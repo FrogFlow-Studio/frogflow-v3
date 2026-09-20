@@ -1,23 +1,28 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
+  connectTelegramAdminFn,
   deletePaymentMethodFn,
   savePaymentMethodFn,
   saveSettingsFn,
   settingsFn,
+  telegramStateFn,
 } from "@/app/admin/admin.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
 
 export const Route = createFileRoute("/admin/_authed/settings")({
-  loader: () => settingsFn(),
+  loader: async () => {
+    const [settings, telegram] = await Promise.all([settingsFn(), telegramStateFn()]);
+    return { ...settings, telegram };
+  },
   component: SettingsPage,
 });
 
 type Method = Awaited<ReturnType<typeof settingsFn>>["methods"][number];
 
 function SettingsPage() {
-  const { settings, methods, ownerTelegramId } = Route.useLoaderData();
+  const { settings, methods, ownerTelegramId, telegram } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const router = useRouter();
   const [saved, setSaved] = useState(false);
@@ -37,6 +42,7 @@ function SettingsPage() {
     <>
       <PageTitle title="Оплата и настройки" />
       <div className="grid gap-4 lg:grid-cols-2">
+        <TelegramCard telegram={telegram} />
         <Card title="Магазин">
           <form
             className="space-y-3"
@@ -287,6 +293,91 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
             </button>
           </div>
         </form>
+      )}
+    </Card>
+  );
+}
+
+type TelegramState = Awaited<ReturnType<typeof telegramStateFn>>;
+
+function TelegramCard({ telegram }: { telegram: TelegramState }) {
+  const router = useRouter();
+  const [result, setResult] = useState<string | null>(null);
+  const connect = useAction(async (token: string) => {
+    const r = await connectTelegramAdminFn({ data: { token } });
+    setResult(
+      r.webhook?.ok
+        ? `Бот @${r.username} подключён, вебхук установлен.`
+        : `Токен принят, но вебхук не установлен: ${r.webhook?.error ?? "неизвестно"}`,
+    );
+    await router.invalidate();
+  });
+  const ok = telegram.connected && telegram.servedBy === "v2" && telegram.webhook?.ok;
+  return (
+    <Card
+      title="Telegram-бот"
+      actions={
+        telegram.connected ? (
+          <Badge tone={ok ? "ok" : "warn"}>
+            {ok
+              ? `@${telegram.username} работает`
+              : `@${telegram.username ?? "бот"} · проверьте вебхук`}
+          </Badge>
+        ) : (
+          <Badge>не подключён</Badge>
+        )
+      }
+      className="lg:col-span-2"
+    >
+      <ol className="mb-3 list-decimal space-y-1 pl-5 text-sm text-muted">
+        <li>
+          В Telegram откройте{" "}
+          <a
+            className="text-accent hover:underline"
+            href="https://t.me/BotFather"
+            target="_blank"
+            rel="noreferrer"
+          >
+            @BotFather
+          </a>
+          , команда <code>/newbot</code>, придумайте имя.
+        </li>
+        <li>
+          Скопируйте токен вида <code>123456789:AA…</code> и вставьте ниже. Всё остальное платформа
+          сделает сама.
+        </li>
+      </ol>
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const form = e.currentTarget;
+          void connect
+            .run(String(new FormData(form).get("token")).trim())
+            .then(() => form.reset())
+            .catch(() => {});
+        }}
+      >
+        <input
+          className="input"
+          name="token"
+          placeholder={telegram.connected ? "Новый токен, если сменили бота" : "Токен из BotFather"}
+          autoComplete="off"
+          required
+        />
+        <button className="btn-primary shrink-0" disabled={connect.busy}>
+          {telegram.connected ? "Заменить" : "Подключить"}
+        </button>
+      </form>
+      {result && <p className="mt-2 text-sm text-muted">{result}</p>}
+      <ErrorBox error={connect.error} />
+      {telegram.connected && telegram.webhook && !telegram.webhook.ok && (
+        <p className="mt-2 text-xs text-warn">
+          Вебхук сейчас: {telegram.webhook.url ?? "не установлен"}.{" "}
+          {telegram.servedBy !== "v2"
+            ? "Магазин обслуживается старой платформой — вставьте токен ещё раз, чтобы перевести сюда."
+            : "Вставьте токен ещё раз, чтобы переустановить."}
+        </p>
       )}
     </Card>
   );

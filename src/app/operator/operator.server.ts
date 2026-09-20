@@ -33,10 +33,11 @@ export async function logEvent(
   botId: string,
   kind: EventKind,
   payload: Record<string, unknown> = {},
+  actor = "operator",
 ): Promise<void> {
   const { error } = await serviceDb()
     .from("bot_events")
-    .insert({ bot_id: botId, actor: "operator", kind, payload: payload as Json });
+    .insert({ bot_id: botId, actor, kind, payload: payload as Json });
   if (error) console.warn("[operator] bot_events:", error.message);
 }
 
@@ -266,7 +267,7 @@ export async function setModule(botId: string, key: ModuleKey, on: boolean) {
   await logEvent(botId, on ? "module_on" : "module_off", { module: key });
 }
 
-export async function connectTelegram(botId: string, token: string) {
+export async function connectTelegram(botId: string, token: string, actor = "operator") {
   const e = env();
   const me = await telegramApi(token, e.TELEGRAM_API_BASE).call<{ username?: string; id?: number }>(
     "getMe",
@@ -280,21 +281,21 @@ export async function connectTelegram(botId: string, token: string) {
   await patchTenantSettings(botId, {
     telegram: { username: me.result?.username ?? null, webhook_ok: false },
   });
-  await logEvent(botId, "webhook", { action: "token", username: me.result?.username });
+  await logEvent(botId, "webhook", { action: "token", username: me.result?.username }, actor);
   return { username: me.result?.username ?? null };
 }
 
-export async function setServedBy(botId: string, servedBy: "v1" | "v2") {
+export async function setServedBy(botId: string, servedBy: "v1" | "v2", actor = "operator") {
   await patchTenantSettings(botId, { served_by: servedBy });
-  await logEvent(botId, "webhook", { action: "served_by", value: servedBy });
-  if (servedBy === "v2") return reinstallWebhook(botId);
+  await logEvent(botId, "webhook", { action: "served_by", value: servedBy }, actor);
+  if (servedBy === "v2") return reinstallWebhook(botId, actor);
   return null;
 }
 
-export async function reinstallWebhook(botId: string) {
+export async function reinstallWebhook(botId: string, actor = "operator") {
   const t = await requireTenant({ by: "id", value: botId });
   const r = await ensureTelegramWebhook(t, true);
-  await logEvent(botId, "webhook", { action: "set", ...r });
+  await logEvent(botId, "webhook", { action: "set", ...r }, actor);
   return r;
 }
 
@@ -355,6 +356,8 @@ export async function createClient(input: {
   vertical: VerticalKey;
   ownerName?: string;
   ownerContact?: string;
+  admin?: { username: string; password: string };
+  actor?: string;
 }) {
   const { data: dup } = await serviceDb()
     .from("bots")
@@ -363,9 +366,22 @@ export async function createClient(input: {
     .limit(1)
     .maybeSingle();
   if (dup) throw new Error(`Идентификатор «${input.ownerId}» уже занят.`);
+  if (input.admin) {
+    const taken = (await tenantDirectory(true)).find(
+      (t) => t.settings.admin?.username === input.admin!.username,
+    );
+    if (taken) throw new Error(`Логин «${input.admin.username}» уже используется.`);
+  }
   const modules = Object.fromEntries(
     MODULE_KEYS.map((k) => [k, moduleDef(k).price === null && moduleDef(k).status === "available"]),
   );
+  const settings: Record<string, unknown> = { served_by: "v2", slug: input.ownerId };
+  if (input.admin) {
+    settings.admin = {
+      username: input.admin.username,
+      password_hash: hashPassword(input.admin.password),
+    };
+  }
   const { data, error } = await serviceDb()
     .from("bots")
     .insert({
@@ -376,13 +392,18 @@ export async function createClient(input: {
       modules,
       owner_name: input.ownerName ?? null,
       owner_contact: input.ownerContact ?? null,
-      settings: { served_by: "v2", slug: input.ownerId },
+      settings: settings as Json,
     })
     .select("id")
     .single();
   if (error || !data) throw new Error(error?.message ?? "insert failed");
   invalidateTenantDirectory();
-  await logEvent(data.id, "onboard", { name: input.name, vertical: input.vertical });
+  await logEvent(
+    data.id,
+    "onboard",
+    { name: input.name, vertical: input.vertical },
+    input.actor ?? "operator",
+  );
   return data.id;
 }
 

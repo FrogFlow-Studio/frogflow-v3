@@ -67,6 +67,9 @@ const schema = z.object({
 
   APP_TIMEZONE: z.string().default("Asia/Almaty"),
 
+  /** Самостоятельная регистрация продавцов на /signup. "0" — только через оператора. */
+  SIGNUP_ENABLED: z.string().default("1"),
+
   VERCEL_ENV: z.string().optional(),
   VERCEL_GIT_COMMIT_SHA: z.string().optional(),
   VERCEL_GIT_COMMIT_REF: z.string().optional(),

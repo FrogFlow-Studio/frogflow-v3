@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as OperatorRouteImport } from './routes/operator'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AdminAuthedRouteImport } from './routes/admin._authed'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
@@ -49,6 +50,11 @@ const AdminRoute = AdminRouteImport.update({
 const OperatorRoute = OperatorRouteImport.update({
   id: '/operator',
   path: '/operator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAuthedRoute = AdminAuthedRouteImport.update({
@@ -171,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/operator': typeof OperatorRouteWithChildren
+  '/signup': typeof SignupRoute
   '/admin/login': typeof AdminLoginRoute
   '/api/health': typeof ApiHealthRoute
   '/operator/login': typeof OperatorLoginRoute
@@ -197,6 +204,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminAuthedIndexRoute
   '/operator': typeof OperatorAuthedIndexRoute
+  '/signup': typeof SignupRoute
   '/admin/login': typeof AdminLoginRoute
   '/api/health': typeof ApiHealthRoute
   '/operator/login': typeof OperatorLoginRoute
@@ -222,6 +230,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/operator': typeof OperatorRouteWithChildren
+  '/signup': typeof SignupRoute
   '/admin/_authed': typeof AdminAuthedRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
   '/api/health': typeof ApiHealthRoute
@@ -252,6 +261,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/operator'
+    | '/signup'
     | '/admin/login'
     | '/api/health'
     | '/operator/login'
@@ -278,6 +288,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/operator'
+    | '/signup'
     | '/admin/login'
     | '/api/health'
     | '/operator/login'
@@ -302,6 +313,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/operator'
+    | '/signup'
     | '/admin/_authed'
     | '/admin/login'
     | '/api/health'
@@ -331,6 +343,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   OperatorRoute: typeof OperatorRouteWithChildren
+  SignupRoute: typeof SignupRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAdminUploadRoute: typeof ApiAdminUploadRoute
   ApiCronJobRoute: typeof ApiCronJobRoute
@@ -361,6 +374,13 @@ declare module '@tanstack/react-router' {
       path: '/operator'
       fullPath: '/operator'
       preLoaderRoute: typeof OperatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/_authed': {
@@ -610,6 +630,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   OperatorRoute: OperatorRouteWithChildren,
+  SignupRoute: SignupRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAdminUploadRoute: ApiAdminUploadRoute,
   ApiCronJobRoute: ApiCronJobRoute,

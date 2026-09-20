@@ -383,3 +383,31 @@ export const requestModuleFn = createServerFn({ method: "POST" })
     if (error && !/duplicate|unique/i.test(error.message)) throw new Error(error.message);
     return { ok: true, already: Boolean(error) };
   });
+
+/* ── Telegram из админки ─────────────────────────────────────────── */
+
+export const telegramStateFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  const { webhookState } = await import("@/app/operator/operator.server");
+  return {
+    connected: Boolean(ctx.tenant.telegramTokenEnc),
+    username: ctx.tenant.settings.telegram?.username ?? null,
+    servedBy: ctx.tenant.settings.served_by ?? null,
+    webhook: await webhookState(ctx.tenant.id),
+  };
+});
+
+/** Продавец подключает бота сам: токен → getMe → шифрование → вебхук на эту платформу. */
+export const connectTelegramAdminFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({ token: z.string().regex(/^\d+:[\w-]{30,}$/, "Не похоже на токен BotFather") })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    const { connectTelegram, setServedBy } = await import("@/app/operator/operator.server");
+    const r = await connectTelegram(ctx.tenant.id, data.token, "admin");
+    const webhook = await setServedBy(ctx.tenant.id, "v2", "admin");
+    return { username: r.username, webhook };
+  });
