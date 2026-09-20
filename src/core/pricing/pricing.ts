@@ -84,6 +84,14 @@ export function setFxProvider(p: FxProvider): void {
   fxMemory = null;
 }
 
+export async function convertForTenant(
+  amount: number,
+  from: string,
+  to: string,
+): Promise<number | null> {
+  return convertAmount(amount, from, to);
+}
+
 async function convertAmount(amount: number, from: string, to: string): Promise<number | null> {
   if (from.toUpperCase() === to.toUpperCase()) return Math.round(amount);
   try {

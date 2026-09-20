@@ -69,6 +69,19 @@ import { notifyAdminNewOrder } from "./admin-notify";
 import { telegramMaterialSender } from "./deliver";
 import { findValidGift, findValidPromoCode } from "@/core/discounts/discounts";
 import { normalizeCode } from "@/core/discounts/pure";
+import {
+  activeDeliveryZones,
+  fulfillmentSettings,
+  maxLeadTimeDaysInCart,
+  zoneFee,
+} from "@/core/fulfillment/fulfillment";
+import {
+  addDaysToIso,
+  isoToDisplay,
+  matchFulfillmentType,
+  parseDateInput,
+  todayInTz,
+} from "@/core/fulfillment/pure";
 
 const PAGE = 5;
 const DEFAULT_PAUSED = "Бот временно недоступен. Загляните чуть позже — мы уже разбираемся.";
@@ -197,6 +210,48 @@ async function handleMessage(
   }
 
   const action = menuActionFor(text, contactLabels(ctx));
+
+  if (text && !action) {
+    const mode = customer.state.mode;
+    if (mode === "awaiting_fulfillment_type") {
+      const type = matchFulfillmentType(text);
+      if (!type) return void (await send(b, b.m.fulfillmentTypePrompt));
+      b.customer = await setState(ctx, customer, {
+        ...customer.state,
+        checkout_fulfillment_type: type,
+      });
+      return askFulfillmentDate(b);
+    }
+    if (mode === "awaiting_fulfillment_date") {
+      const iso = parseDateInput(text);
+      const minIso =
+        customer.state.checkout_min_fulfillment_date ??
+        addDaysToIso(todayInTz(ctx.timezone), await maxLeadTimeDaysInCart(ctx, customer));
+      if (!iso) return void (await send(b, b.m.fulfillmentDateInvalid));
+      if (iso < minIso)
+        return void (await send(b, b.m.fulfillmentDateTooEarly(isoToDisplay(minIso))));
+      b.customer = await setState(ctx, customer, {
+        ...customer.state,
+        checkout_fulfillment_at: iso,
+      });
+      return afterDate(b);
+    }
+    if (mode === "awaiting_delivery_zone") {
+      const zones = await activeDeliveryZones(ctx);
+      const z =
+        zones.find((x) => x.name.trim().toLowerCase() === text.trim().toLowerCase()) ??
+        zones.find((x) => text.toLowerCase().includes(x.name.toLowerCase()));
+      return z ? pickZone(b, z.id) : askZoneOrAddress(b);
+    }
+    if (mode === "awaiting_address") {
+      b.customer = await setState(ctx, customer, {
+        ...customer.state,
+        checkout_fulfillment_address: text.slice(0, 500),
+      });
+      return askNote(b);
+    }
+    if (mode === "awaiting_fulfillment_note") return finishAfterNote(b, text.slice(0, 500));
+  }
 
   if (customer.state.mode === "awaiting_promo_code" && text && !action) {
     const idle = { ...customer.state, mode: "idle" as const };
@@ -382,6 +437,8 @@ async function sendProductCard(b: Bot, p: Product) {
         : [[{ text: b.m.addToCartBtn, callback_data: `add:${p.id}` }]],
     };
   }
+  if (p.lead_time_days && p.lead_time_days > 0)
+    caption += `\n${b.m.leadTimeLabel(p.lead_time_days)}`;
   if (outOfStock) caption += `\n${b.m.outOfStockLabel}`;
   if (imgs.length === 0) {
     await send(b, caption, { reply_markup: keyboard });
@@ -506,7 +563,125 @@ async function continueCheckout(b: Bot) {
     return;
   }
   if (!b.customer.state.country_code) return askCountry(b, true);
-  return finishCheckout(b, b.customer.state.country_code);
+  return proceedToFulfillmentOrPlace(b, b.customer.state.country_code);
+}
+
+/** Физическая корзина: способ получения → дата → зона и адрес → пожелания → заказ. */
+async function proceedToFulfillmentOrPlace(b: Bot, countryCode: string) {
+  const items = await listCart(b.ctx, b.customer);
+  const physical = items.some((i) => i.products?.fulfillment_kind === "physical");
+  const {
+    checkout_fulfillment_type: _t,
+    checkout_fulfillment_at: _a,
+    checkout_delivery_zone_id: _z,
+    checkout_delivery_zone_name: _zn,
+    checkout_delivery_fee: _zf,
+    checkout_fulfillment_address: _ad,
+    checkout_fulfillment_note: _n,
+    ...clean
+  } = b.customer.state;
+  if (!physical) {
+    b.customer = await setState(b.ctx, b.customer, clean);
+    return finishCheckout(b, countryCode);
+  }
+  const fs = await fulfillmentSettings(b.ctx);
+  if (fs.pickup && fs.delivery) {
+    b.customer = await setState(b.ctx, b.customer, { ...clean, mode: "awaiting_fulfillment_type" });
+    await send(b, b.m.fulfillmentTypePrompt, {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: b.m.fulfillmentTypePickupBtn, callback_data: "fulfilltype:pickup" }],
+          [{ text: b.m.fulfillmentTypeDeliveryBtn, callback_data: "fulfilltype:delivery" }],
+        ],
+      },
+    });
+    return;
+  }
+  b.customer = await setState(b.ctx, b.customer, {
+    ...clean,
+    checkout_fulfillment_type: fs.delivery ? "delivery" : "pickup",
+  });
+  return askFulfillmentDate(b);
+}
+
+async function askFulfillmentDate(b: Bot) {
+  const minDays = await maxLeadTimeDaysInCart(b.ctx, b.customer);
+  const minIso = addDaysToIso(todayInTz(b.ctx.timezone), minDays);
+  b.customer = await setState(b.ctx, b.customer, {
+    ...b.customer.state,
+    mode: "awaiting_fulfillment_date",
+    checkout_min_fulfillment_date: minIso,
+  });
+  await send(b, b.m.fulfillmentDatePrompt(isoToDisplay(minIso)));
+}
+
+async function afterDate(b: Bot) {
+  if (b.customer.state.checkout_fulfillment_type === "delivery") return askZoneOrAddress(b);
+  return askNote(b);
+}
+
+async function askZoneOrAddress(b: Bot) {
+  const zones = await activeDeliveryZones(b.ctx);
+  if (zones.length === 0) {
+    b.customer = await setState(b.ctx, b.customer, {
+      ...b.customer.state,
+      mode: "awaiting_address",
+    });
+    return void (await send(b, b.m.addressPrompt));
+  }
+  b.customer = await setState(b.ctx, b.customer, {
+    ...b.customer.state,
+    mode: "awaiting_delivery_zone",
+  });
+  const buttons = await Promise.all(
+    zones.map(async (z) => {
+      const fee = await zoneFee(b.ctx, z.price, b.customer.state.country_code);
+      return [
+        {
+          text: `${z.name} (+${formatMoney(fee.amount, fee.currency)})`,
+          callback_data: `zone:${z.id}`,
+        },
+      ];
+    }),
+  );
+  await send(b, b.m.deliveryZonePrompt, { reply_markup: { inline_keyboard: buttons } });
+}
+
+async function pickZone(b: Bot, zoneId: string) {
+  const zone = (await activeDeliveryZones(b.ctx)).find((z) => z.id === zoneId);
+  if (!zone) return askZoneOrAddress(b);
+  const fee = await zoneFee(b.ctx, zone.price, b.customer.state.country_code);
+  b.customer = await setState(b.ctx, b.customer, {
+    ...b.customer.state,
+    checkout_delivery_zone_id: zone.id,
+    checkout_delivery_zone_name: zone.name,
+    checkout_delivery_fee: fee.amount,
+    mode: "awaiting_address",
+  });
+  await send(b, b.m.addressPrompt);
+}
+
+async function askNote(b: Bot) {
+  b.customer = await setState(b.ctx, b.customer, {
+    ...b.customer.state,
+    mode: "awaiting_fulfillment_note",
+  });
+  await send(b, b.m.fulfillmentNotePrompt, {
+    reply_markup: {
+      inline_keyboard: [[{ text: b.m.fulfillmentNoteSkipBtn, callback_data: "fulfillnote:skip" }]],
+    },
+  });
+}
+
+async function finishAfterNote(b: Bot, note: string | null) {
+  b.customer = await setState(b.ctx, b.customer, {
+    ...b.customer.state,
+    checkout_fulfillment_note: note ?? undefined,
+    mode: "idle",
+  });
+  const cc = b.customer.state.country_code;
+  if (!cc) return askCountry(b, true);
+  return finishCheckout(b, cc);
 }
 
 async function finishCheckout(b: Bot, countryCode: string) {
@@ -515,6 +690,21 @@ async function finishCheckout(b: Bot, countryCode: string) {
     promoCode: st.promo_code,
     usePoints: st.use_points,
     giftCode: st.gift_certificate_code,
+    fulfillment: st.checkout_fulfillment_type
+      ? {
+          type: st.checkout_fulfillment_type,
+          at: st.checkout_fulfillment_at ?? null,
+          address: st.checkout_fulfillment_address ?? null,
+          note: st.checkout_fulfillment_note ?? null,
+          zone: st.checkout_delivery_zone_id
+            ? {
+                id: st.checkout_delivery_zone_id,
+                name: st.checkout_delivery_zone_name ?? "",
+                fee: st.checkout_delivery_fee ?? 0,
+              }
+            : null,
+        }
+      : null,
   });
   if (!result.ok) {
     switch (result.reason) {
@@ -535,6 +725,8 @@ async function finishCheckout(b: Bot, countryCode: string) {
         b.customer = await setState(b.ctx, b.customer, rest);
         return void (await send(b, b.m.giftCertificateInvalid));
       }
+      case "out_of_stock":
+        return void (await send(b, b.m.outOfStockAtCheckout));
       default:
         return void (await send(b, b.m.orderCreateFailed));
     }
@@ -548,8 +740,31 @@ async function finishCheckout(b: Bot, countryCode: string) {
     promo_code: _promo,
     use_points: _up,
     gift_certificate_code: _gift,
+    checkout_fulfillment_type: _ft,
+    checkout_fulfillment_at: _fa,
+    checkout_min_fulfillment_date: _fm,
+    checkout_delivery_zone_id: _fz,
+    checkout_delivery_zone_name: _fzn,
+    checkout_delivery_fee: _ff,
+    checkout_fulfillment_address: _fad,
+    checkout_fulfillment_note: _fn,
     ...rest
   } = b.customer.state;
+  const physical = order.fulfillment_kind === "physical";
+  if (physical && result.amountDue <= 0 && !result.zeroTotal) {
+    // Оплата при получении: заказ сразу в работе.
+    await b.ctx.db
+      .from("orders")
+      .update({ status: "accepted" })
+      .eq("id", order.id)
+      .eq("status", "awaiting_payment");
+    b.customer = await setState(b.ctx, b.customer, { ...rest, mode: "idle" });
+    await send(b, b.m.orderAcceptedOnReceipt(no, formatMoney(order.total, order.currency)), {
+      reply_markup: mainMenu(b),
+    });
+    await notifyAdminNewOrder(b.ctx, b.api, order, null);
+    return;
+  }
   if (result.zeroTotal) {
     b.customer = await setState(b.ctx, b.customer, { ...rest, mode: "idle" });
     await send(b, b.m.orderPaidByDiscounts(no), { reply_markup: mainMenu(b) });
@@ -578,9 +793,14 @@ async function finishCheckout(b: Bot, countryCode: string) {
     pending_order_id: order.id,
     pending_display_no: no,
   });
+  const due = result.amountDue;
+  const depositLine =
+    physical && due < Number(order.total)
+      ? `${b.m.depositLine(formatMoney(due, order.currency), formatMoney(order.total, order.currency))}\n\n`
+      : "";
   const text =
-    `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(order.total, order.currency))}\n\n` +
-    `${escapeHtml(method.instructions || b.m.defaultInstructions)}\n\n${b.m.afterProofManual}`;
+    `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}\n${depositLine}\n` +
+    `${escapeHtml(method.instructions || b.m.defaultInstructions)}\n\n${physical ? b.m.afterProofPhysical : b.m.afterProofManual}`;
   if (method.qr_code_path && text.length <= 1024) {
     const r = await b.api.call("sendPhoto", {
       chat_id: b.chatId,
@@ -765,6 +985,24 @@ async function handleCallback(
     return;
   }
   if (data === "checkout") return startCheckout(b);
+  if (data.startsWith("fulfilltype:")) {
+    if (customer.state.mode !== "awaiting_fulfillment_type") return;
+    const type = data.slice(12);
+    if (type !== "pickup" && type !== "delivery") return;
+    b.customer = await setState(ctx, customer, {
+      ...customer.state,
+      checkout_fulfillment_type: type,
+    });
+    return askFulfillmentDate(b);
+  }
+  if (data.startsWith("zone:")) {
+    if (customer.state.mode !== "awaiting_delivery_zone") return;
+    return pickZone(b, data.slice(5));
+  }
+  if (data === "fulfillnote:skip") {
+    if (customer.state.mode !== "awaiting_fulfillment_note") return;
+    return finishAfterNote(b, null);
+  }
   if (data === "promo:enter") {
     b.customer = await setState(ctx, customer, { ...customer.state, mode: "awaiting_promo_code" });
     return void (await send(b, b.m.promoCodePrompt));

@@ -2,7 +2,10 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   connectTelegramAdminFn,
+  deleteDeliveryZoneFn,
   deletePaymentMethodFn,
+  saveDeliveryZoneFn,
+  deliveryZonesFn,
   savePaymentMethodFn,
   saveSettingsFn,
   settingsFn,
@@ -13,8 +16,12 @@ import { imagePath } from "@/core/catalog/image-url";
 
 export const Route = createFileRoute("/admin/_authed/settings")({
   loader: async () => {
-    const [settings, telegram] = await Promise.all([settingsFn(), telegramStateFn()]);
-    return { ...settings, telegram };
+    const [settings, telegram, zones] = await Promise.all([
+      settingsFn(),
+      telegramStateFn(),
+      deliveryZonesFn(),
+    ]);
+    return { ...settings, telegram, zones };
   },
   component: SettingsPage,
 });
@@ -22,7 +29,7 @@ export const Route = createFileRoute("/admin/_authed/settings")({
 type Method = Awaited<ReturnType<typeof settingsFn>>["methods"][number];
 
 function SettingsPage() {
-  const { settings, methods, ownerTelegramId, telegram } = Route.useLoaderData();
+  const { settings, methods, ownerTelegramId, telegram, zones } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const router = useRouter();
   const [saved, setSaved] = useState(false);
@@ -112,6 +119,8 @@ function SettingsPage() {
           </form>
         </Card>
         <PaymentMethods methods={methods} />
+        <FulfillmentCard settings={settings} />
+        <ZonesCard zones={zones} />
       </div>
     </>
   );
@@ -396,6 +405,204 @@ function TelegramCard({ telegram }: { telegram: TelegramState }) {
             ? "Магазин обслуживается старой платформой — вставьте токен ещё раз, чтобы перевести сюда."
             : "Вставьте токен ещё раз, чтобы переустановить."}
         </p>
+      )}
+    </Card>
+  );
+}
+
+function FulfillmentCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const [saved, setSaved] = useState(false);
+  const save = useAction(async (f: FormData) => {
+    await saveSettingsFn({
+      data: {
+        fulfillment_pickup_enabled: f.get("pickup") === "on" ? "true" : "false",
+        fulfillment_delivery_enabled: f.get("delivery") === "on" ? "true" : "false",
+        payment_mode: String(f.get("payment_mode")),
+        deposit_percent: String(f.get("deposit_percent") || "30"),
+      },
+    });
+    setSaved(true);
+    await router.invalidate();
+  });
+  const [mode, setMode] = useState(settings.payment_mode ?? "full");
+  return (
+    <Card title="Физические товары: получение и оплата">
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save.run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        <div className="flex flex-wrap gap-4 text-sm">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="pickup"
+              defaultChecked={settings.fulfillment_pickup_enabled !== "false"}
+            />{" "}
+            Самовывоз
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="delivery"
+              defaultChecked={settings.fulfillment_delivery_enabled !== "false"}
+            />{" "}
+            Доставка
+          </label>
+        </div>
+        <Field label="Оплата физических заказов">
+          <select
+            className="input"
+            name="payment_mode"
+            value={mode}
+            onChange={(e) => setMode(e.target.value)}
+          >
+            <option value="full">Полная предоплата по чеку</option>
+            <option value="deposit">Задаток по чеку, остаток при получении</option>
+            <option value="on_receipt">Оплата при получении, без чека</option>
+          </select>
+        </Field>
+        {mode === "deposit" && (
+          <Field label="Задаток, % от суммы">
+            <input
+              className="input w-32"
+              name="deposit_percent"
+              type="number"
+              min={1}
+              max={100}
+              defaultValue={settings.deposit_percent ?? "30"}
+            />
+          </Field>
+        )}
+        <div className="flex items-center gap-3">
+          <button className="btn-secondary" disabled={save.busy}>
+            Сохранить
+          </button>
+          {saved && <span className="text-xs text-ok">Сохранено</span>}
+        </div>
+        <ErrorBox error={save.error} />
+      </form>
+    </Card>
+  );
+}
+
+type Zone = Awaited<ReturnType<typeof deliveryZonesFn>>[number];
+
+function ZonesCard({ zones }: { zones: Zone[] }) {
+  const router = useRouter();
+  const [editing, setEditing] = useState<Zone | "new" | null>(null);
+  const save = useAction(async (f: FormData, id: string | null) => {
+    await saveDeliveryZoneFn({
+      data: {
+        id,
+        name: String(f.get("name")),
+        price: Number(f.get("price")) || 0,
+        isActive: f.get("isActive") === "on",
+        sortOrder: Number(f.get("sortOrder")) || 0,
+      },
+    });
+    setEditing(null);
+    await router.invalidate();
+  });
+  const del = useAction(async (id: string) => {
+    if (!confirm("Удалить зону?")) return;
+    await deleteDeliveryZoneFn({ data: { id } });
+    await router.invalidate();
+  });
+  const cur = editing === "new" ? null : editing;
+  return (
+    <Card
+      title="Зоны доставки"
+      actions={
+        <button className="btn-secondary text-xs" onClick={() => setEditing("new")}>
+          + Зона
+        </button>
+      }
+    >
+      <p className="mb-3 text-xs text-muted">
+        Покупатель выбирает зону при доставке, её цена добавляется к заказу. Без зон бот просто
+        спросит адрес.
+      </p>
+      {zones.length === 0 ? (
+        <p className="text-sm text-muted">Зон пока нет.</p>
+      ) : (
+        <ul className="divide-y divide-line text-sm">
+          {zones.map((z) => (
+            <li key={z.id} className="flex items-center justify-between gap-3 py-2">
+              <span>
+                {z.name} <span className="text-muted">· {Number(z.price)}</span>{" "}
+                {!z.is_active && <Badge>выкл</Badge>}
+              </span>
+              <span className="shrink-0">
+                <button className="btn-ghost text-xs" onClick={() => setEditing(z)}>
+                  Изменить
+                </button>
+                <button
+                  className="btn-ghost text-xs text-danger"
+                  onClick={() => void del.run(z.id).catch(() => {})}
+                >
+                  Удалить
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <ErrorBox error={del.error} />
+      {editing !== null && (
+        <form
+          key={cur?.id ?? "new"}
+          className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-[1fr_120px_80px_auto]"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save.run(new FormData(e.currentTarget), cur?.id ?? null).catch(() => {});
+          }}
+        >
+          <Field label="Название">
+            <input
+              className="input"
+              name="name"
+              defaultValue={cur?.name ?? ""}
+              required
+              maxLength={80}
+              placeholder="Алмалинский район"
+            />
+          </Field>
+          <Field label="Цена">
+            <input
+              className="input"
+              name="price"
+              type="number"
+              min={0}
+              step="1"
+              defaultValue={cur ? Number(cur.price) : 0}
+            />
+          </Field>
+          <Field label="Порядок">
+            <input
+              className="input"
+              name="sortOrder"
+              type="number"
+              defaultValue={cur?.sort_order ?? zones.length}
+            />
+          </Field>
+          <label className="flex items-center gap-2 self-end pb-2 text-sm">
+            <input type="checkbox" name="isActive" defaultChecked={cur?.is_active ?? true} />{" "}
+            Активна
+          </label>
+          <div className="flex gap-2 sm:col-span-4">
+            <button className="btn-primary" disabled={save.busy}>
+              Сохранить
+            </button>
+            <button type="button" className="btn-ghost" onClick={() => setEditing(null)}>
+              Отмена
+            </button>
+          </div>
+          <ErrorBox error={save.error} />
+        </form>
       )}
     </Card>
   );

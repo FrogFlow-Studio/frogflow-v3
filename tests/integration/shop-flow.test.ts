@@ -203,25 +203,21 @@ describe.skipIf(!liveReady)("живая база: контур магазина 
     try {
       await ctx2.db.from("promo_codes").delete().eq("code", "V2TEST10");
       await ctx2.db.from("gift_certificates").delete().eq("code", "GIFT-V2TEST1");
-      await ctx2.db
-        .from("promo_codes")
-        .insert({
-          bot_id: DEMO_BOT,
-          code: "V2TEST10",
-          discount_type: "percent",
-          discount_value: 10,
-          max_uses: 1,
-          is_active: true,
-        });
-      await ctx2.db
-        .from("gift_certificates")
-        .insert({
-          bot_id: DEMO_BOT,
-          code: "GIFT-V2TEST1",
-          amount: 300,
-          currency: "KZT",
-          status: "active",
-        });
+      await ctx2.db.from("promo_codes").insert({
+        bot_id: DEMO_BOT,
+        code: "V2TEST10",
+        discount_type: "percent",
+        discount_value: 10,
+        max_uses: 1,
+        is_active: true,
+      });
+      await ctx2.db.from("gift_certificates").insert({
+        bot_id: DEMO_BOT,
+        code: "GIFT-V2TEST1",
+        amount: 300,
+        currency: "KZT",
+        status: "active",
+      });
 
       expect((await findValidPromoCode(ctx2, "v2test10")).ok).toBe(true);
       expect((await findValidPromoCode(ctx2, "nope")).ok).toBe(false);
@@ -268,6 +264,97 @@ describe.skipIf(!liveReady)("живая база: контур магазина 
     } finally {
       await ctx2.db.from("promo_codes").delete().eq("code", "V2TEST10");
       await ctx2.db.from("gift_certificates").delete().eq("code", "GIFT-V2TEST1");
+      await serviceDb().from("bots").update({ modules: before }).eq("id", DEMO_BOT);
+      invalidateTenantDirectory();
+    }
+  });
+
+  it("физический заказ: зона доставки в сумме, задаток 30 %, остаток списан", async () => {
+    const { serviceDb } = await import("@/core/db/client.server");
+    const { setSetting } = await import("@/core/settings/settings");
+    const { data: botRow } = await serviceDb()
+      .from("bots")
+      .select("modules")
+      .eq("id", DEMO_BOT)
+      .single();
+    const before = botRow?.modules as Record<string, boolean>;
+    await serviceDb()
+      .from("bots")
+      .update({ modules: { ...before, stock: true } })
+      .eq("id", DEMO_BOT);
+    const { invalidateTenantDirectory, requireTenant } =
+      await import("@/core/tenant/resolve.server");
+    invalidateTenantDirectory();
+    const ctx2 = tenantContext(await requireTenant({ by: "id", value: DEMO_BOT }));
+    const customer = await upsertCustomer(ctx2, "telegram", TEST_TG_ID, { firstName: "v2" });
+    let productId: string | null = null;
+    let zoneId: string | null = null;
+    try {
+      const { data: p } = await ctx2.db
+        .from("products")
+        .insert({
+          bot_id: DEMO_BOT,
+          name: "v2 probe · торт",
+          description: "",
+          price: 1000,
+          currency: "KZT",
+          is_active: true,
+          fulfillment_kind: "physical",
+          category_ids: [],
+          country_prices: {},
+          stock_quantity: 2,
+          lead_time_days: 2,
+        })
+        .select("id")
+        .single();
+      productId = p!.id;
+      const { data: z } = await ctx2.db
+        .from("delivery_zones")
+        .insert({
+          bot_id: DEMO_BOT,
+          name: "v2 probe zone",
+          price: 500,
+          is_active: true,
+          sort_order: 0,
+        })
+        .select("id")
+        .single();
+      zoneId = z!.id;
+      await setSetting(ctx2, "payment_mode", "deposit");
+      await setSetting(ctx2, "deposit_percent", "30");
+
+      expect(await addToCart(ctx2, customer, productId)).toBe("ok");
+      expect(await addToCart(ctx2, customer, productId)).toBe("ok");
+      expect(await addToCart(ctx2, customer, productId)).toBe("out_of_stock");
+      const withCountry = await setState(ctx2, customer, { ...customer.state, country_code: "KZ" });
+      const r = await placeOrder(ctx2, withCountry, "KZ", {
+        fulfillment: {
+          type: "delivery",
+          at: "2030-01-10",
+          address: "ул. Абая 1",
+          note: "без орехов",
+          zone: { id: zoneId, name: "v2 probe zone", fee: 500 },
+        },
+      });
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      createdOrders.push(r.order.id);
+      expect(Number(r.order.total)).toBe(2500);
+      expect(Number(r.order.delivery_fee)).toBe(500);
+      expect(r.order.fulfillment_type).toBe("delivery");
+      expect(r.order.fulfillment_address).toBe("ул. Абая 1");
+      expect(r.order.delivery_zone_name).toBe("v2 probe zone");
+      expect(r.amountDue).toBe(750);
+      const { data: stock } = await ctx2.db
+        .from("products")
+        .select("stock_quantity")
+        .eq("id", productId)
+        .single();
+      expect(stock?.stock_quantity).toBe(0);
+    } finally {
+      if (productId) await ctx2.db.from("products").delete().eq("id", productId);
+      if (zoneId) await ctx2.db.from("delivery_zones").delete().eq("id", zoneId);
+      await ctx2.db.from("app_settings").delete().in("key", ["payment_mode", "deposit_percent"]);
       await serviceDb().from("bots").update({ modules: before }).eq("id", DEMO_BOT);
       invalidateTenantDirectory();
     }

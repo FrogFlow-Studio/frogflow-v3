@@ -319,6 +319,10 @@ export const SETTING_KEYS = [
   "cart_reminder_hours",
   "delivery_lang_timing",
   "loyalty_earn_percent",
+  "fulfillment_pickup_enabled",
+  "fulfillment_delivery_enabled",
+  "payment_mode",
+  "deposit_percent",
 ] as const;
 
 export const settingsFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -530,6 +534,55 @@ export const cancelGiftCertificateFn = createServerFn({ method: "POST" })
       .update({ status: "cancelled" })
       .eq("id", data.id)
       .eq("status", "active");
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/* ── зоны доставки ───────────────────────────────────────────────── */
+
+export const deliveryZonesFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  const { data, error } = await ctx.db
+    .from("delivery_zones")
+    .select("*")
+    .order("sort_order")
+    .order("name");
+  if (error) throw new Error(error.message);
+  return data ?? [];
+});
+
+export const saveDeliveryZoneFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        id: uuid.nullable(),
+        name: z.string().min(1).max(80),
+        price: z.number().min(0),
+        isActive: z.boolean(),
+        sortOrder: z.number().int(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    const row = {
+      name: data.name.trim(),
+      price: data.price,
+      is_active: data.isActive,
+      sort_order: data.sortOrder,
+    };
+    const { error } = data.id
+      ? await ctx.db.from("delivery_zones").update(row).eq("id", data.id)
+      : await ctx.db.from("delivery_zones").insert({ bot_id: ctx.tenant.id, ...row });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteDeliveryZoneFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: uuid }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    const { error } = await ctx.db.from("delivery_zones").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

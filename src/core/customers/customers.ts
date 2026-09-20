@@ -38,7 +38,8 @@ export type DialogMode =
   | "awaiting_fulfillment_type"
   | "awaiting_fulfillment_date"
   | "awaiting_delivery_zone"
-  | "awaiting_address";
+  | "awaiting_address"
+  | "awaiting_fulfillment_note";
 
 export type DialogState = {
   mode?: DialogMode;
@@ -50,6 +51,14 @@ export type DialogState = {
   use_points?: boolean;
   gift_certificate_code?: string;
   placing_order?: boolean;
+  checkout_fulfillment_type?: "pickup" | "delivery";
+  checkout_fulfillment_at?: string;
+  checkout_min_fulfillment_date?: string;
+  checkout_delivery_zone_id?: string;
+  checkout_delivery_zone_name?: string;
+  checkout_delivery_fee?: number;
+  checkout_fulfillment_address?: string;
+  checkout_fulfillment_note?: string;
   [key: string]: Json | undefined;
 };
 

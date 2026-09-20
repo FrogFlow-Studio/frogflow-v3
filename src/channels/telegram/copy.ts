@@ -56,6 +56,21 @@ export type Msg = {
   giftCertificateRemoved: string;
   giftCertificateDiscountLine: (amount: string) => string;
   orderPaidByDiscounts: (no: number) => string;
+  fulfillmentTypePrompt: string;
+  fulfillmentTypePickupBtn: string;
+  fulfillmentTypeDeliveryBtn: string;
+  fulfillmentDatePrompt: (minDate: string) => string;
+  fulfillmentDateInvalid: string;
+  fulfillmentDateTooEarly: (minDate: string) => string;
+  deliveryZonePrompt: string;
+  addressPrompt: string;
+  fulfillmentNotePrompt: string;
+  fulfillmentNoteSkipBtn: string;
+  outOfStockAtCheckout: string;
+  orderAcceptedOnReceipt: (no: number, total: string) => string;
+  depositLine: (due: string, total: string) => string;
+  afterProofPhysical: string;
+  leadTimeLabel: (days: number) => string;
   chooseCountry: string;
   countrySaved: (name: string) => string;
   paymentNotConfigured: string;
@@ -148,6 +163,26 @@ const ru: Msg = {
   giftCertificateRemoved: "Сертификат убран.",
   giftCertificateDiscountLine: (a) => `🎫 Сертификат: −${a}\n`,
   orderPaidByDiscounts: (no) => `🎉 Заказ #${no} полностью оплачен скидкой — файлы уже в пути.`,
+  fulfillmentTypePrompt: "Как вы хотите получить заказ?",
+  fulfillmentTypePickupBtn: "🚶 Самовывоз",
+  fulfillmentTypeDeliveryBtn: "🚚 Доставка",
+  fulfillmentDatePrompt: (d) =>
+    `📅 На какую дату? Напишите в формате ДД.ММ.ГГГГ. Ближайшая возможная: ${d}.`,
+  fulfillmentDateInvalid: "Не разобрал дату. Формат: ДД.ММ.ГГГГ, например 05.03.2026.",
+  fulfillmentDateTooEarly: (d) => `Так быстро не успеем. Ближайшая дата: ${d}.`,
+  deliveryZonePrompt: "Выберите район доставки:",
+  addressPrompt: "📍 Укажите адрес доставки одним сообщением.",
+  fulfillmentNotePrompt:
+    "✏️ Пожелания к заказу (надпись, аллергия, время)? Напишите или нажмите «Без комментария».",
+  fulfillmentNoteSkipBtn: "Без комментария",
+  outOfStockAtCheckout:
+    "К сожалению, одного из товаров больше нет в наличии — мы убрали его из корзины. Проверьте корзину и оформите заново.",
+  orderAcceptedOnReceipt: (no, total) =>
+    `✅ Заказ #${no} принят. Оплата ${total} при получении. Мы напишем, когда будет готов.`,
+  depositLine: (due, total) => `Сейчас — задаток ${due}, остаток при получении (итого ${total}).`,
+  afterProofPhysical:
+    "После оплаты пришлите сюда фото или PDF чека — продавец подтвердит заказ и возьмёт в работу.",
+  leadTimeLabel: (days) => `⏳ Срок изготовления: ${days} дн.`,
   chooseCountry: "🌍 Выберите страну оплаты:",
   countrySaved: (n) => `✅ Страна: ${n}`,
   paymentNotConfigured: "Продавец ещё не настроил способы оплаты. Напишите ему напрямую.",

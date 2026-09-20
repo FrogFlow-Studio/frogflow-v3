@@ -111,17 +111,20 @@ export type TenantContext = {
   db: Db;
   /** Публичный адрес платформы: ссылки в сообщениях, колбэки оплаты. */
   appUrl: string;
+  /** Часовой пояс для дат получения. */
+  timezone: string;
   secrets: {
     telegramToken(): string;
   };
 };
 
 export function tenantContext(tenant: Tenant): TenantContext {
-  const { APP_URL, SECRETS_KEY } = env();
+  const { APP_URL, SECRETS_KEY, APP_TIMEZONE } = env();
   return {
     tenant,
     db: tenantDb(tenant.id),
     appUrl: APP_URL,
+    timezone: APP_TIMEZONE,
     secrets: {
       telegramToken() {
         const enc = tenant.telegramTokenEnc;

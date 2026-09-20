@@ -13,6 +13,7 @@ import {
 import type { Locale } from "@/core/i18n/locale";
 import { itemLanguages, itemMaterials } from "./pure";
 import { applyDiscounts, normalizeCode } from "@/core/discounts/pure";
+import { amountDueNow, decrementStock, restoreStock } from "@/core/fulfillment/fulfillment";
 import {
   awardPointsForOrder,
   findValidGift,
@@ -99,6 +100,8 @@ export type PlaceOrderResult =
       priced: Awaited<ReturnType<typeof priceCart>>;
       /** Скидки покрыли всё: чек не нужен, заказ можно выдавать сразу. */
       zeroTotal: boolean;
+      /** Сколько платить сейчас: задаток или ноль при оплате при получении. */
+      amountDue: number;
     }
   | {
       ok: false;
@@ -108,13 +111,23 @@ export type PlaceOrderResult =
         | "country_unavailable"
         | "order_failed"
         | "promo_invalid"
-        | "gift_invalid";
+        | "gift_invalid"
+        | "out_of_stock";
     };
+
+export type FulfillmentInput = {
+  type: "pickup" | "delivery" | null;
+  at: string | null;
+  address: string | null;
+  note: string | null;
+  zone: { id: string; name: string; fee: number } | null;
+};
 
 export type PlaceOrderOptions = {
   promoCode?: string | null;
   usePoints?: boolean;
   giftCode?: string | null;
+  fulfillment?: FulfillmentInput | null;
 };
 
 /** Скидки корзины для показа — без списания. */
@@ -176,7 +189,9 @@ export async function placeOrder(
 ): Promise<PlaceOrderResult> {
   if (!(await claimOrderPlacement(ctx, customer))) return { ok: false, reason: "busy" };
   const redemptions: Redemptions = {};
+  const reserved: Array<{ productId: string; qty: number }> = [];
   const fail = async (reason: Extract<PlaceOrderResult, { ok: false }>["reason"]) => {
+    for (const r of reserved) await restoreStock(ctx, r.productId, r.qty);
     await rollbackRedemptions(ctx, customer, redemptions);
     await releaseOrderPlacement(ctx, customer);
     return { ok: false as const, reason };
@@ -195,10 +210,26 @@ export async function placeOrder(
     }
     const priced = await priceCart(ctx, items, countryCode);
 
+    // Складской учёт — до создания заказа: не хватило, откатываем уже
+    // списанное и убираем раскупленную строку из корзины.
+    if (ctx.tenant.modules.stock) {
+      for (const it of items) {
+        const ok = await decrementStock(ctx, it.products!.id, Number(it.quantity));
+        if (!ok) {
+          await ctx.db.from("cart_items").delete().eq("id", it.id);
+          return await fail("out_of_stock");
+        }
+        reserved.push({ productId: it.products!.id, qty: Number(it.quantity) });
+      }
+    }
+    const f = priced.kind === "physical" ? (opts.fulfillment ?? null) : null;
+    const deliveryFee = f?.type === "delivery" && f.zone ? f.zone.fee : 0;
+
     // Скидки в порядке v1: промокод → баллы → сертификат. Каждая списывается
     // атомарно; сорвалось ниже — всё возвращается через rollbackRedemptions.
     const m = ctx.tenant.modules;
-    let total = priced.total;
+    // Комиссия зоны до скидок: скидка действует и на доставку.
+    let total = priced.total + deliveryFee;
     let promoCode: string | null = null;
     let discountAmount = 0;
     if (m.coupons && opts.promoCode) {
@@ -252,6 +283,13 @@ export async function placeOrder(
         points_used: pointsUsed,
         gift_certificate_code: giftCode,
         gift_certificate_discount: giftDiscount,
+        fulfillment_type: f?.type ?? null,
+        fulfillment_at: f?.at ? `${f.at}T00:00:00Z` : null,
+        fulfillment_address: f?.type === "delivery" ? f.address : null,
+        fulfillment_note: f?.note ?? null,
+        delivery_zone_id: f?.type === "delivery" ? (f.zone?.id ?? null) : null,
+        delivery_zone_name: f?.type === "delivery" ? (f.zone?.name ?? null) : null,
+        delivery_fee: deliveryFee,
       })
       .select("*")
       .single();
@@ -282,14 +320,17 @@ export async function placeOrder(
       .select("*, order_items(*)")
       .eq("id", order.id)
       .single();
+    const finalOrder = (full ?? { ...order, order_items: [] }) as OrderWithItems;
     return {
       ok: true,
-      order: (full ?? { ...order, order_items: [] }) as OrderWithItems,
+      order: finalOrder,
       method,
       priced,
       zeroTotal: total <= 0,
+      amountDue: total <= 0 ? 0 : await amountDueNow(ctx, { total, fulfillment_kind: priced.kind }),
     };
   } catch (e) {
+    for (const r of reserved) await restoreStock(ctx, r.productId, r.qty).catch(() => {});
     await rollbackRedemptions(ctx, customer, redemptions).catch(() => {});
     await releaseOrderPlacement(ctx, customer).catch(() => {});
     throw e;
