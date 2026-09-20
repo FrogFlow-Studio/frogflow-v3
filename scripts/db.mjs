@@ -19,7 +19,9 @@ if (existsSync(".env")) {
   }
 }
 const token = process.env.SUPABASE_ACCESS_TOKEN;
-const ref = process.env.SUPABASE_PROJECT_REF || process.env.SUPABASE_URL?.match(/https?:\/\/([^.]+)\.supabase\.co/)?.[1];
+const ref =
+  process.env.SUPABASE_PROJECT_REF ||
+  process.env.SUPABASE_URL?.match(/https?:\/\/([^.]+)\.supabase\.co/)?.[1];
 if (!token || !ref) {
   console.error("Нужны SUPABASE_ACCESS_TOKEN и SUPABASE_URL (или SUPABASE_PROJECT_REF)");
   process.exit(1);

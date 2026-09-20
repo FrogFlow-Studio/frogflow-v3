@@ -33,6 +33,9 @@ function SettingsPage() {
         admin_chat_id: String(f.get("admin_chat_id")),
         admin_contact_link: String(f.get("admin_contact_link")),
         instruction_caption: String(f.get("instruction_caption")),
+        ...(shop.modules.loyalty
+          ? { loyalty_earn_percent: String(f.get("loyalty_earn_percent") || "5") }
+          : {}),
       },
     });
     setSaved(true);
@@ -76,6 +79,21 @@ function SettingsPage() {
                 placeholder="https://t.me/username"
               />
             </Field>
+            {shop.modules.loyalty && (
+              <Field
+                label="Баллы за покупку, % от суммы заказа"
+                hint="Начисляются после выдачи; 1 балл = 1 единица валюты при оплате следующего заказа."
+              >
+                <input
+                  className="input w-32"
+                  name="loyalty_earn_percent"
+                  type="number"
+                  min={1}
+                  max={100}
+                  defaultValue={settings.loyalty_earn_percent ?? "5"}
+                />
+              </Field>
+            )}
             <Field label="Текст инструкции покупателю">
               <textarea
                 className="input"

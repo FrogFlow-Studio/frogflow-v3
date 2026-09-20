@@ -32,6 +32,9 @@ function Layout() {
           <NavLink to="/admin/products">Товары</NavLink>
           <NavLink to="/admin/categories">Категории</NavLink>
           <NavLink to="/admin/customers">Покупатели</NavLink>
+          {(shop.modules.coupons || shop.modules.gift_certificates) && (
+            <NavLink to="/admin/discounts">Скидки</NavLink>
+          )}
           <NavLink to="/admin/settings">
             {physical ? "Оплата и доставка" : "Оплата и настройки"}
           </NavLink>

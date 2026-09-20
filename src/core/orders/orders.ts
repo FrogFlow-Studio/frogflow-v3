@@ -12,6 +12,18 @@ import {
 } from "@/core/catalog/materials";
 import type { Locale } from "@/core/i18n/locale";
 import { itemLanguages, itemMaterials } from "./pure";
+import { applyDiscounts, normalizeCode } from "@/core/discounts/pure";
+import {
+  awardPointsForOrder,
+  findValidGift,
+  findValidPromoCode,
+  loyaltyBalance,
+  redeemGift,
+  redeemPoints,
+  redeemPromoCode,
+  rollbackRedemptions,
+  type Redemptions,
+} from "@/core/discounts/discounts";
 
 export { displayNo, itemLanguages, itemMaterials } from "./pure";
 
@@ -85,8 +97,67 @@ export type PlaceOrderResult =
       order: OrderWithItems;
       method: PaymentMethodRow;
       priced: Awaited<ReturnType<typeof priceCart>>;
+      /** Скидки покрыли всё: чек не нужен, заказ можно выдавать сразу. */
+      zeroTotal: boolean;
     }
-  | { ok: false; reason: "busy" | "empty_cart" | "country_unavailable" | "order_failed" };
+  | {
+      ok: false;
+      reason:
+        | "busy"
+        | "empty_cart"
+        | "country_unavailable"
+        | "order_failed"
+        | "promo_invalid"
+        | "gift_invalid";
+    };
+
+export type PlaceOrderOptions = {
+  promoCode?: string | null;
+  usePoints?: boolean;
+  giftCode?: string | null;
+};
+
+/** Скидки корзины для показа — без списания. */
+export type CartSummary = {
+  subtotal: number;
+  currency: string;
+  promo: { code: string; discount: number } | null;
+  promoInvalid: boolean;
+  points: { balance: number; discount: number; used: boolean };
+  gift: { code: string; discount: number } | null;
+  giftInvalid: boolean;
+  total: number;
+};
+
+export async function cartSummary(
+  ctx: TenantContext,
+  customer: Customer,
+  priced: { total: number; currency: string },
+  opts: PlaceOrderOptions,
+): Promise<CartSummary> {
+  const m = ctx.tenant.modules;
+  const promoCode = m.coupons && opts.promoCode ? normalizeCode(opts.promoCode) : null;
+  const promo = promoCode ? await findValidPromoCode(ctx, promoCode) : null;
+  const giftCode = m.gift_certificates && opts.giftCode ? normalizeCode(opts.giftCode) : null;
+  const gift = giftCode ? await findValidGift(ctx, giftCode) : null;
+  const balance = m.loyalty ? await loyaltyBalance(ctx, customer.telegramId) : 0;
+  const usePoints = Boolean(m.loyalty && opts.usePoints && balance > 0);
+  const r = applyDiscounts(priced.total, {
+    promo: promo?.ok ? promo.promo : null,
+    points: usePoints ? balance : 0,
+    gift: gift?.ok ? gift.certificate.amount : null,
+  });
+  return {
+    subtotal: priced.total,
+    currency: priced.currency,
+    promo: promoCode && promo?.ok ? { code: promoCode, discount: r.promo } : null,
+    promoInvalid: Boolean(promoCode && !promo?.ok),
+    points: { balance, discount: r.points, used: usePoints },
+    gift: giftCode && gift?.ok ? { code: giftCode, discount: r.gift } : null,
+    giftInvalid: Boolean(giftCode && !gift?.ok),
+    total: r.total,
+  };
+}
 
 /**
  * Создать заказ из корзины: снимок цен и файлов в order_items, номер через
@@ -101,8 +172,15 @@ export async function placeOrder(
   ctx: TenantContext,
   customer: Customer,
   countryCode: string,
+  opts: PlaceOrderOptions = {},
 ): Promise<PlaceOrderResult> {
   if (!(await claimOrderPlacement(ctx, customer))) return { ok: false, reason: "busy" };
+  const redemptions: Redemptions = {};
+  const fail = async (reason: Extract<PlaceOrderResult, { ok: false }>["reason"]) => {
+    await rollbackRedemptions(ctx, customer, redemptions);
+    await releaseOrderPlacement(ctx, customer);
+    return { ok: false as const, reason };
+  };
   try {
     const method = await paymentMethodFor(ctx, countryCode);
     if (!method) {
@@ -116,6 +194,39 @@ export async function placeOrder(
       return { ok: false, reason: "empty_cart" };
     }
     const priced = await priceCart(ctx, items, countryCode);
+
+    // Скидки в порядке v1: промокод → баллы → сертификат. Каждая списывается
+    // атомарно; сорвалось ниже — всё возвращается через rollbackRedemptions.
+    const m = ctx.tenant.modules;
+    let total = priced.total;
+    let promoCode: string | null = null;
+    let discountAmount = 0;
+    if (m.coupons && opts.promoCode) {
+      const r = await redeemPromoCode(ctx, opts.promoCode, total);
+      if (!r.ok) return await fail("promo_invalid");
+      promoCode = normalizeCode(opts.promoCode);
+      discountAmount = r.discount;
+      redemptions.promo = { id: r.promoId, previousUsedCount: r.previousUsedCount };
+      total -= discountAmount;
+    }
+    let pointsUsed = 0;
+    if (m.loyalty && opts.usePoints) {
+      pointsUsed = await redeemPoints(ctx, customer.telegramId, total);
+      redemptions.pointsUsed = pointsUsed;
+      total -= pointsUsed;
+    }
+    let giftCode: string | null = null;
+    let giftDiscount = 0;
+    if (m.gift_certificates && opts.giftCode) {
+      const r = await redeemGift(ctx, opts.giftCode, total, customer.telegramId);
+      if (!r.ok) return await fail("gift_invalid");
+      giftCode = normalizeCode(opts.giftCode);
+      giftDiscount = r.discount;
+      redemptions.giftId = r.certificateId;
+      total -= giftDiscount;
+    }
+    total = Math.max(0, total);
+
     const display =
       [customer.firstName, customer.lastName].filter(Boolean).join(" ").trim() ||
       (customer.username ? `@${customer.username}` : `id${customer.telegramId}`);
@@ -132,16 +243,25 @@ export async function placeOrder(
         contact: customer.contactPhone,
         country_code: method.country_code,
         country_name: method.country_name,
-        total: priced.total,
+        total,
         currency: priced.currency,
         status: "awaiting_payment",
         fulfillment_kind: priced.kind,
+        promo_code: promoCode,
+        discount_amount: discountAmount,
+        points_used: pointsUsed,
+        gift_certificate_code: giftCode,
+        gift_certificate_discount: giftDiscount,
       })
       .select("*")
       .single();
-    if (error || !order) {
-      await releaseOrderPlacement(ctx, customer);
-      return { ok: false, reason: "order_failed" };
+    if (error || !order) return await fail("order_failed");
+    redemptions.orderId = order.id;
+    if (redemptions.giftId) {
+      await ctx.db
+        .from("gift_certificates")
+        .update({ redeemed_order_id: order.id })
+        .eq("id", redemptions.giftId);
     }
 
     const rows = priced.lines.map(({ item, unit, name }) =>
@@ -150,8 +270,7 @@ export async function placeOrder(
     const { error: itemsError } = await ctx.db.from("order_items").insert(rows);
     if (itemsError) {
       await ctx.db.from("orders").delete().eq("id", order.id);
-      await releaseOrderPlacement(ctx, customer);
-      return { ok: false, reason: "order_failed" };
+      return await fail("order_failed");
     }
     await clearCart(ctx, customer);
     // Захват снимается здесь, а не в канале: иначе следующая кнопка
@@ -168,8 +287,10 @@ export async function placeOrder(
       order: (full ?? { ...order, order_items: [] }) as OrderWithItems,
       method,
       priced,
+      zeroTotal: total <= 0,
     };
   } catch (e) {
+    await rollbackRedemptions(ctx, customer, redemptions).catch(() => {});
     await releaseOrderPlacement(ctx, customer).catch(() => {});
     throw e;
   }
@@ -338,7 +459,14 @@ export type MaterialSender = (
   materials: MaterialSnapshot[],
 ) => Promise<"sent" | "failed">;
 
-export type DeliverResult = { ok: true; alreadyDelivered?: boolean; sent: number; failed: number };
+export type DeliverResult = {
+  ok: true;
+  alreadyDelivered?: boolean;
+  sent: number;
+  failed: number;
+  /** Начислено баллов за покупку (модуль loyalty), 0 — нет. */
+  pointsEarned: number;
+};
 
 /**
  * Выдача цифрового заказа. Канал приносит функцию отправки; ядро отвечает
@@ -352,7 +480,7 @@ export async function deliverOrder(
   lang: Locale = "ru",
 ): Promise<DeliverResult> {
   const order = await claimOrderForDelivery(ctx, orderId);
-  if (!order) return { ok: true, alreadyDelivered: true, sent: 0, failed: 0 };
+  if (!order) return { ok: true, alreadyDelivered: true, sent: 0, failed: 0, pointsEarned: 0 };
   const items = order.order_items.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
   let sent = 0;
   let failed = 0;
@@ -380,7 +508,10 @@ export async function deliverOrder(
         : { status: "delivered" },
     )
     .eq("id", orderId);
-  return { ok: true, sent, failed };
+  const pointsEarned = failed
+    ? 0
+    : await awardPointsForOrder(ctx, orderId, order.telegram_id, Number(order.total));
+  return { ok: true, sent, failed, pointsEarned };
 }
 
 export async function signedFileUrl(path: string, ttlSec = 7 * 24 * 3600): Promise<string | null> {

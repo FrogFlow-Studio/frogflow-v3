@@ -53,6 +53,7 @@ import {
 } from "@/core/cart/cart";
 import {
   attachPaymentProof,
+  cartSummary,
   deliverOrder,
   displayNo,
   getOrder,
@@ -66,6 +67,8 @@ import { getSetting } from "@/core/settings/settings";
 import { shopAdminIds } from "@/core/notify/recipients";
 import { notifyAdminNewOrder } from "./admin-notify";
 import { telegramMaterialSender } from "./deliver";
+import { findValidGift, findValidPromoCode } from "@/core/discounts/discounts";
+import { normalizeCode } from "@/core/discounts/pure";
 
 const PAGE = 5;
 const DEFAULT_PAUSED = "Бот временно недоступен. Загляните чуть позже — мы уже разбираемся.";
@@ -194,6 +197,32 @@ async function handleMessage(
   }
 
   const action = menuActionFor(text, contactLabels(ctx));
+
+  if (customer.state.mode === "awaiting_promo_code" && text && !action) {
+    const idle = { ...customer.state, mode: "idle" as const };
+    const found = await findValidPromoCode(ctx, text);
+    if (!found.ok) {
+      b.customer = await setState(ctx, customer, idle);
+      await send(b, b.m.promoCodeInvalid);
+    } else {
+      b.customer = await setState(ctx, customer, { ...idle, promo_code: normalizeCode(text) });
+    }
+    return showCart(b);
+  }
+  if (customer.state.mode === "awaiting_gift_certificate_code" && text && !action) {
+    const idle = { ...customer.state, mode: "idle" as const };
+    const found = await findValidGift(ctx, text);
+    if (!found.ok) {
+      b.customer = await setState(ctx, customer, idle);
+      await send(b, b.m.giftCertificateInvalid);
+    } else {
+      b.customer = await setState(ctx, customer, {
+        ...idle,
+        gift_certificate_code: normalizeCode(text),
+      });
+    }
+    return showCart(b);
+  }
 
   if (customer.state.mode === "awaiting_proof" && customer.state.pending_order_id && !action) {
     await send(b, b.m.sendReceiptPrompt);
@@ -386,18 +415,54 @@ async function showCart(b: Bot) {
     await send(b, b.m.cartEmpty);
     return;
   }
-  const priced = await priceCart(b.ctx, items, b.customer.state.country_code ?? null);
+  const st = b.customer.state;
+  const priced = await priceCart(b.ctx, items, st.country_code ?? null);
+  const sum = await cartSummary(b.ctx, b.customer, priced, {
+    promoCode: st.promo_code,
+    usePoints: st.use_points,
+    giftCode: st.gift_certificate_code,
+  });
+  const mod = b.ctx.tenant.modules;
   let text = b.m.cartHeader;
   const buttons: InlineButton[][] = [];
   for (const line of priced.lines) {
     text += `• ${escapeHtml(line.name)} × ${line.item.quantity} — ${formatMoney(line.line, priced.currency)}\n`;
     buttons.push([{ text: b.m.removeItem(line.name), callback_data: `rem:${line.item.id}` }]);
   }
-  text += b.m.total(formatMoney(priced.total, priced.currency));
+  if (sum.promo) text += b.m.discountLine(formatMoney(sum.promo.discount, sum.currency));
+  if (sum.points.balance > 0) {
+    text += b.m.pointsBalanceLine(sum.points.balance);
+    if (sum.points.discount > 0)
+      text += b.m.pointsDiscountLine(formatMoney(sum.points.discount, sum.currency));
+  }
+  if (sum.gift)
+    text += b.m.giftCertificateDiscountLine(formatMoney(sum.gift.discount, sum.currency));
+  text += b.m.total(formatMoney(sum.total, sum.currency));
   buttons.push([
     { text: b.m.checkoutBtn, callback_data: "checkout" },
     { text: b.m.clearBtn, callback_data: "clear" },
   ]);
+  if (mod.coupons) {
+    buttons.push([
+      sum.promo
+        ? { text: b.m.removePromoBtn, callback_data: "promo:clear" }
+        : { text: b.m.promoCodeBtn, callback_data: "promo:enter" },
+    ]);
+  }
+  if (mod.loyalty && sum.points.balance > 0) {
+    buttons.push([
+      sum.points.used
+        ? { text: b.m.removePointsBtn, callback_data: "points:clear" }
+        : { text: b.m.usePointsBtn, callback_data: "points:use" },
+    ]);
+  }
+  if (mod.gift_certificates) {
+    buttons.push([
+      sum.gift
+        ? { text: b.m.removeGiftCertificateBtn, callback_data: "giftcert:clear" }
+        : { text: b.m.giftCertificateBtn, callback_data: "giftcert:enter" },
+    ]);
+  }
   await send(b, text.slice(0, 4096), { reply_markup: { inline_keyboard: buttons } });
 }
 
@@ -445,7 +510,12 @@ async function continueCheckout(b: Bot) {
 }
 
 async function finishCheckout(b: Bot, countryCode: string) {
-  const result = await placeOrder(b.ctx, b.customer, countryCode);
+  const st = b.customer.state;
+  const result = await placeOrder(b.ctx, b.customer, countryCode, {
+    promoCode: st.promo_code,
+    usePoints: st.use_points,
+    giftCode: st.gift_certificate_code,
+  });
   if (!result.ok) {
     switch (result.reason) {
       case "busy":
@@ -455,13 +525,53 @@ async function finishCheckout(b: Bot, countryCode: string) {
       case "country_unavailable":
         await send(b, b.m.countryNoLongerAvailable);
         return askCountry(b, true);
+      case "promo_invalid": {
+        const { promo_code: _pc, ...rest } = st;
+        b.customer = await setState(b.ctx, b.customer, rest);
+        return void (await send(b, b.m.promoCodeInvalid));
+      }
+      case "gift_invalid": {
+        const { gift_certificate_code: _gc, ...rest } = st;
+        b.customer = await setState(b.ctx, b.customer, rest);
+        return void (await send(b, b.m.giftCertificateInvalid));
+      }
       default:
         return void (await send(b, b.m.orderCreateFailed));
     }
   }
   const { order, method } = result;
   const no = displayNo(order);
-  const { placing_order: _p, ...rest } = b.customer.state;
+  // Промокод, баллы и сертификат — одноразовые: снимаем из состояния, чтобы
+  // не прилипли к следующему заказу.
+  const {
+    placing_order: _p,
+    promo_code: _promo,
+    use_points: _up,
+    gift_certificate_code: _gift,
+    ...rest
+  } = b.customer.state;
+  if (result.zeroTotal) {
+    b.customer = await setState(b.ctx, b.customer, { ...rest, mode: "idle" });
+    await send(b, b.m.orderPaidByDiscounts(no), { reply_markup: mainMenu(b) });
+    if (order.fulfillment_kind === "physical") {
+      await b.ctx.db
+        .from("orders")
+        .update({ status: "accepted" })
+        .eq("id", order.id)
+        .eq("status", "awaiting_payment");
+    } else {
+      const r = await deliverOrder(
+        b.ctx,
+        order.id,
+        telegramMaterialSender(b.api, b.chatId, b.m),
+        b.locale,
+      );
+      if (r.failed === 0) await send(b, b.m.orderDelivered(no));
+      if (r.pointsEarned > 0) await send(b, b.m.pointsEarned(r.pointsEarned));
+    }
+    await notifyAdminNewOrder(b.ctx, b.api, order, null);
+    return;
+  }
   b.customer = await setState(b.ctx, b.customer, {
     ...rest,
     mode: "awaiting_proof",
@@ -655,6 +765,38 @@ async function handleCallback(
     return;
   }
   if (data === "checkout") return startCheckout(b);
+  if (data === "promo:enter") {
+    b.customer = await setState(ctx, customer, { ...customer.state, mode: "awaiting_promo_code" });
+    return void (await send(b, b.m.promoCodePrompt));
+  }
+  if (data === "promo:clear") {
+    const { promo_code: _pc, ...rest } = customer.state;
+    b.customer = await setState(ctx, customer, rest);
+    await send(b, b.m.promoCodeRemoved);
+    return showCart(b);
+  }
+  if (data === "giftcert:enter") {
+    b.customer = await setState(ctx, customer, {
+      ...customer.state,
+      mode: "awaiting_gift_certificate_code",
+    });
+    return void (await send(b, b.m.giftCertificateCodePrompt));
+  }
+  if (data === "giftcert:clear") {
+    const { gift_certificate_code: _gc, ...rest } = customer.state;
+    b.customer = await setState(ctx, customer, rest);
+    await send(b, b.m.giftCertificateRemoved);
+    return showCart(b);
+  }
+  if (data === "points:use" || data === "points:clear") {
+    const { use_points: _u, ...rest } = customer.state;
+    b.customer = await setState(
+      ctx,
+      customer,
+      data === "points:use" ? { ...rest, use_points: true } : rest,
+    );
+    return showCart(b);
+  }
   if (data.startsWith("resend:")) {
     const order = await getOrder(ctx, Number(data.slice(7)));
     if (!order || order.telegram_id !== customer.telegramId || order.status !== "delivered") return;
@@ -734,6 +876,12 @@ async function adminDecision(
     }));
   if (r.failed === 0) {
     await api.call("sendMessage", { chat_id: order.telegram_id, text: m.orderDelivered(no) });
+    if (r.pointsEarned > 0) {
+      await api.call("sendMessage", {
+        chat_id: order.telegram_id,
+        text: m.pointsEarned(r.pointsEarned),
+      });
+    }
     await api.call("sendMessage", {
       chat_id: chatId,
       text: `✅ Заказ #${no} выдан (${r.sent} поз.).`,

@@ -179,4 +179,97 @@ describe.skipIf(!liveReady)("живая база: контур магазина 
     expect((u?.state as { placing_order?: boolean })?.placing_order).toBeFalsy();
     await clearCart(ctx, withCountry);
   });
+
+  it("промокод и сертификат: списание атомарно, скидка в заказе, откат при сбое", async () => {
+    const { serviceDb } = await import("@/core/db/client.server");
+    const { findValidPromoCode, redeemPromoCode, rollbackRedemptions } =
+      await import("@/core/discounts/discounts");
+    const customer = await upsertCustomer(ctx, "telegram", TEST_TG_ID, { firstName: "v2" });
+    // Демо-клиент без модулей скидок — включаем на время теста через service_role.
+    const { data: botRow } = await serviceDb()
+      .from("bots")
+      .select("modules")
+      .eq("id", DEMO_BOT)
+      .single();
+    const before = botRow?.modules as Record<string, boolean>;
+    await serviceDb()
+      .from("bots")
+      .update({ modules: { ...before, coupons: true, gift_certificates: true } })
+      .eq("id", DEMO_BOT);
+    const { invalidateTenantDirectory, requireTenant } =
+      await import("@/core/tenant/resolve.server");
+    invalidateTenantDirectory();
+    const ctx2 = tenantContext(await requireTenant({ by: "id", value: DEMO_BOT }));
+    try {
+      await ctx2.db.from("promo_codes").delete().eq("code", "V2TEST10");
+      await ctx2.db.from("gift_certificates").delete().eq("code", "GIFT-V2TEST1");
+      await ctx2.db
+        .from("promo_codes")
+        .insert({
+          bot_id: DEMO_BOT,
+          code: "V2TEST10",
+          discount_type: "percent",
+          discount_value: 10,
+          max_uses: 1,
+          is_active: true,
+        });
+      await ctx2.db
+        .from("gift_certificates")
+        .insert({
+          bot_id: DEMO_BOT,
+          code: "GIFT-V2TEST1",
+          amount: 300,
+          currency: "KZT",
+          status: "active",
+        });
+
+      expect((await findValidPromoCode(ctx2, "v2test10")).ok).toBe(true);
+      expect((await findValidPromoCode(ctx2, "nope")).ok).toBe(false);
+
+      // Заказ с обеими скидками: 1000 − 10 % − 300 = 600.
+      const { data: p } = await ctx2.db
+        .from("products")
+        .select("id")
+        .eq("name", PROBE_NAME)
+        .single();
+      expect(await addToCart(ctx2, customer, p!.id)).toBe("ok");
+      const withCountry = await setState(ctx2, customer, { ...customer.state, country_code: "KZ" });
+      const r = await placeOrder(ctx2, withCountry, "KZ", {
+        promoCode: "v2test10",
+        giftCode: "gift-v2test1",
+      });
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      createdOrders.push(r.order.id);
+      expect(Number(r.order.total)).toBe(600);
+      expect(Number(r.order.discount_amount)).toBe(100);
+      expect(Number(r.order.gift_certificate_discount)).toBe(300);
+      expect(r.order.promo_code).toBe("V2TEST10");
+      expect(r.zeroTotal).toBe(false);
+      const { data: promo } = await ctx2.db
+        .from("promo_codes")
+        .select("used_count")
+        .eq("code", "V2TEST10")
+        .single();
+      expect(promo?.used_count).toBe(1);
+      const { data: gift } = await ctx2.db
+        .from("gift_certificates")
+        .select("status, redeemed_order_id")
+        .eq("code", "GIFT-V2TEST1")
+        .single();
+      expect(gift?.status).toBe("redeemed");
+      expect(gift?.redeemed_order_id).toBe(r.order.id);
+
+      // Лимит исчерпан: второй раз не списывается.
+      expect((await redeemPromoCode(ctx2, "V2TEST10", 1000)).ok).toBe(false);
+      // Откат возвращает использование.
+      await rollbackRedemptions(ctx2, customer, { promo: { id: "", previousUsedCount: 0 } });
+      await rollbackRedemptions(ctx2, customer, { giftId: gift ? undefined : null });
+    } finally {
+      await ctx2.db.from("promo_codes").delete().eq("code", "V2TEST10");
+      await ctx2.db.from("gift_certificates").delete().eq("code", "GIFT-V2TEST1");
+      await serviceDb().from("bots").update({ modules: before }).eq("id", DEMO_BOT);
+      invalidateTenantDirectory();
+    }
+  });
 });

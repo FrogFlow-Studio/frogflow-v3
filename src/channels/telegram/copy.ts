@@ -38,6 +38,24 @@ export type Msg = {
   checkoutBtn: string;
   clearBtn: string;
   cartCleared: string;
+  promoCodeBtn: string;
+  removePromoBtn: string;
+  promoCodePrompt: string;
+  promoCodeInvalid: string;
+  promoCodeRemoved: string;
+  discountLine: (amount: string) => string;
+  usePointsBtn: string;
+  removePointsBtn: string;
+  pointsBalanceLine: (n: number) => string;
+  pointsDiscountLine: (amount: string) => string;
+  pointsEarned: (n: number) => string;
+  giftCertificateBtn: string;
+  removeGiftCertificateBtn: string;
+  giftCertificateCodePrompt: string;
+  giftCertificateInvalid: string;
+  giftCertificateRemoved: string;
+  giftCertificateDiscountLine: (amount: string) => string;
+  orderPaidByDiscounts: (no: number) => string;
   chooseCountry: string;
   countrySaved: (name: string) => string;
   paymentNotConfigured: string;
@@ -111,6 +129,25 @@ const ru: Msg = {
   checkoutBtn: "✅ Оформить заказ",
   clearBtn: "🗑 Очистить",
   cartCleared: "Корзина очищена.",
+  promoCodeBtn: "🎟 Ввести промокод",
+  removePromoBtn: "❌ Убрать промокод",
+  promoCodePrompt: "Введите промокод:",
+  promoCodeInvalid: "⚠️ Промокод недействителен или больше не работает.",
+  promoCodeRemoved: "Промокод убран.",
+  discountLine: (a) => `🎟 Скидка по промокоду: −${a}\n`,
+  usePointsBtn: "🏆 Списать баллы",
+  removePointsBtn: "❌ Не списывать баллы",
+  pointsBalanceLine: (n) => `🏆 Ваши баллы: ${n}\n`,
+  pointsDiscountLine: (a) => `🏆 Оплата баллами: −${a}\n`,
+  pointsEarned: (n) =>
+    `🏆 Вам начислено ${n} баллов за покупку. Баллами можно оплатить часть следующего заказа.`,
+  giftCertificateBtn: "🎫 Ввести сертификат",
+  removeGiftCertificateBtn: "❌ Убрать сертификат",
+  giftCertificateCodePrompt: "Введите код подарочного сертификата:",
+  giftCertificateInvalid: "⚠️ Сертификат недействителен или уже использован.",
+  giftCertificateRemoved: "Сертификат убран.",
+  giftCertificateDiscountLine: (a) => `🎫 Сертификат: −${a}\n`,
+  orderPaidByDiscounts: (no) => `🎉 Заказ #${no} полностью оплачен скидкой — файлы уже в пути.`,
   chooseCountry: "🌍 Выберите страну оплаты:",
   countrySaved: (n) => `✅ Страна: ${n}`,
   paymentNotConfigured: "Продавец ещё не настроил способы оплаты. Напишите ему напрямую.",
@@ -189,6 +226,14 @@ const kk: Msg = {
   total: (a) => `\n<b>Барлығы: ${a}</b>`,
   checkoutBtn: "✅ Тапсырыс беру",
   clearBtn: "🗑 Тазалау",
+  promoCodeBtn: "🎟 Промокод енгізу",
+  removePromoBtn: "❌ Промокодты алып тастау",
+  promoCodeInvalid: "⚠️ Промокод жарамсыз немесе енді жұмыс істемейді.",
+  usePointsBtn: "🏆 Баллдарды жұмсау",
+  removePointsBtn: "❌ Баллдарды жұмсамау",
+  giftCertificateBtn: "🎫 Сертификат енгізу",
+  removeGiftCertificateBtn: "❌ Сертификатты алып тастау",
+  giftCertificateInvalid: "⚠️ Сертификат жарамсыз немесе бұрын пайдаланылған.",
   chooseCountry: "🌍 Төлем елін таңдаңыз:",
   useMenu: "Төмендегі мәзірден бөлімді таңдаңыз 👇",
 };
@@ -219,6 +264,25 @@ const en: Msg = {
   total: (a) => `\n<b>Total: ${a}</b>`,
   checkoutBtn: "✅ Checkout",
   clearBtn: "🗑 Clear",
+  promoCodeBtn: "🎟 Enter promo code",
+  removePromoBtn: "❌ Remove promo code",
+  promoCodePrompt: "Enter your promo code:",
+  promoCodeInvalid: "⚠️ This promo code is invalid or no longer works.",
+  promoCodeRemoved: "Promo code removed.",
+  discountLine: (a) => `🎟 Promo discount: −${a}\n`,
+  usePointsBtn: "🏆 Use points",
+  removePointsBtn: "❌ Don't use points",
+  pointsBalanceLine: (n) => `🏆 Your points: ${n}\n`,
+  pointsDiscountLine: (a) => `🏆 Paid with points: −${a}\n`,
+  pointsEarned: (n) => `🏆 You earned ${n} points. Use them on your next order.`,
+  giftCertificateBtn: "🎫 Enter certificate code",
+  removeGiftCertificateBtn: "❌ Remove certificate",
+  giftCertificateCodePrompt: "Enter your gift certificate code:",
+  giftCertificateInvalid: "⚠️ This certificate is invalid or already used.",
+  giftCertificateRemoved: "Certificate removed.",
+  giftCertificateDiscountLine: (a) => `🎫 Certificate: −${a}\n`,
+  orderPaidByDiscounts: (no) =>
+    `🎉 Order #${no} is fully covered by your discounts — files are on the way.`,
   chooseCountry: "🌍 Choose your payment country:",
   phonePromptHtml:
     "📞 Share your phone number for order updates — tap the button below or type it.",
@@ -248,6 +312,13 @@ const uz: Msg = {
   total: (a) => `\n<b>Jami: ${a}</b>`,
   checkoutBtn: "✅ Buyurtma berish",
   clearBtn: "🗑 Tozalash",
+  promoCodeBtn: "🎟 Promokod kiritish",
+  removePromoBtn: "❌ Promokodni olib tashlash",
+  promoCodeInvalid: "⚠️ Promokod amal qilmaydi yoki endi ishlamaydi.",
+  usePointsBtn: "🏆 Ballarni sarflash",
+  removePointsBtn: "❌ Ballarni sarflamaslik",
+  giftCertificateBtn: "🎫 Sertifikat kodini kiritish",
+  removeGiftCertificateBtn: "❌ Sertifikatni olib tashlash",
   useMenu: "Quyidagi menyudan bo‘limni tanlang 👇",
 };
 

@@ -89,6 +89,7 @@ export async function runOrderAction(
       if (r.alreadyDelivered) return { ok: true, message: `Заказ #${no} уже выдан` };
       if (r.failed === 0) {
         await notifyCustomer(ctx, order, m.orderDelivered(no));
+        if (r.pointsEarned > 0) await notifyCustomer(ctx, order, m.pointsEarned(r.pointsEarned));
         return { ok: true, message: `Заказ #${no} выдан: ${r.sent} поз.` };
       }
       return {

@@ -318,6 +318,7 @@ export const SETTING_KEYS = [
   "instruction_caption",
   "cart_reminder_hours",
   "delivery_lang_timing",
+  "loyalty_earn_percent",
 ] as const;
 
 export const settingsFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -410,4 +411,125 @@ export const connectTelegramAdminFn = createServerFn({ method: "POST" })
     const r = await connectTelegram(ctx.tenant.id, data.token, "admin");
     const webhook = await setServedBy(ctx.tenant.id, "v2", "admin");
     return { username: r.username, webhook };
+  });
+
+/* ── промокоды и сертификаты ─────────────────────────────────────── */
+
+export const promoCodesFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  const { data, error } = await ctx.db
+    .from("promo_codes")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+});
+
+export const savePromoCodeFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        id: uuid.nullable(),
+        code: z.string().min(2).max(40),
+        discountType: z.enum(["percent", "fixed"]),
+        discountValue: z.number().positive(),
+        maxUses: z.number().int().positive().nullable(),
+        validUntil: z.string().nullable(),
+        isActive: z.boolean(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { requireAdminModule } = await import("@/app/auth/guards.server");
+    const ctx = await requireAdminModule("coupons");
+    const { normalizeCode } = await import("@/core/discounts/pure");
+    if (data.discountType === "percent" && data.discountValue > 100)
+      throw new Error("Процент не больше 100.");
+    const row = {
+      code: normalizeCode(data.code),
+      discount_type: data.discountType,
+      discount_value: data.discountValue,
+      max_uses: data.maxUses,
+      valid_until: data.validUntil ? new Date(data.validUntil).toISOString() : null,
+      is_active: data.isActive,
+    };
+    const q = data.id
+      ? ctx.db.from("promo_codes").update(row).eq("id", data.id)
+      : ctx.db.from("promo_codes").insert({ bot_id: ctx.tenant.id, ...row });
+    const { error } = await q;
+    if (error)
+      throw new Error(
+        /duplicate|unique/i.test(error.message) ? "Такой код уже есть." : error.message,
+      );
+    return { ok: true };
+  });
+
+export const deletePromoCodeFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: uuid }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    const { error } = await ctx.db.from("promo_codes").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const giftCertificatesFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  const { data, error } = await ctx.db
+    .from("gift_certificates")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+});
+
+export const createGiftCertificateFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        amount: z.number().positive(),
+        currency: z.string().length(3),
+        note: z.string().max(200).optional(),
+        code: z.string().max(40).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { requireAdminModule } = await import("@/app/auth/guards.server");
+    const ctx = await requireAdminModule("gift_certificates");
+    const { generateGiftCode, normalizeCode } = await import("@/core/discounts/pure");
+    for (let i = 0; i < 5; i++) {
+      const code = data.code?.trim() ? normalizeCode(data.code) : generateGiftCode();
+      const { data: row, error } = await ctx.db
+        .from("gift_certificates")
+        .insert({
+          bot_id: ctx.tenant.id,
+          code,
+          amount: data.amount,
+          currency: data.currency.toUpperCase(),
+          note: data.note ?? null,
+          status: "active",
+        })
+        .select("code")
+        .single();
+      if (!error && row) return { code: row.code };
+      if (data.code?.trim() || !/duplicate|unique/i.test(error?.message ?? ""))
+        throw new Error(error?.message ?? "insert failed");
+    }
+    throw new Error("Не удалось подобрать уникальный код");
+  });
+
+export const cancelGiftCertificateFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: uuid }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    const { error } = await ctx.db
+      .from("gift_certificates")
+      .update({ status: "cancelled" })
+      .eq("id", data.id)
+      .eq("status", "active");
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
