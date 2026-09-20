@@ -17,7 +17,21 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - run: npm run lint
       - run: npm run typecheck
+      # Интеграционные тесты (tests/integration) ходят в настоящую базу и
+      # сами пропускают себя, если секреты не заданы.
       - run: npm test
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          APP_URL: https://ci.invalid
+          SECRETS_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          SESSION_SECRET: ci-session-secret-ci-session-secret-0000
+          WEBHOOK_SECRET: ci-webhook-secret-ci-webhook-secret-0000
+          CRON_SECRET: ci-cron-secret-0000
+          OPERATOR_USERNAME: operator
+          OPERATOR_PASSWORD: ci-operator-password
       - run: npx vite build
         env:
           APP_URL: https://ci.invalid

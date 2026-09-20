@@ -154,6 +154,10 @@ export async function placeOrder(
       return { ok: false, reason: "order_failed" };
     }
     await clearCart(ctx, customer);
+    // Захват снимается здесь, а не в канале: иначе следующая кнопка
+    // «Оформить» молча упирается в placing_order (поймано интеграционным
+    // тестом на живой базе).
+    await releaseOrderPlacement(ctx, customer);
     const { data: full } = await ctx.db
       .from("orders")
       .select("*, order_items(*)")
