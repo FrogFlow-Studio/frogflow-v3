@@ -34,5 +34,24 @@ export async function ensureTelegramWebhook(tenant: Tenant, force = false): Prom
   if (!set.ok) return { ok: false, url: current, pending, error: set.description };
 
   await patchTenantSettings(tenant.id, { telegram: { webhook_ok: true } });
+  await syncMenuButton(tenant, api).catch(() => {});
   return { ok: true, url: wantUrl, pending };
+}
+
+/** Кнопка меню бота: «Магазин» (Mini App) при включённом модуле, иначе стандартная. */
+export async function syncMenuButton(
+  tenant: Tenant,
+  api: ReturnType<typeof telegramApi>,
+): Promise<void> {
+  const { APP_URL } = env();
+  const on = tenant.modules.telegram_mini_app && tenant.modules.shop;
+  await api.call("setChatMenuButton", {
+    menu_button: on
+      ? {
+          type: "web_app",
+          text: "🛍 Магазин",
+          web_app: { url: `${APP_URL}/s/${tenant.settings.slug ?? tenant.id}` },
+        }
+      : { type: "default" },
+  });
 }

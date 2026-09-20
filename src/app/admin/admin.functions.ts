@@ -323,6 +323,10 @@ export const SETTING_KEYS = [
   "fulfillment_delivery_enabled",
   "payment_mode",
   "deposit_percent",
+  "legal_offer",
+  "legal_privacy",
+  "legal_requisites",
+  "legal_about",
 ] as const;
 
 export const settingsFn = createServerFn({ method: "GET" }).handler(async () => {

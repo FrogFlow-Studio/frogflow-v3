@@ -121,6 +121,7 @@ function SettingsPage() {
         <PaymentMethods methods={methods} />
         <FulfillmentCard settings={settings} />
         <ZonesCard zones={zones} />
+        <LegalCard settings={settings} />
       </div>
     </>
   );
@@ -604,6 +605,58 @@ function ZonesCard({ zones }: { zones: Zone[] }) {
           <ErrorBox error={save.error} />
         </form>
       )}
+    </Card>
+  );
+}
+
+function LegalCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = Route.useRouteContext();
+  const [saved, setSaved] = useState(false);
+  const save = useAction(async (f: FormData) => {
+    await saveSettingsFn({
+      data: {
+        legal_offer: String(f.get("legal_offer")),
+        legal_privacy: String(f.get("legal_privacy")),
+        legal_requisites: String(f.get("legal_requisites")),
+        legal_about: String(f.get("legal_about")),
+      },
+    });
+    setSaved(true);
+    await router.invalidate();
+  });
+  const docs = [
+    ["legal_offer", "Публичная оферта"],
+    ["legal_privacy", "Политика конфиденциальности"],
+    ["legal_requisites", "Реквизиты продавца"],
+    ["legal_about", "О продавце"],
+  ] as const;
+  return (
+    <Card title="Юридические страницы" className="lg:col-span-2">
+      <p className="mb-3 text-xs text-muted">
+        Показываются в боте (кнопка «Информация») и на витрине{" "}
+        {shop.slug ? `/s/${shop.slug}/legal/…` : ""}. Пустой текст — страница скрыта.
+      </p>
+      <form
+        className="grid gap-3 md:grid-cols-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save.run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        {docs.map(([k, title]) => (
+          <Field key={k} label={title}>
+            <textarea className="input" name={k} rows={5} defaultValue={settings[k] ?? ""} />
+          </Field>
+        ))}
+        <div className="flex items-center gap-3 md:col-span-2">
+          <button className="btn-secondary" disabled={save.busy}>
+            Сохранить
+          </button>
+          {saved && <span className="text-xs text-ok">Сохранено</span>}
+        </div>
+        <ErrorBox error={save.error} />
+      </form>
     </Card>
   );
 }

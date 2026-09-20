@@ -18,6 +18,7 @@ import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as OperatorAuthedRouteImport } from './routes/operator._authed'
 import { Route as OperatorLoginRouteImport } from './routes/operator.login'
+import { Route as SSlugRouteImport } from './routes/s.$slug'
 import { Route as AdminAuthedIndexRouteImport } from './routes/admin._authed.index'
 import { Route as AdminAuthedCategoriesRouteImport } from './routes/admin._authed.categories'
 import { Route as AdminAuthedCustomersRouteImport } from './routes/admin._authed.customers'
@@ -32,11 +33,15 @@ import { Route as ApiOperatorBotsRouteImport } from './routes/api/operator/bots'
 import { Route as ApiTelegramBotIdRouteImport } from './routes/api/telegram.$botId'
 import { Route as ApiZernioWebhookRouteImport } from './routes/api/zernio/webhook'
 import { Route as OperatorAuthedIndexRouteImport } from './routes/operator._authed.index'
+import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
+import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
 import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authed.products_.$id'
 import { Route as ApiImgBotIdSplatRouteImport } from './routes/api/img.$botId.$'
 import { Route as OperatorAuthedClientsBotIdRouteImport } from './routes/operator._authed.clients.$botId'
 import { Route as OperatorAuthedClientsNewRouteImport } from './routes/operator._authed.clients.new'
+import { Route as SSlugLegalDocRouteImport } from './routes/s.$slug.legal.$doc'
+import { Route as SSlugPIdRouteImport } from './routes/s.$slug.p.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -80,6 +85,11 @@ const OperatorLoginRoute = OperatorLoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => OperatorRoute,
+} as any)
+const SSlugRoute = SSlugRouteImport.update({
+  id: '/s/$slug',
+  path: '/s/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAuthedIndexRoute = AdminAuthedIndexRouteImport.update({
   id: '/',
@@ -151,6 +161,16 @@ const OperatorAuthedIndexRoute = OperatorAuthedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
+const SSlugIndexRoute = SSlugIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SSlugRoute,
+} as any)
+const SSlugCartRoute = SSlugCartRouteImport.update({
+  id: '/cart',
+  path: '/cart',
+  getParentRoute: () => SSlugRoute,
+} as any)
 const AdminAuthedOrdersIdRoute = AdminAuthedOrdersIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -178,6 +198,16 @@ const OperatorAuthedClientsNewRoute =
     path: '/clients/new',
     getParentRoute: () => OperatorAuthedRoute,
   } as any)
+const SSlugLegalDocRoute = SSlugLegalDocRouteImport.update({
+  id: '/legal/$doc',
+  path: '/legal/$doc',
+  getParentRoute: () => SSlugRoute,
+} as any)
+const SSlugPIdRoute = SSlugPIdRouteImport.update({
+  id: '/p/$id',
+  path: '/p/$id',
+  getParentRoute: () => SSlugRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -187,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/admin/login': typeof AdminLoginRoute
   '/api/health': typeof ApiHealthRoute
   '/operator/login': typeof OperatorLoginRoute
+  '/s/$slug': typeof SSlugRouteWithChildren
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/customers': typeof AdminAuthedCustomersRoute
   '/admin/discounts': typeof AdminAuthedDiscountsRoute
@@ -199,13 +230,17 @@ export interface FileRoutesByFullPath {
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
+  '/s/$slug/cart': typeof SSlugCartRoute
   '/admin/': typeof AdminAuthedIndexRoute
   '/operator/': typeof OperatorAuthedIndexRoute
+  '/s/$slug/': typeof SSlugIndexRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
+  '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
+  '/s/$slug/p/$id': typeof SSlugPIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -227,11 +262,15 @@ export interface FileRoutesByTo {
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
+  '/s/$slug/cart': typeof SSlugCartRoute
+  '/s/$slug': typeof SSlugIndexRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
+  '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
+  '/s/$slug/p/$id': typeof SSlugPIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -244,6 +283,7 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute
   '/operator/_authed': typeof OperatorAuthedRouteWithChildren
   '/operator/login': typeof OperatorLoginRoute
+  '/s/$slug': typeof SSlugRouteWithChildren
   '/admin/_authed/categories': typeof AdminAuthedCategoriesRoute
   '/admin/_authed/customers': typeof AdminAuthedCustomersRoute
   '/admin/_authed/discounts': typeof AdminAuthedDiscountsRoute
@@ -256,13 +296,17 @@ export interface FileRoutesById {
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
+  '/s/$slug/cart': typeof SSlugCartRoute
   '/admin/_authed/': typeof AdminAuthedIndexRoute
   '/operator/_authed/': typeof OperatorAuthedIndexRoute
+  '/s/$slug/': typeof SSlugIndexRoute
   '/admin/_authed/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/_authed/products_/$id': typeof AdminAuthedProductsIdRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/operator/_authed/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/_authed/clients/new': typeof OperatorAuthedClientsNewRoute
+  '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
+  '/s/$slug/p/$id': typeof SSlugPIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -274,6 +318,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/api/health'
     | '/operator/login'
+    | '/s/$slug'
     | '/admin/categories'
     | '/admin/customers'
     | '/admin/discounts'
@@ -286,13 +331,17 @@ export interface FileRouteTypes {
     | '/api/operator/bots'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
+    | '/s/$slug/cart'
     | '/admin/'
     | '/operator/'
+    | '/s/$slug/'
     | '/admin/orders/$id'
     | '/admin/products/$id'
     | '/api/img/$botId/$'
     | '/operator/clients/$botId'
     | '/operator/clients/new'
+    | '/s/$slug/legal/$doc'
+    | '/s/$slug/p/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -314,11 +363,15 @@ export interface FileRouteTypes {
     | '/api/operator/bots'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
+    | '/s/$slug/cart'
+    | '/s/$slug'
     | '/admin/orders/$id'
     | '/admin/products/$id'
     | '/api/img/$botId/$'
     | '/operator/clients/$botId'
     | '/operator/clients/new'
+    | '/s/$slug/legal/$doc'
+    | '/s/$slug/p/$id'
   id:
     | '__root__'
     | '/'
@@ -330,6 +383,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/operator/_authed'
     | '/operator/login'
+    | '/s/$slug'
     | '/admin/_authed/categories'
     | '/admin/_authed/customers'
     | '/admin/_authed/discounts'
@@ -342,13 +396,17 @@ export interface FileRouteTypes {
     | '/api/operator/bots'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
+    | '/s/$slug/cart'
     | '/admin/_authed/'
     | '/operator/_authed/'
+    | '/s/$slug/'
     | '/admin/_authed/orders/$id'
     | '/admin/_authed/products_/$id'
     | '/api/img/$botId/$'
     | '/operator/_authed/clients/$botId'
     | '/operator/_authed/clients/new'
+    | '/s/$slug/legal/$doc'
+    | '/s/$slug/p/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -357,6 +415,7 @@ export interface RootRouteChildren {
   OperatorRoute: typeof OperatorRouteWithChildren
   SignupRoute: typeof SignupRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  SSlugRoute: typeof SSlugRouteWithChildren
   ApiAdminUploadRoute: typeof ApiAdminUploadRoute
   ApiCronJobRoute: typeof ApiCronJobRoute
   ApiOperatorBotsRoute: typeof ApiOperatorBotsRoute
@@ -429,6 +488,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/operator/login'
       preLoaderRoute: typeof OperatorLoginRouteImport
       parentRoute: typeof OperatorRoute
+    }
+    '/s/$slug': {
+      id: '/s/$slug'
+      path: '/s/$slug'
+      fullPath: '/s/$slug'
+      preLoaderRoute: typeof SSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/_authed/': {
       id: '/admin/_authed/'
@@ -528,6 +594,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedIndexRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/s/$slug/': {
+      id: '/s/$slug/'
+      path: '/'
+      fullPath: '/s/$slug/'
+      preLoaderRoute: typeof SSlugIndexRouteImport
+      parentRoute: typeof SSlugRoute
+    }
+    '/s/$slug/cart': {
+      id: '/s/$slug/cart'
+      path: '/cart'
+      fullPath: '/s/$slug/cart'
+      preLoaderRoute: typeof SSlugCartRouteImport
+      parentRoute: typeof SSlugRoute
+    }
     '/admin/_authed/orders/$id': {
       id: '/admin/_authed/orders/$id'
       path: '/$id'
@@ -562,6 +642,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/operator/clients/new'
       preLoaderRoute: typeof OperatorAuthedClientsNewRouteImport
       parentRoute: typeof OperatorAuthedRoute
+    }
+    '/s/$slug/legal/$doc': {
+      id: '/s/$slug/legal/$doc'
+      path: '/legal/$doc'
+      fullPath: '/s/$slug/legal/$doc'
+      preLoaderRoute: typeof SSlugLegalDocRouteImport
+      parentRoute: typeof SSlugRoute
+    }
+    '/s/$slug/p/$id': {
+      id: '/s/$slug/p/$id'
+      path: '/p/$id'
+      fullPath: '/s/$slug/p/$id'
+      preLoaderRoute: typeof SSlugPIdRouteImport
+      parentRoute: typeof SSlugRoute
     }
   }
 }
@@ -647,12 +741,29 @@ const OperatorRouteWithChildren = OperatorRoute._addFileChildren(
   OperatorRouteChildren,
 )
 
+interface SSlugRouteChildren {
+  SSlugCartRoute: typeof SSlugCartRoute
+  SSlugIndexRoute: typeof SSlugIndexRoute
+  SSlugLegalDocRoute: typeof SSlugLegalDocRoute
+  SSlugPIdRoute: typeof SSlugPIdRoute
+}
+
+const SSlugRouteChildren: SSlugRouteChildren = {
+  SSlugCartRoute: SSlugCartRoute,
+  SSlugIndexRoute: SSlugIndexRoute,
+  SSlugLegalDocRoute: SSlugLegalDocRoute,
+  SSlugPIdRoute: SSlugPIdRoute,
+}
+
+const SSlugRouteWithChildren = SSlugRoute._addFileChildren(SSlugRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   OperatorRoute: OperatorRouteWithChildren,
   SignupRoute: SignupRoute,
   ApiHealthRoute: ApiHealthRoute,
+  SSlugRoute: SSlugRouteWithChildren,
   ApiAdminUploadRoute: ApiAdminUploadRoute,
   ApiCronJobRoute: ApiCronJobRoute,
   ApiOperatorBotsRoute: ApiOperatorBotsRoute,

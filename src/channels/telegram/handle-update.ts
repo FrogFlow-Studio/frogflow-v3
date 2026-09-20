@@ -69,6 +69,7 @@ import { notifyAdminNewOrder } from "./admin-notify";
 import { telegramMaterialSender } from "./deliver";
 import { findValidGift, findValidPromoCode } from "@/core/discounts/discounts";
 import { normalizeCode } from "@/core/discounts/pure";
+import { claimHandoff, HANDOFF_PREFIX } from "@/core/storefront/handoff";
 import {
   activeDeliveryZones,
   fulfillmentSettings,
@@ -143,11 +144,27 @@ function mainMenu(b: Bot) {
     [{ text: m.instruction }, { text: m.information }],
     [{ text: def.locales[b.locale].contactBtn }],
   ];
+  const t = b.ctx.tenant;
+  if (t.modules.telegram_mini_app && t.modules.shop) {
+    keyboard.unshift([
+      { text: "🛍 Магазин", web_app: { url: `${b.ctx.appUrl}/s/${t.settings.slug ?? t.id}` } },
+    ]);
+  }
   return { keyboard, resize_keyboard: true };
 }
 
 async function sendMain(b: Bot, text?: string) {
   await send(b, text ?? b.m.chooseSection, { reply_markup: mainMenu(b) });
+}
+
+/** Показать корзину покупателю извне (Mini App перенёс позиции). */
+export async function sendCartMessage(
+  ctx: TenantContext,
+  api: TelegramApi,
+  customer: Customer,
+): Promise<void> {
+  const locale = localeOf(ctx, customer);
+  await showCart({ ctx, api, chatId: customer.telegramId, customer, locale, m: COPY[locale] });
 }
 
 // ── входящие сообщения ────────────────────────────────────────────────
@@ -180,7 +197,7 @@ async function handleMessage(
   const b: Bot = { ctx, api, chatId, customer, locale, m: COPY[locale] };
   const text = msg.text?.trim();
 
-  if (text?.startsWith("/start")) return startFlow(b);
+  if (text?.startsWith("/start")) return startFlow(b, text.slice(6).trim());
 
   // Телефон на шаге оформления — кнопкой или текстом.
   if (customer.state.mode === "awaiting_contact") {
@@ -293,7 +310,21 @@ async function handleMessage(
   await sendMain(b, b.m.useMenu);
 }
 
-async function startFlow(b: Bot) {
+async function startFlow(b: Bot, payload = "") {
+  if (payload.startsWith(HANDOFF_PREFIX)) {
+    const r = await claimHandoff(b.ctx, b.customer, payload.slice(HANDOFF_PREFIX.length));
+    if (!b.customer.state.locale)
+      await applyLocale(b, b.ctx.tenant.settings.default_locale ?? "ru");
+    if (r === "ok" || r === "claimed") return showCart(b);
+    await send(b, b.m.cartEmpty);
+    return;
+  }
+  if (payload.startsWith("p_")) {
+    if (!b.customer.state.locale)
+      await applyLocale(b, b.ctx.tenant.settings.default_locale ?? "ru");
+    const p = await getProduct(b.ctx, payload.slice(2));
+    if (p) return sendProductCard(b, p);
+  }
   if (b.ctx.tenant.modules.multi_language) {
     const buttons: InlineButton[][] = SUPPORTED_LOCALES.map((l) => [
       { text: `${localeFlags[l]} ${localeNames[l]}`, callback_data: `locale:${l}` },
