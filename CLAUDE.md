@@ -23,6 +23,19 @@ FrogFlow v2 — переписывание платформы из `FrogFlow/fro
    исключений. `npm run build` перегенерирует `src/routeTree.gen.ts` — его
    коммитим вместе с маршрутами.
 
+## Веб-часть
+
+`src/app/*` — код панелей: `auth/` (сессия, пароли, гварды), `ui/`
+(компоненты без зависимостей), `operator/` и `admin/` (серверные функции в
+`*.functions.ts`, реализация в `*.server.ts`). Каждая серверная функция
+начинается с `requireOperator()` или `requireAdmin()`: маршрутный гейт —
+только UX. Страницы в `src/routes/{operator,admin}._authed.*.tsx`.
+
+Ловушка dev-сервера: запросы `<img>` (Sec-Fetch-Dest: image) Nitro в dev
+считает статикой Vite и не отдаёт приложению, поэтому картинки из
+`/api/img/*` в `npm run dev` показывают 404. В продакшен-сборке всё работает;
+проверять так: `NITRO_PRESET=node-server npx vite build && node .output/server/index.mjs`.
+
 ## Тесты на живой базе
 
 `tests/integration/*` ходят в настоящую Supabase под ключами из `.env`

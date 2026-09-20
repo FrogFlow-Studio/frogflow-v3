@@ -10,21 +10,108 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as OperatorRouteImport } from './routes/operator'
+import { Route as AdminAuthedRouteImport } from './routes/admin._authed'
+import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as OperatorAuthedRouteImport } from './routes/operator._authed'
+import { Route as OperatorLoginRouteImport } from './routes/operator.login'
+import { Route as AdminAuthedIndexRouteImport } from './routes/admin._authed.index'
+import { Route as AdminAuthedCategoriesRouteImport } from './routes/admin._authed.categories'
+import { Route as AdminAuthedCustomersRouteImport } from './routes/admin._authed.customers'
+import { Route as AdminAuthedModulesRouteImport } from './routes/admin._authed.modules'
+import { Route as AdminAuthedOrdersRouteImport } from './routes/admin._authed.orders'
+import { Route as AdminAuthedProductsRouteImport } from './routes/admin._authed.products'
+import { Route as AdminAuthedSettingsRouteImport } from './routes/admin._authed.settings'
+import { Route as ApiAdminUploadRouteImport } from './routes/api/admin/upload'
 import { Route as ApiCronJobRouteImport } from './routes/api/cron.$job'
 import { Route as ApiOperatorBotsRouteImport } from './routes/api/operator/bots'
 import { Route as ApiTelegramBotIdRouteImport } from './routes/api/telegram.$botId'
 import { Route as ApiZernioWebhookRouteImport } from './routes/api/zernio/webhook'
+import { Route as OperatorAuthedIndexRouteImport } from './routes/operator._authed.index'
+import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
+import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authed.products_.$id'
 import { Route as ApiImgBotIdSplatRouteImport } from './routes/api/img.$botId.$'
+import { Route as OperatorAuthedClientsBotIdRouteImport } from './routes/operator._authed.clients.$botId'
+import { Route as OperatorAuthedClientsNewRouteImport } from './routes/operator._authed.clients.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OperatorRoute = OperatorRouteImport.update({
+  id: '/operator',
+  path: '/operator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAuthedRoute = AdminAuthedRouteImport.update({
+  id: '/_authed',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OperatorAuthedRoute = OperatorAuthedRouteImport.update({
+  id: '/_authed',
+  getParentRoute: () => OperatorRoute,
+} as any)
+const OperatorLoginRoute = OperatorLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => OperatorRoute,
+} as any)
+const AdminAuthedIndexRoute = AdminAuthedIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedCategoriesRoute = AdminAuthedCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedCustomersRoute = AdminAuthedCustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedModulesRoute = AdminAuthedModulesRouteImport.update({
+  id: '/modules',
+  path: '/modules',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedOrdersRoute = AdminAuthedOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedProductsRoute = AdminAuthedProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedSettingsRoute = AdminAuthedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const ApiAdminUploadRoute = ApiAdminUploadRouteImport.update({
+  id: '/api/admin/upload',
+  path: '/api/admin/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCronJobRoute = ApiCronJobRouteImport.update({
@@ -47,73 +134,205 @@ const ApiZernioWebhookRoute = ApiZernioWebhookRouteImport.update({
   path: '/api/zernio/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OperatorAuthedIndexRoute = OperatorAuthedIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
+const AdminAuthedOrdersIdRoute = AdminAuthedOrdersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AdminAuthedOrdersRoute,
+} as any)
+const AdminAuthedProductsIdRoute = AdminAuthedProductsIdRouteImport.update({
+  id: '/products_/$id',
+  path: '/products/$id',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
 const ApiImgBotIdSplatRoute = ApiImgBotIdSplatRouteImport.update({
   id: '/api/img/$botId/$',
   path: '/api/img/$botId/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OperatorAuthedClientsBotIdRoute =
+  OperatorAuthedClientsBotIdRouteImport.update({
+    id: '/clients/$botId',
+    path: '/clients/$botId',
+    getParentRoute: () => OperatorAuthedRoute,
+  } as any)
+const OperatorAuthedClientsNewRoute =
+  OperatorAuthedClientsNewRouteImport.update({
+    id: '/clients/new',
+    path: '/clients/new',
+    getParentRoute: () => OperatorAuthedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/operator': typeof OperatorRouteWithChildren
+  '/admin/login': typeof AdminLoginRoute
   '/api/health': typeof ApiHealthRoute
+  '/operator/login': typeof OperatorLoginRoute
+  '/admin/categories': typeof AdminAuthedCategoriesRoute
+  '/admin/customers': typeof AdminAuthedCustomersRoute
+  '/admin/modules': typeof AdminAuthedModulesRoute
+  '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
+  '/admin/products': typeof AdminAuthedProductsRoute
+  '/admin/settings': typeof AdminAuthedSettingsRoute
+  '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
+  '/admin/': typeof AdminAuthedIndexRoute
+  '/operator/': typeof OperatorAuthedIndexRoute
+  '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
+  '/admin/products/$id': typeof AdminAuthedProductsIdRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
+  '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
+  '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminAuthedIndexRoute
+  '/operator': typeof OperatorAuthedIndexRoute
+  '/admin/login': typeof AdminLoginRoute
   '/api/health': typeof ApiHealthRoute
+  '/operator/login': typeof OperatorLoginRoute
+  '/admin/categories': typeof AdminAuthedCategoriesRoute
+  '/admin/customers': typeof AdminAuthedCustomersRoute
+  '/admin/modules': typeof AdminAuthedModulesRoute
+  '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
+  '/admin/products': typeof AdminAuthedProductsRoute
+  '/admin/settings': typeof AdminAuthedSettingsRoute
+  '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
+  '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
+  '/admin/products/$id': typeof AdminAuthedProductsIdRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
+  '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
+  '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/operator': typeof OperatorRouteWithChildren
+  '/admin/_authed': typeof AdminAuthedRouteWithChildren
+  '/admin/login': typeof AdminLoginRoute
   '/api/health': typeof ApiHealthRoute
+  '/operator/_authed': typeof OperatorAuthedRouteWithChildren
+  '/operator/login': typeof OperatorLoginRoute
+  '/admin/_authed/categories': typeof AdminAuthedCategoriesRoute
+  '/admin/_authed/customers': typeof AdminAuthedCustomersRoute
+  '/admin/_authed/modules': typeof AdminAuthedModulesRoute
+  '/admin/_authed/orders': typeof AdminAuthedOrdersRouteWithChildren
+  '/admin/_authed/products': typeof AdminAuthedProductsRoute
+  '/admin/_authed/settings': typeof AdminAuthedSettingsRoute
+  '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
+  '/admin/_authed/': typeof AdminAuthedIndexRoute
+  '/operator/_authed/': typeof OperatorAuthedIndexRoute
+  '/admin/_authed/orders/$id': typeof AdminAuthedOrdersIdRoute
+  '/admin/_authed/products_/$id': typeof AdminAuthedProductsIdRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
+  '/operator/_authed/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
+  '/operator/_authed/clients/new': typeof OperatorAuthedClientsNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
+    | '/operator'
+    | '/admin/login'
     | '/api/health'
+    | '/operator/login'
+    | '/admin/categories'
+    | '/admin/customers'
+    | '/admin/modules'
+    | '/admin/orders'
+    | '/admin/products'
+    | '/admin/settings'
+    | '/api/admin/upload'
     | '/api/cron/$job'
     | '/api/operator/bots'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
+    | '/admin/'
+    | '/operator/'
+    | '/admin/orders/$id'
+    | '/admin/products/$id'
     | '/api/img/$botId/$'
+    | '/operator/clients/$botId'
+    | '/operator/clients/new'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
+    | '/operator'
+    | '/admin/login'
     | '/api/health'
+    | '/operator/login'
+    | '/admin/categories'
+    | '/admin/customers'
+    | '/admin/modules'
+    | '/admin/orders'
+    | '/admin/products'
+    | '/admin/settings'
+    | '/api/admin/upload'
     | '/api/cron/$job'
     | '/api/operator/bots'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
+    | '/admin/orders/$id'
+    | '/admin/products/$id'
     | '/api/img/$botId/$'
+    | '/operator/clients/$botId'
+    | '/operator/clients/new'
   id:
     | '__root__'
     | '/'
+    | '/admin'
+    | '/operator'
+    | '/admin/_authed'
+    | '/admin/login'
     | '/api/health'
+    | '/operator/_authed'
+    | '/operator/login'
+    | '/admin/_authed/categories'
+    | '/admin/_authed/customers'
+    | '/admin/_authed/modules'
+    | '/admin/_authed/orders'
+    | '/admin/_authed/products'
+    | '/admin/_authed/settings'
+    | '/api/admin/upload'
     | '/api/cron/$job'
     | '/api/operator/bots'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
+    | '/admin/_authed/'
+    | '/operator/_authed/'
+    | '/admin/_authed/orders/$id'
+    | '/admin/_authed/products_/$id'
     | '/api/img/$botId/$'
+    | '/operator/_authed/clients/$botId'
+    | '/operator/_authed/clients/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  OperatorRoute: typeof OperatorRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiAdminUploadRoute: typeof ApiAdminUploadRoute
   ApiCronJobRoute: typeof ApiCronJobRoute
   ApiOperatorBotsRoute: typeof ApiOperatorBotsRoute
   ApiTelegramBotIdRoute: typeof ApiTelegramBotIdRoute
@@ -130,11 +349,109 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operator': {
+      id: '/operator'
+      path: '/operator'
+      fullPath: '/operator'
+      preLoaderRoute: typeof OperatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/_authed': {
+      id: '/admin/_authed'
+      path: ''
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminAuthedRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operator/_authed': {
+      id: '/operator/_authed'
+      path: ''
+      fullPath: '/operator'
+      preLoaderRoute: typeof OperatorAuthedRouteImport
+      parentRoute: typeof OperatorRoute
+    }
+    '/operator/login': {
+      id: '/operator/login'
+      path: '/login'
+      fullPath: '/operator/login'
+      preLoaderRoute: typeof OperatorLoginRouteImport
+      parentRoute: typeof OperatorRoute
+    }
+    '/admin/_authed/': {
+      id: '/admin/_authed/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminAuthedIndexRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/categories': {
+      id: '/admin/_authed/categories'
+      path: '/categories'
+      fullPath: '/admin/categories'
+      preLoaderRoute: typeof AdminAuthedCategoriesRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/customers': {
+      id: '/admin/_authed/customers'
+      path: '/customers'
+      fullPath: '/admin/customers'
+      preLoaderRoute: typeof AdminAuthedCustomersRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/modules': {
+      id: '/admin/_authed/modules'
+      path: '/modules'
+      fullPath: '/admin/modules'
+      preLoaderRoute: typeof AdminAuthedModulesRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/orders': {
+      id: '/admin/_authed/orders'
+      path: '/orders'
+      fullPath: '/admin/orders'
+      preLoaderRoute: typeof AdminAuthedOrdersRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/products': {
+      id: '/admin/_authed/products'
+      path: '/products'
+      fullPath: '/admin/products'
+      preLoaderRoute: typeof AdminAuthedProductsRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/settings': {
+      id: '/admin/_authed/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminAuthedSettingsRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/api/admin/upload': {
+      id: '/api/admin/upload'
+      path: '/api/admin/upload'
+      fullPath: '/api/admin/upload'
+      preLoaderRoute: typeof ApiAdminUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cron/$job': {
@@ -165,6 +482,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiZernioWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/operator/_authed/': {
+      id: '/operator/_authed/'
+      path: '/'
+      fullPath: '/operator/'
+      preLoaderRoute: typeof OperatorAuthedIndexRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
+    '/admin/_authed/orders/$id': {
+      id: '/admin/_authed/orders/$id'
+      path: '/$id'
+      fullPath: '/admin/orders/$id'
+      preLoaderRoute: typeof AdminAuthedOrdersIdRouteImport
+      parentRoute: typeof AdminAuthedOrdersRoute
+    }
+    '/admin/_authed/products_/$id': {
+      id: '/admin/_authed/products_/$id'
+      path: '/products/$id'
+      fullPath: '/admin/products/$id'
+      preLoaderRoute: typeof AdminAuthedProductsIdRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/api/img/$botId/$': {
       id: '/api/img/$botId/$'
       path: '/api/img/$botId/$'
@@ -172,12 +510,108 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiImgBotIdSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/operator/_authed/clients/$botId': {
+      id: '/operator/_authed/clients/$botId'
+      path: '/clients/$botId'
+      fullPath: '/operator/clients/$botId'
+      preLoaderRoute: typeof OperatorAuthedClientsBotIdRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
+    '/operator/_authed/clients/new': {
+      id: '/operator/_authed/clients/new'
+      path: '/clients/new'
+      fullPath: '/operator/clients/new'
+      preLoaderRoute: typeof OperatorAuthedClientsNewRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
   }
 }
 
+interface AdminAuthedOrdersRouteChildren {
+  AdminAuthedOrdersIdRoute: typeof AdminAuthedOrdersIdRoute
+}
+
+const AdminAuthedOrdersRouteChildren: AdminAuthedOrdersRouteChildren = {
+  AdminAuthedOrdersIdRoute: AdminAuthedOrdersIdRoute,
+}
+
+const AdminAuthedOrdersRouteWithChildren =
+  AdminAuthedOrdersRoute._addFileChildren(AdminAuthedOrdersRouteChildren)
+
+interface AdminAuthedRouteChildren {
+  AdminAuthedCategoriesRoute: typeof AdminAuthedCategoriesRoute
+  AdminAuthedCustomersRoute: typeof AdminAuthedCustomersRoute
+  AdminAuthedModulesRoute: typeof AdminAuthedModulesRoute
+  AdminAuthedOrdersRoute: typeof AdminAuthedOrdersRouteWithChildren
+  AdminAuthedProductsRoute: typeof AdminAuthedProductsRoute
+  AdminAuthedSettingsRoute: typeof AdminAuthedSettingsRoute
+  AdminAuthedIndexRoute: typeof AdminAuthedIndexRoute
+  AdminAuthedProductsIdRoute: typeof AdminAuthedProductsIdRoute
+}
+
+const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
+  AdminAuthedCategoriesRoute: AdminAuthedCategoriesRoute,
+  AdminAuthedCustomersRoute: AdminAuthedCustomersRoute,
+  AdminAuthedModulesRoute: AdminAuthedModulesRoute,
+  AdminAuthedOrdersRoute: AdminAuthedOrdersRouteWithChildren,
+  AdminAuthedProductsRoute: AdminAuthedProductsRoute,
+  AdminAuthedSettingsRoute: AdminAuthedSettingsRoute,
+  AdminAuthedIndexRoute: AdminAuthedIndexRoute,
+  AdminAuthedProductsIdRoute: AdminAuthedProductsIdRoute,
+}
+
+const AdminAuthedRouteWithChildren = AdminAuthedRoute._addFileChildren(
+  AdminAuthedRouteChildren,
+)
+
+interface AdminRouteChildren {
+  AdminAuthedRoute: typeof AdminAuthedRouteWithChildren
+  AdminLoginRoute: typeof AdminLoginRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAuthedRoute: AdminAuthedRouteWithChildren,
+  AdminLoginRoute: AdminLoginRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface OperatorAuthedRouteChildren {
+  OperatorAuthedIndexRoute: typeof OperatorAuthedIndexRoute
+  OperatorAuthedClientsBotIdRoute: typeof OperatorAuthedClientsBotIdRoute
+  OperatorAuthedClientsNewRoute: typeof OperatorAuthedClientsNewRoute
+}
+
+const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
+  OperatorAuthedIndexRoute: OperatorAuthedIndexRoute,
+  OperatorAuthedClientsBotIdRoute: OperatorAuthedClientsBotIdRoute,
+  OperatorAuthedClientsNewRoute: OperatorAuthedClientsNewRoute,
+}
+
+const OperatorAuthedRouteWithChildren = OperatorAuthedRoute._addFileChildren(
+  OperatorAuthedRouteChildren,
+)
+
+interface OperatorRouteChildren {
+  OperatorAuthedRoute: typeof OperatorAuthedRouteWithChildren
+  OperatorLoginRoute: typeof OperatorLoginRoute
+}
+
+const OperatorRouteChildren: OperatorRouteChildren = {
+  OperatorAuthedRoute: OperatorAuthedRouteWithChildren,
+  OperatorLoginRoute: OperatorLoginRoute,
+}
+
+const OperatorRouteWithChildren = OperatorRoute._addFileChildren(
+  OperatorRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
+  OperatorRoute: OperatorRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
+  ApiAdminUploadRoute: ApiAdminUploadRoute,
   ApiCronJobRoute: ApiCronJobRoute,
   ApiOperatorBotsRoute: ApiOperatorBotsRoute,
   ApiTelegramBotIdRoute: ApiTelegramBotIdRoute,

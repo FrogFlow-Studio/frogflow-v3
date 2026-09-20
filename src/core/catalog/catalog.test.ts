@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { imageUrl } from "./catalog";
+import { decodeImageKey, encodeImageKey } from "./image-url";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 
 const ctx = {
@@ -9,11 +10,15 @@ const ctx = {
 
 describe("imageUrl", () => {
   it("ключ с префиксом и без него дают один адрес", () => {
-    expect(imageUrl(ctx, "0bac1f86-5231-4e57-838d-2faa44d427e7/a.png")).toBe(
-      "https://app.test/api/img/0bac1f86-5231-4e57-838d-2faa44d427e7/a.png",
+    const a = imageUrl(ctx, "0bac1f86-5231-4e57-838d-2faa44d427e7/a.png");
+    expect(a).toBe(
+      `https://app.test/api/img/0bac1f86-5231-4e57-838d-2faa44d427e7/${encodeImageKey(ctx.tenant.id, "a.png")}`,
     );
-    expect(imageUrl(ctx, "1783414427610-x7i24b.jpeg")).toBe(
-      "https://app.test/api/img/0bac1f86-5231-4e57-838d-2faa44d427e7/1783414427610-x7i24b.jpeg",
+    expect(decodeImageKey(a.split("/").pop()!)).toBe("a.png");
+    expect(decodeImageKey(imageUrl(ctx, "1783414427610-x7i24b.jpeg").split("/").pop()!)).toBe(
+      "1783414427610-x7i24b.jpeg",
     );
+    expect(a).not.toMatch(/\.png$/);
+    expect(decodeImageKey("../x")).toBeNull();
   });
 });

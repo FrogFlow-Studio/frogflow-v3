@@ -1,0 +1,48 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState, type FormEvent } from "react";
+import { adminLogin } from "@/app/admin/admin.functions";
+import { ErrorBox, Field, useAction } from "@/app/ui";
+
+export const Route = createFileRoute("/admin/login")({ component: LoginPage });
+
+function LoginPage() {
+  const navigate = useNavigate();
+  const [wrong, setWrong] = useState(false);
+  const { run, busy, error } = useAction(async (username: string, password: string) => {
+    const r = await adminLogin({ data: { username, password } });
+    if (!r.ok) return setWrong(true);
+    await navigate({ to: "/admin" });
+  });
+  return (
+    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
+      <h1 className="text-lg font-semibold">Вход в магазин</h1>
+      <p className="mt-1 text-sm text-muted">Логин и пароль выдаёт FrogFlow при подключении.</p>
+      <form
+        onSubmit={(e: FormEvent<HTMLFormElement>) => {
+          e.preventDefault();
+          const f = new FormData(e.currentTarget);
+          void run(String(f.get("username")), String(f.get("password"))).catch(() => {});
+        }}
+        className="card mt-6 space-y-4 p-5"
+      >
+        <Field label="Логин">
+          <input className="input" name="username" autoComplete="username" required />
+        </Field>
+        <Field label="Пароль">
+          <input
+            className="input"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+          />
+        </Field>
+        {wrong && <p className="text-sm text-danger">Неверный логин или пароль.</p>}
+        <ErrorBox error={error} />
+        <button className="btn-primary w-full" disabled={busy}>
+          Войти
+        </button>
+      </form>
+    </main>
+  );
+}

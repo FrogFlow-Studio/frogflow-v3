@@ -9,16 +9,18 @@ export const Route = createFileRoute("/api/img/$botId/$")({
     handlers: {
       GET: async ({ params }) => {
         const botId = params.botId;
-        const rel = params._splat ?? "";
-        if (!/^[0-9a-f-]{36}$/i.test(botId) || !rel || rel.includes("..")) {
+        const { decodeImageKey } = await import("@/core/catalog/image-url");
+        const rel = decodeImageKey(params._splat ?? "");
+        if (!/^[0-9a-f-]{36}$/i.test(botId) || !rel)
           return new Response("not found", { status: 404 });
-        }
         const { serviceDb } = await import("@/core/db/client.server");
         const storage = serviceDb().storage.from("product-images");
         // Новый ключ с префиксом арендатора; если такого нет — старый ключ без
         // префикса, но только когда строка product_images подтверждает, что
         // он принадлежит этому арендатору.
-        let file = (await storage.download(`${botId}/${rel}`)).data;
+        const first = await storage.download(`${botId}/${rel}`);
+        let file = first.data;
+        if (first.error) console.warn(`[img] ${botId}/${rel}: ${first.error.message}`);
         if (!file) {
           const { data: owned } = await serviceDb()
             .from("product_images")

@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database } from "@/core/db-types";
+import { imagePath } from "./image-url";
 
 type ProductRow = Database["public"]["Tables"]["products"]["Row"];
 
@@ -108,14 +109,7 @@ export function sortedVariants(p: Pick<Product, "product_variants">): ProductVar
   return (p.product_variants ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
 }
 
-/**
- * Публичная ссылка на витринную картинку — раздаётся этим же деплоем.
- * Ключи в product-images двух видов: новые `<bot_id>/<file>` и старые без
- * префикса (первый клиент). В адресе префикс всегда один — bot_id из
- * контекста, маршрут /api/img восстанавливает ключ сам.
- */
+/** Публичная ссылка на витринную картинку — раздаётся этим же деплоем. */
 export function imageUrl(ctx: TenantContext, path: string): string {
-  const prefix = `${ctx.tenant.id}/`;
-  const rel = path.startsWith(prefix) ? path.slice(prefix.length) : path;
-  return `${ctx.appUrl}/api/img/${ctx.tenant.id}/${rel}`;
+  return `${ctx.appUrl}${imagePath(ctx.tenant.id, path)}`;
 }
