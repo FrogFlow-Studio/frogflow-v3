@@ -1,0 +1,98 @@
+# План переноса
+
+Порядок — от самого маленького клиента к самому большому, по одному, с
+откатом одной командой (`docs/MIGRATION.md`). Каждая фаза самостоятельно
+полезна и не ломает предыдущие.
+
+Правила из `frogflow/docs/v2/README.md` действуют: база не трогается, v1 и
+v2 работают одновременно, поломку у живого клиента чиним в v1, готовность
+меряется проверками из `docs/inherited-knowledge.md`, а не ощущением.
+
+## Фаза 1 — фундамент ✔
+
+Арендатор из запроса, per-request JWT, шифрование токенов, реестры модулей и
+ниш, вебхуки, крон вебхуков, API оператора. Готово, `npm run check` зелёный.
+
+## Фаза 2 — цифровой магазин в Telegram ✔ (минимальный контур)
+
+Каталог → корзина → страна → телефон → заказ → реквизиты → чек → продавец →
+выдача. Первый клиент на v2 — самый маленький магазин цифровых материалов
+без платных модулей.
+
+Осталось внутри фазы, по описи:
+
+| модуль / поведение                 | v1                                  | v2                       |
+| ---------------------------------- | ----------------------------------- | ------------------------ |
+| `coupons` промокоды                | `promo-codes.ts`, CAS `used_count`  | нет                      |
+| `loyalty` баллы                    | `loyalty.server.ts`                 | нет                      |
+| `gift_certificates`                | `gift-certificates.ts`              | нет                      |
+| `multi_language` «все языки»       | `deliveryPriceMultiplier`, `lang_*` | нет                      |
+| `stock` списание на оформлении     | `decrementStock`/`restoreStock`     | нет¹                     |
+| `review_request` отзывы            | `reviews.ts`, `product_reviews`     | нет                      |
+| `referral`                         | `referrals.server.ts`               | нет                      |
+| `cart_reminder` крон               | `cart-reminder.server.ts`           | нет                      |
+| `smart_search` LLM-поиск           | `smart-search.server.ts`            | нет                      |
+| `manager_chat`                     | `manager-chat.server.ts`, RPC touch | нет                      |
+| `blocked` — чтение                 | `replyIfBlocked`                    | ✔                        |
+| пауза за неоплату                  | `replyIfPaused`                     | ✔                        |
+| счёт оператора чеком от владельца  | `subscription_invoices`             | нет                      |
+| напоминание об оплате из админки   | `remindOrderPayment`                | нет                      |
+| «Информация»: юридические страницы | `/legal/*`, бакет `legal-docs`      | ссылки есть, страниц нет |
+
+¹ проверка остатка при добавлении в корзину есть; атомарное списание при
+оформлении — нет, поэтому модуль `stock` включать клиенту на v2 пока нельзя.
+
+## Фаза 3 — оплата и физические товары
+
+Robokassa (`robokassa.server.ts`, колбэки `result/success/fail`, подпись по
+`robokassa_test_mode`, не по `IsTest`), OCR чеков (Google Vision, `proof_auto`
+для RU/KZ), выбор способа оплаты для KZ; физический чекаут (тип получения,
+дата с `lead_time_days`, зоны с конвертацией комиссии, адрес, примечание),
+статусы `accepted → in_production → ready → delivered`, напоминание за сутки,
+`payment_mode = on_receipt`. Ниши `confectionery` и `flowers`.
+
+## Фаза 4 — Zernio: Instagram Direct и WhatsApp
+
+Единый вебхук уже принимает события и пишет их в `zernio_logs` как
+`ignored`. Переносятся: `direct-flow.ts` (чистый разбор, 57 проверок —
+переносится первым), `direct-purchase.server.ts` (состояние диалога, заказ по
+факту чека, выдача письмом), WhatsApp-активация, каталог списками, шаблоны
+Meta вне 24-часового окна, `Idempotency-Key` через контекст события,
+добор `pending`, `account.disconnected`. Аккаунты клиента — в
+`bots.settings.zernio.account_ids`, а не в `ZERNIO_PROFILE_ID` деплоя; ключ
+API Zernio один на платформу.
+
+Консультант (`consultant/*`, `consultant-universal/*`) — та же фаза, отдельный
+вход по нише `consultant*`: леджер `consultant_message_runs`, guard
+«менеджер в чате», курс ВТБ через relay, импорт каталога из Sheets/XLSX.
+
+## Фаза 5 — веб: админка, панель оператора, Mini App, витрина
+
+- **Админка клиента** — `/admin` на общем домене, сессия хранит `bot_id`;
+  вход по `bots.settings.admin` (логин + scrypt-хеш) вместо `ADMIN_PASSWORD`
+  деплоя. Страницы по описи `docs/v1-admin-inventory.md` §1.4, гейт модулей
+  на сервере первой строкой каждой функции (`requireAdmin(ctx) +
+requireModule(ctx, key)`).
+- **Панель оператора** — `/operator`: список клиентов, тумблеры модулей,
+  смена ниши, «Переустановить webhook», здоровье, счета, журнал, заявки,
+  лиды. Онбординг — без Vercel: форма поверх `POST /api/operator/bots`.
+  `/api/internal/*` и `bots.internal_secret` больше не нужны — панель и
+  клиент в одном процессе.
+- **Mini App** — `/s/<slug>/mini-app`, `initData` проверяется токеном бота
+  из хранилища; API с rate-limit по бакетам.
+- **Витрина** `/s/<slug>/shop` и свой домен клиента через `settings.hosts`.
+
+## Фаза 6 — VIP-бот, рассылки, ретеншн
+
+Второй токен (VIP) — в `bots.settings.vip.token_enc` тем же шифрованием,
+вебхук `/api/telegram/<bot_id>/vip`. Рассылки Telegram/WhatsApp порциями из
+крона, ретеншн `zernio_logs`, `manager_chat_messages`, `admin_login_attempts`,
+`bot_health_snapshots` — один крон на всех.
+
+## Фаза 7 — v1 выключена
+
+Все клиенты `served_by = "v2"`, проекты Vercel v1 удалены (иначе их крон
+`ensure-webhook` попытается забрать бота обратно — в v1 есть `ownsWebhook`,
+но лучше не проверять), репозиторий v1 архивируется. Только после этого
+можно менять схему: `bots.bot_token` → обязательное шифрование, `app_url`
+и `internal_secret` — удалить, `story_product_tags` — привести к общему виду.

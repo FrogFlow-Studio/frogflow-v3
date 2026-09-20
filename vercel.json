@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".vercel/output",
+  "installCommand": "npm install --legacy-peer-deps",
+  "framework": "tanstack-start",
+  "trailingSlash": false,
+  "regions": ["icn1"],
+  "crons": [{ "path": "/api/cron/ensure-webhook", "schedule": "0 * * * *" }]
+}
