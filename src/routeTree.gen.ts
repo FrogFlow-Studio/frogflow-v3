@@ -38,6 +38,7 @@ import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
 import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authed.products_.$id'
 import { Route as ApiImgBotIdSplatRouteImport } from './routes/api/img.$botId.$'
+import { Route as ApiRobokassaBotIdActionRouteImport } from './routes/api/robokassa.$botId.$action'
 import { Route as OperatorAuthedClientsBotIdRouteImport } from './routes/operator._authed.clients.$botId'
 import { Route as OperatorAuthedClientsNewRouteImport } from './routes/operator._authed.clients.new'
 import { Route as SSlugLegalDocRouteImport } from './routes/s.$slug.legal.$doc'
@@ -186,6 +187,11 @@ const ApiImgBotIdSplatRoute = ApiImgBotIdSplatRouteImport.update({
   path: '/api/img/$botId/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRobokassaBotIdActionRoute = ApiRobokassaBotIdActionRouteImport.update({
+  id: '/api/robokassa/$botId/$action',
+  path: '/api/robokassa/$botId/$action',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OperatorAuthedClientsBotIdRoute =
   OperatorAuthedClientsBotIdRouteImport.update({
     id: '/clients/$botId',
@@ -237,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
+  '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByTo {
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
+  '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
@@ -303,6 +311,7 @@ export interface FileRoutesById {
   '/admin/_authed/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/_authed/products_/$id': typeof AdminAuthedProductsIdRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
+  '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
   '/operator/_authed/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/_authed/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
@@ -338,6 +347,7 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/admin/products/$id'
     | '/api/img/$botId/$'
+    | '/api/robokassa/$botId/$action'
     | '/operator/clients/$botId'
     | '/operator/clients/new'
     | '/s/$slug/legal/$doc'
@@ -368,6 +378,7 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/admin/products/$id'
     | '/api/img/$botId/$'
+    | '/api/robokassa/$botId/$action'
     | '/operator/clients/$botId'
     | '/operator/clients/new'
     | '/s/$slug/legal/$doc'
@@ -403,6 +414,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/orders/$id'
     | '/admin/_authed/products_/$id'
     | '/api/img/$botId/$'
+    | '/api/robokassa/$botId/$action'
     | '/operator/_authed/clients/$botId'
     | '/operator/_authed/clients/new'
     | '/s/$slug/legal/$doc'
@@ -422,6 +434,7 @@ export interface RootRouteChildren {
   ApiTelegramBotIdRoute: typeof ApiTelegramBotIdRoute
   ApiZernioWebhookRoute: typeof ApiZernioWebhookRoute
   ApiImgBotIdSplatRoute: typeof ApiImgBotIdSplatRoute
+  ApiRobokassaBotIdActionRoute: typeof ApiRobokassaBotIdActionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -629,6 +642,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiImgBotIdSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/robokassa/$botId/$action': {
+      id: '/api/robokassa/$botId/$action'
+      path: '/api/robokassa/$botId/$action'
+      fullPath: '/api/robokassa/$botId/$action'
+      preLoaderRoute: typeof ApiRobokassaBotIdActionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/operator/_authed/clients/$botId': {
       id: '/operator/_authed/clients/$botId'
       path: '/clients/$botId'
@@ -770,6 +790,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTelegramBotIdRoute: ApiTelegramBotIdRoute,
   ApiZernioWebhookRoute: ApiZernioWebhookRoute,
   ApiImgBotIdSplatRoute: ApiImgBotIdSplatRoute,
+  ApiRobokassaBotIdActionRoute: ApiRobokassaBotIdActionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

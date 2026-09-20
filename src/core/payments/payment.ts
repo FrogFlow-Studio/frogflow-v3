@@ -1,0 +1,47 @@
+import type { TenantContext } from "@/core/tenant/resolve.server";
+import { getSettings } from "@/core/settings/settings";
+import { ROBOKASSA_KEYS, robokassaConfig } from "./robokassa";
+
+export async function robokassaFor(ctx: TenantContext) {
+  return robokassaConfig(await getSettings(ctx, ROBOKASSA_KEYS), ctx.tenant.modules.robokassa);
+}
+
+/**
+ * Онлайн-оплата подтверждена шлюзом: отметить, что деньги получены.
+ * Цифровой заказ дальше выдаёт канал, физический принимается в работу.
+ * Идемпотентно: повторный колбэк на закрытый заказ ничего не меняет.
+ */
+export async function markPaidOnline(
+  ctx: TenantContext,
+  orderId: number,
+  amount: number,
+  provider: string,
+): Promise<{ ok: boolean; kind: "digital" | "physical" | null; alreadyDone: boolean }> {
+  const { data: order } = await ctx.db
+    .from("orders")
+    .select("status, fulfillment_kind, admin_note, paid_amount, total")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) return { ok: false, kind: null, alreadyDone: false };
+  const kind = order.fulfillment_kind === "physical" ? "physical" : "digital";
+  if (!["awaiting_payment", "awaiting_confirmation"].includes(order.status))
+    return { ok: true, kind, alreadyDone: true };
+  const note =
+    `${order.admin_note ? `${order.admin_note}; ` : ""}Оплачено через ${provider}: ${amount}`.slice(
+      0,
+      500,
+    );
+  const paid = Math.min(Number(order.total), Number(order.paid_amount ?? 0) + amount);
+  const patch =
+    kind === "physical"
+      ? { status: "accepted", payment_proof_path: provider, admin_note: note, paid_amount: paid }
+      : { status: "paid", payment_proof_path: provider, admin_note: note, paid_amount: paid };
+  const { data } = await ctx.db
+    .from("orders")
+    .update(patch)
+    .eq("id", orderId)
+    .in("status", ["awaiting_payment", "awaiting_confirmation"])
+    .select("id")
+    .maybeSingle();
+  return { ok: Boolean(data), kind, alreadyDone: !data };
+}

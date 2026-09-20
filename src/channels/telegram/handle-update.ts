@@ -26,6 +26,7 @@ import { verticalDef } from "@/core/verticals/registry";
 import { formatMoney } from "@/core/money/money";
 import {
   upsertCustomer,
+  getCustomer,
   setState,
   setContactPhone,
   isBlocked,
@@ -70,6 +71,8 @@ import { telegramMaterialSender } from "./deliver";
 import { findValidGift, findValidPromoCode } from "@/core/discounts/discounts";
 import { normalizeCode } from "@/core/discounts/pure";
 import { claimHandoff, HANDOFF_PREFIX } from "@/core/storefront/handoff";
+import { robokassaFor } from "@/core/payments/payment";
+import { buildPaymentUrl } from "@/core/payments/robokassa";
 import {
   activeDeliveryZones,
   fulfillmentSettings,
@@ -825,28 +828,104 @@ async function finishCheckout(b: Bot, countryCode: string) {
     pending_display_no: no,
   });
   const due = result.amountDue;
+  const rk = await robokassaFor(b.ctx);
+  if (rk.ready) {
+    b.customer = await setState(b.ctx, b.customer, {
+      ...rest,
+      mode: "choose_pay",
+      pending_order_id: order.id,
+      pending_display_no: no,
+    });
+    await send(
+      b,
+      `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}\n\n${b.m.choosePayMethod}`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: b.m.payViaRobokassaBtn, callback_data: `pay:rk:${order.id}` }],
+            [{ text: b.m.payManualBtn, callback_data: `pay:manual:${order.id}` }],
+          ],
+        },
+      },
+    );
+    return;
+  }
   const depositLine =
     physical && due < Number(order.total)
       ? `${b.m.depositLine(formatMoney(due, order.currency), formatMoney(order.total, order.currency))}\n\n`
       : "";
+  await sendManualInstructions(b, {
+    no,
+    due,
+    total: Number(order.total),
+    currency: order.currency,
+    instructions: method.instructions,
+    qr: method.qr_code_path,
+    physical,
+    depositLine,
+  });
+}
+
+async function sendManualInstructions(
+  b: Bot,
+  p: {
+    no: number;
+    due: number;
+    total: number;
+    currency: string;
+    instructions: string | null;
+    qr: string | null;
+    physical: boolean;
+    depositLine: string;
+  },
+) {
   const text =
-    `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}\n${depositLine}\n` +
-    `${escapeHtml(method.instructions || b.m.defaultInstructions)}\n\n${physical ? b.m.afterProofPhysical : b.m.afterProofManual}`;
-  if (method.qr_code_path && text.length <= 1024) {
+    `${b.m.manualTitleNew(p.no)}\n\n${b.m.amountToPay(formatMoney(p.due, p.currency))}\n${p.depositLine}\n` +
+    `${escapeHtml(p.instructions || b.m.defaultInstructions)}\n\n${p.physical ? b.m.afterProofPhysical : b.m.afterProofManual}`;
+  if (p.qr && text.length <= 1024) {
     const r = await b.api.call("sendPhoto", {
       chat_id: b.chatId,
-      photo: imageUrl(b.ctx, method.qr_code_path),
+      photo: imageUrl(b.ctx, p.qr),
       caption: text,
       parse_mode: "HTML",
     });
     if (r.ok) return;
   }
   await send(b, text);
-  if (method.qr_code_path)
-    await b.api.call("sendPhoto", {
-      chat_id: b.chatId,
-      photo: imageUrl(b.ctx, method.qr_code_path),
-    });
+  if (p.qr) await b.api.call("sendPhoto", { chat_id: b.chatId, photo: imageUrl(b.ctx, p.qr) });
+}
+
+/** Оплата картой подтверждена шлюзом: выдать цифровой заказ, сообщить покупателю и продавцу. */
+export async function onOrderPaid(
+  ctx: TenantContext,
+  api: TelegramApi,
+  orderId: number,
+): Promise<void> {
+  const order = await getOrder(ctx, orderId);
+  if (!order) return;
+  const customer = await getCustomer(ctx, order.user_key ?? `tg_${order.telegram_id}`);
+  const locale = customer ? localeOf(ctx, customer) : "ru";
+  const m = COPY[locale];
+  const no = displayNo(order);
+  await api.call("sendMessage", { chat_id: order.telegram_id, text: m.paymentReceived(no) });
+  if (customer) await setState(ctx, customer, { ...customer.state, mode: "idle" });
+  if (order.fulfillment_kind !== "physical") {
+    const r = await deliverOrder(
+      ctx,
+      orderId,
+      telegramMaterialSender(api, order.telegram_id, m),
+      locale,
+    );
+    if (r.failed === 0 && !r.alreadyDelivered)
+      await api.call("sendMessage", { chat_id: order.telegram_id, text: m.orderDelivered(no) });
+    if (r.pointsEarned > 0)
+      await api.call("sendMessage", {
+        chat_id: order.telegram_id,
+        text: m.pointsEarned(r.pointsEarned),
+      });
+  }
+  const fresh = await getOrder(ctx, orderId);
+  if (fresh) await notifyAdminNewOrder(ctx, api, fresh, null, { paidOnline: true });
 }
 
 async function receiveProof(b: Bot, msg: TelegramMessage, orderId: number) {
@@ -1016,6 +1095,67 @@ async function handleCallback(
     return;
   }
   if (data === "checkout") return startCheckout(b);
+  if (data.startsWith("pay:")) {
+    const [, kind, idRaw] = data.split(":");
+    const order = await getOrder(ctx, Number(idRaw));
+    if (!order || order.telegram_id !== customer.telegramId || order.status !== "awaiting_payment")
+      return;
+    const no = displayNo(order);
+    const { amountDueNow } = await import("@/core/fulfillment/fulfillment");
+    const due = await amountDueNow(ctx, {
+      total: Number(order.total),
+      fulfillment_kind: order.fulfillment_kind,
+    });
+    if (kind === "rk") {
+      const rk = await robokassaFor(ctx);
+      if (!rk.ready) return;
+      const url = buildPaymentUrl(rk, {
+        outSum: due,
+        invId: order.id,
+        description: `Заказ #${no}`,
+        botId: ctx.tenant.id,
+      });
+      b.customer = await setState(ctx, customer, {
+        ...customer.state,
+        mode: "awaiting_payment",
+        pending_order_id: order.id,
+        pending_display_no: no,
+      });
+      await send(
+        b,
+        `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}\n\n${b.m.robokassaHint}`,
+        { reply_markup: { inline_keyboard: [[{ text: b.m.payViaRobokassaBtn, url }]] } },
+      );
+      return;
+    }
+    if (kind === "manual") {
+      const method =
+        (await listActivePaymentMethods(ctx)).find((x) => x.country_code === order.country_code) ??
+        null;
+      const physical = order.fulfillment_kind === "physical";
+      b.customer = await setState(ctx, customer, {
+        ...customer.state,
+        mode: "awaiting_proof",
+        pending_order_id: order.id,
+        pending_display_no: no,
+      });
+      const depositLine =
+        physical && due < Number(order.total)
+          ? `${b.m.depositLine(formatMoney(due, order.currency), formatMoney(order.total, order.currency))}\n\n`
+          : "";
+      return sendManualInstructions(b, {
+        no,
+        due,
+        total: Number(order.total),
+        currency: order.currency,
+        instructions: method?.instructions ?? null,
+        qr: method?.qr_code_path ?? null,
+        physical,
+        depositLine,
+      });
+    }
+    return;
+  }
   if (data.startsWith("fulfilltype:")) {
     if (customer.state.mode !== "awaiting_fulfillment_type") return;
     const type = data.slice(12);

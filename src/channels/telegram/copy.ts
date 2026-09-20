@@ -71,6 +71,11 @@ export type Msg = {
   depositLine: (due: string, total: string) => string;
   afterProofPhysical: string;
   leadTimeLabel: (days: number) => string;
+  choosePayMethod: string;
+  payViaRobokassaBtn: string;
+  payManualBtn: string;
+  robokassaHint: string;
+  paymentReceived: (no: number) => string;
   chooseCountry: string;
   countrySaved: (name: string) => string;
   paymentNotConfigured: string;
@@ -183,6 +188,11 @@ const ru: Msg = {
   afterProofPhysical:
     "После оплаты пришлите сюда фото или PDF чека — продавец подтвердит заказ и возьмёт в работу.",
   leadTimeLabel: (days) => `⏳ Срок изготовления: ${days} дн.`,
+  choosePayMethod: "Выберите способ оплаты:",
+  payViaRobokassaBtn: "💳 Оплатить картой онлайн",
+  payManualBtn: "🧾 Перевод по реквизитам + чек",
+  robokassaHint: "Нажмите кнопку, оплатите картой — после оплаты всё придёт сюда автоматически.",
+  paymentReceived: (no) => `✅ Оплата по заказу #${no} получена.`,
   chooseCountry: "🌍 Выберите страну оплаты:",
   countrySaved: (n) => `✅ Страна: ${n}`,
   paymentNotConfigured: "Продавец ещё не настроил способы оплаты. Напишите ему напрямую.",

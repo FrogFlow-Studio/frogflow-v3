@@ -121,6 +121,7 @@ function SettingsPage() {
         <PaymentMethods methods={methods} />
         <FulfillmentCard settings={settings} />
         <ZonesCard zones={zones} />
+        {shop.modules.robokassa && <RobokassaCard settings={settings} />}
         <LegalCard settings={settings} />
       </div>
     </>
@@ -650,6 +651,118 @@ function LegalCard({ settings }: { settings: Record<string, string> }) {
           </Field>
         ))}
         <div className="flex items-center gap-3 md:col-span-2">
+          <button className="btn-secondary" disabled={save.busy}>
+            Сохранить
+          </button>
+          {saved && <span className="text-xs text-ok">Сохранено</span>}
+        </div>
+        <ErrorBox error={save.error} />
+      </form>
+    </Card>
+  );
+}
+
+function RobokassaCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = Route.useRouteContext();
+  const [saved, setSaved] = useState(false);
+  const save = useAction(async (f: FormData) => {
+    await saveSettingsFn({
+      data: {
+        robokassa_enabled: f.get("enabled") === "on" ? "true" : "false",
+        robokassa_test_mode: f.get("test") === "on" ? "true" : "false",
+        robokassa_login: String(f.get("login")).trim(),
+        robokassa_pass1: String(f.get("pass1")).trim(),
+        robokassa_pass2: String(f.get("pass2")).trim(),
+        robokassa_pass1_test: String(f.get("pass1t")).trim(),
+        robokassa_pass2_test: String(f.get("pass2t")).trim(),
+      },
+    });
+    setSaved(true);
+    await router.invalidate();
+  });
+  const resultUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/api/robokassa/${shop.botId}/result`;
+  return (
+    <Card title="Robokassa: оплата картой" className="lg:col-span-2">
+      <p className="mb-3 text-xs text-muted">
+        В личном кабинете Robokassa укажите Result URL{" "}
+        <code className="rounded bg-surface-2 px-1">{resultUrl}</code>, Success URL{" "}
+        <code className="rounded bg-surface-2 px-1">{resultUrl.replace(/result$/, "success")}</code>
+        , Fail URL{" "}
+        <code className="rounded bg-surface-2 px-1">{resultUrl.replace(/result$/, "fail")}</code>,
+        метод POST, алгоритм MD5.
+      </p>
+      <form
+        className="grid gap-3 sm:grid-cols-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save.run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        <div className="flex gap-4 text-sm sm:col-span-2">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="enabled"
+              defaultChecked={settings.robokassa_enabled === "true"}
+            />{" "}
+            Включить оплату картой
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="test"
+              defaultChecked={settings.robokassa_test_mode === "true"}
+            />{" "}
+            Тестовый режим
+          </label>
+        </div>
+        <Field label="MerchantLogin">
+          <input
+            className="input"
+            name="login"
+            defaultValue={settings.robokassa_login ?? ""}
+            autoComplete="off"
+          />
+        </Field>
+        <div />
+        <Field label="Пароль #1 (боевой)">
+          <input
+            className="input"
+            name="pass1"
+            type="password"
+            defaultValue={settings.robokassa_pass1 ?? ""}
+            autoComplete="off"
+          />
+        </Field>
+        <Field label="Пароль #2 (боевой)">
+          <input
+            className="input"
+            name="pass2"
+            type="password"
+            defaultValue={settings.robokassa_pass2 ?? ""}
+            autoComplete="off"
+          />
+        </Field>
+        <Field label="Тестовый пароль #1">
+          <input
+            className="input"
+            name="pass1t"
+            type="password"
+            defaultValue={settings.robokassa_pass1_test ?? ""}
+            autoComplete="off"
+          />
+        </Field>
+        <Field label="Тестовый пароль #2">
+          <input
+            className="input"
+            name="pass2t"
+            type="password"
+            defaultValue={settings.robokassa_pass2_test ?? ""}
+            autoComplete="off"
+          />
+        </Field>
+        <div className="flex items-center gap-3 sm:col-span-2">
           <button className="btn-secondary" disabled={save.busy}>
             Сохранить
           </button>

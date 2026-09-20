@@ -327,6 +327,13 @@ export const SETTING_KEYS = [
   "legal_privacy",
   "legal_requisites",
   "legal_about",
+  "robokassa_enabled",
+  "robokassa_test_mode",
+  "robokassa_login",
+  "robokassa_pass1",
+  "robokassa_pass2",
+  "robokassa_pass1_test",
+  "robokassa_pass2_test",
 ] as const;
 
 export const settingsFn = createServerFn({ method: "GET" }).handler(async () => {
