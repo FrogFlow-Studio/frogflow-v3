@@ -12,7 +12,7 @@ export async function notifyAdminNewOrder(
   api: TelegramApi,
   order: OrderWithItems,
   proof: ProofRef,
-  opts: { paidOnline?: boolean } = {},
+  opts: { paidOnline?: boolean; autoDelivered?: boolean; reviewReason?: string } = {},
 ): Promise<void> {
   const recipients = await adminRecipients(ctx);
   if (recipients.length === 0) {
@@ -25,9 +25,12 @@ export async function notifyAdminNewOrder(
   const items = order.order_items ?? [];
   const paidOnline = Boolean(opts.paidOnline);
   const summary =
-    (paidOnline
-      ? `💳 <b>Заказ #${no} оплачен картой</b>\n\n`
-      : `🆕 <b>Новый заказ #${no}</b>\n\n`) +
+    (opts.autoDelivered
+      ? `✅ <b>Заказ #${no}: чек распознан, файлы выданы автоматически</b>\n\n`
+      : paidOnline
+        ? `💳 <b>Заказ #${no} оплачен картой</b>\n\n`
+        : `🆕 <b>Новый заказ #${no}</b>\n\n`) +
+    (opts.reviewReason ? `🔎 Автопроверка чека: ${escapeHtml(opts.reviewReason)}\n\n` : "") +
     `👤 ${escapeHtml(order.display_name ?? "")}${order.username ? ` (@${escapeHtml(order.username)})` : ""}\n` +
     `📞 ${escapeHtml(order.contact ?? "—")}\n` +
     `🌍 ${escapeHtml(order.country_name ?? "—")}\n` +
@@ -41,7 +44,7 @@ export async function notifyAdminNewOrder(
       )
       .join("\n");
   const reply_markup =
-    paidOnline && order.fulfillment_kind !== "physical"
+    (paidOnline || opts.autoDelivered) && order.fulfillment_kind !== "physical"
       ? undefined
       : {
           inline_keyboard: [

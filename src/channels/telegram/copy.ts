@@ -109,6 +109,10 @@ export type Msg = {
   contactAuthor: (link: string) => string;
   contactNotSet: string;
   useMenu: string;
+  notReceiptLike: (no: string) => string;
+  receiptPaymentFailed: (no: string) => string;
+  receiptManualReview: (no: string) => string;
+  receiptVerified: (no: string) => string;
   smartSearchResults: (q: string, n: number) => string;
   rateBtn: (no: string) => string;
   chooseProductToRate: string;
@@ -132,6 +136,13 @@ export type Msg = {
 };
 
 const ru: Msg = {
+  notReceiptLike: (no) =>
+    `⚠️ Это не похоже на чек оплаты.\n\nПришлите, пожалуйста, скриншот перевода / чека с суммой заказа #${no}.`,
+  receiptPaymentFailed: (no) =>
+    `⚠️ По этому скриншоту платёж не прошёл (ошибка, отказ или неверные данные).\n\nЗаказ #${no} не выдан. Пришлите чек успешной оплаты — когда перевод действительно зачислится.`,
+  receiptManualReview: (no) =>
+    `📨 Чек по заказу #${no} получен, но автоматическая проверка не прошла. Заказ отправлен продавцу на ручную проверку — файлы придут после подтверждения.`,
+  receiptVerified: (no) => `✅ Спасибо! Чек проверен. Заказ #${no} — отправляю файлы…`,
   smartSearchResults: (q, n) => `🤖 По смыслу запроса «${q}» подобрано: ${n}`,
   rateBtn: (no) => `⭐ Оценить (#${no})`,
   chooseProductToRate: "Какой товар из этого заказа оцениваете?",
@@ -286,6 +297,13 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  notReceiptLike: (no) =>
+    `⚠️ Бұл төлем чегіне ұқсамайды.\n\n#${no} тапсырысының сомасы көрсетілген аударым/чек скриншотын жіберіңіз.`,
+  receiptPaymentFailed: (no) =>
+    `⚠️ Бұл скриншот бойынша төлем өтпеген (қате, бас тарту немесе қате деректер).\n\n#${no} тапсырысы берілген жоқ. Аударым нақты түскеннен кейін сәтті төлем чегін жіберіңіз.`,
+  receiptManualReview: (no) =>
+    `📨 #${no} тапсырысы бойынша чек алынды, бірақ автоматты тексеру өтпеді. Тапсырыс сатушыға қолмен тексеруге жіберілді — файлдар растаудан кейін келеді.`,
+  receiptVerified: (no) => `✅ Рақмет! Чек тексерілді. Тапсырыс #${no} — файлдарды жіберудемін…`,
   smartSearchResults: (q, n) => `🤖 «${q}» сұрауының мағынасы бойынша таңдалды: ${n}`,
   rateBtn: (no) => `⭐ Бағалау (#${no})`,
   chooseProductToRate: "Осы тапсырыстан қай тауарды бағалайсыз?",
@@ -342,6 +360,13 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  notReceiptLike: (no) =>
+    `⚠️ This doesn’t look like a payment receipt.\n\nPlease send a screenshot of the transfer/receipt showing the amount for order #${no}.`,
+  receiptPaymentFailed: (no) =>
+    `⚠️ This screenshot shows the payment did not go through (error, declined, or invalid details).\n\nOrder #${no} was not fulfilled. Please send a receipt of a successful payment once the transfer is completed.`,
+  receiptManualReview: (no) =>
+    `📨 Receipt received for order #${no}, but automatic verification failed. The order was sent to the seller for manual review — files will arrive after confirmation.`,
+  receiptVerified: (no) => `✅ Thank you! Receipt verified. Order #${no} — sending files…`,
   smartSearchResults: (q, n) => `🤖 Picked by meaning for “${q}”: ${n}`,
   rateBtn: (no) => `⭐ Rate (#${no})`,
   chooseProductToRate: "Which product from this order are you rating?",
@@ -418,6 +443,13 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  notReceiptLike: (no) =>
+    `⚠️ Bu to‘lov chekiga o‘xshamayapti.\n\n#${no} buyurtma summasi ko‘rsatilgan o‘tkazma/chek skrinshotini yuboring.`,
+  receiptPaymentFailed: (no) =>
+    `⚠️ Bu skrinshotda to‘lov o‘tmagan (xato, rad etilgan yoki noto‘g‘ri ma’lumot).\n\n#${no} buyurtma berilmadi. O‘tkazma haqiqatan o‘tgach, muvaffaqiyatli to‘lov chekini yuboring.`,
+  receiptManualReview: (no) =>
+    `📨 #${no} buyurtmasi uchun chek qabul qilindi, lekin avtomatik tekshiruv o‘tmadi. Buyurtma sotuvchiga qo‘lda tekshirish uchun yuborildi — fayllar tasdiqlangandan so‘ng keladi.`,
+  receiptVerified: (no) => `✅ Rahmat! Chek tekshirildi. Buyurtma #${no} — fayllar yuborilmoqda…`,
   smartSearchResults: (q, n) => `🤖 «${q}» so‘rovi ma’nosi bo‘yicha tanlandi: ${n}`,
   rateBtn: (no) => `⭐ Baholash (#${no})`,
   chooseProductToRate: "Ushbu buyurtmadan qaysi mahsulotni baholaysiz?",

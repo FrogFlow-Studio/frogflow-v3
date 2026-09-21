@@ -328,6 +328,8 @@ export const SETTING_KEYS = [
   "smart_search_daily_spend",
   "smart_search_lifetime_spend",
   "smart_search_last_error",
+  "receipt_ocr_auto",
+  "receipt_ocr_usage",
   "fulfillment_pickup_enabled",
   "fulfillment_delivery_enabled",
   "payment_mode",
@@ -354,11 +356,13 @@ export const settingsFn = createServerFn({ method: "GET" }).handler(async () => 
     listPaymentMethods(ctx),
   ]);
   const { platformHasKey } = await import("@/core/search/smart.server");
+  const { visionConfigured } = await import("@/core/receipts/verify.server");
   return {
     settings,
     methods,
     ownerTelegramId: ctx.tenant.ownerTelegramId,
     smartSearchKey: platformHasKey(),
+    visionKey: visionConfigured(),
   };
 });
 

@@ -29,7 +29,7 @@ export const Route = createFileRoute("/admin/_authed/settings")({
 type Method = Awaited<ReturnType<typeof settingsFn>>["methods"][number];
 
 function SettingsPage() {
-  const { settings, methods, ownerTelegramId, telegram, zones, smartSearchKey } =
+  const { settings, methods, ownerTelegramId, telegram, zones, smartSearchKey, visionKey } =
     Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const router = useRouter();
@@ -123,6 +123,7 @@ function SettingsPage() {
         <FulfillmentCard settings={settings} />
         <ZonesCard zones={zones} />
         {shop.modules.robokassa && <RobokassaCard settings={settings} />}
+        {shop.modules.receipt_ocr && <ReceiptOcrCard settings={settings} hasKey={visionKey} />}
         {shop.modules.smart_search && (
           <SmartSearchCard settings={settings} hasKey={smartSearchKey} />
         )}
@@ -842,6 +843,61 @@ function SmartSearchCard({
           Последняя ошибка: {settings.smart_search_last_error}
         </p>
       )}
+      <ErrorBox error={toggle.error} />
+    </Card>
+  );
+}
+
+function ReceiptOcrCard({
+  settings,
+  hasKey,
+}: {
+  settings: Record<string, string>;
+  hasKey: boolean;
+}) {
+  const router = useRouter();
+  const enabled = settings.receipt_ocr_auto !== "false";
+  const toggle = useAction(async (v: boolean) => {
+    await saveSettingsFn({ data: { receipt_ocr_auto: v ? "true" : "false" } });
+    await router.invalidate();
+  });
+  let usage = { count: 0, monthCount: 0, month: "" };
+  try {
+    usage = { ...usage, ...(JSON.parse(settings.receipt_ocr_usage || "{}") as object) };
+  } catch {
+    /* пустое значение */
+  }
+  const thisMonth = usage.month === new Date().toISOString().slice(0, 7) ? usage.monthCount : 0;
+  return (
+    <Card title="Распознавание чеков">
+      <p className="mb-3 text-sm text-muted">
+        Чек, присланный в бот, читается автоматически: если сумма и признаки оплаты сошлись — файлы
+        уходят покупателю сразу, без вашего участия; сомнительный чек попадает к вам с причиной;
+        скрин без оплаты бот просит прислать заново. Тариф — $2 за 1000 распознаваний.
+      </p>
+      {!hasKey && (
+        <p className="mb-3 rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">
+          На платформе не задан ключ Google Vision — чеки идут на ручную проверку, пока оператор его
+          не добавит.
+        </p>
+      )}
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={enabled}
+          disabled={toggle.busy || !hasKey}
+          onChange={(v) => void toggle.run(v).catch(() => {})}
+          label="Автопроверка чеков"
+        />
+        <span className="text-sm">
+          {enabled ? "Автопроверка включена" : "Выключена — проверяете сами"}
+        </span>
+      </div>
+      <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
+        <dt className="text-muted">Распознано в этом месяце</dt>
+        <dd className="tabular-nums">{thisMonth}</dd>
+        <dt className="text-muted">Всего</dt>
+        <dd className="tabular-nums">{usage.count}</dd>
+      </dl>
       <ErrorBox error={toggle.error} />
     </Card>
   );

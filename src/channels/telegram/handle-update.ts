@@ -1030,9 +1030,68 @@ async function receiveProof(b: Bot, msg: TelegramMessage, orderId: number) {
     await send(b, text);
     return;
   }
+  const no = displayNo(res.order);
+  const proof = { fileId, kind };
+
+  // Автопроверка чека (модуль receipt_ocr): цифровой заказ выдаётся сам,
+  // сомнительный — продавцу с причиной, не-чек — просим прислать заново.
+  const { receiptOcrAutoEnabled } = await import("@/core/receipts/verify.server");
+  if (res.order.fulfillment_kind !== "physical" && (await receiptOcrAutoEnabled(b.ctx))) {
+    const { verifyReceipt } = await import("@/core/receipts/verify.server");
+    const { isRetryReason } = await import("@/core/receipts/pure");
+    const v = await verifyReceipt(b.ctx, {
+      bytes: file.bytes,
+      mime: file.mime,
+      expectedAmount: Number(res.order.total),
+      currency: res.order.currency,
+      orderId,
+    });
+    if (!v.ok && isRetryReason(v.reason)) {
+      await b.ctx.db
+        .from("orders")
+        .update({ status: "awaiting_payment", admin_note: `OCR: ${v.detail}`.slice(0, 500) })
+        .eq("id", orderId)
+        .eq("status", "awaiting_confirmation");
+      await send(
+        b,
+        v.reason === "payment_failed"
+          ? b.m.receiptPaymentFailed(String(no))
+          : b.m.notReceiptLike(String(no)),
+      );
+      return;
+    }
+    b.customer = await setState(b.ctx, b.customer, { ...b.customer.state, mode: "idle" });
+    if (!v.ok) {
+      await b.ctx.db
+        .from("orders")
+        .update({ admin_note: `OCR: ${v.detail}`.slice(0, 500) })
+        .eq("id", orderId);
+      await send(b, b.m.receiptManualReview(String(no)), { reply_markup: mainMenu(b) });
+      await notifyAdminNewOrder(b.ctx, b.api, res.order, proof, { reviewReason: v.detail });
+      return;
+    }
+    await b.ctx.db
+      .from("orders")
+      .update({ admin_note: `OCR ok: сумма ${v.matchedAmount}` })
+      .eq("id", orderId);
+    await send(b, b.m.receiptVerified(String(no)), { reply_markup: mainMenu(b) });
+    const r = await deliverOrder(
+      b.ctx,
+      orderId,
+      telegramMaterialSender(b.api, b.chatId, b.m),
+      b.locale,
+    );
+    if (r.failed === 0 && !r.alreadyDelivered) await send(b, b.m.orderDelivered(no));
+    if (r.pointsEarned > 0) await send(b, b.m.pointsEarned(r.pointsEarned));
+    await notifyReferral(b.ctx, b.api, r.referral);
+    const fresh = (await getOrder(b.ctx, orderId)) ?? res.order;
+    await notifyAdminNewOrder(b.ctx, b.api, fresh, proof, { autoDelivered: r.failed === 0 });
+    return;
+  }
+
   b.customer = await setState(b.ctx, b.customer, { ...b.customer.state, mode: "idle" });
-  await send(b, b.m.proofReceived(displayNo(res.order)), { reply_markup: mainMenu(b) });
-  await notifyAdminNewOrder(b.ctx, b.api, res.order, { fileId, kind });
+  await send(b, b.m.proofReceived(no), { reply_markup: mainMenu(b) });
+  await notifyAdminNewOrder(b.ctx, b.api, res.order, proof);
 }
 
 async function downloadTelegramFile(
