@@ -22,7 +22,7 @@ export type TelegramCallbackQuery = {
   id: string;
   data?: string;
   from?: TelegramUser;
-  message?: { chat?: { id: number }; message_id?: number };
+  message?: { chat?: { id: number }; message_id?: number; reply_markup?: InlineKeyboard };
 };
 
 export type TelegramUpdate = {

@@ -33,6 +33,14 @@ function Layout() {
           <NavLink to="/admin/products">Товары</NavLink>
           <NavLink to="/admin/categories">Категории</NavLink>
           <NavLink to="/admin/customers">Покупатели</NavLink>
+          {shop.modules.manager_chat && (
+            <NavLink to="/admin/chat">
+              <span className="flex items-center justify-between gap-2">
+                Чат
+                {shop.chatUnread > 0 && <Badge tone="accent">{shop.chatUnread}</Badge>}
+              </span>
+            </NavLink>
+          )}
           {(shop.modules.coupons || shop.modules.gift_certificates) && (
             <NavLink to="/admin/discounts">Скидки</NavLink>
           )}

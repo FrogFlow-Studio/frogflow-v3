@@ -23,6 +23,7 @@ import { Route as AdminAuthedIndexRouteImport } from './routes/admin._authed.ind
 import { Route as AdminAuthedAnalyticsRouteImport } from './routes/admin._authed.analytics'
 import { Route as AdminAuthedBroadcastsRouteImport } from './routes/admin._authed.broadcasts'
 import { Route as AdminAuthedCategoriesRouteImport } from './routes/admin._authed.categories'
+import { Route as AdminAuthedChatRouteImport } from './routes/admin._authed.chat'
 import { Route as AdminAuthedCustomersRouteImport } from './routes/admin._authed.customers'
 import { Route as AdminAuthedDiscountsRouteImport } from './routes/admin._authed.discounts'
 import { Route as AdminAuthedModulesRouteImport } from './routes/admin._authed.modules'
@@ -113,6 +114,11 @@ const AdminAuthedBroadcastsRoute = AdminAuthedBroadcastsRouteImport.update({
 const AdminAuthedCategoriesRoute = AdminAuthedCategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedChatRoute = AdminAuthedChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedCustomersRoute = AdminAuthedCustomersRouteImport.update({
@@ -245,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
+  '/admin/chat': typeof AdminAuthedChatRoute
   '/admin/customers': typeof AdminAuthedCustomersRoute
   '/admin/discounts': typeof AdminAuthedDiscountsRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
@@ -281,6 +288,7 @@ export interface FileRoutesByTo {
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
+  '/admin/chat': typeof AdminAuthedChatRoute
   '/admin/customers': typeof AdminAuthedCustomersRoute
   '/admin/discounts': typeof AdminAuthedDiscountsRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
@@ -319,6 +327,7 @@ export interface FileRoutesById {
   '/admin/_authed/analytics': typeof AdminAuthedAnalyticsRoute
   '/admin/_authed/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/_authed/categories': typeof AdminAuthedCategoriesRoute
+  '/admin/_authed/chat': typeof AdminAuthedChatRoute
   '/admin/_authed/customers': typeof AdminAuthedCustomersRoute
   '/admin/_authed/discounts': typeof AdminAuthedDiscountsRoute
   '/admin/_authed/modules': typeof AdminAuthedModulesRoute
@@ -358,6 +367,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/broadcasts'
     | '/admin/categories'
+    | '/admin/chat'
     | '/admin/customers'
     | '/admin/discounts'
     | '/admin/modules'
@@ -394,6 +404,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/broadcasts'
     | '/admin/categories'
+    | '/admin/chat'
     | '/admin/customers'
     | '/admin/discounts'
     | '/admin/modules'
@@ -431,6 +442,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/analytics'
     | '/admin/_authed/broadcasts'
     | '/admin/_authed/categories'
+    | '/admin/_authed/chat'
     | '/admin/_authed/customers'
     | '/admin/_authed/discounts'
     | '/admin/_authed/modules'
@@ -572,6 +584,13 @@ declare module '@tanstack/react-router' {
       path: '/categories'
       fullPath: '/admin/categories'
       preLoaderRoute: typeof AdminAuthedCategoriesRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/chat': {
+      id: '/admin/_authed/chat'
+      path: '/chat'
+      fullPath: '/admin/chat'
+      preLoaderRoute: typeof AdminAuthedChatRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/customers': {
@@ -753,6 +772,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedAnalyticsRoute: typeof AdminAuthedAnalyticsRoute
   AdminAuthedBroadcastsRoute: typeof AdminAuthedBroadcastsRoute
   AdminAuthedCategoriesRoute: typeof AdminAuthedCategoriesRoute
+  AdminAuthedChatRoute: typeof AdminAuthedChatRoute
   AdminAuthedCustomersRoute: typeof AdminAuthedCustomersRoute
   AdminAuthedDiscountsRoute: typeof AdminAuthedDiscountsRoute
   AdminAuthedModulesRoute: typeof AdminAuthedModulesRoute
@@ -767,6 +787,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedAnalyticsRoute: AdminAuthedAnalyticsRoute,
   AdminAuthedBroadcastsRoute: AdminAuthedBroadcastsRoute,
   AdminAuthedCategoriesRoute: AdminAuthedCategoriesRoute,
+  AdminAuthedChatRoute: AdminAuthedChatRoute,
   AdminAuthedCustomersRoute: AdminAuthedCustomersRoute,
   AdminAuthedDiscountsRoute: AdminAuthedDiscountsRoute,
   AdminAuthedModulesRoute: AdminAuthedModulesRoute,

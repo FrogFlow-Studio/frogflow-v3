@@ -403,7 +403,7 @@ M68: `conversation_id TEXT`, `zernio_account_id TEXT`, `outreach_error TEXT`.
 | `operator_bot_stats()` | `() → TABLE(bot_id uuid, orders_total bigint, orders_30d bigint, last_order_at timestamptz, products_total bigint, customers_total bigint, storage_bytes bigint)`; `LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,storage` (M10) | только `service_role`; `anon/authenticated/tenant_bot` — REVOKE |
 | `operator_storage_by_kind()` | `() → TABLE(bot_id uuid, storage_kind text, storage_bytes bigint)`; та же методика, разбивка по видам: «Материалы» / «Фото товаров» / «Чеки оплаты» (M39) | только `service_role` |
 | `increment_broadcast_counts(p_broadcast_id uuid, p_sent int DEFAULT 0, p_failed int DEFAULT 0, p_blocked int DEFAULT 0)` | `→ void`; `LANGUAGE sql SECURITY INVOKER` (M11 / PATCH-BROADCASTS) — атомарный инкремент счётчиков рассылки | `service_role`, `tenant_bot` |
-| `manager_chat_touch(p_bot_id uuid, p_telegram_id bigint, p_direction text, p_sender text, p_preview text)` | `→ void`; plpgsql, upsert + инкремент `unread_count` (M26) | `tenant_bot`, `service_role` |
+| `manager_chat_touch(p_bot_id uuid, p_telegram_id bigint, p_direction text, p_sender text, p_preview text)` | `→ void`; plpgsql, upsert превью и времени (M26). **Живая версия не инкрементирует `unread_count`** (проверено 2026-09-21 под service_role: после реплики покупателя счётчик остаётся 0) — v2 считает непрочитанные сама, CAS в `src/core/chat/chat.ts` | `tenant_bot`, `service_role` |
 | `claim_order_placement(p_bot_id uuid, p_telegram_id bigint)` | `→ boolean`; атомарный захват `bot_users.state.placing_order` (M27, вместо CAS по `updated_at`) | `tenant_bot`, `service_role` |
 
 ### 2.2 Функции в БД, не описанные в `types.ts` (триггеры и служебные)

@@ -125,3 +125,15 @@ export async function runOrderAction(
     }
   }
 }
+
+/** Ответ менеджера из панели: тем же sendMessage, что и у бота, плюс запись в лог чата. */
+export async function replyAsManager(
+  ctx: TenantContext,
+  telegramId: number,
+  text: string,
+): Promise<void> {
+  const r = await api(ctx).call("sendMessage", { chat_id: telegramId, text });
+  if (!r.ok) throw new Error(r.description || "Не удалось отправить сообщение в Telegram");
+  const { recordMessage } = await import("@/core/chat/chat");
+  await recordMessage(ctx, { telegramId, direction: "out", sender: "manager", text });
+}

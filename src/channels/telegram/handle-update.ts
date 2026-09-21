@@ -1,3 +1,4 @@
+import { inboundIntercepted } from "@/core/chat/chat";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { TelegramApi } from "./api";
 import type {
@@ -199,6 +200,18 @@ async function handleMessage(
   const locale = localeOf(ctx, customer);
   const b: Bot = { ctx, api, chatId, customer, locale, m: COPY[locale] };
   const text = msg.text?.trim();
+
+  // Чат с менеджером: реплика в лог; если менеджер подключён — бот молчит.
+  // Исключения: /start (покупатель хочет меню) и чек на шаге оплаты.
+  const proofStep = customer.state.mode === "awaiting_proof" && Boolean(msg.photo || msg.document);
+  const intercepted = await inboundIntercepted(
+    ctx,
+    from.id,
+    text ||
+      msg.caption ||
+      (msg.photo ? "[фото]" : msg.document ? "[файл]" : msg.contact ? "[контакт]" : "[без текста]"),
+  );
+  if (intercepted && !text?.startsWith("/start") && !proofStep) return;
 
   if (text?.startsWith("/start")) return startFlow(b, text.slice(6).trim());
 
@@ -1033,6 +1046,14 @@ async function handleCallback(
   });
   const locale = localeOf(ctx, customer);
   const b: Bot = { ctx, api, chatId, customer, locale, m: COPY[locale] };
+
+  // Нажатия кнопок — тоже в лог чата, подписью кнопки, а не сырым callback_data.
+  if (ctx.tenant.modules.manager_chat) {
+    const label = cq.message?.reply_markup?.inline_keyboard
+      ?.flat()
+      .find((btn) => btn.callback_data === data)?.text;
+    if (await inboundIntercepted(ctx, from.id, `👉 ${label ?? "нажал кнопку"}`)) return;
+  }
 
   if (data.startsWith("locale:")) {
     const l = data.slice(7);

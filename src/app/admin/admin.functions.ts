@@ -57,6 +57,9 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       status: ctx.tenant.status,
       telegram: ctx.tenant.settings.telegram?.username ?? null,
       slug: ctx.tenant.settings.slug ?? null,
+      chatUnread: ctx.tenant.modules.manager_chat
+        ? await (await import("@/core/chat/chat")).totalUnread(ctx).catch(() => 0)
+        : 0,
     };
   } catch {
     return null;
@@ -692,4 +695,48 @@ export const analyticsFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const ctx = await admin();
     return (await import("@/core/analytics/analytics")).analytics(ctx, data.days);
+  });
+
+/* ── чат с менеджером ────────────────────────────────────────────── */
+
+const chatModule = async () =>
+  (await import("@/app/auth/guards.server")).requireAdminModule("manager_chat");
+const tgId = z.number().int().positive();
+
+export const chatConversationsFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await chatModule();
+  const { listConversations, totalUnread } = await import("@/core/chat/chat");
+  const [conversations, unread] = await Promise.all([listConversations(ctx), totalUnread(ctx)]);
+  return { conversations, unread };
+});
+
+export const chatMessagesFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ telegramId: tgId }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await chatModule();
+    const { listMessages, markRead } = await import("@/core/chat/chat");
+    const messages = await listMessages(ctx, data.telegramId);
+    await markRead(ctx, data.telegramId);
+    return messages;
+  });
+
+export const chatConnectFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ telegramId: tgId, active: z.boolean() }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await chatModule();
+    const chat = await import("@/core/chat/chat");
+    if (data.active) await chat.connect(ctx, data.telegramId);
+    else await chat.disconnect(ctx, data.telegramId);
+    return { ok: true };
+  });
+
+export const chatReplyFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ telegramId: tgId, text: z.string().trim().min(1).max(4000) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await chatModule();
+    const { replyAsManager } = await import("./admin.server");
+    await replyAsManager(ctx, data.telegramId, data.text);
+    return { ok: true };
   });
