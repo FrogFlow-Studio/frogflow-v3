@@ -10,6 +10,7 @@
     { "path": "/api/cron/broadcast", "schedule": "* * * * *" },
     { "path": "/api/cron/cart-reminder", "schedule": "*/30 * * * *" },
     { "path": "/api/cron/fulfillment-reminder", "schedule": "0 * * * *" },
-    { "path": "/api/cron/retention", "schedule": "20 3 * * *" }
+    { "path": "/api/cron/retention", "schedule": "20 3 * * *" },
+    { "path": "/api/cron/vip", "schedule": "*/10 * * * *" }
   ]
 }

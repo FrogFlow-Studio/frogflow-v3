@@ -285,6 +285,25 @@ export async function connectTelegram(botId: string, token: string, actor = "ope
   return { username: me.result?.username ?? null };
 }
 
+/** VIP-бот клиента: второй токен → getMe → шифрование в settings.vip → вебхук. */
+export async function connectVipBot(botId: string, token: string, actor = "operator") {
+  const e = env();
+  const me = await telegramApi(token, e.TELEGRAM_API_BASE).call<{ username?: string }>("getMe");
+  if (!me.ok) throw new Error(`Telegram отверг токен: ${me.description ?? "getMe failed"}`);
+  await patchTenantSettings(botId, {
+    vip: {
+      token_enc: encryptSecret(token, e.SECRETS_KEY),
+      username: me.result?.username ?? null,
+      webhook_ok: false,
+    },
+  });
+  await logEvent(botId, "webhook", { action: "vip_token", username: me.result?.username }, actor);
+  const { ensureVipWebhook } = await import("@/core/tenant/vip-webhook.server");
+  const webhook = await ensureVipWebhook(await requireTenant({ by: "id", value: botId }), true);
+  await logEvent(botId, "webhook", { action: "vip_set", ...webhook }, actor);
+  return { username: me.result?.username ?? null, webhook };
+}
+
 export async function setServedBy(botId: string, servedBy: "v1" | "v2", actor = "operator") {
   await patchTenantSettings(botId, { served_by: servedBy });
   await logEvent(botId, "webhook", { action: "served_by", value: servedBy }, actor);

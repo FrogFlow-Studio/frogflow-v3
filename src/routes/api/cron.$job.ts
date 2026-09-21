@@ -26,6 +26,19 @@ export const Route = createFileRoute("/api/cron/$job")({
                 results[t.id] = { ok: false, error: e instanceof Error ? e.message : String(e) };
               }
             }
+            // VIP-боты: второй токен у клиентов с модулем.
+            const { ensureVipWebhook } = await import("@/core/tenant/vip-webhook.server");
+            for (const t of tenants) {
+              if (!t.modules.vip || !t.settings.vip?.token_enc) continue;
+              try {
+                results[`${t.id}:vip`] = await ensureVipWebhook(t);
+              } catch (e) {
+                results[`${t.id}:vip`] = {
+                  ok: false,
+                  error: e instanceof Error ? e.message : String(e),
+                };
+              }
+            }
             // Zernio: один вебхук на платформу, а не на клиента.
             const { ensurePlatformWebhook } = await import("@/channels/zernio/connect.server");
             results.zernio = await ensurePlatformWebhook();
@@ -52,6 +65,28 @@ export const Route = createFileRoute("/api/cron/$job")({
                       error: r.reason instanceof Error ? r.reason.message : String(r.reason),
                     };
             });
+            break;
+          }
+          case "vip": {
+            // Напоминания об истечении и исключение из VIP-групп.
+            const { runVipCron } = await import("@/core/vip/cron");
+            const { tenantContext } = await import("@/core/tenant/resolve.server");
+            const { vipGroupApi } = await import("@/channels/telegram/vip/group");
+            const { vipTelegramApi } = await import("@/channels/telegram/vip/handle");
+            for (const t of tenants) {
+              if (!t.modules.vip || !t.settings.vip?.token_enc) continue;
+              try {
+                const ctx = tenantContext(t);
+                const api = vipTelegramApi(ctx);
+                results[t.id] = await runVipCron(
+                  ctx,
+                  vipGroupApi(api),
+                  t.settings.vip.username ?? null,
+                );
+              } catch (e) {
+                results[t.id] = { ok: false, error: e instanceof Error ? e.message : String(e) };
+              }
+            }
             break;
           }
           case "retention": {

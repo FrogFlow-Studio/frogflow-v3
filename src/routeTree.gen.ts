@@ -31,6 +31,7 @@ import { Route as AdminAuthedModulesRouteImport } from './routes/admin._authed.m
 import { Route as AdminAuthedOrdersRouteImport } from './routes/admin._authed.orders'
 import { Route as AdminAuthedProductsRouteImport } from './routes/admin._authed.products'
 import { Route as AdminAuthedSettingsRouteImport } from './routes/admin._authed.settings'
+import { Route as AdminAuthedVipRouteImport } from './routes/admin._authed.vip'
 import { Route as ApiAdminUploadRouteImport } from './routes/api/admin/upload'
 import { Route as ApiCronJobRouteImport } from './routes/api/cron.$job'
 import { Route as ApiOperatorBotsRouteImport } from './routes/api/operator/bots'
@@ -47,6 +48,7 @@ import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authe
 import { Route as ApiAdminExportKindRouteImport } from './routes/api/admin/export.$kind'
 import { Route as ApiImgBotIdSplatRouteImport } from './routes/api/img.$botId.$'
 import { Route as ApiRobokassaBotIdActionRouteImport } from './routes/api/robokassa.$botId.$action'
+import { Route as ApiTelegramBotIdVipRouteImport } from './routes/api/telegram.$botId.vip'
 import { Route as OperatorAuthedClientsBotIdRouteImport } from './routes/operator._authed.clients.$botId'
 import { Route as OperatorAuthedClientsNewRouteImport } from './routes/operator._authed.clients.new'
 import { Route as SSlugLegalDocRouteImport } from './routes/s.$slug.legal.$doc'
@@ -160,6 +162,11 @@ const AdminAuthedSettingsRoute = AdminAuthedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
+const AdminAuthedVipRoute = AdminAuthedVipRouteImport.update({
+  id: '/vip',
+  path: '/vip',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
 const ApiAdminUploadRoute = ApiAdminUploadRouteImport.update({
   id: '/api/admin/upload',
   path: '/api/admin/upload',
@@ -240,6 +247,11 @@ const ApiRobokassaBotIdActionRoute = ApiRobokassaBotIdActionRouteImport.update({
   path: '/api/robokassa/$botId/$action',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTelegramBotIdVipRoute = ApiTelegramBotIdVipRouteImport.update({
+  id: '/vip',
+  path: '/vip',
+  getParentRoute: () => ApiTelegramBotIdRoute,
+} as any)
 const OperatorAuthedClientsBotIdRoute =
   OperatorAuthedClientsBotIdRouteImport.update({
     id: '/clients/$botId',
@@ -283,10 +295,11 @@ export interface FileRoutesByFullPath {
   '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/products': typeof AdminAuthedProductsRoute
   '/admin/settings': typeof AdminAuthedSettingsRoute
+  '/admin/vip': typeof AdminAuthedVipRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
-  '/api/telegram/$botId': typeof ApiTelegramBotIdRoute
+  '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
@@ -300,6 +313,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
+  '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
@@ -324,10 +338,11 @@ export interface FileRoutesByTo {
   '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/products': typeof AdminAuthedProductsRoute
   '/admin/settings': typeof AdminAuthedSettingsRoute
+  '/admin/vip': typeof AdminAuthedVipRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
-  '/api/telegram/$botId': typeof ApiTelegramBotIdRoute
+  '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
@@ -339,6 +354,7 @@ export interface FileRoutesByTo {
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
+  '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
@@ -367,10 +383,11 @@ export interface FileRoutesById {
   '/admin/_authed/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/_authed/products': typeof AdminAuthedProductsRoute
   '/admin/_authed/settings': typeof AdminAuthedSettingsRoute
+  '/admin/_authed/vip': typeof AdminAuthedVipRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
-  '/api/telegram/$botId': typeof ApiTelegramBotIdRoute
+  '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/_authed/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/_authed/requests': typeof OperatorAuthedRequestsRoute
@@ -384,6 +401,7 @@ export interface FileRoutesById {
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
+  '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
   '/operator/_authed/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/_authed/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
@@ -411,6 +429,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
+    | '/admin/vip'
     | '/api/admin/upload'
     | '/api/cron/$job'
     | '/api/operator/bots'
@@ -428,6 +447,7 @@ export interface FileRouteTypes {
     | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
+    | '/api/telegram/$botId/vip'
     | '/operator/clients/$botId'
     | '/operator/clients/new'
     | '/s/$slug/legal/$doc'
@@ -452,6 +472,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
+    | '/admin/vip'
     | '/api/admin/upload'
     | '/api/cron/$job'
     | '/api/operator/bots'
@@ -467,6 +488,7 @@ export interface FileRouteTypes {
     | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
+    | '/api/telegram/$botId/vip'
     | '/operator/clients/$botId'
     | '/operator/clients/new'
     | '/s/$slug/legal/$doc'
@@ -494,6 +516,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/orders'
     | '/admin/_authed/products'
     | '/admin/_authed/settings'
+    | '/admin/_authed/vip'
     | '/api/admin/upload'
     | '/api/cron/$job'
     | '/api/operator/bots'
@@ -511,6 +534,7 @@ export interface FileRouteTypes {
     | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
+    | '/api/telegram/$botId/vip'
     | '/operator/_authed/clients/$botId'
     | '/operator/_authed/clients/new'
     | '/s/$slug/legal/$doc'
@@ -527,7 +551,7 @@ export interface RootRouteChildren {
   ApiAdminUploadRoute: typeof ApiAdminUploadRoute
   ApiCronJobRoute: typeof ApiCronJobRoute
   ApiOperatorBotsRoute: typeof ApiOperatorBotsRoute
-  ApiTelegramBotIdRoute: typeof ApiTelegramBotIdRoute
+  ApiTelegramBotIdRoute: typeof ApiTelegramBotIdRouteWithChildren
   ApiZernioWebhookRoute: typeof ApiZernioWebhookRoute
   ApiAdminExportKindRoute: typeof ApiAdminExportKindRoute
   ApiImgBotIdSplatRoute: typeof ApiImgBotIdSplatRoute
@@ -690,6 +714,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedSettingsRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/_authed/vip': {
+      id: '/admin/_authed/vip'
+      path: '/vip'
+      fullPath: '/admin/vip'
+      preLoaderRoute: typeof AdminAuthedVipRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/api/admin/upload': {
       id: '/api/admin/upload'
       path: '/api/admin/upload'
@@ -802,6 +833,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRobokassaBotIdActionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/telegram/$botId/vip': {
+      id: '/api/telegram/$botId/vip'
+      path: '/vip'
+      fullPath: '/api/telegram/$botId/vip'
+      preLoaderRoute: typeof ApiTelegramBotIdVipRouteImport
+      parentRoute: typeof ApiTelegramBotIdRoute
+    }
     '/operator/_authed/clients/$botId': {
       id: '/operator/_authed/clients/$botId'
       path: '/clients/$botId'
@@ -856,6 +894,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedOrdersRoute: typeof AdminAuthedOrdersRouteWithChildren
   AdminAuthedProductsRoute: typeof AdminAuthedProductsRoute
   AdminAuthedSettingsRoute: typeof AdminAuthedSettingsRoute
+  AdminAuthedVipRoute: typeof AdminAuthedVipRoute
   AdminAuthedIndexRoute: typeof AdminAuthedIndexRoute
   AdminAuthedProductsIdRoute: typeof AdminAuthedProductsIdRoute
 }
@@ -872,6 +911,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedOrdersRoute: AdminAuthedOrdersRouteWithChildren,
   AdminAuthedProductsRoute: AdminAuthedProductsRoute,
   AdminAuthedSettingsRoute: AdminAuthedSettingsRoute,
+  AdminAuthedVipRoute: AdminAuthedVipRoute,
   AdminAuthedIndexRoute: AdminAuthedIndexRoute,
   AdminAuthedProductsIdRoute: AdminAuthedProductsIdRoute,
 }
@@ -944,6 +984,17 @@ const SSlugRouteChildren: SSlugRouteChildren = {
 
 const SSlugRouteWithChildren = SSlugRoute._addFileChildren(SSlugRouteChildren)
 
+interface ApiTelegramBotIdRouteChildren {
+  ApiTelegramBotIdVipRoute: typeof ApiTelegramBotIdVipRoute
+}
+
+const ApiTelegramBotIdRouteChildren: ApiTelegramBotIdRouteChildren = {
+  ApiTelegramBotIdVipRoute: ApiTelegramBotIdVipRoute,
+}
+
+const ApiTelegramBotIdRouteWithChildren =
+  ApiTelegramBotIdRoute._addFileChildren(ApiTelegramBotIdRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
@@ -954,7 +1005,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminUploadRoute: ApiAdminUploadRoute,
   ApiCronJobRoute: ApiCronJobRoute,
   ApiOperatorBotsRoute: ApiOperatorBotsRoute,
-  ApiTelegramBotIdRoute: ApiTelegramBotIdRoute,
+  ApiTelegramBotIdRoute: ApiTelegramBotIdRouteWithChildren,
   ApiZernioWebhookRoute: ApiZernioWebhookRoute,
   ApiAdminExportKindRoute: ApiAdminExportKindRoute,
   ApiImgBotIdSplatRoute: ApiImgBotIdSplatRoute,

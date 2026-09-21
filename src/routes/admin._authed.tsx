@@ -46,6 +46,7 @@ function Layout() {
           )}
           {shop.modules.broadcasts && <NavLink to="/admin/broadcasts">Рассылки</NavLink>}
           <NavLink to="/admin/consultant">ИИ-консультант</NavLink>
+          {shop.modules.vip && <NavLink to="/admin/vip">VIP-подписки</NavLink>}
           <NavLink to="/admin/settings">
             {physical ? "Оплата и доставка" : "Оплата и настройки"}
           </NavLink>
