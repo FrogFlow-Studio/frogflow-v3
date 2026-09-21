@@ -8,21 +8,78 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
+const PRODUCTS = [
+  {
+    icon: "🛍",
+    t: "Магазин-бот",
+    channels: "Telegram · WhatsApp · Instagram",
+    d: "Каталог, корзина, оплата и выдача заказа прямо в переписке. Покупатель не уходит из мессенджера, вы не отвечаете вручную на «сколько стоит» и «как оплатить».",
+  },
+  {
+    icon: "🤖",
+    t: "ИИ-консультант",
+    channels: "Instagram Direct · WhatsApp · Telegram",
+    d: "Отвечает клиентам круглосуточно по вашему прайсу и базе знаний: наличие, размеры, цвета, цены в двух валютах, условия доставки. Не знает — уточняет, а сложное передаёт менеджеру и записывает заявку.",
+  },
+  {
+    icon: "📣",
+    t: "Автоматизация Instagram",
+    channels: "комментарии · директ · сторис",
+    d: "Ответ на комментарий с ключевым словом, сообщение в директ, реакция на «цена?» под сторис, сбор заявок в панель — без ручного мониторинга.",
+  },
+  {
+    icon: "🖥",
+    t: "Витрина и Mini App",
+    channels: "ссылка · свой домен · внутри Telegram",
+    d: "Магазин по ссылке для рекламы и соцсетей, приложение внутри Telegram с корзиной на одном экране. Заказ уходит в тот же бот и ту же панель.",
+  },
+  {
+    icon: "🔁",
+    t: "Возврат и удержание",
+    channels: "рассылки · напоминания · лояльность",
+    d: "Рассылки по сегментам, напоминание о брошенной корзине, промокоды, сертификаты, баллы, рефералы, отзывы — покупатели возвращаются сами.",
+  },
+  {
+    icon: "🧩",
+    t: "Под вашу задачу",
+    channels: "VIP-подписки · курсы · интеграции",
+    d: "Платный доступ в закрытый канал, курсы внутри бота, выгрузки и связки с вашими таблицами и CRM. Расскажите задачу — предложим решение и сроки.",
+  },
+];
+
+const CHANNELS = [
+  {
+    icon: "✈️",
+    t: "Telegram",
+    d: "Магазин-бот, Mini App, чат с менеджером, рассылки, ИИ-консультант, VIP-подписки.",
+  },
+  {
+    icon: "💬",
+    t: "WhatsApp",
+    d: "Магазин в чате с каталогом и оформлением, автоответчик, переписка из панели, рассылки шаблонами.",
+  },
+  {
+    icon: "📸",
+    t: "Instagram",
+    d: "ИИ-консультант в директе, магазин в переписке, автоответы на комментарии и сторис, сбор заявок.",
+  },
+];
+
 const STEPS = [
   {
     n: "1",
-    t: "Создайте магазин",
-    d: "Название, ниша, токен бота из @BotFather — и у вас уже есть магазин в Telegram и витрина с собственным адресом.",
+    t: "Создайте кабинет",
+    d: "Название, ниша, два клика — и у вас есть панель, витрина с собственным адресом и бот в Telegram, как только вставите токен из @BotFather.",
   },
   {
     n: "2",
-    t: "Добавьте товары",
-    d: "Фото, цены по странам, варианты, файлы для цифровых материалов. Категории и остатки — как в обычном магазине.",
+    t: "Добавьте товары или прайс",
+    d: "Фото, цены по странам, варианты, файлы для цифровых товаров. Для консультанта — прайс из Google Таблицы или XLSX и база знаний.",
   },
   {
     n: "3",
-    t: "Делитесь ссылкой",
-    d: "Покупатель открывает бота или витрину, выбирает, оплачивает — и получает заказ. Вы видите всё в панели.",
+    t: "Подключите каналы",
+    d: "Telegram сразу, WhatsApp и Instagram — по заявке из панели. Клиент пишет туда, где ему удобно, вы видите всё в одном месте.",
   },
 ];
 
@@ -61,9 +118,14 @@ const AUDIENCE = [
     d: "Кондитерские, цветы, подарки, handmade: дата получения, самовывоз или доставка по зонам, задаток, статусы заказа.",
   },
   {
-    icon: "🧑‍💼",
-    t: "Прайс и подбор",
-    d: "Консультанты и магазины с большим прайсом: умный поиск по смыслу, чат с менеджером, заявки и заказы в одной панели.",
+    icon: "🛒",
+    t: "Магазины с большим прайсом",
+    d: "Текстиль, одежда, косметика, техника: ИИ-консультант отвечает по наличию и характеристикам, менеджер подключается к сделке.",
+  },
+  {
+    icon: "💆",
+    t: "Услуги и запись",
+    d: "Салоны, студии, клиники, эксперты: консультант отвечает на вопросы, записывает и передаёт заявку с контактами.",
   },
 ];
 
@@ -94,7 +156,15 @@ const CAPABILITIES = GROUP_ORDER.map((group) => ({
 const FAQ = [
   {
     q: "Нужен ли сайт или программист?",
-    a: "Нет. Достаточно токена бота из @BotFather. Витрина и панель уже готовы, вы только заполняете товары.",
+    a: "Нет. Для Telegram достаточно токена бота из @BotFather, витрина и панель уже готовы. WhatsApp и Instagram подключаем вместе с вами по заявке из панели.",
+  },
+  {
+    q: "Что такое ИИ-консультант и что он знает о моём бизнесе?",
+    a: "Это ассистент, который отвечает клиентам в директе и чатах по вашему прайсу и базе знаний: наличие, размеры, цены, условия. Лишнего не выдумывает: не уверен — уточняет или зовёт менеджера. Каждый ответ и его стоимость видны в панели.",
+  },
+  {
+    q: "Работает ли в WhatsApp и Instagram, а не только в Telegram?",
+    a: "Да. Магазин в чате, ИИ-консультант и автоответы работают в Instagram Direct и WhatsApp Business; рассылки в WhatsApp идут одобренными шаблонами.",
   },
   {
     q: "Как покупатели платят?",
@@ -118,6 +188,9 @@ function Landing() {
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5">
         <span className="text-lg font-semibold">🐸 FrogFlow</span>
         <nav className="flex items-center gap-5 text-sm">
+          <a href="#products" className="hidden text-muted hover:text-fg md:inline">
+            Что мы делаем
+          </a>
           <a href="#how" className="hidden text-muted hover:text-fg md:inline">
             Как это работает
           </a>
@@ -137,13 +210,13 @@ function Landing() {
       {/* Герой */}
       <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 pt-10 pb-16 md:grid-cols-[1.1fr_0.9fr] md:pt-16">
         <div>
-          <p className="text-sm font-medium text-accent">Магазин в Telegram за один вечер</p>
+          <p className="text-sm font-medium text-accent">Telegram · WhatsApp · Instagram</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight md:text-5xl">
-            Продавайте в Telegram — заказы, оплата и выдача идут сами
+            Продажи и общение с клиентами в мессенджерах — без ручной рутины
           </h1>
           <p className="mt-5 max-w-xl text-lg text-muted">
-            FrogFlow превращает вашего бота в полноценный магазин: покупатель выбирает, платит и
-            получает заказ, а вы только смотрите на растущую выручку в панели.
+            Магазин-бот, ИИ-консультант и автоматизация в тех каналах, где уже сидят ваши клиенты.
+            Заказы, оплата, выдача и ответы на вопросы идут сами, вы видите всё в одной панели.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             {signup ? (
@@ -160,7 +233,7 @@ function Landing() {
             </a>
           </div>
           <p className="mt-4 text-sm text-muted">
-            Без сайта и программиста. Нужен только токен бота.
+            Без сайта и программиста. Telegram — сразу, WhatsApp и Instagram — по заявке.
           </p>
         </div>
 
@@ -207,10 +280,47 @@ function Landing() {
         </div>
       </section>
 
+      {/* Что мы делаем */}
+      <section id="products" className="border-t border-line bg-surface">
+        <div className="mx-auto w-full max-w-6xl px-4 py-16">
+          <h2 className="text-2xl font-semibold md:text-3xl">Что мы делаем</h2>
+          <p className="mt-2 max-w-2xl text-muted">
+            Шесть направлений на одной платформе — включайте нужные, остальное подключится позже без
+            переезда.
+          </p>
+          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {PRODUCTS.map((p) => (
+              <div key={p.t} className="rounded-lg border border-line bg-bg p-5">
+                <span className="text-2xl">{p.icon}</span>
+                <h3 className="mt-3 font-semibold">{p.t}</h3>
+                <p className="mt-1 text-xs font-medium text-accent">{p.channels}</p>
+                <p className="mt-2 text-sm text-muted">{p.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Каналы */}
+      <section id="channels" className="mx-auto w-full max-w-6xl px-4 py-16">
+        <h2 className="text-2xl font-semibold md:text-3xl">Там, где ваши клиенты</h2>
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {CHANNELS.map((c) => (
+            <div key={c.t} className="card p-5">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{c.icon}</span>
+                <h3 className="font-semibold">{c.t}</h3>
+              </div>
+              <p className="mt-2 text-sm text-muted">{c.d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Как это работает */}
       <section id="how" className="border-t border-line bg-surface">
         <div className="mx-auto w-full max-w-6xl px-4 py-16">
-          <h2 className="text-2xl font-semibold md:text-3xl">Три шага до первой продажи</h2>
+          <h2 className="text-2xl font-semibold md:text-3xl">Три шага до старта</h2>
           <div className="mt-8 grid gap-6 md:grid-cols-3">
             {STEPS.map((s) => (
               <div key={s.n} className="flex gap-4">
@@ -229,7 +339,7 @@ function Landing() {
 
       {/* Возможности */}
       <section id="features" className="mx-auto w-full max-w-6xl px-4 py-16">
-        <h2 className="text-2xl font-semibold md:text-3xl">Что умеет ваш магазин</h2>
+        <h2 className="text-2xl font-semibold md:text-3xl">Что получает ваш бизнес</h2>
         <p className="mt-2 max-w-2xl text-muted">
           Всё, что раньше требовало сайта, менеджера и трёх сервисов, — в одном боте и одной панели.
         </p>
@@ -279,7 +389,7 @@ function Landing() {
       <section className="border-t border-line bg-surface">
         <div className="mx-auto w-full max-w-6xl px-4 py-16">
           <h2 className="text-2xl font-semibold md:text-3xl">Для кого</h2>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {AUDIENCE.map((a) => (
               <div key={a.t} className="rounded-lg border border-line bg-bg p-5">
                 <span className="text-2xl">{a.icon}</span>
@@ -307,10 +417,10 @@ function Landing() {
       {/* Призыв */}
       <section className="mx-auto w-full max-w-6xl px-4 pb-16">
         <div className="rounded-2xl bg-accent px-6 py-10 text-center text-accent-fg md:px-12">
-          <h2 className="text-2xl font-semibold md:text-3xl">Первая продажа — уже сегодня</h2>
+          <h2 className="text-2xl font-semibold md:text-3xl">Начните с Telegram сегодня</h2>
           <p className="mx-auto mt-3 max-w-xl opacity-90">
-            Создайте магазин, добавьте первый товар и отправьте ссылку покупателям. Остальное бот
-            сделает сам.
+            Создайте кабинет, добавьте первый товар и отправьте ссылку клиентам. WhatsApp, Instagram
+            и ИИ-консультанта подключим следующим шагом.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             {signup && (
@@ -333,7 +443,7 @@ function Landing() {
 
       <footer className="border-t border-line">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs text-muted">
-          <span>© FrogFlow · магазины в Telegram</span>
+          <span>© FrogFlow · магазины, ИИ-консультанты и автоматизация в мессенджерах</span>
           <span className="flex gap-4">
             <a href="#features" className="hover:text-fg">
               Возможности
