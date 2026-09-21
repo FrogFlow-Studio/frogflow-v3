@@ -24,7 +24,7 @@ function Dashboard() {
       {!(d.setup.telegram && d.setup.products && d.setup.payment) && (
         <Card title="Первые шаги" className="mb-6">
           <p className="mb-3 text-sm text-muted">
-            Три вещи, после которых магазин начнёт продавать. Остальное можно настроить потом.
+            Четыре шага, после которых магазин начнёт продавать. Остальное можно настроить потом.
           </p>
           <ol className="space-y-2 text-sm">
             <Step done={d.setup.telegram} to="/admin/settings" title="Подключить бота в Telegram">
