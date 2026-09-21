@@ -98,6 +98,17 @@ export function settingsFromJson(json: unknown): TenantSettings {
   };
 }
 
+/**
+ * Клиент переезжает на v2 явным переключателем оператора
+ * (`settings.served_by = "v2"`). До этого его обслуживает прежняя платформа,
+ * и v2 для него невидима: не пускает в админку и на витрину, не выдаёт
+ * заказы, не чистит журналы, не трогает вебхуки. Оба деплоя работают на
+ * одной базе одновременно, поэтому граница — только этот флаг.
+ */
+export function servedByV2(t: Pick<Tenant, "settings">): boolean {
+  return t.settings.served_by === "v2";
+}
+
 export function tenantFromRow(row: TenantRow): Tenant {
   return {
     id: row.id,

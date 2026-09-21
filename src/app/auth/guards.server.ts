@@ -1,5 +1,6 @@
 import { appSession } from "./session.server";
 import { requireTenant, tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
+import { servedByV2 } from "@/core/tenant/directory";
 
 export class Unauthorized extends Error {
   constructor(public readonly role: "operator" | "admin") {
@@ -19,7 +20,8 @@ export async function requireAdmin(): Promise<TenantContext> {
   const botId = s.data.admin?.botId;
   if (!botId) throw new Unauthorized("admin");
   const tenant = await requireTenant({ by: "id", value: botId });
-  if (tenant.archived) throw new Unauthorized("admin");
+  // Архив или клиент прежней платформы (см. servedByV2) — сессия недействительна.
+  if (tenant.archived || !servedByV2(tenant)) throw new Unauthorized("admin");
   return tenantContext(tenant);
 }
 

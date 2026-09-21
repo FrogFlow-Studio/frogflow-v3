@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  servedByV2,
   findTenant,
   modulesFromJson,
   settingsFromJson,
@@ -82,5 +83,13 @@ describe("settings: default_locale", () => {
   it("принимает только известный язык", () => {
     expect(settingsFromJson({ default_locale: "kk" }).default_locale).toBe("kk");
     expect(settingsFromJson({ default_locale: "xx" }).default_locale).toBeUndefined();
+  });
+});
+
+describe("servedByV2", () => {
+  it("клиент виден v2 только по явному флагу оператора", () => {
+    expect(servedByV2({ settings: { served_by: "v2" } })).toBe(true);
+    expect(servedByV2({ settings: { served_by: "v1" } })).toBe(false);
+    expect(servedByV2({ settings: {} })).toBe(false);
   });
 });

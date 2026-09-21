@@ -9,8 +9,10 @@ const slug = z.string().regex(/^[a-z0-9][a-z0-9_.-]{1,39}$/);
 
 async function shopCtx(s: string) {
   const { requireTenant, tenantContext } = await import("@/core/tenant/resolve.server");
+  const { servedByV2 } = await import("@/core/tenant/directory");
   const t = await requireTenant({ by: "slug", value: s });
-  if (t.archived || !t.modules.shop) throw new Error("Магазин не найден");
+  // Клиент прежней платформы: его витрина и заказы живут там, здесь — «не найден».
+  if (t.archived || !t.modules.shop || !servedByV2(t)) throw new Error("Магазин не найден");
   return tenantContext(t);
 }
 

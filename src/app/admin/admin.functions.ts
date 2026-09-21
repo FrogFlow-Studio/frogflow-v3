@@ -37,6 +37,15 @@ export const adminLogin = createServerFn({ method: "POST" })
     }
     const t = await findTenantByAdminUsername(data.username);
     if (!t) return { ok: false as const };
+    // Клиента ещё обслуживает прежняя платформа: заказы и выдача идут там,
+    // и подтверждение заказа отсюда осталось бы без бота (токен только у v1).
+    {
+      const { servedByV2 } = await import("@/core/tenant/directory");
+      if (!servedByV2(t))
+        throw new Error(
+          "Ваш магазин пока работает на прежней платформе FrogFlow — войдите в прежнюю панель. Переезд на новую включает оператор.",
+        );
+    }
     if (await loginLocked({ botId: t.id }, ip))
       throw new Error("Слишком много неудачных попыток. Попробуйте через 15 минут.");
     const ok = checkAdminPassword(t, data.password);

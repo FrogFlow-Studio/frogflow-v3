@@ -18,7 +18,9 @@ async function handle(request: Request, botId: string, action: string): Promise<
   if (!/^[0-9a-f-]{36}$/i.test(botId)) return new Response("not found", { status: 404 });
   const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
   const tenant = await resolveTenant({ by: "id", value: botId });
-  if (!tenant) return new Response("not found", { status: 404 });
+  // Платежи клиента прежней платформы подтверждает она сама (см. servedByV2).
+  if (!tenant || tenant.settings.served_by !== "v2")
+    return new Response("not found", { status: 404 });
   const ctx = tenantContext(tenant);
   const params =
     request.method === "POST"

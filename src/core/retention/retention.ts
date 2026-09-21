@@ -1,4 +1,5 @@
 import { serviceDb } from "@/core/db/client.server";
+import { servedByV2 } from "@/core/tenant/directory";
 
 /**
  * Ретеншн журналов — один проход на всех клиентов (serviceDb, правило 4).
@@ -37,6 +38,14 @@ const DELETE_CHUNK = 150;
 
 export type PruneResult = { deleted: number; done: boolean };
 
+/**
+ * Границы прохода: только клиенты v2 (`servedByV2`) — журналы клиентов
+ * прежней платформы чистит она сама. `undefined` — без границ (тесты);
+ * пустой список — чистить нечего.
+ */
+export type Scope = readonly string[] | undefined;
+const none: PruneResult = { deleted: 0, done: true };
+
 const cutoff = (days: number, now: number) => new Date(now - days * 86_400_000).toISOString();
 
 type ByAt =
@@ -52,36 +61,42 @@ async function deleteIds(table: string, ids: string[]): Promise<void> {
   }
 }
 
-async function pruneByAt(table: ByAt, days: number, now: number): Promise<PruneResult> {
-  const { data, error } = await serviceDb()
-    .from(table)
-    .select("id")
-    .lt("at", cutoff(days, now))
-    .order("at", { ascending: true })
-    .limit(BATCH);
+async function pruneByAt(
+  table: ByAt,
+  days: number,
+  now: number,
+  scope: Scope,
+): Promise<PruneResult> {
+  if (scope && scope.length === 0) return none;
+  let q = serviceDb().from(table).select("id").lt("at", cutoff(days, now));
+  if (scope) q = q.in("bot_id", [...scope]);
+  const { data, error } = await q.order("at", { ascending: true }).limit(BATCH);
   if (error) throw new Error(`${table}: ${error.message}`);
   const ids = (data ?? []).map((r) => r.id);
   await deleteIds(table, ids);
   return { deleted: ids.length, done: ids.length < BATCH };
 }
 
-export async function pruneZernioLogs(now = Date.now()): Promise<PruneResult> {
+export async function pruneZernioLogs(now = Date.now(), scope?: Scope): Promise<PruneResult> {
+  if (scope && scope.length === 0) return none;
   const db = serviceDb();
-  const { data: settled, error } = await db
+  let q1 = db
     .from("zernio_logs")
     .select("id")
     .in("status", ["processed", "ignored"])
-    .lt("created_at", cutoff(RETENTION.zernioLogsDays, now))
-    .order("created_at", { ascending: true })
-    .limit(BATCH);
+    .lt("created_at", cutoff(RETENTION.zernioLogsDays, now));
+  if (scope) q1 = q1.in("bot_id", [...scope]);
+  const { data: settled, error } = await q1.order("created_at", { ascending: true }).limit(BATCH);
   if (error) throw new Error(`zernio_logs: ${error.message}`);
   const ids = (settled ?? []).map((r) => r.id);
   if (ids.length < BATCH) {
-    const { data: stale, error: e2 } = await db
+    let q2 = db
       .from("zernio_logs")
       .select("id")
       .not("status", "in", "(processed,ignored)")
-      .lt("created_at", cutoff(RETENTION.zernioLogsStaleDays, now))
+      .lt("created_at", cutoff(RETENTION.zernioLogsStaleDays, now));
+    if (scope) q2 = q2.in("bot_id", [...scope]);
+    const { data: stale, error: e2 } = await q2
       .order("created_at", { ascending: true })
       .limit(BATCH - ids.length);
     if (e2) throw new Error(`zernio_logs: ${e2.message}`);
@@ -91,35 +106,45 @@ export async function pruneZernioLogs(now = Date.now()): Promise<PruneResult> {
   return { deleted: ids.length, done: ids.length < BATCH };
 }
 
-export async function pruneManagerChatMessages(now = Date.now()): Promise<PruneResult> {
-  const { data, error } = await serviceDb()
+export async function pruneManagerChatMessages(
+  now = Date.now(),
+  scope?: Scope,
+): Promise<PruneResult> {
+  if (scope && scope.length === 0) return none;
+  let q = serviceDb()
     .from("manager_chat_messages")
     .select("id")
-    .lt("created_at", cutoff(RETENTION.managerChatDays, now))
-    .order("created_at", { ascending: true })
-    .limit(BATCH);
+    .lt("created_at", cutoff(RETENTION.managerChatDays, now));
+  if (scope) q = q.in("bot_id", [...scope]);
+  const { data, error } = await q.order("created_at", { ascending: true }).limit(BATCH);
   if (error) throw new Error(`manager_chat_messages: ${error.message}`);
   const ids = (data ?? []).map((r) => r.id);
   await deleteIds("manager_chat_messages", ids);
   return { deleted: ids.length, done: ids.length < BATCH };
 }
 
-export const pruneAdminLoginAttempts = (now = Date.now()) =>
-  pruneByAt("admin_login_attempts", RETENTION.adminLoginsDays, now);
+export const pruneAdminLoginAttempts = (now = Date.now(), scope?: Scope) =>
+  pruneByAt("admin_login_attempts", RETENTION.adminLoginsDays, now, scope);
+/** Попытки входа оператора — платформенные, без bot_id: границы клиентов к ним не относятся. */
 export const pruneOperatorLoginAttempts = (now = Date.now()) =>
-  pruneByAt("operator_login_attempts", RETENTION.operatorLoginsDays, now);
-export const pruneBotEvents = (now = Date.now()) =>
-  pruneByAt("bot_events", RETENTION.botEventsDays, now);
-export const pruneHealthSnapshots = (now = Date.now()) =>
-  pruneByAt("bot_health_snapshots", RETENTION.healthSnapshotsDays, now);
+  pruneByAt("operator_login_attempts", RETENTION.operatorLoginsDays, now, undefined);
+export const pruneBotEvents = (now = Date.now(), scope?: Scope) =>
+  pruneByAt("bot_events", RETENTION.botEventsDays, now, scope);
+export const pruneHealthSnapshots = (now = Date.now(), scope?: Scope) =>
+  pruneByAt("bot_health_snapshots", RETENTION.healthSnapshotsDays, now, scope);
 
-export async function pruneBroadcastRecipients(now = Date.now()): Promise<PruneResult> {
+export async function pruneBroadcastRecipients(
+  now = Date.now(),
+  scope?: Scope,
+): Promise<PruneResult> {
+  if (scope && scope.length === 0) return none;
   const db = serviceDb();
-  const { data: old, error } = await db
+  let q = db
     .from("broadcasts")
     .select("id")
-    .lt("created_at", cutoff(RETENTION.broadcastRecipientsDays, now))
-    .limit(BATCH);
+    .lt("created_at", cutoff(RETENTION.broadcastRecipientsDays, now));
+  if (scope) q = q.in("bot_id", [...scope]);
+  const { data: old, error } = await q.limit(BATCH);
   if (error) throw new Error(`broadcasts: ${error.message}`);
   if (!old?.length) return { deleted: 0, done: true };
   const { data, error: e2 } = await db
@@ -144,15 +169,22 @@ export async function pruneBroadcastRecipients(now = Date.now()): Promise<PruneR
 export async function runRetention(
   now = Date.now(),
   budgetMs = 40_000,
+  /** Клиенты, чьи журналы чистим; по умолчанию — все на v2, включая архивных. */
+  scope?: Scope,
 ): Promise<Record<string, PruneResult | { error: string }>> {
+  if (!scope) {
+    const { tenantDirectory } = await import("@/core/tenant/resolve.server");
+    scope = (await tenantDirectory(true)).filter(servedByV2).map((t) => t.id);
+  }
+  const s = scope;
   const jobs: Record<string, (n: number) => Promise<PruneResult>> = {
-    zernio_logs: pruneZernioLogs,
-    manager_chat_messages: pruneManagerChatMessages,
-    admin_login_attempts: pruneAdminLoginAttempts,
+    zernio_logs: (n) => pruneZernioLogs(n, s),
+    manager_chat_messages: (n) => pruneManagerChatMessages(n, s),
+    admin_login_attempts: (n) => pruneAdminLoginAttempts(n, s),
     operator_login_attempts: pruneOperatorLoginAttempts,
-    bot_events: pruneBotEvents,
-    bot_health_snapshots: pruneHealthSnapshots,
-    broadcast_recipients: pruneBroadcastRecipients,
+    bot_events: (n) => pruneBotEvents(n, s),
+    bot_health_snapshots: (n) => pruneHealthSnapshots(n, s),
+    broadcast_recipients: (n) => pruneBroadcastRecipients(n, s),
   };
   const out: Record<string, PruneResult | { error: string }> = {};
   const startedAt = Date.now();

@@ -39,9 +39,17 @@ export const Route = createFileRoute("/api/cron/$job")({
                 };
               }
             }
-            // Zernio: один вебхук на платформу, а не на клиента.
-            const { ensurePlatformWebhook } = await import("@/channels/zernio/connect.server");
-            results.zernio = await ensurePlatformWebhook();
+            // Zernio: один вебхук на платформу, а не на клиента — и только когда
+            // хоть один клиент v2 подключил Instagram/WhatsApp: иначе платформе
+            // нечего слушать, а ключ может быть общим с деплоем v1.
+            const zernioInUse = tenants.some(
+              (t) => t.settings.zernio?.profile_id || t.settings.zernio?.account_ids?.length,
+            );
+            if (zernioInUse) {
+              const { ensurePlatformWebhook } = await import("@/channels/zernio/connect.server");
+              results.zernio = await ensurePlatformWebhook();
+            } else
+              results.zernio = { ok: true, action: "skipped", error: "нет клиентов v2 с Zernio" };
             break;
           }
           case "broadcast":
