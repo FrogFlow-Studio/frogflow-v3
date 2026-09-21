@@ -38,7 +38,11 @@ export function classifyDeliveryError(
     msg.includes("deactivated") ||
     msg.includes("chat not found") ||
     msg.includes("user is deactivated") ||
-    msg.includes("bot can't initiate")
+    msg.includes("bot can't initiate") ||
+    // WhatsApp (Meta): номер не в WhatsApp (131021) и получатель недоступен (131026).
+    msg.includes("131021") ||
+    msg.includes("131026") ||
+    msg.includes("not a whatsapp user")
   )
     return "blocked";
   return "failed";

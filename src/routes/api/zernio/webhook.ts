@@ -51,7 +51,9 @@ export const Route = createFileRoute("/api/zernio/webhook")({
         const ctx = tenantContext(tenant);
 
         const handled =
-          payload.event === "message.received" || payload.event === "account.disconnected";
+          payload.event === "message.received" ||
+          payload.event === "account.disconnected" ||
+          payload.event === "whatsapp.template.status_updated";
         const { error } = await ctx.db.from("zernio_logs").insert({
           bot_id: tenant.id,
           event_id: eventId,
@@ -71,7 +73,15 @@ export const Route = createFileRoute("/api/zernio/webhook")({
         let status = "failed";
         let note: string | null = null;
         try {
-          if (payload.event === "account.disconnected") {
+          if (payload.event === "whatsapp.template.status_updated") {
+            const { handleTemplateStatus } = await import("@/channels/zernio/templates.server");
+            const r = await handleTemplateStatus(
+              ctx,
+              payload as import("@/channels/zernio/templates.server").TemplateStatusPayload,
+            );
+            status = "processed";
+            note = r.note;
+          } else if (payload.event === "account.disconnected") {
             const { handleAccountDisconnected } = await import("@/channels/zernio/handle-account");
             const r = await handleAccountDisconnected(ctx, payload);
             status = "processed";

@@ -1,4 +1,5 @@
 import { env } from "@/config/env";
+import type { Json } from "@/core/db-types";
 import { normalizeZernioBaseUrl } from "./base-url";
 import { idempotencyKeyFor } from "./event-context.server";
 import { normalizeInboxMessage, type ZernioInboxMessage } from "./inbox-types";
@@ -238,6 +239,110 @@ export async function upsertWebhook(url: string): Promise<{ ok: boolean; error?:
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/* ── WhatsApp: шаблоны Meta и первое сообщение ───────────────────────── */
+
+/** Вердикт ревью Meta по шаблону; значения приходят дословно, отправить можно только APPROVED. */
+export type WhatsAppTemplate = {
+  name: string;
+  language: string;
+  status: string;
+  category?: string;
+  /** Форма компонентов задаётся Meta и уходит к ней же без изменений. */
+  components?: Json;
+  /** Причина отказа от Meta; при одобрении приходит "NONE". */
+  reason?: string;
+};
+
+export async function listWhatsAppTemplates(accountId: string): Promise<WhatsAppTemplate[]> {
+  const result = await request<{ templates?: WhatsAppTemplate[] }>("/whatsapp/templates", {
+    query: { accountId },
+  });
+  return result.templates ?? [];
+}
+
+export async function createWhatsAppTemplate(input: {
+  accountId: string;
+  name: string;
+  /** MARKETING допустим, но тарифицируется дороже; для магазина почти всегда UTILITY. */
+  category: "UTILITY" | "MARKETING";
+  language: string;
+  components: Json;
+}): Promise<{ ok: true; template?: WhatsAppTemplate } | { ok: false; error: string }> {
+  try {
+    const result = await request<{ template?: WhatsAppTemplate }>("/whatsapp/templates", {
+      method: "POST",
+      body: input,
+    });
+    return { ok: true, template: result.template };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/**
+ * Написать в WhatsApp первым — единственный способ начать разговор или
+ * вернуться в него после закрытия 24-часового окна. Meta пропускает либо
+ * одобренный шаблон (работает всегда, но стоит денег за доставку), либо
+ * служебное сообщение категории utility без шаблона (Direct Send — доступен
+ * не каждому WABA, поэтому это попытка, а не гарантия).
+ */
+export async function startWhatsAppConversation(params: {
+  accountId: string;
+  /** Телефон получателя в международном формате, только цифры. */
+  phone: string;
+  message?: string;
+  templateName?: string;
+  templateLanguage?: string;
+  templateParams?: string[];
+}): Promise<{ ok: true; conversationId?: string } | { ok: false; error: string }> {
+  const body: Record<string, unknown> = {
+    accountId: params.accountId,
+    participantId: params.phone.replace(/\D/g, ""),
+  };
+  if (params.templateName) {
+    body.templateName = params.templateName;
+    if (params.templateLanguage) body.templateLanguage = params.templateLanguage;
+    if (params.templateParams?.length) body.templateParams = params.templateParams;
+    if (params.message) body.message = params.message;
+  } else {
+    // Direct Send: category и templateName взаимоисключающи, message обязателен.
+    body.category = "utility";
+    body.message = params.message ?? "";
+  }
+  try {
+    const result = await request<{
+      data?: { conversationId?: string; id?: string };
+      conversationId?: string;
+      conversation?: { id?: string };
+    }>("/inbox/conversations", { method: "POST", body, idempotencyKey: idempotencyKeyFor(body) });
+    return {
+      ok: true,
+      conversationId:
+        result.data?.conversationId ||
+        result.data?.id ||
+        result.conversationId ||
+        result.conversation?.id ||
+        undefined,
+    };
+  } catch (e) {
+    const details = e instanceof Error ? e.message : String(e);
+    console.error(`[zernio] startWhatsAppConversation failed: ${details}`);
+    if (/TEMPLATE_REQUIRED/i.test(details))
+      return {
+        ok: false,
+        error:
+          "WhatsApp требует одобренный шаблон, чтобы написать первым. Создайте шаблон в разделе «Рассылки» и дождитесь одобрения Meta.",
+      };
+    if (/Direct Send/i.test(details))
+      return {
+        ok: false,
+        error:
+          "Этот WhatsApp-аккаунт не допущен к отправке без шаблона. Нужен одобренный шаблон Meta.",
+      };
+    return { ok: false, error: details };
   }
 }
 

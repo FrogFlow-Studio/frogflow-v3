@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { MODULE_KEYS } from "@/core/modules/registry";
+import type { TenantContext } from "@/core/tenant/resolve.server";
 
 /**
  * Серверные функции админки продавца. Каждая начинается с requireAdmin():
@@ -692,13 +693,24 @@ export const deleteDeliveryZoneFn = createServerFn({ method: "POST" })
 /* ── рассылки ────────────────────────────────────────────────────── */
 
 const audienceSchema = z.enum(["all", "buyers", "non_buyers", "country", "test"]);
+const channelSchema = z.enum(["telegram", "whatsapp"]).default("telegram");
+
+/** Аккаунты WhatsApp клиента из снимка Zernio — от чьего имени идёт рассылка шаблонами. */
+function whatsAppAccountsOf(ctx: TenantContext) {
+  return (ctx.tenant.settings.zernio?.accounts ?? [])
+    .filter((a) => a.platform === "whatsapp" && !a.expired)
+    .map((a) => ({ id: a.id, name: a.name ?? a.username ?? a.id }));
+}
 
 export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () => {
-  const { requireAdminModule } = await import("@/app/auth/guards.server");
-  const ctx = await requireAdminModule("broadcasts");
+  const { requireAdminAnyModule } = await import("@/app/auth/guards.server");
+  const ctx = await requireAdminAnyModule("broadcasts", "wa_broadcasts");
   const { listBroadcasts, audienceCountries } = await import("@/core/broadcasts/broadcasts");
   const { getSettings } = await import("@/core/settings/settings");
-  const [broadcasts, countries, products, settings] = await Promise.all([
+  const { listTemplates, templateBody, templateParamCount } =
+    await import("@/core/whatsapp/templates");
+  const wa = ctx.tenant.modules.wa_broadcasts;
+  const [broadcasts, countries, products, settings, templates] = await Promise.all([
     listBroadcasts(ctx),
     audienceCountries(ctx),
     ctx.db
@@ -708,7 +720,8 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
       .order("name")
       .limit(200)
       .then((r) => r.data ?? []),
-    getSettings(ctx, ["cart_reminder_hours", "admin_chat_id"]),
+    getSettings(ctx, ["cart_reminder_hours", "admin_chat_id", "whatsapp_bot_excluded_phones"]),
+    wa ? listTemplates(ctx) : Promise.resolve([]),
   ]);
   return {
     broadcasts,
@@ -716,53 +729,163 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
     products,
     cartReminderHours: settings.cart_reminder_hours ?? "",
     hasAdminChat: Boolean(settings.admin_chat_id || ctx.tenant.ownerTelegramId),
+    telegram: ctx.tenant.modules.broadcasts && Boolean(ctx.tenant.telegramTokenEnc),
+    telegramModule: ctx.tenant.modules.broadcasts,
+    whatsapp: wa
+      ? {
+          accounts: whatsAppAccountsOf(ctx),
+          excludedPhones: settings.whatsapp_bot_excluded_phones ?? "",
+          templates: templates.map((t) => ({
+            id: t.id,
+            accountId: t.account_id,
+            name: t.name,
+            language: t.language,
+            category: t.category,
+            status: t.status,
+            reason: t.reason,
+            body: templateBody(t.components),
+            paramCount: templateParamCount(t.components),
+            updatedAt: t.updated_at,
+          })),
+        }
+      : null,
   };
 });
 
 export const audienceCountFn = createServerFn({ method: "GET" })
   .validator((d: unknown) =>
-    z.object({ audience: audienceSchema, countryCode: z.string().max(3).optional() }).parse(d),
+    z
+      .object({
+        audience: audienceSchema,
+        countryCode: z.string().max(3).optional(),
+        channel: channelSchema,
+      })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const { requireAdminModule } = await import("@/app/auth/guards.server");
+    const filter = { country_code: data.countryCode };
+    if (data.channel === "whatsapp") {
+      const ctx = await requireAdminModule("wa_broadcasts");
+      const { resolveWhatsAppAudience } = await import("@/core/broadcasts/broadcasts");
+      return { count: (await resolveWhatsAppAudience(ctx, data.audience, filter)).length };
+    }
     const ctx = await requireAdminModule("broadcasts");
     const { resolveAudience } = await import("@/core/broadcasts/broadcasts");
-    const ids = await resolveAudience(ctx, data.audience, { country_code: data.countryCode });
-    return { count: ids.length };
+    return { count: (await resolveAudience(ctx, data.audience, filter)).length };
   });
 
 export const createBroadcastFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z
       .object({
-        text: z.string().max(4000),
-        photoKeys: z.array(z.string().min(1).max(300)).max(10),
-        productIds: z.array(uuid).max(8),
-        showCatalog: z.boolean(),
+        channel: channelSchema,
+        text: z.string().max(4000).default(""),
+        photoKeys: z.array(z.string().min(1).max(300)).max(10).default([]),
+        productIds: z.array(uuid).max(8).default([]),
+        showCatalog: z.boolean().default(false),
         audience: audienceSchema,
         countryCode: z.string().max(3).optional(),
+        whatsapp: z
+          .object({
+            accountId: z.string().min(1).max(100),
+            templateName: z.string().min(1).max(512),
+            templateLanguage: z.string().min(2).max(16),
+            templateParams: z.array(z.string().max(1024)).max(20).default([]),
+          })
+          .optional(),
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
     const { requireAdminModule } = await import("@/app/auth/guards.server");
-    const ctx = await requireAdminModule("broadcasts");
+    const ctx = await requireAdminModule(
+      data.channel === "whatsapp" ? "wa_broadcasts" : "broadcasts",
+    );
     const { createBroadcast } = await import("@/core/broadcasts/broadcasts");
+    if (data.channel === "whatsapp") {
+      if (!data.whatsapp) throw new Error("Выберите аккаунт и шаблон WhatsApp.");
+      const { ownsWhatsAppAccount } = await import("@/channels/zernio/templates.server");
+      if (!ownsWhatsAppAccount(ctx, data.whatsapp.accountId))
+        throw new Error("Этот аккаунт WhatsApp не подключён к вашему магазину.");
+      const { data: tpl } = await ctx.db
+        .from("whatsapp_templates")
+        .select("status, components")
+        .eq("account_id", data.whatsapp.accountId)
+        .eq("name", data.whatsapp.templateName)
+        .eq("language", data.whatsapp.templateLanguage)
+        .maybeSingle();
+      if (!tpl) throw new Error("Шаблон не найден — обновите список шаблонов.");
+      if (tpl.status !== "APPROVED")
+        throw new Error(`Шаблон ещё не одобрен Meta (статус ${tpl.status}) — отправлять нельзя.`);
+      const { templateParamCount } = await import("@/core/whatsapp/templates");
+      const need = templateParamCount(tpl.components);
+      const params = data.whatsapp.templateParams.map((p) => p.trim());
+      if (params.length < need || params.slice(0, need).some((p) => !p))
+        throw new Error(`Шаблон ждёт ${need} подстановок — заполните все.`);
+      data.whatsapp.templateParams = params.slice(0, need);
+    }
     const r = await createBroadcast(ctx, {
+      channel: data.channel,
       text: data.text,
       photoKeys: data.photoKeys,
       productIds: data.productIds,
       showCatalog: data.showCatalog,
       audience: data.audience,
       filter: data.countryCode ? { country_code: data.countryCode } : undefined,
+      whatsapp: data.whatsapp,
     });
     if (!r.ok) throw new Error(r.message);
     // Первый пакет — сразу: продавец видит результат на «себе», не ожидая крона.
-    if (data.audience === "test") {
+    if (data.audience === "test" && data.channel === "telegram") {
       const { runBroadcastBatch } = await import("@/channels/telegram/jobs");
       await runBroadcastBatch(ctx.tenant).catch((e) => console.error("[broadcast:test]", e));
     }
     return { id: r.broadcast.id, total: r.broadcast.total_count };
+  });
+
+export const syncWhatsAppTemplatesFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ accountId: z.string().min(1).max(100) }).parse(d))
+  .handler(async ({ data }) => {
+    const { requireAdminModule } = await import("@/app/auth/guards.server");
+    const ctx = await requireAdminModule("wa_broadcasts");
+    const { syncWhatsAppTemplates } = await import("@/channels/zernio/templates.server");
+    const r = await syncWhatsAppTemplates(ctx, data.accountId);
+    if (!r.ok) throw new Error(r.error ?? "Не удалось обновить шаблоны");
+    return { count: r.count };
+  });
+
+export const createWhatsAppTemplateFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        accountId: z.string().min(1).max(100),
+        name: z.string().min(1).max(512),
+        language: z.string().min(2).max(16),
+        category: z.enum(["UTILITY", "MARKETING"]),
+        body: z.string().min(1).max(1024),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { requireAdminModule } = await import("@/app/auth/guards.server");
+    const ctx = await requireAdminModule("wa_broadcasts");
+    const { submitWhatsAppTemplate } = await import("@/channels/zernio/templates.server");
+    const r = await submitWhatsAppTemplate(ctx, data);
+    if (!r.ok) throw new Error(r.error ?? "Meta не приняла шаблон");
+    return { name: r.name };
+  });
+
+export const setExcludedPhonesFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ phones: z.string().max(20000) }).parse(d))
+  .handler(async ({ data }) => {
+    const { requireAdminModule } = await import("@/app/auth/guards.server");
+    const ctx = await requireAdminModule("wa_broadcasts");
+    const { parseExcludedPhones } = await import("@/core/broadcasts/broadcasts");
+    const { setSetting } = await import("@/core/settings/settings");
+    const phones = [...parseExcludedPhones(data.phones)].join(", ");
+    await setSetting(ctx, "whatsapp_bot_excluded_phones", phones);
+    return { phones };
   });
 
 export const cancelBroadcastFn = createServerFn({ method: "POST" })

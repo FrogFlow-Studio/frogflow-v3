@@ -105,7 +105,7 @@ describe.skipIf(!liveReady)("рассылки и напоминания на д�
     let sent = 0;
     let blocked = 0;
     for (let i = 0; i < 20 && !done; i++) {
-      const b = await processBroadcastBatch(ctx, async (id) => {
+      const b = await processBroadcastBatch(ctx, async ({ telegramId: id }) => {
         if (id === OTHER_TG_ID) throw new Error("Forbidden: bot was blocked by the user");
         delivered.push(id);
       });

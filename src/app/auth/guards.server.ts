@@ -23,6 +23,16 @@ export async function requireAdmin(): Promise<TenantContext> {
   return tenantContext(tenant);
 }
 
+/** Страница, доступная при любом из модулей (например, рассылки Telegram или WhatsApp). */
+export async function requireAdminAnyModule(
+  ...keys: Array<keyof TenantContext["tenant"]["modules"]>
+): Promise<TenantContext> {
+  const ctx = await requireAdmin();
+  if (!keys.some((k) => ctx.tenant.modules[k]))
+    throw new Error(`Модуль «${keys[0]}» не подключён к вашему тарифу.`);
+  return ctx;
+}
+
 export async function requireAdminModule(
   key: keyof TenantContext["tenant"]["modules"],
 ): Promise<TenantContext> {

@@ -44,7 +44,9 @@ function Layout() {
           {(shop.modules.coupons || shop.modules.gift_certificates || shop.modules.referral) && (
             <NavLink to="/admin/discounts">Скидки</NavLink>
           )}
-          {shop.modules.broadcasts && <NavLink to="/admin/broadcasts">Рассылки</NavLink>}
+          {(shop.modules.broadcasts || shop.modules.wa_broadcasts) && (
+            <NavLink to="/admin/broadcasts">Рассылки</NavLink>
+          )}
           <NavLink to="/admin/consultant">ИИ-консультант</NavLink>
           {shop.modules.vip && <NavLink to="/admin/vip">VIP-подписки</NavLink>}
           <NavLink to="/admin/settings">

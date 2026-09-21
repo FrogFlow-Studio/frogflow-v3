@@ -48,8 +48,13 @@ export const Route = createFileRoute("/api/cron/$job")({
           case "cart-reminder":
           case "fulfillment-reminder": {
             const jobs = await import("@/channels/telegram/jobs");
+            const wa = await import("@/channels/zernio/jobs");
             const run = {
-              broadcast: jobs.runBroadcastBatch,
+              // Рассылки: пакет Telegram и пакет WhatsApp (шаблоны Meta) — по одному на клиента.
+              broadcast: async (t: (typeof tenants)[number]) => ({
+                telegram: await jobs.runBroadcastBatch(t),
+                whatsapp: await wa.runWhatsAppBroadcastBatch(t),
+              }),
               "cart-reminder": jobs.runCartReminders,
               "fulfillment-reminder": jobs.runFulfillmentReminders,
             }[params.job];

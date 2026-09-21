@@ -65,7 +65,8 @@ export function telegramBroadcastSender(ctx: TenantContext, tg: TelegramApi): Br
     if (!r.ok) throw new Error(r.description || `${method} failed`);
   };
 
-  return async (chatId, content) => {
+  return async (recipient, content) => {
+    const chatId = recipient.telegramId;
     const reply_markup = await keyboardFor(content);
     const photos = content.photoKeys.map((k) => imageUrl(ctx, k));
     const text = content.text;

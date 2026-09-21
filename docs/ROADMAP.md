@@ -86,11 +86,21 @@ Telegram, ответ менеджера из панели через Zernio, `Id
 Вебхук платформы — один на ключ Zernio, чинится кроном `ensure-webhook`,
 чужой деплой (v1 клиента) без `force` не перетягивается.
 
+WhatsApp-рассылки шаблонами Meta (`wa_broadcasts`): та же очередь
+`broadcasts`/`broadcast_recipients` с `channel = whatsapp` — аудитория из
+`bot_users.platform = whatsapp` (номер из `contact_phone` или `wa_<номер>`,
+минус `opt_out` и `whatsapp_bot_excluded_phones`), отправка через
+`POST /inbox/conversations` с `templateName` (`channels/zernio/jobs.ts`),
+коды Meta «не в WhatsApp» (131021/131026) считаются как «заблокировали».
+Шаблоны — локальная копия `whatsapp_templates` (`core/whatsapp/templates.ts`):
+синхронизация из Meta и заявка на новый шаблон из админки
+(`channels/zernio/templates.server.ts`), вердикт ревью — вебхуком
+`whatsapp.template.status_updated`. Крон `broadcast` гоняет пакеты Telegram
+и WhatsApp по одному на клиента; в WhatsApp нет «себе на пробу».
+
 Осталось: каталог списками WhatsApp (interactive list) и нативный каталог
-Meta, шаблоны Meta вне 24-часового окна и
-WhatsApp-рассылки, добор `pending`, `account.disconnected` (сейчас только
-в журнале), автоматизация комментариев Instagram, выбор языка первым
-сообщением (сейчас — по слову «язык»).
+Meta, добор `pending`, автоматизация комментариев Instagram, выбор языка
+первым сообщением (сейчас — по слову «язык»).
 
 Консультант ниши `consultant*` из v1 (леджер `consultant_message_runs`, курс
 ВТБ через relay, импорт каталога из Sheets/XLSX) — заменён общим

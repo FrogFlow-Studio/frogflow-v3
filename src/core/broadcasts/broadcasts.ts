@@ -17,6 +17,79 @@ import {
 
 export type BroadcastRow = Database["public"]["Tables"]["broadcasts"]["Row"];
 export type AudienceFilter = { country_code?: string };
+export type BroadcastChannel = "telegram" | "whatsapp";
+
+/** Получатель WhatsApp-рассылки: номер плюс синтетический ключ покупателя. */
+export type WhatsAppRecipient = { telegramId: number; phone: string };
+
+function phoneOf(u: { user_key: string; contact_phone: string | null }): string {
+  const raw =
+    u.contact_phone?.replace(/\D/g, "") ||
+    (u.user_key.startsWith("wa_") ? u.user_key.slice(3) : "");
+  return /^\d{10,15}$/.test(raw) ? raw : "";
+}
+
+/** Список номеров, которым продавец обещал не писать (настройка whatsapp_bot_excluded_phones). */
+export function parseExcludedPhones(raw: string | null | undefined): Set<string> {
+  return new Set(
+    (raw ?? "")
+      .split(/[,;\n]+/)
+      .map((x) => x.replace(/\D/g, ""))
+      .filter((x) => x.length >= 10),
+  );
+}
+
+/**
+ * Кому уходит WhatsApp-рассылка: покупатели из WhatsApp с номером, без
+ * отписавшихся и исключённых. «Себе на пробу» здесь нет — у продавца в базе
+ * нет своей записи покупателя, пустой список честнее отправки непонятно кому.
+ */
+export async function resolveWhatsAppAudience(
+  ctx: TenantContext,
+  type: AudienceType,
+  filter: AudienceFilter = {},
+): Promise<WhatsAppRecipient[]> {
+  if (type === "test") return [];
+  const { getSetting } = await import("@/core/settings/settings");
+  const excluded = parseExcludedPhones(await getSetting(ctx, "whatsapp_bot_excluded_phones"));
+  const users = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("bot_users")
+        .select("telegram_id, user_key, contact_phone, state, opt_out")
+        .eq("platform", "whatsapp")
+        .range(from, to),
+    "получатели WhatsApp",
+  );
+  let buyers: Set<string> | null = null;
+  if (type === "buyers" || type === "non_buyers") {
+    const orders = await pageAll(
+      (from, to) =>
+        ctx.db
+          .from("orders")
+          .select("user_key")
+          .in("status", [...BUYER_STATUSES])
+          .eq("platform", "whatsapp")
+          .range(from, to),
+      "покупатели WhatsApp",
+    );
+    buyers = new Set(orders.map((o) => String(o.user_key ?? "")).filter(Boolean));
+  }
+  const code = filter.country_code?.trim().toUpperCase();
+  return users
+    .filter((u) => !u.opt_out)
+    .filter((u) => (buyers ? buyers.has(u.user_key) === (type === "buyers") : true))
+    .filter((u) =>
+      type === "country"
+        ? Boolean(code) &&
+          String(
+            (u.state as { country_code?: string } | null)?.country_code ?? "",
+          ).toUpperCase() === code
+        : true,
+    )
+    .map((u) => ({ telegramId: Number(u.telegram_id), phone: phoneOf(u) }))
+    .filter((r) => r.phone && !excluded.has(r.phone));
+}
 
 /** Статусы заказов, по которым человек считается покупателем: оплаченный
  *  цифровой (delivered) и физический с принятым задатком в работе. */
@@ -102,9 +175,19 @@ export async function audienceCountries(ctx: TenantContext): Promise<Record<stri
   return out;
 }
 
+export type WhatsAppTemplateRef = {
+  accountId: string;
+  templateName: string;
+  templateLanguage: string;
+  templateParams: string[];
+};
+
 export type CreateBroadcastInput = BroadcastContent & {
   audience: AudienceType;
   filter?: AudienceFilter;
+  channel?: BroadcastChannel;
+  /** WhatsApp: только одобренный шаблон Meta — свободный текст вне 24-часового окна не доставляется. */
+  whatsapp?: WhatsAppTemplateRef;
 };
 
 export type CreateBroadcastResult =
@@ -115,20 +198,58 @@ export async function createBroadcast(
   ctx: TenantContext,
   input: CreateBroadcastInput,
 ): Promise<CreateBroadcastResult> {
+  const channel: BroadcastChannel = input.channel ?? "telegram";
   const content = normalizeContent(input);
-  const problem = contentProblem(content);
-  if (problem) return { ok: false, reason: "invalid", message: problem };
+  if (channel === "telegram") {
+    const problem = contentProblem(content);
+    if (problem) return { ok: false, reason: "invalid", message: problem };
+  } else {
+    if (!ctx.tenant.modules.wa_broadcasts)
+      return {
+        ok: false,
+        reason: "invalid",
+        message: "Модуль «Рассылки в WhatsApp» не подключён к вашему тарифу.",
+      };
+    if (!input.whatsapp?.accountId)
+      return {
+        ok: false,
+        reason: "invalid",
+        message: "Не выбран аккаунт WhatsApp, от которого идёт рассылка.",
+      };
+    if (!input.whatsapp.templateName)
+      return {
+        ok: false,
+        reason: "invalid",
+        message:
+          "Для рассылки в WhatsApp нужен одобренный шаблон Meta — выберите его в списке шаблонов.",
+      };
+  }
   if (!AUDIENCE_TYPES.includes(input.audience))
     return { ok: false, reason: "invalid", message: "Неизвестная аудитория." };
 
-  const ids = await resolveAudience(ctx, input.audience, input.filter);
-  if (ids.length === 0)
+  const recipients: Array<{ telegram_id: number; phone: string | null }> =
+    channel === "telegram"
+      ? (await resolveAudience(ctx, input.audience, input.filter)).map((id) => ({
+          telegram_id: id,
+          phone: null,
+        }))
+      : [
+          ...new Map(
+            (await resolveWhatsAppAudience(ctx, input.audience, input.filter)).map((r) => [
+              r.phone,
+              r,
+            ]),
+          ).values(),
+        ].map((r) => ({ telegram_id: r.telegramId, phone: r.phone }));
+  if (recipients.length === 0)
     return {
       ok: false,
       reason: "no_recipients",
       message:
         input.audience === "test"
-          ? "Не настроен Telegram-id администратора (Настройки → Уведомления)."
+          ? channel === "telegram"
+            ? "Не настроен Telegram-id администратора (Настройки → Уведомления)."
+            : "В WhatsApp нет пробной отправки себе — выберите аудиторию."
           : "Для выбранной аудитории получателей не нашлось.",
     };
 
@@ -136,7 +257,7 @@ export async function createBroadcast(
     .from("broadcasts")
     .select("id")
     .in("status", ["queued", "sending"])
-    .eq("channel", "telegram")
+    .eq("channel", channel)
     .limit(1)
     .maybeSingle();
   if (activeError) return { ok: false, reason: "db", message: activeError.message };
@@ -148,24 +269,30 @@ export async function createBroadcast(
     .insert({
       bot_id: ctx.tenant.id,
       status: "queued",
-      channel: "telegram",
-      message_text: content.text,
-      photo_paths: content.photoKeys,
-      product_ids: content.productIds,
-      show_catalog: content.showCatalog,
+      channel,
+      message_text:
+        channel === "telegram" ? content.text : `Шаблон ${input.whatsapp!.templateName}`,
+      photo_paths: channel === "telegram" ? content.photoKeys : [],
+      product_ids: channel === "telegram" ? content.productIds : [],
+      show_catalog: channel === "telegram" ? content.showCatalog : false,
       audience_type: input.audience,
       audience_filter: input.filter ?? {},
-      total_count: ids.length,
+      total_count: recipients.length,
+      account_id: input.whatsapp?.accountId ?? null,
+      template_name: input.whatsapp?.templateName ?? null,
+      template_language: input.whatsapp?.templateLanguage ?? null,
+      template_params: input.whatsapp?.templateParams ?? [],
     })
     .select("*")
     .single();
   if (error || !broadcast)
     return { ok: false, reason: "db", message: error?.message ?? "Не удалось создать рассылку" };
 
-  const rows = ids.map((telegram_id) => ({
+  const rows = recipients.map((r) => ({
     bot_id: ctx.tenant.id,
     broadcast_id: broadcast.id,
-    telegram_id,
+    telegram_id: r.telegram_id,
+    phone: r.phone,
     status: "pending",
   }));
   for (let i = 0; i < rows.length; i += 500) {
@@ -182,7 +309,12 @@ export async function createBroadcast(
 }
 
 /** Отправитель одного сообщения; бросает Error с описанием от канала. */
-export type BroadcastSender = (telegramId: number, content: BroadcastContent) => Promise<void>;
+export type BroadcastRecipient = { telegramId: number; phone: string | null };
+export type BroadcastSender = (
+  recipient: BroadcastRecipient,
+  content: BroadcastContent,
+  broadcast: BroadcastRow,
+) => Promise<void>;
 
 export function contentOf(b: BroadcastRow): BroadcastContent {
   return normalizeContent({
@@ -212,6 +344,7 @@ export type BatchResult = {
 export async function processBroadcastBatch(
   ctx: TenantContext,
   send: BroadcastSender,
+  channel: BroadcastChannel = "telegram",
 ): Promise<BatchResult> {
   const none: BatchResult = {
     broadcastId: null,
@@ -225,7 +358,7 @@ export async function processBroadcastBatch(
     .from("broadcasts")
     .select("*")
     .in("status", ["queued", "sending"])
-    .eq("channel", "telegram")
+    .eq("channel", channel)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -241,7 +374,7 @@ export async function processBroadcastBatch(
 
   const { data: pending } = await ctx.db
     .from("broadcast_recipients")
-    .select("id, telegram_id")
+    .select("id, telegram_id, phone")
     .eq("broadcast_id", broadcast.id)
     .eq("status", "pending")
     .limit(BATCH_SIZE);
@@ -299,7 +432,7 @@ export async function processBroadcastBatch(
       return Boolean(data);
     };
     try {
-      await send(Number(r.telegram_id), content);
+      await send({ telegramId: Number(r.telegram_id), phone: r.phone ?? null }, content, broadcast);
       if (await settle({ status: "sent", sent_at: new Date().toISOString(), error_message: null }))
         sent++;
     } catch (e) {
@@ -368,19 +501,21 @@ export async function listBroadcasts(ctx: TenantContext, limit = 50): Promise<Br
   const { data, error } = await ctx.db
     .from("broadcasts")
     .select("*")
-    .eq("channel", "telegram")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(`broadcasts: ${error.message}`);
   return data ?? [];
 }
 
-export async function hasActiveBroadcast(ctx: TenantContext): Promise<boolean> {
+export async function hasActiveBroadcast(
+  ctx: TenantContext,
+  channel: BroadcastChannel = "telegram",
+): Promise<boolean> {
   const { data } = await ctx.db
     .from("broadcasts")
     .select("id")
     .in("status", ["queued", "sending"])
-    .eq("channel", "telegram")
+    .eq("channel", channel)
     .limit(1)
     .maybeSingle();
   return Boolean(data);
