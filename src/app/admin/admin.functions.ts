@@ -20,6 +20,21 @@ export const adminLogin = createServerFn({ method: "POST" })
       await import("@/app/auth/login-guard.server");
     const ip = clientIp();
     await loginDelay();
+    // Один вход на всех: данные оператора платформы открывают панель оператора.
+    {
+      const { env } = await import("@/config/env");
+      const { timingSafeSecretEqual } = await import("@/channels/telegram/secret");
+      const e = env();
+      if (timingSafeSecretEqual(data.username, e.OPERATOR_USERNAME)) {
+        if (await loginLocked("operator", ip))
+          throw new Error("Слишком много неудачных попыток. Попробуйте через 15 минут.");
+        const ok = timingSafeSecretEqual(data.password, e.OPERATOR_PASSWORD);
+        await recordLogin("operator", ip, ok, data.username);
+        if (!ok) return { ok: false as const };
+        await (await appSession()).update({ operator: true });
+        return { ok: true as const, role: "operator" as const };
+      }
+    }
     const t = await findTenantByAdminUsername(data.username);
     if (!t) return { ok: false as const };
     if (await loginLocked({ botId: t.id }, ip))
@@ -30,7 +45,7 @@ export const adminLogin = createServerFn({ method: "POST" })
     await (
       await appSession()
     ).update({ admin: { botId: t.id, username: data.username.trim().toLowerCase() } });
-    return { ok: true as const };
+    return { ok: true as const, role: "admin" as const };
   });
 
 export const adminLogout = createServerFn({ method: "POST" }).handler(async () => {

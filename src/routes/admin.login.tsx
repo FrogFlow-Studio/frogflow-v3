@@ -18,7 +18,7 @@ function LoginPage() {
     setWrong(false);
     const r = await adminLogin({ data: { username, password } });
     if (!r.ok) return setWrong(true);
-    await navigate({ to: "/admin" });
+    await navigate({ to: r.role === "operator" ? "/operator" : "/admin" });
   });
   return (
     <main className="flex min-h-screen flex-col">
