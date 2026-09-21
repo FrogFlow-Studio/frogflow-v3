@@ -1,4 +1,10 @@
-import { isLocale, localeNames, SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
+import {
+  isLocale,
+  localeFlags,
+  localeNames,
+  SUPPORTED_LOCALES,
+  type Locale,
+} from "@/core/i18n/locale";
 import { isDeliveryLangChoice, type DeliveryLangChoice } from "@/core/catalog/materials";
 
 /**
@@ -81,6 +87,34 @@ export function matchLocalePick(text: string): Locale | null {
     if (needle.length >= 3 && name.startsWith(needle)) return locale;
   }
   return null;
+}
+
+/**
+ * Текст выбора языка — сразу на всех четырёх: до выбора язык покупателя не
+ * известен, показывать его на одном было бы гаданием. Кнопок у Instagram
+ * три, языков четыре — поэтому нумерованный список; он работает и в папке
+ * «Запросы сообщений», куда попадает весь трафик от неподписчиков.
+ */
+export function languagePickerText(): string {
+  const lines = SUPPORTED_LOCALES.map((l, i) => `${i + 1}. ${localeFlags[l]} ${localeNames[l]}`);
+  return (
+    "Выберите язык / Тілді таңдаңыз / Tilni tanlang / Choose language:\n\n" +
+    `${lines.join("\n")}\n\n` +
+    "Ответьте номером. / Нөмірімен жауап беріңіз. / Raqami bilan javob bering. / Reply with the number."
+  );
+}
+
+/** После стольких нераспознанных ответов на выбор языка отвечаем на языке магазина, не держим человека на шаге вечно. */
+export const MAX_LOCALE_MISSES = 2;
+
+/** Новый покупатель: язык ещё не выбирали и сценарий не начат — первым делом спрашиваем язык. */
+export function needsLocalePick(state: {
+  mode?: string;
+  locale?: string;
+  locale_picked_at?: unknown;
+}): boolean {
+  if (state.locale || state.locale_picked_at) return false;
+  return !state.mode || state.mode === "idle";
 }
 
 /** Повтор цифры из списка языков сразу после выбора — не номер товара. */

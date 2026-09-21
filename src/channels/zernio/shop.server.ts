@@ -7,13 +7,7 @@ import {
   type DialogState,
 } from "@/core/customers/customers";
 import type { Json } from "@/core/db-types";
-import {
-  isLocale,
-  localeFlags,
-  localeNames,
-  SUPPORTED_LOCALES,
-  type Locale,
-} from "@/core/i18n/locale";
+import { isLocale, localeNames, type Locale } from "@/core/i18n/locale";
 import {
   getProduct,
   imageUrl,
@@ -75,6 +69,9 @@ import {
   matchDeliveryLangChoice,
   matchDirectCommand,
   matchLocalePick,
+  languagePickerText,
+  needsLocalePick,
+  MAX_LOCALE_MISSES,
   matchOrdinal,
   matchZone,
   parseRemoveCommand,
@@ -262,6 +259,12 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
 
   if (!text) return "question";
 
+  // Новому покупателю — выбор языка раньше чего бы то ни было, один раз.
+  if (needsLocalePick(s.customer.state) && !memory(s.customer).locale_picked_at) {
+    await askLocale(s);
+    return "handled";
+  }
+
   if (isCancel(text)) {
     await setMode(s, { mode: "idle" });
     await reply(s, `${plain(s.m.useMenu)}\n\n${hint(s)}`, {
@@ -300,11 +303,25 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   switch (mode) {
     case "awaiting_locale": {
       const picked = matchLocalePick(text);
-      if (!picked) return askLocale(s).then(() => "handled" as const);
+      if (!picked) {
+        const misses = Number(s.customer.state.locale_misses ?? 0) + 1;
+        if (misses < MAX_LOCALE_MISSES) {
+          await setMode(s, { locale_misses: misses });
+          return askLocale(s).then(() => "handled" as const);
+        }
+        // Не упорствуем: дальше отвечаем на языке магазина и показываем каталог.
+        await remember(
+          s,
+          { locale_picked_at: new Date().toISOString() },
+          { mode: "idle", locale: s.locale, locale_misses: undefined },
+        );
+        await showCatalog(s, null, 0, true);
+        return "handled";
+      }
       await remember(
         s,
         { locale_picked_at: new Date().toISOString() },
-        { mode: "idle", locale: picked },
+        { mode: "idle", locale: picked, locale_misses: undefined },
       );
       s.locale = picked;
       s.m = COPY[picked];
@@ -740,8 +757,7 @@ async function removeFromCart(s: Shop, number: string) {
 
 async function askLocale(s: Shop) {
   await setMode(s, { mode: "awaiting_locale" });
-  const lines = SUPPORTED_LOCALES.map((l, i) => `${i + 1}. ${localeFlags[l]} ${localeNames[l]}`);
-  await reply(s, `${plain(s.m.chooseLanguage)}\n\n${lines.join("\n")}`, { force: true });
+  await reply(s, languagePickerText(), { force: true });
 }
 
 async function askCountry(s: Shop, forCheckout: boolean) {

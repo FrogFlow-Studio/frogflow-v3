@@ -12,6 +12,8 @@ import {
   matchDeliveryLangChoice,
   matchDirectCommand,
   matchLocalePick,
+  languagePickerText,
+  needsLocalePick,
   matchOrdinal,
   matchZone,
   parseRemoveCommand,
@@ -83,6 +85,26 @@ describe("matchCountry", () => {
     expect(matchCountry("не знаю", countries)).toBeNull();
     expect(matchCountry("99", countries)).toBeNull();
     expect(matchCountry("ка", countries)).toBeNull();
+  });
+});
+
+describe("выбор языка первым сообщением", () => {
+  it("спрашивает только нового покупателя вне сценария, текст — на четырёх языках", () => {
+    expect(needsLocalePick({})).toBe(true);
+    expect(needsLocalePick({ mode: "idle" })).toBe(true);
+    expect(needsLocalePick({ locale: "ru" })).toBe(false);
+    expect(needsLocalePick({ locale_picked_at: "2026-01-01T00:00:00Z" })).toBe(false);
+    expect(needsLocalePick({ mode: "awaiting_proof" })).toBe(false);
+    const text = languagePickerText();
+    for (const part of [
+      "Выберите язык",
+      "Тілді таңдаңыз",
+      "Tilni tanlang",
+      "Choose language",
+      "1. ",
+      "4. ",
+    ])
+      expect(text).toContain(part);
   });
 });
 

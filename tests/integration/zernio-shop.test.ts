@@ -2,7 +2,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { liveReady, DEMO_BOT } from "./live";
 import { serviceDb } from "@/core/db/client.server";
 import { requireTenant, tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
-import { getCustomer, syntheticTelegramId, userKey } from "@/core/customers/customers";
+import {
+  getCustomer,
+  setState,
+  syntheticTelegramId,
+  upsertCustomer,
+  userKey,
+} from "@/core/customers/customers";
 import { deliverOrder, getOrder } from "@/core/orders/orders";
 import { handleZernioMessage } from "@/channels/zernio/handle-message";
 import { zernioMaterialSender } from "@/channels/zernio/deliver";
@@ -14,6 +20,8 @@ import type { ZernioTransport } from "@/channels/zernio/api.server";
  * всё остальное — настоящая база под ключом арендатора.
  */
 const SENDER = "990000777003";
+const NEW_SENDER = "990000777013"; // первый контакт — выбор языка
+const LOST_SENDER = "990000777014"; // не понимает выбор языка
 const KEY = userKey("instagram", SENDER);
 const TG = syntheticTelegramId(KEY);
 const PROBE_NAME = "v2 direct · материал";
@@ -69,7 +77,11 @@ async function cleanup() {
     await db.from("orders").delete().eq("id", orderId);
   }
   await db.from("cart_items").delete().eq("bot_id", DEMO_BOT).eq("telegram_id", TG);
-  await db.from("bot_users").delete().eq("bot_id", DEMO_BOT).eq("user_key", KEY);
+  await db
+    .from("bot_users")
+    .delete()
+    .eq("bot_id", DEMO_BOT)
+    .in("user_key", [KEY, userKey("instagram", NEW_SENDER), userKey("instagram", LOST_SENDER)]);
   await db.from("products").delete().eq("bot_id", DEMO_BOT).eq("name", PROBE_NAME);
   await db.from("payment_methods").delete().eq("bot_id", DEMO_BOT).eq("country_name", COUNTRY_NAME);
 }
@@ -116,6 +128,9 @@ describe.skipIf(!liveReady)("магазин в Instagram Direct на демо-к
       sort_order: 99,
     });
     if (mErr) throw new Error(`seed method: ${mErr.message}`);
+    // Основной покупатель уже выбирал язык — иначе первым ответом был бы выбор языка.
+    const seeded = await upsertCustomer(ctx, "instagram", SENDER, { firstName: "Проба Магазин" });
+    await setState(ctx, seeded, { locale: "ru", locale_picked_at: new Date().toISOString() });
   });
   afterAll(cleanup);
 
@@ -214,5 +229,47 @@ describe.skipIf(!liveReady)("магазин в Instagram Direct на демо-к
       fake,
     );
     expect(["processed", "ignored"]).toContain(r.status);
+  });
+
+  it("первый контакт: выбор языка на четырёх языках, ответ номером — каталог на выбранном", async () => {
+    const ev = (id: string, t: string) => ({
+      ...text(id, t),
+      message: {
+        ...text(id, t).message,
+        sender: { id: NEW_SENDER, name: "Новый", username: "new_probe" },
+      },
+    });
+    const r = await handleZernioMessage(ctx, ev("n-1", "Здравствуйте!"), fake);
+    expect(r.status).toBe("processed");
+    expect(last().text).toContain("Выберите язык / Тілді таңдаңыз");
+    expect(last().text).toContain("Choose language");
+    await handleZernioMessage(ctx, ev("n-2", "3"), fake);
+    const c = await getCustomer(ctx, userKey("instagram", NEW_SENDER));
+    expect(c?.state.locale).toBe("en");
+    expect(c?.state.mode).toBe("idle");
+    expect(sent.slice(-2)[0]!.text).toMatch(/English|language/i);
+    // Второй раз не спрашиваем.
+    const before = sent.length;
+    await handleZernioMessage(ctx, ev("n-3", "catalog"), fake);
+    expect(sent.slice(before).some((m) => /Choose language/.test(m.text))).toBe(false);
+  });
+
+  it("первый контакт: не понял дважды — отвечаем на языке магазина и показываем каталог", async () => {
+    const ev = (id: string, t: string) => ({
+      ...text(id, t),
+      message: {
+        ...text(id, t).message,
+        sender: { id: LOST_SENDER, name: "Потерялся", username: "lost_probe" },
+      },
+    });
+    await handleZernioMessage(ctx, ev("l-1", "привет"), fake);
+    expect(last().text).toContain("Выберите язык");
+    await handleZernioMessage(ctx, ev("l-2", "что?"), fake);
+    expect(last().text).toContain("Выберите язык");
+    await handleZernioMessage(ctx, ev("l-3", "не понимаю"), fake);
+    expect(last().text).not.toContain("Выберите язык");
+    const c = await getCustomer(ctx, userKey("instagram", LOST_SENDER));
+    expect(c?.state.locale).toBe("ru");
+    expect(c?.state.mode).toBe("idle");
   });
 });
