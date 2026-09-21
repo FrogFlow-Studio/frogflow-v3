@@ -250,3 +250,21 @@ export const resolveModuleRequestFn = createServerFn({ method: "POST" })
     await guard();
     return (await impl()).resolveModuleRequest(data.id, data.action);
   });
+
+/* ── рассылка владельцам ──────────────────────────────────────────── */
+
+export const ownerBroadcastsFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await impl()).listOwnerBroadcasts();
+});
+
+export const broadcastToOwnersFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({ botIds: z.array(botId).min(1).max(500), text: z.string().trim().min(1).max(4000) })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await impl()).broadcastToOwners(data.botIds, data.text);
+  });
