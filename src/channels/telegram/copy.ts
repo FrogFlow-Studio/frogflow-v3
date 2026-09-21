@@ -109,12 +109,23 @@ export type Msg = {
   contactAuthor: (link: string) => string;
   contactNotSet: string;
   useMenu: string;
+  cartReminder: string;
+  openCartBtn: string;
+  fulfillmentReminder: (no: string, date: string) => string;
+  broadcastPick: string;
+  openCatalogBtn: string;
   yourId: (id: number) => string;
   fileLink: string;
   fileLinkTtl: string;
 };
 
 const ru: Msg = {
+  cartReminder:
+    "🛒 Вы оставили товары в корзине — они всё ещё вас ждут! Оформить заказ можно в любой момент.",
+  openCartBtn: "🛒 Открыть корзину",
+  fulfillmentReminder: (no, d) => `⏰ Напоминаем: заказ #${no} — получение завтра, ${d}.`,
+  broadcastPick: "👇 Выберите материал:",
+  openCatalogBtn: "📚 Открыть каталог",
   chooseLanguage: "Выберите язык",
   languageSaved: "✅ Язык сохранён.",
   chooseSection: "Выберите раздел:",
@@ -249,6 +260,12 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  cartReminder:
+    "🛒 Себетте тауарлар қалды — олар әлі де сізді күтуде! Тапсырысты кез келген уақытта рәсімдей аласыз.",
+  openCartBtn: "🛒 Себетті ашу",
+  fulfillmentReminder: (no, d) => `⏰ Еске саламыз: №${no} тапсырысты алу ертең, ${d}.`,
+  broadcastPick: "👇 Материалды таңдаңыз:",
+  openCatalogBtn: "📚 Каталогты ашу",
   chooseLanguage: "Тілді таңдаңыз",
   languageSaved: "✅ Тіл сақталды.",
   chooseSection: "Бөлімді таңдаңыз:",
@@ -285,6 +302,12 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  cartReminder:
+    "🛒 You left some items in your cart — they're still waiting for you! You can check out anytime.",
+  openCartBtn: "🛒 Open cart",
+  fulfillmentReminder: (no, d) => `⏰ Reminder: order #${no} — pickup/delivery is tomorrow, ${d}.`,
+  broadcastPick: "👇 Pick an item:",
+  openCatalogBtn: "📚 Open catalog",
   chooseLanguage: "Choose your language",
   languageSaved: "✅ Language saved.",
   chooseSection: "Choose a section:",
@@ -341,6 +364,12 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  cartReminder:
+    "🛒 Savatda mahsulotlar qoldi — ular hali ham sizni kutmoqda! Buyurtmani istalgan vaqtda rasmiylashtirishingiz mumkin.",
+  openCartBtn: "🛒 Savatni ochish",
+  fulfillmentReminder: (no, d) => `⏰ Eslatma: #${no} buyurtma ertaga, ${d} kuni olinadi.`,
+  broadcastPick: "👇 Materialni tanlang:",
+  openCatalogBtn: "📚 Katalogni ochish",
   chooseLanguage: "Tilni tanlang",
   languageSaved: "✅ Til saqlandi.",
   chooseSection: "Bo‘limni tanlang:",

@@ -20,6 +20,7 @@ import { Route as OperatorAuthedRouteImport } from './routes/operator._authed'
 import { Route as OperatorLoginRouteImport } from './routes/operator.login'
 import { Route as SSlugRouteImport } from './routes/s.$slug'
 import { Route as AdminAuthedIndexRouteImport } from './routes/admin._authed.index'
+import { Route as AdminAuthedBroadcastsRouteImport } from './routes/admin._authed.broadcasts'
 import { Route as AdminAuthedCategoriesRouteImport } from './routes/admin._authed.categories'
 import { Route as AdminAuthedCustomersRouteImport } from './routes/admin._authed.customers'
 import { Route as AdminAuthedDiscountsRouteImport } from './routes/admin._authed.discounts'
@@ -95,6 +96,11 @@ const SSlugRoute = SSlugRouteImport.update({
 const AdminAuthedIndexRoute = AdminAuthedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedBroadcastsRoute = AdminAuthedBroadcastsRouteImport.update({
+  id: '/broadcasts',
+  path: '/broadcasts',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedCategoriesRoute = AdminAuthedCategoriesRouteImport.update({
@@ -224,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/operator/login': typeof OperatorLoginRoute
   '/s/$slug': typeof SSlugRouteWithChildren
+  '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/customers': typeof AdminAuthedCustomersRoute
   '/admin/discounts': typeof AdminAuthedDiscountsRoute
@@ -257,6 +264,7 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/api/health': typeof ApiHealthRoute
   '/operator/login': typeof OperatorLoginRoute
+  '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/customers': typeof AdminAuthedCustomersRoute
   '/admin/discounts': typeof AdminAuthedDiscountsRoute
@@ -292,6 +300,7 @@ export interface FileRoutesById {
   '/operator/_authed': typeof OperatorAuthedRouteWithChildren
   '/operator/login': typeof OperatorLoginRoute
   '/s/$slug': typeof SSlugRouteWithChildren
+  '/admin/_authed/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/_authed/categories': typeof AdminAuthedCategoriesRoute
   '/admin/_authed/customers': typeof AdminAuthedCustomersRoute
   '/admin/_authed/discounts': typeof AdminAuthedDiscountsRoute
@@ -328,6 +337,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/operator/login'
     | '/s/$slug'
+    | '/admin/broadcasts'
     | '/admin/categories'
     | '/admin/customers'
     | '/admin/discounts'
@@ -361,6 +371,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/api/health'
     | '/operator/login'
+    | '/admin/broadcasts'
     | '/admin/categories'
     | '/admin/customers'
     | '/admin/discounts'
@@ -395,6 +406,7 @@ export interface FileRouteTypes {
     | '/operator/_authed'
     | '/operator/login'
     | '/s/$slug'
+    | '/admin/_authed/broadcasts'
     | '/admin/_authed/categories'
     | '/admin/_authed/customers'
     | '/admin/_authed/discounts'
@@ -514,6 +526,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminAuthedIndexRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/broadcasts': {
+      id: '/admin/_authed/broadcasts'
+      path: '/broadcasts'
+      fullPath: '/admin/broadcasts'
+      preLoaderRoute: typeof AdminAuthedBroadcastsRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/categories': {
@@ -692,6 +711,7 @@ const AdminAuthedOrdersRouteWithChildren =
   AdminAuthedOrdersRoute._addFileChildren(AdminAuthedOrdersRouteChildren)
 
 interface AdminAuthedRouteChildren {
+  AdminAuthedBroadcastsRoute: typeof AdminAuthedBroadcastsRoute
   AdminAuthedCategoriesRoute: typeof AdminAuthedCategoriesRoute
   AdminAuthedCustomersRoute: typeof AdminAuthedCustomersRoute
   AdminAuthedDiscountsRoute: typeof AdminAuthedDiscountsRoute
@@ -704,6 +724,7 @@ interface AdminAuthedRouteChildren {
 }
 
 const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
+  AdminAuthedBroadcastsRoute: AdminAuthedBroadcastsRoute,
   AdminAuthedCategoriesRoute: AdminAuthedCategoriesRoute,
   AdminAuthedCustomersRoute: AdminAuthedCustomersRoute,
   AdminAuthedDiscountsRoute: AdminAuthedDiscountsRoute,

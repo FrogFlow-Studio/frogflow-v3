@@ -28,6 +28,29 @@ export const Route = createFileRoute("/api/cron/$job")({
             }
             break;
           }
+          case "broadcast":
+          case "cart-reminder":
+          case "fulfillment-reminder": {
+            const jobs = await import("@/channels/telegram/jobs");
+            const run = {
+              broadcast: jobs.runBroadcastBatch,
+              "cart-reminder": jobs.runCartReminders,
+              "fulfillment-reminder": jobs.runFulfillmentReminders,
+            }[params.job];
+            // Клиенты — параллельно: пакет рассылки одного не задерживает других.
+            const settled = await Promise.allSettled(tenants.map((t) => run(t)));
+            settled.forEach((r, i) => {
+              const id = tenants[i]!.id;
+              results[id] =
+                r.status === "fulfilled"
+                  ? r.value
+                  : {
+                      ok: false,
+                      error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+                    };
+            });
+            break;
+          }
           default:
             return new Response("unknown job", { status: 404 });
         }

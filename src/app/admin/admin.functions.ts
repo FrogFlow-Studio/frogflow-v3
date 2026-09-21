@@ -597,3 +597,88 @@ export const deleteDeliveryZoneFn = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/* ── рассылки ────────────────────────────────────────────────────── */
+
+const audienceSchema = z.enum(["all", "buyers", "non_buyers", "country", "test"]);
+
+export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireAdminModule } = await import("@/app/auth/guards.server");
+  const ctx = await requireAdminModule("broadcasts");
+  const { listBroadcasts, audienceCountries } = await import("@/core/broadcasts/broadcasts");
+  const { getSettings } = await import("@/core/settings/settings");
+  const [broadcasts, countries, products, settings] = await Promise.all([
+    listBroadcasts(ctx),
+    audienceCountries(ctx),
+    ctx.db
+      .from("products")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("name")
+      .limit(200)
+      .then((r) => r.data ?? []),
+    getSettings(ctx, ["cart_reminder_hours", "admin_chat_id"]),
+  ]);
+  return {
+    broadcasts,
+    countries,
+    products,
+    cartReminderHours: settings.cart_reminder_hours ?? "",
+    hasAdminChat: Boolean(settings.admin_chat_id || ctx.tenant.ownerTelegramId),
+  };
+});
+
+export const audienceCountFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z.object({ audience: audienceSchema, countryCode: z.string().max(3).optional() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { requireAdminModule } = await import("@/app/auth/guards.server");
+    const ctx = await requireAdminModule("broadcasts");
+    const { resolveAudience } = await import("@/core/broadcasts/broadcasts");
+    const ids = await resolveAudience(ctx, data.audience, { country_code: data.countryCode });
+    return { count: ids.length };
+  });
+
+export const createBroadcastFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        text: z.string().max(4000),
+        photoKeys: z.array(z.string().min(1).max(300)).max(10),
+        productIds: z.array(uuid).max(8),
+        showCatalog: z.boolean(),
+        audience: audienceSchema,
+        countryCode: z.string().max(3).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { requireAdminModule } = await import("@/app/auth/guards.server");
+    const ctx = await requireAdminModule("broadcasts");
+    const { createBroadcast } = await import("@/core/broadcasts/broadcasts");
+    const r = await createBroadcast(ctx, {
+      text: data.text,
+      photoKeys: data.photoKeys,
+      productIds: data.productIds,
+      showCatalog: data.showCatalog,
+      audience: data.audience,
+      filter: data.countryCode ? { country_code: data.countryCode } : undefined,
+    });
+    if (!r.ok) throw new Error(r.message);
+    // Первый пакет — сразу: продавец видит результат на «себе», не ожидая крона.
+    if (data.audience === "test") {
+      const { runBroadcastBatch } = await import("@/channels/telegram/jobs");
+      await runBroadcastBatch(ctx.tenant).catch((e) => console.error("[broadcast:test]", e));
+    }
+    return { id: r.broadcast.id, total: r.broadcast.total_count };
+  });
+
+export const cancelBroadcastFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: uuid }).parse(d))
+  .handler(async ({ data }) => {
+    const { requireAdminModule } = await import("@/app/auth/guards.server");
+    const ctx = await requireAdminModule("broadcasts");
+    const { cancelBroadcast } = await import("@/core/broadcasts/broadcasts");
+    return { ok: await cancelBroadcast(ctx, data.id) };
+  });
