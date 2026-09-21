@@ -1,10 +1,18 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { operatorCredentialsFn, setOperatorCredentialsFn } from "@/app/operator/operator.functions";
+import {
+  operatorCredentialsFn,
+  payoutRequisitesFn,
+  setOperatorCredentialsFn,
+  setPayoutRequisitesFn,
+} from "@/app/operator/operator.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed/settings")({
-  loader: () => operatorCredentialsFn(),
+  loader: async () => {
+    const [cred, payout] = await Promise.all([operatorCredentialsFn(), payoutRequisitesFn()]);
+    return { ...cred, requisites: payout.requisites };
+  },
   component: SettingsPage,
 });
 
@@ -29,6 +37,7 @@ function SettingsPage() {
     <>
       <PageTitle title="Настройки платформы" />
       <div className="grid gap-4 lg:grid-cols-2">
+        <RequisitesCard requisites={cred.requisites} />
         <Card title="Учётка оператора">
           <p className="mb-3 text-sm text-muted">
             Логин и пароль хранятся в базе, а не в переменных деплоя. Ими вы входите с главной
@@ -113,5 +122,48 @@ function SettingsPage() {
         </Card>
       </div>
     </>
+  );
+}
+
+function RequisitesCard({ requisites }: { requisites: string }) {
+  const router = useRouter();
+  const [saved, setSaved] = useState(false);
+  const save = useAction(async (value: string) => {
+    await setPayoutRequisitesFn({ data: { requisites: value } });
+    setSaved(true);
+    await router.invalidate();
+  });
+  return (
+    <Card title="Реквизиты для выплат">
+      <p className="mb-3 text-sm text-muted">
+        Подставляются в счёт владельцу бота (карточка клиента → «Подписка и счета»). Снимок
+        реквизитов хранится в каждом счёте — смена реквизитов не меняет уже выставленные.
+      </p>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSaved(false);
+          void save
+            .run(String(new FormData(e.currentTarget).get("requisites") ?? ""))
+            .catch(() => {});
+        }}
+      >
+        <textarea
+          className="input"
+          name="requisites"
+          rows={4}
+          defaultValue={requisites}
+          placeholder="Kaspi Gold 4400 …, получатель …"
+        />
+        <div className="flex items-center gap-3">
+          <button className="btn-primary" disabled={save.busy}>
+            Сохранить
+          </button>
+          {saved && <span className="text-sm text-ok">Сохранено</span>}
+        </div>
+        <ErrorBox error={save.error} />
+      </form>
+    </Card>
   );
 }

@@ -35,7 +35,7 @@ v2 работают одновременно, поломку у живого к�
 | `manager_chat`                     | `manager-chat.server.ts`, RPC touch | ✔ `/admin/chat`              |
 | `blocked` — чтение                 | `replyIfBlocked`                    | ✔                            |
 | пауза за неоплату                  | `replyIfPaused`                     | ✔                            |
-| счёт оператора чеком от владельца  | `subscription_invoices`             | нет                          |
+| счёт оператора чеком от владельца  | `subscription_invoices`             | ✔ панель оператора + бот     |
 | напоминание об оплате из админки   | `remindOrderPayment`                | ✔                            |
 | «Информация»: юридические страницы | `/legal/*`, бакет `legal-docs`      | ✔ `/s/<slug>/legal/*`        |
 

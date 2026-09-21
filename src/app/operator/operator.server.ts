@@ -27,7 +27,8 @@ type EventKind =
   | "onboard"
   | "webhook"
   | "meta"
-  | "message";
+  | "message"
+  | "payment";
 
 export async function logEvent(
   botId: string,

@@ -9,6 +9,9 @@ import { VERTICAL_KEYS } from "@/core/verticals/registry";
  * Реализация — в operator.server.ts (серверный модуль, не попадает в бандл).
  */
 const guard = async () => (await import("@/app/auth/guards.server")).requireOperator();
+/** Кто действует — логин оператора из базы; в журнале bot_events. */
+const actor = async () =>
+  (await (await import("./credentials.server")).operatorCredentialsSource()).username ?? "operator";
 const impl = () => import("./operator.server");
 
 const botId = z.string().uuid();
@@ -291,4 +294,127 @@ export const setOperatorCredentialsFn = createServerFn({ method: "POST" })
       throw new Error("Текущий пароль неверный.");
     await setOperatorCredentials(data.username, data.password);
     return { ok: true };
+  });
+
+/* ── подписка и счета ─────────────────────────────────────────────── */
+
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Дата в формате ГГГГ-ММ-ДД");
+
+export const billingFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ botId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    const b = await import("./billing.server");
+    const [requisites, payments, invoices, expiresAt] = await Promise.all([
+      b.getPayoutRequisites(),
+      b.listPayments(data.botId),
+      b.listInvoices(data.botId),
+      b.subscriptionExpiresAt(data.botId),
+    ]);
+    return { requisites, payments, invoices, expiresAt };
+  });
+
+export const payoutRequisitesFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return { requisites: await (await import("./billing.server")).getPayoutRequisites() };
+});
+
+export const setPayoutRequisitesFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ requisites: z.string().max(2000) }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    await (await import("./billing.server")).setPayoutRequisites(data.requisites);
+    return { ok: true };
+  });
+
+export const addPaymentFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId: z.string().uuid(),
+        period_start: isoDate,
+        period_end: isoDate,
+        amount: z.number().nonnegative(),
+        currency: z.string().trim().min(1).max(8),
+        note: z.string().max(500).nullable(),
+      })
+      .refine((v) => v.period_end >= v.period_start, { message: "Конец периода раньше начала" })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const { botId, ...p } = data;
+    return (await import("./billing.server")).addPayment(botId, p, await actor());
+  });
+
+export const deletePaymentFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ botId: z.string().uuid(), paymentId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    await (
+      await import("./billing.server")
+    ).deletePayment(data.botId, data.paymentId, await actor());
+    return { ok: true };
+  });
+
+export const createInvoiceFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId: z.string().uuid(),
+        amount: z.number().positive(),
+        currency: z.string().trim().min(1).max(8),
+        note: z.string().max(500).nullable(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const { botId, ...p } = data;
+    return (await import("./billing.server")).createInvoice(botId, p, await actor());
+  });
+
+export const invoiceActionFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        action: z.enum(["confirm", "reject", "cancel"]),
+        periodStart: isoDate.optional(),
+        periodEnd: isoDate.optional(),
+        reason: z.string().max(500).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const b = await import("./billing.server");
+    const who = await actor();
+    if (data.action === "confirm") {
+      if (!data.periodStart || !data.periodEnd) throw new Error("Укажите период подписки");
+      const r = await b.confirmInvoice(
+        data.id,
+        { start: data.periodStart, end: data.periodEnd },
+        who,
+      );
+      return {
+        ok: true,
+        message: `Счёт оплачен, подписка до ${r.expiresAt ? new Date(r.expiresAt).toLocaleDateString("ru") : "—"}.`,
+      };
+    }
+    if (data.action === "reject") {
+      await b.rejectInvoice(data.id, data.reason ?? "", who);
+      return { ok: true, message: "Счёт отклонён." };
+    }
+    await b.cancelInvoice(data.id, who);
+    return { ok: true, message: "Счёт отменён." };
+  });
+
+export const invoiceProofUrlFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return { url: await (await import("./billing.server")).invoiceProofUrl(data.id) };
   });

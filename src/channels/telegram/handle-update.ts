@@ -208,6 +208,10 @@ async function handleMessage(
   }
   if (msg.chat.type !== undefined && msg.chat.type !== "private") return;
 
+  // Чек по счёту оператора от владельца бота — до гварда паузы: счёт и
+  // выставляется как раз тогда, когда бот приостановлен за просрочку.
+  if ((msg.photo || msg.document) && (await ownerInvoiceProof(ctx, api, msg))) return;
+
   if (await isBlocked(ctx, from.id)) return;
   if (ctx.tenant.status !== "active") {
     await api.call("sendMessage", {
@@ -1189,6 +1193,51 @@ async function receiveProof(b: Bot, msg: TelegramMessage, orderId: number) {
   b.customer = await setState(b.ctx, b.customer, { ...b.customer.state, mode: "idle" });
   await send(b, b.m.proofReceived(no), { reply_markup: mainMenu(b) });
   await notifyAdminNewOrder(b.ctx, b.api, res.order, proof);
+}
+
+/**
+ * Владелец отвечает на счёт оператора фото или файлом — тем же жестом, что
+ * покупатель с чеком по заказу. Только когда у владельца есть открытый счёт
+ * и нет своего заказа, ждущего чек (иначе тест собственного чекаута попал бы
+ * сюда). Возвращает true, если сообщение обработано.
+ */
+async function ownerInvoiceProof(
+  ctx: TenantContext,
+  api: TelegramApi,
+  msg: TelegramMessage,
+): Promise<boolean> {
+  const from = msg.from;
+  if (!from || Number(ctx.tenant.ownerTelegramId) !== Number(from.id)) return false;
+  const { attachInvoiceProof, openInvoiceForOwner } = await import("@/core/billing/invoices");
+  const invoice = await openInvoiceForOwner(ctx, from.id);
+  if (!invoice) return false;
+  const customer = await getCustomer(ctx, `tg_${from.id}`);
+  if (customer && (await recentAwaitingPaymentOrder(ctx, customer))) return false;
+  const fileId = msg.document?.file_id ?? msg.photo?.[msg.photo.length - 1]?.file_id;
+  if (!fileId) return false;
+  const file = await downloadTelegramFile(api, fileId);
+  const reply = (text: string) => api.call("sendMessage", { chat_id: msg.chat.id, text });
+  if (!file) {
+    await reply("Не удалось скачать файл из Telegram, попробуйте отправить ещё раз.");
+    return true;
+  }
+  const docName = (msg.document?.file_name ?? "").toLowerCase();
+  const ext =
+    docName.match(/\.([a-z0-9]{1,8})$/)?.[1] ??
+    (file.mime === "application/pdf" ? "pdf" : msg.document ? "bin" : "jpg");
+  const r = await attachInvoiceProof(ctx, invoice, { ...file, ext });
+  if (!r.ok) {
+    await reply(
+      r.reason === "upload_failed"
+        ? "Не удалось сохранить чек, попробуйте отправить ещё раз."
+        : "Этот счёт уже обработан — если нужен новый, напишите оператору.",
+    );
+    return true;
+  }
+  await reply(
+    `Чек получен по счёту на ${invoice.amount} ${invoice.currency}${invoice.note ? ` — ${invoice.note}` : ""}. Ожидайте подтверждения оплаты.`,
+  );
+  return true;
 }
 
 async function downloadTelegramFile(

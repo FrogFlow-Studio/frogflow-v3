@@ -1,0 +1,314 @@
+import { serviceDb } from "@/core/db/client.server";
+import { logEvent, notifyOwner } from "./operator.server";
+
+/**
+ * Подписка клиента на платформу: платежи (subscription_payments — срок
+ * bots.subscription_expires_at пересчитывает триггер, второго источника
+ * истины нет) и счета владельцу (subscription_invoices): выставлено → чек
+ * прислан → подтверждено или отклонено. Подтверждение не изобретает свою
+ * бухгалтерию — заводит обычный платёж.
+ */
+const REQUISITES_KEY = "payout_requisites";
+
+export async function getPayoutRequisites(): Promise<string> {
+  const { data } = await serviceDb()
+    .from("operator_settings")
+    .select("value")
+    .eq("key", REQUISITES_KEY)
+    .maybeSingle();
+  return data?.value ?? "";
+}
+
+export async function setPayoutRequisites(value: string): Promise<void> {
+  const db = serviceDb();
+  const v = value.trim();
+  const { data } = await db
+    .from("operator_settings")
+    .select("key")
+    .eq("key", REQUISITES_KEY)
+    .maybeSingle();
+  const { error } = data
+    ? await db.from("operator_settings").update({ value: v }).eq("key", REQUISITES_KEY)
+    : await db.from("operator_settings").insert({ key: REQUISITES_KEY, value: v });
+  if (error) throw new Error(`Не удалось сохранить реквизиты: ${error.message}`);
+}
+
+export type Payment = {
+  id: string;
+  period_start: string;
+  period_end: string;
+  amount: number;
+  currency: string;
+  paid_at: string;
+  note: string | null;
+};
+
+export async function listPayments(botId: string): Promise<Payment[]> {
+  const { data, error } = await serviceDb()
+    .from("subscription_payments")
+    .select("id, period_start, period_end, amount, currency, paid_at, note")
+    .eq("bot_id", botId)
+    .order("period_end", { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((p) => ({ ...p, amount: Number(p.amount) }));
+}
+
+export type NewPayment = {
+  period_start: string;
+  period_end: string;
+  amount: number;
+  currency: string;
+  note: string | null;
+};
+
+export async function subscriptionExpiresAt(botId: string): Promise<string | null> {
+  const { data } = await serviceDb()
+    .from("bots")
+    .select("subscription_expires_at")
+    .eq("id", botId)
+    .maybeSingle();
+  return data?.subscription_expires_at ?? null;
+}
+
+/** Платёж; если бот был приостановлен за просрочку и новый срок в будущем — возвращаем в работу. */
+export async function addPayment(
+  botId: string,
+  p: NewPayment,
+  actor: string,
+): Promise<{ expiresAt: string | null }> {
+  const db = serviceDb();
+  const { error } = await db.from("subscription_payments").insert({ bot_id: botId, ...p });
+  if (error) throw new Error(`Не удалось записать платёж: ${error.message}`);
+  await logEvent(
+    botId,
+    "payment",
+    { action: "added", period_end: p.period_end, amount: p.amount, currency: p.currency },
+    actor,
+  );
+  const { data: bot } = await db
+    .from("bots")
+    .select("status, subscription_expires_at")
+    .eq("id", botId)
+    .maybeSingle();
+  const expiresAt = bot?.subscription_expires_at ?? null;
+  if (bot?.status === "suspended" && expiresAt && new Date(expiresAt).getTime() > Date.now()) {
+    await db.from("bots").update({ status: "active" }).eq("id", botId);
+    const { invalidateTenantDirectory } = await import("@/core/tenant/resolve.server");
+    invalidateTenantDirectory();
+    await logEvent(botId, "resume", { reason: "payment_covers_arrears" }, actor);
+  }
+  return { expiresAt };
+}
+
+export async function deletePayment(
+  botId: string,
+  paymentId: string,
+  actor: string,
+): Promise<void> {
+  const { error } = await serviceDb()
+    .from("subscription_payments")
+    .delete()
+    .eq("id", paymentId)
+    .eq("bot_id", botId);
+  if (error) throw new Error(error.message);
+  await logEvent(botId, "payment", { action: "deleted", payment_id: paymentId }, actor);
+}
+
+export type InvoiceStatus = "sent" | "proof_uploaded" | "paid" | "rejected" | "cancelled";
+
+export type Invoice = {
+  id: string;
+  bot_id: string;
+  amount: number;
+  currency: string;
+  note: string | null;
+  requisites_snapshot: string;
+  status: InvoiceStatus;
+  has_proof: boolean;
+  proof_uploaded_at: string | null;
+  created_at: string;
+  created_by: string | null;
+  confirmed_at: string | null;
+  reject_reason: string | null;
+};
+
+const SELECT =
+  "id, bot_id, amount, currency, note, requisites_snapshot, status, proof_path, proof_uploaded_at, created_at, created_by, confirmed_at, reject_reason";
+
+type Row = Omit<Invoice, "has_proof" | "status"> & { status: string; proof_path: string | null };
+
+function toInvoice(r: Row): Invoice {
+  const { proof_path, ...rest } = r;
+  return {
+    ...rest,
+    amount: Number(r.amount),
+    status: r.status as InvoiceStatus,
+    has_proof: Boolean(proof_path),
+  };
+}
+
+export async function listInvoices(botId?: string): Promise<Invoice[]> {
+  let q = serviceDb()
+    .from("subscription_invoices")
+    .select(SELECT)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (botId) q = q.eq("bot_id", botId);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r) => toInvoice(r as Row));
+}
+
+async function invoiceOrThrow(id: string): Promise<Invoice & { proof_path: string | null }> {
+  const { data, error } = await serviceDb()
+    .from("subscription_invoices")
+    .select(SELECT)
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) throw new Error(`Счёт не найден${error ? `: ${error.message}` : ""}`);
+  return { ...toInvoice(data as Row), proof_path: (data as Row).proof_path };
+}
+
+/**
+ * Счёт владельцу: текст с суммой и реквизитами уходит через его же бота.
+ * Недоставленное сообщение не откатывает счёт — он виден в панели, а сумму
+ * можно передать любым другим каналом.
+ */
+export async function createInvoice(
+  botId: string,
+  p: { amount: number; currency: string; note: string | null },
+  actor: string,
+  opts: { deliver?: boolean } = {},
+): Promise<{ invoice: Invoice; delivered: boolean; deliveryError: string | null }> {
+  const requisites = await getPayoutRequisites();
+  if (!requisites.trim())
+    throw new Error("Реквизиты для выплат не заданы — заполните их в настройках платформы.");
+  const { data, error } = await serviceDb()
+    .from("subscription_invoices")
+    .insert({
+      bot_id: botId,
+      amount: p.amount,
+      currency: p.currency,
+      note: p.note,
+      requisites_snapshot: requisites,
+      created_by: actor,
+    })
+    .select(SELECT)
+    .single();
+  if (error || !data) throw new Error(`Не удалось создать счёт: ${error?.message ?? "нет данных"}`);
+  const invoice = toInvoice(data as Row);
+  await logEvent(
+    botId,
+    "payment",
+    { action: "invoice_created", invoice_id: invoice.id, amount: p.amount, currency: p.currency },
+    actor,
+  );
+  if (opts.deliver === false) return { invoice, delivered: false, deliveryError: null };
+  const text =
+    `Счёт на оплату подписки\n\nСумма: ${p.amount} ${p.currency}${p.note ? `\nЗа что: ${p.note}` : ""}` +
+    `\n\nРеквизиты для оплаты:\n${requisites}\n\nПосле оплаты пришлите, пожалуйста, фото или файл с чеком следующим сообщением в этот чат.`;
+  try {
+    const r = await notifyOwner(botId, text);
+    return {
+      invoice,
+      delivered: r.delivered.length > 0,
+      deliveryError: r.delivered.length
+        ? null
+        : (r.failed[0]?.reason ?? "владелец не получил сообщение"),
+    };
+  } catch (e) {
+    return { invoice, delivered: false, deliveryError: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export async function invoiceProofUrl(id: string): Promise<string | null> {
+  const inv = await invoiceOrThrow(id);
+  if (!inv.proof_path) return null;
+  const { data, error } = await serviceDb()
+    .storage.from("payment-proofs")
+    .createSignedUrl(inv.proof_path, 300);
+  if (error || !data) return null;
+  return data.signedUrl;
+}
+
+/**
+ * Подтверждение = платёж за период. Захват счёта условным UPDATE: двойной
+ * клик или два оператора не дадут двух платежей; если платёж не записался
+ * — статус откатывается, счёт остаётся подтверждаемым.
+ */
+export async function confirmInvoice(
+  id: string,
+  period: { start: string; end: string },
+  actor: string,
+): Promise<{ expiresAt: string | null }> {
+  const inv = await invoiceOrThrow(id);
+  if (inv.status !== "sent" && inv.status !== "proof_uploaded")
+    throw new Error(`Счёт уже в статусе «${inv.status}» — подтверждать нечего`);
+  if (period.end < period.start) throw new Error("Конец периода раньше начала");
+  const db = serviceDb();
+  const { data: claimed, error } = await db
+    .from("subscription_invoices")
+    .update({ status: "paid", confirmed_at: new Date().toISOString() })
+    .eq("id", id)
+    .in("status", ["sent", "proof_uploaded"])
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error(`Не удалось подтвердить счёт: ${error.message}`);
+  if (!claimed) throw new Error("Счёт уже обработан — обновите список");
+  try {
+    const r = await addPayment(
+      inv.bot_id,
+      {
+        period_start: period.start,
+        period_end: period.end,
+        amount: inv.amount,
+        currency: inv.currency,
+        note: inv.note ? `Счёт: ${inv.note}` : "По счёту из панели оператора",
+      },
+      actor,
+    );
+    await logEvent(
+      inv.bot_id,
+      "payment",
+      { action: "invoice_confirmed", invoice_id: id, amount: inv.amount, currency: inv.currency },
+      actor,
+    );
+    return r;
+  } catch (e) {
+    await db
+      .from("subscription_invoices")
+      .update({ status: inv.status, confirmed_at: null })
+      .eq("id", id);
+    throw e;
+  }
+}
+
+export async function rejectInvoice(id: string, reason: string, actor: string): Promise<void> {
+  const inv = await invoiceOrThrow(id);
+  if (inv.status === "paid") throw new Error("Счёт уже оплачен — отклонять нечего");
+  const { error } = await serviceDb()
+    .from("subscription_invoices")
+    .update({ status: "rejected", reject_reason: reason.trim() || null })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  await logEvent(
+    inv.bot_id,
+    "payment",
+    { action: "invoice_rejected", invoice_id: id, reason: reason.trim() || null },
+    actor,
+  );
+}
+
+/** Отменить можно только счёт, по которому ещё не прислали чек — иначе это «отклонить». */
+export async function cancelInvoice(id: string, actor: string): Promise<void> {
+  const inv = await invoiceOrThrow(id);
+  if (inv.status !== "sent")
+    throw new Error("Отменить можно только счёт, по которому ещё не прислали чек");
+  const { error } = await serviceDb()
+    .from("subscription_invoices")
+    .update({ status: "cancelled" })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  await logEvent(inv.bot_id, "payment", { action: "invoice_cancelled", invoice_id: id }, actor);
+}
