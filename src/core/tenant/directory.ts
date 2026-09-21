@@ -66,7 +66,23 @@ export function settingsFromJson(json: unknown): TenantSettings {
     hosts: strList(s.hosts)?.map((h) => h.toLowerCase()),
     default_locale: isLocale(s.default_locale) ? s.default_locale : undefined,
     telegram: { username: str(tg.username), webhook_ok: tg.webhook_ok === true },
-    zernio: { profile_id: str(zr.profile_id), account_ids: strList(zr.account_ids) },
+    zernio: {
+      profile_id: str(zr.profile_id),
+      account_ids: strList(zr.account_ids),
+      accounts: Array.isArray(zr.accounts)
+        ? zr.accounts
+            .filter((a): a is Record<string, unknown> => Boolean(a) && typeof a === "object")
+            .map((a) => ({
+              id: String(a.id ?? ""),
+              platform: String(a.platform ?? ""),
+              username: str(a.username),
+              name: str(a.name),
+              expired: a.expired === true,
+            }))
+            .filter((a) => a.id)
+        : undefined,
+      synced_at: str(zr.synced_at),
+    },
     admin: { username: str(adm.username), password_hash: str(adm.password_hash) },
     served_by: served,
   };

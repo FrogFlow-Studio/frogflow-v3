@@ -3,6 +3,12 @@ import { normalizeZernioBaseUrl } from "./base-url";
 import { idempotencyKeyFor } from "./event-context.server";
 import { normalizeInboxMessage, type ZernioInboxMessage } from "./inbox-types";
 import type { ZernioPlatform } from "./platform";
+import {
+  ZERNIO_WEBHOOK_EVENTS,
+  ZERNIO_WEBHOOK_NAME,
+  findStoreWebhook,
+  type ZernioWebhookRecord,
+} from "./webhook-fit";
 
 /**
  * Клиент API Zernio. Ключ один на платформу (env), аккаунты клиентов — в
@@ -148,6 +154,91 @@ export async function listConversationMessages(
   return (result.messages ?? [])
     .map(normalizeInboxMessage)
     .sort((a, b) => Date.parse(a.createdAt ?? "") - Date.parse(b.createdAt ?? ""));
+}
+
+/* ── профили, аккаунты, вебхук ───────────────────────────────────────── */
+
+export type ZernioProfile = { _id: string; name: string; description?: string };
+
+export type ZernioAccount = {
+  _id: string;
+  platform: string;
+  name?: string;
+  username?: string;
+  /** Ссылка на профиль — строкой или развёрнутым объектом, зависит от эндпоинта. */
+  profileId?: string | { _id: string };
+  isExpired?: boolean;
+};
+
+export function accountProfileId(a: ZernioAccount): string | null {
+  return typeof a.profileId === "string" ? a.profileId : (a.profileId?._id ?? null);
+}
+
+export async function listProfiles(): Promise<ZernioProfile[]> {
+  const r = await request<{ profiles?: ZernioProfile[] }>("/profiles");
+  return r.profiles ?? [];
+}
+
+/** Профиль Zernio — «папка» аккаунтов одного клиента; по нему разводятся вебхуки и подключения. */
+export async function createProfile(name: string, description?: string): Promise<ZernioProfile> {
+  const r = await request<{ profile: ZernioProfile }>("/profiles", {
+    method: "POST",
+    body: { name, description: description ?? "FrogFlow" },
+  });
+  return r.profile;
+}
+
+/** Ссылка OAuth-подключения аккаунта в профиль; после авторизации Zernio вернёт на redirectUrl. */
+export async function connectUrl(
+  platform: ZernioPlatform,
+  profileId: string,
+  redirectUrl?: string,
+): Promise<string> {
+  const query: Record<string, string> = { profileId };
+  if (redirectUrl) query.redirect_url = redirectUrl;
+  const r = await request<{ authUrl: string }>(`/connect/${platform}`, { query });
+  return r.authUrl;
+}
+
+export async function listAccounts(profileId?: string): Promise<ZernioAccount[]> {
+  const r = await request<{ accounts?: ZernioAccount[] }>("/accounts", {
+    query: profileId ? { profileId } : undefined,
+  });
+  return r.accounts ?? [];
+}
+
+export async function readWebhookSettings(): Promise<ZernioWebhookRecord[]> {
+  const r = await request<{ webhooks?: ZernioWebhookRecord[] }>("/webhooks/settings");
+  return r.webhooks ?? [];
+}
+
+/**
+ * Записать store-webhook на этот деплой: существующую запись (в том числе
+ * под старым именем) обновляем, а не заводим вторую — иначе каждое событие
+ * приходило бы дважды.
+ */
+export async function upsertWebhook(url: string): Promise<{ ok: boolean; error?: string }> {
+  const secret = env().ZERNIO_WEBHOOK_SECRET?.trim();
+  if (!secret) return { ok: false, error: "ZERNIO_WEBHOOK_SECRET не задан" };
+  try {
+    const existing = findStoreWebhook(await readWebhookSettings(), url);
+    const r = await request<{ success?: boolean; error?: string }>("/webhooks/settings", {
+      method: existing ? "PUT" : "POST",
+      body: {
+        ...(existing ? { _id: existing._id || existing.id } : {}),
+        name: ZERNIO_WEBHOOK_NAME,
+        url,
+        secret,
+        events: [...ZERNIO_WEBHOOK_EVENTS],
+        isActive: true,
+      },
+    });
+    if (r.success === false)
+      return { ok: false, error: r.error || "Zernio не принял настройки вебхука" };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 /** Транспорт канала — подменяется в тестах, чтобы не ходить в Zernio. */

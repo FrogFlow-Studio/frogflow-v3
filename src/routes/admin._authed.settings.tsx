@@ -1,7 +1,10 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   connectTelegramAdminFn,
+  syncZernioAccountsFn,
+  zernioConnectLinkFn,
+  zernioStateFn,
   deleteDeliveryZoneFn,
   deletePaymentMethodFn,
   saveDeliveryZoneFn,
@@ -16,12 +19,13 @@ import { imagePath } from "@/core/catalog/image-url";
 
 export const Route = createFileRoute("/admin/_authed/settings")({
   loader: async () => {
-    const [settings, telegram, zones] = await Promise.all([
+    const [settings, telegram, zones, zernio] = await Promise.all([
       settingsFn(),
       telegramStateFn(),
       deliveryZonesFn(),
+      zernioStateFn(),
     ]);
-    return { ...settings, telegram, zones };
+    return { ...settings, telegram, zones, zernio };
   },
   component: SettingsPage,
 });
@@ -29,7 +33,7 @@ export const Route = createFileRoute("/admin/_authed/settings")({
 type Method = Awaited<ReturnType<typeof settingsFn>>["methods"][number];
 
 function SettingsPage() {
-  const { settings, methods, ownerTelegramId, telegram, zones, smartSearchKey, visionKey } =
+  const { settings, methods, ownerTelegramId, telegram, zones, zernio, smartSearchKey, visionKey } =
     Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const router = useRouter();
@@ -54,6 +58,13 @@ function SettingsPage() {
       <PageTitle title="Оплата и настройки" />
       <div className="grid gap-4 lg:grid-cols-2">
         <TelegramCard telegram={telegram} />
+        {(shop.modules.instagram || shop.modules.whatsapp) && (
+          <ChannelsCard
+            zernio={zernio}
+            instagram={shop.modules.instagram}
+            whatsapp={shop.modules.whatsapp}
+          />
+        )}
         <Card title="Магазин">
           <form
             className="space-y-3"
@@ -413,6 +424,131 @@ function TelegramCard({ telegram }: { telegram: TelegramState }) {
             : "Вставьте токен ещё раз, чтобы переустановить."}
         </p>
       )}
+    </Card>
+  );
+}
+
+type ZernioState = Awaited<ReturnType<typeof zernioStateFn>>;
+
+const CHANNEL_LABEL: Record<string, string> = { instagram: "Instagram", whatsapp: "WhatsApp" };
+
+function ChannelsCard({
+  zernio,
+  instagram,
+  whatsapp,
+}: {
+  zernio: ZernioState;
+  instagram: boolean;
+  whatsapp: boolean;
+}) {
+  const router = useRouter();
+  const [note, setNote] = useState<string | null>(null);
+  const connect = useAction(async (platform: "instagram" | "whatsapp") => {
+    const r = await zernioConnectLinkFn({ data: { platform } });
+    window.location.assign(r.url);
+  });
+  const sync = useAction(async () => {
+    const r = await syncZernioAccountsFn();
+    setNote(
+      r.accounts.length
+        ? `Подключено аккаунтов: ${r.accounts.length}.`
+        : "Подключённых аккаунтов пока нет — завершите авторизацию и нажмите «Обновить».",
+    );
+    await router.invalidate();
+  });
+  // Возврат из авторизации Zernio: подтянуть аккаунты и убрать метку из адреса.
+  useEffect(() => {
+    if (!window.location.search.includes("zernio=connected")) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    void sync.run().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const live = zernio.accounts.filter((a) => !a.expired).length;
+  return (
+    <Card
+      title="Instagram и WhatsApp"
+      actions={
+        live > 0 ? (
+          <Badge tone="ok">
+            {live} {live === 1 ? "аккаунт" : "аккаунта"} подключено
+          </Badge>
+        ) : (
+          <Badge>не подключено</Badge>
+        )
+      }
+      className="lg:col-span-2"
+    >
+      <p className="mb-3 text-sm text-muted">
+        Бот отвечает в Direct и WhatsApp, ведёт каталог и заказы и передаёт сложные вопросы вам в
+        «Чат». Нажмите «Подключить», войдите в аккаунт и дайте разрешения — дальше платформа сделает
+        всё сама.
+      </p>
+      {!zernio.configured && (
+        <p className="mb-3 rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">
+          На платформе не настроено подключение мессенджеров — оператор добавит его, и кнопки
+          заработают.
+        </p>
+      )}
+      {(zernio.accounts.length > 0 || zernio.manualIds.length > 0) && (
+        <ul className="mb-3 divide-y divide-line rounded-md border border-line text-sm">
+          {zernio.accounts.map((a) => (
+            <li key={a.id} className="flex items-center justify-between gap-2 px-3 py-2">
+              <span>
+                <span className="font-medium">{CHANNEL_LABEL[a.platform] ?? a.platform}</span>{" "}
+                <span className="text-muted">
+                  {a.username ? `@${a.username}` : (a.name ?? a.id)}
+                </span>
+              </span>
+              <Badge tone={a.expired ? "warn" : "ok"}>
+                {a.expired ? "нужно переподключить" : "работает"}
+              </Badge>
+            </li>
+          ))}
+          {zernio.manualIds.map((id) => (
+            <li key={id} className="flex items-center justify-between gap-2 px-3 py-2">
+              <span className="text-muted">Аккаунт {id}</span>
+              <Badge>подключён оператором</Badge>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {instagram && (
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={connect.busy || !zernio.configured}
+            onClick={() => void connect.run("instagram").catch(() => {})}
+          >
+            Подключить Instagram
+          </button>
+        )}
+        {whatsapp && (
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={connect.busy || !zernio.configured}
+            onClick={() => void connect.run("whatsapp").catch(() => {})}
+          >
+            Подключить WhatsApp
+          </button>
+        )}
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={sync.busy || !zernio.configured}
+          onClick={() => void sync.run().catch(() => {})}
+        >
+          Обновить список
+        </button>
+      </div>
+      {note && <p className="mt-2 text-sm text-muted">{note}</p>}
+      {zernio.syncedAt && (
+        <p className="mt-2 text-xs text-muted">
+          Обновлено {new Date(zernio.syncedAt).toLocaleString("ru")}
+        </p>
+      )}
+      <ErrorBox error={connect.error ?? sync.error} />
     </Card>
   );
 }

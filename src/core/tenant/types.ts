@@ -27,6 +27,9 @@ export type TenantSettings = {
     profile_id?: string;
     /** Идентификаторы аккаунтов Zernio → этот арендатор. */
     account_ids?: string[];
+    /** Снимок подключённых аккаунтов для панелей (обновляется синхронизацией). */
+    accounts?: ZernioAccountSnapshot[];
+    synced_at?: string;
   };
   /** Вход в админку клиента. */
   admin?: {
@@ -36,6 +39,14 @@ export type TenantSettings = {
   };
   /** Переключатель миграции: пока v1 обслуживает клиента, v2 отвечает 409 на его вебхуки. */
   served_by?: "v1" | "v2";
+};
+
+export type ZernioAccountSnapshot = {
+  id: string;
+  platform: string;
+  username?: string;
+  name?: string;
+  expired?: boolean;
 };
 
 export type Tenant = {

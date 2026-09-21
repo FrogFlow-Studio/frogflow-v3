@@ -26,6 +26,9 @@ export const Route = createFileRoute("/api/cron/$job")({
                 results[t.id] = { ok: false, error: e instanceof Error ? e.message : String(e) };
               }
             }
+            // Zernio: один вебхук на платформу, а не на клиента.
+            const { ensurePlatformWebhook } = await import("@/channels/zernio/connect.server");
+            results.zernio = await ensurePlatformWebhook();
             break;
           }
           case "broadcast":

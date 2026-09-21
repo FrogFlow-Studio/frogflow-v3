@@ -469,6 +469,35 @@ export const telegramStateFn = createServerFn({ method: "GET" }).handler(async (
   };
 });
 
+/** Instagram и WhatsApp: подключённые аккаунты Zernio из снимка в настройках клиента. */
+export const zernioStateFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  const { zernioConfigured } = await import("@/channels/zernio/api.server");
+  const z = ctx.tenant.settings.zernio;
+  return {
+    configured: zernioConfigured(),
+    accounts: z?.accounts ?? [],
+    manualIds: (z?.account_ids ?? []).filter((id) => !(z?.accounts ?? []).some((a) => a.id === id)),
+    syncedAt: z?.synced_at ?? null,
+  };
+});
+
+export const zernioConnectLinkFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ platform: z.enum(["instagram", "whatsapp"]) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    if (!ctx.tenant.modules[data.platform])
+      throw new Error("Этот канал не подключён к вашему тарифу — оставьте заявку в «Модулях».");
+    const { connectLink } = await import("@/channels/zernio/connect.server");
+    return { url: await connectLink(ctx.tenant, data.platform) };
+  });
+
+export const syncZernioAccountsFn = createServerFn({ method: "POST" }).handler(async () => {
+  const ctx = await admin();
+  const { syncAccounts } = await import("@/channels/zernio/connect.server");
+  return syncAccounts(ctx.tenant);
+});
+
 /** Продавец подключает бота сам: токен → getMe → шифрование → вебхук на эту платформу. */
 export const connectTelegramAdminFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
