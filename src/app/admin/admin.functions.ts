@@ -754,7 +754,12 @@ export const analyticsFn = createServerFn({ method: "GET" })
 
 const chatModule = async () =>
   (await import("@/app/auth/guards.server")).requireAdminModule("manager_chat");
-const tgId = z.number().int().positive();
+// Покупатели из Instagram/WhatsApp живут под синтетическим отрицательным
+// telegram_id (core/customers), поэтому «положительный» здесь не годится.
+const tgId = z
+  .number()
+  .int()
+  .refine((n) => n !== 0, "telegram_id не может быть нулём");
 
 export const chatConversationsFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await chatModule();
@@ -782,8 +787,8 @@ export const chatConnectFn = createServerFn({ method: "POST" })
     else {
       await chat.disconnect(ctx, data.telegramId);
       // Вернули боту — консультант снова отвечает этому покупателю.
-      const { getCustomer, userKey } = await import("@/core/customers/customers");
-      const c = await getCustomer(ctx, userKey("telegram", data.telegramId));
+      const { getCustomerByTelegramId } = await import("@/core/customers/customers");
+      const c = await getCustomerByTelegramId(ctx, data.telegramId);
       if (c) await (await import("@/core/consultant/engine.server")).resumeConsultant(ctx, c);
     }
     return { ok: true };

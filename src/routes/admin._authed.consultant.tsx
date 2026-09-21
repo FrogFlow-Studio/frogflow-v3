@@ -51,7 +51,7 @@ function ConsultantPage() {
     <>
       <PageTitle
         title="ИИ-консультант"
-        subtitle="Отвечает покупателям на свободные вопросы в боте по вашему профилю, базе знаний и каталогу. Сложное передаёт вам в «Чат» и присылает заявку в Telegram."
+        subtitle="Отвечает покупателям на свободные вопросы в Telegram, Instagram Direct и WhatsApp по вашему профилю, базе знаний и каталогу. Сложное передаёт вам в «Чат» и присылает заявку в Telegram."
       />
       {!data.configured && (
         <div className="mb-4 rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">

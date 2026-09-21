@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database, Json } from "@/core/db-types";
 import type { Locale } from "@/core/i18n/locale";
@@ -18,6 +19,18 @@ export const USER_KEY_PREFIX: Record<Platform, string> = {
 
 export function userKey(platform: Platform, externalId: string | number): string {
   return `${USER_KEY_PREFIX[platform]}${externalId}`;
+}
+
+/**
+ * Синтетический `telegram_id` покупателя из Instagram/WhatsApp — та же
+ * формула, что в v1 (`zernioCustomerId`): отрицательное число из первых 13
+ * шестнадцатеричных знаков sha256 от user_key. Корзина, заказы, чат с
+ * менеджером и блокировки держатся на telegram_id, а (bot_id, telegram_id)
+ * уникален — нулём, как писал ранний v2, второй покупатель Direct уже не
+ * создался бы. Префикс канала в ключе разводит один номер в двух каналах.
+ */
+export function syntheticTelegramId(key: string): number {
+  return -parseInt(createHash("sha256").update(key).digest("hex").slice(0, 13), 16);
 }
 
 /**
@@ -82,6 +95,9 @@ export type Customer = {
   email: string | null;
   loyaltyPoints: number;
   state: DialogState;
+  /** Диалог и аккаунт Zernio — куда отвечать покупателю из Instagram/WhatsApp. */
+  zernioConversationId: string | null;
+  zernioAccountId: string | null;
 };
 
 export function stateFromJson(json: Json | null | undefined): DialogState {
@@ -101,6 +117,8 @@ function fromRow(r: Row): Customer {
     email: r.email,
     loyaltyPoints: r.loyalty_points ?? 0,
     state: stateFromJson(r.state),
+    zernioConversationId: r.zernio_conversation_id ?? null,
+    zernioAccountId: r.zernio_account_id ?? null,
   };
 }
 
@@ -109,7 +127,21 @@ export type Profile = {
   firstName?: string | null;
   lastName?: string | null;
   languageCode?: string | null;
+  /** Instagram/WhatsApp: диалог и аккаунт Zernio, телефон WhatsApp, профиль подписчика. */
+  zernioConversationId?: string | null;
+  zernioAccountId?: string | null;
+  contactPhone?: string | null;
+  metadata?: Record<string, Json>;
 };
+
+function mergeMetadata(
+  prev: Json | null,
+  next: Record<string, Json> | undefined,
+): Json | undefined {
+  if (!next || Object.keys(next).length === 0) return undefined;
+  const base = prev && typeof prev === "object" && !Array.isArray(prev) ? prev : {};
+  return { ...base, ...next };
+}
 
 /** Найти или создать покупателя; профиль обновляется, состояние — нет. */
 export async function upsertCustomer(
@@ -125,11 +157,16 @@ export async function upsertCustomer(
     .eq("user_key", key)
     .maybeSingle();
   if (existing) {
+    const metadata = mergeMetadata(existing.metadata, profile.metadata);
     const patch = {
       username: profile.username ?? existing.username,
       first_name: profile.firstName ?? existing.first_name,
       last_name: profile.lastName ?? existing.last_name,
       language_code: profile.languageCode ?? existing.language_code,
+      zernio_conversation_id: profile.zernioConversationId ?? existing.zernio_conversation_id,
+      zernio_account_id: profile.zernioAccountId ?? existing.zernio_account_id,
+      contact_phone: profile.contactPhone ?? existing.contact_phone,
+      ...(metadata !== undefined ? { metadata } : {}),
     };
     const { data: updated } = await ctx.db
       .from("bot_users")
@@ -139,11 +176,7 @@ export async function upsertCustomer(
       .single();
     return fromRow(updated ?? existing);
   }
-  // telegram_id NOT NULL в types.ts; для Instagram/WhatsApp v1 писал 0 —
-  // ровно так и продолжаем, чтобы уникальный (bot_id, telegram_id) не мешал
-  // (0 у одного бота бывает много раз только если индекс частичный — он
-  // такой, см. docs/db-schema.md).
-  const telegramId = platform === "telegram" ? Number(externalId) : 0;
+  const telegramId = platform === "telegram" ? Number(externalId) : syntheticTelegramId(key);
   const { data: inserted, error } = await ctx.db
     .from("bot_users")
     .insert({
@@ -155,6 +188,10 @@ export async function upsertCustomer(
       first_name: profile.firstName ?? null,
       last_name: profile.lastName ?? null,
       language_code: profile.languageCode ?? null,
+      zernio_conversation_id: profile.zernioConversationId ?? null,
+      zernio_account_id: profile.zernioAccountId ?? null,
+      contact_phone: profile.contactPhone ?? null,
+      metadata: profile.metadata ?? {},
       state: {},
     })
     .select("*")
@@ -166,6 +203,19 @@ export async function upsertCustomer(
 
 export async function getCustomer(ctx: TenantContext, key: string): Promise<Customer | null> {
   const { data } = await ctx.db.from("bot_users").select("*").eq("user_key", key).maybeSingle();
+  return data ? fromRow(data) : null;
+}
+
+/** Покупатель по telegram_id — в том числе синтетическому (чат с менеджером хранит только его). */
+export async function getCustomerByTelegramId(
+  ctx: TenantContext,
+  telegramId: number,
+): Promise<Customer | null> {
+  const { data } = await ctx.db
+    .from("bot_users")
+    .select("*")
+    .eq("telegram_id", telegramId)
+    .maybeSingle();
   return data ? fromRow(data) : null;
 }
 

@@ -16,11 +16,10 @@ export function verifyZernioSignature(
 /**
  * Один вебхук Zernio на всю платформу. Арендатор — по accountId события
  * (bots.settings.zernio.account_ids). Дедупликация — вставкой event_id в
- * zernio_logs с уникальным индексом: доставка у Zernio at-least-once.
- *
- * Обработка сообщений Instagram/WhatsApp (магазин в Direct, консультант)
- * переносится в фазе 4 (docs/ROADMAP.md); до неё события принимаются,
- * пишутся в журнал как ignored и не теряются.
+ * zernio_logs с уникальным индексом: доставка у Zernio at-least-once, и
+ * повтор события (в том числе по таймауту ответа) не должен обернуться
+ * вторым ответом покупателю. Строка журнала заводится до обработки и
+ * получает итог после: processed / ignored / failed с причиной.
  */
 export const Route = createFileRoute("/api/zernio/webhook")({
   server: {
@@ -34,45 +33,55 @@ export const Route = createFileRoute("/api/zernio/webhook")({
         if (!verifyZernioSignature(raw, sig, secret))
           return new Response("invalid signature", { status: 401 });
 
-        let payload: {
-          event?: string;
-          id?: string;
-          account?: { accountId?: string; id?: string; _id?: string };
-          message?: { accountId?: string };
-        };
+        let payload: import("@/channels/zernio/message").ZernioWebhookMessagePayload;
         try {
           payload = JSON.parse(raw);
         } catch {
           return new Response("bad json", { status: 400 });
         }
         const accountId =
-          payload.account?.accountId ||
-          payload.account?.id ||
-          payload.account?._id ||
-          payload.message?.accountId ||
-          null;
+          payload.account?.accountId || payload.account?.id || payload.account?._id || null;
         const eventId = payload.id ?? null;
         if (!accountId || !eventId) return new Response("accepted", { status: 202 });
 
-        const { resolveTenant } = await import("@/core/tenant/resolve.server");
+        const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
         const tenant = await resolveTenant({ by: "zernio_account", value: accountId });
         if (!tenant || tenant.settings.served_by !== "v2")
           return new Response("accepted", { status: 202 });
+        const ctx = tenantContext(tenant);
 
-        const { tenantDb } = await import("@/core/db/client.server");
-        const { error } = await tenantDb(tenant.id)
-          .from("zernio_logs")
-          .insert({
-            bot_id: tenant.id,
-            event_id: eventId,
-            event_type: payload.event ?? "unknown",
-            status: "ignored",
-            payload: payload as never,
-            error_message: "v2: обработчик канала ещё не перенесён",
-          });
-        // Конфликт по event_id — повторная доставка, уже принято.
-        if (error && !/duplicate|unique/i.test(error.message))
+        const isMessage = payload.event === "message.received";
+        const { error } = await ctx.db.from("zernio_logs").insert({
+          bot_id: tenant.id,
+          event_id: eventId,
+          event_type: payload.event ?? "unknown",
+          status: isMessage ? "received" : "ignored",
+          payload: payload as never,
+          error_message: isMessage ? null : "v2: событие не обрабатывается",
+        });
+        if (error) {
+          // Конфликт по event_id — повторная доставка, уже принято.
+          if (/duplicate|unique/i.test(error.message)) return new Response("ok");
           return new Response("error", { status: 500 });
+        }
+        if (!isMessage) return new Response("ok");
+
+        const { runWithZernioEvent } = await import("@/channels/zernio/event-context.server");
+        const { handleZernioMessage } = await import("@/channels/zernio/handle-message");
+        let status = "failed";
+        let note: string | null = null;
+        try {
+          const r = await runWithZernioEvent(eventId, () => handleZernioMessage(ctx, payload));
+          status = r.status;
+          note = r.note ?? null;
+        } catch (e) {
+          note = e instanceof Error ? e.message : String(e);
+          console.error(`[zernio] ${eventId} failed: ${note}`);
+        }
+        await ctx.db
+          .from("zernio_logs")
+          .update({ status, error_message: note })
+          .eq("event_id", eventId);
         return new Response("ok");
       },
     },

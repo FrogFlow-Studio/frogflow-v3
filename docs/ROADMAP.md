@@ -57,20 +57,27 @@ delivered` в боте и админке, напоминание за сутки
 статусы `accepted → in_production → ready → delivered`, напоминание за сутки,
 `payment_mode = on_receipt`. Ниши `confectionery` и `flowers`.
 
-## Фаза 4 — Zernio: Instagram Direct и WhatsApp
+## Фаза 4 — Zernio: Instagram Direct и WhatsApp ✔ (консультант и чат)
 
-Единый вебхук уже принимает события и пишет их в `zernio_logs` как
-`ignored`. Переносятся: `direct-flow.ts` (чистый разбор, 57 проверок —
-переносится первым), `direct-purchase.server.ts` (состояние диалога, заказ по
-факту чека, выдача письмом), WhatsApp-активация, каталог списками, шаблоны
-Meta вне 24-часового окна, `Idempotency-Key` через контекст события,
-добор `pending`, `account.disconnected`. Аккаунты клиента — в
-`bots.settings.zernio.account_ids`, а не в `ZERNIO_PROFILE_ID` деплоя; ключ
-API Zernio один на платформу.
+Сделано: адаптер `src/channels/zernio` — разбор события, покупатель с
+синтетическим `telegram_id`, реплика в «Чат» и перехват менеджером из
+панели, ИИ-консультант (общий с Telegram, `src/core/consultant`) с проверкой
+«менеджер отвечает из приложения» по хвосту переписки, заявка продавцу в
+Telegram, ответ менеджера из панели через Zernio, `Idempotency-Key` из
+контекста события, журнал `zernio_logs` с итогом обработки. Аккаунты клиента
+— в `bots.settings.zernio.account_ids` (ставит оператор), ключ API Zernio
+один на платформу.
 
-Консультант (`consultant/*`, `consultant-universal/*`) — та же фаза, отдельный
-вход по нише `consultant*`: леджер `consultant_message_runs`, guard
-«менеджер в чате», курс ВТБ через relay, импорт каталога из Sheets/XLSX.
+Осталось: магазин в Direct/WhatsApp — `direct-flow.ts` (чистый разбор, 57
+проверок — переносится первым), `direct-purchase.server.ts` (состояние
+диалога, заказ по факту чека, выдача письмом), каталог списками WhatsApp,
+шаблоны Meta вне 24-часового окна и WhatsApp-рассылки, добор `pending`,
+`account.disconnected`, подключение аккаунта из админки (connect-URL Zernio),
+автоматизация комментариев Instagram.
+
+Консультант ниши `consultant*` из v1 (леджер `consultant_message_runs`, курс
+ВТБ через relay, импорт каталога из Sheets/XLSX) — заменён общим
+консультантом v2; специфика BOVI переносится по запросу клиента.
 
 ## Фаза 5 — веб: панель оператора и админка ✔ (первый выпуск), Mini App, витрина
 

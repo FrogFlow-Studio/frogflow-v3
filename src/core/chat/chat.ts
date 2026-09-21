@@ -119,6 +119,9 @@ export type Conversation = {
   username: string | null;
   first_name: string | null;
   last_name: string | null;
+  /** telegram | instagram | whatsapp — куда уходит ответ менеджера. */
+  platform: string;
+  user_key: string | null;
 };
 
 export async function listConversations(ctx: TenantContext, limit = 200): Promise<Conversation[]> {
@@ -133,7 +136,7 @@ export async function listConversations(ctx: TenantContext, limit = 200): Promis
   if (!states?.length) return [];
   const { data: users } = await ctx.db
     .from("bot_users")
-    .select("telegram_id, username, first_name, last_name")
+    .select("telegram_id, username, first_name, last_name, platform, user_key")
     .in(
       "telegram_id",
       states.map((s) => s.telegram_id),
@@ -147,6 +150,8 @@ export async function listConversations(ctx: TenantContext, limit = 200): Promis
       username: u?.username ?? null,
       first_name: u?.first_name ?? null,
       last_name: u?.last_name ?? null,
+      platform: u?.platform ?? "telegram",
+      user_key: u?.user_key ?? null,
     };
   });
 }

@@ -18,7 +18,13 @@ const POLL_MS = 5000;
 
 function label(c: Conversation): string {
   const name = [c.first_name, c.last_name].filter(Boolean).join(" ");
-  return name || (c.username ? `@${c.username}` : `id ${c.telegram_id}`);
+  return name || (c.username ? `@${c.username}` : c.user_key || `id ${c.telegram_id}`);
+}
+
+const CHANNEL: Record<string, string> = { instagram: "Instagram", whatsapp: "WhatsApp" };
+
+function channelOf(c: Conversation): string | null {
+  return CHANNEL[c.platform] ?? null;
 }
 
 function stripHtml(s: string): string {
@@ -104,6 +110,7 @@ function ChatPage() {
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-sm font-medium">{label(c)}</span>
                   <span className="flex shrink-0 items-center gap-1">
+                    {channelOf(c) && <Badge>{channelOf(c)}</Badge>}
                     {c.active && <Badge tone="ok">вы в чате</Badge>}
                     {c.unread_count > 0 && <Badge tone="accent">{c.unread_count}</Badge>}
                   </span>
@@ -127,7 +134,10 @@ function ChatPage() {
               <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
                 <span className="text-sm font-medium">
                   {label(selected)}{" "}
-                  <span className="text-xs text-muted">id {selected.telegram_id}</span>
+                  <span className="text-xs text-muted">
+                    {channelOf(selected) ??
+                      (selected.username ? `@${selected.username}` : `id ${selected.telegram_id}`)}
+                  </span>
                 </span>
                 <button
                   type="button"

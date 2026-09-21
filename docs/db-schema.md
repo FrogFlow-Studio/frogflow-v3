@@ -252,7 +252,7 @@ CHECK `product_material_files_language_check`: **`language IN ('ru','kk','en','u
 |---|---|---|---|
 | `bot_id` | UUID | null* | *M02 объявляет `SET NOT NULL`; в `types.ts` nullable |
 | `user_key` | TEXT | NN | `tg_<telegram_id>` / `ig_<provider_id>` — часть PK |
-| `telegram_id` | BIGINT | NN | NOT NULL снят PATCH-ZERNIO, в `types.ts` не-null |
+| `telegram_id` | BIGINT | NN | NOT NULL снят PATCH-ZERNIO, в `types.ts` не-null. Для `ig_…`/`wa_…` — синтетический отрицательный: `-parseInt(sha256(user_key).hex.slice(0,13),16)` (v1 `zernioCustomerId`, v2 `syntheticTelegramId`) — на нём держатся корзина, заказы, чат с менеджером |
 | `platform` | TEXT | NN | `'telegram'` |
 | `username` / `first_name` / `last_name` / `language_code` | TEXT | null | |
 | `contact_phone` | TEXT | null | |

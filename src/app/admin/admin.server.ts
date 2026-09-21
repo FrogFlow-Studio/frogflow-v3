@@ -132,13 +132,31 @@ export async function runOrderAction(
 }
 
 /** Ответ менеджера из панели: тем же sendMessage, что и у бота, плюс запись в лог чата. */
+/** Ответ менеджера из панели — в канал покупателя: Telegram или Instagram/WhatsApp через Zernio. */
 export async function replyAsManager(
   ctx: TenantContext,
   telegramId: number,
   text: string,
 ): Promise<void> {
-  const r = await api(ctx).call("sendMessage", { chat_id: telegramId, text });
-  if (!r.ok) throw new Error(r.description || "Не удалось отправить сообщение в Telegram");
+  const { getCustomerByTelegramId } = await import("@/core/customers/customers");
+  const customer = await getCustomerByTelegramId(ctx, telegramId);
+  if (customer && customer.platform !== "telegram") {
+    if (!customer.zernioConversationId || !customer.zernioAccountId)
+      throw new Error("У покупателя нет диалога в Zernio — ответить некуда");
+    const { sendInboxMessage } = await import("@/channels/zernio/api.server");
+    const r = await sendInboxMessage(
+      customer.zernioConversationId,
+      customer.zernioAccountId,
+      text,
+      {
+        platform: customer.platform,
+      },
+    );
+    if (!r.ok) throw new Error(r.error || "Не удалось отправить сообщение");
+  } else {
+    const r = await api(ctx).call("sendMessage", { chat_id: telegramId, text });
+    if (!r.ok) throw new Error(r.description || "Не удалось отправить сообщение в Telegram");
+  }
   const { recordMessage } = await import("@/core/chat/chat");
   await recordMessage(ctx, { telegramId, direction: "out", sender: "manager", text });
 }
