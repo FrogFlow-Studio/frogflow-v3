@@ -21,30 +21,34 @@ v2 работают одновременно, поломку у живого к�
 
 Осталось внутри фазы, по описи:
 
-| модуль / поведение                 | v1                                  | v2                       |
-| ---------------------------------- | ----------------------------------- | ------------------------ |
-| `coupons` промокоды                | `promo-codes.ts`, CAS `used_count`  | нет                      |
-| `loyalty` баллы                    | `loyalty.server.ts`                 | нет                      |
-| `gift_certificates`                | `gift-certificates.ts`              | нет                      |
-| `multi_language` «все языки»       | `deliveryPriceMultiplier`, `lang_*` | нет                      |
-| `stock` списание на оформлении     | `decrementStock`/`restoreStock`     | нет¹                     |
-| `review_request` отзывы            | `reviews.ts`, `product_reviews`     | нет                      |
-| `referral`                         | `referrals.server.ts`               | нет                      |
-| `cart_reminder` крон               | `cart-reminder.server.ts`           | нет                      |
-| `smart_search` LLM-поиск           | `smart-search.server.ts`            | нет                      |
-| `manager_chat`                     | `manager-chat.server.ts`, RPC touch | нет                      |
-| `blocked` — чтение                 | `replyIfBlocked`                    | ✔                        |
-| пауза за неоплату                  | `replyIfPaused`                     | ✔                        |
-| счёт оператора чеком от владельца  | `subscription_invoices`             | нет                      |
-| напоминание об оплате из админки   | `remindOrderPayment`                | нет                      |
-| «Информация»: юридические страницы | `/legal/*`, бакет `legal-docs`      | ссылки есть, страниц нет |
+| модуль / поведение                 | v1                                  | v2                          |
+| ---------------------------------- | ----------------------------------- | --------------------------- |
+| `coupons` промокоды                | `promo-codes.ts`, CAS `used_count`  | ✔ бот + админка             |
+| `loyalty` баллы                    | `loyalty.server.ts`                 | ✔                           |
+| `gift_certificates`                | `gift-certificates.ts`              | ✔ бот + админка             |
+| `multi_language` «все языки»       | `deliveryPriceMultiplier`, `lang_*` | нет                         |
+| `stock` списание на оформлении     | `decrementStock`/`restoreStock`     | ✔                           |
+| `review_request` отзывы            | `reviews.ts`, `product_reviews`     | нет                         |
+| `referral`                         | `referrals.server.ts`               | нет                         |
+| `cart_reminder` крон               | `cart-reminder.server.ts`           | ✔ `/api/cron/cart-reminder` |
+| `smart_search` LLM-поиск           | `smart-search.server.ts`            | нет                         |
+| `manager_chat`                     | `manager-chat.server.ts`, RPC touch | нет                         |
+| `blocked` — чтение                 | `replyIfBlocked`                    | ✔                           |
+| пауза за неоплату                  | `replyIfPaused`                     | ✔                           |
+| счёт оператора чеком от владельца  | `subscription_invoices`             | нет                         |
+| напоминание об оплате из админки   | `remindOrderPayment`                | ✔                           |
+| «Информация»: юридические страницы | `/legal/*`, бакет `legal-docs`      | ✔ `/s/<slug>/legal/*`       |
 
-¹ проверка остатка при добавлении в корзину есть; атомарное списание при
-оформлении — нет, поэтому модуль `stock` включать клиенту на v2 пока нельзя.
+## Фаза 3 — оплата и физические товары ✔ (без OCR)
 
-## Фаза 3 — оплата и физические товары
+Сделано: Robokassa из бота (`/api/robokassa/<bot_id>/<result|success|fail>`,
+подпись с `Shp_bot`, настройки в админке), физический чекаут целиком (тип
+получения, дата с `lead_time_days`, зоны и комиссия, адрес, примечание,
+задаток и `on_receipt`), статусы `accepted → in_production → ready →
+delivered` в боте и админке, напоминание за сутки покупателю и продавцу
+(`/api/cron/fulfillment-reminder`). Осталось: OCR чеков.
 
-Robokassa (`robokassa.server.ts`, колбэки `result/success/fail`, подпись по
+Как было в v1: Robokassa (`robokassa.server.ts`, колбэки `result/success/fail`, подпись по
 `robokassa_test_mode`, не по `IsTest`), OCR чеков (Google Vision, `proof_auto`
 для RU/KZ), выбор способа оплаты для KZ; физический чекаут (тип получения,
 дата с `lead_time_days`, зоны с конвертацией комиссии, адрес, примечание),
@@ -89,16 +93,29 @@ API Zernio один на платформу.
 - Сессия одна на платформу (`ff-session`), CSRF-middleware на серверных
   функциях, антибрут входа через таблицы `*_login_attempts`.
 
-Дальше в этой фазе: Mini App `/s/<slug>/mini-app`, витрина `/s/<slug>`,
-юридические страницы, рассылки из админки, чат с менеджером, аналитика с
-графиками, локализация админки (kk/en/uz), роли и несколько пользователей
-у одного магазина.
+- **Витрина и Mini App** `/s/<slug>`: каталог, товар с вариантами, корзина
+  в браузере, передача корзины в бота (`web_cart_handoffs`, `wc_<token>`),
+  чекаут прямо из Mini App по `initData`, юридические страницы
+  `/s/<slug>/legal/<doc>`, кнопка меню бота «🛍 Магазин».
+- **Регистрация продавца** `/signup` (`SIGNUP_ENABLED`) и подключение
+  Telegram токеном из админки.
+- **Скидки** `/admin/discounts`: промокоды, сертификаты; баллы лояльности.
+- **Рассылки** `/admin/broadcasts`: текст, фото, кнопки товаров и каталога,
+  аудитории с живым счётчиком, пробная отправка себе, история с прогрессом и
+  остановкой; порог напоминания о брошенной корзине.
+- **Аналитика** `/admin/analytics`: 7/30/90 дней с дельтой к прошлому
+  периоду, выручка/заказы/покупатели по дням, топ товаров, каналы, статусы;
+  у каждого графика табличный вид.
 
-## Фаза 6 — VIP-бот, рассылки, ретеншн
+Дальше в этой фазе: чат с менеджером, локализация админки (kk/en/uz), роли
+и несколько пользователей у одного магазина, выгрузка в Excel.
 
-Второй токен (VIP) — в `bots.settings.vip.token_enc` тем же шифрованием,
-вебхук `/api/telegram/<bot_id>/vip`. Рассылки Telegram/WhatsApp порциями из
-крона, ретеншн `zernio_logs`, `manager_chat_messages`, `admin_login_attempts`,
+## Фаза 6 — VIP-бот, ретеншн
+
+Рассылки Telegram уже сделаны (фаза 5): `/api/cron/broadcast` раз в минуту,
+по 25 сообщений на клиента, клиенты параллельно. WhatsApp-рассылки — вместе
+с Zernio в фазе 4. Второй токен (VIP) — в `bots.settings.vip.token_enc` тем
+же шифрованием, вебхук `/api/telegram/<bot_id>/vip`. Ретеншн `zernio_logs`, `manager_chat_messages`, `admin_login_attempts`,
 `bot_health_snapshots` — один крон на всех.
 
 ## Фаза 7 — v1 выключена
