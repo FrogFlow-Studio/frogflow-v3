@@ -146,8 +146,15 @@ WhatsApp-рассылки, добор `pending`, `account.disconnected` (сей�
 Рассылки Telegram уже сделаны (фаза 5): `/api/cron/broadcast` раз в минуту,
 по 25 сообщений на клиента, клиенты параллельно. WhatsApp-рассылки — вместе
 с Zernio в фазе 4. Второй токен (VIP) — в `bots.settings.vip.token_enc` тем
-же шифрованием, вебхук `/api/telegram/<bot_id>/vip`. Ретеншн `zernio_logs`, `manager_chat_messages`, `admin_login_attempts`,
-`bot_health_snapshots` — один крон на всех.
+же шифрованием, вебхук `/api/telegram/<bot_id>/vip`.
+
+Ретеншн ✔: `/api/cron/retention` раз в сутки, один проход на всех клиентов
+(`src/core/retention/retention.ts`): `zernio_logs` (30 дней, сбои — 180),
+`manager_chat_messages` (90), `admin_login_attempts` и
+`operator_login_attempts` (90), `bot_events` (180), `bot_health_snapshots`
+(30), `broadcast_recipients` по дате кампании (90). Порции по 2000 строк,
+удаление по 150 id за запрос — список id живёт в строке запроса PostgREST.
+Живой тест на демо-клиенте.
 
 ## Фаза 7 — v1 выключена
 

@@ -54,6 +54,12 @@ export const Route = createFileRoute("/api/cron/$job")({
             });
             break;
           }
+          case "retention": {
+            // Один проход на всех клиентов: журналы, переписка, попытки входа.
+            const { runRetention } = await import("@/core/retention/retention");
+            results.retention = await runRetention();
+            break;
+          }
           default:
             return new Response("unknown job", { status: 404 });
         }

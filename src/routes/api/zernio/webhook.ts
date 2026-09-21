@@ -50,30 +50,38 @@ export const Route = createFileRoute("/api/zernio/webhook")({
           return new Response("accepted", { status: 202 });
         const ctx = tenantContext(tenant);
 
-        const isMessage = payload.event === "message.received";
+        const handled =
+          payload.event === "message.received" || payload.event === "account.disconnected";
         const { error } = await ctx.db.from("zernio_logs").insert({
           bot_id: tenant.id,
           event_id: eventId,
           event_type: payload.event ?? "unknown",
-          status: isMessage ? "received" : "ignored",
+          status: handled ? "received" : "ignored",
           payload: payload as never,
-          error_message: isMessage ? null : "v2: событие не обрабатывается",
+          error_message: handled ? null : "v2: событие не обрабатывается",
         });
         if (error) {
           // Конфликт по event_id — повторная доставка, уже принято.
           if (/duplicate|unique/i.test(error.message)) return new Response("ok");
           return new Response("error", { status: 500 });
         }
-        if (!isMessage) return new Response("ok");
+        if (!handled) return new Response("ok");
 
         const { runWithZernioEvent } = await import("@/channels/zernio/event-context.server");
-        const { handleZernioMessage } = await import("@/channels/zernio/handle-message");
         let status = "failed";
         let note: string | null = null;
         try {
-          const r = await runWithZernioEvent(eventId, () => handleZernioMessage(ctx, payload));
-          status = r.status;
-          note = r.note ?? null;
+          if (payload.event === "account.disconnected") {
+            const { handleAccountDisconnected } = await import("@/channels/zernio/handle-account");
+            const r = await handleAccountDisconnected(ctx, payload);
+            status = "processed";
+            note = r.note;
+          } else {
+            const { handleZernioMessage } = await import("@/channels/zernio/handle-message");
+            const r = await runWithZernioEvent(eventId, () => handleZernioMessage(ctx, payload));
+            status = r.status;
+            note = r.note ?? null;
+          }
         } catch (e) {
           note = e instanceof Error ? e.message : String(e);
           console.error(`[zernio] ${eventId} failed: ${note}`);
