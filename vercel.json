@@ -12,6 +12,7 @@
     { "path": "/api/cron/fulfillment-reminder", "schedule": "0 * * * *" },
     { "path": "/api/cron/retention", "schedule": "20 3 * * *" },
     { "path": "/api/cron/vip", "schedule": "*/10 * * * *" },
-    { "path": "/api/cron/subscriptions", "schedule": "0 4 * * *" }
+    { "path": "/api/cron/subscriptions", "schedule": "0 4 * * *" },
+    { "path": "/api/cron/health", "schedule": "*/15 * * * *" }
   ]
 }

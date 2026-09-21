@@ -59,6 +59,7 @@ function ClientsPage() {
                 <th>Ниша</th>
                 <th>Статус</th>
                 <th>Подписка</th>
+                <th>Здоровье</th>
                 <th>Каналы</th>
                 <th className="text-right">Заказов / 30 дн</th>
                 <th className="text-right">Товаров</th>
@@ -87,6 +88,9 @@ function ClientsPage() {
                   </td>
                   <td>
                     <SubscriptionBadge s={c.subscription} expiresAt={c.subscriptionExpiresAt} />
+                  </td>
+                  <td>
+                    <HealthBadge h={c.health} />
                   </td>
                   <td className="space-x-1">
                     {c.telegram.connected ? (
@@ -133,4 +137,24 @@ export function SubscriptionBadge({
   if (s.state === "expiring") return <Badge tone="warn">истекает через {s.daysLeft} дн.</Badge>;
   if (s.state === "overdue") return <Badge tone="warn">просрочена {-(s.daysLeft ?? 0)} дн.</Badge>;
   return <Badge tone="danger">просрочена {-(s.daysLeft ?? 0)} дн.</Badge>;
+}
+
+export function HealthBadge({
+  h,
+}: {
+  h: { ok: boolean; at: string; error: string | null; pending: number | null } | null;
+}) {
+  if (!h) return <Badge>нет данных</Badge>;
+  const when = new Date(h.at).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
+  if (h.ok)
+    return (
+      <Badge tone="ok">
+        работает{h.pending ? ` · очередь ${h.pending}` : ""} · {when}
+      </Badge>
+    );
+  return (
+    <Badge tone="danger">
+      {h.error ? h.error.slice(0, 40) : "сбой"} · {when}
+    </Badge>
+  );
 }

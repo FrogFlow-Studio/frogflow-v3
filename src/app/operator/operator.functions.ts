@@ -441,3 +441,21 @@ export const sweepSubscriptionsFn = createServerFn({ method: "POST" }).handler(a
   await guard();
   return (await import("./billing.server")).sweepSubscriptions();
 });
+
+export const healthHistoryFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z
+      .object({ botId: z.string().uuid(), days: z.number().int().min(1).max(60).optional() })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await import("./health.server")).getHealthHistory(data.botId, data.days ?? 14);
+  });
+
+export const recordHealthNowFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await import("./health.server")).recordHealthSnapshots(data.botId);
+  });

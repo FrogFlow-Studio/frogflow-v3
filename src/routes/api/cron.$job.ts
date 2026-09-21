@@ -89,6 +89,12 @@ export const Route = createFileRoute("/api/cron/$job")({
             }
             break;
           }
+          case "health": {
+            // Снимок здоровья каждого бота на v2 — история простоев в панели оператора.
+            const { recordHealthSnapshots } = await import("@/app/operator/health.server");
+            results.health = await recordHealthSnapshots();
+            break;
+          }
           case "subscriptions": {
             // Подписки клиентов на платформу: предупредить, приостановить по политике.
             const { sweepSubscriptions } = await import("@/app/operator/billing.server");

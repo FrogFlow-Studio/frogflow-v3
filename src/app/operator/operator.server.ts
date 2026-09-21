@@ -99,6 +99,8 @@ export type ClientView = {
   subscriptionExpiresAt: string | null;
   /** Состояние подписки из дат и политики (core/billing/subscription). */
   subscription: { state: SubscriptionState; daysLeft: number | null; policy: OverduePolicy };
+  /** Последний снимок здоровья (крон health) — null, если снимков ещё нет. */
+  health: { ok: boolean; at: string; error: string | null; pending: number | null } | null;
   createdAt: string | null;
   stats: ClientStats | null;
 };
@@ -114,6 +116,7 @@ function toView(
     created_at: string | null;
   },
   stats: ClientStats | null,
+  health: ClientView["health"] = null,
 ): ClientView {
   return {
     id: t.id,
@@ -147,6 +150,7 @@ function toView(
     })(),
     createdAt: extra.created_at,
     stats,
+    health,
   };
 }
 
@@ -160,10 +164,12 @@ async function extras(ids?: string[]) {
 }
 
 export async function listClients(): Promise<ClientView[]> {
-  const [tenants, stats, ex] = await Promise.all([
+  const { latestHealth } = await import("./health.server");
+  const [tenants, stats, ex, health] = await Promise.all([
     tenantDirectory(true),
     clientStats().catch(() => new Map<string, ClientStats>()),
     extras(),
+    latestHealth().catch(() => new Map()),
   ]);
   return tenants
     .map((t) => {
@@ -179,6 +185,7 @@ export async function listClients(): Promise<ClientView[]> {
           created_at: e?.created_at ?? null,
         },
         stats.get(t.id) ?? null,
+        health.get(t.id) ?? null,
       );
     })
     .sort(
@@ -189,6 +196,8 @@ export async function listClients(): Promise<ClientView[]> {
 }
 
 export async function getClient(botId: string): Promise<ClientView> {
+  const { latestHealth } = await import("./health.server");
+  const health = await latestHealth([botId]).catch(() => new Map());
   const [t, stats, ex] = await Promise.all([
     requireTenant({ by: "id", value: botId }),
     clientStats().catch(() => new Map<string, ClientStats>()),
@@ -206,6 +215,7 @@ export async function getClient(botId: string): Promise<ClientView> {
       created_at: e?.created_at ?? null,
     },
     stats.get(botId) ?? null,
+    health.get(botId) ?? null,
   );
 }
 
