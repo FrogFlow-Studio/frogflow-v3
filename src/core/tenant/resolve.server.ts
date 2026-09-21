@@ -115,6 +115,8 @@ export type TenantContext = {
   timezone: string;
   secrets: {
     telegramToken(): string;
+    /** Токен VIP-бота (settings.vip.token_enc); бросает, если VIP-бот не подключён. */
+    vipToken(): string;
   };
 };
 
@@ -130,6 +132,13 @@ export function tenantContext(tenant: Tenant): TenantContext {
         const enc = tenant.telegramTokenEnc;
         if (!isEncryptedSecret(enc)) {
           throw new Error(`У клиента «${tenant.name}» не подключён Telegram-бот (нет токена)`);
+        }
+        return decryptSecret(enc, SECRETS_KEY);
+      },
+      vipToken() {
+        const enc = tenant.settings.vip?.token_enc;
+        if (!isEncryptedSecret(enc)) {
+          throw new Error(`У клиента «${tenant.name}» не подключён VIP-бот (нет токена)`);
         }
         return decryptSecret(enc, SECRETS_KEY);
       },

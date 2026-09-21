@@ -31,6 +31,12 @@ export type TenantSettings = {
     accounts?: ZernioAccountSnapshot[];
     synced_at?: string;
   };
+  /** VIP-бот (модуль vip): второй токен тем же шифрованием, что bots.bot_token. */
+  vip?: {
+    token_enc?: string;
+    username?: string;
+    webhook_ok?: boolean;
+  };
   /** Вход в админку клиента. */
   admin?: {
     username?: string;

@@ -60,6 +60,7 @@ export function settingsFromJson(json: unknown): TenantSettings {
   const tg = obj(s.telegram);
   const zr = obj(s.zernio);
   const adm = obj(s.admin);
+  const vip = obj(s.vip);
   const served = s.served_by === "v2" ? "v2" : s.served_by === "v1" ? "v1" : undefined;
   return {
     slug: str(s.slug)?.toLowerCase(),
@@ -84,6 +85,11 @@ export function settingsFromJson(json: unknown): TenantSettings {
       synced_at: str(zr.synced_at),
     },
     admin: { username: str(adm.username), password_hash: str(adm.password_hash) },
+    vip: {
+      token_enc: str(vip.token_enc),
+      username: str(vip.username),
+      webhook_ok: vip.webhook_ok === true,
+    },
     served_by: served,
   };
 }
