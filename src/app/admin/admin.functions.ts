@@ -682,3 +682,14 @@ export const cancelBroadcastFn = createServerFn({ method: "POST" })
     const { cancelBroadcast } = await import("@/core/broadcasts/broadcasts");
     return { ok: await cancelBroadcast(ctx, data.id) };
   });
+
+/* ── аналитика ───────────────────────────────────────────────────── */
+
+export const analyticsFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z.object({ days: z.union([z.literal(7), z.literal(30), z.literal(90)]) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    return (await import("@/core/analytics/analytics")).analytics(ctx, data.days);
+  });

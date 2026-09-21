@@ -29,6 +29,7 @@ function Layout() {
             Обзор
           </NavLink>
           <NavLink to="/admin/orders">Заказы</NavLink>
+          {shop.modules.dashboard && <NavLink to="/admin/analytics">Аналитика</NavLink>}
           <NavLink to="/admin/products">Товары</NavLink>
           <NavLink to="/admin/categories">Категории</NavLink>
           <NavLink to="/admin/customers">Покупатели</NavLink>
