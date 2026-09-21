@@ -46,8 +46,9 @@ const schema = z.object({
   CRON_SECRET: z.string().min(16),
 
   /** Панель оператора — владелец платформы. */
-  OPERATOR_USERNAME: z.string().min(1),
-  OPERATOR_PASSWORD: z.string().min(8),
+  // Запасной вход оператора, пока учётка не задана в базе (operator_settings).
+  OPERATOR_USERNAME: z.string().min(1).optional(),
+  OPERATOR_PASSWORD: z.string().min(8).optional(),
 
   /** Zernio: один аккаунт платформы, профили клиентов — в базе. */
   ZERNIO_API_KEY: z.string().optional(),

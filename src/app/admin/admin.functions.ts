@@ -22,13 +22,12 @@ export const adminLogin = createServerFn({ method: "POST" })
     await loginDelay();
     // Один вход на всех: данные оператора платформы открывают панель оператора.
     {
-      const { env } = await import("@/config/env");
-      const { timingSafeSecretEqual } = await import("@/channels/telegram/secret");
-      const e = env();
-      if (timingSafeSecretEqual(data.username, e.OPERATOR_USERNAME)) {
+      const { isOperatorUsername, verifyOperator } =
+        await import("@/app/operator/credentials.server");
+      if (await isOperatorUsername(data.username)) {
         if (await loginLocked("operator", ip))
           throw new Error("Слишком много неудачных попыток. Попробуйте через 15 минут.");
-        const ok = timingSafeSecretEqual(data.password, e.OPERATOR_PASSWORD);
+        const ok = await verifyOperator(data.username, data.password);
         await recordLogin("operator", ip, ok, data.username);
         if (!ok) return { ok: false as const };
         await (await appSession()).update({ operator: true });

@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { env } from "@/config/env";
-import { isBasicAuthorized } from "@/lib/cron-auth";
 import type { Database } from "@/core/db-types";
 
 const body = z.object({
@@ -39,7 +38,10 @@ export const Route = createFileRoute("/api/operator/bots")({
     handlers: {
       POST: async ({ request }) => {
         const e = env();
-        if (!isBasicAuthorized(request, e.OPERATOR_USERNAME, e.OPERATOR_PASSWORD)) {
+        const { basicCredentials } = await import("@/lib/cron-auth");
+        const { verifyOperator } = await import("@/app/operator/credentials.server");
+        const cred = basicCredentials(request);
+        if (!cred || !(await verifyOperator(cred.username, cred.password))) {
           return new Response("unauthorized", {
             status: 401,
             headers: { "www-authenticate": "Basic" },

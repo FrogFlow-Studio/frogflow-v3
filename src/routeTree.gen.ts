@@ -38,6 +38,7 @@ import { Route as ApiZernioWebhookRouteImport } from './routes/api/zernio/webhoo
 import { Route as OperatorAuthedIndexRouteImport } from './routes/operator._authed.index'
 import { Route as OperatorAuthedBroadcastRouteImport } from './routes/operator._authed.broadcast'
 import { Route as OperatorAuthedRequestsRouteImport } from './routes/operator._authed.requests'
+import { Route as OperatorAuthedSettingsRouteImport } from './routes/operator._authed.settings'
 import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
 import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
@@ -193,6 +194,11 @@ const OperatorAuthedRequestsRoute = OperatorAuthedRequestsRouteImport.update({
   path: '/requests',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
+const OperatorAuthedSettingsRoute = OperatorAuthedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
 const SSlugIndexRoute = SSlugIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -277,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
+  '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/admin/': typeof AdminAuthedIndexRoute
   '/operator/': typeof OperatorAuthedIndexRoute
@@ -316,6 +323,7 @@ export interface FileRoutesByTo {
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
+  '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug': typeof SSlugIndexRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
@@ -357,6 +365,7 @@ export interface FileRoutesById {
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/_authed/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/_authed/requests': typeof OperatorAuthedRequestsRoute
+  '/operator/_authed/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/admin/_authed/': typeof AdminAuthedIndexRoute
   '/operator/_authed/': typeof OperatorAuthedIndexRoute
@@ -399,6 +408,7 @@ export interface FileRouteTypes {
     | '/api/zernio/webhook'
     | '/operator/broadcast'
     | '/operator/requests'
+    | '/operator/settings'
     | '/s/$slug/cart'
     | '/admin/'
     | '/operator/'
@@ -438,6 +448,7 @@ export interface FileRouteTypes {
     | '/api/zernio/webhook'
     | '/operator/broadcast'
     | '/operator/requests'
+    | '/operator/settings'
     | '/s/$slug/cart'
     | '/s/$slug'
     | '/admin/orders/$id'
@@ -478,6 +489,7 @@ export interface FileRouteTypes {
     | '/api/zernio/webhook'
     | '/operator/_authed/broadcast'
     | '/operator/_authed/requests'
+    | '/operator/_authed/settings'
     | '/s/$slug/cart'
     | '/admin/_authed/'
     | '/operator/_authed/'
@@ -715,6 +727,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedRequestsRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/operator/_authed/settings': {
+      id: '/operator/_authed/settings'
+      path: '/settings'
+      fullPath: '/operator/settings'
+      preLoaderRoute: typeof OperatorAuthedSettingsRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
     '/s/$slug/': {
       id: '/s/$slug/'
       path: '/'
@@ -855,6 +874,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface OperatorAuthedRouteChildren {
   OperatorAuthedBroadcastRoute: typeof OperatorAuthedBroadcastRoute
   OperatorAuthedRequestsRoute: typeof OperatorAuthedRequestsRoute
+  OperatorAuthedSettingsRoute: typeof OperatorAuthedSettingsRoute
   OperatorAuthedIndexRoute: typeof OperatorAuthedIndexRoute
   OperatorAuthedClientsBotIdRoute: typeof OperatorAuthedClientsBotIdRoute
   OperatorAuthedClientsNewRoute: typeof OperatorAuthedClientsNewRoute
@@ -863,6 +883,7 @@ interface OperatorAuthedRouteChildren {
 const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedBroadcastRoute: OperatorAuthedBroadcastRoute,
   OperatorAuthedRequestsRoute: OperatorAuthedRequestsRoute,
+  OperatorAuthedSettingsRoute: OperatorAuthedSettingsRoute,
   OperatorAuthedIndexRoute: OperatorAuthedIndexRoute,
   OperatorAuthedClientsBotIdRoute: OperatorAuthedClientsBotIdRoute,
   OperatorAuthedClientsNewRoute: OperatorAuthedClientsNewRoute,

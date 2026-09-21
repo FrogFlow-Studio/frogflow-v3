@@ -20,19 +20,15 @@ export const operatorLogin = createServerFn({ method: "POST" })
     z.object({ username: z.string().min(1), password: z.string().min(1) }).parse(d),
   )
   .handler(async ({ data }) => {
-    const { env } = await import("@/config/env");
     const { appSession } = await import("@/app/auth/session.server");
     const { clientIp, loginLocked, recordLogin, loginDelay } =
       await import("@/app/auth/login-guard.server");
-    const { timingSafeSecretEqual } = await import("@/channels/telegram/secret");
-    const e = env();
+    const { verifyOperator } = await import("./credentials.server");
     const ip = clientIp();
     if (await loginLocked("operator", ip))
       throw new Error("Слишком много неудачных попыток. Попробуйте через 15 минут.");
     await loginDelay();
-    const ok =
-      timingSafeSecretEqual(data.username, e.OPERATOR_USERNAME) &&
-      timingSafeSecretEqual(data.password, e.OPERATOR_PASSWORD);
+    const ok = await verifyOperator(data.username, data.password);
     await recordLogin("operator", ip, ok, data.username);
     if (!ok) return { ok: false as const };
     const s = await appSession();
@@ -267,4 +263,32 @@ export const broadcastToOwnersFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await guard();
     return (await impl()).broadcastToOwners(data.botIds, data.text);
+  });
+
+/* ── учётка оператора ─────────────────────────────────────────────── */
+
+export const operatorCredentialsFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await import("./credentials.server")).operatorCredentialsSource();
+});
+
+export const setOperatorCredentialsFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        currentPassword: z.string().min(1),
+        username: z.string().min(3).max(40),
+        password: z.string().min(10).max(200),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const { verifyOperator, operatorCredentialsSource, setOperatorCredentials } =
+      await import("./credentials.server");
+    const { username } = await operatorCredentialsSource();
+    if (!username || !(await verifyOperator(username, data.currentPassword)))
+      throw new Error("Текущий пароль неверный.");
+    await setOperatorCredentials(data.username, data.password);
+    return { ok: true };
   });
