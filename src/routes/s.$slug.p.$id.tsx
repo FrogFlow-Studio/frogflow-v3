@@ -46,9 +46,13 @@ function ProductPage() {
   };
   return (
     <>
-      <Link to="/s/$slug" params={{ slug }} className="text-sm text-muted hover:underline">
-        ← Каталог
-      </Link>
+      <nav className="text-sm text-muted">
+        <Link to="/s/$slug" params={{ slug }} className="hover:underline">
+          Каталог
+        </Link>
+        <span className="mx-1.5">/</span>
+        <span className="text-fg">{p.name}</span>
+      </nav>
       <div className="mt-3 grid gap-6 md:grid-cols-2">
         <div>
           {p.images[img] ? (
@@ -77,12 +81,16 @@ function ProductPage() {
           )}
         </div>
         <div>
-          <h1 className="text-xl font-semibold">{p.name}</h1>
-          {p.rating && (
-            <div className="mt-1 text-sm text-muted">
-              ★ {p.rating.avg.toFixed(1)} · {p.rating.count} отзывов
-            </div>
-          )}
+          <h1 className="text-2xl font-semibold">{p.name}</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
+            <span className="badge">{p.kind === "digital" ? "📄 Файл" : "📦 Товар"}</span>
+            {p.rating && (
+              <span>
+                ★ {p.rating.avg.toFixed(1)} · {p.rating.count}{" "}
+                {p.rating.count === 1 ? "отзыв" : p.rating.count < 5 ? "отзыва" : "отзывов"}
+              </span>
+            )}
+          </div>
           <div className="mt-3 text-2xl font-semibold tabular-nums">
             {formatMoney(price, currency)}
           </div>
@@ -114,7 +122,7 @@ function ProductPage() {
           )}
           <div className="mt-5 flex items-center gap-3">
             {p.inStock ? (
-              <button className="btn-primary" onClick={add}>
+              <button className="btn-primary px-5 py-2.5 text-base" onClick={add}>
                 🛒 В корзину
               </button>
             ) : (
@@ -122,8 +130,25 @@ function ProductPage() {
             )}
             {msg && <span className="text-sm text-muted">{msg}</span>}
           </div>
+          <ul className="mt-5 space-y-1.5 text-sm text-muted">
+            {p.kind === "digital" ? (
+              <>
+                <li>⚡ Файл придёт сразу после подтверждения оплаты</li>
+                <li>🔁 Повторная отправка в любой момент из «Мои заказы»</li>
+              </>
+            ) : (
+              <>
+                <li>📅 Дату получения выберете при оформлении</li>
+                <li>🚚 Самовывоз или доставка — как удобно</li>
+              </>
+            )}
+            <li>💳 Оплата переводом по реквизитам или картой</li>
+          </ul>
           {p.description && (
-            <p className="mt-6 text-sm leading-relaxed whitespace-pre-line">{p.description}</p>
+            <div className="mt-6 border-t border-line pt-5">
+              <h2 className="mb-2 text-sm font-semibold">Описание</h2>
+              <p className="text-sm leading-relaxed whitespace-pre-line">{p.description}</p>
+            </div>
           )}
         </div>
       </div>

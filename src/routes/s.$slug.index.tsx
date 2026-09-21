@@ -4,7 +4,6 @@ import { z } from "zod";
 import { storeCatalogFn } from "@/app/storefront/storefront.functions";
 import { useCart } from "@/app/storefront/cart";
 import { formatMoney } from "@/core/money/money";
-import { Empty } from "@/app/ui";
 
 export const Route = createFileRoute("/s/$slug/")({
   validateSearch: z.object({ q: z.string().optional(), category: z.string().optional() }),
@@ -18,72 +17,117 @@ function CatalogPage() {
   const products = Route.useLoaderData();
   const { slug } = Route.useParams();
   const shop = useLoaderData({ from: "/s/$slug" });
-  const categories = shop.categories;
+  const categories = shop.categories.filter((c) => !c.parent_id);
   const s = Route.useSearch();
   const navigate = useNavigate();
   const [q, setQ] = useState(s.q ?? "");
   const cart = useCart();
   const [added, setAdded] = useState<string | null>(null);
+  const current = categories.find((c) => c.id === s.category);
+  const digitalOnly = products.length > 0 && products.every((p) => p.kind === "digital");
+
   return (
     <>
-      <form
-        className="mb-4 flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void navigate({ to: "/s/$slug", params: { slug }, search: { ...s, q: q || undefined } });
-        }}
-      >
-        <input
-          className="input"
-          placeholder="Поиск по каталогу"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <button className="btn-secondary shrink-0">Найти</button>
-      </form>
+      <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">{current ? current.name : "Каталог"}</h1>
+          <p className="mt-1 text-sm text-muted">
+            {s.q
+              ? `Поиск: «${s.q}»`
+              : digitalOnly
+                ? "Файлы приходят сразу после оплаты — в бот или на почту."
+                : "Выберите товар, оформите заказ — остальное сделает бот."}
+          </p>
+        </div>
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void navigate({
+              to: "/s/$slug",
+              params: { slug },
+              search: { ...s, q: q || undefined },
+            });
+          }}
+        >
+          <input
+            className="input md:w-64"
+            placeholder="Поиск по каталогу"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          <button className="btn-secondary shrink-0">Найти</button>
+        </form>
+      </div>
+
       {categories.length > 0 && (
-        <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+        <div className="mb-6 flex gap-2 overflow-x-auto pb-1">
           <Link
             to="/s/$slug"
             params={{ slug }}
             search={{ q: s.q }}
-            className={`badge shrink-0 ${!s.category ? "border-accent bg-accent/10 text-accent" : ""}`}
+            className={`badge shrink-0 px-3 py-1.5 ${!s.category ? "border-accent bg-accent/10 text-accent" : ""}`}
           >
             Все
           </Link>
-          {categories
-            .filter((c) => !c.parent_id)
-            .map((c) => (
-              <Link
-                key={c.id}
-                to="/s/$slug"
-                params={{ slug }}
-                search={{ q: s.q, category: c.id }}
-                className={`badge shrink-0 ${s.category === c.id ? "border-accent bg-accent/10 text-accent" : ""}`}
-              >
-                {c.name}
-              </Link>
-            ))}
+          {categories.map((c) => (
+            <Link
+              key={c.id}
+              to="/s/$slug"
+              params={{ slug }}
+              search={{ q: s.q, category: c.id }}
+              className={`badge shrink-0 px-3 py-1.5 ${s.category === c.id ? "border-accent bg-accent/10 text-accent" : ""}`}
+            >
+              {c.name}
+            </Link>
+          ))}
         </div>
       )}
+
       {products.length === 0 ? (
-        <Empty>Ничего не найдено.</Empty>
+        <div className="rounded-lg border border-dashed border-line px-4 py-16 text-center">
+          <div className="text-3xl">🛍</div>
+          <p className="mt-3 font-medium">{s.q ? "Ничего не нашлось" : "Каталог наполняется"}</p>
+          <p className="mt-1 text-sm text-muted">
+            {s.q ? "Попробуйте другое слово или откройте все товары." : "Загляните чуть позже."}
+          </p>
+          {s.q && (
+            <Link to="/s/$slug" params={{ slug }} className="btn-secondary mt-4">
+              Все товары
+            </Link>
+          )}
+        </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {products.map((p) => (
-            <div key={p.id} className="card flex flex-col overflow-hidden">
-              <Link to="/s/$slug/p/$id" params={{ slug, id: p.id }} className="block">
+            <article
+              key={p.id}
+              className="card group flex flex-col overflow-hidden transition-shadow hover:shadow-md"
+            >
+              <Link to="/s/$slug/p/$id" params={{ slug, id: p.id }} className="relative block">
                 {p.images[0] ? (
                   <img
                     src={p.images[0]}
                     alt={p.name}
-                    className="aspect-square w-full object-cover"
+                    className="aspect-square w-full object-cover transition-transform group-hover:scale-[1.02]"
                     loading="lazy"
                   />
                 ) : (
-                  <div className="flex aspect-square items-center justify-center bg-surface-2 text-3xl">
-                    📦
+                  <div className="flex aspect-square items-center justify-center bg-surface-2 text-4xl">
+                    {p.kind === "digital" ? "📄" : "📦"}
                   </div>
+                )}
+                <span className="absolute top-2 left-2 rounded-md bg-surface/90 px-2 py-0.5 text-[11px] font-medium backdrop-blur">
+                  {p.kind === "digital"
+                    ? "Файл"
+                    : p.leadTimeDays
+                      ? `На заказ · ${p.leadTimeDays} дн.`
+                      : "Товар"}
+                </span>
+                {!p.inStock && (
+                  <span className="absolute top-2 right-2 rounded-md bg-fg/80 px-2 py-0.5 text-[11px] font-medium text-bg">
+                    нет в наличии
+                  </span>
                 )}
               </Link>
               <div className="flex flex-1 flex-col p-3">
@@ -94,24 +138,27 @@ function CatalogPage() {
                 >
                   {p.name}
                 </Link>
-                <div className="mt-auto flex items-center justify-between pt-2">
+                {p.rating && (
+                  <div className="mt-1 text-xs text-muted">
+                    ★ {p.rating.avg.toFixed(1)} · {p.rating.count}
+                  </div>
+                )}
+                <div className="mt-auto flex items-center justify-between gap-2 pt-3">
                   <span className="text-sm font-semibold tabular-nums">
                     {p.priceFrom ? "от " : ""}
                     {formatMoney(p.price, p.currency)}
                   </span>
-                  {!p.inStock ? (
-                    <span className="text-xs text-muted">нет</span>
-                  ) : p.variants.length > 0 ? (
+                  {!p.inStock ? null : p.variants.length > 0 ? (
                     <Link
                       to="/s/$slug/p/$id"
                       params={{ slug, id: p.id }}
-                      className="btn-secondary px-2 py-1 text-xs"
+                      className="btn-secondary px-2.5 py-1 text-xs"
                     >
                       Выбрать
                     </Link>
                   ) : (
                     <button
-                      className="btn-primary px-2 py-1 text-xs"
+                      className="btn-primary px-2.5 py-1 text-xs"
                       onClick={() => {
                         const r = cart.add({
                           productId: p.id,
@@ -126,12 +173,12 @@ function CatalogPage() {
                         setTimeout(() => setAdded(null), 1500);
                       }}
                     >
-                      {added === p.id ? "✓" : "В корзину"}
+                      {added === p.id ? "✓ Добавлено" : "В корзину"}
                     </button>
                   )}
                 </div>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}

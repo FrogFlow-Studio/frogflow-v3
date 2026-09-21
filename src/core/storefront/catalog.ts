@@ -33,6 +33,8 @@ export type StoreInfo = {
   contactLink: string | null;
   currency: string;
   miniApp: boolean;
+  /** Короткий текст «О продавце» для шапки витрины. */
+  tagline: string | null;
   categories: Array<{ id: string; name: string; parent_id: string | null }>;
   legal: Record<string, boolean>;
 };
@@ -58,6 +60,13 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
     contactLink: s.admin_contact_link ?? null,
     currency: "KZT",
     miniApp: Boolean(ctx.tenant.modules.telegram_mini_app && ctx.tenant.modules.shop),
+    tagline: s.legal_about
+      ? s.legal_about
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 160) || null
+      : null,
     categories: cats
       .filter((c) => c.is_visible)
       .map((c) => ({ id: c.id, name: c.name, parent_id: c.parent_id })),
