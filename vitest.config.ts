@@ -9,5 +9,8 @@ export default defineConfig({
     setupFiles: ["tests/setup-env.ts"],
     include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
     testTimeout: 30_000,
+    // Живые тесты ходят в одну базу и один демо-клиент: параллельные файлы
+    // затирали друг другу товары и покупателей (счётчик товаров, корзина).
+    fileParallelism: false,
   },
 });
