@@ -52,7 +52,11 @@ export type DialogMode =
   | "awaiting_fulfillment_date"
   | "awaiting_delivery_zone"
   | "awaiting_address"
-  | "awaiting_fulfillment_note";
+  | "awaiting_fulfillment_note"
+  /** Только Instagram/WhatsApp: у Direct нет /start, страна и вариант выбираются текстом. */
+  | "awaiting_locale"
+  | "awaiting_country"
+  | "awaiting_variant_choice";
 
 export type DialogState = {
   mode?: DialogMode;
@@ -78,6 +82,8 @@ export type DialogState = {
   last_smart_search_at?: string;
   /** История и пауза ИИ-консультанта (src/core/consultant). */
   consultant?: { [key: string]: Json | undefined };
+  /** Магазин в Instagram/WhatsApp: показанный список, дедупликация ответов (src/channels/zernio/shop.server). */
+  direct?: { [key: string]: Json | undefined };
   [key: string]: Json | undefined;
 };
 

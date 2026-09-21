@@ -12,7 +12,13 @@ export async function notifyAdminNewOrder(
   api: TelegramApi,
   order: OrderWithItems,
   proof: ProofRef,
-  opts: { paidOnline?: boolean; autoDelivered?: boolean; reviewReason?: string } = {},
+  opts: {
+    paidOnline?: boolean;
+    autoDelivered?: boolean;
+    reviewReason?: string;
+    /** Чек пришёл ссылкой (Instagram/WhatsApp), а не файлом Telegram. */
+    proofUrl?: string;
+  } = {},
 ): Promise<void> {
   const recipients = await adminRecipients(ctx);
   if (recipients.length === 0) {
@@ -31,6 +37,8 @@ export async function notifyAdminNewOrder(
         ? `💳 <b>Заказ #${no} оплачен картой</b>\n\n`
         : `🆕 <b>Новый заказ #${no}</b>\n\n`) +
     (opts.reviewReason ? `🔎 Автопроверка чека: ${escapeHtml(opts.reviewReason)}\n\n` : "") +
+    (order.platform !== "telegram" ? `📲 Канал: ${escapeHtml(order.platform)}\n` : "") +
+    (opts.proofUrl ? `🧾 Чек: ${escapeHtml(opts.proofUrl)}\n` : "") +
     `👤 ${escapeHtml(order.display_name ?? "")}${order.username ? ` (@${escapeHtml(order.username)})` : ""}\n` +
     `📞 ${escapeHtml(order.contact ?? "—")}\n` +
     `🌍 ${escapeHtml(order.country_name ?? "—")}\n` +

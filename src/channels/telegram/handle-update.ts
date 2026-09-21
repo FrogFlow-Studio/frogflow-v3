@@ -1537,6 +1537,15 @@ async function adminDecision(
   const no = displayNo(order);
   const buyerLocale: Locale = "ru";
   const m = COPY[buyerLocale];
+  // Покупатель из Instagram/WhatsApp — ответы и выдача уходят через Zernio.
+  const { sendToZernioTarget, zernioTargetForOrder } =
+    await import("@/channels/zernio/outbound.server");
+  const zernioTarget = await zernioTargetForOrder(ctx, order);
+  const tellBuyer = async (text: string) => {
+    if (zernioTarget) await sendToZernioTarget(zernioTarget, text);
+    else if (order.platform === "telegram")
+      await api.call("sendMessage", { chat_id: order.telegram_id, text });
+  };
 
   if (data.startsWith("reject:")) {
     const ok = await rejectOrder(ctx, orderId);
@@ -1544,15 +1553,7 @@ async function adminDecision(
       chat_id: chatId,
       text: ok ? `❌ Заказ #${no} отклонён.` : `Заказ #${no} уже закрыт (${order.status}).`,
     });
-    if (ok && order.platform === "telegram")
-      await api.call("sendMessage", { chat_id: order.telegram_id, text: m.orderRejected(no) });
-    return;
-  }
-  if (order.platform !== "telegram") {
-    await api.call("sendMessage", {
-      chat_id: chatId,
-      text: `Заказ #${no} из ${order.platform}: выдача этого канала переносится в следующей фазе v2.`,
-    });
+    if (ok) await tellBuyer(m.orderRejected(no));
     return;
   }
   if (order.fulfillment_kind === "physical") {
@@ -1562,27 +1563,29 @@ async function adminDecision(
       .eq("id", orderId)
       .in("status", ["awaiting_payment", "awaiting_confirmation"]);
     await api.call("sendMessage", { chat_id: chatId, text: `✅ Заказ #${no} принят в работу.` });
+    await tellBuyer(`✅ Заказ #${no} принят в работу.`);
     return;
   }
-  const r = await deliverOrder(
-    ctx,
-    orderId,
-    telegramMaterialSender(api, order.telegram_id, m),
-    buyerLocale,
-  );
+  let sender = telegramMaterialSender(api, order.telegram_id, m);
+  if (zernioTarget) {
+    const { zernioSenderFor } = await import("@/channels/zernio/outbound.server");
+    sender = zernioSenderFor(zernioTarget);
+  } else if (order.platform !== "telegram") {
+    await api.call("sendMessage", {
+      chat_id: chatId,
+      text: `Заказ #${no} из ${order.platform}: у покупателя нет диалога для выдачи.`,
+    });
+    return;
+  }
+  const r = await deliverOrder(ctx, orderId, sender, buyerLocale);
   if (r.alreadyDelivered)
     return void (await api.call("sendMessage", {
       chat_id: chatId,
       text: `Заказ #${no} уже выдан.`,
     }));
   if (r.failed === 0) {
-    await api.call("sendMessage", { chat_id: order.telegram_id, text: m.orderDelivered(no) });
-    if (r.pointsEarned > 0) {
-      await api.call("sendMessage", {
-        chat_id: order.telegram_id,
-        text: m.pointsEarned(r.pointsEarned),
-      });
-    }
+    await tellBuyer(m.orderDelivered(no));
+    if (r.pointsEarned > 0) await tellBuyer(m.pointsEarned(r.pointsEarned));
     await notifyReferral(ctx, api, r.referral);
     await api.call("sendMessage", {
       chat_id: chatId,

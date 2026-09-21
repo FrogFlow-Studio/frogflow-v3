@@ -44,7 +44,7 @@ export async function handleZernioMessage(
   if (!ctx.tenant.modules[m.platform])
     return ignored(`модуль «${PLATFORM_LABEL[m.platform]}» у клиента выключен`);
 
-  const customer = await upsertCustomer(ctx, m.platform, m.senderId, {
+  let customer = await upsertCustomer(ctx, m.platform, m.senderId, {
     username: m.senderUsername || null,
     firstName: m.senderName,
     zernioConversationId: m.conversationId,
@@ -63,10 +63,25 @@ export async function handleZernioMessage(
       return processed("менеджер ведёт диалог в панели");
   }
 
+  // Магазин в переписке — отдельный модуль на канал; свободный вопрос
+  // уходит дальше консультанту или продавцу.
+  let customerNow = customer;
+  const shopOn =
+    m.platform === "whatsapp" ? ctx.tenant.modules.wa_shop : ctx.tenant.modules.dm_shop;
+  if (shopOn) {
+    const { handleShopMessage } = await import("./shop.server");
+    const r = await handleShopMessage(ctx, customer, m, transport);
+    customerNow = r.customer;
+    if (r.outcome === "handled") return processed("магазин");
+  }
+
   const consultant = await import("@/core/consultant/engine.server");
-  if (!(await consultant.consultantEnabled(ctx)))
+  if (!(await consultant.consultantEnabled(ctx))) {
+    if (shopOn && m.text) await forwardedToSeller(ctx, customerNow, m, transport);
     return processed("консультант выключен — сообщение в «Чате»");
-  if (consultant.isPaused(customer)) return processed("консультант на паузе");
+  }
+  if (consultant.isPaused(customerNow)) return processed("консультант на паузе");
+  customer = customerNow;
 
   const memory = consultantMemory(customer);
   let tail: Awaited<ReturnType<ZernioTransport["tail"]>> = [];
@@ -123,4 +138,40 @@ export async function handleZernioMessage(
     await notifyAdminsHtml(ctx, lines.join("\n")).catch(() => 0);
   }
   return processed(r.handoff ? `ответ + передача менеджеру (${r.handoff.reason})` : undefined);
+}
+
+/**
+ * Магазин включён, консультанта нет, а покупатель задал вопрос: один раз
+ * сказать, что продавец ответит здесь, и как заказать. Повтор в течение
+ * часа подавляется — иначе на каждую реплику диалога прилетал бы один и
+ * тот же ответ (v1: «Передал ваш вопрос продавцу» дважды подряд).
+ */
+async function forwardedToSeller(
+  ctx: TenantContext,
+  customer: Customer,
+  m: ReturnType<typeof parseZernioMessage>,
+  transport: ZernioTransport,
+) {
+  const direct = customer.state.direct;
+  const mem = direct && typeof direct === "object" && !Array.isArray(direct) ? direct : {};
+  const at = Date.parse(String(mem.forwarded_at ?? ""));
+  if (Number.isFinite(at) && Date.now() - at < 3600_000) return;
+  const text =
+    "Передал ваш вопрос продавцу — он ответит здесь. Чтобы заказать самостоятельно, напишите номер товара или «каталог».";
+  const r = await transport.send(m.conversationId!, m.accountId!, text, { platform: m.platform });
+  if (!r.ok) return;
+  const { setState } = await import("@/core/customers/customers");
+  await setState(ctx, customer, {
+    ...customer.state,
+    direct: { ...mem, forwarded_at: new Date().toISOString() },
+  });
+  if (ctx.tenant.modules.manager_chat) {
+    const { recordMessage } = await import("@/core/chat/chat");
+    await recordMessage(ctx, {
+      telegramId: customer.telegramId,
+      direction: "out",
+      sender: "bot",
+      text,
+    });
+  }
 }

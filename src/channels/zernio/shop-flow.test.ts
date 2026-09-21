@@ -1,0 +1,222 @@
+import { describe, expect, it } from "vitest";
+import {
+  classifyIncoming,
+  extractEmail,
+  extractProductNumber,
+  isAffirmative,
+  isCancel,
+  isLocalePickEcho,
+  isPaymentComplaint,
+  LOCALE_PICK_ECHO_MS,
+  matchCountry,
+  matchDirectCommand,
+  matchLocalePick,
+  matchOrdinal,
+  matchZone,
+  parseRemoveCommand,
+  pickCartLineToRemove,
+  pickReceiptAttachment,
+  plain,
+  productNumberFromKeywords,
+  productNumberFromName,
+} from "./shop-flow";
+
+/** Список стран — из настоящих payment_methods клиента. */
+const countries = [
+  { code: "KZ", name: "🇰🇿 Казахстан" },
+  { code: "RU", name: "🇷🇺 Россия" },
+  { code: "BY", name: "🇧🇾 Беларусь" },
+  { code: "KG", name: "🇰🇬 Кыргызстан" },
+  { code: "UZ", name: "🇺🇿 Узбекистан" },
+  { code: "OTHER", name: "Другая страна" },
+];
+
+describe("extractProductNumber", () => {
+  it("принимает номер в том виде, в каком его пишут покупатели", () => {
+    for (const input of ["018", "18", "№18", "# 18", "18.", "18)"])
+      expect(extractProductNumber(input), input).toBe("18");
+  });
+  it("снимает ведущие нули и не принимает за номер текст", () => {
+    expect(extractProductNumber("000")).toBe("0");
+    for (const input of ["привет", "18 штук", "1 класс", "123456", ""])
+      expect(extractProductNumber(input), input).toBeNull();
+  });
+});
+
+describe("productNumberFromName / Keywords", () => {
+  it("берёт номер из названия во всех форматах клиента", () => {
+    expect(productNumberFromName("018. Набор «Пазлы БУКВЫ»")).toBe("18");
+    expect(productNumberFromName("236) Пазлы")).toBe("236");
+    expect(productNumberFromName("081 | Дни недели")).toBe("81");
+    expect(productNumberFromName("165 Календари")).toBe("165");
+  });
+  it("не принимает класс за номер и не выдумывает", () => {
+    expect(productNumberFromName("Прописи для 1 класса")).toBeNull();
+    expect(productNumberFromName(null)).toBeNull();
+    expect(productNumberFromKeywords("018, пазлы, карточки")).toBe("18");
+    expect(productNumberFromKeywords("пазлы, 018")).toBeNull();
+  });
+});
+
+describe("корзина: убрать позицию", () => {
+  it("понимает просьбу убрать и находит позицию по номеру или месту", () => {
+    expect(parseRemoveCommand("убрать 018")).toBe("18");
+    expect(parseRemoveCommand("- №18")).toBe("18");
+    expect(parseRemoveCommand("убери всё")).toBeNull();
+    const names = ["018. Пазлы", "Прописи"];
+    expect(pickCartLineToRemove("18", names)).toBe(0);
+    expect(pickCartLineToRemove("2", names)).toBe(1);
+    expect(pickCartLineToRemove("7", names)).toBeNull();
+  });
+});
+
+describe("matchCountry", () => {
+  it("номер из списка, название с флагом и не до конца, код", () => {
+    expect(matchCountry("1", countries)?.code).toBe("KZ");
+    expect(matchCountry("2.", countries)?.code).toBe("RU");
+    expect(matchCountry("🇰🇿 Казахстан", countries)?.code).toBe("KZ");
+    expect(matchCountry("казах", countries)?.code).toBe("KZ");
+    expect(matchCountry("kz", countries)?.code).toBe("KZ");
+  });
+  it("не угадывает наугад", () => {
+    expect(matchCountry("не знаю", countries)).toBeNull();
+    expect(matchCountry("99", countries)).toBeNull();
+    expect(matchCountry("ка", countries)).toBeNull();
+  });
+});
+
+describe("matchLocalePick / echo", () => {
+  it("номер, код и родное название", () => {
+    expect(matchLocalePick("1")).toBe("ru");
+    expect(matchLocalePick("3)")).toBe("en");
+    expect(matchLocalePick("KK")).toBe("kk");
+    expect(matchLocalePick("Русский")).toBe("ru");
+    expect(matchLocalePick("рус")).toBe("ru");
+    expect(matchLocalePick("O‘zbekcha")).toBe("uz");
+    expect(matchLocalePick("ру")).toBeNull();
+    expect(matchLocalePick("99")).toBeNull();
+  });
+  it("повтор «1» сразу после выбора языка — не номер товара, после окна — номер", () => {
+    const at = new Date(1_000_000).toISOString();
+    expect(isLocalePickEcho("1", at, 1_000_000 + 5_000)).toBe(true);
+    expect(isLocalePickEcho("1", at, 1_000_000 + LOCALE_PICK_ECHO_MS + 1)).toBe(false);
+    expect(isLocalePickEcho("196", at, 1_000_000 + 5_000)).toBe(false);
+    expect(isLocalePickEcho("1", undefined)).toBe(false);
+  });
+});
+
+describe("matchZone / matchOrdinal", () => {
+  const zones = [
+    { id: "a", name: "Центр" },
+    { id: "b", name: "Окраина" },
+  ];
+  it("номер или название", () => {
+    expect(matchZone("2", zones)?.id).toBe("b");
+    expect(matchZone("центр", zones)?.id).toBe("a");
+    expect(matchZone("окр", zones)?.id).toBe("b");
+    expect(matchZone("север", zones)).toBeNull();
+    expect(matchOrdinal("3.", 5)).toBe(2);
+    expect(matchOrdinal("9", 5)).toBeNull();
+    expect(matchOrdinal("три", 5)).toBeNull();
+  });
+});
+
+describe("pickReceiptAttachment", () => {
+  it("берёт картинку или файл, старые события без типа — фото", () => {
+    expect(pickReceiptAttachment([{ url: "https://cdn/1.jpg", type: "image" }])).toBe(
+      "https://cdn/1.jpg",
+    );
+    expect(pickReceiptAttachment([{ url: "https://cdn/1.pdf", type: "file" }])).toBe(
+      "https://cdn/1.pdf",
+    );
+    expect(pickReceiptAttachment([{ url: "https://cdn/1.jpg" }])).toBe("https://cdn/1.jpg");
+  });
+  it("не принимает голосовое, видео, пост и эхо шаблона; находит чек рядом с голосовым", () => {
+    for (const type of ["audio", "video", "share", "ephemeral", "template"])
+      expect(pickReceiptAttachment([{ url: "https://cdn/x", type }]), type).toBeNull();
+    expect(
+      pickReceiptAttachment([
+        { url: "https://cdn/voice", type: "audio" },
+        { url: "https://cdn/receipt.jpg", type: "image" },
+      ]),
+    ).toBe("https://cdn/receipt.jpg");
+    expect(pickReceiptAttachment(null)).toBeNull();
+  });
+});
+
+describe("extractEmail", () => {
+  it("находит адрес и не выдумывает", () => {
+    expect(extractEmail("моя почта Anna.K@Example.com, спасибо")).toBe("anna.k@example.com");
+    expect(extractEmail("нет почты")).toBeNull();
+  });
+});
+
+describe("classifyIncoming", () => {
+  it("номер, согласие, отказ, вопрос", () => {
+    expect(classifyIncoming("196")).toEqual({ kind: "product_number", number: "196" });
+    expect(classifyIncoming("Да").kind).toBe("affirmative");
+    expect(isAffirmative("+")).toBe(true);
+    expect(classifyIncoming("Здравствуйте, а скидка есть?").kind).toBe("question");
+    for (const input of ["не нужно", "Нет", "нет.", "Спасибо!", "понятно", "всё"])
+      expect(classifyIncoming(input).kind, input).toBe("dismissal");
+    expect(classifyIncoming("Спасибо, а когда будет новый набор?").kind).toBe("question");
+  });
+});
+
+describe("isCancel", () => {
+  it("все обычные способы выйти и ни одной обычной реплики", () => {
+    for (const input of ["отмена", "Отмена!", "стоп", "заново", "/start", "хватит"])
+      expect(isCancel(input), input).toBe(true);
+    for (const input of ["Казахстан", "018", "отменяется ли заказ?"])
+      expect(isCancel(input), input).toBe(false);
+  });
+});
+
+describe("matchDirectCommand", () => {
+  it("команды словом и подписи кнопок на всех языках магазина", () => {
+    expect(matchDirectCommand("Корзина")).toBe("cart");
+    expect(matchDirectCommand("Оформить заказ")).toBe("checkout");
+    expect(matchDirectCommand("реквизиты")).toBe("checkout");
+    expect(matchDirectCommand("мои заказы")).toBe("orders");
+    expect(matchDirectCommand("Каталог!")).toBe("catalog");
+    expect(matchDirectCommand("Тапсырысты рәсімдеу")).toBe("checkout");
+    expect(matchDirectCommand("Savat")).toBe("cart");
+    expect(matchDirectCommand("тіл")).toBe("language");
+    expect(matchDirectCommand("сменить страну")).toBe("country");
+  });
+  it("живая фраза с командой внутри — не команда", () => {
+    for (const input of [
+      "Я оплатила 400тг вам, вы материал мне не отправили",
+      "а где мой заказ, я оплатила вчера",
+      "в корзине что-то не так",
+    ])
+      expect(matchDirectCommand(input), input).toBeNull();
+  });
+});
+
+describe("isPaymentComplaint", () => {
+  it("узнаёт жалобу и не считает жалобой вопрос", () => {
+    for (const input of [
+      "Я оплатила 400тг вам, вы материал мне не отправили",
+      "Верните мои деньги",
+      "файл не открывается",
+      "где мой материал?",
+      "это обман какой-то",
+    ])
+      expect(isPaymentComplaint(input), input).toBe(true);
+    for (const input of [
+      "как оплатить?",
+      "не могу найти реквизиты",
+      "196",
+      "я ещё не оплатила",
+      "",
+    ])
+      expect(isPaymentComplaint(input), input).toBe(false);
+  });
+});
+
+describe("plain", () => {
+  it("снимает HTML и сущности для Instagram", () => {
+    expect(plain("<b>Заказ #5</b>\n&lt;3 &amp; «ок»")).toBe("Заказ #5\n<3 & «ок»");
+  });
+});

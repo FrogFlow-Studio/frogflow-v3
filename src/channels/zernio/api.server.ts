@@ -154,6 +154,8 @@ export async function listConversationMessages(
 export type ZernioTransport = {
   send: typeof sendInboxMessage;
   tail: typeof listConversationMessages;
+  /** Скачивание вложения (чек) — в тестах подменяется, по умолчанию fetch по ссылке Zernio. */
+  download?: (url: string) => Promise<{ bytes: Uint8Array; mime: string } | null>;
 };
 
 export const liveTransport: ZernioTransport = {

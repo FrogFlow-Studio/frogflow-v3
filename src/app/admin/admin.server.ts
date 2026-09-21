@@ -30,13 +30,19 @@ function api(ctx: TenantContext) {
   return telegramApi(ctx.secrets.telegramToken(), env().TELEGRAM_API_BASE);
 }
 
-/** Уведомить покупателя в его канале. Пока только Telegram; Direct — фаза 4. */
+/** Уведомить покупателя в его канале: Telegram или Instagram/WhatsApp через Zernio. */
 export async function notifyCustomer(
   ctx: TenantContext,
   order: OrderWithItems,
   text: string,
 ): Promise<boolean> {
-  if (order.platform !== "telegram" || !ctx.tenant.telegramTokenEnc) return false;
+  if (order.platform !== "telegram") {
+    const { sendToZernioTarget, zernioTargetForOrder } =
+      await import("@/channels/zernio/outbound.server");
+    const target = await zernioTargetForOrder(ctx, order);
+    return target ? sendToZernioTarget(target, text) : false;
+  }
+  if (!ctx.tenant.telegramTokenEnc) return false;
   const r = await api(ctx).call("sendMessage", {
     chat_id: order.telegram_id,
     text,
@@ -78,14 +84,16 @@ export async function runOrderAction(
             : `Заказ #${no} нельзя принять из статуса ${order.status}`,
         };
       }
-      if (order.platform !== "telegram")
-        return { ok: false, message: `Выдача в ${order.platform} переносится в следующей фазе` };
-      const r = await deliverOrder(
-        ctx,
-        id,
-        telegramMaterialSender(api(ctx), order.telegram_id, m),
-        "ru",
-      );
+      let sender = telegramMaterialSender(api(ctx), order.telegram_id, m);
+      if (order.platform !== "telegram") {
+        const { zernioSenderFor, zernioTargetForOrder } =
+          await import("@/channels/zernio/outbound.server");
+        const target = await zernioTargetForOrder(ctx, order);
+        if (!target)
+          return { ok: false, message: `У покупателя из ${order.platform} нет диалога для выдачи` };
+        sender = zernioSenderFor(target);
+      }
+      const r = await deliverOrder(ctx, id, sender, "ru");
       if (r.alreadyDelivered) return { ok: true, message: `Заказ #${no} уже выдан` };
       if (r.failed === 0) {
         await notifyCustomer(ctx, order, m.orderDelivered(no));

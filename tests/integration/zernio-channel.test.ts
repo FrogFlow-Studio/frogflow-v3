@@ -53,7 +53,14 @@ describe.skipIf(!liveReady)("канал Instagram/WhatsApp на демо-кли�
     const tenant = await requireTenant({ by: "id", value: DEMO_BOT });
     ctx = tenantContext({
       ...tenant,
-      modules: { ...tenant.modules, instagram: true, whatsapp: true, manager_chat: true },
+      modules: {
+        ...tenant.modules,
+        instagram: true,
+        whatsapp: true,
+        manager_chat: true,
+        dm_shop: false,
+        wa_shop: false,
+      },
     });
     prevConsultant = await getSetting(ctx, "consultant_enabled");
     await setSetting(ctx, "consultant_enabled", "false");
