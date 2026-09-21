@@ -14,6 +14,10 @@ import {
   matchLocalePick,
   languagePickerText,
   needsLocalePick,
+  stepAnswer,
+  whatsappList,
+  clipRowTitle,
+  WA_LIST_MAX_ROWS,
   matchOrdinal,
   matchZone,
   parseRemoveCommand,
@@ -263,5 +267,57 @@ describe("matchDeliveryLangChoice", () => {
     expect(matchDeliveryLangChoice("оба", [...langs])).toBe("all");
     expect(matchDeliveryLangChoice("все языки", [...langs])).toBe("all");
     expect(matchDeliveryLangChoice("english", [...langs])).toBeNull();
+  });
+});
+
+describe("списки WhatsApp", () => {
+  it("режет строки по лимитам Meta и не выходит за десять строк на сообщение", () => {
+    const rows = Array.from({ length: 12 }, (_, i) => ({
+      id: `PROD:${i}`,
+      title: `Очень длинное название товара номер ${i}`,
+      description: "x".repeat(100),
+    }));
+    const list = whatsappList({
+      body: "Каталог",
+      buttonLabel: "Открыть каталог, пожалуйста",
+      sections: [
+        { title: "Товары", rows },
+        { title: "…", rows: [{ id: "CART", title: "Корзина" }] },
+      ],
+    }) as {
+      type: string;
+      action: {
+        button: string;
+        sections: Array<{ rows: Array<{ title: string; description?: string }> }>;
+      };
+    };
+    expect(list.type).toBe("list");
+    expect(list.action.button.length).toBeLessThanOrEqual(20);
+    const total = list.action.sections.reduce((n, sct) => n + sct.rows.length, 0);
+    expect(total).toBe(WA_LIST_MAX_ROWS);
+    expect(list.action.sections).toHaveLength(1); // бюджет ушёл на первую секцию
+    for (const r of list.action.sections[0]!.rows) {
+      expect(r.title.length).toBeLessThanOrEqual(24);
+      expect(r.description!.length).toBeLessThanOrEqual(72);
+    }
+  });
+  it("пустые секции пропускаются, короткие заголовки не трогаются", () => {
+    const list = whatsappList({
+      body: "Страна",
+      buttonLabel: "Выбрать",
+      sections: [
+        { title: "Пусто", rows: [] },
+        { title: "Страна", rows: [{ id: "STEP:1", title: "Казахстан" }] },
+      ],
+    }) as { action: { sections: Array<{ title: string }> } };
+    expect(list.action.sections.map((x) => x.title)).toEqual(["Страна"]);
+    expect(clipRowTitle("Казахстан")).toBe("Казахстан");
+    expect(clipRowTitle("Набор прописей для первого класса", 24)).toMatch(/…$/);
+  });
+  it("строка STEP:<n> — ответ на шаг, остальные postback — команды", () => {
+    expect(stepAnswer("STEP:3")).toBe("3");
+    expect(stepAnswer("CART")).toBeNull();
+    expect(stepAnswer(null)).toBeNull();
+    expect(stepAnswer("STEP:")).toBeNull();
   });
 });

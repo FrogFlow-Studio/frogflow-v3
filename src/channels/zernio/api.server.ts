@@ -92,6 +92,8 @@ export type SendOptions = {
   /** Instagram вне 24-часового окна: HUMAN_AGENT — живой агент известному контакту, не рассылка. */
   messagingType?: "MESSAGE_TAG";
   messageTag?: "HUMAN_AGENT";
+  /** Родной interactive-объект Meta (список WhatsApp); при нём Zernio игнорирует buttons. */
+  interactive?: Json;
 };
 
 export type SendResult = { ok: boolean; error?: string };
@@ -126,7 +128,8 @@ export async function sendInboxMessage(
     if (opts.attachmentName) body.attachmentName = opts.attachmentName;
   }
   const buttons = normalizeDmButtons(opts.buttons);
-  if (buttons.length) body.buttons = buttons;
+  if (opts.interactive) body.interactive = opts.interactive;
+  else if (buttons.length) body.buttons = buttons;
   if (opts.messagingType) {
     body.messagingType = opts.messagingType;
     if (opts.messageTag) body.messageTag = opts.messageTag;

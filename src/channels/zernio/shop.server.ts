@@ -53,7 +53,7 @@ import { buildPaymentUrl } from "@/core/payments/robokassa";
 import { formatRatingSummary } from "@/core/reviews/pure";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
 import { askDeliveryLangBeforeOrder, cartLanguageChoices } from "@/core/cart/languages";
-import { localeFlags as flags } from "@/core/i18n/locale";
+import { localeFlags as flags, SUPPORTED_LOCALES } from "@/core/i18n/locale";
 import { COPY, normalizePhone, type Msg } from "@/channels/telegram/copy";
 import { adminTelegramApi } from "@/channels/telegram/notify";
 import { liveTransport, type DmButton, type ZernioTransport } from "./api.server";
@@ -70,6 +70,11 @@ import {
   matchDirectCommand,
   matchLocalePick,
   languagePickerText,
+  stepAnswer,
+  whatsappList,
+  STEP_PREFIX,
+  WA_LIST_MAX_ROWS,
+  WA_LIST_PAGE,
   needsLocalePick,
   MAX_LOCALE_MISSES,
   matchOrdinal,
@@ -157,7 +162,7 @@ function fingerprint(text: string): string {
 async function reply(
   s: Shop,
   html: string,
-  opts: { buttons?: DmButton[]; attachmentUrl?: string; force?: boolean } = {},
+  opts: { buttons?: DmButton[]; attachmentUrl?: string; force?: boolean; interactive?: Json } = {},
 ): Promise<boolean> {
   const text = plain(html).slice(0, 2000);
   const mem = memory(s.customer);
@@ -170,6 +175,7 @@ async function reply(
     buttons: opts.buttons,
     attachmentUrl: opts.attachmentUrl,
     attachmentType: opts.attachmentUrl ? "image" : undefined,
+    interactive: opts.interactive,
   });
   if (!r.ok) {
     console.error(`[zernio-shop] reply failed for ${s.customer.userKey}: ${r.error}`);
@@ -235,6 +241,9 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const text = msg.text;
   const mode = s.customer.state.mode;
 
+  // Строка списка WhatsApp «STEP:<n>» — ответ на текущий шаг, как набранная цифра.
+  const step = stepAnswer(msg.postbackPayload);
+  if (step) return route(s, { ...msg, postbackPayload: null, text: step });
   if (msg.postbackPayload) return handlePostback(s, msg.postbackPayload);
 
   // Вложение: чек на шаге оплаты или по свежему открытому заказу.
@@ -517,6 +526,7 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
 async function showCatalog(s: Shop, categoryId: string | null, offset: number, force: boolean) {
   const cats = await listChildCategories(s.ctx, categoryId);
   if (cats.length > 0) {
+    const PAGE = pageSize(s);
     const page = cats.slice(offset, offset + PAGE);
     const lines = page.map((c, i) => `${offset + i + 1}. ${c.name}`);
     const more = cats.length > offset + PAGE;
@@ -537,6 +547,23 @@ async function showCatalog(s: Shop, categoryId: string | null, offset: number, f
     buttons.push(BTN.cart(s.m));
     if (categoryId)
       buttons.push({ type: "postback", title: plain(s.m.backToCategories), payload: "CATALOG" });
+    if (s.platform === "whatsapp") {
+      await reply(s, plain(s.m.catalogHeader), {
+        force,
+        interactive: whatsappList({
+          body: plain(s.m.catalogHeader),
+          buttonLabel: plain(s.m.openCatalogBtn),
+          sections: [
+            {
+              title: plain(s.m.catalogHeader),
+              rows: page.map((c) => ({ id: `CAT:${c.id}:0`, title: c.name })),
+            },
+            { title: "…", rows: buttons.map((b) => ({ id: b.payload!, title: b.title })) },
+          ],
+        }),
+      });
+      return;
+    }
     await reply(
       s,
       `${plain(s.m.catalogHeader)}\n\n${lines.join("\n")}\n\n${s.locale === "ru" ? "Напишите номер раздела." : plain(s.m.chooseSection)}`,
@@ -560,19 +587,20 @@ async function showProductList(
   force: boolean,
 ) {
   const country = s.customer.state.country_code ?? null;
+  const PAGE = pageSize(s);
   const page = products.slice(offset, offset + PAGE);
-  const lines = await Promise.all(
-    page.map(async (p, i) => {
+  const prices = await Promise.all(
+    page.map(async (p) => {
       const variants = sortedVariants(p);
       const money = variants.length
         ? await resolvePrice(s.ctx, p, country, variants[0])
         : await resolvePrice(s.ctx, p, country);
-      const price = variants.length
+      return variants.length
         ? plain(s.m.priceFrom(formatMoney(money.amount, money.currency)))
         : formatMoney(money.amount, money.currency);
-      return `${offset + i + 1}. ${p.name} — ${price}`;
     }),
   );
+  const lines = page.map((p, i) => `${offset + i + 1}. ${p.name} — ${prices[i]}`);
   await remember(s, {
     list: {
       kind: "products",
@@ -593,11 +621,48 @@ async function showProductList(
       ? { type: "postback", title: plain(s.m.backToCategories), payload: "CATALOG" }
       : BTN.orders(s.m),
   );
+  if (s.platform === "whatsapp") {
+    await reply(s, plain(s.m.catalogHeader), {
+      force,
+      interactive: whatsappList({
+        body: plain(s.m.catalogHeader),
+        buttonLabel: plain(s.m.openCatalogBtn),
+        sections: [
+          {
+            title: plain(s.m.catalog),
+            rows: page.map((p, i) => ({
+              id: `PROD:${p.id}`,
+              title: p.name,
+              description: prices[i],
+            })),
+          },
+          { title: "…", rows: buttons.map((b) => ({ id: b.payload!, title: b.title })) },
+        ],
+      }),
+    });
+    return;
+  }
   await reply(
     s,
     `${lines.join("\n")}\n\n${s.locale === "ru" ? "Напишите номер товара, чтобы посмотреть подробнее." : plain(s.m.searchPrompt)}`,
     { force, buttons: buttons.slice(0, 3) },
   );
+}
+
+/** Список WhatsApp вмещает десять строк с навигацией; в Instagram — нумерованный текст. */
+function pageSize(s: Shop): number {
+  return s.platform === "whatsapp" ? WA_LIST_PAGE : PAGE;
+}
+
+/** Шаг сценария списком WhatsApp: строки «STEP:<n>» разбираются как набранная цифра. */
+function stepList(body: string, buttonLabel: string, section: string, titles: string[]): Json {
+  return whatsappList({
+    body,
+    buttonLabel,
+    sections: [
+      { title: section, rows: titles.map((title, i) => ({ id: `${STEP_PREFIX}${i + 1}`, title })) },
+    ],
+  });
 }
 
 /** Номер: из показанного списка, иначе — номер товара из названия/ключевых слов, иначе поиск. */
@@ -757,6 +822,19 @@ async function removeFromCart(s: Shop, number: string) {
 
 async function askLocale(s: Shop) {
   await setMode(s, { mode: "awaiting_locale" });
+  if (s.platform === "whatsapp") {
+    const body = "Выберите язык / Тілді таңдаңыз / Tilni tanlang / Choose language";
+    await reply(s, body, {
+      force: true,
+      interactive: stepList(
+        body,
+        "Язык / Language",
+        "Язык / Language",
+        SUPPORTED_LOCALES.map((l) => `${flags[l]} ${localeNames[l]}`),
+      ),
+    });
+    return;
+  }
   await reply(s, languagePickerText(), { force: true });
 }
 
@@ -768,6 +846,18 @@ async function askCountry(s: Shop, forCheckout: boolean) {
   }
   await setMode(s, { mode: "awaiting_country", placing_order: forCheckout ? true : undefined });
   const lines = methods.map((m, i) => `${i + 1}. ${m.country_name}`);
+  if (s.platform === "whatsapp" && methods.length <= WA_LIST_MAX_ROWS) {
+    await reply(s, plain(s.m.chooseCountry), {
+      force: true,
+      interactive: stepList(
+        plain(s.m.chooseCountry),
+        s.locale === "ru" ? "Выбрать страну" : plain(s.m.chooseCountry).slice(0, 20),
+        plain(s.m.chooseCountry),
+        methods.map((m) => m.country_name),
+      ),
+    });
+    return;
+  }
   await reply(s, `${plain(s.m.chooseCountry)}\n\n${lines.join("\n")}`, { force: true });
 }
 
@@ -891,8 +981,21 @@ async function proceedToLanguageOrPlace(s: Shop, countryCode: string) {
     const langs = await cartLanguageChoices(s.ctx, s.customer);
     if (langs.length > 1) {
       await setMode(s, { mode: "awaiting_delivery_lang", delivery_lang: undefined });
-      const lines = langs.map((l, i) => `${i + 1}. ${flags[l]} ${localeNames[l]}`);
-      lines.push(`${langs.length + 1}. ${plain(s.m.allLanguagesBtn(langs.length))}`);
+      const titles = langs.map((l) => `${flags[l]} ${localeNames[l]}`);
+      titles.push(plain(s.m.allLanguagesBtn(langs.length)));
+      if (s.platform === "whatsapp") {
+        await reply(s, plain(s.m.chooseDeliveryLanguage), {
+          force: true,
+          interactive: stepList(
+            plain(s.m.chooseDeliveryLanguage),
+            plain(s.m.chooseDeliveryLanguage),
+            plain(s.m.chooseDeliveryLanguage),
+            titles,
+          ),
+        });
+        return;
+      }
+      const lines = titles.map((t, i) => `${i + 1}. ${t}`);
       await reply(s, `${plain(s.m.chooseDeliveryLanguage)}\n\n${lines.join("\n")}`, {
         force: true,
       });
