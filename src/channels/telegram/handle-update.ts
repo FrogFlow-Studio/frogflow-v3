@@ -189,8 +189,21 @@ async function handleMessage(
   msg: TelegramMessage,
 ): Promise<void> {
   const from = msg.from;
-  if (!from || (msg.chat.type !== undefined && msg.chat.type !== "private")) return;
+  if (!from) return;
   const chatId = msg.chat.id;
+
+  // /id — до всех гвардов и в любом чате: продавец узнаёт свой id (и id
+  // группы) для настроек уведомлений ещё до того, как магазин настроен.
+  if (/^\/id(@\w+)?$/.test(msg.text?.trim() ?? "")) {
+    const m = COPY[ctx.tenant.settings.default_locale ?? "ru"];
+    const text =
+      chatId === from.id
+        ? m.yourId(from.id)
+        : `${m.yourId(from.id)}\nID этого чата: <code>${chatId}</code>`;
+    await api.call("sendMessage", { chat_id: chatId, text, parse_mode: "HTML" });
+    return;
+  }
+  if (msg.chat.type !== undefined && msg.chat.type !== "private") return;
 
   if (await isBlocked(ctx, from.id)) return;
   if (ctx.tenant.status !== "active") {
