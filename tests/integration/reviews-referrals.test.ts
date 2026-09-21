@@ -10,7 +10,11 @@ import {
   saveComment,
   saveRating,
 } from "@/core/reviews/reviews";
-import { registerReferral, rewardReferrerIfFirstDelivery } from "@/core/referrals/referrals";
+import {
+  referralPercent,
+  registerReferral,
+  rewardReferrerIfFirstDelivery,
+} from "@/core/referrals/referrals";
 
 const REFERRER = TEST_TG_ID + 40;
 const REFERRED = TEST_TG_ID + 41;
@@ -74,7 +78,8 @@ describe.skipIf(!liveReady)("отзывы и рефералы на демо-кл
     expect(await registerReferral(ctx, REFERRED, "123456789012")).toBeNull();
     const gift = await registerReferral(ctx, REFERRED, String(REFERRER));
     expect(gift?.code.startsWith("WELCOME-")).toBe(true);
-    expect(gift?.percent).toBe(10);
+    // Процент — настройка клиента (в админке его могли поменять), не константа.
+    expect(gift?.percent).toBe(await referralPercent(ctx));
     expect(await registerReferral(ctx, REFERRED, String(REFERRER))).toBeNull();
     const { data: promo } = await ctx.db
       .from("promo_codes")

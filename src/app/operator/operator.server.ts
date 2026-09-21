@@ -27,8 +27,7 @@ type EventKind =
   | "onboard"
   | "webhook"
   | "meta"
-  | "message"
-  | "module_request";
+  | "message";
 
 export async function logEvent(
   botId: string,
@@ -518,14 +517,14 @@ export async function resolveModuleRequest(
       .then((r) => r.delivered.length > 0)
       .catch(() => false);
   }
-  await serviceDb()
+  // CHECK на status допускает только pending/resolved — «снять» тоже resolved,
+  // разница остаётся в журнале клиента.
+  const { error: updError } = await serviceDb()
     .from("module_requests")
-    .update({
-      status: action === "enable" ? "resolved" : "dismissed",
-      resolved_at: new Date().toISOString(),
-    })
+    .update({ status: "resolved", resolved_at: new Date().toISOString() })
     .eq("id", id);
-  await logEvent(req.bot_id, "module_request", { key, action }, actor);
+  if (updError) throw new Error(`Не удалось закрыть заявку: ${updError.message}`);
+  await logEvent(req.bot_id, "meta", { module_request: key, action }, actor);
   return { notified };
 }
 
