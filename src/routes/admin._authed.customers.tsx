@@ -26,7 +26,17 @@ function CustomersPage() {
   });
   return (
     <>
-      <PageTitle title="Покупатели" subtitle={`${rows.length} показано`} />
+      <PageTitle
+        title="Покупатели"
+        subtitle={`${rows.length} показано`}
+        actions={
+          shop.modules.excel_export && (
+            <a className="btn-secondary text-xs" href="/api/admin/export/customers">
+              Выгрузить в Excel
+            </a>
+          )
+        }
+      />
       <form
         className="mb-4 flex gap-2"
         onSubmit={(e) => {

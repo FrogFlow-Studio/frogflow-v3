@@ -39,6 +39,7 @@ import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
 import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
 import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authed.products_.$id'
+import { Route as ApiAdminExportKindRouteImport } from './routes/api/admin/export.$kind'
 import { Route as ApiImgBotIdSplatRouteImport } from './routes/api/img.$botId.$'
 import { Route as ApiRobokassaBotIdActionRouteImport } from './routes/api/robokassa.$botId.$action'
 import { Route as OperatorAuthedClientsBotIdRouteImport } from './routes/operator._authed.clients.$botId'
@@ -194,6 +195,11 @@ const AdminAuthedProductsIdRoute = AdminAuthedProductsIdRouteImport.update({
   path: '/products/$id',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
+const ApiAdminExportKindRoute = ApiAdminExportKindRouteImport.update({
+  id: '/api/admin/export/$kind',
+  path: '/api/admin/export/$kind',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiImgBotIdSplatRoute = ApiImgBotIdSplatRouteImport.update({
   id: '/api/img/$botId/$',
   path: '/api/img/$botId/$',
@@ -256,6 +262,7 @@ export interface FileRoutesByFullPath {
   '/s/$slug/': typeof SSlugIndexRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
+  '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
@@ -289,6 +296,7 @@ export interface FileRoutesByTo {
   '/s/$slug': typeof SSlugIndexRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
+  '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
@@ -328,6 +336,7 @@ export interface FileRoutesById {
   '/s/$slug/': typeof SSlugIndexRoute
   '/admin/_authed/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/_authed/products_/$id': typeof AdminAuthedProductsIdRoute
+  '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
   '/operator/_authed/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
@@ -366,6 +375,7 @@ export interface FileRouteTypes {
     | '/s/$slug/'
     | '/admin/orders/$id'
     | '/admin/products/$id'
+    | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
     | '/operator/clients/$botId'
@@ -399,6 +409,7 @@ export interface FileRouteTypes {
     | '/s/$slug'
     | '/admin/orders/$id'
     | '/admin/products/$id'
+    | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
     | '/operator/clients/$botId'
@@ -437,6 +448,7 @@ export interface FileRouteTypes {
     | '/s/$slug/'
     | '/admin/_authed/orders/$id'
     | '/admin/_authed/products_/$id'
+    | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
     | '/operator/_authed/clients/$botId'
@@ -457,6 +469,7 @@ export interface RootRouteChildren {
   ApiOperatorBotsRoute: typeof ApiOperatorBotsRoute
   ApiTelegramBotIdRoute: typeof ApiTelegramBotIdRoute
   ApiZernioWebhookRoute: typeof ApiZernioWebhookRoute
+  ApiAdminExportKindRoute: typeof ApiAdminExportKindRoute
   ApiImgBotIdSplatRoute: typeof ApiImgBotIdSplatRoute
   ApiRobokassaBotIdActionRoute: typeof ApiRobokassaBotIdActionRoute
 }
@@ -673,6 +686,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedProductsIdRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/api/admin/export/$kind': {
+      id: '/api/admin/export/$kind'
+      path: '/api/admin/export/$kind'
+      fullPath: '/api/admin/export/$kind'
+      preLoaderRoute: typeof ApiAdminExportKindRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/img/$botId/$': {
       id: '/api/img/$botId/$'
       path: '/api/img/$botId/$'
@@ -831,6 +851,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOperatorBotsRoute: ApiOperatorBotsRoute,
   ApiTelegramBotIdRoute: ApiTelegramBotIdRoute,
   ApiZernioWebhookRoute: ApiZernioWebhookRoute,
+  ApiAdminExportKindRoute: ApiAdminExportKindRoute,
   ApiImgBotIdSplatRoute: ApiImgBotIdSplatRoute,
   ApiRobokassaBotIdActionRoute: ApiRobokassaBotIdActionRoute,
 }

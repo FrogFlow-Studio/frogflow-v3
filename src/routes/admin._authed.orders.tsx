@@ -36,8 +36,55 @@ export function OrderStatus({ status }: { status: string }) {
   return <Badge tone={s.tone}>{s.text}</Badge>;
 }
 
+function ExportButton() {
+  const [open, setOpen] = useState(false);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const href = `/api/admin/export/orders?from=${from}&to=${to}`;
+  return (
+    <div className="relative">
+      <button type="button" className="btn-secondary text-xs" onClick={() => setOpen(!open)}>
+        Выгрузить в Excel
+      </button>
+      {open && (
+        <div className="absolute right-0 z-10 mt-1 w-64 space-y-2 rounded-md border border-line bg-surface p-3 shadow-md">
+          <label className="block text-xs text-muted">
+            С даты
+            <input
+              className="input mt-1"
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+          </label>
+          <label className="block text-xs text-muted">
+            По дату (включительно)
+            <input
+              className="input mt-1"
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </label>
+          <a
+            className="btn-primary block text-center text-xs"
+            href={href}
+            onClick={() => setOpen(false)}
+          >
+            Скачать CSV
+          </a>
+          <p className="text-xs text-muted">
+            Без дат — все заказы. Файл открывается в Excel и Google Таблицах.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OrdersPage() {
   const { orders, counts } = Route.useLoaderData();
+  const { shop } = Route.useRouteContext();
   const { status, q } = Route.useSearch();
   const navigate = useNavigate();
   const [query, setQuery] = useState(q ?? "");
@@ -52,7 +99,7 @@ function OrdersPage() {
   ];
   return (
     <>
-      <PageTitle title="Заказы" />
+      <PageTitle title="Заказы" actions={shop.modules.excel_export && <ExportButton />} />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {tabs.map(([s, label]) => (
           <Link
