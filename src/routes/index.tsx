@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { signupEnabledFn } from "@/app/signup/signup.functions";
 import { ThemeToggle } from "@/app/ui";
+import { MODULE_KEYS, moduleDef } from "@/core/modules/registry";
 
 export const Route = createFileRoute("/")({
   loader: () => signupEnabledFn().catch(() => ({ enabled: false })),
@@ -25,56 +26,70 @@ const STEPS = [
   },
 ];
 
-const FEATURES = [
+const HIGHLIGHTS = [
   {
     icon: "🛍",
-    t: "Магазин, который открывается в один клик",
+    t: "Магазин без сайта",
     d: "Каталог с фото и вариантами прямо в Telegram, витрина по ссылке и Mini App. Корзина сохраняется, оформление — за три шага.",
   },
   {
     icon: "💳",
-    t: "Любая оплата — без вашего участия",
-    d: "Реквизиты по странам, оплата картой через Robokassa, задаток или оплата при получении. Чеки распознаются сами.",
-  },
-  {
-    icon: "📦",
-    t: "Выдача заказов автоматически",
-    d: "Цифровые файлы уходят покупателю сразу после оплаты. Физические заказы ведутся по статусам: принят, готовится, готов, выдан.",
+    t: "Оплата и выдача без вашего участия",
+    d: "Реквизиты по странам, карта через Robokassa, чек читается автоматически — файлы уходят покупателю сразу после оплаты.",
   },
   {
     icon: "🔁",
-    t: "Покупатели возвращаются",
-    d: "Напоминание о брошенной корзине, рассылки по базе, промокоды, подарочные сертификаты, баллы за покупки, рефералы и отзывы.",
+    t: "Покупатели возвращаются сами",
+    d: "Напоминание о брошенной корзине, рассылки, промокоды, сертификаты, баллы, рефералы и отзывы.",
   },
   {
     icon: "📊",
-    t: "Всё под контролем",
-    d: "Заказы, покупатели и выручка по дням, чат с покупателем, выгрузка в Excel — в одной панели с телефона или компьютера.",
-  },
-  {
-    icon: "🎂",
-    t: "Для кондитеров и цветочных — особый режим",
-    d: "Дата получения, самовывоз или доставка по зонам, срок изготовления, напоминание за сутки вам и покупателю.",
+    t: "Панель, в которой всё видно",
+    d: "Заказы, покупатели, выручка по дням, чат с покупателем, выгрузка в Excel — с телефона или компьютера.",
   },
 ];
 
 const AUDIENCE = [
   {
     icon: "📚",
-    t: "Авторы материалов и курсов",
-    d: "Файлы, PDF, видео — выдача в момент оплаты, версии на нескольких языках.",
+    t: "Цифровые товары",
+    d: "Учебные материалы, шаблоны, курсы, PDF и видео: файл выдаётся в момент оплаты, версии на нескольких языках.",
   },
   {
-    icon: "🎂",
-    t: "Кондитерские",
-    d: "Торты на дату, задаток, доставка по районам, статусы заказа.",
+    icon: "📦",
+    t: "Товары на заказ и с доставкой",
+    d: "Кондитерские, цветы, подарки, handmade: дата получения, самовывоз или доставка по зонам, задаток, статусы заказа.",
   },
   {
-    icon: "💐",
-    t: "Цветочные",
-    d: "Букеты к дате, адрес доставки, комментарий к заказу, оплата при получении.",
+    icon: "🧑‍💼",
+    t: "Прайс и подбор",
+    d: "Консультанты и магазины с большим прайсом: умный поиск по смыслу, чат с менеджером, заявки и заказы в одной панели.",
   },
 ];
+
+/** Полный список возможностей — из реестра модулей, чтобы ничего не забыть. */
+const GROUP_ORDER = [
+  "База",
+  "Оплата",
+  "Каталог",
+  "Физические товары",
+  "Удержание",
+  "Сервис",
+  "Instagram",
+  "WhatsApp",
+  "Аналитика",
+];
+const CAPABILITIES = GROUP_ORDER.map((group) => ({
+  group,
+  items: MODULE_KEYS.map(moduleDef)
+    .filter((d) => d.group === group)
+    .map((d) => ({
+      title: d.title,
+      desc: d.desc,
+      soon: d.status !== "available",
+      base: d.price === null,
+    })),
+})).filter((g) => g.items.length > 0);
 
 const FAQ = [
   {
@@ -153,10 +168,10 @@ function Landing() {
         <div className="card mx-auto w-full max-w-sm overflow-hidden shadow-lg">
           <div className="flex items-center gap-3 border-b border-line px-4 py-3">
             <span className="grid h-9 w-9 place-items-center rounded-full bg-accent/15 text-lg">
-              🎂
+              🛍
             </span>
             <div>
-              <div className="text-sm font-semibold">Кондитерская «Медовик»</div>
+              <div className="text-sm font-semibold">Ваш магазин</div>
               <div className="text-xs text-muted">бот · онлайн</div>
             </div>
           </div>
@@ -165,15 +180,17 @@ function Landing() {
               🛍 Каталог
             </div>
             <div className="w-fit max-w-[90%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 shadow-sm">
-              <div className="font-medium">📦 Торт «Медовик» классический</div>
-              <div className="mt-1 text-muted">Мёд, сметанный крем, 1,5 кг. Готовим за 2 дня.</div>
-              <div className="mt-2 font-semibold">💰 от 12 000 ₸</div>
+              <div className="font-medium">📦 Набор рабочих листов, 1 класс</div>
+              <div className="mt-1 text-muted">
+                48 страниц, PDF. Файл придёт сразу после оплаты.
+              </div>
+              <div className="mt-2 font-semibold">💰 1 900 ₸</div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <span className="rounded-md border border-line bg-surface-2 px-2 py-1 text-xs">
-                  1 кг — 12 000 ₸
+                  🛒 В корзину
                 </span>
                 <span className="rounded-md border border-line bg-surface-2 px-2 py-1 text-xs">
-                  2 кг — 22 000 ₸
+                  ⭐ 4.9 (37)
                 </span>
               </div>
             </div>
@@ -181,10 +198,10 @@ function Landing() {
               ✅ Оформить заказ
             </div>
             <div className="w-fit max-w-[90%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 shadow-sm">
-              📅 На какую дату? Самовывоз или доставка?
+              💳 Оплатите картой или переводом — чек проверю сам.
             </div>
             <div className="w-fit max-w-[90%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 shadow-sm">
-              🎉 Заказ #128 принят. Задаток 6 000 ₸ получен — ждём вас 24 сентября!
+              🎉 Заказ #128 оплачен. Файл отправлен — приятной работы!
             </div>
           </div>
         </div>
@@ -216,12 +233,43 @@ function Landing() {
         <p className="mt-2 max-w-2xl text-muted">
           Всё, что раньше требовало сайта, менеджера и трёх сервисов, — в одном боте и одной панели.
         </p>
-        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f) => (
+        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {HIGHLIGHTS.map((f) => (
             <div key={f.t} className="card p-5">
               <span className="text-2xl">{f.icon}</span>
               <h3 className="mt-3 font-semibold">{f.t}</h3>
               <p className="mt-2 text-sm text-muted">{f.d}</p>
+            </div>
+          ))}
+        </div>
+
+        <h3 className="mt-14 text-xl font-semibold md:text-2xl">Все возможности по разделам</h3>
+        <p className="mt-2 max-w-2xl text-sm text-muted">
+          Базовые входят в подключение. Остальные включаются по запросу из панели — платите только
+          за то, что используете.
+        </p>
+        <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {CAPABILITIES.map((g) => (
+            <div key={g.group} className="card p-5">
+              <h4 className="text-xs font-semibold tracking-wide text-muted uppercase">
+                {g.group}
+              </h4>
+              <ul className="mt-3 space-y-3">
+                {g.items.map((it) => (
+                  <li key={it.title} className="text-sm">
+                    <div className="flex flex-wrap items-center gap-2 font-medium">
+                      {it.title}
+                      {it.base && (
+                        <span className="badge border-accent/30 bg-accent/10 text-accent">
+                          в пакете
+                        </span>
+                      )}
+                      {it.soon && <span className="badge">скоро</span>}
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted">{it.desc}</p>
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>
