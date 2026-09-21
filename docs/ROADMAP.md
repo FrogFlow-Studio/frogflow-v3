@@ -28,11 +28,11 @@ v2 работают одновременно, поломку у живого к�
 | `gift_certificates`                | `gift-certificates.ts`              | ✔ бот + админка             |
 | `multi_language` «все языки»       | `deliveryPriceMultiplier`, `lang_*` | нет                         |
 | `stock` списание на оформлении     | `decrementStock`/`restoreStock`     | ✔                           |
-| `review_request` отзывы            | `reviews.ts`, `product_reviews`     | нет                         |
-| `referral`                         | `referrals.server.ts`               | нет                         |
+| `review_request` отзывы            | `reviews.ts`, `product_reviews`     | ✔                           |
+| `referral`                         | `referrals.server.ts`               | ✔                           |
 | `cart_reminder` крон               | `cart-reminder.server.ts`           | ✔ `/api/cron/cart-reminder` |
 | `smart_search` LLM-поиск           | `smart-search.server.ts`            | нет                         |
-| `manager_chat`                     | `manager-chat.server.ts`, RPC touch | нет                         |
+| `manager_chat`                     | `manager-chat.server.ts`, RPC touch | ✔ `/admin/chat`             |
 | `blocked` — чтение                 | `replyIfBlocked`                    | ✔                           |
 | пауза за неоплату                  | `replyIfPaused`                     | ✔                           |
 | счёт оператора чеком от владельца  | `subscription_invoices`             | нет                         |
@@ -107,8 +107,11 @@ API Zernio один на платформу.
   периоду, выручка/заказы/покупатели по дням, топ товаров, каналы, статусы;
   у каждого графика табличный вид.
 
-Дальше в этой фазе: чат с менеджером, локализация админки (kk/en/uz), роли
-и несколько пользователей у одного магазина, выгрузка в Excel.
+- **Чат с менеджером** `/admin/chat`, **выгрузка в Excel** заказов и
+  покупателей, отзывы и реферальная программа в боте.
+
+Дальше в этой фазе: локализация админки (kk/en/uz), роли и несколько
+пользователей у одного магазина, умный поиск (LLM).
 
 ## Фаза 6 — VIP-бот, ретеншн
 

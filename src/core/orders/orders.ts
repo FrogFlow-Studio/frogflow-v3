@@ -1,3 +1,4 @@
+import { rewardReferrerIfFirstDelivery, type ReferralGrant } from "@/core/referrals/referrals";
 import { createHash } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database, Json } from "@/core/db-types";
@@ -507,6 +508,8 @@ export type DeliverResult = {
   failed: number;
   /** Начислено баллов за покупку (модуль loyalty), 0 — нет. */
   pointsEarned: number;
+  /** Награда пригласившему (модуль referral) — каналу осталось её отправить. */
+  referral?: ReferralGrant | null;
 };
 
 /**
@@ -552,7 +555,8 @@ export async function deliverOrder(
   const pointsEarned = failed
     ? 0
     : await awardPointsForOrder(ctx, orderId, order.telegram_id, Number(order.total));
-  return { ok: true, sent, failed, pointsEarned };
+  const referral = failed ? null : await rewardReferrerIfFirstDelivery(ctx, order.telegram_id);
+  return { ok: true, sent, failed, pointsEarned, referral };
 }
 
 export async function signedFileUrl(path: string, ttlSec = 7 * 24 * 3600): Promise<string | null> {

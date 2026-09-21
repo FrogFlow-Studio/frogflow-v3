@@ -7,14 +7,20 @@ import {
   giftCertificatesFn,
   promoCodesFn,
   savePromoCodeFn,
+  saveSettingsFn,
+  settingsFn,
 } from "@/app/admin/admin.functions";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 
 export const Route = createFileRoute("/admin/_authed/discounts")({
   loader: async () => {
-    const [promos, gifts] = await Promise.all([promoCodesFn(), giftCertificatesFn()]);
-    return { promos, gifts };
+    const [promos, gifts, settings] = await Promise.all([
+      promoCodesFn(),
+      giftCertificatesFn(),
+      settingsFn(),
+    ]);
+    return { promos, gifts, referralPercent: settings.settings.referral_discount_percent ?? "" };
   },
   component: DiscountsPage,
 });
@@ -22,7 +28,7 @@ export const Route = createFileRoute("/admin/_authed/discounts")({
 type Promo = Awaited<ReturnType<typeof promoCodesFn>>[number];
 
 function DiscountsPage() {
-  const { promos, gifts } = Route.useLoaderData();
+  const { promos, gifts, referralPercent } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   return (
     <>
@@ -35,6 +41,7 @@ function DiscountsPage() {
         {shop.modules.gift_certificates && (
           <GiftCard gifts={gifts} currency={promos[0] ? "KZT" : "KZT"} />
         )}
+        {shop.modules.referral && <ReferralCard percent={referralPercent} bot={shop.telegram} />}
       </div>
     </>
   );
@@ -321,6 +328,49 @@ function GiftCard({ gifts, currency }: { gifts: Gift[]; currency: string }) {
           </tbody>
         </table>
       )}
+    </Card>
+  );
+}
+
+function ReferralCard({ percent, bot }: { percent: string; bot: string | null }) {
+  const router = useRouter();
+  const [value, setValue] = useState(percent);
+  const save = useAction(async () => {
+    await saveSettingsFn({ data: { referral_discount_percent: value.trim() } });
+    await router.invalidate();
+  });
+  return (
+    <Card title="Реферальная программа">
+      <p className="mb-3 text-sm text-muted">
+        Покупатель делится ссылкой из раздела «ℹ️ Информация» в боте
+        {bot ? ` (t.me/${bot}?start=ref_…)` : ""}. Приглашённый сразу получает одноразовый промокод
+        на первую покупку, пригласивший — такой же после первой выданной покупки друга. Промокоды
+        WELCOME-… и REF-… появляются в списке слева.
+      </p>
+      <form
+        className="flex items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save.run().catch(() => {});
+        }}
+      >
+        <Field label="Скидка по промокоду, %">
+          <input
+            className="input w-32"
+            type="number"
+            min={1}
+            max={100}
+            step={1}
+            placeholder="10"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
+        </Field>
+        <button className="btn-secondary" disabled={save.busy}>
+          Сохранить
+        </button>
+      </form>
+      <ErrorBox error={save.error} />
     </Card>
   );
 }

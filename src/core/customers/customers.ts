@@ -59,6 +59,8 @@ export type DialogState = {
   checkout_delivery_fee?: number;
   checkout_fulfillment_address?: string;
   checkout_fulfillment_note?: string;
+  /** Товар, для которого только что поставлена оценка и ждём комментарий. */
+  review_product_id?: string;
   [key: string]: Json | undefined;
 };
 

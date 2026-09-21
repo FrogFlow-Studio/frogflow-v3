@@ -41,7 +41,7 @@ function Layout() {
               </span>
             </NavLink>
           )}
-          {(shop.modules.coupons || shop.modules.gift_certificates) && (
+          {(shop.modules.coupons || shop.modules.gift_certificates || shop.modules.referral) && (
             <NavLink to="/admin/discounts">Скидки</NavLink>
           )}
           {shop.modules.broadcasts && <NavLink to="/admin/broadcasts">Рассылки</NavLink>}

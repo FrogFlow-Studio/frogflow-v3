@@ -322,6 +322,7 @@ export const SETTING_KEYS = [
   "cart_reminder_hours",
   "delivery_lang_timing",
   "loyalty_earn_percent",
+  "referral_discount_percent",
   "fulfillment_pickup_enabled",
   "fulfillment_delivery_enabled",
   "payment_mode",

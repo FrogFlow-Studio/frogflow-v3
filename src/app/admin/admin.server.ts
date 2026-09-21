@@ -90,6 +90,7 @@ export async function runOrderAction(
       if (r.failed === 0) {
         await notifyCustomer(ctx, order, m.orderDelivered(no));
         if (r.pointsEarned > 0) await notifyCustomer(ctx, order, m.pointsEarned(r.pointsEarned));
+        await notifyReferralGrant(ctx, r.referral);
         return { ok: true, message: `Заказ #${no} выдан: ${r.sent} поз.` };
       }
       return {
@@ -111,6 +112,10 @@ export async function runOrderAction(
         accepted: "Заказ принят",
       };
       if (ok && action === "next") await notifyCustomer(ctx, order, `${labels[to] ?? to} — #${no}`);
+      if (ok && to === "delivered") {
+        const { rewardReferrerIfFirstDelivery } = await import("@/core/referrals/referrals");
+        await notifyReferralGrant(ctx, await rewardReferrerIfFirstDelivery(ctx, order.telegram_id));
+      }
       return { ok, message: ok ? `Статус: ${to}` : "Статус уже изменился" };
     }
     case "remind": {
@@ -136,4 +141,16 @@ export async function replyAsManager(
   if (!r.ok) throw new Error(r.description || "Не удалось отправить сообщение в Telegram");
   const { recordMessage } = await import("@/core/chat/chat");
   await recordMessage(ctx, { telegramId, direction: "out", sender: "manager", text });
+}
+
+async function notifyReferralGrant(
+  ctx: TenantContext,
+  grant: { telegramId: number; code: string; percent: number } | null | undefined,
+): Promise<void> {
+  if (!grant || !ctx.tenant.telegramTokenEnc) return;
+  await api(ctx).call("sendMessage", {
+    chat_id: grant.telegramId,
+    text: COPY.ru.referralReward(grant.percent, grant.code),
+    parse_mode: "HTML",
+  });
 }

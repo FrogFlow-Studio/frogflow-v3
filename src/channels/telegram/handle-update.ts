@@ -1,4 +1,13 @@
+import { REFERRAL_PREFIX, registerReferral, type ReferralGrant } from "@/core/referrals/referrals";
+import {
+  hasDeliveredPurchase,
+  reviewableProductsForOrder,
+  saveComment,
+  saveRating,
+} from "@/core/reviews/reviews";
+import { formatRatingSummary, isValidRating } from "@/core/reviews/pure";
 import { inboundIntercepted } from "@/core/chat/chat";
+import { stateFromJson } from "@/core/customers/customers";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { TelegramApi } from "./api";
 import type {
@@ -124,8 +133,8 @@ function localeOf(ctx: TenantContext, customer: Customer): Locale {
   return ctx.tenant.settings.default_locale ?? "ru";
 }
 
-async function send(b: Bot, text: string, extra: Record<string, unknown> = {}) {
-  return b.api.call("sendMessage", {
+async function send(b: Bot, text: string, extra: Record<string, unknown> = {}): Promise<void> {
+  await b.api.call("sendMessage", {
     chat_id: b.chatId,
     text,
     parse_mode: "HTML",
@@ -286,6 +295,15 @@ async function handleMessage(
     if (mode === "awaiting_fulfillment_note") return finishAfterNote(b, text.slice(0, 500));
   }
 
+  if (customer.state.mode === "awaiting_review_comment") {
+    const { review_product_id: productId, ...rest } = customer.state;
+    b.customer = await setState(ctx, customer, { ...rest, mode: "idle" });
+    if (text && !action && productId) {
+      await saveComment(ctx, from.id, productId, text);
+      await send(b, b.m.reviewCommentSaved);
+      return;
+    }
+  }
   if (customer.state.mode === "awaiting_promo_code" && text && !action) {
     const idle = { ...customer.state, mode: "idle" as const };
     const found = await findValidPromoCode(ctx, text);
@@ -327,6 +345,15 @@ async function handleMessage(
 }
 
 async function startFlow(b: Bot, payload = "") {
+  if (payload.startsWith(REFERRAL_PREFIX)) {
+    const gift = await registerReferral(
+      b.ctx,
+      b.customer.telegramId,
+      payload.slice(REFERRAL_PREFIX.length),
+    );
+    if (gift) await send(b, b.m.referralWelcome(gift.percent, gift.code));
+    payload = "";
+  }
   if (payload.startsWith(HANDOFF_PREFIX)) {
     const r = await claimHandoff(b.ctx, b.customer, payload.slice(HANDOFF_PREFIX.length));
     if (!b.customer.state.locale)
@@ -396,6 +423,14 @@ async function menuAction(b: Bot, action: ReturnType<typeof menuActionFor>) {
           { text: "ℹ️ О продавце", url: `${base}/about` },
         ],
       ];
+      const botName = b.ctx.tenant.settings.telegram?.username;
+      if (b.ctx.tenant.modules.referral && botName)
+        buttons.push([
+          {
+            text: b.m.inviteFriendBtn,
+            url: `https://t.me/${botName}?start=${REFERRAL_PREFIX}${b.customer.telegramId}`,
+          },
+        ]);
       await send(b, b.m.infoText, { reply_markup: { inline_keyboard: buttons } });
       return;
     }
@@ -486,6 +521,10 @@ async function sendProductCard(b: Bot, p: Product) {
   }
   if (p.lead_time_days && p.lead_time_days > 0)
     caption += `\n${b.m.leadTimeLabel(p.lead_time_days)}`;
+  const rating = b.ctx.tenant.modules.review_request
+    ? formatRatingSummary(p.rating_avg, p.rating_count ?? 0)
+    : null;
+  if (rating) caption += `\n${rating}`;
   if (outOfStock) caption += `\n${b.m.outOfStockLabel}`;
   if (imgs.length === 0) {
     await send(b, caption, { reply_markup: keyboard });
@@ -830,6 +869,7 @@ async function finishCheckout(b: Bot, countryCode: string) {
       );
       if (r.failed === 0) await send(b, b.m.orderDelivered(no));
       if (r.pointsEarned > 0) await send(b, b.m.pointsEarned(r.pointsEarned));
+      await notifyReferral(b.ctx, b.api, r.referral);
     }
     await notifyAdminNewOrder(b.ctx, b.api, order, null);
     return;
@@ -936,6 +976,7 @@ export async function onOrderPaid(
         chat_id: order.telegram_id,
         text: m.pointsEarned(r.pointsEarned),
       });
+    await notifyReferral(ctx, api, r.referral);
   }
   const fresh = await getOrder(ctx, orderId);
   if (fresh) await notifyAdminNewOrder(ctx, api, fresh, null, { paidOnline: true });
@@ -985,6 +1026,40 @@ async function downloadTelegramFile(
   };
 }
 
+async function askRating(b: Bot, productId: string, name: string) {
+  await send(b, b.m.chooseRatingPrompt(escapeHtml(name)), {
+    reply_markup: {
+      inline_keyboard: [
+        [1, 2, 3, 4, 5].map((n) => ({
+          text: "⭐".repeat(n),
+          callback_data: `stars:${productId}:${n}`,
+        })),
+      ],
+    },
+  });
+}
+
+/** Награда пригласившему после выдачи — своим сообщением, на своём языке. */
+async function notifyReferral(
+  ctx: TenantContext,
+  api: TelegramApi,
+  grant: ReferralGrant | null | undefined,
+) {
+  if (!grant) return;
+  const { data: u } = await ctx.db
+    .from("bot_users")
+    .select("state")
+    .eq("telegram_id", grant.telegramId)
+    .maybeSingle();
+  const st = stateFromJson(u?.state);
+  const locale = isLocale(st.locale) ? st.locale : (ctx.tenant.settings.default_locale ?? "ru");
+  await api.call("sendMessage", {
+    chat_id: grant.telegramId,
+    text: COPY[locale].referralReward(grant.percent, grant.code),
+    parse_mode: "HTML",
+  });
+}
+
 async function showMyOrders(b: Bot) {
   const orders = await listCustomerOrders(b.ctx, b.customer);
   if (orders.length === 0) {
@@ -999,8 +1074,12 @@ async function showMyOrders(b: Bot) {
     text += `#${no} — ${formatMoney(o.total, o.currency)} — ${st}\n`;
     for (const i of o.order_items ?? [])
       text += `   • ${escapeHtml(i.name_snapshot)} × ${i.quantity}\n`;
+    const row: InlineButton[] = [];
     if (o.status === "delivered" && o.fulfillment_kind !== "physical")
-      buttons.push([{ text: `${b.m.resendBtn} #${no}`, callback_data: `resend:${o.id}` }]);
+      row.push({ text: `${b.m.resendBtn} #${no}`, callback_data: `resend:${o.id}` });
+    if (o.status === "delivered" && b.ctx.tenant.modules.review_request)
+      row.push({ text: b.m.rateBtn(String(no)), callback_data: `rate:${o.id}` });
+    if (row.length) buttons.push(row);
   }
   await send(
     b,
@@ -1227,6 +1306,48 @@ async function handleCallback(
     );
     return showCart(b);
   }
+  if (data.startsWith("rate:") && ctx.tenant.modules.review_request) {
+    const products = await reviewableProductsForOrder(ctx, Number(data.slice(5)), from.id);
+    if (products.length === 0) return send(b, b.m.noReviewableProducts);
+    if (products.length === 1) return askRating(b, products[0]!.productId, products[0]!.name);
+    return send(b, b.m.chooseProductToRate, {
+      reply_markup: {
+        inline_keyboard: products.map((p) => [
+          { text: p.name, callback_data: `rateproduct:${p.productId}` },
+        ]),
+      },
+    });
+  }
+  if (data.startsWith("rateproduct:") && ctx.tenant.modules.review_request) {
+    const productId = data.slice(12);
+    if (!(await hasDeliveredPurchase(ctx, from.id, productId)))
+      return send(b, b.m.reviewNotAllowed);
+    const p = await getProduct(ctx, productId);
+    return askRating(b, productId, p?.name ?? "");
+  }
+  if (data.startsWith("stars:") && ctx.tenant.modules.review_request) {
+    const [, productId = "", raw = ""] = data.split(":");
+    const rating = Number(raw);
+    if (!isValidRating(rating)) return;
+    if (!(await hasDeliveredPurchase(ctx, from.id, productId)))
+      return send(b, b.m.reviewNotAllowed);
+    await saveRating(ctx, from.id, productId, rating);
+    b.customer = await setState(ctx, b.customer, {
+      ...b.customer.state,
+      mode: "awaiting_review_comment",
+      review_product_id: productId,
+    });
+    return send(b, b.m.reviewSaved, {
+      reply_markup: {
+        inline_keyboard: [[{ text: b.m.reviewSkipBtn, callback_data: "reviewskip" }]],
+      },
+    });
+  }
+  if (data === "reviewskip") {
+    const { review_product_id: _rp, ...rest } = b.customer.state;
+    b.customer = await setState(ctx, b.customer, { ...rest, mode: "idle" });
+    return send(b, b.m.useMenu);
+  }
   if (data.startsWith("resend:")) {
     const order = await getOrder(ctx, Number(data.slice(7)));
     if (!order || order.telegram_id !== customer.telegramId || order.status !== "delivered") return;
@@ -1312,6 +1433,7 @@ async function adminDecision(
         text: m.pointsEarned(r.pointsEarned),
       });
     }
+    await notifyReferral(ctx, api, r.referral);
     await api.call("sendMessage", {
       chat_id: chatId,
       text: `✅ Заказ #${no} выдан (${r.sent} поз.).`,

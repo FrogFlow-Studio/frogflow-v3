@@ -109,6 +109,17 @@ export type Msg = {
   contactAuthor: (link: string) => string;
   contactNotSet: string;
   useMenu: string;
+  rateBtn: (no: string) => string;
+  chooseProductToRate: string;
+  chooseRatingPrompt: (name: string) => string;
+  reviewSaved: string;
+  reviewSkipBtn: string;
+  reviewCommentSaved: string;
+  reviewNotAllowed: string;
+  noReviewableProducts: string;
+  inviteFriendBtn: string;
+  referralWelcome: (percent: number, code: string) => string;
+  referralReward: (percent: number, code: string) => string;
   cartReminder: string;
   openCartBtn: string;
   fulfillmentReminder: (no: string, date: string) => string;
@@ -120,6 +131,19 @@ export type Msg = {
 };
 
 const ru: Msg = {
+  rateBtn: (no) => `⭐ Оценить (#${no})`,
+  chooseProductToRate: "Какой товар из этого заказа оцениваете?",
+  chooseRatingPrompt: (name) => `Оцените «${name}»:`,
+  reviewSaved: "✅ Спасибо за оценку! Хотите добавить комментарий — просто напишите его.",
+  reviewSkipBtn: "Пропустить",
+  reviewCommentSaved: "✅ Комментарий сохранён. Спасибо за отзыв!",
+  reviewNotAllowed: "⚠️ Оценить можно только то, что вы реально купили и получили.",
+  noReviewableProducts: "В этом заказе нет товаров, которые можно оценить.",
+  inviteFriendBtn: "🎁 Пригласить друга",
+  referralWelcome: (p, c) =>
+    `🎁 Вам подарок за переход по приглашению — промокод на скидку ${p}% на первую покупку: <code>${c}</code>`,
+  referralReward: (p, c) =>
+    `🎉 Ваш приглашённый друг совершил первую покупку! Промокод на скидку ${p}% для вас: <code>${c}</code>`,
   cartReminder:
     "🛒 Вы оставили товары в корзине — они всё ещё вас ждут! Оформить заказ можно в любой момент.",
   openCartBtn: "🛒 Открыть корзину",
@@ -260,6 +284,19 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  rateBtn: (no) => `⭐ Бағалау (#${no})`,
+  chooseProductToRate: "Осы тапсырыстан қай тауарды бағалайсыз?",
+  chooseRatingPrompt: (name) => `«${name}» тауарын бағалаңыз:`,
+  reviewSaved: "✅ Бағалағаныңыз үшін рақмет! Пікір қосқыңыз келсе — жай ғана жазыңыз.",
+  reviewSkipBtn: "Өткізіп жіберу",
+  reviewCommentSaved: "✅ Пікір сақталды. Пікіріңіз үшін рақмет!",
+  reviewNotAllowed: "⚠️ Тек нақты сатып алып, алған тауарды ғана бағалауға болады.",
+  noReviewableProducts: "Бұл тапсырыста бағалауға болатын тауар жоқ.",
+  inviteFriendBtn: "🎁 Досты шақыру",
+  referralWelcome: (p, c) =>
+    `🎁 Шақыру сілтемесі бойынша өткеніңіз үшін сыйлық — алғашқы сатып алуға ${p}% жеңілдік промокоды: <code>${c}</code>`,
+  referralReward: (p, c) =>
+    `🎉 Сіз шақырған дос алғашқы сатып алуын жасады! Сізге ${p}% жеңілдік промокоды: <code>${c}</code>`,
   cartReminder:
     "🛒 Себетте тауарлар қалды — олар әлі де сізді күтуде! Тапсырысты кез келген уақытта рәсімдей аласыз.",
   openCartBtn: "🛒 Себетті ашу",
@@ -302,6 +339,19 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  rateBtn: (no) => `⭐ Rate (#${no})`,
+  chooseProductToRate: "Which product from this order are you rating?",
+  chooseRatingPrompt: (name) => `Rate "${name}":`,
+  reviewSaved: "✅ Thanks for the rating! Want to add a comment — just type it.",
+  reviewSkipBtn: "Skip",
+  reviewCommentSaved: "✅ Comment saved. Thanks for the review!",
+  reviewNotAllowed: "⚠️ You can only rate something you actually bought and received.",
+  noReviewableProducts: "This order has no products you can rate.",
+  inviteFriendBtn: "🎁 Invite a friend",
+  referralWelcome: (p, c) =>
+    `🎁 A gift for joining via an invitation — a ${p}% discount code for your first purchase: <code>${c}</code>`,
+  referralReward: (p, c) =>
+    `🎉 Your invited friend made their first purchase! Here is a ${p}% discount code for you: <code>${c}</code>`,
   cartReminder:
     "🛒 You left some items in your cart — they're still waiting for you! You can check out anytime.",
   openCartBtn: "🛒 Open cart",
@@ -364,6 +414,19 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  rateBtn: (no) => `⭐ Baholash (#${no})`,
+  chooseProductToRate: "Ushbu buyurtmadan qaysi mahsulotni baholaysiz?",
+  chooseRatingPrompt: (name) => `«${name}» mahsulotini baholang:`,
+  reviewSaved: "✅ Baholaganingiz uchun rahmat! Izoh qo‘shmoqchi bo‘lsangiz — shunchaki yozing.",
+  reviewSkipBtn: "O‘tkazib yuborish",
+  reviewCommentSaved: "✅ Izoh saqlandi. Fikringiz uchun rahmat!",
+  reviewNotAllowed: "⚠️ Faqat haqiqatan sotib olib, qo‘lga kiritgan mahsulotni baholash mumkin.",
+  noReviewableProducts: "Bu buyurtmada baholash mumkin bo‘lgan mahsulot yo‘q.",
+  inviteFriendBtn: "🎁 Do‘stni taklif qilish",
+  referralWelcome: (p, c) =>
+    `🎁 Taklif havolasi orqali o‘tganingiz uchun sovg‘a — birinchi xaridga ${p}% chegirma promokodi: <code>${c}</code>`,
+  referralReward: (p, c) =>
+    `🎉 Siz taklif qilgan do‘stingiz birinchi xaridini qildi! Sizga ${p}% chegirma promokodi: <code>${c}</code>`,
   cartReminder:
     "🛒 Savatda mahsulotlar qoldi — ular hali ham sizni kutmoqda! Buyurtmani istalgan vaqtda rasmiylashtirishingiz mumkin.",
   openCartBtn: "🛒 Savatni ochish",
