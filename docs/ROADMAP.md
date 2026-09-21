@@ -31,7 +31,7 @@ v2 работают одновременно, поломку у живого к�
 | `review_request` отзывы            | `reviews.ts`, `product_reviews`     | ✔                           |
 | `referral`                         | `referrals.server.ts`               | ✔                           |
 | `cart_reminder` крон               | `cart-reminder.server.ts`           | ✔ `/api/cron/cart-reminder` |
-| `smart_search` LLM-поиск           | `smart-search.server.ts`            | нет                         |
+| `smart_search` LLM-поиск           | `smart-search.server.ts`            | ✔ Haiku 4.5, SDK            |
 | `manager_chat`                     | `manager-chat.server.ts`, RPC touch | ✔ `/admin/chat`             |
 | `blocked` — чтение                 | `replyIfBlocked`                    | ✔                           |
 | пауза за неоплату                  | `replyIfPaused`                     | ✔                           |
@@ -111,7 +111,7 @@ API Zernio один на платформу.
   покупателей, отзывы и реферальная программа в боте.
 
 Дальше в этой фазе: локализация админки (kk/en/uz), роли и несколько
-пользователей у одного магазина, умный поиск (LLM).
+пользователей у одного магазина, OCR чеков.
 
 ## Фаза 6 — VIP-бот, ретеншн
 

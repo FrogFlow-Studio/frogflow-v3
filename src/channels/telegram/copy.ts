@@ -109,6 +109,7 @@ export type Msg = {
   contactAuthor: (link: string) => string;
   contactNotSet: string;
   useMenu: string;
+  smartSearchResults: (q: string, n: number) => string;
   rateBtn: (no: string) => string;
   chooseProductToRate: string;
   chooseRatingPrompt: (name: string) => string;
@@ -131,6 +132,7 @@ export type Msg = {
 };
 
 const ru: Msg = {
+  smartSearchResults: (q, n) => `🤖 По смыслу запроса «${q}» подобрано: ${n}`,
   rateBtn: (no) => `⭐ Оценить (#${no})`,
   chooseProductToRate: "Какой товар из этого заказа оцениваете?",
   chooseRatingPrompt: (name) => `Оцените «${name}»:`,
@@ -284,6 +286,7 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  smartSearchResults: (q, n) => `🤖 «${q}» сұрауының мағынасы бойынша таңдалды: ${n}`,
   rateBtn: (no) => `⭐ Бағалау (#${no})`,
   chooseProductToRate: "Осы тапсырыстан қай тауарды бағалайсыз?",
   chooseRatingPrompt: (name) => `«${name}» тауарын бағалаңыз:`,
@@ -339,6 +342,7 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  smartSearchResults: (q, n) => `🤖 Picked by meaning for “${q}”: ${n}`,
   rateBtn: (no) => `⭐ Rate (#${no})`,
   chooseProductToRate: "Which product from this order are you rating?",
   chooseRatingPrompt: (name) => `Rate "${name}":`,
@@ -414,6 +418,7 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  smartSearchResults: (q, n) => `🤖 «${q}» so‘rovi ma’nosi bo‘yicha tanlandi: ${n}`,
   rateBtn: (no) => `⭐ Baholash (#${no})`,
   chooseProductToRate: "Ushbu buyurtmadan qaysi mahsulotni baholaysiz?",
   chooseRatingPrompt: (name) => `«${name}» mahsulotini baholang:`,

@@ -11,7 +11,7 @@ import {
   settingsFn,
   telegramStateFn,
 } from "@/app/admin/admin.functions";
-import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
+import { Badge, Card, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
 
 export const Route = createFileRoute("/admin/_authed/settings")({
@@ -29,7 +29,8 @@ export const Route = createFileRoute("/admin/_authed/settings")({
 type Method = Awaited<ReturnType<typeof settingsFn>>["methods"][number];
 
 function SettingsPage() {
-  const { settings, methods, ownerTelegramId, telegram, zones } = Route.useLoaderData();
+  const { settings, methods, ownerTelegramId, telegram, zones, smartSearchKey } =
+    Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const router = useRouter();
   const [saved, setSaved] = useState(false);
@@ -122,6 +123,9 @@ function SettingsPage() {
         <FulfillmentCard settings={settings} />
         <ZonesCard zones={zones} />
         {shop.modules.robokassa && <RobokassaCard settings={settings} />}
+        {shop.modules.smart_search && (
+          <SmartSearchCard settings={settings} hasKey={smartSearchKey} />
+        )}
         <LegalCard settings={settings} />
       </div>
     </>
@@ -770,6 +774,75 @@ function RobokassaCard({ settings }: { settings: Record<string, string> }) {
         </div>
         <ErrorBox error={save.error} />
       </form>
+    </Card>
+  );
+}
+
+function SmartSearchCard({
+  settings,
+  hasKey,
+}: {
+  settings: Record<string, string>;
+  hasKey: boolean;
+}) {
+  const router = useRouter();
+  const enabled = settings.smart_search_enabled === "true";
+  const toggle = useAction(async (v: boolean) => {
+    await saveSettingsFn({ data: { smart_search_enabled: v ? "true" : "false" } });
+    await router.invalidate();
+  });
+  const today = new Date().toISOString().slice(0, 10);
+  const [d, n] = (settings.smart_search_daily_count ?? "").split(":");
+  const todayCount = d === today ? Number(n) || 0 : 0;
+  const spend = (raw: string | undefined) => {
+    try {
+      const p = JSON.parse(raw || "{}") as { count?: number; usd?: number; date?: string };
+      return { count: Number(p.count) || 0, usd: Number(p.usd) || 0, date: p.date };
+    } catch {
+      return { count: 0, usd: 0, date: undefined };
+    }
+  };
+  const daily = spend(settings.smart_search_daily_spend);
+  const life = spend(settings.smart_search_lifetime_spend);
+  return (
+    <Card title="Умный поиск по каталогу">
+      <p className="mb-3 text-sm text-muted">
+        Когда обычный поиск в боте ничего не нашёл, запрос вроде «что-то на день рождения пятилетке»
+        подбирается по смыслу через языковую модель. Каждый вызов стоит денег и учитывается ниже;
+        лимит — 200 вызовов в день на бота и не чаще раза в 45 секунд у одного покупателя.
+      </p>
+      {!hasKey && (
+        <p className="mb-3 rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">
+          На платформе не задан ключ Anthropic — поиск не заработает, пока оператор его не добавит.
+        </p>
+      )}
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={enabled}
+          disabled={toggle.busy || !hasKey}
+          onChange={(v) => void toggle.run(v).catch(() => {})}
+          label="Включить умный поиск"
+        />
+        <span className="text-sm">{enabled ? "Включён" : "Выключен"}</span>
+      </div>
+      <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
+        <dt className="text-muted">Сегодня вызовов</dt>
+        <dd className="tabular-nums">{todayCount} / 200</dd>
+        <dt className="text-muted">Расход сегодня</dt>
+        <dd className="tabular-nums">
+          {daily.date === today ? `$${daily.usd.toFixed(4)}` : "$0.0000"}
+        </dd>
+        <dt className="text-muted">Расход всего</dt>
+        <dd className="tabular-nums">
+          ${life.usd.toFixed(4)} за {life.count} вызовов
+        </dd>
+      </dl>
+      {settings.smart_search_last_error && (
+        <p className="mt-3 text-xs text-danger">
+          Последняя ошибка: {settings.smart_search_last_error}
+        </p>
+      )}
+      <ErrorBox error={toggle.error} />
     </Card>
   );
 }

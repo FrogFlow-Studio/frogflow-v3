@@ -7,6 +7,7 @@ import {
 } from "@/core/reviews/reviews";
 import { formatRatingSummary, isValidRating } from "@/core/reviews/pure";
 import { inboundIntercepted } from "@/core/chat/chat";
+import { PRODUCT_SELECT } from "@/core/catalog/catalog";
 import { stateFromJson } from "@/core/customers/customers";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { TelegramApi } from "./api";
@@ -543,11 +544,34 @@ async function sendProductCard(b: Bot, p: Product) {
 async function showSearch(b: Bot, query: string) {
   const found = await searchProducts(b.ctx, query);
   if (found.length === 0) {
-    await send(b, b.m.searchNothing(escapeHtml(query)));
+    const smart = await smartSearchFallback(b, query);
+    if (smart.length === 0) {
+      await send(b, b.m.searchNothing(escapeHtml(query)));
+      return;
+    }
+    await send(b, b.m.smartSearchResults(escapeHtml(query), smart.length));
+    for (const p of smart.slice(0, PAGE)) await sendProductCard(b, p);
     return;
   }
   await send(b, b.m.searchResults(escapeHtml(query), found.length));
   for (const p of found.slice(0, PAGE)) await sendProductCard(b, p);
+}
+
+/** Умный поиск (LLM) — только когда обычный ничего не нашёл и продавец его включил. */
+async function smartSearchFallback(b: Bot, query: string): Promise<Product[]> {
+  const { smartSearchEnabled, consumeQuota, smartSearchProductIds } =
+    await import("@/core/search/smart.server");
+  if (!(await smartSearchEnabled(b.ctx))) return [];
+  if (!(await consumeQuota(b.ctx, b.customer))) return [];
+  const ids = await smartSearchProductIds(b.ctx, query);
+  if (!ids?.length) return [];
+  const { data } = await b.ctx.db
+    .from("products")
+    .select(PRODUCT_SELECT)
+    .in("id", ids.slice(0, PAGE))
+    .eq("is_active", true);
+  const byId = new Map(((data ?? []) as unknown as Product[]).map((p) => [p.id, p]));
+  return ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
 }
 
 // ── корзина и оформление ──────────────────────────────────────────────

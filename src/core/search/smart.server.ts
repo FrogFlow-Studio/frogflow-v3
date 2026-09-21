@@ -1,0 +1,147 @@
+import Anthropic from "@anthropic-ai/sdk";
+import { env } from "@/config/env";
+import type { TenantContext } from "@/core/tenant/resolve.server";
+import type { Customer } from "@/core/customers/customers";
+import { getSetting, getSettings, setSetting } from "@/core/settings/settings";
+import {
+  COOLDOWN_SECONDS,
+  DAILY_LIMIT,
+  MAX_CANDIDATES,
+  MAX_QUERY_LEN,
+  SMART_SEARCH_MODEL,
+  addSpend,
+  buildPrompt,
+  formatDailyCount,
+  parseDailyCount,
+  parseSmartSearchIds,
+  parseSpend,
+  type Candidate,
+} from "./smart-pure";
+
+/**
+ * Умный поиск — фолбэк, когда обычный поиск ничего не нашёл. У каждого вызова
+ * реальная стоимость (Anthropic API), поэтому: отдельный переключатель
+ * продавца (smart_search_enabled), личный кулдаун покупателя и дневной
+ * потолок на бота. Модель — Haiku 4.5, как в v1: счёт выставляется клиенту.
+ */
+export const KEYS = {
+  enabled: "smart_search_enabled",
+  dailyCount: "smart_search_daily_count",
+  dailySpend: "smart_search_daily_spend",
+  lifetimeSpend: "smart_search_lifetime_spend",
+  lastError: "smart_search_last_error",
+} as const;
+
+const TIMEOUT_MS = 40_000;
+
+export function platformHasKey(): boolean {
+  return Boolean(env().ANTHROPIC_API_KEY?.trim());
+}
+
+export async function smartSearchEnabled(ctx: TenantContext): Promise<boolean> {
+  if (!platformHasKey() || !ctx.tenant.modules.smart_search) return false;
+  return (await getSetting(ctx, KEYS.enabled)) === "true";
+}
+
+/**
+ * Оба предохранителя разом: кулдаун покупателя (метка в bot_users.state) и
+ * дневной счётчик бота. Если хоть один не пройден — вызова модели не будет.
+ */
+export async function consumeQuota(ctx: TenantContext, customer: Customer): Promise<boolean> {
+  const now = Date.now();
+  const last = customer.state.last_smart_search_at;
+  if (typeof last === "string" && now - new Date(last).getTime() < COOLDOWN_SECONDS * 1000)
+    return false;
+  await ctx.db
+    .from("bot_users")
+    .update({ state: { ...customer.state, last_smart_search_at: new Date(now).toISOString() } })
+    .eq("user_key", customer.userKey);
+
+  const count = parseDailyCount(await getSetting(ctx, KEYS.dailyCount));
+  if (count >= DAILY_LIMIT) return false;
+  await setSetting(ctx, KEYS.dailyCount, formatDailyCount(count + 1));
+  return true;
+}
+
+async function recordSpend(
+  ctx: TenantContext,
+  usage: { inputTokens: number; outputTokens: number },
+) {
+  const s = await getSettings(ctx, [KEYS.dailySpend, KEYS.lifetimeSpend]);
+  const today = new Date().toISOString().slice(0, 10);
+  const dailyRaw = s[KEYS.dailySpend];
+  const daily = dailyRaw?.includes(`"date":"${today}"`) ? parseSpend(dailyRaw) : parseSpend(null);
+  await setSetting(
+    ctx,
+    KEYS.dailySpend,
+    JSON.stringify({ ...addSpend(daily, usage), date: today }),
+  );
+  await setSetting(
+    ctx,
+    KEYS.lifetimeSpend,
+    JSON.stringify(addSpend(parseSpend(s[KEYS.lifetimeSpend]), usage)),
+  );
+}
+
+async function candidates(ctx: TenantContext): Promise<Candidate[]> {
+  const { data } = await ctx.db
+    .from("products")
+    .select("id, name, description, keywords")
+    .eq("is_active", true)
+    .order("sort_order")
+    .limit(MAX_CANDIDATES);
+  return (data ?? []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: (p.description ?? "").slice(0, 300),
+    keywords: (p.keywords ?? "").slice(0, 100),
+  }));
+}
+
+/**
+ * id подходящих товаров по убыванию релевантности, или null при сбое (нет
+ * ключа, сеть, невалидный ответ) — вызывающий код покажет «ничего не
+ * найдено». Последняя причина сбоя пишется в настройки, чтобы продавец видел
+ * её рядом с переключателем, а не только в логе.
+ */
+export async function smartSearchProductIds(
+  ctx: TenantContext,
+  query: string,
+): Promise<string[] | null> {
+  const apiKey = env().ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) return null;
+  const q = query.trim().slice(0, MAX_QUERY_LEN);
+  const list = await candidates(ctx);
+  if (!q || list.length === 0) return null;
+
+  const client = new Anthropic({ apiKey, maxRetries: 1, timeout: TIMEOUT_MS });
+  try {
+    const response = await client.messages.create({
+      model: SMART_SEARCH_MODEL,
+      // 600 кандидатов полными UUID — с запасом, чтобы модель не обрезала JSON.
+      max_tokens: 12_000,
+      messages: [{ role: "user", content: buildPrompt(ctx.tenant.vertical, q, list) }],
+    });
+    await recordSpend(ctx, {
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+    });
+    const text = response.content.find((b) => b.type === "text")?.text ?? "";
+    const ids = parseSmartSearchIds(
+      text,
+      list.map((c) => c.id),
+    );
+    await setSetting(ctx, KEYS.lastError, "");
+    return ids;
+  } catch (e) {
+    const detail =
+      e instanceof Anthropic.APIError
+        ? `HTTP ${e.status ?? "?"}: ${e.message}`
+        : e instanceof Error
+          ? `${e.name}: ${e.message}`
+          : String(e);
+    console.error(`[smart-search:${ctx.tenant.id}]`, detail);
+    await setSetting(ctx, KEYS.lastError, `${new Date().toISOString()} — ${detail}`.slice(0, 500));
+    return null;
+  }
+}

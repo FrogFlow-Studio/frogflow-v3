@@ -323,6 +323,11 @@ export const SETTING_KEYS = [
   "delivery_lang_timing",
   "loyalty_earn_percent",
   "referral_discount_percent",
+  "smart_search_enabled",
+  "smart_search_daily_count",
+  "smart_search_daily_spend",
+  "smart_search_lifetime_spend",
+  "smart_search_last_error",
   "fulfillment_pickup_enabled",
   "fulfillment_delivery_enabled",
   "payment_mode",
@@ -348,7 +353,13 @@ export const settingsFn = createServerFn({ method: "GET" }).handler(async () => 
     getSettings(ctx, SETTING_KEYS),
     listPaymentMethods(ctx),
   ]);
-  return { settings, methods, ownerTelegramId: ctx.tenant.ownerTelegramId };
+  const { platformHasKey } = await import("@/core/search/smart.server");
+  return {
+    settings,
+    methods,
+    ownerTelegramId: ctx.tenant.ownerTelegramId,
+    smartSearchKey: platformHasKey(),
+  };
 });
 
 export const saveSettingsFn = createServerFn({ method: "POST" })

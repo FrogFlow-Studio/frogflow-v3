@@ -61,6 +61,8 @@ export type DialogState = {
   checkout_fulfillment_note?: string;
   /** Товар, для которого только что поставлена оценка и ждём комментарий. */
   review_product_id?: string;
+  /** Кулдаун умного поиска — когда покупатель звал его последний раз. */
+  last_smart_search_at?: string;
   [key: string]: Json | undefined;
 };
 
