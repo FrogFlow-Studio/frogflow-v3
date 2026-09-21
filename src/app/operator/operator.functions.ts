@@ -229,3 +229,24 @@ export const notifyOwnerFn = createServerFn({ method: "POST" })
     await guard();
     return (await impl()).notifyOwner(data.botId, data.text);
   });
+
+/* ── заявки на модули ─────────────────────────────────────────────── */
+
+export const moduleRequestsFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await impl()).listModuleRequests();
+});
+
+export const pendingRequestCountFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await impl()).pendingModuleRequestCount();
+});
+
+export const resolveModuleRequestFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ id: z.string().uuid(), action: z.enum(["enable", "dismiss"]) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await impl()).resolveModuleRequest(data.id, data.action);
+  });

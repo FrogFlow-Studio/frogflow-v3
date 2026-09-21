@@ -36,6 +36,7 @@ import { Route as ApiOperatorBotsRouteImport } from './routes/api/operator/bots'
 import { Route as ApiTelegramBotIdRouteImport } from './routes/api/telegram.$botId'
 import { Route as ApiZernioWebhookRouteImport } from './routes/api/zernio/webhook'
 import { Route as OperatorAuthedIndexRouteImport } from './routes/operator._authed.index'
+import { Route as OperatorAuthedRequestsRouteImport } from './routes/operator._authed.requests'
 import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
 import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
@@ -181,6 +182,11 @@ const OperatorAuthedIndexRoute = OperatorAuthedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
+const OperatorAuthedRequestsRoute = OperatorAuthedRequestsRouteImport.update({
+  id: '/requests',
+  path: '/requests',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
 const SSlugIndexRoute = SSlugIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
+  '/operator/requests': typeof OperatorAuthedRequestsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/admin/': typeof AdminAuthedIndexRoute
   '/operator/': typeof OperatorAuthedIndexRoute
@@ -300,6 +307,7 @@ export interface FileRoutesByTo {
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
+  '/operator/requests': typeof OperatorAuthedRequestsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug': typeof SSlugIndexRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
@@ -339,6 +347,7 @@ export interface FileRoutesById {
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
+  '/operator/_authed/requests': typeof OperatorAuthedRequestsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/admin/_authed/': typeof AdminAuthedIndexRoute
   '/operator/_authed/': typeof OperatorAuthedIndexRoute
@@ -379,6 +388,7 @@ export interface FileRouteTypes {
     | '/api/operator/bots'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
+    | '/operator/requests'
     | '/s/$slug/cart'
     | '/admin/'
     | '/operator/'
@@ -416,6 +426,7 @@ export interface FileRouteTypes {
     | '/api/operator/bots'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
+    | '/operator/requests'
     | '/s/$slug/cart'
     | '/s/$slug'
     | '/admin/orders/$id'
@@ -454,6 +465,7 @@ export interface FileRouteTypes {
     | '/api/operator/bots'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
+    | '/operator/_authed/requests'
     | '/s/$slug/cart'
     | '/admin/_authed/'
     | '/operator/_authed/'
@@ -677,6 +689,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedIndexRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/operator/_authed/requests': {
+      id: '/operator/_authed/requests'
+      path: '/requests'
+      fullPath: '/operator/requests'
+      preLoaderRoute: typeof OperatorAuthedRequestsRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
     '/s/$slug/': {
       id: '/s/$slug/'
       path: '/'
@@ -815,12 +834,14 @@ const AdminRouteChildren: AdminRouteChildren = {
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface OperatorAuthedRouteChildren {
+  OperatorAuthedRequestsRoute: typeof OperatorAuthedRequestsRoute
   OperatorAuthedIndexRoute: typeof OperatorAuthedIndexRoute
   OperatorAuthedClientsBotIdRoute: typeof OperatorAuthedClientsBotIdRoute
   OperatorAuthedClientsNewRoute: typeof OperatorAuthedClientsNewRoute
 }
 
 const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
+  OperatorAuthedRequestsRoute: OperatorAuthedRequestsRoute,
   OperatorAuthedIndexRoute: OperatorAuthedIndexRoute,
   OperatorAuthedClientsBotIdRoute: OperatorAuthedClientsBotIdRoute,
   OperatorAuthedClientsNewRoute: OperatorAuthedClientsNewRoute,

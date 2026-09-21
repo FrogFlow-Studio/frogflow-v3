@@ -284,22 +284,31 @@ export async function processBroadcastBatch(
         .single();
       if (st?.status === "cancelled") break;
     }
+    // Итог пишем CAS-ом «ещё pending»: два пересёкшихся запуска крона (или
+    // живой деплой v1 на той же очереди) не посчитают одного получателя дважды.
+    const settle = async (
+      patch: Database["public"]["Tables"]["broadcast_recipients"]["Update"],
+    ) => {
+      const { data } = await ctx.db
+        .from("broadcast_recipients")
+        .update(patch)
+        .eq("id", r.id)
+        .eq("status", "pending")
+        .select("id")
+        .maybeSingle();
+      return Boolean(data);
+    };
     try {
       await send(Number(r.telegram_id), content);
-      await ctx.db
-        .from("broadcast_recipients")
-        .update({ status: "sent", sent_at: new Date().toISOString(), error_message: null })
-        .eq("id", r.id);
-      sent++;
+      if (await settle({ status: "sent", sent_at: new Date().toISOString(), error_message: null }))
+        sent++;
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       const kind = classifyDeliveryError(message);
-      await ctx.db
-        .from("broadcast_recipients")
-        .update({ status: kind, error_message: message.slice(0, 500) || "unknown error" })
-        .eq("id", r.id);
-      if (kind === "blocked") blocked++;
-      else failed++;
+      if (await settle({ status: kind, error_message: message.slice(0, 500) || "unknown error" })) {
+        if (kind === "blocked") blocked++;
+        else failed++;
+      }
     }
     if (i + 1 < pending.length) await sleep(SEND_DELAY_MS);
   }

@@ -1,17 +1,23 @@
 import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
-import { operatorCheck, operatorLogout } from "@/app/operator/operator.functions";
-import { NavLink, Shell, ThemeToggle } from "@/app/ui";
+import {
+  operatorCheck,
+  operatorLogout,
+  pendingRequestCountFn,
+} from "@/app/operator/operator.functions";
+import { Badge, NavLink, Shell, ThemeToggle } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed")({
   beforeLoad: async () => {
     const { authed } = await operatorCheck();
     if (!authed) throw redirect({ to: "/operator/login" });
+    return { pendingRequests: await pendingRequestCountFn().catch(() => 0) };
   },
   component: Layout,
 });
 
 function Layout() {
   const navigate = useNavigate();
+  const { pendingRequests } = Route.useRouteContext();
   return (
     <Shell
       brand="🐸 FrogFlow · оператор"
@@ -21,6 +27,12 @@ function Layout() {
             Клиенты
           </NavLink>
           <NavLink to="/operator/clients/new">Подключить клиента</NavLink>
+          <NavLink to="/operator/requests">
+            <span className="flex items-center justify-between gap-2">
+              Заявки на модули
+              {pendingRequests > 0 && <Badge tone="accent">{pendingRequests}</Badge>}
+            </span>
+          </NavLink>
         </>
       }
       user={

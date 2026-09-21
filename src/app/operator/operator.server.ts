@@ -27,7 +27,8 @@ type EventKind =
   | "onboard"
   | "webhook"
   | "meta"
-  | "message";
+  | "message"
+  | "module_request";
 
 export async function logEvent(
   botId: string,
@@ -438,4 +439,92 @@ export async function notifyOwner(
     failed: failed.length,
   });
   return { delivered, failed };
+}
+
+/* ── заявки на модули ─────────────────────────────────────────────── */
+
+export type ModuleRequestView = {
+  id: string;
+  botId: string;
+  clientName: string;
+  moduleKey: ModuleKey;
+  moduleTitle: string;
+  price: number | null;
+  requestedAt: string;
+  alreadyOn: boolean;
+};
+
+/** Единая очередь «Заказать подключение» со всех клиентов, самая старая внизу. */
+export async function listModuleRequests(): Promise<ModuleRequestView[]> {
+  const { data, error } = await serviceDb()
+    .from("module_requests")
+    .select("id, bot_id, module_key, requested_at")
+    .eq("status", "pending")
+    .order("requested_at", { ascending: false })
+    .limit(200);
+  if (error) throw new Error(error.message);
+  if (!data?.length) return [];
+  const tenants = await tenantDirectory(true);
+  const byId = new Map(tenants.map((t) => [t.id, t]));
+  return data
+    .filter((r) => byId.has(r.bot_id))
+    .map((r) => {
+      const t = byId.get(r.bot_id)!;
+      const key = r.module_key as ModuleKey;
+      const def = MODULES[key];
+      return {
+        id: r.id,
+        botId: r.bot_id,
+        clientName: t.name,
+        moduleKey: key,
+        moduleTitle: def?.title ?? r.module_key,
+        price: def?.price ?? null,
+        requestedAt: r.requested_at,
+        alreadyOn: Boolean(t.modules[key]),
+      };
+    });
+}
+
+export async function pendingModuleRequestCount(): Promise<number> {
+  const { count } = await serviceDb()
+    .from("module_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+  return count ?? 0;
+}
+
+/**
+ * Закрыть заявку: включить модуль (и сказать владельцу) или просто снять с
+ * очереди. Владельца уведомляем лучшим старанием — без бота сообщение не уйдёт.
+ */
+export async function resolveModuleRequest(
+  id: string,
+  action: "enable" | "dismiss",
+  actor = "operator",
+): Promise<{ notified: boolean }> {
+  const { data: req } = await serviceDb()
+    .from("module_requests")
+    .select("id, bot_id, module_key, status")
+    .eq("id", id)
+    .maybeSingle();
+  if (!req) throw new Error("Заявка не найдена.");
+  if (req.status !== "pending") return { notified: false };
+  const key = req.module_key as ModuleKey;
+  let notified = false;
+  if (action === "enable") {
+    await setModule(req.bot_id, key, true);
+    const title = MODULES[key]?.title ?? key;
+    notified = await notifyOwner(req.bot_id, `✅ Модуль «${title}» подключён к вашему магазину.`)
+      .then((r) => r.delivered.length > 0)
+      .catch(() => false);
+  }
+  await serviceDb()
+    .from("module_requests")
+    .update({
+      status: action === "enable" ? "resolved" : "dismissed",
+      resolved_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  await logEvent(req.bot_id, "module_request", { key, action }, actor);
+  return { notified };
 }
