@@ -58,6 +58,8 @@ const schema = z.object({
   TELEGRAM_API_BASE: z.string().url().default("https://api.telegram.org"),
 
   ANTHROPIC_API_KEY: z.string().optional(),
+  /** Модель ИИ-консультанта; по умолчанию Haiku 4.5, как в v1 — счёт идёт клиенту. */
+  CONSULTANT_MODEL: z.string().optional(),
   GOOGLE_VISION_API_KEY: z.string().optional(),
 
   SMTP_HOST: z.string().optional(),

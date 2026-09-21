@@ -24,6 +24,7 @@ import { Route as AdminAuthedAnalyticsRouteImport } from './routes/admin._authed
 import { Route as AdminAuthedBroadcastsRouteImport } from './routes/admin._authed.broadcasts'
 import { Route as AdminAuthedCategoriesRouteImport } from './routes/admin._authed.categories'
 import { Route as AdminAuthedChatRouteImport } from './routes/admin._authed.chat'
+import { Route as AdminAuthedConsultantRouteImport } from './routes/admin._authed.consultant'
 import { Route as AdminAuthedCustomersRouteImport } from './routes/admin._authed.customers'
 import { Route as AdminAuthedDiscountsRouteImport } from './routes/admin._authed.discounts'
 import { Route as AdminAuthedModulesRouteImport } from './routes/admin._authed.modules'
@@ -122,6 +123,11 @@ const AdminAuthedCategoriesRoute = AdminAuthedCategoriesRouteImport.update({
 const AdminAuthedChatRoute = AdminAuthedChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedConsultantRoute = AdminAuthedConsultantRouteImport.update({
+  id: '/consultant',
+  path: '/consultant',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedCustomersRoute = AdminAuthedCustomersRouteImport.update({
@@ -270,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/chat': typeof AdminAuthedChatRoute
+  '/admin/consultant': typeof AdminAuthedConsultantRoute
   '/admin/customers': typeof AdminAuthedCustomersRoute
   '/admin/discounts': typeof AdminAuthedDiscountsRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
@@ -310,6 +317,7 @@ export interface FileRoutesByTo {
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/chat': typeof AdminAuthedChatRoute
+  '/admin/consultant': typeof AdminAuthedConsultantRoute
   '/admin/customers': typeof AdminAuthedCustomersRoute
   '/admin/discounts': typeof AdminAuthedDiscountsRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
@@ -352,6 +360,7 @@ export interface FileRoutesById {
   '/admin/_authed/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/_authed/categories': typeof AdminAuthedCategoriesRoute
   '/admin/_authed/chat': typeof AdminAuthedChatRoute
+  '/admin/_authed/consultant': typeof AdminAuthedConsultantRoute
   '/admin/_authed/customers': typeof AdminAuthedCustomersRoute
   '/admin/_authed/discounts': typeof AdminAuthedDiscountsRoute
   '/admin/_authed/modules': typeof AdminAuthedModulesRoute
@@ -395,6 +404,7 @@ export interface FileRouteTypes {
     | '/admin/broadcasts'
     | '/admin/categories'
     | '/admin/chat'
+    | '/admin/consultant'
     | '/admin/customers'
     | '/admin/discounts'
     | '/admin/modules'
@@ -435,6 +445,7 @@ export interface FileRouteTypes {
     | '/admin/broadcasts'
     | '/admin/categories'
     | '/admin/chat'
+    | '/admin/consultant'
     | '/admin/customers'
     | '/admin/discounts'
     | '/admin/modules'
@@ -476,6 +487,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/broadcasts'
     | '/admin/_authed/categories'
     | '/admin/_authed/chat'
+    | '/admin/_authed/consultant'
     | '/admin/_authed/customers'
     | '/admin/_authed/discounts'
     | '/admin/_authed/modules'
@@ -627,6 +639,13 @@ declare module '@tanstack/react-router' {
       path: '/chat'
       fullPath: '/admin/chat'
       preLoaderRoute: typeof AdminAuthedChatRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/consultant': {
+      id: '/admin/_authed/consultant'
+      path: '/consultant'
+      fullPath: '/admin/consultant'
+      preLoaderRoute: typeof AdminAuthedConsultantRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/customers': {
@@ -830,6 +849,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedBroadcastsRoute: typeof AdminAuthedBroadcastsRoute
   AdminAuthedCategoriesRoute: typeof AdminAuthedCategoriesRoute
   AdminAuthedChatRoute: typeof AdminAuthedChatRoute
+  AdminAuthedConsultantRoute: typeof AdminAuthedConsultantRoute
   AdminAuthedCustomersRoute: typeof AdminAuthedCustomersRoute
   AdminAuthedDiscountsRoute: typeof AdminAuthedDiscountsRoute
   AdminAuthedModulesRoute: typeof AdminAuthedModulesRoute
@@ -845,6 +865,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedBroadcastsRoute: AdminAuthedBroadcastsRoute,
   AdminAuthedCategoriesRoute: AdminAuthedCategoriesRoute,
   AdminAuthedChatRoute: AdminAuthedChatRoute,
+  AdminAuthedConsultantRoute: AdminAuthedConsultantRoute,
   AdminAuthedCustomersRoute: AdminAuthedCustomersRoute,
   AdminAuthedDiscountsRoute: AdminAuthedDiscountsRoute,
   AdminAuthedModulesRoute: AdminAuthedModulesRoute,

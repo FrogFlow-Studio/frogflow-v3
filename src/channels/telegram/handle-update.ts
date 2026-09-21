@@ -7,6 +7,7 @@ import {
 } from "@/core/reviews/reviews";
 import { formatRatingSummary, isValidRating } from "@/core/reviews/pure";
 import { inboundIntercepted } from "@/core/chat/chat";
+import { adminRecipients } from "@/core/notify/recipients";
 import { PRODUCT_SELECT } from "@/core/catalog/catalog";
 import { stateFromJson } from "@/core/customers/customers";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -355,7 +356,60 @@ async function handleMessage(
     return menuAction(b, action);
   }
   if (customer.state.mode === "search" && text) return showSearch(b, text);
+  if (text && (await consultantReply(b, text))) return;
   await sendMain(b, b.m.useMenu);
+}
+
+/**
+ * ИИ-консультант на свободный текст: отвечает по профилю, базе знаний и
+ * каталогу; при передаче менеджеру — уведомление продавцу и пауза, чтобы
+ * дальше отвечал человек (в /admin/chat диалог помечается «вы в чате»).
+ */
+async function consultantReply(b: Bot, text: string): Promise<boolean> {
+  const { consultantEnabled, isPaused, runConsultant } =
+    await import("@/core/consultant/engine.server");
+  if (!(await consultantEnabled(b.ctx))) return false;
+  if (isPaused(b.customer)) return true; // менеджер ведёт диалог — бот молчит
+  await b.api.call("sendChatAction", { chat_id: b.chatId, action: "typing" });
+  const r = await runConsultant(b.ctx, b.customer, text, { platform: "telegram" });
+  if (!r) return false;
+  await b.api.call("sendMessage", { chat_id: b.chatId, text: r.reply });
+  if (b.ctx.tenant.modules.manager_chat) {
+    const { recordMessage } = await import("@/core/chat/chat");
+    await recordMessage(b.ctx, {
+      telegramId: b.customer.telegramId,
+      direction: "out",
+      sender: "bot",
+      text: r.reply,
+    });
+  }
+  if (r.handoff) {
+    if (b.ctx.tenant.modules.manager_chat) {
+      const { connect } = await import("@/core/chat/chat");
+      await connect(b.ctx, b.customer.telegramId).catch(() => {});
+    }
+    const who =
+      [b.customer.firstName, b.customer.lastName].filter(Boolean).join(" ") ||
+      (b.customer.username ? `@${b.customer.username}` : `id ${b.customer.telegramId}`);
+    const lines = [
+      r.handoff.kind === "lead"
+        ? `📝 <b>Заявка от ИИ-консультанта</b> (${escapeHtml(r.handoff.reason)})`
+        : `🙋 <b>Клиент ждёт менеджера</b> (${escapeHtml(r.handoff.reason)})`,
+      `👤 ${escapeHtml(who)}${b.customer.username ? ` · @${escapeHtml(b.customer.username)}` : ""}`,
+      r.handoff.customerName ? `Имя: ${escapeHtml(r.handoff.customerName)}` : "",
+      r.handoff.customerContact ? `📞 ${escapeHtml(r.handoff.customerContact)}` : "",
+      `📋 ${escapeHtml(r.handoff.summary)}`,
+      "",
+      "Ответьте клиенту в разделе «Чат» панели — консультант в этом диалоге молчит 12 часов.",
+    ].filter((l) => l !== "");
+    for (const chatId of await adminRecipients(b.ctx))
+      await b.api.call("sendMessage", {
+        chat_id: chatId,
+        text: lines.join("\n"),
+        parse_mode: "HTML",
+      });
+  }
+  return true;
 }
 
 async function startFlow(b: Bot, payload = "") {

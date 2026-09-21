@@ -362,6 +362,11 @@ export const SETTING_KEYS = [
   "smart_search_last_error",
   "receipt_ocr_auto",
   "receipt_ocr_usage",
+  "consultant_enabled",
+  "consultant_profile",
+  "consultant_knowledge",
+  "consultant_usage",
+  "consultant_last_error",
   "fulfillment_pickup_enabled",
   "fulfillment_delivery_enabled",
   "payment_mode",
@@ -774,7 +779,13 @@ export const chatConnectFn = createServerFn({ method: "POST" })
     const ctx = await chatModule();
     const chat = await import("@/core/chat/chat");
     if (data.active) await chat.connect(ctx, data.telegramId);
-    else await chat.disconnect(ctx, data.telegramId);
+    else {
+      await chat.disconnect(ctx, data.telegramId);
+      // Вернули боту — консультант снова отвечает этому покупателю.
+      const { getCustomer, userKey } = await import("@/core/customers/customers");
+      const c = await getCustomer(ctx, userKey("telegram", data.telegramId));
+      if (c) await (await import("@/core/consultant/engine.server")).resumeConsultant(ctx, c);
+    }
     return { ok: true };
   });
 
@@ -787,4 +798,77 @@ export const chatReplyFn = createServerFn({ method: "POST" })
     const { replyAsManager } = await import("./admin.server");
     await replyAsManager(ctx, data.telegramId, data.text);
     return { ok: true };
+  });
+
+/* ── ИИ-консультант ──────────────────────────────────────────────── */
+
+export const consultantFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  const { loadConsultant, consultantConfigured, KEYS } =
+    await import("@/core/consultant/engine.server");
+  const { getSettings } = await import("@/core/settings/settings");
+  const [c, s] = await Promise.all([
+    loadConsultant(ctx),
+    getSettings(ctx, [KEYS.usage, KEYS.lastError]),
+  ]);
+  let usage = { count: 0, inputTokens: 0, outputTokens: 0, usd: 0 };
+  try {
+    usage = { ...usage, ...(JSON.parse(s[KEYS.usage] || "{}") as object) };
+  } catch {
+    /* пусто */
+  }
+  return { ...c, configured: consultantConfigured(), usage, lastError: s[KEYS.lastError] ?? "" };
+});
+
+export const saveConsultantFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        enabled: z.boolean(),
+        profile: z.object({
+          brand_name: z.string().min(1).max(120),
+          goal: z.enum(["direct_sales", "book_call", "booking", "expert_faq"]),
+          tone: z.enum(["friendly_expert", "formal", "luxury_warm", "casual"]),
+          primary_language: z.enum(["ru", "kk", "en"]),
+          countries: z.array(z.string().max(8)).max(10),
+          currency: z.string().min(3).max(3),
+          website_url: z.string().max(200).optional(),
+          delivery_info: z.string().max(1000).optional(),
+          payment_info: z.string().max(1000).optional(),
+          about: z.string().max(1500).optional(),
+          custom_instructions: z.string().max(3000).optional(),
+          medical_disclaimer: z.boolean().optional(),
+        }),
+        docs: z
+          .array(
+            z.object({
+              id: z.string().max(40),
+              title: z.string().min(1).max(160),
+              category: z.string().max(80).optional(),
+              content: z.string().min(1).max(6000),
+            }),
+          )
+          .max(60),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    const { setSetting } = await import("@/core/settings/settings");
+    const { KEYS } = await import("@/core/consultant/engine.server");
+    await setSetting(ctx, KEYS.enabled, data.enabled ? "true" : "false");
+    await setSetting(ctx, KEYS.profile, JSON.stringify(data.profile));
+    await setSetting(ctx, KEYS.knowledge, JSON.stringify(data.docs));
+    return { ok: true };
+  });
+
+/** Проверка из админки: ответ на пробный вопрос без записи истории. */
+export const consultantTestFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ text: z.string().trim().min(1).max(1000) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    const { runConsultant } = await import("@/core/consultant/engine.server");
+    const r = await runConsultant(ctx, null, data.text, { platform: "admin_test", dryRun: true });
+    if (!r) throw new Error("На платформе не задан ключ Anthropic.");
+    return r;
   });

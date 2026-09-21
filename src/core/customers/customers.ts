@@ -63,6 +63,8 @@ export type DialogState = {
   review_product_id?: string;
   /** Кулдаун умного поиска — когда покупатель звал его последний раз. */
   last_smart_search_at?: string;
+  /** История и пауза ИИ-консультанта (src/core/consultant). */
+  consultant?: { [key: string]: Json | undefined };
   [key: string]: Json | undefined;
 };
 
