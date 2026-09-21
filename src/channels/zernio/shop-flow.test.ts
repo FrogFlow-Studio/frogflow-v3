@@ -9,6 +9,7 @@ import {
   isPaymentComplaint,
   LOCALE_PICK_ECHO_MS,
   matchCountry,
+  matchDeliveryLangChoice,
   matchDirectCommand,
   matchLocalePick,
   matchOrdinal,
@@ -218,5 +219,27 @@ describe("isPaymentComplaint", () => {
 describe("plain", () => {
   it("снимает HTML и сущности для Instagram", () => {
     expect(plain("<b>Заказ #5</b>\n&lt;3 &amp; «ок»")).toBe("Заказ #5\n<3 & «ок»");
+  });
+});
+
+describe("matchDeliveryLangChoice", () => {
+  const langs = ["ru", "kk"] as const;
+  it("номер из показанного списка: языки, затем «все»; «1 класс» и номер товара — нет", () => {
+    expect(matchDeliveryLangChoice("1", [...langs])).toBe("ru");
+    expect(matchDeliveryLangChoice("2.", [...langs])).toBe("kk");
+    expect(matchDeliveryLangChoice("3", [...langs])).toBe("all");
+    expect(matchDeliveryLangChoice("1 класс", [...langs])).toBeNull();
+    expect(matchDeliveryLangChoice("018", [...langs])).toBeNull();
+    expect(matchDeliveryLangChoice("4", [...langs])).toBeNull();
+  });
+  it("название языка, постбэк кнопки, «оба» / «все языки»", () => {
+    expect(matchDeliveryLangChoice("Русский", [...langs])).toBe("ru");
+    expect(matchDeliveryLangChoice("қазақша", [...langs])).toBe("kk");
+    expect(matchDeliveryLangChoice("kz", [...langs])).toBe("kk");
+    expect(matchDeliveryLangChoice("deliverylang:ru", [...langs])).toBe("ru");
+    expect(matchDeliveryLangChoice("deliverylang:all", [...langs])).toBe("all");
+    expect(matchDeliveryLangChoice("оба", [...langs])).toBe("all");
+    expect(matchDeliveryLangChoice("все языки", [...langs])).toBe("all");
+    expect(matchDeliveryLangChoice("english", [...langs])).toBeNull();
   });
 });

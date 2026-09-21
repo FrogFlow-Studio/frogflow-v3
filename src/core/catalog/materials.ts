@@ -1,4 +1,4 @@
-import type { Locale } from "@/core/i18n/locale";
+import { isLocale, type Locale } from "@/core/i18n/locale";
 
 /**
  * Файлы материала — в одном виде для всех, кто их снимает в заказ.
@@ -73,4 +73,45 @@ export function productSellable(product: ProductWithFiles | null | undefined): b
   if (!product) return false;
   if (product.fulfillment_kind === "physical") return true;
   return materialLanguages(product).length > 0;
+}
+
+/**
+ * Выбор языка материалов ДО оформления (настройка `delivery_lang_timing` =
+ * "before"): конкретный язык или «все» — тогда позиция стоит ×N по числу
+ * языков, реально заведённых у ЭТОГО товара (как N комплектов), а не по
+ * числу языков системы: товар с одним языком не станет стоить 4x.
+ */
+export type DeliveryLangChoice = Locale | "all";
+
+export function isDeliveryLangChoice(value: unknown): value is DeliveryLangChoice {
+  return value === "all" || (typeof value === "string" && isLocale(value));
+}
+
+export function deliveryPriceMultiplier(
+  choice: DeliveryLangChoice | null | undefined,
+  availableLangsCount: number,
+): number {
+  if (choice !== "all") return 1;
+  return Math.max(1, availableLangsCount);
+}
+
+/**
+ * Языки, уже отправленные покупателю по позиции (`order_items.delivered_language`):
+ * список кодов через запятую; «both» — исторический синоним ru+kk у старых заказов.
+ */
+export function parseDeliveredLanguages(raw: string | null | undefined): Set<Locale> {
+  if (!raw) return new Set();
+  if (raw === "both") return new Set(["ru", "kk"]);
+  return new Set(
+    raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(isLocale),
+  );
+}
+
+export function addDeliveredLanguage(raw: string | null | undefined, lang: Locale): string {
+  const set = parseDeliveredLanguages(raw);
+  set.add(lang);
+  return MATERIAL_LANGUAGES.filter((l) => set.has(l)).join(",");
 }

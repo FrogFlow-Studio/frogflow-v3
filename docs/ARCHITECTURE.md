@@ -177,7 +177,7 @@ v1 выпускала на каждый деплой JWT с `role: tenant_bot` �
   уведомления покупателю из админки и Telegram-кнопок продавца уходят в
   канал заказа (`channels/zernio/outbound.server.ts`).
 
-Не перенесено — см. `docs/ROADMAP.md`: «все языки», VIP-бот, списки и
+Не перенесено — см. `docs/ROADMAP.md`: VIP-бот, списки и
 нативный каталог WhatsApp, шаблоны и рассылки WhatsApp, автоматизация
 комментариев Instagram.
 

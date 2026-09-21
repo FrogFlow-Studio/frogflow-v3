@@ -9,6 +9,7 @@ import { formatRatingSummary, isValidRating } from "@/core/reviews/pure";
 import { inboundIntercepted } from "@/core/chat/chat";
 import { adminRecipients } from "@/core/notify/recipients";
 import { PRODUCT_SELECT } from "@/core/catalog/catalog";
+import { isDeliveryLangChoice } from "@/core/catalog/materials";
 import { stateFromJson } from "@/core/customers/customers";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { TelegramApi } from "./api";
@@ -75,11 +76,12 @@ import {
   placeOrder,
   recentAwaitingPaymentOrder,
   rejectOrder,
+  completeLanguageDelivery,
 } from "@/core/orders/orders";
 import { getSetting } from "@/core/settings/settings";
 import { shopAdminIds } from "@/core/notify/recipients";
 import { notifyAdminNewOrder } from "./admin-notify";
-import { telegramMaterialSender } from "./deliver";
+import { telegramLanguageAsker, telegramMaterialSender } from "./deliver";
 import { findValidGift, findValidPromoCode } from "@/core/discounts/discounts";
 import { normalizeCode } from "@/core/discounts/pure";
 import { claimHandoff, HANDOFF_PREFIX } from "@/core/storefront/handoff";
@@ -759,7 +761,7 @@ async function proceedToFulfillmentOrPlace(b: Bot, countryCode: string) {
   } = b.customer.state;
   if (!physical) {
     b.customer = await setState(b.ctx, b.customer, clean);
-    return finishCheckout(b, countryCode);
+    return proceedToLanguageOrPlace(b, countryCode);
   }
   const fs = await fulfillmentSettings(b.ctx);
   if (fs.pickup && fs.delivery) {
@@ -861,12 +863,44 @@ async function finishAfterNote(b: Bot, note: string | null) {
   return finishCheckout(b, cc);
 }
 
+/**
+ * Между страной и оформлением: модуль multi_language с настройкой «спросить
+ * до оформления» и больше одного языка в корзине — выбор языка (или «все
+ * языки ×N»); иначе сразу заказ.
+ */
+async function proceedToLanguageOrPlace(b: Bot, countryCode: string) {
+  const { askDeliveryLangBeforeOrder, cartLanguageChoices } = await import("@/core/cart/languages");
+  if (await askDeliveryLangBeforeOrder(b.ctx)) {
+    const langs = await cartLanguageChoices(b.ctx, b.customer);
+    if (langs.length > 1) {
+      b.customer = await setState(b.ctx, b.customer, {
+        ...b.customer.state,
+        mode: "awaiting_delivery_lang",
+        delivery_lang: undefined,
+      });
+      await send(b, b.m.chooseDeliveryLanguage, {
+        reply_markup: {
+          inline_keyboard: [
+            ...langs.map((l) => [
+              { text: `${localeFlags[l]} ${localeNames[l]}`, callback_data: `checkoutlang:${l}` },
+            ]),
+            [{ text: b.m.allLanguagesBtn(langs.length), callback_data: "checkoutlang:all" }],
+          ],
+        },
+      });
+      return;
+    }
+  }
+  return finishCheckout(b, countryCode);
+}
+
 async function finishCheckout(b: Bot, countryCode: string) {
   const st = b.customer.state;
   const result = await placeOrder(b.ctx, b.customer, countryCode, {
     promoCode: st.promo_code,
     usePoints: st.use_points,
     giftCode: st.gift_certificate_code,
+    deliveryLang: isDeliveryLangChoice(st.delivery_lang) ? st.delivery_lang : null,
     fulfillment: st.checkout_fulfillment_type
       ? {
           type: st.checkout_fulfillment_type,
@@ -925,6 +959,7 @@ async function finishCheckout(b: Bot, countryCode: string) {
     checkout_delivery_fee: _ff,
     checkout_fulfillment_address: _fad,
     checkout_fulfillment_note: _fn,
+    delivery_lang: _dl,
     ...rest
   } = b.customer.state;
   const physical = order.fulfillment_kind === "physical";
@@ -952,13 +987,11 @@ async function finishCheckout(b: Bot, countryCode: string) {
         .eq("id", order.id)
         .eq("status", "awaiting_payment");
     } else {
-      const r = await deliverOrder(
-        b.ctx,
-        order.id,
-        telegramMaterialSender(b.api, b.chatId, b.m),
-        b.locale,
-      );
-      if (r.failed === 0) await send(b, b.m.orderDelivered(no));
+      const r = await deliverOrder(b.ctx, order.id, telegramMaterialSender(b.api, b.chatId, b.m), {
+        lang: b.locale,
+        ask: telegramLanguageAsker(b.api, b.chatId, b.m),
+      });
+      if (r.failed === 0 && r.pending === 0) await send(b, b.m.orderDelivered(no));
       if (r.pointsEarned > 0) await send(b, b.m.pointsEarned(r.pointsEarned));
       await notifyReferral(b.ctx, b.api, r.referral);
     }
@@ -1054,13 +1087,11 @@ export async function onOrderPaid(
   await api.call("sendMessage", { chat_id: order.telegram_id, text: m.paymentReceived(no) });
   if (customer) await setState(ctx, customer, { ...customer.state, mode: "idle" });
   if (order.fulfillment_kind !== "physical") {
-    const r = await deliverOrder(
-      ctx,
-      orderId,
-      telegramMaterialSender(api, order.telegram_id, m),
-      locale,
-    );
-    if (r.failed === 0 && !r.alreadyDelivered)
+    const r = await deliverOrder(ctx, orderId, telegramMaterialSender(api, order.telegram_id, m), {
+      lang: locale,
+      ask: telegramLanguageAsker(api, order.telegram_id, m),
+    });
+    if (r.failed === 0 && r.pending === 0 && !r.alreadyDelivered)
       await api.call("sendMessage", { chat_id: order.telegram_id, text: m.orderDelivered(no) });
     if (r.pointsEarned > 0)
       await api.call("sendMessage", {
@@ -1142,13 +1173,12 @@ async function receiveProof(b: Bot, msg: TelegramMessage, orderId: number) {
       .update({ admin_note: `OCR ok: сумма ${v.matchedAmount}` })
       .eq("id", orderId);
     await send(b, b.m.receiptVerified(String(no)), { reply_markup: mainMenu(b) });
-    const r = await deliverOrder(
-      b.ctx,
-      orderId,
-      telegramMaterialSender(b.api, b.chatId, b.m),
-      b.locale,
-    );
-    if (r.failed === 0 && !r.alreadyDelivered) await send(b, b.m.orderDelivered(no));
+    const r = await deliverOrder(b.ctx, orderId, telegramMaterialSender(b.api, b.chatId, b.m), {
+      lang: b.locale,
+      ask: telegramLanguageAsker(b.api, b.chatId, b.m),
+    });
+    if (r.failed === 0 && r.pending === 0 && !r.alreadyDelivered)
+      await send(b, b.m.orderDelivered(no));
     if (r.pointsEarned > 0) await send(b, b.m.pointsEarned(r.pointsEarned));
     await notifyReferral(b.ctx, b.api, r.referral);
     const fresh = (await getOrder(b.ctx, orderId)) ?? res.order;
@@ -1287,6 +1317,42 @@ async function handleCallback(
   if (data.startsWith("locale:")) {
     const l = data.slice(7);
     if (isLocale(l)) await applyLocale(b, l);
+    return;
+  }
+  // Язык материалов до оформления — только на этом шаге: старые кнопки
+  // прошлого оформления Telegram хранит бессрочно.
+  if (data.startsWith("checkoutlang:")) {
+    const choice = data.slice("checkoutlang:".length);
+    if (customer.state.mode !== "awaiting_delivery_lang" || !isDeliveryLangChoice(choice)) return;
+    const cc = customer.state.country_code;
+    b.customer = await setState(ctx, customer, {
+      ...customer.state,
+      mode: "idle",
+      delivery_lang: choice,
+    });
+    if (!cc) return askCountry(b, true);
+    return finishCheckout(b, cc);
+  }
+  // Ответ на «на каком языке» при выдаче: выдать позицию, закрыть заказ, если это был последний вопрос.
+  if (data.startsWith("lang:")) {
+    const [, orderIdRaw, itemId, lang] = data.split(":");
+    if (!orderIdRaw || !itemId || !isLocale(lang)) return;
+    const r = await completeLanguageDelivery(
+      ctx,
+      { orderId: Number(orderIdRaw), itemId, lang, telegramId: customer.telegramId },
+      telegramMaterialSender(api, chatId, b.m),
+    );
+    if (r.status !== "sent") {
+      if (r.status === "already") await send(b, b.m.fileAlreadySent);
+      else if (r.status === "failed") await send(b, b.m.proofFailed);
+      return;
+    }
+    if (r.completed) {
+      const order = await getOrder(ctx, Number(orderIdRaw));
+      if (order) await send(b, b.m.orderDelivered(displayNo(order)));
+      if (r.pointsEarned > 0) await send(b, b.m.pointsEarned(r.pointsEarned));
+      await notifyReferral(ctx, api, r.referral);
+    }
     return;
   }
   if (data.startsWith("setcountry:") || data.startsWith("country:")) {
@@ -1506,8 +1572,11 @@ async function handleCallback(
       .update({ status: "paid" })
       .eq("id", order.id)
       .eq("status", "delivered");
-    const r = await deliverOrder(ctx, order.id, telegramMaterialSender(api, chatId, b.m), locale);
-    if (!r.alreadyDelivered) await send(b, b.m.orderDelivered(displayNo(order)));
+    const r = await deliverOrder(ctx, order.id, telegramMaterialSender(api, chatId, b.m), {
+      lang: locale,
+      ask: telegramLanguageAsker(api, chatId, b.m),
+    });
+    if (!r.alreadyDelivered && r.pending === 0) await send(b, b.m.orderDelivered(displayNo(order)));
     return;
   }
 }
@@ -1577,11 +1646,23 @@ async function adminDecision(
     });
     return;
   }
-  const r = await deliverOrder(ctx, orderId, sender, buyerLocale);
+  const r = await deliverOrder(
+    ctx,
+    orderId,
+    sender,
+    zernioTarget
+      ? { lang: buyerLocale, allWhenAmbiguous: true }
+      : { lang: buyerLocale, ask: telegramLanguageAsker(api, order.telegram_id, m) },
+  );
   if (r.alreadyDelivered)
     return void (await api.call("sendMessage", {
       chat_id: chatId,
       text: `Заказ #${no} уже выдан.`,
+    }));
+  if (r.failed === 0 && r.pending > 0)
+    return void (await api.call("sendMessage", {
+      chat_id: chatId,
+      text: `📚 Заказ #${no}: покупателю задан вопрос о языке материалов (${r.pending} поз.) — файлы уйдут после ответа.`,
     }));
   if (r.failed === 0) {
     await tellBuyer(m.orderDelivered(no));

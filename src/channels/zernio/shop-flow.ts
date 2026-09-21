@@ -1,4 +1,5 @@
 import { isLocale, localeNames, SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
+import { isDeliveryLangChoice, type DeliveryLangChoice } from "@/core/catalog/materials";
 
 /**
  * Разбор реплик покупателя в Instagram Direct и WhatsApp — без побочных
@@ -442,4 +443,55 @@ export function plain(html: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&amp;/g, "&");
+}
+
+/**
+ * Ответ на «на каком языке нужны материалы» до оформления: номер из
+ * показанного списка (языки корзины, затем «все»), код или название языка,
+ * «оба»/«все языки», постбэк кнопки `deliverylang:<код|all>`. Не путать с
+ * matchLocalePick — тот выбирает язык интерфейса и нумерует все четыре.
+ */
+export function matchDeliveryLangChoice(text: string, langs: Locale[]): DeliveryLangChoice | null {
+  const raw = text.trim().toLowerCase();
+  if (!raw || langs.length === 0) return null;
+  if (raw.startsWith("deliverylang:")) {
+    const rest = raw.slice("deliverylang:".length);
+    if (rest === "all") return "all";
+    return isDeliveryLangChoice(rest) && langs.includes(rest as Locale) ? (rest as Locale) : null;
+  }
+  const ordinal = raw.match(/^(\d{1,2})\s*[.)]?$/);
+  if (ordinal) {
+    const index = Number(ordinal[1]) - 1;
+    if (index >= 0 && index < langs.length) return langs[index]!;
+    if (index === langs.length) return "all";
+    return null;
+  }
+  const strip = (value: string) => value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+  const needle = strip(raw);
+  if (!needle) return null;
+  const allAliases = new Set([
+    "all",
+    "both",
+    "оба",
+    "обе",
+    "все",
+    "всеязыки",
+    "барлық",
+    "барлыктилдер",
+    "hammasi",
+    "barchatillar",
+  ]);
+  if (allAliases.has(needle) || /всеязык|обаязык|барлықтіл|barchatil/.test(needle)) return "all";
+  if (
+    new Set(["kz", "казахский", "казакша", "kazakh", "қазақ"]).has(needle) &&
+    langs.includes("kk")
+  )
+    return "kk";
+  for (const locale of langs) {
+    if (needle === locale) return locale;
+    const name = strip(localeNames[locale]);
+    if (name === needle) return locale;
+    if (needle.length >= 3 && name.startsWith(needle)) return locale;
+  }
+  return null;
 }

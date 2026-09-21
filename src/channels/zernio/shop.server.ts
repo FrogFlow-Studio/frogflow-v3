@@ -57,6 +57,9 @@ import { addDaysToIso, isoToDisplay, parseDateInput, todayInTz } from "@/core/fu
 import { robokassaFor } from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
 import { formatRatingSummary } from "@/core/reviews/pure";
+import { isDeliveryLangChoice } from "@/core/catalog/materials";
+import { askDeliveryLangBeforeOrder, cartLanguageChoices } from "@/core/cart/languages";
+import { localeFlags as flags } from "@/core/i18n/locale";
 import { COPY, normalizePhone, type Msg } from "@/channels/telegram/copy";
 import { adminTelegramApi } from "@/channels/telegram/notify";
 import { liveTransport, type DmButton, type ZernioTransport } from "./api.server";
@@ -69,6 +72,7 @@ import {
   isCancel,
   isPaymentComplaint,
   matchCountry,
+  matchDeliveryLangChoice,
   matchDirectCommand,
   matchLocalePick,
   matchOrdinal,
@@ -354,6 +358,16 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       }
       await setMode(s, { mode: "idle" });
       break;
+    }
+    case "awaiting_delivery_lang": {
+      const langs = await cartLanguageChoices(s.ctx, s.customer);
+      const choice = matchDeliveryLangChoice(text, langs);
+      const cc = s.customer.state.country_code;
+      if (!choice || !cc)
+        return proceedToLanguageOrPlace(s, cc ?? "").then(() => "handled" as const);
+      await setMode(s, { mode: "idle", delivery_lang: choice });
+      await finishCheckout(s, cc);
+      return "handled";
     }
     case "awaiting_fulfillment_type": {
       const type = matchFulfillmentType(text);
@@ -777,7 +791,7 @@ async function proceedToFulfillmentOrPlace(s: Shop, countryCode: string) {
   } = s.customer.state;
   if (!physical) {
     s.customer = await setState(s.ctx, s.customer, clean);
-    return finishCheckout(s, countryCode);
+    return proceedToLanguageOrPlace(s, countryCode);
   }
   const fs = await fulfillmentSettings(s.ctx);
   if (fs.pickup && fs.delivery) {
@@ -855,12 +869,30 @@ async function finishAfterNote(s: Shop, note: string | null) {
   return finishCheckout(s, cc);
 }
 
+/** Язык материалов до оформления — списком: языки корзины, затем «все языки ×N». */
+async function proceedToLanguageOrPlace(s: Shop, countryCode: string) {
+  if (await askDeliveryLangBeforeOrder(s.ctx)) {
+    const langs = await cartLanguageChoices(s.ctx, s.customer);
+    if (langs.length > 1) {
+      await setMode(s, { mode: "awaiting_delivery_lang", delivery_lang: undefined });
+      const lines = langs.map((l, i) => `${i + 1}. ${flags[l]} ${localeNames[l]}`);
+      lines.push(`${langs.length + 1}. ${plain(s.m.allLanguagesBtn(langs.length))}`);
+      await reply(s, `${plain(s.m.chooseDeliveryLanguage)}\n\n${lines.join("\n")}`, {
+        force: true,
+      });
+      return;
+    }
+  }
+  return finishCheckout(s, countryCode);
+}
+
 async function finishCheckout(s: Shop, countryCode: string) {
   const st = s.customer.state;
   const result = await placeOrder(s.ctx, s.customer, countryCode, {
     promoCode: st.promo_code,
     usePoints: st.use_points,
     giftCode: st.gift_certificate_code,
+    deliveryLang: isDeliveryLangChoice(st.delivery_lang) ? st.delivery_lang : null,
     fulfillment: st.checkout_fulfillment_type
       ? {
           type: st.checkout_fulfillment_type,
@@ -917,6 +949,7 @@ async function finishCheckout(s: Shop, countryCode: string) {
     checkout_delivery_fee: _ff,
     checkout_fulfillment_address: _fad,
     checkout_fulfillment_note: _fn,
+    delivery_lang: _dl,
     ...rest
   } = s.customer.state;
   const physical = order.fulfillment_kind === "physical";
@@ -1186,7 +1219,8 @@ async function deliverHere(s: Shop, orderId: number, no: number): Promise<boolea
     s.ctx,
     orderId,
     zernioMaterialSender(s.transport, s.conversationId, s.accountId, s.platform),
-    s.locale,
+    // Direct не умеет спросить язык после оплаты — при нескольких языках отдаём все.
+    { lang: s.locale, allWhenAmbiguous: true },
   );
   if (r.failed === 0 && !r.alreadyDelivered)
     await reply(s, s.m.orderDelivered(no), { force: true });

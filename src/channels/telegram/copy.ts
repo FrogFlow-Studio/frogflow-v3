@@ -133,6 +133,10 @@ export type Msg = {
   yourId: (id: number) => string;
   fileLink: string;
   fileLinkTtl: string;
+  chooseDeliveryLanguage: string;
+  allLanguagesBtn: (n: number) => string;
+  chooseItemLanguage: (name: string) => string;
+  fileAlreadySent: string;
 };
 
 const ru: Msg = {
@@ -293,6 +297,11 @@ const ru: Msg = {
   yourId: (id) => `Ваш Telegram ID: <code>${id}</code>`,
   fileLink: "📥 Нажмите здесь, чтобы скачать файл",
   fileLinkTtl: "Ссылка действует 7 дней",
+  chooseDeliveryLanguage: "🌐 На каком языке нужны материалы?",
+  allLanguagesBtn: (n) => `Все языки ×${n}`,
+  chooseItemLanguage: (name) =>
+    `📚 Материал «<b>${name}</b>»\nВыберите язык, на котором хотите получить файл:`,
+  fileAlreadySent: "Этот файл уже отправлен на выбранном языке.",
 };
 
 const kk: Msg = {
@@ -325,6 +334,10 @@ const kk: Msg = {
   broadcastPick: "👇 Материалды таңдаңыз:",
   openCatalogBtn: "📚 Каталогты ашу",
   chooseLanguage: "Тілді таңдаңыз",
+  chooseDeliveryLanguage: "🌐 Материалдарды қай тілде алғыңыз келеді?",
+  allLanguagesBtn: (n) => `Барлық тілдер ×${n}`,
+  chooseItemLanguage: (name) => `📚 «<b>${name}</b>» материалы\nФайлды қай тілде алғыңыз келеді:`,
+  fileAlreadySent: "Бұл файл таңдалған тілде жіберілген.",
   languageSaved: "✅ Тіл сақталды.",
   chooseSection: "Бөлімді таңдаңыз:",
   catalog: "📚 Каталог",
@@ -388,6 +401,10 @@ const en: Msg = {
   broadcastPick: "👇 Pick an item:",
   openCatalogBtn: "📚 Open catalog",
   chooseLanguage: "Choose your language",
+  chooseDeliveryLanguage: "🌐 Which language should the files be in?",
+  allLanguagesBtn: (n) => `All languages ×${n}`,
+  chooseItemLanguage: (name) => `📚 «<b>${name}</b>»\nChoose the language for the file:`,
+  fileAlreadySent: "This file has already been sent in that language.",
   languageSaved: "✅ Language saved.",
   chooseSection: "Choose a section:",
   catalog: "📚 Catalog",
@@ -471,6 +488,10 @@ const uz: Msg = {
   broadcastPick: "👇 Materialni tanlang:",
   openCatalogBtn: "📚 Katalogni ochish",
   chooseLanguage: "Tilni tanlang",
+  chooseDeliveryLanguage: "🌐 Materiallarni qaysi tilda olishni xohlaysiz?",
+  allLanguagesBtn: (n) => `Barcha tillar ×${n}`,
+  chooseItemLanguage: (name) => `📚 «<b>${name}</b>»\nFaylni qaysi tilda olishni tanlang:`,
+  fileAlreadySent: "Bu fayl tanlangan tilda allaqachon yuborilgan.",
   languageSaved: "✅ Til saqlandi.",
   chooseSection: "Bo‘limni tanlang:",
   catalog: "📚 Katalog",

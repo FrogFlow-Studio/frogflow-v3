@@ -2,7 +2,7 @@ import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { tenantDirectory } from "@/core/tenant/resolve.server";
 import { telegramApi } from "@/channels/telegram/api";
-import { telegramMaterialSender } from "@/channels/telegram/deliver";
+import { telegramLanguageAsker, telegramMaterialSender } from "@/channels/telegram/deliver";
 import { COPY } from "@/channels/telegram/copy";
 import {
   deliverOrder,
@@ -10,6 +10,7 @@ import {
   getOrder,
   rejectOrder,
   type OrderWithItems,
+  type DeliverOptions,
 } from "@/core/orders/orders";
 import { verifyPassword } from "@/app/auth/password";
 import type { Tenant } from "@/core/tenant/types";
@@ -85,6 +86,10 @@ export async function runOrderAction(
         };
       }
       let sender = telegramMaterialSender(api(ctx), order.telegram_id, m);
+      let opts: DeliverOptions = {
+        lang: "ru",
+        ask: telegramLanguageAsker(api(ctx), order.telegram_id, m),
+      };
       if (order.platform !== "telegram") {
         const { zernioSenderFor, zernioTargetForOrder } =
           await import("@/channels/zernio/outbound.server");
@@ -92,9 +97,15 @@ export async function runOrderAction(
         if (!target)
           return { ok: false, message: `У покупателя из ${order.platform} нет диалога для выдачи` };
         sender = zernioSenderFor(target);
+        opts = { lang: "ru", allWhenAmbiguous: true };
       }
-      const r = await deliverOrder(ctx, id, sender, "ru");
+      const r = await deliverOrder(ctx, id, sender, opts);
       if (r.alreadyDelivered) return { ok: true, message: `Заказ #${no} уже выдан` };
+      if (r.failed === 0 && r.pending > 0)
+        return {
+          ok: true,
+          message: `Заказ #${no}: покупателю задан вопрос о языке (${r.pending} поз.) — файлы уйдут после ответа`,
+        };
       if (r.failed === 0) {
         await notifyCustomer(ctx, order, m.orderDelivered(no));
         if (r.pointsEarned > 0) await notifyCustomer(ctx, order, m.pointsEarned(r.pointsEarned));

@@ -10,9 +10,13 @@ import {
   materialLanguages,
   materialsForProduct,
   type MaterialSnapshot,
+  addDeliveredLanguage,
+  isDeliveryLangChoice,
+  parseDeliveredLanguages,
+  type DeliveryLangChoice,
 } from "@/core/catalog/materials";
-import type { Locale } from "@/core/i18n/locale";
-import { itemLanguages, itemMaterials } from "./pure";
+import { localeNames, type Locale } from "@/core/i18n/locale";
+import { itemAvailableLanguages, itemMaterials, itemNeedsLanguageChoice } from "./pure";
 import { applyDiscounts, normalizeCode } from "@/core/discounts/pure";
 import { amountDueNow, decrementStock, restoreStock } from "@/core/fulfillment/fulfillment";
 import {
@@ -129,6 +133,8 @@ export type PlaceOrderOptions = {
   usePoints?: boolean;
   giftCode?: string | null;
   fulfillment?: FulfillmentInput | null;
+  /** Язык материалов, выбранный до оформления (multi_language, delivery_lang_timing = before). */
+  deliveryLang?: DeliveryLangChoice | null;
 };
 
 /** Скидки корзины для показа — без списания. */
@@ -209,7 +215,11 @@ export async function placeOrder(
       await releaseOrderPlacement(ctx, customer);
       return { ok: false, reason: "empty_cart" };
     }
-    const priced = await priceCart(ctx, items, countryCode);
+    const deliveryLang =
+      ctx.tenant.modules.multi_language && isDeliveryLangChoice(opts.deliveryLang)
+        ? opts.deliveryLang
+        : null;
+    const priced = await priceCart(ctx, items, countryCode, { deliveryLang });
 
     // Складской учёт — до создания заказа: не хватило, откатываем уже
     // списанное и убираем раскупленную строку из корзины.
@@ -291,6 +301,7 @@ export async function placeOrder(
         delivery_zone_id: f?.type === "delivery" ? (f.zone?.id ?? null) : null,
         delivery_zone_name: f?.type === "delivery" ? (f.zone?.name ?? null) : null,
         delivery_fee: deliveryFee,
+        delivery_lang_choice: priced.kind === "physical" ? null : deliveryLang,
       })
       .select("*")
       .single();
@@ -501,62 +512,182 @@ export type MaterialSender = (
   materials: MaterialSnapshot[],
 ) => Promise<"sent" | "failed">;
 
+/** Спросить покупателя, на каком языке выдать позицию; true — вопрос отправлен. */
+export type LanguageAsker = (item: OrderItemRow, langs: Locale[]) => Promise<boolean>;
+
+export type DeliverOptions = {
+  /** Язык интерфейса покупателя — им выдаём, если выбора нет и он доступен. */
+  lang?: Locale;
+  /** Канал умеет спросить язык при выдаче (Telegram — кнопками). */
+  ask?: LanguageAsker;
+  /** Канал не умеет спрашивать (Direct, письмо) — при нескольких языках отдать все. */
+  allWhenAmbiguous?: boolean;
+};
+
 export type DeliverResult = {
   ok: true;
   alreadyDelivered?: boolean;
   sent: number;
   failed: number;
+  /** Позиции, по которым ждём ответа покупателя о языке: заказ остаётся «выдаётся». */
+  pending: number;
   /** Начислено баллов за покупку (модуль loyalty), 0 — нет. */
   pointsEarned: number;
   /** Награда пригласившему (модуль referral) — каналу осталось её отправить. */
   referral?: ReferralGrant | null;
 };
 
-/**
- * Выдача цифрового заказа. Канал приносит функцию отправки; ядро отвечает
- * за захват, порядок, статусы и delivery_index (сколько позиций уже ушло —
- * повторная выдача продолжает, а не дублирует).
- */
-export async function deliverOrder(
+/** Отметить язык выданным; возвращает новое значение колонки — следующий язык копится поверх него. */
+async function markDelivered(
   ctx: TenantContext,
-  orderId: number,
-  send: MaterialSender,
-  lang: Locale = "ru",
-): Promise<DeliverResult> {
-  const order = await claimOrderForDelivery(ctx, orderId);
-  if (!order) return { ok: true, alreadyDelivered: true, sent: 0, failed: 0, pointsEarned: 0 };
-  const items = order.order_items.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
-  let sent = 0;
-  let failed = 0;
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i]!;
-    const langs = itemLanguages(item);
-    const pick = langs.includes(lang) ? lang : langs[0];
-    const materials = pick ? itemMaterials(item, pick) : [];
-    const result = materials.length ? await send(item, materials) : "failed";
-    if (result === "sent") sent++;
-    else failed++;
-    await ctx.db
-      .from("orders")
-      .update({ delivery_index: i + 1 })
-      .eq("id", orderId);
-  }
+  item: OrderItemRow,
+  current: string | null,
+  lang: Locale,
+): Promise<string> {
+  const next = addDeliveredLanguage(current, lang);
+  await ctx.db.from("order_items").update({ delivered_language: next }).eq("id", item.id);
+  return next;
+}
+
+/** Имя позиции с языком, когда языков у выдачи больше одного. */
+export function itemLabel(item: OrderItemRow, lang: Locale, many: boolean): OrderItemRow {
+  return many ? { ...item, name_snapshot: `${item.name_snapshot} (${localeNames[lang]})` } : item;
+}
+
+async function finalizeDelivery(
+  ctx: TenantContext,
+  order: OrderWithItems,
+  failed: number,
+  total: number,
+): Promise<{ pointsEarned: number; referral: ReferralGrant | null }> {
   await ctx.db
     .from("orders")
     .update(
       failed
         ? {
             status: "awaiting_confirmation",
-            admin_note: `Выдача не удалась: ${failed} из ${items.length}`,
+            admin_note: `Выдача не удалась: ${failed} из ${total}`,
           }
         : { status: "delivered" },
     )
-    .eq("id", orderId);
+    .eq("id", order.id);
   const pointsEarned = failed
     ? 0
-    : await awardPointsForOrder(ctx, orderId, order.telegram_id, Number(order.total));
+    : await awardPointsForOrder(ctx, order.id, order.telegram_id, Number(order.total));
   const referral = failed ? null : await rewardReferrerIfFirstDelivery(ctx, order.telegram_id);
-  return { ok: true, sent, failed, pointsEarned, referral };
+  return { pointsEarned, referral };
+}
+
+/**
+ * Выдача цифрового заказа. Канал приносит функцию отправки; ядро отвечает
+ * за захват, порядок, статусы, delivery_index (сколько позиций уже ушло —
+ * повторная выдача продолжает, а не дублирует) и языки: выбранный до
+ * оформления язык или «все», уже выданные языки при повторе, вопрос
+ * покупателю при выдаче (заказ остаётся «выдаётся», пока он не ответит),
+ * иначе язык интерфейса или первый доступный.
+ */
+export async function deliverOrder(
+  ctx: TenantContext,
+  orderId: number,
+  send: MaterialSender,
+  opts: DeliverOptions = {},
+): Promise<DeliverResult> {
+  const order = await claimOrderForDelivery(ctx, orderId);
+  if (!order)
+    return { ok: true, alreadyDelivered: true, sent: 0, failed: 0, pending: 0, pointsEarned: 0 };
+  const multi = ctx.tenant.modules.multi_language;
+  const choice =
+    multi && isDeliveryLangChoice(order.delivery_lang_choice) ? order.delivery_lang_choice : null;
+  const items = order.order_items.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  let sent = 0;
+  let failed = 0;
+  let pending = 0;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]!;
+    const langs = itemAvailableLanguages(item, multi);
+    const delivered = parseDeliveredLanguages(item.delivered_language);
+    let result: "sent" | "failed" | "pending" = "failed";
+    const sendLangs = async (list: Locale[]) => {
+      let ok = true;
+      let current = item.delivered_language;
+      for (const l of list) {
+        const materials = itemMaterials(item, l);
+        if (materials.length === 0) continue;
+        const r = await send(itemLabel(item, l, list.length > 1), materials);
+        if (r === "sent") current = await markDelivered(ctx, item, current, l);
+        else ok = false;
+      }
+      return ok ? ("sent" as const) : ("failed" as const);
+    };
+    if (langs.length === 0) result = "failed";
+    else if (choice === "all") result = await sendLangs(langs);
+    else if (choice) result = await sendLangs([langs.includes(choice) ? choice : langs[0]!]);
+    else if (multi && delivered.size > 0)
+      // Повторная выдача: те же языки, что покупатель уже выбирал, без переспроса.
+      result = await sendLangs(langs.filter((l) => delivered.has(l)));
+    else if (langs.length > 1 && opts.ask)
+      result = (await opts.ask(item, langs)) ? "pending" : "failed";
+    else if (langs.length > 1 && opts.allWhenAmbiguous) result = await sendLangs(langs);
+    else {
+      const l = opts.lang && langs.includes(opts.lang) ? opts.lang : langs[0]!;
+      result = await sendLangs([l]);
+    }
+    if (result === "sent") sent++;
+    else if (result === "pending") pending++;
+    else failed++;
+    await ctx.db
+      .from("orders")
+      .update({ delivery_index: i + 1 })
+      .eq("id", orderId);
+  }
+  if (pending > 0 && failed === 0)
+    return { ok: true, sent, failed, pending, pointsEarned: 0, referral: null };
+  const fin = await finalizeDelivery(ctx, order, failed, items.length);
+  return { ok: true, sent, failed, pending, ...fin };
+}
+
+export type LanguagePickResult =
+  | { status: "not_found" | "already" | "no_materials" | "failed" }
+  | {
+      status: "sent";
+      /** Все позиции выданы — заказ закрыт. */
+      completed: boolean;
+      pointsEarned: number;
+      referral: ReferralGrant | null;
+    };
+
+/**
+ * Покупатель ответил на вопрос о языке позиции: выдать её на этом языке и,
+ * если ни одна позиция больше не ждёт выбора, закрыть заказ.
+ */
+export async function completeLanguageDelivery(
+  ctx: TenantContext,
+  p: { orderId: number; itemId: string; lang: Locale; telegramId: number },
+  send: MaterialSender,
+): Promise<LanguagePickResult> {
+  const order = await getOrder(ctx, p.orderId);
+  if (!order || order.telegram_id !== p.telegramId) return { status: "not_found" };
+  const item = order.order_items.find((i) => i.id === p.itemId);
+  if (!item) return { status: "not_found" };
+  if (parseDeliveredLanguages(item.delivered_language).has(p.lang)) return { status: "already" };
+  const materials = itemMaterials(item, p.lang);
+  if (materials.length === 0) return { status: "no_materials" };
+  const r = await send(item, materials);
+  if (r !== "sent") return { status: "failed" };
+  await markDelivered(ctx, item, item.delivered_language, p.lang);
+  const multi = ctx.tenant.modules.multi_language;
+  const stillPending = order.order_items.some((it) =>
+    itemNeedsLanguageChoice(
+      it.id === item.id
+        ? { ...it, delivered_language: addDeliveredLanguage(item.delivered_language, p.lang) }
+        : it,
+      multi,
+    ),
+  );
+  if (stillPending || order.status !== "delivering")
+    return { status: "sent", completed: false, pointsEarned: 0, referral: null };
+  const fin = await finalizeDelivery(ctx, order, 0, order.order_items.length);
+  return { status: "sent", completed: true, ...fin };
 }
 
 export async function signedFileUrl(path: string, ttlSec = 7 * 24 * 3600): Promise<string | null> {

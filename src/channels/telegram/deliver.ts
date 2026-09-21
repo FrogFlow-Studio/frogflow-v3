@@ -1,5 +1,6 @@
 import type { TelegramApi } from "./api";
-import type { MaterialSender } from "@/core/orders/orders";
+import type { LanguageAsker, MaterialSender } from "@/core/orders/orders";
+import { localeFlags, localeNames } from "@/core/i18n/locale";
 import { signedFileUrl } from "@/core/orders/orders";
 import { escapeHtml, type Msg } from "./copy";
 
@@ -47,5 +48,25 @@ export function telegramMaterialSender(api: TelegramApi, chatId: number, m: Msg)
       if (!ok) allOk = false;
     }
     return allOk ? "sent" : "failed";
+  };
+}
+
+/** Вопрос «на каком языке» кнопками; ответ приходит callback `lang:<order>:<item>:<lang>`. */
+export function telegramLanguageAsker(api: TelegramApi, chatId: number, m: Msg): LanguageAsker {
+  return async (item, langs) => {
+    const r = await api.call("sendMessage", {
+      chat_id: chatId,
+      text: m.chooseItemLanguage(escapeHtml(item.name_snapshot)),
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [
+          langs.map((l) => ({
+            text: `${localeFlags[l]} ${localeNames[l]}`,
+            callback_data: `lang:${item.order_id}:${item.id}:${l}`,
+          })),
+        ],
+      },
+    });
+    return r.ok;
   };
 }

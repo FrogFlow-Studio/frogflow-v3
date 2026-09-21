@@ -48,6 +48,9 @@ function SettingsPage() {
         ...(shop.modules.loyalty
           ? { loyalty_earn_percent: String(f.get("loyalty_earn_percent") || "5") }
           : {}),
+        ...(shop.modules.multi_language
+          ? { delivery_lang_timing: String(f.get("delivery_lang_timing") || "during") }
+          : {}),
       },
     });
     setSaved(true);
@@ -111,6 +114,21 @@ function SettingsPage() {
                   max={100}
                   defaultValue={settings.loyalty_earn_percent ?? "5"}
                 />
+              </Field>
+            )}
+            {shop.modules.multi_language && (
+              <Field
+                label="Язык материалов"
+                hint="До оформления покупатель может взять «все языки» — позиция стоит ×N по числу языков товара. При выдаче Telegram спрашивает язык кнопкой на каждую позицию, Instagram и WhatsApp получают все языки."
+              >
+                <select
+                  className="input"
+                  name="delivery_lang_timing"
+                  defaultValue={settings.delivery_lang_timing ?? "during"}
+                >
+                  <option value="during">Спрашивать при выдаче</option>
+                  <option value="before">Спрашивать до оформления (с ценой за все языки)</option>
+                </select>
               </Field>
             )}
             <Field label="Текст инструкции покупателю">

@@ -56,7 +56,9 @@ export type DialogMode =
   /** Только Instagram/WhatsApp: у Direct нет /start, страна и вариант выбираются текстом. */
   | "awaiting_locale"
   | "awaiting_country"
-  | "awaiting_variant_choice";
+  | "awaiting_variant_choice"
+  /** multi_language, delivery_lang_timing = before: язык материалов перед оформлением. */
+  | "awaiting_delivery_lang";
 
 export type DialogState = {
   mode?: DialogMode;
@@ -76,6 +78,8 @@ export type DialogState = {
   checkout_delivery_fee?: number;
   checkout_fulfillment_address?: string;
   checkout_fulfillment_note?: string;
+  /** Язык материалов, выбранный до оформления: код или "all". */
+  delivery_lang?: string;
   /** Товар, для которого только что поставлена оценка и ждём комментарий. */
   review_product_id?: string;
   /** Кулдаун умного поиска — когда покупатель звал его последний раз. */

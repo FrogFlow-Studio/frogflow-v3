@@ -1,7 +1,12 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { PRODUCT_SELECT, type Product } from "@/core/catalog/catalog";
-import { productSellable } from "@/core/catalog/materials";
+import {
+  deliveryPriceMultiplier,
+  materialLanguages,
+  productSellable,
+  type DeliveryLangChoice,
+} from "@/core/catalog/materials";
 import { resolvePrice } from "@/core/pricing/pricing";
 import type { Money } from "@/core/money/money";
 
@@ -148,7 +153,14 @@ export async function clearCart(ctx: TenantContext, customer: Customer): Promise
   await ctx.db.from("cart_items").delete().eq("telegram_id", customer.telegramId);
 }
 
-export type PricedLine = { item: CartItem; name: string; unit: Money; line: number };
+export type PricedLine = {
+  item: CartItem;
+  name: string;
+  unit: Money;
+  line: number;
+  /** ×N за «все языки» (модуль multi_language): сколько комплектов в цене. */
+  copies: number;
+};
 export type PricedCart = {
   lines: PricedLine[];
   total: number;
@@ -161,21 +173,28 @@ export async function priceCart(
   ctx: TenantContext,
   items: CartItem[],
   countryCode: string | null,
+  opts: { deliveryLang?: DeliveryLangChoice | null } = {},
 ): Promise<PricedCart> {
   const lines: PricedLine[] = [];
   let total = 0;
   let currency = "KZT";
   let kind: "digital" | "physical" = "digital";
+  const choice = ctx.tenant.modules.multi_language ? (opts.deliveryLang ?? null) : null;
   for (const item of items) {
     const p = item.products;
     if (!p) continue;
     if (p.fulfillment_kind === "physical") kind = "physical";
     const unit = await resolvePrice(ctx, p, countryCode, item.product_variants);
     currency = unit.currency;
-    const line = unit.amount * Number(item.quantity);
+    // «Все языки» — как N комплектов по числу языков этого товара.
+    const copies =
+      p.fulfillment_kind === "physical"
+        ? 1
+        : deliveryPriceMultiplier(choice, materialLanguages(p).length);
+    const line = unit.amount * copies * Number(item.quantity);
     total += line;
     const name = item.product_variants ? `${p.name} (${item.product_variants.name})` : p.name;
-    lines.push({ item, name, unit, line });
+    lines.push({ item, name, unit, line, copies });
   }
   return { lines, total, currency, kind };
 }
