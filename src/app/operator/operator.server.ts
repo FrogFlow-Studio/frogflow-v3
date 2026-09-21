@@ -1,4 +1,10 @@
 import { env } from "@/config/env";
+import {
+  computeState,
+  readPolicy,
+  type OverduePolicy,
+  type SubscriptionState,
+} from "@/core/billing/subscription";
 import { serviceDb } from "@/core/db/client.server";
 import type { Database, Json } from "@/core/db-types";
 import { MODULE_KEYS, MODULES, moduleDef, type ModuleKey } from "@/core/modules/registry";
@@ -91,6 +97,8 @@ export type ClientView = {
   notes: string | null;
   tags: string[];
   subscriptionExpiresAt: string | null;
+  /** Состояние подписки из дат и политики (core/billing/subscription). */
+  subscription: { state: SubscriptionState; daysLeft: number | null; policy: OverduePolicy };
   createdAt: string | null;
   stats: ClientStats | null;
 };
@@ -133,6 +141,10 @@ function toView(
     notes: extra.notes,
     tags: extra.tags,
     subscriptionExpiresAt: extra.subscription_expires_at,
+    subscription: (() => {
+      const st = computeState(extra.subscription_expires_at, readPolicy(t.settings));
+      return { state: st.state, daysLeft: st.daysLeft, policy: st.policy };
+    })(),
     createdAt: extra.created_at,
     stats,
   };

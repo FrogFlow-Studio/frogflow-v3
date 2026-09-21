@@ -91,6 +91,10 @@ export function settingsFromJson(json: unknown): TenantSettings {
       webhook_ok: vip.webhook_ok === true,
     },
     served_by: served,
+    on_overdue:
+      s.on_overdue === "suspend" ? "suspend" : s.on_overdue === "warn" ? "warn" : undefined,
+    warn_days_before: typeof s.warn_days_before === "number" ? s.warn_days_before : undefined,
+    grace_days: typeof s.grace_days === "number" ? s.grace_days : undefined,
   };
 }
 

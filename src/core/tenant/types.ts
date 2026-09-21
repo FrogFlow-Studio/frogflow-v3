@@ -45,6 +45,10 @@ export type TenantSettings = {
   };
   /** Переключатель миграции: пока v1 обслуживает клиента, v2 отвечает 409 на его вебхуки. */
   served_by?: "v1" | "v2";
+  /** Поведение при неоплате подписки (те же ключи, что в v1; читает core/billing/subscription). */
+  on_overdue?: "warn" | "suspend";
+  warn_days_before?: number;
+  grace_days?: number;
 };
 
 export type ZernioAccountSnapshot = {

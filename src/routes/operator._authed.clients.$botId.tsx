@@ -18,6 +18,7 @@ import {
   createInvoiceFn,
   invoiceActionFn,
   invoiceProofUrlFn,
+  setOverduePolicyFn,
 } from "@/app/operator/operator.functions";
 import { MODULE_KEYS, moduleDef, type ModuleKey } from "@/core/modules/registry";
 import { VERTICAL_KEYS, VERTICALS } from "@/core/verticals/registry";
@@ -594,6 +595,17 @@ function BillingCard({ c }: { c: C }) {
     const r = await invoiceProofUrlFn({ data: { id } });
     if (r.url) window.open(r.url, "_blank", "noopener");
   });
+  const policy = useAction(async (f: FormData) => {
+    await setOverduePolicyFn({
+      data: {
+        botId: c.id,
+        on_overdue: String(f.get("on_overdue")) === "suspend" ? "suspend" : "warn",
+        warn_days_before: Number(f.get("warn_days_before")),
+        grace_days: Number(f.get("grace_days")),
+      },
+    });
+    setNote("Политика сохранена.");
+  });
   const confirm = (id: string) => {
     const start = prompt("Начало оплаченного периода (ГГГГ-ММ-ДД):", today());
     if (!start) return;
@@ -798,9 +810,60 @@ function BillingCard({ c }: { c: C }) {
               ))}
             </ul>
           )}
+          <form
+            className="grid gap-2 sm:grid-cols-3"
+            onSubmit={(e: FormEvent<HTMLFormElement>) => {
+              e.preventDefault();
+              void policy.run(new FormData(e.currentTarget)).catch(() => {});
+            }}
+          >
+            <div className="text-sm font-medium sm:col-span-3">При неоплате</div>
+            <select
+              className="input"
+              name="on_overdue"
+              defaultValue={c.subscription.policy.on_overdue}
+            >
+              <option value="warn">только предупреждать</option>
+              <option value="suspend">приостановить после отсрочки</option>
+            </select>
+            <input
+              className="input"
+              name="warn_days_before"
+              type="number"
+              min={0}
+              max={60}
+              defaultValue={c.subscription.policy.warn_days_before}
+              title="За сколько дней предупреждать"
+            />
+            <input
+              className="input"
+              name="grace_days"
+              type="number"
+              min={0}
+              max={60}
+              defaultValue={c.subscription.policy.grace_days}
+              title="Дней отсрочки после истечения"
+            />
+            <div className="text-xs text-muted sm:col-span-3">
+              Предупреждение за N дней до конца и отсрочка после истечения; обход — ежедневно,
+              владелец получает сообщение от своего бота.
+            </div>
+            <div className="sm:col-span-3">
+              <button className="btn-secondary" disabled={policy.busy}>
+                Сохранить политику
+              </button>
+            </div>
+          </form>
           {note && <p className="text-sm text-muted">{note}</p>}
           <ErrorBox
-            error={load.error ?? invoice.error ?? payment.error ?? act.error ?? proof.error}
+            error={
+              load.error ??
+              invoice.error ??
+              payment.error ??
+              act.error ??
+              proof.error ??
+              policy.error
+            }
           />
         </div>
       )}

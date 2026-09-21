@@ -21,23 +21,23 @@ v2 работают одновременно, поломку у живого к�
 
 Осталось внутри фазы, по описи:
 
-| модуль / поведение                 | v1                                  | v2                           |
-| ---------------------------------- | ----------------------------------- | ---------------------------- |
-| `coupons` промокоды                | `promo-codes.ts`, CAS `used_count`  | ✔ бот + админка              |
-| `loyalty` баллы                    | `loyalty.server.ts`                 | ✔                            |
-| `gift_certificates`                | `gift-certificates.ts`              | ✔ бот + админка              |
-| `multi_language` «все языки»       | `deliveryPriceMultiplier`, `lang_*` | ✔ до оформления и при выдаче |
-| `stock` списание на оформлении     | `decrementStock`/`restoreStock`     | ✔                            |
-| `review_request` отзывы            | `reviews.ts`, `product_reviews`     | ✔                            |
-| `referral`                         | `referrals.server.ts`               | ✔                            |
-| `cart_reminder` крон               | `cart-reminder.server.ts`           | ✔ `/api/cron/cart-reminder`  |
-| `smart_search` LLM-поиск           | `smart-search.server.ts`            | ✔ Haiku 4.5, SDK             |
-| `manager_chat`                     | `manager-chat.server.ts`, RPC touch | ✔ `/admin/chat`              |
-| `blocked` — чтение                 | `replyIfBlocked`                    | ✔                            |
-| пауза за неоплату                  | `replyIfPaused`                     | ✔                            |
-| счёт оператора чеком от владельца  | `subscription_invoices`             | ✔ панель оператора + бот     |
-| напоминание об оплате из админки   | `remindOrderPayment`                | ✔                            |
-| «Информация»: юридические страницы | `/legal/*`, бакет `legal-docs`      | ✔ `/s/<slug>/legal/*`        |
+| модуль / поведение                 | v1                                  | v2                                              |
+| ---------------------------------- | ----------------------------------- | ----------------------------------------------- |
+| `coupons` промокоды                | `promo-codes.ts`, CAS `used_count`  | ✔ бот + админка                                 |
+| `loyalty` баллы                    | `loyalty.server.ts`                 | ✔                                               |
+| `gift_certificates`                | `gift-certificates.ts`              | ✔ бот + админка                                 |
+| `multi_language` «все языки»       | `deliveryPriceMultiplier`, `lang_*` | ✔ до оформления и при выдаче                    |
+| `stock` списание на оформлении     | `decrementStock`/`restoreStock`     | ✔                                               |
+| `review_request` отзывы            | `reviews.ts`, `product_reviews`     | ✔                                               |
+| `referral`                         | `referrals.server.ts`               | ✔                                               |
+| `cart_reminder` крон               | `cart-reminder.server.ts`           | ✔ `/api/cron/cart-reminder`                     |
+| `smart_search` LLM-поиск           | `smart-search.server.ts`            | ✔ Haiku 4.5, SDK                                |
+| `manager_chat`                     | `manager-chat.server.ts`, RPC touch | ✔ `/admin/chat`                                 |
+| `blocked` — чтение                 | `replyIfBlocked`                    | ✔                                               |
+| пауза за неоплату                  | `replyIfPaused`                     | ✔                                               |
+| счёт оператора чеком от владельца  | `subscription_invoices`             | ✔ панель оператора + бот, обход подписок кроном |
+| напоминание об оплате из админки   | `remindOrderPayment`                | ✔                                               |
+| «Информация»: юридические страницы | `/legal/*`, бакет `legal-docs`      | ✔ `/s/<slug>/legal/*`                           |
 
 ## Фаза 3 — оплата и физические товары ✔
 

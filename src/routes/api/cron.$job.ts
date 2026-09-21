@@ -89,6 +89,12 @@ export const Route = createFileRoute("/api/cron/$job")({
             }
             break;
           }
+          case "subscriptions": {
+            // Подписки клиентов на платформу: предупредить, приостановить по политике.
+            const { sweepSubscriptions } = await import("@/app/operator/billing.server");
+            results.subscriptions = await sweepSubscriptions();
+            break;
+          }
           case "retention": {
             // Один проход на всех клиентов: журналы, переписка, попытки входа.
             const { runRetention } = await import("@/core/retention/retention");

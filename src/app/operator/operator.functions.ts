@@ -418,3 +418,26 @@ export const invoiceProofUrlFn = createServerFn({ method: "POST" })
     await guard();
     return { url: await (await import("./billing.server")).invoiceProofUrl(data.id) };
   });
+
+export const setOverduePolicyFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId: z.string().uuid(),
+        on_overdue: z.enum(["warn", "suspend"]),
+        warn_days_before: z.number().int().min(0).max(60),
+        grace_days: z.number().int().min(0).max(60),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const { botId, ...policy } = data;
+    await (await import("./billing.server")).setOverduePolicy(botId, policy, await actor());
+    return { ok: true };
+  });
+
+export const sweepSubscriptionsFn = createServerFn({ method: "POST" }).handler(async () => {
+  await guard();
+  return (await import("./billing.server")).sweepSubscriptions();
+});

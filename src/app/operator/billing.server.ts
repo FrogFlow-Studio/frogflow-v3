@@ -1,4 +1,11 @@
 import { serviceDb } from "@/core/db/client.server";
+import {
+  computeState,
+  readPolicy,
+  suspendText,
+  warnText,
+  type OverduePolicy,
+} from "@/core/billing/subscription";
 import { logEvent, notifyOwner } from "./operator.server";
 
 /**
@@ -311,4 +318,131 @@ export async function cancelInvoice(id: string, actor: string): Promise<void> {
     .eq("id", id);
   if (error) throw new Error(error.message);
   await logEvent(inv.bot_id, "payment", { action: "invoice_cancelled", invoice_id: id }, actor);
+}
+
+/* ── обход подписок ─────────────────────────────────────────────────── */
+
+export type SweepAction = "warned" | "suspended" | "skipped" | "failed";
+export type SweepEntry = {
+  bot_id: string;
+  bot_name: string;
+  state: string;
+  action: SweepAction;
+  detail: string;
+};
+export type SweepNotify = (botId: string, text: string) => Promise<{ ok: boolean; detail: string }>;
+
+const defaultNotify: SweepNotify = async (botId, text) => {
+  try {
+    const r = await notifyOwner(botId, text);
+    return r.delivered.length
+      ? { ok: true, detail: "доставлено" }
+      : { ok: false, detail: r.failed[0]?.reason ?? "не доставлено" };
+  } catch (e) {
+    return { ok: false, detail: e instanceof Error ? e.message : String(e) };
+  }
+};
+
+async function alreadyDone(botId: string, marker: string): Promise<boolean> {
+  const { data, error } = await serviceDb()
+    .from("bot_events")
+    .select("id")
+    .eq("bot_id", botId)
+    .eq("payload->>sweep_marker", marker)
+    .limit(1);
+  // Отказ проверки — не повод действовать: лучше пропустить клиента на этом проходе, чем разослать дубль.
+  if (error) {
+    console.error(`[operator] sweep idempotency check failed for ${botId}: ${error.message}`);
+    return true;
+  }
+  return (data?.length ?? 0) > 0;
+}
+
+/**
+ * Ежедневный обход подписок клиентов на v2: предупредить заранее, применить
+ * политику после отсрочки. Идемпотентность — метка `sweep_marker` в
+ * bot_events (вид действия + период + день): warn уходит раз в день, пока не
+ * оплачено; suspend — один раз на период; недоставленное предупреждение не
+ * помечается сделанным и повторится на следующем проходе.
+ */
+export async function sweepSubscriptions(
+  now = new Date(),
+  notify: SweepNotify = defaultNotify,
+  /** Только один клиент (тесты) — без фильтра по served_by. */
+  onlyBotId?: string,
+): Promise<SweepEntry[]> {
+  const { tenantDirectory, invalidateTenantDirectory } =
+    await import("@/core/tenant/resolve.server");
+  const tenants = (await tenantDirectory(true)).filter((t) =>
+    onlyBotId ? t.id === onlyBotId : t.settings.served_by === "v2" && !t.archived,
+  );
+  const ids = tenants.map((t) => t.id);
+  const { data: rows } = ids.length
+    ? await serviceDb().from("bots").select("id, subscription_expires_at").in("id", ids)
+    : { data: [] as Array<{ id: string; subscription_expires_at: string | null }> };
+  const expires = new Map((rows ?? []).map((r) => [r.id, r.subscription_expires_at]));
+  const results: SweepEntry[] = [];
+  const dayKey = now.toISOString().slice(0, 10);
+
+  for (const t of tenants) {
+    const policy: OverduePolicy = readPolicy(t.settings);
+    const sub = computeState(expires.get(t.id) ?? null, policy, now);
+    const base = { bot_id: t.id, bot_name: t.name, state: sub.state };
+    if (sub.state === "no_data" || sub.state === "ok" || t.status === "suspended") {
+      results.push({ ...base, action: "skipped", detail: "нет повода" });
+      continue;
+    }
+    const shouldSuspend = sub.state === "grace_over" && policy.on_overdue === "suspend";
+    const marker = shouldSuspend ? `suspend:${sub.expiresAt}` : `warn:${sub.expiresAt}:${dayKey}`;
+    if (await alreadyDone(t.id, marker)) {
+      results.push({ ...base, action: "skipped", detail: "уже сделано" });
+      continue;
+    }
+    if (shouldSuspend) {
+      const { error } = await serviceDb()
+        .from("bots")
+        .update({ status: "suspended" })
+        .eq("id", t.id);
+      if (error) {
+        results.push({
+          ...base,
+          action: "failed",
+          detail: `не удалось приостановить: ${error.message}`,
+        });
+        continue;
+      }
+      invalidateTenantDirectory();
+      await logEvent(
+        t.id,
+        "suspend",
+        { reason: "subscription_overdue", sweep_marker: marker },
+        "cron",
+      );
+      const n = await notify(t.id, suspendText(sub.daysLeft));
+      results.push({
+        ...base,
+        action: "suspended",
+        detail: n.ok ? "приостановлен, владелец уведомлён" : `приостановлен; ${n.detail}`,
+      });
+      continue;
+    }
+    const n = await notify(t.id, warnText(sub.daysLeft, policy.on_overdue === "suspend"));
+    if (!n.ok) {
+      results.push({ ...base, action: "failed", detail: n.detail });
+      continue;
+    }
+    await logEvent(t.id, "message", { kind: "subscription_warning", sweep_marker: marker }, "cron");
+    results.push({ ...base, action: "warned", detail: "владелец предупреждён" });
+  }
+  return results;
+}
+
+export async function setOverduePolicy(
+  botId: string,
+  policy: OverduePolicy,
+  actor: string,
+): Promise<void> {
+  const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
+  await patchTenantSettings(botId, policy);
+  await logEvent(botId, "meta", { policy }, actor);
 }

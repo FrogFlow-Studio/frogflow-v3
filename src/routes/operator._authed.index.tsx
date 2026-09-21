@@ -58,6 +58,7 @@ function ClientsPage() {
                 <th>Клиент</th>
                 <th>Ниша</th>
                 <th>Статус</th>
+                <th>Подписка</th>
                 <th>Каналы</th>
                 <th className="text-right">Заказов / 30 дн</th>
                 <th className="text-right">Товаров</th>
@@ -83,6 +84,9 @@ function ClientsPage() {
                   <td className="text-muted">{c.verticalTitle}</td>
                   <td>
                     <StatusBadge status={c.status} />
+                  </td>
+                  <td>
+                    <SubscriptionBadge s={c.subscription} expiresAt={c.subscriptionExpiresAt} />
                   </td>
                   <td className="space-x-1">
                     {c.telegram.connected ? (
@@ -114,4 +118,19 @@ export function StatusBadge({ status }: { status: string }) {
   if (status === "active") return <Badge tone="ok">активен</Badge>;
   if (status === "paused") return <Badge tone="warn">пауза</Badge>;
   return <Badge tone="danger">приостановлен</Badge>;
+}
+
+export function SubscriptionBadge({
+  s,
+  expiresAt,
+}: {
+  s: { state: string; daysLeft: number | null };
+  expiresAt: string | null;
+}) {
+  const until = expiresAt ? new Date(expiresAt).toLocaleDateString("ru") : "";
+  if (s.state === "no_data") return <Badge>не заведена</Badge>;
+  if (s.state === "ok") return <Badge tone="ok">до {until}</Badge>;
+  if (s.state === "expiring") return <Badge tone="warn">истекает через {s.daysLeft} дн.</Badge>;
+  if (s.state === "overdue") return <Badge tone="warn">просрочена {-(s.daysLeft ?? 0)} дн.</Badge>;
+  return <Badge tone="danger">просрочена {-(s.daysLeft ?? 0)} дн.</Badge>;
 }
