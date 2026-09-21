@@ -89,6 +89,9 @@ export type SendOptions = {
   attachmentType?: "image" | "video" | "audio" | "file";
   /** WhatsApp показывает имя документа получателю; без него — «Untitled». */
   attachmentName?: string;
+  /** Instagram вне 24-часового окна: HUMAN_AGENT — живой агент известному контакту, не рассылка. */
+  messagingType?: "MESSAGE_TAG";
+  messageTag?: "HUMAN_AGENT";
 };
 
 export type SendResult = { ok: boolean; error?: string };
@@ -124,6 +127,10 @@ export async function sendInboxMessage(
   }
   const buttons = normalizeDmButtons(opts.buttons);
   if (buttons.length) body.buttons = buttons;
+  if (opts.messagingType) {
+    body.messagingType = opts.messagingType;
+    if (opts.messageTag) body.messageTag = opts.messageTag;
+  }
   try {
     await request(`/inbox/conversations/${encodeURIComponent(conversationId)}/messages`, {
       method: "POST",
@@ -345,6 +352,63 @@ export async function startWhatsAppConversation(params: {
     return { ok: false, error: details };
   }
 }
+
+/**
+ * Написать в Instagram Direct первым — по username, без comment-to-DM.
+ * Meta почти всегда отказывает, если человек ещё не писал и не комментировал
+ * пост с автоматизацией: холодный Direct запрещён, это не баг ключа.
+ */
+export async function startInstagramConversation(params: {
+  accountId: string;
+  username: string;
+  message: string;
+  buttons?: DmButton[];
+}): Promise<{ ok: true; conversationId?: string } | { ok: false; error: string }> {
+  const handle = params.username.trim().replace(/^@+/, "");
+  if (!handle) return { ok: false, error: "Нет Instagram-ника, чтобы открыть Direct." };
+  const body: Record<string, unknown> = {
+    accountId: params.accountId,
+    participantId: handle,
+    identifier: handle,
+    identifierType: "username",
+    message: params.message,
+  };
+  const buttons = normalizeDmButtons(params.buttons);
+  if (buttons.length > 0) body.buttons = buttons;
+  try {
+    const result = await request<{
+      data?: { conversationId?: string; id?: string };
+      conversationId?: string;
+      conversation?: { id?: string };
+    }>("/inbox/conversations", { method: "POST", body, idempotencyKey: idempotencyKeyFor(body) });
+    return {
+      ok: true,
+      conversationId:
+        result.data?.conversationId ||
+        result.data?.id ||
+        result.conversationId ||
+        result.conversation?.id ||
+        undefined,
+    };
+  } catch (e) {
+    const details = e instanceof Error ? e.message : String(e);
+    console.error(`[zernio] startInstagramConversation failed: ${details}`);
+    if (
+      /24[- ]hour|messaging window|outside the allowed|HUMAN_AGENT|not allowed to message/i.test(
+        details,
+      )
+    )
+      return {
+        ok: false,
+        error:
+          "Instagram не даёт написать первым в Direct: нет недавнего диалога. Дождитесь комментария к посту или сообщения от покупателя.",
+      };
+    return { ok: false, error: details };
+  }
+}
+
+/** Низкоуровневый запрос к Zernio — для соседних модулей канала (автоматизации, посты). */
+export const zernioRequest = request;
 
 /** Транспорт канала — подменяется в тестах, чтобы не ходить в Zernio. */
 export type ZernioTransport = {

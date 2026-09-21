@@ -27,6 +27,7 @@ import { Route as AdminAuthedChatRouteImport } from './routes/admin._authed.chat
 import { Route as AdminAuthedConsultantRouteImport } from './routes/admin._authed.consultant'
 import { Route as AdminAuthedCustomersRouteImport } from './routes/admin._authed.customers'
 import { Route as AdminAuthedDiscountsRouteImport } from './routes/admin._authed.discounts'
+import { Route as AdminAuthedInstagramRouteImport } from './routes/admin._authed.instagram'
 import { Route as AdminAuthedModulesRouteImport } from './routes/admin._authed.modules'
 import { Route as AdminAuthedOrdersRouteImport } from './routes/admin._authed.orders'
 import { Route as AdminAuthedProductsRouteImport } from './routes/admin._authed.products'
@@ -140,6 +141,11 @@ const AdminAuthedCustomersRoute = AdminAuthedCustomersRouteImport.update({
 const AdminAuthedDiscountsRoute = AdminAuthedDiscountsRouteImport.update({
   id: '/discounts',
   path: '/discounts',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedInstagramRoute = AdminAuthedInstagramRouteImport.update({
+  id: '/instagram',
+  path: '/instagram',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedModulesRoute = AdminAuthedModulesRouteImport.update({
@@ -291,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/admin/consultant': typeof AdminAuthedConsultantRoute
   '/admin/customers': typeof AdminAuthedCustomersRoute
   '/admin/discounts': typeof AdminAuthedDiscountsRoute
+  '/admin/instagram': typeof AdminAuthedInstagramRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
   '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/products': typeof AdminAuthedProductsRoute
@@ -334,6 +341,7 @@ export interface FileRoutesByTo {
   '/admin/consultant': typeof AdminAuthedConsultantRoute
   '/admin/customers': typeof AdminAuthedCustomersRoute
   '/admin/discounts': typeof AdminAuthedDiscountsRoute
+  '/admin/instagram': typeof AdminAuthedInstagramRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
   '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/products': typeof AdminAuthedProductsRoute
@@ -379,6 +387,7 @@ export interface FileRoutesById {
   '/admin/_authed/consultant': typeof AdminAuthedConsultantRoute
   '/admin/_authed/customers': typeof AdminAuthedCustomersRoute
   '/admin/_authed/discounts': typeof AdminAuthedDiscountsRoute
+  '/admin/_authed/instagram': typeof AdminAuthedInstagramRoute
   '/admin/_authed/modules': typeof AdminAuthedModulesRoute
   '/admin/_authed/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/_authed/products': typeof AdminAuthedProductsRoute
@@ -425,6 +434,7 @@ export interface FileRouteTypes {
     | '/admin/consultant'
     | '/admin/customers'
     | '/admin/discounts'
+    | '/admin/instagram'
     | '/admin/modules'
     | '/admin/orders'
     | '/admin/products'
@@ -468,6 +478,7 @@ export interface FileRouteTypes {
     | '/admin/consultant'
     | '/admin/customers'
     | '/admin/discounts'
+    | '/admin/instagram'
     | '/admin/modules'
     | '/admin/orders'
     | '/admin/products'
@@ -512,6 +523,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/consultant'
     | '/admin/_authed/customers'
     | '/admin/_authed/discounts'
+    | '/admin/_authed/instagram'
     | '/admin/_authed/modules'
     | '/admin/_authed/orders'
     | '/admin/_authed/products'
@@ -684,6 +696,13 @@ declare module '@tanstack/react-router' {
       path: '/discounts'
       fullPath: '/admin/discounts'
       preLoaderRoute: typeof AdminAuthedDiscountsRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/instagram': {
+      id: '/admin/_authed/instagram'
+      path: '/instagram'
+      fullPath: '/admin/instagram'
+      preLoaderRoute: typeof AdminAuthedInstagramRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/modules': {
@@ -890,6 +909,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedConsultantRoute: typeof AdminAuthedConsultantRoute
   AdminAuthedCustomersRoute: typeof AdminAuthedCustomersRoute
   AdminAuthedDiscountsRoute: typeof AdminAuthedDiscountsRoute
+  AdminAuthedInstagramRoute: typeof AdminAuthedInstagramRoute
   AdminAuthedModulesRoute: typeof AdminAuthedModulesRoute
   AdminAuthedOrdersRoute: typeof AdminAuthedOrdersRouteWithChildren
   AdminAuthedProductsRoute: typeof AdminAuthedProductsRoute
@@ -907,6 +927,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedConsultantRoute: AdminAuthedConsultantRoute,
   AdminAuthedCustomersRoute: AdminAuthedCustomersRoute,
   AdminAuthedDiscountsRoute: AdminAuthedDiscountsRoute,
+  AdminAuthedInstagramRoute: AdminAuthedInstagramRoute,
   AdminAuthedModulesRoute: AdminAuthedModulesRoute,
   AdminAuthedOrdersRoute: AdminAuthedOrdersRouteWithChildren,
   AdminAuthedProductsRoute: AdminAuthedProductsRoute,

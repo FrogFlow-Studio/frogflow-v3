@@ -94,6 +94,20 @@ export const Route = createFileRoute("/api/cron/$job")({
             }
             break;
           }
+          case "comment-dm-fallback": {
+            // Резервная DM по комментариям Instagram, если родное правило Zernio замолчало.
+            const { runCommentDmFallback } = await import("@/channels/zernio/automations.server");
+            const { tenantContext } = await import("@/core/tenant/resolve.server");
+            for (const t of tenants) {
+              if (!t.modules.instagram || !t.settings.zernio?.profile_id) continue;
+              try {
+                results[t.id] = await runCommentDmFallback(tenantContext(t));
+              } catch (e) {
+                results[t.id] = { ok: false, error: e instanceof Error ? e.message : String(e) };
+              }
+            }
+            break;
+          }
           case "health": {
             // Снимок здоровья каждого бота на v2 — история простоев в панели оператора.
             const { recordHealthSnapshots } = await import("@/app/operator/health.server");

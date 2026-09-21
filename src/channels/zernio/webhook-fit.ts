@@ -10,6 +10,7 @@ const LEGACY_NAMES = ["Store Webhook", "Instagram Store Webhook"];
 
 export const ZERNIO_WEBHOOK_EVENTS = [
   "message.received",
+  "comment.received",
   "account.disconnected",
   "whatsapp.template.status_updated",
 ] as const;
@@ -45,7 +46,9 @@ export function describeWebhookFit(
   const current = findStoreWebhook(webhooks, expectedUrl);
   if (!current) return { fit: "missing" };
   const active = current.isActive !== false && current.active !== false;
-  const listens = (current.events ?? []).includes("message.received");
+  // Без comment.received двухшаговая DM по комментарию не срабатывает — запись «устарела».
+  const events = current.events ?? [];
+  const listens = events.includes("message.received") && events.includes("comment.received");
   if (!active || current.url !== expectedUrl || !listens) return { fit: "stale", current };
   return { fit: "ok", current };
 }

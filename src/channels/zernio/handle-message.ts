@@ -54,6 +54,20 @@ export async function handleZernioMessage(
   });
   if (await isBlocked(ctx, customer.telegramId)) return ignored("покупатель заблокирован");
 
+  // Двухшаговая Comment-to-DM: покупатель написал первым после комментария —
+  // отдаём обещанное второе сообщение с кнопками; «+»/«да» дальше не разбираем.
+  if (m.platform === "instagram" && m.senderUsername && ctx.tenant.modules.instagram) {
+    const { deliverPendingTwoStepDm } = await import("./automations.server");
+    const { isTwoStepAcknowledgement } = await import("@/core/instagram/comment-rules");
+    const delivered = await deliverPendingTwoStepDm(ctx, {
+      accountId: m.accountId,
+      conversationId: m.conversationId,
+      username: m.senderUsername,
+    });
+    if (delivered && isTwoStepAcknowledgement(m.text))
+      return processed("второе сообщение по комментарию");
+  }
+
   const text = messageAsText(m);
   if (!text) return ignored("пустое сообщение");
 

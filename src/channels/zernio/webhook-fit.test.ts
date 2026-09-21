@@ -39,7 +39,7 @@ describe("describeWebhookFit", () => {
     const current = {
       name: "FrogFlow Store Webhook",
       url: expected,
-      events: ["message.received", "account.disconnected"],
+      events: ["message.received", "comment.received", "account.disconnected"],
       isActive: true,
     };
     expect(describeWebhookFit([current], expected)).toEqual({ fit: "ok", current });

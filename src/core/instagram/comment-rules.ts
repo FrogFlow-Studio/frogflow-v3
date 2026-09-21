@@ -1,0 +1,340 @@
+/**
+ * Comment-to-DM в Instagram: чистая логика без сети и базы — перенос
+ * v1 `comment-dm-fallback.ts` и `zernio-post-ids.ts` по описи
+ * (docs/inherited-knowledge.md). Оркестрация (Zernio API, журнал
+ * `comment_dm_fallback_sends`) — в `channels/zernio/automations.server.ts`.
+ */
+
+export type MatchMode = "exact" | "contains";
+
+export type AutomationButton = {
+  type: "url" | "postback";
+  title: string;
+  url?: string;
+  payload?: string;
+};
+
+/**
+ * Совпадает ли комментарий с ключевыми словами правила — повторяет семантику
+ * Zernio ("keywords: empty = any comment triggers", "matchMode: exact,
+ * contains"). Точный алгоритм Zernio не документирован детальнее этих двух
+ * слов — это лучшее воспроизведение по названию режимов, а не копия.
+ */
+export function commentMatchesAutomation(
+  text: string,
+  keywords: string[] | undefined,
+  matchMode: MatchMode | undefined,
+): boolean {
+  if (!keywords || keywords.length === 0) return true;
+  const normalized = text.trim().toLowerCase();
+  return keywords.some((kw) => {
+    const k = kw.trim().toLowerCase();
+    if (!k) return false;
+    return matchMode === "exact" ? normalized === k : normalized.includes(k);
+  });
+}
+
+/**
+ * Не пытаемся раньше этого возраста — даём Zernio шанс сработать первым.
+ * Штатный ответ у Zernio уходит в пределах минуты; без паузы каждый новый
+ * комментарий немедленно дублировался бы нашей же резервной отправкой.
+ */
+export const FALLBACK_MIN_AGE_MS = 5 * 60 * 1000;
+
+/** Крон каждые 15 минут; 10 минут — длиннее одного прогона и короче следующего тика. */
+export const STALE_PENDING_MS = 10 * 60 * 1000;
+
+/** С запасом от документированного 7-дневного окна private-reply у Zernio. */
+export const FALLBACK_MAX_AGE_MS = 6.5 * 24 * 60 * 60 * 1000;
+
+/**
+ * Что делать с уже существующей строкой comment_dm_fallback_sends.
+ * Inbox не идемпотентен: если прошлый прогон успел отправить и умер до
+ * UPDATE, человек получал то же сообщение каждые 15 минут. Один повтор
+ * private-reply ещё допустим (Meta на дубль отвечает «already sent»),
+ * второй и дальше — бросаем.
+ */
+export type StalePendingAction = "wait" | "retry" | "abandon" | "skip";
+
+export function stalePendingAction(
+  row: { status: string; created_at: string; updated_at: string },
+  now: Date,
+  staleMs: number = STALE_PENDING_MS,
+): StalePendingAction {
+  if (row.status !== "pending") return "skip";
+  const created = new Date(row.created_at).getTime();
+  const updated = new Date(row.updated_at).getTime();
+  if (Number.isNaN(created) || Number.isNaN(updated)) return "abandon";
+  if (now.getTime() - updated <= staleMs) return "wait";
+  // updated уже уехал от insert — этот комментарий уже подхватывали.
+  if (updated - created > staleMs) return "abandon";
+  return "retry";
+}
+
+/** Private-reply ИЛИ альт-канал доставили DM — для крона это успех, не повод слать ещё. */
+export function fallbackRecordStatus(
+  privateOk: boolean,
+  altChannelStatus: string,
+): "sent" | "failed" {
+  return privateOk || altChannelStatus === "sent" ? "sent" : "failed";
+}
+
+export type CommentAgeVerdict = "too_new" | "too_old" | "eligible";
+
+export function commentAgeVerdict(createdTimeIso: string, now: Date): CommentAgeVerdict {
+  const created = new Date(createdTimeIso).getTime();
+  if (Number.isNaN(created)) return "too_old"; // дате доверять нельзя — не отправляем вслепую
+  const age = now.getTime() - created;
+  if (age < FALLBACK_MIN_AGE_MS) return "too_new";
+  if (age > FALLBACK_MAX_AGE_MS) return "too_old";
+  return "eligible";
+}
+
+/**
+ * Статус комментария относительно правила — общий для резервного крона и
+ * догоняющей рассылки в панели: продавец видит, кому правило уже ответило,
+ * кому не должно было (не то слово), а кому должно было, но не ответило.
+ */
+export type CommentReplyStatus =
+  | "owner" // комментарий самого аккаунта — не адресат
+  | "sent" // Zernio отправил DM
+  | "failed" // Zernio пытался и не смог
+  | "no_match" // правило есть, ключевые слова не совпали
+  | "no_automation" // под постом нет активного правила
+  | "missing"; // подходит под правило, но в логах нет — пропущено
+
+export function annotateCommentStatus(
+  comment: { id?: string; message?: string; from?: { isOwner?: boolean } },
+  automation: { keywords: string[]; matchMode?: MatchMode } | null,
+  sentCommentIds: Set<string>,
+  failedCommentIds: Set<string>,
+): CommentReplyStatus {
+  if (comment.from?.isOwner) return "owner";
+  const id = comment.id ?? "";
+  if (id && sentCommentIds.has(id)) return "sent";
+  if (!automation) return "no_automation";
+  if (!commentMatchesAutomation(comment.message ?? "", automation.keywords, automation.matchMode))
+    return "no_match";
+  if (id && failedCommentIds.has(id)) return "failed";
+  return "missing";
+}
+
+/**
+ * Почему Instagram отклонит private-reply ещё до вызова: ответ в ветке,
+ * старше 7 дней или Instagram сам помечает canReply=false.
+ */
+export type PrivateReplyBlockReason = "nested" | "too_old" | "cannot_reply";
+
+export function commentPrivateReplyBlockReason(
+  comment: { parentId?: string | null; createdTime?: string; canReply?: boolean },
+  now: Date,
+): PrivateReplyBlockReason | null {
+  if (comment.parentId) return "nested";
+  if (comment.canReply === false) return "cannot_reply";
+  if (commentAgeVerdict(comment.createdTime ?? "", now) === "too_old") return "too_old";
+  return null;
+}
+
+/**
+ * Сырой отказ Zernio/Meta по private-reply — в текст для продавца.
+ * 2534066: Meta называет две равнозначные причины (права токена ИЛИ
+ * невалидный comment ID) и не говорит, какая; выдавать одну за факт нельзя —
+ * живой случай опроверг версию «холодный DM».
+ */
+export function explainInstagramPrivateReplyError(raw: string): string {
+  const text = raw.toLowerCase();
+  if (
+    text.includes("2534066") ||
+    text.includes("granular scopes") ||
+    text.includes("comment id is valid")
+  )
+    return (
+      "Instagram отклонил private reply (код 2534066). Meta в самом тексте ошибки " +
+      "называет две возможные причины разом и не уточняет, какая верна: недостаточно " +
+      "прав токена на private reply (скоуп instagram_business_manage_messages) — или " +
+      "невалидный comment ID/контекст. Публичный ответ в комментариях идёт другим вызовом " +
+      "и скоупом (instagram_business_manage_comments), поэтому его успех не подтверждает " +
+      "и не исключает ни одну из этих причин. Самое надёжное действие — переподключить " +
+      "Instagram заново, явно подтвердив доступ к сообщениям на экране согласия Meta. " +
+      "Если не поможет — в поддержку Zernio с этим кодом, comment ID и post ID."
+    );
+  if (text.includes("2534025") || text.includes("older than") || /\b7\s*day/.test(text))
+    return "Instagram не принимает приватный ответ: комментарию больше 7 дней.";
+  if (
+    text.includes("2534023") ||
+    text.includes("privatereplyconsumed") ||
+    text.includes("already sent a private reply")
+  )
+    return "На этот комментарий приватный ответ уже уходил — Instagram даёт только один.";
+  if (text.includes("1545133"))
+    return (
+      "Instagram с конца августа 2026 не принимает кнопки и вложения в первом DM тем, " +
+      "кто не подписан. Отправьте голый текст без кнопки."
+    );
+  return raw;
+}
+
+/* ── Идентификаторы постов ─────────────────────────────────────────────
+ * Comment-to-DM на конкретный пост требует оба id: platformPostId — media
+ * id Instagram (длинная цифра), postId — id записи в Zernio (24 hex). Если
+ * в правило уходит не тот — карточка выглядит живой, а комментарии рилса
+ * Zernio не подписывает.
+ */
+
+export function isInstagramMediaId(value: string | null | undefined): boolean {
+  return typeof value === "string" && /^\d{10,}$/.test(value.trim());
+}
+
+export function isZernioObjectId(value: string | null | undefined): boolean {
+  return typeof value === "string" && /^[a-f0-9]{24}$/i.test(value.trim());
+}
+
+function asId(value: unknown): string {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
+}
+
+/** Id записи поста в Zernio: только 24-hex; media id и latePostId отбрасываем. */
+export function pickZernioPostId(post: {
+  postId?: unknown;
+  _id?: unknown;
+  id?: unknown;
+  _zernioPostId?: unknown;
+  latePostId?: unknown;
+}): string | null {
+  for (const value of [post._zernioPostId, post.postId, post._id, post.id]) {
+    const id = asId(value);
+    if (isZernioObjectId(id)) return id;
+  }
+  return null;
+}
+
+export function describeAutomationTargetIds(
+  platformPostId?: string | null,
+  postId?: string | null,
+): string {
+  const target = platformPostId?.trim() || "нет";
+  const zernio = postId?.trim() || "нет";
+  let flag = "";
+  if (!postId?.trim()) flag = " [нет id Zernio — правило могли сохранить без обязательного postId]";
+  else if (isInstagramMediaId(postId) || postId.trim() === platformPostId?.trim())
+    flag = " [в postId лежит Instagram id, а не id поста Zernio]";
+  else if (!isZernioObjectId(postId)) flag = " [postId не похож на id Zernio]";
+  return `target=${target} zernioPost=${zernio}${flag}`;
+}
+
+/** Подпись типа медиа в селекте — чтобы не выбрать фото вместо рилса с тем же текстом. */
+export function describePostMediaKind(post: {
+  mediaProductType?: unknown;
+  mediaType?: unknown;
+  type?: unknown;
+  _isStory?: unknown;
+}): string {
+  if (post._isStory === true) return "Stories";
+  const raw = [post.mediaProductType, post.mediaType, post.type]
+    .map((v) => (typeof v === "string" ? v.trim().toLowerCase() : ""))
+    .find(Boolean);
+  if (!raw) return "";
+  if (raw.includes("reel")) return "Reels";
+  if (raw.includes("carousel") || raw.includes("album")) return "Карусель";
+  if (raw.includes("video")) return "Видео";
+  if (raw.includes("image") || raw.includes("photo") || raw === "feed") return "Фото";
+  if (raw.includes("story")) return "Stories";
+  return raw;
+}
+
+/* ── Тело правила для Zernio ─────────────────────────────────────────── */
+
+/** Предел длины DM: с кнопками это button_template, и он строже. */
+export const DM_LIMIT_WITH_BUTTONS = 640;
+export const DM_LIMIT_PLAIN = 1000;
+
+export type AutomationInput = {
+  accountId: string;
+  profileId?: string;
+  name: string;
+  trigger?: "comment" | "story_reply";
+  platformPostId?: string | null;
+  postId?: string | null;
+  postTitle?: string;
+  keywords?: string[];
+  matchMode?: MatchMode;
+  dmMessage?: string;
+  buttons?: AutomationButton[];
+  commentReply?: string;
+  dmMessageVariations?: string[];
+  commentReplyVariations?: string[];
+  linkTracking?: boolean;
+  clickTag?: string;
+  isActive?: boolean;
+  /** Наши поля, Zernio их не знает — хранятся в мета. */
+  twoStepDm?: boolean;
+  secondDmMessage?: string;
+  secondDmButtons?: AutomationButton[];
+  unresolvedPrompt?: string;
+};
+
+/**
+ * Тело запроса к автоматизации Zernio. null у id поста опускаем — это «все
+ * посты»; пустую строку сохраняем — ею продавец очищает поле; пустой список
+ * ключевых слов значащий — «любой комментарий». В двухшаговом режиме первое
+ * сообщение уходит чистым текстом без кнопок (Meta пессимизирует кнопки в
+ * первом DM), кнопки — вторым сообщением из мета.
+ */
+export function buildAutomationBody(data: Partial<AutomationInput>): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value === null || value === undefined) continue;
+    if (
+      key === "twoStepDm" ||
+      key === "secondDmMessage" ||
+      key === "secondDmButtons" ||
+      key === "unresolvedPrompt"
+    )
+      continue;
+    if ((key === "platformPostId" || key === "postId") && value === "") continue;
+    body[key] = value;
+  }
+  if (data.twoStepDm) delete body.buttons;
+  if (Array.isArray(body.keywords))
+    body.keywords = (body.keywords as string[]).map((k) => k.toLowerCase().trim()).filter(Boolean);
+
+  const dmMessage = typeof body.dmMessage === "string" ? body.dmMessage : "";
+  if (!dmMessage.trim())
+    throw new Error(
+      "Текст сообщения в Direct обязателен — без него автоматизации нечего отправить.",
+    );
+
+  const hasButtons = Array.isArray(body.buttons) && (body.buttons as unknown[]).length > 0;
+  const limit = hasButtons ? DM_LIMIT_WITH_BUTTONS : DM_LIMIT_PLAIN;
+  if (dmMessage.length > limit)
+    throw new Error(
+      hasButtons
+        ? `Сообщение в Direct — ${dmMessage.length} символов, а с кнопками помещается ${limit}. Сократите текст или уберите кнопки.`
+        : `Сообщение в Direct — ${dmMessage.length} символов, предел ${limit}. Сократите текст.`,
+    );
+  for (const field of ["dmMessageVariations", "commentReplyVariations"] as const) {
+    const variations = body[field];
+    if (!Array.isArray(variations)) continue;
+    if ((variations as string[]).some((t) => t.length > limit))
+      throw new Error(`Один из вариантов текста длиннее ${limit} символов. Сократите его.`);
+  }
+  return body;
+}
+
+/** Текст второго сообщения по умолчанию (двухшаговый режим). */
+export const DEFAULT_SECOND_DM = "Для перехода в бот и получения материалов нажмите кнопку ниже 👇";
+
+/**
+ * Первое сообщение покупателя в Direct после двухшагового правила — часто
+ * это «+», «1», «да»: он выполнил просьбу «напишите нам», и отвечать на это
+ * консультантом или магазином не нужно.
+ */
+export function isTwoStepAcknowledgement(text: string | null | undefined): boolean {
+  const t = (text ?? "").trim().toLowerCase();
+  return (
+    !t ||
+    ["+", ".", "1", "да", "ссылка", "материалы", "купить", "старт", "/start", "хочу"].includes(t)
+  );
+}

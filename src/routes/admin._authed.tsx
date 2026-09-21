@@ -48,6 +48,7 @@ function Layout() {
             <NavLink to="/admin/broadcasts">Рассылки</NavLink>
           )}
           <NavLink to="/admin/consultant">ИИ-консультант</NavLink>
+          {shop.modules.instagram && <NavLink to="/admin/instagram">Instagram</NavLink>}
           {shop.modules.vip && <NavLink to="/admin/vip">VIP-подписки</NavLink>}
           <NavLink to="/admin/settings">
             {physical ? "Оплата и доставка" : "Оплата и настройки"}

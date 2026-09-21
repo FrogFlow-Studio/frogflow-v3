@@ -52,6 +52,7 @@ export const Route = createFileRoute("/api/zernio/webhook")({
 
         const handled =
           payload.event === "message.received" ||
+          payload.event === "comment.received" ||
           payload.event === "account.disconnected" ||
           payload.event === "whatsapp.template.status_updated";
         const { error } = await ctx.db.from("zernio_logs").insert({
@@ -73,7 +74,20 @@ export const Route = createFileRoute("/api/zernio/webhook")({
         let status = "failed";
         let note: string | null = null;
         try {
-          if (payload.event === "whatsapp.template.status_updated") {
+          if (payload.event === "comment.received") {
+            // Двухшаговая Comment-to-DM: второе сообщение с кнопками после первого от Zernio.
+            const { handleCommentReceived } = await import("@/channels/zernio/automations.server");
+            const r = ctx.tenant.modules.instagram
+              ? await runWithZernioEvent(eventId, () =>
+                  handleCommentReceived(
+                    ctx,
+                    payload as import("@/channels/zernio/automations.server").CommentReceivedPayload,
+                  ),
+                )
+              : { note: "модуль «instagram» у клиента выключен" };
+            status = "processed";
+            note = r.note;
+          } else if (payload.event === "whatsapp.template.status_updated") {
             const { handleTemplateStatus } = await import("@/channels/zernio/templates.server");
             const r = await handleTemplateStatus(
               ctx,

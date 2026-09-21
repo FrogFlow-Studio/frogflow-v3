@@ -98,8 +98,24 @@ WhatsApp-рассылки шаблонами Meta (`wa_broadcasts`): та же �
 `whatsapp.template.status_updated`. Крон `broadcast` гоняет пакеты Telegram
 и WhatsApp по одному на клиента; в WhatsApp нет «себе на пробу».
 
+Автоматизация комментариев Instagram (модуль `instagram`): правила
+Comment-to-DM живут у Zernio (`/comment-automations`), наши дополнения —
+двухшаговая DM, текст второго сообщения, публичная просьба написать в
+директ — в `app_settings.ig_comment_automations_meta` тем же ключом, что в
+v1 (клиент переезжает без потери настроек). Чистые правила —
+`core/instagram/comment-rules.ts` (совпадение слов, окно 5 минут…6,5 дней,
+статусы комментариев, id постов, тело правила), оркестрация —
+`channels/zernio/automations.server.ts`: `comment.received` → второе
+сообщение с кнопками (или очередь `two_step_dm_pending` в `zernio_logs`,
+доставка первым же DM покупателя), крон `comment-dm-fallback` раз в 15
+минут дошлёт пропущенные private-reply с эскалацией (inbox в существующий
+диалог, HUMAN_AGENT, публичный ответ, просьба написать первым; журнал
+`comment_dm_fallback_sends`), догоняющая рассылка из `/admin/instagram`.
+Таблицы `comment_automation_settings` и `zernio_automations` в живой базе
+нет — не используются.
+
 Осталось: каталог списками WhatsApp (interactive list) и нативный каталог
-Meta, добор `pending`, автоматизация комментариев Instagram, выбор языка
+Meta, добор `pending`, публикация постов и сторис через Zernio, выбор языка
 первым сообщением (сейчас — по слову «язык»).
 
 Консультант ниши `consultant*` из v1 (леджер `consultant_message_runs`, курс
