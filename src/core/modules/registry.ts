@@ -21,6 +21,8 @@
 export type ModuleDef = {
   /** Как показывать в панели / витрине. */
   title: string;
+  /** Что это даёт продавцу — одно-два предложения для его админки. */
+  desc: string;
   /** Группировка — совпадает с разделами прайса. */
   group: string;
   /** Разовая стоимость подключения, ₸; null — входит в базовый пакет. */
@@ -42,24 +44,28 @@ export const MODULES = {
   // ── База: «05 Базовые возможности», входят в каждый продукт без доплаты ──
   shop: {
     title: "Магазин",
+    desc: "Каталог, корзина и оформление заказа в боте: покупатель выбирает, платит и получает заказ без вашего участия.",
     group: "База",
     price: null,
     status: "available",
   },
   broadcasts: {
     title: "Рассылки по базе",
+    desc: "Сообщение с фото и кнопками всем покупателям или сегменту: купившим, не купившим, по стране.",
     group: "База",
     price: null,
     status: "available",
   },
   multi_files: {
     title: "Материалы из нескольких файлов",
+    desc: "К одному товару — несколько файлов и версии на разных языках; выдаются одним заказом.",
     group: "База",
     price: null,
     status: "available",
   },
   order_status: {
     title: "«Где мой заказ»",
+    desc: "Кнопка «📋 Мои заказы» в боте: покупатель сам видит статус и состав заказа и не пишет вам «где мой заказ».",
     group: "База",
     price: null,
     status: "available",
@@ -67,6 +73,7 @@ export const MODULES = {
   },
   excel_export: {
     title: "Выгрузка в Excel",
+    desc: "Заказы за период и база покупателей одной кнопкой — файл открывается в Excel и Google Таблицах.",
     group: "База",
     price: null,
     status: "available",
@@ -74,13 +81,15 @@ export const MODULES = {
   },
   legal_docs: {
     title: "Юридические страницы",
+    desc: "Оферта, политика конфиденциальности, реквизиты и «О продавце» — в боте и на витрине.",
     group: "База",
     price: null,
     status: "available",
     note: "Отдельным пунктом в прайсе не заведено — уточнить условия, если продавать как модуль.",
   },
   dashboard: {
-    title: "Дашборд с графиками",
+    title: "Аналитика",
+    desc: "Выручка, заказы и новые покупатели по дням, средний чек, топ товаров — с сравнением к прошлому периоду.",
     group: "База",
     price: null,
     status: "available",
@@ -89,13 +98,15 @@ export const MODULES = {
 
   // ── Оплата: «Приём оплаты и продажи» ──
   robokassa: {
-    title: "Онлайн-эквайринг (RoboKassa)",
+    title: "Оплата картой (Robokassa)",
+    desc: "Оплата картой прямо в боте: заказ подтверждается и выдаётся автоматически, без чеков.",
     group: "Оплата",
     price: 25000,
     status: "available",
   },
   crypto: {
     title: "Оплата криптой (NOWPayments)",
+    desc: "Оплата криптовалютой через счёт-инвойс; заказ выдаётся после подтверждения сети.",
     group: "Оплата",
     price: 25000,
     status: "planned",
@@ -103,6 +114,7 @@ export const MODULES = {
   },
   receipt_ocr: {
     title: "Распознавание чека",
+    desc: "Чек с переводом читается автоматически: сумма сошлась — файлы уходят сразу, вы не проверяете чеки руками. $2 за 1000 чеков.",
     group: "Оплата",
     price: 20000,
     status: "available",
@@ -110,12 +122,14 @@ export const MODULES = {
   },
   telegram_stars: {
     title: "Оплата Telegram Stars",
+    desc: "Оплата звёздами Telegram в один тап, без карт и реквизитов.",
     group: "Оплата",
     price: 17000,
     status: "planned",
   },
   coupons: {
     title: "Скидки и промокоды",
+    desc: "Промокоды на процент или сумму с лимитом использований и сроком; покупатель вводит код в корзине.",
     group: "Оплата",
     price: 20000,
     status: "available",
@@ -123,6 +137,7 @@ export const MODULES = {
   },
   gift_certificates: {
     title: "Подарочные сертификаты",
+    desc: "Подарочные сертификаты на сумму: вы выдаёте код, получатель применяет его в корзине.",
     group: "Оплата",
     price: 14000,
     status: "available",
@@ -130,12 +145,14 @@ export const MODULES = {
   },
   upsell: {
     title: "Апсейл и кросс-сейл",
+    desc: "«С этим покупают» и допродажа в корзине и после заказа.",
     group: "Оплата",
     price: 12000,
     status: "planned",
   },
   quiz: {
     title: "Квиз-подбор",
+    desc: "Короткий опрос, который подбирает покупателю подходящий товар.",
     group: "Оплата",
     price: 12000,
     status: "planned",
@@ -144,12 +161,14 @@ export const MODULES = {
   // ── Каталог: «Каталог и материалы» ──
   multi_currency: {
     title: "Мультивалютность",
+    desc: "Свои цены и реквизиты для каждой страны — покупатель видит суммы в своей валюте.",
     group: "Каталог",
     price: 18000,
     status: "available",
   },
   multi_language: {
     title: "Мультиязычность",
+    desc: "Бот на русском, казахском, английском и узбекском; отдельные версии файлов для каждого языка.",
     group: "Каталог",
     price: 16000,
     status: "available",
@@ -157,25 +176,29 @@ export const MODULES = {
   },
   vip: {
     title: "VIP-подписки",
+    desc: "Платная подписка на закрытый канал или группу: доступ выдаётся и отзывается автоматически.",
     group: "Каталог",
     price: 22000,
     status: "available",
   },
   blocked: {
     title: "Блокировка пользователей",
+    desc: "Чёрный список: заблокированный покупатель не может писать боту и оформлять заказы.",
     group: "Каталог",
     price: 14000,
     status: "available",
   },
   courses: {
     title: "Курсы внутри магазина",
+    desc: "Уроки по расписанию внутри бота: доступ открывается после оплаты, материалы выдаются по шагам.",
     group: "Каталог",
     price: 18000,
     status: "planned",
     note: "Кода курсов в репозитории нет. Отдельный продукт «Бот „Курсы“» (42 000 ₸) — это другая позиция прайса, не этот модуль.",
   },
   smart_search: {
-    title: "Умный поиск по каталогу (LLM)",
+    title: "Умный поиск по каталогу",
+    desc: "Когда обычный поиск не нашёл, запрос вроде «что-то на день рождения пятилетке» подбирается по смыслу.",
     group: "Каталог",
     price: 16000,
     status: "available",
@@ -183,6 +206,7 @@ export const MODULES = {
   },
   web_storefront: {
     title: "Публичная веб-витрина",
+    desc: "Витрина по ссылке и с вашим доменом: каталог виден без Telegram, покупка — в боте одной кнопкой.",
     group: "Каталог",
     price: 22000,
     status: "available",
@@ -190,6 +214,7 @@ export const MODULES = {
   },
   telegram_mini_app: {
     title: "Telegram Mini App",
+    desc: "Магазин открывается внутри Telegram как приложение: каталог, корзина и оформление на одном экране.",
     group: "Каталог",
     price: 28000,
     status: "available",
@@ -200,6 +225,7 @@ export const MODULES = {
   // ── Instagram: «04 Instagram» ──
   instagram: {
     title: "Instagram-автоматизация",
+    desc: "Автоответы на комментарии и директ, сбор заявок из Instagram.",
     group: "Instagram",
     price: 22000,
     status: "available",
@@ -207,6 +233,7 @@ export const MODULES = {
   },
   dm_shop: {
     title: "Магазин в директе",
+    desc: "Каталог и заказ прямо в переписке Instagram Direct.",
     group: "Instagram",
     price: 16000,
     status: "available",
@@ -217,6 +244,7 @@ export const MODULES = {
   // ── WhatsApp ──
   whatsapp: {
     title: "WhatsApp-автоматизация",
+    desc: "Подключение номера WhatsApp Business, автоответчик и переписка из панели.",
     group: "WhatsApp",
     price: 22000,
     status: "available",
@@ -224,6 +252,7 @@ export const MODULES = {
   },
   wa_shop: {
     title: "Магазин в WhatsApp",
+    desc: "Каталог, корзина и оформление заказа в чате WhatsApp.",
     group: "WhatsApp",
     price: 16000,
     status: "available",
@@ -232,6 +261,7 @@ export const MODULES = {
   },
   wa_broadcasts: {
     title: "Рассылки в WhatsApp",
+    desc: "Рассылки по базе WhatsApp одобренными шаблонами.",
     group: "WhatsApp",
     price: 18000,
     status: "available",
@@ -242,6 +272,7 @@ export const MODULES = {
   // ── Удержание: «Повторные продажи и удержание» ──
   cart_reminder: {
     title: "Напоминание о брошенной корзине",
+    desc: "Покупателю, который положил товар и не оформил заказ, бот напомнит об этом через заданное время.",
     group: "Удержание",
     price: 9000,
     status: "available",
@@ -249,6 +280,7 @@ export const MODULES = {
   },
   winback: {
     title: "Возвратные продажи",
+    desc: "Сегменты базы, напоминание о повторной покупке и серия сообщений тем, кто давно не покупал.",
     group: "Удержание",
     price: 24000,
     status: "planned",
@@ -256,12 +288,14 @@ export const MODULES = {
   },
   funnel: {
     title: "Автоворонка",
+    desc: "Серия сообщений после подписки: прогрев, полезный контент, предложение.",
     group: "Удержание",
     price: 21000,
     status: "planned",
   },
   loyalty: {
     title: "Программа лояльности",
+    desc: "Баллы за покупки: процент от суммы после выдачи, списание в корзине при следующем заказе.",
     group: "Удержание",
     price: 14000,
     status: "available",
@@ -269,6 +303,7 @@ export const MODULES = {
   },
   referral: {
     title: "Реферальная программа",
+    desc: "Персональная ссылка «Пригласить друга»: промокод и приглашённому, и вам после его первой покупки.",
     group: "Удержание",
     price: 14000,
     status: "available",
@@ -278,6 +313,7 @@ export const MODULES = {
   // ── Сервис: «Клиентский сервис» ──
   manager_chat: {
     title: "Чат с менеджером",
+    desc: "Вся переписка бота с покупателями в панели; подключаетесь к диалогу и отвечаете сами, бот замолкает.",
     group: "Сервис",
     price: 14000,
     status: "available",
@@ -285,12 +321,14 @@ export const MODULES = {
   },
   helpdesk: {
     title: "Мини-helpdesk",
+    desc: "Обращения покупателей как тикеты: статусы, ответственный, история.",
     group: "Сервис",
     price: 22000,
     status: "planned",
   },
   review_request: {
     title: "Оценка после покупки",
+    desc: "После выдачи заказа покупатель ставит оценку и оставляет комментарий; рейтинг виден в карточке товара.",
     group: "Сервис",
     price: 7000,
     status: "available",
@@ -298,6 +336,7 @@ export const MODULES = {
   },
   notify_in_bot: {
     title: "Дублирование уведомлений",
+    desc: "Уведомления о заказах дублируются вам в личку бота, а не только в группу.",
     group: "Сервис",
     price: 9000,
     status: "planned",
@@ -306,12 +345,14 @@ export const MODULES = {
   // ── Аналитика: «Аналитика и управление» ──
   crm_pipeline: {
     title: "Мини-CRM воронка",
+    desc: "Заявки и заказы на доске по стадиям сделки.",
     group: "Аналитика",
     price: 14000,
     status: "planned",
   },
   admin_roles: {
     title: "Мультиадминство с ролями",
+    desc: "Несколько сотрудников в панели с разными правами: менеджер, бухгалтер, владелец.",
     group: "Аналитика",
     price: 14000,
     status: "planned",
@@ -319,12 +360,14 @@ export const MODULES = {
   },
   crm_integration: {
     title: "Интеграция с CRM и Таблицами",
+    desc: "Заказы и покупатели автоматически попадают в вашу CRM или Google Таблицы.",
     group: "Аналитика",
     price: 12000,
     status: "planned",
   },
   multi_bot: {
     title: "Управление несколькими ботами",
+    desc: "Несколько ботов и магазинов под одним входом в панель.",
     group: "Аналитика",
     price: 23000,
     status: "planned",
@@ -333,6 +376,7 @@ export const MODULES = {
   // ── Физические товары ──
   stock: {
     title: "Складской учёт",
+    desc: "Остатки по товарам: закончился — кнопка «В корзину» пропадает, при заказе остаток списывается.",
     group: "Физические товары",
     price: 12000,
     status: "available",
@@ -340,12 +384,14 @@ export const MODULES = {
   },
   limited_offers: {
     title: "Ограниченные предложения",
+    desc: "Акции с таймером и ограниченным количеством.",
     group: "Физические товары",
     price: 7000,
     status: "planned",
   },
   waitlist: {
     title: "Лист ожидания",
+    desc: "Кнопка «Сообщить, когда появится»: бот сам напишет покупателю при поступлении.",
     group: "Физические товары",
     price: 9000,
     status: "planned",

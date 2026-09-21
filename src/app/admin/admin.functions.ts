@@ -74,11 +74,29 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
     revenue(ctx, 30),
     listOrdersForAdmin(ctx, { limit: 8 }),
   ]);
-  const [{ count: products }, { count: customers }] = await Promise.all([
+  const { listPaymentMethods } = await import("@/core/settings/payment-methods");
+  const [{ count: products }, { count: customers }, methods] = await Promise.all([
     ctx.db.from("products").select("id", { count: "exact", head: true }).eq("is_active", true),
     ctx.db.from("bot_users").select("user_key", { count: "exact", head: true }),
+    listPaymentMethods(ctx),
   ]);
-  return { counts, rev30, recent, products: products ?? 0, customers: customers ?? 0 };
+  return {
+    counts,
+    rev30,
+    recent,
+    products: products ?? 0,
+    customers: customers ?? 0,
+    // Чек-лист первых шагов на «Обзоре» для только что открытого магазина.
+    setup: {
+      telegram: Boolean(ctx.tenant.telegramTokenEnc),
+      products: (products ?? 0) > 0,
+      payment: methods.length > 0 || ctx.tenant.modules.robokassa,
+      legal: Boolean(
+        await (await import("@/core/settings/settings")).getSetting(ctx, "legal_requisites"),
+      ),
+      slug: ctx.tenant.settings.slug ?? null,
+    },
+  };
 });
 
 /* ── каталог ─────────────────────────────────────────────────────── */

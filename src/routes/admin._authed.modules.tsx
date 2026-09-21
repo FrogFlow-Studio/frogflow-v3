@@ -18,7 +18,10 @@ function ModulesPage() {
     groups.set(moduleDef(k).group, [...(groups.get(moduleDef(k).group) ?? []), k]);
   return (
     <>
-      <PageTitle title="Модули" subtitle="Что подключено к вашему магазину и что можно добавить" />
+      <PageTitle
+        title="Модули"
+        subtitle="Что уже работает в вашем магазине и что можно добавить. Цена — разовое подключение; после заявки мы свяжемся с вами и включим модуль."
+      />
       <div className="grid gap-4 md:grid-cols-2">
         {[...groups.entries()].map(([group, keys]) => (
           <div key={group} className="card">
@@ -46,7 +49,7 @@ function ModulesPage() {
                           <Badge tone="accent">в пакете</Badge>
                         ) : null}
                       </div>
-                      {d.note && <div className="line-clamp-2 text-xs text-muted">{d.note}</div>}
+                      <div className="text-xs text-muted">{d.desc}</div>
                     </div>
                     {!on && !planned && (
                       <button
@@ -57,7 +60,7 @@ function ModulesPage() {
                         {requested.has(k)
                           ? "Заявка отправлена"
                           : d.price
-                            ? `Подключить · ${d.price.toLocaleString("ru")} ₸`
+                            ? `Подключить за ${d.price.toLocaleString("ru")} ₸`
                             : "Подключить"}
                       </button>
                     )}

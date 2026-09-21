@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { dashboardFn } from "@/app/admin/admin.functions";
 import { Card, Empty, PageTitle, Stat } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
@@ -20,6 +21,38 @@ function Dashboard() {
         title="Обзор"
         subtitle={`${shop.verticalTitle}${shop.telegram ? ` · @${shop.telegram}` : ""}`}
       />
+      {!(d.setup.telegram && d.setup.products && d.setup.payment) && (
+        <Card title="Первые шаги" className="mb-6">
+          <p className="mb-3 text-sm text-muted">
+            Три вещи, после которых магазин начнёт продавать. Остальное можно настроить потом.
+          </p>
+          <ol className="space-y-2 text-sm">
+            <Step done={d.setup.telegram} to="/admin/settings" title="Подключить бота в Telegram">
+              Создайте бота в @BotFather и вставьте токен в настройках — магазин заработает сразу.
+            </Step>
+            <Step done={d.setup.products} to="/admin/products" title="Добавить первый товар">
+              Название, цена, фото; для цифрового материала — файл, который получит покупатель.
+            </Step>
+            <Step done={d.setup.payment} to="/admin/settings" title="Указать, как вам платить">
+              Реквизиты для перевода по странам или оплата картой через Robokassa.
+            </Step>
+            <Step done={d.setup.legal} to="/admin/settings" title="Заполнить реквизиты продавца">
+              Оферта и реквизиты показываются покупателю в боте и на витрине — это доверие и закон.
+            </Step>
+          </ol>
+          {d.setup.slug && (
+            <p className="mt-3 text-xs text-muted">
+              Витрина магазина: <span className="font-mono">/s/{d.setup.slug}</span>
+              {shop.telegram && (
+                <>
+                  {" "}
+                  · бот: <span className="font-mono">t.me/{shop.telegram}</span>
+                </>
+              )}
+            </p>
+          )}
+        </Card>
+      )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Требуют действия" value={attention} hint="чеки на проверке и готовые заказы" />
         <Stat
@@ -105,5 +138,37 @@ function Dashboard() {
         </Card>
       </div>
     </>
+  );
+}
+
+function Step({
+  done,
+  to,
+  title,
+  children,
+}: {
+  done: boolean;
+  to: "/admin/settings" | "/admin/products";
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <li className="flex gap-3">
+      <span
+        className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full text-xs ${done ? "bg-ok text-white" : "border border-line text-muted"}`}
+      >
+        {done ? "✓" : ""}
+      </span>
+      <div>
+        {done ? (
+          <span className="font-medium text-muted line-through">{title}</span>
+        ) : (
+          <Link to={to} className="font-medium text-accent hover:underline">
+            {title}
+          </Link>
+        )}
+        {!done && <p className="text-muted">{children}</p>}
+      </div>
+    </li>
   );
 }
