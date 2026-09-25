@@ -190,6 +190,32 @@ export const setZernioAccountsFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Профиль Zernio клиента и сверка его аккаунтов — то же, что кнопка в админке продавца. */
+export const syncZernioFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    const { ensureTenantProfile, syncAccounts } = await import("@/channels/zernio/connect.server");
+    const { requireTenant } = await import("@/core/tenant/resolve.server");
+    const tenant = await requireTenant({ by: "id", value: data.botId });
+    const profileId = await ensureTenantProfile(tenant);
+    const r = await syncAccounts({
+      ...tenant,
+      settings: {
+        ...tenant.settings,
+        zernio: { ...tenant.settings.zernio, profile_id: profileId },
+      },
+    });
+    await (
+      await impl()
+    ).logEvent(data.botId, "meta", {
+      zernio_profile_id: profileId,
+      zernio_account_ids: r.accountIds,
+      zernio_conflicts: r.conflicts.map((c) => c.id),
+    });
+    return { profileId, ...r };
+  });
+
 export const setAdminCredentialsFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

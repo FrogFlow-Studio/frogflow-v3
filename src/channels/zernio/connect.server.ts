@@ -1,6 +1,7 @@
 import { env } from "@/config/env";
 import type { Tenant, ZernioAccountSnapshot } from "@/core/tenant/types";
-import { patchTenantSettings, requireTenant } from "@/core/tenant/resolve.server";
+import { patchTenantSettings, requireTenant, tenantDirectory } from "@/core/tenant/resolve.server";
+import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
 import {
   accountProfileId,
   connectUrl,
@@ -38,29 +39,58 @@ export async function connectLink(tenant: Tenant, platform: ZernioPlatform): Pro
   return connectUrl(platform, profileId, back);
 }
 
-export type SyncResult = { accounts: ZernioAccountSnapshot[]; accountIds: string[] };
+export type SyncConflict = { id: string; platform: string; username?: string; ownerName: string };
+export type SyncResult = {
+  accounts: ZernioAccountSnapshot[];
+  accountIds: string[];
+  /** Аккаунты профиля, уже записанные у другого клиента, — этому не отдаём. */
+  conflicts: SyncConflict[];
+};
 
-/** Аккаунты профиля → account_ids арендатора (ручные id оператора сохраняются). */
+/**
+ * Аккаунты профиля → account_ids арендатора (ручные id оператора сохраняются).
+ * Аккаунт, который числится у другого клиента, в список не попадает: ключ
+ * один на платформу, и двое владельцев значили бы события «ничьи».
+ */
 export async function syncAccounts(tenant: Tenant): Promise<SyncResult> {
   if (!zernioConfigured()) throw new Error("Zernio не подключён на платформе.");
   const profileId = tenant.settings.zernio?.profile_id;
-  if (!profileId) return { accounts: [], accountIds: tenant.settings.zernio?.account_ids ?? [] };
+  if (!profileId)
+    return { accounts: [], accountIds: tenant.settings.zernio?.account_ids ?? [], conflicts: [] };
   const accounts = (await listAccounts(profileId))
     .filter((a) => isZernioPlatform(a.platform))
     .filter((a) => (accountProfileId(a) ?? profileId) === profileId);
-  const snapshot: ZernioAccountSnapshot[] = accounts.map((a) => ({
-    id: a._id,
-    platform: a.platform,
-    username: a.username,
-    name: a.name,
-    expired: a.isExpired === true,
-  }));
-  const manual = tenant.settings.zernio?.account_ids ?? [];
+  const directory = await tenantDirectory(true);
+  const foreign = new Map(
+    foreignZernioAccounts(
+      directory,
+      tenant.id,
+      accounts.map((a) => a._id),
+    ).map((f) => [f.id, f.owner]),
+  );
+  const snapshot: ZernioAccountSnapshot[] = accounts
+    .filter((a) => !foreign.has(a._id))
+    .map((a) => ({
+      id: a._id,
+      platform: a.platform,
+      username: a.username,
+      name: a.name,
+      expired: a.isExpired === true,
+    }));
+  const conflicts: SyncConflict[] = accounts
+    .filter((a) => foreign.has(a._id))
+    .map((a) => ({
+      id: a._id,
+      platform: a.platform,
+      username: a.username,
+      ownerName: foreign.get(a._id)!.name,
+    }));
+  const manual = (tenant.settings.zernio?.account_ids ?? []).filter((id) => !foreign.has(id));
   const accountIds = Array.from(new Set([...manual, ...snapshot.map((a) => a.id)]));
   await patchTenantSettings(tenant.id, {
     zernio: { account_ids: accountIds, accounts: snapshot, synced_at: new Date().toISOString() },
   });
-  return { accounts: snapshot, accountIds };
+  return { accounts: snapshot, accountIds, conflicts };
 }
 
 export async function syncAccountsById(botId: string): Promise<SyncResult> {

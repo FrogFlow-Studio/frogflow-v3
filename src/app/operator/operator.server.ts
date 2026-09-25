@@ -20,6 +20,7 @@ import {
 } from "@/core/tenant/resolve.server";
 import { ensureTelegramWebhook } from "@/core/tenant/telegram-webhook.server";
 import type { Tenant } from "@/core/tenant/types";
+import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
 import { hashPassword } from "@/app/auth/password";
 import { telegramWebhookUrl } from "@/channels/telegram/secret";
 
@@ -86,6 +87,20 @@ export type ClientView = {
   hosts: string[];
   telegram: { connected: boolean; username: string | null; webhookOk: boolean };
   zernioAccounts: string[];
+  zernio: {
+    profileId: string | null;
+    accounts: Array<{
+      id: string;
+      platform: string;
+      username: string | null;
+      name: string | null;
+      expired: boolean;
+      /** Последнее событие Zernio этого аккаунта в журнале (null — не было). */
+      lastEventAt: string | null;
+    }>;
+    syncedAt: string | null;
+    lastEventAt: string | null;
+  };
   adminUsername: string | null;
   modules: Record<ModuleKey, boolean>;
   modulesOn: number;
@@ -117,6 +132,7 @@ function toView(
   },
   stats: ClientStats | null,
   health: ClientView["health"] = null,
+  zernioEvents: Map<string, string> = new Map(),
 ): ClientView {
   return {
     id: t.id,
@@ -133,6 +149,19 @@ function toView(
       webhookOk: Boolean(t.settings.telegram?.webhook_ok),
     },
     zernioAccounts: t.settings.zernio?.account_ids ?? [],
+    zernio: {
+      profileId: t.settings.zernio?.profile_id ?? null,
+      accounts: (t.settings.zernio?.accounts ?? []).map((a) => ({
+        id: a.id,
+        platform: a.platform,
+        username: a.username ?? null,
+        name: a.name ?? null,
+        expired: Boolean(a.expired),
+        lastEventAt: zernioEvents.get(a.id) ?? null,
+      })),
+      syncedAt: t.settings.zernio?.synced_at ?? null,
+      lastEventAt: zernioEvents.get("*") ?? null,
+    },
     adminUsername: t.settings.admin?.username ?? null,
     modules: t.modules,
     modulesOn: MODULE_KEYS.filter((k) => t.modules[k]).length,
@@ -198,10 +227,11 @@ export async function listClients(): Promise<ClientView[]> {
 export async function getClient(botId: string): Promise<ClientView> {
   const { latestHealth } = await import("./health.server");
   const health = await latestHealth([botId]).catch(() => new Map());
-  const [t, stats, ex] = await Promise.all([
+  const [t, stats, ex, zernioEvents] = await Promise.all([
     requireTenant({ by: "id", value: botId }),
     clientStats().catch(() => new Map<string, ClientStats>()),
     extras([botId]),
+    zernioLastEvents(botId).catch(() => new Map<string, string>()),
   ]);
   const e = ex.get(botId);
   return toView(
@@ -216,7 +246,31 @@ export async function getClient(botId: string): Promise<ClientView> {
     },
     stats.get(botId) ?? null,
     health.get(botId) ?? null,
+    zernioEvents,
   );
+}
+
+/**
+ * Когда аккаунт последний раз присылал событие: по журналу zernio_logs,
+ * ключ — accountId из payload, «*» — любое событие клиента. Оператор по
+ * этому видит, что вебхук доходит именно до этого клиента.
+ */
+export async function zernioLastEvents(botId: string, limit = 300): Promise<Map<string, string>> {
+  const { data } = await serviceDb()
+    .from("zernio_logs")
+    .select("payload, created_at")
+    .eq("bot_id", botId)
+    .neq("status", "event")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  const out = new Map<string, string>();
+  for (const row of data ?? []) {
+    if (!out.has("*")) out.set("*", row.created_at);
+    const p = row.payload as { account?: { accountId?: string; id?: string; _id?: string } } | null;
+    const id = p?.account?.accountId || p?.account?.id || p?.account?._id;
+    if (id && !out.has(id)) out.set(id, row.created_at);
+  }
+  return out;
 }
 
 export type EventView = { id: string; at: string; actor: string; kind: string; payload: Json };
@@ -388,6 +442,12 @@ export async function setAddressing(botId: string, slug: string | null, hosts: s
 }
 
 export async function setZernioAccounts(botId: string, accountIds: string[]) {
+  const foreign = foreignZernioAccounts(await tenantDirectory(true), botId, accountIds);
+  if (foreign.length)
+    throw new Error(
+      `Аккаунт ${foreign.map((f) => `${f.id} уже у клиента «${f.owner.name}»`).join(", ")}. ` +
+        "Ключ Zernio один на платформу: у аккаунта может быть только один клиент.",
+    );
   await patchTenantSettings(botId, { zernio: { account_ids: accountIds } });
   await logEvent(botId, "meta", { zernio_account_ids: accountIds });
 }

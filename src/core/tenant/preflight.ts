@@ -20,6 +20,8 @@ export type PreflightInput = {
   adminLogin: boolean;
   /** Адрес деплоя v1 — напоминание поставить его крон на паузу. */
   appUrl: string | null;
+  /** Аккаунты Zernio клиента, записанные ещё и у другого клиента. */
+  zernioConflicts?: string[];
 };
 
 export function evaluatePreflight(i: PreflightInput): Preflight {
@@ -106,6 +108,13 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
           detail: "Задайте логин и пароль в карточке — иначе продавцу некуда войти после переезда.",
         },
   );
+  if (i.zernioConflicts?.length)
+    checks.push({
+      key: "zernio",
+      level: "block",
+      title: "Аккаунт Zernio числится у двух клиентов",
+      detail: `Ключ Zernio один на платформу, и события аккаунта ${i.zernioConflicts.join(", ")} не уйдут никому. Уберите его у одного из клиентов.`,
+    });
   if (i.appUrl)
     checks.push({
       key: "v1",

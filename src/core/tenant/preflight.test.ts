@@ -58,4 +58,8 @@ describe("evaluatePreflight", () => {
     const p = evaluatePreflight({ ...base, modulesOn: ["shop", "robokassa"], paymentMethods: 0 });
     expect(p.checks.find((c) => c.key === "payments")?.level).toBe("ok");
   });
+  it("аккаунт Zernio у двух клиентов блокирует переезд", () => {
+    const p = evaluatePreflight({ ...base, modulesOn: ["shop"], zernioConflicts: ["ig-1"] });
+    expect(preflightBlockers(p)).toEqual(["Аккаунт Zernio числится у двух клиентов"]);
+  });
 });

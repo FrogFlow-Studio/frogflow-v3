@@ -77,6 +77,18 @@ describe("tenant directory", () => {
     expect(findTenant(dir, { by: "host", value: "nobody.kz" })).toBeNull();
     expect(findTenant(dir, { by: "slug", value: "" })).toBeNull();
   });
+
+  it("аккаунт Zernio, записанный у двух клиентов, — ничей: событие не уходит первому попавшемуся", () => {
+    const a = tenantFromRow(row({ settings: { zernio: { account_ids: ["shared", "only-a"] } } }));
+    const b = tenantFromRow(
+      row({
+        id: "de44b934-c8db-47ac-9aa9-535c762cf8c7",
+        settings: { zernio: { account_ids: ["SHARED"] } },
+      }),
+    );
+    expect(findTenant([a, b], { by: "zernio_account", value: "shared" })).toBeNull();
+    expect(findTenant([a, b], { by: "zernio_account", value: "only-a" })?.id).toBe(a.id);
+  });
 });
 
 describe("settings: default_locale", () => {

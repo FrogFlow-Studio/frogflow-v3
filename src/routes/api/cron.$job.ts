@@ -120,6 +120,9 @@ export const Route = createFileRoute("/api/cron/$job")({
             // Снимок здоровья каждого бота на v2 — история простоев в панели оператора.
             const { recordHealthSnapshots } = await import("@/app/operator/health.server");
             results.health = await recordHealthSnapshots();
+            // Аккаунты Instagram/WhatsApp: сверка профилей с Zernio, отвалившиеся — продавцу.
+            const { syncZernioAccountsFor } = await import("@/channels/zernio/health.server");
+            results.zernio = await syncZernioAccountsFor(tenants);
             break;
           }
           case "subscriptions": {

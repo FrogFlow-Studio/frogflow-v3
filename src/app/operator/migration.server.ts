@@ -7,7 +7,8 @@
 import { env } from "@/config/env";
 import { serviceDb } from "@/core/db/client.server";
 import { MODULE_KEYS } from "@/core/modules/registry";
-import { requireTenant } from "@/core/tenant/resolve.server";
+import { requireTenant, tenantDirectory } from "@/core/tenant/resolve.server";
+import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
 import { decryptSecret, isEncryptedSecret } from "@/core/secrets/vault";
 import { evaluatePreflight, type Preflight } from "@/core/tenant/preflight";
 import { telegramApi } from "@/channels/telegram/api";
@@ -52,5 +53,10 @@ export async function preflight(botId: string): Promise<Preflight> {
     products,
     adminLogin: Boolean(t.settings.admin?.username && t.settings.admin?.password_hash),
     appUrl: t.appUrl,
+    zernioConflicts: foreignZernioAccounts(
+      await tenantDirectory(),
+      botId,
+      t.settings.zernio?.account_ids ?? [],
+    ).map((f) => f.id),
   });
 }

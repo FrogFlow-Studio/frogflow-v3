@@ -171,11 +171,13 @@ export function findTenant(directory: readonly Tenant[], lookup: TenantLookup): 
         null
       );
     }
-    case "zernio_account":
-      return (
-        directory.find((t) =>
-          t.settings.zernio?.account_ids?.some((a) => a.toLowerCase() === value),
-        ) ?? null
+    case "zernio_account": {
+      // Аккаунт, записанный у двух клиентов, — ничей: событие не должно
+      // уйти «первому попавшемуся» (core/tenant/zernio-accounts.ts).
+      const owners = directory.filter((t) =>
+        t.settings.zernio?.account_ids?.some((a) => a.toLowerCase() === value),
       );
+      return owners.length === 1 ? owners[0]! : null;
+    }
   }
 }
