@@ -81,6 +81,7 @@ import {
 import { getSetting } from "@/core/settings/settings";
 import { shopAdminIds } from "@/core/notify/recipients";
 import { notifyAdminNewOrder } from "./admin-notify";
+import { notifyDeliveryFailure } from "./notify";
 import { telegramLanguageAsker, telegramMaterialSender } from "./deliver";
 import { findValidGift, findValidPromoCode } from "@/core/discounts/discounts";
 import { normalizeCode } from "@/core/discounts/pure";
@@ -996,6 +997,7 @@ async function finishCheckout(b: Bot, countryCode: string) {
         ask: telegramLanguageAsker(b.api, b.chatId, b.m),
       });
       if (r.failed === 0 && r.pending === 0) await send(b, b.m.orderDelivered(no));
+      if (r.failed > 0) await notifyDeliveryFailure(b.ctx, order, r);
       if (r.pointsEarned > 0) await send(b, b.m.pointsEarned(r.pointsEarned));
       await notifyReferral(b.ctx, b.api, r.referral);
     }
@@ -1097,6 +1099,7 @@ export async function onOrderPaid(
     });
     if (r.failed === 0 && r.pending === 0 && !r.alreadyDelivered)
       await api.call("sendMessage", { chat_id: order.telegram_id, text: m.orderDelivered(no) });
+    if (r.failed > 0) await notifyDeliveryFailure(ctx, order, r);
     if (r.pointsEarned > 0)
       await api.call("sendMessage", {
         chat_id: order.telegram_id,
@@ -1183,6 +1186,7 @@ async function receiveProof(b: Bot, msg: TelegramMessage, orderId: number) {
     });
     if (r.failed === 0 && r.pending === 0 && !r.alreadyDelivered)
       await send(b, b.m.orderDelivered(no));
+    if (r.failed > 0) await notifyDeliveryFailure(b.ctx, res.order, r);
     if (r.pointsEarned > 0) await send(b, b.m.pointsEarned(r.pointsEarned));
     await notifyReferral(b.ctx, b.api, r.referral);
     const fresh = (await getOrder(b.ctx, orderId)) ?? res.order;
@@ -1666,7 +1670,7 @@ async function adminDecision(
   };
 
   if (data.startsWith("reject:")) {
-    const ok = await rejectOrder(ctx, orderId);
+    const ok = await rejectOrder(ctx, orderId, "admin");
     await api.call("sendMessage", {
       chat_id: chatId,
       text: ok ? `❌ Заказ #${no} отклонён.` : `Заказ #${no} уже закрыт (${order.status}).`,
@@ -1700,8 +1704,12 @@ async function adminDecision(
     orderId,
     sender,
     zernioTarget
-      ? { lang: buyerLocale, allWhenAmbiguous: true }
-      : { lang: buyerLocale, ask: telegramLanguageAsker(api, order.telegram_id, m) },
+      ? { lang: buyerLocale, allWhenAmbiguous: true, actor: "admin" }
+      : {
+          lang: buyerLocale,
+          ask: telegramLanguageAsker(api, order.telegram_id, m),
+          actor: "admin",
+        },
   );
   if (r.alreadyDelivered)
     return void (await api.call("sendMessage", {

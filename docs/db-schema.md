@@ -365,6 +365,7 @@ CHECK `vip_status_check`: `status IN ('pending_payment','active','expired','canc
 `id UUID PK`, `bot_id UUID null → bots`, `event_id TEXT UNIQUE`, `event_type TEXT NN`, `status TEXT NN D:'pending'` (`pending|processed|error|ignored`), `payload JSONB NN D:'{}'`, `error_message TEXT`, `created_at TIMESTAMPTZ NN D:now()`.
 Индексы `idx_zernio_logs_event_id`, `idx_zernio_logs_type`, `idx_zernio_logs_bot_id`, `idx_zernio_logs_bot_status_created(bot_id, status, created_at)` (M34).
 Известная проблема (ANALYSIS.md): ~69 строк вечно висят в `pending` — перечитывать некому.
+v2 дополнительно пишет сюда таймлайн заказов: `event_type = order.<kind>`, `status = event`, `event_id = order:<id>:<kind>:<метка>`, `payload.order_id` (см. `core/orders/events.ts`) — своей таблицы до фазы 7 нет.
 
 #### `comment_dm_fallback_sends` (M62, +M64, +M65, +M66)
 `id UUID PK`, `bot_id UUID NN→bots`, `automation_id TEXT NN`, `platform_post_id TEXT NN`, `comment_id TEXT NN`,

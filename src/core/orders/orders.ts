@@ -1,6 +1,7 @@
 import { rewardReferrerIfFirstDelivery, type ReferralGrant } from "@/core/referrals/referrals";
 import { createHash } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { recordOrderEvent } from "./events";
 import type { Database, Json } from "@/core/db-types";
 import { serviceDb } from "@/core/db/client.server";
 import type { Customer } from "@/core/customers/customers";
@@ -333,6 +334,11 @@ export async function placeOrder(
       .eq("id", order.id)
       .single();
     const finalOrder = (full ?? { ...order, order_items: [] }) as OrderWithItems;
+    await recordOrderEvent(ctx, finalOrder.id, "placed", {
+      platform: finalOrder.platform,
+      total: Number(finalOrder.total),
+      currency: finalOrder.currency,
+    });
     return {
       ok: true,
       order: finalOrder,
@@ -469,6 +475,7 @@ export async function attachPaymentProof(
     .eq("id", orderId)
     .select("*, order_items(*)")
     .single();
+  await recordOrderEvent(ctx, orderId, "proof", { path: key });
   return { ok: true, order: (updated ?? order) as OrderWithItems };
 }
 
@@ -476,6 +483,7 @@ export async function attachPaymentProof(
 export async function claimOrderForDelivery(
   ctx: TenantContext,
   orderId: number,
+  actor = "bot",
 ): Promise<OrderWithItems | null> {
   const { data, error } = await ctx.db
     .from("orders")
@@ -485,7 +493,10 @@ export async function claimOrderForDelivery(
     .select("*, order_items(*)")
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (data) return data as OrderWithItems;
+  if (data) {
+    await recordOrderEvent(ctx, orderId, "delivery_started", {}, actor);
+    return data as OrderWithItems;
+  }
   const { data: existing } = await ctx.db
     .from("orders")
     .select("status")
@@ -496,7 +507,11 @@ export async function claimOrderForDelivery(
   throw new Error(`Заказ #${orderId} нельзя выдать (статус: ${existing.status})`);
 }
 
-export async function rejectOrder(ctx: TenantContext, orderId: number): Promise<boolean> {
+export async function rejectOrder(
+  ctx: TenantContext,
+  orderId: number,
+  actor = "bot",
+): Promise<boolean> {
   const { data } = await ctx.db
     .from("orders")
     .update({ status: "rejected" })
@@ -504,6 +519,7 @@ export async function rejectOrder(ctx: TenantContext, orderId: number): Promise<
     .in("status", [...REJECTABLE_STATUSES])
     .select("id")
     .maybeSingle();
+  if (data) await recordOrderEvent(ctx, orderId, "rejected", {}, actor);
   return Boolean(data);
 }
 
@@ -522,6 +538,8 @@ export type DeliverOptions = {
   ask?: LanguageAsker;
   /** Канал не умеет спрашивать (Direct, письмо) — при нескольких языках отдать все. */
   allWhenAmbiguous?: boolean;
+  /** Кто запустил выдачу — для таймлайна заказа: bot (автоматически) или admin. */
+  actor?: string;
 };
 
 export type DeliverResult = {
@@ -571,6 +589,12 @@ async function finalizeDelivery(
         : { status: "delivered" },
     )
     .eq("id", order.id);
+  await recordOrderEvent(
+    ctx,
+    order.id,
+    failed ? "delivery_failed" : "delivered",
+    failed ? { failed, total } : { sent: total },
+  );
   const pointsEarned = failed
     ? 0
     : await awardPointsForOrder(ctx, order.id, order.telegram_id, Number(order.total));
@@ -592,7 +616,7 @@ export async function deliverOrder(
   send: MaterialSender,
   opts: DeliverOptions = {},
 ): Promise<DeliverResult> {
-  const order = await claimOrderForDelivery(ctx, orderId);
+  const order = await claimOrderForDelivery(ctx, orderId, opts.actor);
   if (!order)
     return { ok: true, alreadyDelivered: true, sent: 0, failed: 0, pending: 0, pointsEarned: 0 };
   const multi = ctx.tenant.modules.multi_language;
@@ -614,8 +638,17 @@ export async function deliverOrder(
         const materials = itemMaterials(item, l);
         if (materials.length === 0) continue;
         const r = await send(itemLabel(item, l, list.length > 1), materials);
-        if (r === "sent") current = await markDelivered(ctx, item, current, l);
-        else ok = false;
+        if (r === "sent") {
+          current = await markDelivered(ctx, item, current, l);
+          await recordOrderEvent(ctx, orderId, "item_sent", { name: item.name_snapshot, lang: l });
+        } else {
+          ok = false;
+          await recordOrderEvent(ctx, orderId, "item_failed", {
+            name: item.name_snapshot,
+            lang: l,
+            reason: "канал не доставил файл",
+          });
+        }
       }
       return ok ? ("sent" as const) : ("failed" as const);
     };
@@ -633,8 +666,17 @@ export async function deliverOrder(
       result = await sendLangs([l]);
     }
     if (result === "sent") sent++;
-    else if (result === "pending") pending++;
-    else failed++;
+    else if (result === "pending") {
+      pending++;
+      await recordOrderEvent(ctx, orderId, "item_pending", { name: item.name_snapshot });
+    } else {
+      failed++;
+      if (langs.length === 0)
+        await recordOrderEvent(ctx, orderId, "item_failed", {
+          name: item.name_snapshot,
+          reason: "у товара нет файлов или ссылок",
+        });
+    }
     await ctx.db
       .from("orders")
       .update({ delivery_index: i + 1 })
@@ -673,8 +715,16 @@ export async function completeLanguageDelivery(
   const materials = itemMaterials(item, p.lang);
   if (materials.length === 0) return { status: "no_materials" };
   const r = await send(item, materials);
-  if (r !== "sent") return { status: "failed" };
+  if (r !== "sent") {
+    await recordOrderEvent(ctx, p.orderId, "item_failed", {
+      name: item.name_snapshot,
+      lang: p.lang,
+      reason: "канал не доставил файл",
+    });
+    return { status: "failed" };
+  }
   await markDelivered(ctx, item, item.delivered_language, p.lang);
+  await recordOrderEvent(ctx, p.orderId, "item_sent", { name: item.name_snapshot, lang: p.lang });
   const multi = ctx.tenant.modules.multi_language;
   const stillPending = order.order_items.some((it) =>
     itemNeedsLanguageChoice(

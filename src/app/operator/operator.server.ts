@@ -328,6 +328,15 @@ export async function connectVipBot(botId: string, token: string, actor = "opera
 }
 
 export async function setServedBy(botId: string, servedBy: "v1" | "v2", actor = "operator") {
+  if (servedBy === "v2") {
+    // Переезд только после предполётной проверки: с непернесённым модулем
+    // или без токена клиент остался бы без бота.
+    const { preflight } = await import("./migration.server");
+    const { preflightBlockers } = await import("@/core/tenant/preflight");
+    const p = await preflight(botId);
+    if (!p.ready)
+      throw new Error(`Клиента нельзя перевести на v2: ${preflightBlockers(p).join("; ")}.`);
+  }
   await patchTenantSettings(botId, { served_by: servedBy });
   await logEvent(botId, "webhook", { action: "served_by", value: servedBy }, actor);
   if (servedBy === "v2") return reinstallWebhook(botId, actor);

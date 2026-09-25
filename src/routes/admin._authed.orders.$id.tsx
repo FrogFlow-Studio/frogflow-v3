@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { orderActionFn, orderFn, orderNoteFn } from "@/app/admin/admin.functions";
-import { Card, ErrorBox, Field, useAction } from "@/app/ui";
+import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
+import { describeOrderEvent } from "@/core/orders/events";
 import { formatMoney } from "@/core/money/money";
 import { displayNo, itemLanguages } from "@/core/orders/pure";
 import { OrderStatus } from "./admin._authed.orders";
@@ -12,7 +13,7 @@ export const Route = createFileRoute("/admin/_authed/orders/$id")({
 });
 
 function OrderPage() {
-  const { order: o, proofUrl } = Route.useLoaderData();
+  const { order: o, proofUrl, events } = Route.useLoaderData();
   const router = useRouter();
   const [msg, setMsg] = useState<string | null>(null);
   const act = useAction(async (action: "confirm" | "reject" | "next" | "prev" | "remind") => {
@@ -192,6 +193,48 @@ function OrderPage() {
             ) : (
               <p className="text-sm text-muted">Чек ещё не прислан.</p>
             )}
+          </Card>
+          <Card title="История">
+            {events.length === 0 ? (
+              <p className="text-sm text-muted">Событий пока нет.</p>
+            ) : (
+              <ol className="space-y-1.5 text-sm">
+                {events.map((e) => {
+                  const d = describeOrderEvent(e);
+                  return (
+                    <li key={e.id} className="flex items-start gap-2">
+                      <span className="w-28 shrink-0 text-xs text-muted tabular-nums">
+                        {new Date(e.at).toLocaleString("ru", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      <span
+                        className={
+                          d.tone === "danger"
+                            ? "text-danger"
+                            : d.tone === "ok"
+                              ? "text-ok"
+                              : d.tone === "warn"
+                                ? "text-warn"
+                                : ""
+                        }
+                      >
+                        {d.text}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+            {o.status === "awaiting_confirmation" &&
+              o.admin_note?.startsWith("Выдача не удалась") && (
+                <div className="mt-3">
+                  <Badge tone="danger">{o.admin_note}</Badge>
+                </div>
+              )}
           </Card>
           <Card title="Заметка">
             <form

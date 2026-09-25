@@ -49,6 +49,10 @@ export async function notifyCustomer(
     text,
     parse_mode: "HTML",
   });
+  if (!r.ok) {
+    const { recordOrderEvent } = await import("@/core/orders/events");
+    await recordOrderEvent(ctx, order.id, "notify_failed", { text: text.slice(0, 120) }, "admin");
+  }
   return r.ok;
 }
 
@@ -65,7 +69,7 @@ export async function runOrderAction(
   const m = COPY.ru;
   switch (action) {
     case "reject": {
-      const ok = await rejectOrder(ctx, id);
+      const ok = await rejectOrder(ctx, id, "admin");
       if (ok) await notifyCustomer(ctx, order, m.orderRejected(no));
       return ok
         ? { ok, message: `Заказ #${no} отклонён` }
@@ -89,6 +93,7 @@ export async function runOrderAction(
       let opts: DeliverOptions = {
         lang: "ru",
         ask: telegramLanguageAsker(api(ctx), order.telegram_id, m),
+        actor: "admin",
       };
       if (order.platform !== "telegram") {
         const { zernioSenderFor, zernioTargetForOrder } =
@@ -97,7 +102,7 @@ export async function runOrderAction(
         if (!target)
           return { ok: false, message: `У покупателя из ${order.platform} нет диалога для выдачи` };
         sender = zernioSenderFor(target);
-        opts = { lang: "ru", allWhenAmbiguous: true };
+        opts = { lang: "ru", allWhenAmbiguous: true, actor: "admin" };
       }
       const r = await deliverOrder(ctx, id, sender, opts);
       if (r.alreadyDelivered) return { ok: true, message: `Заказ #${no} уже выдан` };
@@ -124,6 +129,10 @@ export async function runOrderAction(
       const to = (action === "next" ? PHYSICAL_NEXT : PHYSICAL_PREV)[order.status];
       if (!to) return { ok: false, message: "Из этого статуса перехода нет" };
       const ok = await setPhysicalStatus(ctx, id, order.status, to);
+      if (ok) {
+        const { recordOrderEvent } = await import("@/core/orders/events");
+        await recordOrderEvent(ctx, id, "status", { to }, "admin");
+      }
       const labels: Record<string, string> = {
         in_production: "🧑‍🍳 Заказ готовится",
         ready: "🎉 Заказ готов к выдаче",
@@ -145,6 +154,10 @@ export async function runOrderAction(
         order,
         `⏰ Напоминаем: заказ #${no} на ${order.total} ${order.currency} ждёт оплаты. Пришлите чек после перевода.`,
       );
+      if (ok) {
+        const { recordOrderEvent } = await import("@/core/orders/events");
+        await recordOrderEvent(ctx, id, "reminded", {}, "admin");
+      }
       return { ok, message: ok ? "Напоминание отправлено" : "Не удалось отправить" };
     }
   }

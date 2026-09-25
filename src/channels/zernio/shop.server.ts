@@ -55,7 +55,7 @@ import { isDeliveryLangChoice } from "@/core/catalog/materials";
 import { askDeliveryLangBeforeOrder, cartLanguageChoices } from "@/core/cart/languages";
 import { localeFlags as flags, SUPPORTED_LOCALES } from "@/core/i18n/locale";
 import { COPY, normalizePhone, type Msg } from "@/channels/telegram/copy";
-import { adminTelegramApi } from "@/channels/telegram/notify";
+import { adminTelegramApi, notifyDeliveryFailure } from "@/channels/telegram/notify";
 import { liveTransport, type DmButton, type ZernioTransport } from "./api.server";
 import { zernioMaterialSender } from "./deliver";
 import type { ParsedZernioMessage } from "./message";
@@ -1343,6 +1343,8 @@ async function deliverHere(s: Shop, orderId: number, no: number): Promise<boolea
   );
   if (r.failed === 0 && !r.alreadyDelivered)
     await reply(s, s.m.orderDelivered(no), { force: true });
+  if (r.failed > 0)
+    await notifyDeliveryFailure(s.ctx, { id: orderId, display_no: no, order_no: no }, r);
   if (r.pointsEarned > 0) await reply(s, s.m.pointsEarned(r.pointsEarned), { force: true });
   if (r.referral) {
     const api = adminTelegramApi(s.ctx);

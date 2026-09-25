@@ -24,3 +24,21 @@ export async function notifyAdminsHtml(ctx: TenantContext, html: string): Promis
   }
   return sent;
 }
+
+/**
+ * Автоматическая выдача не прошла (оплата без человека: OCR, Robokassa,
+ * скидки в ноль) — продавец должен узнать сразу, а не когда покупатель
+ * пожалуется. Заказ остаётся «на подтверждении» с пометкой в заметке.
+ */
+export async function notifyDeliveryFailure(
+  ctx: TenantContext,
+  order: { id: number; display_no: number | null; order_no: number },
+  r: { sent: number; failed: number },
+): Promise<number> {
+  const no = order.display_no ?? order.order_no;
+  return notifyAdminsHtml(
+    ctx,
+    `⚠️ Заказ #${no}: не выдано ${r.failed} из ${r.sent + r.failed} поз. ` +
+      `Проверьте файлы товара и нажмите «Подтвердить и выдать» в карточке заказа — выдача продолжится с невыданных.`,
+  );
+}

@@ -61,12 +61,24 @@ export const getClientFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await guard();
     const m = await impl();
-    const [client, events, webhook] = await Promise.all([
+    const { preflight } = await import("./migration.server");
+    const [client, events, webhook, migration] = await Promise.all([
       m.getClient(data.botId),
       m.listEvents(data.botId),
       m.webhookState(data.botId),
+      preflight(data.botId).catch((e) => ({
+        ready: false,
+        checks: [
+          {
+            key: "error",
+            level: "block" as const,
+            title: "Проверка не удалась",
+            detail: e instanceof Error ? e.message : String(e),
+          },
+        ],
+      })),
     ]);
-    return { client, events, webhook };
+    return { client, events, webhook, migration };
   });
 
 export const updateClientMetaFn = createServerFn({ method: "POST" })

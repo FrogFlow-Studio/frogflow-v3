@@ -292,12 +292,14 @@ export const orderFn = createServerFn({ method: "GET" })
     const ctx = await admin();
     const { getOrder } = await import("@/core/orders/orders");
     const { proofSignedUrl } = await import("@/core/orders/admin");
+    const { listOrderEvents } = await import("@/core/orders/events");
     const order = await getOrder(ctx, data.id);
     if (!order) throw new Error("Заказ не найден");
-    const proofUrl = order.payment_proof_path
-      ? await proofSignedUrl(ctx, order.payment_proof_path)
-      : null;
-    return { order, proofUrl };
+    const [proofUrl, events] = await Promise.all([
+      order.payment_proof_path ? proofSignedUrl(ctx, order.payment_proof_path) : null,
+      listOrderEvents(ctx, data.id),
+    ]);
+    return { order, proofUrl, events };
   });
 
 export const orderActionFn = createServerFn({ method: "POST" })

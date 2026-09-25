@@ -33,7 +33,7 @@ export const Route = createFileRoute("/operator/_authed/clients/$botId")({
 });
 
 function ClientPage() {
-  const { client: c, events, webhook } = Route.useLoaderData();
+  const { client: c, events, webhook, migration } = Route.useLoaderData();
   const router = useRouter();
   const navigate = useNavigate();
   const refresh = () => router.invalidate();
@@ -110,7 +110,7 @@ function ClientPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <TelegramCard c={c} webhook={webhook} onDone={refresh} />
+        <TelegramCard c={c} webhook={webhook} migration={migration} onDone={refresh} />
         <AdminAccessCard c={c} onDone={refresh} />
         <ModulesCard c={c} onDone={refresh} />
         <div className="space-y-4">
@@ -158,8 +158,45 @@ function ClientPage() {
 
 type C = Awaited<ReturnType<typeof getClientFn>>["client"];
 type W = Awaited<ReturnType<typeof getClientFn>>["webhook"];
+type M = Awaited<ReturnType<typeof getClientFn>>["migration"];
 
-function TelegramCard({ c, webhook, onDone }: { c: C; webhook: W; onDone: () => Promise<void> }) {
+const LEVEL_TONE = { ok: "ok", info: "neutral", warn: "warn", block: "danger" } as const;
+const LEVEL_MARK = { ok: "✓", info: "i", warn: "!", block: "✕" } as const;
+
+/** Предполётная проверка переезда: что блокирует, что стоит поправить, что напомнить. */
+function MigrationChecks({ m }: { m: M }) {
+  return (
+    <div className="rounded-md border border-line p-3 text-xs">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="font-medium">Готовность к переезду</span>
+        <Badge tone={m.ready ? "ok" : "danger"}>{m.ready ? "можно переводить" : "не готов"}</Badge>
+      </div>
+      <ul className="space-y-1.5">
+        {m.checks.map((ch) => (
+          <li key={ch.key} className="flex items-start gap-2">
+            <Badge tone={LEVEL_TONE[ch.level]}>{LEVEL_MARK[ch.level]}</Badge>
+            <span>
+              <span className="font-medium">{ch.title}</span>
+              <span className="block text-muted">{ch.detail}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function TelegramCard({
+  c,
+  webhook,
+  migration,
+  onDone,
+}: {
+  c: C;
+  webhook: W;
+  migration: M;
+  onDone: () => Promise<void>;
+}) {
   const connect = useAction(async (token: string) => {
     await connectTelegramFn({ data: { botId: c.id, token } });
     await onDone();
@@ -208,18 +245,27 @@ function TelegramCard({ c, webhook, onDone }: { c: C; webhook: W; onDone: () => 
         </button>
       </form>
       <ErrorBox error={connect.error ?? serve.error ?? reinstall.error} />
-      {c.telegram.connected && (
+      {c.servedBy !== "v2" && (
+        <div className="mt-4">
+          <MigrationChecks m={migration} />
+        </div>
+      )}
+      {(c.telegram.connected || c.servedBy === "v2") && (
         <div className="mt-4 space-y-3 text-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="font-medium">Обслуживает эта платформа</div>
               <div className="text-xs text-muted">
-                Выключено — бот остаётся на старом деплое v1.
+                {c.servedBy === "v2"
+                  ? "Выключите — бот вернётся на деплой v1 (там переустановите вебхук)."
+                  : migration.ready
+                    ? "Включите — вебхук переставится сюда, заказы и выдача пойдут через v2."
+                    : "Пока не готов: сначала уберите блокирующие пункты выше."}
               </div>
             </div>
             <Switch
               checked={c.servedBy === "v2"}
-              disabled={serve.busy}
+              disabled={serve.busy || (c.servedBy !== "v2" && !migration.ready)}
               onChange={(on) => void serve.run(on ? "v2" : "v1").catch(() => {})}
               label="served by v2"
             />
