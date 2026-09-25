@@ -125,6 +125,10 @@ export const Route = createFileRoute("/api/cron/$job")({
             // Аккаунты Instagram/WhatsApp: сверка профилей с Zernio, отвалившиеся — продавцу.
             const { syncZernioAccountsFor } = await import("@/channels/zernio/health.server");
             results.zernio = await syncZernioAccountsFor(tenants);
+            // Зависшие события вебхука (received старше трёх минут) — тем же обработчиком.
+            const { retryStuckEventsFor } = await import("@/channels/zernio/dispatch.server");
+            const { tenantContext } = await import("@/core/tenant/resolve.server");
+            results.zernioRetry = await retryStuckEventsFor(tenants, tenantContext);
             break;
           }
           case "subscriptions": {

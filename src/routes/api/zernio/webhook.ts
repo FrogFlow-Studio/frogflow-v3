@@ -50,11 +50,9 @@ export const Route = createFileRoute("/api/zernio/webhook")({
           return new Response("accepted", { status: 202 });
         const ctx = tenantContext(tenant);
 
-        const handled =
-          payload.event === "message.received" ||
-          payload.event === "comment.received" ||
-          payload.event === "account.disconnected" ||
-          payload.event === "whatsapp.template.status_updated";
+        const { dispatchZernioEvent, isHandledEvent, settleZernioEvent } =
+          await import("@/channels/zernio/dispatch.server");
+        const handled = isHandledEvent(payload.event);
         const { error } = await ctx.db.from("zernio_logs").insert({
           bot_id: tenant.id,
           event_id: eventId,
@@ -70,50 +68,7 @@ export const Route = createFileRoute("/api/zernio/webhook")({
         }
         if (!handled) return new Response("ok");
 
-        const { runWithZernioEvent } = await import("@/channels/zernio/event-context.server");
-        let status = "failed";
-        let note: string | null = null;
-        try {
-          if (payload.event === "comment.received") {
-            // Двухшаговая Comment-to-DM: второе сообщение с кнопками после первого от Zernio.
-            const { handleCommentReceived } = await import("@/channels/zernio/automations.server");
-            const r = ctx.tenant.modules.instagram
-              ? await runWithZernioEvent(eventId, () =>
-                  handleCommentReceived(
-                    ctx,
-                    payload as import("@/channels/zernio/automations.server").CommentReceivedPayload,
-                  ),
-                )
-              : { note: "модуль «instagram» у клиента выключен" };
-            status = "processed";
-            note = r.note;
-          } else if (payload.event === "whatsapp.template.status_updated") {
-            const { handleTemplateStatus } = await import("@/channels/zernio/templates.server");
-            const r = await handleTemplateStatus(
-              ctx,
-              payload as import("@/channels/zernio/templates.server").TemplateStatusPayload,
-            );
-            status = "processed";
-            note = r.note;
-          } else if (payload.event === "account.disconnected") {
-            const { handleAccountDisconnected } = await import("@/channels/zernio/handle-account");
-            const r = await handleAccountDisconnected(ctx, payload);
-            status = "processed";
-            note = r.note;
-          } else {
-            const { handleZernioMessage } = await import("@/channels/zernio/handle-message");
-            const r = await runWithZernioEvent(eventId, () => handleZernioMessage(ctx, payload));
-            status = r.status;
-            note = r.note ?? null;
-          }
-        } catch (e) {
-          note = e instanceof Error ? e.message : String(e);
-          console.error(`[zernio] ${eventId} failed: ${note}`);
-        }
-        await ctx.db
-          .from("zernio_logs")
-          .update({ status, error_message: note })
-          .eq("event_id", eventId);
+        await settleZernioEvent(ctx, eventId, await dispatchZernioEvent(ctx, eventId, payload));
         return new Response("ok");
       },
     },
