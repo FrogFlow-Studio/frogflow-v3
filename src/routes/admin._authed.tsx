@@ -59,6 +59,14 @@ function Layout() {
           <NavLink to="/admin/consultant">{t("nav.consultant")}</NavLink>
           {shop.modules.instagram && <NavLink to="/admin/instagram">{t("nav.instagram")}</NavLink>}
           {shop.modules.vip && <NavLink to="/admin/vip">{t("nav.vip")}</NavLink>}
+          {shop.undelivered > 0 && (
+            <NavLink to="/admin/undelivered">
+              <span className="flex items-center justify-between gap-2">
+                {t("nav.undelivered")}
+                <Badge tone="danger">{shop.undelivered}</Badge>
+              </span>
+            </NavLink>
+          )}
           {owner && (
             <NavLink to="/admin/settings">
               {physical ? t("nav.settingsPhysical") : t("nav.settings")}

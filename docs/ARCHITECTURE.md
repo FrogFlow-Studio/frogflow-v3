@@ -203,7 +203,18 @@ v1 выпускала на каждый деплой JWT с `role: tenant_bot` �
 event` и `order_id` в `payload`; ретеншн держит их 180 дней. Продавец видит
 таймлайн в карточке заказа; сбой автоматической выдачи (OCR, Robokassa,
 скидки в ноль, Direct) уходит продавцу в Telegram сразу
-(`notifyDeliveryFailure`).
+(`notifyDeliveryFailure`) и ставит повтор выдачи в outbox.
+
+**Outbox** (`core/outbox/outbox.ts`, правила повторов — `pure.ts`):
+исходящие покупателю (`notifyCustomer`) и продавцу (`notifyAdminsHtml`)
+идут через `sendOrEnqueue`: отказ — строка в `zernio_logs` с
+`event_id = outbox:<uuid>`, `status = queued|sending|dead|processed|ignored`,
+адресат, текст и `next_at` в `payload`. Крон `broadcast` (минута) вызывает
+`app/outbox/senders.server.ts`: Telegram и Zernio по адресату, повтор
+выдачи — `runOrderAction(confirm)`. Пять попыток с паузами 1/5/15/60/180
+минут; «bot was blocked», «chat not found» — сразу `dead`. Продавец видит
+`dead` на странице «Не доставлено» и в бейдже навигации, может повторить
+или скрыть; строки чистит ретеншн как остальные записи журнала.
 
 **Роли в админке** (`core/auth/roles.ts`): владелец — `bots.settings.admin`
 (задаёт оператор), команда — `bots.settings.admin.users[]` с ролями

@@ -101,6 +101,12 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       chatUnread: ctx.tenant.modules.manager_chat
         ? await (await import("@/core/chat/chat")).totalUnread(ctx).catch(() => 0)
         : 0,
+      /** Сколько исходящих не доставлено после всех повторов — бейдж в навигации. */
+      undelivered: await (
+        await import("@/core/outbox/outbox")
+      )
+        .countUndelivered(ctx)
+        .catch(() => 0),
     };
   } catch {
     return null;
@@ -382,6 +388,28 @@ export const orderFn = createServerFn({ method: "GET" })
       listOrderEvents(ctx, data.id),
     ]);
     return { order, proofUrl, events };
+  });
+
+export const undeliveredFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  const { listUndelivered } = await import("@/core/outbox/outbox");
+  const rows = await listUndelivered(ctx);
+  const ids = Array.from(new Set(rows.map((r) => r.orderId).filter((x): x is number => !!x)));
+  const { data } = ids.length
+    ? await ctx.db.from("orders").select("id, order_no, display_no").in("id", ids)
+    : { data: [] as Array<{ id: number; order_no: number; display_no: number | null }> };
+  const no = new Map((data ?? []).map((o) => [o.id, o.display_no ?? o.order_no]));
+  return rows.map((r) => ({ ...r, orderNo: r.orderId ? (no.get(r.orderId) ?? null) : null }));
+});
+
+export const outboxActionFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: uuid, action: z.enum(["retry", "dismiss"]) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { retryOutbox, dismissOutbox } = await import("@/core/outbox/outbox");
+    const ok =
+      data.action === "retry" ? await retryOutbox(ctx, data.id) : await dismissOutbox(ctx, data.id);
+    return { ok };
   });
 
 export const orderActionFn = createServerFn({ method: "POST" })

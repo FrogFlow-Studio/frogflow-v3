@@ -94,23 +94,45 @@ export async function notifyCustomer(
   order: OrderWithItems,
   text: string,
 ): Promise<boolean> {
+  const { sendOrEnqueue } = await import("@/core/outbox/outbox");
   if (order.platform !== "telegram") {
-    const { sendToZernioTarget, zernioTargetForOrder } =
-      await import("@/channels/zernio/outbound.server");
+    const { zernioTargetForOrder } = await import("@/channels/zernio/outbound.server");
+    const { zernioOutboxSender } = await import("@/channels/zernio/outbox.server");
     const target = await zernioTargetForOrder(ctx, order);
-    return target ? sendToZernioTarget(target, text) : false;
+    if (!target) return false;
+    return sendOrEnqueue(
+      ctx,
+      {
+        kind: "customer_notice",
+        target: { channel: "zernio", ...target },
+        text,
+        orderId: order.id,
+        audience: "customer",
+      },
+      zernioOutboxSender(),
+    );
   }
   if (!ctx.tenant.telegramTokenEnc) return false;
-  const r = await api(ctx).call("sendMessage", {
-    chat_id: order.telegram_id,
-    text,
-    parse_mode: "HTML",
-  });
-  if (!r.ok) {
+  const { telegramOutboxSender } = await import("@/channels/telegram/outbox");
+  const ok = await sendOrEnqueue(
+    ctx,
+    {
+      kind: "customer_notice",
+      target: { channel: "telegram", chatId: String(order.telegram_id) },
+      text,
+      orderId: order.id,
+      audience: "customer",
+    },
+    telegramOutboxSender,
+  );
+  if (!ok) {
     const { recordOrderEvent } = await import("@/core/orders/events");
-    await recordOrderEvent(ctx, order.id, "notify_failed", { text: text.slice(0, 120) });
+    await recordOrderEvent(ctx, order.id, "notify_failed", {
+      text: text.slice(0, 120),
+      retrying: true,
+    });
   }
-  return r.ok;
+  return ok;
 }
 
 export type OrderAction = "confirm" | "reject" | "next" | "prev" | "remind";

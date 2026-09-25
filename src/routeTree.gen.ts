@@ -32,6 +32,7 @@ import { Route as AdminAuthedModulesRouteImport } from './routes/admin._authed.m
 import { Route as AdminAuthedOrdersRouteImport } from './routes/admin._authed.orders'
 import { Route as AdminAuthedProductsRouteImport } from './routes/admin._authed.products'
 import { Route as AdminAuthedSettingsRouteImport } from './routes/admin._authed.settings'
+import { Route as AdminAuthedUndeliveredRouteImport } from './routes/admin._authed.undelivered'
 import { Route as AdminAuthedVipRouteImport } from './routes/admin._authed.vip'
 import { Route as ApiAdminUploadRouteImport } from './routes/api/admin/upload'
 import { Route as ApiCronJobRouteImport } from './routes/api/cron.$job'
@@ -168,6 +169,11 @@ const AdminAuthedSettingsRoute = AdminAuthedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
+const AdminAuthedUndeliveredRoute = AdminAuthedUndeliveredRouteImport.update({
+  id: '/undelivered',
+  path: '/undelivered',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
 const AdminAuthedVipRoute = AdminAuthedVipRouteImport.update({
   id: '/vip',
   path: '/vip',
@@ -302,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/products': typeof AdminAuthedProductsRoute
   '/admin/settings': typeof AdminAuthedSettingsRoute
+  '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/vip': typeof AdminAuthedVipRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
@@ -346,6 +353,7 @@ export interface FileRoutesByTo {
   '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/products': typeof AdminAuthedProductsRoute
   '/admin/settings': typeof AdminAuthedSettingsRoute
+  '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/vip': typeof AdminAuthedVipRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
@@ -392,6 +400,7 @@ export interface FileRoutesById {
   '/admin/_authed/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/_authed/products': typeof AdminAuthedProductsRoute
   '/admin/_authed/settings': typeof AdminAuthedSettingsRoute
+  '/admin/_authed/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/_authed/vip': typeof AdminAuthedVipRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
@@ -439,6 +448,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
+    | '/admin/undelivered'
     | '/admin/vip'
     | '/api/admin/upload'
     | '/api/cron/$job'
@@ -483,6 +493,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
+    | '/admin/undelivered'
     | '/admin/vip'
     | '/api/admin/upload'
     | '/api/cron/$job'
@@ -528,6 +539,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/orders'
     | '/admin/_authed/products'
     | '/admin/_authed/settings'
+    | '/admin/_authed/undelivered'
     | '/admin/_authed/vip'
     | '/api/admin/upload'
     | '/api/cron/$job'
@@ -733,6 +745,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedSettingsRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/_authed/undelivered': {
+      id: '/admin/_authed/undelivered'
+      path: '/undelivered'
+      fullPath: '/admin/undelivered'
+      preLoaderRoute: typeof AdminAuthedUndeliveredRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/admin/_authed/vip': {
       id: '/admin/_authed/vip'
       path: '/vip'
@@ -914,6 +933,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedOrdersRoute: typeof AdminAuthedOrdersRouteWithChildren
   AdminAuthedProductsRoute: typeof AdminAuthedProductsRoute
   AdminAuthedSettingsRoute: typeof AdminAuthedSettingsRoute
+  AdminAuthedUndeliveredRoute: typeof AdminAuthedUndeliveredRoute
   AdminAuthedVipRoute: typeof AdminAuthedVipRoute
   AdminAuthedIndexRoute: typeof AdminAuthedIndexRoute
   AdminAuthedProductsIdRoute: typeof AdminAuthedProductsIdRoute
@@ -932,6 +952,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedOrdersRoute: AdminAuthedOrdersRouteWithChildren,
   AdminAuthedProductsRoute: AdminAuthedProductsRoute,
   AdminAuthedSettingsRoute: AdminAuthedSettingsRoute,
+  AdminAuthedUndeliveredRoute: AdminAuthedUndeliveredRoute,
   AdminAuthedVipRoute: AdminAuthedVipRoute,
   AdminAuthedIndexRoute: AdminAuthedIndexRoute,
   AdminAuthedProductsIdRoute: AdminAuthedProductsIdRoute,

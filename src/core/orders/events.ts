@@ -124,7 +124,9 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
     case "status":
       return { text: `Статус: ${str(p.to)}${who}`, tone: "neutral" };
     case "notify_failed":
-      return { text: `Сообщение покупателю не доставлено: ${str(p.text)}`, tone: "warn" };
+      return p.retrying
+        ? { text: `Сообщение покупателю не ушло, повторим: ${str(p.text)}`, tone: "warn" }
+        : { text: `Сообщение покупателю не доставлено: ${str(p.text)}`, tone: "warn" };
     default:
       return { text: String(e.kind), tone: "neutral" };
   }

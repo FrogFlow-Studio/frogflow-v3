@@ -62,6 +62,8 @@ export const Route = createFileRoute("/api/cron/$job")({
               broadcast: async (t: (typeof tenants)[number]) => ({
                 telegram: await jobs.runBroadcastBatch(t),
                 whatsapp: await wa.runWhatsAppBroadcastBatch(t),
+                // Повторы исходящих (core/outbox) — та же минутная сетка.
+                outbox: await (await import("@/app/outbox/senders.server")).runOutbox(t),
               }),
               "cart-reminder": jobs.runCartReminders,
               "fulfillment-reminder": jobs.runFulfillmentReminders,
