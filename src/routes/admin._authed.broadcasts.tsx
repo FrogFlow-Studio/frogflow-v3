@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
   audienceCountFn,
@@ -10,6 +10,7 @@ import {
   setExcludedPhonesFn,
   syncWhatsAppTemplatesFn,
 } from "@/app/admin/admin.functions";
+import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
 import {
@@ -30,43 +31,57 @@ type WhatsApp = NonNullable<Data["whatsapp"]>;
 type Template = WhatsApp["templates"][number];
 type Channel = "telegram" | "whatsapp";
 
-const AUDIENCES: Array<{ value: AudienceType; label: string; hint: string; tgOnly?: boolean }> = [
-  { value: "all", label: "Всем", hint: "Все, кто писал боту в этом канале" },
-  { value: "buyers", label: "Покупателям", hint: "Есть хотя бы один оплаченный заказ" },
-  { value: "non_buyers", label: "Ещё не покупали", hint: "Писали боту, но не платили" },
-  { value: "country", label: "По стране", hint: "Выбрали эту страну оплаты в боте" },
-  {
-    value: "test",
-    label: "Себе на пробу",
-    hint: "Только администраторам из настроек",
-    tgOnly: true,
-  },
-];
+const AUDIENCES: Array<{ value: AudienceType; label: AdminKey; hint: AdminKey; tgOnly?: boolean }> =
+  [
+    { value: "all", label: "broadcasts.audience.all", hint: "broadcasts.audience.allHint" },
+    {
+      value: "buyers",
+      label: "broadcasts.audience.buyers",
+      hint: "broadcasts.audience.buyersHint",
+    },
+    {
+      value: "non_buyers",
+      label: "broadcasts.audience.nonBuyers",
+      hint: "broadcasts.audience.nonBuyersHint",
+    },
+    {
+      value: "country",
+      label: "broadcasts.audience.country",
+      hint: "broadcasts.audience.countryHint",
+    },
+    {
+      value: "test",
+      label: "broadcasts.audience.test",
+      hint: "broadcasts.audience.testHint",
+      tgOnly: true,
+    },
+  ];
 
 const STATUS: Record<
   string,
-  { label: string; tone: "neutral" | "ok" | "warn" | "danger" | "accent" }
+  { label: AdminKey; tone: "neutral" | "ok" | "warn" | "danger" | "accent" }
 > = {
-  queued: { label: "в очереди", tone: "accent" },
-  sending: { label: "идёт", tone: "accent" },
-  completed: { label: "завершена", tone: "ok" },
-  cancelled: { label: "отменена", tone: "neutral" },
-  failed: { label: "не доставлена", tone: "danger" },
+  queued: { label: "broadcasts.status.queued", tone: "accent" },
+  sending: { label: "broadcasts.status.sending", tone: "accent" },
+  completed: { label: "broadcasts.status.completed", tone: "ok" },
+  cancelled: { label: "broadcasts.status.cancelled", tone: "neutral" },
+  failed: { label: "broadcasts.status.failed", tone: "danger" },
 };
 
 const TEMPLATE_STATUS: Record<
   string,
-  { label: string; tone: "ok" | "warn" | "danger" | "neutral" }
+  { label: AdminKey; tone: "ok" | "warn" | "danger" | "neutral" }
 > = {
-  APPROVED: { label: "одобрен", tone: "ok" },
-  PENDING: { label: "на проверке", tone: "warn" },
-  IN_APPEAL: { label: "апелляция", tone: "warn" },
-  REJECTED: { label: "отклонён", tone: "danger" },
-  PAUSED: { label: "приостановлен", tone: "danger" },
-  DISABLED: { label: "отключён", tone: "danger" },
-  PENDING_DELETION: { label: "удаляется", tone: "neutral" },
+  APPROVED: { label: "broadcasts.templateStatus.approved", tone: "ok" },
+  PENDING: { label: "broadcasts.templateStatus.pending", tone: "warn" },
+  IN_APPEAL: { label: "broadcasts.templateStatus.inAppeal", tone: "warn" },
+  REJECTED: { label: "broadcasts.templateStatus.rejected", tone: "danger" },
+  PAUSED: { label: "broadcasts.templateStatus.paused", tone: "danger" },
+  DISABLED: { label: "broadcasts.templateStatus.disabled", tone: "danger" },
+  PENDING_DELETION: { label: "broadcasts.templateStatus.pendingDeletion", tone: "neutral" },
 };
 
+/** Языки шаблона — самоназвания, одинаковы на любом языке панели. */
 const LANGUAGES = [
   { code: "ru", label: "Русский" },
   { code: "kk", label: "Қазақша" },
@@ -74,19 +89,27 @@ const LANGUAGES = [
   { code: "uz", label: "Oʻzbekcha" },
 ];
 
-async function uploadImage(file: File): Promise<string> {
+/** Словарь панели для вложенных компонентов страницы. */
+function useT(): AdminT {
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
+  return adminT(shop.locale);
+}
+
+async function uploadImage(file: File, t: AdminT): Promise<string> {
   const fd = new FormData();
   fd.set("kind", "image");
   fd.set("file", file);
   const r = await fetch("/api/admin/upload", { method: "POST", body: fd });
   const j = (await r.json().catch(() => ({}))) as { key?: string; error?: string };
-  if (!r.ok || !j.key) throw new Error(j.error ?? `Загрузка не удалась (${r.status})`);
+  if (!r.ok || !j.key)
+    throw new Error(j.error ?? t("broadcasts.uploadFailed", { status: r.status }));
   return j.key;
 }
 
 function BroadcastsPage() {
   const data = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const router = useRouter();
   const [channel, setChannel] = useState<Channel>(data.telegramModule ? "telegram" : "whatsapp");
   const activeIn = (c: Channel) =>
@@ -106,11 +129,11 @@ function BroadcastsPage() {
   return (
     <>
       <PageTitle
-        title="Рассылки"
+        title={t("broadcasts.title")}
         subtitle={
           channel === "telegram"
-            ? "Сообщение уходит по 25 человек в минуту — Telegram не примет быстрее. Заблокировавшие бота считаются отдельно."
-            : "WhatsApp пропускает первое сообщение вне суточного окна только одобренным шаблоном Meta; каждое доставленное сообщение Meta тарифицирует."
+            ? t("broadcasts.subtitle.telegram")
+            : t("broadcasts.subtitle.whatsapp")
         }
       />
       {both && (
@@ -137,8 +160,8 @@ function BroadcastsPage() {
             <ExcludedPhonesCard phones={data.whatsapp.excludedPhones} />
           </div>
         ) : (
-          <Card title="Рассылки">
-            <Empty>Модуль рассылок не подключён.</Empty>
+          <Card title={t("broadcasts.title")}>
+            <Empty>{t("broadcasts.moduleOff")}</Empty>
           </Card>
         )}
         <div className="space-y-4">
@@ -193,9 +216,10 @@ function AudiencePicker({
   setCountry: (c: string) => void;
   count: number | null;
 }) {
+  const t = useT();
   return (
     <div>
-      <span className="label">Кому</span>
+      <span className="label">{t("broadcasts.audience.label")}</span>
       <div className="grid gap-2 sm:grid-cols-2">
         {AUDIENCES.filter((a) => channel === "telegram" || !a.tgOnly).map((a) => (
           <label
@@ -210,8 +234,8 @@ function AudiencePicker({
               onChange={() => setAudience(a.value)}
             />
             <span>
-              <span className="font-medium">{a.label}</span>
-              <span className="block text-xs text-muted">{a.hint}</span>
+              <span className="font-medium">{t(a.label)}</span>
+              <span className="block text-xs text-muted">{t(a.hint)}</span>
             </span>
           </label>
         ))}
@@ -219,7 +243,7 @@ function AudiencePicker({
       {audience === "country" && (
         <select className="input mt-2" value={country} onChange={(e) => setCountry(e.target.value)}>
           {Object.keys(data.countries).length === 0 && (
-            <option value="">Страны ещё не выбирал никто</option>
+            <option value="">{t("broadcasts.audience.noCountries")}</option>
           )}
           {Object.entries(data.countries)
             .sort((a, b) => b[1] - a[1])
@@ -231,19 +255,18 @@ function AudiencePicker({
         </select>
       )}
       {audience === "test" && !data.hasAdminChat && (
-        <p className="mt-2 text-xs text-danger">
-          Не указан Telegram-id администратора — задайте его в настройках, иначе пробную рассылку
-          отправить некому.
-        </p>
+        <p className="mt-2 text-xs text-danger">{t("broadcasts.audience.noAdminChat")}</p>
       )}
       <p className="mt-2 text-sm text-muted">
-        Получателей: <span className="font-medium text-fg tabular-nums">{count ?? "…"}</span>
+        {t("broadcasts.audience.recipients")}{" "}
+        <span className="font-medium text-fg tabular-nums">{count ?? "…"}</span>
       </p>
     </div>
   );
 }
 
 function Composer({ data, botId, disabled }: { data: Data; botId: string; disabled: boolean }) {
+  const t = useT();
   const router = useRouter();
   const [text, setText] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
@@ -258,11 +281,7 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
 
   const send = useAction(async () => {
     const isTest = audience === "test";
-    if (
-      !isTest &&
-      !confirm(`Отправить ${count ?? "?"} получателям? Отменить можно будет во время отправки.`)
-    )
-      return;
+    if (!isTest && !confirm(t("broadcasts.compose.confirmTelegram", { n: count ?? "?" }))) return;
     await createBroadcastFn({
       data: {
         channel: "telegram",
@@ -290,7 +309,7 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
     try {
       const keys: string[] = [];
       for (const f of Array.from(files).slice(0, MAX_PHOTOS - photos.length))
-        keys.push(await uploadImage(f));
+        keys.push(await uploadImage(f, t));
       setPhotos((p) => [...p, ...keys].slice(0, MAX_PHOTOS));
     } catch (e) {
       setUploadError(e);
@@ -309,33 +328,33 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
     !disabled && !uploading && !send.busy && (text.trim() || photos.length > 0) && (count ?? 0) > 0;
 
   return (
-    <Card title="Новая рассылка в Telegram">
+    <Card title={t("broadcasts.compose.telegramTitle")}>
       {disabled && (
         <div className="mb-3 rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">
-          Сейчас идёт другая рассылка — новую можно создать после её завершения.
+          {t("broadcasts.compose.anotherActive")}
         </div>
       )}
       {!data.telegram && (
         <div className="mb-3 rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">
-          Telegram-бот не подключён — рассылка встанет в очередь и уйдёт после подключения.
+          {t("broadcasts.compose.botOff")}
         </div>
       )}
       <div className="space-y-4">
         <Field
-          label="Текст сообщения"
-          hint={`${text.length} / 4000. Можно HTML: <b>жирный</b>, <i>курсив</i>, <a href="…">ссылка</a>.`}
+          label={t("broadcasts.compose.text")}
+          hint={t("broadcasts.compose.textHint", { n: text.length })}
         >
           <textarea
             className="input min-h-32"
             value={text}
             maxLength={4000}
             onChange={(e) => setText(e.target.value)}
-            placeholder="🎉 Новинка недели: …"
+            placeholder={t("broadcasts.compose.textPlaceholder")}
           />
         </Field>
 
         <div>
-          <span className="label">Фото (до {MAX_PHOTOS})</span>
+          <span className="label">{t("broadcasts.compose.photos", { n: MAX_PHOTOS })}</span>
           <div className="flex flex-wrap gap-2">
             {photos.map((k) => (
               <div key={k} className="relative">
@@ -348,7 +367,7 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
                   type="button"
                   className="absolute -top-2 -right-2 grid h-6 w-6 place-items-center rounded-full bg-danger text-xs text-white"
                   onClick={() => setPhotos((p) => p.filter((x) => x !== k))}
-                  aria-label="Убрать фото"
+                  aria-label={t("broadcasts.compose.removePhoto")}
                 >
                   ×
                 </button>
@@ -356,7 +375,7 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
             ))}
             {photos.length < MAX_PHOTOS && (
               <label className="btn-secondary cursor-pointer text-xs">
-                {uploading ? "Загрузка…" : "+ Добавить фото"}
+                {uploading ? t("broadcasts.compose.uploading") : t("broadcasts.compose.addPhoto")}
                 <input
                   ref={fileRef}
                   type="file"
@@ -372,19 +391,22 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
         </div>
 
         <div>
-          <span className="label">Кнопки под сообщением</span>
+          <span className="label">{t("broadcasts.compose.buttons")}</span>
           <div className="flex items-center gap-3 py-1">
             <Switch
               checked={showCatalog}
               onChange={setShowCatalog}
-              label="Кнопка «Открыть каталог»"
+              label={t("broadcasts.compose.catalogSwitch")}
             />
-            <span className="text-sm">Кнопка «📚 Открыть каталог»</span>
+            <span className="text-sm">{t("broadcasts.compose.catalogButton")}</span>
           </div>
           {data.products.length > 0 && (
             <details className="mt-2">
               <summary className="cursor-pointer text-sm text-muted">
-                Товары кнопками: {products.length} / {MAX_PRODUCT_BUTTONS}
+                {t("broadcasts.compose.productButtons", {
+                  n: products.length,
+                  max: MAX_PRODUCT_BUTTONS,
+                })}
               </summary>
               <div className="mt-2 max-h-56 space-y-1 overflow-auto rounded-md border border-line p-2">
                 {data.products.map((p) => (
@@ -419,10 +441,10 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
             onClick={() => void send.run().catch(() => {})}
           >
             {send.busy
-              ? "Отправляем…"
+              ? t("broadcasts.compose.sending")
               : audience === "test"
-                ? "Отправить себе"
-                : "Запустить рассылку"}
+                ? t("broadcasts.compose.sendSelf")
+                : t("broadcasts.compose.start")}
           </button>
         </div>
         <ErrorBox error={send.error} />
@@ -437,6 +459,7 @@ function fillTemplate(body: string, params: string[]): string {
 }
 
 function WhatsAppComposer({ data, wa, disabled }: { data: Data; wa: WhatsApp; disabled: boolean }) {
+  const t = useT();
   const router = useRouter();
   const approved = wa.templates.filter((t) => t.status === "APPROVED");
   const [accountId, setAccountId] = useState(wa.accounts[0]?.id ?? "");
@@ -450,12 +473,7 @@ function WhatsAppComposer({ data, wa, disabled }: { data: Data; wa: WhatsApp; di
 
   const send = useAction(async () => {
     if (!template) return;
-    if (
-      !confirm(
-        `Отправить ${count ?? "?"} получателям в WhatsApp? Каждое доставленное сообщение оплачивается по тарифу Meta.`,
-      )
-    )
-      return;
+    if (!confirm(t("broadcasts.compose.confirmWhatsapp", { n: count ?? "?" }))) return;
     await createBroadcastFn({
       data: {
         channel: "whatsapp",
@@ -478,21 +496,18 @@ function WhatsAppComposer({ data, wa, disabled }: { data: Data; wa: WhatsApp; di
   const canSend = !disabled && !send.busy && Boolean(template) && paramsOk && (count ?? 0) > 0;
 
   return (
-    <Card title="Новая рассылка в WhatsApp">
+    <Card title={t("broadcasts.compose.whatsappTitle")}>
       {disabled && (
         <div className="mb-3 rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">
-          Сейчас идёт другая рассылка — новую можно создать после её завершения.
+          {t("broadcasts.compose.anotherActive")}
         </div>
       )}
       {wa.accounts.length === 0 ? (
-        <Empty>
-          WhatsApp не подключён — подключите аккаунт в «Оплата и настройки» → «Instagram и
-          WhatsApp».
-        </Empty>
+        <Empty>{t("broadcasts.compose.whatsappOff")}</Empty>
       ) : (
         <div className="space-y-4">
           {wa.accounts.length > 1 && (
-            <Field label="От какого номера">
+            <Field label={t("broadcasts.compose.fromNumber")}>
               <select
                 className="input"
                 value={accountId}
@@ -511,12 +526,8 @@ function WhatsAppComposer({ data, wa, disabled }: { data: Data; wa: WhatsApp; di
             </Field>
           )}
           <Field
-            label="Шаблон"
-            hint={
-              forAccount.length === 0
-                ? "Одобренных шаблонов пока нет — создайте шаблон ниже и дождитесь проверки Meta."
-                : undefined
-            }
+            label={t("broadcasts.compose.template")}
+            hint={forAccount.length === 0 ? t("broadcasts.compose.noApproved") : undefined}
           >
             <select
               className="input"
@@ -537,7 +548,7 @@ function WhatsAppComposer({ data, wa, disabled }: { data: Data; wa: WhatsApp; di
           {template && need > 0 && (
             <div className="space-y-2">
               {Array.from({ length: need }, (_, i) => (
-                <Field key={i} label={`Подстановка {{${i + 1}}}`}>
+                <Field key={i} label={t("broadcasts.compose.param", { n: i + 1 })}>
                   <input
                     className="input"
                     value={params[i] ?? ""}
@@ -556,7 +567,7 @@ function WhatsAppComposer({ data, wa, disabled }: { data: Data; wa: WhatsApp; di
           )}
           {template && (
             <div className="rounded-md border border-line bg-bg-soft p-3 text-sm whitespace-pre-wrap">
-              {fillTemplate(template.body, params) || "(пустой шаблон)"}
+              {fillTemplate(template.body, params) || t("broadcasts.compose.emptyTemplate")}
             </div>
           )}
 
@@ -576,7 +587,7 @@ function WhatsAppComposer({ data, wa, disabled }: { data: Data; wa: WhatsApp; di
               disabled={!canSend}
               onClick={() => void send.run().catch(() => {})}
             >
-              {send.busy ? "Отправляем…" : "Запустить рассылку"}
+              {send.busy ? t("broadcasts.compose.sending") : t("broadcasts.compose.start")}
             </button>
           </div>
           <ErrorBox error={send.error} />
@@ -587,6 +598,7 @@ function WhatsAppComposer({ data, wa, disabled }: { data: Data; wa: WhatsApp; di
 }
 
 function TemplatesCard({ wa }: { wa: WhatsApp }) {
+  const t = useT();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [accountId, setAccountId] = useState(wa.accounts[0]?.id ?? "");
@@ -609,7 +621,7 @@ function TemplatesCard({ wa }: { wa: WhatsApp }) {
 
   return (
     <Card
-      title="Шаблоны Meta"
+      title={t("broadcasts.templates.title")}
       actions={
         wa.accounts.length > 0 ? (
           <div className="flex gap-2">
@@ -618,18 +630,18 @@ function TemplatesCard({ wa }: { wa: WhatsApp }) {
               disabled={sync.busy}
               onClick={() => void sync.run().catch(() => {})}
             >
-              {sync.busy ? "Обновляем…" : "Обновить из Meta"}
+              {sync.busy ? t("broadcasts.templates.syncing") : t("broadcasts.templates.sync")}
             </button>
             <button className="btn-secondary text-xs" onClick={() => setOpen((v) => !v)}>
-              {open ? "Скрыть" : "+ Новый шаблон"}
+              {open ? t("common.hide") : t("broadcasts.templates.new")}
             </button>
           </div>
         ) : undefined
       }
     >
       <p className="mb-3 text-sm text-muted">
-        Шаблон проходит проверку Meta (обычно до суток). Подстановки пишутся как{" "}
-        <code>{"{{1}}"}</code>, <code>{"{{2}}"}</code>… — значения задаются при запуске рассылки.
+        {t("broadcasts.templates.introBefore")} <code>{"{{1}}"}</code>, <code>{"{{2}}"}</code>
+        {t("broadcasts.templates.introAfter")}
       </p>
       {open && (
         <form
@@ -640,7 +652,7 @@ function TemplatesCard({ wa }: { wa: WhatsApp }) {
           }}
         >
           {wa.accounts.length > 1 && (
-            <Field label="Аккаунт">
+            <Field label={t("broadcasts.templates.account")}>
               <select
                 className="input"
                 value={accountId}
@@ -655,7 +667,7 @@ function TemplatesCard({ wa }: { wa: WhatsApp }) {
             </Field>
           )}
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Имя" hint="латиница, цифры, «_»">
+            <Field label={t("broadcasts.templates.name")} hint={t("broadcasts.templates.nameHint")}>
               <input
                 className="input"
                 value={name}
@@ -664,7 +676,7 @@ function TemplatesCard({ wa }: { wa: WhatsApp }) {
                 required
               />
             </Field>
-            <Field label="Язык">
+            <Field label={t("broadcasts.templates.language")}>
               <select
                 className="input"
                 value={language}
@@ -677,7 +689,10 @@ function TemplatesCard({ wa }: { wa: WhatsApp }) {
                 ))}
               </select>
             </Field>
-            <Field label="Категория" hint="MARKETING — акции; UTILITY — служебные, дешевле">
+            <Field
+              label={t("broadcasts.templates.category")}
+              hint={t("broadcasts.templates.categoryHint")}
+            >
               <select
                 className="input"
                 value={category}
@@ -688,28 +703,28 @@ function TemplatesCard({ wa }: { wa: WhatsApp }) {
               </select>
             </Field>
           </div>
-          <Field label="Текст" hint={`${body.length} / 1024`}>
+          <Field label={t("broadcasts.templates.body")} hint={`${body.length} / 1024`}>
             <textarea
               className="input min-h-24"
               value={body}
               maxLength={1024}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Здравствуйте, {{1}}! У нас новинки: {{2}}. Ответьте «стоп», чтобы отписаться."
+              placeholder={t("broadcasts.templates.bodyPlaceholder")}
               required
             />
           </Field>
           <button className="btn-primary" disabled={create.busy}>
-            {create.busy ? "Отправляем в Meta…" : "Отправить на проверку"}
+            {create.busy ? t("broadcasts.templates.submitting") : t("broadcasts.templates.submit")}
           </button>
           <ErrorBox error={create.error} />
         </form>
       )}
       {wa.templates.length === 0 ? (
-        <Empty>Шаблонов ещё нет.</Empty>
+        <Empty>{t("broadcasts.templates.empty")}</Empty>
       ) : (
         <ul className="divide-y divide-line">
-          {wa.templates.map((t) => (
-            <TemplateRow key={t.id} t={t} />
+          {wa.templates.map((tpl) => (
+            <TemplateRow key={tpl.id} t={t} tpl={tpl} />
           ))}
         </ul>
       )}
@@ -718,25 +733,26 @@ function TemplatesCard({ wa }: { wa: WhatsApp }) {
   );
 }
 
-function TemplateRow({ t }: { t: Template }) {
-  const st = TEMPLATE_STATUS[t.status] ?? { label: t.status, tone: "neutral" as const };
+function TemplateRow({ t, tpl }: { t: AdminT; tpl: Template }) {
+  const st = TEMPLATE_STATUS[tpl.status];
   return (
     <li className="py-2">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">{t.name}</span>
-        <span className="text-xs text-muted">{t.language}</span>
-        <Badge tone={st.tone}>{st.label}</Badge>
-        <span className="text-xs text-muted">{t.category}</span>
+        <span className="font-medium">{tpl.name}</span>
+        <span className="text-xs text-muted">{tpl.language}</span>
+        <Badge tone={st?.tone ?? "neutral"}>{st ? t(st.label) : tpl.status}</Badge>
+        <span className="text-xs text-muted">{tpl.category}</span>
       </div>
-      {t.body && (
-        <p className="mt-1 line-clamp-2 text-sm text-muted whitespace-pre-wrap">{t.body}</p>
+      {tpl.body && (
+        <p className="mt-1 line-clamp-2 text-sm text-muted whitespace-pre-wrap">{tpl.body}</p>
       )}
-      {t.reason && <p className="mt-1 text-xs text-danger">Meta: {t.reason}</p>}
+      {tpl.reason && <p className="mt-1 text-xs text-danger">Meta: {tpl.reason}</p>}
     </li>
   );
 }
 
 function ExcludedPhonesCard({ phones }: { phones: string }) {
+  const t = useT();
   const router = useRouter();
   const [value, setValue] = useState(phones);
   const save = useAction(async () => {
@@ -745,11 +761,8 @@ function ExcludedPhonesCard({ phones }: { phones: string }) {
     await router.invalidate();
   });
   return (
-    <Card title="Не писать этим номерам">
-      <p className="mb-3 text-sm text-muted">
-        Номера через запятую или с новой строки, в международном формате. Им не уйдёт ни одна
-        рассылка, что бы ни выбрали в аудитории.
-      </p>
+    <Card title={t("broadcasts.excluded.title")}>
+      <p className="mb-3 text-sm text-muted">{t("broadcasts.excluded.intro")}</p>
       <form
         className="space-y-2"
         onSubmit={(e) => {
@@ -764,7 +777,7 @@ function ExcludedPhonesCard({ phones }: { phones: string }) {
           placeholder="77001234567, 77007654321"
         />
         <button className="btn-secondary" disabled={save.busy}>
-          Сохранить
+          {t("common.save")}
         </button>
       </form>
       <ErrorBox error={save.error} />
@@ -773,45 +786,50 @@ function ExcludedPhonesCard({ phones }: { phones: string }) {
 }
 
 function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showChannel: boolean }) {
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
+  const t = adminT(shop.locale);
   const router = useRouter();
   const cancel = useAction(async (id: string) => {
-    if (!confirm("Остановить рассылку? Уже отправленные сообщения останутся.")) return;
+    if (!confirm(t("broadcasts.history.confirmStop"))) return;
     await cancelBroadcastFn({ data: { id } });
     await router.invalidate();
   });
   return (
-    <Card title="История">
+    <Card title={t("broadcasts.history.title")}>
       {broadcasts.length === 0 ? (
-        <Empty>Рассылок ещё не было.</Empty>
+        <Empty>{t("broadcasts.history.empty")}</Empty>
       ) : (
         <ul className="divide-y divide-line">
           {broadcasts.map((b) => {
-            const st = STATUS[b.status] ?? { label: b.status, tone: "neutral" as const };
+            const st = STATUS[b.status];
             const live = b.status === "queued" || b.status === "sending";
             const pct = progressPercent(b);
+            const audienceKey = AUDIENCES.find((a) => a.value === b.audience_type)?.label;
             return (
               <li key={b.id} className="py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone={st.tone}>{st.label}</Badge>
+                      <Badge tone={st?.tone ?? "neutral"}>{st ? t(st.label) : b.status}</Badge>
                       {showChannel && (
                         <Badge tone="neutral">
                           {b.channel === "whatsapp" ? "WhatsApp" : "Telegram"}
                         </Badge>
                       )}
                       <span className="text-xs text-muted">
-                        {new Date(b.created_at).toLocaleString("ru")} ·{" "}
-                        {AUDIENCES.find((a) => a.value === b.audience_type)?.label ??
-                          b.audience_type}
+                        {new Date(b.created_at).toLocaleString(intlLocale(shop.locale))} ·{" "}
+                        {audienceKey ? t(audienceKey) : b.audience_type}
                         {b.audience_type === "country" &&
                           ` (${(b.audience_filter as { country_code?: string })?.country_code ?? ""})`}
                       </span>
                     </div>
                     <p className="mt-1 line-clamp-2 text-sm">
                       {b.channel === "whatsapp"
-                        ? `Шаблон ${b.template_name ?? ""} · ${b.template_language ?? ""}`
-                        : b.message_text || "(только фото)"}
+                        ? t("broadcasts.history.template", {
+                            name: b.template_name ?? "",
+                            language: b.template_language ?? "",
+                          })
+                        : b.message_text || t("broadcasts.history.photoOnly")}
                     </p>
                   </div>
                   {live && (
@@ -819,7 +837,7 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
                       className="btn-ghost text-xs text-danger"
                       onClick={() => void cancel.run(b.id).catch(() => {})}
                     >
-                      Остановить
+                      {t("broadcasts.history.stop")}
                     </button>
                   )}
                 </div>
@@ -830,16 +848,21 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
                   />
                 </div>
                 <div className="mt-1 flex gap-3 text-xs text-muted tabular-nums">
-                  <span>всего {b.total_count}</span>
-                  <span className="text-ok">доставлено {b.sent_count}</span>
+                  <span>{t("broadcasts.history.total", { n: b.total_count })}</span>
+                  <span className="text-ok">
+                    {t("broadcasts.history.sent", { n: b.sent_count })}
+                  </span>
                   {b.blocked_count > 0 && (
                     <span>
-                      {b.channel === "whatsapp" ? "не в WhatsApp" : "заблокировали"}{" "}
-                      {b.blocked_count}
+                      {b.channel === "whatsapp"
+                        ? t("broadcasts.history.notInWhatsapp", { n: b.blocked_count })
+                        : t("broadcasts.history.blocked", { n: b.blocked_count })}
                     </span>
                   )}
                   {b.failed_count > 0 && (
-                    <span className="text-danger">ошибки {b.failed_count}</span>
+                    <span className="text-danger">
+                      {t("broadcasts.history.errors", { n: b.failed_count })}
+                    </span>
                   )}
                 </div>
               </li>
@@ -853,6 +876,7 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
 }
 
 function CartReminderCard({ hours }: { hours: string }) {
+  const t = useT();
   const router = useRouter();
   const [value, setValue] = useState(hours);
   const save = useAction(async () => {
@@ -860,11 +884,8 @@ function CartReminderCard({ hours }: { hours: string }) {
     await router.invalidate();
   });
   return (
-    <Card title="Напоминание о брошенной корзине">
-      <p className="mb-3 text-sm text-muted">
-        Покупателю, который положил товары в корзину и не оформил заказ, бот напомнит об этом один
-        раз. Новый товар в корзине разрешает следующее напоминание. «0» — выключить.
-      </p>
+    <Card title={t("broadcasts.cart.title")}>
+      <p className="mb-3 text-sm text-muted">{t("broadcasts.cart.intro")}</p>
       <form
         className="flex items-end gap-2"
         onSubmit={(e) => {
@@ -872,7 +893,7 @@ function CartReminderCard({ hours }: { hours: string }) {
           void save.run().catch(() => {});
         }}
       >
-        <Field label="Через сколько часов">
+        <Field label={t("broadcasts.cart.hours")}>
           <input
             className="input w-32"
             type="number"
@@ -885,7 +906,7 @@ function CartReminderCard({ hours }: { hours: string }) {
           />
         </Field>
         <button className="btn-secondary" disabled={save.busy}>
-          Сохранить
+          {t("common.save")}
         </button>
       </form>
       <ErrorBox error={save.error} />

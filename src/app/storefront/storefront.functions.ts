@@ -1,11 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { Locale } from "@/core/i18n/locale";
 
 /**
  * Витрина и Mini App: публичные серверные функции. Арендатор — по slug из
  * адреса; ничего приватного не отдаём, всё под ключом арендатора.
  */
 const slug = z.string().regex(/^[a-z0-9][a-z0-9_.-]{1,39}$/);
+
+/** Переводчик ошибок, которые покупатель увидит на витрине, — на языке магазина. */
+async function shopT(ctx: { tenant: { settings: { default_locale?: Locale } } }) {
+  const { storefrontT } = await import("@/app/i18n/storefront");
+  return storefrontT(ctx.tenant.settings.default_locale ?? "ru");
+}
 
 async function shopCtx(s: string) {
   const { requireTenant, tenantContext } = await import("@/core/tenant/resolve.server");
@@ -21,7 +28,12 @@ export const storeInfoFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const ctx = await shopCtx(data.slug);
     const { storeInfo } = await import("@/core/storefront/catalog");
-    return { ...(await storeInfo(ctx)), paused: ctx.tenant.status !== "active" };
+    return {
+      ...(await storeInfo(ctx)),
+      paused: ctx.tenant.status !== "active",
+      /** Язык витрины — язык магазина; покупатель может сменить его через `?lang=`. */
+      locale: (ctx.tenant.settings.default_locale ?? "ru") as Locale,
+    };
   });
 
 export const storeCatalogFn = createServerFn({ method: "GET" })
@@ -42,7 +54,7 @@ export const storeProductFn = createServerFn({ method: "GET" })
     const ctx = await shopCtx(data.slug);
     const { storeProduct, storeCatalog } = await import("@/core/storefront/catalog");
     const product = await storeProduct(ctx, data.id);
-    if (!product) throw new Error("Товар не найден");
+    if (!product) throw new Error((await shopT(ctx))("error.productNotFound"));
     const related = (await storeCatalog(ctx, { categoryId: product.categoryIds[0] ?? null }))
       .filter((p) => p.id !== product.id)
       .slice(0, 4);
@@ -67,7 +79,7 @@ export const createHandoffFn = createServerFn({ method: "POST" })
     const ctx = await shopCtx(data.slug);
     const { createHandoff, parseHandoffItems } = await import("@/core/storefront/handoff");
     const r = await createHandoff(ctx, parseHandoffItems(data.items));
-    if (!r) throw new Error("У магазина ещё не подключён Telegram-бот — напишите продавцу.");
+    if (!r) throw new Error((await shopT(ctx))("error.noBot"));
     return { url: r.url };
   });
 
@@ -86,9 +98,7 @@ export const miniAppCheckoutFn = createServerFn({ method: "POST" })
     const v = validateInitData(data.initData, ctx.secrets.telegramToken());
     if (!v.ok)
       throw new Error(
-        v.reason === "expired"
-          ? "Сессия Mini App устарела — откройте магазин заново."
-          : "Не удалось подтвердить Telegram-аккаунт.",
+        (await shopT(ctx))(v.reason === "expired" ? "error.miniAppExpired" : "error.miniAppAuth"),
       );
     const { upsertCustomer } = await import("@/core/customers/customers");
     const { importItems, parseHandoffItems } = await import("@/core/storefront/handoff");
@@ -99,8 +109,7 @@ export const miniAppCheckoutFn = createServerFn({ method: "POST" })
       languageCode: v.user.language_code,
     });
     const imported = await importItems(ctx, customer, parseHandoffItems(data.items));
-    if (imported === 0)
-      throw new Error("Ни один товар не удалось положить в корзину — возможно, он снят с продажи.");
+    if (imported === 0) throw new Error((await shopT(ctx))("error.nothingImported"));
     const { env } = await import("@/config/env");
     const { telegramApi } = await import("@/channels/telegram/api");
     const { sendCartMessage } = await import("@/channels/telegram/handle-update");

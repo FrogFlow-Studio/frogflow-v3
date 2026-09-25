@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { storeProductFn } from "@/app/storefront/storefront.functions";
 import { useCart } from "@/app/storefront/cart";
+import { useStorefrontLocale } from "@/app/storefront/locale";
+import { reviewsWord } from "@/app/i18n/storefront";
 import { formatMoney } from "@/core/money/money";
 
 export const Route = createFileRoute("/s/$slug/p/$id")({
@@ -24,6 +26,7 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
 function ProductPage() {
   const { product: p, related } = Route.useLoaderData();
   const { slug } = Route.useParams();
+  const { locale, t } = useStorefrontLocale();
   const cart = useCart();
   const [img, setImg] = useState(0);
   const [variant, setVariant] = useState<string | null>(p.variants[0]?.id ?? null);
@@ -41,14 +44,14 @@ function ProductPage() {
       image: p.images[0] ?? null,
       kind: p.kind,
     });
-    setMsg(r === "ok" ? "Добавлено в корзину" : "Файлы и физические товары оформляются отдельно.");
+    setMsg(r === "ok" ? t("product.addedToCart") : t("catalog.mixed"));
     setTimeout(() => setMsg(null), 2000);
   };
   return (
     <>
       <nav className="text-sm text-muted">
         <Link to="/s/$slug" params={{ slug }} className="hover:underline">
-          Каталог
+          {t("catalog.title")}
         </Link>
         <span className="mx-1.5">/</span>
         <span className="text-fg">{p.name}</span>
@@ -83,11 +86,12 @@ function ProductPage() {
         <div>
           <h1 className="text-2xl font-semibold">{p.name}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
-            <span className="badge">{p.kind === "digital" ? "📄 Файл" : "📦 Товар"}</span>
+            <span className="badge">
+              {p.kind === "digital" ? t("product.file") : t("product.physical")}
+            </span>
             {p.rating && (
               <span>
-                ★ {p.rating.avg.toFixed(1)} · {p.rating.count}{" "}
-                {p.rating.count === 1 ? "отзыв" : p.rating.count < 5 ? "отзыва" : "отзывов"}
+                ★ {p.rating.avg.toFixed(1)} · {p.rating.count} {reviewsWord(locale, p.rating.count)}
               </span>
             )}
           </div>
@@ -96,17 +100,17 @@ function ProductPage() {
           </div>
           {p.leadTimeDays ? (
             <div className="mt-1 text-sm text-muted">
-              ⏳ Срок изготовления: {p.leadTimeDays} дн.
+              {t("product.leadTime", { n: p.leadTimeDays })}
             </div>
           ) : null}
           {p.kind === "digital" && p.languages.length > 0 && (
             <div className="mt-1 text-sm text-muted">
-              Файлы: {p.languages.map((l) => l.toUpperCase()).join(", ")}
+              {t("product.files", { langs: p.languages.map((l) => l.toUpperCase()).join(", ") })}
             </div>
           )}
           {p.variants.length > 0 && (
             <div className="mt-4">
-              <div className="label">Вариант</div>
+              <div className="label">{t("product.variant")}</div>
               <div className="flex flex-wrap gap-2">
                 {p.variants.map((v) => (
                   <button
@@ -123,30 +127,30 @@ function ProductPage() {
           <div className="mt-5 flex items-center gap-3">
             {p.inStock ? (
               <button className="btn-primary px-5 py-2.5 text-base" onClick={add}>
-                🛒 В корзину
+                {t("product.addToCart")}
               </button>
             ) : (
-              <span className="badge">Нет в наличии</span>
+              <span className="badge">{t("product.outOfStock")}</span>
             )}
             {msg && <span className="text-sm text-muted">{msg}</span>}
           </div>
           <ul className="mt-5 space-y-1.5 text-sm text-muted">
             {p.kind === "digital" ? (
               <>
-                <li>⚡ Файл придёт сразу после подтверждения оплаты</li>
-                <li>🔁 Повторная отправка в любой момент из «Мои заказы»</li>
+                <li>{t("product.digitalInstant")}</li>
+                <li>{t("product.digitalResend")}</li>
               </>
             ) : (
               <>
-                <li>📅 Дату получения выберете при оформлении</li>
-                <li>🚚 Самовывоз или доставка — как удобно</li>
+                <li>{t("product.physicalDate")}</li>
+                <li>{t("product.physicalDelivery")}</li>
               </>
             )}
-            <li>💳 Оплата переводом по реквизитам или картой</li>
+            <li>{t("product.payment")}</li>
           </ul>
           {p.description && (
             <div className="mt-6 border-t border-line pt-5">
-              <h2 className="mb-2 text-sm font-semibold">Описание</h2>
+              <h2 className="mb-2 text-sm font-semibold">{t("product.description")}</h2>
               <p className="text-sm leading-relaxed whitespace-pre-line">{p.description}</p>
             </div>
           )}
@@ -154,7 +158,7 @@ function ProductPage() {
       </div>
       {related.length > 0 && (
         <section className="mt-10">
-          <h2 className="mb-3 text-sm font-semibold text-muted">Похожие товары</h2>
+          <h2 className="mb-3 text-sm font-semibold text-muted">{t("product.related")}</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {related.map((r) => (
               <Link

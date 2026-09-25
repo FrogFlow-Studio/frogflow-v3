@@ -6,6 +6,7 @@ import {
   chatMessagesFn,
   chatReplyFn,
 } from "@/app/admin/admin.functions";
+import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import type { ChatMessage, Conversation } from "@/core/chat/chat";
 
@@ -39,6 +40,9 @@ const BUBBLE: Record<string, string> = {
 
 function ChatPage() {
   const initial = Route.useLoaderData();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const loc = intlLocale(shop.locale);
   const [conversations, setConversations] = useState<Conversation[]>(initial.conversations);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -90,15 +94,12 @@ function ChatPage() {
 
   return (
     <>
-      <PageTitle
-        title="Чат с менеджером"
-        subtitle="Живые переписки бота с покупателями. Подключитесь к диалогу, чтобы отвечать самому — бот на это время замолчит для этого покупателя."
-      />
+      <PageTitle title={t("chat.title")} subtitle={t("chat.subtitle")} />
       <ErrorBox error={loadError ?? toggle.error ?? send.error} />
       <div className="card grid h-[calc(100vh-14rem)] min-h-[28rem] grid-cols-1 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <div className="overflow-y-auto border-b border-line md:border-r md:border-b-0">
           {conversations.length === 0 ? (
-            <Empty>Диалогов пока нет: как только покупатель напишет боту, он появится здесь.</Empty>
+            <Empty>{t("chat.empty")}</Empty>
           ) : (
             conversations.map((c) => (
               <button
@@ -111,16 +112,18 @@ function ChatPage() {
                   <span className="truncate text-sm font-medium">{label(c)}</span>
                   <span className="flex shrink-0 items-center gap-1">
                     {channelOf(c) && <Badge>{channelOf(c)}</Badge>}
-                    {c.active && <Badge tone="ok">вы в чате</Badge>}
+                    {c.active && <Badge tone="ok">{t("chat.youInChat")}</Badge>}
                     {c.unread_count > 0 && <Badge tone="accent">{c.unread_count}</Badge>}
                   </span>
                 </div>
                 <p className="mt-1 truncate text-xs text-muted">
-                  {c.last_message_direction === "out" ? "Вы: " : ""}
-                  {c.last_message_preview ? stripHtml(c.last_message_preview) : "Нет сообщений"}
+                  {c.last_message_direction === "out" ? t("chat.youPrefix") : ""}
+                  {c.last_message_preview
+                    ? stripHtml(c.last_message_preview)
+                    : t("chat.noMessages")}
                 </p>
                 <p className="mt-0.5 text-[11px] text-muted">
-                  {new Date(c.last_message_at).toLocaleString("ru")}
+                  {new Date(c.last_message_at).toLocaleString(loc)}
                 </p>
               </button>
             ))
@@ -128,7 +131,7 @@ function ChatPage() {
         </div>
         <div className="flex min-h-0 flex-col">
           {selected === null ? (
-            <p className="m-auto text-sm text-muted">Выберите диалог слева.</p>
+            <p className="m-auto text-sm text-muted">{t("chat.pickDialog")}</p>
           ) : (
             <>
               <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
@@ -145,7 +148,7 @@ function ChatPage() {
                   disabled={toggle.busy}
                   onClick={() => void toggle.run().catch(() => {})}
                 >
-                  {selected.active ? "Вернуть боту" : "Подключиться к диалогу"}
+                  {selected.active ? t("chat.returnToBot") : t("chat.join")}
                 </button>
               </div>
               <div
@@ -159,12 +162,12 @@ function ChatPage() {
                   >
                     {m.sender === "bot" && (
                       <p className="mb-1 text-[10px] tracking-wide text-muted uppercase">
-                        автоответ бота
+                        {t("chat.botAuto")}
                       </p>
                     )}
                     <p className="whitespace-pre-wrap">{stripHtml(m.text)}</p>
                     <p className="mt-1 text-[10px] text-muted">
-                      {new Date(m.created_at).toLocaleString("ru")}
+                      {new Date(m.created_at).toLocaleString(loc)}
                     </p>
                   </div>
                 ))}
@@ -180,9 +183,7 @@ function ChatPage() {
                   className="input min-h-10 flex-1"
                   rows={2}
                   placeholder={
-                    selected.active
-                      ? "Напишите покупателю…"
-                      : "Ответ уйдёт покупателю; чтобы бот не отвечал вместо вас — подключитесь к диалогу"
+                    selected.active ? t("chat.placeholderActive") : t("chat.placeholderInactive")
                   }
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
@@ -192,7 +193,7 @@ function ChatPage() {
                   }}
                 />
                 <button className="btn-primary self-end" disabled={!reply.trim() || send.busy}>
-                  Отправить
+                  {t("chat.send")}
                 </button>
               </form>
             </>

@@ -192,7 +192,7 @@ function OrderPage() {
                 <a href={proofUrl} target="_blank" rel="noreferrer">
                   <img
                     src={proofUrl}
-                    alt="чек"
+                    alt={t("order.proof")}
                     className="max-h-96 rounded-md border border-line"
                   />
                 </a>

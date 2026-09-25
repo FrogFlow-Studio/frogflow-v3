@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouteContext, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   automationLogsFn,
@@ -12,6 +12,7 @@ import {
   syncInstagramPostFn,
   toggleAutomationFn,
 } from "@/app/admin/instagram.functions";
+import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
 import { DM_LIMIT_PLAIN, DM_LIMIT_WITH_BUTTONS } from "@/core/instagram/comment-rules";
 
@@ -28,42 +29,49 @@ type CommentRow = Awaited<ReturnType<typeof postCommentsFn>>["comments"][number]
 
 const REPLY_STATUS: Record<
   CommentRow["replyStatus"],
-  { label: string; tone: "neutral" | "ok" | "warn" | "danger" | "accent" }
+  { label: AdminKey; tone: "neutral" | "ok" | "warn" | "danger" | "accent" }
 > = {
-  owner: { label: "ваш ответ", tone: "neutral" },
-  sent: { label: "DM ушла", tone: "ok" },
-  failed: { label: "DM не прошла", tone: "danger" },
-  no_match: { label: "не по слову", tone: "neutral" },
-  no_automation: { label: "нет правила", tone: "neutral" },
-  missing: { label: "пропущен", tone: "warn" },
+  owner: { label: "instagram.reply.owner", tone: "neutral" },
+  sent: { label: "instagram.reply.sent", tone: "ok" },
+  failed: { label: "instagram.reply.failed", tone: "danger" },
+  no_match: { label: "instagram.reply.no_match", tone: "neutral" },
+  no_automation: { label: "instagram.reply.no_automation", tone: "neutral" },
+  missing: { label: "instagram.reply.missing", tone: "warn" },
 };
-const BLOCK_REASON: Record<string, string> = {
-  nested: "ответ в ветке — Instagram не принимает private reply",
-  too_old: "старше 7 дней",
-  cannot_reply: "Instagram помечает canReply=false",
+const BLOCK_REASON: Record<string, AdminKey> = {
+  nested: "instagram.block.nested",
+  too_old: "instagram.block.too_old",
+  cannot_reply: "instagram.block.cannot_reply",
 };
+
+/** Переводчик и код Intl для языка панели — из контекста маршрута. */
+function useAdminI18n() {
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
+  return { t: adminT(shop.locale), intl: intlLocale(shop.locale) };
+}
 
 function InstagramPage() {
   const data = Route.useLoaderData();
+  const { t } = useAdminI18n();
   const [editing, setEditing] = useState<Automation | null | "new">(null);
   if (!data.configured)
     return (
       <>
         <PageTitle title="Instagram" />
         <Card>
-          <Empty>Zernio не подключён на платформе — обратитесь к оператору.</Empty>
+          <Empty>{t("instagram.notConfigured")}</Empty>
         </Card>
       </>
     );
   if (data.accounts.length === 0)
     return (
       <>
-        <PageTitle title="Instagram" subtitle="Автоответы в Direct на комментарии к постам." />
+        <PageTitle title="Instagram" subtitle={t("instagram.subtitleShort")} />
         <Card>
           <Empty>
-            Instagram ещё не подключён.{" "}
+            {t("instagram.notConnected")}{" "}
             <Link to="/admin/settings" className="underline">
-              Подключить в настройках
+              {t("instagram.connectInSettings")}
             </Link>
           </Empty>
         </Card>
@@ -71,10 +79,7 @@ function InstagramPage() {
     );
   return (
     <>
-      <PageTitle
-        title="Instagram"
-        subtitle="Комментарий с ключевым словом под постом — и человеку уходит сообщение в Direct. Правила исполняет Zernio, резервный крон раз в 15 минут доотправляет пропущенные."
-      />
+      <PageTitle title="Instagram" subtitle={t("instagram.subtitle")} />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="space-y-4">
           <RulesCard data={data} onEdit={setEditing} />
@@ -95,34 +100,37 @@ function InstagramPage() {
   );
 }
 
-function targetLabel(a: Automation): string {
-  if (a.trigger === "story_reply") return "ответы на сторис";
-  if (!a.platformPostId) return "все посты";
-  return a.postTitle ? `пост «${a.postTitle.slice(0, 40)}…»` : `пост ${a.platformPostId}`;
+function targetLabel(t: AdminT, a: Automation): string {
+  if (a.trigger === "story_reply") return t("instagram.target.storyReplies");
+  if (!a.platformPostId) return t("instagram.target.allPosts");
+  return a.postTitle
+    ? t("instagram.target.postTitled", { title: a.postTitle.slice(0, 40) })
+    : t("instagram.target.postId", { id: a.platformPostId });
 }
 
 function RulesCard({ data, onEdit }: { data: Data; onEdit: (a: Automation | "new") => void }) {
   const router = useRouter();
+  const { t } = useAdminI18n();
   const toggle = useAction(async (a: Automation) => {
     await toggleAutomationFn({ data: { id: a.id, isActive: !a.isActive } });
     await router.invalidate();
   });
   const remove = useAction(async (a: Automation) => {
-    if (!confirm(`Удалить правило «${a.name}»? Статистика срабатываний пропадёт.`)) return;
+    if (!confirm(t("instagram.rules.deleteConfirm", { name: a.name }))) return;
     await deleteAutomationFn({ data: { id: a.id } });
     await router.invalidate();
   });
   return (
     <Card
-      title="Правила Comment-to-DM"
+      title={t("instagram.rules.title")}
       actions={
         <button className="btn-primary text-xs" onClick={() => onEdit("new")}>
-          + Новое правило
+          {t("instagram.rules.new")}
         </button>
       }
     >
       {data.automations.length === 0 ? (
-        <Empty>Правил пока нет. Создайте первое: пост, ключевое слово и текст для Direct.</Empty>
+        <Empty>{t("instagram.rules.empty")}</Empty>
       ) : (
         <ul className="divide-y divide-line">
           {data.automations.map((a) => (
@@ -132,9 +140,11 @@ function RulesCard({ data, onEdit }: { data: Data; onEdit: (a: Automation | "new
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{a.name}</span>
                     <Badge tone={a.isActive ? "ok" : "neutral"}>
-                      {a.isActive ? "работает" : "выключено"}
+                      {a.isActive ? t("instagram.rules.active") : t("instagram.rules.inactive")}
                     </Badge>
-                    {a.twoStepDm && <Badge tone="accent">2 шага</Badge>}
+                    {a.twoStepDm && (
+                      <Badge tone="accent">{t("instagram.rules.twoStepBadge")}</Badge>
+                    )}
                     {data.accounts.length > 1 && (
                       <span className="text-xs text-muted">
                         {data.accounts.find((x) => x.id === a.accountId)?.name ?? a.accountId}
@@ -142,16 +152,22 @@ function RulesCard({ data, onEdit }: { data: Data; onEdit: (a: Automation | "new
                     )}
                   </div>
                   <p className="mt-1 text-xs text-muted">
-                    {targetLabel(a)} ·{" "}
+                    {targetLabel(t, a)} ·{" "}
                     {a.keywords.length
-                      ? `${a.matchMode === "exact" ? "точно" : "содержит"}: ${a.keywords.join(", ")}`
-                      : "любой комментарий"}
+                      ? `${a.matchMode === "exact" ? t("instagram.match.exact") : t("instagram.match.contains")}: ${a.keywords.join(", ")}`
+                      : t("instagram.rules.anyComment")}
                   </p>
                   <p className="mt-1 line-clamp-2 text-sm">{a.dmMessage}</p>
                   <p className="mt-1 text-xs text-muted tabular-nums">
-                    сработало {a.stats.triggered} · DM {a.stats.dmsSent}
+                    {t("instagram.rules.stats", {
+                      triggered: a.stats.triggered,
+                      sent: a.stats.dmsSent,
+                    })}
                     {a.stats.dmsFailed > 0 && (
-                      <span className="text-danger"> · не прошло {a.stats.dmsFailed}</span>
+                      <span className="text-danger">
+                        {" "}
+                        {t("instagram.rules.failedCount", { n: a.stats.dmsFailed })}
+                      </span>
                     )}
                   </p>
                 </div>
@@ -159,16 +175,16 @@ function RulesCard({ data, onEdit }: { data: Data; onEdit: (a: Automation | "new
                   <Switch
                     checked={a.isActive}
                     onChange={() => void toggle.run(a).catch(() => {})}
-                    label="Включено"
+                    label={t("instagram.rules.enabled")}
                   />
                   <button className="btn-ghost text-xs" onClick={() => onEdit(a)}>
-                    Изменить
+                    {t("common.edit")}
                   </button>
                   <button
                     className="btn-ghost text-xs text-danger"
                     onClick={() => void remove.run(a).catch(() => {})}
                   >
-                    Удалить
+                    {t("common.delete")}
                   </button>
                 </div>
               </div>
@@ -183,6 +199,7 @@ function RulesCard({ data, onEdit }: { data: Data; onEdit: (a: Automation | "new
 }
 
 function LogsDisclosure({ id }: { id: string }) {
+  const { t, intl } = useAdminI18n();
   const [open, setOpen] = useState(false);
   const [onlyFailed, setOnlyFailed] = useState(false);
   const [logs, setLogs] = useState<Awaited<ReturnType<typeof automationLogsFn>>["logs"] | null>(
@@ -207,7 +224,7 @@ function LogsDisclosure({ id }: { id: string }) {
   return (
     <div className="mt-2">
       <button className="btn-ghost text-xs" onClick={() => setOpen((v) => !v)}>
-        {open ? "Скрыть историю" : "История срабатываний"}
+        {open ? t("instagram.logs.hide") : t("instagram.logs.show")}
       </button>
       {open && (
         <div className="mt-2 rounded-md border border-line p-2 text-xs">
@@ -217,13 +234,13 @@ function LogsDisclosure({ id }: { id: string }) {
               checked={onlyFailed}
               onChange={(e) => setOnlyFailed(e.target.checked)}
             />
-            только неудачные
+            {t("instagram.logs.onlyFailed")}
           </label>
           <ErrorBox error={error} />
           {logs === null ? (
-            <p className="text-muted">Загрузка…</p>
+            <p className="text-muted">{t("instagram.loading")}</p>
           ) : logs.length === 0 ? (
-            <p className="text-muted">Записей нет.</p>
+            <p className="text-muted">{t("instagram.logs.empty")}</p>
           ) : (
             <ul className="max-h-64 space-y-1 overflow-auto">
               {logs.map((l, i) => (
@@ -237,7 +254,7 @@ function LogsDisclosure({ id }: { id: string }) {
                   <span className="truncate text-muted">{l.commentText}</span>
                   {l.error && <span className="text-danger">{l.error}</span>}
                   {l.createdAt && (
-                    <span className="text-muted">{new Date(l.createdAt).toLocaleString("ru")}</span>
+                    <span className="text-muted">{new Date(l.createdAt).toLocaleString(intl)}</span>
                   )}
                 </li>
               ))}
@@ -284,6 +301,7 @@ function PostPicker({
   value: { platformPostId: string; postId: string; title: string } | null;
   onChange: (v: { platformPostId: string; postId: string; title: string } | null) => void;
 }) {
+  const { t, intl } = useAdminI18n();
   const { posts, error, refresh, setPosts } = usePosts(accountId);
   const [url, setUrl] = useState("");
   const sync = useAction(async () => {
@@ -311,29 +329,26 @@ function PostPicker({
             );
           }}
         >
-          <option value="">Все посты аккаунта</option>
+          <option value="">{t("instagram.posts.all")}</option>
           {(posts ?? []).map((p) => (
             <option key={p.platformPostId} value={p.platformPostId}>
               {[
-                p.publishedAt ? new Date(p.publishedAt).toLocaleDateString("ru") : "",
+                p.publishedAt ? new Date(p.publishedAt).toLocaleDateString(intl) : "",
                 p.kind,
                 p.caption || p.platformPostId,
               ]
                 .filter(Boolean)
                 .join(" · ")}
-              {p.zernioPostId ? "" : " (нет id Zernio)"}
+              {p.zernioPostId ? "" : ` ${t("instagram.posts.noZernioId")}`}
             </option>
           ))}
         </select>
         <button type="button" className="btn-secondary text-xs" onClick={refresh}>
-          {posts === null ? "…" : "Обновить"}
+          {posts === null ? "…" : t("instagram.posts.refresh")}
         </button>
       </div>
       {value && !value.postId && (
-        <p className="text-xs text-danger">
-          У этого поста нет id записи в Zernio — вставьте ссылку на публикацию ниже, чтобы
-          досинхронизировать.
-        </p>
+        <p className="text-xs text-danger">{t("instagram.posts.missingId")}</p>
       )}
       <div className="flex gap-2">
         <input
@@ -348,7 +363,7 @@ function PostPicker({
           disabled={!url.trim() || sync.busy}
           onClick={() => void sync.run().catch(() => {})}
         >
-          {sync.busy ? "Ищем…" : "Найти по ссылке"}
+          {sync.busy ? t("instagram.posts.searching") : t("instagram.posts.findByUrl")}
         </button>
       </div>
       <ErrorBox error={error ?? sync.error} />
@@ -365,6 +380,7 @@ function ButtonsEditor({
   onChange: (b: Button[]) => void;
   telegramUsername: string | null;
 }) {
+  const { t } = useAdminI18n();
   const update = (i: number, patch: Partial<Button>) =>
     onChange(buttons.map((b, j) => (j === i ? { ...b, ...patch } : b)));
   return (
@@ -373,7 +389,7 @@ function ButtonsEditor({
         <div key={i} className="flex flex-wrap gap-2">
           <input
             className="input w-52"
-            placeholder="Текст кнопки"
+            placeholder={t("instagram.buttons.textPlaceholder")}
             maxLength={40}
             value={b.title}
             onChange={(e) => update(i, { title: e.target.value })}
@@ -383,8 +399,8 @@ function ButtonsEditor({
             value={b.type}
             onChange={(e) => update(i, { type: e.target.value as Button["type"] })}
           >
-            <option value="url">ссылка</option>
-            <option value="postback">команда боту</option>
+            <option value="url">{t("instagram.buttons.typeUrl")}</option>
+            <option value="postback">{t("instagram.buttons.typePostback")}</option>
           </select>
           {b.type === "url" ? (
             <input
@@ -417,7 +433,7 @@ function ButtonsEditor({
             className="btn-secondary text-xs"
             onClick={() => onChange([...buttons, { type: "url", title: "", url: "" }])}
           >
-            + Кнопка
+            {t("instagram.buttons.add")}
           </button>
           {telegramUsername && (
             <button
@@ -428,13 +444,13 @@ function ButtonsEditor({
                   ...buttons,
                   {
                     type: "url",
-                    title: "Открыть в Telegram ✈️",
+                    title: t("instagram.buttons.openTelegram"),
                     url: `https://t.me/${telegramUsername}`,
                   },
                 ])
               }
             >
-              + В Telegram-бот
+              {t("instagram.buttons.addTelegram")}
             </button>
           )}
         </div>
@@ -453,6 +469,7 @@ function RuleForm({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const { t } = useAdminI18n();
   const [accountId, setAccountId] = useState(initial?.accountId ?? data.accounts[0]!.id);
   const [name, setName] = useState(initial?.name ?? "");
   const [trigger, setTrigger] = useState<"comment" | "story_reply">(initial?.trigger ?? "comment");
@@ -515,10 +532,10 @@ function RuleForm({
 
   return (
     <Card
-      title={initial ? "Изменить правило" : "Новое правило"}
+      title={initial ? t("instagram.form.editTitle") : t("instagram.form.newTitle")}
       actions={
         <button className="btn-ghost text-xs" onClick={onClose}>
-          Закрыть
+          {t("common.close")}
         </button>
       }
     >
@@ -530,18 +547,18 @@ function RuleForm({
         }}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Название">
+          <Field label={t("instagram.form.name")}>
             <input
               className="input"
               value={name}
               maxLength={120}
               required
               onChange={(e) => setName(e.target.value)}
-              placeholder="Рилс про курс"
+              placeholder={t("instagram.form.namePlaceholder")}
             />
           </Field>
           {data.accounts.length > 1 ? (
-            <Field label="Аккаунт">
+            <Field label={t("instagram.form.account")}>
               <select
                 className="input"
                 value={accountId}
@@ -558,44 +575,41 @@ function RuleForm({
               </select>
             </Field>
           ) : (
-            <Field label="Срабатывает на">
+            <Field label={t("instagram.form.trigger")}>
               <select
                 className="input"
                 value={trigger}
                 onChange={(e) => setTrigger(e.target.value as typeof trigger)}
               >
-                <option value="comment">комментарии к посту</option>
-                <option value="story_reply">ответы на сторис</option>
+                <option value="comment">{t("instagram.trigger.comment")}</option>
+                <option value="story_reply">{t("instagram.trigger.storyReply")}</option>
               </select>
             </Field>
           )}
         </div>
         {trigger === "comment" && (
-          <Field
-            label="Пост"
-            hint="Правило на все посты требует ключевое слово — иначе бот ответит на любой комментарий."
-          >
+          <Field label={t("instagram.form.post")} hint={t("instagram.form.postHint")}>
             <PostPicker accountId={accountId} value={target} onChange={setTarget} />
           </Field>
         )}
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
-          <Field label="Ключевые слова" hint="через запятую; регистр не важен">
+          <Field label={t("instagram.form.keywords")} hint={t("instagram.form.keywordsHint")}>
             <input
               className="input"
               value={keywords}
               disabled={replyToAll && Boolean(target)}
               onChange={(e) => setKeywords(e.target.value)}
-              placeholder="хочу, цена, +"
+              placeholder={t("instagram.form.keywordsPlaceholder")}
             />
           </Field>
-          <Field label="Совпадение">
+          <Field label={t("instagram.form.match")}>
             <select
               className="input"
               value={matchMode}
               onChange={(e) => setMatchMode(e.target.value as typeof matchMode)}
             >
-              <option value="contains">содержит</option>
-              <option value="exact">точно</option>
+              <option value="contains">{t("instagram.match.contains")}</option>
+              <option value="exact">{t("instagram.match.exact")}</option>
             </select>
           </Field>
         </div>
@@ -604,23 +618,23 @@ function RuleForm({
             <Switch
               checked={replyToAll}
               onChange={setReplyToAll}
-              label="Отвечать на любой комментарий"
+              label={t("instagram.form.replyToAll")}
             />
-            <span className="text-sm">Отвечать на любой комментарий под этим постом</span>
+            <span className="text-sm">{t("instagram.form.replyToAllHint")}</span>
           </div>
         )}
-        <Field label="Сообщение в Direct" hint={`${dmMessage.length} / ${limit}`}>
+        <Field label={t("instagram.form.dmMessage")} hint={`${dmMessage.length} / ${limit}`}>
           <textarea
             className="input min-h-28"
             value={dmMessage}
             maxLength={DM_LIMIT_PLAIN}
             required
             onChange={(e) => setDmMessage(e.target.value)}
-            placeholder="Привет! Вот ссылка на материалы…"
+            placeholder={t("instagram.form.dmPlaceholder")}
           />
         </Field>
         <div>
-          <span className="label">Кнопки под сообщением (до 3)</span>
+          <span className="label">{t("instagram.form.buttons")}</span>
           <ButtonsEditor
             buttons={buttons}
             onChange={setButtons}
@@ -629,32 +643,27 @@ function RuleForm({
         </div>
         <div className="rounded-md border border-line p-3">
           <div className="flex items-center gap-3">
-            <Switch checked={twoStepDm} onChange={setTwoStepDm} label="Два шага" />
-            <span className="text-sm">
-              Два шага: сначала текст без кнопок, кнопки — вторым сообщением
-            </span>
+            <Switch
+              checked={twoStepDm}
+              onChange={setTwoStepDm}
+              label={t("instagram.form.twoStep")}
+            />
+            <span className="text-sm">{t("instagram.form.twoStepLabel")}</span>
           </div>
-          <p className="mt-1 text-xs text-muted">
-            Meta пессимизирует кнопки в первом сообщении незнакомому человеку. В этом режиме кнопки
-            уходят вторым сообщением; если Direct ещё закрыт — сразу после первого ответа
-            покупателя.
-          </p>
+          <p className="mt-1 text-xs text-muted">{t("instagram.form.twoStepHint")}</p>
           {twoStepDm && (
-            <Field label="Текст второго сообщения">
+            <Field label={t("instagram.form.secondDm")}>
               <input
                 className="input mt-2"
                 value={secondDmMessage}
                 maxLength={1000}
                 onChange={(e) => setSecondDmMessage(e.target.value)}
-                placeholder="Для перехода в бот и получения материалов нажмите кнопку ниже 👇"
+                placeholder={t("instagram.form.secondDmPlaceholder")}
               />
             </Field>
           )}
         </div>
-        <Field
-          label="Публичный ответ под комментарием"
-          hint="необязательно; например «Ответили в директ 💬»"
-        >
+        <Field label={t("instagram.form.commentReply")} hint={t("instagram.form.commentReplyHint")}>
           <input
             className="input"
             value={commentReply}
@@ -662,26 +671,21 @@ function RuleForm({
             onChange={(e) => setCommentReply(e.target.value)}
           />
         </Field>
-        <Field
-          label="Если DM не доставилась никак"
-          hint="публичный ответ с просьбой написать первым — открывает окно Direct"
-        >
+        <Field label={t("instagram.form.unresolved")} hint={t("instagram.form.unresolvedHint")}>
           <input
             className="input"
             value={unresolvedPrompt}
             maxLength={500}
             onChange={(e) => setUnresolvedPrompt(e.target.value)}
-            placeholder="Напишите нам в директ, и мы пришлём материалы 🙌"
+            placeholder={t("instagram.form.unresolvedPlaceholder")}
           />
         </Field>
         <div className="flex items-center gap-3">
           <button className="btn-primary" disabled={save.busy || !dmMessage.trim() || !name.trim()}>
-            {save.busy ? "Сохраняем…" : "Сохранить"}
+            {save.busy ? t("instagram.form.saving") : t("common.save")}
           </button>
           {initial && (initial.platformPostId ?? null) !== (target?.platformPostId ?? null) && (
-            <span className="text-xs text-warn">
-              Смена поста пересоздаёт правило — счётчики обнулятся.
-            </span>
+            <span className="text-xs text-warn">{t("instagram.form.postChangeWarn")}</span>
           )}
         </div>
         <ErrorBox error={save.error} />
@@ -691,6 +695,7 @@ function RuleForm({
 }
 
 function CatchupCard({ data }: { data: Data }) {
+  const { t, intl } = useAdminI18n();
   const [accountId, setAccountId] = useState(data.accounts[0]!.id);
   const { posts } = usePosts(accountId);
   const [postId, setPostId] = useState("");
@@ -722,7 +727,7 @@ function CatchupCard({ data }: { data: Data }) {
   });
   const ids = useMemo(() => [...selected].slice(0, 25), [selected]);
   const sendPrivate = useAction(async () => {
-    if (!confirm(`Отправить DM ${ids.length} людям?`)) return;
+    if (!confirm(t("instagram.catchup.confirmDm", { n: ids.length }))) return;
     const r = await catchupPrivateFn({
       data: {
         accountId,
@@ -737,7 +742,7 @@ function CatchupCard({ data }: { data: Data }) {
     setResults(r.results);
   });
   const sendPublic = useAction(async () => {
-    if (!confirm(`Ответить публично под ${ids.length} комментариями?`)) return;
+    if (!confirm(t("instagram.catchup.confirmPublic", { n: ids.length }))) return;
     const r = await catchupPublicFn({
       data: { accountId, postId, commentIds: ids, message: publicText },
     });
@@ -746,11 +751,8 @@ function CatchupCard({ data }: { data: Data }) {
   const resultOf = (id: string) => results.find((r) => r.commentId === id);
 
   return (
-    <Card title="Догоняющая рассылка по комментариям">
-      <p className="mb-3 text-sm text-muted">
-        Если правило под постом замолчало, здесь видно, кому DM не ушла, и можно отправить её
-        вручную — до 25 человек за раз.
-      </p>
+    <Card title={t("instagram.catchup.title")}>
+      <p className="mb-3 text-sm text-muted">{t("instagram.catchup.intro")}</p>
       <div className="flex flex-wrap gap-2">
         {data.accounts.length > 1 && (
           <select
@@ -777,11 +779,15 @@ function CatchupCard({ data }: { data: Data }) {
             setLoaded(null);
           }}
         >
-          <option value="">{posts === null ? "Загрузка постов…" : "Выберите пост"}</option>
+          <option value="">
+            {posts === null
+              ? t("instagram.catchup.loadingPosts")
+              : t("instagram.catchup.choosePost")}
+          </option>
           {(posts ?? []).map((p) => (
             <option key={p.platformPostId} value={p.platformPostId}>
               {[
-                p.publishedAt ? new Date(p.publishedAt).toLocaleDateString("ru") : "",
+                p.publishedAt ? new Date(p.publishedAt).toLocaleDateString(intl) : "",
                 p.kind,
                 p.caption || p.platformPostId,
               ]
@@ -795,27 +801,28 @@ function CatchupCard({ data }: { data: Data }) {
           disabled={!postId || load.busy}
           onClick={() => void load.run().catch(() => {})}
         >
-          {load.busy ? "Загружаем…" : "Загрузить комментарии"}
+          {load.busy ? t("instagram.catchup.loading") : t("instagram.catchup.load")}
         </button>
       </div>
       <ErrorBox error={load.error} />
       {loaded && (
         <div className="mt-3 space-y-3">
           {!loaded.automation && (
-            <p className="text-xs text-warn">
-              Под этим постом нет активного правила — статусы «пропущен» тут не считаются.
-            </p>
+            <p className="text-xs text-warn">{t("instagram.catchup.noRule")}</p>
           )}
           <p className="text-xs text-muted">
-            Комментариев: {loaded.comments.length} · выбрано {selected.size}
+            {t("instagram.catchup.counts", {
+              total: loaded.comments.length,
+              selected: selected.size,
+            })}
             <button
               className="btn-ghost ml-2 text-xs"
               onClick={() => setSelected(new Set(loaded.comments.map((c) => c.id)))}
             >
-              все
+              {t("instagram.catchup.selectAll")}
             </button>
             <button className="btn-ghost text-xs" onClick={() => setSelected(new Set())}>
-              никого
+              {t("instagram.catchup.selectNone")}
             </button>
           </p>
           <ul className="max-h-80 divide-y divide-line overflow-auto rounded-md border border-line">
@@ -841,18 +848,24 @@ function CatchupCard({ data }: { data: Data }) {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">@{c.username || "?"}</span>
-                      <Badge tone={st.tone}>{st.label}</Badge>
+                      <Badge tone={st.tone}>{t(st.label)}</Badge>
                       {c.blockReason && (
-                        <span className="text-xs text-muted">{BLOCK_REASON[c.blockReason]}</span>
+                        <span className="text-xs text-muted">
+                          {BLOCK_REASON[c.blockReason]
+                            ? t(BLOCK_REASON[c.blockReason]!)
+                            : c.blockReason}
+                        </span>
                       )}
                       {r && (
                         <Badge tone={r.ok ? "ok" : "danger"}>
-                          {r.ok ? "отправлено" : "ошибка"}
+                          {r.ok
+                            ? t("instagram.catchup.resultOk")
+                            : t("instagram.catchup.resultError")}
                         </Badge>
                       )}
                       {c.createdTime && (
                         <span className="text-xs text-muted">
-                          {new Date(c.createdTime).toLocaleString("ru")}
+                          {new Date(c.createdTime).toLocaleString(intl)}
                         </span>
                       )}
                     </div>
@@ -863,7 +876,7 @@ function CatchupCard({ data }: { data: Data }) {
               );
             })}
           </ul>
-          <Field label="Текст DM">
+          <Field label={t("instagram.catchup.dmText")}>
             <textarea
               className="input min-h-20"
               value={message}
@@ -876,10 +889,12 @@ function CatchupCard({ data }: { data: Data }) {
             disabled={ids.length === 0 || !message.trim() || sendPrivate.busy}
             onClick={() => void sendPrivate.run().catch(() => {})}
           >
-            {sendPrivate.busy ? "Отправляем…" : `Отправить DM (${ids.length})`}
+            {sendPrivate.busy
+              ? t("instagram.catchup.sending")
+              : t("instagram.catchup.sendDm", { n: ids.length })}
           </button>
           <ErrorBox error={sendPrivate.error} />
-          <Field label="Публичный ответ под комментарием" hint="отдельное действие, свой текст">
+          <Field label={t("instagram.form.commentReply")} hint={t("instagram.catchup.publicHint")}>
             <input
               className="input"
               value={publicText}
@@ -892,7 +907,9 @@ function CatchupCard({ data }: { data: Data }) {
             disabled={ids.length === 0 || !publicText.trim() || sendPublic.busy}
             onClick={() => void sendPublic.run().catch(() => {})}
           >
-            {sendPublic.busy ? "Отвечаем…" : `Ответить публично (${ids.length})`}
+            {sendPublic.busy
+              ? t("instagram.catchup.replying")
+              : t("instagram.catchup.replyPublic", { n: ids.length })}
           </button>
           <ErrorBox error={sendPublic.error} />
         </div>
@@ -902,23 +919,28 @@ function CatchupCard({ data }: { data: Data }) {
 }
 
 function FallbackJournal({ rows }: { rows: Data["fallbackSends"] }) {
+  const { t, intl } = useAdminI18n();
   if (rows.length === 0) return null;
   return (
-    <Card title="Резервные отправки">
-      <p className="mb-2 text-xs text-muted">
-        Крон раз в 15 минут дошлёт DM тем, кого правило Zernio пропустило.
-      </p>
+    <Card title={t("instagram.fallback.title")}>
+      <p className="mb-2 text-xs text-muted">{t("instagram.fallback.intro")}</p>
       <ul className="divide-y divide-line text-xs">
         {rows.map((r) => (
           <li key={r.id} className="flex flex-wrap items-center gap-2 py-1.5">
             <Badge tone={r.status === "sent" ? "ok" : r.status === "failed" ? "danger" : "warn"}>
               {r.status}
             </Badge>
-            <span className="text-muted">{new Date(r.created_at).toLocaleString("ru")}</span>
-            <span>комментарий {r.comment_id}</span>
-            {r.alt_channel_status === "sent" && <span className="text-ok">через диалог</span>}
-            {r.comment_reply_status === "sent" && <span>+ публичный ответ</span>}
-            {r.comment_reply_error === "prompt_sent" && <span>+ просьба написать</span>}
+            <span className="text-muted">{new Date(r.created_at).toLocaleString(intl)}</span>
+            <span>{t("instagram.fallback.comment", { id: r.comment_id })}</span>
+            {r.alt_channel_status === "sent" && (
+              <span className="text-ok">{t("instagram.fallback.viaDialog")}</span>
+            )}
+            {r.comment_reply_status === "sent" && (
+              <span>{t("instagram.fallback.publicReply")}</span>
+            )}
+            {r.comment_reply_error === "prompt_sent" && (
+              <span>{t("instagram.fallback.promptSent")}</span>
+            )}
             {r.error && <span className="text-danger">{r.error.slice(0, 160)}</span>}
           </li>
         ))}

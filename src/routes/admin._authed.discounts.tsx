@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   cancelGiftCertificateFn,
@@ -10,6 +10,7 @@ import {
   saveSettingsFn,
   settingsFn,
 } from "@/app/admin/admin.functions";
+import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 
@@ -30,12 +31,10 @@ type Promo = Awaited<ReturnType<typeof promoCodesFn>>[number];
 function DiscountsPage() {
   const { promos, gifts, referralPercent } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   return (
     <>
-      <PageTitle
-        title="Скидки"
-        subtitle="Промокоды и подарочные сертификаты покупатель вводит в корзине бота"
-      />
+      <PageTitle title={t("discounts.title")} subtitle={t("discounts.subtitle")} />
       <div className="grid gap-4 lg:grid-cols-2">
         {shop.modules.coupons && <PromoCard promos={promos} />}
         {shop.modules.gift_certificates && (
@@ -49,6 +48,8 @@ function DiscountsPage() {
 
 function PromoCard({ promos }: { promos: Promo[] }) {
   const router = useRouter();
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
+  const t = adminT(shop.locale);
   const [editing, setEditing] = useState<Promo | "new" | null>(null);
   const save = useAction(async (f: FormData, id: string | null) => {
     const mu = String(f.get("maxUses")).trim();
@@ -68,30 +69,30 @@ function PromoCard({ promos }: { promos: Promo[] }) {
     await router.invalidate();
   });
   const del = useAction(async (id: string) => {
-    if (!confirm("Удалить промокод?")) return;
+    if (!confirm(t("discounts.promo.deleteConfirm"))) return;
     await deletePromoCodeFn({ data: { id } });
     await router.invalidate();
   });
   const cur = editing === "new" ? null : editing;
   return (
     <Card
-      title="Промокоды"
+      title={t("discounts.promo.title")}
       actions={
         <button className="btn-secondary text-xs" onClick={() => setEditing("new")}>
-          + Промокод
+          {t("discounts.promo.new")}
         </button>
       }
     >
       {promos.length === 0 ? (
-        <Empty>Промокодов пока нет.</Empty>
+        <Empty>{t("discounts.promo.empty")}</Empty>
       ) : (
         <table className="table">
           <thead>
             <tr>
-              <th>Код</th>
-              <th>Скидка</th>
-              <th>Использований</th>
-              <th>Действует до</th>
+              <th>{t("discounts.col.code")}</th>
+              <th>{t("discounts.col.discount")}</th>
+              <th>{t("discounts.col.uses")}</th>
+              <th>{t("discounts.col.validUntil")}</th>
               <th></th>
             </tr>
           </thead>
@@ -102,9 +103,9 @@ function PromoCard({ promos }: { promos: Promo[] }) {
               return (
                 <tr key={p.id}>
                   <td className="font-mono font-medium">
-                    {p.code} {!p.is_active && <Badge>выкл</Badge>}
-                    {expired && <Badge tone="warn">истёк</Badge>}
-                    {exhausted && <Badge tone="warn">исчерпан</Badge>}
+                    {p.code} {!p.is_active && <Badge>{t("discounts.promo.off")}</Badge>}
+                    {expired && <Badge tone="warn">{t("discounts.promo.expired")}</Badge>}
+                    {exhausted && <Badge tone="warn">{t("discounts.promo.exhausted")}</Badge>}
                   </td>
                   <td>
                     {p.discount_type === "percent"
@@ -116,17 +117,19 @@ function PromoCard({ promos }: { promos: Promo[] }) {
                     {p.max_uses !== null ? ` / ${p.max_uses}` : ""}
                   </td>
                   <td className="text-muted">
-                    {p.valid_until ? new Date(p.valid_until).toLocaleDateString("ru") : "бессрочно"}
+                    {p.valid_until
+                      ? new Date(p.valid_until).toLocaleDateString(intlLocale(shop.locale))
+                      : t("discounts.promo.noExpiry")}
                   </td>
                   <td className="text-right whitespace-nowrap">
                     <button className="btn-ghost text-xs" onClick={() => setEditing(p)}>
-                      Изменить
+                      {t("common.edit")}
                     </button>
                     <button
                       className="btn-ghost text-xs text-danger"
                       onClick={() => void del.run(p.id).catch(() => {})}
                     >
-                      Удалить
+                      {t("common.delete")}
                     </button>
                   </td>
                 </tr>
@@ -146,7 +149,7 @@ function PromoCard({ promos }: { promos: Promo[] }) {
           }}
         >
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Код">
+            <Field label={t("discounts.col.code")}>
               <input
                 className="input font-mono uppercase"
                 name="code"
@@ -157,17 +160,17 @@ function PromoCard({ promos }: { promos: Promo[] }) {
                 placeholder="SALE10"
               />
             </Field>
-            <Field label="Тип">
+            <Field label={t("discounts.promo.type")}>
               <select
                 className="input"
                 name="discountType"
                 defaultValue={cur?.discount_type ?? "percent"}
               >
-                <option value="percent">Процент</option>
-                <option value="fixed">Сумма</option>
+                <option value="percent">{t("discounts.promo.typePercent")}</option>
+                <option value="fixed">{t("discounts.promo.typeFixed")}</option>
               </select>
             </Field>
-            <Field label="Значение">
+            <Field label={t("discounts.promo.value")}>
               <input
                 className="input"
                 name="discountValue"
@@ -178,7 +181,7 @@ function PromoCard({ promos }: { promos: Promo[] }) {
                 required
               />
             </Field>
-            <Field label="Лимит использований" hint="Пусто — без лимита.">
+            <Field label={t("discounts.promo.maxUses")} hint={t("discounts.promo.maxUsesHint")}>
               <input
                 className="input"
                 name="maxUses"
@@ -187,7 +190,7 @@ function PromoCard({ promos }: { promos: Promo[] }) {
                 defaultValue={cur?.max_uses ?? ""}
               />
             </Field>
-            <Field label="Действует до">
+            <Field label={t("discounts.col.validUntil")}>
               <input
                 className="input"
                 name="validUntil"
@@ -197,16 +200,16 @@ function PromoCard({ promos }: { promos: Promo[] }) {
             </Field>
             <label className="flex items-center gap-2 self-end pb-2 text-sm">
               <input type="checkbox" name="isActive" defaultChecked={cur?.is_active ?? true} />{" "}
-              Активен
+              {t("discounts.promo.active")}
             </label>
           </div>
           <ErrorBox error={save.error} />
           <div className="flex gap-2">
             <button className="btn-primary" disabled={save.busy}>
-              Сохранить
+              {t("common.save")}
             </button>
             <button type="button" className="btn-ghost" onClick={() => setEditing(null)}>
-              Отмена
+              {t("common.cancel")}
             </button>
           </div>
         </form>
@@ -219,6 +222,8 @@ type Gift = Awaited<ReturnType<typeof giftCertificatesFn>>[number];
 
 function GiftCard({ gifts, currency }: { gifts: Gift[]; currency: string }) {
   const router = useRouter();
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
+  const t = adminT(shop.locale);
   const [created, setCreated] = useState<string | null>(null);
   const create = useAction(async (f: FormData) => {
     const r = await createGiftCertificateFn({
@@ -233,14 +238,18 @@ function GiftCard({ gifts, currency }: { gifts: Gift[]; currency: string }) {
     await router.invalidate();
   });
   const cancel = useAction(async (id: string) => {
-    if (!confirm("Аннулировать сертификат?")) return;
+    if (!confirm(t("discounts.gift.cancelConfirm"))) return;
     await cancelGiftCertificateFn({ data: { id } });
     await router.invalidate();
   });
   const tone = { active: "ok", redeemed: "neutral", cancelled: "danger" } as const;
-  const label = { active: "активен", redeemed: "использован", cancelled: "аннулирован" } as const;
+  const label = {
+    active: t("discounts.gift.status.active"),
+    redeemed: t("discounts.gift.status.redeemed"),
+    cancelled: t("discounts.gift.status.cancelled"),
+  } as const;
   return (
-    <Card title="Подарочные сертификаты">
+    <Card title={t("discounts.gift.title")}>
       <form
         className="mb-4 grid gap-3 sm:grid-cols-[1fr_100px_1fr_auto]"
         onSubmit={(e) => {
@@ -252,7 +261,7 @@ function GiftCard({ gifts, currency }: { gifts: Gift[]; currency: string }) {
             .catch(() => {});
         }}
       >
-        <Field label="Номинал">
+        <Field label={t("discounts.gift.amount")}>
           <input
             className="input"
             name="amount"
@@ -263,39 +272,39 @@ function GiftCard({ gifts, currency }: { gifts: Gift[]; currency: string }) {
             placeholder="5000"
           />
         </Field>
-        <Field label="Валюта">
+        <Field label={t("discounts.gift.currency")}>
           <input className="input" name="currency" defaultValue={currency} maxLength={3} />
         </Field>
-        <Field label="Кому / заметка">
+        <Field label={t("discounts.gift.note")}>
           <input
             className="input"
             name="note"
             maxLength={200}
-            placeholder="Для Айгерим, день рождения"
+            placeholder={t("discounts.gift.notePlaceholder")}
           />
         </Field>
         <button className="btn-primary self-end" disabled={create.busy}>
-          Выпустить
+          {t("discounts.gift.issue")}
         </button>
       </form>
       {created && (
         <p className="mb-3 text-sm">
-          Код сертификата:{" "}
-          <code className="rounded bg-surface-2 px-2 py-1 font-mono">{created}</code> — передайте
-          покупателю.
+          {t("discounts.gift.createdCode")}{" "}
+          <code className="rounded bg-surface-2 px-2 py-1 font-mono">{created}</code>{" "}
+          {t("discounts.gift.createdHint")}
         </p>
       )}
       <ErrorBox error={create.error ?? cancel.error} />
       {gifts.length === 0 ? (
-        <Empty>Сертификатов пока нет.</Empty>
+        <Empty>{t("discounts.gift.empty")}</Empty>
       ) : (
         <table className="table">
           <thead>
             <tr>
-              <th>Код</th>
-              <th>Номинал</th>
-              <th>Статус</th>
-              <th>Заметка</th>
+              <th>{t("discounts.col.code")}</th>
+              <th>{t("discounts.gift.amount")}</th>
+              <th>{t("discounts.col.status")}</th>
+              <th>{t("discounts.col.note")}</th>
               <th></th>
             </tr>
           </thead>
@@ -309,7 +318,9 @@ function GiftCard({ gifts, currency }: { gifts: Gift[]; currency: string }) {
                     {label[g.status as keyof typeof label] ?? g.status}
                   </Badge>
                   {g.redeemed_order_id && (
-                    <span className="ml-1 text-xs text-muted">заказ #{g.redeemed_order_id}</span>
+                    <span className="ml-1 text-xs text-muted">
+                      {t("discounts.gift.order", { no: g.redeemed_order_id })}
+                    </span>
                   )}
                 </td>
                 <td className="text-muted">{g.note ?? ""}</td>
@@ -319,7 +330,7 @@ function GiftCard({ gifts, currency }: { gifts: Gift[]; currency: string }) {
                       className="btn-ghost text-xs text-danger"
                       onClick={() => void cancel.run(g.id).catch(() => {})}
                     >
-                      Аннулировать
+                      {t("discounts.gift.cancel")}
                     </button>
                   )}
                 </td>
@@ -334,18 +345,17 @@ function GiftCard({ gifts, currency }: { gifts: Gift[]; currency: string }) {
 
 function ReferralCard({ percent, bot }: { percent: string; bot: string | null }) {
   const router = useRouter();
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
+  const t = adminT(shop.locale);
   const [value, setValue] = useState(percent);
   const save = useAction(async () => {
     await saveSettingsFn({ data: { referral_discount_percent: value.trim() } });
     await router.invalidate();
   });
   return (
-    <Card title="Реферальная программа">
+    <Card title={t("discounts.referral.title")}>
       <p className="mb-3 text-sm text-muted">
-        Покупатель делится ссылкой из раздела «ℹ️ Информация» в боте
-        {bot ? ` (t.me/${bot}?start=ref_…)` : ""}. Приглашённый сразу получает одноразовый промокод
-        на первую покупку, пригласивший — такой же после первой выданной покупки друга. Промокоды
-        WELCOME-… и REF-… появляются в списке слева.
+        {t("discounts.referral.intro", { link: bot ? ` (t.me/${bot}?start=ref_…)` : "" })}
       </p>
       <form
         className="flex items-end gap-2"
@@ -354,7 +364,7 @@ function ReferralCard({ percent, bot }: { percent: string; bot: string | null })
           void save.run().catch(() => {});
         }}
       >
-        <Field label="Скидка по промокоду, %">
+        <Field label={t("discounts.referral.percent")}>
           <input
             className="input w-32"
             type="number"
@@ -367,7 +377,7 @@ function ReferralCard({ percent, bot }: { percent: string; bot: string | null })
           />
         </Field>
         <button className="btn-secondary" disabled={save.busy}>
-          Сохранить
+          {t("common.save")}
         </button>
       </form>
       <ErrorBox error={save.error} />

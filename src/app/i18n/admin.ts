@@ -3,12 +3,22 @@
  * откатом на русский по ключу. Язык магазина хранится в
  * app_settings.admin_locale и приходит в маршрутный контекст (`shop.locale`),
  * так что SSR и клиент рисуют одно и то же. Переведены сквозные страницы
- * (навигация, вход, обзор, заказы, товары, покупатели, категории, модули);
- * остальные разделы пока по-русски — ключи добавляются по мере перевода.
+ * (навигация, вход, обзор, заказы, товары, покупатели, категории, модули)
+ * здесь, остальные разделы — в `./admin/<раздел>.ts`, по файлу на страницу.
  */
 import type { Locale } from "@/core/i18n/locale";
+import * as settings from "./admin/settings";
+import * as broadcasts from "./admin/broadcasts";
+import * as instagram from "./admin/instagram";
+import * as vip from "./admin/vip";
+import * as product from "./admin/product";
+import * as discounts from "./admin/discounts";
+import * as consultant from "./admin/consultant";
+import * as analytics from "./admin/analytics";
+import * as chat from "./admin/chat";
+import * as outbox from "./admin/outbox";
 
-const ru = {
+const baseRu = {
   // навигация и оболочка
   "nav.overview": "Обзор",
   "nav.orders": "Заказы",
@@ -25,6 +35,7 @@ const ru = {
   "nav.settingsPhysical": "Оплата и доставка",
   "nav.settings": "Оплата и настройки",
   "nav.modules": "Модули",
+  "nav.undelivered": "Не доставлено",
   "nav.logout": "Выйти",
   "nav.paused": "пауза",
   "nav.language": "Язык панели",
@@ -234,10 +245,24 @@ const ru = {
   "modules.connect": "Подключить",
 } as const;
 
+const ru = {
+  ...baseRu,
+  ...settings.ru,
+  ...broadcasts.ru,
+  ...instagram.ru,
+  ...vip.ru,
+  ...product.ru,
+  ...discounts.ru,
+  ...consultant.ru,
+  ...analytics.ru,
+  ...chat.ru,
+  ...outbox.ru,
+} as const;
+
 export type AdminKey = keyof typeof ru;
 type Dict = Partial<Record<AdminKey, string>>;
 
-const kk: Dict = {
+const baseKk: Dict = {
   "nav.overview": "Шолу",
   "nav.orders": "Тапсырыстар",
   "nav.analytics": "Аналитика",
@@ -253,6 +278,7 @@ const kk: Dict = {
   "nav.settingsPhysical": "Төлем және жеткізу",
   "nav.settings": "Төлем және баптаулар",
   "nav.modules": "Модульдер",
+  "nav.undelivered": "Жеткізілмеді",
   "nav.logout": "Шығу",
   "nav.paused": "кідіріс",
   "nav.language": "Панель тілі",
@@ -451,7 +477,7 @@ const kk: Dict = {
   "modules.connect": "Қосу",
 };
 
-const en: Dict = {
+const baseEn: Dict = {
   "nav.overview": "Overview",
   "nav.orders": "Orders",
   "nav.analytics": "Analytics",
@@ -467,6 +493,7 @@ const en: Dict = {
   "nav.settingsPhysical": "Payment & delivery",
   "nav.settings": "Payment & settings",
   "nav.modules": "Modules",
+  "nav.undelivered": "Undelivered",
   "nav.logout": "Log out",
   "nav.paused": "paused",
   "nav.language": "Panel language",
@@ -665,7 +692,7 @@ const en: Dict = {
   "modules.connect": "Enable",
 };
 
-const uz: Dict = {
+const baseUz: Dict = {
   "nav.overview": "Umumiy",
   "nav.orders": "Buyurtmalar",
   "nav.analytics": "Tahlil",
@@ -681,6 +708,7 @@ const uz: Dict = {
   "nav.settingsPhysical": "To‘lov va yetkazib berish",
   "nav.settings": "To‘lov va sozlamalar",
   "nav.modules": "Modullar",
+  "nav.undelivered": "Yetkazilmagan",
   "nav.logout": "Chiqish",
   "nav.paused": "pauza",
   "nav.language": "Panel tili",
@@ -880,6 +908,48 @@ const uz: Dict = {
   "modules.requested": "So‘rov yuborildi",
   "modules.connectFor": "{price} ₸ ga ulash",
   "modules.connect": "Ulash",
+};
+
+const kk: Dict = {
+  ...baseKk,
+  ...settings.kk,
+  ...broadcasts.kk,
+  ...instagram.kk,
+  ...vip.kk,
+  ...product.kk,
+  ...discounts.kk,
+  ...consultant.kk,
+  ...analytics.kk,
+  ...chat.kk,
+  ...outbox.kk,
+};
+
+const en: Dict = {
+  ...baseEn,
+  ...settings.en,
+  ...broadcasts.en,
+  ...instagram.en,
+  ...vip.en,
+  ...product.en,
+  ...discounts.en,
+  ...consultant.en,
+  ...analytics.en,
+  ...chat.en,
+  ...outbox.en,
+};
+
+const uz: Dict = {
+  ...baseUz,
+  ...settings.uz,
+  ...broadcasts.uz,
+  ...instagram.uz,
+  ...vip.uz,
+  ...product.uz,
+  ...discounts.uz,
+  ...consultant.uz,
+  ...analytics.uz,
+  ...chat.uz,
+  ...outbox.uz,
 };
 
 const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };

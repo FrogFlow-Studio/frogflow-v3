@@ -3,6 +3,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { storeCatalogFn } from "@/app/storefront/storefront.functions";
 import { useCart } from "@/app/storefront/cart";
+import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
 
 export const Route = createFileRoute("/s/$slug/")({
@@ -17,6 +18,7 @@ function CatalogPage() {
   const products = Route.useLoaderData();
   const { slug } = Route.useParams();
   const shop = useLoaderData({ from: "/s/$slug" });
+  const { t } = useStorefrontLocale();
   const categories = shop.categories.filter((c) => !c.parent_id);
   const s = Route.useSearch();
   const navigate = useNavigate();
@@ -30,13 +32,13 @@ function CatalogPage() {
     <>
       <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">{current ? current.name : "Каталог"}</h1>
+          <h1 className="text-2xl font-semibold">{current ? current.name : t("catalog.title")}</h1>
           <p className="mt-1 text-sm text-muted">
             {s.q
-              ? `Поиск: «${s.q}»`
+              ? t("catalog.searchFor", { q: s.q })
               : digitalOnly
-                ? "Файлы приходят сразу после оплаты — в бот или на почту."
-                : "Выберите товар, оформите заказ — остальное сделает бот."}
+                ? t("catalog.digitalIntro")
+                : t("catalog.intro")}
           </p>
         </div>
         <form
@@ -52,11 +54,11 @@ function CatalogPage() {
         >
           <input
             className="input md:w-64"
-            placeholder="Поиск по каталогу"
+            placeholder={t("catalog.searchPlaceholder")}
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-          <button className="btn-secondary shrink-0">Найти</button>
+          <button className="btn-secondary shrink-0">{t("catalog.search")}</button>
         </form>
       </div>
 
@@ -68,7 +70,7 @@ function CatalogPage() {
             search={{ q: s.q }}
             className={`badge shrink-0 px-3 py-1.5 ${!s.category ? "border-accent bg-accent/10 text-accent" : ""}`}
           >
-            Все
+            {t("catalog.all")}
           </Link>
           {categories.map((c) => (
             <Link
@@ -87,13 +89,15 @@ function CatalogPage() {
       {products.length === 0 ? (
         <div className="rounded-lg border border-dashed border-line px-4 py-16 text-center">
           <div className="text-3xl">🛍</div>
-          <p className="mt-3 font-medium">{s.q ? "Ничего не нашлось" : "Каталог наполняется"}</p>
+          <p className="mt-3 font-medium">
+            {s.q ? t("catalog.nothingFound") : t("catalog.filling")}
+          </p>
           <p className="mt-1 text-sm text-muted">
-            {s.q ? "Попробуйте другое слово или откройте все товары." : "Загляните чуть позже."}
+            {s.q ? t("catalog.tryAnother") : t("catalog.comeLater")}
           </p>
           {s.q && (
             <Link to="/s/$slug" params={{ slug }} className="btn-secondary mt-4">
-              Все товары
+              {t("catalog.allProducts")}
             </Link>
           )}
         </div>
@@ -119,14 +123,14 @@ function CatalogPage() {
                 )}
                 <span className="absolute top-2 left-2 rounded-md bg-surface/90 px-2 py-0.5 text-[11px] font-medium backdrop-blur">
                   {p.kind === "digital"
-                    ? "Файл"
+                    ? t("catalog.file")
                     : p.leadTimeDays
-                      ? `На заказ · ${p.leadTimeDays} дн.`
-                      : "Товар"}
+                      ? t("catalog.madeToOrder", { n: p.leadTimeDays })
+                      : t("catalog.product")}
                 </span>
                 {!p.inStock && (
                   <span className="absolute top-2 right-2 rounded-md bg-fg/80 px-2 py-0.5 text-[11px] font-medium text-bg">
-                    нет в наличии
+                    {t("catalog.outOfStock")}
                   </span>
                 )}
               </Link>
@@ -145,8 +149,9 @@ function CatalogPage() {
                 )}
                 <div className="mt-auto flex items-center justify-between gap-2 pt-3">
                   <span className="text-sm font-semibold tabular-nums">
-                    {p.priceFrom ? "от " : ""}
-                    {formatMoney(p.price, p.currency)}
+                    {p.priceFrom
+                      ? t("catalog.priceFrom", { price: formatMoney(p.price, p.currency) })
+                      : formatMoney(p.price, p.currency)}
                   </span>
                   {!p.inStock ? null : p.variants.length > 0 ? (
                     <Link
@@ -154,7 +159,7 @@ function CatalogPage() {
                       params={{ slug, id: p.id }}
                       className="btn-secondary px-2.5 py-1 text-xs"
                     >
-                      Выбрать
+                      {t("catalog.choose")}
                     </Link>
                   ) : (
                     <button
@@ -173,7 +178,7 @@ function CatalogPage() {
                         setTimeout(() => setAdded(null), 1500);
                       }}
                     >
-                      {added === p.id ? "✓ Добавлено" : "В корзину"}
+                      {added === p.id ? t("catalog.added") : t("catalog.addToCart")}
                     </button>
                   )}
                 </div>
@@ -184,7 +189,7 @@ function CatalogPage() {
       )}
       {added === "mixed" && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-md bg-fg px-4 py-2 text-sm text-bg shadow">
-          Файлы и физические товары оформляются отдельно.
+          {t("catalog.mixed")}
         </div>
       )}
     </>

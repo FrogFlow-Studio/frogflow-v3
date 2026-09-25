@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { createHandoffFn, miniAppCheckoutFn } from "@/app/storefront/storefront.functions";
 import { useCart, useTelegramWebApp } from "@/app/storefront/cart";
+import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
 import { Empty, ErrorBox, useAction } from "@/app/ui";
 
@@ -9,6 +10,7 @@ export const Route = createFileRoute("/s/$slug/cart")({ component: CartPage });
 
 function CartPage() {
   const { slug } = Route.useParams();
+  const { t } = useStorefrontLocale();
   const cart = useCart();
   const wa = useTelegramWebApp();
   const [done, setDone] = useState<string | null>(null);
@@ -21,28 +23,28 @@ function CartPage() {
     if (wa) {
       await miniAppCheckoutFn({ data: { slug, initData: wa.initData, items } });
       cart.clear();
-      setDone("Корзина отправлена в чат с ботом — там кнопка «Оформить заказ».");
+      setDone(t("cart.sentToBot"));
       setTimeout(() => wa.close(), 1200);
       return;
     }
     const { url } = await createHandoffFn({ data: { slug, items } });
     cart.clear();
-    setDone("Открываем Telegram…");
+    setDone(t("cart.openingTelegram"));
     window.location.href = url;
   });
   if (cart.lines.length === 0 && !done) {
     return (
       <Empty>
-        Корзина пуста.{" "}
+        {t("cart.empty")}{" "}
         <Link to="/s/$slug" params={{ slug }} className="text-accent hover:underline">
-          В каталог
+          {t("cart.toCatalog")}
         </Link>
       </Empty>
     );
   }
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="mb-4 text-xl font-semibold">Корзина</h1>
+      <h1 className="mb-4 text-xl font-semibold">{t("cart.title")}</h1>
       {done && <p className="mb-4 rounded-md bg-ok/10 px-3 py-2 text-sm text-ok">{done}</p>}
       <ul className="divide-y divide-line">
         {cart.lines.map((l) => (
@@ -77,7 +79,7 @@ function CartPage() {
                 className="btn-ghost px-2 text-xs"
                 onClick={() => cart.setQty(l.productId, l.variantId, 0)}
               >
-                Убрать
+                {t("cart.remove")}
               </button>
             )}
           </li>
@@ -86,18 +88,18 @@ function CartPage() {
       {cart.lines.length > 0 && (
         <>
           <div className="mt-4 flex items-center justify-between text-lg font-semibold">
-            <span>Итого</span>
+            <span>{t("cart.total")}</span>
             <span className="tabular-nums">{formatMoney(cart.total, cart.currency)}</span>
           </div>
           <p className="mt-1 text-xs text-muted">
-            Промокоды, баллы и доставка применяются на следующем шаге{wa ? "" : " в Telegram"}.
+            {wa ? t("cart.nextStep") : t("cart.nextStepTelegram")}
           </p>
           <button
             className="btn-primary mt-4 w-full"
             disabled={checkout.busy}
             onClick={() => void checkout.run().catch(() => {})}
           >
-            {wa ? "Оформить заказ" : "Оформить в Telegram"}
+            {wa ? t("cart.checkout") : t("cart.checkoutTelegram")}
           </button>
           <ErrorBox error={checkout.error} />
         </>

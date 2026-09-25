@@ -137,7 +137,7 @@ export function NavLink(props: LinkProps & { children: ReactNode; className?: st
 }
 
 /** Переключатель темы: класс .dark на <html>, выбор в localStorage. */
-export function ThemeToggle() {
+export function ThemeToggle({ labels }: { labels?: { light: string; dark: string } } = {}) {
   const [dark, setDark] = useState(false);
   useEffect(() => {
     try {
@@ -165,7 +165,7 @@ export function ThemeToggle() {
         }
       }}
     >
-      {dark ? "☀︎ Светлая" : "☾ Тёмная"}
+      {dark ? (labels?.light ?? "☀︎ Светлая") : (labels?.dark ?? "☾ Тёмная")}
     </button>
   );
 }

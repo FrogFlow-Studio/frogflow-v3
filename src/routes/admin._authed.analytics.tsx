@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { z } from "zod";
 import { analyticsFn } from "@/app/admin/admin.functions";
+import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { PageTitle } from "@/app/ui";
 import { BarList, ChartCard, DataTable, LineChart } from "@/app/ui/charts";
 import { compactNumber, shortDay } from "@/core/analytics/pure";
@@ -20,18 +21,27 @@ export const Route = createFileRoute("/admin/_authed/analytics")({
 
 const PLATFORM: Record<string, string> = {
   telegram: "Telegram",
-  web: "Витрина",
   instagram: "Instagram",
   whatsapp: "WhatsApp",
 };
 
+function platformLabel(platform: string, t: AdminT): string {
+  if (platform === "web") return t("analytics.platform.web");
+  return PLATFORM[platform] ?? platform;
+}
+
 function Delta({ value, upIsGood = true }: { value: number | null; upIsGood?: boolean }) {
-  if (value === null) return <span className="text-muted">нет данных за прошлый период</span>;
-  if (value === 0) return <span className="text-muted">без изменений</span>;
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
+  const t = adminT(shop.locale);
+  if (value === null) return <span className="text-muted">{t("analytics.delta.noPrev")}</span>;
+  if (value === 0) return <span className="text-muted">{t("analytics.delta.same")}</span>;
   const good = value > 0 === upIsGood;
   return (
     <span className={good ? "text-ok" : "text-danger"}>
-      {value > 0 ? "▲" : "▼"} {Math.abs(value).toLocaleString("ru")} % к прошлому периоду
+      {value > 0 ? "▲" : "▼"}{" "}
+      {t("analytics.delta.vsPrev", {
+        pct: Math.abs(value).toLocaleString(intlLocale(shop.locale)),
+      })}
     </span>
   );
 }
@@ -51,17 +61,18 @@ function Tile({ label, value, delta }: { label: string; value: string; delta: nu
 function AnalyticsPage() {
   const a = Route.useLoaderData();
   const { days } = Route.useSearch();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const loc = intlLocale(shop.locale);
   const money = (v: number) => formatMoney(v, a.currency);
   const short = (v: number) => compactNumber(v);
+  const num = (v: number) => v.toLocaleString(loc);
   const dayLabel = (d: string) =>
-    new Date(`${d}T00:00:00`).toLocaleDateString("ru", { day: "numeric", month: "long" });
+    new Date(`${d}T00:00:00`).toLocaleDateString(loc, { day: "numeric", month: "long" });
 
   return (
     <>
-      <PageTitle
-        title="Аналитика"
-        subtitle="Оплаченные заказы: выданные цифровые и физические с принятым задатком. Сравнение — с таким же периодом до этого."
-      />
+      <PageTitle title={t("analytics.title")} subtitle={t("analytics.subtitle")} />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {([7, 30, 90] as const).map((d) => (
           <Link
@@ -70,34 +81,42 @@ function AnalyticsPage() {
             search={{ days: d }}
             className={`rounded-md border px-3 py-1.5 text-sm ${days === d ? "border-accent bg-accent/10 font-medium" : "border-line hover:bg-surface-2"}`}
           >
-            {d} дней
+            {t("analytics.days", { n: d })}
           </Link>
         ))}
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <Tile label="Выручка" value={money(a.current.revenue)} delta={a.delta.revenue} />
         <Tile
-          label="Оплаченных заказов"
-          value={a.current.orders.toLocaleString("ru")}
+          label={t("analytics.tile.revenue")}
+          value={money(a.current.revenue)}
+          delta={a.delta.revenue}
+        />
+        <Tile
+          label={t("analytics.tile.paidOrders")}
+          value={a.current.orders.toLocaleString(loc)}
           delta={a.delta.orders}
         />
-        <Tile label="Средний чек" value={money(a.current.avgCheck)} delta={a.delta.avgCheck} />
         <Tile
-          label="Новых покупателей"
-          value={a.current.customers.toLocaleString("ru")}
+          label={t("analytics.tile.avgCheck")}
+          value={money(a.current.avgCheck)}
+          delta={a.delta.avgCheck}
+        />
+        <Tile
+          label={t("analytics.tile.newCustomers")}
+          value={a.current.customers.toLocaleString(loc)}
           delta={a.delta.customers}
         />
         <Tile
-          label="Платили"
-          value={a.current.buyers.toLocaleString("ru")}
+          label={t("analytics.tile.buyers")}
+          value={a.current.buyers.toLocaleString(loc)}
           delta={a.delta.buyers}
         />
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <ChartCard
-          title="Выручка по дням"
+          title={t("analytics.chart.revenueByDay")}
           chart={
             <LineChart
               points={a.series.map((p) => ({ x: p.day, y: p.revenue }))}
@@ -107,7 +126,7 @@ function AnalyticsPage() {
           }
           table={
             <DataTable
-              head={["День", "Выручка"]}
+              head={[t("analytics.col.day"), t("analytics.col.revenue")]}
               rows={a.series
                 .slice()
                 .reverse()
@@ -116,18 +135,18 @@ function AnalyticsPage() {
           }
         />
         <ChartCard
-          title="Оплаченные заказы по дням"
+          title={t("analytics.chart.ordersByDay")}
           chart={
             <LineChart
               points={a.series.map((p) => ({ x: p.day, y: p.orders }))}
-              format={(v) => v.toLocaleString("ru")}
+              format={num}
               labelX={shortDay}
               integer
             />
           }
           table={
             <DataTable
-              head={["День", "Заказов"]}
+              head={[t("analytics.col.day"), t("analytics.col.orders")]}
               rows={a.series
                 .slice()
                 .reverse()
@@ -136,11 +155,11 @@ function AnalyticsPage() {
           }
         />
         <ChartCard
-          title="Новые покупатели по дням"
+          title={t("analytics.chart.customersByDay")}
           chart={
             <LineChart
               points={a.series.map((p) => ({ x: p.day, y: p.customers }))}
-              format={(v) => v.toLocaleString("ru")}
+              format={num}
               labelX={shortDay}
               color="var(--chart-2)"
               integer
@@ -148,7 +167,7 @@ function AnalyticsPage() {
           }
           table={
             <DataTable
-              head={["День", "Покупателей"]}
+              head={[t("analytics.col.day"), t("analytics.col.customers")]}
               rows={a.series
                 .slice()
                 .reverse()
@@ -157,41 +176,50 @@ function AnalyticsPage() {
           }
         />
         <ChartCard
-          title="Топ товаров по выручке"
+          title={t("analytics.chart.topProducts")}
           chart={
             <BarList
-              rows={a.topProducts.map((t) => ({
-                label: t.name,
-                value: t.revenue,
-                hint: `${t.qty} шт.`,
+              rows={a.topProducts.map((tp) => ({
+                label: tp.name,
+                value: tp.revenue,
+                hint: t("analytics.qty", { n: tp.qty }),
               }))}
               format={money}
             />
           }
           table={
             <DataTable
-              head={["Товар", "Штук", "Заказов", "Выручка"]}
-              rows={a.topProducts.map((t) => [t.name, t.qty, t.orders, money(t.revenue)])}
+              head={[
+                t("analytics.col.product"),
+                t("analytics.col.qty"),
+                t("analytics.col.orders"),
+                t("analytics.col.revenue"),
+              ]}
+              rows={a.topProducts.map((tp) => [tp.name, tp.qty, tp.orders, money(tp.revenue)])}
             />
           }
         />
         <ChartCard
-          title="Заказы по каналам"
+          title={t("analytics.chart.byChannel")}
           chart={
             <BarList
               rows={a.byPlatform.map((p) => ({
-                label: PLATFORM[p.platform] ?? p.platform,
+                label: platformLabel(p.platform, t),
                 value: p.orders,
                 hint: money(p.revenue),
               }))}
-              format={(v) => v.toLocaleString("ru")}
+              format={num}
             />
           }
           table={
             <DataTable
-              head={["Канал", "Заказов", "Выручка"]}
+              head={[
+                t("analytics.col.channel"),
+                t("analytics.col.orders"),
+                t("analytics.col.revenue"),
+              ]}
               rows={a.byPlatform.map((p) => [
-                PLATFORM[p.platform] ?? p.platform,
+                platformLabel(p.platform, t),
                 p.orders,
                 money(p.revenue),
               ])}
@@ -199,16 +227,16 @@ function AnalyticsPage() {
           }
         />
         <ChartCard
-          title="Все заказы периода по статусам"
+          title={t("analytics.chart.byStatus")}
           chart={
             <BarList
               rows={a.byStatus.map((s) => ({ label: s.status, value: s.orders }))}
-              format={(v) => v.toLocaleString("ru")}
+              format={num}
             />
           }
           table={
             <DataTable
-              head={["Статус", "Заказов"]}
+              head={[t("analytics.col.status"), t("analytics.col.orders")]}
               rows={a.byStatus.map((s) => [
                 <OrderStatus key={s.status} status={s.status} />,
                 s.orders,

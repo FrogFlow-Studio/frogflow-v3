@@ -18,7 +18,7 @@ import {
   teamFn,
 } from "@/app/admin/admin.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
-import { ROLE_TITLES } from "@/core/auth/roles";
+import { adminT, intlLocale } from "@/app/i18n/admin";
 import { imagePath } from "@/core/catalog/image-url";
 
 export const Route = createFileRoute("/admin/_authed/settings")({
@@ -40,6 +40,7 @@ function SettingsPage() {
   const { settings, methods, ownerTelegramId, telegram, zones, zernio, smartSearchKey, visionKey } =
     Route.useLoaderData();
   const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const router = useRouter();
   const [saved, setSaved] = useState(false);
   const save = useAction(async (f: FormData) => {
@@ -62,7 +63,7 @@ function SettingsPage() {
   });
   return (
     <>
-      <PageTitle title="Оплата и настройки" />
+      <PageTitle title={t("settings.title")} />
       <div className="grid gap-4 lg:grid-cols-2">
         <TelegramCard telegram={telegram} />
         {(shop.modules.instagram || shop.modules.whatsapp) && (
@@ -72,7 +73,7 @@ function SettingsPage() {
             whatsapp={shop.modules.whatsapp}
           />
         )}
-        <Card title="Магазин">
+        <Card title={t("settings.shop.title")}>
           <form
             className="space-y-3"
             onSubmit={(e) => {
@@ -80,7 +81,7 @@ function SettingsPage() {
               void save.run(new FormData(e.currentTarget)).catch(() => {});
             }}
           >
-            <Field label="Название в боте">
+            <Field label={t("settings.shop.name")}>
               <input
                 className="input"
                 name="shop_name"
@@ -88,8 +89,10 @@ function SettingsPage() {
               />
             </Field>
             <Field
-              label="Telegram ID для уведомлений о заказах"
-              hint={`Через запятую. Можно ID группы. Владелец${ownerTelegramId ? ` (${ownerTelegramId})` : ""} получает всегда. Свой ID узнаётся командой /id в боте.`}
+              label={t("settings.shop.adminChatId")}
+              hint={t("settings.shop.adminChatIdHint", {
+                owner: ownerTelegramId ? ` (${ownerTelegramId})` : "",
+              })}
             >
               <input
                 className="input"
@@ -97,7 +100,7 @@ function SettingsPage() {
                 defaultValue={settings.admin_chat_id ?? ""}
               />
             </Field>
-            <Field label="Ссылка «Связаться с продавцом»">
+            <Field label={t("settings.shop.contactLink")}>
               <input
                 className="input"
                 name="admin_contact_link"
@@ -107,8 +110,8 @@ function SettingsPage() {
             </Field>
             {shop.modules.loyalty && (
               <Field
-                label="Баллы за покупку, % от суммы заказа"
-                hint="Начисляются после выдачи; 1 балл = 1 единица валюты при оплате следующего заказа."
+                label={t("settings.shop.loyaltyPercent")}
+                hint={t("settings.shop.loyaltyHint")}
               >
                 <input
                   className="input w-32"
@@ -121,21 +124,18 @@ function SettingsPage() {
               </Field>
             )}
             {shop.modules.multi_language && (
-              <Field
-                label="Язык материалов"
-                hint="До оформления покупатель может взять «все языки» — позиция стоит ×N по числу языков товара. При выдаче Telegram спрашивает язык кнопкой на каждую позицию, Instagram и WhatsApp получают все языки."
-              >
+              <Field label={t("settings.shop.langTiming")} hint={t("settings.shop.langTimingHint")}>
                 <select
                   className="input"
                   name="delivery_lang_timing"
                   defaultValue={settings.delivery_lang_timing ?? "during"}
                 >
-                  <option value="during">Спрашивать при выдаче</option>
-                  <option value="before">Спрашивать до оформления (с ценой за все языки)</option>
+                  <option value="during">{t("settings.shop.langDuring")}</option>
+                  <option value="before">{t("settings.shop.langBefore")}</option>
                 </select>
               </Field>
             )}
-            <Field label="Текст инструкции покупателю">
+            <Field label={t("settings.shop.instruction")}>
               <textarea
                 className="input"
                 name="instruction_caption"
@@ -145,9 +145,9 @@ function SettingsPage() {
             </Field>
             <div className="flex items-center gap-3">
               <button className="btn-primary" disabled={save.busy}>
-                Сохранить
+                {t("common.save")}
               </button>
-              {saved && <span className="text-xs text-ok">Сохранено</span>}
+              {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
             </div>
             <ErrorBox error={save.error} />
           </form>
@@ -170,6 +170,7 @@ function SettingsPage() {
 function PaymentMethods({ methods }: { methods: Method[] }) {
   const router = useRouter();
   const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const [editing, setEditing] = useState<Method | "new" | null>(null);
   const save = useAction(async (f: FormData, id: string | null) => {
     await savePaymentMethodFn({
@@ -188,7 +189,7 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
     await router.invalidate();
   });
   const del = useAction(async (id: string) => {
-    if (!confirm("Удалить способ оплаты?")) return;
+    if (!confirm(t("settings.pay.deleteConfirm"))) return;
     await deletePaymentMethodFn({ data: { id } });
     await router.invalidate();
   });
@@ -196,7 +197,7 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
   const [qr, setQr] = useState<string | null>(null);
   return (
     <Card
-      title="Способы оплаты по странам"
+      title={t("settings.pay.title")}
       actions={
         <button
           className="btn-secondary text-xs"
@@ -205,14 +206,11 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
             setEditing("new");
           }}
         >
-          + Страна
+          {t("settings.pay.addCountry")}
         </button>
       }
     >
-      <p className="mb-3 text-xs text-muted">
-        Покупатель выбирает страну, видит реквизиты и QR, присылает чек. Первая страна в списке —
-        домашняя, по ней считается цена, пока страна покупателя неизвестна.
-      </p>
+      <p className="mb-3 text-xs text-muted">{t("settings.pay.intro")}</p>
       <ul className="divide-y divide-line">
         {methods.map((m) => (
           <li key={m.id} className="flex items-center justify-between gap-3 py-2 text-sm">
@@ -221,7 +219,7 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
               <span className="text-muted">
                 {m.country_code} · {m.currency}
               </span>{" "}
-              {!m.is_active && <Badge>выкл</Badge>}
+              {!m.is_active && <Badge>{t("settings.off")}</Badge>}
               <div className="line-clamp-1 text-xs text-muted">{m.instructions}</div>
             </div>
             <div className="shrink-0">
@@ -232,21 +230,19 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
                   setEditing(m);
                 }}
               >
-                Изменить
+                {t("common.edit")}
               </button>
               <button
                 className="btn-ghost text-xs text-danger"
                 onClick={() => void del.run(m.id).catch(() => {})}
               >
-                Удалить
+                {t("common.delete")}
               </button>
             </div>
           </li>
         ))}
         {methods.length === 0 && (
-          <li className="py-3 text-sm text-muted">
-            Пока ни одной страны — покупатели не смогут оформить заказ.
-          </li>
+          <li className="py-3 text-sm text-muted">{t("settings.pay.empty")}</li>
         )}
       </ul>
       <ErrorBox error={del.error} />
@@ -260,7 +256,7 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
           }}
         >
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Код страны">
+            <Field label={t("settings.pay.countryCode")}>
               <input
                 className="input"
                 name="countryCode"
@@ -270,16 +266,16 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
                 maxLength={8}
               />
             </Field>
-            <Field label="Название">
+            <Field label={t("settings.name")}>
               <input
                 className="input"
                 name="countryName"
                 defaultValue={cur?.country_name ?? ""}
-                placeholder="Казахстан"
+                placeholder={t("settings.pay.countryPlaceholder")}
                 required
               />
             </Field>
-            <Field label="Валюта">
+            <Field label={t("settings.pay.currency")}>
               <input
                 className="input"
                 name="currency"
@@ -289,10 +285,7 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
               />
             </Field>
           </div>
-          <Field
-            label="Реквизиты и инструкция"
-            hint="Этот текст покупатель увидит после оформления."
-          >
+          <Field label={t("settings.pay.instructions")} hint={t("settings.pay.instructionsHint")}>
             <textarea
               className="input"
               name="instructions"
@@ -301,7 +294,7 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
               required
             />
           </Field>
-          <Field label="QR-код (картинка)">
+          <Field label={t("settings.pay.qr")}>
             <input type="hidden" name="qrCodePath" value={qr ?? ""} />
             <div className="flex items-center gap-3">
               {qr && (
@@ -312,7 +305,7 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
                 />
               )}
               <label className="btn-secondary cursor-pointer text-xs">
-                {qr ? "Заменить" : "Загрузить"}
+                {qr ? t("settings.pay.qrReplace") : t("settings.pay.qrUpload")}
                 <input
                   type="file"
                   accept="image/*"
@@ -331,7 +324,7 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
               </label>
               {qr && (
                 <button type="button" className="btn-ghost text-xs" onClick={() => setQr(null)}>
-                  Убрать
+                  {t("settings.pay.qrRemove")}
                 </button>
               )}
             </div>
@@ -339,10 +332,10 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="isActive" defaultChecked={cur?.is_active ?? true} />{" "}
-              Активен
+              {t("settings.pay.active")}
             </label>
             <label className="flex items-center gap-2 text-sm">
-              Порядок{" "}
+              {t("settings.order")}{" "}
               <input
                 className="input w-20"
                 name="sortOrder"
@@ -354,10 +347,10 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
           <ErrorBox error={save.error} />
           <div className="flex gap-2">
             <button className="btn-primary" disabled={save.busy}>
-              Сохранить
+              {t("common.save")}
             </button>
             <button type="button" className="btn-ghost" onClick={() => setEditing(null)}>
-              Отмена
+              {t("common.cancel")}
             </button>
           </div>
         </form>
@@ -370,36 +363,42 @@ type TelegramState = Awaited<ReturnType<typeof telegramStateFn>>;
 
 function TelegramCard({ telegram }: { telegram: TelegramState }) {
   const router = useRouter();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const [result, setResult] = useState<string | null>(null);
   const connect = useAction(async (token: string) => {
     const r = await connectTelegramAdminFn({ data: { token } });
     setResult(
       r.webhook?.ok
-        ? `Бот @${r.username} подключён, вебхук установлен.`
-        : `Токен принят, но вебхук не установлен: ${r.webhook?.error ?? "неизвестно"}`,
+        ? t("settings.tg.connected", { username: r.username ?? "" })
+        : t("settings.tg.webhookFailed", {
+            error: r.webhook?.error ?? t("settings.tg.unknown"),
+          }),
     );
     await router.invalidate();
   });
   const ok = telegram.connected && telegram.servedBy === "v2" && telegram.webhook?.ok;
   return (
     <Card
-      title="Telegram-бот"
+      title={t("settings.tg.title")}
       actions={
         telegram.connected ? (
           <Badge tone={ok ? "ok" : "warn"}>
             {ok
-              ? `@${telegram.username} работает`
-              : `@${telegram.username ?? "бот"} · проверьте вебхук`}
+              ? t("settings.tg.working", { username: telegram.username ?? "" })
+              : t("settings.tg.checkWebhook", {
+                  username: telegram.username ?? t("settings.tg.botFallback"),
+                })}
           </Badge>
         ) : (
-          <Badge>не подключён</Badge>
+          <Badge>{t("settings.tg.notConnected")}</Badge>
         )
       }
       className="lg:col-span-2"
     >
       <ol className="mb-3 list-decimal space-y-1 pl-5 text-sm text-muted">
         <li>
-          В Telegram откройте{" "}
+          {t("settings.tg.step1Before")}{" "}
           <a
             className="text-accent hover:underline"
             href="https://t.me/BotFather"
@@ -408,11 +407,11 @@ function TelegramCard({ telegram }: { telegram: TelegramState }) {
           >
             @BotFather
           </a>
-          , команда <code>/newbot</code>, придумайте имя.
+          {t("settings.tg.step1Middle")} <code>/newbot</code>
+          {t("settings.tg.step1After")}
         </li>
         <li>
-          Скопируйте токен вида <code>123456789:AA…</code> и вставьте ниже. Всё остальное платформа
-          сделает сама.
+          {t("settings.tg.step2Before")} <code>123456789:AA…</code> {t("settings.tg.step2After")}
         </li>
       </ol>
       <form
@@ -429,22 +428,24 @@ function TelegramCard({ telegram }: { telegram: TelegramState }) {
         <input
           className="input"
           name="token"
-          placeholder={telegram.connected ? "Новый токен, если сменили бота" : "Токен из BotFather"}
+          placeholder={
+            telegram.connected ? t("settings.tg.tokenNew") : t("settings.tg.tokenPlaceholder")
+          }
           autoComplete="off"
           required
         />
         <button className="btn-primary shrink-0" disabled={connect.busy}>
-          {telegram.connected ? "Заменить" : "Подключить"}
+          {telegram.connected ? t("settings.tg.replace") : t("settings.tg.connect")}
         </button>
       </form>
       {result && <p className="mt-2 text-sm text-muted">{result}</p>}
       <ErrorBox error={connect.error} />
       {telegram.connected && telegram.webhook && !telegram.webhook.ok && (
         <p className="mt-2 text-xs text-warn">
-          Вебхук сейчас: {telegram.webhook.url ?? "не установлен"}.{" "}
-          {telegram.servedBy !== "v2"
-            ? "Магазин обслуживается старой платформой — вставьте токен ещё раз, чтобы перевести сюда."
-            : "Вставьте токен ещё раз, чтобы переустановить."}
+          {t("settings.tg.webhookNow", {
+            url: telegram.webhook.url ?? t("settings.tg.webhookNone"),
+          })}{" "}
+          {telegram.servedBy !== "v2" ? t("settings.tg.legacy") : t("settings.tg.reinstall")}
         </p>
       )}
     </Card>
@@ -465,6 +466,8 @@ function ChannelsCard({
   whatsapp: boolean;
 }) {
   const router = useRouter();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const [note, setNote] = useState<string | null>(null);
   const connect = useAction(async (platform: "instagram" | "whatsapp") => {
     const r = await zernioConnectLinkFn({ data: { platform } });
@@ -474,8 +477,8 @@ function ChannelsCard({
     const r = await syncZernioAccountsFn();
     setNote(
       r.accounts.length
-        ? `Подключено аккаунтов: ${r.accounts.length}.`
-        : "Подключённых аккаунтов пока нет — завершите авторизацию и нажмите «Обновить».",
+        ? t("settings.ch.syncedCount", { n: r.accounts.length })
+        : t("settings.ch.syncedNone"),
     );
     await router.invalidate();
   });
@@ -489,27 +492,24 @@ function ChannelsCard({
   const live = zernio.accounts.filter((a) => !a.expired).length;
   return (
     <Card
-      title="Instagram и WhatsApp"
+      title={t("settings.ch.title")}
       actions={
         live > 0 ? (
           <Badge tone="ok">
-            {live} {live === 1 ? "аккаунт" : "аккаунта"} подключено
+            {live === 1
+              ? t("settings.ch.liveOne", { n: live })
+              : t("settings.ch.liveMany", { n: live })}
           </Badge>
         ) : (
-          <Badge>не подключено</Badge>
+          <Badge>{t("settings.ch.notConnected")}</Badge>
         )
       }
       className="lg:col-span-2"
     >
-      <p className="mb-3 text-sm text-muted">
-        Бот отвечает в Direct и WhatsApp, ведёт каталог и заказы и передаёт сложные вопросы вам в
-        «Чат». Нажмите «Подключить», войдите в аккаунт и дайте разрешения — дальше платформа сделает
-        всё сама.
-      </p>
+      <p className="mb-3 text-sm text-muted">{t("settings.ch.intro")}</p>
       {!zernio.configured && (
         <p className="mb-3 rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">
-          На платформе не настроено подключение мессенджеров — оператор добавит его, и кнопки
-          заработают.
+          {t("settings.ch.notConfigured")}
         </p>
       )}
       {(zernio.accounts.length > 0 || zernio.manualIds.length > 0) && (
@@ -523,14 +523,14 @@ function ChannelsCard({
                 </span>
               </span>
               <Badge tone={a.expired ? "warn" : "ok"}>
-                {a.expired ? "нужно переподключить" : "работает"}
+                {a.expired ? t("settings.ch.expired") : t("settings.ch.working")}
               </Badge>
             </li>
           ))}
           {zernio.manualIds.map((id) => (
             <li key={id} className="flex items-center justify-between gap-2 px-3 py-2">
-              <span className="text-muted">Аккаунт {id}</span>
-              <Badge>подключён оператором</Badge>
+              <span className="text-muted">{t("settings.ch.account", { id })}</span>
+              <Badge>{t("settings.ch.byOperator")}</Badge>
             </li>
           ))}
         </ul>
@@ -543,7 +543,7 @@ function ChannelsCard({
             disabled={connect.busy || !zernio.configured}
             onClick={() => void connect.run("instagram").catch(() => {})}
           >
-            Подключить Instagram
+            {t("settings.ch.connectInstagram")}
           </button>
         )}
         {whatsapp && (
@@ -553,7 +553,7 @@ function ChannelsCard({
             disabled={connect.busy || !zernio.configured}
             onClick={() => void connect.run("whatsapp").catch(() => {})}
           >
-            Подключить WhatsApp
+            {t("settings.ch.connectWhatsapp")}
           </button>
         )}
         <button
@@ -562,13 +562,15 @@ function ChannelsCard({
           disabled={sync.busy || !zernio.configured}
           onClick={() => void sync.run().catch(() => {})}
         >
-          Обновить список
+          {t("settings.ch.refresh")}
         </button>
       </div>
       {note && <p className="mt-2 text-sm text-muted">{note}</p>}
       {zernio.syncedAt && (
         <p className="mt-2 text-xs text-muted">
-          Обновлено {new Date(zernio.syncedAt).toLocaleString("ru")}
+          {t("settings.ch.updatedAt", {
+            date: new Date(zernio.syncedAt).toLocaleString(intlLocale(shop.locale)),
+          })}
         </p>
       )}
       <ErrorBox error={connect.error ?? sync.error} />
@@ -578,6 +580,8 @@ function ChannelsCard({
 
 function FulfillmentCard({ settings }: { settings: Record<string, string> }) {
   const router = useRouter();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const [saved, setSaved] = useState(false);
   const save = useAction(async (f: FormData) => {
     await saveSettingsFn({
@@ -593,7 +597,7 @@ function FulfillmentCard({ settings }: { settings: Record<string, string> }) {
   });
   const [mode, setMode] = useState(settings.payment_mode ?? "full");
   return (
-    <Card title="Физические товары: получение и оплата">
+    <Card title={t("settings.ful.title")}>
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -608,7 +612,7 @@ function FulfillmentCard({ settings }: { settings: Record<string, string> }) {
               name="pickup"
               defaultChecked={settings.fulfillment_pickup_enabled !== "false"}
             />{" "}
-            Самовывоз
+            {t("settings.ful.pickup")}
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -616,23 +620,23 @@ function FulfillmentCard({ settings }: { settings: Record<string, string> }) {
               name="delivery"
               defaultChecked={settings.fulfillment_delivery_enabled !== "false"}
             />{" "}
-            Доставка
+            {t("settings.ful.delivery")}
           </label>
         </div>
-        <Field label="Оплата физических заказов">
+        <Field label={t("settings.ful.paymentMode")}>
           <select
             className="input"
             name="payment_mode"
             value={mode}
             onChange={(e) => setMode(e.target.value)}
           >
-            <option value="full">Полная предоплата по чеку</option>
-            <option value="deposit">Задаток по чеку, остаток при получении</option>
-            <option value="on_receipt">Оплата при получении, без чека</option>
+            <option value="full">{t("settings.ful.full")}</option>
+            <option value="deposit">{t("settings.ful.deposit")}</option>
+            <option value="on_receipt">{t("settings.ful.onReceipt")}</option>
           </select>
         </Field>
         {mode === "deposit" && (
-          <Field label="Задаток, % от суммы">
+          <Field label={t("settings.ful.depositPercent")}>
             <input
               className="input w-32"
               name="deposit_percent"
@@ -645,9 +649,9 @@ function FulfillmentCard({ settings }: { settings: Record<string, string> }) {
         )}
         <div className="flex items-center gap-3">
           <button className="btn-secondary" disabled={save.busy}>
-            Сохранить
+            {t("common.save")}
           </button>
-          {saved && <span className="text-xs text-ok">Сохранено</span>}
+          {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
         </div>
         <ErrorBox error={save.error} />
       </form>
@@ -659,6 +663,8 @@ type Zone = Awaited<ReturnType<typeof deliveryZonesFn>>[number];
 
 function ZonesCard({ zones }: { zones: Zone[] }) {
   const router = useRouter();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const [editing, setEditing] = useState<Zone | "new" | null>(null);
   const save = useAction(async (f: FormData, id: string | null) => {
     await saveDeliveryZoneFn({
@@ -674,43 +680,40 @@ function ZonesCard({ zones }: { zones: Zone[] }) {
     await router.invalidate();
   });
   const del = useAction(async (id: string) => {
-    if (!confirm("Удалить зону?")) return;
+    if (!confirm(t("settings.zones.deleteConfirm"))) return;
     await deleteDeliveryZoneFn({ data: { id } });
     await router.invalidate();
   });
   const cur = editing === "new" ? null : editing;
   return (
     <Card
-      title="Зоны доставки"
+      title={t("settings.zones.title")}
       actions={
         <button className="btn-secondary text-xs" onClick={() => setEditing("new")}>
-          + Зона
+          {t("settings.zones.add")}
         </button>
       }
     >
-      <p className="mb-3 text-xs text-muted">
-        Покупатель выбирает зону при доставке, её цена добавляется к заказу. Без зон бот просто
-        спросит адрес.
-      </p>
+      <p className="mb-3 text-xs text-muted">{t("settings.zones.intro")}</p>
       {zones.length === 0 ? (
-        <p className="text-sm text-muted">Зон пока нет.</p>
+        <p className="text-sm text-muted">{t("settings.zones.empty")}</p>
       ) : (
         <ul className="divide-y divide-line text-sm">
           {zones.map((z) => (
             <li key={z.id} className="flex items-center justify-between gap-3 py-2">
               <span>
                 {z.name} <span className="text-muted">· {Number(z.price)}</span>{" "}
-                {!z.is_active && <Badge>выкл</Badge>}
+                {!z.is_active && <Badge>{t("settings.off")}</Badge>}
               </span>
               <span className="shrink-0">
                 <button className="btn-ghost text-xs" onClick={() => setEditing(z)}>
-                  Изменить
+                  {t("common.edit")}
                 </button>
                 <button
                   className="btn-ghost text-xs text-danger"
                   onClick={() => void del.run(z.id).catch(() => {})}
                 >
-                  Удалить
+                  {t("common.delete")}
                 </button>
               </span>
             </li>
@@ -727,17 +730,17 @@ function ZonesCard({ zones }: { zones: Zone[] }) {
             void save.run(new FormData(e.currentTarget), cur?.id ?? null).catch(() => {});
           }}
         >
-          <Field label="Название">
+          <Field label={t("settings.name")}>
             <input
               className="input"
               name="name"
               defaultValue={cur?.name ?? ""}
               required
               maxLength={80}
-              placeholder="Алмалинский район"
+              placeholder={t("settings.zones.namePlaceholder")}
             />
           </Field>
-          <Field label="Цена">
+          <Field label={t("settings.zones.price")}>
             <input
               className="input"
               name="price"
@@ -747,7 +750,7 @@ function ZonesCard({ zones }: { zones: Zone[] }) {
               defaultValue={cur ? Number(cur.price) : 0}
             />
           </Field>
-          <Field label="Порядок">
+          <Field label={t("settings.order")}>
             <input
               className="input"
               name="sortOrder"
@@ -757,14 +760,14 @@ function ZonesCard({ zones }: { zones: Zone[] }) {
           </Field>
           <label className="flex items-center gap-2 self-end pb-2 text-sm">
             <input type="checkbox" name="isActive" defaultChecked={cur?.is_active ?? true} />{" "}
-            Активна
+            {t("settings.zones.active")}
           </label>
           <div className="flex gap-2 sm:col-span-4">
             <button className="btn-primary" disabled={save.busy}>
-              Сохранить
+              {t("common.save")}
             </button>
             <button type="button" className="btn-ghost" onClick={() => setEditing(null)}>
-              Отмена
+              {t("common.cancel")}
             </button>
           </div>
           <ErrorBox error={save.error} />
@@ -777,6 +780,7 @@ function ZonesCard({ zones }: { zones: Zone[] }) {
 function LegalCard({ settings }: { settings: Record<string, string> }) {
   const router = useRouter();
   const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const [saved, setSaved] = useState(false);
   const save = useAction(async (f: FormData) => {
     await saveSettingsFn({
@@ -791,16 +795,15 @@ function LegalCard({ settings }: { settings: Record<string, string> }) {
     await router.invalidate();
   });
   const docs = [
-    ["legal_offer", "Публичная оферта"],
-    ["legal_privacy", "Политика конфиденциальности"],
-    ["legal_requisites", "Реквизиты продавца"],
-    ["legal_about", "О продавце"],
+    ["legal_offer", t("settings.legal.offer")],
+    ["legal_privacy", t("settings.legal.privacy")],
+    ["legal_requisites", t("settings.legal.requisites")],
+    ["legal_about", t("settings.legal.about")],
   ] as const;
   return (
-    <Card title="Юридические страницы" className="lg:col-span-2">
+    <Card title={t("settings.legal.title")} className="lg:col-span-2">
       <p className="mb-3 text-xs text-muted">
-        Показываются в боте (кнопка «Информация») и на витрине{" "}
-        {shop.slug ? `/s/${shop.slug}/legal/…` : ""}. Пустой текст — страница скрыта.
+        {t("settings.legal.intro", { path: shop.slug ? ` /s/${shop.slug}/legal/…` : "" })}
       </p>
       <form
         className="grid gap-3 md:grid-cols-2"
@@ -816,9 +819,9 @@ function LegalCard({ settings }: { settings: Record<string, string> }) {
         ))}
         <div className="flex items-center gap-3 md:col-span-2">
           <button className="btn-secondary" disabled={save.busy}>
-            Сохранить
+            {t("common.save")}
           </button>
-          {saved && <span className="text-xs text-ok">Сохранено</span>}
+          {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
         </div>
         <ErrorBox error={save.error} />
       </form>
@@ -829,6 +832,7 @@ function LegalCard({ settings }: { settings: Record<string, string> }) {
 function RobokassaCard({ settings }: { settings: Record<string, string> }) {
   const router = useRouter();
   const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const [saved, setSaved] = useState(false);
   const save = useAction(async (f: FormData) => {
     await saveSettingsFn({
@@ -847,14 +851,15 @@ function RobokassaCard({ settings }: { settings: Record<string, string> }) {
   });
   const resultUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/api/robokassa/${shop.botId}/result`;
   return (
-    <Card title="Robokassa: оплата картой" className="lg:col-span-2">
+    <Card title={t("settings.rk.title")} className="lg:col-span-2">
       <p className="mb-3 text-xs text-muted">
-        В личном кабинете Robokassa укажите Result URL{" "}
-        <code className="rounded bg-surface-2 px-1">{resultUrl}</code>, Success URL{" "}
+        {t("settings.rk.introResult")}{" "}
+        <code className="rounded bg-surface-2 px-1">{resultUrl}</code>
+        {t("settings.rk.introSuccess")}{" "}
         <code className="rounded bg-surface-2 px-1">{resultUrl.replace(/result$/, "success")}</code>
-        , Fail URL{" "}
-        <code className="rounded bg-surface-2 px-1">{resultUrl.replace(/result$/, "fail")}</code>,
-        метод POST, алгоритм MD5.
+        {t("settings.rk.introFail")}{" "}
+        <code className="rounded bg-surface-2 px-1">{resultUrl.replace(/result$/, "fail")}</code>
+        {t("settings.rk.introTail")}
       </p>
       <form
         className="grid gap-3 sm:grid-cols-2"
@@ -870,7 +875,7 @@ function RobokassaCard({ settings }: { settings: Record<string, string> }) {
               name="enabled"
               defaultChecked={settings.robokassa_enabled === "true"}
             />{" "}
-            Включить оплату картой
+            {t("settings.rk.enable")}
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -878,7 +883,7 @@ function RobokassaCard({ settings }: { settings: Record<string, string> }) {
               name="test"
               defaultChecked={settings.robokassa_test_mode === "true"}
             />{" "}
-            Тестовый режим
+            {t("settings.rk.test")}
           </label>
         </div>
         <Field label="MerchantLogin">
@@ -890,7 +895,7 @@ function RobokassaCard({ settings }: { settings: Record<string, string> }) {
           />
         </Field>
         <div />
-        <Field label="Пароль #1 (боевой)">
+        <Field label={t("settings.rk.pass1")}>
           <input
             className="input"
             name="pass1"
@@ -899,7 +904,7 @@ function RobokassaCard({ settings }: { settings: Record<string, string> }) {
             autoComplete="off"
           />
         </Field>
-        <Field label="Пароль #2 (боевой)">
+        <Field label={t("settings.rk.pass2")}>
           <input
             className="input"
             name="pass2"
@@ -908,7 +913,7 @@ function RobokassaCard({ settings }: { settings: Record<string, string> }) {
             autoComplete="off"
           />
         </Field>
-        <Field label="Тестовый пароль #1">
+        <Field label={t("settings.rk.pass1Test")}>
           <input
             className="input"
             name="pass1t"
@@ -917,7 +922,7 @@ function RobokassaCard({ settings }: { settings: Record<string, string> }) {
             autoComplete="off"
           />
         </Field>
-        <Field label="Тестовый пароль #2">
+        <Field label={t("settings.rk.pass2Test")}>
           <input
             className="input"
             name="pass2t"
@@ -928,9 +933,9 @@ function RobokassaCard({ settings }: { settings: Record<string, string> }) {
         </Field>
         <div className="flex items-center gap-3 sm:col-span-2">
           <button className="btn-secondary" disabled={save.busy}>
-            Сохранить
+            {t("common.save")}
           </button>
-          {saved && <span className="text-xs text-ok">Сохранено</span>}
+          {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
         </div>
         <ErrorBox error={save.error} />
       </form>
@@ -946,6 +951,8 @@ function SmartSearchCard({
   hasKey: boolean;
 }) {
   const router = useRouter();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const enabled = settings.smart_search_enabled === "true";
   const toggle = useAction(async (v: boolean) => {
     await saveSettingsFn({ data: { smart_search_enabled: v ? "true" : "false" } });
@@ -965,15 +972,11 @@ function SmartSearchCard({
   const daily = spend(settings.smart_search_daily_spend);
   const life = spend(settings.smart_search_lifetime_spend);
   return (
-    <Card title="Умный поиск по каталогу">
-      <p className="mb-3 text-sm text-muted">
-        Когда обычный поиск в боте ничего не нашёл, запрос вроде «что-то на день рождения пятилетке»
-        подбирается по смыслу через языковую модель. Каждый вызов стоит денег и учитывается ниже;
-        лимит — 200 вызовов в день на бота и не чаще раза в 45 секунд у одного покупателя.
-      </p>
+    <Card title={t("settings.ss.title")}>
+      <p className="mb-3 text-sm text-muted">{t("settings.ss.intro")}</p>
       {!hasKey && (
         <p className="mb-3 rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">
-          На платформе не задан ключ Anthropic — поиск не заработает, пока оператор его не добавит.
+          {t("settings.ss.noKey")}
         </p>
       )}
       <div className="flex items-center gap-3">
@@ -981,25 +984,25 @@ function SmartSearchCard({
           checked={enabled}
           disabled={toggle.busy || !hasKey}
           onChange={(v) => void toggle.run(v).catch(() => {})}
-          label="Включить умный поиск"
+          label={t("settings.ss.enable")}
         />
-        <span className="text-sm">{enabled ? "Включён" : "Выключен"}</span>
+        <span className="text-sm">{enabled ? t("settings.ss.on") : t("settings.ss.off")}</span>
       </div>
       <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
-        <dt className="text-muted">Сегодня вызовов</dt>
+        <dt className="text-muted">{t("settings.ss.todayCalls")}</dt>
         <dd className="tabular-nums">{todayCount} / 200</dd>
-        <dt className="text-muted">Расход сегодня</dt>
+        <dt className="text-muted">{t("settings.ss.todaySpend")}</dt>
         <dd className="tabular-nums">
           {daily.date === today ? `$${daily.usd.toFixed(4)}` : "$0.0000"}
         </dd>
-        <dt className="text-muted">Расход всего</dt>
+        <dt className="text-muted">{t("settings.ss.totalSpend")}</dt>
         <dd className="tabular-nums">
-          ${life.usd.toFixed(4)} за {life.count} вызовов
+          {t("settings.ss.spendFor", { usd: life.usd.toFixed(4), n: life.count })}
         </dd>
       </dl>
       {settings.smart_search_last_error && (
         <p className="mt-3 text-xs text-danger">
-          Последняя ошибка: {settings.smart_search_last_error}
+          {t("settings.ss.lastError", { error: settings.smart_search_last_error })}
         </p>
       )}
       <ErrorBox error={toggle.error} />
@@ -1015,6 +1018,8 @@ function ReceiptOcrCard({
   hasKey: boolean;
 }) {
   const router = useRouter();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const enabled = settings.receipt_ocr_auto !== "false";
   const toggle = useAction(async (v: boolean) => {
     await saveSettingsFn({ data: { receipt_ocr_auto: v ? "true" : "false" } });
@@ -1028,16 +1033,11 @@ function ReceiptOcrCard({
   }
   const thisMonth = usage.month === new Date().toISOString().slice(0, 7) ? usage.monthCount : 0;
   return (
-    <Card title="Распознавание чеков">
-      <p className="mb-3 text-sm text-muted">
-        Чек, присланный в бот, читается автоматически: если сумма и признаки оплаты сошлись — файлы
-        уходят покупателю сразу, без вашего участия; сомнительный чек попадает к вам с причиной;
-        скрин без оплаты бот просит прислать заново. Тариф — $2 за 1000 распознаваний.
-      </p>
+    <Card title={t("settings.ocr.title")}>
+      <p className="mb-3 text-sm text-muted">{t("settings.ocr.intro")}</p>
       {!hasKey && (
         <p className="mb-3 rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">
-          На платформе не задан ключ Google Vision — чеки идут на ручную проверку, пока оператор его
-          не добавит.
+          {t("settings.ocr.noKey")}
         </p>
       )}
       <div className="flex items-center gap-3">
@@ -1045,16 +1045,14 @@ function ReceiptOcrCard({
           checked={enabled}
           disabled={toggle.busy || !hasKey}
           onChange={(v) => void toggle.run(v).catch(() => {})}
-          label="Автопроверка чеков"
+          label={t("settings.ocr.auto")}
         />
-        <span className="text-sm">
-          {enabled ? "Автопроверка включена" : "Выключена — проверяете сами"}
-        </span>
+        <span className="text-sm">{enabled ? t("settings.ocr.on") : t("settings.ocr.off")}</span>
       </div>
       <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
-        <dt className="text-muted">Распознано в этом месяце</dt>
+        <dt className="text-muted">{t("settings.ocr.month")}</dt>
         <dd className="tabular-nums">{thisMonth}</dd>
-        <dt className="text-muted">Всего</dt>
+        <dt className="text-muted">{t("settings.ocr.total")}</dt>
         <dd className="tabular-nums">{usage.count}</dd>
       </dl>
       <ErrorBox error={toggle.error} />
@@ -1071,6 +1069,8 @@ type Member = Awaited<ReturnType<typeof teamFn>>[number];
  * истории заказа.
  */
 function TeamCard() {
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const [members, setMembers] = useState<Member[] | null>(null);
   const [editing, setEditing] = useState<Member | "new" | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -1094,30 +1094,26 @@ function TeamCard() {
     await reload();
   });
   const remove = useAction(async (username: string) => {
-    if (!confirm(`Удалить пользователя ${username}? Он больше не сможет войти.`)) return;
+    if (!confirm(t("settings.team.deleteConfirm", { username }))) return;
     await deleteTeamMemberFn({ data: { username } });
     await reload();
   });
   const current = editing === "new" ? null : editing;
   return (
     <Card
-      title="Команда"
+      title={t("settings.team.title")}
       actions={
         <button className="btn-secondary text-xs" onClick={() => setEditing("new")}>
-          + Пользователь
+          {t("settings.team.add")}
         </button>
       }
     >
-      <p className="mb-3 text-sm text-muted">
-        Менеджер ведёт заказы, товары, покупателей, чат и рассылки; «просмотр» — только смотрит и
-        выгружает. Настройки, оплата, модули и команда — только у владельца. Кто что сделал, видно в
-        истории заказа.
-      </p>
+      <p className="mb-3 text-sm text-muted">{t("settings.team.intro")}</p>
       <ErrorBox error={error ?? remove.error} />
       {members === null ? (
-        <p className="text-sm text-muted">Загрузка…</p>
+        <p className="text-sm text-muted">{t("settings.team.loading")}</p>
       ) : members.length === 0 ? (
-        <p className="text-sm text-muted">Пока только вы.</p>
+        <p className="text-sm text-muted">{t("settings.team.onlyYou")}</p>
       ) : (
         <ul className="divide-y divide-line text-sm">
           {members.map((m) => (
@@ -1126,19 +1122,19 @@ function TeamCard() {
                 <span className="font-medium">{m.username}</span>
                 {m.name && <span className="text-muted"> · {m.name}</span>}{" "}
                 <Badge tone={m.role === "manager" ? "accent" : "neutral"}>
-                  {ROLE_TITLES[m.role]}
+                  {t(`role.${m.role}`)}
                 </Badge>
               </div>
               <div className="flex shrink-0 gap-1">
                 <button className="btn-ghost text-xs" onClick={() => setEditing(m)}>
-                  Изменить
+                  {t("common.edit")}
                 </button>
                 <button
                   className="btn-ghost text-xs text-danger"
                   disabled={remove.busy}
                   onClick={() => void remove.run(m.username).catch(() => {})}
                 >
-                  Удалить
+                  {t("common.delete")}
                 </button>
               </div>
             </li>
@@ -1154,7 +1150,7 @@ function TeamCard() {
             void save.run(new FormData(e.currentTarget)).catch(() => {});
           }}
         >
-          <Field label="Логин" hint="латиница, цифры, «_», от 3 символов">
+          <Field label={t("settings.team.username")} hint={t("settings.team.usernameHint")}>
             <input
               className="input"
               name="username"
@@ -1164,7 +1160,7 @@ function TeamCard() {
               autoComplete="off"
             />
           </Field>
-          <Field label="Имя">
+          <Field label={t("settings.team.name")}>
             <input
               className="input"
               name="name"
@@ -1172,15 +1168,15 @@ function TeamCard() {
               maxLength={80}
             />
           </Field>
-          <Field label="Роль">
+          <Field label={t("settings.team.role")}>
             <select className="input" name="role" defaultValue={current?.role ?? "manager"}>
-              <option value="manager">Менеджер — заказы, товары, чат, рассылки</option>
-              <option value="viewer">Просмотр — только смотреть и выгружать</option>
+              <option value="manager">{t("settings.team.roleManager")}</option>
+              <option value="viewer">{t("settings.team.roleViewer")}</option>
             </select>
           </Field>
           <Field
-            label={current ? "Новый пароль (пусто — не менять)" : "Пароль"}
-            hint="не короче 8 символов"
+            label={current ? t("settings.team.newPassword") : t("settings.team.password")}
+            hint={t("settings.team.passwordHint")}
           >
             <input
               className="input"
@@ -1193,10 +1189,10 @@ function TeamCard() {
           </Field>
           <div className="flex gap-2 sm:col-span-2">
             <button className="btn-primary" disabled={save.busy}>
-              Сохранить
+              {t("common.save")}
             </button>
             <button type="button" className="btn-ghost" onClick={() => setEditing(null)}>
-              Отмена
+              {t("common.cancel")}
             </button>
           </div>
           <div className="sm:col-span-2">

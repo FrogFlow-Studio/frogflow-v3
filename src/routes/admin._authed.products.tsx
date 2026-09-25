@@ -162,7 +162,7 @@ function ProductsPage() {
                       p.files ? (
                         <Badge tone="ok">{p.files}</Badge>
                       ) : (
-                        <Badge tone="danger">нет файла</Badge>
+                        <Badge tone="danger">{t("products.noFile")}</Badge>
                       )
                     ) : (
                       <span className="text-muted">—</span>
@@ -172,7 +172,7 @@ function ProductsPage() {
                     <Switch
                       checked={p.is_active}
                       onChange={(on) => void toggle.run(p.id, on).catch(() => {})}
-                      label="в продаже"
+                      label={t("products.onSaleLabel")}
                     />
                   </td>
                 </tr>

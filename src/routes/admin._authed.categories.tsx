@@ -98,7 +98,7 @@ function CategoriesPage() {
                       <Switch
                         checked={c.is_visible}
                         onChange={(on) => void vis.run(c, on).catch(() => {})}
-                        label="видимость"
+                        label={t("categories.col.visible")}
                       />
                     </td>
                     <td className="text-right whitespace-nowrap">

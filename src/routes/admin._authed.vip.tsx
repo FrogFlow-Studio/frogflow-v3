@@ -11,6 +11,7 @@ import {
   vipStateFn,
   vipSubscriptionActionFn,
 } from "@/app/admin/vip.functions";
+import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/admin/_authed/vip")({
@@ -22,69 +23,65 @@ type State = Awaited<ReturnType<typeof vipStateFn>>;
 type Tariff = State["tariffs"][number];
 type Sub = State["subscriptions"][number];
 
-const STATUS: Record<string, { label: string; tone: "ok" | "warn" | "neutral" | "danger" }> = {
-  active: { label: "активна", tone: "ok" },
-  pending_payment: { label: "ждёт оплаты", tone: "warn" },
-  expired: { label: "истекла", tone: "neutral" },
-  cancelled: { label: "отклонена", tone: "danger" },
+const STATUS: Record<string, { key: AdminKey; tone: "ok" | "warn" | "neutral" | "danger" }> = {
+  active: { key: "vip.status.active", tone: "ok" },
+  pending_payment: { key: "vip.status.pending_payment", tone: "warn" },
+  expired: { key: "vip.status.expired", tone: "neutral" },
+  cancelled: { key: "vip.status.cancelled", tone: "danger" },
 };
 
-const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString("ru") : "—");
+const fmt = (iso: string | null, locale: string) =>
+  iso ? new Date(iso).toLocaleString(locale) : "—";
 
 function VipPage() {
   const state = Route.useLoaderData();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   return (
     <>
-      <PageTitle
-        title="VIP-подписки"
-        subtitle="Платный доступ в закрытую Telegram-группу: тарифы, чеки, автоматические напоминания и исключение по истечении. Работает отдельным VIP-ботом."
-      />
+      <PageTitle title={t("vip.title")} subtitle={t("vip.subtitle")} />
       <div className="grid gap-4 lg:grid-cols-2">
-        <BotCard state={state} />
-        <SettingsCard state={state} />
-        <TariffsCard state={state} />
-        <SubscribersCard state={state} />
+        <BotCard state={state} t={t} />
+        <SettingsCard state={state} t={t} />
+        <TariffsCard state={state} t={t} />
+        <SubscribersCard state={state} t={t} locale={intlLocale(shop.locale)} />
       </div>
     </>
   );
 }
 
-function BotCard({ state }: { state: State }) {
+function BotCard({ state, t }: { state: State; t: AdminT }) {
   const router = useRouter();
   const [note, setNote] = useState<string | null>(null);
   const connect = useAction(async (token: string) => {
     const r = await connectVipBotFn({ data: { token } });
     setNote(
       r.webhook.ok
-        ? `VIP-бот @${r.username} подключён, вебхук установлен.`
-        : `Токен принят, вебхук не установлен: ${r.webhook.error ?? "неизвестно"}`,
+        ? t("vip.bot.connected", { username: r.username ?? "" })
+        : t("vip.bot.webhookFailed", { error: r.webhook.error ?? t("vip.bot.unknownError") }),
     );
     await router.invalidate();
   });
   const ok = state.bot.connected && state.bot.webhookOk;
   return (
     <Card
-      title="VIP-бот"
+      title={t("vip.bot.title")}
       actions={
         state.bot.connected ? (
           <Badge tone={ok ? "ok" : "warn"}>
-            {ok ? `@${state.bot.username} работает` : "проверьте вебхук"}
+            {ok
+              ? t("vip.bot.working", { username: state.bot.username ?? "" })
+              : t("vip.bot.checkWebhook")}
           </Badge>
         ) : (
-          <Badge>не подключён</Badge>
+          <Badge>{t("vip.bot.notConnected")}</Badge>
         )
       }
     >
       <ol className="mb-3 list-decimal space-y-1 pl-5 text-sm text-muted">
-        <li>Создайте отдельного бота в @BotFather и вставьте токен ниже.</li>
-        <li>
-          Добавьте бота администратором в закрытую группу с правом приглашать и исключать
-          участников.
-        </li>
-        <li>
-          Укажите ID группы в настройках справа (узнать: добавьте бота и напишите в группе /id
-          основному боту).
-        </li>
+        <li>{t("vip.bot.step1")}</li>
+        <li>{t("vip.bot.step2")}</li>
+        <li>{t("vip.bot.step3")}</li>
       </ol>
       <form
         className="flex gap-2"
@@ -100,12 +97,14 @@ function BotCard({ state }: { state: State }) {
         <input
           className="input"
           name="token"
-          placeholder={state.bot.connected ? "Новый токен, если сменили бота" : "Токен VIP-бота"}
+          placeholder={
+            state.bot.connected ? t("vip.bot.newTokenPlaceholder") : t("vip.bot.tokenPlaceholder")
+          }
           autoComplete="off"
           required
         />
         <button className="btn-primary shrink-0" disabled={connect.busy}>
-          {state.bot.connected ? "Заменить" : "Подключить"}
+          {state.bot.connected ? t("vip.bot.replace") : t("vip.bot.connect")}
         </button>
       </form>
       {note && <p className="mt-2 text-sm text-muted">{note}</p>}
@@ -114,7 +113,7 @@ function BotCard({ state }: { state: State }) {
   );
 }
 
-function SettingsCard({ state }: { state: State }) {
+function SettingsCard({ state, t }: { state: State; t: AdminT }) {
   const router = useRouter();
   const s = state.settings;
   const [test, setTest] = useState(s.testMode);
@@ -137,12 +136,17 @@ function SettingsCard({ state }: { state: State }) {
   const run = useAction(async () => {
     const r = await runVipCronFn();
     setCron(
-      `Напоминаний: ${r.warned} + ${r.warned2}, истекло: ${r.expired}, не удалось исключить: ${r.kickFailed}.${r.errors.length ? `\n${r.errors.join("\n")}` : ""}`,
+      t("vip.settings.cronResult", {
+        warned: r.warned,
+        warned2: r.warned2,
+        expired: r.expired,
+        kickFailed: r.kickFailed,
+      }) + (r.errors.length ? `\n${r.errors.join("\n")}` : ""),
     );
   });
-  const unit = test ? "мин." : "дн.";
+  const unit = test ? t("vip.settings.unitMin") : t("vip.settings.unitDays");
   return (
-    <Card title="Настройки VIP">
+    <Card title={t("vip.settings.title")}>
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -151,11 +155,11 @@ function SettingsCard({ state }: { state: State }) {
           void save.run(new FormData(e.currentTarget)).catch(() => {});
         }}
       >
-        <Field label="ID VIP-группы" hint="Отрицательное число вида -1001234567890.">
+        <Field label={t("vip.settings.groupId")} hint={t("vip.settings.groupIdHint")}>
           <input className="input" name="group_id" defaultValue={s.groupId} placeholder="-100…" />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label={`Первое напоминание, ${unit} до конца`}>
+          <Field label={t("vip.settings.warn1", { unit })}>
             <input
               className="input"
               name="warn_days"
@@ -164,7 +168,7 @@ function SettingsCard({ state }: { state: State }) {
               defaultValue={s.warnDays}
             />
           </Field>
-          <Field label={`Второе напоминание, ${unit} до конца`} hint="Строго меньше первого.">
+          <Field label={t("vip.settings.warn2", { unit })} hint={t("vip.settings.warn2Hint")}>
             <input
               className="input"
               name="warn_days_2"
@@ -175,34 +179,27 @@ function SettingsCard({ state }: { state: State }) {
           </Field>
         </div>
         <div className="flex items-center gap-3">
-          <Switch
-            checked={test}
-            onChange={setTest}
-            label="Тест-режим: сроки в минутах вместо дней"
-          />
-          <span className="text-sm">{test ? "Включён" : "Выключен"}</span>
+          <Switch checked={test} onChange={setTest} label={t("vip.settings.testMode")} />
+          <span className="text-sm">{test ? t("vip.settings.on") : t("vip.settings.off")}</span>
         </div>
-        <Field label="Сообщение при активации">
+        <Field label={t("vip.settings.welcome")}>
           <input className="input" name="welcome" defaultValue={s.welcome} />
         </Field>
-        <Field
-          label="Реквизиты для оплаты"
-          hint="Покупатель видит их после выбора тарифа и присылает чек в этот же чат."
-        >
+        <Field label={t("vip.settings.instructions")} hint={t("vip.settings.instructionsHint")}>
           <textarea className="input" name="instructions" rows={3} defaultValue={s.instructions} />
         </Field>
         <div className="flex items-center gap-3">
           <button className="btn-primary" disabled={save.busy}>
-            Сохранить
+            {t("common.save")}
           </button>
-          {saved && <span className="text-sm text-ok">Сохранено</span>}
+          {saved && <span className="text-sm text-ok">{t("vip.settings.saved")}</span>}
           <button
             type="button"
             className="btn-secondary"
             disabled={run.busy || !state.bot.connected}
             onClick={() => void run.run().catch(() => {})}
           >
-            Проверить сроки сейчас
+            {t("vip.settings.runCron")}
           </button>
         </div>
         {cron && <pre className="whitespace-pre-wrap text-xs text-muted">{cron}</pre>}
@@ -225,106 +222,108 @@ const EMPTY_TARIFF = {
   sort_order: 0,
 };
 
-function TariffsCard({ state }: { state: State }) {
+function TariffsCard({ state, t }: { state: State; t: AdminT }) {
   const router = useRouter();
   const [editing, setEditing] = useState<(typeof EMPTY_TARIFF & { id?: string }) | null>(null);
-  const save = useAction(async (t: NonNullable<typeof editing>) => {
-    await saveVipTariffFn({ data: t });
+  const save = useAction(async (tariff: NonNullable<typeof editing>) => {
+    await saveVipTariffFn({ data: tariff });
     setEditing(null);
     await router.invalidate();
   });
   const del = useAction(async (id: string) => {
-    if (!confirm("Удалить тариф?")) return;
+    if (!confirm(t("vip.tariffs.deleteConfirm"))) return;
     await deleteVipTariffFn({ data: { id } });
     await router.invalidate();
   });
-  const edit = (t: Tariff) =>
+  const edit = (tariff: Tariff) =>
     setEditing({
-      id: t.id,
-      name: t.name,
-      description: t.description ?? "",
-      price: Number(t.price),
-      currency: t.currency,
-      duration_days: t.duration_days,
-      duration_minutes: t.duration_minutes ?? 5,
-      is_active: t.is_active,
-      is_public: t.is_public,
-      is_entry: t.is_entry,
-      sort_order: t.sort_order,
+      id: tariff.id,
+      name: tariff.name,
+      description: tariff.description ?? "",
+      price: Number(tariff.price),
+      currency: tariff.currency,
+      duration_days: tariff.duration_days,
+      duration_minutes: tariff.duration_minutes ?? 5,
+      is_active: tariff.is_active,
+      is_public: tariff.is_public,
+      is_entry: tariff.is_entry,
+      sort_order: tariff.sort_order,
     });
-  const link = (t: Tariff) =>
-    state.bot.username ? `https://t.me/${state.bot.username}?start=t_${t.id}` : null;
+  const link = (tariff: Tariff) =>
+    state.bot.username ? `https://t.me/${state.bot.username}?start=t_${tariff.id}` : null;
   return (
     <Card
-      title="Тарифы"
+      title={t("vip.tariffs.title")}
       actions={
         <button
           type="button"
           className="btn-secondary text-xs"
           onClick={() => setEditing({ ...EMPTY_TARIFF })}
         >
-          + Тариф
+          {t("vip.tariffs.new")}
         </button>
       }
       className="lg:col-span-2"
     >
-      <p className="mb-3 text-sm text-muted">
-        «Первый вход» показывается новым участникам один раз; продление — по публичным тарифам.
-        Скрытый тариф (не публичный) доступен только по персональной ссылке и закрепляется за
-        участником.
-      </p>
+      <p className="mb-3 text-sm text-muted">{t("vip.tariffs.intro")}</p>
       {state.tariffs.length === 0 ? (
-        <Empty>Тарифов пока нет — добавьте первый.</Empty>
+        <Empty>{t("vip.tariffs.empty")}</Empty>
       ) : (
         <div className="overflow-x-auto">
           <table className="table">
             <thead>
               <tr>
-                <th>Тариф</th>
-                <th>Цена</th>
-                <th>Срок</th>
-                <th>Тип</th>
-                <th>Ссылка</th>
+                <th>{t("vip.tariffs.col.tariff")}</th>
+                <th>{t("vip.tariffs.col.price")}</th>
+                <th>{t("vip.tariffs.col.duration")}</th>
+                <th>{t("vip.tariffs.col.type")}</th>
+                <th>{t("vip.tariffs.col.link")}</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {state.tariffs.map((t) => (
-                <tr key={t.id} className={t.is_active ? "" : "opacity-60"}>
+              {state.tariffs.map((tariff) => (
+                <tr key={tariff.id} className={tariff.is_active ? "" : "opacity-60"}>
                   <td>
-                    <span className="font-medium">{t.name}</span>
-                    {!t.is_active && <Badge>выключен</Badge>}
+                    <span className="font-medium">{tariff.name}</span>
+                    {!tariff.is_active && <Badge>{t("vip.tariffs.off")}</Badge>}
                   </td>
                   <td className="tabular-nums">
-                    {Number(t.price)} {t.currency}
+                    {Number(tariff.price)} {tariff.currency}
                   </td>
                   <td className="tabular-nums">
-                    {t.duration_days} дн.
-                    {t.duration_minutes ? ` (тест: ${t.duration_minutes} мин.)` : ""}
+                    {t("vip.tariffs.days", { n: tariff.duration_days })}
+                    {tariff.duration_minutes
+                      ? ` ${t("vip.tariffs.testMinutes", { n: tariff.duration_minutes })}`
+                      : ""}
                   </td>
                   <td>
-                    {t.is_entry ? (
-                      <Badge tone="accent">первый вход</Badge>
-                    ) : t.is_public ? (
-                      "публичный"
+                    {tariff.is_entry ? (
+                      <Badge tone="accent">{t("vip.tariffs.entry")}</Badge>
+                    ) : tariff.is_public ? (
+                      t("vip.tariffs.public")
                     ) : (
-                      <Badge tone="warn">скрытый</Badge>
+                      <Badge tone="warn">{t("vip.tariffs.hidden")}</Badge>
                     )}
                   </td>
                   <td className="max-w-[16rem] truncate text-xs text-muted">
-                    {link(t) ?? "подключите бота"}
+                    {link(tariff) ?? t("vip.tariffs.connectBot")}
                   </td>
                   <td className="text-right whitespace-nowrap">
-                    <button type="button" className="btn-ghost text-xs" onClick={() => edit(t)}>
-                      Изменить
+                    <button
+                      type="button"
+                      className="btn-ghost text-xs"
+                      onClick={() => edit(tariff)}
+                    >
+                      {t("common.edit")}
                     </button>
                     <button
                       type="button"
                       className="btn-ghost text-xs text-danger"
                       disabled={del.busy}
-                      onClick={() => void del.run(t.id).catch(() => {})}
+                      onClick={() => void del.run(tariff.id).catch(() => {})}
                     >
-                      Удалить
+                      {t("common.delete")}
                     </button>
                   </td>
                 </tr>
@@ -342,7 +341,7 @@ function TariffsCard({ state }: { state: State }) {
             void save.run(editing).catch(() => {});
           }}
         >
-          <Field label="Название">
+          <Field label={t("vip.tariffs.form.name")}>
             <input
               className="input"
               value={editing.name}
@@ -350,14 +349,14 @@ function TariffsCard({ state }: { state: State }) {
               required
             />
           </Field>
-          <Field label="Описание">
+          <Field label={t("vip.tariffs.form.description")}>
             <input
               className="input"
               value={editing.description}
               onChange={(e) => setEditing({ ...editing, description: e.target.value })}
             />
           </Field>
-          <Field label="Цена">
+          <Field label={t("vip.tariffs.form.price")}>
             <input
               className="input"
               type="number"
@@ -366,7 +365,7 @@ function TariffsCard({ state }: { state: State }) {
               onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })}
             />
           </Field>
-          <Field label="Валюта">
+          <Field label={t("vip.tariffs.form.currency")}>
             <input
               className="input"
               value={editing.currency}
@@ -374,7 +373,7 @@ function TariffsCard({ state }: { state: State }) {
               onChange={(e) => setEditing({ ...editing, currency: e.target.value.toUpperCase() })}
             />
           </Field>
-          <Field label="Срок, дней">
+          <Field label={t("vip.tariffs.form.days")}>
             <input
               className="input"
               type="number"
@@ -383,7 +382,7 @@ function TariffsCard({ state }: { state: State }) {
               onChange={(e) => setEditing({ ...editing, duration_days: Number(e.target.value) })}
             />
           </Field>
-          <Field label="Срок в тест-режиме, минут">
+          <Field label={t("vip.tariffs.form.testMinutes")}>
             <input
               className="input"
               type="number"
@@ -392,7 +391,7 @@ function TariffsCard({ state }: { state: State }) {
               onChange={(e) => setEditing({ ...editing, duration_minutes: Number(e.target.value) })}
             />
           </Field>
-          <Field label="Порядок">
+          <Field label={t("vip.tariffs.form.order")}>
             <input
               className="input"
               type="number"
@@ -404,25 +403,25 @@ function TariffsCard({ state }: { state: State }) {
             <Switch
               checked={editing.is_active}
               onChange={(v) => setEditing({ ...editing, is_active: v })}
-              label="Активен"
+              label={t("vip.tariffs.form.active")}
             />
             <Switch
               checked={editing.is_public}
               onChange={(v) => setEditing({ ...editing, is_public: v })}
-              label="Публичный"
+              label={t("vip.tariffs.form.public")}
             />
             <Switch
               checked={editing.is_entry}
               onChange={(v) => setEditing({ ...editing, is_entry: v })}
-              label="Первый вход"
+              label={t("vip.tariffs.form.entry")}
             />
           </div>
           <div className="flex gap-2 md:col-span-2">
             <button className="btn-primary" disabled={save.busy}>
-              Сохранить
+              {t("common.save")}
             </button>
             <button type="button" className="btn-secondary" onClick={() => setEditing(null)}>
-              Отмена
+              {t("common.cancel")}
             </button>
           </div>
           <div className="md:col-span-2">
@@ -439,7 +438,7 @@ function who(s: Sub): string {
   return name || (s.username ? `@${s.username}` : `id ${s.telegram_id}`);
 }
 
-function SubscribersCard({ state }: { state: State }) {
+function SubscribersCard({ state, t, locale }: { state: State; t: AdminT; locale: string }) {
   const router = useRouter();
   const [status, setStatus] = useState<string>("all");
   const [q, setQ] = useState("");
@@ -465,83 +464,85 @@ function SubscribersCard({ state }: { state: State }) {
         status: String(f.get("status")) === "expired" ? "expired" : "active",
       },
     });
-    setNote(r.warning ? `Добавлено. ${r.warning}` : "Подписка добавлена.");
+    setNote(r.warning ? t("vip.subs.addedWarning", { warning: r.warning }) : t("vip.subs.added"));
     await router.invalidate();
   });
   const proof = useAction(async (id: string) => {
     const r = await vipProofUrlFn({ data: { id } });
     if (r.url) window.open(r.url, "_blank", "noopener");
-    else setNote("Чек не сохранён.");
+    else setNote(t("vip.subs.noProof"));
   });
   const rows = state.subscriptions.filter((s) => {
     if (status !== "all" && s.status !== status) return false;
-    const t = q.trim().toLowerCase();
+    const needle = q.trim().toLowerCase();
     return (
-      !t ||
-      who(s).toLowerCase().includes(t) ||
-      String(s.telegram_id).includes(t) ||
-      (s.tariff?.name ?? "").toLowerCase().includes(t)
+      !needle ||
+      who(s).toLowerCase().includes(needle) ||
+      String(s.telegram_id).includes(needle) ||
+      (s.tariff?.name ?? "").toLowerCase().includes(needle)
     );
   });
   const extend = (s: Sub) => {
-    const raw = prompt("На сколько дней изменить срок? Отрицательное число — сократить.", "30");
+    const raw = prompt(t("vip.subs.extendPrompt"), "30");
     const days = Number(raw);
     if (!raw || !Number.isInteger(days) || days === 0) return;
     void act.run({ id: s.id, action: "extend", days }).catch(() => {});
   };
   const reject = (s: Sub) => {
-    const n = prompt("Причина отказа (покупатель увидит её):", "") ?? undefined;
+    const n = prompt(t("vip.subs.rejectPrompt"), "") ?? undefined;
     void act.run({ id: s.id, action: "reject", note: n || undefined }).catch(() => {});
   };
   const pending = state.subscriptions.filter((s) => s.status === "pending_payment").length;
   return (
     <Card
-      title="Подписчики"
-      actions={pending > 0 ? <Badge tone="warn">{pending} ждут подтверждения</Badge> : undefined}
+      title={t("vip.subs.title")}
+      actions={
+        pending > 0 ? (
+          <Badge tone="warn">{t("vip.subs.pendingCount", { n: pending })}</Badge>
+        ) : undefined
+      }
       className="lg:col-span-2"
     >
       <div className="mb-3 flex flex-wrap gap-2">
         <select className="input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="all">Все статусы</option>
-          <option value="pending_payment">Ждут оплаты</option>
-          <option value="active">Активные</option>
-          <option value="expired">Истекшие</option>
-          <option value="cancelled">Отклонённые</option>
+          <option value="all">{t("vip.subs.filter.all")}</option>
+          <option value="pending_payment">{t("vip.subs.filter.pending")}</option>
+          <option value="active">{t("vip.subs.filter.active")}</option>
+          <option value="expired">{t("vip.subs.filter.expired")}</option>
+          <option value="cancelled">{t("vip.subs.filter.cancelled")}</option>
         </select>
         <input
           className="input w-64"
-          placeholder="Имя, @username, ID или тариф"
+          placeholder={t("vip.subs.searchPlaceholder")}
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
       </div>
       {rows.length === 0 ? (
-        <Empty>
-          Подписчиков пока нет: покупатель появится здесь, как только выберет тариф в VIP-боте.
-        </Empty>
+        <Empty>{t("vip.subs.empty")}</Empty>
       ) : (
         <div className="overflow-x-auto">
           <table className="table">
             <thead>
               <tr>
-                <th>Участник</th>
-                <th>Тариф</th>
-                <th>Статус</th>
-                <th>До</th>
-                <th>Чек</th>
+                <th>{t("vip.subs.col.member")}</th>
+                <th>{t("vip.subs.col.tariff")}</th>
+                <th>{t("vip.subs.col.status")}</th>
+                <th>{t("vip.subs.col.until")}</th>
+                <th>{t("vip.subs.col.proof")}</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {rows.map((s) => {
-                const st = STATUS[s.status] ?? { label: s.status, tone: "neutral" as const };
+                const st = STATUS[s.status];
                 return (
                   <tr key={s.id}>
                     <td>
                       <span className="font-medium">{who(s)}</span>
                       <span className="block text-xs text-muted">
                         id {s.telegram_id}
-                        {s.imported ? " · вручную" : ""}
+                        {s.imported ? ` · ${t("vip.subs.manual")}` : ""}
                       </span>
                     </td>
                     <td>
@@ -550,13 +551,15 @@ function SubscribersCard({ state }: { state: State }) {
                         : "—"}
                     </td>
                     <td>
-                      <Badge tone={st.tone}>{st.label}</Badge>
+                      <Badge tone={st?.tone ?? "neutral"}>{st ? t(st.key) : s.status}</Badge>
                       {s.admin_note?.startsWith("warned") && (
-                        <span className="block text-xs text-muted">напоминание отправлено</span>
+                        <span className="block text-xs text-muted">{t("vip.subs.reminded")}</span>
                       )}
                     </td>
                     <td className="tabular-nums text-xs">
-                      {s.status === "pending_payment" ? fmt(s.created_at) : fmt(s.expires_at)}
+                      {s.status === "pending_payment"
+                        ? fmt(s.created_at, locale)
+                        : fmt(s.expires_at, locale)}
                     </td>
                     <td>
                       {s.has_proof ? (
@@ -565,10 +568,10 @@ function SubscribersCard({ state }: { state: State }) {
                           className="btn-ghost text-xs"
                           onClick={() => void proof.run(s.id).catch(() => {})}
                         >
-                          Открыть
+                          {t("vip.subs.open")}
                         </button>
                       ) : (
-                        <span className="text-xs text-muted">нет</span>
+                        <span className="text-xs text-muted">{t("common.no")}</span>
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
@@ -582,7 +585,7 @@ function SubscribersCard({ state }: { state: State }) {
                               void act.run({ id: s.id, action: "confirm" }).catch(() => {})
                             }
                           >
-                            Подтвердить
+                            {t("vip.subs.confirm")}
                           </button>{" "}
                           <button
                             type="button"
@@ -590,7 +593,7 @@ function SubscribersCard({ state }: { state: State }) {
                             disabled={act.busy}
                             onClick={() => reject(s)}
                           >
-                            Отклонить
+                            {t("vip.subs.reject")}
                           </button>
                         </>
                       )}
@@ -602,7 +605,7 @@ function SubscribersCard({ state }: { state: State }) {
                             disabled={act.busy}
                             onClick={() => extend(s)}
                           >
-                            ± дни
+                            {t("vip.subs.extend")}
                           </button>
                           <button
                             type="button"
@@ -612,18 +615,18 @@ function SubscribersCard({ state }: { state: State }) {
                               void act.run({ id: s.id, action: "resend" }).catch(() => {})
                             }
                           >
-                            Переотправить ссылку
+                            {t("vip.subs.resend")}
                           </button>
                           <button
                             type="button"
                             className="btn-ghost text-xs text-danger"
                             disabled={act.busy}
                             onClick={() =>
-                              confirm("Исключить из группы и закрыть доступ?") &&
+                              confirm(t("vip.subs.excludeConfirm")) &&
                               void act.run({ id: s.id, action: "exclude" }).catch(() => {})
                             }
                           >
-                            Исключить
+                            {t("vip.subs.exclude")}
                           </button>
                         </>
                       )}
@@ -634,7 +637,7 @@ function SubscribersCard({ state }: { state: State }) {
                           disabled={act.busy}
                           onClick={() => extend(s)}
                         >
-                          Продлить
+                          {t("vip.subs.prolong")}
                         </button>
                       )}
                       <button
@@ -642,11 +645,11 @@ function SubscribersCard({ state }: { state: State }) {
                         className="btn-ghost text-xs text-danger"
                         disabled={act.busy}
                         onClick={() =>
-                          confirm("Удалить запись?") &&
+                          confirm(t("vip.subs.deleteConfirm")) &&
                           void act.run({ id: s.id, action: "delete" }).catch(() => {})
                         }
                       >
-                        Удалить
+                        {t("common.delete")}
                       </button>
                     </td>
                   </tr>
@@ -669,31 +672,31 @@ function SubscribersCard({ state }: { state: State }) {
             .catch(() => {});
         }}
       >
-        <div className="md:col-span-4 text-sm font-medium">Добавить участника вручную</div>
-        <Field label="Telegram ID">
+        <div className="md:col-span-4 text-sm font-medium">{t("vip.subs.add.title")}</div>
+        <Field label={t("vip.subs.add.telegramId")}>
           <input className="input" name="telegram_id" type="number" min={1} required />
         </Field>
-        <Field label="Тариф">
+        <Field label={t("vip.subs.add.tariff")}>
           <select className="input" name="tariff_id" required>
-            {state.tariffs.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
+            {state.tariffs.map((tariff) => (
+              <option key={tariff.id} value={tariff.id}>
+                {tariff.name}
               </option>
             ))}
           </select>
         </Field>
-        <Field label="Дней (пусто — по тарифу)">
+        <Field label={t("vip.subs.add.days")}>
           <input className="input" name="days" type="number" min={1} />
         </Field>
-        <Field label="Статус">
+        <Field label={t("vip.subs.add.status")}>
           <select className="input" name="status" defaultValue="active">
-            <option value="active">Активна — отправить ссылку</option>
-            <option value="expired">Истекла — только история</option>
+            <option value="active">{t("vip.subs.add.statusActive")}</option>
+            <option value="expired">{t("vip.subs.add.statusExpired")}</option>
           </select>
         </Field>
         <div className="md:col-span-4">
           <button className="btn-secondary" disabled={add.busy || state.tariffs.length === 0}>
-            Добавить
+            {t("vip.subs.add.submit")}
           </button>
         </div>
       </form>

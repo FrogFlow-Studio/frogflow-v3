@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { deleteProductFn, productFn, saveProductFn } from "@/app/admin/admin.functions";
+import { adminT, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
 import { MATERIAL_LANGUAGES } from "@/core/catalog/materials";
@@ -15,19 +16,24 @@ type Img = { key: string };
 type Mat = { language: Locale; filePath: string; fileName: string | null };
 type Variant = { name: string; price: number };
 
-async function upload(kind: "image" | "file", file: File): Promise<{ key: string; name: string }> {
+async function upload(
+  kind: "image" | "file",
+  file: File,
+  t: AdminT,
+): Promise<{ key: string; name: string }> {
   const fd = new FormData();
   fd.set("kind", kind);
   fd.set("file", file);
   const r = await fetch("/api/admin/upload", { method: "POST", body: fd });
   const j = (await r.json().catch(() => ({}))) as { key?: string; name?: string; error?: string };
-  if (!r.ok || !j.key) throw new Error(j.error ?? `Загрузка не удалась (${r.status})`);
+  if (!r.ok || !j.key) throw new Error(j.error ?? t("product.uploadFailed", { status: r.status }));
   return { key: j.key, name: j.name ?? file.name };
 }
 
 function ProductEditor() {
   const { product: p, categories, countries, defaultFulfillment } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const navigate = useNavigate();
   const isNew = !p;
 
@@ -97,7 +103,7 @@ function ProductEditor() {
     else await navigate({ to: "/admin/products" });
   });
   const del = useAction(async () => {
-    if (!p || !confirm("Удалить товар вместе с файлами? Заказы с ним сохранятся.")) return;
+    if (!p || !confirm(t("product.deleteConfirm"))) return;
     await deleteProductFn({ data: { id: p.id } });
     await navigate({ to: "/admin/products" });
   });
@@ -108,7 +114,7 @@ function ProductEditor() {
     for (const file of Array.from(files)) {
       setUploading(file.name);
       try {
-        const r = await upload(kind, file);
+        const r = await upload(kind, file, t);
         if (kind === "image") setImages((x) => [...x, { key: r.key }]);
         else
           setMaterials((x) => [
@@ -132,10 +138,10 @@ function ProductEditor() {
       }}
     >
       <PageTitle
-        title={isNew ? "Новый товар" : p.name}
+        title={isNew ? t("product.newTitle") : p.name}
         subtitle={
           <Link to="/admin/products" className="hover:underline">
-            ← к списку
+            {t("product.backToList")}
           </Link>
         }
         actions={
@@ -147,11 +153,11 @@ function ProductEditor() {
                 disabled={del.busy}
                 onClick={() => void del.run().catch(() => {})}
               >
-                Удалить
+                {t("common.delete")}
               </button>
             )}
             <button className="btn-primary" disabled={save.busy || Boolean(uploading)}>
-              Сохранить
+              {t("common.save")}
             </button>
           </>
         }
@@ -159,9 +165,9 @@ function ProductEditor() {
       <ErrorBox error={save.error ?? del.error ?? uploadError} />
       <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_340px]">
         <div className="space-y-4">
-          <Card title="Описание">
+          <Card title={t("product.card.description")}>
             <div className="space-y-3">
-              <Field label="Название">
+              <Field label={t("product.name")}>
                 <input
                   className="input"
                   name="name"
@@ -170,7 +176,7 @@ function ProductEditor() {
                   maxLength={200}
                 />
               </Field>
-              <Field label="Описание" hint="Показывается в карточке товара.">
+              <Field label={t("product.description")} hint={t("product.descriptionHint")}>
                 <textarea
                   className="input"
                   name="description"
@@ -178,18 +184,13 @@ function ProductEditor() {
                   defaultValue={p?.description ?? ""}
                 />
               </Field>
-              <Field
-                label="Ключевые слова для поиска"
-                hint="Через запятую: синонимы, класс, предмет."
-              >
+              <Field label={t("product.keywords")} hint={t("product.keywordsHint")}>
                 <input className="input" name="keywords" defaultValue={p?.keywords ?? ""} />
               </Field>
-              <Field label="Категории">
+              <Field label={t("product.categories")}>
                 <div className="grid gap-1 sm:grid-cols-2">
                   {categories.length === 0 && (
-                    <span className="text-sm text-muted">
-                      Категорий нет — товар покажется на первом экране.
-                    </span>
+                    <span className="text-sm text-muted">{t("product.noCategories")}</span>
                   )}
                   {categories.map((c) => (
                     <label key={c.id} className="flex items-center gap-2 text-sm">
@@ -210,9 +211,9 @@ function ProductEditor() {
             </div>
           </Card>
 
-          <Card title="Цена">
+          <Card title={t("product.card.price")}>
             <div className="grid gap-3 sm:grid-cols-3">
-              <Field label="Базовая цена">
+              <Field label={t("product.basePrice")}>
                 <input
                   className="input"
                   name="price"
@@ -223,7 +224,7 @@ function ProductEditor() {
                   required
                 />
               </Field>
-              <Field label="Валюта">
+              <Field label={t("product.currency")}>
                 <input
                   className="input"
                   name="currency"
@@ -231,7 +232,7 @@ function ProductEditor() {
                   maxLength={3}
                 />
               </Field>
-              <Field label="Порядок в списке">
+              <Field label={t("product.sortOrder")}>
                 <input
                   className="input"
                   name="sortOrder"
@@ -242,7 +243,7 @@ function ProductEditor() {
             </div>
             {shop.modules.multi_currency && countries.length > 0 && (
               <div className="mt-4">
-                <div className="label">Цена по странам (пусто — по курсу от базовой)</div>
+                <div className="label">{t("product.countryPrices")}</div>
                 <div className="grid gap-2 sm:grid-cols-3">
                   {countries.map((c) => (
                     <Field key={c.code} label={`${c.name}, ${c.currency}`}>
@@ -262,15 +263,13 @@ function ProductEditor() {
               </div>
             )}
             <div className="mt-4">
-              <div className="label">
-                Варианты (например, «1 кг», «2 кг») — цена варианта вместо базовой
-              </div>
+              <div className="label">{t("product.variants")}</div>
               <div className="space-y-2">
                 {variants.map((v, i) => (
                   <div key={i} className="flex gap-2">
                     <input
                       className="input"
-                      placeholder="Название"
+                      placeholder={t("product.variantName")}
                       value={v.name}
                       onChange={(e) =>
                         setVariants((x) =>
@@ -304,13 +303,13 @@ function ProductEditor() {
                   className="btn-secondary"
                   onClick={() => setVariants((x) => [...x, { name: "", price: 0 }])}
                 >
-                  + Вариант
+                  {t("product.addVariant")}
                 </button>
               </div>
             </div>
           </Card>
 
-          <Card title="Тип и наличие">
+          <Card title={t("product.card.kind")}>
             <div className="flex flex-wrap gap-4">
               <label className="flex items-center gap-2 text-sm">
                 <input
@@ -319,7 +318,7 @@ function ProductEditor() {
                   checked={kind === "digital"}
                   onChange={() => setKind("digital")}
                 />{" "}
-                Цифровой: файлы после оплаты
+                {t("product.kindDigital")}
               </label>
               <label className="flex items-center gap-2 text-sm">
                 <input
@@ -328,11 +327,11 @@ function ProductEditor() {
                   checked={kind === "physical"}
                   onChange={() => setKind("physical")}
                 />{" "}
-                Физический: доставка или самовывоз
+                {t("product.kindPhysical")}
               </label>
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
-              <Field label="Остаток" hint="Пусто — не учитывать.">
+              <Field label={t("product.stock")} hint={t("product.stockHint")}>
                 <input
                   className="input"
                   name="stockQuantity"
@@ -342,7 +341,7 @@ function ProductEditor() {
                 />
               </Field>
               {kind === "physical" && (
-                <Field label="Срок изготовления, дней">
+                <Field label={t("product.leadTime")}>
                   <input
                     className="input"
                     name="leadTimeDays"
@@ -353,15 +352,15 @@ function ProductEditor() {
                 </Field>
               )}
               <label className="flex items-center gap-2 self-end pb-2 text-sm">
-                <input type="checkbox" name="isActive" defaultChecked={p?.is_active ?? true} /> В
-                продаже
+                <input type="checkbox" name="isActive" defaultChecked={p?.is_active ?? true} />{" "}
+                {t("product.onSale")}
               </label>
             </div>
           </Card>
         </div>
 
         <div className="space-y-4">
-          <Card title="Фото">
+          <Card title={t("product.card.photos")}>
             <div className="grid grid-cols-3 gap-2">
               {images.map((img, i) => (
                 <div key={img.key} className="group relative">
@@ -405,7 +404,7 @@ function ProductEditor() {
               ))}
             </div>
             <label className="btn-secondary mt-3 w-full cursor-pointer">
-              {uploading ? `Загрузка: ${uploading}` : "+ Добавить фото"}
+              {uploading ? t("product.uploading", { name: uploading }) : t("product.addPhoto")}
               <input
                 type="file"
                 accept="image/*"
@@ -414,15 +413,15 @@ function ProductEditor() {
                 onChange={(e) => void onUpload("image", e.target.files)}
               />
             </label>
-            <p className="mt-1 text-xs text-muted">Первое фото — обложка.</p>
+            <p className="mt-1 text-xs text-muted">{t("product.firstIsCover")}</p>
           </Card>
 
           {kind === "digital" && (
             <Card
-              title="Файлы материала"
+              title={t("product.card.files")}
               actions={
                 materials.length === 0 ? (
-                  <Badge tone="danger">нужен файл</Badge>
+                  <Badge tone="danger">{t("product.needFile")}</Badge>
                 ) : (
                   <Badge tone="ok">{materials.length}</Badge>
                 )
@@ -476,9 +475,7 @@ function ProductEditor() {
                   </label>
                 ))}
               </div>
-              <p className="mt-2 text-xs text-muted">
-                PDF, ZIP, видео до 200 МБ. Покупатель получает все файлы своего языка.
-              </p>
+              <p className="mt-2 text-xs text-muted">{t("product.filesHint")}</p>
             </Card>
           )}
         </div>

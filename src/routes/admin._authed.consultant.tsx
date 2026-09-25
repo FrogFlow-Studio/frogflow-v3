@@ -2,13 +2,8 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { consultantFn, consultantTestFn, saveConsultantFn } from "@/app/admin/admin.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
-import {
-  GOAL_LABELS,
-  GOALS,
-  TONE_LABELS,
-  TONES,
-  type ConsultantProfile,
-} from "@/core/consultant/profile";
+import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
+import { GOALS, TONES, type ConsultantProfile } from "@/core/consultant/profile";
 import type { KnowledgeDoc } from "@/core/consultant/knowledge";
 
 export const Route = createFileRoute("/admin/_authed/consultant")({
@@ -18,6 +13,9 @@ export const Route = createFileRoute("/admin/_authed/consultant")({
 
 function ConsultantPage() {
   const data = Route.useLoaderData();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const loc = intlLocale(shop.locale);
   const router = useRouter();
   const [enabled, setEnabled] = useState(data.enabled);
   const [profile, setProfile] = useState<ConsultantProfile>(data.profile);
@@ -49,36 +47,30 @@ function ConsultantPage() {
 
   return (
     <>
-      <PageTitle
-        title="ИИ-консультант"
-        subtitle="Отвечает покупателям на свободные вопросы в Telegram, Instagram Direct и WhatsApp по вашему профилю, базе знаний и каталогу. Сложное передаёт вам в «Чат» и присылает заявку в Telegram."
-      />
+      <PageTitle title={t("consultant.title")} subtitle={t("consultant.subtitle")} />
       {!data.configured && (
         <div className="mb-4 rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">
-          На платформе не задан ключ Anthropic — консультант не ответит, пока оператор его не
-          добавит. Настройки можно заполнить заранее.
+          {t("consultant.notConfigured")}
         </div>
       )}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <div className="space-y-4">
-          <Card title="Профиль бизнеса">
+          <Card title={t("consultant.profile.title")}>
             <div className="mb-4 flex items-center gap-3">
-              <Switch checked={enabled} onChange={setEnabled} label="Включить консультанта" />
+              <Switch checked={enabled} onChange={setEnabled} label={t("consultant.enable")} />
               <span className="text-sm">
-                {enabled
-                  ? "Отвечает на свободный текст в боте"
-                  : "Выключен — на свободный текст бот показывает меню"}
+                {enabled ? t("consultant.enabledHint") : t("consultant.disabledHint")}
               </span>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Название компании">
+              <Field label={t("consultant.brandName")}>
                 <input
                   className="input"
                   value={profile.brand_name}
                   onChange={(e) => set("brand_name", e.target.value)}
                 />
               </Field>
-              <Field label="Сайт" hint="Необязательно">
+              <Field label={t("consultant.website")} hint={t("consultant.optional")}>
                 <input
                   className="input"
                   value={profile.website_url ?? ""}
@@ -86,7 +78,7 @@ function ConsultantPage() {
                   placeholder="https://"
                 />
               </Field>
-              <Field label="Цель диалога">
+              <Field label={t("consultant.goal")}>
                 <select
                   className="input"
                   value={profile.goal}
@@ -94,25 +86,25 @@ function ConsultantPage() {
                 >
                   {GOALS.map((g) => (
                     <option key={g} value={g}>
-                      {GOAL_LABELS[g]}
+                      {t(`consultant.goal.${g}` as AdminKey)}
                     </option>
                   ))}
                 </select>
               </Field>
-              <Field label="Тон общения">
+              <Field label={t("consultant.tone")}>
                 <select
                   className="input"
                   value={profile.tone}
                   onChange={(e) => set("tone", e.target.value as ConsultantProfile["tone"])}
                 >
-                  {TONES.map((t) => (
-                    <option key={t} value={t}>
-                      {TONE_LABELS[t]}
+                  {TONES.map((tone) => (
+                    <option key={tone} value={tone}>
+                      {t(`consultant.tone.${tone}` as AdminKey)}
                     </option>
                   ))}
                 </select>
               </Field>
-              <Field label="Основной язык" hint="Клиенту отвечает на его языке">
+              <Field label={t("consultant.language")} hint={t("consultant.languageHint")}>
                 <select
                   className="input"
                   value={profile.primary_language}
@@ -125,7 +117,7 @@ function ConsultantPage() {
                   <option value="en">English</option>
                 </select>
               </Field>
-              <Field label="Валюта цен">
+              <Field label={t("consultant.currency")}>
                 <input
                   className="input"
                   value={profile.currency}
@@ -133,7 +125,7 @@ function ConsultantPage() {
                   onChange={(e) => set("currency", e.target.value.toUpperCase())}
                 />
               </Field>
-              <Field label="Страны" hint="Через запятую: KZ, RU">
+              <Field label={t("consultant.countries")} hint={t("consultant.countriesHint")}>
                 <input
                   className="input"
                   value={profile.countries.join(", ")}
@@ -150,36 +142,30 @@ function ConsultantPage() {
               </Field>
             </div>
             <div className="mt-3 space-y-3">
-              <Field
-                label="О компании"
-                hint="Что продаёте, кому, чем отличаетесь — 2–3 предложения"
-              >
+              <Field label={t("consultant.about")} hint={t("consultant.aboutHint")}>
                 <textarea
                   className="input min-h-20"
                   value={profile.about ?? ""}
                   onChange={(e) => set("about", e.target.value || undefined)}
                 />
               </Field>
-              <Field label="Условия доставки">
+              <Field label={t("consultant.delivery")}>
                 <textarea
                   className="input min-h-16"
                   value={profile.delivery_info ?? ""}
                   onChange={(e) => set("delivery_info", e.target.value || undefined)}
-                  placeholder="Курьер по Алматы в день заказа, СДЭК по стране…"
+                  placeholder={t("consultant.deliveryPlaceholder")}
                 />
               </Field>
-              <Field label="Условия оплаты">
+              <Field label={t("consultant.payment")}>
                 <textarea
                   className="input min-h-16"
                   value={profile.payment_info ?? ""}
                   onChange={(e) => set("payment_info", e.target.value || undefined)}
-                  placeholder="Kaspi QR, перевод, карта…"
+                  placeholder={t("consultant.paymentPlaceholder")}
                 />
               </Field>
-              <Field
-                label="Особые указания"
-                hint="Что говорить и чего не обещать. Например: «не называть сроки быстрее 2 дней», «предлагать открытку к букету»"
-              >
+              <Field label={t("consultant.instructions")} hint={t("consultant.instructionsHint")}>
                 <textarea
                   className="input min-h-20"
                   value={profile.custom_instructions ?? ""}
@@ -192,13 +178,13 @@ function ConsultantPage() {
                   checked={Boolean(profile.medical_disclaimer)}
                   onChange={(e) => set("medical_disclaimer", e.target.checked)}
                 />
-                Добавлять дисклеймер про БАДы и консультацию врача
+                {t("consultant.medicalDisclaimer")}
               </label>
             </div>
           </Card>
 
           <Card
-            title="База знаний"
+            title={t("consultant.knowledge.title")}
             actions={
               <button
                 type="button"
@@ -207,18 +193,13 @@ function ConsultantPage() {
                   setDocs((ds) => [...ds, { id: `doc${Date.now()}`, title: "", content: "" }])
                 }
               >
-                + Документ
+                {t("consultant.knowledge.add")}
               </button>
             }
           >
-            <p className="mb-3 text-sm text-muted">
-              Условия, ответы на частые вопросы, описания услуг, регламенты. Консультант отвечает
-              только по этим текстам и каталогу — чего здесь нет, того он не обещает.
-            </p>
+            <p className="mb-3 text-sm text-muted">{t("consultant.knowledge.intro")}</p>
             {docs.length === 0 && (
-              <p className="text-sm text-muted">
-                Пока нет документов. Каталог товаров консультант видит и без них.
-              </p>
+              <p className="text-sm text-muted">{t("consultant.knowledge.empty")}</p>
             )}
             <div className="space-y-4">
               {docs.map((d, i) => (
@@ -226,13 +207,13 @@ function ConsultantPage() {
                   <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
                     <input
                       className="input"
-                      placeholder="Название документа"
+                      placeholder={t("consultant.knowledge.docTitle")}
                       value={d.title}
                       onChange={(e) => setDoc(i, { title: e.target.value })}
                     />
                     <input
                       className="input sm:w-40"
-                      placeholder="Раздел"
+                      placeholder={t("consultant.knowledge.category")}
                       value={d.category ?? ""}
                       onChange={(e) => setDoc(i, { category: e.target.value })}
                     />
@@ -241,12 +222,12 @@ function ConsultantPage() {
                       className="btn-ghost text-xs text-danger"
                       onClick={() => setDocs((ds) => ds.filter((_, j) => j !== i))}
                     >
-                      Удалить
+                      {t("common.delete")}
                     </button>
                   </div>
                   <textarea
                     className="input mt-2 min-h-24"
-                    placeholder="Текст документа"
+                    placeholder={t("consultant.knowledge.content")}
                     value={d.content}
                     onChange={(e) => setDoc(i, { content: e.target.value })}
                   />
@@ -261,29 +242,31 @@ function ConsultantPage() {
               disabled={save.busy}
               onClick={() => void save.run().catch(() => {})}
             >
-              {save.busy ? "Сохраняем…" : "Сохранить"}
+              {save.busy ? t("consultant.saving") : t("common.save")}
             </button>
-            {saved && <span className="text-sm text-ok">Сохранено</span>}
+            {saved && <span className="text-sm text-ok">{t("consultant.saved")}</span>}
           </div>
           <ErrorBox error={save.error} />
         </div>
 
         <div className="space-y-4">
-          <TestChat configured={data.configured} />
-          <Card title="Расход">
+          <TestChat configured={data.configured} t={t} />
+          <Card title={t("consultant.usage.title")}>
             <dl className="grid grid-cols-2 gap-2 text-sm">
-              <dt className="text-muted">Ответов всего</dt>
+              <dt className="text-muted">{t("consultant.usage.count")}</dt>
               <dd className="tabular-nums">{data.usage.count}</dd>
-              <dt className="text-muted">Стоимость всего</dt>
+              <dt className="text-muted">{t("consultant.usage.cost")}</dt>
               <dd className="tabular-nums">${data.usage.usd.toFixed(4)}</dd>
-              <dt className="text-muted">Токенов вход / выход</dt>
+              <dt className="text-muted">{t("consultant.usage.tokens")}</dt>
               <dd className="tabular-nums">
-                {data.usage.inputTokens.toLocaleString("ru")} /{" "}
-                {data.usage.outputTokens.toLocaleString("ru")}
+                {data.usage.inputTokens.toLocaleString(loc)} /{" "}
+                {data.usage.outputTokens.toLocaleString(loc)}
               </dd>
             </dl>
             {data.lastError && (
-              <p className="mt-3 text-xs text-danger">Последняя ошибка: {data.lastError}</p>
+              <p className="mt-3 text-xs text-danger">
+                {t("consultant.usage.lastError", { error: data.lastError })}
+              </p>
             )}
           </Card>
         </div>
@@ -292,7 +275,7 @@ function ConsultantPage() {
   );
 }
 
-function TestChat({ configured }: { configured: boolean }) {
+function TestChat({ configured, t }: { configured: boolean; t: AdminT }) {
   const [q, setQ] = useState("");
   const [log, setLog] = useState<
     Array<{ q: string; a: string; handoff: string | null; usd: number }>
@@ -311,11 +294,8 @@ function TestChat({ configured }: { configured: boolean }) {
     setQ("");
   });
   return (
-    <Card title="Проверить ответы">
-      <p className="mb-3 text-sm text-muted">
-        Задайте вопрос как покупатель. Ответ считается по сохранённым настройкам; история здесь не
-        ведётся.
-      </p>
+    <Card title={t("consultant.test.title")}>
+      <p className="mb-3 text-sm text-muted">{t("consultant.test.intro")}</p>
       <div className="mb-3 max-h-80 space-y-3 overflow-auto">
         {log.map((m, i) => (
           <div key={i} className="space-y-1 text-sm">
@@ -330,7 +310,7 @@ function TestChat({ configured }: { configured: boolean }) {
               {m.handoff && (
                 <>
                   {" "}
-                  · <Badge tone="warn">передача менеджеру</Badge> {m.handoff}
+                  · <Badge tone="warn">{t("consultant.test.handoff")}</Badge> {m.handoff}
                 </>
               )}
             </div>
@@ -346,13 +326,13 @@ function TestChat({ configured }: { configured: boolean }) {
       >
         <input
           className="input"
-          placeholder="Например: есть ли доставка в Астану?"
+          placeholder={t("consultant.test.placeholder")}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           disabled={!configured}
         />
         <button className="btn-secondary shrink-0" disabled={!configured || ask.busy || !q.trim()}>
-          {ask.busy ? "…" : "Спросить"}
+          {ask.busy ? "…" : t("consultant.test.ask")}
         </button>
       </form>
       <ErrorBox error={ask.error} />
