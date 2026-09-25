@@ -7,6 +7,9 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
  * подключён, иначе тумблер в панели оператора прятал бы только пункт меню.
  */
 const vip = async () => (await import("@/app/auth/guards.server")).requireAdminModule("vip");
+/** Изменения — с роли менеджера (core/auth/roles). */
+const vipWrite = async () =>
+  (await import("@/app/auth/guards.server")).requireAdminModule("vip", "manager");
 
 async function groupOf(ctx: TenantContext) {
   if (!ctx.tenant.settings.vip?.token_enc)
@@ -66,7 +69,7 @@ export const connectVipBotFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await vip();
+    const ctx = await vipWrite();
     const { connectVipBot } = await import("@/app/operator/operator.server");
     return connectVipBot(ctx.tenant.id, data.token, "admin");
   });
@@ -88,7 +91,7 @@ const tariffInput = z.object({
 export const saveVipTariffFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => tariffInput.parse(d))
   .handler(async ({ data }) => {
-    const ctx = await vip();
+    const ctx = await vipWrite();
     const { saveTariff } = await import("@/core/vip/vip");
     return { id: await saveTariff(ctx, data) };
   });
@@ -96,7 +99,7 @@ export const saveVipTariffFn = createServerFn({ method: "POST" })
 export const deleteVipTariffFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await vip();
+    const ctx = await vipWrite();
     const { deleteTariff } = await import("@/core/vip/vip");
     await deleteTariff(ctx, data.id);
     return { ok: true };
@@ -114,7 +117,7 @@ export const vipSubscriptionActionFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await vip();
+    const ctx = await vipWrite();
     const core = await import("@/core/vip/vip");
     const group = await groupOf(ctx);
     switch (data.action) {
@@ -174,13 +177,13 @@ export const addVipManualFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await vip();
+    const ctx = await vipWrite();
     const { addManualSubscription } = await import("@/core/vip/vip");
     return addManualSubscription(ctx, await groupOf(ctx), data);
   });
 
 export const runVipCronFn = createServerFn({ method: "POST" }).handler(async () => {
-  const ctx = await vip();
+  const ctx = await vipWrite();
   const { runVipCron } = await import("@/core/vip/cron");
   return runVipCron(ctx, await groupOf(ctx), ctx.tenant.settings.vip?.username ?? null);
 });
@@ -188,7 +191,7 @@ export const runVipCronFn = createServerFn({ method: "POST" }).handler(async () 
 export const vipProofUrlFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await vip();
+    const ctx = await vipWrite();
     const { getSubscription } = await import("@/core/vip/vip");
     const { proofSignedUrl } = await import("@/core/orders/admin");
     const sub = await getSubscription(ctx, data.id);

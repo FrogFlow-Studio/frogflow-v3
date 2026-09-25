@@ -1,5 +1,6 @@
 import { useSession } from "@tanstack/react-start/server";
 import { env } from "@/config/env";
+import type { AdminRole } from "@/core/auth/roles";
 
 /**
  * Одна cookie на всю платформу. Оператор и продавец — разные роли в ней:
@@ -8,7 +9,8 @@ import { env } from "@/config/env";
  */
 export type AppSession = {
   operator?: boolean;
-  admin?: { botId: string; username: string };
+  /** role нет у сессий, выданных до появления ролей — это владелец. */
+  admin?: { botId: string; username: string; role?: AdminRole };
 };
 
 export function sessionConfig() {

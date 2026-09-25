@@ -37,11 +37,12 @@ export type TenantSettings = {
     username?: string;
     webhook_ok?: boolean;
   };
-  /** Вход в админку клиента. */
+  /** Вход в админку клиента: владелец — от оператора, остальные — от владельца (core/auth/roles). */
   admin?: {
     username?: string;
     /** scrypt-хеш, см. core/auth/password.ts */
     password_hash?: string;
+    users?: AdminUser[];
   };
   /** Переключатель миграции: пока v1 обслуживает клиента, v2 отвечает 409 на его вебхуки. */
   served_by?: "v1" | "v2";
@@ -49,6 +50,14 @@ export type TenantSettings = {
   on_overdue?: "warn" | "suspend";
   warn_days_before?: number;
   grace_days?: number;
+};
+
+export type AdminUser = {
+  username: string;
+  password_hash: string;
+  role: "manager" | "viewer";
+  name?: string;
+  created_at?: string;
 };
 
 export type ZernioAccountSnapshot = {

@@ -13,8 +13,12 @@ import {
   saveSettingsFn,
   settingsFn,
   telegramStateFn,
+  deleteTeamMemberFn,
+  saveTeamMemberFn,
+  teamFn,
 } from "@/app/admin/admin.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
+import { ROLE_TITLES } from "@/core/auth/roles";
 import { imagePath } from "@/core/catalog/image-url";
 
 export const Route = createFileRoute("/admin/_authed/settings")({
@@ -157,6 +161,7 @@ function SettingsPage() {
           <SmartSearchCard settings={settings} hasKey={smartSearchKey} />
         )}
         <LegalCard settings={settings} />
+        <TeamCard />
       </div>
     </>
   );
@@ -1053,6 +1058,152 @@ function ReceiptOcrCard({
         <dd className="tabular-nums">{usage.count}</dd>
       </dl>
       <ErrorBox error={toggle.error} />
+    </Card>
+  );
+}
+
+type Member = Awaited<ReturnType<typeof teamFn>>[number];
+
+/**
+ * Команда магазина: владелец заводит менеджеров (заказы, товары, рассылки) и
+ * пользователей «только просмотр» (бухгалтер, аналитик). Логин уникален на
+ * платформе, пароль от 8 символов; все действия подписываются логином в
+ * истории заказа.
+ */
+function TeamCard() {
+  const [members, setMembers] = useState<Member[] | null>(null);
+  const [editing, setEditing] = useState<Member | "new" | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const reload = () =>
+    teamFn()
+      .then(setMembers)
+      .catch((e) => setError(e));
+  useEffect(() => {
+    void reload();
+  }, []);
+  const save = useAction(async (f: FormData) => {
+    await saveTeamMemberFn({
+      data: {
+        username: String(f.get("username")),
+        name: String(f.get("name") || ""),
+        role: f.get("role") === "viewer" ? "viewer" : "manager",
+        password: String(f.get("password") || "") || undefined,
+      },
+    });
+    setEditing(null);
+    await reload();
+  });
+  const remove = useAction(async (username: string) => {
+    if (!confirm(`Удалить пользователя ${username}? Он больше не сможет войти.`)) return;
+    await deleteTeamMemberFn({ data: { username } });
+    await reload();
+  });
+  const current = editing === "new" ? null : editing;
+  return (
+    <Card
+      title="Команда"
+      actions={
+        <button className="btn-secondary text-xs" onClick={() => setEditing("new")}>
+          + Пользователь
+        </button>
+      }
+    >
+      <p className="mb-3 text-sm text-muted">
+        Менеджер ведёт заказы, товары, покупателей, чат и рассылки; «просмотр» — только смотрит и
+        выгружает. Настройки, оплата, модули и команда — только у владельца. Кто что сделал, видно в
+        истории заказа.
+      </p>
+      <ErrorBox error={error ?? remove.error} />
+      {members === null ? (
+        <p className="text-sm text-muted">Загрузка…</p>
+      ) : members.length === 0 ? (
+        <p className="text-sm text-muted">Пока только вы.</p>
+      ) : (
+        <ul className="divide-y divide-line text-sm">
+          {members.map((m) => (
+            <li key={m.username} className="flex items-center justify-between gap-3 py-2">
+              <div className="min-w-0">
+                <span className="font-medium">{m.username}</span>
+                {m.name && <span className="text-muted"> · {m.name}</span>}{" "}
+                <Badge tone={m.role === "manager" ? "accent" : "neutral"}>
+                  {ROLE_TITLES[m.role]}
+                </Badge>
+              </div>
+              <div className="flex shrink-0 gap-1">
+                <button className="btn-ghost text-xs" onClick={() => setEditing(m)}>
+                  Изменить
+                </button>
+                <button
+                  className="btn-ghost text-xs text-danger"
+                  disabled={remove.busy}
+                  onClick={() => void remove.run(m.username).catch(() => {})}
+                >
+                  Удалить
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {editing !== null && (
+        <form
+          key={current?.username ?? "new"}
+          className="mt-4 grid gap-3 rounded-md border border-line p-3 sm:grid-cols-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save.run(new FormData(e.currentTarget)).catch(() => {});
+          }}
+        >
+          <Field label="Логин" hint="латиница, цифры, «_», от 3 символов">
+            <input
+              className="input"
+              name="username"
+              defaultValue={current?.username ?? ""}
+              readOnly={Boolean(current)}
+              required
+              autoComplete="off"
+            />
+          </Field>
+          <Field label="Имя">
+            <input
+              className="input"
+              name="name"
+              defaultValue={current?.name ?? ""}
+              maxLength={80}
+            />
+          </Field>
+          <Field label="Роль">
+            <select className="input" name="role" defaultValue={current?.role ?? "manager"}>
+              <option value="manager">Менеджер — заказы, товары, чат, рассылки</option>
+              <option value="viewer">Просмотр — только смотреть и выгружать</option>
+            </select>
+          </Field>
+          <Field
+            label={current ? "Новый пароль (пусто — не менять)" : "Пароль"}
+            hint="не короче 8 символов"
+          >
+            <input
+              className="input"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required={!current}
+            />
+          </Field>
+          <div className="flex gap-2 sm:col-span-2">
+            <button className="btn-primary" disabled={save.busy}>
+              Сохранить
+            </button>
+            <button type="button" className="btn-ghost" onClick={() => setEditing(null)}>
+              Отмена
+            </button>
+          </div>
+          <div className="sm:col-span-2">
+            <ErrorBox error={save.error} />
+          </div>
+        </form>
+      )}
     </Card>
   );
 }

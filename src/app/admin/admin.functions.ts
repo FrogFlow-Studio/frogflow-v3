@@ -8,6 +8,11 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
  * контекст арендатора берётся из сессии, подключение к базе — под его ролью.
  */
 const admin = async () => (await import("@/app/auth/guards.server")).requireAdmin();
+/** Изменения — менеджеру и владельцу; настройки, оплата, модули, команда — только владельцу (core/auth/roles). */
+const adminWrite = async () =>
+  (await import("@/app/auth/guards.server")).requireAdminRole("manager");
+const adminOwner = async () => (await import("@/app/auth/guards.server")).requireAdminRole("owner");
+const actor = async () => (await import("@/app/auth/guards.server")).adminActor();
 const uuid = z.string().uuid();
 
 export const adminLogin = createServerFn({ method: "POST" })
@@ -15,7 +20,7 @@ export const adminLogin = createServerFn({ method: "POST" })
     z.object({ username: z.string().min(1), password: z.string().min(1) }).parse(d),
   )
   .handler(async ({ data }) => {
-    const { findTenantByAdminUsername, checkAdminPassword } = await import("./admin.server");
+    const { resolveAdminLogin, checkAdminPassword } = await import("./admin.server");
     const { appSession } = await import("@/app/auth/session.server");
     const { clientIp, loginLocked, recordLogin, loginDelay } =
       await import("@/app/auth/login-guard.server");
@@ -35,8 +40,9 @@ export const adminLogin = createServerFn({ method: "POST" })
         return { ok: true as const, role: "operator" as const };
       }
     }
-    const t = await findTenantByAdminUsername(data.username);
-    if (!t) return { ok: false as const };
+    const login = await resolveAdminLogin(data.username);
+    if (!login) return { ok: false as const };
+    const t = login.tenant;
     // Клиента ещё обслуживает прежняя платформа: заказы и выдача идут там,
     // и подтверждение заказа отсюда осталось бы без бота (токен только у v1).
     {
@@ -48,12 +54,14 @@ export const adminLogin = createServerFn({ method: "POST" })
     }
     if (await loginLocked({ botId: t.id }, ip))
       throw new Error("Слишком много неудачных попыток. Попробуйте через 15 минут.");
-    const ok = checkAdminPassword(t, data.password);
+    const ok = checkAdminPassword(login, data.password);
     await recordLogin({ botId: t.id }, ip, ok, data.username);
     if (!ok) return { ok: false as const };
     await (
       await appSession()
-    ).update({ admin: { botId: t.id, username: data.username.trim().toLowerCase() } });
+    ).update({
+      admin: { botId: t.id, username: data.username.trim().toLowerCase(), role: login.role },
+    });
     return { ok: true as const, role: "admin" as const };
   });
 
@@ -82,6 +90,8 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       name: shopName,
       /** Язык админки продавца — app_settings.admin_locale, иначе язык магазина. */
       locale,
+      role: await (await import("@/app/auth/guards.server")).adminRole(),
+      username: s.data.admin.username,
       vertical: ctx.tenant.vertical,
       verticalTitle: VERTICALS[ctx.tenant.vertical].title,
       modules: ctx.tenant.modules,
@@ -146,10 +156,42 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
 
 /** Продавец убрал чек-лист первых шагов с обзора. */
 export const hideSetupFn = createServerFn({ method: "POST" }).handler(async () => {
-  const ctx = await admin();
+  const ctx = await adminWrite();
   await (await import("@/core/settings/settings")).setSetting(ctx, "setup_hidden", "1");
   return { ok: true };
 });
+
+/* ── команда ─────────────────────────────────────────────────────── */
+
+export const teamFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await adminOwner();
+  return (await import("./admin.server")).listTeam(ctx);
+});
+
+export const saveTeamMemberFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        username: z.string().min(3).max(40),
+        name: z.string().max(80).optional(),
+        role: z.enum(["manager", "viewer"]),
+        password: z.string().min(8).max(200).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminOwner();
+    await (await import("./admin.server")).saveTeamMember(ctx, data);
+    return { ok: true };
+  });
+
+export const deleteTeamMemberFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ username: z.string().min(1).max(40) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await adminOwner();
+    await (await import("./admin.server")).deleteTeamMember(ctx, data.username);
+    return { ok: true };
+  });
 
 /* ── каталог ─────────────────────────────────────────────────────── */
 
@@ -159,7 +201,7 @@ export const importCatalogFn = createServerFn({ method: "POST" })
     z.object({ csv: z.string().min(1).max(4_000_000), apply: z.boolean().default(false) }).parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminWrite();
     const m = await import("@/core/catalog/import.server");
     if (!data.apply) return { preview: await m.previewImport(ctx, data.csv), result: null };
     return { preview: null, result: await m.applyImport(ctx, data.csv) };
@@ -183,7 +225,7 @@ export const saveCategoryFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminWrite();
     const m = await import("@/core/catalog/admin");
     const { id, ...input } = data;
     if (id) {
@@ -196,7 +238,7 @@ export const saveCategoryFn = createServerFn({ method: "POST" })
 export const deleteCategoryFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminWrite();
     await (await import("@/core/catalog/admin")).deleteCategory(ctx, data.id);
     return { ok: true };
   });
@@ -276,7 +318,7 @@ const productInput = z.object({
 export const saveProductFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid.nullable(), product: productInput }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminWrite();
     const m = await import("@/core/catalog/admin");
     const { images, materials, variants, ...fields } = data.product;
     if (fields.fulfillmentKind === "digital" && materials.length === 0)
@@ -297,7 +339,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
 export const deleteProductFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminWrite();
     await (await import("@/core/catalog/admin")).deleteProduct(ctx, data.id);
     return { ok: true };
   });
@@ -305,7 +347,7 @@ export const deleteProductFn = createServerFn({ method: "POST" })
 export const setProductActiveFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid, active: z.boolean() }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminWrite();
     await (await import("@/core/catalog/admin")).setProductActive(ctx, data.id, data.active);
     return { ok: true };
   });
@@ -352,8 +394,13 @@ export const orderActionFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await admin();
-    return (await import("./admin.server")).runOrderAction(ctx, data.id, data.action);
+    const ctx = await adminWrite();
+    return (await import("./admin.server")).runOrderAction(
+      ctx,
+      data.id,
+      data.action,
+      await actor(),
+    );
   });
 
 export const orderNoteFn = createServerFn({ method: "POST" })
@@ -361,7 +408,7 @@ export const orderNoteFn = createServerFn({ method: "POST" })
     z.object({ id: z.number().int(), note: z.string().max(2000).nullable() }).parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminWrite();
     await (await import("@/core/orders/admin")).setOrderNote(ctx, data.id, data.note);
     return { ok: true };
   });
@@ -389,7 +436,7 @@ export const setBlockedFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { requireAdminModule } = await import("@/app/auth/guards.server");
-    const ctx = await requireAdminModule("blocked");
+    const ctx = await requireAdminModule("blocked", "manager");
     await (
       await import("@/core/orders/admin")
     ).setBlocked(ctx, data.telegramId, data.blocked, data);
@@ -464,7 +511,7 @@ export const settingsFn = createServerFn({ method: "GET" }).handler(async () => 
 export const saveSettingsFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.record(z.enum(SETTING_KEYS), z.string().max(4000)).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminOwner();
     const { setSetting } = await import("@/core/settings/settings");
     for (const [k, v] of Object.entries(data)) await setSetting(ctx, k, v);
     return { ok: true };
@@ -486,7 +533,7 @@ export const savePaymentMethodFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminOwner();
     const { id, ...input } = data;
     return {
       id: await (await import("@/core/settings/payment-methods")).savePaymentMethod(ctx, id, input),
@@ -496,7 +543,7 @@ export const savePaymentMethodFn = createServerFn({ method: "POST" })
 export const deletePaymentMethodFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminOwner();
     await (await import("@/core/settings/payment-methods")).deletePaymentMethod(ctx, data.id);
     return { ok: true };
   });
@@ -506,7 +553,7 @@ export const requestModuleFn = createServerFn({ method: "POST" })
     z.object({ key: z.enum(MODULE_KEYS as [string, ...string[]]) }).parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminOwner();
     const { error } = await ctx.db
       .from("module_requests")
       .insert({ bot_id: ctx.tenant.id, module_key: data.key });
@@ -543,7 +590,7 @@ export const zernioStateFn = createServerFn({ method: "GET" }).handler(async () 
 export const zernioConnectLinkFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ platform: z.enum(["instagram", "whatsapp"]) }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminOwner();
     if (!ctx.tenant.modules[data.platform])
       throw new Error("Этот канал не подключён к вашему тарифу — оставьте заявку в «Модулях».");
     const { connectLink } = await import("@/channels/zernio/connect.server");
@@ -551,7 +598,7 @@ export const zernioConnectLinkFn = createServerFn({ method: "POST" })
   });
 
 export const syncZernioAccountsFn = createServerFn({ method: "POST" }).handler(async () => {
-  const ctx = await admin();
+  const ctx = await adminOwner();
   const { syncAccounts } = await import("@/channels/zernio/connect.server");
   return syncAccounts(ctx.tenant);
 });
@@ -564,7 +611,7 @@ export const connectTelegramAdminFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminOwner();
     const { connectTelegram, setServedBy } = await import("@/app/operator/operator.server");
     const r = await connectTelegram(ctx.tenant.id, data.token, "admin");
     const webhook = await setServedBy(ctx.tenant.id, "v2", "admin");
@@ -600,7 +647,7 @@ export const savePromoCodeFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { requireAdminModule } = await import("@/app/auth/guards.server");
-    const ctx = await requireAdminModule("coupons");
+    const ctx = await requireAdminModule("coupons", "manager");
     const { normalizeCode } = await import("@/core/discounts/pure");
     if (data.discountType === "percent" && data.discountValue > 100)
       throw new Error("Процент не больше 100.");
@@ -626,7 +673,7 @@ export const savePromoCodeFn = createServerFn({ method: "POST" })
 export const deletePromoCodeFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminWrite();
     const { error } = await ctx.db.from("promo_codes").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -656,7 +703,7 @@ export const createGiftCertificateFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { requireAdminModule } = await import("@/app/auth/guards.server");
-    const ctx = await requireAdminModule("gift_certificates");
+    const ctx = await requireAdminModule("gift_certificates", "manager");
     const { generateGiftCode, normalizeCode } = await import("@/core/discounts/pure");
     for (let i = 0; i < 5; i++) {
       const code = data.code?.trim() ? normalizeCode(data.code) : generateGiftCode();
@@ -682,7 +729,7 @@ export const createGiftCertificateFn = createServerFn({ method: "POST" })
 export const cancelGiftCertificateFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminWrite();
     const { error } = await ctx.db
       .from("gift_certificates")
       .update({ status: "cancelled" })
@@ -718,7 +765,7 @@ export const saveDeliveryZoneFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminOwner();
     const row = {
       name: data.name.trim(),
       price: data.price,
@@ -735,7 +782,7 @@ export const saveDeliveryZoneFn = createServerFn({ method: "POST" })
 export const deleteDeliveryZoneFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminOwner();
     const { error } = await ctx.db.from("delivery_zones").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -852,6 +899,7 @@ export const createBroadcastFn = createServerFn({ method: "POST" })
     const { requireAdminModule } = await import("@/app/auth/guards.server");
     const ctx = await requireAdminModule(
       data.channel === "whatsapp" ? "wa_broadcasts" : "broadcasts",
+      "manager",
     );
     const { createBroadcast } = await import("@/core/broadcasts/broadcasts");
     if (data.channel === "whatsapp") {
@@ -899,7 +947,7 @@ export const syncWhatsAppTemplatesFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ accountId: z.string().min(1).max(100) }).parse(d))
   .handler(async ({ data }) => {
     const { requireAdminModule } = await import("@/app/auth/guards.server");
-    const ctx = await requireAdminModule("wa_broadcasts");
+    const ctx = await requireAdminModule("wa_broadcasts", "manager");
     const { syncWhatsAppTemplates } = await import("@/channels/zernio/templates.server");
     const r = await syncWhatsAppTemplates(ctx, data.accountId);
     if (!r.ok) throw new Error(r.error ?? "Не удалось обновить шаблоны");
@@ -920,7 +968,7 @@ export const createWhatsAppTemplateFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { requireAdminModule } = await import("@/app/auth/guards.server");
-    const ctx = await requireAdminModule("wa_broadcasts");
+    const ctx = await requireAdminModule("wa_broadcasts", "manager");
     const { submitWhatsAppTemplate } = await import("@/channels/zernio/templates.server");
     const r = await submitWhatsAppTemplate(ctx, data);
     if (!r.ok) throw new Error(r.error ?? "Meta не приняла шаблон");
@@ -943,7 +991,7 @@ export const cancelBroadcastFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid }).parse(d))
   .handler(async ({ data }) => {
     const { requireAdminModule } = await import("@/app/auth/guards.server");
-    const ctx = await requireAdminModule("broadcasts");
+    const ctx = await requireAdminModule("broadcasts", "manager");
     const { cancelBroadcast } = await import("@/core/broadcasts/broadcasts");
     return { ok: await cancelBroadcast(ctx, data.id) };
   });
@@ -1067,7 +1115,7 @@ export const saveConsultantFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminOwner();
     const { setSetting } = await import("@/core/settings/settings");
     const { KEYS } = await import("@/core/consultant/engine.server");
     await setSetting(ctx, KEYS.enabled, data.enabled ? "true" : "false");
@@ -1080,7 +1128,7 @@ export const saveConsultantFn = createServerFn({ method: "POST" })
 export const consultantTestFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ text: z.string().trim().min(1).max(1000) }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminOwner();
     const { runConsultant } = await import("@/core/consultant/engine.server");
     const r = await runConsultant(ctx, null, data.text, { platform: "admin_test", dryRun: true });
     if (!r) throw new Error("На платформе не задан ключ Anthropic.");

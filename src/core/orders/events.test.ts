@@ -23,6 +23,9 @@ describe("describeOrderEvent", () => {
     expect(describeOrderEvent({ kind: "rejected", actor: "admin", payload: {} }).text).toBe(
       "Заказ отклонён (продавец)",
     );
+    expect(describeOrderEvent({ kind: "rejected", actor: "admin:masha", payload: {} }).text).toBe(
+      "Заказ отклонён (masha)",
+    );
     expect(
       describeOrderEvent({
         kind: "delivery_failed",

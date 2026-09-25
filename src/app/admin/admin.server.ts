@@ -12,19 +12,76 @@ import {
   type OrderWithItems,
   type DeliverOptions,
 } from "@/core/orders/orders";
-import { verifyPassword } from "@/app/auth/password";
-import type { Tenant } from "@/core/tenant/types";
+import { hashPassword, verifyPassword } from "@/app/auth/password";
+import { patchTenantSettings } from "@/core/tenant/resolve.server";
+import {
+  adminLoginTaken,
+  findAdminLogin,
+  normalizeLogin,
+  type AdminLogin,
+} from "@/core/auth/roles";
 
-export async function findTenantByAdminUsername(username: string): Promise<Tenant | null> {
-  const u = username.trim().toLowerCase();
-  return (
-    (await tenantDirectory(true)).find((t) => t.settings.admin?.username === u && !t.archived) ??
-    null
-  );
+/** Кто входит под логином: владелец или пользователь магазина (core/auth/roles). */
+export async function resolveAdminLogin(username: string): Promise<AdminLogin | null> {
+  return findAdminLogin(await tenantDirectory(true), username);
 }
 
-export function checkAdminPassword(t: Tenant, password: string): boolean {
-  return verifyPassword(password, t.settings.admin?.password_hash);
+export function checkAdminPassword(login: AdminLogin, password: string): boolean {
+  return verifyPassword(password, login.passwordHash);
+}
+
+/* ── команда магазина: пользователи с ролями в bots.settings.admin.users ── */
+
+export type TeamMember = {
+  username: string;
+  name: string | null;
+  role: "manager" | "viewer";
+  createdAt: string | null;
+};
+
+export function listTeam(ctx: TenantContext): TeamMember[] {
+  return (ctx.tenant.settings.admin?.users ?? []).map((u) => ({
+    username: u.username,
+    name: u.name ?? null,
+    role: u.role,
+    createdAt: u.created_at ?? null,
+  }));
+}
+
+export async function saveTeamMember(
+  ctx: TenantContext,
+  input: { username: string; name?: string; role: "manager" | "viewer"; password?: string },
+): Promise<void> {
+  const username = normalizeLogin(input.username);
+  if (!/^[a-z0-9][a-z0-9_.-]{2,39}$/.test(username))
+    throw new Error("Логин: латиница, цифры, точка, дефис и «_», от 3 до 40 символов.");
+  if (username === ctx.tenant.settings.admin?.username)
+    throw new Error("Это логин владельца магазина.");
+  const users = [...(ctx.tenant.settings.admin?.users ?? [])];
+  const existing = users.find((u) => u.username === username);
+  if (adminLoginTaken(await tenantDirectory(true), username, { botId: ctx.tenant.id, username }))
+    throw new Error(`Логин «${username}» уже занят.`);
+  if (!existing && !input.password) throw new Error("Для нового пользователя нужен пароль.");
+  if (input.password && input.password.length < 8)
+    throw new Error("Пароль — не короче 8 символов.");
+  const next = {
+    username,
+    password_hash: input.password ? hashPassword(input.password) : existing!.password_hash,
+    role: input.role,
+    name: input.name?.trim() || undefined,
+    created_at: existing?.created_at ?? new Date().toISOString(),
+  };
+  const merged = existing
+    ? users.map((u) => (u.username === username ? next : u))
+    : [...users, next];
+  if (merged.length > 20) throw new Error("Не больше 20 пользователей у магазина.");
+  await patchTenantSettings(ctx.tenant.id, { admin: { users: merged } });
+}
+
+export async function deleteTeamMember(ctx: TenantContext, username: string): Promise<void> {
+  const u = normalizeLogin(username);
+  const users = (ctx.tenant.settings.admin?.users ?? []).filter((x) => x.username !== u);
+  await patchTenantSettings(ctx.tenant.id, { admin: { users } });
 }
 
 function api(ctx: TenantContext) {
@@ -51,7 +108,7 @@ export async function notifyCustomer(
   });
   if (!r.ok) {
     const { recordOrderEvent } = await import("@/core/orders/events");
-    await recordOrderEvent(ctx, order.id, "notify_failed", { text: text.slice(0, 120) }, "admin");
+    await recordOrderEvent(ctx, order.id, "notify_failed", { text: text.slice(0, 120) });
   }
   return r.ok;
 }
@@ -62,6 +119,7 @@ export async function runOrderAction(
   ctx: TenantContext,
   id: number,
   action: OrderAction,
+  actor = "admin",
 ): Promise<{ ok: boolean; message: string }> {
   const order = await getOrder(ctx, id);
   if (!order) return { ok: false, message: "Заказ не найден" };
@@ -69,7 +127,7 @@ export async function runOrderAction(
   const m = COPY.ru;
   switch (action) {
     case "reject": {
-      const ok = await rejectOrder(ctx, id, "admin");
+      const ok = await rejectOrder(ctx, id, actor);
       if (ok) await notifyCustomer(ctx, order, m.orderRejected(no));
       return ok
         ? { ok, message: `Заказ #${no} отклонён` }
@@ -93,7 +151,7 @@ export async function runOrderAction(
       let opts: DeliverOptions = {
         lang: "ru",
         ask: telegramLanguageAsker(api(ctx), order.telegram_id, m),
-        actor: "admin",
+        actor,
       };
       if (order.platform !== "telegram") {
         const { zernioSenderFor, zernioTargetForOrder } =
@@ -102,7 +160,7 @@ export async function runOrderAction(
         if (!target)
           return { ok: false, message: `У покупателя из ${order.platform} нет диалога для выдачи` };
         sender = zernioSenderFor(target);
-        opts = { lang: "ru", allWhenAmbiguous: true, actor: "admin" };
+        opts = { lang: "ru", allWhenAmbiguous: true, actor };
       }
       const r = await deliverOrder(ctx, id, sender, opts);
       if (r.alreadyDelivered) return { ok: true, message: `Заказ #${no} уже выдан` };
@@ -131,7 +189,7 @@ export async function runOrderAction(
       const ok = await setPhysicalStatus(ctx, id, order.status, to);
       if (ok) {
         const { recordOrderEvent } = await import("@/core/orders/events");
-        await recordOrderEvent(ctx, id, "status", { to }, "admin");
+        await recordOrderEvent(ctx, id, "status", { to }, actor);
       }
       const labels: Record<string, string> = {
         in_production: "🧑‍🍳 Заказ готовится",
@@ -156,7 +214,7 @@ export async function runOrderAction(
       );
       if (ok) {
         const { recordOrderEvent } = await import("@/core/orders/events");
-        await recordOrderEvent(ctx, id, "reminded", {}, "admin");
+        await recordOrderEvent(ctx, id, "reminded", {}, actor);
       }
       return { ok, message: ok ? "Напоминание отправлено" : "Не удалось отправить" };
     }

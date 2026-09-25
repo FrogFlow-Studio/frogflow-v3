@@ -86,7 +86,11 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
   tone: "neutral" | "ok" | "warn" | "danger";
 } {
   const p = e.payload;
-  const who = e.actor === "admin" ? " (продавец)" : e.actor === "system" ? " (система)" : "";
+  const who = e.actor.startsWith("admin")
+    ? ` (${e.actor.slice("admin:".length) || "продавец"})`
+    : e.actor === "system"
+      ? " (система)"
+      : "";
   switch (e.kind) {
     case "placed":
       return { text: `Заказ создан${p.platform ? ` · ${str(p.platform)}` : ""}`, tone: "neutral" };

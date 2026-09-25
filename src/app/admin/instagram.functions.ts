@@ -6,6 +6,9 @@ import { z } from "zod";
  * начинается с проверки модуля `instagram` — пункт меню лишь UX.
  */
 const ig = async () => (await import("@/app/auth/guards.server")).requireAdminModule("instagram");
+/** Изменения — с роли менеджера (core/auth/roles). */
+const igWrite = async () =>
+  (await import("@/app/auth/guards.server")).requireAdminModule("instagram", "manager");
 const accountId = z.string().min(1).max(100);
 
 const buttonSchema = z.object({
@@ -67,7 +70,7 @@ export const instagramPostsFn = createServerFn({ method: "GET" })
 export const syncInstagramPostFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ accountId, url: z.string().url().max(500) }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await ig();
+    const ctx = await igWrite();
     const { syncPostByUrl } = await import("@/channels/zernio/automations.server");
     const r = await syncPostByUrl(ctx, data.accountId, data.url);
     if (!r.post)
@@ -106,7 +109,7 @@ export const saveAutomationFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await ig();
+    const ctx = await igWrite();
     const { saveAutomation } = await import("@/channels/zernio/automations.server");
     const r = await saveAutomation(ctx, data);
     if (!r.ok) throw new Error(r.error);
@@ -116,7 +119,7 @@ export const saveAutomationFn = createServerFn({ method: "POST" })
 export const deleteAutomationFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: z.string().min(1).max(100) }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await ig();
+    const ctx = await igWrite();
     const { deleteAutomation } = await import("@/channels/zernio/automations.server");
     return { ok: await deleteAutomation(ctx, data.id) };
   });
@@ -126,7 +129,7 @@ export const toggleAutomationFn = createServerFn({ method: "POST" })
     z.object({ id: z.string().min(1).max(100), isActive: z.boolean() }).parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await ig();
+    const ctx = await igWrite();
     const { toggleAutomation } = await import("@/channels/zernio/automations.server");
     return { ok: await toggleAutomation(ctx, data.id, data.isActive) };
   });
@@ -199,7 +202,7 @@ export const catchupPrivateFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await ig();
+    const ctx = await igWrite();
     const { sendCatchupPrivateReplies } = await import("@/channels/zernio/automations.server");
     return { results: await sendCatchupPrivateReplies(ctx, data) };
   });
@@ -207,7 +210,7 @@ export const catchupPrivateFn = createServerFn({ method: "POST" })
 export const catchupPublicFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object(catchupBase).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await ig();
+    const ctx = await igWrite();
     const { sendCatchupCommentReplies } = await import("@/channels/zernio/automations.server");
     return { results: await sendCatchupCommentReplies(ctx, data) };
   });

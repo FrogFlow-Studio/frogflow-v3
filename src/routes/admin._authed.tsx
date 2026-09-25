@@ -19,6 +19,7 @@ function Layout() {
   const router = useRouter();
   const t = adminT(shop.locale);
   const physical = shop.vertical === "confectionery" || shop.vertical === "flowers";
+  const owner = shop.role === "owner";
   const switchLocale = async (locale: Locale) => {
     await setAdminLocaleFn({ data: { locale } });
     await router.invalidate();
@@ -58,14 +59,20 @@ function Layout() {
           <NavLink to="/admin/consultant">{t("nav.consultant")}</NavLink>
           {shop.modules.instagram && <NavLink to="/admin/instagram">{t("nav.instagram")}</NavLink>}
           {shop.modules.vip && <NavLink to="/admin/vip">{t("nav.vip")}</NavLink>}
-          <NavLink to="/admin/settings">
-            {physical ? t("nav.settingsPhysical") : t("nav.settings")}
-          </NavLink>
-          <NavLink to="/admin/modules">{t("nav.modules")}</NavLink>
+          {owner && (
+            <NavLink to="/admin/settings">
+              {physical ? t("nav.settingsPhysical") : t("nav.settings")}
+            </NavLink>
+          )}
+          {owner && <NavLink to="/admin/modules">{t("nav.modules")}</NavLink>}
         </>
       }
       user={
         <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2 px-1">
+            <span className="truncate">{shop.username}</span>
+            <Badge tone={owner ? "accent" : "neutral"}>{t(`role.${shop.role}`)}</Badge>
+          </div>
           <select
             className="input h-8 w-full text-xs"
             value={shop.locale}

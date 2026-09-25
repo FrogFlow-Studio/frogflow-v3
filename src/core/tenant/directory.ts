@@ -84,7 +84,22 @@ export function settingsFromJson(json: unknown): TenantSettings {
         : undefined,
       synced_at: str(zr.synced_at),
     },
-    admin: { username: str(adm.username), password_hash: str(adm.password_hash) },
+    admin: {
+      username: str(adm.username),
+      password_hash: str(adm.password_hash),
+      users: Array.isArray(adm.users)
+        ? adm.users
+            .filter((u): u is Record<string, unknown> => Boolean(u) && typeof u === "object")
+            .map((u) => ({
+              username: String(u.username ?? "").toLowerCase(),
+              password_hash: String(u.password_hash ?? ""),
+              role: u.role === "viewer" ? ("viewer" as const) : ("manager" as const),
+              name: str(u.name),
+              created_at: str(u.created_at),
+            }))
+            .filter((u) => u.username && u.password_hash)
+        : undefined,
+    },
     vip: {
       token_enc: str(vip.token_enc),
       username: str(vip.username),

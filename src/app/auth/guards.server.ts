@@ -1,6 +1,7 @@
 import { appSession } from "./session.server";
 import { requireTenant, tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
 import { servedByV2 } from "@/core/tenant/directory";
+import { roleAllows, type AdminRole } from "@/core/auth/roles";
 
 export class Unauthorized extends Error {
   constructor(public readonly role: "operator" | "admin") {
@@ -25,6 +26,29 @@ export async function requireAdmin(): Promise<TenantContext> {
   return tenantContext(tenant);
 }
 
+/** Роль текущего пользователя админки; старые сессии без роли — владелец. */
+export async function adminRole(): Promise<AdminRole> {
+  const s = await appSession();
+  return s.data.admin?.role ?? "owner";
+}
+
+export async function adminActor(): Promise<string> {
+  const s = await appSession();
+  return `admin:${s.data.admin?.username ?? ""}`;
+}
+
+/** Изменение, требующее роли не ниже `min` (core/auth/roles). */
+export async function requireAdminRole(min: AdminRole): Promise<TenantContext> {
+  const ctx = await requireAdmin();
+  if (!roleAllows(await adminRole(), min))
+    throw new Error(
+      min === "owner"
+        ? "Это может изменить только владелец магазина."
+        : "У вашей роли нет прав на изменения — только просмотр.",
+    );
+  return ctx;
+}
+
 /** Страница, доступная при любом из модулей (например, рассылки Telegram или WhatsApp). */
 export async function requireAdminAnyModule(
   ...keys: Array<keyof TenantContext["tenant"]["modules"]>
@@ -37,8 +61,9 @@ export async function requireAdminAnyModule(
 
 export async function requireAdminModule(
   key: keyof TenantContext["tenant"]["modules"],
+  min?: AdminRole,
 ): Promise<TenantContext> {
-  const ctx = await requireAdmin();
+  const ctx = min ? await requireAdminRole(min) : await requireAdmin();
   if (!ctx.tenant.modules[key]) throw new Error(`Модуль «${key}» не подключён к вашему тарифу.`);
   return ctx;
 }
