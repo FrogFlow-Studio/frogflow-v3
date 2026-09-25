@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { requestModuleFn } from "@/app/admin/admin.functions";
+import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, PageTitle, useAction } from "@/app/ui";
 import { MODULE_KEYS, moduleDef, type ModuleKey } from "@/core/modules/registry";
 
@@ -8,6 +9,7 @@ export const Route = createFileRoute("/admin/_authed/modules")({ component: Modu
 
 function ModulesPage() {
   const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const [requested, setRequested] = useState<Set<string>>(new Set());
   const req = useAction(async (key: ModuleKey) => {
     await requestModuleFn({ data: { key } });
@@ -18,10 +20,7 @@ function ModulesPage() {
     groups.set(moduleDef(k).group, [...(groups.get(moduleDef(k).group) ?? []), k]);
   return (
     <>
-      <PageTitle
-        title="Модули"
-        subtitle="Что уже работает в вашем магазине и что можно добавить. Цена — разовое подключение; после заявки мы свяжемся с вами и включим модуль."
-      />
+      <PageTitle title={t("modules.title")} subtitle={t("modules.subtitle")} />
       <div className="grid gap-4 md:grid-cols-2">
         {[...groups.entries()].map(([group, keys]) => (
           <div key={group} className="card">
@@ -42,11 +41,11 @@ function ModulesPage() {
                       <div className="flex items-center gap-2">
                         {d.title}{" "}
                         {on ? (
-                          <Badge tone="ok">подключён</Badge>
+                          <Badge tone="ok">{t("modules.on")}</Badge>
                         ) : planned ? (
-                          <Badge>скоро</Badge>
+                          <Badge>{t("modules.soon")}</Badge>
                         ) : d.price === null ? (
-                          <Badge tone="accent">в пакете</Badge>
+                          <Badge tone="accent">{t("modules.included")}</Badge>
                         ) : null}
                       </div>
                       <div className="text-xs text-muted">{d.desc}</div>
@@ -58,10 +57,12 @@ function ModulesPage() {
                         onClick={() => void req.run(k).catch(() => {})}
                       >
                         {requested.has(k)
-                          ? "Заявка отправлена"
+                          ? t("modules.requested")
                           : d.price
-                            ? `Подключить за ${d.price.toLocaleString("ru")} ₸`
-                            : "Подключить"}
+                            ? t("modules.connectFor", {
+                                price: d.price.toLocaleString(intlLocale(shop.locale)),
+                              })
+                            : t("modules.connect")}
                       </button>
                     )}
                   </li>

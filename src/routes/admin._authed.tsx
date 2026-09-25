@@ -1,6 +1,8 @@
-import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
-import { adminLogout, adminShopFn } from "@/app/admin/admin.functions";
+import { createFileRoute, Outlet, redirect, useNavigate, useRouter } from "@tanstack/react-router";
+import { adminLogout, adminShopFn, setAdminLocaleFn } from "@/app/admin/admin.functions";
+import { ADMIN_LOCALE_LABELS, adminT } from "@/app/i18n/admin";
 import { Badge, NavLink, Shell, ThemeToggle } from "@/app/ui";
+import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
 export const Route = createFileRoute("/admin/_authed")({
   beforeLoad: async () => {
@@ -14,58 +16,78 @@ export const Route = createFileRoute("/admin/_authed")({
 function Layout() {
   const { shop } = Route.useRouteContext();
   const navigate = useNavigate();
+  const router = useRouter();
+  const t = adminT(shop.locale);
   const physical = shop.vertical === "confectionery" || shop.vertical === "flowers";
+  const switchLocale = async (locale: Locale) => {
+    await setAdminLocaleFn({ data: { locale } });
+    await router.invalidate();
+  };
   return (
     <Shell
       brand={
         <span className="flex items-center gap-2 truncate">
           {shop.name}
-          {shop.status !== "active" && <Badge tone="warn">пауза</Badge>}
+          {shop.status !== "active" && <Badge tone="warn">{t("nav.paused")}</Badge>}
         </span>
       }
       nav={
         <>
           <NavLink to="/admin" activeOptions={{ exact: true }}>
-            Обзор
+            {t("nav.overview")}
           </NavLink>
-          <NavLink to="/admin/orders">Заказы</NavLink>
-          {shop.modules.dashboard && <NavLink to="/admin/analytics">Аналитика</NavLink>}
-          <NavLink to="/admin/products">Товары</NavLink>
-          <NavLink to="/admin/categories">Категории</NavLink>
-          <NavLink to="/admin/customers">Покупатели</NavLink>
+          <NavLink to="/admin/orders">{t("nav.orders")}</NavLink>
+          {shop.modules.dashboard && <NavLink to="/admin/analytics">{t("nav.analytics")}</NavLink>}
+          <NavLink to="/admin/products">{t("nav.products")}</NavLink>
+          <NavLink to="/admin/categories">{t("nav.categories")}</NavLink>
+          <NavLink to="/admin/customers">{t("nav.customers")}</NavLink>
           {shop.modules.manager_chat && (
             <NavLink to="/admin/chat">
               <span className="flex items-center justify-between gap-2">
-                Чат
+                {t("nav.chat")}
                 {shop.chatUnread > 0 && <Badge tone="accent">{shop.chatUnread}</Badge>}
               </span>
             </NavLink>
           )}
           {(shop.modules.coupons || shop.modules.gift_certificates || shop.modules.referral) && (
-            <NavLink to="/admin/discounts">Скидки</NavLink>
+            <NavLink to="/admin/discounts">{t("nav.discounts")}</NavLink>
           )}
           {(shop.modules.broadcasts || shop.modules.wa_broadcasts) && (
-            <NavLink to="/admin/broadcasts">Рассылки</NavLink>
+            <NavLink to="/admin/broadcasts">{t("nav.broadcasts")}</NavLink>
           )}
-          <NavLink to="/admin/consultant">ИИ-консультант</NavLink>
-          {shop.modules.instagram && <NavLink to="/admin/instagram">Instagram</NavLink>}
-          {shop.modules.vip && <NavLink to="/admin/vip">VIP-подписки</NavLink>}
+          <NavLink to="/admin/consultant">{t("nav.consultant")}</NavLink>
+          {shop.modules.instagram && <NavLink to="/admin/instagram">{t("nav.instagram")}</NavLink>}
+          {shop.modules.vip && <NavLink to="/admin/vip">{t("nav.vip")}</NavLink>}
           <NavLink to="/admin/settings">
-            {physical ? "Оплата и доставка" : "Оплата и настройки"}
+            {physical ? t("nav.settingsPhysical") : t("nav.settings")}
           </NavLink>
-          <NavLink to="/admin/modules">Модули</NavLink>
+          <NavLink to="/admin/modules">{t("nav.modules")}</NavLink>
         </>
       }
       user={
-        <div className="flex items-center justify-between">
-          <ThemeToggle />
-          <button
-            type="button"
-            className="btn-ghost text-xs"
-            onClick={() => void adminLogout().then(() => navigate({ to: "/admin/login" }))}
+        <div className="space-y-2">
+          <select
+            className="input h-8 w-full text-xs"
+            value={shop.locale}
+            aria-label={t("nav.language")}
+            onChange={(e) => void switchLocale(e.target.value as Locale)}
           >
-            Выйти
-          </button>
+            {SUPPORTED_LOCALES.map((l) => (
+              <option key={l} value={l}>
+                {ADMIN_LOCALE_LABELS[l]}
+              </option>
+            ))}
+          </select>
+          <div className="flex items-center justify-between">
+            <ThemeToggle />
+            <button
+              type="button"
+              className="btn-ghost text-xs"
+              onClick={() => void adminLogout().then(() => navigate({ to: "/admin/login" }))}
+            >
+              {t("nav.logout")}
+            </button>
+          </div>
         </div>
       }
     >

@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-r
 import { useState } from "react";
 import { z } from "zod";
 import { importCatalogFn, productsFn, setProductActiveFn } from "@/app/admin/admin.functions";
+import { adminT, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, PageTitle, Switch, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { imagePath } from "@/core/catalog/image-url";
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/admin/_authed/products")({
 function ProductsPage() {
   const { products, categories } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const s = Route.useSearch();
   const navigate = useNavigate();
   const router = useRouter();
@@ -36,20 +38,20 @@ function ProductsPage() {
   return (
     <>
       <PageTitle
-        title="Товары"
-        subtitle={`${products.length} позиций`}
+        title={t("products.title")}
+        subtitle={t("products.count", { n: products.length })}
         actions={
           <div className="flex gap-2">
             <button className="btn-secondary" onClick={() => setImportOpen((v) => !v)}>
-              Импорт / экспорт
+              {t("products.importExport")}
             </button>
             <Link to="/admin/products/$id" params={{ id: "new" }} className="btn-primary">
-              + Товар
+              {t("products.new")}
             </Link>
           </div>
         }
       />
-      {importOpen && <ImportCard onDone={() => router.invalidate()} />}
+      {importOpen && <ImportCard t={t} onDone={() => router.invalidate()} />}
       <form
         className="mb-4 flex flex-wrap gap-2"
         onSubmit={(e) => {
@@ -59,7 +61,7 @@ function ProductsPage() {
       >
         <input
           className="input w-56"
-          placeholder="Поиск по названию"
+          placeholder={t("products.searchPlaceholder")}
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -73,7 +75,7 @@ function ProductsPage() {
             })
           }
         >
-          <option value="">Все категории</option>
+          <option value="">{t("products.allCategories")}</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -91,19 +93,19 @@ function ProductsPage() {
               })
             }
           />{" "}
-          только скрытые
+          {t("products.onlyHidden")}
         </label>
-        <button className="btn-secondary">Найти</button>
+        <button className="btn-secondary">{t("common.search")}</button>
       </form>
       {products.length === 0 ? (
         <Empty>
-          Товаров нет.{" "}
+          {t("products.empty")}{" "}
           <Link
             to="/admin/products/$id"
             params={{ id: "new" }}
             className="text-accent hover:underline"
           >
-            Добавить первый
+            {t("products.addFirst")}
           </Link>
         </Empty>
       ) : (
@@ -112,11 +114,11 @@ function ProductsPage() {
             <thead>
               <tr>
                 <th></th>
-                <th>Название</th>
-                <th>Категории</th>
-                <th className="text-right">Цена</th>
-                <th>Файлы</th>
-                <th>В продаже</th>
+                <th>{t("products.col.name")}</th>
+                <th>{t("products.col.categories")}</th>
+                <th className="text-right">{t("products.col.price")}</th>
+                <th>{t("products.col.files")}</th>
+                <th>{t("products.col.onSale")}</th>
               </tr>
             </thead>
             <tbody>
@@ -142,9 +144,11 @@ function ProductsPage() {
                       {p.name}
                     </Link>
                     <div className="text-xs text-muted">
-                      {p.fulfillment_kind === "physical" ? "физический" : "цифровой"}
-                      {p.variants ? ` · ${p.variants} вар.` : ""}
-                      {p.stock_quantity != null ? ` · остаток ${p.stock_quantity}` : ""}
+                      {p.fulfillment_kind === "physical" ? t("order.physical") : t("order.digital")}
+                      {p.variants ? ` · ${t("products.variants", { n: p.variants })}` : ""}
+                      {p.stock_quantity != null
+                        ? ` · ${t("products.stock", { n: p.stock_quantity })}`
+                        : ""}
                     </div>
                   </td>
                   <td className="text-muted">
@@ -189,7 +193,7 @@ type Result = NonNullable<Awaited<ReturnType<typeof importCatalogFn>>["result"]>
  * создастся, что обновится, какие колонки не поняты, — потом применение.
  * Выгрузка отдаёт тот же формат с id, чтобы правки в Excel возвращались.
  */
-function ImportCard({ onDone }: { onDone: () => Promise<void> }) {
+function ImportCard({ t, onDone }: { t: AdminT; onDone: () => Promise<void> }) {
   const [csv, setCsv] = useState("");
   const [fileName, setFileName] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -204,28 +208,29 @@ function ImportCard({ onDone }: { onDone: () => Promise<void> }) {
   });
   const apply = useAction(async () => {
     if (!preview) return;
-    if (!confirm(`Создать ${preview.create} и обновить ${preview.update} товаров?`)) return;
+    if (!confirm(t("products.import.confirm", { create: preview.create, update: preview.update })))
+      return;
     const r = await importCatalogFn({ data: { csv, apply: true } });
     setResult(r.result);
     setPreview(null);
     await onDone();
   });
   return (
-    <Card title="Импорт и экспорт каталога" className="mb-4">
+    <Card title={t("products.import.title")} className="mb-4">
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <p className="mb-2 text-sm text-muted">
-            Выгрузите каталог в CSV, поправьте в Excel или Google Таблицах и загрузите обратно:
-            строки с id обновятся, новые названия создадутся. Колонки: Название, Цена, Валюта,
-            Категория, Описание, Ключевые слова, В продаже, Остаток, Тип, Ссылка, Ссылка kz.
-          </p>
+          <p className="mb-2 text-sm text-muted">{t("products.import.intro")}</p>
           <a className="btn-secondary inline-block" href="/api/admin/export/products">
-            Скачать каталог (CSV)
+            {t("products.import.download")}
           </a>
         </div>
         <div>
           <label className="btn-secondary inline-block cursor-pointer">
-            {load.busy ? "Читаем…" : fileName ? `Файл: ${fileName}` : "Выбрать CSV для импорта"}
+            {load.busy
+              ? t("products.import.reading")
+              : fileName
+                ? t("products.import.file", { name: fileName })
+                : t("products.import.choose")}
             <input
               type="file"
               accept=".csv,text/csv,text/plain"
@@ -241,21 +246,25 @@ function ImportCard({ onDone }: { onDone: () => Promise<void> }) {
           {preview && (
             <div className="mt-3 space-y-2 text-sm">
               <p>
-                Создать: <b>{preview.create}</b> · обновить: <b>{preview.update}</b>
+                {t("products.import.create")} <b>{preview.create}</b> ·{" "}
+                {t("products.import.update")} <b>{preview.update}</b>
                 {preview.newCategories.length > 0 && (
-                  <> · новые категории: {preview.newCategories.join(", ")}</>
+                  <>
+                    {" "}
+                    · {t("products.import.newCategories")} {preview.newCategories.join(", ")}
+                  </>
                 )}
               </p>
               {preview.unknownColumns.length > 0 && (
                 <p className="text-xs text-muted">
-                  Не поняты колонки (пропущены): {preview.unknownColumns.join(", ")}
+                  {t("products.import.unknown", { cols: preview.unknownColumns.join(", ") })}
                 </p>
               )}
               {preview.errors.length > 0 && (
                 <ul className="max-h-32 overflow-auto text-xs text-danger">
                   {preview.errors.map((e) => (
                     <li key={e.line}>
-                      строка {e.line}: {e.message}
+                      {t("products.import.line", { line: e.line, message: e.message })}
                     </li>
                   ))}
                 </ul>
@@ -265,7 +274,9 @@ function ImportCard({ onDone }: { onDone: () => Promise<void> }) {
                   {preview.samples.map((x, i) => (
                     <li key={i}>
                       <Badge tone={x.action === "create" ? "accent" : "neutral"}>
-                        {x.action === "create" ? "новый" : "обновить"}
+                        {x.action === "create"
+                          ? t("products.import.rowNew")
+                          : t("products.import.rowUpdate")}
                       </Badge>{" "}
                       {x.name}
                       {x.price !== null && ` — ${x.price}`}
@@ -279,15 +290,17 @@ function ImportCard({ onDone }: { onDone: () => Promise<void> }) {
                 disabled={!preview.ok || apply.busy}
                 onClick={() => void apply.run().catch(() => {})}
               >
-                {apply.busy ? "Загружаем…" : "Применить импорт"}
+                {apply.busy ? t("products.import.applying") : t("products.import.apply")}
               </button>
             </div>
           )}
           {result && (
             <div className="mt-3 text-sm">
               <p>
-                Готово: создано <b>{result.created}</b>, обновлено <b>{result.updated}</b>
-                {result.categoriesCreated > 0 && `, новых категорий ${result.categoriesCreated}`}.
+                {t("products.import.done", { created: result.created, updated: result.updated })}
+                {result.categoriesCreated > 0 &&
+                  t("products.import.doneCategories", { n: result.categoriesCreated })}
+                .
               </p>
               {result.errors.length > 0 && (
                 <ul className="mt-1 max-h-32 overflow-auto text-xs text-danger">

@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { orderActionFn, orderFn, orderNoteFn } from "@/app/admin/admin.functions";
+import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { describeOrderEvent } from "@/core/orders/events";
 import { formatMoney } from "@/core/money/money";
@@ -14,10 +15,12 @@ export const Route = createFileRoute("/admin/_authed/orders/$id")({
 
 function OrderPage() {
   const { order: o, proofUrl, events } = Route.useLoaderData();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const router = useRouter();
   const [msg, setMsg] = useState<string | null>(null);
   const act = useAction(async (action: "confirm" | "reject" | "next" | "prev" | "remind") => {
-    if (action === "reject" && !confirm("Отклонить заказ? Покупатель получит уведомление.")) return;
+    if (action === "reject" && !confirm(t("order.rejectConfirm"))) return;
     const r = await orderActionFn({ data: { id: o.id, action } });
     setMsg(r.message);
     await router.invalidate();
@@ -47,11 +50,11 @@ function OrderPage() {
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h2 className="flex items-center gap-2 text-lg font-semibold">
-              Заказ #{no} <OrderStatus status={o.status} />
+              {t("order.title", { no })} <OrderStatus status={o.status} />
             </h2>
             <p className="text-sm text-muted">
-              {new Date(o.created_at).toLocaleString("ru")} · {o.platform} ·{" "}
-              {physical ? "физический" : "цифровой"}
+              {new Date(o.created_at).toLocaleString(intlLocale(shop.locale))} · {o.platform} ·{" "}
+              {physical ? t("order.physical") : t("order.digital")}
             </p>
           </div>
           <Link to="/admin/orders" className="btn-ghost">
@@ -66,7 +69,7 @@ function OrderPage() {
               disabled={act.busy}
               onClick={() => void act.run("confirm").catch(() => {})}
             >
-              {physical ? "✅ Принять заказ" : "✅ Подтвердить и выдать"}
+              {physical ? t("order.acceptPhysical") : t("order.confirmDeliver")}
             </button>
           )}
           {physical &&
@@ -77,10 +80,10 @@ function OrderPage() {
                 onClick={() => void act.run("next").catch(() => {})}
               >
                 {o.status === "accepted"
-                  ? "→ В производство"
+                  ? t("order.toProduction")
                   : o.status === "in_production"
-                    ? "→ Готов"
-                    : "→ Выдан"}
+                    ? t("order.toReady")
+                    : t("order.toDelivered")}
               </button>
             )}
           {physical && (o.status === "in_production" || o.status === "ready") && (
@@ -89,7 +92,7 @@ function OrderPage() {
               disabled={act.busy}
               onClick={() => void act.run("prev").catch(() => {})}
             >
-              ← Шаг назад
+              {t("order.stepBack")}
             </button>
           )}
           {o.status === "awaiting_payment" && (
@@ -98,7 +101,7 @@ function OrderPage() {
               disabled={act.busy}
               onClick={() => void act.run("remind").catch(() => {})}
             >
-              ⏰ Напомнить об оплате
+              {t("order.remind")}
             </button>
           )}
           {canReject && (
@@ -107,7 +110,7 @@ function OrderPage() {
               disabled={act.busy}
               onClick={() => void act.run("reject").catch(() => {})}
             >
-              Отклонить
+              {t("order.reject")}
             </button>
           )}
         </div>
@@ -115,24 +118,26 @@ function OrderPage() {
         <ErrorBox error={act.error} />
 
         <div className="space-y-4">
-          <Card title="Покупатель">
+          <Card title={t("order.customer")}>
             <dl className="grid grid-cols-[120px_1fr] gap-y-1 text-sm">
-              <dt className="text-muted">Имя</dt>
+              <dt className="text-muted">{t("order.name")}</dt>
               <dd>
                 {o.display_name} {o.username && <span className="text-muted">@{o.username}</span>}
               </dd>
-              <dt className="text-muted">Телефон</dt>
+              <dt className="text-muted">{t("order.phone")}</dt>
               <dd>{o.contact ?? "—"}</dd>
-              <dt className="text-muted">Почта</dt>
+              <dt className="text-muted">{t("order.email")}</dt>
               <dd>{o.customer_email ?? "—"}</dd>
-              <dt className="text-muted">Страна</dt>
+              <dt className="text-muted">{t("order.country")}</dt>
               <dd>{o.country_name ?? "—"}</dd>
               {physical && (
                 <>
-                  <dt className="text-muted">Получение</dt>
+                  <dt className="text-muted">{t("order.fulfillment")}</dt>
                   <dd>
-                    {o.fulfillment_type === "delivery" ? "🚚 Доставка" : "🏠 Самовывоз"}{" "}
-                    {o.fulfillment_at ? new Date(o.fulfillment_at).toLocaleDateString("ru") : ""}
+                    {o.fulfillment_type === "delivery" ? t("order.delivery") : t("order.pickup")}{" "}
+                    {o.fulfillment_at
+                      ? new Date(o.fulfillment_at).toLocaleDateString(intlLocale(shop.locale))
+                      : ""}
                     {o.fulfillment_address && <div>{o.fulfillment_address}</div>}
                     {o.fulfillment_note && <div className="text-muted">{o.fulfillment_note}</div>}
                   </dd>
@@ -140,7 +145,7 @@ function OrderPage() {
               )}
             </dl>
           </Card>
-          <Card title="Состав">
+          <Card title={t("order.items")}>
             <table className="table">
               <tbody>
                 {(o.order_items ?? []).map((i) => (
@@ -148,7 +153,9 @@ function OrderPage() {
                     <td>
                       {i.name_snapshot}
                       <div className="text-xs text-muted">
-                        файлы: {itemLanguages(i).join(", ") || "нет"}
+                        {t("order.files", {
+                          langs: itemLanguages(i).join(", ") || t("order.noFiles"),
+                        })}
                       </div>
                     </td>
                     <td className="text-right whitespace-nowrap tabular-nums">
@@ -157,7 +164,7 @@ function OrderPage() {
                   </tr>
                 ))}
                 <tr>
-                  <td className="font-medium">Итого</td>
+                  <td className="font-medium">{t("common.total")}</td>
                   <td className="text-right font-medium tabular-nums">
                     {formatMoney(o.total, o.currency)}
                   </td>
@@ -166,11 +173,11 @@ function OrderPage() {
             </table>
             {Number(o.discount_amount) > 0 && (
               <p className="mt-1 text-xs text-muted">
-                Скидка: {formatMoney(o.discount_amount, o.currency)}
+                {t("order.discount", { sum: formatMoney(o.discount_amount, o.currency) })}
               </p>
             )}
           </Card>
-          <Card title="Чек оплаты">
+          <Card title={t("order.proof")}>
             {proofUrl ? (
               /\.(pdf)(\?|$)/i.test(o.payment_proof_path ?? "") ? (
                 <a
@@ -179,7 +186,7 @@ function OrderPage() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Открыть PDF
+                  {t("order.openPdf")}
                 </a>
               ) : (
                 <a href={proofUrl} target="_blank" rel="noreferrer">
@@ -191,12 +198,12 @@ function OrderPage() {
                 </a>
               )
             ) : (
-              <p className="text-sm text-muted">Чек ещё не прислан.</p>
+              <p className="text-sm text-muted">{t("order.noProof")}</p>
             )}
           </Card>
-          <Card title="История">
+          <Card title={t("order.history")}>
             {events.length === 0 ? (
-              <p className="text-sm text-muted">Событий пока нет.</p>
+              <p className="text-sm text-muted">{t("order.noEvents")}</p>
             ) : (
               <ol className="space-y-1.5 text-sm">
                 {events.map((e) => {
@@ -204,7 +211,7 @@ function OrderPage() {
                   return (
                     <li key={e.id} className="flex items-start gap-2">
                       <span className="w-28 shrink-0 text-xs text-muted tabular-nums">
-                        {new Date(e.at).toLocaleString("ru", {
+                        {new Date(e.at).toLocaleString(intlLocale(shop.locale), {
                           day: "2-digit",
                           month: "2-digit",
                           hour: "2-digit",
@@ -236,7 +243,7 @@ function OrderPage() {
                 </div>
               )}
           </Card>
-          <Card title="Заметка">
+          <Card title={t("order.note")}>
             <form
               className="space-y-2"
               onSubmit={(e) => {
@@ -244,7 +251,7 @@ function OrderPage() {
                 void note.run(String(new FormData(e.currentTarget).get("note"))).catch(() => {});
               }}
             >
-              <Field label="Видна только вам">
+              <Field label={t("order.noteHint")}>
                 <textarea
                   className="input"
                   name="note"
@@ -253,7 +260,7 @@ function OrderPage() {
                 />
               </Field>
               <button className="btn-secondary" disabled={note.busy}>
-                Сохранить
+                {t("common.save")}
               </button>
             </form>
           </Card>

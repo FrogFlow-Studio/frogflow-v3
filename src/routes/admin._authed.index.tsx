@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { dashboardFn, hideSetupFn } from "@/app/admin/admin.functions";
+import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Card, Empty, PageTitle, Stat, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
@@ -14,6 +15,8 @@ export const Route = createFileRoute("/admin/_authed/")({
 function Dashboard() {
   const d = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const loc = intlLocale(shop.locale);
   const router = useRouter();
   const attention = (d.counts.awaiting_confirmation ?? 0) + (d.counts.ready ?? 0);
   const steps = [
@@ -32,12 +35,12 @@ function Dashboard() {
   return (
     <>
       <PageTitle
-        title="Обзор"
+        title={t("overview.title")}
         subtitle={`${shop.verticalTitle}${shop.telegram ? ` · @${shop.telegram}` : ""}`}
       />
       {!d.setup.hidden && doneCount < steps.length && (
         <Card
-          title={`Первые шаги · ${doneCount} из ${steps.length}`}
+          title={`${t("overview.steps")} · ${t("overview.stepsOf", { done: doneCount, total: steps.length })}`}
           className="mb-6"
           actions={
             <button
@@ -45,7 +48,7 @@ function Dashboard() {
               disabled={hide.busy}
               onClick={() => void hide.run().catch(() => {})}
             >
-              Скрыть
+              {t("common.hide")}
             </button>
           }
         >
@@ -55,46 +58,42 @@ function Dashboard() {
               style={{ width: `${Math.round((doneCount / steps.length) * 100)}%` }}
             />
           </div>
-          <p className="mb-3 text-sm text-muted">
-            Шаги, после которых магазин продаёт сам. Остальное можно настроить потом.
-          </p>
+          <p className="mb-3 text-sm text-muted">{t("overview.stepsIntro")}</p>
           <ol className="space-y-2 text-sm">
-            <Step done={d.setup.telegram} to="/admin/settings" title="Подключить бота в Telegram">
-              Создайте бота в @BotFather и вставьте токен в настройках — магазин заработает сразу.
+            <Step done={d.setup.telegram} to="/admin/settings" title={t("overview.step.telegram")}>
+              {t("overview.step.telegramHint")}
             </Step>
-            <Step done={d.setup.products} to="/admin/products" title="Добавить первый товар">
-              Название, цена, фото; для цифрового материала — файл, который получит покупатель.
+            <Step done={d.setup.products} to="/admin/products" title={t("overview.step.products")}>
+              {t("overview.step.productsHint")}
             </Step>
-            <Step done={d.setup.payment} to="/admin/settings" title="Указать, как вам платить">
-              Реквизиты для перевода по странам или оплата картой через Robokassa.
+            <Step done={d.setup.payment} to="/admin/settings" title={t("overview.step.payment")}>
+              {t("overview.step.paymentHint")}
             </Step>
             <Step
               done={d.setup.notifications}
               to="/admin/settings"
-              title="Куда присылать заказы и чеки"
+              title={t("overview.step.notifications")}
             >
-              Ваш Telegram-id в настройках уведомлений: бот пришлёт каждый новый заказ с кнопками
-              «подтвердить» и «отклонить». Свой id бот скажет по команде /id.
+              {t("overview.step.notificationsHint")}
             </Step>
-            <Step done={d.setup.legal} to="/admin/settings" title="Заполнить реквизиты продавца">
-              Оферта и реквизиты показываются покупателю в боте и на витрине — это доверие и закон.
+            <Step done={d.setup.legal} to="/admin/settings" title={t("overview.step.legal")}>
+              {t("overview.step.legalHint")}
             </Step>
             <Step
               done={d.setup.firstOrder}
               to="/admin/orders"
-              title="Сделать тестовый заказ на себя"
+              title={t("overview.step.firstOrder")}
             >
-              Откройте бота, положите товар в корзину, оформите и пришлите любой чек — заказ
-              появится здесь, и вы увидите весь путь покупателя.
+              {t("overview.step.firstOrderHint")}
             </Step>
           </ol>
           {d.setup.slug && (
             <p className="mt-3 text-xs text-muted">
-              Витрина магазина: <span className="font-mono">/s/{d.setup.slug}</span>
+              {t("overview.storefront")} <span className="font-mono">/s/{d.setup.slug}</span>
               {shop.telegram && (
                 <>
                   {" "}
-                  · бот: <span className="font-mono">t.me/{shop.telegram}</span>
+                  · {t("overview.bot")} <span className="font-mono">t.me/{shop.telegram}</span>
                 </>
               )}
             </p>
@@ -102,35 +101,39 @@ function Dashboard() {
         </Card>
       )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Требуют действия" value={attention} hint="чеки на проверке и готовые заказы" />
         <Stat
-          label="Выручка за 30 дней"
-          value={formatMoney(d.rev30.total, d.rev30.currency)}
-          hint={`${d.rev30.orders} оплаченных заказов`}
+          label={t("overview.attention")}
+          value={attention}
+          hint={t("overview.attentionHint")}
         />
-        <Stat label="Товаров в продаже" value={d.products} />
-        <Stat label="Покупателей" value={d.customers.toLocaleString("ru")} />
+        <Stat
+          label={t("overview.revenue30")}
+          value={formatMoney(d.rev30.total, d.rev30.currency)}
+          hint={t("overview.paidOrders", { n: d.rev30.orders })}
+        />
+        <Stat label={t("overview.productsOnSale")} value={d.products} />
+        <Stat label={t("overview.customers")} value={d.customers.toLocaleString(loc)} />
       </div>
       <div className="mt-6 grid gap-4 lg:grid-cols-[2fr_1fr]">
         <Card
-          title="Последние заказы"
+          title={t("overview.recentOrders")}
           actions={
             <Link to="/admin/orders" className="text-xs text-accent hover:underline">
-              все заказы
+              {t("overview.allOrders")}
             </Link>
           }
         >
           {d.recent.length === 0 ? (
-            <Empty>Заказов пока нет.</Empty>
+            <Empty>{t("overview.noOrders")}</Empty>
           ) : (
             <table className="table">
               <thead>
                 <tr>
-                  <th>№</th>
-                  <th>Покупатель</th>
-                  <th>Сумма</th>
-                  <th>Статус</th>
-                  <th>Когда</th>
+                  <th>{t("orders.col.no")}</th>
+                  <th>{t("orders.col.customer")}</th>
+                  <th>{t("orders.col.total")}</th>
+                  <th>{t("orders.col.status")}</th>
+                  <th>{t("orders.col.when")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -150,16 +153,14 @@ function Dashboard() {
                     <td>
                       <OrderStatus status={o.status} />
                     </td>
-                    <td className="text-muted">
-                      {new Date(o.created_at).toLocaleDateString("ru")}
-                    </td>
+                    <td className="text-muted">{new Date(o.created_at).toLocaleDateString(loc)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
         </Card>
-        <Card title="Заказы по статусам">
+        <Card title={t("overview.byStatus")}>
           <ul className="space-y-2 text-sm">
             {(
               [

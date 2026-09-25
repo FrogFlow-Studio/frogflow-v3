@@ -1,7 +1,14 @@
-import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useNavigate,
+  useRouteContext,
+} from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { ordersFn } from "@/app/admin/admin.functions";
+import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Empty, PageTitle } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
@@ -15,28 +22,46 @@ export const Route = createFileRoute("/admin/_authed/orders")({
   component: OrdersPage,
 });
 
-const STATUS_LABEL: Record<
-  string,
-  { text: string; tone: "neutral" | "ok" | "warn" | "danger" | "accent" }
-> = {
-  awaiting_payment: { text: "ждёт оплаты", tone: "neutral" },
-  awaiting_confirmation: { text: "чек на проверке", tone: "warn" },
-  delivering: { text: "выдаётся", tone: "accent" },
-  delivered: { text: "выдан", tone: "ok" },
-  paid: { text: "оплачен", tone: "accent" },
-  accepted: { text: "принят", tone: "accent" },
-  in_production: { text: "готовится", tone: "accent" },
-  ready: { text: "готов", tone: "warn" },
-  rejected: { text: "отклонён", tone: "danger" },
-  cancelled: { text: "отменён", tone: "danger" },
+const STATUS_TONE: Record<string, "neutral" | "ok" | "warn" | "danger" | "accent"> = {
+  awaiting_payment: "neutral",
+  awaiting_confirmation: "warn",
+  delivering: "accent",
+  delivered: "ok",
+  paid: "accent",
+  accepted: "accent",
+  in_production: "accent",
+  ready: "warn",
+  rejected: "danger",
+  cancelled: "danger",
 };
 
+const STATUS_KEYS = [
+  "awaiting_payment",
+  "awaiting_confirmation",
+  "delivering",
+  "delivered",
+  "paid",
+  "accepted",
+  "in_production",
+  "ready",
+  "rejected",
+  "cancelled",
+] as const;
+
 export function OrderStatus({ status }: { status: string }) {
-  const s = STATUS_LABEL[status] ?? { text: status, tone: "neutral" as const };
-  return <Badge tone={s.tone}>{s.text}</Badge>;
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
+  const t = adminT(shop.locale);
+  const known = (STATUS_KEYS as readonly string[]).includes(status);
+  return (
+    <Badge tone={STATUS_TONE[status] ?? "neutral"}>
+      {known ? t(`orders.status.${status as (typeof STATUS_KEYS)[number]}`) : status}
+    </Badge>
+  );
 }
 
 function ExportButton() {
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
+  const t = adminT(shop.locale);
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -44,12 +69,12 @@ function ExportButton() {
   return (
     <div className="relative">
       <button type="button" className="btn-secondary text-xs" onClick={() => setOpen(!open)}>
-        Выгрузить в Excel
+        {t("common.exportExcel")}
       </button>
       {open && (
         <div className="absolute right-0 z-10 mt-1 w-64 space-y-2 rounded-md border border-line bg-surface p-3 shadow-md">
           <label className="block text-xs text-muted">
-            С даты
+            {t("orders.export.from")}
             <input
               className="input mt-1"
               type="date"
@@ -58,7 +83,7 @@ function ExportButton() {
             />
           </label>
           <label className="block text-xs text-muted">
-            По дату (включительно)
+            {t("orders.export.to")}
             <input
               className="input mt-1"
               type="date"
@@ -71,11 +96,9 @@ function ExportButton() {
             href={href}
             onClick={() => setOpen(false)}
           >
-            Скачать CSV
+            {t("common.downloadCsv")}
           </a>
-          <p className="text-xs text-muted">
-            Без дат — все заказы. Файл открывается в Excel и Google Таблицах.
-          </p>
+          <p className="text-xs text-muted">{t("orders.export.hint")}</p>
         </div>
       )}
     </div>
@@ -85,21 +108,29 @@ function ExportButton() {
 function OrdersPage() {
   const { orders, counts } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const { status, q } = Route.useSearch();
   const navigate = useNavigate();
   const [query, setQuery] = useState(q ?? "");
   const tabs: Array<[string | undefined, string]> = [
-    [undefined, "Все"],
-    ["awaiting_confirmation", "Чек на проверке"],
-    ["awaiting_payment", "Ждут оплаты"],
-    ["accepted", "В работе"],
-    ["ready", "Готовы"],
-    ["delivered", "Выданы"],
-    ["rejected", "Отклонены"],
+    [undefined, t("common.all")],
+    ...(
+      [
+        "awaiting_confirmation",
+        "awaiting_payment",
+        "accepted",
+        "ready",
+        "delivered",
+        "rejected",
+      ] as const
+    ).map((k): [string, string] => [k, t(`orders.tab.${k}` as AdminKey)]),
   ];
   return (
     <>
-      <PageTitle title="Заказы" actions={shop.modules.excel_export && <ExportButton />} />
+      <PageTitle
+        title={t("orders.title")}
+        actions={shop.modules.excel_export && <ExportButton />}
+      />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {tabs.map(([s, label]) => (
           <Link
@@ -121,27 +152,27 @@ function OrdersPage() {
         >
           <input
             className="input w-56"
-            placeholder="№, имя, телефон"
+            placeholder={t("orders.searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <button className="btn-secondary">Найти</button>
+          <button className="btn-secondary">{t("common.search")}</button>
         </form>
       </div>
       {orders.length === 0 ? (
-        <Empty>Заказов нет.</Empty>
+        <Empty>{t("orders.empty")}</Empty>
       ) : (
         <div className="card overflow-x-auto">
           <table className="table">
             <thead>
               <tr>
-                <th>№</th>
-                <th>Покупатель</th>
-                <th>Состав</th>
-                <th className="text-right">Сумма</th>
-                <th>Статус</th>
-                <th>Канал</th>
-                <th>Когда</th>
+                <th>{t("orders.col.no")}</th>
+                <th>{t("orders.col.customer")}</th>
+                <th>{t("orders.col.items")}</th>
+                <th className="text-right">{t("orders.col.total")}</th>
+                <th>{t("orders.col.status")}</th>
+                <th>{t("orders.col.channel")}</th>
+                <th>{t("orders.col.when")}</th>
               </tr>
             </thead>
             <tbody>
@@ -169,7 +200,7 @@ function OrdersPage() {
                   </td>
                   <td className="text-muted">{o.platform}</td>
                   <td className="whitespace-nowrap text-muted">
-                    {new Date(o.created_at).toLocaleString("ru", {
+                    {new Date(o.created_at).toLocaleString(intlLocale(shop.locale), {
                       dateStyle: "short",
                       timeStyle: "short",
                     })}

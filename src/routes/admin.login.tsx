@@ -1,18 +1,46 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { adminLogin } from "@/app/admin/admin.functions";
+import { ADMIN_LOCALE_LABELS, adminT } from "@/app/i18n/admin";
 import { signupEnabledFn } from "@/app/signup/signup.functions";
 import { ErrorBox, Field, ThemeToggle, useAction } from "@/app/ui";
+import { isLocale, SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
 export const Route = createFileRoute("/admin/login")({
   loader: () => signupEnabledFn().catch(() => ({ enabled: false })),
   component: LoginPage,
 });
 
+/** Язык страницы входа: сессии ещё нет, поэтому запоминается в браузере. */
+function useLoginLocale(): [Locale, (l: Locale) => void] {
+  const [locale, setLocale] = useState<Locale>("ru");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("ff-admin-locale");
+      if (isLocale(saved)) setLocale(saved);
+    } catch {
+      /* без localStorage — русский */
+    }
+  }, []);
+  return [
+    locale,
+    (l) => {
+      setLocale(l);
+      try {
+        localStorage.setItem("ff-admin-locale", l);
+      } catch {
+        /* ignore */
+      }
+    },
+  ];
+}
+
 /** Вход продавца в панель своего магазина. */
 function LoginPage() {
   const { enabled: signup } = Route.useLoaderData();
   const navigate = useNavigate();
+  const [locale, setLocale] = useLoginLocale();
+  const t = adminT(locale);
   const [wrong, setWrong] = useState(false);
   const { run, busy, error } = useAction(async (username: string, password: string) => {
     setWrong(false);
@@ -26,14 +54,25 @@ function LoginPage() {
         <Link to="/" className="text-lg font-semibold">
           🐸 FrogFlow
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <select
+            className="input h-8 text-xs"
+            value={locale}
+            aria-label={t("nav.language")}
+            onChange={(e) => setLocale(e.target.value as Locale)}
+          >
+            {SUPPORTED_LOCALES.map((l) => (
+              <option key={l} value={l}>
+                {ADMIN_LOCALE_LABELS[l]}
+              </option>
+            ))}
+          </select>
+          <ThemeToggle />
+        </div>
       </header>
       <section className="mx-auto w-full max-w-sm flex-1 px-4 pt-6 pb-16 md:pt-16">
-        <h1 className="text-2xl font-semibold">Вход в панель магазина</h1>
-        <p className="mt-2 text-sm text-muted">
-          Заказы, товары, покупатели, рассылки и аналитика вашего магазина. Введите логин и пароль,
-          которые задали при регистрации.
-        </p>
+        <h1 className="text-2xl font-semibold">{t("login.title")}</h1>
+        <p className="mt-2 text-sm text-muted">{t("login.subtitle")}</p>
         <form
           onSubmit={(e: FormEvent<HTMLFormElement>) => {
             e.preventDefault();
@@ -42,17 +81,17 @@ function LoginPage() {
           }}
           className="card mt-6 space-y-4 p-5"
         >
-          <Field label="Логин">
+          <Field label={t("login.username")}>
             <input
               className="input"
               name="username"
               autoComplete="username"
               autoFocus
               required
-              placeholder="логин магазина"
+              placeholder={t("login.usernamePlaceholder")}
             />
           </Field>
-          <Field label="Пароль">
+          <Field label={t("login.password")}>
             <input
               className="input"
               name="password"
@@ -61,27 +100,22 @@ function LoginPage() {
               required
             />
           </Field>
-          {wrong && (
-            <p className="text-sm text-danger">
-              Неверный логин или пароль. После нескольких неудачных попыток вход блокируется на 15
-              минут.
-            </p>
-          )}
+          {wrong && <p className="text-sm text-danger">{t("login.wrong")}</p>}
           <ErrorBox error={error} />
           <button className="btn-primary w-full" disabled={busy}>
-            {busy ? "Входим…" : "Войти"}
+            {busy ? t("login.busy") : t("login.submit")}
           </button>
         </form>
         <div className="mt-6 space-y-2 text-sm text-muted">
           {signup && (
             <p>
-              Ещё нет магазина?{" "}
+              {t("login.noShop")}{" "}
               <Link to="/signup" className="text-accent hover:underline">
-                Зарегистрировать за пять минут
+                {t("login.signup")}
               </Link>
             </p>
           )}
-          <p>Забыли пароль — напишите в поддержку FrogFlow, мы выдадим новый.</p>
+          <p>{t("login.forgot")}</p>
         </div>
       </section>
     </main>

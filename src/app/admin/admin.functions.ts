@@ -70,11 +70,18 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
   try {
     const ctx = await admin();
     const { VERTICALS } = await import("@/core/verticals/registry");
-    const { getSetting } = await import("@/core/settings/settings");
-    const shopName = (await getSetting(ctx, "shop_name")) ?? ctx.tenant.name;
+    const { getSettings } = await import("@/core/settings/settings");
+    const { isLocale } = await import("@/core/i18n/locale");
+    const st = await getSettings(ctx, ["shop_name", "admin_locale"]);
+    const shopName = st.shop_name ?? ctx.tenant.name;
+    const locale = isLocale(st.admin_locale)
+      ? st.admin_locale
+      : (ctx.tenant.settings.default_locale ?? "ru");
     return {
       botId: ctx.tenant.id,
       name: shopName,
+      /** Язык админки продавца — app_settings.admin_locale, иначе язык магазина. */
+      locale,
       vertical: ctx.tenant.vertical,
       verticalTitle: VERTICALS[ctx.tenant.vertical].title,
       modules: ctx.tenant.modules,
@@ -89,6 +96,14 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
     return null;
   }
 });
+
+export const setAdminLocaleFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ locale: z.enum(["ru", "kk", "en", "uz"]) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    await (await import("@/core/settings/settings")).setSetting(ctx, "admin_locale", data.locale);
+    return { ok: true };
+  });
 
 export const dashboardFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await admin();

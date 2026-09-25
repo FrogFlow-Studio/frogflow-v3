@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { categoriesFn, deleteCategoryFn, saveCategoryFn } from "@/app/admin/admin.functions";
+import { adminT } from "@/app/i18n/admin";
 import { Card, Empty, ErrorBox, PageTitle, Switch, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/admin/_authed/categories")({
@@ -26,6 +27,8 @@ function tree(cats: Cat[]): Array<Cat & { depth: number }> {
 
 function CategoriesPage() {
   const cats = Route.useLoaderData();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
   const router = useRouter();
   const [editing, setEditing] = useState<Cat | null | "new">(null);
   const save = useAction(async (f: FormData, id: string | null) => {
@@ -42,7 +45,7 @@ function CategoriesPage() {
     await router.invalidate();
   });
   const del = useAction(async (id: string) => {
-    if (!confirm("Удалить категорию?")) return;
+    if (!confirm(t("categories.deleteConfirm"))) return;
     await deleteCategoryFn({ data: { id } });
     await router.invalidate();
   });
@@ -63,28 +66,26 @@ function CategoriesPage() {
   return (
     <>
       <PageTitle
-        title="Категории"
-        subtitle="Дерево каталога в боте и на витрине"
+        title={t("categories.title")}
+        subtitle={t("categories.subtitle")}
         actions={
           <button className="btn-primary" onClick={() => setEditing("new")}>
-            + Категория
+            {t("categories.new")}
           </button>
         }
       />
       <ErrorBox error={del.error ?? vis.error} />
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         {rows.length === 0 ? (
-          <Empty>
-            Категорий пока нет. Товары без категории показываются на первом экране каталога.
-          </Empty>
+          <Empty>{t("categories.empty")}</Empty>
         ) : (
           <div className="card">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Название</th>
-                  <th>Порядок</th>
-                  <th>Видна</th>
+                  <th>{t("categories.col.name")}</th>
+                  <th>{t("categories.col.order")}</th>
+                  <th>{t("categories.col.visible")}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -102,13 +103,13 @@ function CategoriesPage() {
                     </td>
                     <td className="text-right whitespace-nowrap">
                       <button className="btn-ghost text-xs" onClick={() => setEditing(c)}>
-                        Изменить
+                        {t("common.edit")}
                       </button>
                       <button
                         className="btn-ghost text-xs text-danger"
                         onClick={() => void del.run(c.id).catch(() => {})}
                       >
-                        Удалить
+                        {t("common.delete")}
                       </button>
                     </td>
                   </tr>
@@ -118,7 +119,7 @@ function CategoriesPage() {
           </div>
         )}
         {editing !== null && (
-          <Card title={current ? "Изменить категорию" : "Новая категория"}>
+          <Card title={current ? t("categories.edit") : t("categories.create")}>
             <form
               key={current?.id ?? "new"}
               className="space-y-3"
@@ -128,7 +129,7 @@ function CategoriesPage() {
               }}
             >
               <label className="block">
-                <span className="label">Название</span>
+                <span className="label">{t("categories.col.name")}</span>
                 <input
                   className="input"
                   name="name"
@@ -138,9 +139,9 @@ function CategoriesPage() {
                 />
               </label>
               <label className="block">
-                <span className="label">Родительская категория</span>
+                <span className="label">{t("categories.parent")}</span>
                 <select className="input" name="parentId" defaultValue={current?.parent_id ?? ""}>
-                  <option value="">— корень каталога —</option>
+                  <option value="">{t("categories.root")}</option>
                   {rows
                     .filter((c) => c.id !== current?.id)
                     .map((c) => (
@@ -152,7 +153,7 @@ function CategoriesPage() {
                 </select>
               </label>
               <label className="block">
-                <span className="label">Порядок</span>
+                <span className="label">{t("categories.col.order")}</span>
                 <input
                   className="input"
                   name="sortOrder"
@@ -166,15 +167,15 @@ function CategoriesPage() {
                   name="isVisible"
                   defaultChecked={current?.is_visible ?? true}
                 />{" "}
-                Показывать покупателям
+                {t("categories.showToCustomers")}
               </label>
               <ErrorBox error={save.error} />
               <div className="flex gap-2">
                 <button className="btn-primary" disabled={save.busy}>
-                  Сохранить
+                  {t("common.save")}
                 </button>
                 <button type="button" className="btn-ghost" onClick={() => setEditing(null)}>
-                  Отмена
+                  {t("common.cancel")}
                 </button>
               </div>
             </form>
