@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { dashboardFn } from "@/app/admin/admin.functions";
-import { Card, Empty, PageTitle, Stat } from "@/app/ui";
+import { dashboardFn, hideSetupFn } from "@/app/admin/admin.functions";
+import { Card, Empty, PageTitle, Stat, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 import { OrderStatus } from "./admin._authed.orders";
@@ -14,17 +14,49 @@ export const Route = createFileRoute("/admin/_authed/")({
 function Dashboard() {
   const d = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
+  const router = useRouter();
   const attention = (d.counts.awaiting_confirmation ?? 0) + (d.counts.ready ?? 0);
+  const steps = [
+    d.setup.telegram,
+    d.setup.products,
+    d.setup.payment,
+    d.setup.notifications,
+    d.setup.legal,
+    d.setup.firstOrder,
+  ];
+  const doneCount = steps.filter(Boolean).length;
+  const hide = useAction(async () => {
+    await hideSetupFn();
+    await router.invalidate();
+  });
   return (
     <>
       <PageTitle
         title="Обзор"
         subtitle={`${shop.verticalTitle}${shop.telegram ? ` · @${shop.telegram}` : ""}`}
       />
-      {!(d.setup.telegram && d.setup.products && d.setup.payment) && (
-        <Card title="Первые шаги" className="mb-6">
+      {!d.setup.hidden && doneCount < steps.length && (
+        <Card
+          title={`Первые шаги · ${doneCount} из ${steps.length}`}
+          className="mb-6"
+          actions={
+            <button
+              className="btn-ghost text-xs"
+              disabled={hide.busy}
+              onClick={() => void hide.run().catch(() => {})}
+            >
+              Скрыть
+            </button>
+          }
+        >
+          <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-line">
+            <div
+              className="h-full bg-accent transition-all"
+              style={{ width: `${Math.round((doneCount / steps.length) * 100)}%` }}
+            />
+          </div>
           <p className="mb-3 text-sm text-muted">
-            Четыре шага, после которых магазин начнёт продавать. Остальное можно настроить потом.
+            Шаги, после которых магазин продаёт сам. Остальное можно настроить потом.
           </p>
           <ol className="space-y-2 text-sm">
             <Step done={d.setup.telegram} to="/admin/settings" title="Подключить бота в Telegram">
@@ -36,8 +68,24 @@ function Dashboard() {
             <Step done={d.setup.payment} to="/admin/settings" title="Указать, как вам платить">
               Реквизиты для перевода по странам или оплата картой через Robokassa.
             </Step>
+            <Step
+              done={d.setup.notifications}
+              to="/admin/settings"
+              title="Куда присылать заказы и чеки"
+            >
+              Ваш Telegram-id в настройках уведомлений: бот пришлёт каждый новый заказ с кнопками
+              «подтвердить» и «отклонить». Свой id бот скажет по команде /id.
+            </Step>
             <Step done={d.setup.legal} to="/admin/settings" title="Заполнить реквизиты продавца">
               Оферта и реквизиты показываются покупателю в боте и на витрине — это доверие и закон.
+            </Step>
+            <Step
+              done={d.setup.firstOrder}
+              to="/admin/orders"
+              title="Сделать тестовый заказ на себя"
+            >
+              Откройте бота, положите товар в корзину, оформите и пришлите любой чек — заказ
+              появится здесь, и вы увидите весь путь покупателя.
             </Step>
           </ol>
           {d.setup.slug && (
@@ -148,7 +196,7 @@ function Step({
   children,
 }: {
   done: boolean;
-  to: "/admin/settings" | "/admin/products";
+  to: "/admin/settings" | "/admin/products" | "/admin/orders";
   title: string;
   children: ReactNode;
 }) {

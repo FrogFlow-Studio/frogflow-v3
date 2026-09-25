@@ -5,16 +5,20 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        const { requireAdminModule } = await import("@/app/auth/guards.server");
+        const { requireAdmin, requireAdminModule } = await import("@/app/auth/guards.server");
         let ctx;
         try {
-          ctx = await requireAdminModule("excel_export");
+          // Каталог выгружает любой продавец — это его данные для импорта обратно; заказы и покупатели — модуль.
+          ctx =
+            params.kind === "products"
+              ? await requireAdmin()
+              : await requireAdminModule("excel_export");
         } catch {
           return new Response("unauthorized", { status: 401 });
         }
         const url = new URL(request.url);
         const day = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
-        const { ordersCsv, customersCsv } = await import("@/core/export/export");
+        const { ordersCsv, customersCsv, productsCsv } = await import("@/core/export/export");
         let result: { csv: string; count: number };
         let name: string;
         if (params.kind === "orders") {
@@ -25,6 +29,9 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
         } else if (params.kind === "customers") {
           result = await customersCsv(ctx);
           name = "customers.csv";
+        } else if (params.kind === "products") {
+          result = await productsCsv(ctx);
+          name = "products.csv";
         } else return new Response("not found", { status: 404 });
         return new Response(result.csv, {
           headers: {

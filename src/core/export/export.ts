@@ -170,3 +170,62 @@ export async function customersCsv(ctx: TenantContext): Promise<{ csv: string; c
   );
   return { csv, count: users.length };
 }
+
+/**
+ * Каталог — в том же формате, который принимает импорт: выгрузил, поправил
+ * цены в Excel, загрузил обратно. Колонка id связывает строку с товаром.
+ */
+export async function productsCsv(ctx: TenantContext): Promise<{ csv: string; count: number }> {
+  const [rows, { data: categories }] = await Promise.all([
+    pageAll(
+      (from, to) =>
+        ctx.db
+          .from("products")
+          .select(
+            "id, name, price, currency, category_ids, description, keywords, is_active, stock_quantity, fulfillment_kind, file_url, file_url_kz, sort_order",
+          )
+          .order("sort_order")
+          .order("name")
+          .range(from, to),
+      "товары для выгрузки",
+    ),
+    ctx.db.from("categories").select("id, name"),
+  ]);
+  const catName = new Map((categories ?? []).map((c) => [c.id, c.name]));
+  const csv = toCsv(
+    [
+      "id",
+      "Название",
+      "Цена",
+      "Валюта",
+      "Категория",
+      "Описание",
+      "Ключевые слова",
+      "В продаже",
+      "Остаток",
+      "Тип",
+      "Ссылка",
+      "Ссылка kz",
+      "Порядок",
+    ],
+    rows.map((p) => [
+      p.id,
+      p.name,
+      p.price,
+      p.currency,
+      (Array.isArray(p.category_ids) ? p.category_ids : [])
+        .map((id) => catName.get(String(id)) ?? "")
+        .filter(Boolean)
+        .join(" / "),
+      p.description ?? "",
+      p.keywords ?? "",
+      p.is_active ? "да" : "нет",
+      p.stock_quantity ?? "",
+      p.fulfillment_kind === "physical" ? "физический" : "цифровой",
+      p.file_url ?? "",
+      p.file_url_kz ?? "",
+      p.sort_order,
+    ]),
+  );
+  return { csv, count: rows.length };
+}

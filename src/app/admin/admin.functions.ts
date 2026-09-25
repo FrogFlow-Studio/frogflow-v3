@@ -99,11 +99,15 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
     listOrdersForAdmin(ctx, { limit: 8 }),
   ]);
   const { listPaymentMethods } = await import("@/core/settings/payment-methods");
-  const [{ count: products }, { count: customers }, methods] = await Promise.all([
-    ctx.db.from("products").select("id", { count: "exact", head: true }).eq("is_active", true),
-    ctx.db.from("bot_users").select("user_key", { count: "exact", head: true }),
-    listPaymentMethods(ctx),
-  ]);
+  const { getSettings } = await import("@/core/settings/settings");
+  const [{ count: products }, { count: customers }, methods, settings, { count: anyOrders }] =
+    await Promise.all([
+      ctx.db.from("products").select("id", { count: "exact", head: true }).eq("is_active", true),
+      ctx.db.from("bot_users").select("user_key", { count: "exact", head: true }),
+      listPaymentMethods(ctx),
+      getSettings(ctx, ["legal_requisites", "admin_chat_id", "setup_hidden"]),
+      ctx.db.from("orders").select("id", { count: "exact", head: true }),
+    ]);
   return {
     counts,
     rev30,
@@ -115,15 +119,36 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
       telegram: Boolean(ctx.tenant.telegramTokenEnc),
       products: (products ?? 0) > 0,
       payment: methods.length > 0 || ctx.tenant.modules.robokassa,
-      legal: Boolean(
-        await (await import("@/core/settings/settings")).getSetting(ctx, "legal_requisites"),
-      ),
+      legal: Boolean(settings.legal_requisites),
+      notifications: Boolean(settings.admin_chat_id || ctx.tenant.ownerTelegramId),
+      // Первый заказ — хотя бы тестовый на себя: значит, путь до оплаты пройден.
+      firstOrder: (anyOrders ?? 0) > 0,
+      hidden: settings.setup_hidden === "1",
       slug: ctx.tenant.settings.slug ?? null,
     },
   };
 });
 
+/** Продавец убрал чек-лист первых шагов с обзора. */
+export const hideSetupFn = createServerFn({ method: "POST" }).handler(async () => {
+  const ctx = await admin();
+  await (await import("@/core/settings/settings")).setSetting(ctx, "setup_hidden", "1");
+  return { ok: true };
+});
+
 /* ── каталог ─────────────────────────────────────────────────────── */
+
+/** Импорт каталога из CSV: предпросмотр (что создастся и обновится) или применение. */
+export const importCatalogFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ csv: z.string().min(1).max(4_000_000), apply: z.boolean().default(false) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    const m = await import("@/core/catalog/import.server");
+    if (!data.apply) return { preview: await m.previewImport(ctx, data.csv), result: null };
+    return { preview: null, result: await m.applyImport(ctx, data.csv) };
+  });
 
 export const categoriesFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await admin();
