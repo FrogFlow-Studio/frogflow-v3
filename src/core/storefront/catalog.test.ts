@@ -26,6 +26,29 @@ function productsDb(rows: Row[], categories: Row[] = []) {
         };
         return q;
       }
+      if (table === "product_variants") {
+        // Варианты берутся из вложенных product_variants строк товаров.
+        const all = rows.flatMap((r) =>
+          ((r.product_variants as Row[]) ?? []).map((v): Row => ({ ...v, product_id: r.id })),
+        );
+        let hit = all;
+        const q = {
+          select: () => q,
+          limit: () => q,
+          ilike(col: string, pat: string) {
+            const needle = pat.replace(/^%|%$/g, "").toLowerCase();
+            hit = hit.filter((v) =>
+              String(v[col] ?? "")
+                .toLowerCase()
+                .includes(needle),
+            );
+            return q;
+          },
+          then: (ok: (v: { data: unknown; error: null }) => unknown) =>
+            Promise.resolve({ data: hit, error: null }).then(ok),
+        };
+        return q;
+      }
       if (table !== "products") throw new Error(`неожиданная таблица: ${table}`);
       const filters: Array<(r: Row) => boolean> = [];
       let one = false;
@@ -44,8 +67,15 @@ function productsDb(rows: Row[], categories: Row[] = []) {
         },
         or(expr: string) {
           calls.or.push(expr);
-          const parts = expr.split(",").map((p) => {
+          const parts = expr.split(/,(?![^(]*\))/).map((p) => {
             const [col, op, ...rest] = p.split(".");
+            if (op === "in") {
+              const list = rest
+                .join(".")
+                .replace(/^\(|\)$/g, "")
+                .split(",");
+              return (r: Row) => list.includes(String(r[col!]));
+            }
             if (op !== "ilike") throw new Error(`неожиданный оператор: ${op}`);
             const needle = rest.join(".").replace(/^%|%$/g, "").toLowerCase();
             return (r: Row) =>
@@ -135,6 +165,25 @@ describe("storeCatalog: поиск витрины", () => {
     expect(ids(await storeCatalog(ctx, { q: "RED CAKE" }))).toEqual(["cake"]);
     expect(ids(await storeCatalog(ctx, { q: "chocolate" }))).toEqual(["cake"]);
     expect(ids(await storeCatalog(ctx, { q: "birthday" }))).toEqual(["cake"]);
+  });
+
+  it("находит товар по названию варианта (v1: «large» находит вариант)", async () => {
+    const { ctx } = ctxWith([
+      ...catalog,
+      product("shirt", {
+        name: "Футболка",
+        product_variants: [
+          { id: "v-s", name: "Маленькая", price: 500, sort_order: 0 },
+          { id: "v-l", name: "Большая", price: 700, sort_order: 1 },
+        ],
+      }),
+    ]);
+    expect(ids(await storeCatalog(ctx, { q: "БОЛЬШ" }))).toEqual(["shirt"]);
+    // Совпадения по тексту товара и по варианту — вместе, без дублей.
+    expect(ids(await storeCatalog(ctx, { q: "а" })).sort()).toEqual(
+      ["grade4", "grade5", "shirt"].sort(),
+    );
+    expect(ids(await storeCatalog(ctx, { q: "средняя" }))).toEqual([]);
   });
 });
 

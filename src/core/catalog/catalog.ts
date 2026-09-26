@@ -78,22 +78,45 @@ export async function getProduct(ctx: TenantContext, id: string): Promise<Produc
   return (data as Product | null) ?? null;
 }
 
+/** Поисковая фраза → ilike-шаблон; спецсимволы PostgREST-фильтра гасятся. */
+export function searchPattern(query: string): string | null {
+  const q = query
+    .trim()
+    .replace(/[%_,()]/g, " ")
+    .slice(0, 80);
+  return q ? `%${q}%` : null;
+}
+
+/**
+ * Фильтр `or` для поиска товара: название, ключевые слова, описание и
+ * названия вариантов. Варианты — отдельная таблица, её не встроить в `or`
+ * по products, поэтому id товаров с подходящим вариантом добавляются как
+ * `id.in.(…)`.
+ */
+export async function productSearchFilter(ctx: TenantContext, pattern: string): Promise<string> {
+  const { data, error } = await ctx.db
+    .from("product_variants")
+    .select("product_id")
+    .ilike("name", pattern)
+    .limit(200);
+  if (error) throw new Error(`search variants: ${error.message}`);
+  const ids = [...new Set((data ?? []).map((v) => v.product_id))];
+  const text = `name.ilike.${pattern},keywords.ilike.${pattern},description.ilike.${pattern}`;
+  return ids.length ? `${text},id.in.(${ids.join(",")})` : text;
+}
+
 export async function searchProducts(
   ctx: TenantContext,
   query: string,
   limit = 50,
 ): Promise<Product[]> {
-  const q = query
-    .trim()
-    .replace(/[%_,()]/g, " ")
-    .slice(0, 80);
-  if (!q) return [];
-  const pattern = `%${q}%`;
+  const pattern = searchPattern(query);
+  if (!pattern) return [];
   const { data, error } = await ctx.db
     .from("products")
     .select(PRODUCT_SELECT)
     .eq("is_active", true)
-    .or(`name.ilike.${pattern},keywords.ilike.${pattern},description.ilike.${pattern}`)
+    .or(await productSearchFilter(ctx, pattern))
     .order("sort_order")
     .order("name")
     .limit(limit);

@@ -857,7 +857,7 @@
   },
   "tests/mini-app-catalog.test.ts": {
     "removes products that only belong to hidden categories": "src/core/storefront/catalog.test.ts › убирает товары, у которых все категории скрыты — в том числе через скрытого родителя",
-    "searches names, descriptions, variants and keywords across the full index": "open: расхождение: поиск storeCatalog идёт по name/keywords/description, названия вариантов не ищутся (название, описание, ключевые слова — в catalog.test.ts › ищет по названию, описанию и ключевым словам без учёта регистра)",
+    "searches names, descriptions, variants and keywords across the full index": "src/core/storefront/catalog.test.ts › находит товар по названию варианта (v1: «large» находит вариант)",
     "treats the query as one phrase, like the bot, not AND of substrings": "src/core/storefront/catalog.test.ts › ищет запрос одной фразой, как бот, а не пересечением слов",
     "keeps uncategorized products only in the unfiltered catalog": "src/core/storefront/catalog.test.ts › товар без категории — только в общем каталоге, не в выбранной категории",
     "includes products from Mini App category subtrees": "src/core/storefront/catalog.test.ts › родительская категория включает товары всех своих подкатегорий",

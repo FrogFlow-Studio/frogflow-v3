@@ -1,7 +1,14 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { productFiles, type ProductFile } from "./product-files";
 import { listAllCategories } from "@/core/catalog/admin";
-import { PRODUCT_SELECT, sortedImages, sortedVariants, type Product } from "@/core/catalog/catalog";
+import {
+  PRODUCT_SELECT,
+  productSearchFilter,
+  searchPattern,
+  sortedImages,
+  sortedVariants,
+  type Product,
+} from "@/core/catalog/catalog";
 import { imagePath } from "@/core/catalog/image-url";
 import { resolvePrice } from "@/core/pricing/pricing";
 import { productSellable } from "@/core/catalog/materials";
@@ -145,13 +152,8 @@ export async function storeCatalog(
     .order("sort_order")
     .order("name")
     .limit(opts.categoryId ? 1000 : 200);
-  if (opts.q?.trim()) {
-    const s = `%${opts.q
-      .trim()
-      .replace(/[%_,()]/g, " ")
-      .slice(0, 80)}%`;
-    q = q.or(`name.ilike.${s},keywords.ilike.${s},description.ilike.${s}`);
-  }
+  const pattern = searchPattern(opts.q ?? "");
+  if (pattern) q = q.or(await productSearchFilter(ctx, pattern));
   const [{ data, error }, cats] = await Promise.all([q, listAllCategories(ctx)]);
   if (error) throw new Error(error.message);
   const known = new Set(cats.map((c) => c.id));

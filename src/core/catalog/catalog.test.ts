@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { imageUrl } from "./catalog";
+import { imageUrl, searchProducts } from "./catalog";
 import { decodeImageKey, encodeImageKey } from "./image-url";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 
@@ -28,5 +28,41 @@ describe("imageUrl", () => {
     expect(decodeImageKey(enc("../other/a.png"))).toBeNull();
     expect(decodeImageKey(enc("a.png?select=*"))).toBeNull();
     expect(decodeImageKey(enc("a\\..\\b"))).toBeNull();
+  });
+});
+
+describe("searchProducts — поиск в боте", () => {
+  it("добавляет к фильтру товары, у которых совпало название варианта", async () => {
+    const seen: { variants?: string; or?: string } = {};
+    const db = {
+      from(table: string) {
+        const q = {
+          select: () => q,
+          eq: () => q,
+          order: () => q,
+          limit: () => q,
+          ilike(_col: string, pat: string) {
+            seen.variants = pat;
+            return q;
+          },
+          or(expr: string) {
+            seen.or = expr;
+            return q;
+          },
+          then: (ok: (v: { data: unknown; error: null }) => unknown) =>
+            Promise.resolve({
+              data:
+                table === "product_variants" ? [{ product_id: "p1" }, { product_id: "p1" }] : [],
+              error: null,
+            }).then(ok),
+        };
+        return q;
+      },
+    };
+    await searchProducts({ ...ctx, db } as unknown as TenantContext, " Большая ");
+    expect(seen.variants).toBe("%Большая%");
+    expect(seen.or).toBe(
+      "name.ilike.%Большая%,keywords.ilike.%Большая%,description.ilike.%Большая%,id.in.(p1)",
+    );
   });
 });

@@ -4,15 +4,15 @@
 и `docs/readiness.json` — руками не правится. `npm test` падает, если сводка
 устарела, пункт описи назван неверно или указанного теста нет.
 
-**Готовность для первых клиентов: 80,6 %** — покрыто тестами v2
-593 из 735 нужных сейчас пунктов.
+**Готовность для первых клиентов: 80,8 %** — покрыто тестами v2
+594 из 735 нужных сейчас пунктов.
 
-**Путь заказа: 93,1 %** — 315 из 338
+**Путь заказа: 93,4 %** — 316 из 338
 (каталог, цена, оформление, оплата и чек, выдача; файлы — `ORDER_PATH` в скрипте).
 
 | всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |
 | ----- | ------- | --------------------- | ---- | ----- | ------------- |
-| 1125 | 593 | 43 | 142 | 33 | 357 |
+| 1125 | 594 | 43 | 141 | 33 | 357 |
 
 «Позже» — поведение нужно, но не магазинам, которые переезжают первыми
 (модуль ещё не перенесён). «Не нужно в v2» — поведение убрано или заменено;
@@ -86,7 +86,7 @@
 | `tests/loyalty.test.ts` | 7 | 7 | 0 | 0 | 0 | 100 % |
 | `tests/manual-order.test.ts` | 8 | 8 | 0 | 0 | 0 | 100 % |
 | `tests/mini-app-auth.test.ts` | 4 | 3 | 0 | 0 | 1 | 100 % |
-| `tests/mini-app-catalog.test.ts` | 13 | 5 | 4 | 1 | 3 | 55,5 % |
+| `tests/mini-app-catalog.test.ts` | 13 | 6 | 3 | 1 | 3 | 66,6 % |
 | `tests/mini-app-library.test.ts` | 5 | 4 | 1 | 0 | 0 | 80 % |
 | `tests/mini-app-rate-limit.test.ts` | 5 | 1 | 0 | 0 | 4 | 100 % |
 | `tests/mini-app-regressions.test.ts` | 27 | 10 | 2 | 0 | 15 | 83,3 % |
@@ -129,7 +129,7 @@
 | `tests/zernio-retry.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/zernio-webhook.test.ts` | 13 | 7 | 3 | 0 | 3 | 70 % |
 
-## Дыры (142)
+## Дыры (141)
 
 ### поломки v1
 
@@ -295,7 +295,6 @@
 
 ### `tests/mini-app-catalog.test.ts`
 
-- searches names, descriptions, variants and keywords across the full index — расхождение: поиск storeCatalog идёт по name/keywords/description, названия вариантов не ищутся (название, описание, ключевые слова — в catalog.test.ts › ищет по названию, описанию и ключевым словам без учёта регистра)
 - shows lead time on physical products and hides it for digital — расхождение: на странице товара (routes/s.$slug.p.$id.tsx) срок изготовления показывается при любом leadTimeDays, в том числе у цифрового; у физического с 0 дней карточка пишет «Товар», а не «В наличии»; разметка в JSX без тестов
 - filters materials by language and keeps chips for the unfiltered set — расхождение: фильтра каталога по языку материала на витрине v2 нет
 - lists material files on the product page and keeps a library tab — расхождение: список файлов на странице товара есть (src/core/storefront/product-files.test.ts), вкладки «Материалы» нет — библиотека на /s/:slug/orders
