@@ -119,14 +119,14 @@
   },
   "src/lib/error-message.test.ts": {
     "настоящий Error — message как есть": "src/app/i18n/errors.test.ts › переводится на язык админки с подстановкой, чужая ошибка — как есть",
-    "объект с message — не Error, но текст есть": "open: adminErrorText и ErrorBox (app/i18n/user-error.ts, app/ui/index.tsx) берут e.message или String(e) — не-Error даёт [object Object], теста нет",
-    "объект с error (форма ошибок Zernio) — тоже читается": "open: adminErrorText и ErrorBox (app/i18n/user-error.ts, app/ui/index.tsx) берут e.message или String(e) — не-Error даёт [object Object], теста нет",
-    "message в приоритете над error, если оба есть": "open: adminErrorText и ErrorBox (app/i18n/user-error.ts, app/ui/index.tsx) берут e.message или String(e) — не-Error даёт [object Object], теста нет",
-    "объект без message/error — сериализуется в JSON, не в [object Object]": "open: adminErrorText и ErrorBox (app/i18n/user-error.ts, app/ui/index.tsx) берут e.message или String(e) — не-Error даёт [object Object], теста нет",
-    "пустая строка в message не считается текстом — идёт дальше": "open: adminErrorText и ErrorBox (app/i18n/user-error.ts, app/ui/index.tsx) берут e.message или String(e) — не-Error даёт [object Object], теста нет",
-    "строка и число — просто String()": "open: adminErrorText отдаёт String(e), теста нет",
-    "null/undefined не роняют функцию": "open: String(e) в adminErrorText не падает на null, но теста нет",
-    "циклическая структура — не падает на JSON.stringify, отдаёт String(e)": "open: adminErrorText и ErrorBox (app/i18n/user-error.ts, app/ui/index.tsx) берут e.message или String(e) — не-Error даёт [object Object], теста нет"
+    "объект с message — не Error, но текст есть": "src/lib/error-message.test.ts › объект с message — не Error, но текст есть",
+    "объект с error (форма ошибок Zernio) — тоже читается": "src/lib/error-message.test.ts › объект с error (форма ошибок Zernio) — тоже читается",
+    "message в приоритете над error, если оба есть": "src/lib/error-message.test.ts › message в приоритете над error, если оба есть",
+    "объект без message/error — сериализуется в JSON, не в [object Object]": "src/lib/error-message.test.ts › объект без message/error — сериализуется в JSON, не в [object Object]",
+    "пустая строка в message не считается текстом — идёт дальше": "src/lib/error-message.test.ts › пустая строка в message не считается текстом — идёт дальше",
+    "строка и число — просто String()": "src/lib/error-message.test.ts › строка и число — просто String()",
+    "null/undefined не роняют функцию": "src/lib/error-message.test.ts › null/undefined не роняют функцию",
+    "циклическая структура — не падает на JSON.stringify, отдаёт String(e)": "src/lib/error-message.test.ts › циклическая структура — не падает на JSON.stringify, отдаёт String(e)"
   },
   "src/lib/internal/internal-api.test.ts": {
     "без заголовка x-internal-secret отклоняет 401 и не трогает базу": "drop: internal-api v1 и его internal_secret в v2 не нужны; один деплой, оператор ходит через /api/operator",

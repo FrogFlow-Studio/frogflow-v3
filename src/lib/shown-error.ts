@@ -1,3 +1,5 @@
+import { errorMessage } from "./error-message";
+
 /**
  * Что человек видит на экране при ошибке. Показываем только текст, который
  * для него написан: отказ ядра (UserError, уже переведённый), русский отказ
@@ -89,7 +91,7 @@ export function clientErrorReport(e: unknown, path: string): ClientErrorReport {
   const err = e instanceof Error ? e : null;
   return {
     name: cut(err?.name ?? typeof e, 80) || "Error",
-    message: cut(err ? err.message : String(e), 500),
+    message: cut(errorMessage(e), 500),
     stack: cut(err?.stack, 4000) || undefined,
     path: cut(path, 200),
   };

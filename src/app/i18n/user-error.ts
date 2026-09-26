@@ -1,4 +1,5 @@
 import type { Locale } from "@/core/i18n/locale";
+import { errorMessage } from "@/lib/error-message";
 import { isUserError } from "@/core/i18n/user-error";
 import { MODULE_KEYS, type ModuleKey } from "@/core/modules/registry";
 import { adminT, isAdminKey } from "./admin";
@@ -10,7 +11,7 @@ import { moduleTitleKey } from "./admin/catalog";
  * Подстановка `{module}` с ключом модуля показывается его названием.
  */
 export function adminErrorText(locale: Locale, e: unknown): string {
-  if (!isUserError(e) || !isAdminKey(e.key)) return e instanceof Error ? e.message : String(e);
+  if (!isUserError(e) || !isAdminKey(e.key)) return errorMessage(e);
   const t = adminT(locale);
   const vars = { ...e.vars };
   if (typeof vars.module === "string" && (MODULE_KEYS as string[]).includes(vars.module))
