@@ -124,6 +124,20 @@ export function isTriggerWord(text: string, triggers: readonly string[]): boolea
   return Boolean(n) && triggers.includes(n);
 }
 
+/**
+ * Нажатие кнопки, которое должно открыть магазин с начала: скрытый payload
+ * «/start» (его ставит normalizeDmButtons кнопке без своего payload — так
+ * устроены кнопки «Купить» в автоматизациях Instagram) или слово-вызов
+ * продавца. Подпись кнопки, которую видно в чате, роли не играет. Кнопки
+ * чужих автоматизаций Zernio (`ACT::…`) — не наши.
+ */
+export function isStartPostback(payload: string | null | undefined, triggers: readonly string[]) {
+  const p = (payload ?? "").trim();
+  if (!p || p.startsWith("ACT::")) return false;
+  const n = normalizeWord(p);
+  return n === "/start" || n === "start" || isTriggerWord(p, triggers);
+}
+
 export async function loadDirectBotSettings(
   ctx: TenantContext,
   platform: DirectBotPlatform,

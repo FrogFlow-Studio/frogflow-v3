@@ -1207,15 +1207,15 @@
     "waits silently after the prompt until /start": "drop: стартовая подсказка WhatsApp не перенесена намеренно, v2 вместо неё спрашивает язык (needsLocalePick)",
     "starts the existing flow when /start arrives": "drop: стартовой подсказки в v2 нет, /start в Direct/WhatsApp — обычная команда каталога (matchDirectCommand)",
     "restarts an activated or in-progress WhatsApp flow on /start": "drop: стартовой подсказки в v2 нет; /start набранным текстом сбрасывает шаг через isCancel и открывает каталог",
-    "restarts Instagram on /start so a CMD «Купить» button wakes the shop": "open: postback /start от кнопки автоматизации (normalizeDmButtons ставит его по умолчанию) в handlePostback (shop.server.ts) уходит в default → question, магазин не открывается, теста нет",
+    "restarts Instagram on /start so a CMD «Купить» button wakes the shop": "src/channels/zernio/shop.server.test.ts › restarts Instagram on /start so a CMD «Купить» button wakes the shop",
     "does not intercept Instagram or an activated WhatsApp flow": "drop: шлюза активации WhatsApp в v2 нет, перехватывать нечего",
     "can disable only the first auto-reply while keeping /start active": "drop: стартовая подсказка WhatsApp не перенесена, выключать нечего",
     "uses the requested activation text": "drop: текста активации WhatsApp в v2 нет, вместо него выбор языка (languagePickerText)",
     "uses the configured activation text and falls back for a blank value": "drop: настройки текста активации WhatsApp в v2 нет, вместо неё выбор языка",
-    "treats a hidden /start payload as start even when the chat shows «купить»": "open: скрытый payload /start кнопки CMD в handlePostback (shop.server.ts) не распознаётся как старт, теста нет",
-    "treats a CMD payload that is itself a trigger word as start": "open: postback со словом-вызовом не сверяется с triggers в handlePostback (shop.server.ts), теста нет",
+    "treats a hidden /start payload as start even when the chat shows «купить»": "src/core/instagram/direct-bot-settings.test.ts › treats a hidden /start payload as start even when the chat shows «купить»",
+    "treats a CMD payload that is itself a trigger word as start": "src/core/instagram/direct-bot-settings.test.ts › treats a CMD payload that is itself a trigger word as start",
     "does not wake the shop on a typed «купить» without a postback": "drop: в v2 набранное слово-вызов намеренно открывает каталог по настройке triggers (core/instagram/direct-bot-settings.ts), постбэк не нужен",
-    "ignores native Zernio ACT:: buttons and ordinary chat": "open: чужой postback ACT:: уходит в default ветку handlePostback (shop.server.ts) → question, теста нет"
+    "ignores native Zernio ACT:: buttons and ordinary chat": "src/channels/zernio/shop.server.test.ts › ignores native Zernio ACT:: buttons and ordinary chat"
   },
   "tests/whatsapp-broadcast-audience.test.ts": {
     "без списка исключений отдаёт всех подряд": "open: resolveWhatsAppAudience (core/broadcasts/broadcasts.ts) без списка исключений не проверяется, живой тест всегда задаёт список",

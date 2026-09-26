@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   directBotSettingKeys,
   directBotSettingsFrom,
+  isStartPostback,
   isTriggerWord,
   parseFeatures,
   parseTriggerWords,
@@ -51,6 +52,24 @@ describe("настройки автоответчика Direct/WhatsApp", () => 
     expect(isTriggerWord("Хочу  заказать", triggers)).toBe(true);
     expect(isTriggerWord("прайс на завтра", triggers)).toBe(false);
     expect(isTriggerWord("прайс", [])).toBe(false);
+  });
+  it("treats a hidden /start payload as start even when the chat shows «купить»", () => {
+    const triggers = parseTriggerWords("заказать, купить, магазин, каталог");
+    expect(isStartPostback("/start", triggers)).toBe(true);
+    expect(isStartPostback("/START", triggers)).toBe(true);
+    expect(isStartPostback("start", [])).toBe(true);
+  });
+  it("treats a CMD payload that is itself a trigger word as start", () => {
+    const triggers = parseTriggerWords("заказать, купить, магазин, каталог");
+    expect(isStartPostback("Купить", triggers)).toBe(true);
+    expect(isStartPostback("Купить", [])).toBe(false);
+  });
+  it("кнопки чужих автоматизаций и наши постбэки стартом не считаются", () => {
+    const triggers = parseTriggerWords("купить");
+    expect(isStartPostback("ACT::cc82e5ebd3b465e3243fde66982ba8d0", triggers)).toBe(false);
+    expect(isStartPostback("CATALOG", triggers)).toBe(false);
+    expect(isStartPostback(null, triggers)).toBe(false);
+    expect(isStartPostback("", triggers)).toBe(false);
   });
   it("битый JSON функций не ломает разбор", () => {
     expect(parseFeatures("{oops").catalog).toBe(true);

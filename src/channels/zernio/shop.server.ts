@@ -107,6 +107,7 @@ import {
 import { matchFulfillmentType } from "@/core/fulfillment/pure";
 import {
   DEFAULT_DIRECT_BOT,
+  isStartPostback,
   isTriggerWord,
   type DirectBotSettings,
 } from "@/core/instagram/direct-bot-settings";
@@ -275,6 +276,9 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   // Строка списка WhatsApp «STEP:<n>» — ответ на текущий шаг, как набранная цифра.
   const step = stepAnswer(msg.postbackPayload);
   if (step) return route(s, { ...msg, postbackPayload: null, text: step });
+  // Кнопка «Купить» автоматизации с payload «/start» или словом-вызовом —
+  // открыть магазин, как набранное слово-вызов (раньше уходила продавцу вопросом).
+  if (isStartPostback(msg.postbackPayload, s.bot.triggers)) return openShop(s);
   if (msg.postbackPayload) return handlePostback(s, msg.postbackPayload);
 
   // Вложение без ссылки (Zernio сменил форму события): если ждём чек — просим
@@ -608,6 +612,19 @@ function featureAllows(s: Shop, command: DirectCommand | string): boolean {
     default:
       return true;
   }
+}
+
+/** Магазин с начала: язык новому покупателю, иначе каталог со сбросом шага. */
+async function openShop(s: Shop): Promise<ShopOutcome> {
+  if (needsLocalePick(s.customer.state) && !memory(s.customer).locale_picked_at) {
+    await askLocale(s);
+    return "handled";
+  }
+  if (!featureAllows(s, "catalog")) return "question";
+  const mode = s.customer.state.mode;
+  if (mode && mode !== "idle" && mode !== "awaiting_proof") await setMode(s, { mode: "idle" });
+  await showCatalog(s, null, 0, true);
+  return "handled";
 }
 
 async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {

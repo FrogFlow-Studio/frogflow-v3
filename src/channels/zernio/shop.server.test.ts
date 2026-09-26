@@ -230,3 +230,24 @@ describe("каталог WhatsApp: описание строки товара", 
     ]);
   });
 });
+
+describe("кнопка «Купить» автоматизации Instagram (опись v1: tests/whatsapp-activation.test.ts)", () => {
+  it("restarts Instagram on /start so a CMD «Купить» button wakes the shop", async () => {
+    const { db, send, tables, sent } = setup({ platform: "instagram" });
+    db.tables.categories = [category("a", null, 1)];
+    const r = await send({ text: "Купить", postbackPayload: "/start" });
+    expect(r.outcome).toBe("handled");
+    expect(tables).toContain("categories");
+    expect(sent.at(-1)?.text).toContain("Раздел a");
+  });
+
+  it("ignores native Zernio ACT:: buttons and ordinary chat", async () => {
+    const { send, tables } = setup({ platform: "instagram" });
+    const r = await send({
+      text: "Я подписался",
+      postbackPayload: "ACT::cc82e5ebd3b465e3243fde66982ba8d0",
+    });
+    expect(r.outcome).toBe("question");
+    expect(tables).not.toContain("categories");
+  });
+});
