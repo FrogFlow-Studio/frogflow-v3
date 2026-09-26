@@ -60,26 +60,71 @@ function ipv4Private(ip: string): boolean {
   );
 }
 
+/** 16 байт адреса IPv6 (в том числе с IPv4 в хвосте) или null, если запись неверная. */
+function ipv6Bytes(ip: string): number[] | null {
+  let tail: number[] = [];
+  let s = ip;
+  const v4 = s.match(/^(.*:)(\d+\.\d+\.\d+\.\d+)$/);
+  if (v4) {
+    const p = v4[2]!.split(".").map(Number);
+    if (p.some((x) => !Number.isInteger(x) || x > 255)) return null;
+    tail = p;
+    s = v4[1]!.endsWith("::") ? v4[1]! : v4[1]!.slice(0, -1);
+  }
+  const halves = s.split("::");
+  if (halves.length > 2) return null;
+  const groups = (part: string) => (part === "" ? [] : part.split(":"));
+  const head = groups(halves[0]!);
+  const rest = halves.length === 2 ? groups(halves[1]!) : [];
+  const want = 8 - tail.length / 2;
+  const fill = want - head.length - rest.length;
+  if (halves.length === 2 ? fill < 1 : fill !== 0) return null;
+  const words = [...head, ...Array<string>(Math.max(fill, 0)).fill("0"), ...rest];
+  const bytes: number[] = [];
+  for (const w of words) {
+    if (!/^[0-9a-f]{1,4}$/.test(w)) return null;
+    const n = parseInt(w, 16);
+    bytes.push(n >> 8, n & 255);
+  }
+  return [...bytes, ...tail];
+}
+
+const v4At = (b: number[], i: number) => b.slice(i, i + 4).join(".");
+const zeros = (b: number[], from: number, to: number) => b.slice(from, to).every((x) => x === 0);
+
 /**
  * Адрес во внутренней сети (или служебный): loopback, частные диапазоны,
  * link-local (в том числе метаданные облака 169.254.169.254), CGNAT,
- * multicast; IPv6 — ::, ::1, fc00::/7, fe80::/10 и IPv4, завёрнутый в IPv6.
+ * multicast. IPv6 разбирается побайтно, так что любая запись (полная,
+ * сжатая, с IPv4 в хвосте) даёт один ответ: ::/96 и ::ffff:0:0/96 (IPv4
+ * внутри IPv6), NAT64 64:ff9b::/96 и 6to4 2002::/16 — по вложенному IPv4;
+ * локальный NAT64, Teredo, документация, fc00::/7, fe80::/10, fec0::/10,
+ * ff00::/8 — внутренние. Неразборчивая запись — тоже.
  */
 export function isPrivateAddress(raw: string): boolean {
   const ip = raw.replace(/^\[|\]$/g, "").toLowerCase();
   if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return ipv4Private(ip);
   if (!ip.includes(":")) return true;
-  const mapped = ip.match(/^(?:0*:)*:?ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mapped) return ipv4Private(mapped[1]!);
-  const hex = ip.match(/^(?:0*:)*:?ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
-  if (hex) {
-    const hi = parseInt(hex[1]!, 16);
-    const lo = parseInt(hex[2]!, 16);
-    return ipv4Private(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`);
-  }
-  if (ip === "::" || ip === "::1") return true;
-  const first = parseInt(ip.split(":")[0] || "0", 16);
-  return (first & 0xfe00) === 0xfc00 || (first & 0xffc0) === 0xfe80 || (first & 0xff00) === 0xff00;
+  const b = ipv6Bytes(ip.replace(/%.*$/, ""));
+  if (!b) return true;
+  const w0 = (b[0]! << 8) | b[1]!;
+  const w1 = (b[2]! << 8) | b[3]!;
+  // ::/96 (устаревшие IPv4-совместимые, ::, ::1) и ::ffff:0:0/96.
+  if (zeros(b, 0, 12)) return ipv4Private(v4At(b, 12));
+  if (zeros(b, 0, 10) && b[10] === 255 && b[11] === 255) return ipv4Private(v4At(b, 12));
+  // NAT64: 64:ff9b::/96 — шлюз во вложенный IPv4; 64:ff9b:1::/48 — локальный.
+  if (w0 === 0x64 && w1 === 0xff9b && zeros(b, 4, 12)) return ipv4Private(v4At(b, 12));
+  if (w0 === 0x64 && w1 === 0xff9b) return true;
+  if (w0 === 0x2002) return ipv4Private(v4At(b, 2));
+  if (w0 === 0x2001 && w1 === 0) return true; // Teredo
+  if (w0 === 0x2001 && w1 === 0x0db8) return true; // документация
+  if (w0 === 0x0100 && zeros(b, 2, 8)) return true; // 100::/64 — сброс
+  return (
+    (w0 & 0xfe00) === 0xfc00 ||
+    (w0 & 0xffc0) === 0xfe80 ||
+    (w0 & 0xffc0) === 0xfec0 ||
+    (w0 & 0xff00) === 0xff00
+  );
 }
 
 const isIpLiteral = (h: string) => /^\d+\.\d+\.\d+\.\d+$/.test(h) || h.startsWith("[");
@@ -87,7 +132,7 @@ const isIpLiteral = (h: string) => /^\d+\.\d+\.\d+\.\d+$/.test(h) || h.startsWit
 /**
  * Только https и публичный хост — сервер не должен ходить во внутреннюю сеть
  * по просьбе продавца. Проверка по записи адреса; имя, которое резолвится во
- * внутренний адрес (127.0.0.1.nip.io), ловит resolvesPublic перед отправкой.
+ * внутренний адрес (127.0.0.1.nip.io), ловит pinnedLookup при соединении.
  */
 export function safeWebhookUrl(raw: string): boolean {
   try {
@@ -102,17 +147,68 @@ export function safeWebhookUrl(raw: string): boolean {
   }
 }
 
-/** Все адреса имени публичные — проверка прямо перед запросом. Ошибка DNS — нет. */
-export async function resolvesPublic(hostname: string): Promise<boolean> {
-  const host = hostname.toLowerCase();
-  if (isIpLiteral(host)) return !isPrivateAddress(host);
-  try {
+type ResolvedAddress = { address: string; family: number };
+type LookupCallback = (
+  err: Error | null,
+  address: string | ResolvedAddress[],
+  family?: number,
+) => void;
+
+/**
+ * lookup для соединения: резолвит имя один раз, проверяет все адреса и
+ * отдаёт сокету именно проверенный. Так подмена DNS между проверкой и
+ * запросом (DNS rebinding) не срабатывает — второго резолва нет.
+ */
+export function pinnedLookup(
+  resolve: (host: string) => Promise<ResolvedAddress[]> = async (host) => {
     const { lookup } = await import("node:dns/promises");
-    const addrs = await lookup(host, { all: true, verbatim: true });
-    return addrs.length > 0 && addrs.every((a) => !isPrivateAddress(a.address));
-  } catch {
-    return false;
-  }
+    return lookup(host, { all: true, verbatim: true });
+  },
+) {
+  return (hostname: string, options: { all?: boolean }, cb: LookupCallback): void => {
+    resolve(hostname).then(
+      (addrs) => {
+        if (!addrs.length || addrs.some((a) => isPrivateAddress(a.address)))
+          return cb(new Error("адрес вебхука ведёт во внутреннюю сеть"), "", 0);
+        if (options.all) return cb(null, addrs);
+        cb(null, addrs[0]!.address, addrs[0]!.family);
+      },
+      (e: unknown) => cb(e instanceof Error ? e : new Error(String(e)), "", 0),
+    );
+  };
+}
+
+/**
+ * POST по https с закреплённым адресом (pinnedLookup). Редиректы не
+ * выполняются: ответ 3xx возвращается как есть. Сертификат проверяется по
+ * имени из адреса.
+ */
+export async function postPinned(
+  url: string,
+  headers: Record<string, string>,
+  body: string,
+  timeoutMs: number,
+): Promise<{ ok: true; status: number } | { ok: false; error: string }> {
+  const { request } = await import("node:https");
+  const u = new URL(url);
+  return new Promise((done) => {
+    const req = request(
+      u,
+      {
+        method: "POST",
+        headers: { ...headers, "content-length": String(Buffer.byteLength(body)) },
+        lookup: pinnedLookup() as never,
+        signal: AbortSignal.timeout(timeoutMs),
+      },
+      (res) => {
+        res.resume();
+        res.on("end", () => done({ ok: true, status: res.statusCode ?? 0 }));
+        res.on("error", (e) => done({ ok: false, error: e.message }));
+      },
+    );
+    req.on("error", (e) => done({ ok: false, error: e.message }));
+    req.end(body);
+  });
 }
 
 export function signBody(body: string, secret: string): string {

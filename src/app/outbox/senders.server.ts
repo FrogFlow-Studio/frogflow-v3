@@ -43,8 +43,8 @@ export async function postWebhook(
   url: string,
   body: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { loadCrm, resolvesPublic, safeWebhookUrl, signBody } = await import("@/core/crm/webhook");
-  if (!safeWebhookUrl(url) || !(await resolvesPublic(new URL(url).hostname)))
+  const { loadCrm, postPinned, safeWebhookUrl, signBody } = await import("@/core/crm/webhook");
+  if (!safeWebhookUrl(url))
     return { ok: false, error: "адрес вебхука запрещён (не https или внутренний)" };
   const cfg = await loadCrm(ctx);
   let event = "order";
@@ -53,22 +53,20 @@ export async function postWebhook(
   } catch {
     /* тело — как есть */
   }
-  try {
-    const r = await fetch(url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-frogflow-event": event,
-        ...(cfg?.secret ? { "x-frogflow-signature": signBody(body, cfg.secret) } : {}),
-      },
-      body,
-      redirect: "manual",
-      signal: AbortSignal.timeout(10_000),
-    });
-    // Google Apps Script отвечает 302 на успешный POST — это успех.
-    if (r.ok || r.status === 302) return { ok: true };
-    return { ok: false, error: `HTTP ${r.status}` };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
+  // Адрес имени проверяется и закрепляется при соединении (pinnedLookup):
+  // подмена DNS после проверки не уведёт запрос во внутреннюю сеть.
+  const r = await postPinned(
+    url,
+    {
+      "content-type": "application/json",
+      "x-frogflow-event": event,
+      ...(cfg?.secret ? { "x-frogflow-signature": signBody(body, cfg.secret) } : {}),
+    },
+    body,
+    10_000,
+  );
+  if (!r.ok) return r;
+  // Google Apps Script отвечает 302 на успешный POST — это успех.
+  if ((r.status >= 200 && r.status < 300) || r.status === 302) return { ok: true };
+  return { ok: false, error: `HTTP ${r.status}` };
 }

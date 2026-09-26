@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { isPrivateAddress, parseCrm, resolvesPublic, safeWebhookUrl, signBody } from "./webhook";
+import {
+  isPrivateAddress,
+  parseCrm,
+  pinnedLookup,
+  postPinned,
+  safeWebhookUrl,
+  signBody,
+} from "./webhook";
 
 describe("вебхук в CRM", () => {
   it("только https и публичный хост", () => {
@@ -48,9 +55,82 @@ describe("вебхук в CRM", () => {
     expect(isPrivateAddress("::ffff:10.0.0.1")).toBe(true);
     expect(isPrivateAddress("fc00::1")).toBe(true);
   });
-  it("имя, которое резолвится во внутренний адрес, не пропускается", async () => {
-    expect(await resolvesPublic("localhost")).toBe(false);
-    expect(await resolvesPublic("127.0.0.1")).toBe(false);
-    expect(await resolvesPublic("[::1]")).toBe(false);
+  it("редкие записи IPv6: IPv4-совместимые, NAT64, 6to4, Teredo, полная запись", () => {
+    expect(isPrivateAddress("::7f00:1")).toBe(true);
+    expect(isPrivateAddress("::127.0.0.1")).toBe(true);
+    expect(isPrivateAddress("64:ff9b::7f00:1")).toBe(true);
+    expect(isPrivateAddress("64:ff9b::a9fe:a9fe")).toBe(true);
+    expect(isPrivateAddress("64:ff9b:1::1")).toBe(true);
+    expect(isPrivateAddress("2002:7f00:1::")).toBe(true);
+    expect(isPrivateAddress("2002:c0a8:101::1")).toBe(true);
+    expect(isPrivateAddress("2001:0:4136:e378::1")).toBe(true);
+    expect(isPrivateAddress("2001:db8::1")).toBe(true);
+    expect(isPrivateAddress("fec0::1")).toBe(true);
+    expect(isPrivateAddress("0:0:0:0:0:0:0:1")).toBe(true);
+    expect(isPrivateAddress("0000:0000:0000:0000:0000:ffff:7f00:0001")).toBe(true);
+    expect(isPrivateAddress("64:ff9b::808:808")).toBe(false);
+    expect(isPrivateAddress("2002:808:808::1")).toBe(false);
+    expect(isPrivateAddress("2a00:1450:4001::200e")).toBe(false);
+    expect(isPrivateAddress("не адрес")).toBe(true);
+    expect(isPrivateAddress("1::2::3")).toBe(true);
+    for (const h of ["[::7f00:1]", "[64:ff9b::7f00:1]", "[2002:a00:1::]"])
+      expect(safeWebhookUrl(`https://${h}/hook`)).toBe(false);
+  });
+});
+
+describe("вебхук CRM: соединение идёт на проверенный адрес (DNS rebinding)", () => {
+  type Addr = { address: string; family: number };
+  const lookupWith = (answers: Addr[][]) => {
+    let call = 0;
+    const resolve = async () => answers[Math.min(call++, answers.length - 1)]!;
+    const lookup = pinnedLookup(resolve);
+    return (all: boolean) =>
+      new Promise<{ err: Error | null; addr: unknown; family?: number }>((done) =>
+        lookup("hook.example", { all }, (err, addr, family) => done({ err, addr, family })),
+      );
+  };
+
+  it("хоть один внутренний адрес у имени — отказ", async () => {
+    const r = await lookupWith([
+      [
+        { address: "93.184.216.34", family: 4 },
+        { address: "127.0.0.1", family: 4 },
+      ],
+    ])(false);
+    expect(r.err?.message).toMatch(/внутренн/);
+  });
+
+  it("отдаёт соединению тот же адрес, что проверен", async () => {
+    // Второй ответ DNS (подмена) уже не участвует: соединение резолвит один раз.
+    const lookup = lookupWith([
+      [{ address: "93.184.216.34", family: 4 }],
+      [{ address: "127.0.0.1", family: 4 }],
+    ]);
+    const one = await lookup(false);
+    expect(one).toEqual({ err: null, addr: "93.184.216.34", family: 4 });
+    const all = await lookup(true);
+    expect(all.err?.message).toMatch(/внутренн/);
+  });
+
+  it("all: true — список адресов", async () => {
+    const r = await lookupWith([[{ address: "2a00:1450:4001::200e", family: 6 }]])(true);
+    expect(r.err).toBeNull();
+    expect(r.addr).toEqual([{ address: "2a00:1450:4001::200e", family: 6 }]);
+  });
+
+  it("ошибка DNS — отказ", async () => {
+    const lookup = pinnedLookup(async () => {
+      throw new Error("ENOTFOUND");
+    });
+    const err = await new Promise<Error | null>((done) =>
+      lookup("nope.example", {}, (e) => done(e)),
+    );
+    expect(err?.message).toBe("ENOTFOUND");
+  });
+
+  it("postPinned не соединяется с именем, которое резолвится во внутренний адрес", async () => {
+    const r = await postPinned("https://localhost:9/hook", {}, "{}", 2_000);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/внутренн/);
   });
 });
