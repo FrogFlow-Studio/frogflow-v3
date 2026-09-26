@@ -141,6 +141,38 @@ export const connectTelegramFn = createServerFn({ method: "POST" })
     return (await impl()).connectTelegram(data.botId, data.token);
   });
 
+export const allEventsFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId: z.string().uuid().nullable().optional(),
+        kind: z.string().max(40).nullable().optional(),
+      })
+      .parse(d ?? {}),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await impl()).listAllEvents({ botId: data.botId ?? null, kind: data.kind ?? null });
+  });
+
+export const preflightAllFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await impl()).preflightAll();
+});
+
+export const setServedByBulkFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botIds: z.array(botId).min(1).max(50) }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await impl()).setServedByBulk(data.botIds);
+  });
+
+export const cronStatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  const { listCronStatus } = await import("./cron-status.server");
+  return listCronStatus();
+});
+
 export const setServedByFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ botId, servedBy: z.enum(["v1", "v2"]) }).parse(d))
   .handler(async ({ data }) => {

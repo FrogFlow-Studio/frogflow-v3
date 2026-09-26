@@ -11,9 +11,13 @@ export const Route = createFileRoute("/operator/_authed/")({
 function ClientsPage() {
   const clients = Route.useLoaderData();
   const [q, setQ] = useState("");
+  const [served, setServed] = useState<"" | "v1" | "v2">("");
+  const [status, setStatus] = useState("");
   const shown = clients.filter(
     (c) =>
-      !q || c.name.toLowerCase().includes(q.toLowerCase()) || c.slug?.includes(q.toLowerCase()),
+      (!q || c.name.toLowerCase().includes(q.toLowerCase()) || c.slug?.includes(q.toLowerCase())) &&
+      (!served || (served === "v2" ? c.servedBy === "v2" : c.servedBy !== "v2")) &&
+      (!status || c.status === status),
   );
   const orders30 = clients.reduce((s, c) => s + (c.stats?.orders_30d ?? 0), 0);
   const customers = clients.reduce((s, c) => s + (c.stats?.customers_total ?? 0), 0);
@@ -42,12 +46,30 @@ function ClientsPage() {
           hint="обслуживаются этим деплоем"
         />
       </div>
-      <input
-        className="input mb-3 max-w-sm"
-        placeholder="Поиск по названию или адресу"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-      />
+      <div className="mb-3 flex flex-wrap gap-2">
+        <input
+          className="input max-w-sm"
+          placeholder="Поиск по названию или адресу"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <select
+          className="input w-44"
+          value={served}
+          onChange={(e) => setServed(e.target.value as "" | "v1" | "v2")}
+        >
+          <option value="">Все платформы</option>
+          <option value="v2">На v2</option>
+          <option value="v1">Ещё на v1</option>
+        </select>
+        <select className="input w-44" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="">Любой статус</option>
+          <option value="active">активен</option>
+          <option value="paused">пауза</option>
+          <option value="suspended">приостановлен</option>
+        </select>
+        <span className="self-center text-sm text-muted">Показано: {shown.length}</span>
+      </div>
       {shown.length === 0 ? (
         <Empty>Ничего не найдено.</Empty>
       ) : (

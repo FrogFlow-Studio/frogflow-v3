@@ -41,6 +41,9 @@ import { Route as ApiTelegramBotIdRouteImport } from './routes/api/telegram.$bot
 import { Route as ApiZernioWebhookRouteImport } from './routes/api/zernio/webhook'
 import { Route as OperatorAuthedIndexRouteImport } from './routes/operator._authed.index'
 import { Route as OperatorAuthedBroadcastRouteImport } from './routes/operator._authed.broadcast'
+import { Route as OperatorAuthedCronsRouteImport } from './routes/operator._authed.crons'
+import { Route as OperatorAuthedLogRouteImport } from './routes/operator._authed.log'
+import { Route as OperatorAuthedMigrationRouteImport } from './routes/operator._authed.migration'
 import { Route as OperatorAuthedRequestsRouteImport } from './routes/operator._authed.requests'
 import { Route as OperatorAuthedSettingsRouteImport } from './routes/operator._authed.settings'
 import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
@@ -214,6 +217,21 @@ const OperatorAuthedBroadcastRoute = OperatorAuthedBroadcastRouteImport.update({
   path: '/broadcast',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
+const OperatorAuthedCronsRoute = OperatorAuthedCronsRouteImport.update({
+  id: '/crons',
+  path: '/crons',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
+const OperatorAuthedLogRoute = OperatorAuthedLogRouteImport.update({
+  id: '/log',
+  path: '/log',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
+const OperatorAuthedMigrationRoute = OperatorAuthedMigrationRouteImport.update({
+  id: '/migration',
+  path: '/migration',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
 const OperatorAuthedRequestsRoute = OperatorAuthedRequestsRouteImport.update({
   id: '/requests',
   path: '/requests',
@@ -316,6 +334,9 @@ export interface FileRoutesByFullPath {
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
+  '/operator/crons': typeof OperatorAuthedCronsRoute
+  '/operator/log': typeof OperatorAuthedLogRoute
+  '/operator/migration': typeof OperatorAuthedMigrationRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
@@ -361,6 +382,9 @@ export interface FileRoutesByTo {
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
+  '/operator/crons': typeof OperatorAuthedCronsRoute
+  '/operator/log': typeof OperatorAuthedLogRoute
+  '/operator/migration': typeof OperatorAuthedMigrationRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
@@ -408,6 +432,9 @@ export interface FileRoutesById {
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/_authed/broadcast': typeof OperatorAuthedBroadcastRoute
+  '/operator/_authed/crons': typeof OperatorAuthedCronsRoute
+  '/operator/_authed/log': typeof OperatorAuthedLogRoute
+  '/operator/_authed/migration': typeof OperatorAuthedMigrationRoute
   '/operator/_authed/requests': typeof OperatorAuthedRequestsRoute
   '/operator/_authed/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
@@ -456,6 +483,9 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
     | '/operator/broadcast'
+    | '/operator/crons'
+    | '/operator/log'
+    | '/operator/migration'
     | '/operator/requests'
     | '/operator/settings'
     | '/s/$slug/cart'
@@ -501,6 +531,9 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
     | '/operator/broadcast'
+    | '/operator/crons'
+    | '/operator/log'
+    | '/operator/migration'
     | '/operator/requests'
     | '/operator/settings'
     | '/s/$slug/cart'
@@ -547,6 +580,9 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
     | '/operator/_authed/broadcast'
+    | '/operator/_authed/crons'
+    | '/operator/_authed/log'
+    | '/operator/_authed/migration'
     | '/operator/_authed/requests'
     | '/operator/_authed/settings'
     | '/s/$slug/cart'
@@ -808,6 +844,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedBroadcastRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/operator/_authed/crons': {
+      id: '/operator/_authed/crons'
+      path: '/crons'
+      fullPath: '/operator/crons'
+      preLoaderRoute: typeof OperatorAuthedCronsRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
+    '/operator/_authed/log': {
+      id: '/operator/_authed/log'
+      path: '/log'
+      fullPath: '/operator/log'
+      preLoaderRoute: typeof OperatorAuthedLogRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
+    '/operator/_authed/migration': {
+      id: '/operator/_authed/migration'
+      path: '/migration'
+      fullPath: '/operator/migration'
+      preLoaderRoute: typeof OperatorAuthedMigrationRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
     '/operator/_authed/requests': {
       id: '/operator/_authed/requests'
       path: '/requests'
@@ -976,6 +1033,9 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface OperatorAuthedRouteChildren {
   OperatorAuthedBroadcastRoute: typeof OperatorAuthedBroadcastRoute
+  OperatorAuthedCronsRoute: typeof OperatorAuthedCronsRoute
+  OperatorAuthedLogRoute: typeof OperatorAuthedLogRoute
+  OperatorAuthedMigrationRoute: typeof OperatorAuthedMigrationRoute
   OperatorAuthedRequestsRoute: typeof OperatorAuthedRequestsRoute
   OperatorAuthedSettingsRoute: typeof OperatorAuthedSettingsRoute
   OperatorAuthedIndexRoute: typeof OperatorAuthedIndexRoute
@@ -985,6 +1045,9 @@ interface OperatorAuthedRouteChildren {
 
 const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedBroadcastRoute: OperatorAuthedBroadcastRoute,
+  OperatorAuthedCronsRoute: OperatorAuthedCronsRoute,
+  OperatorAuthedLogRoute: OperatorAuthedLogRoute,
+  OperatorAuthedMigrationRoute: OperatorAuthedMigrationRoute,
   OperatorAuthedRequestsRoute: OperatorAuthedRequestsRoute,
   OperatorAuthedSettingsRoute: OperatorAuthedSettingsRoute,
   OperatorAuthedIndexRoute: OperatorAuthedIndexRoute,

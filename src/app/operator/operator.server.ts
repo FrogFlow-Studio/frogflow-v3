@@ -285,6 +285,91 @@ export async function listEvents(botId: string, limit = 40): Promise<EventView[]
   return data ?? [];
 }
 
+export type PlatformEvent = EventView & { botId: string; botName: string };
+
+/** Журнал действий оператора по всем клиентам: кто, что, у кого. */
+export async function listAllEvents(
+  opts: { limit?: number; botId?: string | null; kind?: string | null } = {},
+): Promise<PlatformEvent[]> {
+  let q = serviceDb()
+    .from("bot_events")
+    .select("id, at, actor, kind, payload, bot_id")
+    .order("at", { ascending: false })
+    .limit(opts.limit ?? 200);
+  if (opts.botId) q = q.eq("bot_id", opts.botId);
+  if (opts.kind) q = q.eq("kind", opts.kind);
+  const { data } = await q;
+  const names = new Map((await tenantDirectory()).map((t) => [t.id, t.name]));
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    at: r.at,
+    actor: r.actor,
+    kind: r.kind,
+    payload: r.payload,
+    botId: r.bot_id,
+    botName: names.get(r.bot_id) ?? r.bot_id.slice(0, 8),
+  }));
+}
+
+export type MigrationCandidate = {
+  id: string;
+  name: string;
+  servedBy: "v1" | "v2" | null;
+  ready: boolean;
+  blockers: string[];
+  warnings: string[];
+};
+
+/** Предполётная проверка всех клиентов, которых ещё обслуживает v1. */
+export async function preflightAll(): Promise<MigrationCandidate[]> {
+  const { preflight } = await import("./migration.server");
+  const { preflightBlockers } = await import("@/core/tenant/preflight");
+  const tenants = (await tenantDirectory(true)).filter(
+    (t) => !t.archived && t.settings.served_by !== "v2",
+  );
+  const out: MigrationCandidate[] = [];
+  for (const t of tenants) {
+    try {
+      const p = await preflight(t.id);
+      out.push({
+        id: t.id,
+        name: t.name,
+        servedBy: t.settings.served_by ?? null,
+        ready: p.ready,
+        blockers: preflightBlockers(p),
+        warnings: p.checks.filter((c) => c.level === "warn").map((c) => c.title),
+      });
+    } catch (e) {
+      out.push({
+        id: t.id,
+        name: t.name,
+        servedBy: t.settings.served_by ?? null,
+        ready: false,
+        blockers: [e instanceof Error ? e.message : String(e)],
+        warnings: [],
+      });
+    }
+  }
+  return out.sort((a, b) => Number(b.ready) - Number(a.ready) || a.name.localeCompare(b.name));
+}
+
+/** Массовый переезд: каждый клиент проходит ту же проверку, что и одиночный. */
+export async function setServedByBulk(
+  botIds: string[],
+  actor = "operator",
+): Promise<Array<{ id: string; ok: boolean; error?: string }>> {
+  const out: Array<{ id: string; ok: boolean; error?: string }> = [];
+  for (const id of botIds) {
+    try {
+      await setServedBy(id, "v2", actor);
+      out.push({ id, ok: true });
+    } catch (e) {
+      out.push({ id, ok: false, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  return out;
+}
+
 export async function updateClientMeta(
   botId: string,
   patch: {

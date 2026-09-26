@@ -28,6 +28,9 @@ function Layout() {
           </NavLink>
           <NavLink to="/operator/clients/new">Подключить клиента</NavLink>
           <NavLink to="/operator/broadcast">Сообщение владельцам</NavLink>
+          <NavLink to="/operator/migration">Переезд на v2</NavLink>
+          <NavLink to="/operator/log">Журнал действий</NavLink>
+          <NavLink to="/operator/crons">Кроны</NavLink>
           <NavLink to="/operator/settings">Настройки</NavLink>
           <NavLink to="/operator/requests">
             <span className="flex items-center justify-between gap-2">
