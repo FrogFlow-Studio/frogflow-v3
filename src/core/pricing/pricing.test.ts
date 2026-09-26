@@ -138,4 +138,38 @@ describe("convertForTenant", () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(await convertForTenant(1000, "KZT", "RUB")).toBeNull();
   });
+
+  describe("курс устарел, а API недоступен", () => {
+    beforeEach(() => vi.useFakeTimers({ now: new Date("2026-09-26T10:00:00Z") }));
+    afterEach(() => vi.useRealTimers());
+
+    it("API недоступен, но есть кэш — считает по устаревшему курсу, не по null", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const provider = vi.fn(async () => ({ KZT: 500, RUB: 100 }));
+      setFxProvider(provider);
+      expect(await convertForTenant(1000, "KZT", "RUB")).toBe(200);
+
+      vi.setSystemTime(new Date("2026-09-26T11:00:00Z")); // час спустя — TTL истёк
+      provider.mockRejectedValue(new Error("network down"));
+      expect(await convertForTenant(1000, "KZT", "RUB")).toBe(200);
+      expect(provider).toHaveBeenCalledTimes(2);
+    });
+
+    it("после сбоя не долбит API на каждый запрос, а пробует снова через минуту", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const provider = vi.fn(async () => ({ KZT: 500, RUB: 100 }));
+      setFxProvider(provider);
+      await convertForTenant(1000, "KZT", "RUB");
+      vi.setSystemTime(new Date("2026-09-26T11:00:00Z"));
+      provider.mockRejectedValue(new Error("network down"));
+      await convertForTenant(1000, "KZT", "RUB");
+      await convertForTenant(1000, "KZT", "RUB");
+      expect(provider).toHaveBeenCalledTimes(2);
+
+      vi.setSystemTime(new Date("2026-09-26T11:01:01Z"));
+      provider.mockResolvedValue({ KZT: 400, RUB: 100 });
+      expect(await convertForTenant(1000, "KZT", "RUB")).toBe(250);
+      expect(provider).toHaveBeenCalledTimes(3);
+    });
+  });
 });

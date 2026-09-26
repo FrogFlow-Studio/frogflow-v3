@@ -55,6 +55,7 @@ async function loadMethods(ctx: TenantContext): Promise<Methods> {
 export function resetPricingCache(): void {
   methodsCache.clear();
   fxMemory = null;
+  fxRetryAt = 0;
 }
 
 export async function currencyForCountry(
@@ -69,9 +70,15 @@ export async function defaultCountryCode(ctx: TenantContext): Promise<string | n
   return (await loadMethods(ctx)).defaultCode;
 }
 
-/** Курсы к USD: open.er-api.com, кеш в памяти на 10 минут — общий на всех арендаторов, курс один. */
+/**
+ * Курсы к USD: open.er-api.com, кеш в памяти на 10 минут — общий на всех
+ * арендаторов, курс один. Сбой API при устаревшем кеше — считаем по старому
+ * курсу (как v1) и пробуем снова не раньше чем через минуту.
+ */
 let fxMemory: { ts: number; rates: Record<string, number> } | null = null;
+let fxRetryAt = 0;
 const FX_TTL_MS = 10 * 60 * 1000;
+const FX_RETRY_MS = 60 * 1000;
 
 export type FxProvider = () => Promise<Record<string, number>>;
 
@@ -89,6 +96,7 @@ let fxProvider: FxProvider = defaultFxProvider;
 export function setFxProvider(p: FxProvider): void {
   fxProvider = p;
   fxMemory = null;
+  fxRetryAt = 0;
 }
 
 export async function convertForTenant(
@@ -115,14 +123,23 @@ async function convertAmount(
   exact = false,
 ): Promise<number | null> {
   if (from.toUpperCase() === to.toUpperCase()) return exact ? amount : Math.round(amount);
+  const rates = await fxRates();
+  return rates ? (exact ? convertViaUsdExact : convertViaUsd)(amount, from, to, rates) : null;
+}
+
+async function fxRates(): Promise<Record<string, number> | null> {
+  const now = Date.now();
+  if (fxMemory && (now - fxMemory.ts <= FX_TTL_MS || now < fxRetryAt)) return fxMemory.rates;
   try {
-    if (!fxMemory || Date.now() - fxMemory.ts > FX_TTL_MS) {
-      fxMemory = { ts: Date.now(), rates: await fxProvider() };
-    }
-    return (exact ? convertViaUsdExact : convertViaUsd)(amount, from, to, fxMemory.rates);
+    fxMemory = { ts: now, rates: await fxProvider() };
+    return fxMemory.rates;
   } catch (e) {
-    console.warn("[pricing] курс недоступен", e);
-    return null;
+    fxRetryAt = now + FX_RETRY_MS;
+    console.warn(
+      fxMemory ? "[pricing] курс недоступен, считаем по прошлому" : "[pricing] курс недоступен",
+      e,
+    );
+    return fxMemory?.rates ?? null;
   }
 }
 
