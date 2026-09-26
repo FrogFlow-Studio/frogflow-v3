@@ -167,7 +167,9 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
       throw shownError(t("error.tooManyRequests"));
     const { getCustomerByTelegramId } = await import("@/core/customers/customers");
     const customer = await getCustomerByTelegramId(ctx, v.user.id);
-    if (!customer) return { orders: [], library: [], libraryNext: null };
+    // Метки языка — только с модулем «Мультиязычность», как значки на витрине (#90).
+    const libraryLangs = Boolean(ctx.tenant.modules.multi_language);
+    if (!customer) return { orders: [], library: [], libraryNext: null, libraryLangs };
     const {
       listCustomerOrders,
       listDeliveredOrders,
@@ -199,7 +201,8 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
       }
     }
     const offset = data.libraryOffset ?? 0;
-    const library: Array<{ orderNo: number; item: string; name: string; url: string }> = [];
+    const { freshLibrary } = await import("@/core/storefront/library");
+    const entries: Parameters<typeof freshLibrary>[1][number][] = [];
     let files = 0;
     let at = offset;
     for (; at < unique.length; at++) {
@@ -210,7 +213,7 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
       const count = mats.reduce((n, m) => n + m.length, 0);
       if (files > 0 && files + count > LIBRARY_FILES) break;
       files += count;
-      for (const m of mats) {
+      for (const [i, m] of mats.entries()) {
         const list = await protectMaterials(ctx, o, m);
         for (const mat of list) {
           const url =
@@ -223,16 +226,27 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
                 )
               : null);
           if (url)
-            library.push({
+            entries.push({
               orderNo: displayNo(o),
               item: item.name_snapshot,
               name: mat.name ?? item.name_snapshot,
               url,
+              lang: langs[i]!,
+              productId: item.product_id,
             });
         }
       }
     }
     const libraryNext = at < unique.length ? at : null;
+    // Название и обложка — какие у товара сейчас; файлы — из снимка заказа.
+    const ids = [...new Set(entries.flatMap((e) => (e.productId ? [e.productId] : [])))];
+    const { data: products } = ids.length
+      ? await ctx.db
+          .from("products")
+          .select("id, name, product_images(image_path, sort_order)")
+          .in("id", ids)
+      : { data: [] };
+    const library = freshLibrary(ctx.tenant.id, entries, products ?? []);
     return {
       orders: orders.map((o) => ({
         id: o.id,
@@ -245,6 +259,7 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
       })),
       library,
       libraryNext,
+      libraryLangs,
     };
   });
 

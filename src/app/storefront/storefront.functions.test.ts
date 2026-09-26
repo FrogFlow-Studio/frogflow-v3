@@ -65,7 +65,7 @@ const { LIBRARY_FILES } = await import("./storefront.functions");
 
 type Row = Record<string, unknown>;
 
-/** Товары: eq и contains по jsonb-массиву — то, чем пользуется каталог витрины. */
+/** Товары: eq, in и contains по jsonb-массиву — то, чем пользуется каталог витрины. */
 function productsTable(rows: Row[]) {
   const filters: Array<(r: Row) => boolean> = [];
   let one = false;
@@ -75,6 +75,10 @@ function productsTable(rows: Row[]) {
     limit: () => q,
     eq(col: string, v: unknown) {
       filters.push((r) => r[col] === v);
+      return q;
+    },
+    in(col: string, vals: unknown[]) {
+      filters.push((r) => vals.includes(r[col]));
       return q;
     },
     contains(col: string, json: string) {
@@ -196,11 +200,11 @@ describe("storeProductFn: похожие товары", () => {
 describe("miniAppOrdersFn: «Мои материалы»", () => {
   const TG = 555;
 
-  function withOrders(orders: Row[]) {
+  function withOrders(orders: Row[], products: Row[] = []) {
     const db = fakeDb();
     db.tables.bot_users = [{ user_key: `tg_${TG}`, telegram_id: TG, state: {} }];
     db.tables.orders = orders;
-    tenantWith(db);
+    tenantWith(db, products);
   }
 
   function order(id: number, kind: string, items: Row[]): Row {
@@ -239,8 +243,42 @@ describe("miniAppOrdersFn: «Мои материалы»", () => {
         name: "ws.pdf",
         // Ссылка несёт имя для скачивания — файл сохранится как «ws.pdf».
         url: `https://s.test/${BOT}/ws.pdf?download=ws.pdf`,
+        lang: "ru",
+        cover: null,
       },
     ]);
+  });
+
+  it("название и обложка — у товара сейчас, файл — из заказа", async () => {
+    withOrders(
+      [
+        order(1, "digital", [
+          {
+            product_id: "p1",
+            name_snapshot: "Старое имя",
+            quantity: 1,
+            material_files_by_lang: {
+              kk: [{ path: `${BOT}/kk.pdf`, name: "kk.pdf", url: null }],
+            },
+          },
+        ]),
+      ],
+      [
+        {
+          id: "p1",
+          name: "Новое имя",
+          product_images: [
+            { image_path: `${BOT}/b.jpg`, sort_order: 1 },
+            { image_path: `${BOT}/a.jpg`, sort_order: 0 },
+          ],
+        },
+      ],
+    );
+    const r = await miniAppOrdersFn({ data: { slug: "shop", initData: initData(TG) } });
+    expect(r.library).toMatchObject([{ item: "Новое имя", name: "kk.pdf", lang: "kk" }]);
+    expect(r.library[0]!.cover).toContain("/api/img/");
+    // Без модуля «Мультиязычность» метки языка не рисуются, файл при этом остаётся.
+    expect(r.libraryLangs).toBe(false);
   });
 
   const sheet = (product: string, file: string): Row => ({
@@ -326,12 +364,14 @@ describe("miniAppOrdersFn: «Мои материалы»", () => {
       orders: [],
       library: [],
       libraryNext: null,
+      libraryLangs: false,
     });
     withOrders([]);
     expect(await miniAppOrdersFn({ data: { slug: "shop", initData: initData(TG) } })).toEqual({
       orders: [],
       library: [],
       libraryNext: null,
+      libraryLangs: false,
     });
     expect(tables).not.toContain("products");
   });
@@ -344,7 +384,12 @@ describe("лимит частоты Mini App", () => {
       miniAppOrdersFn({ data: { slug: "shop", initData: initData(tg) } });
     for (let i = 0; i < MINI_APP_BUDGETS.orders.limit; i++) await call(777);
     await expect(call(777)).rejects.toThrow("Слишком много запросов");
-    await expect(call(778)).resolves.toEqual({ orders: [], library: [], libraryNext: null });
+    await expect(call(778)).resolves.toEqual({
+      orders: [],
+      library: [],
+      libraryNext: null,
+      libraryLangs: false,
+    });
   });
 
   it("оформление: пачка запросов упирается в лимит до похода в базу и в Telegram", async () => {

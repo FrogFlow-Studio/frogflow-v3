@@ -24,6 +24,8 @@ function OrdersPage() {
     return () => clearTimeout(timer);
   }, []);
   const [loadingMore, setLoadingMore] = useState(false);
+  const manyLangs =
+    Boolean(data?.libraryLangs) && new Set(data?.library.map((f) => f.lang)).size > 1;
   useEffect(() => {
     if (!wa) return;
     miniAppOrdersFn({ data: { slug, initData: wa.initData } }).then(setData, setError);
@@ -90,16 +92,33 @@ function OrdersPage() {
           <p className="mb-2 text-xs text-muted">{t("orders.libraryHint")}</p>
           <ul className="divide-y divide-line rounded-md border border-line">
             {data.library.map((f, i) => (
-              <li key={i} className="px-3 py-2 text-sm">
-                <a
-                  href={f.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-accent hover:underline"
-                >
-                  📁 {f.name}
-                </a>
-                <span className="text-xs text-muted"> · #{f.orderNo}</span>
+              <li key={i} className="flex items-center gap-3 px-3 py-2 text-sm">
+                {f.cover ? (
+                  <img
+                    src={f.cover}
+                    alt=""
+                    loading="lazy"
+                    className="h-10 w-10 shrink-0 rounded object-cover"
+                  />
+                ) : (
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-line/40">
+                    📁
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <a
+                    href={f.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block truncate text-accent hover:underline"
+                  >
+                    {f.name}
+                  </a>
+                  <span className="block truncate text-xs text-muted">
+                    {f.item !== f.name ? `${f.item} · ` : ""}
+                    {manyLangs ? `${f.lang.toUpperCase()} · ` : ""}#{f.orderNo}
+                  </span>
+                </div>
               </li>
             ))}
           </ul>
