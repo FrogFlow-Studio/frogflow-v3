@@ -4,7 +4,7 @@ import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 let db: FakeDb;
 vi.mock("@/core/db/client.server", () => ({ serviceDb: () => db }));
 
-const { RETENTION, pruneBroadcastRecipients, pruneOperatorLoginAttempts } =
+const { RETENTION, pruneBroadcastRecipients, pruneOperatorLoginAttempts, pruneZernioLogs } =
   await import("./retention");
 
 const NOW = Date.parse("2026-09-26T00:00:00Z");
@@ -44,5 +44,39 @@ describe("сроки хранения служебных журналов, ка�
     expect(db.tables.broadcast_recipients!.map((r) => r.id)).toEqual(["r3", "r4"]);
     // Сама кампания остаётся: чистятся только получатели.
     expect(db.tables.broadcasts!.map((b) => b.id)).toEqual(["b-old", "b-new", "b-other"]);
+  });
+});
+
+describe("ретеншн zernio_logs", () => {
+  beforeEach(() => {
+    db.tables.zernio_logs = [];
+  });
+
+  it("сообщает done, когда удалять нечего", async () => {
+    expect(await pruneZernioLogs(NOW)).toEqual({ deleted: 0, done: true });
+    db.tables.zernio_logs = [
+      { id: "fresh", bot_id: "b", status: "processed", created_at: daysAgo(1) },
+      { id: "recent-fail", bot_id: "b", status: "failed", created_at: daysAgo(40) },
+    ];
+    expect(await pruneZernioLogs(NOW)).toEqual({ deleted: 0, done: true });
+    expect(db.tables.zernio_logs.map((r) => r.id)).toEqual(["fresh", "recent-fail"]);
+  });
+
+  it("убирает отработанное старше 30 дней и сбои старше 180, остальное оставляет", async () => {
+    db.tables.zernio_logs = [
+      { id: "old-ok", bot_id: "b", status: "processed", created_at: daysAgo(31) },
+      { id: "old-fail", bot_id: "b", status: "failed", created_at: daysAgo(181) },
+      { id: "recent-fail", bot_id: "b", status: "failed", created_at: daysAgo(40) },
+    ];
+    expect(await pruneZernioLogs(NOW)).toEqual({ deleted: 2, done: true });
+    expect(db.tables.zernio_logs.map((r) => r.id)).toEqual(["recent-fail"]);
+  });
+
+  it("пустой круг клиентов v2 — ничего не трогает", async () => {
+    db.tables.zernio_logs = [
+      { id: "old-ok", bot_id: "b", status: "processed", created_at: daysAgo(31) },
+    ];
+    expect(await pruneZernioLogs(NOW, [])).toEqual({ deleted: 0, done: true });
+    expect(db.tables.zernio_logs).toHaveLength(1);
   });
 });

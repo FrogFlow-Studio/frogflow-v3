@@ -9,6 +9,7 @@ import {
 import { operationKey } from "@/core/billing/invoice-check";
 import type { Tenant } from "@/core/tenant/types";
 import { logEvent, notifyOwner } from "./operator.server";
+import { NO_RECIPIENTS_REASON } from "@/core/notify/deliver";
 
 /**
  * Подписка клиента на платформу: платежи (subscription_payments — срок
@@ -296,9 +297,7 @@ export async function createInvoice(
       invoice,
       payUrl,
       delivered: r.delivered.length > 0,
-      deliveryError: r.delivered.length
-        ? null
-        : (r.failed[0]?.reason ?? "владелец не получил сообщение"),
+      deliveryError: r.delivered.length ? null : (r.failed[0]?.reason ?? NO_RECIPIENTS_REASON),
     };
   } catch (e) {
     return {
@@ -498,7 +497,7 @@ const defaultNotify: SweepNotify = async (botId, text) => {
     const r = await notifyOwner(botId, text);
     return r.delivered.length
       ? { ok: true, detail: "доставлено" }
-      : { ok: false, detail: r.failed[0]?.reason ?? "не доставлено" };
+      : { ok: false, detail: r.failed[0]?.reason ?? NO_RECIPIENTS_REASON };
   } catch (e) {
     return { ok: false, detail: e instanceof Error ? e.message : String(e) };
   }

@@ -1,4 +1,5 @@
 import { SHOP_SLUG_PATTERN } from "@/core/tenant/slug";
+import { NO_RECIPIENTS_REASON } from "@/core/notify/deliver";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { shopEventView } from "@/app/admin/audit-labels";
 import { useEffect, useState, type FormEvent } from "react";
@@ -1673,8 +1674,12 @@ function MessageCard({ c }: { c: C }) {
   const [result, setResult] = useState<string | null>(null);
   const send = useAction(async (text: string) => {
     const r = await notifyOwnerFn({ data: { botId: c.id, text } });
+    if (r.noRecipients) return setResult(`Не отправлено: ${NO_RECIPIENTS_REASON}.`);
+    const failed = r.failed.map((f) => `${f.id}: ${f.reason}`).join("; ");
     setResult(
-      `Доставлено: ${r.delivered.length}${r.failed.length ? `, не доставлено: ${r.failed.map((f) => `${f.id} (${f.reason})`).join("; ")}` : ""}`,
+      r.ok
+        ? `Доставлено: ${r.delivered.length}${failed ? `, не доставлено: ${failed}` : ""}`
+        : `Не доставлено никому. ${failed}`,
     );
   });
   return (

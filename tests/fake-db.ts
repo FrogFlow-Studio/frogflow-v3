@@ -107,6 +107,20 @@ class Query implements PromiseLike<Result> {
     this.filters.push((r) => vs.includes(r[col]));
     return this;
   }
+  /** not(col, "in", "(a,b)") и not(col, "is", null) — как ими пользуется код. */
+  not(col: string, op: "in" | "is", v: string | null) {
+    if (op === "is") {
+      if (v !== null) throw new Error(`fakeDb: not is ${v} не поддержан`);
+      this.filters.push((r) => pick(r, col) != null);
+      return this;
+    }
+    if (op !== "in") throw new Error(`fakeDb: not ${op} не поддержан`);
+    const vs = String(v)
+      .replace(/^\(|\)$/g, "")
+      .split(",");
+    this.filters.push((r) => !vs.includes(String(r[col])));
+    return this;
+  }
   /** like с «%» на конце — префикс, как ими пользуется код. */
   like(col: string, pattern: string) {
     const re = new RegExp(
@@ -130,6 +144,10 @@ class Query implements PromiseLike<Result> {
   }
   gte(col: string, v: string | number) {
     this.filters.push((r) => r[col] != null && (r[col] as string | number) >= v);
+    return this;
+  }
+  lte(col: string, v: string | number) {
+    this.filters.push((r) => r[col] != null && (r[col] as string | number) <= v);
     return this;
   }
   lt(col: string, v: string | number) {

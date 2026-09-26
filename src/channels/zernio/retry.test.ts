@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { claimedAt, retryStuckEvents, type DispatchOutcome } from "./dispatch.server";
+import {
+  claimedAt,
+  retryStuckEvents,
+  retryStuckEventsFor,
+  type DispatchOutcome,
+} from "./dispatch.server";
+import type { Tenant } from "@/core/tenant/types";
 
 const NOW = new Date("2026-09-26T12:00:00Z");
 const ago = (ms: number) => new Date(NOW.getTime() - ms).toISOString();
@@ -72,5 +78,33 @@ describe("добор зависших событий Zernio", () => {
     expect(claimedAt(String(during))).toBe(NOW.getTime());
     expect(s.row("e")).toMatchObject({ status: "failed", error_message: "добор: сбой" });
     expect(claimedAt("добор: сбой")).toBeNull();
+  });
+});
+
+describe("добор по всем клиентам", () => {
+  it("выключенный модуль instagram — добор не трогает ничего", async () => {
+    const s = setup([{ event_id: "stuck", status: "received", created_at: ago(5 * MIN) }]);
+    const tenant = (id: string, modules: Record<string, boolean>) =>
+      ({ id, modules, settings: { zernio: { profile_id: "p1" } } }) as unknown as Tenant;
+    const opened: string[] = [];
+    const out = await retryStuckEventsFor(
+      [tenant("off", { instagram: false, whatsapp: false })],
+      (t) => {
+        opened.push(t.id);
+        return s.ctx;
+      },
+    );
+    expect(opened).toEqual([]);
+    expect(out).toEqual({});
+    expect(s.row("stuck")).toMatchObject({ status: "received", error_message: null });
+
+    // Тот же клиент с включённым Instagram — добор к нему заходит.
+    await retryStuckEventsFor([tenant("on", { instagram: true, whatsapp: false })], (t) => {
+      opened.push(t.id);
+      const db = fakeDb();
+      db.tables.zernio_logs = [];
+      return { tenant: t, db } as unknown as TenantContext;
+    });
+    expect(opened).toEqual(["on"]);
   });
 });

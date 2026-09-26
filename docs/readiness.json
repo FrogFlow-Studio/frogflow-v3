@@ -329,17 +329,17 @@
     "returns the claimed state using a real bot_users column": "drop: хелпера claimBotUserState в v2 нет; состояние пишется по user_key в customers.ts setState через типизированный клиент, несуществующую колонку ловит typecheck"
   },
   "tests/broadcast-audience.test.ts": {
-    "аудитория «все» не отдаёт синтетические id покупателей из других каналов": "open: resolveAudience фильтрует platform=telegram и isRealTelegramChat (src/core/broadcasts/broadcasts.ts), но тест v2 проверяет только знак id, не положительный id чужого канала",
-    "фильтр по платформе доезжает до запроса, а не только до результата": "open: .eq(platform, telegram) есть в resolveAudience, теста на фильтр в запросе нет",
-    "строка без telegram_id получателем не считается": "open: isRealTelegramChat отсекает null, но тест на null/строку без telegram_id в аудитории нет",
-    "покупатели считаются только по доставленным телеграм-заказам": "open: живой тест проверяет только отсутствие пробного покупателя; статус delivered и платформа заказа не проверены",
-    "«не покупали» исключает покупателей и чужие каналы разом": "open: живой тест не содержит покупателя и строк чужих каналов",
-    "аудитория по стране тоже не тянет чужие каналы": "open: живой тест проверяет фильтр по стране, но без строк Instagram/WhatsApp"
+    "аудитория «все» не отдаёт синтетические id покупателей из других каналов": "src/core/broadcasts/audience.test.ts › «все» не отдаёт id покупателей из других каналов, даже положительные",
+    "фильтр по платформе доезжает до запроса, а не только до результата": "src/core/broadcasts/audience.test.ts › фильтр по платформе доезжает до запроса, а не только до результата",
+    "строка без telegram_id получателем не считается": "src/core/broadcasts/audience.test.ts › строка без telegram_id получателем не считается",
+    "покупатели считаются только по доставленным телеграм-заказам": "src/core/broadcasts/audience.test.ts › покупатели — только по выданным телеграм-заказам",
+    "«не покупали» исключает покупателей и чужие каналы разом": "src/core/broadcasts/audience.test.ts › «не покупали» исключает покупателей и чужие каналы разом",
+    "аудитория по стране тоже не тянет чужие каналы": "src/core/broadcasts/audience.test.ts › аудитория по стране тоже не тянет чужие каналы"
   },
   "tests/broadcast-create.test.ts": {
     "при пустой очереди создаёт рассылку, а не бросает «уже идёт другая»": "tests/integration/broadcasts.test.ts › создаёт рассылку, отправляет пакет и закрывает её; заблокировавших считает отдельно",
     "настоящую занятую очередь по-прежнему отклоняет": "tests/integration/broadcasts.test.ts › создаёт рассылку, отправляет пакет и закрывает её; заблокировавших считает отдельно",
-    "рассылка в другом канале не считается занятой очередью": "open: проверка занятости идёт с .eq(channel) в createBroadcast (src/core/broadcasts/broadcasts.ts), теста нет"
+    "рассылка в другом канале не считается занятой очередью": "src/core/broadcasts/audience.test.ts › рассылка в другом канале не считается занятой очередью"
   },
   "tests/cart-reminder.test.ts": {
     "напоминалка выключена (0 часов) — не напоминаем никогда": "src/core/reminders/pure.test.ts › 0 часов — модуль выключен",
@@ -516,11 +516,11 @@
   },
   "tests/consultant-notify-recipients.test.ts": {
     "владелец и все ID из настроек, без повторов": "src/core/notify/recipients.test.ts › без дублей и без владельца, если его нет",
-    "отправляет каждому": "open: notifyOwner в src/app/operator/operator.server.ts шлёт всем adminRecipients, теста нет",
-    "отказ одного не отменяет остальных и виден поимённо": "open: notifyOwner (operator.server.ts) собирает failed поимённо, теста нет",
-    "если не дошло никому — это не успех": "open: notifyOwner (operator.server.ts) возвращает delivered/failed без признака успеха, теста нет",
-    "получателей нет — говорим об этом прямо": "open: notifyOwner (operator.server.ts) при пустом списке молча возвращает пустые массивы, теста нет",
-    "отказы Telegram переводятся на человеческий": "open: причина отказа отдаётся как description Telegram без перевода (operator.server.ts notifyOwner)"
+    "отправляет каждому": "src/core/notify/deliver.test.ts › отправляет каждому",
+    "отказ одного не отменяет остальных и виден поимённо": "src/core/notify/deliver.test.ts › отказ одного не отменяет остальных и виден поимённо",
+    "если не дошло никому — это не успех": "src/core/notify/deliver.test.ts › если не дошло никому — это не успех",
+    "получателей нет — говорим об этом прямо": "src/core/notify/deliver.test.ts › получателей нет — говорим об этом прямо",
+    "отказы Telegram переводятся на человеческий": "src/core/notify/deliver.test.ts › отказы Telegram переводятся на человеческий"
   },
   "tests/consultant-run-insert.test.ts": {
     "пишет в consultant_message_runs с ключом магазин + сообщение": "drop: журнал consultant_message_runs v1 не переносится — v2 копит расход в app_settings consultant_usage и дневной бюджет (core/consultant/budget.ts)",
@@ -815,7 +815,7 @@
     "генерирует разные коды при повторных вызовах": "src/core/discounts/pure.test.ts › сертификат: повторные вызовы дают разные коды"
   },
   "tests/instagram-inbox-message.test.ts": {
-    "does not attach a message tag to a regular Direct reply": "open: тело sendInboxMessage (channels/zernio/api.server.ts) без тега для обычного ответа не проверено"
+    "does not attach a message tag to a regular Direct reply": "src/channels/zernio/inbox-send.test.ts › обычный ответ в Direct уходит без тега сообщения"
   },
   "tests/invoices-server.test.ts": {
     "пустые реквизиты по умолчанию, сохраняются и читаются обратно": "src/app/operator/invoices.test.ts › пустые реквизиты по умолчанию, сохраняются и читаются обратно",
@@ -1218,7 +1218,7 @@
     "ignores native Zernio ACT:: buttons and ordinary chat": "src/channels/zernio/shop.server.test.ts › ignores native Zernio ACT:: buttons and ordinary chat"
   },
   "tests/whatsapp-broadcast-audience.test.ts": {
-    "без списка исключений отдаёт всех подряд": "open: resolveWhatsAppAudience (core/broadcasts/broadcasts.ts) без списка исключений не проверяется, живой тест всегда задаёт список",
+    "без списка исключений отдаёт всех подряд": "src/core/broadcasts/audience.test.ts › без списка исключений отдаёт всех подряд",
     "исключённый номер не попадает в рассылку": "tests/integration/whatsapp-broadcasts.test.ts › аудитория: номера из WhatsApp минус исключённые, «себе» пуста",
     "исключение работает и для аудитории по стране": "tests/integration/whatsapp-broadcasts.test.ts › аудитория: номера из WhatsApp минус исключённые, «себе» пуста"
   },
@@ -1285,7 +1285,7 @@
   },
   "tests/zernio-logs-retention.test.ts": {
     "удаляет отработанное старше порога и не трогает свежее и недавние ошибки": "tests/integration/retention.test.ts › zernio_logs: отработанные старше 30 дней уходят, сбои живут 180, свежее остаётся",
-    "сообщает done, когда удалять нечего": "open: pruneZernioLogs (core/retention/retention.ts) возвращает done, но тестом это не проверено"
+    "сообщает done, когда удалять нечего": "src/core/retention/retention.test.ts › сообщает done, когда удалять нечего"
   },
   "tests/zernio-message.test.ts": {
     "разбирает настоящее событие целиком": "src/channels/zernio/message.test.ts › разбирает настоящее событие целиком",
@@ -1319,7 +1319,7 @@
   },
   "tests/zernio-retry.test.ts": {
     "забирает застрявшее message.received, обходит свежее, отмечает чужой тип и держит сбой": "tests/integration/zernio-retry.test.ts › берёт только старые received, прогоняет и пишет итог",
-    "выключенный модуль instagram — добор не трогает ничего": "open: retryStuckEventsFor (channels/zernio/dispatch.server.ts) отбирает клиентов по профилю Zernio, не по модулю; теста нет"
+    "выключенный модуль instagram — добор не трогает ничего": "src/channels/zernio/retry.test.ts › выключенный модуль instagram — добор не трогает ничего"
   },
   "tests/zernio-webhook.test.ts": {
     "accepts an HMAC-SHA256 signature for the untouched raw body": "src/channels/zernio/webhook-signature.test.ts › accepts an HMAC-SHA256 signature for the untouched raw body",

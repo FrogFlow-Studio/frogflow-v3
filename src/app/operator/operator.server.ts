@@ -36,6 +36,7 @@ import { addressConflict, telegramBotTaken } from "@/core/tenant/directory";
 import { adminLoginTaken } from "@/core/auth/roles";
 import { hashPassword } from "@/app/auth/password";
 import { telegramWebhookUrl } from "@/channels/telegram/secret";
+import { NO_RECIPIENTS_REASON, type DeliveryReport } from "@/core/notify/deliver";
 
 type BotUpdate = Database["public"]["Tables"]["bots"]["Update"];
 type EventKind =
@@ -720,27 +721,21 @@ export async function archiveClient(botId: string) {
   await logEvent(botId, "suspend", { archived: true });
 }
 
-export async function notifyOwner(
-  botId: string,
-  text: string,
-): Promise<{ delivered: string[]; failed: Array<{ id: string; reason: string }> }> {
+export async function notifyOwner(botId: string, text: string): Promise<DeliveryReport> {
   const t = await requireTenant({ by: "id", value: botId });
   const ctx = tenantContext(t);
   const { adminRecipients } = await import("@/core/notify/recipients");
+  const { deliverToEach } = await import("@/core/notify/deliver");
   const api = telegramApi(ctx.secrets.telegramToken(), env().TELEGRAM_API_BASE);
-  const delivered: string[] = [];
-  const failed: Array<{ id: string; reason: string }> = [];
-  for (const id of await adminRecipients(ctx)) {
-    const r = await api.call("sendMessage", { chat_id: id, text });
-    if (r.ok) delivered.push(id);
-    else failed.push({ id, reason: r.description ?? "нет ответа" });
-  }
+  const r = await deliverToEach(await adminRecipients(ctx), (id) =>
+    api.call("sendMessage", { chat_id: id, text }),
+  );
   await logEvent(botId, "message", {
     text: text.slice(0, 200),
-    delivered: delivered.length,
-    failed: failed.length,
+    delivered: r.delivered.length,
+    failed: r.failed.length,
   });
-  return { delivered, failed };
+  return r;
 }
 
 /* ── заявки на модули ─────────────────────────────────────────────── */
@@ -950,7 +945,7 @@ export async function broadcastToOwners(
           bot_id: id,
           bot_name: t.name,
           status: "failed",
-          error: r.failed[0]?.reason ?? "не настроен id администратора",
+          error: r.failed[0]?.reason ?? NO_RECIPIENTS_REASON,
           at: now(),
         };
       } catch (e) {

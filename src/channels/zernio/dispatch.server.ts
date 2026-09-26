@@ -198,6 +198,8 @@ export async function retryStuckEventsFor(
   const out: Record<string, RetryResult | { error: string }> = {};
   for (const t of tenants) {
     if (!t.settings.zernio?.profile_id && !t.settings.zernio?.account_ids?.length) continue;
+    // Каналы Zernio выключены — добор не трогает журнал клиента вовсе, как в v1.
+    if (!t.modules.instagram && !t.modules.whatsapp) continue;
     try {
       const r = await retryStuckEvents(tenantContext(t));
       if (r.found || r.abandoned) out[t.id] = r;
