@@ -12,6 +12,7 @@ import {
   cleanAssistText,
   parseAssistDaily,
   type AssistProduct,
+  type AssistReview,
   type AssistTask,
 } from "./prompts";
 
@@ -26,6 +27,8 @@ export type AssistRequest = {
   task: AssistTask;
   product: AssistProduct;
   lang: Locale;
+  /** Для task "review": отзыв, на который отвечает продавец. */
+  review?: AssistReview;
 };
 
 /**
@@ -58,7 +61,7 @@ export async function assistText(ctx: TenantContext, req: AssistRequest): Promis
       "Дневной предел расходов ИИ исчерпан. Попробуйте завтра.",
     );
 
-  const { system, user } = assistPrompt(req.task, req.product, req.lang);
+  const { system, user } = assistPrompt(req.task, req.product, req.lang, req.review);
   const client = new Anthropic({ apiKey, maxRetries: 1, timeout: TIMEOUT_MS });
   let response: Anthropic.Message;
   try {

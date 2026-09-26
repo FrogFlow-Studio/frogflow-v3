@@ -39,6 +39,7 @@ const NOT_AUDITED = new Set([
   "hideSetupFn",
   "assistDescriptionFn",
   "assistPostFn",
+  "assistReviewReplyFn",
 ]);
 
 const ADMIN_FUNCTIONS_FILE = /(^|\/)src\/app\/admin\/[^/]+\.functions\.ts$/;

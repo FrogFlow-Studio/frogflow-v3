@@ -37,6 +37,7 @@ import { Route as AdminAuthedOrdersRouteImport } from './routes/admin._authed.or
 import { Route as AdminAuthedPostsRouteImport } from './routes/admin._authed.posts'
 import { Route as AdminAuthedProductsRouteImport } from './routes/admin._authed.products'
 import { Route as AdminAuthedQuizRouteImport } from './routes/admin._authed.quiz'
+import { Route as AdminAuthedReviewsRouteImport } from './routes/admin._authed.reviews'
 import { Route as AdminAuthedSettingsRouteImport } from './routes/admin._authed.settings'
 import { Route as AdminAuthedUndeliveredRouteImport } from './routes/admin._authed.undelivered'
 import { Route as AdminAuthedVipRouteImport } from './routes/admin._authed.vip'
@@ -205,6 +206,11 @@ const AdminAuthedProductsRoute = AdminAuthedProductsRouteImport.update({
 const AdminAuthedQuizRoute = AdminAuthedQuizRouteImport.update({
   id: '/quiz',
   path: '/quiz',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedReviewsRoute = AdminAuthedReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedSettingsRoute = AdminAuthedSettingsRouteImport.update({
@@ -391,6 +397,7 @@ export interface FileRoutesByFullPath {
   '/admin/posts': typeof AdminAuthedPostsRoute
   '/admin/products': typeof AdminAuthedProductsRoute
   '/admin/quiz': typeof AdminAuthedQuizRoute
+  '/admin/reviews': typeof AdminAuthedReviewsRoute
   '/admin/settings': typeof AdminAuthedSettingsRoute
   '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/vip': typeof AdminAuthedVipRoute
@@ -449,6 +456,7 @@ export interface FileRoutesByTo {
   '/admin/posts': typeof AdminAuthedPostsRoute
   '/admin/products': typeof AdminAuthedProductsRoute
   '/admin/quiz': typeof AdminAuthedQuizRoute
+  '/admin/reviews': typeof AdminAuthedReviewsRoute
   '/admin/settings': typeof AdminAuthedSettingsRoute
   '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/vip': typeof AdminAuthedVipRoute
@@ -509,6 +517,7 @@ export interface FileRoutesById {
   '/admin/_authed/posts': typeof AdminAuthedPostsRoute
   '/admin/_authed/products': typeof AdminAuthedProductsRoute
   '/admin/_authed/quiz': typeof AdminAuthedQuizRoute
+  '/admin/_authed/reviews': typeof AdminAuthedReviewsRoute
   '/admin/_authed/settings': typeof AdminAuthedSettingsRoute
   '/admin/_authed/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/_authed/vip': typeof AdminAuthedVipRoute
@@ -570,6 +579,7 @@ export interface FileRouteTypes {
     | '/admin/posts'
     | '/admin/products'
     | '/admin/quiz'
+    | '/admin/reviews'
     | '/admin/settings'
     | '/admin/undelivered'
     | '/admin/vip'
@@ -628,6 +638,7 @@ export interface FileRouteTypes {
     | '/admin/posts'
     | '/admin/products'
     | '/admin/quiz'
+    | '/admin/reviews'
     | '/admin/settings'
     | '/admin/undelivered'
     | '/admin/vip'
@@ -687,6 +698,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/posts'
     | '/admin/_authed/products'
     | '/admin/_authed/quiz'
+    | '/admin/_authed/reviews'
     | '/admin/_authed/settings'
     | '/admin/_authed/undelivered'
     | '/admin/_authed/vip'
@@ -940,6 +952,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedQuizRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/_authed/reviews': {
+      id: '/admin/_authed/reviews'
+      path: '/reviews'
+      fullPath: '/admin/reviews'
+      preLoaderRoute: typeof AdminAuthedReviewsRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/admin/_authed/settings': {
       id: '/admin/_authed/settings'
       path: '/settings'
@@ -1188,6 +1207,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedPostsRoute: typeof AdminAuthedPostsRoute
   AdminAuthedProductsRoute: typeof AdminAuthedProductsRoute
   AdminAuthedQuizRoute: typeof AdminAuthedQuizRoute
+  AdminAuthedReviewsRoute: typeof AdminAuthedReviewsRoute
   AdminAuthedSettingsRoute: typeof AdminAuthedSettingsRoute
   AdminAuthedUndeliveredRoute: typeof AdminAuthedUndeliveredRoute
   AdminAuthedVipRoute: typeof AdminAuthedVipRoute
@@ -1210,6 +1230,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedPostsRoute: AdminAuthedPostsRoute,
   AdminAuthedProductsRoute: AdminAuthedProductsRoute,
   AdminAuthedQuizRoute: AdminAuthedQuizRoute,
+  AdminAuthedReviewsRoute: AdminAuthedReviewsRoute,
   AdminAuthedSettingsRoute: AdminAuthedSettingsRoute,
   AdminAuthedUndeliveredRoute: AdminAuthedUndeliveredRoute,
   AdminAuthedVipRoute: AdminAuthedVipRoute,

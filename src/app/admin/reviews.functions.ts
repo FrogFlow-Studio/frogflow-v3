@@ -1,0 +1,66 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { UserError } from "@/core/i18n/user-error";
+
+/**
+ * Отзывы покупателей (модуль review_request): список, черновик ответа от
+ * ИИ-помощника (core/assistant) и отправка ответа покупателю. Смотреть может
+ * вся команда, отвечать — менеджер и выше.
+ */
+const lang = z.enum(["ru", "kk", "en", "uz"]).optional();
+
+export const reviewsFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        rating: z.number().int().min(1).max(5).optional(),
+        withComment: z.boolean().optional(),
+      })
+      .parse(d ?? {}),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await (
+      await import("@/app/auth/guards.server")
+    ).requireAdminModule("review_request");
+    const { listReviewsForAdmin } = await import("@/core/reviews/admin");
+    return listReviewsForAdmin(ctx, data);
+  });
+
+async function reviewOrFail(id: string) {
+  const ctx = await (
+    await import("@/app/auth/guards.server")
+  ).requireAdminModule("review_request", "manager");
+  const { getReviewForAdmin } = await import("@/core/reviews/admin");
+  const review = await getReviewForAdmin(ctx, id);
+  if (!review) throw new UserError("err.review.notFound", "Отзыв не найден.");
+  return { ctx, review };
+}
+
+export const assistReviewReplyFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: z.string().uuid(), lang }).parse(d))
+  .handler(async ({ data }) => {
+    const { ctx, review } = await reviewOrFail(data.id);
+    const { assistText } = await import("@/core/assistant/assistant.server");
+    const text = await assistText(ctx, {
+      task: "review",
+      lang: data.lang ?? ctx.tenant.settings.default_locale ?? "ru",
+      product: { name: review.productName ?? "товар" },
+      review: { rating: review.rating, comment: review.comment },
+    });
+    return { text };
+  });
+
+export const replyToReviewFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ id: z.string().uuid(), text: z.string().trim().min(1).max(1000) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { ctx, review } = await reviewOrFail(data.id);
+    const { sendReviewReply } = await import("./reviews.server");
+    if (!(await sendReviewReply(ctx, review, data.text)))
+      throw new UserError(
+        "err.review.notDelivered",
+        "Ответ не доставлен: покупатель недоступен в своём канале (заблокировал бота или диалог закрыт).",
+      );
+    return { ok: true };
+  });

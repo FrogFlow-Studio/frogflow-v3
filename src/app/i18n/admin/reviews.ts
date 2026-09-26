@@ -1,0 +1,88 @@
+import type { SectionDict } from "../section";
+
+/** Раздел «Отзывы». */
+export const ru = {
+  "reviews.title": "Отзывы",
+  "reviews.subtitle":
+    "Оценки и комментарии покупателей после выдачи заказа. Ответ уходит покупателю личным сообщением от магазина.",
+  "reviews.avg": "Средняя оценка: {avg} из 5 · отзывов: {n}",
+  "reviews.filterAll": "Все оценки",
+  "reviews.filterStars": "{n} ★",
+  "reviews.withComment": "Только с текстом",
+  "reviews.empty": "Отзывов пока нет. Покупатели оценивают товар в «Мои заказы» после выдачи.",
+  "reviews.noComment": "Без комментария",
+  "reviews.productDeleted": "Товар удалён",
+  "reviews.buyerUnknown": "Покупатель",
+  "reviews.reply": "Ответить",
+  "reviews.replyPlaceholder": "Ваш ответ покупателю",
+  "reviews.assist": "Написать с ИИ",
+  "reviews.assistHint": "ИИ пишет черновик в поле; отправляете вы, после правки.",
+  "reviews.send": "Отправить покупателю",
+  "reviews.cancel": "Отмена",
+  "reviews.sent": "Ответ отправлен покупателю.",
+};
+
+export const kk: SectionDict<typeof ru> = {
+  "reviews.title": "Пікірлер",
+  "reviews.subtitle":
+    "Тапсырыс берілгеннен кейінгі сатып алушылардың бағалары мен пікірлері. Жауап сатып алушыға дүкеннен жеке хабарлама болып барады.",
+  "reviews.avg": "Орташа баға: 5-тен {avg} · пікірлер: {n}",
+  "reviews.filterAll": "Барлық бағалар",
+  "reviews.filterStars": "{n} ★",
+  "reviews.withComment": "Тек мәтіні барлар",
+  "reviews.empty":
+    "Әзірге пікір жоқ. Сатып алушылар тауарды берілгеннен кейін «Менің тапсырыстарым» бөлімінде бағалайды.",
+  "reviews.noComment": "Пікірсіз",
+  "reviews.productDeleted": "Тауар жойылған",
+  "reviews.buyerUnknown": "Сатып алушы",
+  "reviews.reply": "Жауап беру",
+  "reviews.replyPlaceholder": "Сатып алушыға жауабыңыз",
+  "reviews.assist": "ЖИ-мен жазу",
+  "reviews.assistHint": "ЖИ өріске жоба жазады; түзеткеннен кейін өзіңіз жібересіз.",
+  "reviews.send": "Сатып алушыға жіберу",
+  "reviews.cancel": "Болдырмау",
+  "reviews.sent": "Жауап сатып алушыға жіберілді.",
+};
+
+export const en: SectionDict<typeof ru> = {
+  "reviews.title": "Reviews",
+  "reviews.subtitle":
+    "Customer ratings and comments after an order is delivered. Your reply goes to the customer as a private message from the shop.",
+  "reviews.avg": "Average rating: {avg} of 5 · reviews: {n}",
+  "reviews.filterAll": "All ratings",
+  "reviews.filterStars": "{n} ★",
+  "reviews.withComment": "With text only",
+  "reviews.empty": "No reviews yet. Customers rate a product in “My orders” after delivery.",
+  "reviews.noComment": "No comment",
+  "reviews.productDeleted": "Product deleted",
+  "reviews.buyerUnknown": "Customer",
+  "reviews.reply": "Reply",
+  "reviews.replyPlaceholder": "Your reply to the customer",
+  "reviews.assist": "Write with AI",
+  "reviews.assistHint": "AI writes a draft into the field; you send it after editing.",
+  "reviews.send": "Send to customer",
+  "reviews.cancel": "Cancel",
+  "reviews.sent": "The reply was sent to the customer.",
+};
+
+export const uz: SectionDict<typeof ru> = {
+  "reviews.title": "Sharhlar",
+  "reviews.subtitle":
+    "Buyurtma topshirilgandan keyin xaridorlarning baholari va izohlari. Javob xaridorga doʻkondan shaxsiy xabar boʻlib boradi.",
+  "reviews.avg": "Oʻrtacha baho: 5 dan {avg} · sharhlar: {n}",
+  "reviews.filterAll": "Barcha baholar",
+  "reviews.filterStars": "{n} ★",
+  "reviews.withComment": "Faqat matnlilari",
+  "reviews.empty":
+    "Hozircha sharh yoʻq. Xaridorlar mahsulotni topshirilgandan keyin «Buyurtmalarim» boʻlimida baholaydi.",
+  "reviews.noComment": "Izohsiz",
+  "reviews.productDeleted": "Mahsulot oʻchirilgan",
+  "reviews.buyerUnknown": "Xaridor",
+  "reviews.reply": "Javob berish",
+  "reviews.replyPlaceholder": "Xaridorga javobingiz",
+  "reviews.assist": "AI bilan yozish",
+  "reviews.assistHint": "AI maydonga qoralama yozadi; tahrirlagach, oʻzingiz yuborasiz.",
+  "reviews.send": "Xaridorga yuborish",
+  "reviews.cancel": "Bekor qilish",
+  "reviews.sent": "Javob xaridorga yuborildi.",
+};

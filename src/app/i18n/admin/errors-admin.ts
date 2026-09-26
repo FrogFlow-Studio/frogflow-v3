@@ -37,6 +37,9 @@ export const ru = {
   "err.assist.budget": "Дневной предел расходов ИИ исчерпан. Попробуйте завтра.",
   "err.assist.failed": "ИИ-помощник не ответил. Попробуйте ещё раз.",
   "err.assist.noProduct": "Товар не найден.",
+  "err.review.notFound": "Отзыв не найден.",
+  "err.review.notDelivered":
+    "Ответ не доставлен: покупатель недоступен в своём канале (заблокировал бота или диалог закрыт).",
   "err.template.notEmpty":
     "Примеры добавляются только в пустой магазин — у вас уже есть товары или категории.",
   "err.upload.tooBig": "Файл больше {mb} МБ.",
@@ -118,6 +121,9 @@ export const kk: SectionDict<typeof ru> = {
   "err.assist.budget": "ЖИ шығынының күндік шегі таусылды. Ертең қайталаңыз.",
   "err.assist.failed": "ЖИ-көмекші жауап бермеді. Қайта көріңіз.",
   "err.assist.noProduct": "Тауар табылмады.",
+  "err.review.notFound": "Пікір табылмады.",
+  "err.review.notDelivered":
+    "Жауап жеткізілмеді: сатып алушы өз арнасында қолжетімсіз (ботты бұғаттаған немесе диалог жабық).",
   "err.template.notEmpty": "Үлгілер тек бос дүкенге қосылады — сізде тауарлар немесе санаттар бар.",
   "err.upload.tooBig": "Файл {mb} МБ-тан үлкен.",
   "err.upload.badType": "Бұл файл түріне қолдау көрсетілмейді.",
@@ -196,6 +202,9 @@ export const en: SectionDict<typeof ru> = {
   "err.assist.budget": "The daily AI spending limit is used up. Try again tomorrow.",
   "err.assist.failed": "The AI assistant did not respond. Please try again.",
   "err.assist.noProduct": "Product not found.",
+  "err.review.notFound": "Review not found.",
+  "err.review.notDelivered":
+    "The reply was not delivered: the customer is unreachable in their channel (blocked the bot or the chat is closed).",
   "err.template.notEmpty":
     "Examples can only be added to an empty shop: you already have products or categories.",
   "err.upload.tooBig": "The file is larger than {mb} MB.",
@@ -276,6 +285,9 @@ export const uz: SectionDict<typeof ru> = {
   "err.assist.budget": "AI xarajatlarining kunlik chegarasi tugadi. Ertaga urinib koʻring.",
   "err.assist.failed": "AI-yordamchi javob bermadi. Qayta urinib koʻring.",
   "err.assist.noProduct": "Mahsulot topilmadi.",
+  "err.review.notFound": "Sharh topilmadi.",
+  "err.review.notDelivered":
+    "Javob yetkazilmadi: xaridor oʻz kanalida mavjud emas (botni bloklagan yoki suhbat yopilgan).",
   "err.template.notEmpty":
     "Namunalar faqat boʻsh do‘konga qo‘shiladi: sizda mahsulot yoki toifalar bor.",
   "err.upload.tooBig": "Fayl {mb} MB dan katta.",

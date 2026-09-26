@@ -46,6 +46,8 @@ export type Msg = {
   starsPaymentStale: string;
   waitlistJoined: string;
   backInStock: (name: string) => string;
+  /** Ответ продавца на отзыв; оба аргумента — уже экранированный HTML. */
+  reviewReply: (product: string, text: string) => string;
   productNotFound: string;
   added: string;
   unavailable: string;
@@ -256,6 +258,7 @@ const ru: Msg = {
   starsPaymentStale: "Заказ уже оплачен или изменился — откройте «Мои заказы».",
   waitlistJoined: "Готово — напишу, как только товар снова появится.",
   backInStock: (name) => `🔔 <b>${name}</b> снова в наличии! Успейте заказать.`,
+  reviewReply: (product, text) => `💬 Ответ магазина на ваш отзыв о <b>${product}</b>:\n\n${text}`,
   productNotFound: "Товар не найден или снят с продажи.",
   added: "✅ Добавлено в корзину",
   unavailable: "Товар недоступен.",
@@ -413,6 +416,8 @@ const kk: Msg = {
     "Тапсырыс төленіп қойған немесе өзгерген — «Менің тапсырыстарым» бөлімін ашыңыз.",
   waitlistJoined: "Дайын — тауар қайта пайда болғанда жазамын.",
   backInStock: (name) => `🔔 <b>${name}</b> қайтадан сатылымда! Тапсырыс беріп үлгеріңіз.`,
+  reviewReply: (product, text) =>
+    `💬 <b>${product}</b> туралы пікіріңізге дүкеннің жауабы:\n\n${text}`,
   reorderBtn: "🔁 Тапсырысты қайталау",
   reorderDone: (n) => `🔁 Өткен тапсырыстан ${n} позиция себетке қосылды`,
   reorderNothing: "Бұл тапсырыстан ештеңе енді сатылымда жоқ.",
@@ -521,6 +526,8 @@ const en: Msg = {
   starsPaymentStale: "The order is already paid or has changed — open “My orders”.",
   waitlistJoined: "Done — I will message you as soon as it is back.",
   backInStock: (name) => `🔔 <b>${name}</b> is back in stock! Order while it lasts.`,
+  reviewReply: (product, text) =>
+    `💬 The shop replied to your review of <b>${product}</b>:\n\n${text}`,
   reorderBtn: "🔁 Reorder",
   reorderDone: (n) => `🔁 Added ${n} item(s) from your previous order to the cart`,
   reorderNothing: "Nothing from this order is on sale anymore.",
@@ -648,6 +655,8 @@ const uz: Msg = {
   starsPaymentStale: "Buyurtma allaqachon to‘langan yoki o‘zgargan — «Buyurtmalarim»ni oching.",
   waitlistJoined: "Tayyor — mahsulot yana paydo bo‘lishi bilan yozaman.",
   backInStock: (name) => `🔔 <b>${name}</b> yana sotuvda! Buyurtma berishga ulguring.`,
+  reviewReply: (product, text) =>
+    `💬 Doʻkonning <b>${product}</b> haqidagi sharhingizga javobi:\n\n${text}`,
   reorderBtn: "🔁 Buyurtmani takrorlash",
   reorderDone: (n) => `🔁 Oldingi buyurtmadan ${n} pozitsiya savatga qo‘shildi`,
   reorderNothing: "Bu buyurtmadan hech narsa endi sotuvda yo‘q.",

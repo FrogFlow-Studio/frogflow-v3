@@ -20,6 +20,7 @@ import * as outbox from "./admin/outbox";
 import * as audit from "./admin/audit";
 import * as posts from "./admin/posts";
 import * as quiz from "./admin/quiz";
+import * as reviews from "./admin/reviews";
 import * as physical from "./admin/physical";
 import * as plan from "./admin/plan";
 import * as errorsCore from "./admin/errors-core";
@@ -46,6 +47,7 @@ const baseRu = {
   "nav.modules": "Модули",
   "nav.undelivered": "Не доставлено",
   "nav.quiz": "Квиз-подбор",
+  "nav.reviews": "Отзывы",
   "nav.logout": "Выйти",
   "nav.paused": "пауза",
   "nav.language": "Язык панели",
@@ -274,6 +276,7 @@ const ru = {
   ...audit.ru,
   ...posts.ru,
   ...quiz.ru,
+  ...reviews.ru,
   ...physical.ru,
   ...plan.ru,
   ...errorsCore.ru,
@@ -303,6 +306,7 @@ const baseKk: Dict = {
   "nav.modules": "Модульдер",
   "nav.undelivered": "Жеткізілмеді",
   "nav.quiz": "Квиз-таңдау",
+  "nav.reviews": "Пікірлер",
   "nav.logout": "Шығу",
   "nav.paused": "кідіріс",
   "nav.language": "Панель тілі",
@@ -524,6 +528,7 @@ const baseEn: Dict = {
   "nav.modules": "Modules",
   "nav.undelivered": "Undelivered",
   "nav.quiz": "Product quiz",
+  "nav.reviews": "Reviews",
   "nav.logout": "Log out",
   "nav.paused": "paused",
   "nav.language": "Panel language",
@@ -745,6 +750,7 @@ const baseUz: Dict = {
   "nav.modules": "Modullar",
   "nav.undelivered": "Yetkazilmagan",
   "nav.quiz": "Kviz-tanlash",
+  "nav.reviews": "Sharhlar",
   "nav.logout": "Chiqish",
   "nav.paused": "pauza",
   "nav.language": "Panel tili",
@@ -966,6 +972,7 @@ const kk: Dict = {
   ...audit.kk,
   ...posts.kk,
   ...quiz.kk,
+  ...reviews.kk,
   ...physical.kk,
   ...plan.kk,
   ...errorsCore.kk,
@@ -989,6 +996,7 @@ const en: Dict = {
   ...audit.en,
   ...posts.en,
   ...quiz.en,
+  ...reviews.en,
   ...physical.en,
   ...plan.en,
   ...errorsCore.en,
@@ -1012,6 +1020,7 @@ const uz: Dict = {
   ...audit.uz,
   ...posts.uz,
   ...quiz.uz,
+  ...reviews.uz,
   ...physical.uz,
   ...plan.uz,
   ...errorsCore.uz,
