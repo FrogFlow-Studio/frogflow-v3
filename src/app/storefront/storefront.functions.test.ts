@@ -132,7 +132,15 @@ beforeEach(() => {
 
 describe("storeProductFn: похожие товары", () => {
   const related = async (products: Row[], id: string) => {
-    tenantWith(fakeDb(), products);
+    const db = fakeDb();
+    db.tables.categories = ["math", "history"].map((c) => ({
+      id: c,
+      name: c,
+      parent_id: null,
+      is_visible: true,
+      sort_order: 0,
+    }));
+    tenantWith(db, products);
     const r = await storeProductFn({ data: { slug: "shop", id } });
     return r.related.map((p) => p.id);
   };
@@ -155,6 +163,17 @@ describe("storeProductFn: похожие товары", () => {
 
   it("других товаров нет — похожих нет, секция на странице не рисуется", async () => {
     expect(await related([product(T, [])], T)).toEqual([]);
+  });
+
+  it("товар из скрытой категории не попадает в похожие", async () => {
+    const db = fakeDb();
+    db.tables.categories = [
+      { id: "math", name: "math", parent_id: null, is_visible: true, sort_order: 0 },
+      { id: "secret", name: "secret", parent_id: null, is_visible: false, sort_order: 0 },
+    ];
+    tenantWith(db, [product(T, []), product("open", ["math"]), product("hidden", ["secret"])]);
+    const r = await storeProductFn({ data: { slug: "shop", id: T } });
+    expect(r.related.map((p) => p.id)).toEqual(["open"]);
   });
 });
 

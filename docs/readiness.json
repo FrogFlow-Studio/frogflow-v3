@@ -856,11 +856,11 @@
     "requires both shop and telegram_mini_app modules": "src/core/storefront/access.test.ts › без магазина закрыто всё"
   },
   "tests/mini-app-catalog.test.ts": {
-    "removes products that only belong to hidden categories": "open: расхождение: storeCatalog (core/storefront/catalog.ts) не смотрит на categories.is_visible — товар только из скрытых категорий виден в каталоге, поиске и похожих",
+    "removes products that only belong to hidden categories": "src/core/storefront/catalog.test.ts › убирает товары, у которых все категории скрыты — в том числе через скрытого родителя",
     "searches names, descriptions, variants and keywords across the full index": "open: расхождение: поиск storeCatalog идёт по name/keywords/description, названия вариантов не ищутся (название, описание, ключевые слова — в catalog.test.ts › ищет по названию, описанию и ключевым словам без учёта регистра)",
     "treats the query as one phrase, like the bot, not AND of substrings": "src/core/storefront/catalog.test.ts › ищет запрос одной фразой, как бот, а не пересечением слов",
     "keeps uncategorized products only in the unfiltered catalog": "src/core/storefront/catalog.test.ts › товар без категории — только в общем каталоге, не в выбранной категории",
-    "includes products from Mini App category subtrees": "open: расхождение: storeCatalog фильтрует по одной категории (contains category_ids), товары подкатегорий в родительскую не попадают",
+    "includes products from Mini App category subtrees": "src/core/storefront/catalog.test.ts › родительская категория включает товары всех своих подкатегорий",
     "shows lead time on physical products and hides it for digital": "open: расхождение: на странице товара (routes/s.$slug.p.$id.tsx) срок изготовления показывается при любом leadTimeDays, в том числе у цифрового; у физического с 0 дней карточка пишет «Товар», а не «В наличии»; разметка в JSX без тестов",
     "uses a bakery placeholder on confectionery deploys": "drop: заглушка-эмодзи серверного HTML Mini App v1; витрина v2 рисует карточки сама",
     "shows compact RU/KZ chips, hides description, and keeps flags on named badges": "drop: вёрстка карточки серверного HTML Mini App v1; в v2 языки файлов — на странице товара витрины",
@@ -916,7 +916,7 @@
   "tests/mini-app-related.test.ts": {
     "товар без категории всё равно получает блок похожих — fallback на весь каталог": "src/app/storefront/storefront.functions.test.ts › товар без категории всё равно получает похожие — из всего каталога",
     "товар с категорией использует прежний заголовок и фильтр по категории": "src/app/storefront/storefront.functions.test.ts › товар с категорией — похожие только из его первой категории",
-    "товар из скрытой категории не попадает в похожие": "open: расхождение: storeCatalog не отсекает товары скрытых категорий, storeProductFn показывает их в похожих",
+    "товар из скрытой категории не попадает в похожие": "src/app/storefront/storefront.functions.test.ts › товар из скрытой категории не попадает в похожие",
     "нет ни одного другого товара в каталоге — секция не рендерится вовсе": "src/app/storefront/storefront.functions.test.ts › других товаров нет — похожих нет, секция на странице не рисуется"
   },
   "tests/mini-app-text.test.ts": {

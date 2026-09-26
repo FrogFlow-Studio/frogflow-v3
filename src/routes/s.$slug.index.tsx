@@ -19,13 +19,23 @@ function CatalogPage() {
   const { slug } = Route.useParams();
   const shop = useLoaderData({ from: "/s/$slug" });
   const { t } = useStorefrontLocale();
-  const categories = shop.categories.filter((c) => !c.parent_id);
+  const all = shop.categories;
+  const categories = all.filter((c) => !c.parent_id);
   const s = Route.useSearch();
   const navigate = useNavigate();
   const [q, setQ] = useState(s.q ?? "");
   const cart = useCart();
   const [added, setAdded] = useState<string | null>(null);
-  const current = categories.find((c) => c.id === s.category);
+  const current = all.find((c) => c.id === s.category);
+  // Корень выбранной ветки подсвечивается в верхнем ряду; второй ряд —
+  // подкатегории выбранной (у листа — его соседи), товары подкатегорий
+  // сервер уже включил в родительскую.
+  const path: string[] = [];
+  for (let c = current; c && !path.includes(c.id); c = all.find((x) => x.id === c!.parent_id))
+    path.unshift(c.id);
+  const children = (id: string) => all.filter((c) => c.parent_id === id);
+  const subParent = current ? (children(current.id).length ? current.id : current.parent_id) : null;
+  const subs = subParent ? children(subParent) : [];
   const digitalOnly = products.length > 0 && products.every((p) => p.kind === "digital");
 
   return (
@@ -78,7 +88,31 @@ function CatalogPage() {
               to="/s/$slug"
               params={{ slug }}
               search={{ q: s.q, category: c.id }}
-              className={`badge shrink-0 px-3 py-1.5 ${s.category === c.id ? "border-accent bg-accent/10 text-accent" : ""}`}
+              className={`badge shrink-0 px-3 py-1.5 ${path[0] === c.id ? "border-accent bg-accent/10 text-accent" : ""}`}
+            >
+              {c.name}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {subs.length > 0 && subParent && (
+        <div className="-mt-3 mb-6 flex gap-2 overflow-x-auto pb-1 text-sm">
+          <Link
+            to="/s/$slug"
+            params={{ slug }}
+            search={{ q: s.q, category: subParent }}
+            className={`badge shrink-0 px-3 py-1 ${s.category === subParent ? "border-accent bg-accent/10 text-accent" : ""}`}
+          >
+            {t("catalog.all")}
+          </Link>
+          {subs.map((c) => (
+            <Link
+              key={c.id}
+              to="/s/$slug"
+              params={{ slug }}
+              search={{ q: s.q, category: c.id }}
+              className={`badge shrink-0 px-3 py-1 ${path.includes(c.id) ? "border-accent bg-accent/10 text-accent" : ""}`}
             >
               {c.name}
             </Link>

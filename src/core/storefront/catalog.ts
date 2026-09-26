@@ -5,6 +5,7 @@ import { imagePath } from "@/core/catalog/image-url";
 import { resolvePrice } from "@/core/pricing/pricing";
 import { productSellable } from "@/core/catalog/materials";
 import { getSettings } from "@/core/settings/settings";
+import { categorySubtree, productOnStorefront, visibleCategoryIds } from "./categories";
 
 /** Публичное представление товара для витрины и Mini App — без серверных полей. */
 export type StoreProduct = {
@@ -55,6 +56,7 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
       "storefront_accent",
     ]),
   ]);
+  const visible = visibleCategoryIds(cats);
   const legalOn = Boolean(ctx.tenant.modules.legal_docs);
   return {
     botId: ctx.tenant.id,
@@ -77,7 +79,7 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
             .slice(0, 160) || null
         : null,
     categories: cats
-      .filter((c) => c.is_visible)
+      .filter((c) => visible.has(c.id))
       .map((c) => ({ id: c.id, name: c.name, parent_id: c.parent_id })),
     // Ссылки на юр. страницы — только при модуле legal_docs (core/storefront/access).
     legal: {
@@ -126,14 +128,16 @@ export async function storeCatalog(
   ctx: TenantContext,
   opts: { q?: string; categoryId?: string | null } = {},
 ): Promise<StoreProduct[]> {
+  // Выбранная категория включает подкатегории (как в v1), а jsonb-массив
+  // category_ids одним запросом на «любой из» не отфильтровать — фильтруем
+  // здесь, по всему активному каталогу.
   let q = ctx.db
     .from("products")
     .select(PRODUCT_SELECT)
     .eq("is_active", true)
     .order("sort_order")
     .order("name")
-    .limit(200);
-  if (opts.categoryId) q = q.contains("category_ids", JSON.stringify([opts.categoryId]));
+    .limit(opts.categoryId ? 1000 : 200);
   if (opts.q?.trim()) {
     const s = `%${opts.q
       .trim()
@@ -141,10 +145,19 @@ export async function storeCatalog(
       .slice(0, 80)}%`;
     q = q.or(`name.ilike.${s},keywords.ilike.${s},description.ilike.${s}`);
   }
-  const { data, error } = await q;
+  const [{ data, error }, cats] = await Promise.all([q, listAllCategories(ctx)]);
   if (error) throw new Error(error.message);
-  const rows = (data ?? []) as Product[];
-  const sellable = rows.filter((p) => p.fulfillment_kind === "physical" || productSellable(p));
+  const known = new Set(cats.map((c) => c.id));
+  const visible = visibleCategoryIds(cats);
+  const wanted = opts.categoryId ? categorySubtree(cats, opts.categoryId, visible) : null;
+  const rows = ((data ?? []) as Product[]).filter((p) => {
+    const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
+    if (wanted && !ids.some((id) => wanted.has(id))) return false;
+    return productOnStorefront(ids, known, visible);
+  });
+  const sellable = rows
+    .filter((p) => p.fulfillment_kind === "physical" || productSellable(p))
+    .slice(0, 200);
   return Promise.all(sellable.map((p) => toStoreProduct(ctx, p)));
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { storeCatalog } from "./catalog";
+import { storeCatalog, storeInfo } from "./catalog";
 
 type Row = Record<string, unknown>;
 
@@ -9,10 +9,23 @@ type Row = Record<string, unknown>;
  * витрина: eq, contains по jsonb-массиву и or из ilike-шаблонов. ilike с
  * `%…%` — подстрока без учёта регистра, как в Postgres.
  */
-function productsDb(rows: Row[]) {
+function productsDb(rows: Row[], categories: Row[] = []) {
   const calls: { or: string[] } = { or: [] };
   const db = {
     from(table: string) {
+      if (table === "app_settings") {
+        const q = { select: () => q, in: async () => ({ data: [], error: null }) };
+        return q;
+      }
+      if (table === "categories") {
+        const q = {
+          select: () => q,
+          order: () => q,
+          then: (ok: (v: { data: unknown; error: null }) => unknown) =>
+            Promise.resolve({ data: categories, error: null }).then(ok),
+        };
+        return q;
+      }
       if (table !== "products") throw new Error(`неожиданная таблица: ${table}`);
       const filters: Array<(r: Row) => boolean> = [];
       let one = false;
@@ -80,8 +93,8 @@ function product(id: string, over: Row = {}): Row {
   };
 }
 
-function ctxWith(rows: Row[], modules: Record<string, boolean> = {}) {
-  const { db, calls } = productsDb(rows);
+function ctxWith(rows: Row[], modules: Record<string, boolean> = {}, categories: Row[] = []) {
+  const { db, calls } = productsDb(rows, categories);
   const ctx = {
     tenant: { id: "bot-1", modules, settings: {} },
     db,
@@ -127,15 +140,68 @@ describe("storeCatalog: поиск витрины", () => {
 
 describe("storeCatalog: фильтр категории", () => {
   it("товар без категории — только в общем каталоге, не в выбранной категории", async () => {
-    const { ctx } = ctxWith([
-      product("in-cakes", { category_ids: ["cakes"] }),
-      product("uncategorized"),
-    ]);
+    const { ctx } = ctxWith(
+      [product("in-cakes", { category_ids: ["cakes"] }), product("uncategorized")],
+      {},
+      [{ id: "cakes", name: "Торты", parent_id: null, is_visible: true }],
+    );
     expect(ids(await storeCatalog(ctx, { categoryId: "cakes" }))).toEqual(["in-cakes"]);
     expect(ids(await storeCatalog(ctx))).toEqual(["in-cakes", "uncategorized"]);
     expect(ids(await storeCatalog(ctx, { categoryId: null }))).toEqual([
       "in-cakes",
       "uncategorized",
     ]);
+  });
+});
+
+describe("storeCatalog: скрытые категории и подкатегории, как в v1", () => {
+  const cat = (id: string, parent: string | null = null, visible = true): Row => ({
+    id,
+    name: id,
+    parent_id: parent,
+    is_visible: visible,
+    sort_order: 0,
+  });
+  // cakes ⟶ tiers ⟶ wedding; hidden ⟶ hidden-child (видна сама, но родитель скрыт)
+  const categories = [
+    cat("cakes"),
+    cat("tiers", "cakes"),
+    cat("wedding", "tiers"),
+    cat("hidden", null, false),
+    cat("hidden-child", "hidden"),
+  ];
+  const products = [
+    product("top", { category_ids: ["cakes"] }),
+    product("sub", { category_ids: ["tiers"] }),
+    product("deep", { category_ids: ["wedding"] }),
+    product("secret", { category_ids: ["hidden"] }),
+    product("secret-child", { category_ids: ["hidden-child"] }),
+    product("both", { category_ids: ["hidden", "cakes"] }),
+    product("free"),
+  ];
+
+  it("убирает товары, у которых все категории скрыты — в том числе через скрытого родителя", async () => {
+    const { ctx } = ctxWith(products, {}, categories);
+    expect(ids(await storeCatalog(ctx))).toEqual(["top", "sub", "deep", "both", "free"]);
+    // Поиск идёт по тому же каталогу.
+    expect(ids(await storeCatalog(ctx, { q: "secret" }))).toEqual([]);
+  });
+
+  it("родительская категория включает товары всех своих подкатегорий", async () => {
+    const { ctx } = ctxWith(products, {}, categories);
+    expect(ids(await storeCatalog(ctx, { categoryId: "cakes" }))).toEqual([
+      "top",
+      "sub",
+      "deep",
+      "both",
+    ]);
+    expect(ids(await storeCatalog(ctx, { categoryId: "tiers" }))).toEqual(["sub", "deep"]);
+    expect(ids(await storeCatalog(ctx, { categoryId: "hidden" }))).toEqual([]);
+  });
+
+  it("витрина не показывает скрытые категории и подкатегории скрытых", async () => {
+    const { ctx } = ctxWith([], {}, categories);
+    const info = await storeInfo(ctx);
+    expect(info.categories.map((c) => c.id)).toEqual(["cakes", "tiers", "wedding"]);
   });
 });

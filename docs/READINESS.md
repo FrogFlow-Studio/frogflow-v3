@@ -4,15 +4,15 @@
 и `docs/readiness.json` — руками не правится. `npm test` падает, если сводка
 устарела, пункт описи назван неверно или указанного теста нет.
 
-**Готовность для первых клиентов: 72,4 %** — покрыто тестами v2
-533 из 736 нужных сейчас пунктов.
+**Готовность для первых клиентов: 72,8 %** — покрыто тестами v2
+536 из 736 нужных сейчас пунктов.
 
-**Путь заказа: 84,3 %** — 286 из 339
+**Путь заказа: 85,2 %** — 289 из 339
 (каталог, цена, оформление, оплата и чек, выдача; файлы — `ORDER_PATH` в скрипте).
 
 | всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |
 | ----- | ------- | --------------------- | ---- | ----- | ------------- |
-| 1125 | 533 | 43 | 203 | 33 | 356 |
+| 1125 | 536 | 43 | 200 | 33 | 356 |
 
 «Позже» — поведение нужно, но не магазинам, которые переезжают первыми
 (модуль ещё не перенесён). «Не нужно в v2» — поведение убрано или заменено;
@@ -86,11 +86,11 @@
 | `tests/loyalty.test.ts` | 7 | 7 | 0 | 0 | 0 | 100 % |
 | `tests/manual-order.test.ts` | 8 | 8 | 0 | 0 | 0 | 100 % |
 | `tests/mini-app-auth.test.ts` | 4 | 3 | 0 | 0 | 1 | 100 % |
-| `tests/mini-app-catalog.test.ts` | 13 | 2 | 7 | 1 | 3 | 22,2 % |
+| `tests/mini-app-catalog.test.ts` | 13 | 4 | 5 | 1 | 3 | 44,4 % |
 | `tests/mini-app-library.test.ts` | 5 | 2 | 3 | 0 | 0 | 40 % |
 | `tests/mini-app-rate-limit.test.ts` | 5 | 1 | 0 | 0 | 4 | 100 % |
 | `tests/mini-app-regressions.test.ts` | 27 | 10 | 2 | 0 | 15 | 83,3 % |
-| `tests/mini-app-related.test.ts` | 4 | 3 | 1 | 0 | 0 | 75 % |
+| `tests/mini-app-related.test.ts` | 4 | 4 | 0 | 0 | 0 | 100 % |
 | `tests/mini-app-text.test.ts` | 2 | 0 | 0 | 0 | 2 | — |
 | `tests/mini-app-validation.test.ts` | 4 | 1 | 0 | 0 | 3 | 100 % |
 | `tests/misc-retention.test.ts` | 3 | 1 | 2 | 0 | 0 | 33,3 % |
@@ -129,7 +129,7 @@
 | `tests/zernio-retry.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/zernio-webhook.test.ts` | 13 | 7 | 3 | 0 | 3 | 70 % |
 
-## Дыры (203)
+## Дыры (200)
 
 ### поломки v1
 
@@ -353,9 +353,7 @@
 
 ### `tests/mini-app-catalog.test.ts`
 
-- removes products that only belong to hidden categories — расхождение: storeCatalog (core/storefront/catalog.ts) не смотрит на categories.is_visible — товар только из скрытых категорий виден в каталоге, поиске и похожих
 - searches names, descriptions, variants and keywords across the full index — расхождение: поиск storeCatalog идёт по name/keywords/description, названия вариантов не ищутся (название, описание, ключевые слова — в catalog.test.ts › ищет по названию, описанию и ключевым словам без учёта регистра)
-- includes products from Mini App category subtrees — расхождение: storeCatalog фильтрует по одной категории (contains category_ids), товары подкатегорий в родительскую не попадают
 - shows lead time on physical products and hides it for digital — расхождение: на странице товара (routes/s.$slug.p.$id.tsx) срок изготовления показывается при любом leadTimeDays, в том числе у цифрового; у физического с 0 дней карточка пишет «Товар», а не «В наличии»; разметка в JSX без тестов
 - [Учителя-CRIT] hides language badges when the multi_language module is off — расхождение: StoreProduct.languages (core/storefront/catalog.ts) не учитывает модуль multi_language — языки файлов видны на странице товара и при выключенном модуле
 - filters materials by language and keeps chips for the unfiltered set — расхождение: фильтра каталога по языку материала на витрине v2 нет
@@ -371,10 +369,6 @@
 
 - filters catalog by material language and uses a two-column grid — расхождение: фильтра каталога по языку материала на витрине v2 нет
 - ships a purchased-materials library, sort chips and bottom tabs — расхождение: библиотека есть (/s/:slug/orders, miniAppOrdersFn), но сортировки каталога и нижних вкладок в v2 нет
-
-### `tests/mini-app-related.test.ts`
-
-- товар из скрытой категории не попадает в похожие — расхождение: storeCatalog не отсекает товары скрытых категорий, storeProductFn показывает их в похожих
 
 ### `tests/misc-retention.test.ts`
 
