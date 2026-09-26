@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildEvent, parseDsn, parseStack, reportError, resetErrorThrottle } from "./errors";
+import {
+  buildEvent,
+  parseDsn,
+  parseStack,
+  reportError,
+  resetErrorThrottle,
+  sendTestError,
+} from "./errors";
 
 const DSN = "https://abc123@o42.ingest.sentry.io/4507";
 
@@ -87,5 +94,23 @@ describe("reportError", () => {
     await expect(
       reportError(new Error("x"), { where: "t" }, { dsn: DSN, fetch: f as never }),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe("sendTestError", () => {
+  it("без DSN честно говорит, что учёт выключен", async () => {
+    expect(await sendTestError({ dsn: undefined })).toMatchObject({ ok: false });
+    expect(await sendTestError({ dsn: "oops" })).toMatchObject({ ok: false });
+  });
+
+  it("возвращает id события при приёме и код при отказе", async () => {
+    const ok = await sendTestError({ dsn: DSN, fetch: (async () => new Response("{}")) as never });
+    expect(ok).toMatchObject({ ok: true, status: 200 });
+    if (ok.ok) expect(ok.eventId).toMatch(/^[0-9a-f]{32}$/);
+    const denied = await sendTestError({
+      dsn: DSN,
+      fetch: (async () => new Response("", { status: 401 })) as never,
+    });
+    expect(denied).toMatchObject({ ok: false, status: 401 });
   });
 });

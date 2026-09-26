@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { CONSULTANT_LIMITS, addDaily, budgetBlock, parseDaily } from "./budget";
+import {
+  CONSULTANT_LIMITS,
+  CONSULTANT_LIMIT_MAX,
+  addDaily,
+  budgetBlock,
+  limitsFor,
+  parseDaily,
+} from "./budget";
 
 const D = "2026-09-26";
 
@@ -37,5 +44,34 @@ describe("дневной предел консультанта", () => {
       usd: 0.0123,
       calls: 1,
     });
+  });
+});
+
+describe("свой предел клиента (bots.settings.consultant_limits)", () => {
+  it("без настройки — общий предел платформы", () => {
+    expect(limitsFor(undefined)).toEqual(CONSULTANT_LIMITS);
+    expect(limitsFor({})).toEqual(CONSULTANT_LIMITS);
+  });
+
+  it("клиенту с большим потоком предел поднимается, незаданное остаётся общим", () => {
+    const l = limitsFor({ daily_usd: 40, daily_calls: null });
+    expect(l).toEqual({ ...CONSULTANT_LIMITS, dailyUsd: 40 });
+    const b = { date: D, usd: 10, calls: 0, tests: 0 };
+    expect(budgetBlock(b, "customer")).toMatch(/\$5\)/);
+    expect(budgetBlock(b, "customer", l)).toBeNull();
+    expect(budgetBlock({ ...b, usd: 40 }, "customer", l)).toMatch(/\$40\)/);
+  });
+
+  it("мусор и запредельные числа не отключают защиту", () => {
+    expect(
+      limitsFor({ daily_usd: -1, daily_calls: Number.NaN, daily_tests: "5" as never }),
+    ).toEqual(CONSULTANT_LIMITS);
+    expect(limitsFor({ daily_usd: 1e9 }).dailyUsd).toBe(CONSULTANT_LIMIT_MAX.dailyUsd);
+    expect(limitsFor({ daily_calls: 12.7 }).dailyCalls).toBe(12);
+  });
+
+  it("ноль — ИИ клиенту выключен", () => {
+    const l = limitsFor({ daily_usd: 0 });
+    expect(budgetBlock(parseDaily(null, D), "customer", l)).toMatch(/предел расходов/);
   });
 });

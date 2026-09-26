@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   operatorCredentialsFn,
   payoutRequisitesFn,
+  sendTestErrorFn,
   setOperatorCredentialsFn,
   setPayoutRequisitesFn,
 } from "@/app/operator/operator.functions";
@@ -38,6 +39,7 @@ function SettingsPage() {
       <PageTitle title="Настройки платформы" />
       <div className="grid gap-4 lg:grid-cols-2">
         <RequisitesCard requisites={cred.requisites} />
+        <ErrorTrackingCard />
         <Card title="Учётка оператора">
           <p className="mb-3 text-sm text-muted">
             Логин и пароль хранятся в базе, а не в переменных деплоя. Ими вы входите с главной
@@ -164,6 +166,36 @@ function RequisitesCard({ requisites }: { requisites: string }) {
         </div>
         <ErrorBox error={save.error} />
       </form>
+    </Card>
+  );
+}
+
+/** Учёт ошибок (src/lib/errors.ts): пробное событие в Sentry по кнопке. */
+function ErrorTrackingCard() {
+  const [result, setResult] = useState<Awaited<ReturnType<typeof sendTestErrorFn>> | null>(null);
+  const test = useAction(async () => setResult(await sendTestErrorFn()));
+  return (
+    <Card title="Учёт ошибок (Sentry)">
+      <p className="mb-3 text-sm text-muted">
+        Сбои вебхуков, кронов и сервера уходят в Sentry с клиентом и местом. Кнопка шлёт пробное
+        событие «Проверка учёта ошибок» — покупателей и клиентов оно не касается.
+      </p>
+      <div className="flex items-center gap-3">
+        <button
+          className="btn-secondary"
+          disabled={test.busy}
+          onClick={() => void test.run().catch(() => {})}
+        >
+          Отправить пробную ошибку
+        </button>
+        {result &&
+          (result.ok ? (
+            <Badge tone="ok">принято, id {result.eventId.slice(0, 8)}</Badge>
+          ) : (
+            <Badge tone="danger">{result.reason}</Badge>
+          ))}
+      </div>
+      <ErrorBox error={test.error} />
     </Card>
   );
 }

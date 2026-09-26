@@ -10,7 +10,7 @@ import { isConsultantVertical } from "@/core/verticals/registry";
 import { parseKnowledge, retrieveKnowledge, type KnowledgeDoc } from "./knowledge";
 import { parseProfile, type ConsultantProfile } from "./profile";
 import { buildSystemPrompt, cleanReply, isResetIntent } from "./prompt";
-import { addDaily, budgetBlock, parseDaily, today } from "./budget";
+import { addDaily, budgetBlock, limitsFor, parseDaily, today } from "./budget";
 
 /**
  * ИИ-консультант: отвечает покупателю по профилю бизнеса, базе знаний и
@@ -257,7 +257,7 @@ export async function runConsultant(
   // Предел на клиента — до вызова модели (core/consultant/budget).
   const kind = opts.dryRun ? "test" : "customer";
   const daily = parseDaily((await getSettings(ctx, [KEYS.daily]))[KEYS.daily], today());
-  const blocked = budgetBlock(daily, kind);
+  const blocked = budgetBlock(daily, kind, limitsFor(ctx.tenant.settings.consultant_limits));
   if (blocked) {
     if (opts.dryRun) throw new Error(blocked);
     await setSetting(ctx, KEYS.lastError, `${new Date().toISOString()} — ${blocked}`.slice(0, 500));

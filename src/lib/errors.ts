@@ -162,7 +162,9 @@ export async function reportError(e: unknown, c: ErrorContext, deps?: Deps): Pro
       body: envelope(event, new Date(now)),
       signal: AbortSignal.timeout(3000),
     }).then(
-      () => undefined,
+      (res) => {
+        if (!res.ok) console.warn(`[errors] Sentry ответил ${res.status} — отчёт не принят`);
+      },
       (x: unknown) => console.warn("[errors] отчёт в Sentry не ушёл:", String(x)),
     );
     if (!deps) {
@@ -177,5 +179,43 @@ export async function reportError(e: unknown, c: ErrorContext, deps?: Deps): Pro
     await send;
   } catch (x) {
     console.warn("[errors] отчёт не собран:", String(x));
+  }
+}
+
+export type TestErrorResult =
+  { ok: true; eventId: string; status: number } | { ok: false; reason: string; status?: number };
+
+/**
+ * Проверка из панели оператора: пробная ошибка уходит в Sentry сразу (без
+ * waitUntil и без ограничения частоты), чтобы увидеть ответ. Покупателей и
+ * клиентов не касается.
+ */
+export async function sendTestError(deps?: Deps): Promise<TestErrorResult> {
+  const d = deps ?? defaultDeps();
+  if (!d.dsn) return { ok: false, reason: "SENTRY_DSN не задан в окружении деплоя." };
+  const target = parseDsn(d.dsn);
+  if (!target) return { ok: false, reason: "SENTRY_DSN задан, но не похож на DSN Sentry." };
+  const now = new Date(d.now?.() ?? Date.now());
+  const event = buildEvent(
+    new Error("Проверка учёта ошибок из панели оператора"),
+    { where: "operator.test" },
+    { environment: d.environment, release: d.release, now },
+  );
+  event.level = "info";
+  try {
+    const res = await (d.fetch ?? fetch)(target.endpoint, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-sentry-envelope",
+        "x-sentry-auth": `Sentry sentry_version=7, sentry_key=${target.publicKey}, sentry_client=frogflow-v2/1`,
+      },
+      body: envelope(event, now),
+      signal: AbortSignal.timeout(5000),
+    });
+    return res.ok
+      ? { ok: true, eventId: event.event_id, status: res.status }
+      : { ok: false, status: res.status, reason: `Sentry ответил ${res.status}.` };
+  } catch (x) {
+    return { ok: false, reason: `Sentry недоступен: ${String(x)}` };
   }
 }

@@ -8,6 +8,7 @@ import {
   reinstallWebhookFn,
   setAddressingFn,
   setAdminCredentialsFn,
+  setConsultantLimitsFn,
   setModuleFn,
   setServedByFn,
   setStatusFn,
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/operator/_authed/clients/$botId")({
 });
 
 function ClientPage() {
-  const { client: c, events, webhook, migration } = Route.useLoaderData();
+  const { client: c, events, webhook, migration, consultant } = Route.useLoaderData();
   const router = useRouter();
   const navigate = useNavigate();
   const refresh = () => router.invalidate();
@@ -118,6 +119,7 @@ function ClientPage() {
           <AddressingCard c={c} onDone={refresh} />
           <ZernioCard c={c} onDone={refresh} />
           <MetaCard c={c} onDone={refresh} />
+          <ConsultantLimitsCard c={c} budget={consultant} onDone={refresh} />
           <MessageCard c={c} />
           <BillingCard c={c} />
           <HealthCard c={c} />
@@ -644,6 +646,113 @@ function MetaCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
         <button className="btn-secondary" disabled={save.busy}>
           Сохранить
         </button>
+        <ErrorBox error={save.error} />
+      </form>
+    </Card>
+  );
+}
+
+type CB = Awaited<ReturnType<typeof getClientFn>>["consultant"];
+type Limits = { dailyUsd: number | null; dailyCalls: number | null; dailyTests: number | null };
+
+/** Дневной предел ИИ-консультанта: общий по умолчанию, клиенту с большим потоком — свой. */
+function ConsultantLimitsCard({
+  c,
+  budget,
+  onDone,
+}: {
+  c: C;
+  budget: CB;
+  onDone: () => Promise<void>;
+}) {
+  const save = useAction(async (limits: Limits | null) => {
+    await setConsultantLimitsFn({ data: { botId: c.id, limits } });
+    await onDone();
+  });
+  const { limits, defaults, max, today: t } = budget;
+  const num = (f: FormData, k: string) => {
+    const v = String(f.get(k) ?? "")
+      .trim()
+      .replace(",", ".");
+    return v === "" ? null : Number(v);
+  };
+  return (
+    <Card title="Предел ИИ-консультанта в день">
+      <p className="mb-3 text-sm text-muted">
+        Сегодня (UTC): ${t.usd.toFixed(2)} из ${limits.dailyUsd}, ответов {t.calls} из{" "}
+        {limits.dailyCalls}, проб {t.tests} из {limits.dailyTests}.{" "}
+        {budget.custom ? <Badge tone="warn">свой предел</Badge> : <Badge>общий предел</Badge>}
+      </p>
+      <form
+        className="space-y-3"
+        onSubmit={(e: FormEvent<HTMLFormElement>) => {
+          e.preventDefault();
+          const f = new FormData(e.currentTarget);
+          void save
+            .run({
+              dailyUsd: num(f, "dailyUsd"),
+              dailyCalls: num(f, "dailyCalls"),
+              dailyTests: num(f, "dailyTests"),
+            })
+            .catch(() => {});
+        }}
+      >
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label="Расход, $" hint={`общий ${defaults.dailyUsd}, до ${max.dailyUsd}`}>
+            <input
+              className="input"
+              name="dailyUsd"
+              type="number"
+              min={0}
+              max={max.dailyUsd}
+              step="0.5"
+              defaultValue={budget.custom ? limits.dailyUsd : ""}
+              placeholder={String(defaults.dailyUsd)}
+            />
+          </Field>
+          <Field label="Ответов" hint={`общий ${defaults.dailyCalls}`}>
+            <input
+              className="input"
+              name="dailyCalls"
+              type="number"
+              min={0}
+              max={max.dailyCalls}
+              step="1"
+              defaultValue={budget.custom ? limits.dailyCalls : ""}
+              placeholder={String(defaults.dailyCalls)}
+            />
+          </Field>
+          <Field label="Проб из админки" hint={`общий ${defaults.dailyTests}`}>
+            <input
+              className="input"
+              name="dailyTests"
+              type="number"
+              min={0}
+              max={max.dailyTests}
+              step="1"
+              defaultValue={budget.custom ? limits.dailyTests : ""}
+              placeholder={String(defaults.dailyTests)}
+            />
+          </Field>
+        </div>
+        <p className="text-xs text-muted">
+          Пустое поле — общий предел. 0 — ИИ клиенту выключен. Расход идёт с ключа платформы.
+        </p>
+        <div className="flex gap-2">
+          <button className="btn-secondary" disabled={save.busy}>
+            Сохранить предел
+          </button>
+          {budget.custom && (
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled={save.busy}
+              onClick={() => void save.run(null).catch(() => {})}
+            >
+              Вернуть общий
+            </button>
+          )}
+        </div>
         <ErrorBox error={save.error} />
       </form>
     </Card>

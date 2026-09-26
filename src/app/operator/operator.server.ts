@@ -880,3 +880,39 @@ export async function listOwnerBroadcasts(limit = 20): Promise<OwnerBroadcastVie
     results: Array.isArray(r.results) ? (r.results as unknown as OwnerDelivery[]) : [],
   }));
 }
+
+/** Дневной предел ИИ-консультанта клиента: свой или общий, и сколько потрачено сегодня. */
+export async function consultantBudget(botId: string) {
+  const { CONSULTANT_LIMITS, CONSULTANT_LIMIT_MAX, limitsFor, parseDaily, today } =
+    await import("@/core/consultant/budget");
+  const t = await requireTenant({ by: "id", value: botId });
+  const { data } = await serviceDb()
+    .from("app_settings")
+    .select("value")
+    .eq("bot_id", botId)
+    .eq("key", "consultant_daily")
+    .maybeSingle();
+  const custom = t.settings.consultant_limits ?? null;
+  return {
+    limits: limitsFor(custom),
+    custom: Boolean(
+      custom && [custom.daily_usd, custom.daily_calls, custom.daily_tests].some((v) => v != null),
+    ),
+    defaults: CONSULTANT_LIMITS,
+    max: CONSULTANT_LIMIT_MAX,
+    today: parseDaily(data?.value, today()),
+  };
+}
+
+/** Свой предел клиента; null — вернуть общий предел платформы. */
+export async function setConsultantLimits(
+  botId: string,
+  limits: { dailyUsd: number | null; dailyCalls: number | null; dailyTests: number | null } | null,
+  actor = "operator",
+) {
+  const value = limits
+    ? { daily_usd: limits.dailyUsd, daily_calls: limits.dailyCalls, daily_tests: limits.dailyTests }
+    : null;
+  await patchTenantSettings(botId, { consultant_limits: value });
+  await logEvent(botId, "meta", { consultant_limits: value }, actor);
+}

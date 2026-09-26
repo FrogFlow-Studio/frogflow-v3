@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { CONSULTANT_LIMIT_MAX } from "@/core/consultant/budget";
 import { MODULE_KEYS } from "@/core/modules/registry";
 import { VERTICAL_KEYS } from "@/core/verticals/registry";
 
@@ -66,7 +67,7 @@ export const getClientFn = createServerFn({ method: "GET" })
     await guard();
     const m = await impl();
     const { preflight } = await import("./migration.server");
-    const [client, events, webhook, migration] = await Promise.all([
+    const [client, events, webhook, migration, consultant] = await Promise.all([
       m.getClient(data.botId),
       m.listEvents(data.botId),
       m.webhookState(data.botId),
@@ -81,8 +82,9 @@ export const getClientFn = createServerFn({ method: "GET" })
           },
         ],
       })),
+      m.consultantBudget(data.botId),
     ]);
-    return { client, events, webhook, migration };
+    return { client, events, webhook, migration, consultant };
   });
 
 export const updateClientMetaFn = createServerFn({ method: "POST" })
@@ -537,3 +539,34 @@ export const recordHealthNowFn = createServerFn({ method: "POST" })
     await guard();
     return (await import("./health.server")).recordHealthSnapshots(data.botId);
   });
+
+/** Дневной предел ИИ-консультанта клиенту с большим потоком; null — общий предел. */
+export const setConsultantLimitsFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => {
+    const n = (max: number, int: boolean) =>
+      (int ? z.number().int() : z.number()).min(0).max(max).nullable();
+    return z
+      .object({
+        botId,
+        limits: z
+          .object({
+            dailyUsd: n(CONSULTANT_LIMIT_MAX.dailyUsd, false),
+            dailyCalls: n(CONSULTANT_LIMIT_MAX.dailyCalls, true),
+            dailyTests: n(CONSULTANT_LIMIT_MAX.dailyTests, true),
+          })
+          .nullable(),
+      })
+      .parse(d);
+  })
+  .handler(async ({ data }) => {
+    await guard();
+    await (await impl()).setConsultantLimits(data.botId, data.limits, await actor());
+    return { ok: true };
+  });
+
+/** Пробная ошибка в Sentry — проверить, что SENTRY_DSN рабочий. */
+export const sendTestErrorFn = createServerFn({ method: "POST" }).handler(async () => {
+  await guard();
+  const { sendTestError } = await import("@/lib/errors");
+  return sendTestError();
+});

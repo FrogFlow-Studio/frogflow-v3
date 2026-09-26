@@ -1,6 +1,7 @@
 import type { ModuleKey } from "@/core/modules/registry";
 import type { VerticalKey } from "@/core/verticals/registry";
 import type { Locale } from "@/core/i18n/locale";
+import type { ConsultantLimitsSetting } from "@/core/consultant/budget";
 
 export type BotStatus = "active" | "paused" | "suspended";
 
@@ -48,6 +49,11 @@ export type TenantSettings = {
   };
   /** Переключатель миграции: пока v1 обслуживает клиента, v2 отвечает 409 на его вебхуки. */
   served_by?: "v1" | "v2";
+  /**
+   * Свой дневной предел ИИ-консультанта (core/consultant/budget). Нет или
+   * null — общий предел платформы. Меняет оператор в карточке клиента.
+   */
+  consultant_limits?: ConsultantLimitsSetting | null;
   /** Поведение при неоплате подписки (те же ключи, что в v1; читает core/billing/subscription). */
   on_overdue?: "warn" | "suspend";
   warn_days_before?: number;
