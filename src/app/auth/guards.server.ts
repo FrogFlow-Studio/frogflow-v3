@@ -1,4 +1,12 @@
 import { appSession, credentialStamp } from "./session.server";
+import { isSessionId, sessionFresh } from "./session-id";
+import { isSessionRevoked } from "./revocation.server";
+
+/** Номер входа есть, срок не вышел, при выходе не отозван. Cookie без номера (до отзыва) — нет. */
+async function sessionAlive(sid: unknown, iat: unknown): Promise<boolean> {
+  if (!isSessionId(sid) || !sessionFresh(iat)) return false;
+  return !(await isSessionRevoked(sid));
+}
 import { requireTenant, tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
 import { servedByV2 } from "@/core/tenant/directory";
 import { loginInTenant, roleAllows, type AdminRole } from "@/core/auth/roles";
@@ -17,6 +25,8 @@ export class Unauthorized extends Error {
 export async function requireOperator(): Promise<void> {
   const s = await appSession();
   if (s.data.operator !== true || !s.data.operatorStamp) throw new Unauthorized("operator");
+  if (!(await sessionAlive(s.data.operatorSid, s.data.operatorIat)))
+    throw new Unauthorized("operator");
   const { operatorStamp } = await import("@/app/operator/credentials.server");
   if (s.data.operatorStamp !== (await operatorStamp())) throw new Unauthorized("operator");
 }
@@ -33,6 +43,7 @@ async function currentAdmin(): Promise<CurrentAdmin> {
   const s = await appSession();
   const a = s.data.admin;
   if (!a?.botId || !a.username || !a.stamp) throw new Unauthorized("admin");
+  if (!(await sessionAlive(a.sid, a.iat))) throw new Unauthorized("admin");
   const tenant = await requireTenant({ by: "id", value: a.botId });
   // Архив или клиент прежней платформы (см. servedByV2) — сессия недействительна.
   if (tenant.archived || !servedByV2(tenant)) throw new Unauthorized("admin");

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { useSession } from "@tanstack/react-start/server";
 import { env } from "@/config/env";
 import type { AdminRole } from "@/core/auth/roles";
+import { SESSION_MAX_AGE_S } from "./session-id";
 
 /**
  * Одна cookie на всю платформу. Оператор и продавец — разные роли в ней:
@@ -12,11 +13,22 @@ export type AppSession = {
   operator?: boolean;
   /** Отпечаток учётки оператора на момент входа — см. credentialStamp. */
   operatorStamp?: string;
+  /** Номер и время входа оператора — для отзыва при выходе (session-id.ts). */
+  operatorSid?: string;
+  operatorIat?: number;
   /**
    * role в cookie — только подсказка интерфейсу: права каждый раз берутся из
    * bots.settings.admin (guards.server). stamp — отпечаток хеша пароля.
    */
-  admin?: { botId: string; username: string; role?: AdminRole; stamp?: string };
+  admin?: {
+    botId: string;
+    username: string;
+    role?: AdminRole;
+    stamp?: string;
+    /** Номер и время входа — для отзыва при выходе (session-id.ts). */
+    sid?: string;
+    iat?: number;
+  };
 };
 
 /**
@@ -35,7 +47,7 @@ export function sessionConfig() {
   return {
     password: env().SESSION_SECRET,
     name: "ff-session",
-    maxAge: 60 * 60 * 24 * 14,
+    maxAge: SESSION_MAX_AGE_S,
     cookie: { httpOnly: true, secure: true, sameSite: "lax" as const, path: "/" },
   };
 }

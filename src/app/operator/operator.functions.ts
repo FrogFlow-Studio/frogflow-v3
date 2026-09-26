@@ -37,14 +37,29 @@ export const operatorLogin = createServerFn({ method: "POST" })
     await recordLogin("operator", ip, ok, data.username);
     if (!ok) return { ok: false as const };
     const s = await appSession();
-    await s.update({ operator: true, operatorStamp: (await operatorStamp()) ?? undefined });
+    const { operatorSessionMark } = await import("@/app/auth/session-id");
+    await s.update({
+      operator: true,
+      operatorStamp: (await operatorStamp()) ?? undefined,
+      ...operatorSessionMark(),
+    });
     return { ok: true as const };
   });
 
 export const operatorLogout = createServerFn({ method: "POST" }).handler(async () => {
   const { appSession } = await import("@/app/auth/session.server");
   const s = await appSession();
-  await s.update({ operator: false, operatorStamp: undefined });
+  // Сначала отзыв, потом стирание: скопированная cookie после выхода не работает.
+  if (s.data.operatorSid) {
+    const { revokeSession } = await import("@/app/auth/revocation.server");
+    await revokeSession(s.data.operatorSid, s.data.operatorIat);
+  }
+  await s.update({
+    operator: false,
+    operatorStamp: undefined,
+    operatorSid: undefined,
+    operatorIat: undefined,
+  });
   return { ok: true };
 });
 

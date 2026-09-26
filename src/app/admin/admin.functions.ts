@@ -24,6 +24,7 @@ export const adminLogin = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { resolveAdminLogin, checkAdminPassword } = await import("./admin.server");
     const { appSession } = await import("@/app/auth/session.server");
+    const { issueSession, operatorSessionMark } = await import("@/app/auth/session-id");
     const { clientIp, loginLocked, recordLogin, loginDelay } =
       await import("@/app/auth/login-guard.server");
     const ip = clientIp();
@@ -43,6 +44,7 @@ export const adminLogin = createServerFn({ method: "POST" })
         ).update({
           operator: true,
           operatorStamp: (await operatorStamp()) ?? undefined,
+          ...operatorSessionMark(),
         });
         return { ok: true as const, role: "operator" as const };
       }
@@ -73,6 +75,7 @@ export const adminLogin = createServerFn({ method: "POST" })
         username,
         role: login.role,
         stamp: adminStamp(t.id, username, login.passwordHash),
+        ...issueSession(),
       },
     });
     return { ok: true as const, role: "admin" as const };
@@ -80,7 +83,14 @@ export const adminLogin = createServerFn({ method: "POST" })
 
 export const adminLogout = createServerFn({ method: "POST" }).handler(async () => {
   const { appSession } = await import("@/app/auth/session.server");
-  await (await appSession()).update({ admin: undefined });
+  const s = await appSession();
+  const a = s.data.admin;
+  // Сначала отзыв, потом стирание: скопированная cookie после выхода не работает.
+  if (a?.sid) {
+    const { revokeSession } = await import("@/app/auth/revocation.server");
+    await revokeSession(a.sid, a.iat);
+  }
+  await s.update({ admin: undefined });
   return { ok: true };
 });
 

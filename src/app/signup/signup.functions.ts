@@ -63,6 +63,7 @@ export const signupFn = createServerFn({ method: "POST" })
         username,
         role: "owner",
         stamp: adminStamp(id, username, login?.passwordHash),
+        ...(await import("@/app/auth/session-id")).issueSession(),
       },
     });
     return { ok: true as const, botId: id };
