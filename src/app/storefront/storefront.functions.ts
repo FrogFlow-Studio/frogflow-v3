@@ -5,6 +5,7 @@ import { z } from "zod";
 import { shownError } from "@/lib/shown-error";
 import type { Locale } from "@/core/i18n/locale";
 import type { StorefrontPart } from "@/core/storefront/access";
+import type { OrderItemRow, OrderWithItems } from "@/core/orders/orders";
 
 /**
  * Витрина и Mini App: публичные серверные функции. Арендатор — по slug из
@@ -135,8 +136,24 @@ export const miniAppCheckoutFn = createServerFn({ method: "POST" })
  * выданные позиции отдаются подписанными ссылками на 7 дней — то, что в v1
  * было отдельными экранами Mini App.
  */
+/**
+ * Файлов библиотеки за один запрос. На каждый — водяной знак (скачать PDF до
+ * ~21 МБ, проштамповать, загрузить копию: 2–6 с, у заказов v1 копий ещё нет)
+ * и подпись ссылки. Считаем файлы, а не товары: у AATeach в товаре два языка.
+ * Товар не режется: если один товар больше лимита, он уходит один на страницу.
+ */
+export const LIBRARY_FILES = 8;
+
 export const miniAppOrdersFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) => z.object({ slug, initData: z.string().min(1).max(8000) }).parse(d))
+  .validator((d: unknown) =>
+    z
+      .object({
+        slug,
+        initData: z.string().min(1).max(8000),
+        libraryOffset: z.number().int().min(0).max(100_000).optional(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const ctx = await shopCtx(data.slug, "mini_app");
     const t = await shopT(ctx);
@@ -150,31 +167,61 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
       throw shownError(t("error.tooManyRequests"));
     const { getCustomerByTelegramId } = await import("@/core/customers/customers");
     const customer = await getCustomerByTelegramId(ctx, v.user.id);
-    if (!customer) return { orders: [], library: [] };
-    const { listCustomerOrders, itemLanguages, itemMaterials, signedFileUrl, displayNo } =
-      await import("@/core/orders/orders");
+    if (!customer) return { orders: [], library: [], libraryNext: null };
+    const {
+      listCustomerOrders,
+      listDeliveredOrders,
+      itemLanguages,
+      itemMaterials,
+      signedFileUrl,
+      displayNo,
+    } = await import("@/core/orders/orders");
     const { parseDeliveredLanguages } = await import("@/core/catalog/materials");
     const { protectMaterials } = await import("@/core/delivery/watermark.server");
-    const orders = await listCustomerOrders(ctx, customer, 30);
-    const library: Array<{ orderNo: number; item: string; name: string; url: string }> = [];
-    for (const o of orders) {
-      if (o.status !== "delivered") continue;
+    const [orders, deliveredOrders] = await Promise.all([
+      listCustomerOrders(ctx, customer, 30),
+      listDeliveredOrders(ctx, customer),
+    ]);
+    // Один товар — одна запись из самого свежего заказа (как в v1): повторная
+    // покупка того же листа не дублирует его в библиотеке. Отбор — без походов
+    // в Storage; тяжёлая часть — только для страницы.
+    const seen = new Set<string>();
+    const unique: Array<{ o: OrderWithItems; item: OrderItemRow }> = [];
+    for (const o of deliveredOrders) {
+      if (o.fulfillment_kind === "physical") continue;
       for (const item of o.order_items ?? []) {
-        const delivered = parseDeliveredLanguages(item.delivered_language);
-        const langs = itemLanguages(item).filter((l) => delivered.size === 0 || delivered.has(l));
-        for (const l of langs)
-          for (const mat of await protectMaterials(ctx, o, itemMaterials(item, l))) {
-            const url = mat.url ?? (mat.path ? await signedFileUrl(mat.path, 7 * 24 * 3600) : null);
-            if (url)
-              library.push({
-                orderNo: displayNo(o),
-                item: item.name_snapshot,
-                name: mat.name ?? item.name_snapshot,
-                url,
-              });
-          }
+        if (item.product_id) {
+          if (seen.has(item.product_id)) continue;
+          seen.add(item.product_id);
+        }
+        unique.push({ o, item });
       }
     }
+    const offset = data.libraryOffset ?? 0;
+    const library: Array<{ orderNo: number; item: string; name: string; url: string }> = [];
+    let files = 0;
+    let at = offset;
+    for (; at < unique.length; at++) {
+      const { o, item } = unique[at]!;
+      const got = parseDeliveredLanguages(item.delivered_language);
+      const langs = itemLanguages(item).filter((l) => got.size === 0 || got.has(l));
+      const mats = langs.map((l) => itemMaterials(item, l));
+      const count = mats.reduce((n, m) => n + m.length, 0);
+      if (files > 0 && files + count > LIBRARY_FILES) break;
+      files += count;
+      for (const m of mats)
+        for (const mat of await protectMaterials(ctx, o, m)) {
+          const url = mat.url ?? (mat.path ? await signedFileUrl(mat.path, 7 * 24 * 3600) : null);
+          if (url)
+            library.push({
+              orderNo: displayNo(o),
+              item: item.name_snapshot,
+              name: mat.name ?? item.name_snapshot,
+              url,
+            });
+        }
+    }
+    const libraryNext = at < unique.length ? at : null;
     return {
       orders: orders.map((o) => ({
         id: o.id,
@@ -186,6 +233,7 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
         items: (o.order_items ?? []).map((i) => ({ name: i.name_snapshot, qty: i.quantity })),
       })),
       library,
+      libraryNext,
     };
   });
 

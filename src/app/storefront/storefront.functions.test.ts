@@ -33,19 +33,35 @@ vi.mock("@/core/tenant/resolve.server", () => ({
   resolveTenant: async () => ctx.tenant,
   tenantContext: () => ctx,
 }));
+/** Сколько ссылок подписано и сколько раз звали водяной знак — это и есть нагрузка библиотеки. */
+const heavy = { signed: 0, protect: 0 };
 vi.mock("@/core/db/client.server", () => ({
   serviceDb: () => ({
     storage: {
       from: () => ({
-        createSignedUrl: async (key: string) => ({ data: { signedUrl: `https://s.test/${key}` } }),
+        createSignedUrl: async (key: string) => {
+          heavy.signed++;
+          return { data: { signedUrl: `https://s.test/${key}` } };
+        },
       }),
     },
   }),
 }));
+vi.mock("@/core/delivery/watermark.server", async (orig) => {
+  const real = await orig<typeof import("@/core/delivery/watermark.server")>();
+  return {
+    ...real,
+    protectMaterials: (...a: Parameters<typeof real.protectMaterials>) => {
+      heavy.protect++;
+      return real.protectMaterials(...a);
+    },
+  };
+});
 
 const { storeProductFn, miniAppOrdersFn, miniAppCheckoutFn } =
   await import("./storefront.functions");
 const { MINI_APP_BUDGETS } = await import("@/core/storefront/rate-limit");
+const { LIBRARY_FILES } = await import("./storefront.functions");
 
 type Row = Record<string, unknown>;
 
@@ -221,16 +237,95 @@ describe("miniAppOrdersFn: «Мои материалы»", () => {
     ]);
   });
 
+  const sheet = (product: string, file: string): Row => ({
+    product_id: product,
+    name_snapshot: `Лист ${product}`,
+    quantity: 1,
+    material_files_by_lang: { ru: [{ path: `${BOT}/${file}`, name: file, url: null }] },
+  });
+
+  it("товар из заказа старше последних 30 не пропадает: библиотека листается страницами", async () => {
+    const orders = [order(1, "digital", [sheet("old", "old.pdf")])];
+    for (let i = 2; i <= 45; i++) orders.push(order(i, "digital", [sheet(`p${i}`, `p${i}.pdf`)]));
+    // created_at у order() — «2026-09-(10+id)»: 45 дней не влезут, даём свои даты.
+    orders.forEach((o, i) => (o.created_at = new Date(Date.UTC(2026, 0, 1 + i)).toISOString()));
+    withOrders(orders);
+    const page = async (libraryOffset?: number) => {
+      heavy.signed = heavy.protect = 0;
+      const r = await miniAppOrdersFn({
+        data: { slug: "shop", initData: initData(TG), libraryOffset },
+      });
+      // Водяной знак и подпись — только для товаров этой страницы, не для всей истории.
+      expect(heavy.protect).toBeLessThanOrEqual(LIBRARY_FILES);
+      expect(heavy.signed).toBeLessThanOrEqual(LIBRARY_FILES);
+      return r;
+    };
+    const first = await page();
+    expect(first.orders).toHaveLength(30);
+    expect(first.library[0]).toMatchObject({ orderNo: 45 });
+    // Листаем до конца: каждый товар ровно один раз, самый старый — последним.
+    const all = [...first.library];
+    let next = first.libraryNext;
+    while (next != null) {
+      const r = await page(next);
+      all.push(...r.library);
+      next = r.libraryNext;
+    }
+    expect(all).toHaveLength(45);
+    expect(all.at(-1)).toMatchObject({ orderNo: 1, name: "old.pdf" });
+  });
+
+  it("товары с файлами на двух языках: за запрос не больше LIBRARY_FILES файлов", async () => {
+    // Как у AATeach: в товаре ru и kk. 20 товаров × 2 файла — это 40 штамповок,
+    // каждая со скачиванием и загрузкой до 21 МБ: не уложится в лимит функции.
+    const two = (product: string): Row => ({
+      product_id: product,
+      name_snapshot: `Лист ${product}`,
+      quantity: 1,
+      material_files_by_lang: {
+        ru: [{ path: `${BOT}/${product}-ru.pdf`, name: `${product}-ru.pdf`, url: null }],
+        kk: [{ path: `${BOT}/${product}-kk.pdf`, name: `${product}-kk.pdf`, url: null }],
+      },
+    });
+    const orders: Row[] = [];
+    for (let i = 1; i <= 10; i++) orders.push(order(i, "digital", [two(`b${i}`)]));
+    withOrders(orders);
+    heavy.signed = 0;
+    const r = await miniAppOrdersFn({ data: { slug: "shop", initData: initData(TG) } });
+    expect(heavy.signed).toBeLessThanOrEqual(LIBRARY_FILES);
+    expect(r.library).toHaveLength(LIBRARY_FILES);
+    // Товар не режется пополам: оба языка одного товара — на одной странице.
+    expect(r.libraryNext).toBe(LIBRARY_FILES / 2);
+    const next = await miniAppOrdersFn({
+      data: { slug: "shop", initData: initData(TG), libraryOffset: r.libraryNext! },
+    });
+    expect(next.library[0]!.name).toBe(`b${10 - LIBRARY_FILES / 2}-ru.pdf`);
+  });
+
+  it("дедуплицирует по товару, оставляя самый свежий заказ", async () => {
+    withOrders([
+      order(1, "digital", [sheet("same", "v1.pdf")]),
+      order(2, "digital", [sheet("same", "v2.pdf"), sheet("other", "o.pdf")]),
+    ]);
+    const r = await miniAppOrdersFn({ data: { slug: "shop", initData: initData(TG) } });
+    expect(r.library.map((l) => [l.orderNo, l.name])).toEqual([
+      [2, "v2.pdf"],
+      [2, "o.pdf"],
+    ]);
+  });
+
   it("нет покупателя или заказов — пустая библиотека, без похода за товарами", async () => {
     tenantWith(fakeDb());
     expect(await miniAppOrdersFn({ data: { slug: "shop", initData: initData(TG) } })).toEqual({
       orders: [],
       library: [],
+      libraryNext: null,
     });
     withOrders([]);
     expect(await miniAppOrdersFn({ data: { slug: "shop", initData: initData(TG) } })).toEqual({
       orders: [],
       library: [],
+      libraryNext: null,
     });
     expect(tables).not.toContain("products");
   });
@@ -243,7 +338,7 @@ describe("лимит частоты Mini App", () => {
       miniAppOrdersFn({ data: { slug: "shop", initData: initData(tg) } });
     for (let i = 0; i < MINI_APP_BUDGETS.orders.limit; i++) await call(777);
     await expect(call(777)).rejects.toThrow("Слишком много запросов");
-    await expect(call(778)).resolves.toEqual({ orders: [], library: [] });
+    await expect(call(778)).resolves.toEqual({ orders: [], library: [], libraryNext: null });
   });
 
   it("оформление: пачка запросов упирается в лимит до похода в базу и в Telegram", async () => {

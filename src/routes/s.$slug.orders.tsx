@@ -23,10 +23,32 @@ function OrdersPage() {
     const timer = setTimeout(() => setChecked(true), 300);
     return () => clearTimeout(timer);
   }, []);
+  const [loadingMore, setLoadingMore] = useState(false);
   useEffect(() => {
     if (!wa) return;
     miniAppOrdersFn({ data: { slug, initData: wa.initData } }).then(setData, setError);
   }, [wa, slug]);
+  // Библиотека листается страницами: у постоянного покупателя вся история за
+  // раз не соберётся (водяной знак и подпись ссылки на каждый файл).
+  const loadMore = () => {
+    if (!wa || !data?.libraryNext) return;
+    setLoadingMore(true);
+    miniAppOrdersFn({ data: { slug, initData: wa.initData, libraryOffset: data.libraryNext } })
+      .then(
+        (next) =>
+          setData((cur) =>
+            cur
+              ? {
+                  ...cur,
+                  library: [...cur.library, ...next.library],
+                  libraryNext: next.libraryNext,
+                }
+              : next,
+          ),
+        setError,
+      )
+      .finally(() => setLoadingMore(false));
+  };
   if (!wa) {
     if (!checked) return null;
     return (
@@ -81,6 +103,11 @@ function OrdersPage() {
               </li>
             ))}
           </ul>
+          {data.libraryNext != null && (
+            <button className="btn-secondary mt-3 w-full" disabled={loadingMore} onClick={loadMore}>
+              {t("orders.libraryMore")}
+            </button>
+          )}
         </section>
       )}
     </div>

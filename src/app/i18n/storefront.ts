@@ -84,6 +84,7 @@ const ru = {
   "orders.onlyTelegram": "Заказы и материалы видны внутри Telegram — откройте магазин через бота.",
   "orders.empty": "Заказов пока нет.",
   "orders.library": "Мои материалы",
+  "orders.libraryMore": "Показать ещё",
   "orders.libraryHint":
     "Ссылки действуют 7 дней; повторно файлы можно получить в боте из «Мои заказы».",
   "orders.status.awaiting_payment": "ждёт оплаты",
@@ -191,6 +192,7 @@ const kk: Dict = {
     "Тапсырыстар мен материалдар Telegram ішінде көрінеді — дүкенді бот арқылы ашыңыз.",
   "orders.empty": "Тапсырыстар әзірге жоқ.",
   "orders.library": "Менің материалдарым",
+  "orders.libraryMore": "Тағы көрсету",
   "orders.libraryHint":
     "Сілтемелер 7 күн жарамды; файлдарды қайта боттағы «Менің тапсырыстарым» бөлімінен алуға болады.",
   "orders.status.awaiting_payment": "төлемді күтеді",
@@ -290,6 +292,7 @@ const en: Dict = {
     "Orders and materials are visible inside Telegram — open the shop from the bot.",
   "orders.empty": "No orders yet.",
   "orders.library": "My materials",
+  "orders.libraryMore": "Show more",
   "orders.libraryHint":
     "Links work for 7 days; you can get the files again in the bot under “My orders”.",
   "orders.status.awaiting_payment": "awaiting payment",
@@ -389,6 +392,7 @@ const uz: Dict = {
     "Buyurtmalar va materiallar Telegram ichida ko‘rinadi — do‘konni bot orqali oching.",
   "orders.empty": "Hozircha buyurtmalar yo‘q.",
   "orders.library": "Materiallarim",
+  "orders.libraryMore": "Yana ko‘rsatish",
   "orders.libraryHint":
     "Havolalar 7 kun ishlaydi; fayllarni yana botdagi «Buyurtmalarim» bo‘limidan olish mumkin.",
   "orders.status.awaiting_payment": "to‘lov kutilmoqda",

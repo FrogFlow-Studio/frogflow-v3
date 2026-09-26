@@ -422,6 +422,32 @@ export async function listCustomerOrders(
 }
 
 /**
+ * Все выданные заказы покупателя, новые первыми, — для библиотеки «Мои
+ * материалы». Без ограничения по числу: в v1 выборка из последних 80 заказов
+ * теряла товары, купленные только раньше. Постранично (PostgREST режет на 1000).
+ */
+export async function listDeliveredOrders(
+  ctx: TenantContext,
+  customer: Customer,
+): Promise<OrderWithItems[]> {
+  const { pageAll } = await import("@/core/db/page");
+  return pageAll<OrderWithItems>(
+    (from, to) =>
+      ctx.db
+        .from("orders")
+        .select("*, order_items(*)")
+        .eq("telegram_id", customer.telegramId)
+        .eq("status", "delivered")
+        .order("created_at", { ascending: false })
+        .range(from, to) as unknown as PromiseLike<{
+        data: OrderWithItems[] | null;
+        error: { message: string } | null;
+      }>,
+    "выданные заказы покупателя",
+  );
+}
+
+/**
  * «Повторить заказ»: те же товары снова в корзину — по одному вызову на
  * единицу количества (addToCart считает остаток и лимиты). Снятых с продажи
  * товаров не будет; возвращает число добавленных единиц.

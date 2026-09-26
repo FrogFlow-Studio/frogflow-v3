@@ -54,6 +54,7 @@ class Query implements PromiseLike<Result> {
   private returning = false;
   private headCount = false;
   private max = Infinity;
+  private skip = 0;
   private sort: { col: string; asc: boolean } | null = null;
   private one: "single" | "maybe" | null = null;
 
@@ -139,6 +140,12 @@ class Query implements PromiseLike<Result> {
     this.max = n;
     return this;
   }
+  /** Страница строк from..to включительно, как .range() у PostgREST. */
+  range(from: number, to: number) {
+    this.skip = from;
+    this.max = to - from + 1;
+    return this;
+  }
   single() {
     this.one = "single";
     return this;
@@ -165,7 +172,7 @@ class Query implements PromiseLike<Result> {
         (a[col] as string) < (b[col] as string) ? (asc ? -1 : 1) : asc ? 1 : -1,
       );
     }
-    return out.slice(0, this.max);
+    return out.slice(this.skip, this.skip + this.max);
   }
 
   private conflict(candidate: Row, except?: Row): boolean {
