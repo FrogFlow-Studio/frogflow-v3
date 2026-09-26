@@ -195,6 +195,42 @@ describe("каталог WhatsApp: постбэк CAT:<раздел>:<смеще
   });
 });
 
+describe("каталог WhatsApp: навигация (опись v1: tests/whatsapp-catalog.test.ts)", () => {
+  it("«Назад» из категории ведёт к её родителю, а не к ней самой", async () => {
+    const { db, send, sent } = setup();
+    db.tables.categories = [
+      category("a", null, 1),
+      category("a1", "a", 1),
+      category("a1x", "a1", 1),
+    ];
+    await send({ postbackPayload: "CAT:a1:0" });
+    const ids = rows(sent).map((r) => r.id);
+    expect(ids).toContain("CAT:a:0");
+    expect(ids).not.toContain("CAT:a1:0");
+    // У раздела верхнего уровня родителя нет — «Назад» ведёт в корень.
+    await send({ postbackPayload: "CAT:a:0" });
+    expect(rows(sent).map((r) => r.id)).toContain("CATALOG");
+  });
+
+  it("отсутствующее или битое смещение — это ноль, а не NaN", async () => {
+    for (const payload of ["CAT:a", "CAT:a:абв", "CAT:a:-5"]) {
+      const { db, send, sent } = setup();
+      db.tables.categories = [
+        category("a", null, 1),
+        category("c0", "a", 1),
+        category("c1", "a", 2),
+      ];
+      await send({ postbackPayload: payload });
+      expect(
+        rows(sent)
+          .map((r) => r.id)
+          .slice(0, 2),
+        payload,
+      ).toEqual(["CAT:c0:0", "CAT:c1:0"]);
+    }
+  });
+});
+
 describe("каталог WhatsApp: описание строки товара", () => {
   it("короткому названию описание — цена, и цена есть у длинного названия", async () => {
     const { db, send, sent } = setup();

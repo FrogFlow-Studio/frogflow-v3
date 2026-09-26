@@ -635,7 +635,8 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
       await showCatalog(s, null, 0, true);
       return "handled";
     case "CAT":
-      await showCatalog(s, a ?? null, Number(b ?? 0) || 0, true);
+      // Смещение из постбэка: нет, не число или меньше нуля — начало списка.
+      await showCatalog(s, a || null, Math.max(0, Math.floor(Number(b ?? 0)) || 0), true);
       return "handled";
     case "PROD": {
       const p = a ? await getProduct(s.ctx, a) : null;
@@ -728,7 +729,11 @@ async function showCatalog(s: Shop, categoryId: string | null, offset: number, f
       });
     buttons.push(BTN.cart(s.m));
     if (categoryId)
-      buttons.push({ type: "postback", title: plain(s.m.backToCategories), payload: "CATALOG" });
+      buttons.push({
+        type: "postback",
+        title: plain(s.m.backToCategories),
+        payload: await backPayload(s, categoryId),
+      });
     if (s.platform === "whatsapp") {
       await reply(s, plain(s.m.catalogHeader), {
         force,
@@ -800,7 +805,11 @@ async function showProductList(
   buttons.push(BTN.cart(s.m));
   buttons.push(
     categoryId
-      ? { type: "postback", title: plain(s.m.backToCategories), payload: "CATALOG" }
+      ? {
+          type: "postback",
+          title: plain(s.m.backToCategories),
+          payload: await backPayload(s, categoryId),
+        }
       : BTN.orders(s.m),
   );
   if (s.platform === "whatsapp") {
@@ -829,6 +838,20 @@ async function showProductList(
     `${lines.join("\n")}\n\n${s.locale === "ru" ? "Напишите номер товара, чтобы посмотреть подробнее." : plain(s.m.searchPrompt)}`,
     { force, buttons: buttons.slice(0, 3) },
   );
+}
+
+/**
+ * «Назад» из раздела — к его родителю, а у раздела верхнего уровня — в
+ * корень. Раньше всегда вёл в корень: из раздела второго уровня покупатель
+ * терял место и начинал с начала.
+ */
+async function backPayload(s: Shop, categoryId: string): Promise<string> {
+  const { data } = await s.ctx.db
+    .from("categories")
+    .select("parent_id")
+    .eq("id", categoryId)
+    .maybeSingle();
+  return data?.parent_id ? `CAT:${data.parent_id}:0` : "CATALOG";
 }
 
 /** Список WhatsApp вмещает десять строк с навигацией; в Instagram — нумерованный текст. */
