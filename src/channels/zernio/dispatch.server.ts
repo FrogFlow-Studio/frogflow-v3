@@ -58,7 +58,12 @@ export async function dispatchZernioEvent(
     return { status: r.status, note: r.note ?? null };
   } catch (e) {
     const note = e instanceof Error ? e.message : String(e);
-    console.error(`[zernio] ${eventId} failed: ${note}`);
+    const { reportError } = await import("@/lib/errors");
+    await reportError(e, {
+      where: "zernio.dispatch",
+      botId: ctx.tenant.id,
+      extra: { event_id: eventId },
+    });
     return { status: "failed", note };
   }
 }

@@ -123,7 +123,15 @@ export async function handleTelegramUpdate(
     if (update.message?.successful_payment) return await handleStarsPaid(ctx, api, update.message);
     if (update.message) return await handleMessage(ctx, api, update.message);
   } catch (e) {
-    console.error(`[tg:${ctx.tenant.id}] update failed`, e);
+    const { reportError } = await import("@/lib/errors");
+    await reportError(e, {
+      where: "telegram.update",
+      botId: ctx.tenant.id,
+      extra: {
+        update_id: update.update_id,
+        kind: update.callback_query ? "callback" : update.message ? "message" : "other",
+      },
+    });
   }
 }
 

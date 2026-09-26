@@ -42,10 +42,17 @@ export const Route = createFileRoute("/api/telegram/$botId")({
           return new Response("ok");
         }
 
+        const ctx = tenantContext(tenant);
+        // Повтор того же update_id (Telegram не дождался ответа) — второго
+        // ответа покупателю не будет. Метку ставим до ответа 200 на обеих
+        // ветках, иначе повтор успеет проскочить, пока первый идёт в фоне.
+        const { claimTelegramUpdate } = await import("@/channels/telegram/dedupe");
+        if (!(await claimTelegramUpdate(ctx, (update as { update_id?: number }).update_id)))
+          return new Response("ok");
+
         const run = async () => {
           const { telegramApi } = await import("@/channels/telegram/api");
           const { handleTelegramUpdate } = await import("@/channels/telegram/handle-update");
-          const ctx = tenantContext(tenant);
           await handleTelegramUpdate(
             ctx,
             telegramApi(ctx.secrets.telegramToken(), env().TELEGRAM_API_BASE),
@@ -63,7 +70,7 @@ export const Route = createFileRoute("/api/telegram/$botId")({
           /^(confirm|reject|resend):/.test(u.callback_query?.data ?? "") ||
           Boolean(u.message?.photo || u.message?.document);
         if (slow) {
-          await runInBackground(run);
+          await runInBackground(run, "telegram.update");
           return new Response("ok");
         }
         await run();

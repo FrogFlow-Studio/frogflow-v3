@@ -73,6 +73,16 @@ const schema = z.object({
   /** Самостоятельная регистрация продавцов на /signup. "0" — только через оператора. */
   SIGNUP_ENABLED: z.string().default("1"),
 
+  /**
+   * Учёт ошибок (src/lib/errors.ts): DSN проекта Sentry или GlitchTip.
+   * Пусто — ошибки только в журнале функции.
+   */
+  SENTRY_DSN: z
+    .string()
+    .url()
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+
   VERCEL_ENV: z.string().optional(),
   VERCEL_GIT_COMMIT_SHA: z.string().optional(),
   VERCEL_GIT_COMMIT_REF: z.string().optional(),

@@ -261,6 +261,7 @@ export async function zernioLastEvents(botId: string, limit = 300): Promise<Map<
     .select("payload, created_at")
     .eq("bot_id", botId)
     .neq("status", "event")
+    .neq("event_type", "telegram.update")
     .order("created_at", { ascending: false })
     .limit(limit);
   const out = new Map<string, string>();

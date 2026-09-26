@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "@/config/env";
 import { isCronAuthorized } from "@/lib/cron-auth";
+import { reportError } from "@/lib/errors";
 
 /**
  * Кроны одного деплоя обходят всех арендаторов. Каждая задача — функция
@@ -28,13 +29,18 @@ export const Route = createFileRoute("/api/cron/$job")({
             error,
           }).catch(() => undefined);
         };
+        // Сбой у одного клиента — в итог крона и в учёт ошибок, остальные идут дальше.
+        const tenantFailure = async (botId: string, e: unknown) => {
+          await reportError(e, { where: `cron:${params.job}`, botId });
+          return { ok: false, error: e instanceof Error ? e.message : String(e) };
+        };
         try {
           const r = await runJob();
           if (r) return r;
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           await finish(false, msg);
-          console.error(`[cron:${params.job}] ${msg}`);
+          await reportError(e, { where: `cron:${params.job}` });
           return new Response("error", { status: 500 });
         }
         await finish(true, null);
@@ -49,7 +55,7 @@ export const Route = createFileRoute("/api/cron/$job")({
                 try {
                   results[t.id] = await ensureTelegramWebhook(t);
                 } catch (e) {
-                  results[t.id] = { ok: false, error: e instanceof Error ? e.message : String(e) };
+                  results[t.id] = await tenantFailure(t.id, e);
                 }
               }
               // VIP-боты: второй токен у клиентов с модулем.
@@ -59,10 +65,7 @@ export const Route = createFileRoute("/api/cron/$job")({
                 try {
                   results[`${t.id}:vip`] = await ensureVipWebhook(t);
                 } catch (e) {
-                  results[`${t.id}:vip`] = {
-                    ok: false,
-                    error: e instanceof Error ? e.message : String(e),
-                  };
+                  results[`${t.id}:vip`] = await tenantFailure(t.id, e);
                 }
               }
               // Zernio: один вебхук на платформу, а не на клиента — и только когда
@@ -101,15 +104,13 @@ export const Route = createFileRoute("/api/cron/$job")({
               }[params.job];
               // Клиенты — параллельно: пакет рассылки одного не задерживает других.
               const settled = await Promise.allSettled(tenants.map((t) => run(t)));
+              const failures = new Map<string, unknown>();
+              for (const [i, r] of settled.entries())
+                if (r.status === "rejected")
+                  failures.set(tenants[i]!.id, await tenantFailure(tenants[i]!.id, r.reason));
               settled.forEach((r, i) => {
                 const id = tenants[i]!.id;
-                results[id] =
-                  r.status === "fulfilled"
-                    ? r.value
-                    : {
-                        ok: false,
-                        error: r.reason instanceof Error ? r.reason.message : String(r.reason),
-                      };
+                results[id] = r.status === "fulfilled" ? r.value : failures.get(id);
               });
               break;
             }
@@ -130,7 +131,7 @@ export const Route = createFileRoute("/api/cron/$job")({
                     t.settings.vip.username ?? null,
                   );
                 } catch (e) {
-                  results[t.id] = { ok: false, error: e instanceof Error ? e.message : String(e) };
+                  results[t.id] = await tenantFailure(t.id, e);
                 }
               }
               break;
@@ -144,7 +145,7 @@ export const Route = createFileRoute("/api/cron/$job")({
                 try {
                   results[t.id] = await runCommentDmFallback(tenantContext(t));
                 } catch (e) {
-                  results[t.id] = { ok: false, error: e instanceof Error ? e.message : String(e) };
+                  results[t.id] = await tenantFailure(t.id, e);
                 }
               }
               break;

@@ -5,7 +5,9 @@ import { adminRecipients } from "@/core/notify/recipients";
 import {
   AUDIENCE_TYPES,
   BATCH_SIZE,
+  CLAIM_STALE_MS,
   SEND_DELAY_MS,
+  STALE_CLAIM_ERROR,
   classifyDeliveryError,
   contentProblem,
   finalStatus,
@@ -229,7 +231,7 @@ export async function createBroadcast(
 
   const recipients: Array<{ telegram_id: number; phone: string | null }> =
     channel === "telegram"
-      ? (await resolveAudience(ctx, input.audience, input.filter)).map((id) => ({
+      ? [...new Set(await resolveAudience(ctx, input.audience, input.filter))].map((id) => ({
           telegram_id: id,
           phone: null,
         }))
@@ -372,13 +374,6 @@ export async function processBroadcastBatch(
       .eq("status", "queued");
   }
 
-  const { data: pending } = await ctx.db
-    .from("broadcast_recipients")
-    .select("id, telegram_id, phone")
-    .eq("broadcast_id", broadcast.id)
-    .eq("status", "pending")
-    .limit(BATCH_SIZE);
-
   const finish = async () => {
     const { data: fresh } = await ctx.db
       .from("broadcasts")
@@ -396,18 +391,35 @@ export async function processBroadcastBatch(
         .in("status", ["queued", "sending"]);
   };
 
-  if (!pending?.length) {
-    await finish();
-    return { ...none, broadcastId: broadcast.id };
-  }
+  // Захват получателя до отправки: строка остаётся pending, но с sent_at =
+  // метка захвата. Второй запуск крона (пересёкшийся по времени) такую
+  // строку не выберет и не отправит второй раз. Итог пишется CAS-ом.
+  // Захваченные и брошенные упавшим запуском — недоставлены, без повтора.
+  const now = Date.now();
+  const { data: stale } = await ctx.db
+    .from("broadcast_recipients")
+    .update({ status: "failed", error_message: STALE_CLAIM_ERROR, sent_at: null })
+    .eq("broadcast_id", broadcast.id)
+    .eq("status", "pending")
+    .lt("sent_at", new Date(now - CLAIM_STALE_MS).toISOString())
+    .select("id");
+
+  const { data: pending } = await ctx.db
+    .from("broadcast_recipients")
+    .select("id, telegram_id, phone")
+    .eq("broadcast_id", broadcast.id)
+    .eq("status", "pending")
+    .is("sent_at", null)
+    .limit(BATCH_SIZE);
 
   const content = contentOf(broadcast);
   let sent = 0;
-  let failed = 0;
+  let failed = stale?.length ?? 0;
   let blocked = 0;
 
-  for (let i = 0; i < pending.length; i++) {
-    const r = pending[i]!;
+  const list = pending ?? [];
+  for (let i = 0; i < list.length; i++) {
+    const r = list[i]!;
     // Отмену из панели уважаем между сообщениями, а не по концу пакета.
     if (i > 0 && i % 10 === 0) {
       const { data: st } = await ctx.db
@@ -417,8 +429,18 @@ export async function processBroadcastBatch(
         .single();
       if (st?.status === "cancelled") break;
     }
-    // Итог пишем CAS-ом «ещё pending»: два пересёкшихся запуска крона (или
-    // живой деплой v1 на той же очереди) не посчитают одного получателя дважды.
+    const claimedAt = new Date().toISOString();
+    const { data: claimed } = await ctx.db
+      .from("broadcast_recipients")
+      .update({ sent_at: claimedAt })
+      .eq("id", r.id)
+      .eq("status", "pending")
+      .is("sent_at", null)
+      .select("id")
+      .maybeSingle();
+    if (!claimed) continue;
+    // Итог — CAS-ом по нашей метке захвата: отмена или чужой запуск,
+    // успевшие поменять строку, не будут перезаписаны и посчитаны дважды.
     const settle = async (
       patch: Database["public"]["Tables"]["broadcast_recipients"]["Update"],
     ) => {
@@ -427,6 +449,7 @@ export async function processBroadcastBatch(
         .update(patch)
         .eq("id", r.id)
         .eq("status", "pending")
+        .eq("sent_at", claimedAt)
         .select("id")
         .maybeSingle();
       return Boolean(data);
@@ -438,12 +461,18 @@ export async function processBroadcastBatch(
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       const kind = classifyDeliveryError(message);
-      if (await settle({ status: kind, error_message: message.slice(0, 500) || "unknown error" })) {
+      if (
+        await settle({
+          status: kind,
+          sent_at: null,
+          error_message: message.slice(0, 500) || "unknown error",
+        })
+      ) {
         if (kind === "blocked") blocked++;
         else failed++;
       }
     }
-    if (i + 1 < pending.length) await sleep(SEND_DELAY_MS);
+    if (i + 1 < list.length) await sleep(SEND_DELAY_MS);
   }
 
   if (sent + failed + blocked > 0) {
@@ -475,9 +504,11 @@ export async function processBroadcastBatch(
     .select("id", { count: "exact", head: true })
     .eq("broadcast_id", broadcast.id)
     .eq("status", "pending");
+  // В счёт идут и захваченные параллельным запуском: пока он шлёт,
+  // рассылка не закрывается.
   const done = !count;
   if (done) await finish();
-  return { broadcastId: broadcast.id, processed: pending.length, sent, failed, blocked, done };
+  return { broadcastId: broadcast.id, processed: list.length, sent, failed, blocked, done };
 }
 
 export async function cancelBroadcast(ctx: TenantContext, id: string): Promise<boolean> {

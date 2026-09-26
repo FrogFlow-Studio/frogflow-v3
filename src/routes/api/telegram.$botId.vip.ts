@@ -35,10 +35,14 @@ export const Route = createFileRoute("/api/telegram/$botId/vip")({
           !tenant.settings.vip?.token_enc
         )
           return new Response("ok");
+        const ctx = tenantContext(tenant);
+        // Повтор обновления VIP-бота — без второго ответа (channels/telegram/dedupe.ts).
+        const { claimTelegramUpdate } = await import("@/channels/telegram/dedupe");
+        if (!(await claimTelegramUpdate(ctx, (update as { update_id?: number }).update_id, "vip")))
+          return new Response("ok");
         const run = async () => {
           const { handleVipUpdate, vipTelegramApi } =
             await import("@/channels/telegram/vip/handle");
-          const ctx = tenantContext(tenant);
           await handleVipUpdate(ctx, vipTelegramApi(ctx), update as never);
         };
         const u = update as {
@@ -49,7 +53,7 @@ export const Route = createFileRoute("/api/telegram/$botId/vip")({
           Boolean(u.message?.photo || u.message?.document) ||
           /^vip_(confirm|reject):/.test(u.callback_query?.data ?? "");
         if (slow) {
-          await runInBackground(run);
+          await runInBackground(run, "telegram.vip");
           return new Response("ok");
         }
         await run();

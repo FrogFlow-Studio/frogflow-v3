@@ -18,7 +18,11 @@ export default {
     try {
       return await (await getEntry()).fetch(request, env, ctx);
     } catch (error) {
-      console.error(error);
+      const { reportError } = await import("@/lib/errors");
+      await reportError(error, {
+        where: "server",
+        extra: { method: request.method, path: new URL(request.url).pathname },
+      });
       return new Response("Внутренняя ошибка", {
         status: 500,
         headers: { "content-type": "text/plain; charset=utf-8" },
