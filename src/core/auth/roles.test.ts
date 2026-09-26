@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adminLoginTaken, findAdminLogin, roleAllows } from "./roles";
+import { adminLoginTaken, findAdminLogin, loginInTenant, roleAllows } from "./roles";
 import type { Tenant } from "@/core/tenant/types";
 
 const tenant = (id: string, admin: Tenant["settings"]["admin"], archived = false) =>
@@ -52,5 +52,25 @@ describe("роли админки", () => {
     expect(adminLoginTaken(shops, "manager1", { botId: "a", username: "manager1" })).toBe(false);
     expect(adminLoginTaken(shops, "manager1", { botId: "b", username: "manager1" })).toBe(true);
     expect(adminLoginTaken(shops, "anna", { botId: "a", username: "anna" })).toBe(false);
+  });
+});
+
+describe("сессия сверяется с текущей командой", () => {
+  it("удалённый пользователь теряет доступ, пониженный получает новую роль", () => {
+    expect(loginInTenant(shops[0]!, "manager1")?.role).toBe("manager");
+    const demoted = tenant("a", {
+      username: "anna",
+      password_hash: "h-anna",
+      users: [{ username: "manager1", password_hash: "h-m", role: "viewer" }],
+    });
+    expect(loginInTenant(demoted, "manager1")?.role).toBe("viewer");
+    const removed = tenant("a", { username: "anna", password_hash: "h-anna", users: [] });
+    expect(loginInTenant(removed, "manager1")).toBeNull();
+  });
+
+  it("логин другого магазина и учётка без пароля не подходят", () => {
+    expect(loginInTenant(shops[0]!, "bob")).toBeNull();
+    expect(loginInTenant(tenant("c", { username: "nopass" }), "nopass")).toBeNull();
+    expect(loginInTenant(shops[0]!, "anna")?.role).toBe("owner");
   });
 });

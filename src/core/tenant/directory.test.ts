@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  addressConflict,
   servedByV2,
   findTenant,
   modulesFromJson,
@@ -78,6 +79,29 @@ describe("tenant directory", () => {
     expect(findTenant(dir, { by: "zernio_account", value: "zr1" })?.id).toBe(b.id);
     expect(findTenant(dir, { by: "host", value: "nobody.kz" })).toBeNull();
     expect(findTenant(dir, { by: "slug", value: "" })).toBeNull();
+  });
+
+  it("slug или домен, записанный у двух клиентов, — ничей: витрину не перехватить", () => {
+    const a = tenantFromRow(row({ settings: { slug: "shop", hosts: ["a.kz"] } }));
+    const b = tenantFromRow(
+      row({
+        id: "de44b934-c8db-47ac-9aa9-535c762cf8c7",
+        settings: { slug: "shop", hosts: ["a.kz"] },
+      }),
+    );
+    expect(findTenant([a, b], { by: "slug", value: "shop" })).toBeNull();
+    expect(findTenant([b, a], { by: "slug", value: "shop" })).toBeNull();
+    expect(findTenant([a, b], { by: "host", value: "a.kz" })).toBeNull();
+    expect(findTenant([a], { by: "slug", value: "shop" })?.id).toBe(a.id);
+  });
+
+  it("addressConflict: занятый slug или домен другого клиента, свой — не конфликт", () => {
+    const a = tenantFromRow(row({ settings: { slug: "shop", hosts: ["a.kz"] } }));
+    expect(addressConflict([a], null, { slug: "SHOP" })).toEqual({ what: "shop", owner: a.name });
+    expect(addressConflict([a], null, { hosts: ["A.kz"] })?.what).toBe("a.kz");
+    expect(addressConflict([a], a.id, { slug: "shop", hosts: ["a.kz"] })).toBeNull();
+    expect(addressConflict([a], null, { slug: "other", hosts: ["b.kz"] })).toBeNull();
+    expect(addressConflict([a], null, { slug: null })).toBeNull();
   });
 
   it("аккаунт Zernio, записанный у двух клиентов, — ничей: событие не уходит первому попавшемуся", () => {

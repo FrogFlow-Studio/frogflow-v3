@@ -59,6 +59,15 @@ export function findAdminLogin(tenants: readonly Tenant[], username: string): Ad
   return null;
 }
 
+/**
+ * Кто сейчас этот логин в этом магазине — для каждой проверки сессии, а не
+ * только при входе. Удалённый пользователь даёт null, пониженный — новую роль.
+ */
+export function loginInTenant(tenant: Tenant, username: string): AdminLogin | null {
+  const found = findAdminLogin([tenant], username);
+  return found && found.passwordHash ? found : null;
+}
+
 /** Логин занят: владельцем или пользователем любого магазина, кроме самой этой записи. */
 export function adminLoginTaken(
   tenants: readonly Tenant[],

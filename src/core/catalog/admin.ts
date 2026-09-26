@@ -1,6 +1,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database, Json } from "@/core/db-types";
 import { serviceDb } from "@/core/db/client.server";
+import { isTenantStorageKey } from "@/core/storage/keys";
 import { PRODUCT_SELECT, type Product } from "./catalog";
 
 type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
@@ -193,7 +194,7 @@ export async function deleteProduct(ctx: TenantContext, id: string): Promise<voi
   if (error) throw new Error(error.message);
   // Файлы в общих бакетах — только под своим префиксом.
   const own = (k: string | null | undefined): k is string =>
-    Boolean(k && k.startsWith(`${ctx.tenant.id}/`));
+    Boolean(k && isTenantStorageKey(ctx.tenant.id, k));
   const imgs = (p?.product_images ?? []).map((i) => i.image_path).filter(own);
   const files = (p?.product_material_files ?? []).map((f) => f.file_path).filter(own);
   if (imgs.length) await serviceDb().storage.from("product-images").remove(imgs);
@@ -216,7 +217,8 @@ export async function setProductImages(
   paths: string[],
 ): Promise<void> {
   for (const p of paths)
-    if (!p.startsWith(`${ctx.tenant.id}/`)) throw new Error("Ключ картинки вне префикса клиента.");
+    if (!isTenantStorageKey(ctx.tenant.id, p))
+      throw new Error("Ключ картинки вне префикса клиента.");
   await ctx.db.from("product_images").delete().eq("product_id", productId);
   if (paths.length) {
     const { error } = await ctx.db.from("product_images").insert(
@@ -243,7 +245,7 @@ export async function setProductMaterials(
   files: MaterialInput[],
 ): Promise<void> {
   for (const f of files)
-    if (!f.filePath.startsWith(`${ctx.tenant.id}/`))
+    if (!isTenantStorageKey(ctx.tenant.id, f.filePath))
       throw new Error("Ключ файла вне префикса клиента.");
   await ctx.db.from("product_material_files").delete().eq("product_id", productId);
   if (files.length) {

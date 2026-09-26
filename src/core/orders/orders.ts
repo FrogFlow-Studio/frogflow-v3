@@ -4,6 +4,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { recordOrderEvent } from "./events";
 import type { Database, Json } from "@/core/db-types";
 import { serviceDb } from "@/core/db/client.server";
+import { isSafeStorageKey, isTenantStorageKey } from "@/core/storage/keys";
 import type { Customer } from "@/core/customers/customers";
 import { setState } from "@/core/customers/customers";
 import { listCart, clearCart, priceCart, type CartItem } from "@/core/cart/cart";
@@ -772,6 +773,7 @@ export async function completeLanguageDelivery(
 }
 
 export async function signedFileUrl(path: string, ttlSec = 7 * 24 * 3600): Promise<string | null> {
+  if (!isSafeStorageKey(path)) return null;
   const { data, error } = await serviceDb()
     .storage.from("product-files")
     .createSignedUrl(path, ttlSec);
@@ -781,5 +783,5 @@ export async function signedFileUrl(path: string, ttlSec = 7 * 24 * 3600): Promi
 
 /** Файл из общего бакета принадлежит арендатору, только если лежит под его префиксом. */
 export function isOwnStorageKey(ctx: TenantContext, key: string): boolean {
-  return key.startsWith(`${ctx.tenant.id}/`);
+  return isTenantStorageKey(ctx.tenant.id, key);
 }

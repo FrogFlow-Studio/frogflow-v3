@@ -1,6 +1,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { OrderWithItems } from "./orders";
 import { serviceDb } from "@/core/db/client.server";
+import { isTenantStorageKey } from "@/core/storage/keys";
 import {
   addDaysToIso,
   OPEN_PHYSICAL_STATUSES,
@@ -136,7 +137,7 @@ export async function setPhysicalStatus(
 }
 
 export async function proofSignedUrl(ctx: TenantContext, path: string): Promise<string | null> {
-  if (!path.startsWith(`${ctx.tenant.id}/`)) return null;
+  if (!isTenantStorageKey(ctx.tenant.id, path)) return null;
   const { data } = await serviceDb().storage.from("payment-proofs").createSignedUrl(path, 600);
   return data?.signedUrl ?? null;
 }

@@ -5,6 +5,8 @@
  * префикса bot_id (первый клиент) и с ним должны давать один формат адреса.
  * Без Buffer: модуль нужен и в браузере (админка), и на сервере.
  */
+import { isSafeStorageKey } from "@/core/storage/keys";
+
 function toBase64Url(s: string): string {
   const bytes = new TextEncoder().encode(s);
   let bin = "";
@@ -28,7 +30,8 @@ export function decodeImageKey(encoded: string): string | null {
   if (!/^[A-Za-z0-9_-]{1,512}$/.test(encoded)) return null;
   try {
     const rel = fromBase64Url(encoded);
-    if (!rel || rel.includes("..") || rel.startsWith("/")) return null;
+    // Раскодированный ключ уходит в адрес Storage под service_role (core/storage/keys).
+    if (!isSafeStorageKey(rel)) return null;
     return rel;
   } catch {
     return null;

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { useSession } from "@tanstack/react-start/server";
 import { env } from "@/config/env";
 import type { AdminRole } from "@/core/auth/roles";
@@ -9,9 +10,26 @@ import type { AdminRole } from "@/core/auth/roles";
  */
 export type AppSession = {
   operator?: boolean;
-  /** role нет у сессий, выданных до появления ролей — это владелец. */
-  admin?: { botId: string; username: string; role?: AdminRole };
+  /** Отпечаток учётки оператора на момент входа — см. credentialStamp. */
+  operatorStamp?: string;
+  /**
+   * role в cookie — только подсказка интерфейсу: права каждый раз берутся из
+   * bots.settings.admin (guards.server). stamp — отпечаток хеша пароля.
+   */
+  admin?: { botId: string; username: string; role?: AdminRole; stamp?: string };
 };
+
+/**
+ * Отпечаток учётных данных для cookie. Сменился пароль или логин — отпечаток
+ * другой, и все сессии, выданные раньше, перестают действовать. В cookie
+ * лежит не хеш пароля, а 16 байт sha256 от него.
+ */
+export function credentialStamp(...parts: Array<string | undefined>): string {
+  return createHash("sha256")
+    .update(`ff-session-stamp\0${parts.map((p) => p ?? "").join("\0")}`)
+    .digest("hex")
+    .slice(0, 32);
+}
 
 export function sessionConfig() {
   return {

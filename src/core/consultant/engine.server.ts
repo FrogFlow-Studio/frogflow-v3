@@ -10,6 +10,7 @@ import { isConsultantVertical } from "@/core/verticals/registry";
 import { parseKnowledge, retrieveKnowledge, type KnowledgeDoc } from "./knowledge";
 import { parseProfile, type ConsultantProfile } from "./profile";
 import { buildSystemPrompt, cleanReply, isResetIntent } from "./prompt";
+import { addDaily, budgetBlock, parseDaily, today } from "./budget";
 
 /**
  * ИИ-консультант: отвечает покупателю по профилю бизнеса, базе знаний и
@@ -21,6 +22,7 @@ export const KEYS = {
   profile: "consultant_profile",
   knowledge: "consultant_knowledge",
   usage: "consultant_usage",
+  daily: "consultant_daily",
   lastError: "consultant_last_error",
 } as const;
 
@@ -252,6 +254,29 @@ export async function runConsultant(
     };
   }
 
+  // Предел на клиента — до вызова модели (core/consultant/budget).
+  const kind = opts.dryRun ? "test" : "customer";
+  const daily = parseDaily((await getSettings(ctx, [KEYS.daily]))[KEYS.daily], today());
+  const blocked = budgetBlock(daily, kind);
+  if (blocked) {
+    if (opts.dryRun) throw new Error(blocked);
+    await setSetting(ctx, KEYS.lastError, `${new Date().toISOString()} — ${blocked}`.slice(0, 500));
+    // Как при передаче менеджеру: пауза, чтобы продавец не получал уведомление на каждое сообщение.
+    if (customer)
+      await saveState(ctx, customer, {
+        paused_until: new Date(Date.now() + 12 * 3600_000).toISOString(),
+      });
+    return {
+      reply: "Передам ваш вопрос менеджеру — он ответит в ближайшее время.",
+      handoff: {
+        kind: "handoff",
+        reason: "unknown_question",
+        summary: `ИИ-консультант на сегодня выключен пределом. Клиент написал: «${incoming.slice(0, 200)}»`,
+      },
+      usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
+    };
+  }
+
   const catalog = await catalogSnippet(ctx);
   const system = buildSystemPrompt(profile, retrieveKnowledge(incoming, docs, 6), catalog);
   const session = [
@@ -334,6 +359,7 @@ export async function runConsultant(
         u.output_tokens * PRICE.out) /
       1_000_000;
     await recordUsage(ctx, usd, u.input_tokens + cacheWrite + cacheRead, u.output_tokens);
+    await setSetting(ctx, KEYS.daily, JSON.stringify(addDaily(daily, usd, kind)));
     await setSetting(ctx, KEYS.lastError, "");
 
     if (customer && !opts.dryRun) {

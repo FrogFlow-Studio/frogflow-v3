@@ -70,8 +70,12 @@ const schema = z.object({
 
   APP_TIMEZONE: z.string().default("Asia/Almaty"),
 
-  /** Самостоятельная регистрация продавцов на /signup. "0" — только через оператора. */
-  SIGNUP_ENABLED: z.string().default("1"),
+  /**
+   * Самостоятельная регистрация продавцов на /signup: "1" — открыта. По
+   * умолчанию закрыта: новый магазин получает ИИ-консультанта на ключе
+   * платформы, а капчи нет — открывать сознательно (лимиты: signup.server).
+   */
+  SIGNUP_ENABLED: z.string().default("0"),
 
   /**
    * Учёт ошибок (src/lib/errors.ts): DSN проекта Sentry или GlitchTip.

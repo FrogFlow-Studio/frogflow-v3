@@ -56,6 +56,20 @@ export async function verifyOperator(username: string, password: string): Promis
   );
 }
 
+/**
+ * Отпечаток текущей учётки оператора для сессии. Смена логина или пароля в
+ * панели (или в окружении) выкидывает все ранее выданные сессии оператора.
+ */
+export async function operatorStamp(): Promise<string | null> {
+  const { credentialStamp } = await import("@/app/auth/session.server");
+  const s = await readSettings();
+  if (s[KEY_USER] && s[KEY_HASH]) return credentialStamp("db", s[KEY_USER], s[KEY_HASH]);
+  const e = env();
+  if (e.OPERATOR_USERNAME && e.OPERATOR_PASSWORD)
+    return credentialStamp("env", e.OPERATOR_USERNAME, e.OPERATOR_PASSWORD);
+  return null;
+}
+
 async function upsert(key: string, value: string): Promise<void> {
   const db = serviceDb();
   const { data } = await db.from("operator_settings").select("key").eq("key", key).maybeSingle();

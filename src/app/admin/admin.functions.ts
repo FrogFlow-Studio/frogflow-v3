@@ -28,7 +28,7 @@ export const adminLogin = createServerFn({ method: "POST" })
     await loginDelay();
     // Один вход на всех: данные оператора платформы открывают панель оператора.
     {
-      const { isOperatorUsername, verifyOperator } =
+      const { isOperatorUsername, verifyOperator, operatorStamp } =
         await import("@/app/operator/credentials.server");
       if (await isOperatorUsername(data.username)) {
         if (await loginLocked("operator", ip))
@@ -36,7 +36,12 @@ export const adminLogin = createServerFn({ method: "POST" })
         const ok = await verifyOperator(data.username, data.password);
         await recordLogin("operator", ip, ok, data.username);
         if (!ok) return { ok: false as const };
-        await (await appSession()).update({ operator: true });
+        await (
+          await appSession()
+        ).update({
+          operator: true,
+          operatorStamp: (await operatorStamp()) ?? undefined,
+        });
         return { ok: true as const, role: "operator" as const };
       }
     }
@@ -57,10 +62,17 @@ export const adminLogin = createServerFn({ method: "POST" })
     const ok = checkAdminPassword(login, data.password);
     await recordLogin({ botId: t.id }, ip, ok, data.username);
     if (!ok) return { ok: false as const };
+    const { adminStamp } = await import("@/app/auth/guards.server");
+    const username = data.username.trim().toLowerCase();
     await (
       await appSession()
     ).update({
-      admin: { botId: t.id, username: data.username.trim().toLowerCase(), role: login.role },
+      admin: {
+        botId: t.id,
+        username,
+        role: login.role,
+        stamp: adminStamp(t.id, username, login.passwordHash),
+      },
     });
     return { ok: true as const, role: "admin" as const };
   });

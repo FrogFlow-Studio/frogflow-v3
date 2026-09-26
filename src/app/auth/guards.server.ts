@@ -1,7 +1,7 @@
-import { appSession } from "./session.server";
+import { appSession, credentialStamp } from "./session.server";
 import { requireTenant, tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
 import { servedByV2 } from "@/core/tenant/directory";
-import { roleAllows, type AdminRole } from "@/core/auth/roles";
+import { loginInTenant, roleAllows, type AdminRole } from "@/core/auth/roles";
 
 export class Unauthorized extends Error {
   constructor(public readonly role: "operator" | "admin") {
@@ -9,38 +9,61 @@ export class Unauthorized extends Error {
   }
 }
 
-/** Первой строкой каждой серверной функции панели оператора. */
+/**
+ * Первой строкой каждой серверной функции панели оператора. Сессия
+ * действует, пока учётка оператора та же, что при входе (operatorStamp).
+ */
 export async function requireOperator(): Promise<void> {
   const s = await appSession();
-  if (s.data.operator !== true) throw new Unauthorized("operator");
+  if (s.data.operator !== true || !s.data.operatorStamp) throw new Unauthorized("operator");
+  const { operatorStamp } = await import("@/app/operator/credentials.server");
+  if (s.data.operatorStamp !== (await operatorStamp())) throw new Unauthorized("operator");
+}
+
+type CurrentAdmin = { ctx: TenantContext; role: AdminRole; username: string };
+
+/**
+ * Пользователь админки по cookie, сверенный с bots.settings.admin на каждом
+ * запросе: удалённый из команды или сменивший пароль теряет доступ сразу
+ * (с точностью до минутного кеша справочника), роль берётся текущая, а не
+ * записанная в cookie при входе.
+ */
+async function currentAdmin(): Promise<CurrentAdmin> {
+  const s = await appSession();
+  const a = s.data.admin;
+  if (!a?.botId || !a.username || !a.stamp) throw new Unauthorized("admin");
+  const tenant = await requireTenant({ by: "id", value: a.botId });
+  // Архив или клиент прежней платформы (см. servedByV2) — сессия недействительна.
+  if (tenant.archived || !servedByV2(tenant)) throw new Unauthorized("admin");
+  const login = loginInTenant(tenant, a.username);
+  if (!login || a.stamp !== adminStamp(tenant.id, a.username, login.passwordHash))
+    throw new Unauthorized("admin");
+  return { ctx: tenantContext(tenant), role: login.role, username: a.username };
+}
+
+/** Отпечаток для cookie продавца — при входе и при смене своего пароля. */
+export function adminStamp(botId: string, username: string, passwordHash: string | undefined) {
+  return credentialStamp("admin", botId, username, passwordHash);
 }
 
 /** Первой строкой каждой серверной функции админки: возвращает контекст арендатора из сессии. */
 export async function requireAdmin(): Promise<TenantContext> {
-  const s = await appSession();
-  const botId = s.data.admin?.botId;
-  if (!botId) throw new Unauthorized("admin");
-  const tenant = await requireTenant({ by: "id", value: botId });
-  // Архив или клиент прежней платформы (см. servedByV2) — сессия недействительна.
-  if (tenant.archived || !servedByV2(tenant)) throw new Unauthorized("admin");
-  return tenantContext(tenant);
+  return (await currentAdmin()).ctx;
 }
 
-/** Роль текущего пользователя админки; старые сессии без роли — владелец. */
+/** Текущая роль пользователя админки — из настроек магазина, не из cookie. */
 export async function adminRole(): Promise<AdminRole> {
-  const s = await appSession();
-  return s.data.admin?.role ?? "owner";
+  return (await currentAdmin()).role;
 }
 
 export async function adminActor(): Promise<string> {
-  const s = await appSession();
-  return `admin:${s.data.admin?.username ?? ""}`;
+  return `admin:${(await currentAdmin()).username}`;
 }
 
 /** Изменение, требующее роли не ниже `min` (core/auth/roles). */
 export async function requireAdminRole(min: AdminRole): Promise<TenantContext> {
-  const ctx = await requireAdmin();
-  if (!roleAllows(await adminRole(), min))
+  const { ctx, role } = await currentAdmin();
+  if (!roleAllows(role, min))
     throw new Error(
       min === "owner"
         ? "Это может изменить только владелец магазина."

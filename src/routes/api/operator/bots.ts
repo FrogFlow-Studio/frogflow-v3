@@ -40,13 +40,26 @@ export const Route = createFileRoute("/api/operator/bots")({
         const e = env();
         const { basicCredentials } = await import("@/lib/cron-auth");
         const { verifyOperator } = await import("@/app/operator/credentials.server");
-        const cred = basicCredentials(request);
-        if (!cred || !(await verifyOperator(cred.username, cred.password))) {
-          return new Response("unauthorized", {
+        const { clientIp, loginLocked, recordLogin, loginDelay } =
+          await import("@/app/auth/login-guard.server");
+        const unauthorized = () =>
+          new Response("unauthorized", {
             status: 401,
             headers: { "www-authenticate": "Basic" },
           });
-        }
+        const cred = basicCredentials(request);
+        if (!cred) return unauthorized();
+        // Тот же антибрут, что у формы входа: попытки пишутся в один журнал.
+        const ip = clientIp(request);
+        await loginDelay();
+        if (await loginLocked("operator", ip))
+          return new Response("too many attempts", {
+            status: 429,
+            headers: { "retry-after": "900" },
+          });
+        const ok = await verifyOperator(cred.username, cred.password);
+        await recordLogin("operator", ip, ok, cred.username.slice(0, 80));
+        if (!ok) return unauthorized();
         const parsed = body.safeParse(await request.json().catch(() => null));
         if (!parsed.success)
           return Response.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -109,6 +122,19 @@ export const Route = createFileRoute("/api/operator/bots")({
             ? row.settings
             : {}
         ) as Record<string, unknown>;
+        if (input.slug || input.hosts) {
+          const { addressConflict } = await import("@/core/tenant/directory");
+          const { tenantDirectory } = await import("@/core/tenant/resolve.server");
+          const taken = addressConflict(await tenantDirectory(true), botId, {
+            slug: input.slug,
+            hosts: input.hosts,
+          });
+          if (taken)
+            return Response.json(
+              { error: `адрес «${taken.what}» уже занят клиентом «${taken.owner}»` },
+              { status: 409 },
+            );
+        }
         const next: Record<string, unknown> = { ...settings };
         if (input.slug) next.slug = input.slug;
         if (input.hosts) next.hosts = input.hosts;

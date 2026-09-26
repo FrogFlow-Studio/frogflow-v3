@@ -21,6 +21,8 @@ import {
 import { ensureTelegramWebhook } from "@/core/tenant/telegram-webhook.server";
 import type { Tenant } from "@/core/tenant/types";
 import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
+import { addressConflict } from "@/core/tenant/directory";
+import { adminLoginTaken } from "@/core/auth/roles";
 import { hashPassword } from "@/app/auth/password";
 import { telegramWebhookUrl } from "@/channels/telegram/secret";
 
@@ -565,12 +567,8 @@ export async function webhookState(botId: string): Promise<{
 }
 
 export async function setAddressing(botId: string, slug: string | null, hosts: string[]) {
-  if (slug) {
-    const taken = (await tenantDirectory(true)).find(
-      (t) => t.settings.slug === slug && t.id !== botId,
-    );
-    if (taken) throw new Error(`Адрес «${slug}» уже занят клиентом «${taken.name}».`);
-  }
+  const taken = addressConflict(await tenantDirectory(true), botId, { slug, hosts });
+  if (taken) throw new Error(`Адрес «${taken.what}» уже занят клиентом «${taken.owner}».`);
   await patchTenantSettings(botId, { slug: slug ?? "", hosts });
   await logEvent(botId, "meta", { slug, hosts });
 }
@@ -587,10 +585,11 @@ export async function setZernioAccounts(botId: string, accountIds: string[]) {
 }
 
 export async function setAdminCredentials(botId: string, username: string, password: string) {
-  const taken = (await tenantDirectory(true)).find(
-    (t) => t.settings.admin?.username === username && t.id !== botId,
-  );
-  if (taken) throw new Error(`Логин «${username}» уже используется клиентом «${taken.name}».`);
+  // Логин уникален на всей платформе, включая пользователей команд (core/auth/roles).
+  const dir = await tenantDirectory(true);
+  const self = dir.find((t) => t.id === botId)?.settings.admin?.username;
+  if (adminLoginTaken(dir, username, { botId, username: self }))
+    throw new Error(`Логин «${username}» уже используется.`);
   await patchTenantSettings(botId, { admin: { username, password_hash: hashPassword(password) } });
   await logEvent(botId, "meta", { admin_username: username });
 }
@@ -603,6 +602,8 @@ export async function createClient(input: {
   ownerContact?: string;
   admin?: { username: string; password: string };
   actor?: string;
+  /** Отпечаток адреса регистрации — по нему считается лимит /signup. */
+  ipHash?: string;
 }) {
   const { data: dup } = await serviceDb()
     .from("bots")
@@ -611,12 +612,12 @@ export async function createClient(input: {
     .limit(1)
     .maybeSingle();
   if (dup) throw new Error(`Идентификатор «${input.ownerId}» уже занят.`);
-  if (input.admin) {
-    const taken = (await tenantDirectory(true)).find(
-      (t) => t.settings.admin?.username === input.admin!.username,
-    );
-    if (taken) throw new Error(`Логин «${input.admin.username}» уже используется.`);
-  }
+  const dir = await tenantDirectory(true);
+  if (input.admin && adminLoginTaken(dir, input.admin.username))
+    throw new Error(`Логин «${input.admin.username}» уже используется.`);
+  // slug нового клиента = его идентификатор: занятый адрес не отдаём.
+  const slugTaken = addressConflict(dir, null, { slug: input.ownerId });
+  if (slugTaken) throw new Error(`Адрес «${slugTaken.what}» уже занят — выберите другой логин.`);
   const modules = Object.fromEntries(
     MODULE_KEYS.map((k) => [k, moduleDef(k).price === null && moduleDef(k).status === "available"]),
   );
@@ -646,7 +647,11 @@ export async function createClient(input: {
   await logEvent(
     data.id,
     "onboard",
-    { name: input.name, vertical: input.vertical },
+    {
+      name: input.name,
+      vertical: input.vertical,
+      ...(input.ipHash ? { ip_hash: input.ipHash } : {}),
+    },
     input.actor ?? "operator",
   );
   return data.id;

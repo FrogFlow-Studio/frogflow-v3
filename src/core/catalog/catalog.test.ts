@@ -21,4 +21,12 @@ describe("imageUrl", () => {
     expect(a).not.toMatch(/\.png$/);
     expect(decodeImageKey("../x")).toBeNull();
   });
+
+  it("закодированный выход из каталога не декодируется в ключ", () => {
+    const enc = (s: string) => encodeImageKey("x", s);
+    expect(decodeImageKey(enc("%2e%2e/%2e%2e/rest/v1/bots"))).toBeNull();
+    expect(decodeImageKey(enc("../other/a.png"))).toBeNull();
+    expect(decodeImageKey(enc("a.png?select=*"))).toBeNull();
+    expect(decodeImageKey(enc("a\\..\\b"))).toBeNull();
+  });
 });

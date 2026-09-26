@@ -14,7 +14,7 @@ const input = z.object({
 
 export const signupEnabledFn = createServerFn({ method: "GET" }).handler(async () => {
   const { env } = await import("@/config/env");
-  return { enabled: env().SIGNUP_ENABLED !== "0" };
+  return { enabled: env().SIGNUP_ENABLED === "1" };
 });
 
 /** Продавец регистрируется сам: магазин, логин, вход в админку. Токен бота подключит в настройках. */
@@ -22,12 +22,16 @@ export const signupFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => input.parse(d))
   .handler(async ({ data }) => {
     const { env } = await import("@/config/env");
-    if (env().SIGNUP_ENABLED === "0")
+    if (env().SIGNUP_ENABLED !== "1")
       throw new Error("Регистрация закрыта — обратитесь к оператору.");
     const { createClient } = await import("@/app/operator/operator.server");
     const { appSession } = await import("@/app/auth/session.server");
-    const { loginDelay } = await import("@/app/auth/login-guard.server");
+    const { clientIp, loginDelay } = await import("@/app/auth/login-guard.server");
+    const { ipHash, signupRefusal } = await import("./signup.server");
     await loginDelay();
+    const hash = ipHash(clientIp());
+    const refusal = await signupRefusal(hash);
+    if (refusal) throw new Error(refusal);
     const username = data.username.toLowerCase();
     const id = await createClient({
       name: data.name.trim(),
@@ -36,7 +40,21 @@ export const signupFn = createServerFn({ method: "POST" })
       ownerContact: data.contact,
       admin: { username, password: data.password },
       actor: "signup",
+      ipHash: hash,
     });
-    await (await appSession()).update({ admin: { botId: id, username } });
+    const { requireTenant } = await import("@/core/tenant/resolve.server");
+    const { loginInTenant } = await import("@/core/auth/roles");
+    const { adminStamp } = await import("@/app/auth/guards.server");
+    const login = loginInTenant(await requireTenant({ by: "id", value: id }), username);
+    await (
+      await appSession()
+    ).update({
+      admin: {
+        botId: id,
+        username,
+        role: "owner",
+        stamp: adminStamp(id, username, login?.passwordHash),
+      },
+    });
     return { ok: true as const, botId: id };
   });

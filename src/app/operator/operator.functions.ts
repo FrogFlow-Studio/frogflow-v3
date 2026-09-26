@@ -26,7 +26,7 @@ export const operatorLogin = createServerFn({ method: "POST" })
     const { appSession } = await import("@/app/auth/session.server");
     const { clientIp, loginLocked, recordLogin, loginDelay } =
       await import("@/app/auth/login-guard.server");
-    const { verifyOperator } = await import("./credentials.server");
+    const { verifyOperator, operatorStamp } = await import("./credentials.server");
     const ip = clientIp();
     if (await loginLocked("operator", ip))
       throw new Error("Слишком много неудачных попыток. Попробуйте через 15 минут.");
@@ -35,20 +35,24 @@ export const operatorLogin = createServerFn({ method: "POST" })
     await recordLogin("operator", ip, ok, data.username);
     if (!ok) return { ok: false as const };
     const s = await appSession();
-    await s.update({ operator: true });
+    await s.update({ operator: true, operatorStamp: (await operatorStamp()) ?? undefined });
     return { ok: true as const };
   });
 
 export const operatorLogout = createServerFn({ method: "POST" }).handler(async () => {
   const { appSession } = await import("@/app/auth/session.server");
   const s = await appSession();
-  await s.update({ operator: false });
+  await s.update({ operator: false, operatorStamp: undefined });
   return { ok: true };
 });
 
 export const operatorCheck = createServerFn({ method: "GET" }).handler(async () => {
-  const { appSession } = await import("@/app/auth/session.server");
-  return { authed: (await appSession()).data.operator === true };
+  try {
+    await guard();
+    return { authed: true };
+  } catch {
+    return { authed: false };
+  }
 });
 
 export const listClientsFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -363,6 +367,10 @@ export const setOperatorCredentialsFn = createServerFn({ method: "POST" })
     if (!username || !(await verifyOperator(username, data.currentPassword)))
       throw new Error("Текущий пароль неверный.");
     await setOperatorCredentials(data.username, data.password);
+    // Все прежние сессии оператора погасли вместе со старым паролем; эта остаётся.
+    const { appSession } = await import("@/app/auth/session.server");
+    const { operatorStamp } = await import("./credentials.server");
+    await (await appSession()).update({ operatorStamp: (await operatorStamp()) ?? undefined });
     return { ok: true };
   });
 

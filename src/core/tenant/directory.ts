@@ -161,6 +161,28 @@ function hostOf(url: string | null | undefined): string | null {
   }
 }
 
+const only = (list: Tenant[]): Tenant | null => (list.length === 1 ? list[0]! : null);
+
+/**
+ * Занят ли короткий адрес или домен другим клиентом. Возвращает имя клиента,
+ * у которого занято, — для сообщения оператору, — или null.
+ */
+export function addressConflict(
+  directory: readonly Tenant[],
+  botId: string | null,
+  want: { slug?: string | null; hosts?: readonly string[] },
+): { what: string; owner: string } | null {
+  const slug = want.slug?.trim().toLowerCase();
+  const hosts = (want.hosts ?? []).map((h) => h.trim().toLowerCase()).filter(Boolean);
+  for (const t of directory) {
+    if (t.id === botId) continue;
+    if (slug && t.settings.slug === slug) return { what: slug, owner: t.name };
+    const h = hosts.find((x) => t.settings.hosts?.includes(x));
+    if (h) return { what: h, owner: t.name };
+  }
+  return null;
+}
+
 /**
  * Поиск арендатора в справочнике — чистая функция, чтобы правила
  * сопоставления проверялись тестами без базы. Справочник — все неархивные
@@ -173,15 +195,16 @@ export function findTenant(directory: readonly Tenant[], lookup: TenantLookup): 
   switch (lookup.by) {
     case "id":
       return directory.find((t) => t.id.toLowerCase() === value) ?? null;
+    // Адрес, записанный у двух клиентов, — ничей, как и аккаунт Zernio ниже:
+    // иначе витрину отдал бы «первый попавшийся», и новый клиент с тем же
+    // slug перехватил бы чужой магазин. Запись дублей закрывает addressConflict.
     case "slug":
-      return directory.find((t) => t.settings.slug === value) ?? null;
+      return only(directory.filter((t) => t.settings.slug === value));
     case "host": {
       const host = value.replace(/:\d+$/, "");
-      return (
-        directory.find((t) => t.settings.hosts?.includes(host)) ??
-        directory.find((t) => hostOf(t.appUrl) === host) ??
-        null
-      );
+      const byHost = directory.filter((t) => t.settings.hosts?.includes(host));
+      if (byHost.length > 1) return null;
+      return byHost[0] ?? directory.find((t) => hostOf(t.appUrl) === host) ?? null;
     }
     case "zernio_account": {
       // Аккаунт, записанный у двух клиентов, — ничей: событие не должно
