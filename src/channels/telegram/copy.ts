@@ -27,6 +27,8 @@ export type Msg = {
   outOfStockLabel: string;
   /** Лист ожидания (модуль waitlist). */
   waitlistBtn: string;
+  /** Апсейл (модуль upsell): «С этим берут». */
+  upsellHeader: string;
   waitlistJoined: string;
   backInStock: (name: string) => string;
   productNotFound: string;
@@ -198,6 +200,7 @@ const ru: Msg = {
   descPending: "Описание скоро появится.",
   outOfStockLabel: "❌ Нет в наличии",
   waitlistBtn: "🔔 Сообщить о поступлении",
+  upsellHeader: "✨ С этим часто берут:",
   waitlistJoined: "Готово — напишу, как только товар снова появится.",
   backInStock: (name) => `🔔 <b>${name}</b> снова в наличии! Успейте заказать.`,
   productNotFound: "Товар не найден или снят с продажи.",
@@ -325,6 +328,7 @@ const ru: Msg = {
 const kk: Msg = {
   ...ru,
   waitlistBtn: "🔔 Түскенде хабарлау",
+  upsellHeader: "✨ Мұнымен бірге жиі алады:",
   waitlistJoined: "Дайын — тауар қайта пайда болғанда жазамын.",
   backInStock: (name) => `🔔 <b>${name}</b> қайтадан сатылымда! Тапсырыс беріп үлгеріңіз.`,
   reorderBtn: "🔁 Тапсырысты қайталау",
@@ -400,6 +404,7 @@ const kk: Msg = {
 const en: Msg = {
   ...ru,
   waitlistBtn: "🔔 Notify me when available",
+  upsellHeader: "✨ Often bought together:",
   waitlistJoined: "Done — I will message you as soon as it is back.",
   backInStock: (name) => `🔔 <b>${name}</b> is back in stock! Order while it lasts.`,
   reorderBtn: "🔁 Reorder",
@@ -495,6 +500,7 @@ const en: Msg = {
 const uz: Msg = {
   ...ru,
   waitlistBtn: "🔔 Kelganda xabar berish",
+  upsellHeader: "✨ Bu bilan ko‘pincha olishadi:",
   waitlistJoined: "Tayyor — mahsulot yana paydo bo‘lishi bilan yozaman.",
   backInStock: (name) => `🔔 <b>${name}</b> yana sotuvda! Buyurtma berishga ulguring.`,
   reorderBtn: "🔁 Buyurtmani takrorlash",

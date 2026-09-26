@@ -717,6 +717,25 @@ async function showCart(b: Bot) {
         : { text: b.m.giftCertificateBtn, callback_data: "giftcert:enter" },
     ]);
   }
+  if (mod.upsell) {
+    const { upsellFor } = await import("@/core/upsell/upsell");
+    const offers = await upsellFor(
+      b.ctx,
+      priced.lines.map((l) => l.item.products?.id).filter((x): x is string => Boolean(x)),
+    );
+    if (offers.length) {
+      text += `\n\n${b.m.upsellHeader}`;
+      for (const o of offers) {
+        const money = await resolvePrice(b.ctx, o, st.country_code ?? null);
+        buttons.push([
+          {
+            text: `➕ ${o.name} — ${formatMoney(money.amount, money.currency)}`.slice(0, 64),
+            callback_data: `add:${o.id}`,
+          },
+        ]);
+      }
+    }
+  }
   await send(b, text.slice(0, 4096), { reply_markup: { inline_keyboard: buttons } });
 }
 

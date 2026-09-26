@@ -921,6 +921,28 @@ async function showCart(s: Shop, force: boolean, prefix?: string) {
   text += plain(s.m.total(formatMoney(sum.total, sum.currency)));
   if (s.locale === "ru") text += "\n\nУбрать позицию: «убрать 1».";
   await reply(s, text, { force, buttons: [BTN.checkout(s.m), BTN.catalog(s.m), BTN.clear(s.m)] });
+  if (s.ctx.tenant.modules.upsell) {
+    const { upsellFor } = await import("@/core/upsell/upsell");
+    const offers = await upsellFor(
+      s.ctx,
+      priced.lines.map((l) => l.item.products?.id).filter((x): x is string => Boolean(x)),
+    );
+    if (offers.length) {
+      const lines: string[] = [];
+      for (const o of offers) {
+        const money = await resolvePrice(s.ctx, o, st.country_code ?? null);
+        lines.push(`• ${o.name} — ${formatMoney(money.amount, money.currency)}`);
+      }
+      await reply(s, `${plain(s.m.upsellHeader)}\n${lines.join("\n")}`, {
+        force: true,
+        buttons: offers.map((o) => ({
+          type: "postback" as const,
+          title: `➕ ${o.name}`.slice(0, 20),
+          payload: `BUY:${o.id}`,
+        })),
+      });
+    }
+  }
 }
 
 async function removeFromCart(s: Shop, number: string) {

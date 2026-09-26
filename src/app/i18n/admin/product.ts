@@ -38,6 +38,10 @@ export const ru = {
   "product.addPhoto": "+ Добавить фото",
   "product.firstIsCover": "Первое фото — обложка.",
   "product.card.files": "Файлы материала",
+  "product.card.upsell": "С этим предлагать",
+  "product.upsellHint":
+    "Бот покажет эти товары в корзине, когда там лежит этот. Пусто — популярные из той же категории.",
+  "product.upsellAdd": "+ добавить товар",
   "product.needFile": "нужен файл",
   "product.filesHint": "PDF, ZIP, видео до 200 МБ. Покупатель получает все файлы своего языка.",
   "products.noFile": "нет файла",
@@ -79,6 +83,10 @@ export const kk: SectionDict<typeof ru> = {
   "product.addPhoto": "+ Фото қосу",
   "product.firstIsCover": "Бірінші фото — мұқаба.",
   "product.card.files": "Материал файлдары",
+  "product.card.upsell": "Мұнымен бірге ұсыну",
+  "product.upsellHint":
+    "Себетте осы тауар болса, бот бұл тауарларды көрсетеді. Бос — сол санаттағы танымалдары.",
+  "product.upsellAdd": "+ тауар қосу",
   "product.needFile": "файл қажет",
   "product.filesHint":
     "PDF, ZIP, 200 МБ-қа дейінгі бейне. Сатып алушы өз тіліндегі барлық файлды алады.",
@@ -121,6 +129,10 @@ export const en: SectionDict<typeof ru> = {
   "product.addPhoto": "+ Add photo",
   "product.firstIsCover": "The first photo is the cover.",
   "product.card.files": "Material files",
+  "product.card.upsell": "Suggest with this",
+  "product.upsellHint":
+    "The bot shows these products in the cart when this one is there. Empty — popular items from the same category.",
+  "product.upsellAdd": "+ add product",
   "product.needFile": "file needed",
   "product.filesHint":
     "PDF, ZIP, video up to 200 MB. The buyer receives all files in their language.",
@@ -163,6 +175,10 @@ export const uz: SectionDict<typeof ru> = {
   "product.addPhoto": "+ Foto qo‘shish",
   "product.firstIsCover": "Birinchi foto — muqova.",
   "product.card.files": "Material fayllari",
+  "product.card.upsell": "Bu bilan taklif qilish",
+  "product.upsellHint":
+    "Savatda shu mahsulot bo‘lsa, bot bu mahsulotlarni ko‘rsatadi. Bo‘sh — shu toifadagi ommabop mahsulotlar.",
+  "product.upsellAdd": "+ mahsulot qo‘shish",
   "product.needFile": "fayl kerak",
   "product.filesHint": "PDF, ZIP, 200 MB gacha video. Xaridor o‘z tilidagi barcha fayllarni oladi.",
   "products.noFile": "fayl yo‘q",

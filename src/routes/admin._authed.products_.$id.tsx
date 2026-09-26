@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { saveUpsellFn, upsellForProductFn } from "@/app/admin/upsell.functions";
 import { deleteProductFn, productFn, saveProductFn } from "@/app/admin/admin.functions";
 import { adminT, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
@@ -485,8 +486,78 @@ function ProductEditor() {
               <p className="mt-2 text-xs text-muted">{t("product.filesHint")}</p>
             </Card>
           )}
+          {shop.modules.upsell && p?.id && <UpsellCard productId={p.id} t={t} />}
         </div>
       </div>
     </form>
+  );
+}
+
+/** «С этим предлагать»: до 10 товаров, которые бот покажет в корзине рядом с этим. */
+function UpsellCard({ productId, t }: { productId: string; t: AdminT }) {
+  const [data, setData] = useState<Awaited<ReturnType<typeof upsellForProductFn>> | null>(null);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    void upsellForProductFn({ data: { productId } }).then((r) => {
+      setData(r);
+      setPicked(r.selected);
+    });
+  }, [productId]);
+  const save = useAction(async () => {
+    await saveUpsellFn({ data: { productId, ids: picked } });
+    setSaved(true);
+  });
+  if (!data) return null;
+  const name = new Map(data.products.map((x) => [x.id, x.name]));
+  return (
+    <Card title={t("product.card.upsell")}>
+      <p className="mb-2 text-xs text-muted">{t("product.upsellHint")}</p>
+      <ul className="mb-2 space-y-1 text-sm">
+        {picked.map((id) => (
+          <li key={id} className="flex items-center justify-between gap-2">
+            <span className="truncate">{name.get(id) ?? id}</span>
+            <button
+              type="button"
+              className="btn-ghost text-xs"
+              onClick={() => setPicked((x) => x.filter((y) => y !== id))}
+            >
+              ✕
+            </button>
+          </li>
+        ))}
+      </ul>
+      {picked.length < 10 && (
+        <select
+          className="input"
+          value=""
+          onChange={(e) => e.target.value && setPicked((x) => [...x, e.target.value])}
+        >
+          <option value="">{t("product.upsellAdd")}</option>
+          {data.products
+            .filter((x) => !picked.includes(x.id))
+            .map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
+            ))}
+        </select>
+      )}
+      <div className="mt-2 flex items-center gap-3">
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={save.busy}
+          onClick={() => {
+            setSaved(false);
+            void save.run().catch(() => {});
+          }}
+        >
+          {t("common.save")}
+        </button>
+        {saved && <span className="text-xs text-ok">✓</span>}
+      </div>
+      <ErrorBox error={save.error} />
+    </Card>
   );
 }
