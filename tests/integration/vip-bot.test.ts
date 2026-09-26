@@ -32,7 +32,9 @@ let inGroup = false;
 
 type Call = [string, Record<string, unknown>];
 const calls: Call[] = [];
-let receipt = randomBytes(64);
+// Чек — настоящий JPEG по первым байтам: attachPaymentProof проверяет содержимое.
+const jpeg = () => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), randomBytes(64)]);
+let receipt = jpeg();
 const api: TelegramApi = {
   call: async (method: string, payload: unknown = {}) => {
     const p = payload as Record<string, unknown>;
@@ -243,7 +245,7 @@ describe.skipIf(!liveReady)("VIP-бот на демо-клиенте: покуп
     ).toBe(true);
 
     await press(`buy_tariff:${monthId}`);
-    receipt = randomBytes(64);
+    receipt = jpeg();
     await photo();
     const invitesBefore = calls.filter(([m]) => m === "createChatInviteLink").length;
     await press(button(/^vip_confirm:/, SELLER)!, SELLER);

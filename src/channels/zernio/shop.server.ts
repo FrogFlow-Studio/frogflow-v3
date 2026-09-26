@@ -1507,7 +1507,11 @@ async function receiveProof(s: Shop, url: string, orderId: number) {
         ? s.m.proofDuplicate
         : res.reason === "closed" || res.reason === "not_found"
           ? s.m.proofOrderClosed
-          : s.m.proofFailed;
+          : res.reason === "invalid_file"
+            ? s.m.proofBadFile
+            : res.reason === "file_too_large"
+              ? s.m.proofTooLarge
+              : s.m.proofFailed;
     await reply(s, text, { force: true });
     return;
   }

@@ -32,7 +32,11 @@ vi.mock("@/core/db/client.server", () => ({
 const { attachPaymentProof, claimOrderForDelivery } = await import("./orders");
 
 const BOT = "00000000-0000-0000-0000-00000000000d";
-const file = (n: number) => ({ bytes: new Uint8Array([n, 2, 3]), mime: "image/jpeg", ext: "jpg" });
+const file = (n: number) => ({
+  bytes: new Uint8Array([0xff, 0xd8, 0xff, n]),
+  mime: "image/jpeg",
+  ext: "jpg",
+});
 const ctx = () => ({ tenant: { id: BOT, modules: {} }, db }) as unknown as TenantContext;
 const order = () => db.tables.orders![0]!;
 
@@ -96,5 +100,38 @@ describe("чек во время выдачи", () => {
     expect(order().status).toBe("awaiting_confirmation");
     expect(order().payment_proof_path).not.toBe("old.jpg");
     expect(removed).toEqual([]);
+  });
+});
+
+describe("файл чека проверяется до загрузки", () => {
+  it("не картинка и не PDF (HTML, видео) — отказ, в хранилище ничего не уходит, заказ не меняется", async () => {
+    let uploaded = false;
+    duringUpload = () => {
+      uploaded = true;
+    };
+    const fake = { bytes: new TextEncoder().encode("<html>"), mime: "image/jpeg", ext: "jpg" };
+    expect(await attachPaymentProof(ctx(), 7, fake)).toEqual({ ok: false, reason: "invalid_file" });
+    const video = {
+      bytes: new Uint8Array([0, 0, 0, 0x18, ...new TextEncoder().encode("ftypmp42")]),
+      mime: "image/heic",
+      ext: "heic",
+    };
+    expect(await attachPaymentProof(ctx(), 7, video)).toEqual({
+      ok: false,
+      reason: "invalid_file",
+    });
+    expect(uploaded).toBe(false);
+    expect(order()).toMatchObject({ payment_proof_path: "old.jpg", payment_proof_hash: "old" });
+  });
+
+  it("Telegram отдаёт octet-stream — PDF сохраняется как .pdf", async () => {
+    const pdf = {
+      bytes: new TextEncoder().encode("%PDF-1.4"),
+      mime: "application/octet-stream",
+      ext: "bin",
+    };
+    const r = await attachPaymentProof(ctx(), 7, pdf);
+    expect(r.ok).toBe(true);
+    expect(order().payment_proof_path).toMatch(/\.pdf$/);
   });
 });

@@ -1356,7 +1356,11 @@ async function receiveProof(b: Bot, msg: TelegramMessage, orderId: number) {
         ? b.m.proofDuplicate
         : res.reason === "closed" || res.reason === "not_found"
           ? b.m.proofOrderClosed
-          : b.m.proofFailed;
+          : res.reason === "invalid_file"
+            ? b.m.proofBadFile
+            : res.reason === "file_too_large"
+              ? b.m.proofTooLarge
+              : b.m.proofFailed;
     await send(b, text);
     return;
   }

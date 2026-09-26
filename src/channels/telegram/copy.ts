@@ -126,6 +126,8 @@ export type Msg = {
   proofReceivedNeedEmail: (no: number) => string;
   proofDuplicate: string;
   proofFailed: string;
+  proofBadFile: string;
+  proofTooLarge: string;
   proofOrderClosed: string;
   orderDelivered: (no: number) => string;
   orderRejected: (no: number) => string;
@@ -340,6 +342,8 @@ const ru: Msg = {
   proofReceived: (no) => `✅ Чек по заказу #${no} получен. Ожидайте подтверждения продавца.`,
   proofDuplicate: "Этот чек уже был отправлен по другому заказу. Пришлите чек именно этой оплаты.",
   proofFailed: "Не удалось сохранить чек, попробуйте отправить ещё раз.",
+  proofBadFile: "Чек нужен фотографией или PDF-файлом. Пришлите, пожалуйста, чек ещё раз.",
+  proofTooLarge: "Файл чека больше 20 МБ. Пришлите, пожалуйста, скриншот или PDF поменьше.",
   proofOrderClosed: "Этот заказ уже закрыт.",
   orderDelivered: (no) => `🎉 Заказ #${no} выдан. Спасибо за покупку!`,
   orderRejected: (no) => `❌ Заказ #${no} отклонён продавцом. Если это ошибка — напишите ему.`,

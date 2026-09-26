@@ -1,3 +1,4 @@
+import { validateProofFile } from "./proof-file";
 import { UserError } from "@/core/i18n/user-error";
 import { rewardReferrerIfFirstDelivery, type ReferralGrant } from "@/core/referrals/referrals";
 import { createHash } from "node:crypto";
@@ -498,7 +499,11 @@ export type ProofFile = { bytes: Uint8Array; mime: string; ext: string };
 
 export type AttachProofResult =
   | { ok: true; order: OrderWithItems }
-  | { ok: false; reason: "not_found" | "closed" | "duplicate" | "upload_failed" };
+  | {
+      ok: false;
+      reason:
+        "not_found" | "closed" | "duplicate" | "upload_failed" | "invalid_file" | "file_too_large";
+    };
 
 /**
  * Чек оплаты: в бакет payment-proofs под префиксом bot_id (изоляция
@@ -514,6 +519,10 @@ export async function attachPaymentProof(
   if (!order) return { ok: false, reason: "not_found" };
   if (!(PROOF_STATUSES as readonly string[]).includes(order.status))
     return { ok: false, reason: "closed" };
+  // Только картинка или PDF до 20 МБ; тип и расширение — по содержимому.
+  const checked = validateProofFile(file);
+  if (!checked.ok) return { ok: false, reason: checked.reason };
+  file = { bytes: file.bytes, mime: checked.mime, ext: checked.ext };
 
   const hash = createHash("sha256").update(file.bytes).digest("hex");
   const { data: dup } = await ctx.db

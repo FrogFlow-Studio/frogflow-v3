@@ -964,8 +964,8 @@
     "без расширения в пути хранилища возвращает имя как есть": "src/core/orders/pure.test.ts › без расширения в пути хранилища возвращает имя как есть"
   },
   "tests/payment-proof.test.ts": {
-    "accepts jpeg/png/pdf with matching magic bytes": "open: расхождение: attachPaymentProof (src/core/orders/orders.ts) не сверяет сигнатуру файла чека с mime, расширение выводится из mime/имени",
-    "rejects empty files, spoofed mime types and oversized payloads": "open: расхождение: attachPaymentProof не отвергает пустой файл, подменённый mime и файл больше 20 МБ (пустой и >20 МБ режет только downloadAttachment Zernio; путь Telegram и подмена mime не проверяются)"
+    "accepts jpeg/png/pdf with matching magic bytes": "src/core/orders/proof-file.test.ts › accepts jpeg/png/pdf with matching magic bytes",
+    "rejects empty files, spoofed mime types and oversized payloads": "src/core/orders/proof-file.test.ts › rejects empty files, spoofed mime types and oversized payloads"
   },
   "tests/pricing.test.ts": {
     "читает плоскую карту, которую пишет админка": "src/core/money/money.test.ts › manualCountryPrice: плоская карта, старый вид, мусор",

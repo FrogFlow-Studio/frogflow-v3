@@ -4,15 +4,15 @@
 и `docs/readiness.json` — руками не правится. `npm test` падает, если сводка
 устарела, пункт описи назван неверно или указанного теста нет.
 
-**Готовность для первых клиентов: 77,6 %** — покрыто тестами v2
-571 из 735 нужных сейчас пунктов.
+**Готовность для первых клиентов: 77,9 %** — покрыто тестами v2
+573 из 735 нужных сейчас пунктов.
 
-**Путь заказа: 91,7 %** — 310 из 338
+**Путь заказа: 92,3 %** — 312 из 338
 (каталог, цена, оформление, оплата и чек, выдача; файлы — `ORDER_PATH` в скрипте).
 
 | всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |
 | ----- | ------- | --------------------- | ---- | ----- | ------------- |
-| 1125 | 571 | 43 | 164 | 33 | 357 |
+| 1125 | 573 | 43 | 162 | 33 | 357 |
 
 «Позже» — поведение нужно, но не магазинам, которые переезжают первыми
 (модуль ещё не перенесён). «Не нужно в v2» — поведение убрано или заменено;
@@ -97,7 +97,7 @@
 | `tests/order-files-page.test.ts` | 8 | 1 | 0 | 0 | 7 | 100 % |
 | `tests/order-platform.test.ts` | 4 | 3 | 1 | 0 | 0 | 75 % |
 | `tests/orders-pure.test.ts` | 11 | 11 | 0 | 0 | 0 | 100 % |
-| `tests/payment-proof.test.ts` | 2 | 0 | 2 | 0 | 0 | 0 % |
+| `tests/payment-proof.test.ts` | 2 | 2 | 0 | 0 | 0 | 100 % |
 | `tests/pricing.test.ts` | 20 | 20 | 0 | 0 | 0 | 100 % |
 | `tests/product-materials.test.ts` | 25 | 25 | 0 | 0 | 0 | 100 % |
 | `tests/promo-codes.test.ts` | 4 | 4 | 0 | 0 | 0 | 100 % |
@@ -129,7 +129,7 @@
 | `tests/zernio-retry.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/zernio-webhook.test.ts` | 13 | 7 | 3 | 0 | 3 | 70 % |
 
-## Дыры (164)
+## Дыры (162)
 
 ### поломки v1
 
@@ -345,11 +345,6 @@
 ### `tests/order-platform.test.ts`
 
 - treats legacy and unknown orders as Telegram — расхождение: v2 ветвится по order.platform !== "telegram" без нормализации (app/admin/admin.server.ts notifyCustomer и действие confirm, channels/telegram/handle-update.ts) — заказ с неизвестным platform уходит в ветку Zernio, а не в Telegram; функции orderPlatform нет (null в v2 исключён: orders.platform NOT NULL)
-
-### `tests/payment-proof.test.ts`
-
-- accepts jpeg/png/pdf with matching magic bytes — расхождение: attachPaymentProof (src/core/orders/orders.ts) не сверяет сигнатуру файла чека с mime, расширение выводится из mime/имени
-- rejects empty files, spoofed mime types and oversized payloads — расхождение: attachPaymentProof не отвергает пустой файл, подменённый mime и файл больше 20 МБ (пустой и >20 МБ режет только downloadAttachment Zernio; путь Telegram и подмена mime не проверяются)
 
 ### `tests/reviews-server.test.ts`
 
