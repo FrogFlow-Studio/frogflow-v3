@@ -10,11 +10,16 @@ const input = z.object({
   contact: z.string().max(200).optional(),
   /** Приманка для ботов: поле скрыто, человек его не заполняет. */
   website: z.string().max(0).optional(),
+  /** Задача со страницы и её решение браузером — см. challenge.ts. */
+  challenge: z.string().max(200).optional(),
+  answer: z.string().max(20).optional(),
 });
 
 export const signupEnabledFn = createServerFn({ method: "GET" }).handler(async () => {
   const { env } = await import("@/config/env");
-  return { enabled: env().SIGNUP_ENABLED === "1" };
+  if (env().SIGNUP_ENABLED !== "1") return { enabled: false as const, challenge: "" };
+  const { issueChallenge } = await import("./challenge");
+  return { enabled: true as const, challenge: issueChallenge(env().SESSION_SECRET) };
 });
 
 /** Продавец регистрируется сам: магазин, логин, вход в админку. Токен бота подключит в настройках. */
@@ -28,9 +33,13 @@ export const signupFn = createServerFn({ method: "POST" })
     const { appSession } = await import("@/app/auth/session.server");
     const { clientIp, loginDelay } = await import("@/app/auth/login-guard.server");
     const { ipHash, signupRefusal } = await import("./signup.server");
+    const { challengeNonce, verifyChallenge } = await import("./challenge");
     await loginDelay();
+    const failed = verifyChallenge(env().SESSION_SECRET, data.challenge, data.answer);
+    if (failed) throw new Error(failed);
+    const nonce = challengeNonce(data.challenge!)!;
     const hash = ipHash(clientIp());
-    const refusal = await signupRefusal(hash);
+    const refusal = await signupRefusal(hash, nonce);
     if (refusal) throw new Error(refusal);
     const username = data.username.toLowerCase();
     const id = await createClient({
@@ -41,6 +50,7 @@ export const signupFn = createServerFn({ method: "POST" })
       admin: { username, password: data.password },
       actor: "signup",
       ipHash: hash,
+      challenge: nonce,
     });
     // Пробный период Basic включается сам. Сбой не ломает регистрацию:
     // магазин уже создан, оператор включит пробный период кнопкой.

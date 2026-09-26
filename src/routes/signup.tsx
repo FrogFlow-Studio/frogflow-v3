@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent } from "react";
 import { signupEnabledFn, signupFn } from "@/app/signup/signup.functions";
+import { solveChallenge } from "@/app/signup/challenge-solve";
 import { VERTICAL_KEYS, VERTICALS } from "@/core/verticals/registry";
 import { ErrorBox, Field, ThemeToggle, useAction } from "@/app/ui";
 
@@ -11,9 +12,11 @@ export const Route = createFileRoute("/signup")({
 });
 
 function SignupPage() {
-  const { enabled } = Route.useLoaderData();
+  const { enabled, challenge } = Route.useLoaderData();
   const navigate = useNavigate();
   const { run, busy, error } = useAction(async (f: FormData) => {
+    // Задача против ботов решается в браузере за секунду-две, пока кнопка «занята».
+    const answer = await solveChallenge(challenge);
     await signupFn({
       data: {
         name: String(f.get("name")),
@@ -22,6 +25,8 @@ function SignupPage() {
         vertical: String(f.get("vertical")),
         contact: String(f.get("contact") || "") || undefined,
         website: String(f.get("website") || ""),
+        challenge,
+        answer,
       },
     });
     await navigate({ to: "/admin" });
@@ -102,7 +107,7 @@ function SignupPage() {
           <input name="website" className="hidden" tabIndex={-1} autoComplete="off" />
           <ErrorBox error={error} />
           <button className="btn-primary w-full" disabled={busy}>
-            Создать магазин
+            {busy ? "Создаём магазин…" : "Создать магазин"}
           </button>
           <p className="text-center text-xs text-muted">
             Уже есть магазин?{" "}

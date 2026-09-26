@@ -654,6 +654,8 @@ export async function createClient(input: {
   actor?: string;
   /** Отпечаток адреса регистрации — по нему считается лимит /signup. */
   ipHash?: string;
+  /** Отпечаток решённой задачи /signup — одна задача на одну регистрацию. */
+  challenge?: string;
 }) {
   const { data: dup } = await serviceDb()
     .from("bots")
@@ -701,6 +703,7 @@ export async function createClient(input: {
       name: input.name,
       vertical: input.vertical,
       ...(input.ipHash ? { ip_hash: input.ipHash } : {}),
+      ...(input.challenge ? { challenge: input.challenge } : {}),
     },
     input.actor ?? "operator",
   );

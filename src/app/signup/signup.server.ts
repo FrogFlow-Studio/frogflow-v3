@@ -4,7 +4,8 @@ import { serviceDb } from "@/core/db/client.server";
 /**
  * Лимит самостоятельной регистрации. Схему не трогаем: регистрации и так
  * пишутся в bot_events (kind=onboard, actor=signup), отпечаток адреса кладём
- * в payload. Капчи нет, поэтому лимит — главная защита открытой формы.
+ * в payload. Вместе с задачей для браузера (challenge.ts) и полем-приманкой
+ * это защита открытой формы от ботов.
  */
 export const SIGNUP_LIMITS = { perIpPerDay: 2, totalPerDay: 20 } as const;
 
@@ -25,7 +26,7 @@ export function signupVerdict(counts: { ip: number; total: number }): string | n
 }
 
 /** null — можно регистрировать; иначе текст отказа. Ошибка базы — отказ. */
-export async function signupRefusal(hash: string): Promise<string | null> {
+export async function signupRefusal(hash: string, nonce?: string): Promise<string | null> {
   const since = new Date(Date.now() - 24 * 3600_000).toISOString();
   const base = () =>
     serviceDb()
@@ -34,7 +35,13 @@ export async function signupRefusal(hash: string): Promise<string | null> {
       .eq("kind", "onboard")
       .eq("actor", "signup")
       .gte("at", since);
-  const [byIp, total] = await Promise.all([base().eq("payload->>ip_hash", hash), base()]);
-  if (byIp.error || total.error) return "Регистрация временно недоступна. Попробуйте позже.";
+  const [byIp, total, reused] = await Promise.all([
+    base().eq("payload->>ip_hash", hash),
+    base(),
+    nonce ? base().eq("payload->>challenge", nonce) : Promise.resolve({ error: null, count: 0 }),
+  ]);
+  if (byIp.error || total.error || reused.error)
+    return "Регистрация временно недоступна. Попробуйте позже.";
+  if ((reused.count ?? 0) > 0) return "Проверка устарела — обновите страницу и попробуйте ещё раз.";
   return signupVerdict({ ip: byIp.count ?? 0, total: total.count ?? 0 });
 }
