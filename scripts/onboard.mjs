@@ -2,7 +2,7 @@
 /**
  * Подключить клиента к v2 — одной командой вместо проекта Vercel.
  *
- *   APP_URL=https://app.frogflow.kz OPERATOR_USERNAME=… OPERATOR_PASSWORD=… \
+ *   APP_URL=https://www.frogflow.tech OPERATOR_USERNAME=… OPERATOR_PASSWORD=… \
  *   node scripts/onboard.mjs --bot-id <uuid> --token <telegram-token> --serve v2
  *
  * Новый клиент:  --name "Магазин" --owner slug --vertical digital --token … --serve v2
