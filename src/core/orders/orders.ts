@@ -49,6 +49,8 @@ export type OrderWithItems = OrderRow & { order_items: OrderItemRow[] };
 export type PaymentMethodRow = Database["public"]["Tables"]["payment_methods"]["Row"];
 
 export const DELIVERABLE_STATUSES = ["awaiting_payment", "awaiting_confirmation", "paid"] as const;
+/** Чек принимается, только пока заказ ждёт оплаты. */
+export const PROOF_STATUSES = ["awaiting_payment", "awaiting_confirmation"] as const;
 export const REJECTABLE_STATUSES = [
   ...DELIVERABLE_STATUSES,
   "accepted",
@@ -477,7 +479,7 @@ export async function attachPaymentProof(
 ): Promise<AttachProofResult> {
   const order = await getOrder(ctx, orderId);
   if (!order) return { ok: false, reason: "not_found" };
-  if (!["awaiting_payment", "awaiting_confirmation"].includes(order.status))
+  if (!(PROOF_STATUSES as readonly string[]).includes(order.status))
     return { ok: false, reason: "closed" };
 
   const hash = createHash("sha256").update(file.bytes).digest("hex");
@@ -501,14 +503,24 @@ export async function attachPaymentProof(
     console.error("[orders] proof upload failed", up.error);
     return { ok: false, reason: "upload_failed" };
   }
-  const { data: updated } = await ctx.db
+  // Пока грузился файл, заказ могли забрать на выдачу (продавец или
+  // автопроверка прошлого чека). Статус пишем, только если заказ всё ещё
+  // ждёт оплаты: иначе «ждёт подтверждения» поверх «выдаётся» открыло бы
+  // его снова, и этот чек запустил бы вторую выдачу.
+  const { data: updated, error } = await ctx.db
     .from("orders")
     .update({ payment_proof_path: key, payment_proof_hash: hash, status: "awaiting_confirmation" })
     .eq("id", orderId)
+    .in("status", [...PROOF_STATUSES])
     .select("*, order_items(*)")
-    .single();
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!updated) {
+    await serviceDb().storage.from("payment-proofs").remove([key]);
+    return { ok: false, reason: "closed" };
+  }
   await recordOrderEvent(ctx, orderId, "proof", { path: key });
-  return { ok: true, order: (updated ?? order) as OrderWithItems };
+  return { ok: true, order: updated as OrderWithItems };
 }
 
 /**
