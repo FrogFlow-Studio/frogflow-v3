@@ -20,13 +20,38 @@ export function displayNo(o: Pick<OrderRow, "id" | "order_no" | "display_no">): 
   return Number(o.display_no ?? o.order_no ?? o.id);
 }
 
+/** Снимок из jsonb старого заказа: только записи с путём или ссылкой. */
+function snapshotList(raw: unknown): MaterialSnapshot[] {
+  if (!Array.isArray(raw)) return [];
+  const str = (v: unknown) => (typeof v === "string" && v ? v : null);
+  return raw.flatMap((m: unknown) => {
+    if (!m || typeof m !== "object") return [];
+    const r = m as Record<string, unknown>;
+    const path = str(r.path);
+    const url = str(r.url);
+    return path || url ? [{ path, name: str(r.name), url }] : [];
+  });
+}
+
+/**
+ * Файлы позиции заказа на языке. Откат как в v1 (materialsForOrderItem):
+ * карта по языкам (заказы после MIGRATION-37) → старые ru/kk снимки
+ * material_files_snapshot / material_files_kz_snapshot (там все файлы
+ * заказа) → совсем старые одиночные колонки (только первый файл).
+ */
 export function itemMaterials(item: OrderItemRow, lang: Locale): MaterialSnapshot[] {
   const byLang = item.material_files_by_lang;
   if (byLang && typeof byLang === "object" && !Array.isArray(byLang)) {
     const arr = (byLang as Record<string, unknown>)[lang];
     if (Array.isArray(arr) && arr.length) return arr as MaterialSnapshot[];
   }
-  // Старые заказы: одиночные колонки.
+  if (lang === "ru" || lang === "kk") {
+    const old = snapshotList(
+      lang === "ru" ? item.material_files_snapshot : item.material_files_kz_snapshot,
+    );
+    if (old.length) return old;
+  }
+  // Совсем старые заказы: одиночные колонки.
   if (lang === "ru" && (item.file_path_snapshot || item.file_url_snapshot)) {
     return [
       { path: item.file_path_snapshot, name: item.file_name_snapshot, url: item.file_url_snapshot },
@@ -56,6 +81,8 @@ export function itemAvailableLanguages(
   item: Pick<
     OrderItemRow,
     | "material_files_by_lang"
+    | "material_files_snapshot"
+    | "material_files_kz_snapshot"
     | "file_path_snapshot"
     | "file_url_snapshot"
     | "file_name_snapshot"
@@ -83,6 +110,8 @@ export function itemNeedsLanguageChoice(
         Pick<
           OrderItemRow,
           | "material_files_by_lang"
+          | "material_files_snapshot"
+          | "material_files_kz_snapshot"
           | "file_path_snapshot"
           | "file_url_snapshot"
           | "file_name_snapshot"

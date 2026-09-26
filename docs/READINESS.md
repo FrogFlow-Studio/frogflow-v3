@@ -4,15 +4,15 @@
 и `docs/readiness.json` — руками не правится. `npm test` падает, если сводка
 устарела, пункт описи назван неверно или указанного теста нет.
 
-**Готовность для первых клиентов: 71,8 %** — покрыто тестами v2
-529 из 736 нужных сейчас пунктов.
+**Готовность для первых клиентов: 72 %** — покрыто тестами v2
+530 из 736 нужных сейчас пунктов.
 
-**Путь заказа: 83,4 %** — 283 из 339
+**Путь заказа: 83,7 %** — 284 из 339
 (каталог, цена, оформление, оплата и чек, выдача; файлы — `ORDER_PATH` в скрипте).
 
 | всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |
 | ----- | ------- | --------------------- | ---- | ----- | ------------- |
-| 1125 | 529 | 43 | 207 | 33 | 356 |
+| 1125 | 530 | 43 | 206 | 33 | 356 |
 
 «Позже» — поведение нужно, но не магазинам, которые переезжают первыми
 (модуль ещё не перенесён). «Не нужно в v2» — поведение убрано или заменено;
@@ -99,7 +99,7 @@
 | `tests/orders-pure.test.ts` | 11 | 4 | 7 | 0 | 0 | 36,3 % |
 | `tests/payment-proof.test.ts` | 2 | 0 | 2 | 0 | 0 | 0 % |
 | `tests/pricing.test.ts` | 20 | 20 | 0 | 0 | 0 | 100 % |
-| `tests/product-materials.test.ts` | 25 | 24 | 1 | 0 | 0 | 96 % |
+| `tests/product-materials.test.ts` | 25 | 25 | 0 | 0 | 0 | 100 % |
 | `tests/promo-codes.test.ts` | 4 | 4 | 0 | 0 | 0 | 100 % |
 | `tests/receipt-audit.test.ts` | 20 | 0 | 0 | 20 | 0 | — |
 | `tests/receipt-ocr-auto.test.ts` | 6 | 6 | 0 | 0 | 0 | 100 % |
@@ -129,7 +129,7 @@
 | `tests/zernio-retry.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/zernio-webhook.test.ts` | 13 | 7 | 3 | 0 | 3 | 70 % |
 
-## Дыры (207)
+## Дыры (206)
 
 ### поломки v1
 
@@ -408,10 +408,6 @@
 
 - accepts jpeg/png/pdf with matching magic bytes — расхождение: attachPaymentProof (src/core/orders/orders.ts) не сверяет сигнатуру файла чека с mime, расширение выводится из mime/имени
 - rejects empty files, spoofed mime types and oversized payloads — расхождение: attachPaymentProof не отвергает пустой файл, подменённый mime и файл больше 20 МБ (пустой и >20 МБ режет только downloadAttachment Zernio; путь Telegram и подмена mime не проверяются)
-
-### `tests/product-materials.test.ts`
-
-- откатывается на старые ru/kk снимки, если карты по языкам нет — расхождение: itemMaterials (core/orders/pure.ts) не читает material_files_snapshot / material_files_kz_snapshot — после пустой/отсутствующей material_files_by_lang сразу идёт на одиночные file_*_snapshot; старые заказы с несколькими файлами без карты по языкам выдадутся не полностью или не выдадутся
 
 ### `tests/receipt-verify.test.ts`
 

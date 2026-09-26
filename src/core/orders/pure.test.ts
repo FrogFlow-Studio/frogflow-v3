@@ -7,6 +7,8 @@ type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"];
 const item = (o: Partial<OrderItemRow>) =>
   ({
     material_files_by_lang: null,
+    material_files_snapshot: [],
+    material_files_kz_snapshot: [],
     file_path_snapshot: null,
     file_name_snapshot: null,
     file_url_snapshot: null,
@@ -17,6 +19,43 @@ const item = (o: Partial<OrderItemRow>) =>
   }) as OrderItemRow;
 
 describe("itemMaterials: откаты снимка заказа", () => {
+  it("откатывается на старые ru/kk снимки, если карты по языкам нет", () => {
+    // Заказ до MIGRATION-37: несколько файлов лежат в material_files_*_snapshot,
+    // одиночные колонки — только первый файл.
+    const old = item({
+      material_files_by_lang: {},
+      material_files_snapshot: [
+        { path: "r1.pdf", name: "R1", url: null },
+        { path: "r2.pdf", name: "R2", url: null },
+      ],
+      material_files_kz_snapshot: [
+        { path: "k1.pdf", name: "K1", url: null },
+        { path: "k2.pdf", name: "K2", url: null },
+      ],
+      file_path_snapshot: "r1.pdf",
+      file_name_snapshot: "R1",
+      file_path_kz_snapshot: "k1.pdf",
+    });
+    expect(itemMaterials(old, "ru").map((m) => m.path)).toEqual(["r1.pdf", "r2.pdf"]);
+    expect(itemMaterials(old, "kk").map((m) => m.path)).toEqual(["k1.pdf", "k2.pdf"]);
+    expect(itemLanguages(old)).toEqual(["ru", "kk"]);
+  });
+
+  it("карта по языкам важнее старых снимков", () => {
+    const both = item({
+      material_files_by_lang: { ru: [{ path: "new.pdf", name: "N", url: null }] },
+      material_files_snapshot: [{ path: "old.pdf", name: "O", url: null }],
+    });
+    expect(itemMaterials(both, "ru").map((m) => m.path)).toEqual(["new.pdf"]);
+  });
+
+  it("мусор в старом снимке не выдаётся", () => {
+    const junk = item({
+      material_files_snapshot: [null, "x", { name: "без пути" }, { path: "ok.pdf" }] as never,
+    });
+    expect(itemMaterials(junk, "ru")).toEqual([{ path: "ok.pdf", name: null, url: null }]);
+  });
+
   it("откатывается на совсем старые одиночные *_snapshot-колонки", () => {
     expect(
       itemMaterials(item({ file_path_snapshot: "old.pdf", file_name_snapshot: "Old" }), "ru"),
