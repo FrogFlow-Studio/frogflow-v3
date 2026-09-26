@@ -24,7 +24,9 @@ export type OrderEventKind =
   | "status"
   | "notify_failed"
   | "email_sent"
-  | "email_failed";
+  | "email_failed"
+  | "payment"
+  | "fulfillment_changed";
 
 export type OrderEvent = {
   id: string;
@@ -102,7 +104,16 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       : "";
   switch (e.kind) {
     case "placed":
-      return { text: `Заказ создан${p.platform ? ` · ${str(p.platform)}` : ""}`, tone: "neutral" };
+      return p.platform === "manual"
+        ? { text: `Заказ заведён вручную${who}`, tone: "neutral" }
+        : { text: `Заказ создан${p.platform ? ` · ${str(p.platform)}` : ""}`, tone: "neutral" };
+    case "payment":
+      return {
+        text: `Внесено ${num(p.amount)}${p.currency ? ` ${str(p.currency)}` : ""}${p.source === "deposit" ? " (задаток по чеку)" : ""}${who}`,
+        tone: "ok",
+      };
+    case "fulfillment_changed":
+      return { text: `Получение изменено${who}`, tone: "neutral" };
     case "proof":
       return { text: "Чек получен", tone: "neutral" };
     case "delivery_started":

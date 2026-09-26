@@ -1,0 +1,403 @@
+/**
+ * Физический заказ в руках продавца: принять с записью задатка, внести
+ * оплату вручную, завести заказ без бота, поправить получение. Канал не
+ * знает ни одна из функций — админка и кнопки в Telegram зовут одно и то же.
+ */
+import { randomUUID } from "node:crypto";
+import type { TenantContext } from "@/core/tenant/resolve.server";
+import {
+  activeDeliveryZones,
+  amountDueNow,
+  decrementStock,
+  recordPayment,
+  restoreStock,
+  zoneFee,
+} from "@/core/fulfillment/fulfillment";
+import {
+  addDaysToIso,
+  fulfillmentTotalBelowPaid,
+  fulfillmentTypePatch,
+  remainingDueNow,
+  todayInTz,
+} from "@/core/fulfillment/pure";
+import { recordOrderEvent } from "./events";
+import {
+  manualCustomerTelegramId,
+  manualCustomerUserKey,
+  manualOrderStatus,
+  manualOrderTotal,
+} from "./manual";
+
+export type AcceptResult = { ok: boolean; alreadyAccepted: boolean; recorded: number };
+
+/**
+ * Принять физический заказ в работу. Если покупатель прислал чек
+ * (awaiting_confirmation), продавец этим подтверждает деньги — пишется
+ * положенная сейчас сумма (задаток или всё) за вычетом уже внесённого
+ * вручную. Из awaiting_payment заказ принимается «на доверие»: чека нет,
+ * платёж писать не в чем. Повторное нажатие (CAS не сошёлся) ничего не
+ * дописывает — иначе задаток задвоился бы.
+ */
+export async function acceptPhysicalOrder(
+  ctx: TenantContext,
+  id: number,
+  actor = "admin",
+): Promise<AcceptResult> {
+  const { data: order } = await ctx.db
+    .from("orders")
+    .select("status, total, paid_amount, fulfillment_kind, currency")
+    .eq("id", id)
+    .maybeSingle();
+  if (!order || order.fulfillment_kind !== "physical")
+    return { ok: false, alreadyAccepted: false, recorded: 0 };
+  if (order.status !== "awaiting_confirmation" && order.status !== "awaiting_payment")
+    return { ok: false, alreadyAccepted: true, recorded: 0 };
+  const { data: moved } = await ctx.db
+    .from("orders")
+    .update({ status: "accepted" })
+    .eq("id", id)
+    .eq("status", order.status)
+    .select("id")
+    .maybeSingle();
+  if (!moved) return { ok: false, alreadyAccepted: true, recorded: 0 };
+  await recordOrderEvent(ctx, id, "status", { to: "accepted" }, actor);
+  let recorded = 0;
+  if (order.status === "awaiting_confirmation") {
+    const due = remainingDueNow(
+      await amountDueNow(ctx, { total: Number(order.total), fulfillment_kind: "physical" }),
+      order.paid_amount,
+    );
+    if (due > 0) {
+      if (await recordPayment(ctx, id, due)) {
+        recorded = due;
+        await recordOrderEvent(
+          ctx,
+          id,
+          "payment",
+          { amount: due, currency: order.currency, source: "deposit" },
+          actor,
+        );
+      } else console.error(`[orders] задаток по #${id} не записан`);
+    }
+  }
+  return { ok: true, alreadyAccepted: false, recorded };
+}
+
+/**
+ * «Внести оплату»: остаток по задатку, наличные при выдаче. Только для
+ * физических и не отклонённых заказов; сумма перепроверяется на сервере
+ * против total − paid_amount, присланному числу не верим.
+ */
+export async function recordManualPayment(
+  ctx: TenantContext,
+  id: number,
+  amount: number,
+  actor = "admin",
+): Promise<{ paid: number; total: number }> {
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Сумма должна быть больше нуля");
+  const { data: order, error } = await ctx.db
+    .from("orders")
+    .select("total, paid_amount, fulfillment_kind, status, currency")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!order) throw new Error("Заказ не найден");
+  if (order.status === "rejected" || order.status === "cancelled")
+    throw new Error("Заказ отклонён — оплата по нему не принимается");
+  if (order.fulfillment_kind !== "physical")
+    throw new Error("Ручное внесение оплаты доступно только для физических заказов");
+  const remaining = Number(order.total) - (Number(order.paid_amount) || 0);
+  if (amount > remaining + 0.01)
+    throw new Error(`Сумма больше остатка: осталось внести ${Math.max(0, remaining)}`);
+  if (!(await recordPayment(ctx, id, amount)))
+    throw new Error("Не удалось записать платёж, попробуйте ещё раз");
+  await recordOrderEvent(ctx, id, "payment", { amount, currency: order.currency }, actor);
+  // Деньги пришли по заказу, который ещё ждал оплату, — он в работе.
+  if (order.status === "awaiting_payment" || order.status === "awaiting_confirmation") {
+    const { data: moved } = await ctx.db
+      .from("orders")
+      .update({ status: "accepted" })
+      .eq("id", id)
+      .eq("status", order.status)
+      .select("id")
+      .maybeSingle();
+    if (moved) await recordOrderEvent(ctx, id, "status", { to: "accepted" }, actor);
+  }
+  return {
+    paid: Math.min(Number(order.total), (Number(order.paid_amount) || 0) + amount),
+    total: Number(order.total),
+  };
+}
+
+/** Самая ранняя дата получения с учётом срока изготовления, в поясе магазина. */
+export function minFulfillmentDate(ctx: TenantContext, leadDays: number, now = new Date()): string {
+  return addDaysToIso(todayInTz(ctx.timezone, now), Math.max(0, leadDays));
+}
+
+async function resolveZone(
+  ctx: TenantContext,
+  zoneId: string,
+  countryCode: string | null,
+): Promise<{ id: string; name: string; price: number; currency: string }> {
+  const zone = (await activeDeliveryZones(ctx)).find((z) => z.id === zoneId);
+  if (!zone) throw new Error("Зона доставки не найдена");
+  const fee = await zoneFee(ctx, zone.price, countryCode);
+  return { id: zone.id, name: zone.name, price: fee.amount, currency: fee.currency };
+}
+
+export type ManualOrderInput = {
+  displayName: string;
+  contact: string | null;
+  items: Array<{ productId: string; variantId: string | null; quantity: number }>;
+  fulfillmentType: "pickup" | "delivery";
+  fulfillmentAt: string | null;
+  address: string | null;
+  note: string | null;
+  deliveryZoneId: string | null;
+  paidAmount: number;
+};
+
+type ManualLine = {
+  productId: string;
+  variantId: string | null;
+  quantity: number;
+  name: string;
+  unit: number;
+  currency: string;
+};
+
+/**
+ * Завести заказ вручную: звонок, комментарий в Instagram, человек без бота.
+ * Только физические товары — цифровой заказ выдаётся в чат, а у ручного
+ * покупателя чата нет. Цена — базовая цена товара или варианта, дата не
+ * раньше срока изготовления, остаток списывается так же, как в чекауте.
+ * Внесённая сумма пишется сразу: есть деньги — заказ в работе, нет — ждёт
+ * оплату. platform = manual: ночная чистка такие заказы не удаляет.
+ */
+export async function createManualOrder(
+  ctx: TenantContext,
+  input: ManualOrderInput,
+  actor = "admin",
+): Promise<{ id: number; orderNo: number }> {
+  if (input.items.length === 0) throw new Error("Добавьте хотя бы одну позицию");
+  if (input.fulfillmentType === "delivery" && !input.deliveryZoneId) {
+    const zones = await activeDeliveryZones(ctx);
+    if (zones.length > 0) throw new Error("Для доставки выберите зону");
+  }
+  const productIds = [...new Set(input.items.map((it) => it.productId))];
+  const { data: products, error: prodErr } = await ctx.db
+    .from("products")
+    .select("id, name, price, currency, is_active, fulfillment_kind, lead_time_days")
+    .in("id", productIds);
+  if (prodErr) throw new Error(prodErr.message);
+  const { data: variants } = await ctx.db
+    .from("product_variants")
+    .select("id, product_id, name, price")
+    .in("product_id", productIds);
+  const byId = new Map((products ?? []).map((p) => [p.id, p]));
+
+  const lines: ManualLine[] = [];
+  let leadDays = 0;
+  for (const it of input.items) {
+    const p = byId.get(it.productId);
+    if (!p || !p.is_active) throw new Error("Товар не найден или скрыт");
+    if (p.fulfillment_kind !== "physical")
+      throw new Error(`«${p.name}» — цифровой товар; вручную заводятся только физические заказы`);
+    const own = (variants ?? []).filter((v) => v.product_id === p.id);
+    let unit = Number(p.price) || 0;
+    let name = p.name;
+    if (own.length > 0) {
+      const v = own.find((row) => row.id === it.variantId);
+      if (!it.variantId) throw new Error(`Выберите вариант для «${p.name}»`);
+      if (!v) throw new Error(`Вариант не найден для «${p.name}»`);
+      unit = Number(v.price) || 0;
+      name = `${p.name} — ${v.name}`;
+    } else if (it.variantId) throw new Error(`У «${p.name}» нет вариантов`);
+    leadDays = Math.max(leadDays, Number(p.lead_time_days) || 0);
+    lines.push({
+      productId: p.id,
+      variantId: it.variantId,
+      quantity: it.quantity,
+      name,
+      unit,
+      currency: p.currency || "KZT",
+    });
+  }
+  const currency = lines[0]!.currency;
+  if (lines.some((l) => l.currency !== currency))
+    throw new Error("Все позиции должны быть в одной валюте");
+
+  if (input.fulfillmentAt && leadDays > 0) {
+    const minIso = minFulfillmentDate(ctx, leadDays);
+    if (input.fulfillmentAt < minIso)
+      throw new Error(
+        `Слишком ранняя дата получения — срок изготовления ${leadDays} дн., доступно с ${minIso}`,
+      );
+  }
+
+  const zone =
+    input.fulfillmentType === "delivery" && input.deliveryZoneId
+      ? await resolveZone(ctx, input.deliveryZoneId, null)
+      : null;
+  if (zone && zone.currency !== currency)
+    throw new Error(`Зона доставки в ${zone.currency}, а товары в ${currency}`);
+  const deliveryFee = zone?.price ?? 0;
+  const total = manualOrderTotal(
+    lines.map((l) => l.unit * l.quantity),
+    deliveryFee,
+  );
+  const paid = Number(input.paidAmount) || 0;
+  if (paid < 0) throw new Error("Внесённая сумма не может быть отрицательной");
+  if (paid > total + 0.01) throw new Error(`Внесено больше итога заказа (${total})`);
+
+  const reserved: Array<{ productId: string; qty: number }> = [];
+  try {
+    if (ctx.tenant.modules.stock) {
+      for (const l of lines) {
+        if (!(await decrementStock(ctx, l.productId, l.quantity)))
+          throw new Error(`Недостаточно «${l.name}» на складе`);
+        reserved.push({ productId: l.productId, qty: l.quantity });
+      }
+    }
+    const entropy = randomUUID();
+    const { data: order, error } = await ctx.db
+      .from("orders")
+      .insert({
+        bot_id: ctx.tenant.id,
+        telegram_id: manualCustomerTelegramId(input.contact, entropy),
+        user_key: manualCustomerUserKey(input.contact, entropy),
+        platform: "manual",
+        display_name: input.displayName,
+        contact: input.contact,
+        username: null,
+        total,
+        currency,
+        status: manualOrderStatus(paid),
+        paid_amount: Math.min(paid, total),
+        admin_note: "Создан вручную",
+        fulfillment_kind: "physical",
+        fulfillment_type: input.fulfillmentType,
+        fulfillment_at: input.fulfillmentAt ? `${input.fulfillmentAt}T00:00:00Z` : null,
+        fulfillment_address: input.fulfillmentType === "delivery" ? input.address : null,
+        fulfillment_note: input.note,
+        delivery_zone_id: zone?.id ?? null,
+        delivery_zone_name: zone?.name ?? null,
+        delivery_fee: deliveryFee,
+      })
+      .select("id, order_no, display_no")
+      .single();
+    if (error || !order) throw new Error(error?.message || "Не удалось создать заказ");
+    const { error: itemsError } = await ctx.db.from("order_items").insert(
+      lines.map((l) => ({
+        bot_id: ctx.tenant.id,
+        order_id: order.id,
+        product_id: l.productId,
+        product_variant_id: l.variantId,
+        name_snapshot: l.name,
+        price_snapshot: l.unit,
+        quantity: l.quantity,
+      })),
+    );
+    if (itemsError) {
+      await ctx.db.from("orders").delete().eq("id", order.id);
+      throw new Error(itemsError.message);
+    }
+    await recordOrderEvent(ctx, order.id, "placed", { platform: "manual", total, currency }, actor);
+    if (paid > 0)
+      await recordOrderEvent(ctx, order.id, "payment", { amount: paid, currency }, actor);
+    return { id: order.id, orderNo: Number(order.display_no ?? order.order_no) };
+  } catch (e) {
+    for (const r of reserved) await restoreStock(ctx, r.productId, r.qty).catch(() => {});
+    throw e;
+  }
+}
+
+export type FulfillmentEdit = {
+  id: number;
+  fulfillmentAt: string | null;
+  address: string | null;
+  note: string | null;
+  fulfillmentType?: "pickup" | "delivery" | null;
+  deliveryZoneId?: string | null;
+};
+
+/**
+ * Поправить получение: покупательница позвонила перенести на субботу.
+ * Дата, адрес и комментарий деньги не трогают; смена доставки ↔
+ * самовывоза пересчитывает комиссию (fulfillmentTypePatch). Флаг
+ * напоминания сбрасывается всегда: иначе после переноса даты напоминание
+ * за сутки не пришло бы уже никогда.
+ */
+export async function updateOrderFulfillment(
+  ctx: TenantContext,
+  input: FulfillmentEdit,
+  actor = "admin",
+): Promise<void> {
+  const { data: order, error: readErr } = await ctx.db
+    .from("orders")
+    .select(
+      "fulfillment_kind, fulfillment_type, fulfillment_at, delivery_fee, total, paid_amount, country_code, status, order_items(products(lead_time_days))",
+    )
+    .eq("id", input.id)
+    .maybeSingle();
+  if (readErr) throw new Error(readErr.message);
+  if (!order) throw new Error("Заказ не найден");
+  if (order.fulfillment_kind !== "physical")
+    throw new Error("Способ получения правится только у физического заказа");
+  if (order.status === "delivered" || order.status === "rejected")
+    throw new Error("Заказ уже закрыт");
+  const newDay = input.fulfillmentAt;
+  const oldDay = order.fulfillment_at ? String(order.fulfillment_at).slice(0, 10) : null;
+  if (newDay && newDay !== oldDay) {
+    const items = (order.order_items ?? []) as Array<{
+      products?: { lead_time_days?: number | null } | null;
+    }>;
+    const leadDays = Math.max(0, ...items.map((it) => Number(it.products?.lead_time_days) || 0));
+    const minIso = minFulfillmentDate(ctx, leadDays);
+    if (newDay < minIso)
+      throw new Error(
+        leadDays > 0
+          ? `Слишком ранняя дата получения — срок изготовления ${leadDays} дн., доступно с ${minIso}`
+          : `Дата получения уже прошла — доступно с ${minIso}`,
+      );
+  }
+  let zone: { id: string; name: string; price: number } | null = null;
+  if (input.fulfillmentType === "delivery" && input.deliveryZoneId) {
+    zone = await resolveZone(ctx, input.deliveryZoneId, order.country_code);
+  } else if (input.fulfillmentType === "delivery" && order.fulfillment_type !== "delivery") {
+    const zones = await activeDeliveryZones(ctx);
+    if (zones.length > 0) throw new Error("Выберите зону доставки");
+  }
+  const typePatch = fulfillmentTypePatch(
+    {
+      fulfillment_type: order.fulfillment_type,
+      delivery_fee: order.delivery_fee,
+      total: Number(order.total),
+    },
+    input.fulfillmentType,
+    zone,
+  );
+  if (fulfillmentTotalBelowPaid(typePatch, Number(order.paid_amount) || 0))
+    throw new Error(
+      "Нельзя снять комиссию доставки — заказ уже оплачен на большую сумму. Сначала верните разницу покупателю.",
+    );
+  const nextType = typePatch.fulfillment_type ?? order.fulfillment_type;
+  const { error } = await ctx.db
+    .from("orders")
+    .update({
+      fulfillment_at: newDay ? `${newDay}T00:00:00Z` : null,
+      fulfillment_address: nextType === "delivery" ? input.address : null,
+      fulfillment_note: input.note,
+      fulfillment_reminder_sent_at: null,
+      ...typePatch,
+    })
+    .eq("id", input.id);
+  if (error) throw new Error(error.message);
+  await recordOrderEvent(
+    ctx,
+    input.id,
+    "fulfillment_changed",
+    { at: newDay, type: nextType, total: typePatch.total },
+    actor,
+  );
+}

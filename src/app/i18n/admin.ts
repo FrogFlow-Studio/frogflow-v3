@@ -18,6 +18,7 @@ import * as analytics from "./admin/analytics";
 import * as chat from "./admin/chat";
 import * as outbox from "./admin/outbox";
 import * as quiz from "./admin/quiz";
+import * as physical from "./admin/physical";
 
 const baseRu = {
   // навигация и оболочка
@@ -260,6 +261,7 @@ const ru = {
   ...chat.ru,
   ...outbox.ru,
   ...quiz.ru,
+  ...physical.ru,
 } as const;
 
 export type AdminKey = keyof typeof ru;
@@ -929,6 +931,7 @@ const kk: Dict = {
   ...chat.kk,
   ...outbox.kk,
   ...quiz.kk,
+  ...physical.kk,
 };
 
 const en: Dict = {
@@ -944,6 +947,7 @@ const en: Dict = {
   ...chat.en,
   ...outbox.en,
   ...quiz.en,
+  ...physical.en,
 };
 
 const uz: Dict = {
@@ -959,6 +963,7 @@ const uz: Dict = {
   ...chat.uz,
   ...outbox.uz,
   ...quiz.uz,
+  ...physical.uz,
 };
 
 const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };

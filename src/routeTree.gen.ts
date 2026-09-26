@@ -51,6 +51,7 @@ import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
 import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
 import { Route as SSlugOrdersRouteImport } from './routes/s.$slug.orders'
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
+import { Route as AdminAuthedOrdersNewRouteImport } from './routes/admin._authed.orders.new'
 import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authed.products_.$id'
 import { Route as ApiAdminExportKindRouteImport } from './routes/api/admin/export.$kind'
 import { Route as ApiImgBotIdSplatRouteImport } from './routes/api/img.$botId.$'
@@ -269,6 +270,11 @@ const AdminAuthedOrdersIdRoute = AdminAuthedOrdersIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AdminAuthedOrdersRoute,
 } as any)
+const AdminAuthedOrdersNewRoute = AdminAuthedOrdersNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AdminAuthedOrdersRoute,
+} as any)
 const AdminAuthedProductsIdRoute = AdminAuthedProductsIdRouteImport.update({
   id: '/products_/$id',
   path: '/products/$id',
@@ -358,6 +364,7 @@ export interface FileRoutesByFullPath {
   '/operator/': typeof OperatorAuthedIndexRoute
   '/s/$slug/': typeof SSlugIndexRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
+  '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
@@ -406,6 +413,7 @@ export interface FileRoutesByTo {
   '/s/$slug/orders': typeof SSlugOrdersRoute
   '/s/$slug': typeof SSlugIndexRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
+  '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
@@ -460,6 +468,7 @@ export interface FileRoutesById {
   '/operator/_authed/': typeof OperatorAuthedIndexRoute
   '/s/$slug/': typeof SSlugIndexRoute
   '/admin/_authed/orders/$id': typeof AdminAuthedOrdersIdRoute
+  '/admin/_authed/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/_authed/products_/$id': typeof AdminAuthedProductsIdRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
@@ -513,6 +522,7 @@ export interface FileRouteTypes {
     | '/operator/'
     | '/s/$slug/'
     | '/admin/orders/$id'
+    | '/admin/orders/new'
     | '/admin/products/$id'
     | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
@@ -561,6 +571,7 @@ export interface FileRouteTypes {
     | '/s/$slug/orders'
     | '/s/$slug'
     | '/admin/orders/$id'
+    | '/admin/orders/new'
     | '/admin/products/$id'
     | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
@@ -614,6 +625,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/'
     | '/s/$slug/'
     | '/admin/_authed/orders/$id'
+    | '/admin/_authed/orders/new'
     | '/admin/_authed/products_/$id'
     | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
@@ -938,6 +950,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedOrdersIdRouteImport
       parentRoute: typeof AdminAuthedOrdersRoute
     }
+    '/admin/_authed/orders/new': {
+      id: '/admin/_authed/orders/new'
+      path: '/new'
+      fullPath: '/admin/orders/new'
+      preLoaderRoute: typeof AdminAuthedOrdersNewRouteImport
+      parentRoute: typeof AdminAuthedOrdersRoute
+    }
     '/admin/_authed/products_/$id': {
       id: '/admin/_authed/products_/$id'
       path: '/products/$id'
@@ -1006,10 +1025,12 @@ declare module '@tanstack/react-router' {
 
 interface AdminAuthedOrdersRouteChildren {
   AdminAuthedOrdersIdRoute: typeof AdminAuthedOrdersIdRoute
+  AdminAuthedOrdersNewRoute: typeof AdminAuthedOrdersNewRoute
 }
 
 const AdminAuthedOrdersRouteChildren: AdminAuthedOrdersRouteChildren = {
   AdminAuthedOrdersIdRoute: AdminAuthedOrdersIdRoute,
+  AdminAuthedOrdersNewRoute: AdminAuthedOrdersNewRoute,
 }
 
 const AdminAuthedOrdersRouteWithChildren =

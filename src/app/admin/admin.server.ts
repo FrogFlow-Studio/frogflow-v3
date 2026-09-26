@@ -157,15 +157,15 @@ export async function runOrderAction(
     }
     case "confirm": {
       if (order.fulfillment_kind === "physical") {
-        const { setPhysicalStatus } = await import("@/core/orders/admin");
-        const ok =
-          (await setPhysicalStatus(ctx, id, "awaiting_confirmation", "accepted")) ||
-          (await setPhysicalStatus(ctx, id, "awaiting_payment", "accepted"));
-        if (ok) await notifyCustomer(ctx, order, `✅ Заказ #${no} принят в работу.`);
+        const { acceptPhysicalOrder } = await import("@/core/orders/physical-admin");
+        const r = await acceptPhysicalOrder(ctx, id, actor);
+        if (r.ok) await notifyCustomer(ctx, order, `✅ Заказ #${no} принят в работу.`);
         return {
-          ok,
-          message: ok
-            ? `Заказ #${no} принят`
+          ok: r.ok,
+          message: r.ok
+            ? r.recorded > 0
+              ? `Заказ #${no} принят, записана оплата ${r.recorded} ${order.currency}`
+              : `Заказ #${no} принят`
             : `Заказ #${no} нельзя принять из статуса ${order.status}`,
         };
       }

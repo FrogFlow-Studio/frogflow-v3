@@ -396,7 +396,13 @@ export const setProductActiveFn = createServerFn({ method: "POST" })
 
 export const ordersFn = createServerFn({ method: "GET" })
   .validator((d: unknown) =>
-    z.object({ status: z.string().optional(), q: z.string().optional() }).parse(d ?? {}),
+    z
+      .object({
+        status: z.string().optional(),
+        q: z.string().optional(),
+        pickup: z.enum(["today", "tomorrow", "overdue", "nodate"]).optional(),
+      })
+      .parse(d ?? {}),
   )
   .handler(async ({ data }) => {
     const ctx = await admin();
@@ -417,11 +423,16 @@ export const orderFn = createServerFn({ method: "GET" })
     const { listOrderEvents } = await import("@/core/orders/events");
     const order = await getOrder(ctx, data.id);
     if (!order) throw new Error("Заказ не найден");
-    const [proofUrl, events] = await Promise.all([
+    const { activeDeliveryZones, amountDueNow } = await import("@/core/fulfillment/fulfillment");
+    type DeliveryZone = Awaited<ReturnType<typeof activeDeliveryZones>>[number];
+    const physical = order.fulfillment_kind === "physical";
+    const [proofUrl, events, zones, dueNow] = await Promise.all([
       order.payment_proof_path ? proofSignedUrl(ctx, order.payment_proof_path) : null,
       listOrderEvents(ctx, data.id),
+      physical ? activeDeliveryZones(ctx) : Promise.resolve<DeliveryZone[]>([]),
+      physical ? amountDueNow(ctx, order) : Number(order.total),
     ]);
-    return { order, proofUrl, events };
+    return { order, proofUrl, events, zones, dueNow };
   });
 
 export const undeliveredFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -472,6 +483,112 @@ export const orderNoteFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await adminWrite();
     await (await import("@/core/orders/admin")).setOrderNote(ctx, data.id, data.note);
+    return { ok: true };
+  });
+
+/* ── ручной заказ, оплата, получение (физические товары) ─────────── */
+
+const isoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .nullable();
+
+/** Что нужно форме ручного заказа: физические товары с вариантами и зоны. */
+export const manualOrderFormFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  const { activeDeliveryZones, zoneFee } = await import("@/core/fulfillment/fulfillment");
+  const { minFulfillmentDate } = await import("@/core/orders/physical-admin");
+  const { data, error } = await ctx.db
+    .from("products")
+    .select(
+      "id, name, price, currency, lead_time_days, stock_quantity, product_variants(id, name, price, sort_order)",
+    )
+    .eq("is_active", true)
+    .eq("fulfillment_kind", "physical")
+    .order("sort_order")
+    .order("name");
+  if (error) throw new Error(error.message);
+  const zones = await Promise.all(
+    (await activeDeliveryZones(ctx)).map(async (z) => {
+      const fee = await zoneFee(ctx, z.price, null);
+      return { id: z.id, name: z.name, price: fee.amount, currency: fee.currency };
+    }),
+  );
+  return {
+    products: (data ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: Number(p.price),
+      currency: p.currency,
+      leadDays: Number(p.lead_time_days) || 0,
+      stock: ctx.tenant.modules.stock ? p.stock_quantity : null,
+      variants: [...(p.product_variants ?? [])]
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((v) => ({ id: v.id, name: v.name, price: Number(v.price) })),
+    })),
+    zones,
+    today: minFulfillmentDate(ctx, 0),
+  };
+});
+
+export const createManualOrderFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        displayName: z.string().trim().min(1).max(120),
+        contact: z.string().trim().max(40).nullable(),
+        items: z
+          .array(
+            z.object({
+              productId: uuid,
+              variantId: uuid.nullable(),
+              quantity: z.number().int().min(1).max(99),
+            }),
+          )
+          .min(1)
+          .max(20),
+        fulfillmentType: z.enum(["pickup", "delivery"]),
+        fulfillmentAt: isoDate,
+        address: z.string().trim().max(500).nullable(),
+        note: z.string().trim().max(500).nullable(),
+        deliveryZoneId: uuid.nullable(),
+        paidAmount: z.number().min(0),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { createManualOrder } = await import("@/core/orders/physical-admin");
+    return createManualOrder(ctx, data, await actor());
+  });
+
+export const recordPaymentFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ id: z.number().int(), amount: z.number().positive() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { recordManualPayment } = await import("@/core/orders/physical-admin");
+    return recordManualPayment(ctx, data.id, data.amount, await actor());
+  });
+
+export const updateFulfillmentFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        id: z.number().int(),
+        fulfillmentAt: isoDate,
+        address: z.string().trim().max(500).nullable(),
+        note: z.string().trim().max(500).nullable(),
+        fulfillmentType: z.enum(["pickup", "delivery"]).nullable().optional(),
+        deliveryZoneId: uuid.nullable().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { updateOrderFulfillment } = await import("@/core/orders/physical-admin");
+    await updateOrderFulfillment(ctx, data, await actor());
     return { ok: true };
   });
 

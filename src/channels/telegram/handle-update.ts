@@ -1932,11 +1932,16 @@ async function adminDecision(
     return;
   }
   if (order.fulfillment_kind === "physical") {
-    await ctx.db
-      .from("orders")
-      .update({ status: "accepted" })
-      .eq("id", orderId)
-      .in("status", ["awaiting_payment", "awaiting_confirmation"]);
+    // Тот же путь, что и в админке: с чеком пишется задаток, повтор не двоит.
+    const { acceptPhysicalOrder } = await import("@/core/orders/physical-admin");
+    const r = await acceptPhysicalOrder(ctx, orderId, "admin");
+    if (!r.ok) {
+      await api.call("sendMessage", {
+        chat_id: chatId,
+        text: `Заказ #${no} уже принят или закрыт (${order.status}).`,
+      });
+      return;
+    }
     await api.call("sendMessage", { chat_id: chatId, text: `✅ Заказ #${no} принят в работу.` });
     await tellBuyer(`✅ Заказ #${no} принят в работу.`);
     return;

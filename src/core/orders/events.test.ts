@@ -34,4 +34,28 @@ describe("describeOrderEvent", () => {
       }).text,
     ).toBe("Выдача не завершена: не удалось 1 из 3");
   });
+
+  it("ручной заказ, внесённая оплата и смена получения видны в истории", () => {
+    expect(
+      describeOrderEvent({ kind: "placed", actor: "admin:masha", payload: { platform: "manual" } })
+        .text,
+    ).toBe("Заказ заведён вручную (masha)");
+    expect(
+      describeOrderEvent({
+        kind: "payment",
+        actor: "admin",
+        payload: { amount: 5000, currency: "KZT" },
+      }),
+    ).toEqual({ text: "Внесено 5000 KZT (продавец)", tone: "ok" });
+    expect(
+      describeOrderEvent({
+        kind: "payment",
+        actor: "admin",
+        payload: { amount: 3000, source: "deposit" },
+      }).text,
+    ).toBe("Внесено 3000 (задаток по чеку) (продавец)");
+    expect(
+      describeOrderEvent({ kind: "fulfillment_changed", actor: "admin", payload: {} }).text,
+    ).toBe("Получение изменено (продавец)");
+  });
 });

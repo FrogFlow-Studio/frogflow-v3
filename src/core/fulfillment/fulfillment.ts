@@ -135,3 +135,36 @@ export async function restoreStock(
     if (data) return;
   }
 }
+
+/**
+ * Дописать внесённую сумму к paid_amount CAS'ом по старому значению: два
+ * одновременных «Внести оплату» не теряют друг друга. Не выше total —
+ * CHECK orders_paid_amount_le_total уронил бы апдейт сырой ошибкой.
+ * false — заказа нет или CAS не сошёлся за пять попыток.
+ */
+export async function recordPayment(
+  ctx: TenantContext,
+  orderId: number,
+  amount: number,
+): Promise<boolean> {
+  if (!Number.isFinite(amount) || amount <= 0) return false;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data: order } = await ctx.db
+      .from("orders")
+      .select("paid_amount, total")
+      .eq("id", orderId)
+      .maybeSingle();
+    if (!order) return false;
+    const current = Number(order.paid_amount) || 0;
+    const next = Math.min(Number(order.total), Math.round((current + amount) * 100) / 100);
+    const { data: updated } = await ctx.db
+      .from("orders")
+      .update({ paid_amount: next })
+      .eq("id", orderId)
+      .eq("paid_amount", current)
+      .select("id")
+      .maybeSingle();
+    if (updated) return true;
+  }
+  return false;
+}

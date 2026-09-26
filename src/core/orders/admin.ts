@@ -1,8 +1,20 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { OrderWithItems } from "./orders";
 import { serviceDb } from "@/core/db/client.server";
+import {
+  addDaysToIso,
+  OPEN_PHYSICAL_STATUSES,
+  todayInTz,
+  type PickupFilter,
+} from "@/core/fulfillment/pure";
 
-export type OrderFilter = { status?: string; q?: string; limit?: number };
+export type OrderFilter = {
+  status?: string;
+  q?: string;
+  limit?: number;
+  /** «К выдаче»: открытые физические заказы по дню получения (matchesPickupFilter). */
+  pickup?: PickupFilter;
+};
 
 export async function listOrdersForAdmin(
   ctx: TenantContext,
@@ -11,9 +23,22 @@ export async function listOrdersForAdmin(
   let q = ctx.db
     .from("orders")
     .select("*, order_items(*)")
-    .order("created_at", { ascending: false })
     .limit(f.limit ?? 100);
   if (f.status) q = q.eq("status", f.status);
+  if (f.pickup) {
+    // fulfillment_at хранится полночью UTC календарного дня получения.
+    const today = todayInTz(ctx.timezone);
+    const day = (iso: string) => `${iso}T00:00:00Z`;
+    q = q.eq("fulfillment_kind", "physical").in("status", [...OPEN_PHYSICAL_STATUSES]);
+    if (f.pickup === "nodate") q = q.is("fulfillment_at", null);
+    else if (f.pickup === "overdue") q = q.lt("fulfillment_at", day(today));
+    else {
+      const from = f.pickup === "today" ? today : addDaysToIso(today, 1);
+      q = q.gte("fulfillment_at", day(from)).lt("fulfillment_at", day(addDaysToIso(from, 1)));
+    }
+    q = q.order("fulfillment_at", { ascending: true });
+  }
+  q = q.order("created_at", { ascending: false });
   if (f.q?.trim()) {
     const s = f.q.trim().replace(/[%_,()]/g, " ");
     const asNo = Number(s);

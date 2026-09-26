@@ -13,7 +13,13 @@ import { Badge, Empty, PageTitle } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 
-const search = z.object({ status: z.string().optional(), q: z.string().optional() });
+const search = z.object({
+  status: z.string().optional(),
+  q: z.string().optional(),
+  pickup: z.enum(["today", "tomorrow", "overdue", "nodate"]).optional(),
+});
+
+const PICKUP_KEYS = ["today", "tomorrow", "overdue", "nodate"] as const;
 
 export const Route = createFileRoute("/admin/_authed/orders")({
   validateSearch: search,
@@ -109,7 +115,8 @@ function OrdersPage() {
   const { orders, counts } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
-  const { status, q } = Route.useSearch();
+  const { status, q, pickup } = Route.useSearch();
+  const physical = shop.vertical === "confectionery" || shop.vertical === "flowers";
   const navigate = useNavigate();
   const [query, setQuery] = useState(q ?? "");
   const tabs: Array<[string | undefined, string]> = [
@@ -129,14 +136,42 @@ function OrdersPage() {
     <>
       <PageTitle
         title={t("orders.title")}
-        actions={shop.modules.excel_export && <ExportButton />}
+        actions={
+          <div className="flex gap-2">
+            {physical && shop.role !== "viewer" && (
+              <Link
+                to="/admin/orders/new"
+                search={{ status, q, pickup }}
+                className="btn-primary text-xs"
+              >
+                {t("physical.newOrder")}
+              </Link>
+            )}
+            {shop.modules.excel_export && <ExportButton />}
+          </div>
+        }
       />
+      {physical && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted">{t("physical.pickupLabel")}</span>
+          {PICKUP_KEYS.map((k) => (
+            <Link
+              key={k}
+              to="/admin/orders"
+              search={{ status, q, pickup: pickup === k ? undefined : k }}
+              className={`badge cursor-pointer ${pickup === k ? "border-accent bg-accent/10 text-accent" : ""}`}
+            >
+              {t(`physical.pickup.${k}`)}
+            </Link>
+          ))}
+        </div>
+      )}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {tabs.map(([s, label]) => (
           <Link
             key={label}
             to="/admin/orders"
-            search={{ status: s, q }}
+            search={{ status: s, q, pickup }}
             className={`badge cursor-pointer ${status === s ? "border-accent bg-accent/10 text-accent" : ""}`}
           >
             {label}
@@ -147,7 +182,10 @@ function OrdersPage() {
           className="ml-auto flex gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            void navigate({ to: "/admin/orders", search: { status, q: query || undefined } });
+            void navigate({
+              to: "/admin/orders",
+              search: { status, q: query || undefined, pickup },
+            });
           }}
         >
           <input
@@ -194,7 +232,16 @@ function OrdersPage() {
                   <td className="max-w-xs truncate text-muted">
                     {(o.order_items ?? []).map((i) => i.name_snapshot).join(", ")}
                   </td>
-                  <td className="text-right tabular-nums">{formatMoney(o.total, o.currency)}</td>
+                  <td className="text-right tabular-nums">
+                    {formatMoney(o.total, o.currency)}
+                    {o.fulfillment_kind === "physical" &&
+                      Number(o.paid_amount) > 0 &&
+                      Number(o.paid_amount) < Number(o.total) && (
+                        <div className="text-xs text-muted">
+                          {t("physical.paid")} {formatMoney(o.paid_amount, o.currency)}
+                        </div>
+                      )}
+                  </td>
                   <td>
                     <OrderStatus status={o.status} />
                   </td>
@@ -204,6 +251,16 @@ function OrdersPage() {
                       dateStyle: "short",
                       timeStyle: "short",
                     })}
+                    {o.fulfillment_at && (
+                      <div className="text-xs text-fg">
+                        →{" "}
+                        {new Date(o.fulfillment_at).toLocaleDateString(intlLocale(shop.locale), {
+                          timeZone: "UTC",
+                          day: "2-digit",
+                          month: "2-digit",
+                        })}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
