@@ -185,6 +185,9 @@ export async function runRetention(
     bot_events: (n) => pruneBotEvents(n, s),
     bot_health_snapshots: (n) => pruneHealthSnapshots(n, s),
     broadcast_recipients: (n) => pruneBroadcastRecipients(n, s),
+    // Копии PDF со знаком (core/delivery) — только клиенты v2 и только `<клиент>/wm/`.
+    watermark_copies: async (n) =>
+      (await import("@/core/delivery/watermark.server")).pruneStampedCopies(s ?? [], n),
   };
   const out: Record<string, PruneResult | { error: string }> = {};
   const startedAt = Date.now();

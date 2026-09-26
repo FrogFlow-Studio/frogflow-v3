@@ -5,7 +5,15 @@ import { serviceDb } from "@/core/db/client.server";
 import { isTenantStorageKey } from "@/core/storage/keys";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { reportError } from "@/lib/errors";
-import { isPdfMaterial, watermarkLine, type WatermarkBuyer } from "./watermark";
+import {
+  copyAgeDays,
+  isPdfMaterial,
+  isStampedCopyKey,
+  STAMP_REUSE_DAYS,
+  staleStampedCopies,
+  watermarkLine,
+  type WatermarkBuyer,
+} from "./watermark";
 
 const BUCKET = "product-files";
 /** Больше — отдаём без знака: функция не должна держать в памяти огромный файл. */
@@ -90,8 +98,16 @@ export async function protectMaterials(
 async function stampedCopy(ctx: TenantContext, order: Order, path: string): Promise<string | null> {
   const bucket = serviceDb().storage.from(BUCKET);
   const key = stampedKey(ctx.tenant.id, order.id, path);
-  const have = await bucket.exists(key);
-  if (have.data) return key;
+  // Свежая копия — та же; старая переписывается, чтобы не удалить её
+  // чисткой, пока живёт новая ссылка (STAMP_REUSE_DAYS < STAMP_KEEP_DAYS).
+  const have = await bucket.info(key);
+  if (have.data) {
+    const age = copyAgeDays(
+      { updated_at: have.data.lastModified ?? null, created_at: have.data.createdAt ?? null },
+      Date.now(),
+    );
+    if (age != null && age <= STAMP_REUSE_DAYS) return key;
+  }
   const info = await bucket.info(path);
   if (!info.data || Number(info.data.size ?? 0) > MAX_BYTES) return null;
   const { data: file, error } = await bucket.download(path);
@@ -104,4 +120,82 @@ async function stampedCopy(ctx: TenantContext, order: Order, path: string): Prom
   const up = await bucket.upload(key, stamped, { contentType: "application/pdf", upsert: true });
   if (up.error) throw new Error(`watermark upload: ${up.error.message}`);
   return key;
+}
+
+type Storage = Pick<ReturnType<typeof serviceDb>["storage"], "from">;
+type Db = Pick<ReturnType<typeof serviceDb>, "from">;
+
+/** Порция на клиента за проход: остаток заберёт следующий запуск. */
+const PRUNE_LIST_LIMIT = 1000;
+const REMOVE_CHUNK = 100;
+/**
+ * Ключей в одной проверке «не оригинал». Список уходит в адрес запроса
+ * PostgREST (`in.(…)`), ключ ~70 знаков: 1000 ключей — около 70 КБ адреса,
+ * такой запрос отвергается, и чистка не шла бы никогда.
+ */
+export const CHECK_CHUNK = 100;
+
+/**
+ * Ключи, на которые ссылаются как на оригинал: файлы товаров и снимки
+ * файлов в заказах. Вторая защита поверх формата ключа — даже если такой
+ * файл вдруг лежит в `wm/`, чистка его не тронет.
+ */
+async function referencedAsOriginal(db: Db, all: string[]): Promise<Set<string>> {
+  const found = new Set<string>();
+  for (let i = 0; i < all.length; i += CHECK_CHUNK)
+    await markReferenced(db, all.slice(i, i + CHECK_CHUNK), found);
+  return found;
+}
+
+async function markReferenced(db: Db, keys: string[], found: Set<string>): Promise<void> {
+  const checks = [
+    db.from("product_material_files").select("file_path").in("file_path", keys),
+    db.from("products").select("file_path").in("file_path", keys),
+    db.from("products").select("file_path_kz").in("file_path_kz", keys),
+    db.from("order_items").select("file_path_snapshot").in("file_path_snapshot", keys),
+    db.from("order_items").select("file_path_kz_snapshot").in("file_path_kz_snapshot", keys),
+  ];
+  for (const q of checks) {
+    const { data, error } = await q;
+    if (error) throw new Error(`watermark prune check: ${error.message}`);
+    for (const row of (data ?? []) as Array<Record<string, string | null>>)
+      for (const v of Object.values(row)) if (v) found.add(v);
+  }
+}
+
+/**
+ * Чистка копий со знаком (крон retention): только клиенты из `tenantIds`
+ * (клиенты v2 — правило 6; у клиентов прежней платформы копий нет, и их
+ * хранилище v2 не трогает), только папка `<клиент>/wm/`, только ключи формата
+ * stampedKey старше STAMP_KEEP_DAYS и не упомянутые как оригинал.
+ */
+export async function pruneStampedCopies(
+  tenantIds: readonly string[],
+  now = Date.now(),
+  deps: { storage?: Storage; db?: Db } = {},
+): Promise<{ deleted: number; done: boolean }> {
+  const storage = deps.storage ?? serviceDb().storage;
+  const db = deps.db ?? serviceDb();
+  const bucket = storage.from(BUCKET);
+  let deleted = 0;
+  let done = true;
+  for (const id of tenantIds) {
+    const { data, error } = await bucket.list(`${id}/wm`, {
+      limit: PRUNE_LIST_LIMIT,
+      sortBy: { column: "updated_at", order: "asc" },
+    });
+    if (error) throw new Error(`watermark prune list ${id}: ${error.message}`);
+    const stale = staleStampedCopies(id, data ?? [], now);
+    const keep = await referencedAsOriginal(db, stale);
+    const doomed = stale.filter((k) => !keep.has(k) && isStampedCopyKey(id, k));
+    for (let i = 0; i < doomed.length; i += REMOVE_CHUNK) {
+      const { error: e } = await bucket.remove(doomed.slice(i, i + REMOVE_CHUNK));
+      if (e) throw new Error(`watermark prune remove ${id}: ${e.message}`);
+    }
+    deleted += doomed.length;
+    // Полная страница и было что удалить — дальше могут быть ещё старые.
+    // Без удалений повтор вернул бы ту же страницу и съел бюджет крона.
+    if ((data ?? []).length >= PRUNE_LIST_LIMIT && doomed.length > 0) done = false;
+  }
+  return { deleted, done };
 }
