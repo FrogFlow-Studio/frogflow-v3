@@ -88,6 +88,8 @@ export type DialogState = {
   consultant?: { [key: string]: Json | undefined };
   /** Магазин в Instagram/WhatsApp: показанный список, дедупликация ответов (src/channels/zernio/shop.server). */
   direct?: { [key: string]: Json | undefined };
+  /** Лист ожидания: id товаров, о поступлении которых покупатель просил сообщить. */
+  waitlist?: string[];
   [key: string]: Json | undefined;
 };
 
@@ -112,6 +114,11 @@ export type Customer = {
 
 export function stateFromJson(json: Json | null | undefined): DialogState {
   return json && typeof json === "object" && !Array.isArray(json) ? (json as DialogState) : {};
+}
+
+/** Строка bot_users → покупатель; для выборок по состоянию (лист ожидания и т. п.). */
+export function customerFromRow(r: Row): Customer {
+  return fromRow(r);
 }
 
 function fromRow(r: Row): Customer {

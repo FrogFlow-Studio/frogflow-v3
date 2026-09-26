@@ -395,7 +395,9 @@ export const MODULES = {
     desc: "Кнопка «Сообщить, когда появится»: бот сам напишет покупателю при поступлении.",
     group: "Физические товары",
     price: 9000,
-    status: "planned",
+    status: "available",
+    requires: ["stock"],
+    note: "Кнопка на товаре без остатка в Telegram и Direct; подписка — bot_users.state.waitlist; рассылка при возврате в продажу из админки (core/waitlist).",
   },
 } as const satisfies Record<string, ModuleDef>;
 

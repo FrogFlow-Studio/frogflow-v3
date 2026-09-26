@@ -560,6 +560,13 @@ async function showCategories(b: Bot, parentId: string | null, offset: number) {
   if (nav.length) await send(b, b.m.navigation, { reply_markup: { inline_keyboard: nav } });
 }
 
+/** Кнопка «Сообщить о поступлении» — только с модулем waitlist. */
+function waitlistRow(b: Bot, productId: string): InlineKeyboard["inline_keyboard"] {
+  return b.ctx.tenant.modules.waitlist
+    ? [[{ text: b.m.waitlistBtn, callback_data: `wait:${productId}` }]]
+    : [];
+}
+
 async function sendProductCard(b: Bot, p: Product) {
   const country = b.customer.state.country_code ?? null;
   const imgs = sortedImages(p);
@@ -578,7 +585,7 @@ async function sendProductCard(b: Bot, p: Product) {
     caption = `📦 <b>${escapeHtml(p.name)}</b>${desc}\n\n💰 <b>${b.m.priceFrom(formatMoney(min, currency))}</b>`;
     keyboard = {
       inline_keyboard: outOfStock
-        ? []
+        ? waitlistRow(b, p.id)
         : priced.map(({ v, money }) => [
             {
               text: `${v.name} — ${formatMoney(money.amount, money.currency)}`,
@@ -591,7 +598,7 @@ async function sendProductCard(b: Bot, p: Product) {
     caption = `📦 <b>${escapeHtml(p.name)}</b>${desc}\n\n💰 <b>${formatMoney(money.amount, money.currency)}</b>`;
     keyboard = {
       inline_keyboard: outOfStock
-        ? []
+        ? waitlistRow(b, p.id)
         : [[{ text: b.m.addToCartBtn, callback_data: `add:${p.id}` }]],
     };
   }
@@ -1429,6 +1436,11 @@ async function handleCallback(
   if (data.startsWith("cat:")) {
     const [, id = "root", off = "0"] = data.split(":");
     return showCategories(b, id === "root" ? null : id, Number(off) || 0);
+  }
+  if (data.startsWith("wait:") && ctx.tenant.modules.waitlist) {
+    const { joinWaitlist } = await import("@/core/waitlist/waitlist");
+    await joinWaitlist(ctx, customer, data.slice(5));
+    return void (await send(b, b.m.waitlistJoined));
   }
   if (data.startsWith("prod:")) {
     const p = await getProduct(ctx, data.slice(5));

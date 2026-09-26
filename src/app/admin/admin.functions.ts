@@ -282,8 +282,13 @@ export const productFn = createServerFn({ method: "GET" })
       m.listAllCategories(ctx),
       listPaymentMethods(ctx),
     ]);
+    const waiting =
+      data.id && ctx.tenant.modules.waitlist
+        ? await (await import("@/core/waitlist/waitlist")).countWaiting(ctx, data.id)
+        : 0;
     return {
       product,
+      waiting,
       categories,
       countries: methods
         .filter((x) => x.is_active)
@@ -334,6 +339,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
         "Цифровому товару нужен хотя бы один файл — иначе покупатель заплатит и ничего не получит.",
       );
     let id = data.id;
+    const before = id ? await stockState(ctx, id) : null;
     if (id) await m.updateProduct(ctx, id, fields);
     else id = await m.createProduct(ctx, fields);
     await Promise.all([
@@ -341,8 +347,32 @@ export const saveProductFn = createServerFn({ method: "POST" })
       m.setProductMaterials(ctx, id, materials),
       m.setProductVariants(ctx, id, variants),
     ]);
-    return { id };
+    const waitlist = await maybeNotifyWaitlist(ctx, id, before);
+    return { id, waitlist };
   });
+
+async function stockState(ctx: TenantContext, id: string) {
+  const { data } = await ctx.db
+    .from("products")
+    .select("is_active, stock_quantity, name")
+    .eq("id", id)
+    .maybeSingle();
+  return data;
+}
+
+/** Товар вернулся в продажу — лист ожидания получает сообщение (модуль waitlist). */
+async function maybeNotifyWaitlist(
+  ctx: TenantContext,
+  id: string,
+  before: Awaited<ReturnType<typeof stockState>> | null,
+) {
+  if (!ctx.tenant.modules.waitlist || !before) return null;
+  const after = await stockState(ctx, id);
+  const { backInStock } = await import("@/core/waitlist/waitlist");
+  if (!after || !backInStock(before, after)) return null;
+  const { notifyBackInStock } = await import("@/app/waitlist/notify.server");
+  return notifyBackInStock(ctx, { id, name: after.name });
+}
 
 export const deleteProductFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid }).parse(d))
@@ -356,8 +386,10 @@ export const setProductActiveFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid, active: z.boolean() }).parse(d))
   .handler(async ({ data }) => {
     const ctx = await adminWrite();
+    const before = await stockState(ctx, data.id);
     await (await import("@/core/catalog/admin")).setProductActive(ctx, data.id, data.active);
-    return { ok: true };
+    const waitlist = await maybeNotifyWaitlist(ctx, data.id, before);
+    return { ok: true, waitlist };
   });
 
 /* ── заказы ──────────────────────────────────────────────────────── */

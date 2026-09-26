@@ -593,6 +593,13 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
     case "ORDERS":
       await showOrders(s);
       return "handled";
+    case "WAIT": {
+      if (!a || !s.ctx.tenant.modules.waitlist) return "question";
+      const { joinWaitlist } = await import("@/core/waitlist/waitlist");
+      s.customer = await joinWaitlist(s.ctx, s.customer, a);
+      await reply(s, plain(s.m.waitlistJoined), { force: true, buttons: [BTN.catalog(s.m)] });
+      return "handled";
+    }
     case "REORDER": {
       const order = a ? await getOrder(s.ctx, Number(a)) : null;
       if (!order || order.telegram_id !== s.customer.telegramId) return "handled";
@@ -836,6 +843,12 @@ async function sendProductCard(s: Shop, p: Product, force: boolean) {
     if (!outOfStock)
       buttons.push({ type: "postback", title: plain(s.m.addToCartBtn), payload: `BUY:${p.id}` });
   }
+  if (outOfStock && s.ctx.tenant.modules.waitlist)
+    buttons.push({
+      type: "postback",
+      title: plain(s.m.waitlistBtn).slice(0, 20),
+      payload: `WAIT:${p.id}`,
+    });
   if (p.lead_time_days && p.lead_time_days > 0)
     text += `\n${plain(s.m.leadTimeLabel(p.lead_time_days))}`;
   const rating = s.ctx.tenant.modules.review_request

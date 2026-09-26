@@ -31,7 +31,7 @@ async function upload(
 }
 
 function ProductEditor() {
-  const { product: p, categories, countries, defaultFulfillment } = Route.useLoaderData();
+  const { product: p, waiting, categories, countries, defaultFulfillment } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const navigate = useNavigate();
@@ -331,7 +331,14 @@ function ProductEditor() {
               </label>
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
-              <Field label={t("product.stock")} hint={t("product.stockHint")}>
+              <Field
+                label={t("product.stock")}
+                hint={
+                  waiting > 0
+                    ? `${t("product.stockHint")} ${t("product.waiting", { n: waiting })}`
+                    : t("product.stockHint")
+                }
+              >
                 <input
                   className="input"
                   name="stockQuantity"

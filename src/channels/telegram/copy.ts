@@ -25,6 +25,10 @@ export type Msg = {
   priceFrom: (amount: string) => string;
   descPending: string;
   outOfStockLabel: string;
+  /** Лист ожидания (модуль waitlist). */
+  waitlistBtn: string;
+  waitlistJoined: string;
+  backInStock: (name: string) => string;
   productNotFound: string;
   added: string;
   unavailable: string;
@@ -193,6 +197,9 @@ const ru: Msg = {
   priceFrom: (a) => `от ${a}`,
   descPending: "Описание скоро появится.",
   outOfStockLabel: "❌ Нет в наличии",
+  waitlistBtn: "🔔 Сообщить о поступлении",
+  waitlistJoined: "Готово — напишу, как только товар снова появится.",
+  backInStock: (name) => `🔔 <b>${name}</b> снова в наличии! Успейте заказать.`,
   productNotFound: "Товар не найден или снят с продажи.",
   added: "✅ Добавлено в корзину",
   unavailable: "Товар недоступен.",
@@ -317,6 +324,9 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  waitlistBtn: "🔔 Түскенде хабарлау",
+  waitlistJoined: "Дайын — тауар қайта пайда болғанда жазамын.",
+  backInStock: (name) => `🔔 <b>${name}</b> қайтадан сатылымда! Тапсырыс беріп үлгеріңіз.`,
   reorderBtn: "🔁 Тапсырысты қайталау",
   reorderDone: (n) => `🔁 Өткен тапсырыстан ${n} позиция себетке қосылды`,
   reorderNothing: "Бұл тапсырыстан ештеңе енді сатылымда жоқ.",
@@ -389,6 +399,9 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  waitlistBtn: "🔔 Notify me when available",
+  waitlistJoined: "Done — I will message you as soon as it is back.",
+  backInStock: (name) => `🔔 <b>${name}</b> is back in stock! Order while it lasts.`,
   reorderBtn: "🔁 Reorder",
   reorderDone: (n) => `🔁 Added ${n} item(s) from your previous order to the cart`,
   reorderNothing: "Nothing from this order is on sale anymore.",
@@ -481,6 +494,9 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  waitlistBtn: "🔔 Kelganda xabar berish",
+  waitlistJoined: "Tayyor — mahsulot yana paydo bo‘lishi bilan yozaman.",
+  backInStock: (name) => `🔔 <b>${name}</b> yana sotuvda! Buyurtma berishga ulguring.`,
   reorderBtn: "🔁 Buyurtmani takrorlash",
   reorderDone: (n) => `🔁 Oldingi buyurtmadan ${n} pozitsiya savatga qo‘shildi`,
   reorderNothing: "Bu buyurtmadan hech narsa endi sotuvda yo‘q.",
