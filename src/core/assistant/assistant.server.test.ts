@@ -73,4 +73,18 @@ describe("ИИ-помощник продавца: пределы при пара
     expect(daily.usd).toBeCloseTo(0.003, 6);
     expect(JSON.parse((await getSetting(ctx, "seller_assist_daily"))!).count).toBe(1);
   });
+
+  it("отказ в деньгах не съедает черновик из дневного счёта", async () => {
+    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    const ctx = ctxOf({ daily_usd: 0.01 });
+    const d = new Date().toISOString().slice(0, 10);
+    await ctx.db.from("app_settings").insert({
+      bot_id: BOT,
+      key: "consultant_daily",
+      value: JSON.stringify({ date: d, usd: 0.01, calls: 0, tests: 0 }),
+    });
+    await expect(assistText(ctx, req as never)).rejects.toMatchObject({ key: "err.assist.budget" });
+    expect(create).not.toHaveBeenCalled();
+    expect(JSON.parse((await getSetting(ctx, "seller_assist_daily"))!).count).toBe(0);
+  });
 });

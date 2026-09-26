@@ -130,6 +130,30 @@ export function settleDaily(b: DailyBudget, reservedUsd: number, actualUsd: numb
 }
 
 /**
+ * Запись расчёта брони для updateSettingAtomic. Если счётчик уже за другие
+ * сутки (бронь в 23:59:59, ответ после полуночи), не пишем ничего: иначе
+ * вчерашний пустой счётчик затёр бы сегодняшний.
+ */
+export function settleRaw(
+  raw: string | null,
+  date: string,
+  reservedUsd: number,
+  actualUsd: number,
+): string | null {
+  if (dailyDate(raw) !== date) return null;
+  return JSON.stringify(settleDaily(parseDaily(raw, date), reservedUsd, actualUsd));
+}
+
+function dailyDate(raw: string | null): string | null {
+  try {
+    const v = JSON.parse(raw ?? "null") as { date?: unknown } | null;
+    return typeof v?.date === "string" ? v.date : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Месячный счёт ИИ-диалогов для лимита плана (core/plans). Диалог — разговор
  * одного покупателя с консультантом: новый начинается, если консультант ещё
  * не отвечал этому покупателю или молчал дольше суток. Продолжение уже

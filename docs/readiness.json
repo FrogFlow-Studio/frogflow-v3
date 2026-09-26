@@ -385,7 +385,7 @@
     "инструмент объявлен отдельно от передачи менеджеру": "drop: отдельного инструмента «вопрос менеджеру» без паузы в v2 нет; общий консультант v2 знает только handoff_to_manager и record_order_lead",
     "записывает вопрос менеджеру и не ставит диалог на паузу": "drop: отдельного инструмента «вопрос менеджеру» без паузы в v2 нет; общий консультант v2 знает только handoff_to_manager и record_order_lead",
     "пустой вопрос не засоряет очередь менеджера": "drop: отдельного инструмента «вопрос менеджеру» без паузы в v2 нет; общий консультант v2 знает только handoff_to_manager и record_order_lead",
-    "передача менеджеру по-прежнему ставит паузу": "open: handoff_to_manager ставит паузу 12 ч в src/core/consultant/engine.server.ts, теста нет"
+    "передача менеджеру по-прежнему ставит паузу": "src/core/consultant/engine.server.test.ts › передача менеджеру ставит паузу на 12 часов и запоминает контакт"
   },
   "tests/consultant-broad-answer.test.ts": {
     "на «полотенца Feiler» приходит сводка без карточек": "drop: консультант ниши consultant* v1 (BOVI: каталог-подбор, сводки, диалоги) заменён общим консультантом v2 (src/core/consultant), специфика BOVI — по запросу клиента",
@@ -400,9 +400,9 @@
     "если отговорка была всем ответом, текст остаётся — молчать нельзя": "drop: консультант ниши consultant* v1 (BOVI: каталог-подбор, сводки, диалоги) заменён общим консультантом v2 (src/core/consultant), специфика BOVI — по запросу клиента"
   },
   "tests/consultant-cache-cost.test.ts": {
-    "забирает поля кеша из ответа API": "open: engine.server.ts читает cache_creation/cache_read_input_tokens, теста нет",
-    "ответ без полей кеша даёт нули, а не NaN": "open: engine.server.ts подставляет 0 при отсутствии полей кеша, теста нет",
-    "чтение из кеша попадает в стоимость": "open: стоимость с cacheRead считается в engine.server.ts для дневного предела, теста нет",
+    "забирает поля кеша из ответа API": "src/core/consultant/engine.server.test.ts › забирает поля кеша из ответа API",
+    "ответ без полей кеша даёт нули, а не NaN": "src/core/consultant/engine.server.test.ts › ответ без полей кеша даёт нули, а не NaN",
+    "чтение из кеша попадает в стоимость": "src/core/consultant/engine.server.test.ts › чтение из кеша попадает в стоимость и в дневной предел",
     "запись в кеш тарифицируется по выбранному TTL": "drop: учёт TTL-разбивки, раундов и пожизненной статистики ai-usage v1 не перенесён; v2 делает один вызов с кешем по умолчанию и копит расход в budget.ts",
     "часовой TTL выбран сознательно — медиана промежутка 10,6 минуты": "drop: учёт TTL-разбивки, раундов и пожизненной статистики ai-usage v1 не перенесён; v2 делает один вызов с кешем по умолчанию и копит расход в budget.ts",
     "чтение дешевле записи настолько, что попадание окупает промах": "drop: учёт TTL-разбивки, раундов и пожизненной статистики ai-usage v1 не перенесён; v2 делает один вызов с кешем по умолчанию и копит расход в budget.ts",
@@ -537,7 +537,7 @@
     "считает цену одного сообщения и долю кеша": "drop: журнал consultant_message_runs v1 не переносится — v2 копит расход в app_settings consultant_usage и дневной бюджет (core/consultant/budget.ts)",
     "группирует по суткам Алматы, а не по UTC": "drop: журнал consultant_message_runs v1 не переносится — v2 копит расход в app_settings consultant_usage и дневной бюджет (core/consultant/budget.ts)",
     "пустой журнал не делит на ноль": "drop: журнал consultant_message_runs v1 не переносится — v2 копит расход в app_settings consultant_usage и дневной бюджет (core/consultant/budget.ts)",
-    "цена сообщения считается по тем же ставкам, что и общий счёт": "open: цена ответа считается по PRICE в core/consultant/engine.server.ts и идёт в дневной бюджет, теста формулы нет"
+    "цена сообщения считается по тем же ставкам, что и общий счёт": "src/core/consultant/engine.server.test.ts › цена сообщения считается по тем же ставкам, что и общий счёт"
   },
   "tests/currency.test.ts": {
     "одна и та же валюта — без похода в сеть, просто округляет": "src/core/pricing/pricing.test.ts › одна и та же валюта — без похода за курсом, просто округляет",
@@ -598,17 +598,17 @@
     "бюджет из живой фразы, не размер 50×70": "drop: специфика BOVI консультанта ниши consultant* из v1 — заменён общим консультантом v2 (src/core/consultant)",
     "режет запрещённые фразы": "drop: фильтр фраз по ТЗ BOVI не переносится — в v2 запрет клише в системном промпте (core/consultant/prompt.ts)",
     "режет цену, которой не было в tools": "src/core/consultant/price-check.test.ts › режет цену, которой не было в tools",
-    "пустой ответ не отправляем": "open: пустой ответ модели заменяется запасной фразой в runConsultant (core/consultant/engine.server.ts), теста нет",
+    "пустой ответ не отправляем": "src/core/consultant/engine.server.test.ts › пустой ответ модели покупателю не уходит — вместо него уточняющий вопрос",
     "режет выдуманную стоимость доставки": "src/core/consultant/price-check.test.ts › режет выдуманную стоимость доставки",
     "режет цвет, которого не было в карточке": "drop: специфика BOVI консультанта ниши consultant* из v1 — заменён общим консультантом v2 (src/core/consultant)",
-    "paused state блокирует исходящие": "open: isPaused в core/consultant/engine.server.ts (paused_until) без теста",
+    "paused state блокирует исходящие": "src/core/consultant/engine.server.test.ts › paused_until в будущем — консультант молчит, в прошлом — отвечает",
     "одно и то же входящее не отвечаем повторно": "src/channels/zernio/event-context.test.ts › повтор того же события даёт тот же ключ",
     "poll берёт покупателя из треда, а не второй ключ по username": "drop: добор переписки v1 (inbox-poll) заменён добором зависших событий zernio_logs (channels/zernio/dispatch.server.ts)",
     "карточка и шаблон — не вмешательство менеджера": "drop: шаблонов карточек BOVI в v2 нет — свои ответы узнаются по памяти диалога (channels/zernio/manager-guard.ts ourReplies)",
     "своё исходящее не считает вмешательством менеджера": "src/channels/zernio/manager-guard.test.ts › свой же ответ бота менеджером не считает, включая пришедший в ленту с задержкой",
-    "state читается из вложенного ключа и не ломает shop DirectState": "open: состояние консультанта в customer.state.consultant (stateOf/saveState в core/consultant/engine.server.ts), теста нет",
-    "по умолчанию Haiku 4.5, имя можно сменить ENV": "open: DEFAULT_MODEL и CONSULTANT_MODEL в core/consultant/engine.server.ts без теста",
-    "покупка → регламентированный handoff и pause": "open: handoff/record_order_lead ставит паузу 12 ч и зовёт продавца (engine.server.ts, channels/zernio/handle-message.ts), теста нет",
+    "state читается из вложенного ключа и не ломает shop DirectState": "src/core/consultant/engine.server.test.ts › состояние живёт в state.consultant и не ломает шаг магазина",
+    "по умолчанию Haiku 4.5, имя можно сменить ENV": "src/core/consultant/engine.server.test.ts › по умолчанию Haiku 4.5, имя можно сменить ENV",
+    "покупка → регламентированный handoff и pause": "src/core/consultant/engine.server.test.ts › покупка — заявка продавцу и пауза",
     "без страны — сначала KZ/RU, не поиск товара": "drop: специфика BOVI консультанта ниши consultant* из v1 — заменён общим консультантом v2 (src/core/consultant)",
     "после страны — запрос товара по ТЗ (Какой товар вас интересует?)": "drop: специфика BOVI консультанта ниши consultant* из v1 — заменён общим консультантом v2 (src/core/consultant)",
     "если товар был назван до выбора страны — после страны сразу отвечает по товару": "drop: специфика BOVI консультанта ниши consultant* из v1 — заменён общим консультантом v2 (src/core/consultant)",
@@ -656,8 +656,8 @@
     "валидатор цен не бракует телефонные номера, года и суммы наборов": "src/core/consultant/price-check.test.ts › валидатор цен не бракует телефонные номера, года и суммы наборов",
     "cleanScriptHallucinations отсекает галлюцинации со сценарием диалога (customer: ... assistant: ...)": "src/core/consultant/pure.test.ts › чистит markdown и сценарии",
     "validateConsultantReply бракует реплики, содержащие имитацию реплик клиента": "src/core/consultant/pure.test.ts › чистит markdown и сценарии",
-    "buildAnthropicMessages формирует правильную структуру сообщений без смешивания истории в плоскую строку": "open: история диалога собирается в сообщения Anthropic в runConsultant (core/consultant/engine.server.ts), теста нет",
-    "buildAnthropicMessages объединяет последовательные сообщения одной роли и гарантирует старт с user": "open: runConsultant (core/consultant/engine.server.ts) срезает ведущий assistant, но соседние реплики одной роли не склеивает, теста нет"
+    "buildAnthropicMessages формирует правильную структуру сообщений без смешивания истории в плоскую строку": "src/core/consultant/engine.server.test.ts › история — отдельные сообщения с ролями, а не одна строка",
+    "buildAnthropicMessages объединяет последовательные сообщения одной роли и гарантирует старт с user": "src/core/consultant/engine.server.test.ts › соседние реплики одной роли склеиваются, первой всегда идёт покупатель"
   },
   "tests/delivery-message.test.ts": {
     "ставит приписку продавца последним абзацем": "src/core/delivery/note.test.ts › ставит приписку продавца последним абзацем",

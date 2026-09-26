@@ -10,6 +10,7 @@ import {
   reserveDaily,
   RESERVE_USD,
   settleDaily,
+  settleRaw,
   startsNewDialog,
 } from "./budget";
 
@@ -114,5 +115,14 @@ describe("бронь бюджета на вызов модели", () => {
   it("после ответа бронь меняется на настоящую цену и не уходит в минус", () => {
     expect(settleDaily({ date: D, usd: 1.03, calls: 1, tests: 0 }, 0.03, 0.002).usd).toBe(1.002);
     expect(settleDaily({ date: D, usd: 0.01, calls: 0, tests: 0 }, 0.03, 0).usd).toBe(0);
+  });
+
+  it("ответ пришёл после полуночи — расчёт брони не затирает счёт нового дня", () => {
+    const fresh = JSON.stringify({ date: "2026-09-27", usd: 0.03, calls: 1, tests: 0 });
+    expect(settleRaw(fresh, D, 0.03, 0.002)).toBeNull();
+    expect(settleRaw(null, D, 0.03, 0.002)).toBeNull();
+    expect(settleRaw("мусор", D, 0.03, 0.002)).toBeNull();
+    const same = JSON.stringify({ date: D, usd: 1.03, calls: 1, tests: 0 });
+    expect(JSON.parse(settleRaw(same, D, 0.03, 0.002)!).usd).toBe(1.002);
   });
 });

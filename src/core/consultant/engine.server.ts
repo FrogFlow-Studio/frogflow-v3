@@ -18,7 +18,7 @@ import {
   parseMonthly,
   reserveDaily,
   RESERVE_USD,
-  settleDaily,
+  settleRaw,
   startsNewDialog,
   today,
 } from "./budget";
@@ -180,6 +180,31 @@ const TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+/**
+ * История диалога — отдельными сообщениями Anthropic, а не одной строкой.
+ * Первой идёт реплика покупателя, соседние реплики одной роли склеиваются
+ * (два сообщения покупателя подряд, пока бот молчал).
+ */
+export function buildConsultantMessages(
+  recent: readonly ConsultantTurn[],
+  incoming?: string,
+): Array<{ role: "user" | "assistant"; content: string }> {
+  const turns = recent.slice(-HISTORY_TURNS).map((t) => ({
+    role: t.role === "customer" ? ("user" as const) : ("assistant" as const),
+    content: t.text,
+  }));
+  if (incoming !== undefined) turns.push({ role: "user", content: incoming });
+  const out: Array<{ role: "user" | "assistant"; content: string }> = [];
+  for (const t of turns) {
+    if (!t.content.trim()) continue;
+    if (!out.length && t.role === "assistant") continue;
+    const last = out[out.length - 1];
+    if (last?.role === t.role) last.content = `${last.content}\n\n${t.content}`;
+    else out.push({ ...t });
+  }
+  return out;
+}
+
 function stateOf(customer: Customer): ConsultantState {
   const s = customer.state.consultant;
   return s && typeof s === "object" && !Array.isArray(s) ? (s as ConsultantState) : {};
@@ -337,12 +362,7 @@ export async function runConsultant(
     .filter(Boolean)
     .join("\n");
 
-  const history: Anthropic.MessageParam[] = (state.recent ?? []).slice(-HISTORY_TURNS).map((t) => ({
-    role: t.role === "customer" ? "user" : "assistant",
-    content: t.text,
-  }));
-  // Две реплики одной роли подряд API склеивает сам; первой обязана быть user.
-  while (history[0]?.role === "assistant") history.shift();
+  const history = buildConsultantMessages(state.recent ?? []);
 
   // Бронь бюджета — проверка и прибавка одной атомарной записью: параллельные
   // сообщения видят брони друг друга и не проскакивают мимо предела.
@@ -382,7 +402,7 @@ export async function runConsultant(
         { type: "text", text: `ДАННЫЕ ТЕКУЩЕГО ДИАЛОГА:\n${session}` },
       ],
       tools: TOOLS,
-      messages: [...history, { role: "user", content: incoming }],
+      messages: buildConsultantMessages(state.recent ?? [], incoming),
     });
 
     let reply = "";
@@ -460,9 +480,7 @@ export async function runConsultant(
         u.output_tokens * PRICE.out) /
       1_000_000;
     await recordUsage(ctx, usd, u.input_tokens + cacheWrite + cacheRead, u.output_tokens);
-    await updateSettingAtomic(ctx, KEYS.daily, (raw) =>
-      JSON.stringify(settleDaily(parseDaily(raw, date), RESERVE_USD, usd)),
-    );
+    await updateSettingAtomic(ctx, KEYS.daily, (raw) => settleRaw(raw, date, RESERVE_USD, usd));
     if (newDialog)
       await trySetSetting(
         ctx,

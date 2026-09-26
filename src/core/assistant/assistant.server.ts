@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/config/env";
-import { limitsFor, parseDaily, RESERVE_USD, settleDaily, today } from "@/core/consultant/budget";
+import { limitsFor, parseDaily, RESERVE_USD, settleRaw, today } from "@/core/consultant/budget";
 import { KEYS as CONSULTANT_KEYS } from "@/core/consultant/engine.server";
 import { UserError } from "@/core/i18n/user-error";
 import type { Locale } from "@/core/i18n/locale";
@@ -75,12 +75,19 @@ export async function assistText(ctx: TenantContext, req: AssistRequest): Promis
       usd: Math.round((shared.usd + RESERVE_USD) * 1_000_000) / 1_000_000,
     });
   });
-  if (overBudget)
-    throw new UserError(
-      "err.assist.budget",
-      "Дневной предел расходов ИИ исчерпан. Попробуйте завтра.",
-    );
-  if (money !== "written") throw busy();
+  if (money !== "written") {
+    // Денег не дали — черновик из дневного счёта возвращаем.
+    await updateSettingAtomic(ctx, DAILY_KEY, (raw) => {
+      const mine = parseAssistDaily(raw, date);
+      return mine.count > 0 ? JSON.stringify({ date, count: mine.count - 1 }) : null;
+    });
+    if (overBudget)
+      throw new UserError(
+        "err.assist.budget",
+        "Дневной предел расходов ИИ исчерпан. Попробуйте завтра.",
+      );
+    throw busy();
+  }
 
   const { system, user } = assistPrompt(req.task, req.product, req.lang, req.review);
   const client = new Anthropic({ apiKey, maxRetries: 1, timeout: TIMEOUT_MS });
@@ -101,7 +108,7 @@ export async function assistText(ctx: TenantContext, req: AssistRequest): Promis
   const usd =
     (response.usage.input_tokens * PRICE.in + response.usage.output_tokens * PRICE.out) / 1_000_000;
   await updateSettingAtomic(ctx, CONSULTANT_KEYS.daily, (raw) =>
-    JSON.stringify(settleDaily(parseDaily(raw, date), RESERVE_USD, usd)),
+    settleRaw(raw, date, RESERVE_USD, usd),
   );
 
   if (response.stop_reason === "refusal")
