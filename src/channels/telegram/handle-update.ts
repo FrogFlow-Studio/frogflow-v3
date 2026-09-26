@@ -609,6 +609,11 @@ async function sendProductCard(b: Bot, p: Product) {
     : null;
   if (rating) caption += `\n${rating}`;
   if (outOfStock) caption += `\n${b.m.outOfStockLabel}`;
+  else if (b.ctx.tenant.modules.limited_offers) {
+    const { offerForProduct, offerLabel } = await import("@/core/offers/offers");
+    const offer = await offerForProduct(b.ctx, p.id);
+    if (offer) caption += `\n<b>${offerLabel(offer, b.ctx.timezone, b.locale)}</b>`;
+  }
   if (imgs.length === 0) {
     await send(b, caption, { reply_markup: keyboard });
   } else {

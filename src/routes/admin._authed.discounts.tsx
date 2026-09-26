@@ -1,5 +1,6 @@
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { deleteOfferFn, offersFn, saveOfferFn } from "@/app/admin/offers.functions";
 import {
   cancelGiftCertificateFn,
   createGiftCertificateFn,
@@ -41,6 +42,7 @@ function DiscountsPage() {
           <GiftCard gifts={gifts} currency={promos[0] ? "KZT" : "KZT"} />
         )}
         {shop.modules.referral && <ReferralCard percent={referralPercent} bot={shop.telegram} />}
+        {shop.modules.limited_offers && <OffersCard />}
       </div>
     </>
   );
@@ -381,6 +383,151 @@ function ReferralCard({ percent, bot }: { percent: string; bot: string | null })
         </button>
       </form>
       <ErrorBox error={save.error} />
+    </Card>
+  );
+}
+
+/** Ограниченные предложения: скидка на товар до даты и, по желанию, на N штук. */
+function OffersCard() {
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const loc = intlLocale(shop.locale);
+  const [data, setData] = useState<Awaited<ReturnType<typeof offersFn>> | null>(null);
+  const [productId, setProductId] = useState("");
+  const [percent, setPercent] = useState("20");
+  const [ends, setEnds] = useState("");
+  const [limit, setLimit] = useState("");
+  const reload = async () => setData(await offersFn());
+  useEffect(() => {
+    void reload();
+  }, []);
+  const add = useAction(async () => {
+    await saveOfferFn({
+      data: {
+        productId,
+        percent: Number(percent),
+        startsAt: null,
+        endsAt: new Date(ends).toISOString(),
+        limit: limit.trim() ? Number(limit) : null,
+      },
+    });
+    setLimit("");
+    await reload();
+  });
+  const del = useAction(async (id: string) => {
+    await deleteOfferFn({ data: { id } });
+    await reload();
+  });
+  const name = new Map((data?.products ?? []).map((p) => [p.id, p.name]));
+  const now = Date.now();
+  return (
+    <Card title={t("discounts.offers.title")} className="lg:col-span-2">
+      <p className="mb-3 text-sm text-muted">{t("discounts.offers.intro")}</p>
+      <form
+        className="grid gap-2 sm:grid-cols-[2fr_1fr_2fr_1fr_auto]"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void add.run().catch(() => {});
+        }}
+      >
+        <select
+          className="input"
+          value={productId}
+          onChange={(e) => setProductId(e.target.value)}
+          required
+        >
+          <option value="">{t("discounts.offers.product")}</option>
+          {(data?.products ?? []).map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        <input
+          className="input"
+          type="number"
+          min={1}
+          max={99}
+          value={percent}
+          onChange={(e) => setPercent(e.target.value)}
+          placeholder="%"
+          required
+        />
+        <input
+          className="input"
+          type="datetime-local"
+          value={ends}
+          onChange={(e) => setEnds(e.target.value)}
+          required
+        />
+        <input
+          className="input"
+          type="number"
+          min={1}
+          value={limit}
+          onChange={(e) => setLimit(e.target.value)}
+          placeholder={t("discounts.offers.limit")}
+        />
+        <button className="btn-primary" disabled={add.busy}>
+          {t("discounts.offers.add")}
+        </button>
+      </form>
+      <ErrorBox error={add.error ?? del.error} />
+      {data && data.offers.length === 0 && (
+        <p className="mt-3 text-sm text-muted">{t("discounts.offers.empty")}</p>
+      )}
+      {data && data.offers.length > 0 && (
+        <table className="table mt-3">
+          <thead>
+            <tr>
+              <th>{t("discounts.offers.product")}</th>
+              <th>%</th>
+              <th>{t("discounts.offers.until")}</th>
+              <th>{t("discounts.offers.sold")}</th>
+              <th>{t("discounts.col.status")}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.offers.map((o) => {
+              const running =
+                Date.parse(o.starts_at) <= now && now < Date.parse(o.ends_at) && (o.left ?? 1) > 0;
+              return (
+                <tr key={o.id}>
+                  <td>{name.get(o.product_id) ?? "—"}</td>
+                  <td className="tabular-nums">−{o.percent}%</td>
+                  <td className="text-muted">
+                    {new Date(o.ends_at).toLocaleString(loc, {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })}
+                  </td>
+                  <td className="tabular-nums">
+                    {o.sold}
+                    {o.limit != null && ` / ${o.limit}`}
+                  </td>
+                  <td>
+                    {running ? (
+                      <Badge tone="ok">{t("discounts.offers.running")}</Badge>
+                    ) : (
+                      <Badge>{t("discounts.offers.ended")}</Badge>
+                    )}
+                  </td>
+                  <td className="text-right">
+                    <button
+                      className="btn-ghost text-xs text-danger"
+                      disabled={del.busy}
+                      onClick={() => void del.run(o.id).catch(() => {})}
+                    >
+                      {t("common.delete")}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
     </Card>
   );
 }

@@ -48,6 +48,17 @@ export const ru = {
   "discounts.referral.intro":
     "Покупатель делится ссылкой из раздела «ℹ️ Информация» в боте{link}. Приглашённый сразу получает одноразовый промокод на первую покупку, пригласивший — такой же после первой выданной покупки друга. Промокоды WELCOME-… и REF-… появляются в списке слева.",
   "discounts.referral.percent": "Скидка по промокоду, %",
+  "discounts.offers.title": "Ограниченные предложения",
+  "discounts.offers.intro":
+    "Скидка на товар до даты и, если нужно, на ограниченное число штук. Цена со скидкой сразу видна в боте, Direct и на витрине, в карточке — таймер и остаток.",
+  "discounts.offers.product": "Товар",
+  "discounts.offers.limit": "Штук (необяз.)",
+  "discounts.offers.add": "Запустить",
+  "discounts.offers.empty": "Акций пока нет.",
+  "discounts.offers.until": "До",
+  "discounts.offers.sold": "Продано",
+  "discounts.offers.running": "идёт",
+  "discounts.offers.ended": "закончилась",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -93,6 +104,17 @@ export const kk: SectionDict<typeof ru> = {
   "discounts.referral.intro":
     "Сатып алушы боттағы «ℹ️ Ақпарат» бөліміндегі сілтемемен бөліседі{link}. Шақырылған адам бірінші сатып алуына бірреттік промокодты бірден алады, шақырған адам дәл сондай промокодты досының бірінші тапсырысы берілгеннен кейін алады. WELCOME-… және REF-… промокодтары сол жақтағы тізімде көрінеді.",
   "discounts.referral.percent": "Промокод бойынша жеңілдік, %",
+  "discounts.offers.title": "Шектеулі ұсыныстар",
+  "discounts.offers.intro":
+    "Тауарға белгілі күнге дейін және қажет болса шектеулі санға жеңілдік. Жеңілдікпен баға ботта, Direct-те және витринада бірден көрінеді, карточкада — таймер мен қалдық.",
+  "discounts.offers.product": "Тауар",
+  "discounts.offers.limit": "Дана (міндетті емес)",
+  "discounts.offers.add": "Іске қосу",
+  "discounts.offers.empty": "Акциялар әзірге жоқ.",
+  "discounts.offers.until": "Дейін",
+  "discounts.offers.sold": "Сатылды",
+  "discounts.offers.running": "жүріп жатыр",
+  "discounts.offers.ended": "аяқталды",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -138,6 +160,17 @@ export const en: SectionDict<typeof ru> = {
   "discounts.referral.intro":
     "Customers share a link from the “ℹ️ Info” section of the bot{link}. The invited friend immediately gets a one-time promo code for their first purchase; the referrer gets the same code once the friend's first order is delivered. WELCOME-… and REF-… promo codes appear in the list on the left.",
   "discounts.referral.percent": "Promo code discount, %",
+  "discounts.offers.title": "Limited offers",
+  "discounts.offers.intro":
+    "A discount on a product until a date and, if needed, for a limited number of units. The discounted price shows in the bot, Direct and the storefront right away; the card shows a timer and units left.",
+  "discounts.offers.product": "Product",
+  "discounts.offers.limit": "Units (optional)",
+  "discounts.offers.add": "Launch",
+  "discounts.offers.empty": "No offers yet.",
+  "discounts.offers.until": "Until",
+  "discounts.offers.sold": "Sold",
+  "discounts.offers.running": "running",
+  "discounts.offers.ended": "ended",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -183,4 +216,15 @@ export const uz: SectionDict<typeof ru> = {
   "discounts.referral.intro":
     "Xaridor botdagi «ℹ️ Ma’lumot» bo‘limidagi havolani ulashadi{link}. Taklif qilingan do‘st birinchi xaridi uchun bir martalik promokodni darhol oladi, taklif qilgan esa do‘stining birinchi buyurtmasi berilgandan keyin xuddi shunday promokod oladi. WELCOME-… va REF-… promokodlari chap tomondagi ro‘yxatda ko‘rinadi.",
   "discounts.referral.percent": "Promokod bo‘yicha chegirma, %",
+  "discounts.offers.title": "Cheklangan takliflar",
+  "discounts.offers.intro":
+    "Mahsulotga ma’lum sanagacha va kerak bo‘lsa cheklangan miqdorga chegirma. Chegirmali narx botda, Direct va vitrinada darhol ko‘rinadi, kartochkada — taymer va qoldiq.",
+  "discounts.offers.product": "Mahsulot",
+  "discounts.offers.limit": "Dona (ixtiyoriy)",
+  "discounts.offers.add": "Ishga tushirish",
+  "discounts.offers.empty": "Hozircha aksiyalar yo‘q.",
+  "discounts.offers.until": "Gacha",
+  "discounts.offers.sold": "Sotildi",
+  "discounts.offers.running": "davom etmoqda",
+  "discounts.offers.ended": "tugadi",
 };

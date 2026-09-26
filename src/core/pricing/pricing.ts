@@ -13,6 +13,8 @@ import type { Json } from "@/core/db-types";
  * Модуль multi_currency выключен → всегда базовая цена в базовой валюте.
  */
 export type PricedProduct = {
+  /** id товара — для ограниченных предложений (core/offers); без него скидка не ищется. */
+  id?: string;
   price: number | string;
   currency?: string | null;
   country_prices?: Json | null;
@@ -106,6 +108,20 @@ async function convertAmount(amount: number, from: string, to: string): Promise<
 }
 
 export async function resolvePrice(
+  ctx: TenantContext,
+  product: PricedProduct,
+  countryCode: string | null | undefined,
+  variant?: { price: number | string } | null,
+): Promise<Money> {
+  const money = await resolveListPrice(ctx, product, countryCode, variant);
+  if (!ctx.tenant.modules.limited_offers || !product.id) return money;
+  const { applyOffer, offerForProduct } = await import("@/core/offers/offers");
+  const offer = await offerForProduct(ctx, product.id);
+  return offer ? { ...money, amount: applyOffer(money.amount, offer.percent) } : money;
+}
+
+/** Цена без акций — по стране и курсу. */
+export async function resolveListPrice(
   ctx: TenantContext,
   product: PricedProduct,
   countryCode: string | null | undefined,

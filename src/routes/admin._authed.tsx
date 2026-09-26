@@ -50,7 +50,10 @@ function Layout() {
               </span>
             </NavLink>
           )}
-          {(shop.modules.coupons || shop.modules.gift_certificates || shop.modules.referral) && (
+          {(shop.modules.coupons ||
+            shop.modules.gift_certificates ||
+            shop.modules.referral ||
+            shop.modules.limited_offers) && (
             <NavLink to="/admin/discounts">{t("nav.discounts")}</NavLink>
           )}
           {(shop.modules.broadcasts || shop.modules.wa_broadcasts) && (
