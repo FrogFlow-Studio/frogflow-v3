@@ -15,11 +15,23 @@ import {
   resolveAdminLogin,
   saveTeamMember,
 } from "@/app/admin/admin.server";
+import { findAdminLogin } from "@/core/auth/roles";
 
 /** Команда магазина: пользователь с ролью входит своим логином в тот же магазин. */
 const LOGIN = "v2_probe_manager";
 let ctx: TenantContext;
 let adminBefore: Json | undefined;
+
+/**
+ * Вход команды открыт только с модулем admin_roles (PR #5). Модуль включаем
+ * в памяти, а не в bots.modules: другие живые тесты читают демо-клиента
+ * параллельно.
+ */
+const loginWithRoles = (username: string, on = true) =>
+  findAdminLogin(
+    [{ ...ctx.tenant, modules: { ...ctx.tenant.modules, admin_roles: on } }],
+    username,
+  );
 
 async function fresh() {
   invalidateTenantDirectory();
@@ -59,7 +71,9 @@ describe.skipIf(!liveReady)("роли: команда магазина на де
       expect.objectContaining({ username: LOGIN, name: "Маша", role: "manager" }),
     ]);
 
-    const login = await resolveAdminLogin(` ${LOGIN} `);
+    // Без модуля «роли» логин команды не входит, хотя пользователь сохранён.
+    expect(loginWithRoles(LOGIN, false)).toBeNull();
+    const login = loginWithRoles(` ${LOGIN} `);
     expect(login?.tenant.id).toBe(DEMO_BOT);
     expect(login?.role).toBe("manager");
     expect(checkAdminPassword(login!, "manager-pass-1")).toBe(true);
@@ -71,7 +85,7 @@ describe.skipIf(!liveReady)("роли: команда магазина на де
     await saveTeamMember(ctx, { username: LOGIN, role: "viewer" });
     ctx = await fresh();
     expect(listTeam(ctx)[0]?.role).toBe("viewer");
-    expect(checkAdminPassword((await resolveAdminLogin(LOGIN))!, "manager-pass-1")).toBe(true);
+    expect(checkAdminPassword(loginWithRoles(LOGIN)!, "manager-pass-1")).toBe(true);
     await expect(
       saveTeamMember(ctx, { username: "demo", role: "manager", password: "12345678" }),
     ).rejects.toThrow(/владельца/);
@@ -79,6 +93,7 @@ describe.skipIf(!liveReady)("роли: команда магазина на де
     await deleteTeamMember(ctx, LOGIN);
     ctx = await fresh();
     expect(listTeam(ctx)).toEqual([]);
+    expect(loginWithRoles(LOGIN)).toBeNull();
     expect(await resolveAdminLogin(LOGIN)).toBeNull();
   });
 });
