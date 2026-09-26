@@ -37,8 +37,18 @@ export function fakeDb(
 
 let seq = 0;
 
+/** Колонка или путь в jsonb «payload->>key», как в фильтрах PostgREST. */
+function pick(r: Row, col: string): unknown {
+  const m = /^(\w+)->>(\w+)$/.exec(col);
+  if (!m) return r[col];
+  const obj = r[m[1]!];
+  const v = obj && typeof obj === "object" ? (obj as Row)[m[2]!] : undefined;
+  return v == null ? v : String(v);
+}
+
 class Query implements PromiseLike<Result> {
-  private op: "select" | "insert" | "update" | "delete" = "select";
+  private op: "select" | "insert" | "upsert" | "update" | "delete" = "select";
+  private conflictCol = "id";
   private filters: Filter[] = [];
   private payload: Row | Row[] = {};
   private returning = false;
@@ -68,6 +78,13 @@ class Query implements PromiseLike<Result> {
     this.payload = rows;
     return this;
   }
+  /** Вставка или замена по onConflict (одна колонка), как у PostgREST. */
+  upsert(rows: Row | Row[], o?: { onConflict?: string }) {
+    this.op = "upsert";
+    this.payload = rows;
+    this.conflictCol = o?.onConflict ?? "id";
+    return this;
+  }
   update(patch: Row) {
     this.op = "update";
     this.payload = patch;
@@ -78,7 +95,7 @@ class Query implements PromiseLike<Result> {
     return this;
   }
   eq(col: string, v: unknown) {
-    this.filters.push((r) => r[col] === v);
+    this.filters.push((r) => pick(r, col) === v);
     return this;
   }
   neq(col: string, v: unknown) {
@@ -91,6 +108,10 @@ class Query implements PromiseLike<Result> {
   }
   is(col: string, v: null) {
     this.filters.push((r) => (r[col] ?? null) === v);
+    return this;
+  }
+  gte(col: string, v: string | number) {
+    this.filters.push((r) => r[col] != null && (r[col] as string | number) >= v);
     return this;
   }
   lt(col: string, v: string | number) {
@@ -153,6 +174,16 @@ class Query implements PromiseLike<Result> {
   }
 
   private run(): Result {
+    if (this.op === "upsert") {
+      const list = Array.isArray(this.payload) ? this.payload : [this.payload];
+      for (const r of list) {
+        const col = this.conflictCol;
+        const existing = this.rows().find((x) => x[col] != null && x[col] === r[col]);
+        if (existing) Object.assign(existing, r);
+        else this.rows().push({ id: `row-${++seq}`, created_at: new Date().toISOString(), ...r });
+      }
+      return { data: null, error: null };
+    }
     if (this.op === "insert") {
       const list = Array.isArray(this.payload) ? this.payload : [this.payload];
       const added: Row[] = [];

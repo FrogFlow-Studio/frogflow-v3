@@ -62,6 +62,7 @@ function Layout() {
             shop.modules.funnel) && <NavLink to="/admin/broadcasts">{t("nav.broadcasts")}</NavLink>}
           <NavLink to="/admin/consultant">{t("nav.consultant")}</NavLink>
           {shop.modules.instagram && <NavLink to="/admin/instagram">{t("nav.instagram")}</NavLink>}
+          {shop.modules.instagram && <NavLink to="/admin/posts">{t("nav.posts")}</NavLink>}
           {shop.modules.vip && <NavLink to="/admin/vip">{t("nav.vip")}</NavLink>}
           {shop.modules.quiz && <NavLink to="/admin/quiz">{t("nav.quiz")}</NavLink>}
           {shop.undelivered > 0 && (

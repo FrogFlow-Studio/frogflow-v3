@@ -77,8 +77,29 @@ export async function settleZernioEvent(ctx: TenantContext, eventId: string, r: 
 }
 
 export const STUCK_AFTER_MS = 3 * 60_000;
+/** Окно ответа Instagram/WhatsApp — 24 часа: ответ на более старое событие не уйдёт. */
+export const STALE_AFTER_MS = 24 * 60 * 60_000;
+/** Добор, который начал прогон и не закончил (функция умерла), — через столько считаем брошенным. */
+export const ABANDONED_AFTER_MS = 10 * 60_000;
+const CLAIM_NOTE = "добор начат ";
 
-export type RetryResult = { found: number; processed: number; failed: number; ignored: number };
+export type RetryResult = {
+  found: number;
+  processed: number;
+  failed: number;
+  ignored: number;
+  /** Старше суток — закрыто без обработки. */
+  expired: number;
+  /** Прогон добора оборвался на полпути — закрыто без повтора. */
+  abandoned: number;
+};
+
+/** Когда добор забрал строку (метка в error_message), или null. */
+export function claimedAt(note: string | null): number | null {
+  if (!note?.startsWith(CLAIM_NOTE)) return null;
+  const t = Date.parse(note.slice(CLAIM_NOTE.length));
+  return Number.isNaN(t) ? null : t;
+}
 
 /**
  * Добор зависших событий. Вебхук пишет строку `received` до обработки;
@@ -87,6 +108,11 @@ export type RetryResult = { found: number; processed: number; failed: number; ig
  * потерянных событий Instagram). Крон берёт такие строки старше трёх
  * минут и прогоняет тем же обработчиком: идемпотентность отправок —
  * по event_id (Idempotency-Key), так что повтор не удваивает ответ.
+ *
+ * Два края: событие старше суток закрывается без ответа (окно переписки
+ * закрыто, отвечать на вчерашнее поздно), а строка, которую прошлый добор
+ * забрал и не закрыл, закрывается как сбой — второй повтор мог бы дважды
+ * позвать консультанта и дважды написать продавцу.
  */
 export async function retryStuckEvents(
   ctx: TenantContext,
@@ -94,23 +120,59 @@ export async function retryStuckEvents(
   dispatch: typeof dispatchZernioEvent = dispatchZernioEvent,
   limit = 20,
 ): Promise<RetryResult> {
-  const res: RetryResult = { found: 0, processed: 0, failed: 0, ignored: 0 };
+  const res: RetryResult = {
+    found: 0,
+    processed: 0,
+    failed: 0,
+    ignored: 0,
+    expired: 0,
+    abandoned: 0,
+  };
+  const t = now.getTime();
+
+  const { data: hung } = await ctx.db
+    .from("zernio_logs")
+    .select("event_id, error_message")
+    .eq("status", "retrying")
+    .limit(50);
+  for (const row of hung ?? []) {
+    const at = claimedAt(row.error_message);
+    if (!row.event_id || (at !== null && t - at < ABANDONED_AFTER_MS)) continue;
+    const { data: closed } = await ctx.db
+      .from("zernio_logs")
+      .update({ status: "failed", error_message: "добор прерван: функция не завершилась" })
+      .eq("event_id", row.event_id)
+      .eq("status", "retrying")
+      .select("event_id");
+    if (closed?.length) res.abandoned++;
+  }
+
   const { data, error } = await ctx.db
     .from("zernio_logs")
-    .select("event_id, event_type, payload")
+    .select("event_id, event_type, payload, created_at")
     .eq("status", "received")
     .in("event_type", [...HANDLED_EVENTS])
-    .lt("created_at", new Date(now.getTime() - STUCK_AFTER_MS).toISOString())
+    .lt("created_at", new Date(t - STUCK_AFTER_MS).toISOString())
     .order("created_at", { ascending: true })
     .limit(limit);
   if (error) throw new Error(`zernio_logs: ${error.message}`);
   for (const row of data ?? []) {
     if (!row.event_id) continue;
     res.found++;
+    if (t - Date.parse(row.created_at) > STALE_AFTER_MS) {
+      const { data: closed } = await ctx.db
+        .from("zernio_logs")
+        .update({ status: "failed", error_message: "добор: старше суток, окно ответа закрыто" })
+        .eq("event_id", row.event_id)
+        .eq("status", "received")
+        .select("event_id");
+      if (closed?.length) res.expired++;
+      continue;
+    }
     // Забираем строку: второй запуск крона её не возьмёт.
     const { data: claimed } = await ctx.db
       .from("zernio_logs")
-      .update({ status: "retrying" })
+      .update({ status: "retrying", error_message: `${CLAIM_NOTE}${now.toISOString()}` })
       .eq("event_id", row.event_id)
       .eq("status", "received")
       .select("event_id");
@@ -138,7 +200,7 @@ export async function retryStuckEventsFor(
     if (!t.settings.zernio?.profile_id && !t.settings.zernio?.account_ids?.length) continue;
     try {
       const r = await retryStuckEvents(tenantContext(t));
-      if (r.found) out[t.id] = r;
+      if (r.found || r.abandoned) out[t.id] = r;
     } catch (e) {
       out[t.id] = { error: e instanceof Error ? e.message : String(e) };
     }
