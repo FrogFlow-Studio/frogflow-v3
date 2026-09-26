@@ -61,3 +61,5 @@ NITRO_PRESET=node-server npx vite build && npm run e2e
 Сводку готовности `docs/READINESS.md` в обычных PR не трогаем: тест проверяет
 только `docs/readiness.json` (пункты и имена тестов). Сводку пересобирает
 отдельный PR (`npm run readiness`); при конфликте в ней берём версию из master.
+`docs/readiness.json` правится руками: при конфликте в нём оставляем строки
+обеих сторон (и из master, и свои), целиком из master его не берём.

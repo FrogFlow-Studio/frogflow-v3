@@ -298,7 +298,7 @@
     "накапливает запросы и USD, не сбрасывая на новый день": "src/core/search/smart-pure.test.ts › стоимость по ценам Haiku и накопление",
     "битый JSON — пустой счётчик, не бросает": "src/core/search/smart-pure.test.ts › стоимость по ценам Haiku и накопление",
     "считает $2 за 1000 чеков": "drop: v2 считает чеки штуками против лимита плана за месяц (core/plans), без долларов",
-    "разбирает счётчик чеков": "open: parseUsage (core/receipts/verify.server.ts) читает только JSON — старое число v1 в receipt_ocr_usage станет 0, теста нет",
+    "разбирает счётчик чеков": "src/core/receipts/verify.server.test.ts › разбирает счётчик чеков, в том числе голое число v1",
     "собирает оба счётчика для панели": "drop: сводка расхода v1 заменена planUsage с лимитами плана (core/plans, покрыт тестом)"
   },
   "tests/analytics.test.ts": {
@@ -931,8 +931,8 @@
   },
   "tests/misc-retention.test.ts": {
     "pruneAdminLoginAttempts удаляет старое, не трогает свежее": "tests/integration/retention.test.ts › переписка, попытки входа и события: старое удаляется, свежее остаётся",
-    "pruneOperatorAuditTables удаляет старые bot_events и operator_login_attempts": "open: bot_events проверены в retention.test.ts, pruneOperatorLoginAttempts (core/retention/retention.ts) — без теста",
-    "pruneBroadcastRecipients удаляет получателей кампаний старше окна": "open: pruneBroadcastRecipients (core/retention/retention.ts) без теста"
+    "pruneOperatorAuditTables удаляет старые bot_events и operator_login_attempts": "src/core/retention/retention.test.ts › pruneOperatorAuditTables удаляет старые попытки входа оператора, свежие остаются",
+    "pruneBroadcastRecipients удаляет получателей кампаний старше окна": "src/core/retention/retention.test.ts › pruneBroadcastRecipients удаляет получателей кампаний старше окна"
   },
   "tests/order-files-page.test.ts": {
     "round-trips a valid token": "drop: страницы файлов заказа с токеном в v2 нет; Direct получает подписанные ссылки Storage прямо в переписку",

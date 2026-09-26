@@ -5,7 +5,7 @@ import { setEnvForTests } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { setFxProvider, resetPricingCache, defaultFxProvider } from "@/core/pricing/pricing";
 import { isRetryReason } from "./pure";
-import { OCR_AUTO_KEY, receiptOcrAutoEnabled, verifyReceipt } from "./verify.server";
+import { OCR_AUTO_KEY, parseUsage, receiptOcrAutoEnabled, verifyReceipt } from "./verify.server";
 
 const BOT = "00000000-0000-0000-0000-000000000001";
 const sha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
@@ -264,5 +264,18 @@ describe("что уходит в Vision", () => {
     };
     const sent = Buffer.from(body.requests[0]!.inputConfig.content, "base64").toString("latin1");
     expect(sent).toBe("%PDF-1.7 body");
+  });
+});
+
+describe("parseUsage: счётчик проверок чеков", () => {
+  it("разбирает счётчик чеков, в том числе голое число v1", () => {
+    // v1 хранила в receipt_ocr_usage просто число — после переезда оно не теряется.
+    expect(parseUsage("17", "2026-09")).toEqual({ count: 17, month: "2026-09", monthCount: 0 });
+    expect(parseUsage("", "2026-09").count).toBe(0);
+    expect(parseUsage("-3", "2026-09").count).toBe(0);
+    expect(parseUsage("мусор", "2026-09").count).toBe(0);
+    expect(
+      parseUsage(JSON.stringify({ count: 5, month: "2026-09", monthCount: 2 }), "2026-09"),
+    ).toEqual({ count: 5, month: "2026-09", monthCount: 2 });
   });
 });

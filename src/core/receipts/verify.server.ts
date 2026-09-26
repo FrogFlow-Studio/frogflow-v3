@@ -50,7 +50,10 @@ export function parseUsage(
   month = new Date().toISOString().slice(0, 7),
 ): OcrUsage {
   try {
-    const p = JSON.parse(raw || "{}") as Partial<OcrUsage>;
+    const parsed = JSON.parse(raw || "{}") as unknown;
+    // v1 хранила в этом ключе голое число — счётчик за всё время, без месяца.
+    const p: Partial<OcrUsage> =
+      typeof parsed === "number" ? { count: parsed } : ((parsed ?? {}) as Partial<OcrUsage>);
     return {
       count: Math.max(0, Number(p.count) || 0),
       month,
