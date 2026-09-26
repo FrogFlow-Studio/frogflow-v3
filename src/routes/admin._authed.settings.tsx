@@ -244,6 +244,7 @@ function SettingsPage() {
         <FulfillmentCard settings={settings} />
         <ZonesCard zones={zones} />
         {shop.modules.robokassa && <RobokassaCard settings={settings} />}
+        {shop.modules.telegram_stars && <StarsCard settings={settings} />}
         {shop.modules.receipt_ocr && <ReceiptOcrCard settings={settings} hasKey={visionKey} />}
         {shop.modules.smart_search && (
           <SmartSearchCard settings={settings} hasKey={smartSearchKey} />
@@ -1063,6 +1064,49 @@ function LegalCard({ settings }: { settings: Record<string, string> }) {
         ))}
         <div className="flex items-center gap-3 md:col-span-2">
           <button className="btn-secondary" disabled={save.busy}>
+            {t("common.save")}
+          </button>
+          {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
+        </div>
+        <ErrorBox error={save.error} />
+      </form>
+    </Card>
+  );
+}
+
+/** Telegram Stars: курс «1 ⭐ = X в валюте магазина»; без курса кнопка оплаты не показывается. */
+function StarsCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const [saved, setSaved] = useState(false);
+  const save = useAction(async (f: FormData) => {
+    await saveSettingsFn({ data: { stars_rate: String(f.get("rate")).trim().replace(",", ".") } });
+    setSaved(true);
+    await router.invalidate();
+  });
+  const currency = (settings.shop_currency ?? "KZT").toUpperCase();
+  return (
+    <Card title={t("settings.stars.title")}>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save.run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        <p className="text-sm text-muted">{t("settings.stars.intro")}</p>
+        <Field label={t("settings.stars.rate", { currency })} hint={t("settings.stars.rateHint")}>
+          <input
+            className="input w-40"
+            name="rate"
+            inputMode="decimal"
+            defaultValue={settings.stars_rate ?? ""}
+            placeholder="6.5"
+          />
+        </Field>
+        <div className="flex items-center gap-3">
+          <button className="btn-primary" disabled={save.busy}>
             {t("common.save")}
           </button>
           {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}

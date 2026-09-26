@@ -29,6 +29,11 @@ export type Msg = {
   waitlistBtn: string;
   /** Апсейл (модуль upsell): «С этим берут». */
   upsellHeader: string;
+  /** Telegram Stars. */
+  payViaStarsBtn: (stars: number) => string;
+  starsInvoiceTitle: (no: number) => string;
+  starsInvoiceDesc: string;
+  starsPaymentStale: string;
   waitlistJoined: string;
   backInStock: (name: string) => string;
   productNotFound: string;
@@ -201,6 +206,10 @@ const ru: Msg = {
   outOfStockLabel: "❌ Нет в наличии",
   waitlistBtn: "🔔 Сообщить о поступлении",
   upsellHeader: "✨ С этим часто берут:",
+  payViaStarsBtn: (n) => `⭐ Оплатить звёздами (${n})`,
+  starsInvoiceTitle: (no) => `Заказ #${no}`,
+  starsInvoiceDesc: "Оплата заказа звёздами Telegram",
+  starsPaymentStale: "Заказ уже оплачен или изменился — откройте «Мои заказы».",
   waitlistJoined: "Готово — напишу, как только товар снова появится.",
   backInStock: (name) => `🔔 <b>${name}</b> снова в наличии! Успейте заказать.`,
   productNotFound: "Товар не найден или снят с продажи.",
@@ -329,6 +338,11 @@ const kk: Msg = {
   ...ru,
   waitlistBtn: "🔔 Түскенде хабарлау",
   upsellHeader: "✨ Мұнымен бірге жиі алады:",
+  payViaStarsBtn: (n) => `⭐ Жұлдыздармен төлеу (${n})`,
+  starsInvoiceTitle: (no) => `Тапсырыс #${no}`,
+  starsInvoiceDesc: "Тапсырысты Telegram жұлдыздарымен төлеу",
+  starsPaymentStale:
+    "Тапсырыс төленіп қойған немесе өзгерген — «Менің тапсырыстарым» бөлімін ашыңыз.",
   waitlistJoined: "Дайын — тауар қайта пайда болғанда жазамын.",
   backInStock: (name) => `🔔 <b>${name}</b> қайтадан сатылымда! Тапсырыс беріп үлгеріңіз.`,
   reorderBtn: "🔁 Тапсырысты қайталау",
@@ -405,6 +419,10 @@ const en: Msg = {
   ...ru,
   waitlistBtn: "🔔 Notify me when available",
   upsellHeader: "✨ Often bought together:",
+  payViaStarsBtn: (n) => `⭐ Pay with Stars (${n})`,
+  starsInvoiceTitle: (no) => `Order #${no}`,
+  starsInvoiceDesc: "Paying for the order with Telegram Stars",
+  starsPaymentStale: "The order is already paid or has changed — open “My orders”.",
   waitlistJoined: "Done — I will message you as soon as it is back.",
   backInStock: (name) => `🔔 <b>${name}</b> is back in stock! Order while it lasts.`,
   reorderBtn: "🔁 Reorder",
@@ -501,6 +519,10 @@ const uz: Msg = {
   ...ru,
   waitlistBtn: "🔔 Kelganda xabar berish",
   upsellHeader: "✨ Bu bilan ko‘pincha olishadi:",
+  payViaStarsBtn: (n) => `⭐ Yulduzlar bilan to‘lash (${n})`,
+  starsInvoiceTitle: (no) => `Buyurtma #${no}`,
+  starsInvoiceDesc: "Buyurtmani Telegram yulduzlari bilan to‘lash",
+  starsPaymentStale: "Buyurtma allaqachon to‘langan yoki o‘zgargan — «Buyurtmalarim»ni oching.",
   waitlistJoined: "Tayyor — mahsulot yana paydo bo‘lishi bilan yozaman.",
   backInStock: (name) => `🔔 <b>${name}</b> yana sotuvda! Buyurtma berishga ulguring.`,
   reorderBtn: "🔁 Buyurtmani takrorlash",

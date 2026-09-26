@@ -172,6 +172,12 @@ export const ru = {
   "settings.legal.requisites": "Реквизиты продавца",
   "settings.legal.about": "О продавце",
   // Robokassa
+  "settings.stars.title": "Telegram Stars",
+  "settings.stars.intro":
+    "Покупатель платит звёздами Telegram в один тап, без карт и реквизитов. Звёзды приходят на баланс бота; вывести их можно через Fragment.",
+  "settings.stars.rate": "Сколько стоит 1 ⭐, {currency}",
+  "settings.stars.rateHint":
+    "Сумма заказа делится на курс и округляется вверх. Пусто — кнопка оплаты звёздами не показывается.",
   "settings.rk.title": "Robokassa: оплата картой",
   "settings.rk.introResult": "В личном кабинете Robokassa укажите Result URL",
   "settings.rk.introSuccess": ", Success URL",
@@ -394,6 +400,12 @@ export const kk: SectionDict<typeof ru> = {
   "settings.legal.privacy": "Құпиялылық саясаты",
   "settings.legal.requisites": "Сатушының реквизиттері",
   "settings.legal.about": "Сатушы туралы",
+  "settings.stars.title": "Telegram Stars",
+  "settings.stars.intro":
+    "Сатып алушы Telegram жұлдыздарымен бір түртумен төлейді, картасыз және деректемесіз. Жұлдыздар бот балансына түседі; оларды Fragment арқылы шығаруға болады.",
+  "settings.stars.rate": "1 ⭐ бағасы, {currency}",
+  "settings.stars.rateHint":
+    "Тапсырыс сомасы бағамға бөлініп, жоғары қарай дөңгелектенеді. Бос — жұлдызбен төлеу түймесі көрсетілмейді.",
   "settings.rk.title": "Robokassa: картамен төлеу",
   "settings.rk.introResult": "Robokassa жеке кабинетінде Result URL көрсетіңіз:",
   "settings.rk.introSuccess": ", Success URL",
@@ -611,6 +623,12 @@ export const en: SectionDict<typeof ru> = {
   "settings.legal.privacy": "Privacy policy",
   "settings.legal.requisites": "Seller details",
   "settings.legal.about": "About the seller",
+  "settings.stars.title": "Telegram Stars",
+  "settings.stars.intro":
+    "Customers pay with Telegram Stars in one tap, with no cards or bank details. Stars land on the bot balance; you can withdraw them via Fragment.",
+  "settings.stars.rate": "Price of 1 ⭐, {currency}",
+  "settings.stars.rateHint":
+    "The order total is divided by the rate and rounded up. Empty — the Stars payment button is hidden.",
   "settings.rk.title": "Robokassa: card payments",
   "settings.rk.introResult": "In your Robokassa account set Result URL",
   "settings.rk.introSuccess": ", Success URL",
@@ -831,6 +849,12 @@ export const uz: SectionDict<typeof ru> = {
   "settings.legal.privacy": "Maxfiylik siyosati",
   "settings.legal.requisites": "Sotuvchi rekvizitlari",
   "settings.legal.about": "Sotuvchi haqida",
+  "settings.stars.title": "Telegram Stars",
+  "settings.stars.intro":
+    "Xaridor Telegram yulduzlari bilan bir bosishda, kartasiz va rekvizitlarsiz to‘laydi. Yulduzlar bot balansiga tushadi; ularni Fragment orqali yechib olish mumkin.",
+  "settings.stars.rate": "1 ⭐ narxi, {currency}",
+  "settings.stars.rateHint":
+    "Buyurtma summasi kursga bo‘linadi va yuqoriga yaxlitlanadi. Bo‘sh — yulduzlar bilan to‘lov tugmasi ko‘rsatilmaydi.",
   "settings.rk.title": "Robokassa: karta orqali to‘lov",
   "settings.rk.introResult": "Robokassa shaxsiy kabinetida Result URL ko‘rsating:",
   "settings.rk.introSuccess": ", Success URL",

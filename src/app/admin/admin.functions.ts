@@ -512,6 +512,7 @@ export const SETTING_KEYS = [
   "shop_currency",
   "shop_tagline",
   "storefront_accent",
+  "stars_rate",
   "admin_chat_id",
   "admin_contact_link",
   "instruction_caption",

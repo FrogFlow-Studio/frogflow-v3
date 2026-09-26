@@ -36,7 +36,7 @@ export async function notifyAdminNewOrder(
     (opts.autoDelivered
       ? `✅ <b>Заказ #${no}: чек распознан, файлы выданы автоматически</b>\n\n`
       : paidOnline
-        ? `💳 <b>Заказ #${no} оплачен картой</b>\n\n`
+        ? `💳 <b>Заказ #${no} оплачен онлайн</b>\n\n`
         : `🆕 <b>Новый заказ #${no}</b>\n\n`) +
     (opts.reviewReason ? `🔎 Автопроверка чека: ${escapeHtml(opts.reviewReason)}\n\n` : "") +
     (order.platform !== "telegram" ? `📲 Канал: ${escapeHtml(order.platform)}\n` : "") +

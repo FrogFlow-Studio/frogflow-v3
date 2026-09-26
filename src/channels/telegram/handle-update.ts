@@ -118,6 +118,9 @@ export async function handleTelegramUpdate(
 ): Promise<void> {
   try {
     if (update.callback_query) return await handleCallback(ctx, api, update.callback_query);
+    if (update.pre_checkout_query)
+      return await handlePreCheckout(ctx, api, update.pre_checkout_query);
+    if (update.message?.successful_payment) return await handleStarsPaid(ctx, api, update.message);
     if (update.message) return await handleMessage(ctx, api, update.message);
   } catch (e) {
     console.error(`[tg:${ctx.tenant.id}] update failed`, e);
@@ -1044,7 +1047,9 @@ async function finishCheckout(b: Bot, countryCode: string) {
   });
   const due = result.amountDue;
   const rk = await robokassaFor(b.ctx);
-  if (rk.ready) {
+  const { starsForOrder } = await import("@/core/payments/stars");
+  const stars = await starsForOrder(b.ctx, due, order.currency);
+  if (rk.ready || stars) {
     b.customer = await setState(b.ctx, b.customer, {
       ...rest,
       mode: "choose_pay",
@@ -1057,7 +1062,12 @@ async function finishCheckout(b: Bot, countryCode: string) {
       {
         reply_markup: {
           inline_keyboard: [
-            [{ text: b.m.payViaRobokassaBtn, callback_data: `pay:rk:${order.id}` }],
+            ...(rk.ready
+              ? [[{ text: b.m.payViaRobokassaBtn, callback_data: `pay:rk:${order.id}` }]]
+              : []),
+            ...(stars
+              ? [[{ text: b.m.payViaStarsBtn(stars), callback_data: `pay:stars:${order.id}` }]]
+              : []),
             [{ text: b.m.payManualBtn, callback_data: `pay:manual:${order.id}` }],
           ],
         },
@@ -1111,6 +1121,77 @@ async function sendManualInstructions(
 }
 
 /** Оплата картой подтверждена шлюзом: выдать цифровой заказ, сообщить покупателю и продавцу. */
+/** Сумма заказа к оплате сейчас — в звёздах; null — Stars недоступны. */
+async function starsDue(
+  ctx: TenantContext,
+  order: import("@/core/orders/orders").OrderWithItems,
+): Promise<number | null> {
+  const { amountDueNow } = await import("@/core/fulfillment/fulfillment");
+  const due = await amountDueNow(ctx, {
+    total: Number(order.total),
+    fulfillment_kind: order.fulfillment_kind,
+  });
+  const { starsForOrder } = await import("@/core/payments/stars");
+  return starsForOrder(ctx, due, order.currency);
+}
+
+/**
+ * Перед списанием звёзд Telegram спрашивает бота, можно ли: заказ наш, ещё
+ * ждёт оплаты, сумма та же. Ответить нужно за 10 секунд.
+ */
+async function handlePreCheckout(
+  ctx: TenantContext,
+  api: TelegramApi,
+  q: import("./types").TelegramPreCheckoutQuery,
+): Promise<void> {
+  const { parseStarsPayload } = await import("@/core/payments/stars");
+  const orderId = parseStarsPayload(q.invoice_payload);
+  const order = orderId ? await getOrder(ctx, orderId) : null;
+  const m = COPY[ctx.tenant.settings.default_locale ?? "ru"];
+  const expected = order ? await starsDue(ctx, order) : null;
+  const ok =
+    Boolean(order) &&
+    ctx.tenant.modules.telegram_stars &&
+    q.currency === "XTR" &&
+    order!.telegram_id === q.from.id &&
+    order!.status === "awaiting_payment" &&
+    expected === q.total_amount;
+  await api.call(
+    "answerPreCheckoutQuery",
+    ok
+      ? { pre_checkout_query_id: q.id, ok: true }
+      : { pre_checkout_query_id: q.id, ok: false, error_message: m.starsPaymentStale },
+  );
+}
+
+/** Звёзды списаны: фиксируем оплату тем же путём, что Robokassa, и выдаём. */
+async function handleStarsPaid(
+  ctx: TenantContext,
+  api: TelegramApi,
+  msg: TelegramMessage,
+): Promise<void> {
+  const pay = msg.successful_payment!;
+  if (pay.currency !== "XTR") return;
+  const { parseStarsPayload } = await import("@/core/payments/stars");
+  const orderId = parseStarsPayload(pay.invoice_payload);
+  if (!orderId) return;
+  const order = await getOrder(ctx, orderId);
+  if (!order || order.telegram_id !== msg.from?.id) return;
+  const { amountDueNow } = await import("@/core/fulfillment/fulfillment");
+  const due = await amountDueNow(ctx, {
+    total: Number(order.total),
+    fulfillment_kind: order.fulfillment_kind,
+  });
+  const { markPaidOnline } = await import("@/core/payments/payment");
+  const r = await markPaidOnline(
+    ctx,
+    orderId,
+    due,
+    `Telegram Stars (${pay.total_amount} ⭐${pay.telegram_payment_charge_id ? `, ${pay.telegram_payment_charge_id}` : ""})`,
+  );
+  if (r.ok && !r.alreadyDone) await onOrderPaid(ctx, api, orderId);
+}
+
 export async function onOrderPaid(
   ctx: TenantContext,
   api: TelegramApi,
@@ -1534,6 +1615,26 @@ async function handleCallback(
         `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}\n\n${b.m.robokassaHint}`,
         { reply_markup: { inline_keyboard: [[{ text: b.m.payViaRobokassaBtn, url }]] } },
       );
+      return;
+    }
+    if (kind === "stars") {
+      const stars = await starsDue(ctx, order);
+      if (!stars) return;
+      const { starsPayload } = await import("@/core/payments/stars");
+      b.customer = await setState(ctx, customer, {
+        ...customer.state,
+        mode: "awaiting_payment",
+        pending_order_id: order.id,
+        pending_display_no: no,
+      });
+      await api.call("sendInvoice", {
+        chat_id: chatId,
+        title: b.m.starsInvoiceTitle(no),
+        description: `${b.m.starsInvoiceDesc} · ${formatMoney(due, order.currency)}`,
+        payload: starsPayload(order.id),
+        currency: "XTR",
+        prices: [{ label: b.m.starsInvoiceTitle(no), amount: stars }],
+      });
       return;
     }
     if (kind === "manual") {

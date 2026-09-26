@@ -125,7 +125,8 @@ export const MODULES = {
     desc: "Оплата звёздами Telegram в один тап, без карт и реквизитов.",
     group: "Оплата",
     price: 17000,
-    status: "planned",
+    status: "available",
+    note: "sendInvoice в XTR, курс «1 ⭐ = X» — карточка в настройках (app_settings.stars_rate); pre_checkout_query сверяет заказ и сумму, successful_payment → markPaidOnline и выдача. Только Telegram.",
   },
   coupons: {
     title: "Скидки и промокоды",
