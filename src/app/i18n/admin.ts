@@ -91,6 +91,10 @@ const baseRu = {
   "overview.step.telegramHint":
     "Создайте бота в @BotFather и вставьте токен в настройках — магазин заработает сразу.",
   "overview.step.products": "Добавить первый товар",
+  "overview.template.title": "Начать с примеров для вашей ниши",
+  "overview.template.hint":
+    "Добавим категории и несколько скрытых примеров товаров. Покупатели их не видят: поменяйте фото, цену и текст и включите.",
+  "overview.template.apply": "Добавить примеры",
   "overview.step.productsHint":
     "Название, цена, фото; для цифрового материала — файл, который получит покупатель.",
   "overview.step.payment": "Указать, как вам платить",
@@ -340,6 +344,10 @@ const baseKk: Dict = {
   "overview.step.telegramHint":
     "@BotFather-де бот жасап, токенді баптауларға қойыңыз — дүкен бірден жұмыс істейді.",
   "overview.step.products": "Алғашқы тауарды қосу",
+  "overview.template.title": "Өз салаңыздың үлгілерінен бастау",
+  "overview.template.hint":
+    "Санаттар мен бірнеше жасырын тауар үлгісін қосамыз. Сатып алушылар оларды көрмейді: фото, баға мен мәтінді ауыстырып, қосыңыз.",
+  "overview.template.apply": "Үлгілерді қосу",
   "overview.step.productsHint":
     "Атауы, бағасы, фотосы; цифрлық материал үшін — сатып алушы алатын файл.",
   "overview.step.payment": "Төлемді қалай қабылдайтыныңызды көрсету",
@@ -558,6 +566,10 @@ const baseEn: Dict = {
   "overview.step.telegramHint":
     "Create a bot in @BotFather and paste the token in settings — the shop starts working right away.",
   "overview.step.products": "Add the first product",
+  "overview.template.title": "Start with examples for your niche",
+  "overview.template.hint":
+    "We will add categories and a few hidden sample products. Buyers do not see them: change the photo, price and text, then switch them on.",
+  "overview.template.apply": "Add examples",
   "overview.step.productsHint":
     "Name, price, photo; for a digital product — the file the customer will receive.",
   "overview.step.payment": "Tell customers how to pay you",
@@ -776,6 +788,10 @@ const baseUz: Dict = {
   "overview.step.telegramHint":
     "@BotFather-da bot yarating va tokenni sozlamalarga qo‘ying — do‘kon darhol ishlaydi.",
   "overview.step.products": "Birinchi mahsulotni qo‘shish",
+  "overview.template.title": "Sohangiz namunalaridan boshlash",
+  "overview.template.hint":
+    "Toifalar va bir nechta yashirin mahsulot namunalarini qo‘shamiz. Xaridorlar ularni ko‘rmaydi: rasm, narx va matnni almashtirib, yoqing.",
+  "overview.template.apply": "Namunalarni qo‘shish",
   "overview.step.productsHint":
     "Nomi, narxi, rasmi; raqamli material uchun — xaridor oladigan fayl.",
   "overview.step.payment": "Qanday to‘lashni ko‘rsatish",

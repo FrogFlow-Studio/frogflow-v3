@@ -170,8 +170,19 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
       firstOrder: (anyOrders ?? 0) > 0,
       hidden: settings.setup_hidden === "1",
       slug: ctx.tenant.settings.slug ?? null,
+      // Пустой магазин может начать с примеров своей ниши (core/templates).
+      template:
+        (products ?? 0) === 0 &&
+        (await (await import("@/core/templates/apply.server")).templateAvailable(ctx)),
     },
   };
+});
+
+/** Категории и скрытые примеры товаров ниши — только в пустой магазин. */
+export const applyNicheTemplateFn = createServerFn({ method: "POST" }).handler(async () => {
+  const ctx = await adminWrite();
+  const { applyNicheTemplate } = await import("@/core/templates/apply.server");
+  return applyNicheTemplate(ctx);
 });
 
 /** Продавец убрал чек-лист первых шагов с обзора. */

@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { dashboardFn, hideSetupFn } from "@/app/admin/admin.functions";
+import { applyNicheTemplateFn, dashboardFn, hideSetupFn } from "@/app/admin/admin.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { verticalTitleKey } from "@/app/i18n/admin/catalog";
-import { Card, Empty, PageTitle, Stat, useAction } from "@/app/ui";
+import { Card, Empty, ErrorBox, PageTitle, Stat, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 import { OrderStatus } from "./admin._authed.orders";
@@ -32,6 +32,10 @@ function Dashboard() {
   const hide = useAction(async () => {
     await hideSetupFn();
     await router.invalidate();
+  });
+  const template = useAction(async () => {
+    await applyNicheTemplateFn();
+    await router.navigate({ to: "/admin/products" });
   });
   return (
     <>
@@ -88,6 +92,20 @@ function Dashboard() {
               {t("overview.step.firstOrderHint")}
             </Step>
           </ol>
+          {d.setup.template && (
+            <div className="mt-4 rounded-md border border-line p-3">
+              <p className="text-sm font-medium">{t("overview.template.title")}</p>
+              <p className="mb-2 text-xs text-muted">{t("overview.template.hint")}</p>
+              <button
+                className="btn-secondary text-sm"
+                disabled={template.busy}
+                onClick={() => void template.run().catch(() => {})}
+              >
+                {t("overview.template.apply")}
+              </button>
+              <ErrorBox error={template.error} />
+            </div>
+          )}
           {d.setup.slug && (
             <p className="mt-3 text-xs text-muted">
               {t("overview.storefront")} <span className="font-mono">/s/{d.setup.slug}</span>
