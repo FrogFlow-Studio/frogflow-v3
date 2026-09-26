@@ -182,3 +182,16 @@ describe("servedByV2", () => {
     expect(servedByV2({ settings: {} })).toBe(false);
   });
 });
+
+describe("ниша клиента из bots.vertical", () => {
+  it("пустая ниша или её отсутствие — digital: живые клиенты v1 разницы не заметят", () => {
+    expect(tenantFromRow(row({ vertical: null as unknown as string })).vertical).toBe("digital");
+    expect(tenantFromRow(row({ vertical: "" })).vertical).toBe("digital");
+  });
+
+  it("известная ниша сохраняется, консультант тоже", () => {
+    expect(tenantFromRow(row({ vertical: "confectionery" })).vertical).toBe("confectionery");
+    expect(tenantFromRow(row({ vertical: "flowers" })).vertical).toBe("flowers");
+    expect(tenantFromRow(row({ vertical: "consultant" })).vertical).toBe("consultant");
+  });
+});

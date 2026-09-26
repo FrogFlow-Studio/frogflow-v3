@@ -32,3 +32,29 @@ describe("даты в поясе клиента", () => {
     expect(zonedDayToUtc("2026-09-21", "UTC")).toBe("2026-09-21T00:00:00.000Z");
   });
 });
+
+describe("выгрузка: края, как в v1", () => {
+  it("минус внутри строки — не формула", () => {
+    expect(cell("Алма-Ата")).toBe("Алма-Ата");
+    expect(cell("+7 700 000-00-00")).toBe("'+7 700 000-00-00");
+    expect(cell("7-А класс")).toBe("7-А класс");
+  });
+
+  it("заголовок остаётся и при пустых данных", () => {
+    expect(toCsv(["№", "Сумма"], [])).toBe(`${BOM}№;Сумма`);
+  });
+});
+
+describe("zonedDayToUtc: пояса с отрицательным смещением и стык суток", () => {
+  it("отрицательное смещение (США, UTC-5 зимой, UTC-4 летом) — позже полуночи UTC того же числа", () => {
+    expect(zonedDayToUtc("2026-01-15", "America/New_York")).toBe("2026-01-15T05:00:00.000Z");
+    expect(zonedDayToUtc("2026-07-15", "America/New_York")).toBe("2026-07-15T04:00:00.000Z");
+    expect(zonedDayToUtc("2026-01-15", "America/New_York", true)).toBe("2026-01-16T04:59:59.999Z");
+  });
+
+  it("конец 31 августа и начало 1 сентября по Алматы стыкуются без пропуска и нахлёста", () => {
+    const end = Date.parse(zonedDayToUtc("2026-08-31", "Asia/Almaty", true));
+    const start = Date.parse(zonedDayToUtc("2026-09-01", "Asia/Almaty"));
+    expect(start - end).toBe(1);
+  });
+});

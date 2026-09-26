@@ -93,29 +93,29 @@
     "formats knowledge articles for system prompt": "drop: встроенные статьи BOVI; в v2 база знаний клиента в промпте (pure.test)"
   },
   "src/lib/cron-auth.test.ts": {
-    "пропускает верный Bearer-заголовок": "open: isCronAuthorized (src/lib/cron-auth.ts) без теста",
+    "пропускает верный Bearer-заголовок": "src/lib/cron-auth.test.ts › пропускает верный Bearer-заголовок",
     "пропускает верный query-параметр secret": "drop: v2 принимает только Bearer (src/lib/cron-auth.ts), Vercel Cron шлёт заголовок",
-    "отклоняет неверный секрет в заголовке": "open: isCronAuthorized (src/lib/cron-auth.ts) без теста",
+    "отклоняет неверный секрет в заголовке": "src/lib/cron-auth.test.ts › отклоняет неверный секрет в заголовке",
     "отклоняет неверный секрет в query": "drop: v2 не принимает секрет в query (src/lib/cron-auth.ts)",
-    "отклоняет запрос вовсе без секрета": "open: isCronAuthorized (src/lib/cron-auth.ts) без теста",
-    "отклоняет всё, если CRON_SECRET не задан на деплое — fail closed": "open: env.ts требует CRON_SECRET от 16 символов, но теста нет",
-    "не путает голый заголовок x-vercel-cron с настоящей авторизацией": "open: isCronAuthorized (src/lib/cron-auth.ts) без теста"
+    "отклоняет запрос вовсе без секрета": "src/lib/cron-auth.test.ts › отклоняет запрос вовсе без секрета",
+    "отклоняет всё, если CRON_SECRET не задан на деплое — fail closed": "src/lib/cron-auth.test.ts › пустой секрет деплоя не открывает кроны — fail closed",
+    "не путает голый заголовок x-vercel-cron с настоящей авторизацией": "src/lib/cron-auth.test.ts › голый заголовок x-vercel-cron не считается авторизацией"
   },
   "src/lib/csv.test.ts": {
     "пустое значение вместо null и undefined": "src/core/export/csv.test.ts › экранирует разделитель, кавычки и переводы строк",
     "оборачивает в кавычки то, что иначе развалит строку": "src/core/export/csv.test.ts › экранирует разделитель, кавычки и переводы строк",
     "не трогает обычный текст": "src/core/export/csv.test.ts › экранирует разделитель, кавычки и переводы строк",
     "обезвреживает формулу апострофом": "src/core/export/csv.test.ts › не даёт Excel исполнить формулу из имени покупателя",
-    "минус внутри строки — не формула": "open: cell в core/export/csv.ts, теста на дефис внутри строки нет",
+    "минус внутри строки — не формула": "src/core/export/csv.test.ts › минус внутри строки — не формула",
     "начинается с BOM, иначе Excel показывает кракозябры": "src/core/export/csv.test.ts › собирает файл с BOM",
     "разделяет столбцы «;», а строки — CRLF": "src/core/export/csv.test.ts › собирает файл с BOM",
-    "заголовок остаётся и при пустых данных": "open: toCsv в core/export/csv.ts, теста на пустые строки нет",
-    "забирает всё, что больше одной страницы": "open: pageAll (src/core/db/page.ts) без теста",
-    "запрашивает страницы подряд, без пропусков и нахлёстов": "open: pageAll (src/core/db/page.ts) без теста",
-    "останавливается на неполной странице — ровно одна страница": "open: pageAll (src/core/db/page.ts) без теста",
-    "ровно PAGE строк — спрашивает следующую страницу": "open: pageAll (src/core/db/page.ts) без теста",
-    "пустая выборка — пустой результат, один запрос": "open: pageAll (src/core/db/page.ts) без теста",
-    "ошибку базы не проглатывает — иначе выгрузка выйдет неполной молча": "open: pageAll (src/core/db/page.ts) без теста"
+    "заголовок остаётся и при пустых данных": "src/core/export/csv.test.ts › заголовок остаётся и при пустых данных",
+    "забирает всё, что больше одной страницы": "src/core/db/page.test.ts › забирает всё, что больше одной страницы",
+    "запрашивает страницы подряд, без пропусков и нахлёстов": "src/core/db/page.test.ts › запрашивает страницы подряд, без пропусков и нахлёстов",
+    "останавливается на неполной странице — ровно одна страница": "src/core/db/page.test.ts › останавливается на неполной странице — ровно одна страница",
+    "ровно PAGE строк — спрашивает следующую страницу": "src/core/db/page.test.ts › ровно PAGE строк — спрашивает следующую страницу",
+    "пустая выборка — пустой результат, один запрос": "src/core/db/page.test.ts › пустая выборка — пустой результат, один запрос",
+    "ошибку базы не проглатывает — иначе выгрузка выйдет неполной молча": "src/core/db/page.test.ts › ошибку базы не проглатывает — иначе выгрузка выйдет неполной молча"
   },
   "src/lib/error-message.test.ts": {
     "настоящий Error — message как есть": "src/app/i18n/errors.test.ts › переводится на язык админки с подстановкой, чужая ошибка — как есть",
@@ -161,14 +161,14 @@
     "нашёл хотя бы один платный доступный модуль для проверки": "open: в v2 нет теста, что каждый платный доступный модуль реестра проверяется гейтом (core/modules/registry.ts)"
   },
   "src/lib/modules/require-module.test.ts": {
-    "модуль подключён — пропускает молча": "open: requireAdminModule в src/app/auth/guards.server.ts без теста",
-    "модуль не подключён — отказывает": "open: requireAdminModule в src/app/auth/guards.server.ts без теста",
+    "модуль подключён — пропускает молча": "src/app/auth/require-module.test.ts › админ и модуль подключён — пропускает",
+    "модуль не подключён — отказывает": "src/app/auth/require-module.test.ts › админ, но модуль не подключён — отказывает",
     "в отказе — человеческое название модуля": "src/app/i18n/errors.test.ts › ключ модуля показывается названием на языке админки",
-    "проверяется именно запрошенный модуль": "open: requireAdminModule в src/app/auth/guards.server.ts без теста",
-    "ошибка чтения не открывает доступ": "open: модули читаются из TenantContext (core/tenant/directory.ts), теста на сбой чтения нет",
-    "админ и модуль подключён — пропускает": "open: requireAdminModule в src/app/auth/guards.server.ts без теста",
-    "не админ — отказывает до проверки модуля": "open: requireAdminModule сначала зовёт requireAdmin, теста нет",
-    "админ, но модуль не подключён — отказывает": "open: requireAdminModule в src/app/auth/guards.server.ts без теста"
+    "проверяется именно запрошенный модуль": "src/app/auth/require-module.test.ts › проверяется именно запрошенный модуль",
+    "ошибка чтения не открывает доступ": "src/app/auth/require-module.test.ts › ошибка чтения магазина не открывает доступ",
+    "админ и модуль подключён — пропускает": "src/app/auth/require-module.test.ts › админ и модуль подключён — пропускает",
+    "не админ — отказывает до проверки модуля": "src/app/auth/require-module.test.ts › не админ — отказывает до проверки модуля",
+    "админ, но модуль не подключён — отказывает": "src/app/auth/require-module.test.ts › админ, но модуль не подключён — отказывает"
   },
   "src/lib/operator/env-block.test.ts": {
     "режим running не отдаёт секреты и токены деплоя": "drop: блок переменных окружения для отдельного деплоя клиента в v2 не нужен — один деплой на всех, клиент подключается из панели оператора",
@@ -261,16 +261,16 @@
     "отклоняет чужой префикс, даже если BOT_ID на деплое не задан": "src/core/storage/keys.test.ts › свой префикс — да, чужой и обход префикса — нет"
   },
   "src/lib/verticals/vertical.test.ts": {
-    "падает в digital, когда VERTICAL не задан — семь живых деплоев не должны заметить разницу": "open: ниша из bots.vertical, asVertical(null) → digital в core/tenant/directory.ts без теста",
-    "падает в digital на пустой строке": "open: asVertical(\"\") → digital в core/tenant/directory.ts без теста",
+    "падает в digital, когда VERTICAL не задан — семь живых деплоев не должны заметить разницу": "src/core/tenant/directory.test.ts › пустая ниша или её отсутствие — digital: живые клиенты v1 разницы не заметят",
+    "падает в digital на пустой строке": "src/core/tenant/directory.test.ts › пустая ниша или её отсутствие — digital: живые клиенты v1 разницы не заметят",
     "падает в digital на опечатке — не должна ронять магазин": "src/core/tenant/directory.test.ts › неизвестная ниша и статус читаются как digital/active",
-    "подхватывает известную нишу": "open: tenantFromRow сохраняет известную нишу, теста нет (core/tenant/directory.ts)",
-    "подхватывает consultant": "open: tenantFromRow с vertical consultant без теста",
+    "подхватывает известную нишу": "src/core/tenant/directory.test.ts › известная ниша сохраняется, консультант тоже",
+    "подхватывает consultant": "src/core/tenant/directory.test.ts › известная ниша сохраняется, консультант тоже",
     "currentVerticalDef() согласован с currentVertical()": "drop: в v2 нет ниши деплоя из VERTICAL — ниша приходит из bots.vertical через TenantContext",
-    "digital — shop, не physical-shop UI": "open: src/core/verticals/registry.ts без теста",
-    "confectionery — shop + physical-shop UI": "open: src/core/verticals/registry.ts без теста",
-    "consultant — физические товары, без UI кондитерской": "open: src/core/verticals/registry.ts без теста",
-    "flowers — shop + physical-shop UI + whatsapp focus": "open: src/core/verticals/registry.ts без теста",
+    "digital — shop, не physical-shop UI": "src/core/verticals/registry.test.ts › digital — магазин без физического чекаута",
+    "confectionery — shop + physical-shop UI": "src/core/verticals/registry.test.ts › confectionery — магазин с физическим чекаутом",
+    "consultant — физические товары, без UI кондитерской": "src/core/verticals/registry.test.ts › consultant — физические товары, но без чекаута кондитерской",
+    "flowers — shop + physical-shop UI + whatsapp focus": "src/core/verticals/registry.test.ts › flowers — магазин с физическим чекаутом и WhatsApp в мастере подключения",
     "распознает повод заказа цветов": "drop: matchFlowerOccasion в v1 нигде не вызывался; подбор в v2 — общий консультант и умный поиск",
     "распознает сорта цветов": "drop: matchFlowerSpecies в v1 нигде не вызывался; подбор в v2 — общий консультант и умный поиск",
     "парсит бюджет из текста": "drop: matchFlowerBudget в v1 нигде не вызывался; бюджет в v2 — core/consultant/budget.ts"
@@ -549,8 +549,8 @@
     "полночь Алматы (UTC+5) — на 5 часов раньше полуночи UTC того же числа": "src/core/export/csv.test.ts › zonedDayToUtc даёт границы дня в UTC",
     "конец дня Алматы (23:59:59) — на 5 часов раньше конца дня UTC": "src/core/export/csv.test.ts › zonedDayToUtc даёт границы дня в UTC",
     "UTC — граница дня совпадает буквально, без сдвига": "src/core/export/csv.test.ts › zonedDayToUtc даёт границы дня в UTC",
-    "отрицательное смещение (США, UTC-5) — позже полуночи UTC того же числа": "open: zonedDayToUtc (core/export/csv.ts) не проверен на поясе с отрицательным смещением и летнем времени",
-    "полночь и 31 августа 23:59:59 Алматы попадают в один и тот же UTC-час — граница не рвёт сутки пополам": "open: стык соседних суток в zonedDayToUtc (core/export/csv.ts) без пропуска и нахлёста не проверен"
+    "отрицательное смещение (США, UTC-5) — позже полуночи UTC того же числа": "src/core/export/csv.test.ts › отрицательное смещение (США, UTC-5 зимой, UTC-4 летом) — позже полуночи UTC того же числа",
+    "полночь и 31 августа 23:59:59 Алматы попадают в один и тот же UTC-час — граница не рвёт сутки пополам": "src/core/export/csv.test.ts › конец 31 августа и начало 1 сентября по Алматы стыкуются без пропуска и нахлёста"
   },
   "tests/consultant-style-budget.test.ts": {
     "на одеяло за 100 000 не предлагает подушку за 30 000": "drop: специфика BOVI консультанта ниши consultant* из v1 — заменён общим консультантом v2 (src/core/consultant)",
