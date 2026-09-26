@@ -57,6 +57,7 @@ export async function handleAccountDisconnected(
     `🔌 <b>${channel}-аккаунт отключился</b>\n\n` +
       `${escapeHtml(label)} отвязался — бот перестал видеть сообщения и отвечать.\n\n` +
       "Откройте «Оплата и настройки» → «Instagram и WhatsApp» и подключите аккаунт заново.",
+    { kind: "account" },
   );
   return {
     notified: sent > 0,

@@ -20,6 +20,8 @@ import {
 } from "@/app/admin/admin.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
 import { directBotSettingsFn, saveDirectBotSettingsFn } from "@/app/admin/channels.functions";
+import { notifyPrefsFn, saveNotifyPrefsFn } from "@/app/admin/notify.functions";
+import { NOTIFY_KINDS, type NotifyPrefs } from "@/core/notify/prefs";
 import type { DirectBotSettings } from "@/core/instagram/direct-bot-settings";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { imagePath } from "@/core/catalog/image-url";
@@ -247,6 +249,7 @@ function SettingsPage() {
           <SmartSearchCard settings={settings} hasKey={smartSearchKey} />
         )}
         <LegalCard settings={settings} />
+        <NotifyCard />
         <TeamCard />
       </div>
     </>
@@ -1309,6 +1312,170 @@ type Member = Awaited<ReturnType<typeof teamFn>>[number];
  * платформе, пароль от 8 символов; все действия подписываются логином в
  * истории заказа.
  */
+/**
+ * Уведомления продавцу: что и куда приходит, тихие часы, утренний дайджест.
+ * Владелец меняет, остальные видят.
+ */
+function NotifyCard() {
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const [data, setData] = useState<Awaited<ReturnType<typeof notifyPrefsFn>> | null>(null);
+  const [p, setP] = useState<NotifyPrefs | null>(null);
+  const [quietOn, setQuietOn] = useState(false);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    void notifyPrefsFn().then((r) => {
+      setData(r);
+      setP(r.prefs);
+      setQuietOn(Boolean(r.prefs.quiet));
+    });
+  }, []);
+  const owner = shop.role === "owner";
+  const save = useAction(async () => {
+    if (!p) return;
+    await saveNotifyPrefsFn({
+      data: {
+        kinds: p.kinds,
+        email: p.email,
+        quiet: quietOn ? (p.quiet ?? { from: "22:00", to: "08:00" }) : null,
+        digest: p.digest,
+      },
+    });
+    setSaved(true);
+  });
+  const setKind = (k: (typeof NOTIFY_KINDS)[number], ch: "telegram" | "email", v: boolean) =>
+    p && setP({ ...p, kinds: { ...p.kinds, [k]: { ...p.kinds[k], [ch]: v } } });
+  if (!p || !data) return <Card title={t("settings.notify.title")}>…</Card>;
+  const quiet = p.quiet ?? { from: "22:00", to: "08:00" };
+  return (
+    <Card title={t("settings.notify.title")} className="lg:col-span-2">
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSaved(false);
+          void save.run().catch(() => {});
+        }}
+      >
+        <p className="text-sm text-muted">{t("settings.notify.intro")}</p>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>{t("settings.notify.col.event")}</th>
+              <th className="text-center">Telegram</th>
+              <th className="text-center">{t("settings.notify.col.email")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {NOTIFY_KINDS.map((k) => (
+              <tr key={k}>
+                <td>
+                  {t(`settings.notify.kind.${k}`)}
+                  {["new_order", "delivery_failure", "complaint"].includes(k) && (
+                    <span className="ml-2 text-xs text-muted">{t("settings.notify.urgent")}</span>
+                  )}
+                </td>
+                <td className="text-center">
+                  <input
+                    type="checkbox"
+                    checked={p.kinds[k].telegram}
+                    disabled={!owner}
+                    onChange={(e) => setKind(k, "telegram", e.target.checked)}
+                  />
+                </td>
+                <td className="text-center">
+                  <input
+                    type="checkbox"
+                    checked={p.kinds[k].email}
+                    disabled={!owner || !data.mail}
+                    onChange={(e) => setKind(k, "email", e.target.checked)}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field
+            label={t("settings.notify.email")}
+            hint={data.mail ? t("settings.notify.emailHint") : t("settings.notify.noMail")}
+          >
+            <input
+              className="input"
+              type="email"
+              value={p.email}
+              disabled={!owner || !data.mail}
+              onChange={(e) => setP({ ...p, email: e.target.value })}
+            />
+          </Field>
+          <Field
+            label={t("settings.notify.quiet")}
+            hint={t("settings.notify.quietHint", { tz: data.timezone })}
+          >
+            <div className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={quietOn}
+                disabled={!owner}
+                onChange={(e) => setQuietOn(e.target.checked)}
+              />
+              <input
+                className="input w-28"
+                type="time"
+                value={quiet.from}
+                disabled={!owner || !quietOn}
+                onChange={(e) => setP({ ...p, quiet: { ...quiet, from: e.target.value } })}
+              />
+              —
+              <input
+                className="input w-28"
+                type="time"
+                value={quiet.to}
+                disabled={!owner || !quietOn}
+                onChange={(e) => setP({ ...p, quiet: { ...quiet, to: e.target.value } })}
+              />
+            </div>
+          </Field>
+        </div>
+        <Field label={t("settings.notify.digest")} hint={t("settings.notify.digestHint")}>
+          <div className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={p.digest.enabled}
+              disabled={!owner}
+              onChange={(e) => setP({ ...p, digest: { ...p.digest, enabled: e.target.checked } })}
+            />
+            {t("settings.notify.digestAt")}
+            <select
+              className="input w-24"
+              value={p.digest.hour}
+              disabled={!owner || !p.digest.enabled}
+              onChange={(e) =>
+                setP({ ...p, digest: { ...p.digest, hour: Number(e.target.value) } })
+              }
+            >
+              {Array.from({ length: 24 }, (_, h) => (
+                <option key={h} value={h}>
+                  {String(h).padStart(2, "0")}:00
+                </option>
+              ))}
+            </select>
+          </div>
+        </Field>
+        {owner && (
+          <div className="flex items-center gap-3">
+            <button className="btn-primary" disabled={save.busy}>
+              {t("common.save")}
+            </button>
+            {saved && <span className="text-sm text-ok">{t("settings.saved")}</span>}
+          </div>
+        )}
+        <ErrorBox error={save.error} />
+      </form>
+    </Card>
+  );
+}
+
 function TeamCard() {
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);

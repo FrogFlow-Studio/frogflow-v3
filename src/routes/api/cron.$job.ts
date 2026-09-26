@@ -129,6 +129,9 @@ export const Route = createFileRoute("/api/cron/$job")({
             const { retryStuckEventsFor } = await import("@/channels/zernio/dispatch.server");
             const { tenantContext } = await import("@/core/tenant/resolve.server");
             results.zernioRetry = await retryStuckEventsFor(tenants, tenantContext);
+            // Утренний дайджест продавцу — у кого настал его час.
+            const { sendDueDigests } = await import("@/channels/telegram/digest.server");
+            results.digest = await sendDueDigests(tenants);
             break;
           }
           case "subscriptions": {

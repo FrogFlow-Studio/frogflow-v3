@@ -21,6 +21,33 @@ export async function notifyAdminsHtml(
 ): Promise<number> {
   const api = adminTelegramApi(ctx);
   if (!api) return 0;
+  // Матрица «событие → канал», тихие часы, почта (core/notify/prefs). Дайджест
+  // сам себя не откладывает и не фильтрует.
+  const isDigest = opts.kind === "digest";
+  const { decideDelivery, loadNotifyPrefs, notifyKindOf } = await import("@/core/notify/prefs");
+  const prefs = await loadNotifyPrefs(ctx);
+  const kind = notifyKindOf(opts.kind);
+  const d = isDigest
+    ? { telegram: true, email: prefs.kinds.system.email && Boolean(prefs.email), defer: false }
+    : decideDelivery(prefs, kind, new Date(), ctx.timezone);
+  if (d.defer) {
+    const { deferToDigest } = await import("@/core/notify/digest");
+    await deferToDigest(ctx, kind, html.replace(/<[^>]+>/g, ""));
+    return 0;
+  }
+  if (d.email) {
+    const { smtpMailer, isMailConfigured } = await import("@/core/mail/mail.server");
+    if (isMailConfigured()) {
+      const text = html.replace(/<[^>]+>/g, "");
+      await smtpMailer({
+        to: prefs.email,
+        subject: text.split("\n")[0]!.slice(0, 120) || "FrogFlow",
+        text,
+        html: html.replace(/\n/g, "<br>"),
+      }).catch(() => ({ ok: false }));
+    }
+  }
+  if (!d.telegram) return d.email ? 1 : 0;
   const { sendOrEnqueue } = await import("@/core/outbox/outbox");
   const { telegramOutboxSender } = await import("./outbox");
   let sent = 0;

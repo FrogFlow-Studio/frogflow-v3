@@ -180,7 +180,7 @@ export async function handleZernioMessage(
       "",
       `Ответьте в разделе «Чат» панели или прямо в ${PLATFORM_LABEL[m.platform]} — консультант в этом диалоге молчит 12 часов.`,
     ].filter((l) => l !== "");
-    await notifyAdminsHtml(ctx, lines.join("\n")).catch(() => 0);
+    await notifyAdminsHtml(ctx, lines.join("\n"), { kind: r.handoff.kind }).catch(() => 0);
   }
   return processed(r.handoff ? `ответ + передача менеджеру (${r.handoff.reason})` : undefined);
 }

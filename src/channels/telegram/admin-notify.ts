@@ -20,8 +20,10 @@ export async function notifyAdminNewOrder(
     proofUrl?: string;
   } = {},
 ): Promise<void> {
-  const recipients = await adminRecipients(ctx);
-  if (recipients.length === 0) {
+  const { loadNotifyPrefs } = await import("@/core/notify/prefs");
+  const prefs = await loadNotifyPrefs(ctx);
+  const recipients = prefs.kinds.new_order.telegram ? await adminRecipients(ctx) : [];
+  if (recipients.length === 0 && !(prefs.kinds.new_order.email && prefs.email)) {
     console.warn(
       `[tg:${ctx.tenant.id}] admin_chat_id не настроен — заказ #${order.id} без уведомления`,
     );
@@ -68,6 +70,18 @@ export async function notifyAdminNewOrder(
             ],
           ],
         };
+  if (prefs.kinds.new_order.email && prefs.email) {
+    const { smtpMailer, isMailConfigured } = await import("@/core/mail/mail.server");
+    if (isMailConfigured()) {
+      const text = summary.replace(/<[^>]+>/g, "");
+      await smtpMailer({
+        to: prefs.email,
+        subject: text.split("\n")[0]!.slice(0, 120),
+        text,
+        html: summary.replace(/\n/g, "<br>"),
+      }).catch(() => ({ ok: false }));
+    }
+  }
   for (const chatId of recipients) {
     const res = await api.call("sendMessage", {
       chat_id: chatId,

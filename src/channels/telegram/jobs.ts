@@ -8,7 +8,7 @@ import { env } from "@/config/env";
 import type { Tenant } from "@/core/tenant/types";
 import { tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
 import { imageUrl } from "@/core/catalog/catalog";
-import { adminRecipients } from "@/core/notify/recipients";
+import { notifyAdminsHtml } from "./notify";
 import {
   processBroadcastBatch,
   type BatchResult,
@@ -171,7 +171,6 @@ export async function runFulfillmentReminders(tenant: Tenant) {
     const typeLabel = r.type === "delivery" ? "Доставка" : "Самовывоз";
     const address = r.address ? `\n📍 ${escapeHtml(r.address)}` : "";
     const text = `⏰ Завтра (${r.dateLabel}) — заказ #${r.displayNo}. ${typeLabel}.${address}`;
-    for (const chatId of await adminRecipients(ctx))
-      await tg.call("sendMessage", { chat_id: chatId, text, parse_mode: "HTML" });
+    await notifyAdminsHtml(ctx, text, { kind: "fulfillment", orderId: r.orderId });
   });
 }
