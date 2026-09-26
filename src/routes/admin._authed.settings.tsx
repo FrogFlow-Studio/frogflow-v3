@@ -20,6 +20,7 @@ import {
   teamFn,
 } from "@/app/admin/admin.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
+import { DELIVERY_NOTE_MAX } from "@/core/delivery/note";
 import { directBotSettingsFn, saveDirectBotSettingsFn } from "@/app/admin/channels.functions";
 import { notifyPrefsFn, saveNotifyPrefsFn } from "@/app/admin/notify.functions";
 import { crmFn, saveCrmFn, testCrmFn } from "@/app/admin/crm.functions";
@@ -93,6 +94,9 @@ function SettingsPage() {
         admin_chat_id: String(f.get("admin_chat_id")),
         admin_contact_link: String(f.get("admin_contact_link")),
         instruction_caption: String(f.get("instruction_caption")),
+        ...(shop.modules.instagram || shop.modules.whatsapp
+          ? { delivery_email_note: String(f.get("delivery_email_note") ?? "") }
+          : {}),
         ...(shop.modules.loyalty
           ? { loyalty_earn_percent: String(f.get("loyalty_earn_percent") || "5") }
           : {}),
@@ -236,6 +240,20 @@ function SettingsPage() {
                 defaultValue={settings.instruction_caption ?? ""}
               />
             </Field>
+            {(shop.modules.instagram || shop.modules.whatsapp) && (
+              <Field
+                label={t("settings.shop.deliveryNote")}
+                hint={t("settings.shop.deliveryNoteHint")}
+              >
+                <textarea
+                  className="input"
+                  name="delivery_email_note"
+                  rows={3}
+                  maxLength={DELIVERY_NOTE_MAX}
+                  defaultValue={settings.delivery_email_note ?? ""}
+                />
+              </Field>
+            )}
             <div className="flex items-center gap-3">
               <button className="btn-primary" disabled={save.busy}>
                 {t("common.save")}

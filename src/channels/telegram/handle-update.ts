@@ -2049,7 +2049,8 @@ async function adminDecision(
       text: `📚 Заказ #${no}: покупателю задан вопрос о языке материалов (${r.pending} поз.) — файлы уйдут после ответа.`,
     }));
   if (r.failed === 0) {
-    await tellBuyer(m.orderDelivered(no));
+    const { deliveredMessage } = await import("@/core/delivery/note.server");
+    await tellBuyer(await deliveredMessage(ctx, order.platform, m.orderDelivered(no)));
     if (r.pointsEarned > 0) await tellBuyer(m.pointsEarned(r.pointsEarned));
     await notifyReferral(ctx, api, r.referral);
     await api.call("sendMessage", {

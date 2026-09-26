@@ -670,6 +670,7 @@ export const SETTING_KEYS = [
   "admin_chat_id",
   "admin_contact_link",
   "instruction_caption",
+  "delivery_email_note",
   "cart_reminder_hours",
   "delivery_lang_timing",
   "loyalty_earn_percent",

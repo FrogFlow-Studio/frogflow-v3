@@ -233,7 +233,12 @@ export async function runOrderAction(
           message: t("msg.orders.langAsked", { no, count: r.pending }),
         };
       if (r.failed === 0) {
-        await notifyCustomer(ctx, order, m.orderDelivered(no));
+        const { deliveredMessage } = await import("@/core/delivery/note.server");
+        await notifyCustomer(
+          ctx,
+          order,
+          await deliveredMessage(ctx, order.platform, m.orderDelivered(no)),
+        );
         if (r.pointsEarned > 0) await notifyCustomer(ctx, order, m.pointsEarned(r.pointsEarned));
         await notifyReferralGrant(ctx, r.referral);
         return { ok: true, message: t("msg.orders.delivered", { no, count: r.sent }) };

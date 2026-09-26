@@ -1595,8 +1595,12 @@ async function deliverHere(s: Shop, orderId: number, no: number): Promise<boolea
     // Direct не умеет спросить язык после оплаты — при нескольких языках отдаём все.
     { lang: s.locale, allWhenAmbiguous: true },
   );
-  if (r.failed === 0 && !r.alreadyDelivered)
-    await reply(s, s.m.orderDelivered(no), { force: true });
+  if (r.failed === 0 && !r.alreadyDelivered) {
+    const { deliveredMessage } = await import("@/core/delivery/note.server");
+    await reply(s, await deliveredMessage(s.ctx, s.platform, s.m.orderDelivered(no)), {
+      force: true,
+    });
+  }
   if (r.failed > 0)
     await notifyDeliveryFailure(s.ctx, { id: orderId, display_no: no, order_no: no }, r);
   if (r.pointsEarned > 0) await reply(s, s.m.pointsEarned(r.pointsEarned), { force: true });

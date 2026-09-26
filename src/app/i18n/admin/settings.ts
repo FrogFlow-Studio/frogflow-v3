@@ -23,6 +23,9 @@ export const ru = {
   "settings.shop.langDuring": "Спрашивать при выдаче",
   "settings.shop.langBefore": "Спрашивать до оформления (с ценой за все языки)",
   "settings.shop.instruction": "Текст инструкции покупателю",
+  "settings.shop.deliveryNote": "Приписка к сообщению о выдаче (Instagram, WhatsApp)",
+  "settings.shop.deliveryNoteHint":
+    "Последний абзац сообщения «заказ выдан» в Direct и WhatsApp, например: «Если не успели скачать файлы, повторная отправка платная». Пусто — «Если письма нет — проверьте папку „Спам“ и напишите сюда, поможем.»",
   "settings.shop.currency": "Валюта магазина",
   "settings.shop.currencyHint": "По умолчанию для новых товаров, реквизитов и витрины.",
   "settings.shop.timezone": "Часовой пояс",
@@ -279,6 +282,9 @@ export const kk: SectionDict<typeof ru> = {
   "settings.shop.langDuring": "Беру кезінде сұрау",
   "settings.shop.langBefore": "Рәсімдеуге дейін сұрау (барлық тілдердің бағасымен)",
   "settings.shop.instruction": "Сатып алушыға нұсқаулық мәтіні",
+  "settings.shop.deliveryNote": "Беру туралы хабарламаға қосымша (Instagram, WhatsApp)",
+  "settings.shop.deliveryNoteHint":
+    "Direct пен WhatsApp-тағы «тапсырыс берілді» хабарламасының соңғы абзацы, мысалы: «Файлдарды уақытында жүктемесеңіз, қайта жіберу ақылы». Бос болса — «Хат келмесе, „Спам“ қалтасын тексеріп, осында жазыңыз» мәтіні (орысша).",
   "settings.shop.currency": "Дүкен валютасы",
   "settings.shop.currencyHint": "Жаңа тауарлар, деректемелер және витрина үшін әдепкі.",
   "settings.shop.timezone": "Уақыт белдеуі",
@@ -529,6 +535,9 @@ export const en: SectionDict<typeof ru> = {
   "settings.shop.langDuring": "Ask on delivery",
   "settings.shop.langBefore": "Ask before checkout (priced for all languages)",
   "settings.shop.instruction": "Instruction text for the customer",
+  "settings.shop.deliveryNote": "Note in the delivery message (Instagram, WhatsApp)",
+  "settings.shop.deliveryNoteHint":
+    "The last paragraph of the “order delivered” message in Direct and WhatsApp, for example: “If you didn’t download the files in time, resending is paid”. If empty, a default note about checking the Spam folder is added (in Russian).",
   "settings.shop.currency": "Shop currency",
   "settings.shop.currencyHint": "Default for new products, payment details and the storefront.",
   "settings.shop.timezone": "Time zone",
@@ -777,6 +786,9 @@ export const uz: SectionDict<typeof ru> = {
   "settings.shop.langDuring": "Topshirishda so‘rash",
   "settings.shop.langBefore": "Rasmiylashtirishdan oldin so‘rash (barcha tillar narxi bilan)",
   "settings.shop.instruction": "Xaridor uchun ko‘rsatma matni",
+  "settings.shop.deliveryNote": "Topshirish xabariga qo‘shimcha (Instagram, WhatsApp)",
+  "settings.shop.deliveryNoteHint":
+    "Direct va WhatsApp’dagi «buyurtma topshirildi» xabarining oxirgi xatboshisi, masalan: «Fayllarni o‘z vaqtida yuklab olmasangiz, qayta yuborish pullik». Bo‘sh bo‘lsa — «Spam» jildini tekshirish haqidagi standart matn (ruscha).",
   "settings.shop.currency": "Do‘kon valyutasi",
   "settings.shop.currencyHint": "Yangi mahsulotlar, rekvizitlar va vitrina uchun standart.",
   "settings.shop.timezone": "Vaqt mintaqasi",
