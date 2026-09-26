@@ -45,6 +45,8 @@ export type StoreInfo = {
   currency: string;
   accent: string | null;
   miniApp: boolean;
+  /** Чипы языков материала над каталогом (модуль multi_language). */
+  langFilter: boolean;
   /** Короткий текст «О продавце» для шапки витрины. */
   tagline: string | null;
   categories: Array<{ id: string; name: string; parent_id: string | null }>;
@@ -79,6 +81,7 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
     /** Акцентный цвет витрины (#rrggbb) из настроек продавца; нет — тема платформы. */
     accent: /^#[0-9a-f]{6}$/i.test(s.storefront_accent ?? "") ? s.storefront_accent! : null,
     miniApp: Boolean(ctx.tenant.modules.telegram_mini_app && ctx.tenant.modules.shop),
+    langFilter: Boolean(ctx.tenant.modules.multi_language),
     tagline: s.shop_tagline?.trim()
       ? s.shop_tagline.trim().slice(0, 160)
       : s.legal_about

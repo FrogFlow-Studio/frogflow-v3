@@ -865,7 +865,7 @@
     "uses a bakery placeholder on confectionery deploys": "drop: заглушка-эмодзи серверного HTML Mini App v1; витрина v2 рисует карточки сама",
     "shows compact RU/KZ chips, hides description, and keeps flags on named badges": "drop: вёрстка карточки серверного HTML Mini App v1; в v2 языки файлов — на странице товара витрины",
     "[Учителя-CRIT] hides language badges when the multi_language module is off": "src/core/storefront/catalog.test.ts › без модуля «Мультиязычность» значков нет: покупатель получит только русский",
-    "filters materials by language and keeps chips for the unfiltered set": "open: расхождение: фильтра каталога по языку материала на витрине v2 нет",
+    "filters materials by language and keeps chips for the unfiltered set": "src/core/storefront/lang-filter.test.ts › выбранный язык оставляет товары с файлами на нём; чипы считаются по всему каталогу",
     "counts materials, not generic products, on the digital vertical": "drop: тексты по VERTICAL из окружения v1; в v2 один деплой, словарь витрины общий (app/i18n/storefront)",
     "lists material files on the product page and keeps a library tab": "open: расхождение: список файлов на странице товара есть (src/core/storefront/product-files.test.ts), вкладки «Материалы» нет — библиотека на /s/:slug/orders",
     "orders by popularity, recency and price": "later: сортировки каталога на витрине v2 нет, первым клиентам не блокер"
@@ -902,7 +902,7 @@
     "skips delivery-language checkout for a physical cart": "drop: вопрос о языке выдачи задаёт бот; в v2 Mini App — витрина /s/:slug, оформление, оплата и чек — в чате бота",
     "uses physical completion copy and keeps the Mini App open after any order": "drop: окно закрывается после переноса корзины в бота; в v2 Mini App — витрина /s/:slug, оформление, оплата и чек — в чате бота",
     "shows material languages and all-languages price like the bot": "drop: цена «все языки» считается в боте (delivery-languages); в v2 Mini App — витрина /s/:slug, оформление, оплата и чек — в чате бота",
-    "filters catalog by material language and uses a two-column grid": "open: расхождение: фильтра каталога по языку материала на витрине v2 нет",
+    "filters catalog by material language and uses a two-column grid": "src/core/storefront/lang-filter.test.ts › чипы — языки, реально заведённые в каталоге, в порядке ru, kk, en, uz",
     "pins catalog add-to-cart buttons to a shared card footer": "drop: вёрстка карточки серверного HTML Mini App v1",
     "does not resend files for physical orders": "src/channels/telegram/resend.test.ts › выданный физический заказ не возвращается в «оплачен» и не выдаётся заново",
     "redelivers a per-item language choice instead of asking again": "tests/integration/delivery-languages.test.ts › повторная выдача идёт на уже выбранных языках без переспроса",

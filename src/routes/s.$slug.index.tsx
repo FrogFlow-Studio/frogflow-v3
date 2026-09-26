@@ -5,17 +5,24 @@ import { storeCatalogFn } from "@/app/storefront/storefront.functions";
 import { useCart } from "@/app/storefront/cart";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
+import { localeFlags } from "@/core/i18n/locale";
+import { filterByLanguage, languageChips } from "@/core/storefront/lang-filter";
 
 export const Route = createFileRoute("/s/$slug/")({
-  validateSearch: z.object({ q: z.string().optional(), category: z.string().optional() }),
-  loaderDeps: ({ search }) => search,
+  validateSearch: z.object({
+    q: z.string().optional(),
+    category: z.string().optional(),
+    lang: z.string().max(5).optional(),
+  }),
+  // Язык фильтруется в браузере: смена чипа не перезапрашивает каталог.
+  loaderDeps: ({ search }) => ({ q: search.q, category: search.category }),
   loader: ({ params, deps }) =>
     storeCatalogFn({ data: { slug: params.slug, q: deps.q, category: deps.category } }),
   component: CatalogPage,
 });
 
 function CatalogPage() {
-  const products = Route.useLoaderData();
+  const catalog = Route.useLoaderData();
   const { slug } = Route.useParams();
   const shop = useLoaderData({ from: "/s/$slug" });
   const { t } = useStorefrontLocale();
@@ -36,6 +43,9 @@ function CatalogPage() {
   const children = (id: string) => all.filter((c) => c.parent_id === id);
   const subParent = current ? (children(current.id).length ? current.id : current.parent_id) : null;
   const subs = subParent ? children(subParent) : [];
+  const langs = shop.langFilter ? languageChips(catalog) : [];
+  const lang = s.lang && langs.includes(s.lang as never) ? s.lang : null;
+  const products = filterByLanguage(catalog, lang);
   const digitalOnly = products.length > 0 && products.every((p) => p.kind === "digital");
 
   return (
@@ -77,7 +87,7 @@ function CatalogPage() {
           <Link
             to="/s/$slug"
             params={{ slug }}
-            search={{ q: s.q }}
+            search={{ q: s.q, lang: s.lang }}
             className={`badge shrink-0 px-3 py-1.5 ${!s.category ? "border-accent bg-accent/10 text-accent" : ""}`}
           >
             {t("catalog.all")}
@@ -87,7 +97,7 @@ function CatalogPage() {
               key={c.id}
               to="/s/$slug"
               params={{ slug }}
-              search={{ q: s.q, category: c.id }}
+              search={{ q: s.q, category: c.id, lang: s.lang }}
               className={`badge shrink-0 px-3 py-1.5 ${path[0] === c.id ? "border-accent bg-accent/10 text-accent" : ""}`}
             >
               {c.name}
@@ -101,7 +111,7 @@ function CatalogPage() {
           <Link
             to="/s/$slug"
             params={{ slug }}
-            search={{ q: s.q, category: subParent }}
+            search={{ q: s.q, category: subParent, lang: s.lang }}
             className={`badge shrink-0 px-3 py-1 ${s.category === subParent ? "border-accent bg-accent/10 text-accent" : ""}`}
           >
             {t("catalog.all")}
@@ -111,10 +121,34 @@ function CatalogPage() {
               key={c.id}
               to="/s/$slug"
               params={{ slug }}
-              search={{ q: s.q, category: c.id }}
+              search={{ q: s.q, category: c.id, lang: s.lang }}
               className={`badge shrink-0 px-3 py-1 ${path.includes(c.id) ? "border-accent bg-accent/10 text-accent" : ""}`}
             >
               {c.name}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {langs.length > 0 && (
+        <div className="-mt-3 mb-6 flex gap-2 overflow-x-auto pb-1 text-sm">
+          <Link
+            to="/s/$slug"
+            params={{ slug }}
+            search={{ ...s, lang: undefined }}
+            className={`badge shrink-0 px-3 py-1 ${!lang ? "border-accent bg-accent/10 text-accent" : ""}`}
+          >
+            {t("catalog.allLanguages")}
+          </Link>
+          {langs.map((l) => (
+            <Link
+              key={l}
+              to="/s/$slug"
+              params={{ slug }}
+              search={{ ...s, lang: l }}
+              className={`badge shrink-0 px-3 py-1 ${lang === l ? "border-accent bg-accent/10 text-accent" : ""}`}
+            >
+              {localeFlags[l]} {l === "kk" ? "KZ" : l.toUpperCase()}
             </Link>
           ))}
         </div>
