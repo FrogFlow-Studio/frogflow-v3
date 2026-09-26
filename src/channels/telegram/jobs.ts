@@ -142,6 +142,14 @@ export async function runBroadcastBatch(
   return processBroadcastBatch(ctx, telegramBroadcastSender(ctx, api(ctx)));
 }
 
+/** Минутная сетка: убрать из чатов продавцов уведомления о решённых заказах. */
+export async function flushOrderNotify(tenant: Tenant) {
+  if (!tenant.telegramTokenEnc) return { skipped: "no telegram" };
+  const ctx = tenantContext(tenant);
+  const { flushDueOrderNotify } = await import("./order-notify");
+  return { dismissed: await flushDueOrderNotify(ctx, api(ctx)) };
+}
+
 export async function runCartReminders(tenant: Tenant) {
   if (!tenant.modules.cart_reminder) return { skipped: "module off" };
   if (!tenant.telegramTokenEnc) return { skipped: "no telegram" };

@@ -287,11 +287,11 @@
     "новый инвайт создан, но Telegram отклонил его доставку — подписка активна, deliveryFailed: true": "open: deliveryFailed при отказе отправки в activateSubscription без теста"
   },
   "tests/admin-order-notify.test.ts": {
-    "парсит сохранённые message_id и отбрасывает мусор": "open: расхождение: в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:<id>, пачка refs+deleteAfter, удаление через 5 минут, сбор message_id из media group) — ни кода, ни места для теста",
-    "читает пачку с отложенным удалением и старый массив": "open: расхождение: в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:<id>, пачка refs+deleteAfter, удаление через 5 минут, сбор message_id из media group) — ни кода, ни места для теста",
-    "считает пачку готовой к удалению только после deleteAfter": "open: расхождение: в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:<id>, пачка refs+deleteAfter, удаление через 5 минут, сбор message_id из media group) — ни кода, ни места для теста",
-    "достаёт id из одного сообщения и из media group": "open: расхождение: в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:<id>, пачка refs+deleteAfter, удаление через 5 минут, сбор message_id из media group) — ни кода, ни места для теста",
-    "не дублирует одни и те же сообщения и сохраняет флаг кнопок": "open: расхождение: в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:<id>, пачка refs+deleteAfter, удаление через 5 минут, сбор message_id из media group) — ни кода, ни места для теста",
+    "парсит сохранённые message_id и отбрасывает мусор": "src/core/notify/order-pack.test.ts › парсит сохранённые message_id и отбрасывает мусор",
+    "читает пачку с отложенным удалением и старый массив": "src/core/notify/order-pack.test.ts › читает пачку с отложенным удалением и старый массив",
+    "считает пачку готовой к удалению только после deleteAfter": "src/core/notify/order-pack.test.ts › считает пачку готовой к удалению только после deleteAfter",
+    "достаёт id из одного сообщения и из media group": "src/core/notify/order-pack.test.ts › достаёт id из одного сообщения и из media group",
+    "не дублирует одни и те же сообщения и сохраняет флаг кнопок": "src/core/notify/order-pack.test.ts › не дублирует одни и те же сообщения и сохраняет флаг кнопок",
     "не отдаёт служебные ключи в клиентские настройки": "drop: v2 читает app_settings только по списку ключей (core/settings/settings.ts), служебные ключи наружу не попадают"
   },
   "tests/ai-usage.test.ts": {

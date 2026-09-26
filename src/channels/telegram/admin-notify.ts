@@ -3,6 +3,8 @@ import type { TelegramApi } from "./api";
 import { adminRecipients } from "@/core/notify/recipients";
 import { displayNo, type OrderWithItems } from "@/core/orders/orders";
 import { escapeHtml } from "./copy";
+import { collectTgMessageIds, type AdminNotifyTgRef } from "@/core/notify/order-pack";
+import { rememberOrderNotify } from "./order-notify";
 
 export type ProofRef = { fileId: string; kind: "photo" | "document" } | null;
 
@@ -82,6 +84,12 @@ export async function notifyAdminNewOrder(
       }).catch(() => ({ ok: false }));
     }
   }
+  // Сообщения уведомления — чтобы после решения снять кнопки и убрать их из чата.
+  const refs: AdminNotifyTgRef[] = [];
+  const remember = (chatId: string, result: unknown, buttons: boolean) => {
+    for (const id of collectTgMessageIds(result))
+      refs.push({ chat_id: chatId, message_id: id, ...(buttons ? { buttons: true } : {}) });
+  };
   for (const chatId of recipients) {
     const res = await api.call("sendMessage", {
       chat_id: chatId,
@@ -91,12 +99,17 @@ export async function notifyAdminNewOrder(
     });
     if (!res.ok)
       console.warn(`[tg:${ctx.tenant.id}] уведомление ${chatId} не доставлено: ${res.description}`);
+    else remember(chatId, res.result, Boolean(reply_markup));
     if (proof) {
-      await api.call(proof.kind === "document" ? "sendDocument" : "sendPhoto", {
+      const p = await api.call(proof.kind === "document" ? "sendDocument" : "sendPhoto", {
         chat_id: chatId,
         [proof.kind === "document" ? "document" : "photo"]: proof.fileId,
         caption: `🧾 Чек оплаты — заказ #${no}`,
       });
+      if (p.ok) remember(chatId, p.result, false);
     }
   }
+  await rememberOrderNotify(ctx, order.id, refs).catch((e) =>
+    console.warn(`[tg:${ctx.tenant.id}] сообщения уведомления #${order.id} не запомнены`, e),
+  );
 }

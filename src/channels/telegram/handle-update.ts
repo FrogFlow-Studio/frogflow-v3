@@ -1982,6 +1982,11 @@ async function adminDecision(
       await api.call("sendMessage", { chat_id: order.telegram_id, text });
   };
 
+  // Решение принято — кнопки уведомления у всех продавцов снимаем, через 5 минут
+  // само уведомление уйдёт из чатов (как в v1).
+  const { scheduleOrderNotifyDismiss } = await import("./order-notify");
+  const decided = () => scheduleOrderNotifyDismiss(ctx, api, orderId);
+
   if (data.startsWith("reject:")) {
     const ok = await rejectOrder(ctx, orderId, "admin");
     await api.call("sendMessage", {
@@ -1989,6 +1994,7 @@ async function adminDecision(
       text: ok ? `❌ Заказ #${no} отклонён.` : `Заказ #${no} уже закрыт (${order.status}).`,
     });
     if (ok) await tellBuyer(m.orderRejected(no));
+    await decided();
     return;
   }
   if (order.fulfillment_kind === "physical") {
@@ -2004,6 +2010,7 @@ async function adminDecision(
     }
     await api.call("sendMessage", { chat_id: chatId, text: `✅ Заказ #${no} принят в работу.` });
     await tellBuyer(`✅ Заказ #${no} принят в работу.`);
+    await decided();
     return;
   }
   let sender = telegramMaterialSender(api, order.telegram_id, m);
@@ -2029,6 +2036,8 @@ async function adminDecision(
           actor: "admin",
         },
   );
+  // Частичная выдача возвращает заказ на проверку — там кнопки ещё нужны.
+  if (r.failed === 0) await decided();
   if (r.alreadyDelivered)
     return void (await api.call("sendMessage", {
       chat_id: chatId,

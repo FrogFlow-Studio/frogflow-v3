@@ -93,6 +93,8 @@ export const Route = createFileRoute("/api/cron/$job")({
                   whatsapp: await wa.runWhatsAppBroadcastBatch(t),
                   // Повторы исходящих (core/outbox) — та же минутная сетка.
                   outbox: await (await import("@/app/outbox/senders.server")).runOutbox(t),
+                  // Уведомления о заказах, по которым решение принято 5 минут назад.
+                  orderNotify: await jobs.flushOrderNotify(t),
                 }),
                 "cart-reminder": jobs.runCartReminders,
                 // Раз в час: напоминание о дате получения, возвратные продажи, автоворонка.

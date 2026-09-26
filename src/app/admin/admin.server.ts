@@ -174,9 +174,17 @@ export async function runOrderAction(
   const no = displayNo(order);
   const status = statusName(t, order.status);
   const m = COPY.ru;
+  // Решение из админки — как кнопка в Telegram: снять кнопки уведомления,
+  // через 5 минут убрать его из чатов продавцов.
+  const decided = async () => {
+    if (!ctx.tenant.telegramTokenEnc) return;
+    const { scheduleOrderNotifyDismiss } = await import("@/channels/telegram/order-notify");
+    await scheduleOrderNotifyDismiss(ctx, api(ctx), id);
+  };
   switch (action) {
     case "reject": {
       const ok = await rejectOrder(ctx, id, actor);
+      if (ok) await decided();
       if (ok) await notifyCustomer(ctx, order, m.orderRejected(no));
       return ok
         ? { ok, message: t("msg.orders.rejected", { no }) }
@@ -186,6 +194,7 @@ export async function runOrderAction(
       if (order.fulfillment_kind === "physical") {
         const { acceptPhysicalOrder } = await import("@/core/orders/physical-admin");
         const r = await acceptPhysicalOrder(ctx, id, actor);
+        if (r.ok) await decided();
         if (r.ok) await notifyCustomer(ctx, order, `✅ Заказ #${no} принят в работу.`);
         return {
           ok: r.ok,
@@ -215,6 +224,7 @@ export async function runOrderAction(
         opts = { lang: "ru", allWhenAmbiguous: true, actor };
       }
       const r = await deliverOrder(ctx, id, sender, opts);
+      if (r.failed === 0) await decided();
       if (r.alreadyDelivered)
         return { ok: true, message: t("msg.orders.alreadyDelivered", { no }) };
       if (r.failed === 0 && r.pending > 0)
