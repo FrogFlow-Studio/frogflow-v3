@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   CHALLENGE_MAX_AGE_MS,
@@ -17,6 +18,8 @@ const BITS = 8;
 const solve = (c: string) => solveChallenge(c, BITS);
 const verify = (c: string | undefined, a: string | undefined, now: number) =>
   verifyChallenge(SECRET, c, a, now, BITS);
+const fits = (c: string, a: string) =>
+  leadingZeroBits(createHash("sha256").update(`${c}:${a}`).digest()) >= BITS;
 
 describe("проверка регистрации на бота", () => {
   it("человек: задача решена, форма заполнялась дольше нескольких секунд — проходит", async () => {
@@ -31,11 +34,12 @@ describe("проверка регистрации на бота", () => {
     expect(verify(c, undefined, later)).not.toBeNull();
     expect(verify(c, "abc", later)).not.toBeNull();
     const answer = await solve(c);
-    const other = issueChallenge(SECRET, T0);
-    // ответ от одной задачи к другой не подходит (кроме редкого совпадения)
-    const reused = verify(other, answer, later);
-    const lucky = (await solve(other)) === answer;
-    if (!lucky) expect(reused).not.toBeNull();
+    // При 8 битах чужой ответ случайно подходит к задаче примерно в 1 случае
+    // из 256 (тест падал в CI). Берём такую чужую задачу, к которой ответ по
+    // тому же хэшу, что в verifyChallenge, не подходит, — и отказ обязателен.
+    let other = issueChallenge(SECRET, T0);
+    while (fits(other, answer)) other = issueChallenge(SECRET, T0);
+    expect(verify(other, answer, later)).not.toBeNull();
   });
 
   it("задачу нельзя выдумать или подписать чужим ключом", async () => {
