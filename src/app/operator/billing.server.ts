@@ -344,8 +344,9 @@ export async function confirmInvoice(
     .maybeSingle();
   if (error) throw new Error(`Не удалось подтвердить счёт: ${error.message}`);
   if (!claimed) throw new Error("Счёт уже обработан — обновите список");
+  let r: { expiresAt: string | null };
   try {
-    const r = await addPayment(
+    r = await addPayment(
       inv.bot_id,
       {
         period_start: period.start,
@@ -356,15 +357,6 @@ export async function confirmInvoice(
       },
       actor,
     );
-    await logEvent(
-      inv.bot_id,
-      "payment",
-      { action: "invoice_confirmed", invoice_id: id, amount: inv.amount, currency: inv.currency },
-      actor,
-    );
-    // Счёт по плану с подключением — подключение теперь оплачено.
-    await (await import("./plans.server")).onInvoicePaid(inv.bot_id, id);
-    return r;
   } catch (e) {
     await db
       .from("subscription_invoices")
@@ -372,6 +364,28 @@ export async function confirmInvoice(
       .eq("id", id);
     throw e;
   }
+  // Платёж записан — счёт оплачен, дальше его не откатываем: иначе повторное
+  // подтверждение записало бы второй платёж.
+  await logEvent(
+    inv.bot_id,
+    "payment",
+    { action: "invoice_confirmed", invoice_id: id, amount: inv.amount, currency: inv.currency },
+    actor,
+  );
+  try {
+    // Счёт по плану с подключением — подключение теперь оплачено.
+    await (await import("./plans.server")).onInvoicePaid(inv.bot_id, id);
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error(`[billing] onInvoicePaid ${id} failed: ${detail}`);
+    await logEvent(
+      inv.bot_id,
+      "payment",
+      { action: "invoice_paid_hook_failed", invoice_id: id, error: detail },
+      actor,
+    );
+  }
+  return r;
 }
 
 /**
@@ -427,11 +441,19 @@ export async function settleInvoiceProof(
 export async function rejectInvoice(id: string, reason: string, actor: string): Promise<void> {
   const inv = await invoiceOrThrow(id);
   if (inv.status === "paid") throw new Error("Счёт уже оплачен — отклонять нечего");
-  const { error } = await serviceDb()
+  if (inv.status !== "sent" && inv.status !== "proof_uploaded")
+    throw new Error(`Счёт уже в статусе «${inv.status}» — отклонять нечего`);
+  // Условно по статусу: подтверждение, прошедшее между чтением и записью,
+  // не должно превратиться в «отклонено».
+  const { data: done, error } = await serviceDb()
     .from("subscription_invoices")
     .update({ status: "rejected", reject_reason: reason.trim() || null })
-    .eq("id", id);
+    .eq("id", id)
+    .in("status", ["sent", "proof_uploaded"])
+    .select("id")
+    .maybeSingle();
   if (error) throw new Error(error.message);
+  if (!done) throw new Error("Счёт уже обработан — обновите список");
   await logEvent(
     inv.bot_id,
     "payment",
@@ -445,11 +467,17 @@ export async function cancelInvoice(id: string, actor: string): Promise<void> {
   const inv = await invoiceOrThrow(id);
   if (inv.status !== "sent")
     throw new Error("Отменить можно только счёт, по которому ещё не прислали чек");
-  const { error } = await serviceDb()
+  // Условно по статусу: чек или подтверждение, пришедшие между чтением и
+  // записью, не затираются отменой.
+  const { data: done, error } = await serviceDb()
     .from("subscription_invoices")
     .update({ status: "cancelled" })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("status", "sent")
+    .select("id")
+    .maybeSingle();
   if (error) throw new Error(error.message);
+  if (!done) throw new Error("Счёт уже обработан — обновите список");
   await logEvent(inv.bot_id, "payment", { action: "invoice_cancelled", invoice_id: id }, actor);
 }
 
