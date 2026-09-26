@@ -8,7 +8,13 @@ export const Route = createFileRoute("/admin/_authed/undelivered")({
   component: UndeliveredPage,
 });
 
-const KINDS = ["customer_notice", "admin_notice", "delivery_failure", "deliver_order"] as const;
+const KINDS = [
+  "customer_notice",
+  "admin_notice",
+  "delivery_failure",
+  "deliver_order",
+  "crm_webhook",
+] as const;
 
 function UndeliveredPage() {
   const rows = Route.useLoaderData();

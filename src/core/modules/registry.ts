@@ -363,10 +363,11 @@ export const MODULES = {
   },
   crm_integration: {
     title: "Интеграция с CRM и Таблицами",
-    desc: "Заказы и покупатели автоматически попадают в вашу CRM или Google Таблицы.",
+    desc: "События заказов автоматически уходят в вашу CRM или Google Таблицы: создан, чек, выдан, отклонён.",
     group: "Аналитика",
     price: 12000,
-    status: "planned",
+    status: "available",
+    note: "core/crm/webhook: POST JSON на https-адрес продавца с подписью HMAC, доставка через outbox с повторами; настройка и тестовое событие — карточка в настройках.",
   },
   multi_bot: {
     title: "Управление несколькими ботами",

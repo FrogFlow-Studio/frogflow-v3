@@ -53,6 +53,13 @@ export async function recordOrderEvent(
     payload: { order_id: orderId, actor, ...payload } as Json,
   });
   if (error) console.warn(`[orders] событие ${kind} для #${orderId} не записано: ${error.message}`);
+  // Модуль crm_integration: событие — во внешнюю CRM или таблицу продавца.
+  if (ctx.tenant.modules.crm_integration) {
+    const { queueCrmEvent } = await import("@/core/crm/webhook");
+    await queueCrmEvent(ctx, kind, orderId, payload).catch((e) =>
+      console.warn(`[crm] событие ${kind} для #${orderId}: ${String(e)}`),
+    );
+  }
 }
 
 export async function listOrderEvents(ctx: TenantContext, orderId: number): Promise<OrderEvent[]> {

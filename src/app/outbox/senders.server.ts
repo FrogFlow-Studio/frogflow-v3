@@ -24,6 +24,8 @@ export function outboxSender(): OutboxSender {
         return telegramOutboxSender(ctx, msg);
       case "zernio":
         return zernio(ctx, msg);
+      case "webhook":
+        return postWebhook(ctx, msg.target.url, msg.text ?? "{}");
       default:
         return { ok: false, error: "неизвестный канал" };
     }
@@ -33,4 +35,40 @@ export function outboxSender(): OutboxSender {
 /** Крон (раз в минуту, вместе с рассылками): повторы исходящих одного клиента. */
 export async function runOutbox(tenant: Tenant): Promise<ProcessResult | { skipped: string }> {
   return processOutbox(tenantContext(tenant), outboxSender());
+}
+
+/** POST на вебхук продавца с подписью; адрес перепроверяется перед каждой отправкой. */
+export async function postWebhook(
+  ctx: import("@/core/tenant/resolve.server").TenantContext,
+  url: string,
+  body: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { loadCrm, safeWebhookUrl, signBody } = await import("@/core/crm/webhook");
+  if (!safeWebhookUrl(url))
+    return { ok: false, error: "адрес вебхука запрещён (не https или внутренний)" };
+  const cfg = await loadCrm(ctx);
+  let event = "order";
+  try {
+    event = String((JSON.parse(body) as { event?: string }).event ?? "order");
+  } catch {
+    /* тело — как есть */
+  }
+  try {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-frogflow-event": event,
+        ...(cfg?.secret ? { "x-frogflow-signature": signBody(body, cfg.secret) } : {}),
+      },
+      body,
+      redirect: "manual",
+      signal: AbortSignal.timeout(10_000),
+    });
+    // Google Apps Script отвечает 302 на успешный POST — это успех.
+    if (r.ok || r.status === 302) return { ok: true };
+    return { ok: false, error: `HTTP ${r.status}` };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
 }

@@ -18,6 +18,8 @@ export type OutboxTarget =
   /** Адресат — заказ целиком (повтор выдачи): канал берётся из заказа. */
   | { channel: "order" }
   | { channel: "telegram"; chatId: string }
+  /** Вебхук продавца (модуль crm_integration): text — JSON-тело. */
+  | { channel: "webhook"; url: string }
   | {
       channel: "zernio";
       conversationId: string;
