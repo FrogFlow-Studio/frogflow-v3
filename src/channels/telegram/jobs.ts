@@ -174,3 +174,32 @@ export async function runFulfillmentReminders(tenant: Tenant) {
     await notifyAdminsHtml(ctx, text, { kind: "fulfillment", orderId: r.orderId });
   });
 }
+
+/**
+ * Возвратные продажи (модуль winback): Telegram — сообщением с кнопкой в
+ * каталог; Instagram/WhatsApp — в диалог Zernio (вне 24-часового окна Meta
+ * откажет, это честный «не доставлено»).
+ */
+export async function runWinbackFor(tenant: Tenant) {
+  if (!tenant.modules.winback) return { skipped: "module off" };
+  const ctx = tenantContext(tenant);
+  const { runWinback } = await import("@/core/winback/winback");
+  const tg = tenant.telegramTokenEnc ? api(ctx) : null;
+  const { sendToZernioTarget, zernioTargetOf } = await import("@/channels/zernio/outbound.server");
+  return runWinback(ctx, async (c, text) => {
+    if (c.platform === "telegram") {
+      if (!tg) return false;
+      const locale = (c.state.locale as keyof typeof COPY) ?? "ru";
+      const m = COPY[locale] ?? COPY.ru;
+      const r = await tg.call("sendMessage", {
+        chat_id: c.telegramId,
+        text: escapeHtml(text),
+        parse_mode: "HTML",
+        reply_markup: { inline_keyboard: [[{ text: m.catalog, callback_data: "cat:root" }]] },
+      });
+      return r.ok;
+    }
+    const target = zernioTargetOf(c);
+    return target ? sendToZernioTarget(target, text) : false;
+  });
+}

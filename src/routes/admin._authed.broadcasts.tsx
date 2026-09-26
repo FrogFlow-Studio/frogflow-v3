@@ -1,3 +1,4 @@
+import { saveWinbackFn, winbackFn } from "@/app/admin/winback.functions";
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -168,6 +169,7 @@ function BroadcastsPage() {
           {shop.modules.cart_reminder && channel === "telegram" && (
             <CartReminderCard hours={data.cartReminderHours} />
           )}
+          {shop.modules.winback && <WinbackCard />}
           <History
             broadcasts={data.broadcasts.filter((b) => (both ? b.channel === channel : true))}
             showChannel={!both}
@@ -987,6 +989,97 @@ function CartReminderCard({ hours }: { hours: string }) {
         </button>
       </form>
       <ErrorBox error={save.error} />
+    </Card>
+  );
+}
+
+/** Возвратные продажи: серия из двух сообщений тем, кто давно не заказывал. */
+function WinbackCard() {
+  const t = useT();
+  const [c, setC] = useState<Awaited<ReturnType<typeof winbackFn>> | null>(null);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    void winbackFn().then(setC);
+  }, []);
+  const save = useAction(async () => {
+    if (!c) return;
+    await saveWinbackFn({ data: c });
+    setSaved(true);
+  });
+  if (!c) return null;
+  return (
+    <Card
+      title={t("broadcasts.winback.title")}
+      actions={
+        <Switch
+          checked={c.enabled}
+          onChange={(on) => setC({ ...c, enabled: on })}
+          label={t("broadcasts.winback.enabled")}
+        />
+      }
+    >
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSaved(false);
+          void save.run().catch(() => {});
+        }}
+      >
+        <p className="text-sm text-muted">{t("broadcasts.winback.intro")}</p>
+        <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
+          <Field label={t("broadcasts.winback.days1")}>
+            <input
+              className="input"
+              type="number"
+              min={3}
+              max={365}
+              value={c.days1}
+              onChange={(e) => setC({ ...c, days1: Number(e.target.value) })}
+            />
+          </Field>
+          <Field label={t("broadcasts.winback.text1")}>
+            <textarea
+              className="input min-h-16"
+              value={c.text1}
+              onChange={(e) => setC({ ...c, text1: e.target.value })}
+            />
+          </Field>
+          <Field label={t("broadcasts.winback.days2")}>
+            <input
+              className="input"
+              type="number"
+              min={4}
+              max={365}
+              value={c.days2 ?? ""}
+              onChange={(e) =>
+                setC({ ...c, days2: e.target.value ? Number(e.target.value) : null })
+              }
+            />
+          </Field>
+          <Field label={t("broadcasts.winback.text2")}>
+            <textarea
+              className="input min-h-16"
+              value={c.text2}
+              onChange={(e) => setC({ ...c, text2: e.target.value })}
+            />
+          </Field>
+        </div>
+        <Field label={t("broadcasts.winback.promo")} hint={t("broadcasts.winback.promoHint")}>
+          <input
+            className="input w-48 uppercase"
+            value={c.promo}
+            onChange={(e) => setC({ ...c, promo: e.target.value })}
+          />
+        </Field>
+        <div className="flex items-center gap-3">
+          <button className="btn-primary" disabled={save.busy}>
+            {t("common.save")}
+          </button>
+          {saved && <span className="text-xs text-ok">✓</span>}
+        </div>
+        <ErrorBox error={save.error} />
+      </form>
     </Card>
   );
 }

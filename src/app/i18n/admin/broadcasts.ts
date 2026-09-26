@@ -103,6 +103,17 @@ export const ru = {
   "broadcasts.templates.empty": "Шаблонов ещё нет.",
   // исключённые номера
   "broadcasts.excluded.title": "Не писать этим номерам",
+  "broadcasts.winback.title": "Возвратные продажи",
+  "broadcasts.winback.enabled": "включено",
+  "broadcasts.winback.intro":
+    "Бот сам напишет тем, кто давно не заказывал: первое сообщение через N дней после последнего заказа, второе — если человек так и не вернулся. Только днём по вашему поясу, не больше 50 сообщений в час. {name} — имя, {promo} — промокод.",
+  "broadcasts.winback.days1": "Через, дней",
+  "broadcasts.winback.text1": "Первое сообщение",
+  "broadcasts.winback.days2": "Второе через, дней",
+  "broadcasts.winback.text2": "Второе сообщение",
+  "broadcasts.winback.promo": "Промокод",
+  "broadcasts.winback.promoHint":
+    "Необязательно; должен быть заведён в «Скидках». Без него строка с {promo} не отправляется.",
   "broadcasts.excluded.intro":
     "Номера через запятую или с новой строки, в международном формате. Им не уйдёт ни одна рассылка, что бы ни выбрали в аудитории.",
   // история
@@ -220,6 +231,17 @@ export const kk: SectionDict<typeof ru> = {
   "broadcasts.templates.addButton": "+ Түйме",
   "broadcasts.templates.empty": "Шаблондар әзірге жоқ.",
   "broadcasts.excluded.title": "Бұл нөмірлерге жазбау",
+  "broadcasts.winback.title": "Қайталама сатылымдар",
+  "broadcasts.winback.enabled": "қосулы",
+  "broadcasts.winback.intro":
+    "Бот ұзақ уақыт тапсырыс бермегендерге өзі жазады: бірінші хабарлама соңғы тапсырыстан N күн өткен соң, екіншісі — адам қайтпаса. Тек сіздің белдеуіңіз бойынша күндіз, сағатына 50 хабарламадан аспайды. {name} — аты, {promo} — промокод.",
+  "broadcasts.winback.days1": "Неше күннен соң",
+  "broadcasts.winback.text1": "Бірінші хабарлама",
+  "broadcasts.winback.days2": "Екіншісі, күн",
+  "broadcasts.winback.text2": "Екінші хабарлама",
+  "broadcasts.winback.promo": "Промокод",
+  "broadcasts.winback.promoHint":
+    "Міндетті емес; «Жеңілдіктер» бөлімінде болуы керек. Онсыз {promo} бар жол жіберілмейді.",
   "broadcasts.excluded.intro":
     "Нөмірлер үтір арқылы немесе жаңа жолдан, халықаралық форматта. Аудиторияда не таңдалса да, оларға бірде-бір хабарлама жіберілмейді.",
   "broadcasts.history.title": "Тарих",
@@ -337,6 +359,17 @@ export const en: SectionDict<typeof ru> = {
   "broadcasts.templates.addButton": "+ Button",
   "broadcasts.templates.empty": "No templates yet.",
   "broadcasts.excluded.title": "Do not message these numbers",
+  "broadcasts.winback.title": "Win-back",
+  "broadcasts.winback.enabled": "on",
+  "broadcasts.winback.intro":
+    "The bot messages customers who have not ordered for a while: the first message N days after their last order, the second if they still have not come back. Daytime in your zone only, at most 50 messages per hour. {name} — name, {promo} — promo code.",
+  "broadcasts.winback.days1": "After, days",
+  "broadcasts.winback.text1": "First message",
+  "broadcasts.winback.days2": "Second after, days",
+  "broadcasts.winback.text2": "Second message",
+  "broadcasts.winback.promo": "Promo code",
+  "broadcasts.winback.promoHint":
+    "Optional; must exist under Discounts. Without it the line with {promo} is not sent.",
   "broadcasts.excluded.intro":
     "Numbers separated by commas or new lines, in international format. They will never receive a broadcast, whatever audience is chosen.",
   "broadcasts.history.title": "History",
@@ -453,6 +486,17 @@ export const uz: SectionDict<typeof ru> = {
   "broadcasts.templates.addButton": "+ Tugma",
   "broadcasts.templates.empty": "Shablonlar hali yo‘q.",
   "broadcasts.excluded.title": "Bu raqamlarga yozilmasin",
+  "broadcasts.winback.title": "Qaytaruvchi sotuvlar",
+  "broadcasts.winback.enabled": "yoqilgan",
+  "broadcasts.winback.intro":
+    "Bot uzoq vaqt buyurtma bermaganlarga o‘zi yozadi: birinchi xabar oxirgi buyurtmadan N kun o‘tgach, ikkinchisi — odam qaytmasa. Faqat sizning mintaqangiz bo‘yicha kunduzi, soatiga 50 xabardan oshmaydi. {name} — ism, {promo} — promokod.",
+  "broadcasts.winback.days1": "Necha kundan keyin",
+  "broadcasts.winback.text1": "Birinchi xabar",
+  "broadcasts.winback.days2": "Ikkinchisi, kun",
+  "broadcasts.winback.text2": "Ikkinchi xabar",
+  "broadcasts.winback.promo": "Promokod",
+  "broadcasts.winback.promoHint":
+    "Ixtiyoriy; «Chegirmalar» bo‘limida bo‘lishi kerak. Usiz {promo} bor qator yuborilmaydi.",
   "broadcasts.excluded.intro":
     "Raqamlar vergul bilan yoki yangi qatordan, xalqaro formatda. Auditoriyada nima tanlanmasin, ularga birorta xabarnoma yuborilmaydi.",
   "broadcasts.history.title": "Tarix",

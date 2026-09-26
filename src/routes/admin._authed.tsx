@@ -56,7 +56,7 @@ function Layout() {
             shop.modules.limited_offers) && (
             <NavLink to="/admin/discounts">{t("nav.discounts")}</NavLink>
           )}
-          {(shop.modules.broadcasts || shop.modules.wa_broadcasts) && (
+          {(shop.modules.broadcasts || shop.modules.wa_broadcasts || shop.modules.winback) && (
             <NavLink to="/admin/broadcasts">{t("nav.broadcasts")}</NavLink>
           )}
           <NavLink to="/admin/consultant">{t("nav.consultant")}</NavLink>
