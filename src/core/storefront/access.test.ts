@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { storefrontAllows } from "./access";
+import { storefrontAllows, storefrontOpen } from "./access";
 
 describe("доступ к витрине по модулям", () => {
   it("без магазина закрыто всё", () => {
@@ -31,5 +31,27 @@ describe("доступ к витрине по модулям", () => {
     expect(storefrontAllows(m, "mini_app")).toBe(true);
     expect(storefrontAllows(m, "web_handoff")).toBe(false);
     expect(storefrontAllows(m, "legal")).toBe(false);
+  });
+});
+
+describe("витрина клиента открыта или «не найдена»", () => {
+  const shop = {
+    archived: false,
+    settings: { served_by: "v2" as const },
+    modules: { shop: true, web_storefront: true, legal_docs: true },
+  };
+
+  it("нет клиента, архив, клиент v1 — не найдена", () => {
+    expect(storefrontOpen(null, "info")).toBe(false);
+    expect(storefrontOpen({ ...shop, archived: true }, "catalog")).toBe(false);
+    expect(storefrontOpen({ ...shop, settings: { served_by: "v1" } }, "catalog")).toBe(false);
+    expect(storefrontOpen({ ...shop, settings: {} }, "catalog")).toBe(false);
+  });
+
+  it("шапка открыта по юр. страницам, каталог — только с оплаченной витриной", () => {
+    const basic = { ...shop, modules: { shop: true, legal_docs: true } };
+    expect(storefrontOpen(basic, "info")).toBe(true);
+    expect(storefrontOpen(basic, "catalog")).toBe(false);
+    expect(storefrontOpen(shop, "catalog")).toBe(true);
   });
 });

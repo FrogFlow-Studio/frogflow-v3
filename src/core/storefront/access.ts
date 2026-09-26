@@ -1,4 +1,6 @@
 import type { ModuleKey } from "@/core/modules/registry";
+import { servedByV2 } from "@/core/tenant/directory";
+import type { Tenant } from "@/core/tenant/types";
 
 /**
  * Какие части /s/<slug> открыты при каких модулях. Страницы каталога общие
@@ -27,4 +29,18 @@ export function storefrontAllows(
     case "legal":
       return Boolean(modules.legal_docs);
   }
+}
+
+/**
+ * Открыта ли эта часть витрины клиента. Нет клиента, он в архиве, ещё на v1
+ * или без оплаченного модуля — для покупателя это одно и то же: «магазин не
+ * найден» (404), а не ошибка сервера.
+ */
+export function storefrontOpen(
+  t:
+    | (Pick<Tenant, "archived" | "settings"> & { modules: Partial<Record<ModuleKey, boolean>> })
+    | null,
+  part: StorefrontPart,
+): boolean {
+  return Boolean(t && !t.archived && servedByV2(t) && storefrontAllows(t.modules, part));
 }

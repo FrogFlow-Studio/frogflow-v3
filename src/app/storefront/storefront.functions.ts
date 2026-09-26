@@ -1,3 +1,4 @@
+import { notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { Locale } from "@/core/i18n/locale";
@@ -16,14 +17,12 @@ async function shopT(ctx: { tenant: { settings: { default_locale?: Locale } } })
 }
 
 async function shopCtx(s: string, part: StorefrontPart) {
-  const { requireTenant, tenantContext } = await import("@/core/tenant/resolve.server");
-  const { servedByV2 } = await import("@/core/tenant/directory");
-  const { storefrontAllows } = await import("@/core/storefront/access");
-  const t = await requireTenant({ by: "slug", value: s });
-  // Клиент прежней платформы: его витрина и заказы живут там, здесь — «не найден».
-  // Без оплаченного модуля (core/storefront/access) — тоже «не найден».
-  if (t.archived || !servedByV2(t) || !storefrontAllows(t.modules, part))
-    throw new Error("Магазин не найден");
+  const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
+  const { storefrontOpen } = await import("@/core/storefront/access");
+  const t = await resolveTenant({ by: "slug", value: s });
+  // Нет такого, клиент прежней платформы (его витрина живёт там) или без
+  // оплаченного модуля — страница «Магазин не найден» с кодом 404, не 500.
+  if (!t || !storefrontOpen(t, part)) throw notFound();
   return tenantContext(t);
 }
 
