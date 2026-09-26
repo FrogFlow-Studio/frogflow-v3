@@ -11,6 +11,7 @@ import { MODULE_KEYS, MODULES, moduleDef, type ModuleKey } from "@/core/modules/
 import { VERTICALS, type VerticalKey } from "@/core/verticals/registry";
 import {
   ADDONS,
+  ADDON_MONTHLY_PRICE,
   ADDON_KEYS,
   MONTHLY_PRICE,
   PLAN_TIERS,
@@ -762,7 +763,7 @@ function planRequest(key: string): {
     const addon = value as AddonKey;
     return {
       title: `${ADDONS[addon].title} сверх плана`,
-      price: null,
+      price: ADDON_MONTHLY_PRICE[addon],
       alreadyOn: (t) => Boolean(t.settings.billing?.addons?.includes(addon)),
       apply: async (botId, actor) => {
         const { setPlan } = await import("./plans.server");

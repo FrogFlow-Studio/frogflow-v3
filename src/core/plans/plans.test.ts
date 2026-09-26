@@ -13,6 +13,8 @@ import {
   trialWindow,
 } from "./plans";
 import {
+  ADDON_KEYS,
+  ADDON_MONTHLY_PRICE,
   BASE_MODULES,
   PLAN_MODULES,
   PLAN_NICHES,
@@ -21,7 +23,7 @@ import {
   parsePlan,
   planTitle,
 } from "./registry";
-import { planUsage, planWriteBlock } from "./tenant";
+import { planUsage, planWriteBlock, upgradeHint, type PlanUsage } from "./tenant";
 
 describe("реестр планов", () => {
   it("в планы попадают только готовые модули", () => {
@@ -300,5 +302,61 @@ describe("клиенты прежней платформы", () => {
     expect(planWriteBlock({ settings: {} })).toMatch(/после переезда/);
     expect(planWriteBlock({ settings: { served_by: "v1" } })).toMatch(/после переезда/);
     expect(planWriteBlock({ settings: { served_by: "v2" } })).toBeNull();
+  });
+});
+
+describe("надбавки за каналы", () => {
+  it("WhatsApp и Instagram — по 5 000 ₸ в месяц, в годовом счёте 10 месяцев", () => {
+    for (const a of ADDON_KEYS) expect(ADDON_MONTHLY_PRICE[a]).toBe(5000);
+    const inv = planInvoice("basic", {
+      period: "year",
+      withConnection: false,
+      addons: [{ title: "WhatsApp", monthly: ADDON_MONTHLY_PRICE.whatsapp }],
+    });
+    expect(inv.amount).toBe(9900 * 10 + 5000 * 10);
+  });
+});
+
+describe("подсказка «предложить план выше»", () => {
+  const usage = (
+    aiDialogs: number,
+    receiptChecks: number,
+    limits = { aiDialogs: 300, receiptChecks: 200 as number | null },
+  ): PlanUsage => ({
+    month: "2026-09",
+    aiDialogs,
+    receiptChecks,
+    limits,
+  });
+
+  it("молчит, пока расход меньше 80 %", () => {
+    expect(upgradeHint("flowers.basic", usage(239, 159))).toBeNull();
+  });
+
+  it("близко к лимиту и исчерпан — следующий план", () => {
+    expect(upgradeHint("flowers.basic", usage(240, 10))).toEqual({
+      level: "near",
+      what: ["aiDialogs"],
+      next: "pro",
+    });
+    expect(
+      upgradeHint("flowers.pro", usage(300, 200, { aiDialogs: 1500, receiptChecks: 200 })),
+    ).toEqual({
+      level: "over",
+      what: ["receiptChecks"],
+      next: "business",
+    });
+  });
+
+  it("на Business следующего плана нет; без плана и без лимита — молчит", () => {
+    expect(
+      upgradeHint("flowers.business", usage(5000, 0, { aiDialogs: 5000, receiptChecks: null }))
+        ?.next,
+    ).toBeNull();
+    expect(upgradeHint(null, usage(9999, 9999))).toBeNull();
+    expect(upgradeHint("custom", usage(9999, 9999))).toBeNull();
+    expect(
+      upgradeHint("flowers.basic", usage(5, 5, { aiDialogs: 0, receiptChecks: null })),
+    ).toBeNull();
   });
 });

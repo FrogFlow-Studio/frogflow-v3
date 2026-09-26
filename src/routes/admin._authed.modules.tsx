@@ -7,6 +7,7 @@ import { MODULE_KEYS, moduleDef, type ModuleKey } from "@/core/modules/registry"
 import { planModules } from "@/core/plans/plans";
 import {
   ADDONS,
+  ADDON_MONTHLY_PRICE,
   PLAN_TIERS,
   TIER_TITLES,
   nicheForVertical,
@@ -125,7 +126,7 @@ function PlanPanel({ p, t, locale }: { p: MyPlan; t: AdminT; locale: string }) {
               >
                 {sent.has(key)
                   ? t("plan.requested")
-                  : `${t("plan.addAddon")}: ${t("plan.addon", { channel: ADDONS[a].title })}`}
+                  : `${t("plan.addAddon")}: ${t("plan.addon", { channel: ADDONS[a].title })} · ${t("plan.perMonth", { price: n(ADDON_MONTHLY_PRICE[a]) })}`}
               </button>
             );
           })}

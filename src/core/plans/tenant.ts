@@ -2,7 +2,7 @@ import type { Tenant } from "@/core/tenant/types";
 import { parseMonthly } from "@/core/consultant/budget";
 import { servedByV2 } from "@/core/tenant/directory";
 import { planLimits } from "./plans";
-import { parsePlan, type PlanLimits } from "./registry";
+import { PLAN_TIERS, parsePlan, type PlanLimits, type PlanTier } from "./registry";
 
 /** Месячные лимиты ИИ арендатора; null — не ограничиваем (без плана, по договору). */
 export function tenantLimits(tenant: Pick<Tenant, "plan" | "settings">): PlanLimits | null {
@@ -58,4 +58,40 @@ export function planUsage(
     receiptChecks: receipts,
     limits: tenantLimits(tenant),
   };
+}
+
+/** С какой доли лимита оператору пора предложить план выше. */
+export const UPGRADE_HINT_SHARE = 0.8;
+
+export type UpgradeHint = {
+  /** near — израсходовано ≥ 80 %, over — лимит исчерпан. */
+  level: "near" | "over";
+  /** Какие лимиты подходят к концу. */
+  what: Array<"aiDialogs" | "receiptChecks">;
+  /** План выше; null — уже Business, остаётся свой лимит по договорённости. */
+  next: PlanTier | null;
+};
+
+/**
+ * Подсказка оператору «предложить план выше». Сверх лимита ничего не
+ * списывается: диалоги уходят менеджеру, чеки — на ручную проверку, — так
+ * что рост клиента видно только здесь.
+ */
+export function upgradeHint(plan: string | null, usage: PlanUsage): UpgradeHint | null {
+  const parsed = parsePlan(plan);
+  if (parsed?.kind !== "tier" || !usage.limits) return null;
+  const pairs = [
+    ["aiDialogs", usage.aiDialogs, usage.limits.aiDialogs],
+    ["receiptChecks", usage.receiptChecks, usage.limits.receiptChecks],
+  ] as const;
+  const what: UpgradeHint["what"] = [];
+  let over = false;
+  for (const [key, used, limit] of pairs) {
+    if (limit == null || limit <= 0) continue; // 0 — ИИ выключен оператором намеренно
+    if (used >= limit) over = true;
+    if (used >= limit * UPGRADE_HINT_SHARE) what.push(key);
+  }
+  if (what.length === 0) return null;
+  const i = PLAN_TIERS.indexOf(parsed.tier);
+  return { level: over ? "over" : "near", what, next: PLAN_TIERS[i + 1] ?? null };
 }

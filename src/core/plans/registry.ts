@@ -166,6 +166,9 @@ export const ADDONS = {
 export type AddonKey = keyof typeof ADDONS;
 export const ADDON_KEYS = Object.keys(ADDONS) as AddonKey[];
 
+/** Надбавка за канал сверх плана, ₸ в месяц (решение Якова 2026-09-26). */
+export const ADDON_MONTHLY_PRICE: Record<AddonKey, number> = { whatsapp: 5000, instagram: 5000 };
+
 /** Модули магазина в каналах — консультанту (без кассы) не включаются. */
 export const SHOP_CHANNEL_MODULES: readonly ModuleKey[] = ["wa_shop", "dm_shop"];
 

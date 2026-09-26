@@ -32,6 +32,7 @@ import {
 } from "@/app/operator/operator.functions";
 import {
   ADDONS,
+  ADDON_MONTHLY_PRICE,
   ADDON_KEYS,
   CONNECTION_PRICE,
   MONTHLY_PRICE,
@@ -536,6 +537,18 @@ function PlanCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
                   <br />
                   Проверки чеков: {limitText(v.usage.receiptChecks, v.usage.limits?.receiptChecks)}
                 </div>
+                {v.upgrade && (
+                  <p className="mt-1 text-warn">
+                    {v.upgrade.level === "over" ? "Лимит исчерпан" : "Лимит почти израсходован"} (
+                    {v.upgrade.what
+                      .map((w) => (w === "aiDialogs" ? "диалоги" : "проверки чеков"))
+                      .join(", ")}
+                    ).{" "}
+                    {v.upgrade.next
+                      ? `Предложите клиенту план ${TIER_TITLES[v.upgrade.next]}.`
+                      : "Это старший план: договоритесь о своём лимите."}
+                  </p>
+                )}
                 <form
                   className="mt-2 grid gap-2 sm:grid-cols-3"
                   onSubmit={(e: FormEvent<HTMLFormElement>) => {
@@ -577,7 +590,7 @@ function PlanCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
                       className="input w-32"
                       type="number"
                       min={0}
-                      value={prices[a] ?? ""}
+                      value={prices[a] ?? ADDON_MONTHLY_PRICE[a]}
                       onChange={(e) => setPrices((p) => ({ ...p, [a]: Number(e.target.value) }))}
                     />
                   </label>

@@ -19,6 +19,7 @@ import {
 } from "@/core/plans/plans";
 import {
   ADDONS,
+  ADDON_MONTHLY_PRICE,
   CUSTOM_PLAN,
   PLAN_VERSION,
   TRIAL_TIER,
@@ -28,7 +29,14 @@ import {
   type AddonKey,
   type PlanTier,
 } from "@/core/plans/registry";
-import { planUsage, planWriteBlock, USAGE_KEYS, type PlanUsage } from "@/core/plans/tenant";
+import {
+  planUsage,
+  planWriteBlock,
+  upgradeHint,
+  USAGE_KEYS,
+  type PlanUsage,
+  type UpgradeHint,
+} from "@/core/plans/tenant";
 import {
   invalidateTenantDirectory,
   patchTenantSettings,
@@ -95,6 +103,8 @@ export type PlanView = {
   outsidePlan: ModuleKey[];
   /** Причина, по которой план сейчас менять нельзя (клиент на v1), или null. */
   writeBlock: string | null;
+  /** Лимиты подходят к концу — предложить план выше. */
+  upgrade: UpgradeHint | null;
 };
 
 export async function getPlanView(botId: string): Promise<PlanView> {
@@ -110,14 +120,16 @@ export async function getPlanView(botId: string): Promise<PlanView> {
     for (const m of billing.grandfathered ?? []) allowed.add(m);
     outsidePlan = MODULE_KEYS.filter((k) => t.modules[k] && !allowed.has(k));
   }
+  const usage = await usageOf(t);
   return {
     plan: t.plan,
     niche,
     billing,
-    usage: await usageOf(t),
+    usage,
     suggestion: suggestion && { tier: suggestion.tier, grandfathered: suggestion.grandfathered },
     outsidePlan,
     writeBlock: planWriteBlock(t),
+    upgrade: upgradeHint(t.plan, usage),
   };
 }
 
@@ -289,6 +301,13 @@ export async function setAiQuota(
   await logEvent(botId, "meta", { ai_quota: clean ?? null }, actor);
 }
 
+/** Цена надбавки: названная оператором, иначе по тарифу (ADDON_MONTHLY_PRICE). */
+function addonPrice(a: AddonKey, named: number | undefined): number {
+  return typeof named === "number" && Number.isFinite(named) && named >= 0
+    ? named
+    : ADDON_MONTHLY_PRICE[a];
+}
+
 /** Сумма и состав счёта по плану — для предпросмотра в панели. */
 export function planInvoicePreview(
   t: Pick<Tenant, "plan" | "settings">,
@@ -303,7 +322,7 @@ export function planInvoicePreview(
     withConnection: !billing.connection_paid_at,
     addons: (billing.addons ?? []).map((a) => ({
       title: ADDONS[a].title,
-      monthly: Number(addonPrices[a]) || 0,
+      monthly: addonPrice(a, addonPrices[a]),
     })),
   });
 }
