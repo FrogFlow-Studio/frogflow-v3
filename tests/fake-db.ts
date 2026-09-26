@@ -124,6 +124,10 @@ class Query implements PromiseLike<Result> {
     this.filters.push((r) => (r[col] ?? null) === v);
     return this;
   }
+  gt(col: string, v: string | number) {
+    this.filters.push((r) => r[col] != null && (r[col] as string | number) > v);
+    return this;
+  }
   gte(col: string, v: string | number) {
     this.filters.push((r) => r[col] != null && (r[col] as string | number) >= v);
     return this;

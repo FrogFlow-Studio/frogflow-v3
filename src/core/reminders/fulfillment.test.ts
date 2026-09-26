@@ -16,7 +16,7 @@ type Filters = { filters: Array<(r: Row) => boolean> };
  */
 function withRangeFilters(db: FakeDb): FakeDb {
   const proto = Object.getPrototypeOf(db.from("orders")) as Record<string, unknown>;
-  if (proto.gt) return db;
+  if (proto.not) return db;
   proto.not = function (this: Filters, col: string, op: string, v: unknown) {
     if (op !== "is") throw new Error(`not.${op} не поддержан`);
     this.filters.push((r) => (r[col] ?? null) !== v);
