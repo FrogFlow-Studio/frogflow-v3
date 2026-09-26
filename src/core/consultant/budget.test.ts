@@ -7,6 +7,9 @@ import {
   limitsFor,
   parseDaily,
   parseMonthly,
+  reserveDaily,
+  RESERVE_USD,
+  settleDaily,
   startsNewDialog,
 } from "./budget";
 
@@ -95,5 +98,21 @@ describe("свой предел клиента (bots.settings.consultant_limits)
   it("ноль — ИИ клиенту выключен", () => {
     const l = limitsFor({ daily_usd: 0 });
     expect(budgetBlock(parseDaily(null, D), "customer", l)).toMatch(/предел расходов/);
+  });
+});
+
+describe("бронь бюджета на вызов модели", () => {
+  const D = "2026-09-26";
+  it("бронь прибавляет запас к расходу и считает вызов; у исчерпанного — причина", () => {
+    const r = reserveDaily({ date: D, usd: 1, calls: 3, tests: 0 }, "customer");
+    expect(r).toEqual({ next: { date: D, usd: 1 + RESERVE_USD, calls: 4, tests: 0 } });
+    expect(reserveDaily({ date: D, usd: 5, calls: 0, tests: 0 }, "customer")).toHaveProperty(
+      "blocked",
+    );
+  });
+
+  it("после ответа бронь меняется на настоящую цену и не уходит в минус", () => {
+    expect(settleDaily({ date: D, usd: 1.03, calls: 1, tests: 0 }, 0.03, 0.002).usd).toBe(1.002);
+    expect(settleDaily({ date: D, usd: 0.01, calls: 0, tests: 0 }, 0.03, 0).usd).toBe(0);
   });
 });

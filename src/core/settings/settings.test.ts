@@ -10,7 +10,7 @@ vi.mock("@/lib/errors", () => ({
   }),
 }));
 
-const { setSetting, trySetSetting, getSetting } = await import("./settings");
+const { setSetting, trySetSetting, getSetting, updateSettingAtomic } = await import("./settings");
 
 const BOT = "11111111-1111-1111-1111-111111111111";
 type Op = "select" | "insert" | "update";
@@ -137,5 +137,59 @@ describe("trySetSetting — служебные счётчики бота и кр
   it("успех — true, без отчёта", async () => {
     expect(await trySetSetting(ctxWith(fakeDb()), "k", "v")).toBe(true);
     expect(reported).toEqual([]);
+  });
+});
+
+describe("updateSettingAtomic — параллельные изменения не теряются", () => {
+  const db = () => fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
+
+  it("20 параллельных прибавок дают 20, включая гонку за первую вставку", async () => {
+    const ctx = ctxWith(db());
+    const inc = (raw: string | null) => String(Number(raw ?? 0) + 1);
+    const res = await Promise.all(
+      Array.from({ length: 20 }, () => updateSettingAtomic(ctx, "n", inc, 50)),
+    );
+    expect(res.every((r) => r === "written")).toBe(true);
+    expect(await getSetting(ctx, "n")).toBe("20");
+  });
+
+  it("предел с проверкой в next: из 30 параллельных проходят ровно 5", async () => {
+    const ctx = ctxWith(db());
+    const capped = (raw: string | null) => {
+      const n = Number(raw ?? 0);
+      return n >= 5 ? null : String(n + 1);
+    };
+    const res = await Promise.all(
+      Array.from({ length: 30 }, () => updateSettingAtomic(ctx, "n", capped, 50)),
+    );
+    expect(res.filter((r) => r === "written")).toHaveLength(5);
+    expect(res.filter((r) => r === "failed")).toHaveLength(0);
+    expect(await getSetting(ctx, "n")).toBe("5");
+  });
+
+  it("30 одновременных броней при свободном пределе записываются все, с попытками по умолчанию", async () => {
+    reported.length = 0;
+    const ctx = ctxWith(db());
+    await trySetSetting(ctx, "n", "0");
+    const inc = (raw: string | null) => String(Number(raw ?? 0) + 1);
+    const res = await Promise.all(
+      Array.from({ length: 30 }, () => updateSettingAtomic(ctx, "n", inc)),
+    );
+    expect(res.filter((r) => r !== "written")).toEqual([]);
+    expect(await getSetting(ctx, "n")).toBe("30");
+    expect(reported.filter((r) => r.where === "settings.atomic")).toEqual([]);
+  });
+
+  it("гонка не выиграна за отведённые попытки — failed, а не молчаливая запись", async () => {
+    reported.length = 0;
+    const ctx = ctxWith(db());
+    const inc = (raw: string | null) => String(Number(raw ?? 0) + 1);
+    const res = await Promise.all(
+      Array.from({ length: 10 }, () => updateSettingAtomic(ctx, "n", inc, 1)),
+    );
+    const written = res.filter((r) => r === "written").length;
+    expect(res).toContain("failed");
+    expect(await getSetting(ctx, "n")).toBe(String(written));
+    expect(reported.some((r) => r.where === "settings.atomic")).toBe(true);
   });
 });

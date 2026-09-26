@@ -84,6 +84,69 @@ async function updateSetting(ctx: TenantContext, key: string, value: string) {
   return data?.length ? null : "строка не обновилась";
 }
 
+/**
+ * Атомарно изменить настройку: прочитать, вычислить новое значение и
+ * записать, только если в базе всё ещё то, что прочитали (сравнение с
+ * прежним значением в WHERE; строку, которой не было, — вставкой, повтор
+ * ключа даёт 23505). Проиграл гонку — ждём случайную паузу, растущую с
+ * каждым проигрышем (до 250 мс), и читаем заново, до `tries` раз. Без паузы
+ * десятки одновременных запросов перечитывают строку разом и снова
+ * сталкиваются: на живой базе 12 из 30 не успевали за 8 попыток. Так
+ * параллельные запросы не проскакивают мимо дневного предела и не затирают
+ * чужие прибавки к счётчику. `next` вернул null — ничего не пишем.
+ *
+ * "written" — записано, "skipped" — next отказался, "failed" — сбой базы
+ * или гонка не выиграна за `tries` попыток (в Sentry).
+ */
+export async function updateSettingAtomic(
+  ctx: TenantContext,
+  key: string,
+  next: (raw: string | null) => string | null,
+  tries = ATOMIC_TRIES,
+): Promise<"written" | "skipped" | "failed"> {
+  for (let i = 0; i < tries; i++) {
+    if (i > 0) await backoff(i);
+    const found = await ctx.db.from("app_settings").select("value").eq("key", key).maybeSingle();
+    if (found.error) return failed(ctx, key, found.error.message);
+    const raw = found.data ? (found.data.value ?? null) : null;
+    const value = next(raw);
+    if (value == null) return "skipped";
+    if (!found.data) {
+      const { error } = await ctx.db
+        .from("app_settings")
+        .insert({ bot_id: ctx.tenant.id, key, value });
+      if (!error) return "written";
+      if (error.code !== "23505") return failed(ctx, key, error.message);
+      continue;
+    }
+    const q = ctx.db.from("app_settings").update({ value }).eq("key", key);
+    const { data, error } = await (raw == null ? q.is("value", null) : q.eq("value", raw)).select(
+      "key",
+    );
+    if (error) return failed(ctx, key, error.message);
+    if (data?.length) return "written";
+  }
+  return failed(ctx, key, `не удалось записать за ${tries} попыток: параллельные изменения`);
+}
+
+/** Попыток хватает на сотню одновременных запросов: каждый круг кто-то выигрывает. */
+export const ATOMIC_TRIES = 60;
+
+/** Случайная пауза перед повтором: 0…min(250, 10·2^n) мс, чтобы проигравшие разошлись. */
+function backoff(attempt: number): Promise<void> {
+  const cap = Math.min(250, 10 * 2 ** attempt);
+  return new Promise((r) => setTimeout(r, Math.random() * cap));
+}
+
+async function failed(ctx: TenantContext, key: string, message: string) {
+  await reportError(new Error(`app_settings ${key}: ${message}`), {
+    where: "settings.atomic",
+    botId: ctx.tenant.id,
+    extra: { key },
+  });
+  return "failed" as const;
+}
+
 /** Список Telegram-id из строки «1, 2; 3» без дублей. */
 export function parseIdList(raw: string | null | undefined): string[] {
   return Array.from(

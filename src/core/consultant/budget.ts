@@ -7,9 +7,11 @@
  * Предел по умолчанию общий (CONSULTANT_LIMITS); клиенту с большим потоком
  * оператор поднимает свой в `bots.settings.consultant_limits` (limitsFor).
  *
- * Счётчик лежит в bot_settings (consultant_daily) — схема не меняется.
- * Чтение и запись не атомарны: при параллельных сообщениях предел может быть
- * превышен на несколько ответов, это мягкий потолок, а не бухгалтерия.
+ * Счётчик лежит в app_settings (consultant_daily) — схема не меняется.
+ * Вызов модели бронирует бюджет заранее (reserveDaily, атомарной записью
+ * updateSettingAtomic), а после ответа бронь меняется на настоящую цену
+ * (settleDaily). Так сотня параллельных запросов не проскакивает мимо
+ * предела: каждый видит брони предыдущих.
  */
 export const CONSULTANT_LIMITS: ConsultantLimits = {
   /** ≈ 2 500 ₸ в день — сотни ответов Haiku; выше — вопрос тарифа. */
@@ -98,6 +100,33 @@ export function addDaily(b: DailyBudget, usd: number, kind: "customer" | "test")
     calls: b.calls + (kind === "customer" ? 1 : 0),
     tests: b.tests + (kind === "test" ? 1 : 0),
   };
+}
+
+/**
+ * Бронь на один вызов модели, $: с запасом выше обычной цены ответа Haiku
+ * (консультант — до 700 токенов ответа и длинный промпт, помощник — до 1200).
+ * Остаток возвращается после ответа; при сбое вызова бронь остаётся: Anthropic
+ * мог успеть списать, а мы этого не узнаем.
+ */
+export const RESERVE_USD = 0.03;
+
+/**
+ * Взять бронь на вызов: новое значение счётчика или причина отказа.
+ * Проверка и прибавка — в одной атомарной записи (updateSettingAtomic).
+ */
+export function reserveDaily(
+  b: DailyBudget,
+  kind: "customer" | "test",
+  limits: ConsultantLimits = CONSULTANT_LIMITS,
+): { next: DailyBudget } | { blocked: string } {
+  const blocked = budgetBlock(b, kind, limits);
+  return blocked ? { blocked } : { next: addDaily(b, RESERVE_USD, kind) };
+}
+
+/** Поменять бронь на настоящую цену: прибавить разницу (бывает отрицательной). */
+export function settleDaily(b: DailyBudget, reservedUsd: number, actualUsd: number): DailyBudget {
+  const usd = b.usd + Math.max(0, actualUsd) - reservedUsd;
+  return { ...b, usd: Math.max(0, Math.round(usd * 1_000_000) / 1_000_000) };
 }
 
 /**

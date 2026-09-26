@@ -1,10 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/config/env";
-import { limitsFor, parseDaily, today } from "@/core/consultant/budget";
+import { limitsFor, parseDaily, RESERVE_USD, settleDaily, today } from "@/core/consultant/budget";
 import { KEYS as CONSULTANT_KEYS } from "@/core/consultant/engine.server";
 import { UserError } from "@/core/i18n/user-error";
 import type { Locale } from "@/core/i18n/locale";
-import { getSettings, trySetSetting } from "@/core/settings/settings";
+import { updateSettingAtomic } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   ASSIST_DAILY_LIMIT,
@@ -34,8 +34,9 @@ export type AssistRequest = {
 /**
  * Черновик текста для продавца. Расход идёт в тот же дневной предел в
  * долларах, что у ИИ-консультанта (core/consultant/budget), и в свой счётчик
- * черновиков в день. Проверки до вызова модели; как и у консультанта, они не
- * атомарны — это мягкий потолок.
+ * черновиков в день. До вызова модели черновик и деньги бронируются
+ * атомарной записью (updateSettingAtomic): сотня параллельных запросов не
+ * проскочит мимо пределов. После ответа бронь меняется на настоящую цену.
  */
 export async function assistText(ctx: TenantContext, req: AssistRequest): Promise<string> {
   const apiKey = env().ANTHROPIC_API_KEY?.trim();
@@ -45,21 +46,41 @@ export async function assistText(ctx: TenantContext, req: AssistRequest): Promis
     throw new UserError("err.assist.noName", "Сначала напишите название товара.");
 
   const date = today();
-  const s = await getSettings(ctx, [DAILY_KEY, CONSULTANT_KEYS.daily]);
-  const mine = parseAssistDaily(s[DAILY_KEY], date);
-  if (mine.count >= ASSIST_DAILY_LIMIT)
+  let overLimit = false;
+  const slot = await updateSettingAtomic(ctx, DAILY_KEY, (raw) => {
+    const mine = parseAssistDaily(raw, date);
+    if (mine.count >= ASSIST_DAILY_LIMIT) {
+      overLimit = true;
+      return null;
+    }
+    return JSON.stringify({ date, count: mine.count + 1 });
+  });
+  if (overLimit)
     throw new UserError(
       "err.assist.limit",
       "На сегодня черновики закончились ({limit} в день). Попробуйте завтра.",
       { limit: ASSIST_DAILY_LIMIT },
     );
-  const shared = parseDaily(s[CONSULTANT_KEYS.daily], date);
+  if (slot !== "written") throw busy();
   const usdCap = limitsFor(ctx.tenant.settings.consultant_limits).dailyUsd;
-  if (shared.usd >= usdCap)
+  let overBudget = false;
+  const money = await updateSettingAtomic(ctx, CONSULTANT_KEYS.daily, (raw) => {
+    const shared = parseDaily(raw, date);
+    if (shared.usd >= usdCap) {
+      overBudget = true;
+      return null;
+    }
+    return JSON.stringify({
+      ...shared,
+      usd: Math.round((shared.usd + RESERVE_USD) * 1_000_000) / 1_000_000,
+    });
+  });
+  if (overBudget)
     throw new UserError(
       "err.assist.budget",
       "Дневной предел расходов ИИ исчерпан. Попробуйте завтра.",
     );
+  if (money !== "written") throw busy();
 
   const { system, user } = assistPrompt(req.task, req.product, req.lang, req.review);
   const client = new Anthropic({ apiKey, maxRetries: 1, timeout: TIMEOUT_MS });
@@ -79,11 +100,8 @@ export async function assistText(ctx: TenantContext, req: AssistRequest): Promis
 
   const usd =
     (response.usage.input_tokens * PRICE.in + response.usage.output_tokens * PRICE.out) / 1_000_000;
-  await trySetSetting(ctx, DAILY_KEY, JSON.stringify({ date, count: mine.count + 1 }));
-  await trySetSetting(
-    ctx,
-    CONSULTANT_KEYS.daily,
-    JSON.stringify({ ...shared, usd: Math.round((shared.usd + usd) * 1_000_000) / 1_000_000 }),
+  await updateSettingAtomic(ctx, CONSULTANT_KEYS.daily, (raw) =>
+    JSON.stringify(settleDaily(parseDaily(raw, date), RESERVE_USD, usd)),
   );
 
   if (response.stop_reason === "refusal")
@@ -93,4 +111,9 @@ export async function assistText(ctx: TenantContext, req: AssistRequest): Promis
   if (!text)
     throw new UserError("err.assist.failed", "ИИ-помощник не ответил. Попробуйте ещё раз.");
   return text;
+}
+
+/** Учёт расхода не записался (сбой базы или сотня параллельных запросов). */
+function busy() {
+  return new UserError("err.assist.busy", "ИИ-помощник сейчас занят. Попробуйте ещё раз.");
 }

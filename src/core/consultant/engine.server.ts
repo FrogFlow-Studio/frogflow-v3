@@ -3,7 +3,7 @@ import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { setState } from "@/core/customers/customers";
-import { getSettings, trySetSetting } from "@/core/settings/settings";
+import { getSettings, trySetSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { resolvePrice } from "@/core/pricing/pricing";
 import { PRODUCT_SELECT, sortedVariants, type Product } from "@/core/catalog/catalog";
 import { isConsultantVertical } from "@/core/verticals/registry";
@@ -12,11 +12,13 @@ import { parseProfile, type ConsultantProfile } from "./profile";
 import { buildSystemPrompt, cleanReply, isResetIntent } from "./prompt";
 import { checkReplyFacts, knownNumbers } from "./price-check";
 import {
-  addDaily,
   budgetBlock,
   limitsFor,
   parseDaily,
   parseMonthly,
+  reserveDaily,
+  RESERVE_USD,
+  settleDaily,
   startsNewDialog,
   today,
 } from "./budget";
@@ -269,9 +271,10 @@ export async function runConsultant(
 
   // Предел на клиента — до вызова модели (core/consultant/budget).
   const kind = opts.dryRun ? "test" : "customer";
-  const daily = parseDaily((await getSettings(ctx, [KEYS.daily]))[KEYS.daily], today());
-  const blocked = budgetBlock(daily, kind, limitsFor(ctx.tenant.settings.consultant_limits));
-  if (blocked) {
+  const date = today();
+  const budgetLimits = limitsFor(ctx.tenant.settings.consultant_limits);
+  const daily = parseDaily((await getSettings(ctx, [KEYS.daily]))[KEYS.daily], date);
+  const overBudget = async (blocked: string): Promise<ConsultantResult> => {
     if (opts.dryRun) throw new Error(blocked);
     await trySetSetting(
       ctx,
@@ -292,7 +295,9 @@ export async function runConsultant(
       },
       usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
     };
-  }
+  };
+  const early = budgetBlock(daily, kind, budgetLimits);
+  if (early) return overBudget(early);
 
   // Лимит ИИ-диалогов плана на месяц: новый диалог сверх лимита — сразу менеджеру.
   const newDialog = Boolean(customer) && !opts.dryRun && startsNewDialog(state.last_reply_at);
@@ -338,6 +343,33 @@ export async function runConsultant(
   }));
   // Две реплики одной роли подряд API склеивает сам; первой обязана быть user.
   while (history[0]?.role === "assistant") history.shift();
+
+  // Бронь бюджета — проверка и прибавка одной атомарной записью: параллельные
+  // сообщения видят брони друг друга и не проскакивают мимо предела.
+  let reserveBlock: string | null = null;
+  const reserved = await updateSettingAtomic(ctx, KEYS.daily, (raw) => {
+    const r = reserveDaily(parseDaily(raw, date), kind, budgetLimits);
+    if ("blocked" in r) {
+      reserveBlock = r.blocked;
+      return null;
+    }
+    return JSON.stringify(r.next);
+  });
+  if (reserveBlock) return overBudget(reserveBlock);
+  // Сбой базы или гонка не выиграна: без брони модель не зовём, но и паузу
+  // на 12 часов не ставим — это не исчерпанный предел.
+  if (reserved !== "written") {
+    if (opts.dryRun) throw new Error("Не удалось записать расход ИИ. Попробуйте ещё раз.");
+    return {
+      reply: "Сейчас не могу ответить — передаю вопрос менеджеру, он напишет вам.",
+      handoff: {
+        kind: "handoff",
+        reason: "unknown_question",
+        summary: `Сбой учёта расхода консультанта. Клиент написал: «${incoming.slice(0, 200)}»`,
+      },
+      usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
+    };
+  }
 
   const client = new Anthropic({ apiKey, maxRetries: 1, timeout: TIMEOUT_MS });
   const model = env().CONSULTANT_MODEL?.trim() || DEFAULT_MODEL;
@@ -428,7 +460,9 @@ export async function runConsultant(
         u.output_tokens * PRICE.out) /
       1_000_000;
     await recordUsage(ctx, usd, u.input_tokens + cacheWrite + cacheRead, u.output_tokens);
-    await trySetSetting(ctx, KEYS.daily, JSON.stringify(addDaily(daily, usd, kind)));
+    await updateSettingAtomic(ctx, KEYS.daily, (raw) =>
+      JSON.stringify(settleDaily(parseDaily(raw, date), RESERVE_USD, usd)),
+    );
     if (newDialog)
       await trySetSetting(
         ctx,
