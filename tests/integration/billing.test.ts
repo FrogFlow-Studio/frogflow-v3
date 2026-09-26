@@ -12,6 +12,7 @@ import {
   listPayments,
   rejectInvoice,
   setPayoutRequisites,
+  settleInvoiceProof,
   subscriptionExpiresAt,
 } from "@/app/operator/billing.server";
 
@@ -50,6 +51,12 @@ async function cleanup() {
     .eq("bot_id", DEMO_BOT)
     .like("note", "v2 billing%");
   await db.from("bot_events").delete().eq("bot_id", DEMO_BOT).eq("actor", "v2-billing-test");
+  if (invoiceIds.length)
+    await db
+      .from("bot_events")
+      .delete()
+      .eq("bot_id", DEMO_BOT)
+      .in("payload->>invoice_id", invoiceIds);
 }
 
 describe.skipIf(!liveReady)("счета оператора владельцу", () => {
@@ -141,5 +148,40 @@ describe.skipIf(!liveReady)("счета оператора владельцу", 
       "cancelled",
     );
     await expect(cancelInvoice(b.invoice.id, "v2-billing-test")).rejects.toThrow();
+  });
+
+  it("один чек по двум счетам разом: подписка продлевается не больше одного раза, номер операции сверяется без приставки", async () => {
+    const op = String(Date.now()).slice(-10);
+    const mk = async (note: string) => {
+      const r = await createInvoice(
+        DEMO_BOT,
+        { amount: 300, currency: "KZT", note },
+        "v2-billing-test",
+        { deliver: false },
+      );
+      invoiceIds.push(r.invoice.id);
+      return r.invoice.id;
+    };
+    const a = await mk("v2 billing · повтор A");
+    const b = await mk("v2 billing · повтор B");
+    const hash = `v2-billing-test-${op}`;
+    const [ra, rb] = await Promise.all([
+      settleInvoiceProof(DEMO_BOT, a, { ok: true, hash, operationId: `QR${op}` }),
+      settleInvoiceProof(DEMO_BOT, b, { ok: true, hash: `${hash}-other`, operationId: op }),
+    ]);
+    // Засчитан не больше одного; если чеки легли совсем разом, оба уходят оператору.
+    expect([ra.confirmed, rb.confirmed].filter(Boolean).length).toBeLessThanOrEqual(1);
+    const paid = (await listInvoices(DEMO_BOT)).filter(
+      (i) => (i.id === a || i.id === b) && i.status === "paid",
+    );
+    expect(paid.length).toBeLessThanOrEqual(1);
+    // Тот же чек третий раз, позже — тоже не проходит.
+    const c = await mk("v2 billing · повтор C");
+    const rc = await settleInvoiceProof(DEMO_BOT, c, {
+      ok: true,
+      hash: `${hash}-third`,
+      operationId: `QR ${op}`,
+    });
+    expect(rc).toMatchObject({ confirmed: false, detail: expect.stringContaining("уже") });
   });
 });

@@ -43,6 +43,31 @@ export function receiptOperationId(text: string): string | null {
   return (id.match(/\d/g) ?? []).length >= 6 ? id : null;
 }
 
+/**
+ * Ключ операции для поиска повтора: только цифры. Один и тот же платёж в PDF
+ * и на скриншоте Kaspi подписывает по-разному («QR 12 345 678» и
+ * «12345678»), а повтор надо поймать в обоих случаях.
+ */
+export function operationKey(operationId: string): string {
+  return operationId.replace(/\D/g, "");
+}
+
+/**
+ * Чей это чек после записи своей отметки (bot_events, action=invoice_proof).
+ * Отметки других счетов с тем же файлом или номером операции — «чужой», в
+ * каком бы порядке они ни легли: из двух почти одновременных чеков хотя бы
+ * один увидит отметку другого, так что засчитать оба нельзя; худший случай —
+ * оба уйдут оператору. Своей отметки нет (не записалась) — тоже не засчитываем:
+ * без неё следующий повтор не поймать.
+ */
+export function claimVerdict(
+  marks: Array<{ invoice_id: string | null }>,
+  invoiceId: string,
+): "mine" | "other" | "missing" {
+  if (marks.some((m) => m.invoice_id !== invoiceId)) return "other";
+  return marks.length ? "mine" : "missing";
+}
+
 const norm = (s: string) => s.toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
 
 /** Имена получателя из настройки оператора: через «;» или с новой строки. */

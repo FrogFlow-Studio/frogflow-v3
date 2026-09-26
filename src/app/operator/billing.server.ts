@@ -6,6 +6,7 @@ import {
   warnText,
   type OverduePolicy,
 } from "@/core/billing/subscription";
+import { operationKey } from "@/core/billing/invoice-check";
 import type { Tenant } from "@/core/tenant/types";
 import { logEvent, notifyOwner } from "./operator.server";
 
@@ -391,12 +392,27 @@ export async function settleInvoiceProof(
       action: "invoice_proof",
       invoice_id: invoiceId,
       proof_hash: check.hash,
-      ...(check.operationId ? { receipt_op: check.operationId } : {}),
+      ...(check.operationId
+        ? { receipt_op: check.operationId, receipt_op_key: operationKey(check.operationId) }
+        : {}),
       auto_check: check.ok ? "passed" : check.detail,
     },
     "auto-check",
   );
   if (!check.ok) return { confirmed: false, detail: check.detail };
+  // Повтор, который проверка до записи не увидела (два чека почти разом):
+  // после своей отметки ещё раз смотрим, нет ли отметок других счетов.
+  const { claimReceipt } = await import("@/core/billing/invoice-check.server");
+  const dup = await claimReceipt(invoiceId, check);
+  if (dup) {
+    await logEvent(
+      botId,
+      "payment",
+      { action: "invoice_proof_duplicate", invoice_id: invoiceId, detail: dup },
+      "auto-check",
+    );
+    return { confirmed: false, detail: dup };
+  }
   try {
     const period = await (await import("./plans.server")).suggestedPeriod(botId);
     const r = await confirmInvoice(invoiceId, period, "auto-check");

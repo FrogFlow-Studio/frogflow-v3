@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { checkInvoiceReceipt, receiptDates, receiptOperationId } from "./invoice-check";
+import {
+  checkInvoiceReceipt,
+  claimVerdict,
+  operationKey,
+  receiptDates,
+  receiptOperationId,
+} from "./invoice-check";
 
 const kaspi = (sum: string, date = "27.09.2026", to = "Яков В.") =>
   `Kaspi.kz\nПеревод успешно совершен\n${sum}\nПолучатель ${to}\nДата и время ${date} 13:51\nКвитанция № 1234567`;
@@ -74,6 +80,22 @@ describe("автопроверка чека за подписку", () => {
       "2026-09-27",
       "2026-09-28",
     ]);
+  });
+});
+
+describe("повтор чека", () => {
+  it("ключ операции — только цифры: приставка и пробелы не мешают поймать повтор", () => {
+    expect(operationKey("QR12345678")).toBe(operationKey("12345678"));
+    expect(operationKey("QR 12 345-678")).toBe("12345678");
+  });
+
+  it("чужая отметка с тем же чеком — не засчитывается, в любом порядке", () => {
+    expect(claimVerdict([{ invoice_id: "a" }, { invoice_id: "a" }], "a")).toBe("mine");
+    expect(claimVerdict([{ invoice_id: "a" }, { invoice_id: "b" }], "a")).toBe("other");
+    expect(claimVerdict([{ invoice_id: "b" }, { invoice_id: "a" }], "a")).toBe("other");
+    expect(claimVerdict([{ invoice_id: null }, { invoice_id: "a" }], "a")).toBe("other");
+    expect(claimVerdict([{ invoice_id: "b" }], "a")).toBe("other");
+    expect(claimVerdict([], "a")).toBe("missing");
   });
 });
 
