@@ -323,7 +323,7 @@
     "забирает claim и ставит placing_order": "tests/integration/shop-flow.test.ts › покупатель → корзина → заказ со снимком позиций → очистка",
     "второй раз забрать не даёт, пока флаг не снят": "tests/integration/shop-flow.test.ts › покупатель → корзина → заказ со снимком позиций → очистка",
     "releaseOrderPlacement снимает флаг, не трогая остальной state": "src/core/orders/placement.test.ts › снимает флаг оформления, не трогая остальной state",
-    "из двух одновременных попыток claim забирает ровно одна": "open: атомарность — в SQL-функции claim_order_placement (M27), v2 только передаёт результат RPC; юнит-тест на фейковой базе проверил бы саму подделку, а живой tests/integration/shop-flow.test.ts проверяет claim только последовательно — нужен живой параллельный тест (здесь без ключей не прогнать)"
+    "из двух одновременных попыток claim забирает ровно одна": "tests/integration/order-placement-zones.test.ts › из двух одновременных попыток claim забирает ровно одна"
   },
   "tests/bot-user-claim.test.ts": {
     "returns the claimed state using a real bot_users column": "drop: хелпера claimBotUserState в v2 нет; состояние пишется по user_key в customers.ts setState через типизированный клиент, несуществующую колонку ловит typecheck"
@@ -667,7 +667,7 @@
   },
   "tests/delivery-zones.test.ts": {
     "activeDeliveryZones возвращает зоны по sort_order, скрытые (is_active=false) не попадают": "src/core/fulfillment/fulfillment.test.ts › activeDeliveryZones возвращает зоны по sort_order, скрытые (is_active=false) не попадают",
-    "activeDeliveryZones не видит зоны другого арендатора (RLS-изоляция)": "open: activeDeliveryZones в v2 не фильтрует bot_id сам и полагается на RLS роли арендатора (ctx.db) — проверить можно только живым тестом в tests/integration (здесь нет ключей); фейковая база RLS не моделирует",
+    "activeDeliveryZones не видит зоны другого арендатора (RLS-изоляция)": "tests/integration/order-placement-zones.test.ts › activeDeliveryZones не видит зоны другого арендатора (RLS-изоляция)",
     "activeDeliveryZones — пустой список, если у арендатора нет ни одной зоны (фолбэк на свободный адрес)": "src/core/fulfillment/fulfillment.test.ts › activeDeliveryZones — пустой список, если у арендатора нет ни одной зоны (фолбэк на свободный адрес)",
     "оба способа включены по умолчанию, пока ничего не настроено": "src/core/fulfillment/fulfillment.test.ts › оба способа включены по умолчанию, пока ничего не настроено",
     "самовывоз выключен явной настройкой — доставка остаётся включённой": "src/core/fulfillment/fulfillment.test.ts › самовывоз выключен явной настройкой — доставка остаётся включённой"
