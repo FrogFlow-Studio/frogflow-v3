@@ -91,7 +91,7 @@ export const CONTACTS: { telegram: string | null; whatsapp: string | null } = {
 };
 
 /** Ссылка на демо-бота. null — кнопка «Попробовать демо» не показывается. */
-export const DEMO_URL: string | null = "https://t.me/maga21zzzbot";
+export const DEMO_URL: string | null = "https://t.me/demtest12_bot";
 
 const NBSP = String.fromCharCode(0xa0);
 
