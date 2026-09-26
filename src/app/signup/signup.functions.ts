@@ -32,7 +32,7 @@ export const signupFn = createServerFn({ method: "POST" })
     const { createClient } = await import("@/app/operator/operator.server");
     const { appSession } = await import("@/app/auth/session.server");
     const { clientIp, loginDelay } = await import("@/app/auth/login-guard.server");
-    const { ipHash, signupRefusal } = await import("./signup.server");
+    const { claimChallenge, ipHash, signupRefusal } = await import("./signup.server");
     const { challengeNonce, verifyChallenge } = await import("./challenge");
     await loginDelay();
     const failed = verifyChallenge(env().SESSION_SECRET, data.challenge, data.answer);
@@ -41,6 +41,8 @@ export const signupFn = createServerFn({ method: "POST" })
     const hash = ipHash(clientIp());
     const refusal = await signupRefusal(hash, nonce);
     if (refusal) throw new Error(refusal);
+    const claimed = await claimChallenge(nonce);
+    if (claimed) throw new Error(claimed);
     const username = data.username.toLowerCase();
     const id = await createClient({
       name: data.name.trim(),

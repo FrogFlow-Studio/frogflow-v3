@@ -5,6 +5,7 @@ import { UserError } from "@/core/i18n/user-error";
 import { ADMIN_DICTS } from "@/app/i18n/admin";
 import {
   handleClientError,
+  MAX_PER_IP_PER_MINUTE,
   MAX_PER_MINUTE,
   pageArea,
   parseClientReport,
@@ -180,6 +181,40 @@ describe("/api/client-error", () => {
     t += 60_000;
     await handleClientError(req(ok), { report, now: () => t });
     expect(report).toHaveBeenCalledTimes(MAX_PER_MINUTE + 1);
+  });
+
+  it("запрос с чужой страницы по Sec-Fetch-Site — отказ, даже с подделанным Origin", async () => {
+    const report = vi.fn(async () => {});
+    const ok = { name: "Error", message: "x", path: "/admin" };
+    const forged = (site: string) =>
+      new Request("https://www.frogflow.tech/api/client-error", {
+        method: "POST",
+        headers: { origin: "https://www.frogflow.tech", "sec-fetch-site": site },
+        body: JSON.stringify(ok),
+      });
+    expect((await handleClientError(forged("cross-site"), { report })).status).toBe(403);
+    expect((await handleClientError(forged("none"), { report })).status).toBe(403);
+    expect((await handleClientError(forged("same-origin"), { report })).status).toBe(204);
+    expect(report).toHaveBeenCalledOnce();
+  });
+
+  it("с одного адреса — не больше своего лимита, другие адреса не страдают", async () => {
+    const report = vi.fn(async () => {});
+    const ok = { name: "Error", message: "x", path: "/s/shop" };
+    const from = (ip: string) =>
+      new Request("https://www.frogflow.tech/api/client-error", {
+        method: "POST",
+        headers: { origin: "https://www.frogflow.tech", "x-forwarded-for": `${ip}, 10.0.0.1` },
+        body: JSON.stringify(ok),
+      });
+    const t = 5_000_000;
+    for (let i = 0; i < MAX_PER_IP_PER_MINUTE + 10; i++)
+      await handleClientError(from("203.0.113.7"), { report, now: () => t });
+    expect(report).toHaveBeenCalledTimes(MAX_PER_IP_PER_MINUTE);
+    await handleClientError(from("198.51.100.2"), { report, now: () => t });
+    expect(report).toHaveBeenCalledTimes(MAX_PER_IP_PER_MINUTE + 1);
+    await handleClientError(from("203.0.113.7"), { report, now: () => t + 60_000 });
+    expect(report).toHaveBeenCalledTimes(MAX_PER_IP_PER_MINUTE + 2);
   });
 
   it("поля обрезаются, раздел по адресу", () => {

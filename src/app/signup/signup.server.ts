@@ -45,3 +45,28 @@ export async function signupRefusal(hash: string, nonce?: string): Promise<strin
   if ((reused.count ?? 0) > 0) return "Проверка устарела — обновите страницу и попробуйте ещё раз.";
   return signupVerdict({ ip: byIp.count ?? 0, total: total.count ?? 0 });
 }
+
+export const CHALLENGE_PREFIX = "signup_challenge:";
+
+/**
+ * Бронь решённой задачи до создания магазина: вставка строки
+ * `operator_settings` с ключом `signup_challenge:<nonce>`. Ключ уникален,
+ * поэтому из двух одновременных отправок с одним решением проходит одна —
+ * проверка по журналу регистраций этого не ловила: обе успевали её пройти,
+ * пока ни одна не записала событие. Просроченные брони подчищаются.
+ */
+export async function claimChallenge(nonce: string, now = Date.now()): Promise<string | null> {
+  const db = serviceDb();
+  const { error } = await db.from("operator_settings").insert({
+    key: `${CHALLENGE_PREFIX}${nonce}`,
+    value: new Date(now + 24 * 3600_000).toISOString(),
+  });
+  if (error?.code === "23505") return "Проверка устарела — обновите страницу и попробуйте ещё раз.";
+  if (error) return "Регистрация временно недоступна. Попробуйте позже.";
+  await db
+    .from("operator_settings")
+    .delete()
+    .like("key", `${CHALLENGE_PREFIX}%`)
+    .lt("value", new Date(now).toISOString());
+  return null;
+}
