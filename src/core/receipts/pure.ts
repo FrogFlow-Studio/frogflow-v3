@@ -329,6 +329,22 @@ export function analyzeReceiptText(
   };
 }
 
+/**
+ * PDF начиная с метки «%PDF»: мусор перед ней (до 1024 байт, см.
+ * orders/proof-file) Vision и разбор текста не понимают.
+ */
+export function pdfFromHeader(bytes: Uint8Array): Uint8Array {
+  const head = String.fromCharCode(...bytes.subarray(0, 1024));
+  const at = head.indexOf("%PDF");
+  return at > 0 ? bytes.subarray(at) : bytes;
+}
+
+/** Фото, которые Vision не читает (HEIC, AVIF): такой чек сразу смотрит продавец. */
+export function visionUnreadableImage(bytes: Uint8Array): boolean {
+  const t = sniffProofMime(bytes);
+  return t === "image/heic" || t === "image/avif";
+}
+
 export function isPdf(mime: string, bytes?: Uint8Array): boolean {
   if (mime.toLowerCase().includes("pdf")) return true;
   if (!bytes || bytes.length < 4) return false;

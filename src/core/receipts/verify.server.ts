@@ -8,6 +8,8 @@ import {
   detectReceiptCurrencies,
   isPdf,
   looksLikeReceipt,
+  pdfFromHeader,
+  visionUnreadableImage,
   extractMoneyAmounts,
   type ReceiptAnalysis,
 } from "./pure";
@@ -152,7 +154,11 @@ export async function readReceiptText(
   opts: { countUsage?: boolean } = {},
 ): Promise<string> {
   const pdf = isPdf(mime, bytes);
+  // Без вызова и без списания лимита: ответ Vision всё равно был бы ошибкой.
+  if (!pdf && visionUnreadableImage(bytes))
+    throw new Error("Фото в формате HEIC/AVIF автопроверка не читает — чек посмотрит продавец");
   if (pdf) {
+    bytes = pdfFromHeader(bytes);
     const embedded = await embeddedPdfText(bytes);
     if (looksLikeReceipt(embedded) && extractMoneyAmounts(embedded).length >= 1) return embedded;
   }

@@ -210,3 +210,39 @@ describe("чек в чужой валюте — сумма заказа пере
     expect(r).toMatchObject({ ok: false, reason: "currency_mismatch" });
   });
 });
+
+describe("что уходит в Vision", () => {
+  const box = (brand: string) =>
+    new Uint8Array([0, 0, 0, 0x18, ...new TextEncoder().encode(`ftyp${brand}`)]);
+
+  it("HEIC и AVIF Vision не читает — не зовём, лимит не тратим, сразу продавцу", async () => {
+    for (const brand of ["heic", "avif"]) {
+      const { db, ctx } = setup();
+      const fetchMock = mockVision("Kaspi Успешно 1 000 ₸");
+      const r = await verifyReceipt(ctx, { ...base, bytes: box(brand), mime: "image/jpeg" });
+      expect(r).toMatchObject({ ok: false, reason: "ocr_unavailable" });
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(db.tables.app_settings!.some((s) => s.key === "receipt_ocr_usage")).toBe(false);
+    }
+  });
+
+  it("PDF с мусором перед %PDF уходит в Vision с %PDF в начале", async () => {
+    const { ctx } = setup();
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      void init;
+      return new Response(
+        JSON.stringify({ responses: [{ responses: [{ fullTextAnnotation: { text: "чек" } }] }] }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const bytes = new TextEncoder().encode("\n\r junk %PDF-1.7 body");
+    await verifyReceipt(ctx, { ...base, bytes, mime: "application/octet-stream" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(String(fetchMock.mock.calls[0]![1]!.body)) as {
+      requests: Array<{ inputConfig: { content: string } }>;
+    };
+    const sent = Buffer.from(body.requests[0]!.inputConfig.content, "base64").toString("latin1");
+    expect(sent).toBe("%PDF-1.7 body");
+  });
+});
