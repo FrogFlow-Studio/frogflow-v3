@@ -118,9 +118,13 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
     inStock: !(stockOn && p.stock_quantity != null && p.stock_quantity <= 0),
     leadTimeDays: p.lead_time_days,
     rating: p.rating_count ? { avg: Number(p.rating_avg ?? 0), count: p.rating_count } : null,
-    languages: (p.product_material_files ?? [])
-      .map((f) => f.language ?? "ru")
-      .filter((l, i, a) => a.indexOf(l) === i),
+    // Без модуля multi_language выдаётся только русский (itemAvailableLanguages),
+    // поэтому языков на витрине не показываем, сколько бы файлов ни было заведено.
+    languages: ctx.tenant.modules.multi_language
+      ? (p.product_material_files ?? [])
+          .map((f) => f.language ?? "ru")
+          .filter((l, i, a) => a.indexOf(l) === i)
+      : [],
   };
 }
 

@@ -205,3 +205,23 @@ describe("storeCatalog: скрытые категории и подкатего�
     expect(info.categories.map((c) => c.id)).toEqual(["cakes", "tiers", "wedding"]);
   });
 });
+
+describe("storeCatalog: значки языков материалов", () => {
+  const multi = product("multi", {
+    product_material_files: [
+      { language: "ru", file_path: "bot/ru.pdf", file_name: "ru.pdf" },
+      { language: "kk", file_path: "bot/kk.pdf", file_name: "kk.pdf" },
+      { language: null, file_path: "bot/old.pdf", file_name: "old.pdf" },
+    ],
+  });
+
+  it("без модуля «Мультиязычность» значков нет: покупатель получит только русский", async () => {
+    const { ctx } = ctxWith([multi]);
+    expect((await storeCatalog(ctx))[0]!.languages).toEqual([]);
+  });
+
+  it("с модулем — все языки товара, без повторов", async () => {
+    const { ctx } = ctxWith([multi], { multi_language: true });
+    expect((await storeCatalog(ctx))[0]!.languages).toEqual(["ru", "kk"]);
+  });
+});

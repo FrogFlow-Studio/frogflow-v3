@@ -864,7 +864,7 @@
     "shows lead time on physical products and hides it for digital": "open: расхождение: на странице товара (routes/s.$slug.p.$id.tsx) срок изготовления показывается при любом leadTimeDays, в том числе у цифрового; у физического с 0 дней карточка пишет «Товар», а не «В наличии»; разметка в JSX без тестов",
     "uses a bakery placeholder on confectionery deploys": "drop: заглушка-эмодзи серверного HTML Mini App v1; витрина v2 рисует карточки сама",
     "shows compact RU/KZ chips, hides description, and keeps flags on named badges": "drop: вёрстка карточки серверного HTML Mini App v1; в v2 языки файлов — на странице товара витрины",
-    "[Учителя-CRIT] hides language badges when the multi_language module is off": "open: расхождение: StoreProduct.languages (core/storefront/catalog.ts) не учитывает модуль multi_language — языки файлов видны на странице товара и при выключенном модуле",
+    "[Учителя-CRIT] hides language badges when the multi_language module is off": "src/core/storefront/catalog.test.ts › без модуля «Мультиязычность» значков нет: покупатель получит только русский",
     "filters materials by language and keeps chips for the unfiltered set": "open: расхождение: фильтра каталога по языку материала на витрине v2 нет",
     "counts materials, not generic products, on the digital vertical": "drop: тексты по VERTICAL из окружения v1; в v2 один деплой, словарь витрины общий (app/i18n/storefront)",
     "lists material files on the product page and keeps a library tab": "open: расхождение: на странице товара v2 только строка языков, без списка файлов; вкладки «Материалы» нет — библиотека на /s/:slug/orders",
