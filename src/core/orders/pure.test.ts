@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Database } from "@/core/db-types";
-import { itemLanguages, itemMaterials } from "./pure";
+import { downloadFileName, itemLanguages, itemMaterials, materialDownloadName } from "./pure";
 
 type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"];
 // Как строка из базы: пустые колонки снимка — null, а не отсутствуют.
@@ -94,5 +94,43 @@ describe("itemLanguages", () => {
   it("пусто, если ни в одном языке ничего нет", () => {
     expect(itemLanguages(item({}))).toEqual([]);
     expect(itemLanguages(item({ material_files_by_lang: { ru: [] } }))).toEqual([]);
+  });
+});
+
+describe("человеческое имя файла при выдаче", () => {
+  it("дописывает расширение из storagePath к человеческому имени", () => {
+    expect(downloadFileName("Пазлы БУКВЫ", "t/1782643012614-ni1xub.pdf")).toBe("Пазлы БУКВЫ.pdf");
+  });
+
+  it("не дублирует расширение, если оно уже есть в имени", () => {
+    expect(downloadFileName("Пазлы.PDF", "t/1782643012614-ni1xub.pdf")).toBe("Пазлы.PDF");
+  });
+
+  it("заменяет запрещённые в именах файлов символы на пробел", () => {
+    expect(downloadFileName('A\\B/C:D*E?F"G<H>I|', "x.pdf")).toBe("A B C D E F G H I.pdf");
+  });
+
+  it("схлопывает повторные пробелы и обрезает края", () => {
+    expect(downloadFileName("   Пазлы    БУКВЫ  ", "x.zip")).toBe("Пазлы БУКВЫ.zip");
+  });
+
+  it("обрезает слишком длинное имя до 80 символов основы", () => {
+    const name = downloadFileName("а".repeat(200), "x.pdf");
+    expect(name).toBe(`${"а".repeat(80)}.pdf`);
+  });
+
+  it("подставляет запасное имя, если после очистки ничего не осталось", () => {
+    expect(downloadFileName(' /:*?"<>| ', "x.pdf")).toBe("Материал.pdf");
+  });
+
+  it("без расширения в пути хранилища возвращает имя как есть", () => {
+    expect(downloadFileName("Пазлы", "t/file")).toBe("Пазлы");
+  });
+
+  it("имя материала, иначе имя товара, иначе «Материал»", () => {
+    const path = "t/1782643012614-ni1xub.pdf";
+    expect(materialDownloadName({ path, name: "Буквы" }, "Пазлы")).toBe("Буквы.pdf");
+    expect(materialDownloadName({ path, name: null }, "Пазлы")).toBe("Пазлы.pdf");
+    expect(materialDownloadName({ path, name: "" }, "")).toBe("Материал.pdf");
   });
 });

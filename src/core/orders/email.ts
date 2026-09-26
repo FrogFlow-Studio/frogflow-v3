@@ -11,6 +11,7 @@ import { recordOrderEvent } from "./events";
 import {
   itemLanguages,
   itemMaterials,
+  materialDownloadName,
   parseDeliveredLanguages,
   signedFileUrl,
   type OrderWithItems,
@@ -41,7 +42,14 @@ export async function emailOrderMaterials(
     for (const l of langs.length ? langs : itemLanguages(item))
       for (const mat of await protectMaterials(ctx, order, itemMaterials(item, l))) {
         const url =
-          mat.url ?? (mat.path ? await signedFileUrl(mat.path, EMAIL_LINK_DAYS * 24 * 3600) : null);
+          mat.url ??
+          (mat.path
+            ? await signedFileUrl(
+                mat.path,
+                EMAIL_LINK_DAYS * 24 * 3600,
+                materialDownloadName(mat, item.name_snapshot),
+              )
+            : null);
         if (url) files.push({ name: mat.name ?? item.name_snapshot, url });
       }
   }

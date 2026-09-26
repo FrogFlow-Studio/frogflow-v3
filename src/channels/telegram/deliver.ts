@@ -2,6 +2,7 @@ import type { TelegramApi } from "./api";
 import type { LanguageAsker, MaterialSender } from "@/core/orders/orders";
 import { localeFlags, localeNames } from "@/core/i18n/locale";
 import { signedFileUrl } from "@/core/orders/orders";
+import { materialDownloadName } from "@/core/orders/pure";
 import { escapeHtml, type Msg } from "./copy";
 
 /**
@@ -24,7 +25,11 @@ export function telegramMaterialSender(api: TelegramApi, chatId: number, m: Msg)
         });
         ok = r.ok;
       } else if (mat.path) {
-        const url = await signedFileUrl(mat.path);
+        const url = await signedFileUrl(
+          mat.path,
+          undefined,
+          materialDownloadName(mat, item.name_snapshot),
+        );
         if (url) {
           const ext = (mat.name ?? mat.path).split(".").pop()?.toLowerCase() ?? "";
           if (["pdf", "zip", "gif"].includes(ext)) {

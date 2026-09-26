@@ -173,6 +173,7 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
       listDeliveredOrders,
       itemLanguages,
       itemMaterials,
+      materialDownloadName,
       signedFileUrl,
       displayNo,
     } = await import("@/core/orders/orders");
@@ -211,7 +212,15 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
       files += count;
       for (const m of mats)
         for (const mat of await protectMaterials(ctx, o, m)) {
-          const url = mat.url ?? (mat.path ? await signedFileUrl(mat.path, 7 * 24 * 3600) : null);
+          const url =
+            mat.url ??
+            (mat.path
+              ? await signedFileUrl(
+                  mat.path,
+                  7 * 24 * 3600,
+                  materialDownloadName(mat, item.name_snapshot),
+                )
+              : null);
           if (url)
             library.push({
               orderNo: displayNo(o),

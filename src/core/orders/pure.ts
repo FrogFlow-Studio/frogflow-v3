@@ -69,6 +69,31 @@ export function itemMaterials(item: OrderItemRow, lang: Locale): MaterialSnapsho
   return [];
 }
 
+/**
+ * Имя файла, под которым покупатель его скачает. Без него подписанная ссылка
+ * отдаёт ключ хранилища («1782643012614-ni1xub.pdf»). Расширение берётся из
+ * пути — по нему файл откроется, — запрещённые в именах символы убираются.
+ */
+export function downloadFileName(displayName: string, storagePath: string): string {
+  const extension = storagePath.includes(".") ? storagePath.split(".").pop()!.toLowerCase() : "";
+  const base = displayName
+    .replace(/[\\/:*?"<>|]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+  const safeBase = base || "Материал";
+  if (!extension) return safeBase;
+  return safeBase.toLowerCase().endsWith(`.${extension}`) ? safeBase : `${safeBase}.${extension}`;
+}
+
+/** Имя для скачивания файла позиции: имя материала, иначе имя товара. */
+export function materialDownloadName(
+  mat: Pick<MaterialSnapshot, "path" | "name">,
+  itemName: string | null | undefined,
+): string {
+  return downloadFileName(mat.name || itemName || "", mat.path ?? "");
+}
+
 export function itemLanguages(item: OrderItemRow): Locale[] {
   return (["ru", "kk", "en", "uz"] as const).filter((l) => itemMaterials(item, l).length > 0);
 }

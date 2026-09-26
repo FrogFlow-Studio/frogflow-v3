@@ -4,15 +4,15 @@
 и `docs/readiness.json` — руками не правится. `npm test` падает, если сводка
 устарела, пункт описи назван неверно или указанного теста нет.
 
-**Готовность для первых клиентов: 74,4 %** — покрыто тестами v2
-548 из 736 нужных сейчас пунктов.
+**Готовность для первых клиентов: 75,4 %** — покрыто тестами v2
+555 из 736 нужных сейчас пунктов.
 
-**Путь заказа: 88,7 %** — 301 из 339
+**Путь заказа: 90,8 %** — 308 из 339
 (каталог, цена, оформление, оплата и чек, выдача; файлы — `ORDER_PATH` в скрипте).
 
 | всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |
 | ----- | ------- | --------------------- | ---- | ----- | ------------- |
-| 1125 | 548 | 43 | 188 | 33 | 356 |
+| 1125 | 555 | 43 | 181 | 33 | 356 |
 
 «Позже» — поведение нужно, но не магазинам, которые переезжают первыми
 (модуль ещё не перенесён). «Не нужно в v2» — поведение убрано или заменено;
@@ -96,7 +96,7 @@
 | `tests/misc-retention.test.ts` | 3 | 1 | 2 | 0 | 0 | 33,3 % |
 | `tests/order-files-page.test.ts` | 8 | 1 | 0 | 0 | 7 | 100 % |
 | `tests/order-platform.test.ts` | 4 | 3 | 1 | 0 | 0 | 75 % |
-| `tests/orders-pure.test.ts` | 11 | 4 | 7 | 0 | 0 | 36,3 % |
+| `tests/orders-pure.test.ts` | 11 | 11 | 0 | 0 | 0 | 100 % |
 | `tests/payment-proof.test.ts` | 2 | 0 | 2 | 0 | 0 | 0 % |
 | `tests/pricing.test.ts` | 20 | 20 | 0 | 0 | 0 | 100 % |
 | `tests/product-materials.test.ts` | 25 | 25 | 0 | 0 | 0 | 100 % |
@@ -129,7 +129,7 @@
 | `tests/zernio-retry.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/zernio-webhook.test.ts` | 13 | 7 | 3 | 0 | 3 | 70 % |
 
-## Дыры (188)
+## Дыры (181)
 
 ### поломки v1
 
@@ -368,16 +368,6 @@
 ### `tests/order-platform.test.ts`
 
 - treats legacy and unknown orders as Telegram — расхождение: v2 ветвится по order.platform !== "telegram" без нормализации (app/admin/admin.server.ts notifyCustomer и действие confirm, channels/telegram/handle-update.ts) — заказ с неизвестным platform уходит в ветку Zernio, а не в Telegram; функции orderPlatform нет (null в v2 исключён: orders.platform NOT NULL)
-
-### `tests/orders-pure.test.ts`
-
-- дописывает расширение из storagePath к человеческому имени — расхождение: в v2 нет человеческого имени файла при выдаче — sendDocument (channels/telegram/deliver.ts) отдаёт подписанную ссылку на ключ Storage, Telegram называет файл по ключу (например 1782643012614-ni1xub.pdf); функции downloadFileName нет
-- не дублирует расширение, если оно уже есть в имени — расхождение: в v2 нет человеческого имени файла при выдаче — sendDocument (channels/telegram/deliver.ts) отдаёт подписанную ссылку на ключ Storage, Telegram называет файл по ключу (например 1782643012614-ni1xub.pdf); функции downloadFileName нет
-- заменяет запрещённые в именах файлов символы на пробел — расхождение: в v2 нет человеческого имени файла при выдаче — sendDocument (channels/telegram/deliver.ts) отдаёт подписанную ссылку на ключ Storage, Telegram называет файл по ключу (например 1782643012614-ni1xub.pdf); функции downloadFileName нет
-- схлопывает повторные пробелы и обрезает края — расхождение: в v2 нет человеческого имени файла при выдаче — sendDocument (channels/telegram/deliver.ts) отдаёт подписанную ссылку на ключ Storage, Telegram называет файл по ключу (например 1782643012614-ni1xub.pdf); функции downloadFileName нет
-- обрезает слишком длинное имя до 80 символов основы — расхождение: в v2 нет человеческого имени файла при выдаче — sendDocument (channels/telegram/deliver.ts) отдаёт подписанную ссылку на ключ Storage, Telegram называет файл по ключу (например 1782643012614-ni1xub.pdf); функции downloadFileName нет
-- подставляет запасное имя, если после очистки ничего не осталось — расхождение: в v2 нет человеческого имени файла при выдаче — sendDocument (channels/telegram/deliver.ts) отдаёт подписанную ссылку на ключ Storage, Telegram называет файл по ключу (например 1782643012614-ni1xub.pdf); функции downloadFileName нет
-- без расширения в пути хранилища возвращает имя как есть — расхождение: в v2 нет человеческого имени файла при выдаче — sendDocument (channels/telegram/deliver.ts) отдаёт подписанную ссылку на ключ Storage, Telegram называет файл по ключу (например 1782643012614-ni1xub.pdf); функции downloadFileName нет
 
 ### `tests/payment-proof.test.ts`
 

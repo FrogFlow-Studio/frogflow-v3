@@ -1,5 +1,6 @@
 import type { MaterialSender } from "@/core/orders/orders";
 import { signedFileUrl } from "@/core/orders/orders";
+import { materialDownloadName } from "@/core/orders/pure";
 import type { ZernioTransport } from "./api.server";
 import type { ZernioPlatform } from "./platform";
 
@@ -18,7 +19,11 @@ export function zernioMaterialSender(
   return async (item, materials) => {
     const lines: string[] = [`📁 ${item.name_snapshot}`];
     for (const mat of materials) {
-      const url = mat.url ?? (mat.path ? await signedFileUrl(mat.path) : null);
+      const url =
+        mat.url ??
+        (mat.path
+          ? await signedFileUrl(mat.path, undefined, materialDownloadName(mat, item.name_snapshot))
+          : null);
       if (!url) return "failed";
       lines.push(`${mat.name ? `${mat.name}: ` : ""}${url}`);
     }

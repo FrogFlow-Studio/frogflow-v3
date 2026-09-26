@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import type { TelegramApi } from "./api";
 import { COPY } from "./copy";
 
-const signedFileUrl = vi.fn(async (path: string) => `https://storage.invalid/${path}`);
+const signedFileUrl = vi.fn(
+  async (path: string, _ttl?: number, _name?: string) => `https://storage.invalid/${path}`,
+);
 vi.mock("@/core/orders/orders", () => ({ signedFileUrl }));
 
 const { telegramMaterialSender } = await import("./deliver");
@@ -30,5 +32,20 @@ describe("telegramMaterialSender", () => {
     expect(signedFileUrl).not.toHaveBeenCalled();
     expect(calls.map((c) => c.method)).toEqual(["sendMessage"]);
     expect(String(calls[0]!.payload.text)).toContain('href="https://cdn.invalid/x.pdf"');
+  });
+
+  it("файл из хранилища подписывается человеческим именем, а не ключом", async () => {
+    const { api, calls } = fakeApi();
+    const send = telegramMaterialSender(api, 42, COPY.ru);
+    const r = await send({ name_snapshot: "Пазлы БУКВЫ" } as never, [
+      { path: "t/1782643012614-ni1xub.pdf", name: null, url: null },
+    ]);
+    expect(r).toBe("sent");
+    expect(signedFileUrl).toHaveBeenCalledWith(
+      "t/1782643012614-ni1xub.pdf",
+      undefined,
+      "Пазлы БУКВЫ.pdf",
+    );
+    expect(calls.map((c) => c.method)).toEqual(["sendDocument"]);
   });
 });

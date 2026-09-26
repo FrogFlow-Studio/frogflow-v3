@@ -40,7 +40,13 @@ import {
   type Redemptions,
 } from "@/core/discounts/discounts";
 
-export { canResendMaterials, displayNo, itemLanguages, itemMaterials } from "./pure";
+export {
+  canResendMaterials,
+  displayNo,
+  itemLanguages,
+  itemMaterials,
+  materialDownloadName,
+} from "./pure";
 export { parseDeliveredLanguages } from "@/core/catalog/materials";
 
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
@@ -845,11 +851,20 @@ export async function completeLanguageDelivery(
   return { status: "sent", completed: true, ...fin };
 }
 
-export async function signedFileUrl(path: string, ttlSec = 7 * 24 * 3600): Promise<string | null> {
+/**
+ * Подписанная ссылка на файл товара. `downloadName` — имя, под которым файл
+ * скачается (materialDownloadName): с ним хранилище отдаёт вложение
+ * «Пазлы БУКВЫ.pdf», а не страницу с ключом «1782643012614-ni1xub.pdf».
+ */
+export async function signedFileUrl(
+  path: string,
+  ttlSec = 7 * 24 * 3600,
+  downloadName?: string,
+): Promise<string | null> {
   if (!isSafeStorageKey(path)) return null;
   const { data, error } = await serviceDb()
     .storage.from("product-files")
-    .createSignedUrl(path, ttlSec);
+    .createSignedUrl(path, ttlSec, downloadName ? { download: downloadName } : undefined);
   if (error || !data?.signedUrl) return null;
   return data.signedUrl;
 }
