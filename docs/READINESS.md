@@ -4,15 +4,15 @@
 и `docs/readiness.json` — руками не правится. `npm test` падает, если сводка
 устарела, пункт описи назван неверно или указанного теста нет.
 
-**Готовность для первых клиентов: 79,3 %** — покрыто тестами v2
-583 из 735 нужных сейчас пунктов.
+**Готовность для первых клиентов: 80,1 %** — покрыто тестами v2
+589 из 735 нужных сейчас пунктов.
 
 **Путь заказа: 92,3 %** — 312 из 338
 (каталог, цена, оформление, оплата и чек, выдача; файлы — `ORDER_PATH` в скрипте).
 
 | всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |
 | ----- | ------- | --------------------- | ---- | ----- | ------------- |
-| 1125 | 583 | 43 | 152 | 33 | 357 |
+| 1125 | 589 | 43 | 146 | 33 | 357 |
 
 «Позже» — поведение нужно, но не магазинам, которые переезжают первыми
 (модуль ещё не перенесён). «Не нужно в v2» — поведение убрано или заменено;
@@ -35,7 +35,7 @@
 | `src/lib/modules/require-module.test.ts` | 8 | 1 | 7 | 0 | 0 | 12,5 % |
 | `src/lib/operator/env-block.test.ts` | 7 | 0 | 0 | 0 | 7 | — |
 | `src/lib/operator/leads-pipeline.test.ts` | 46 | 0 | 0 | 0 | 46 | — |
-| `src/lib/operator/subscription-cron.test.ts` | 9 | 3 | 6 | 0 | 0 | 33,3 % |
+| `src/lib/operator/subscription-cron.test.ts` | 9 | 9 | 0 | 0 | 0 | 100 % |
 | `src/lib/operator/subscriptions.test.ts` | 13 | 12 | 1 | 0 | 0 | 92,3 % |
 | `src/lib/tenant-storage-key.test.ts` | 5 | 3 | 2 | 0 | 0 | 60 % |
 | `src/lib/verticals/vertical.test.ts` | 13 | 1 | 8 | 0 | 4 | 11,1 % |
@@ -129,7 +129,7 @@
 | `tests/zernio-retry.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/zernio-webhook.test.ts` | 13 | 7 | 3 | 0 | 3 | 70 % |
 
-## Дыры (152)
+## Дыры (146)
 
 ### поломки v1
 
@@ -191,15 +191,6 @@
 - админ и модуль подключён — пропускает — requireAdminModule в src/app/auth/guards.server.ts без теста
 - не админ — отказывает до проверки модуля — requireAdminModule сначала зовёт requireAdmin, теста нет
 - админ, но модуль не подключён — отказывает — requireAdminModule в src/app/auth/guards.server.ts без теста
-
-### `src/lib/operator/subscription-cron.test.ts`
-
-- оплаченный бот не трогает — sweepSubscriptions в src/app/operator/billing.server.ts пропускает ok, теста нет
-- просрочка дольше отсрочки с политикой suspend — приостанавливает и уведомляет — приостановка в sweepSubscriptions (app/operator/billing.server.ts) без теста
-- та же просрочка с политикой warn — только предупреждает, не приостанавливает — grace_over при политике warn в sweepSubscriptions без теста
-- новый оплаченный период после предупреждения — предупреждает заново — метка sweep_marker включает срок подписки, но теста на новый период нет
-- уже приостановленного бота повторно не трогает — пропуск suspended в sweepSubscriptions без теста
-- без даты подписки — пропускает — пропуск no_data в sweepSubscriptions без теста (computeState покрыт)
 
 ### `src/lib/operator/subscriptions.test.ts`
 

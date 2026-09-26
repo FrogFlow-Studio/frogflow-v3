@@ -228,15 +228,15 @@
     "дожим берёт follow_up_draft, иначе первое письмо": "drop: воронки лидов оператора v1 в v2 нет"
   },
   "src/lib/operator/subscription-cron.test.ts": {
-    "оплаченный бот не трогает": "open: sweepSubscriptions в src/app/operator/billing.server.ts пропускает ok, теста нет",
+    "оплаченный бот не трогает": "src/app/operator/subscription-sweep.test.ts › оплаченный бот не трогает",
     "истекает скоро — предупреждает, не трогая статус": "tests/integration/subscriptions-sweep.test.ts › истекает через 2 дня — предупреждает; тот же день — молчит; следующий день — снова",
-    "просрочка дольше отсрочки с политикой suspend — приостанавливает и уведомляет": "open: приостановка в sweepSubscriptions (app/operator/billing.server.ts) без теста",
-    "та же просрочка с политикой warn — только предупреждает, не приостанавливает": "open: grace_over при политике warn в sweepSubscriptions без теста",
+    "просрочка дольше отсрочки с политикой suspend — приостанавливает и уведомляет": "src/app/operator/subscription-sweep.test.ts › просрочка дольше отсрочки с политикой suspend — приостанавливает и уведомляет",
+    "та же просрочка с политикой warn — только предупреждает, не приостанавливает": "src/app/operator/subscription-sweep.test.ts › та же просрочка с политикой warn — только предупреждает, не приостанавливает",
     "повторный запуск в тот же день не дублирует действие": "tests/integration/subscriptions-sweep.test.ts › истекает через 2 дня — предупреждает; тот же день — молчит; следующий день — снова",
-    "новый оплаченный период после предупреждения — предупреждает заново": "open: метка sweep_marker включает срок подписки, но теста на новый период нет",
+    "новый оплаченный период после предупреждения — предупреждает заново": "src/app/operator/subscription-sweep.test.ts › новый оплаченный период после предупреждения — предупреждает заново",
     "недоставленное предупреждение не помечается сделанным — повторится на следующем запуске": "tests/integration/subscriptions-sweep.test.ts › недоставленное предупреждение не помечается сделанным",
-    "уже приостановленного бота повторно не трогает": "open: пропуск suspended в sweepSubscriptions без теста",
-    "без даты подписки — пропускает": "open: пропуск no_data в sweepSubscriptions без теста (computeState покрыт)"
+    "уже приостановленного бота повторно не трогает": "src/app/operator/subscription-sweep.test.ts › уже приостановленного бота повторно не трогает",
+    "без даты подписки — пропускает": "src/app/operator/subscription-sweep.test.ts › без даты подписки — пропускает"
   },
   "src/lib/operator/subscriptions.test.ts": {
     "без даты — no_data, а не «просрочено»": "src/core/billing/subscription.test.ts › без даты — no_data, а не «просрочено»",
