@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluate, parseInventory, readiness, run } from "../scripts/readiness.ts";
+import { ORDER_PATH, evaluate, parseInventory, readiness, run } from "../scripts/readiness.ts";
 
 const MD = `# Опись
 
@@ -89,5 +89,10 @@ describe("docs/READINESS.md", () => {
     expect(r.items.length).toBeGreaterThan(1000);
     expect(r.errors).toEqual([]);
     expect(r.current).toBe(r.report);
+  });
+
+  it("файлы пути заказа есть в описи", () => {
+    const groups = new Set(run(process.cwd()).items.map((i) => i.group));
+    expect(ORDER_PATH.filter((g) => !groups.has(g))).toEqual([]);
   });
 });

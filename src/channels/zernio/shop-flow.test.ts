@@ -27,6 +27,7 @@ import {
   productNumberFromKeywords,
   productNumberFromName,
 } from "./shop-flow";
+import { parseZernioMessage } from "./message";
 
 /** Список стран — из настоящих payment_methods клиента. */
 const countries = [
@@ -62,6 +63,23 @@ describe("productNumberFromName / Keywords", () => {
     expect(productNumberFromName(null)).toBeNull();
     expect(productNumberFromKeywords("018, пазлы, карточки")).toBe("18");
     expect(productNumberFromKeywords("пазлы, 018")).toBeNull();
+  });
+  it("голые цифры без разделителя — не номер из названия", () => {
+    // У номера обязателен разделитель: «1» или «2026» — это не «001. …».
+    expect(productNumberFromName("1")).toBeNull();
+    expect(productNumberFromName("2026")).toBeNull();
+  });
+  it("класс в начале ключевых слов — не номер товара", () => {
+    // «358. Тетрадь для диагностики техники чтения» с ключевыми словами
+    // «1 класс русский язык» становилась товаром №1 и отвечала на «1».
+    expect(productNumberFromKeywords("1 класс русский язык, 2 класс русский язык")).toBeNull();
+    expect(productNumberFromKeywords("3 класс математика, счёт")).toBeNull();
+  });
+  it("пустые ключевые слова и слова без номера номера не дают", () => {
+    expect(productNumberFromKeywords(null)).toBeNull();
+    expect(productNumberFromKeywords(undefined)).toBeNull();
+    expect(productNumberFromKeywords("")).toBeNull();
+    expect(productNumberFromKeywords("пазлы, буквы")).toBeNull();
   });
 });
 
@@ -188,12 +206,41 @@ describe("pickReceiptAttachment", () => {
     for (const type of ["voice", "sticker", "story_mention", "reel"])
       expect(pickReceiptAttachment([{ url: "https://cdn/x", type }]), type).toBeNull();
   });
+  it("живые media-объекты Instagram и WhatsApp из события — это чек", () => {
+    const event = (attachment: Record<string, unknown>) =>
+      parseZernioMessage({
+        event: "message.received",
+        message: { text: null, attachments: [attachment as never] },
+      }).attachments;
+    expect(
+      pickReceiptAttachment(
+        event({
+          type: "image",
+          url: "https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=1",
+          payload: { url: "https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=1" },
+        }),
+      ),
+    ).toContain("ig_messaging_cdn");
+    expect(
+      pickReceiptAttachment(
+        event({
+          type: "image",
+          url: "https://zernio.com/api/v1/whatsapp/media/1?accountId=a1",
+          payload: { mimeType: "image/jpeg" },
+        }),
+      ),
+    ).toContain("/whatsapp/media/");
+  });
 });
 
 describe("extractEmail", () => {
   it("находит адрес и не выдумывает", () => {
     expect(extractEmail("моя почта Anna.K@Example.com, спасибо")).toBe("anna.k@example.com");
     expect(extractEmail("нет почты")).toBeNull();
+  });
+  it("не принимает за почту ник Instagram и адрес словами", () => {
+    for (const input of ["анна собака мейл ру", "@annavenglovskaia", "почта", ""])
+      expect(extractEmail(input), input).toBeNull();
   });
 });
 

@@ -20,6 +20,42 @@ import { join } from "node:path";
 
 export const FIX_GROUP = "fix";
 
+/** Файлы описи про путь заказа: каталог → цена → оформление → оплата и чек → выдача. */
+export const ORDER_PATH = [
+  "tests/receipt-verify.test.ts",
+  "tests/receipt-ocr-auto.test.ts",
+  "tests/payment-proof.test.ts",
+  "tests/direct-receipt-download.test.ts",
+  "tests/pricing.test.ts",
+  "tests/currency.test.ts",
+  "tests/orders-pure.test.ts",
+  "tests/bot-order-placement.test.ts",
+  "tests/order-platform.test.ts",
+  "tests/fulfillment.test.ts",
+  "tests/fulfillment-reminder.test.ts",
+  "tests/fulfillment-dates.test.ts",
+  "tests/fulfillment-kind.test.ts",
+  "tests/delivery-zones.test.ts",
+  "tests/delivery-message.test.ts",
+  "tests/direct-purchase.test.ts",
+  "tests/direct-flow.test.ts",
+  "tests/whatsapp-catalog.test.ts",
+  "tests/zernio-inbox-order.test.ts",
+  "tests/direct-reply.test.ts",
+  "tests/mini-app-catalog.test.ts",
+  "tests/mini-app-regressions.test.ts",
+  "tests/mini-app-library.test.ts",
+  "tests/mini-app-related.test.ts",
+  "tests/mini-app-rate-limit.test.ts",
+  "tests/telegram-webapp-init-data.test.ts",
+  "tests/web-storefront-handoff.test.ts",
+  "tests/product-materials.test.ts",
+  "tests/admin-order-notify.test.ts",
+  "tests/robokassa.test.ts",
+  "tests/loyalty.test.ts",
+  "tests/gift-certificates.test.ts",
+];
+
 export type Item = { group: string; key: string };
 export type Status = "covered" | "open" | "later" | "drop";
 export type Verdict = Item & { status: Status; ref: string | null; live: boolean };
@@ -117,6 +153,7 @@ const cell = (s: string) => s.replace(/\|/g, "\\|");
 export function renderReport(verdicts: Verdict[]): string {
   const all = count(verdicts);
   const groups = [...new Set(verdicts.map((v) => v.group))];
+  const order = count(verdicts.filter((v) => ORDER_PATH.includes(v.group)));
   const out: string[] = [
     "# Готовность v2 по описи v1",
     "",
@@ -126,6 +163,9 @@ export function renderReport(verdicts: Verdict[]): string {
     "",
     `**Готовность для первых клиентов: ${pct(readiness(all))}** — покрыто тестами v2`,
     `${all.covered} из ${all.covered + all.open} нужных сейчас пунктов.`,
+    "",
+    `**Путь заказа: ${pct(readiness(order))}** — ${order.covered} из ${order.covered + order.open}`,
+    "(каталог, цена, оформление, оплата и чек, выдача; файлы — `ORDER_PATH` в скрипте).",
     "",
     "| всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |",
     "| ----- | ------- | --------------------- | ---- | ----- | ------------- |",

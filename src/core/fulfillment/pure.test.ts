@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addDaysToIso,
   amountDue,
+  daysInMonth,
   fulfillmentTotalBelowPaid,
   fulfillmentTypePatch,
   isoToDisplay,
@@ -34,6 +35,32 @@ describe("fulfillment pure", () => {
     expect(matchFulfillmentType("Самовывоз")).toBe("pickup");
     expect(matchFulfillmentType("нужна доставка")).toBe("delivery");
     expect(matchFulfillmentType("не знаю")).toBeNull();
+  });
+});
+
+describe("даты получения: месяцы и високосный год", () => {
+  it("считает длину обычных месяцев", () => {
+    expect(daysInMonth(2026, 1)).toBe(31);
+    expect(daysInMonth(2026, 4)).toBe(30);
+    expect(daysInMonth(2026, 12)).toBe(31);
+  });
+
+  it("учитывает високосный год для февраля", () => {
+    expect(daysInMonth(2024, 2)).toBe(29);
+    expect(daysInMonth(2025, 2)).toBe(28);
+    expect(daysInMonth(2000, 2)).toBe(29); // делится на 400 — високосный
+    expect(daysInMonth(1900, 2)).toBe(28); // делится на 100, но не на 400
+    expect(parseDateInput("29.02.2024")).toBe("2024-02-29");
+    expect(parseDateInput("29.02.2025")).toBeNull();
+  });
+
+  it("переносит через 29 февраля високосного года", () => {
+    expect(addDaysToIso("2024-02-28", 1)).toBe("2024-02-29");
+    expect(addDaysToIso("2024-02-28", 2)).toBe("2024-03-01");
+  });
+
+  it("0 дней возвращает ту же дату", () => {
+    expect(addDaysToIso("2026-09-05", 0)).toBe("2026-09-05");
   });
 });
 

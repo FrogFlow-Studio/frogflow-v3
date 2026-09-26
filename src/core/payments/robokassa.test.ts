@@ -72,4 +72,46 @@ describe("robokassa", () => {
     expect(robokassaConfig(base, false).ready).toBe(false);
     expect(robokassaConfig({ ...base, robokassa_pass2: "" }, true).ready).toBe(false);
   });
+
+  it("md5Hex — обычный MD5 в hex, сверка с известным хешем", () => {
+    expect(md5Hex("abc")).toBe("900150983cd24fb0d6963f7d28e17f72");
+  });
+
+  it("IsTest=1 только когда явно попросили, иначе IsTest=0", () => {
+    const url = buildPaymentUrl(
+      { login: "shop", pass1: "p1", pass2: "p2", testMode: false },
+      { outSum: 100, invId: 1, description: "d", botId: BOT },
+    );
+    expect(new URL(url).searchParams.get("IsTest")).toBe("0");
+  });
+
+  it("результат: сумма в подписи не совпадает с переданной — отклоняет", () => {
+    const sig = md5Hex(`1500.00:42:p2:Shp_bot=${BOT}`).toUpperCase();
+    expect(
+      verifyResultSignature({
+        outSum: "999.00",
+        invId: "42",
+        signature: sig,
+        pass2: "p2",
+        shp: [["Shp_bot", BOT]],
+      }),
+    ).toBe(false);
+  });
+
+  it("результат: несколько Shp_-параметров сортируются по ключу, как требует протокол", () => {
+    // Shp_botId раньше Shp_orderId, хотя пришли в обратном порядке.
+    const sig = md5Hex("1500.00:42:p2:Shp_botId=abc:Shp_orderId=42").toUpperCase();
+    expect(
+      verifyResultSignature({
+        outSum: "1500.00",
+        invId: "42",
+        signature: sig,
+        pass2: "p2",
+        shp: [
+          ["Shp_orderId", "42"],
+          ["Shp_botId", "abc"],
+        ],
+      }),
+    ).toBe(true);
+  });
 });

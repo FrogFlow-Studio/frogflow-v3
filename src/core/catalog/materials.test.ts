@@ -32,4 +32,46 @@ describe("materials", () => {
     expect(productSellable({ fulfillment_kind: "physical" })).toBe(true);
     expect(productSellable(null)).toBe(false);
   });
+
+  it("не путает языки — включая en/uz, не только ru/kk", () => {
+    const p = {
+      product_material_files: [
+        { language: "kk", file_path: "kk.pdf", file_name: "KK", sort_order: 1 },
+        { language: "en", file_path: "en.pdf", file_name: "EN", sort_order: 1 },
+        { language: "uz", file_path: "uz.pdf", file_name: "UZ", sort_order: 1 },
+      ],
+    };
+    expect(materialsForProduct(p, "ru")).toEqual([]);
+    expect(materialsForProduct(p, "kk").map((m) => m.path)).toEqual(["kk.pdf"]);
+    expect(materialsForProduct(p, "en").map((m) => m.path)).toEqual(["en.pdf"]);
+    expect(materialsForProduct(p, "uz").map((m) => m.path)).toEqual(["uz.pdf"]);
+  });
+
+  it("у товара без файлов не выдумывает материал", () => {
+    expect(materialsForProduct({}, "ru")).toEqual([]);
+    expect(materialsForProduct(null, "ru")).toEqual([]);
+    expect(materialsForProduct(undefined, "kk")).toEqual([]);
+  });
+
+  it("продаваемость считается так же, как снимок, по всем 4 языкам", () => {
+    expect(productSellable({ file_path_kz: "kz/file.pdf" })).toBe(true);
+    expect(
+      productSellable({ product_material_files: [{ language: "uz", file_path: "u.pdf" }] }),
+    ).toBe(true);
+    expect(productSellable({})).toBe(false);
+    // Запись без пути файлом не является, сколько бы строк ни было в таблице.
+    expect(
+      productSellable({
+        fulfillment_kind: "digital",
+        product_material_files: [{ language: "ru", file_path: null }],
+      }),
+    ).toBe(false);
+  });
+
+  it("пустой массив, если у товара нет ни ссылки, ни пути", () => {
+    for (const lang of ["ru", "kk", "en", "uz"] as const) {
+      expect(materialsForProduct({ file_name: "Материал" }, lang)).toEqual([]);
+      expect(materialsForProduct(null, lang)).toEqual([]);
+    }
+  });
 });

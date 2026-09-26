@@ -40,4 +40,27 @@ describe("discounts", () => {
     expect(normalizeCode("  sale10 ")).toBe("SALE10");
     expect(generateGiftCode()).toMatch(/^GIFT-[A-Z2-9]{8}$/);
   });
+
+  it("сертификат: нулевая или отрицательная сумма, нулевой номинал — скидки нет", () => {
+    expect(computeGiftDiscount(0, 300)).toBe(0);
+    expect(computeGiftDiscount(1000, 0)).toBe(0);
+    expect(computeGiftDiscount(-100, 300)).toBe(0);
+  });
+
+  it("баллы: нулевая или отрицательная сумма, нулевой процент — не начисляются", () => {
+    expect(computePointsEarned(0, 10)).toBe(0);
+    expect(computePointsEarned(1000, 0)).toBe(0);
+    expect(computePointsEarned(-100, 10)).toBe(0);
+  });
+
+  it("баллы: нулевая или отрицательная сумма, нулевой баланс — скидки нет", () => {
+    expect(computePointsDiscount(0, 300)).toBe(0);
+    expect(computePointsDiscount(1000, 0)).toBe(0);
+    expect(computePointsDiscount(-100, 300)).toBe(0);
+  });
+
+  it("сертификат: повторные вызовы дают разные коды", () => {
+    const codes = new Set(Array.from({ length: 20 }, () => generateGiftCode()));
+    expect(codes.size).toBeGreaterThan(1);
+  });
 });

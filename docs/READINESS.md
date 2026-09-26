@@ -4,12 +4,15 @@
 и `docs/readiness.json` — руками не правится. `npm test` падает, если сводка
 устарела, пункт описи назван неверно или указанного теста нет.
 
-**Готовность для первых клиентов: 52,3 %** — покрыто тестами v2
-384 из 734 нужных сейчас пунктов.
+**Готовность для первых клиентов: 71,6 %** — покрыто тестами v2
+526 из 734 нужных сейчас пунктов.
+
+**Путь заказа: 83 %** — 280 из 337
+(каталог, цена, оформление, оплата и чек, выдача; файлы — `ORDER_PATH` в скрипте).
 
 | всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |
 | ----- | ------- | --------------------- | ---- | ----- | ------------- |
-| 1125 | 384 | 43 | 350 | 33 | 358 |
+| 1125 | 526 | 43 | 208 | 33 | 358 |
 
 «Позже» — поведение нужно, но не магазинам, которые переезжают первыми
 (модуль ещё не перенесён). «Не нужно в v2» — поведение убрано или заменено;
@@ -40,7 +43,7 @@
 | `tests/admin-order-notify.test.ts` | 6 | 0 | 5 | 0 | 1 | 0 % |
 | `tests/ai-usage.test.ts` | 5 | 2 | 1 | 0 | 2 | 66,6 % |
 | `tests/analytics.test.ts` | 16 | 2 | 14 | 0 | 0 | 12,5 % |
-| `tests/bot-order-placement.test.ts` | 4 | 2 | 2 | 0 | 0 | 50 % |
+| `tests/bot-order-placement.test.ts` | 4 | 3 | 1 | 0 | 0 | 75 % |
 | `tests/bot-user-claim.test.ts` | 1 | 0 | 0 | 0 | 1 | — |
 | `tests/broadcast-audience.test.ts` | 6 | 0 | 6 | 0 | 0 | 0 % |
 | `tests/broadcast-create.test.ts` | 3 | 2 | 1 | 0 | 0 | 66,6 % |
@@ -65,60 +68,60 @@
 | `tests/consultant-usage-stats.test.ts` | 4 | 0 | 1 | 0 | 3 | 0 % |
 | `tests/consultant-vtb-rate.test.ts` | 12 | 0 | 0 | 0 | 12 | — |
 | `tests/consultant.test.ts` | 73 | 5 | 10 | 0 | 58 | 33,3 % |
-| `tests/currency.test.ts` | 4 | 1 | 3 | 0 | 0 | 25 % |
+| `tests/currency.test.ts` | 4 | 3 | 1 | 0 | 0 | 75 % |
 | `tests/datetime.test.ts` | 5 | 3 | 2 | 0 | 0 | 60 % |
-| `tests/delivery-message.test.ts` | 4 | 0 | 4 | 0 | 0 | 0 % |
-| `tests/delivery-zones.test.ts` | 5 | 0 | 5 | 0 | 0 | 0 % |
-| `tests/direct-flow.test.ts` | 57 | 50 | 5 | 2 | 0 | 90,9 % |
-| `tests/direct-purchase.test.ts` | 14 | 3 | 11 | 0 | 0 | 21,4 % |
+| `tests/delivery-message.test.ts` | 4 | 1 | 3 | 0 | 0 | 25 % |
+| `tests/delivery-zones.test.ts` | 5 | 4 | 1 | 0 | 0 | 80 % |
+| `tests/direct-flow.test.ts` | 57 | 54 | 1 | 2 | 0 | 98,1 % |
+| `tests/direct-purchase.test.ts` | 14 | 14 | 0 | 0 | 0 | 100 % |
 | `tests/direct-receipt-download.test.ts` | 3 | 3 | 0 | 0 | 0 | 100 % |
-| `tests/direct-reply.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
-| `tests/fulfillment-dates.test.ts` | 10 | 6 | 4 | 0 | 0 | 60 % |
-| `tests/fulfillment-kind.test.ts` | 5 | 4 | 1 | 0 | 0 | 80 % |
-| `tests/fulfillment-reminder.test.ts` | 10 | 4 | 6 | 0 | 0 | 40 % |
-| `tests/fulfillment.test.ts` | 18 | 4 | 14 | 0 | 0 | 22,2 % |
-| `tests/gift-certificates.test.ts` | 5 | 3 | 2 | 0 | 0 | 60 % |
+| `tests/direct-reply.test.ts` | 2 | 2 | 0 | 0 | 0 | 100 % |
+| `tests/fulfillment-dates.test.ts` | 10 | 10 | 0 | 0 | 0 | 100 % |
+| `tests/fulfillment-kind.test.ts` | 5 | 5 | 0 | 0 | 0 | 100 % |
+| `tests/fulfillment-reminder.test.ts` | 10 | 10 | 0 | 0 | 0 | 100 % |
+| `tests/fulfillment.test.ts` | 18 | 17 | 1 | 0 | 0 | 94,4 % |
+| `tests/gift-certificates.test.ts` | 5 | 5 | 0 | 0 | 0 | 100 % |
 | `tests/instagram-inbox-message.test.ts` | 1 | 0 | 1 | 0 | 0 | 0 % |
 | `tests/invoices-server.test.ts` | 11 | 4 | 7 | 0 | 0 | 36,3 % |
-| `tests/loyalty.test.ts` | 7 | 4 | 3 | 0 | 0 | 57,1 % |
+| `tests/loyalty.test.ts` | 7 | 7 | 0 | 0 | 0 | 100 % |
 | `tests/manual-order.test.ts` | 8 | 8 | 0 | 0 | 0 | 100 % |
 | `tests/mini-app-auth.test.ts` | 4 | 3 | 0 | 0 | 1 | 100 % |
-| `tests/mini-app-catalog.test.ts` | 13 | 0 | 9 | 1 | 3 | 0 % |
-| `tests/mini-app-library.test.ts` | 5 | 0 | 5 | 0 | 0 | 0 % |
+| `tests/mini-app-catalog.test.ts` | 13 | 2 | 7 | 1 | 3 | 22,2 % |
+| `tests/mini-app-library.test.ts` | 5 | 2 | 3 | 0 | 0 | 40 % |
 | `tests/mini-app-rate-limit.test.ts` | 5 | 0 | 1 | 0 | 4 | 0 % |
-| `tests/mini-app-regressions.test.ts` | 27 | 5 | 7 | 0 | 15 | 41,6 % |
-| `tests/mini-app-related.test.ts` | 4 | 0 | 4 | 0 | 0 | 0 % |
+| `tests/mini-app-regressions.test.ts` | 27 | 9 | 3 | 0 | 15 | 75 % |
+| `tests/mini-app-related.test.ts` | 4 | 3 | 1 | 0 | 0 | 75 % |
 | `tests/mini-app-text.test.ts` | 2 | 0 | 0 | 0 | 2 | — |
 | `tests/mini-app-validation.test.ts` | 4 | 1 | 0 | 0 | 3 | 100 % |
 | `tests/misc-retention.test.ts` | 3 | 1 | 2 | 0 | 0 | 33,3 % |
 | `tests/order-files-page.test.ts` | 8 | 1 | 0 | 0 | 7 | 100 % |
-| `tests/order-platform.test.ts` | 4 | 0 | 2 | 0 | 2 | 0 % |
-| `tests/orders-pure.test.ts` | 11 | 2 | 9 | 0 | 0 | 18,1 % |
+| `tests/order-platform.test.ts` | 4 | 1 | 1 | 0 | 2 | 50 % |
+| `tests/orders-pure.test.ts` | 11 | 4 | 7 | 0 | 0 | 36,3 % |
 | `tests/payment-proof.test.ts` | 2 | 0 | 2 | 0 | 0 | 0 % |
-| `tests/pricing.test.ts` | 20 | 3 | 17 | 0 | 0 | 15 % |
-| `tests/product-materials.test.ts` | 25 | 17 | 8 | 0 | 0 | 68 % |
+| `tests/pricing.test.ts` | 20 | 20 | 0 | 0 | 0 | 100 % |
+| `tests/product-materials.test.ts` | 25 | 24 | 1 | 0 | 0 | 96 % |
 | `tests/promo-codes.test.ts` | 4 | 4 | 0 | 0 | 0 | 100 % |
 | `tests/receipt-audit.test.ts` | 20 | 0 | 0 | 20 | 0 | — |
-| `tests/receipt-ocr-auto.test.ts` | 6 | 0 | 6 | 0 | 0 | 0 % |
-| `tests/receipt-verify.test.ts` | 51 | 16 | 34 | 0 | 1 | 32 % |
+| `tests/receipt-ocr-auto.test.ts` | 6 | 6 | 0 | 0 | 0 | 100 % |
+| `tests/receipt-verify.test.ts` | 51 | 45 | 5 | 0 | 1 | 90 % |
 | `tests/reviews-server.test.ts` | 4 | 1 | 3 | 0 | 0 | 25 % |
 | `tests/reviews.test.ts` | 6 | 5 | 1 | 0 | 0 | 83,3 % |
-| `tests/robokassa.test.ts` | 11 | 6 | 5 | 0 | 0 | 54,5 % |
+| `tests/robokassa.test.ts` | 11 | 11 | 0 | 0 | 0 | 100 % |
 | `tests/smart-search.test.ts` | 14 | 8 | 4 | 0 | 2 | 66,6 % |
 | `tests/telegram-init-data.test.ts` | 3 | 3 | 0 | 0 | 0 | 100 % |
 | `tests/telegram-webapp-init-data.test.ts` | 9 | 0 | 9 | 0 | 0 | 0 % |
 | `tests/tenant-isolation.test.ts` | 7 | 3 | 4 | 0 | 0 | 42,8 % |
 | `tests/vip-flow.test.ts` | 24 | 24 | 0 | 0 | 0 | 100 % |
-| `tests/web-storefront-handoff.test.ts` | 2 | 0 | 2 | 0 | 0 | 0 % |
+| `tests/web-storefront-handoff.test.ts` | 2 | 2 | 0 | 0 | 0 | 100 % |
 | `tests/whatsapp-activation.test.ts` | 12 | 0 | 4 | 0 | 8 | 0 % |
 | `tests/whatsapp-broadcast-audience.test.ts` | 3 | 2 | 1 | 0 | 0 | 66,6 % |
-| `tests/whatsapp-catalog.test.ts` | 14 | 4 | 10 | 0 | 0 | 28,5 % |
+| `tests/whatsapp-catalog.test.ts` | 14 | 10 | 4 | 0 | 0 | 71,4 % |
 | `tests/whatsapp-contact-exclusions.test.ts` | 3 | 3 | 0 | 0 | 0 | 100 % |
 | `tests/zernio-account-disconnected.test.ts` | 4 | 0 | 4 | 0 | 0 | 0 % |
 | `tests/zernio-automation-body.test.ts` | 8 | 8 | 0 | 0 | 0 | 100 % |
 | `tests/zernio-base-url.test.ts` | 5 | 3 | 2 | 0 | 0 | 60 % |
 | `tests/zernio-idempotency.test.ts` | 6 | 6 | 0 | 0 | 0 | 100 % |
-| `tests/zernio-inbox-order.test.ts` | 3 | 0 | 3 | 0 | 0 | 0 % |
+| `tests/zernio-inbox-order.test.ts` | 3 | 3 | 0 | 0 | 0 | 100 % |
 | `tests/zernio-inbox-shape.test.ts` | 2 | 2 | 0 | 0 | 0 | 100 % |
 | `tests/zernio-logs-retention.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/zernio-message.test.ts` | 17 | 12 | 5 | 0 | 0 | 70,5 % |
@@ -126,7 +129,7 @@
 | `tests/zernio-retry.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/zernio-webhook.test.ts` | 13 | 7 | 3 | 0 | 3 | 70 % |
 
-## Дыры (350)
+## Дыры (208)
 
 ### поломки v1
 
@@ -227,11 +230,11 @@
 
 ### `tests/admin-order-notify.test.ts`
 
-- парсит сохранённые message_id и отбрасывает мусор — в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:*, удаление через 5 минут) — ни кода, ни теста
-- читает пачку с отложенным удалением и старый массив — в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:*, удаление через 5 минут) — ни кода, ни теста
-- считает пачку готовой к удалению только после deleteAfter — в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:*, удаление через 5 минут) — ни кода, ни теста
-- достаёт id из одного сообщения и из media group — в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:*, удаление через 5 минут) — ни кода, ни теста
-- не дублирует одни и те же сообщения и сохраняет флаг кнопок — в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:*, удаление через 5 минут) — ни кода, ни теста
+- парсит сохранённые message_id и отбрасывает мусор — расхождение: в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:<id>, пачка refs+deleteAfter, удаление через 5 минут, сбор message_id из media group) — ни кода, ни места для теста
+- читает пачку с отложенным удалением и старый массив — расхождение: в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:<id>, пачка refs+deleteAfter, удаление через 5 минут, сбор message_id из media group) — ни кода, ни места для теста
+- считает пачку готовой к удалению только после deleteAfter — расхождение: в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:<id>, пачка refs+deleteAfter, удаление через 5 минут, сбор message_id из media group) — ни кода, ни места для теста
+- достаёт id из одного сообщения и из media group — расхождение: в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:<id>, пачка refs+deleteAfter, удаление через 5 минут, сбор message_id из media group) — ни кода, ни места для теста
+- не дублирует одни и те же сообщения и сохраняет флаг кнопок — расхождение: в v2 нет отзыва уведомлений продавцу о заказе (admin_notify_tg:<id>, пачка refs+deleteAfter, удаление через 5 минут, сбор message_id из media group) — ни кода, ни места для теста
 
 ### `tests/ai-usage.test.ts`
 
@@ -256,8 +259,7 @@
 
 ### `tests/bot-order-placement.test.ts`
 
-- releaseOrderPlacement снимает флаг, не трогая остальной state — releaseOrderPlacement (core/orders/orders.ts) — сохранность остального state не проверяется
-- из двух одновременных попыток claim забирает ровно одна — claimOrderPlacement проверен только последовательно, параллельного теста нет
+- из двух одновременных попыток claim забирает ровно одна — атомарность — в SQL-функции claim_order_placement (M27), v2 только передаёт результат RPC; юнит-тест на фейковой базе проверил бы саму подделку, а живой tests/integration/shop-flow.test.ts проверяет claim только последовательно — нужен живой параллельный тест (здесь без ключей не прогнать)
 
 ### `tests/broadcast-audience.test.ts`
 
@@ -315,9 +317,7 @@
 
 ### `tests/currency.test.ts`
 
-- одна и та же валюта — без похода в сеть, просто округляет — convertAmount в core/pricing/pricing.ts округляет без курса, но теста (с setFxProvider) нет
-- API курсов недоступен и кэша ещё не было — null, а не исходное число — convertAmount (core/pricing/pricing.ts) ловит сбой и отдаёт null, теста с упавшим FxProvider нет
-- API недоступен, но есть кэш — считает по устаревшему курсу, не по null — в v2 при сбое API устаревший курс из памяти не используется — convertAmount (core/pricing/pricing.ts) отдаёт null, теста нет
+- API недоступен, но есть кэш — считает по устаревшему курсу, не по null — расхождение: convertAmount (core/pricing/pricing.ts) при сбое провайдера после истечения TTL (10 мин) отдаёт null, хотя старые курсы ещё лежат в fxMemory; v1 считал по устаревшему кэшу. Кэш v2 только в памяти процесса (в v1 — в таблице settings), после холодного старта его нет вовсе
 
 ### `tests/datetime.test.ts`
 
@@ -326,86 +326,21 @@
 
 ### `tests/delivery-message.test.ts`
 
-- ставит приписку продавца последним абзацем — приписки продавца к сообщению о выдаче в v2 нет — channels/zernio/deliver.ts пишет фиксированный текст
-- без приписки отправляет текст по умолчанию — приписки продавца к сообщению о выдаче в v2 нет — channels/zernio/deliver.ts пишет фиксированный текст
-- срок жизни ссылок берётся из кода, а не из текста продавца — срок «7 дней» зашит строкой в channels/zernio/deliver.ts, теста на текст выдачи в переписке нет (срок проверен только в письме mail.test.ts)
-- вариант с кнопкой на страницу файлов тоже несёт приписку — в Direct v2 выдаёт ссылки прямо в переписку, кнопки на страницу файлов и приписки нет (channels/zernio/deliver.ts)
+- ставит приписку продавца последним абзацем — расхождение: приписки продавца к сообщению о выдаче в v2 нет — channels/zernio/deliver.ts пишет фиксированный текст, настройки для текста продавца нет
+- без приписки отправляет текст по умолчанию — расхождение: текста по умолчанию/приписки в v2 нет — channels/zernio/deliver.ts пишет фиксированный текст без абзаца продавца
+- вариант с кнопкой на страницу файлов тоже несёт приписку — расхождение: в Direct v2 выдаёт ссылки прямо в переписку — ни кнопки на страницу файлов, ни дубликата на почту в тексте, ни приписки (channels/zernio/deliver.ts)
 
 ### `tests/delivery-zones.test.ts`
 
-- activeDeliveryZones возвращает зоны по sort_order, скрытые (is_active=false) не попадают — activeDeliveryZones в core/fulfillment/fulfillment.ts фильтрует is_active и сортирует, теста нет
-- activeDeliveryZones не видит зоны другого арендатора (RLS-изоляция) — tenant-isolation проверяет RLS на bots и products, на delivery_zones теста нет
-- activeDeliveryZones — пустой список, если у арендатора нет ни одной зоны (фолбэк на свободный адрес) — фолбэк на свободный адрес без зон в чекауте (Telegram и shop.server.ts) тестом не проверен
-- оба способа включены по умолчанию, пока ничего не настроено — fulfillmentSettings (core/fulfillment/fulfillment.ts) без теста значения по умолчанию
-- самовывоз выключен явной настройкой — доставка остаётся включённой — fulfillment_pickup_enabled=false читается в fulfillmentSettings, теста нет
+- activeDeliveryZones не видит зоны другого арендатора (RLS-изоляция) — activeDeliveryZones в v2 не фильтрует bot_id сам и полагается на RLS роли арендатора (ctx.db) — проверить можно только живым тестом в tests/integration (здесь нет ключей); фейковая база RLS не моделирует
 
 ### `tests/direct-flow.test.ts`
 
-- не принимает класс за номер товара — productNumberFromName требует разделитель, но тест v2 не проверяет голое «1»/«2026» без разделителя
-- не принимает класс за номер товара #2 — productNumberFromKeywords на «1 класс русский язык» (тот самый случай с Тетрадью №358) в v2 не проверен
-- пустые ключевые слова номера не дают — productNumberFromKeywords(null) и ключевые слова без цифр в тесте v2 не проверены
-- понимает слово с кнопки на всех 4 языках — matchFulfillmentType (core/fulfillment/pure.ts) не узнаёт «Өзі алып кету» и «O‘zi olib ketish», тест v2 только на русском
-- не принимает за почту то, что ею не является — extractEmail на Instagram-ник «@annavenglovskaia» и «собака мейл ру» в v2 не проверен
-
-### `tests/direct-purchase.test.ts`
-
-- забирает шаг и переводит его в processing_proof — атомарного захвата шага чека в v2 нет — attachPaymentProof (core/orders/orders.ts) проверяет статус без CAS, повтор и гонка не проверены
-- второй раз забрать не даёт — шаг уже не awaiting_proof — атомарного захвата шага чека в v2 нет — attachPaymentProof (core/orders/orders.ts) проверяет статус без CAS, повтор и гонка не проверены
-- не забирает шаг, на котором чек не ждут — v2 намеренно принимает чек и вне шага по свежему заказу awaiting_payment (shop.server.ts), случай без открытого заказа тестом не проверен
-- из двух одновременных попыток забирает шаг ровно одна — атомарного захвата шага чека в v2 нет — attachPaymentProof (core/orders/orders.ts) проверяет статус без CAS, повтор и гонка не проверены
-- на пустой корзине заказ не создаёт — placeOrder (core/orders/orders.ts) на пустой корзине тестом не проверен
-- физический заказ — записывает fulfillment_type/at/address/note — живой тест физического заказа проверяет только type и address, fulfillment_at и note не проверены
-- физический заказ без fulfillment (устаревший вызов) — поля остаются null — placeOrder физического товара без fulfillment тестом не проверен
-- товар с двумя вариантами — createOrderFromCart создаёт две строки с верными вариантами — варианты товара в корзине и заказе v2 (core/cart, core/orders) тестом не покрыты
-- товар с вариантами без выбранного варианта в корзину не попадает — addToCart товара с вариантами без выбранного варианта тестом не проверен
-- недостаточный остаток — заказ не создаётся, остаток не трогается — decrementStock при нехватке на оформлении не проверен, живой тест ловит только out_of_stock в addToCart
-- раскупленная вторая позиция — откатывает остаток уже списанной первой — restoreStock при частичном списании (core/fulfillment/fulfillment.ts) тестом не проверен
-
-### `tests/direct-reply.test.ts`
-
-- does not mark an answer as sent when Zernio rejects it — reply() в channels/zernio/shop.server.ts не пишет last_reply при отказе, теста на отказ транспорта нет
-
-### `tests/fulfillment-dates.test.ts`
-
-- считает длину обычных месяцев — daysInMonth (core/fulfillment/pure.ts) напрямую не тестируется
-- учитывает високосный год для февраля — високосный февраль в daysInMonth и parseDateInput не проверен
-- переносит через 29 февраля високосного года — addDaysToIso через 29 февраля не проверен
-- 0 дней возвращает ту же дату — addDaysToIso с 0 дней не проверен
-
-### `tests/fulfillment-kind.test.ts`
-
-- нельзя добавить физический товар, когда в корзине уже цифровой — addToCart возвращает mixed_cart (core/cart/cart.ts), теста нет
-
-### `tests/fulfillment-reminder.test.ts`
-
-- дата получения ровно через 24 часа — на границе, ещё считается — граница ровно 24 часа в isFulfillmentReminderEligible не проверена
-- дата получения прямо сейчас — уже не будущее, не напоминаем — граница «ровно сейчас» в isFulfillmentReminderEligible не проверена
-- заказ в ближайшие 24 часа — напоминание отправлено и проставлено ровно один раз — sendFulfillmentReminders (core/reminders/fulfillment.ts) без живого теста
-- дата получения дальше суток — заказ не трогается — sendFulfillmentReminders без живого теста
-- заказ ещё не принят продавцом (awaiting_confirmation), но дата уже завтра — напоминание всё равно шлём — awaiting_confirmation есть в OPEN_PHYSICAL_STATUSES (core/reminders/fulfillment.ts), теста нет
-- заказ уже выдан (delivered) — напоминание не шлём — исключение delivered в sendFulfillmentReminders тестом не проверено
+- понимает слово с кнопки на всех 4 языках — расхождение: matchFulfillmentType (core/fulfillment/pure.ts) не узнаёт самовывоз на казахском «Өзі алып кету» и узбекском «O‘zi olib ketish» (ждёт «өзім»/«алып кетемін»/«olib ketaman») — возвращает null; «Жеткізу», «Yetkazib berish», русский и английский узнаёт
 
 ### `tests/fulfillment.test.ts`
 
-- acceptOrder переводит awaiting_confirmation в accepted — acceptPhysicalOrder (core/orders/physical-admin.ts) без теста
-- acceptOrder повторно на уже принятом — alreadyAccepted, статус не меняется — повторное «Принять заказ» в acceptPhysicalOrder тестом не проверено
-- acceptOrder на delivered — тоже alreadyAccepted, не пытается принять заново — acceptPhysicalOrder на delivered тестом не проверен
-- acceptOrder на rejected бросает — отклонённый заказ обратно в работу не берут — acceptPhysicalOrder на rejected тестом не проверен
-- advanceFulfillment проходит accepted → in_production → ready → delivered — переходы статусов физического заказа (core/orders/admin.ts) без теста
-- advanceFulfillment из delivered дальше не идёт — переход из delivered (core/orders/admin.ts) без теста
-- двойное нажатие: из двух одновременных advanceFulfillment ровно один продвигает статус — CAS смены статуса физического заказа не проверен
-- recordPayment суммирует внесённое (задаток + остаток) — recordPayment (core/fulfillment/fulfillment.ts) с CAS без теста
-- processPendingDeliveries не трогает accepted/in_production/ready — повтор выдачи через outbox не должен трогать физические заказы в работе, теста нет
-- digital-заказ — всегда полная сумма, режим оплаты не смотрится вовсе — amountDueNow (core/fulfillment/fulfillment.ts) для digital без теста
-- payment_mode не настроен — full по умолчанию, вся сумма — значение по умолчанию в fulfillmentSettings без теста
-- deposit с мусорным deposit_percent (NaN) — откатывается на 30%, не на NaN₸ — amountDue с NaN процентом не проверен
-- deposit с deposit_percent вне диапазона (150) — тоже клэмп на 30% — amountDue с процентом вне 1..100 не проверен
-- recordPayment не даёт paid_amount превысить total (CHECK из MIGRATION-55) — recordPayment в v2 обрезает до total вместо отказа, теста нет
-
-### `tests/gift-certificates.test.ts`
-
-- нулевая сумма или нулевой номинал — скидки нет — computeGiftDiscount с нулём и отрицательной суммой не проверен
-- генерирует разные коды при повторных вызовах — неповторяемость generateGiftCode не проверена
+- recordPayment не даёт paid_amount превысить total (CHECK из MIGRATION-55) — расхождение: v1 отказывал (false, paid_amount не менялся), v2 recordPayment (core/fulfillment/fulfillment.ts) обрезает до total и возвращает true — лишнее молча теряется; инвариант paid ≤ total держится (src/core/fulfillment/fulfillment.test.ts › не поднимает paid_amount выше total), отказ есть только выше, в recordManualPayment
 
 ### `tests/instagram-inbox-message.test.ts`
 
@@ -421,52 +356,35 @@
 - отменить можно только счёт без присланного чека — живой тест отменяет повторно отменённый, отмена счёта с чеком или оплаченного не проверена
 - null, пока чек не прислан; signed URL, когда путь есть — ссылка на чек счёта для оператора тестом не проверена
 
-### `tests/loyalty.test.ts`
-
-- нулевая сумма или нулевой процент — баллов нет — computePointsEarned (core/discounts/pure.ts) отсекает 0 и минус, но теста на это нет
-- нулевая сумма или нулевой баланс — скидки нет — computePointsDiscount (core/discounts/pure.ts) без теста на нулевую сумму и нулевой баланс
-- без согласия сумму не трогает — согласие покупателя opts.usePoints в placeOrder (core/orders/orders.ts) — теста, что без него баллы не списываются, нет
-
 ### `tests/mini-app-catalog.test.ts`
 
-- removes products that only belong to hidden categories — storeCatalog (core/storefront/catalog.ts) не отсекает товары только из скрытых категорий (is_visible), теста нет
-- searches names, descriptions, variants and keywords across the full index — поиск витрины (storeCatalog) идёт по name/keywords/description без названий вариантов, теста нет
-- treats the query as one phrase, like the bot, not AND of substrings — storeCatalog ищет фразу целиком через ilike, но теста на это нет
-- keeps uncategorized products only in the unfiltered catalog — фильтр категории storeCatalog (contains category_ids) без теста
-- includes products from Mini App category subtrees — storeCatalog фильтрует только по одной категории, без подкатегорий; теста нет
-- shows lead time on physical products and hides it for digital — leadTimeDays на карточке витрины (routes/s.$slug.index.tsx, s.$slug.p.$id.tsx) без теста
-- [Учителя-CRIT] hides language badges when the multi_language module is off — StoreProduct.languages (core/storefront/catalog.ts) не учитывает модуль multi_language — языки видны и при выключенном модуле; теста нет
-- filters materials by language and keeps chips for the unfiltered set — фильтра каталога по языку материала на витрине v2 нет
-- lists material files on the product page and keeps a library tab — языки файлов на странице товара и «Мои материалы» (/s/:slug/orders, miniAppOrdersFn) есть, теста нет
+- removes products that only belong to hidden categories — расхождение: storeCatalog (core/storefront/catalog.ts) не смотрит на categories.is_visible — товар только из скрытых категорий виден в каталоге, поиске и похожих
+- searches names, descriptions, variants and keywords across the full index — расхождение: поиск storeCatalog идёт по name/keywords/description, названия вариантов не ищутся (название, описание, ключевые слова — в catalog.test.ts › ищет по названию, описанию и ключевым словам без учёта регистра)
+- includes products from Mini App category subtrees — расхождение: storeCatalog фильтрует по одной категории (contains category_ids), товары подкатегорий в родительскую не попадают
+- shows lead time on physical products and hides it for digital — расхождение: на странице товара (routes/s.$slug.p.$id.tsx) срок изготовления показывается при любом leadTimeDays, в том числе у цифрового; у физического с 0 дней карточка пишет «Товар», а не «В наличии»; разметка в JSX без тестов
+- [Учителя-CRIT] hides language badges when the multi_language module is off — расхождение: StoreProduct.languages (core/storefront/catalog.ts) не учитывает модуль multi_language — языки файлов видны на странице товара и при выключенном модуле
+- filters materials by language and keeps chips for the unfiltered set — расхождение: фильтра каталога по языку материала на витрине v2 нет
+- lists material files on the product page and keeps a library tab — расхождение: на странице товара v2 только строка языков, без списка файлов; вкладки «Материалы» нет — библиотека на /s/:slug/orders
 
 ### `tests/mini-app-library.test.ts`
 
-- дедуплицирует по товару, оставляя самый свежий заказ — библиотека в miniAppOrdersFn (app/storefront/storefront.functions.ts) не дедуплицирует по товару, теста нет
-- исключает физические заказы — библиотека только для цифровых материалов — miniAppOrdersFn берёт только позиции с файлами, отдельной проверки физических и теста нет
-- не теряет товар, купленный только в заказе старше последних 80 — miniAppOrdersFn смотрит только 30 последних заказов (listCustomerOrders(ctx, customer, 30)) — та же поломка; теста нет
-- подставляет актуальное имя и обложку товара, языки материала — библиотека v2 берёт name_snapshot, без актуального имени и обложки; теста нет
-- пустая история заказов — пустая библиотека, без похода за товарами — miniAppOrdersFn возвращает пустое без покупателя, теста нет
+- дедуплицирует по товару, оставляя самый свежий заказ — расхождение: библиотека miniAppOrdersFn (app/storefront/storefront.functions.ts) не дедуплицирует по товару — каждый файл каждого выданного заказа отдельной строкой
+- не теряет товар, купленный только в заказе старше последних 80 — расхождение: miniAppOrdersFn берёт только 30 последних заказов (listCustomerOrders(ctx, customer, 30)) — товар из более старого заказа пропадает из библиотеки
+- подставляет актуальное имя и обложку товара, языки материала — расхождение: библиотека v2 берёт name_snapshot позиции, без актуального имени, обложки и языка
 
 ### `tests/mini-app-rate-limit.test.ts`
 
-- limits checkout bursts independently per Telegram user — miniAppCheckoutFn (перенос корзины в бота и сообщение с корзиной) без лимита частоты на покупателя
+- limits checkout bursts independently per Telegram user — расхождение: у miniAppCheckoutFn (перенос корзины в бота и сообщение с корзиной) и miniAppOrdersFn нет лимита частоты на покупателя
 
 ### `tests/mini-app-regressions.test.ts`
 
-- resets Telegram Menu Button when the module is disabled — syncMenuButton (core/tenant/telegram-webhook.server.ts) ставит default без модуля, но тест есть только на откат на v1 (migration), не на выключенный модуль
-- filters catalog by material language and uses a two-column grid — фильтра каталога по языку материала на витрине v2 нет
-- does not resend files for physical orders — кнопка resend скрыта для физических в «Моих заказах» (channels/telegram/handle-update.ts), но обработчик resend: вид заказа не проверяет; теста нет
-- guards the delivery-language callback against a stale button, like fulfilltype:/zone: — проверка mode awaiting_delivery_lang для checkoutlang: есть (channels/telegram/handle-update.ts), теста нет
-- hides Direct purchase buttons for out-of-stock products, on the card and in search results — карточка Direct прячет «В корзину» без остатка (channels/zernio/shop.server.ts), теста нет
-- offers rating for delivered physical orders, unlike file resend — кнопка оценки для любого выданного заказа в «Моих заказах» (channels/telegram/handle-update.ts), теста нет
-- ships a purchased-materials library, sort chips and bottom tabs — библиотека есть (/s/:slug/orders, miniAppOrdersFn), теста нет; сортировки и нижних вкладок в v2 нет
+- filters catalog by material language and uses a two-column grid — расхождение: фильтра каталога по языку материала на витрине v2 нет
+- does not resend files for physical orders — расхождение: кнопка resend у физического заказа скрыта (my-orders.test.ts › оценить можно и выданный физический заказ, а повторная отправка файлов — только у цифрового), но обработчик resend: (channels/telegram/handle-update.ts) вид заказа не проверяет — старая или подделанная кнопка переводит выданный физический заказ в paid и зовёт deliverOrder
+- ships a purchased-materials library, sort chips and bottom tabs — расхождение: библиотека есть (/s/:slug/orders, miniAppOrdersFn), но сортировки каталога и нижних вкладок в v2 нет
 
 ### `tests/mini-app-related.test.ts`
 
-- товар без категории всё равно получает блок похожих — fallback на весь каталог — storeProductFn берёт весь каталог без категории (app/storefront/storefront.functions.ts), теста нет
-- товар с категорией использует прежний заголовок и фильтр по категории — похожие по первой категории в storeProductFn, теста нет
-- товар из скрытой категории не попадает в похожие — storeCatalog не отсекает скрытые категории, похожие их показывают; теста нет
-- нет ни одного другого товара в каталоге — секция не рендерится вовсе — секция скрыта при пустом related (routes/s.$slug.p.$id.tsx), теста нет
+- товар из скрытой категории не попадает в похожие — расхождение: storeCatalog не отсекает товары скрытых категорий, storeProductFn показывает их в похожих
 
 ### `tests/misc-retention.test.ts`
 
@@ -475,102 +393,34 @@
 
 ### `tests/order-platform.test.ts`
 
-- keeps Instagram and WhatsApp orders in their own channels — выдача и уведомления ветвятся по orders.platform (channels/telegram/handle-update.ts, app/admin/admin.server.ts), теста нет
-- treats legacy and unknown orders as Telegram — v2 сравнивает platform !== "telegram" без нормализации — null или неизвестное уйдёт в Zernio; функции и теста нет
+- treats legacy and unknown orders as Telegram — расхождение: v2 ветвится по order.platform !== "telegram" без нормализации (app/admin/admin.server.ts notifyCustomer и действие confirm, channels/telegram/handle-update.ts) — заказ с неизвестным platform уходит в ветку Zernio, а не в Telegram; функции orderPlatform нет (null в v2 исключён: orders.platform NOT NULL)
 
 ### `tests/orders-pure.test.ts`
 
-- ссылка приоритетнее пути, если заданы оба — приоритет file_url над file_path в materialsForProduct (core/catalog/materials.ts) без теста
-- пустой массив, если нет ни ссылки, ни пути — materialsForProduct для товара без полей — теста нет
-- дописывает расширение из storagePath к человеческому имени — v2 отдаёт файл по подписанной ссылке на ключ Storage (signedFileUrl в core/orders/orders.ts, sendDocument в channels/telegram/deliver.ts) — человеческого имени файла нет, функции и теста нет
-- не дублирует расширение, если оно уже есть в имени — v2 отдаёт файл по подписанной ссылке на ключ Storage (signedFileUrl в core/orders/orders.ts, sendDocument в channels/telegram/deliver.ts) — человеческого имени файла нет, функции и теста нет
-- заменяет запрещённые в именах файлов символы на пробел — v2 отдаёт файл по подписанной ссылке на ключ Storage (signedFileUrl в core/orders/orders.ts, sendDocument в channels/telegram/deliver.ts) — человеческого имени файла нет, функции и теста нет
-- схлопывает повторные пробелы и обрезает края — v2 отдаёт файл по подписанной ссылке на ключ Storage (signedFileUrl в core/orders/orders.ts, sendDocument в channels/telegram/deliver.ts) — человеческого имени файла нет, функции и теста нет
-- обрезает слишком длинное имя до 80 символов основы — v2 отдаёт файл по подписанной ссылке на ключ Storage (signedFileUrl в core/orders/orders.ts, sendDocument в channels/telegram/deliver.ts) — человеческого имени файла нет, функции и теста нет
-- подставляет запасное имя, если после очистки ничего не осталось — v2 отдаёт файл по подписанной ссылке на ключ Storage (signedFileUrl в core/orders/orders.ts, sendDocument в channels/telegram/deliver.ts) — человеческого имени файла нет, функции и теста нет
-- без расширения в пути хранилища возвращает имя как есть — v2 отдаёт файл по подписанной ссылке на ключ Storage (signedFileUrl в core/orders/orders.ts, sendDocument в channels/telegram/deliver.ts) — человеческого имени файла нет, функции и теста нет
+- дописывает расширение из storagePath к человеческому имени — расхождение: в v2 нет человеческого имени файла при выдаче — sendDocument (channels/telegram/deliver.ts) отдаёт подписанную ссылку на ключ Storage, Telegram называет файл по ключу (например 1782643012614-ni1xub.pdf); функции downloadFileName нет
+- не дублирует расширение, если оно уже есть в имени — расхождение: в v2 нет человеческого имени файла при выдаче — sendDocument (channels/telegram/deliver.ts) отдаёт подписанную ссылку на ключ Storage, Telegram называет файл по ключу (например 1782643012614-ni1xub.pdf); функции downloadFileName нет
+- заменяет запрещённые в именах файлов символы на пробел — расхождение: в v2 нет человеческого имени файла при выдаче — sendDocument (channels/telegram/deliver.ts) отдаёт подписанную ссылку на ключ Storage, Telegram называет файл по ключу (например 1782643012614-ni1xub.pdf); функции downloadFileName нет
+- схлопывает повторные пробелы и обрезает края — расхождение: в v2 нет человеческого имени файла при выдаче — sendDocument (channels/telegram/deliver.ts) отдаёт подписанную ссылку на ключ Storage, Telegram называет файл по ключу (например 1782643012614-ni1xub.pdf); функции downloadFileName нет
+- обрезает слишком длинное имя до 80 символов основы — расхождение: в v2 нет человеческого имени файла при выдаче — sendDocument (channels/telegram/deliver.ts) отдаёт подписанную ссылку на ключ Storage, Telegram называет файл по ключу (например 1782643012614-ni1xub.pdf); функции downloadFileName нет
+- подставляет запасное имя, если после очистки ничего не осталось — расхождение: в v2 нет человеческого имени файла при выдаче — sendDocument (channels/telegram/deliver.ts) отдаёт подписанную ссылку на ключ Storage, Telegram называет файл по ключу (например 1782643012614-ni1xub.pdf); функции downloadFileName нет
+- без расширения в пути хранилища возвращает имя как есть — расхождение: в v2 нет человеческого имени файла при выдаче — sendDocument (channels/telegram/deliver.ts) отдаёт подписанную ссылку на ключ Storage, Telegram называет файл по ключу (например 1782643012614-ni1xub.pdf); функции downloadFileName нет
 
 ### `tests/payment-proof.test.ts`
 
-- accepts jpeg/png/pdf with matching magic bytes — attachPaymentProof (core/orders/orders.ts) не сверяет сигнатуру файла чека; проверки и теста нет
-- rejects empty files, spoofed mime types and oversized payloads — attachPaymentProof не отвергает пустой, подменённый по mime и слишком большой чек; проверки и теста нет
-
-### `tests/pricing.test.ts`
-
-- для Казахстана берёт ручную цену, а не основную — resolveListPrice (src/core/pricing/pricing.ts) — ручная цена страны, теста нет
-- для России считает по курсу и показывает рубли — resolveListPrice (src/core/pricing/pricing.ts) — конвертация в валюту страны, теста нет
-- при неизвестной стране считает по домашней стране продавца — resolveListPrice (src/core/pricing/pricing.ts) — страна не выбрана → домашняя, теста нет
-- товар без цен по странам считается по курсу от основной — resolveListPrice (src/core/pricing/pricing.ts) — товар без country_prices, теста нет
-- страна без реквизитов не роняет расчёт — resolveListPrice (src/core/pricing/pricing.ts) — страна без реквизитов, теста нет
-- курс недоступен (convertAmount вернул null) — откатывается на базовую цену — resolveListPrice (src/core/pricing/pricing.ts) — откат при отсутствии курса, теста нет
-- игнорирует ручную цену страны и конвертацию — всегда база — resolveListPrice (src/core/pricing/pricing.ts) — без multi_currency всегда база, теста нет
-- подставляет цену варианта вместо базовой products.price — resolveListPrice (src/core/pricing/pricing.ts) — цена варианта, теста нет
-- курс всё ещё применяется к цене варианта для другой страны — resolveListPrice (src/core/pricing/pricing.ts) — конвертация цены варианта, теста нет
-- ручная цена страны (country_prices) для варианта не ищется — сознательный обход — resolveListPrice (src/core/pricing/pricing.ts) — обход ручной цены для варианта, теста нет
-- без модуля multi_currency — тоже цена варианта, без конвертации — resolveListPrice (src/core/pricing/pricing.ts) — вариант без multi_currency, теста нет
-- для домашней страны продавца — без конвертации — zoneFee (src/core/fulfillment/fulfillment.ts) — домашняя страна, теста нет
-- для другой страны — конвертирует по курсу, а не просто меняет ярлык — zoneFee (src/core/fulfillment/fulfillment.ts) — конвертация комиссии, теста нет
-- страна ещё не выбрана — считает по домашней стране продавца — zoneFee (src/core/fulfillment/fulfillment.ts) — страна не выбрана, теста нет
-- страна без реквизитов — остаётся домашняя валюта, число не выдумывается — zoneFee (src/core/fulfillment/fulfillment.ts) — страна без реквизитов, теста нет
-- курс недоступен (convertAmount вернул null) — откатывается на домашнюю валюту — zoneFee (src/core/fulfillment/fulfillment.ts) — откат при отсутствии курса, теста нет
-- без модуля multi_currency — всегда домашняя валюта, независимо от страны — zoneFee (src/core/fulfillment/fulfillment.ts) — без multi_currency, теста нет
+- accepts jpeg/png/pdf with matching magic bytes — расхождение: attachPaymentProof (src/core/orders/orders.ts) не сверяет сигнатуру файла чека с mime, расширение выводится из mime/имени
+- rejects empty files, spoofed mime types and oversized payloads — расхождение: attachPaymentProof не отвергает пустой файл, подменённый mime и файл больше 20 МБ (пустой и >20 МБ режет только downloadAttachment Zernio; путь Telegram и подмена mime не проверяются)
 
 ### `tests/product-materials.test.ts`
 
-- не путает языки — включая новые en/uz, не только ru/kk — materialsForProduct проверен только на ru/kk, en/uz без теста
-- у товара без файлов не выдумывает материал — materialsForProduct({}) и null — теста нет
-- считает так же, как снимок, по всем 4 языкам — productSellable проверен только на file_path; uz-only и строка без пути — без теста
-- откатывается на старые ru/kk снимки, если карты по языкам нет — itemMaterials (core/orders/pure.ts) не читает material_files_snapshot/material_files_kz_snapshot — старые заказы без карты по языкам не выдадутся; теста нет
-- откатывается на совсем старые одиночные *_snapshot-колонки — откат itemMaterials на file_*_snapshot есть, теста нет
-- en/uz не имеют legacy-отката — пусто, если карты по языкам нет — itemMaterials для en/uz без карты — теста нет
-- берёт первый непустой язык по порядку ru→kk→en→uz — порядок языков itemLanguages (core/orders/pure.ts) без теста
-- пусто, если ни в одном языке ничего нет — itemLanguages для позиции без файлов — теста нет
-
-### `tests/receipt-ocr-auto.test.ts`
-
-- без ключа и с true — автопроверка включена — receiptOcrAutoEnabled в src/core/receipts/verify.server.ts (нет ключа — включено) без теста
-- явное false выключает автопроверку — receiptOcrAutoEnabled в src/core/receipts/verify.server.ts (false выключает) без теста
-- тумблер включён — читаем чек даже без proof_auto (KZ до кнопки реквизитов) — вход в OCR по тумблеру в handle-update.ts и zernio/shop.server.ts без теста
-- тумблер выключен и нет proof_auto — обычный заказ, OCR нет — вход в OCR по тумблеру в handle-update.ts и zernio/shop.server.ts без теста
-- без ключа и с true — автопроверка включена #2 — receiptOcrAutoEnabled в src/core/receipts/verify.server.ts (нет ключа — включено) без теста
-- явное false выключает автопроверку #2 — receiptOcrAutoEnabled в src/core/receipts/verify.server.ts (false выключает) без теста
+- откатывается на старые ru/kk снимки, если карты по языкам нет — расхождение: itemMaterials (core/orders/pure.ts) не читает material_files_snapshot / material_files_kz_snapshot — после пустой/отсутствующей material_files_by_lang сразу идёт на одиночные file_*_snapshot; старые заказы с несколькими файлами без карты по языкам выдадутся не полностью или не выдадутся
 
 ### `tests/receipt-verify.test.ts`
 
-- переплата на 30% проходит — граница ровно +30% в findMatchingAmount (src/core/receipts/pure.ts) не проверена
-- константы соответствуют документированным значениям — UNDERPAY_TOLERANCE/OVERPAY_TOLERANCE в src/core/receipts/pure.ts без теста
-- если в чеке ожидаемая валюта — берём её, даже когда рядом другая — detectReceiptCurrencies и правило «своя валюта есть — не конфликт» в src/core/receipts/pure.ts без теста
-- только чужая валюта — возвращаем её — detectReceiptCurrencies в src/core/receipts/pure.ts без теста
-- нет маркеров — null — detectReceiptCurrencies в src/core/receipts/pure.ts без теста
-- чек без упоминания какой-либо валюты — не конфликт (доверяем сумме, как раньше) — analyzeReceiptText без валюты в тексте не проверен
-- валюта вне списка известных — не блокируем — analyzeReceiptText с валютой вне CURRENCY_MARKERS не проверен
-- без ожидаемой валюты — не проверяем вообще — analyzeReceiptText без currency не проверен
-- одинаковые байты — одинаковый хеш — sha256 чека считается внутри verifyReceipt (verify.server.ts), теста нет
-- разные байты — разный хеш — sha256 чека считается внутри verifyReceipt (verify.server.ts), теста нет
-- успешный чек с оговоркой «в случае ошибки» не считается отказом — looksLikeFailedPayment на успешном чеке с оговоркой не проверен
-- payment_failed просим переслать, а не кладём в ручную выдачу — isRetryReason в src/core/receipts/pure.ts без теста
-- случайный текст без маркеров — не похоже — looksLikeReceipt на длинном тексте без маркеров не проверен (в тесте только короткое «привет»)
-- карточка товара с «в корзине» — не чек, даже если сумма та же — looksLikeShopScreenNotReceipt на карточке товара («в корзине») не проверен
-- настоящий чек не режется, даже если сверху попал текст бота — смешанный текст (скрин бота + фискальный чек) в looksLikeShopScreenNotReceipt не проверен
-- ВТБ: сумма операции 228 ₽ и выплата 1101.24 KZT, не телефон и не дата — extractMoneyAmounts на чеке ВТБ (1101.24 KZT и 228 ₽) не проверен
-- Сбер: сумма в местной валюте 1077.30 KZT — extractMoneyAmounts на «сумма в местной валюте» не проверен
-- Сбер: 661.50 и 1072.58 KZT тоже читаются — extractMoneyAmounts на «сумма в местной валюте» не проверен
-- голое 1900 тоже сумма, не год — extractMoneyAmounts на сумме без валюты («Оплата 1900») не проверен
-- экран «Платёж выполнен» 227 ₽ — extractMoneyAmounts на 227 ₽ с телефоном рядом не проверен
-- на смешанном чеке в KZT остаётся выплата, не рубли — amountsForCurrency на смешанном чеке KZT/RUB не проверен
-- чек уже принят по другому заказу — receipt_reused, автовыдачи нет — verifyReceipt в src/core/receipts/verify.server.ts без теста (receipt_reused)
-- чек новый (нет совпадения по хешу) — автовыдача, proofHash в результате — verifyReceipt в src/core/receipts/verify.server.ts без теста (хеш чека в результате)
-- успешный чек с фразой «в случае ошибки» — автовыдача — analyzeReceiptText на успешном чеке с «в случае ошибки» не проверен
-- чек с тенге и рублями — находит 1101.24 KZT под заказ 1100 ₸ — analyzeReceiptText на смешанном чеке KZT/RUB не проверен
-- на экране только 227 ₽ — переводим заказ 1100 ₸ и принимаем — v2 не переводит сумму заказа по курсу, чек в чужой валюте уходит в currency_mismatch (src/core/receipts/pure.ts), кода и теста нет
-- Сбер «местная валюта» 1077.30 KZT на заказ 228 ₽ — принимаем (спред банка ~10%) — v2 не переводит сумму заказа по курсу, чек в чужой валюте уходит в currency_mismatch (src/core/receipts/pure.ts), кода и теста нет
-- Сбер 661.50 KZT на заказ 152 ₽ — ~17% ниже mid-market, в допуске ±30% — v2 не переводит сумму заказа по курсу, чек в чужой валюте уходит в currency_mismatch (src/core/receipts/pure.ts), кода и теста нет
-- Сбер ~50% ниже mid-market — всё ещё к продавцу — v2 не переводит сумму заказа по курсу, чек в чужой валюте уходит в currency_mismatch (src/core/receipts/pure.ts), кода и теста нет
-- скрин карточки товара вместо чека — не принимаем — analyzeReceiptText на карточке товара не проверен
-- чек в другой валюте — переводим сумму заказа и сверяем — v2 не переводит сумму заказа по курсу, чек в чужой валюте уходит в currency_mismatch (src/core/receipts/pure.ts), кода и теста нет
-- чек в другой валюте, сумма после курса не сошлась — amount_mismatch — v2 не переводит сумму заказа по курсу, чек в чужой валюте уходит в currency_mismatch (src/core/receipts/pure.ts), кода и теста нет
-- PDF идёт в files:annotate и проходит ту же сверку суммы — verifyReceipt в src/core/receipts/verify.server.ts без теста (PDF через files:annotate и текст из PDF)
-- картинка по-прежнему идёт в images:annotate — verifyReceipt в src/core/receipts/verify.server.ts без теста (картинка через images:annotate)
+- на экране только 227 ₽ — переводим заказ 1100 ₸ и принимаем — расхождение: v2 не переводит сумму заказа по курсу — чек в чужой валюте без своей уходит в currency_mismatch (analyzeReceiptText, src/core/receipts/pure.ts), продавцу на ручную проверку, а не в автовыдачу
+- Сбер «местная валюта» 1077.30 KZT на заказ 228 ₽ — принимаем (спред банка ~10%) — расхождение: v2 не переводит сумму заказа по курсу — чек в чужой валюте без своей уходит в currency_mismatch (analyzeReceiptText, src/core/receipts/pure.ts), продавцу на ручную проверку, а не в автовыдачу
+- Сбер 661.50 KZT на заказ 152 ₽ — ~17% ниже mid-market, в допуске ±30% — расхождение: v2 не переводит сумму заказа по курсу — чек в чужой валюте без своей уходит в currency_mismatch (analyzeReceiptText, src/core/receipts/pure.ts), продавцу на ручную проверку, а не в автовыдачу
+- чек в другой валюте — переводим сумму заказа и сверяем — расхождение: v2 не переводит сумму заказа по курсу — чек в чужой валюте без своей уходит в currency_mismatch (analyzeReceiptText, src/core/receipts/pure.ts), продавцу на ручную проверку, а не в автовыдачу
+- чек в другой валюте, сумма после курса не сошлась — amount_mismatch — расхождение: v2 не переводит сумму заказа по курсу — чек в чужой валюте без своей уходит в currency_mismatch (analyzeReceiptText, src/core/receipts/pure.ts), продавцу на ручную проверку, а не в автовыдачу; итог «к продавцу» тот же, но причина currency_mismatch, а не amount_mismatch
 
 ### `tests/reviews-server.test.ts`
 
@@ -582,14 +432,6 @@
 
 - округляет и не выходит за границы 1..5 — starsForRating проверен только сверху (9), округление и нижняя граница нет
 
-### `tests/robokassa.test.ts`
-
-- считает обычный MD5 в hex, как ждёт Robokassa — md5Hex не сверяется с известным хешем, тест v2 считает ожидание той же функцией
-- IsTest=1 только когда явно попросили — buildPaymentUrl проверен только с testMode=true, IsTest=0 не проверен
-- отклоняет, если сумма в подписи не совпадает с переданной — verifyResultSignature с другой суммой не проверен
-- учитывает Shp_-параметры отсортированными по ключу, как того требует протокол — сортировка нескольких Shp_ в verifyResultSignature не проверена (в тесте один Shp_bot)
-- NaN от нечислового OutSum не считается прошедшей проверку суммы — сверка суммы в src/routes/api/robokassa.$botId.$action.ts без теста
-
 ### `tests/smart-search.test.ts`
 
 - пустой список ids — пустой результат — parseSmartSearchIds на пустом массиве ids не проверен
@@ -599,15 +441,15 @@
 
 ### `tests/telegram-webapp-init-data.test.ts`
 
-- читает tgWebAppData из hash Mini App — v2 берёт initData только из Telegram.WebApp (useTelegramWebApp в src/app/storefront/cart.tsx), запасного чтения launch params нет, теста нет
-- читает tgWebAppData из query string — v2 берёт initData только из Telegram.WebApp (useTelegramWebApp в src/app/storefront/cart.tsx), запасного чтения launch params нет, теста нет
-- собирает значение, если внутренний query не закодирован целиком — v2 берёт initData только из Telegram.WebApp (useTelegramWebApp в src/app/storefront/cart.tsx), запасного чтения launch params нет, теста нет
-- пустой hash — пустая строка — v2 берёт initData только из Telegram.WebApp (useTelegramWebApp в src/app/storefront/cart.tsx), запасного чтения launch params нет, теста нет
-- берёт tgWebAppData из JSON, который пишет telegram-web-app.js — v2 берёт initData только из Telegram.WebApp (useTelegramWebApp в src/app/storefront/cart.tsx), запасного чтения launch params нет, теста нет
-- игнорирует битый JSON — v2 берёт initData только из Telegram.WebApp (useTelegramWebApp в src/app/storefront/cart.tsx), запасного чтения launch params нет, теста нет
-- разбирает сохранённый hash+search — v2 берёт initData только из Telegram.WebApp (useTelegramWebApp в src/app/storefront/cart.tsx), запасного чтения launch params нет, теста нет
-- предпочитает SDK, затем capture, затем hash — v2 берёт initData только из Telegram.WebApp (useTelegramWebApp в src/app/storefront/cart.tsx), запасного чтения launch params нет, теста нет
-- захватывает launch params до SDK и не просит закрыть окно — v2 берёт initData только из Telegram.WebApp (useTelegramWebApp в src/app/storefront/cart.tsx), запасного чтения launch params нет, теста нет
+- читает tgWebAppData из hash Mini App — расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет
+- читает tgWebAppData из query string — расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет
+- собирает значение, если внутренний query не закодирован целиком — расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет
+- пустой hash — пустая строка — расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет
+- берёт tgWebAppData из JSON, который пишет telegram-web-app.js — расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет
+- игнорирует битый JSON — расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет
+- разбирает сохранённый hash+search — расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет
+- предпочитает SDK, затем capture, затем hash — расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет
+- захватывает launch params до SDK и не просит закрыть окно — расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет
 
 ### `tests/tenant-isolation.test.ts`
 
@@ -615,11 +457,6 @@
 - ключ арендатора видит только своих покупателей — изоляция bot_users под tenantDb в живом тесте v2 не проверяется
 - служебные таблицы панели арендатору недоступны — закрытость bot_events, operator_broadcasts, operator_login_attempts для роли арендатора в v2 не проверяется
 - подделанная подпись не принимается — jwt.test.ts проверяет подпись только локально (verifyTenantJwt), отказ базы на поддельный ключ не проверяется
-
-### `tests/web-storefront-handoff.test.ts`
-
-- совпадает с форматом deep link — префикс wc_ (HANDOFF_PREFIX в core/storefront/handoff.ts) и разбор его в handle-update.ts тестом не закреплены
-- quantity по умолчанию 1 в типе — parseHandoffItems (core/storefront/handoff.ts) подставляет 1 и режет 1..99, теста нет
 
 ### `tests/whatsapp-activation.test.ts`
 
@@ -634,16 +471,10 @@
 
 ### `tests/whatsapp-catalog.test.ts`
 
-- корень разбирается в parentId = null — CAT:<id>:<offset> разбирается прямо в handlePostback (shop.server.ts), пустой id корня передаётся как "", не null; теста нет
-- категория и смещение читаются как есть — разбор CAT:<id>:<offset> в handlePostback (shop.server.ts) без теста
-- отсутствующее или битое смещение — это ноль, а не NaN — Number(b)\|\|0 в handlePostback (shop.server.ts) пропускает отрицательное смещение, теста нет
-- чужие постбэки не перехватываются — разбор postback в handlePostback (shop.server.ts) по head без теста
-- «Назад» из категории ведёт к её родителю, а не к ней самой — в v2 «Назад» из раздела шлёт CATALOG (в корень, shop.server.ts), к родителю не ведёт; теста нет
-- страница оставляет место под «Назад» и «Ещё» — WA_LIST_PAGE = WA_LIST_MAX_ROWS - 3 (shop-flow.ts), теста, что навигация не вытесняет товары, нет
-- короткому названию описание — просто цена — в списке WhatsApp описание строки — только цена (shop.server.ts), функции rowSubtitle и теста нет
-- длинное название продолжается в описании — там товары и расходятся — хвост длинного названия в описание строки WhatsApp не переносится (shop.server.ts ставит только цену), похожие товары неразличимы
-- цена дописывается, когда остаётся место — rowSubtitle в v2 нет, описание строки — только цена
-- не влезает вместе — хвост названия важнее цены — rowSubtitle в v2 нет, хвост названия в описание не попадает
+- отсутствующее или битое смещение — это ноль, а не NaN — расхождение: handlePostback (shop.server.ts) берёт Number(b)\|\|0 — отсутствующее и нечисловое смещение дают 0, но отрицательное проходит: CAT:<id>:-5 показывает пустую страницу (cats.slice(-5, 2)) только с «Ещё»/«Корзиной»/«Назад»
+- «Назад» из категории ведёт к её родителю, а не к ней самой — расхождение: «Назад» из раздела в showCatalog/showProductList (shop.server.ts) всегда шлёт CATALOG — в корень, а не к родителю; из раздела второго уровня покупатель выпадает на верх каталога
+- длинное название продолжается в описании — там товары и расходятся — расхождение: rowSubtitle в v2 нет — описание строки товара WhatsApp всегда только цена (showProductList, shop.server.ts), хвост длинного названия обрезается clipRowTitle, и «034. Декор на дверь к 1…»/«035. …» неразличимы
+- не влезает вместе — хвост названия важнее цены — расхождение: rowSubtitle в v2 нет — описание строки всегда цена, хвост названия туда не попадает ни при каком месте
 
 ### `tests/zernio-account-disconnected.test.ts`
 
@@ -656,12 +487,6 @@
 
 - calls the JSON API even when Vercel contains only the Zernio host — что запросы (connect.server.ts, api.server.ts) идут по нормализованному адресу, тестом не проверено
 - reports a useful configuration error for an HTML response — ошибка «Проверьте ZERNIO_BASE_URL» на HTML-ответ в api.server.ts без теста
-
-### `tests/zernio-inbox-order.test.ts`
-
-- ответ от новых к старым разворачивается в хронологический — сортировка переписки по времени в api.server.ts без теста
-- ответ уже в хронологическом порядке не портится — сортировка переписки по времени в api.server.ts без теста
-- последним оказывается самое свежее — его и проверяет защита — что последним в переписке идёт самое свежее (api.server.ts) для защиты менеджера, тестом не проверено
 
 ### `tests/zernio-logs-retention.test.ts`
 

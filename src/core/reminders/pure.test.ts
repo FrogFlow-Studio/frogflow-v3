@@ -24,6 +24,17 @@ describe("isFulfillmentReminderEligible", () => {
     expect(isFulfillmentReminderEligible(new Date(now.getTime() - H), now, null)).toBe(false);
     expect(isFulfillmentReminderEligible(new Date(now.getTime() + 2 * H), now, now)).toBe(false);
   });
+
+  it("дата получения ровно через 24 часа — на границе, ещё считается", () => {
+    expect(isFulfillmentReminderEligible(new Date(now.getTime() + 24 * H), now, null)).toBe(true);
+    expect(isFulfillmentReminderEligible(new Date(now.getTime() + 24 * H + 1), now, null)).toBe(
+      false,
+    );
+  });
+
+  it("дата получения прямо сейчас — уже не будущее, не напоминаем", () => {
+    expect(isFulfillmentReminderEligible(new Date(now.getTime()), now, null)).toBe(false);
+  });
 });
 
 describe("parseReminderHours", () => {
