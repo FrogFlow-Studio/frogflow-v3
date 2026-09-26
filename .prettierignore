@@ -11,3 +11,5 @@ docs/v1-admin-inventory.md
 docs/v1-runtime-inventory.md
 docs/inherited-knowledge.md
 docs/READINESS.md
+test-results
+playwright-report

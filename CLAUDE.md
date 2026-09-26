@@ -53,4 +53,7 @@ FrogFlow v2 — переписывание платформы из `FrogFlow/fro
 ```bash
 npm run check       # lint + typecheck + test
 npm run build       # typecheck + vite build (Nitro, Vercel preset)
+
+# Сквозной прогон в браузере (Playwright) против подставной базы, как в CI:
+NITRO_PRESET=node-server npx vite build && npm run e2e
 ```

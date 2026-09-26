@@ -5,7 +5,8 @@
     "tests/**/*.ts",
     "scripts/**/*.ts",
     "vite.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "playwright.config.ts"
   ],
   "compilerOptions": {
     "target": "ES2022",

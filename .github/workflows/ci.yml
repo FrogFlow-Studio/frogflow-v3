@@ -35,3 +35,27 @@ jobs:
       - run: npx vite build
         env:
           APP_URL: https://ci.invalid
+
+  # Сквозной прогон в браузере: собранное приложение против подставной базы
+  # (tests/e2e/supabase-stub.ts) — ключи настоящей базы здесь не нужны.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npx playwright install --with-deps chromium
+      - run: npx vite build
+        env:
+          NITRO_PRESET: node-server
+          APP_URL: https://ci.invalid
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results
+          retention-days: 7

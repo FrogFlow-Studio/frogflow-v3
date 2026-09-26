@@ -36,7 +36,14 @@ export default tseslint.config(
     },
   },
   {
-    files: ["src/config/**", "vite.config.ts", "vitest.config.ts", "tests/**", "src/**/*.test.ts"],
+    files: [
+      "src/config/**",
+      "vite.config.ts",
+      "vitest.config.ts",
+      "playwright.config.ts",
+      "tests/**",
+      "src/**/*.test.ts",
+    ],
     rules: { "no-restricted-syntax": "off" },
   },
   {
