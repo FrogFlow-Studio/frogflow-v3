@@ -17,6 +17,7 @@ import * as consultant from "./admin/consultant";
 import * as analytics from "./admin/analytics";
 import * as chat from "./admin/chat";
 import * as outbox from "./admin/outbox";
+import * as quiz from "./admin/quiz";
 
 const baseRu = {
   // навигация и оболочка
@@ -36,6 +37,7 @@ const baseRu = {
   "nav.settings": "Оплата и настройки",
   "nav.modules": "Модули",
   "nav.undelivered": "Не доставлено",
+  "nav.quiz": "Квиз-подбор",
   "nav.logout": "Выйти",
   "nav.paused": "пауза",
   "nav.language": "Язык панели",
@@ -257,6 +259,7 @@ const ru = {
   ...analytics.ru,
   ...chat.ru,
   ...outbox.ru,
+  ...quiz.ru,
 } as const;
 
 export type AdminKey = keyof typeof ru;
@@ -279,6 +282,7 @@ const baseKk: Dict = {
   "nav.settings": "Төлем және баптаулар",
   "nav.modules": "Модульдер",
   "nav.undelivered": "Жеткізілмеді",
+  "nav.quiz": "Квиз-таңдау",
   "nav.logout": "Шығу",
   "nav.paused": "кідіріс",
   "nav.language": "Панель тілі",
@@ -494,6 +498,7 @@ const baseEn: Dict = {
   "nav.settings": "Payment & settings",
   "nav.modules": "Modules",
   "nav.undelivered": "Undelivered",
+  "nav.quiz": "Product quiz",
   "nav.logout": "Log out",
   "nav.paused": "paused",
   "nav.language": "Panel language",
@@ -709,6 +714,7 @@ const baseUz: Dict = {
   "nav.settings": "To‘lov va sozlamalar",
   "nav.modules": "Modullar",
   "nav.undelivered": "Yetkazilmagan",
+  "nav.quiz": "Kviz-tanlash",
   "nav.logout": "Chiqish",
   "nav.paused": "pauza",
   "nav.language": "Panel tili",
@@ -922,6 +928,7 @@ const kk: Dict = {
   ...analytics.kk,
   ...chat.kk,
   ...outbox.kk,
+  ...quiz.kk,
 };
 
 const en: Dict = {
@@ -936,6 +943,7 @@ const en: Dict = {
   ...analytics.en,
   ...chat.en,
   ...outbox.en,
+  ...quiz.en,
 };
 
 const uz: Dict = {
@@ -950,6 +958,7 @@ const uz: Dict = {
   ...analytics.uz,
   ...chat.uz,
   ...outbox.uz,
+  ...quiz.uz,
 };
 
 const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };

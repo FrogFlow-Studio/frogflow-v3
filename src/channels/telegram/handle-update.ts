@@ -167,6 +167,7 @@ function mainMenu(b: Bot) {
     [{ text: def.locales[b.locale].contactBtn }],
   ];
   const t = b.ctx.tenant;
+  if (t.modules.quiz) keyboard.splice(1, 0, [{ text: m.quizBtn }]);
   if (t.modules.telegram_mini_app && t.modules.shop) {
     keyboard.unshift([
       { text: "🛍 Магазин", web_app: { url: `${b.ctx.appUrl}/s/${t.settings.slug ?? t.id}` } },
@@ -471,6 +472,8 @@ async function applyLocale(b: Bot, locale: Locale) {
 
 async function menuAction(b: Bot, action: ReturnType<typeof menuActionFor>) {
   switch (action) {
+    case "quiz":
+      return b.ctx.tenant.modules.quiz ? quizAsk(b, 0, true) : showCategories(b, null, 0);
     case "catalog":
       return showCategories(b, null, 0);
     case "search":
@@ -561,6 +564,52 @@ async function showCategories(b: Bot, parentId: string | null, offset: number) {
     if (back) nav.push([{ ...back[0]!, text: b.m.backToCategories }]);
   }
   if (nav.length) await send(b, b.m.navigation, { reply_markup: { inline_keyboard: nav } });
+}
+
+/** Квиз: вопрос номер q; ответы копятся в state.quiz_tags до результата. */
+async function quizAsk(b: Bot, q: number, fresh = false): Promise<void> {
+  const { loadQuiz } = await import("@/core/quiz/quiz");
+  const quiz = await loadQuiz(b.ctx);
+  if (!quiz.questions.length) {
+    await send(b, b.m.quizNotReady, {
+      reply_markup: { inline_keyboard: [[{ text: b.m.catalog, callback_data: "cat:root" }]] },
+    });
+    return;
+  }
+  if (fresh) {
+    b.customer = await setState(b.ctx, b.customer, { ...b.customer.state, quiz_tags: [] });
+    if (quiz.intro) await send(b, escapeHtml(quiz.intro));
+  }
+  const question = quiz.questions[q];
+  if (!question) return quizFinish(b);
+  await send(b, `<b>${q + 1}/${quiz.questions.length}.</b> ${escapeHtml(question.text)}`, {
+    reply_markup: {
+      inline_keyboard: question.options.map((o, i) => [
+        { text: o.label, callback_data: `quiz:${q}:${i}` },
+      ]),
+    },
+  });
+}
+
+async function quizFinish(b: Bot): Promise<void> {
+  const { quizResult } = await import("@/core/quiz/quiz");
+  const tags = Array.isArray(b.customer.state.quiz_tags)
+    ? (b.customer.state.quiz_tags as string[])
+    : [];
+  const found = await quizResult(b.ctx, tags);
+  if (!found.length) {
+    await send(b, b.m.quizNothing, {
+      reply_markup: { inline_keyboard: [[{ text: b.m.catalog, callback_data: "cat:root" }]] },
+    });
+    return;
+  }
+  await send(b, b.m.quizResult, {
+    reply_markup: {
+      inline_keyboard: found.map((p) => [
+        { text: p.name.slice(0, 60), callback_data: `prod:${p.id}` },
+      ]),
+    },
+  });
 }
 
 /** Кнопка «Сообщить о поступлении» — только с модулем waitlist. */
@@ -1541,6 +1590,24 @@ async function handleCallback(
   if (data.startsWith("cat:")) {
     const [, id = "root", off = "0"] = data.split(":");
     return showCategories(b, id === "root" ? null : id, Number(off) || 0);
+  }
+  if (data.startsWith("quiz:") && ctx.tenant.modules.quiz) {
+    const [, qRaw, oRaw] = data.split(":");
+    const q = Number(qRaw);
+    const { loadQuiz } = await import("@/core/quiz/quiz");
+    const option = (await loadQuiz(ctx)).questions[q]?.options[Number(oRaw)];
+    if (!option) return quizAsk(b, 0, true);
+    const prev =
+      q === 0
+        ? []
+        : Array.isArray(customer.state.quiz_tags)
+          ? (customer.state.quiz_tags as string[])
+          : [];
+    b.customer = await setState(ctx, customer, {
+      ...customer.state,
+      quiz_tags: [...prev, ...option.tags],
+    });
+    return quizAsk(b, q + 1);
   }
   if (data.startsWith("wait:") && ctx.tenant.modules.waitlist) {
     const { joinWaitlist } = await import("@/core/waitlist/waitlist");

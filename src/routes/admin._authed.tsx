@@ -63,6 +63,7 @@ function Layout() {
           <NavLink to="/admin/consultant">{t("nav.consultant")}</NavLink>
           {shop.modules.instagram && <NavLink to="/admin/instagram">{t("nav.instagram")}</NavLink>}
           {shop.modules.vip && <NavLink to="/admin/vip">{t("nav.vip")}</NavLink>}
+          {shop.modules.quiz && <NavLink to="/admin/quiz">{t("nav.quiz")}</NavLink>}
           {shop.undelivered > 0 && (
             <NavLink to="/admin/undelivered">
               <span className="flex items-center justify-between gap-2">

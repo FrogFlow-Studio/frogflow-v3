@@ -29,6 +29,11 @@ export type Msg = {
   waitlistBtn: string;
   /** Апсейл (модуль upsell): «С этим берут». */
   upsellHeader: string;
+  /** Квиз-подбор (модуль quiz). */
+  quizBtn: string;
+  quizResult: string;
+  quizNothing: string;
+  quizNotReady: string;
   /** Telegram Stars. */
   payViaStarsBtn: (stars: number) => string;
   starsInvoiceTitle: (no: number) => string;
@@ -206,6 +211,10 @@ const ru: Msg = {
   outOfStockLabel: "❌ Нет в наличии",
   waitlistBtn: "🔔 Сообщить о поступлении",
   upsellHeader: "✨ С этим часто берут:",
+  quizBtn: "🧩 Подобрать товар",
+  quizResult: "Вот что вам подойдёт:",
+  quizNothing: "Точного совпадения не нашлось — загляните в каталог.",
+  quizNotReady: "Подбор ещё не настроен — загляните в каталог.",
   payViaStarsBtn: (n) => `⭐ Оплатить звёздами (${n})`,
   starsInvoiceTitle: (no) => `Заказ #${no}`,
   starsInvoiceDesc: "Оплата заказа звёздами Telegram",
@@ -338,6 +347,10 @@ const kk: Msg = {
   ...ru,
   waitlistBtn: "🔔 Түскенде хабарлау",
   upsellHeader: "✨ Мұнымен бірге жиі алады:",
+  quizBtn: "🧩 Тауар таңдау",
+  quizResult: "Сізге мыналар сәйкес келеді:",
+  quizNothing: "Дәл сәйкестік табылмады — каталогқа қараңыз.",
+  quizNotReady: "Таңдау әлі бапталмаған — каталогқа қараңыз.",
   payViaStarsBtn: (n) => `⭐ Жұлдыздармен төлеу (${n})`,
   starsInvoiceTitle: (no) => `Тапсырыс #${no}`,
   starsInvoiceDesc: "Тапсырысты Telegram жұлдыздарымен төлеу",
@@ -419,6 +432,10 @@ const en: Msg = {
   ...ru,
   waitlistBtn: "🔔 Notify me when available",
   upsellHeader: "✨ Often bought together:",
+  quizBtn: "🧩 Find a product",
+  quizResult: "Here is what suits you:",
+  quizNothing: "No exact match — have a look at the catalog.",
+  quizNotReady: "The picker is not set up yet — have a look at the catalog.",
   payViaStarsBtn: (n) => `⭐ Pay with Stars (${n})`,
   starsInvoiceTitle: (no) => `Order #${no}`,
   starsInvoiceDesc: "Paying for the order with Telegram Stars",
@@ -519,6 +536,10 @@ const uz: Msg = {
   ...ru,
   waitlistBtn: "🔔 Kelganda xabar berish",
   upsellHeader: "✨ Bu bilan ko‘pincha olishadi:",
+  quizBtn: "🧩 Mahsulot tanlash",
+  quizResult: "Sizga mos keladiganlari:",
+  quizNothing: "Aniq moslik topilmadi — katalogga qarang.",
+  quizNotReady: "Tanlash hali sozlanmagan — katalogga qarang.",
   payViaStarsBtn: (n) => `⭐ Yulduzlar bilan to‘lash (${n})`,
   starsInvoiceTitle: (no) => `Buyurtma #${no}`,
   starsInvoiceDesc: "Buyurtmani Telegram yulduzlari bilan to‘lash",
@@ -590,7 +611,7 @@ const uz: Msg = {
 export const COPY: Record<Locale, Msg> = { ru, kk, en, uz };
 
 export type MenuAction =
-  "catalog" | "search" | "cart" | "myOrders" | "instruction" | "information" | "contact";
+  "catalog" | "search" | "cart" | "myOrders" | "instruction" | "information" | "contact" | "quiz";
 
 /** Текст кнопки меню на любом языке → каноническое действие. */
 export function menuActionFor(
@@ -606,6 +627,7 @@ export function menuActionFor(
     if (t === m.myOrders) return "myOrders";
     if (t === m.instruction) return "instruction";
     if (t === m.information) return "information";
+    if (t === m.quizBtn) return "quiz";
   }
   if (contactLabels.includes(t)) return "contact";
   return undefined;
