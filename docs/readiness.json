@@ -16,7 +16,7 @@
     "fix(consultant): bill the cached prompt, and hold the cache for an hour": "open: engine.server.ts считает cache_creation и cache_read в расход, но теста нет; TTL кеша 5 минут",
     "fix(consultant): treat a blank quantity in a stock report as \"not in stock\"": "drop: импорт остатков 1С консультанта BOVI; в v2 общий импорт CSV (core/catalog/import.ts)",
     "fix(consultant): read the real 1C price export instead of importing nothing": "drop: импорт прайса 1С консультанта BOVI; в v2 общий импорт CSV (core/catalog/import.ts)",
-    "fix(consultant): stop losing knowledge base and store info writes": "open: setSetting (core/settings/settings.ts) не читает error у update/insert — отказ записи молча выглядит успехом, теста нет",
+    "fix(consultant): stop losing knowledge base and store info writes": "src/core/settings/settings.test.ts › база отказала во вставке — честная ошибка продавцу и отчёт в Sentry",
     "fix(consultant): make it structurally impossible to quote the VTB sell rate": "drop: курс ВТБ/НБРК консультанта BOVI; в v2 общий консультант без курсов",
     "fix(consultant): restore build by removing leftover NBK rate variant": "drop: курс ВТБ/НБРК консультанта BOVI; в v2 общий консультант без курсов",
     "fix(consultant): remove NBK fallback completely, strictly use official VTB API only": "drop: курс ВТБ/НБРК консультанта BOVI; в v2 общий консультант без курсов",
@@ -528,10 +528,10 @@
     "без BOT_ID ничего не пишет и не падает": "drop: BOT_ID окружения v1 в v2 нет — арендатор приходит через TenantContext"
   },
   "tests/consultant-settings-write.test.ts": {
-    "база знаний пишется без onConflict — ключ составной": "open: база знаний пишется через setSetting (core/settings/settings.ts, select+update/insert без onConflict), теста записи новой настройки нет",
-    "адрес и часы пишутся без onConflict": "open: доставка и оплата в consultant_profile пишутся через setSetting (core/settings/settings.ts), теста нет",
-    "отказ базы больше не выглядит как успех — база знаний": "open: setSetting (core/settings/settings.ts) не проверяет error от update/insert — отказ базы выглядит как успех saveConsultantFn",
-    "отказ базы больше не выглядит как успех — адрес магазина": "open: setSetting (core/settings/settings.ts) глотает ошибку записи — профиль консультанта может не сохраниться молча"
+    "база знаний пишется без onConflict — ключ составной": "src/core/settings/settings.test.ts › новый ключ вставляется, существующий обновляется",
+    "адрес и часы пишутся без onConflict": "src/core/settings/settings.test.ts › новый ключ вставляется, существующий обновляется",
+    "отказ базы больше не выглядит как успех — база знаний": "src/core/settings/settings.test.ts › база отказала во вставке — честная ошибка продавцу и отчёт в Sentry",
+    "отказ базы больше не выглядит как успех — адрес магазина": "src/core/settings/settings.test.ts › база отказала в обновлении — не «сохранено»"
   },
   "tests/consultant-usage-stats.test.ts": {
     "считает цену одного сообщения и долю кеша": "drop: журнал consultant_message_runs v1 не переносится — v2 копит расход в app_settings consultant_usage и дневной бюджет (core/consultant/budget.ts)",

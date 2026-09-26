@@ -4,7 +4,7 @@ import { limitsFor, parseDaily, today } from "@/core/consultant/budget";
 import { KEYS as CONSULTANT_KEYS } from "@/core/consultant/engine.server";
 import { UserError } from "@/core/i18n/user-error";
 import type { Locale } from "@/core/i18n/locale";
-import { getSettings, setSetting } from "@/core/settings/settings";
+import { getSettings, trySetSetting } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   ASSIST_DAILY_LIMIT,
@@ -76,8 +76,8 @@ export async function assistText(ctx: TenantContext, req: AssistRequest): Promis
 
   const usd =
     (response.usage.input_tokens * PRICE.in + response.usage.output_tokens * PRICE.out) / 1_000_000;
-  await setSetting(ctx, DAILY_KEY, JSON.stringify({ date, count: mine.count + 1 }));
-  await setSetting(
+  await trySetSetting(ctx, DAILY_KEY, JSON.stringify({ date, count: mine.count + 1 }));
+  await trySetSetting(
     ctx,
     CONSULTANT_KEYS.daily,
     JSON.stringify({ ...shared, usd: Math.round((shared.usd + usd) * 1_000_000) / 1_000_000 }),

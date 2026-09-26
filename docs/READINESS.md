@@ -4,12 +4,12 @@
 и `docs/readiness.json` — руками не правится. `npm test` падает, если сводка
 устарела, пункт описи назван неверно или указанного теста нет.
 
-**Готовность для первых клиентов: 51,6 %** — покрыто тестами v2
-379 из 734 нужных сейчас пунктов.
+**Готовность для первых клиентов: 52,3 %** — покрыто тестами v2
+384 из 734 нужных сейчас пунктов.
 
 | всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |
 | ----- | ------- | --------------------- | ---- | ----- | ------------- |
-| 1125 | 379 | 43 | 355 | 33 | 358 |
+| 1125 | 384 | 43 | 350 | 33 | 358 |
 
 «Позже» — поведение нужно, но не магазинам, которые переезжают первыми
 (модуль ещё не перенесён). «Не нужно в v2» — поведение убрано или заменено;
@@ -19,7 +19,7 @@
 
 | файл v1 | всего | покрыто | дыра | позже | не нужно | готовность |
 | ------- | ----- | ------- | ---- | ----- | -------- | ---------- |
-| поломки v1 (fix) | 51 | 14 | 9 | 0 | 28 | 60,8 % |
+| поломки v1 (fix) | 51 | 15 | 8 | 0 | 28 | 65,2 % |
 | `src/lib/comment-dm-fallback.test.ts` | 29 | 29 | 0 | 0 | 0 | 100 % |
 | `src/lib/consultant/bovi-features.test.ts` | 7 | 0 | 0 | 0 | 7 | — |
 | `src/lib/cron-auth.test.ts` | 7 | 0 | 5 | 0 | 2 | 0 % |
@@ -60,7 +60,7 @@
 | `tests/consultant-manager-guard.test.ts` | 8 | 8 | 0 | 0 | 0 | 100 % |
 | `tests/consultant-notify-recipients.test.ts` | 6 | 0 | 6 | 0 | 0 | 0 % |
 | `tests/consultant-run-insert.test.ts` | 3 | 0 | 0 | 0 | 3 | — |
-| `tests/consultant-settings-write.test.ts` | 4 | 0 | 4 | 0 | 0 | 0 % |
+| `tests/consultant-settings-write.test.ts` | 4 | 4 | 0 | 0 | 0 | 100 % |
 | `tests/consultant-style-budget.test.ts` | 16 | 0 | 0 | 0 | 16 | — |
 | `tests/consultant-usage-stats.test.ts` | 4 | 0 | 1 | 0 | 3 | 0 % |
 | `tests/consultant-vtb-rate.test.ts` | 12 | 0 | 0 | 0 | 12 | — |
@@ -126,7 +126,7 @@
 | `tests/zernio-retry.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/zernio-webhook.test.ts` | 13 | 7 | 3 | 0 | 3 | 70 % |
 
-## Дыры (355)
+## Дыры (350)
 
 ### поломки v1
 
@@ -134,7 +134,6 @@
 - fix(zernio): read the last hundred messages of a conversation, not the first — listConversationMessages (channels/zernio/api.server.ts) просит sortOrder=desc и сортирует сам, теста нет
 - fix(consultant): say which build is live and what the manager check saw — /api/health отдаёт commit и branch, пауза пишется итогом в zernio_logs (handle-message.ts), тестов нет
 - fix(consultant): bill the cached prompt, and hold the cache for an hour — engine.server.ts считает cache_creation и cache_read в расход, но теста нет; TTL кеша 5 минут
-- fix(consultant): stop losing knowledge base and store info writes — setSetting (core/settings/settings.ts) не читает error у update/insert — отказ записи молча выглядит успехом, теста нет
 - fix(instagram): resolve build type error and fully customize comment-to-dm buttons — кнопки второго сообщения задаёт продавец (automations.server.ts), но тест не проверяет, что уходят именно его кнопки
 - fix(consultant): pass customer_contact to dynamic prompt context — engine.server.ts кладёт state.contact в данные диалога, теста нет
 - fix(consultant): fix looksLikeConsultantBotReply empty snippet bug that dropped all incoming messages — findManagerMessage отбрасывает пустые ourReplies (filter(Boolean)), но теста с пустой репликой бота нет
@@ -296,13 +295,6 @@
 - если не дошло никому — это не успех — notifyOwner (operator.server.ts) возвращает delivered/failed без признака успеха, теста нет
 - получателей нет — говорим об этом прямо — notifyOwner (operator.server.ts) при пустом списке молча возвращает пустые массивы, теста нет
 - отказы Telegram переводятся на человеческий — причина отказа отдаётся как description Telegram без перевода (operator.server.ts notifyOwner)
-
-### `tests/consultant-settings-write.test.ts`
-
-- база знаний пишется без onConflict — ключ составной — база знаний пишется через setSetting (core/settings/settings.ts, select+update/insert без onConflict), теста записи новой настройки нет
-- адрес и часы пишутся без onConflict — доставка и оплата в consultant_profile пишутся через setSetting (core/settings/settings.ts), теста нет
-- отказ базы больше не выглядит как успех — база знаний — setSetting (core/settings/settings.ts) не проверяет error от update/insert — отказ базы выглядит как успех saveConsultantFn
-- отказ базы больше не выглядит как успех — адрес магазина — setSetting (core/settings/settings.ts) глотает ошибку записи — профиль консультанта может не сохраниться молча
 
 ### `tests/consultant-usage-stats.test.ts`
 

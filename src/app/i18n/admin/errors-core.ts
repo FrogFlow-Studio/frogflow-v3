@@ -9,6 +9,8 @@ export const ru = {
     "Ручное внесение оплаты доступно только для физических заказов",
   "err.orders.amountOverRemaining": "Сумма больше остатка: осталось внести {remaining}",
   "err.orders.paymentNotSaved": "Не удалось записать платёж, попробуйте ещё раз",
+  "err.settings.saveFailed":
+    "Настройка не сохранилась. Попробуйте ещё раз; если повторится — напишите в поддержку.",
   "err.orders.zoneNotFound": "Зона доставки не найдена",
   "err.orders.noItems": "Добавьте хотя бы одну позицию",
   "err.orders.deliveryZoneRequired": "Для доставки выберите зону",
@@ -55,6 +57,8 @@ export const kk: SectionDict<typeof ru> = {
     "Төлемді қолмен енгізу тек физикалық тапсырыстарға қолжетімді",
   "err.orders.amountOverRemaining": "Сома қалдықтан көп: енгізуге {remaining} қалды",
   "err.orders.paymentNotSaved": "Төлем жазылмады, қайталап көріңіз",
+  "err.settings.saveFailed":
+    "Баптау сақталмады. Қайта көріңіз; қайталанса — қолдау қызметіне жазыңыз.",
   "err.orders.zoneNotFound": "Жеткізу аймағы табылмады",
   "err.orders.noItems": "Кемінде бір позиция қосыңыз",
   "err.orders.deliveryZoneRequired": "Жеткізу үшін аймақты таңдаңыз",
@@ -101,6 +105,8 @@ export const en: SectionDict<typeof ru> = {
   "err.orders.manualPaymentPhysicalOnly": "Manual payments are only available for physical orders",
   "err.orders.amountOverRemaining": "The amount exceeds the balance: {remaining} left to pay",
   "err.orders.paymentNotSaved": "Couldn't record the payment, please try again",
+  "err.settings.saveFailed":
+    "The setting was not saved. Please try again; if it happens again, contact support.",
   "err.orders.zoneNotFound": "Delivery zone not found",
   "err.orders.noItems": "Add at least one item",
   "err.orders.deliveryZoneRequired": "Choose a zone for delivery",
@@ -149,6 +155,8 @@ export const uz: SectionDict<typeof ru> = {
     "Toʻlovni qoʻlda kiritish faqat jismoniy buyurtmalar uchun mavjud",
   "err.orders.amountOverRemaining": "Summa qoldiqdan katta: {remaining} toʻlash qoldi",
   "err.orders.paymentNotSaved": "Toʻlovni yozib boʻlmadi, qayta urinib koʻring",
+  "err.settings.saveFailed":
+    "Sozlama saqlanmadi. Qayta urinib koʻring; takrorlansa — qoʻllab-quvvatlash xizmatiga yozing.",
   "err.orders.zoneNotFound": "Yetkazib berish hududi topilmadi",
   "err.orders.noItems": "Kamida bitta pozitsiya qoʻshing",
   "err.orders.deliveryZoneRequired": "Yetkazib berish uchun hududni tanlang",

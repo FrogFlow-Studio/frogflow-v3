@@ -82,6 +82,7 @@ function SettingsPage() {
   const router = useRouter();
   const [saved, setSaved] = useState(false);
   const save = useAction(async (f: FormData) => {
+    setSaved(false);
     await setShopTimezoneFn({ data: { timezone: String(f.get("shop_timezone") ?? "") } });
     await saveSettingsFn({
       data: {
@@ -833,6 +834,7 @@ function FulfillmentCard({ settings }: { settings: Record<string, string> }) {
   const t = adminT(shop.locale);
   const [saved, setSaved] = useState(false);
   const save = useAction(async (f: FormData) => {
+    setSaved(false);
     await saveSettingsFn({
       data: {
         fulfillment_pickup_enabled: f.get("pickup") === "on" ? "true" : "false",
@@ -1032,6 +1034,7 @@ function LegalCard({ settings }: { settings: Record<string, string> }) {
   const t = adminT(shop.locale);
   const [saved, setSaved] = useState(false);
   const save = useAction(async (f: FormData) => {
+    setSaved(false);
     await saveSettingsFn({
       data: {
         legal_offer: String(f.get("legal_offer")),
@@ -1085,6 +1088,7 @@ function StarsCard({ settings }: { settings: Record<string, string> }) {
   const t = adminT(shop.locale);
   const [saved, setSaved] = useState(false);
   const save = useAction(async (f: FormData) => {
+    setSaved(false);
     await saveSettingsFn({ data: { stars_rate: String(f.get("rate")).trim().replace(",", ".") } });
     setSaved(true);
     await router.invalidate();
@@ -1127,6 +1131,7 @@ function RobokassaCard({ settings }: { settings: Record<string, string> }) {
   const t = adminT(shop.locale);
   const [saved, setSaved] = useState(false);
   const save = useAction(async (f: FormData) => {
+    setSaved(false);
     await saveSettingsFn({
       data: {
         robokassa_enabled: f.get("enabled") === "on" ? "true" : "false",

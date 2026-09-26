@@ -1,6 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { patchTenantSettings } from "@/core/tenant/resolve.server";
-import { getSetting, setSetting } from "@/core/settings/settings";
+import { getSetting, trySetSetting } from "@/core/settings/settings";
 import { escapeHtml } from "@/channels/telegram/copy";
 import { notifyAdminsHtml } from "@/channels/telegram/notify";
 
@@ -51,7 +51,7 @@ export async function handleAccountDisconnected(
     last.accountId === accountId && last.at && Date.now() - Date.parse(last.at) < COOLDOWN_MS;
   if (cooled) return { notified: false, note: "уже уведомляли недавно" };
 
-  await setSetting(ctx, KEY, JSON.stringify({ accountId, at: new Date().toISOString() }));
+  await trySetSetting(ctx, KEY, JSON.stringify({ accountId, at: new Date().toISOString() }));
   const sent = await notifyAdminsHtml(
     ctx,
     `🔌 <b>${channel}-аккаунт отключился</b>\n\n` +

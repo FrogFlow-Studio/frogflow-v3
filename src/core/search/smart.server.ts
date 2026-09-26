@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
-import { getSetting, getSettings, setSetting } from "@/core/settings/settings";
+import { getSetting, getSettings, trySetSetting } from "@/core/settings/settings";
 import {
   COOLDOWN_SECONDS,
   DAILY_LIMIT,
@@ -59,7 +59,7 @@ export async function consumeQuota(ctx: TenantContext, customer: Customer): Prom
 
   const count = parseDailyCount(await getSetting(ctx, KEYS.dailyCount));
   if (count >= DAILY_LIMIT) return false;
-  await setSetting(ctx, KEYS.dailyCount, formatDailyCount(count + 1));
+  await trySetSetting(ctx, KEYS.dailyCount, formatDailyCount(count + 1));
   return true;
 }
 
@@ -71,12 +71,12 @@ async function recordSpend(
   const today = new Date().toISOString().slice(0, 10);
   const dailyRaw = s[KEYS.dailySpend];
   const daily = dailyRaw?.includes(`"date":"${today}"`) ? parseSpend(dailyRaw) : parseSpend(null);
-  await setSetting(
+  await trySetSetting(
     ctx,
     KEYS.dailySpend,
     JSON.stringify({ ...addSpend(daily, usage), date: today }),
   );
-  await setSetting(
+  await trySetSetting(
     ctx,
     KEYS.lifetimeSpend,
     JSON.stringify(addSpend(parseSpend(s[KEYS.lifetimeSpend]), usage)),
@@ -131,7 +131,7 @@ export async function smartSearchProductIds(
       text,
       list.map((c) => c.id),
     );
-    await setSetting(ctx, KEYS.lastError, "");
+    await trySetSetting(ctx, KEYS.lastError, "");
     return ids;
   } catch (e) {
     const detail =
@@ -141,7 +141,11 @@ export async function smartSearchProductIds(
           ? `${e.name}: ${e.message}`
           : String(e);
     console.error(`[smart-search:${ctx.tenant.id}]`, detail);
-    await setSetting(ctx, KEYS.lastError, `${new Date().toISOString()} — ${detail}`.slice(0, 500));
+    await trySetSetting(
+      ctx,
+      KEYS.lastError,
+      `${new Date().toISOString()} — ${detail}`.slice(0, 500),
+    );
     return null;
   }
 }

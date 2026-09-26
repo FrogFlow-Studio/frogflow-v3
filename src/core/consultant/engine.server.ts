@@ -3,7 +3,7 @@ import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { setState } from "@/core/customers/customers";
-import { getSettings, setSetting } from "@/core/settings/settings";
+import { getSettings, trySetSetting } from "@/core/settings/settings";
 import { resolvePrice } from "@/core/pricing/pricing";
 import { PRODUCT_SELECT, sortedVariants, type Product } from "@/core/catalog/catalog";
 import { isConsultantVertical } from "@/core/verticals/registry";
@@ -213,7 +213,7 @@ async function recordUsage(
   } catch {
     /* пустое значение */
   }
-  await setSetting(
+  await trySetSetting(
     ctx,
     KEYS.usage,
     JSON.stringify({
@@ -269,7 +269,11 @@ export async function runConsultant(
   const blocked = budgetBlock(daily, kind, limitsFor(ctx.tenant.settings.consultant_limits));
   if (blocked) {
     if (opts.dryRun) throw new Error(blocked);
-    await setSetting(ctx, KEYS.lastError, `${new Date().toISOString()} — ${blocked}`.slice(0, 500));
+    await trySetSetting(
+      ctx,
+      KEYS.lastError,
+      `${new Date().toISOString()} — ${blocked}`.slice(0, 500),
+    );
     // Как при передаче менеджеру: пауза, чтобы продавец не получал уведомление на каждое сообщение.
     if (customer)
       await saveState(ctx, customer, {
@@ -293,7 +297,11 @@ export async function runConsultant(
   const dialogs = parseMonthly((await getSettings(ctx, [KEYS.dialogs]))[KEYS.dialogs], monthOf());
   if (newDialog && limits?.aiDialogs != null && dialogs.count >= limits.aiDialogs) {
     const reason = `Лимит ИИ-диалогов плана на месяц (${limits.aiDialogs}) исчерпан — новые обращения уходят менеджеру.`;
-    await setSetting(ctx, KEYS.lastError, `${new Date().toISOString()} — ${reason}`.slice(0, 500));
+    await trySetSetting(
+      ctx,
+      KEYS.lastError,
+      `${new Date().toISOString()} — ${reason}`.slice(0, 500),
+    );
     if (customer)
       await saveState(ctx, customer, {
         paused_until: new Date(Date.now() + 12 * 3600_000).toISOString(),
@@ -391,14 +399,14 @@ export async function runConsultant(
         u.output_tokens * PRICE.out) /
       1_000_000;
     await recordUsage(ctx, usd, u.input_tokens + cacheWrite + cacheRead, u.output_tokens);
-    await setSetting(ctx, KEYS.daily, JSON.stringify(addDaily(daily, usd, kind)));
+    await trySetSetting(ctx, KEYS.daily, JSON.stringify(addDaily(daily, usd, kind)));
     if (newDialog)
-      await setSetting(
+      await trySetSetting(
         ctx,
         KEYS.dialogs,
         JSON.stringify({ month: dialogs.month, count: dialogs.count + 1 }),
       );
-    await setSetting(ctx, KEYS.lastError, "");
+    await trySetSetting(ctx, KEYS.lastError, "");
 
     if (customer && !opts.dryRun) {
       const recent: ConsultantTurn[] = [
@@ -426,7 +434,11 @@ export async function runConsultant(
           ? e.message
           : String(e);
     console.error(`[consultant:${ctx.tenant.id}]`, detail);
-    await setSetting(ctx, KEYS.lastError, `${new Date().toISOString()} — ${detail}`.slice(0, 500));
+    await trySetSetting(
+      ctx,
+      KEYS.lastError,
+      `${new Date().toISOString()} — ${detail}`.slice(0, 500),
+    );
     return {
       reply: "Сейчас не могу ответить — передаю вопрос менеджеру, он напишет вам.",
       handoff: {

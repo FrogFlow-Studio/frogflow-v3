@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSetting, setSetting } from "@/core/settings/settings";
+import { getSetting, trySetSetting } from "@/core/settings/settings";
 import {
   analyzeReceiptText,
   isPdf,
@@ -59,7 +59,7 @@ export function parseUsage(
 
 async function recordVisionCall(ctx: TenantContext): Promise<void> {
   const u = parseUsage(await getSetting(ctx, OCR_USAGE_KEY));
-  await setSetting(
+  await trySetSetting(
     ctx,
     OCR_USAGE_KEY,
     JSON.stringify({ ...u, count: u.count + 1, monthCount: u.monthCount + 1 }),
