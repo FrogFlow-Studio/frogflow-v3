@@ -405,6 +405,12 @@ export const billingFn = createServerFn({ method: "GET" })
 /* ── тариф клиента (core/plans) ─────────────────────────────────── */
 
 const plans = () => import("./plans.server");
+
+/** Выручка платформы: MRR, пробные, просроченные, поступления по месяцам. */
+export const revenueFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await import("./revenue.server")).revenueReport();
+});
 const addonKey = z.enum(["whatsapp", "instagram"]);
 const quota = z.number().int().min(0).max(1_000_000).nullable().optional();
 

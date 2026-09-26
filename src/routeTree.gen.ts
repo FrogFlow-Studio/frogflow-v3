@@ -48,6 +48,7 @@ import { Route as OperatorAuthedCronsRouteImport } from './routes/operator._auth
 import { Route as OperatorAuthedLogRouteImport } from './routes/operator._authed.log'
 import { Route as OperatorAuthedMigrationRouteImport } from './routes/operator._authed.migration'
 import { Route as OperatorAuthedRequestsRouteImport } from './routes/operator._authed.requests'
+import { Route as OperatorAuthedRevenueRouteImport } from './routes/operator._authed.revenue'
 import { Route as OperatorAuthedSettingsRouteImport } from './routes/operator._authed.settings'
 import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
 import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
@@ -257,6 +258,11 @@ const OperatorAuthedRequestsRoute = OperatorAuthedRequestsRouteImport.update({
   path: '/requests',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
+const OperatorAuthedRevenueRoute = OperatorAuthedRevenueRouteImport.update({
+  id: '/revenue',
+  path: '/revenue',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
 const OperatorAuthedSettingsRoute = OperatorAuthedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -371,6 +377,7 @@ export interface FileRoutesByFullPath {
   '/operator/log': typeof OperatorAuthedLogRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
+  '/operator/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
@@ -424,6 +431,7 @@ export interface FileRoutesByTo {
   '/operator/log': typeof OperatorAuthedLogRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
+  '/operator/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
@@ -479,6 +487,7 @@ export interface FileRoutesById {
   '/operator/_authed/log': typeof OperatorAuthedLogRoute
   '/operator/_authed/migration': typeof OperatorAuthedMigrationRoute
   '/operator/_authed/requests': typeof OperatorAuthedRequestsRoute
+  '/operator/_authed/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/_authed/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
@@ -535,6 +544,7 @@ export interface FileRouteTypes {
     | '/operator/log'
     | '/operator/migration'
     | '/operator/requests'
+    | '/operator/revenue'
     | '/operator/settings'
     | '/s/$slug/cart'
     | '/s/$slug/orders'
@@ -588,6 +598,7 @@ export interface FileRouteTypes {
     | '/operator/log'
     | '/operator/migration'
     | '/operator/requests'
+    | '/operator/revenue'
     | '/operator/settings'
     | '/s/$slug/cart'
     | '/s/$slug/orders'
@@ -642,6 +653,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/log'
     | '/operator/_authed/migration'
     | '/operator/_authed/requests'
+    | '/operator/_authed/revenue'
     | '/operator/_authed/settings'
     | '/s/$slug/cart'
     | '/s/$slug/orders'
@@ -953,6 +965,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedRequestsRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/operator/_authed/revenue': {
+      id: '/operator/_authed/revenue'
+      path: '/revenue'
+      fullPath: '/operator/revenue'
+      preLoaderRoute: typeof OperatorAuthedRevenueRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
     '/operator/_authed/settings': {
       id: '/operator/_authed/settings'
       path: '/settings'
@@ -1140,6 +1159,7 @@ interface OperatorAuthedRouteChildren {
   OperatorAuthedLogRoute: typeof OperatorAuthedLogRoute
   OperatorAuthedMigrationRoute: typeof OperatorAuthedMigrationRoute
   OperatorAuthedRequestsRoute: typeof OperatorAuthedRequestsRoute
+  OperatorAuthedRevenueRoute: typeof OperatorAuthedRevenueRoute
   OperatorAuthedSettingsRoute: typeof OperatorAuthedSettingsRoute
   OperatorAuthedIndexRoute: typeof OperatorAuthedIndexRoute
   OperatorAuthedClientsBotIdRoute: typeof OperatorAuthedClientsBotIdRoute
@@ -1152,6 +1172,7 @@ const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedLogRoute: OperatorAuthedLogRoute,
   OperatorAuthedMigrationRoute: OperatorAuthedMigrationRoute,
   OperatorAuthedRequestsRoute: OperatorAuthedRequestsRoute,
+  OperatorAuthedRevenueRoute: OperatorAuthedRevenueRoute,
   OperatorAuthedSettingsRoute: OperatorAuthedSettingsRoute,
   OperatorAuthedIndexRoute: OperatorAuthedIndexRoute,
   OperatorAuthedClientsBotIdRoute: OperatorAuthedClientsBotIdRoute,
