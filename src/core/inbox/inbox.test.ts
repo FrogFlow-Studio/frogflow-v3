@@ -1,0 +1,161 @@
+import { describe, expect, it } from "vitest";
+import type { Conversation } from "@/core/chat/chat";
+import {
+  channelOf,
+  cleanQuickReplies,
+  fillQuickReply,
+  filterInbox,
+  inboxCounts,
+  inboxEventId,
+  mergeInbox,
+  parseQuickReplies,
+  rowToMeta,
+  QUICK_REPLIES_MAX,
+  type InboxFilter,
+  type InboxMeta,
+} from "./inbox";
+
+const conv = (id: number, over: Partial<Conversation> = {}): Conversation => ({
+  telegram_id: id,
+  active: false,
+  last_message_at: "2026-09-26T10:00:00Z",
+  last_message_preview: "привет",
+  last_message_direction: "in",
+  unread_count: 0,
+  username: null,
+  first_name: null,
+  last_name: null,
+  platform: "telegram",
+  user_key: null,
+  ...over,
+});
+
+const meta = (id: number, over: Partial<InboxMeta> = {}): InboxMeta => ({
+  telegramId: id,
+  status: "open",
+  assignee: null,
+  updatedAt: null,
+  updatedBy: null,
+  ...over,
+});
+
+const ALL: InboxFilter = { status: "all", who: "all", channel: "all" };
+
+describe("единый входящий", () => {
+  it("ключ строки включает бота: event_id уникален на всю базу", () => {
+    expect(inboxEventId("bot-a", 5)).toBe("inbox:bot-a:5");
+    expect(inboxEventId("bot-a", -7)).not.toBe(inboxEventId("bot-b", -7));
+  });
+
+  it("строка базы → учёт: неизвестный статус считается открытым, пустой ответственный — null", () => {
+    expect(rowToMeta({ status: "closed", payload: { telegram_id: 3, assignee: "anna" } })).toEqual({
+      telegramId: 3,
+      status: "closed",
+      assignee: "anna",
+      updatedAt: null,
+      updatedBy: null,
+    });
+    expect(
+      rowToMeta({ status: "pending", payload: { telegram_id: 3, assignee: "" } }),
+    ).toMatchObject({ status: "open", assignee: null });
+    expect(rowToMeta({ status: "open", payload: null })).toMatchObject({ telegramId: 0 });
+  });
+
+  it("канал: всё, что не Instagram и не WhatsApp, — Telegram", () => {
+    expect(channelOf("instagram")).toBe("instagram");
+    expect(channelOf("whatsapp")).toBe("whatsapp");
+    expect(channelOf("telegram")).toBe("telegram");
+    expect(channelOf(null)).toBe("telegram");
+  });
+
+  it("диалог без строки учёта — открыт и ничей; номера обращений подставляются", () => {
+    const items = mergeInbox(
+      [conv(1), conv(2)],
+      new Map([[2, meta(2, { status: "closed", assignee: "anna" })]]),
+      new Map([[1, [7, 9]]]),
+    );
+    expect(items[0]).toMatchObject({
+      telegram_id: 1,
+      status: "open",
+      assignee: null,
+      tickets: [7, 9],
+    });
+    expect(items[1]).toMatchObject({
+      telegram_id: 2,
+      status: "closed",
+      assignee: "anna",
+      tickets: [],
+    });
+  });
+
+  const items = mergeInbox(
+    [
+      conv(1, { platform: "instagram" }),
+      conv(2, { unread_count: 3 }),
+      conv(3, { platform: "whatsapp", unread_count: 1 }),
+      conv(4),
+    ],
+    new Map([
+      [1, meta(1, { assignee: "anna" })],
+      [3, meta(3, { status: "closed", assignee: "boris" })],
+      [4, meta(4, { assignee: "boris" })],
+    ]),
+  );
+  const ids = (f: Partial<InboxFilter>, me = "boris") =>
+    filterInbox(items, { ...ALL, ...f }, me).map((i) => i.telegram_id);
+
+  it("фильтры: статус, «мои», «без ответственного», канал", () => {
+    expect(ids({ status: "open" })).toEqual([2, 1, 4]);
+    expect(ids({ status: "closed" })).toEqual([3]);
+    expect(ids({ who: "mine" })).toEqual([3, 4]);
+    expect(ids({ who: "mine", status: "open" })).toEqual([4]);
+    expect(ids({ who: "none" })).toEqual([2]);
+    expect(ids({ channel: "instagram" })).toEqual([1]);
+    expect(ids({ channel: "telegram" })).toEqual([2, 4]);
+  });
+
+  it("открытые с непрочитанными — наверх; решённый с непрочитанными не всплывает", () => {
+    expect(ids({})).toEqual([2, 1, 3, 4]);
+  });
+
+  it("счётчики считают только открытые", () => {
+    expect(inboxCounts(items, "boris")).toEqual({ open: 3, mine: 1, unassigned: 1 });
+    expect(inboxCounts(items, "anna")).toEqual({ open: 3, mine: 1, unassigned: 1 });
+    expect(inboxCounts([], "anna")).toEqual({ open: 0, mine: 0, unassigned: 0 });
+  });
+});
+
+describe("быстрые ответы", () => {
+  it("битый или чужой JSON в настройке — пустой список, а не падение страницы", () => {
+    expect(parseQuickReplies(null)).toEqual([]);
+    expect(parseQuickReplies("не json")).toEqual([]);
+    expect(parseQuickReplies('{"a":1}')).toEqual([]);
+    expect(parseQuickReplies('[{"title":"Цена","text":"от 5000 ₸"}]')).toEqual([
+      { title: "Цена", text: "от 5000 ₸" },
+    ]);
+  });
+
+  it("пустые выкидываются, без названия — первая строка текста, длины и число ограничены", () => {
+    const r = cleanQuickReplies([
+      { title: "  ", text: "  " },
+      { title: "", text: "Доставка завтра\nс 10 до 18" },
+      { title: "x".repeat(100), text: "y".repeat(3000) },
+      { text: 42 as unknown as string },
+    ]);
+    expect(r).toHaveLength(2);
+    expect(r[0]).toEqual({ title: "Доставка завтра", text: "Доставка завтра\nс 10 до 18" });
+    expect(r[1]!.title).toHaveLength(60);
+    expect(r[1]!.text).toHaveLength(2000);
+    const many = Array.from({ length: 50 }, (_, i) => ({ title: `t${i}`, text: `x${i}` }));
+    expect(cleanQuickReplies(many)).toHaveLength(QUICK_REPLIES_MAX);
+  });
+
+  it("{name} — имя покупателя; без имени обращение убирается аккуратно", () => {
+    expect(fillQuickReply("Здравствуйте, {name}!", { first_name: "Анна" })).toBe(
+      "Здравствуйте, Анна!",
+    );
+    expect(fillQuickReply("Здравствуйте, {name}!", { first_name: null })).toBe("Здравствуйте!");
+    expect(fillQuickReply("{name}, спасибо", { first_name: " " })).toBe("спасибо");
+    expect(fillQuickReply("Привет {name} как дела", { first_name: null })).toBe("Привет как дела");
+  });
+});

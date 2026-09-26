@@ -66,6 +66,7 @@ export const ru = {
   "audit.action.saveWinbackFn": "изменил возврат покупателей",
   "audit.action.publishPostFn": "опубликовал или запланировал пост",
   "audit.action.cancelPostFn": "отменил запланированный пост",
+  "audit.action.quickRepliesSaveFn": "изменил быстрые ответы во входящих",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -133,6 +134,7 @@ export const kk: SectionDict<typeof ru> = {
   "audit.action.saveWinbackFn": "сатып алушыларды қайтаруды өзгертті",
   "audit.action.publishPostFn": "жазбаны жариялады немесе жоспарлады",
   "audit.action.cancelPostFn": "жоспарланған жазбаны тоқтатты",
+  "audit.action.quickRepliesSaveFn": "кіріс хаттардағы жылдам жауаптарды өзгертті",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -200,6 +202,7 @@ export const en: SectionDict<typeof ru> = {
   "audit.action.saveWinbackFn": "changed customer win-back",
   "audit.action.publishPostFn": "published or scheduled a post",
   "audit.action.cancelPostFn": "cancelled a scheduled post",
+  "audit.action.quickRepliesSaveFn": "changed saved replies in the inbox",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -267,4 +270,5 @@ export const uz: SectionDict<typeof ru> = {
   "audit.action.saveWinbackFn": "xaridorlarni qaytarishni oʻzgartirdi",
   "audit.action.publishPostFn": "postni eʼlon qildi yoki rejalashtirdi",
   "audit.action.cancelPostFn": "rejalashtirilgan postni bekor qildi",
+  "audit.action.quickRepliesSaveFn": "kiruvchi xabarlardagi tezkor javoblarni o‘zgartirdi",
 };

@@ -1328,12 +1328,88 @@ const tgId = z
   .int()
   .refine((n) => n !== 0, "telegram_id не может быть нулём");
 
+/** Кому можно поручить диалог: владелец и менеджеры (наблюдатель отвечать не может). */
+function inboxAssignees(
+  ctx: TenantContext,
+): { username: string; name: string | null; owner: boolean }[] {
+  const a = ctx.tenant.settings.admin;
+  const owner = a?.username ? [{ username: a.username, name: null, owner: true }] : [];
+  const managers = (a?.users ?? [])
+    .filter((u) => u.role === "manager")
+    .map((u) => ({ username: u.username, name: u.name ?? null, owner: false }));
+  return [...owner, ...managers];
+}
+
+/** Единый входящий: диалоги всех каналов с учётом «решено» и ответственного. */
 export const chatConversationsFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await chatModule();
   const { listConversations, totalUnread } = await import("@/core/chat/chat");
-  const [conversations, unread] = await Promise.all([listConversations(ctx), totalUnread(ctx)]);
-  return { conversations, unread };
+  const inbox = await import("@/core/inbox/inbox");
+  const { getSetting } = await import("@/core/settings/settings");
+  const { adminIdentity } = await import("@/app/auth/guards.server");
+  const [list, unread, rawReplies, me] = await Promise.all([
+    listConversations(ctx),
+    totalUnread(ctx),
+    getSetting(ctx, inbox.QUICK_REPLIES_KEY),
+    adminIdentity(),
+  ]);
+  const ids = list.map((c) => c.telegram_id);
+  const [meta, tickets] = await Promise.all([
+    inbox.inboxMetaFor(ctx, ids),
+    ctx.tenant.modules.helpdesk ? inbox.openTicketNumbers(ctx, ids) : new Map<number, number[]>(),
+  ]);
+  return {
+    conversations: inbox.mergeInbox(list, meta, tickets),
+    unread,
+    me: me?.username ?? "",
+    assignees: inboxAssignees(ctx),
+    quickReplies: inbox.parseQuickReplies(rawReplies),
+  };
 });
+
+export const inboxSetFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        telegramId: tgId,
+        status: z.enum(["open", "closed"]).optional(),
+        assignee: z.string().max(40).nullable().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await chatModule("manager");
+    const { adminActor } = await import("@/app/auth/guards.server");
+    if (data.assignee && !inboxAssignees(ctx).some((a) => a.username === data.assignee))
+      throw new UserError("err.admin.inboxAssignee", "Такого пользователя нет в команде магазина.");
+    const { setInboxMeta } = await import("@/core/inbox/inbox");
+    const meta = await setInboxMeta(
+      ctx,
+      data.telegramId,
+      { status: data.status, assignee: data.assignee },
+      await adminActor(),
+    );
+    return { status: meta.status, assignee: meta.assignee };
+  });
+
+export const quickRepliesSaveFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        replies: z
+          .array(z.object({ title: z.string().max(200), text: z.string().max(4000) }))
+          .max(100),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await chatModule("manager");
+    const { cleanQuickReplies, QUICK_REPLIES_KEY } = await import("@/core/inbox/inbox");
+    const { setSetting } = await import("@/core/settings/settings");
+    const replies = cleanQuickReplies(data.replies);
+    await setSetting(ctx, QUICK_REPLIES_KEY, JSON.stringify(replies));
+    return { replies, count: replies.length };
+  });
 
 export const chatMessagesFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ telegramId: tgId }).parse(d))
@@ -1369,6 +1445,13 @@ export const chatReplyFn = createServerFn({ method: "POST" })
     const ctx = await chatModule("manager");
     const { replyAsManager } = await import("./admin.server");
     await replyAsManager(ctx, data.telegramId, data.text);
+    // Ничей диалог достаётся тому, кто ответил первым.
+    const { adminIdentity, adminActor } = await import("@/app/auth/guards.server");
+    const inbox = await import("@/core/inbox/inbox");
+    const me = await adminIdentity();
+    const meta = await inbox.getInboxMeta(ctx, data.telegramId);
+    if (me && !meta.assignee)
+      await inbox.setInboxMeta(ctx, data.telegramId, { assignee: me.username }, await adminActor());
     return { ok: true };
   });
 

@@ -79,6 +79,8 @@ export async function inboundIntercepted(
 ): Promise<boolean> {
   if (!ctx.tenant.modules.manager_chat) return false;
   await recordMessage(ctx, { telegramId, direction: "in", sender: "customer", text });
+  const { reopenOnInbound } = await import("@/core/inbox/inbox");
+  await reopenOnInbound(ctx, telegramId);
   return isManagerConnected(ctx, telegramId);
 }
 

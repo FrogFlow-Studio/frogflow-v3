@@ -26,6 +26,7 @@ const NOT_AUDITED = new Set([
   // переписка с покупателями
   "chatReplyFn",
   "chatConnectFn",
+  "inboxSetFn",
   // вход и выход — в admin_login_attempts
   "adminLogin",
   "adminLogout",

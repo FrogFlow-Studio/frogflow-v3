@@ -43,6 +43,7 @@ export const ru = {
   "err.admin.waRejected": "Meta не приняла шаблон",
   // чат с покупателем
   "err.admin.noZernioDialog": "У покупателя нет диалога в Zernio — ответить некуда",
+  "err.admin.inboxAssignee": "Такого пользователя нет в команде магазина.",
   "err.admin.sendFailed": "Не удалось отправить сообщение",
   "err.admin.sendTelegramFailed": "Не удалось отправить сообщение в Telegram",
   // CRM, Instagram, акции, возвратные продажи
@@ -110,6 +111,7 @@ export const kk: SectionDict<typeof ru> = {
   "err.admin.waSyncFailed": "Шаблондарды жаңарту мүмкін болмады",
   "err.admin.waRejected": "Meta шаблонды қабылдамады",
   "err.admin.noZernioDialog": "Сатып алушының Zernio-да диалогы жоқ — жауап жіберетін жер жоқ",
+  "err.admin.inboxAssignee": "Мұндай пайдаланушы дүкен командасында жоқ.",
   "err.admin.sendFailed": "Хабарламаны жіберу мүмкін болмады",
   "err.admin.sendTelegramFailed": "Хабарламаны Telegram-ға жіберу мүмкін болмады",
   "err.admin.crmUrl": "Мекенжай https:// деп басталып, сыртқы серверге апаруы керек.",
@@ -177,6 +179,7 @@ export const en: SectionDict<typeof ru> = {
   "err.admin.waSyncFailed": "Could not refresh the templates",
   "err.admin.waRejected": "Meta did not accept the template",
   "err.admin.noZernioDialog": "The buyer has no Zernio conversation — there is nowhere to reply",
+  "err.admin.inboxAssignee": "There is no such user in the shop team.",
   "err.admin.sendFailed": "Could not send the message",
   "err.admin.sendTelegramFailed": "Could not send the message to Telegram",
   "err.admin.crmUrl": "The address must start with https:// and point to an external server.",
@@ -244,6 +247,7 @@ export const uz: SectionDict<typeof ru> = {
   "err.admin.waSyncFailed": "Shablonlarni yangilab boʻlmadi",
   "err.admin.waRejected": "Meta shablonni qabul qilmadi",
   "err.admin.noZernioDialog": "Xaridorning Zernioda suhbati yoʻq — javob yuboradigan joy yoʻq",
+  "err.admin.inboxAssignee": "Do‘kon jamoasida bunday foydalanuvchi yo‘q.",
   "err.admin.sendFailed": "Xabarni yuborib boʻlmadi",
   "err.admin.sendTelegramFailed": "Xabarni Telegramga yuborib boʻlmadi",
   "err.admin.crmUrl": "Manzil https:// bilan boshlanishi va tashqi serverga olib borishi kerak.",

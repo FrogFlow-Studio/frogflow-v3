@@ -25,6 +25,7 @@ describe("журнал действий админки: что пишем", () =
       "outboxActionFn",
       "chatReplyFn",
       "chatConnectFn",
+      "inboxSetFn",
       "adminLogin",
       "adminLogout",
       "previewQuizFn",
