@@ -23,16 +23,17 @@ const adminAudit = createMiddleware({ type: "function" }).server(async (call) =>
   });
 });
 
-// Ошибка для человека (UserError) из ядра или панели уходит продавцу на языке
-// его админки. Нет сессии продавца (оператор, вход) — русский текст как есть.
+// Что уходит в браузер (lib/server-fn-errors, toScreenError): человеку —
+// только текст для него. UserError — на языке админки продавца (нет сессии
+// продавца — по-русски), сбой — «сбой на сервере, попробуйте ещё раз» вместо
+// сырого текста; подробности сбоя ушли в Sentry во внутренней прослойке.
 const userErrors = createMiddleware({ type: "function" }).server(async ({ next }) => {
   try {
     return await next();
   } catch (e) {
-    const { isUserError } = await import("@/core/i18n/user-error");
-    if (!isUserError(e)) throw e;
+    const { toScreenError } = await import("@/lib/server-fn-errors");
     const { translateForAdmin } = await import("@/app/admin/errors.server");
-    throw new Error(await translateForAdmin(e));
+    throw await toScreenError(e, translateForAdmin);
   }
 });
 

@@ -37,6 +37,10 @@ export function StorefrontLocaleProvider({
       /* приватный режим — язык магазина */
     }
   }, [key]);
+  // Язык страницы — для чтения с экрана и текста ошибок (ui/ErrorBox).
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
   const api = useMemo<LocaleApi>(() => ({ locale, t: storefrontT(locale) }), [locale]);
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

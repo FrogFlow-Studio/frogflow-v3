@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, redirect, useNavigate, useRouter } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { adminLogout, adminShopFn, setAdminLocaleFn } from "@/app/admin/admin.functions";
 import { ADMIN_LOCALE_LABELS, adminT } from "@/app/i18n/admin";
 import { Badge, NavLink, Shell, ThemeToggle } from "@/app/ui";
@@ -18,6 +19,13 @@ function Layout() {
   const navigate = useNavigate();
   const router = useRouter();
   const t = adminT(shop.locale);
+  // Язык страницы — для чтения с экрана и текста ошибок (ui/ErrorBox).
+  useEffect(() => {
+    document.documentElement.lang = shop.locale;
+    return () => {
+      document.documentElement.lang = "ru";
+    };
+  }, [shop.locale]);
   const physical = shop.vertical === "confectionery" || shop.vertical === "flowers";
   const owner = shop.role === "owner";
   const switchLocale = async (locale: Locale) => {

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { shownError } from "@/lib/shown-error";
 import { MODULE_KEYS } from "@/core/modules/registry";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
@@ -56,9 +57,9 @@ export const adminLogin = createServerFn({ method: "POST" })
     // и подтверждение заказа отсюда осталось бы без бота (токен только у v1).
     {
       const { servedByV2 } = await import("@/core/tenant/directory");
-      if (!servedByV2(t)) throw new Error(tr("err.login.oldPlatform"));
+      if (!servedByV2(t)) throw shownError(tr("err.login.oldPlatform"));
     }
-    if (await loginLocked({ botId: t.id }, ip)) throw new Error(tr("err.login.tooMany"));
+    if (await loginLocked({ botId: t.id }, ip)) throw shownError(tr("err.login.tooMany"));
     const ok = checkAdminPassword(login, data.password);
     await recordLogin({ botId: t.id }, ip, ok, data.username);
     if (!ok) return { ok: false as const };

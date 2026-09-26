@@ -2,6 +2,7 @@ import { SHOP_SLUG_RE } from "@/core/tenant/slug";
 import { notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { shownError } from "@/lib/shown-error";
 import type { Locale } from "@/core/i18n/locale";
 import type { StorefrontPart } from "@/core/storefront/access";
 
@@ -58,7 +59,7 @@ export const storeProductFn = createServerFn({ method: "GET" })
     const ctx = await shopCtx(data.slug, "catalog");
     const { storeProduct, storeCatalog } = await import("@/core/storefront/catalog");
     const product = await storeProduct(ctx, data.id);
-    if (!product) throw new Error((await shopT(ctx))("error.productNotFound"));
+    if (!product) throw shownError((await shopT(ctx))("error.productNotFound"));
     const related = (await storeCatalog(ctx, { categoryId: product.categoryIds[0] ?? null }))
       .filter((p) => p.id !== product.id)
       .slice(0, 4);
@@ -83,7 +84,7 @@ export const createHandoffFn = createServerFn({ method: "POST" })
     const ctx = await shopCtx(data.slug, "web_handoff");
     const { createHandoff, parseHandoffItems } = await import("@/core/storefront/handoff");
     const r = await createHandoff(ctx, parseHandoffItems(data.items));
-    if (!r) throw new Error((await shopT(ctx))("error.noBot"));
+    if (!r) throw shownError((await shopT(ctx))("error.noBot"));
     return { url: r.url };
   });
 
@@ -101,7 +102,7 @@ export const miniAppCheckoutFn = createServerFn({ method: "POST" })
     const { validateInitData } = await import("@/core/storefront/init-data");
     const v = validateInitData(data.initData, ctx.secrets.telegramToken());
     if (!v.ok)
-      throw new Error(
+      throw shownError(
         (await shopT(ctx))(v.reason === "expired" ? "error.miniAppExpired" : "error.miniAppAuth"),
       );
     const { upsertCustomer } = await import("@/core/customers/customers");
@@ -113,7 +114,7 @@ export const miniAppCheckoutFn = createServerFn({ method: "POST" })
       languageCode: v.user.language_code,
     });
     const imported = await importItems(ctx, customer, parseHandoffItems(data.items));
-    if (imported === 0) throw new Error((await shopT(ctx))("error.nothingImported"));
+    if (imported === 0) throw shownError((await shopT(ctx))("error.nothingImported"));
     const { env } = await import("@/config/env");
     const { telegramApi } = await import("@/channels/telegram/api");
     const { sendCartMessage } = await import("@/channels/telegram/handle-update");
@@ -135,11 +136,11 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await shopCtx(data.slug, "mini_app");
     const t = await shopT(ctx);
-    if (!ctx.tenant.telegramTokenEnc) throw new Error(t("error.noBot"));
+    if (!ctx.tenant.telegramTokenEnc) throw shownError(t("error.noBot"));
     const { validateInitData } = await import("@/core/storefront/init-data");
     const v = validateInitData(data.initData, ctx.secrets.telegramToken());
     if (!v.ok)
-      throw new Error(t(v.reason === "expired" ? "error.miniAppExpired" : "error.miniAppAuth"));
+      throw shownError(t(v.reason === "expired" ? "error.miniAppExpired" : "error.miniAppAuth"));
     const { getCustomerByTelegramId } = await import("@/core/customers/customers");
     const customer = await getCustomerByTelegramId(ctx, v.user.id);
     if (!customer) return { orders: [], library: [] };

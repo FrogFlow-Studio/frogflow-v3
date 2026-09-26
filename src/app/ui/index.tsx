@@ -1,5 +1,7 @@
 import { Link, type LinkProps } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
+import { retryText, screenErrorText } from "@/lib/shown-error";
+import { reportBrowserFailure } from "./report-client";
 
 /* Маленькая библиотека компонентов платформы: без Radix, без зависимостей. */
 
@@ -116,13 +118,39 @@ export function Empty({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Ошибка действия на экране. Сырой текст сбоя («Cannot read properties…»,
+ * HTML страницы 500) человек не видит: только понятная фраза на языке
+ * панели, а подробности — в Sentry (lib/shown-error).
+ */
 export function ErrorBox({ error }: { error: unknown }) {
+  useEffect(() => {
+    if (error) reportBrowserFailure(error);
+  }, [error]);
   if (!error) return null;
-  const text = error instanceof Error ? error.message : String(error);
+  const lang = typeof document === "undefined" ? undefined : document.documentElement.lang;
+  const text = screenErrorText(error, lang);
   return (
     <div className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
       {text}
     </div>
+  );
+}
+
+/**
+ * Страница, у которой не загрузились данные (ошибка в loader/beforeLoad):
+ * понятная фраза и кнопка «Обновить» вместо стандартного экрана с текстом
+ * исключения. Подключена как defaultErrorComponent роутера.
+ */
+export function RouteError({ error }: { error: unknown }) {
+  const lang = typeof document === "undefined" ? undefined : document.documentElement.lang;
+  return (
+    <main className="mx-auto flex min-h-[50vh] max-w-md flex-col justify-center gap-3 px-4">
+      <ErrorBox error={error} />
+      <button className="btn-secondary w-fit" onClick={() => window.location.reload()}>
+        {retryText(lang)}
+      </button>
+    </main>
   );
 }
 

@@ -15,6 +15,7 @@ import { Route as OperatorRouteImport } from './routes/operator'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AdminAuthedRouteImport } from './routes/admin._authed'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as ApiClientErrorRouteImport } from './routes/api/client-error'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as OperatorAuthedRouteImport } from './routes/operator._authed'
 import { Route as OperatorLoginRouteImport } from './routes/operator.login'
@@ -93,6 +94,11 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => AdminRoute,
+} as any)
+const ApiClientErrorRoute = ApiClientErrorRouteImport.update({
+  id: '/api/client-error',
+  path: '/api/client-error',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
@@ -347,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/operator': typeof OperatorRouteWithChildren
   '/signup': typeof SignupRoute
   '/admin/login': typeof AdminLoginRoute
+  '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
   '/operator/login': typeof OperatorLoginRoute
   '/s/$slug': typeof SSlugRouteWithChildren
@@ -402,6 +409,7 @@ export interface FileRoutesByTo {
   '/operator': typeof OperatorAuthedIndexRoute
   '/signup': typeof SignupRoute
   '/admin/login': typeof AdminLoginRoute
+  '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
   '/operator/login': typeof OperatorLoginRoute
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
@@ -456,6 +464,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/admin/_authed': typeof AdminAuthedRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
+  '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
   '/operator/_authed': typeof OperatorAuthedRouteWithChildren
   '/operator/login': typeof OperatorLoginRoute
@@ -514,6 +523,7 @@ export interface FileRouteTypes {
     | '/operator'
     | '/signup'
     | '/admin/login'
+    | '/api/client-error'
     | '/api/health'
     | '/operator/login'
     | '/s/$slug'
@@ -569,6 +579,7 @@ export interface FileRouteTypes {
     | '/operator'
     | '/signup'
     | '/admin/login'
+    | '/api/client-error'
     | '/api/health'
     | '/operator/login'
     | '/admin/analytics'
@@ -622,6 +633,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/admin/_authed'
     | '/admin/login'
+    | '/api/client-error'
     | '/api/health'
     | '/operator/_authed'
     | '/operator/login'
@@ -678,6 +690,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   OperatorRoute: typeof OperatorRouteWithChildren
   SignupRoute: typeof SignupRoute
+  ApiClientErrorRoute: typeof ApiClientErrorRoute
   ApiHealthRoute: typeof ApiHealthRoute
   SSlugRoute: typeof SSlugRouteWithChildren
   ApiAdminUploadRoute: typeof ApiAdminUploadRoute
@@ -733,6 +746,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/login'
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/api/client-error': {
+      id: '/api/client-error'
+      path: '/api/client-error'
+      fullPath: '/api/client-error'
+      preLoaderRoute: typeof ApiClientErrorRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/health': {
       id: '/api/health'
@@ -1231,6 +1251,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   OperatorRoute: OperatorRouteWithChildren,
   SignupRoute: SignupRoute,
+  ApiClientErrorRoute: ApiClientErrorRoute,
   ApiHealthRoute: ApiHealthRoute,
   SSlugRoute: SSlugRouteWithChildren,
   ApiAdminUploadRoute: ApiAdminUploadRoute,

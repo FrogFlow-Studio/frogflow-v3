@@ -28,6 +28,9 @@ export const ru = {
   "err.admin.percentMax": "Процент не больше 100.",
   "err.admin.codeTaken": "Такой код уже есть.",
   "err.admin.codeGenFailed": "Не удалось подобрать уникальный код",
+  "err.server.failed":
+    "Не удалось выполнить действие: сбой на сервере. Попробуйте ещё раз — мы уже получили отчёт.",
+  "err.server.badInput": "Данные формы не прошли проверку. Проверьте поля и попробуйте ещё раз.",
   "err.assist.noKey": "ИИ-помощник недоступен: на платформе не задан ключ.",
   "err.assist.noName": "Сначала напишите название товара.",
   "err.assist.limit": "На сегодня черновики закончились ({limit} в день). Попробуйте завтра.",
@@ -106,6 +109,9 @@ export const kk: SectionDict<typeof ru> = {
   "err.admin.percentMax": "Пайыз 100-ден аспауы керек.",
   "err.admin.codeTaken": "Мұндай код бұрыннан бар.",
   "err.admin.codeGenFailed": "Бірегей код құрастыру мүмкін болмады",
+  "err.server.failed":
+    "Әрекетті орындау мүмкін болмады: серверде ақау. Қайта көріңіз — есеп бізге жетті.",
+  "err.server.badInput": "Форма деректері тексерістен өтпеді. Өрістерді тексеріп, қайта көріңіз.",
   "err.assist.noKey": "ЖИ-көмекші қолжетімсіз: платформада кілт берілмеген.",
   "err.assist.noName": "Алдымен тауардың атауын жазыңыз.",
   "err.assist.limit": "Бүгінгі жобалар таусылды (күніне {limit}). Ертең қайталаңыз.",
@@ -181,6 +187,9 @@ export const en: SectionDict<typeof ru> = {
   "err.admin.percentMax": "The percentage cannot exceed 100.",
   "err.admin.codeTaken": "This code already exists.",
   "err.admin.codeGenFailed": "Could not generate a unique code",
+  "err.server.failed":
+    "The action failed because of a server error. Please try again — we have already received a report.",
+  "err.server.badInput": "The form data did not pass validation. Check the fields and try again.",
   "err.assist.noKey": "The AI assistant is unavailable: the platform has no API key.",
   "err.assist.noName": "Enter the product name first.",
   "err.assist.limit": "No drafts left for today ({limit} per day). Try again tomorrow.",
@@ -257,6 +266,10 @@ export const uz: SectionDict<typeof ru> = {
   "err.admin.percentMax": "Foiz 100 dan oshmasligi kerak.",
   "err.admin.codeTaken": "Bunday kod allaqachon mavjud.",
   "err.admin.codeGenFailed": "Takrorlanmas kod tanlab boʻlmadi",
+  "err.server.failed":
+    "Amalni bajarib boʻlmadi: serverda nosozlik. Qayta urinib koʻring — hisobot bizga yetib keldi.",
+  "err.server.badInput":
+    "Forma maʼlumotlari tekshiruvdan oʻtmadi. Maydonlarni tekshirib, qayta urinib koʻring.",
   "err.assist.noKey": "AI-yordamchi mavjud emas: platformada kalit berilmagan.",
   "err.assist.noName": "Avval mahsulot nomini yozing.",
   "err.assist.limit": "Bugungi qoralamalar tugadi (kuniga {limit}). Ertaga urinib koʻring.",

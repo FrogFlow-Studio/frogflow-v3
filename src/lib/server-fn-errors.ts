@@ -1,4 +1,6 @@
+import { isUserError, UserError } from "@/core/i18n/user-error";
 import { reportError, type ErrorContext } from "./errors";
+import { isShownError, SHOWN_ERROR, shownError } from "./shown-error";
 
 /**
  * Ошибки серверных функций админки и панели оператора — в учёт ошибок.
@@ -15,7 +17,7 @@ export function isPlatformFailure(e: unknown): boolean {
   if (e instanceof Response) return false;
   const x = e as { name?: unknown; message?: unknown; isRedirect?: unknown; isNotFound?: unknown };
   if (x.isRedirect || x.isNotFound) return false;
-  if (x.name === "UserError" || x.name === "ZodError") return false;
+  if (x.name === "UserError" || x.name === "ZodError" || x.name === SHOWN_ERROR) return false;
   const message = typeof x.message === "string" ? x.message : "";
   if (message === "Unauthorized") return false;
   if (e instanceof Error && e.constructor === Error && /[А-Яа-яЁё]/.test(message)) return false;
@@ -60,4 +62,34 @@ export async function reportServerFnFailure<R>(call: Call<R>, deps: Deps = {}): 
     }
     throw e;
   }
+}
+
+export const SERVER_FAILED_TEXT =
+  "Не удалось выполнить действие: сбой на сервере. Попробуйте ещё раз — мы уже получили отчёт.";
+export const BAD_INPUT_TEXT =
+  "Данные формы не прошли проверку. Проверьте поля и попробуйте ещё раз.";
+
+/**
+ * Что из серверной функции уходит в браузер (src/start.ts). Человеку — только
+ * текст для него, помеченный ShownError (lib/shown-error):
+ *   • UserError — переведённый на язык админки;
+ *   • уже помеченный отказ (shownError — текст на языке магазина) — как есть;
+ *   • русский отказ панели (`throw new Error("Пароли не совпадают")`) — как есть;
+ *   • ошибка разбора ввода (ZodError) — «проверьте поля», без JSON схемы;
+ *   • сбой — «сбой на сервере, попробуйте ещё раз» (в Sentry он ушёл раньше).
+ * redirect/notFound, Response и конец сессии (Unauthorized) идут как были.
+ */
+export async function toScreenError(
+  e: unknown,
+  translate: (e: UserError) => Promise<string>,
+): Promise<unknown> {
+  if (isShownError(e)) return e;
+  if (isUserError(e)) return shownError(await translate(e));
+  if (isPlatformFailure(e))
+    return shownError(await translate(new UserError("err.server.failed", SERVER_FAILED_TEXT)));
+  const x = e as { name?: unknown; message?: unknown };
+  if (x.name === "ZodError")
+    return shownError(await translate(new UserError("err.server.badInput", BAD_INPUT_TEXT)));
+  if (e instanceof Error && e.constructor === Error) return shownError(e.message);
+  return e;
 }

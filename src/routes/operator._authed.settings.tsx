@@ -8,6 +8,7 @@ import {
   setPayoutRequisitesFn,
 } from "@/app/operator/operator.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
+import { shownError } from "@/lib/shown-error";
 
 export const Route = createFileRoute("/operator/_authed/settings")({
   loader: async () => {
@@ -28,7 +29,7 @@ function SettingsPage() {
   const [done, setDone] = useState(false);
   const save = useAction(async (f: FormData) => {
     const password = String(f.get("password"));
-    if (password !== String(f.get("password2"))) throw new Error("Пароли не совпадают.");
+    if (password !== String(f.get("password2"))) throw shownError("Пароли не совпадают.");
     await setOperatorCredentialsFn({
       data: {
         currentPassword: String(f.get("currentPassword")),

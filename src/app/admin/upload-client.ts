@@ -5,6 +5,7 @@
  */
 import type { AdminKey, AdminT } from "@/app/i18n/admin";
 import type { UploadKind } from "@/core/storage/upload";
+import { shownError } from "@/lib/shown-error";
 
 type Answer = { key?: string; url?: string; problem?: string; mb?: number };
 
@@ -27,7 +28,7 @@ const PROBLEM_TEXT: Record<string, AdminKey> = {
 
 function fail(t: AdminT, j: Answer, fallback: string): Error {
   const key = j.problem ? PROBLEM_TEXT[j.problem] : undefined;
-  return new Error(key ? t(key, { mb: j.mb ?? "" }) : fallback);
+  return shownError(key ? t(key, { mb: j.mb ?? "" }) : fallback);
 }
 
 export async function uploadFile(
@@ -46,7 +47,7 @@ export async function uploadFile(
     body: file,
     headers: { "content-type": type, "cache-control": "max-age=3600", "x-upsert": "false" },
   }).catch(() => null);
-  if (!put?.ok) throw new Error(fallback(put?.status ?? 0));
+  if (!put?.ok) throw shownError(fallback(put?.status ?? 0));
 
   const done = await call({ action: "confirm", kind, key: sign.j.key });
   if (done.status !== 200 || !done.j.key) throw fail(t, done.j, fallback(done.status));
