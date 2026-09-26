@@ -126,6 +126,13 @@ export const Route = createFileRoute("/api/operator/bots")({
             ? row.settings
             : {}
         ) as Record<string, unknown>;
+        if (input.hosts) {
+          const { cleanHosts } = await import("@/core/tenant/custom-domain");
+          const { env } = await import("@/config/env");
+          const clean = cleanHosts(input.hosts, env().APP_URL);
+          if ("error" in clean) return Response.json({ error: clean.error }, { status: 400 });
+          input.hosts = clean.hosts;
+        }
         if (input.slug || input.hosts) {
           const { addressConflict } = await import("@/core/tenant/directory");
           const { tenantDirectory } = await import("@/core/tenant/resolve.server");

@@ -3,6 +3,8 @@ import { telegramApi } from "@/channels/telegram/api";
 import { telegramWebhookSecret, telegramWebhookUrl } from "@/channels/telegram/secret";
 import { tenantContext, patchTenantSettings } from "./resolve.server";
 import type { Tenant } from "./types";
+import { storefrontBase } from "./custom-domain";
+import { servedByV2 } from "./directory";
 
 /** Что бот получает от Telegram; pre_checkout_query — подтверждение оплаты Stars. */
 export const ALLOWED_UPDATES = ["message", "callback_query", "pre_checkout_query"];
@@ -60,10 +62,21 @@ export async function syncMenuButton(
       ? {
           type: "web_app",
           text: "🛍 Магазин",
-          web_app: { url: `${APP_URL}/s/${tenant.settings.slug ?? tenant.id}` },
+          web_app: { url: storefrontBase(tenant, APP_URL) },
         }
       : { type: "default" },
   });
+}
+
+/**
+ * Адрес витрины сменился (свой домен): кнопка «Магазин» должна вести туда же.
+ * Только для клиента v2 — бота клиента v1 не трогаем (CLAUDE.md, правило 6).
+ */
+export async function refreshMenuButton(tenant: Tenant): Promise<void> {
+  if (!tenant.telegramTokenEnc || !servedByV2(tenant) || tenant.archived) return;
+  const { TELEGRAM_API_BASE } = env();
+  const api = telegramApi(tenantContext(tenant).secrets.telegramToken(), TELEGRAM_API_BASE);
+  await syncMenuButton(tenant, api);
 }
 
 /**

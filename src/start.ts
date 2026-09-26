@@ -4,6 +4,13 @@ import { createCsrfMiddleware, createMiddleware, createStart } from "@tanstack/r
 // cookie-сессией продавца или оператора.
 const csrf = createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === "serverFn" });
 
+// Свой домен клиента (core/tenant/custom-domain): на домене магазина — только
+// его витрина. Общий адрес платформы проходит как раньше.
+const customDomain = createMiddleware().server(async ({ request, next }) => {
+  const { customDomainResponse } = await import("@/app/storefront/custom-domain.server");
+  return (await customDomainResponse(request)) ?? next();
+});
+
 // Журнал действий в админке (core/audit/admin-audit): после успешной
 // серверной функции админки — кто из команды и что поменял. Ошибка записи
 // журнала действие не отменяет.
@@ -40,7 +47,7 @@ const failureReport = createMiddleware({ type: "function" }).server(async (call)
 });
 
 export const startInstance = createStart(() => ({
-  requestMiddleware: [csrf],
+  requestMiddleware: [customDomain, csrf],
   // Порядок — снаружи внутрь. Учёт сбоев внутри перевода: видит исходную
   // ошибку (UserError), а не переведённый на английский текст. Журнал
   // внутри перевода ошибок: отказ не пишется, текст переводится.

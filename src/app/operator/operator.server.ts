@@ -606,11 +606,21 @@ export async function webhookState(botId: string): Promise<{
   }
 }
 
-export async function setAddressing(botId: string, slug: string | null, hosts: string[]) {
+export async function setAddressing(botId: string, slug: string | null, rawHosts: string[]) {
+  // Домен платформы или кривое имя магазину не записываем (core/tenant/custom-domain).
+  const { cleanHosts } = await import("@/core/tenant/custom-domain");
+  const clean = cleanHosts(rawHosts, env().APP_URL);
+  if ("error" in clean) throw new Error(clean.error);
+  const hosts = clean.hosts;
   const taken = addressConflict(await tenantDirectory(true), botId, { slug, hosts });
   if (taken) throw new Error(`Адрес «${taken.what}» уже занят клиентом «${taken.owner}».`);
   await patchTenantSettings(botId, { slug: slug ?? "", hosts });
   await logEvent(botId, "meta", { slug, hosts });
+  // Кнопка «Магазин» в боте — на новый адрес витрины; сбой Telegram адрес не отменяет.
+  const { refreshMenuButton } = await import("@/core/tenant/telegram-webhook.server");
+  await refreshMenuButton(await requireTenant({ by: "id", value: botId })).catch((e) =>
+    console.warn("[operator] menu button:", e),
+  );
 }
 
 export async function setZernioAccounts(botId: string, accountIds: string[]) {

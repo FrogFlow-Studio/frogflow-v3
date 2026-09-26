@@ -36,6 +36,7 @@ import {
   type Locale,
 } from "@/core/i18n/locale";
 import { verticalDef } from "@/core/verticals/registry";
+import { storefrontBase } from "@/core/tenant/custom-domain";
 import { formatMoney } from "@/core/money/money";
 import {
   upsertCustomer,
@@ -181,9 +182,7 @@ function mainMenu(b: Bot) {
   const t = b.ctx.tenant;
   if (t.modules.quiz) keyboard.splice(1, 0, [{ text: m.quizBtn }]);
   if (t.modules.telegram_mini_app && t.modules.shop) {
-    keyboard.unshift([
-      { text: "🛍 Магазин", web_app: { url: `${b.ctx.appUrl}/s/${t.settings.slug ?? t.id}` } },
-    ]);
+    keyboard.unshift([{ text: "🛍 Магазин", web_app: { url: storefrontBase(t, b.ctx.appUrl) } }]);
   }
   return { keyboard, resize_keyboard: true };
 }
@@ -529,7 +528,7 @@ async function menuAction(b: Bot, action: ReturnType<typeof menuActionFor>) {
     }
     case "information": {
       if (!b.ctx.tenant.modules.legal_docs) return sendMain(b);
-      const base = `${b.ctx.appUrl}/s/${b.ctx.tenant.settings.slug ?? b.ctx.tenant.id}/legal`;
+      const base = `${storefrontBase(b.ctx.tenant, b.ctx.appUrl)}/legal`;
       const buttons: InlineButton[][] = [
         [
           { text: "📄 Оферта", url: `${base}/offer` },
