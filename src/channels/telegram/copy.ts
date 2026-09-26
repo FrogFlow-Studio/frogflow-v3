@@ -113,6 +113,14 @@ export type Msg = {
   afterProofManual: string;
   sendReceiptPrompt: string;
   proofReceived: (no: number) => string;
+  /** Instagram/WhatsApp: почта для выдачи письмом (перенос из v1). */
+  emailAsk: string;
+  emailAskOptional: string;
+  emailSkipBtn: string;
+  emailHint: string;
+  emailSaved: (email: string) => string;
+  proofReceivedEmail: (no: number, email: string) => string;
+  proofReceivedNeedEmail: (no: number) => string;
   proofDuplicate: string;
   proofFailed: string;
   proofOrderClosed: string;
@@ -171,6 +179,18 @@ export type Msg = {
 };
 
 const ru: Msg = {
+  emailAsk:
+    "На какую почту прислать материалы после оплаты? Instagram не умеет пересылать документы, поэтому файлы уходят письмом.\n\nПроверьте адрес: без лишних пробелов и ошибок, например anna@mail.ru",
+  emailAskOptional:
+    "Прислать материалы ещё и на почту? Напишите адрес, например anna@mail.ru, или нажмите «Без почты».",
+  emailSkipBtn: "Без почты",
+  emailHint:
+    "Это не похоже на адрес почты. Напишите его целиком, например anna@mail.ru\n\nЧтобы выйти, напишите «отмена».",
+  emailSaved: (email) => `Записал: ${email}. Материалы придут на этот адрес после проверки оплаты.`,
+  proofReceivedEmail: (no, email) =>
+    `✅ Чек по заказу #${no} получен. После проверки пришлём материалы сюда и на ${email}.`,
+  proofReceivedNeedEmail: (no) =>
+    `✅ Чек по заказу #${no} получен.\n\nНа какую почту прислать материалы? Instagram не умеет пересылать документы, поэтому файлы уходят письмом. Проверьте адрес перед отправкой.`,
   notReceiptLike: (no) =>
     `⚠️ Это не похоже на чек оплаты.\n\nПришлите, пожалуйста, скриншот перевода / чека с суммой заказа #${no}.`,
   receiptPaymentFailed: (no) =>
@@ -360,6 +380,19 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  emailAsk:
+    "Төлемнен кейін материалдарды қай поштаға жіберейік? Instagram құжаттарды жібере алмайды, сондықтан файлдар хатпен кетеді.\n\nМекенжайды тексеріңіз: артық бос орынсыз және қатесіз, мысалы anna@mail.ru",
+  emailAskOptional:
+    "Материалдарды поштаға да жіберейік пе? Мекенжайды жазыңыз, мысалы anna@mail.ru, немесе «Поштасыз» түймесін басыңыз.",
+  emailSkipBtn: "Поштасыз",
+  emailHint:
+    "Бұл пошта мекенжайына ұқсамайды. Толық жазыңыз, мысалы anna@mail.ru\n\nШығу үшін «болдырмау» деп жазыңыз.",
+  emailSaved: (email) =>
+    `Жаздым: ${email}. Төлем тексерілген соң материалдар осы мекенжайға келеді.`,
+  proofReceivedEmail: (no, email) =>
+    `✅ #${no} тапсырыстың чегі алынды. Тексерістен кейін материалдарды осында және ${email} мекенжайына жібереміз.`,
+  proofReceivedNeedEmail: (no) =>
+    `✅ #${no} тапсырыстың чегі алынды.\n\nМатериалдарды қай поштаға жіберейік? Instagram құжаттарды жібере алмайды, сондықтан файлдар хатпен кетеді. Жібермес бұрын мекенжайды тексеріңіз.`,
   waitlistBtn: "🔔 Түскенде хабарлау",
   upsellHeader: "✨ Мұнымен бірге жиі алады:",
   quizBtn: "🧩 Тауар таңдау",
@@ -454,6 +487,19 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  emailAsk:
+    "Which email should we send the materials to after payment? Instagram can't forward documents, so files go out by email.\n\nPlease check the address: no extra spaces or typos, e.g. anna@mail.ru",
+  emailAskOptional:
+    "Send the materials to your email as well? Type the address, e.g. anna@mail.ru, or tap “No email”.",
+  emailSkipBtn: "No email",
+  emailHint:
+    "That doesn't look like an email address. Please type it in full, e.g. anna@mail.ru\n\nTo exit, type “cancel”.",
+  emailSaved: (email) =>
+    `Saved: ${email}. The materials will go to this address once payment is checked.`,
+  proofReceivedEmail: (no, email) =>
+    `✅ Receipt for order #${no} received. After checking we'll send the materials here and to ${email}.`,
+  proofReceivedNeedEmail: (no) =>
+    `✅ Receipt for order #${no} received.\n\nWhich email should we send the materials to? Instagram can't forward documents, so files go out by email. Please check the address before sending.`,
   waitlistBtn: "🔔 Notify me when available",
   upsellHeader: "✨ Often bought together:",
   quizBtn: "🧩 Find a product",
@@ -568,6 +614,19 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  emailAsk:
+    "To‘lovdan keyin materiallarni qaysi pochtaga yuboraylik? Instagram hujjatlarni yubora olmaydi, shuning uchun fayllar xat orqali ketadi.\n\nManzilni tekshiring: ortiqcha bo‘shliq va xatosiz, masalan anna@mail.ru",
+  emailAskOptional:
+    "Materiallarni pochtaga ham yuboraylikmi? Manzilni yozing, masalan anna@mail.ru, yoki «Pochtasiz» tugmasini bosing.",
+  emailSkipBtn: "Pochtasiz",
+  emailHint:
+    "Bu pochta manziliga o‘xshamaydi. To‘liq yozing, masalan anna@mail.ru\n\nChiqish uchun «bekor» deb yozing.",
+  emailSaved: (email) =>
+    `Yozib oldim: ${email}. To‘lov tekshirilgach materiallar shu manzilga keladi.`,
+  proofReceivedEmail: (no, email) =>
+    `✅ #${no} buyurtma cheki qabul qilindi. Tekshirgach materiallarni shu yerga va ${email} manziliga yuboramiz.`,
+  proofReceivedNeedEmail: (no) =>
+    `✅ #${no} buyurtma cheki qabul qilindi.\n\nMateriallarni qaysi pochtaga yuboraylik? Instagram hujjatlarni yubora olmaydi, shuning uchun fayllar xat orqali ketadi. Yuborishdan oldin manzilni tekshiring.`,
   waitlistBtn: "🔔 Kelganda xabar berish",
   upsellHeader: "✨ Bu bilan ko‘pincha olishadi:",
   quizBtn: "🧩 Mahsulot tanlash",

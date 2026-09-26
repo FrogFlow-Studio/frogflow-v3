@@ -107,6 +107,8 @@ describe.skipIf(!liveReady)("магазин в Instagram Direct на демо-к
       },
     });
     await cleanup();
+    // Почта платформы «готова»: заказ из Instagram спрашивает почту до реквизитов.
+    fake.mailReady = () => true;
     // На демо-клиенте лежат настройки автоответчика из v1 — тест идёт на значениях по умолчанию.
     prevBot = await getSettings(ctx, directBotSettingKeys("instagram"));
     for (const k of directBotSettingKeys("instagram")) await setSetting(ctx, k, "");
@@ -178,6 +180,12 @@ describe.skipIf(!liveReady)("магазин в Instagram Direct на демо-к
     expect(line).toBeTruthy();
     const ordinal = line.match(/^(\d+)\./)![1];
     await handleZernioMessage(ctx, text("d-6", ordinal!), fake);
+    // Instagram не пересылает документы: сначала почта, как в v1.
+    expect(last().text).toMatch(/почту прислать материалы/);
+    expect((await getCustomer(ctx, KEY))?.state.mode).toBe("awaiting_email");
+    await handleZernioMessage(ctx, text("d-6a", "мой ящик анна"), fake);
+    expect(last().text).toMatch(/не похоже на адрес почты/);
+    await handleZernioMessage(ctx, text("d-6b", "Почта: Anna.Probe@Example.com"), fake);
     const instructions = sent.find((m) => m.text.includes("тестовые реквизиты Direct"));
     expect(instructions).toBeTruthy();
     expect(instructions!.text).toMatch(/Заказ #\d+/);
@@ -188,6 +196,8 @@ describe.skipIf(!liveReady)("магазин в Instagram Direct на демо-к
     expect(orderId).toBeGreaterThan(0);
     const order = await getOrder(ctx, orderId);
     expect(order?.platform).toBe("instagram");
+    expect(order?.customer_email).toBe("anna.probe@example.com");
+    expect((await getCustomer(ctx, KEY))?.email).toBe("anna.probe@example.com");
     expect(order?.user_key).toBe(KEY);
     expect(order?.status).toBe("awaiting_payment");
   });

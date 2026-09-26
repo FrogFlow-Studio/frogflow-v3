@@ -60,7 +60,10 @@ export type DialogMode =
   /** multi_language, delivery_lang_timing = before: язык материалов перед оформлением. */
   | "awaiting_delivery_lang"
   /** helpdesk: покупатель описывает обращение одним сообщением. */
-  | "awaiting_ticket";
+  | "awaiting_ticket"
+  /** Instagram/WhatsApp: почта для выдачи письмом — до оформления или после чека. */
+  | "awaiting_email"
+  | "awaiting_order_email";
 
 export type DialogState = {
   mode?: DialogMode;
@@ -272,6 +275,19 @@ export async function setContactPhone(
     .eq("user_key", customer.userKey);
   if (error) throw new Error(`Не удалось сохранить телефон: ${error.message}`);
   return { ...customer, contactPhone: phone };
+}
+
+export async function setEmail(
+  ctx: TenantContext,
+  customer: Customer,
+  email: string,
+): Promise<Customer> {
+  const { error } = await ctx.db
+    .from("bot_users")
+    .update({ email })
+    .eq("user_key", customer.userKey);
+  if (error) throw new Error(`Не удалось сохранить почту: ${error.message}`);
+  return { ...customer, email };
 }
 
 export async function isBlocked(ctx: TenantContext, telegramId: number): Promise<boolean> {

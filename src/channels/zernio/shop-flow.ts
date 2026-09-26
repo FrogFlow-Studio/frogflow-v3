@@ -238,6 +238,26 @@ export function pickReceiptAttachment(
   return unknown?.url ?? null;
 }
 
+/**
+ * Нужен ли шаг «ваша почта» перед оформлением (перенос из v1). Instagram не
+ * пересылает документы, поэтому цифровой заказ оттуда выдаётся письмом —
+ * почта обязательна. В WhatsApp файлы приходят в переписку, почту
+ * предлагаем с кнопкой «Без почты». Физический заказ, Telegram, уже
+ * известная почта, отказ от неё или неготовая почта платформы — шага нет.
+ */
+export function emailStep(p: {
+  platform: string;
+  physical: boolean;
+  knownEmail: string | null | undefined;
+  skipped: boolean;
+  mailReady: boolean;
+}): "required" | "optional" | null {
+  if (!p.mailReady || p.physical || p.knownEmail?.trim()) return null;
+  if (p.platform === "instagram") return "required";
+  if (p.platform === "whatsapp" && !p.skipped) return "optional";
+  return null;
+}
+
 /** Почта — нестрого: поймать опечатку, а не отсеять экзотику по RFC. */
 export function extractEmail(text: string): string | null {
   const match = text.trim().match(/[^\s<>()[\],;:@"]+@[^\s<>()[\],;:@"]+\.[a-zA-Z]{2,}/);
@@ -320,6 +340,10 @@ const CANCEL_WORDS = new Set([
   "/start",
   "/stop",
   "хватит",
+  "cancel",
+  "болдырмау",
+  "bekor",
+  "bekor qilish",
 ]);
 
 /** Выход из сценария — работает на любом шаге, иначе на выборе страны можно запереться. */

@@ -422,6 +422,8 @@ export type ZernioTransport = {
     url: string,
     accountId?: string | null,
   ) => Promise<{ bytes: Uint8Array; mime: string } | null>;
+  /** Готова ли почта платформы (SMTP) — в тестах подменяется; живое — isMailConfigured. */
+  mailReady?: () => boolean;
 };
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;

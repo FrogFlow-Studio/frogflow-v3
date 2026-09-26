@@ -2,6 +2,7 @@ import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   setContactPhone,
+  setEmail,
   setState,
   type Customer,
   type DialogState,
@@ -68,11 +69,14 @@ import {
   type ZernioTransport,
 } from "./api.server";
 import { zernioMaterialSender } from "./deliver";
+import { isMailConfigured } from "@/core/mail/mail.server";
 import type { NativeOrder, ParsedZernioMessage } from "./message";
 import { describeNativeCart, matchNativeItems } from "@/core/whatsapp/native-cart";
 import type { ZernioPlatform } from "./platform";
 import {
   classifyIncoming,
+  emailStep,
+  extractEmail,
   extractProductNumber,
   isCancel,
   isPaymentComplaint,
@@ -124,6 +128,8 @@ type DirectMemory = {
   last_reply_at?: string;
   locale_picked_at?: string;
   variant_product?: string;
+  /** WhatsApp: покупатель отказался от почты — больше не спрашиваем. */
+  email_skipped?: boolean;
 };
 
 type Shop = {
@@ -471,6 +477,22 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       await finishAfterNote(s, text.slice(0, 500));
       return "handled";
     }
+    case "awaiting_email": {
+      const email = extractEmail(text);
+      if (!email) return reply(s, s.m.emailHint, { force: true }).then(() => "handled" as const);
+      s.customer = await setEmail(s.ctx, s.customer, email);
+      await setMode(s, { mode: "idle" });
+      const cc = s.customer.state.country_code;
+      if (!cc) return askCountry(s, true).then(() => "handled" as const);
+      await finishCheckout(s, cc);
+      return "handled";
+    }
+    case "awaiting_order_email": {
+      const email = extractEmail(text);
+      if (!email) return reply(s, s.m.emailHint, { force: true }).then(() => "handled" as const);
+      await saveOrderEmail(s, Number(s.customer.state.pending_order_id), email);
+      return "handled";
+    }
     case "awaiting_proof":
     case "choose_pay":
     case "awaiting_payment": {
@@ -638,6 +660,14 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
     case "NOTE":
       await finishAfterNote(s, null);
       return "handled";
+    case "EMAIL": {
+      if (s.customer.state.mode !== "awaiting_email") return "handled";
+      await remember(s, { email_skipped: true }, { mode: "idle" });
+      const cc = s.customer.state.country_code;
+      if (!cc) await askCountry(s, true);
+      else await finishCheckout(s, cc);
+      return "handled";
+    }
     case "PAY":
       await choosePayment(s, a === "rk" ? "rk" : "manual");
       return "handled";
@@ -1164,7 +1194,70 @@ async function proceedToLanguageOrPlace(s: Shop, countryCode: string) {
   return finishCheckout(s, countryCode);
 }
 
+/**
+ * Шаг «ваша почта» до оформления (перенос из v1): заказ из Instagram
+ * выдаётся письмом, и почта нужна до чека — автопроверка чека выдаёт заказ
+ * сразу. Спросили — true, оформление продолжит ответ покупателя.
+ */
+async function askEmailFirst(s: Shop, countryCode: string): Promise<boolean> {
+  const items = await listCart(s.ctx, s.customer);
+  const step = emailStep({
+    platform: s.platform,
+    physical: items.some((i) => i.products?.fulfillment_kind === "physical"),
+    knownEmail: s.customer.email,
+    skipped: memory(s.customer).email_skipped === true,
+    mailReady: (s.transport.mailReady ?? isMailConfigured)(),
+  });
+  if (!step) return false;
+  await setMode(s, { mode: "awaiting_email", country_code: countryCode });
+  if (step === "required") await reply(s, s.m.emailAsk, { force: true });
+  else
+    await reply(s, s.m.emailAskOptional, {
+      force: true,
+      buttons: [{ type: "postback", title: plain(s.m.emailSkipBtn), payload: "EMAIL:skip" }],
+    });
+  return true;
+}
+
+/**
+ * Почта, присланная после чека: в покупателя и в заказ. Если продавец уже
+ * выдал заказ — письмо уходит сразу, иначе его отправит выдача.
+ */
+async function saveOrderEmail(s: Shop, orderId: number, email: string) {
+  s.customer = await setEmail(s.ctx, s.customer, email);
+  await setMode(s, { mode: "idle" });
+  if (orderId) {
+    await s.ctx.db
+      .from("orders")
+      .update({ customer_email: email })
+      .eq("id", orderId)
+      .eq("telegram_id", s.customer.telegramId);
+    const fresh = await getOrder(s.ctx, orderId);
+    if (fresh?.status === "delivered") {
+      const { emailOrderMaterials } = await import("@/core/orders/email");
+      await emailOrderMaterials(s.ctx, fresh).catch((e) =>
+        console.warn(`[zernio] письмо по заказу #${orderId}: ${String(e)}`),
+      );
+    }
+  }
+  await reply(s, s.m.emailSaved(email), { force: true });
+}
+
+/** После чека: заказу из Instagram без почты — спросить её (заказ мог прийти из v1 или до шага). */
+async function askOrderEmailIfMissing(s: Shop, order: OrderWithItems): Promise<boolean> {
+  if (
+    s.platform !== "instagram" ||
+    order.fulfillment_kind === "physical" ||
+    order.customer_email?.trim() ||
+    !(s.transport.mailReady ?? isMailConfigured)()
+  )
+    return false;
+  await setMode(s, { mode: "awaiting_order_email", pending_order_id: order.id });
+  return true;
+}
+
 async function finishCheckout(s: Shop, countryCode: string) {
+  if (await askEmailFirst(s, countryCode)) return;
   const st = s.customer.state;
   const result = await placeOrder(s.ctx, s.customer, countryCode, {
     promoCode: st.promo_code,
@@ -1450,6 +1543,7 @@ async function receiveProof(s: Shop, url: string, orderId: number) {
         .update({ admin_note: `OCR: ${v.detail}`.slice(0, 500) })
         .eq("id", orderId);
       await reply(s, s.m.receiptManualReview(String(no)), { force: true });
+      if (await askOrderEmailIfMissing(s, res.order)) await reply(s, s.m.emailAsk, { force: true });
       await notifyAdmin(res.order, { reviewReason: v.detail });
       return;
     }
@@ -1460,12 +1554,19 @@ async function receiveProof(s: Shop, url: string, orderId: number) {
     await reply(s, s.m.receiptVerified(String(no)), { force: true });
     const delivered = await deliverHere(s, orderId, no);
     const fresh = (await getOrder(s.ctx, orderId)) ?? res.order;
+    if (await askOrderEmailIfMissing(s, fresh)) await reply(s, s.m.emailAsk, { force: true });
     await notifyAdmin(fresh, { autoDelivered: delivered });
     return;
   }
 
   await setMode(s, { mode: "idle" });
-  await reply(s, s.m.proofReceived(no), {
+  if (await askOrderEmailIfMissing(s, res.order)) {
+    await reply(s, s.m.proofReceivedNeedEmail(no), { force: true });
+    await notifyAdmin(res.order);
+    return;
+  }
+  const email = res.order.platform !== "telegram" ? res.order.customer_email?.trim() : null;
+  await reply(s, email ? s.m.proofReceivedEmail(no, email) : s.m.proofReceived(no), {
     force: true,
     buttons: [BTN.orders(s.m), BTN.catalog(s.m)],
   });

@@ -293,6 +293,8 @@ export async function placeOrder(
         username: customer.username,
         display_name: display,
         contact: customer.contactPhone,
+        // Instagram/WhatsApp: почта для копии материалов письмом (emailOrderMaterials).
+        customer_email: customer.platform !== "telegram" ? customer.email?.trim() || null : null,
         country_code: method.country_code,
         country_name: method.country_name,
         total,

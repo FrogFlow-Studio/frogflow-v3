@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyIncoming,
+  emailStep,
   extractEmail,
   extractProductNumber,
   isAffirmative,
@@ -385,5 +386,38 @@ describe("списки WhatsApp", () => {
     expect(stepAnswer("CART")).toBeNull();
     expect(stepAnswer(null)).toBeNull();
     expect(stepAnswer("STEP:")).toBeNull();
+  });
+});
+
+describe("emailStep — шаг «ваша почта»", () => {
+  const base = {
+    platform: "instagram",
+    physical: false,
+    knownEmail: null,
+    skipped: false,
+    mailReady: true,
+  };
+  it("Instagram, цифровой заказ, почты нет — спрашиваем обязательно", () => {
+    expect(emailStep(base)).toBe("required");
+    // отказ от почты в Instagram не действует: иначе материалам некуда уйти
+    expect(emailStep({ ...base, skipped: true })).toBe("required");
+  });
+  it("WhatsApp — предлагаем с кнопкой «Без почты», после отказа не спрашиваем", () => {
+    expect(emailStep({ ...base, platform: "whatsapp" })).toBe("optional");
+    expect(emailStep({ ...base, platform: "whatsapp", skipped: true })).toBeNull();
+  });
+  it("шага нет: почта известна, физический товар, Telegram, почта платформы не настроена", () => {
+    expect(emailStep({ ...base, knownEmail: "a@b.kz" })).toBeNull();
+    expect(emailStep({ ...base, knownEmail: "  " })).toBe("required");
+    expect(emailStep({ ...base, physical: true })).toBeNull();
+    expect(emailStep({ ...base, platform: "telegram" })).toBeNull();
+    expect(emailStep({ ...base, mailReady: false })).toBeNull();
+  });
+  it("«отмена» понимается на всех языках покупателя", () => {
+    for (const w of ["отмена", "Cancel", "болдырмау", "bekor"]) expect(isCancel(w), w).toBe(true);
+  });
+  it("почта вытаскивается из фразы и приводится к нижнему регистру", () => {
+    expect(extractEmail("Почта: Anna.Probe@Example.com")).toBe("anna.probe@example.com");
+    expect(extractEmail("мой ящик анна")).toBeNull();
   });
 });

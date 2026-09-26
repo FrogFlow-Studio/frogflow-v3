@@ -88,6 +88,8 @@ describe.skipIf(!liveReady)("магазин в WhatsApp списками на д
       },
     });
     await cleanup();
+    // Почта платформы «готова»: WhatsApp предлагает почту с кнопкой «Без почты».
+    fake.mailReady = () => true;
     const { data: p, error } = await ctx.db
       .from("products")
       .insert({
@@ -156,6 +158,16 @@ describe.skipIf(!liveReady)("магазин в WhatsApp списками на д
     const line = countries.find((x) => x.title.startsWith("Казахстан (v2"))!;
     expect(line).toBeTruthy();
     await handleZernioMessage(ctx, tapList("w-7", line.id), fake);
+    expect(last().text).toMatch(/на почту/);
+    expect(last().buttons).toEqual(["Без почты"]);
+    await handleZernioMessage(
+      ctx,
+      {
+        ...event("w-7a", { text: null }),
+        metadata: { interactiveType: "button_reply", interactiveId: "EMAIL:skip" },
+      },
+      fake,
+    );
     const instructions = sent.find((m) => m.text.includes("тестовые реквизиты WhatsApp"));
     expect(instructions).toBeTruthy();
     const c = await getCustomer(ctx, KEY);
