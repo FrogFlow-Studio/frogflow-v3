@@ -31,6 +31,11 @@ export type Msg = {
   upsellHeader: string;
   /** Квиз-подбор (модуль quiz). */
   quizBtn: string;
+  /** Мини-helpdesk. */
+  ticketPrompt: string;
+  ticketCreated: (no: number) => string;
+  ticketAppended: (no: number) => string;
+  ticketClosed: (no: number) => string;
   quizResult: string;
   quizNothing: string;
   quizNotReady: string;
@@ -212,6 +217,10 @@ const ru: Msg = {
   waitlistBtn: "🔔 Сообщить о поступлении",
   upsellHeader: "✨ С этим часто берут:",
   quizBtn: "🧩 Подобрать товар",
+  ticketPrompt: "Опишите вопрос одним сообщением — передам его команде магазина.",
+  ticketCreated: (no) => `📨 Обращение #${no} принято. Ответим здесь, в этом чате.`,
+  ticketAppended: (no) => `📨 Добавил к обращению #${no}. Ответим здесь.`,
+  ticketClosed: (no) => `✅ Обращение #${no} закрыто. Если вопрос остался — напишите снова.`,
   quizResult: "Вот что вам подойдёт:",
   quizNothing: "Точного совпадения не нашлось — загляните в каталог.",
   quizNotReady: "Подбор ещё не настроен — загляните в каталог.",
@@ -348,6 +357,10 @@ const kk: Msg = {
   waitlistBtn: "🔔 Түскенде хабарлау",
   upsellHeader: "✨ Мұнымен бірге жиі алады:",
   quizBtn: "🧩 Тауар таңдау",
+  ticketPrompt: "Сұрағыңызды бір хабарламамен сипаттаңыз — дүкен командасына жеткіземін.",
+  ticketCreated: (no) => `📨 #${no} өтініш қабылданды. Осы чатта жауап береміз.`,
+  ticketAppended: (no) => `📨 #${no} өтінішке қостым. Осында жауап береміз.`,
+  ticketClosed: (no) => `✅ #${no} өтініш жабылды. Сұрақ қалса — қайта жазыңыз.`,
   quizResult: "Сізге мыналар сәйкес келеді:",
   quizNothing: "Дәл сәйкестік табылмады — каталогқа қараңыз.",
   quizNotReady: "Таңдау әлі бапталмаған — каталогқа қараңыз.",
@@ -433,6 +446,11 @@ const en: Msg = {
   waitlistBtn: "🔔 Notify me when available",
   upsellHeader: "✨ Often bought together:",
   quizBtn: "🧩 Find a product",
+  ticketPrompt: "Describe your question in one message — I will pass it to the shop team.",
+  ticketCreated: (no) => `📨 Request #${no} received. We will reply here in this chat.`,
+  ticketAppended: (no) => `📨 Added to request #${no}. We will reply here.`,
+  ticketClosed: (no) =>
+    `✅ Request #${no} is closed. If you still have a question, just write again.`,
   quizResult: "Here is what suits you:",
   quizNothing: "No exact match — have a look at the catalog.",
   quizNotReady: "The picker is not set up yet — have a look at the catalog.",
@@ -537,6 +555,10 @@ const uz: Msg = {
   waitlistBtn: "🔔 Kelganda xabar berish",
   upsellHeader: "✨ Bu bilan ko‘pincha olishadi:",
   quizBtn: "🧩 Mahsulot tanlash",
+  ticketPrompt: "Savolingizni bitta xabarda yozing — do‘kon jamoasiga yetkazaman.",
+  ticketCreated: (no) => `📨 #${no} murojaat qabul qilindi. Shu chatda javob beramiz.`,
+  ticketAppended: (no) => `📨 #${no} murojaatga qo‘shdim. Shu yerda javob beramiz.`,
+  ticketClosed: (no) => `✅ #${no} murojaat yopildi. Savol qolsa — yana yozing.`,
   quizResult: "Sizga mos keladiganlari:",
   quizNothing: "Aniq moslik topilmadi — katalogga qarang.",
   quizNotReady: "Tanlash hali sozlanmagan — katalogga qarang.",

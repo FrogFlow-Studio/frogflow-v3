@@ -82,7 +82,7 @@ import {
 import { getSetting } from "@/core/settings/settings";
 import { shopAdminIds } from "@/core/notify/recipients";
 import { notifyAdminNewOrder } from "./admin-notify";
-import { notifyDeliveryFailure } from "./notify";
+import { notifyAdminsHtml, notifyDeliveryFailure } from "./notify";
 import { telegramLanguageAsker, telegramMaterialSender } from "./deliver";
 import { findValidGift, findValidPromoCode } from "@/core/discounts/discounts";
 import { normalizeCode } from "@/core/discounts/pure";
@@ -322,6 +322,28 @@ async function handleMessage(
     if (mode === "awaiting_fulfillment_note") return finishAfterNote(b, text.slice(0, 500));
   }
 
+  if (customer.state.mode === "awaiting_ticket" && text && !action && ctx.tenant.modules.helpdesk) {
+    b.customer = await setState(ctx, customer, { ...customer.state, mode: "idle" });
+    const { createTicket } = await import("@/core/helpdesk/tickets");
+    const who = customer.firstName || (customer.username ? `@${customer.username}` : null);
+    const { ticket, created } = await createTicket(ctx, {
+      telegramId: from.id,
+      customerName: who,
+      platform: "telegram",
+      subject: text,
+    });
+    if (ctx.tenant.modules.manager_chat) {
+      const { recordMessage } = await import("@/core/chat/chat");
+      await recordMessage(ctx, { telegramId: from.id, direction: "in", sender: "customer", text });
+    }
+    await notifyAdminsHtml(
+      ctx,
+      `📨 <b>${created ? "Новое обращение" : "Дополнение к обращению"} #${ticket.number}</b>\n👤 ${escapeHtml(who ?? String(from.id))}\n\n${escapeHtml(text.slice(0, 1000))}\n\nОтветить — раздел «Чат», статус — «Обращения» в панели.`,
+      { kind: "question" },
+    ).catch(() => 0);
+    await send(b, created ? b.m.ticketCreated(ticket.number) : b.m.ticketAppended(ticket.number));
+    return;
+  }
   if (customer.state.mode === "awaiting_review_comment") {
     const { review_product_id: productId, ...rest } = customer.state;
     b.customer = await setState(ctx, customer, { ...rest, mode: "idle" });
@@ -517,6 +539,14 @@ async function menuAction(b: Bot, action: ReturnType<typeof menuActionFor>) {
       return;
     }
     case "contact": {
+      if (b.ctx.tenant.modules.helpdesk) {
+        b.customer = await setState(b.ctx, b.customer, {
+          ...b.customer.state,
+          mode: "awaiting_ticket",
+        });
+        await send(b, b.m.ticketPrompt);
+        return;
+      }
       const link = await getSetting(b.ctx, "admin_contact_link");
       await send(b, link ? b.m.contactAuthor(escapeHtml(link)) : b.m.contactNotSet);
       return;

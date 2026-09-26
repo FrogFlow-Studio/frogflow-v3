@@ -58,7 +58,9 @@ export type DialogMode =
   | "awaiting_country"
   | "awaiting_variant_choice"
   /** multi_language, delivery_lang_timing = before: язык материалов перед оформлением. */
-  | "awaiting_delivery_lang";
+  | "awaiting_delivery_lang"
+  /** helpdesk: покупатель описывает обращение одним сообщением. */
+  | "awaiting_ticket";
 
 export type DialogState = {
   mode?: DialogMode;
