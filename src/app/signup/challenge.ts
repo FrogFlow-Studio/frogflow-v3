@@ -45,6 +45,8 @@ export function verifyChallenge(
   challenge: string | undefined,
   answer: string | undefined,
   now = Date.now(),
+  /** Сложность; меньше — только в тестах, чтобы медленный CI не ждал десятки секунд. */
+  bits = POW_BITS,
 ): string | null {
   const c = parse(challenge ?? "");
   if (!c) return REFRESH;
@@ -55,6 +57,6 @@ export function verifyChallenge(
   if (age < CHALLENGE_MIN_FILL_MS) return "Слишком быстро — проверьте поля и отправьте ещё раз.";
   if (!/^\d{1,12}$/.test(answer ?? "")) return REFRESH;
   const digest = createHash("sha256").update(`${challenge}:${answer}`).digest();
-  if (leadingZeroBits(digest) < POW_BITS) return REFRESH;
+  if (leadingZeroBits(digest) < bits) return REFRESH;
   return null;
 }
