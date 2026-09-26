@@ -35,6 +35,7 @@ import {
   deliverOrder,
   displayNo,
   getOrder,
+  setOrderEmail,
   listActivePaymentMethods,
   listCustomerOrders,
   placeOrder,
@@ -480,7 +481,14 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     case "awaiting_email": {
       const email = extractEmail(text);
       if (!email) return reply(s, s.m.emailHint, { force: true }).then(() => "handled" as const);
-      s.customer = await setEmail(s.ctx, s.customer, email);
+      try {
+        s.customer = await setEmail(s.ctx, s.customer, email);
+      } catch (e) {
+        // Шаг остаётся «жду почту»: покупатель пришлёт её ещё раз.
+        console.error(`[zernio:${s.ctx.tenant.id}] почта покупателя: ${String(e)}`);
+        await reply(s, s.m.emailSaveFailed, { force: true });
+        return "handled";
+      }
       await setMode(s, { mode: "idle" });
       const cc = s.customer.state.country_code;
       if (!cc) return askCountry(s, true).then(() => "handled" as const);
@@ -1224,14 +1232,17 @@ async function askEmailFirst(s: Shop, countryCode: string): Promise<boolean> {
  * выдал заказ — письмо уходит сразу, иначе его отправит выдача.
  */
 async function saveOrderEmail(s: Shop, orderId: number, email: string) {
-  s.customer = await setEmail(s.ctx, s.customer, email);
+  try {
+    if (orderId) await setOrderEmail(s.ctx, orderId, s.customer.telegramId, email);
+    s.customer = await setEmail(s.ctx, s.customer, email);
+  } catch (e) {
+    // Не говорим «записал», если не записали: шаг остаётся, покупатель пришлёт почту ещё раз.
+    console.error(`[zernio:${s.ctx.tenant.id}] почта заказа #${orderId}: ${String(e)}`);
+    await reply(s, s.m.emailSaveFailed, { force: true });
+    return;
+  }
   await setMode(s, { mode: "idle" });
   if (orderId) {
-    await s.ctx.db
-      .from("orders")
-      .update({ customer_email: email })
-      .eq("id", orderId)
-      .eq("telegram_id", s.customer.telegramId);
     const fresh = await getOrder(s.ctx, orderId);
     if (fresh?.status === "delivered") {
       const { emailOrderMaterials } = await import("@/core/orders/email");

@@ -820,3 +820,24 @@ export async function signedFileUrl(path: string, ttlSec = 7 * 24 * 3600): Promi
 export function isOwnStorageKey(ctx: TenantContext, key: string): boolean {
   return isTenantStorageKey(ctx.tenant.id, key);
 }
+
+/**
+ * Почта покупателя в заказ (Instagram/WhatsApp, выдача письмом). Ошибку
+ * базы не глотаем: иначе покупатель услышит «записал», а письмо не уйдёт.
+ * Чужой или удалённый заказ — false, не ошибка.
+ */
+export async function setOrderEmail(
+  ctx: TenantContext,
+  orderId: number,
+  telegramId: number,
+  email: string,
+): Promise<boolean> {
+  const { data, error } = await ctx.db
+    .from("orders")
+    .update({ customer_email: email })
+    .eq("id", orderId)
+    .eq("telegram_id", telegramId)
+    .select("id");
+  if (error) throw new Error(`Не удалось сохранить почту в заказе #${orderId}: ${error.message}`);
+  return (data ?? []).length > 0;
+}

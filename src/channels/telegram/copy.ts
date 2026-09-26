@@ -119,6 +119,7 @@ export type Msg = {
   emailSkipBtn: string;
   emailHint: string;
   emailSaved: (email: string) => string;
+  emailSaveFailed: string;
   proofReceivedEmail: (no: number, email: string) => string;
   proofReceivedNeedEmail: (no: number) => string;
   proofDuplicate: string;
@@ -179,6 +180,7 @@ export type Msg = {
 };
 
 const ru: Msg = {
+  emailSaveFailed: "Не получилось сохранить почту. Пришлите адрес ещё раз, пожалуйста.",
   emailAsk:
     "На какую почту прислать материалы после оплаты? Instagram не умеет пересылать документы, поэтому файлы уходят письмом.\n\nПроверьте адрес: без лишних пробелов и ошибок, например anna@mail.ru",
   emailAskOptional:
@@ -380,6 +382,7 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  emailSaveFailed: "Поштаны сақтау мүмкін болмады. Мекенжайды қайта жіберіңізші.",
   emailAsk:
     "Төлемнен кейін материалдарды қай поштаға жіберейік? Instagram құжаттарды жібере алмайды, сондықтан файлдар хатпен кетеді.\n\nМекенжайды тексеріңіз: артық бос орынсыз және қатесіз, мысалы anna@mail.ru",
   emailAskOptional:
@@ -487,6 +490,7 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  emailSaveFailed: "Couldn't save the email. Please send the address again.",
   emailAsk:
     "Which email should we send the materials to after payment? Instagram can't forward documents, so files go out by email.\n\nPlease check the address: no extra spaces or typos, e.g. anna@mail.ru",
   emailAskOptional:
@@ -614,6 +618,7 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  emailSaveFailed: "Pochtani saqlab bo‘lmadi. Iltimos, manzilni qayta yuboring.",
   emailAsk:
     "To‘lovdan keyin materiallarni qaysi pochtaga yuboraylik? Instagram hujjatlarni yubora olmaydi, shuning uchun fayllar xat orqali ketadi.\n\nManzilni tekshiring: ortiqcha bo‘shliq va xatosiz, masalan anna@mail.ru",
   emailAskOptional:
