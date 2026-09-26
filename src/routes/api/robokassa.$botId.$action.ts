@@ -61,13 +61,15 @@ async function handle(request: Request, botId: string, action: string): Promise<
     total: Number(order.total),
     fulfillment_kind: order.fulfillment_kind,
   });
-  if (Math.abs(Number(outSum) - expected) > 0.01) {
+  // «не число» (NaN) проходило сравнение: NaN > 0.01 — ложь, и в paid_amount ложился NaN.
+  const paid = Number(outSum);
+  if (!Number.isFinite(paid) || Math.abs(paid - expected) > 0.01) {
     console.error(
       `[robokassa:${botId}] сумма ${outSum} ≠ ожидаемой ${expected} по заказу ${orderId}`,
     );
     return new Response("amount mismatch", { status: 400 });
   }
-  const r = await markPaidOnline(ctx, orderId, Number(outSum), "Robokassa");
+  const r = await markPaidOnline(ctx, orderId, paid, "Robokassa");
   if (r.ok && !r.alreadyDone) {
     const { runInBackground } = await import("@/lib/background");
     await runInBackground(async () => {

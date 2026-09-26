@@ -11,10 +11,11 @@ export const Route = createFileRoute("/api/admin/upload")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { requireAdmin } = await import("@/app/auth/guards.server");
+        const { requireAdminRole } = await import("@/app/auth/guards.server");
         let ctx;
         try {
-          ctx = await requireAdmin();
+          // Загрузка — это изменение: роль «просмотр» файлы не кладёт.
+          ctx = await requireAdminRole("manager");
         } catch {
           return new Response("unauthorized", { status: 401 });
         }

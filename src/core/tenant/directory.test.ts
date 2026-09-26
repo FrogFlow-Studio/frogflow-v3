@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addressConflict,
+  telegramBotTaken,
   servedByV2,
   findTenant,
   modulesFromJson,
@@ -94,6 +95,14 @@ describe("tenant directory", () => {
     expect(findTenant([b, a], { by: "slug", value: "shop" })).toBeNull();
     expect(findTenant([a, b], { by: "host", value: "a.kz" })).toBeNull();
     expect(findTenant([a], { by: "slug", value: "shop" })?.id).toBe(a.id);
+  });
+
+  it("telegramBotTaken: бот другого магазина занят, свой — нет", () => {
+    const a = tenantFromRow(row({ settings: { telegram: { username: "ShopBot" } } }));
+    expect(telegramBotTaken([a], "other-id", "shopbot")).toBe(a.name);
+    expect(telegramBotTaken([a], a.id, "ShopBot")).toBeNull();
+    expect(telegramBotTaken([a], "other-id", "another_bot")).toBeNull();
+    expect(telegramBotTaken([a], "other-id", undefined)).toBeNull();
   });
 
   it("addressConflict: занятый slug или домен другого клиента, свой — не конфликт", () => {

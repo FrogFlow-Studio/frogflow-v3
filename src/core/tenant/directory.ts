@@ -194,6 +194,20 @@ function hostOf(url: string | null | undefined): string | null {
   }
 }
 
+/** Имя клиента, к которому уже подключён Telegram-бот с этим username, или null. */
+export function telegramBotTaken(
+  directory: readonly Tenant[],
+  botId: string,
+  username: string | null | undefined,
+): string | null {
+  const u = username?.trim().toLowerCase();
+  if (!u) return null;
+  const other = directory.find(
+    (t) => t.id !== botId && t.settings.telegram?.username?.toLowerCase() === u,
+  );
+  return other ? other.name : null;
+}
+
 const only = (list: Tenant[]): Tenant | null => (list.length === 1 ? list[0]! : null);
 
 /**

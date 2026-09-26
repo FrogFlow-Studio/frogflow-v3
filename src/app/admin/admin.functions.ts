@@ -130,7 +130,7 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
 export const setAdminLocaleFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ locale: z.enum(["ru", "kk", "en", "uz"]) }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const ctx = await adminWrite();
     await (await import("@/core/settings/settings")).setSetting(ctx, "admin_locale", data.locale);
     return { ok: true };
   });
@@ -1259,7 +1259,7 @@ export const setExcludedPhonesFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ phones: z.string().max(20000) }).parse(d))
   .handler(async ({ data }) => {
     const { requireAdminModule } = await import("@/app/auth/guards.server");
-    const ctx = await requireAdminModule("wa_broadcasts");
+    const ctx = await requireAdminModule("wa_broadcasts", "manager");
     const { parseExcludedPhones } = await import("@/core/broadcasts/broadcasts");
     const { setSetting } = await import("@/core/settings/settings");
     const phones = [...parseExcludedPhones(data.phones)].join(", ");
@@ -1289,8 +1289,9 @@ export const analyticsFn = createServerFn({ method: "GET" })
 
 /* ── чат с менеджером ────────────────────────────────────────────── */
 
-const chatModule = async () =>
-  (await import("@/app/auth/guards.server")).requireAdminModule("manager_chat");
+/** Читать чат может любая роль; подключаться и писать покупателю — менеджер и владелец. */
+const chatModule = async (min?: "manager") =>
+  (await import("@/app/auth/guards.server")).requireAdminModule("manager_chat", min);
 // Покупатели из Instagram/WhatsApp живут под синтетическим отрицательным
 // telegram_id (core/customers), поэтому «положительный» здесь не годится.
 const tgId = z
@@ -1318,7 +1319,7 @@ export const chatMessagesFn = createServerFn({ method: "GET" })
 export const chatConnectFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ telegramId: tgId, active: z.boolean() }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await chatModule();
+    const ctx = await chatModule("manager");
     const chat = await import("@/core/chat/chat");
     if (data.active) await chat.connect(ctx, data.telegramId);
     else {
@@ -1336,7 +1337,7 @@ export const chatReplyFn = createServerFn({ method: "POST" })
     z.object({ telegramId: tgId, text: z.string().trim().min(1).max(4000) }).parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await chatModule();
+    const ctx = await chatModule("manager");
     const { replyAsManager } = await import("./admin.server");
     await replyAsManager(ctx, data.telegramId, data.text);
     return { ok: true };

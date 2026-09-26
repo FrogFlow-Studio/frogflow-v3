@@ -32,7 +32,7 @@ import {
 import { ensureTelegramWebhook } from "@/core/tenant/telegram-webhook.server";
 import type { Tenant } from "@/core/tenant/types";
 import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
-import { addressConflict } from "@/core/tenant/directory";
+import { addressConflict, telegramBotTaken } from "@/core/tenant/directory";
 import { adminLoginTaken } from "@/core/auth/roles";
 import { hashPassword } from "@/app/auth/password";
 import { telegramWebhookUrl } from "@/channels/telegram/secret";
@@ -458,6 +458,10 @@ export async function connectTelegram(botId: string, token: string, actor = "ope
     "getMe",
   );
   if (!me.ok) throw new Error(`Telegram отверг токен: ${me.description ?? "getMe failed"}`);
+  // Один бот — один магазин: иначе вебхук переставится на другого клиента, и
+  // покупатели чужого магазина пойдут в этот (продавец подключает бота сам).
+  const taken = telegramBotTaken(await tenantDirectory(true), botId, me.result?.username);
+  if (taken) throw new Error(`Этот бот уже подключён к магазину «${taken}».`);
   const { error } = await serviceDb()
     .from("bots")
     .update({ bot_token: encryptSecret(token, e.SECRETS_KEY) })

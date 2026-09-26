@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCrm, safeWebhookUrl, signBody } from "./webhook";
+import { isPrivateAddress, parseCrm, resolvesPublic, safeWebhookUrl, signBody } from "./webhook";
 
 describe("вебхук в CRM", () => {
   it("только https и публичный хост", () => {
@@ -23,5 +23,34 @@ describe("вебхук в CRM", () => {
   it("подпись HMAC-SHA256 тела", () => {
     expect(signBody("{}", "s")).toMatch(/^sha256=[0-9a-f]{64}$/);
     expect(signBody("{}", "s")).not.toBe(signBody("{}", "t"));
+  });
+  it("внутренние адреса в любой записи отклоняются", () => {
+    for (const u of [
+      "https://2130706433/", // 127.0.0.1 десятичным числом
+      "https://0x7f.1/",
+      "https://[::1]/",
+      "https://[::ffff:127.0.0.1]/",
+      "https://[::ffff:a9fe:a9fe]/", // 169.254.169.254
+      "https://[fd00::1]/",
+      "https://[fe80::1]/",
+      "https://100.64.0.1/",
+      "https://0.0.0.0/",
+      "https://app.localhost/",
+    ])
+      expect(safeWebhookUrl(u), u).toBe(false);
+    expect(safeWebhookUrl("https://[2a00:1450:4001::200e]/hook")).toBe(true);
+    expect(safeWebhookUrl("https://8.8.8.8/hook")).toBe(true);
+  });
+  it("isPrivateAddress: публичные — нет, служебные — да", () => {
+    expect(isPrivateAddress("93.184.216.34")).toBe(false);
+    expect(isPrivateAddress("2a00:1450:4001::200e")).toBe(false);
+    expect(isPrivateAddress("169.254.169.254")).toBe(true);
+    expect(isPrivateAddress("::ffff:10.0.0.1")).toBe(true);
+    expect(isPrivateAddress("fc00::1")).toBe(true);
+  });
+  it("имя, которое резолвится во внутренний адрес, не пропускается", async () => {
+    expect(await resolvesPublic("localhost")).toBe(false);
+    expect(await resolvesPublic("127.0.0.1")).toBe(false);
+    expect(await resolvesPublic("[::1]")).toBe(false);
   });
 });

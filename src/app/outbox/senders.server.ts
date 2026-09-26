@@ -43,8 +43,8 @@ export async function postWebhook(
   url: string,
   body: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { loadCrm, safeWebhookUrl, signBody } = await import("@/core/crm/webhook");
-  if (!safeWebhookUrl(url))
+  const { loadCrm, resolvesPublic, safeWebhookUrl, signBody } = await import("@/core/crm/webhook");
+  if (!safeWebhookUrl(url) || !(await resolvesPublic(new URL(url).hostname)))
     return { ok: false, error: "адрес вебхука запрещён (не https или внутренний)" };
   const cfg = await loadCrm(ctx);
   let event = "order";

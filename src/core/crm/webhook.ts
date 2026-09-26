@@ -40,16 +40,76 @@ export function parseCrm(raw: string | null | undefined): CrmConfig | null {
   }
 }
 
-const PRIVATE_HOST =
-  /^(localhost|.*\.local|.*\.internal|0\.0\.0\.0|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|169\.254\.\d+\.\d+|\[?::1\]?|\[?f[cd][0-9a-f]{2}:.*)$/i;
+const PRIVATE_NAME = /^(localhost|.*\.localhost|.*\.local|.*\.internal)$/i;
 
-/** Только https и публичный хост — сервер не должен ходить во внутреннюю сеть по просьбе продавца. */
+function ipv4Private(ip: string): boolean {
+  const p = ip.split(".").map(Number);
+  if (p.length !== 4 || p.some((x) => !Number.isInteger(x) || x < 0 || x > 255)) return true;
+  const [a, b] = p as [number, number, number, number];
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 192 && b === 0) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    a >= 224
+  );
+}
+
+/**
+ * Адрес во внутренней сети (или служебный): loopback, частные диапазоны,
+ * link-local (в том числе метаданные облака 169.254.169.254), CGNAT,
+ * multicast; IPv6 — ::, ::1, fc00::/7, fe80::/10 и IPv4, завёрнутый в IPv6.
+ */
+export function isPrivateAddress(raw: string): boolean {
+  const ip = raw.replace(/^\[|\]$/g, "").toLowerCase();
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return ipv4Private(ip);
+  if (!ip.includes(":")) return true;
+  const mapped = ip.match(/^(?:0*:)*:?ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) return ipv4Private(mapped[1]!);
+  const hex = ip.match(/^(?:0*:)*:?ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (hex) {
+    const hi = parseInt(hex[1]!, 16);
+    const lo = parseInt(hex[2]!, 16);
+    return ipv4Private(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`);
+  }
+  if (ip === "::" || ip === "::1") return true;
+  const first = parseInt(ip.split(":")[0] || "0", 16);
+  return (first & 0xfe00) === 0xfc00 || (first & 0xffc0) === 0xfe80 || (first & 0xff00) === 0xff00;
+}
+
+const isIpLiteral = (h: string) => /^\d+\.\d+\.\d+\.\d+$/.test(h) || h.startsWith("[");
+
+/**
+ * Только https и публичный хост — сервер не должен ходить во внутреннюю сеть
+ * по просьбе продавца. Проверка по записи адреса; имя, которое резолвится во
+ * внутренний адрес (127.0.0.1.nip.io), ловит resolvesPublic перед отправкой.
+ */
 export function safeWebhookUrl(raw: string): boolean {
   try {
     const u = new URL(raw);
     if (u.protocol !== "https:") return false;
     if (u.username || u.password) return false;
-    return !PRIVATE_HOST.test(u.hostname);
+    const host = u.hostname.toLowerCase();
+    if (PRIVATE_NAME.test(host)) return false;
+    return isIpLiteral(host) ? !isPrivateAddress(host) : true;
+  } catch {
+    return false;
+  }
+}
+
+/** Все адреса имени публичные — проверка прямо перед запросом. Ошибка DNS — нет. */
+export async function resolvesPublic(hostname: string): Promise<boolean> {
+  const host = hostname.toLowerCase();
+  if (isIpLiteral(host)) return !isPrivateAddress(host);
+  try {
+    const { lookup } = await import("node:dns/promises");
+    const addrs = await lookup(host, { all: true, verbatim: true });
+    return addrs.length > 0 && addrs.every((a) => !isPrivateAddress(a.address));
   } catch {
     return false;
   }
