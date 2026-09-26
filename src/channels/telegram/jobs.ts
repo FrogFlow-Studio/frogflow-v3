@@ -203,3 +203,31 @@ export async function runWinbackFor(tenant: Tenant) {
     return target ? sendToZernioTarget(target, text) : false;
   });
 }
+
+/** Автоворонка (модуль funnel): те же каналы, что у возвратных продаж. */
+export async function runFunnelFor(tenant: Tenant) {
+  if (!tenant.modules.funnel) return { skipped: "module off" };
+  const ctx = tenantContext(tenant);
+  const { runFunnel } = await import("@/core/funnel/funnel");
+  const tg = tenant.telegramTokenEnc ? api(ctx) : null;
+  const { sendToZernioTarget, zernioTargetOf } = await import("@/channels/zernio/outbound.server");
+  return runFunnel(ctx, async (c, text, catalogButton) => {
+    if (c.platform === "telegram") {
+      if (!tg) return false;
+      const m = COPY[(c.state.locale as keyof typeof COPY) ?? "ru"] ?? COPY.ru;
+      const r = await tg.call("sendMessage", {
+        chat_id: c.telegramId,
+        text: escapeHtml(text),
+        parse_mode: "HTML",
+        ...(catalogButton
+          ? {
+              reply_markup: { inline_keyboard: [[{ text: m.catalog, callback_data: "cat:root" }]] },
+            }
+          : {}),
+      });
+      return r.ok;
+    }
+    const target = zernioTargetOf(c);
+    return target ? sendToZernioTarget(target, text) : false;
+  });
+}

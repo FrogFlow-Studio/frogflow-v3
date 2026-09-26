@@ -56,9 +56,10 @@ function Layout() {
             shop.modules.limited_offers) && (
             <NavLink to="/admin/discounts">{t("nav.discounts")}</NavLink>
           )}
-          {(shop.modules.broadcasts || shop.modules.wa_broadcasts || shop.modules.winback) && (
-            <NavLink to="/admin/broadcasts">{t("nav.broadcasts")}</NavLink>
-          )}
+          {(shop.modules.broadcasts ||
+            shop.modules.wa_broadcasts ||
+            shop.modules.winback ||
+            shop.modules.funnel) && <NavLink to="/admin/broadcasts">{t("nav.broadcasts")}</NavLink>}
           <NavLink to="/admin/consultant">{t("nav.consultant")}</NavLink>
           {shop.modules.instagram && <NavLink to="/admin/instagram">{t("nav.instagram")}</NavLink>}
           {shop.modules.vip && <NavLink to="/admin/vip">{t("nav.vip")}</NavLink>}

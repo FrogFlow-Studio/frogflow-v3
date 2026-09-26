@@ -92,10 +92,11 @@ export const Route = createFileRoute("/api/cron/$job")({
                   outbox: await (await import("@/app/outbox/senders.server")).runOutbox(t),
                 }),
                 "cart-reminder": jobs.runCartReminders,
-                // Раз в час: напоминание о дате получения и возвратные продажи (winback).
+                // Раз в час: напоминание о дате получения, возвратные продажи, автоворонка.
                 "fulfillment-reminder": async (t: (typeof tenants)[number]) => ({
                   fulfillment: await jobs.runFulfillmentReminders(t),
                   winback: await jobs.runWinbackFor(t),
+                  funnel: await jobs.runFunnelFor(t),
                 }),
               }[params.job];
               // Клиенты — параллельно: пакет рассылки одного не задерживает других.

@@ -1,4 +1,5 @@
 import { saveWinbackFn, winbackFn } from "@/app/admin/winback.functions";
+import { funnelFn, saveFunnelFn } from "@/app/admin/funnel.functions";
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -170,6 +171,7 @@ function BroadcastsPage() {
             <CartReminderCard hours={data.cartReminderHours} />
           )}
           {shop.modules.winback && <WinbackCard />}
+          {shop.modules.funnel && <FunnelCard />}
           <History
             broadcasts={data.broadcasts.filter((b) => (both ? b.channel === channel : true))}
             showChannel={!both}
@@ -1072,6 +1074,119 @@ function WinbackCard() {
             onChange={(e) => setC({ ...c, promo: e.target.value })}
           />
         </Field>
+        <div className="flex items-center gap-3">
+          <button className="btn-primary" disabled={save.busy}>
+            {t("common.save")}
+          </button>
+          {saved && <span className="text-xs text-ok">✓</span>}
+        </div>
+        <ErrorBox error={save.error} />
+      </form>
+    </Card>
+  );
+}
+
+/** Автоворонка: до 10 сообщений новому покупателю по часам от первого контакта. */
+function FunnelCard() {
+  const t = useT();
+  const [c, setC] = useState<Awaited<ReturnType<typeof funnelFn>> | null>(null);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    void funnelFn().then(setC);
+  }, []);
+  const save = useAction(async () => {
+    if (!c) return;
+    await saveFunnelFn({ data: c });
+    setSaved(true);
+  });
+  if (!c) return null;
+  const setStep = (i: number, patch: Partial<(typeof c.steps)[number]>) =>
+    setC({ ...c, steps: c.steps.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
+  return (
+    <Card
+      title={t("broadcasts.funnel.title")}
+      actions={
+        <Switch
+          checked={c.enabled}
+          onChange={(on) => setC({ ...c, enabled: on })}
+          label={t("broadcasts.winback.enabled")}
+        />
+      }
+    >
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSaved(false);
+          void save.run().catch(() => {});
+        }}
+      >
+        <p className="text-sm text-muted">{t("broadcasts.funnel.intro")}</p>
+        {c.steps.map((s, i) => (
+          <div key={i} className="rounded-md border border-line p-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+              {t("broadcasts.funnel.after")}
+              <input
+                className="input w-24"
+                type="number"
+                min={1}
+                max={1080}
+                value={s.afterHours}
+                onChange={(e) => setStep(i, { afterHours: Number(e.target.value) })}
+              />
+              {t("broadcasts.funnel.hours")}
+              <label className="ml-auto flex items-center gap-1 text-xs">
+                <input
+                  type="checkbox"
+                  checked={s.catalogButton}
+                  onChange={(e) => setStep(i, { catalogButton: e.target.checked })}
+                />
+                {t("broadcasts.funnel.catalogButton")}
+              </label>
+              <button
+                type="button"
+                className="btn-ghost text-xs text-danger"
+                onClick={() => setC({ ...c, steps: c.steps.filter((_, j) => j !== i) })}
+              >
+                ✕
+              </button>
+            </div>
+            <textarea
+              className="input min-h-16"
+              value={s.text}
+              onChange={(e) => setStep(i, { text: e.target.value })}
+            />
+          </div>
+        ))}
+        {c.steps.length < 10 && (
+          <button
+            type="button"
+            className="btn-ghost text-xs"
+            onClick={() =>
+              setC({
+                ...c,
+                steps: [
+                  ...c.steps,
+                  {
+                    afterHours: (c.steps[c.steps.length - 1]?.afterHours ?? 0) + 24,
+                    text: "",
+                    catalogButton: false,
+                  },
+                ],
+              })
+            }
+          >
+            {t("broadcasts.funnel.addStep")}
+          </button>
+        )}
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={c.stopOnOrder}
+            onChange={(e) => setC({ ...c, stopOnOrder: e.target.checked })}
+          />
+          {t("broadcasts.funnel.stopOnOrder")}
+        </label>
         <div className="flex items-center gap-3">
           <button className="btn-primary" disabled={save.busy}>
             {t("common.save")}

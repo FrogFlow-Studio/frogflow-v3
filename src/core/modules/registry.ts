@@ -293,7 +293,8 @@ export const MODULES = {
     desc: "Серия сообщений после подписки: прогрев, полезный контент, предложение.",
     group: "Удержание",
     price: 21000,
-    status: "planned",
+    status: "available",
+    note: "core/funnel: до 10 шагов по часам от первого контакта (bot_users.created_at), прогресс — state.funnel; крон fulfillment-reminder раз в час, днём; остановка после первого заказа. Настройка — «Рассылки».",
   },
   loyalty: {
     title: "Программа лояльности",

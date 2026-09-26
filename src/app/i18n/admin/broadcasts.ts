@@ -103,6 +103,14 @@ export const ru = {
   "broadcasts.templates.empty": "Шаблонов ещё нет.",
   // исключённые номера
   "broadcasts.excluded.title": "Не писать этим номерам",
+  "broadcasts.funnel.title": "Автоворонка",
+  "broadcasts.funnel.intro":
+    "Серия сообщений новому покупателю по часам от первого контакта с ботом: прогрев, польза, предложение. Только днём по вашему поясу; опоздавшие шаги не шлются пачкой. {name} — имя.",
+  "broadcasts.funnel.after": "Через",
+  "broadcasts.funnel.hours": "ч после первого контакта",
+  "broadcasts.funnel.catalogButton": "кнопка «Каталог»",
+  "broadcasts.funnel.addStep": "+ Шаг",
+  "broadcasts.funnel.stopOnOrder": "Останавливать серию после первого заказа",
   "broadcasts.winback.title": "Возвратные продажи",
   "broadcasts.winback.enabled": "включено",
   "broadcasts.winback.intro":
@@ -231,6 +239,14 @@ export const kk: SectionDict<typeof ru> = {
   "broadcasts.templates.addButton": "+ Түйме",
   "broadcasts.templates.empty": "Шаблондар әзірге жоқ.",
   "broadcasts.excluded.title": "Бұл нөмірлерге жазбау",
+  "broadcasts.funnel.title": "Автоворонка",
+  "broadcasts.funnel.intro":
+    "Жаңа сатып алушыға бетпен алғашқы байланыстан кейін сағат бойынша хабарламалар сериясы: қыздыру, пайда, ұсыныс. Тек сіздің белдеуіңіз бойынша күндіз; кешіккен қадамдар бірге жіберілмейді. {name} — аты.",
+  "broadcasts.funnel.after": "Кейін",
+  "broadcasts.funnel.hours": "сағ, алғашқы байланыстан соң",
+  "broadcasts.funnel.catalogButton": "«Каталог» түймесі",
+  "broadcasts.funnel.addStep": "+ Қадам",
+  "broadcasts.funnel.stopOnOrder": "Алғашқы тапсырыстан кейін серияны тоқтату",
   "broadcasts.winback.title": "Қайталама сатылымдар",
   "broadcasts.winback.enabled": "қосулы",
   "broadcasts.winback.intro":
@@ -359,6 +375,14 @@ export const en: SectionDict<typeof ru> = {
   "broadcasts.templates.addButton": "+ Button",
   "broadcasts.templates.empty": "No templates yet.",
   "broadcasts.excluded.title": "Do not message these numbers",
+  "broadcasts.funnel.title": "Auto-funnel",
+  "broadcasts.funnel.intro":
+    "A series of messages to a new customer, timed in hours from their first contact with the bot: warm-up, value, offer. Daytime in your zone only; late steps are not sent in a burst. {name} — name.",
+  "broadcasts.funnel.after": "After",
+  "broadcasts.funnel.hours": "h from first contact",
+  "broadcasts.funnel.catalogButton": "“Catalog” button",
+  "broadcasts.funnel.addStep": "+ Step",
+  "broadcasts.funnel.stopOnOrder": "Stop the series after the first order",
   "broadcasts.winback.title": "Win-back",
   "broadcasts.winback.enabled": "on",
   "broadcasts.winback.intro":
@@ -486,6 +510,14 @@ export const uz: SectionDict<typeof ru> = {
   "broadcasts.templates.addButton": "+ Tugma",
   "broadcasts.templates.empty": "Shablonlar hali yo‘q.",
   "broadcasts.excluded.title": "Bu raqamlarga yozilmasin",
+  "broadcasts.funnel.title": "Avtovoronka",
+  "broadcasts.funnel.intro":
+    "Yangi xaridorga bot bilan birinchi aloqadan soatlar bo‘yicha xabarlar seriyasi: qizdirish, foyda, taklif. Faqat mintaqangiz bo‘yicha kunduzi; kechikkan qadamlar birdaniga yuborilmaydi. {name} — ism.",
+  "broadcasts.funnel.after": "Keyin",
+  "broadcasts.funnel.hours": "soat, birinchi aloqadan so‘ng",
+  "broadcasts.funnel.catalogButton": "«Katalog» tugmasi",
+  "broadcasts.funnel.addStep": "+ Qadam",
+  "broadcasts.funnel.stopOnOrder": "Birinchi buyurtmadan keyin seriyani to‘xtatish",
   "broadcasts.winback.title": "Qaytaruvchi sotuvlar",
   "broadcasts.winback.enabled": "yoqilgan",
   "broadcasts.winback.intro":
