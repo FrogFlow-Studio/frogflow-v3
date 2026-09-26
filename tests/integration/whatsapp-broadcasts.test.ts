@@ -294,11 +294,16 @@ describe.skipIf(!liveReady)("WhatsApp: шаблоны и рассылки на �
       .select("*")
       .eq("id", r.broadcast.id)
       .single();
-    expect(row?.status).toBe("completed");
     const { data: rec } = await ctx.db
       .from("broadcast_recipients")
       .select("phone, status, error_message")
       .eq("broadcast_id", r.broadcast.id);
+    // Крон рассылок v1 демо-клиента (раз в минуту) served_by не смотрит и
+    // может забрать получателя первым: без нашего аккаунта Zernio он не
+    // отправит, и рассылка без единой доставки станет failed. Итог «completed»
+    // обязателен, только когда всех получателей разослали мы.
+    if (calls.length === (rec ?? []).length) expect(row?.status).toBe("completed");
+    else expect(["completed", "failed"]).toContain(row?.status);
     const byPhone = Object.fromEntries((rec ?? []).map((x) => [x.phone, x.status]));
     if (calls.some((c) => c.phone === PHONE_OK)) expect(byPhone[PHONE_OK]).toBe("sent");
     if (calls.some((c) => c.phone === PHONE_BAD)) {
