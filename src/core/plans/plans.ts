@@ -10,6 +10,9 @@ import {
   ANNUAL_BILLED_MONTHS,
   BASE_MODULES,
   CONNECTION_PRICE,
+  COURSES_FROM_TIER,
+  COURSES_NICHES,
+  COURSES_SALE,
   MONTHLY_PRICE,
   PLAN_LIMITS,
   PLAN_MODULES,
@@ -17,19 +20,33 @@ import {
   SHOP_CHANNEL_MODULES,
   TIER_TITLES,
   TRIAL_DAYS,
+  type CoursesSale,
   type ParsedPlan,
   type PlanLimits,
   type PlanNiche,
   type PlanTier,
 } from "./registry";
 
-/** Модули уровня ниши с учётом нижних уровней и базы. */
-export function planModules(niche: PlanNiche, tier: PlanTier): Set<ModuleKey> {
+/**
+ * Модули уровня ниши с учётом нижних уровней и базы. `sale` — как продаются
+ * «Курсы» (COURSES_SALE в registry), параметром только для тестов.
+ */
+export function planModules(
+  niche: PlanNiche,
+  tier: PlanTier,
+  sale: CoursesSale = COURSES_SALE,
+): Set<ModuleKey> {
   const out = new Set<ModuleKey>(BASE_MODULES);
   for (const t of PLAN_TIERS) {
     for (const m of PLAN_MODULES[niche][t]) out.add(m);
     if (t === tier) break;
   }
+  if (
+    sale === "plan" &&
+    COURSES_NICHES.includes(niche) &&
+    PLAN_TIERS.indexOf(tier) >= PLAN_TIERS.indexOf(COURSES_FROM_TIER)
+  )
+    out.add("courses");
   return out;
 }
 
@@ -51,11 +68,13 @@ export function addonModules(niche: PlanNiche, billing: BillingSettings | undefi
 export function effectiveModules(
   plan: ParsedPlan,
   billing: BillingSettings | undefined,
+  sale: CoursesSale = COURSES_SALE,
 ): Record<ModuleKey, boolean> | null {
   if (!plan || plan.kind !== "tier") return null;
-  const on = planModules(plan.niche, plan.tier);
+  const on = planModules(plan.niche, plan.tier, sale);
   for (const m of addonModules(plan.niche, billing)) on.add(m);
   for (const m of billing?.grandfathered ?? []) on.add(m);
+  if (sale === "off") on.delete("courses");
   const out = {} as Record<ModuleKey, boolean>;
   for (const k of MODULE_KEYS) out[k] = on.has(k) && moduleDef(k).status === "available";
   return out;

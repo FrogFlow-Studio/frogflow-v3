@@ -207,7 +207,10 @@ export async function deleteProduct(ctx: TenantContext, id: string): Promise<voi
   const own = (k: string | null | undefined): k is string =>
     Boolean(k && isTenantStorageKey(ctx.tenant.id, k));
   const imgs = (p?.product_images ?? []).map((i) => i.image_path).filter(own);
-  const files = (p?.product_material_files ?? []).map((f) => f.file_path).filter(own);
+  const lessons = await (await import("@/core/courses/course.server")).dropCourse(ctx, id);
+  const files = [...(p?.product_material_files ?? []).map((f) => f.file_path), ...lessons].filter(
+    own,
+  );
   if (imgs.length) await serviceDb().storage.from("product-images").remove(imgs);
   if (files.length) await serviceDb().storage.from("product-files").remove(files);
 }

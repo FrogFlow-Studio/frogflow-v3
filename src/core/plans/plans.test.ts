@@ -395,3 +395,35 @@ describe("колонка bots.subscription_plan", () => {
     expect(dbPlanFor(CUSTOM_PLAN)).toBe("enterprise");
   });
 });
+
+describe("модуль «Курсы» в тарифах", () => {
+  it("по умолчанию входит в Pro и Business ниш с магазином, не в Basic и не консультанту", () => {
+    for (const n of ["digital", "confectionery", "flowers"] as const) {
+      expect(planModules(n, "basic", "plan").has("courses")).toBe(false);
+      expect(planModules(n, "pro", "plan").has("courses")).toBe(true);
+      expect(planModules(n, "business", "plan").has("courses")).toBe(true);
+    }
+    for (const t of PLAN_TIERS)
+      expect(planModules("consultant_universal", t, "plan").has("courses")).toBe(false);
+  });
+
+  it("«отдельно» — ни в одном плане, но подключённый оператором сохраняется", () => {
+    for (const n of PLAN_NICHES)
+      for (const t of PLAN_TIERS) expect(planModules(n, t, "separate").has("courses")).toBe(false);
+  });
+
+  it("«отложить» — выключен у всех, даже подключённый вручную", () => {
+    const mods = effectiveModules(
+      parsePlan("digital.business"),
+      { grandfathered: ["courses"] },
+      "off",
+    );
+    expect(mods!.courses).toBe(false);
+  });
+
+  it("пока модуль не готов, план его не включает", () => {
+    // Строка тарифа уже на месте; флаг поднимется, когда модуль станет available.
+    expect(moduleDef("courses").status).toBe("planned");
+    expect(effectiveModules(parsePlan("digital.pro"), undefined, "plan")!.courses).toBe(false);
+  });
+});

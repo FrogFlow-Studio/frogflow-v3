@@ -86,6 +86,16 @@ export const ru = {
   "msg.orders.remindOnlyAwaiting": "Напоминание только для заказов, ждущих оплаты",
   "msg.orders.reminded": "Напоминание отправлено",
   "msg.orders.remindFailed": "Не удалось отправить",
+  // курсы (core/courses)
+  "err.course.noProduct": "Товар не найден.",
+  "err.course.physical": "Курс можно сделать только из цифрового товара, не из физического.",
+  "err.course.tooMany": "В курсе не больше {max} уроков.",
+  "err.course.noTitle": "У урока {lesson} нет названия.",
+  "err.course.badLink": "Ссылка в уроке {lesson} должна начинаться с https://.",
+  "err.course.tooManyFiles": "В уроке {lesson} не больше {max} файлов.",
+  "err.course.emptyLesson": "Урок {lesson} пустой: добавьте текст, файл или ссылку.",
+  "err.course.badSchedule": "Уроки можно открывать раз в 1–60 дней.",
+  "err.course.badLesson": "Урок {lesson} повреждён — удалите его и добавьте заново.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -167,6 +177,15 @@ export const kk: SectionDict<typeof ru> = {
   "msg.orders.remindOnlyAwaiting": "Еске салу тек төлем күтіп тұрған тапсырыстарға жіберіледі",
   "msg.orders.reminded": "Еске салу жіберілді",
   "msg.orders.remindFailed": "Жіберу мүмкін болмады",
+  "err.course.noProduct": "Тауар табылмады.",
+  "err.course.physical": "Курсты тек цифрлық тауардан жасауға болады, физикалық тауардан емес.",
+  "err.course.tooMany": "Курста {max} сабақтан көп болмайды.",
+  "err.course.noTitle": "{lesson}-сабақтың атауы жоқ.",
+  "err.course.badLink": "{lesson}-сабақтағы сілтеме https:// деп басталуы керек.",
+  "err.course.tooManyFiles": "{lesson}-сабақта {max} файлдан көп болмайды.",
+  "err.course.emptyLesson": "{lesson}-сабақ бос: мәтін, файл немесе сілтеме қосыңыз.",
+  "err.course.badSchedule": "Сабақтарды 1–60 күнде бір рет ашуға болады.",
+  "err.course.badLesson": "{lesson}-сабақ бүлінген — оны өшіріп, қайта қосыңыз.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -248,6 +267,15 @@ export const en: SectionDict<typeof ru> = {
   "msg.orders.remindOnlyAwaiting": "Reminders are only for orders awaiting payment",
   "msg.orders.reminded": "Reminder sent",
   "msg.orders.remindFailed": "Could not send",
+  "err.course.noProduct": "Product not found.",
+  "err.course.physical": "A course can only be made from a digital product, not a physical one.",
+  "err.course.tooMany": "A course can have at most {max} lessons.",
+  "err.course.noTitle": "Lesson {lesson} has no title.",
+  "err.course.badLink": "The link in lesson {lesson} must start with https://.",
+  "err.course.tooManyFiles": "Lesson {lesson} can have at most {max} files.",
+  "err.course.emptyLesson": "Lesson {lesson} is empty: add text, a file or a link.",
+  "err.course.badSchedule": "Lessons can open once every 1–60 days.",
+  "err.course.badLesson": "Lesson {lesson} is damaged — delete it and add it again.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -332,4 +360,14 @@ export const uz: SectionDict<typeof ru> = {
   "msg.orders.remindOnlyAwaiting": "Eslatma faqat toʻlov kutayotgan buyurtmalar uchun",
   "msg.orders.reminded": "Eslatma yuborildi",
   "msg.orders.remindFailed": "Yuborib boʻlmadi",
+  "err.course.noProduct": "Mahsulot topilmadi.",
+  "err.course.physical":
+    "Kursni faqat raqamli mahsulotdan yaratish mumkin, jismoniy mahsulotdan emas.",
+  "err.course.tooMany": "Kursda {max} tadan ortiq dars boʻlmaydi.",
+  "err.course.noTitle": "{lesson}-darsning nomi yoʻq.",
+  "err.course.badLink": "{lesson}-darsdagi havola https:// bilan boshlanishi kerak.",
+  "err.course.tooManyFiles": "{lesson}-darsda {max} tadan ortiq fayl boʻlmaydi.",
+  "err.course.emptyLesson": "{lesson}-dars boʻsh: matn, fayl yoki havola qoʻshing.",
+  "err.course.badSchedule": "Darslarni 1–60 kunda bir marta ochish mumkin.",
+  "err.course.badLesson": "{lesson}-dars buzilgan — uni oʻchirib, qaytadan qoʻshing.",
 };

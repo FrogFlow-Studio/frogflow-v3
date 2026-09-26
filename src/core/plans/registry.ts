@@ -163,6 +163,20 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
   },
 };
 
+/**
+ * Как продаётся модуль «Курсы» (courses). Решение за Яковом, до ответа
+ * действует «plan»; меняется здесь одной строкой:
+ *   plan     — входит в планы ниш с магазином, начиная с COURSES_FROM_TIER;
+ *   separate — ни в один план не входит, оператор подключает отдельно
+ *              (18 000 ₸ по каталогу модулей, пишется в billing.grandfathered);
+ *   off      — не продаём: модуль выключен у всех, даже подключённый вручную.
+ */
+export type CoursesSale = "plan" | "separate" | "off";
+export const COURSES_SALE: CoursesSale = "plan";
+export const COURSES_FROM_TIER: PlanTier = "pro";
+/** Ниши с магазином; у консультанта нет кассы, курсы ему ни к чему. */
+export const COURSES_NICHES: readonly PlanNiche[] = ["digital", "confectionery", "flowers"];
+
 /** Докупаются сверх плана только каналы: у них разная себестоимость. */
 export const ADDONS = {
   whatsapp: { title: "WhatsApp", modules: ["whatsapp", "wa_shop"] },

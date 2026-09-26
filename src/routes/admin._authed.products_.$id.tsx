@@ -4,6 +4,7 @@ import { saveUpsellFn, upsellForProductFn } from "@/app/admin/upsell.functions";
 import { deleteProductFn, productFn, saveProductFn } from "@/app/admin/admin.functions";
 import { adminT, type AdminT } from "@/app/i18n/admin";
 import { uploadFile } from "@/app/admin/upload-client";
+import { CourseCard } from "@/app/admin/course-card";
 import { assistDescriptionFn } from "@/app/admin/assistant.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
@@ -488,6 +489,9 @@ function ProductEditor() {
               </div>
               <p className="mt-2 text-xs text-muted">{t("product.filesHint")}</p>
             </Card>
+          )}
+          {shop.modules.courses && p?.id && kind === "digital" && (
+            <CourseCard productId={p.id} t={t} />
           )}
           {shop.modules.upsell && p?.id && <UpsellCard productId={p.id} t={t} />}
         </div>

@@ -52,6 +52,23 @@ export const ru = {
   "product.filesHint": "PDF, ZIP, видео до 200 МБ. Покупатель получает все файлы своего языка.",
   "products.noFile": "нет файла",
   "products.onSaleLabel": "в продаже",
+  "product.card.course": "Уроки курса",
+  "product.courseHint":
+    "Покупатель получит уроки после оплаты. Файлы уроков не уходят обычной выдачей, их видно только в курсе.",
+  "product.courseScheduleAll": "Все уроки сразу после оплаты",
+  "product.courseScheduleDrip": "По одному уроку по расписанию",
+  "product.courseEveryDays": "каждые, дней:",
+  "product.courseEmpty": "Уроков пока нет.",
+  "product.lessonTitle": "Название урока",
+  "product.lessonText": "Текст урока",
+  "product.lessonLink": "Ссылка на видео или документ (https://…)",
+  "product.lessonAddFile": "+ файл",
+  "product.lessonAdd": "+ урок",
+  "product.lessonUp": "Выше",
+  "product.lessonDown": "Ниже",
+  "product.lessonDelete": "Удалить урок",
+  "product.lessonOpensNow": "Открыт сразу после оплаты",
+  "product.lessonOpensDay": "Откроется на {day}-й день",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -104,6 +121,23 @@ export const kk: SectionDict<typeof ru> = {
     "PDF, ZIP, 200 МБ-қа дейінгі бейне. Сатып алушы өз тіліндегі барлық файлды алады.",
   "products.noFile": "файл жоқ",
   "products.onSaleLabel": "сатылымда",
+  "product.card.course": "Курс сабақтары",
+  "product.courseHint":
+    "Сатып алушы сабақтарды төлемнен кейін алады. Сабақ файлдары әдеттегі берумен жіберілмейді, олар тек курста көрінеді.",
+  "product.courseScheduleAll": "Барлық сабақ төлемнен кейін бірден",
+  "product.courseScheduleDrip": "Кесте бойынша бір-бірден",
+  "product.courseEveryDays": "әр, күн:",
+  "product.courseEmpty": "Әзірге сабақ жоқ.",
+  "product.lessonTitle": "Сабақ атауы",
+  "product.lessonText": "Сабақ мәтіні",
+  "product.lessonLink": "Бейнеге немесе құжатқа сілтеме (https://…)",
+  "product.lessonAddFile": "+ файл",
+  "product.lessonAdd": "+ сабақ",
+  "product.lessonUp": "Жоғары",
+  "product.lessonDown": "Төмен",
+  "product.lessonDelete": "Сабақты өшіру",
+  "product.lessonOpensNow": "Төлемнен кейін бірден ашық",
+  "product.lessonOpensDay": "{day}-күні ашылады",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -156,6 +190,23 @@ export const en: SectionDict<typeof ru> = {
     "PDF, ZIP, video up to 200 MB. The buyer receives all files in their language.",
   "products.noFile": "no file",
   "products.onSaleLabel": "on sale",
+  "product.card.course": "Course lessons",
+  "product.courseHint":
+    "The buyer gets the lessons after payment. Lesson files are not sent with the regular delivery; they are only visible in the course.",
+  "product.courseScheduleAll": "All lessons right after payment",
+  "product.courseScheduleDrip": "One lesson at a time on a schedule",
+  "product.courseEveryDays": "every, days:",
+  "product.courseEmpty": "No lessons yet.",
+  "product.lessonTitle": "Lesson title",
+  "product.lessonText": "Lesson text",
+  "product.lessonLink": "Link to a video or document (https://…)",
+  "product.lessonAddFile": "+ file",
+  "product.lessonAdd": "+ lesson",
+  "product.lessonUp": "Move up",
+  "product.lessonDown": "Move down",
+  "product.lessonDelete": "Delete lesson",
+  "product.lessonOpensNow": "Open right after payment",
+  "product.lessonOpensDay": "Opens on day {day}",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -207,4 +258,21 @@ export const uz: SectionDict<typeof ru> = {
   "product.filesHint": "PDF, ZIP, 200 MB gacha video. Xaridor o‘z tilidagi barcha fayllarni oladi.",
   "products.noFile": "fayl yo‘q",
   "products.onSaleLabel": "sotuvda",
+  "product.card.course": "Kurs darslari",
+  "product.courseHint":
+    "Xaridor darslarni toʻlovdan keyin oladi. Dars fayllari oddiy topshirish bilan yuborilmaydi, ular faqat kursda koʻrinadi.",
+  "product.courseScheduleAll": "Barcha darslar toʻlovdan keyin darhol",
+  "product.courseScheduleDrip": "Jadval boʻyicha bittadan",
+  "product.courseEveryDays": "har, kun:",
+  "product.courseEmpty": "Hozircha darslar yoʻq.",
+  "product.lessonTitle": "Dars nomi",
+  "product.lessonText": "Dars matni",
+  "product.lessonLink": "Video yoki hujjatga havola (https://…)",
+  "product.lessonAddFile": "+ fayl",
+  "product.lessonAdd": "+ dars",
+  "product.lessonUp": "Yuqoriga",
+  "product.lessonDown": "Pastga",
+  "product.lessonDelete": "Darsni oʻchirish",
+  "product.lessonOpensNow": "Toʻlovdan keyin darhol ochiq",
+  "product.lessonOpensDay": "{day}-kuni ochiladi",
 };
