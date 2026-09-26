@@ -84,6 +84,7 @@ import {
   isPaymentComplaint,
   matchCountry,
   matchDeliveryLangChoice,
+  matchLoyaltyPointsChoice,
   matchDirectCommand,
   type DirectCommand,
   matchLocalePick,
@@ -446,6 +447,14 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       await finishCheckout(s, cc);
       return "handled";
     }
+    case "awaiting_points_choice": {
+      const choice = matchLoyaltyPointsChoice(text);
+      const cc = s.customer.state.country_code;
+      if (!choice || !cc) return askPoints(s).then(() => "handled" as const);
+      await setMode(s, { mode: "idle", use_points: choice === "yes" });
+      await finishCheckout(s, cc);
+      return "handled";
+    }
     case "awaiting_fulfillment_type": {
       const type = matchFulfillmentType(text);
       if (!type) return reply(s, s.m.fulfillmentTypePrompt).then(() => "handled" as const);
@@ -693,6 +702,13 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
       const cc = s.customer.state.country_code;
       if (!cc) await askCountry(s, true);
       else await finishCheckout(s, cc);
+      return "handled";
+    }
+    case "LOYALTY": {
+      const cc = s.customer.state.country_code;
+      if (s.customer.state.mode !== "awaiting_points_choice" || !cc) return "handled";
+      await setMode(s, { mode: "idle", use_points: a === "yes" });
+      await finishCheckout(s, cc);
       return "handled";
     }
     case "PAY":
@@ -1131,6 +1147,8 @@ async function proceedToFulfillmentOrPlace(s: Shop, countryCode: string) {
     checkout_delivery_fee: _zf,
     checkout_fulfillment_address: _ad,
     checkout_fulfillment_note: _n,
+    // Ответ «списать баллы?» — на одно оформление: новое спросит заново.
+    use_points: _p,
     ...clean
   } = s.customer.state;
   if (!physical) {
@@ -1308,8 +1326,32 @@ async function askOrderEmailIfMissing(s: Shop, order: OrderWithItems): Promise<b
   return true;
 }
 
+/**
+ * Шаг «списать баллы?» (перенос из v1 direct-flow): в Direct нет кнопки
+ * корзины «Списать баллы», поэтому при модуле loyalty и ненулевом балансе
+ * спрашиваем один раз за оформление. Ответ — в use_points (false — копить).
+ */
+async function askPointsFirst(s: Shop, countryCode: string): Promise<boolean> {
+  if (!s.ctx.tenant.modules.loyalty || s.customer.loyaltyPoints <= 0) return false;
+  if (s.customer.state.use_points !== undefined) return false;
+  await setMode(s, { mode: "awaiting_points_choice", country_code: countryCode });
+  await askPoints(s);
+  return true;
+}
+
+async function askPoints(s: Shop) {
+  await reply(s, plain(s.m.pointsAsk(s.customer.loyaltyPoints)), {
+    force: true,
+    buttons: [
+      { type: "postback", title: plain(s.m.pointsYesBtn), payload: "LOYALTY:yes" },
+      { type: "postback", title: plain(s.m.pointsNoBtn), payload: "LOYALTY:no" },
+    ],
+  });
+}
+
 async function finishCheckout(s: Shop, countryCode: string) {
   if (await askEmailFirst(s, countryCode)) return;
+  if (await askPointsFirst(s, countryCode)) return;
   const st = s.customer.state;
   const result = await placeOrder(s.ctx, s.customer, countryCode, {
     promoCode: st.promo_code,

@@ -63,7 +63,9 @@ export type DialogMode =
   | "awaiting_ticket"
   /** Instagram/WhatsApp: почта для выдачи письмом — до оформления или после чека. */
   | "awaiting_email"
-  | "awaiting_order_email";
+  | "awaiting_order_email"
+  /** Instagram/WhatsApp, модуль loyalty: «списать баллы?» перед оформлением. */
+  | "awaiting_points_choice";
 
 export type DialogState = {
   mode?: DialogMode;

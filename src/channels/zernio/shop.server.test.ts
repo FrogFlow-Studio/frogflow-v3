@@ -19,22 +19,35 @@ const BOT = "00000000-0000-0000-0000-0000000000dd";
 
 type Sent = { text: string; interactive?: Json };
 
-function setup(opts: { platform?: ZernioPlatform; sendOk?: boolean } = {}) {
+function setup(
+  opts: {
+    platform?: ZernioPlatform;
+    sendOk?: boolean;
+    state?: Record<string, unknown>;
+    modules?: Record<string, boolean>;
+    loyaltyPoints?: number;
+  } = {},
+) {
   const db = fakeDb();
   const tables: string[] = [];
-  db.tables.bot_users = [{ id: "u1", bot_id: BOT, user_key: "wa_1", state: { locale: "ru" } }];
+  const state = opts.state ?? { locale: "ru" };
+  db.tables.bot_users = [{ id: "u1", bot_id: BOT, user_key: "wa_1", state }];
   db.tables.categories = [];
   db.tables.products = [];
   db.tables.cart_items = [];
   db.tables.orders = [];
   const ctx = {
-    tenant: { id: BOT, modules: {}, settings: {} },
+    tenant: { id: BOT, modules: opts.modules ?? {}, settings: {} },
     db: {
       from: (t: string) => {
         tables.push(t);
         return db.from(t);
       },
-      rpc: db.rpc,
+      // Захват оформления занят: сценарий доходит до placeOrder и останавливается.
+      rpc: (name: string, args: Record<string, unknown>) =>
+        name === "claim_order_placement"
+          ? Promise.resolve({ data: false, error: null })
+          : db.rpc(name, args),
     },
     appUrl: "https://app.test",
   } as unknown as TenantContext;
@@ -48,8 +61,8 @@ function setup(opts: { platform?: ZernioPlatform; sendOk?: boolean } = {}) {
     languageCode: null,
     contactPhone: null,
     email: null,
-    loyaltyPoints: 0,
-    state: { locale: "ru" },
+    loyaltyPoints: opts.loyaltyPoints ?? 0,
+    state: state as Customer["state"],
     zernioConversationId: "conv-1",
     zernioAccountId: "acc-1",
   };
@@ -62,6 +75,7 @@ function setup(opts: { platform?: ZernioPlatform; sendOk?: boolean } = {}) {
     }),
     tail: vi.fn(async () => []),
     download,
+    mailReady: () => false,
   };
   const msg = (m: Partial<ParsedZernioMessage>): ParsedZernioMessage => ({
     conversationId: "conv-1",
@@ -128,6 +142,37 @@ describe("ответ покупателю", () => {
     await send({ text: "отмена" });
     expect(direct().last_reply).toEqual(expect.any(String));
     expect(direct().last_reply_at).toEqual(expect.any(String));
+  });
+});
+
+describe("шаг «списать баллы?» в Direct/WhatsApp", () => {
+  const asking = {
+    state: { locale: "ru", mode: "awaiting_points_choice", country_code: "KZ" },
+    modules: { loyalty: true },
+    loyaltyPoints: 50,
+  };
+  const saved = (db: ReturnType<typeof setup>["db"]) =>
+    db.tables.bot_users![0]!.state as Record<string, unknown>;
+
+  it("«спасибо» — не ответ: шаг переспрашивает с кнопками, баллы не тронуты", async () => {
+    const { db, sent, send } = setup(asking);
+    await send({ text: "спасибо" });
+    expect(sent.at(-1)?.text).toContain("У вас 50 баллов");
+    expect(saved(db).mode).toBe("awaiting_points_choice");
+    expect(saved(db).use_points).toBeUndefined();
+  });
+
+  it("«нет» кнопкой — копить: use_points=false, оформление идёт дальше", async () => {
+    const { db, send } = setup(asking);
+    await send({ postbackPayload: "LOYALTY:no", text: "Нет, копить" });
+    expect(saved(db).use_points).toBe(false);
+    expect(saved(db).mode).not.toBe("awaiting_points_choice");
+  });
+
+  it("«да» текстом — списать: use_points=true", async () => {
+    const { db, send } = setup(asking);
+    await send({ text: "да" });
+    expect(saved(db).use_points).toBe(true);
   });
 });
 

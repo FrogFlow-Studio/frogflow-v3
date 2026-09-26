@@ -72,6 +72,10 @@ export type Msg = {
   pointsBalanceLine: (n: number) => string;
   pointsDiscountLine: (amount: string) => string;
   pointsEarned: (n: number) => string;
+  /** Direct/WhatsApp: шаг «списать баллы?» при оформлении. */
+  pointsAsk: (n: number) => string;
+  pointsYesBtn: string;
+  pointsNoBtn: string;
   giftCertificateBtn: string;
   removeGiftCertificateBtn: string;
   giftCertificateCodePrompt: string;
@@ -281,6 +285,9 @@ const ru: Msg = {
   promoCodeInvalid: "⚠️ Промокод недействителен или больше не работает.",
   promoCodeRemoved: "Промокод убран.",
   discountLine: (a) => `🎟 Скидка по промокоду: −${a}\n`,
+  pointsAsk: (n) => `🏆 У вас ${n} баллов. Списать их в счёт этого заказа?`,
+  pointsYesBtn: "Да, списать",
+  pointsNoBtn: "Нет, копить",
   usePointsBtn: "🏆 Списать баллы",
   removePointsBtn: "❌ Не списывать баллы",
   pointsBalanceLine: (n) => `🏆 Ваши баллы: ${n}\n`,
@@ -486,6 +493,9 @@ const kk: Msg = {
   promoCodeBtn: "🎟 Промокод енгізу",
   removePromoBtn: "❌ Промокодты алып тастау",
   promoCodeInvalid: "⚠️ Промокод жарамсыз немесе енді жұмыс істемейді.",
+  pointsAsk: (n) => `🏆 Сізде ${n} балл бар. Осы тапсырысқа жұмсаймыз ба?`,
+  pointsYesBtn: "Иә, жұмсау",
+  pointsNoBtn: "Жоқ, жинау",
   usePointsBtn: "🏆 Баллдарды жұмсау",
   removePointsBtn: "❌ Баллдарды жұмсамау",
   giftCertificateBtn: "🎫 Сертификат енгізу",
@@ -601,6 +611,9 @@ const en: Msg = {
   promoCodeInvalid: "⚠️ This promo code is invalid or no longer works.",
   promoCodeRemoved: "Promo code removed.",
   discountLine: (a) => `🎟 Promo discount: −${a}\n`,
+  pointsAsk: (n) => `🏆 You have ${n} points. Use them for this order?`,
+  pointsYesBtn: "Yes, use",
+  pointsNoBtn: "No, keep",
   usePointsBtn: "🏆 Use points",
   removePointsBtn: "❌ Don't use points",
   pointsBalanceLine: (n) => `🏆 Your points: ${n}\n`,
@@ -719,6 +732,9 @@ const uz: Msg = {
   promoCodeBtn: "🎟 Promokod kiritish",
   removePromoBtn: "❌ Promokodni olib tashlash",
   promoCodeInvalid: "⚠️ Promokod amal qilmaydi yoki endi ishlamaydi.",
+  pointsAsk: (n) => `🏆 Sizda ${n} ball bor. Ushbu buyurtma uchun sarflaymizmi?`,
+  pointsYesBtn: "Ha, sarflash",
+  pointsNoBtn: "Yo'q, jamlash",
   usePointsBtn: "🏆 Ballarni sarflash",
   removePointsBtn: "❌ Ballarni sarflamaslik",
   giftCertificateBtn: "🎫 Sertifikat kodini kiritish",

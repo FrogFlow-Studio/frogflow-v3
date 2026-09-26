@@ -535,6 +535,27 @@ export function plain(html: string): string {
 }
 
 /**
+ * Ответ на «списать баллы?» при оформлении в Direct/WhatsApp: постбэк
+ * `LOYALTY:yes|no`, текст кнопки или короткое «да»/«нет» на любом из
+ * четырёх языков. Длинная реплика («нет, спасибо, не надо писать»), «спасибо»
+ * и цифры — не выбор: шаг переспросит.
+ */
+export function matchLoyaltyPointsChoice(text: string): "yes" | "no" | null {
+  const raw = text.trim().toLowerCase();
+  if (raw === "loyalty:yes") return "yes";
+  if (raw === "loyalty:no") return "no";
+  const words = raw
+    .replace(/[^\p{L}\p{N}'\s]+/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 0 || words.length > 3) return null;
+  const first = words[0]!;
+  if (["да", "yes", "иә", "ия", "ha"].includes(first)) return "yes";
+  if (["нет", "no", "жоқ", "жок", "yo'q", "yoq"].includes(first)) return "no";
+  return null;
+}
+
+/**
  * Ответ на «на каком языке нужны материалы» до оформления: номер из
  * показанного списка (языки корзины, затем «все»), код или название языка,
  * «оба»/«все языки», постбэк кнопки `deliverylang:<код|all>`. Не путать с

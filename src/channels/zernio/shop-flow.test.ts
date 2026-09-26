@@ -11,6 +11,7 @@ import {
   LOCALE_PICK_ECHO_MS,
   matchCountry,
   matchDeliveryLangChoice,
+  matchLoyaltyPointsChoice,
   matchDirectCommand,
   matchLocalePick,
   languagePickerText,
@@ -419,5 +420,28 @@ describe("emailStep — шаг «ваша почта»", () => {
   it("почта вытаскивается из фразы и приводится к нижнему регистру", () => {
     expect(extractEmail("Почта: Anna.Probe@Example.com")).toBe("anna.probe@example.com");
     expect(extractEmail("мой ящик анна")).toBeNull();
+  });
+});
+
+describe("matchLoyaltyPointsChoice", () => {
+  it("принимает кнопки и короткие да/нет", () => {
+    expect(matchLoyaltyPointsChoice("Да, списать")).toBe("yes");
+    expect(matchLoyaltyPointsChoice("да")).toBe("yes");
+    expect(matchLoyaltyPointsChoice("LOYALTY:yes")).toBe("yes");
+    expect(matchLoyaltyPointsChoice("Yes, use")).toBe("yes");
+    expect(matchLoyaltyPointsChoice("Иә")).toBe("yes");
+    expect(matchLoyaltyPointsChoice("Нет, копить")).toBe("no");
+    expect(matchLoyaltyPointsChoice("нет")).toBe("no");
+    expect(matchLoyaltyPointsChoice("LOYALTY:no")).toBe("no");
+    expect(matchLoyaltyPointsChoice("No, keep")).toBe("no");
+    expect(matchLoyaltyPointsChoice("жоқ")).toBe("no");
+  });
+
+  it("не путает вежливый отказ от разговора с отказом списывать бонусы", () => {
+    expect(matchLoyaltyPointsChoice("спасибо")).toBeNull();
+    expect(matchLoyaltyPointsChoice("хорошо")).toBeNull();
+    expect(matchLoyaltyPointsChoice("018")).toBeNull();
+    expect(matchLoyaltyPointsChoice("нет, спасибо, не надо мне писать")).toBeNull();
+    expect(matchLoyaltyPointsChoice("данные карты где?")).toBeNull();
   });
 });
