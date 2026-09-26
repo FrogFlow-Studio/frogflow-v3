@@ -43,7 +43,9 @@ vi.mock("@/core/db/client.server", () => ({
   }),
 }));
 
-const { storeProductFn, miniAppOrdersFn } = await import("./storefront.functions");
+const { storeProductFn, miniAppOrdersFn, miniAppCheckoutFn } =
+  await import("./storefront.functions");
+const { MINI_APP_BUDGETS } = await import("@/core/storefront/rate-limit");
 
 type Row = Record<string, unknown>;
 
@@ -212,5 +214,32 @@ describe("miniAppOrdersFn: «Мои материалы»", () => {
       library: [],
     });
     expect(tables).not.toContain("products");
+  });
+});
+
+describe("лимит частоты Mini App", () => {
+  it("«Мои заказы»: после лимита покупатель получает понятный отказ, другой покупатель — нет", async () => {
+    tenantWith(fakeDb());
+    const call = (tg: number) =>
+      miniAppOrdersFn({ data: { slug: "shop", initData: initData(tg) } });
+    for (let i = 0; i < MINI_APP_BUDGETS.orders.limit; i++) await call(777);
+    await expect(call(777)).rejects.toThrow("Слишком много запросов");
+    await expect(call(778)).resolves.toEqual({ orders: [], library: [] });
+  });
+
+  it("оформление: пачка запросов упирается в лимит до похода в базу и в Telegram", async () => {
+    tenantWith(fakeDb());
+    const call = () =>
+      miniAppCheckoutFn({
+        data: {
+          slug: "shop",
+          initData: initData(779),
+          items: [{ product_id: "aaaaaaaa-0000-4000-8000-000000000000", quantity: 1 }],
+        },
+      }).catch((e: Error) => e.message);
+    for (let i = 0; i < MINI_APP_BUDGETS.checkout.limit; i++) await call();
+    tables = [];
+    expect(await call()).toContain("Слишком много запросов");
+    expect(tables).toEqual([]);
   });
 });

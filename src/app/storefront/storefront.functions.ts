@@ -105,6 +105,10 @@ export const miniAppCheckoutFn = createServerFn({ method: "POST" })
       throw shownError(
         (await shopT(ctx))(v.reason === "expired" ? "error.miniAppExpired" : "error.miniAppAuth"),
       );
+    // Счёт — по подписанному id: чужой бюджет подделкой не выесть.
+    const { takeMiniApp } = await import("@/core/storefront/rate-limit");
+    if (!takeMiniApp(ctx.tenant.id, v.user.id, "checkout"))
+      throw shownError((await shopT(ctx))("error.tooManyRequests"));
     const { upsertCustomer } = await import("@/core/customers/customers");
     const { importItems, parseHandoffItems } = await import("@/core/storefront/handoff");
     const customer = await upsertCustomer(ctx, "telegram", v.user.id, {
@@ -141,6 +145,9 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
     const v = validateInitData(data.initData, ctx.secrets.telegramToken());
     if (!v.ok)
       throw shownError(t(v.reason === "expired" ? "error.miniAppExpired" : "error.miniAppAuth"));
+    const { takeMiniApp } = await import("@/core/storefront/rate-limit");
+    if (!takeMiniApp(ctx.tenant.id, v.user.id, "orders"))
+      throw shownError(t("error.tooManyRequests"));
     const { getCustomerByTelegramId } = await import("@/core/customers/customers");
     const customer = await getCustomerByTelegramId(ctx, v.user.id);
     if (!customer) return { orders: [], library: [] };

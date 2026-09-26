@@ -878,7 +878,7 @@
     "пустая история заказов — пустая библиотека, без похода за товарами": "src/app/storefront/storefront.functions.test.ts › нет покупателя или заказов — пустая библиотека, без похода за товарами"
   },
   "tests/mini-app-rate-limit.test.ts": {
-    "limits checkout bursts independently per Telegram user": "open: расхождение: у miniAppCheckoutFn (перенос корзины в бота и сообщение с корзиной) и miniAppOrdersFn нет лимита частоты на покупателя",
+    "limits checkout bursts independently per Telegram user": "src/core/storefront/rate-limit.test.ts › пачка оформлений упирается в лимит у каждого покупателя отдельно",
     "uses a separate, larger cart allowance": "drop: корзина витрины v2 живёт в браузере (app/storefront/cart.tsx), серверных запросов корзины нет",
     "limits proof uploads more tightly than cart traffic": "drop: загрузки чека из окна нет; в v2 Mini App — витрина /s/:slug, оформление, оплата и чек — в чате бота",
     "orders_poll имеет свой бюджет, не деля лимит со вкладкой «Заказы»": "drop: опроса статуса оплаты из окна в v2 нет; «Мои заказы» грузятся один раз (miniAppOrdersFn)",
