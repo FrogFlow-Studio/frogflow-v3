@@ -90,6 +90,14 @@ export const CONTACTS: { telegram: string | null; whatsapp: string | null } = {
   whatsapp: "77005102751",
 };
 
+/** Адрес главной без хвостового слэша: canonical, og:url и языковые версии. */
+export const SITE_URL = "https://www.frogflow.tech";
+
+/** Адрес главной на языке: русский — без параметра, остальные — `?lang=`. */
+export function landingUrl(locale: Locale): string {
+  return locale === "ru" ? `${SITE_URL}/` : `${SITE_URL}/?lang=${locale}`;
+}
+
 /** Ссылка на демо-бота. null — кнопка «Попробовать демо» не показывается. */
 export const DEMO_URL: string | null = "https://t.me/demtest12_bot";
 

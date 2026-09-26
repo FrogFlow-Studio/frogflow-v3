@@ -13,6 +13,7 @@ import {
   SETUP_FEE_FROM,
   TRIAL_DAYS,
   formatTenge,
+  landingUrl,
   type PlanKey,
 } from "@/app/landing/config";
 import { SUPPORTED_LOCALES, isLocale, type Locale } from "@/core/i18n/locale";
@@ -28,7 +29,8 @@ export const Route = createFileRoute("/")({
     return { signup: enabled, locale };
   },
   head: ({ loaderData }) => {
-    const t = landingT(loaderData?.locale ?? "ru");
+    const locale = loaderData?.locale ?? "ru";
+    const t = landingT(locale);
     return {
       meta: [
         { title: t("meta.title") },
@@ -36,8 +38,12 @@ export const Route = createFileRoute("/")({
         { property: "og:title", content: t("meta.title") },
         { property: "og:description", content: t("meta.description") },
         { property: "og:type", content: "website" },
+        { property: "og:url", content: landingUrl(locale) },
       ],
       links: [
+        { rel: "canonical", href: landingUrl(locale) },
+        ...SUPPORTED_LOCALES.map((l) => ({ rel: "alternate", hrefLang: l, href: landingUrl(l) })),
+        { rel: "alternate", hrefLang: "x-default", href: landingUrl("ru") },
         { rel: "preconnect", href: "https://fonts.googleapis.com" },
         { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
         {

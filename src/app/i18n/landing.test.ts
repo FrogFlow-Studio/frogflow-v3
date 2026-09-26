@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LANDING_KEYS, landingT } from "./landing";
-import { formatTenge } from "@/app/landing/config";
+import { formatTenge, landingUrl } from "@/app/landing/config";
 import { SUPPORTED_LOCALES } from "@/core/i18n/locale";
 
 describe("словарь главной", () => {
@@ -23,5 +23,12 @@ describe("словарь главной", () => {
     expect(formatTenge(9900)).toBe("9 900 ₸");
     expect(formatTenge(39900)).toBe("39 900 ₸");
     expect(formatTenge(900)).toBe("900 ₸");
+  });
+});
+
+describe("landingUrl", () => {
+  it("русский без параметра, остальные с ?lang, всё на новом домене", () => {
+    expect(landingUrl("ru")).toBe("https://www.frogflow.tech/");
+    expect(landingUrl("kk")).toBe("https://www.frogflow.tech/?lang=kk");
   });
 });
