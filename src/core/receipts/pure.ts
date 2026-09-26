@@ -134,6 +134,12 @@ export function looksLikeFailedPayment(text: string): boolean {
   return PAYMENT_FAILED_PHRASES.some((p) => t.includes(p));
 }
 
+/** В тексте есть прямые слова банка о проведённом платеже, а не только «оплата». */
+export function looksLikeCompletedPayment(text: string): boolean {
+  const t = norm(text);
+  return RECEIPT_DONE_PHRASES.some((p) => t.includes(p));
+}
+
 export function looksLikeShopScreenNotReceipt(text: string): boolean {
   const t = norm(text);
   if (RECEIPT_DONE_PHRASES.some((p) => t.includes(p))) return false;

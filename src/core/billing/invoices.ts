@@ -8,7 +8,13 @@ import { serviceDb } from "@/core/db/client.server";
  * invoice-<id>, статус переводится под RLS арендатора (колоночный UPDATE
  * на status/proof_path/proof_uploaded_at, M60).
  */
-export type OpenInvoice = { id: string; amount: number; currency: string; note: string | null };
+export type OpenInvoice = {
+  id: string;
+  amount: number;
+  currency: string;
+  note: string | null;
+  created_at: string;
+};
 
 /** Старейший открытый счёт — если отправитель владелец бота; иначе null. */
 export async function openInvoiceForOwner(
@@ -19,7 +25,7 @@ export async function openInvoiceForOwner(
     return null;
   const { data } = await ctx.db
     .from("subscription_invoices")
-    .select("id, amount, currency, note")
+    .select("id, amount, currency, note, created_at")
     .eq("status", "sent")
     .order("created_at", { ascending: true })
     .limit(1)

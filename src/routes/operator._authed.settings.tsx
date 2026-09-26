@@ -12,7 +12,7 @@ import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 export const Route = createFileRoute("/operator/_authed/settings")({
   loader: async () => {
     const [cred, payout] = await Promise.all([operatorCredentialsFn(), payoutRequisitesFn()]);
-    return { ...cred, requisites: payout.requisites };
+    return { ...cred, requisites: payout.requisites, recipient: payout.recipient };
   },
   component: SettingsPage,
 });
@@ -38,7 +38,7 @@ function SettingsPage() {
     <>
       <PageTitle title="Настройки платформы" />
       <div className="grid gap-4 lg:grid-cols-2">
-        <RequisitesCard requisites={cred.requisites} />
+        <RequisitesCard requisites={cred.requisites} recipient={cred.recipient} />
         <ErrorTrackingCard />
         <Card title="Учётка оператора">
           <p className="mb-3 text-sm text-muted">
@@ -127,11 +127,16 @@ function SettingsPage() {
   );
 }
 
-function RequisitesCard({ requisites }: { requisites: string }) {
+function RequisitesCard({ requisites, recipient }: { requisites: string; recipient: string }) {
   const router = useRouter();
   const [saved, setSaved] = useState(false);
-  const save = useAction(async (value: string) => {
-    await setPayoutRequisitesFn({ data: { requisites: value } });
+  const save = useAction(async (f: FormData) => {
+    await setPayoutRequisitesFn({
+      data: {
+        requisites: String(f.get("requisites") ?? ""),
+        recipient: String(f.get("recipient") ?? ""),
+      },
+    });
     setSaved(true);
     await router.invalidate();
   });
@@ -139,16 +144,16 @@ function RequisitesCard({ requisites }: { requisites: string }) {
     <Card title="Реквизиты для выплат">
       <p className="mb-3 text-sm text-muted">
         Подставляются в счёт владельцу бота (карточка клиента → «Подписка и счета»). Снимок
-        реквизитов хранится в каждом счёте — смена реквизитов не меняет уже выставленные.
+        реквизитов хранится в каждом счёте — смена реквизитов не меняет уже выставленные. Владелец
+        платит переводом на Kaspi и присылает чек своему боту: чек с точной суммой счёта продлевает
+        подписку сам, остальные ждут вашей проверки.
       </p>
       <form
         className="space-y-3"
         onSubmit={(e) => {
           e.preventDefault();
           setSaved(false);
-          void save
-            .run(String(new FormData(e.currentTarget).get("requisites") ?? ""))
-            .catch(() => {});
+          void save.run(new FormData(e.currentTarget)).catch(() => {});
         }}
       >
         <textarea
@@ -158,6 +163,18 @@ function RequisitesCard({ requisites }: { requisites: string }) {
           defaultValue={requisites}
           placeholder="Kaspi Gold 4400 …, получатель …"
         />
+        <Field
+          label="Получатель, как он написан в чеке Kaspi"
+          hint="Пока поле пустое, каждый чек ждёт вашей проверки. Заполненное: чек с этим именем, точной суммой и номером операции продлевает подписку сам."
+        >
+          <input
+            className="input"
+            name="recipient"
+            defaultValue={recipient}
+            placeholder="Яков В."
+          />
+        </Field>
+
         <div className="flex items-center gap-3">
           <button className="btn-primary" disabled={save.busy}>
             Сохранить

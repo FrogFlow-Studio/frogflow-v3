@@ -6,6 +6,7 @@ import {
   warnText,
   type OverduePolicy,
 } from "@/core/billing/subscription";
+import type { Tenant } from "@/core/tenant/types";
 import { logEvent, notifyOwner } from "./operator.server";
 
 /**
@@ -26,18 +27,24 @@ export async function getPayoutRequisites(): Promise<string> {
   return data?.value ?? "";
 }
 
-export async function setPayoutRequisites(value: string): Promise<void> {
+async function setOperatorSetting(key: string, value: string): Promise<void> {
   const db = serviceDb();
   const v = value.trim();
-  const { data } = await db
-    .from("operator_settings")
-    .select("key")
-    .eq("key", REQUISITES_KEY)
-    .maybeSingle();
+  const { data } = await db.from("operator_settings").select("key").eq("key", key).maybeSingle();
   const { error } = data
-    ? await db.from("operator_settings").update({ value: v }).eq("key", REQUISITES_KEY)
-    : await db.from("operator_settings").insert({ key: REQUISITES_KEY, value: v });
-  if (error) throw new Error(`Не удалось сохранить реквизиты: ${error.message}`);
+    ? await db.from("operator_settings").update({ value: v }).eq("key", key)
+    : await db.from("operator_settings").insert({ key, value: v });
+  if (error) throw new Error(`Не удалось сохранить настройку: ${error.message}`);
+}
+
+export async function setPayoutRequisites(value: string): Promise<void> {
+  await setOperatorSetting(REQUISITES_KEY, value);
+}
+
+/** Получатель в чеке Kaspi для автопроверки чеков за подписку. */
+export async function setPayoutRecipient(value: string): Promise<void> {
+  const { RECIPIENT_KEY } = await import("@/core/billing/invoice-check.server");
+  await setOperatorSetting(RECIPIENT_KEY, value);
 }
 
 export type Payment = {
@@ -293,6 +300,41 @@ export async function confirmInvoice(
   }
 }
 
+/**
+ * Итог автопроверки чека за подписку. Отпечаток файла и номер операции
+ * пишутся всегда — по ним тот же чек по другому счёту не пройдёт. Прошёл проверку — счёт
+ * подтверждается сам на следующий период клиента; нет — остаётся «чек
+ * прислан» и ждёт оператора, причина видна в журнале клиента.
+ */
+export async function settleInvoiceProof(
+  botId: string,
+  invoiceId: string,
+  check: import("@/core/billing/invoice-check.server").InvoiceProofCheck,
+): Promise<{ confirmed: true; expiresAt: string | null } | { confirmed: false; detail: string }> {
+  await logEvent(
+    botId,
+    "payment",
+    {
+      action: "invoice_proof",
+      invoice_id: invoiceId,
+      proof_hash: check.hash,
+      ...(check.operationId ? { receipt_op: check.operationId } : {}),
+      auto_check: check.ok ? "passed" : check.detail,
+    },
+    "auto-check",
+  );
+  if (!check.ok) return { confirmed: false, detail: check.detail };
+  try {
+    const period = await (await import("./plans.server")).suggestedPeriod(botId);
+    const r = await confirmInvoice(invoiceId, period, "auto-check");
+    return { confirmed: true, expiresAt: r.expiresAt };
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error(`[billing] auto-confirm ${invoiceId} failed: ${detail}`);
+    return { confirmed: false, detail };
+  }
+}
+
 export async function rejectInvoice(id: string, reason: string, actor: string): Promise<void> {
   const inv = await invoiceOrThrow(id);
   if (inv.status === "paid") throw new Error("Счёт уже оплачен — отклонять нечего");
@@ -345,6 +387,33 @@ const defaultNotify: SweepNotify = async (botId, text) => {
   }
 };
 
+/**
+ * Счёт за следующий период, который обход выставляет сам: только клиенту на
+ * плане (ниша × уровень) и только если открытого счёта ещё нет. null —
+ * выставлять нечего.
+ */
+export type SweepInvoicer = (t: Tenant) => Promise<{ amount: number; delivered: boolean } | null>;
+
+const defaultInvoicer: SweepInvoicer = async (t) => {
+  const { parsePlan } = await import("@/core/plans/registry");
+  if (parsePlan(t.plan)?.kind !== "tier") return null;
+  const { data: open } = await serviceDb()
+    .from("subscription_invoices")
+    .select("id")
+    .eq("bot_id", t.id)
+    .in("status", ["sent", "proof_uploaded"])
+    .limit(1);
+  if (open?.length) return null;
+  const r = await (
+    await import("./plans.server")
+  ).createPlanInvoice(
+    t.id,
+    { period: t.settings.billing?.period ?? "month", addonPrices: {} },
+    "cron",
+  );
+  return { amount: r.invoice.amount, delivered: r.delivered };
+};
+
 async function alreadyDone(botId: string, marker: string): Promise<boolean> {
   const { data, error } = await serviceDb()
     .from("bot_events")
@@ -372,6 +441,7 @@ export async function sweepSubscriptions(
   notify: SweepNotify = defaultNotify,
   /** Только один клиент (тесты) — без фильтра по served_by. */
   onlyBotId?: string,
+  invoicer: SweepInvoicer = defaultInvoicer,
 ): Promise<SweepEntry[]> {
   const { tenantDirectory, invalidateTenantDirectory } =
     await import("@/core/tenant/resolve.server");
@@ -427,6 +497,25 @@ export async function sweepSubscriptions(
         detail: n.ok ? "приостановлен, владелец уведомлён" : `приостановлен; ${n.detail}`,
       });
       continue;
+    }
+    // Счёт на следующий период — один раз на срок, до напоминания: владелец
+    // получает сумму и реквизиты Kaspi и отвечает чеком.
+    const invoiceMarker = `invoice:${sub.expiresAt}`;
+    if (!(await alreadyDone(t.id, invoiceMarker))) {
+      try {
+        const inv = await invoicer(t);
+        if (inv)
+          await logEvent(
+            t.id,
+            "payment",
+            { action: "auto_invoice", amount: inv.amount, sweep_marker: invoiceMarker },
+            "cron",
+          );
+      } catch (e) {
+        console.error(
+          `[operator] auto invoice for ${t.id} failed: ${e instanceof Error ? e.message : e}`,
+        );
+      }
     }
     const n = await notify(t.id, warnText(sub.daysLeft, policy.on_overdue === "suspend"));
     if (!n.ok) {

@@ -146,6 +146,8 @@ export async function readReceiptText(
   ctx: TenantContext,
   bytes: Uint8Array,
   mime: string,
+  /** Чек за подписку платформе — не проверка клиента, в его лимит не идёт. */
+  opts: { countUsage?: boolean } = {},
 ): Promise<string> {
   const pdf = isPdf(mime, bytes);
   if (pdf) {
@@ -154,7 +156,7 @@ export async function readReceiptText(
   }
   const apiKey = env().GOOGLE_VISION_API_KEY?.trim();
   if (!apiKey) throw new Error("GOOGLE_VISION_API_KEY не задан");
-  await recordVisionCall(ctx);
+  if (opts.countUsage !== false) await recordVisionCall(ctx);
   return pdf ? visionPdf(bytes, apiKey) : visionImage(bytes, apiKey);
 }
 

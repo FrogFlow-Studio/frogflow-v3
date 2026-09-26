@@ -501,14 +501,23 @@ export const createPlanInvoiceFn = createServerFn({ method: "POST" })
 
 export const payoutRequisitesFn = createServerFn({ method: "GET" }).handler(async () => {
   await guard();
-  return { requisites: await (await import("./billing.server")).getPayoutRequisites() };
+  const { payoutRecipient } = await import("@/core/billing/invoice-check.server");
+  const [requisites, recipient] = await Promise.all([
+    (await import("./billing.server")).getPayoutRequisites(),
+    payoutRecipient(),
+  ]);
+  return { requisites, recipient };
 });
 
 export const setPayoutRequisitesFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) => z.object({ requisites: z.string().max(2000) }).parse(d))
+  .validator((d: unknown) =>
+    z.object({ requisites: z.string().max(2000), recipient: z.string().max(200) }).parse(d),
+  )
   .handler(async ({ data }) => {
     await guard();
-    await (await import("./billing.server")).setPayoutRequisites(data.requisites);
+    const b = await import("./billing.server");
+    await b.setPayoutRequisites(data.requisites);
+    await b.setPayoutRecipient(data.recipient);
     return { ok: true };
   });
 

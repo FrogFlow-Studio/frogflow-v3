@@ -27,8 +27,15 @@ async function cleanupEvents() {
     .delete()
     .eq("bot_id", DEMO_BOT)
     .eq("actor", "cron")
-    .like("payload->>sweep_marker", "warn:%");
+    .or("payload->>sweep_marker.like.warn:%,payload->>sweep_marker.like.invoice:%");
 }
+
+// Настоящий счёт ушёл бы владельцу демо-бота: подменяем, считаем вызовы.
+const invoiced: string[] = [];
+const invoicer = async (t: { id: string }) => {
+  invoiced.push(t.id);
+  return { amount: 9900, delivered: true };
+};
 
 describe.skipIf(!liveReady)("обход подписок", () => {
   beforeAll(async () => {
@@ -59,33 +66,35 @@ describe.skipIf(!liveReady)("обход подписок", () => {
 
   it("истекает через 2 дня — предупреждает; тот же день — молчит; следующий день — снова", async () => {
     const now = new Date();
-    const first = (await sweepSubscriptions(now, notify, DEMO_BOT)).find(
+    const first = (await sweepSubscriptions(now, notify, DEMO_BOT, invoicer)).find(
       (e) => e.bot_id === DEMO_BOT,
     )!;
     expect(first.state).toBe("expiring");
     expect(first.action).toBe("warned");
     expect(sent[0]).toMatch(/заканчивается через 2 дн\./);
-    const again = (await sweepSubscriptions(now, notify, DEMO_BOT)).find(
+    const again = (await sweepSubscriptions(now, notify, DEMO_BOT, invoicer)).find(
       (e) => e.bot_id === DEMO_BOT,
     )!;
     expect(again.action).toBe("skipped");
     expect(sent).toHaveLength(1);
     const tomorrow = new Date(now.getTime() + 86_400_000);
-    const next = (await sweepSubscriptions(tomorrow, notify, DEMO_BOT)).find(
+    const next = (await sweepSubscriptions(tomorrow, notify, DEMO_BOT, invoicer)).find(
       (e) => e.bot_id === DEMO_BOT,
     )!;
     expect(next.action).toBe("warned");
     expect(sent).toHaveLength(2);
+    // Счёт на следующий период — один раз на срок, а не каждый день.
+    expect(invoiced).toEqual([DEMO_BOT]);
   });
 
   it("недоставленное предупреждение не помечается сделанным", async () => {
     const day = new Date(Date.now() + 2 * 86_400_000);
     const failing = async () => ({ ok: false, detail: "бот молчит" });
-    const r1 = (await sweepSubscriptions(day, failing, DEMO_BOT)).find(
+    const r1 = (await sweepSubscriptions(day, failing, DEMO_BOT, invoicer)).find(
       (e) => e.bot_id === DEMO_BOT,
     )!;
     expect(r1.action).toBe("failed");
-    const r2 = (await sweepSubscriptions(day, notify, DEMO_BOT)).find(
+    const r2 = (await sweepSubscriptions(day, notify, DEMO_BOT, invoicer)).find(
       (e) => e.bot_id === DEMO_BOT,
     )!;
     expect(r2.action).toBe("warned");

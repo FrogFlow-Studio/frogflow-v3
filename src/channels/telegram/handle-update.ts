@@ -1461,6 +1461,21 @@ async function ownerInvoiceProof(
     );
     return true;
   }
+  // Автопроверка: прошла — подписка продлена сразу; нет — чек ждёт оператора.
+  const { verifyInvoiceProof } = await import("@/core/billing/invoice-check.server");
+  const { settleInvoiceProof } = await import("@/app/operator/billing.server");
+  const settled = await settleInvoiceProof(
+    ctx.tenant.id,
+    invoice.id,
+    await verifyInvoiceProof(ctx, invoice, file),
+  );
+  if (settled.confirmed) {
+    const until = settled.expiresAt
+      ? ` Подписка оплачена до ${new Date(settled.expiresAt).toLocaleDateString("ru")}.`
+      : "";
+    await reply(`Оплата ${invoice.amount} ${invoice.currency} подтверждена, спасибо!${until}`);
+    return true;
+  }
   await reply(
     `Чек получен по счёту на ${invoice.amount} ${invoice.currency}${invoice.note ? ` — ${invoice.note}` : ""}. Ожидайте подтверждения оплаты.`,
   );
