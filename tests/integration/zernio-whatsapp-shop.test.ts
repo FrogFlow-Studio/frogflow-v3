@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { liveReady, DEMO_BOT } from "./live";
+import { liveReady, DEMO_BOT, dropDemoOrder } from "./live";
 import { serviceDb } from "@/core/db/client.server";
 import { requireTenant, tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
 import { getCustomer, syntheticTelegramId, userKey } from "@/core/customers/customers";
@@ -61,7 +61,13 @@ const tapList = (id: string, rowId: string) => ({
 
 async function cleanup() {
   const db = serviceDb();
-  if (orderId) await db.from("orders").delete().eq("id", orderId);
+  // Все заказы пробного покупателя: сценарий заводит больше одного.
+  const { data: own } = await db
+    .from("orders")
+    .select("id")
+    .eq("bot_id", DEMO_BOT)
+    .eq("user_key", KEY);
+  for (const o of own ?? []) await dropDemoOrder(o.id);
   await db.from("cart_items").delete().eq("bot_id", DEMO_BOT).eq("telegram_id", TG);
   await db.from("bot_users").delete().eq("bot_id", DEMO_BOT).eq("user_key", KEY);
   await db.from("products").delete().eq("bot_id", DEMO_BOT).eq("name", PROBE_NAME);

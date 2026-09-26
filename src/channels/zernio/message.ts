@@ -293,5 +293,8 @@ export function messageAsText(m: ParsedZernioMessage): string {
     return `Корзина из каталога WhatsApp: ${items || "без позиций"}${m.nativeOrder.note ? `. ${m.nativeOrder.note}` : ""}`;
   }
   if (m.attachments.length) return `[вложение: ${m.attachments.map((a) => a.type).join(", ")}]`;
+  // Вложение без ссылки — не пустое сообщение: на шаге оплаты магазин просит
+  // прислать чек ещё раз, иначе оно дойдёт до продавца, а не пропадёт молча.
+  if (m.mediaWithoutUrl) return "[вложение без ссылки]";
   return "";
 }

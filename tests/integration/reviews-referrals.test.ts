@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { liveReady, DEMO_BOT, TEST_TG_ID } from "./live";
+import { liveReady, DEMO_BOT, TEST_TG_ID, dropDemoOrder } from "./live";
 import { serviceDb } from "@/core/db/client.server";
 import { requireTenant, tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
 import { upsertCustomer, userKey } from "@/core/customers/customers";
@@ -25,7 +25,7 @@ const orderIds: number[] = [];
 
 async function cleanup() {
   const db = serviceDb();
-  for (const id of orderIds) await db.from("orders").delete().eq("id", id);
+  for (const id of orderIds) await dropDemoOrder(id);
   await db.from("referrals").delete().eq("bot_id", DEMO_BOT).eq("referred_telegram_id", REFERRED);
   await db
     .from("promo_codes")

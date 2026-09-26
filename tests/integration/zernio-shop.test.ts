@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { liveReady, DEMO_BOT } from "./live";
+import { liveReady, DEMO_BOT, dropDemoOrder } from "./live";
 import { serviceDb } from "@/core/db/client.server";
 import { requireTenant, tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
 import {
@@ -81,7 +81,7 @@ async function cleanup() {
       await db.storage
         .from("payment-proofs")
         .remove(files.map((f) => `${DEMO_BOT}/order-${orderId}/${f.name}`));
-    await db.from("orders").delete().eq("id", orderId);
+    await dropDemoOrder(orderId);
   }
   await db.from("cart_items").delete().eq("bot_id", DEMO_BOT).eq("telegram_id", TG);
   await db

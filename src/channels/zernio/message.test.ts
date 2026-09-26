@@ -130,6 +130,7 @@ describe("parseZernioMessage", () => {
     });
     expect(p.attachments).toEqual([]);
     expect(p.mediaWithoutUrl).toBe(true);
+    expect(messageAsText(p)).toBe("[вложение без ссылки]");
   });
 
   it("нажатие читается из корня события: Instagram postback и строка списка WhatsApp", () => {
