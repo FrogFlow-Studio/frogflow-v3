@@ -69,6 +69,8 @@ describe("классификация текста", () => {
     expect(isPdf("application/pdf")).toBe(true);
     expect(isPdf("image/jpeg", new TextEncoder().encode("%PDF-1.4"))).toBe(true);
     expect(isPdf("image/jpeg", new Uint8Array([1, 2, 3, 4]))).toBe(false);
+    // Мусор перед меткой — как у файла чека (orders/proof-file): тоже PDF.
+    expect(isPdf("application/octet-stream", new TextEncoder().encode("\n\n%PDF-1.7"))).toBe(true);
   });
 });
 

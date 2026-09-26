@@ -1,3 +1,4 @@
+import { sniffProofMime } from "@/core/orders/proof-file";
 /**
  * Проверка чека по распознанному тексту — чистые правила, без Vision и базы.
  * Допуск ±30%: OCR и банк часто дают сумму рядом с заказом (комиссия,
@@ -331,5 +332,6 @@ export function analyzeReceiptText(
 export function isPdf(mime: string, bytes?: Uint8Array): boolean {
   if (mime.toLowerCase().includes("pdf")) return true;
   if (!bytes || bytes.length < 4) return false;
-  return String.fromCharCode(bytes[0]!, bytes[1]!, bytes[2]!, bytes[3]!) === "%PDF";
+  // Те же правила, что при приёме файла чека: метка в первых 1024 байтах.
+  return sniffProofMime(bytes) === "application/pdf";
 }

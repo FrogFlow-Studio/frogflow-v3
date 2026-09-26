@@ -92,4 +92,32 @@ describe("файл чека", () => {
         ext: "heic",
       });
   });
+
+  it("PDF с мусором перед %PDF (до 1024 байт) принимается, дальше — нет", () => {
+    const withPrefix = (n: number) => {
+      const b = new Uint8Array(n + 8);
+      b.fill(0x20, 0, n);
+      b.set(new TextEncoder().encode("%PDF-1.7"), n);
+      return b;
+    };
+    expect(validateProofFile({ bytes: withPrefix(3), mime: "application/pdf" })).toEqual({
+      ok: true,
+      mime: "application/pdf",
+      ext: "pdf",
+    });
+    // Метка целиком в первых 1024 байтах — как у Acrobat.
+    expect(validateProofFile({ bytes: withPrefix(1020), mime: "application/pdf" }).ok).toBe(true);
+    expect(validateProofFile({ bytes: withPrefix(1021), mime: "application/pdf" }).ok).toBe(false);
+  });
+
+  it("AVIF принимается как image/avif, а не как HEIC", () => {
+    for (const brand of ["avif", "avis"]) {
+      const b = new Uint8Array([0, 0, 0, 0x1c, ...new TextEncoder().encode(`ftyp${brand}`)]);
+      expect(validateProofFile({ bytes: b, mime: "application/octet-stream" })).toEqual({
+        ok: true,
+        mime: "image/avif",
+        ext: "avif",
+      });
+    }
+  });
 });
