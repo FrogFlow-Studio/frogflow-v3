@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { degrees, PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import type { MaterialSnapshot } from "@/core/catalog/materials";
 import { serviceDb } from "@/core/db/client.server";
-import { isTenantStorageKey } from "@/core/storage/keys";
+import { isDeliverableStorageKey, isTenantStorageKey } from "@/core/storage/keys";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { reportError } from "@/lib/errors";
 import {
@@ -70,15 +70,31 @@ export async function stampPdf(bytes: Uint8Array, line: string): Promise<Uint8Ar
 type Order = WatermarkBuyer & { id: number; display_no?: number | null; order_no?: number | null };
 
 /**
- * Материалы к выдаче: у магазина со знаком каждый PDF из хранилища заменяется
- * копией с именем покупателя (готовая копия берётся повторно). Любая
- * неудача — исходный файл: покупатель заплатил и должен получить материал.
+ * Материалы к выдаче. Через эту функцию проходят все выдачи (Telegram,
+ * Instagram/WhatsApp, письмо, «Мои материалы»), поэтому здесь же отсекаем
+ * ключ с префиксом другого клиента: строки заказов v1 и старые снимки
+ * пишутся не через проверки v2, а подпись идёт под service_role. Такой файл
+ * не подписывается: выдача по нему не пройдёт, и продавец увидит ошибку.
+ *
+ * У магазина со знаком каждый PDF из хранилища заменяется копией с именем
+ * покупателя (готовая копия берётся повторно). Любая неудача знака —
+ * исходный файл: покупатель заплатил и должен получить материал.
  */
 export async function protectMaterials(
   ctx: TenantContext,
   order: Order,
   materials: MaterialSnapshot[],
 ): Promise<MaterialSnapshot[]> {
+  const foreign = (m: MaterialSnapshot) =>
+    Boolean(m.path) && !isDeliverableStorageKey(ctx.tenant.id, m.path!);
+  if (materials.some(foreign)) {
+    await reportError(new Error("чужой ключ в материалах заказа"), {
+      where: "delivery.foreign_key",
+      botId: ctx.tenant.id,
+      extra: { orderId: order.id },
+    });
+    materials = materials.map((m) => (foreign(m) ? { ...m, path: null } : m));
+  }
   if (!watermarkEnabled(ctx)) return materials;
   const out: MaterialSnapshot[] = [];
   for (const m of materials) {

@@ -53,4 +53,19 @@ describe("копия со знаком", () => {
     const mats = [{ path: `${T}/a.pdf`, name: "a.pdf", url: null }];
     expect(await protectMaterials(ctx, { id: 1 }, mats)).toBe(mats);
   });
+
+  it("файл с префиксом другого клиента не выдаётся: путь снимается, ссылка на него не подписывается", async () => {
+    const ctx = { tenant: { id: T, settings: {} } } as unknown as TenantContext;
+    const other = "99999999-8888-7777-6666-555555555555";
+    const mats = [
+      { path: `${other}/paid.pdf`, name: "paid.pdf", url: null },
+      { path: `${T}/a.pdf`, name: "a.pdf", url: null },
+      { path: "legacy-v1.pdf", name: null, url: null },
+    ];
+    expect(await protectMaterials(ctx, { id: 1 }, mats)).toEqual([
+      { path: null, name: "paid.pdf", url: null },
+      mats[1],
+      mats[2],
+    ]);
+  });
 });

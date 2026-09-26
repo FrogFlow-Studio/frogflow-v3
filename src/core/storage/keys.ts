@@ -28,3 +28,18 @@ export function isSafeStorageKey(key: string): boolean {
 export function isTenantStorageKey(tenantId: string, key: string): boolean {
   return key.startsWith(`${tenantId}/`) && isSafeStorageKey(key);
 }
+
+const UUID_PREFIX = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//i;
+
+/**
+ * Ключ, на который можно выдать покупателю подписанную ссылку. Свой префикс —
+ * да, чужой `<bot_id>/` — нет (строки заказов v1 и старые снимки материалов
+ * пишутся не через проверки v2). Ключ без префикса — файл, залитый в v1 до
+ * разметки ключей, — пропускаем, как v1 (tenant-storage-key.server.ts):
+ * иначе у переехавших клиентов перестанут выдаваться старые заказы.
+ */
+export function isDeliverableStorageKey(tenantId: string, key: string): boolean {
+  if (!isSafeStorageKey(key)) return false;
+  const m = key.match(UUID_PREFIX);
+  return !m || m[1]!.toLowerCase() === tenantId.toLowerCase();
+}

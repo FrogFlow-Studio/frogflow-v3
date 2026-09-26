@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSafeStorageKey, isTenantStorageKey } from "./keys";
+import { isDeliverableStorageKey, isSafeStorageKey, isTenantStorageKey } from "./keys";
 
 const T = "0bac1f86-5231-4e57-838d-2faa44d427e7";
 const OTHER = "11111111-2222-4333-8444-555555555555";
@@ -54,5 +54,23 @@ describe("isTenantStorageKey", () => {
     expect(isTenantStorageKey(T, `${T}/../${OTHER}/a.png`)).toBe(false);
     expect(isTenantStorageKey(T, `${T}/%2e%2e/${OTHER}/a.png`)).toBe(false);
     expect(isTenantStorageKey(T, "a.png")).toBe(false);
+  });
+});
+
+describe("isDeliverableStorageKey", () => {
+  it("пропускает ключ со своим bot_id-префиксом, без учёта регистра", () => {
+    expect(isDeliverableStorageKey(T, `${T}/a.pdf`)).toBe(true);
+    expect(isDeliverableStorageKey(T, `${T.toUpperCase()}/a.pdf`)).toBe(true);
+  });
+
+  it("отклоняет ключ с чужим bot_id-префиксом и обход префикса", () => {
+    expect(isDeliverableStorageKey(T, `${OTHER}/a.pdf`)).toBe(false);
+    expect(isDeliverableStorageKey(T, `${T}/../${OTHER}/a.pdf`)).toBe(false);
+    expect(isDeliverableStorageKey(T, `a/%2e%2e/${OTHER}/a.pdf`)).toBe(false);
+  });
+
+  it("пропускает ключ без префикса — файлы v1, залитые до разметки ключей", () => {
+    expect(isDeliverableStorageKey(T, "1782643012614-ni1xub.pdf")).toBe(true);
+    expect(isDeliverableStorageKey(T, "materials/урок.pdf")).toBe(true);
   });
 });
