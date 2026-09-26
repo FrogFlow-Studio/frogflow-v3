@@ -6,6 +6,15 @@ import { parseDeliveredLanguages, type MaterialSnapshot } from "@/core/catalog/m
 type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
 type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"];
 
+/**
+ * Можно ли покупателю ещё раз получить файлы заказа: только выданный
+ * цифровой. Физический заказ выдаёт продавец — повтор вернул бы его в
+ * «оплачен» и запустил бы выдачу материалов.
+ */
+export function canResendMaterials(o: Pick<OrderRow, "status" | "fulfillment_kind">): boolean {
+  return o.status === "delivered" && o.fulfillment_kind !== "physical";
+}
+
 /** Номер для покупателя — замороженный display_no, не перенумеровываемый order_no. */
 export function displayNo(o: Pick<OrderRow, "id" | "order_no" | "display_no">): number {
   return Number(o.display_no ?? o.order_no ?? o.id);

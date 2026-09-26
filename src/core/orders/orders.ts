@@ -20,7 +20,12 @@ import {
   type DeliveryLangChoice,
 } from "@/core/catalog/materials";
 import { localeNames, type Locale } from "@/core/i18n/locale";
-import { itemAvailableLanguages, itemMaterials, itemNeedsLanguageChoice } from "./pure";
+import {
+  canResendMaterials,
+  itemAvailableLanguages,
+  itemMaterials,
+  itemNeedsLanguageChoice,
+} from "./pure";
 import { applyDiscounts, normalizeCode } from "@/core/discounts/pure";
 import { amountDueNow, decrementStock, restoreStock } from "@/core/fulfillment/fulfillment";
 import {
@@ -35,7 +40,7 @@ import {
   type Redemptions,
 } from "@/core/discounts/discounts";
 
-export { displayNo, itemLanguages, itemMaterials } from "./pure";
+export { canResendMaterials, displayNo, itemLanguages, itemMaterials } from "./pure";
 export { parseDeliveredLanguages } from "@/core/catalog/materials";
 
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
@@ -502,6 +507,26 @@ export async function attachPaymentProof(
     .single();
   await recordOrderEvent(ctx, orderId, "proof", { path: key });
   return { ok: true, order: (updated ?? order) as OrderWithItems };
+}
+
+/**
+ * Повторная выдача по кнопке покупателя: выданный цифровой заказ снова
+ * «оплачен», дальше — обычный deliverOrder. false — повторять нельзя
+ * (физический, не выдан, чужой статус успел смениться).
+ */
+export async function reopenForResend(
+  ctx: TenantContext,
+  order: Pick<OrderRow, "id" | "status" | "fulfillment_kind">,
+): Promise<boolean> {
+  if (!canResendMaterials(order)) return false;
+  const { data, error } = await ctx.db
+    .from("orders")
+    .update({ status: "paid" })
+    .eq("id", order.id)
+    .eq("status", "delivered")
+    .select("id");
+  if (error) throw new Error(error.message);
+  return Boolean(data?.length);
 }
 
 /** CAS-захват на выдачу: из awaiting_* в delivering, иначе — уже выдан или нельзя. */

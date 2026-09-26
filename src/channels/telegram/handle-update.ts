@@ -68,6 +68,7 @@ import {
 } from "@/core/cart/cart";
 import {
   attachPaymentProof,
+  canResendMaterials,
   cartSummary,
   deliverOrder,
   displayNo,
@@ -78,6 +79,7 @@ import {
   recentAwaitingPaymentOrder,
   rejectOrder,
   reorderIntoCart,
+  reopenForResend,
   completeLanguageDelivery,
 } from "@/core/orders/orders";
 import { getSetting } from "@/core/settings/settings";
@@ -1546,7 +1548,7 @@ async function showMyOrders(b: Bot) {
     for (const i of o.order_items ?? [])
       text += `   • ${escapeHtml(i.name_snapshot)} × ${i.quantity}\n`;
     const row: InlineButton[] = [];
-    if (o.status === "delivered" && o.fulfillment_kind !== "physical")
+    if (canResendMaterials(o))
       row.push({ text: `${b.m.resendBtn} #${no}`, callback_data: `resend:${o.id}` });
     if (["delivered", "rejected", "cancelled"].includes(o.status) && (o.order_items ?? []).length)
       row.push({ text: `${b.m.reorderBtn} #${no}`, callback_data: `reorder:${o.id}` });
@@ -1931,12 +1933,9 @@ async function handleCallback(
   }
   if (data.startsWith("resend:")) {
     const order = await getOrder(ctx, Number(data.slice(7)));
-    if (!order || order.telegram_id !== customer.telegramId || order.status !== "delivered") return;
-    await ctx.db
-      .from("orders")
-      .update({ status: "paid" })
-      .eq("id", order.id)
-      .eq("status", "delivered");
+    // Старая или подделанная кнопка: только свой выданный цифровой заказ.
+    if (!order || order.telegram_id !== customer.telegramId) return;
+    if (!(await reopenForResend(ctx, order))) return;
     const r = await deliverOrder(ctx, order.id, telegramMaterialSender(api, chatId, b.m), {
       lang: locale,
       ask: telegramLanguageAsker(api, chatId, b.m),

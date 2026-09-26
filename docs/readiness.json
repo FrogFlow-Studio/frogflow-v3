@@ -904,7 +904,7 @@
     "shows material languages and all-languages price like the bot": "drop: цена «все языки» считается в боте (delivery-languages); в v2 Mini App — витрина /s/:slug, оформление, оплата и чек — в чате бота",
     "filters catalog by material language and uses a two-column grid": "open: расхождение: фильтра каталога по языку материала на витрине v2 нет",
     "pins catalog add-to-cart buttons to a shared card footer": "drop: вёрстка карточки серверного HTML Mini App v1",
-    "does not resend files for physical orders": "open: расхождение: кнопка resend у физического заказа скрыта (my-orders.test.ts › оценить можно и выданный физический заказ, а повторная отправка файлов — только у цифрового), но обработчик resend: (channels/telegram/handle-update.ts) вид заказа не проверяет — старая или подделанная кнопка переводит выданный физический заказ в paid и зовёт deliverOrder",
+    "does not resend files for physical orders": "src/channels/telegram/resend.test.ts › выданный физический заказ не возвращается в «оплачен» и не выдаётся заново",
     "redelivers a per-item language choice instead of asking again": "tests/integration/delivery-languages.test.ts › повторная выдача идёт на уже выбранных языках без переспроса",
     "guards the delivery-language callback against a stale button, like fulfilltype:/zone:": "src/channels/telegram/my-orders.test.ts › старая кнопка checkoutlang: вне шага выбора языка ничего не делает",
     "hides Direct purchase buttons for out-of-stock products, on the card and in search results": "src/channels/zernio/shop-card.test.ts › прячет кнопки покупки у товара без остатка, у товара в наличии — показывает",
