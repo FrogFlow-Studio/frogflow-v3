@@ -590,8 +590,13 @@ function PlanCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
                       className="input w-32"
                       type="number"
                       min={0}
-                      value={prices[a] ?? ADDON_MONTHLY_PRICE[a]}
-                      onChange={(e) => setPrices((p) => ({ ...p, [a]: Number(e.target.value) }))}
+                      placeholder={`${ADDON_MONTHLY_PRICE[a]} по тарифу`}
+                      value={prices[a] ?? ""}
+                      onChange={(e) => {
+                        // Пустое поле — цена по тарифу (ADDON_MONTHLY_PRICE), а не 0 ₸.
+                        const x = e.target.value.trim();
+                        setPrices((p) => ({ ...p, [a]: x === "" ? undefined : Number(x) }));
+                      }}
                     />
                   </label>
                 ))}
