@@ -1,14 +1,21 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 import { allEventsFn, listClientsFn } from "@/app/operator/operator.functions";
+import { shopEventView } from "@/app/admin/audit-labels";
 import { Badge, Empty, PageTitle } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed/log")({
-  validateSearch: z.object({ botId: z.string().optional(), kind: z.string().optional() }),
+  validateSearch: z.object({
+    botId: z.string().optional(),
+    kind: z.string().optional(),
+    who: z.enum(["shop", "platform"]).optional(),
+  }),
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {
     const [events, clients] = await Promise.all([
-      allEventsFn({ data: { botId: deps.botId ?? null, kind: deps.kind ?? null } }),
+      allEventsFn({
+        data: { botId: deps.botId ?? null, kind: deps.kind ?? null, who: deps.who ?? null },
+      }),
       listClientsFn(),
     ]);
     return { events, clients: clients.map((c) => ({ id: c.id, name: c.name })) };
@@ -68,6 +75,23 @@ function LogPage() {
         </select>
         <select
           className="input w-56"
+          value={s.who ?? ""}
+          onChange={(e) =>
+            void navigate({
+              to: "/operator/log",
+              search: {
+                ...s,
+                who: (e.target.value || undefined) as "shop" | "platform" | undefined,
+              },
+            })
+          }
+        >
+          <option value="">Все исполнители</option>
+          <option value="platform">Оператор и платформа</option>
+          <option value="shop">Команда магазина</option>
+        </select>
+        <select
+          className="input w-56"
           value={s.kind ?? ""}
           onChange={(e) =>
             void navigate({
@@ -118,10 +142,13 @@ function LogPage() {
                   </td>
                   <td className="text-muted">{e.actor}</td>
                   <td>
-                    <Badge>{KIND_LABEL.get(e.kind) ?? e.kind}</Badge>
+                    <Badge>{shopEventView(e)?.title ?? KIND_LABEL.get(e.kind) ?? e.kind}</Badge>
                   </td>
-                  <td className="max-w-md truncate text-xs text-muted" title={summarize(e.payload)}>
-                    {summarize(e.payload)}
+                  <td
+                    className="max-w-md truncate text-xs text-muted"
+                    title={shopEventView(e)?.details ?? summarize(e.payload)}
+                  >
+                    {shopEventView(e)?.details ?? summarize(e.payload)}
                   </td>
                 </tr>
               ))}

@@ -155,12 +155,17 @@ export const allEventsFn = createServerFn({ method: "GET" })
       .object({
         botId: z.string().uuid().nullable().optional(),
         kind: z.string().max(40).nullable().optional(),
+        who: z.enum(["shop", "platform"]).nullable().optional(),
       })
       .parse(d ?? {}),
   )
   .handler(async ({ data }) => {
     await guard();
-    return (await impl()).listAllEvents({ botId: data.botId ?? null, kind: data.kind ?? null });
+    return (await impl()).listAllEvents({
+      botId: data.botId ?? null,
+      kind: data.kind ?? null,
+      who: data.who ?? null,
+    });
   });
 
 export const preflightAllFn = createServerFn({ method: "GET" }).handler(async () => {

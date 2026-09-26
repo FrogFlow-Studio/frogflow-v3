@@ -42,6 +42,19 @@ async function currentAdmin(): Promise<CurrentAdmin> {
   return { ctx: tenantContext(tenant), role: login.role, username: a.username };
 }
 
+/**
+ * Кто из магазина сейчас действует, без исключения: null — нет действующей
+ * сессии продавца. Для журнала действий (src/start.ts), не для доступа.
+ */
+export async function adminIdentity(): Promise<{ botId: string; username: string } | null> {
+  try {
+    const a = await currentAdmin();
+    return { botId: a.ctx.tenant.id, username: a.username };
+  } catch {
+    return null;
+  }
+}
+
 /** Отпечаток для cookie продавца — при входе и при смене своего пароля. */
 export function adminStamp(botId: string, username: string, passwordHash: string | undefined) {
   return credentialStamp("admin", botId, username, passwordHash);

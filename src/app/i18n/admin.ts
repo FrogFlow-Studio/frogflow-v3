@@ -17,6 +17,7 @@ import * as consultant from "./admin/consultant";
 import * as analytics from "./admin/analytics";
 import * as chat from "./admin/chat";
 import * as outbox from "./admin/outbox";
+import * as audit from "./admin/audit";
 import * as posts from "./admin/posts";
 import * as quiz from "./admin/quiz";
 import * as physical from "./admin/physical";
@@ -266,6 +267,7 @@ const ru = {
   ...analytics.ru,
   ...chat.ru,
   ...outbox.ru,
+  ...audit.ru,
   ...posts.ru,
   ...quiz.ru,
   ...physical.ru,
@@ -945,6 +947,7 @@ const kk: Dict = {
   ...analytics.kk,
   ...chat.kk,
   ...outbox.kk,
+  ...audit.kk,
   ...posts.kk,
   ...quiz.kk,
   ...physical.kk,
@@ -967,6 +970,7 @@ const en: Dict = {
   ...analytics.en,
   ...chat.en,
   ...outbox.en,
+  ...audit.en,
   ...posts.en,
   ...quiz.en,
   ...physical.en,
@@ -989,6 +993,7 @@ const uz: Dict = {
   ...analytics.uz,
   ...chat.uz,
   ...outbox.uz,
+  ...audit.uz,
   ...posts.uz,
   ...quiz.uz,
   ...physical.uz,

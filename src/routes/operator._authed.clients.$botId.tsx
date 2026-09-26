@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { shopEventView } from "@/app/admin/audit-labels";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   archiveClientFn,
@@ -167,9 +168,9 @@ function ClientPage() {
                     {new Date(e.at).toLocaleString("ru")}
                   </td>
                   <td>{e.actor}</td>
-                  <td>{e.kind}</td>
+                  <td>{shopEventView(e)?.title ?? e.kind}</td>
                   <td className="max-w-md truncate font-mono text-xs text-muted">
-                    {JSON.stringify(e.payload)}
+                    {shopEventView(e)?.details ?? JSON.stringify(e.payload)}
                   </td>
                 </tr>
               ))}

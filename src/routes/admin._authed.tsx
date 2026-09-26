@@ -79,6 +79,7 @@ function Layout() {
             </NavLink>
           )}
           {owner && <NavLink to="/admin/modules">{t("nav.modules")}</NavLink>}
+          {owner && <NavLink to="/admin/log">{t("audit.nav")}</NavLink>}
         </>
       }
       user={

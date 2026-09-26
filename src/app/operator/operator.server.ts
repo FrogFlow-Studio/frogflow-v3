@@ -306,7 +306,13 @@ export type PlatformEvent = EventView & { botId: string; botName: string };
 
 /** Журнал действий оператора по всем клиентам: кто, что, у кого. */
 export async function listAllEvents(
-  opts: { limit?: number; botId?: string | null; kind?: string | null } = {},
+  opts: {
+    limit?: number;
+    botId?: string | null;
+    kind?: string | null;
+    /** shop — действия команды магазина (core/audit/admin-audit), platform — все прочие. */
+    who?: "shop" | "platform" | null;
+  } = {},
 ): Promise<PlatformEvent[]> {
   let q = serviceDb()
     .from("bot_events")
@@ -315,6 +321,8 @@ export async function listAllEvents(
     .limit(opts.limit ?? 200);
   if (opts.botId) q = q.eq("bot_id", opts.botId);
   if (opts.kind) q = q.eq("kind", opts.kind);
+  if (opts.who === "shop") q = q.like("actor", "admin:%");
+  if (opts.who === "platform") q = q.not("actor", "like", "admin:%");
   const { data } = await q;
   const names = new Map((await tenantDirectory()).map((t) => [t.id, t.name]));
   return (data ?? []).map((r) => ({
