@@ -185,9 +185,20 @@ async function invoiceOrThrow(id: string): Promise<Invoice & { proof_path: strin
 }
 
 /**
+ * Способы оплаты подписки по порядку перебора. Пока один — перевод по
+ * реквизитам (запасной путь). Свой Kaspi-кассир встанет перед ним, когда
+ * будет готов, и createInvoice его подхватит без изменений.
+ */
+async function payProviders() {
+  const { transferProvider } = await import("@/core/billing/pay/transfer");
+  return [transferProvider];
+}
+
+/**
  * Счёт владельцу: текст с суммой и реквизитами уходит через его же бота.
  * Недоставленное сообщение не откатывает счёт — он виден в панели, а сумму
- * можно передать любым другим каналом.
+ * можно передать любым другим каналом. Текст счёта готовит способ оплаты
+ * (пока перевод), чтобы добавление Kaspi-кассира не трогало этот код.
  */
 export async function createInvoice(
   botId: string,
@@ -196,8 +207,17 @@ export async function createInvoice(
   opts: { deliver?: boolean } = {},
 ): Promise<{ invoice: Invoice; delivered: boolean; deliveryError: string | null }> {
   const requisites = await getPayoutRequisites();
-  if (!requisites.trim())
-    throw new Error("Реквизиты для выплат не заданы — заполните их в настройках платформы.");
+  const { availableProviders, issueWithFallback } = await import("@/core/billing/pay/provider");
+  const reqBase = {
+    botId,
+    amount: p.amount,
+    currency: p.currency,
+    note: p.note,
+    requisites,
+    ownerPhone: null,
+  };
+  // Ни один способ не готов (например, нет реквизитов для перевода) — счёт не заводим.
+  const { ready } = await availableProviders(await payProviders(), reqBase);
   const { data, error } = await serviceDb()
     .from("subscription_invoices")
     .insert({
@@ -212,18 +232,22 @@ export async function createInvoice(
     .single();
   if (error || !data) throw new Error(`Не удалось создать счёт: ${error?.message ?? "нет данных"}`);
   const invoice = toInvoice(data as Row);
+  const { issued } = await issueWithFallback(ready, { ...reqBase, invoiceId: invoice.id });
   await logEvent(
     botId,
     "payment",
-    { action: "invoice_created", invoice_id: invoice.id, amount: p.amount, currency: p.currency },
+    {
+      action: "invoice_created",
+      invoice_id: invoice.id,
+      amount: p.amount,
+      currency: p.currency,
+      pay_provider: issued.provider,
+    },
     actor,
   );
   if (opts.deliver === false) return { invoice, delivered: false, deliveryError: null };
-  const text =
-    `Счёт на оплату подписки\n\nСумма: ${p.amount} ${p.currency}${p.note ? `\nЗа что: ${p.note}` : ""}` +
-    `\n\nРеквизиты для оплаты:\n${requisites}\n\nПосле оплаты пришлите, пожалуйста, фото или файл с чеком следующим сообщением в этот чат.`;
   try {
-    const r = await notifyOwner(botId, text);
+    const r = await notifyOwner(botId, issued.ownerText);
     return {
       invoice,
       delivered: r.delivered.length > 0,
