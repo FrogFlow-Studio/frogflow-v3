@@ -145,6 +145,7 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
     const { listCustomerOrders, itemLanguages, itemMaterials, signedFileUrl, displayNo } =
       await import("@/core/orders/orders");
     const { parseDeliveredLanguages } = await import("@/core/catalog/materials");
+    const { protectMaterials } = await import("@/core/delivery/watermark.server");
     const orders = await listCustomerOrders(ctx, customer, 30);
     const library: Array<{ orderNo: number; item: string; name: string; url: string }> = [];
     for (const o of orders) {
@@ -153,7 +154,7 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
         const delivered = parseDeliveredLanguages(item.delivered_language);
         const langs = itemLanguages(item).filter((l) => delivered.size === 0 || delivered.has(l));
         for (const l of langs)
-          for (const mat of itemMaterials(item, l)) {
+          for (const mat of await protectMaterials(ctx, o, itemMaterials(item, l))) {
             const url = mat.url ?? (mat.path ? await signedFileUrl(mat.path, 7 * 24 * 3600) : null);
             if (url)
               library.push({

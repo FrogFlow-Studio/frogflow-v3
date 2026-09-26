@@ -13,6 +13,7 @@ import {
   saveSettingsFn,
   settingsFn,
   setShopTimezoneFn,
+  setPdfWatermarkFn,
   telegramStateFn,
   deleteTeamMemberFn,
   saveTeamMemberFn,
@@ -74,6 +75,7 @@ function SettingsPage() {
     zernio,
     smartSearchKey,
     visionKey,
+    pdfWatermark,
   } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
@@ -245,6 +247,7 @@ function SettingsPage() {
         <PaymentMethods methods={methods} />
         <FulfillmentCard settings={settings} />
         <ZonesCard zones={zones} />
+        <WatermarkCard enabled={pdfWatermark} />
         {shop.modules.robokassa && <RobokassaCard settings={settings} />}
         {shop.modules.telegram_stars && <StarsCard settings={settings} />}
         {shop.modules.receipt_ocr && <ReceiptOcrCard settings={settings} hasKey={visionKey} />}
@@ -1294,6 +1297,34 @@ function SmartSearchCard({
           {t("settings.ss.lastError", { error: settings.smart_search_last_error })}
         </p>
       )}
+      <ErrorBox error={toggle.error} />
+    </Card>
+  );
+}
+
+/** Водяной знак на выдаваемых PDF: кто купил и номер заказа на каждой странице. */
+function WatermarkCard({ enabled }: { enabled: boolean }) {
+  const router = useRouter();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const toggle = useAction(async (v: boolean) => {
+    await setPdfWatermarkFn({ data: { enabled: v } });
+    await router.invalidate();
+  });
+  return (
+    <Card title={t("settings.watermark.title")}>
+      <p className="mb-3 text-sm text-muted">{t("settings.watermark.intro")}</p>
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={enabled}
+          disabled={toggle.busy}
+          onChange={(v) => void toggle.run(v).catch(() => {})}
+          label={t("settings.watermark.switch")}
+        />
+        <span className="text-sm">
+          {enabled ? t("settings.watermark.on") : t("settings.watermark.off")}
+        </span>
+      </div>
       <ErrorBox error={toggle.error} />
     </Card>
   );

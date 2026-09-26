@@ -6,6 +6,7 @@ import {
   type Mailer,
 } from "@/core/mail/mail.server";
 import { getSetting } from "@/core/settings/settings";
+import { protectMaterials } from "@/core/delivery/watermark.server";
 import { recordOrderEvent } from "./events";
 import {
   itemLanguages,
@@ -38,7 +39,7 @@ export async function emailOrderMaterials(
     const delivered = parseDeliveredLanguages(item.delivered_language);
     const langs = itemLanguages(item).filter((l) => delivered.size === 0 || delivered.has(l));
     for (const l of langs.length ? langs : itemLanguages(item))
-      for (const mat of itemMaterials(item, l)) {
+      for (const mat of await protectMaterials(ctx, order, itemMaterials(item, l))) {
         const url =
           mat.url ?? (mat.path ? await signedFileUrl(mat.path, EMAIL_LINK_DAYS * 24 * 3600) : null);
         if (url) files.push({ name: mat.name ?? item.name_snapshot, url });

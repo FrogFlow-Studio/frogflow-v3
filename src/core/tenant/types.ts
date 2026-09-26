@@ -60,6 +60,11 @@ export type TenantSettings = {
   grace_days?: number;
   /** Тариф (core/plans): ключ плана, надбавки, льготы, лимиты. */
   billing?: BillingSettings;
+  /** Выдача цифровых товаров (core/delivery). */
+  delivery?: {
+    /** Водяной знак с покупателем и номером заказа на каждом выдаваемом PDF. */
+    pdf_watermark?: boolean;
+  };
 };
 
 export type BillingSettings = {

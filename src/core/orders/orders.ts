@@ -2,6 +2,7 @@ import { UserError } from "@/core/i18n/user-error";
 import { rewardReferrerIfFirstDelivery, type ReferralGrant } from "@/core/referrals/referrals";
 import { createHash } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { protectMaterials } from "@/core/delivery/watermark.server";
 import { recordOrderEvent } from "./events";
 import type { Database, Json } from "@/core/db-types";
 import { serviceDb } from "@/core/db/client.server";
@@ -673,7 +674,10 @@ export async function deliverOrder(
       for (const l of list) {
         const materials = itemMaterials(item, l);
         if (materials.length === 0) continue;
-        const r = await send(itemLabel(item, l, list.length > 1), materials);
+        const r = await send(
+          itemLabel(item, l, list.length > 1),
+          await protectMaterials(ctx, order, materials),
+        );
         if (r === "sent") {
           current = await markDelivered(ctx, item, current, l);
           await recordOrderEvent(ctx, orderId, "item_sent", { name: item.name_snapshot, lang: l });
@@ -750,7 +754,7 @@ export async function completeLanguageDelivery(
   if (parseDeliveredLanguages(item.delivered_language).has(p.lang)) return { status: "already" };
   const materials = itemMaterials(item, p.lang);
   if (materials.length === 0) return { status: "no_materials" };
-  const r = await send(item, materials);
+  const r = await send(item, await protectMaterials(ctx, order, materials));
   if (r !== "sent") {
     await recordOrderEvent(ctx, p.orderId, "item_failed", {
       name: item.name_snapshot,

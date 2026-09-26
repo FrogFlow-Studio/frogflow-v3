@@ -702,6 +702,7 @@ export const settingsFn = createServerFn({ method: "GET" }).handler(async () => 
     methods,
     ownerTelegramId: ctx.tenant.ownerTelegramId,
     timezone: ctx.tenant.settings.timezone ?? null,
+    pdfWatermark: ctx.tenant.settings.delivery?.pdf_watermark === true,
     smartSearchKey: platformHasKey(),
     visionKey: visionConfigured(),
   };
@@ -719,6 +720,16 @@ export const setShopTimezoneFn = createServerFn({ method: "POST" })
     const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
     await patchTenantSettings(ctx.tenant.id, { timezone: tz ?? "" });
     return { ok: true, timezone: tz ?? null };
+  });
+
+/** Водяной знак на выдаваемых PDF — в bots.settings.delivery (читает core/delivery). */
+export const setPdfWatermarkFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ enabled: z.boolean() }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await adminOwner();
+    const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
+    await patchTenantSettings(ctx.tenant.id, { delivery: { pdf_watermark: data.enabled } });
+    return { ok: true, enabled: data.enabled };
   });
 
 export const saveSettingsFn = createServerFn({ method: "POST" })
