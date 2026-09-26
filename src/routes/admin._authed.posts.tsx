@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useRouteContext, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { cancelPostFn, postsFn, publishPostFn } from "@/app/admin/posts.functions";
-import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
+import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
+import { uploadFile } from "@/app/admin/upload-client";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { CAPTION_MAX, mediaTypeOf, type PostKind } from "@/core/social/post-draft";
 
@@ -66,14 +67,10 @@ function PostsPage() {
 
 type Media = { key: string; name: string };
 
-async function upload(file: File): Promise<{ key: string } | { status: number }> {
-  const fd = new FormData();
-  // Фото — в бакет картинок, видео — в бакет файлов (он принимает большие).
-  fd.set("kind", mediaTypeOf(file.type || file.name) === "video" ? "file" : "image");
-  fd.set("file", file);
-  const r = await fetch("/api/admin/upload", { method: "POST", body: fd });
-  const j = (await r.json().catch(() => ({}))) as { key?: string };
-  return r.ok && j.key ? { key: j.key } : { status: r.status };
+/** Фото — в бакет картинок, видео — в бакет файлов (он принимает большие). */
+function upload(file: File, t: AdminT): Promise<string> {
+  const kind = mediaTypeOf(file.type || file.name) === "video" ? "file" : "image";
+  return uploadFile(kind, file, t, (status) => t("posts.uploadFailed", { status }));
 }
 
 function PostForm({ data }: { data: Data }) {
@@ -91,9 +88,8 @@ function PostForm({ data }: { data: Data }) {
 
   const addFiles = useAction(async (files: FileList) => {
     for (const f of Array.from(files)) {
-      const r = await upload(f);
-      if ("status" in r) throw new Error(t("posts.uploadFailed", { status: r.status }));
-      setMedia((m) => [...m, { key: r.key, name: f.name }]);
+      const key = await upload(f, t);
+      setMedia((m) => [...m, { key, name: f.name }]);
     }
   });
 

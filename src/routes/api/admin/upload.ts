@@ -1,12 +1,28 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { randomBytes } from "node:crypto";
+import {
+  UPLOAD_KINDS,
+  isIssuedUploadKey,
+  isUploadKind,
+  mb,
+  newUploadKey,
+  uploadProblem,
+  type UploadProblem,
+} from "@/core/storage/upload";
 
-const KINDS = {
-  image: { bucket: "product-images", max: 20 * 1024 * 1024, types: /^image\/(jpeg|png|gif|webp)$/ },
-  file: { bucket: "product-files", max: 200 * 1024 * 1024, types: /.*/ },
-} as const;
+const STATUS: Record<UploadProblem, number> = { too_big: 413, bad_type: 415, empty: 400 };
 
-/** Загрузка в общие бакеты — ключ всегда под префиксом клиента. */
+function problem(p: UploadProblem, max: number) {
+  return Response.json({ problem: p, mb: mb(max) }, { status: STATUS[p] });
+}
+
+/**
+ * Загрузка в общие бакеты в два шага, файл мимо функции Vercel:
+ * `sign` — проверяет заявленные размер и тип и выдаёт подписанную ссылку на
+ * новый ключ под префиксом клиента; браузер кладёт файл прямо в Storage;
+ * `confirm` — сверяет то, что легло в бакет, и удаляет файл, если он не
+ * проходит по правилам.
+ */
 export const Route = createFileRoute("/api/admin/upload")({
   server: {
     handlers: {
@@ -19,31 +35,41 @@ export const Route = createFileRoute("/api/admin/upload")({
         } catch {
           return new Response("unauthorized", { status: 401 });
         }
-        const form = await request.formData().catch(() => null);
-        const kind = form?.get("kind");
-        const file = form?.get("file");
-        if (!form || (kind !== "image" && kind !== "file") || !(file instanceof File))
-          return new Response("bad request", { status: 400 });
-        const spec = KINDS[kind];
-        if (file.size > spec.max)
-          return Response.json(
-            { error: `Файл больше ${Math.round(spec.max / 1024 / 1024)} МБ` },
-            { status: 413 },
-          );
-        if (!spec.types.test(file.type))
-          return Response.json({ error: "Неподдерживаемый тип файла" }, { status: 415 });
-        const ext =
-          (file.name.split(".").pop() || "bin")
-            .toLowerCase()
-            .replace(/[^a-z0-9]/g, "")
-            .slice(0, 8) || "bin";
-        const key = `${ctx.tenant.id}/${randomBytes(12).toString("hex")}.${ext}`;
+        const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+        const kind = body?.kind;
+        if (!body || !isUploadKind(kind)) return new Response("bad request", { status: 400 });
+        const spec = UPLOAD_KINDS[kind];
         const { serviceDb } = await import("@/core/db/client.server");
-        const { error } = await serviceDb()
-          .storage.from(spec.bucket)
-          .upload(key, file, { contentType: file.type || "application/octet-stream" });
-        if (error) return Response.json({ error: error.message }, { status: 500 });
-        return Response.json({ key, name: file.name, size: file.size });
+        const bucket = serviceDb().storage.from(spec.bucket);
+
+        if (body.action === "sign") {
+          const p = uploadProblem(kind, Number(body.size), String(body.type ?? ""));
+          if (p) return problem(p, spec.max);
+          const key = newUploadKey(
+            ctx.tenant.id,
+            randomBytes(12).toString("hex"),
+            String(body.name ?? ""),
+          );
+          const { data, error } = await bucket.createSignedUploadUrl(key);
+          if (error || !data) return Response.json({ error: error?.message }, { status: 500 });
+          return Response.json({ key, url: data.signedUrl });
+        }
+
+        if (body.action === "confirm") {
+          const key = String(body.key ?? "");
+          if (!isIssuedUploadKey(ctx.tenant.id, key))
+            return new Response("bad request", { status: 400 });
+          const { data, error } = await bucket.info(key);
+          if (error || !data) return Response.json({ problem: "not_stored" }, { status: 404 });
+          const p = uploadProblem(kind, Number(data.size), String(data.contentType ?? ""));
+          if (p) {
+            await bucket.remove([key]);
+            return problem(p, spec.max);
+          }
+          return Response.json({ key, size: data.size });
+        }
+
+        return new Response("bad request", { status: 400 });
       },
     },
   },

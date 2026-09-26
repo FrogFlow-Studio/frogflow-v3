@@ -13,6 +13,7 @@ import {
   syncWhatsAppTemplatesFn,
 } from "@/app/admin/admin.functions";
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
+import { uploadFile } from "@/app/admin/upload-client";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
 import {
@@ -98,14 +99,7 @@ function useT(): AdminT {
 }
 
 async function uploadImage(file: File, t: AdminT): Promise<string> {
-  const fd = new FormData();
-  fd.set("kind", "image");
-  fd.set("file", file);
-  const r = await fetch("/api/admin/upload", { method: "POST", body: fd });
-  const j = (await r.json().catch(() => ({}))) as { key?: string; error?: string };
-  if (!r.ok || !j.key)
-    throw new Error(j.error ?? t("broadcasts.uploadFailed", { status: r.status }));
-  return j.key;
+  return uploadFile("image", file, t, (status) => t("broadcasts.uploadFailed", { status }));
 }
 
 function BroadcastsPage() {

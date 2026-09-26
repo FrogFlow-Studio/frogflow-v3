@@ -25,6 +25,7 @@ import { crmFn, saveCrmFn, testCrmFn } from "@/app/admin/crm.functions";
 import { NOTIFY_KINDS, type NotifyPrefs } from "@/core/notify/prefs";
 import type { DirectBotSettings } from "@/core/instagram/direct-bot-settings";
 import { adminT, intlLocale } from "@/app/i18n/admin";
+import { uploadFile } from "@/app/admin/upload-client";
 import { imagePath } from "@/core/catalog/image-url";
 
 export const Route = createFileRoute("/admin/_authed/settings")({
@@ -405,12 +406,10 @@ function PaymentMethods({ methods }: { methods: Method[] }) {
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    const fd = new FormData();
-                    fd.set("kind", "image");
-                    fd.set("file", file);
-                    const r = await fetch("/api/admin/upload", { method: "POST", body: fd });
-                    const j = (await r.json()) as { key?: string };
-                    if (j.key) setQr(j.key);
+                    const key = await uploadFile("image", file, t, (status) =>
+                      t("product.uploadFailed", { status }),
+                    ).catch(() => null);
+                    if (key) setQr(key);
                   }}
                 />
               </label>

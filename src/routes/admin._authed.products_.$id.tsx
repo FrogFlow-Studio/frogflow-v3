@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { saveUpsellFn, upsellForProductFn } from "@/app/admin/upsell.functions";
 import { deleteProductFn, productFn, saveProductFn } from "@/app/admin/admin.functions";
 import { adminT, type AdminT } from "@/app/i18n/admin";
+import { uploadFile } from "@/app/admin/upload-client";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
 import { MATERIAL_LANGUAGES } from "@/core/catalog/materials";
@@ -22,13 +23,8 @@ async function upload(
   file: File,
   t: AdminT,
 ): Promise<{ key: string; name: string }> {
-  const fd = new FormData();
-  fd.set("kind", kind);
-  fd.set("file", file);
-  const r = await fetch("/api/admin/upload", { method: "POST", body: fd });
-  const j = (await r.json().catch(() => ({}))) as { key?: string; name?: string; error?: string };
-  if (!r.ok || !j.key) throw new Error(j.error ?? t("product.uploadFailed", { status: r.status }));
-  return { key: j.key, name: j.name ?? file.name };
+  const key = await uploadFile(kind, file, t, (status) => t("product.uploadFailed", { status }));
+  return { key, name: file.name };
 }
 
 function ProductEditor() {
