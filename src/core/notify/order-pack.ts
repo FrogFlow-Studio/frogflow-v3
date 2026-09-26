@@ -10,7 +10,17 @@ export type AdminNotifyTgRef = { chat_id: string; message_id: number; buttons?: 
 export type AdminNotifyPack = {
   refs: AdminNotifyTgRef[];
   deleteAfter: string | null;
+  /** Когда пачка появилась — по нему чистится пачка, по которой решения так и не было. */
+  createdAt?: string;
 };
+
+/**
+ * Пачка без решения (заказ так и не подтвердили и не отклонили) живёт не
+ * дольше недели — как неоплаченный заказ в ночной чистке v1. Telegram всё
+ * равно не даёт удалять сообщения старше 48 часов, поэтому убирается только
+ * запись в app_settings.
+ */
+export const ADMIN_NOTIFY_STALE_MS = 7 * 24 * 3600_000;
 
 /** После решения пачка ещё 5 минут видна — продавец успеет переслать её коллегам. */
 export const ADMIN_NOTIFY_DISMISS_DELAY_MS = 5 * 60 * 1000;
@@ -51,11 +61,14 @@ export function parseAdminNotifyPack(raw: string | null | undefined): AdminNotif
       return { refs: refsFromUnknown(parsed), deleteAfter: null };
     }
     if (!parsed || typeof parsed !== "object") return empty;
-    const record = parsed as { refs?: unknown; deleteAfter?: unknown };
+    const record = parsed as { refs?: unknown; deleteAfter?: unknown; createdAt?: unknown };
     return {
       refs: refsFromUnknown(record.refs),
       deleteAfter:
         typeof record.deleteAfter === "string" && record.deleteAfter ? record.deleteAfter : null,
+      ...(typeof record.createdAt === "string" && record.createdAt
+        ? { createdAt: record.createdAt }
+        : {}),
     };
   } catch {
     return empty;
@@ -70,6 +83,20 @@ export function isAdminNotifyDue(pack: AdminNotifyPack, now = Date.now()): boole
   if (!pack.deleteAfter) return false;
   const at = Date.parse(pack.deleteAfter);
   return Number.isFinite(at) && at <= now;
+}
+
+/**
+ * Пачка без решения старше недели. Возраст — по createdAt, у пачек, записанных
+ * до него, — по updated_at строки app_settings; без обоих — не трогаем.
+ */
+export function isAdminNotifyStale(
+  pack: AdminNotifyPack,
+  rowUpdatedAt: string | null | undefined,
+  now = Date.now(),
+): boolean {
+  if (pack.deleteAfter) return false;
+  const at = Date.parse(pack.createdAt ?? rowUpdatedAt ?? "");
+  return Number.isFinite(at) && now - at > ADMIN_NOTIFY_STALE_MS;
 }
 
 export function collectTgMessageIds(result: unknown): number[] {

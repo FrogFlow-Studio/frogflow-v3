@@ -71,6 +71,7 @@ describe("уведомление продавцу о заказе убирает
         { chat_id: "222", message_id: 503 },
       ],
       deleteAfter: null,
+      createdAt: expect.any(String),
     });
   });
 
@@ -118,5 +119,26 @@ describe("уведомление продавцу о заказе убирает
     } as never);
     expect(order7().status).toBe("rejected");
     expect(pack().deleteAfter).not.toBeNull();
+  });
+
+  it("пачка без решения старше недели забывается, чужие ключи и свежие пачки не трогаются", async () => {
+    const { db, ctx, api, calls, pack, order7 } = setup();
+    await notifyAdminNewOrder(ctx, api, order7(), null);
+    expect(pack().createdAt).toBeTruthy();
+    const created = Date.parse(pack().createdAt!);
+    db.tables.app_settings!.push(
+      { bot_id: BOT, key: "admin_notify_tg:7", value: "[]" },
+      { bot_id: BOT, key: "v2_order_notify:8", value: JSON.stringify({ refs: [] }) },
+    );
+    calls.length = 0;
+    expect(await flushDueOrderNotify(ctx, api, created + 6 * 24 * 3600_000)).toBe(0);
+    expect(await flushDueOrderNotify(ctx, api, created + 8 * 24 * 3600_000)).toBe(1);
+    // Сообщения старше 48 часов Telegram не удаляет — зовём его зря не будем.
+    expect(calls).toEqual([]);
+    expect(pack()).toEqual({ refs: [], deleteAfter: null });
+    const keys = db.tables.app_settings!.map((r) => r.key);
+    expect(keys).toContain("admin_notify_tg:7");
+    // Пачка без createdAt и без updated_at — возраст неизвестен, остаётся.
+    expect(keys).toContain("v2_order_notify:8");
   });
 });

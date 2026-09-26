@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isAdminNotifyStale,
   ADMIN_NOTIFY_DISMISS_DELAY_MS,
   adminNotifySettingKey,
   collectTgMessageIds,
@@ -83,5 +84,30 @@ describe("уведомления продавцу о заказе: пачка с
     expect(isAdminNotifySettingKey("v2_order_notify:42")).toBe(true);
     expect(isAdminNotifySettingKey("admin_notify_tg:42")).toBe(false);
     expect(isAdminNotifySettingKey("admin_chat_id")).toBe(false);
+  });
+
+  it("пачка без решения старше недели — устаревшая, с решением или свежая — нет", () => {
+    const now = Date.parse("2026-09-26T12:00:00Z");
+    const day = 24 * 3600_000;
+    const old = new Date(now - 8 * day).toISOString();
+    const fresh = new Date(now - 2 * day).toISOString();
+    expect(isAdminNotifyStale({ refs: [], deleteAfter: null, createdAt: old }, null, now)).toBe(
+      true,
+    );
+    expect(isAdminNotifyStale({ refs: [], deleteAfter: null, createdAt: fresh }, old, now)).toBe(
+      false,
+    );
+    // Пачка, записанная до createdAt, — по времени строки.
+    expect(isAdminNotifyStale({ refs: [], deleteAfter: null }, old, now)).toBe(true);
+    expect(isAdminNotifyStale({ refs: [], deleteAfter: null }, null, now)).toBe(false);
+    // С решением её уберёт обычная пятиминутная чистка.
+    expect(isAdminNotifyStale({ refs: [], deleteAfter: old, createdAt: old }, old, now)).toBe(
+      false,
+    );
+    expect(parseAdminNotifyPack(JSON.stringify({ refs: [], createdAt: old }))).toEqual({
+      refs: [],
+      deleteAfter: null,
+      createdAt: old,
+    });
   });
 });

@@ -5,6 +5,7 @@ import {
   ORDER_NOTIFY_KEY_PREFIX,
   adminNotifySettingKey,
   isAdminNotifyDue,
+  isAdminNotifyStale,
   mergeAdminNotifyRefs,
   parseAdminNotifyPack,
   type AdminNotifyPack,
@@ -35,10 +36,12 @@ export async function rememberOrderNotify(
   ctx: TenantContext,
   orderId: number,
   refs: AdminNotifyTgRef[],
+  now = Date.now(),
 ): Promise<void> {
   if (!refs.length) return;
   const pack = await loadPack(ctx, orderId);
   pack.refs = mergeAdminNotifyRefs(pack.refs, refs);
+  pack.createdAt ??= new Date(now).toISOString();
   await savePack(ctx, orderId, pack);
 }
 
@@ -68,7 +71,11 @@ export async function scheduleOrderNotifyDismiss(
   }
 }
 
-/** Минутный крон: удалить из чатов пачки, у которых вышел срок. Возвращает число пачек. */
+/**
+ * Минутный крон: удалить из чатов пачки, у которых вышел срок, и забыть
+ * пачки без решения старше недели. Только ключи v2 и только в базе этого
+ * клиента (ctx.db); крон зовёт его лишь для клиентов v2. Возвращает число пачек.
+ */
 export async function flushDueOrderNotify(
   ctx: TenantContext,
   api: TelegramApi,
@@ -76,12 +83,17 @@ export async function flushDueOrderNotify(
 ): Promise<number> {
   const { data, error } = await ctx.db
     .from("app_settings")
-    .select("key, value")
+    .select("key, value, updated_at")
     .like("key", `${ORDER_NOTIFY_KEY_PREFIX}%`);
   if (error) throw new Error(error.message);
   let dismissed = 0;
   for (const row of data ?? []) {
     const pack = parseAdminNotifyPack(row.value);
+    if (isAdminNotifyStale(pack, row.updated_at, now)) {
+      await ctx.db.from("app_settings").delete().eq("key", row.key);
+      dismissed += 1;
+      continue;
+    }
     if (!isAdminNotifyDue(pack, now)) continue;
     // Сообщение старше 48 часов Telegram удалить не даст — это не повод держать пачку.
     for (const r of pack.refs)
