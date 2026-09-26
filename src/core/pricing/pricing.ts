@@ -1,5 +1,10 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { convertViaUsd, manualCountryPrice, type Money } from "@/core/money/money";
+import {
+  convertViaUsd,
+  convertViaUsdExact,
+  manualCountryPrice,
+  type Money,
+} from "@/core/money/money";
 import type { Json } from "@/core/db-types";
 
 /**
@@ -94,13 +99,27 @@ export async function convertForTenant(
   return convertAmount(amount, from, to);
 }
 
-async function convertAmount(amount: number, from: string, to: string): Promise<number | null> {
-  if (from.toUpperCase() === to.toUpperCase()) return Math.round(amount);
+/** Перевод суммы для сверки чека: до копеек, без округления до целого. */
+export async function convertForReceipt(
+  amount: number,
+  from: string,
+  to: string,
+): Promise<number | null> {
+  return convertAmount(amount, from, to, true);
+}
+
+async function convertAmount(
+  amount: number,
+  from: string,
+  to: string,
+  exact = false,
+): Promise<number | null> {
+  if (from.toUpperCase() === to.toUpperCase()) return exact ? amount : Math.round(amount);
   try {
     if (!fxMemory || Date.now() - fxMemory.ts > FX_TTL_MS) {
       fxMemory = { ts: Date.now(), rates: await fxProvider() };
     }
-    return convertViaUsd(amount, from, to, fxMemory.rates);
+    return (exact ? convertViaUsdExact : convertViaUsd)(amount, from, to, fxMemory.rates);
   } catch (e) {
     console.warn("[pricing] курс недоступен", e);
     return null;

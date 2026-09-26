@@ -1402,7 +1402,9 @@ async function receiveProof(b: Bot, msg: TelegramMessage, orderId: number) {
     }
     await b.ctx.db
       .from("orders")
-      .update({ admin_note: `OCR ok: сумма ${v.matchedAmount}` })
+      .update({
+        admin_note: `OCR ok: сумма ${v.matchedAmount}${v.matchedCurrency ? ` ${v.matchedCurrency} (по курсу)` : ""}`,
+      })
       .eq("id", orderId);
     await send(b, b.m.receiptVerified(String(no)), { reply_markup: mainMenu(b) });
     const r = await deliverOrder(b.ctx, orderId, telegramMaterialSender(b.api, b.chatId, b.m), {

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import { setEnvForTests } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { setFxProvider, resetPricingCache, defaultFxProvider } from "@/core/pricing/pricing";
 import { isRetryReason } from "./pure";
 import { OCR_AUTO_KEY, receiptOcrAutoEnabled, verifyReceipt } from "./verify.server";
 
@@ -147,5 +148,65 @@ describe("verifyReceipt — разбор текста и маршрут в Visio
     expect(String((fetchMock.mock.calls[0] as unknown as [string])[0])).toContain(
       "images:annotate",
     );
+  });
+});
+
+/** Курсы к USD: 1 USD = 480 ₸ = 97 ₽ (порядок реальных, числа круглые для проверки). */
+const RATES = { USD: 1, KZT: 480, RUB: 97 };
+
+describe("чек в чужой валюте — сумма заказа переводится по курсу, как в v1", () => {
+  beforeEach(() => setFxProvider(async () => RATES));
+  afterEach(() => {
+    setFxProvider(defaultFxProvider);
+    resetPricingCache();
+  });
+
+  it("на экране только 227 ₽ — переводим заказ 1100 ₸ и принимаем", async () => {
+    mockVision("Платёж выполнен. Перевод по номеру телефона. 227 ₽");
+    const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 1100, currency: "KZT" });
+    expect(r).toMatchObject({ ok: true, matchedAmount: 227, matchedCurrency: "RUB" });
+  });
+
+  it("Сбер «местная валюта» 1077.30 KZT на заказ 228 ₽ — принимаем (спред банка)", async () => {
+    mockVision("Чек по операции. Перевод выполнен. Сумма в местной валюте 1077.30 KZT");
+    const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 228, currency: "RUB" });
+    expect(r).toMatchObject({ ok: true, matchedAmount: 1077.3, matchedCurrency: "KZT" });
+  });
+
+  it("Сбер 661.50 KZT на заказ 152 ₽ — ниже рыночного курса, но в допуске ±30%", async () => {
+    mockVision("Чек по операции. Перевод выполнен. Сумма в местной валюте 661.50 KZT");
+    const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 152, currency: "RUB" });
+    expect(r).toMatchObject({ ok: true, matchedAmount: 661.5 });
+  });
+
+  it("сумма после курса не сошлась — amount_mismatch, к продавцу", async () => {
+    mockVision("Чек по операции. Перевод выполнен. Сумма в местной валюте 400 KZT");
+    const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 152, currency: "RUB" });
+    expect(r).toMatchObject({ ok: false, reason: "amount_mismatch" });
+    if (!r.ok) expect(r.detail).toContain("по курсу");
+  });
+
+  it("мелкая валюта: сумма по курсу не округляется до целого — недоплата не проходит", async () => {
+    // 700 ₸ ≈ 1,46 $. С округлением до 1 $ окно было 0,70–1,30 $: чек на 0,80 $
+    // (55% цены) принимался, а честный 1,46 $ уходил продавцу.
+    mockVision("Payment successful. Transfer completed. Amount 0.80 USD");
+    const low = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 700, currency: "KZT" });
+    expect(low).toMatchObject({ ok: false, reason: "amount_mismatch" });
+    mockVision("Payment successful. Transfer completed. Amount 1.46 USD");
+    const fair = await verifyReceipt(setup().ctx, {
+      ...base,
+      expectedAmount: 700,
+      currency: "KZT",
+    });
+    expect(fair).toMatchObject({ ok: true, matchedAmount: 1.46, matchedCurrency: "USD" });
+  });
+
+  it("курс недоступен — как раньше: currency_mismatch, к продавцу", async () => {
+    setFxProvider(async () => {
+      throw new Error("нет сети");
+    });
+    mockVision("Платёж выполнен. Перевод по номеру телефона. 227 ₽");
+    const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 1100, currency: "KZT" });
+    expect(r).toMatchObject({ ok: false, reason: "currency_mismatch" });
   });
 });

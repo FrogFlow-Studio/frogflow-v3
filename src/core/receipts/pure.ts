@@ -269,7 +269,13 @@ export type ReceiptReason =
   | "ocr_unavailable";
 
 export type ReceiptAnalysis =
-  { ok: true; matchedAmount: number } | { ok: false; reason: ReceiptReason; detail: string };
+  | {
+      ok: true;
+      matchedAmount: number;
+      /** Валюта найденной суммы, если чек в чужой валюте и сверка шла по курсу. */
+      matchedCurrency?: string;
+    }
+  | { ok: false; reason: ReceiptReason; detail: string };
 
 /** Чек просим прислать заново; остальное — ручная проверка продавцом. */
 export function isRetryReason(reason: ReceiptReason): boolean {

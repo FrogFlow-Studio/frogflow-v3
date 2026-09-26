@@ -45,3 +45,21 @@ export function convertViaUsd(
   if (from.toUpperCase() === to.toUpperCase()) return Math.round(amount);
   return Math.round((amount / f) * t);
 }
+
+/**
+ * Перевод по курсу до копеек, без округления до целого — для сверки сумм.
+ * Цены на витрине округляются до целого (convertViaUsd), но 700 ₸ ≈ 1,46 $
+ * после такого округления становятся 1 $, и допуск по чеку съезжает на треть.
+ */
+export function convertViaUsdExact(
+  amount: number,
+  from: string,
+  to: string,
+  ratesToUsd: Record<string, number>,
+): number | null {
+  const f = ratesToUsd[from.toUpperCase()];
+  const t = ratesToUsd[to.toUpperCase()];
+  if (!f || !t || !Number.isFinite(f) || !Number.isFinite(t)) return null;
+  if (from.toUpperCase() === to.toUpperCase()) return amount;
+  return Math.round((amount / f) * t * 100) / 100;
+}

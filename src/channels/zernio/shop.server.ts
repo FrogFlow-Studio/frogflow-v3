@@ -1560,7 +1560,9 @@ async function receiveProof(s: Shop, url: string, orderId: number) {
     }
     await s.ctx.db
       .from("orders")
-      .update({ admin_note: `OCR ok: сумма ${v.matchedAmount}` })
+      .update({
+        admin_note: `OCR ok: сумма ${v.matchedAmount}${v.matchedCurrency ? ` ${v.matchedCurrency} (по курсу)` : ""}`,
+      })
       .eq("id", orderId);
     await reply(s, s.m.receiptVerified(String(no)), { force: true });
     const delivered = await deliverHere(s, orderId, no);

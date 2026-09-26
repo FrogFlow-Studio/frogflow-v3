@@ -2,8 +2,10 @@ import { createHash } from "node:crypto";
 import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSetting, trySetSetting } from "@/core/settings/settings";
+import { convertForReceipt } from "@/core/pricing/pricing";
 import {
   analyzeReceiptText,
+  detectReceiptCurrencies,
   isPdf,
   looksLikeReceipt,
   extractMoneyAmounts,
@@ -162,6 +164,36 @@ export async function readReceiptText(
 
 export type VerifyResult = ReceiptAnalysis & { extractedText?: string };
 
+/**
+ * Чек только в чужой валюте (покупатель платил рублями за заказ в тенге):
+ * переводим сумму заказа по курсу в валюту чека и сверяем с тем же допуском
+ * ±30% — он покрывает спред банка, как в v1. Курса нет — остаётся
+ * currency_mismatch, чек смотрит продавец.
+ */
+async function withFx(
+  analysis: ReceiptAnalysis,
+  text: string,
+  p: { expectedAmount: number; currency?: string },
+): Promise<ReceiptAnalysis> {
+  if (analysis.ok || analysis.reason !== "currency_mismatch") return analysis;
+  const cur = p.currency?.trim().toUpperCase();
+  if (!cur) return analysis;
+  const misses: string[] = [];
+  for (const foreign of detectReceiptCurrencies(text).filter((c) => c !== cur)) {
+    const converted = await convertForReceipt(p.expectedAmount, cur, foreign);
+    if (converted == null || converted <= 0) continue;
+    const r = analyzeReceiptText(text, converted, foreign);
+    if (r.ok) return { ...r, matchedCurrency: foreign };
+    misses.push(`${converted} ${foreign}`);
+  }
+  if (misses.length === 0) return analysis;
+  return {
+    ok: false,
+    reason: "amount_mismatch",
+    detail: `Заказ ${p.expectedAmount} ${cur} по курсу — ${misses.join(" / ")}; такой суммы в чеке нет (допуск ±30%).`,
+  };
+}
+
 /** Полная проверка: OCR → правила → повтор того же файла по другому заказу. */
 export async function verifyReceipt(
   ctx: TenantContext,
@@ -183,7 +215,7 @@ export async function verifyReceipt(
       detail: e instanceof Error ? e.message : String(e),
     };
   }
-  const analysis = analyzeReceiptText(text, p.expectedAmount, p.currency);
+  const analysis = await withFx(analyzeReceiptText(text, p.expectedAmount, p.currency), text, p);
   const extractedText = text.slice(0, 2000);
   if (!analysis.ok) return { ...analysis, extractedText };
   const hash = createHash("sha256").update(p.bytes).digest("hex");
