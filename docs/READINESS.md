@@ -4,15 +4,15 @@
 и `docs/readiness.json` — руками не правится. `npm test` падает, если сводка
 устарела, пункт описи назван неверно или указанного теста нет.
 
-**Готовность для первых клиентов: 77,9 %** — покрыто тестами v2
-573 из 735 нужных сейчас пунктов.
+**Готовность для первых клиентов: 78,3 %** — покрыто тестами v2
+576 из 735 нужных сейчас пунктов.
 
 **Путь заказа: 92,3 %** — 312 из 338
 (каталог, цена, оформление, оплата и чек, выдача; файлы — `ORDER_PATH` в скрипте).
 
 | всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |
 | ----- | ------- | --------------------- | ---- | ----- | ------------- |
-| 1125 | 573 | 43 | 162 | 33 | 357 |
+| 1125 | 576 | 43 | 159 | 33 | 357 |
 
 «Позже» — поведение нужно, но не магазинам, которые переезжают первыми
 (модуль ещё не перенесён). «Не нужно в v2» — поведение убрано или заменено;
@@ -67,7 +67,7 @@
 | `tests/consultant-style-budget.test.ts` | 16 | 0 | 0 | 0 | 16 | — |
 | `tests/consultant-usage-stats.test.ts` | 4 | 0 | 1 | 0 | 3 | 0 % |
 | `tests/consultant-vtb-rate.test.ts` | 12 | 0 | 0 | 0 | 12 | — |
-| `tests/consultant.test.ts` | 73 | 5 | 10 | 0 | 58 | 33,3 % |
+| `tests/consultant.test.ts` | 73 | 8 | 7 | 0 | 58 | 53,3 % |
 | `tests/currency.test.ts` | 4 | 3 | 1 | 0 | 0 | 75 % |
 | `tests/datetime.test.ts` | 5 | 3 | 2 | 0 | 0 | 60 % |
 | `tests/delivery-message.test.ts` | 4 | 3 | 0 | 0 | 1 | 100 % |
@@ -129,7 +129,7 @@
 | `tests/zernio-retry.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/zernio-webhook.test.ts` | 13 | 7 | 3 | 0 | 3 | 70 % |
 
-## Дыры (162)
+## Дыры (159)
 
 ### поломки v1
 
@@ -278,14 +278,11 @@
 
 ### `tests/consultant.test.ts`
 
-- режет цену, которой не было в tools — v2 не сверяет цену в ответе консультанта с каталогом — только правило в промпте (core/consultant/prompt.ts)
 - пустой ответ не отправляем — пустой ответ модели заменяется запасной фразой в runConsultant (core/consultant/engine.server.ts), теста нет
-- режет выдуманную стоимость доставки — v2 не проверяет выдуманную стоимость доставки в ответе — только правило в промпте (core/consultant/prompt.ts)
 - paused state блокирует исходящие — isPaused в core/consultant/engine.server.ts (paused_until) без теста
 - state читается из вложенного ключа и не ломает shop DirectState — состояние консультанта в customer.state.consultant (stateOf/saveState в core/consultant/engine.server.ts), теста нет
 - по умолчанию Haiku 4.5, имя можно сменить ENV — DEFAULT_MODEL и CONSULTANT_MODEL в core/consultant/engine.server.ts без теста
 - покупка → регламентированный handoff и pause — handoff/record_order_lead ставит паузу 12 ч и зовёт продавца (engine.server.ts, channels/zernio/handle-message.ts), теста нет
-- валидатор цен не бракует телефонные номера, года и суммы наборов — валидатора цен в ответе консультанта v2 нет (см. правило про выдуманные цены)
 - buildAnthropicMessages формирует правильную структуру сообщений без смешивания истории в плоскую строку — история диалога собирается в сообщения Anthropic в runConsultant (core/consultant/engine.server.ts), теста нет
 - buildAnthropicMessages объединяет последовательные сообщения одной роли и гарантирует старт с user — runConsultant (core/consultant/engine.server.ts) срезает ведущий assistant, но соседние реплики одной роли не склеивает, теста нет
 

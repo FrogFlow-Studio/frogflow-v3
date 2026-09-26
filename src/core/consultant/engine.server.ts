@@ -10,6 +10,7 @@ import { isConsultantVertical } from "@/core/verticals/registry";
 import { parseKnowledge, retrieveKnowledge, type KnowledgeDoc } from "./knowledge";
 import { parseProfile, type ConsultantProfile } from "./profile";
 import { buildSystemPrompt, cleanReply, isResetIntent } from "./prompt";
+import { checkReplyFacts, knownNumbers } from "./price-check";
 import {
   addDaily,
   budgetBlock,
@@ -92,7 +93,8 @@ export async function loadConsultant(
 }
 
 /** Каталог одной строкой на товар — наличие и цены только отсюда. */
-async function catalogSnippet(ctx: TenantContext): Promise<string> {
+/** Каталог для подсказки и цены из него — для сверки ответа (price-check). */
+async function catalogSnippet(ctx: TenantContext): Promise<{ text: string; prices: number[] }> {
   const { data } = await ctx.db
     .from("products")
     .select(PRODUCT_SELECT)
@@ -100,6 +102,7 @@ async function catalogSnippet(ctx: TenantContext): Promise<string> {
     .order("sort_order")
     .limit(CATALOG_LIMIT);
   const rows = (data ?? []) as Product[];
+  const prices: number[] = [];
   const lines = await Promise.all(
     rows.map(async (p) => {
       const variants = sortedVariants(p);
@@ -109,6 +112,7 @@ async function catalogSnippet(ctx: TenantContext): Promise<string> {
           )
         : [];
       const base = await resolvePrice(ctx, p, null);
+      prices.push(base.amount, ...priced.map(({ m }) => m.amount));
       const price = priced.length
         ? priced.map(({ v, m }) => `${v.name} — ${m.amount} ${m.currency}`).join(", ")
         : `${base.amount} ${base.currency}`;
@@ -122,7 +126,7 @@ async function catalogSnippet(ctx: TenantContext): Promise<string> {
       return `- ${p.name}: ${price}${stock}${desc ? `. ${desc}` : ""}`;
     }),
   );
-  return lines.join("\n");
+  return { text: lines.join("\n"), prices };
 }
 
 const TOOLS: Anthropic.Tool[] = [
@@ -318,7 +322,7 @@ export async function runConsultant(
   }
 
   const catalog = await catalogSnippet(ctx);
-  const system = buildSystemPrompt(profile, retrieveKnowledge(incoming, docs, 6), catalog);
+  const system = buildSystemPrompt(profile, retrieveKnowledge(incoming, docs, 6), catalog.text);
   const session = [
     `Канал: ${opts.platform}`,
     customer?.firstName ? `Имя клиента в профиле: ${customer.firstName}` : "",
@@ -382,6 +386,31 @@ export async function runConsultant(
       };
     }
     reply = cleanReply(reply);
+    // Цена или доставка не из каталога и условий — покупателю не уходит, вопрос менеджеру.
+    const facts = checkReplyFacts(
+      reply,
+      knownNumbers({
+        prices: catalog.prices,
+        texts: [system, session, incoming, ...history.map((h) => String(h.content))],
+      }),
+    );
+    if (!facts.ok) {
+      console.warn(`[consultant:${ctx.tenant.id}] ответ заменён: ${facts.reason}`);
+      await trySetSetting(
+        ctx,
+        KEYS.lastError,
+        `${new Date().toISOString()} — ответ консультанта не отправлен: ${facts.reason}; вопрос передан менеджеру`.slice(
+          0,
+          500,
+        ),
+      );
+      reply = "Точную стоимость уточню у менеджера — он напишет вам в ближайшее время.";
+      handoff = handoff ?? {
+        kind: "handoff",
+        reason: "unknown_question",
+        summary: `Консультант назвал ${facts.reason}. Клиент написал: «${incoming.slice(0, 200)}»`,
+      };
+    }
     if (!reply && handoff)
       reply =
         handoff.kind === "lead"
@@ -406,7 +435,7 @@ export async function runConsultant(
         KEYS.dialogs,
         JSON.stringify({ month: dialogs.month, count: dialogs.count + 1 }),
       );
-    await trySetSetting(ctx, KEYS.lastError, "");
+    if (facts.ok) await trySetSetting(ctx, KEYS.lastError, "");
 
     if (customer && !opts.dryRun) {
       const recent: ConsultantTurn[] = [
