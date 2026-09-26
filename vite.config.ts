@@ -13,13 +13,13 @@ export default defineConfig({
     tanstackStart({ srcDirectory: "src", server: { entry: "server" } }),
     nitro({
       vercel: {
-        functionRules: {
-          // Вебхуки каналов: выдача файлов крупного заказа может занять минуты.
-          "/api/telegram/**": { maxDuration: 60 },
-          "/api/zernio/**": { maxDuration: 60 },
-          "/api/cron/**": { maxDuration: 120 },
-          "/_serverFn/**": { maxDuration: 60 },
-        },
+        // Одна функция на всё. Отдельные функции (vercel.functionRules) Nitro
+        // собирает копией основной, и в копии node_modules/tslib — ссылка по
+        // абсолютному пути сборочной машины: на Vercel её нет. С тех пор как
+        // pdf-lib принёс вторую версию tslib, все /_serverFn, вебхуки и кроны
+        // отвечали 500, а главная падала в «Something went wrong!».
+        // Вебхуки каналов выдают файлы крупного заказа минутами, кроны — дольше.
+        functions: { maxDuration: 120 },
       },
     }),
     viteReact(),

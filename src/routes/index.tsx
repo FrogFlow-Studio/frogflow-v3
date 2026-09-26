@@ -24,9 +24,11 @@ export const Route = createFileRoute("/")({
   validateSearch: z.object({ lang: z.string().optional() }),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   loader: async ({ deps }) => {
-    const { enabled } = await signupEnabledFn().catch(() => ({ enabled: false }));
+    // Сбой запроса не должен ронять главную: клиент TanStack на ответ 500 без
+    // сериализации возвращает не ошибку, а что попало (бывало и undefined).
+    const res = await signupEnabledFn().catch(() => null);
     const locale: Locale = isLocale(deps.lang) ? deps.lang : "ru";
-    return { signup: enabled, locale };
+    return { signup: res?.enabled === true, locale };
   },
   head: ({ loaderData }) => {
     const locale = loaderData?.locale ?? "ru";
