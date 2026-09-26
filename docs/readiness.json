@@ -152,10 +152,10 @@
   "src/lib/manager-chat.test.ts": {
     "does nothing when the module isn't purchased — no DB call, auto-reply proceeds": "tests/integration/chat.test.ts › без модуля — ни перехвата, ни записи",
     "logs the customer's message and lets the bot reply when no manager is connected": "tests/integration/chat.test.ts › без подключённого менеджера бот не перехватывается, но реплика попадает в лог",
-    "logs a placeholder for text-less messages (photos, etc.)": "open: заглушка [без текста]/[фото] в core/chat/chat.ts и handle-update.ts, теста нет",
+    "logs a placeholder for text-less messages (photos, etc.)": "src/core/chat/chat.test.ts › сообщение без текста пишется заглушкой по виду вложения",
     "logs the message but suppresses the auto-reply once a manager is connected": "tests/integration/chat.test.ts › подключение менеджера перехватывает диалог, отключение возвращает боту",
-    "does nothing when the module is off, even if a stale active row exists": "open: inboundIntercepted выходит до чтения состояния, но тест без модуля идёт при неактивной строке",
-    "logs the tapped button with a 👉 prefix and mirrors the active flag": "open: префикс 👉 ставит handle-update.ts, тест чата передаёт готовый текст"
+    "does nothing when the module is off, even if a stale active row exists": "src/core/chat/chat.test.ts › выключенный модуль — ничего не пишет, даже если в базе осталась активная строка",
+    "logs the tapped button with a 👉 prefix and mirrors the active flag": "src/core/chat/chat.test.ts › нажатая кнопка пишется подписью с 👉 и повторяет флаг подключения менеджера"
   },
   "src/lib/modules/registry.test.ts": {
     "нашёл хотя бы один платный доступный модуль для проверки": "open: в v2 нет теста, что каждый платный доступный модуль реестра проверяется гейтом (core/modules/registry.ts)"
@@ -1154,15 +1154,15 @@
     "отклоняет просроченный auth_date": "src/core/storefront/init-data.test.ts › отвергает чужой токен, подделку и просрочку"
   },
   "tests/telegram-webapp-init-data.test.ts": {
-    "читает tgWebAppData из hash Mini App": "open: расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет",
-    "читает tgWebAppData из query string": "open: расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет",
-    "собирает значение, если внутренний query не закодирован целиком": "open: расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет",
-    "пустой hash — пустая строка": "open: расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет",
-    "берёт tgWebAppData из JSON, который пишет telegram-web-app.js": "open: расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет",
-    "игнорирует битый JSON": "open: расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет",
-    "разбирает сохранённый hash+search": "open: расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет",
-    "предпочитает SDK, затем capture, затем hash": "open: расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет",
-    "захватывает launch params до SDK и не просит закрыть окно": "open: расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет"
+    "читает tgWebAppData из hash Mini App": "src/app/storefront/tg-init-data.test.ts › читает tgWebAppData из hash Mini App",
+    "читает tgWebAppData из query string": "src/app/storefront/tg-init-data.test.ts › читает tgWebAppData из query string",
+    "собирает значение, если внутренний query не закодирован целиком": "src/app/storefront/tg-init-data.test.ts › собирает значение, если внутренний query не закодирован целиком",
+    "пустой hash — пустая строка": "src/app/storefront/tg-init-data.test.ts › пустой hash — пустая строка",
+    "берёт tgWebAppData из JSON, который пишет telegram-web-app.js": "src/app/storefront/tg-init-data.test.ts › берёт tgWebAppData из JSON, который пишет telegram-web-app.js",
+    "игнорирует битый JSON": "src/app/storefront/tg-init-data.test.ts › игнорирует битый JSON",
+    "разбирает сохранённый hash+search": "src/app/storefront/tg-init-data.test.ts › разбирает сохранённый hash+search",
+    "предпочитает SDK, затем capture, затем hash": "src/app/storefront/tg-init-data.test.ts › предпочитает SDK, затем capture, затем hash",
+    "захватывает launch params до SDK и не просит закрыть окно": "src/app/storefront/tg-init-data.test.ts › захватывает launch params до SDK и не просит закрыть окно"
   },
   "tests/tenant-isolation.test.ts": {
     "ключ арендатора видит только свои заказы": "tests/integration/tenant-isolation.test.ts › ключ арендатора видит только свои заказы",

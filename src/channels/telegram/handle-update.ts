@@ -7,7 +7,7 @@ import {
   saveRating,
 } from "@/core/reviews/reviews";
 import { formatRatingSummary, isValidRating } from "@/core/reviews/pure";
-import { inboundIntercepted } from "@/core/chat/chat";
+import { inboundIntercepted, inboundLogText, tappedButtonText } from "@/core/chat/chat";
 import { adminRecipients } from "@/core/notify/recipients";
 import { PRODUCT_SELECT } from "@/core/catalog/catalog";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
@@ -254,13 +254,7 @@ async function handleMessage(
   // Чат с менеджером: реплика в лог; если менеджер подключён — бот молчит.
   // Исключения: /start (покупатель хочет меню) и чек на шаге оплаты.
   const proofStep = customer.state.mode === "awaiting_proof" && Boolean(msg.photo || msg.document);
-  const intercepted = await inboundIntercepted(
-    ctx,
-    from.id,
-    text ||
-      msg.caption ||
-      (msg.photo ? "[фото]" : msg.document ? "[файл]" : msg.contact ? "[контакт]" : "[без текста]"),
-  );
+  const intercepted = await inboundIntercepted(ctx, from.id, inboundLogText(msg));
   if (intercepted && !text?.startsWith("/start") && !proofStep) return;
 
   if (text?.startsWith("/start")) return startFlow(b, text.slice(6).trim());
@@ -1633,7 +1627,7 @@ async function handleCallback(
     const label = cq.message?.reply_markup?.inline_keyboard
       ?.flat()
       .find((btn) => btn.callback_data === data)?.text;
-    if (await inboundIntercepted(ctx, from.id, `👉 ${label ?? "нажал кнопку"}`)) return;
+    if (await inboundIntercepted(ctx, from.id, tappedButtonText(label))) return;
   }
 
   if (data.startsWith("locale:")) {

@@ -58,6 +58,26 @@ async function bumpUnread(ctx: TenantContext, telegramId: number): Promise<void>
   }
 }
 
+/** Реплика покупателя без текста — заглушкой по виду вложения, чтобы в чате было видно, что пришло. */
+export function inboundLogText(m: {
+  text?: string | null;
+  caption?: string | null;
+  photo?: unknown;
+  document?: unknown;
+  contact?: unknown;
+}): string {
+  return (
+    m.text?.trim() ||
+    m.caption?.trim() ||
+    (m.photo ? "[фото]" : m.document ? "[файл]" : m.contact ? "[контакт]" : "[без текста]")
+  );
+}
+
+/** Нажатая кнопка — в чат подписью с 👉, а не сырым callback_data. */
+export function tappedButtonText(label: string | null | undefined): string {
+  return `👉 ${label?.trim() || "нажал кнопку"}`;
+}
+
 export async function isManagerConnected(ctx: TenantContext, telegramId: number): Promise<boolean> {
   const { data } = await ctx.db
     .from("manager_chat_state")

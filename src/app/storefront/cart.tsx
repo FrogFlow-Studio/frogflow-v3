@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { captureLaunchParams, pickInitData } from "./tg-init-data";
 
 /** Корзина витрины: в браузере покупателя, по магазину. Сервер её не видит до оформления. */
 export type CartLine = {
@@ -112,13 +113,38 @@ export type TgWebApp = {
 export function useTelegramWebApp(): TgWebApp | null {
   const [wa, setWa] = useState<TgWebApp | null>(null);
   useEffect(() => {
-    const w = (window as unknown as { Telegram?: { WebApp?: TgWebApp } }).Telegram?.WebApp;
-    if (w && w.initData) {
-      setWa(w);
-      w.ready?.();
-      w.expand?.();
-      if (w.colorScheme === "dark") document.documentElement.classList.add("dark");
-    }
+    // Параметры запуска — сразу, пока адрес не сменился и SDK мог не успеть.
+    const captured = captureLaunchParams(window.location, window.sessionStorage);
+    let tries = 0;
+    const attach = (): boolean => {
+      const w = (window as unknown as { Telegram?: { WebApp?: TgWebApp } }).Telegram?.WebApp;
+      const initData = pickInitData({ sdk: w?.initData, captured });
+      if (!initData) return false;
+      if (w?.initData) {
+        setWa(w);
+        w.ready?.();
+        w.expand?.();
+        if (w.colorScheme === "dark") document.documentElement.classList.add("dark");
+        return true;
+      }
+      // SDK ещё грузится: ждём его, а initData из параметров запуска годится для сервера сразу.
+      if (w || tries >= 30) {
+        setWa({
+          initData,
+          close: () => w?.close?.(),
+          openTelegramLink: (url) =>
+            w?.openTelegramLink ? w.openTelegramLink(url) : window.open(url),
+        });
+        return true;
+      }
+      return false;
+    };
+    if (attach()) return;
+    const timer = setInterval(() => {
+      tries++;
+      if (attach() || tries >= 30) clearInterval(timer);
+    }, 100);
+    return () => clearInterval(timer);
   }, []);
   return wa;
 }
