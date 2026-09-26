@@ -31,3 +31,8 @@ export function isCourseToken(
 export function coursePath(slug: string, orderItemId: string, token: string): string {
   return `/s/${encodeURIComponent(slug)}/course/${orderItemId}?k=${token}`;
 }
+
+/** Полный адрес курса от адреса витрины магазина (storefrontBase: свой домен или общий). */
+export function courseUrl(storefront: string, orderItemId: string, token: string): string {
+  return `${storefront}/course/${orderItemId}?k=${token}`;
+}

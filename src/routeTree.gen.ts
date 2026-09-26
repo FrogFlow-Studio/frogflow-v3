@@ -67,6 +67,7 @@ import { Route as ApiRobokassaBotIdActionRouteImport } from './routes/api/roboka
 import { Route as ApiTelegramBotIdVipRouteImport } from './routes/api/telegram.$botId.vip'
 import { Route as OperatorAuthedClientsBotIdRouteImport } from './routes/operator._authed.clients.$botId'
 import { Route as OperatorAuthedClientsNewRouteImport } from './routes/operator._authed.clients.new'
+import { Route as SSlugCourseItemIdRouteImport } from './routes/s.$slug.course.$itemId'
 import { Route as SSlugLegalDocRouteImport } from './routes/s.$slug.legal.$doc'
 import { Route as SSlugPIdRouteImport } from './routes/s.$slug.p.$id'
 
@@ -360,6 +361,11 @@ const OperatorAuthedClientsNewRoute =
     path: '/clients/new',
     getParentRoute: () => OperatorAuthedRoute,
   } as any)
+const SSlugCourseItemIdRoute = SSlugCourseItemIdRouteImport.update({
+  id: '/course/$itemId',
+  path: '/course/$itemId',
+  getParentRoute: () => SSlugRoute,
+} as any)
 const SSlugLegalDocRoute = SSlugLegalDocRouteImport.update({
   id: '/legal/$doc',
   path: '/legal/$doc',
@@ -428,6 +434,7 @@ export interface FileRoutesByFullPath {
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
+  '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
 }
@@ -485,6 +492,7 @@ export interface FileRoutesByTo {
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
+  '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
 }
@@ -548,6 +556,7 @@ export interface FileRoutesById {
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
   '/operator/_authed/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/_authed/clients/new': typeof OperatorAuthedClientsNewRoute
+  '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
 }
@@ -610,6 +619,7 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId/vip'
     | '/operator/clients/$botId'
     | '/operator/clients/new'
+    | '/s/$slug/course/$itemId'
     | '/s/$slug/legal/$doc'
     | '/s/$slug/p/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -667,6 +677,7 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId/vip'
     | '/operator/clients/$botId'
     | '/operator/clients/new'
+    | '/s/$slug/course/$itemId'
     | '/s/$slug/legal/$doc'
     | '/s/$slug/p/$id'
   id:
@@ -729,6 +740,7 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId/vip'
     | '/operator/_authed/clients/$botId'
     | '/operator/_authed/clients/new'
+    | '/s/$slug/course/$itemId'
     | '/s/$slug/legal/$doc'
     | '/s/$slug/p/$id'
   fileRoutesById: FileRoutesById
@@ -1162,6 +1174,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedClientsNewRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/s/$slug/course/$itemId': {
+      id: '/s/$slug/course/$itemId'
+      path: '/course/$itemId'
+      fullPath: '/s/$slug/course/$itemId'
+      preLoaderRoute: typeof SSlugCourseItemIdRouteImport
+      parentRoute: typeof SSlugRoute
+    }
     '/s/$slug/legal/$doc': {
       id: '/s/$slug/legal/$doc'
       path: '/legal/$doc'
@@ -1302,6 +1321,7 @@ interface SSlugRouteChildren {
   SSlugCartRoute: typeof SSlugCartRoute
   SSlugOrdersRoute: typeof SSlugOrdersRoute
   SSlugIndexRoute: typeof SSlugIndexRoute
+  SSlugCourseItemIdRoute: typeof SSlugCourseItemIdRoute
   SSlugLegalDocRoute: typeof SSlugLegalDocRoute
   SSlugPIdRoute: typeof SSlugPIdRoute
 }
@@ -1310,6 +1330,7 @@ const SSlugRouteChildren: SSlugRouteChildren = {
   SSlugCartRoute: SSlugCartRoute,
   SSlugOrdersRoute: SSlugOrdersRoute,
   SSlugIndexRoute: SSlugIndexRoute,
+  SSlugCourseItemIdRoute: SSlugCourseItemIdRoute,
   SSlugLegalDocRoute: SSlugLegalDocRoute,
   SSlugPIdRoute: SSlugPIdRoute,
 }

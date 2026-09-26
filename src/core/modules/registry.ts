@@ -197,7 +197,7 @@ export const MODULES = {
     group: "Каталог",
     price: 18000,
     status: "planned",
-    note: "Готовы уроки в карточке цифрового товара (core/courses, app_settings.course_<id>). Выдача покупателю и страница курса — следующие PR; до них модуль planned. Как продаётся — COURSES_SALE в core/plans/registry. Отдельный продукт «Бот „Курсы“» (42 000 ₸) — другая позиция прайса.",
+    note: "Готовы уроки в карточке цифрового товара (core/courses, app_settings.course_<id>), ссылка на курс в выдаче и страница /s/<slug>/course/<позиция>. Осталось: сообщение о новом уроке и прогресс для продавца; до этого модуль planned. Как продаётся — COURSES_SALE в core/plans/registry. Отдельный продукт «Бот „Курсы“» (42 000 ₸) — другая позиция прайса.",
   },
   smart_search: {
     title: "Умный поиск по каталогу",
@@ -428,7 +428,9 @@ export function moduleDef(key: ModuleKey): ModuleDef {
  * открывает — ни страницы админки, ни поведения бота, пока модуль «в
  * разработке». Сырые флаги остаются у оператора (проверка переезда их видит).
  */
-export function availableModules(modules: Record<ModuleKey, boolean>): Record<ModuleKey, boolean> {
+export function availableModules(
+  modules: Partial<Record<ModuleKey, boolean>>,
+): Record<ModuleKey, boolean> {
   const out = {} as Record<ModuleKey, boolean>;
   for (const k of MODULE_KEYS) out[k] = modules[k] === true && MODULES[k].status === "available";
   return out;

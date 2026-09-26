@@ -1,4 +1,4 @@
-import type { ModuleKey } from "@/core/modules/registry";
+import { availableModules, type ModuleKey } from "@/core/modules/registry";
 import { servedByV2 } from "@/core/tenant/directory";
 import type { Tenant } from "@/core/tenant/types";
 
@@ -9,8 +9,10 @@ import type { Tenant } from "@/core/tenant/types";
  * только у веб-витрины, «Мои заказы» и оформление из Mini App — только у Mini
  * App, юридические страницы — модуль legal_docs (базовый, включён всем).
  * «info» — шапка магазина: нужна и каталогу, и юр. страницам (ссылки из бота).
+ * «course» — страница купленного курса (модуль courses): ссылка приходит при
+ * выдаче в любой канал, поэтому платная витрина для неё не нужна.
  */
-export type StorefrontPart = "info" | "catalog" | "web_handoff" | "mini_app" | "legal";
+export type StorefrontPart = "info" | "catalog" | "web_handoff" | "mini_app" | "legal" | "course";
 
 export function storefrontAllows(
   modules: Partial<Record<ModuleKey, boolean>>,
@@ -19,7 +21,13 @@ export function storefrontAllows(
   if (!modules.shop) return false;
   switch (part) {
     case "info":
-      return storefrontAllows(modules, "catalog") || storefrontAllows(modules, "legal");
+      return (
+        storefrontAllows(modules, "catalog") ||
+        storefrontAllows(modules, "legal") ||
+        storefrontAllows(modules, "course")
+      );
+    case "course":
+      return Boolean(modules.courses);
     case "catalog":
       return Boolean(modules.web_storefront || modules.telegram_mini_app);
     case "web_handoff":
@@ -42,5 +50,8 @@ export function storefrontOpen(
     | null,
   part: StorefrontPart,
 ): boolean {
-  return Boolean(t && !t.archived && servedByV2(t) && storefrontAllows(t.modules, part));
+  // Модуль «в разработке» не открывает витрину, даже если флаг стоит в базе.
+  return Boolean(
+    t && !t.archived && servedByV2(t) && storefrontAllows(availableModules(t.modules), part),
+  );
 }

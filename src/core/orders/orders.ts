@@ -664,6 +664,13 @@ export type DeliverResult = {
   referral?: ReferralGrant | null;
 };
 
+/** Ссылка на уроки, если позиция — курс (модуль courses); см. core/courses/delivery. */
+async function courseLink(ctx: TenantContext, item: OrderItemRow): Promise<MaterialSnapshot[]> {
+  if (!ctx.tenant.modules.courses) return [];
+  const { courseMaterials } = await import("@/core/courses/delivery.server");
+  return courseMaterials(ctx, item);
+}
+
 /** Отметить язык выданным; возвращает новое значение колонки — следующий язык копится поверх него. */
 async function markDelivered(
   ctx: TenantContext,
@@ -752,13 +759,16 @@ export async function deliverOrder(
     const sendLangs = async (list: Locale[]) => {
       let ok = true;
       let current = item.delivered_language;
+      // Ссылка на курс — один раз на позицию, с первым выданным языком.
+      let course = delivered.size === 0 ? await courseLink(ctx, item) : [];
       for (const l of list) {
         const materials = itemMaterials(item, l);
         if (materials.length === 0) continue;
-        const r = await send(
-          itemLabel(item, l, list.length > 1),
-          await protectMaterials(ctx, order, materials),
-        );
+        const r = await send(itemLabel(item, l, list.length > 1), [
+          ...(await protectMaterials(ctx, order, materials)),
+          ...course,
+        ]);
+        course = [];
         if (r === "sent") {
           current = await markDelivered(ctx, item, current, l);
           await recordOrderEvent(ctx, orderId, "item_sent", { name: item.name_snapshot, lang: l });
@@ -835,7 +845,8 @@ export async function completeLanguageDelivery(
   if (parseDeliveredLanguages(item.delivered_language).has(p.lang)) return { status: "already" };
   const materials = itemMaterials(item, p.lang);
   if (materials.length === 0) return { status: "no_materials" };
-  const r = await send(item, await protectMaterials(ctx, order, materials));
+  const course = item.delivered_language ? [] : await courseLink(ctx, item);
+  const r = await send(item, [...(await protectMaterials(ctx, order, materials)), ...course]);
   if (r !== "sent") {
     await recordOrderEvent(ctx, p.orderId, "item_failed", {
       name: item.name_snapshot,

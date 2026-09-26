@@ -112,6 +112,16 @@ const ru = {
   "error.tooManyRequests": "Слишком много запросов подряд — подождите минуту и попробуйте снова.",
   "error.nothingImported":
     "Ни один товар не удалось положить в корзину — возможно, он снят с продажи.",
+  // курс (модуль courses)
+  "course.progress": "Пройдено {done} из {total}",
+  "course.next": "Следующий урок откроется {date}",
+  "course.lesson": "Урок {no}",
+  "course.locked": "Откроется {date}",
+  "course.openLink": "Открыть материал",
+  "course.markDone": "Отметить пройденным",
+  "course.done": "✓ Пройден",
+  "course.linkHint":
+    "Ссылки на файлы действуют сутки — откройте страницу заново, чтобы получить новые.",
 } as const;
 
 export type StorefrontKey = keyof typeof ru;
@@ -218,6 +228,15 @@ const kk: Dict = {
   "error.tooManyRequests": "Сұраулар тым жиі — бір минут күтіп, қайта көріңіз.",
   "error.nothingImported":
     "Бірде-бір тауарды себетке салу мүмкін болмады — мүмкін, ол сатылымнан алынған.",
+  "course.progress": "{total} сабақтың {done} өтілді",
+  "course.next": "Келесі сабақ {date} ашылады",
+  "course.lesson": "{no}-сабақ",
+  "course.locked": "{date} ашылады",
+  "course.openLink": "Материалды ашу",
+  "course.markDone": "Өтілді деп белгілеу",
+  "course.done": "✓ Өтілді",
+  "course.linkHint":
+    "Файл сілтемелері бір тәулік жұмыс істейді — жаңаларын алу үшін бетті қайта ашыңыз.",
 };
 
 const en: Dict = {
@@ -318,6 +337,14 @@ const en: Dict = {
   "error.tooManyRequests": "Too many requests in a row — wait a minute and try again.",
   "error.nothingImported":
     "None of the products could be added to the cart — they may have been taken off sale.",
+  "course.progress": "{done} of {total} completed",
+  "course.next": "The next lesson opens {date}",
+  "course.lesson": "Lesson {no}",
+  "course.locked": "Opens {date}",
+  "course.openLink": "Open material",
+  "course.markDone": "Mark as completed",
+  "course.done": "✓ Completed",
+  "course.linkHint": "File links work for one day — reopen the page to get new ones.",
 };
 
 const uz: Dict = {
@@ -418,6 +445,15 @@ const uz: Dict = {
   "error.tooManyRequests": "So‘rovlar juda ko‘p — bir daqiqa kutib, qayta urinib ko‘ring.",
   "error.nothingImported":
     "Birorta mahsulotni savatga solib bo‘lmadi — ehtimol, u sotuvdan olingan.",
+  "course.progress": "{total} tadan {done} tasi oʻtildi",
+  "course.next": "Keyingi dars {date} ochiladi",
+  "course.lesson": "{no}-dars",
+  "course.locked": "{date} ochiladi",
+  "course.openLink": "Materialni ochish",
+  "course.markDone": "Oʻtildi deb belgilash",
+  "course.done": "✓ Oʻtildi",
+  "course.linkHint":
+    "Fayl havolalari bir kun ishlaydi — yangilarini olish uchun sahifani qayta oching.",
 };
 
 const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };
