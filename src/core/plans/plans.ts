@@ -152,9 +152,25 @@ export function nextPeriod(
   return { start, end: addDays(addMonths(start, period === "year" ? 12 : 1), -1) };
 }
 
-/** Пробный период: Basic ниши на TRIAL_DAYS дней (7), один раз на клиента. */
+/**
+ * Пробный период: Basic ниши на TRIAL_DAYS дней, считая сегодняшний, один
+ * раз на клиента. Конец включительно — как у оплаченного периода.
+ */
 export function trialWindow(today: string): { until: string } {
-  return { until: addDays(today, TRIAL_DAYS) };
+  return { until: addDays(today, TRIAL_DAYS - 1) };
+}
+
+/**
+ * Продление пробного периода оператором: без разрыва с текущим, а если он
+ * уже кончился — с сегодняшнего дня. Конец включительно.
+ */
+export function trialExtension(
+  trialUntil: string,
+  days: number,
+  today: string,
+): { start: string; end: string } {
+  const start = trialUntil >= today ? addDays(trialUntil, 1) : today;
+  return { start, end: addDays(start, days - 1) };
 }
 
 /**

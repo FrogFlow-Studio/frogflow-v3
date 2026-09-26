@@ -16,6 +16,7 @@ import {
   planModules,
   addonModules,
   suggestPlan,
+  trialExtension,
   trialWindow,
 } from "@/core/plans/plans";
 import {
@@ -25,6 +26,7 @@ import {
   PLAN_VERSION,
   dbPlanFor,
   TRIAL_DAYS,
+  TRIAL_EXTEND_MAX_DAYS,
   TRIAL_TIER,
   nicheForVertical,
   parsePlan,
@@ -214,9 +216,11 @@ export async function adoptSuggestedPlan(botId: string, actor: string): Promise<
 }
 
 /**
- * Пробный период: Basic ниши на TRIAL_DAYS дней, один раз на клиента. Срок
- * подписки двигается нулевым платежом — тем же путём, что и оплата, так
- * что обход неоплаты предупредит и остановит по обычной политике.
+ * Пробный период: Basic ниши на TRIAL_DAYS дней, один раз на клиента.
+ * Включается сам при регистрации (/signup), клиенту, заведённому
+ * оператором, — кнопкой. Срок подписки двигается нулевым платежом — тем же
+ * путём, что и оплата, так что обход неоплаты предупредит и остановит по
+ * обычной политике.
  */
 export async function startTrial(botId: string, actor: string): Promise<{ until: string }> {
   const t = await loadWritable(botId);
@@ -248,6 +252,45 @@ export async function startTrial(botId: string, actor: string): Promise<{ until:
   invalidateTenantDirectory();
   await logEvent(botId, "meta", { plan, trial_until: until }, actor);
   return { until };
+}
+
+/**
+ * Продление пробного периода оператором: ещё один нулевой платёж вплотную
+ * к текущему сроку. Только пока клиент не платил: после оплаты пробный
+ * период кончился, дальше — счёт.
+ */
+export async function extendTrial(
+  botId: string,
+  days: number,
+  actor: string,
+): Promise<{ until: string }> {
+  if (!Number.isInteger(days) || days < 1 || days > TRIAL_EXTEND_MAX_DAYS)
+    throw new Error(`Продлить можно на 1–${TRIAL_EXTEND_MAX_DAYS} дней за раз.`);
+  const t = await loadWritable(botId);
+  const trialUntil = t.settings.billing?.trial_until;
+  if (!trialUntil) throw new Error("У клиента не было пробного периода — сначала включите его.");
+  const { addPayment, subscriptionExpiresAt } = await import("./billing.server");
+  const expires = (await subscriptionExpiresAt(botId))?.slice(0, 10) ?? null;
+  if (expires && expires > trialUntil)
+    throw new Error("Клиент уже оплатил подписку после пробного периода — продлевать нечего.");
+  const { start, end } = trialExtension(trialUntil, days, today());
+  await addPayment(
+    botId,
+    {
+      period_start: start,
+      period_end: end,
+      amount: 0,
+      currency: "KZT",
+      note: `Продление пробного периода на ${days} дн.`,
+    },
+    actor,
+  );
+  await patchTenantSettings(botId, {
+    billing: { ...(t.settings.billing ?? {}), trial_until: end },
+  });
+  invalidateTenantDirectory();
+  await logEvent(botId, "meta", { trial_until: end, trial_extended_days: days }, actor);
+  return { until: end };
 }
 
 /**

@@ -42,6 +42,15 @@ export const signupFn = createServerFn({ method: "POST" })
       actor: "signup",
       ipHash: hash,
     });
+    // Пробный период Basic включается сам. Сбой не ломает регистрацию:
+    // магазин уже создан, оператор включит пробный период кнопкой.
+    try {
+      const { nicheForVertical } = await import("@/core/plans/registry");
+      if (nicheForVertical(data.vertical as (typeof VERTICAL_KEYS)[number]))
+        await (await import("@/app/operator/plans.server")).startTrial(id, "signup");
+    } catch (e) {
+      console.error(`[signup] trial for ${id} failed: ${e instanceof Error ? e.message : e}`);
+    }
     const { requireTenant } = await import("@/core/tenant/resolve.server");
     const { loginInTenant } = await import("@/core/auth/roles");
     const { adminStamp } = await import("@/app/auth/guards.server");

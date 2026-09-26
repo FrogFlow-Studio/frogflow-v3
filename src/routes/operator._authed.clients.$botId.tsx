@@ -27,6 +27,7 @@ import {
   planFn,
   setPlanFn,
   planActionFn,
+  extendTrialFn,
   setAiQuotaFn,
   planInvoicePreviewFn,
   createPlanInvoiceFn,
@@ -39,13 +40,14 @@ import {
   MONTHLY_PRICE,
   PLAN_TIERS,
   TIER_TITLES,
+  TRIAL_DAYS,
+  TRIAL_EXTEND_MAX_DAYS,
   parsePlan,
   type AddonKey,
   type PlanTier,
 } from "@/core/plans/registry";
 import { MODULE_KEYS, moduleDef, type ModuleKey } from "@/core/modules/registry";
 import { VERTICAL_KEYS, VERTICALS } from "@/core/verticals/registry";
-import { TRIAL_DAYS } from "@/core/plans/registry";
 import { Badge, Card, ErrorBox, Field, PageTitle, Stat, Switch, useAction } from "@/app/ui";
 import { StatusBadge } from "./operator._authed.index";
 
@@ -378,6 +380,12 @@ function PlanCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
     await onDone();
     await load.run();
   });
+  const extend = useAction(async (f: FormData) => {
+    const r = await extendTrialFn({ data: { botId: c.id, days: Number(f.get("days")) } });
+    setNote(r.message);
+    await onDone();
+    await load.run();
+  });
   const quota = useAction(async (f: FormData) => {
     const val = (k: string) => {
       const x = String(f.get(k) ?? "").trim();
@@ -520,9 +528,30 @@ function PlanCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
             )}
           </div>
           {v.billing.trial_until && (
-            <p className="text-xs text-muted">
-              Пробный период до {new Date(v.billing.trial_until).toLocaleDateString("ru")}
-            </p>
+            <form
+              className="flex flex-wrap items-center gap-2 text-xs text-muted"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void extend.run(new FormData(e.currentTarget)).catch(() => {});
+              }}
+            >
+              <span>
+                Пробный период до {new Date(v.billing.trial_until).toLocaleDateString("ru")}.
+                Продлить на
+              </span>
+              <input
+                name="days"
+                type="number"
+                min={1}
+                max={TRIAL_EXTEND_MAX_DAYS}
+                defaultValue={7}
+                className="input w-16 py-1"
+              />
+              <span>дн.</span>
+              <button className="btn-secondary py-1" disabled={extend.busy}>
+                Продлить
+              </button>
+            </form>
           )}
           {v.outsidePlan.length > 0 && (
             <p className="text-xs text-warn">

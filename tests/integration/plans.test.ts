@@ -6,7 +6,13 @@ import { invalidateTenantDirectory, requireTenant } from "@/core/tenant/resolve.
 import { effectiveModules } from "@/core/plans/plans";
 import { nicheForVertical, parsePlan } from "@/core/plans/registry";
 import { servedByV2 } from "@/core/tenant/directory";
-import { setPlan, toggleModuleOnPlan, getPlanView } from "@/app/operator/plans.server";
+import {
+  extendTrial,
+  getPlanView,
+  setPlan,
+  startTrial,
+  toggleModuleOnPlan,
+} from "@/app/operator/plans.server";
 
 /**
  * Тариф на живой базе, только «Демо-тестер»: ключ плана пишется в
@@ -94,5 +100,52 @@ describe.skipIf(!liveReady)("тарифы на демо-клиенте", () => {
     await setPlan(DEMO_BOT, { tier: "custom", period: "month", addons: [] }, "test");
     expect(await dbPlan()).toBe("enterprise");
     expect((await tenant()).plan).toBe("custom");
+  });
+
+  it("пробный период: 7 дней Basic нулевым платежом, продление — вплотную к сроку", async () => {
+    const t0 = await tenant();
+    if (!nicheForVertical(t0.vertical) || !servedByV2(t0)) return;
+    const startedAt = new Date().toISOString();
+    const { data: s0 } = await serviceDb()
+      .from("bots")
+      .select("settings")
+      .eq("id", DEMO_BOT)
+      .single();
+    const billing = { ...((s0?.settings as { billing?: object }).billing ?? {}) };
+    delete (billing as { trial_until?: string }).trial_until;
+    await serviceDb()
+      .from("bots")
+      .update({ settings: { ...(s0?.settings as object), billing } as Json })
+      .eq("id", DEMO_BOT);
+    invalidateTenantDirectory();
+    try {
+      const { until } = await startTrial(DEMO_BOT, "test");
+      const t1 = await tenant();
+      expect(t1.plan).toMatch(/\.basic$/);
+      expect(t1.settings.billing?.trial_until).toBe(until);
+      await expect(startTrial(DEMO_BOT, "test")).rejects.toThrow(/уже был/);
+
+      const { data: expires } = await serviceDb()
+        .from("bots")
+        .select("subscription_expires_at")
+        .eq("id", DEMO_BOT)
+        .single();
+      if ((expires?.subscription_expires_at ?? "").slice(0, 10) > until) {
+        // У демо-клиента оплачен срок дальше пробного — продлевать нечего.
+        await expect(extendTrial(DEMO_BOT, 3, "test")).rejects.toThrow(/уже оплатил/);
+        return;
+      }
+      const r = await extendTrial(DEMO_BOT, 3, "test");
+      expect(r.until > until).toBe(true);
+      expect((await tenant()).settings.billing?.trial_until).toBe(r.until);
+      await expect(extendTrial(DEMO_BOT, 31, "test")).rejects.toThrow(/1–30/);
+    } finally {
+      await serviceDb()
+        .from("subscription_payments")
+        .delete()
+        .eq("bot_id", DEMO_BOT)
+        .eq("amount", 0)
+        .gte("paid_at", startedAt);
+    }
   });
 });

@@ -10,6 +10,7 @@ import {
   planLimits,
   planModules,
   suggestPlan,
+  trialExtension,
   trialWindow,
 } from "./plans";
 import {
@@ -206,8 +207,22 @@ describe("периоды", () => {
     expect(nextPeriod(null, "month", "2027-01-31").end).toBe("2027-02-27");
   });
 
-  it("пробный период — 7 дней", () => {
-    expect(trialWindow("2026-09-26")).toEqual({ until: "2026-10-03" });
+  it("пробный период — 7 дней, считая день начала", () => {
+    expect(trialWindow("2026-09-26")).toEqual({ until: "2026-10-02" });
+  });
+
+  it("продление пробного — вплотную к текущему сроку", () => {
+    expect(trialExtension("2026-10-02", 7, "2026-09-30")).toEqual({
+      start: "2026-10-03",
+      end: "2026-10-09",
+    });
+  });
+
+  it("продление кончившегося пробного — с сегодняшнего дня", () => {
+    expect(trialExtension("2026-10-02", 3, "2026-10-10")).toEqual({
+      start: "2026-10-10",
+      end: "2026-10-12",
+    });
   });
 });
 

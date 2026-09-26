@@ -448,6 +448,16 @@ export const planActionFn = createServerFn({ method: "POST" })
     };
   });
 
+export const extendTrialFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId, days: z.number().int().min(1).max(30) }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    const r = await (await plans()).extendTrial(data.botId, data.days, await actor());
+    return {
+      message: `Пробный период продлён до ${new Date(r.until).toLocaleDateString("ru")}.`,
+    };
+  });
+
 export const setAiQuotaFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ botId, ai_dialogs: quota, receipt_checks: quota }).parse(d))
   .handler(async ({ data }) => {
