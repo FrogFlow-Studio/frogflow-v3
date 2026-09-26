@@ -184,28 +184,52 @@ async function invoiceOrThrow(id: string): Promise<Invoice & { proof_path: strin
   return { ...toInvoice(data as Row), proof_path: (data as Row).proof_path };
 }
 
-/**
- * Способы оплаты подписки по порядку перебора. Пока один — перевод по
- * реквизитам (запасной путь). Свой Kaspi-кассир встанет перед ним, когда
- * будет готов, и createInvoice его подхватит без изменений.
- */
-async function payProviders() {
-  const { transferProvider } = await import("@/core/billing/pay/transfer");
-  return [transferProvider];
+/** Ссылка Kaspi Pay платформы (core/billing/pay/kaspi-link); пусто — не задана. */
+export async function getKaspiPayLink(): Promise<string> {
+  const { KASPI_LINK_KEY } = await import("@/core/billing/pay/kaspi-link");
+  const { data } = await serviceDb()
+    .from("operator_settings")
+    .select("value")
+    .eq("key", KASPI_LINK_KEY)
+    .maybeSingle();
+  return data?.value?.trim() ?? "";
+}
+
+export async function setKaspiPayLink(value: string): Promise<void> {
+  const { KASPI_LINK_KEY, normalizeKaspiLink } = await import("@/core/billing/pay/kaspi-link");
+  const link = value.trim() ? normalizeKaspiLink(value) : "";
+  if (link === null)
+    throw new Error("Ссылка Kaspi Pay должна начинаться с https:// и вести на kaspi.kz.");
+  await setOperatorSetting(KASPI_LINK_KEY, link);
 }
 
 /**
- * Счёт владельцу: текст с суммой и реквизитами уходит через его же бота.
+ * Способы оплаты подписки по порядку перебора: ссылка Kaspi Pay, если
+ * оператор её задал, потом перевод по реквизитам (запасной путь).
+ */
+async function payProviders() {
+  const { transferProvider } = await import("@/core/billing/pay/transfer");
+  const { kaspiLinkProvider } = await import("@/core/billing/pay/kaspi-link");
+  return [kaspiLinkProvider(getKaspiPayLink), transferProvider];
+}
+
+/**
+ * Счёт владельцу: текст с суммой и способом оплаты уходит через его же бота.
  * Недоставленное сообщение не откатывает счёт — он виден в панели, а сумму
- * можно передать любым другим каналом. Текст счёта готовит способ оплаты
- * (пока перевод), чтобы добавление Kaspi-кассира не трогало этот код.
+ * можно передать любым другим каналом. Текст счёта готовит способ оплаты,
+ * так что новый способ не трогает этот код.
  */
 export async function createInvoice(
   botId: string,
   p: { amount: number; currency: string; note: string | null },
   actor: string,
   opts: { deliver?: boolean } = {},
-): Promise<{ invoice: Invoice; delivered: boolean; deliveryError: string | null }> {
+): Promise<{
+  invoice: Invoice;
+  delivered: boolean;
+  deliveryError: string | null;
+  payUrl: string | null;
+}> {
   const requisites = await getPayoutRequisites();
   const { availableProviders, issueWithFallback } = await import("@/core/billing/pay/provider");
   const reqBase = {
@@ -263,18 +287,25 @@ export async function createInvoice(
     },
     actor,
   );
-  if (opts.deliver === false) return { invoice, delivered: false, deliveryError: null };
+  const payUrl = issued.payUrl ?? null;
+  if (opts.deliver === false) return { invoice, delivered: false, deliveryError: null, payUrl };
   try {
     const r = await notifyOwner(botId, issued.ownerText);
     return {
       invoice,
+      payUrl,
       delivered: r.delivered.length > 0,
       deliveryError: r.delivered.length
         ? null
         : (r.failed[0]?.reason ?? "владелец не получил сообщение"),
     };
   } catch (e) {
-    return { invoice, delivered: false, deliveryError: e instanceof Error ? e.message : String(e) };
+    return {
+      invoice,
+      payUrl,
+      delivered: false,
+      deliveryError: e instanceof Error ? e.message : String(e),
+    };
   }
 }
 

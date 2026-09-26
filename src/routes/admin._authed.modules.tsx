@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { myPlanFn, requestModuleFn, requestPlanFn } from "@/app/admin/admin.functions";
+import { myPlanFn, payPlanFn, requestModuleFn, requestPlanFn } from "@/app/admin/admin.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { moduleDescKey, moduleGroupKey, moduleTitleKey } from "@/app/i18n/admin/catalog";
 import { Badge, Card, ErrorBox, PageTitle, useAction } from "@/app/ui";
@@ -24,6 +24,45 @@ export const Route = createFileRoute("/admin/_authed/modules")({
 
 type MyPlan = Awaited<ReturnType<typeof myPlanFn>>;
 type PlanRequestKey = `plan:${PlanTier}` | `addon:${AddonKey}`;
+type PayInvoice = Awaited<ReturnType<typeof payPlanFn>>;
+
+/** Счёт после «Оплатить»: QR и ссылка Kaspi Pay или реквизиты для перевода. */
+function PayBox({ inv, t, n }: { inv: PayInvoice; t: AdminT; n: (x: number) => string }) {
+  const amount = n(inv.amount);
+  return (
+    <div className="mt-4 rounded border border-line p-3 text-sm">
+      <div className="font-medium">{t("plan.payTitle", { amount })}</div>
+      {inv.note && <div className="text-xs text-muted">{inv.note}</div>}
+      {inv.payUrl ? (
+        <div className="mt-2 flex flex-wrap items-center gap-4">
+          {inv.qr && (
+            <img
+              src={`data:image/svg+xml;utf8,${encodeURIComponent(inv.qr)}`}
+              alt="QR Kaspi"
+              className="h-40 w-40 bg-white"
+            />
+          )}
+          <div className="max-w-sm space-y-2">
+            <a
+              className="btn-primary inline-block text-xs"
+              href={inv.payUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("plan.payOpen")}
+            </a>
+            <p className="text-xs text-muted">{t("plan.payHint", { amount })}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-2 space-y-2">
+          <p className="text-xs text-muted">{t("plan.payTransfer", { amount })}</p>
+          <pre className="whitespace-pre-wrap text-xs">{inv.requisites}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Нижний уровень ниши, в который входит модуль; null — ни в одном плане. */
 function tierOf(niche: PlanNiche, key: ModuleKey): PlanTier | null {
@@ -38,6 +77,8 @@ function PlanPanel({ p, t, locale }: { p: MyPlan; t: AdminT; locale: string }) {
     setSent((s) => new Set(s).add(key));
     await router.invalidate();
   });
+  const [invoice, setInvoice] = useState<PayInvoice | null>(null);
+  const pay = useAction(async () => setInvoice(await payPlanFn()));
   const n = (x: number) => x.toLocaleString(locale);
   const usageLine = (used: number, limit: number | null | undefined) =>
     limit === null || limit === undefined
@@ -95,6 +136,17 @@ function PlanPanel({ p, t, locale }: { p: MyPlan; t: AdminT; locale: string }) {
           <p className="text-xs text-muted">{t("plan.limitHint")}</p>
         </div>
       </div>
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3">
+        <button
+          className="btn-primary text-xs"
+          disabled={pay.busy}
+          onClick={() => void pay.run().catch(() => {})}
+        >
+          {t("plan.pay")}
+        </button>
+      </div>
+      {invoice && <PayBox inv={invoice} t={t} n={n} />}
+      <ErrorBox error={pay.error} />
       {(higher.length > 0 || addons.length > 0) && (
         <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3">
           {higher.map((tier) => {

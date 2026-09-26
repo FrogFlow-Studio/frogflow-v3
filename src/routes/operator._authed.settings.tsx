@@ -12,7 +12,12 @@ import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 export const Route = createFileRoute("/operator/_authed/settings")({
   loader: async () => {
     const [cred, payout] = await Promise.all([operatorCredentialsFn(), payoutRequisitesFn()]);
-    return { ...cred, requisites: payout.requisites, recipient: payout.recipient };
+    return {
+      ...cred,
+      requisites: payout.requisites,
+      recipient: payout.recipient,
+      kaspiLink: payout.kaspiLink,
+    };
   },
   component: SettingsPage,
 });
@@ -38,7 +43,11 @@ function SettingsPage() {
     <>
       <PageTitle title="Настройки платформы" />
       <div className="grid gap-4 lg:grid-cols-2">
-        <RequisitesCard requisites={cred.requisites} recipient={cred.recipient} />
+        <RequisitesCard
+          requisites={cred.requisites}
+          recipient={cred.recipient}
+          kaspiLink={cred.kaspiLink}
+        />
         <ErrorTrackingCard />
         <Card title="Учётка оператора">
           <p className="mb-3 text-sm text-muted">
@@ -127,7 +136,15 @@ function SettingsPage() {
   );
 }
 
-function RequisitesCard({ requisites, recipient }: { requisites: string; recipient: string }) {
+function RequisitesCard({
+  requisites,
+  recipient,
+  kaspiLink,
+}: {
+  requisites: string;
+  recipient: string;
+  kaspiLink: string;
+}) {
   const router = useRouter();
   const [saved, setSaved] = useState(false);
   const save = useAction(async (f: FormData) => {
@@ -135,6 +152,7 @@ function RequisitesCard({ requisites, recipient }: { requisites: string; recipie
       data: {
         requisites: String(f.get("requisites") ?? ""),
         recipient: String(f.get("recipient") ?? ""),
+        kaspiLink: String(f.get("kaspiLink") ?? ""),
       },
     });
     setSaved(true);
@@ -172,6 +190,17 @@ function RequisitesCard({ requisites, recipient }: { requisites: string; recipie
             name="recipient"
             defaultValue={recipient}
             placeholder="Яков В."
+          />
+        </Field>
+        <Field
+          label="Ссылка Kaspi Pay для оплаты подписки"
+          hint="Создаётся в вашем Kaspi Pay. Владелец по кнопке «Оплатить» получает её и QR с ней, вводит сумму счёта и платит. Пусто — только перевод по реквизитам."
+        >
+          <input
+            className="input"
+            name="kaspiLink"
+            defaultValue={kaspiLink}
+            placeholder="https://pay.kaspi.kz/pay/…"
           />
         </Field>
 

@@ -29,6 +29,7 @@
     "@vercel/functions": "^2.2.13",
     "nodemailer": "^9.1.1",
     "pdf-lib": "^1.17.1",
+    "qrcode-generator": "^2.0.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "tailwindcss": "^4.3.1",

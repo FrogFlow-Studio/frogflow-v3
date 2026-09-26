@@ -847,6 +847,15 @@ export const requestPlanFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** «Оплатить»: счёт на сумму плана со ссылкой и QR Kaspi Pay (или реквизитами). */
+export const payPlanFn = createServerFn({ method: "POST" }).handler(async () => {
+  const ctx = await adminOwner();
+  const { ownerPayInvoice } = await import("@/app/operator/plans.server");
+  const { qrSvg } = await import("@/core/billing/pay/kaspi-link");
+  const r = await ownerPayInvoice(ctx.tenant.id, await actor());
+  return { ...r, qr: r.payUrl ? qrSvg(r.payUrl) : null };
+});
+
 /* ── Telegram из админки ─────────────────────────────────────────── */
 
 export const telegramStateFn = createServerFn({ method: "GET" }).handler(async () => {

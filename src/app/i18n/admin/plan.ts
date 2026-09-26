@@ -20,6 +20,13 @@ export const ru = {
   "plan.addAddon": "Подключить",
   "plan.requested": "Заявка отправлена",
   "plan.inTier": "в {tier}",
+  "plan.pay": "Оплатить",
+  "plan.payTitle": "Счёт на {amount} ₸",
+  "plan.payOpen": "Открыть в Kaspi",
+  "plan.payHint":
+    "Отсканируйте QR или откройте ссылку в приложении Kaspi и введите ровно {amount} ₸. После оплаты пришлите чек в вашего бота — подписка продлится автоматически.",
+  "plan.payTransfer":
+    "Переведите ровно {amount} ₸ по реквизитам ниже и пришлите чек в вашего бота. Счёт продублирован в бота.",
   "plan.included": "в вашем плане",
 } as const;
 
@@ -42,6 +49,13 @@ export const kk: SectionDict<typeof ru> = {
   "plan.addAddon": "Қосу",
   "plan.requested": "Өтінім жіберілді",
   "plan.inTier": "{tier} ішінде",
+  "plan.pay": "Төлеу",
+  "plan.payTitle": "{amount} ₸ шот",
+  "plan.payOpen": "Kaspi-де ашу",
+  "plan.payHint":
+    "QR-ды сканерлеңіз немесе сілтемені Kaspi қосымшасында ашып, дәл {amount} ₸ енгізіңіз. Төлегеннен кейін чекті ботыңызға жіберіңіз — жазылым автоматты түрде ұзарады.",
+  "plan.payTransfer":
+    "Төмендегі деректемелер бойынша дәл {amount} ₸ аударып, чекті ботыңызға жіберіңіз. Шот ботқа да жіберілді.",
   "plan.included": "жоспарыңызда бар",
 };
 
@@ -64,6 +78,13 @@ export const en: SectionDict<typeof ru> = {
   "plan.addAddon": "Add",
   "plan.requested": "Request sent",
   "plan.inTier": "in {tier}",
+  "plan.pay": "Pay",
+  "plan.payTitle": "Invoice for {amount} ₸",
+  "plan.payOpen": "Open in Kaspi",
+  "plan.payHint":
+    "Scan the QR or open the link in the Kaspi app and enter exactly {amount} ₸. After paying, send the receipt to your bot and the subscription renews automatically.",
+  "plan.payTransfer":
+    "Transfer exactly {amount} ₸ using the details below and send the receipt to your bot. The invoice was also sent to the bot.",
   "plan.included": "in your plan",
 };
 
@@ -86,5 +107,12 @@ export const uz: SectionDict<typeof ru> = {
   "plan.addAddon": "Ulash",
   "plan.requested": "Ariza yuborildi",
   "plan.inTier": "{tier} ichida",
+  "plan.pay": "Toʻlash",
+  "plan.payTitle": "{amount} ₸ hisob",
+  "plan.payOpen": "Kaspi-da ochish",
+  "plan.payHint":
+    "QR-ni skanerlang yoki havolani Kaspi ilovasida oching va aynan {amount} ₸ kiriting. Toʻlovdan soʻng chekni botingizga yuboring — obuna avtomatik uzayadi.",
+  "plan.payTransfer":
+    "Quyidagi rekvizitlar boʻyicha aynan {amount} ₸ oʻtkazing va chekni botingizga yuboring. Hisob botga ham yuborildi.",
   "plan.included": "rejangizda bor",
 };

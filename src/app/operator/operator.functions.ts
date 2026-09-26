@@ -502,20 +502,29 @@ export const createPlanInvoiceFn = createServerFn({ method: "POST" })
 export const payoutRequisitesFn = createServerFn({ method: "GET" }).handler(async () => {
   await guard();
   const { payoutRecipient } = await import("@/core/billing/invoice-check.server");
-  const [requisites, recipient] = await Promise.all([
-    (await import("./billing.server")).getPayoutRequisites(),
+  const b = await import("./billing.server");
+  const [requisites, recipient, kaspiLink] = await Promise.all([
+    b.getPayoutRequisites(),
     payoutRecipient(),
+    b.getKaspiPayLink(),
   ]);
-  return { requisites, recipient };
+  return { requisites, recipient, kaspiLink };
 });
 
 export const setPayoutRequisitesFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
-    z.object({ requisites: z.string().max(2000), recipient: z.string().max(200) }).parse(d),
+    z
+      .object({
+        requisites: z.string().max(2000),
+        recipient: z.string().max(200),
+        kaspiLink: z.string().max(500),
+      })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     await guard();
     const b = await import("./billing.server");
+    await b.setKaspiPayLink(data.kaspiLink);
     await b.setPayoutRequisites(data.requisites);
     await b.setPayoutRecipient(data.recipient);
     return { ok: true };

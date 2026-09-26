@@ -402,6 +402,64 @@ export async function createPlanInvoice(
   return r;
 }
 
+/**
+ * Кнопка «Оплатить» у владельца: открытый счёт, если он уже есть (владелец
+ * мог нажать дважды или оператор выставил свой), иначе новый счёт по плану
+ * на период клиента по базовым ценам каналов. Счёт уходит и в бота — туда
+ * владелец присылает чек.
+ */
+export async function ownerPayInvoice(
+  botId: string,
+  actor: string,
+): Promise<{
+  invoiceId: string;
+  amount: number;
+  currency: string;
+  note: string | null;
+  payUrl: string | null;
+  requisites: string | null;
+  reused: boolean;
+}> {
+  const billing = await import("./billing.server");
+  const { data: open } = await serviceDb()
+    .from("subscription_invoices")
+    .select("id, amount, currency, note, requisites_snapshot")
+    .eq("bot_id", botId)
+    .eq("status", "sent")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (open) {
+    const { normalizeKaspiLink } = await import("@/core/billing/pay/kaspi-link");
+    const payUrl =
+      open.currency === "KZT" ? normalizeKaspiLink(await billing.getKaspiPayLink()) : null;
+    return {
+      invoiceId: open.id,
+      amount: Number(open.amount),
+      currency: open.currency,
+      note: open.note,
+      payUrl,
+      requisites: payUrl ? null : open.requisites_snapshot,
+      reused: true,
+    };
+  }
+  const t = await load(botId);
+  const r = await createPlanInvoice(
+    botId,
+    { period: t.settings.billing?.period ?? "month", addonPrices: {} },
+    actor,
+  );
+  return {
+    invoiceId: r.invoice.id,
+    amount: r.invoice.amount,
+    currency: r.invoice.currency,
+    note: r.invoice.note,
+    payUrl: r.payUrl,
+    requisites: r.payUrl ? null : r.invoice.requisites_snapshot,
+    reused: false,
+  };
+}
+
 /** После подтверждения счёта: счёт с подключением закрывает подключение. */
 export async function onInvoicePaid(botId: string, invoiceId: string): Promise<void> {
   const t = await load(botId);

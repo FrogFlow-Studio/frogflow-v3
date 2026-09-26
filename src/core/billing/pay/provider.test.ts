@@ -34,11 +34,11 @@ const fake = (
 describe("способы оплаты подписки", () => {
   it("готовы только те, у кого нет причины пропуска", async () => {
     const { ready, skipped } = await availableProviders(
-      [fake("kaspi_cashier", { unavailable: "кассир не подключён" }), transferProvider],
+      [fake("kaspi_link", { unavailable: "ссылка не задана" }), transferProvider],
       req,
     );
     expect(ready.map((p) => p.key)).toEqual(["transfer"]);
-    expect(skipped).toEqual([{ provider: "kaspi_cashier", reason: "кассир не подключён" }]);
+    expect(skipped).toEqual([{ provider: "kaspi_link", reason: "ссылка не задана" }]);
   });
 
   it("перевод без реквизитов недоступен; ни одного способа — ошибка", async () => {
@@ -49,17 +49,17 @@ describe("способы оплаты подписки", () => {
 
   it("выставляет первым готовым; упавший уходит в skipped", async () => {
     const { issued, skipped } = await issueWithFallback(
-      [fake("kaspi_cashier", { throws: "Kaspi ответил 500" }), transferProvider],
+      [fake("kaspi_link", { throws: "Kaspi ответил 500" }), transferProvider],
       req,
     );
     expect(issued.provider).toBe("transfer");
-    expect(skipped).toEqual([{ provider: "kaspi_cashier", reason: "Kaspi ответил 500" }]);
+    expect(skipped).toEqual([{ provider: "kaspi_link", reason: "Kaspi ответил 500" }]);
   });
 
   it("все способы упали — ошибка с причинами", async () => {
     await expect(
-      issueWithFallback([fake("kaspi_cashier", { throws: "нет сети" })], req),
-    ).rejects.toThrow(/kaspi_cashier: нет сети/);
+      issueWithFallback([fake("kaspi_link", { throws: "нет сети" })], req),
+    ).rejects.toThrow(/kaspi_link: нет сети/);
   });
 
   it("номер Kaspi приводится к 7XXXXXXXXXX", () => {
