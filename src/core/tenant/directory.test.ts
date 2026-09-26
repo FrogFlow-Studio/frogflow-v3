@@ -21,6 +21,7 @@ const row = (over: Partial<TenantRow>): TenantRow => ({
   app_url: "https://aatech-pi.vercel.app",
   archived_at: null,
   bot_token: null,
+  subscription_plan: null,
   ...over,
 });
 

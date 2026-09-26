@@ -129,7 +129,9 @@ export const setModuleFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ botId, key: moduleKey, on: z.boolean() }).parse(d))
   .handler(async ({ data }) => {
     await guard();
-    await (await impl()).setModule(data.botId, data.key as (typeof MODULE_KEYS)[number], data.on);
+    await (
+      await impl()
+    ).setModule(data.botId, data.key as (typeof MODULE_KEYS)[number], data.on, await actor());
     return { ok: true };
   });
 
@@ -391,7 +393,89 @@ export const billingFn = createServerFn({ method: "GET" })
       b.listInvoices(data.botId),
       b.subscriptionExpiresAt(data.botId),
     ]);
-    return { requisites, payments, invoices, expiresAt };
+    const suggested = await (await import("./plans.server")).suggestedPeriod(data.botId);
+    return { requisites, payments, invoices, expiresAt, suggested };
+  });
+
+/* ── тариф клиента (core/plans) ─────────────────────────────────── */
+
+const plans = () => import("./plans.server");
+const addonKey = z.enum(["whatsapp", "instagram"]);
+const quota = z.number().int().min(0).max(1_000_000).nullable().optional();
+
+export const planFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await plans()).getPlanView(data.botId);
+  });
+
+export const setPlanFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId,
+        tier: z.enum(["basic", "pro", "business", "custom"]),
+        period: z.enum(["month", "year"]),
+        addons: z.array(addonKey).max(2),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const { botId: id, ...input } = data;
+    await (await plans()).setPlan(id, input, await actor());
+    return { ok: true };
+  });
+
+export const planActionFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId, action: z.enum(["adopt", "trial"]) }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    const p = await plans();
+    if (data.action === "adopt") {
+      await p.adoptSuggestedPlan(data.botId, await actor());
+      return { message: "Клиент переведён на план, купленные модули сохранены бесплатно." };
+    }
+    const r = await p.startTrial(data.botId, await actor());
+    return {
+      message: `Пробный период Basic до ${new Date(r.until).toLocaleDateString("ru")}.`,
+    };
+  });
+
+export const setAiQuotaFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId, ai_dialogs: quota, receipt_checks: quota }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    const { botId: id, ...q } = data;
+    await (await plans()).setAiQuota(id, q, await actor());
+    return { ok: true };
+  });
+
+const addonPrices = z
+  .object({ whatsapp: z.number().min(0).optional(), instagram: z.number().min(0).optional() })
+  .default({});
+
+export const planInvoicePreviewFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ botId, period: z.enum(["month", "year"]), addonPrices }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const { tenantDirectory } = await import("@/core/tenant/resolve.server");
+    const t = (await tenantDirectory(true)).find((x) => x.id === data.botId);
+    if (!t) throw new Error("Клиент не найден");
+    return (await plans()).planInvoicePreview(t, data.addonPrices, data.period);
+  });
+
+export const createPlanInvoiceFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ botId, period: z.enum(["month", "year"]), addonPrices }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const { botId: id, ...input } = data;
+    return (await plans()).createPlanInvoice(id, input, await actor());
   });
 
 export const payoutRequisitesFn = createServerFn({ method: "GET" }).handler(async () => {

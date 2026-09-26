@@ -99,3 +99,30 @@ export function addDaily(b: DailyBudget, usd: number, kind: "customer" | "test")
     tests: b.tests + (kind === "test" ? 1 : 0),
   };
 }
+
+/**
+ * Месячный счёт ИИ-диалогов для лимита плана (core/plans). Диалог — разговор
+ * одного покупателя с консультантом: новый начинается, если консультант ещё
+ * не отвечал этому покупателю или молчал дольше суток. Продолжение уже
+ * начатого диалога лимит не останавливает — покупателя не бросают на
+ * полуслове.
+ */
+export const DIALOG_GAP_MS = 24 * 3600_000;
+
+export function startsNewDialog(lastReplyAt: string | undefined, now = Date.now()): boolean {
+  if (!lastReplyAt) return true;
+  const t = new Date(lastReplyAt).getTime();
+  return !Number.isFinite(t) || now - t > DIALOG_GAP_MS;
+}
+
+export type MonthlyDialogs = { month: string; count: number };
+
+export function parseMonthly(raw: string | null | undefined, month: string): MonthlyDialogs {
+  try {
+    const v = JSON.parse(raw || "{}") as Partial<MonthlyDialogs>;
+    const n = Number(v.count);
+    return { month, count: v.month === month && Number.isFinite(n) && n > 0 ? n : 0 };
+  } catch {
+    return { month, count: 0 };
+  }
+}

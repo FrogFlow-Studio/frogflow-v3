@@ -10,7 +10,15 @@ import { isConsultantVertical } from "@/core/verticals/registry";
 import { parseKnowledge, retrieveKnowledge, type KnowledgeDoc } from "./knowledge";
 import { parseProfile, type ConsultantProfile } from "./profile";
 import { buildSystemPrompt, cleanReply, isResetIntent } from "./prompt";
-import { addDaily, budgetBlock, limitsFor, parseDaily, today } from "./budget";
+import {
+  addDaily,
+  budgetBlock,
+  limitsFor,
+  parseDaily,
+  parseMonthly,
+  startsNewDialog,
+  today,
+} from "./budget";
 
 /**
  * ИИ-консультант: отвечает покупателю по профилю бизнеса, базе знаний и
@@ -23,6 +31,7 @@ export const KEYS = {
   knowledge: "consultant_knowledge",
   usage: "consultant_usage",
   daily: "consultant_daily",
+  dialogs: "consultant_dialogs_month",
   lastError: "consultant_last_error",
 } as const;
 
@@ -277,6 +286,29 @@ export async function runConsultant(
     };
   }
 
+  // Лимит ИИ-диалогов плана на месяц: новый диалог сверх лимита — сразу менеджеру.
+  const newDialog = Boolean(customer) && !opts.dryRun && startsNewDialog(state.last_reply_at);
+  const { tenantLimits, monthOf } = await import("@/core/plans/tenant");
+  const limits = tenantLimits(ctx.tenant);
+  const dialogs = parseMonthly((await getSettings(ctx, [KEYS.dialogs]))[KEYS.dialogs], monthOf());
+  if (newDialog && limits?.aiDialogs != null && dialogs.count >= limits.aiDialogs) {
+    const reason = `Лимит ИИ-диалогов плана на месяц (${limits.aiDialogs}) исчерпан — новые обращения уходят менеджеру.`;
+    await setSetting(ctx, KEYS.lastError, `${new Date().toISOString()} — ${reason}`.slice(0, 500));
+    if (customer)
+      await saveState(ctx, customer, {
+        paused_until: new Date(Date.now() + 12 * 3600_000).toISOString(),
+      });
+    return {
+      reply: "Передам ваш вопрос менеджеру — он ответит в ближайшее время.",
+      handoff: {
+        kind: "handoff",
+        reason: "unknown_question",
+        summary: `ИИ-консультант: исчерпан лимит диалогов плана. Клиент написал: «${incoming.slice(0, 200)}»`,
+      },
+      usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
+    };
+  }
+
   const catalog = await catalogSnippet(ctx);
   const system = buildSystemPrompt(profile, retrieveKnowledge(incoming, docs, 6), catalog);
   const session = [
@@ -360,6 +392,12 @@ export async function runConsultant(
       1_000_000;
     await recordUsage(ctx, usd, u.input_tokens + cacheWrite + cacheRead, u.output_tokens);
     await setSetting(ctx, KEYS.daily, JSON.stringify(addDaily(daily, usd, kind)));
+    if (newDialog)
+      await setSetting(
+        ctx,
+        KEYS.dialogs,
+        JSON.stringify({ month: dialogs.month, count: dialogs.count + 1 }),
+      );
     await setSetting(ctx, KEYS.lastError, "");
 
     if (customer && !opts.dryRun) {

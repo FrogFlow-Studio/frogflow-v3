@@ -281,6 +281,8 @@ export async function confirmInvoice(
       { action: "invoice_confirmed", invoice_id: id, amount: inv.amount, currency: inv.currency },
       actor,
     );
+    // Счёт по плану с подключением — подключение теперь оплачено.
+    await (await import("./plans.server")).onInvoicePaid(inv.bot_id, id);
     return r;
   } catch (e) {
     await db

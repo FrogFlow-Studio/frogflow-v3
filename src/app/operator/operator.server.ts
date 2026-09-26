@@ -9,6 +9,16 @@ import { serviceDb } from "@/core/db/client.server";
 import type { Database, Json } from "@/core/db-types";
 import { MODULE_KEYS, MODULES, moduleDef, type ModuleKey } from "@/core/modules/registry";
 import { VERTICALS, type VerticalKey } from "@/core/verticals/registry";
+import {
+  ADDONS,
+  ADDON_KEYS,
+  MONTHLY_PRICE,
+  PLAN_TIERS,
+  TIER_TITLES,
+  parsePlan,
+  type AddonKey,
+  type PlanTier,
+} from "@/core/plans/registry";
 import { encryptSecret } from "@/core/secrets/vault";
 import { telegramApi } from "@/channels/telegram/api";
 import {
@@ -106,6 +116,8 @@ export type ClientView = {
   adminUsername: string | null;
   modules: Record<ModuleKey, boolean>;
   modulesOn: number;
+  /** `bots.subscription_plan` — ключ плана, `custom` или null (core/plans). */
+  plan: string | null;
   pausedMessage: string | null;
   appUrl: string | null;
   ownerTelegramId: number | null;
@@ -167,6 +179,7 @@ function toView(
     adminUsername: t.settings.admin?.username ?? null,
     modules: t.modules,
     modulesOn: MODULE_KEYS.filter((k) => t.modules[k]).length,
+    plan: t.plan,
     pausedMessage: t.pausedMessage,
     appUrl: t.appUrl,
     ownerTelegramId: t.ownerTelegramId,
@@ -408,7 +421,13 @@ export async function setStatus(botId: string, status: Tenant["status"]) {
   await logEvent(botId, status === "active" ? "resume" : status === "paused" ? "pause" : "suspend");
 }
 
-export async function setModule(botId: string, key: ModuleKey, on: boolean) {
+export async function setModule(botId: string, key: ModuleKey, on: boolean, actor = "operator") {
+  // Клиент на плане: модуль сверх плана записывается в сохранённые (core/plans).
+  const onPlan = (await tenantDirectory(true)).find((t) => t.id === botId);
+  if (onPlan && parsePlan(onPlan.plan)?.kind === "tier") {
+    const { toggleModuleOnPlan } = await import("./plans.server");
+    return toggleModuleOnPlan(onPlan, key, on, actor);
+  }
   const def = moduleDef(key);
   if (on && def.status !== "available")
     throw new Error(`Модуль «${def.title}» ещё не реализован — включить нельзя.`);
@@ -703,6 +722,65 @@ export type ModuleRequestView = {
   alreadyOn: boolean;
 };
 
+/**
+ * Заявки на тариф из админки продавца лежат в той же очереди: `plan:<уровень>`
+ * — переход на план, `addon:<канал>` — канал сверх плана. Схема не меняется,
+ * module_key — свободный текст.
+ */
+function planRequest(key: string): {
+  title: string;
+  price: number | null;
+  alreadyOn: (t: Tenant) => boolean;
+  apply: (botId: string, actor: string) => Promise<void>;
+} | null {
+  const [kind, value] = key.split(":");
+  if (kind === "plan" && (PLAN_TIERS as readonly string[]).includes(value ?? "")) {
+    const tier = value as PlanTier;
+    return {
+      title: `Переход на план ${TIER_TITLES[tier]}`,
+      price: MONTHLY_PRICE[tier],
+      alreadyOn: (t) => {
+        const p = parsePlan(t.plan);
+        return p?.kind === "tier" && p.tier === tier;
+      },
+      apply: async (botId, actor) => {
+        const { setPlan } = await import("./plans.server");
+        const t = (await tenantDirectory(true)).find((x) => x.id === botId);
+        await setPlan(
+          botId,
+          {
+            tier,
+            period: t?.settings.billing?.period ?? "month",
+            addons: t?.settings.billing?.addons ?? [],
+          },
+          actor,
+        );
+      },
+    };
+  }
+  if (kind === "addon" && (ADDON_KEYS as string[]).includes(value ?? "")) {
+    const addon = value as AddonKey;
+    return {
+      title: `${ADDONS[addon].title} сверх плана`,
+      price: null,
+      alreadyOn: (t) => Boolean(t.settings.billing?.addons?.includes(addon)),
+      apply: async (botId, actor) => {
+        const { setPlan } = await import("./plans.server");
+        const t = (await tenantDirectory(true)).find((x) => x.id === botId);
+        const p = parsePlan(t?.plan);
+        if (p?.kind !== "tier") throw new Error("У клиента нет плана — сначала выберите план.");
+        const addons = [...new Set([...(t?.settings.billing?.addons ?? []), addon])];
+        await setPlan(
+          botId,
+          { tier: p.tier, period: t?.settings.billing?.period ?? "month", addons },
+          actor,
+        );
+      },
+    };
+  }
+  return null;
+}
+
 /** Единая очередь «Заказать подключение» со всех клиентов, самая старая внизу. */
 export async function listModuleRequests(): Promise<ModuleRequestView[]> {
   const { data, error } = await serviceDb()
@@ -721,15 +799,16 @@ export async function listModuleRequests(): Promise<ModuleRequestView[]> {
       const t = byId.get(r.bot_id)!;
       const key = r.module_key as ModuleKey;
       const def = MODULES[key];
+      const plan = planRequest(r.module_key);
       return {
         id: r.id,
         botId: r.bot_id,
         clientName: t.name,
         moduleKey: key,
-        moduleTitle: def?.title ?? r.module_key,
-        price: def?.price ?? null,
+        moduleTitle: plan ? plan.title : (def?.title ?? r.module_key),
+        price: plan ? plan.price : (def?.price ?? null),
         requestedAt: r.requested_at,
-        alreadyOn: Boolean(t.modules[key]),
+        alreadyOn: plan ? plan.alreadyOn(t) : Boolean(t.modules[key]),
       };
     });
 }
@@ -759,9 +838,15 @@ export async function resolveModuleRequest(
   if (!req) throw new Error("Заявка не найдена.");
   if (req.status !== "pending") return { notified: false };
   const key = req.module_key as ModuleKey;
+  const plan = planRequest(req.module_key);
   let notified = false;
-  if (action === "enable") {
-    await setModule(req.bot_id, key, true);
+  if (action === "enable" && plan) {
+    await plan.apply(req.bot_id, actor);
+    notified = await notifyOwner(req.bot_id, `✅ ${plan.title}: готово.`)
+      .then((r) => r.delivered.length > 0)
+      .catch(() => false);
+  } else if (action === "enable") {
+    await setModule(req.bot_id, key, true, actor);
     const title = MODULES[key]?.title ?? key;
     notified = await notifyOwner(req.bot_id, `✅ Модуль «${title}» подключён к вашему магазину.`)
       .then((r) => r.delivered.length > 0)

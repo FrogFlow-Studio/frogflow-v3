@@ -1,14 +1,14 @@
 import { MODULE_KEYS, type ModuleKey } from "@/core/modules/registry";
 import { VERTICALS, type VerticalKey } from "@/core/verticals/registry";
 import type { Database } from "@/core/db-types";
-import type { BotStatus, Tenant, TenantLookup, TenantSettings } from "./types";
+import type { BillingSettings, BotStatus, Tenant, TenantLookup, TenantSettings } from "./types";
 import { isLocale } from "@/core/i18n/locale";
 
 type BotRow = Database["public"]["Tables"]["bots"]["Row"];
 
 /** Колонки `bots`, которые нужны справочнику арендаторов. */
 export const TENANT_COLUMNS =
-  "id, bot_name, status, vertical, modules, settings, paused_message, owner_telegram_id, app_url, archived_at, bot_token" as const;
+  "id, bot_name, status, vertical, modules, settings, paused_message, owner_telegram_id, app_url, archived_at, bot_token, subscription_plan" as const;
 
 export type TenantRow = Pick<
   BotRow,
@@ -23,6 +23,7 @@ export type TenantRow = Pick<
   | "app_url"
   | "archived_at"
   | "bot_token"
+  | "subscription_plan"
 >;
 
 function asStatus(value: string | null): BotStatus {
@@ -111,6 +112,37 @@ export function settingsFromJson(json: unknown): TenantSettings {
       s.on_overdue === "suspend" ? "suspend" : s.on_overdue === "warn" ? "warn" : undefined,
     warn_days_before: typeof s.warn_days_before === "number" ? s.warn_days_before : undefined,
     grace_days: typeof s.grace_days === "number" ? s.grace_days : undefined,
+    billing: billingFromJson(s.billing),
+  };
+}
+
+function billingFromJson(json: unknown): BillingSettings | undefined {
+  if (!json || typeof json !== "object" || Array.isArray(json)) return undefined;
+  const b = json as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  const quota = (v: unknown) =>
+    v === null ? null : typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : undefined;
+  const q =
+    b.ai_quota && typeof b.ai_quota === "object" && !Array.isArray(b.ai_quota)
+      ? (b.ai_quota as Record<string, unknown>)
+      : null;
+  return {
+    addons: Array.isArray(b.addons)
+      ? b.addons.filter((a): a is "whatsapp" | "instagram" => a === "whatsapp" || a === "instagram")
+      : undefined,
+    grandfathered: Array.isArray(b.grandfathered)
+      ? b.grandfathered.filter(
+          (k): k is ModuleKey => typeof k === "string" && (MODULE_KEYS as string[]).includes(k),
+        )
+      : undefined,
+    ai_quota: q
+      ? { ai_dialogs: quota(q.ai_dialogs), receipt_checks: quota(q.receipt_checks) }
+      : undefined,
+    period: b.period === "year" ? "year" : b.period === "month" ? "month" : undefined,
+    connection_paid_at: str(b.connection_paid_at),
+    connection_invoice_id: str(b.connection_invoice_id),
+    plan_version: typeof b.plan_version === "number" ? b.plan_version : undefined,
+    trial_until: str(b.trial_until),
   };
 }
 
@@ -138,6 +170,7 @@ export function tenantFromRow(row: TenantRow): Tenant {
     appUrl: row.app_url,
     archived: row.archived_at != null,
     telegramTokenEnc: row.bot_token,
+    plan: row.subscription_plan ?? null,
   };
 }
 

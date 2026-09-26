@@ -58,6 +58,27 @@ export type TenantSettings = {
   on_overdue?: "warn" | "suspend";
   warn_days_before?: number;
   grace_days?: number;
+  /** Тариф сверх `bots.subscription_plan` (core/plans): надбавки, льготы, лимиты. */
+  billing?: BillingSettings;
+};
+
+export type BillingSettings = {
+  /** Каналы, докупленные сверх плана (core/plans/registry ADDONS). */
+  addons?: Array<"whatsapp" | "instagram">;
+  /** Модули, купленные по старой схеме или подаренные оператором: включены бесплатно сверх плана. */
+  grandfathered?: ModuleKey[];
+  /** Индивидуальные месячные лимиты вместо лимитов плана; null — без лимита. */
+  ai_quota?: { ai_dialogs?: number | null; receipt_checks?: number | null };
+  /** Оплата раз в месяц или раз в год (10 месяцев за 12). */
+  period?: "month" | "year";
+  /** Подключение оплачено (или не берётся — действующий клиент). */
+  connection_paid_at?: string;
+  /** Счёт, в который включено подключение: его подтверждение ставит connection_paid_at. */
+  connection_invoice_id?: string;
+  /** Версия состава планов, по которой клиент подключён. */
+  plan_version?: number;
+  /** Пробный период: до какой даты и был ли он уже. */
+  trial_until?: string;
 };
 
 export type AdminUser = {
@@ -90,6 +111,8 @@ export type Tenant = {
   archived: boolean;
   /** Зашифрованный токен Telegram (enc:v1:…) или null, если бот в Telegram не подключён. */
   telegramTokenEnc: string | null;
+  /** `bots.subscription_plan`: ключ плана (`flowers.pro`), `custom` или null — модули вручную. */
+  plan: string | null;
 };
 
 /** По какому признаку арендатор найден — для журнала и ответов 404. */

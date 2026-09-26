@@ -1,0 +1,207 @@
+import type { ModuleKey } from "@/core/modules/registry";
+import type { VerticalKey } from "@/core/verticals/registry";
+
+/**
+ * Тарифы платформы: подключение один раз и дальше подписка на план. План —
+ * пара «ниша × уровень» (`flowers.pro`), ключ пишется в существующую колонку
+ * `bots.subscription_plan`. Модули остаются внутренними флагами «функция
+ * включена»: план лишь решает, какие флаги стоят в `bots.modules`, так что
+ * все проверки `ctx.tenant.modules.*` в коде работают как раньше, и v1,
+ * читающий ту же колонку, тоже.
+ *
+ * Условия утверждены Яковом 26.09.2026: цены одинаковы для всех ниш, сверх
+ * плана докупаются только каналы (WhatsApp, Instagram), лимиты ИИ помесячно,
+ * годовая оплата — 10 месяцев вместо 12, пробный период 14 дней на Basic.
+ * Консультант BOVI (ниша `consultant`) — вне тарифов, по договору: у него
+ * план `custom`, модули оператор включает руками, как до тарифов.
+ *
+ * В планы кладём только готовые модули ("available"). Позиция без кода
+ * войдёт в план, когда будет сделана, — тест не даст положить planned.
+ */
+
+export const PLAN_TIERS = ["basic", "pro", "business"] as const;
+export type PlanTier = (typeof PLAN_TIERS)[number];
+
+/** Ниши с тарифами. `consultant` (BOVI) сюда не входит — он по договору. */
+export const PLAN_NICHES = ["confectionery", "flowers", "digital", "consultant_universal"] as const;
+export type PlanNiche = (typeof PLAN_NICHES)[number];
+
+export type PlanKey = `${PlanNiche}.${PlanTier}`;
+/** Индивидуальные условия (BOVI и договорные клиенты): модули — вручную. */
+export const CUSTOM_PLAN = "custom";
+
+/**
+ * Версия состава планов. Меняется, когда состав или цены планов меняются:
+ * клиенту пишется версия, по которой он подключён (`billing.plan_version`),
+ * чтобы изменение не меняло его условия молча.
+ */
+export const PLAN_VERSION = 1;
+
+export const TIER_TITLES: Record<PlanTier, string> = {
+  basic: "Basic",
+  pro: "Pro",
+  business: "Business",
+};
+
+/** ₸. Одинаковые для всех ниш. */
+export const CONNECTION_PRICE: Record<PlanTier, number> = {
+  basic: 15_000,
+  pro: 30_000,
+  business: 60_000,
+};
+export const MONTHLY_PRICE: Record<PlanTier, number> = {
+  basic: 9_900,
+  pro: 19_900,
+  business: 39_900,
+};
+/** Годовая оплата: два месяца в подарок. */
+export const ANNUAL_BILLED_MONTHS = 10;
+export const TRIAL_DAYS = 14;
+export const TRIAL_TIER: PlanTier = "basic";
+
+/** Месячные лимиты ИИ; null — без лимита. */
+export type PlanLimits = { aiDialogs: number | null; receiptChecks: number | null };
+export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
+  basic: { aiDialogs: 300, receiptChecks: 200 },
+  pro: { aiDialogs: 1_500, receiptChecks: 1_000 },
+  business: { aiDialogs: 5_000, receiptChecks: null },
+};
+
+/** Бесплатная часть: во всех планах всех ниш. */
+export const BASE_MODULES: readonly ModuleKey[] = [
+  "shop",
+  "broadcasts",
+  "multi_files",
+  "order_status",
+  "excel_export",
+  "legal_docs",
+  "dashboard",
+];
+
+/**
+ * Что добавляет каждый уровень ниши сверх предыдущего. Pro включает всё из
+ * Basic, Business — всё из Pro (см. planModules).
+ */
+export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey[]>> = {
+  confectionery: {
+    // Дата и способ получения, зоны, ручной заказ и задаток — в ядре, без флага.
+    basic: ["stock"],
+    pro: [
+      "robokassa",
+      "receipt_ocr",
+      "coupons",
+      "gift_certificates",
+      "cart_reminder",
+      "review_request",
+      "manager_chat",
+      "telegram_mini_app",
+    ],
+    business: [
+      "whatsapp",
+      "wa_shop",
+      "instagram",
+      "dm_shop",
+      "loyalty",
+      "referral",
+      "web_storefront",
+      "smart_search",
+      "multi_language",
+      "multi_currency",
+      "admin_roles",
+      "crm_integration",
+    ],
+  },
+  flowers: {
+    // Покупатели цветов пишут в WhatsApp — он с Basic.
+    basic: ["whatsapp", "wa_shop", "stock"],
+    pro: [
+      "robokassa",
+      "receipt_ocr",
+      "manager_chat",
+      "gift_certificates",
+      "coupons",
+      "cart_reminder",
+      "review_request",
+    ],
+    business: [
+      "instagram",
+      "dm_shop",
+      "wa_broadcasts",
+      "smart_search",
+      "web_storefront",
+      "loyalty",
+      "referral",
+      "multi_currency",
+    ],
+  },
+  digital: {
+    basic: [],
+    pro: ["robokassa", "receipt_ocr", "coupons", "cart_reminder", "vip", "multi_language"],
+    business: [
+      "telegram_mini_app",
+      "web_storefront",
+      "smart_search",
+      "loyalty",
+      "referral",
+      "gift_certificates",
+      "instagram",
+      "dm_shop",
+      "whatsapp",
+      "wa_shop",
+    ],
+  },
+  consultant_universal: {
+    basic: ["instagram", "manager_chat"],
+    // Pro и Business консультанта отличаются глубиной ИИ и лимитом диалогов.
+    pro: [],
+    business: ["whatsapp", "multi_currency"],
+  },
+};
+
+/** Докупаются сверх плана только каналы: у них разная себестоимость. */
+export const ADDONS = {
+  whatsapp: { title: "WhatsApp", modules: ["whatsapp", "wa_shop"] },
+  instagram: { title: "Instagram", modules: ["instagram", "dm_shop"] },
+} as const satisfies Record<string, { title: string; modules: readonly ModuleKey[] }>;
+export type AddonKey = keyof typeof ADDONS;
+export const ADDON_KEYS = Object.keys(ADDONS) as AddonKey[];
+
+/** Модули магазина в каналах — консультанту (без кассы) не включаются. */
+export const SHOP_CHANNEL_MODULES: readonly ModuleKey[] = ["wa_shop", "dm_shop"];
+
+export function nicheForVertical(v: VerticalKey): PlanNiche | null {
+  return (PLAN_NICHES as readonly string[]).includes(v) ? (v as PlanNiche) : null;
+}
+
+export function planKey(niche: PlanNiche, tier: PlanTier): PlanKey {
+  return `${niche}.${tier}`;
+}
+
+export type ParsedPlan =
+  { kind: "tier"; key: PlanKey; niche: PlanNiche; tier: PlanTier } | { kind: "custom" } | null;
+
+/** Разбор `bots.subscription_plan`; незнакомое значение (в т.ч. из v1) — null. */
+export function parsePlan(raw: string | null | undefined): ParsedPlan {
+  const v = (raw ?? "").trim();
+  if (!v) return null;
+  if (v === CUSTOM_PLAN) return { kind: "custom" };
+  const [niche, tier] = v.split(".");
+  if (
+    (PLAN_NICHES as readonly string[]).includes(niche ?? "") &&
+    (PLAN_TIERS as readonly string[]).includes(tier ?? "")
+  )
+    return {
+      kind: "tier",
+      key: v as PlanKey,
+      niche: niche as PlanNiche,
+      tier: tier as PlanTier,
+    };
+  return null;
+}
+
+export function planTitle(raw: string | null | undefined, nicheTitle?: string): string {
+  const p = parsePlan(raw);
+  if (!p) return "без плана";
+  if (p.kind === "custom") return "Индивидуальный (по договору)";
+  return `${nicheTitle ? `${nicheTitle} · ` : ""}${TIER_TITLES[p.tier]}`;
+}

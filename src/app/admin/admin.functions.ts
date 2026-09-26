@@ -772,6 +772,57 @@ export const requestModuleFn = createServerFn({ method: "POST" })
     return { ok: true, already: Boolean(error) };
   });
 
+/* ── тариф магазина (core/plans) ─────────────────────────────────── */
+
+export const myPlanFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  const { parsePlan, nicheForVertical, MONTHLY_PRICE, CONNECTION_PRICE, ADDON_KEYS } =
+    await import("@/core/plans/registry");
+  const { planUsage, USAGE_KEYS } = await import("@/core/plans/tenant");
+  const { getSettings } = await import("@/core/settings/settings");
+  const plan = parsePlan(ctx.tenant.plan);
+  const values = await getSettings(ctx, Object.values(USAGE_KEYS));
+  const { data: pending } = await ctx.db
+    .from("module_requests")
+    .select("module_key")
+    .eq("status", "pending");
+  const billing = ctx.tenant.settings.billing ?? {};
+  return {
+    plan: plan?.kind === "tier" ? plan.tier : plan?.kind === "custom" ? ("custom" as const) : null,
+    hasTiers: Boolean(nicheForVertical(ctx.tenant.vertical)),
+    period: billing.period ?? "month",
+    trialUntil: billing.trial_until ?? null,
+    addons: billing.addons ?? [],
+    availableAddons: ADDON_KEYS,
+    prices: { monthly: MONTHLY_PRICE, connection: CONNECTION_PRICE },
+    usage: planUsage(ctx.tenant, values),
+    pending: (pending ?? []).map((r) => r.module_key),
+  };
+});
+
+export const requestPlanFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        key: z.enum([
+          "plan:basic",
+          "plan:pro",
+          "plan:business",
+          "addon:whatsapp",
+          "addon:instagram",
+        ]),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminOwner();
+    const { error } = await ctx.db
+      .from("module_requests")
+      .insert({ bot_id: ctx.tenant.id, module_key: data.key });
+    if (error && !/duplicate|unique/i.test(error.message)) throw new Error(error.message);
+    return { ok: true };
+  });
+
 /* ── Telegram из админки ─────────────────────────────────────────── */
 
 export const telegramStateFn = createServerFn({ method: "GET" }).handler(async () => {

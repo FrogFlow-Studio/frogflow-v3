@@ -25,7 +25,18 @@ export function visionConfigured(): boolean {
 
 export async function receiptOcrAutoEnabled(ctx: TenantContext): Promise<boolean> {
   if (!ctx.tenant.modules.receipt_ocr || !visionConfigured()) return false;
-  return (await getSetting(ctx, OCR_AUTO_KEY)) !== "false";
+  if ((await getSetting(ctx, OCR_AUTO_KEY)) === "false") return false;
+  // Лимит проверок плана на месяц: исчерпан — чек уходит продавцу на ручную проверку.
+  return !(await receiptLimitReached(ctx));
+}
+
+export async function receiptLimitReached(ctx: TenantContext): Promise<boolean> {
+  const { tenantLimits } = await import("@/core/plans/tenant");
+  const { overLimit } = await import("@/core/plans/plans");
+  const limits = tenantLimits(ctx.tenant);
+  if (!limits || limits.receiptChecks === null) return false;
+  const u = parseUsage(await getSetting(ctx, OCR_USAGE_KEY));
+  return overLimit(u.monthCount, limits.receiptChecks);
 }
 
 export type OcrUsage = { count: number; month: string; monthCount: number };

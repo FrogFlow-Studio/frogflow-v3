@@ -6,6 +6,8 @@ import {
   budgetBlock,
   limitsFor,
   parseDaily,
+  parseMonthly,
+  startsNewDialog,
 } from "./budget";
 
 const D = "2026-09-26";
@@ -44,6 +46,26 @@ describe("дневной предел консультанта", () => {
       usd: 0.0123,
       calls: 1,
     });
+  });
+});
+
+describe("ИИ-диалоги за месяц", () => {
+  const now = Date.parse("2026-09-26T12:00:00Z");
+
+  it("новый диалог — первый ответ или пауза дольше суток", () => {
+    expect(startsNewDialog(undefined, now)).toBe(true);
+    expect(startsNewDialog("2026-09-26T09:00:00Z", now)).toBe(false);
+    expect(startsNewDialog("2026-09-25T11:59:00Z", now)).toBe(true);
+    expect(startsNewDialog("мусор", now)).toBe(true);
+  });
+
+  it("счётчик месяца сбрасывается в новом месяце и не ломается на мусоре", () => {
+    expect(parseMonthly(JSON.stringify({ month: "2026-09", count: 12 }), "2026-09")).toEqual({
+      month: "2026-09",
+      count: 12,
+    });
+    expect(parseMonthly(JSON.stringify({ month: "2026-08", count: 12 }), "2026-09").count).toBe(0);
+    expect(parseMonthly("{oops", "2026-09").count).toBe(0);
   });
 });
 
