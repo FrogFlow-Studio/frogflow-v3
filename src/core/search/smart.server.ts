@@ -6,7 +6,6 @@ import { getSetting, getSettings, trySetSetting } from "@/core/settings/settings
 import {
   COOLDOWN_SECONDS,
   DAILY_LIMIT,
-  DAILY_USD_LIMIT,
   MAX_CANDIDATES,
   MAX_QUERY_LEN,
   SMART_SEARCH_MODEL,
@@ -16,6 +15,7 @@ import {
   parseDailyCount,
   parseSmartSearchIds,
   parseSpend,
+  smartSearchUsdLimit,
   spendExhausted,
   todayUtc,
   type Candidate,
@@ -62,14 +62,15 @@ export async function consumeQuota(ctx: TenantContext, customer: Customer): Prom
     .eq("user_key", customer.userKey);
 
   const s = await getSettings(ctx, [KEYS.dailyCount, KEYS.dailySpend, KEYS.lastError]);
-  if (spendExhausted(s[KEYS.dailySpend])) {
+  const usdLimit = smartSearchUsdLimit(ctx.tenant.settings.smart_search_limits);
+  if (spendExhausted(s[KEYS.dailySpend], todayUtc(), usdLimit)) {
     // Продавец видит причину рядом с переключателем; пишем раз в день.
     const today = todayUtc();
     if (!s[KEYS.lastError]?.startsWith(today))
       await trySetSetting(
         ctx,
         KEYS.lastError,
-        `${new Date().toISOString()} — дневной предел расходов ($${DAILY_USD_LIMIT}) исчерпан, до полуночи UTC умный поиск выключен`,
+        `${new Date().toISOString()} — дневной предел расходов ($${usdLimit}) исчерпан, до полуночи UTC умный поиск выключен`,
       );
     return false;
   }

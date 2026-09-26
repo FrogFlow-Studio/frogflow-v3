@@ -2,6 +2,7 @@ import type { ModuleKey } from "@/core/modules/registry";
 import type { VerticalKey } from "@/core/verticals/registry";
 import type { Locale } from "@/core/i18n/locale";
 import type { ConsultantLimitsSetting } from "@/core/consultant/budget";
+import type { SmartSearchLimitsSetting } from "@/core/search/smart-pure";
 
 export type BotStatus = "active" | "paused" | "suspended";
 
@@ -54,6 +55,8 @@ export type TenantSettings = {
    * null — общий предел платформы. Меняет оператор в карточке клиента.
    */
   consultant_limits?: ConsultantLimitsSetting | null;
+  /** Свой дневной предел умного поиска в долларах (core/search). Меняет оператор. */
+  smart_search_limits?: SmartSearchLimitsSetting | null;
   /** Поведение при неоплате подписки (те же ключи, что в v1; читает core/billing/subscription). */
   on_overdue?: "warn" | "suspend";
   warn_days_before?: number;

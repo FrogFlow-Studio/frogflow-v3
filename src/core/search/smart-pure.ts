@@ -11,6 +11,18 @@ export const DAILY_LIMIT = 200;
  * $20 в день на ключе платформы.
  */
 export const DAILY_USD_LIMIT = 3;
+/** Выше этого оператор поднять не может — защита от опечатки в лишний ноль. */
+export const SMART_SEARCH_USD_MAX = 100;
+
+/** Свой предел клиента в bots.settings.smart_search_limits; нет/null — общий. */
+export type SmartSearchLimitsSetting = { daily_usd?: number | null };
+
+/** Действующий дневной предел клиента в долларах; 0 — умный поиск выключен. */
+export function smartSearchUsdLimit(s: SmartSearchLimitsSetting | null | undefined): number {
+  const v = s?.daily_usd;
+  if (typeof v !== "number" || !Number.isFinite(v) || v < 0) return DAILY_USD_LIMIT;
+  return Math.min(v, SMART_SEARCH_USD_MAX);
+}
 export const COOLDOWN_SECONDS = 45;
 export const MAX_CANDIDATES = 600;
 export const MAX_QUERY_LEN = 200;
@@ -96,8 +108,12 @@ export function dailySpendUsd(raw: string | null | undefined, today = todayUtc()
   }
 }
 
-export function spendExhausted(raw: string | null | undefined, today = todayUtc()): boolean {
-  return dailySpendUsd(raw, today) >= DAILY_USD_LIMIT;
+export function spendExhausted(
+  raw: string | null | undefined,
+  today = todayUtc(),
+  limit = DAILY_USD_LIMIT,
+): boolean {
+  return dailySpendUsd(raw, today) >= limit;
 }
 
 export function addSpend(prev: Spend, u: TokenUsage): Spend {

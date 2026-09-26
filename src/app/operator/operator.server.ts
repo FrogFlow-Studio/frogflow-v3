@@ -1023,6 +1023,38 @@ export async function consultantBudget(botId: string) {
   };
 }
 
+/** Дневной предел умного поиска клиента в долларах: свой или общий, и расход сегодня. */
+export async function smartSearchBudget(botId: string) {
+  const { DAILY_USD_LIMIT, SMART_SEARCH_USD_MAX, dailySpendUsd, smartSearchUsdLimit } =
+    await import("@/core/search/smart-pure");
+  const t = await requireTenant({ by: "id", value: botId });
+  const { data } = await serviceDb()
+    .from("app_settings")
+    .select("value")
+    .eq("bot_id", botId)
+    .eq("key", "smart_search_daily_spend")
+    .maybeSingle();
+  const custom = t.settings.smart_search_limits?.daily_usd;
+  return {
+    limitUsd: smartSearchUsdLimit(t.settings.smart_search_limits),
+    custom: typeof custom === "number",
+    defaultUsd: DAILY_USD_LIMIT,
+    maxUsd: SMART_SEARCH_USD_MAX,
+    todayUsd: dailySpendUsd(data?.value),
+  };
+}
+
+/** Свой предел умного поиска; null — общий предел платформы. */
+export async function setSmartSearchLimit(
+  botId: string,
+  dailyUsd: number | null,
+  actor = "operator",
+) {
+  const value = dailyUsd == null ? null : { daily_usd: dailyUsd };
+  await patchTenantSettings(botId, { smart_search_limits: value });
+  await logEvent(botId, "meta", { smart_search_limits: value }, actor);
+}
+
 /** Свой предел клиента; null — вернуть общий предел платформы. */
 export async function setConsultantLimits(
   botId: string,

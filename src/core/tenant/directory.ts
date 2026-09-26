@@ -63,6 +63,10 @@ export function settingsFromJson(json: unknown): TenantSettings {
   const adm = obj(s.admin);
   const vip = obj(s.vip);
   const served = s.served_by === "v2" ? "v2" : s.served_by === "v1" ? "v1" : undefined;
+  // Пределы ИИ: только числа, остальное — null («общий предел»).
+  const numOrNull = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const cl = s.consultant_limits;
+  const sl = s.smart_search_limits;
   return {
     slug: str(s.slug)?.toLowerCase(),
     hosts: strList(s.hosts)?.map((h) => h.toLowerCase()),
@@ -113,6 +117,18 @@ export function settingsFromJson(json: unknown): TenantSettings {
     warn_days_before: typeof s.warn_days_before === "number" ? s.warn_days_before : undefined,
     grace_days: typeof s.grace_days === "number" ? s.grace_days : undefined,
     billing: billingFromJson(s.billing),
+    consultant_limits:
+      cl && typeof cl === "object" && !Array.isArray(cl)
+        ? {
+            daily_usd: numOrNull(obj(cl).daily_usd),
+            daily_calls: numOrNull(obj(cl).daily_calls),
+            daily_tests: numOrNull(obj(cl).daily_tests),
+          }
+        : undefined,
+    smart_search_limits:
+      sl && typeof sl === "object" && !Array.isArray(sl)
+        ? { daily_usd: numOrNull(obj(sl).daily_usd) }
+        : undefined,
   };
 }
 

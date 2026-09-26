@@ -8,6 +8,8 @@ import {
   parseDailyCount,
   parseSmartSearchIds,
   parseSpend,
+  SMART_SEARCH_USD_MAX,
+  smartSearchUsdLimit,
   spendExhausted,
 } from "./smart-pure";
 
@@ -65,5 +67,25 @@ describe("дневной предел расходов в долларах", () 
     // дневной потолок по числу запросов стоил бы десятки долларов.
     const worst = estimateUsd({ inputTokens: 90_000, outputTokens: 2_000 });
     expect(worst * 200).toBeGreaterThan(DAILY_USD_LIMIT);
+  });
+});
+
+describe("свой предел умного поиска клиента (bots.settings.smart_search_limits)", () => {
+  const D = "2026-09-26";
+  const day = (usd: number) =>
+    JSON.stringify({ count: 1, inputTokens: 1, outputTokens: 1, usd, date: D });
+
+  it("без настройки — общий предел, своё значение — своё, опечатка в лишний ноль — не выше потолка", () => {
+    expect(smartSearchUsdLimit(undefined)).toBe(DAILY_USD_LIMIT);
+    expect(smartSearchUsdLimit({ daily_usd: null })).toBe(DAILY_USD_LIMIT);
+    expect(smartSearchUsdLimit({ daily_usd: -1 })).toBe(DAILY_USD_LIMIT);
+    expect(smartSearchUsdLimit({ daily_usd: 10 })).toBe(10);
+    expect(smartSearchUsdLimit({ daily_usd: 10_000 })).toBe(SMART_SEARCH_USD_MAX);
+  });
+
+  it("поднятый предел пропускает больше расхода, 0 выключает умный поиск", () => {
+    expect(spendExhausted(day(5), D)).toBe(true);
+    expect(spendExhausted(day(5), D, 10)).toBe(false);
+    expect(spendExhausted(day(0), D, 0)).toBe(true);
   });
 });

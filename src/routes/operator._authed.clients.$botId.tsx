@@ -11,6 +11,7 @@ import {
   setAddressingFn,
   setAdminCredentialsFn,
   setConsultantLimitsFn,
+  setSmartSearchLimitFn,
   setModuleFn,
   setServedByFn,
   setStatusFn,
@@ -58,7 +59,7 @@ export const Route = createFileRoute("/operator/_authed/clients/$botId")({
 });
 
 function ClientPage() {
-  const { client: c, events, webhook, migration, consultant } = Route.useLoaderData();
+  const { client: c, events, webhook, migration, consultant, smartSearch } = Route.useLoaderData();
   const router = useRouter();
   const navigate = useNavigate();
   const refresh = () => router.invalidate();
@@ -146,6 +147,7 @@ function ClientPage() {
           <ZernioCard c={c} onDone={refresh} />
           <MetaCard c={c} onDone={refresh} />
           <ConsultantLimitsCard c={c} budget={consultant} onDone={refresh} />
+          <SmartSearchLimitCard c={c} budget={smartSearch} onDone={refresh} />
           <MessageCard c={c} />
           <BillingCard c={c} />
           <HealthCard c={c} />
@@ -1120,6 +1122,74 @@ function ConsultantLimitsCard({
         </div>
         <p className="text-xs text-muted">
           Пустое поле — общий предел. 0 — ИИ клиенту выключен. Расход идёт с ключа платформы.
+        </p>
+        <div className="flex gap-2">
+          <button className="btn-secondary" disabled={save.busy}>
+            Сохранить предел
+          </button>
+          {budget.custom && (
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled={save.busy}
+              onClick={() => void save.run(null).catch(() => {})}
+            >
+              Вернуть общий
+            </button>
+          )}
+        </div>
+        <ErrorBox error={save.error} />
+      </form>
+    </Card>
+  );
+}
+
+type SB = Awaited<ReturnType<typeof getClientFn>>["smartSearch"];
+
+function SmartSearchLimitCard({
+  c,
+  budget,
+  onDone,
+}: {
+  c: C;
+  budget: SB;
+  onDone: () => Promise<void>;
+}) {
+  const save = useAction(async (dailyUsd: number | null) => {
+    await setSmartSearchLimitFn({ data: { botId: c.id, dailyUsd } });
+    await onDone();
+  });
+  return (
+    <Card title="Предел умного поиска в день">
+      <p className="mb-3 text-sm text-muted">
+        Сегодня (UTC): ${budget.todayUsd.toFixed(2)} из ${budget.limitUsd}.{" "}
+        {budget.custom ? <Badge tone="warn">свой предел</Badge> : <Badge>общий предел</Badge>}
+      </p>
+      <form
+        className="space-y-3"
+        onSubmit={(e: FormEvent<HTMLFormElement>) => {
+          e.preventDefault();
+          const v = String(new FormData(e.currentTarget).get("dailyUsd") ?? "")
+            .trim()
+            .replace(",", ".");
+          void save.run(v === "" ? null : Number(v)).catch(() => {});
+        }}
+      >
+        <Field label="Расход, $" hint={`общий ${budget.defaultUsd}, до ${budget.maxUsd}`}>
+          <input
+            className="input"
+            name="dailyUsd"
+            type="number"
+            min={0}
+            max={budget.maxUsd}
+            step="0.5"
+            defaultValue={budget.custom ? budget.limitUsd : ""}
+            placeholder={String(budget.defaultUsd)}
+          />
+        </Field>
+        <p className="text-xs text-muted">
+          Пустое поле — общий предел. 0 — умный поиск клиенту выключен. Расход идёт с ключа
+          платформы.
         </p>
         <div className="flex gap-2">
           <button className="btn-secondary" disabled={save.busy}>

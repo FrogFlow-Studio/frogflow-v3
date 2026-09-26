@@ -2,6 +2,7 @@ import { SHOP_SLUG_RE } from "@/core/tenant/slug";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { CONSULTANT_LIMIT_MAX } from "@/core/consultant/budget";
+import { SMART_SEARCH_USD_MAX } from "@/core/search/smart-pure";
 import { MODULE_KEYS } from "@/core/modules/registry";
 import { VERTICAL_KEYS } from "@/core/verticals/registry";
 
@@ -83,7 +84,7 @@ export const getClientFn = createServerFn({ method: "GET" })
     await guard();
     const m = await impl();
     const { preflight } = await import("./migration.server");
-    const [client, events, webhook, migration, consultant] = await Promise.all([
+    const [client, events, webhook, migration, consultant, smartSearch] = await Promise.all([
       m.getClient(data.botId),
       m.listEvents(data.botId),
       m.webhookState(data.botId),
@@ -99,8 +100,9 @@ export const getClientFn = createServerFn({ method: "GET" })
         ],
       })),
       m.consultantBudget(data.botId),
+      m.smartSearchBudget(data.botId),
     ]);
-    return { client, events, webhook, migration, consultant };
+    return { client, events, webhook, migration, consultant, smartSearch };
   });
 
 export const updateClientMetaFn = createServerFn({ method: "POST" })
@@ -697,6 +699,17 @@ export const setConsultantLimitsFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await guard();
     await (await impl()).setConsultantLimits(data.botId, data.limits, await actor());
+    return { ok: true };
+  });
+
+/** Дневной предел умного поиска клиента в долларах; null — общий предел. */
+export const setSmartSearchLimitFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ botId, dailyUsd: z.number().min(0).max(SMART_SEARCH_USD_MAX).nullable() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    await (await impl()).setSmartSearchLimit(data.botId, data.dailyUsd, await actor());
     return { ok: true };
   });
 

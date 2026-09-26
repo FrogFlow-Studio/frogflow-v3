@@ -146,6 +146,28 @@ describe("tenant directory", () => {
   });
 });
 
+describe("settings: свои пределы ИИ клиента", () => {
+  it("свой предел консультанта доходит до ядра, мусор отбрасывается", () => {
+    expect(
+      settingsFromJson({
+        consultant_limits: { daily_usd: 40, daily_calls: null, daily_tests: "x" },
+      }).consultant_limits,
+    ).toEqual({ daily_usd: 40, daily_calls: null, daily_tests: null });
+    expect(settingsFromJson({ consultant_limits: null }).consultant_limits).toBeUndefined();
+    expect(settingsFromJson({}).consultant_limits).toBeUndefined();
+  });
+
+  it("свой предел умного поиска в долларах доходит до ядра", () => {
+    expect(
+      settingsFromJson({ smart_search_limits: { daily_usd: 10 } }).smart_search_limits,
+    ).toEqual({ daily_usd: 10 });
+    expect(
+      settingsFromJson({ smart_search_limits: { daily_usd: "10" } }).smart_search_limits,
+    ).toEqual({ daily_usd: null });
+    expect(settingsFromJson({}).smart_search_limits).toBeUndefined();
+  });
+});
+
 describe("settings: default_locale", () => {
   it("принимает только известный язык", () => {
     expect(settingsFromJson({ default_locale: "kk" }).default_locale).toBe("kk");
