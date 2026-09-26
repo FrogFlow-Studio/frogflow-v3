@@ -159,4 +159,28 @@ describe.skipIf(!liveReady)("магазин в WhatsApp списками на д
     expect(order?.platform).toBe("whatsapp");
     expect(order?.status).toBe("awaiting_payment");
   });
+
+  it("корзина из каталога Meta: retailer id = id товара → в корзину и к оформлению", async () => {
+    const before = sent.length;
+    const r = await handleZernioMessage(
+      ctx,
+      event("wa-native-1", {
+        metadata: {
+          order: {
+            catalog_id: "cat1",
+            text: "побыстрее",
+            product_items: [
+              { product_retailer_id: productId, quantity: 2, item_price: 2500, currency: "KZT" },
+            ],
+          },
+        },
+        text: null,
+      }),
+      fake,
+    );
+    expect(r.status).toBe("processed");
+    expect(sent.length).toBeGreaterThan(before);
+    // Оформление началось: вопрос про страну или реквизиты.
+    expect(last().text).toMatch(/стран|реквизит|Заказ #/i);
+  });
 });

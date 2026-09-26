@@ -32,6 +32,8 @@ export const saveDirectBotSettingsFn = createServerFn({ method: "POST" })
           cart: z.boolean(),
           checkout: z.boolean(),
         }),
+        ignoreExcluded: z.boolean().optional(),
+        notifyTemplate: z.string().max(200).optional(),
       })
       .parse(d),
   )
@@ -45,6 +47,8 @@ export const saveDirectBotSettingsFn = createServerFn({ method: "POST" })
       triggers: parseTriggerWords(data.triggers),
       script: data.script,
       features: data.features,
+      ignoreExcluded: data.ignoreExcluded ?? false,
+      notifyTemplate: data.notifyTemplate ?? "",
     });
     return { ok: true };
   });

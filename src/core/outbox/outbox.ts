@@ -23,6 +23,7 @@ export type OutboxTarget =
       conversationId: string;
       accountId: string;
       platform: "instagram" | "whatsapp";
+      phone?: string | null;
     };
 
 export type OutboxMessage = {

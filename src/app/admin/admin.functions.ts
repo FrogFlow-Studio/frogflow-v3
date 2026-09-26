@@ -991,6 +991,24 @@ export const createWhatsAppTemplateFn = createServerFn({ method: "POST" })
         language: z.string().min(2).max(16),
         category: z.enum(["UTILITY", "MARKETING"]),
         body: z.string().min(1).max(1024),
+        buttons: z
+          .array(
+            z.discriminatedUnion("type", [
+              z.object({ type: z.literal("QUICK_REPLY"), text: z.string().min(1).max(25) }),
+              z.object({
+                type: z.literal("URL"),
+                text: z.string().min(1).max(25),
+                url: z.string().url().max(2000),
+              }),
+              z.object({
+                type: z.literal("PHONE_NUMBER"),
+                text: z.string().min(1).max(25),
+                phone: z.string().min(5).max(20),
+              }),
+            ]),
+          )
+          .max(3)
+          .optional(),
       })
       .parse(d),
   )

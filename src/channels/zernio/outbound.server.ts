@@ -7,7 +7,13 @@ import { isZernioPlatform, type ZernioPlatform } from "./platform";
 import { plain } from "./shop-flow";
 
 /** Куда писать покупателю из Instagram/WhatsApp — по его записи в bot_users. */
-export type ZernioTarget = { conversationId: string; accountId: string; platform: ZernioPlatform };
+export type ZernioTarget = {
+  conversationId: string;
+  accountId: string;
+  platform: ZernioPlatform;
+  /** Номер WhatsApp — чтобы написать первым, когда 24-часовое окно закрылось. */
+  phone?: string | null;
+};
 
 export function zernioTargetOf(customer: Customer | null): ZernioTarget | null {
   if (!customer || !isZernioPlatform(customer.platform)) return null;
@@ -16,6 +22,7 @@ export function zernioTargetOf(customer: Customer | null): ZernioTarget | null {
     conversationId: customer.zernioConversationId,
     accountId: customer.zernioAccountId,
     platform: customer.platform,
+    phone: customer.contactPhone,
   };
 }
 

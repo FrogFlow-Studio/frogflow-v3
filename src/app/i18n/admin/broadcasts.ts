@@ -92,6 +92,14 @@ export const ru = {
     "Здравствуйте, {{1}}! У нас новинки: {{2}}. Ответьте «стоп», чтобы отписаться.",
   "broadcasts.templates.submitting": "Отправляем в Meta…",
   "broadcasts.templates.submit": "Отправить на проверку",
+  "broadcasts.templates.buttons": "Кнопки под текстом",
+  "broadcasts.templates.buttonsHint":
+    "До трёх: быстрый ответ, ссылка или звонок. Meta проверяет их вместе с текстом.",
+  "broadcasts.templates.btnQuick": "быстрый ответ",
+  "broadcasts.templates.btnUrl": "ссылка",
+  "broadcasts.templates.btnPhone": "звонок",
+  "broadcasts.templates.btnText": "Надпись (до 25 знаков)",
+  "broadcasts.templates.addButton": "+ Кнопка",
   "broadcasts.templates.empty": "Шаблонов ещё нет.",
   // исключённые номера
   "broadcasts.excluded.title": "Не писать этим номерам",
@@ -202,6 +210,14 @@ export const kk: SectionDict<typeof ru> = {
     "Сәлеметсіз бе, {{1}}! Бізде жаңалықтар бар: {{2}}. Жазылудан бас тарту үшін «стоп» деп жауап беріңіз.",
   "broadcasts.templates.submitting": "Meta-ға жіберілуде…",
   "broadcasts.templates.submit": "Тексеруге жіберу",
+  "broadcasts.templates.buttons": "Мәтін астындағы түймелер",
+  "broadcasts.templates.buttonsHint":
+    "Үшке дейін: жылдам жауап, сілтеме немесе қоңырау. Meta оларды мәтінмен бірге тексереді.",
+  "broadcasts.templates.btnQuick": "жылдам жауап",
+  "broadcasts.templates.btnUrl": "сілтеме",
+  "broadcasts.templates.btnPhone": "қоңырау",
+  "broadcasts.templates.btnText": "Жазуы (25 таңбаға дейін)",
+  "broadcasts.templates.addButton": "+ Түйме",
   "broadcasts.templates.empty": "Шаблондар әзірге жоқ.",
   "broadcasts.excluded.title": "Бұл нөмірлерге жазбау",
   "broadcasts.excluded.intro":
@@ -311,6 +327,14 @@ export const en: SectionDict<typeof ru> = {
     "Hello, {{1}}! New arrivals: {{2}}. Reply “stop” to unsubscribe.",
   "broadcasts.templates.submitting": "Sending to Meta…",
   "broadcasts.templates.submit": "Submit for review",
+  "broadcasts.templates.buttons": "Buttons under the text",
+  "broadcasts.templates.buttonsHint":
+    "Up to three: quick reply, link or call. Meta reviews them together with the text.",
+  "broadcasts.templates.btnQuick": "quick reply",
+  "broadcasts.templates.btnUrl": "link",
+  "broadcasts.templates.btnPhone": "call",
+  "broadcasts.templates.btnText": "Label (up to 25 characters)",
+  "broadcasts.templates.addButton": "+ Button",
   "broadcasts.templates.empty": "No templates yet.",
   "broadcasts.excluded.title": "Do not message these numbers",
   "broadcasts.excluded.intro":
@@ -419,6 +443,14 @@ export const uz: SectionDict<typeof ru> = {
     "Assalomu alaykum, {{1}}! Bizda yangiliklar: {{2}}. Obunani bekor qilish uchun «stop» deb javob bering.",
   "broadcasts.templates.submitting": "Meta-ga yuborilmoqda…",
   "broadcasts.templates.submit": "Tekshiruvga yuborish",
+  "broadcasts.templates.buttons": "Matn ostidagi tugmalar",
+  "broadcasts.templates.buttonsHint":
+    "Uchtagacha: tez javob, havola yoki qo‘ng‘iroq. Meta ularni matn bilan birga tekshiradi.",
+  "broadcasts.templates.btnQuick": "tez javob",
+  "broadcasts.templates.btnUrl": "havola",
+  "broadcasts.templates.btnPhone": "qo‘ng‘iroq",
+  "broadcasts.templates.btnText": "Yozuv (25 belgigacha)",
+  "broadcasts.templates.addButton": "+ Tugma",
   "broadcasts.templates.empty": "Shablonlar hali yo‘q.",
   "broadcasts.excluded.title": "Bu raqamlarga yozilmasin",
   "broadcasts.excluded.intro":

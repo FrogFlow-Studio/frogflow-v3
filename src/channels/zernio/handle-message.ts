@@ -85,6 +85,13 @@ export async function handleZernioMessage(
   const bot = await loadDirectBotSettings(ctx, m.platform);
   if (!bot.enabled && !isConsultantVertical(ctx.tenant.vertical))
     return processed("автоответчик выключен в настройках канала");
+  if (m.platform === "whatsapp" && bot.ignoreExcluded) {
+    const { excludedPhoneSet, isExcludedSender } = await import("@/core/whatsapp/exclusions");
+    const { getSetting } = await import("@/core/settings/settings");
+    const excluded = excludedPhoneSet(await getSetting(ctx, "whatsapp_bot_excluded_phones"));
+    if (isExcludedSender(excluded, m.senderPhone, m.senderId))
+      return ignored("номер в списке исключений продавца");
+  }
 
   // Магазин в переписке — отдельный модуль на канал; свободный вопрос
   // уходит дальше консультанту или продавцу.
@@ -96,6 +103,18 @@ export async function handleZernioMessage(
     const r = await handleShopMessage(ctx, customer, m, transport, bot);
     customerNow = r.customer;
     if (r.outcome === "handled") return processed("магазин");
+  } else if (m.nativeOrder) {
+    // Корзина из каталога Meta без магазина в переписке — продавцу текстом, как в v1.
+    const { describeNativeCart } = await import("@/core/whatsapp/native-cart");
+    const who = customer.username ? `@${customer.username}` : customer.firstName || m.senderId;
+    await notifyAdminsHtml(
+      ctx,
+      describeNativeCart(escapeHtml(who), m.nativeOrder.items, m.nativeOrder.note),
+      {
+        kind: "native_cart",
+      },
+    ).catch(() => 0);
+    return processed("корзина из каталога WhatsApp — продавцу");
   }
 
   const consultant = await import("@/core/consultant/engine.server");

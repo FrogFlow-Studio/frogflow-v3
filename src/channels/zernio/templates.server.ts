@@ -4,6 +4,7 @@
  * `whatsapp_templates` (core/whatsapp/templates), источник истины — Meta.
  */
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import type { Json } from "@/core/db-types";
 import {
   applyTemplateStatus,
   normalizeTemplateName,
@@ -43,13 +44,39 @@ export async function syncWhatsAppTemplates(
   }
 }
 
+export type TemplateButton =
+  | { type: "QUICK_REPLY"; text: string }
+  | { type: "URL"; text: string; url: string }
+  | { type: "PHONE_NUMBER"; text: string; phone: string };
+
 export type NewTemplateInput = {
   accountId: string;
   name: string;
   language: string;
   category: "UTILITY" | "MARKETING";
   body: string;
+  /** До трёх кнопок под текстом — форма компонента BUTTONS у Meta. */
+  buttons?: TemplateButton[];
 };
+
+export function buttonsComponent(buttons: TemplateButton[] | undefined): Json | null {
+  const list = (buttons ?? []).filter((b) => b.text.trim()).slice(0, 3);
+  if (!list.length) return null;
+  return {
+    type: "BUTTONS",
+    buttons: list.map((b) =>
+      b.type === "URL"
+        ? { type: "URL", text: b.text.trim(), url: b.url.trim() }
+        : b.type === "PHONE_NUMBER"
+          ? {
+              type: "PHONE_NUMBER",
+              text: b.text.trim(),
+              phone_number: b.phone.replace(/[^\d+]/g, ""),
+            }
+          : { type: "QUICK_REPLY", text: b.text.trim() },
+    ),
+  };
+}
 
 /**
  * Заявка на шаблон: тело с плейсхолдерами `{{1}}…{{n}}` уходит в Meta как
@@ -67,7 +94,9 @@ export async function submitWhatsAppTemplate(
   if (!name) return { ok: false, error: "Имя шаблона: строчные латинские буквы, цифры и «_»." };
   const body = input.body.trim();
   if (!body) return { ok: false, error: "Текст шаблона пуст." };
-  const components = [{ type: "BODY", text: body }];
+  const components: Json[] = [{ type: "BODY", text: body }];
+  const buttons = buttonsComponent(input.buttons);
+  if (buttons) components.push(buttons);
   const r = await api.create({
     accountId: input.accountId,
     name,

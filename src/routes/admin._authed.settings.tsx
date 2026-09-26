@@ -606,6 +606,8 @@ function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp" }) {
         triggers: s.triggersText,
         script: s.script,
         features: s.features,
+        ignoreExcluded: s.ignoreExcluded,
+        notifyTemplate: s.notifyTemplate,
       },
     });
     setSaved(true);
@@ -694,6 +696,32 @@ function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp" }) {
               {feature("checkout", t("settings.dbot.feature.checkout"))}
             </div>
           </Field>
+          {platform === "whatsapp" && (
+            <>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={s.ignoreExcluded}
+                  disabled={!owner}
+                  onChange={(e) => setS({ ...s, ignoreExcluded: e.target.checked })}
+                />
+                {t("settings.dbot.ignoreExcluded")}
+              </label>
+              <Field
+                label={t("settings.dbot.notifyTemplate")}
+                hint={t("settings.dbot.notifyTemplateHint")}
+              >
+                <input
+                  className="input"
+                  value={s.notifyTemplate}
+                  disabled={!owner}
+                  placeholder="order_update:ru"
+                  onChange={(e) => setS({ ...s, notifyTemplate: e.target.value })}
+                />
+              </Field>
+              <p className="text-xs text-muted">{t("settings.dbot.nativeCatalogHint")}</p>
+            </>
+          )}
           {owner && (
             <div className="flex items-center gap-3">
               <button className="btn-primary" disabled={save.busy}>

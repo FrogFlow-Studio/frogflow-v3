@@ -20,7 +20,16 @@ export const DIRECT_BOT_PREFIX: Record<DirectBotPlatform, string> = {
   whatsapp: "whatsapp_bot_",
 };
 
-export const DIRECT_BOT_SUFFIXES = ["enabled", "scope", "triggers", "script", "features"] as const;
+export const DIRECT_BOT_SUFFIXES = [
+  "enabled",
+  "scope",
+  "triggers",
+  "script",
+  "features",
+  // только WhatsApp
+  "ignore_excluded_contacts",
+  "notify_template",
+] as const;
 
 export type DirectBotFeatures = {
   catalog: boolean;
@@ -35,6 +44,10 @@ export type DirectBotSettings = {
   triggers: string[];
   script: string;
   features: DirectBotFeatures;
+  /** WhatsApp: не отвечать номерам из списка исключений (`whatsapp_bot_excluded_phones`). */
+  ignoreExcluded: boolean;
+  /** WhatsApp: одобренный шаблон «имя:язык» для уведомлений вне 24-часового окна. */
+  notifyTemplate: string;
 };
 
 export const DEFAULT_DIRECT_BOT: DirectBotSettings = {
@@ -43,6 +56,8 @@ export const DEFAULT_DIRECT_BOT: DirectBotSettings = {
   triggers: [],
   script: "",
   features: { catalog: true, search: true, cart: true, checkout: true },
+  ignoreExcluded: false,
+  notifyTemplate: "",
 };
 
 export function directBotSettingKeys(platform: DirectBotPlatform): string[] {
@@ -97,6 +112,8 @@ export function directBotSettingsFrom(
     triggers: parseTriggerWords(v("triggers")),
     script: v("script"),
     features: parseFeatures(v("features")),
+    ignoreExcluded: v("ignore_excluded_contacts") === "true",
+    notifyTemplate: v("notify_template"),
   };
 }
 
@@ -125,4 +142,8 @@ export async function saveDirectBotSettings(
   await setSetting(ctx, `${p}triggers`, s.triggers.join(", "));
   await setSetting(ctx, `${p}script`, s.script.trim());
   await setSetting(ctx, `${p}features`, JSON.stringify(s.features));
+  if (platform === "whatsapp") {
+    await setSetting(ctx, `${p}ignore_excluded_contacts`, s.ignoreExcluded ? "true" : "false");
+    await setSetting(ctx, `${p}notify_template`, s.notifyTemplate.trim());
+  }
 }

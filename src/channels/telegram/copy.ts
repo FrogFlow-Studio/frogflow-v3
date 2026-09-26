@@ -109,6 +109,8 @@ export type Msg = {
   contactAuthor: (link: string) => string;
   contactNotSet: string;
   useMenu: string;
+  /** Корзина из каталога Meta не совпала с товарами — заказ ушёл продавцу. */
+  nativeCartForwarded: string;
   notReceiptLike: (no: string) => string;
   receiptPaymentFailed: (no: string) => string;
   receiptManualReview: (no: string) => string;
@@ -294,6 +296,8 @@ const ru: Msg = {
   contactAuthor: (l) => `💬 Связаться с продавцом: ${l}`,
   contactNotSet: "Продавец ещё не указал контакт для связи.",
   useMenu: "Выберите раздел в меню ниже 👇",
+  nativeCartForwarded:
+    "Получил вашу корзину из каталога и передал продавцу — он подтвердит заказ и напишет здесь.",
   yourId: (id) => `Ваш Telegram ID: <code>${id}</code>`,
   fileLink: "📥 Нажмите здесь, чтобы скачать файл",
   fileLinkTtl: "Ссылка действует 7 дней",
@@ -369,6 +373,8 @@ const kk: Msg = {
   giftCertificateInvalid: "⚠️ Сертификат жарамсыз немесе бұрын пайдаланылған.",
   chooseCountry: "🌍 Төлем елін таңдаңыз:",
   useMenu: "Төмендегі мәзірден бөлімді таңдаңыз 👇",
+  nativeCartForwarded:
+    "Каталогтан жиналған себетіңізді алдым және сатушыға бердім — ол тапсырысты растап, осында жазады.",
 };
 
 const en: Msg = {
@@ -456,6 +462,8 @@ const en: Msg = {
   sendReceiptPrompt:
     "Please send a photo or PDF of your payment receipt. Tap any menu button to go back.",
   useMenu: "Pick a section from the menu below 👇",
+  nativeCartForwarded:
+    "Got your cart from the catalog and passed it to the seller — they will confirm the order and reply here.",
 };
 
 const uz: Msg = {
@@ -515,6 +523,8 @@ const uz: Msg = {
   giftCertificateBtn: "🎫 Sertifikat kodini kiritish",
   removeGiftCertificateBtn: "❌ Sertifikatni olib tashlash",
   useMenu: "Quyidagi menyudan bo‘limni tanlang 👇",
+  nativeCartForwarded:
+    "Katalogdan yig‘ilgan savatingizni oldim va sotuvchiga uzatdim — u buyurtmani tasdiqlab, shu yerda yozadi.",
 };
 
 export const COPY: Record<Locale, Msg> = { ru, kk, en, uz };

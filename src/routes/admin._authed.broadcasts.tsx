@@ -606,15 +606,37 @@ function TemplatesCard({ wa }: { wa: WhatsApp }) {
   const [language, setLanguage] = useState("ru");
   const [category, setCategory] = useState<"UTILITY" | "MARKETING">("MARKETING");
   const [body, setBody] = useState("");
+  type Btn = { type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER"; text: string; value: string };
+  const [buttons, setButtons] = useState<Btn[]>([]);
+  const setBtn = (i: number, patch: Partial<Btn>) =>
+    setButtons((bs) => bs.map((b, j) => (j === i ? { ...b, ...patch } : b)));
 
   const sync = useAction(async () => {
     for (const a of wa.accounts) await syncWhatsAppTemplatesFn({ data: { accountId: a.id } });
     await router.invalidate();
   });
   const create = useAction(async () => {
-    await createWhatsAppTemplateFn({ data: { accountId, name, language, category, body } });
+    await createWhatsAppTemplateFn({
+      data: {
+        accountId,
+        name,
+        language,
+        category,
+        body,
+        buttons: buttons
+          .filter((b) => b.text.trim())
+          .map((b) =>
+            b.type === "URL"
+              ? { type: "URL" as const, text: b.text, url: b.value }
+              : b.type === "PHONE_NUMBER"
+                ? { type: "PHONE_NUMBER" as const, text: b.text, phone: b.value }
+                : { type: "QUICK_REPLY" as const, text: b.text },
+          ),
+      },
+    });
     setName("");
     setBody("");
+    setButtons([]);
     setOpen(false);
     await router.invalidate();
   });
@@ -712,6 +734,61 @@ function TemplatesCard({ wa }: { wa: WhatsApp }) {
               placeholder={t("broadcasts.templates.bodyPlaceholder")}
               required
             />
+          </Field>
+          <Field
+            label={t("broadcasts.templates.buttons")}
+            hint={t("broadcasts.templates.buttonsHint")}
+          >
+            <div className="space-y-2">
+              {buttons.map((b, i) => (
+                <div key={i} className="grid gap-2 sm:grid-cols-[auto_1fr_1fr_auto]">
+                  <select
+                    className="input"
+                    value={b.type}
+                    onChange={(e) => setBtn(i, { type: e.target.value as Btn["type"], value: "" })}
+                  >
+                    <option value="QUICK_REPLY">{t("broadcasts.templates.btnQuick")}</option>
+                    <option value="URL">{t("broadcasts.templates.btnUrl")}</option>
+                    <option value="PHONE_NUMBER">{t("broadcasts.templates.btnPhone")}</option>
+                  </select>
+                  <input
+                    className="input"
+                    maxLength={25}
+                    placeholder={t("broadcasts.templates.btnText")}
+                    value={b.text}
+                    onChange={(e) => setBtn(i, { text: e.target.value })}
+                  />
+                  {b.type !== "QUICK_REPLY" ? (
+                    <input
+                      className="input"
+                      placeholder={b.type === "URL" ? "https://…" : "+7…"}
+                      value={b.value}
+                      onChange={(e) => setBtn(i, { value: e.target.value })}
+                    />
+                  ) : (
+                    <span />
+                  )}
+                  <button
+                    type="button"
+                    className="btn-ghost text-xs text-danger"
+                    onClick={() => setButtons((bs) => bs.filter((_, j) => j !== i))}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {buttons.length < 3 && (
+                <button
+                  type="button"
+                  className="btn-ghost text-xs"
+                  onClick={() =>
+                    setButtons((bs) => [...bs, { type: "QUICK_REPLY", text: "", value: "" }])
+                  }
+                >
+                  {t("broadcasts.templates.addButton")}
+                </button>
+              )}
+            </div>
           </Field>
           <button className="btn-primary" disabled={create.busy}>
             {create.busy ? t("broadcasts.templates.submitting") : t("broadcasts.templates.submit")}

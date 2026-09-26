@@ -20,6 +20,8 @@ describe("настройки автоответчика Direct/WhatsApp", () => 
       triggers: [],
       script: "",
       features: { catalog: true, search: true, cart: true, checkout: true },
+      ignoreExcluded: false,
+      notifyTemplate: "",
     });
   });
   it("читает значения v1: выключен, на все сообщения, слова-вызовы, функции", () => {
@@ -30,6 +32,8 @@ describe("настройки автоответчика Direct/WhatsApp", () => 
         whatsapp_bot_triggers: "Заказать, купить!\nПрайс;",
         whatsapp_bot_features: '{"checkout":false,"cart":"нет"}',
         whatsapp_bot_script: "  Напишите «каталог».  ",
+        whatsapp_bot_ignore_excluded_contacts: "true",
+        whatsapp_bot_notify_template: "order_update:ru",
       },
       "whatsapp",
     );
@@ -38,6 +42,8 @@ describe("настройки автоответчика Direct/WhatsApp", () => 
     expect(s.triggers).toEqual(["заказать", "купить", "прайс"]);
     expect(s.features).toEqual({ catalog: true, search: true, cart: true, checkout: false });
     expect(s.script).toBe("Напишите «каталог».");
+    expect(s.ignoreExcluded).toBe(true);
+    expect(s.notifyTemplate).toBe("order_update:ru");
   });
   it("слово-вызов совпадает целиком без учёта регистра и знаков", () => {
     const triggers = parseTriggerWords("прайс, хочу заказать");

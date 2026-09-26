@@ -101,6 +101,12 @@ export const ru = {
   "settings.dbot.feature.search": "поиск по номеру",
   "settings.dbot.feature.cart": "корзина",
   "settings.dbot.feature.checkout": "оформление заказа",
+  "settings.dbot.ignoreExcluded": "Не отвечать номерам из списка исключений (раздел «Рассылки»)",
+  "settings.dbot.notifyTemplate": "Шаблон для сообщений вне 24-часового окна",
+  "settings.dbot.notifyTemplateHint":
+    "Имя одобренного Meta шаблона с одним параметром {{1}} и язык через двоеточие. Без него бот попробует служебную отправку без шаблона.",
+  "settings.dbot.nativeCatalogHint":
+    "Корзина из каталога Meta: чтобы бот оформил такой заказ сам, укажите в каталоге Meta артикулом (Content ID) id товара, его номер или точное название из админки.",
   "settings.ch.connectInstagram": "Подключить Instagram",
   "settings.ch.connectWhatsapp": "Подключить WhatsApp",
   "settings.ch.refresh": "Обновить список",
@@ -286,6 +292,13 @@ export const kk: SectionDict<typeof ru> = {
   "settings.dbot.feature.search": "нөмір бойынша іздеу",
   "settings.dbot.feature.cart": "себет",
   "settings.dbot.feature.checkout": "тапсырысты рәсімдеу",
+  "settings.dbot.ignoreExcluded":
+    "Ерекшелік тізіміндегі нөмірлерге жауап бермеу («Хабарламалар» бөлімі)",
+  "settings.dbot.notifyTemplate": "24 сағаттық терезеден тыс хабарламалар шаблоны",
+  "settings.dbot.notifyTemplateHint":
+    "Бір {{1}} параметрі бар Meta бекіткен шаблон атауы және қос нүкте арқылы тілі. Онсыз бот шаблонсыз қызметтік жіберуді сынайды.",
+  "settings.dbot.nativeCatalogHint":
+    "Meta каталогынан себет: бот мұндай тапсырысты өзі рәсімдеуі үшін Meta каталогында артикул (Content ID) ретінде тауар id-ін, нөмірін немесе әкімші панеліндегі нақты атауын көрсетіңіз.",
   "settings.ch.connectInstagram": "Instagram қосу",
   "settings.ch.connectWhatsapp": "WhatsApp қосу",
   "settings.ch.refresh": "Тізімді жаңарту",
@@ -461,6 +474,13 @@ export const en: SectionDict<typeof ru> = {
   "settings.dbot.feature.search": "search by number",
   "settings.dbot.feature.cart": "cart",
   "settings.dbot.feature.checkout": "checkout",
+  "settings.dbot.ignoreExcluded":
+    "Do not reply to numbers on the exclusion list (Broadcasts section)",
+  "settings.dbot.notifyTemplate": "Template for messages outside the 24-hour window",
+  "settings.dbot.notifyTemplateHint":
+    "Name of an approved Meta template with one {{1}} parameter and the language after a colon. Without it the bot tries a utility send without a template.",
+  "settings.dbot.nativeCatalogHint":
+    "Meta catalog cart: for the bot to place such an order itself, set the product id, its number or the exact name from this panel as the Content ID in the Meta catalog.",
   "settings.ch.connectInstagram": "Connect Instagram",
   "settings.ch.connectWhatsapp": "Connect WhatsApp",
   "settings.ch.refresh": "Refresh list",
@@ -639,6 +659,13 @@ export const uz: SectionDict<typeof ru> = {
   "settings.dbot.feature.search": "raqam bo‘yicha qidiruv",
   "settings.dbot.feature.cart": "savat",
   "settings.dbot.feature.checkout": "buyurtmani rasmiylashtirish",
+  "settings.dbot.ignoreExcluded":
+    "Istisno ro‘yxatidagi raqamlarga javob bermaslik («Xabarlar» bo‘limi)",
+  "settings.dbot.notifyTemplate": "24 soatlik oynadan tashqari xabarlar uchun shablon",
+  "settings.dbot.notifyTemplateHint":
+    "Bitta {{1}} parametrli Meta tasdiqlagan shablon nomi va ikki nuqtadan keyin til. Usiz bot shablonsiz xizmat yuborishni sinab ko‘radi.",
+  "settings.dbot.nativeCatalogHint":
+    "Meta katalogidan savat: bot bunday buyurtmani o‘zi rasmiylashtirishi uchun Meta katalogida artikul (Content ID) sifatida mahsulot id-si, raqami yoki paneldagi aniq nomini ko‘rsating.",
   "settings.ch.connectInstagram": "Instagramni ulash",
   "settings.ch.connectWhatsapp": "WhatsAppni ulash",
   "settings.ch.refresh": "Ro‘yxatni yangilash",

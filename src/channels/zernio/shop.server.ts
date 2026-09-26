@@ -54,11 +54,16 @@ import { formatRatingSummary } from "@/core/reviews/pure";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
 import { askDeliveryLangBeforeOrder, cartLanguageChoices } from "@/core/cart/languages";
 import { localeFlags as flags, SUPPORTED_LOCALES } from "@/core/i18n/locale";
-import { COPY, normalizePhone, type Msg } from "@/channels/telegram/copy";
-import { adminTelegramApi, notifyDeliveryFailure } from "@/channels/telegram/notify";
+import { COPY, escapeHtml, normalizePhone, type Msg } from "@/channels/telegram/copy";
+import {
+  adminTelegramApi,
+  notifyAdminsHtml,
+  notifyDeliveryFailure,
+} from "@/channels/telegram/notify";
 import { liveTransport, type DmButton, type ZernioTransport } from "./api.server";
 import { zernioMaterialSender } from "./deliver";
-import type { ParsedZernioMessage } from "./message";
+import type { NativeOrder, ParsedZernioMessage } from "./message";
+import { describeNativeCart, matchNativeItems } from "@/core/whatsapp/native-cart";
 import type { ZernioPlatform } from "./platform";
 import {
   classifyIncoming,
@@ -250,6 +255,9 @@ export async function handleShopMessage(
 async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const text = msg.text;
   const mode = s.customer.state.mode;
+
+  // Корзина из каталога Meta — штатная корзина WhatsApp мимо бота.
+  if (msg.nativeOrder) return handleNativeCart(s, msg.nativeOrder);
 
   // Строка списка WhatsApp «STEP:<n>» — ответ на текущий шаг, как набранная цифра.
   const step = stepAnswer(msg.postbackPayload);
@@ -484,6 +492,47 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     case "question":
       return "question";
   }
+}
+
+/**
+ * Корзина из каталога Meta: позиции сопоставляются с товарами админки по
+ * retailer id (id товара, номер или название). Совпало — в корзину и сразу к
+ * оформлению; нет — продавцу в Telegram текстом, покупателю «передал».
+ */
+async function handleNativeCart(s: Shop, order: NativeOrder): Promise<ShopOutcome> {
+  const { data } = await s.ctx.db
+    .from("products")
+    .select("id, name, keywords")
+    .eq("is_active", true)
+    .limit(1000);
+  const match = matchNativeItems(order.items, data ?? []);
+  const who = s.customer.username
+    ? `@${s.customer.username}`
+    : s.customer.firstName || s.customer.userKey;
+  if (match.unmatched.length) {
+    await notifyAdminsHtml(
+      s.ctx,
+      describeNativeCart(escapeHtml(who), match.unmatched, order.note) +
+        (match.matched.length
+          ? `\n\nОстальные позиции (${match.matched.map((m) => m.name).join(", ")}) бот положил в корзину покупателя.`
+          : ""),
+      { kind: "native_cart" },
+    ).catch(() => 0);
+  }
+  if (!match.matched.length) {
+    await reply(s, plain(s.m.nativeCartForwarded), { force: true });
+    return "handled";
+  }
+  let added = 0;
+  for (const m of match.matched)
+    for (let i = 0; i < Math.min(m.quantity, 20); i++)
+      if ((await addToCart(s.ctx, s.customer, m.productId)) === "ok") added++;
+  if (!added) {
+    await reply(s, plain(s.m.nativeCartForwarded), { force: true });
+    return "handled";
+  }
+  await startCheckout(s);
+  return "handled";
 }
 
 /** Выключенная продавцом часть магазина: команда и кнопка не отвечают, реплика уходит как вопрос. */
