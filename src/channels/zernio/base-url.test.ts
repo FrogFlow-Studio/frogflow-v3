@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeZernioBaseUrl } from "./base-url";
+import { attachmentNeedsZernioKey, normalizeZernioBaseUrl } from "./base-url";
 
 describe("normalizeZernioBaseUrl", () => {
   it("пусто — адрес API по умолчанию", () => {
@@ -14,5 +14,26 @@ describe("normalizeZernioBaseUrl", () => {
     expect(normalizeZernioBaseUrl("https://api.example.com/v2/")).toBe(
       "https://api.example.com/v2",
     );
+  });
+});
+
+describe("attachmentNeedsZernioKey", () => {
+  it("ключ — только на хост API Zernio и только по https", () => {
+    expect(attachmentNeedsZernioKey("https://zernio.com/api/v1/media/abc", undefined)).toBe(true);
+    expect(
+      attachmentNeedsZernioKey("https://api.example.io/files/x", "https://api.example.io/v1"),
+    ).toBe(true);
+    expect(attachmentNeedsZernioKey("http://zernio.com/api/v1/media/abc", undefined)).toBe(false);
+  });
+
+  it("чужие хосты и похожие имена ключ не получают", () => {
+    for (const url of [
+      "https://scontent.cdninstagram.com/v/t51/abc.jpg",
+      "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=1",
+      "https://zernio.com.evil.io/api/v1/media",
+      "https://evil.io/?u=https://zernio.com/api/v1",
+      "not a url",
+    ])
+      expect(attachmentNeedsZernioKey(url, undefined), url).toBe(false);
   });
 });

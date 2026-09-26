@@ -200,7 +200,9 @@ export const saveTeamMemberFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await adminOwner();
+    const ctx = await (
+      await import("@/app/auth/guards.server")
+    ).requireAdminModule("admin_roles", "owner");
     await (await import("./admin.server")).saveTeamMember(ctx, data);
     return { ok: true };
   });

@@ -2,13 +2,18 @@ import { describe, expect, it } from "vitest";
 import { adminLoginTaken, findAdminLogin, loginInTenant, roleAllows } from "./roles";
 import type { Tenant } from "@/core/tenant/types";
 
-const tenant = (id: string, admin: Tenant["settings"]["admin"], archived = false) =>
+const tenant = (
+  id: string,
+  admin: Tenant["settings"]["admin"],
+  archived = false,
+  modules: Partial<Tenant["modules"]> = { admin_roles: true },
+) =>
   ({
     id,
     name: id,
     archived,
     settings: { admin },
-    modules: {},
+    modules,
     status: "active",
   }) as unknown as Tenant;
 
@@ -72,5 +77,24 @@ describe("сессия сверяется с текущей командой", (
     expect(loginInTenant(shops[0]!, "bob")).toBeNull();
     expect(loginInTenant(tenant("c", { username: "nopass" }), "nopass")).toBeNull();
     expect(loginInTenant(shops[0]!, "anna")?.role).toBe("owner");
+  });
+});
+
+describe("команда — платный модуль admin_roles", () => {
+  it("без модуля входит только владелец, но логины команды остаются занятыми", () => {
+    const off = tenant(
+      "a",
+      {
+        username: "anna",
+        password_hash: "h-anna",
+        users: [{ username: "manager1", password_hash: "h-m", role: "manager" }],
+      },
+      false,
+      {},
+    );
+    expect(findAdminLogin([off], "manager1")).toBeNull();
+    expect(loginInTenant(off, "manager1")).toBeNull();
+    expect(loginInTenant(off, "anna")?.role).toBe("owner");
+    expect(adminLoginTaken([off], "manager1")).toBe(true);
   });
 });

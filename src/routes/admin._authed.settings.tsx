@@ -250,10 +250,10 @@ function SettingsPage() {
         {shop.modules.smart_search && (
           <SmartSearchCard settings={settings} hasKey={smartSearchKey} />
         )}
-        <LegalCard settings={settings} />
-        <NotifyCard />
+        {shop.modules.legal_docs && <LegalCard settings={settings} />}
+        {shop.modules.notify_in_bot && <NotifyCard />}
         {shop.modules.crm_integration && <CrmCard />}
-        <TeamCard />
+        {shop.modules.admin_roles && <TeamCard />}
       </div>
     </>
   );

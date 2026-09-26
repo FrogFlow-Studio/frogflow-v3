@@ -61,7 +61,12 @@ import {
   notifyAdminsHtml,
   notifyDeliveryFailure,
 } from "@/channels/telegram/notify";
-import { liveTransport, type DmButton, type ZernioTransport } from "./api.server";
+import {
+  downloadAttachment,
+  liveTransport,
+  type DmButton,
+  type ZernioTransport,
+} from "./api.server";
 import { zernioMaterialSender } from "./deliver";
 import type { NativeOrder, ParsedZernioMessage } from "./message";
 import { describeNativeCart, matchNativeItems } from "@/core/whatsapp/native-cart";
@@ -137,7 +142,6 @@ type Shop = {
 const LIST_TTL_MS = 30 * 60 * 1000;
 const REPEAT_WINDOW_MS = 90 * 1000;
 const PAGE = 10;
-const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 function memory(c: Customer): DirectMemory {
   const d = c.state.direct;
@@ -1363,27 +1367,8 @@ async function choosePayment(s: Shop, kind: "rk" | "manual") {
 
 // ── чек и выдача ──────────────────────────────────────────────────────
 
-async function downloadAttachment(
-  url: string,
-): Promise<{ bytes: Uint8Array; mime: string } | null> {
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-    if (!res.ok) return null;
-    const buf = await res.arrayBuffer();
-    if (buf.byteLength === 0 || buf.byteLength > MAX_ATTACHMENT_BYTES) return null;
-    return {
-      bytes: new Uint8Array(buf),
-      mime: res.headers.get("content-type") ?? "application/octet-stream",
-    };
-  } catch {
-    return null;
-  }
-}
-
 async function receiveProof(s: Shop, url: string, orderId: number) {
-  const file = s.transport.download
-    ? await s.transport.download(url)
-    : await downloadAttachment(url);
+  const file = await (s.transport.download ?? downloadAttachment)(url);
   if (!file) {
     await reply(s, s.m.proofFailed, { force: true });
     return;

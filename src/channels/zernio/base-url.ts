@@ -18,3 +18,19 @@ export function normalizeZernioBaseUrl(value?: string | null): string {
     return configured.replace(/\/$/, "");
   }
 }
+
+/**
+ * Нужен ли ключ Zernio, чтобы скачать вложение по этой ссылке. Вложения
+ * WhatsApp Zernio отдаёт через свой API (медиа Meta без токена не отдаётся),
+ * и без ключа приходит 401 — чек «не скачался». Ключ уходит только на хост
+ * API Zernio и только по https: ссылке на чужой хост ключ не показываем.
+ */
+export function attachmentNeedsZernioKey(url: string, baseUrl?: string | null): boolean {
+  try {
+    const u = new URL(url);
+    const api = new URL(normalizeZernioBaseUrl(baseUrl));
+    return u.protocol === "https:" && u.host === api.host;
+  } catch {
+    return false;
+  }
+}

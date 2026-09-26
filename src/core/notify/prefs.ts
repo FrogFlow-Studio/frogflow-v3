@@ -141,7 +141,13 @@ export function notifyKindOf(raw: string | undefined): NotifyKind {
   }
 }
 
+/**
+ * Матрица, почта, тихие часы и дайджест — модуль notify_in_bot. Без него всё
+ * уходит в Telegram сразу, как в базовом пакете; сохранённые настройки не
+ * стираются и вернутся, когда модуль снова включат.
+ */
 export async function loadNotifyPrefs(ctx: TenantContext): Promise<NotifyPrefs> {
+  if (!ctx.tenant.modules.notify_in_bot) return defaultNotifyPrefs();
   return parseNotifyPrefs(await getSetting(ctx, NOTIFY_PREFS_KEY));
 }
 

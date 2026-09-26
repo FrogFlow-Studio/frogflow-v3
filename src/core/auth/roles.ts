@@ -47,7 +47,9 @@ export function findAdminLogin(tenants: readonly Tenant[], username: string): Ad
     const a = t.settings.admin;
     if (a?.username === u)
       return { tenant: t, role: "owner", passwordHash: a.password_hash, name: null };
-    const user = a?.users?.find((x) => x.username === u);
+    // Пользователи команды входят, только пока оплачен модуль admin_roles;
+    // логин при этом остаётся занятым (adminLoginTaken их по-прежнему видит).
+    const user = t.modules.admin_roles ? a?.users?.find((x) => x.username === u) : undefined;
     if (user)
       return {
         tenant: t,

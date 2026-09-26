@@ -1,6 +1,6 @@
 import { env } from "@/config/env";
 import type { Json } from "@/core/db-types";
-import { normalizeZernioBaseUrl } from "./base-url";
+import { attachmentNeedsZernioKey, normalizeZernioBaseUrl } from "./base-url";
 import { idempotencyKeyFor } from "./event-context.server";
 import { normalizeInboxMessage, type ZernioInboxMessage } from "./inbox-types";
 import type { ZernioPlatform } from "./platform";
@@ -417,11 +417,47 @@ export const zernioRequest = request;
 export type ZernioTransport = {
   send: typeof sendInboxMessage;
   tail: typeof listConversationMessages;
-  /** Скачивание вложения (чек) — в тестах подменяется, по умолчанию fetch по ссылке Zernio. */
+  /** Скачивание вложения (чек) — в тестах подменяется; живое — downloadAttachment. */
   download?: (url: string) => Promise<{ bytes: Uint8Array; mime: string } | null>;
 };
+
+const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Скачать вложение покупателя (чек). Ссылки на API Zernio — с ключом
+ * (attachmentNeedsZernioKey), остальные (CDN Instagram) — как есть; только
+ * http(s), не больше 20 МБ.
+ */
+export async function downloadAttachment(
+  url: string,
+): Promise<{ bytes: Uint8Array; mime: string } | null> {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    const e = env();
+    const key = e.ZERNIO_API_KEY?.trim();
+    const headers: Record<string, string> =
+      key && attachmentNeedsZernioKey(url, e.ZERNIO_BASE_URL)
+        ? { Authorization: `Bearer ${key}` }
+        : {};
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(30_000) });
+    if (!res.ok) {
+      console.warn(`[zernio] вложение не скачалось: HTTP ${res.status} (${u.host})`);
+      return null;
+    }
+    const buf = await res.arrayBuffer();
+    if (buf.byteLength === 0 || buf.byteLength > MAX_ATTACHMENT_BYTES) return null;
+    return {
+      bytes: new Uint8Array(buf),
+      mime: res.headers.get("content-type") ?? "application/octet-stream",
+    };
+  } catch {
+    return null;
+  }
+}
 
 export const liveTransport: ZernioTransport = {
   send: sendInboxMessage,
   tail: listConversationMessages,
+  download: downloadAttachment,
 };

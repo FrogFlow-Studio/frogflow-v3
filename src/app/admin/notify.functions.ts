@@ -3,7 +3,6 @@ import { z } from "zod";
 
 /** Уведомления продавцу: матрица «событие → канал», тихие часы, дайджест (core/notify/prefs). */
 const admin = async () => (await import("@/app/auth/guards.server")).requireAdmin();
-const adminOwner = async () => (await import("@/app/auth/guards.server")).requireAdminRole("owner");
 
 export const notifyPrefsFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await admin();
@@ -26,7 +25,9 @@ export const saveNotifyPrefsFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await adminOwner();
+    const ctx = await (
+      await import("@/app/auth/guards.server")
+    ).requireAdminModule("notify_in_bot", "owner");
     const { NOTIFY_KINDS, defaultNotifyPrefs, saveNotifyPrefs } =
       await import("@/core/notify/prefs");
     const prefs = defaultNotifyPrefs();

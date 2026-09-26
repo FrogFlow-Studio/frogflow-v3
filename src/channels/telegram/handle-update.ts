@@ -171,7 +171,10 @@ function mainMenu(b: Bot) {
   const keyboard: Array<Array<Record<string, unknown>>> = [
     [{ text: m.catalog }, { text: m.search }],
     [{ text: m.cart }, { text: m.myOrders }],
-    [{ text: m.instruction }, { text: m.information }],
+    // «Информация» ведёт на юр. страницы — только при модуле legal_docs.
+    b.ctx.tenant.modules.legal_docs
+      ? [{ text: m.instruction }, { text: m.information }]
+      : [{ text: m.instruction }],
     [{ text: def.locales[b.locale].contactBtn }],
   ];
   const t = b.ctx.tenant;
@@ -524,6 +527,7 @@ async function menuAction(b: Bot, action: ReturnType<typeof menuActionFor>) {
       return;
     }
     case "information": {
+      if (!b.ctx.tenant.modules.legal_docs) return sendMain(b);
       const base = `${b.ctx.appUrl}/s/${b.ctx.tenant.settings.slug ?? b.ctx.tenant.id}/legal`;
       const buttons: InlineButton[][] = [
         [

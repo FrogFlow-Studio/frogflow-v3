@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { Locale } from "@/core/i18n/locale";
+import type { StorefrontPart } from "@/core/storefront/access";
 
 /**
  * Витрина и Mini App: публичные серверные функции. Арендатор — по slug из
@@ -14,19 +15,22 @@ async function shopT(ctx: { tenant: { settings: { default_locale?: Locale } } })
   return storefrontT(ctx.tenant.settings.default_locale ?? "ru");
 }
 
-async function shopCtx(s: string) {
+async function shopCtx(s: string, part: StorefrontPart) {
   const { requireTenant, tenantContext } = await import("@/core/tenant/resolve.server");
   const { servedByV2 } = await import("@/core/tenant/directory");
+  const { storefrontAllows } = await import("@/core/storefront/access");
   const t = await requireTenant({ by: "slug", value: s });
   // Клиент прежней платформы: его витрина и заказы живут там, здесь — «не найден».
-  if (t.archived || !t.modules.shop || !servedByV2(t)) throw new Error("Магазин не найден");
+  // Без оплаченного модуля (core/storefront/access) — тоже «не найден».
+  if (t.archived || !servedByV2(t) || !storefrontAllows(t.modules, part))
+    throw new Error("Магазин не найден");
   return tenantContext(t);
 }
 
 export const storeInfoFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ slug }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await shopCtx(data.slug);
+    const ctx = await shopCtx(data.slug, "info");
     const { storeInfo } = await import("@/core/storefront/catalog");
     return {
       ...(await storeInfo(ctx)),
@@ -43,7 +47,7 @@ export const storeCatalogFn = createServerFn({ method: "GET" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await shopCtx(data.slug);
+    const ctx = await shopCtx(data.slug, "catalog");
     const { storeCatalog } = await import("@/core/storefront/catalog");
     return storeCatalog(ctx, { q: data.q, categoryId: data.category ?? null });
   });
@@ -51,7 +55,7 @@ export const storeCatalogFn = createServerFn({ method: "GET" })
 export const storeProductFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ slug, id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await shopCtx(data.slug);
+    const ctx = await shopCtx(data.slug, "catalog");
     const { storeProduct, storeCatalog } = await import("@/core/storefront/catalog");
     const product = await storeProduct(ctx, data.id);
     if (!product) throw new Error((await shopT(ctx))("error.productNotFound"));
@@ -76,7 +80,7 @@ const items = z
 export const createHandoffFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ slug, items }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await shopCtx(data.slug);
+    const ctx = await shopCtx(data.slug, "web_handoff");
     const { createHandoff, parseHandoffItems } = await import("@/core/storefront/handoff");
     const r = await createHandoff(ctx, parseHandoffItems(data.items));
     if (!r) throw new Error((await shopT(ctx))("error.noBot"));
@@ -93,7 +97,7 @@ export const miniAppCheckoutFn = createServerFn({ method: "POST" })
     z.object({ slug, initData: z.string().min(1).max(8000), items }).parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await shopCtx(data.slug);
+    const ctx = await shopCtx(data.slug, "mini_app");
     const { validateInitData } = await import("@/core/storefront/init-data");
     const v = validateInitData(data.initData, ctx.secrets.telegramToken());
     if (!v.ok)
@@ -129,7 +133,7 @@ export const miniAppCheckoutFn = createServerFn({ method: "POST" })
 export const miniAppOrdersFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ slug, initData: z.string().min(1).max(8000) }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await shopCtx(data.slug);
+    const ctx = await shopCtx(data.slug, "mini_app");
     const t = await shopT(ctx);
     if (!ctx.tenant.telegramTokenEnc) throw new Error(t("error.noBot"));
     const { validateInitData } = await import("@/core/storefront/init-data");
@@ -181,7 +185,7 @@ export const legalFn = createServerFn({ method: "GET" })
     z.object({ slug, doc: z.enum(["offer", "privacy", "requisites", "about"]) }).parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await shopCtx(data.slug);
+    const ctx = await shopCtx(data.slug, "legal");
     const { getSetting } = await import("@/core/settings/settings");
     const { storeInfo } = await import("@/core/storefront/catalog");
     const [text, info] = await Promise.all([getSetting(ctx, `legal_${data.doc}`), storeInfo(ctx)]);

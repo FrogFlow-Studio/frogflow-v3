@@ -55,6 +55,7 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
       "storefront_accent",
     ]),
   ]);
+  const legalOn = Boolean(ctx.tenant.modules.legal_docs);
   return {
     botId: ctx.tenant.id,
     slug: ctx.tenant.settings.slug ?? ctx.tenant.id,
@@ -78,11 +79,12 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
     categories: cats
       .filter((c) => c.is_visible)
       .map((c) => ({ id: c.id, name: c.name, parent_id: c.parent_id })),
+    // Ссылки на юр. страницы — только при модуле legal_docs (core/storefront/access).
     legal: {
-      offer: Boolean(s.legal_offer),
-      privacy: Boolean(s.legal_privacy),
-      requisites: Boolean(s.legal_requisites),
-      about: Boolean(s.legal_about),
+      offer: legalOn && Boolean(s.legal_offer),
+      privacy: legalOn && Boolean(s.legal_privacy),
+      requisites: legalOn && Boolean(s.legal_requisites),
+      about: legalOn && Boolean(s.legal_about),
     },
   };
 }
