@@ -213,11 +213,15 @@ export async function verifyReceipt(
     expectedAmount: number;
     currency?: string;
     orderId: number;
+    /** Аудит чеков оператора — не проверка клиента, в его лимит не идёт. */
+    countUsage?: boolean;
   },
 ): Promise<VerifyResult> {
   let text: string;
   try {
-    text = await readReceiptText(ctx, p.bytes, p.mime || "image/jpeg");
+    text = await readReceiptText(ctx, p.bytes, p.mime || "image/jpeg", {
+      countUsage: p.countUsage,
+    });
   } catch (e) {
     return {
       ok: false,

@@ -721,3 +721,39 @@ export const sendTestErrorFn = createServerFn({ method: "POST" }).handler(async 
   const { sendTestError } = await import("@/lib/errors");
   return sendTestError();
 });
+
+/* ── аудит чеков (только чтение, лимит клиента не тратится) ───────── */
+
+export const receiptAuditInventoryFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await import("./receipt-audit.server")).receiptAuditInventory(data.botId);
+  });
+
+/** Один шаг прогона: следующий чек с новых к старым; Vision — с ключа платформы. */
+export const receiptAuditScanFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId,
+        afterId: z.number().int().min(0),
+        seenHashes: z
+          .array(
+            z.object({
+              hash: z.string().max(128),
+              orderId: z.number().int(),
+              displayNo: z.union([z.number(), z.string().max(32)]),
+            }),
+          )
+          .max(2000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await import("./receipt-audit.server")).scanNextReceipt(data.botId, {
+      afterId: data.afterId,
+      seenHashes: data.seenHashes,
+    });
+  });

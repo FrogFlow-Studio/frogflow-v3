@@ -6,6 +6,20 @@ import { parseDeliveredLanguages, type MaterialSnapshot } from "@/core/catalog/m
 type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
 type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"];
 
+/** Статус заказа по-русски — для выгрузки и текстов оператору. */
+export const ORDER_STATUS_RU: Record<string, string> = {
+  awaiting_payment: "ожидает оплаты",
+  awaiting_confirmation: "чек на проверке",
+  delivering: "выдаётся",
+  delivered: "выдан",
+  paid: "оплачен",
+  rejected: "отклонён",
+  cancelled: "отменён",
+  accepted: "принят в работу",
+  in_production: "в работе",
+  ready: "готов",
+};
+
 /**
  * Можно ли покупателю ещё раз получить файлы заказа: только выданный
  * цифровой. Физический заказ выдаёт продавец — повтор вернул бы его в

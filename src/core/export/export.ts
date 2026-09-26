@@ -1,19 +1,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
+import { ORDER_STATUS_RU as STATUS_RU } from "@/core/orders/pure";
 import { shopDateTime, toCsv, zonedDayToUtc } from "./csv";
-
-const STATUS_RU: Record<string, string> = {
-  awaiting_payment: "ожидает оплаты",
-  awaiting_confirmation: "чек на проверке",
-  delivering: "выдаётся",
-  delivered: "выдан",
-  paid: "оплачен",
-  rejected: "отклонён",
-  cancelled: "отменён",
-  accepted: "принят в работу",
-  in_production: "в работе",
-  ready: "готов",
-};
 
 export type ExportRange = { from?: string | null; to?: string | null };
 
