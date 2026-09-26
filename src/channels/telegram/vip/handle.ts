@@ -350,6 +350,23 @@ export async function handleVipUpdate(
   api: TelegramApi,
   update: TelegramUpdate,
 ): Promise<void> {
+  try {
+    await vipUpdate(ctx, api, update);
+  } catch (e) {
+    // Обновление уже засчитано (dedupe): без отчёта сбой пропал бы молча.
+    const { reportError } = await import("@/lib/errors");
+    await reportError(e, {
+      where: "telegram.vip",
+      botId: ctx.tenant.id,
+      extra: {
+        update_id: update.update_id,
+        kind: update.callback_query ? "callback" : update.message ? "message" : "other",
+      },
+    });
+  }
+}
+
+async function vipUpdate(ctx: TenantContext, api: TelegramApi, update: TelegramUpdate) {
   const msg = update.message;
   if (msg) {
     if (!msg.from || (msg.chat.type && msg.chat.type !== "private")) return;

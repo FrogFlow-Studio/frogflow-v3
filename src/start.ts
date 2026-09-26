@@ -29,8 +29,20 @@ const userErrors = createMiddleware({ type: "function" }).server(async ({ next }
   }
 });
 
+// Сбои серверных функций админки и панели оператора — в Sentry (lib/errors);
+// отказы человеку (UserError, неверный ввод, нет сессии) туда не идут.
+const failureReport = createMiddleware({ type: "function" }).server(async (call) => {
+  const { reportServerFnFailure } = await import("@/lib/server-fn-errors");
+  return reportServerFnFailure(call, {
+    botId: async () =>
+      (await (await import("@/app/auth/guards.server")).adminIdentity())?.botId ?? null,
+  });
+});
+
 export const startInstance = createStart(() => ({
   requestMiddleware: [csrf],
-  // Журнал внутри перевода ошибок: отказ не пишется, текст переводится.
-  functionMiddleware: [userErrors, adminAudit],
+  // Порядок — снаружи внутрь. Учёт сбоев внутри перевода: видит исходную
+  // ошибку (UserError), а не переведённый на английский текст. Журнал
+  // внутри перевода ошибок: отказ не пишется, текст переводится.
+  functionMiddleware: [userErrors, failureReport, adminAudit],
 }));
