@@ -13,7 +13,7 @@ import type { VerticalKey } from "@/core/verticals/registry";
  *
  * Условия утверждены Яковом 26.09.2026: цены одинаковы для всех ниш, сверх
  * плана докупаются только каналы (WhatsApp, Instagram), лимиты ИИ помесячно,
- * годовая оплата — 10 месяцев вместо 12, пробный период 14 дней на Basic.
+ * годовая оплата — 10 месяцев вместо 12, пробный период 7 дней на Basic.
  * Консультант BOVI (ниша `consultant`) — вне тарифов, по договору: у него
  * план `custom`, модули оператор включает руками, как до тарифов.
  *
@@ -58,7 +58,7 @@ export const MONTHLY_PRICE: Record<PlanTier, number> = {
 };
 /** Годовая оплата: два месяца в подарок. */
 export const ANNUAL_BILLED_MONTHS = 10;
-export const TRIAL_DAYS = 14;
+export const TRIAL_DAYS = 7;
 export const TRIAL_TIER: PlanTier = "basic";
 
 /** Месячные лимиты ИИ; null — без лимита. */

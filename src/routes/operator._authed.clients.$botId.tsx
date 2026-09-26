@@ -45,6 +45,7 @@ import {
 } from "@/core/plans/registry";
 import { MODULE_KEYS, moduleDef, type ModuleKey } from "@/core/modules/registry";
 import { VERTICAL_KEYS, VERTICALS } from "@/core/verticals/registry";
+import { TRIAL_DAYS } from "@/core/plans/registry";
 import { Badge, Card, ErrorBox, Field, PageTitle, Stat, Switch, useAction } from "@/app/ui";
 import { StatusBadge } from "./operator._authed.index";
 
@@ -514,7 +515,7 @@ function PlanCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
                 disabled={action.busy}
                 onClick={() => void action.run("trial").catch(() => {})}
               >
-                Пробный период 14 дней
+                Пробный период {TRIAL_DAYS} дней
               </button>
             )}
           </div>

@@ -206,8 +206,8 @@ describe("периоды", () => {
     expect(nextPeriod(null, "month", "2027-01-31").end).toBe("2027-02-27");
   });
 
-  it("пробный период — 14 дней", () => {
-    expect(trialWindow("2026-09-26")).toEqual({ until: "2026-10-10" });
+  it("пробный период — 7 дней", () => {
+    expect(trialWindow("2026-09-26")).toEqual({ until: "2026-10-03" });
   });
 });
 

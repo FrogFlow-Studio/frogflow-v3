@@ -9,7 +9,7 @@ import type { Locale } from "@/core/i18n/locale";
 const ru = {
   "meta.title": "FrogFlow — магазин в Telegram, WhatsApp и Instagram",
   "meta.description":
-    "Бот сам принимает заказы и оплату, проверяет чеки и выдаёт товар. Запуск за вечер, без программиста. 14 дней бесплатно.",
+    "Бот сам принимает заказы и оплату, проверяет чеки и выдаёт товар. Запуск за вечер, без программиста. {days} дней бесплатно.",
   "nav.how": "Как работает",
   "nav.pricing": "Цены",
   "nav.faq": "Вопросы",
@@ -179,7 +179,7 @@ export const LANDING_KEYS = Object.keys(ru) as LandingKey[];
 const kk: Dict = {
   "meta.title": "FrogFlow — Telegram, WhatsApp және Instagram-дағы дүкен",
   "meta.description":
-    "Бот тапсырыс пен төлемді өзі қабылдайды, чекті тексереді және тауарды береді. Бір кеште іске қосу, бағдарламашысыз. 14 күн тегін.",
+    "Бот тапсырыс пен төлемді өзі қабылдайды, чекті тексереді және тауарды береді. Бір кеште іске қосу, бағдарламашысыз. {days} күн тегін.",
   "nav.how": "Қалай жұмыс істейді",
   "nav.pricing": "Бағалар",
   "nav.faq": "Сұрақтар",
@@ -345,7 +345,7 @@ const kk: Dict = {
 const en: Dict = {
   "meta.title": "FrogFlow — a shop in Telegram, WhatsApp and Instagram",
   "meta.description":
-    "The bot takes orders and payments, checks receipts and delivers the goods. Launch in one evening without a developer. 14 days free.",
+    "The bot takes orders and payments, checks receipts and delivers the goods. Launch in one evening without a developer. {days} days free.",
   "nav.how": "How it works",
   "nav.pricing": "Pricing",
   "nav.faq": "FAQ",
@@ -510,7 +510,7 @@ const en: Dict = {
 const uz: Dict = {
   "meta.title": "FrogFlow — Telegram, WhatsApp va Instagramdagi do‘kon",
   "meta.description":
-    "Bot buyurtma va to‘lovni o‘zi qabul qiladi, chekni tekshiradi va mahsulotni yetkazadi. Bir kechada ishga tushadi, dasturchisiz. 14 kun bepul.",
+    "Bot buyurtma va to‘lovni o‘zi qabul qiladi, chekni tekshiradi va mahsulotni yetkazadi. Bir kechada ishga tushadi, dasturchisiz. {days} kun bepul.",
   "nav.how": "Qanday ishlaydi",
   "nav.pricing": "Narxlar",
   "nav.faq": "Savollar",

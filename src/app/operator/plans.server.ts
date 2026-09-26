@@ -24,6 +24,7 @@ import {
   CUSTOM_PLAN,
   PLAN_VERSION,
   dbPlanFor,
+  TRIAL_DAYS,
   TRIAL_TIER,
   nicheForVertical,
   parsePlan,
@@ -213,7 +214,7 @@ export async function adoptSuggestedPlan(botId: string, actor: string): Promise<
 }
 
 /**
- * Пробный период: Basic ниши на 14 дней, один раз на клиента. Срок
+ * Пробный период: Basic ниши на TRIAL_DAYS дней, один раз на клиента. Срок
  * подписки двигается нулевым платежом — тем же путём, что и оплата, так
  * что обход неоплаты предупредит и остановит по обычной политике.
  */
@@ -240,7 +241,7 @@ export async function startTrial(botId: string, actor: string): Promise<{ until:
       period_end: until,
       amount: 0,
       currency: "KZT",
-      note: "Пробный период 14 дней",
+      note: `Пробный период ${TRIAL_DAYS} дней`,
     },
     actor,
   );

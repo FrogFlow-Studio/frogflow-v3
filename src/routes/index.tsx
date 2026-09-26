@@ -34,9 +34,9 @@ export const Route = createFileRoute("/")({
     return {
       meta: [
         { title: t("meta.title") },
-        { name: "description", content: t("meta.description") },
+        { name: "description", content: t("meta.description", { days: TRIAL_DAYS }) },
         { property: "og:title", content: t("meta.title") },
-        { property: "og:description", content: t("meta.description") },
+        { property: "og:description", content: t("meta.description", { days: TRIAL_DAYS }) },
         { property: "og:type", content: "website" },
         { property: "og:url", content: landingUrl(locale) },
       ],

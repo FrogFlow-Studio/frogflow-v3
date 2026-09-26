@@ -152,7 +152,7 @@ export function nextPeriod(
   return { start, end: addDays(addMonths(start, period === "year" ? 12 : 1), -1) };
 }
 
-/** Пробный период: Basic ниши на 14 дней, один раз на клиента. */
+/** Пробный период: Basic ниши на TRIAL_DAYS дней (7), один раз на клиента. */
 export function trialWindow(today: string): { until: string } {
   return { until: addDays(today, TRIAL_DAYS) };
 }

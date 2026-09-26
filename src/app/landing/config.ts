@@ -17,8 +17,8 @@ export const PLAN_PRICES: Record<PlanKey, number> = {
 /** Разовое подключение «от», ₸. */
 export const SETUP_FEE_FROM = 15000;
 
-/** Пробный период, дней. */
-export const TRIAL_DAYS = 14;
+/** Пробный период, дней: тот же, что выдаёт оператор (`core/plans/registry`). */
+export { TRIAL_DAYS } from "@/core/plans/registry";
 
 /** Тариф, который выделяется на странице. */
 export const FEATURED_PLAN: PlanKey = "pro";
