@@ -1956,7 +1956,7 @@ async function adminDecision(
   if (!admins.includes(String(fromId))) {
     await api.call("sendMessage", {
       chat_id: chatId,
-      text: "⛔ Кнопка доступна только администратору магазина (app_settings.admin_chat_id).",
+      text: "⛔ Кнопка доступна только продавцу этого магазина.",
     });
     return;
   }

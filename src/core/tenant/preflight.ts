@@ -27,7 +27,7 @@ export type PreflightInput = {
    * Необязательные поля: не передано — пункт не проверяется (старые вызовы
    * и тесты не меняют смысл).
    */
-  /** Сколько id в app_settings.admin_chat_id — только они жмут «подтвердить». */
+  /** Сколько продавцов жмут «подтвердить»: admin_chat_id плюс владелец из карточки. */
   sellerChats?: number;
   /** Заказы в `delivering`: выдачу вёл v1, v2 такие не подхватит. */
   deliveringOrders?: number;
@@ -130,7 +130,7 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
       level: "block",
       title: "Некому подтверждать заказы",
       detail:
-        "В настройках магазина не задан Telegram-id продавца (admin_chat_id): чеки придут, но нажать «Подтвердить и выдать» будет некому.",
+        "Не задан ни Telegram-id владельца в карточке, ни admin_chat_id в настройках магазина: чеки придут, но нажать «Подтвердить и выдать» будет некому.",
     });
   if (i.deliveringOrders)
     checks.push({

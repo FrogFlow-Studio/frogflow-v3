@@ -16,6 +16,8 @@ import type { TelegramApi } from "@/channels/telegram/api";
  */
 const TG = TEST_TG_ID + 61;
 const SELLER = TEST_TG_ID + 62;
+/** Владелец из карточки клиента, которого нет в admin_chat_id. */
+const OWNER = TEST_TG_ID + 63;
 const PROBE = "v2 live · заказ в Telegram";
 const FILE_PATH = `${DEMO_BOT}/v2-live-order/material.pdf`;
 const COUNTRY = "Казахстан (v2 live order)";
@@ -108,6 +110,7 @@ describe.skipIf(!liveReady)("полный заказ в Telegram-боте на �
     // Автопроверку чеков и чат с менеджером выключаем: здесь — ручной путь.
     ctx = tenantContext({
       ...t,
+      ownerTelegramId: OWNER,
       status: "active",
       modules: { ...t.modules, shop: true, receipt_ocr: false, manager_chat: false },
     });
@@ -266,5 +269,20 @@ describe.skipIf(!liveReady)("полный заказ в Telegram-боте на �
     await handleTelegramUpdate(ctx, api, press(confirm!, SELLER));
     expect(sentTo(TG, beforeRepeat)).toHaveLength(0);
     expect(sentTo(SELLER, beforeRepeat).some(([, p]) => String(p.text).includes("уже"))).toBe(true);
+  });
+
+  it("владелец не из admin_chat_id получает кнопки заказа и может их нажать", async () => {
+    const order = orderIds.length ? orderIds[orderIds.length - 1]! : null;
+    const reject = button(/^reject:\d+$/, OWNER);
+    expect(reject, "владельцу не пришла кнопка «Отклонить»").not.toBeNull();
+    const before = calls.length;
+    await handleTelegramUpdate(ctx, api, press(reject!, OWNER));
+    const answers = sentTo(OWNER, before).map(([, p]) => String(p.text));
+    expect(
+      answers.some((t) => t.startsWith("⛔")),
+      `владелец получил ⛔ (заказ ${order})`,
+    ).toBe(false);
+    // Заказ уже выдан — отклонять нечего, но это ответ по делу, а не отказ в доступе.
+    expect(answers.some((t) => t.includes("уже закрыт"))).toBe(true);
   });
 });

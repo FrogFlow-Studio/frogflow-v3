@@ -4,15 +4,15 @@
 и `docs/readiness.json` — руками не правится. `npm test` падает, если сводка
 устарела, пункт описи назван неверно или указанного теста нет.
 
-**Готовность для первых клиентов: 72 %** — покрыто тестами v2
-530 из 736 нужных сейчас пунктов.
+**Готовность для первых клиентов: 72,1 %** — покрыто тестами v2
+531 из 736 нужных сейчас пунктов.
 
 **Путь заказа: 83,7 %** — 284 из 339
 (каталог, цена, оформление, оплата и чек, выдача; файлы — `ORDER_PATH` в скрипте).
 
 | всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |
 | ----- | ------- | --------------------- | ---- | ----- | ------------- |
-| 1125 | 530 | 43 | 206 | 33 | 356 |
+| 1125 | 531 | 43 | 205 | 33 | 356 |
 
 «Позже» — поведение нужно, но не магазинам, которые переезжают первыми
 (модуль ещё не перенесён). «Не нужно в v2» — поведение убрано или заменено;
@@ -61,7 +61,7 @@
 | `tests/consultant-finkaz-rate.test.ts` | 8 | 0 | 0 | 0 | 8 | — |
 | `tests/consultant-knowledge-search.test.ts` | 4 | 1 | 0 | 0 | 3 | 100 % |
 | `tests/consultant-manager-guard.test.ts` | 8 | 8 | 0 | 0 | 0 | 100 % |
-| `tests/consultant-notify-recipients.test.ts` | 6 | 0 | 6 | 0 | 0 | 0 % |
+| `tests/consultant-notify-recipients.test.ts` | 6 | 1 | 5 | 0 | 0 | 16,6 % |
 | `tests/consultant-run-insert.test.ts` | 3 | 0 | 0 | 0 | 3 | — |
 | `tests/consultant-settings-write.test.ts` | 4 | 4 | 0 | 0 | 0 | 100 % |
 | `tests/consultant-style-budget.test.ts` | 16 | 0 | 0 | 0 | 16 | — |
@@ -129,7 +129,7 @@
 | `tests/zernio-retry.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/zernio-webhook.test.ts` | 13 | 7 | 3 | 0 | 3 | 70 % |
 
-## Дыры (206)
+## Дыры (205)
 
 ### поломки v1
 
@@ -291,7 +291,6 @@
 
 ### `tests/consultant-notify-recipients.test.ts`
 
-- владелец и все ID из настроек, без повторов — adminRecipients (src/core/notify/recipients.ts) — владелец плюс admin_chat_id без дублей, теста нет
 - отправляет каждому — notifyOwner в src/app/operator/operator.server.ts шлёт всем adminRecipients, теста нет
 - отказ одного не отменяет остальных и виден поимённо — notifyOwner (operator.server.ts) собирает failed поимённо, теста нет
 - если не дошло никому — это не успех — notifyOwner (operator.server.ts) возвращает delivered/failed без признака успеха, теста нет

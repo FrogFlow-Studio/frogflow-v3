@@ -22,7 +22,11 @@ const ACTOR = "v2-live-migration-test";
 const COUNTRY = "Казахстан (v2 live migration)";
 const FAKE_TOKEN = "123456:v2-live-migration-fake";
 
-let saved: { bot_token: string | null; settings: Json } | null = null;
+let saved: {
+  bot_token: string | null;
+  settings: Json;
+  owner_telegram_id: number | null;
+} | null = null;
 let prevAdmins: { value: string } | null = null;
 const tg: Array<[string, Record<string, unknown>]> = [];
 const realFetch = globalThis.fetch;
@@ -72,11 +76,15 @@ describe.skipIf(!liveReady)("переезд и откат на демо-клие
     const db = serviceDb();
     const { data, error } = await db
       .from("bots")
-      .select("bot_token, settings")
+      .select("bot_token, settings, owner_telegram_id")
       .eq("id", DEMO_BOT)
       .single();
     if (error || !data) throw new Error(`demo bot: ${error?.message}`);
-    saved = { bot_token: data.bot_token, settings: data.settings };
+    saved = {
+      bot_token: data.bot_token,
+      settings: data.settings,
+      owner_telegram_id: data.owner_telegram_id,
+    };
     const { data: admins } = await db
       .from("app_settings")
       .select("value")
@@ -108,7 +116,12 @@ describe.skipIf(!liveReady)("переезд и откат на демо-клие
     const settings = { ...(saved.settings as Record<string, unknown>), served_by: "v1" };
     await db
       .from("bots")
-      .update({ bot_token: encryptSecret(FAKE_TOKEN, env().SECRETS_KEY), settings })
+      // Владелец из карточки тоже подтверждает заказы — на время «нет продавца» его нет.
+      .update({
+        bot_token: encryptSecret(FAKE_TOKEN, env().SECRETS_KEY),
+        settings,
+        owner_telegram_id: null,
+      })
       .eq("id", DEMO_BOT);
     await db
       .from("app_settings")

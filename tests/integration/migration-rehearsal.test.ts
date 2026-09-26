@@ -39,7 +39,11 @@ const PROBE = "v2 репетиция · материал";
 const FILE_PATH = `${DEMO_BOT}/v2-rehearsal/material.pdf`;
 const COUNTRY = "Казахстан (v2 rehearsal)";
 
-let saved: { bot_token: string | null; settings: Json } | null = null;
+let saved: {
+  bot_token: string | null;
+  settings: Json;
+  owner_telegram_id: number | null;
+} | null = null;
 let prevAdmins: { value: string | null } | null = null;
 let productId = "";
 const tg: Array<[string, Record<string, unknown>]> = [];
@@ -166,10 +170,14 @@ describe.skipIf(!liveReady)("репетиция переезда на демо-�
     const db = serviceDb();
     const { data } = await db
       .from("bots")
-      .select("bot_token, settings")
+      .select("bot_token, settings, owner_telegram_id")
       .eq("id", DEMO_BOT)
       .single();
-    saved = { bot_token: data!.bot_token, settings: data!.settings };
+    saved = {
+      bot_token: data!.bot_token,
+      settings: data!.settings,
+      owner_telegram_id: data!.owner_telegram_id,
+    };
     const { data: admins } = await db
       .from("app_settings")
       .select("value")
@@ -209,7 +217,8 @@ describe.skipIf(!liveReady)("репетиция переезда на демо-�
     delete settings.telegram;
     await db
       .from("bots")
-      .update({ bot_token: null, settings: settings as Json })
+      // Владелец из карточки тоже подтверждает заказы — на время «нет продавца» его нет.
+      .update({ bot_token: null, settings: settings as Json, owner_telegram_id: null })
       .eq("id", DEMO_BOT);
     await db
       .from("app_settings")

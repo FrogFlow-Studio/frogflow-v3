@@ -515,7 +515,7 @@
     "пустая переписка ничего не ломает": "src/channels/zernio/manager-guard.test.ts › пустая переписка ничего не ломает"
   },
   "tests/consultant-notify-recipients.test.ts": {
-    "владелец и все ID из настроек, без повторов": "open: adminRecipients (src/core/notify/recipients.ts) — владелец плюс admin_chat_id без дублей, теста нет",
+    "владелец и все ID из настроек, без повторов": "src/core/notify/recipients.test.ts › без дублей и без владельца, если его нет",
     "отправляет каждому": "open: notifyOwner в src/app/operator/operator.server.ts шлёт всем adminRecipients, теста нет",
     "отказ одного не отменяет остальных и виден поимённо": "open: notifyOwner (operator.server.ts) собирает failed поимённо, теста нет",
     "если не дошло никому — это не успех": "open: notifyOwner (operator.server.ts) возвращает delivered/failed без признака успеха, теста нет",

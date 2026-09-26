@@ -14,18 +14,22 @@ import { evaluatePreflight, type Preflight } from "@/core/tenant/preflight";
 import { telegramApi } from "@/channels/telegram/api";
 import { MATERIAL_COLUMNS, productSellable, type ProductWithFiles } from "@/core/catalog/materials";
 import { computeState, readPolicy } from "@/core/billing/subscription";
-import { parseIdList } from "@/core/settings/settings";
+import { sellerIds } from "@/core/notify/recipients";
 import { pageAll } from "@/core/db/page";
 
-/** Сколько id продавца в admin_chat_id: только они жмут «подтвердить». */
+/** Сколько продавцов жмут «подтвердить»: admin_chat_id плюс владелец из карточки. */
 async function sellerChats(botId: string): Promise<number> {
-  const { data } = await serviceDb()
-    .from("app_settings")
-    .select("value")
-    .eq("bot_id", botId)
-    .eq("key", "admin_chat_id")
-    .maybeSingle();
-  return parseIdList(data?.value).length;
+  const db = serviceDb();
+  const [{ data }, { data: bot }] = await Promise.all([
+    db
+      .from("app_settings")
+      .select("value")
+      .eq("bot_id", botId)
+      .eq("key", "admin_chat_id")
+      .maybeSingle(),
+    db.from("bots").select("owner_telegram_id").eq("id", botId).maybeSingle(),
+  ]);
+  return sellerIds(data?.value, bot?.owner_telegram_id).length;
 }
 
 async function deliveringOrders(botId: string): Promise<number> {
