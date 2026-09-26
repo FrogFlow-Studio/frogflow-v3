@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { liveReady, DEMO_BOT, TEST_TG_ID } from "./live";
+import { liveReady, DEMO_BOT, TEST_TG_ID, dropOrderNotify } from "./live";
 import { serviceDb } from "@/core/db/client.server";
 import { requireTenant, tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
 import { getSetting, setSetting } from "@/core/settings/settings";
@@ -33,6 +33,7 @@ async function cleanup() {
       .delete()
       .eq("bot_id", DEMO_BOT)
       .like("event_id", `order:${orderId}:%`);
+    await dropOrderNotify(orderId);
     await db.from("order_items").delete().eq("order_id", orderId);
     await db.from("orders").delete().eq("id", orderId);
   }

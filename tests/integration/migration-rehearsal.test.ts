@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { randomBytes } from "node:crypto";
-import { liveReady, DEMO_BOT, TEST_TG_ID } from "./live";
+import { liveReady, DEMO_BOT, TEST_TG_ID, dropOrderNotify } from "./live";
 import { env } from "@/config/env";
 import { serviceDb } from "@/core/db/client.server";
 import type { Json } from "@/core/db-types";
@@ -134,6 +134,7 @@ async function cleanup() {
       await db.storage
         .from("payment-proofs")
         .remove(proofs.map((f) => `${DEMO_BOT}/order-${id}/${f.name}`));
+    await dropOrderNotify(id);
     await db.from("zernio_logs").delete().eq("bot_id", DEMO_BOT).like("event_id", `order:${id}:%`);
     await db.from("order_items").delete().eq("order_id", id);
     await db.from("orders").delete().eq("id", id);
