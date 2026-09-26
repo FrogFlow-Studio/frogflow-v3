@@ -36,17 +36,28 @@ export const adminLogin = createServerFn({ method: "POST" })
       if (await isOperatorUsername(data.username)) {
         if (await loginLocked("operator", ip))
           throw new Error("Слишком много неудачных попыток. Попробуйте через 15 минут.");
-        const ok = await verifyOperator(data.username, data.password);
-        await recordLogin("operator", ip, ok, data.username);
-        if (!ok) return { ok: false as const };
-        await (
-          await appSession()
-        ).update({
-          operator: true,
-          operatorStamp: (await operatorStamp()) ?? undefined,
-          ...operatorSessionMark(),
+        // Магазин с тем же логином входит своим паролем (auth/login-route).
+        const { routeOperatorName } = await import("@/app/auth/login-route");
+        const route = await routeOperatorName({
+          operator: () => verifyOperator(data.username, data.password),
+          shop: async () => {
+            const shop = await resolveAdminLogin(data.username);
+            return Boolean(shop && checkAdminPassword(shop, data.password));
+          },
         });
-        return { ok: true as const, role: "operator" as const };
+        if (route !== "shop") {
+          const ok = route === "operator";
+          await recordLogin("operator", ip, ok, data.username);
+          if (!ok) return { ok: false as const };
+          await (
+            await appSession()
+          ).update({
+            operator: true,
+            operatorStamp: (await operatorStamp()) ?? undefined,
+            ...operatorSessionMark(),
+          });
+          return { ok: true as const, role: "operator" as const };
+        }
       }
     }
     const login = await resolveAdminLogin(data.username);
