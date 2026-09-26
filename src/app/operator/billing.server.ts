@@ -232,7 +232,25 @@ export async function createInvoice(
     .single();
   if (error || !data) throw new Error(`Не удалось создать счёт: ${error?.message ?? "нет данных"}`);
   const invoice = toInvoice(data as Row);
-  const { issued } = await issueWithFallback(ready, { ...reqBase, invoiceId: invoice.id });
+  // Способы могли отвалиться после вставки: тогда счёт остаётся в базе, а
+  // владелец ничего не получает. Такой счёт сразу помечаем отменённым.
+  let issued;
+  try {
+    ({ issued } = await issueWithFallback(ready, { ...reqBase, invoiceId: invoice.id }));
+  } catch (e) {
+    await serviceDb()
+      .from("subscription_invoices")
+      .update({ status: "cancelled" })
+      .eq("id", invoice.id)
+      .eq("status", "sent");
+    await logEvent(
+      botId,
+      "payment",
+      { action: "invoice_cancelled", invoice_id: invoice.id, reason: "issue_failed" },
+      actor,
+    );
+    throw e instanceof Error ? e : new Error(String(e));
+  }
   await logEvent(
     botId,
     "payment",
