@@ -12,6 +12,7 @@ import {
   savePaymentMethodFn,
   saveSettingsFn,
   settingsFn,
+  setShopTimezoneFn,
   telegramStateFn,
   deleteTeamMemberFn,
   saveTeamMemberFn,
@@ -38,17 +39,50 @@ export const Route = createFileRoute("/admin/_authed/settings")({
 
 type Method = Awaited<ReturnType<typeof settingsFn>>["methods"][number];
 
+const CURRENCIES = ["KZT", "RUB", "USD", "EUR", "UZS", "KGS", "BYN", "UAH", "TRY", "AED"];
+const TIMEZONES = [
+  "Asia/Almaty",
+  "Asia/Aqtobe",
+  "Asia/Aqtau",
+  "Europe/Moscow",
+  "Europe/Samara",
+  "Asia/Yekaterinburg",
+  "Asia/Novosibirsk",
+  "Asia/Tashkent",
+  "Asia/Bishkek",
+  "Europe/Minsk",
+  "Europe/Kyiv",
+  "Asia/Dubai",
+  "Europe/Istanbul",
+  "Asia/Baku",
+  "Asia/Tbilisi",
+  "Asia/Yerevan",
+];
+
 function SettingsPage() {
-  const { settings, methods, ownerTelegramId, telegram, zones, zernio, smartSearchKey, visionKey } =
-    Route.useLoaderData();
+  const {
+    settings,
+    methods,
+    ownerTelegramId,
+    timezone,
+    telegram,
+    zones,
+    zernio,
+    smartSearchKey,
+    visionKey,
+  } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const router = useRouter();
   const [saved, setSaved] = useState(false);
   const save = useAction(async (f: FormData) => {
+    await setShopTimezoneFn({ data: { timezone: String(f.get("shop_timezone") ?? "") } });
     await saveSettingsFn({
       data: {
         shop_name: String(f.get("shop_name")),
+        shop_currency: String(f.get("shop_currency") || "KZT").toUpperCase(),
+        shop_tagline: String(f.get("shop_tagline") ?? ""),
+        storefront_accent: String(f.get("storefront_accent_on") ? f.get("storefront_accent") : ""),
         admin_chat_id: String(f.get("admin_chat_id")),
         admin_contact_link: String(f.get("admin_contact_link")),
         instruction_caption: String(f.get("instruction_caption")),
@@ -103,6 +137,54 @@ function SettingsPage() {
                 name="admin_chat_id"
                 defaultValue={settings.admin_chat_id ?? ""}
               />
+            </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label={t("settings.shop.currency")} hint={t("settings.shop.currencyHint")}>
+                <select
+                  className="input"
+                  name="shop_currency"
+                  defaultValue={(settings.shop_currency ?? "KZT").toUpperCase()}
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label={t("settings.shop.timezone")} hint={t("settings.shop.timezoneHint")}>
+                <select className="input" name="shop_timezone" defaultValue={timezone ?? ""}>
+                  <option value="">{t("settings.shop.timezoneDefault")}</option>
+                  {TIMEZONES.map((z) => (
+                    <option key={z} value={z}>
+                      {z}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <Field label={t("settings.shop.tagline")} hint={t("settings.shop.taglineHint")}>
+              <input
+                className="input"
+                name="shop_tagline"
+                maxLength={160}
+                defaultValue={settings.shop_tagline ?? ""}
+              />
+            </Field>
+            <Field label={t("settings.shop.accent")} hint={t("settings.shop.accentHint")}>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  name="storefront_accent_on"
+                  defaultChecked={Boolean(settings.storefront_accent)}
+                />
+                <input
+                  type="color"
+                  name="storefront_accent"
+                  className="h-9 w-16 rounded border border-line"
+                  defaultValue={settings.storefront_accent || "#2f9e5f"}
+                />
+              </div>
             </Field>
             <Field label={t("settings.shop.contactLink")}>
               <input

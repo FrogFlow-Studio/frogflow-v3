@@ -126,7 +126,7 @@ export function tenantContext(tenant: Tenant): TenantContext {
     tenant,
     db: tenantDb(tenant.id),
     appUrl: APP_URL,
-    timezone: APP_TIMEZONE,
+    timezone: tenant.settings.timezone ?? APP_TIMEZONE,
     secrets: {
       telegramToken() {
         const enc = tenant.telegramTokenEnc;

@@ -16,6 +16,8 @@ export type TenantSettings = {
   hosts?: string[];
   /** Язык интерфейса бота по умолчанию. */
   default_locale?: Locale;
+  /** Часовой пояс магазина (IANA); нет — APP_TIMEZONE платформы. */
+  timezone?: string;
   telegram?: {
     /** @username бота — для ссылок и диагностики; токен лежит в bots.bot_token. */
     username?: string;

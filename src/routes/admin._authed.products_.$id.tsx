@@ -85,7 +85,7 @@ function ProductEditor() {
           description: String(f.get("description")),
           keywords: String(f.get("keywords")),
           price: Number(f.get("price")) || 0,
-          currency: String(f.get("currency") || "KZT"),
+          currency: String(f.get("currency") || shop.currency),
           countryPrices,
           categoryIds: f.getAll("categoryIds").map(String),
           isActive: f.get("isActive") === "on",
@@ -228,7 +228,7 @@ function ProductEditor() {
                 <input
                   className="input"
                   name="currency"
-                  defaultValue={p?.currency ?? "KZT"}
+                  defaultValue={p?.currency ?? shop.currency}
                   maxLength={3}
                 />
               </Field>

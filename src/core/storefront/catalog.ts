@@ -32,6 +32,7 @@ export type StoreInfo = {
   botUsername: string | null;
   contactLink: string | null;
   currency: string;
+  accent: string | null;
   miniApp: boolean;
   /** Короткий текст «О продавце» для шапки витрины. */
   tagline: string | null;
@@ -49,6 +50,9 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
       "legal_privacy",
       "legal_requisites",
       "legal_about",
+      "shop_currency",
+      "shop_tagline",
+      "storefront_accent",
     ]),
   ]);
   return {
@@ -58,15 +62,19 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
     vertical: ctx.tenant.vertical,
     botUsername: ctx.tenant.settings.telegram?.username ?? null,
     contactLink: s.admin_contact_link ?? null,
-    currency: "KZT",
+    currency: (s.shop_currency ?? "KZT").toUpperCase(),
+    /** Акцентный цвет витрины (#rrggbb) из настроек продавца; нет — тема платформы. */
+    accent: /^#[0-9a-f]{6}$/i.test(s.storefront_accent ?? "") ? s.storefront_accent! : null,
     miniApp: Boolean(ctx.tenant.modules.telegram_mini_app && ctx.tenant.modules.shop),
-    tagline: s.legal_about
-      ? s.legal_about
-          .replace(/<[^>]+>/g, " ")
-          .replace(/\s+/g, " ")
-          .trim()
-          .slice(0, 160) || null
-      : null,
+    tagline: s.shop_tagline?.trim()
+      ? s.shop_tagline.trim().slice(0, 160)
+      : s.legal_about
+        ? s.legal_about
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 160) || null
+        : null,
     categories: cats
       .filter((c) => c.is_visible)
       .map((c) => ({ id: c.id, name: c.name, parent_id: c.parent_id })),

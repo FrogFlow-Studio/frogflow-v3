@@ -1,3 +1,4 @@
+import type React from "react";
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { storeInfoFn } from "@/app/storefront/storefront.functions";
 import { CartProvider, useCart } from "@/app/storefront/cart";
@@ -54,7 +55,10 @@ function StoreFrame() {
   const { t } = useStorefrontLocale();
   const themeLabels = { light: t("theme.light"), dark: t("theme.dark") };
   return (
-    <div className="flex min-h-screen flex-col">
+    <div
+      className="flex min-h-screen flex-col"
+      style={shop.accent ? ({ "--accent": shop.accent } as React.CSSProperties) : undefined}
+    >
       <header className="sticky top-0 z-20 border-b border-line bg-surface/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4">
           <Link

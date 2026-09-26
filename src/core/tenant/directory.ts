@@ -66,6 +66,7 @@ export function settingsFromJson(json: unknown): TenantSettings {
     slug: str(s.slug)?.toLowerCase(),
     hosts: strList(s.hosts)?.map((h) => h.toLowerCase()),
     default_locale: isLocale(s.default_locale) ? s.default_locale : undefined,
+    timezone: validTimezone(str(s.timezone)),
     telegram: { username: str(tg.username), webhook_ok: tg.webhook_ok === true },
     zernio: {
       profile_id: str(zr.profile_id),
@@ -138,6 +139,17 @@ export function tenantFromRow(row: TenantRow): Tenant {
     archived: row.archived_at != null,
     telegramTokenEnc: row.bot_token,
   };
+}
+
+/** Только настоящий IANA-пояс: битое значение не должно валить форматирование дат. */
+export function validTimezone(tz: string | undefined): string | undefined {
+  if (!tz) return undefined;
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: tz });
+    return tz;
+  } catch {
+    return undefined;
+  }
 }
 
 function hostOf(url: string | null | undefined): string | null {

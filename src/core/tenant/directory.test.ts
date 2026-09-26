@@ -45,6 +45,8 @@ describe("tenant directory", () => {
     expect(s.zernio?.account_ids).toEqual(["acc1"]);
     expect(s.served_by).toBe("v2");
     expect(settingsFromJson("x")).toEqual({});
+    expect(settingsFromJson({ timezone: "Europe/Moscow" }).timezone).toBe("Europe/Moscow");
+    expect(settingsFromJson({ timezone: "Mars/Olympus" }).timezone).toBeUndefined();
   });
 
   it("неизвестная ниша и статус читаются как digital/active", () => {

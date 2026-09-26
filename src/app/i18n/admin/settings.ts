@@ -23,6 +23,16 @@ export const ru = {
   "settings.shop.langDuring": "Спрашивать при выдаче",
   "settings.shop.langBefore": "Спрашивать до оформления (с ценой за все языки)",
   "settings.shop.instruction": "Текст инструкции покупателю",
+  "settings.shop.currency": "Валюта магазина",
+  "settings.shop.currencyHint": "По умолчанию для новых товаров, реквизитов и витрины.",
+  "settings.shop.timezone": "Часовой пояс",
+  "settings.shop.timezoneHint": "Даты выдачи, напоминания и выгрузки — в этом поясе.",
+  "settings.shop.timezoneDefault": "как у платформы (Алматы)",
+  "settings.shop.tagline": "Подзаголовок витрины",
+  "settings.shop.taglineHint":
+    "Одна строка под названием магазина на витрине; пусто — из «О продавце».",
+  "settings.shop.accent": "Цвет витрины",
+  "settings.shop.accentHint": "Кнопки и акценты на витрине /s/…; галочка снята — цвет платформы.",
   // способы оплаты
   "settings.pay.title": "Способы оплаты по странам",
   "settings.pay.addCountry": "+ Страна",
@@ -215,6 +225,17 @@ export const kk: SectionDict<typeof ru> = {
   "settings.shop.langDuring": "Беру кезінде сұрау",
   "settings.shop.langBefore": "Рәсімдеуге дейін сұрау (барлық тілдердің бағасымен)",
   "settings.shop.instruction": "Сатып алушыға нұсқаулық мәтіні",
+  "settings.shop.currency": "Дүкен валютасы",
+  "settings.shop.currencyHint": "Жаңа тауарлар, деректемелер және витрина үшін әдепкі.",
+  "settings.shop.timezone": "Уақыт белдеуі",
+  "settings.shop.timezoneHint": "Беру күндері, еске салулар мен экспорт — осы белдеуде.",
+  "settings.shop.timezoneDefault": "платформадағыдай (Алматы)",
+  "settings.shop.tagline": "Витрина тақырыпшасы",
+  "settings.shop.taglineHint":
+    "Витринадағы дүкен атауының астындағы бір жол; бос — «Сатушы туралы» бөлімінен.",
+  "settings.shop.accent": "Витрина түсі",
+  "settings.shop.accentHint":
+    "/s/… витринасындағы түймелер мен акценттер; құсбелгі алынса — платформа түсі.",
   "settings.pay.title": "Елдер бойынша төлем тәсілдері",
   "settings.pay.addCountry": "+ Ел",
   "settings.pay.intro":
@@ -400,6 +421,17 @@ export const en: SectionDict<typeof ru> = {
   "settings.shop.langDuring": "Ask on delivery",
   "settings.shop.langBefore": "Ask before checkout (priced for all languages)",
   "settings.shop.instruction": "Instruction text for the customer",
+  "settings.shop.currency": "Shop currency",
+  "settings.shop.currencyHint": "Default for new products, payment details and the storefront.",
+  "settings.shop.timezone": "Time zone",
+  "settings.shop.timezoneHint": "Fulfillment dates, reminders and exports use this zone.",
+  "settings.shop.timezoneDefault": "same as the platform (Almaty)",
+  "settings.shop.tagline": "Storefront tagline",
+  "settings.shop.taglineHint":
+    "One line under the shop name on the storefront; empty — taken from “About the seller”.",
+  "settings.shop.accent": "Storefront color",
+  "settings.shop.accentHint":
+    "Buttons and accents on the /s/… storefront; unchecked — platform color.",
   "settings.pay.title": "Payment methods by country",
   "settings.pay.addCountry": "+ Country",
   "settings.pay.intro":
@@ -582,6 +614,17 @@ export const uz: SectionDict<typeof ru> = {
   "settings.shop.langDuring": "Topshirishda so‘rash",
   "settings.shop.langBefore": "Rasmiylashtirishdan oldin so‘rash (barcha tillar narxi bilan)",
   "settings.shop.instruction": "Xaridor uchun ko‘rsatma matni",
+  "settings.shop.currency": "Do‘kon valyutasi",
+  "settings.shop.currencyHint": "Yangi mahsulotlar, rekvizitlar va vitrina uchun standart.",
+  "settings.shop.timezone": "Vaqt mintaqasi",
+  "settings.shop.timezoneHint": "Yetkazish sanalari, eslatmalar va eksport — shu mintaqada.",
+  "settings.shop.timezoneDefault": "platformadagidek (Almati)",
+  "settings.shop.tagline": "Vitrina sarlavhasi",
+  "settings.shop.taglineHint":
+    "Vitrinada do‘kon nomi ostidagi bir qator; bo‘sh — «Sotuvchi haqida» bo‘limidan.",
+  "settings.shop.accent": "Vitrina rangi",
+  "settings.shop.accentHint":
+    "/s/… vitrinasidagi tugmalar va aksentlar; belgi olib tashlansa — platforma rangi.",
   "settings.pay.title": "Mamlakatlar bo‘yicha to‘lov usullari",
   "settings.pay.addCountry": "+ Mamlakat",
   "settings.pay.intro":

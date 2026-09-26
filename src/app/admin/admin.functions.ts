@@ -80,7 +80,7 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
     const { VERTICALS } = await import("@/core/verticals/registry");
     const { getSettings } = await import("@/core/settings/settings");
     const { isLocale } = await import("@/core/i18n/locale");
-    const st = await getSettings(ctx, ["shop_name", "admin_locale"]);
+    const st = await getSettings(ctx, ["shop_name", "admin_locale", "shop_currency"]);
     const shopName = st.shop_name ?? ctx.tenant.name;
     const locale = isLocale(st.admin_locale)
       ? st.admin_locale
@@ -90,6 +90,8 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       name: shopName,
       /** Язык админки продавца — app_settings.admin_locale, иначе язык магазина. */
       locale,
+      /** Валюта магазина по умолчанию — для новых товаров и реквизитов. */
+      currency: (st.shop_currency ?? "KZT").toUpperCase(),
       role: await (await import("@/app/auth/guards.server")).adminRole(),
       username: s.data.admin.username,
       vertical: ctx.tenant.vertical,
@@ -475,6 +477,9 @@ export const setBlockedFn = createServerFn({ method: "POST" })
 
 export const SETTING_KEYS = [
   "shop_name",
+  "shop_currency",
+  "shop_tagline",
+  "storefront_accent",
   "admin_chat_id",
   "admin_contact_link",
   "instruction_caption",
@@ -531,10 +536,24 @@ export const settingsFn = createServerFn({ method: "GET" }).handler(async () => 
     settings,
     methods,
     ownerTelegramId: ctx.tenant.ownerTelegramId,
+    timezone: ctx.tenant.settings.timezone ?? null,
     smartSearchKey: platformHasKey(),
     visionKey: visionConfigured(),
   };
 });
+
+/** Часовой пояс магазина — в bots.settings: его читает контекст арендатора без похода в app_settings. */
+export const setShopTimezoneFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ timezone: z.string().max(64) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await adminOwner();
+    const { validTimezone } = await import("@/core/tenant/directory");
+    const tz = validTimezone(data.timezone.trim() || undefined);
+    if (data.timezone.trim() && !tz) throw new Error("Неизвестный часовой пояс");
+    const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
+    await patchTenantSettings(ctx.tenant.id, { timezone: tz ?? "" });
+    return { ok: true, timezone: tz ?? null };
+  });
 
 export const saveSettingsFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.record(z.enum(SETTING_KEYS), z.string().max(4000)).parse(d))
