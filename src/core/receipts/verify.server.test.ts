@@ -91,6 +91,23 @@ describe("verifyReceipt — повтор чека по хешу файла", () 
     mockVision("Оплата успешно. Сумма: 1000 KZT");
     expect(await verifyReceipt(ctx, base)).toMatchObject({ ok: true, matchedAmount: 1000 });
   });
+  it("тот же JPEG с байтами в хвосте — всё равно повтор, и старый хэш сырых байтов узнаётся", async () => {
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xda, 0x00, 0x02, 0x11, 0xff, 0xd9]);
+    const tampered = new Uint8Array([...jpeg, 0x00, 0x01, 0xff, 0xd9]);
+    const { db, ctx } = setup();
+    db.tables.orders = [{ id: 42, display_no: 42, order_no: 42, payment_proof_hash: sha(jpeg) }];
+    mockVision("Оплата успешно. Сумма: 1000 KZT");
+    expect(await verifyReceipt(ctx, { ...base, bytes: tampered })).toMatchObject({
+      ok: false,
+      reason: "receipt_reused",
+    });
+    db.tables.orders = [{ id: 42, display_no: 42, payment_proof_hash: sha(tampered) }];
+    mockVision("Оплата успешно. Сумма: 1000 KZT");
+    expect(await verifyReceipt(ctx, { ...base, bytes: tampered })).toMatchObject({
+      ok: false,
+      reason: "receipt_reused",
+    });
+  });
   it("чек новый — автовыдача; свой же хеш (записан при приёме чека) не считается повтором", async () => {
     const { db, ctx } = setup();
     db.tables.orders = [{ id: 99, display_no: 99, payment_proof_hash: sha(IMG) }];
@@ -140,6 +157,9 @@ describe("verifyReceipt — разбор текста и маршрут в Visio
     const body = JSON.parse(String(init.body));
     expect(body.requests[0].inputConfig.mimeType).toBe("application/pdf");
     expect(body.requests[0].pages).toEqual([1, 2, 3, 4, 5]);
+    // Разбор встроенного текста (pdf.js) не должен забрать буфер: в Vision уходит сам файл.
+    expect(body.requests[0].inputConfig.content).toBe(Buffer.from(pdf).toString("base64"));
+    expect(pdf.byteLength).toBe(8);
   });
   it("картинка идёт в images:annotate", async () => {
     const { ctx } = setup();

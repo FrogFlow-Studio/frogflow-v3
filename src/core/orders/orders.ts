@@ -1,7 +1,7 @@
 import { validateProofFile } from "./proof-file";
+import { proofHashes } from "./proof-hash";
 import { UserError } from "@/core/i18n/user-error";
 import { rewardReferrerIfFirstDelivery, type ReferralGrant } from "@/core/referrals/referrals";
-import { createHash } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { protectMaterials } from "@/core/delivery/watermark.server";
 import { recordOrderEvent } from "./events";
@@ -524,11 +524,13 @@ export async function attachPaymentProof(
   if (!checked.ok) return { ok: false, reason: checked.reason };
   file = { bytes: file.bytes, mime: checked.mime, ext: checked.ext };
 
-  const hash = createHash("sha256").update(file.bytes).digest("hex");
+  // Отпечаток содержимого, а не сырых байтов; старые чеки — и по сырому (proof-hash).
+  const hashes = proofHashes(file.bytes);
+  const hash = hashes.stored;
   const { data: dup } = await ctx.db
     .from("orders")
     .select("id")
-    .eq("payment_proof_hash", hash)
+    .in("payment_proof_hash", hashes.all)
     .neq("id", orderId)
     .limit(1)
     .maybeSingle();

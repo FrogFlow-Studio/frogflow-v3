@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
 import { env } from "@/config/env";
+import { proofHashes } from "@/core/orders/proof-hash";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSetting, trySetSetting } from "@/core/settings/settings";
 import { convertForReceipt } from "@/core/pricing/pricing";
@@ -139,7 +139,8 @@ async function visionPdf(bytes: Uint8Array, apiKey: string): Promise<string> {
 async function embeddedPdfText(bytes: Uint8Array): Promise<string> {
   try {
     const { extractText } = await import("unpdf");
-    const { text } = await extractText(bytes, { mergePages: true });
+    // Копия: pdf.js забирает (detach) буфер, а байты нужны дальше — Vision и отпечаток чека.
+    const { text } = await extractText(bytes.slice(), { mergePages: true });
     return text.trim();
   } catch {
     return "";
@@ -224,11 +225,10 @@ export async function verifyReceipt(
   const analysis = await withFx(analyzeReceiptText(text, p.expectedAmount, p.currency), text, p);
   const extractedText = text.slice(0, 2000);
   if (!analysis.ok) return { ...analysis, extractedText };
-  const hash = createHash("sha256").update(p.bytes).digest("hex");
   const { data: reuse } = await ctx.db
     .from("orders")
     .select("id, display_no, order_no")
-    .eq("payment_proof_hash", hash)
+    .in("payment_proof_hash", proofHashes(p.bytes).all)
     .neq("id", p.orderId)
     .limit(1)
     .maybeSingle();
