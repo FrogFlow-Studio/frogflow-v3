@@ -210,6 +210,11 @@ event` и `order_id` в `payload`; ретеншн держит их 180 дней
 скидки в ноль, Direct) уходит продавцу в Telegram сразу
 (`notifyDeliveryFailure`) и ставит повтор выдачи в outbox.
 
+**Почта** (`core/mail/mail.server.ts`): SMTP платформы из окружения
+(`SMTP_HOST/PORT/USER/PASSWORD/FROM`), nodemailer; единственное письмо пока —
+материалы заказа покупателю из Instagram/WhatsApp (`core/orders/email.ts`,
+вызывается из `finalizeDelivery`).
+
 **Outbox** (`core/outbox/outbox.ts`, правила повторов — `pure.ts`):
 исходящие покупателю (`notifyCustomer`) и продавцу (`notifyAdminsHtml`)
 идут через `sendOrEnqueue`: отказ — строка в `zernio_logs` с

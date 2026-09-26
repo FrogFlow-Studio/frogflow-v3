@@ -22,7 +22,9 @@ export type OrderEventKind =
   | "rejected"
   | "reminded"
   | "status"
-  | "notify_failed";
+  | "notify_failed"
+  | "email_sent"
+  | "email_failed";
 
 export type OrderEvent = {
   id: string;
@@ -123,6 +125,13 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       return { text: `Напоминание об оплате отправлено${who}`, tone: "neutral" };
     case "status":
       return { text: `Статус: ${str(p.to)}${who}`, tone: "neutral" };
+    case "email_sent":
+      return {
+        text: `Материалы отправлены на почту ${str(p.to)} (${num(p.files)} ссылок)`,
+        tone: "ok",
+      };
+    case "email_failed":
+      return { text: `Письмо на ${str(p.to)} не ушло: ${str(p.error)}`, tone: "warn" };
     case "notify_failed":
       return p.retrying
         ? { text: `Сообщение покупателю не ушло, повторим: ${str(p.text)}`, tone: "warn" }

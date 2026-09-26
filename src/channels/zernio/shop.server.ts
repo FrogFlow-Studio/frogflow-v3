@@ -39,6 +39,7 @@ import {
   placeOrder,
   recentAwaitingPaymentOrder,
   type OrderWithItems,
+  reorderIntoCart,
 } from "@/core/orders/orders";
 import {
   activeDeliveryZones,
@@ -592,6 +593,17 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
     case "ORDERS":
       await showOrders(s);
       return "handled";
+    case "REORDER": {
+      const order = a ? await getOrder(s.ctx, Number(a)) : null;
+      if (!order || order.telegram_id !== s.customer.telegramId) return "handled";
+      const added = await reorderIntoCart(s.ctx, s.customer, order);
+      if (!added) {
+        await reply(s, plain(s.m.reorderNothing), { force: true, buttons: [BTN.catalog(s.m)] });
+        return "handled";
+      }
+      await showCart(s, true, plain(s.m.reorderDone(added)));
+      return "handled";
+    }
     case "FT":
       if (a === "pickup" || a === "delivery") {
         await setMode(s, { checkout_fulfillment_type: a });
@@ -1460,7 +1472,19 @@ async function showOrders(s: Shop) {
     text += `#${no} — ${formatMoney(o.total, o.currency)} — ${plain(st)}\n`;
     for (const i of o.order_items ?? []) text += `   • ${i.name_snapshot} × ${i.quantity}\n`;
   }
-  await reply(s, text, { force: true, buttons: [BTN.catalog(s.m), BTN.cart(s.m)] });
+  // Кнопок в Direct не больше трёх: «повторить» — для последнего закрытого заказа с товарами.
+  const repeatable = orders.find(
+    (o) =>
+      ["delivered", "rejected", "cancelled"].includes(o.status) && (o.order_items ?? []).length,
+  );
+  const buttons: DmButton[] = [BTN.catalog(s.m), BTN.cart(s.m)];
+  if (repeatable)
+    buttons.push({
+      type: "postback",
+      title: `${plain(s.m.reorderBtn)} #${displayNo(repeatable)}`,
+      payload: `REORDER:${repeatable.id}`,
+    });
+  await reply(s, text, { force: true, buttons });
 }
 
 export const __test = { fingerprint, env };

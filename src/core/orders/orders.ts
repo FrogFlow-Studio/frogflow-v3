@@ -33,6 +33,7 @@ import {
 } from "@/core/discounts/discounts";
 
 export { displayNo, itemLanguages, itemMaterials } from "./pure";
+export { parseDeliveredLanguages } from "@/core/catalog/materials";
 
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
 export type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"];
@@ -408,6 +409,27 @@ export async function listCustomerOrders(
   return (data ?? []) as OrderWithItems[];
 }
 
+/**
+ * «Повторить заказ»: те же товары снова в корзину — по одному вызову на
+ * единицу количества (addToCart считает остаток и лимиты). Снятых с продажи
+ * товаров не будет; возвращает число добавленных единиц.
+ */
+export async function reorderIntoCart(
+  ctx: TenantContext,
+  customer: Customer,
+  order: OrderWithItems,
+): Promise<number> {
+  const { addToCart } = await import("@/core/cart/cart");
+  let added = 0;
+  for (const item of order.order_items) {
+    if (!item.product_id) continue;
+    for (let i = 0; i < Math.min(Number(item.quantity) || 1, 20); i++)
+      if ((await addToCart(ctx, customer, item.product_id, item.product_variant_id)) === "ok")
+        added++;
+  }
+  return added;
+}
+
 /** Открытый заказ, ждущий чек, не старше суток — запасной путь, если состояние потерялось. */
 export async function recentAwaitingPaymentOrder(
   ctx: TenantContext,
@@ -599,6 +621,15 @@ async function finalizeDelivery(
     ? 0
     : await awardPointsForOrder(ctx, order.id, order.telegram_id, Number(order.total));
   const referral = failed ? null : await rewardReferrerIfFirstDelivery(ctx, order.telegram_id);
+  // Покупателю из Instagram/WhatsApp — копия материалов на почту: ссылки в
+  // переписке живут 7 дней и теряются, письмо остаётся.
+  if (!failed && order.platform !== "telegram" && order.customer_email) {
+    const fresh = await getOrder(ctx, order.id);
+    const { emailOrderMaterials } = await import("./email");
+    await emailOrderMaterials(ctx, fresh ?? order).catch((e) =>
+      console.warn(`[orders] письмо по заказу #${order.id}: ${String(e)}`),
+    );
+  }
   return { pointsEarned, referral };
 }
 

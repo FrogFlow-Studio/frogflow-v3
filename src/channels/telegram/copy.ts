@@ -103,6 +103,10 @@ export type Msg = {
   myOrdersEmpty: string;
   myOrdersHeader: string;
   resendBtn: string;
+  /** «Повторить заказ»: те же товары снова в корзину. */
+  reorderBtn: string;
+  reorderDone: (n: number) => string;
+  reorderNothing: string;
   status: Record<string, string>;
   instructionDefault: string;
   infoText: string;
@@ -279,6 +283,9 @@ const ru: Msg = {
   myOrdersEmpty: "У вас пока нет заказов.",
   myOrdersHeader: "📋 <b>Ваши заказы</b>\n\n",
   resendBtn: "📥 Прислать файлы ещё раз",
+  reorderBtn: "🔁 Повторить заказ",
+  reorderDone: (n) => `🔁 Добавил в корзину ${n} поз. из прошлого заказа`,
+  reorderNothing: "Из этого заказа ничего уже нет в продаже.",
   status: {
     awaiting_payment: "ожидает оплаты",
     awaiting_confirmation: "чек на проверке",
@@ -310,6 +317,9 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  reorderBtn: "🔁 Тапсырысты қайталау",
+  reorderDone: (n) => `🔁 Өткен тапсырыстан ${n} позиция себетке қосылды`,
+  reorderNothing: "Бұл тапсырыстан ештеңе енді сатылымда жоқ.",
   notReceiptLike: (no) =>
     `⚠️ Бұл төлем чегіне ұқсамайды.\n\n#${no} тапсырысының сомасы көрсетілген аударым/чек скриншотын жіберіңіз.`,
   receiptPaymentFailed: (no) =>
@@ -379,6 +389,9 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  reorderBtn: "🔁 Reorder",
+  reorderDone: (n) => `🔁 Added ${n} item(s) from your previous order to the cart`,
+  reorderNothing: "Nothing from this order is on sale anymore.",
   notReceiptLike: (no) =>
     `⚠️ This doesn’t look like a payment receipt.\n\nPlease send a screenshot of the transfer/receipt showing the amount for order #${no}.`,
   receiptPaymentFailed: (no) =>
@@ -468,6 +481,9 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  reorderBtn: "🔁 Buyurtmani takrorlash",
+  reorderDone: (n) => `🔁 Oldingi buyurtmadan ${n} pozitsiya savatga qo‘shildi`,
+  reorderNothing: "Bu buyurtmadan hech narsa endi sotuvda yo‘q.",
   notReceiptLike: (no) =>
     `⚠️ Bu to‘lov chekiga o‘xshamayapti.\n\n#${no} buyurtma summasi ko‘rsatilgan o‘tkazma/chek skrinshotini yuboring.`,
   receiptPaymentFailed: (no) =>

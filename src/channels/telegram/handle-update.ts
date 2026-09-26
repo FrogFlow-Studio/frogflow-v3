@@ -76,6 +76,7 @@ import {
   placeOrder,
   recentAwaitingPaymentOrder,
   rejectOrder,
+  reorderIntoCart,
   completeLanguageDelivery,
 } from "@/core/orders/orders";
 import { getSetting } from "@/core/settings/settings";
@@ -1310,6 +1311,8 @@ async function showMyOrders(b: Bot) {
     const row: InlineButton[] = [];
     if (o.status === "delivered" && o.fulfillment_kind !== "physical")
       row.push({ text: `${b.m.resendBtn} #${no}`, callback_data: `resend:${o.id}` });
+    if (["delivered", "rejected", "cancelled"].includes(o.status) && (o.order_items ?? []).length)
+      row.push({ text: `${b.m.reorderBtn} #${no}`, callback_data: `reorder:${o.id}` });
     if (o.status === "delivered" && b.ctx.tenant.modules.review_request)
       row.push({ text: b.m.rateBtn(String(no)), callback_data: `rate:${o.id}` });
     if (row.length) buttons.push(row);
@@ -1616,6 +1619,14 @@ async function handleCallback(
     const { review_product_id: _rp, ...rest } = b.customer.state;
     b.customer = await setState(ctx, b.customer, { ...rest, mode: "idle" });
     return send(b, b.m.useMenu);
+  }
+  if (data.startsWith("reorder:")) {
+    const order = await getOrder(ctx, Number(data.slice(8)));
+    if (!order || order.telegram_id !== customer.telegramId) return;
+    const added = await reorderIntoCart(ctx, customer, order);
+    if (!added) return void (await send(b, b.m.reorderNothing));
+    await send(b, b.m.reorderDone(added));
+    return showCart(b);
   }
   if (data.startsWith("resend:")) {
     const order = await getOrder(ctx, Number(data.slice(7)));

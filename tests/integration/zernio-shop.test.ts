@@ -301,4 +301,22 @@ describe.skipIf(!liveReady)("магазин в Instagram Direct на демо-к
     await setSetting(ctx, enabledKey, "");
     await setSetting(ctx, triggersKey, "");
   });
+
+  it("«повторить заказ»: кнопка в «моих заказах» кладёт товары прошлого заказа в корзину", async () => {
+    await handleZernioMessage(ctx, tap("r-1", "ORDERS"), fake);
+    const btn = last().buttons?.find((b) => /Повторить заказ/.test(b));
+    expect(btn).toBeTruthy();
+    const no = btn!.match(/#(\d+)/)![1];
+    const { data: row } = await ctx.db
+      .from("orders")
+      .select("id")
+      .eq("bot_id", DEMO_BOT)
+      .or(`display_no.eq.${no},order_no.eq.${no}`)
+      .order("id", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    await handleZernioMessage(ctx, tap("r-2", `REORDER:${row!.id}`), fake);
+    expect(last().text).toContain(PROBE_NAME);
+    expect(last().text).toMatch(/из прошлого заказа/);
+  });
 });
