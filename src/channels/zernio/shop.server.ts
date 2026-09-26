@@ -269,6 +269,20 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   if (step) return route(s, { ...msg, postbackPayload: null, text: step });
   if (msg.postbackPayload) return handlePostback(s, msg.postbackPayload);
 
+  // Вложение без ссылки (Zernio сменил форму события): если ждём чек — просим
+  // прислать ещё раз, а не отвечаем как на вопрос и не теряем его молча.
+  if (msg.mediaWithoutUrl && msg.attachments.length === 0 && !text) {
+    const waiting =
+      ((mode === "awaiting_proof" || mode === "awaiting_payment") &&
+        s.customer.state.pending_order_id) ||
+      (await recentAwaitingPaymentOrder(s.ctx, s.customer));
+    if (waiting) {
+      console.warn(`[zernio:${s.ctx.tenant.id}] вложение без ссылки на шаге оплаты`);
+      await reply(s, s.m.proofFailed, { force: true });
+      return "handled";
+    }
+  }
+
   // Вложение: чек на шаге оплаты или по свежему открытому заказу.
   if (msg.attachments.length > 0) {
     const url = pickReceiptAttachment(msg.attachments);
@@ -1368,7 +1382,7 @@ async function choosePayment(s: Shop, kind: "rk" | "manual") {
 // ── чек и выдача ──────────────────────────────────────────────────────
 
 async function receiveProof(s: Shop, url: string, orderId: number) {
-  const file = await (s.transport.download ?? downloadAttachment)(url);
+  const file = await (s.transport.download ?? downloadAttachment)(url, s.accountId);
   if (!file) {
     await reply(s, s.m.proofFailed, { force: true });
     return;

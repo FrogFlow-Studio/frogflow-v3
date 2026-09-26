@@ -721,8 +721,8 @@
     "берёт картинку или файл": "src/channels/zernio/shop-flow.test.ts › берёт картинку или файл, старые события без типа — фото",
     "не принимает за чек голосовое, видео, пересланный пост и эхо шаблона": "src/channels/zernio/shop-flow.test.ts › не принимает голосовое, видео, пост и эхо шаблона; находит чек рядом с голосовым",
     "находит чек, даже если он пришёл вместе с голосовым": "src/channels/zernio/shop-flow.test.ts › не принимает голосовое, видео, пост и эхо шаблона; находит чек рядом с голосовым",
-    "на платёжном шаге принимает живые Instagram и WhatsApp media-объекты": "open: parseZernioMessage (channels/zernio/message.ts) берёт только a.url и теряет payload.url, WhatsApp media на шаге оплаты не проверен",
-    "не зависит от нового имени типа, если URL есть": "open: pickReceiptAttachment в v2 отвергает незнакомый тип вложения даже с URL на шаге оплаты, теста нет",
+    "на платёжном шаге принимает живые Instagram и WhatsApp media-объекты": "src/channels/zernio/message.test.ts › чек вложением: ссылка из payload.url (Instagram), из медиа WhatsApp, mime сохраняется",
+    "не зависит от нового имени типа, если URL есть": "src/channels/zernio/shop-flow.test.ts › не зависит от нового имени типа, если есть ссылка; картинка всё равно первая",
     "понимает просьбу убрать позицию": "src/channels/zernio/shop-flow.test.ts › понимает просьбу убрать и находит позицию по номеру или месту",
     "не принимает за удаление обычную реплику": "src/channels/zernio/shop-flow.test.ts › понимает просьбу убрать и находит позицию по номеру или месту",
     "находит позицию по номеру материала": "src/channels/zernio/shop-flow.test.ts › понимает просьбу убрать и находит позицию по номеру или месту",
@@ -748,9 +748,9 @@
     "раскупленная вторая позиция — откатывает остаток уже списанной первой": "open: restoreStock при частичном списании (core/fulfillment/fulfillment.ts) тестом не проверен"
   },
   "tests/direct-receipt-download.test.ts": {
-    "authenticates WhatsApp media and adds the receiving account": "open: downloadAttachment (channels/zernio/api.server.ts) ставит ключ Zernio, но accountId к медиа WhatsApp не добавляет, теста нет",
+    "authenticates WhatsApp media and adds the receiving account": "src/channels/zernio/base-url.test.ts › медиа WhatsApp через API Zernio получает принявший аккаунт",
     "leaves an Instagram CDN URL unauthenticated": "src/channels/zernio/base-url.test.ts › чужие хосты и похожие имена ключ не получают",
-    "does not duplicate an accountId already present in the Zernio URL": "open: добавления accountId к ссылке медиа WhatsApp в v2 нет (downloadAttachment), нет и теста"
+    "does not duplicate an accountId already present in the Zernio URL": "src/channels/zernio/base-url.test.ts › не дублирует accountId, уже стоящий в ссылке; без аккаунта — как есть"
   },
   "tests/direct-reply.test.ts": {
     "does not mark an answer as sent when Zernio rejects it": "open: reply() в channels/zernio/shop.server.ts не пишет last_reply при отказе, теста на отказ транспорта нет",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { attachmentNeedsZernioKey, normalizeZernioBaseUrl } from "./base-url";
+import { attachmentNeedsZernioKey, withReceivingAccount, normalizeZernioBaseUrl } from "./base-url";
 
 describe("normalizeZernioBaseUrl", () => {
   it("пусто — адрес API по умолчанию", () => {
@@ -35,5 +35,27 @@ describe("attachmentNeedsZernioKey", () => {
       "not a url",
     ])
       expect(attachmentNeedsZernioKey(url, undefined), url).toBe(false);
+  });
+});
+
+describe("withReceivingAccount", () => {
+  it("медиа WhatsApp через API Zernio получает принявший аккаунт", () => {
+    expect(withReceivingAccount("https://zernio.com/api/v1/media/m1", "acc1")).toBe(
+      "https://zernio.com/api/v1/media/m1?accountId=acc1",
+    );
+    expect(withReceivingAccount("https://zernio.com/api/v1/media/m1?x=1", "acc 2")).toBe(
+      "https://zernio.com/api/v1/media/m1?x=1&accountId=acc+2",
+    );
+  });
+  it("ссылку CDN Instagram не трогает", () => {
+    const url = "https://scontent.cdninstagram.com/v/t51/abc.jpg?stp=1";
+    expect(withReceivingAccount(url, "acc1")).toBe(url);
+  });
+  it("не дублирует accountId, уже стоящий в ссылке; без аккаунта — как есть", () => {
+    const url = "https://zernio.com/api/v1/media/m1?accountId=other";
+    expect(withReceivingAccount(url, "acc1")).toBe(url);
+    expect(withReceivingAccount("https://zernio.com/api/v1/media/m1", null)).toBe(
+      "https://zernio.com/api/v1/media/m1",
+    );
   });
 });

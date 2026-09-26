@@ -39,7 +39,13 @@ export type ZernioWebhookMessagePayload = {
     platform?: string;
     direction?: "incoming" | "outgoing" | string;
     text?: string | null;
-    attachments?: Array<{ type?: string; url?: string; payload?: Record<string, Json> }>;
+    attachments?: Array<{
+      type?: string;
+      url?: string;
+      mimeType?: string;
+      payload?: Record<string, Json>;
+      [key: string]: Json | undefined;
+    }>;
     sender?: {
       id?: string;
       contactId?: string;
@@ -90,7 +96,10 @@ export type ParsedZernioMessage = {
   /** Нажатие кнопки или строки списка — у такого сообщения текста нет. */
   postbackPayload: string | null;
   nativeOrder: NativeOrder | null;
-  attachments: Array<{ type: string; url: string }>;
+  /** mimeType — только когда Zernio его прислал (WhatsApp-медиа). */
+  attachments: Array<{ type: string; url: string; mimeType?: string }>;
+  /** Вложение пришло, но ссылки на него не нашлось — чек нельзя молча терять. */
+  mediaWithoutUrl: boolean;
   /** Ответ на сторис или рилс: id медиа из метаданных Zernio (форма поля у них плавает). */
   storyId: string | null;
   /** Ссылка на медиа сторис — запасной ключ для сопоставления с тегом товара. */
@@ -133,6 +142,36 @@ const STORY_ATTACHMENT_TYPES = new Set([
   "ig_story",
   "reel",
 ]);
+
+/**
+ * Где у вложения лежит ссылка. Instagram через Zernio присылает её то в
+ * `url`, то в `payload.url` (форма Messenger), WhatsApp — в `url` или в
+ * объекте медиа; смотрим во все места, иначе чек молча теряется.
+ */
+const ATTACHMENT_URL_PATHS = [
+  ["url"],
+  ["payload", "url"],
+  ["mediaUrl"],
+  ["media_url"],
+  ["fileUrl"],
+  ["file_url"],
+  ["payload", "mediaUrl"],
+  ["payload", "src"],
+  ["media", "url"],
+  ["image", "url"],
+  ["document", "url"],
+  ["file", "url"],
+  ["link"],
+];
+const ATTACHMENT_MIME_PATHS = [
+  ["mimeType"],
+  ["mime_type"],
+  ["payload", "mimeType"],
+  ["payload", "mime_type"],
+  ["media", "mimeType"],
+  ["image", "mime_type"],
+  ["document", "mime_type"],
+];
 
 function pick(obj: unknown, paths: readonly string[][]): string | null {
   for (const path of paths) {
@@ -196,8 +235,17 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
       }
     : null;
 
-  const attachments = (message.attachments ?? [])
-    .map((a) => ({ type: str(a.type).toLowerCase() || "file", url: str(a.url) }))
+  const rawAttachments = Array.isArray(message.attachments) ? message.attachments : [];
+  const attachments = rawAttachments
+    .map((a) => {
+      const url = pick(a, ATTACHMENT_URL_PATHS) ?? "";
+      const mimeType = pick(a, ATTACHMENT_MIME_PATHS)?.toLowerCase();
+      return {
+        type: str(a?.type).toLowerCase() || "file",
+        url: /^https?:\/\//i.test(url) ? url : "",
+        ...(mimeType ? { mimeType } : {}),
+      };
+    })
     .filter((a) => a.url);
 
   // Ответ на сторис: id и ссылка живут в metadata события, message.metadata или в самом
@@ -226,6 +274,7 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
     postbackPayload,
     nativeOrder,
     attachments,
+    mediaWithoutUrl: attachments.length < rawAttachments.length,
     storyId,
     storyMediaUrl,
     outgoing: message.direction === "outgoing",

@@ -34,3 +34,21 @@ export function attachmentNeedsZernioKey(url: string, baseUrl?: string | null): 
     return false;
   }
 }
+
+/**
+ * Ссылка на медиа WhatsApp через API Zernio отдаётся только с аккаунтом,
+ * который сообщение принял (`accountId`): без него — ошибка, и чек не
+ * скачивается. Дописываем принявший аккаунт, если его в ссылке ещё нет;
+ * чужие хосты (CDN Instagram) не трогаем.
+ */
+export function withReceivingAccount(
+  url: string,
+  accountId: string | null | undefined,
+  baseUrl?: string | null,
+): string {
+  if (!accountId || !attachmentNeedsZernioKey(url, baseUrl)) return url;
+  const u = new URL(url);
+  if (u.searchParams.has("accountId")) return url;
+  u.searchParams.set("accountId", accountId);
+  return u.toString();
+}

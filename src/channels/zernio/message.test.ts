@@ -89,6 +89,49 @@ describe("parseZernioMessage", () => {
     expect(messageAsText(p)).toBe("[вложение: image]");
   });
 
+  it("чек вложением: ссылка из payload.url (Instagram), из медиа WhatsApp, mime сохраняется", () => {
+    const p = parseZernioMessage({
+      event: "message.received",
+      message: {
+        conversationId: "c1",
+        sender: { id: "u1" },
+        attachments: [
+          { type: "image", payload: { url: "https://lookaside.fbsbx.com/ig_messaging_cdn/?a=1" } },
+          {
+            type: "document",
+            document: { url: "https://zernio.com/api/v1/media/m1" },
+            mimeType: "application/pdf",
+          },
+          { type: "image", mediaUrl: "https://zernio.com/api/v1/media/m2" },
+        ],
+      },
+      account: { accountId: "a1" },
+    });
+    expect(p.attachments).toEqual([
+      { type: "image", url: "https://lookaside.fbsbx.com/ig_messaging_cdn/?a=1" },
+      { type: "document", url: "https://zernio.com/api/v1/media/m1", mimeType: "application/pdf" },
+      { type: "image", url: "https://zernio.com/api/v1/media/m2" },
+    ]);
+    expect(p.mediaWithoutUrl).toBe(false);
+  });
+
+  it("вложение без ссылки или не с http(s) — отмечено, а не пропало молча", () => {
+    const p = parseZernioMessage({
+      event: "message.received",
+      message: {
+        conversationId: "c1",
+        sender: { id: "u1" },
+        attachments: [
+          { type: "image", id: "wamid.1" },
+          { type: "image", url: "javascript:alert(1)" },
+        ],
+      },
+      account: { accountId: "a1" },
+    });
+    expect(p.attachments).toEqual([]);
+    expect(p.mediaWithoutUrl).toBe(true);
+  });
+
   it("нажатие читается из корня события: Instagram postback и строка списка WhatsApp", () => {
     const ig = parseZernioMessage({
       event: "message.received",

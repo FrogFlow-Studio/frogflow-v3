@@ -1,6 +1,6 @@
 import { env } from "@/config/env";
 import type { Json } from "@/core/db-types";
-import { attachmentNeedsZernioKey, normalizeZernioBaseUrl } from "./base-url";
+import { attachmentNeedsZernioKey, normalizeZernioBaseUrl, withReceivingAccount } from "./base-url";
 import { idempotencyKeyFor } from "./event-context.server";
 import { normalizeInboxMessage, type ZernioInboxMessage } from "./inbox-types";
 import type { ZernioPlatform } from "./platform";
@@ -418,23 +418,28 @@ export type ZernioTransport = {
   send: typeof sendInboxMessage;
   tail: typeof listConversationMessages;
   /** Скачивание вложения (чек) — в тестах подменяется; живое — downloadAttachment. */
-  download?: (url: string) => Promise<{ bytes: Uint8Array; mime: string } | null>;
+  download?: (
+    url: string,
+    accountId?: string | null,
+  ) => Promise<{ bytes: Uint8Array; mime: string } | null>;
 };
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 /**
  * Скачать вложение покупателя (чек). Ссылки на API Zernio — с ключом
- * (attachmentNeedsZernioKey), остальные (CDN Instagram) — как есть; только
- * http(s), не больше 20 МБ.
+ * (attachmentNeedsZernioKey) и с принявшим аккаунтом (withReceivingAccount),
+ * остальные (CDN Instagram) — как есть; только http(s), не больше 20 МБ.
  */
 export async function downloadAttachment(
-  url: string,
+  rawUrl: string,
+  accountId?: string | null,
 ): Promise<{ bytes: Uint8Array; mime: string } | null> {
   try {
+    const e = env();
+    const url = withReceivingAccount(rawUrl, accountId, e.ZERNIO_BASE_URL);
     const u = new URL(url);
     if (u.protocol !== "https:" && u.protocol !== "http:") return null;
-    const e = env();
     const key = e.ZERNIO_API_KEY?.trim();
     const headers: Record<string, string> =
       key && attachmentNeedsZernioKey(url, e.ZERNIO_BASE_URL)

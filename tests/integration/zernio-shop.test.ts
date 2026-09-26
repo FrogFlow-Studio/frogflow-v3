@@ -43,8 +43,12 @@ const fake: ZernioTransport = {
     return { ok: true };
   },
   tail: async () => [],
-  download: async () => ({ bytes: PNG, mime: "image/png" }),
+  download: async (url, accountId) => {
+    downloads.push({ url, accountId: accountId ?? null });
+    return { bytes: PNG, mime: "image/png" };
+  },
 };
+const downloads: Array<{ url: string; accountId: string | null }> = [];
 const last = () => sent[sent.length - 1]!;
 let prevBot: Record<string, string> = {};
 
@@ -197,15 +201,29 @@ describe.skipIf(!liveReady)("магазин в Instagram Direct на демо-к
     expect(fresh.some((t) => /Передал ваш вопрос продавцу/.test(t))).toBe(true);
   });
 
-  it("чек картинкой: заказ переходит на проверку, покупатель получает подтверждение", async () => {
+  it("вложение без ссылки на шаге оплаты: просим прислать чек ещё раз, заказ ждёт", async () => {
+    await handleZernioMessage(
+      ctx,
+      event("d-8a", { text: null, attachments: [{ type: "image", id: "wamid.no-url" }] }),
+      fake,
+    );
+    expect(last().text).toMatch(/Не удалось сохранить чек/);
+    expect((await getOrder(ctx, orderId))?.status).toBe("awaiting_payment");
+  });
+
+  it("чек картинкой в форме Instagram (payload.url): заказ на проверке, скачан с аккаунтом", async () => {
     await handleZernioMessage(
       ctx,
       event("d-8", {
         text: null,
-        attachments: [{ type: "image", url: "https://cdn.test/receipt.png" }],
+        attachments: [{ type: "image", payload: { url: "https://cdn.test/receipt.png" } }],
       }),
       fake,
     );
+    expect(downloads.at(-1)).toEqual({
+      url: "https://cdn.test/receipt.png",
+      accountId: "acc-demo",
+    });
     expect(last().text).toMatch(/Чек по заказу #\d+ получен/);
     const order = await getOrder(ctx, orderId);
     expect(order?.status).toBe("awaiting_confirmation");

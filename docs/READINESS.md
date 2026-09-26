@@ -4,12 +4,12 @@
 и `docs/readiness.json` — руками не правится. `npm test` падает, если сводка
 устарела, пункт описи назван неверно или указанного теста нет.
 
-**Готовность для первых клиентов: 51 %** — покрыто тестами v2
-375 из 734 нужных сейчас пунктов.
+**Готовность для первых клиентов: 51,6 %** — покрыто тестами v2
+379 из 734 нужных сейчас пунктов.
 
 | всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |
 | ----- | ------- | --------------------- | ---- | ----- | ------------- |
-| 1125 | 375 | 43 | 359 | 33 | 358 |
+| 1125 | 379 | 43 | 355 | 33 | 358 |
 
 «Позже» — поведение нужно, но не магазинам, которые переезжают первыми
 (модуль ещё не перенесён). «Не нужно в v2» — поведение убрано или заменено;
@@ -69,9 +69,9 @@
 | `tests/datetime.test.ts` | 5 | 3 | 2 | 0 | 0 | 60 % |
 | `tests/delivery-message.test.ts` | 4 | 0 | 4 | 0 | 0 | 0 % |
 | `tests/delivery-zones.test.ts` | 5 | 0 | 5 | 0 | 0 | 0 % |
-| `tests/direct-flow.test.ts` | 57 | 48 | 7 | 2 | 0 | 87,2 % |
+| `tests/direct-flow.test.ts` | 57 | 50 | 5 | 2 | 0 | 90,9 % |
 | `tests/direct-purchase.test.ts` | 14 | 3 | 11 | 0 | 0 | 21,4 % |
-| `tests/direct-receipt-download.test.ts` | 3 | 1 | 2 | 0 | 0 | 33,3 % |
+| `tests/direct-receipt-download.test.ts` | 3 | 3 | 0 | 0 | 0 | 100 % |
 | `tests/direct-reply.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/fulfillment-dates.test.ts` | 10 | 6 | 4 | 0 | 0 | 60 % |
 | `tests/fulfillment-kind.test.ts` | 5 | 4 | 1 | 0 | 0 | 80 % |
@@ -126,7 +126,7 @@
 | `tests/zernio-retry.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/zernio-webhook.test.ts` | 13 | 7 | 3 | 0 | 3 | 70 % |
 
-## Дыры (359)
+## Дыры (355)
 
 ### поломки v1
 
@@ -354,8 +354,6 @@
 - пустые ключевые слова номера не дают — productNumberFromKeywords(null) и ключевые слова без цифр в тесте v2 не проверены
 - понимает слово с кнопки на всех 4 языках — matchFulfillmentType (core/fulfillment/pure.ts) не узнаёт «Өзі алып кету» и «O‘zi olib ketish», тест v2 только на русском
 - не принимает за почту то, что ею не является — extractEmail на Instagram-ник «@annavenglovskaia» и «собака мейл ру» в v2 не проверен
-- на платёжном шаге принимает живые Instagram и WhatsApp media-объекты — parseZernioMessage (channels/zernio/message.ts) берёт только a.url и теряет payload.url, WhatsApp media на шаге оплаты не проверен
-- не зависит от нового имени типа, если URL есть — pickReceiptAttachment в v2 отвергает незнакомый тип вложения даже с URL на шаге оплаты, теста нет
 
 ### `tests/direct-purchase.test.ts`
 
@@ -370,11 +368,6 @@
 - товар с вариантами без выбранного варианта в корзину не попадает — addToCart товара с вариантами без выбранного варианта тестом не проверен
 - недостаточный остаток — заказ не создаётся, остаток не трогается — decrementStock при нехватке на оформлении не проверен, живой тест ловит только out_of_stock в addToCart
 - раскупленная вторая позиция — откатывает остаток уже списанной первой — restoreStock при частичном списании (core/fulfillment/fulfillment.ts) тестом не проверен
-
-### `tests/direct-receipt-download.test.ts`
-
-- authenticates WhatsApp media and adds the receiving account — downloadAttachment (channels/zernio/api.server.ts) ставит ключ Zernio, но accountId к медиа WhatsApp не добавляет, теста нет
-- does not duplicate an accountId already present in the Zernio URL — добавления accountId к ссылке медиа WhatsApp в v2 нет (downloadAttachment), нет и теста
 
 ### `tests/direct-reply.test.ts`
 

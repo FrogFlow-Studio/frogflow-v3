@@ -169,6 +169,25 @@ describe("pickReceiptAttachment", () => {
     ).toBe("https://cdn/receipt.jpg");
     expect(pickReceiptAttachment(null)).toBeNull();
   });
+  it("не зависит от нового имени типа, если есть ссылка; картинка всё равно первая", () => {
+    expect(pickReceiptAttachment([{ url: "https://cdn/new", type: "media" }])).toBe(
+      "https://cdn/new",
+    );
+    expect(
+      pickReceiptAttachment([
+        { url: "https://cdn/new", type: "media" },
+        { url: "https://cdn/r.jpg", type: "image" },
+      ]),
+    ).toBe("https://cdn/r.jpg");
+    expect(
+      pickReceiptAttachment([{ url: "https://cdn/x", type: "media", mimeType: "image/jpeg" }]),
+    ).toBe("https://cdn/x");
+    expect(
+      pickReceiptAttachment([{ url: "https://cdn/v", type: "media", mimeType: "audio/ogg" }]),
+    ).toBeNull();
+    for (const type of ["voice", "sticker", "story_mention", "reel"])
+      expect(pickReceiptAttachment([{ url: "https://cdn/x", type }]), type).toBeNull();
+  });
 });
 
 describe("extractEmail", () => {
