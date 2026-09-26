@@ -20,6 +20,10 @@ import * as outbox from "./admin/outbox";
 import * as quiz from "./admin/quiz";
 import * as physical from "./admin/physical";
 import * as plan from "./admin/plan";
+import * as errorsCore from "./admin/errors-core";
+import * as errorsVip from "./admin/errors-vip";
+import * as errorsAdmin from "./admin/errors-admin";
+import * as catalog from "./admin/catalog";
 
 const baseRu = {
   // навигация и оболочка
@@ -264,6 +268,10 @@ const ru = {
   ...quiz.ru,
   ...physical.ru,
   ...plan.ru,
+  ...errorsCore.ru,
+  ...errorsVip.ru,
+  ...errorsAdmin.ru,
+  ...catalog.ru,
 } as const;
 
 export type AdminKey = keyof typeof ru;
@@ -304,6 +312,7 @@ const baseKk: Dict = {
   "common.yes": "иә",
   "common.no": "жоқ",
   "common.total": "Барлығы",
+  "common.none": "—",
   "common.exportExcel": "Excel-ге жүктеу",
   "common.downloadCsv": "CSV жүктеу",
   "login.title": "Дүкен панеліне кіру",
@@ -520,6 +529,7 @@ const baseEn: Dict = {
   "common.yes": "yes",
   "common.no": "no",
   "common.total": "Total",
+  "common.none": "—",
   "common.exportExcel": "Export to Excel",
   "common.downloadCsv": "Download CSV",
   "login.title": "Sign in to your shop panel",
@@ -736,6 +746,7 @@ const baseUz: Dict = {
   "common.yes": "ha",
   "common.no": "yo‘q",
   "common.total": "Jami",
+  "common.none": "—",
   "common.exportExcel": "Excel-ga yuklash",
   "common.downloadCsv": "CSV yuklab olish",
   "login.title": "Do‘kon paneliga kirish",
@@ -935,6 +946,10 @@ const kk: Dict = {
   ...quiz.kk,
   ...physical.kk,
   ...plan.kk,
+  ...errorsCore.kk,
+  ...errorsVip.kk,
+  ...errorsAdmin.kk,
+  ...catalog.kk,
 };
 
 const en: Dict = {
@@ -952,6 +967,10 @@ const en: Dict = {
   ...quiz.en,
   ...physical.en,
   ...plan.en,
+  ...errorsCore.en,
+  ...errorsVip.en,
+  ...errorsAdmin.en,
+  ...catalog.en,
 };
 
 const uz: Dict = {
@@ -969,11 +988,21 @@ const uz: Dict = {
   ...quiz.uz,
   ...physical.uz,
   ...plan.uz,
+  ...errorsCore.uz,
+  ...errorsVip.uz,
+  ...errorsAdmin.uz,
+  ...catalog.uz,
 };
 
-const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };
+export const ADMIN_DICTS: Record<Locale, Dict> = { ru, kk, en, uz };
+const DICTS = ADMIN_DICTS;
 
 export type AdminT = (key: AdminKey, vars?: Record<string, string | number>) => string;
+
+/** Есть ли ключ в словаре админки — для ключей, пришедших извне (UserError). */
+export function isAdminKey(key: string): key is AdminKey {
+  return Object.hasOwn(ru, key);
+}
 
 /** Переводчик для языка: ключ → строка с подстановкой `{name}`; нет перевода — русский. */
 export function adminT(locale: Locale): AdminT {

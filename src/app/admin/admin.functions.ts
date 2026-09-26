@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { MODULE_KEYS } from "@/core/modules/registry";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { UserError } from "@/core/i18n/user-error";
 
 /**
  * Серверные функции админки продавца. Каждая начинается с requireAdmin():
@@ -48,17 +49,16 @@ export const adminLogin = createServerFn({ method: "POST" })
     const login = await resolveAdminLogin(data.username);
     if (!login) return { ok: false as const };
     const t = login.tenant;
+    // Сессии продавца ещё нет — текст сразу на языке магазина.
+    const { adminT } = await import("@/app/i18n/admin");
+    const tr = adminT(t.settings.default_locale ?? "ru");
     // Клиента ещё обслуживает прежняя платформа: заказы и выдача идут там,
     // и подтверждение заказа отсюда осталось бы без бота (токен только у v1).
     {
       const { servedByV2 } = await import("@/core/tenant/directory");
-      if (!servedByV2(t))
-        throw new Error(
-          "Ваш магазин пока работает на прежней платформе FrogFlow — войдите в прежнюю панель. Переезд на новую включает оператор.",
-        );
+      if (!servedByV2(t)) throw new Error(tr("err.login.oldPlatform"));
     }
-    if (await loginLocked({ botId: t.id }, ip))
-      throw new Error("Слишком много неудачных попыток. Попробуйте через 15 минут.");
+    if (await loginLocked({ botId: t.id }, ip)) throw new Error(tr("err.login.tooMany"));
     const ok = checkAdminPassword(login, data.password);
     await recordLogin({ botId: t.id }, ip, ok, data.username);
     if (!ok) return { ok: false as const };
@@ -349,7 +349,8 @@ export const saveProductFn = createServerFn({ method: "POST" })
     const m = await import("@/core/catalog/admin");
     const { images, materials, variants, ...fields } = data.product;
     if (fields.fulfillmentKind === "digital" && materials.length === 0)
-      throw new Error(
+      throw new UserError(
+        "err.admin.digitalNeedsFile",
         "Цифровому товару нужен хотя бы один файл — иначе покупатель заплатит и ничего не получит.",
       );
     let id = data.id;
@@ -436,7 +437,7 @@ export const orderFn = createServerFn({ method: "GET" })
     const { proofSignedUrl } = await import("@/core/orders/admin");
     const { listOrderEvents } = await import("@/core/orders/events");
     const order = await getOrder(ctx, data.id);
-    if (!order) throw new Error("Заказ не найден");
+    if (!order) throw new UserError("err.admin.orderNotFound", "Заказ не найден");
     const { activeDeliveryZones, amountDueNow } = await import("@/core/fulfillment/fulfillment");
     type DeliveryZone = Awaited<ReturnType<typeof activeDeliveryZones>>[number];
     const physical = order.fulfillment_kind === "physical";
@@ -713,7 +714,8 @@ export const setShopTimezoneFn = createServerFn({ method: "POST" })
     const ctx = await adminOwner();
     const { validTimezone } = await import("@/core/tenant/directory");
     const tz = validTimezone(data.timezone.trim() || undefined);
-    if (data.timezone.trim() && !tz) throw new Error("Неизвестный часовой пояс");
+    if (data.timezone.trim() && !tz)
+      throw new UserError("err.admin.unknownTimezone", "Неизвестный часовой пояс");
     const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
     await patchTenantSettings(ctx.tenant.id, { timezone: tz ?? "" });
     return { ok: true, timezone: tz ?? null };
@@ -854,7 +856,10 @@ export const zernioConnectLinkFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await adminOwner();
     if (!ctx.tenant.modules[data.platform])
-      throw new Error("Этот канал не подключён к вашему тарифу — оставьте заявку в «Модулях».");
+      throw new UserError(
+        "err.admin.channelOff",
+        "Этот канал не подключён к вашему тарифу — оставьте заявку в «Модулях».",
+      );
     const { connectLink } = await import("@/channels/zernio/connect.server");
     return { url: await connectLink(ctx.tenant, data.platform) };
   });
@@ -912,7 +917,7 @@ export const savePromoCodeFn = createServerFn({ method: "POST" })
     const ctx = await requireAdminModule("coupons", "manager");
     const { normalizeCode } = await import("@/core/discounts/pure");
     if (data.discountType === "percent" && data.discountValue > 100)
-      throw new Error("Процент не больше 100.");
+      throw new UserError("err.admin.percentMax", "Процент не больше 100.");
     const row = {
       code: normalizeCode(data.code),
       discount_type: data.discountType,
@@ -926,9 +931,9 @@ export const savePromoCodeFn = createServerFn({ method: "POST" })
       : ctx.db.from("promo_codes").insert({ bot_id: ctx.tenant.id, ...row });
     const { error } = await q;
     if (error)
-      throw new Error(
-        /duplicate|unique/i.test(error.message) ? "Такой код уже есть." : error.message,
-      );
+      throw /duplicate|unique/i.test(error.message)
+        ? new UserError("err.admin.codeTaken", "Такой код уже есть.")
+        : new Error(error.message);
     return { ok: true };
   });
 
@@ -982,10 +987,12 @@ export const createGiftCertificateFn = createServerFn({ method: "POST" })
         .select("code")
         .single();
       if (!error && row) return { code: row.code };
+      if (data.code?.trim() && /duplicate|unique/i.test(error?.message ?? ""))
+        throw new UserError("err.admin.codeTaken", "Такой код уже есть.");
       if (data.code?.trim() || !/duplicate|unique/i.test(error?.message ?? ""))
         throw new Error(error?.message ?? "insert failed");
     }
-    throw new Error("Не удалось подобрать уникальный код");
+    throw new UserError("err.admin.codeGenFailed", "Не удалось подобрать уникальный код");
   });
 
 export const cancelGiftCertificateFn = createServerFn({ method: "POST" })
@@ -1165,10 +1172,14 @@ export const createBroadcastFn = createServerFn({ method: "POST" })
     );
     const { createBroadcast } = await import("@/core/broadcasts/broadcasts");
     if (data.channel === "whatsapp") {
-      if (!data.whatsapp) throw new Error("Выберите аккаунт и шаблон WhatsApp.");
+      if (!data.whatsapp)
+        throw new UserError("err.admin.waPickTemplate", "Выберите аккаунт и шаблон WhatsApp.");
       const { ownsWhatsAppAccount } = await import("@/channels/zernio/templates.server");
       if (!ownsWhatsAppAccount(ctx, data.whatsapp.accountId))
-        throw new Error("Этот аккаунт WhatsApp не подключён к вашему магазину.");
+        throw new UserError(
+          "err.admin.waNotYours",
+          "Этот аккаунт WhatsApp не подключён к вашему магазину.",
+        );
       const { data: tpl } = await ctx.db
         .from("whatsapp_templates")
         .select("status, components")
@@ -1176,14 +1187,26 @@ export const createBroadcastFn = createServerFn({ method: "POST" })
         .eq("name", data.whatsapp.templateName)
         .eq("language", data.whatsapp.templateLanguage)
         .maybeSingle();
-      if (!tpl) throw new Error("Шаблон не найден — обновите список шаблонов.");
+      if (!tpl)
+        throw new UserError(
+          "err.admin.waTemplateMissing",
+          "Шаблон не найден — обновите список шаблонов.",
+        );
       if (tpl.status !== "APPROVED")
-        throw new Error(`Шаблон ещё не одобрен Meta (статус ${tpl.status}) — отправлять нельзя.`);
+        throw new UserError(
+          "err.admin.waTemplateNotApproved",
+          "Шаблон ещё не одобрен Meta (статус {status}) — отправлять нельзя.",
+          { status: tpl.status },
+        );
       const { templateParamCount } = await import("@/core/whatsapp/templates");
       const need = templateParamCount(tpl.components);
       const params = data.whatsapp.templateParams.map((p) => p.trim());
       if (params.length < need || params.slice(0, need).some((p) => !p))
-        throw new Error(`Шаблон ждёт ${need} подстановок — заполните все.`);
+        throw new UserError(
+          "err.admin.waTemplateParams",
+          "Шаблон ждёт {count} подстановок — заполните все.",
+          { count: need },
+        );
       data.whatsapp.templateParams = params.slice(0, need);
     }
     const r = await createBroadcast(ctx, {
@@ -1212,7 +1235,10 @@ export const syncWhatsAppTemplatesFn = createServerFn({ method: "POST" })
     const ctx = await requireAdminModule("wa_broadcasts", "manager");
     const { syncWhatsAppTemplates } = await import("@/channels/zernio/templates.server");
     const r = await syncWhatsAppTemplates(ctx, data.accountId);
-    if (!r.ok) throw new Error(r.error ?? "Не удалось обновить шаблоны");
+    if (!r.ok)
+      throw r.error
+        ? new Error(r.error)
+        : new UserError("err.admin.waSyncFailed", "Не удалось обновить шаблоны");
     return { count: r.count };
   });
 
@@ -1251,7 +1277,10 @@ export const createWhatsAppTemplateFn = createServerFn({ method: "POST" })
     const ctx = await requireAdminModule("wa_broadcasts", "manager");
     const { submitWhatsAppTemplate } = await import("@/channels/zernio/templates.server");
     const r = await submitWhatsAppTemplate(ctx, data);
-    if (!r.ok) throw new Error(r.error ?? "Meta не приняла шаблон");
+    if (!r.ok)
+      throw r.error
+        ? new Error(r.error)
+        : new UserError("err.admin.waRejected", "Meta не приняла шаблон");
     return { name: r.name };
   });
 
@@ -1412,6 +1441,7 @@ export const consultantTestFn = createServerFn({ method: "POST" })
     const ctx = await adminOwner();
     const { runConsultant } = await import("@/core/consultant/engine.server");
     const r = await runConsultant(ctx, null, data.text, { platform: "admin_test", dryRun: true });
-    if (!r) throw new Error("На платформе не задан ключ Anthropic.");
+    if (!r)
+      throw new UserError("err.admin.noAnthropicKey", "На платформе не задан ключ Anthropic.");
     return r;
   });

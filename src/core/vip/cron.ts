@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { UserError } from "@/core/i18n/user-error";
 import {
   addWarnOffset,
   formatDateTime,
@@ -36,7 +37,8 @@ export async function runVipCron(
 ): Promise<VipCronResult> {
   const r: VipCronResult = { warned: 0, warned2: 0, expired: 0, kickFailed: 0, errors: [] };
   const s = await vipSettings(ctx);
-  if (!s.groupId) throw new Error("vip_group_id не настроен в настройках VIP");
+  if (!s.groupId)
+    throw new UserError("err.vip.cronGroupIdMissing", "vip_group_id не настроен в настройках VIP");
   const t1 = addWarnOffset(now, s.warnDays, s.testMode).toISOString();
   const t2 = addWarnOffset(now, s.warnDays2, s.testMode).toISOString();
   const nowIso = now.toISOString();

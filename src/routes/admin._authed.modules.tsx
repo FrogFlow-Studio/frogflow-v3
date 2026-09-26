@@ -2,6 +2,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { myPlanFn, requestModuleFn, requestPlanFn } from "@/app/admin/admin.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
+import { moduleDescKey, moduleGroupKey, moduleTitleKey } from "@/app/i18n/admin/catalog";
 import { Badge, Card, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { MODULE_KEYS, moduleDef, type ModuleKey } from "@/core/modules/registry";
 import { planModules } from "@/core/plans/plans";
@@ -150,9 +151,9 @@ function ModulesPage() {
   const niche = nicheForVertical(shop.vertical);
   // На плане модули по одному не продаются: вместо цены — в каком плане модуль есть.
   const onPlan = p.plan !== null && p.plan !== "custom" && niche !== null;
-  const groups = new Map<string, ModuleKey[]>();
+  const groups = new Map<ReturnType<typeof moduleGroupKey>, ModuleKey[]>();
   for (const k of MODULE_KEYS)
-    groups.set(moduleDef(k).group, [...(groups.get(moduleDef(k).group) ?? []), k]);
+    groups.set(moduleGroupKey(k), [...(groups.get(moduleGroupKey(k)) ?? []), k]);
   return (
     <>
       <PageTitle title={t("modules.title")} subtitle={onPlan ? undefined : t("modules.subtitle")} />
@@ -161,7 +162,7 @@ function ModulesPage() {
         {[...groups.entries()].map(([group, keys]) => (
           <div key={group} className="card">
             <div className="border-b border-line px-4 py-2 text-xs font-medium tracking-wide text-muted uppercase">
-              {group}
+              {t(group)}
             </div>
             <ul className="divide-y divide-line">
               {keys.map((k) => {
@@ -176,7 +177,7 @@ function ModulesPage() {
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        {d.title}{" "}
+                        {t(moduleTitleKey(k))}{" "}
                         {on ? (
                           <Badge tone="ok">{onPlan ? t("plan.included") : t("modules.on")}</Badge>
                         ) : planned ? (
@@ -189,7 +190,7 @@ function ModulesPage() {
                           </Badge>
                         ) : null}
                       </div>
-                      <div className="text-xs text-muted">{d.desc}</div>
+                      <div className="text-xs text-muted">{t(moduleDescKey(k))}</div>
                     </div>
                     {!onPlan && !on && !planned && (
                       <button

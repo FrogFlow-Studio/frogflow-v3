@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { UserError } from "@/core/i18n/user-error";
 
 /**
  * Раздел VIP платный: мало быть админом своего магазина — модуль должен быть
@@ -13,7 +14,10 @@ const vipWrite = async () =>
 
 async function groupOf(ctx: TenantContext) {
   if (!ctx.tenant.settings.vip?.token_enc)
-    throw new Error("Сначала подключите VIP-бота — токен в разделе «VIP-бот».");
+    throw new UserError(
+      "err.vip.connectBotFirst",
+      "Сначала подключите VIP-бота — токен в разделе «VIP-бот».",
+    );
   const { vipTelegramApi } = await import("@/channels/telegram/vip/handle");
   const { vipGroupApi } = await import("@/channels/telegram/vip/group");
   return vipGroupApi(vipTelegramApi(ctx));
@@ -120,46 +124,50 @@ export const vipSubscriptionActionFn = createServerFn({ method: "POST" })
     const ctx = await vipWrite();
     const core = await import("@/core/vip/vip");
     const group = await groupOf(ctx);
+    const { adminLocale } = await import("@/app/admin/locale.server");
+    const { adminT, intlLocale } = await import("@/app/i18n/admin");
+    const locale = await adminLocale(ctx);
+    const t = adminT(locale);
     switch (data.action) {
       case "confirm": {
         const r = await core.activateSubscription(ctx, group, data.id);
         return {
           ok: true,
-          message: r.deliveryFailed
-            ? "Подписка активна, но сообщение покупателю не доставлено — используйте «Переотправить ссылку»."
-            : "Подписка подтверждена, ссылка отправлена.",
+          message: r.deliveryFailed ? t("msg.vip.confirmedUndelivered") : t("msg.vip.confirmed"),
         };
       }
       case "reject": {
         const r = await core.rejectSubscription(ctx, group, data.id, data.note);
         return {
           ok: true,
-          message: r.alreadyProcessed ? "Заявка уже обработана." : "Заявка отклонена.",
+          message: r.alreadyProcessed ? t("msg.vip.alreadyProcessed") : t("msg.vip.rejected"),
         };
       }
       case "resend":
         await core.resendInvite(ctx, group, data.id);
-        return { ok: true, message: "Новая ссылка отправлена." };
+        return { ok: true, message: t("msg.vip.linkResent") };
       case "exclude":
         await core.excludeMember(ctx, group, data.id);
-        return { ok: true, message: "Участник исключён из группы." };
+        return { ok: true, message: t("msg.vip.excluded") };
       case "delete": {
         const r = await core.deleteSubscription(ctx, group, data.id);
         return {
           ok: true,
-          message: r.forgotProfile
-            ? "Подписка удалена, профиль участника забыт."
-            : "Подписка удалена.",
+          message: r.forgotProfile ? t("msg.vip.deletedWithProfile") : t("msg.vip.deleted"),
         };
       }
       case "extend": {
-        if (!data.days) throw new Error("Укажите число дней");
+        if (!data.days) throw new UserError("err.vip.daysRequired", "Укажите число дней");
         const r = await core.extendSubscription(ctx, group, data.id, data.days);
         return {
           ok: true,
           message: r.expired
-            ? "Подписка завершена."
-            : `Срок изменён: до ${new Date(r.expiresAt).toLocaleString("ru")}.`,
+            ? t("msg.vip.ended")
+            : t("msg.vip.extended", {
+                date: new Date(r.expiresAt).toLocaleString(intlLocale(locale), {
+                  timeZone: ctx.timezone,
+                }),
+              }),
         };
       }
     }
@@ -179,7 +187,15 @@ export const addVipManualFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await vipWrite();
     const { addManualSubscription } = await import("@/core/vip/vip");
-    return addManualSubscription(ctx, await groupOf(ctx), data);
+    const r = await addManualSubscription(ctx, await groupOf(ctx), data);
+    if (!r.warningKeys.length) return { ok: r.ok, warning: r.warning };
+    const t = await (await import("@/app/admin/locale.server")).adminTFor(ctx);
+    const text = {
+      notInGroup: "msg.vip.warn.notInGroup",
+      noGroup: "msg.vip.warn.noGroup",
+      undelivered: "msg.vip.warn.undelivered",
+    } as const;
+    return { ok: r.ok, warning: r.warningKeys.map((k) => t(text[k])).join(" ") };
   });
 
 export const runVipCronFn = createServerFn({ method: "POST" }).handler(async () => {

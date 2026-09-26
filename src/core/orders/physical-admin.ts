@@ -3,6 +3,7 @@
  * оплату вручную, завести заказ без бота, поправить получение. Канал не
  * знает ни одна из функций — админка и кнопки в Telegram зовут одно и то же.
  */
+import { UserError } from "@/core/i18n/user-error";
 import { randomUUID } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
@@ -94,23 +95,39 @@ export async function recordManualPayment(
   amount: number,
   actor = "admin",
 ): Promise<{ paid: number; total: number }> {
-  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Сумма должна быть больше нуля");
+  if (!Number.isFinite(amount) || amount <= 0)
+    throw new UserError("err.orders.amountPositive", "Сумма должна быть больше нуля");
   const { data: order, error } = await ctx.db
     .from("orders")
     .select("total, paid_amount, fulfillment_kind, status, currency")
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!order) throw new Error("Заказ не найден");
+  if (!order) throw new UserError("err.orders.notFound", "Заказ не найден");
   if (order.status === "rejected" || order.status === "cancelled")
-    throw new Error("Заказ отклонён — оплата по нему не принимается");
+    throw new UserError(
+      "err.orders.rejectedNoPayment",
+      "Заказ отклонён — оплата по нему не принимается",
+    );
   if (order.fulfillment_kind !== "physical")
-    throw new Error("Ручное внесение оплаты доступно только для физических заказов");
+    throw new UserError(
+      "err.orders.manualPaymentPhysicalOnly",
+      "Ручное внесение оплаты доступно только для физических заказов",
+    );
   const remaining = Number(order.total) - (Number(order.paid_amount) || 0);
   if (amount > remaining + 0.01)
-    throw new Error(`Сумма больше остатка: осталось внести ${Math.max(0, remaining)}`);
+    throw new UserError(
+      "err.orders.amountOverRemaining",
+      "Сумма больше остатка: осталось внести {remaining}",
+      {
+        remaining: Math.max(0, remaining),
+      },
+    );
   if (!(await recordPayment(ctx, id, amount)))
-    throw new Error("Не удалось записать платёж, попробуйте ещё раз");
+    throw new UserError(
+      "err.orders.paymentNotSaved",
+      "Не удалось записать платёж, попробуйте ещё раз",
+    );
   await recordOrderEvent(ctx, id, "payment", { amount, currency: order.currency }, actor);
   // Деньги пришли по заказу, который ещё ждал оплату, — он в работе.
   if (order.status === "awaiting_payment" || order.status === "awaiting_confirmation") {
@@ -140,7 +157,7 @@ async function resolveZone(
   countryCode: string | null,
 ): Promise<{ id: string; name: string; price: number; currency: string }> {
   const zone = (await activeDeliveryZones(ctx)).find((z) => z.id === zoneId);
-  if (!zone) throw new Error("Зона доставки не найдена");
+  if (!zone) throw new UserError("err.orders.zoneNotFound", "Зона доставки не найдена");
   const fee = await zoneFee(ctx, zone.price, countryCode);
   return { id: zone.id, name: zone.name, price: fee.amount, currency: fee.currency };
 }
@@ -179,10 +196,12 @@ export async function createManualOrder(
   input: ManualOrderInput,
   actor = "admin",
 ): Promise<{ id: number; orderNo: number }> {
-  if (input.items.length === 0) throw new Error("Добавьте хотя бы одну позицию");
+  if (input.items.length === 0)
+    throw new UserError("err.orders.noItems", "Добавьте хотя бы одну позицию");
   if (input.fulfillmentType === "delivery" && !input.deliveryZoneId) {
     const zones = await activeDeliveryZones(ctx);
-    if (zones.length > 0) throw new Error("Для доставки выберите зону");
+    if (zones.length > 0)
+      throw new UserError("err.orders.deliveryZoneRequired", "Для доставки выберите зону");
   }
   const productIds = [...new Set(input.items.map((it) => it.productId))];
   const { data: products, error: prodErr } = await ctx.db
@@ -200,19 +219,31 @@ export async function createManualOrder(
   let leadDays = 0;
   for (const it of input.items) {
     const p = byId.get(it.productId);
-    if (!p || !p.is_active) throw new Error("Товар не найден или скрыт");
+    if (!p || !p.is_active)
+      throw new UserError("err.orders.productUnavailable", "Товар не найден или скрыт");
     if (p.fulfillment_kind !== "physical")
-      throw new Error(`«${p.name}» — цифровой товар; вручную заводятся только физические заказы`);
+      throw new UserError(
+        "err.orders.digitalProduct",
+        "«{name}» — цифровой товар; вручную заводятся только физические заказы",
+        { name: p.name },
+      );
     const own = (variants ?? []).filter((v) => v.product_id === p.id);
     let unit = Number(p.price) || 0;
     let name = p.name;
     if (own.length > 0) {
       const v = own.find((row) => row.id === it.variantId);
-      if (!it.variantId) throw new Error(`Выберите вариант для «${p.name}»`);
-      if (!v) throw new Error(`Вариант не найден для «${p.name}»`);
+      if (!it.variantId)
+        throw new UserError("err.orders.variantRequired", "Выберите вариант для «{name}»", {
+          name: p.name,
+        });
+      if (!v)
+        throw new UserError("err.orders.variantNotFound", "Вариант не найден для «{name}»", {
+          name: p.name,
+        });
       unit = Number(v.price) || 0;
       name = `${p.name} — ${v.name}`;
-    } else if (it.variantId) throw new Error(`У «${p.name}» нет вариантов`);
+    } else if (it.variantId)
+      throw new UserError("err.orders.noVariants", "У «{name}» нет вариантов", { name: p.name });
     leadDays = Math.max(leadDays, Number(p.lead_time_days) || 0);
     lines.push({
       productId: p.id,
@@ -225,13 +256,15 @@ export async function createManualOrder(
   }
   const currency = lines[0]!.currency;
   if (lines.some((l) => l.currency !== currency))
-    throw new Error("Все позиции должны быть в одной валюте");
+    throw new UserError("err.orders.mixedCurrency", "Все позиции должны быть в одной валюте");
 
   if (input.fulfillmentAt && leadDays > 0) {
     const minIso = minFulfillmentDate(ctx, leadDays);
     if (input.fulfillmentAt < minIso)
-      throw new Error(
-        `Слишком ранняя дата получения — срок изготовления ${leadDays} дн., доступно с ${minIso}`,
+      throw new UserError(
+        "err.orders.dateTooEarly",
+        "Слишком ранняя дата получения — срок изготовления {days} дн., доступно с {date}",
+        { days: leadDays, date: minIso },
       );
   }
 
@@ -240,22 +273,35 @@ export async function createManualOrder(
       ? await resolveZone(ctx, input.deliveryZoneId, null)
       : null;
   if (zone && zone.currency !== currency)
-    throw new Error(`Зона доставки в ${zone.currency}, а товары в ${currency}`);
+    throw new UserError(
+      "err.orders.zoneCurrency",
+      "Зона доставки в {zoneCurrency}, а товары в {currency}",
+      {
+        zoneCurrency: zone.currency,
+        currency,
+      },
+    );
   const deliveryFee = zone?.price ?? 0;
   const total = manualOrderTotal(
     lines.map((l) => l.unit * l.quantity),
     deliveryFee,
   );
   const paid = Number(input.paidAmount) || 0;
-  if (paid < 0) throw new Error("Внесённая сумма не может быть отрицательной");
-  if (paid > total + 0.01) throw new Error(`Внесено больше итога заказа (${total})`);
+  if (paid < 0)
+    throw new UserError("err.orders.paidNegative", "Внесённая сумма не может быть отрицательной");
+  if (paid > total + 0.01)
+    throw new UserError("err.orders.paidOverTotal", "Внесено больше итога заказа ({total})", {
+      total,
+    });
 
   const reserved: Array<{ productId: string; qty: number }> = [];
   try {
     if (ctx.tenant.modules.stock) {
       for (const l of lines) {
         if (!(await decrementStock(ctx, l.productId, l.quantity)))
-          throw new Error(`Недостаточно «${l.name}» на складе`);
+          throw new UserError("err.orders.outOfStock", "Недостаточно «{name}» на складе", {
+            name: l.name,
+          });
         reserved.push({ productId: l.productId, qty: l.quantity });
       }
     }
@@ -286,7 +332,8 @@ export async function createManualOrder(
       })
       .select("id, order_no, display_no")
       .single();
-    if (error || !order) throw new Error(error?.message || "Не удалось создать заказ");
+    if (error) throw new Error(error.message);
+    if (!order) throw new UserError("err.orders.createFailed", "Не удалось создать заказ");
     const { error: itemsError } = await ctx.db.from("order_items").insert(
       lines.map((l) => ({
         bot_id: ctx.tenant.id,
@@ -341,11 +388,14 @@ export async function updateOrderFulfillment(
     .eq("id", input.id)
     .maybeSingle();
   if (readErr) throw new Error(readErr.message);
-  if (!order) throw new Error("Заказ не найден");
+  if (!order) throw new UserError("err.orders.notFound", "Заказ не найден");
   if (order.fulfillment_kind !== "physical")
-    throw new Error("Способ получения правится только у физического заказа");
+    throw new UserError(
+      "err.orders.fulfillmentPhysicalOnly",
+      "Способ получения правится только у физического заказа",
+    );
   if (order.status === "delivered" || order.status === "rejected")
-    throw new Error("Заказ уже закрыт");
+    throw new UserError("err.orders.closed", "Заказ уже закрыт");
   const newDay = input.fulfillmentAt;
   const oldDay = order.fulfillment_at ? String(order.fulfillment_at).slice(0, 10) : null;
   if (newDay && newDay !== oldDay) {
@@ -354,19 +404,28 @@ export async function updateOrderFulfillment(
     }>;
     const leadDays = Math.max(0, ...items.map((it) => Number(it.products?.lead_time_days) || 0));
     const minIso = minFulfillmentDate(ctx, leadDays);
-    if (newDay < minIso)
-      throw new Error(
-        leadDays > 0
-          ? `Слишком ранняя дата получения — срок изготовления ${leadDays} дн., доступно с ${minIso}`
-          : `Дата получения уже прошла — доступно с ${minIso}`,
+    if (newDay < minIso) {
+      if (leadDays > 0)
+        throw new UserError(
+          "err.orders.dateTooEarly",
+          "Слишком ранняя дата получения — срок изготовления {days} дн., доступно с {date}",
+          { days: leadDays, date: minIso },
+        );
+      throw new UserError(
+        "err.orders.datePassed",
+        "Дата получения уже прошла — доступно с {date}",
+        {
+          date: minIso,
+        },
       );
+    }
   }
   let zone: { id: string; name: string; price: number } | null = null;
   if (input.fulfillmentType === "delivery" && input.deliveryZoneId) {
     zone = await resolveZone(ctx, input.deliveryZoneId, order.country_code);
   } else if (input.fulfillmentType === "delivery" && order.fulfillment_type !== "delivery") {
     const zones = await activeDeliveryZones(ctx);
-    if (zones.length > 0) throw new Error("Выберите зону доставки");
+    if (zones.length > 0) throw new UserError("err.orders.pickZone", "Выберите зону доставки");
   }
   const typePatch = fulfillmentTypePatch(
     {
@@ -378,7 +437,8 @@ export async function updateOrderFulfillment(
     zone,
   );
   if (fulfillmentTotalBelowPaid(typePatch, Number(order.paid_amount) || 0))
-    throw new Error(
+    throw new UserError(
+      "err.orders.feeBelowPaid",
       "Нельзя снять комиссию доставки — заказ уже оплачен на большую сумму. Сначала верните разницу покупателю.",
     );
   const nextType = typePatch.fulfillment_type ?? order.fulfillment_type;

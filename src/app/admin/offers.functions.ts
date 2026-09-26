@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { UserError } from "@/core/i18n/user-error";
 
 /** Ограниченные предложения (модуль limited_offers): список, добавление, удаление. */
 const moduleAdmin = async (min?: "manager") =>
@@ -39,7 +40,7 @@ export const saveOfferFn = createServerFn({ method: "POST" })
     const { listOffers, saveOffers } = await import("@/core/offers/offers");
     const starts = data.startsAt ?? new Date().toISOString();
     if (Date.parse(data.endsAt) <= Date.parse(starts))
-      throw new Error("Окончание акции должно быть позже начала.");
+      throw new UserError("err.admin.offerEnd", "Окончание акции должно быть позже начала.");
     const current = (await listOffers(ctx)).map(({ sold: _s, left: _l, ...o }) => o);
     await saveOffers(ctx, [
       {

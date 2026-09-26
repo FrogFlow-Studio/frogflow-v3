@@ -4,6 +4,7 @@
  * (docs/inherited-knowledge.md). Оркестрация (Zernio API, журнал
  * `comment_dm_fallback_sends`) — в `channels/zernio/automations.server.ts`.
  */
+import { UserError } from "@/core/i18n/user-error";
 
 export type MatchMode = "exact" | "contains";
 
@@ -302,23 +303,36 @@ export function buildAutomationBody(data: Partial<AutomationInput>): Record<stri
 
   const dmMessage = typeof body.dmMessage === "string" ? body.dmMessage : "";
   if (!dmMessage.trim())
-    throw new Error(
+    throw new UserError(
+      "err.instagram.dmRequired",
       "Текст сообщения в Direct обязателен — без него автоматизации нечего отправить.",
     );
 
   const hasButtons = Array.isArray(body.buttons) && (body.buttons as unknown[]).length > 0;
   const limit = hasButtons ? DM_LIMIT_WITH_BUTTONS : DM_LIMIT_PLAIN;
-  if (dmMessage.length > limit)
-    throw new Error(
-      hasButtons
-        ? `Сообщение в Direct — ${dmMessage.length} символов, а с кнопками помещается ${limit}. Сократите текст или уберите кнопки.`
-        : `Сообщение в Direct — ${dmMessage.length} символов, предел ${limit}. Сократите текст.`,
+  if (dmMessage.length > limit) {
+    const vars = { length: dmMessage.length, limit };
+    if (hasButtons)
+      throw new UserError(
+        "err.instagram.dmTooLongButtons",
+        "Сообщение в Direct — {length} символов, а с кнопками помещается {limit}. Сократите текст или уберите кнопки.",
+        vars,
+      );
+    throw new UserError(
+      "err.instagram.dmTooLong",
+      "Сообщение в Direct — {length} символов, предел {limit}. Сократите текст.",
+      vars,
     );
+  }
   for (const field of ["dmMessageVariations", "commentReplyVariations"] as const) {
     const variations = body[field];
     if (!Array.isArray(variations)) continue;
     if ((variations as string[]).some((t) => t.length > limit))
-      throw new Error(`Один из вариантов текста длиннее ${limit} символов. Сократите его.`);
+      throw new UserError(
+        "err.instagram.variantTooLong",
+        "Один из вариантов текста длиннее {limit} символов. Сократите его.",
+        { limit },
+      );
   }
   return body;
 }

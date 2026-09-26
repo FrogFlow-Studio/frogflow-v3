@@ -3,6 +3,7 @@ import type { Database } from "@/core/db-types";
 import { getSettings } from "@/core/settings/settings";
 import { serviceDb } from "@/core/db/client.server";
 import { isLocale, type Locale } from "@/core/i18n/locale";
+import { UserError } from "@/core/i18n/user-error";
 import {
   addTariffDuration,
   formatDateTime,
@@ -168,7 +169,11 @@ export async function deleteTariff(ctx: TenantContext, id: string): Promise<void
     .from("vip_subscriptions")
     .select("id", { count: "exact", head: true })
     .eq("tariff_id", id);
-  if ((count ?? 0) > 0) throw new Error("По тарифу есть подписки — выключите его, а не удаляйте.");
+  if ((count ?? 0) > 0)
+    throw new UserError(
+      "err.vip.tariffHasSubscriptions",
+      "По тарифу есть подписки — выключите его, а не удаляйте.",
+    );
   const { error } = await ctx.db.from("vip_tariffs").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
@@ -477,12 +482,19 @@ export async function activateSubscription(
   id: string,
 ): Promise<ActivateResult> {
   const sub = await getSubscription(ctx, id);
-  if (!sub) throw new Error("Подписка не найдена");
-  if (sub.status === "active") throw new Error("Подписка уже активна");
+  if (!sub) throw new UserError("err.vip.subscriptionNotFound", "Подписка не найдена");
+  if (sub.status === "active") throw new UserError("err.vip.alreadyActive", "Подписка уже активна");
   if (sub.status !== "pending_payment")
-    throw new Error("Подтвердить можно только заявку «ожидает оплаты»");
+    throw new UserError(
+      "err.vip.confirmOnlyPending",
+      "Подтвердить можно только заявку «ожидает оплаты»",
+    );
   const settings = await vipSettings(ctx);
-  if (!settings.groupId) throw new Error("Не настроен ID VIP-группы в настройках");
+  if (!settings.groupId)
+    throw new UserError(
+      "err.vip.groupIdMissingInSettings",
+      "Не настроен ID VIP-группы в настройках",
+    );
 
   const now = new Date();
   const latest = await latestActiveExpiry(ctx, sub.telegram_id, id);
@@ -498,7 +510,10 @@ export async function activateSubscription(
       inviteExpireDate(expiresAt),
     );
     if (!link)
-      throw new Error("Не удалось создать ссылку-приглашение. Убедитесь, что бот — админ группы.");
+      throw new UserError(
+        "err.vip.inviteFailed",
+        "Не удалось создать ссылку-приглашение. Убедитесь, что бот — админ группы.",
+      );
   }
   await expireOtherActives(ctx, group, sub.telegram_id, id, settings.groupId);
   const { data: updated, error } = await ctx.db
@@ -516,9 +531,14 @@ export async function activateSubscription(
     .maybeSingle();
   if (error || !updated) {
     if (link) await group.revokeInvite(settings.groupId, link);
-    throw new Error(
-      error ? `Ошибка обновления: ${error.message}` : "Заявку уже обработал другой администратор",
-    );
+    throw error
+      ? new UserError("err.vip.updateFailed", "Ошибка обновления: {error}", {
+          error: error.message,
+        })
+      : new UserError(
+          "err.vip.processedByAnotherAdmin",
+          "Заявку уже обработал другой администратор",
+        );
   }
 
   const until = esc(formatDateTime(expiresAt, ctx.timezone));
@@ -543,7 +563,7 @@ export async function rejectSubscription(
   note?: string,
 ): Promise<{ ok: true; alreadyProcessed?: boolean }> {
   const sub = await getSubscription(ctx, id);
-  if (!sub) throw new Error("Подписка не найдена");
+  if (!sub) throw new UserError("err.vip.subscriptionNotFound", "Подписка не найдена");
   if (sub.status !== "pending_payment") return { ok: true, alreadyProcessed: true };
   const { groupId } = await vipSettings(ctx);
   if (groupId && sub.group_invite_link) await group.revokeInvite(groupId, sub.group_invite_link);
@@ -585,7 +605,10 @@ async function grantAccess(
       inviteExpireDate(p.expiresAt),
     );
     if (!link)
-      throw new Error("Не удалось создать ссылку-приглашение. Убедитесь, что бот — админ группы.");
+      throw new UserError(
+        "err.vip.inviteFailed",
+        "Не удалось создать ссылку-приглашение. Убедитесь, что бот — админ группы.",
+      );
   }
   const { error } = await ctx.db
     .from("vip_subscriptions")
@@ -593,7 +616,9 @@ async function grantAccess(
     .eq("id", p.id);
   if (error) {
     if (link) await group.revokeInvite(p.groupId, link);
-    throw new Error(`Ошибка сохранения ссылки: ${error.message}`);
+    throw new UserError("err.vip.linkSaveFailed", "Ошибка сохранения ссылки: {error}", {
+      error: error.message,
+    });
   }
   const until = esc(formatDateTime(p.expiresAt, ctx.timezone));
   const sent = await group.send(
@@ -605,14 +630,20 @@ async function grantAccess(
   return { inGroup, inviteSent: Boolean(link), deliveryFailed: !sent };
 }
 
+/**
+ * Предупреждения ручного добавления — кодами: ядро не знает языка админки,
+ * текст на языке продавца собирает серверный слой панели.
+ */
+export type ManualWarning = "notInGroup" | "noGroup" | "undelivered";
+
 export async function addManualSubscription(
   ctx: TenantContext,
   group: VipGroup,
   p: { telegramId: number; tariffId: string; days?: number; status: "active" | "expired" },
-): Promise<{ ok: true; warning?: string }> {
+): Promise<{ ok: true; warning?: string; warningKeys: ManualWarning[] }> {
   const settings = await vipSettings(ctx);
   const tariff = await getTariff(ctx, p.tariffId);
-  if (!tariff) throw new Error("Тариф не найден");
+  if (!tariff) throw new UserError("err.vip.tariffNotFound", "Тариф не найден");
   const now = new Date();
   const expiresAt = new Date(now);
   if (settings.testMode)
@@ -623,12 +654,15 @@ export async function addManualSubscription(
 
   let user: MemberUser = {};
   let warning: string | undefined;
+  const warningKeys: ManualWarning[] = [];
   if (settings.groupId) {
     const m = await group.member(settings.groupId, p.telegramId);
     if (m?.user) user = m.user;
-    else
+    else {
       warning =
         "Пользователь не найден в VIP-группе. Подписка создана; ссылка уйдёт, если он писал боту.";
+      warningKeys.push("notInGroup");
+    }
   }
   if (p.status === "active")
     await expireOtherActives(ctx, group, p.telegramId, undefined, settings.groupId);
@@ -650,9 +684,10 @@ export async function addManualSubscription(
     .single();
   if (error || !inserted) throw new Error(error?.message ?? "insert failed");
   if (p.status === "active") {
-    if (!settings.groupId)
+    if (!settings.groupId) {
       warning = `${warning ? `${warning} ` : ""}VIP-группа не настроена — инвайт не отправлен.`;
-    else {
+      warningKeys.push("noGroup");
+    } else {
       const r = await grantAccess(ctx, group, {
         id: inserted.id,
         telegramId: p.telegramId,
@@ -660,13 +695,15 @@ export async function addManualSubscription(
         groupId: settings.groupId,
         welcome: settings.welcome,
       });
-      if (r.deliveryFailed)
+      if (r.deliveryFailed) {
         warning = `${warning ? `${warning} ` : ""}Сообщение пользователю не доставлено (не писал боту или заблокировал). Ссылка сохранена — используйте «Переотправить».`;
+        warningKeys.push("undelivered");
+      }
     }
   }
   if (tariff.is_public === false && !tariff.is_entry)
     await assignMemberTariff(ctx, p.telegramId, user, tariff.id, "admin");
-  return { ok: true, warning };
+  return { ok: true, warning, warningKeys };
 }
 
 export async function extendSubscription(
@@ -676,13 +713,16 @@ export async function extendSubscription(
   days: number,
 ): Promise<{ ok: true; expired: boolean; expiresAt: string }> {
   if (!Number.isInteger(days) || days === 0)
-    throw new Error("Укажите число дней, отличное от нуля");
+    throw new UserError("err.vip.daysNonZero", "Укажите число дней, отличное от нуля");
   const sub = await getSubscription(ctx, id);
-  if (!sub) throw new Error("Подписка не найдена");
+  if (!sub) throw new UserError("err.vip.subscriptionNotFound", "Подписка не найдена");
   const { groupId } = await vipSettings(ctx);
   const { wasInactive, baseSafe, shortenedPast } = resolveVipExtension(sub, days);
   if (days < 0 && wasInactive)
-    throw new Error("Нельзя уменьшить истёкшую подписку. Сначала продлите или создайте новую.");
+    throw new UserError(
+      "err.vip.cannotShortenExpired",
+      "Нельзя уменьшить истёкшую подписку. Сначала продлите или создайте новую.",
+    );
   let link = sub.group_invite_link;
 
   if (shortenedPast) {
@@ -721,7 +761,8 @@ export async function extendSubscription(
         inviteExpireDate(baseSafe),
       );
       if (!link)
-        throw new Error(
+        throw new UserError(
+          "err.vip.inviteFailed",
           "Не удалось создать ссылку-приглашение. Убедитесь, что бот — админ группы.",
         );
       notify = `✅ Подписка продлена до <b>${until}</b>\n\nОдноразовая ссылка для вступления:\n${link}`;
@@ -747,13 +788,19 @@ export async function extendSubscription(
 /** Новая ссылка для активной подписки, чей инвайт до покупателя не дошёл. */
 export async function resendInvite(ctx: TenantContext, group: VipGroup, id: string): Promise<void> {
   const sub = await getSubscription(ctx, id);
-  if (!sub) throw new Error("Подписка не найдена");
+  if (!sub) throw new UserError("err.vip.subscriptionNotFound", "Подписка не найдена");
   if (sub.status !== "active")
-    throw new Error("Переотправить ссылку можно только для активной подписки");
+    throw new UserError(
+      "err.vip.resendOnlyActive",
+      "Переотправить ссылку можно только для активной подписки",
+    );
   const { groupId } = await vipSettings(ctx);
-  if (!groupId) throw new Error("Не настроен ID VIP-группы");
+  if (!groupId) throw new UserError("err.vip.groupIdMissing", "Не настроен ID VIP-группы");
   if (await isMember(group, groupId, sub.telegram_id))
-    throw new Error("Пользователь уже состоит в VIP-группе — ссылка не нужна");
+    throw new UserError(
+      "err.vip.alreadyInGroup",
+      "Пользователь уже состоит в VIP-группе — ссылка не нужна",
+    );
   if (sub.group_invite_link) await group.revokeInvite(groupId, sub.group_invite_link);
   const expiresAt = new Date(sub.expires_at);
   const link = await group.createInvite(
@@ -762,21 +809,27 @@ export async function resendInvite(ctx: TenantContext, group: VipGroup, id: stri
     inviteExpireDate(expiresAt),
   );
   if (!link)
-    throw new Error("Не удалось создать ссылку-приглашение. Убедитесь, что бот — админ группы.");
+    throw new UserError(
+      "err.vip.inviteFailed",
+      "Не удалось создать ссылку-приглашение. Убедитесь, что бот — админ группы.",
+    );
   const { error } = await ctx.db
     .from("vip_subscriptions")
     .update({ group_invite_link: link })
     .eq("id", id);
   if (error) {
     await group.revokeInvite(groupId, link);
-    throw new Error(`Ошибка сохранения ссылки: ${error.message}`);
+    throw new UserError("err.vip.linkSaveFailed", "Ошибка сохранения ссылки: {error}", {
+      error: error.message,
+    });
   }
   const sent = await group.send(
     sub.telegram_id,
     `🔁 Ссылка для вступления в VIP-группу переотправлена администратором.\n\nСрок действия подписки до: <b>${esc(formatDateTime(expiresAt, ctx.timezone))}</b>\n\nОдноразовая ссылка:\n${link}`,
   );
   if (!sent)
-    throw new Error(
+    throw new UserError(
+      "err.vip.resendUndelivered",
       "Ссылка создана и сохранена, но сообщение не доставлено — возможно, пользователь заблокировал бота.",
     );
 }
@@ -788,9 +841,9 @@ export async function excludeMember(
   id: string,
 ): Promise<void> {
   const sub = await getSubscription(ctx, id);
-  if (!sub) throw new Error("Подписка не найдена");
+  if (!sub) throw new UserError("err.vip.subscriptionNotFound", "Подписка не найдена");
   const { groupId } = await vipSettings(ctx);
-  if (!groupId) throw new Error("Не настроен ID VIP-группы");
+  if (!groupId) throw new UserError("err.vip.groupIdMissing", "Не настроен ID VIP-группы");
   const { data: rows } = await ctx.db
     .from("vip_subscriptions")
     .select("id, group_invite_link")
@@ -800,9 +853,12 @@ export async function excludeMember(
     if (r.group_invite_link) await group.revokeInvite(groupId, r.group_invite_link);
   const ban = await group.kick(groupId, sub.telegram_id);
   if (!ban.ok && !isAlreadyNotInChat(ban.description))
-    throw new Error(
-      ban.description || "Не удалось исключить из группы (бот админ? право ban users?)",
-    );
+    throw ban.description
+      ? new Error(ban.description)
+      : new UserError(
+          "err.vip.kickFailed",
+          "Не удалось исключить из группы (бот админ? право ban users?)",
+        );
   await ctx.db
     .from("vip_subscriptions")
     .update({ status: "expired", group_invite_link: null, admin_note: "admin_excluded" })
@@ -825,7 +881,7 @@ export async function deleteSubscription(
   id: string,
 ): Promise<{ forgotProfile: boolean }> {
   const sub = await getSubscription(ctx, id);
-  if (!sub) throw new Error("Подписка не найдена");
+  if (!sub) throw new UserError("err.vip.subscriptionNotFound", "Подписка не найдена");
   const { groupId } = await vipSettings(ctx);
   if (groupId && sub.group_invite_link) await group.revokeInvite(groupId, sub.group_invite_link);
   if (groupId && sub.status === "active") {

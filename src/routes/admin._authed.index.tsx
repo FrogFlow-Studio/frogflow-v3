@@ -2,6 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { dashboardFn, hideSetupFn } from "@/app/admin/admin.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
+import { verticalTitleKey } from "@/app/i18n/admin/catalog";
 import { Card, Empty, PageTitle, Stat, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
@@ -36,7 +37,7 @@ function Dashboard() {
     <>
       <PageTitle
         title={t("overview.title")}
-        subtitle={`${shop.verticalTitle}${shop.telegram ? ` · @${shop.telegram}` : ""}`}
+        subtitle={`${t(verticalTitleKey(shop.vertical))}${shop.telegram ? ` · @${shop.telegram}` : ""}`}
       />
       {!d.setup.hidden && doneCount < steps.length && (
         <Card

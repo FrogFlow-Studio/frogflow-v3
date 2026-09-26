@@ -2,6 +2,7 @@ import { appSession, credentialStamp } from "./session.server";
 import { requireTenant, tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
 import { servedByV2 } from "@/core/tenant/directory";
 import { loginInTenant, roleAllows, type AdminRole } from "@/core/auth/roles";
+import { UserError } from "@/core/i18n/user-error";
 
 export class Unauthorized extends Error {
   constructor(public readonly role: "operator" | "admin") {
@@ -64,11 +65,9 @@ export async function adminActor(): Promise<string> {
 export async function requireAdminRole(min: AdminRole): Promise<TenantContext> {
   const { ctx, role } = await currentAdmin();
   if (!roleAllows(role, min))
-    throw new Error(
-      min === "owner"
-        ? "Это может изменить только владелец магазина."
-        : "У вашей роли нет прав на изменения — только просмотр.",
-    );
+    throw min === "owner"
+      ? new UserError("err.auth.ownerOnly", "Это может изменить только владелец магазина.")
+      : new UserError("err.auth.viewOnly", "У вашей роли нет прав на изменения — только просмотр.");
   return ctx;
 }
 
@@ -78,7 +77,9 @@ export async function requireAdminAnyModule(
 ): Promise<TenantContext> {
   const ctx = await requireAdmin();
   if (!keys.some((k) => ctx.tenant.modules[k]))
-    throw new Error(`Модуль «${keys[0]}» не подключён к вашему тарифу.`);
+    throw new UserError("err.auth.moduleOff", "Модуль «{module}» не подключён к вашему тарифу.", {
+      module: keys[0]!,
+    });
   return ctx;
 }
 
@@ -87,6 +88,9 @@ export async function requireAdminModule(
   min?: AdminRole,
 ): Promise<TenantContext> {
   const ctx = min ? await requireAdminRole(min) : await requireAdmin();
-  if (!ctx.tenant.modules[key]) throw new Error(`Модуль «${key}» не подключён к вашему тарифу.`);
+  if (!ctx.tenant.modules[key])
+    throw new UserError("err.auth.moduleOff", "Модуль «{module}» не подключён к вашему тарифу.", {
+      module: key,
+    });
   return ctx;
 }

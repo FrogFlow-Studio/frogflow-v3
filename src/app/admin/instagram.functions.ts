@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { UserError } from "@/core/i18n/user-error";
 
 /**
  * Раздел «Instagram»: правила Comment-to-DM через Zernio. Каждая функция
@@ -74,7 +75,10 @@ export const syncInstagramPostFn = createServerFn({ method: "POST" })
     const { syncPostByUrl } = await import("@/channels/zernio/automations.server");
     const r = await syncPostByUrl(ctx, data.accountId, data.url);
     if (!r.post)
-      throw new Error("Zernio не нашёл публикацию по ссылке — проверьте ссылку и аккаунт.");
+      throw new UserError(
+        "err.admin.igPostNotFound",
+        "Zernio не нашёл публикацию по ссылке — проверьте ссылку и аккаунт.",
+      );
     return r.post;
   });
 

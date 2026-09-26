@@ -1,3 +1,4 @@
+import { UserError } from "@/core/i18n/user-error";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database, Json } from "@/core/db-types";
 import { serviceDb } from "@/core/db/client.server";
@@ -47,7 +48,8 @@ export async function updateCategory(
   id: string,
   input: Partial<CategoryInput>,
 ): Promise<void> {
-  if (input.parentId === id) throw new Error("Категория не может быть родителем самой себе.");
+  if (input.parentId === id)
+    throw new UserError("err.catalog.selfParent", "Категория не может быть родителем самой себе.");
   const patch: Database["public"]["Tables"]["categories"]["Update"] = {};
   if (input.name !== undefined) patch.name = input.name;
   if (input.parentId !== undefined) patch.parent_id = input.parentId;
@@ -62,12 +64,21 @@ export async function deleteCategory(ctx: TenantContext, id: string): Promise<vo
     .from("products")
     .select("id", { count: "exact", head: true })
     .contains("category_ids", JSON.stringify([id]));
-  if (count) throw new Error(`В категории ${count} товаров — сначала перенесите их.`);
+  if (count)
+    throw new UserError(
+      "err.catalog.hasProducts",
+      "В категории {count} товаров — сначала перенесите их.",
+      { count },
+    );
   const { count: kids } = await ctx.db
     .from("categories")
     .select("id", { count: "exact", head: true })
     .eq("parent_id", id);
-  if (kids) throw new Error("У категории есть подкатегории — сначала удалите их.");
+  if (kids)
+    throw new UserError(
+      "err.catalog.hasSubcategories",
+      "У категории есть подкатегории — сначала удалите их.",
+    );
   const { error } = await ctx.db.from("categories").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }

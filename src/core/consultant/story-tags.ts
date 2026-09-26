@@ -1,3 +1,4 @@
+import { UserError } from "@/core/i18n/user-error";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSetting, setSetting } from "@/core/settings/settings";
 
@@ -141,7 +142,8 @@ export type StoryTagInput = {
 export async function upsertStoryTag(ctx: TenantContext, input: StoryTagInput): Promise<StoryTag> {
   const info = extractInstagramMediaInfo(input.story);
   const storyId = info.shortcode ?? input.story.trim();
-  if (!storyId) throw new Error("Укажите ссылку на сторис или её id.");
+  if (!storyId)
+    throw new UserError("err.stories.idRequired", "Укажите ссылку на сторис или её id.");
   const tags = await listStoryTags(ctx);
   const tag: StoryTag = {
     id: tags.find((t) => t.story_id === storyId)?.id ?? `st_${Date.now().toString(36)}`,

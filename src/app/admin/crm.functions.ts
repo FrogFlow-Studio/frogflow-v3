@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { UserError } from "@/core/i18n/user-error";
 
 /** Интеграция с CRM и Таблицами (модуль crm_integration): адрес, секрет, события, проверка. */
 const moduleAdmin = async (min?: "owner") =>
@@ -36,7 +37,10 @@ export const saveCrmFn = createServerFn({ method: "POST" })
       return { ok: true };
     }
     if (!safeWebhookUrl(data.url.trim()))
-      throw new Error("Адрес должен начинаться с https:// и вести на внешний сервер.");
+      throw new UserError(
+        "err.admin.crmUrl",
+        "Адрес должен начинаться с https:// и вести на внешний сервер.",
+      );
     const prev = await loadCrm(ctx);
     const cfg = parseCrm(
       JSON.stringify({
@@ -54,7 +58,7 @@ export const testCrmFn = createServerFn({ method: "POST" }).handler(async () => 
   const ctx = await moduleAdmin("owner");
   const { loadCrm } = await import("@/core/crm/webhook");
   const cfg = await loadCrm(ctx);
-  if (!cfg) throw new Error("Сначала сохраните адрес вебхука.");
+  if (!cfg) throw new UserError("err.admin.crmSaveFirst", "Сначала сохраните адрес вебхука.");
   const { postWebhook } = await import("@/app/outbox/senders.server");
   const body = JSON.stringify({
     event: "test",

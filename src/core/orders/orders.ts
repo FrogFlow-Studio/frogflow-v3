@@ -1,3 +1,4 @@
+import { UserError } from "@/core/i18n/user-error";
 import { rewardReferrerIfFirstDelivery, type ReferralGrant } from "@/core/referrals/referrals";
 import { createHash } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -525,9 +526,12 @@ export async function claimOrderForDelivery(
     .select("status")
     .eq("id", orderId)
     .maybeSingle();
-  if (!existing) throw new Error("Заказ не найден");
+  if (!existing) throw new UserError("err.orders.notFound", "Заказ не найден");
   if (existing.status === "delivered" || existing.status === "delivering") return null;
-  throw new Error(`Заказ #${orderId} нельзя выдать (статус: ${existing.status})`);
+  throw new UserError("err.orders.cannotDeliver", "Заказ #{no} нельзя выдать (статус: {status})", {
+    no: orderId,
+    status: existing.status,
+  });
 }
 
 export async function rejectOrder(
