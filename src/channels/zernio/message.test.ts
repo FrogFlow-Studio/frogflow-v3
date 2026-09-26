@@ -214,3 +214,70 @@ describe("parseZernioMessage", () => {
     ).toBe(true);
   });
 });
+
+describe("parseZernioMessage — аккаунт и нажатия (опись v1)", () => {
+  const base = {
+    event: "message.received",
+    message: { conversationId: "c1", sender: { id: "u1" } },
+  };
+  /** Строка списка WhatsApp: подпись строки дублируется в message.text. */
+  const waListReply = {
+    event: "message.received",
+    account: { id: "wa-acc", accountId: "wa-acc", platform: "whatsapp" },
+    message: {
+      conversationId: "c1",
+      text: "⛺ ЛАГЕРЬ И ВНЕУРОЧКА",
+      sender: { id: "77011234567" },
+    },
+    metadata: {
+      interactiveType: "list_reply",
+      interactiveId: "CAT:e37096e4-195b-4fde-9a41-effff658fe01:0",
+    },
+  };
+
+  it("берёт accountId как канонический, а не id", () => {
+    const { accountId } = parseZernioMessage({
+      ...base,
+      account: { id: "запасной", accountId: "канонический" },
+    });
+    expect(accountId).toBe("канонический");
+  });
+
+  it("подпись строки приходит текстом и остаётся в text, не подменяя payload", () => {
+    const parsed = parseZernioMessage(waListReply);
+    expect(parsed.text).toBe("⛺ ЛАГЕРЬ И ВНЕУРОЧКА");
+    expect(parsed.postbackPayload).toBe("CAT:e37096e4-195b-4fde-9a41-effff658fe01:0");
+  });
+
+  it("кнопка чужой автоматизации Zernio отдаётся как есть", () => {
+    const parsed = parseZernioMessage({
+      ...base,
+      account: { accountId: "ig-acc", platform: "instagram" },
+      message: { ...base.message, text: "Я подписался (ась)" },
+      metadata: {
+        postbackPayload: "ACT::cc82e5ebd3b465e3243fde66982ba8d0",
+        postbackTitle: "Я подписался (ась)",
+      },
+    });
+    expect(parsed.postbackPayload).toBe("ACT::cc82e5ebd3b465e3243fde66982ba8d0");
+    expect(parsed.text).toBe("Я подписался (ась)");
+  });
+
+  it("кнопка WhatsApp (button_reply) читается так же, как строка списка", () => {
+    const parsed = parseZernioMessage({
+      ...waListReply,
+      message: { ...waListReply.message, text: "В корзину" },
+      metadata: { interactiveType: "button_reply", interactiveId: "BUY:42" },
+    });
+    expect(parsed.postbackPayload).toBe("BUY:42");
+  });
+
+  it("запасное чтение из message.metadata работает, если форма вернётся", () => {
+    const { metadata, ...withoutTopLevel } = waListReply;
+    const parsed = parseZernioMessage({
+      ...withoutTopLevel,
+      message: { ...waListReply.message, metadata },
+    } as never);
+    expect(parsed.postbackPayload).toBe("CAT:e37096e4-195b-4fde-9a41-effff658fe01:0");
+  });
+});

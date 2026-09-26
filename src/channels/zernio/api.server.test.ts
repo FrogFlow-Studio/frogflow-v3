@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setEnvForTests } from "@/config/env";
-import { downloadAttachment, readCapped } from "./api.server";
+import { downloadAttachment, listProfiles, readCapped } from "./api.server";
 
 afterEach(() => {
   setEnvForTests(undefined);
@@ -70,5 +70,30 @@ describe("readCapped — вложение не больше лимита", () =>
       ),
     );
     expect(await downloadAttachment("https://zernio.com/api/v1/whatsapp/media/big")).toBeNull();
+  });
+});
+
+describe("адрес API Zernio (опись v1: tests/zernio-base-url.test.ts)", () => {
+  it("calls the JSON API even when Vercel contains only the Zernio host", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk_test", ZERNIO_BASE_URL: "https://zernio.com" });
+    const fetchMock = vi.fn(async () => Response.json({ profiles: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    await listProfiles();
+    const [url] = fetchMock.mock.calls[0] as unknown as [string];
+    expect(url).toBe("https://zernio.com/api/v1/profiles");
+  });
+
+  it("reports a useful configuration error for an HTML response", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk_test", ZERNIO_BASE_URL: "https://zernio.com/app" });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response("<!doctype html><html></html>", {
+            headers: { "content-type": "text/html" },
+          }),
+      ),
+    );
+    await expect(listProfiles()).rejects.toThrow(/Проверьте ZERNIO_BASE_URL/);
   });
 });

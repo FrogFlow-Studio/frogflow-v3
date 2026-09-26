@@ -1244,10 +1244,10 @@
     "falls back to a numeric sender id and ignores invalid entries": "src/core/whatsapp/exclusions.test.ts › +7 и 8 — один номер; короткие и пустые записи не считаются"
   },
   "tests/zernio-account-disconnected.test.ts": {
-    "уведомляет продавца по всем адресам из admin_chat_id": "open: handleAccountDisconnected (channels/zernio/handle-account.ts) без теста",
-    "без настроенного admin_chat_id ничего не отправляет": "open: handleAccountDisconnected (channels/zernio/handle-account.ts) без теста",
-    "не повторяет уведомление о том же аккаунте раньше шести часов": "open: кулдаун zernio_disconnect_notified в handle-account.ts без теста",
-    "другой аккаунт уведомляется даже пока первый ещё в кулдауне": "open: кулдаун по аккаунту в handle-account.ts без теста"
+    "уведомляет продавца по всем адресам из admin_chat_id": "src/channels/zernio/handle-account.test.ts › уведомляет продавца по всем адресам из admin_chat_id и помечает аккаунт",
+    "без настроенного admin_chat_id ничего не отправляет": "src/channels/zernio/handle-account.test.ts › без настроенного admin_chat_id ничего не отправляет",
+    "не повторяет уведомление о том же аккаунте раньше шести часов": "src/channels/zernio/handle-account.test.ts › не повторяет уведомление о том же аккаунте раньше шести часов",
+    "другой аккаунт уведомляется даже пока первый ещё в кулдауне": "src/channels/zernio/handle-account.test.ts › другой аккаунт уведомляется даже пока первый ещё в кулдауне"
   },
   "tests/zernio-automation-body.test.ts": {
     "опускает null у идентификаторов поста — это автоматизация на все посты": "src/core/instagram/comment-rules.test.ts › опускает null у идентификаторов поста — это автоматизация на все посты",
@@ -1263,8 +1263,8 @@
     "uses the official API URL when unset": "src/channels/zernio/base-url.test.ts › пусто — адрес API по умолчанию",
     "repairs the common host-only Vercel configuration": "src/channels/zernio/base-url.test.ts › сайт без пути достраивается до API",
     "preserves explicit API and proxy base URLs": "src/channels/zernio/base-url.test.ts › свой адрес берётся как есть, без завершающего слэша",
-    "calls the JSON API even when Vercel contains only the Zernio host": "open: что запросы (connect.server.ts, api.server.ts) идут по нормализованному адресу, тестом не проверено",
-    "reports a useful configuration error for an HTML response": "open: ошибка «Проверьте ZERNIO_BASE_URL» на HTML-ответ в api.server.ts без теста"
+    "calls the JSON API even when Vercel contains only the Zernio host": "src/channels/zernio/api.server.test.ts › calls the JSON API even when Vercel contains only the Zernio host",
+    "reports a useful configuration error for an HTML response": "src/channels/zernio/api.server.test.ts › reports a useful configuration error for an HTML response"
   },
   "tests/zernio-idempotency.test.ts": {
     "повтор того же события даёт тот же ключ": "src/channels/zernio/event-context.test.ts › повтор того же события даёт тот же ключ",
@@ -1294,14 +1294,14 @@
     "text=null у сообщения с одним вложением читается как пустая строка": "src/channels/zernio/message.test.ts › text=null у сообщения с одним вложением — пустая строка, вложение видно",
     "нажатие кнопки отдаёт payload, обычное сообщение — null": "src/channels/zernio/message.test.ts › нажатие читается из корня события: Instagram postback и строка списка WhatsApp",
     "подставляет имя, когда Instagram не дал ни имени, ни юзернейма": "src/channels/zernio/message.test.ts › не выдумывает профиль и id, когда их нет",
-    "берёт accountId как канонический, а не id": "open: приоритет accountId над id в parseZernioMessage (message.ts) есть, но в тесте оба поля равны",
+    "берёт accountId как канонический, а не id": "src/channels/zernio/message.test.ts › берёт accountId как канонический, а не id",
     "использует Mongo-style _id, если accountId и id отсутствуют": "src/channels/zernio/message.test.ts › не выдумывает профиль и id, когда их нет",
     "строка списка WhatsApp читается из корня события": "src/channels/zernio/message.test.ts › нажатие читается из корня события: Instagram postback и строка списка WhatsApp",
-    "подпись строки приходит текстом и остаётся в text, не подменяя payload": "open: что подпись строки остаётся в text отдельно от postbackPayload (message.ts), тестом не проверено",
+    "подпись строки приходит текстом и остаётся в text, не подменяя payload": "src/channels/zernio/message.test.ts › подпись строки приходит текстом и остаётся в text, не подменяя payload",
     "кнопка Instagram читается по своему ключу postbackPayload": "src/channels/zernio/message.test.ts › нажатие читается из корня события: Instagram postback и строка списка WhatsApp",
-    "кнопка чужой автоматизации Zernio отдаётся как есть": "open: payload ACT:: в parseZernioMessage (message.ts) отдаётся как есть, но теста нет",
-    "кнопка WhatsApp (button_reply) читается так же, как строка списка": "open: button_reply в INTERACTIVE_TAP_TYPES (message.ts) есть, тест проверяет только list_reply",
-    "запасное чтение из message.metadata работает, если форма вернётся": "open: запасное чтение message.metadata в parseZernioMessage (message.ts) без теста",
+    "кнопка чужой автоматизации Zernio отдаётся как есть": "src/channels/zernio/message.test.ts › кнопка чужой автоматизации Zernio отдаётся как есть",
+    "кнопка WhatsApp (button_reply) читается так же, как строка списка": "src/channels/zernio/message.test.ts › кнопка WhatsApp (button_reply) читается так же, как строка списка",
+    "запасное чтение из message.metadata работает, если форма вернётся": "src/channels/zernio/message.test.ts › запасное чтение из message.metadata работает, если форма вернётся",
     "обычное сообщение нажатием не считается": "src/channels/zernio/message.test.ts › обычное сообщение — не нажатие; чужая платформа падает в instagram",
     "нативная корзина Meta разбирается из корня события": "src/channels/zernio/message.test.ts › корзина из каталога WhatsApp превращается в текст для журнала",
     "неизвестная платформа не роняет разбор и считается instagram": "src/channels/zernio/message.test.ts › обычное сообщение — не нажатие; чужая платформа падает в instagram"
@@ -1322,8 +1322,8 @@
     "выключенный модуль instagram — добор не трогает ничего": "open: retryStuckEventsFor (channels/zernio/dispatch.server.ts) отбирает клиентов по профилю Zernio, не по модулю; теста нет"
   },
   "tests/zernio-webhook.test.ts": {
-    "accepts an HMAC-SHA256 signature for the untouched raw body": "open: verifyZernioSignature (src/routes/api/zernio/webhook.ts) без теста",
-    "rejects missing credentials, altered bodies and altered signatures": "open: verifyZernioSignature (src/routes/api/zernio/webhook.ts) без теста",
+    "accepts an HMAC-SHA256 signature for the untouched raw body": "src/channels/zernio/webhook-signature.test.ts › accepts an HMAC-SHA256 signature for the untouched raw body",
+    "rejects missing credentials, altered bodies and altered signatures": "src/channels/zernio/webhook-signature.test.ts › rejects missing credentials, altered bodies and altered signatures",
     "missing when there is no store webhook at all": "src/channels/zernio/webhook-fit.test.ts › missing — записи нет",
     "stale when the record points at another host": "src/channels/zernio/webhook-fit.test.ts › stale — чужой хост, выключена или не слушает входящие",
     "stale when the record is inactive or no longer listens for DMs": "src/channels/zernio/webhook-fit.test.ts › stale — чужой хост, выключена или не слушает входящие",
@@ -1334,6 +1334,6 @@
     "sales fit is ok only for the operator URL listening to DMs": "drop: вебхука продаж и воронки лидов оператора v1 в v2 нет",
     "принимает id из вебхука, не только mongo _id": "src/core/tenant/directory.test.ts › находит по id, slug, host (свой домен и app_url) и аккаунту Zernio",
     "если Instagram один — не отбрасывает чужой формат accountId": "drop: v2 находит клиента строго по settings.zernio.account_ids (findTenant), угадывания по единственному аккаунту нет",
-    "двум аккаунтам без точного id не угадывает": "open: findTenant по неизвестному id Zernio (core/tenant/directory.ts) отдельно не проверен, есть только тест на общий аккаунт у двух клиентов"
+    "двум аккаунтам без точного id не угадывает": "src/core/tenant/directory.test.ts › двум аккаунтам без точного id не угадывает: неизвестный аккаунт — ничей"
   }
 }

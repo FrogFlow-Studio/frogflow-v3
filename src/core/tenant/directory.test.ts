@@ -144,6 +144,18 @@ describe("tenant directory", () => {
     expect(findTenant([a, b], { by: "zernio_account", value: "shared" })).toBeNull();
     expect(findTenant([a, b], { by: "zernio_account", value: "only-a" })?.id).toBe(a.id);
   });
+
+  it("двум аккаунтам без точного id не угадывает: неизвестный аккаунт — ничей", () => {
+    const a = tenantFromRow(row({ settings: { zernio: { account_ids: ["acc_1"] } } }));
+    const b = tenantFromRow(
+      row({
+        id: "de44b934-c8db-47ac-9aa9-535c762cf8c7",
+        settings: { zernio: { account_ids: ["acc_2"] } },
+      }),
+    );
+    expect(findTenant([a, b], { by: "zernio_account", value: "unknown" })).toBeNull();
+    expect(findTenant([a], { by: "zernio_account", value: "unknown" })).toBeNull();
+  });
 });
 
 describe("settings: свои пределы ИИ клиента", () => {
