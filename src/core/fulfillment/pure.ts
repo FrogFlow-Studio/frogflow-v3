@@ -46,7 +46,9 @@ export function amountDue(total: number, mode: PaymentMode, depositPercent: numb
 
 export function matchFulfillmentType(text: string): "pickup" | "delivery" | null {
   const t = text.trim().toLowerCase();
-  if (/самовывоз|заберу|сам|pickup|өзім|алып кетемін|olib ketaman/.test(t)) return "pickup";
+  // Слова с кнопки на всех 4 языках («Өзі алып кету», «O‘zi olib ketish») и
+  // разговорные формы; узбекский апостроф бывает любым, поэтому olib ket(aman|ish).
+  if (/самовывоз|заберу|сам|pickup|өзім|өзі алып|алып кет|olib ket/.test(t)) return "pickup";
   if (/доставк|привез|курьер|delivery|жеткіз|yetkaz/.test(t)) return "delivery";
   return null;
 }

@@ -36,6 +36,16 @@ describe("fulfillment pure", () => {
     expect(matchFulfillmentType("нужна доставка")).toBe("delivery");
     expect(matchFulfillmentType("не знаю")).toBeNull();
   });
+
+  it("слово с кнопки на всех 4 языках, в том числе самовывоз на казахском и узбекском", () => {
+    for (const w of ["🏠 Самовывоз", "🏠 Pickup", "🏠 Өзі алып кету", "🏠 O‘zi olib ketish"])
+      expect(matchFulfillmentType(w), w).toBe("pickup");
+    // Узбекский апостроф пишут по-разному: ‘, ʻ, ' или вовсе без него.
+    for (const w of ["Oʻzi olib ketish", "O'zi olib ketish", "ozi olib ketaman", "olib ketish"])
+      expect(matchFulfillmentType(w), w).toBe("pickup");
+    for (const w of ["🚚 Доставка", "🚚 Delivery", "🚚 Жеткізу", "🚚 Yetkazib berish"])
+      expect(matchFulfillmentType(w), w).toBe("delivery");
+  });
 });
 
 describe("даты получения: месяцы и високосный год", () => {
