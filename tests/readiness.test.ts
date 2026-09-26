@@ -84,11 +84,14 @@ describe("сопоставление", () => {
 });
 
 describe("docs/READINESS.md", () => {
-  it("сопоставление без ошибок, сводка свежая (node scripts/readiness.ts)", () => {
+  // Свежесть сводки не проверяется: каждый PR пересобирал docs/READINESS.md, и
+  // открытые PR конфликтовали друг с другом после каждого слияния. Сводку
+  // пересобирает отдельный PR (node scripts/readiness.ts), а здесь — только
+  // что опись сопоставляется без ошибок: имена тестов и файлы существуют.
+  it("сопоставление без ошибок (сводку пересобирает node scripts/readiness.ts)", () => {
     const r = run(process.cwd());
     expect(r.items.length).toBeGreaterThan(1000);
     expect(r.errors).toEqual([]);
-    expect(r.current).toBe(r.report);
   });
 
   it("файлы пути заказа есть в описи", () => {

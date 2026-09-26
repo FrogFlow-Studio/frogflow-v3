@@ -13,7 +13,10 @@
  * Сводка — `docs/READINESS.md`:
  *
  *   node scripts/readiness.ts          — пересобрать сводку
- *   node scripts/readiness.ts --check  — только сверить (то же делает npm test)
+ *   node scripts/readiness.ts --check  — сверить и сводку, и сопоставление
+ *
+ * npm test проверяет только сопоставление (без свежести сводки): сводку
+ * пересобирает отдельный PR, чтобы открытые PR не конфликтовали на ней.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

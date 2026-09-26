@@ -57,3 +57,7 @@ npm run build       # typecheck + vite build (Nitro, Vercel preset)
 # Сквозной прогон в браузере (Playwright) против подставной базы, как в CI:
 NITRO_PRESET=node-server npx vite build && npm run e2e
 ```
+
+Сводку готовности `docs/READINESS.md` в обычных PR не трогаем: тест проверяет
+только `docs/readiness.json` (пункты и имена тестов). Сводку пересобирает
+отдельный PR (`npm run readiness`); при конфликте в ней берём версию из master.
