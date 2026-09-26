@@ -1,13 +1,112 @@
 /** Чистая часть аналитики: разбивка по дням, дельты, компактные числа. */
 
-export const PAID_STATUSES = [
-  "delivered",
-  "accepted",
-  "in_production",
-  "ready",
-  "completed",
-  "paid",
-] as const;
+/** Физический заказ в работе: задаток уже внесён, заказ ещё не выдан. */
+const PHYSICAL_IN_PROGRESS = new Set(["accepted", "in_production", "ready"]);
+
+/**
+ * Какие заказы входят в выручку (как в v1): цифровые — только выданные,
+ * физические — ещё и в работе, чтобы внесённый задаток был виден до выдачи.
+ */
+export function includeOrderInAnalytics(o: {
+  status: string;
+  fulfillment_kind?: string | null;
+}): boolean {
+  if (o.status === "delivered") return true;
+  return o.fulfillment_kind === "physical" && PHYSICAL_IN_PROGRESS.has(o.status);
+}
+
+/** Выручка по одному заказу: выданный — полный total, в работе — внесённое (paid_amount). */
+export function analyticsRevenue(o: {
+  total: number | string | null;
+  status: string;
+  fulfillment_kind?: string | null;
+  paid_amount?: number | string | null;
+}): number {
+  if (o.status === "delivered") return Number(o.total) || 0;
+  return Number(o.paid_amount) || 0;
+}
+
+export type CurrencySummary = { revenue: number; orders: number };
+
+/** Выручка и число заказов по валютам — суммы разных валют не складываются. */
+export function summarizeByCurrency(
+  orders: Array<{ currency: string | null; revenue: number }>,
+): Record<string, CurrencySummary> {
+  const out: Record<string, CurrencySummary> = {};
+  for (const o of orders) {
+    const e = (out[o.currency || "—"] ??= { revenue: 0, orders: 0 });
+    e.revenue += o.revenue;
+    e.orders += 1;
+  }
+  return out;
+}
+
+/** Валюта, в которой больше всего заказов: в ней плитки, график и топ товаров. */
+export function dominantCurrency(orders: Array<{ currency: string | null }>): string | null {
+  const counts = new Map<string, number>();
+  for (const o of orders) counts.set(o.currency || "—", (counts.get(o.currency || "—") ?? 0) + 1);
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [cur, n] of counts)
+    if (n > bestCount) {
+      best = cur;
+      bestCount = n;
+    }
+  return best;
+}
+
+/** Валюты для разбивки: доминирующая первой, остальные по числу заказов, затем по алфавиту. */
+export function orderedCurrencies(
+  summary: Record<string, CurrencySummary>,
+  dominant: string | null,
+): string[] {
+  return Object.keys(summary).sort((a, b) => {
+    if (a === dominant) return -1;
+    if (b === dominant) return 1;
+    return summary[b]!.orders - summary[a]!.orders || a.localeCompare(b);
+  });
+}
+
+export type AnalyticsItem = {
+  order_id: number;
+  product_id: string | null;
+  name_snapshot: string | null;
+  price_snapshot: number | string | null;
+  quantity: number | null;
+};
+
+export type TopProduct = { name: string; revenue: number; qty: number; orders: number };
+
+/**
+ * Топ товаров по проданному количеству. Выручка — только по заказам из
+ * `revenueOrderIds` (одна валюта), у заказа в работе строка масштабируется
+ * долей внесённого (paid_amount / total), как сводка. Товар без product_id
+ * (удалён) группируется по названию.
+ */
+export function topProductsBySales(
+  items: AnalyticsItem[],
+  revenueOrderIds: Set<number>,
+  limit = 8,
+  revenueScaleByOrderId?: Map<number, number>,
+): TopProduct[] {
+  const byKey = new Map<string, TopProduct>();
+  for (const it of items) {
+    const name = it.name_snapshot || "Товар";
+    const key = it.product_id ?? `name:${name}`;
+    const e = byKey.get(key) ?? { name, revenue: 0, qty: 0, orders: 0 };
+    const qty = Number(it.quantity) || 0;
+    e.qty += qty;
+    e.orders += 1;
+    if (revenueOrderIds.has(it.order_id))
+      e.revenue +=
+        (Number(it.price_snapshot) || 0) * qty * (revenueScaleByOrderId?.get(it.order_id) ?? 1);
+    byKey.set(key, e);
+  }
+  return [...byKey.values()]
+    .map((t) => ({ ...t, revenue: Math.round(t.revenue) }))
+    .sort((a, b) => b.qty - a.qty || b.revenue - a.revenue)
+    .slice(0, limit);
+}
 
 /** YYYY-MM-DD в часовом поясе клиента. */
 export function dayKey(iso: string | Date, tz: string): string {

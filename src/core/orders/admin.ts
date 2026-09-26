@@ -81,23 +81,33 @@ export async function orderCounts(ctx: TenantContext): Promise<OrderCounts> {
   return out;
 }
 
+/**
+ * Выручка за `days` дней для главной админки — по тем же правилам, что
+ * аналитика (core/analytics/pure): выданные заказы и физические в работе с
+ * внесённым задатком; сумма — в основной валюте, другие не складываются.
+ */
 export async function revenue(
   ctx: TenantContext,
   days: number,
 ): Promise<{ total: number; currency: string; orders: number }> {
+  const { analyticsRevenue, dominantCurrency, includeOrderInAnalytics } =
+    await import("@/core/analytics/pure");
   const since = new Date(Date.now() - days * 86400_000).toISOString();
   const { data } = await ctx.db
     .from("orders")
-    .select("total, currency")
-    .in("status", ["delivered", "accepted", "in_production", "ready", "completed", "paid"])
+    .select("total, paid_amount, currency, status, fulfillment_kind")
+    .in("status", ["delivered", "accepted", "in_production", "ready"])
     .gte("created_at", since);
+  const counted = (data ?? []).filter((o) => includeOrderInAnalytics(o));
+  const currency = dominantCurrency(counted) ?? "KZT";
   let total = 0;
-  let currency = "KZT";
-  for (const r of data ?? []) {
-    total += Number(r.total) || 0;
-    currency = r.currency;
-  }
-  return { total, currency, orders: data?.length ?? 0 };
+  let orders = 0;
+  for (const o of counted)
+    if ((o.currency || "—") === currency) {
+      total += analyticsRevenue(o);
+      orders += 1;
+    }
+  return { total: Math.round(total), currency, orders };
 }
 
 export async function setOrderNote(

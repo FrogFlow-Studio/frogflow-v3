@@ -114,6 +114,15 @@ function AnalyticsPage() {
         />
       </div>
 
+      {a.byCurrency.length > 1 && (
+        <p className="mt-3 text-sm text-muted">
+          {t("analytics.byCurrency", { currency: a.currency })}{" "}
+          {a.byCurrency
+            .map((c) => `${formatMoney(c.revenue, c.currency)} (${num(c.orders)})`)
+            .join(" · ")}
+        </p>
+      )}
+
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <ChartCard
           title={t("analytics.chart.revenueByDay")}

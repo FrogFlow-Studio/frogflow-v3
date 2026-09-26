@@ -1,6 +1,20 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
-import { PAID_STATUSES, dayKey, dayKeys, emptySeries, pctDelta, type DayPoint } from "./pure";
+import {
+  analyticsRevenue,
+  dayKey,
+  dayKeys,
+  dominantCurrency,
+  emptySeries,
+  includeOrderInAnalytics,
+  orderedCurrencies,
+  pctDelta,
+  summarizeByCurrency,
+  topProductsBySales,
+  type DayPoint,
+  type AnalyticsItem,
+  type TopProduct,
+} from "./pure";
 
 export type PeriodTotals = {
   revenue: number;
@@ -10,11 +24,14 @@ export type PeriodTotals = {
   buyers: number;
 };
 
-export type TopProduct = { name: string; revenue: number; qty: number; orders: number };
+export type { TopProduct };
 
 export type Analytics = {
   days: number;
+  /** Валюта с наибольшим числом заказов: в ней плитки, график, каналы и топ. */
   currency: string;
+  /** Выручка текущего периода по каждой валюте, основная первой. */
+  byCurrency: Array<{ currency: string; revenue: number; orders: number }>;
   series: DayPoint[];
   current: PeriodTotals;
   previous: PeriodTotals;
@@ -26,8 +43,12 @@ export type Analytics = {
 
 /**
  * Сводка за последние `days` дней с сравнением к предыдущему такому же
- * периоду. Считается в памяти по оплаченным заказам — у одного клиента их
- * тысячи, не миллионы, и один проход дешевле шести агрегатных запросов.
+ * периоду. Считается в памяти — у одного клиента заказов тысячи, не
+ * миллионы, и один проход дешевле шести агрегатных запросов.
+ *
+ * Как в v1: в выручку идут выданные заказы и физические в работе (с
+ * внесённым задатком, paid_amount). Валюты не складываются: плитки, график,
+ * каналы и топ — в основной валюте, остальные — отдельной разбивкой.
  */
 export async function analytics(ctx: TenantContext, days: number): Promise<Analytics> {
   const now = new Date();
@@ -41,7 +62,9 @@ export async function analytics(ctx: TenantContext, days: number): Promise<Analy
       (from, to) =>
         ctx.db
           .from("orders")
-          .select("id, created_at, total, currency, status, platform, telegram_id")
+          .select(
+            "id, created_at, total, paid_amount, currency, status, fulfillment_kind, platform, telegram_id",
+          )
           .gte("created_at", since)
           .order("created_at")
           .range(from, to),
@@ -59,7 +82,10 @@ export async function analytics(ctx: TenantContext, days: number): Promise<Analy
     ),
   ]);
 
-  const paid = new Set<string>(PAID_STATUSES);
+  const counted = orders
+    .filter((o) => includeOrderInAnalytics(o))
+    .map((o) => ({ ...o, day: dayKey(o.created_at, tz), revenue: analyticsRevenue(o) }));
+  const currency = dominantCurrency(counted) ?? "KZT";
   const series = emptySeries(keys);
   const byDay = new Map(series.map((p) => [p.day, p]));
   const blank = (): PeriodTotals & { buyerIds: Set<number> } => ({
@@ -72,33 +98,40 @@ export async function analytics(ctx: TenantContext, days: number): Promise<Analy
   });
   const cur = blank();
   const prev = blank();
-  let currency = "KZT";
   const currentIds: number[] = [];
+  const revenueIds = new Set<number>();
+  const scale = new Map<number, number>();
   const byPlatform = new Map<string, { orders: number; revenue: number }>();
   const byStatus = new Map<string, number>();
 
-  for (const o of orders) {
-    const day = dayKey(o.created_at, tz);
-    const inCurrent = day >= firstDay;
-    if (inCurrent) byStatus.set(o.status, (byStatus.get(o.status) ?? 0) + 1);
-    if (!paid.has(o.status)) continue;
-    const total = Number(o.total) || 0;
-    currency = o.currency || currency;
+  for (const o of orders)
+    if (dayKey(o.created_at, tz) >= firstDay)
+      byStatus.set(o.status, (byStatus.get(o.status) ?? 0) + 1);
+
+  const currentCounted = counted.filter((o) => o.day >= firstDay);
+  const summary = summarizeByCurrency(currentCounted);
+  for (const o of counted) {
+    const inCurrent = o.day >= firstDay;
+    if (inCurrent) currentIds.push(o.id);
     const bucket = inCurrent ? cur : prev;
-    bucket.revenue += total;
-    bucket.orders += 1;
+    // Покупатель — в любой валюте; деньги и число заказов — в основной.
     bucket.buyerIds.add(Number(o.telegram_id));
+    if ((o.currency || "—") !== currency) continue;
+    bucket.revenue += o.revenue;
+    bucket.orders += 1;
     if (inCurrent) {
-      currentIds.push(o.id);
-      const p = byDay.get(day);
+      revenueIds.add(o.id);
+      const total = Number(o.total) || 0;
+      if (total > 0 && o.revenue !== total) scale.set(o.id, o.revenue / total);
+      const p = byDay.get(o.day);
       if (p) {
-        p.revenue += total;
+        p.revenue += o.revenue;
         p.orders += 1;
       }
       const platform = o.platform || "telegram";
       const pl = byPlatform.get(platform) ?? { orders: 0, revenue: 0 };
       pl.orders += 1;
-      pl.revenue += total;
+      pl.revenue += o.revenue;
       byPlatform.set(platform, pl);
     }
   }
@@ -121,27 +154,24 @@ export async function analytics(ctx: TenantContext, days: number): Promise<Analy
   const current = finish(cur);
   const previous = finish(prev);
 
-  // Топ товаров — по снимкам позиций оплаченных заказов текущего периода.
-  const top = new Map<string, TopProduct>();
+  // Топ товаров — по снимкам позиций заказов текущего периода; выручка — в основной валюте.
+  const items: AnalyticsItem[] = [];
   for (let i = 0; i < currentIds.length; i += 200) {
     const { data } = await ctx.db
       .from("order_items")
-      .select("order_id, name_snapshot, price_snapshot, quantity")
+      .select("order_id, product_id, name_snapshot, price_snapshot, quantity")
       .in("order_id", currentIds.slice(i, i + 200));
-    for (const it of data ?? []) {
-      const name = it.name_snapshot || "Товар";
-      const t = top.get(name) ?? { name, revenue: 0, qty: 0, orders: 0 };
-      const qty = Number(it.quantity) || 1;
-      t.revenue += (Number(it.price_snapshot) || 0) * qty;
-      t.qty += qty;
-      t.orders += 1;
-      top.set(name, t);
-    }
+    items.push(...(data ?? []));
   }
 
   return {
     days,
     currency,
+    byCurrency: orderedCurrencies(summary, currency).map((c) => ({
+      currency: c,
+      revenue: Math.round(summary[c]!.revenue),
+      orders: summary[c]!.orders,
+    })),
     series,
     current,
     previous,
@@ -152,10 +182,7 @@ export async function analytics(ctx: TenantContext, days: number): Promise<Analy
       customers: pctDelta(current.customers, previous.customers),
       buyers: pctDelta(current.buyers, previous.buyers),
     },
-    topProducts: [...top.values()]
-      .map((t) => ({ ...t, revenue: Math.round(t.revenue) }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 8),
+    topProducts: topProductsBySales(items, revenueIds, 8, scale),
     byPlatform: [...byPlatform.entries()]
       .map(([platform, v]) => ({ platform, ...v, revenue: Math.round(v.revenue) }))
       .sort((a, b) => b.orders - a.orders),
