@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as OperatorRouteImport } from './routes/operator'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AdminAuthedRouteImport } from './routes/admin._authed'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as ApiClientErrorRouteImport } from './routes/api/client-error'
@@ -54,6 +56,7 @@ import { Route as OperatorAuthedSettingsRouteImport } from './routes/operator._a
 import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
 import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
 import { Route as SSlugOrdersRouteImport } from './routes/s.$slug.orders'
+import { Route as SSlugSitemapDotxmlRouteImport } from './routes/s.$slug_.sitemap[.]xml'
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
 import { Route as AdminAuthedOrdersNewRouteImport } from './routes/admin._authed.orders.new'
 import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authed.products_.$id'
@@ -81,9 +84,19 @@ const OperatorRoute = OperatorRouteImport.update({
   path: '/operator',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAuthedRoute = AdminAuthedRouteImport.update({
@@ -289,6 +302,11 @@ const SSlugOrdersRoute = SSlugOrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => SSlugRoute,
 } as any)
+const SSlugSitemapDotxmlRoute = SSlugSitemapDotxmlRouteImport.update({
+  id: '/s/$slug_/sitemap.xml',
+  path: '/s/$slug/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminAuthedOrdersIdRoute = AdminAuthedOrdersIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -351,7 +369,9 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/operator': typeof OperatorRouteWithChildren
+  '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/login': typeof AdminLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
@@ -388,6 +408,7 @@ export interface FileRoutesByFullPath {
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
+  '/s/$slug/sitemap.xml': typeof SSlugSitemapDotxmlRoute
   '/admin/': typeof AdminAuthedIndexRoute
   '/operator/': typeof OperatorAuthedIndexRoute
   '/s/$slug/': typeof SSlugIndexRoute
@@ -407,7 +428,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminAuthedIndexRoute
   '/operator': typeof OperatorAuthedIndexRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/login': typeof AdminLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
@@ -443,6 +466,7 @@ export interface FileRoutesByTo {
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
+  '/s/$slug/sitemap.xml': typeof SSlugSitemapDotxmlRoute
   '/s/$slug': typeof SSlugIndexRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
@@ -461,7 +485,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/operator': typeof OperatorRouteWithChildren
+  '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/_authed': typeof AdminAuthedRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
@@ -500,6 +526,7 @@ export interface FileRoutesById {
   '/operator/_authed/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
+  '/s/$slug_/sitemap.xml': typeof SSlugSitemapDotxmlRoute
   '/admin/_authed/': typeof AdminAuthedIndexRoute
   '/operator/_authed/': typeof OperatorAuthedIndexRoute
   '/s/$slug/': typeof SSlugIndexRoute
@@ -521,7 +548,9 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/operator'
+    | '/robots.txt'
     | '/signup'
+    | '/sitemap.xml'
     | '/admin/login'
     | '/api/client-error'
     | '/api/health'
@@ -558,6 +587,7 @@ export interface FileRouteTypes {
     | '/operator/settings'
     | '/s/$slug/cart'
     | '/s/$slug/orders'
+    | '/s/$slug/sitemap.xml'
     | '/admin/'
     | '/operator/'
     | '/s/$slug/'
@@ -577,7 +607,9 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/operator'
+    | '/robots.txt'
     | '/signup'
+    | '/sitemap.xml'
     | '/admin/login'
     | '/api/client-error'
     | '/api/health'
@@ -613,6 +645,7 @@ export interface FileRouteTypes {
     | '/operator/settings'
     | '/s/$slug/cart'
     | '/s/$slug/orders'
+    | '/s/$slug/sitemap.xml'
     | '/s/$slug'
     | '/admin/orders/$id'
     | '/admin/orders/new'
@@ -630,7 +663,9 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/operator'
+    | '/robots.txt'
     | '/signup'
+    | '/sitemap.xml'
     | '/admin/_authed'
     | '/admin/login'
     | '/api/client-error'
@@ -669,6 +704,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/settings'
     | '/s/$slug/cart'
     | '/s/$slug/orders'
+    | '/s/$slug_/sitemap.xml'
     | '/admin/_authed/'
     | '/operator/_authed/'
     | '/s/$slug/'
@@ -689,7 +725,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   OperatorRoute: typeof OperatorRouteWithChildren
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   SignupRoute: typeof SignupRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiClientErrorRoute: typeof ApiClientErrorRoute
   ApiHealthRoute: typeof ApiHealthRoute
   SSlugRoute: typeof SSlugRouteWithChildren
@@ -698,6 +736,7 @@ export interface RootRouteChildren {
   ApiOperatorBotsRoute: typeof ApiOperatorBotsRoute
   ApiTelegramBotIdRoute: typeof ApiTelegramBotIdRouteWithChildren
   ApiZernioWebhookRoute: typeof ApiZernioWebhookRoute
+  SSlugSitemapDotxmlRoute: typeof SSlugSitemapDotxmlRoute
   ApiAdminExportKindRoute: typeof ApiAdminExportKindRoute
   ApiImgBotIdSplatRoute: typeof ApiImgBotIdSplatRoute
   ApiRobokassaBotIdActionRoute: typeof ApiRobokassaBotIdActionRoute
@@ -726,11 +765,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/_authed': {
@@ -1020,6 +1073,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugOrdersRouteImport
       parentRoute: typeof SSlugRoute
     }
+    '/s/$slug_/sitemap.xml': {
+      id: '/s/$slug_/sitemap.xml'
+      path: '/s/$slug/sitemap.xml'
+      fullPath: '/s/$slug/sitemap.xml'
+      preLoaderRoute: typeof SSlugSitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/_authed/orders/$id': {
       id: '/admin/_authed/orders/$id'
       path: '/$id'
@@ -1250,7 +1310,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   OperatorRoute: OperatorRouteWithChildren,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   SignupRoute: SignupRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiClientErrorRoute: ApiClientErrorRoute,
   ApiHealthRoute: ApiHealthRoute,
   SSlugRoute: SSlugRouteWithChildren,
@@ -1259,6 +1321,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOperatorBotsRoute: ApiOperatorBotsRoute,
   ApiTelegramBotIdRoute: ApiTelegramBotIdRouteWithChildren,
   ApiZernioWebhookRoute: ApiZernioWebhookRoute,
+  SSlugSitemapDotxmlRoute: SSlugSitemapDotxmlRoute,
   ApiAdminExportKindRoute: ApiAdminExportKindRoute,
   ApiImgBotIdSplatRoute: ApiImgBotIdSplatRoute,
   ApiRobokassaBotIdActionRoute: ApiRobokassaBotIdActionRoute,
