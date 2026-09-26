@@ -1,462 +1,642 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState, type ReactNode } from "react";
+import { z } from "zod";
 import { signupEnabledFn } from "@/app/signup/signup.functions";
-import { ThemeToggle } from "@/app/ui";
-import { MODULE_KEYS, moduleDef } from "@/core/modules/registry";
+import { landingT, type LandingKey, type LandingT } from "@/app/i18n/landing";
+import {
+  CLIENTS,
+  CONTACTS,
+  DEMO_URL,
+  FEATURED_PLAN,
+  PLAN_PRICES,
+  REVIEWS,
+  SETUP_FEE_FROM,
+  TRIAL_DAYS,
+  formatTenge,
+  type PlanKey,
+} from "@/app/landing/config";
+import { SUPPORTED_LOCALES, isLocale, type Locale } from "@/core/i18n/locale";
+
+const LANG_LABELS: Record<Locale, string> = { ru: "RU", kk: "KZ", en: "EN", uz: "UZ" };
 
 export const Route = createFileRoute("/")({
-  loader: () => signupEnabledFn().catch(() => ({ enabled: false })),
+  validateSearch: z.object({ lang: z.string().optional() }),
+  loaderDeps: ({ search }) => ({ lang: search.lang }),
+  loader: async ({ deps }) => {
+    const { enabled } = await signupEnabledFn().catch(() => ({ enabled: false }));
+    const locale: Locale = isLocale(deps.lang) ? deps.lang : "ru";
+    return { signup: enabled, locale };
+  },
+  head: ({ loaderData }) => {
+    const t = landingT(loaderData?.locale ?? "ru");
+    return {
+      meta: [
+        { title: t("meta.title") },
+        { name: "description", content: t("meta.description") },
+        { property: "og:title", content: t("meta.title") },
+        { property: "og:description", content: t("meta.description") },
+        { property: "og:type", content: "website" },
+      ],
+      links: [
+        { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+        {
+          rel: "stylesheet",
+          href: "https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&display=swap",
+        },
+      ],
+    };
+  },
   component: Landing,
 });
 
-const PRODUCTS = [
-  {
-    icon: "🛍",
-    t: "Магазин-бот",
-    channels: "Telegram · WhatsApp · Instagram",
-    d: "Каталог, корзина, оплата и выдача заказа прямо в переписке. Покупатель не уходит из мессенджера, вы не отвечаете вручную на «сколько стоит» и «как оплатить».",
-  },
-  {
-    icon: "🤖",
-    t: "ИИ-консультант",
-    channels: "Instagram Direct · WhatsApp · Telegram",
-    d: "Отвечает клиентам круглосуточно по вашему прайсу и базе знаний: наличие, размеры, цвета, цены в двух валютах, условия доставки. Не знает — уточняет, а сложное передаёт менеджеру и записывает заявку.",
-  },
-  {
-    icon: "📣",
-    t: "Автоматизация Instagram",
-    channels: "комментарии · директ · сторис",
-    d: "Ответ на комментарий с ключевым словом, сообщение в директ, реакция на «цена?» под сторис, сбор заявок в панель — без ручного мониторинга.",
-  },
-  {
-    icon: "🖥",
-    t: "Витрина и Mini App",
-    channels: "ссылка · свой домен · внутри Telegram",
-    d: "Магазин по ссылке для рекламы и соцсетей, приложение внутри Telegram с корзиной на одном экране. Заказ уходит в тот же бот и ту же панель.",
-  },
-  {
-    icon: "🔁",
-    t: "Возврат и удержание",
-    channels: "рассылки · напоминания · лояльность",
-    d: "Рассылки по сегментам, напоминание о брошенной корзине, промокоды, сертификаты, баллы, рефералы, отзывы — покупатели возвращаются сами.",
-  },
-  {
-    icon: "🧩",
-    t: "Под вашу задачу",
-    channels: "VIP-подписки · курсы · интеграции",
-    d: "Платный доступ в закрытый канал, курсы внутри бота, выгрузки и связки с вашими таблицами и CRM. Расскажите задачу — предложим решение и сроки.",
-  },
-];
-
-const CHANNELS = [
-  {
-    icon: "✈️",
-    t: "Telegram",
-    d: "Магазин-бот, Mini App, чат с менеджером, рассылки, ИИ-консультант, VIP-подписки.",
-  },
-  {
-    icon: "💬",
-    t: "WhatsApp",
-    d: "Магазин в чате с каталогом и оформлением, автоответчик, переписка из панели, рассылки шаблонами.",
-  },
-  {
-    icon: "📸",
-    t: "Instagram",
-    d: "ИИ-консультант в директе, магазин в переписке, автоответы на комментарии и сторис, сбор заявок.",
-  },
-];
-
-const STEPS = [
-  {
-    n: "1",
-    t: "Создайте кабинет",
-    d: "Название, ниша, два клика — и у вас есть панель, витрина с собственным адресом и бот в Telegram, как только вставите токен из @BotFather.",
-  },
-  {
-    n: "2",
-    t: "Добавьте товары или прайс",
-    d: "Фото, цены по странам, варианты, файлы для цифровых товаров. Для консультанта — прайс из Google Таблицы или XLSX и база знаний.",
-  },
-  {
-    n: "3",
-    t: "Подключите каналы",
-    d: "Telegram сразу, WhatsApp и Instagram — по заявке из панели. Клиент пишет туда, где ему удобно, вы видите всё в одном месте.",
-  },
-];
-
-const HIGHLIGHTS = [
-  {
-    icon: "🛍",
-    t: "Магазин без сайта",
-    d: "Каталог с фото и вариантами прямо в Telegram, витрина по ссылке и Mini App. Корзина сохраняется, оформление — за три шага.",
-  },
-  {
-    icon: "💳",
-    t: "Оплата и выдача без вашего участия",
-    d: "Реквизиты по странам, карта через Robokassa, чек читается автоматически — файлы уходят покупателю сразу после оплаты.",
-  },
-  {
-    icon: "🔁",
-    t: "Покупатели возвращаются сами",
-    d: "Напоминание о брошенной корзине, рассылки, промокоды, сертификаты, баллы, рефералы и отзывы.",
-  },
-  {
-    icon: "📊",
-    t: "Панель, в которой всё видно",
-    d: "Заказы, покупатели, выручка по дням, чат с покупателем, выгрузка в Excel — с телефона или компьютера.",
-  },
-];
-
-const AUDIENCE = [
-  {
-    icon: "📚",
-    t: "Цифровые товары",
-    d: "Учебные материалы, шаблоны, курсы, PDF и видео: файл выдаётся в момент оплаты, версии на нескольких языках.",
-  },
-  {
-    icon: "📦",
-    t: "Товары на заказ и с доставкой",
-    d: "Кондитерские, цветы, подарки, handmade: дата получения, самовывоз или доставка по зонам, задаток, статусы заказа.",
-  },
-  {
-    icon: "🛒",
-    t: "Магазины с большим прайсом",
-    d: "Текстиль, одежда, косметика, техника: ИИ-консультант отвечает по наличию и характеристикам, менеджер подключается к сделке.",
-  },
-  {
-    icon: "💆",
-    t: "Услуги и запись",
-    d: "Салоны, студии, клиники, эксперты: консультант отвечает на вопросы, записывает и передаёт заявку с контактами.",
-  },
-];
-
-/** Полный список возможностей — из реестра модулей, чтобы ничего не забыть. */
-const GROUP_ORDER = [
-  "База",
-  "Оплата",
-  "Каталог",
-  "Физические товары",
-  "Удержание",
-  "Сервис",
-  "Instagram",
-  "WhatsApp",
-  "Аналитика",
-];
-const CAPABILITIES = GROUP_ORDER.map((group) => ({
-  group,
-  items: MODULE_KEYS.map(moduleDef)
-    .filter((d) => d.group === group)
-    .map((d) => ({
-      title: d.title,
-      desc: d.desc,
-      soon: d.status !== "available",
-      base: d.price === null,
-    })),
-})).filter((g) => g.items.length > 0);
-
-const FAQ = [
-  {
-    q: "Нужен ли сайт или программист?",
-    a: "Нет. Для Telegram достаточно токена бота из @BotFather, витрина и панель уже готовы. WhatsApp и Instagram подключаем вместе с вами по заявке из панели.",
-  },
-  {
-    q: "Что такое ИИ-консультант и что он знает о моём бизнесе?",
-    a: "Это ассистент, который отвечает клиентам в директе и чатах по вашему прайсу и базе знаний: наличие, размеры, цены, условия. Лишнего не выдумывает: не уверен — уточняет или зовёт менеджера. Каждый ответ и его стоимость видны в панели.",
-  },
-  {
-    q: "Работает ли в WhatsApp и Instagram, а не только в Telegram?",
-    a: "Да. Магазин в чате, ИИ-консультант и автоответы работают в Instagram Direct и WhatsApp Business; рассылки в WhatsApp идут одобренными шаблонами.",
-  },
-  {
-    q: "Как покупатели платят?",
-    a: "Так, как удобно вам: перевод по реквизитам с проверкой чека, карта через Robokassa, задаток или оплата при получении.",
-  },
-  {
-    q: "Можно ли работать на несколько стран?",
-    a: "Да: свои цены и реквизиты для каждой страны, интерфейс бота на русском, казахском, английском и узбекском.",
-  },
-  {
-    q: "Сколько это стоит?",
-    a: "Базовые возможности входят в подключение, дополнительные модули включаются по запросу из панели — платите только за то, что используете.",
-  },
-];
+type Channel = "tg" | "wa" | "ig";
+type Niche = "dig" | "phy" | "ai";
+type PricingNiche = "dig" | "cake" | "flow" | "ai";
+const PLANS: PlanKey[] = ["basic", "pro", "business"];
 
 /** Главная платформы — для владельцев магазинов. */
 function Landing() {
-  const { enabled: signup } = Route.useLoaderData();
+  const { signup, locale } = Route.useLoaderData();
+  const t = landingT(locale);
+  useEffect(() => {
+    // Корневой шаблон рисует lang="ru"; для чтения с экрана и переводчика браузера — язык страницы.
+    document.documentElement.lang = locale;
+  }, [locale]);
+
+  const signupCta = signup ? (
+    <Link to="/signup" className="btn-primary px-5 py-3 text-base">
+      {t("hero.ctaSignup", { days: TRIAL_DAYS })}
+    </Link>
+  ) : (
+    <Link to="/admin/login" className="btn-primary px-5 py-3 text-base">
+      {t("hero.ctaLogin")}
+    </Link>
+  );
+
   return (
-    <main className="flex min-h-screen flex-col">
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5">
-        <span className="text-lg font-semibold">🐸 FrogFlow</span>
-        <nav className="flex items-center gap-5 text-sm">
-          <a href="#products" className="hidden text-muted hover:text-fg md:inline">
-            Что мы делаем
-          </a>
-          <a href="#how" className="hidden text-muted hover:text-fg md:inline">
-            Как это работает
-          </a>
-          <a href="#features" className="hidden text-muted hover:text-fg md:inline">
-            Возможности
-          </a>
-          <a href="#faq" className="hidden text-muted hover:text-fg md:inline">
-            Вопросы
-          </a>
-          <ThemeToggle />
-          <Link to="/admin/login" className="btn-secondary">
-            Войти
-          </Link>
-        </nav>
-      </header>
+    <div className="flex min-h-screen flex-col bg-bg">
+      <Header t={t} locale={locale} />
 
-      {/* Герой */}
-      <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 pt-10 pb-16 md:grid-cols-[1.1fr_0.9fr] md:pt-16">
-        <div>
-          <p className="text-sm font-medium text-accent">Telegram · WhatsApp · Instagram</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight md:text-5xl">
-            Продажи и общение с клиентами в мессенджерах — без ручной рутины
-          </h1>
-          <p className="mt-5 max-w-xl text-lg text-muted">
-            Магазин-бот, ИИ-консультант и автоматизация в тех каналах, где уже сидят ваши клиенты.
-            Заказы, оплата, выдача и ответы на вопросы идут сами, вы видите всё в одной панели.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            {signup ? (
-              <Link to="/signup" className="btn-primary px-5 py-2.5 text-base">
-                Открыть магазин бесплатно
-              </Link>
-            ) : (
-              <Link to="/admin/login" className="btn-primary px-5 py-2.5 text-base">
-                Войти в панель магазина
-              </Link>
-            )}
-            <a href="#how" className="btn-secondary px-5 py-2.5 text-base">
-              Как это работает
-            </a>
+      <main>
+        {/* Первый экран */}
+        <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 pt-10 pb-14 md:grid-cols-[1.3fr_0.9fr] md:pt-16 md:pb-20">
+          <div>
+            <h1 className="font-display text-3xl leading-[1.15] font-bold tracking-tight text-balance md:text-[42px]">
+              {t("hero.title")}
+            </h1>
+            <p className="mt-5 max-w-xl text-lg text-muted">{t("hero.lead")}</p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              {signupCta}
+              {DEMO_URL && (
+                <a
+                  href={DEMO_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-secondary px-5 py-3 text-base"
+                >
+                  {t("hero.ctaDemo")}
+                </a>
+              )}
+            </div>
+            <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
+              {(["hero.fact1", "hero.fact2", "hero.fact3"] as const).map((k) => (
+                <li key={k}>
+                  <span className="font-bold text-accent">✓</span> {t(k)}
+                </li>
+              ))}
+            </ul>
           </div>
-          <p className="mt-4 text-sm text-muted">
-            Без сайта и программиста. Telegram — сразу, WhatsApp и Instagram — по заявке.
-          </p>
-        </div>
+          <ChatDemo t={t} />
+        </section>
 
-        {/* Макет диалога с ботом */}
-        <div className="card mx-auto w-full max-w-sm overflow-hidden shadow-lg">
-          <div className="flex items-center gap-3 border-b border-line px-4 py-3">
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-accent/15 text-lg">
-              🛍
-            </span>
-            <div>
-              <div className="text-sm font-semibold">Ваш магазин</div>
-              <div className="text-xs text-muted">бот · онлайн</div>
-            </div>
-          </div>
-          <div className="space-y-3 bg-surface-2/60 p-4 text-sm">
-            <div className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-sm bg-accent px-3 py-2 text-accent-fg">
-              🛍 Каталог
-            </div>
-            <div className="w-fit max-w-[90%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 shadow-sm">
-              <div className="font-medium">📦 Набор рабочих листов, 1 класс</div>
-              <div className="mt-1 text-muted">
-                48 страниц, PDF. Файл придёт сразу после оплаты.
-              </div>
-              <div className="mt-2 font-semibold">💰 1 900 ₸</div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                <span className="rounded-md border border-line bg-surface-2 px-2 py-1 text-xs">
-                  🛒 В корзину
-                </span>
-                <span className="rounded-md border border-line bg-surface-2 px-2 py-1 text-xs">
-                  ⭐ 4.9 (37)
-                </span>
-              </div>
-            </div>
-            <div className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-sm bg-accent px-3 py-2 text-accent-fg">
-              ✅ Оформить заказ
-            </div>
-            <div className="w-fit max-w-[90%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 shadow-sm">
-              💳 Оплатите картой или переводом — чек проверю сам.
-            </div>
-            <div className="w-fit max-w-[90%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 shadow-sm">
-              🎉 Заказ #128 оплачен. Файл отправлен — приятной работы!
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Что мы делаем */}
-      <section id="products" className="border-t border-line bg-surface">
-        <div className="mx-auto w-full max-w-6xl px-4 py-16">
-          <h2 className="text-2xl font-semibold md:text-3xl">Что мы делаем</h2>
-          <p className="mt-2 max-w-2xl text-muted">
-            Шесть направлений на одной платформе — включайте нужные, остальное подключится позже без
-            переезда.
-          </p>
-          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {PRODUCTS.map((p) => (
-              <div key={p.t} className="rounded-lg border border-line bg-bg p-5">
-                <span className="text-2xl">{p.icon}</span>
-                <h3 className="mt-3 font-semibold">{p.t}</h3>
-                <p className="mt-1 text-xs font-medium text-accent">{p.channels}</p>
-                <p className="mt-2 text-sm text-muted">{p.d}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Каналы */}
-      <section id="channels" className="mx-auto w-full max-w-6xl px-4 py-16">
-        <h2 className="text-2xl font-semibold md:text-3xl">Там, где ваши клиенты</h2>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {CHANNELS.map((c) => (
-            <div key={c.t} className="card p-5">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">{c.icon}</span>
-                <h3 className="font-semibold">{c.t}</h3>
-              </div>
-              <p className="mt-2 text-sm text-muted">{c.d}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Как это работает */}
-      <section id="how" className="border-t border-line bg-surface">
-        <div className="mx-auto w-full max-w-6xl px-4 py-16">
-          <h2 className="text-2xl font-semibold md:text-3xl">Три шага до старта</h2>
-          <div className="mt-8 grid gap-6 md:grid-cols-3">
-            {STEPS.map((s) => (
-              <div key={s.n} className="flex gap-4">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-lg font-semibold text-accent-fg">
-                  {s.n}
-                </span>
-                <div>
-                  <h3 className="font-semibold">{s.t}</h3>
-                  <p className="mt-1 text-sm text-muted">{s.d}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Возможности */}
-      <section id="features" className="mx-auto w-full max-w-6xl px-4 py-16">
-        <h2 className="text-2xl font-semibold md:text-3xl">Что получает ваш бизнес</h2>
-        <p className="mt-2 max-w-2xl text-muted">
-          Всё, что раньше требовало сайта, менеджера и трёх сервисов, — в одном боте и одной панели.
-        </p>
-        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {HIGHLIGHTS.map((f) => (
-            <div key={f.t} className="card p-5">
-              <span className="text-2xl">{f.icon}</span>
-              <h3 className="mt-3 font-semibold">{f.t}</h3>
-              <p className="mt-2 text-sm text-muted">{f.d}</p>
-            </div>
-          ))}
-        </div>
-
-        <h3 className="mt-14 text-xl font-semibold md:text-2xl">Все возможности по разделам</h3>
-        <p className="mt-2 max-w-2xl text-sm text-muted">
-          Базовые входят в подключение. Остальные включаются по запросу из панели — платите только
-          за то, что используете.
-        </p>
-        <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {CAPABILITIES.map((g) => (
-            <div key={g.group} className="card p-5">
-              <h4 className="text-xs font-semibold tracking-wide text-muted uppercase">
-                {g.group}
-              </h4>
-              <ul className="mt-3 space-y-3">
-                {g.items.map((it) => (
-                  <li key={it.title} className="text-sm">
-                    <div className="flex flex-wrap items-center gap-2 font-medium">
-                      {it.title}
-                      {it.base && (
-                        <span className="badge border-accent/30 bg-accent/10 text-accent">
-                          в пакете
-                        </span>
+        {CLIENTS.length > 0 && (
+          <section className="border-y border-line bg-surface">
+            <div className="mx-auto w-full max-w-6xl px-4 py-8">
+              <p className="text-sm text-muted">{t("clients.title")}</p>
+              <ul className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
+                {CLIENTS.map((c) => {
+                  const [what, figures] = c.note[locale].split(" · ");
+                  return (
+                    <li key={c.name} className="grid content-start gap-1">
+                      {c.url ? (
+                        <a
+                          href={c.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-display font-bold hover:text-accent"
+                        >
+                          {c.name} ↗
+                        </a>
+                      ) : (
+                        <span className="font-display font-bold">{c.name}</span>
                       )}
-                      {it.soon && <span className="badge">скоро</span>}
-                    </div>
-                    <p className="mt-0.5 text-xs text-muted">{it.desc}</p>
-                  </li>
-                ))}
+                      <span className="text-sm text-muted">{what}</span>
+                      {figures && (
+                        <span className="text-sm font-semibold tabular-nums">{figures}</span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
-          ))}
-        </div>
-      </section>
+          </section>
+        )}
 
-      {/* Для кого */}
-      <section className="border-t border-line bg-surface">
-        <div className="mx-auto w-full max-w-6xl px-4 py-16">
-          <h2 className="text-2xl font-semibold md:text-3xl">Для кого</h2>
-          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {AUDIENCE.map((a) => (
-              <div key={a.t} className="rounded-lg border border-line bg-bg p-5">
-                <span className="text-2xl">{a.icon}</span>
-                <h3 className="mt-3 font-semibold">{a.t}</h3>
-                <p className="mt-2 text-sm text-muted">{a.d}</p>
+        <Scenarios t={t} />
+
+        {/* Три шага */}
+        <section id="how" className="scroll-mt-20 border-y border-line bg-surface">
+          <div className="mx-auto w-full max-w-6xl px-4 py-16">
+            <SectionTitle>{t("steps.title")}</SectionTitle>
+            <ol className="mt-8 grid gap-8 md:grid-cols-3">
+              {([1, 2, 3] as const).map((n) => (
+                <li key={n} className="grid content-start gap-2">
+                  <span className="font-display text-4xl leading-none font-bold text-accent">
+                    {n}
+                  </span>
+                  <span className="text-sm font-semibold text-accent">
+                    {t(`steps.${n}.time` as LandingKey)}
+                  </span>
+                  <h3 className="font-semibold">{t(`steps.${n}.title` as LandingKey)}</h3>
+                  <p className="text-sm text-muted">{t(`steps.${n}.text` as LandingKey)}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <Pricing t={t} signup={signup} />
+
+        {REVIEWS.length > 0 && (
+          <section className="border-y border-line bg-surface">
+            <div className="mx-auto w-full max-w-6xl px-4 py-16">
+              <SectionTitle>{t("reviews.title")}</SectionTitle>
+              <div className="mt-8 grid gap-4 md:grid-cols-3">
+                {REVIEWS.map((r) => (
+                  <figure key={r.author + r.shop} className="card grid gap-4 p-5">
+                    <blockquote className="text-sm">{r.text[locale]}</blockquote>
+                    <figcaption className="text-sm">
+                      <b>{r.author}</b> <span className="text-muted">· {r.shop}</span>
+                    </figcaption>
+                  </figure>
+                ))}
               </div>
+            </div>
+          </section>
+        )}
+
+        {/* Вопросы */}
+        <section id="faq" className="mx-auto w-full max-w-3xl scroll-mt-20 px-4 py-16">
+          <SectionTitle>{t("faq.title")}</SectionTitle>
+          <div className="mt-6 border-b border-line">
+            {([1, 2, 3, 4, 5] as const).map((n) => (
+              <details key={n} className="group border-t border-line" open={n === 1}>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4 font-semibold [&::-webkit-details-marker]:hidden">
+                  {t(`faq.${n}.q` as LandingKey)}
+                  <span className="text-xl text-muted group-open:rotate-45 motion-safe:transition-transform">
+                    +
+                  </span>
+                </summary>
+                <p className="pb-4 text-muted">{t(`faq.${n}.a` as LandingKey)}</p>
+              </details>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Вопросы */}
-      <section id="faq" className="mx-auto w-full max-w-3xl px-4 py-16">
-        <h2 className="text-2xl font-semibold md:text-3xl">Частые вопросы</h2>
-        <dl className="mt-8 divide-y divide-line">
-          {FAQ.map((f) => (
-            <div key={f.q} className="py-4">
-              <dt className="font-semibold">{f.q}</dt>
-              <dd className="mt-1 text-sm text-muted">{f.a}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
+        <FinalCta t={t} signup={signup} />
+      </main>
 
-      {/* Призыв */}
-      <section className="mx-auto w-full max-w-6xl px-4 pb-16">
-        <div className="rounded-2xl bg-accent px-6 py-10 text-center text-accent-fg md:px-12">
-          <h2 className="text-2xl font-semibold md:text-3xl">Начните с Telegram сегодня</h2>
-          <p className="mx-auto mt-3 max-w-xl opacity-90">
-            Создайте кабинет, добавьте первый товар и отправьте ссылку клиентам. WhatsApp, Instagram
-            и ИИ-консультанта подключим следующим шагом.
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            {signup && (
-              <Link
-                to="/signup"
-                className="inline-flex items-center rounded-md bg-surface px-5 py-2.5 font-medium text-fg hover:opacity-90"
-              >
-                Открыть магазин
-              </Link>
-            )}
-            <Link
-              to="/admin/login"
-              className="inline-flex items-center rounded-md border border-accent-fg/40 px-5 py-2.5 font-medium hover:bg-accent-fg/10"
-            >
-              У меня уже есть магазин
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <footer className="border-t border-line">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs text-muted">
-          <span>© FrogFlow · магазины, ИИ-консультанты и автоматизация в мессенджерах</span>
-          <span className="flex gap-4">
-            <a href="#features" className="hover:text-fg">
-              Возможности
+      <footer className="mt-16 border-t border-line">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted">
+          <span>© FrogFlow · {t("footer.tagline")}</span>
+          <span className="flex gap-5">
+            <a href="#pricing" className="hover:text-fg">
+              {t("nav.pricing")}
             </a>
             <a href="#faq" className="hover:text-fg">
-              Вопросы
+              {t("nav.faq")}
             </a>
             <Link to="/admin/login" className="hover:text-fg">
-              Вход
+              {t("footer.login")}
             </Link>
           </span>
         </div>
       </footer>
-    </main>
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: ReactNode }) {
+  return (
+    <h2 className="font-display text-2xl leading-tight font-bold text-balance md:text-[32px]">
+      {children}
+    </h2>
+  );
+}
+
+function Header({ t, locale }: { t: LandingT; locale: Locale }) {
+  const links = (
+    <>
+      <a href="#how" className="text-muted hover:text-fg">
+        {t("nav.how")}
+      </a>
+      <a href="#pricing" className="text-muted hover:text-fg">
+        {t("nav.pricing")}
+      </a>
+      <a href="#faq" className="text-muted hover:text-fg">
+        {t("nav.faq")}
+      </a>
+    </>
+  );
+  return (
+    <header className="sticky top-0 z-20 border-b border-line bg-bg/90 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-6xl items-center gap-6 px-4 py-3">
+        <Link
+          to="/"
+          search={{ lang: locale === "ru" ? undefined : locale }}
+          className="font-display text-lg font-bold"
+        >
+          🐸 FrogFlow
+        </Link>
+        <nav className="hidden gap-5 text-sm md:flex">{links}</nav>
+        <div className="ml-auto flex items-center gap-3">
+          <div
+            role="group"
+            aria-label={t("nav.language")}
+            className="flex overflow-hidden rounded-md border border-line text-xs"
+          >
+            {SUPPORTED_LOCALES.map((l) => (
+              <Link
+                key={l}
+                to="/"
+                search={{ lang: l === "ru" ? undefined : l }}
+                hrefLang={l}
+                aria-current={l === locale ? "true" : undefined}
+                className={`px-2 py-1.5 font-medium ${
+                  l === locale ? "bg-accent/15 text-fg" : "text-muted hover:text-fg"
+                }`}
+              >
+                {LANG_LABELS[l]}
+              </Link>
+            ))}
+          </div>
+          <Link to="/admin/login" className="text-sm font-semibold hover:text-accent">
+            {t("nav.login")}
+          </Link>
+        </div>
+      </div>
+      <nav className="flex gap-5 overflow-x-auto px-4 pb-3 text-sm whitespace-nowrap md:hidden">
+        {links}
+      </nav>
+    </header>
+  );
+}
+
+const CHANNEL_COLORS: Record<Channel, string> = { tg: "#2a9bd8", wa: "#25a55a", ig: "#c1407a" };
+const CHANNELS: { key: Channel; name: string }[] = [
+  { key: "tg", name: "Telegram" },
+  { key: "wa", name: "WhatsApp" },
+  { key: "ig", name: "Instagram" },
+];
+
+/** Макет переписки: как магазин выглядит у покупателя в каждом канале. */
+function ChatDemo({ t }: { t: LandingT }) {
+  const [channel, setChannel] = useState<Channel>("tg");
+  const color = CHANNEL_COLORS[channel];
+  const shop = t(`chat.${channel}.shop` as LandingKey);
+  const out = (text: string) => (
+    <div
+      className="max-w-[86%] self-end rounded-2xl rounded-br-sm px-3 py-2 text-white"
+      style={{ background: color }}
+    >
+      {text}
+    </div>
+  );
+  const bot = (body: ReactNode) => (
+    <div className="max-w-[88%] rounded-2xl rounded-bl-sm border border-line bg-surface px-3 py-2">
+      {body}
+    </div>
+  );
+  const sub = (text: string) => <div className="mt-1 text-xs text-muted">{text}</div>;
+  const messages: Record<Channel, ReactNode[]> = {
+    tg: [
+      out(t("chat.tg.m1")),
+      bot(
+        <>
+          <div className="font-semibold">{t("chat.tg.product")}</div>
+          {sub(t("chat.tg.productSub"))}
+          <div className="mt-1 font-bold">1 900 ₸</div>
+          <div className="mt-2 flex gap-1.5 text-xs">
+            <span className="rounded-md border border-line bg-surface-2 px-2 py-1">
+              🛒 {t("chat.tg.addToCart")}
+            </span>
+            <span className="rounded-md border border-line bg-surface-2 px-2 py-1">★ 4.9 (37)</span>
+          </div>
+        </>,
+      ),
+      out(t("chat.tg.m3")),
+      bot(t("chat.tg.m4")),
+      bot(
+        <>
+          {t("chat.tg.m5")}
+          {sub(`📎 ${t("chat.tg.file")}`)}
+        </>,
+      ),
+    ],
+    wa: [
+      out(t("chat.wa.m1")),
+      bot(
+        <>
+          {t("chat.wa.m2")}
+          <div className="mt-2 grid gap-1 text-xs">
+            <span className="rounded-md border border-line bg-surface-2 px-2 py-1">
+              {t("chat.wa.item1")}
+            </span>
+            <span className="rounded-md border border-line bg-surface-2 px-2 py-1">
+              {t("chat.wa.item2")}
+            </span>
+          </div>
+        </>,
+      ),
+      out("1"),
+      bot(t("chat.wa.m4")),
+      bot(
+        <>
+          {t("chat.wa.m5")}
+          {sub(t("chat.wa.m5sub"))}
+        </>,
+      ),
+    ],
+    ig: [
+      out(t("chat.ig.m1")),
+      bot(t("chat.ig.m2")),
+      out(t("chat.ig.m3")),
+      bot(t("chat.ig.m4")),
+      bot(
+        <>
+          {t("chat.ig.m5")}
+          {sub(t("chat.ig.m5sub"))}
+        </>,
+      ),
+    ],
+  };
+  return (
+    <div className="mx-auto w-full max-w-sm overflow-hidden rounded-3xl border border-line bg-surface shadow-xl">
+      <div role="tablist" className="flex gap-1 border-b border-line bg-surface-2 p-2">
+        {CHANNELS.map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            role="tab"
+            aria-selected={c.key === channel}
+            onClick={() => setChannel(c.key)}
+            className={`flex-1 rounded-md px-1 py-2 text-xs font-semibold ${
+              c.key === channel ? "bg-surface text-fg shadow-sm" : "text-muted hover:text-fg"
+            }`}
+          >
+            <span
+              className="mr-1.5 inline-block h-2 w-2 rounded-full"
+              style={{ background: CHANNEL_COLORS[c.key] }}
+            />
+            {c.name}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-3 border-b border-line px-4 py-3">
+        <span
+          className="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white"
+          style={{ background: color }}
+        >
+          {shop.charAt(0)}
+        </span>
+        <div>
+          <div className="text-sm font-semibold">{shop}</div>
+          <div className="text-xs text-muted">
+            {channel === "ig" ? t("chat.ig.status") : t("chat.online")}
+          </div>
+        </div>
+      </div>
+      <div className="flex min-h-[21rem] flex-col gap-2 bg-bg p-4 text-sm leading-snug">
+        {messages[channel].map((m, i) => (
+          <div key={`${channel}-${i}`} className="flex flex-col">
+            {m}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const NICHES: Niche[] = ["dig", "phy", "ai"];
+
+/** «Было → стало» по нише продавца. */
+function Scenarios({ t }: { t: LandingT }) {
+  const [niche, setNiche] = useState<Niche>("dig");
+  const k = (s: string) => t(`scen.${niche}.${s}` as LandingKey);
+  return (
+    <section className="mx-auto w-full max-w-6xl px-4 py-16">
+      <SectionTitle>{t("scen.title")}</SectionTitle>
+      <p className="mt-2 text-muted">{t("scen.sub")}</p>
+      <div role="tablist" className="mt-6 flex flex-wrap gap-2">
+        {NICHES.map((n) => (
+          <button
+            key={n}
+            type="button"
+            role="tab"
+            aria-selected={n === niche}
+            onClick={() => setNiche(n)}
+            className={`rounded-full border px-4 py-2 text-sm font-medium ${
+              n === niche
+                ? "border-fg bg-fg text-bg"
+                : "border-line bg-surface text-fg hover:bg-surface-2"
+            }`}
+          >
+            {t(`scen.${n}.tab` as LandingKey)}
+          </button>
+        ))}
+      </div>
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div className="rounded-xl border border-line p-6">
+          <h3 className="text-xs font-semibold tracking-widest text-muted uppercase">
+            {t("scen.now")}
+          </h3>
+          <ul className="mt-3 grid list-disc gap-2 pl-5">
+            {["b1", "b2", "b3"].map((s) => (
+              <li key={s}>{k(s)}</li>
+            ))}
+          </ul>
+        </div>
+        <div className="rounded-xl bg-accent/10 p-6">
+          <h3 className="text-xs font-semibold tracking-widest text-accent uppercase">
+            {t("scen.with")}
+          </h3>
+          <ul className="mt-3 grid list-disc gap-2 pl-5">
+            {["a1", "a2", "a3"].map((s) => (
+              <li key={s}>{k(s)}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const PRICING_NICHES: PricingNiche[] = ["dig", "cake", "flow", "ai"];
+
+/** Что входит в план ниши: у Basic четыре пункта, у старших — «всё из младшего» и три своих. */
+function planFeatures(t: LandingT, niche: PricingNiche, plan: PlanKey): string[] {
+  const own = (n: number) =>
+    Array.from({ length: n }, (_, i) => t(`pricing.${niche}.${plan}.f${i + 1}` as LandingKey));
+  if (plan === "basic") return own(4);
+  return [t(plan === "pro" ? "pricing.allBasic" : "pricing.allPro"), ...own(3)];
+}
+
+function Pricing({ t, signup }: { t: LandingT; signup: boolean }) {
+  const [niche, setNiche] = useState<PricingNiche>("dig");
+  return (
+    <section id="pricing" className="mx-auto w-full max-w-6xl scroll-mt-20 px-4 py-16">
+      <SectionTitle>{t("pricing.title")}</SectionTitle>
+      <p className="mt-2 max-w-2xl text-muted">{t("pricing.sub", { days: TRIAL_DAYS })}</p>
+      <div
+        role="tablist"
+        aria-label={t("pricing.nicheLabel")}
+        className="mt-6 flex flex-wrap gap-2"
+      >
+        {PRICING_NICHES.map((n) => (
+          <button
+            key={n}
+            type="button"
+            role="tab"
+            aria-selected={n === niche}
+            onClick={() => setNiche(n)}
+            className={`rounded-full border px-4 py-2 text-sm font-medium ${
+              n === niche
+                ? "border-fg bg-fg text-bg"
+                : "border-line bg-surface text-fg hover:bg-surface-2"
+            }`}
+          >
+            {t(`pricing.niche.${n}` as LandingKey)}
+          </button>
+        ))}
+      </div>
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
+        {PLANS.map((p) => {
+          const featured = p === FEATURED_PLAN;
+          return (
+            <div
+              key={p}
+              className={`flex flex-col rounded-2xl bg-surface p-6 ${
+                featured ? "border-2 border-accent" : "border border-line"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-display text-lg font-bold">
+                  {p === "basic" ? "Basic" : p === "pro" ? "Pro" : "Business"}
+                </h3>
+                {featured && (
+                  <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-accent-fg">
+                    {t("pricing.featured")}
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-sm text-muted">{t(`pricing.${p}.for` as LandingKey)}</p>
+              <div className="mt-4 font-display text-3xl font-bold tabular-nums">
+                {t("pricing.from", { price: formatTenge(PLAN_PRICES[p]) })}
+              </div>
+              <div className="text-sm text-muted">{t("pricing.perMonth")}</div>
+              <ul className="mt-5 mb-6 grid gap-2 text-sm">
+                {planFeatures(t, niche, p).map((f) => (
+                  <li key={f}>
+                    <span className="font-bold text-accent">✓</span> {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to={signup ? "/signup" : "/admin/login"}
+                className={`mt-auto ${featured ? "btn-primary" : "btn-secondary"} py-2.5`}
+              >
+                {t("pricing.cta")}
+              </Link>
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-4 text-sm text-muted">
+        {t("pricing.setup", { price: formatTenge(SETUP_FEE_FROM) })}
+      </p>
+    </section>
+  );
+}
+
+function FinalCta({ t, signup }: { t: LandingT; signup: boolean }) {
+  const contacts = [
+    CONTACTS.telegram && {
+      label: "Telegram",
+      value: `@${CONTACTS.telegram}`,
+      href: `https://t.me/${CONTACTS.telegram}`,
+      color: "#2a9bd8",
+    },
+    CONTACTS.whatsapp && {
+      label: "WhatsApp",
+      value: `+${CONTACTS.whatsapp}`,
+      href: `https://wa.me/${CONTACTS.whatsapp}`,
+      color: "#25a55a",
+    },
+  ].filter((c): c is { label: string; value: string; href: string; color: string } => !!c);
+  return (
+    <section className="mx-auto w-full max-w-6xl px-4">
+      <div
+        className={`grid items-center gap-8 rounded-3xl bg-fg px-6 py-10 text-bg md:px-12 ${
+          contacts.length > 0 ? "md:grid-cols-[1.2fr_1fr]" : ""
+        }`}
+      >
+        <div>
+          <h2 className="font-display text-2xl leading-tight font-bold md:text-[32px]">
+            {t("final.title")}
+          </h2>
+          <p className="mt-3 max-w-xl opacity-80">
+            {t("final.text")} {contacts.length > 0 && t("final.textContacts")}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            {signup && (
+              <Link to="/signup" className="btn-primary px-5 py-2.5 text-base">
+                {t("final.cta")}
+              </Link>
+            )}
+            <Link
+              to="/admin/login"
+              className="inline-flex items-center rounded-md border border-bg/30 px-5 py-2.5 font-medium hover:bg-bg/10"
+            >
+              {t("final.login")}
+            </Link>
+          </div>
+        </div>
+        {contacts.length > 0 && (
+          <div className="grid gap-3">
+            {contacts.map((c) => (
+              <a
+                key={c.label}
+                href={c.href}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-3 rounded-xl border border-bg/25 px-4 py-3 hover:bg-bg/10"
+              >
+                <span
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-bold text-white"
+                  style={{ background: c.color }}
+                >
+                  {c.label === "Telegram" ? "TG" : "WA"}
+                </span>
+                <span>
+                  <span className="block text-xs opacity-70">{c.label}</span>
+                  <span className="font-semibold">{c.value}</span>
+                </span>
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
