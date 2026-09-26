@@ -37,6 +37,8 @@ const NOT_AUDITED = new Set([
   "vipProofUrlFn",
   "zernioConnectLinkFn",
   "hideSetupFn",
+  "assistDescriptionFn",
+  "assistPostFn",
 ]);
 
 const ADMIN_FUNCTIONS_FILE = /(^|\/)src\/app\/admin\/[^/]+\.functions\.ts$/;

@@ -1,12 +1,16 @@
 import { createFileRoute, Link, useRouteContext, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
 import { cancelPostFn, postsFn, publishPostFn } from "@/app/admin/posts.functions";
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { uploadFile } from "@/app/admin/upload-client";
+import { assistPostFn } from "@/app/admin/assistant.functions";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { CAPTION_MAX, mediaTypeOf, type PostKind } from "@/core/social/post-draft";
 
 export const Route = createFileRoute("/admin/_authed/posts")({
+  // ?product=<id> — пришли из карточки товара: можно попросить ИИ написать пост о нём.
+  validateSearch: z.object({ product: z.string().uuid().optional() }),
   loader: () => postsFn(),
   component: PostsPage,
 });
@@ -85,6 +89,13 @@ function PostForm({ data }: { data: Data }) {
   const [at, setAt] = useState("");
   const [done, setDone] = useState<string | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
+  const { product } = Route.useSearch();
+  const assist = useAction(async (productId: string) => {
+    const r = await assistPostFn({ data: { productId } });
+    setText(r.text);
+    const image = r.image;
+    if (image) setMedia((m) => (m.length ? m : [{ key: image, name: image.split("/").pop()! }]));
+  });
 
   const addFiles = useAction(async (files: FileList) => {
     for (const f of Array.from(files)) {
@@ -172,6 +183,22 @@ function PostForm({ data }: { data: Data }) {
             ))}
           </div>
         </Field>
+
+        {product && kind !== "story" && (
+          <div className="rounded-md border border-line p-3">
+            <p className="text-sm font-medium">{t("posts.assist.title")}</p>
+            <p className="mb-2 text-xs text-muted">{t("posts.assist.hint")}</p>
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              disabled={assist.busy}
+              onClick={() => void assist.run(product).catch(() => {})}
+            >
+              {assist.busy ? t("posts.assist.busy") : t("posts.assist.write")}
+            </button>
+            <ErrorBox error={assist.error} />
+          </div>
+        )}
 
         {kind !== "story" && (
           <Field label={t("posts.text")} hint={t("posts.textHint", { n: text.length })}>

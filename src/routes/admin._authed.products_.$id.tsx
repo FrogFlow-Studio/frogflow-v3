@@ -4,6 +4,7 @@ import { saveUpsellFn, upsellForProductFn } from "@/app/admin/upsell.functions";
 import { deleteProductFn, productFn, saveProductFn } from "@/app/admin/admin.functions";
 import { adminT, type AdminT } from "@/app/i18n/admin";
 import { uploadFile } from "@/app/admin/upload-client";
+import { assistDescriptionFn } from "@/app/admin/assistant.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
 import { MATERIAL_LANGUAGES } from "@/core/catalog/materials";
@@ -143,6 +144,11 @@ function ProductEditor() {
         }
         actions={
           <>
+            {!isNew && shop.modules.instagram && (
+              <Link to="/admin/posts" search={{ product: p.id }} className="btn-secondary">
+                {t("product.makePost")}
+              </Link>
+            )}
             {!isNew && (
               <button
                 type="button"
@@ -181,6 +187,7 @@ function ProductEditor() {
                   defaultValue={p?.description ?? ""}
                 />
               </Field>
+              <DescriptionAssist t={t} kind={kind} currency={p?.currency ?? shop.currency} />
               <Field label={t("product.keywords")} hint={t("product.keywordsHint")}>
                 <input className="input" name="keywords" defaultValue={p?.keywords ?? ""} />
               </Field>
@@ -555,5 +562,69 @@ function UpsellCard({ productId, t }: { productId: string; t: AdminT }) {
       </div>
       <ErrorBox error={save.error} />
     </Card>
+  );
+}
+
+/**
+ * Черновик описания от ИИ: берёт из формы название, цену, ключевые слова и
+ * то, что уже написано в описании, и кладёт текст в поле. Прежний текст
+ * можно вернуть одной кнопкой; сохраняет продавец сам.
+ */
+function DescriptionAssist({
+  t,
+  kind,
+  currency,
+}: {
+  t: AdminT;
+  kind: "digital" | "physical";
+  currency: string;
+}) {
+  const [before, setBefore] = useState<string | null>(null);
+  const field = (el: HTMLElement, name: string) =>
+    el.closest("form")?.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null;
+  const write = useAction(async (el: HTMLElement) => {
+    const area = field(el, "description");
+    if (!area) return;
+    const { text } = await assistDescriptionFn({
+      data: {
+        name: field(el, "name")?.value ?? "",
+        description: area.value,
+        keywords: field(el, "keywords")?.value ?? "",
+        price: Number(field(el, "price")?.value) || null,
+        currency: field(el, "currency")?.value || currency,
+        kind,
+      },
+    });
+    setBefore(area.value);
+    area.value = text;
+  });
+  return (
+    <div className="space-y-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="btn-secondary text-sm"
+          disabled={write.busy}
+          onClick={(e) => void write.run(e.currentTarget).catch(() => {})}
+        >
+          {write.busy ? t("product.assist.busy") : t("product.assist.write")}
+        </button>
+        {before !== null && (
+          <button
+            type="button"
+            className="btn-ghost text-sm"
+            onClick={(e) => {
+              const area = field(e.currentTarget, "description");
+              if (area) area.value = before;
+              setBefore(null);
+            }}
+          >
+            {t("product.assist.undo")}
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-muted">{t("product.assist.hint")}</p>
+      <ErrorBox error={write.error} />
+    </div>
   );
 }
