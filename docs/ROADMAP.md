@@ -6,7 +6,8 @@
 
 Правила из `frogflow/docs/v2/README.md` действуют: база не трогается, v1 и
 v2 работают одновременно, поломку у живого клиента чиним в v1, готовность
-меряется проверками из `docs/inherited-knowledge.md`, а не ощущением.
+меряется проверками из `docs/inherited-knowledge.md`, а не ощущением. Счётчик — `docs/READINESS.md`
+(`npm run readiness`, сопоставление «проверка → тест» в `docs/readiness.json`).
 
 ## Фаза 1 — фундамент ✔
 
