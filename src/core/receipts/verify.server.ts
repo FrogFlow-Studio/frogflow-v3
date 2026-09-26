@@ -1,6 +1,13 @@
 import { env } from "@/config/env";
 import { proofHashes } from "@/core/orders/proof-hash";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { setState, type Customer } from "@/core/customers/customers";
+import {
+  RECEIPT_CHECKS_PER_DAY,
+  RECEIPT_CHECKS_PER_ORDER,
+  receiptCheckBlocked,
+  withReceiptCheck,
+} from "./attempts";
 import { getSetting, trySetSetting } from "@/core/settings/settings";
 import { convertForReceipt } from "@/core/pricing/pricing";
 import {
@@ -247,4 +254,32 @@ export async function verifyReceipt(
       extractedText,
     };
   return { ...analysis, extractedText };
+}
+
+/**
+ * Проверка чека покупателя с его лимитом: сверх лимита Vision не зовём, чек
+ * уходит продавцу. Попытку записываем до вызова — параллельные файлы не
+ * проскочат мимо счётчика целой пачкой.
+ */
+export async function verifyCustomerReceipt(
+  ctx: TenantContext,
+  customer: Customer,
+  p: Parameters<typeof verifyReceipt>[1],
+  now = new Date(),
+): Promise<{ result: VerifyResult; customer: Customer }> {
+  const blocked = receiptCheckBlocked(customer.state, p.orderId, now);
+  if (blocked)
+    return {
+      customer,
+      result: {
+        ok: false,
+        reason: "check_limit",
+        detail:
+          blocked === "order"
+            ? `Покупатель прислал уже ${RECEIPT_CHECKS_PER_ORDER} файла по этому заказу — автопроверка остановлена.`
+            : `Покупатель исчерпал ${RECEIPT_CHECKS_PER_DAY} автопроверок чека за сутки.`,
+      },
+    };
+  const next = await setState(ctx, customer, withReceiptCheck(customer.state, p.orderId, now));
+  return { customer: next, result: await verifyReceipt(ctx, p) };
 }

@@ -1610,15 +1610,17 @@ async function receiveProof(s: Shop, url: string, orderId: number) {
 
   const { receiptOcrAutoEnabled } = await import("@/core/receipts/verify.server");
   if (res.order.fulfillment_kind !== "physical" && (await receiptOcrAutoEnabled(s.ctx))) {
-    const { verifyReceipt } = await import("@/core/receipts/verify.server");
+    const { verifyCustomerReceipt } = await import("@/core/receipts/verify.server");
     const { isRetryReason } = await import("@/core/receipts/pure");
-    const v = await verifyReceipt(s.ctx, {
+    const checked = await verifyCustomerReceipt(s.ctx, s.customer, {
       bytes: file.bytes,
       mime,
       expectedAmount: Number(res.order.total),
       currency: res.order.currency,
       orderId,
     });
+    s.customer = checked.customer;
+    const v = checked.result;
     if (!v.ok && isRetryReason(v.reason)) {
       await s.ctx.db
         .from("orders")

@@ -267,7 +267,9 @@ export type ReceiptReason =
   | "amount_mismatch"
   | "currency_mismatch"
   | "receipt_reused"
-  | "ocr_unavailable";
+  | "ocr_unavailable"
+  /** Покупатель исчерпал автопроверки (src/core/receipts/attempts) — чек смотрит продавец. */
+  | "check_limit";
 
 export type ReceiptAnalysis =
   | {

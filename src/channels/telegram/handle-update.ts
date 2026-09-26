@@ -1366,15 +1366,17 @@ async function receiveProof(b: Bot, msg: TelegramMessage, orderId: number) {
   // сомнительный — продавцу с причиной, не-чек — просим прислать заново.
   const { receiptOcrAutoEnabled } = await import("@/core/receipts/verify.server");
   if (res.order.fulfillment_kind !== "physical" && (await receiptOcrAutoEnabled(b.ctx))) {
-    const { verifyReceipt } = await import("@/core/receipts/verify.server");
+    const { verifyCustomerReceipt } = await import("@/core/receipts/verify.server");
     const { isRetryReason } = await import("@/core/receipts/pure");
-    const v = await verifyReceipt(b.ctx, {
+    const checked = await verifyCustomerReceipt(b.ctx, b.customer, {
       bytes: file.bytes,
       mime: file.mime,
       expectedAmount: Number(res.order.total),
       currency: res.order.currency,
       orderId,
     });
+    b.customer = checked.customer;
+    const v = checked.result;
     if (!v.ok && isRetryReason(v.reason)) {
       await b.ctx.db
         .from("orders")

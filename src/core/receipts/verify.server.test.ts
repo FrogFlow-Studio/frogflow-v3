@@ -5,7 +5,15 @@ import { setEnvForTests } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { setFxProvider, resetPricingCache, defaultFxProvider } from "@/core/pricing/pricing";
 import { isRetryReason } from "./pure";
-import { OCR_AUTO_KEY, parseUsage, receiptOcrAutoEnabled, verifyReceipt } from "./verify.server";
+import {
+  OCR_AUTO_KEY,
+  parseUsage,
+  receiptOcrAutoEnabled,
+  verifyCustomerReceipt,
+  verifyReceipt,
+} from "./verify.server";
+import { RECEIPT_CHECKS_PER_ORDER } from "./attempts";
+import type { Customer } from "@/core/customers/customers";
 
 const BOT = "00000000-0000-0000-0000-000000000001";
 const sha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
@@ -277,5 +285,40 @@ describe("parseUsage: счётчик проверок чеков", () => {
     expect(
       parseUsage(JSON.stringify({ count: 5, month: "2026-09", monthCount: 2 }), "2026-09"),
     ).toEqual({ count: 5, month: "2026-09", monthCount: 2 });
+  });
+});
+
+describe("verifyCustomerReceipt — лимит проверок на покупателя", () => {
+  const buyer = (): Customer =>
+    ({ userKey: "tg_1", telegramId: 1, platform: "telegram", state: {} }) as unknown as Customer;
+
+  it("«не чек» по кругу: сверх лимита заказа Vision не зовём, чек уходит продавцу", async () => {
+    const { db, ctx } = setup();
+    db.tables.bot_users = [{ bot_id: BOT, user_key: "tg_1", state: {} }];
+    const fetchMock = mockVision("котик на диване");
+    let customer = buyer();
+    for (let i = 0; i < RECEIPT_CHECKS_PER_ORDER; i++) {
+      const r = await verifyCustomerReceipt(ctx, customer, base);
+      customer = r.customer;
+      expect(r.result.ok).toBe(false);
+      if (!r.result.ok) expect(isRetryReason(r.result.reason)).toBe(true);
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(RECEIPT_CHECKS_PER_ORDER);
+    const over = await verifyCustomerReceipt(ctx, customer, base);
+    expect(fetchMock).toHaveBeenCalledTimes(RECEIPT_CHECKS_PER_ORDER);
+    expect(over.result).toMatchObject({ ok: false, reason: "check_limit" });
+    if (!over.result.ok) expect(isRetryReason(over.result.reason)).toBe(false);
+    // Счётчик живёт в bot_users.state — переживает перезапуск и смену режима диалога.
+    expect(db.tables.bot_users![0]!.state).toMatchObject({
+      receipt_checks: { order_id: base.orderId, order_n: RECEIPT_CHECKS_PER_ORDER },
+    });
+  });
+
+  it("настоящий чек в пределах лимита проходит как раньше", async () => {
+    const { db, ctx } = setup();
+    db.tables.bot_users = [{ bot_id: BOT, user_key: "tg_1", state: {} }];
+    mockVision("Kaspi Перевод успешно выполнен\nСумма 1 000 ₸\nКвитанция № 123");
+    const r = await verifyCustomerReceipt(ctx, buyer(), base);
+    expect(r.result.ok).toBe(true);
   });
 });
