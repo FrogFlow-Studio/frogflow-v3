@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 
 // Локальный .env для интеграционных тестов; уже заданные переменные не трогаем.
@@ -6,4 +7,20 @@ if (existsSync(".env")) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
     if (m && m[1] && process.env[m[1]] === undefined) process.env[m[1]] = m[2] ?? "";
   }
+}
+
+// В окружении проекта заданы только ключи Supabase: платформенным секретам,
+// которые живым тестам не нужны по сути (адрес деплоя, подписи, шифрование
+// токенов — у демо-клиента своего бота нет), даём разовые значения на прогон.
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  const oneOff = () => randomBytes(32).toString("hex");
+  const defaults: Record<string, () => string> = {
+    APP_URL: () => "https://live-test.invalid",
+    SUPABASE_PUBLISHABLE_KEY: () => "unused-in-tests",
+    SECRETS_KEY: oneOff,
+    SESSION_SECRET: oneOff,
+    WEBHOOK_SECRET: oneOff,
+    CRON_SECRET: oneOff,
+  };
+  for (const [k, make] of Object.entries(defaults)) process.env[k] ??= make();
 }

@@ -11,6 +11,10 @@ const TG = TEST_TG_ID + 95;
 const KEY = userKey("telegram", String(TG));
 let ctx: TenantContext;
 let prev: string | null = null;
+// Воронка идёт днём по часам клиента; возраст покупателя считаем от этого же
+// момента, а не от «сейчас» — иначе после 12:00 UTC ему меньше суток.
+const day = new Date();
+day.setUTCHours(6, 0, 0, 0);
 
 async function cleanup() {
   const db = serviceDb();
@@ -27,7 +31,7 @@ describe.skipIf(!liveReady)("автоворонка на демо-клиенте
     await upsertCustomer(ctx, "telegram", String(TG), { firstName: "Новичок" });
     await serviceDb()
       .from("bot_users")
-      .update({ created_at: new Date(Date.now() - 30 * 3600_000).toISOString() })
+      .update({ created_at: new Date(day.getTime() - 30 * 3600_000).toISOString() })
       .eq("bot_id", DEMO_BOT)
       .eq("user_key", KEY);
   });
@@ -50,8 +54,6 @@ describe.skipIf(!liveReady)("автоворонка на демо-клиенте
         ],
       }),
     );
-    const day = new Date();
-    day.setUTCHours(6, 0, 0, 0);
     const sent: string[] = [];
     const send = async (c: { telegramId: number }, text: string) => {
       if (c.telegramId === TG) sent.push(text);
