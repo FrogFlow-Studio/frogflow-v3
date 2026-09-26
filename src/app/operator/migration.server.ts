@@ -12,6 +12,54 @@ import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
 import { decryptSecret, isEncryptedSecret } from "@/core/secrets/vault";
 import { evaluatePreflight, type Preflight } from "@/core/tenant/preflight";
 import { telegramApi } from "@/channels/telegram/api";
+import { MATERIAL_COLUMNS, productSellable, type ProductWithFiles } from "@/core/catalog/materials";
+import { computeState, readPolicy } from "@/core/billing/subscription";
+import { parseIdList } from "@/core/settings/settings";
+import { pageAll } from "@/core/db/page";
+
+/** Сколько id продавца в admin_chat_id: только они жмут «подтвердить». */
+async function sellerChats(botId: string): Promise<number> {
+  const { data } = await serviceDb()
+    .from("app_settings")
+    .select("value")
+    .eq("bot_id", botId)
+    .eq("key", "admin_chat_id")
+    .maybeSingle();
+  return parseIdList(data?.value).length;
+}
+
+async function deliveringOrders(botId: string): Promise<number> {
+  const { count } = await serviceDb()
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("bot_id", botId)
+    .eq("status", "delivering");
+  return count ?? 0;
+}
+
+/** Активные цифровые товары, которые v2 не даст купить: нет ни одного файла. */
+async function unsellableProducts(botId: string): Promise<number> {
+  const rows = await pageAll(
+    (from, to) =>
+      serviceDb()
+        .from("products")
+        .select(`id, ${MATERIAL_COLUMNS}`)
+        .eq("bot_id", botId)
+        .eq("is_active", true)
+        .range(from, to),
+    "товары для проверки переезда",
+  );
+  return rows.filter((p) => !productSellable(p as unknown as ProductWithFiles)).length;
+}
+
+async function subscriptionExpiresAt(botId: string): Promise<string | null> {
+  const { data } = await serviceDb()
+    .from("bots")
+    .select("subscription_expires_at")
+    .eq("id", botId)
+    .maybeSingle();
+  return data?.subscription_expires_at ?? null;
+}
 
 async function countRows(table: "payment_methods" | "products", botId: string): Promise<number> {
   const { count } = await serviceDb()
@@ -40,10 +88,15 @@ export async function preflight(botId: string): Promise<Preflight> {
       tokenOk = false;
     }
   }
-  const [paymentMethods, products] = await Promise.all([
+  const [paymentMethods, products, chats, delivering, unsellable, expiresAt] = await Promise.all([
     countRows("payment_methods", botId),
     countRows("products", botId),
+    sellerChats(botId),
+    deliveringOrders(botId),
+    unsellableProducts(botId),
+    subscriptionExpiresAt(botId),
   ]);
+  const policy = readPolicy(t.settings);
   return evaluatePreflight({
     modulesOn: MODULE_KEYS.filter((k) => t.modules[k]),
     tokenPresent,
@@ -53,6 +106,14 @@ export async function preflight(botId: string): Promise<Preflight> {
     products,
     adminLogin: Boolean(t.settings.admin?.username && t.settings.admin?.password_hash),
     appUrl: t.appUrl,
+    sellerChats: chats,
+    deliveringOrders: delivering,
+    unsellableProducts: unsellable,
+    slug: t.settings.slug ?? null,
+    subscription: {
+      state: computeState(expiresAt, policy).state,
+      suspend: policy.on_overdue === "suspend",
+    },
     zernioConflicts: foreignZernioAccounts(
       await tenantDirectory(),
       botId,

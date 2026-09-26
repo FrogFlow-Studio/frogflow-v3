@@ -6,7 +6,10 @@
  *   node scripts/onboard.mjs --bot-id <uuid> --token <telegram-token> --serve v2
  *
  * Новый клиент:  --name "Магазин" --owner slug --vertical digital --token … --serve v2
- * Откат на v1:   --bot-id <uuid> --serve v1   (затем «Переустановить webhook» в панели v1)
+ * Откат на v1:   --bot-id <uuid> --serve v1   (затем снять паузу с проекта Vercel клиента в v1)
+ *
+ * Перевод на v2 идёт через предполётную проверку: при блокирующих пунктах
+ * ответ 409 со списком, клиент остаётся на v1. --force — перевести всё равно.
  */
 const args = process.argv.slice(2);
 const opt = (name) => {
@@ -35,6 +38,7 @@ const body = {
   hosts: list("--hosts"),
   zernio_account_ids: list("--zernio"),
   served_by: opt("--serve"),
+  force: args.includes("--force") ? true : undefined,
 };
 for (const k of Object.keys(body)) if (body[k] === undefined) delete body[k];
 

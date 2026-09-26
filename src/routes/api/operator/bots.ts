@@ -22,6 +22,8 @@ const body = z.object({
   zernio_account_ids: z.array(z.string()).optional(),
   /** Переключить обслуживание клиента на v2 (и поставить вебхук) или вернуть на v1. */
   served_by: z.enum(["v1", "v2"]).optional(),
+  /** Перевести на v2, даже если предполётная проверка против (осознанно, оператором). */
+  force: z.boolean().optional(),
 });
 
 /**
@@ -30,8 +32,10 @@ const body = z.object({
  * scripts/onboard.mjs. Basic-auth учётной записью оператора.
  *
  * Переезд клиента с v1: PATCH {bot_id, telegram_token, served_by: "v2"} —
- * токен шифруется, вебхук переставляется на этот деплой. Откат:
- * {served_by: "v1"} и «Переустановить webhook» в панели v1.
+ * токен шифруется, затем предполётная проверка (как переключатель в панели:
+ * блокирующие пункты — 409 со списком, клиент остаётся на v1), и вебхук
+ * переставляется на этот деплой. Откат: {served_by: "v1"} — кнопка меню
+ * возвращается к стандартной, вебхук забирает крон деплоя v1.
  */
 export const Route = createFileRoute("/api/operator/bots")({
   server: {
@@ -145,7 +149,15 @@ export const Route = createFileRoute("/api/operator/bots")({
           };
         if (botUsername)
           next.telegram = { ...((settings.telegram as object) ?? {}), username: botUsername };
-        if (input.served_by) next.served_by = input.served_by;
+        // Существующий клиент переезжает на v2 только после предполётной
+        // проверки — её делаем ниже, когда токен уже записан.
+        const prevServedBy = settings.served_by;
+        const needsPreflight =
+          input.served_by === "v2" &&
+          prevServedBy !== "v2" &&
+          Boolean(input.bot_id) &&
+          !input.force;
+        if (input.served_by && !needsPreflight) next.served_by = input.served_by;
 
         const patch: Database["public"]["Tables"]["bots"]["Update"] = { settings: next as never };
         if (input.telegram_token)
@@ -156,7 +168,44 @@ export const Route = createFileRoute("/api/operator/bots")({
         if (upErr) return Response.json({ error: upErr.message }, { status: 500 });
         invalidateTenantDirectory();
 
+        if (needsPreflight) {
+          const { preflight } = await import("@/app/operator/migration.server");
+          const { preflightBlockers } = await import("@/core/tenant/preflight");
+          const p = await preflight(botId);
+          if (!p.ready)
+            return Response.json(
+              {
+                error: `Клиента нельзя перевести на v2: ${preflightBlockers(p).join("; ")}.`,
+                bot_id: botId,
+                served_by: prevServedBy ?? null,
+                checks: p.checks,
+              },
+              { status: 409 },
+            );
+          const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
+          await patchTenantSettings(botId, { served_by: "v2" });
+        }
+        if (input.served_by || input.force) {
+          const { logEvent } = await import("@/app/operator/operator.server");
+          await logEvent(
+            botId,
+            "webhook",
+            { action: "served_by", value: input.served_by ?? null, force: Boolean(input.force) },
+            `api:${cred.username.slice(0, 40)}`,
+          ).catch(() => undefined);
+        }
+
         const tenant = await resolveTenant({ by: "id", value: botId });
+        const { releasesTelegramOnSwitch } = await import("@/core/tenant/preflight");
+        if (
+          tenant &&
+          releasesTelegramOnSwitch(prevServedBy as string | undefined, input.served_by)
+        ) {
+          const { releaseTelegramToV1 } = await import("@/core/tenant/telegram-webhook.server");
+          await releaseTelegramToV1(tenant).catch((x) =>
+            console.warn(`[operator-api] menu button reset for ${botId}: ${String(x)}`),
+          );
+        }
         const webhook =
           tenant && tenant.settings.served_by === "v2"
             ? await ensureTelegramWebhook(tenant, true)

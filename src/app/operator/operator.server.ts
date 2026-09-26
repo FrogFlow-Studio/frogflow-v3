@@ -503,6 +503,7 @@ export async function setServedBy(botId: string, servedBy: "v1" | "v2", actor = 
     if (!p.ready)
       throw new Error(`Клиента нельзя перевести на v2: ${preflightBlockers(p).join("; ")}.`);
   }
+  const before = await requireTenant({ by: "id", value: botId });
   await patchTenantSettings(botId, { served_by: servedBy });
   await logEvent(botId, "webhook", { action: "served_by", value: servedBy }, actor);
   if (servedBy === "v2") {
@@ -510,6 +511,13 @@ export async function setServedBy(botId: string, servedBy: "v1" | "v2", actor = 
       console.warn(`[operator] story tags import for ${botId}: ${String(e)}`),
     );
     return reinstallWebhook(botId, actor);
+  }
+  const { releasesTelegramOnSwitch } = await import("@/core/tenant/preflight");
+  if (releasesTelegramOnSwitch(before.settings.served_by, servedBy)) {
+    const { releaseTelegramToV1 } = await import("@/core/tenant/telegram-webhook.server");
+    await releaseTelegramToV1(before).catch((e) =>
+      console.warn(`[operator] menu button reset for ${botId}: ${String(e)}`),
+    );
   }
   return null;
 }

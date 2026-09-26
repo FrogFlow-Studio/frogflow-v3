@@ -65,3 +65,16 @@ export async function syncMenuButton(
       : { type: "default" },
   });
 }
+
+/**
+ * Откат клиента на v1: кнопка меню бота смотрела на витрину v2 (/s/<slug>),
+ * а v2 клиентов v1 на витрину не пускает. Возвращаем стандартную кнопку;
+ * свою Mini App v1 поставит при следующей перезагрузке настроек. Вебхук не
+ * трогаем: его забирает крон деплоя v1 (секрет подписи знает только он).
+ */
+export async function releaseTelegramToV1(tenant: Tenant): Promise<void> {
+  if (!tenant.telegramTokenEnc) return;
+  const { TELEGRAM_API_BASE } = env();
+  const api = telegramApi(tenantContext(tenant).secrets.telegramToken(), TELEGRAM_API_BASE);
+  await api.call("setChatMenuButton", { menu_button: { type: "default" } });
+}

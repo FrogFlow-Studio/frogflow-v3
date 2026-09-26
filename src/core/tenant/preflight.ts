@@ -1,4 +1,5 @@
 import { MODULES, type ModuleKey } from "@/core/modules/registry";
+import type { SubscriptionState } from "@/core/billing/subscription";
 
 /**
  * Предполётная проверка перед переводом клиента на v2 — чистая часть:
@@ -22,6 +23,20 @@ export type PreflightInput = {
   appUrl: string | null;
   /** Аккаунты Zernio клиента, записанные ещё и у другого клиента. */
   zernioConflicts?: string[];
+  /*
+   * Необязательные поля: не передано — пункт не проверяется (старые вызовы
+   * и тесты не меняют смысл).
+   */
+  /** Сколько id в app_settings.admin_chat_id — только они жмут «подтвердить». */
+  sellerChats?: number;
+  /** Заказы в `delivering`: выдачу вёл v1, v2 такие не подхватит. */
+  deliveringOrders?: number;
+  /** Активные цифровые товары без единого файла — покупатель их не купит. */
+  unsellableProducts?: number;
+  /** settings.slug; null — не задан (ссылки «Магазин» и документов будут с UUID). */
+  slug?: string | null;
+  /** Состояние подписки и включена ли политика «приостановить». */
+  subscription?: { state: SubscriptionState; suspend: boolean };
 };
 
 export function evaluatePreflight(i: PreflightInput): Preflight {
@@ -73,7 +88,7 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
         }
       : {
           key: "payments",
-          level: "warn",
+          level: "block",
           title: "Нет реквизитов оплаты",
           detail: "Покупатель не сможет оформить заказ. Реквизиты по странам — в админке продавца.",
         },
@@ -103,11 +118,51 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
         }
       : {
           key: "admin",
-          level: "warn",
+          level: "block",
           title: "Нет логина продавца",
-          detail: "Задайте логин и пароль в карточке — иначе продавцу некуда войти после переезда.",
+          detail:
+            "Задайте логин и пароль в карточке: после паузы проекта v1 его админка пропадёт, и продавцу некуда будет войти.",
         },
   );
+  if (i.sellerChats !== undefined && i.sellerChats === 0)
+    checks.push({
+      key: "seller_chat",
+      level: "block",
+      title: "Некому подтверждать заказы",
+      detail:
+        "В настройках магазина не задан Telegram-id продавца (admin_chat_id): чеки придут, но нажать «Подтвердить и выдать» будет некому.",
+    });
+  if (i.deliveringOrders)
+    checks.push({
+      key: "delivering",
+      level: "block",
+      title: "Идёт выдача заказов в v1",
+      detail: `Заказов в выдаче: ${i.deliveringOrders}. Их ведёт крон v1, v2 такие не подхватит. Дождитесь окончания или выдайте вручную.`,
+    });
+  if (i.unsellableProducts)
+    checks.push({
+      key: "files",
+      level: "warn",
+      title: "Цифровые товары без файлов",
+      detail: `Активных товаров без файлов: ${i.unsellableProducts}. В v2 их нельзя купить, пока продавец не загрузит материалы.`,
+    });
+  if (i.slug === null)
+    checks.push({
+      key: "slug",
+      level: "warn",
+      title: "Нет короткого адреса",
+      detail:
+        "Задайте его в «Адресах»: иначе ссылки на магазин и документы будут с длинным id клиента.",
+    });
+  if (i.subscription?.state === "grace_over")
+    checks.push({
+      key: "subscription",
+      level: i.subscription.suspend ? "block" : "warn",
+      title: "Подписка просрочена",
+      detail: i.subscription.suspend
+        ? "Политика «приостановить»: первый же ночной крон v2 выключит бота. Продлите подписку или смените политику."
+        : "Бот продолжит работать, продавец будет получать предупреждения об оплате.",
+    });
   if (i.zernioConflicts?.length)
     checks.push({
       key: "zernio",
@@ -120,11 +175,23 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
       key: "v1",
       level: "info",
       title: "Остановите крон v1 после переезда",
-      detail: `Деплой ${i.appUrl} каждый час ставит вебхук обратно. Поставьте проект Vercel на паузу или удалите крон ensure-webhook.`,
+      detail: `Деплой ${i.appUrl} каждую минуту (крон broadcast) ставит вебхук обратно. Сразу после переключения поставьте его проект Vercel на паузу.`,
     });
   return { ready: !checks.some((c) => c.level === "block"), checks };
 }
 
 export function preflightBlockers(p: Preflight): string[] {
   return p.checks.filter((c) => c.level === "block").map((c) => c.title);
+}
+
+/**
+ * Откат трогает Telegram (кнопку меню) только у клиента, которого v2
+ * действительно обслуживала: «v1» у клиента, который и так на v1, не должен
+ * сбрасывать меню его живого бота.
+ */
+export function releasesTelegramOnSwitch(
+  prev: string | null | undefined,
+  next: "v1" | "v2" | null | undefined,
+): boolean {
+  return prev === "v2" && next === "v1";
 }

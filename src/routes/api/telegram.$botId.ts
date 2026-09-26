@@ -32,13 +32,17 @@ export const Route = createFileRoute("/api/telegram/$botId")({
 
         const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
         const tenant = await resolveTenant({ by: "id", value: botId });
-        // Клиент ещё на v1: его вебхук не должен быть здесь. Отвечаем 200,
-        // чтобы Telegram не копил очередь, и пишем в журнал — это сигнал
-        // о неправильно переставленном вебхуке.
+        // Клиент на v1: его вебхук не должен быть здесь. Не найден или ни
+        // разу не был на v2 — отвечаем 200, чтобы Telegram не копил очередь, и
+        // пишем в журнал (вебхук переставлен неправильно). Явно возвращён на
+        // v1 (откат) — 503: до того, как деплой v1 заберёт вебхук, Telegram
+        // держит обновления у себя и отдаст их v1, а не теряет.
         if (!tenant || tenant.settings.served_by !== "v2") {
           console.warn(
             `[telegram] update for ${botId} ignored: tenant ${tenant ? "served by v1" : "not found"}`,
           );
+          if (tenant?.settings.served_by === "v1")
+            return new Response("served by v1", { status: 503, headers: { "retry-after": "60" } });
           return new Response("ok");
         }
 
