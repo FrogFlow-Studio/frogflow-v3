@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SHOP_SLUG_PATTERN, SHOP_SLUG_RE, isShopSlug } from "./slug";
+import { SHOP_SLUG_PATTERN, SHOP_SLUG_RE, isReservedSlug, isShopSlug } from "./slug";
 
 describe("короткий адрес магазина", () => {
   it("принимает «_» и «.», как регистрация и витрина", () => {
@@ -16,5 +16,26 @@ describe("короткий адрес магазина", () => {
     const html = new RegExp(`^(?:${SHOP_SLUG_PATTERN})$`, "v");
     for (const s of ["anna_shop", "shop.kz", "_shop", "A", "my-shop"])
       expect(html.test(s), s).toBe(SHOP_SLUG_RE.test(s));
+  });
+});
+
+describe("служебные адреса", () => {
+  it("служебные слова и «frogflow» заняты в любом написании", () => {
+    for (const s of [
+      "admin",
+      "AD-min",
+      "a.d.m.i.n",
+      "api",
+      "operator",
+      "kaspi",
+      "frogflow-shop",
+      "my_frogflow",
+    ])
+      expect(isReservedSlug(s), s).toBe(true);
+  });
+
+  it("обычные имена магазинов свободны", () => {
+    for (const s of ["anna_shop", "printkzart", "didaktika_03", "shop.kz", "", null, undefined])
+      expect(isReservedSlug(s), String(s)).toBe(false);
   });
 });

@@ -114,12 +114,23 @@ describe("tenant directory", () => {
   });
 
   it("addressConflict: занятый slug или домен другого клиента, свой — не конфликт", () => {
-    const a = tenantFromRow(row({ settings: { slug: "shop", hosts: ["a.kz"] } }));
-    expect(addressConflict([a], null, { slug: "SHOP" })).toEqual({ what: "shop", owner: a.name });
+    const a = tenantFromRow(row({ settings: { slug: "anna", hosts: ["a.kz"] } }));
+    expect(addressConflict([a], null, { slug: "ANNA" })).toEqual({ what: "anna", owner: a.name });
     expect(addressConflict([a], null, { hosts: ["A.kz"] })?.what).toBe("a.kz");
-    expect(addressConflict([a], a.id, { slug: "shop", hosts: ["a.kz"] })).toBeNull();
+    expect(addressConflict([a], a.id, { slug: "anna", hosts: ["a.kz"] })).toBeNull();
     expect(addressConflict([a], null, { slug: "other", hosts: ["b.kz"] })).toBeNull();
     expect(addressConflict([a], null, { slug: null })).toBeNull();
+  });
+
+  it("addressConflict: служебный адрес занят платформой, но у кого он уже стоит — остаётся", () => {
+    const a = tenantFromRow(row({ settings: { slug: "shop" } }));
+    expect(addressConflict([], null, { slug: "Admin" })).toEqual({
+      what: "admin",
+      owner: "FrogFlow",
+    });
+    expect(addressConflict([a], "other-id", { slug: "frogflow-shop" })?.owner).toBe("FrogFlow");
+    expect(addressConflict([a], a.id, { slug: "shop" })).toBeNull();
+    expect(addressConflict([a], a.id, { slug: "api" })?.owner).toBe("FrogFlow");
   });
 
   it("аккаунт Zernio, записанный у двух клиентов, — ничей: событие не уходит первому попавшемуся", () => {

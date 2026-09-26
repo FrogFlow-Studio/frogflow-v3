@@ -1,3 +1,4 @@
+import { isReservedSlug } from "./slug";
 import { MODULE_KEYS, type ModuleKey } from "@/core/modules/registry";
 import { VERTICALS, type VerticalKey } from "@/core/verticals/registry";
 import type { Database } from "@/core/db-types";
@@ -223,6 +224,10 @@ export function addressConflict(
 ): { what: string; owner: string } | null {
   const slug = want.slug?.trim().toLowerCase();
   const hosts = (want.hosts ?? []).map((h) => h.trim().toLowerCase()).filter(Boolean);
+  // Служебный адрес занят платформой; клиент, у которого он уже стоит, его сохраняет.
+  const own = botId ? directory.find((t) => t.id === botId) : null;
+  if (slug && isReservedSlug(slug) && own?.settings.slug !== slug)
+    return { what: slug, owner: "FrogFlow" };
   for (const t of directory) {
     if (t.id === botId) continue;
     if (slug && t.settings.slug === slug) return { what: slug, owner: t.name };
