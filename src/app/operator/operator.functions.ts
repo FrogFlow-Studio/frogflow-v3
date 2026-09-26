@@ -1,3 +1,4 @@
+import { SHOP_SLUG_RE } from "@/core/tenant/slug";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { CONSULTANT_LIMIT_MAX } from "@/core/consultant/budget";
@@ -205,10 +206,7 @@ export const setAddressingFn = createServerFn({ method: "POST" })
     z
       .object({
         botId,
-        slug: z
-          .string()
-          .regex(/^[a-z0-9-]{2,40}$/)
-          .nullable(),
+        slug: z.string().regex(SHOP_SLUG_RE).nullable(),
         hosts: z.array(z.string().min(3).max(120)).max(10),
       })
       .parse(d),
@@ -282,7 +280,7 @@ export const createClientFn = createServerFn({ method: "POST" })
     z
       .object({
         name: z.string().min(1).max(120),
-        ownerId: z.string().regex(/^[a-z0-9-]{2,40}$/, "латиница, цифры, дефис"),
+        ownerId: z.string().regex(SHOP_SLUG_RE, "латиница, цифры, точка, дефис, подчёркивание"),
         vertical,
         ownerName: z.string().max(120).optional(),
         ownerContact: z.string().max(200).optional(),

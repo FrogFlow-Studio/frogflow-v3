@@ -1,3 +1,4 @@
+import { SHOP_SLUG_PATTERN } from "@/core/tenant/slug";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { shopEventView } from "@/app/admin/audit-labels";
 import { useEffect, useState, type FormEvent } from "react";
@@ -830,7 +831,7 @@ function AddressingCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
             className="input"
             name="slug"
             defaultValue={c.slug ?? ""}
-            pattern="[a-z0-9\-]{2,40}"
+            pattern={SHOP_SLUG_PATTERN}
           />
         </Field>
         <Field label="Свои домены" hint="Через запятую. DNS домена должен смотреть на платформу.">

@@ -1,3 +1,4 @@
+import { SHOP_SLUG_RE } from "@/core/tenant/slug";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { env } from "@/config/env";
@@ -14,10 +15,7 @@ const body = z.object({
     .string()
     .regex(/^\d+:[\w-]{30,}$/)
     .optional(),
-  slug: z
-    .string()
-    .regex(/^[a-z0-9-]{2,40}$/)
-    .optional(),
+  slug: z.string().regex(SHOP_SLUG_RE).optional(),
   hosts: z.array(z.string()).optional(),
   zernio_account_ids: z.array(z.string()).optional(),
   /** Переключить обслуживание клиента на v2 (и поставить вебхук) или вернуть на v1. */

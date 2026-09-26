@@ -1,3 +1,4 @@
+import { SHOP_SLUG_RE } from "@/core/tenant/slug";
 import { notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -8,7 +9,7 @@ import type { StorefrontPart } from "@/core/storefront/access";
  * Витрина и Mini App: публичные серверные функции. Арендатор — по slug из
  * адреса; ничего приватного не отдаём, всё под ключом арендатора.
  */
-const slug = z.string().regex(/^[a-z0-9][a-z0-9_.-]{1,39}$/);
+const slug = z.string().regex(SHOP_SLUG_RE);
 
 /** Переводчик ошибок, которые покупатель увидит на витрине, — на языке магазина. */
 async function shopT(ctx: { tenant: { settings: { default_locale?: Locale } } }) {

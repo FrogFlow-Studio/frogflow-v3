@@ -1,3 +1,4 @@
+import { SHOP_SLUG_PATTERN } from "@/core/tenant/slug";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent } from "react";
 import { createClientFn } from "@/app/operator/operator.functions";
@@ -50,7 +51,7 @@ function NewClientPage() {
                 className="input"
                 name="ownerId"
                 required
-                pattern="[a-z0-9\-]{2,40}"
+                pattern={SHOP_SLUG_PATTERN}
                 placeholder="printkzart"
               />
             </Field>
