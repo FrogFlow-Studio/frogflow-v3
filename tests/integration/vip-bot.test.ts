@@ -164,8 +164,11 @@ describe.skipIf(!liveReady)("VIP-бот на демо-клиенте: покуп
     });
   });
   afterAll(async () => {
-    for (const k of [...VIP_SETTING_KEYS, "admin_chat_id"])
-      await setSetting(ctx, k, prevSettings[k] ?? "");
+    // Ключа не было — удаляем строку, а не оставляем пустую: демо-клиент как был.
+    for (const k of [...VIP_SETTING_KEYS, "admin_chat_id"]) {
+      if (k in prevSettings) await setSetting(ctx, k, prevSettings[k]!);
+      else await serviceDb().from("app_settings").delete().eq("bot_id", DEMO_BOT).eq("key", k);
+    }
     await cleanup();
     if (prevEntry.length)
       await serviceDb().from("vip_tariffs").update({ is_entry: true }).in("id", prevEntry);
