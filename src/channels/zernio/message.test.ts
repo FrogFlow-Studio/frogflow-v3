@@ -145,6 +145,21 @@ describe("parseZernioMessage", () => {
     expect(messageAsText(p)).toBe("Корзина из каталога WhatsApp: sku1 × 2. без сахара");
   });
 
+  it("ответ на сторис: id из метаданных события, ссылка — из вложения", () => {
+    const m = parseZernioMessage({
+      ...realEvent,
+      metadata: { storyReply: { storyId: "17900000000000001" } },
+      message: {
+        ...realEvent.message,
+        text: "сколько стоит?",
+        attachments: [{ type: "story", url: "https://cdn.example/story123.jpg" }],
+      },
+    } as never);
+    expect(m.storyId).toBe("17900000000000001");
+    expect(m.storyMediaUrl).toBe("https://cdn.example/story123.jpg");
+    expect(parseZernioMessage(realEvent).storyId).toBeNull();
+  });
+
   it("исходящее сообщение помечается, чтобы не отвечать самим себе", () => {
     expect(
       parseZernioMessage({

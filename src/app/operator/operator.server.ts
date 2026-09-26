@@ -393,8 +393,56 @@ export async function setServedBy(botId: string, servedBy: "v1" | "v2", actor = 
   }
   await patchTenantSettings(botId, { served_by: servedBy });
   await logEvent(botId, "webhook", { action: "served_by", value: servedBy }, actor);
-  if (servedBy === "v2") return reinstallWebhook(botId, actor);
+  if (servedBy === "v2") {
+    await importLegacyStoryTags(botId).catch((e) =>
+      console.warn(`[operator] story tags import for ${botId}: ${String(e)}`),
+    );
+    return reinstallWebhook(botId, actor);
+  }
   return null;
+}
+
+/**
+ * Теги сторис из v1 (`story_product_tags`, bot_id TEXT без RLS — ядро v2 её
+ * не читает) один раз копируются в app_settings клиента при переезде.
+ */
+export async function importLegacyStoryTags(botId: string): Promise<number> {
+  const { listStoryTags, saveStoryTags } = await import("@/core/consultant/story-tags");
+  const t = await requireTenant({ by: "id", value: botId });
+  const ctx = tenantContext(t);
+  if ((await listStoryTags(ctx)).length > 0) return 0;
+  const { data } = await serviceDb()
+    .from("story_product_tags")
+    .select("*")
+    .eq("bot_id", botId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  const rows = (data ?? []) as Array<{
+    id: string;
+    story_id: string;
+    story_url: string | null;
+    product_id: string | null;
+    product_name: string;
+    product_price_kzt: number | null;
+    notes: string | null;
+    created_at: string | null;
+  }>;
+  if (!rows.length) return 0;
+  await saveStoryTags(
+    ctx,
+    rows.map((r) => ({
+      id: r.id,
+      story_id: r.story_id,
+      story_url: r.story_url,
+      product_id: r.product_id,
+      product_name: r.product_name,
+      price: r.product_price_kzt,
+      notes: r.notes,
+      created_at: r.created_at ?? new Date().toISOString(),
+    })),
+  );
+  await logEvent(botId, "meta", { story_tags_imported: rows.length });
+  return rows.length;
 }
 
 export async function reinstallWebhook(botId: string, actor = "operator") {

@@ -68,6 +68,7 @@ import {
   matchCountry,
   matchDeliveryLangChoice,
   matchDirectCommand,
+  type DirectCommand,
   matchLocalePick,
   languagePickerText,
   stepAnswer,
@@ -87,6 +88,11 @@ import {
   productNumberFromName,
 } from "./shop-flow";
 import { matchFulfillmentType } from "@/core/fulfillment/pure";
+import {
+  DEFAULT_DIRECT_BOT,
+  isTriggerWord,
+  type DirectBotSettings,
+} from "@/core/instagram/direct-bot-settings";
 
 /**
  * Магазин в Instagram Direct и WhatsApp (модули dm_shop / wa_shop). Тот же
@@ -118,6 +124,8 @@ type Shop = {
   platform: ZernioPlatform;
   locale: Locale;
   m: Msg;
+  /** Настройки автоответчика канала: слова-вызовы и что из магазина включено. */
+  bot: DirectBotSettings;
 };
 
 const LIST_TTL_MS = 30 * 60 * 1000;
@@ -221,6 +229,7 @@ export async function handleShopMessage(
   customer: Customer,
   msg: ParsedZernioMessage,
   transport: ZernioTransport = liveTransport,
+  bot: DirectBotSettings = DEFAULT_DIRECT_BOT,
 ): Promise<{ outcome: ShopOutcome; customer: Customer }> {
   const locale = localeOf(ctx, customer);
   const s: Shop = {
@@ -232,6 +241,7 @@ export async function handleShopMessage(
     platform: msg.platform,
     locale,
     m: COPY[locale],
+    bot,
   };
   const outcome = await route(s, msg);
   return { outcome, customer: s.customer };
@@ -283,8 +293,10 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     return "handled";
   }
 
-  const command = matchDirectCommand(text);
+  // Слова-вызовы продавца открывают магазин, как встроенная команда «каталог».
+  const command = isTriggerWord(text, s.bot.triggers) ? "catalog" : matchDirectCommand(text);
   if (command) {
+    if (!featureAllows(s, command)) return "question";
     if (mode && mode !== "idle" && mode !== "awaiting_proof") await setMode(s, { mode: "idle" });
     switch (command) {
       case "catalog":
@@ -457,10 +469,12 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const kind = classifyIncoming(text);
   switch (kind.kind) {
     case "product_number": {
+      if (!s.bot.features.search) return "question";
       await pickByNumber(s, kind.number);
       return "handled";
     }
     case "affirmative": {
+      if (!s.bot.features.catalog) return "question";
       await showCatalog(s, null, 0, true);
       return "handled";
     }
@@ -472,8 +486,34 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   }
 }
 
+/** Выключенная продавцом часть магазина: команда и кнопка не отвечают, реплика уходит как вопрос. */
+function featureAllows(s: Shop, command: DirectCommand | string): boolean {
+  const f = s.bot.features;
+  switch (command) {
+    case "catalog":
+    case "CATALOG":
+    case "CAT":
+    case "PROD":
+      return f.catalog;
+    case "cart":
+    case "CART":
+    case "BUY":
+    case "CLEAR":
+      return f.cart;
+    case "checkout":
+    case "CHECKOUT":
+    case "PAY":
+    case "FT":
+    case "NOTE":
+      return f.checkout;
+    default:
+      return true;
+  }
+}
+
 async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
   const [head, a, b] = payload.split(":");
+  if (head && !featureAllows(s, head)) return "question";
   switch (head) {
     case "CATALOG":
       await showCatalog(s, null, 0, true);

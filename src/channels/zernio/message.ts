@@ -91,9 +91,59 @@ export type ParsedZernioMessage = {
   postbackPayload: string | null;
   nativeOrder: NativeOrder | null;
   attachments: Array<{ type: string; url: string }>;
+  /** Ответ на сторис или рилс: id медиа из метаданных Zernio (форма поля у них плавает). */
+  storyId: string | null;
+  /** Ссылка на медиа сторис — запасной ключ для сопоставления с тегом товара. */
+  storyMediaUrl: string | null;
   /** Исходящее (наш же ответ, если Zernio когда-нибудь начнёт их слать) — не обрабатываем. */
   outgoing: boolean;
 };
+
+const STORY_ID_PATHS = [
+  ["storyReply", "storyId"],
+  ["storyReply", "story_id"],
+  ["storyReply", "id"],
+  ["story_reply", "story_id"],
+  ["story_reply", "storyId"],
+  ["story_reply", "id"],
+  ["reelReply", "reelId"],
+  ["reelReply", "id"],
+  ["storyId"],
+  ["story_id"],
+  ["reelId"],
+  ["story", "id"],
+  ["reel", "id"],
+];
+const STORY_URL_PATHS = [
+  ["storyReply", "storyUrl"],
+  ["storyReply", "story_url"],
+  ["storyReply", "url"],
+  ["storyReply", "mediaUrl"],
+  ["story_reply", "story_url"],
+  ["story_reply", "url"],
+  ["storyUrl"],
+  ["story_url"],
+  ["story", "url"],
+  ["story", "mediaUrl"],
+];
+const STORY_ATTACHMENT_TYPES = new Set([
+  "story",
+  "story_mention",
+  "story_reply",
+  "ig_story",
+  "reel",
+]);
+
+function pick(obj: unknown, paths: readonly string[][]): string | null {
+  for (const path of paths) {
+    let cur: unknown = obj;
+    for (const key of path)
+      cur = cur && typeof cur === "object" ? (cur as Record<string, unknown>)[key] : undefined;
+    if (typeof cur === "string" && cur.trim()) return cur.trim();
+    if (typeof cur === "number") return String(cur);
+  }
+  return null;
+}
 
 const FALLBACK_NAME = "друг";
 const INTERACTIVE_TAP_TYPES = new Set(["postback", "button_reply", "list_reply"]);
@@ -150,6 +200,17 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
     .map((a) => ({ type: str(a.type).toLowerCase() || "file", url: str(a.url) }))
     .filter((a) => a.url);
 
+  // Ответ на сторис: id и ссылка живут в metadata события, message.metadata или в самом
+  // сообщении — Zernio менял форму не раз, поэтому смотрим во все три места.
+  const storySources = [payload.metadata, message.metadata, message, payload];
+  let storyId: string | null = null;
+  let storyMediaUrl: string | null = null;
+  for (const src of storySources) {
+    storyId ??= pick(src, STORY_ID_PATHS);
+    storyMediaUrl ??= pick(src, STORY_URL_PATHS);
+  }
+  storyMediaUrl ??= attachments.find((a) => STORY_ATTACHMENT_TYPES.has(a.type))?.url ?? null;
+
   return {
     conversationId: message.conversationId || conversation.id || null,
     // accountId — каноническое поле; id и mongo-style _id — запасные.
@@ -165,6 +226,8 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
     postbackPayload,
     nativeOrder,
     attachments,
+    storyId,
+    storyMediaUrl,
     outgoing: message.direction === "outgoing",
   };
 }

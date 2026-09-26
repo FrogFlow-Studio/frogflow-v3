@@ -13,6 +13,8 @@ import { deliverOrder, getOrder } from "@/core/orders/orders";
 import { handleZernioMessage } from "@/channels/zernio/handle-message";
 import { zernioMaterialSender } from "@/channels/zernio/deliver";
 import type { ZernioTransport } from "@/channels/zernio/api.server";
+import { getSettings, setSetting } from "@/core/settings/settings";
+import { directBotSettingKeys } from "@/core/instagram/direct-bot-settings";
 
 /**
  * Магазин в Direct на демо-клиенте: каталог → карточка → корзина →
@@ -44,6 +46,7 @@ const fake: ZernioTransport = {
   download: async () => ({ bytes: PNG, mime: "image/png" }),
 };
 const last = () => sent[sent.length - 1]!;
+let prevBot: Record<string, string> = {};
 
 function event(id: string, body: Record<string, unknown>) {
   return {
@@ -100,6 +103,9 @@ describe.skipIf(!liveReady)("магазин в Instagram Direct на демо-к
       },
     });
     await cleanup();
+    // На демо-клиенте лежат настройки автоответчика из v1 — тест идёт на значениях по умолчанию.
+    prevBot = await getSettings(ctx, directBotSettingKeys("instagram"));
+    for (const k of directBotSettingKeys("instagram")) await setSetting(ctx, k, "");
     const { data: p, error } = await ctx.db
       .from("products")
       .insert({
@@ -132,7 +138,10 @@ describe.skipIf(!liveReady)("магазин в Instagram Direct на демо-к
     const seeded = await upsertCustomer(ctx, "instagram", SENDER, { firstName: "Проба Магазин" });
     await setState(ctx, seeded, { locale: "ru", locale_picked_at: new Date().toISOString() });
   });
-  afterAll(cleanup);
+  afterAll(async () => {
+    for (const k of directBotSettingKeys("instagram")) await setSetting(ctx, k, prevBot[k] ?? "");
+    await cleanup();
+  });
 
   it("карточка по кнопке: название, цена и «В корзину»", async () => {
     const r = await handleZernioMessage(ctx, tap("d-1", `PROD:${productId}`), fake);
@@ -271,5 +280,25 @@ describe.skipIf(!liveReady)("магазин в Instagram Direct на демо-к
     const c = await getCustomer(ctx, userKey("instagram", LOST_SENDER));
     expect(c?.state.locale).toBe("ru");
     expect(c?.state.mode).toBe("idle");
+  });
+
+  it("настройки автоответчика: своё слово-вызов открывает каталог, выключенный бот молчит", async () => {
+    const keys = directBotSettingKeys("instagram");
+    const triggersKey = keys.find((k) => k.endsWith("_triggers"))!;
+    const enabledKey = keys.find((k) => k.endsWith("_enabled"))!;
+    await setSetting(ctx, triggersKey, "прайс, хочу купить");
+    const before = sent.length;
+    const r1 = await handleZernioMessage(ctx, text("s-1", "Прайс!"), fake);
+    expect(r1.status).toBe("processed");
+    expect(sent.length).toBeGreaterThan(before);
+    expect(last().text).toMatch(/категори|каталог|товар/i);
+
+    await setSetting(ctx, enabledKey, "false");
+    const before2 = sent.length;
+    const r2 = await handleZernioMessage(ctx, text("s-2", "каталог"), fake);
+    expect(r2.note).toContain("выключен");
+    expect(sent.length).toBe(before2);
+    await setSetting(ctx, enabledKey, "");
+    await setSetting(ctx, triggersKey, "");
   });
 });

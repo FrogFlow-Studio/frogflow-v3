@@ -77,6 +77,15 @@ export async function handleZernioMessage(
       return processed("менеджер ведёт диалог в панели");
   }
 
+  // Настройки автоответчика канала (те же ключи, что в v1). Выключенный —
+  // молчит вовсе; консультантские ниши тумблер не читают: у них консультант
+  // и есть канал.
+  const { loadDirectBotSettings } = await import("@/core/instagram/direct-bot-settings");
+  const { isConsultantVertical } = await import("@/core/verticals/registry");
+  const bot = await loadDirectBotSettings(ctx, m.platform);
+  if (!bot.enabled && !isConsultantVertical(ctx.tenant.vertical))
+    return processed("автоответчик выключен в настройках канала");
+
   // Магазин в переписке — отдельный модуль на канал; свободный вопрос
   // уходит дальше консультанту или продавцу.
   let customerNow = customer;
@@ -84,14 +93,14 @@ export async function handleZernioMessage(
     m.platform === "whatsapp" ? ctx.tenant.modules.wa_shop : ctx.tenant.modules.dm_shop;
   if (shopOn) {
     const { handleShopMessage } = await import("./shop.server");
-    const r = await handleShopMessage(ctx, customer, m, transport);
+    const r = await handleShopMessage(ctx, customer, m, transport, bot);
     customerNow = r.customer;
     if (r.outcome === "handled") return processed("магазин");
   }
 
   const consultant = await import("@/core/consultant/engine.server");
   if (!(await consultant.consultantEnabled(ctx))) {
-    if (shopOn && m.text) await forwardedToSeller(ctx, customerNow, m, transport);
+    if (shopOn && m.text) await forwardedToSeller(ctx, customerNow, m, transport, bot);
     return processed("консультант выключен — сообщение в «Чате»");
   }
   if (consultant.isPaused(customerNow)) return processed("консультант на паузе");
@@ -114,7 +123,10 @@ export async function handleZernioMessage(
     return processed("менеджер отвечает из приложения — консультант на паузе 12 ч");
   }
 
-  const r = await consultant.runConsultant(ctx, customer, text, { platform: m.platform });
+  const r = await consultant.runConsultant(ctx, customer, text, {
+    platform: m.platform,
+    story: { storyId: m.storyId, mediaUrl: m.storyMediaUrl },
+  });
   if (!r) return { status: "failed", note: "консультант не ответил (см. consultant_last_error)" };
 
   const sent = await transport.send(m.conversationId, m.accountId, r.reply, {
@@ -165,12 +177,19 @@ async function forwardedToSeller(
   customer: Customer,
   m: ReturnType<typeof parseZernioMessage>,
   transport: ZernioTransport,
+  bot: import("@/core/instagram/direct-bot-settings").DirectBotSettings,
 ) {
+  // «Только по заказам»: вне сценария покупки бот молчит, чтобы диалог
+  // остался непрочитанным для продавца в приложении (решение из v1).
+  const mode = customer.state.mode;
+  const inFlow = Boolean(mode) && mode !== "idle";
+  if (bot.scope === "purchases" && !inFlow && !bot.script) return;
   const direct = customer.state.direct;
   const mem = direct && typeof direct === "object" && !Array.isArray(direct) ? direct : {};
   const at = Date.parse(String(mem.forwarded_at ?? ""));
   if (Number.isFinite(at) && Date.now() - at < 3600_000) return;
   const text =
+    bot.script ||
     "Передал ваш вопрос продавцу — он ответит здесь. Чтобы заказать самостоятельно, напишите номер товара или «каталог».";
   const r = await transport.send(m.conversationId!, m.accountId!, text, { platform: m.platform });
   if (!r.ok) return;

@@ -223,12 +223,22 @@ export async function runConsultant(
   ctx: TenantContext,
   customer: Customer | null,
   text: string,
-  opts: { platform: string; dryRun?: boolean } = { platform: "telegram" },
+  opts: {
+    platform: string;
+    dryRun?: boolean;
+    /** Ответ на сторис/рилс — консультант узнаёт товар по тегу продавца. */
+    story?: { storyId: string | null; mediaUrl: string | null };
+  } = { platform: "telegram" },
 ): Promise<ConsultantResult | null> {
   const apiKey = env().ANTHROPIC_API_KEY?.trim();
   if (!apiKey) return null;
-  const incoming = text.trim().slice(0, 1500);
+  let incoming = text.trim().slice(0, 1500);
   if (!incoming) return null;
+  if (opts.story && (opts.story.storyId || opts.story.mediaUrl)) {
+    const { findStoryTag, listStoryTags, storyContextLine } = await import("./story-tags");
+    const tag = findStoryTag(await listStoryTags(ctx), opts.story.storyId, opts.story.mediaUrl);
+    incoming = `${storyContextLine(tag, opts.story.storyId)}\n\n${incoming}`;
+  }
 
   const { profile, docs } = await loadConsultant(ctx);
   const state = customer ? stateOf(customer) : {};

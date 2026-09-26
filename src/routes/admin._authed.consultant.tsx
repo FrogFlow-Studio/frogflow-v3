@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { consultantFn, consultantTestFn, saveConsultantFn } from "@/app/admin/admin.functions";
+import { deleteStoryTagFn, storyTagsFn, upsertStoryTagFn } from "@/app/admin/consultant.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { GOALS, TONES, type ConsultantProfile } from "@/core/consultant/profile";
@@ -251,6 +252,7 @@ function ConsultantPage() {
 
         <div className="space-y-4">
           <TestChat configured={data.configured} t={t} />
+          {shop.modules.instagram && <StoriesCard t={t} />}
           <Card title={t("consultant.usage.title")}>
             <dl className="grid grid-cols-2 gap-2 text-sm">
               <dt className="text-muted">{t("consultant.usage.count")}</dt>
@@ -336,6 +338,146 @@ function TestChat({ configured, t }: { configured: boolean; t: AdminT }) {
         </button>
       </form>
       <ErrorBox error={ask.error} />
+    </Card>
+  );
+}
+
+type StoryTags = Awaited<ReturnType<typeof storyTagsFn>>;
+
+/**
+ * Теги товаров на сторис: покупатель ответил на сторис «сколько стоит?» —
+ * консультант знает, какой товар на ней, и отвечает по делу.
+ */
+function StoriesCard({ t }: { t: AdminT }) {
+  const [data, setData] = useState<StoryTags | null>(null);
+  const [story, setStory] = useState("");
+  const [productId, setProductId] = useState("");
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [notes, setNotes] = useState("");
+  const reload = async () => setData(await storyTagsFn());
+  useEffect(() => {
+    void reload();
+  }, []);
+  const add = useAction(async () => {
+    const product = data?.products.find((p) => p.id === productId);
+    await upsertStoryTagFn({
+      data: {
+        story,
+        productId: productId || null,
+        productName: (product?.name ?? name).trim(),
+        price: price.trim() ? Number(price) : null,
+        notes: notes.trim() || null,
+      },
+    });
+    setStory("");
+    setName("");
+    setPrice("");
+    setNotes("");
+    await reload();
+  });
+  const del = useAction(async (id: string) => {
+    await deleteStoryTagFn({ data: { id } });
+    await reload();
+  });
+  return (
+    <Card title={t("consultant.stories.title")}>
+      <p className="mb-3 text-sm text-muted">{t("consultant.stories.intro")}</p>
+      <form
+        className="space-y-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void add.run().catch(() => {});
+        }}
+      >
+        <input
+          className="input"
+          placeholder={t("consultant.stories.storyPlaceholder")}
+          value={story}
+          onChange={(e) => setStory(e.target.value)}
+          required
+        />
+        <div className="grid gap-2 sm:grid-cols-2">
+          <select
+            className="input"
+            value={productId}
+            onChange={(e) => setProductId(e.target.value)}
+          >
+            <option value="">{t("consultant.stories.pickProduct")}</option>
+            {(data?.products ?? []).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <input
+            className="input"
+            placeholder={t("consultant.stories.namePlaceholder")}
+            value={name}
+            disabled={Boolean(productId)}
+            required={!productId}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <input
+            className="input"
+            type="number"
+            min={0}
+            placeholder={t("consultant.stories.pricePlaceholder")}
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
+          <input
+            className="input"
+            placeholder={t("consultant.stories.notesPlaceholder")}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </div>
+        <button className="btn-secondary" disabled={add.busy}>
+          {t("consultant.stories.add")}
+        </button>
+        <ErrorBox error={add.error ?? del.error} />
+      </form>
+      {data && data.tags.length === 0 && (
+        <p className="mt-3 text-sm text-muted">{t("consultant.stories.empty")}</p>
+      )}
+      {data && data.tags.length > 0 && (
+        <ul className="mt-3 divide-y divide-line rounded-md border border-line text-sm">
+          {data.tags.map((tag) => (
+            <li key={tag.id} className="flex items-start justify-between gap-2 px-3 py-2">
+              <div className="min-w-0">
+                <div className="font-medium">
+                  {tag.product_name}
+                  {tag.price != null && <span className="text-muted"> · {tag.price}</span>}
+                </div>
+                <div className="truncate text-xs text-muted">
+                  {tag.story_url ? (
+                    <a
+                      href={tag.story_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:underline"
+                    >
+                      {tag.story_url}
+                    </a>
+                  ) : (
+                    tag.story_id
+                  )}
+                  {tag.notes && ` · ${tag.notes}`}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-ghost shrink-0 text-xs text-danger"
+                disabled={del.busy}
+                onClick={() => void del.run(tag.id).catch(() => {})}
+              >
+                {t("common.delete")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }

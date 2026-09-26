@@ -60,6 +60,16 @@ export const ru = {
   "consultant.test.handoff": "передача менеджеру",
   "consultant.test.placeholder": "Например: есть ли доставка в Астану?",
   "consultant.test.ask": "Спросить",
+  "consultant.stories.title": "Сторис",
+  "consultant.stories.intro":
+    "Отметьте, какой товар показан на сторис или рилсе: когда покупатель ответит на неё «сколько стоит?», консультант поймёт, о чём речь.",
+  "consultant.stories.storyPlaceholder": "Ссылка на сторис, рилс или пост",
+  "consultant.stories.pickProduct": "— товар из каталога —",
+  "consultant.stories.namePlaceholder": "или название товара",
+  "consultant.stories.pricePlaceholder": "Цена",
+  "consultant.stories.notesPlaceholder": "Заметка для консультанта",
+  "consultant.stories.add": "Добавить тег",
+  "consultant.stories.empty": "Тегов пока нет.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -122,6 +132,16 @@ export const kk: SectionDict<typeof ru> = {
   "consultant.test.handoff": "менеджерге беру",
   "consultant.test.placeholder": "Мысалы: Астанаға жеткізу бар ма?",
   "consultant.test.ask": "Сұрау",
+  "consultant.stories.title": "Сторис",
+  "consultant.stories.intro":
+    "Сторис немесе рилсте қай тауар көрсетілгенін белгілеңіз: сатып алушы оған «қанша тұрады?» деп жауап берсе, консультант не туралы екенін түсінеді.",
+  "consultant.stories.storyPlaceholder": "Сторис, рилс немесе жазба сілтемесі",
+  "consultant.stories.pickProduct": "— каталогтағы тауар —",
+  "consultant.stories.namePlaceholder": "немесе тауар атауы",
+  "consultant.stories.pricePlaceholder": "Бағасы",
+  "consultant.stories.notesPlaceholder": "Консультантқа ескертпе",
+  "consultant.stories.add": "Тег қосу",
+  "consultant.stories.empty": "Тегтер әзірге жоқ.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -184,6 +204,16 @@ export const en: SectionDict<typeof ru> = {
   "consultant.test.handoff": "handoff to manager",
   "consultant.test.placeholder": "For example: do you deliver to Astana?",
   "consultant.test.ask": "Ask",
+  "consultant.stories.title": "Stories",
+  "consultant.stories.intro":
+    "Tag which product a story or reel shows: when a customer replies to it with “how much?”, the consultant knows what they mean.",
+  "consultant.stories.storyPlaceholder": "Link to a story, reel or post",
+  "consultant.stories.pickProduct": "— product from catalog —",
+  "consultant.stories.namePlaceholder": "or product name",
+  "consultant.stories.pricePlaceholder": "Price",
+  "consultant.stories.notesPlaceholder": "Note for the consultant",
+  "consultant.stories.add": "Add tag",
+  "consultant.stories.empty": "No tags yet.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -247,4 +277,14 @@ export const uz: SectionDict<typeof ru> = {
   "consultant.test.handoff": "menejerga o‘tkazish",
   "consultant.test.placeholder": "Masalan: Astanaga yetkazib berish bormi?",
   "consultant.test.ask": "So‘rash",
+  "consultant.stories.title": "Storis",
+  "consultant.stories.intro":
+    "Storis yoki rilsda qaysi mahsulot ko‘rsatilganini belgilang: xaridor unga «qancha turadi?» deb javob bersa, konsultant nima haqida gap ketayotganini tushunadi.",
+  "consultant.stories.storyPlaceholder": "Storis, rils yoki post havolasi",
+  "consultant.stories.pickProduct": "— katalogdagi mahsulot —",
+  "consultant.stories.namePlaceholder": "yoki mahsulot nomi",
+  "consultant.stories.pricePlaceholder": "Narx",
+  "consultant.stories.notesPlaceholder": "Konsultant uchun eslatma",
+  "consultant.stories.add": "Teg qo‘shish",
+  "consultant.stories.empty": "Hozircha teglar yo‘q.",
 };

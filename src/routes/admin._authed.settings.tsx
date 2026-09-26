@@ -18,6 +18,8 @@ import {
   teamFn,
 } from "@/app/admin/admin.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
+import { directBotSettingsFn, saveDirectBotSettingsFn } from "@/app/admin/channels.functions";
+import type { DirectBotSettings } from "@/core/instagram/direct-bot-settings";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { imagePath } from "@/core/catalog/image-url";
 
@@ -73,6 +75,8 @@ function SettingsPage() {
             whatsapp={shop.modules.whatsapp}
           />
         )}
+        {shop.modules.instagram && <DirectBotCard platform="instagram" />}
+        {shop.modules.whatsapp && <DirectBotCard platform="whatsapp" />}
         <Card title={t("settings.shop.title")}>
           <form
             className="space-y-3"
@@ -574,6 +578,133 @@ function ChannelsCard({
         </p>
       )}
       <ErrorBox error={connect.error ?? sync.error} />
+    </Card>
+  );
+}
+
+/**
+ * Автоответчик канала: тумблер, область ответов, слова-вызовы, ответ на
+ * непонятное, что из магазина включено. Ключи те же, что в v1.
+ */
+function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp" }) {
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const [s, setS] = useState<(DirectBotSettings & { triggersText: string }) | null>(null);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    void directBotSettingsFn({ data: { platform } }).then((r) =>
+      setS({ ...r, triggersText: r.triggers.join(", ") }),
+    );
+  }, [platform]);
+  const save = useAction(async () => {
+    if (!s) return;
+    await saveDirectBotSettingsFn({
+      data: {
+        platform,
+        enabled: s.enabled,
+        scope: s.scope,
+        triggers: s.triggersText,
+        script: s.script,
+        features: s.features,
+      },
+    });
+    setSaved(true);
+  });
+  const owner = shop.role === "owner";
+  const feature = (k: keyof DirectBotSettings["features"], label: string) => (
+    <label className="flex items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        checked={s?.features[k] ?? true}
+        disabled={!owner}
+        onChange={(e) => s && setS({ ...s, features: { ...s.features, [k]: e.target.checked } })}
+      />
+      {label}
+    </label>
+  );
+  return (
+    <Card
+      title={t("settings.dbot.title", { channel: CHANNEL_LABEL[platform] ?? platform })}
+      actions={
+        s && (
+          <Switch
+            checked={s.enabled}
+            onChange={(on) => owner && setS({ ...s, enabled: on })}
+            label={t("settings.dbot.enabled")}
+          />
+        )
+      }
+    >
+      {!s ? (
+        <p className="text-sm text-muted">…</p>
+      ) : (
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSaved(false);
+            void save.run().catch(() => {});
+          }}
+        >
+          <p className="text-sm text-muted">{t("settings.dbot.intro")}</p>
+          <Field label={t("settings.dbot.scope")}>
+            <div className="space-y-1 text-sm">
+              {(["purchases", "all"] as const).map((v) => (
+                <label key={v} className="flex items-start gap-2">
+                  <input
+                    type="radio"
+                    name={`scope-${platform}`}
+                    checked={s.scope === v}
+                    disabled={!owner}
+                    onChange={() => setS({ ...s, scope: v })}
+                  />
+                  <span>
+                    {t(`settings.dbot.scope.${v}`)}
+                    <span className="block text-xs text-muted">
+                      {t(`settings.dbot.scope.${v}Hint`)}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </Field>
+          <Field label={t("settings.dbot.triggers")} hint={t("settings.dbot.triggersHint")}>
+            <input
+              className="input"
+              value={s.triggersText}
+              disabled={!owner}
+              placeholder={t("settings.dbot.triggersPlaceholder")}
+              onChange={(e) => setS({ ...s, triggersText: e.target.value })}
+            />
+          </Field>
+          <Field label={t("settings.dbot.script")} hint={t("settings.dbot.scriptHint")}>
+            <textarea
+              className="input min-h-20"
+              value={s.script}
+              disabled={!owner}
+              placeholder={t("settings.dbot.scriptPlaceholder")}
+              onChange={(e) => setS({ ...s, script: e.target.value })}
+            />
+          </Field>
+          <Field label={t("settings.dbot.features")}>
+            <div className="grid grid-cols-2 gap-1">
+              {feature("catalog", t("settings.dbot.feature.catalog"))}
+              {feature("search", t("settings.dbot.feature.search"))}
+              {feature("cart", t("settings.dbot.feature.cart"))}
+              {feature("checkout", t("settings.dbot.feature.checkout"))}
+            </div>
+          </Field>
+          {owner && (
+            <div className="flex items-center gap-3">
+              <button className="btn-primary" disabled={save.busy}>
+                {t("common.save")}
+              </button>
+              {saved && <span className="text-sm text-ok">{t("settings.saved")}</span>}
+            </div>
+          )}
+          <ErrorBox error={save.error} />
+        </form>
+      )}
     </Card>
   );
 }
