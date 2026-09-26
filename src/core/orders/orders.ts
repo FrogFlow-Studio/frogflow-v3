@@ -25,6 +25,7 @@ import {
   itemAvailableLanguages,
   itemMaterials,
   itemNeedsLanguageChoice,
+  withDownloadName,
 } from "./pure";
 import { applyDiscounts, normalizeCode } from "@/core/discounts/pure";
 import { amountDueNow, decrementStock, restoreStock } from "@/core/fulfillment/fulfillment";
@@ -864,9 +865,9 @@ export async function signedFileUrl(
   if (!isSafeStorageKey(path)) return null;
   const { data, error } = await serviceDb()
     .storage.from("product-files")
-    .createSignedUrl(path, ttlSec, downloadName ? { download: downloadName } : undefined);
+    .createSignedUrl(path, ttlSec);
   if (error || !data?.signedUrl) return null;
-  return data.signedUrl;
+  return downloadName ? withDownloadName(data.signedUrl, downloadName) : data.signedUrl;
 }
 
 /** Файл из общего бакета принадлежит арендатору, только если лежит под его префиксом. */

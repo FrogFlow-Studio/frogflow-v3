@@ -86,12 +86,33 @@ export function downloadFileName(displayName: string, storagePath: string): stri
   return safeBase.toLowerCase().endsWith(`.${extension}`) ? safeBase : `${safeBase}.${extension}`;
 }
 
-/** Имя для скачивания файла позиции: имя материала, иначе имя товара. */
+/**
+ * Дописывает имя для скачивания к подписанной ссылке. Не через опцию
+ * `download` supabase-js: она кодирует имя, а потом прогоняет всю ссылку
+ * через encodeURI ещё раз, и кириллица приходит как «%D0%9F…pdf».
+ */
+export function withDownloadName(signedUrl: string, name: string): string {
+  return `${signedUrl}${signedUrl.includes("?") ? "&" : "?"}download=${encodeURIComponent(name)}`;
+}
+
+/**
+ * Имя для скачивания файла позиции: имя материала, иначе имя товара. Если
+ * без своего имени в позиции несколько файлов (`all` — все файлы позиции),
+ * они нумеруются «Товар (1).pdf», «Товар (2).pdf», чтобы не совпадать.
+ */
 export function materialDownloadName(
   mat: Pick<MaterialSnapshot, "path" | "name">,
   itemName: string | null | undefined,
+  all: ReadonlyArray<Pick<MaterialSnapshot, "name">> = [mat],
 ): string {
-  return downloadFileName(mat.name || itemName || "", mat.path ?? "");
+  if (mat.name) return downloadFileName(mat.name, mat.path ?? "");
+  const unnamed = all.filter((m) => !m.name);
+  const n = unnamed.indexOf(mat);
+  const base = itemName || "Материал";
+  return downloadFileName(
+    unnamed.length > 1 && n >= 0 ? `${base} (${n + 1})` : base,
+    mat.path ?? "",
+  );
 }
 
 export function itemLanguages(item: OrderItemRow): Locale[] {

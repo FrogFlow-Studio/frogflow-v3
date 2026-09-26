@@ -22,7 +22,11 @@ export function zernioMaterialSender(
       const url =
         mat.url ??
         (mat.path
-          ? await signedFileUrl(mat.path, undefined, materialDownloadName(mat, item.name_snapshot))
+          ? await signedFileUrl(
+              mat.path,
+              undefined,
+              materialDownloadName(mat, item.name_snapshot, materials),
+            )
           : null);
       if (!url) return "failed";
       lines.push(`${mat.name ? `${mat.name}: ` : ""}${url}`);

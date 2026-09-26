@@ -233,7 +233,13 @@ describe("miniAppOrdersFn: «Мои материалы»", () => {
     const r = await miniAppOrdersFn({ data: { slug: "shop", initData: initData(TG) } });
     expect(r.orders.map((o) => o.no)).toEqual([2, 1]);
     expect(r.library).toEqual([
-      { orderNo: 2, item: "Рабочий лист", name: "ws.pdf", url: `https://s.test/${BOT}/ws.pdf` },
+      {
+        orderNo: 2,
+        item: "Рабочий лист",
+        name: "ws.pdf",
+        // Ссылка несёт имя для скачивания — файл сохранится как «ws.pdf».
+        url: `https://s.test/${BOT}/ws.pdf?download=ws.pdf`,
+      },
     ]);
   });
 

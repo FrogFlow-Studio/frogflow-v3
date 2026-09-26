@@ -39,19 +39,21 @@ export async function emailOrderMaterials(
   for (const item of order.order_items) {
     const delivered = parseDeliveredLanguages(item.delivered_language);
     const langs = itemLanguages(item).filter((l) => delivered.size === 0 || delivered.has(l));
-    for (const l of langs.length ? langs : itemLanguages(item))
-      for (const mat of await protectMaterials(ctx, order, itemMaterials(item, l))) {
+    for (const l of langs.length ? langs : itemLanguages(item)) {
+      const list = await protectMaterials(ctx, order, itemMaterials(item, l));
+      for (const mat of list) {
         const url =
           mat.url ??
           (mat.path
             ? await signedFileUrl(
                 mat.path,
                 EMAIL_LINK_DAYS * 24 * 3600,
-                materialDownloadName(mat, item.name_snapshot),
+                materialDownloadName(mat, item.name_snapshot, list),
               )
             : null);
         if (url) files.push({ name: mat.name ?? item.name_snapshot, url });
       }
+    }
   }
   if (!files.length) return { sent: false, reason: "нет файлов" };
   const shopName = (await getSetting(ctx, "shop_name")) || ctx.tenant.name;

@@ -28,7 +28,7 @@ export function telegramMaterialSender(api: TelegramApi, chatId: number, m: Msg)
         const url = await signedFileUrl(
           mat.path,
           undefined,
-          materialDownloadName(mat, item.name_snapshot),
+          materialDownloadName(mat, item.name_snapshot, materials),
         );
         if (url) {
           const ext = (mat.name ?? mat.path).split(".").pop()?.toLowerCase() ?? "";

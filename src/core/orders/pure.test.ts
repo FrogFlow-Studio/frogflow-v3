@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Database } from "@/core/db-types";
-import { downloadFileName, itemLanguages, itemMaterials, materialDownloadName } from "./pure";
+import {
+  downloadFileName,
+  itemLanguages,
+  itemMaterials,
+  materialDownloadName,
+  withDownloadName,
+} from "./pure";
 
 type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"];
 // Как строка из базы: пустые колонки снимка — null, а не отсутствуют.
@@ -132,5 +138,31 @@ describe("человеческое имя файла при выдаче", () =>
     expect(materialDownloadName({ path, name: "Буквы" }, "Пазлы")).toBe("Буквы.pdf");
     expect(materialDownloadName({ path, name: null }, "Пазлы")).toBe("Пазлы.pdf");
     expect(materialDownloadName({ path, name: "" }, "")).toBe("Материал.pdf");
+  });
+
+  it("кириллица с кавычками и пробелами кодируется в ссылке один раз", () => {
+    const signed = "https://x.supabase.co/storage/v1/object/sign/product-files/t/1.pdf?token=abc";
+    const name = "Пазлы «Буквы» 1 класс.pdf";
+    const url = withDownloadName(signed, name);
+    expect(url.startsWith(`${signed}&download=`)).toBe(true);
+    const param = new URL(url).searchParams.get("download");
+    // Хранилище берёт имя из параметра как есть — после одного раскодирования.
+    expect(param).toBe(name);
+    expect(url).not.toContain("%25");
+    expect(withDownloadName("https://x/a.pdf", "a b.pdf")).toBe(
+      "https://x/a.pdf?download=a%20b.pdf",
+    );
+  });
+
+  it("несколько файлов без своего имени нумеруются, с именем — остаются как есть", () => {
+    const a = { path: "t/1.pdf", name: null, url: null };
+    const b = { path: "t/2.pdf", name: "", url: null };
+    const c = { path: "t/3.zip", name: "Ответы", url: null };
+    const all = [a, b, c];
+    expect(materialDownloadName(a, "Пазлы", all)).toBe("Пазлы (1).pdf");
+    expect(materialDownloadName(b, "Пазлы", all)).toBe("Пазлы (2).pdf");
+    expect(materialDownloadName(c, "Пазлы", all)).toBe("Ответы.zip");
+    // Один файл без имени — без номера.
+    expect(materialDownloadName(a, "Пазлы", [a, c])).toBe("Пазлы.pdf");
   });
 });

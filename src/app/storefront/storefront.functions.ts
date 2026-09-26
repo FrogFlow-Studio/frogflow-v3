@@ -210,15 +210,16 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
       const count = mats.reduce((n, m) => n + m.length, 0);
       if (files > 0 && files + count > LIBRARY_FILES) break;
       files += count;
-      for (const m of mats)
-        for (const mat of await protectMaterials(ctx, o, m)) {
+      for (const m of mats) {
+        const list = await protectMaterials(ctx, o, m);
+        for (const mat of list) {
           const url =
             mat.url ??
             (mat.path
               ? await signedFileUrl(
                   mat.path,
                   7 * 24 * 3600,
-                  materialDownloadName(mat, item.name_snapshot),
+                  materialDownloadName(mat, item.name_snapshot, list),
                 )
               : null);
           if (url)
@@ -229,6 +230,7 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
               url,
             });
         }
+      }
     }
     const libraryNext = at < unique.length ? at : null;
     return {
