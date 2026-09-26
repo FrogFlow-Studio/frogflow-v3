@@ -1,7 +1,7 @@
 import type React from "react";
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { storeInfoFn } from "@/app/storefront/storefront.functions";
-import { CartProvider, useCart } from "@/app/storefront/cart";
+import { CartProvider, useCart, useTelegramWebApp } from "@/app/storefront/cart";
 import { StorefrontLocaleProvider, useStorefrontLocale } from "@/app/storefront/locale";
 import { storefrontT } from "@/app/i18n/storefront";
 import { ThemeToggle } from "@/app/ui";
@@ -90,6 +90,7 @@ function StoreFrame() {
                 {t("layout.openTelegram")}
               </a>
             )}
+            <OrdersLink slug={shop.slug} />
             <CartButton slug={shop.slug} />
           </div>
         </div>
@@ -145,6 +146,18 @@ function StoreFrame() {
         </div>
       </footer>
     </div>
+  );
+}
+
+/** «Мои заказы» — только внутри Telegram Mini App: там есть подписанный initData. */
+function OrdersLink({ slug }: { slug: string }) {
+  const wa = useTelegramWebApp();
+  const { t } = useStorefrontLocale();
+  if (!wa) return null;
+  return (
+    <Link to="/s/$slug/orders" params={{ slug }} className="btn-secondary">
+      {t("orders.link")}
+    </Link>
   );
 }
 

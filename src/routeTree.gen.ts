@@ -48,6 +48,7 @@ import { Route as OperatorAuthedRequestsRouteImport } from './routes/operator._a
 import { Route as OperatorAuthedSettingsRouteImport } from './routes/operator._authed.settings'
 import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
 import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
+import { Route as SSlugOrdersRouteImport } from './routes/s.$slug.orders'
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
 import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authed.products_.$id'
 import { Route as ApiAdminExportKindRouteImport } from './routes/api/admin/export.$kind'
@@ -252,6 +253,11 @@ const SSlugCartRoute = SSlugCartRouteImport.update({
   path: '/cart',
   getParentRoute: () => SSlugRoute,
 } as any)
+const SSlugOrdersRoute = SSlugOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => SSlugRoute,
+} as any)
 const AdminAuthedOrdersIdRoute = AdminAuthedOrdersIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -340,6 +346,7 @@ export interface FileRoutesByFullPath {
   '/operator/requests': typeof OperatorAuthedRequestsRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
+  '/s/$slug/orders': typeof SSlugOrdersRoute
   '/admin/': typeof AdminAuthedIndexRoute
   '/operator/': typeof OperatorAuthedIndexRoute
   '/s/$slug/': typeof SSlugIndexRoute
@@ -388,6 +395,7 @@ export interface FileRoutesByTo {
   '/operator/requests': typeof OperatorAuthedRequestsRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
+  '/s/$slug/orders': typeof SSlugOrdersRoute
   '/s/$slug': typeof SSlugIndexRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
@@ -438,6 +446,7 @@ export interface FileRoutesById {
   '/operator/_authed/requests': typeof OperatorAuthedRequestsRoute
   '/operator/_authed/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
+  '/s/$slug/orders': typeof SSlugOrdersRoute
   '/admin/_authed/': typeof AdminAuthedIndexRoute
   '/operator/_authed/': typeof OperatorAuthedIndexRoute
   '/s/$slug/': typeof SSlugIndexRoute
@@ -489,6 +498,7 @@ export interface FileRouteTypes {
     | '/operator/requests'
     | '/operator/settings'
     | '/s/$slug/cart'
+    | '/s/$slug/orders'
     | '/admin/'
     | '/operator/'
     | '/s/$slug/'
@@ -537,6 +547,7 @@ export interface FileRouteTypes {
     | '/operator/requests'
     | '/operator/settings'
     | '/s/$slug/cart'
+    | '/s/$slug/orders'
     | '/s/$slug'
     | '/admin/orders/$id'
     | '/admin/products/$id'
@@ -586,6 +597,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/requests'
     | '/operator/_authed/settings'
     | '/s/$slug/cart'
+    | '/s/$slug/orders'
     | '/admin/_authed/'
     | '/operator/_authed/'
     | '/s/$slug/'
@@ -893,6 +905,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugCartRouteImport
       parentRoute: typeof SSlugRoute
     }
+    '/s/$slug/orders': {
+      id: '/s/$slug/orders'
+      path: '/orders'
+      fullPath: '/s/$slug/orders'
+      preLoaderRoute: typeof SSlugOrdersRouteImport
+      parentRoute: typeof SSlugRoute
+    }
     '/admin/_authed/orders/$id': {
       id: '/admin/_authed/orders/$id'
       path: '/$id'
@@ -1075,6 +1094,7 @@ const OperatorRouteWithChildren = OperatorRoute._addFileChildren(
 
 interface SSlugRouteChildren {
   SSlugCartRoute: typeof SSlugCartRoute
+  SSlugOrdersRoute: typeof SSlugOrdersRoute
   SSlugIndexRoute: typeof SSlugIndexRoute
   SSlugLegalDocRoute: typeof SSlugLegalDocRoute
   SSlugPIdRoute: typeof SSlugPIdRoute
@@ -1082,6 +1102,7 @@ interface SSlugRouteChildren {
 
 const SSlugRouteChildren: SSlugRouteChildren = {
   SSlugCartRoute: SSlugCartRoute,
+  SSlugOrdersRoute: SSlugOrdersRoute,
   SSlugIndexRoute: SSlugIndexRoute,
   SSlugLegalDocRoute: SSlugLegalDocRoute,
   SSlugPIdRoute: SSlugPIdRoute,

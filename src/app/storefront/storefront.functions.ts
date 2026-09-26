@@ -121,6 +121,61 @@ export const miniAppCheckoutFn = createServerFn({ method: "POST" })
     return { ok: true, imported };
   });
 
+/**
+ * Mini App «Мои заказы» и библиотека материалов: покупатель подписан initData,
+ * выданные позиции отдаются подписанными ссылками на 7 дней — то, что в v1
+ * было отдельными экранами Mini App.
+ */
+export const miniAppOrdersFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ slug, initData: z.string().min(1).max(8000) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await shopCtx(data.slug);
+    const t = await shopT(ctx);
+    if (!ctx.tenant.telegramTokenEnc) throw new Error(t("error.noBot"));
+    const { validateInitData } = await import("@/core/storefront/init-data");
+    const v = validateInitData(data.initData, ctx.secrets.telegramToken());
+    if (!v.ok)
+      throw new Error(t(v.reason === "expired" ? "error.miniAppExpired" : "error.miniAppAuth"));
+    const { getCustomerByTelegramId } = await import("@/core/customers/customers");
+    const customer = await getCustomerByTelegramId(ctx, v.user.id);
+    if (!customer) return { orders: [], library: [] };
+    const { listCustomerOrders, itemLanguages, itemMaterials, signedFileUrl, displayNo } =
+      await import("@/core/orders/orders");
+    const { parseDeliveredLanguages } = await import("@/core/catalog/materials");
+    const orders = await listCustomerOrders(ctx, customer, 30);
+    const library: Array<{ orderNo: number; item: string; name: string; url: string }> = [];
+    for (const o of orders) {
+      if (o.status !== "delivered") continue;
+      for (const item of o.order_items ?? []) {
+        const delivered = parseDeliveredLanguages(item.delivered_language);
+        const langs = itemLanguages(item).filter((l) => delivered.size === 0 || delivered.has(l));
+        for (const l of langs)
+          for (const mat of itemMaterials(item, l)) {
+            const url = mat.url ?? (mat.path ? await signedFileUrl(mat.path, 7 * 24 * 3600) : null);
+            if (url)
+              library.push({
+                orderNo: displayNo(o),
+                item: item.name_snapshot,
+                name: mat.name ?? item.name_snapshot,
+                url,
+              });
+          }
+      }
+    }
+    return {
+      orders: orders.map((o) => ({
+        id: o.id,
+        no: displayNo(o),
+        status: o.status,
+        total: Number(o.total),
+        currency: o.currency,
+        createdAt: o.created_at,
+        items: (o.order_items ?? []).map((i) => ({ name: i.name_snapshot, qty: i.quantity })),
+      })),
+      library,
+    };
+  });
+
 export const legalFn = createServerFn({ method: "GET" })
   .validator((d: unknown) =>
     z.object({ slug, doc: z.enum(["offer", "privacy", "requisites", "about"]) }).parse(d),
