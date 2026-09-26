@@ -1165,13 +1165,13 @@
     "захватывает launch params до SDK и не просит закрыть окно": "open: расхождение: v2 берёт initData только из window.Telegram.WebApp.initData (useTelegramWebApp в src/app/storefront/cart.tsx); запасного чтения tgWebAppData из hash, query string или sessionStorage (__telegram__initParams) и раннего захвата launch params нет"
   },
   "tests/tenant-isolation.test.ts": {
-    "ключ арендатора видит только свои заказы": "open: изоляция orders под tenantDb в живом тесте v2 не проверяется, есть только bots/products/app_settings",
-    "ключ арендатора видит только своих покупателей": "open: изоляция bot_users под tenantDb в живом тесте v2 не проверяется",
+    "ключ арендатора видит только свои заказы": "tests/integration/tenant-isolation.test.ts › ключ арендатора видит только свои заказы",
+    "ключ арендатора видит только своих покупателей": "tests/integration/tenant-isolation.test.ts › ключ арендатора видит только своих покупателей",
     "ключ арендатора видит только свои товары": "tests/integration/tenant-isolation.test.ts › ключ арендатора видит только свою строку bots и свои товары",
     "два ключа видят разные наборы строк": "tests/integration/tenant-isolation.test.ts › ключ арендатора видит только свою строку bots и свои товары",
     "в bots арендатор видит одну строку — свою": "tests/integration/tenant-isolation.test.ts › ключ арендатора видит только свою строку bots и свои товары",
-    "служебные таблицы панели арендатору недоступны": "open: закрытость bot_events, operator_broadcasts, operator_login_attempts для роли арендатора в v2 не проверяется",
-    "подделанная подпись не принимается": "open: jwt.test.ts проверяет подпись только локально (verifyTenantJwt), отказ базы на поддельный ключ не проверяется"
+    "служебные таблицы панели арендатору недоступны": "tests/integration/tenant-isolation.test.ts › служебные таблицы панели арендатору недоступны",
+    "подделанная подпись не принимается": "tests/integration/tenant-isolation.test.ts › подделанная подпись не принимается"
   },
   "tests/vip-flow.test.ts": {
     "зажимает снизу: короткая подписка (тест-режим) даёт хотя бы 10 минут на переход": "src/core/vip/pure.test.ts › зажимает снизу: короткая подписка даёт хотя бы 10 минут на переход",
