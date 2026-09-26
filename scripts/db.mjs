@@ -4,8 +4,8 @@
  * невозможен). Секреты — из окружения или .env: SUPABASE_ACCESS_TOKEN
  * (Personal Access Token), SUPABASE_URL или SUPABASE_PROJECT_REF.
  *
- *   node scripts/db.mjs migrations/0001-jobs.sql
- *   node scripts/db.mjs --sql "select count(*) from v2_jobs"
+ *   node scripts/db.mjs path/to/file.sql
+ *   node scripts/db.mjs --sql "select count(*) from bots"
  *
  * Миграции v2 — только аддитивные (новые таблицы с префиксом v2_, новые
  * функции): v1 работает на той же базе и ничего из этого не читает.
