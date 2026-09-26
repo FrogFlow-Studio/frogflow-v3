@@ -4,15 +4,15 @@
 и `docs/readiness.json` — руками не правится. `npm test` падает, если сводка
 устарела, пункт описи назван неверно или указанного теста нет.
 
-**Готовность для первых клиентов: 80,5 %** — покрыто тестами v2
-592 из 735 нужных сейчас пунктов.
+**Готовность для первых клиентов: 80,6 %** — покрыто тестами v2
+593 из 735 нужных сейчас пунктов.
 
-**Путь заказа: 92,8 %** — 314 из 338
+**Путь заказа: 93,1 %** — 315 из 338
 (каталог, цена, оформление, оплата и чек, выдача; файлы — `ORDER_PATH` в скрипте).
 
 | всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |
 | ----- | ------- | --------------------- | ---- | ----- | ------------- |
-| 1125 | 592 | 43 | 143 | 33 | 357 |
+| 1125 | 593 | 43 | 142 | 33 | 357 |
 
 «Позже» — поведение нужно, но не магазинам, которые переезжают первыми
 (модуль ещё не перенесён). «Не нужно в v2» — поведение убрано или заменено;
@@ -95,7 +95,7 @@
 | `tests/mini-app-validation.test.ts` | 4 | 1 | 0 | 0 | 3 | 100 % |
 | `tests/misc-retention.test.ts` | 3 | 1 | 2 | 0 | 0 | 33,3 % |
 | `tests/order-files-page.test.ts` | 8 | 1 | 0 | 0 | 7 | 100 % |
-| `tests/order-platform.test.ts` | 4 | 3 | 1 | 0 | 0 | 75 % |
+| `tests/order-platform.test.ts` | 4 | 4 | 0 | 0 | 0 | 100 % |
 | `tests/orders-pure.test.ts` | 11 | 11 | 0 | 0 | 0 | 100 % |
 | `tests/payment-proof.test.ts` | 2 | 2 | 0 | 0 | 0 | 100 % |
 | `tests/pricing.test.ts` | 20 | 20 | 0 | 0 | 0 | 100 % |
@@ -129,7 +129,7 @@
 | `tests/zernio-retry.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/zernio-webhook.test.ts` | 13 | 7 | 3 | 0 | 3 | 70 % |
 
-## Дыры (143)
+## Дыры (142)
 
 ### поломки v1
 
@@ -313,10 +313,6 @@
 
 - pruneOperatorAuditTables удаляет старые bot_events и operator_login_attempts — bot_events проверены в retention.test.ts, pruneOperatorLoginAttempts (core/retention/retention.ts) — без теста
 - pruneBroadcastRecipients удаляет получателей кампаний старше окна — pruneBroadcastRecipients (core/retention/retention.ts) без теста
-
-### `tests/order-platform.test.ts`
-
-- treats legacy and unknown orders as Telegram — расхождение: v2 ветвится по order.platform !== "telegram" без нормализации (app/admin/admin.server.ts notifyCustomer и действие confirm, channels/telegram/handle-update.ts) — заказ с неизвестным platform уходит в ветку Zernio, а не в Telegram; функции orderPlatform нет (null в v2 исключён: orders.platform NOT NULL)
 
 ### `tests/reviews-server.test.ts`
 

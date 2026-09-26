@@ -1,4 +1,5 @@
 import { REFERRAL_PREFIX, registerReferral, type ReferralGrant } from "@/core/referrals/referrals";
+import { orderChannel } from "@/core/orders/pure";
 import {
   hasDeliveredPurchase,
   reviewableProductsForOrder,
@@ -1982,7 +1983,7 @@ async function adminDecision(
   const zernioTarget = await zernioTargetForOrder(ctx, order);
   const tellBuyer = async (text: string) => {
     if (zernioTarget) await sendToZernioTarget(zernioTarget, text);
-    else if (order.platform === "telegram")
+    else if (orderChannel(order.platform) === "telegram")
       await api.call("sendMessage", { chat_id: order.telegram_id, text });
   };
 
@@ -2021,7 +2022,7 @@ async function adminDecision(
   if (zernioTarget) {
     const { zernioSenderFor } = await import("@/channels/zernio/outbound.server");
     sender = zernioSenderFor(zernioTarget);
-  } else if (order.platform !== "telegram") {
+  } else if (orderChannel(order.platform) !== "telegram") {
     await api.call("sendMessage", {
       chat_id: chatId,
       text: `Заказ #${no} из ${order.platform}: у покупателя нет диалога для выдачи.`,

@@ -177,3 +177,19 @@ export function itemNeedsLanguageChoice(
   if (langs.length <= 1) return false;
   return parseDeliveredLanguages(item.delivered_language).size === 0;
 }
+
+/**
+ * Канал заказа по колонке `orders.platform`, как orderPlatform в v1
+ * (src/lib/order-platform.ts). CHECK на колонке нет, и у старых заказов
+ * встречаются пустые и незнакомые значения — v1 считала их заказами
+ * Telegram. Сравнение `platform !== "telegram"` отправляло такой заказ в
+ * Instagram/WhatsApp, где диалога нет, и покупатель оставался без ответа.
+ * `manual` — заказ, который продавец завёл сам: чата с покупателем нет.
+ */
+export type OrderChannel = "telegram" | "zernio" | "manual";
+
+export function orderChannel(platform: string | null | undefined): OrderChannel {
+  if (platform === "instagram" || platform === "whatsapp") return "zernio";
+  if (platform === "manual") return "manual";
+  return "telegram";
+}

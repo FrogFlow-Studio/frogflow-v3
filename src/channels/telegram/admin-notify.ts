@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { orderChannel } from "@/core/orders/pure";
 import type { TelegramApi } from "./api";
 import { adminRecipients } from "@/core/notify/recipients";
 import { displayNo, type OrderWithItems } from "@/core/orders/orders";
@@ -41,7 +42,9 @@ export async function notifyAdminNewOrder(
         ? `💳 <b>Заказ #${no} оплачен онлайн</b>\n\n`
         : `🆕 <b>Новый заказ #${no}</b>\n\n`) +
     (opts.reviewReason ? `🔎 Автопроверка чека: ${escapeHtml(opts.reviewReason)}\n\n` : "") +
-    (order.platform !== "telegram" ? `📲 Канал: ${escapeHtml(order.platform)}\n` : "") +
+    (orderChannel(order.platform) !== "telegram"
+      ? `📲 Канал: ${escapeHtml(order.platform)}\n`
+      : "") +
     (opts.proofUrl ? `🧾 Чек: ${escapeHtml(opts.proofUrl)}\n` : "") +
     `👤 ${escapeHtml(order.display_name ?? "")}${order.username ? ` (@${escapeHtml(order.username)})` : ""}\n` +
     `📞 ${escapeHtml(order.contact ?? "—")}\n` +

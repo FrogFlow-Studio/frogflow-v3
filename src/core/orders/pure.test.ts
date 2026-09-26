@@ -5,6 +5,7 @@ import {
   itemLanguages,
   itemMaterials,
   materialDownloadName,
+  orderChannel,
   withDownloadName,
 } from "./pure";
 
@@ -164,5 +165,18 @@ describe("человеческое имя файла при выдаче", () =>
     expect(materialDownloadName(c, "Пазлы", all)).toBe("Ответы.zip");
     // Один файл без имени — без номера.
     expect(materialDownloadName(a, "Пазлы", [a, c])).toBe("Пазлы.pdf");
+  });
+});
+
+describe("orderChannel: канал заказа, как orderPlatform в v1", () => {
+  it("Instagram и WhatsApp — через Zernio, ручной заказ — без канала", () => {
+    expect(orderChannel("instagram")).toBe("zernio");
+    expect(orderChannel("whatsapp")).toBe("zernio");
+    expect(orderChannel("manual")).toBe("manual");
+  });
+
+  it("всё остальное, включая пустое и незнакомое значение старых заказов, — Telegram", () => {
+    for (const p of ["telegram", "", null, undefined, "Telegram", "tg", "bot"])
+      expect(orderChannel(p)).toBe("telegram");
   });
 });

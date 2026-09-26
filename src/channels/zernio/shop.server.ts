@@ -1,4 +1,5 @@
 import { env } from "@/config/env";
+import { orderChannel } from "@/core/orders/pure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   setContactPhone,
@@ -1582,7 +1583,8 @@ async function receiveProof(s: Shop, url: string, orderId: number) {
     await notifyAdmin(res.order);
     return;
   }
-  const email = res.order.platform !== "telegram" ? res.order.customer_email?.trim() : null;
+  const email =
+    orderChannel(res.order.platform) !== "telegram" ? res.order.customer_email?.trim() : null;
   await reply(s, email ? s.m.proofReceivedEmail(no, email) : s.m.proofReceived(no), {
     force: true,
     buttons: [BTN.orders(s.m), BTN.catalog(s.m)],

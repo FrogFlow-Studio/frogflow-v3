@@ -1,4 +1,5 @@
 import { env } from "@/config/env";
+import { orderChannel } from "@/core/orders/pure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { tenantDirectory } from "@/core/tenant/resolve.server";
 import { telegramApi } from "@/channels/telegram/api";
@@ -103,7 +104,10 @@ export async function notifyCustomer(
   text: string,
 ): Promise<boolean> {
   const { sendOrEnqueue } = await import("@/core/outbox/outbox");
-  if (order.platform !== "telegram") {
+  const channel = orderChannel(order.platform);
+  // Ручной заказ продавец завёл сам — чата с покупателем нет (как в v1).
+  if (channel === "manual") return false;
+  if (channel === "zernio") {
     const { zernioTargetForOrder } = await import("@/channels/zernio/outbound.server");
     const { zernioOutboxSender } = await import("@/channels/zernio/outbox.server");
     const target = await zernioTargetForOrder(ctx, order);
@@ -120,7 +124,8 @@ export async function notifyCustomer(
       zernioOutboxSender(),
     );
   }
-  if (!ctx.tenant.telegramTokenEnc) return false;
+  // Синтетический telegram_id: в Telegram писать некуда, sendMessage даст 400.
+  if (!ctx.tenant.telegramTokenEnc || Number(order.telegram_id) <= 0) return false;
   const { telegramOutboxSender } = await import("@/channels/telegram/outbox");
   const ok = await sendOrEnqueue(
     ctx,
@@ -211,7 +216,7 @@ export async function runOrderAction(
         ask: telegramLanguageAsker(api(ctx), order.telegram_id, m),
         actor,
       };
-      if (order.platform !== "telegram") {
+      if (orderChannel(order.platform) !== "telegram") {
         const { zernioSenderFor, zernioTargetForOrder } =
           await import("@/channels/zernio/outbound.server");
         const target = await zernioTargetForOrder(ctx, order);
@@ -306,7 +311,8 @@ export async function replyAsManager(
 ): Promise<void> {
   const { getCustomerByTelegramId } = await import("@/core/customers/customers");
   const customer = await getCustomerByTelegramId(ctx, telegramId);
-  if (customer && customer.platform !== "telegram") {
+  // Как orderChannel: в Zernio только Instagram и WhatsApp, незнакомое — Telegram.
+  if (customer && (customer.platform === "instagram" || customer.platform === "whatsapp")) {
     if (!customer.zernioConversationId || !customer.zernioAccountId)
       throw new UserError(
         "err.admin.noZernioDialog",

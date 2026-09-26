@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { orderChannel } from "@/core/orders/pure";
 import { getCustomer, getCustomerByTelegramId, type Customer } from "@/core/customers/customers";
 import type { MaterialSender } from "@/core/orders/orders";
 import { liveTransport, type ZernioTransport } from "./api.server";
@@ -31,7 +32,7 @@ export async function zernioTargetForOrder(
   ctx: TenantContext,
   order: { user_key: string | null; telegram_id: number; platform: string },
 ): Promise<ZernioTarget | null> {
-  if (order.platform === "telegram") return null;
+  if (orderChannel(order.platform) === "telegram") return null;
   const customer = order.user_key
     ? await getCustomer(ctx, order.user_key)
     : await getCustomerByTelegramId(ctx, Number(order.telegram_id));

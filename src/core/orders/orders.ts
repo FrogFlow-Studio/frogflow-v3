@@ -26,6 +26,7 @@ import {
   itemAvailableLanguages,
   itemMaterials,
   itemNeedsLanguageChoice,
+  orderChannel,
   withDownloadName,
 } from "./pure";
 import { applyDiscounts, normalizeCode } from "@/core/discounts/pure";
@@ -719,7 +720,7 @@ async function finalizeDelivery(
   const referral = failed ? null : await rewardReferrerIfFirstDelivery(ctx, order.telegram_id);
   // Покупателю из Instagram/WhatsApp — копия материалов на почту: ссылки в
   // переписке живут 7 дней и теряются, письмо остаётся.
-  if (!failed && order.platform !== "telegram" && order.customer_email) {
+  if (!failed && orderChannel(order.platform) !== "telegram" && order.customer_email) {
     const fresh = await getOrder(ctx, order.id);
     const { emailOrderMaterials } = await import("./email");
     await emailOrderMaterials(ctx, fresh ?? order).catch((e) =>

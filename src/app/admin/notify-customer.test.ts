@@ -56,3 +56,22 @@ describe("notifyCustomer: заказ уведомляется в своём ка
     });
   });
 });
+
+describe("notifyCustomer: старые заказы с необычной платформой, как в v1", () => {
+  it("пустая или незнакомая платформа — это Telegram, а не Instagram/WhatsApp", async () => {
+    for (const platform of ["", "Telegram", "tg", "bot"]) {
+      expect(await notifyCustomer(ctx, order(platform), "готово")).toBe(true);
+      expect(lastTarget()).toEqual({
+        target: { channel: "telegram", chatId: "42" },
+        sender: "telegram-sender",
+      });
+    }
+    expect(zernioTargetForOrder).not.toHaveBeenCalled();
+  });
+
+  it("заказ, заведённый продавцом вручную, никуда не уведомляется: чата нет", async () => {
+    expect(await notifyCustomer(ctx, order("manual"), "готово")).toBe(false);
+    expect(sendOrEnqueue).not.toHaveBeenCalled();
+    expect(zernioTargetForOrder).not.toHaveBeenCalled();
+  });
+});
