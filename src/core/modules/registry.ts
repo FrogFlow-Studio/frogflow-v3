@@ -421,3 +421,15 @@ export const MODULE_KEYS = Object.keys(MODULES) as ModuleKey[];
 export function moduleDef(key: ModuleKey): ModuleDef {
   return MODULES[key];
 }
+
+/**
+ * Модули, которые действуют у клиента: включённые и готовые. Флаг planned-
+ * модуля в `bots.modules` (поставлен руками в базе или v1) ничего не
+ * открывает — ни страницы админки, ни поведения бота, пока модуль «в
+ * разработке». Сырые флаги остаются у оператора (проверка переезда их видит).
+ */
+export function availableModules(modules: Record<ModuleKey, boolean>): Record<ModuleKey, boolean> {
+  const out = {} as Record<ModuleKey, boolean>;
+  for (const k of MODULE_KEYS) out[k] = modules[k] === true && MODULES[k].status === "available";
+  return out;
+}

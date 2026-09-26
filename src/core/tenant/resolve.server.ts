@@ -1,6 +1,7 @@
 import { serviceDb, tenantDb, type Db } from "@/core/db/client.server";
 import { env } from "@/config/env";
 import { decryptSecret, isEncryptedSecret } from "@/core/secrets/vault";
+import { availableModules } from "@/core/modules/registry";
 import { findTenant, tenantFromRow, TENANT_COLUMNS, type TenantRow } from "./directory";
 import type { Tenant, TenantLookup } from "./types";
 
@@ -120,8 +121,13 @@ export type TenantContext = {
   };
 };
 
-export function tenantContext(tenant: Tenant): TenantContext {
+/**
+ * Контекст запроса клиента: админка, бот, витрина, кроны. Модули в нём — только
+ * готовые (availableModules): planned-флаг из базы не открывает ничего.
+ */
+export function tenantContext(raw: Tenant): TenantContext {
   const { APP_URL, SECRETS_KEY, APP_TIMEZONE } = env();
+  const tenant: Tenant = { ...raw, modules: availableModules(raw.modules) };
   return {
     tenant,
     db: tenantDb(tenant.id),

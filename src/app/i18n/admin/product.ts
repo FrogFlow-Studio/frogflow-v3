@@ -54,7 +54,7 @@ export const ru = {
   "products.onSaleLabel": "в продаже",
   "product.card.course": "Уроки курса",
   "product.courseHint":
-    "Покупатель получит уроки после оплаты. Файлы уроков не уходят обычной выдачей, их видно только в курсе.",
+    "Файл материала выше придёт сразу после оплаты, например программа курса. Уроки открываются по расписанию на странице курса, обычной выдачей их файлы не уходят.",
   "product.courseScheduleAll": "Все уроки сразу после оплаты",
   "product.courseScheduleDrip": "По одному уроку по расписанию",
   "product.courseEveryDays": "каждые, дней:",
@@ -123,7 +123,7 @@ export const kk: SectionDict<typeof ru> = {
   "products.onSaleLabel": "сатылымда",
   "product.card.course": "Курс сабақтары",
   "product.courseHint":
-    "Сатып алушы сабақтарды төлемнен кейін алады. Сабақ файлдары әдеттегі берумен жіберілмейді, олар тек курста көрінеді.",
+    "Жоғарыдағы материал файлы төлемнен кейін бірден келеді, мысалы курс бағдарламасы. Сабақтар курс бетінде кесте бойынша ашылады, олардың файлдары әдеттегі берумен жіберілмейді.",
   "product.courseScheduleAll": "Барлық сабақ төлемнен кейін бірден",
   "product.courseScheduleDrip": "Кесте бойынша бір-бірден",
   "product.courseEveryDays": "әр, күн:",
@@ -192,7 +192,7 @@ export const en: SectionDict<typeof ru> = {
   "products.onSaleLabel": "on sale",
   "product.card.course": "Course lessons",
   "product.courseHint":
-    "The buyer gets the lessons after payment. Lesson files are not sent with the regular delivery; they are only visible in the course.",
+    "The material file above arrives right after payment, for example the course outline. Lessons open on schedule on the course page; their files are not sent with the regular delivery.",
   "product.courseScheduleAll": "All lessons right after payment",
   "product.courseScheduleDrip": "One lesson at a time on a schedule",
   "product.courseEveryDays": "every, days:",
@@ -260,7 +260,7 @@ export const uz: SectionDict<typeof ru> = {
   "products.onSaleLabel": "sotuvda",
   "product.card.course": "Kurs darslari",
   "product.courseHint":
-    "Xaridor darslarni toʻlovdan keyin oladi. Dars fayllari oddiy topshirish bilan yuborilmaydi, ular faqat kursda koʻrinadi.",
+    "Yuqoridagi material fayli toʻlovdan keyin darhol keladi, masalan kurs dasturi. Darslar kurs sahifasida jadval boʻyicha ochiladi, ularning fayllari oddiy topshirish bilan yuborilmaydi.",
   "product.courseScheduleAll": "Barcha darslar toʻlovdan keyin darhol",
   "product.courseScheduleDrip": "Jadval boʻyicha bittadan",
   "product.courseEveryDays": "har, kun:",
