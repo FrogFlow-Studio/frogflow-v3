@@ -14,6 +14,10 @@ import {
 } from "./plans";
 import {
   ADDON_KEYS,
+  CUSTOM_PLAN,
+  DB_PLAN_VALUES,
+  dbPlanFor,
+  planKey,
   ADDON_MONTHLY_PRICE,
   BASE_MODULES,
   PLAN_MODULES,
@@ -358,5 +362,21 @@ describe("подсказка «предложить план выше»", () => 
     expect(
       upgradeHint("flowers.basic", usage(5, 5, { aiDialogs: 0, receiptChecks: null })),
     ).toBeNull();
+  });
+});
+
+describe("колонка bots.subscription_plan", () => {
+  // В рабочей базе CHECK пропускает только free/basic/pro/enterprise:
+  // «flowers.pro» или «custom» база отклоняет, ключ плана живёт в settings.
+  it("для любого плана пишется значение, которое принимает база", () => {
+    const keys = [CUSTOM_PLAN, ...PLAN_NICHES.flatMap((n) => PLAN_TIERS.map((t) => planKey(n, t)))];
+    for (const k of keys) expect(DB_PLAN_VALUES).toContain(dbPlanFor(k));
+  });
+
+  it("уровень переносится как есть, Business и индивидуальный — enterprise", () => {
+    expect(dbPlanFor("flowers.basic")).toBe("basic");
+    expect(dbPlanFor("digital.pro")).toBe("pro");
+    expect(dbPlanFor("confectionery.business")).toBe("enterprise");
+    expect(dbPlanFor(CUSTOM_PLAN)).toBe("enterprise");
   });
 });

@@ -22,7 +22,6 @@ const row = (over: Partial<TenantRow>): TenantRow => ({
   app_url: "https://aatech-pi.vercel.app",
   archived_at: null,
   bot_token: null,
-  subscription_plan: null,
   ...over,
 });
 
@@ -50,6 +49,15 @@ describe("tenant directory", () => {
     expect(settingsFromJson("x")).toEqual({});
     expect(settingsFromJson({ timezone: "Europe/Moscow" }).timezone).toBe("Europe/Moscow");
     expect(settingsFromJson({ timezone: "Mars/Olympus" }).timezone).toBeUndefined();
+  });
+
+  it("план клиента — из settings.billing.plan, а не из колонки subscription_plan", () => {
+    expect(tenantFromRow(row({})).plan).toBeNull();
+    const t = tenantFromRow(
+      row({ settings: { billing: { plan: "flowers.pro", period: "year" } } }),
+    );
+    expect(t.plan).toBe("flowers.pro");
+    expect(t.settings.billing?.plan).toBe("flowers.pro");
   });
 
   it("неизвестная ниша и статус читаются как digital/active", () => {

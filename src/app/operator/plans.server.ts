@@ -1,8 +1,9 @@
 /**
  * Тариф клиента в панели оператора: выбор плана, надбавки каналов, пробный
  * период, подбор плана действующему клиенту и счёт по плану. Правила — в
- * core/plans, здесь только запись: план в `bots.subscription_plan`,
- * флаги в `bots.modules`, условия в `bots.settings.billing`.
+ * core/plans, здесь только запись: ключ плана и условия — в
+ * `bots.settings.billing`, уровень — в `bots.subscription_plan` (там
+ * допустимы только free/basic/pro/enterprise), флаги — в `bots.modules`.
  */
 import { serviceDb } from "@/core/db/client.server";
 import type { Json } from "@/core/db-types";
@@ -22,6 +23,7 @@ import {
   ADDON_MONTHLY_PRICE,
   CUSTOM_PLAN,
   PLAN_VERSION,
+  dbPlanFor,
   TRIAL_TIER,
   nicheForVertical,
   parsePlan,
@@ -52,6 +54,20 @@ async function load(botId: string): Promise<Tenant> {
   const t = (await tenantDirectory(true)).find((x) => x.id === botId);
   if (!t) throw new Error("Клиент не найден");
   return t;
+}
+
+/**
+ * Записать план: ключ — в `settings.billing.plan`, в `bots.subscription_plan` —
+ * допустимый базой уровень (`dbPlanFor`). Колонка первой: если база её
+ * отклонит, настройки не меняются.
+ */
+async function writePlan(botId: string, plan: string, billing: BillingSettings): Promise<void> {
+  const { error } = await serviceDb()
+    .from("bots")
+    .update({ subscription_plan: dbPlanFor(plan) })
+    .eq("id", botId);
+  if (error) throw new Error(error.message);
+  await patchTenantSettings(botId, { billing: { ...billing, plan } });
 }
 
 /** Клиент для изменения плана: клиента v1 не трогаем (planWriteBlock). */
@@ -160,12 +176,7 @@ export async function setPlan(
     addons: input.addons.filter((a) => a in ADDONS),
     plan_version: PLAN_VERSION,
   };
-  const { error } = await serviceDb()
-    .from("bots")
-    .update({ subscription_plan: plan })
-    .eq("id", botId);
-  if (error) throw new Error(error.message);
-  await patchTenantSettings(botId, { billing });
+  await writePlan(botId, plan, billing);
   await syncModules({ ...t, plan }, billing);
   invalidateTenantDirectory();
   await logEvent(
@@ -195,12 +206,7 @@ export async function adoptSuggestedPlan(botId: string, actor: string): Promise<
     period: t.settings.billing?.period ?? "month",
     plan_version: PLAN_VERSION,
   };
-  const { error } = await serviceDb()
-    .from("bots")
-    .update({ subscription_plan: plan })
-    .eq("id", botId);
-  if (error) throw new Error(error.message);
-  await patchTenantSettings(botId, { billing });
+  await writePlan(botId, plan, billing);
   await syncModules({ ...t, plan }, billing);
   invalidateTenantDirectory();
   await logEvent(botId, "meta", { plan, adopted: true, grandfathered: s.grandfathered }, actor);
@@ -224,12 +230,7 @@ export async function startTrial(botId: string, actor: string): Promise<{ until:
     period: t.settings.billing?.period ?? "month",
     plan_version: PLAN_VERSION,
   };
-  const { error } = await serviceDb()
-    .from("bots")
-    .update({ subscription_plan: plan })
-    .eq("id", botId);
-  if (error) throw new Error(error.message);
-  await patchTenantSettings(botId, { billing });
+  await writePlan(botId, plan, billing);
   await syncModules({ ...t, plan }, billing);
   const { addPayment } = await import("./billing.server");
   await addPayment(

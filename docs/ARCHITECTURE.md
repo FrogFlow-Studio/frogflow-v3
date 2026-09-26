@@ -154,7 +154,9 @@ v1 выпускала на каждый деплой JWT с `role: tenant_bot` �
   `process.env.VERTICAL` и `if (niche === …)` в общем коде.
 
 Тарифы (`src/core/plans`) лежат поверх модулей и схему не меняют. План —
-пара «ниша × уровень» (`flowers.pro`) в `bots.subscription_plan`; `custom` —
+пара «ниша × уровень» (`flowers.pro`) в `bots.settings.billing.plan`; колонка
+`bots.subscription_plan` пропускает только free/basic/pro/enterprise, туда
+пишется уровень (`dbPlanFor`: Business и `custom` — enterprise); `custom` —
 договорные условия (BOVI), модули вручную; пусто — клиент ещё на старой
 схеме, модули не трогаются. Смена плана пересчитывает `bots.modules`
 (план ∪ надбавки каналов ∪ сохранённые модули), поэтому все проверки

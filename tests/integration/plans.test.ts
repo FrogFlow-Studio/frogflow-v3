@@ -9,15 +9,24 @@ import { servedByV2 } from "@/core/tenant/directory";
 import { setPlan, toggleModuleOnPlan, getPlanView } from "@/app/operator/plans.server";
 
 /**
- * Тариф на живой базе, только «Демо-тестер»: план пишется в
- * bots.subscription_plan, флаги модулей пересчитываются, модуль сверх плана
- * сохраняется бесплатно. Строка клиента возвращается как была.
+ * Тариф на живой базе, только «Демо-тестер»: ключ плана пишется в
+ * settings.billing.plan, в bots.subscription_plan — допустимый базой уровень,
+ * флаги модулей пересчитываются, модуль сверх плана сохраняется бесплатно. Строка клиента возвращается как была.
  */
 let before: { modules: Json | null; subscription_plan: string | null; billing: Json | undefined };
 
 async function tenant() {
   invalidateTenantDirectory();
   return requireTenant({ by: "id", value: DEMO_BOT });
+}
+
+async function dbPlan() {
+  const { data } = await serviceDb()
+    .from("bots")
+    .select("subscription_plan")
+    .eq("id", DEMO_BOT)
+    .single();
+  return data?.subscription_plan ?? null;
 }
 
 describe.skipIf(!liveReady)("тарифы на демо-клиенте", () => {
@@ -66,6 +75,7 @@ describe.skipIf(!liveReady)("тарифы на демо-клиенте", () => {
     expect(t1.plan).toBe(`${niche}.basic`);
     expect(t1.modules).toEqual(effectiveModules(parsePlan(t1.plan), { addons: ["instagram"] }));
     expect(t1.modules.instagram).toBe(true);
+    expect(await dbPlan()).toBe("basic");
 
     await toggleModuleOnPlan(t1, "winback", true, "test");
     const t2 = await tenant();
@@ -76,5 +86,13 @@ describe.skipIf(!liveReady)("тарифы на демо-клиенте", () => {
     const view = await getPlanView(DEMO_BOT);
     expect(view.usage.limits).toEqual({ aiDialogs: 300, receiptChecks: 200 });
     expect(view.outsidePlan).toEqual([]);
+
+    // Business и индивидуальные условия: база принимает только free/basic/pro/enterprise.
+    await setPlan(DEMO_BOT, { tier: "business", period: "month", addons: [] }, "test");
+    expect(await dbPlan()).toBe("enterprise");
+    expect((await tenant()).plan).toBe(`${niche}.business`);
+    await setPlan(DEMO_BOT, { tier: "custom", period: "month", addons: [] }, "test");
+    expect(await dbPlan()).toBe("enterprise");
+    expect((await tenant()).plan).toBe("custom");
   });
 });

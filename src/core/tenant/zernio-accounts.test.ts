@@ -14,7 +14,6 @@ const row = (id: string, ids: string[], archived = false): TenantRow => ({
   app_url: null,
   archived_at: archived ? "2026-01-01T00:00:00Z" : null,
   bot_token: null,
-  subscription_plan: null,
 });
 
 const a = tenantFromRow(row("a", ["ig-a", "wa-a"]));

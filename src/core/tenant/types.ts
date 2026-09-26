@@ -58,11 +58,13 @@ export type TenantSettings = {
   on_overdue?: "warn" | "suspend";
   warn_days_before?: number;
   grace_days?: number;
-  /** Тариф сверх `bots.subscription_plan` (core/plans): надбавки, льготы, лимиты. */
+  /** Тариф (core/plans): ключ плана, надбавки, льготы, лимиты. */
   billing?: BillingSettings;
 };
 
 export type BillingSettings = {
+  /** Ключ плана (`flowers.pro`) или `custom`; в `bots.subscription_plan` — только уровень. */
+  plan?: string;
   /** Каналы, докупленные сверх плана (core/plans/registry ADDONS). */
   addons?: Array<"whatsapp" | "instagram">;
   /** Модули, купленные по старой схеме или подаренные оператором: включены бесплатно сверх плана. */
@@ -111,7 +113,7 @@ export type Tenant = {
   archived: boolean;
   /** Зашифрованный токен Telegram (enc:v1:…) или null, если бот в Telegram не подключён. */
   telegramTokenEnc: string | null;
-  /** `bots.subscription_plan`: ключ плана (`flowers.pro`), `custom` или null — модули вручную. */
+  /** `settings.billing.plan`: ключ плана (`flowers.pro`), `custom` или null — модули вручную. */
   plan: string | null;
 };
 

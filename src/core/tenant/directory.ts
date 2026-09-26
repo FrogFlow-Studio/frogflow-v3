@@ -8,7 +8,7 @@ type BotRow = Database["public"]["Tables"]["bots"]["Row"];
 
 /** Колонки `bots`, которые нужны справочнику арендаторов. */
 export const TENANT_COLUMNS =
-  "id, bot_name, status, vertical, modules, settings, paused_message, owner_telegram_id, app_url, archived_at, bot_token, subscription_plan" as const;
+  "id, bot_name, status, vertical, modules, settings, paused_message, owner_telegram_id, app_url, archived_at, bot_token" as const;
 
 export type TenantRow = Pick<
   BotRow,
@@ -23,7 +23,6 @@ export type TenantRow = Pick<
   | "app_url"
   | "archived_at"
   | "bot_token"
-  | "subscription_plan"
 >;
 
 function asStatus(value: string | null): BotStatus {
@@ -127,6 +126,7 @@ function billingFromJson(json: unknown): BillingSettings | undefined {
       ? (b.ai_quota as Record<string, unknown>)
       : null;
   return {
+    plan: str(b.plan),
     addons: Array.isArray(b.addons)
       ? b.addons.filter((a): a is "whatsapp" | "instagram" => a === "whatsapp" || a === "instagram")
       : undefined,
@@ -158,19 +158,21 @@ export function servedByV2(t: Pick<Tenant, "settings">): boolean {
 }
 
 export function tenantFromRow(row: TenantRow): Tenant {
+  const settings = settingsFromJson(row.settings);
   return {
     id: row.id,
     name: row.bot_name,
     status: asStatus(row.status),
     vertical: asVertical(row.vertical),
     modules: modulesFromJson(row.modules),
-    settings: settingsFromJson(row.settings),
+    settings,
     pausedMessage: row.paused_message,
     ownerTelegramId: row.owner_telegram_id,
     appUrl: row.app_url,
     archived: row.archived_at != null,
     telegramTokenEnc: row.bot_token,
-    plan: row.subscription_plan ?? null,
+    // Ключ плана — в settings: колонка subscription_plan хранит только уровень (core/plans).
+    plan: settings.billing?.plan ?? null,
   };
 }
 

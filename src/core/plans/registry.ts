@@ -3,8 +3,10 @@ import type { VerticalKey } from "@/core/verticals/registry";
 
 /**
  * Тарифы платформы: подключение один раз и дальше подписка на план. План —
- * пара «ниша × уровень» (`flowers.pro`), ключ пишется в существующую колонку
- * `bots.subscription_plan`. Модули остаются внутренними флагами «функция
+ * пара «ниша × уровень» (`flowers.pro`), ключ лежит в `bots.settings.billing.plan`.
+ * Колонка `bots.subscription_plan` принимает только free/basic/pro/enterprise
+ * (ограничение базы, схему не меняем) — туда пишется уровень (`dbPlanFor`).
+ * Модули остаются внутренними флагами «функция
  * включена»: план лишь решает, какие флаги стоят в `bots.modules`, так что
  * все проверки `ctx.tenant.modules.*` в коде работают как раньше, и v1,
  * читающий ту же колонку, тоже.
@@ -183,7 +185,26 @@ export function planKey(niche: PlanNiche, tier: PlanTier): PlanKey {
 export type ParsedPlan =
   { kind: "tier"; key: PlanKey; niche: PlanNiche; tier: PlanTier } | { kind: "custom" } | null;
 
-/** Разбор `bots.subscription_plan`; незнакомое значение (в т.ч. из v1) — null. */
+/**
+ * Значения, которые база принимает в `bots.subscription_plan` (CHECK в схеме
+ * общей с v1 базы). Ключ плана с нишей туда не помещается.
+ */
+export const DB_PLAN_VALUES = ["free", "basic", "pro", "enterprise"] as const;
+export type DbPlan = (typeof DB_PLAN_VALUES)[number];
+
+const DB_PLAN_BY_TIER: Record<PlanTier, DbPlan> = {
+  basic: "basic",
+  pro: "pro",
+  business: "enterprise",
+};
+
+/** Что записать в `bots.subscription_plan` для плана: уровень; индивидуальные условия — enterprise. */
+export function dbPlanFor(plan: string): DbPlan {
+  const p = parsePlan(plan);
+  return p?.kind === "tier" ? DB_PLAN_BY_TIER[p.tier] : "enterprise";
+}
+
+/** Разбор ключа плана (`settings.billing.plan`); незнакомое значение — null. */
 export function parsePlan(raw: string | null | undefined): ParsedPlan {
   const v = (raw ?? "").trim();
   if (!v) return null;

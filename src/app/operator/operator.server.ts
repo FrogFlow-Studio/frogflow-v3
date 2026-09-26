@@ -117,7 +117,7 @@ export type ClientView = {
   adminUsername: string | null;
   modules: Record<ModuleKey, boolean>;
   modulesOn: number;
-  /** `bots.subscription_plan` — ключ плана, `custom` или null (core/plans). */
+  /** `settings.billing.plan` — ключ плана, `custom` или null (core/plans). */
   plan: string | null;
   pausedMessage: string | null;
   appUrl: string | null;
