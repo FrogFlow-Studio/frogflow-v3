@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { serviceDb } from "@/core/db/client.server";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { readReceiptText } from "@/core/receipts/verify.server";
-import { checkInvoiceReceipt } from "./invoice-check";
+import { checkInvoiceReceipt, recipientNames } from "./invoice-check";
 import type { OpenInvoice } from "./invoices";
 
 /**
@@ -62,7 +62,7 @@ export async function verifyInvoiceProof(
   });
   // Без получателя автоматически не принимаем — и не тратим распознавание.
   const recipient = await payoutRecipient();
-  if (!recipient)
+  if (!recipientNames(recipient).length)
     return fail("Получатель платежей не указан в настройках оператора — чек проверяет оператор.");
   const sameFile = await seenElsewhere("proof_hash", hash, invoice.id);
   if (sameFile) return fail(sameFile);

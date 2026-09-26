@@ -15,9 +15,11 @@ import {
  *    заказов, и сверх того банк прямо пишет, что платёж проведён: скрин
  *    самого счёта со словом «оплата» чеком не считается.
  * 2. Сумма счёта есть в чеке точно, без допуска ±30%, как у заказов.
- * 3. Получатель, как оператор его записал («Яков В.»), есть в тексте. Не
- *    задан — автоматически не принимаем: иначе подписку продлил бы перевод
- *    на ту же сумму кому угодно.
+ * 3. Получатель, как оператор его записал («Яков В.»), есть в тексте. Имён
+ *    может быть несколько через «;» или с новой строки: в чеке перевода —
+ *    имя человека, в чеке оплаты по ссылке Kaspi Pay — название магазина.
+ *    Не задан — автоматически не принимаем: иначе подписку продлил бы
+ *    перевод на ту же сумму кому угодно.
  * 4. Если в чеке есть даты, хотя бы одна не раньше дня выставления счёта:
  *    старый чек за другую оплату не подходит.
  * 5. В чеке есть номер операции (квитанции) — по нему ловится повтор: новый
@@ -42,6 +44,23 @@ export function receiptOperationId(text: string): string | null {
 }
 
 const norm = (s: string) => s.toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
+
+/** Имена получателя из настройки оператора: через «;» или с новой строки. */
+export function recipientNames(raw: string | null | undefined): string[] {
+  return (raw ?? "")
+    .split(/[;\n]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Слова Kaspi о проведённой оплате по ссылке или QR Kaspi Pay («Платёж
+ * успешно совершён», «Покупка успешно совершена») — в общем списке их нет,
+ * чтобы не ослаблять проверку чеков покупателей.
+ */
+const KASPI_PAY_DONE = ["успешно совершен", "оплата прошла успешно"];
+const completed = (text: string) =>
+  looksLikeCompletedPayment(text) || KASPI_PAY_DONE.some((p) => norm(text).includes(p));
 
 /** Даты чека: 26.09.2026, 26/09/2026, 2026-09-26 → ISO-день. */
 export function receiptDates(text: string): string[] {
@@ -68,7 +87,7 @@ export function checkInvoiceReceipt(
     currency: string;
     /** Когда выставлен счёт (ISO). */
     createdAt: string;
-    /** Как получатель выглядит в чеке; пусто — чек идёт оператору. */
+    /** Как получатель выглядит в чеке (несколько — через «;»); пусто — чек идёт оператору. */
     recipient?: string | null;
   },
 ): InvoiceReceiptVerdict {
@@ -76,7 +95,7 @@ export function checkInvoiceReceipt(
   const no = (detail: string): InvoiceReceiptVerdict => ({ ok: false, detail, operationId });
   const base = analyzeReceiptText(text, invoice.amount, invoice.currency);
   if (!base.ok) return no(base.detail);
-  if (!looksLikeCompletedPayment(text)) return no("В чеке нет слов банка о проведённом платеже.");
+  if (!completed(text)) return no("В чеке нет слов банка о проведённом платеже.");
   const exact = amountsForCurrency(text, invoice.currency.toUpperCase()).some(
     (a) => Math.abs(a - invoice.amount) < 1,
   );
@@ -84,11 +103,11 @@ export function checkInvoiceReceipt(
     return no(
       `В чеке нет суммы счёта ${invoice.amount} ${invoice.currency} точно — нужна ручная проверка.`,
     );
-  const recipient = invoice.recipient?.trim();
-  if (!recipient)
+  const names = recipientNames(invoice.recipient);
+  if (!names.length)
     return no("Получатель платежей не указан в настройках оператора — чек проверяет оператор.");
-  if (!norm(text).includes(norm(recipient)))
-    return no(`В чеке не найден получатель «${recipient}».`);
+  if (!names.some((n) => norm(text).includes(norm(n))))
+    return no(`В чеке не найден получатель «${names.join("» или «")}».`);
   const dates = receiptDates(text);
   const issued = invoice.createdAt.slice(0, 10);
   if (dates.length && dates[dates.length - 1]! < issued)

@@ -76,3 +76,29 @@ describe("автопроверка чека за подписку", () => {
     ]);
   });
 });
+
+describe("чек оплаты по ссылке Kaspi Pay", () => {
+  const pay = (sum: string, shop = "FrogFlow") =>
+    `Kaspi.kz\nПлатёж успешно совершён\n${sum}\nМагазин ${shop}\n27.09.2026 14:10\nКвитанция № QR 12 345 678`;
+  const both = { ...invoice, recipient: "Яков В.; FrogFlow" };
+
+  it("название магазина из списка получателей — принят", () => {
+    expect(checkInvoiceReceipt(pay("9 900 ₸"), both)).toEqual({
+      ok: true,
+      operationId: "QR12345678",
+    });
+  });
+
+  it("перевод на имя из того же списка тоже принят", () => {
+    expect(checkInvoiceReceipt(kaspi("9 900 ₸"), both).ok).toBe(true);
+  });
+
+  it("чужой магазин — ручная проверка", () => {
+    const r = checkInvoiceReceipt(pay("9 900 ₸", "Другой ИП"), both);
+    expect(r).toMatchObject({ ok: false, detail: expect.stringContaining("FrogFlow") });
+  });
+
+  it("только разделители вместо имени — как пустой получатель", () => {
+    expect(checkInvoiceReceipt(pay("9 900 ₸"), { ...invoice, recipient: " ; \n" }).ok).toBe(false);
+  });
+});

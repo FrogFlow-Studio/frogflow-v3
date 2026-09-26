@@ -516,7 +516,7 @@ export const setPayoutRequisitesFn = createServerFn({ method: "POST" })
     z
       .object({
         requisites: z.string().max(2000),
-        recipient: z.string().max(200),
+        recipient: z.string().max(500),
         kaspiLink: z.string().max(500),
       })
       .parse(d),

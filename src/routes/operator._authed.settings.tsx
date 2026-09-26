@@ -183,13 +183,24 @@ function RequisitesCard({
         />
         <Field
           label="Получатель, как он написан в чеке Kaspi"
-          hint="Пока поле пустое, каждый чек ждёт вашей проверки. Заполненное: чек с этим именем, точной суммой и номером операции продлевает подписку сам."
+          hint="Пока поле пустое, каждый чек ждёт вашей проверки. Заполненное: чек с этим именем, точной суммой и номером операции продлевает подписку сам. Если принимаете и перевод, и оплату по ссылке Kaspi Pay, впишите оба имени через «;»: имя в чеке перевода и название магазина в чеке Kaspi Pay."
         >
           <input
             className="input"
             name="recipient"
             defaultValue={recipient}
-            placeholder="Яков В."
+            placeholder="Яков В.; FrogFlow"
+          />
+        </Field>
+        <Field
+          label="Ссылка Kaspi Pay для оплаты подписки"
+          hint="Создаётся в вашем Kaspi Pay. Владелец по кнопке «Оплатить» получает её и QR с ней, вводит сумму счёта и платит. Пусто — только перевод по реквизитам."
+        >
+          <input
+            className="input"
+            name="kaspiLink"
+            defaultValue={kaspiLink}
+            placeholder="https://pay.kaspi.kz/pay/…"
           />
         </Field>
         <Field
