@@ -6,6 +6,7 @@ import { getSetting, getSettings, trySetSetting } from "@/core/settings/settings
 import {
   COOLDOWN_SECONDS,
   DAILY_LIMIT,
+  DAILY_USD_LIMIT,
   MAX_CANDIDATES,
   MAX_QUERY_LEN,
   SMART_SEARCH_MODEL,
@@ -15,14 +16,16 @@ import {
   parseDailyCount,
   parseSmartSearchIds,
   parseSpend,
+  spendExhausted,
+  todayUtc,
   type Candidate,
 } from "./smart-pure";
 
 /**
  * Умный поиск — фолбэк, когда обычный поиск ничего не нашёл. У каждого вызова
  * реальная стоимость (Anthropic API), поэтому: отдельный переключатель
- * продавца (smart_search_enabled), личный кулдаун покупателя и дневной
- * потолок на бота. Модель — Haiku 4.5, как в v1: счёт выставляется клиенту.
+ * продавца (smart_search_enabled), личный кулдаун покупателя, дневной
+ * потолок запросов и дневной предел расходов в долларах на бота. Модель — Haiku 4.5, как в v1: счёт выставляется клиенту.
  */
 export const KEYS = {
   enabled: "smart_search_enabled",
@@ -44,8 +47,9 @@ export async function smartSearchEnabled(ctx: TenantContext): Promise<boolean> {
 }
 
 /**
- * Оба предохранителя разом: кулдаун покупателя (метка в bot_users.state) и
- * дневной счётчик бота. Если хоть один не пройден — вызова модели не будет.
+ * Все предохранители разом: кулдаун покупателя (метка в bot_users.state),
+ * дневной счётчик и дневной расход бота. Если хоть один не пройден — вызова
+ * модели не будет.
  */
 export async function consumeQuota(ctx: TenantContext, customer: Customer): Promise<boolean> {
   const now = Date.now();
@@ -57,7 +61,19 @@ export async function consumeQuota(ctx: TenantContext, customer: Customer): Prom
     .update({ state: { ...customer.state, last_smart_search_at: new Date(now).toISOString() } })
     .eq("user_key", customer.userKey);
 
-  const count = parseDailyCount(await getSetting(ctx, KEYS.dailyCount));
+  const s = await getSettings(ctx, [KEYS.dailyCount, KEYS.dailySpend, KEYS.lastError]);
+  if (spendExhausted(s[KEYS.dailySpend])) {
+    // Продавец видит причину рядом с переключателем; пишем раз в день.
+    const today = todayUtc();
+    if (!s[KEYS.lastError]?.startsWith(today))
+      await trySetSetting(
+        ctx,
+        KEYS.lastError,
+        `${new Date().toISOString()} — дневной предел расходов ($${DAILY_USD_LIMIT}) исчерпан, до полуночи UTC умный поиск выключен`,
+      );
+    return false;
+  }
+  const count = parseDailyCount(s[KEYS.dailyCount]);
   if (count >= DAILY_LIMIT) return false;
   await trySetSetting(ctx, KEYS.dailyCount, formatDailyCount(count + 1));
   return true;
@@ -68,7 +84,7 @@ async function recordSpend(
   usage: { inputTokens: number; outputTokens: number },
 ) {
   const s = await getSettings(ctx, [KEYS.dailySpend, KEYS.lifetimeSpend]);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayUtc();
   const dailyRaw = s[KEYS.dailySpend];
   const daily = dailyRaw?.includes(`"date":"${today}"`) ? parseSpend(dailyRaw) : parseSpend(null);
   await trySetSetting(

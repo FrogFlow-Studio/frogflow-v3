@@ -5,6 +5,12 @@
 
 export const SMART_SEARCH_MODEL = "claude-haiku-4-5";
 export const DAILY_LIMIT = 200;
+/**
+ * Дневной предел расходов на бота в долларах. Счётчик запросов один не
+ * спасает: запрос по каталогу в 600 товаров стоит ~$0.1, и 200 таких — уже
+ * $20 в день на ключе платформы.
+ */
+export const DAILY_USD_LIMIT = 3;
 export const COOLDOWN_SECONDS = 45;
 export const MAX_CANDIDATES = 600;
 export const MAX_QUERY_LEN = 200;
@@ -78,6 +84,20 @@ export function parseSpend(raw: string | null | undefined): Spend {
   } catch {
     return empty;
   }
+}
+
+/** Расход за сегодня (UTC) из smart_search_daily_spend; другой день или мусор — 0. */
+export function dailySpendUsd(raw: string | null | undefined, today = todayUtc()): number {
+  try {
+    const p = JSON.parse(raw ?? "") as { date?: unknown };
+    return p?.date === today ? parseSpend(raw).usd : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function spendExhausted(raw: string | null | undefined, today = todayUtc()): boolean {
+  return dailySpendUsd(raw, today) >= DAILY_USD_LIMIT;
 }
 
 export function addSpend(prev: Spend, u: TokenUsage): Spend {

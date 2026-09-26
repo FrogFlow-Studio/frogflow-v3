@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  DAILY_USD_LIMIT,
   addSpend,
+  dailySpendUsd,
   estimateUsd,
   formatDailyCount,
   parseDailyCount,
   parseSmartSearchIds,
   parseSpend,
+  spendExhausted,
 } from "./smart-pure";
 
 describe("parseSmartSearchIds", () => {
@@ -35,5 +38,32 @@ describe("счётчики и расход", () => {
     expect(s.usd).toBeCloseTo(0.0105, 6);
     expect(parseSpend(JSON.stringify(s))).toEqual(s);
     expect(parseSpend("{oops")).toEqual({ count: 0, inputTokens: 0, outputTokens: 0, usd: 0 });
+  });
+});
+
+describe("дневной предел расходов в долларах", () => {
+  const D = "2026-09-26";
+  const day = (usd: number, date = D) =>
+    JSON.stringify({ count: 3, inputTokens: 1, outputTokens: 1, usd, date });
+
+  it("считается только сегодняшний расход, мусор и старый день — ноль", () => {
+    expect(dailySpendUsd(day(1.25), D)).toBe(1.25);
+    expect(dailySpendUsd(day(9, "2026-09-25"), D)).toBe(0);
+    expect(dailySpendUsd(JSON.stringify({ usd: 9 }), D)).toBe(0);
+    expect(dailySpendUsd("{oops", D)).toBe(0);
+    expect(dailySpendUsd(null, D)).toBe(0);
+  });
+
+  it("предел закрывает вызовы модели до полуночи UTC", () => {
+    expect(spendExhausted(day(DAILY_USD_LIMIT - 0.01), D)).toBe(false);
+    expect(spendExhausted(day(DAILY_USD_LIMIT), D)).toBe(true);
+    expect(spendExhausted(day(DAILY_USD_LIMIT * 10, "2026-09-25"), D)).toBe(false);
+  });
+
+  it("200 запросов по самому большому каталогу не проходят под пределом", () => {
+    // 600 кандидатов ≈ 90 тыс. токенов ввода: без предела в долларах
+    // дневной потолок по числу запросов стоил бы десятки долларов.
+    const worst = estimateUsd({ inputTokens: 90_000, outputTokens: 2_000 });
+    expect(worst * 200).toBeGreaterThan(DAILY_USD_LIMIT);
   });
 });
