@@ -1,4 +1,5 @@
 import { serviceDb } from "@/core/db/client.server";
+import { isInternalTenant } from "@/core/tenant/internal";
 import { tenantDirectory } from "@/core/tenant/resolve.server";
 import { TIER_TITLES, parsePlan } from "@/core/plans/registry";
 import {
@@ -35,13 +36,16 @@ const ORDER: Record<RevenueState, number> = { overdue: 0, trial: 1, paying: 2, n
 
 export async function revenueReport(now = new Date()): Promise<RevenueReport> {
   const today = now.toISOString().slice(0, 10);
-  const tenants = (await tenantDirectory(true)).filter((t) => !t.archived);
+  // «Демо-тестер» и другие стенды — не выручка.
+  const tenants = (await tenantDirectory(true)).filter(
+    (t) => !t.archived && !isInternalTenant(t.id),
+  );
   const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1)).toISOString();
   const [bots, payments] = await Promise.all([
     serviceDb().from("bots").select("id, subscription_expires_at"),
     serviceDb()
       .from("subscription_payments")
-      .select("paid_at, amount, currency")
+      .select("bot_id, paid_at, amount, currency")
       .gte("paid_at", since)
       .limit(10_000),
   ]);
@@ -78,7 +82,9 @@ export async function revenueReport(now = new Date()): Promise<RevenueReport> {
       today,
     ),
     cash: cashByMonth(
-      (payments.data ?? []).map((p) => ({ ...p, amount: Number(p.amount) })),
+      (payments.data ?? [])
+        .filter((p) => !isInternalTenant(p.bot_id))
+        .map((p) => ({ ...p, amount: Number(p.amount) })),
       today,
     ),
     clients,
