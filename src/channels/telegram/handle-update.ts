@@ -84,6 +84,7 @@ import { shopAdminIds } from "@/core/notify/recipients";
 import { notifyAdminNewOrder } from "./admin-notify";
 import { notifyAdminsHtml, notifyDeliveryFailure } from "./notify";
 import { telegramLanguageAsker, telegramMaterialSender } from "./deliver";
+import { legacyLangItem, parseLegacyLang, parseSearchMore, searchPage } from "./legacy";
 import { findValidGift, findValidPromoCode } from "@/core/discounts/discounts";
 import { normalizeCode } from "@/core/discounts/pure";
 import { claimHandoff, HANDOFF_PREFIX } from "@/core/storefront/handoff";
@@ -722,20 +723,39 @@ async function sendProductCard(b: Bot, p: Product) {
   }
 }
 
-async function showSearch(b: Bot, query: string) {
+/**
+ * Поиск по каталогу страницами по PAGE. Запрос запоминается в
+ * state.last_search: в callback `searchmore:<сдвиг>` он не помещается
+ * (64 байта), формат общий с v1 — её кнопки в старых чатах тоже работают.
+ */
+async function showSearch(b: Bot, query: string, offset = 0) {
   const found = await searchProducts(b.ctx, query);
-  if (found.length === 0) {
-    const smart = await smartSearchFallback(b, query);
-    if (smart.length === 0) {
-      await send(b, b.m.searchNothing(escapeHtml(query)));
-      return;
-    }
-    await send(b, b.m.smartSearchResults(escapeHtml(query), smart.length));
-    for (const p of smart.slice(0, PAGE)) await sendProductCard(b, p);
+  if (b.customer.state.last_search !== query)
+    b.customer = await setState(b.ctx, b.customer, { ...b.customer.state, last_search: query });
+  if (found.length > 0) {
+    const page = searchPage(found.length, offset, PAGE);
+    if (page.from === 0) await send(b, b.m.searchResults(escapeHtml(query), found.length));
+    for (const p of found.slice(page.from, page.to)) await sendProductCard(b, p);
+    if (page.next !== null)
+      await send(b, b.m.searchShown(page.to, found.length), {
+        reply_markup: {
+          inline_keyboard: [[{ text: b.m.showMore, callback_data: `searchmore:${page.next}` }]],
+        },
+      });
     return;
   }
-  await send(b, b.m.searchResults(escapeHtml(query), found.length));
-  for (const p of found.slice(0, PAGE)) await sendProductCard(b, p);
+  // Следующая страница без результатов (каталог изменился) — не звать LLM повторно.
+  if (offset > 0) {
+    await send(b, b.m.searchNothing(escapeHtml(query)));
+    return;
+  }
+  const smart = await smartSearchFallback(b, query);
+  if (smart.length === 0) {
+    await send(b, b.m.searchNothing(escapeHtml(query)));
+    return;
+  }
+  await send(b, b.m.smartSearchResults(escapeHtml(query), smart.length));
+  for (const p of smart.slice(0, PAGE)) await sendProductCard(b, p);
 }
 
 /** Умный поиск (LLM) — только когда обычный ничего не нашёл и продавец его включил. */
@@ -1527,6 +1547,26 @@ async function showMyOrders(b: Bot) {
   );
 }
 
+/** Выдать позицию на выбранном языке; последний ответ закрывает заказ. */
+async function deliverInLanguage(b: Bot, orderId: number, itemId: string, lang: Locale) {
+  const r = await completeLanguageDelivery(
+    b.ctx,
+    { orderId, itemId, lang, telegramId: b.customer.telegramId },
+    telegramMaterialSender(b.api, b.chatId, b.m),
+  );
+  if (r.status !== "sent") {
+    if (r.status === "already") await send(b, b.m.fileAlreadySent);
+    else if (r.status === "failed") await send(b, b.m.proofFailed);
+    return;
+  }
+  if (r.completed) {
+    const order = await getOrder(b.ctx, orderId);
+    if (order) await send(b, b.m.orderDelivered(displayNo(order)));
+    if (r.pointsEarned > 0) await send(b, b.m.pointsEarned(r.pointsEarned));
+    await notifyReferral(b.ctx, b.api, r.referral);
+  }
+}
+
 // ── callback-кнопки ───────────────────────────────────────────────────
 
 const NAV_NEEDS_COUNTRY = /^(cat:|prod:|checkout$|cart:show$)/;
@@ -1596,23 +1636,24 @@ async function handleCallback(
   if (data.startsWith("lang:")) {
     const [, orderIdRaw, itemId, lang] = data.split(":");
     if (!orderIdRaw || !itemId || !isLocale(lang)) return;
-    const r = await completeLanguageDelivery(
-      ctx,
-      { orderId: Number(orderIdRaw), itemId, lang, telegramId: customer.telegramId },
-      telegramMaterialSender(api, chatId, b.m),
-    );
-    if (r.status !== "sent") {
-      if (r.status === "already") await send(b, b.m.fileAlreadySent);
-      else if (r.status === "failed") await send(b, b.m.proofFailed);
-      return;
-    }
-    if (r.completed) {
-      const order = await getOrder(ctx, Number(orderIdRaw));
-      if (order) await send(b, b.m.orderDelivered(displayNo(order)));
-      if (r.pointsEarned > 0) await send(b, b.m.pointsEarned(r.pointsEarned));
-      await notifyReferral(ctx, api, r.referral);
-    }
-    return;
+    return deliverInLanguage(b, Number(orderIdRaw), itemId, lang);
+  }
+  // Та же кнопка, нарисованная прежней платформой до переезда клиента:
+  // позиция в ней — индекс, а не id (channels/telegram/legacy).
+  if (data.startsWith("lang_")) {
+    const legacy = parseLegacyLang(data);
+    if (!legacy) return;
+    const order = await getOrder(ctx, legacy.orderId);
+    if (!order || order.telegram_id !== customer.telegramId) return;
+    const item = legacyLangItem(order.order_items, legacy.index);
+    if (!item) return;
+    return deliverInLanguage(b, legacy.orderId, item.id, legacy.lang);
+  }
+  // «Показать ещё» под результатами поиска: запрос — в state.last_search.
+  if (data.startsWith("searchmore:")) {
+    const query = customer.state.last_search;
+    if (typeof query !== "string" || !query) return send(b, b.m.searchExpired);
+    return showSearch(b, query, parseSearchMore(data));
   }
   if (data.startsWith("setcountry:") || data.startsWith("country:")) {
     const forCheckout = data.startsWith("country:");

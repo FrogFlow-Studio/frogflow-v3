@@ -121,6 +121,10 @@ export type Msg = {
   searchPrompt: string;
   searchNothing: (q: string) => string;
   searchResults: (q: string, n: number) => string;
+  /** Под страницей результатов, рядом с кнопкой «Показать ещё» (`searchmore:`). */
+  searchShown: (shown: number, total: number) => string;
+  /** `searchmore:` без запомненного запроса. */
+  searchExpired: string;
   myOrdersEmpty: string;
   myOrdersHeader: string;
   resendBtn: string;
@@ -317,6 +321,8 @@ const ru: Msg = {
   searchPrompt: "🔍 Введите слово для поиска по каталогу:",
   searchNothing: (q) => `По запросу «${q}» ничего не найдено.`,
   searchResults: (q, n) => `🔍 «${q}»: найдено ${n}`,
+  searchShown: (s, t) => `Показано ${s} из ${t}`,
+  searchExpired: "Сессия поиска устарела. Повторите поиск.",
   myOrdersEmpty: "У вас пока нет заказов.",
   myOrdersHeader: "📋 <b>Ваши заказы</b>\n\n",
   resendBtn: "📥 Прислать файлы ещё раз",
@@ -406,6 +412,11 @@ const kk: Msg = {
   allLanguagesBtn: (n) => `Барлық тілдер ×${n}`,
   chooseItemLanguage: (name) => `📚 «<b>${name}</b>» материалы\nФайлды қай тілде алғыңыз келеді:`,
   fileAlreadySent: "Бұл файл таңдалған тілде жіберілген.",
+  searchPrompt: "🔍 Каталогтан іздеу үшін сөз енгізіңіз:",
+  searchNothing: (q) => `«${q}» сұрауы бойынша ештеңе табылмады.`,
+  searchResults: (q, n) => `🔍 «${q}»: табылды ${n}`,
+  searchShown: (s, t) => `Көрсетілді ${s} / ${t}`,
+  searchExpired: "Іздеу сессиясы ескірді. Іздеуді қайталаңыз.",
   languageSaved: "✅ Тіл сақталды.",
   chooseSection: "Бөлімді таңдаңыз:",
   catalog: "📚 Каталог",
@@ -495,6 +506,11 @@ const en: Msg = {
   allLanguagesBtn: (n) => `All languages ×${n}`,
   chooseItemLanguage: (name) => `📚 «<b>${name}</b>»\nChoose the language for the file:`,
   fileAlreadySent: "This file has already been sent in that language.",
+  searchPrompt: "🔍 Type a word to search the catalog:",
+  searchNothing: (q) => `Nothing found for “${q}”.`,
+  searchResults: (q, n) => `🔍 “${q}”: ${n} found`,
+  searchShown: (s, t) => `Showing ${s} of ${t}`,
+  searchExpired: "Your search session has expired. Please search again.",
   languageSaved: "✅ Language saved.",
   chooseSection: "Choose a section:",
   catalog: "📚 Catalog",
@@ -603,6 +619,11 @@ const uz: Msg = {
   allLanguagesBtn: (n) => `Barcha tillar ×${n}`,
   chooseItemLanguage: (name) => `📚 «<b>${name}</b>»\nFaylni qaysi tilda olishni tanlang:`,
   fileAlreadySent: "Bu fayl tanlangan tilda allaqachon yuborilgan.",
+  searchPrompt: "🔍 Katalogdan qidirish uchun soʻz kiriting:",
+  searchNothing: (q) => `«${q}» soʻrovi boʻyicha hech narsa topilmadi.`,
+  searchResults: (q, n) => `🔍 «${q}»: ${n} ta topildi`,
+  searchShown: (s, t) => `Koʻrsatildi ${s} / ${t}`,
+  searchExpired: "Qidiruv sessiyasi eskirdi. Qayta qidiring.",
   languageSaved: "✅ Til saqlandi.",
   chooseSection: "Bo‘limni tanlang:",
   catalog: "📚 Katalog",
