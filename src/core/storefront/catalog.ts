@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { productFiles, type ProductFile } from "./product-files";
 import { listAllCategories } from "@/core/catalog/admin";
 import { PRODUCT_SELECT, sortedImages, sortedVariants, type Product } from "@/core/catalog/catalog";
 import { imagePath } from "@/core/catalog/image-url";
@@ -23,6 +24,8 @@ export type StoreProduct = {
   leadTimeDays: number | null;
   rating: { avg: number; count: number } | null;
   languages: string[];
+  /** Файлы материала — только на странице товара (storeProduct), в каталоге не нужны. */
+  files?: ProductFile[];
 };
 
 export type StoreInfo = {
@@ -172,5 +175,7 @@ export async function storeProduct(ctx: TenantContext, id: string): Promise<Stor
     .eq("id", id)
     .eq("is_active", true)
     .maybeSingle();
-  return data ? toStoreProduct(ctx, data as Product) : null;
+  if (!data) return null;
+  const files = productFiles(data as Product, Boolean(ctx.tenant.modules.multi_language));
+  return { ...(await toStoreProduct(ctx, data as Product)), files };
 }

@@ -103,10 +103,32 @@ function ProductPage() {
               {t("product.leadTime", { n: p.leadTimeDays })}
             </div>
           ) : null}
-          {p.kind === "digital" && p.languages.length > 0 && (
-            <div className="mt-1 text-sm text-muted">
-              {t("product.files", { langs: p.languages.map((l) => l.toUpperCase()).join(", ") })}
+          {p.kind === "digital" && (p.files?.length ?? 0) > 0 ? (
+            <div className="mt-3">
+              <div className="label">{t("product.filesTitle")}</div>
+              <ul className="space-y-1 text-sm">
+                {p.files!.map((f, i) => (
+                  <li key={i} className="flex items-baseline gap-2">
+                    <span aria-hidden>📄</span>
+                    <span className="min-w-0 flex-1 break-words">
+                      {f.name || t("product.fileUnnamed")}
+                    </span>
+                    {p.languages.length > 1 && (
+                      <span className="shrink-0 text-xs text-muted">
+                        {f.lang === "kk" ? "KZ" : f.lang.toUpperCase()}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
+          ) : (
+            p.kind === "digital" &&
+            p.languages.length > 0 && (
+              <div className="mt-1 text-sm text-muted">
+                {t("product.files", { langs: p.languages.map((l) => l.toUpperCase()).join(", ") })}
+              </div>
+            )
           )}
           {p.variants.length > 0 && (
             <div className="mt-4">

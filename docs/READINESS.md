@@ -299,7 +299,7 @@
 - searches names, descriptions, variants and keywords across the full index — расхождение: поиск storeCatalog идёт по name/keywords/description, названия вариантов не ищутся (название, описание, ключевые слова — в catalog.test.ts › ищет по названию, описанию и ключевым словам без учёта регистра)
 - shows lead time on physical products and hides it for digital — расхождение: на странице товара (routes/s.$slug.p.$id.tsx) срок изготовления показывается при любом leadTimeDays, в том числе у цифрового; у физического с 0 дней карточка пишет «Товар», а не «В наличии»; разметка в JSX без тестов
 - filters materials by language and keeps chips for the unfiltered set — расхождение: фильтра каталога по языку материала на витрине v2 нет
-- lists material files on the product page and keeps a library tab — расхождение: на странице товара v2 только строка языков, без списка файлов; вкладки «Материалы» нет — библиотека на /s/:slug/orders
+- lists material files on the product page and keeps a library tab — расхождение: список файлов на странице товара есть (src/core/storefront/product-files.test.ts), вкладки «Материалы» нет — библиотека на /s/:slug/orders
 
 ### `tests/mini-app-library.test.ts`
 

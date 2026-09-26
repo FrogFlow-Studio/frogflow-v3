@@ -867,7 +867,7 @@
     "[Учителя-CRIT] hides language badges when the multi_language module is off": "src/core/storefront/catalog.test.ts › без модуля «Мультиязычность» значков нет: покупатель получит только русский",
     "filters materials by language and keeps chips for the unfiltered set": "open: расхождение: фильтра каталога по языку материала на витрине v2 нет",
     "counts materials, not generic products, on the digital vertical": "drop: тексты по VERTICAL из окружения v1; в v2 один деплой, словарь витрины общий (app/i18n/storefront)",
-    "lists material files on the product page and keeps a library tab": "open: расхождение: на странице товара v2 только строка языков, без списка файлов; вкладки «Материалы» нет — библиотека на /s/:slug/orders",
+    "lists material files on the product page and keeps a library tab": "open: расхождение: список файлов на странице товара есть (src/core/storefront/product-files.test.ts), вкладки «Материалы» нет — библиотека на /s/:slug/orders",
     "orders by popularity, recency and price": "later: сортировки каталога на витрине v2 нет, первым клиентам не блокер"
   },
   "tests/mini-app-library.test.ts": {
