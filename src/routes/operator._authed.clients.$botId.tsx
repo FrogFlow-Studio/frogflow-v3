@@ -1325,7 +1325,8 @@ function BillingCard({ c }: { c: C }) {
       actions={
         expires ? (
           <Badge tone={overdue ? "danger" : "ok"}>
-            {overdue ? "просрочена с" : "оплачена до"} {new Date(expires).toLocaleDateString("ru")}
+            {overdue ? "просрочена с" : data && !data.backedByPayments ? "срок до" : "оплачена до"}{" "}
+            {new Date(expires).toLocaleDateString("ru")}
           </Badge>
         ) : (
           <Badge>платежей нет</Badge>
@@ -1336,6 +1337,12 @@ function BillingCard({ c }: { c: C }) {
         <p className="text-sm text-muted">Загрузка…</p>
       ) : (
         <div className="space-y-4">
+          {!data.backedByPayments && (
+            <p className="rounded-md border border-line p-2 text-sm text-warn">
+              Дата не подтверждена ни одним платежом — досталась от заведения клиента. При первом же
+              записанном платеже она пересчитается по нему.
+            </p>
+          )}
           <form
             className="grid gap-2 sm:grid-cols-3"
             onSubmit={(e: FormEvent<HTMLFormElement>) => {

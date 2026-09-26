@@ -66,6 +66,15 @@ export function computeState(
   return { state, expiresAt, daysLeft, policy };
 }
 
+/**
+ * Срок подписки подтверждён платежами? Дата без единого записанного платежа
+ * (например, досталась от заведения строки) — неподтверждённая, панель
+ * оператора об этом предупреждает. Нет даты — предупреждать не о чем.
+ */
+export function expiryBackedByPayments(expiresAt: string | null, paymentCount: number): boolean {
+  return !expiresAt || paymentCount > 0;
+}
+
 export function warnText(daysLeft: number | null, willSuspend: boolean): string {
   const tail = willSuspend
     ? "После окончания отсрочки бот будет временно приостановлен."

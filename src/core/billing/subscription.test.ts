@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { computeState, DEFAULT_POLICY, readPolicy, warnText } from "./subscription";
+import {
+  computeState,
+  DEFAULT_POLICY,
+  expiryBackedByPayments,
+  readPolicy,
+  warnText,
+} from "./subscription";
 
 const P = { on_overdue: "suspend" as const, warn_days_before: 5, grace_days: 3 };
 const at = (s: string) => new Date(s);
@@ -66,5 +72,13 @@ describe("тексты владельцу", () => {
   it("до истечения — «заканчивается через», после — «просрочена на»", () => {
     expect(warnText(3, true)).toMatch(/через 3 дн\..*приостановлен/s);
     expect(warnText(-2, false)).toMatch(/просрочена на 2 дн\..*продолжит работать/s);
+  });
+});
+
+describe("expiryBackedByPayments", () => {
+  it("дата без платежей помечается как неподтверждённая", () => {
+    expect(expiryBackedByPayments("2026-12-31T00:00:00Z", 0)).toBe(false);
+    expect(expiryBackedByPayments("2026-12-31T00:00:00Z", 1)).toBe(true);
+    expect(expiryBackedByPayments(null, 0)).toBe(true);
   });
 });

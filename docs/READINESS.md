@@ -36,7 +36,7 @@
 | `src/lib/operator/env-block.test.ts` | 7 | 0 | 0 | 0 | 7 | — |
 | `src/lib/operator/leads-pipeline.test.ts` | 46 | 0 | 0 | 0 | 46 | — |
 | `src/lib/operator/subscription-cron.test.ts` | 9 | 9 | 0 | 0 | 0 | 100 % |
-| `src/lib/operator/subscriptions.test.ts` | 13 | 12 | 1 | 0 | 0 | 92,3 % |
+| `src/lib/operator/subscriptions.test.ts` | 13 | 13 | 0 | 0 | 0 | 100 % |
 | `src/lib/tenant-storage-key.test.ts` | 5 | 4 | 1 | 0 | 0 | 80 % |
 | `src/lib/verticals/vertical.test.ts` | 13 | 1 | 8 | 0 | 4 | 11,1 % |
 | `src/lib/vip-subscriptions.test.ts` | 9 | 4 | 4 | 0 | 1 | 50 % |
@@ -191,10 +191,6 @@
 - админ и модуль подключён — пропускает — requireAdminModule в src/app/auth/guards.server.ts без теста
 - не админ — отказывает до проверки модуля — requireAdminModule сначала зовёт requireAdmin, теста нет
 - админ, но модуль не подключён — отказывает — requireAdminModule в src/app/auth/guards.server.ts без теста
-
-### `src/lib/operator/subscriptions.test.ts`
-
-- дата без платежей помечается как неподтверждённая — computeState v2 (core/billing/subscription.ts) не различает дату без платежей, панель оператора этого не показывает
 
 ### `src/lib/tenant-storage-key.test.ts`
 

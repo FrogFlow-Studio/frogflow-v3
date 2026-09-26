@@ -414,7 +414,9 @@ export const billingFn = createServerFn({ method: "GET" })
       b.subscriptionExpiresAt(data.botId),
     ]);
     const suggested = await (await import("./plans.server")).suggestedPeriod(data.botId);
-    return { requisites, payments, invoices, expiresAt, suggested };
+    const { expiryBackedByPayments } = await import("@/core/billing/subscription");
+    const backedByPayments = expiryBackedByPayments(expiresAt, payments.length);
+    return { requisites, payments, invoices, expiresAt, backedByPayments, suggested };
   });
 
 /* ── тариф клиента (core/plans) ─────────────────────────────────── */
