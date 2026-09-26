@@ -4,15 +4,15 @@
 и `docs/readiness.json` — руками не правится. `npm test` падает, если сводка
 устарела, пункт описи назван неверно или указанного теста нет.
 
-**Готовность для первых клиентов: 80,2 %** — покрыто тестами v2
-590 из 735 нужных сейчас пунктов.
+**Готовность для первых клиентов: 80,4 %** — покрыто тестами v2
+591 из 735 нужных сейчас пунктов.
 
-**Путь заказа: 92,6 %** — 313 из 338
+**Путь заказа: 92,8 %** — 314 из 338
 (каталог, цена, оформление, оплата и чек, выдача; файлы — `ORDER_PATH` в скрипте).
 
 | всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |
 | ----- | ------- | --------------------- | ---- | ----- | ------------- |
-| 1125 | 590 | 43 | 145 | 33 | 357 |
+| 1125 | 591 | 43 | 144 | 33 | 357 |
 
 «Позже» — поведение нужно, но не магазинам, которые переезжают первыми
 (модуль ещё не перенесён). «Не нужно в v2» — поведение убрано или заменено;
@@ -79,7 +79,7 @@
 | `tests/fulfillment-dates.test.ts` | 10 | 10 | 0 | 0 | 0 | 100 % |
 | `tests/fulfillment-kind.test.ts` | 5 | 5 | 0 | 0 | 0 | 100 % |
 | `tests/fulfillment-reminder.test.ts` | 10 | 10 | 0 | 0 | 0 | 100 % |
-| `tests/fulfillment.test.ts` | 18 | 17 | 1 | 0 | 0 | 94,4 % |
+| `tests/fulfillment.test.ts` | 18 | 18 | 0 | 0 | 0 | 100 % |
 | `tests/gift-certificates.test.ts` | 5 | 5 | 0 | 0 | 0 | 100 % |
 | `tests/instagram-inbox-message.test.ts` | 1 | 0 | 1 | 0 | 0 | 0 % |
 | `tests/invoices-server.test.ts` | 11 | 11 | 0 | 0 | 0 | 100 % |
@@ -129,7 +129,7 @@
 | `tests/zernio-retry.test.ts` | 2 | 1 | 1 | 0 | 0 | 50 % |
 | `tests/zernio-webhook.test.ts` | 13 | 7 | 3 | 0 | 3 | 70 % |
 
-## Дыры (145)
+## Дыры (144)
 
 ### поломки v1
 
@@ -289,10 +289,6 @@
 ### `tests/delivery-zones.test.ts`
 
 - activeDeliveryZones не видит зоны другого арендатора (RLS-изоляция) — activeDeliveryZones в v2 не фильтрует bot_id сам и полагается на RLS роли арендатора (ctx.db) — проверить можно только живым тестом в tests/integration (здесь нет ключей); фейковая база RLS не моделирует
-
-### `tests/fulfillment.test.ts`
-
-- recordPayment не даёт paid_amount превысить total (CHECK из MIGRATION-55) — расхождение: v1 отказывал (false, paid_amount не менялся), v2 recordPayment (core/fulfillment/fulfillment.ts) обрезает до total и возвращает true — лишнее молча теряется; инвариант paid ≤ total держится (src/core/fulfillment/fulfillment.test.ts › не поднимает paid_amount выше total), отказ есть только выше, в recordManualPayment
 
 ### `tests/instagram-inbox-message.test.ts`
 

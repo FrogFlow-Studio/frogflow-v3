@@ -805,7 +805,7 @@
     "deposit с пустым deposit_percent — откатывается на 30%, не на 0₸ (Блок 1, находка 1.7)": "src/core/fulfillment/pure.test.ts › задаток: полная, процент, при получении",
     "deposit с мусорным deposit_percent (NaN) — откатывается на 30%, не на NaN₸": "src/core/fulfillment/fulfillment.test.ts › deposit с мусорным deposit_percent (NaN) — откатывается на 30%, не на NaN₸",
     "deposit с deposit_percent вне диапазона (150) — тоже клэмп на 30%": "src/core/fulfillment/fulfillment.test.ts › deposit с deposit_percent вне диапазона (150) — тоже клэмп на 30%",
-    "recordPayment не даёт paid_amount превысить total (CHECK из MIGRATION-55)": "open: расхождение: v1 отказывал (false, paid_amount не менялся), v2 recordPayment (core/fulfillment/fulfillment.ts) обрезает до total и возвращает true — лишнее молча теряется; инвариант paid ≤ total держится (src/core/fulfillment/fulfillment.test.ts › не поднимает paid_amount выше total), отказ есть только выше, в recordManualPayment"
+    "recordPayment не даёт paid_amount превысить total (CHECK из MIGRATION-55)": "src/core/fulfillment/fulfillment.test.ts › recordPayment не даёт paid_amount превысить total (CHECK из MIGRATION-55)"
   },
   "tests/gift-certificates.test.ts": {
     "приводит к верхнему регистру и убирает пробелы по краям": "src/core/discounts/pure.test.ts › коды нормализуются, сертификат генерируется читаемым",

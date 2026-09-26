@@ -123,11 +123,25 @@ export async function recordManualPayment(
         remaining: Math.max(0, remaining),
       },
     );
-  if (!(await recordPayment(ctx, id, amount)))
+  if (!(await recordPayment(ctx, id, amount))) {
+    // Пока проверяли остаток, по заказу успели внести другой платёж.
+    const { data: fresh } = await ctx.db
+      .from("orders")
+      .select("total, paid_amount")
+      .eq("id", id)
+      .maybeSingle();
+    const left = fresh ? Number(fresh.total) - (Number(fresh.paid_amount) || 0) : remaining;
+    if (amount > left + 0.01)
+      throw new UserError(
+        "err.orders.amountOverRemaining",
+        "Сумма больше остатка: осталось внести {remaining}",
+        { remaining: Math.max(0, left) },
+      );
     throw new UserError(
       "err.orders.paymentNotSaved",
       "Не удалось записать платёж, попробуйте ещё раз",
     );
+  }
   await recordOrderEvent(ctx, id, "payment", { amount, currency: order.currency }, actor);
   // Деньги пришли по заказу, который ещё ждал оплату, — он в работе.
   if (order.status === "awaiting_payment" || order.status === "awaiting_confirmation") {

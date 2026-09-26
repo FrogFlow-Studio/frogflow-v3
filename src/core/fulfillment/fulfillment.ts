@@ -138,9 +138,11 @@ export async function restoreStock(
 
 /**
  * Дописать внесённую сумму к paid_amount CAS'ом по старому значению: два
- * одновременных «Внести оплату» не теряют друг друга. Не выше total —
- * CHECK orders_paid_amount_le_total уронил бы апдейт сырой ошибкой.
- * false — заказа нет или CAS не сошёлся за пять попыток.
+ * одновременных «Внести оплату» не теряют друг друга. Сумма, с которой
+ * внесённое превысит total, не пишется совсем (как в v1): обрезка молча
+ * теряла бы разницу, а в журнале осталась бы полная сумма. Копейка
+ * округления — не переплата, такой остаток доводится ровно до total.
+ * false — заказа нет, переплата или CAS не сошёлся за пять попыток.
  */
 export async function recordPayment(
   ctx: TenantContext,
@@ -156,7 +158,10 @@ export async function recordPayment(
       .maybeSingle();
     if (!order) return false;
     const current = Number(order.paid_amount) || 0;
-    const next = Math.min(Number(order.total), Math.round((current + amount) * 100) / 100);
+    const total = Number(order.total);
+    const sum = Math.round((current + amount) * 100) / 100;
+    if (sum > total + 0.01) return false;
+    const next = Math.min(total, sum);
     const { data: updated } = await ctx.db
       .from("orders")
       .update({ paid_amount: next })

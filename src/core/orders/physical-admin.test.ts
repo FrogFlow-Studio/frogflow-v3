@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { acceptPhysicalOrder } from "./physical-admin";
+import { acceptPhysicalOrder, recordManualPayment } from "./physical-admin";
 
 const BOT = "00000000-0000-0000-0000-000000000001";
 
@@ -70,5 +70,37 @@ describe("acceptPhysicalOrder — «Принять заказ»", () => {
     expect(r.ok).toBe(false);
     expect(order().status).toBe("rejected");
     expect(order().paid_amount).toBe(0);
+  });
+});
+
+describe("recordManualPayment — «Внести оплату»", () => {
+  const events = (ctx: TenantContext) =>
+    (
+      (ctx as unknown as { db: { tables: Record<string, Array<Record<string, unknown>>> } }).db
+        .tables.zernio_logs ?? []
+    ).filter((e) => e.event_type === "order.payment");
+
+  it("больше остатка — отказ с остатком, ничего не записано", async () => {
+    const { ctx, order } = setup("accepted");
+    order().paid_amount = 10000;
+    await expect(recordManualPayment(ctx, 1, 6000)).rejects.toMatchObject({
+      key: "err.orders.amountOverRemaining",
+    });
+    expect(order().paid_amount).toBe(10000);
+    expect(events(ctx)).toEqual([]);
+  });
+
+  it("два одновременных платежа на весь остаток — проходит один, второй получает отказ", async () => {
+    const { ctx, order } = setup("accepted");
+    const r = await Promise.allSettled([
+      recordManualPayment(ctx, 1, 10000),
+      recordManualPayment(ctx, 1, 10000),
+    ]);
+    expect(r.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+    const failed = r.find((x) => x.status === "rejected") as PromiseRejectedResult;
+    expect(failed.reason).toMatchObject({ key: "err.orders.amountOverRemaining" });
+    // В заказе и в журнале — ровно то, что внесено, без «потерянных» 5000.
+    expect(order().paid_amount).toBe(10000);
+    expect(events(ctx).map((e) => (e.payload as { amount: number }).amount)).toEqual([10000]);
   });
 });

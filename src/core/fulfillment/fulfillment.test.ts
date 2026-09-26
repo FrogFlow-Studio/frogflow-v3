@@ -113,9 +113,18 @@ describe("recordPayment — «Внести оплату»", () => {
     expect(db.tables.orders![0]!.paid_amount).toBe(9000);
   });
 
-  it("не поднимает paid_amount выше total", async () => {
+  it("recordPayment не даёт paid_amount превысить total (CHECK из MIGRATION-55)", async () => {
+    // Как в v1: переплата — отказ, paid_amount не меняется, а не молчаливая обрезка.
     const { db, ctx } = withOrder(15000);
-    await recordPayment(ctx, 1, 20000);
+    expect(await recordPayment(ctx, 1, 20000)).toBe(false);
+    expect(db.tables.orders![0]!.paid_amount).toBe(0);
+  });
+
+  it("остаток после задатка — ровно до total, копейки округления не мешают", async () => {
+    const { db, ctx } = withOrder(15000, 4500);
+    expect(await recordPayment(ctx, 1, 10500.001)).toBe(true);
+    expect(db.tables.orders![0]!.paid_amount).toBe(15000);
+    expect(await recordPayment(ctx, 1, 1)).toBe(false);
     expect(db.tables.orders![0]!.paid_amount).toBe(15000);
   });
 
