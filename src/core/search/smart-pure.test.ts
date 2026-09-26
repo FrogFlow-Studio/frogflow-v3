@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DAILY_USD_LIMIT,
   addSpend,
+  buildPrompt,
   dailySpendUsd,
   estimateUsd,
   formatDailyCount,
@@ -87,5 +88,36 @@ describe("свой предел умного поиска клиента (bots.s
     expect(spendExhausted(day(5), D)).toBe(true);
     expect(spendExhausted(day(5), D, 10)).toBe(false);
     expect(spendExhausted(day(0), D, 0)).toBe(true);
+  });
+});
+
+describe("умный поиск: опись v1 (tests/smart-search.test.ts)", () => {
+  const valid = ["p1", "p2"];
+  const one = [{ id: "p1", name: "Тест", description: "", keywords: "" }];
+
+  it("пустой список ids — пустой результат", () => {
+    expect(parseSmartSearchIds('{"ids": []}', valid)).toEqual([]);
+  });
+
+  it("digital (умолчание, VERTICAL не задан) — промпт про учебные материалы", () => {
+    const p = buildPrompt("digital", "тесты по алгебре для 7 класса", one);
+    expect(p).toContain("учебный материал");
+    expect(p).not.toContain("кондитерской");
+    expect(buildPrompt("", "x", one)).toContain("учебный материал");
+  });
+
+  it("confectionery — промпт про торты и десерты", () => {
+    const p = buildPrompt("confectionery", "что-то на день рождения пятилетке", one);
+    expect(p).toContain("кондитерской");
+    expect(p).not.toContain("учебный материал");
+  });
+
+  it("consultant — промпт про прайс, не учебные материалы", () => {
+    for (const v of ["consultant", "consultant_universal"]) {
+      const p = buildPrompt(v, "пододеяльник 200х220 бежевый", one);
+      expect(p).toContain("прайса консультанта");
+      expect(p).not.toContain("учебный материал");
+      expect(p).not.toContain("кондитерской");
+    }
   });
 });

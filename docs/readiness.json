@@ -1106,16 +1106,16 @@
     "картинка по-прежнему идёт в images:annotate": "src/core/receipts/verify.server.test.ts › картинка идёт в images:annotate"
   },
   "tests/reviews-server.test.ts": {
-    "возвращает уникальные товары доставленного заказа этого покупателя": "open: reviewableProductsForOrder (src/core/reviews/reviews.ts) проверен только на одной позиции, повторы не проверены",
-    "чужой заказ или недоставленный — пустой список": "open: reviewableProductsForOrder на чужом и недоставленном заказе не проверен",
+    "возвращает уникальные товары доставленного заказа этого покупателя": "src/core/reviews/reviews.test.ts › возвращает уникальные товары доставленного заказа этого покупателя",
+    "чужой заказ или недоставленный — пустой список": "src/core/reviews/reviews.test.ts › чужой заказ или недоставленный — пустой список",
     "оценка звёздами пишется без комментария, комментарий дописывается отдельным вызовом": "tests/integration/reviews-referrals.test.ts › после выдачи: оценка с комментарием, рейтинг на товаре, награда пригласившему один раз",
-    "updateReviewComment для несуществующей оценки — false, без побочных эффектов": "open: saveComment (src/core/reviews/reviews.ts) вернёт true, если оценки нет, теста нет"
+    "updateReviewComment для несуществующей оценки — false, без побочных эффектов": "src/core/reviews/reviews.test.ts › updateReviewComment для несуществующей оценки — false, без побочных эффектов"
   },
   "tests/reviews.test.ts": {
     "принимает только целые числа от 1 до 5": "src/core/reviews/pure.test.ts › оценка — целое от 1 до 5",
     "отвергает нецелые и выходящие за диапазон значения": "src/core/reviews/pure.test.ts › оценка — целое от 1 до 5",
     "рисует нужное число закрашенных и пустых звёзд": "src/core/reviews/pure.test.ts › звёзды и сводка",
-    "округляет и не выходит за границы 1..5": "open: starsForRating проверен только сверху (9), округление и нижняя граница нет",
+    "округляет и не выходит за границы 1..5": "src/core/reviews/pure.test.ts › округляет и не выходит за границы 1..5",
     "форматирует среднюю оценку с одним знаком после запятой": "src/core/reviews/pure.test.ts › звёзды и сводка",
     "без отзывов — ничего не показываем": "src/core/reviews/pure.test.ts › звёзды и сводка"
   },
@@ -1136,7 +1136,7 @@
     "достаёт id из чистого JSON": "src/core/search/smart-pure.test.ts › берёт JSON из текста и отбрасывает чужие и повторные id",
     "достаёт JSON, даже если модель добавила текст вокруг": "src/core/search/smart-pure.test.ts › берёт JSON из текста и отбрасывает чужие и повторные id",
     "отбрасывает id, которых нет среди реальных кандидатов": "src/core/search/smart-pure.test.ts › берёт JSON из текста и отбрасывает чужие и повторные id",
-    "пустой список ids — пустой результат": "open: parseSmartSearchIds на пустом массиве ids не проверен",
+    "пустой список ids — пустой результат": "src/core/search/smart-pure.test.ts › пустой список ids — пустой результат",
     "невалидный JSON — пустой результат, не бросает": "src/core/search/smart-pure.test.ts › мусор — пустой список",
     "ids не массив — пустой результат": "src/core/search/smart-pure.test.ts › мусор — пустой список",
     "считает USD по прайсу Haiku 4.5: $1/MTok in, $5/MTok out": "src/core/search/smart-pure.test.ts › стоимость по ценам Haiku и накопление",
@@ -1144,9 +1144,9 @@
     "накапливает токены и USD за день": "src/core/search/smart-pure.test.ts › стоимость по ценам Haiku и накопление",
     "достаёт usage из ответа Anthropic": "drop: v2 зовёт Anthropic через SDK и берёт response.usage типизированно, разбор ответа не нужен",
     "форматирует мелкие суммы с 4 знаками": "drop: formatUsd в v2 нет, расход показывается в панели оператора через toFixed",
-    "digital (умолчание, VERTICAL не задан) — промпт про учебные материалы": "open: domainHint/buildPrompt в src/core/search/smart-pure.ts без теста",
-    "confectionery — промпт про торты и десерты": "open: domainHint/buildPrompt в src/core/search/smart-pure.ts без теста",
-    "consultant — промпт про прайс, не учебные материалы": "open: domainHint/buildPrompt в src/core/search/smart-pure.ts без теста"
+    "digital (умолчание, VERTICAL не задан) — промпт про учебные материалы": "src/core/search/smart-pure.test.ts › digital (умолчание, VERTICAL не задан) — промпт про учебные материалы",
+    "confectionery — промпт про торты и десерты": "src/core/search/smart-pure.test.ts › confectionery — промпт про торты и десерты",
+    "consultant — промпт про прайс, не учебные материалы": "src/core/search/smart-pure.test.ts › consultant — промпт про прайс, не учебные материалы"
   },
   "tests/telegram-init-data.test.ts": {
     "принимает корректный initData": "src/core/storefront/init-data.test.ts › принимает подписанные данные и достаёт пользователя",

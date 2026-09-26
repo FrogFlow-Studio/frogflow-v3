@@ -78,12 +78,14 @@ export async function saveComment(
   productId: string,
   comment: string,
 ): Promise<boolean> {
-  const { error } = await ctx.db
+  // Комментарий дописывается к уже поставленной оценке; нет оценки — false.
+  const { data, error } = await ctx.db
     .from("product_reviews")
     .update({ comment: comment.trim().slice(0, 1000) })
     .eq("telegram_id", telegramId)
-    .eq("product_id", productId);
-  return !error;
+    .eq("product_id", productId)
+    .select("id");
+  return !error && Boolean(data?.length);
 }
 
 export async function listProductReviews(
