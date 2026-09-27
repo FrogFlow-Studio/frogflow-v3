@@ -56,3 +56,42 @@ export function productOnStorefront(
   const live = categoryIds.filter((id) => known.has(id));
   return live.length === 0 || live.some((id) => visible.has(id));
 }
+
+type Node = { id: string; parent_id: string | null };
+
+/**
+ * Чипы категорий витрины — дерево, как папки в боте v1: без выбора — только
+ * корневые; у открытой категории второй ряд — её подкатегории, у листа — его
+ * соседи (подкатегории родителя). path — цепочка от корня до выбранной, для
+ * подсветки. Категории приходят уже видимыми и отсортированными (storeInfo);
+ * неизвестный id — как «без выбора». Цикл в parent_id не зависает.
+ */
+export function categoryChips<T extends Node>(
+  all: readonly T[],
+  currentId?: string | null,
+): { roots: T[]; current: T | null; path: string[]; subParent: string | null; subs: T[] } {
+  const byId = new Map(all.map((c) => [c.id, c]));
+  const current = (currentId && byId.get(currentId)) || null;
+  const path: string[] = [];
+  for (
+    let c: T | undefined = current ?? undefined;
+    c && !path.includes(c.id);
+    c = c.parent_id ? byId.get(c.parent_id) : undefined
+  )
+    path.unshift(c.id);
+  const children = (id: string) => all.filter((c) => c.parent_id === id);
+  const subParent = current
+    ? children(current.id).length
+      ? current.id
+      : current.parent_id && byId.has(current.parent_id)
+        ? current.parent_id
+        : null
+    : null;
+  return {
+    roots: all.filter((c) => !c.parent_id || !byId.has(c.parent_id)),
+    current,
+    path,
+    subParent,
+    subs: subParent ? children(subParent) : [],
+  };
+}

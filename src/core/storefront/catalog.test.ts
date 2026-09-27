@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { storeCatalog, storeInfo } from "./catalog";
+import { categoryChips } from "./categories";
 
 type Row = Record<string, unknown>;
 
@@ -252,6 +253,15 @@ describe("storeCatalog: скрытые категории и подкатего�
     const { ctx } = ctxWith([], {}, categories);
     const info = await storeInfo(ctx);
     expect(info.categories.map((c) => c.id)).toEqual(["cakes", "tiers", "wedding"]);
+  });
+
+  it("подкатегория скрытого родителя не всплывает на витрине главной категорией", async () => {
+    const { ctx } = ctxWith([], {}, categories);
+    const { roots, subs } = categoryChips((await storeInfo(ctx)).categories);
+    // hidden-child видна сама, но её родитель скрыт: в дерево она не попадает вовсе.
+    expect(roots.map((c) => c.id)).toEqual(["cakes"]);
+    expect(categoryChips((await storeInfo(ctx)).categories, "hidden-child").current).toBeNull();
+    expect(subs).toEqual([]);
   });
 });
 

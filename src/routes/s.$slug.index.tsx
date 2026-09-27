@@ -7,6 +7,7 @@ import { useCart } from "@/app/storefront/cart";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
 import { localeFlags } from "@/core/i18n/locale";
+import { categoryChips } from "@/core/storefront/categories";
 import { filterByLanguage, languageChips } from "@/core/storefront/lang-filter";
 
 export const Route = createFileRoute("/s/$slug/")({
@@ -27,23 +28,21 @@ function CatalogPage() {
   const { slug } = Route.useParams();
   const shop = useLoaderData({ from: "/s/$slug" });
   const { t } = useStorefrontLocale();
-  const all = shop.categories;
-  const categories = all.filter((c) => !c.parent_id);
   const s = Route.useSearch();
   const navigate = useNavigate();
   const [q, setQ] = useState(s.q ?? "");
   const cart = useCart();
   const [added, setAdded] = useState<string | null>(null);
-  const current = all.find((c) => c.id === s.category);
   // Корень выбранной ветки подсвечивается в верхнем ряду; второй ряд —
   // подкатегории выбранной (у листа — его соседи), товары подкатегорий
   // сервер уже включил в родительскую.
-  const path: string[] = [];
-  for (let c = current; c && !path.includes(c.id); c = all.find((x) => x.id === c!.parent_id))
-    path.unshift(c.id);
-  const children = (id: string) => all.filter((c) => c.parent_id === id);
-  const subParent = current ? (children(current.id).length ? current.id : current.parent_id) : null;
-  const subs = subParent ? children(subParent) : [];
+  const {
+    roots: categories,
+    current,
+    path,
+    subParent,
+    subs,
+  } = categoryChips(shop.categories, s.category);
   const langs = shop.langFilter ? languageChips(catalog) : [];
   const lang = s.lang && langs.includes(s.lang as never) ? s.lang : null;
   const products = filterByLanguage(catalog, lang);
