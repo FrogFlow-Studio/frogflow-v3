@@ -680,8 +680,11 @@ export const orderFn = createServerFn({ method: "GET" })
       balancePath ? proofSignedUrl(ctx, balancePath) : null,
       balancePath ? balanceProofPending(ctx, order.id, order.paid_amount) : false,
     ]);
+    // Ссылка на страницу заказа — отправить покупателю, когда канал не донёс выдачу.
+    const { orderPageUrl, viewsOrderPage } = await import("@/core/storefront/web-order");
+    const pageUrl = viewsOrderPage(order) ? await orderPageUrl(ctx, order.id) : null;
     if (!accountant)
-      return { order, proofUrl, balanceProofUrl, balancePending, events, zones, dueNow };
+      return { order, proofUrl, balanceProofUrl, balancePending, events, zones, dueNow, pageUrl };
     // Бухгалтеру: без контактов; журнал — только события и время, без текста.
     const { redactOrder, redactEventPayload } = await import("@/core/orders/redact");
     return {
@@ -692,6 +695,7 @@ export const orderFn = createServerFn({ method: "GET" })
       events: events.map((e) => ({ ...e, actor: "", payload: redactEventPayload(e.payload) })),
       zones,
       dueNow,
+      pageUrl: null,
     };
   });
 

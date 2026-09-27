@@ -4,7 +4,7 @@ import { storefrontAllows, storefrontOpen } from "./access";
 describe("доступ к витрине по модулям", () => {
   it("без магазина закрыто всё", () => {
     const m = { web_storefront: true, telegram_mini_app: true, legal_docs: true };
-    for (const p of ["info", "catalog", "web_handoff", "mini_app", "legal"] as const)
+    for (const p of ["info", "catalog", "web_handoff", "mini_app", "legal", "order"] as const)
       expect(storefrontAllows(m, p)).toBe(false);
   });
 
@@ -15,7 +15,14 @@ describe("доступ к витрине по модулям", () => {
     expect(storefrontAllows(m, "mini_app")).toBe(false);
     expect(storefrontAllows(m, "legal")).toBe(true);
     expect(storefrontAllows(m, "info")).toBe(true);
-    expect(storefrontAllows({ shop: true }, "info")).toBe(false);
+  });
+
+  it("страница заказа и её шапка открыты при любом магазине (ссылка из Direct/WhatsApp)", () => {
+    expect(storefrontAllows({ shop: true }, "order")).toBe(true);
+    expect(storefrontAllows({ shop: true }, "info")).toBe(true);
+    expect(storefrontAllows({ shop: true }, "catalog")).toBe(false);
+    expect(storefrontAllows({ shop: true }, "legal")).toBe(false);
+    expect(storefrontAllows({ legal_docs: true }, "order")).toBe(false);
   });
 
   it("веб-витрина: каталог и корзина с сайта, но не Mini App", () => {

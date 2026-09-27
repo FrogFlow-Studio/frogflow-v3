@@ -2048,8 +2048,9 @@ async function adminDecision(
   let sender = telegramMaterialSender(api, order.telegram_id, m);
   const web = orderChannel(order.platform) === "web";
   if (zernioTarget) {
-    const { zernioSenderFor } = await import("@/channels/zernio/outbound.server");
-    sender = zernioSenderFor(zernioTarget);
+    // Окно 24 часа закрыто — причину и ссылку на заказ продавец получит отдельным уведомлением.
+    const { zernioDeliverySender } = await import("@/channels/zernio/outbound.server");
+    sender = (await zernioDeliverySender(ctx, zernioTarget, order)).send;
   } else if (web) {
     // Заказ с сайта: материалы — на странице заказа и копией на почту.
     const { webMaterialSender } = await import("@/core/storefront/web-order");

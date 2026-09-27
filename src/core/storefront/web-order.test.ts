@@ -16,6 +16,9 @@ vi.mock("@/core/fulfillment/fulfillment", async (orig) => ({
 }));
 const importItems = vi.fn();
 vi.mock("./handoff", () => ({ importItems: (...a: unknown[]) => importItems(...a) }));
+vi.mock("@/config/env", () => ({
+  env: () => ({ SESSION_SECRET: "test-secret-test-secret-test-secret-42" }),
+}));
 
 const {
   normalizeEmail,
@@ -29,6 +32,7 @@ const {
   webCustomerId,
   webMaterialSender,
   webOrderView,
+  orderPageUrl,
 } = await import("./web-order");
 const { claimCheckoutChallenge } = await import("./checkout-guard");
 const { storefrontAllows } = await import("./access");
@@ -586,15 +590,45 @@ describe("заказ с сайта: страница заказа", () => {
     }
   });
 
-  it("обычный заказ из Instagram/WhatsApp и из Telegram страницей на сайте не открывается", async () => {
-    for (const platform of ["instagram", "whatsapp", "telegram"]) {
+  it("заказ из Telegram страницей на сайте не открывается", async () => {
+    const { ctx } = withOrder({ platform: "telegram" });
+    expect(await webOrderView(ctx, 9)).toBeNull();
+    expect(await webCardPaymentUrl(ctx, 9)).toBeNull();
+  });
+
+  it("обычный заказ из Instagram/WhatsApp: страница показывает заказ, но оплатить на ней нельзя", async () => {
+    for (const platform of ["instagram", "whatsapp"]) {
       const { ctx } = withOrder({ platform });
-      expect(await webOrderView(ctx, 9)).toBeNull();
+      const v = await webOrderView(ctx, 9);
+      expect(v).toMatchObject({ id: 9, no: 109, payment: null, due: 0 });
       expect(await webCardPaymentUrl(ctx, 9)).toBeNull();
     }
   });
 
   it("выдача на сайт не шлёт сообщений: материалы уже на странице", async () => {
     expect(await webMaterialSender({} as never, [])).toBe("sent");
+  });
+});
+
+describe("ссылка на страницу заказа", () => {
+  const ctxOf = (modules: Record<string, boolean>, settings: Record<string, unknown>) =>
+    ({
+      tenant: { id: BOT, archived: false, modules, settings },
+      appUrl: "https://app.test",
+    }) as unknown as TenantContext;
+
+  it("магазин без витрины и юр. страниц: ссылка есть, и её страница открывается", async () => {
+    const url = await orderPageUrl(ctxOf({ shop: true }, { served_by: "v2", slug: "bovi" }), 7);
+    expect(url).toMatch(/^https:\/\/app\.test\/s\/bovi\/order\/7\?t=/);
+    const t = new URL(url!).searchParams.get("t")!;
+    expect(verifyOrderAccess(SECRET, BOT, 7, t)).toBe(true);
+  });
+
+  it("без магазина, на v1 или без адреса — ссылки нет (выдача не считается отправленной)", async () => {
+    expect(await orderPageUrl(ctxOf({}, { served_by: "v2", slug: "bovi" }), 7)).toBeNull();
+    expect(
+      await orderPageUrl(ctxOf({ shop: true }, { served_by: "v1", slug: "bovi" }), 7),
+    ).toBeNull();
+    expect(await orderPageUrl(ctxOf({ shop: true }, { served_by: "v2" }), 7)).toBeNull();
   });
 });

@@ -9,6 +9,7 @@ import {
   type Customer,
 } from "@/core/customers/customers";
 import { isWebSource } from "./web-source";
+import { storefrontOpen } from "./access";
 import { clearCart, listCart } from "@/core/cart/cart";
 import { getSetting } from "@/core/settings/settings";
 import { importItems, type HandoffItem } from "./handoff";
@@ -406,13 +407,38 @@ export async function hasOrderPage(
   return isInvoiceLink(ctx, order.id);
 }
 
+/**
+ * Чей заказ страница заказа хотя бы показывает: с сайта и любой из
+ * Instagram/WhatsApp — выдача в Direct и WhatsApp даёт ссылку на страницу,
+ * где файлы подписываются заново при каждом открытии (ссылки в переписке
+ * живут 7 дней). Оплата на странице — только где hasOrderPage.
+ */
+export function viewsOrderPage(order: { platform: string | null }): boolean {
+  return (
+    order.platform === "web" || order.platform === "instagram" || order.platform === "whatsapp"
+  );
+}
+
+/**
+ * Подписанная ссылка на страницу заказа (как в письме и на сайте). Нет
+ * адреса магазина (settings.slug) — null: страницы у такого магазина нет.
+ */
+export async function orderPageUrl(ctx: TenantContext, orderId: number): Promise<string | null> {
+  const slug = ctx.tenant.settings.slug;
+  // Ссылка только туда, где страница откроется (как orderPageCtx и шапка /s/<slug>).
+  if (!slug || !storefrontOpen(ctx.tenant, "order")) return null;
+  const { env } = await import("@/config/env");
+  const t = orderAccessToken(env().SESSION_SECRET, ctx.tenant.id, orderId);
+  return `${ctx.appUrl}/s/${encodeURIComponent(slug)}/order/${orderId}?t=${t}`;
+}
+
 export async function webOrderView(
   ctx: TenantContext,
   orderId: number,
 ): Promise<WebOrderView | null> {
   const order = await getOrder(ctx, orderId);
-  if (!order || !(await hasOrderPage(ctx, order))) return null;
-  const payable = PAYABLE.has(order.status);
+  if (!order || !viewsOrderPage(order)) return null;
+  const payable = PAYABLE.has(order.status) && (await hasOrderPage(ctx, order));
   const method =
     payable && order.country_code ? await paymentMethodFor(ctx, order.country_code) : null;
   const card = payable && (await robokassaFor(ctx)).ready;

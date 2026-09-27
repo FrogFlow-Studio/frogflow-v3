@@ -11,9 +11,12 @@ import type { Tenant } from "@/core/tenant/types";
  * «info» — шапка магазина: нужна и каталогу, и юр. страницам (ссылки из бота).
  * «course» — страница купленного курса (модуль courses): ссылка приходит при
  * выдаче в любой канал, поэтому платная витрина для неё не нужна.
+ * «order» — страница заказа по подписанной ссылке: её получает покупатель из
+ * Direct, WhatsApp или с сайта при любом магазине, поэтому и шапка («info»)
+ * для неё открыта без витрины и юр. страниц — иначе выдача вела бы на 404.
  */
 export type StorefrontPart =
-  "info" | "catalog" | "web_handoff" | "web_checkout" | "mini_app" | "legal" | "course";
+  "info" | "catalog" | "web_handoff" | "web_checkout" | "mini_app" | "legal" | "course" | "order";
 
 export function storefrontAllows(
   modules: Partial<Record<ModuleKey, boolean>>,
@@ -25,8 +28,11 @@ export function storefrontAllows(
       return (
         storefrontAllows(modules, "catalog") ||
         storefrontAllows(modules, "legal") ||
-        storefrontAllows(modules, "course")
+        storefrontAllows(modules, "course") ||
+        storefrontAllows(modules, "order")
       );
+    case "order":
+      return true;
     case "course":
       return Boolean(modules.courses);
     case "catalog":

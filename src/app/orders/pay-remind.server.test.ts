@@ -4,7 +4,10 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 const buyer = vi.fn();
 vi.mock("@/config/env", () => ({ env: () => ({ SESSION_SECRET: "secret" }) }));
 vi.mock("@/core/storefront/web-order", () => ({
-  orderAccessToken: (_s: string, bot: string, id: number) => `tok-${bot}-${id}`,
+  orderPageUrl: async (
+    c: { tenant: { id: string; settings: { slug?: string } }; appUrl: string },
+    id: number,
+  ) => `${c.appUrl}/s/${c.tenant.settings.slug}/order/${id}?t=tok-${c.tenant.id}-${id}`,
 }));
 vi.mock("@/core/customers/customers", () => ({
   getCustomerByTelegramId: (...a: unknown[]) => buyer(...a),

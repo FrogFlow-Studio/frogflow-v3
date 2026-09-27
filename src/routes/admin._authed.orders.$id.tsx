@@ -30,7 +30,9 @@ function OrderPage() {
     events,
     zones,
     dueNow,
+    pageUrl,
   } = Route.useLoaderData();
+  const [copied, setCopied] = useState(false);
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const editable = canEdit(shop.role);
@@ -121,6 +123,19 @@ function OrderPage() {
               onClick={() => void act.run("remind").catch(() => {})}
             >
               {t("order.remind")}
+            </button>
+          )}
+          {pageUrl && (
+            <button
+              className="btn-ghost"
+              onClick={() =>
+                void navigator.clipboard
+                  ?.writeText(pageUrl)
+                  .then(() => setCopied(true))
+                  .catch(() => window.prompt(t("order.copyLink"), pageUrl))
+              }
+            >
+              {copied ? t("order.linkCopied") : t("order.copyLink")}
             </button>
           )}
           {canReject && (

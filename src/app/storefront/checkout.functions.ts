@@ -208,11 +208,25 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
     return { id: r.order.id, t: orderAccessToken(await secret(), ctx.tenant.id, r.order.id) };
   });
 
+/**
+ * Магазин, чья страница заказа открыта: клиент v2, не в архиве, с модулем
+ * магазина. Оформление на сайте не требуется — по ссылке из выдачи в
+ * Instagram/WhatsApp страницу открывают и покупатели магазина без сайта.
+ */
+async function orderPageCtx(s: string) {
+  const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
+  const { storefrontOpen } = await import("@/core/storefront/access");
+  const t = await resolveTenant({ by: "slug", value: s });
+  // Та же часть, что открывает шапку /s/<slug>: страница и её layout не расходятся.
+  if (!t || !storefrontOpen(t, "order")) throw notFound();
+  return tenantContext(t);
+}
+
 async function orderCtx(
   data: { slug: string; id: number; t: string },
   kind: "order" | "proof" | "card",
 ) {
-  const ctx = await checkoutCtx(data.slug);
+  const ctx = kind === "order" ? await orderPageCtx(data.slug) : await checkoutCtx(data.slug);
   const { verifyOrderAccess } = await import("@/core/storefront/web-order");
   if (!verifyOrderAccess(await secret(), ctx.tenant.id, data.id, data.t)) throw notFound();
   const { takeWeb } = await import("@/core/storefront/checkout-guard");
@@ -251,6 +265,11 @@ export const webProofFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await orderCtx(data, "proof");
     const t = await shopT(ctx);
+    // Чек на странице — только у заказов, оплачиваемых на ней (сайт, счёт ссылкой).
+    const { getOrder } = await import("@/core/orders/orders");
+    const { hasOrderPage } = await import("@/core/storefront/web-order");
+    const order = await getOrder(ctx, data.id);
+    if (!order || !(await hasOrderPage(ctx, order))) throw notFound();
     const bytes = new Uint8Array(Buffer.from(data.data, "base64"));
     if (bytes.length === 0) throw shownError(t("checkout.proof.badFile"));
     if (bytes.length > WEB_PROOF_MAX_BYTES) throw shownError(t("checkout.proof.tooLarge"));

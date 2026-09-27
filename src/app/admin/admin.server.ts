@@ -225,6 +225,7 @@ export async function runOrderAction(
         };
       }
       let sender = telegramMaterialSender(api(ctx), order.telegram_id, m);
+      let channelNotes: string[] = [];
       let opts: DeliverOptions = {
         lang: "ru",
         ask: telegramLanguageAsker(api(ctx), order.telegram_id, m),
@@ -242,7 +243,7 @@ export async function runOrderAction(
           const { invoiceLinkSender } = await import("@/channels/web/order.server");
           sender = await invoiceLinkSender(ctx, order);
         } else {
-          const { zernioSenderFor, zernioTargetForOrder } =
+          const { zernioDeliverySender, zernioTargetForOrder } =
             await import("@/channels/zernio/outbound.server");
           const target = await zernioTargetForOrder(ctx, order);
           if (!target)
@@ -250,7 +251,10 @@ export async function runOrderAction(
               ok: false,
               message: t("msg.orders.noDialog", { platform: platformName(order.platform) }),
             };
-          sender = zernioSenderFor(target);
+          const d = await zernioDeliverySender(ctx, target, order);
+          sender = d.send;
+          // Окно 24 часа закрыто: причина и что ушло покупателю — продавцу в ответ.
+          channelNotes = d.notes;
         }
         opts = { lang: "ru", allWhenAmbiguous: true, actor };
       }
@@ -275,7 +279,10 @@ export async function runOrderAction(
         if (r.pointsEarned > 0)
           await notifyCustomer(ctx, order, m.pointsEarned(r.pointsEarned), { email: false });
         await notifyReferralGrant(ctx, r.referral);
-        return { ok: true, message: t("msg.orders.delivered", { no, count: r.sent }) };
+        return {
+          ok: true,
+          message: [t("msg.orders.delivered", { no, count: r.sent }), ...channelNotes].join(" "),
+        };
       }
       return {
         ok: false,

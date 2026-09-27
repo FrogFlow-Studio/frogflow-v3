@@ -39,6 +39,7 @@ export async function reminderText(ctx: TenantContext, r: PayReminder): Promise<
       ? `\n${m.payReminderDeposit(formatMoney(r.due, r.currency), formatMoney(r.total, r.currency))}`
       : "";
   const head = `${m.payReminderTitle(r.no)}\n\n${m.payReminderAmount(formatMoney(r.due, r.currency))}${deposit}\n\n`;
+  const { orderPageUrl } = await import("@/core/storefront/web-order");
   const url = r.invoiceLink ? await orderPageUrl(ctx, r.orderId) : null;
   const body = url
     ? m.payReminderLink(escapeHtml(url))
@@ -47,13 +48,4 @@ export async function reminderText(ctx: TenantContext, r: PayReminder): Promise<
   if (r.platform === "telegram") return html;
   const { plain } = await import("@/channels/zernio/shop-flow");
   return plain(html);
-}
-
-async function orderPageUrl(ctx: TenantContext, orderId: number): Promise<string | null> {
-  const slug = ctx.tenant.settings.slug;
-  if (!slug) return null;
-  const { env } = await import("@/config/env");
-  const { orderAccessToken } = await import("@/core/storefront/web-order");
-  const t = orderAccessToken(env().SESSION_SECRET, ctx.tenant.id, orderId);
-  return `${ctx.appUrl}/s/${encodeURIComponent(slug)}/order/${orderId}?t=${t}`;
 }

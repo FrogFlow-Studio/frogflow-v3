@@ -151,7 +151,9 @@ export function describeSendError(
 ): string {
   const kind = classifyZernioFailure(failure);
   if (kind === "window_closed")
-    return "Прошло больше 24 часов с последнего сообщения покупателя — WhatsApp разрешает писать только одобренным шаблоном.";
+    return platform === "instagram"
+      ? "Прошло больше 24 часов с последнего сообщения покупателя — Instagram не даёт написать ему первым."
+      : "Прошло больше 24 часов с последнего сообщения покупателя — WhatsApp разрешает писать только одобренным шаблоном.";
   if (platform === "whatsapp" && kind === "unreachable")
     return "Номер покупателя не принимает сообщения WhatsApp: WhatsApp на нём нет или приложение устарело.";
   const channel = platform === "whatsapp" ? "WhatsApp" : "Instagram";

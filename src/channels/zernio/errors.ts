@@ -11,6 +11,8 @@ export type ZernioFailure = {
   code?: string;
   /** Код Meta из platformError (131047, 131026…). */
   platformCode?: number;
+  /** error_subcode Meta (Instagram вне окна: код 10, подкод 2018278). */
+  platformSubcode?: number;
   /** Retry-After в секундах (429, 503). */
   retryAfterSec?: number;
 };
@@ -59,6 +61,8 @@ export function parseZernioFailure(
   if (pe && typeof pe === "object") {
     const c = Number((pe as Record<string, unknown>).code);
     if (Number.isInteger(c)) f.platformCode = c;
+    const sub = Number((pe as Record<string, unknown>).error_subcode);
+    if (Number.isInteger(sub) && sub > 0) f.platformSubcode = sub;
   }
   // Часть ответов кладёт код Meta на верхний уровень: {"code": "131056"}
   // (WhatsApp, «If it fails»), иногда числом.
@@ -83,7 +87,8 @@ export function zernioFailureOf(e: unknown): ZernioFailure {
 
 /**
  * - window_closed — WhatsApp: 24 часа с последнего сообщения покупателя
- *   прошли (131047), писать можно только шаблоном;
+ *   прошли (131047), писать можно только шаблоном; Instagram: то же окно
+ *   (код 10, подкод 2018278), шаблонов нет;
  * - unreachable — получатель недостижим: нет WhatsApp или старое приложение
  *   (131026, 131021), номер не в списке теста (131030), аккаунт Meta
  *   заблокирован (131031), в диалоге нет получателя;
@@ -101,6 +106,7 @@ export type ZernioFailureKind =
   "window_closed" | "unreachable" | "permanent" | "rate_limited" | "ambiguous" | "temporary";
 
 const UNREACHABLE_META = [131021, 131026, 131030, 131031];
+const IG_OUTSIDE_WINDOW = 2018278;
 /** Лимиты и временные сбои Meta: 1/2 — «попробуйте позже», 4/17/32/613/80007/130429 — лимиты. */
 const TEMPORARY_META = [1, 2];
 const RATE_LIMIT_META = [4, 17, 32, 613, 80007, 130429, 131056];
@@ -117,6 +123,8 @@ export function classifyZernioFailure(f: ZernioFailure | null | undefined): Zern
   if (f?.status === null && f.code === CONNECT_FAILED) return "temporary";
   if (!f || f.status === null || f.status === 500) return "ambiguous";
   if (f.platformCode === 131047) return "window_closed";
+  // Instagram: «This message is sent outside of allowed window» — код 10, подкод 2018278.
+  if (f.platformCode === 10 && f.platformSubcode === IG_OUTSIDE_WINDOW) return "window_closed";
   if (f.code === "MISSING_PARTICIPANT" || UNREACHABLE_META.includes(f.platformCode ?? -1))
     return "unreachable";
   if (

@@ -66,4 +66,53 @@ describe("выдача материалов в Direct/WhatsApp", () => {
       idempotencyScope: "deliver:item-7",
     });
   });
+
+  it("в каждом сообщении о выдаче — ссылка на страницу заказа", async () => {
+    const { t, texts } = transport();
+    const send = zernioMaterialSender(t, "conv-1", "acc-1", "instagram", {
+      pageUrl: "https://app.test/s/shop/order/9?t=abc",
+    });
+    await send(item, [{ path: null, name: "Урок", url: "https://ex.test/l" }]);
+    expect(texts[0]).toContain(
+      "Все файлы заказа — на странице: https://app.test/s/shop/order/9?t=abc",
+    );
+  });
+
+  function closed(platformCode: number, platformSubcode?: number) {
+    return {
+      send: vi.fn(async () => ({
+        ok: false,
+        error: "outside window",
+        failure: { status: 400, platformCode, platformSubcode },
+      })),
+    } as unknown as ZernioTransport;
+  }
+
+  it("окно 24 часа закрыто: файлы ждут на странице — позиция выдана, запасной путь один раз", async () => {
+    for (const [code, sub] of [
+      [131047, undefined],
+      [10, 2018278],
+    ] as const) {
+      const onWindowClosed = vi.fn(async () => {});
+      const send = zernioMaterialSender(closed(code, sub), "c", "a", "whatsapp", {
+        pageUrl: "https://app.test/s/shop/order/9?t=abc",
+        onWindowClosed,
+      });
+      const mats = [{ path: null, name: "Урок", url: "https://ex.test/l" }];
+      expect(await send(item, mats)).toBe("sent");
+      expect(await send({ ...item, id: "i2" } as typeof item, mats)).toBe("sent");
+      expect(onWindowClosed).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("окно закрыто, а страницы заказа нет, или другой отказ — не выдано", async () => {
+    const mats = [{ path: null, name: "Урок", url: "https://ex.test/l" }];
+    expect(await zernioMaterialSender(closed(131047), "c", "a", "whatsapp")(item, mats)).toBe(
+      "failed",
+    );
+    const other = zernioMaterialSender(closed(131026), "c", "a", "whatsapp", {
+      pageUrl: "https://app.test/p",
+    });
+    expect(await other(item, mats)).toBe("failed");
+  });
 });

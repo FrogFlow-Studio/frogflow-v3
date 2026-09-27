@@ -253,4 +253,15 @@ describe("нет ответа Zernio", () => {
     expect(classifyZernioFailure(b.failure)).toBe("ambiguous");
     expect(b.error).toMatch(/могло уйти/);
   });
+
+  it("Instagram вне окна (код 10, подкод 2018278) — окно закрыто; код 10 без подкода — нет", () => {
+    const body = JSON.stringify({
+      type: "platform_error",
+      platformError: { code: 10, error_subcode: 2018278, message: "outside of allowed window" },
+    });
+    const f = parseZernioFailure(400, body);
+    expect(f.platformSubcode).toBe(2018278);
+    expect(classifyZernioFailure(f)).toBe("window_closed");
+    expect(classifyZernioFailure({ status: 400, platformCode: 10 })).not.toBe("window_closed");
+  });
 });

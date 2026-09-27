@@ -1753,10 +1753,13 @@ async function receiveProof(
 
 /** Выдача цифрового заказа ссылками в эту же переписку. */
 async function deliverHere(s: Shop, orderId: number, no: number): Promise<boolean> {
+  const { orderPageUrl } = await import("@/core/storefront/web-order");
   const r = await deliverOrder(
     s.ctx,
     orderId,
-    zernioMaterialSender(s.transport, s.conversationId, s.accountId, s.platform),
+    zernioMaterialSender(s.transport, s.conversationId, s.accountId, s.platform, {
+      pageUrl: await orderPageUrl(s.ctx, orderId),
+    }),
     // Direct не умеет спросить язык после оплаты — при нескольких языках отдаём все.
     { lang: s.locale, allWhenAmbiguous: true },
   );
