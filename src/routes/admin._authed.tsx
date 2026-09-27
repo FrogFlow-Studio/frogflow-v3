@@ -74,6 +74,14 @@ function Layout() {
               </span>
             </NavLink>
           )}
+          {shop.modules.helpdesk && shop.modules.manager_chat && (
+            <NavLink to="/admin/tickets">
+              <span className="flex items-center justify-between gap-2">
+                {t("nav.tickets")}
+                {shop.ticketsOpen > 0 && <Badge tone="accent">{shop.ticketsOpen}</Badge>}
+              </span>
+            </NavLink>
+          )}
           {(shop.modules.coupons ||
             shop.modules.gift_certificates ||
             shop.modules.referral ||

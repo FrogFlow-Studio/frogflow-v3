@@ -21,6 +21,7 @@ import * as audit from "./admin/audit";
 import * as posts from "./admin/posts";
 import * as quiz from "./admin/quiz";
 import * as reviews from "./admin/reviews";
+import * as tickets from "./admin/tickets";
 import * as pipeline from "./admin/pipeline";
 import * as physical from "./admin/physical";
 import * as plan from "./admin/plan";
@@ -49,6 +50,7 @@ const baseRu = {
   "nav.undelivered": "Не доставлено",
   "nav.quiz": "Квиз-подбор",
   "nav.reviews": "Отзывы",
+  "nav.tickets": "Обращения",
   "nav.pipeline": "Воронка",
   "nav.logout": "Выйти",
   "nav.paused": "пауза",
@@ -291,6 +293,7 @@ const ru = {
   ...posts.ru,
   ...quiz.ru,
   ...reviews.ru,
+  ...tickets.ru,
   ...pipeline.ru,
   ...physical.ru,
   ...plan.ru,
@@ -322,6 +325,7 @@ const baseKk: Dict = {
   "nav.undelivered": "Жеткізілмеді",
   "nav.quiz": "Квиз-таңдау",
   "nav.reviews": "Пікірлер",
+  "nav.tickets": "Өтініштер",
   "nav.pipeline": "Воронка",
   "nav.logout": "Шығу",
   "nav.paused": "кідіріс",
@@ -557,6 +561,7 @@ const baseEn: Dict = {
   "nav.undelivered": "Undelivered",
   "nav.quiz": "Product quiz",
   "nav.reviews": "Reviews",
+  "nav.tickets": "Requests",
   "nav.pipeline": "Pipeline",
   "nav.logout": "Log out",
   "nav.paused": "paused",
@@ -793,6 +798,7 @@ const baseUz: Dict = {
   "nav.undelivered": "Yetkazilmagan",
   "nav.quiz": "Kviz-tanlash",
   "nav.reviews": "Sharhlar",
+  "nav.tickets": "Murojaatlar",
   "nav.pipeline": "Voronka",
   "nav.logout": "Chiqish",
   "nav.paused": "pauza",
@@ -1028,6 +1034,7 @@ const kk: Dict = {
   ...posts.kk,
   ...quiz.kk,
   ...reviews.kk,
+  ...tickets.kk,
   ...pipeline.kk,
   ...physical.kk,
   ...plan.kk,
@@ -1053,6 +1060,7 @@ const en: Dict = {
   ...posts.en,
   ...quiz.en,
   ...reviews.en,
+  ...tickets.en,
   ...pipeline.en,
   ...physical.en,
   ...plan.en,
@@ -1078,6 +1086,7 @@ const uz: Dict = {
   ...posts.uz,
   ...quiz.uz,
   ...reviews.uz,
+  ...tickets.uz,
   ...pipeline.uz,
   ...physical.uz,
   ...plan.uz,

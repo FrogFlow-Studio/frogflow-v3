@@ -115,6 +115,7 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "multi_currency",
       "admin_roles",
       "crm_integration",
+      "helpdesk",
     ],
   },
   flowers: {
@@ -139,6 +140,7 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "loyalty",
       "referral",
       "multi_currency",
+      "helpdesk",
     ],
   },
   digital: {
@@ -163,6 +165,8 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "dm_shop",
       "whatsapp",
       "wa_shop",
+      "manager_chat",
+      "helpdesk",
     ],
   },
   consultant_universal: {

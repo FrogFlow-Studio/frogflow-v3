@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
 import {
   chatConnectFn,
   chatConversationsFn,
@@ -21,6 +22,8 @@ import {
 } from "@/core/inbox/inbox";
 
 export const Route = createFileRoute("/admin/_authed/chat")({
+  // ?c=<id покупателя> — открыть диалог сразу (ссылка из «Обращений»).
+  validateSearch: z.object({ c: z.coerce.number().int().optional() }),
   loader: () => chatConversationsFn(),
   component: ChatPage,
 });
@@ -66,7 +69,7 @@ function ChatPage() {
     const a = initial.assignees.find((x) => x.username === u);
     return a?.name ? `${a.name} (${u})` : u;
   };
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(Route.useSearch().c ?? null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [reply, setReply] = useState("");
   const [loadError, setLoadError] = useState<unknown>(null);

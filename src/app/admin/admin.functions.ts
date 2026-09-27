@@ -139,6 +139,10 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       chatUnread: ctx.tenant.modules.manager_chat
         ? await (await import("@/core/chat/chat")).totalUnread(ctx).catch(() => 0)
         : 0,
+      /** Открытые обращения helpdesk — бейдж «Обращения» в навигации. */
+      ticketsOpen: ctx.tenant.modules.helpdesk
+        ? await (await import("@/core/helpdesk/tickets")).countOpenTickets(ctx).catch(() => 0)
+        : 0,
       /** Сколько исходящих не доставлено после всех повторов — бейдж в навигации. */
       undelivered: await (
         await import("@/core/outbox/outbox")

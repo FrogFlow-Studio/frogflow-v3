@@ -104,6 +104,11 @@ export async function pruneZernioLogs(now = Date.now(), scope?: Scope): Promise<
       .from("zernio_logs")
       .select("id")
       .not("status", "in", "(processed,ignored)")
+      // Обращения helpdesk (core/helpdesk: event_type = ticket, свои статусы
+      // open/waiting/closed) — не журнал вебхука, а учёт продавца: их чистка
+      // не трогает. По event_type, а не по event_id: у старых строк вебхука
+      // event_id бывает null, а NOT LIKE на null отбросил бы и их.
+      .neq("event_type", "ticket")
       .lt("created_at", cutoff(RETENTION.zernioLogsStaleDays, now));
     if (scope) q2 = q2.in("bot_id", [...scope]);
     const { data: stale, error: e2 } = await q2

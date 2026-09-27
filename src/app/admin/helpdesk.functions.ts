@@ -51,7 +51,9 @@ export const updateTicketFn = createServerFn({ method: "POST" })
     // Ответственный — только из команды магазина, не произвольная строка.
     if (data.assignee && !helpdeskTeam(ctx.tenant).some((m) => m.username === data.assignee))
       throw new UserError("err.ticket.badAssignee", "Такого сотрудника нет в команде магазина.");
-    const { updateTicket } = await import("@/core/helpdesk/tickets");
+    const { getTicket, updateTicket } = await import("@/core/helpdesk/tickets");
+    const before = await getTicket(ctx, data.id);
+    if (!before) throw new UserError("err.ticket.notFound", "Обращение не найдено.");
     const ticket = await updateTicket(
       ctx,
       data.id,
@@ -59,5 +61,10 @@ export const updateTicketFn = createServerFn({ method: "POST" })
       await guards.adminActor(),
     );
     if (!ticket) throw new UserError("err.ticket.notFound", "Обращение не найдено.");
-    return { ticket };
+    const { notifyTicketClosed } = await import("./helpdesk.server");
+    const notified =
+      before.status !== "closed" && ticket.status === "closed"
+        ? await notifyTicketClosed(ctx, ticket)
+        : null;
+    return { ticket, notified };
   });

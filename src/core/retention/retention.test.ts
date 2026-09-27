@@ -80,6 +80,57 @@ describe("ретеншн zernio_logs", () => {
     expect(db.tables.zernio_logs.map((r) => r.id)).toEqual(["recent-fail"]);
   });
 
+  it("обращения helpdesk не удаляются, даже старые и незакрытые", async () => {
+    db.tables.zernio_logs = [
+      {
+        id: "old-fail",
+        bot_id: "b",
+        event_type: "message.received",
+        status: "failed",
+        created_at: daysAgo(181),
+      },
+      {
+        id: "t-open",
+        bot_id: "b",
+        event_id: "ticket:1",
+        event_type: "ticket",
+        status: "open",
+        created_at: daysAgo(400),
+      },
+      {
+        id: "t-wait",
+        bot_id: "b",
+        event_id: "ticket:2",
+        event_type: "ticket",
+        status: "waiting",
+        created_at: daysAgo(400),
+      },
+      {
+        id: "t-old",
+        bot_id: "b",
+        event_id: "ticket:3",
+        event_type: "ticket",
+        status: "pending",
+        created_at: daysAgo(400),
+      },
+      {
+        id: "t-closed",
+        bot_id: "b",
+        event_id: "ticket:4",
+        event_type: "ticket",
+        status: "closed",
+        created_at: daysAgo(400),
+      },
+    ];
+    expect(await pruneZernioLogs(NOW)).toEqual({ deleted: 1, done: true });
+    expect(db.tables.zernio_logs.map((r) => r.id)).toEqual([
+      "t-open",
+      "t-wait",
+      "t-old",
+      "t-closed",
+    ]);
+  });
+
   it("пустой круг клиентов v2 — ничего не трогает", async () => {
     db.tables.zernio_logs = [
       { id: "old-ok", bot_id: "b", status: "processed", created_at: daysAgo(31) },
