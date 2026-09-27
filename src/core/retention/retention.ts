@@ -133,6 +133,42 @@ export const pruneBotEvents = (now = Date.now(), scope?: Scope) =>
 export const pruneHealthSnapshots = (now = Date.now(), scope?: Scope) =>
   pruneByAt("bot_health_snapshots", RETENTION.healthSnapshotsDays, now, scope);
 
+/**
+ * Брони решённых задач регистрации (app/signup: `claimChallenge`) — строки
+ * `operator_settings` с ключом `signup_challenge:<отпечаток>`, значение —
+ * срок брони (выдача + сутки). Таблица общая с v1, поэтому удаляем строго по
+ * префиксу: в LIKE «_» — любой символ, так что выборку ещё раз сверяем
+ * `startsWith` и удаляем только точные ключи. Значение не дата — не трогаем.
+ */
+export const SIGNUP_CHALLENGE_PREFIX = "signup_challenge:";
+
+export async function pruneSignupChallenges(now = Date.now()): Promise<PruneResult> {
+  const db = serviceDb();
+  const { data, error } = await db
+    .from("operator_settings")
+    .select("key, value")
+    .like("key", `${SIGNUP_CHALLENGE_PREFIX}%`)
+    .lt("value", new Date(now).toISOString())
+    .limit(BATCH);
+  if (error) throw new Error(`operator_settings: ${error.message}`);
+  const rows = data ?? [];
+  const keys = rows
+    .filter((r) => r.key.startsWith(SIGNUP_CHALLENGE_PREFIX))
+    .filter((r) => {
+      const until = Date.parse(r.value ?? "");
+      return Number.isFinite(until) && until < now;
+    })
+    .map((r) => r.key);
+  for (let i = 0; i < keys.length; i += DELETE_CHUNK) {
+    const { error: e2 } = await db
+      .from("operator_settings")
+      .delete()
+      .in("key", keys.slice(i, i + DELETE_CHUNK));
+    if (e2) throw new Error(`operator_settings: ${e2.message}`);
+  }
+  return { deleted: keys.length, done: rows.length < BATCH };
+}
+
 export async function pruneBroadcastRecipients(
   now = Date.now(),
   scope?: Scope,
@@ -185,6 +221,8 @@ export async function runRetention(
     bot_events: (n) => pruneBotEvents(n, s),
     bot_health_snapshots: (n) => pruneHealthSnapshots(n, s),
     broadcast_recipients: (n) => pruneBroadcastRecipients(n, s),
+    // Платформенные брони регистрации, без bot_id: границы клиентов к ним не относятся.
+    signup_challenges: pruneSignupChallenges,
     // Копии PDF со знаком (core/delivery) — только клиенты v2 и только `<клиент>/wm/`.
     watermark_copies: async (n) =>
       (await import("@/core/delivery/watermark.server")).pruneStampedCopies(s ?? [], n),

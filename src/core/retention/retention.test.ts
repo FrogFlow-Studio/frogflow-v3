@@ -4,8 +4,13 @@ import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 let db: FakeDb;
 vi.mock("@/core/db/client.server", () => ({ serviceDb: () => db }));
 
-const { RETENTION, pruneBroadcastRecipients, pruneOperatorLoginAttempts, pruneZernioLogs } =
-  await import("./retention");
+const {
+  RETENTION,
+  pruneBroadcastRecipients,
+  pruneOperatorLoginAttempts,
+  pruneSignupChallenges,
+  pruneZernioLogs,
+} = await import("./retention");
 
 const NOW = Date.parse("2026-09-26T00:00:00Z");
 const daysAgo = (d: number) => new Date(NOW - d * 86_400_000).toISOString();
@@ -78,5 +83,30 @@ describe("ретеншн zernio_logs", () => {
     ];
     expect(await pruneZernioLogs(NOW, [])).toEqual({ deleted: 0, done: true });
     expect(db.tables.zernio_logs).toHaveLength(1);
+  });
+});
+
+describe("брони задач регистрации в operator_settings", () => {
+  it("удаляет только signup_challenge: старше суток, остальные строки общей с v1 таблицы не трогает", async () => {
+    const past = new Date(NOW - 1000).toISOString();
+    const future = new Date(NOW + 3600_000).toISOString();
+    db.tables.operator_settings = [
+      { key: "signup_challenge:old1", value: past },
+      { key: "signup_challenge:old2", value: daysAgo(10) },
+      { key: "signup_challenge:fresh", value: future },
+      // «_» в LIKE — любой символ: похожий ключ не должен попасть под удаление.
+      { key: "signupXchallenge:old", value: past },
+      { key: "operator_password_hash", value: past },
+      { key: "session_revoked:x", value: past },
+      { key: "signup_challenge:not-a-date", value: "abc" },
+    ];
+    expect(await pruneSignupChallenges(NOW)).toEqual({ deleted: 2, done: true });
+    expect(db.tables.operator_settings!.map((r) => r.key)).toEqual([
+      "signup_challenge:fresh",
+      "signupXchallenge:old",
+      "operator_password_hash",
+      "session_revoked:x",
+      "signup_challenge:not-a-date",
+    ]);
   });
 });

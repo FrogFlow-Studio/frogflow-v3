@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { serviceDb } from "@/core/db/client.server";
+import { SIGNUP_CHALLENGE_PREFIX, pruneSignupChallenges } from "@/core/retention/retention";
 
 /**
  * Лимит самостоятельной регистрации. Схему не трогаем: регистрации и так
@@ -46,7 +47,7 @@ export async function signupRefusal(hash: string, nonce?: string): Promise<strin
   return signupVerdict({ ip: byIp.count ?? 0, total: total.count ?? 0 });
 }
 
-export const CHALLENGE_PREFIX = "signup_challenge:";
+export const CHALLENGE_PREFIX = SIGNUP_CHALLENGE_PREFIX;
 
 /**
  * Бронь решённой задачи до создания магазина: вставка строки
@@ -63,10 +64,6 @@ export async function claimChallenge(nonce: string, now = Date.now()): Promise<s
   });
   if (error?.code === "23505") return "Проверка устарела — обновите страницу и попробуйте ещё раз.";
   if (error) return "Регистрация временно недоступна. Попробуйте позже.";
-  await db
-    .from("operator_settings")
-    .delete()
-    .like("key", `${CHALLENGE_PREFIX}%`)
-    .lt("value", new Date(now).toISOString());
+  await pruneSignupChallenges(now).catch(() => undefined);
   return null;
 }
