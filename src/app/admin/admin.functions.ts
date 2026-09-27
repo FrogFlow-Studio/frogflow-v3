@@ -4,6 +4,7 @@ import { shownError } from "@/lib/shown-error";
 import { MODULE_KEYS } from "@/core/modules/registry";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
+import { SETTING_KEYS, settingsForRole, WRITABLE_SETTING_KEYS } from "./setting-keys";
 
 /**
  * Серверные функции админки продавца. Каждая начинается с requireAdmin():
@@ -672,63 +673,16 @@ export const setBlockedFn = createServerFn({ method: "POST" })
 
 /* ── настройки ───────────────────────────────────────────────────── */
 
-export const SETTING_KEYS = [
-  "shop_name",
-  "shop_currency",
-  "shop_tagline",
-  "storefront_accent",
-  "stars_rate",
-  "admin_chat_id",
-  "admin_contact_link",
-  "instruction_caption",
-  "delivery_email_note",
-  "cart_reminder_hours",
-  "delivery_lang_timing",
-  "loyalty_earn_percent",
-  "referral_discount_percent",
-  "smart_search_enabled",
-  "smart_search_daily_count",
-  "smart_search_daily_spend",
-  "smart_search_lifetime_spend",
-  "smart_search_last_error",
-  "receipt_ocr_auto",
-  "receipt_ocr_usage",
-  "consultant_enabled",
-  "consultant_profile",
-  "consultant_knowledge",
-  "consultant_usage",
-  "consultant_last_error",
-  "fulfillment_pickup_enabled",
-  "fulfillment_delivery_enabled",
-  "payment_mode",
-  "deposit_percent",
-  "legal_offer",
-  "legal_privacy",
-  "legal_requisites",
-  "legal_about",
-  "vip_group_id",
-  "vip_payment_instructions",
-  "vip_test_mode",
-  "vip_warn_days",
-  "vip_warn_days_2",
-  "vip_welcome_message",
-  "robokassa_enabled",
-  "robokassa_test_mode",
-  "robokassa_login",
-  "robokassa_pass1",
-  "robokassa_pass2",
-  "robokassa_pass1_test",
-  "robokassa_pass2_test",
-] as const;
-
 export const settingsFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await admin();
+  const role = await (await import("@/app/auth/guards.server")).adminRole();
   const { getSettings } = await import("@/core/settings/settings");
   const { listPaymentMethods } = await import("@/core/settings/payment-methods");
-  const [settings, methods] = await Promise.all([
+  const [raw, methods] = await Promise.all([
     getSettings(ctx, SETTING_KEYS),
     listPaymentMethods(ctx),
   ]);
+  const settings = settingsForRole(raw, role);
   const { platformHasKey } = await import("@/core/search/smart.server");
   const { visionConfigured } = await import("@/core/receipts/verify.server");
   return {
@@ -767,7 +721,7 @@ export const setPdfWatermarkFn = createServerFn({ method: "POST" })
   });
 
 export const saveSettingsFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) => z.record(z.enum(SETTING_KEYS), z.string().max(4000)).parse(d))
+  .validator((d: unknown) => z.record(z.enum(WRITABLE_SETTING_KEYS), z.string().max(4000)).parse(d))
   .handler(async ({ data }) => {
     const ctx = await adminOwner();
     const { setSetting } = await import("@/core/settings/settings");
