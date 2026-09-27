@@ -82,7 +82,7 @@ test("настройки продавца: разделы рисуются и о
   expect(errors).toEqual([]);
 });
 
-test("аналитика: воронка по источникам рисуется", async ({ page }) => {
+test("аналитика: воронка по источникам и ссылки с меткой", async ({ page }) => {
   const errors = await watch(page);
   await page.goto("/admin/login");
   await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
@@ -91,5 +91,15 @@ test("аналитика: воронка по источникам рисует�
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto("/admin/analytics");
   await expect(page.getByText("Воронка по источникам")).toBeVisible();
+  // Генератор ссылок с меткой: кириллица становится латиницей.
+  await page.locator('input[name="source-tag"]').fill("Весна 2026");
+  await expect(
+    page.locator('input[value="https://t.me/e2e_shop_bot?start=src_vesna_2026"]'),
+  ).toBeVisible();
+  await expect(
+    page.locator(`input[value$="/s/${F.SHOP_SLUG}?utm_source=vesna_2026"]`),
+  ).toBeVisible();
+  await page.locator('input[name="source-tag"]').fill("весна🔥");
+  await expect(page.getByText("В метке можно только буквы")).toBeVisible();
   expect(errors).toEqual([]);
 });

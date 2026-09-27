@@ -53,8 +53,25 @@ export const ru = {
   "analytics.sources.other": "Другие",
   "analytics.sources.site": "Сайт: {label}",
   "analytics.sources.bot": "Бот: {label}",
+  "analytics.sources.tag": "Метка: {label}",
   "analytics.sources.allNote":
     "«Все источники» — заказы покупателей за выбранный период без ручных заказов, поэтому сумма может не совпадать с плиткой выручки.",
+  "analytics.links.title": "Ссылки с меткой",
+  "analytics.links.intro":
+    "Придумайте метку для места, где разместите ссылку: блогер, реклама, визитка. Заказы по ней появятся отдельной строкой в воронке по источникам.",
+  "analytics.links.tag": "Метка",
+  "analytics.links.placeholder": "например, весна или blogger_anna",
+  "analytics.links.result": "В воронке: {tag}",
+  "analytics.links.bot": "Бот",
+  "analytics.links.store": "Витрина",
+  "analytics.links.copy": "Скопировать",
+  "analytics.links.copied": "Скопировано",
+  "analytics.links.noBot": "Подключите Telegram-бота, чтобы получить ссылку на него.",
+  "analytics.links.noStore": "Витрина магазина не открыта.",
+  "analytics.links.err.chars":
+    "В метке можно только буквы, цифры, пробел, _ и -. Кириллица станет латиницей, эмодзи и другие знаки не подойдут.",
+  "analytics.links.err.long": "Метка слишком длинная: до 40 латинских знаков.",
+  "analytics.links.err.reserved": "Метки на «ref-» заняты приглашениями друзей, выберите другую.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -109,8 +126,25 @@ export const kk: SectionDict<typeof ru> = {
   "analytics.sources.other": "Басқалар",
   "analytics.sources.site": "Сайт: {label}",
   "analytics.sources.bot": "Бот: {label}",
+  "analytics.sources.tag": "Белгі: {label}",
   "analytics.sources.allNote":
     "«Барлық көздер» — таңдалған кезеңдегі сатып алушылардың тапсырыстары, қолмен енгізілген тапсырыстарсыз, сондықтан сома түсім плиткасымен сәйкес келмеуі мүмкін.",
+  "analytics.links.title": "Белгісі бар сілтемелер",
+  "analytics.links.intro":
+    "Сілтеме орналасатын орынға белгі ойлап табыңыз: блогер, жарнама, визитка. Ол бойынша тапсырыстар көздер воронкасында бөлек жолмен көрінеді.",
+  "analytics.links.tag": "Белгі",
+  "analytics.links.placeholder": "мысалы, коктем немесе blogger_anna",
+  "analytics.links.result": "Воронкада: {tag}",
+  "analytics.links.bot": "Бот",
+  "analytics.links.store": "Витрина",
+  "analytics.links.copy": "Көшіру",
+  "analytics.links.copied": "Көшірілді",
+  "analytics.links.noBot": "Сілтеме алу үшін Telegram-ботты қосыңыз.",
+  "analytics.links.noStore": "Дүкен витринасы ашық емес.",
+  "analytics.links.err.chars":
+    "Белгіде тек әріптер, сандар, бос орын, _ және - болады. Кирилл әріптері латыншаға ауысады, эмодзи және басқа белгілер жарамайды.",
+  "analytics.links.err.long": "Белгі тым ұзын: 40 латын таңбасына дейін.",
+  "analytics.links.err.reserved": "«ref-» белгілері дос шақыруларына арналған, басқасын таңдаңыз.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -165,8 +199,26 @@ export const en: SectionDict<typeof ru> = {
   "analytics.sources.other": "Other",
   "analytics.sources.site": "Site: {label}",
   "analytics.sources.bot": "Bot: {label}",
+  "analytics.sources.tag": "Tag: {label}",
   "analytics.sources.allNote":
     "“All sources” counts buyer orders for the selected period without manual orders, so the total may differ from the revenue tile.",
+  "analytics.links.title": "Tagged links",
+  "analytics.links.intro":
+    "Pick a tag for the place where you post the link: a blogger, an ad, a business card. Orders from it show up as a separate row in the funnel by source.",
+  "analytics.links.tag": "Tag",
+  "analytics.links.placeholder": "e.g. spring or blogger_anna",
+  "analytics.links.result": "In the funnel: {tag}",
+  "analytics.links.bot": "Bot",
+  "analytics.links.store": "Storefront",
+  "analytics.links.copy": "Copy",
+  "analytics.links.copied": "Copied",
+  "analytics.links.noBot": "Connect a Telegram bot to get a link to it.",
+  "analytics.links.noStore": "The shop storefront is not open.",
+  "analytics.links.err.chars":
+    "A tag may contain only letters, digits, spaces, _ and -. Cyrillic becomes Latin; emoji and other symbols are not allowed.",
+  "analytics.links.err.long": "The tag is too long: up to 40 Latin characters.",
+  "analytics.links.err.reserved":
+    "Tags starting with «ref-» are reserved for friend invites, pick another.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -221,6 +273,24 @@ export const uz: SectionDict<typeof ru> = {
   "analytics.sources.other": "Boshqalar",
   "analytics.sources.site": "Sayt: {label}",
   "analytics.sources.bot": "Bot: {label}",
+  "analytics.sources.tag": "Belgi: {label}",
   "analytics.sources.allNote":
     "«Barcha manbalar» — tanlangan davrdagi xaridorlar buyurtmalari, qo‘lda kiritilgan buyurtmalarsiz, shuning uchun summa tushum plitkasidan farq qilishi mumkin.",
+  "analytics.links.title": "Belgili havolalar",
+  "analytics.links.intro":
+    "Havolani joylashtiradigan joy uchun belgi o‘ylab toping: bloger, reklama, vizitka. Undan kelgan buyurtmalar manbalar voronkasida alohida qatorda ko‘rinadi.",
+  "analytics.links.tag": "Belgi",
+  "analytics.links.placeholder": "masalan, bahor yoki blogger_anna",
+  "analytics.links.result": "Voronkada: {tag}",
+  "analytics.links.bot": "Bot",
+  "analytics.links.store": "Vitrina",
+  "analytics.links.copy": "Nusxalash",
+  "analytics.links.copied": "Nusxalandi",
+  "analytics.links.noBot": "Havola olish uchun Telegram-botni ulang.",
+  "analytics.links.noStore": "Do‘kon vitrinasi ochiq emas.",
+  "analytics.links.err.chars":
+    "Belgida faqat harflar, raqamlar, bo‘sh joy, _ va - bo‘lishi mumkin. Kirill harflari lotinchaga o‘tadi, emoji va boshqa belgilar mos emas.",
+  "analytics.links.err.long": "Belgi juda uzun: 40 ta lotin belgisigacha.",
+  "analytics.links.err.reserved":
+    "«ref-» bilan boshlanuvchi belgilar do‘st taklifi uchun band, boshqasini tanlang.",
 };

@@ -1,12 +1,19 @@
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
+import { useRef, useState } from "react";
 import { z } from "zod";
 import { analyticsFn } from "@/app/admin/admin.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
-import { PageTitle } from "@/app/ui";
+import { Card, Field, PageTitle } from "@/app/ui";
 import { BarList, ChartCard, DataTable, LineChart } from "@/app/ui/charts";
 import { compactNumber, shortDay } from "@/core/analytics/pure";
 import { FUNNEL_STAGES, stageRate } from "@/core/analytics/funnel";
-import { revenueParts } from "@/core/analytics/source-funnel";
+import { revenueParts, SOURCE_TAG_GROUP } from "@/core/analytics/source-funnel";
+import {
+  botSourceLink,
+  SOURCE_TAG_MAX,
+  sourceTag,
+  storeSourceLink,
+} from "@/core/analytics/source-links";
 import { formatMoney } from "@/core/money/money";
 import { OrderStatus } from "./admin._authed.orders";
 
@@ -32,9 +39,90 @@ function sourceLabel(source: string, t: AdminT): string {
   if (source === "all") return t("analytics.sources.all");
   if (["direct", "referral", "storefront", "product", "other"].includes(source))
     return t(`analytics.sources.${source}` as "analytics.sources.direct");
+  if (source.startsWith(SOURCE_TAG_GROUP))
+    return t("analytics.sources.tag", { label: source.slice(SOURCE_TAG_GROUP.length) });
   if (source.startsWith("site:"))
     return t("analytics.sources.site", { label: source.slice("site:".length) });
   return t("analytics.sources.bot", { label: source });
+}
+
+/** Строка ссылки: адрес и кнопка «Скопировать». */
+function CopyLink({ label, url, t }: { label: string; url: string; t: AdminT }) {
+  const [copied, setCopied] = useState(false);
+  const field = useRef<HTMLInputElement>(null);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Буфер обмена недоступен (не https, запрет браузера): адрес выделяется для ручного копирования.
+      field.current?.focus();
+    }
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="w-20 text-sm text-muted">{label}</span>
+      <input
+        ref={field}
+        className="input min-w-0 flex-1 font-mono text-xs"
+        readOnly
+        value={url}
+        onFocus={(e) => e.currentTarget.select()}
+      />
+      <button type="button" className="btn-secondary text-xs" onClick={() => void copy()}>
+        {copied ? t("analytics.links.copied") : t("analytics.links.copy")}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Генератор ссылок с меткой: t.me/<бот>?start=src_<метка> и витрина с
+ * ?utm_source=<метка>. Метка разбирается в core/analytics/source-links.
+ */
+function SourceLinksCard({ bot, store }: { bot: string | null; store: string | null }) {
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
+  const t = adminT(shop.locale);
+  const [input, setInput] = useState("");
+  const parsed = sourceTag(input);
+  const error =
+    !parsed.ok && parsed.reason !== "empty" ? t(`analytics.links.err.${parsed.reason}`) : null;
+  return (
+    <Card title={t("analytics.links.title")} className="lg:col-span-2">
+      <p className="mb-3 text-sm text-muted">{t("analytics.links.intro")}</p>
+      <Field label={t("analytics.links.tag")}>
+        <input
+          className="input w-full max-w-sm"
+          name="source-tag"
+          maxLength={SOURCE_TAG_MAX * 2}
+          placeholder={t("analytics.links.placeholder")}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+        />
+      </Field>
+      {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+      {parsed.ok && (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs text-muted">{t("analytics.links.result", { tag: parsed.tag })}</p>
+          {bot ? (
+            <CopyLink label={t("analytics.links.bot")} url={botSourceLink(bot, parsed.tag)} t={t} />
+          ) : (
+            <p className="text-sm text-muted">{t("analytics.links.noBot")}</p>
+          )}
+          {store ? (
+            <CopyLink
+              label={t("analytics.links.store")}
+              url={storeSourceLink(store, parsed.tag)}
+              t={t}
+            />
+          ) : (
+            <p className="text-sm text-muted">{t("analytics.links.noStore")}</p>
+          )}
+        </div>
+      )}
+    </Card>
+  );
 }
 
 function platformLabel(platform: string, t: AdminT): string {
@@ -207,6 +295,7 @@ function AnalyticsPage() {
             />
           }
         />
+        <SourceLinksCard bot={a.links.bot} store={a.links.store} />
         <ChartCard
           title={t("analytics.chart.revenueByDay")}
           chart={

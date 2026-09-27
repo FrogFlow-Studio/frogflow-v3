@@ -26,8 +26,9 @@ export type SourceRow = { source: string } & Record<FunnelStage, number> & {
 
 /**
  * Группа источника. «direct» — без ссылки; «referral», «storefront»,
- * «product» — личные и товарные ссылки (в том числе ?ref= витрины); метки (`site:…`, `src_…` и прочие
- * ссылки продавца) — как есть.
+ * «product» — личные и товарные ссылки (в том числе ?ref= витрины);
+ * метка `src_X` бота и `site:X` витрины — одна группа `tag:X`; остальные
+ * источники (`site:google/spring`, прочие ссылки продавца) — как есть.
  */
 export function sourceGroup(raw: unknown): string {
   if (typeof raw !== "string" || !raw.trim()) return SOURCE_DIRECT;
@@ -37,8 +38,15 @@ export function sourceGroup(raw: unknown): string {
   if (s.startsWith("p_")) return "product";
   // Личная ссылка с витрины (?ref=…) — такое же приглашение, как ref_ в боте.
   if (s.startsWith("site:") && /(^site:| )ref-/.test(s)) return "referral";
+  // Метка из генератора ссылок (core/analytics/source-links): бот
+  // `src_<метка>` и витрина `?utm_source=<метка>` — одна кампания, одна строка.
+  if (s.startsWith("src_") && s.length > 4) return `${SOURCE_TAG_GROUP}${s.slice(4)}`;
+  if (/^site:[^/ ]+$/.test(s)) return `${SOURCE_TAG_GROUP}${s.slice("site:".length)}`;
   return s;
 }
+
+/** Префикс группы «метка»: `tag:vesna` — и бот, и сайт с этой меткой. */
+export const SOURCE_TAG_GROUP = "tag:";
 
 /**
  * Выручка строки по валютам для показа: сначала основная валюта магазина

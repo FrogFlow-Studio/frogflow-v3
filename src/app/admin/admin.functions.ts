@@ -1635,7 +1635,17 @@ export const analyticsFn = createServerFn({ method: "GET" })
       funnels.buyerFunnel(ctx, from, now),
       funnels.sourceFunnel(ctx, from, now),
     ]);
-    return { ...a, funnel, sources };
+    const { storefrontOpen } = await import("@/core/storefront/access");
+    const { storefrontBase } = await import("@/core/tenant/custom-domain");
+    /** Куда ведут ссылки с меткой (core/analytics/source-links). */
+    const links = {
+      bot: ctx.tenant.telegramTokenEnc ? (ctx.tenant.settings.telegram?.username ?? null) : null,
+      store:
+        ctx.tenant.settings.slug && storefrontOpen(ctx.tenant, "catalog")
+          ? storefrontBase(ctx.tenant, ctx.appUrl)
+          : null,
+    };
+    return { ...a, funnel, sources, links };
   });
 
 /* ── чат с менеджером ────────────────────────────────────────────── */

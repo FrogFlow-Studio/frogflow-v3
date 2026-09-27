@@ -12,10 +12,13 @@ describe("группа источника", () => {
     expect(sourceGroup("wc_token")).toBe("storefront");
     expect(sourceGroup("p_0000")).toBe("product");
     expect(sourceGroup("site:google/spring")).toBe("site:google/spring");
-    expect(sourceGroup("src_insta")).toBe("src_insta");
+    // Одна метка из генератора ссылок — одна строка для бота и сайта.
+    expect(sourceGroup("src_insta")).toBe("tag:insta");
+    expect(sourceGroup("site:insta")).toBe("tag:insta");
+    expect(sourceGroup("src_")).toBe("src_");
     expect(sourceGroup("site:ref-anna")).toBe("referral");
     expect(sourceGroup("site:ig ref-blog")).toBe("referral");
-    expect(sourceGroup("site:prefix-ref-x")).toBe("site:prefix-ref-x");
+    expect(sourceGroup("site:prefix-ref-x")).toBe("tag:prefix-ref-x");
   });
 
   it("хвост после первых групп — «другие», «все» считает всё", () => {
@@ -23,7 +26,7 @@ describe("группа источника", () => {
     for (let i = 0; i < 5; i++)
       acc.user({ platform: "telegram", user_key: `tg_${i}`, state: { first_source: `src_${i}` } });
     const rows = acc.rows(3);
-    expect(rows.map((r) => r.source)).toEqual(["all", "src_0", "src_1", "src_2", "other"]);
+    expect(rows.map((r) => r.source)).toEqual(["all", "tag:0", "tag:1", "tag:2", "other"]);
     expect(rows[0]!.arrived).toBe(5);
     expect(rows.at(-1)!.arrived).toBe(2);
   });
@@ -123,7 +126,12 @@ describe("воронка по источникам из базы", () => {
       paid: 1,
       revenue: { KZT: 5000 },
     });
-    expect(by.src_insta).toMatchObject({ arrived: 0, ordered: 1, paid: 1, revenue: { KZT: 5000 } });
+    expect(by["tag:insta"]).toMatchObject({
+      arrived: 0,
+      ordered: 1,
+      paid: 1,
+      revenue: { KZT: 5000 },
+    });
     expect(by["site:google/spring"]).toMatchObject({ arrived: 1, ordered: 1, paid: 0 });
     expect(by.direct).toMatchObject({ arrived: 1, cart: 1, ordered: 0 });
   });
