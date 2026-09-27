@@ -5,6 +5,7 @@
  */
 import { stubDb, type StubDb } from "./pg-stub.ts";
 import { seedBase } from "./seed/base.ts";
+import { seedConsultant } from "./seed/consultant.ts";
 import { seedCommentToDm } from "./seed/comment-to-dm.ts";
 import { seedInstagram } from "./seed/instagram.ts";
 import { seedOperator } from "./seed/operator.ts";
@@ -21,6 +22,7 @@ export function seedDb(): StubDb {
   seedStorefront(db, now);
   seedInstagram(db);
   seedVip(db, now);
+  seedConsultant(db, now);
   seedCommentToDm(db, now);
   return db;
 }

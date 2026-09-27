@@ -11,6 +11,7 @@ import { randomUUID } from "node:crypto";
 import { crc32 } from "node:zlib";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { baseColumn, schemaColumns, selectColumns } from "../db-schema.ts";
+import { CONS_ANSWER, CONS_HANDOFF_SUMMARY, CONS_HANDOFF_WORD } from "./fixtures/consultant.ts";
 
 export type Row = Record<string, unknown>;
 export type Tables = Record<string, Row[]>;
@@ -33,6 +34,8 @@ export type StubDb = {
   zernio: { method: string; path: string; body: Row }[];
   /** Правила Comment-to-DM в Zernio (`/comment-automations`): список и правка. */
   zernioAutomations: Row[];
+  /** Запросы к подставной модели Anthropic (консультант): что приложение спросило. */
+  anthropic: Row[];
 };
 
 const rows = (db: StubDb, t: string) => (db.tables[t] ??= []);
@@ -797,8 +800,48 @@ export function stubDb(init: Partial<StubDb> = {}): StubDb {
     members: new Set(),
     zernio: [],
     zernioAutomations: [],
+    anthropic: [],
     ...init,
   };
+}
+
+/**
+ * Подставная модель Anthropic для консультанта: на обычный вопрос отвечает
+ * текстом, на просьбу позвать менеджера — инструментом handoff_to_manager,
+ * как настоящая модель по подсказке консультанта.
+ */
+function anthropic(db: StubDb, body: Buffer, res: ServerResponse) {
+  const req = JSON.parse(body.toString()) as Row;
+  db.anthropic.push(req);
+  const messages = (req.messages ?? []) as { role: string; content: unknown }[];
+  const last = [...messages].reverse().find((m) => m.role === "user");
+  const text =
+    typeof last?.content === "string"
+      ? last.content
+      : ((last?.content ?? []) as { type: string; text?: string }[])
+          .map((b) => b.text ?? "")
+          .join(" ");
+  const handoff = text.toLowerCase().includes(CONS_HANDOFF_WORD);
+  return send(res, 200, {
+    id: `msg_e2e_${db.anthropic.length}`,
+    type: "message",
+    role: "assistant",
+    model: req.model,
+    content: handoff
+      ? [
+          { type: "text", text: "Передаю ваш вопрос менеджеру, он скоро напишет." },
+          {
+            type: "tool_use",
+            id: `toolu_e2e_${db.anthropic.length}`,
+            name: "handoff_to_manager",
+            input: { reason: "human_requested", summary: CONS_HANDOFF_SUMMARY },
+          },
+        ]
+      : [{ type: "text", text: CONS_ANSWER }],
+    stop_reason: handoff ? "tool_use" : "end_turn",
+    stop_sequence: null,
+    usage: { input_tokens: 1200, output_tokens: 40 },
+  });
 }
 
 /**
@@ -818,6 +861,8 @@ export function startPgStub(port: number, db: StubDb) {
         if (url.pathname.startsWith("/zernio/")) return zernio(db, req, url, body, res);
         if (url.pathname === "/__e2e/telegram") return send(res, 200, db.telegram);
         if (url.pathname === "/__e2e/zernio") return send(res, 200, db.zernio);
+        if (url.pathname === "/anthropic/v1/messages") return anthropic(db, body, res);
+        if (url.pathname === "/__e2e/anthropic") return send(res, 200, db.anthropic);
         const t = /^\/__e2e\/tables\/(\w+)$/.exec(url.pathname);
         if (t && req.method === "GET") return send(res, 200, rows(db, t[1]!));
         if (t && req.method === "POST") {

@@ -1,6 +1,6 @@
 /**
  * Поднимает для сквозного прогона собранное приложение (node-server) рядом с
- * подставной Supabase и Telegram (pg-stub.ts) с демо-магазином (seed.ts).
+ * подставной Supabase, Telegram, Zernio и Anthropic (pg-stub.ts) с демо-магазином (seed.ts).
  * Секреты — заглушки: настоящих ключей здесь нет и не нужно, в базу прогон не
  * ходит.
  */
@@ -29,6 +29,9 @@ const app = spawn(process.execPath, [".output/server/index.mjs"], {
     ZERNIO_BASE_URL: `${STUB}/zernio/v1`,
     ZERNIO_API_KEY: "e2e-zernio-key",
     ZERNIO_WEBHOOK_SECRET,
+    // Консультант: SDK Anthropic берёт адрес из ANTHROPIC_BASE_URL — подставная модель.
+    ANTHROPIC_API_KEY: "e2e-anthropic-key",
+    ANTHROPIC_BASE_URL: `${STUB}/anthropic`,
     SUPABASE_PUBLISHABLE_KEY: "e2e",
     SUPABASE_SERVICE_ROLE_KEY: "e2e",
     SUPABASE_JWT_SECRET: "e2e-jwt-secret-e2e-jwt-secret-0000",
