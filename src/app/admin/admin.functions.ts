@@ -445,17 +445,37 @@ export const productsFn = createServerFn({ method: "GET" })
         q: z.string().optional(),
         categoryId: uuid.nullable().optional(),
         onlyInactive: z.boolean().optional(),
+        offset: z.number().int().min(0).max(1_000_000).optional(),
       })
       .parse(d ?? {}),
   )
   .handler(async ({ data }) => {
     const ctx = await admin();
     const m = await import("@/core/catalog/admin");
-    const [products, categories] = await Promise.all([
+    const [page, categories] = await Promise.all([
       m.listProductsForAdmin(ctx, data),
       m.listAllCategories(ctx),
     ]);
-    return { products, categories };
+    return { products: page.rows, total: page.total, hasMore: page.hasMore, categories };
+  });
+
+/**
+ * Выбор товара в формах админки: поиск по названию (core/catalog/picker).
+ * Названия товаров видит любой сотрудник — как и сам список товаров.
+ */
+export const productPickerFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        q: z.string().max(100).default(""),
+        exclude: z.array(uuid).max(50).default([]),
+      })
+      .parse(d ?? {}),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    const { searchProducts } = await import("@/core/catalog/picker");
+    return searchProducts(ctx, { q: data.q, exclude: data.exclude });
   });
 
 export const productFn = createServerFn({ method: "GET" })
@@ -1239,16 +1259,10 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
     await import("@/core/whatsapp/templates");
   const wa = ctx.tenant.modules.wa_broadcasts;
   const { clicksFor } = await import("@/core/broadcasts/clicks");
-  const [broadcasts, countries, products, settings, templates, categories] = await Promise.all([
+  // Товары для кнопок и сегмента выбираются поиском (productPickerFn), не списком.
+  const [broadcasts, countries, settings, templates, categories] = await Promise.all([
     listBroadcasts(ctx),
     audienceCountries(ctx),
-    ctx.db
-      .from("products")
-      .select("id, name")
-      .eq("is_active", true)
-      .order("name")
-      .limit(200)
-      .then((r) => r.data ?? []),
     getSettings(ctx, ["cart_reminder_hours", "admin_chat_id", "whatsapp_bot_excluded_phones"]),
     wa ? listTemplates(ctx) : Promise.resolve([]),
     ctx.db
@@ -1267,7 +1281,6 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
     broadcasts: broadcasts.map((b) => ({ ...b, clicks: clicks[b.id] ?? 0 })),
     categories,
     countries,
-    products,
     cartReminderHours: settings.cart_reminder_hours ?? "",
     hasAdminChat: Boolean(settings.admin_chat_id || ctx.tenant.ownerTelegramId),
     telegram: ctx.tenant.modules.broadcasts && Boolean(ctx.tenant.telegramTokenEnc),

@@ -30,7 +30,8 @@ export const Route = createFileRoute("/admin/_authed/products")({
 });
 
 function ProductsPage() {
-  const { products, categories } = Route.useLoaderData();
+  const first = Route.useLoaderData();
+  const { categories } = first;
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const s = Route.useSearch();
@@ -38,16 +39,39 @@ function ProductsPage() {
   const router = useRouter();
   const [q, setQ] = useState(s.q ?? "");
   const [importOpen, setImportOpen] = useState(false);
+  // Первая страница — из загрузчика, следующие дописываются кнопкой «Показать ещё».
+  const [products, setProducts] = useState(first.products);
+  const [hasMore, setHasMore] = useState(first.hasMore);
+  useEffect(() => {
+    setProducts(first.products);
+    setHasMore(first.hasMore);
+  }, [first]);
+  const more = useAction(async () => {
+    const r = await productsFn({
+      data: {
+        q: s.q,
+        categoryId: s.category ?? null,
+        onlyInactive: s.inactive,
+        offset: products.length,
+      },
+    });
+    setProducts((p) => {
+      const seen = new Set(p.map((x) => x.id));
+      return [...p, ...r.products.filter((x) => !seen.has(x.id))];
+    });
+    setHasMore(r.hasMore);
+  });
+  // Переключатель правит строку на месте: перезагрузка сбросила бы дочитанные страницы.
   const toggle = useAction(async (id: string, on: boolean) => {
     await setProductActiveFn({ data: { id, active: on } });
-    await router.invalidate();
+    setProducts((p) => p.map((x) => (x.id === id ? { ...x, is_active: on } : x)));
   });
   const catName = new Map(categories.map((c) => [c.id, c.name]));
   return (
     <>
       <PageTitle
         title={t("products.title")}
-        subtitle={t("products.count", { n: products.length })}
+        subtitle={t("products.count", { n: first.total })}
         actions={
           <div className="flex gap-2">
             <button className="btn-secondary" onClick={() => setImportOpen((v) => !v)}>
@@ -192,6 +216,24 @@ function ProductsPage() {
               ))}
             </tbody>
           </table>
+          {(hasMore || products.length < first.total) && (
+            <div className="flex flex-wrap items-center gap-3 border-t border-line p-3">
+              <span className="text-sm text-muted">
+                {t("products.shown", { n: products.length, total: first.total })}
+              </span>
+              {hasMore && (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={more.busy}
+                  onClick={() => void more.run().catch(() => {})}
+                >
+                  {t("products.showMore")}
+                </button>
+              )}
+              <ErrorBox error={more.error ?? toggle.error} />
+            </div>
+          )}
         </div>
       )}
     </>

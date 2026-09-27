@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ProductSearch, type PickerProduct } from "@/app/admin/product-picker";
 import { useEffect, useState } from "react";
 import { saveUpsellFn, upsellForProductFn } from "@/app/admin/upsell.functions";
 import { deleteProductFn, productFn, saveProductFn } from "@/app/admin/admin.functions";
@@ -502,32 +503,33 @@ function ProductEditor() {
 
 /** «С этим предлагать»: до 10 товаров, которые бот покажет в корзине рядом с этим. */
 function UpsellCard({ productId, t }: { productId: string; t: AdminT }) {
-  const [data, setData] = useState<Awaited<ReturnType<typeof upsellForProductFn>> | null>(null);
-  const [picked, setPicked] = useState<string[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [picked, setPicked] = useState<PickerProduct[]>([]);
   const [saved, setSaved] = useState(false);
   useEffect(() => {
     void upsellForProductFn({ data: { productId } }).then((r) => {
-      setData(r);
-      setPicked(r.selected);
+      const byId = new Map(r.products.map((x) => [x.id, x]));
+      // Порядок — как сохранён; удалённый товар показываем id, чтобы его можно было убрать.
+      setPicked(r.selected.map((id) => byId.get(id) ?? { id, name: id, price: 0, currency: "" }));
+      setLoaded(true);
     });
   }, [productId]);
   const save = useAction(async () => {
-    await saveUpsellFn({ data: { productId, ids: picked } });
+    await saveUpsellFn({ data: { productId, ids: picked.map((x) => x.id) } });
     setSaved(true);
   });
-  if (!data) return null;
-  const name = new Map(data.products.map((x) => [x.id, x.name]));
+  if (!loaded) return null;
   return (
     <Card title={t("product.card.upsell")}>
       <p className="mb-2 text-xs text-muted">{t("product.upsellHint")}</p>
       <ul className="mb-2 space-y-1 text-sm">
-        {picked.map((id) => (
-          <li key={id} className="flex items-center justify-between gap-2">
-            <span className="truncate">{name.get(id) ?? id}</span>
+        {picked.map((x) => (
+          <li key={x.id} className="flex items-center justify-between gap-2">
+            <span className="truncate">{x.name}</span>
             <button
               type="button"
               className="btn-ghost text-xs"
-              onClick={() => setPicked((x) => x.filter((y) => y !== id))}
+              onClick={() => setPicked((p) => p.filter((y) => y.id !== x.id))}
             >
               ✕
             </button>
@@ -535,20 +537,15 @@ function UpsellCard({ productId, t }: { productId: string; t: AdminT }) {
         ))}
       </ul>
       {picked.length < 10 && (
-        <select
-          className="input"
-          value=""
-          onChange={(e) => e.target.value && setPicked((x) => [...x, e.target.value])}
-        >
-          <option value="">{t("product.upsellAdd")}</option>
-          {data.products
-            .filter((x) => !picked.includes(x.id))
-            .map((x) => (
-              <option key={x.id} value={x.id}>
-                {x.name}
-              </option>
-            ))}
-        </select>
+        <div aria-label={t("product.upsellAdd")}>
+          <ProductSearch
+            t={t}
+            exclude={[productId, ...picked.map((x) => x.id)]}
+            onPick={(x) =>
+              setPicked((p) => (p.some((y) => y.id === x.id) || p.length >= 10 ? p : [...p, x]))
+            }
+          />
+        </div>
       )}
       <div className="mt-2 flex items-center gap-3">
         <button

@@ -12,17 +12,8 @@ const adminWrite = async () =>
 export const storyTagsFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await admin();
   const { listStoryTags } = await import("@/core/consultant/story-tags");
-  const [tags, products] = await Promise.all([
-    listStoryTags(ctx),
-    ctx.db
-      .from("products")
-      .select("id, name")
-      .eq("is_active", true)
-      .order("name")
-      .limit(500)
-      .then((r) => r.data ?? []),
-  ]);
-  return { tags, products };
+  const tags = await listStoryTags(ctx);
+  return { tags };
 });
 
 export const upsertStoryTagFn = createServerFn({ method: "POST" })

@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { ProductPicker, type PickerProduct } from "@/app/admin/product-picker";
 import { useEffect, useState } from "react";
 import { consultantFn, consultantTestFn, saveConsultantFn } from "@/app/admin/admin.functions";
 import { deleteStoryTagFn, storyTagsFn, upsertStoryTagFn } from "@/app/admin/consultant.functions";
@@ -367,7 +368,7 @@ type StoryTags = Awaited<ReturnType<typeof storyTagsFn>>;
 function StoriesCard({ t }: { t: AdminT }) {
   const [data, setData] = useState<StoryTags | null>(null);
   const [story, setStory] = useState("");
-  const [productId, setProductId] = useState("");
+  const [product, setProduct] = useState<PickerProduct | null>(null);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [notes, setNotes] = useState("");
@@ -376,11 +377,10 @@ function StoriesCard({ t }: { t: AdminT }) {
     void reload();
   }, []);
   const add = useAction(async () => {
-    const product = data?.products.find((p) => p.id === productId);
     await upsertStoryTagFn({
       data: {
         story,
-        productId: productId || null,
+        productId: product?.id ?? null,
         productName: (product?.name ?? name).trim(),
         price: price.trim() ? Number(price) : null,
         notes: notes.trim() || null,
@@ -414,24 +414,15 @@ function StoriesCard({ t }: { t: AdminT }) {
           required
         />
         <div className="grid gap-2 sm:grid-cols-2">
-          <select
-            className="input"
-            value={productId}
-            onChange={(e) => setProductId(e.target.value)}
-          >
-            <option value="">{t("consultant.stories.pickProduct")}</option>
-            {(data?.products ?? []).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          <div aria-label={t("consultant.stories.pickProduct")}>
+            <ProductPicker t={t} value={product} onChange={setProduct} />
+          </div>
           <input
             className="input"
             placeholder={t("consultant.stories.namePlaceholder")}
             value={name}
-            disabled={Boolean(productId)}
-            required={!productId}
+            disabled={Boolean(product)}
+            required={!product}
             onChange={(e) => setName(e.target.value)}
           />
           <input

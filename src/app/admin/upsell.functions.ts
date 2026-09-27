@@ -10,17 +10,10 @@ export const upsellForProductFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const ctx = await moduleAdmin();
     const { getUpsellFor } = await import("@/core/upsell/upsell");
-    const [selected, products] = await Promise.all([
-      getUpsellFor(ctx, data.productId),
-      ctx.db
-        .from("products")
-        .select("id, name")
-        .eq("is_active", true)
-        .neq("id", data.productId)
-        .order("name")
-        .limit(500)
-        .then((r) => r.data ?? []),
-    ]);
+    const { productsByIds } = await import("@/core/catalog/picker");
+    const selected = await getUpsellFor(ctx, data.productId);
+    // Названия выбранных; новые добавляются поиском (productPickerFn).
+    const products = await productsByIds(ctx, selected);
     return { selected, products };
   });
 

@@ -102,23 +102,56 @@ export type ProductListRow = {
   cover: string | null;
 };
 
+/** Строк на странице списка товаров; следующая — кнопкой «Показать ещё». */
+export const PRODUCT_PAGE = 100;
+
+export type ProductListOpts = {
+  q?: string;
+  categoryId?: string | null;
+  onlyInactive?: boolean;
+  offset?: number;
+};
+
+/**
+ * Страница списка товаров. Порядок — sort_order, название и в конце id:
+ * без уникального ключа в хвосте товары с одинаковыми позицией и
+ * названием могли переезжать между страницами (повтор или пропуск).
+ */
 export async function listProductsForAdmin(
   ctx: TenantContext,
-  opts: { q?: string; categoryId?: string | null; onlyInactive?: boolean } = {},
-): Promise<ProductListRow[]> {
-  let q = ctx.db
-    .from("products")
-    .select(
-      "id, name, price, currency, is_active, sort_order, fulfillment_kind, stock_quantity, category_ids, created_at, product_images(image_path, sort_order), product_material_files(id), product_variants(id)",
+  opts: ProductListOpts = {},
+): Promise<{ rows: ProductListRow[]; total: number; hasMore: boolean }> {
+  const offset = Math.max(0, Math.floor(opts.offset ?? 0));
+  type Filterable<Q> = {
+    ilike(column: "name", pattern: string): Q;
+    contains(column: "category_ids", value: string): Q;
+    eq(column: "is_active", value: boolean): Q;
+  };
+  const filtered = <Q extends Filterable<Q>>(q: Q): Q => {
+    let r = q;
+    const term = opts.q?.trim().replace(/[%_,()*\\]/g, " ");
+    if (term) r = r.ilike("name", `%${term}%`);
+    if (opts.categoryId) r = r.contains("category_ids", JSON.stringify([opts.categoryId]));
+    if (opts.onlyInactive) r = r.eq("is_active", false);
+    return r;
+  };
+  const [page, count] = await Promise.all([
+    filtered(
+      ctx.db
+        .from("products")
+        .select(
+          "id, name, price, currency, is_active, sort_order, fulfillment_kind, stock_quantity, category_ids, created_at, product_images(image_path, sort_order), product_material_files(id), product_variants(id)",
+        ),
     )
-    .order("sort_order")
-    .order("name");
-  if (opts.q?.trim()) q = q.ilike("name", `%${opts.q.trim().replace(/[%_]/g, " ")}%`);
-  if (opts.categoryId) q = q.contains("category_ids", JSON.stringify([opts.categoryId]));
-  if (opts.onlyInactive) q = q.eq("is_active", false);
-  const { data, error } = await q.limit(500);
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((p) => ({
+      .order("sort_order")
+      .order("name")
+      .order("id")
+      .range(offset, offset + PRODUCT_PAGE - 1),
+    filtered(ctx.db.from("products").select("id", { count: "exact", head: true })),
+  ]);
+  if (page.error) throw new Error(page.error.message);
+  if (count.error) throw new Error(count.error.message);
+  const rows = (page.data ?? []).map((p) => ({
     id: p.id,
     name: p.name,
     price: Number(p.price),
@@ -135,6 +168,8 @@ export async function listProductsForAdmin(
     cover:
       p.product_images?.slice().sort((a, b) => a.sort_order - b.sort_order)[0]?.image_path ?? null,
   }));
+  const total = count.count ?? offset + rows.length;
+  return { rows, total, hasMore: offset + rows.length < total };
 }
 
 export async function getProductForAdmin(ctx: TenantContext, id: string): Promise<Product | null> {

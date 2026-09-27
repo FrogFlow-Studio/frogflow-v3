@@ -1,4 +1,5 @@
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
+import { ProductPicker, type PickerProduct } from "@/app/admin/product-picker";
 import { useEffect, useState } from "react";
 import { deleteOfferFn, offersFn, saveOfferFn } from "@/app/admin/offers.functions";
 import {
@@ -393,7 +394,7 @@ function OffersCard() {
   const t = adminT(shop.locale);
   const loc = intlLocale(shop.locale);
   const [data, setData] = useState<Awaited<ReturnType<typeof offersFn>> | null>(null);
-  const [productId, setProductId] = useState("");
+  const [product, setProduct] = useState<PickerProduct | null>(null);
   const [percent, setPercent] = useState("20");
   const [ends, setEnds] = useState("");
   const [limit, setLimit] = useState("");
@@ -404,7 +405,7 @@ function OffersCard() {
   const add = useAction(async () => {
     await saveOfferFn({
       data: {
-        productId,
+        productId: product?.id ?? "",
         percent: Number(percent),
         startsAt: null,
         endsAt: new Date(ends).toISOString(),
@@ -412,6 +413,7 @@ function OffersCard() {
       },
     });
     setLimit("");
+    setProduct(null);
     await reload();
   });
   const del = useAction(async (id: string) => {
@@ -430,19 +432,9 @@ function OffersCard() {
           void add.run().catch(() => {});
         }}
       >
-        <select
-          className="input"
-          value={productId}
-          onChange={(e) => setProductId(e.target.value)}
-          required
-        >
-          <option value="">{t("discounts.offers.product")}</option>
-          {(data?.products ?? []).map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <div aria-label={t("discounts.offers.product")}>
+          <ProductPicker t={t} value={product} onChange={setProduct} />
+        </div>
         <input
           className="input"
           type="number"
@@ -468,7 +460,7 @@ function OffersCard() {
           onChange={(e) => setLimit(e.target.value)}
           placeholder={t("discounts.offers.limit")}
         />
-        <button className="btn-primary" disabled={add.busy}>
+        <button className="btn-primary" disabled={add.busy || !product}>
           {t("discounts.offers.add")}
         </button>
       </form>

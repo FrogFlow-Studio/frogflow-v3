@@ -9,16 +9,13 @@ const moduleAdmin = async (min?: "manager") =>
 export const offersFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await moduleAdmin();
   const { listOffers } = await import("@/core/offers/offers");
-  const [offers, products] = await Promise.all([
-    listOffers(ctx),
-    ctx.db
-      .from("products")
-      .select("id, name, price, currency")
-      .eq("is_active", true)
-      .order("name")
-      .limit(500)
-      .then((r) => r.data ?? []),
-  ]);
+  const { productsByIds } = await import("@/core/catalog/picker");
+  const offers = await listOffers(ctx);
+  // Названия товаров из предложений; выбор нового — поиском (productPickerFn).
+  const products = await productsByIds(
+    ctx,
+    offers.map((o) => o.product_id),
+  );
   return { offers, products };
 });
 

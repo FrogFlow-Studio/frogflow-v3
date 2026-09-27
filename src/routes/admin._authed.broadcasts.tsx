@@ -14,6 +14,7 @@ import {
 } from "@/app/admin/admin.functions";
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { uploadFile } from "@/app/admin/upload-client";
+import { ProductPicker, ProductSearch, type PickerProduct } from "@/app/admin/product-picker";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
 import {
@@ -40,6 +41,8 @@ type SegmentKind = (typeof SEGMENT_KINDS)[number];
 type SegmentDraft = {
   kind: SegmentKind;
   productId: string;
+  /** Название выбранного товара — только для формы, в сегмент не уходит. */
+  productName: string;
   categoryId: string;
   days: string;
   locale: string;
@@ -48,6 +51,7 @@ type SegmentDraft = {
 const EMPTY_SEGMENT: SegmentDraft = {
   kind: "product",
   productId: "",
+  productName: "",
   categoryId: "",
   days: "30",
   locale: "ru",
@@ -286,18 +290,17 @@ function SegmentPicker({
         ))}
       </select>
       {value.kind === "product" && (
-        <select
-          className="input"
-          value={value.productId}
-          onChange={(e) => set({ productId: e.target.value })}
-        >
-          <option value="">{t("broadcasts.segment.pickProduct")}</option>
-          {data.products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <div aria-label={t("broadcasts.segment.pickProduct")}>
+          <ProductPicker
+            t={t}
+            value={
+              value.productId
+                ? { id: value.productId, name: value.productName, price: 0, currency: "" }
+                : null
+            }
+            onChange={(p) => set({ productId: p?.id ?? "", productName: p?.name ?? "" })}
+          />
+        </div>
       )}
       {value.kind === "category" && (
         <select
@@ -430,7 +433,7 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
   const router = useRouter();
   const [text, setText] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
-  const [products, setProducts] = useState<string[]>([]);
+  const [products, setProducts] = useState<PickerProduct[]>([]);
   const [showCatalog, setShowCatalog] = useState(false);
   const [audience, setAudience] = useState<UiAudience>("all");
   const [country, setCountry] = useState(Object.keys(data.countries)[0] ?? "");
@@ -452,7 +455,7 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
         channel: "telegram",
         text,
         photoKeys: photos,
-        productIds: products,
+        productIds: products.map((p) => p.id),
         showCatalog,
         audience: audience === "segment" ? "all" : audience,
         countryCode: audience === "country" ? country : undefined,
@@ -487,10 +490,11 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
     }
   };
 
-  const toggleProduct = (id: string) =>
+  const addProduct = (x: PickerProduct) =>
     setProducts((p) =>
-      p.includes(id) ? p.filter((x) => x !== id) : p.length < MAX_PRODUCT_BUTTONS ? [...p, id] : p,
+      p.some((y) => y.id === x.id) || p.length >= MAX_PRODUCT_BUTTONS ? p : [...p, x],
     );
+  const removeProduct = (id: string) => setProducts((p) => p.filter((x) => x.id !== id));
 
   const canSend =
     !disabled &&
@@ -573,28 +577,32 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
             />
             <span className="text-sm">{t("broadcasts.compose.catalogButton")}</span>
           </div>
-          {data.products.length > 0 && (
-            <details className="mt-2">
-              <summary className="cursor-pointer text-sm text-muted">
-                {t("broadcasts.compose.productButtons", {
-                  n: products.length,
-                  max: MAX_PRODUCT_BUTTONS,
-                })}
-              </summary>
-              <div className="mt-2 max-h-56 space-y-1 overflow-auto rounded-md border border-line p-2">
-                {data.products.map((p) => (
-                  <label key={p.id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={products.includes(p.id)}
-                      onChange={() => toggleProduct(p.id)}
-                    />
-                    <span className="truncate">{p.name}</span>
-                  </label>
-                ))}
-              </div>
-            </details>
-          )}
+          <details className="mt-2">
+            <summary className="cursor-pointer text-sm text-muted">
+              {t("broadcasts.compose.productButtons", {
+                n: products.length,
+                max: MAX_PRODUCT_BUTTONS,
+              })}
+            </summary>
+            <div className="mt-2 space-y-2 rounded-md border border-line p-2">
+              {products.map((p) => (
+                <div key={p.id} className="flex items-center gap-2 text-sm">
+                  <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                  <button
+                    type="button"
+                    className="btn-ghost text-xs"
+                    aria-label="✕"
+                    onClick={() => removeProduct(p.id)}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              {products.length < MAX_PRODUCT_BUTTONS && (
+                <ProductSearch t={t} onPick={addProduct} exclude={products.map((p) => p.id)} />
+              )}
+            </div>
+          </details>
         </div>
 
         <AudiencePicker

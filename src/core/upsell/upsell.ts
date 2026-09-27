@@ -10,6 +10,8 @@ import { getSetting, setSetting } from "@/core/settings/settings";
  */
 export const UPSELL_KEY = "upsell_rules";
 export const UPSELL_MAX = 3;
+/** Сколько популярных товаров смотрим для «из тех же категорий». */
+const POPULAR_SCAN = 500;
 
 export type UpsellRules = Record<string, string[]>;
 
@@ -65,14 +67,27 @@ export async function upsellFor(
 ): Promise<UpsellProduct[]> {
   if (!ctx.tenant.modules.upsell || cartIds.length === 0) return [];
   const rules = parseRules(await getSetting(ctx, UPSELL_KEY));
-  const { data } = await ctx.db
-    .from("products")
-    .select(
-      "id, name, price, currency, category_ids, stock_quantity, rating_count, fulfillment_kind",
-    )
-    .eq("is_active", true)
-    .limit(500);
-  const rows = (data ?? []) as Row[];
+  const cols =
+    "id, name, price, currency, category_ids, stock_quantity, rating_count, fulfillment_kind";
+  // Товары корзины и из правил — по id: у крупного каталога они могли не
+  // попасть в общую выборку, и правило продавца молча не срабатывало.
+  // Для запасного «из тех же категорий» хватает самых популярных.
+  const named = [...new Set([...cartIds, ...fromRules(cartIds, rules, 20)])];
+  const [explicit, popular] = await Promise.all([
+    ctx.db.from("products").select(cols).eq("is_active", true).in("id", named),
+    ctx.db
+      .from("products")
+      .select(cols)
+      .eq("is_active", true)
+      .order("rating_count", { ascending: false, nullsFirst: false })
+      .order("id")
+      .limit(POPULAR_SCAN),
+  ]);
+  const rows = [
+    ...new Map(
+      [...(explicit.data ?? []), ...(popular.data ?? [])].map((r) => [r.id, r as Row]),
+    ).values(),
+  ];
   const byId = new Map(rows.map((r) => [r.id, r]));
   const inCart = new Set(cartIds);
   const stockOn = ctx.tenant.modules.stock;
