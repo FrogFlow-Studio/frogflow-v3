@@ -11,6 +11,7 @@ const {
   pruneClosedLeads,
   pruneOperatorLoginAttempts,
   pruneReceiptChecks,
+  pruneRateLimits,
   BATCH,
   pruneSignupChallenges,
   pruneZernioLogs,
@@ -225,6 +226,67 @@ describe("счётчики автопроверок чека покупател�
     expect(await pruneReceiptChecks(NOW, ["bot-1"])).toEqual({ deleted: 1, done: true });
     expect(db.tables.app_settings!.map((r) => r.bot_id)).toEqual(["bot-v1"]);
     expect(await pruneReceiptChecks(NOW, [])).toEqual({ deleted: 0, done: true });
+  });
+});
+
+describe("общие счётчики лимита частоты", () => {
+  const counter = (daysOld: number) =>
+    JSON.stringify({ w: NOW - daysOld * 86_400_000, c: 3, p: 1 });
+  const row = (bot_id: string, key: string, daysOld: number, value?: string) => ({
+    bot_id,
+    key,
+    value: value ?? counter(daysOld),
+    updated_at: daysAgo(daysOld),
+  });
+  const OLD = RETENTION.rateLimitDays + 1;
+
+  it("pruneRateLimits удаляет только старые счётчики rate_limit:, остальное не трогает", async () => {
+    db.tables.app_settings = [
+      row("bot-1", "rate_limit:mini_app_checkout:tg_1", OLD),
+      row("bot-1", "rate_limit:course:item-1", OLD),
+      row("bot-1", "rate_limit:mini_app_orders:tg_2", 0),
+      // Не наши строки: «_» в LIKE, похожие имена, настройка магазина, битое значение.
+      row("bot-1", "rateXlimit:k:tg_1", OLD),
+      row("bot-1", "rate_limits_note", OLD),
+      row("bot-1", "shop_name", OLD, "Магазин"),
+      row("bot-1", "receipt_checks:tg_1", OLD),
+      row("bot-1", "rate_limit:k:broken", OLD, "abc"),
+    ];
+    expect(await pruneRateLimits(NOW)).toEqual({ deleted: 2, done: true });
+    expect(db.tables.app_settings!.map((r) => r.key)).toEqual([
+      "rate_limit:mini_app_orders:tg_2",
+      "rateXlimit:k:tg_1",
+      "rate_limits_note",
+      "shop_name",
+      "receipt_checks:tg_1",
+      "rate_limit:k:broken",
+    ]);
+  });
+
+  it("свежее окно в старой строке не удаляется", async () => {
+    // Дата записи отстала, а окно свежее (часы разошлись) — строку оставляем.
+    db.tables.app_settings = [row("bot-1", "rate_limit:k:tg_1", OLD, counter(0))];
+    expect(await pruneRateLimits(NOW)).toEqual({ deleted: 0, done: true });
+    expect(db.tables.app_settings).toHaveLength(1);
+  });
+
+  it("больше порции свежих счётчиков не заслоняют старые", async () => {
+    db.tables.app_settings = [
+      ...Array.from({ length: BATCH + 5 }, (_, i) => row("bot-1", `rate_limit:k:tg_f${i}`, 0)),
+      row("bot-1", "rate_limit:k:tg_old", OLD),
+    ];
+    expect(await pruneRateLimits(NOW)).toEqual({ deleted: 1, done: true });
+    expect(db.tables.app_settings).toHaveLength(BATCH + 5);
+  });
+
+  it("только клиенты из границ прохода (v2)", async () => {
+    db.tables.app_settings = [
+      row("bot-1", "rate_limit:k:tg_1", OLD),
+      row("bot-v1", "rate_limit:k:tg_1", OLD),
+    ];
+    expect(await pruneRateLimits(NOW, ["bot-1"])).toEqual({ deleted: 1, done: true });
+    expect(db.tables.app_settings!.map((r) => r.bot_id)).toEqual(["bot-v1"]);
+    expect(await pruneRateLimits(NOW, [])).toEqual({ deleted: 0, done: true });
   });
 });
 

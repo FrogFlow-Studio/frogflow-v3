@@ -2,6 +2,7 @@ import { serviceDb } from "@/core/db/client.server";
 import { servedByV2 } from "@/core/tenant/directory";
 import { LEAD_PREFIX, isClosedStage, parseLead } from "@/core/pipeline/stages";
 import { RECEIPT_CHECKS_PREFIX, receiptChecksDay } from "@/core/receipts/attempts";
+import { RATE_LIMIT_PREFIX, parseCounter } from "@/core/storefront/rate-limit";
 import { CHECKOUT_CHALLENGE_PREFIX } from "@/core/storefront/checkout-guard";
 
 /**
@@ -37,6 +38,8 @@ export const RETENTION = {
    * неоплаченных заказов без чека.
    */
   receiptChecksDays: 7,
+  /** Общие счётчики лимита частоты: окна у них минутные, сутки — с запасом. */
+  rateLimitDays: 1,
   /** Брони решённых задач оформления на витрине: задача живёт 2 часа. */
   checkoutChallengesDays: 1,
 } as const;
@@ -235,6 +238,47 @@ export async function pruneReceiptChecks(now = Date.now(), scope?: Scope): Promi
 }
 
 /**
+ * Общие счётчики лимита частоты — строки app_settings `rate_limit:<вид>:<кто>`
+ * (core/storefront/rate-limit). Как у счётчиков чеков: LIKE сверяется ещё раз
+ * `startsWith`, удаляется только строка, значение которой — счётчик с окном
+ * старше суток. Только клиенты v2.
+ */
+export async function pruneRateLimits(now = Date.now(), scope?: Scope): Promise<PruneResult> {
+  if (scope && scope.length === 0) return none;
+  const db = serviceDb();
+  const edge = cutoff(RETENTION.rateLimitDays, now);
+  let q = db
+    .from("app_settings")
+    .select("bot_id, key, value")
+    .like("key", `${RATE_LIMIT_PREFIX}%`)
+    .lt("updated_at", edge);
+  if (scope) q = q.in("bot_id", [...scope]);
+  const { data, error } = await q.order("updated_at", { ascending: true }).limit(BATCH);
+  if (error) throw new Error(`app_settings: ${error.message}`);
+  const rows = data ?? [];
+  const edgeMs = Date.parse(edge);
+  const byBot = new Map<string, string[]>();
+  for (const r of rows) {
+    if (!r.bot_id || !r.key.startsWith(RATE_LIMIT_PREFIX)) continue;
+    const c = parseCounter(r.value);
+    if (!c || c.w >= edgeMs) continue;
+    byBot.set(r.bot_id, [...(byBot.get(r.bot_id) ?? []), r.key]);
+  }
+  let deleted = 0;
+  for (const [botId, keys] of byBot)
+    for (let i = 0; i < keys.length; i += DELETE_CHUNK) {
+      const { error: e2 } = await db
+        .from("app_settings")
+        .delete()
+        .eq("bot_id", botId)
+        .in("key", keys.slice(i, i + DELETE_CHUNK));
+      if (e2) throw new Error(`app_settings: ${e2.message}`);
+      deleted += Math.min(DELETE_CHUNK, keys.length - i);
+    }
+  return { deleted, done: rows.length < BATCH || deleted === 0 };
+}
+
+/**
  * Закрытые заявки воронки сделок — строки app_settings `crm:lead:<id>`.
  * Удаляем строго по префиксу (LIKE ещё раз сверяется startsWith) и только
  * заявку, закрытую раньше окна; открытые не трогаем, сколько бы им ни было.
@@ -370,6 +414,7 @@ export async function runRetention(
     signup_challenges: pruneSignupChallenges,
     closed_leads: (n) => pruneClosedLeads(n, s),
     receipt_checks: (n) => pruneReceiptChecks(n, s),
+    rate_limits: (n) => pruneRateLimits(n, s),
     checkout_challenges: (n) => pruneCheckoutChallenges(n, s),
     // Копии PDF со знаком (core/delivery) — только клиенты v2 и только `<клиент>/wm/`.
     watermark_copies: async (n) =>
