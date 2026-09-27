@@ -40,6 +40,8 @@ export type ZernioWebhookMessagePayload = {
   event: string;
   message?: {
     id?: string;
+    /** Id сообщения у Meta: по нему Zernio заново выдаёт ссылку на вложение. */
+    platformMessageId?: string;
     conversationId?: string;
     platform?: string;
     direction?: "incoming" | "outgoing" | string;
@@ -103,8 +105,13 @@ export type ParsedZernioMessage = {
   /** Нажатие кнопки или строки списка — у такого сообщения текста нет. */
   postbackPayload: string | null;
   nativeOrder: NativeOrder | null;
-  /** mimeType — только когда Zernio его прислал (WhatsApp-медиа). */
-  attachments: Array<{ type: string; url: string; mimeType?: string }>;
+  /** Id сообщения у Meta — для повторного чтения вложения (ссылки CDN Instagram живут недолго). */
+  platformMessageId: string | null;
+  /**
+   * mimeType — только когда Zernio его прислал (WhatsApp-медиа). index — место
+   * вложения в исходном списке события (нужно для повторного чтения).
+   */
+  attachments: Array<{ type: string; url: string; mimeType?: string; index: number }>;
   /** Вложение пришло, но ссылки на него не нашлось — чек нельзя молча терять. */
   mediaWithoutUrl: boolean;
   /** Ответ на сторис или рилс: id медиа из метаданных Zernio (форма поля у них плавает). */
@@ -256,13 +263,14 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
 
   const rawAttachments = Array.isArray(message.attachments) ? message.attachments : [];
   const attachments = rawAttachments
-    .map((a) => {
+    .map((a, index) => {
       const url = pick(a, ATTACHMENT_URL_PATHS) ?? "";
       const mimeType = pick(a, ATTACHMENT_MIME_PATHS)?.toLowerCase();
       return {
         type: str(a?.type).toLowerCase() || "file",
         url: /^https?:\/\//i.test(url) ? url : "",
         ...(mimeType ? { mimeType } : {}),
+        index,
       };
     })
     .filter((a) => a.url);
@@ -292,6 +300,7 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
     metadata,
     postbackPayload,
     nativeOrder,
+    platformMessageId: str(message.platformMessageId) || null,
     attachments,
     mediaWithoutUrl: attachments.length < rawAttachments.length,
     storyId,

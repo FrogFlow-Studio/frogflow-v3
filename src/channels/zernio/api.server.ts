@@ -425,6 +425,32 @@ export async function startWhatsAppConversation(params: {
   }
 }
 
+/**
+ * Свежая ссылка на вложение сообщения. Ссылки CDN Instagram и Facebook в
+ * событии подписаны на время и истекают; Zernio по id сообщения у Meta и
+ * месту вложения выдаёт новую (перевыпускает у Meta, если старая протухла).
+ * null — не вышло: сообщение не нашлось, платформа не умеет, Zernio недоступен.
+ */
+export async function refreshAttachmentUrl(
+  conversationId: string,
+  platformMessageId: string,
+  index: number,
+  accountId: string,
+): Promise<string | null> {
+  try {
+    const r = await request<{ url?: string }>(
+      `/inbox/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(platformMessageId)}/attachments/${index}`,
+      { query: { accountId, format: "json" }, timeoutMs: REFRESH_TIMEOUT_MS },
+    );
+    return typeof r.url === "string" && /^https?:\/\//i.test(r.url) ? r.url : null;
+  } catch (e) {
+    console.warn(
+      `[zernio] вложение не перечитано: ${e instanceof Error ? e.message.slice(0, 200) : String(e)}`,
+    );
+    return null;
+  }
+}
+
 /** Низкоуровневый запрос к Zernio — для соседних модулей канала (автоматизации, посты). */
 export const zernioRequest = request;
 
@@ -437,6 +463,8 @@ export type ZernioTransport = {
     url: string,
     accountId?: string | null,
   ) => Promise<{ bytes: Uint8Array; mime: string } | null>;
+  /** Свежая ссылка на вложение (просроченный CDN) — в тестах подменяется; живое — refreshAttachmentUrl. */
+  refresh?: typeof refreshAttachmentUrl;
   /** Готова ли почта платформы (SMTP) — в тестах подменяется; живое — isMailConfigured. */
   mailReady?: () => boolean;
   /**
@@ -447,6 +475,12 @@ export type ZernioTransport = {
 };
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+/**
+ * Чек качается в фоне вебхука, и при мёртвой ссылке CDN попыток две (с
+ * перечитыванием вложения между ними): худший случай 15 + 8 + 15 = 38 с.
+ */
+const DOWNLOAD_TIMEOUT_MS = 15_000;
+const REFRESH_TIMEOUT_MS = 8_000;
 
 /**
  * Тело ответа не больше `max` байт. Покупатель сам выбирает, что прислать,
@@ -501,7 +535,7 @@ export async function downloadAttachment(
       key && attachmentNeedsZernioKey(url, e.ZERNIO_BASE_URL)
         ? { Authorization: `Bearer ${key}` }
         : {};
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(30_000) });
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
     if (!res.ok) {
       console.warn(`[zernio] вложение не скачалось: HTTP ${res.status} (${u.host})`);
       return null;
@@ -521,5 +555,6 @@ export const liveTransport: ZernioTransport = {
   send: sendInboxMessage,
   tail: listConversationMessages,
   download: downloadAttachment,
+  refresh: refreshAttachmentUrl,
   imageInfo: async (ctx, path) => (await import("./media.server")).storageImageInfo(ctx, path),
 };

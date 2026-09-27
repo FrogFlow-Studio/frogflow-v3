@@ -85,7 +85,7 @@ describe("parseZernioMessage", () => {
       account: { accountId: "a1" },
     });
     expect(p.text).toBe("");
-    expect(p.attachments).toEqual([{ type: "image", url: "https://cdn/x.jpg" }]);
+    expect(p.attachments).toEqual([{ type: "image", url: "https://cdn/x.jpg", index: 0 }]);
     expect(messageAsText(p)).toBe("[вложение: image]");
   });
 
@@ -108,9 +108,14 @@ describe("parseZernioMessage", () => {
       account: { accountId: "a1" },
     });
     expect(p.attachments).toEqual([
-      { type: "image", url: "https://lookaside.fbsbx.com/ig_messaging_cdn/?a=1" },
-      { type: "document", url: "https://zernio.com/api/v1/media/m1", mimeType: "application/pdf" },
-      { type: "image", url: "https://zernio.com/api/v1/media/m2" },
+      { type: "image", url: "https://lookaside.fbsbx.com/ig_messaging_cdn/?a=1", index: 0 },
+      {
+        type: "document",
+        url: "https://zernio.com/api/v1/media/m1",
+        mimeType: "application/pdf",
+        index: 1,
+      },
+      { type: "image", url: "https://zernio.com/api/v1/media/m2", index: 2 },
     ]);
     expect(p.mediaWithoutUrl).toBe(false);
   });

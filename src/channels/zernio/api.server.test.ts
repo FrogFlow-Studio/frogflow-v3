@@ -8,6 +8,7 @@ import {
   listConversationMessages,
   listProfiles,
   readCapped,
+  refreshAttachmentUrl,
   sendInboxMessage,
 } from "./api.server";
 import { isAttachmentRejected } from "./errors";
@@ -200,5 +201,38 @@ describe("кнопки Direct/WhatsApp — заголовок не длинне�
     }
     expect(buttonTitle(`${family}${family}`)).toBe(`${family}…`);
     expect(buttonTitle(`  ${flag} Казахстан  `)).toBe(`${flag} Казахстан`);
+  });
+});
+
+describe("refreshAttachmentUrl — свежая ссылка на вложение Instagram", () => {
+  it("просит JSON по id сообщения у Meta, месту вложения и аккаунту", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk_test" });
+    const fetchMock = vi.fn(async () =>
+      Response.json({ status: "success", url: "https://cdn.test/fresh.jpg", refreshed: true }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await refreshAttachmentUrl("conv/1", "mid-1", 2, "acc-1")).toBe(
+      "https://cdn.test/fresh.jpg",
+    );
+    const u = new URL((fetchMock.mock.calls[0] as unknown as [string])[0]);
+    expect(u.pathname.endsWith("/inbox/conversations/conv%2F1/messages/mid-1/attachments/2")).toBe(
+      true,
+    );
+    expect(u.searchParams.get("accountId")).toBe("acc-1");
+    expect(u.searchParams.get("format")).toBe("json");
+  });
+
+  it("404 или ссылка не http(s) — null, без исключения", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk_test" });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ error: "not found" }, { status: 404 })),
+    );
+    expect(await refreshAttachmentUrl("c", "m", 0, "a")).toBeNull();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ url: "javascript:alert(1)" })),
+    );
+    expect(await refreshAttachmentUrl("c", "m", 0, "a")).toBeNull();
   });
 });

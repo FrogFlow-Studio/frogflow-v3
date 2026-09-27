@@ -68,6 +68,7 @@ import {
 } from "@/channels/telegram/notify";
 import {
   downloadAttachment,
+  refreshAttachmentUrl,
   liveTransport,
   type DmButton,
   type ZernioTransport,
@@ -329,7 +330,12 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         : null;
     if (!orderId) orderId = await recentAwaitingPaymentOrder(s.ctx, s.customer);
     if (orderId && url) {
-      await receiveProof(s, url, orderId);
+      const index = msg.attachments.find((a) => a.url === url)?.index;
+      const again =
+        msg.platformMessageId && index != null
+          ? { platformMessageId: msg.platformMessageId, index }
+          : null;
+      await receiveProof(s, url, orderId, again);
       return "handled";
     }
     if (orderId) {
@@ -1594,8 +1600,26 @@ async function choosePayment(s: Shop, kind: "rk" | "manual") {
 
 // ── чек и выдача ──────────────────────────────────────────────────────
 
-async function receiveProof(s: Shop, url: string, orderId: number) {
-  const file = await (s.transport.download ?? downloadAttachment)(url, s.accountId);
+async function receiveProof(
+  s: Shop,
+  url: string,
+  orderId: number,
+  again: { platformMessageId: string; index: number } | null,
+) {
+  const download = s.transport.download ?? downloadAttachment;
+  let file = await download(url, s.accountId);
+  // Ссылка CDN Instagram живёт недолго (повторная обработка события, медленный
+  // вебхук): перечитываем вложение у Zernio по id сообщения и только потом
+  // просим покупателя прислать чек заново.
+  if (!file && again) {
+    const fresh = await (s.transport.refresh ?? refreshAttachmentUrl)(
+      s.conversationId,
+      again.platformMessageId,
+      again.index,
+      s.accountId,
+    );
+    if (fresh) file = await download(fresh, s.accountId);
+  }
   if (!file) {
     await reply(s, s.m.proofFailed, { force: true });
     return;
@@ -1631,7 +1655,13 @@ async function receiveProof(s: Shop, url: string, orderId: number) {
     o: OrderWithItems,
     opts: Parameters<typeof notifyAdminNewOrder>[4] = {},
   ) => {
-    if (api) await notifyAdminNewOrder(s.ctx, api, o, null, { ...opts, proofUrl: url });
+    // Ссылка CDN Instagram из события протухает — продавцу карточка заказа в
+    // панели: чек там лежит в нашем хранилище и открывается свежей ссылкой.
+    if (api)
+      await notifyAdminNewOrder(s.ctx, api, o, null, {
+        ...opts,
+        proofUrl: `${s.ctx.appUrl}/admin/orders/${o.id}`,
+      });
   };
 
   const { receiptOcrAutoEnabled } = await import("@/core/receipts/verify.server");

@@ -18,6 +18,18 @@ import { handleShopMessage } from "./shop.server";
 
 const BOT = "00000000-0000-0000-0000-0000000000dd";
 
+// Хранилище чеков: загрузка всегда удаётся (attachPaymentProof в тестах чека).
+vi.mock("@/core/db/client.server", () => ({
+  serviceDb: () => ({
+    storage: {
+      from: () => ({
+        upload: async () => ({ data: {}, error: null }),
+        remove: async () => ({ data: [], error: null }),
+      }),
+    },
+  }),
+}));
+
 type Sent = { text: string; interactive?: Json };
 
 function setup(
@@ -90,6 +102,7 @@ function setup(
     metadata: {},
     postbackPayload: null,
     nativeOrder: null,
+    platformMessageId: null,
     attachments: [],
     mediaWithoutUrl: false,
     storyId: null,
@@ -181,12 +194,93 @@ describe("чек вне платёжного шага", () => {
   it("картинка без открытого заказа за чек не принимается", async () => {
     const { send, sent, download, db } = setup({ platform: "instagram" });
     const r = await send({
-      attachments: [{ type: "image", url: "https://cdn.test/receipt.jpg" }],
+      attachments: [{ type: "image", url: "https://cdn.test/receipt.jpg", index: 0 }],
     });
     expect(r.outcome).toBe("question");
     expect(download).not.toHaveBeenCalled();
     expect(sent).toHaveLength(0);
     expect(db.tables.orders).toHaveLength(0);
+  });
+});
+
+describe("чек из Instagram: просроченная ссылка CDN", () => {
+  const waiting = { locale: "ru", mode: "awaiting_proof", pending_order_id: 7 };
+  const receipt = {
+    platformMessageId: "mid-1",
+    attachments: [
+      { type: "audio", url: "https://cdn.test/voice.mp4", index: 0 },
+      { type: "image", url: "https://cdn.test/old.jpg", index: 1 },
+    ],
+  };
+
+  const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
+  const awaitingOrder = () => ({
+    id: 7,
+    bot_id: BOT,
+    order_no: 7,
+    display_no: 107,
+    telegram_id: -1,
+    status: "awaiting_payment",
+    fulfillment_kind: "digital",
+    total: 1000,
+    currency: "KZT",
+    payment_proof_path: null,
+    payment_proof_hash: null,
+    order_items: [],
+  });
+
+  it("старая ссылка мертва, свежая скачалась — чек принят, заказ ждёт подтверждения", async () => {
+    const { send, download, transport, db, sent } = setup({
+      platform: "instagram",
+      state: waiting,
+    });
+    db.tables.orders = [awaitingOrder()];
+    db.tables.order_items = [];
+    download.mockImplementation((async (url: string) =>
+      url === "https://cdn.test/fresh.jpg"
+        ? { bytes: JPEG, mime: "image/jpeg" }
+        : null) as unknown as () => Promise<null>);
+    const refresh = vi.fn(async () => "https://cdn.test/fresh.jpg");
+    transport.refresh = refresh;
+    await send(receipt);
+    expect(refresh).toHaveBeenCalledWith("conv-1", "mid-1", 1, "acc-1");
+    expect(download.mock.calls.map((c) => (c as unknown as [string])[0])).toEqual([
+      "https://cdn.test/old.jpg",
+      "https://cdn.test/fresh.jpg",
+    ]);
+    expect(db.tables.orders![0]).toMatchObject({ status: "awaiting_confirmation" });
+    expect(db.tables.orders![0]!.payment_proof_path).toContain("order-7");
+    expect(sent.at(-1)?.text).toMatch(/получен/);
+  });
+
+  it("свежая ссылка тоже не скачалась — две попытки, просим прислать чек заново", async () => {
+    const { send, download, transport, db, sent } = setup({
+      platform: "instagram",
+      state: waiting,
+    });
+    db.tables.orders = [awaitingOrder()];
+    transport.refresh = vi.fn(async () => "https://cdn.test/fresh.jpg");
+    await send(receipt);
+    expect(download).toHaveBeenCalledTimes(2);
+    expect(db.tables.orders![0]).toMatchObject({ status: "awaiting_payment" });
+    expect(sent.at(-1)?.text).toMatch(/Не удалось сохранить чек/);
+  });
+
+  it("перечитать не вышло — просим прислать чек заново, повторно не качаем", async () => {
+    const { send, download, transport, sent } = setup({ platform: "instagram", state: waiting });
+    transport.refresh = vi.fn(async () => null);
+    await send(receipt);
+    expect(download).toHaveBeenCalledTimes(1);
+    expect(sent.at(-1)?.text).toMatch(/чек/i);
+  });
+
+  it("без id сообщения у Meta перечитывать нечем — сразу просим чек заново", async () => {
+    const { send, download, transport } = setup({ platform: "instagram", state: waiting });
+    const refresh = vi.fn(async () => "https://cdn.test/fresh.jpg");
+    transport.refresh = refresh;
+    await send({ ...receipt, platformMessageId: null });
+    expect(refresh).not.toHaveBeenCalled();
+    expect(download).toHaveBeenCalledTimes(1);
   });
 });
 
