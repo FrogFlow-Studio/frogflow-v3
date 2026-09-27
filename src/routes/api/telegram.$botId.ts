@@ -54,6 +54,17 @@ export const Route = createFileRoute("/api/telegram/$botId")({
         if (!(await claimTelegramUpdate(ctx, (update as { update_id?: number }).update_id)))
           return new Response("ok");
 
+        // Лимит частоты от одного покупателя — до обработки, чтобы спамер не
+        // выбирал общий лимит консультанта за всех (core/customers/inbound-rate).
+        const { telegramInboundAllowed } = await import("@/channels/telegram/inbound-limit");
+        const allowed = await telegramInboundAllowed(ctx, update as never, async (html) => {
+          const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
+          await runInBackground(async () => {
+            await notifyAdminsHtml(ctx, html, { kind: "system" });
+          }, "telegram.flood");
+        });
+        if (!allowed) return new Response("ok");
+
         const run = async () => {
           const { telegramApi } = await import("@/channels/telegram/api");
           const { handleTelegramUpdate } = await import("@/channels/telegram/handle-update");

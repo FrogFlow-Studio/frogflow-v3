@@ -1,3 +1,4 @@
+import { reportError } from "@/lib/errors";
 import { updateSettingAtomic } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 
@@ -106,6 +107,7 @@ export async function takeShared(
   b: Budget,
   local = sharedLocal,
   now = Date.now(),
+  tries = SHARED_TRIES,
 ): Promise<boolean> {
   if (!local.take(`${ctx.tenant.id}:${kind}:${subject}`, b, now)) return false;
   let allowed = true;
@@ -118,10 +120,11 @@ export async function takeShared(
         allowed = next != null;
         return next;
       },
-      SHARED_TRIES,
+      tries,
     );
     return r === "failed" ? true : allowed;
-  } catch {
+  } catch (e) {
+    await reportError(e, { where: "rate-limit", botId: ctx.tenant.id, extra: { kind } });
     return true;
   }
 }

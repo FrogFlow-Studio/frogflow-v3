@@ -3,6 +3,7 @@ import type { Tenant } from "@/core/tenant/types";
 import type { ZernioWebhookMessagePayload } from "./message";
 import type { DispatchOutcome } from "./dispatch.server";
 import { runNotingEffects } from "@/lib/external-effects";
+import type { InboundVerdict } from "@/core/customers/inbound-rate";
 
 export type IntakeDeps = {
   resolve: (
@@ -21,11 +22,17 @@ export type IntakeDeps = {
   settle: (ctx: TenantContext, eventId: string, r: DispatchOutcome) => Promise<void>;
   /** Отметка на строке журнала перед первой отправкой наружу. */
   markSending: (ctx: TenantContext, eventId: string) => Promise<void>;
+  /** Лимит частоты входящих от покупателя (core/customers/inbound-rate). */
+  admit: (ctx: TenantContext, payload: ZernioWebhookMessagePayload) => Promise<InboundVerdict>;
+  /** Уведомить продавца о покупателе сверх лимита (раз в час на покупателя). */
+  notifyFlood: (ctx: TenantContext, payload: ZernioWebhookMessagePayload) => Promise<void>;
   /** Магазин найден по профилю: записать новые id аккаунтов и вернуть свежего арендатора. */
   resync: (tenant: Tenant) => Promise<Tenant>;
 };
 
 export type IntakeResult = { status: number; body: string };
+
+export const FLOOD_NOTE = "частые сообщения";
 
 /**
  * Приём события Zernio после проверки подписи. Zernio ждёт ответа 2xx не
@@ -68,6 +75,31 @@ export async function intakeZernioEvent(
   }
   if (!handled) return { status: 200, body: "ok" };
 
+  // Сверх лимита частоты — строка журнала ignored с причиной: ни фон, ни
+  // добор (он берёт received) событие не обработают.
+  if (payload.event === "message.received") {
+    const verdict = await deps.admit(ctx, payload);
+    if (verdict !== "ok") {
+      const { error: markError } = await ctx.db
+        .from("zernio_logs")
+        .update({ status: "ignored", error_message: FLOOD_NOTE })
+        .eq("event_id", eventId)
+        .eq("status", "received");
+      // Не пометили — строка осталась received, и через 3 минуты её обработает
+      // добор: лишнее сообщение лучше потерянного. Сбой — в Sentry.
+      if (markError) {
+        const { reportError } = await import("@/lib/errors");
+        await reportError(new Error(`zernio_logs: ${markError.message}`), {
+          where: "zernio.flood",
+          botId: found.tenant.id,
+          extra: { event_id: eventId },
+        });
+      }
+      if (verdict === "limited_notify") await deps.background(() => deps.notifyFlood(ctx, payload));
+      return { status: 200, body: "ok" };
+    }
+  }
+
   await deps.background(async () => {
     if (!(await deps.claim(ctx, eventId))) return;
     let run = ctx;
@@ -98,6 +130,24 @@ export async function intakeZernioEvent(
   return { status: 200, body: "ok" };
 }
 
+/**
+ * Лимит частоты для входящего сообщения покупателя. Исходящие эхо (ответы
+ * бота, продавец пишет из приложения, рассылки) тоже приходят как
+ * message.received, а отправитель у них берётся из собеседника — это id
+ * покупателя. Их не считаем: иначе ответ консультанта с фото или переписка
+ * продавца выбирали бы лимит покупателя.
+ */
+export async function admitZernioInbound(
+  ctx: TenantContext,
+  payload: ZernioWebhookMessagePayload,
+): Promise<InboundVerdict> {
+  const { parseZernioMessage } = await import("./message");
+  const m = parseZernioMessage(payload);
+  if (m.outgoing || m.senderId === "unknown") return "ok";
+  const { admitInbound } = await import("@/core/customers/inbound-rate");
+  return admitInbound(ctx, `${m.platform}_${m.senderId}`);
+}
+
 /** Боевые зависимости приёма: справочник, фон на waitUntil, добор и сверка аккаунтов. */
 export async function liveIntakeDeps(): Promise<IntakeDeps> {
   const [resolveMod, dispatchMod, { runInBackground }] = await Promise.all([
@@ -113,6 +163,24 @@ export async function liveIntakeDeps(): Promise<IntakeDeps> {
     dispatch: dispatchMod.dispatchZernioEvent,
     settle: dispatchMod.settleZernioEvent,
     markSending: (ctx, eventId) => dispatchMod.markZernioEventSending(ctx, eventId),
+    admit: admitZernioInbound,
+    notifyFlood: async (ctx, payload) => {
+      const [{ parseZernioMessage }, { PLATFORM_LABEL }, { floodNoticeHtml }, notify, copy] =
+        await Promise.all([
+          import("./message"),
+          import("./platform"),
+          import("@/core/customers/inbound-rate"),
+          import("@/channels/telegram/notify"),
+          import("@/channels/telegram/copy"),
+        ]);
+      const m = parseZernioMessage(payload);
+      const who = m.senderUsername ? `@${m.senderUsername}` : m.senderName || m.senderId;
+      await notify.notifyAdminsHtml(
+        ctx,
+        floodNoticeHtml(PLATFORM_LABEL[m.platform], copy.escapeHtml(who)),
+        { kind: "system" },
+      );
+    },
     resync: async (tenant) => {
       const { resyncAfterReconnect } = await import("./connect.server");
       if (!(await resyncAfterReconnect(tenant))) return tenant;

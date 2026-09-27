@@ -3,7 +3,12 @@ import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
 import { findZernioTenant } from "@/core/tenant/directory";
-import { intakeZernioEvent, type IntakeDeps } from "./intake.server";
+import {
+  FLOOD_NOTE,
+  admitZernioInbound,
+  intakeZernioEvent,
+  type IntakeDeps,
+} from "./intake.server";
 import {
   claimZernioEvent,
   markZernioEventSending,
@@ -34,6 +39,8 @@ function setup(directory: Tenant[] = [SHOP, OTHER, V1]) {
   const queued: Array<() => Promise<void>> = [];
   const dispatched: Array<{ eventId: string; tenant: string }> = [];
   const resynced: string[] = [];
+  const verdicts: Array<"ok" | "limited" | "limited_notify"> = [];
+  const flooded: string[] = [];
   const deps: IntakeDeps = {
     resolve: async (a, p) => findZernioTenant(directory, a, p),
     tenantContext: (t) => ({ tenant: t, db }) as unknown as TenantContext,
@@ -52,6 +59,10 @@ function setup(directory: Tenant[] = [SHOP, OTHER, V1]) {
         .eq("event_id", eventId);
     },
     markSending: (ctx, id) => markZernioEventSending(ctx, id),
+    admit: async () => verdicts.shift() ?? "ok",
+    notifyFlood: async (_ctx, p) => {
+      flooded.push(p.id ?? "");
+    },
     resync: async (t) => {
       resynced.push(t.id);
       return tenant(t.id, { profile_id: "prof-1", account_ids: ["acc-old", "acc-new"] });
@@ -61,7 +72,7 @@ function setup(directory: Tenant[] = [SHOP, OTHER, V1]) {
   const drain = async () => {
     while (queued.length) await queued.shift()!();
   };
-  return { db, deps, queued, dispatched, resynced, row, drain };
+  return { db, deps, queued, dispatched, resynced, row, drain, verdicts, flooded };
 }
 
 describe("приём вебхука Zernio", () => {
@@ -200,5 +211,60 @@ describe("магазин события Zernio", () => {
     expect(findZernioTenant([SHOP], "ACC-OLD", null)).toMatchObject({ via: "account" });
     expect(findZernioTenant([SHOP], "acc-new", "prof-1")).toMatchObject({ via: "profile" });
     expect(findZernioTenant([SHOP], "acc-new", null)).toBeNull();
+  });
+});
+
+describe("лимит частоты входящих", () => {
+  it("сверх лимита — строка ignored «частые сообщения», без обработки; добор её не берёт", async () => {
+    const s = setup();
+    s.verdicts.push("limited_notify", "limited");
+    await intakeZernioEvent(event("f1", { accountId: "acc-old" }), s.deps);
+    await intakeZernioEvent(event("f2", { accountId: "acc-old" }), s.deps);
+    await s.drain();
+    expect(s.row("f1")).toMatchObject({ status: "ignored", error_message: FLOOD_NOTE });
+    expect(s.row("f2")).toMatchObject({ status: "ignored", error_message: FLOOD_NOTE });
+    expect(s.dispatched).toEqual([]);
+    // Продавцу — одно уведомление, на первое событие сверх лимита.
+    expect(s.flooded).toEqual(["f1"]);
+    await intakeZernioEvent(event("f3", { accountId: "acc-old" }), s.deps);
+    await s.drain();
+    expect(s.dispatched).toEqual([{ eventId: "f3", tenant: "shop" }]);
+  });
+
+  it("комментарии и прочие события лимит входящих не считает", async () => {
+    const s = setup();
+    s.verdicts.push("limited");
+    const comment = { ...event("c1", { accountId: "acc-old" }), event: "comment.received" };
+    await intakeZernioEvent(comment as ZernioWebhookMessagePayload, s.deps);
+    await s.drain();
+    expect(s.dispatched).toEqual([{ eventId: "c1", tenant: "shop" }]);
+    expect(s.verdicts).toEqual(["limited"]);
+  });
+});
+
+describe("лимит входящих: что считается", () => {
+  const msg = (direction: string, i: number) =>
+    ({
+      id: `m${i}`,
+      event: "message.received",
+      account: { accountId: "acc-old", platform: "instagram" },
+      conversation: { id: "conv-1", participantId: "ig-buyer" },
+      message: { id: `m${i}`, direction, text: "фото" },
+    }) as unknown as ZernioWebhookMessagePayload;
+
+  it("40 исходящих (бот, продавец из приложения) не тратят лимит покупателя", async () => {
+    const db = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
+    const ctx = {
+      tenant: { id: "33333333-3333-3333-3333-333333333333" },
+      db,
+    } as unknown as TenantContext;
+    for (let i = 0; i < 40; i++)
+      expect(await admitZernioInbound(ctx, msg("outgoing", i))).toBe("ok");
+    expect(await admitZernioInbound(ctx, msg("incoming", 99))).toBe("ok");
+    // Считалось только входящее.
+    const row = (db.tables.app_settings ?? []).find((r) =>
+      String(r.key).startsWith("rate_limit:inbound:"),
+    );
+    expect(JSON.parse(String(row?.value)).c).toBe(1);
   });
 });
