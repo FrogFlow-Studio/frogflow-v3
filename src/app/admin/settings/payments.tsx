@@ -1,0 +1,418 @@
+import { useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import {
+  deletePaymentMethodFn,
+  savePaymentMethodFn,
+  saveSettingsFn,
+  settingsFn,
+} from "@/app/admin/admin.functions";
+import { Badge, Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
+import { adminT } from "@/app/i18n/admin";
+import { uploadFile } from "@/app/admin/upload-client";
+import { imagePath } from "@/core/catalog/image-url";
+import { settingsRoute } from "./route";
+
+type Method = Awaited<ReturnType<typeof settingsFn>>["methods"][number];
+
+export function PaymentMethods({ methods }: { methods: Method[] }) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const [editing, setEditing] = useState<Method | "new" | null>(null);
+  const save = useAction(async (f: FormData, id: string | null) => {
+    await savePaymentMethodFn({
+      data: {
+        id,
+        countryCode: String(f.get("countryCode")).toUpperCase(),
+        countryName: String(f.get("countryName")),
+        currency: String(f.get("currency")).toUpperCase(),
+        instructions: String(f.get("instructions")),
+        qrCodePath: String(f.get("qrCodePath")) || null,
+        isActive: f.get("isActive") === "on",
+        sortOrder: Number(f.get("sortOrder")) || 0,
+      },
+    });
+    setEditing(null);
+    await router.invalidate();
+  });
+  const del = useAction(async (id: string) => {
+    if (!confirm(t("settings.pay.deleteConfirm"))) return;
+    await deletePaymentMethodFn({ data: { id } });
+    await router.invalidate();
+  });
+  const cur = editing === "new" ? null : editing;
+  const [qr, setQr] = useState<string | null>(null);
+  return (
+    <Card
+      title={t("settings.pay.title")}
+      actions={
+        <button
+          className="btn-secondary text-xs"
+          onClick={() => {
+            setQr(null);
+            setEditing("new");
+          }}
+        >
+          {t("settings.pay.addCountry")}
+        </button>
+      }
+    >
+      <p className="mb-3 text-xs text-muted">{t("settings.pay.intro")}</p>
+      <ul className="divide-y divide-line">
+        {methods.map((m) => (
+          <li key={m.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+            <div>
+              <span className="font-medium">{m.country_name}</span>{" "}
+              <span className="text-muted">
+                {m.country_code} · {m.currency}
+              </span>{" "}
+              {!m.is_active && <Badge>{t("settings.off")}</Badge>}
+              <div className="line-clamp-1 text-xs text-muted">{m.instructions}</div>
+            </div>
+            <div className="shrink-0">
+              <button
+                className="btn-ghost text-xs"
+                onClick={() => {
+                  setQr(m.qr_code_path);
+                  setEditing(m);
+                }}
+              >
+                {t("common.edit")}
+              </button>
+              <button
+                className="btn-ghost text-xs text-danger"
+                onClick={() => void del.run(m.id).catch(() => {})}
+              >
+                {t("common.delete")}
+              </button>
+            </div>
+          </li>
+        ))}
+        {methods.length === 0 && (
+          <li className="py-3 text-sm text-muted">{t("settings.pay.empty")}</li>
+        )}
+      </ul>
+      <ErrorBox error={del.error} />
+      {editing !== null && (
+        <form
+          key={cur?.id ?? "new"}
+          className="mt-4 space-y-3 border-t border-line pt-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save.run(new FormData(e.currentTarget), cur?.id ?? null).catch(() => {});
+          }}
+        >
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label={t("settings.pay.countryCode")}>
+              <input
+                className="input"
+                name="countryCode"
+                defaultValue={cur?.country_code ?? ""}
+                placeholder="KZ"
+                required
+                maxLength={8}
+              />
+            </Field>
+            <Field label={t("settings.name")}>
+              <input
+                className="input"
+                name="countryName"
+                defaultValue={cur?.country_name ?? ""}
+                placeholder={t("settings.pay.countryPlaceholder")}
+                required
+              />
+            </Field>
+            <Field label={t("settings.pay.currency")}>
+              <input
+                className="input"
+                name="currency"
+                defaultValue={cur?.currency ?? "KZT"}
+                maxLength={3}
+                required
+              />
+            </Field>
+          </div>
+          <Field label={t("settings.pay.instructions")} hint={t("settings.pay.instructionsHint")}>
+            <textarea
+              className="input"
+              name="instructions"
+              rows={4}
+              defaultValue={cur?.instructions ?? ""}
+              required
+            />
+          </Field>
+          <Field label={t("settings.pay.qr")}>
+            <input type="hidden" name="qrCodePath" value={qr ?? ""} />
+            <div className="flex items-center gap-3">
+              {qr && (
+                <img
+                  src={imagePath(shop.botId, qr)}
+                  alt="QR"
+                  className="h-16 w-16 rounded border border-line object-cover"
+                />
+              )}
+              <label className="btn-secondary cursor-pointer text-xs">
+                {qr ? t("settings.pay.qrReplace") : t("settings.pay.qrUpload")}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const key = await uploadFile("image", file, t, (status) =>
+                      t("product.uploadFailed", { status }),
+                    ).catch(() => null);
+                    if (key) setQr(key);
+                  }}
+                />
+              </label>
+              {qr && (
+                <button type="button" className="btn-ghost text-xs" onClick={() => setQr(null)}>
+                  {t("settings.pay.qrRemove")}
+                </button>
+              )}
+            </div>
+          </Field>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="isActive" defaultChecked={cur?.is_active ?? true} />{" "}
+              {t("settings.pay.active")}
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              {t("settings.order")}{" "}
+              <input
+                className="input w-20"
+                name="sortOrder"
+                type="number"
+                defaultValue={cur?.sort_order ?? methods.length}
+              />
+            </label>
+          </div>
+          <ErrorBox error={save.error} />
+          <div className="flex gap-2">
+            <button className="btn-primary" disabled={save.busy}>
+              {t("common.save")}
+            </button>
+            <button type="button" className="btn-ghost" onClick={() => setEditing(null)}>
+              {t("common.cancel")}
+            </button>
+          </div>
+        </form>
+      )}
+    </Card>
+  );
+}
+
+/** Telegram Stars: курс «1 ⭐ = X в валюте магазина»; без курса кнопка оплаты не показывается. */
+export function StarsCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const [saved, setSaved] = useState(false);
+  const save = useAction(async (f: FormData) => {
+    setSaved(false);
+    await saveSettingsFn({ data: { stars_rate: String(f.get("rate")).trim().replace(",", ".") } });
+    setSaved(true);
+    await router.invalidate();
+  });
+  const currency = (settings.shop_currency ?? "KZT").toUpperCase();
+  return (
+    <Card title={t("settings.stars.title")}>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save.run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        <p className="text-sm text-muted">{t("settings.stars.intro")}</p>
+        <Field label={t("settings.stars.rate", { currency })} hint={t("settings.stars.rateHint")}>
+          <input
+            className="input w-40"
+            name="rate"
+            inputMode="decimal"
+            defaultValue={settings.stars_rate ?? ""}
+            placeholder="6.5"
+          />
+        </Field>
+        <div className="flex items-center gap-3">
+          <button className="btn-primary" disabled={save.busy}>
+            {t("common.save")}
+          </button>
+          {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
+        </div>
+        <ErrorBox error={save.error} />
+      </form>
+    </Card>
+  );
+}
+
+export function RobokassaCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const [saved, setSaved] = useState(false);
+  const save = useAction(async (f: FormData) => {
+    setSaved(false);
+    await saveSettingsFn({
+      data: {
+        robokassa_enabled: f.get("enabled") === "on" ? "true" : "false",
+        robokassa_test_mode: f.get("test") === "on" ? "true" : "false",
+        robokassa_login: String(f.get("login")).trim(),
+        robokassa_pass1: String(f.get("pass1")).trim(),
+        robokassa_pass2: String(f.get("pass2")).trim(),
+        robokassa_pass1_test: String(f.get("pass1t")).trim(),
+        robokassa_pass2_test: String(f.get("pass2t")).trim(),
+      },
+    });
+    setSaved(true);
+    await router.invalidate();
+  });
+  // Адрес сайта известен только в браузере: читаем после отрисовки, иначе
+  // сервер и браузер рисуют разный текст и React ругается на гидратацию (#418).
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
+  const resultUrl = `${origin}/api/robokassa/${shop.botId}/result`;
+  return (
+    <Card title={t("settings.rk.title")} className="lg:col-span-2">
+      <p className="mb-3 text-xs text-muted">
+        {t("settings.rk.introResult")}{" "}
+        <code className="rounded bg-surface-2 px-1">{resultUrl}</code>
+        {t("settings.rk.introSuccess")}{" "}
+        <code className="rounded bg-surface-2 px-1">{resultUrl.replace(/result$/, "success")}</code>
+        {t("settings.rk.introFail")}{" "}
+        <code className="rounded bg-surface-2 px-1">{resultUrl.replace(/result$/, "fail")}</code>
+        {t("settings.rk.introTail")}
+      </p>
+      <form
+        className="grid gap-3 sm:grid-cols-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save.run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        <div className="flex gap-4 text-sm sm:col-span-2">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="enabled"
+              defaultChecked={settings.robokassa_enabled === "true"}
+            />{" "}
+            {t("settings.rk.enable")}
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="test"
+              defaultChecked={settings.robokassa_test_mode === "true"}
+            />{" "}
+            {t("settings.rk.test")}
+          </label>
+        </div>
+        <Field label="MerchantLogin">
+          <input
+            className="input"
+            name="login"
+            defaultValue={settings.robokassa_login ?? ""}
+            autoComplete="off"
+          />
+        </Field>
+        <div />
+        <Field label={t("settings.rk.pass1")}>
+          <input
+            className="input"
+            name="pass1"
+            type="password"
+            defaultValue={settings.robokassa_pass1 ?? ""}
+            autoComplete="off"
+          />
+        </Field>
+        <Field label={t("settings.rk.pass2")}>
+          <input
+            className="input"
+            name="pass2"
+            type="password"
+            defaultValue={settings.robokassa_pass2 ?? ""}
+            autoComplete="off"
+          />
+        </Field>
+        <Field label={t("settings.rk.pass1Test")}>
+          <input
+            className="input"
+            name="pass1t"
+            type="password"
+            defaultValue={settings.robokassa_pass1_test ?? ""}
+            autoComplete="off"
+          />
+        </Field>
+        <Field label={t("settings.rk.pass2Test")}>
+          <input
+            className="input"
+            name="pass2t"
+            type="password"
+            defaultValue={settings.robokassa_pass2_test ?? ""}
+            autoComplete="off"
+          />
+        </Field>
+        <div className="flex items-center gap-3 sm:col-span-2">
+          <button className="btn-secondary" disabled={save.busy}>
+            {t("common.save")}
+          </button>
+          {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
+        </div>
+        <ErrorBox error={save.error} />
+      </form>
+    </Card>
+  );
+}
+
+export function ReceiptOcrCard({
+  settings,
+  hasKey,
+}: {
+  settings: Record<string, string>;
+  hasKey: boolean;
+}) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const enabled = settings.receipt_ocr_auto !== "false";
+  const toggle = useAction(async (v: boolean) => {
+    await saveSettingsFn({ data: { receipt_ocr_auto: v ? "true" : "false" } });
+    await router.invalidate();
+  });
+  let usage = { count: 0, monthCount: 0, month: "" };
+  try {
+    usage = { ...usage, ...(JSON.parse(settings.receipt_ocr_usage || "{}") as object) };
+  } catch {
+    /* пустое значение */
+  }
+  const thisMonth = usage.month === new Date().toISOString().slice(0, 7) ? usage.monthCount : 0;
+  return (
+    <Card title={t("settings.ocr.title")}>
+      <p className="mb-3 text-sm text-muted">{t("settings.ocr.intro")}</p>
+      {!hasKey && (
+        <p className="mb-3 rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">
+          {t("settings.ocr.noKey")}
+        </p>
+      )}
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={enabled}
+          disabled={toggle.busy || !hasKey}
+          onChange={(v) => void toggle.run(v).catch(() => {})}
+          label={t("settings.ocr.auto")}
+        />
+        <span className="text-sm">{enabled ? t("settings.ocr.on") : t("settings.ocr.off")}</span>
+      </div>
+      <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
+        <dt className="text-muted">{t("settings.ocr.month")}</dt>
+        <dd className="tabular-nums">{thisMonth}</dd>
+        <dt className="text-muted">{t("settings.ocr.total")}</dt>
+        <dd className="tabular-nums">{usage.count}</dd>
+      </dl>
+      <ErrorBox error={toggle.error} />
+    </Card>
+  );
+}

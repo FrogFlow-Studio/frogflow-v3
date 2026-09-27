@@ -110,6 +110,33 @@ test("маршруты /api отвечают: крон без секрета —
   expect((await request.get("/robots.txt")).status()).toBe(200);
 });
 
+test("настройки продавца: разделы рисуются и оживают без ошибок гидратации", async ({ page }) => {
+  const errors = await watch(page);
+  await page.goto("/admin/login");
+  await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
+  await page.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
+  await page.getByRole("button", { name: "Войти" }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await page.goto("/admin/settings");
+  // Разделы, которые видны на тарифе e2e-магазина (остальные — по модулям).
+  for (const title of [
+    "Магазин",
+    "Способы оплаты по странам",
+    "Telegram-бот",
+    "Физические товары: получение и оплата",
+    "Зоны доставки",
+    "Robokassa: оплата картой",
+    "Недельный отчёт",
+    "Защита PDF от перепродажи",
+  ])
+    await expect(page.getByText(title, { exact: true }).first(), title).toBeVisible();
+  await expect(page.getByText(`/api/robokassa/${F.SHOP_ID}/result`)).toContainText("http");
+  await expect(page.locator("body")).not.toContainText(
+    /Cannot read|undefined|TypeError|Internal Server Error/,
+  );
+  expect(errors).toEqual([]);
+});
+
 test("витрина: разметка товара для поиска уже в ответе сервера", async ({ request }) => {
   const html = await (await request.get(`/s/${F.SHOP_SLUG}/p/${F.PRODUCT_ID}`)).text();
   const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
