@@ -4,7 +4,15 @@
  * без живой Supabase. Уникальные ключи задаются явно, нарушение — ошибка
  * 23505, как у PostgREST. Каждый запрос отдаёт управление (await), так что
  * параллельные вызовы перемежаются, как в настоящей базе.
+ *
+ * Колонки в select, фильтрах, сортировке, вставках и onConflict сверяются
+ * со схемой из src/core/db-types.ts: несуществующая — исключение, как 400
+ * у PostgREST. Ошибку, которую код поймал и проглотил, всё равно видно:
+ * она копится в schemaViolations, и tests/setup-env.ts валит тест.
  */
+export const schemaViolations: string[] = [];
+import { schemaColumns, selectColumns, baseColumn } from "./db-schema";
+
 type Row = Record<string, unknown>;
 type Filter = (r: Row) => boolean;
 type Result = { data: unknown; error: { code?: string; message: string } | null; count?: number };
@@ -82,29 +90,51 @@ class Query implements PromiseLike<Result> {
     private unique: string[][],
   ) {}
 
+  /** Колонка есть в таблице? Таблица вне схемы (тестовая) не проверяется. */
+  private col(expr: string): string {
+    const known = schemaColumns().get(this.table);
+    const name = baseColumn(expr);
+    // `orders.status` — фильтр по встроенной связи: колонка другой таблицы.
+    if (known && !name.includes(".") && !known.has(name)) {
+      const msg = `fakeDb: в таблице ${this.table} нет колонки «${name}» (PostgREST ответил бы 400)`;
+      schemaViolations.push(msg);
+      throw new Error(msg);
+    }
+    return expr;
+  }
+  private cols(rows: Row | Row[]) {
+    for (const r of Array.isArray(rows) ? rows : [rows])
+      for (const k of Object.keys(r)) this.col(k);
+  }
+
   private rows(): Row[] {
     return (this.db.tables[this.table] ??= []);
   }
 
-  select(_cols?: string, o?: { count?: string; head?: boolean }) {
+  select(cols?: string, o?: { count?: string; head?: boolean }) {
+    if (cols) for (const c of selectColumns(cols)) this.col(c);
     if (this.op === "select") {
       this.headCount = Boolean(o?.head);
     } else this.returning = true;
     return this;
   }
   insert(rows: Row | Row[]) {
+    this.cols(rows);
     this.op = "insert";
     this.payload = rows;
     return this;
   }
   /** Вставка или замена по onConflict (одна колонка), как у PostgREST. */
   upsert(rows: Row | Row[], o?: { onConflict?: string }) {
+    this.cols(rows);
+    for (const c of (o?.onConflict ?? "").split(",")) if (c.trim()) this.col(c);
     this.op = "upsert";
     this.payload = rows;
     this.conflictCol = o?.onConflict ?? "id";
     return this;
   }
   update(patch: Row) {
+    this.cols(patch);
     this.op = "update";
     this.payload = patch;
     return this;
@@ -114,19 +144,23 @@ class Query implements PromiseLike<Result> {
     return this;
   }
   eq(col: string, v: unknown) {
+    this.col(col);
     this.filters.push((r) => pick(r, col) === v);
     return this;
   }
   neq(col: string, v: unknown) {
+    this.col(col);
     this.filters.push((r) => r[col] !== v);
     return this;
   }
   in(col: string, vs: unknown[]) {
+    this.col(col);
     this.filters.push((r) => vs.includes(r[col]));
     return this;
   }
   /** not(col, "in", "(a,b)") и not(col, "is", null) — как ими пользуется код. */
   not(col: string, op: "in" | "is", v: string | null) {
+    this.col(col);
     if (op === "is") {
       if (v !== null) throw new Error(`fakeDb: not is ${v} не поддержан`);
       this.filters.push((r) => pick(r, col) != null);
@@ -141,6 +175,7 @@ class Query implements PromiseLike<Result> {
   }
   /** contains по jsonb-объекту: все ключи образца совпадают (плоский @>). */
   contains(col: string, v: Record<string, unknown>) {
+    this.col(col);
     this.filters.push((r) => {
       const obj = r[col] as Record<string, unknown> | null;
       return Boolean(obj) && Object.entries(v).every(([k, x]) => jsonContains(obj![k], x));
@@ -149,6 +184,7 @@ class Query implements PromiseLike<Result> {
   }
   /** like с «%» на конце — префикс, как ими пользуется код. */
   like(col: string, pattern: string) {
+    this.col(col);
     const re = new RegExp(
       "^" +
         pattern
@@ -162,6 +198,7 @@ class Query implements PromiseLike<Result> {
   }
   /** ilike — как like, без учёта регистра. */
   ilike(col: string, pattern: string) {
+    this.col(col);
     const re = new RegExp(
       "^" +
         pattern
@@ -175,26 +212,32 @@ class Query implements PromiseLike<Result> {
     return this;
   }
   is(col: string, v: null) {
+    this.col(col);
     this.filters.push((r) => (r[col] ?? null) === v);
     return this;
   }
   gt(col: string, v: string | number) {
+    this.col(col);
     this.filters.push((r) => r[col] != null && (r[col] as string | number) > v);
     return this;
   }
   gte(col: string, v: string | number) {
+    this.col(col);
     this.filters.push((r) => r[col] != null && (r[col] as string | number) >= v);
     return this;
   }
   lte(col: string, v: string | number) {
+    this.col(col);
     this.filters.push((r) => r[col] != null && (r[col] as string | number) <= v);
     return this;
   }
   lt(col: string, v: string | number) {
+    this.col(col);
     this.filters.push((r) => r[col] != null && (r[col] as string | number) < v);
     return this;
   }
   order(col: string, o?: { ascending?: boolean }) {
+    this.col(col);
     this.sorts.push({ col, asc: o?.ascending !== false });
     return this;
   }

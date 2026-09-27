@@ -9,6 +9,7 @@
 import { randomUUID } from "node:crypto";
 import { crc32 } from "node:zlib";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { baseColumn, schemaColumns, selectColumns } from "../db-schema.ts";
 
 export type Row = Record<string, unknown>;
 export type Tables = Record<string, Row[]>;
@@ -215,6 +216,37 @@ function parseQuery(url: URL): Parsed {
   return p;
 }
 
+/**
+ * Колонка запроса, которой нет в таблице (схема — src/core/db-types.ts), или
+ * null. Настоящий PostgREST на такой ответит 400 (42703) — заглушка тоже,
+ * иначе сквозной прогон зеленел бы на запросе, который упадёт в проде.
+ */
+function unknownColumn(table: string, url: URL, body: Buffer): string | null {
+  const known = schemaColumns().get(table);
+  if (!known) return null;
+  const miss = (expr: string) => {
+    const c = baseColumn(expr);
+    return !c.includes(".") && !known.has(c) ? c : null;
+  };
+  const found: (string | null)[] = [];
+  for (const c of selectColumns(url.searchParams.get("select") ?? "*")) found.push(miss(c));
+  for (const [k] of url.searchParams) {
+    if (RESERVED.has(k) || /^(not\.)?(or|and)$/.test(k)) continue;
+    if (/^[a-z_]+\.[a-z_]/.test(k) && !k.includes("->")) continue; // встроенная таблица
+    found.push(miss(k));
+  }
+  for (const part of (url.searchParams.get("order") ?? "").split(","))
+    if (part) found.push(miss(part.split(".")[0]!));
+  for (const c of (url.searchParams.get("on_conflict") ?? "").split(","))
+    if (c) found.push(miss(c));
+  if (body.length) {
+    const payload = JSON.parse(body.toString()) as Row | Row[];
+    for (const r of Array.isArray(payload) ? payload : [payload])
+      for (const k of Object.keys(r)) found.push(miss(k));
+  }
+  return found.find((c) => c !== null) ?? null;
+}
+
 /* ── встроенные таблицы: select=*,order_items(*),products(name) ─── */
 
 type Embed = { alias: string; table: string; inner: boolean; select: string };
@@ -413,6 +445,17 @@ function rest(db: StubDb, req: IncomingMessage, url: URL, body: Buffer, res: Ser
       ? (JSON.parse(body.toString()) as Row)
       : Object.fromEntries(url.searchParams);
     return send(res, 200, fn(db, args) ?? null);
+  }
+
+  const missing = unknownColumn(table, url, body);
+  if (missing) {
+    console.error(`[pg-stub] ${method} ${table}: нет колонки «${missing}»`);
+    return send(res, 400, {
+      code: "42703",
+      message: `column ${table}.${missing} does not exist`,
+      details: null,
+      hint: null,
+    });
   }
 
   const reply = (list: Row[], total?: number) => {

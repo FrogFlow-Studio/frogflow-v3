@@ -24,3 +24,12 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
   };
   for (const [k, make] of Object.entries(defaults)) process.env[k] ??= make();
 }
+
+// Подставная база (tests/fake-db.ts) копит обращения к несуществующим
+// колонкам — даже те, чью ошибку код поймал и проглотил. Такой тест не зелёный.
+const { afterEach, expect } = await import("vitest");
+const { schemaViolations } = await import("./fake-db");
+afterEach(() => {
+  const found = schemaViolations.splice(0);
+  expect(found, "обращение к несуществующей колонке").toEqual([]);
+});
