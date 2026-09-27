@@ -6,6 +6,8 @@ import * as F from "./fixtures.ts";
  * Покупка на витрине сайта без мессенджера: каталог → корзина → «Оформить на
  * сайте» (задача против ботов решается в браузере) → страница заказа →
  * оплата картой через Robokassa продавца → материалы на странице заказа.
+ * Второй путь — перевод по реквизитам Kaspi и чек, который продавец
+ * подтверждает в админке (автопроверки чеков в прогоне нет: ключа Vision нет).
  * База подставная (pg-stub.ts), Robokassa — наши же подписанные колбэки.
  */
 
@@ -37,13 +39,8 @@ async function watch(page: Page): Promise<{ errors: string[]; robokassa: string[
 
 const md5 = (s: string) => createHash("md5").update(s).digest("hex");
 
-test("покупатель оформляет и оплачивает картой на сайте — материалы на странице заказа", async ({
-  page,
-  request,
-}, info) => {
-  const { errors, robokassa } = await watch(page);
-  const email = `buyer-${info.project.name}-${Date.now()}@example.com`;
-
+/** Каталог → корзина → оформление → страница заказа; возвращает номер заказа. */
+async function placeWebOrder(page: Page, request: APIRequestContext, email: string) {
   await page.goto(`/s/${F.SHOP_SLUG}`);
   await page.getByRole("button", { name: "В корзину" }).first().click();
   await page.goto(`/s/${F.SHOP_SLUG}/cart`);
@@ -75,6 +72,17 @@ test("покупатель оформляет и оплачивает карто
   await stranger.goto(`/s/${F.SHOP_SLUG}/order/${id}?t=${"0".repeat(32)}`);
   await expect(stranger.getByRole("heading", { name: /Заказ №/ })).toHaveCount(0);
   await stranger.close();
+  return id;
+}
+
+test("покупатель оформляет и оплачивает картой на сайте — материалы на странице заказа", async ({
+  page,
+  request,
+}, info) => {
+  const { errors, robokassa } = await watch(page);
+  const email = `buyer-${info.project.name}-${Date.now()}@example.com`;
+
+  const id = await placeWebOrder(page, request, email);
 
   // «Оплатить картой» уводит на Robokassa продавца (запрос перехвачен).
   await page.getByRole("button", { name: "Оплатить картой" }).click();
@@ -111,6 +119,63 @@ test("покупатель оформляет и оплачивает карто
     `/api/robokassa/${F.SHOP_ID}/success?OutSum=${outSum}&InvId=${id}&SignatureValue=${successSig}&Shp_bot=${F.SHOP_ID}`,
   );
   await expect(page).toHaveURL(new RegExp(`/s/${F.SHOP_SLUG}/order/${id}\\?t=[0-9a-f]{32}$`));
+  await expect(page.getByRole("heading", { name: "Ваши материалы" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "propisi.pdf" })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+/** Чек-PDF со своим содержимым: один и тот же чек к двум заказам не принимается. */
+const receiptPdf = (tag: string) =>
+  Buffer.from(`%PDF-1.4
+% Kaspi чек ${tag}
+1 0 obj << >> endobj
+trailer << >>
+%%EOF
+`);
+
+test("покупатель платит переводом Kaspi и присылает чек, продавец подтверждает — материалы на странице заказа", async ({
+  page,
+  browser,
+  request,
+}, info) => {
+  const { errors } = await watch(page);
+  const email = `kaspi-${info.project.name}-${Date.now()}@example.com`;
+  const id = await placeWebOrder(page, request, email);
+  const orderUrl = page.url();
+
+  // Чек — файлом со страницы заказа: заказ ждёт продавца, страница это говорит.
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "kaspi-check.pdf",
+    mimeType: "application/pdf",
+    buffer: receiptPdf(email),
+  });
+  await expect(page.getByText("Чек получен — продавец проверит его и выдаст заказ.")).toBeVisible();
+  await expect.poll(async () => (await orderOf(request, id)).status).toBe("awaiting_confirmation");
+  // Вернулся позже по своей ссылке — страница помнит, что чек на проверке.
+  await page.goto(orderUrl);
+  await expect(
+    page.getByText("Чек у продавца на проверке — материалы появятся здесь."),
+  ).toBeVisible();
+  await expect(page.locator('input[type="file"]')).toHaveCount(0);
+
+  // Продавец подтверждает в веб-админке (своя вкладка).
+  const seller = await browser.newPage();
+  await watch(seller);
+  await seller.goto("/admin/login");
+  await seller.locator('input[name="username"]').fill(F.SELLER_LOGIN);
+  await seller.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
+  await seller.getByRole("button", { name: "Войти" }).click();
+  await expect(seller).toHaveURL(/\/admin$/);
+  await seller.goto(`/admin/orders/${id}`);
+  await seller.getByRole("button", { name: "✅ Подтвердить и выдать" }).click();
+  await expect(seller.getByText(/выдан: 1 поз\./)).toBeVisible();
+  await seller.close();
+  await expect
+    .poll(async () => (await orderOf(request, id)).status, { timeout: 15_000 })
+    .toBe("delivered");
+
+  // Покупатель по своей ссылке видит материалы.
+  await page.goto(orderUrl);
   await expect(page.getByRole("heading", { name: "Ваши материалы" })).toBeVisible();
   await expect(page.getByRole("link", { name: "propisi.pdf" })).toBeVisible();
   expect(errors).toEqual([]);
