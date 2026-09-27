@@ -197,6 +197,14 @@ export async function placeWebOrder(
     fulfillment?: WebFulfillmentRequest | null;
     /** Контакты, введённые в этом оформлении: в заказ, а не в покупателя. */
     contact?: { name: string; phone: string | null };
+    /**
+     * Промокод и подарочный сертификат — те же, что в боте (модули coupons и
+     * gift_certificates, проверка и списание в placeOrder). Баллы на сайте не
+     * списываются: почту никто не подтверждает, и, введя чужую, можно было бы
+     * потратить чужие баллы.
+     */
+    promoCode?: string | null;
+    giftCode?: string | null;
   } = {},
 ): Promise<WebPlaceResult> {
   if (items.some((it) => Number(it.quantity) > WEB_MAX_QTY))
@@ -255,16 +263,20 @@ async function placeFromCart(
   if ((await importItems(ctx, customer, items)) === 0)
     return { ok: false, reason: "nothing_imported" };
   const cart = await listCart(ctx, customer);
+  const discounts = {
+    ...(opts.promoCode?.trim() ? { promoCode: opts.promoCode.trim() } : {}),
+    ...(opts.giftCode?.trim() ? { giftCode: opts.giftCode.trim() } : {}),
+  };
   let r: PlaceOrderResult;
   if (!cart.some((it) => it.products?.fulfillment_kind === "physical")) {
-    r = await placeOrder(ctx, customer, countryCode);
+    r = await placeOrder(ctx, customer, countryCode, discounts);
   } else {
     const f = await resolveWebFulfillment(ctx, customer, opts.fulfillment, countryCode);
     if (!f.ok) {
       await clearCart(ctx, customer);
       return f;
     }
-    r = await placeOrder(ctx, customer, countryCode, { fulfillment: f.input });
+    r = await placeOrder(ctx, customer, countryCode, { ...discounts, fulfillment: f.input });
   }
   if (!r.ok || !opts.contact) return r;
   const patch = {
@@ -347,6 +359,8 @@ export type WebOrderView = {
     fee: number;
   } | null;
   items: Array<{ name: string; qty: number; price: number }>;
+  /** Скидка промокодом, баллами и сертификатом вместе; total — уже после неё. */
+  discount: number;
   /**
    * Как платить: реквизиты и QR способа оплаты страны заказа и/или карта
    * через Robokassa продавца; null — платить не нужно.
@@ -416,6 +430,10 @@ export async function webOrderView(
       qty: Number(i.quantity),
       price: Number(i.price_snapshot),
     })),
+    discount:
+      (Number(order.discount_amount) || 0) +
+      (Number(order.points_used) || 0) +
+      (Number(order.gift_certificate_discount) || 0),
     payment:
       method || card
         ? {

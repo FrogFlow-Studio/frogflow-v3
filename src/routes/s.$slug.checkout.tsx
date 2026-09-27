@@ -24,6 +24,9 @@ function CheckoutPage() {
   // Вошёл через Telegram — заказ попадёт к тому же покупателю, что и в боте.
   const login = useTgLogin(slug);
   const navigate = useNavigate();
+  // Решение задачи одноразовое: после отказа (неверный промокод, товар
+  // закончился) берём новую, чтобы покупатель исправил поле и отправил снова.
+  const [challenge, setChallenge] = useState(info.enabled ? info.challenge : "");
   const physical = cart.lines.some((l) => l.kind === "physical");
   const ff = info.enabled ? info.fulfillment : null;
   const [ftype, setFtype] = useState<"pickup" | "delivery">(
@@ -32,10 +35,10 @@ function CheckoutPage() {
   const { run, busy, error } = useAction(async (f: FormData) => {
     if (!info.enabled) return;
     // Задача против ботов решается в браузере, пока кнопка «занята».
-    const answer = await solveChallenge(info.challenge);
+    const answer = await solveChallenge(challenge);
     // Сервер не принимает форму быстрее трёх секунд после выдачи задачи
     // (автозаполнение успевает) — дожидаемся молча, а не просим обновить.
-    const issued = Number(info.challenge.split(".")[1]);
+    const issued = Number(challenge.split(".")[1]);
     const wait = issued + CHALLENGE_MIN_FILL_MS + 250 - Date.now();
     if (wait > 0)
       await new Promise((r) => setTimeout(r, Math.min(wait, CHALLENGE_MIN_FILL_MS + 250)));
@@ -60,11 +63,17 @@ function CheckoutPage() {
               note: String(f.get("note") ?? "") || null,
             }
           : null,
+        promo: String(f.get("promo") ?? "") || undefined,
+        gift: String(f.get("gift") ?? "") || undefined,
         website: String(f.get("website") ?? ""),
         source: readWebSource(slug),
-        challenge: info.challenge,
+        challenge,
         answer,
       },
+    }).catch(async (e: unknown) => {
+      const fresh = await webCheckoutInfoFn({ data: { slug } }).catch(() => null);
+      if (fresh?.enabled) setChallenge(fresh.challenge);
+      throw e;
     });
     cart.clear();
     rememberOrderToken(slug, String(r.id), r.t);
@@ -190,6 +199,16 @@ function CheckoutPage() {
               <textarea className="input" name="note" maxLength={500} rows={2} />
             </Field>
           </fieldset>
+        )}
+        {info.codes.promo && (
+          <Field label={t("checkout.promo")}>
+            <input className="input" name="promo" maxLength={40} autoComplete="off" />
+          </Field>
+        )}
+        {info.codes.gift && (
+          <Field label={t("checkout.gift")}>
+            <input className="input" name="gift" maxLength={40} autoComplete="off" />
+          </Field>
         )}
         {/* Приманка для ботов: человек это поле не видит и не заполняет. */}
         <input

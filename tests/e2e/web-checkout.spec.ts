@@ -124,6 +124,41 @@ test("покупатель оформляет и оплачивает карто
   expect(errors).toEqual([]);
 });
 
+test("промокод на сайте: неверный — понятная ошибка и повтор без перезагрузки, верный — скидка в заказе", async ({
+  page,
+  request,
+}, info) => {
+  const { errors } = await watch(page);
+  const email = `promo-${info.project.name}-${Date.now()}@example.com`;
+  // Свой адрес: лимит оформлений с одного адреса общий для всех тестов прогона.
+  await page.setExtraHTTPHeaders({
+    "x-forwarded-for": `10.0.${info.project.name === "phone" ? 2 : 1}.${Date.now() % 250}`,
+  });
+
+  await page.goto(`/s/${F.SHOP_SLUG}`);
+  await page.getByRole("button", { name: "В корзину" }).first().click();
+  await page.goto(`/s/${F.SHOP_SLUG}/checkout`);
+  await page.locator('input[name="name"]').fill("Промо E2E");
+  await page.locator('input[name="email"]').fill(email);
+  await page.locator('input[name="promo"]').fill("NOPE");
+  await page.getByRole("button", { name: "Перейти к оплате" }).click();
+  await expect(page.getByText("Промокод не подошёл")).toBeVisible({ timeout: 30_000 });
+
+  // Поля сохранились, задача против ботов — новая: исправляем код и отправляем снова.
+  await expect(page.locator('input[name="email"]')).toHaveValue(email);
+  await page.locator('input[name="promo"]').fill(F.PROMO_CODE.toLowerCase());
+  await page.getByRole("button", { name: "Перейти к оплате" }).click();
+  await expect(page).toHaveURL(new RegExp(`/s/${F.SHOP_SLUG}/order/\\d+\\?t=[0-9a-f]{32}$`), {
+    timeout: 30_000,
+  });
+  const id = Number(new URL(page.url()).pathname.split("/").pop());
+  const discounted = F.PRODUCT_PRICE - F.PRODUCT_PRICE / 10;
+  expect(await orderOf(request, id)).toMatchObject({ total: discounted, platform: "web" });
+  await expect(page.getByText("Скидка")).toBeVisible();
+  await expect(page.getByText(/К оплате: 1\s?350/)).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("«С этим берут» в корзине сайта: правило продавца, товар добавляется одной кнопкой", async ({
   page,
 }) => {

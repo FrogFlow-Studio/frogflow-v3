@@ -159,8 +159,57 @@ describe("заказ с сайта: оформление", () => {
     placeOrder.mockResolvedValue({ ok: true, order: { id: 7 } });
     const r = await placeWebOrder(ctx, customer, [{ product_id: "p1", quantity: 1 }], "KZ");
     expect(r).toMatchObject({ ok: true });
-    expect(placeOrder).toHaveBeenCalledWith(ctx, customer, "KZ");
+    expect(placeOrder).toHaveBeenCalledWith(ctx, customer, "KZ", {});
     expect(db.tables.cart_items!.map((c) => c.id)).toEqual(["new"]);
+  });
+
+  it("промокод и сертификат уходят в тот же placeOrder, баллы на сайте не списываются", async () => {
+    const { db, ctx } = setup();
+    importItems.mockImplementation(async () => {
+      db.tables.cart_items!.push({
+        id: "new",
+        bot_id: BOT,
+        telegram_id: -5,
+        products: { id: "p1", fulfillment_kind: "digital" },
+      });
+      return 1;
+    });
+    placeOrder.mockResolvedValue({ ok: false, reason: "promo_invalid" });
+    const r = await placeWebOrder(ctx, customer, [{ product_id: "p1", quantity: 1 }], "KZ", {
+      promoCode: " spring10 ",
+      giftCode: "GIFT-ABCD",
+    });
+    expect(r).toEqual({ ok: false, reason: "promo_invalid" });
+    expect(placeOrder).toHaveBeenCalledWith(ctx, customer, "KZ", {
+      promoCode: "spring10",
+      giftCode: "GIFT-ABCD",
+    });
+    expect(placeOrder.mock.calls[0]![3]).not.toHaveProperty("usePoints");
+  });
+
+  it("физический заказ: коды скидки идут вместе с выбором получения", async () => {
+    const { db, ctx } = setup();
+    db.tables.payment_methods = [];
+    db.tables.delivery_zones = [];
+    importItems.mockImplementation(async () => {
+      db.tables.cart_items!.push({
+        id: "cake",
+        bot_id: BOT,
+        telegram_id: -5,
+        products: { id: "cake", fulfillment_kind: "physical", lead_time_days: 0 },
+      });
+      return 1;
+    });
+    placeOrder.mockResolvedValue({ ok: true, order: { id: 8 } });
+    await placeWebOrder(ctx, customer, [{ product_id: "cake", quantity: 1 }], "KZ", {
+      fulfillment: { type: "pickup", date: "2099-01-10" },
+      giftCode: "GIFT-ABCD",
+      promoCode: "  ",
+    });
+    expect(placeOrder).toHaveBeenCalledWith(ctx, customer, "KZ", {
+      giftCode: "GIFT-ABCD",
+      fulfillment: { type: "pickup", at: "2099-01-10", address: null, note: null, zone: null },
+    });
   });
 
   it("физические товары: выбор получения проверяется до placeOrder и уходит в заказ", async () => {
@@ -399,6 +448,18 @@ describe("заказ с сайта: страница заказа", () => {
       materials: [],
     });
     expect(v!.payment!.qr).toMatch(/^https:\/\/shop\.test\/api\/img\/.+/);
+    expect(v!.discount).toBe(0);
+  });
+
+  it("скидка промокодом, баллами и сертификатом видна вместе; к оплате — уже после неё", async () => {
+    const { ctx } = withOrder({
+      total: 1700,
+      discount_amount: 500,
+      points_used: 0,
+      gift_certificate_discount: 300,
+    });
+    const v = await webOrderView(ctx, 9);
+    expect(v).toMatchObject({ total: 1700, due: 1700, discount: 800 });
   });
 
   it("Robokassa продавца подключена — есть оплата картой на сумму заказа", async () => {

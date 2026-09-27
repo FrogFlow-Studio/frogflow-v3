@@ -58,6 +58,11 @@ export const webCheckoutInfoFn = createServerFn({ method: "GET" })
       enabled: true as const,
       countries,
       fulfillment: await webFulfillmentOptions(ctx, countries[0]?.code ?? null),
+      /** Поля кодов скидки — только при включённых модулях. */
+      codes: {
+        promo: Boolean(ctx.tenant.modules.coupons),
+        gift: Boolean(ctx.tenant.modules.gift_certificates),
+      },
       challenge: issueChallenge(await secret(), Date.now(), "checkout"),
     };
   });
@@ -89,6 +94,8 @@ const checkoutInput = z.object({
     })
     .nullable()
     .optional(),
+  promo: z.string().trim().max(40).optional(),
+  gift: z.string().trim().max(40).optional(),
   /** Приманка для ботов: поле скрыто, человек его не заполняет. */
   website: z.string().max(0).optional(),
   challenge: z.string().max(200),
@@ -122,9 +129,14 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
     if (!email) throw shownError(t("checkout.error.email"));
     const { clientIp } = await import("@/app/auth/login-guard.server");
     const { claimCheckoutChallenge, takeWeb } = await import("@/core/storefront/checkout-guard");
+    const ip = clientIp() ?? "unknown";
+    const m = ctx.tenant.modules;
+    const promoCode = m.coupons && data.promo ? data.promo : null;
+    const giftCode = m.gift_certificates && data.gift ? data.gift : null;
     if (
-      !(await takeWeb(ctx, "checkoutIp", clientIp() ?? "unknown")) ||
-      !(await takeWeb(ctx, "checkoutEmail", email))
+      !(await takeWeb(ctx, "checkoutIp", ip)) ||
+      !(await takeWeb(ctx, "checkoutEmail", email)) ||
+      ((promoCode || giftCode) && !(await takeWeb(ctx, "code", ip)))
     )
       throw shownError(t("error.tooManyRequests"));
     const claimed = await claimCheckoutChallenge(ctx, challengeNonce(data.challenge)!);
@@ -151,6 +163,8 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
     const r = await placeWebOrder(ctx, customer, parseHandoffItems(data.items), data.country, {
       fulfillment: data.fulfillment,
       contact: { name: data.name, phone },
+      promoCode,
+      giftCode,
     });
     if (!r.ok) {
       switch (r.reason) {
@@ -175,6 +189,10 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
           throw shownError(t("error.nothingImported"));
         case "out_of_stock":
           throw shownError(t("checkout.error.outOfStock"));
+        case "promo_invalid":
+          throw shownError(t("checkout.error.promo"));
+        case "gift_invalid":
+          throw shownError(t("checkout.error.gift"));
         case "country_unavailable":
           throw shownError(t("checkout.error.country"));
         case "busy":

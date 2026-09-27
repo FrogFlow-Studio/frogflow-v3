@@ -102,6 +102,50 @@ export async function redeemGift(
   return { ok: true as const, discount, certificateId: found.certificate.id };
 }
 
+/**
+ * Вернуть промокод и сертификат отменённого неоплаченного заказа
+ * (rejectOrder после выигранного перехода статуса — один раз на заказ).
+ * Сертификат — только если он всё ещё погашен именно этим заказом;
+ * счётчик промокода — CAS по прежнему значению, не ниже нуля.
+ */
+export async function returnOrderCodes(
+  ctx: TenantContext,
+  orderId: number,
+  promoCode: string | null,
+): Promise<{ promo: boolean; gift: boolean }> {
+  const { data: gift } = await ctx.db
+    .from("gift_certificates")
+    .update({
+      status: "active",
+      redeemed_order_id: null,
+      redeemed_by_telegram_id: null,
+      redeemed_at: null,
+    })
+    .eq("redeemed_order_id", orderId)
+    .eq("status", "redeemed")
+    .select("id");
+  let promo = false;
+  if (promoCode) {
+    for (let i = 0; i < 5 && !promo; i++) {
+      const { data: p } = await ctx.db
+        .from("promo_codes")
+        .select("id, used_count")
+        .eq("code", normalizeCode(promoCode))
+        .maybeSingle();
+      if (!p || p.used_count <= 0) break;
+      const { data: done } = await ctx.db
+        .from("promo_codes")
+        .update({ used_count: p.used_count - 1 })
+        .eq("id", p.id)
+        .eq("used_count", p.used_count)
+        .select("id")
+        .maybeSingle();
+      promo = Boolean(done);
+    }
+  }
+  return { promo, gift: (gift?.length ?? 0) > 0 };
+}
+
 /* ── баллы ────────────────────────────────────────────────────────── */
 
 export async function loyaltyEarnPercent(ctx: TenantContext): Promise<number> {

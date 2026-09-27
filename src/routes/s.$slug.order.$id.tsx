@@ -100,6 +100,18 @@ function OrderPage() {
           </li>
         ))}
       </ul>
+      {view.discount > 0 && (
+        <div className="space-y-1 text-sm">
+          <div className="flex justify-between gap-3">
+            <span>{t("order.discount")}</span>
+            <span className="tabular-nums">−{formatMoney(view.discount, view.currency)}</span>
+          </div>
+          <div className="flex justify-between gap-3 font-semibold">
+            <span>{t("cart.total")}</span>
+            <span className="tabular-nums">{formatMoney(view.total, view.currency)}</span>
+          </div>
+        </div>
+      )}
       {view.fulfillment?.type && (
         <p className="text-sm">
           {t(view.fulfillment.type === "delivery" ? "order.deliveryOn" : "order.pickupOn", {

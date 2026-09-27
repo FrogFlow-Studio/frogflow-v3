@@ -46,6 +46,7 @@ import {
   redeemPoints,
   redeemPromoCode,
   restorePoints,
+  returnOrderCodes,
   rollbackRedemptions,
   type Redemptions,
 } from "@/core/discounts/discounts";
@@ -670,13 +671,28 @@ export async function rejectOrder(
     to?: "rejected" | "cancelled";
   } = {},
 ): Promise<boolean> {
-  const { data } = await ctx.db
-    .from("orders")
-    .update({ status: opts.to ?? "rejected" })
-    .eq("id", orderId)
-    .in("status", [...(opts.from ?? REJECTABLE_STATUSES)])
-    .select("id, platform, telegram_id, points_used, points_earned")
-    .maybeSingle();
+  // Переход статуса — CAS. Сначала из «ждёт оплаты»: так известно, что
+  // заказ отменён неоплаченным, и его промокод и сертификат возвращаются.
+  const from: string[] = [...(opts.from ?? REJECTABLE_STATUSES)];
+  const cas = async (statuses: string[]) =>
+    statuses.length === 0
+      ? null
+      : (
+          await ctx.db
+            .from("orders")
+            .update({ status: opts.to ?? "rejected" })
+            .eq("id", orderId)
+            .in("status", statuses)
+            .select("id, platform, telegram_id, points_used, points_earned, promo_code")
+            .maybeSingle()
+        ).data;
+  const unpaidData = from.includes("awaiting_payment") ? await cas(["awaiting_payment"]) : null;
+  const data = unpaidData ?? (await cas(from.filter((st) => st !== "awaiting_payment")));
+  // Брошенный неоплаченный заказ не сжигает сертификат покупателя и не
+  // расходует лимит промокода; возвращает только выигравший CAS выше.
+  const codesReturned = unpaidData
+    ? await returnOrderCodes(ctx, orderId, unpaidData.promo_code)
+    : null;
   // Списанные в заказе баллы — обратно покупателю. Переход статуса выше —
   // CAS, поэтому возвращает ровно один вызов, сколько бы их ни пришло
   // (кнопка продавца, срок жизни неоплаченного заказа с сайта).
@@ -695,6 +711,8 @@ export async function rejectOrder(
       {
         ...(opts.to === "cancelled" ? { to: "cancelled" } : {}),
         ...(pointsReturned > 0 ? { pointsReturned } : {}),
+        ...(codesReturned?.promo ? { promoReturned: true } : {}),
+        ...(codesReturned?.gift ? { giftReturned: true } : {}),
       },
       actor,
     );

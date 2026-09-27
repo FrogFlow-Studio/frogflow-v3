@@ -175,7 +175,13 @@ export function seedDb(): StubDb {
       bot_name: F.SHOP_NAME,
       status: "active",
       vertical: "digital",
-      modules: { robokassa: true, shop: true, web_storefront: true, upsell: true },
+      modules: {
+        robokassa: true,
+        shop: true,
+        web_storefront: true,
+        coupons: true,
+        upsell: true,
+      },
       settings: {
         served_by: "v2",
         default_locale: "ru",
@@ -321,6 +327,20 @@ export function seedDb(): StubDb {
       file_path: F.MATERIAL_PATH,
       file_name: "raskraska.pdf",
       sort_order: 0,
+      created_at: now,
+    }),
+  ];
+  // Промокод для оформления на сайте (web-checkout.spec.ts).
+  db.tables.promo_codes = [
+    shop({
+      id: "e2e00000-0000-4000-8000-0000000000e1",
+      code: F.PROMO_CODE,
+      discount_type: "percent",
+      discount_value: 10,
+      used_count: 0,
+      max_uses: null,
+      valid_until: null,
+      is_active: true,
       created_at: now,
     }),
   ];
