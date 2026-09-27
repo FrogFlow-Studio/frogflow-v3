@@ -62,6 +62,7 @@ export function settingsFromJson(json: unknown): TenantSettings {
   const zr = obj(s.zernio);
   const adm = obj(s.admin);
   const vip = obj(s.vip);
+  const mb = obj(s.multi_bot);
   const served = s.served_by === "v2" ? "v2" : s.served_by === "v1" ? "v1" : undefined;
   // Пределы ИИ: только числа, остальное — null («общий предел»).
   const numOrNull = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -111,6 +112,7 @@ export function settingsFromJson(json: unknown): TenantSettings {
       username: str(vip.username),
       webhook_ok: vip.webhook_ok === true,
     },
+    multi_bot: str(mb.group) ? { group: str(mb.group)!.toLowerCase() } : undefined,
     served_by: served,
     on_overdue:
       s.on_overdue === "suspend" ? "suspend" : s.on_overdue === "warn" ? "warn" : undefined,

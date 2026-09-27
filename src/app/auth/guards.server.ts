@@ -11,6 +11,8 @@ import { requireTenant, tenantContext, type TenantContext } from "@/core/tenant/
 import { servedByV2 } from "@/core/tenant/directory";
 import { loginInTenant, roleAllows, type AdminRole } from "@/core/auth/roles";
 import { UserError } from "@/core/i18n/user-error";
+import { canSwitchShop, groupShops } from "@/core/tenant/shop-group";
+import type { Tenant } from "@/core/tenant/types";
 
 export class Unauthorized extends Error {
   constructor(public readonly role: "operator" | "admin") {
@@ -31,7 +33,13 @@ export async function requireOperator(): Promise<void> {
   if (s.data.operatorStamp !== (await operatorStamp())) throw new Unauthorized("operator");
 }
 
-type CurrentAdmin = { ctx: TenantContext; role: AdminRole; username: string };
+type CurrentAdmin = {
+  ctx: TenantContext;
+  role: AdminRole;
+  username: string;
+  /** Магазин, где заведён логин; ctx — выбранный магазин группы (или он же). */
+  home: Tenant;
+};
 
 /**
  * Пользователь админки по cookie, сверенный с bots.settings.admin на каждом
@@ -50,7 +58,43 @@ async function currentAdmin(): Promise<CurrentAdmin> {
   const login = loginInTenant(tenant, a.username);
   if (!login || a.stamp !== adminStamp(tenant.id, a.username, login.passwordHash))
     throw new Unauthorized("admin");
-  return { ctx: tenantContext(tenant), role: login.role, username: a.username };
+  const active = await activeShop(tenant, login.role, a.activeBotId);
+  return { ctx: tenantContext(active), role: login.role, username: a.username, home: tenant };
+}
+
+/**
+ * Модуль «Несколько ботов»: выбранный владельцем магазин его группы. Право
+ * сверяется на каждом запросе — оператор отвязал магазин или выключил
+ * модуль, и работа сразу возвращается в свой магазин, без чужих данных.
+ * Сотрудники (не владелец) остаются в магазине, где заведены.
+ */
+async function activeShop(home: Tenant, role: AdminRole, activeBotId?: string): Promise<Tenant> {
+  if (!activeBotId || activeBotId === home.id || role !== "owner") return home;
+  const target = await requireTenant({ by: "id", value: activeBotId }).catch(() => null);
+  return target && canSwitchShop(home, target) ? target : home;
+}
+
+/** Магазины группы, доступные текущему продавцу: свой первым; без модуля — только свой. */
+export async function adminShops(): Promise<{ current: string; shops: Tenant[] }> {
+  const { ctx, role, home } = await currentAdmin();
+  if (role !== "owner") return { current: ctx.tenant.id, shops: [home] };
+  const { tenantDirectory } = await import("@/core/tenant/resolve.server");
+  return { current: ctx.tenant.id, shops: groupShops(await tenantDirectory(), home) };
+}
+
+/** Перейти в другой магазин группы. Только владелец и только в свою группу. */
+export async function switchAdminShop(botId: string): Promise<void> {
+  const { role, home } = await currentAdmin();
+  const s = await appSession();
+  if (botId === home.id) {
+    await s.update({ admin: { ...s.data.admin!, activeBotId: undefined } });
+    return;
+  }
+  const target =
+    role === "owner" ? await requireTenant({ by: "id", value: botId }).catch(() => null) : null;
+  if (!target || !canSwitchShop(home, target))
+    throw new UserError("err.auth.shopSwitch", "Этот магазин не связан с вашим.");
+  await s.update({ admin: { ...s.data.admin!, activeBotId: target.id } });
 }
 
 /**

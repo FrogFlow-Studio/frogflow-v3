@@ -6,6 +6,7 @@ export const ru = {
   "err.auth.ownerOnly": "Это может изменить только владелец магазина.",
   "err.auth.viewOnly": "У вашей роли нет прав на изменения — только просмотр.",
   "err.auth.moduleOff": "Модуль «{module}» не подключён к вашему тарифу.",
+  "err.auth.shopSwitch": "Этот магазин не связан с вашим.",
   // вход
   "err.login.tooMany": "Слишком много неудачных попыток. Попробуйте через 15 минут.",
   "err.login.oldPlatform":
@@ -105,6 +106,7 @@ export const kk: SectionDict<typeof ru> = {
   "err.auth.ownerOnly": "Мұны тек дүкен иесі өзгерте алады.",
   "err.auth.viewOnly": "Сіздің рөліңізге өзгерту құқығы берілмеген — тек қарау.",
   "err.auth.moduleOff": "«{module}» модулі тарифіңізге қосылмаған.",
+  "err.auth.shopSwitch": "Бұл дүкен сіздікімен байланыстырылмаған.",
   "err.login.tooMany": "Сәтсіз әрекеттер тым көп. 15 минуттан кейін қайталап көріңіз.",
   "err.login.oldPlatform":
     "Дүкеніңіз әзірге FrogFlow-тың бұрынғы платформасында жұмыс істейді — бұрынғы панельге кіріңіз. Жаңа платформаға көшіруді оператор қосады.",
@@ -198,6 +200,7 @@ export const en: SectionDict<typeof ru> = {
   "err.auth.ownerOnly": "Only the shop owner can change this.",
   "err.auth.viewOnly": "Your role cannot make changes — view only.",
   "err.auth.moduleOff": "The “{module}” module is not included in your plan.",
+  "err.auth.shopSwitch": "This shop is not linked to yours.",
   "err.login.tooMany": "Too many failed attempts. Please try again in 15 minutes.",
   "err.login.oldPlatform":
     "Your shop still runs on the previous FrogFlow platform — sign in to the old panel. The move to the new one is enabled by the operator.",
@@ -291,6 +294,7 @@ export const uz: SectionDict<typeof ru> = {
   "err.auth.ownerOnly": "Buni faqat doʻkon egasi oʻzgartira oladi.",
   "err.auth.viewOnly": "Sizning rolingizda oʻzgartirish huquqi yoʻq — faqat koʻrish.",
   "err.auth.moduleOff": "«{module}» moduli tarifingizga ulanmagan.",
+  "err.auth.shopSwitch": "Bu doʻkon sizniki bilan bogʻlanmagan.",
   "err.login.tooMany":
     "Muvaffaqiyatsiz urinishlar juda koʻp. 15 daqiqadan keyin qayta urinib koʻring.",
   "err.login.oldPlatform":

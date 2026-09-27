@@ -151,6 +151,20 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
   }
 });
 
+/** Модуль «Несколько ботов»: магазины группы для переключателя в шапке. */
+export const adminShopsFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { adminShops } = await import("@/app/auth/guards.server");
+  const { current, shops } = await adminShops();
+  return { current, shops: shops.map((t) => ({ id: t.id, name: t.name })) };
+});
+
+export const switchShopFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    await (await import("@/app/auth/guards.server")).switchAdminShop(data.botId);
+    return { ok: true };
+  });
+
 export const setAdminLocaleFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ locale: z.enum(["ru", "kk", "en", "uz"]) }).parse(d))
   .handler(async ({ data }) => {

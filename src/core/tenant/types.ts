@@ -35,6 +35,12 @@ export type TenantSettings = {
     accounts?: ZernioAccountSnapshot[];
     synced_at?: string;
   };
+  /**
+   * Модуль «Несколько ботов»: магазины с одинаковым `group` — один продавец,
+   * его владелец переключается между ними в админке без второго входа.
+   * Группу ставит только оператор (core/tenant/shop-group).
+   */
+  multi_bot?: { group?: string };
   /** VIP-бот (модуль vip): второй токен тем же шифрованием, что bots.bot_token. */
   vip?: {
     token_enc?: string;
