@@ -73,12 +73,15 @@ export async function defaultCountryCode(ctx: TenantContext): Promise<string | n
 /**
  * Курсы к USD: open.er-api.com, кеш в памяти на 10 минут — общий на всех
  * арендаторов, курс один. Сбой API при устаревшем кеше — считаем по старому
- * курсу (как v1) и пробуем снова не раньше чем через минуту.
+ * курсу (как v1) и пробуем снова не раньше чем через минуту. Сверка чека
+ * по курсу старше суток не идёт — там ошибка стоит денег, решает продавец.
  */
 let fxMemory: { ts: number; rates: Record<string, number> } | null = null;
 let fxRetryAt = 0;
 const FX_TTL_MS = 10 * 60 * 1000;
 const FX_RETRY_MS = 60 * 1000;
+/** Для сверки чека курс старше суток не годится: чек смотрит продавец. */
+const FX_RECEIPT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export type FxProvider = () => Promise<Record<string, number>>;
 
@@ -123,7 +126,8 @@ async function convertAmount(
   exact = false,
 ): Promise<number | null> {
   if (from.toUpperCase() === to.toUpperCase()) return exact ? amount : Math.round(amount);
-  const rates = await fxRates();
+  let rates = await fxRates();
+  if (exact && fxMemory && Date.now() - fxMemory.ts > FX_RECEIPT_MAX_AGE_MS) rates = null;
   return rates ? (exact ? convertViaUsdExact : convertViaUsd)(amount, from, to, rates) : null;
 }
 

@@ -3,6 +3,7 @@ import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   convertForTenant,
+  convertForReceipt,
   defaultFxProvider,
   resetPricingCache,
   resolveListPrice,
@@ -170,6 +171,23 @@ describe("convertForTenant", () => {
       provider.mockResolvedValue({ KZT: 400, RUB: 100 });
       expect(await convertForTenant(1000, "KZT", "RUB")).toBe(250);
       expect(provider).toHaveBeenCalledTimes(3);
+    });
+
+    it("для чека курс старше суток не годится — null, чек смотрит продавец; витрина считает по нему", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const provider = vi.fn(async () => ({ KZT: 500, RUB: 100 }));
+      setFxProvider(provider);
+      expect(await convertForReceipt(1000, "KZT", "RUB")).toBe(200);
+      provider.mockRejectedValue(new Error("network down"));
+
+      vi.setSystemTime(new Date("2026-09-27T09:00:00Z")); // 23 часа — ещё годится
+      expect(await convertForReceipt(1000, "KZT", "RUB")).toBe(200);
+
+      vi.setSystemTime(new Date("2026-09-27T10:02:00Z")); // больше суток
+      expect(await convertForReceipt(1000, "KZT", "RUB")).toBeNull();
+      expect(await convertForTenant(1000, "KZT", "RUB")).toBe(200);
+      // Одна валюта — курс не нужен.
+      expect(await convertForReceipt(1000, "KZT", "KZT")).toBe(1000);
     });
   });
 });
