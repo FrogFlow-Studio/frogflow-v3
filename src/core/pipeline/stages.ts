@@ -66,6 +66,8 @@ export type Lead = {
   note: string | null;
   /** Логин из «Команды» или владелец; null — не назначен. */
   owner: string | null;
+  /** Покупатель бота (bot_users.user_key), если заявка пришла из диалога; по нему заявка сливается с заказом. */
+  user_key: string | null;
   created_at: string;
   updated_at: string;
   /** Когда заявка ушла в «Выполнено» или «Потеряна»; по ней чистит ночная уборка. */
@@ -113,6 +115,7 @@ export function parseLead(raw: string | null | undefined): Lead | null {
     currency: currency(p.currency),
     note: str(p.note, 1000),
     owner: str(p.owner, 64),
+    user_key: str(p.user_key, 120),
     created_at: created,
     updated_at: str(p.updated_at, 40) ?? created,
     closed_at: str(p.closed_at, 40),

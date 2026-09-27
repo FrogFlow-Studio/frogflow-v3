@@ -433,6 +433,8 @@ async function consultantReply(b: Bot, text: string): Promise<boolean> {
       const { connect } = await import("@/core/chat/chat");
       await connect(b.ctx, b.customer.telegramId).catch(() => {});
     }
+    const { leadFromHandoff } = await import("@/core/pipeline/sources");
+    await leadFromHandoff(b.ctx, b.customer, r.handoff);
     const who =
       [b.customer.firstName, b.customer.lastName].filter(Boolean).join(" ") ||
       (b.customer.username ? `@${b.customer.username}` : `id ${b.customer.telegramId}`);

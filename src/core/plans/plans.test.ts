@@ -484,3 +484,14 @@ describe("модуль «Несколько ботов» в тарифах", () 
     expect(effectiveModules(parsePlan("digital.pro"), undefined)!.multi_bot).toBe(false);
   });
 });
+
+describe("воронка сделок в тарифах", () => {
+  it("входит в Pro и Business всех ниш, в Basic — нет (подключается отдельно)", () => {
+    expect(moduleDef("crm_pipeline").status).toBe("available");
+    for (const niche of ["confectionery", "flowers", "digital", "consultant_universal"] as const) {
+      expect(planModules(niche, "pro")).toContain("crm_pipeline");
+      expect(planModules(niche, "business")).toContain("crm_pipeline");
+      expect(planModules(niche, "basic")).not.toContain("crm_pipeline");
+    }
+  });
+});

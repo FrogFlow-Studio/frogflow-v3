@@ -23,7 +23,7 @@ export async function createLead(
   ctx: TenantContext,
   input: LeadInput,
   now = new Date(),
-  opts: { id?: string; source?: LeadSource; owner?: string | null } = {},
+  opts: { id?: string; source?: LeadSource; owner?: string | null; userKey?: string | null } = {},
 ): Promise<Lead> {
   const clean = sanitizeLeadInput(input);
   const id = opts.id ?? randomUUID();
@@ -35,6 +35,7 @@ export async function createLead(
     ...clean,
     source: opts.source ?? "manual",
     owner: opts.owner ?? null,
+    user_key: opts.userKey ?? null,
     created_at: at,
     updated_at: at,
     closed_at: null,

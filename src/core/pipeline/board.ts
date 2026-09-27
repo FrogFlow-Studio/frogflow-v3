@@ -1,6 +1,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
 import { listLeads } from "./leads";
+import type { Lead } from "./stages";
 import {
   CLOSED_ORDER_STATUSES,
   PIPELINE_STAGES,
@@ -58,6 +59,42 @@ export function requirePipeline(ctx: TenantContext): void {
     });
 }
 
+/**
+ * Для заявок из диалогов: user_key покупателя → когда он оформил последний
+ * заказ. Отдельный запрос, а не заказы доски: заказ мог уже уйти из окна
+ * закрытых, а заявка — остаться.
+ */
+async function customersWithOrders(
+  ctx: TenantContext,
+  leads: Lead[],
+): Promise<Map<string, string>> {
+  const since = new Map<string, string>();
+  for (const l of leads) {
+    if (!l.user_key) continue;
+    const prev = since.get(l.user_key);
+    if (prev === undefined || l.created_at < prev) since.set(l.user_key, l.created_at);
+  }
+  const keys = [...since.keys()];
+  const last = new Map<string, string>();
+  for (let i = 0; i < keys.length; i += 100) {
+    const chunk = keys.slice(i, i + 100);
+    const oldest = chunk.map((k) => since.get(k)!).sort()[0]!;
+    const { data, error } = await ctx.db
+      .from("orders")
+      .select("user_key, created_at")
+      .in("user_key", chunk)
+      .gte("created_at", oldest)
+      .limit(2000);
+    if (error) throw new Error(`Заказы не прочитались: ${error.message}`);
+    for (const o of (data ?? []) as Array<{ user_key: string | null; created_at: string }>) {
+      if (!o.user_key) continue;
+      const prev = last.get(o.user_key);
+      if (prev === undefined || o.created_at > prev) last.set(o.user_key, o.created_at);
+    }
+  }
+  return last;
+}
+
 /** Доска: открытые заказы и заявки — все, закрытые — за последние CLOSED_WINDOW_DAYS дней. */
 export async function pipelineBoard(ctx: TenantContext, now = new Date()): Promise<Board> {
   requirePipeline(ctx);
@@ -97,7 +134,10 @@ export async function pipelineBoard(ctx: TenantContext, now = new Date()): Promi
       platform: o.platform ?? "telegram",
     });
   }
+  const ordered = await customersWithOrders(ctx, leads);
   for (const l of leads) {
+    // Покупатель заявки оформил заказ — дальше сделку ведёт заказ.
+    if (l.user_key && (ordered.get(l.user_key) ?? "") >= l.created_at) continue;
     if (isClosedStage(l.stage) && (l.closed_at ?? l.updated_at) < since) continue;
     cards.push({
       kind: "lead",

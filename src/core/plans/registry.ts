@@ -100,6 +100,7 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "review_request",
       "manager_chat",
       "telegram_mini_app",
+      "crm_pipeline",
     ],
     business: [
       "whatsapp",
@@ -127,6 +128,7 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "coupons",
       "cart_reminder",
       "review_request",
+      "crm_pipeline",
     ],
     business: [
       "instagram",
@@ -141,7 +143,15 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
   },
   digital: {
     basic: [],
-    pro: ["robokassa", "receipt_ocr", "coupons", "cart_reminder", "vip", "multi_language"],
+    pro: [
+      "robokassa",
+      "receipt_ocr",
+      "coupons",
+      "cart_reminder",
+      "vip",
+      "multi_language",
+      "crm_pipeline",
+    ],
     business: [
       "telegram_mini_app",
       "web_storefront",
@@ -158,7 +168,7 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
   consultant_universal: {
     basic: ["instagram", "manager_chat"],
     // Pro и Business консультанта отличаются глубиной ИИ и лимитом диалогов.
-    pro: [],
+    pro: ["crm_pipeline"],
     business: ["whatsapp", "multi_currency"],
   },
 };

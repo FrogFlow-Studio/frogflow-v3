@@ -51,6 +51,7 @@ describe("заявка: разбор и проверка ввода", () => {
     currency: "KZT",
     note: "Торт на субботу",
     owner: null,
+    user_key: null,
     created_at: "2026-09-27T05:00:00.000Z",
     updated_at: "2026-09-27T05:00:00.000Z",
     closed_at: null,

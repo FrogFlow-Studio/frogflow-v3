@@ -168,6 +168,8 @@ export async function handleZernioMessage(
       const { connect } = await import("@/core/chat/chat");
       await connect(ctx, customer.telegramId).catch(() => {});
     }
+    const { leadFromHandoff } = await import("@/core/pipeline/sources");
+    await leadFromHandoff(ctx, customer, r.handoff);
     const who = customer.firstName || (customer.username ? `@${customer.username}` : m.senderId);
     const lines = [
       r.handoff.kind === "lead"

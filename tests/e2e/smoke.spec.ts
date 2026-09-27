@@ -46,6 +46,8 @@ test("панели без входа уводят на страницу вход
   const errors = await watch(page);
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin\/login$/);
+  await page.goto("/admin/pipeline");
+  await expect(page).toHaveURL(/\/admin\/login$/);
   await page.goto("/operator");
   await expect(page).toHaveURL(/\/operator\/login$/);
   expect(errors).toEqual([]);
