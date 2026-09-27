@@ -868,7 +868,7 @@
     "filters materials by language and keeps chips for the unfiltered set": "src/core/storefront/lang-filter.test.ts › выбранный язык оставляет товары с файлами на нём; чипы считаются по всему каталогу",
     "counts materials, not generic products, on the digital vertical": "drop: тексты по VERTICAL из окружения v1; в v2 один деплой, словарь витрины общий (app/i18n/storefront)",
     "lists material files on the product page and keeps a library tab": "src/core/storefront/tabs.test.ts › у магазина материалов есть вкладка «Материалы», у остальных нет",
-    "orders by popularity, recency and price": "later: сортировки каталога на витрине v2 нет, первым клиентам не блокер"
+    "orders by popularity, recency and price": "src/core/storefront/sort.test.ts › по популярности, новизне и цене; по умолчанию — порядок продавца"
   },
   "tests/mini-app-library.test.ts": {
     "дедуплицирует по товару, оставляя самый свежий заказ": "src/app/storefront/storefront.functions.test.ts › дедуплицирует по товару, оставляя самый свежий заказ",

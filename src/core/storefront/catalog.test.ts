@@ -285,6 +285,20 @@ describe("storeCatalog: значки языков материалов", () => {
   });
 });
 
+describe("storeCatalog: сортировка, как в Mini App v1", () => {
+  it("сортирует после поиска и фильтров; без сортировки — порядок продавца", async () => {
+    const { ctx } = ctxWith([
+      product("a", { price: 900, created_at: "2026-01-01T00:00:00Z", rating_count: 1 }),
+      product("b", { price: 300, created_at: "2026-03-01T00:00:00Z", rating_count: 40 }),
+      product("c", { price: 500, created_at: "2026-02-01T00:00:00Z", rating_count: 0 }),
+    ]);
+    expect(ids(await storeCatalog(ctx))).toEqual(["a", "b", "c"]);
+    expect(ids(await storeCatalog(ctx, { sort: "price" }))).toEqual(["b", "c", "a"]);
+    expect(ids(await storeCatalog(ctx, { sort: "new" }))).toEqual(["b", "c", "a"]);
+    expect(ids(await storeCatalog(ctx, { sort: "popular" }))).toEqual(["b", "a", "c"]);
+  });
+});
+
 describe("storeCatalog: срок изготовления", () => {
   it("shows lead time on physical products and hides it for digital", async () => {
     const { ctx } = ctxWith([

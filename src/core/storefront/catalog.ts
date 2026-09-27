@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { sortCatalog, type CatalogSort } from "./sort";
 import { shownLeadDays } from "@/core/catalog/lead-time";
 import { productFiles, type ProductFile } from "./product-files";
 import { listAllCategories } from "@/core/catalog/admin";
@@ -144,7 +145,7 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
 
 export async function storeCatalog(
   ctx: TenantContext,
-  opts: { q?: string; categoryId?: string | null } = {},
+  opts: { q?: string; categoryId?: string | null; sort?: CatalogSort } = {},
 ): Promise<StoreProduct[]> {
   // Выбранная категория включает подкатегории (как в v1), а jsonb-массив
   // category_ids одним запросом на «любой из» не отфильтровать — фильтруем
@@ -168,9 +169,11 @@ export async function storeCatalog(
     if (wanted && !ids.some((id) => wanted.has(id))) return false;
     return productOnStorefront(ids, known, visible);
   });
-  const sellable = rows
-    .filter((p) => p.fulfillment_kind === "physical" || productSellable(p))
-    .slice(0, 200);
+  // Сортировка — после фильтров и до обрезки списка, как в v1.
+  const sellable = sortCatalog(
+    rows.filter((p) => p.fulfillment_kind === "physical" || productSellable(p)),
+    opts.sort ?? "catalog",
+  ).slice(0, 200);
   return Promise.all(sellable.map((p) => toStoreProduct(ctx, p)));
 }
 

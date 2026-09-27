@@ -5,6 +5,7 @@ import { z } from "zod";
 import { shownError } from "@/lib/shown-error";
 import type { Locale } from "@/core/i18n/locale";
 import type { StorefrontPart } from "@/core/storefront/access";
+import { CATALOG_SORTS } from "@/core/storefront/sort";
 import type { OrderItemRow, OrderWithItems } from "@/core/orders/orders";
 
 /**
@@ -45,13 +46,18 @@ export const storeInfoFn = createServerFn({ method: "GET" })
 export const storeCatalogFn = createServerFn({ method: "GET" })
   .validator((d: unknown) =>
     z
-      .object({ slug, q: z.string().max(80).optional(), category: z.string().uuid().optional() })
+      .object({
+        slug,
+        q: z.string().max(80).optional(),
+        category: z.string().uuid().optional(),
+        sort: z.enum(CATALOG_SORTS).optional(),
+      })
       .parse(d),
   )
   .handler(async ({ data }) => {
     const ctx = await shopCtx(data.slug, "catalog");
     const { storeCatalog } = await import("@/core/storefront/catalog");
-    return storeCatalog(ctx, { q: data.q, categoryId: data.category ?? null });
+    return storeCatalog(ctx, { q: data.q, categoryId: data.category ?? null, sort: data.sort });
   });
 
 export const storeProductFn = createServerFn({ method: "GET" })

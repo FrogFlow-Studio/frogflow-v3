@@ -9,17 +9,22 @@ import { formatMoney } from "@/core/money/money";
 import { localeFlags } from "@/core/i18n/locale";
 import { categoryChips } from "@/core/storefront/categories";
 import { filterByLanguage, languageChips } from "@/core/storefront/lang-filter";
+import { CATALOG_SORTS, parseCatalogSort } from "@/core/storefront/sort";
 
 export const Route = createFileRoute("/s/$slug/")({
   validateSearch: z.object({
     q: z.string().optional(),
     category: z.string().optional(),
     lang: z.string().max(5).optional(),
+    // Сортировка как в Mini App v1; «catalog» (порядок продавца) в адрес не пишется.
+    sort: z.enum(CATALOG_SORTS).optional().catch(undefined),
   }),
   // Язык фильтруется в браузере: смена чипа не перезапрашивает каталог.
-  loaderDeps: ({ search }) => ({ q: search.q, category: search.category }),
+  loaderDeps: ({ search }) => ({ q: search.q, category: search.category, sort: search.sort }),
   loader: ({ params, deps }) =>
-    storeCatalogFn({ data: { slug: params.slug, q: deps.q, category: deps.category } }),
+    storeCatalogFn({
+      data: { slug: params.slug, q: deps.q, category: deps.category, sort: deps.sort },
+    }),
   component: CatalogPage,
 });
 
@@ -46,6 +51,7 @@ function CatalogPage() {
   const langs = shop.langFilter ? languageChips(catalog) : [];
   const lang = s.lang && langs.includes(s.lang as never) ? s.lang : null;
   const products = filterByLanguage(catalog, lang);
+  const sort = parseCatalogSort(s.sort);
   const digitalOnly = products.length > 0 && products.every((p) => p.kind === "digital");
 
   return (
@@ -87,7 +93,7 @@ function CatalogPage() {
           <Link
             to="/s/$slug"
             params={{ slug }}
-            search={{ q: s.q, lang: s.lang }}
+            search={{ q: s.q, lang: s.lang, sort: s.sort }}
             className={`badge shrink-0 px-3 py-1.5 ${!s.category ? "border-accent bg-accent/10 text-accent" : ""}`}
           >
             {t("catalog.all")}
@@ -97,7 +103,7 @@ function CatalogPage() {
               key={c.id}
               to="/s/$slug"
               params={{ slug }}
-              search={{ q: s.q, category: c.id, lang: s.lang }}
+              search={{ q: s.q, category: c.id, lang: s.lang, sort: s.sort }}
               className={`badge shrink-0 px-3 py-1.5 ${path[0] === c.id ? "border-accent bg-accent/10 text-accent" : ""}`}
             >
               {c.name}
@@ -111,7 +117,7 @@ function CatalogPage() {
           <Link
             to="/s/$slug"
             params={{ slug }}
-            search={{ q: s.q, category: subParent, lang: s.lang }}
+            search={{ q: s.q, category: subParent, lang: s.lang, sort: s.sort }}
             className={`badge shrink-0 px-3 py-1 ${s.category === subParent ? "border-accent bg-accent/10 text-accent" : ""}`}
           >
             {t("catalog.all")}
@@ -121,7 +127,7 @@ function CatalogPage() {
               key={c.id}
               to="/s/$slug"
               params={{ slug }}
-              search={{ q: s.q, category: c.id, lang: s.lang }}
+              search={{ q: s.q, category: c.id, lang: s.lang, sort: s.sort }}
               className={`badge shrink-0 px-3 py-1 ${path.includes(c.id) ? "border-accent bg-accent/10 text-accent" : ""}`}
             >
               {c.name}
@@ -149,6 +155,23 @@ function CatalogPage() {
               className={`badge shrink-0 px-3 py-1 ${lang === l ? "border-accent bg-accent/10 text-accent" : ""}`}
             >
               {localeFlags[l]} {l === "kk" ? "KZ" : l.toUpperCase()}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {catalog.length > 1 && (
+        <div className="-mt-3 mb-6 flex gap-2 overflow-x-auto pb-1 text-sm">
+          {CATALOG_SORTS.map((k) => (
+            <Link
+              key={k}
+              to="/s/$slug"
+              params={{ slug }}
+              search={{ ...s, sort: k === "catalog" ? undefined : k }}
+              aria-current={sort === k ? "page" : undefined}
+              className={`badge shrink-0 px-3 py-1 ${sort === k ? "border-accent bg-accent/10 text-accent" : ""}`}
+            >
+              {t(`catalog.sort.${k}`)}
             </Link>
           ))}
         </div>
