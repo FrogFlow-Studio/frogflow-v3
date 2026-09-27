@@ -1800,6 +1800,7 @@ export const chatReplyFn = createServerFn({ method: "POST" })
             name: z.string().max(255).default(""),
           })
           .optional(),
+        draftId: z.string().uuid().optional(),
       })
       .refine((v) => v.text.length > 0 || v.attachment, { message: "empty reply" })
       .parse(d),
@@ -1807,7 +1808,7 @@ export const chatReplyFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await chatModule("manager");
     const { replyAsManager, pauseBotAfterManagerReply } = await import("./admin.server");
-    await replyAsManager(ctx, data.telegramId, data.text, data.attachment);
+    await replyAsManager(ctx, data.telegramId, data.text, data.attachment, data.draftId);
     // Ответил человек — консультант не перебивает его на выбранное продавцом время.
     await pauseBotAfterManagerReply(ctx, data.telegramId);
     // Ничей диалог достаётся тому, кто ответил первым.

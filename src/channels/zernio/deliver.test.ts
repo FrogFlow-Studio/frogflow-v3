@@ -54,4 +54,16 @@ describe("выдача материалов в Direct/WhatsApp", () => {
     expect(texts[0]).toContain("https://drive.test/f");
     expect(texts[0]).not.toContain("7 дней");
   });
+
+  it("ключ идемпотентности — по позиции заказа", async () => {
+    const { t } = transport();
+    const send = zernioMaterialSender(t, "conv-1", "acc-1", "whatsapp");
+    await send({ ...item, id: "item-7" } as typeof item, [
+      { path: null, name: "Урок", url: "https://ex.test/l" },
+    ]);
+    expect(t.send).toHaveBeenCalledWith("conv-1", "acc-1", expect.any(String), {
+      platform: "whatsapp",
+      idempotencyScope: "deliver:item-7",
+    });
+  });
 });

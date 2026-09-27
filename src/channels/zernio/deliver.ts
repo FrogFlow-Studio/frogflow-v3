@@ -32,7 +32,11 @@ export function zernioMaterialSender(
       lines.push(`${mat.name ? `${mat.name}: ` : ""}${url}`);
     }
     if (materials.some((m) => m.path)) lines.push("", "Ссылки на файлы действуют 7 дней.");
-    const r = await transport.send(conversationId, accountId, lines.join("\n"), { platform });
+    // Позиция + тело: повтор после таймаута не шлёт ссылки второй раз.
+    const r = await transport.send(conversationId, accountId, lines.join("\n"), {
+      platform,
+      idempotencyScope: `deliver:${item.id}`,
+    });
     return r.ok ? "sent" : "failed";
   };
 }

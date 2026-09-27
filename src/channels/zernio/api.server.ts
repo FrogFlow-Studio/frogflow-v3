@@ -2,6 +2,15 @@ import { env } from "@/config/env";
 import type { Json } from "@/core/db-types";
 import { attachmentNeedsZernioKey, normalizeZernioBaseUrl, withReceivingAccount } from "./base-url";
 import { idempotencyKeyFor } from "./event-context.server";
+import {
+  CONNECT_FAILED,
+  ZernioApiError,
+  classifyZernioFailure,
+  connectFailed,
+  parseZernioFailure,
+  zernioFailureOf,
+  type ZernioFailure,
+} from "./errors";
 import { normalizeInboxMessage, type ZernioInboxMessage } from "./inbox-types";
 import type { ZernioPlatform } from "./platform";
 import type { V2WebhookPlan, ZernioWebhookRecord } from "./webhook-fit";
@@ -32,22 +41,33 @@ async function request<T>(
   let url = `${normalizeZernioBaseUrl(env().ZERNIO_BASE_URL)}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
   if (options.query) url += `?${new URLSearchParams(options.query).toString()}`;
 
-  const response = await fetch(url, {
-    method: options.method ?? "GET",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      ...(options.idempotencyKey ? { "Idempotency-Key": options.idempotencyKey } : {}),
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined,
-    signal: AbortSignal.timeout(options.timeoutMs ?? 12_000),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: options.method ?? "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        ...(options.idempotencyKey ? { "Idempotency-Key": options.idempotencyKey } : {}),
+      },
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      signal: AbortSignal.timeout(options.timeoutMs ?? 12_000),
+    });
+  } catch (e) {
+    throw new ZernioApiError(
+      `Zernio API: нет ответа (${e instanceof Error ? e.message : String(e)})`,
+      { status: null, ...(connectFailed(e) ? { code: CONNECT_FAILED } : {}) },
+    );
+  }
   const text = await response.text();
   if (!response.ok) {
     const detail = /^\s*</.test(text)
       ? "Zernio вернул HTML-страницу вместо ответа API"
       : text.slice(0, 1000);
-    throw new Error(`Zernio API ${response.status}: ${detail}`);
+    throw new ZernioApiError(
+      `Zernio API ${response.status}: ${detail}`,
+      parseZernioFailure(response.status, text, response.headers.get("retry-after")),
+    );
   }
   try {
     return JSON.parse(text) as T;
@@ -111,18 +131,34 @@ export type SendOptions = {
   messageTag?: "HUMAN_AGENT";
   /** Родной interactive-объект Meta (список WhatsApp); при нём Zernio игнорирует buttons. */
   interactive?: Json;
+  /** Область ключа идемпотентности (event-context: idempotencyKeyFor); в тело не уходит. */
+  idempotencyScope?: string;
 };
 
-export type SendResult = { ok: boolean; error?: string };
+/** failure — поля отказа Zernio: по ним очередь решает, повторять ли. */
+export type SendResult = { ok: boolean; error?: string; failure?: ZernioFailure };
 
-/** Ошибка отправки словами продавца: у WhatsApp вне 24-часового окна свой, штатный отказ. */
-export function describeSendError(platform: ZernioPlatform, details: string): string {
-  if (platform === "whatsapp" && /re-?engagement|131047|131026|24[- ]hour/i.test(details)) {
+/**
+ * Ошибка отправки словами продавца — по коду отказа, не по тексту. Окно 24
+ * часа у WhatsApp — только 131047; 131026 — получатель недостижим.
+ */
+export function describeSendError(
+  platform: ZernioPlatform,
+  details: string,
+  failure?: ZernioFailure,
+): string {
+  const kind = classifyZernioFailure(failure);
+  if (kind === "window_closed")
     return "Прошло больше 24 часов с последнего сообщения покупателя — WhatsApp разрешает писать только одобренным шаблоном.";
-  }
+  if (platform === "whatsapp" && kind === "unreachable")
+    return "Номер покупателя не принимает сообщения WhatsApp: WhatsApp на нём нет или приложение устарело.";
   const channel = platform === "whatsapp" ? "WhatsApp" : "Instagram";
   if (/inbox add-on required/i.test(details))
     return `Для этого аккаунта недоступна отправка сообщений (${channel}). Проверьте права подключения и тариф сервиса.`;
+  if (kind === "rate_limited")
+    return `${channel} временно ограничил отправку. Повторите через минуту.`;
+  if (kind === "ambiguous")
+    return `${channel} не подтвердил отправку: сообщение могло уйти. Проверьте переписку, прежде чем отправлять снова.`;
   return `Не удалось отправить сообщение. Проверьте подключение ${channel} и повторите попытку.`;
 }
 
@@ -156,13 +192,14 @@ export async function sendInboxMessage(
       method: "POST",
       body,
       // Повтор доставки вебхука не должен обернуться вторым сообщением у покупателя.
-      idempotencyKey: idempotencyKeyFor(body),
+      idempotencyKey: idempotencyKeyFor(body, opts.idempotencyScope),
     });
     return { ok: true };
   } catch (e) {
     const details = e instanceof Error ? e.message : String(e);
     console.error(`[zernio] send failed for ${conversationId}: ${details}`);
-    return { ok: false, error: describeSendError(platform, details) };
+    const failure = zernioFailureOf(e);
+    return { ok: false, error: describeSendError(platform, details, failure), failure };
   }
 }
 
@@ -326,7 +363,11 @@ export async function startWhatsAppConversation(params: {
   templateName?: string;
   templateLanguage?: string;
   templateParams?: string[];
-}): Promise<{ ok: true; conversationId?: string } | { ok: false; error: string }> {
+  /** Область ключа идемпотентности (очередь: outbox:<id>). */
+  idempotencyScope?: string;
+}): Promise<
+  { ok: true; conversationId?: string } | { ok: false; error: string; failure?: ZernioFailure }
+> {
   const body: Record<string, unknown> = {
     accountId: params.accountId,
     participantId: params.phone.replace(/\D/g, ""),
@@ -346,7 +387,11 @@ export async function startWhatsAppConversation(params: {
       data?: { conversationId?: string; id?: string };
       conversationId?: string;
       conversation?: { id?: string };
-    }>("/inbox/conversations", { method: "POST", body, idempotencyKey: idempotencyKeyFor(body) });
+    }>("/inbox/conversations", {
+      method: "POST",
+      body,
+      idempotencyKey: idempotencyKeyFor(body, params.idempotencyScope),
+    });
     return {
       ok: true,
       conversationId:
@@ -359,19 +404,22 @@ export async function startWhatsAppConversation(params: {
   } catch (e) {
     const details = e instanceof Error ? e.message : String(e);
     console.error(`[zernio] startWhatsAppConversation failed: ${details}`);
+    const failure = zernioFailureOf(e);
     if (/TEMPLATE_REQUIRED/i.test(details))
       return {
         ok: false,
         error:
           "WhatsApp требует одобренный шаблон, чтобы написать первым. Создайте шаблон в разделе «Рассылки» и дождитесь одобрения Meta.",
+        failure,
       };
     if (/Direct Send/i.test(details))
       return {
         ok: false,
         error:
           "Этот WhatsApp-аккаунт не допущен к отправке без шаблона. Нужен одобренный шаблон Meta.",
+        failure,
       };
-    return { ok: false, error: details };
+    return { ok: false, error: details, failure };
   }
 }
 

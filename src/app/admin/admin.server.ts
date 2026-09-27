@@ -362,6 +362,8 @@ export async function replyAsManager(
   telegramId: number,
   text: string,
   attachment?: ChatAttachment,
+  /** Id черновика со страницы «Чат»: повтор отправки после ошибки не удвоит сообщение. */
+  draftId?: string,
 ): Promise<void> {
   const { getCustomerByTelegramId } = await import("@/core/customers/customers");
   const customer = await getCustomerByTelegramId(ctx, telegramId);
@@ -382,7 +384,11 @@ export async function replyAsManager(
       customer.zernioConversationId,
       customer.zernioAccountId,
       message,
-      { platform: customer.platform, ...media },
+      {
+        platform: customer.platform,
+        ...media,
+        ...(draftId ? { idempotencyScope: `chat:${draftId}` } : {}),
+      },
     );
     // Отказ Zernio уже объяснён словами продавца (describeSendError) — показываем его.
     if (!r.ok)

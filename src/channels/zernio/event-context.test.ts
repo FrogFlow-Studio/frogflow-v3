@@ -29,4 +29,16 @@ describe("idempotencyKeyFor", () => {
     expect(idempotencyKeyFor({ message: "hi" })).toBeUndefined();
     expect(await runWithZernioEvent(null, async () => idempotencyKeyFor({}))).toBeUndefined();
   });
+
+  it("явная область (очередь, черновик «Чата», позиция выдачи) важнее события", async () => {
+    const scoped = idempotencyKeyFor({ message: "hi" }, "outbox:1");
+    expect(scoped).toBeTruthy();
+    expect(idempotencyKeyFor({ message: "hi" }, "outbox:1")).toBe(scoped);
+    expect(idempotencyKeyFor({ message: "hi" }, "outbox:2")).not.toBe(scoped);
+    expect(
+      await runWithZernioEvent("evt-1", async () =>
+        idempotencyKeyFor({ message: "hi" }, "outbox:1"),
+      ),
+    ).toBe(scoped);
+  });
 });

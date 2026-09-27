@@ -106,6 +106,8 @@ function ChatPage() {
   const [selectedId, setSelectedId] = useState<number | null>(Route.useSearch().c ?? null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [reply, setReply] = useState("");
+  // Id черновика — ключ идемпотентности отправки в Instagram/WhatsApp (новый на каждый диалог).
+  const draftId = useRef(crypto.randomUUID());
   // Фото или документ к ответу: уже в хранилище, уйдёт вместе с текстом.
   const [attachment, setAttachment] = useState<ChatAttachment | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -161,7 +163,10 @@ function ChatPage() {
     await chatResumeBotFn({ data: { telegramId: selected.telegram_id } });
     setConversations((await chatConversationsFn()).conversations);
   });
-  useEffect(() => setAttachment(null), [selectedId]);
+  useEffect(() => {
+    setAttachment(null);
+    draftId.current = crypto.randomUUID();
+  }, [selectedId]);
   const attach = useAction(async (file: File) => {
     const kind = PHOTO_TYPES.includes(file.type) ? "photo" : "file";
     const key = await uploadFile(kind === "photo" ? "chatPhoto" : "chatFile", file, t, (status) =>
@@ -176,8 +181,11 @@ function ChatPage() {
         telegramId: selectedId,
         text: reply.trim(),
         ...(attachment ? { attachment } : {}),
+        draftId: draftId.current,
       },
     });
+    // Ушло — следующий черновик с новым id; после ошибки id прежний.
+    draftId.current = crypto.randomUUID();
     setReply("");
     setAttachment(null);
     setMessages(await chatMessagesFn({ data: { telegramId: selectedId } }));

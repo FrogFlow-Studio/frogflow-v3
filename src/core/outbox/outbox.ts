@@ -37,6 +37,12 @@ export type OutboxMessage = {
   orderId?: number;
   /** Кто адресат для страницы: «покупатель» или «продавец». */
   audience: "customer" | "admin";
+  /**
+   * `outbox:<uuid>` — id строки очереди. Выдаётся до первой отправки
+   * (sendOrEnqueue) и не меняется между попытками: канал строит из него
+   * ключ идемпотентности, и повтор после таймаута не удваивает сообщение.
+   */
+  eventId?: string;
 };
 
 export type OutboxRow = OutboxMessage & {
@@ -49,10 +55,33 @@ export type OutboxRow = OutboxMessage & {
   createdAt: string;
 };
 
+/**
+ * Отказ отправителя. Канал сам решает по коду ответа, повторять ли:
+ * `permanent` — адресат недостижим, повтор не поможет; `retryAfterSec` —
+ * упёрлись в лимит: ждём столько (от минуты до часа) и пробуем снова,
+ * попытку не тратим; `recipientOnly` — лимит на одного получателя, прочим
+ * писать можно. Без полей — решает текст (Telegram) и счётчик попыток.
+ */
+export type OutboxFailure = {
+  error: string;
+  permanent?: boolean;
+  retryAfterSec?: number;
+  recipientOnly?: boolean;
+};
+
 export type OutboxSender = (
   ctx: TenantContext,
   msg: OutboxMessage,
-) => Promise<{ ok: true } | { ok: false; error: string }>;
+) => Promise<{ ok: true } | ({ ok: false } & OutboxFailure)>;
+
+/** Лимит не тратит попытки, но ждём не больше часа за раз и не дольше суток от постановки. */
+const RATE_LIMITED_MAX_AGE_MS = 24 * 60 * 60_000;
+const RATE_LIMITED_MIN_WAIT_SEC = 60;
+const RATE_LIMITED_MAX_WAIT_SEC = 60 * 60;
+
+function failureOf(f: string | OutboxFailure | null): OutboxFailure | null {
+  return typeof f === "string" ? { error: f } : f;
+}
 
 export const OUTBOX_PREFIX = "outbox:";
 const TYPE = (kind: string) => `outbox.${kind}`;
@@ -70,13 +99,20 @@ type Payload = {
 export async function enqueueOutbox(
   ctx: TenantContext,
   msg: OutboxMessage,
-  firstError: string | null,
+  first: string | OutboxFailure | null,
   now = new Date(),
 ): Promise<string> {
-  const attempts = firstError ? 1 : 0;
-  const nextAt = firstError ? outboxNextAt(attempts, now) : now;
-  const dead = nextAt === null || outboxPermanentFailure(firstError);
-  const eventId = `${OUTBOX_PREFIX}${randomUUID()}`;
+  const failure = failureOf(first);
+  const firstError = failure?.error ?? null;
+  const limited = failure?.retryAfterSec !== undefined;
+  const attempts = failure && !limited ? 1 : 0;
+  const nextAt = limited
+    ? rateLimitedNextAt(failure!.retryAfterSec!, now, now)
+    : failure
+      ? outboxNextAt(attempts, now)
+      : now;
+  const dead = nextAt === null || Boolean(failure?.permanent) || outboxPermanentFailure(firstError);
+  const eventId = msg.eventId ?? newOutboxId();
   const payload: Payload = {
     target: msg.target,
     text: msg.text,
@@ -109,16 +145,43 @@ export async function sendOrEnqueue(
   msg: OutboxMessage,
   send: OutboxSender,
 ): Promise<boolean> {
-  let error: string;
+  msg = { ...msg, eventId: msg.eventId ?? newOutboxId() };
+  let failure: OutboxFailure;
   try {
     const r = await send(ctx, msg);
     if (r.ok) return true;
-    error = r.error;
+    failure = { ...r, error: r.error || "отказ без причины" };
   } catch (e) {
-    error = e instanceof Error ? e.message : String(e);
+    failure = { error: e instanceof Error ? e.message : String(e) };
   }
-  await enqueueOutbox(ctx, msg, error || "отказ без причины");
+  await enqueueOutbox(ctx, msg, failure);
   return false;
+}
+
+const newOutboxId = () => `${OUTBOX_PREFIX}${randomUUID()}`;
+
+/** Когда пробовать после лимита; null — за сутки от постановки не успеть. */
+function rateLimitedNextAt(retryAfterSec: number, now: Date, createdAt: Date): Date | null {
+  const wait = Math.min(
+    Math.max(retryAfterSec, RATE_LIMITED_MIN_WAIT_SEC),
+    RATE_LIMITED_MAX_WAIT_SEC,
+  );
+  const next = new Date(now.getTime() + wait * 1000);
+  return next.getTime() > createdAt.getTime() + RATE_LIMITED_MAX_AGE_MS ? null : next;
+}
+
+/** Получатель сообщения — чтобы лимит одного не тормозил остальных. */
+function recipientKey(t: OutboxTarget): string {
+  switch (t.channel) {
+    case "zernio":
+      return `zernio:${t.conversationId}`;
+    case "telegram":
+      return `telegram:${t.chatId}`;
+    case "webhook":
+      return `webhook:${t.url}`;
+    default:
+      return t.channel;
+  }
 }
 
 function rowOf(r: {
@@ -170,7 +233,10 @@ export async function processOutbox(
   now = new Date(),
 ): Promise<ProcessResult> {
   const res: ProcessResult = { tried: 0, sent: 0, dead: 0, requeued: 0 };
+  // Получатели под лимитом (131056): их сообщения ждут, остальные уходят.
+  const limitedRecipients = new Set<string>();
   for (const row of await dueOutbox(ctx, now)) {
+    if (limitedRecipients.has(recipientKey(row.target))) continue;
     res.tried++;
     // Забираем строку себе: второй запуск крона в ту же минуту её не возьмёт.
     const { data: claimed } = await ctx.db
@@ -180,16 +246,28 @@ export async function processOutbox(
       .eq("status", "queued")
       .select("id");
     if (!claimed?.length) continue;
-    let error: string | null = null;
+    let failure: OutboxFailure | null = null;
     try {
       const r = await send(ctx, row);
-      if (!r.ok) error = r.error || "отказ без причины";
+      if (!r.ok) failure = { ...r, error: r.error || "отказ без причины" };
     } catch (e) {
-      error = e instanceof Error ? e.message : String(e);
+      failure = { error: e instanceof Error ? e.message : String(e) };
     }
-    const attempts = row.attempts + 1;
-    const nextAt = error ? outboxNextAt(attempts, now) : null;
-    const dead = Boolean(error) && (nextAt === null || outboxPermanentFailure(error));
+    const error = failure?.error ?? null;
+    // Лимит: попытку не тратим, ждём сколько сказали (в пределах часа и
+    // суток от постановки). Лимит ключа (429) общий на всех клиентов —
+    // остаток очереди в следующий прогон; лимит получателя — только его.
+    const limited = failure?.retryAfterSec !== undefined;
+    const attempts = limited ? row.attempts : row.attempts + 1;
+    const created = new Date(Date.parse(row.createdAt) || now.getTime());
+    const nextAt = limited
+      ? rateLimitedNextAt(failure!.retryAfterSec!, now, created)
+      : error
+        ? outboxNextAt(attempts, now)
+        : null;
+    const dead =
+      Boolean(error) &&
+      (nextAt === null || Boolean(failure?.permanent) || outboxPermanentFailure(error));
     const status = !error ? "processed" : dead ? "dead" : "queued";
     await ctx.db
       .from("zernio_logs")
@@ -212,6 +290,8 @@ export async function processOutbox(
       res.dead++;
       if (row.orderId) await noteDead(ctx, row, error);
     } else res.requeued++;
+    if (limited && failure?.recipientOnly) limitedRecipients.add(recipientKey(row.target));
+    else if (limited) break;
   }
   return res;
 }

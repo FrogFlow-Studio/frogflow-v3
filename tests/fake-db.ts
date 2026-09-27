@@ -219,22 +219,22 @@ class Query implements PromiseLike<Result> {
   }
   gt(col: string, v: string | number) {
     this.col(col);
-    this.filters.push((r) => r[col] != null && (r[col] as string | number) > v);
+    this.filters.push((r) => pick(r, col) != null && (pick(r, col) as string | number) > v);
     return this;
   }
   gte(col: string, v: string | number) {
     this.col(col);
-    this.filters.push((r) => r[col] != null && (r[col] as string | number) >= v);
+    this.filters.push((r) => pick(r, col) != null && (pick(r, col) as string | number) >= v);
     return this;
   }
   lte(col: string, v: string | number) {
     this.col(col);
-    this.filters.push((r) => r[col] != null && (r[col] as string | number) <= v);
+    this.filters.push((r) => pick(r, col) != null && (pick(r, col) as string | number) <= v);
     return this;
   }
   lt(col: string, v: string | number) {
     this.col(col);
-    this.filters.push((r) => r[col] != null && (r[col] as string | number) < v);
+    this.filters.push((r) => pick(r, col) != null && (pick(r, col) as string | number) < v);
     return this;
   }
   order(col: string, o?: { ascending?: boolean }) {

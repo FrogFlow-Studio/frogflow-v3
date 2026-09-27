@@ -17,11 +17,19 @@ export function runWithZernioEvent<T>(eventId: string | null, task: () => Promis
   return store.run({ eventId }, task);
 }
 
-/** Ключ одной отправки: событие + тело. Вне обработки события ключа нет — ручную отправку подавлять нельзя. */
-export function idempotencyKeyFor(body: unknown): string | undefined {
-  const context = store.getStore();
-  if (!context) return undefined;
+/**
+ * Ключ одной отправки: область + тело. Область — явная (`outbox:<id>`,
+ * `chat:<id черновика>`, `deliver:<позиция>`) или событие Zernio, в
+ * обработке которого идёт отправка. Без области ключа нет: одинаковый
+ * текст, отправленный продавцом дважды намеренно, подавлять нельзя.
+ * Zernio хранит ключ сутки и только для успешных ответов, поэтому повтор
+ * после 5xx уходит заново, а повтор после нашего таймаута при уже
+ * принятой отправке возвращает исходный ответ, а не второе сообщение.
+ */
+export function idempotencyKeyFor(body: unknown, scope?: string): string | undefined {
+  const key = scope ?? store.getStore()?.eventId;
+  if (!key) return undefined;
   return createHash("sha256")
-    .update(`${context.eventId}:${JSON.stringify(body)}`)
+    .update(`${key}:${JSON.stringify(body)}`)
     .digest("hex");
 }
