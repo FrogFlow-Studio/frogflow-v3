@@ -18,7 +18,7 @@ const ago = (ms: number) => new Date(NOW.getTime() - ms).toISOString();
 const H = 3600_000;
 
 function setup(orders: Array<Record<string, unknown>>) {
-  const db = fakeDb({ unique: { zernio_logs: [["event_id"]] } });
+  const db = fakeDb({ unique: { zernio_logs: [["event_id"]] }, maxRows: 1000 });
   db.tables.orders = orders.map((o, i) => ({
     id: 100 + i,
     bot_id: BOT,
@@ -35,7 +35,10 @@ function setup(orders: Array<Record<string, unknown>>) {
     ...o,
   }));
   db.tables.zernio_logs = [];
-  db.tables.app_settings = [{ bot_id: BOT, key: "shop_name", value: "Прописи" }];
+  db.tables.app_settings = [
+    { bot_id: BOT, key: "shop_name", value: "Прописи" },
+    { bot_id: BOT, key: "storefront_checkout", value: JSON.stringify({ enabled: true }) },
+  ];
   const ctx = {
     tenant: { id: BOT, name: "bot", modules: {}, settings: { slug: "propisi" } },
     appUrl: "https://shop.test",
@@ -120,6 +123,36 @@ describe("письмо о неоплаченном заказе с сайта", 
     const { ctx, sent, mailer } = setup([{}]);
     (ctx.tenant.settings as { slug?: string }).slug = undefined;
     await remindWebOrders(ctx, SECRET, NOW, mailer);
+    expect(sent).toHaveLength(0);
+  });
+
+  it("покупатель оплатил, пока крон шёл по списку, — письмо «не оплачен» не уходит", async () => {
+    const { db, ctx } = setup([{}, {}]);
+    const sent: string[] = [];
+    // Пока уходит первое письмо, второй заказ оплачивают картой.
+    const mailer: Mailer = vi.fn(async (m) => {
+      sent.push(m.subject);
+      db.tables.orders![1]!.status = "delivered";
+      return { ok: true };
+    });
+    expect(await remindWebOrders(ctx, SECRET, NOW, mailer)).toEqual({ sent: 1, failed: 0 });
+    expect(sent).toEqual([expect.stringContaining("№501")]);
+  });
+
+  it("неоплаченных в окне больше, чем влезает в страницу, — письмо получает каждый", async () => {
+    const orders = Array.from({ length: 1234 }, (_, i) => ({
+      customer_email: `b${i}@mail.ru`,
+      created_at: ago(4 * H + (i % 7) * 60_000),
+    }));
+    const { ctx, sent, mailer } = setup(orders);
+    expect(await remindWebOrders(ctx, SECRET, NOW, mailer)).toEqual({ sent: 1234, failed: 0 });
+    expect(new Set(sent.map((m) => m.to)).size).toBe(1234);
+  });
+
+  it("продавец выключил оформление на сайте — страница заказа закрыта, не пишем", async () => {
+    const { db, ctx, sent, mailer } = setup([{}]);
+    db.tables.app_settings![1]!.value = JSON.stringify({ enabled: false });
+    expect(await remindWebOrders(ctx, SECRET, NOW, mailer)).toEqual({ sent: 0, failed: 0 });
     expect(sent).toHaveLength(0);
   });
 });
