@@ -203,7 +203,7 @@ function OrderPage() {
         </section>
       )}
       {/* Баллы копятся у покупателя из бота: не вошедшему — вход с подсказкой. */}
-      {login.state?.points && !login.state.me && !login.inTelegram && (
+      {login.state?.points && login.state.bot && !login.state.me && !login.inTelegram && (
         <div className="border-t border-line pt-4">
           <TgLoginBox login={login} />
         </div>

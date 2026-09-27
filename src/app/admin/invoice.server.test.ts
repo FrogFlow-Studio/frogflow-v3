@@ -23,7 +23,9 @@ vi.mock("@/core/storefront/web-order", () => ({
   webCheckoutSettings: async () => ({ enabled: webPay }),
   orderAccessToken: (_s: string, bot: string, id: number) => `tok-${bot}-${id}`,
 }));
-vi.mock("@/core/orders/orders", () => ({
+// rejectOrder — настоящий: остаток при отмене счёта возвращает только он.
+vi.mock("@/core/orders/orders", async (orig) => ({
+  ...(await orig<typeof import("@/core/orders/orders")>()),
   displayNo: (o: { display_no: number }) => o.display_no,
   listActivePaymentMethods: async () => [{ country_code: "KZ" }],
   placeOrder: async (...a: unknown[]) => {
@@ -230,6 +232,35 @@ describe("счёт из диалога", () => {
       sendDialogInvoice(ctx({ dm_shop: true }, { slug: "propisi" }), -7, items),
     ).rejects.toMatchObject({ key: "err.invoice.outOfStock" });
     expect(zernio).toHaveLength(0);
+  });
+
+  it("признак «счёт ссылкой» не записался — счёт отменён, остаток возвращён один раз, сообщения нет", async () => {
+    igNoShop();
+    db.tables.products![0]!.stock_quantity = 3;
+    db.tables.orders = [
+      {
+        id: 77,
+        bot_id: "b",
+        platform: "instagram",
+        telegram_id: -7,
+        status: "awaiting_payment",
+        paid_amount: 0,
+        points_used: 0,
+        points_earned: 0,
+        delivery_index: 0,
+      },
+    ];
+    db.tables.order_items = [{ id: "i", order_id: 77, product_id: "p", quantity: 1 }];
+    db.tables.zernio_logs = [];
+    // Признак уже записан (ответ базы потерялся) — повторная вставка падает.
+    db.tables.app_settings = [{ bot_id: "b", key: "invoice_link:77", value: "1" }];
+    await expect(
+      sendDialogInvoice(ctx({ dm_shop: true, stock: true }, { slug: "propisi" }), -7, items),
+    ).rejects.toMatchObject({ key: "err.invoice.cancelled" });
+    expect(db.tables.orders[0]!.status).toBe("cancelled");
+    expect(db.tables.products![0]!.stock_quantity).toBe(4);
+    expect(zernio).toHaveLength(0);
+    expect(confirmed).toHaveLength(0);
   });
 
   it("скидки покрыли всё — заказ выдаётся сразу, уже как счёт ссылкой", async () => {

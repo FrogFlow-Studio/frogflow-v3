@@ -52,6 +52,8 @@ export const ru = {
   "err.invoice.digitalLimit": "Цифровой товар — одна штука в счёте.",
   "err.invoice.outOfStock": "Не хватает товара на складе.",
   "err.invoice.failed": "Не удалось собрать счёт, попробуйте ещё раз.",
+  "err.invoice.cancelled":
+    "Счёт не сохранился и отменён, покупателю ничего не ушло. Выставьте его заново.",
   "err.invoice.noCustomer": "Покупатель не найден.",
   "err.invoice.blocked": "Покупатель заблокирован.",
   "err.invoice.noShopInChannel":
@@ -179,6 +181,8 @@ export const kk: SectionDict<typeof ru> = {
   "err.invoice.digitalLimit": "Цифрлық тауар шотта бір дана ғана.",
   "err.invoice.outOfStock": "Қоймада тауар жетпейді.",
   "err.invoice.failed": "Шотты жинау мүмкін болмады, қайталап көріңіз.",
+  "err.invoice.cancelled":
+    "Шот сақталмай, бас тартылды, сатып алушыға ештеңе жіберілмеді. Шотты қайта шығарыңыз.",
   "err.invoice.noCustomer": "Сатып алушы табылмады.",
   "err.invoice.blocked": "Сатып алушы бұғатталған.",
   "err.invoice.noShopInChannel":
@@ -302,6 +306,8 @@ export const en: SectionDict<typeof ru> = {
   "err.invoice.digitalLimit": "A digital product can be in an invoice only once.",
   "err.invoice.outOfStock": "Not enough stock.",
   "err.invoice.failed": "Could not build the invoice, please try again.",
+  "err.invoice.cancelled":
+    "The invoice was not saved and has been cancelled; nothing was sent to the buyer. Please issue it again.",
   "err.invoice.noCustomer": "Customer not found.",
   "err.invoice.blocked": "The customer is blocked.",
   "err.invoice.noShopInChannel":
@@ -427,6 +433,8 @@ export const uz: SectionDict<typeof ru> = {
   "err.invoice.digitalLimit": "Raqamli mahsulot hisobda faqat bitta.",
   "err.invoice.outOfStock": "Omborda mahsulot yetarli emas.",
   "err.invoice.failed": "Hisobni yigʻib boʻlmadi, qayta urinib koʻring.",
+  "err.invoice.cancelled":
+    "Hisob saqlanmadi va bekor qilindi, xaridorga hech narsa yuborilmadi. Hisobni qayta chiqaring.",
   "err.invoice.noCustomer": "Xaridor topilmadi.",
   "err.invoice.blocked": "Xaridor bloklangan.",
   "err.invoice.noShopInChannel":

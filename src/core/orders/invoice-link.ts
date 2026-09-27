@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 
 /**
@@ -16,7 +17,7 @@ export async function markInvoiceLink(ctx: TenantContext, orderId: number): Prom
     value: "1",
     updated_at: new Date().toISOString(),
   });
-  if (error) throw new Error(`invoice_link: ${error.message}`);
+  if (error) throw serverFailure(`признак счёта ссылкой для заказа ${orderId}: ${error.message}`);
 }
 
 export async function isInvoiceLink(ctx: TenantContext, orderId: number): Promise<boolean> {

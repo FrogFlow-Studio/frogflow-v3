@@ -113,7 +113,8 @@ async function placeInvoiceOrder(
   cart: PricedCart,
 ): Promise<{ id: number; no: number; url: string }> {
   if (cart.kind === "physical") throw linkPhysicalError();
-  const { displayNo, listActivePaymentMethods, placeOrder } = await import("@/core/orders/orders");
+  const { displayNo, listActivePaymentMethods, placeOrder, rejectOrder } =
+    await import("@/core/orders/orders");
   const country =
     customer.state.country_code ?? (await listActivePaymentMethods(ctx))[0]?.country_code ?? null;
   if (!country)
@@ -126,8 +127,27 @@ async function placeInvoiceOrder(
         ? new UserError("err.invoice.noPayment", "Не настроены способы оплаты магазина.")
         : invoiceError(r.reason === "empty_cart" ? "empty" : "failed");
   // Признак «счёт ссылкой»: страница заказа, срок оплаты и возврат остатка.
+  // Без признака заказ не истёк бы и держал остаток: такой счёт отменяем
+  // сразу, продавцу — «счёт отменён», его можно выставить заново. Остаток
+  // возвращает только rejectOrder: признак мог записаться, хотя ответ не
+  // дошёл (тогда rejectOrder вернул бы его и сам), поэтому — опцией, а не
+  // вторым вызовом.
   const { markInvoiceLink } = await import("@/core/orders/invoice-link");
-  await markInvoiceLink(ctx, r.order.id);
+  try {
+    await markInvoiceLink(ctx, r.order.id);
+  } catch (e) {
+    const cancelled = await rejectOrder(ctx, r.order.id, "invoice", {
+      from: ["awaiting_payment"],
+      to: "cancelled",
+      restoreStock: true,
+    });
+    if (!cancelled) throw e;
+    console.warn(`[invoice] счёт #${r.order.id} отменён: ${String(e)}`);
+    throw new UserError(
+      "err.invoice.cancelled",
+      "Счёт не сохранился и отменён, покупателю ничего не ушло. Выставьте его заново.",
+    );
+  }
   if (r.zeroTotal) {
     // Скидки покрыли всё — выдаём сразу, как бот.
     const { runOrderAction } = await import("./admin.server");

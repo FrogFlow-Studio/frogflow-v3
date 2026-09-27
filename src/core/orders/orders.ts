@@ -669,6 +669,8 @@ export async function rejectOrder(
     from?: readonly string[];
     /** «cancelled» — заказ закрыт без решения продавца (истёк срок оплаты). */
     to?: "rejected" | "cancelled";
+    /** Вернуть остаток на склад в любом случае (счёт ссылкой, чей признак не записался). */
+    restoreStock?: boolean;
   } = {},
 ): Promise<boolean> {
   // Переход статуса — CAS. Сначала из «ждёт оплаты»: так известно, что
@@ -718,7 +720,8 @@ export async function rejectOrder(
     );
   // Заказ с сайта оформляет кто угодно — отклонённый возвращает остаток.
   // Так же счёт ссылкой из диалога: его повтор после сбоя не держит товар.
-  if (data?.platform === "web") await restoreOrderStock(ctx, orderId);
+  if (data?.platform === "web" || (data && opts.restoreStock))
+    await restoreOrderStock(ctx, orderId);
   else if (data) {
     const { isInvoiceLink } = await import("./invoice-link");
     if (await isInvoiceLink(ctx, orderId)) await restoreOrderStock(ctx, orderId);
