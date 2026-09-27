@@ -117,6 +117,7 @@ import {
   isTriggerWord,
   type DirectBotSettings,
 } from "@/core/instagram/direct-bot-settings";
+import { iceBreakerKind, type IceBreakerKind } from "@/core/instagram/ice-breakers";
 
 /**
  * Магазин в Instagram Direct и WhatsApp (модули dm_shop / wa_shop). Тот же
@@ -139,6 +140,8 @@ type DirectMemory = {
   variant_product?: string;
   /** WhatsApp: покупатель отказался от почты — больше не спрашиваем. */
   email_skipped?: boolean;
+  /** Быстрый вопрос «Связаться с продавцом»: следующий вопрос — продавцу (handle-message). */
+  contact_requested_at?: string;
 };
 
 type Shop = {
@@ -304,6 +307,8 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   // Кнопка «Купить» автоматизации с payload «/start» или словом-вызовом —
   // открыть магазин, как набранное слово-вызов (раньше уходила продавцу вопросом).
   if (isStartPostback(msg.postbackPayload, s.bot.triggers)) return openShop(s);
+  const ib = iceBreakerKind(msg.postbackPayload);
+  if (ib) return handleIceBreaker(s, ib);
   if (msg.postbackPayload) return handlePostback(s, msg.postbackPayload);
 
   // Вложение без ссылки (Zernio сменил форму события): если ждём чек — просим
@@ -650,6 +655,47 @@ function featureAllows(s: Shop, command: DirectCommand | string): boolean {
     default:
       return true;
   }
+}
+
+/**
+ * Быстрый вопрос Instagram (core/instagram/ice-breakers) — первое нажатие в
+ * новом диалоге. Ведёт на те же команды, что и слова «каталог», «мои
+ * заказы»; новому покупателю сначала выбор языка, как на любое первое
+ * сообщение. «Как оплатить» с пустой корзиной — способы оплаты (без
+ * реквизитов: они — при оформлении). «Связаться с продавцом» — просьба
+ * описать вопрос и метка: следующий вопрос handle-message отдаёт продавцу.
+ */
+async function handleIceBreaker(s: Shop, kind: IceBreakerKind): Promise<ShopOutcome> {
+  if (kind === "contact") {
+    await remember(s, { contact_requested_at: new Date().toISOString() });
+    await reply(s, plain(s.m.ticketPrompt), { force: true });
+    return "handled";
+  }
+  if (kind === "catalog") return openShop(s);
+  const command: DirectCommand = kind === "pay" ? "checkout" : "orders";
+  if (!featureAllows(s, command)) return "question";
+  if (needsLocalePick(s.customer.state) && !memory(s.customer).locale_picked_at) {
+    await askLocale(s);
+    return "handled";
+  }
+  const mode = s.customer.state.mode;
+  if (mode && mode !== "idle" && mode !== "awaiting_proof") await setMode(s, { mode: "idle" });
+  if (command === "orders") {
+    await showOrders(s);
+    return "handled";
+  }
+  if ((await listCart(s.ctx, s.customer)).length > 0) {
+    await startCheckout(s);
+    return "handled";
+  }
+  const methods = await listActivePaymentMethods(s.ctx);
+  if (!methods.length) {
+    await reply(s, s.m.paymentNotConfigured, { force: true });
+    return "handled";
+  }
+  const list = methods.map((x) => `• ${x.country_name} (${x.currency})`).join("\n");
+  await reply(s, plain(s.m.payMethods(list)), { force: true, buttons: [BTN.catalog(s.m)] });
+  return "handled";
 }
 
 /** Магазин с начала: язык новому покупателю, иначе каталог со сбросом шага. */

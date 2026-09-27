@@ -313,6 +313,27 @@ export async function writeV2Webhook(
   }
 }
 
+/* ── Instagram: быстрые вопросы нового диалога (ice breakers) ───────── */
+
+export type IceBreaker = { question: string; payload: string };
+
+/** До 4 вопросов по 80 символов; набор заменяет прежний целиком. */
+export async function setInstagramIceBreakers(
+  accountId: string,
+  items: IceBreaker[],
+): Promise<void> {
+  await request(`/accounts/${encodeURIComponent(accountId)}/instagram-ice-breakers`, {
+    method: "PUT",
+    body: { ice_breakers: items },
+  });
+}
+
+export async function deleteInstagramIceBreakers(accountId: string): Promise<void> {
+  await request(`/accounts/${encodeURIComponent(accountId)}/instagram-ice-breakers`, {
+    method: "DELETE",
+  });
+}
+
 /* ── WhatsApp: шаблоны Meta и первое сообщение ───────────────────────── */
 
 /** Вердикт ревью Meta по шаблону; значения приходят дословно, отправить можно только APPROVED. */

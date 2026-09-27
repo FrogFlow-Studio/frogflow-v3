@@ -36,6 +36,8 @@ export type TenantSettings = {
     /** Снимок подключённых аккаунтов для панелей (обновляется синхронизацией). */
     accounts?: ZernioAccountSnapshot[];
     synced_at?: string;
+    /** Отпечаток поставленных быстрых вопросов Instagram; "" — мы ничего не ставили. */
+    ice_breakers_v?: string;
   };
   /**
    * Модуль «Несколько ботов»: магазины с одинаковым `group` — один продавец,

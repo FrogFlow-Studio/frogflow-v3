@@ -137,6 +137,10 @@ export async function handleZernioMessage(
   }
 
   const consultant = await import("@/core/consultant/engine.server");
+  // Быстрый вопрос «Связаться с продавцом»: этот вопрос — продавцу, не консультанту.
+  const { contactRequested } = await import("@/core/instagram/ice-breakers");
+  if (m.text && contactRequested(customerNow.state))
+    return processed(await contactSeller(ctx, customerNow, m, consultant));
   if (!(await consultant.consultantEnabled(ctx))) {
     // Модуль «Поддержка»: вопрос в Direct/WhatsApp — обращение с номером.
     const ticket = m.text ? await directTicket(ctx, customerNow, m.platform, m.text) : null;
@@ -293,6 +297,38 @@ async function forwardedToSeller(
       text,
     });
   }
+}
+
+/**
+ * Вопрос после «Связаться с продавцом»: обращение (модуль «Поддержка») или
+ * уведомление продавцу; ИИ-консультант замолкает, чтобы ответил человек.
+ * Метку забирает условная запись (core/instagram/contact-request): из двух
+ * сообщений подряд продавцу уходит одно, второе остаётся в «Чате».
+ * Пауза пишется поверх свежего state.
+ */
+async function contactSeller(
+  ctx: TenantContext,
+  customer: Customer,
+  m: ReturnType<typeof parseZernioMessage>,
+  consultant: typeof import("@/core/consultant/engine.server"),
+): Promise<string> {
+  const { claimContactRequest } = await import("@/core/instagram/contact-request");
+  let c = await claimContactRequest(ctx, customer);
+  // Метку забрало соседнее сообщение: оно и уходит продавцу, это видно в «Чате».
+  if (!c) return "просьба связаться — вопрос уже у продавца";
+  const ticket = await directTicket(ctx, c, m.platform, m.text);
+  if (!ticket) {
+    const who = c.firstName || (c.username ? `@${c.username}` : m.senderId);
+    await notifyAdminsHtml(
+      ctx,
+      `🙋 <b>Покупатель просит связаться</b>\n${PLATFORM_LABEL[m.platform]} · 👤 ${escapeHtml(who)}${c.username ? ` · @${escapeHtml(c.username)}` : ""}\n\n${escapeHtml(m.text.slice(0, 1000))}\n\nОтветить — в приложении ${PLATFORM_LABEL[m.platform]} или в «Чате» панели.`,
+      { kind: "question" },
+    ).catch(() => 0);
+  }
+  if (await consultant.consultantEnabled(ctx)) c = await consultant.pauseConsultant(ctx, c);
+  return ticket
+    ? `просьба связаться — обращение #${ticket.number}`
+    : "просьба связаться — вопрос продавцу";
 }
 
 /**

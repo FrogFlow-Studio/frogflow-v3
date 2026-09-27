@@ -14,6 +14,7 @@ import { adminT } from "@/app/i18n/admin";
 import { parseWebCheckout } from "@/core/storefront/web-checkout-settings";
 import { ChannelsCard, DirectBotCard, TelegramCard } from "@/app/admin/settings/channels";
 import { CrmCard } from "@/app/admin/settings/crm";
+import { IceBreakersCard } from "@/app/admin/settings/ice-breakers";
 import { FulfillmentCard, ZonesCard } from "@/app/admin/settings/delivery";
 import { NotifyCard } from "@/app/admin/settings/notify";
 import {
@@ -131,6 +132,7 @@ function SettingsPage() {
           />
         )}
         {shop.modules.instagram && <DirectBotCard platform="instagram" />}
+        {shop.modules.instagram && shop.modules.dm_shop && <IceBreakersCard />}
         {shop.modules.whatsapp && <DirectBotCard platform="whatsapp" />}
         <Card title={t("settings.shop.title")}>
           <form

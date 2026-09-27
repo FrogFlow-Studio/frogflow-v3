@@ -94,6 +94,7 @@ export function settingsFromJson(json: unknown): TenantSettings {
             .filter((a) => a.id)
         : undefined,
       synced_at: str(zr.synced_at),
+      ice_breakers_v: str(zr.ice_breakers_v),
     },
     admin: {
       username: str(adm.username),

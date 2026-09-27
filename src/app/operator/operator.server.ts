@@ -533,7 +533,21 @@ export async function setServedBy(botId: string, servedBy: "v1" | "v2", actor = 
       console.warn(`[operator] story tags import for ${botId}: ${String(e)}`);
       return { error: e instanceof Error ? e.message : String(e) };
     });
-    return { ...(await reinstallWebhook(botId, actor)), storyTags };
+    const r = { ...(await reinstallWebhook(botId, actor)), storyTags };
+    await applyIceBreakers(botId);
+    return r;
+  }
+  if (before.settings.served_by === "v2") {
+    const { releaseIceBreakersToV1 } = await import("@/channels/zernio/ice-breakers.server");
+    // Откат не держим: подсказки снимет повторный откат, а оператор видит причину в журнале.
+    await releaseIceBreakersToV1(before).catch((e) =>
+      logEvent(
+        botId,
+        "webhook",
+        { action: "ice_breakers_release_failed", error: String(e) },
+        actor,
+      ),
+    );
   }
   const { releasesTelegramOnSwitch } = await import("@/core/tenant/preflight");
   if (releasesTelegramOnSwitch(before.settings.served_by, servedBy)) {
@@ -543,6 +557,13 @@ export async function setServedBy(botId: string, servedBy: "v1" | "v2", actor = 
     );
   }
   return null;
+}
+
+/** Быстрые вопросы Instagram после переезда; сбой не мешает переезду — крон повторит. */
+async function applyIceBreakers(botId: string): Promise<void> {
+  const { refreshIceBreakers } = await import("@/channels/zernio/ice-breakers.server");
+  const r = await refreshIceBreakers(botId);
+  if (!r.ok) console.warn(`[operator] ice breakers for ${botId}: ${r.error}`);
 }
 
 /**

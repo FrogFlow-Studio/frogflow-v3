@@ -10,6 +10,8 @@ import type { ParsedZernioMessage } from "./message";
 import type { ZernioPlatform } from "./platform";
 import { WA_LIST_MAX_ROWS, WA_LIST_PAGE } from "./shop-flow";
 import { handleShopMessage } from "./shop.server";
+import { COPY } from "@/channels/telegram/copy";
+import { contactRequested } from "@/core/instagram/ice-breakers";
 
 /**
  * Магазин в Direct и WhatsApp целиком, на базе в памяти и подменённом
@@ -30,7 +32,17 @@ vi.mock("@/core/db/client.server", () => ({
   }),
 }));
 
-type Sent = { text: string; interactive?: Json };
+// ИИ-консультант: «Связаться с продавцом» ставит его на паузу, если включён.
+const consultant = vi.hoisted(() => ({ enabled: false, paused: 0 }));
+vi.mock("@/core/consultant/engine.server", () => ({
+  consultantEnabled: async () => consultant.enabled,
+  pauseConsultant: async (_ctx: unknown, c: unknown) => {
+    consultant.paused++;
+    return c;
+  },
+}));
+
+type Sent = { text: string; interactive?: Json; buttons?: unknown[] };
 
 function setup(
   opts: {
@@ -82,10 +94,17 @@ function setup(
   const sent: Sent[] = [];
   const download = vi.fn(async () => null);
   const transport: ZernioTransport = {
-    send: vi.fn(async (_c: string, _a: string, text: string, o: { interactive?: Json } = {}) => {
-      sent.push({ text, interactive: o.interactive });
-      return opts.sendOk === false ? { ok: false, error: "Zernio API 403" } : { ok: true };
-    }),
+    send: vi.fn(
+      async (
+        _c: string,
+        _a: string,
+        text: string,
+        o: { interactive?: Json; buttons?: unknown[] } = {},
+      ) => {
+        sent.push({ text, interactive: o.interactive, buttons: o.buttons });
+        return opts.sendOk === false ? { ok: false, error: "Zernio API 403" } : { ok: true };
+      },
+    ),
     tail: vi.fn(async () => []),
     download,
     mailReady: () => false,
@@ -514,5 +533,59 @@ describe("фото товара в Instagram и WhatsApp", () => {
     });
     await send({ postbackPayload: "PROD:p1" });
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe("быстрые вопросы Instagram: постбэк IB:<вид>", () => {
+  it("«Мои заказы» — список заказов, «Каталог» — каталог", async () => {
+    const { send, sent, tables } = setup({ platform: "instagram" });
+    expect((await send({ postbackPayload: "IB:orders", text: "Мои заказы" })).outcome).toBe(
+      "handled",
+    );
+    expect(sent.at(-1)!.text).toContain(COPY.ru.myOrdersEmpty);
+    expect((await send({ postbackPayload: "IB:catalog" })).outcome).toBe("handled");
+    expect(tables).toContain("categories");
+  });
+
+  it("«Связаться с продавцом» — просьба описать вопрос и отметка, что следующий текст — продавцу", async () => {
+    const { send, sent, db } = setup({ platform: "instagram" });
+    expect((await send({ postbackPayload: "IB:contact" })).outcome).toBe("handled");
+    expect(sent.at(-1)!.text).toBe(COPY.ru.ticketPrompt);
+    const direct = (
+      db.tables.bot_users![0]!.state as { direct?: { contact_requested_at?: string } }
+    ).direct;
+    expect(contactRequested({ direct })).toBe(true);
+    // Сам клик консультанта не ставит на паузу: пауза — когда вопрос ушёл продавцу.
+    expect(consultant.paused).toBe(0);
+  });
+
+  it("«Как оплатить» с пустой корзиной — способы оплаты и кнопка каталога", async () => {
+    const { send, sent, db } = setup({ platform: "instagram" });
+    db.tables.payment_methods = [
+      { id: "pm1", is_active: true, sort_order: 1, country_name: "Казахстан", currency: "KZT" },
+      { id: "pm2", is_active: false, sort_order: 2, country_name: "Россия", currency: "RUB" },
+    ];
+    expect((await send({ postbackPayload: "IB:pay" })).outcome).toBe("handled");
+    expect(sent.at(-1)!.text).toBe(COPY.ru.payMethods("• Казахстан (KZT)"));
+    expect(sent.at(-1)!.buttons).toHaveLength(1);
+  });
+
+  it("«Как оплатить» без способов оплаты — честно говорим, что оплата не настроена", async () => {
+    const { send, sent, db } = setup({ platform: "instagram" });
+    db.tables.payment_methods = [];
+    await send({ postbackPayload: "IB:pay" });
+    expect(sent.at(-1)!.text).toBe(COPY.ru.paymentNotConfigured);
+  });
+
+  it("новому покупателю сначала выбор языка, как на любое первое сообщение", async () => {
+    const { send, db } = setup({ platform: "instagram", state: {} });
+    await send({ postbackPayload: "IB:pay" });
+    expect((db.tables.bot_users![0]!.state as { mode?: string }).mode).toBe("awaiting_locale");
+  });
+
+  it("незнакомый вид подсказки — не наш постбэк", async () => {
+    const { send, sent } = setup({ platform: "instagram" });
+    expect((await send({ postbackPayload: "IB:other" })).outcome).toBe("question");
+    expect(sent).toEqual([]);
   });
 });

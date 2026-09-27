@@ -33,6 +33,8 @@ export type Msg = {
   quizBtn: string;
   /** Мини-helpdesk. */
   ticketPrompt: string;
+  /** Быстрый вопрос «Как оплатить» при пустой корзине: страны и валюты, без реквизитов. */
+  payMethods: (list: string) => string;
   ticketCreated: (no: number) => string;
   ticketAppended: (no: number) => string;
   ticketClosed: (no: number) => string;
@@ -315,6 +317,8 @@ const ru: Msg = {
   upsellHeader: "✨ С этим часто берут:",
   quizBtn: "🧩 Подобрать товар",
   ticketPrompt: "Опишите вопрос одним сообщением — передам его команде магазина.",
+  payMethods: (list) =>
+    `Оплатить можно так:\n${list}\n\nВыберите товар в каталоге — реквизиты покажу при оформлении заказа.`,
   ticketCreated: (no) => `📨 Обращение #${no} принято. Ответим здесь, в этом чате.`,
   ticketAppended: (no) => `📨 Добавил к обращению #${no}. Ответим здесь.`,
   ticketClosed: (no) => `✅ Обращение #${no} закрыто. Если вопрос остался — напишите снова.`,
@@ -512,6 +516,8 @@ const kk: Msg = {
   upsellHeader: "✨ Мұнымен бірге жиі алады:",
   quizBtn: "🧩 Тауар таңдау",
   ticketPrompt: "Сұрағыңызды бір хабарламамен сипаттаңыз — дүкен командасына жеткіземін.",
+  payMethods: (list) =>
+    `Төлеу тәсілдері:\n${list}\n\nКаталогтан тауар таңдаңыз — деректемелерді тапсырысты рәсімдегенде көрсетемін.`,
   ticketCreated: (no) => `📨 #${no} өтініш қабылданды. Осы чатта жауап береміз.`,
   ticketAppended: (no) => `📨 #${no} өтінішке қостым. Осында жауап береміз.`,
   ticketClosed: (no) => `✅ #${no} өтініш жабылды. Сұрақ қалса — қайта жазыңыз.`,
@@ -666,6 +672,8 @@ const en: Msg = {
   upsellHeader: "✨ Often bought together:",
   quizBtn: "🧩 Find a product",
   ticketPrompt: "Describe your question in one message — I will pass it to the shop team.",
+  payMethods: (list) =>
+    `You can pay:\n${list}\n\nPick a product in the catalog — I will show payment details when you place the order.`,
   ticketCreated: (no) => `📨 Request #${no} received. We will reply here in this chat.`,
   ticketAppended: (no) => `📨 Added to request #${no}. We will reply here.`,
   ticketClosed: (no) =>
@@ -840,6 +848,8 @@ const uz: Msg = {
   upsellHeader: "✨ Bu bilan ko‘pincha olishadi:",
   quizBtn: "🧩 Mahsulot tanlash",
   ticketPrompt: "Savolingizni bitta xabarda yozing — do‘kon jamoasiga yetkazaman.",
+  payMethods: (list) =>
+    `To‘lov usullari:\n${list}\n\nKatalogdan mahsulot tanlang — rekvizitlarni buyurtma rasmiylashtirilganda ko‘rsataman.`,
   ticketCreated: (no) => `📨 #${no} murojaat qabul qilindi. Shu chatda javob beramiz.`,
   ticketAppended: (no) => `📨 #${no} murojaatga qo‘shdim. Shu yerda javob beramiz.`,
   ticketClosed: (no) => `✅ #${no} murojaat yopildi. Savol qolsa — yana yozing.`,

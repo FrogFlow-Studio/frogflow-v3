@@ -152,6 +152,18 @@ export const ru = {
   "settings.notify.digestAt": "присылать в",
   "settings.dbot.nativeCatalogHint":
     "Корзина из каталога Meta: чтобы бот оформил такой заказ сам, укажите в каталоге Meta артикулом (Content ID) id товара, его номер или точное название из админки.",
+  "settings.ib.title": "Быстрые вопросы в Instagram",
+  "settings.ib.enabled": "включены",
+  "settings.ib.intro":
+    "Подсказки, которые покупатель видит, когда впервые пишет вам в Direct. Нажатие открывает каталог, заказы, оплату или просьбу описать вопрос. Тексты можно менять, до 80 знаков.",
+  "settings.ib.kind.catalog": "Каталог",
+  "settings.ib.kind.orders": "Мои заказы",
+  "settings.ib.kind.pay": "Как оплатить",
+  "settings.ib.kind.contact": "Связаться с продавцом",
+  "settings.ib.needsShop":
+    "Подсказки ведут в магазин в Direct: они появятся, когда включён автоответчик Instagram, а «Каталог» и «Как оплатить» — когда эти части магазина включены.",
+  "settings.ib.notApplied":
+    "Сохранено, но Instagram пока не принял подсказки — попробуем снова автоматически.",
   "settings.ch.connectInstagram": "Подключить Instagram",
   "settings.ch.connectWhatsapp": "Подключить WhatsApp",
   "settings.ch.refresh": "Обновить список",
@@ -433,6 +445,18 @@ export const kk: SectionDict<typeof ru> = {
   "settings.notify.digestAt": "жіберу уақыты",
   "settings.dbot.nativeCatalogHint":
     "Meta каталогынан себет: бот мұндай тапсырысты өзі рәсімдеуі үшін Meta каталогында артикул (Content ID) ретінде тауар id-ін, нөмірін немесе әкімші панеліндегі нақты атауын көрсетіңіз.",
+  "settings.ib.title": "Instagram-дағы жылдам сұрақтар",
+  "settings.ib.enabled": "қосулы",
+  "settings.ib.intro":
+    "Сатып алушы Direct-ке алғаш жазғанда көретін кеңестер. Басу каталогты, тапсырыстарды, төлемді немесе сұрақты сипаттау өтінішін ашады. Мәтінді өзгертуге болады, 80 таңбаға дейін.",
+  "settings.ib.kind.catalog": "Каталог",
+  "settings.ib.kind.orders": "Менің тапсырыстарым",
+  "settings.ib.kind.pay": "Қалай төлеуге болады",
+  "settings.ib.kind.contact": "Сатушымен байланысу",
+  "settings.ib.needsShop":
+    "Кеңестер Direct-тегі дүкенге апарады: олар Instagram автожауапкері қосулы болғанда шығады, ал «Каталог» пен «Қалай төлеуге болады» — дүкеннің осы бөліктері қосулы болғанда.",
+  "settings.ib.notApplied":
+    "Сақталды, бірақ Instagram кеңестерді әзірге қабылдамады — автоматты түрде қайта көреміз.",
   "settings.ch.connectInstagram": "Instagram қосу",
   "settings.ch.connectWhatsapp": "WhatsApp қосу",
   "settings.ch.refresh": "Тізімді жаңарту",
@@ -705,6 +729,18 @@ export const en: SectionDict<typeof ru> = {
   "settings.notify.digestAt": "send at",
   "settings.dbot.nativeCatalogHint":
     "Meta catalog cart: for the bot to place such an order itself, set the product id, its number or the exact name from this panel as the Content ID in the Meta catalog.",
+  "settings.ib.title": "Instagram quick questions",
+  "settings.ib.enabled": "on",
+  "settings.ib.intro":
+    "Prompts a buyer sees when they first message you in Direct. A tap opens the catalog, orders, payment or a request to describe the question. Texts can be changed, up to 80 characters.",
+  "settings.ib.kind.catalog": "Catalog",
+  "settings.ib.kind.orders": "My orders",
+  "settings.ib.kind.pay": "How to pay",
+  "settings.ib.kind.contact": "Contact the seller",
+  "settings.ib.needsShop":
+    "The prompts lead into the Direct shop: they appear while the Instagram auto-reply is on, and «Catalog» and «How to pay» only while those parts of the shop are on.",
+  "settings.ib.notApplied":
+    "Saved, but Instagram has not accepted the prompts yet — we will retry automatically.",
   "settings.ch.connectInstagram": "Connect Instagram",
   "settings.ch.connectWhatsapp": "Connect WhatsApp",
   "settings.ch.refresh": "Refresh list",
@@ -980,6 +1016,18 @@ export const uz: SectionDict<typeof ru> = {
   "settings.notify.digestAt": "yuborish vaqti",
   "settings.dbot.nativeCatalogHint":
     "Meta katalogidan savat: bot bunday buyurtmani o‘zi rasmiylashtirishi uchun Meta katalogida artikul (Content ID) sifatida mahsulot id-si, raqami yoki paneldagi aniq nomini ko‘rsating.",
+  "settings.ib.title": "Instagramdagi tezkor savollar",
+  "settings.ib.enabled": "yoqilgan",
+  "settings.ib.intro":
+    "Xaridor Directda sizga birinchi marta yozganda ko‘radigan maslahatlar. Bosish katalog, buyurtmalar, to‘lov yoki savolni yozish so‘rovini ochadi. Matnlarni o‘zgartirish mumkin, 80 belgigacha.",
+  "settings.ib.kind.catalog": "Katalog",
+  "settings.ib.kind.orders": "Buyurtmalarim",
+  "settings.ib.kind.pay": "Qanday to‘lash",
+  "settings.ib.kind.contact": "Sotuvchi bilan bog‘lanish",
+  "settings.ib.needsShop":
+    "Maslahatlar Directdagi do‘konga olib boradi: ular Instagram avtojavobchisi yoqilganda, «Katalog» va «Qanday to‘lash» esa do‘konning shu qismlari yoqilganda chiqadi.",
+  "settings.ib.notApplied":
+    "Saqlandi, lekin Instagram maslahatlarni hali qabul qilmadi — avtomatik qayta urinamiz.",
   "settings.ch.connectInstagram": "Instagramni ulash",
   "settings.ch.connectWhatsapp": "WhatsAppni ulash",
   "settings.ch.refresh": "Ro‘yxatni yangilash",

@@ -68,6 +68,18 @@ export const Route = createFileRoute("/api/cron/$job")({
                   results[`${t.id}:vip`] = await tenantFailure(t.id, e);
                 }
               }
+              // Быстрые вопросы Instagram: только клиентам v2 и только когда набор сменился.
+              const { ensureIceBreakers } = await import("@/channels/zernio/ice-breakers.server");
+              for (const t of tenants) {
+                if (!t.settings.zernio?.accounts?.length) continue;
+                try {
+                  const r = await ensureIceBreakers(t);
+                  if (r.action !== "skipped" && r.action !== "unchanged")
+                    results[`${t.id}:ice_breakers`] = r;
+                } catch (e) {
+                  results[`${t.id}:ice_breakers`] = await tenantFailure(t.id, e);
+                }
+              }
               // Zernio: запись вебхука v2 крон только читает — писать её может лишь
               // оператор кнопкой (записи v1 с тем же ключом код v2 не трогает).
               const zernioInUse = tenants.some(

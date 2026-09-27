@@ -1109,7 +1109,11 @@ export const zernioConnectLinkFn = createServerFn({ method: "POST" })
 export const syncZernioAccountsFn = createServerFn({ method: "POST" }).handler(async () => {
   const ctx = await adminOwner();
   const { syncAccounts } = await import("@/channels/zernio/connect.server");
-  return syncAccounts(ctx.tenant);
+  const r = await syncAccounts(ctx.tenant);
+  // Новый аккаунт Instagram получает быстрые вопросы сразу, а не с кроном.
+  const { refreshIceBreakers } = await import("@/channels/zernio/ice-breakers.server");
+  await refreshIceBreakers(ctx.tenant.id);
+  return r;
 });
 
 /** Продавец подключает бота сам: токен → getMe → шифрование → вебхук на эту платформу. */

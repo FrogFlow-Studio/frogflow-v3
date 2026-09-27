@@ -50,5 +50,47 @@ export const saveDirectBotSettingsFn = createServerFn({ method: "POST" })
       ignoreExcluded: data.ignoreExcluded ?? false,
       notifyTemplate: data.notifyTemplate ?? "",
     });
+    // Тумблер и части магазина решают, какие быстрые вопросы видны в Instagram.
+    if (data.platform === "instagram") {
+      const { refreshIceBreakers } = await import("@/channels/zernio/ice-breakers.server");
+      await refreshIceBreakers(ctx.tenant.id);
+    }
     return { ok: true };
+  });
+
+/**
+ * Быстрые вопросы Instagram (core/instagram/ice-breakers): набор и тексты.
+ * После сохранения сразу приводим подсказки в аккаунтах к настройке; сбой
+ * Zernio не отменяет сохранение — продавцу говорим, крон повторит.
+ */
+export const iceBreakersFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  const { loadIceBreakers } = await import("@/core/instagram/ice-breakers");
+  return loadIceBreakers(ctx);
+});
+
+export const saveIceBreakersFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        enabled: z.boolean(),
+        items: z
+          .array(
+            z.object({
+              kind: z.enum(["catalog", "orders", "pay", "contact"]),
+              question: z.string().max(200),
+              on: z.boolean(),
+            }),
+          )
+          .max(4),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminOwner();
+    const { saveIceBreakers } = await import("@/core/instagram/ice-breakers");
+    await saveIceBreakers(ctx, data);
+    const { refreshIceBreakers } = await import("@/channels/zernio/ice-breakers.server");
+    const r = await refreshIceBreakers(ctx.tenant.id);
+    return { ok: true, applied: r.ok };
   });

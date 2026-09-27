@@ -11,10 +11,17 @@ const customer = {
   state: { consultant: { last_reply_at: new Date(Date.now() - 3600_000).toISOString() } },
 } as unknown as Customer;
 
+const setState = vi.fn(async (_ctx: unknown, c: Customer, state: Customer["state"]) => ({
+  ...c,
+  state,
+}));
 vi.mock("@/core/customers/customers", () => ({
   upsertCustomer: vi.fn(async () => customer),
   isBlocked: vi.fn(async () => false),
+  setState,
 }));
+const notifyAdminsHtml = vi.fn(async (_ctx: unknown, _html: string, _o?: unknown) => 1);
+vi.mock("@/channels/telegram/notify", () => ({ notifyAdminsHtml }));
 vi.mock("@/core/instagram/direct-bot-settings", () => ({
   loadDirectBotSettings: vi.fn(async () => ({ enabled: true, ignoreExcluded: false })),
 }));
@@ -25,6 +32,17 @@ vi.mock("@/core/consultant/engine.server", () => ({
   isPaused: () => false,
   pauseConsultant,
   runConsultant,
+}));
+
+/** «Связаться с продавцом»: метку забирает условная запись; здесь — чем она ответила. */
+const claimContactRequest = vi.fn(async (_ctx: unknown, c: Customer) => c as Customer | null);
+vi.mock("@/core/instagram/contact-request", () => ({ claimContactRequest }));
+const createTicket = vi.fn(async () => ({ ticket: { number: 7 }, created: true }));
+vi.mock("@/core/helpdesk/tickets", () => ({ createTicket }));
+vi.mock("@/core/chat/chat", () => ({
+  inboundIntercepted: vi.fn(async () => false),
+  recordMessage: vi.fn(async () => {}),
+  connect: vi.fn(async () => {}),
 }));
 
 const setOptOut = vi.fn(async () => true);
@@ -170,5 +188,65 @@ describe("Comment-to-DM: второй быстрый «+»", () => {
     twoStepJustDelivered.mockResolvedValue(false);
     expect(r.note).not.toBe("второе сообщение по комментарию");
     expect(twoStepJustDelivered).not.toHaveBeenCalled();
+  });
+});
+
+describe("быстрый вопрос «Связаться с продавцом»", () => {
+  const asked = {
+    ...customer,
+    platform: "instagram",
+    state: { ...customer.state, direct: { contact_requested_at: new Date().toISOString() } },
+  } as unknown as Customer;
+  const igCtx = (modules: Record<string, boolean> = {}) =>
+    ({
+      tenant: { ...ctx.tenant, modules: { instagram: true, ...modules } },
+    }) as unknown as TenantContext;
+  const event = (text: string) =>
+    ({
+      account: { platform: "instagram", accountId: "acc-1" },
+      conversation: { id: "conv-1" },
+      message: { text, sender: { id: "ig-1" } },
+    }) as never;
+  const transport = { send: vi.fn(async () => ({ ok: true })), tail: async () => [] };
+  const run = async (text: string, modules?: Record<string, boolean>) => {
+    const { upsertCustomer } = await import("@/core/customers/customers");
+    vi.mocked(upsertCustomer).mockResolvedValueOnce(asked);
+    return handleZernioMessage(
+      igCtx(modules),
+      event(text),
+      transport as unknown as ZernioTransport,
+    );
+  };
+  const reset = () => {
+    for (const f of [pauseConsultant, runConsultant, notifyAdminsHtml, createTicket]) f.mockClear();
+    claimContactRequest.mockReset();
+    claimContactRequest.mockImplementation(async (_ctx, c) => c);
+  };
+
+  it("два сообщения подряд — продавцу одна пересылка, консультант молчит", async () => {
+    reset();
+    claimContactRequest.mockImplementationOnce(async (_ctx, c) => c);
+    claimContactRequest.mockImplementationOnce(async () => null);
+    const a = await run("Нужна консультация по размеру");
+    const b = await run("и по цвету");
+    expect(a.note).toBe("просьба связаться — вопрос продавцу");
+    expect(b.note).toBe("просьба связаться — вопрос уже у продавца");
+    expect(notifyAdminsHtml).toHaveBeenCalledOnce();
+    expect(String(notifyAdminsHtml.mock.calls[0]![1])).toContain("Нужна консультация по размеру");
+    expect(pauseConsultant).toHaveBeenCalledOnce();
+    expect(runConsultant).not.toHaveBeenCalled();
+  });
+
+  it("модуль «Поддержка» — одно обращение вместо уведомления «просит связаться»", async () => {
+    reset();
+    claimContactRequest.mockImplementationOnce(async (_ctx, c) => c);
+    claimContactRequest.mockImplementationOnce(async () => null);
+    const a = await run("Нужна консультация", { helpdesk: true, manager_chat: true });
+    await run("ещё вопрос", { helpdesk: true, manager_chat: true });
+    expect(a.note).toBe("просьба связаться — обращение #7");
+    expect(createTicket).toHaveBeenCalledOnce();
+    expect(notifyAdminsHtml).toHaveBeenCalledOnce();
+    expect(String(notifyAdminsHtml.mock.calls[0]![1])).toContain("Новое обращение #7");
+    expect(runConsultant).not.toHaveBeenCalled();
   });
 });
