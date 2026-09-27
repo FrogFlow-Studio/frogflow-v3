@@ -3,6 +3,7 @@ import type { Json } from "@/core/db-types";
 import { customerFromRow, setState, type Customer } from "@/core/customers/customers";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { minutesInTz } from "@/core/notify/prefs";
+import { eachPage } from "@/core/db/page";
 
 /**
  * Возвратные продажи (модуль winback): покупателю, который давно не
@@ -121,46 +122,58 @@ export async function runWinback(
   if (!cfg.enabled) return { ...r, skipped: "disabled" };
   if (!daytime(now, ctx.timezone)) return { ...r, skipped: "night" };
   const since = new Date(now.getTime() - WINBACK_MAX_AGE_DAYS * DAY).toISOString();
-  const { data: orders } = await ctx.db
-    .from("orders")
-    .select("id, telegram_id, created_at")
-    .in("status", DONE_STATUSES)
-    .gte("created_at", since)
-    .order("created_at", { ascending: false })
-    .limit(5000);
+  // Все заказы окна, постранично (в 180 днях у крупного магазина больше
+  // 5000 заказов); в памяти — только последний заказ каждого покупателя.
   const last = new Map<number, { id: number; at: string }>();
-  for (const o of orders ?? [])
-    if (!last.has(Number(o.telegram_id)))
-      last.set(Number(o.telegram_id), { id: o.id, at: o.created_at });
-  const due = [...last.entries()].filter(
-    ([, o]) => (now.getTime() - Date.parse(o.at)) / DAY >= cfg.days1,
+  await eachPage(
+    (from, to) =>
+      ctx.db
+        .from("orders")
+        .select("id, telegram_id, created_at")
+        .in("status", DONE_STATUSES)
+        .gte("created_at", since)
+        .order("id")
+        .range(from, to),
+    "возврат клиентов: заказы",
+    (orders) => {
+      for (const o of orders) {
+        const tg = Number(o.telegram_id);
+        const prev = last.get(tg);
+        if (!prev || o.created_at > prev.at) last.set(tg, { id: o.id, at: o.created_at });
+      }
+    },
   );
+  const due = [...last.entries()]
+    .filter(([, o]) => (now.getTime() - Date.parse(o.at)) / DAY >= cfg.days1)
+    .map(([id]) => id);
   if (!due.length) return r;
-  const { data: users } = await ctx.db
-    .from("bot_users")
-    .select("*")
-    .in(
-      "telegram_id",
-      due.map(([id]) => id),
-    );
+  // Покупатели кусками по 200 id (длина адреса и потолок 1000 строк), пока
+  // не набрана пачка отправок.
   const { isBlocked } = await import("@/core/customers/customers");
-  for (const row of users ?? []) {
-    if (r.sent + r.failed >= WINBACK_BATCH) break;
-    const c = customerFromRow(row);
-    const order = last.get(c.telegramId);
-    if (!order) continue;
-    r.checked++;
-    const mem = (c.state.winback ?? undefined) as WinbackMemory | undefined;
-    const step = winbackStep(cfg, order, mem, now);
-    if (!step || (await isBlocked(ctx, c.telegramId))) continue;
-    const ok = await send(c, winbackText(cfg, step, c.firstName)).catch(() => false);
-    if (ok) r.sent++;
-    else r.failed++;
-    // Шаг отмечаем и при неудаче: не долбить одного и того же каждый час.
-    await setState(ctx, c, {
-      ...c.state,
-      winback: { order_id: order.id, step, at: now.toISOString() } as unknown as Json,
-    });
+  for (let i = 0; i < due.length && r.sent + r.failed < WINBACK_BATCH; i += 200) {
+    const { data: users, error } = await ctx.db
+      .from("bot_users")
+      .select("*")
+      .in("telegram_id", due.slice(i, i + 200));
+    if (error) throw new Error(`возврат клиентов: покупатели: ${error.message}`);
+    for (const row of users ?? []) {
+      if (r.sent + r.failed >= WINBACK_BATCH) break;
+      const c = customerFromRow(row);
+      const order = last.get(c.telegramId);
+      if (!order) continue;
+      r.checked++;
+      const mem = (c.state.winback ?? undefined) as WinbackMemory | undefined;
+      const step = winbackStep(cfg, order, mem, now);
+      if (!step || (await isBlocked(ctx, c.telegramId))) continue;
+      const ok = await send(c, winbackText(cfg, step, c.firstName)).catch(() => false);
+      if (ok) r.sent++;
+      else r.failed++;
+      // Шаг отмечаем и при неудаче: не долбить одного и того же каждый час.
+      await setState(ctx, c, {
+        ...c.state,
+        winback: { order_id: order.id, step, at: now.toISOString() } as unknown as Json,
+      });
+    }
   }
   return r;
 }

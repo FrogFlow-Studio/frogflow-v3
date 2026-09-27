@@ -13,16 +13,21 @@ export type FakeDb = {
   tables: Record<string, Row[]>;
   from: (table: string) => Query;
   rpc: (name: string, args: Record<string, unknown>) => Promise<Result>;
+  /** Потолок строк одного ответа, как max-rows у PostgREST (там 1000). */
+  maxRows: number;
 };
 
 export function fakeDb(
   opts: {
     unique?: Record<string, string[][]>;
     rpc?: Record<string, (db: FakeDb, args: Record<string, unknown>) => void>;
+    /** Включить потолок ответа, как у Supabase: `maxRows: 1000`. */
+    maxRows?: number;
   } = {},
 ): FakeDb {
   const db: FakeDb = {
     tables: {},
+    maxRows: opts.maxRows ?? Infinity,
     from: (table) => new Query(db, table, opts.unique?.[table] ?? []),
     rpc: async (name, args) => {
       await Promise.resolve();
@@ -36,6 +41,19 @@ export function fakeDb(
 }
 
 let seq = 0;
+
+/** Вхождение jsonb, как оператор @> : массив содержит все элементы, объект — все пары. */
+function jsonContains(have: unknown, want: unknown): boolean {
+  if (Array.isArray(want))
+    return Array.isArray(have) && want.every((w) => have.some((h) => jsonContains(h, w)));
+  if (want && typeof want === "object")
+    return (
+      Boolean(have) &&
+      typeof have === "object" &&
+      Object.entries(want).every(([k, w]) => jsonContains((have as Row)[k], w))
+    );
+  return have === want;
+}
 
 /** Колонка или путь в jsonb «payload->>key», как в фильтрах PostgREST. */
 function pick(r: Row, col: string): unknown {
@@ -55,7 +73,7 @@ class Query implements PromiseLike<Result> {
   private headCount = false;
   private max = Infinity;
   private skip = 0;
-  private sort: { col: string; asc: boolean } | null = null;
+  private sorts: Array<{ col: string; asc: boolean }> = [];
   private one: "single" | "maybe" | null = null;
 
   constructor(
@@ -125,7 +143,7 @@ class Query implements PromiseLike<Result> {
   contains(col: string, v: Record<string, unknown>) {
     this.filters.push((r) => {
       const obj = r[col] as Record<string, unknown> | null;
-      return Boolean(obj) && Object.entries(v).every(([k, x]) => obj![k] === x);
+      return Boolean(obj) && Object.entries(v).every(([k, x]) => jsonContains(obj![k], x));
     });
     return this;
   }
@@ -177,7 +195,7 @@ class Query implements PromiseLike<Result> {
     return this;
   }
   order(col: string, o?: { ascending?: boolean }) {
-    this.sort = { col, asc: o?.ascending !== false };
+    this.sorts.push({ col, asc: o?.ascending !== false });
     return this;
   }
   limit(n: number) {
@@ -210,11 +228,15 @@ class Query implements PromiseLike<Result> {
 
   private matching(): Row[] {
     let out = this.rows().filter((r) => this.filters.every((f) => f(r)));
-    if (this.sort) {
-      const { col, asc } = this.sort;
-      out = [...out].sort((a, b) =>
-        (a[col] as string) < (b[col] as string) ? (asc ? -1 : 1) : asc ? 1 : -1,
-      );
+    if (this.sorts.length) {
+      out = [...out].sort((a, b) => {
+        for (const { col, asc } of this.sorts) {
+          const x = a[col] as string;
+          const y = b[col] as string;
+          if (x !== y) return x < y ? (asc ? -1 : 1) : asc ? 1 : -1;
+        }
+        return 0;
+      });
     }
     return out.slice(this.skip, this.skip + this.max);
   }
@@ -273,6 +295,6 @@ class Query implements PromiseLike<Result> {
       return { data: null, error: null };
     }
     if (this.headCount) return { data: null, error: null, count: hit.length };
-    return this.shape(hit);
+    return this.shape(hit.slice(0, this.db.maxRows));
   }
 }

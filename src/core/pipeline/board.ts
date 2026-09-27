@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
+import { pageAll } from "@/core/db/page";
 import { listLeads } from "./leads";
 import type { Lead } from "./stages";
 import {
@@ -79,14 +80,18 @@ async function customersWithOrders(
   for (let i = 0; i < keys.length; i += 100) {
     const chunk = keys.slice(i, i + 100);
     const oldest = chunk.map((k) => since.get(k)!).sort()[0]!;
-    const { data, error } = await ctx.db
-      .from("orders")
-      .select("user_key, created_at")
-      .in("user_key", chunk)
-      .gte("created_at", oldest)
-      .limit(2000);
-    if (error) throw new Error(`Заказы не прочитались: ${error.message}`);
-    for (const o of (data ?? []) as Array<{ user_key: string | null; created_at: string }>) {
+    const rows = await pageAll(
+      (from, to) =>
+        ctx.db
+          .from("orders")
+          .select("user_key, created_at")
+          .in("user_key", chunk)
+          .gte("created_at", oldest)
+          .order("id")
+          .range(from, to),
+      "Заказы не прочитались",
+    );
+    for (const o of rows as Array<{ user_key: string | null; created_at: string }>) {
       if (!o.user_key) continue;
       const prev = last.get(o.user_key);
       if (prev === undefined || o.created_at > prev) last.set(o.user_key, o.created_at);

@@ -567,12 +567,12 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
  * оформлению; нет — продавцу в Telegram текстом, покупателю «передал».
  */
 async function handleNativeCart(s: Shop, order: NativeOrder): Promise<ShopOutcome> {
-  const { data } = await s.ctx.db
-    .from("products")
-    .select("id, name, keywords")
-    .eq("is_active", true)
-    .limit(1000);
-  const match = matchNativeItems(order.items, data ?? []);
+  const { allActiveProducts } = await import("@/core/catalog/active");
+  const products = await allActiveProducts<{ id: string; name: string; keywords: string | null }>(
+    s.ctx,
+    "id, name, keywords",
+  );
+  const match = matchNativeItems(order.items, products);
   const who = s.customer.username
     ? `@${s.customer.username}`
     : s.customer.firstName || s.customer.userKey;

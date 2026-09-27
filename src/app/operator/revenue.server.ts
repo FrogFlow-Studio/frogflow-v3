@@ -1,4 +1,5 @@
 import { serviceDb } from "@/core/db/client.server";
+import { pageAll } from "@/core/db/page";
 import { isInternalTenant } from "@/core/tenant/internal";
 import { tenantDirectory } from "@/core/tenant/resolve.server";
 import { TIER_TITLES, parsePlan } from "@/core/plans/registry";
@@ -43,14 +44,19 @@ export async function revenueReport(now = new Date()): Promise<RevenueReport> {
   const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1)).toISOString();
   const [bots, payments] = await Promise.all([
     serviceDb().from("bots").select("id, subscription_expires_at"),
-    serviceDb()
-      .from("subscription_payments")
-      .select("bot_id, paid_at, amount, currency")
-      .gte("paid_at", since)
-      .limit(10_000),
+    pageAll(
+      (from, to) =>
+        serviceDb()
+          .from("subscription_payments")
+          .select("bot_id, paid_at, amount, currency")
+          .gte("paid_at", since)
+          .order("paid_at")
+          .order("id")
+          .range(from, to),
+      "оплаты подписок",
+    ),
   ]);
   if (bots.error) throw new Error(bots.error.message);
-  if (payments.error) throw new Error(payments.error.message);
   const expires = new Map((bots.data ?? []).map((b) => [b.id, b.subscription_expires_at]));
   const input = tenants.map((t) => ({
     t,
@@ -82,7 +88,7 @@ export async function revenueReport(now = new Date()): Promise<RevenueReport> {
       today,
     ),
     cash: cashByMonth(
-      (payments.data ?? [])
+      payments
         .filter((p) => !isInternalTenant(p.bot_id))
         .map((p) => ({ ...p, amount: Number(p.amount) })),
       today,

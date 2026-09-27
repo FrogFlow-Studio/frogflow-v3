@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSetting, setSetting } from "@/core/settings/settings";
+import { allActiveProducts } from "@/core/catalog/active";
 
 /**
  * Квиз-подбор (модуль quiz): до 5 вопросов с вариантами кнопками; у
@@ -89,14 +90,11 @@ export async function quizResult<T extends QuizProduct = QuizProduct>(
   ctx: TenantContext,
   tags: readonly string[],
 ): Promise<T[]> {
-  const { data } = await ctx.db
-    .from("products")
-    .select("id, name, keywords, description, stock_quantity")
-    .eq("is_active", true)
-    .limit(1000);
-  const stockOn = ctx.tenant.modules.stock;
-  const rows = (data ?? []).filter(
-    (p) => !(stockOn && p.stock_quantity != null && p.stock_quantity <= 0),
+  const all = await allActiveProducts<QuizProduct & { stock_quantity: number | null }>(
+    ctx,
+    "id, name, keywords, description, stock_quantity",
   );
+  const stockOn = ctx.tenant.modules.stock;
+  const rows = all.filter((p) => !(stockOn && p.stock_quantity != null && p.stock_quantity <= 0));
   return scoreProducts(rows, tags) as unknown as T[];
 }

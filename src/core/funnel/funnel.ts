@@ -3,6 +3,7 @@ import type { Json } from "@/core/db-types";
 import { customerFromRow, isBlocked, setState, type Customer } from "@/core/customers/customers";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { daytime } from "@/core/winback/winback";
+import { eachPage, pageAll } from "@/core/db/page";
 
 /**
  * Автоворонка (модуль funnel): серия сообщений новому покупателю по
@@ -73,6 +74,31 @@ export async function saveFunnel(ctx: TenantContext, cfg: FunnelConfig): Promise
 
 export type FunnelSender = (c: Customer, text: string, catalogButton: boolean) => Promise<boolean>;
 
+/** Кто из этих покупателей уже заказывал: id кусками, чтобы запрос не упёрся в 1000 строк. */
+async function customersWithOrders(
+  ctx: TenantContext,
+  rows: ReadonlyArray<{ telegram_id: number }>,
+): Promise<Set<number>> {
+  const out = new Set<number>();
+  const ids = [...new Set(rows.map((u) => u.telegram_id))];
+  for (let i = 0; i < ids.length; i += 200) {
+    const chunk = ids.slice(i, i + 200);
+    // Одного заказа на покупателя хватает; заказов у 200 покупателей бывает больше 1000.
+    const got = await pageAll(
+      (from, to) =>
+        ctx.db
+          .from("orders")
+          .select("telegram_id")
+          .in("telegram_id", chunk)
+          .order("id")
+          .range(from, to),
+      "автоворонка: заказы",
+    );
+    for (const o of got) out.add(Number(o.telegram_id));
+  }
+  return out;
+}
+
 export async function runFunnel(
   ctx: TenantContext,
   send: FunnelSender,
@@ -85,47 +111,49 @@ export async function runFunnel(
   if (!daytime(now, ctx.timezone)) return { ...r, skipped: "night" };
   const since = new Date(now.getTime() - FUNNEL_WINDOW_DAYS * 86_400_000).toISOString();
   const firstAfter = new Date(now.getTime() - cfg.steps[0]!.afterHours * 3600_000).toISOString();
-  const { data } = await ctx.db
-    .from("bot_users")
-    .select("*")
-    .gte("created_at", since)
-    .lte("created_at", firstAfter)
-    .order("created_at", { ascending: true })
-    .limit(1000);
-  const rows = data ?? [];
-  let ordered = new Set<number>();
-  if (cfg.stopOnOrder && rows.length) {
-    const { data: orders } = await ctx.db
-      .from("orders")
-      .select("telegram_id")
-      .in(
-        "telegram_id",
-        rows.map((u) => u.telegram_id),
-      );
-    ordered = new Set((orders ?? []).map((o) => Number(o.telegram_id)));
-  }
-  for (const row of rows) {
-    if (r.sent + r.failed >= FUNNEL_BATCH) break;
-    const c = customerFromRow(row);
-    const mem = c.state.funnel as { step?: number; stopped?: boolean } | undefined;
-    if (mem?.stopped) continue;
-    r.checked++;
-    if (ordered.has(c.telegramId)) {
-      await setState(ctx, c, { ...c.state, funnel: { ...(mem ?? {}), stopped: true } as Json });
-      continue;
-    }
-    const due = funnelDue(cfg, row.created_at, mem?.step ?? 0, now);
-    if (due == null || (await isBlocked(ctx, c.telegramId))) continue;
-    const step = cfg.steps[due]!;
-    const ok = await send(c, fillFunnelText(step.text, c.firstName), step.catalogButton).catch(
-      () => false,
-    );
-    if (ok) r.sent++;
-    else r.failed++;
-    await setState(ctx, c, {
-      ...c.state,
-      funnel: { step: due + 1, at: now.toISOString() } as unknown as Json,
-    });
-  }
+  // Постранично: в окне 45 дней у крупного магазина больше 1000 новых
+  // покупателей, а PostgREST молча отдаёт только первую тысячу.
+  await eachPage(
+    (from, to) =>
+      ctx.db
+        .from("bot_users")
+        .select("*")
+        .gte("created_at", since)
+        .lte("created_at", firstAfter)
+        .order("created_at", { ascending: true })
+        .order("user_key", { ascending: true })
+        .range(from, to),
+    "автоворонка: покупатели",
+    async (rows) => {
+      const ordered = cfg.stopOnOrder ? await customersWithOrders(ctx, rows) : new Set<number>();
+      for (const row of rows) {
+        if (r.sent + r.failed >= FUNNEL_BATCH) return false;
+        const c = customerFromRow(row);
+        const mem = c.state.funnel as { step?: number; stopped?: boolean } | undefined;
+        if (mem?.stopped) continue;
+        r.checked++;
+        if (ordered.has(c.telegramId)) {
+          await setState(ctx, c, {
+            ...c.state,
+            funnel: { ...(mem ?? {}), stopped: true } as Json,
+          });
+          continue;
+        }
+        const due = funnelDue(cfg, row.created_at, mem?.step ?? 0, now);
+        if (due == null || (await isBlocked(ctx, c.telegramId))) continue;
+        const step = cfg.steps[due]!;
+        const ok = await send(c, fillFunnelText(step.text, c.firstName), step.catalogButton).catch(
+          () => false,
+        );
+        if (ok) r.sent++;
+        else r.failed++;
+        await setState(ctx, c, {
+          ...c.state,
+          funnel: { step: due + 1, at: now.toISOString() } as unknown as Json,
+        });
+      }
+      return r.sent + r.failed < FUNNEL_BATCH;
+    },
+  );
   return r;
 }

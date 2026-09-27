@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pageAll } from "./page";
+import { eachPage, pageAll } from "./page";
 
 /** Таблица из n строк, отдаётся кусками [from, to] включительно, как PostgREST range(). */
 function table(n: number) {
@@ -58,5 +58,20 @@ describe("pageAll: всё, а не первые 1000 строк", () => {
         ? { data: Array.from({ length: 10 }, (_, i) => i), error: null }
         : { data: null, error: { message: "timeout" } };
     await expect(pageAll(query, "покупатели", 10)).rejects.toThrow("покупатели: timeout");
+  });
+});
+
+describe("eachPage: обход без накопления", () => {
+  it("отдаёт все страницы по очереди", async () => {
+    const { query } = table(25);
+    const seen: number[][] = [];
+    await eachPage(query, "t", (rows) => void seen.push(rows), 10);
+    expect(seen.map((p) => p.length)).toEqual([10, 10, 5]);
+  });
+
+  it("false из обработчика — дальше не читает", async () => {
+    const { query, calls } = table(25);
+    await eachPage(query, "t", () => false, 10);
+    expect(calls).toHaveLength(1);
   });
 });

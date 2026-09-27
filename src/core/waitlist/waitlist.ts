@@ -40,15 +40,32 @@ export async function joinWaitlist(
   return setState(ctx, customer, { ...customer.state, waitlist: withWaitlist(list, productId) });
 }
 
+/**
+ * Все ждущие товар. Страницы — по user_key после последнего увиденного, а не
+ * по смещению: рассылка убирает товар из списка у получивших, и смещение
+ * перепрыгнуло бы через ещё не оповещённых.
+ */
 export async function waitingCustomers(ctx: TenantContext, productId: string): Promise<Customer[]> {
-  const { data, error } = await ctx.db
-    .from("bot_users")
-    .select("*")
-    .contains("state", { waitlist: [productId] })
-    .limit(1000);
-  if (error) throw new Error(`waitlist: ${error.message}`);
-  return (data ?? []).map(customerFromRow);
+  const out: Customer[] = [];
+  let after: string | null = null;
+  for (;;) {
+    let q = ctx.db
+      .from("bot_users")
+      .select("*")
+      .contains("state", { waitlist: [productId] })
+      .order("user_key")
+      .limit(PAGE);
+    if (after != null) q = q.gt("user_key", after);
+    const { data, error } = await q;
+    if (error) throw new Error(`waitlist: ${error.message}`);
+    const rows = data ?? [];
+    out.push(...rows.map(customerFromRow));
+    if (rows.length < PAGE) return out;
+    after = rows[rows.length - 1]!.user_key;
+  }
 }
+
+const PAGE = 1000;
 
 export async function countWaiting(ctx: TenantContext, productId: string): Promise<number> {
   const { count } = await ctx.db

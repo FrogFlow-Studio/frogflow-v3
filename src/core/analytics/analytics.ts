@@ -1,15 +1,13 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { pageAll } from "@/core/db/page";
+import { eachPage, pageAll } from "@/core/db/page";
 import {
   analyticsRevenue,
   dayKey,
   dayKeys,
-  dominantCurrency,
   emptySeries,
   includeOrderInAnalytics,
   orderedCurrencies,
   pctDelta,
-  summarizeByCurrency,
   topProductsBySales,
   type DayPoint,
   type AnalyticsItem,
@@ -41,10 +39,41 @@ export type Analytics = {
   byStatus: Array<{ status: string; orders: number }>;
 };
 
+type Money = { revenue: number; orders: number };
+type Acc = {
+  /** Засчитанных заказов в обоих периодах — по ним выбирается основная валюта. */
+  count: number;
+  cur: Money;
+  prev: Money;
+  byDay: Map<string, Money>;
+  byPlatform: Map<string, Money>;
+  /** Заказы текущего периода в этой валюте — для топа товаров. */
+  ids: number[];
+  scale: Map<number, number>;
+};
+
+const blankAcc = (): Acc => ({
+  count: 0,
+  cur: { revenue: 0, orders: 0 },
+  prev: { revenue: 0, orders: 0 },
+  byDay: new Map(),
+  byPlatform: new Map(),
+  ids: [],
+  scale: new Map(),
+});
+
+const add = (m: Map<string, Money>, k: string, revenue: number) => {
+  const e = m.get(k) ?? { revenue: 0, orders: 0 };
+  e.revenue += revenue;
+  e.orders += 1;
+  m.set(k, e);
+};
+
 /**
  * Сводка за последние `days` дней с сравнением к предыдущему такому же
- * периоду. Считается в памяти — у одного клиента заказов тысячи, не
- * миллионы, и один проход дешевле шести агрегатных запросов.
+ * периоду. Заказы читаются постранично и сразу складываются в суммы по
+ * валютам: в памяти не держим строки заказов, только итоги и номера
+ * заказов текущего периода (для топа товаров).
  *
  * Как в v1: в выручку идут выданные заказы и физические в работе (с
  * внесённым задатком, paid_amount). Валюты не складываются: плитки, график,
@@ -57,8 +86,13 @@ export async function analytics(ctx: TenantContext, days: number): Promise<Analy
   const firstDay = keys[0]!;
   const since = new Date(now.getTime() - 2 * days * 86400_000).toISOString();
 
-  const [orders, users] = await Promise.all([
-    pageAll(
+  const accs = new Map<string, Acc>();
+  const buyers = { cur: new Set<number>(), prev: new Set<number>() };
+  const byStatus = new Map<string, number>();
+  const customers = { cur: 0, prev: 0, byDay: new Map<string, number>() };
+
+  await Promise.all([
+    eachPage(
       (from, to) =>
         ctx.db
           .from("orders")
@@ -67,102 +101,109 @@ export async function analytics(ctx: TenantContext, days: number): Promise<Analy
           )
           .gte("created_at", since)
           .order("created_at")
+          .order("id")
           .range(from, to),
       "заказы для аналитики",
+      (rows) => {
+        for (const o of rows) {
+          const day = dayKey(o.created_at, tz);
+          const inCurrent = day >= firstDay;
+          if (inCurrent) byStatus.set(o.status, (byStatus.get(o.status) ?? 0) + 1);
+          if (!includeOrderInAnalytics(o)) continue;
+          const revenue = analyticsRevenue(o);
+          // Покупатель — в любой валюте; деньги и число заказов — по своей валюте.
+          (inCurrent ? buyers.cur : buyers.prev).add(Number(o.telegram_id));
+          const cur = o.currency || "—";
+          const acc = accs.get(cur) ?? blankAcc();
+          accs.set(cur, acc);
+          acc.count += 1;
+          const bucket = inCurrent ? acc.cur : acc.prev;
+          bucket.revenue += revenue;
+          bucket.orders += 1;
+          if (!inCurrent) continue;
+          acc.ids.push(o.id);
+          const total = Number(o.total) || 0;
+          if (total > 0 && revenue !== total) acc.scale.set(o.id, revenue / total);
+          add(acc.byDay, day, revenue);
+          add(acc.byPlatform, o.platform || "telegram", revenue);
+        }
+      },
     ),
-    pageAll(
+    eachPage(
       (from, to) =>
         ctx.db
           .from("bot_users")
           .select("created_at")
           .gte("created_at", since)
           .order("created_at")
+          .order("user_key")
           .range(from, to),
       "покупатели для аналитики",
+      (rows) => {
+        for (const u of rows) {
+          const day = dayKey(u.created_at, tz);
+          if (day >= firstDay) {
+            customers.cur += 1;
+            customers.byDay.set(day, (customers.byDay.get(day) ?? 0) + 1);
+          } else customers.prev += 1;
+        }
+      },
     ),
   ]);
 
-  const counted = orders
-    .filter((o) => includeOrderInAnalytics(o))
-    .map((o) => ({ ...o, day: dayKey(o.created_at, tz), revenue: analyticsRevenue(o) }));
-  const currency = dominantCurrency(counted) ?? "KZT";
+  // Основная валюта — с наибольшим числом засчитанных заказов (при равенстве — первая встреченная).
+  let currency = "KZT";
+  let best = 0;
+  for (const [c, acc] of accs)
+    if (acc.count > best) {
+      currency = c;
+      best = acc.count;
+    }
+  const main = accs.get(currency) ?? blankAcc();
+
   const series = emptySeries(keys);
-  const byDay = new Map(series.map((p) => [p.day, p]));
-  const blank = (): PeriodTotals & { buyerIds: Set<number> } => ({
-    revenue: 0,
-    orders: 0,
-    avgCheck: 0,
-    customers: 0,
-    buyers: 0,
-    buyerIds: new Set(),
-  });
-  const cur = blank();
-  const prev = blank();
-  const currentIds: number[] = [];
-  const revenueIds = new Set<number>();
-  const scale = new Map<number, number>();
-  const byPlatform = new Map<string, { orders: number; revenue: number }>();
-  const byStatus = new Map<string, number>();
-
-  for (const o of orders)
-    if (dayKey(o.created_at, tz) >= firstDay)
-      byStatus.set(o.status, (byStatus.get(o.status) ?? 0) + 1);
-
-  const currentCounted = counted.filter((o) => o.day >= firstDay);
-  const summary = summarizeByCurrency(currentCounted);
-  for (const o of counted) {
-    const inCurrent = o.day >= firstDay;
-    if (inCurrent) currentIds.push(o.id);
-    const bucket = inCurrent ? cur : prev;
-    // Покупатель — в любой валюте; деньги и число заказов — в основной.
-    bucket.buyerIds.add(Number(o.telegram_id));
-    if ((o.currency || "—") !== currency) continue;
-    bucket.revenue += o.revenue;
-    bucket.orders += 1;
-    if (inCurrent) {
-      revenueIds.add(o.id);
-      const total = Number(o.total) || 0;
-      if (total > 0 && o.revenue !== total) scale.set(o.id, o.revenue / total);
-      const p = byDay.get(o.day);
-      if (p) {
-        p.revenue += o.revenue;
-        p.orders += 1;
-      }
-      const platform = o.platform || "telegram";
-      const pl = byPlatform.get(platform) ?? { orders: 0, revenue: 0 };
-      pl.orders += 1;
-      pl.revenue += o.revenue;
-      byPlatform.set(platform, pl);
+  for (const p of series) {
+    const m = main.byDay.get(p.day);
+    if (m) {
+      p.revenue = m.revenue;
+      p.orders = m.orders;
     }
+    p.customers = customers.byDay.get(p.day) ?? 0;
   }
-  for (const u of users) {
-    const day = dayKey(u.created_at, tz);
-    const inCurrent = day >= firstDay;
-    (inCurrent ? cur : prev).customers += 1;
-    if (inCurrent) {
-      const p = byDay.get(day);
-      if (p) p.customers += 1;
-    }
-  }
-  const finish = (b: PeriodTotals & { buyerIds: Set<number> }): PeriodTotals => ({
-    revenue: Math.round(b.revenue),
-    orders: b.orders,
-    avgCheck: b.orders ? Math.round(b.revenue / b.orders) : 0,
-    customers: b.customers,
-    buyers: b.buyerIds.size,
+  const finish = (m: Money, customersN: number, buyerIds: Set<number>): PeriodTotals => ({
+    revenue: Math.round(m.revenue),
+    orders: m.orders,
+    avgCheck: m.orders ? Math.round(m.revenue / m.orders) : 0,
+    customers: customersN,
+    buyers: buyerIds.size,
   });
-  const current = finish(cur);
-  const previous = finish(prev);
+  const current = finish(main.cur, customers.cur, buyers.cur);
+  const previous = finish(main.prev, customers.prev, buyers.prev);
+  const summary: Record<string, { revenue: number; orders: number }> = {};
+  for (const [c, acc] of accs) if (acc.cur.orders) summary[c] = acc.cur;
 
-  // Топ товаров — по снимкам позиций заказов текущего периода; выручка — в основной валюте.
+  // Топ товаров — по снимкам позиций заказов текущего периода в основной валюте.
+  // Кусками по 200 заказов и постранично: позиций у 200 заказов бывает больше 1000.
   const items: AnalyticsItem[] = [];
-  for (let i = 0; i < currentIds.length; i += 200) {
-    const { data } = await ctx.db
-      .from("order_items")
-      .select("order_id, product_id, name_snapshot, price_snapshot, quantity")
-      .in("order_id", currentIds.slice(i, i + 200));
-    items.push(...(data ?? []));
+  for (let i = 0; i < main.ids.length; i += 200) {
+    const chunk = main.ids.slice(i, i + 200);
+    items.push(
+      ...(await pageAll(
+        (from, to) =>
+          ctx.db
+            .from("order_items")
+            .select("order_id, product_id, name_snapshot, price_snapshot, quantity")
+            .in("order_id", chunk)
+            .order("order_id")
+            .order("id")
+            .range(from, to),
+        "позиции заказов для аналитики",
+      )),
+    );
   }
+  const revenueIds = new Set(main.ids);
+  const scale = main.scale;
+  const byPlatform = main.byPlatform;
 
   return {
     days,

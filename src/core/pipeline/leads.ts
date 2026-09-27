@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { updateSettingAtomic } from "@/core/settings/settings";
+import { pageAll } from "@/core/db/page";
 import {
   LEAD_PREFIX,
   isClosedStage,
@@ -89,14 +90,18 @@ export async function updateLead(
 
 /** Все заявки магазина; битые строки и чужие ключи пропускаются. */
 export async function listLeads(ctx: TenantContext): Promise<Lead[]> {
-  const { data, error } = await ctx.db
-    .from("app_settings")
-    .select("key, value")
-    .like("key", `${LEAD_PREFIX}%`)
-    .limit(2000);
-  if (error) throw new Error(`Заявки не прочитались: ${error.message}`);
+  const data = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("app_settings")
+        .select("key, value")
+        .like("key", `${LEAD_PREFIX}%`)
+        .order("key")
+        .range(from, to),
+    "Заявки не прочитались",
+  );
   const out: Lead[] = [];
-  for (const row of data ?? []) {
+  for (const row of data) {
     if (!row.key.startsWith(LEAD_PREFIX)) continue;
     const lead = parseLead(row.value);
     if (lead && leadKey(lead.id) === row.key) out.push(lead);
