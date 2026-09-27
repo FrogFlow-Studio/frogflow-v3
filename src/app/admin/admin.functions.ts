@@ -781,6 +781,36 @@ export const customersFn = createServerFn({ method: "GET" })
     return (await import("@/core/orders/admin")).listCustomers(ctx, data.q);
   });
 
+/** Карточка покупателя: профиль, заказы, обращения, заявки, чат, теги и заметка продавца. */
+export const customerCardFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ key: z.string().min(1).max(200) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    const { customerCard, knownTags } = await import("@/core/customers/card");
+    const [card, tags] = await Promise.all([customerCard(ctx, data.key), knownTags(ctx)]);
+    if (!card) throw new UserError("err.customer.notFound", "Покупатель не найден.");
+    return { card, tags };
+  });
+
+/** Теги и заметка продавца о покупателе (слиянием в bot_users.metadata). */
+export const saveCustomerNoteFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        key: z.string().min(1).max(200),
+        tags: z.array(z.string().max(100)).max(50),
+        note: z.string().max(4000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { setSellerNote } = await import("@/core/customers/card");
+    const r = await setSellerNote(ctx, data.key, { tags: data.tags, note: data.note });
+    if (!r) throw new UserError("err.customer.notFound", "Покупатель не найден.");
+    return r;
+  });
+
 export const setBlockedFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

@@ -22,6 +22,7 @@ import * as posts from "./admin/posts";
 import * as quiz from "./admin/quiz";
 import * as reviews from "./admin/reviews";
 import * as tickets from "./admin/tickets";
+import * as customer from "./admin/customer";
 import * as pipeline from "./admin/pipeline";
 import * as physical from "./admin/physical";
 import * as plan from "./admin/plan";
@@ -302,6 +303,7 @@ const ru = {
   ...quiz.ru,
   ...reviews.ru,
   ...tickets.ru,
+  ...customer.ru,
   ...pipeline.ru,
   ...physical.ru,
   ...plan.ru,
@@ -1065,6 +1067,7 @@ const kk: Dict = {
   ...quiz.kk,
   ...reviews.kk,
   ...tickets.kk,
+  ...customer.kk,
   ...pipeline.kk,
   ...physical.kk,
   ...plan.kk,
@@ -1092,6 +1095,7 @@ const en: Dict = {
   ...quiz.en,
   ...reviews.en,
   ...tickets.en,
+  ...customer.en,
   ...pipeline.en,
   ...physical.en,
   ...plan.en,
@@ -1119,6 +1123,7 @@ const uz: Dict = {
   ...quiz.uz,
   ...reviews.uz,
   ...tickets.uz,
+  ...customer.uz,
   ...pipeline.uz,
   ...physical.uz,
   ...plan.uz,

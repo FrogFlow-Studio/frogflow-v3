@@ -461,6 +461,12 @@ async function consultantReply(b: Bot, text: string): Promise<boolean> {
 }
 
 async function startFlow(b: Bot, payload = "") {
+  // Откуда пришёл покупатель — первая ссылка /start, для карточки покупателя (core/customers/card).
+  if (payload && !b.customer.state.first_source)
+    b.customer = await setState(b.ctx, b.customer, {
+      ...b.customer.state,
+      first_source: payload.slice(0, 64),
+    });
   if (payload.startsWith(REFERRAL_PREFIX)) {
     const gift = await registerReferral(
       b.ctx,

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { customersFn, setBlockedFn } from "@/app/admin/admin.functions";
@@ -74,7 +74,13 @@ function CustomersPage() {
               {rows.map((r) => (
                 <tr key={r.user_key}>
                   <td>
-                    {[r.first_name, r.last_name].filter(Boolean).join(" ") || "—"}{" "}
+                    <Link
+                      to="/admin/customers/$key"
+                      params={{ key: r.user_key }}
+                      className="hover:text-accent"
+                    >
+                      {[r.first_name, r.last_name].filter(Boolean).join(" ") || "—"}
+                    </Link>{" "}
                     {r.username && <span className="text-muted">@{r.username}</span>}
                     {r.blocked && <Badge tone="danger">{t("customers.blocked")}</Badge>}
                   </td>
