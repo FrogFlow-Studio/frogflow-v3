@@ -32,6 +32,15 @@ export const ru = {
   "analytics.col.status": "Статус",
   "analytics.qty": "{n} шт.",
   "analytics.platform.web": "Витрина",
+  "analytics.funnel.title": "Воронка покупателя",
+  "analytics.funnel.hint":
+    "Сколько покупателей дошло до каждого шага за период. Оформивший заказ считается и положившим в корзину, оплативший — и заказавшим. «Пришли» — новые покупатели; по витрине видны только те, кто оставил корзину или заказ.",
+  "analytics.funnel.all": "Все каналы",
+  "analytics.funnel.arrived": "Пришли",
+  "analytics.funnel.cart": "Корзина",
+  "analytics.funnel.ordered": "Заказ",
+  "analytics.funnel.paid": "Оплата",
+  "analytics.funnel.rate": "{pct} % от прошлого шага",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -65,6 +74,15 @@ export const kk: SectionDict<typeof ru> = {
   "analytics.col.status": "Мәртебе",
   "analytics.qty": "{n} дана",
   "analytics.platform.web": "Витрина",
+  "analytics.funnel.title": "Сатып алушы воронкасы",
+  "analytics.funnel.hint":
+    "Кезеңде әр қадамға қанша сатып алушы жеткені. Тапсырыс бергендер себетке салғандар қатарында, төлегендер тапсырыс бергендер қатарында есептеледі. «Келді» — жаңа сатып алушылар; витрина бойынша тек себет не тапсырыс қалдырғандар көрінеді.",
+  "analytics.funnel.all": "Барлық арналар",
+  "analytics.funnel.arrived": "Келді",
+  "analytics.funnel.cart": "Себет",
+  "analytics.funnel.ordered": "Тапсырыс",
+  "analytics.funnel.paid": "Төлем",
+  "analytics.funnel.rate": "алдыңғы қадамнан {pct} %",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -98,6 +116,15 @@ export const en: SectionDict<typeof ru> = {
   "analytics.col.status": "Status",
   "analytics.qty": "{n} pcs",
   "analytics.platform.web": "Storefront",
+  "analytics.funnel.title": "Buyer funnel",
+  "analytics.funnel.hint":
+    "How many buyers reached each step in the period. Anyone who ordered also counts as having added to cart, anyone who paid also counts as having ordered. “Arrived” means new buyers; for the storefront only those who left a cart or an order are visible.",
+  "analytics.funnel.all": "All channels",
+  "analytics.funnel.arrived": "Arrived",
+  "analytics.funnel.cart": "Cart",
+  "analytics.funnel.ordered": "Order",
+  "analytics.funnel.paid": "Paid",
+  "analytics.funnel.rate": "{pct} % of the previous step",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -131,4 +158,13 @@ export const uz: SectionDict<typeof ru> = {
   "analytics.col.status": "Holat",
   "analytics.qty": "{n} dona",
   "analytics.platform.web": "Vitrina",
+  "analytics.funnel.title": "Xaridor voronkasi",
+  "analytics.funnel.hint":
+    "Davr ichida har bir qadamga nechta xaridor yetgani. Buyurtma berganlar savatga solganlar qatorida, to‘laganlar buyurtma berganlar qatorida hisoblanadi. «Keldi» — yangi xaridorlar; vitrina bo‘yicha faqat savat yoki buyurtma qoldirganlar ko‘rinadi.",
+  "analytics.funnel.all": "Barcha kanallar",
+  "analytics.funnel.arrived": "Keldi",
+  "analytics.funnel.cart": "Savat",
+  "analytics.funnel.ordered": "Buyurtma",
+  "analytics.funnel.paid": "To‘lov",
+  "analytics.funnel.rate": "oldingi qadamdan {pct} %",
 };

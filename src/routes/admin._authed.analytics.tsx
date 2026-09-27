@@ -5,6 +5,7 @@ import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { PageTitle } from "@/app/ui";
 import { BarList, ChartCard, DataTable, LineChart } from "@/app/ui/charts";
 import { compactNumber, shortDay } from "@/core/analytics/pure";
+import { FUNNEL_STAGES, stageRate } from "@/core/analytics/funnel";
 import { formatMoney } from "@/core/money/money";
 import { OrderStatus } from "./admin._authed.orders";
 
@@ -124,6 +125,40 @@ function AnalyticsPage() {
       )}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <ChartCard
+          className="lg:col-span-2"
+          title={t("analytics.funnel.title")}
+          chart={
+            <>
+              <BarList
+                rows={FUNNEL_STAGES.map((st, i) => {
+                  const all = a.funnel[0]!;
+                  const rate = i ? stageRate(all[FUNNEL_STAGES[i - 1]!], all[st]) : null;
+                  return {
+                    label: t(`analytics.funnel.${st}`),
+                    value: all[st],
+                    hint: rate === null ? undefined : t("analytics.funnel.rate", { pct: rate }),
+                  };
+                })}
+                format={num}
+                color="var(--chart-2)"
+              />
+              <p className="mt-2 text-xs text-muted">{t("analytics.funnel.hint")}</p>
+            </>
+          }
+          table={
+            <DataTable
+              head={[
+                t("analytics.col.channel"),
+                ...FUNNEL_STAGES.map((st) => t(`analytics.funnel.${st}`)),
+              ]}
+              rows={a.funnel.map((r) => [
+                r.channel === "all" ? t("analytics.funnel.all") : platformLabel(r.channel, t),
+                ...FUNNEL_STAGES.map((st) => num(r[st])),
+              ])}
+            />
+          }
+        />
         <ChartCard
           title={t("analytics.chart.revenueByDay")}
           chart={
