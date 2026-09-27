@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { webCheckoutFn, webCheckoutInfoFn } from "@/app/storefront/checkout.functions";
-import { solveChallenge } from "@/app/signup/challenge-solve";
+import { CHALLENGE_MIN_FILL_MS, solveChallenge } from "@/app/signup/challenge-solve";
 import { useCart } from "@/app/storefront/cart";
 import { rememberOrderToken } from "@/app/storefront/order-token";
 import { useStorefrontLocale } from "@/app/storefront/locale";
@@ -29,6 +29,12 @@ function CheckoutPage() {
     if (!info.enabled) return;
     // Задача против ботов решается в браузере, пока кнопка «занята».
     const answer = await solveChallenge(info.challenge);
+    // Сервер не принимает форму быстрее трёх секунд после выдачи задачи
+    // (автозаполнение успевает) — дожидаемся молча, а не просим обновить.
+    const issued = Number(info.challenge.split(".")[1]);
+    const wait = issued + CHALLENGE_MIN_FILL_MS + 250 - Date.now();
+    if (wait > 0)
+      await new Promise((r) => setTimeout(r, Math.min(wait, CHALLENGE_MIN_FILL_MS + 250)));
     const r = await webCheckoutFn({
       data: {
         slug,

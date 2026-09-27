@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { rateLimiter, type Budget } from "./rate-limit";
+import { createHash } from "node:crypto";
+import { takeShared, type Budget } from "./rate-limit";
 
 /**
  * Защита анонимного оформления на витрине, как у регистрации (#71, #121):
@@ -27,8 +28,10 @@ export async function claimCheckoutChallenge(
 }
 
 /**
- * Лимиты частоты в памяти процесса (мягкие, как у Mini App): оформление — с
- * одного адреса и на одну почту; страница заказа и загрузка чека — на заказ.
+ * Лимиты частоты — общие для всех экземпляров функции (takeShared: память и
+ * счётчик в app_settings). Оформление — с одного адреса и на одну почту;
+ * страница заказа, загрузка чека и оплата картой — на заказ. Адрес и почта
+ * в ключ счётчика идут отпечатком, а не открытым текстом.
  */
 export const WEB_BUDGETS = {
   checkoutIp: { limit: 5, windowMs: 10 * 60_000 },
@@ -38,8 +41,14 @@ export const WEB_BUDGETS = {
   card: { limit: 10, windowMs: 10 * 60_000 },
 } as const satisfies Record<string, Budget>;
 
-const web = rateLimiter();
+export function webSubject(who: string): string {
+  return createHash("sha256").update(`ff-web-limit\0${who}`).digest("hex").slice(0, 24);
+}
 
-export function takeWeb(botId: string, kind: keyof typeof WEB_BUDGETS, who: string): boolean {
-  return web.take(`${botId}:${kind}:${who}`, WEB_BUDGETS[kind]);
+export function takeWeb(
+  ctx: TenantContext,
+  kind: keyof typeof WEB_BUDGETS,
+  who: string,
+): Promise<boolean> {
+  return takeShared(ctx, `web_${kind}`, webSubject(who), WEB_BUDGETS[kind]);
 }

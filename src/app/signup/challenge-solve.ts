@@ -6,6 +6,9 @@
  */
 export const POW_BITS = 16;
 
+/** Раньше этого после выдачи задачи форму не принимают: человек так быстро не заполняет. */
+export const CHALLENGE_MIN_FILL_MS = 3_000;
+
 export function leadingZeroBits(bytes: Uint8Array): number {
   let n = 0;
   for (const b of bytes) {

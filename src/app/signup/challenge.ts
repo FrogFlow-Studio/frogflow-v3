@@ -1,7 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { POW_BITS, leadingZeroBits } from "./challenge-solve";
+import { CHALLENGE_MIN_FILL_MS, POW_BITS, leadingZeroBits } from "./challenge-solve";
 
-export { POW_BITS };
+export { CHALLENGE_MIN_FILL_MS, POW_BITS };
 
 /**
  * Защита открытой регистрации от ботов без внешней капчи и ключей: страница
@@ -10,10 +10,10 @@ export { POW_BITS };
  * Простой скрипт, который шлёт POST без браузера, не пройдёт; повтор одной
  * задачи закрывает отпечаток в журнале регистраций (signup.server).
  */
-export const CHALLENGE_MIN_FILL_MS = 3_000;
 export const CHALLENGE_MAX_AGE_MS = 2 * 3600_000;
 
 const REFRESH = "Проверка устарела — обновите страницу и попробуйте ещё раз.";
+export const CHALLENGE_TOO_FAST = "Слишком быстро — проверьте поля и отправьте ещё раз.";
 
 /**
  * Назначение задачи входит в подпись: задачу регистрации не подсунуть в
@@ -65,7 +65,7 @@ export function verifyChallenge(
   if (!timingSafeEqual(want, Buffer.from(c.sig))) return REFRESH;
   const age = now - c.issued;
   if (age > CHALLENGE_MAX_AGE_MS || age < -60_000) return REFRESH;
-  if (age < CHALLENGE_MIN_FILL_MS) return "Слишком быстро — проверьте поля и отправьте ещё раз.";
+  if (age < CHALLENGE_MIN_FILL_MS) return CHALLENGE_TOO_FAST;
   if (!/^\d{1,12}$/.test(answer ?? "")) return REFRESH;
   const digest = createHash("sha256").update(`${challenge}:${answer}`).digest();
   if (leadingZeroBits(digest) < bits) return REFRESH;

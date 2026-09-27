@@ -101,19 +101,28 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
     const ctx = await checkoutCtx(data.slug);
     const t = await shopT(ctx);
     if (ctx.tenant.status !== "active") throw shownError(t("layout.paused"));
-    const { challengeNonce, verifyChallenge, POW_BITS } = await import("@/app/signup/challenge");
-    if (
-      verifyChallenge(await secret(), data.challenge, data.answer, Date.now(), POW_BITS, "checkout")
-    )
-      throw shownError(t("checkout.error.refresh"));
+    const { CHALLENGE_TOO_FAST, challengeNonce, verifyChallenge, POW_BITS } =
+      await import("@/app/signup/challenge");
+    const bad = verifyChallenge(
+      await secret(),
+      data.challenge,
+      data.answer,
+      Date.now(),
+      POW_BITS,
+      "checkout",
+    );
+    if (bad)
+      throw shownError(
+        t(bad === CHALLENGE_TOO_FAST ? "checkout.error.tooFast" : "checkout.error.refresh"),
+      );
     const { normalizeEmail } = await import("@/core/storefront/web-order");
     const email = normalizeEmail(data.email);
     if (!email) throw shownError(t("checkout.error.email"));
     const { clientIp } = await import("@/app/auth/login-guard.server");
     const { claimCheckoutChallenge, takeWeb } = await import("@/core/storefront/checkout-guard");
     if (
-      !takeWeb(ctx.tenant.id, "checkoutIp", clientIp() ?? "unknown") ||
-      !takeWeb(ctx.tenant.id, "checkoutEmail", email)
+      !(await takeWeb(ctx, "checkoutIp", clientIp() ?? "unknown")) ||
+      !(await takeWeb(ctx, "checkoutEmail", email))
     )
       throw shownError(t("error.tooManyRequests"));
     const claimed = await claimCheckoutChallenge(ctx, challengeNonce(data.challenge)!);
@@ -174,7 +183,7 @@ async function orderCtx(
   const { verifyOrderAccess } = await import("@/core/storefront/web-order");
   if (!verifyOrderAccess(await secret(), ctx.tenant.id, data.id, data.t)) throw notFound();
   const { takeWeb } = await import("@/core/storefront/checkout-guard");
-  if (!takeWeb(ctx.tenant.id, kind, String(data.id)))
+  if (!(await takeWeb(ctx, kind, String(data.id))))
     throw shownError((await shopT(ctx))("error.tooManyRequests"));
   return ctx;
 }

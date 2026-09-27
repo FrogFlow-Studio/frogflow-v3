@@ -209,6 +209,8 @@ export function seedDb(): StubDb {
     ["robokassa_login", F.ROBOKASSA.login],
     ["robokassa_pass1", F.ROBOKASSA.pass1],
     ["robokassa_pass2", F.ROBOKASSA.pass2],
+    // Оформление на витрине сайта (web-checkout.spec.ts).
+    ["storefront_checkout", '{"enabled":true}'],
   ].map(([key, value]) => shop({ key, value, updated_at: now }));
 
   db.tables.payment_methods = [
