@@ -1,11 +1,15 @@
 import { getRequestUrl } from "@tanstack/react-start/server";
 import { env } from "@/config/env";
 import { storefrontOpen } from "@/core/storefront/access";
-import { shareOrigin, storeCover } from "@/core/storefront/share.server";
+import { canonicalOrigin, shareOrigin, storeCover } from "@/core/storefront/share.server";
 import { shopManifest } from "@/core/storefront/share";
 import { shopIconPng } from "@/core/storefront/icon.server";
 import { getSettings } from "@/core/settings/settings";
 import type { Tenant } from "@/core/tenant/types";
+import { PRODUCT_SELECT, type Product } from "@/core/catalog/catalog";
+import { listAllCategories } from "@/core/catalog/admin";
+import { visibleCategoryIds } from "@/core/storefront/categories";
+import { listedOnStorefront } from "@/core/storefront/sitemap";
 
 /**
  * Превью ссылок и установка витрины на телефон (core/storefront/share).
@@ -24,17 +28,47 @@ async function openShop(slug: string, part: "info" | "catalog"): Promise<Tenant 
 }
 
 /** Адрес для абсолютных ссылок и картинка витрины — для тегов страницы. */
-export async function shareInfo(
-  slug: string,
-): Promise<{ origin: string; cover: string | null; installable: boolean } | null> {
+export async function shareInfo(slug: string): Promise<{
+  origin: string;
+  /** Адрес для canonical: свой домен магазина или адрес платформы. */
+  canonical: string;
+  cover: string | null;
+  installable: boolean;
+} | null> {
   const t = await openShop(slug, "info");
   if (!t) return null;
   const { tenantContext } = await import("@/core/tenant/resolve.server");
   return {
     origin: shareOrigin(t, getRequestUrl().toString(), env().APP_URL),
+    canonical: canonicalOrigin(t, env().APP_URL),
     cover: await storeCover(tenantContext(t)),
     installable: storefrontOpen(t, "catalog"),
   };
+}
+
+/**
+ * Для разметки товара в поиске: виден ли товар в каталоге витрины (как в
+ * карте сайта) и оценка из одобренных отзывов. Скрытый, снятый с продажи
+ * или цифровой без файлов — listed: false, разметки нет.
+ */
+export async function productSeo(
+  slug: string,
+  id: string,
+): Promise<{ listed: boolean; rating: { avg: number; count: number } | null } | null> {
+  const t = await openShop(slug, "catalog");
+  if (!t) return null;
+  const { tenantContext } = await import("@/core/tenant/resolve.server");
+  const ctx = tenantContext(t);
+  const [{ data, error }, cats] = await Promise.all([
+    ctx.db.from("products").select(PRODUCT_SELECT).eq("id", id).maybeSingle(),
+    listAllCategories(ctx),
+  ]);
+  if (error) throw new Error(error.message);
+  const known = new Set(cats.map((c) => c.id));
+  if (!data || !listedOnStorefront(data as Product, known, visibleCategoryIds(cats)))
+    return { listed: false, rating: null };
+  const { approvedRating } = await import("@/core/reviews/photos.server");
+  return { listed: true, rating: await approvedRating(ctx, id) };
 }
 
 const TEXT = { "content-type": "text/plain; charset=utf-8" };

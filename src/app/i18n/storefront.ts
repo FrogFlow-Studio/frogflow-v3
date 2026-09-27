@@ -12,6 +12,7 @@ import { intlLocale } from "./admin";
 const ru = {
   // оболочка
   "meta.shop": "Магазин",
+  "meta.category": "{category}: товары магазина «{shop}»",
   "layout.openTelegram": "✈️ Открыть в Telegram",
   "layout.paused": "Магазин временно не принимает заказы.",
   "layout.cart": "Корзина",
@@ -214,6 +215,7 @@ export const STOREFRONT_KEYS = Object.keys(ru) as StorefrontKey[];
 
 const kk: Dict = {
   "meta.shop": "Дүкен",
+  "meta.category": "{category}: «{shop}» дүкенінің тауарлары",
   "layout.openTelegram": "✈️ Telegram-да ашу",
   "layout.paused": "Дүкен уақытша тапсырыс қабылдамайды.",
   "layout.cart": "Себет",
@@ -405,6 +407,7 @@ const kk: Dict = {
 
 const en: Dict = {
   "meta.shop": "Shop",
+  "meta.category": "{category}: products from {shop}",
   "layout.openTelegram": "✈️ Open in Telegram",
   "layout.paused": "The shop is not taking orders right now.",
   "layout.cart": "Cart",
@@ -594,6 +597,7 @@ const en: Dict = {
 
 const uz: Dict = {
   "meta.shop": "Do‘kon",
+  "meta.category": "{category}: «{shop}» do‘koni mahsulotlari",
   "layout.openTelegram": "✈️ Telegram-da ochish",
   "layout.paused": "Do‘kon vaqtincha buyurtma qabul qilmaydi.",
   "layout.cart": "Savat",

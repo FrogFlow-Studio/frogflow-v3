@@ -8,9 +8,23 @@ import { formatMoney } from "@/core/money/money";
 import { pageBadge } from "@/core/catalog/lead-time";
 import { ProductReviews } from "@/app/storefront/reviews";
 import { productMeta } from "@/core/storefront/share";
+import { storeProductSeoFn } from "@/app/storefront/share.functions";
+import {
+  canonicalLink,
+  jsonLdScript,
+  productCanonical,
+  productJsonLd,
+} from "@/core/storefront/seo";
 
 export const Route = createFileRoute("/s/$slug/p/$id")({
-  loader: ({ params }) => storeProductFn({ data: { slug: params.slug, id: params.id } }),
+  loader: async ({ params }) => {
+    const [page, seo] = await Promise.all([
+      storeProductFn({ data: { slug: params.slug, id: params.id } }),
+      // Разметка для поиска не должна ронять страницу товара.
+      storeProductSeoFn({ data: { slug: params.slug, id: params.id } }).catch(() => null),
+    ]);
+    return { ...page, seo };
+  },
   head: ({ loaderData, matches }) => {
     const shop = matches.find((m) => (m.routeId as string) === "/s/$slug")?.loaderData as
       | {
@@ -18,24 +32,34 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
           name: string;
           tagline: string | null;
           accent: string | null;
-          share: { origin: string; cover: string | null };
+          share: { origin: string; canonical: string; cover: string | null };
         }
       | undefined;
+    const seoShop = shop && { name: shop.name, slug: shop.slug, origin: shop.share.canonical };
+    if (!loaderData) return { meta: [] };
+    const share = productMeta(
+      loaderData.product,
+      shop
+        ? {
+            slug: shop.slug,
+            name: shop.name,
+            tagline: shop.tagline,
+            accent: shop.accent,
+            origin: shop.share.origin,
+            cover: shop.share.cover,
+          }
+        : null,
+    );
+    // Разметка товара — только если он виден в каталоге витрины (как в карте сайта).
+    const ld =
+      seoShop && loaderData.seo?.listed
+        ? [jsonLdScript(productJsonLd(loaderData.product, seoShop, loaderData.seo.rating))]
+        : [];
     return {
-      meta: loaderData
-        ? productMeta(
-            loaderData.product,
-            shop
-              ? {
-                  slug: shop.slug,
-                  name: shop.name,
-                  tagline: shop.tagline,
-                  accent: shop.accent,
-                  origin: shop.share.origin,
-                  cover: shop.share.cover,
-                }
-              : null,
-          )
+      meta: share,
+      scripts: ld,
+      links: seoShop
+        ? [canonicalLink(productCanonical(seoShop.origin, seoShop.slug, loaderData.product.id))]
         : [],
     };
   },

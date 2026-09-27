@@ -109,3 +109,22 @@ test("маршруты /api отвечают: крон без секрета —
   expect((await request.get("/api/health")).status()).toBe(200);
   expect((await request.get("/robots.txt")).status()).toBe(200);
 });
+
+test("витрина: разметка товара для поиска уже в ответе сервера", async ({ request }) => {
+  const html = await (await request.get(`/s/${F.SHOP_SLUG}/p/${F.PRODUCT_ID}`)).text();
+  const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
+  expect(canonical).toMatch(new RegExp(`^https?://[^/]+/s/${F.SHOP_SLUG}/p/${F.PRODUCT_ID}$`));
+  const raw = html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)?.[1];
+  const ld = JSON.parse(raw!);
+  expect(ld).toMatchObject({
+    "@type": "Product",
+    name: F.PRODUCT_NAME,
+    offers: { price: String(F.PRODUCT_PRICE), availability: "https://schema.org/InStock" },
+    // Второй отзыв (1 звезда) ещё не одобрен продавцом и в оценку не входит.
+    aggregateRating: { ratingValue: 5, reviewCount: 1 },
+  });
+  const shopHtml = await (await request.get(`/s/${F.SHOP_SLUG}?sort=new`)).text();
+  expect(shopHtml).toMatch(
+    new RegExp(`<link rel="canonical" href="https?://[^/]+/s/${F.SHOP_SLUG}"`),
+  );
+});

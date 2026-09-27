@@ -20,6 +20,7 @@ function table(rows: () => Record<string, unknown>[]) {
     order: () => q,
     limit: () => q,
     eq: () => q,
+    maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
     in: async (_c: string, keys: string[]) => ({
       data: keys.filter((k) => k in settings).map((k) => ({ key: k, value: settings[k] })),
       error: null,
@@ -45,8 +46,10 @@ vi.mock("@/core/tenant/resolve.server", () => ({
 }));
 vi.mock("@tanstack/react-start/server", () => ({ getRequestUrl: () => new URL(requestUrl) }));
 vi.mock("@/config/env", () => ({ env: () => ({ APP_URL: "https://www.frogflow.tech" }) }));
+const approvedRating = vi.fn(async () => ({ avg: 4.5, count: 2 }));
+vi.mock("@/core/reviews/photos.server", () => ({ approvedRating }));
 
-const { manifestResponse, iconResponse, shareInfo } = await import("./share.server");
+const { manifestResponse, iconResponse, productSeo, shareInfo } = await import("./share.server");
 const { shareOrigin } = await import("@/core/storefront/share.server");
 
 function product(id: string, over: Record<string, unknown> = {}) {
@@ -144,5 +147,50 @@ describe("картинка и адрес превью", () => {
     expect(shareOrigin(tenant, "https://evil.kz/s/shop", app)).toBe(app);
     expect(shareOrigin(tenant, "http://localhost:3000/s/shop", app)).toBe(app);
     expect(shareOrigin({ settings: {} } as Tenant, "https://shop.kz/s/shop", app)).toBe(app);
+  });
+});
+
+describe("разметка товара для поиска", () => {
+  it("canonical — свой домен магазина, даже если страницу открыли с адреса платформы", async () => {
+    expect((await shareInfo("shop"))?.canonical).toBe("https://shop.kz");
+    tenant.settings = { served_by: "v2", slug: "shop" } as Tenant["settings"];
+    expect((await shareInfo("shop"))?.canonical).toBe("https://www.frogflow.tech");
+  });
+
+  it("видимый товар — разметка с оценкой из одобренных отзывов", async () => {
+    products = [product("shown")];
+    expect(await productSeo("shop", "shown")).toEqual({
+      listed: true,
+      rating: { avg: 4.5, count: 2 },
+    });
+  });
+
+  it.each([
+    ["снят с продажи", { is_active: false }],
+    ["только в скрытой категории", { category_ids: ["hidden"] }],
+    ["цифровой без файлов", { product_material_files: [] }],
+  ])("%s — без разметки", async (_n, over) => {
+    categories = [{ id: "hidden", name: "h", parent_id: null, is_visible: false }];
+    products = [product("p", over)];
+    approvedRating.mockClear();
+    expect(await productSeo("shop", "p")).toEqual({ listed: false, rating: null });
+    expect(approvedRating).not.toHaveBeenCalled();
+  });
+
+  it("нет товара — без разметки", async () => {
+    expect(await productSeo("shop", "missing")).toEqual({ listed: false, rating: null });
+  });
+
+  it.each([
+    ["клиент прежней платформы", () => (tenant.settings = { slug: "shop" } as Tenant["settings"])],
+    ["архив", () => ((tenant as { archived: boolean }).archived = true)],
+    [
+      "только юр. страницы",
+      () => (tenant.modules = { shop: true, legal_docs: true } as Tenant["modules"]),
+    ],
+  ])("%s — null (страница отвечает «не найден»)", async (_n, spoil) => {
+    products = [product("shown")];
+    spoil();
+    expect(await productSeo("shop", "shown")).toBeNull();
   });
 });

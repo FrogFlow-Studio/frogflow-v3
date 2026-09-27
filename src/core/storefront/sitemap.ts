@@ -23,6 +23,21 @@ const LEGAL_DOCS = ["offer", "privacy", "requisites", "about"] as const;
 
 export type SitemapEntry = { loc: string; priority?: number };
 
+/**
+ * Товар виден в каталоге витрины: активный, не только в скрытых категориях,
+ * цифровой — с файлами. Тот же отбор у карты сайта и разметки товара.
+ */
+export function listedOnStorefront(
+  p: Product,
+  known: ReadonlySet<string>,
+  visible: ReadonlySet<string>,
+): boolean {
+  if (!p.is_active) return false;
+  const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
+  if (!productOnStorefront(ids, known, visible)) return false;
+  return p.fulfillment_kind === "physical" || productSellable(p);
+}
+
 /** Адреса витрины магазина; `base` — `https://host/s/<slug>` без «/» в конце. */
 export async function storefrontSitemap(ctx: TenantContext, base: string): Promise<SitemapEntry[]> {
   const [products, cats, legal] = await Promise.all([
@@ -47,9 +62,7 @@ export async function storefrontSitemap(ctx: TenantContext, base: string): Promi
     if (visible.has(c.id))
       out.push({ loc: `${base}?category=${encodeURIComponent(c.id)}`, priority: 0.6 });
   for (const p of (products.data ?? []) as Product[]) {
-    const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
-    if (!productOnStorefront(ids, known, visible)) continue;
-    if (p.fulfillment_kind !== "physical" && !productSellable(p)) continue;
+    if (!listedOnStorefront(p, known, visible)) continue;
     out.push({ loc: `${base}/p/${encodeURIComponent(p.id)}`, priority: 0.8 });
   }
   const legalSettings = legal as Record<string, string | null | undefined>;

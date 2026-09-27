@@ -60,3 +60,13 @@ export function shareOrigin(t: Pick<Tenant, "settings">, requestUrl: string, app
     : false;
   return own ? `https://${host}` : appUrl.replace(/\/+$/, "");
 }
+
+/**
+ * Адрес для canonical: свой домен магазина, если он настроен без ошибок
+ * (карта сайта такого магазина отдаётся только с него), иначе адрес
+ * платформы — где бы покупатель ни открыл страницу.
+ */
+export function canonicalOrigin(t: Pick<Tenant, "settings">, appUrl: string): string {
+  const own = t.settings.hosts?.find((h) => customHostProblem(h, appUrl) === null);
+  return own ? `https://${normalizeHost(own)}` : appUrl.replace(/\/+$/, "");
+}

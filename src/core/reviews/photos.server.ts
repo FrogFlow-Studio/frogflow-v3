@@ -263,3 +263,39 @@ export async function approvedReviews(
       .map((p) => imagePath(ctx.tenant.id, p)),
   }));
 }
+
+/**
+ * Средняя оценка и число отзывов товара — только одобренные продавцом, как
+ * их видит покупатель на витрине (для разметки товара в поиске).
+ */
+export async function approvedRating(
+  ctx: TenantContext,
+  productId: string,
+): Promise<{ avg: number; count: number } | null> {
+  let sum = 0;
+  let count = 0;
+  await eachPage<{ id: string; rating: number }>(
+    (a, b) =>
+      ctx.db
+        .from("product_reviews")
+        .select("id, rating")
+        .eq("product_id", productId)
+        .order("id")
+        .range(a, b),
+    "product_reviews",
+    async (rows) => {
+      const metas = await reviewMetas(
+        ctx,
+        rows.map((r) => r.id),
+      );
+      for (const r of rows) {
+        const rating = Number(r.rating);
+        if (metas.get(r.id)?.status !== "approved" || !(rating >= 1 && rating <= 5)) continue;
+        sum += rating;
+        count++;
+      }
+    },
+    200,
+  );
+  return count ? { avg: Math.round((sum / count) * 10) / 10, count } : null;
+}

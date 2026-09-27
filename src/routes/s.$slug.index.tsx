@@ -10,6 +10,10 @@ import { localeFlags } from "@/core/i18n/locale";
 import { categoryChips } from "@/core/storefront/categories";
 import { filterByLanguage, languageChips } from "@/core/storefront/lang-filter";
 import { CATALOG_SORTS, parseCatalogSort } from "@/core/storefront/sort";
+import { storefrontT } from "@/app/i18n/storefront";
+import { shareText } from "@/core/storefront/share";
+import { canonicalLink, categoryCanonical, shopCanonical } from "@/core/storefront/seo";
+import type { Locale } from "@/core/i18n/locale";
 
 export const Route = createFileRoute("/s/$slug/")({
   validateSearch: z.object({
@@ -25,6 +29,44 @@ export const Route = createFileRoute("/s/$slug/")({
     storeCatalogFn({
       data: { slug: params.slug, q: deps.q, category: deps.category, sort: deps.sort },
     }),
+  head: ({ match, matches }) => {
+    const shop = matches.find((m) => (m.routeId as string) === "/s/$slug")?.loaderData as
+      | {
+          slug: string;
+          name: string;
+          tagline: string | null;
+          locale: Locale;
+          categories: Array<{ id: string; name: string }>;
+          share: { origin: string; canonical: string; cover: string | null };
+        }
+      | undefined;
+    if (!shop) return {};
+    // Поиск, сортировка и язык — та же страница: canonical без них.
+    const cat = match.search.category
+      ? shop.categories.find((c) => c.id === match.search.category)
+      : undefined;
+    if (!cat) return { links: [canonicalLink(shopCanonical(shop.share.canonical, shop.slug))] };
+    const title = `${cat.name} — ${shop.name}`;
+    const description = shareText(
+      [
+        storefrontT(shop.locale)("meta.category", { category: cat.name, shop: shop.name }),
+        shop.tagline,
+      ]
+        .filter(Boolean)
+        .join(". "),
+    );
+    const url = categoryCanonical(shop.share.canonical, shop.slug, cat.id);
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:url", content: url },
+      ],
+      links: [canonicalLink(url)],
+    };
+  },
   component: CatalogPage,
 });
 

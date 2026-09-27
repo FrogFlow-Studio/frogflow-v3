@@ -38,6 +38,7 @@ vi.mock("@/core/db/client.server", () => ({
 }));
 
 const {
+  approvedRating,
   addReviewPhoto,
   approveLegacyReviews,
   approvedReviews,
@@ -190,6 +191,18 @@ describe("старые отзывы", () => {
     expect((await approvedReviews(ctx, P)).map((r) => r.id)).toEqual([R1]);
     // Повторное нажатие ничего не меняет.
     expect(await approveLegacyReviews(ctx)).toBe(0);
+  });
+});
+
+describe("оценка для поиска", () => {
+  it("считаются только одобренные отзывы", async () => {
+    expect(await approvedRating(ctx, P)).toBeNull();
+    await setReviewStatus(ctx, R1, "approved");
+    expect(await approvedRating(ctx, P)).toEqual({ avg: 5, count: 1 });
+    await setReviewStatus(ctx, R2, "approved");
+    expect(await approvedRating(ctx, P)).toEqual({ avg: 3.5, count: 2 });
+    await setReviewStatus(ctx, R1, "hidden");
+    expect(await approvedRating(ctx, P)).toEqual({ avg: 2, count: 1 });
   });
 });
 

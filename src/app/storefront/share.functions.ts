@@ -18,3 +18,13 @@ export const storeShareFn = createServerFn({ method: "GET" })
     if (!info) throw notFound();
     return info;
   });
+
+/** Разметка товара для поиска: виден ли товар в каталоге и оценка из одобренных отзывов. */
+export const storeProductSeoFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ slug, id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { productSeo } = await import("./share.server");
+    const seo = await productSeo(data.slug.toLowerCase(), data.id);
+    if (!seo) throw notFound();
+    return seo;
+  });
