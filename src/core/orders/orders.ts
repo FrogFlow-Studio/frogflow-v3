@@ -137,6 +137,8 @@ export type PlaceOrderResult =
       zeroTotal: boolean;
       /** Сколько платить сейчас: задаток или ноль при оплате при получении. */
       amountDue: number;
+      /** Сертификат больше заказа — код на остаток (покупателю в подтверждении). */
+      giftRest: import("@/core/discounts/gift-rest").GiftRest | null;
     }
   | {
       ok: false;
@@ -291,11 +293,13 @@ export async function placeOrder(
     }
     let giftCode: string | null = null;
     let giftDiscount = 0;
+    let giftSource: { code: string; amount: number; currency: string } | null = null;
     if (m.gift_certificates && opts.giftCode) {
       const r = await redeemGift(ctx, opts.giftCode, total, customer.telegramId);
       if (!r.ok) return await fail("gift_invalid");
       giftCode = normalizeCode(opts.giftCode);
       giftDiscount = r.discount;
+      giftSource = r.certificate;
       redemptions.giftId = r.certificateId;
       total -= giftDiscount;
     }
@@ -372,6 +376,34 @@ export async function placeOrder(
       total: Number(finalOrder.total),
       currency: finalOrder.currency,
     });
+    // Сертификат больше заказа — остаток новым кодом в той же валюте. Сбой
+    // выдачи заказ не срывает: сертификат погашен, остаток выдаст продавец.
+    let giftRest: import("@/core/discounts/gift-rest").GiftRest | null = null;
+    if (giftSource && giftSource.amount - giftDiscount > 0.01) {
+      const { issueGiftRest } = await import("@/core/discounts/gift-rest");
+      giftRest = await issueGiftRest(ctx, {
+        orderId: finalOrder.id,
+        orderNo: finalOrder.display_no ?? finalOrder.order_no,
+        sourceCode: giftSource.code,
+        rest: giftSource.amount - giftDiscount,
+        currency: giftSource.currency,
+      }).catch((e) => {
+        console.error(`[orders] остаток сертификата по заказу #${finalOrder.id}: ${String(e)}`);
+        return null;
+      });
+      await recordOrderEvent(
+        ctx,
+        finalOrder.id,
+        "gift_rest",
+        giftRest
+          ? { code: giftRest.code, amount: giftRest.amount, currency: giftRest.currency }
+          : {
+              failed: true,
+              amount: giftSource.amount - giftDiscount,
+              currency: giftSource.currency,
+            },
+      );
+    }
     return {
       ok: true,
       order: finalOrder,
@@ -379,6 +411,7 @@ export async function placeOrder(
       priced,
       zeroTotal: total <= 0,
       amountDue: total <= 0 ? 0 : await amountDueNow(ctx, { total, fulfillment_kind: priced.kind }),
+      giftRest,
     };
   } catch (e) {
     for (const r of reserved) await restoreStock(ctx, r.productId, r.qty).catch(() => {});

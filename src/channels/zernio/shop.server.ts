@@ -1449,6 +1449,15 @@ async function finishCheckout(s: Shop, countryCode: string) {
     delivery_lang: _dl,
     ...rest
   } = s.customer.state;
+  if (result.giftRest)
+    await reply(
+      s,
+      s.m.giftRestIssued(
+        result.giftRest.code,
+        formatMoney(result.giftRest.amount, result.giftRest.currency),
+      ),
+      { force: true },
+    );
   const physical = order.fulfillment_kind === "physical";
   const api = adminTelegramApi(s.ctx);
   const notifyAdmin = async (

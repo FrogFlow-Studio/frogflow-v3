@@ -71,11 +71,19 @@ export async function redeemPromoCode(ctx: TenantContext, raw: string, subtotal:
 export async function findValidGift(ctx: TenantContext, raw: string) {
   const { data: c } = await ctx.db
     .from("gift_certificates")
-    .select("id, amount, status")
+    .select("id, code, amount, currency, status")
     .eq("code", normalizeCode(raw))
     .maybeSingle();
   if (!c || c.status !== "active") return { ok: false as const };
-  return { ok: true as const, certificate: { id: c.id, amount: Number(c.amount) } };
+  return {
+    ok: true as const,
+    certificate: {
+      id: c.id,
+      code: c.code,
+      amount: Number(c.amount),
+      currency: c.currency || "KZT",
+    },
+  };
 }
 
 export async function redeemGift(
@@ -99,7 +107,12 @@ export async function redeemGift(
     .select("id")
     .maybeSingle();
   if (!data) return { ok: false as const };
-  return { ok: true as const, discount, certificateId: found.certificate.id };
+  return {
+    ok: true as const,
+    discount,
+    certificateId: found.certificate.id,
+    certificate: found.certificate,
+  };
 }
 
 /**
@@ -113,17 +126,27 @@ export async function returnOrderCodes(
   orderId: number,
   promoCode: string | null,
 ): Promise<{ promo: boolean; gift: boolean }> {
-  const { data: gift } = await ctx.db
-    .from("gift_certificates")
-    .update({
-      status: "active",
-      redeemed_order_id: null,
-      redeemed_by_telegram_id: null,
-      redeemed_at: null,
-    })
-    .eq("redeemed_order_id", orderId)
-    .eq("status", "redeemed")
-    .select("id");
+  // Остаток сертификата, выданный по этому заказу, — погасить первым: если
+  // им уже заплатили, исходный сертификат не возвращаем (иначе вышло бы
+  // вдвое больше номинала).
+  const { voidGiftRest } = await import("./gift-rest");
+  const restVoided = await voidGiftRest(ctx, orderId).catch((e) => {
+    console.error(`[discounts] остаток сертификата заказа #${orderId}: ${String(e)}`);
+    return false;
+  });
+  const { data: gift } = !restVoided
+    ? { data: [] as Array<{ id: string }> }
+    : await ctx.db
+        .from("gift_certificates")
+        .update({
+          status: "active",
+          redeemed_order_id: null,
+          redeemed_by_telegram_id: null,
+          redeemed_at: null,
+        })
+        .eq("redeemed_order_id", orderId)
+        .eq("status", "redeemed")
+        .select("id");
   let promo = false;
   if (promoCode) {
     for (let i = 0; i < 5 && !promo; i++) {

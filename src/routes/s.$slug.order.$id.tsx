@@ -176,6 +176,20 @@ function OrderPage() {
           <p className="text-xs text-muted">{t("order.gift.hint")}</p>
         </section>
       )}
+      {view.giftRest && (
+        <section className="card space-y-2 p-5">
+          <h2 className="font-semibold">{t("order.giftRest.title")}</h2>
+          <p className="text-sm">
+            {t("order.gift.amount", {
+              sum: formatMoney(view.giftRest.amount, view.giftRest.currency),
+            })}
+          </p>
+          <p className="rounded-md bg-surface-2 px-3 py-2 text-center font-mono text-xl tracking-wider select-all">
+            {view.giftRest.code}
+          </p>
+          <p className="text-xs text-muted">{t("order.giftRest.hint")}</p>
+        </section>
+      )}
       {view.materials.length > 0 && (
         <section className="card space-y-2 p-5">
           <h2 className="font-semibold">{t("order.materials")}</h2>

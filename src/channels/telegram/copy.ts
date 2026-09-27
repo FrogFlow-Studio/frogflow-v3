@@ -85,6 +85,7 @@ export type Msg = {
   removeGiftCertificateBtn: string;
   giftCertificateCodePrompt: string;
   giftCertificateInvalid: string;
+  giftRestIssued: (code: string, sum: string) => string;
   giftCertificateRemoved: string;
   giftCertificateDiscountLine: (amount: string) => string;
   orderPaidByDiscounts: (no: number) => string;
@@ -344,6 +345,8 @@ const ru: Msg = {
   removeGiftCertificateBtn: "❌ Убрать сертификат",
   giftCertificateCodePrompt: "Введите код подарочного сертификата:",
   giftCertificateInvalid: "⚠️ Сертификат недействителен или уже использован.",
+  giftRestIssued: (code, sum) =>
+    `🎁 Сертификат больше суммы заказа — остаток ${sum} сохранён новым кодом:\n<code>${code}</code>\nВведите его при следующем заказе.`,
   giftCertificateRemoved: "Сертификат убран.",
   giftCertificateDiscountLine: (a) => `🎫 Сертификат: −${a}\n`,
   orderPaidByDiscounts: (no) => `🎉 Заказ #${no} полностью оплачен скидкой — файлы уже в пути.`,
@@ -581,6 +584,8 @@ const kk: Msg = {
   giftCertificateBtn: "🎫 Сертификат енгізу",
   removeGiftCertificateBtn: "❌ Сертификатты алып тастау",
   giftCertificateInvalid: "⚠️ Сертификат жарамсыз немесе бұрын пайдаланылған.",
+  giftRestIssued: (code, sum) =>
+    `🎁 Сертификат тапсырыс сомасынан көп — қалған ${sum} жаңа кодпен сақталды:\n<code>${code}</code>\nОны келесі тапсырыста енгізіңіз.`,
   chooseCountry: "🌍 Төлем елін таңдаңыз:",
   useMenu: "Төмендегі мәзірден бөлімді таңдаңыз 👇",
   nativeCartForwarded:
@@ -730,6 +735,8 @@ const en: Msg = {
   removeGiftCertificateBtn: "❌ Remove certificate",
   giftCertificateCodePrompt: "Enter your gift certificate code:",
   giftCertificateInvalid: "⚠️ This certificate is invalid or already used.",
+  giftRestIssued: (code, sum) =>
+    `🎁 The certificate exceeds the order total — the remaining ${sum} is saved as a new code:\n<code>${code}</code>\nEnter it with your next order.`,
   giftCertificateRemoved: "Certificate removed.",
   giftCertificateDiscountLine: (a) => `🎫 Certificate: −${a}\n`,
   orderPaidByDiscounts: (no) =>
@@ -865,6 +872,8 @@ const uz: Msg = {
   promoCodeBtn: "🎟 Promokod kiritish",
   removePromoBtn: "❌ Promokodni olib tashlash",
   promoCodeInvalid: "⚠️ Promokod amal qilmaydi yoki endi ishlamaydi.",
+  giftRestIssued: (code, sum) =>
+    `🎁 Sertifikat buyurtma summasidan ko‘p — qolgan ${sum} yangi kod bilan saqlandi:\n<code>${code}</code>\nUni keyingi buyurtmada kiriting.`,
   pointsAsk: (n) => `🏆 Sizda ${n} ball bor. Ushbu buyurtma uchun sarflaymizmi?`,
   pointsYesBtn: "Ha, sarflash",
   pointsNoBtn: "Yo'q, jamlash",

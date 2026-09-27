@@ -175,6 +175,9 @@ const ru = {
   "gift.closed": "Подарочные сертификаты сейчас не продаются.",
   "gift.error.amount": "Выберите номинал из списка.",
   "order.gift.title": "Ваш подарочный сертификат",
+  "order.giftRest.title": "Остаток сертификата",
+  "order.giftRest.hint":
+    "Сертификат оказался больше заказа — остаток сохранён новым кодом. Введите его при следующем заказе в поле «Подарочный сертификат».",
   "order.gift.amount": "Номинал: {sum}",
   "order.gift.hint":
     "Введите код при оформлении заказа в поле «Подарочный сертификат». Копия кода — на почте.",
@@ -404,6 +407,9 @@ const kk: Dict = {
   "gift.closed": "Сыйлық сертификаттары қазір сатылмайды.",
   "gift.error.amount": "Тізімнен номинал таңдаңыз.",
   "order.gift.title": "Сіздің сыйлық сертификатыңыз",
+  "order.giftRest.title": "Сертификаттың қалдығы",
+  "order.giftRest.hint":
+    "Сертификат тапсырыстан көп болды — қалдығы жаңа кодпен сақталды. Оны келесі тапсырыста «Сыйлық сертификаты» жолына енгізіңіз.",
   "order.gift.amount": "Номинал: {sum}",
   "order.gift.hint":
     "Тапсырысты рәсімдегенде кодты «Сыйлық сертификаты» өрісіне енгізіңіз. Код көшірмесі — поштада.",
@@ -624,6 +630,9 @@ const en: Dict = {
   "gift.closed": "Gift cards are not on sale right now.",
   "gift.error.amount": "Choose an amount from the list.",
   "order.gift.title": "Your gift card",
+  "order.giftRest.title": "Gift card balance",
+  "order.giftRest.hint":
+    "The gift card exceeded the order total — the remainder is saved as a new code. Enter it with your next order in the “Gift card” field.",
   "order.gift.amount": "Amount: {sum}",
   "order.gift.hint":
     "Enter the code at checkout in the “Gift card” field. A copy of the code is in your email.",
@@ -844,6 +853,9 @@ const uz: Dict = {
   "gift.closed": "Sovgʻa sertifikatlari hozir sotilmaydi.",
   "gift.error.amount": "Roʻyxatdan nominal tanlang.",
   "order.gift.title": "Sizning sovgʻa sertifikatingiz",
+  "order.giftRest.title": "Sertifikat qoldigʻi",
+  "order.giftRest.hint":
+    "Sertifikat buyurtmadan koʻp boʻldi — qoldigʻi yangi kod bilan saqlandi. Uni keyingi buyurtmada «Sovgʻa sertifikati» maydoniga kiriting.",
   "order.gift.amount": "Nominal: {sum}",
   "order.gift.hint":
     "Buyurtma berishda kodni «Sovgʻa sertifikati» maydoniga kiriting. Kod nusxasi — pochtada.",

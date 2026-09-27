@@ -1094,6 +1094,15 @@ async function finishCheckout(b: Bot, countryCode: string) {
     delivery_lang: _dl,
     ...rest
   } = b.customer.state;
+  // Сертификат больше заказа — код на остаток сразу, до реквизитов.
+  if (result.giftRest)
+    await send(
+      b,
+      b.m.giftRestIssued(
+        escapeHtml(result.giftRest.code),
+        formatMoney(result.giftRest.amount, result.giftRest.currency),
+      ),
+    );
   const physical = order.fulfillment_kind === "physical";
   if (physical && result.amountDue <= 0 && !result.zeroTotal) {
     // Оплата при получении: заказ сразу в работе.

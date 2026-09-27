@@ -385,6 +385,8 @@ export type WebOrderView = {
   balancePending: boolean;
   /** Покупка подарочного сертификата: номинал, а код — только после выдачи. */
   gift: { amount: number; currency: string; code: string | null } | null;
+  /** Остаток сертификата, применённого к заказу, — новым кодом (core/discounts/gift-rest). */
+  giftRest: { code: string; amount: number; currency: string } | null;
 };
 
 const PAYABLE = new Set(["awaiting_payment"]);
@@ -464,6 +466,13 @@ export async function webOrderView(
     balance,
     balancePending,
     gift: await webOrderGift(ctx, order),
+    giftRest: order.gift_certificate_code
+      ? await (
+          await import("@/core/discounts/gift-rest")
+        )
+          .giftRestOf(ctx, order.id)
+          .catch(() => null)
+      : null,
   };
 }
 

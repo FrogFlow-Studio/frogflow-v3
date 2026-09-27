@@ -18,6 +18,7 @@ export type OrderEventKind =
   | "item_failed"
   | "item_pending"
   | "delivered"
+  | "gift_rest"
   | "delivery_failed"
   | "rejected"
   | "reminded"
@@ -196,6 +197,16 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       };
     case "item_pending":
       return { text: `Покупателю задан вопрос о языке: ${str(p.name)}`, tone: "warn" };
+    case "gift_rest":
+      return p.failed
+        ? {
+            text: `Остаток сертификата ${num(p.amount)} ${str(p.currency)} не выдан — выдайте покупателю новый сертификат вручную`,
+            tone: "danger",
+          }
+        : {
+            text: `Остаток сертификата ${num(p.amount)} ${str(p.currency)} — новый код ${str(p.code)}`,
+            tone: "neutral",
+          };
     case "delivered":
       return { text: `Заказ выдан полностью (${num(p.sent)} поз.)`, tone: "ok" };
     case "delivery_failed":
