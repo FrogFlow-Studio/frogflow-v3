@@ -15,6 +15,11 @@ export type ZernioInteractiveMetadata = {
   interactiveType?: string;
   interactiveId?: string;
   interactiveTitle?: string;
+  /**
+   * WhatsApp: кнопка шаблона (рассылки). Приходит простым событием `button`,
+   * interactiveType пуст. Без своего payload Meta кладёт сюда текст кнопки.
+   */
+  buttonPayload?: string;
   /** WhatsApp: корзина из нативного каталога Meta. */
   order?: {
     catalog_id?: string;
@@ -216,11 +221,23 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
 
   // Настоящее место нажатия — корень события; message.metadata — запасное чтение.
   const interactive = payload.metadata ?? message.metadata ?? {};
+  const text = (message.text ?? "").trim();
+  // Кнопка шаблона WhatsApp: свой payload — нажатие; равный тексту кнопки —
+  // просто слова покупателя (так их увидят «Стоп»/«Отписаться» и слова-вызовы).
+  // Без текста кнопки сравнить не с чем: нажатием считаем только наш вид
+  // постбэка («CATALOG», «PROD:…»), остальное — словами.
+  const templatePayload = str(interactive.buttonPayload).trim();
+  const templateTap =
+    templatePayload &&
+    (text ? templatePayload !== text : /^[A-Z][A-Z_]*(:.*)?$/.test(templatePayload))
+      ? templatePayload
+      : "";
   const postbackPayload =
     str(interactive.postbackPayload) ||
     (INTERACTIVE_TAP_TYPES.has(str(interactive.interactiveType))
       ? str(interactive.interactiveId)
       : "") ||
+    templateTap ||
     null;
 
   const order = interactive.order;
@@ -271,7 +288,7 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
     senderName,
     senderPhone,
     // text приходит null у сообщения с одним вложением — это не отсутствие поля.
-    text: (message.text ?? "").trim(),
+    text: text || (postbackPayload ? "" : templatePayload),
     metadata,
     postbackPayload,
     nativeOrder,

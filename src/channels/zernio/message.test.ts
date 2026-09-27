@@ -153,6 +153,44 @@ describe("parseZernioMessage", () => {
     expect(messageAsText(wa)).toBe("CAT:abc");
   });
 
+  it("кнопка шаблона WhatsApp: payload из metadata.buttonPayload — нажатие", () => {
+    const wa = parseZernioMessage({
+      event: "message.received",
+      message: { conversationId: "c1", text: "Купить", sender: { id: "77011234567" } },
+      account: { accountId: "a1", platform: "whatsapp" },
+      metadata: { buttonPayload: "PROD:p-1" },
+    });
+    expect(wa.postbackPayload).toBe("PROD:p-1");
+    expect(wa.text).toBe("Купить");
+  });
+
+  it("кнопка шаблона без своего payload (Meta кладёт туда текст) — обычный текст", () => {
+    const wa = parseZernioMessage({
+      event: "message.received",
+      message: { conversationId: "c1", text: "Отписаться", sender: { id: "77011234567" } },
+      account: { accountId: "a1", platform: "whatsapp" },
+      metadata: { buttonPayload: "Отписаться" },
+    });
+    expect(wa.postbackPayload).toBeNull();
+    expect(wa.text).toBe("Отписаться");
+    const noText = parseZernioMessage({
+      event: "message.received",
+      message: { conversationId: "c1", text: null, sender: { id: "77011234567" } },
+      account: { accountId: "a1", platform: "whatsapp" },
+      metadata: { buttonPayload: "Отписаться" },
+    });
+    expect(noText.postbackPayload).toBeNull();
+    expect(noText.text).toBe("Отписаться");
+    const ours = parseZernioMessage({
+      event: "message.received",
+      message: { conversationId: "c1", sender: { id: "77011234567" } },
+      account: { accountId: "a1", platform: "whatsapp" },
+      metadata: { buttonPayload: "CATALOG" },
+    });
+    expect(ours.postbackPayload).toBe("CATALOG");
+    expect(ours.text).toBe("");
+  });
+
   it("обычное сообщение — не нажатие; чужая платформа падает в instagram", () => {
     const p = parseZernioMessage({
       event: "message.received",
