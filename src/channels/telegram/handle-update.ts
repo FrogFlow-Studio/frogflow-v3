@@ -80,6 +80,12 @@ import {
   completeLanguageDelivery,
 } from "@/core/orders/orders";
 import { getSetting } from "@/core/settings/settings";
+import {
+  optOutCommand,
+  optOutWordsApply,
+  setOptOut,
+  type OptOutCommand,
+} from "@/core/customers/opt-out";
 import { shopAdminIds } from "@/core/notify/recipients";
 import { notifyAdminNewOrder } from "./admin-notify";
 import { notifyAdminsHtml, notifyDeliveryFailure } from "./notify";
@@ -235,9 +241,16 @@ async function handleMessage(
   // Исключения: /start (покупатель хочет меню) и чек на шаге оплаты.
   const proofStep = customer.state.mode === "awaiting_proof" && Boolean(msg.photo || msg.document);
   const intercepted = await inboundIntercepted(ctx, from.id, inboundLogText(msg));
+  // «Отписаться» / «подписаться» словом — вне оформления; и при чате с менеджером.
+  const optCmd = optOutWordsApply(customer.state.mode) ? optOutCommand(text) : null;
+  if (optCmd) return optOutReply(b, optCmd);
   if (intercepted && !text?.startsWith("/start") && !proofStep) return;
 
-  if (text?.startsWith("/start")) return startFlow(b, text.slice(6).trim());
+  if (text?.startsWith("/start")) {
+    // /start возвращает отписавшегося к рассылкам.
+    if (await setOptOut(ctx, customer.userKey, false)) await send(b, b.m.resubscribed);
+    return startFlow(b, text.slice(6).trim());
+  }
 
   // Телефон на шаге оформления — кнопкой или текстом.
   if (customer.state.mode === "awaiting_contact") {
@@ -445,6 +458,12 @@ async function consultantReply(b: Bot, text: string): Promise<boolean> {
       });
   }
   return true;
+}
+
+/** Отписка или возврат к рассылкам; ответ — одинаковый и при повторе. */
+async function optOutReply(b: Bot, cmd: OptOutCommand) {
+  await setOptOut(b.ctx, b.customer.userKey, cmd === "unsubscribe");
+  await send(b, cmd === "unsubscribe" ? b.m.unsubscribed : b.m.resubscribed);
 }
 
 async function startFlow(b: Bot, payload = "") {
@@ -1602,6 +1621,9 @@ async function handleCallback(
   });
   const locale = localeOf(ctx, customer);
   const b: Bot = { ctx, api, chatId, customer, locale, m: COPY[locale] };
+
+  // Кнопка «Отписаться» под рассылкой — до перехвата чатом с менеджером.
+  if (data === "unsub") return optOutReply(b, "unsubscribe");
 
   // Нажатия кнопок — тоже в лог чата, подписью кнопки, а не сырым callback_data.
   if (ctx.tenant.modules.manager_chat) {

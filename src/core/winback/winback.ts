@@ -159,6 +159,8 @@ export async function runWinback(
     if (error) throw serverFailure(`возврат клиентов: покупатели: ${error.message}`);
     for (const row of users ?? []) {
       if (r.sent + r.failed >= WINBACK_BATCH) break;
+      // Отписавшийся от рассылок не получает и этих сообщений (core/customers/opt-out).
+      if (row.opt_out) continue;
       const c = customerFromRow(row);
       const order = last.get(c.telegramId);
       if (!order) continue;

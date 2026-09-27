@@ -186,6 +186,13 @@ export type Msg = {
   courseOpenBtn: string;
   broadcastPick: string;
   openCatalogBtn: string;
+  /** Кнопка под рассылкой и ответы на отписку/возврат. */
+  unsubscribeBtn: string;
+  unsubscribeHint: string;
+  unsubscribed: string;
+  resubscribed: string;
+  /** То же для Instagram/WhatsApp: там нет /start. */
+  unsubscribedDirect: string;
   yourId: (id: number) => string;
   fileLink: string;
   fileLinkTtl: string;
@@ -243,6 +250,13 @@ const ru: Msg = {
   courseOpenBtn: "Открыть курс",
   broadcastPick: "👇 Выберите материал:",
   openCatalogBtn: "📚 Открыть каталог",
+  unsubscribeBtn: "🔕 Отписаться от рассылок",
+  unsubscribeHint: "Больше не хотите получать рассылки?",
+  unsubscribed:
+    "Вы отписались от рассылок магазина. Сообщения о ваших заказах будут приходить как раньше.\n\nВернуться — /start или напишите «подписаться».",
+  resubscribed: "Вы снова подписаны на рассылки магазина.",
+  unsubscribedDirect:
+    "Вы отписались от рассылок магазина. Сообщения о ваших заказах будут приходить как раньше. Вернуться — напишите «подписаться».",
   chooseLanguage: "Выберите язык",
   languageSaved: "✅ Язык сохранён.",
   chooseSection: "Выберите раздел:",
@@ -483,6 +497,13 @@ const kk: Msg = {
   courseOpenBtn: "Курсты ашу",
   broadcastPick: "👇 Материалды таңдаңыз:",
   openCatalogBtn: "📚 Каталогты ашу",
+  unsubscribeBtn: "🔕 Таратылымнан бас тарту",
+  unsubscribeHint: "Таратылым алуды қаламайсыз ба?",
+  unsubscribed:
+    "Сіз дүкен таратылымынан бас тарттыңыз. Тапсырыстарыңыз туралы хабарлар бұрынғыдай келеді.\n\nҚайта жазылу — /start немесе «жазылу» деп жазыңыз.",
+  resubscribed: "Сіз дүкен таратылымына қайта жазылдыңыз.",
+  unsubscribedDirect:
+    "Сіз дүкен таратылымынан бас тарттыңыз. Тапсырыстарыңыз туралы хабарлар бұрынғыдай келеді. Қайта жазылу үшін «жазылу» деп жазыңыз.",
   chooseLanguage: "Тілді таңдаңыз",
   chooseDeliveryLanguage: "🌐 Материалдарды қай тілде алғыңыз келеді?",
   allLanguagesBtn: (n) => `Барлық тілдер ×${n}`,
@@ -605,6 +626,13 @@ const en: Msg = {
   courseOpenBtn: "Open the course",
   broadcastPick: "👇 Pick an item:",
   openCatalogBtn: "📚 Open catalog",
+  unsubscribeBtn: "🔕 Unsubscribe",
+  unsubscribeHint: "Don't want to receive these messages?",
+  unsubscribed:
+    "You have unsubscribed from the shop's mailings. Messages about your orders will still arrive.\n\nTo come back, send /start or type “subscribe”.",
+  resubscribed: "You are subscribed to the shop's mailings again.",
+  unsubscribedDirect:
+    "You have unsubscribed from the shop's mailings. Messages about your orders will still arrive. To come back, type “subscribe”.",
   chooseLanguage: "Choose your language",
   chooseDeliveryLanguage: "🌐 Which language should the files be in?",
   allLanguagesBtn: (n) => `All languages ×${n}`,
@@ -746,6 +774,13 @@ const uz: Msg = {
   courseOpenBtn: "Kursni ochish",
   broadcastPick: "👇 Materialni tanlang:",
   openCatalogBtn: "📚 Katalogni ochish",
+  unsubscribeBtn: "🔕 Obunani bekor qilish",
+  unsubscribeHint: "Xabarnomalarni olishni istamaysizmi?",
+  unsubscribed:
+    "Siz do'kon xabarnomalaridan obunani bekor qildingiz. Buyurtmalaringiz haqidagi xabarlar avvalgidek keladi.\n\nQaytish uchun /start yuboring yoki «obuna» deb yozing.",
+  resubscribed: "Siz do'kon xabarnomalariga qayta obuna bo'ldingiz.",
+  unsubscribedDirect:
+    "Siz do'kon xabarnomalaridan obunani bekor qildingiz. Buyurtmalaringiz haqidagi xabarlar avvalgidek keladi. Qaytish uchun «obuna» deb yozing.",
   chooseLanguage: "Tilni tanlang",
   chooseDeliveryLanguage: "🌐 Materiallarni qaysi tilda olishni xohlaysiz?",
   allLanguagesBtn: (n) => `Barcha tillar ×${n}`,

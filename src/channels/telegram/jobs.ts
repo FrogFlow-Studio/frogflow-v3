@@ -31,8 +31,8 @@ async function broadcastKeyboard(
   ctx: TenantContext,
   content: BroadcastContent,
   mark: string,
-  locale: "ru" = "ru",
-): Promise<{ inline_keyboard: InlineButton[][] } | undefined> {
+): Promise<{ inline_keyboard: InlineButton[][] }> {
+  const locale = ctx.tenant.settings.default_locale ?? "ru";
   const rows: InlineButton[][] = [];
   if (content.productIds.length > 0) {
     const { data } = await ctx.db
@@ -49,7 +49,9 @@ async function broadcastKeyboard(
   }
   if (content.showCatalog)
     rows.push([{ text: COPY[locale].openCatalogBtn, callback_data: `cat:root:0:${mark}` }]);
-  return rows.length ? { inline_keyboard: rows } : undefined;
+  // Отписка — под каждой рассылкой (handle-update: callback "unsub").
+  rows.push([{ text: COPY[locale].unsubscribeBtn, callback_data: "unsub" }]);
+  return { inline_keyboard: rows };
 }
 
 /**
@@ -84,7 +86,7 @@ export function telegramBroadcastSender(ctx: TenantContext, tg: TelegramApi): Br
           text,
           parse_mode: "HTML",
           disable_web_page_preview: true,
-          ...(reply_markup ? { reply_markup } : {}),
+          reply_markup,
         }),
         "sendMessage",
       );
@@ -108,7 +110,7 @@ export function telegramBroadcastSender(ctx: TenantContext, tg: TelegramApi): Br
           chat_id: chatId,
           photo: photos[0],
           ...(asCaption ? { caption: text, parse_mode: "HTML" } : {}),
-          ...(reply_markup ? { reply_markup } : {}),
+          reply_markup,
         }),
         "sendPhoto",
       );
@@ -126,15 +128,17 @@ export function telegramBroadcastSender(ctx: TenantContext, tg: TelegramApi): Br
       }),
       "sendMediaGroup",
     );
-    if (reply_markup)
-      fail(
-        await tg.call("sendMessage", {
-          chat_id: chatId,
-          text: COPY.ru.broadcastPick,
-          reply_markup,
-        }),
-        "sendMessage",
-      );
+    // У альбома кнопок нет: они — отдельным сообщением следом.
+    const m = COPY[ctx.tenant.settings.default_locale ?? "ru"];
+    const onlyUnsub = content.productIds.length === 0 && !content.showCatalog;
+    fail(
+      await tg.call("sendMessage", {
+        chat_id: chatId,
+        text: onlyUnsub ? m.unsubscribeHint : m.broadcastPick,
+        reply_markup,
+      }),
+      "sendMessage",
+    );
   };
 }
 
@@ -165,7 +169,12 @@ export async function runCartReminders(tenant: Tenant) {
     const r = await tg.call("sendMessage", {
       chat_id: telegramId,
       text: m.cartReminder,
-      reply_markup: { inline_keyboard: [[{ text: m.openCartBtn, callback_data: "cart:show" }]] },
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: m.openCartBtn, callback_data: "cart:show" }],
+          [{ text: m.unsubscribeBtn, callback_data: "unsub" }],
+        ],
+      },
     });
     return r.ok;
   });
@@ -208,7 +217,12 @@ export async function runWinbackFor(tenant: Tenant) {
         chat_id: c.telegramId,
         text: escapeHtml(text),
         parse_mode: "HTML",
-        reply_markup: { inline_keyboard: [[{ text: m.catalog, callback_data: "cat:root" }]] },
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: m.catalog, callback_data: "cat:root" }],
+            [{ text: m.unsubscribeBtn, callback_data: "unsub" }],
+          ],
+        },
       });
       return r.ok;
     }
@@ -257,11 +271,12 @@ export async function runFunnelFor(tenant: Tenant) {
         chat_id: c.telegramId,
         text: escapeHtml(text),
         parse_mode: "HTML",
-        ...(catalogButton
-          ? {
-              reply_markup: { inline_keyboard: [[{ text: m.catalog, callback_data: "cat:root" }]] },
-            }
-          : {}),
+        reply_markup: {
+          inline_keyboard: [
+            ...(catalogButton ? [[{ text: m.catalog, callback_data: "cat:root" }]] : []),
+            [{ text: m.unsubscribeBtn, callback_data: "unsub" }],
+          ],
+        },
       });
       return r.ok;
     }

@@ -128,6 +128,8 @@ export async function runFunnel(
       const ordered = cfg.stopOnOrder ? await customersWithOrders(ctx, rows) : new Set<number>();
       for (const row of rows) {
         if (r.sent + r.failed >= FUNNEL_BATCH) return false;
+        // Отписавшийся от рассылок не получает и этих сообщений (core/customers/opt-out).
+        if (row.opt_out) continue;
         const c = customerFromRow(row);
         const mem = c.state.funnel as { step?: number; stopped?: boolean } | undefined;
         if (mem?.stopped) continue;

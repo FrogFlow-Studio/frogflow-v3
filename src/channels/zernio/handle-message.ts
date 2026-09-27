@@ -72,11 +72,21 @@ export async function handleZernioMessage(
   const text = messageAsText(m);
   if (!text) return ignored("пустое сообщение");
 
+  let intercepted = false;
   if (ctx.tenant.modules.manager_chat) {
     const { inboundIntercepted } = await import("@/core/chat/chat");
-    if (await inboundIntercepted(ctx, customer.telegramId, text))
-      return processed("менеджер ведёт диалог в панели");
+    intercepted = await inboundIntercepted(ctx, customer.telegramId, text);
   }
+
+  // «Стоп» / «отписаться» вне оформления — отписка от рассылок (WhatsApp этого
+  // требует); на шаге оформления «стоп» по-прежнему отменяет оформление.
+  const { optOutCommand, optOutWordsApply } = await import("@/core/customers/opt-out");
+  const optCmd = optOutWordsApply(customer.state.mode) ? optOutCommand(m.text) : null;
+  if (optCmd) {
+    await directOptOut(ctx, customer, m, transport, optCmd);
+    return processed(optCmd === "unsubscribe" ? "отписка от рассылок" : "возврат к рассылкам");
+  }
+  if (intercepted) return processed("менеджер ведёт диалог в панели");
 
   // Настройки автоответчика канала (те же ключи, что в v1). Выключенный —
   // молчит вовсе; консультантские ниши тумблер не читают: у них консультант
@@ -197,6 +207,31 @@ export async function handleZernioMessage(
     await notifyAdminsHtml(ctx, lines.join("\n"), { kind: r.handoff.kind }).catch(() => 0);
   }
   return processed(r.handoff ? `ответ + передача менеджеру (${r.handoff.reason})` : undefined);
+}
+
+/** Отписка или возврат в Direct/WhatsApp: флаг и короткое подтверждение. */
+async function directOptOut(
+  ctx: TenantContext,
+  customer: Customer,
+  m: ReturnType<typeof parseZernioMessage>,
+  transport: ZernioTransport,
+  cmd: import("@/core/customers/opt-out").OptOutCommand,
+) {
+  const { setOptOut } = await import("@/core/customers/opt-out");
+  await setOptOut(ctx, customer.userKey, cmd === "unsubscribe");
+  const locale = customer.state.locale ?? ctx.tenant.settings.default_locale ?? "ru";
+  const copy = COPY[locale] ?? COPY.ru;
+  const text = cmd === "unsubscribe" ? copy.unsubscribedDirect : copy.resubscribed;
+  const r = await transport.send(m.conversationId!, m.accountId!, text, { platform: m.platform });
+  if (r.ok && ctx.tenant.modules.manager_chat) {
+    const { recordMessage } = await import("@/core/chat/chat");
+    await recordMessage(ctx, {
+      telegramId: customer.telegramId,
+      direction: "out",
+      sender: "bot",
+      text,
+    });
+  }
 }
 
 /**
