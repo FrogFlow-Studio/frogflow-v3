@@ -24,6 +24,7 @@ import { Route as OperatorLoginRouteImport } from './routes/operator.login'
 import { Route as SSlugRouteImport } from './routes/s.$slug'
 import { Route as AdminAuthedIndexRouteImport } from './routes/admin._authed.index'
 import { Route as AdminAuthedAnalyticsRouteImport } from './routes/admin._authed.analytics'
+import { Route as AdminAuthedBotPreviewRouteImport } from './routes/admin._authed.bot-preview'
 import { Route as AdminAuthedBroadcastsRouteImport } from './routes/admin._authed.broadcasts'
 import { Route as AdminAuthedCategoriesRouteImport } from './routes/admin._authed.categories'
 import { Route as AdminAuthedChatRouteImport } from './routes/admin._authed.chat'
@@ -149,6 +150,11 @@ const AdminAuthedIndexRoute = AdminAuthedIndexRouteImport.update({
 const AdminAuthedAnalyticsRoute = AdminAuthedAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedBotPreviewRoute = AdminAuthedBotPreviewRouteImport.update({
+  id: '/bot-preview',
+  path: '/bot-preview',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedBroadcastsRoute = AdminAuthedBroadcastsRouteImport.update({
@@ -433,6 +439,7 @@ export interface FileRoutesByFullPath {
   '/operator/login': typeof OperatorLoginRoute
   '/s/$slug': typeof SSlugRouteWithChildren
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
+  '/admin/bot-preview': typeof AdminAuthedBotPreviewRoute
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/chat': typeof AdminAuthedChatRoute
@@ -500,6 +507,7 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/operator/login': typeof OperatorLoginRoute
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
+  '/admin/bot-preview': typeof AdminAuthedBotPreviewRoute
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/chat': typeof AdminAuthedChatRoute
@@ -569,6 +577,7 @@ export interface FileRoutesById {
   '/operator/login': typeof OperatorLoginRoute
   '/s/$slug': typeof SSlugRouteWithChildren
   '/admin/_authed/analytics': typeof AdminAuthedAnalyticsRoute
+  '/admin/_authed/bot-preview': typeof AdminAuthedBotPreviewRoute
   '/admin/_authed/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/_authed/categories': typeof AdminAuthedCategoriesRoute
   '/admin/_authed/chat': typeof AdminAuthedChatRoute
@@ -639,6 +648,7 @@ export interface FileRouteTypes {
     | '/operator/login'
     | '/s/$slug'
     | '/admin/analytics'
+    | '/admin/bot-preview'
     | '/admin/broadcasts'
     | '/admin/categories'
     | '/admin/chat'
@@ -706,6 +716,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/operator/login'
     | '/admin/analytics'
+    | '/admin/bot-preview'
     | '/admin/broadcasts'
     | '/admin/categories'
     | '/admin/chat'
@@ -774,6 +785,7 @@ export interface FileRouteTypes {
     | '/operator/login'
     | '/s/$slug'
     | '/admin/_authed/analytics'
+    | '/admin/_authed/bot-preview'
     | '/admin/_authed/broadcasts'
     | '/admin/_authed/categories'
     | '/admin/_authed/chat'
@@ -958,6 +970,13 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/admin/analytics'
       preLoaderRoute: typeof AdminAuthedAnalyticsRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/bot-preview': {
+      id: '/admin/_authed/bot-preview'
+      path: '/bot-preview'
+      fullPath: '/admin/bot-preview'
+      preLoaderRoute: typeof AdminAuthedBotPreviewRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/broadcasts': {
@@ -1349,6 +1368,7 @@ const AdminAuthedOrdersRouteWithChildren =
 
 interface AdminAuthedRouteChildren {
   AdminAuthedAnalyticsRoute: typeof AdminAuthedAnalyticsRoute
+  AdminAuthedBotPreviewRoute: typeof AdminAuthedBotPreviewRoute
   AdminAuthedBroadcastsRoute: typeof AdminAuthedBroadcastsRoute
   AdminAuthedCategoriesRoute: typeof AdminAuthedCategoriesRoute
   AdminAuthedChatRoute: typeof AdminAuthedChatRoute
@@ -1375,6 +1395,7 @@ interface AdminAuthedRouteChildren {
 
 const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedAnalyticsRoute: AdminAuthedAnalyticsRoute,
+  AdminAuthedBotPreviewRoute: AdminAuthedBotPreviewRoute,
   AdminAuthedBroadcastsRoute: AdminAuthedBroadcastsRoute,
   AdminAuthedCategoriesRoute: AdminAuthedCategoriesRoute,
   AdminAuthedChatRoute: AdminAuthedChatRoute,

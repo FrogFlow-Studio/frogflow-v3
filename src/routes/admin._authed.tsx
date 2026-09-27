@@ -108,6 +108,7 @@ function Layout() {
               {shop.modules.instagram && <NavLink to="/admin/posts">{t("nav.posts")}</NavLink>}
               {shop.modules.vip && <NavLink to="/admin/vip">{t("nav.vip")}</NavLink>}
               {shop.modules.quiz && <NavLink to="/admin/quiz">{t("nav.quiz")}</NavLink>}
+              <NavLink to="/admin/bot-preview">{t("nav.botPreview")}</NavLink>
               {shop.undelivered > 0 && (
                 <NavLink to="/admin/undelivered">
                   <span className="flex items-center justify-between gap-2">

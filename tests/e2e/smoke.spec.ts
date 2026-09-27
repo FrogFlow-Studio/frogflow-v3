@@ -110,6 +110,21 @@ test("маршруты /api отвечают: крон без секрета —
   expect((await request.get("/robots.txt")).status()).toBe(200);
 });
 
+test("предпросмотр бота: приветствие, карточка товара и меню", async ({ page }) => {
+  const errors = await watch(page);
+  await page.goto("/admin/login");
+  await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
+  await page.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
+  await page.getByRole("button", { name: "Войти" }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await page.goto("/admin/bot-preview");
+  await expect(page.getByRole("heading", { name: "Предпросмотр бота" })).toBeVisible();
+  await expect(page.locator("strong", { hasText: F.SHOP_NAME })).toBeVisible();
+  await expect(page.locator("strong", { hasText: F.PRODUCT_NAME })).toBeVisible();
+  await expect(page.getByText("📚 Каталог")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("настройки продавца: разделы рисуются и оживают без ошибок гидратации", async ({ page }) => {
   const errors = await watch(page);
   await page.goto("/admin/login");

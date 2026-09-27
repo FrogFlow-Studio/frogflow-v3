@@ -21,6 +21,7 @@ import * as audit from "./admin/audit";
 import * as posts from "./admin/posts";
 import * as quiz from "./admin/quiz";
 import * as reviews from "./admin/reviews";
+import * as botPreview from "./admin/bot-preview";
 import * as tickets from "./admin/tickets";
 import * as customer from "./admin/customer";
 import * as pipeline from "./admin/pipeline";
@@ -52,6 +53,7 @@ const baseRu = {
   "nav.modules": "Модули",
   "nav.undelivered": "Не доставлено",
   "nav.quiz": "Квиз-подбор",
+  "nav.botPreview": "Предпросмотр бота",
   "nav.reviews": "Отзывы",
   "nav.tickets": "Обращения",
   "nav.pipeline": "Воронка",
@@ -313,6 +315,7 @@ const ru = {
   ...posts.ru,
   ...quiz.ru,
   ...reviews.ru,
+  ...botPreview.ru,
   ...tickets.ru,
   ...customer.ru,
   ...pipeline.ru,
@@ -347,6 +350,7 @@ const baseKk: Dict = {
   "nav.modules": "Модульдер",
   "nav.undelivered": "Жеткізілмеді",
   "nav.quiz": "Квиз-таңдау",
+  "nav.botPreview": "Ботты алдын ала қарау",
   "nav.reviews": "Пікірлер",
   "nav.tickets": "Өтініштер",
   "nav.pipeline": "Воронка",
@@ -601,6 +605,7 @@ const baseEn: Dict = {
   "nav.modules": "Modules",
   "nav.undelivered": "Undelivered",
   "nav.quiz": "Product quiz",
+  "nav.botPreview": "Bot preview",
   "nav.reviews": "Reviews",
   "nav.tickets": "Requests",
   "nav.pipeline": "Pipeline",
@@ -855,6 +860,7 @@ const baseUz: Dict = {
   "nav.modules": "Modullar",
   "nav.undelivered": "Yetkazilmagan",
   "nav.quiz": "Kviz-tanlash",
+  "nav.botPreview": "Botni oldindan ko‘rish",
   "nav.reviews": "Sharhlar",
   "nav.tickets": "Murojaatlar",
   "nav.pipeline": "Voronka",
@@ -1110,6 +1116,7 @@ const kk: Dict = {
   ...posts.kk,
   ...quiz.kk,
   ...reviews.kk,
+  ...botPreview.kk,
   ...tickets.kk,
   ...customer.kk,
   ...pipeline.kk,
@@ -1139,6 +1146,7 @@ const en: Dict = {
   ...posts.en,
   ...quiz.en,
   ...reviews.en,
+  ...botPreview.en,
   ...tickets.en,
   ...customer.en,
   ...pipeline.en,
@@ -1168,6 +1176,7 @@ const uz: Dict = {
   ...posts.uz,
   ...quiz.uz,
   ...reviews.uz,
+  ...botPreview.uz,
   ...tickets.uz,
   ...customer.uz,
   ...pipeline.uz,
