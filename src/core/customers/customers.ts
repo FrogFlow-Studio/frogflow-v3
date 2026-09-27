@@ -281,6 +281,53 @@ export async function setState(
   return { ...customer, state: next };
 }
 
+/**
+ * Обновить один раздел состояния диалога (объект в `state[key]`), не затирая
+ * то, что записали параллельно. Состояние перечитывается прямо перед записью,
+ * запись — с условием на маленький счётчик `state[key].rev` и на `state.mode`;
+ * промах — перечитать и повторить. Для долгих обработчиков (консультант думает
+ * до 35 с), у которых снимок покупателя успевает устареть.
+ */
+export async function updateStateSection(
+  ctx: TenantContext,
+  customer: Customer,
+  key: "consultant" | "direct",
+  patch: (current: Record<string, unknown>) => Record<string, unknown>,
+): Promise<Customer> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data, error } = await ctx.db
+      .from("bot_users")
+      .select("state")
+      .eq("user_key", customer.userKey)
+      .maybeSingle();
+    if (error)
+      throw serverFailure(`Не удалось прочитать состояние ${customer.userKey}: ${error.message}`);
+    if (!data) throw serverFailure(`Покупатель ${customer.userKey} не найден`);
+    const state = (data.state ?? {}) as DialogState;
+    const raw = state[key];
+    const current =
+      raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+    const rev = typeof current.rev === "number" ? current.rev : null;
+    const next: DialogState = { ...state, [key]: { ...patch(current), rev: (rev ?? 0) + 1 } };
+    const base = ctx.db
+      .from("bot_users")
+      .update({ state: next as Json })
+      .eq("user_key", customer.userKey);
+    const byRev =
+      rev == null
+        ? base.is(`state->${key}->>rev`, null)
+        : base.eq(`state->${key}->>rev`, String(rev));
+    const mode = typeof state.mode === "string" && state.mode ? state.mode : null;
+    const { data: written, error: werr } = await (
+      mode == null ? byRev.is("state->>mode", null) : byRev.eq("state->>mode", mode)
+    ).select("user_key");
+    if (werr)
+      throw serverFailure(`Не удалось сохранить состояние ${customer.userKey}: ${werr.message}`);
+    if (written?.length) return { ...customer, state: next };
+  }
+  throw serverFailure(`Состояние ${customer.userKey} меняется параллельно, запись не удалась`);
+}
+
 export async function setContactPhone(
   ctx: TenantContext,
   customer: Customer,

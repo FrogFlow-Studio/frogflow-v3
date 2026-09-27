@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
-import { setState } from "@/core/customers/customers";
+import { updateStateSection } from "@/core/customers/customers";
 import { getSettings, trySetSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { resolvePrice } from "@/core/pricing/pricing";
 import { PRODUCT_SELECT, sortedVariants, type Product } from "@/core/catalog/catalog";
@@ -22,6 +22,16 @@ import {
 import { pauseHours, pausedUntilIso } from "./pause";
 import { takeAiCall } from "./rate.server";
 import { serverFailure } from "@/lib/server-failure";
+import {
+  ASK_CONTACT_RESULT,
+  formatProfile,
+  isPurchaseHandoff,
+  mergeProfile,
+  parseProfile as parseMemory,
+  phoneIn,
+  REMEMBER_TOOL,
+  type CustomerProfile,
+} from "./memory";
 import {
   budgetBlock,
   limitsFor,
@@ -78,6 +88,10 @@ export type ConsultantState = {
   paused_until?: string;
   contact?: string;
   last_reply_at?: string;
+  /** Что покупатель уже сказал (core/consultant/memory) — расширенный режим. */
+  profile?: CustomerProfile;
+  /** Телефон перед покупкой уже спрашивали — второй раз не спрашиваем. */
+  contact_asked?: boolean;
 };
 
 export type Handoff = {
@@ -92,6 +106,12 @@ export type ConsultantResult = {
   reply: string;
   handoff: Handoff | null;
   usage: { inputTokens: number; outputTokens: number; usd: number };
+  /**
+   * Что делал консультант по порядку: имена вызванных инструментов, а также
+   * `ask_contact` (спросил телефон вместо передачи). Для журнала ответов в
+   * каналах.
+   */
+  tools?: string[];
 };
 
 export function consultantConfigured(): boolean {
@@ -242,9 +262,17 @@ export function isPaused(customer: Customer, now = Date.now()): boolean {
   return Boolean(until) && new Date(until!).getTime() > now;
 }
 
+/**
+ * Записать изменения поверх свежего состояния: пока модель думала, бот или
+ * второе сообщение могли записать своё (core/customers updateStateSection).
+ * Профиль покупателя сливается: новое поверх того, что узнали параллельно.
+ */
 async function saveState(ctx: TenantContext, customer: Customer, patch: Partial<ConsultantState>) {
-  const next = { ...stateOf(customer), ...patch };
-  return setState(ctx, customer, { ...customer.state, consultant: next as never });
+  return updateStateSection(ctx, customer, "consultant", (current) => {
+    const next: Record<string, unknown> = { ...current, ...patch };
+    if (patch.profile) next.profile = { ...parseMemory(current.profile), ...patch.profile };
+    return next;
+  });
 }
 
 /**
@@ -261,7 +289,12 @@ export function pausedUntil(customer: Customer, now = Date.now()): string | null
 }
 
 export async function resumeConsultant(ctx: TenantContext, customer: Customer) {
-  return saveState(ctx, customer, { paused_until: undefined, recent: [] });
+  return saveState(ctx, customer, {
+    paused_until: undefined,
+    recent: [],
+    profile: undefined,
+    contact_asked: undefined,
+  });
 }
 
 async function recordUsage(
@@ -416,10 +449,15 @@ export async function runConsultant(
   const system = buildSystemPrompt(profile, retrieveKnowledge(incoming, docs, 6), catalog.text, {
     catalogTools: Boolean(loaded),
   });
+  let known = loaded ? parseMemory(state.profile) : {};
+  const profile0 = known;
   const session = [
     `Канал: ${opts.platform}`,
     customer?.firstName ? `Имя клиента в профиле: ${customer.firstName}` : "",
     state.contact ? `Контакт клиента, который он уже давал: ${state.contact}` : "",
+    loaded && formatProfile(profile0)
+      ? `Что известно о покупателе: ${formatProfile(profile0)}`
+      : "",
     `Сейчас: ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC`,
   ]
     .filter(Boolean)
@@ -468,6 +506,7 @@ export async function runConsultant(
     1_000_000;
   // Расход записан и бронь закрыта — catch второй раз их не трогает.
   let settled = false;
+  const toolsUsed: string[] = [];
   const started = Date.now();
   const deadline = started + ROUNDS_DEADLINE_MS;
   /**
@@ -496,7 +535,9 @@ export async function runConsultant(
     return response;
   };
   try {
-    const tools = loaded ? [...CATALOG_TOOLS, ...TOOLS] : TOOLS;
+    const tools = loaded ? [...CATALOG_TOOLS, REMEMBER_TOOL, ...TOOLS] : TOOLS;
+    let contactAsked = Boolean(state.contact_asked);
+    const phoneNow = phoneIn(incoming);
     const messages: Anthropic.MessageParam[] = buildConsultantMessages(
       state.recent ?? [],
       incoming,
@@ -527,10 +568,12 @@ export async function runConsultant(
       response = got;
 
       let text = "";
+      let askContact = false;
       const results: Anthropic.ToolResultBlockParam[] = [];
       for (const block of response.content) {
         if (block.type === "text") text += block.text;
         else if (block.type === "tool_use") {
+          toolsUsed.push(block.name);
           const input = (block.input ?? {}) as Record<string, unknown>;
           if (loaded && CATALOG_TOOL_NAMES.has(block.name)) {
             const run = runCatalogTool(loaded, block.name, input);
@@ -539,34 +582,71 @@ export async function runConsultant(
             results.push({ type: "tool_result", tool_use_id: block.id, content: run.result });
             continue;
           }
+          if (loaded && block.name === REMEMBER_TOOL.name) {
+            known = mergeProfile(known, input);
+            results.push({ type: "tool_result", tool_use_id: block.id, content: "ok" });
+            continue;
+          }
           const str = (k: string) =>
-            typeof input[k] === "string" ? (input[k] as string) : undefined;
+            typeof input[k] === "string" && input[k].trim() ? (input[k] as string) : undefined;
+          // Покупку без телефона менеджеру не отдаём: сначала контакт и способ получения (v1).
+          if (
+            loaded &&
+            isPurchaseHandoff(block.name, input) &&
+            !str("customer_contact") &&
+            !known.phone &&
+            !state.contact &&
+            !phoneNow &&
+            !contactAsked
+          ) {
+            contactAsked = true;
+            askContact = true;
+            toolsUsed.push("ask_contact");
+            results.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: ASK_CONTACT_RESULT,
+            });
+            continue;
+          }
+          const contact = str("customer_contact") ?? known.phone ?? phoneNow ?? undefined;
+          const summary = (key: string) =>
+            [
+              str(key) ?? "",
+              loaded && formatProfile(known) ? `Известно: ${formatProfile(known)}` : "",
+            ]
+              .filter(Boolean)
+              .join("\n");
           if (block.name === "handoff_to_manager")
             handoff = {
               kind: "handoff",
               reason: str("reason") ?? "human_requested",
-              customerName: str("customer_name"),
-              customerContact: str("customer_contact"),
-              summary: str("summary") ?? "",
+              customerName: str("customer_name") ?? known.name,
+              customerContact: contact,
+              summary: summary("summary"),
             };
           else if (block.name === "record_order_lead")
             handoff = {
               kind: "lead",
               reason: str("lead_type") ?? "order",
-              customerName: str("customer_name"),
-              customerContact: str("customer_contact"),
-              summary: str("details") ?? "",
+              customerName: str("customer_name") ?? known.name,
+              customerContact: contact,
+              summary: summary("details"),
             };
           results.push({ type: "tool_result", tool_use_id: block.id, content: "ok" });
         }
       }
       // Нужны данные каталога — ещё раунд с результатами; иначе ответ готов.
-      // Текст раунда, который ушёл за данными («секунду, посмотрю»), покупателю не уходит.
+      // Текст раунда, который ушёл за данными («секунду, посмотрю») или за
+      // контактом («передаю менеджеру»), покупателю не уходит.
       const needsData = response.content.some(
         (b) => b.type === "tool_use" && CATALOG_TOOL_NAMES.has(b.name),
       );
-      if (text.trim() && !needsData) reply = text;
-      if (last || !loaded || !needsData || response.stop_reason !== "tool_use" || handoff) break;
+      if (text.trim() && !needsData && !askContact) reply = text;
+      // Ещё раунд и тогда, когда нужно спросить контакт или модель только
+      // запомнила сказанное и ничего не ответила.
+      const more = needsData || askContact || !text.trim();
+      if (last || !loaded || !more || response.stop_reason !== "tool_use" || handoff) break;
       messages.push({ role: "assistant", content: response.content });
       messages.push({ role: "user", content: results });
     }
@@ -650,6 +730,7 @@ export async function runConsultant(
           recent,
           last_reply_at: new Date().toISOString(),
           ...(handoff?.customerContact ? { contact: handoff.customerContact } : {}),
+          ...(loaded ? { profile: known, contact_asked: contactAsked || undefined } : {}),
           ...(handoff ? { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) } : {}),
         });
       } catch (e) {
@@ -668,6 +749,7 @@ export async function runConsultant(
       reply,
       handoff,
       usage: { inputTokens: u.input_tokens, outputTokens: u.output_tokens, usd },
+      tools: toolsUsed,
     };
   } catch (e) {
     const detail =

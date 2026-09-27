@@ -42,13 +42,15 @@ const rows = (db: StubDb, t: string) => (db.tables[t] ??= []);
 
 /* ── фильтры PostgREST ──────────────────────────────────────────── */
 
+/** Колонка или путь в jsonb: `state->>mode`, `state->consultant->>rev`. */
 function pick(r: Row, col: string): unknown {
-  const m = /^(\w+)(?:->>?(\w+))?$/.exec(col);
+  const m = /^(\w+)((?:->>?\w+)*)$/.exec(col);
   if (!m) return undefined;
-  const v = r[m[1]!];
+  let v: unknown = r[m[1]!];
   if (!m[2]) return v;
-  const inner = v && typeof v === "object" ? (v as Row)[m[2]] : undefined;
-  return col.includes("->>") && inner != null ? String(inner) : inner;
+  for (const key of m[2].split(/->>?/).filter(Boolean))
+    v = v && typeof v === "object" ? (v as Row)[key] : undefined;
+  return m[2].includes("->>") && v != null ? String(v) : v;
 }
 
 function unquote(s: string) {

@@ -5,8 +5,23 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer, DialogState } from "@/core/customers/customers";
 
 vi.mock("@/lib/errors", () => ({ reportError: vi.fn(async () => {}) }));
+const saved: DialogState[] = [];
 vi.mock("@/core/customers/customers", () => ({
-  setState: vi.fn(async (_ctx: unknown, c: Customer, state: DialogState) => ({ ...c, state })),
+  updateStateSection: vi.fn(
+    async (
+      _ctx: unknown,
+      c: Customer,
+      key: "consultant",
+      patch: (cur: Record<string, unknown>) => Record<string, unknown>,
+    ) => {
+      const state: DialogState = {
+        ...c.state,
+        [key]: patch((c.state[key] ?? {}) as Record<string, unknown>) as never,
+      };
+      saved.push(state);
+      return { ...c, state };
+    },
+  ),
 }));
 
 type Resp = {
@@ -87,13 +102,13 @@ function ctxOf(
     db,
   } as unknown as TenantContext;
 }
-const customer = (): Customer =>
+const customer = (state: DialogState = {}): Customer =>
   ({
     userKey: "ig:1",
     platform: "instagram",
     telegramId: -1,
     firstName: "Аня",
-    state: {},
+    state,
   }) as Customer;
 const usage = { input_tokens: 100, output_tokens: 10 };
 const say = (t: string): Resp => ({
@@ -112,6 +127,7 @@ beforeEach(() => {
   queue = [];
   aiAllowed = true;
   resetCatalogCache();
+  saved.length = 0;
 });
 afterEach(() => {
   setEnvForTests(undefined);
@@ -390,8 +406,8 @@ describe("консультант с поиском по каталогу", () =>
   });
 
   it("сбой записи состояния после ответа: ответ уходит, расход и бронь — один раз", async () => {
-    const { setState } = await import("@/core/customers/customers");
-    vi.mocked(setState).mockRejectedValueOnce(new Error("гонка обновления"));
+    const { updateStateSection } = await import("@/core/customers/customers");
+    vi.mocked(updateStateSection).mockRejectedValueOnce(new Error("гонка обновления"));
     queue = [search({ query: "полотенце" }), say("Есть полотенце Aquanova.")];
     const ctx = ctxOf({ consultant_search: true });
     const r = await runConsultant(ctx, customer(), "полотенце", { platform: "instagram" });
@@ -403,5 +419,117 @@ describe("консультант с поиском по каталогу", () =>
     const usage = JSON.parse(rows.find((x) => x.key === KEYS.usage)!.value!) as { count: number };
     expect(daily.usd).toBeCloseTo((2 * (100 * 1 + 10 * 5)) / 1_000_000, 6);
     expect(usage.count).toBe(1);
+  });
+
+  it("запоминает сказанное и показывает его в следующем сообщении", async () => {
+    queue = [
+      {
+        stop_reason: "tool_use",
+        content: [
+          { type: "text", text: "Какой размер кровати?" },
+          {
+            type: "tool_use",
+            id: "r1",
+            name: "remember_customer",
+            input: { looking_for: "одеяло", city: "Астана" },
+          },
+        ],
+        usage,
+      },
+    ];
+    const ctx = ctxOf({ consultant_search: true });
+    const r = await runConsultant(ctx, customer(), "нужно одеяло, я из Астаны", {
+      platform: "instagram",
+    });
+    // Ответ уже есть — лишнего раунда ради «запомнил» нет.
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(r?.reply).toBe("Какой размер кровати?");
+    const st = (saved.at(-1) as { consultant: { profile: Record<string, string> } }).consultant;
+    expect(st.profile).toEqual({ looking_for: "одеяло", city: "Астана" });
+
+    queue = [say("Есть 200x220.")];
+    await runConsultant(ctx, customer(saved.at(-1)), "200 на 220", { platform: "instagram" });
+    const next = create.mock.calls.at(-1)![0] as { system: Array<{ text: string }> };
+    expect(next.system[1]!.text).toContain(
+      "Что известно о покупателе: ищет: одеяло; город: Астана",
+    );
+  });
+
+  it("покупка без телефона: сначала спросить контакт, передача — после ответа", async () => {
+    const buy = (id: string): Resp => ({
+      stop_reason: "tool_use",
+      content: [
+        { type: "text", text: "Передаю менеджеру." },
+        {
+          type: "tool_use",
+          id,
+          name: "handoff_to_manager",
+          input: { reason: "purchase", summary: "Берёт полотенце" },
+        },
+      ],
+      usage,
+    });
+    queue = [buy("h1"), say("Оставьте, пожалуйста, телефон и город доставки.")];
+    const ctx = ctxOf({ consultant_search: true });
+    const r = await runConsultant(ctx, customer(), "беру", { platform: "instagram" });
+    expect(r?.handoff).toBeNull();
+    expect(r?.reply).toBe("Оставьте, пожалуйста, телефон и город доставки.");
+    expect(r?.tools).toEqual(["handoff_to_manager", "ask_contact"]);
+    const second = create.mock.calls[1]![0] as { messages: Array<{ content: unknown }> };
+    const res = second.messages.at(-1)!.content as Array<{ content: string }>;
+    expect(res[0]!.content).toContain("Заказ ещё не передан");
+
+    // Покупатель дал телефон — передача сразу, контакт в заявке.
+    queue = [buy("h2")];
+    const r2 = await runConsultant(ctx, customer(saved.at(-1)), "+7 701 123 45 67, Алматы", {
+      platform: "instagram",
+    });
+    expect(r2?.handoff).toMatchObject({ kind: "handoff", customerContact: "+7 701 123 45 67" });
+  });
+
+  it("контакт спрашивают один раз: не ответил — передача как есть", async () => {
+    queue = [
+      {
+        stop_reason: "tool_use",
+        content: [
+          {
+            type: "tool_use",
+            id: "h1",
+            name: "handoff_to_manager",
+            input: { reason: "purchase", summary: "Берёт" },
+          },
+        ],
+        usage,
+      },
+    ];
+    const r = await runConsultant(
+      ctxOf({ consultant_search: true }),
+      customer({ consultant: { contact_asked: true } } as DialogState),
+      "просто оформите",
+      { platform: "instagram" },
+    );
+    expect(r?.handoff).toMatchObject({ kind: "handoff", reason: "purchase" });
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it("без флага памяти нет: инструмента не дают, контакт не спрашивают", async () => {
+    queue = [
+      {
+        stop_reason: "tool_use",
+        content: [
+          {
+            type: "tool_use",
+            id: "h1",
+            name: "handoff_to_manager",
+            input: { reason: "purchase", summary: "Берёт" },
+          },
+        ],
+        usage,
+      },
+    ];
+    const r = await runConsultant(ctxOf({}), customer(), "беру", { platform: "instagram" });
+    expect(r?.handoff).toMatchObject({ kind: "handoff", reason: "purchase" });
+    const args = create.mock.calls[0]![0] as { tools: Array<{ name: string }> };
+    expect(args.tools.map((t) => t.name)).not.toContain("remember_customer");
   });
 });

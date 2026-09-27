@@ -9,10 +9,21 @@ vi.mock("@/lib/errors", () => ({ reportError: vi.fn(async () => {}) }));
 /** Что записал консультант в состояние покупателя. */
 const saved: DialogState[] = [];
 vi.mock("@/core/customers/customers", () => ({
-  setState: vi.fn(async (_ctx: unknown, c: Customer, state: DialogState) => {
-    saved.push(state);
-    return { ...c, state };
-  }),
+  updateStateSection: vi.fn(
+    async (
+      _ctx: unknown,
+      c: Customer,
+      key: "consultant",
+      patch: (cur: Record<string, unknown>) => Record<string, unknown>,
+    ) => {
+      const state: DialogState = {
+        ...c.state,
+        [key]: patch((c.state[key] ?? {}) as Record<string, unknown>) as never,
+      };
+      saved.push(state);
+      return { ...c, state };
+    },
+  ),
 }));
 
 type Usage = {
