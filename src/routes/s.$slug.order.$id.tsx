@@ -23,6 +23,7 @@ const PROOF_NOTE: Record<string, StorefrontKey> = {
   paymentFailed: "checkout.proof.paymentFailed",
   review: "checkout.proof.review",
   delivered: "checkout.proof.delivered",
+  balance: "checkout.proof.balance",
 };
 
 function toBase64(file: File): Promise<string> {
@@ -123,53 +124,32 @@ function OrderPage() {
       )}
       {note && <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">{t(note)}</p>}
       {awaiting && view.payment && (
-        <section className="card space-y-3 p-5">
-          <h2 className="font-semibold">{t("order.pay")}</h2>
-          <p className="text-lg font-semibold tabular-nums">
-            {t("order.amount", { sum: formatMoney(view.due, view.currency) })}
-          </p>
-          {view.due < view.total && <p className="text-xs text-muted">{t("order.depositHint")}</p>}
-          {view.payment.card && (
-            <div className="space-y-1">
-              <button
-                className="btn-primary w-full"
-                disabled={card.busy}
-                onClick={() => void card.run().catch(() => {})}
-              >
-                {t("order.payCard")}
-              </button>
-              <p className="text-xs text-muted">{t("order.payCardHint")}</p>
-              <ErrorBox error={card.error} />
-            </div>
-          )}
-          {view.payment.card && (view.payment.instructions || view.payment.qr) && (
-            <h3 className="pt-2 text-sm font-medium">{t("order.payTransfer")}</h3>
-          )}
-          {view.payment.instructions && (
-            <p className="text-sm whitespace-pre-line">{view.payment.instructions}</p>
-          )}
-          {view.payment.qr && (
-            <img src={view.payment.qr} alt="QR" className="h-48 w-48 rounded object-contain" />
-          )}
-          {(view.payment.instructions || view.payment.qr) && (
-            <div>
-              <h3 className="text-sm font-medium">{t("order.proofTitle")}</h3>
-              <p className="text-xs text-muted">{t("order.proofHint")}</p>
-              <input
-                type="file"
-                accept="image/*,application/pdf"
-                className="mt-2 block text-sm"
-                disabled={proof.busy}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                  const f = e.currentTarget.files?.[0];
-                  if (f) void proof.run(f).catch(() => {});
-                  e.currentTarget.value = "";
-                }}
-              />
-              <ErrorBox error={proof.error} />
-            </div>
-          )}
-        </section>
+        <PayBox
+          title={t("order.pay")}
+          due={view.due}
+          currency={view.currency}
+          hint={view.due < view.total ? t("order.depositHint") : null}
+          payment={view.payment}
+          card={card}
+          proof={proof}
+        />
+      )}
+      {view.balance && (
+        <PayBox
+          title={t("order.balanceTitle")}
+          due={view.balance.due}
+          currency={view.currency}
+          hint={t("order.balancePaid", {
+            paid: formatMoney(view.balance.paid, view.currency),
+            total: formatMoney(view.total, view.currency),
+          })}
+          payment={view.balance}
+          card={card}
+          proof={proof}
+        />
+      )}
+      {view.balancePending && !note && (
+        <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">{t("order.balancePending")}</p>
       )}
       {checking && !note && (
         <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">
@@ -223,5 +203,75 @@ function OrderPage() {
         </div>
       )}
     </div>
+  );
+}
+
+type Action<A extends unknown[]> = {
+  busy: boolean;
+  error: unknown;
+  run: (...a: A) => Promise<unknown>;
+};
+
+/**
+ * Как платить: карта через Robokassa продавца и/или перевод по реквизитам с
+ * чеком. Сумму и способ даёт сервер — и за заказ, и за остаток по задатку.
+ */
+function PayBox(props: {
+  title: string;
+  due: number;
+  currency: string;
+  hint: string | null;
+  payment: { instructions: string | null; qr: string | null; card: boolean };
+  card: Action<[]>;
+  proof: Action<[File]>;
+}) {
+  const { t } = useStorefrontLocale();
+  const { payment, card, proof } = props;
+  return (
+    <section className="card space-y-3 p-5">
+      <h2 className="font-semibold">{props.title}</h2>
+      <p className="text-lg font-semibold tabular-nums">
+        {t("order.amount", { sum: formatMoney(props.due, props.currency) })}
+      </p>
+      {props.hint && <p className="text-xs text-muted">{props.hint}</p>}
+      {payment.card && (
+        <div className="space-y-1">
+          <button
+            className="btn-primary w-full"
+            disabled={card.busy}
+            onClick={() => void card.run().catch(() => {})}
+          >
+            {t("order.payCard")}
+          </button>
+          <p className="text-xs text-muted">{t("order.payCardHint")}</p>
+          <ErrorBox error={card.error} />
+        </div>
+      )}
+      {payment.card && (payment.instructions || payment.qr) && (
+        <h3 className="pt-2 text-sm font-medium">{t("order.payTransfer")}</h3>
+      )}
+      {payment.instructions && (
+        <p className="text-sm whitespace-pre-line">{payment.instructions}</p>
+      )}
+      {payment.qr && <img src={payment.qr} alt="QR" className="h-48 w-48 rounded object-contain" />}
+      {(payment.instructions || payment.qr) && (
+        <div>
+          <h3 className="text-sm font-medium">{t("order.proofTitle")}</h3>
+          <p className="text-xs text-muted">{t("order.proofHint")}</p>
+          <input
+            type="file"
+            accept="image/*,application/pdf"
+            className="mt-2 block text-sm"
+            disabled={proof.busy}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              const f = e.currentTarget.files?.[0];
+              if (f) void proof.run(f).catch(() => {});
+              e.currentTarget.value = "";
+            }}
+          />
+          <ErrorBox error={proof.error} />
+        </div>
+      )}
+    </section>
   );
 }

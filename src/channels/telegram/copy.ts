@@ -132,6 +132,7 @@ export type Msg = {
   /** Счёт ссылкой (#194): оплата и чек — на странице заказа. */
   payReminderLink: (url: string) => string;
   proofReceived: (no: number) => string;
+  balanceProofRejected: (no: number) => string;
   /** Instagram/WhatsApp: почта для выдачи письмом (перенос из v1). */
   emailAsk: string;
   emailAskOptional: string;
@@ -213,6 +214,8 @@ export type Msg = {
 };
 
 const ru: Msg = {
+  balanceProofRejected: (no) =>
+    `❌ Чек на остаток по заказу #${no} продавец не принял. Оплатите остаток ещё раз или пришлите другой чек; вопросы — продавцу.`,
   emailSaveFailed: "Не получилось сохранить почту. Пришлите адрес ещё раз, пожалуйста.",
   emailAsk:
     "На какую почту прислать материалы после оплаты? Instagram не умеет пересылать документы, поэтому файлы уходят письмом.\n\nПроверьте адрес: без лишних пробелов и ошибок, например anna@mail.ru",
@@ -446,6 +449,8 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  balanceProofRejected: (no) =>
+    `❌ #${no} тапсырыс бойынша қалған сомаға чекті сатушы қабылдамады. Қалған соманы қайта төлеңіз немесе басқа чек жіберіңіз; сұрақтар болса — сатушыға.`,
   payReminderTitle: (no) => `⏰ <b>#${no} тапсырыс төлемді күтуде</b>`,
   payReminderAfter: "Төлегеннен кейін чектің фотосын немесе PDF файлын осында жіберіңіз.",
   payReminderAmount: (a) => `💰 Төлеуге: <b>${a}</b>`,
@@ -584,6 +589,8 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  balanceProofRejected: (no) =>
+    `❌ The seller did not accept the balance receipt for order #${no}. Please pay the balance again or send another receipt; questions go to the seller.`,
   payReminderTitle: (no) => `⏰ <b>Order #${no} is awaiting payment</b>`,
   payReminderAfter: "After paying, send a photo or PDF of the receipt here.",
   payReminderAmount: (a) => `💰 To pay: <b>${a}</b>`,
@@ -742,6 +749,8 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  balanceProofRejected: (no) =>
+    `❌ #${no} buyurtma bo‘yicha qolgan summa chekini sotuvchi qabul qilmadi. Qolgan summani qayta to‘lang yoki boshqa chek yuboring; savollar — sotuvchiga.`,
   payReminderTitle: (no) => `⏰ <b>#${no} buyurtma to‘lovni kutmoqda</b>`,
   payReminderAfter: "To‘lovdan so‘ng chekning surati yoki PDF faylini shu yerga yuboring.",
   payReminderAmount: (a) => `💰 To‘lov: <b>${a}</b>`,

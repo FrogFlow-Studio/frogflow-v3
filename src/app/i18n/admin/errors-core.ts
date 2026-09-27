@@ -8,6 +8,7 @@ export const ru = {
   "err.orders.manualPaymentPhysicalOnly":
     "Ручное внесение оплаты доступно только для физических заказов",
   "err.orders.amountOverRemaining": "Сумма больше остатка: осталось внести {remaining}",
+  "err.orders.noBalanceProof": "Чека на остаток, который ждёт проверки, нет",
   "err.orders.paymentNotSaved": "Не удалось записать платёж, попробуйте ещё раз",
   "err.settings.saveFailed":
     "Настройка не сохранилась. Попробуйте ещё раз; если повторится — напишите в поддержку.",
@@ -54,6 +55,7 @@ export const kk: SectionDict<typeof ru> = {
   "err.orders.manualPaymentPhysicalOnly":
     "Төлемді қолмен енгізу тек физикалық тапсырыстарға қолжетімді",
   "err.orders.amountOverRemaining": "Сома қалдықтан көп: енгізуге {remaining} қалды",
+  "err.orders.noBalanceProof": "Тексерісті күтіп тұрған қалған сома чегі жоқ",
   "err.orders.paymentNotSaved": "Төлем жазылмады, қайталап көріңіз",
   "err.settings.saveFailed":
     "Баптау сақталмады. Қайта көріңіз; қайталанса — қолдау қызметіне жазыңыз.",
@@ -100,6 +102,7 @@ export const en: SectionDict<typeof ru> = {
   "err.orders.rejectedNoPayment": "The order was rejected — payments for it are not accepted",
   "err.orders.manualPaymentPhysicalOnly": "Manual payments are only available for physical orders",
   "err.orders.amountOverRemaining": "The amount exceeds the balance: {remaining} left to pay",
+  "err.orders.noBalanceProof": "There is no balance receipt waiting for review",
   "err.orders.paymentNotSaved": "Couldn't record the payment, please try again",
   "err.settings.saveFailed":
     "The setting was not saved. Please try again; if it happens again, contact support.",
@@ -148,6 +151,7 @@ export const uz: SectionDict<typeof ru> = {
   "err.orders.manualPaymentPhysicalOnly":
     "Toʻlovni qoʻlda kiritish faqat jismoniy buyurtmalar uchun mavjud",
   "err.orders.amountOverRemaining": "Summa qoldiqdan katta: {remaining} toʻlash qoldi",
+  "err.orders.noBalanceProof": "Tekshiruvni kutayotgan qolgan summa cheki yoʻq",
   "err.orders.paymentNotSaved": "Toʻlovni yozib boʻlmadi, qayta urinib koʻring",
   "err.settings.saveFailed":
     "Sozlama saqlanmadi. Qayta urinib koʻring; takrorlansa — qoʻllab-quvvatlash xizmatiga yozing.",

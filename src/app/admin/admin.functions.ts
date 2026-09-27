@@ -648,12 +648,22 @@ export const orderFn = createServerFn({ method: "GET" })
       physical ? activeDeliveryZones(ctx) : Promise.resolve<DeliveryZone[]>([]),
       physical ? amountDueNow(ctx, order) : Number(order.total),
     ]);
-    if (!accountant) return { order, proofUrl, events, zones, dueNow };
+    // Чек на остаток по задатку лежит событием заказа (core/orders/balance).
+    const { balanceProofPending, lastBalanceProofPath } = await import("@/core/orders/balance");
+    const balancePath = lastBalanceProofPath(events);
+    const [balanceProofUrl, balancePending] = await Promise.all([
+      balancePath ? proofSignedUrl(ctx, balancePath) : null,
+      balancePath ? balanceProofPending(ctx, order.id, order.paid_amount) : false,
+    ]);
+    if (!accountant)
+      return { order, proofUrl, balanceProofUrl, balancePending, events, zones, dueNow };
     // Бухгалтеру: без контактов; журнал — только события и время, без текста.
     const { redactOrder, redactEventPayload } = await import("@/core/orders/redact");
     return {
       order: redactOrder(order),
       proofUrl,
+      balanceProofUrl,
+      balancePending,
       events: events.map((e) => ({ ...e, actor: "", payload: redactEventPayload(e.payload) })),
       zones,
       dueNow,
@@ -775,6 +785,15 @@ export const recordPaymentFn = createServerFn({ method: "POST" })
     const ctx = await adminWrite();
     const { recordManualPayment } = await import("@/core/orders/physical-admin");
     return recordManualPayment(ctx, data.id, data.amount, await actor());
+  });
+
+/** «Отклонить чек на остаток»: покупатель снова может доплатить (core/orders/balance). */
+export const rejectBalanceProofFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: z.number().int() }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { rejectBalanceProofAndNotify } = await import("./balance.server");
+    return rejectBalanceProofAndNotify(ctx, data.id, await actor());
   });
 
 export const updateFulfillmentFn = createServerFn({ method: "POST" })

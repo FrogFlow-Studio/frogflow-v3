@@ -498,6 +498,81 @@ describe("заказ с сайта: страница заказа", () => {
     expect((await webOrderView(ctx, 9))!.payment).toBeNull();
   });
 
+  const rkOn = () =>
+    robokassa.mockResolvedValue({
+      ready: true,
+      login: "L",
+      pass1: "a",
+      pass2: "b",
+      testMode: false,
+    });
+  const inWork = (over: Record<string, unknown> = {}) =>
+    withOrder({
+      status: "in_production",
+      fulfillment_kind: "physical",
+      total: 10000,
+      paid_amount: 3000,
+      ...over,
+    });
+
+  it("задаток внесён, заказ в работе — «оплатить остаток»: сумма с сервера, карта и реквизиты", async () => {
+    const { ctx } = inWork();
+    rkOn();
+    const v = (await webOrderView(ctx, 9))!;
+    expect(v.payment).toBeNull();
+    expect(v.balance).toMatchObject({
+      due: 7000,
+      paid: 3000,
+      card: true,
+      instructions: "Kaspi: pay.kaspi.kz/pay/xyz",
+    });
+    expect(v.balancePending).toBe(false);
+    const url = new URL((await webCardPaymentUrl(ctx, 9))!);
+    expect(url.searchParams.get("InvId")).toBe("1000000000090000");
+    expect(url.searchParams.get("OutSum")).toBe("7000.00");
+    expect(url.searchParams.get("Description")).toContain("Остаток");
+  });
+
+  it("чек на остаток у продавца — оплатить ещё раз нельзя, на странице «на проверке»", async () => {
+    const { db, ctx } = inWork();
+    rkOn();
+    db.tables.zernio_logs = [
+      {
+        id: "e1",
+        bot_id: BOT,
+        event_id: "order:9:balance_proof:300000:0",
+        event_type: "order.balance_proof",
+        status: "event",
+        payload: { order_id: 9 },
+        created_at: "2026-09-27T07:00:00Z",
+      },
+    ];
+    const v = (await webOrderView(ctx, 9))!;
+    expect(v.balance).toBeNull();
+    expect(v.balancePending).toBe(true);
+    expect(await webCardPaymentUrl(ctx, 9)).toBeNull();
+  });
+
+  it("остатка нет: всё внесено, оплата при получении, цифровой, ещё не принят", async () => {
+    for (const over of [
+      { paid_amount: 10000 },
+      { paid_amount: 0 },
+      { fulfillment_kind: "digital" },
+      { status: "delivered" },
+    ]) {
+      const { ctx } = inWork(over);
+      rkOn();
+      expect((await webOrderView(ctx, 9))!.balance).toBeNull();
+      expect(await webCardPaymentUrl(ctx, 9)).toBeNull();
+    }
+  });
+
+  it("ни карты, ни реквизитов — кнопки нет, остаток платят при получении", async () => {
+    const { db, ctx } = inWork();
+    db.tables.payment_methods = [];
+    expect((await webOrderView(ctx, 9))!.balance).toBeNull();
+  });
+
   it("заказ из бота по этой странице не открывается", async () => {
     const { ctx } = withOrder({ platform: "telegram" });
     expect(await webOrderView(ctx, 9)).toBeNull();

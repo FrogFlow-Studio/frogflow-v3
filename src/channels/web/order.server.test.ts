@@ -15,13 +15,19 @@ const notifyNew = vi.fn();
 const notifyFail = vi.fn();
 const coreDeliver = vi.fn();
 const zernioCopy = vi.fn();
+let current: unknown = null;
+const attachBalance = vi.fn();
+const notifyAdmins = vi.fn();
+vi.mock("@/core/orders/balance", () => ({
+  attachBalanceProof: (...a: unknown[]) => attachBalance(...a),
+}));
 let zernioTarget: unknown = { conversationId: "c", accountId: "a", platform: "instagram" };
 
 vi.mock("@/core/orders/orders", async (orig) => ({
   ...(await orig<typeof import("@/core/orders/orders")>()),
   attachPaymentProof: (...a: unknown[]) => attach(...a),
   markProofVerified: (...a: unknown[]) => markVerified(...a),
-  getOrder: async () => null,
+  getOrder: async () => current,
   deliverOrder: (...a: unknown[]) => coreDeliver(...a),
 }));
 vi.mock("@/channels/zernio/outbound.server", () => ({
@@ -43,6 +49,7 @@ vi.mock("@/core/customers/customers", () => ({
 }));
 vi.mock("@/channels/telegram/notify", () => ({
   adminTelegramApi: () => ({}),
+  notifyAdminsHtml: (...a: unknown[]) => notifyAdmins(...a),
   notifyDeliveryFailure: (...a: unknown[]) => notifyFail(...a),
 }));
 vi.mock("@/channels/telegram/admin-notify", () => ({
@@ -86,14 +93,52 @@ beforeEach(() => {
     notifyFail,
     coreDeliver,
     zernioCopy,
+    attachBalance,
+    notifyAdmins,
   ])
     f.mockReset();
+  current = null;
+  attachBalance.mockResolvedValue(null);
+  notifyAdmins.mockResolvedValue(1);
   zernioCopy.mockResolvedValue("sent");
   attach.mockResolvedValue({ ok: true, order: { ...ORDER }, hash: "h" });
   deliver.mockResolvedValue({ sent: 1, failed: 0, pending: 0 });
   markVerified.mockResolvedValue(true);
   notifyNew.mockResolvedValue(undefined);
   notifyFail.mockResolvedValue(0);
+});
+
+describe("чек на остаток по задатку", () => {
+  const inWork = { ...ORDER, status: "in_production", fulfillment_kind: "physical" };
+
+  it("заказ в работе с остатком — чек на остаток, продавцу сообщение; обычный путь не трогается", async () => {
+    const { ctx } = setup();
+    current = inWork;
+    attachBalance.mockResolvedValue({ ok: true, due: 7000, path: "p" });
+    expect(await receiveWebProof(ctx, 9, file)).toEqual({ ok: true, result: "balance" });
+    expect(attach).not.toHaveBeenCalled();
+    expect(notifyAdmins).toHaveBeenCalledWith(
+      ctx,
+      expect.stringContaining("чек на остаток"),
+      expect.objectContaining({ orderId: 9 }),
+    );
+  });
+
+  it("второй чек на остаток — отказ «уже был», без сообщения продавцу", async () => {
+    const { ctx } = setup();
+    current = inWork;
+    attachBalance.mockResolvedValue({ ok: false, reason: "duplicate" });
+    expect(await receiveWebProof(ctx, 9, file)).toEqual({ ok: false, reason: "duplicate" });
+    expect(notifyAdmins).not.toHaveBeenCalled();
+    expect(attach).not.toHaveBeenCalled();
+  });
+
+  it("остатка нет — обычный чек заказа", async () => {
+    const { ctx } = setup();
+    current = { ...ORDER, status: "awaiting_payment" };
+    await receiveWebProof(ctx, 9, file);
+    expect(attach).toHaveBeenCalled();
+  });
 });
 
 describe("чек с сайта", () => {

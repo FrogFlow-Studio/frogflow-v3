@@ -370,6 +370,19 @@ export type WebOrderView = {
   email: string | null;
   /** Чек загружен — заказ на проверке у продавца по чеку, а не по контактам. */
   proof: boolean;
+  /**
+   * Остаток по задатку (core/orders/balance): задаток внесён, заказ в работе,
+   * покупатель может доплатить сам. null — доплачивать нечего или нечем.
+   */
+  balance: {
+    due: number;
+    paid: number;
+    instructions: string | null;
+    qr: string | null;
+    card: boolean;
+  } | null;
+  /** Чек на остаток прислан и ждёт продавца. */
+  balancePending: boolean;
   /** Покупка подарочного сертификата: номинал, а код — только после выдачи. */
   gift: { amount: number; currency: string; code: string | null } | null;
 };
@@ -401,6 +414,7 @@ export async function webOrderView(
   const method =
     payable && order.country_code ? await paymentMethodFor(ctx, order.country_code) : null;
   const card = payable && (await robokassaFor(ctx)).ready;
+  const { balance, balancePending } = await balanceView(ctx, order);
   return {
     id: order.id,
     no: displayNo(order),
@@ -447,7 +461,35 @@ export async function webOrderView(
     materials: await webOrderMaterials(ctx, order),
     email: order.customer_email,
     proof: Boolean(order.payment_proof_path),
+    balance,
+    balancePending,
     gift: await webOrderGift(ctx, order),
+  };
+}
+
+async function balanceView(
+  ctx: TenantContext,
+  order: OrderWithItems,
+): Promise<Pick<WebOrderView, "balance" | "balancePending">> {
+  const { balanceDue, balanceProofPending } = await import("@/core/orders/balance");
+  const due = balanceDue(order);
+  if (!due) return { balance: null, balancePending: false };
+  if (await balanceProofPending(ctx, order.id, order.paid_amount))
+    return { balance: null, balancePending: true };
+  const [method, rk] = await Promise.all([
+    order.country_code ? paymentMethodFor(ctx, order.country_code) : null,
+    robokassaFor(ctx),
+  ]);
+  if (!method && !rk.ready) return { balance: null, balancePending: false };
+  return {
+    balance: {
+      due,
+      paid: Number(order.paid_amount) || 0,
+      instructions: method?.instructions ?? null,
+      qr: method?.qr_code_path ? imageUrl(ctx, method.qr_code_path) : null,
+      card: rk.ready,
+    },
+    balancePending: false,
   };
 }
 
@@ -477,9 +519,21 @@ export async function webCardPaymentUrl(
   orderId: number,
 ): Promise<string | null> {
   const order = await getOrder(ctx, orderId);
-  if (!order || !PAYABLE.has(order.status) || !(await hasOrderPage(ctx, order))) return null;
+  if (!order || !(await hasOrderPage(ctx, order))) return null;
   const rk = await robokassaFor(ctx);
   if (!rk.ready) return null;
+  if (!PAYABLE.has(order.status)) {
+    // Остаток по задатку: свой InvId, сумма — остаток с сервера.
+    const { claimBalanceInvId, balancePayable } = await import("@/core/orders/balance");
+    const left = await balancePayable(ctx, order);
+    if (!left) return null;
+    return buildPaymentUrl(rk, {
+      outSum: left,
+      invId: await claimBalanceInvId(ctx, order.id, left),
+      description: `Остаток по заказу #${displayNo(order)}`,
+      botId: ctx.tenant.id,
+    });
+  }
   const due = await amountDueNow(ctx, {
     total: Number(order.total),
     fulfillment_kind: order.fulfillment_kind,

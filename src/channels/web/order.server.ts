@@ -3,6 +3,7 @@ import { getCustomer } from "@/core/customers/customers";
 import {
   PROOF_SWAPPED_NOTE,
   attachPaymentProof,
+  displayNo,
   deliverOrder,
   getOrder,
   markProofVerified,
@@ -103,7 +104,9 @@ export type WebProofOutcome =
   /** Чек у продавца на проверке. */
   | { ok: true; result: "review" }
   /** Чек совпал, материалы на странице. */
-  | { ok: true; result: "delivered" };
+  | { ok: true; result: "delivered" }
+  /** Чек на остаток по задатку у продавца на проверке. */
+  | { ok: true; result: "balance" };
 
 /** Чек с сайта: тот же путь, что в Instagram/WhatsApp, без переписки. */
 export async function receiveWebProof(
@@ -120,6 +123,8 @@ export async function receiveWebProof(
         : mime.startsWith("image/")
           ? "jpg"
           : "bin";
+  const balance = await receiveBalanceProof(ctx, orderId, { bytes: file.bytes, mime });
+  if (balance) return balance;
   const res = await attachPaymentProof(ctx, orderId, { bytes: file.bytes, mime, ext });
   if (!res.ok) return { ok: false, reason: res.reason };
 
@@ -174,4 +179,31 @@ export async function receiveWebProof(
   }
   await notifySeller(ctx, res.order);
   return { ok: true, result: "review" };
+}
+
+/**
+ * Чек на остаток по задатку (core/orders/balance): заказ уже в работе, чек
+ * задатка на месте — этот ложится событием заказа, продавец проверяет его и
+ * вносит оплату в карточке заказа. null — у заказа нет остатка к доплате.
+ */
+async function receiveBalanceProof(
+  ctx: TenantContext,
+  orderId: number,
+  file: { bytes: Uint8Array; mime: string },
+): Promise<WebProofOutcome | null> {
+  const order = await getOrder(ctx, orderId);
+  if (!order) return null;
+  const { attachBalanceProof } = await import("@/core/orders/balance");
+  const r = await attachBalanceProof(ctx, order, file);
+  if (!r) return null;
+  if (!r.ok) return { ok: false, reason: r.reason };
+  const { formatMoney } = await import("@/core/money/money");
+  const { escapeHtml } = await import("@/channels/telegram/copy");
+  const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
+  await notifyAdminsHtml(
+    ctx,
+    `🧾 Покупатель прислал чек на остаток ${escapeHtml(formatMoney(r.due, order.currency))} по заказу #${displayNo(order)}. Проверьте чек в карточке заказа и нажмите «Внести оплату».`,
+    { orderId, kind: "proof" },
+  ).catch((e) => console.error(`[web:${ctx.tenant.id}] уведомление о чеке на остаток`, e));
+  return { ok: true, result: "balance" };
 }

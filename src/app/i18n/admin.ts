@@ -201,6 +201,10 @@ const baseRu = {
   "order.discount": "Скидка: {sum}",
   "order.proof": "Чек оплаты",
   "order.openPdf": "Открыть PDF",
+  "order.balanceProof": "Чек на остаток",
+  "order.balanceReject": "Отклонить чек на остаток",
+  "order.balancePendingNote":
+    "Покупатель прислал чек на остаток — проверьте его и внесите оплату или отклоните чек.",
   "order.noProof": "Чек ещё не прислан.",
   "order.history": "История",
   "order.noEvents": "Событий пока нет.",
@@ -493,6 +497,10 @@ const baseKk: Dict = {
   "order.discount": "Жеңілдік: {sum}",
   "order.proof": "Төлем чегі",
   "order.openPdf": "PDF ашу",
+  "order.balanceProof": "Қалған сомаға чек",
+  "order.balanceReject": "Қалған сома чегін қабылдамау",
+  "order.balancePendingNote":
+    "Сатып алушы қалған сомаға чек жіберді — тексеріп, төлемді енгізіңіз немесе чекті қабылдамаңыз.",
   "order.noProof": "Чек әлі жіберілмеген.",
   "order.history": "Тарих",
   "order.noEvents": "Оқиғалар әзірге жоқ.",
@@ -747,6 +755,10 @@ const baseEn: Dict = {
   "order.discount": "Discount: {sum}",
   "order.proof": "Payment receipt",
   "order.openPdf": "Open PDF",
+  "order.balanceProof": "Balance receipt",
+  "order.balanceReject": "Reject balance receipt",
+  "order.balancePendingNote":
+    "The buyer sent a balance receipt — check it and record the payment, or reject the receipt.",
   "order.noProof": "No receipt yet.",
   "order.history": "History",
   "order.noEvents": "No events yet.",
@@ -1006,6 +1018,10 @@ const baseUz: Dict = {
   "order.discount": "Chegirma: {sum}",
   "order.proof": "To‘lov cheki",
   "order.openPdf": "PDF ochish",
+  "order.balanceProof": "Qolgan summa cheki",
+  "order.balanceReject": "Qolgan summa chekini rad etish",
+  "order.balancePendingNote":
+    "Xaridor qolgan summa chekini yubordi — tekshirib, toʻlovni kiriting yoki chekni rad eting.",
   "order.noProof": "Chek hali yuborilmagan.",
   "order.history": "Tarix",
   "order.noEvents": "Hozircha voqealar yo‘q.",

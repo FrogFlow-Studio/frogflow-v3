@@ -37,6 +37,14 @@ vi.mock("@/channels/telegram/notify", () => ({ notifyAdminsHtml }));
 vi.mock("@/app/payments/paid-online.server", () => ({ afterPaidOnline }));
 vi.mock("@/lib/background", () => ({ runInBackground: (task: () => Promise<void>) => task() }));
 vi.mock("@/config/env", () => ({ env: () => ({ SESSION_SECRET: "s".repeat(40) }) }));
+type BalanceRes = Awaited<
+  ReturnType<typeof import("@/core/orders/balance").recordBalancePaidOnline>
+>;
+const recordBalancePaidOnline = vi.fn(async (): Promise<BalanceRes> => ({ result: "recorded" }));
+vi.mock("@/core/orders/balance", async (orig) => ({
+  ...(await orig<typeof import("@/core/orders/balance")>()),
+  recordBalancePaidOnline,
+}));
 vi.mock("@/core/fulfillment/fulfillment", () => ({
   amountDueNow: async (_ctx: unknown, o: { total: number }) => o.total,
 }));
@@ -157,5 +165,97 @@ describe("Robokassa: заказ с сайта", () => {
     expect(afterPaidOnline).not.toHaveBeenCalled();
     expect(notifyAdminsHtml).toHaveBeenCalledTimes(1);
     status = "awaiting_payment";
+  });
+});
+
+describe("Robokassa: оплата остатка по задатку", () => {
+  const INV = "1000000000420001";
+  beforeEach(() => {
+    platform = "web";
+    status = "in_production";
+    markPaidOnline.mockClear();
+    afterPaidOnline.mockClear();
+    notifyAdminsHtml.mockClear();
+    recordBalancePaidOnline.mockClear();
+  });
+
+  it("остаток записан к заказу 42, продавцу — сообщение; заказ не «оплачивается заново»", async () => {
+    expect(await (await callResult("1050.00", INV)).text()).toBe(`OK${INV}`);
+    expect(recordBalancePaidOnline).toHaveBeenCalledWith(
+      expect.anything(),
+      42,
+      1050,
+      "Robokassa",
+      INV,
+    );
+    expect(markPaidOnline).not.toHaveBeenCalled();
+    expect(afterPaidOnline).not.toHaveBeenCalled();
+    expect(notifyAdminsHtml).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining("Остаток"),
+      expect.objectContaining({ orderId: 42 }),
+    );
+  });
+
+  it("повтор колбэка — OK без второго сообщения", async () => {
+    recordBalancePaidOnline.mockResolvedValueOnce({ result: "duplicate" });
+    expect(await (await callResult("1050.00", INV)).text()).toBe(`OK${INV}`);
+    expect(notifyAdminsHtml).not.toHaveBeenCalled();
+  });
+
+  it("переплата — деньги пришли, не записаны: продавцу срочно вернуть разницу", async () => {
+    recordBalancePaidOnline.mockResolvedValueOnce({ result: "refused" });
+    expect(await (await callResult("1050.00", INV)).text()).toBe(`OK${INV}`);
+    expect(notifyAdminsHtml).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining("верните"),
+      expect.objectContaining({ kind: "delivery_failure" }),
+    );
+  });
+
+  it("оплата по отменённому заказу — продавцу: выполнить заказ или вернуть деньги", async () => {
+    recordBalancePaidOnline.mockResolvedValueOnce({ result: "closed" });
+    expect(await (await callResult("1050.00", INV)).text()).toBe(`OK${INV}`);
+    expect(notifyAdminsHtml).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringMatching(/счёт Robokassa №\d+\).*отменённому заказу/),
+      expect.objectContaining({ kind: "delivery_failure" }),
+    );
+  });
+
+  it("чек на остаток ждал продавца — в сообщении: чек не вносить", async () => {
+    recordBalancePaidOnline.mockResolvedValueOnce({ result: "recorded", proofPending: true });
+    await callResult("1050.00", INV);
+    expect(notifyAdminsHtml).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining("в заказ не вносите"),
+      expect.anything(),
+    );
+  });
+
+  it("метка не записалась — 500, Robokassa повторит колбэк", async () => {
+    recordBalancePaidOnline.mockResolvedValueOnce({ result: "retry" });
+    expect((await callResult("1050.00", INV)).status).toBe(500);
+    expect(notifyAdminsHtml).not.toHaveBeenCalled();
+  });
+
+  it("мусорный InvId и нечисловая сумма — 400, ничего не пишем", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect((await callResult("1050.00", "1000000000009999")).status).toBe(400);
+    expect((await callResult("abc", INV)).status).toBe(400);
+    expect(recordBalancePaidOnline).not.toHaveBeenCalled();
+  });
+
+  it("возврат покупателя после оплаты остатка — на страницу того же заказа", async () => {
+    const sig = md5Hex(`1050.00:${INV}:p1:Shp_bot=${BOT}`).toUpperCase();
+    const res = await callReturn("success", {
+      OutSum: "1050.00",
+      InvId: INV,
+      SignatureValue: sig,
+      Shp_bot: BOT,
+    });
+    expect(res.headers.get("location")).toMatch(
+      /^https:\/\/app\.test\/s\/shop\/order\/42\?t=[0-9a-f]{32}$/,
+    );
   });
 });

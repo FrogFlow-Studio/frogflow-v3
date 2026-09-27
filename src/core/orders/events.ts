@@ -26,7 +26,14 @@ export type OrderEventKind =
   | "email_sent"
   | "email_failed"
   | "payment"
-  | "fulfillment_changed";
+  | "fulfillment_changed"
+  | "balance_proof"
+  | "balance_paid"
+  | "balance_overpaid"
+  | "balance_closed"
+  | "balance_credited"
+  | "balance_link"
+  | "balance_proof_rejected";
 
 export type OrderEvent = {
   id: string;
@@ -141,6 +148,38 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       };
     case "fulfillment_changed":
       return { text: `Получение изменено${who}`, tone: "neutral" };
+    case "balance_proof":
+      return {
+        text: `Чек на остаток ${num(p.amount)} — проверьте и внесите оплату`,
+        tone: "warn",
+      };
+    case "balance_proof_rejected":
+      return { text: `Чек на остаток не принят${who}`, tone: "warn" };
+    case "balance_paid":
+      return {
+        text: `Получен платёж за остаток ${num(p.amount)}${p.currency ? ` ${str(p.currency)}` : ""} через ${str(p.provider)}${p.invId ? `, счёт №${str(p.invId)}` : ""}`,
+        tone: "neutral",
+      };
+    case "balance_credited":
+      return {
+        text: `Остаток ${num(p.amount)}${p.currency ? ` ${str(p.currency)}` : ""} внесён в оплату заказа${p.invId ? ` (счёт №${str(p.invId)})` : ""}`,
+        tone: "ok",
+      };
+    case "balance_link":
+      return {
+        text: `Покупателю выдана ссылка на оплату остатка ${num(p.amount)}`,
+        tone: "neutral",
+      };
+    case "balance_closed":
+      return {
+        text: `Оплата ${num(p.amount)} через ${str(p.provider)}${p.invId ? ` (счёт №${str(p.invId)})` : ""} пришла по закрытому заказу — выполните заказ или верните деньги`,
+        tone: "danger",
+      };
+    case "balance_overpaid":
+      return {
+        text: `Оплата ${num(p.amount)} через ${str(p.provider)}${p.invId ? ` (счёт №${str(p.invId)})` : ""} не записана: остаток уже внесён — верните разницу покупателю`,
+        tone: "danger",
+      };
     case "proof":
       return { text: "Чек получен", tone: "neutral" };
     case "delivery_started":

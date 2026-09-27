@@ -54,7 +54,11 @@ async function handle(request: Request, botId: string, action: string): Promise<
   if (!verifyResultSignature({ outSum, invId, signature, pass2: rk.pass2, shp }))
     return new Response("bad sign", { status: 400 });
 
-  const orderId = Number(invId);
+  const { parseRobokassaInvId } = await import("@/core/orders/balance");
+  const inv = parseRobokassaInvId(invId);
+  if (!inv) return new Response("bad request", { status: 400 });
+  if (inv.balance) return balanceResult(ctx, inv.orderId, outSum, invId);
+  const orderId = inv.orderId;
   const { getOrder } = await import("@/core/orders/orders");
   const order = await getOrder(ctx, orderId);
   if (!order) return new Response("order not found", { status: 404 });
@@ -97,6 +101,59 @@ async function handle(request: Request, botId: string, action: string): Promise<
 }
 
 /**
+ * Остаток по задатку оплачен картой (InvId остатка, core/orders/balance).
+ * Сумма не сверяется с «к оплате сейчас»: деньги уже пришли с верной
+ * подписью; записываем их, если не выходит переплаты, иначе — продавцу.
+ */
+async function balanceResult(
+  ctx: import("@/core/tenant/resolve.server").TenantContext,
+  orderId: number,
+  outSum: string,
+  invId: string,
+): Promise<Response> {
+  const paid = Number(outSum);
+  if (!Number.isFinite(paid) || paid <= 0) {
+    console.error(`[robokassa:${ctx.tenant.id}] остаток: сумма ${outSum} по заказу ${orderId}`);
+    return new Response("amount mismatch", { status: 400 });
+  }
+  const { getOrder } = await import("@/core/orders/orders");
+  const order = await getOrder(ctx, orderId);
+  if (!order) return new Response("order not found", { status: 404 });
+  const { recordBalancePaidOnline } = await import("@/core/orders/balance");
+  const { result: r, proofPending } = await recordBalancePaidOnline(
+    ctx,
+    orderId,
+    paid,
+    "Robokassa",
+    invId,
+  );
+  if (r === "not_found") return new Response("order not found", { status: 404 });
+  if (r === "retry") return new Response("retry", { status: 500 });
+  if (r === "recorded" || r === "refused" || r === "closed") {
+    const { formatMoney } = await import("@/core/money/money");
+    const { escapeHtml } = await import("@/channels/telegram/copy");
+    const no = order.display_no ?? order.order_no;
+    const sum = escapeHtml(formatMoney(paid, order.currency));
+    const inv = ` (счёт Robokassa №${escapeHtml(invId)})`;
+    const text =
+      r === "recorded"
+        ? `💳 Остаток ${sum} по заказу #${no} оплачен картой через Robokassa${inv}.`
+        : r === "closed"
+          ? `⚠️ Оплата остатка ${sum} через Robokassa${inv} пришла по отменённому заказу #${no}. Свяжитесь с покупателем: выполнить заказ или вернуть деньги.`
+          : `⚠️ Оплата ${sum} через Robokassa${inv} пришла по заказу #${no}, но остаток уже внесён. Свяжитесь с покупателем и верните разницу.`;
+    const proofNote = proofPending
+      ? "\nПо заказу ждёт чек на остаток: остаток уже оплачен картой. Если перевод по чеку тоже пришёл — верните его, в заказ не вносите."
+      : "";
+    const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
+    await notifyAdminsHtml(ctx, text + proofNote, {
+      orderId,
+      kind: r === "recorded" ? "fulfillment" : "delivery_failure",
+    }).catch((e) => console.error(`[robokassa:${ctx.tenant.id}] уведомление об остатке`, e));
+  }
+  return new Response(`OK${invId}`);
+}
+
+/**
  * Покупатель заказа с сайта возвращается на страницу заказа. После успеха —
  * с подписанной ссылкой, но только если подпись Robokassa (пароль №1) верна;
  * после отказа подписи нет, поэтому — без ссылки: страница возьмёт её из
@@ -109,9 +166,11 @@ async function webOrderReturn(
 ): Promise<string | null> {
   const invId = params.get("InvId") ?? "";
   const slug = ctx.tenant.settings.slug;
-  if (!/^\d{1,12}$/.test(invId) || !slug) return null;
+  const { parseRobokassaInvId } = await import("@/core/orders/balance");
+  const inv = parseRobokassaInvId(invId);
+  if (!inv || !slug) return null;
   const { getOrder } = await import("@/core/orders/orders");
-  const order = await getOrder(ctx, Number(invId));
+  const order = await getOrder(ctx, inv.orderId);
   const { hasOrderPage } = await import("@/core/storefront/web-order");
   if (!order || !(await hasOrderPage(ctx, order))) return null;
   const page = `${ctx.appUrl}/s/${encodeURIComponent(slug)}/order/${order.id}`;

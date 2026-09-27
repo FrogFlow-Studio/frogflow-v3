@@ -6,6 +6,7 @@ import {
   orderFn,
   orderNoteFn,
   recordPaymentFn,
+  rejectBalanceProofFn,
   updateFulfillmentFn,
 } from "@/app/admin/admin.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
@@ -21,7 +22,15 @@ export const Route = createFileRoute("/admin/_authed/orders/$id")({
 });
 
 function OrderPage() {
-  const { order: o, proofUrl, events, zones, dueNow } = Route.useLoaderData();
+  const {
+    order: o,
+    proofUrl,
+    balanceProofUrl,
+    balancePending,
+    events,
+    zones,
+    dueNow,
+  } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const editable = canEdit(shop.role);
@@ -163,7 +172,13 @@ function OrderPage() {
               <FulfillmentEditor order={o} zones={zones} />
             )}
           </Card>
-          {physical && <PaymentCard order={o} dueNow={dueNow} />}
+          {physical && (
+            <PaymentCard
+              order={o}
+              dueNow={dueNow}
+              balanceProofUrl={balancePending ? balanceProofUrl : null}
+            />
+          )}
           <Card title={t("order.items")}>
             <table className="table">
               <tbody>
@@ -218,6 +233,18 @@ function OrderPage() {
               )
             ) : (
               <p className="text-sm text-muted">{t("order.noProof")}</p>
+            )}
+            {balanceProofUrl && (
+              <p className="mt-3 text-sm">
+                <a
+                  className="text-accent hover:underline"
+                  href={balanceProofUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {t("order.balanceProof")}
+                </a>
+              </p>
             )}
           </Card>
           <Card title={t("order.history")}>
@@ -295,7 +322,16 @@ type Order = Awaited<ReturnType<typeof orderFn>>["order"];
 type Zone = { id: string; name: string; price: number };
 
 /** Внесено / осталось по физическому заказу и ручное внесение оплаты. */
-function PaymentCard({ order: o, dueNow }: { order: Order; dueNow: number }) {
+function PaymentCard({
+  order: o,
+  dueNow,
+  balanceProofUrl,
+}: {
+  order: Order;
+  dueNow: number;
+  /** Чек на остаток ждёт проверки (core/orders/balance). */
+  balanceProofUrl: string | null;
+}) {
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const router = useRouter();
@@ -307,9 +343,38 @@ function PaymentCard({ order: o, dueNow }: { order: Order; dueNow: number }) {
     setAmount("");
     await router.invalidate();
   });
+  const rejectBalance = useAction(async () => {
+    await rejectBalanceProofFn({ data: { id: o.id } });
+    await router.invalidate();
+  });
   const closed = o.status === "rejected" || o.status === "cancelled";
   return (
     <Card title={t("physical.payTitle")}>
+      {balanceProofUrl && (
+        <div className="mb-3 space-y-2 rounded-md bg-surface-2 p-3 text-sm">
+          <p>{t("order.balancePendingNote")}</p>
+          <a
+            className="text-accent hover:underline"
+            href={balanceProofUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("order.balanceProof")}
+          </a>
+          {canEdit(shop.role) && (
+            <div>
+              <button
+                className="btn-secondary"
+                disabled={rejectBalance.busy}
+                onClick={() => void rejectBalance.run().catch(() => {})}
+              >
+                {t("order.balanceReject")}
+              </button>
+              <ErrorBox error={rejectBalance.error} />
+            </div>
+          )}
+        </div>
+      )}
       <dl className="grid grid-cols-[120px_1fr] gap-y-1 text-sm">
         <dt className="text-muted">{t("physical.paid")}</dt>
         <dd className="tabular-nums">{formatMoney(paid, o.currency)}</dd>

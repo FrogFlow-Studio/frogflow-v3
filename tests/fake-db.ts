@@ -176,7 +176,7 @@ class Query implements PromiseLike<Result> {
   }
   in(col: string, vs: unknown[]) {
     this.col(col);
-    this.filters.push((r) => vs.includes(r[col]));
+    this.filters.push((r) => vs.includes(pick(r, col)));
     return this;
   }
   /** not(col, "in", "(a,b)"), not(col, "is", null) и not(col, "gt", n) — как ими пользуется код. */
