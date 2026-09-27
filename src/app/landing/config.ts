@@ -7,19 +7,15 @@ import type { LandingKey } from "@/app/i18n/landing";
 import type { Locale } from "@/core/i18n/locale";
 import { moduleDef, type ModuleKey } from "@/core/modules/registry";
 import { planModules } from "@/core/plans/plans";
-import { PLAN_TIERS, type PlanNiche } from "@/core/plans/registry";
+import { CONNECTION_PRICE, MONTHLY_PRICE, PLAN_TIERS, type PlanNiche } from "@/core/plans/registry";
 
 export type PlanKey = "basic" | "pro" | "business";
 
-/** Абонентская плата в месяц, ₸. */
-export const PLAN_PRICES: Record<PlanKey, number> = {
-  basic: 9900,
-  pro: 19900,
-  business: 39900,
-};
+/** Абонентская плата в месяц, ₸: та же, что выставляет оператор (`core/plans/registry`). */
+export const PLAN_PRICES: Record<PlanKey, number> = MONTHLY_PRICE;
 
-/** Разовое подключение «от», ₸. */
-export const SETUP_FEE_FROM = 15000;
+/** Разовое подключение «от», ₸: подключение младшего тарифа. */
+export const SETUP_FEE_FROM = CONNECTION_PRICE.basic;
 
 /** Пробный период, дней: тот же, что выдаёт оператор (`core/plans/registry`). */
 export { TRIAL_DAYS } from "@/core/plans/registry";

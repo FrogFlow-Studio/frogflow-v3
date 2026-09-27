@@ -58,17 +58,31 @@ export async function shopSitemapResponse(request: Request, slug: string): Promi
   return shopXml(t, new URL(request.url).origin);
 }
 
+/** Карта страниц самой платформы (главная и ниши) — только на общем адресе. */
+export const PAGES_SITEMAP = "/sitemap-pages.xml";
+
 /** /sitemap.xml: индекс на общем адресе, карта магазина на его домене. */
 export async function rootSitemapResponse(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const { APP_URL } = env();
   if (isPlatformHost(url.host, APP_URL))
-    return new Response(sitemapIndexXml(platformSitemapLocs(await directory(), APP_URL)), {
-      headers: XML,
-    });
+    return new Response(
+      sitemapIndexXml([
+        `${APP_URL}${PAGES_SITEMAP}`,
+        ...platformSitemapLocs(await directory(), APP_URL),
+      ]),
+      { headers: XML },
+    );
   const shop = shopForHost(await directory(), url.host, APP_URL);
   if (!shop || !storefrontOpen(shop, "catalog")) return notFound();
   return shopXml(shop, url.origin);
+}
+
+/** /sitemap-pages.xml: главная и страницы ниш на всех языках (app/landing/niches). */
+export async function pagesSitemapResponse(request: Request): Promise<Response> {
+  if (!isPlatformHost(new URL(request.url).host, env().APP_URL)) return notFound();
+  const { landingSitemapLocs } = await import("@/app/landing/niches");
+  return new Response(sitemapXml(landingSitemapLocs().map((loc) => ({ loc }))), { headers: XML });
 }
 
 /** /robots.txt */

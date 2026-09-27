@@ -27,6 +27,33 @@ test("главная: страница рисуется, серверная фу
   expect(errors).toEqual([]);
 });
 
+test("страница ниши: свой заголовок и canonical, тарифы ниши, переход с главной", async ({
+  page,
+}) => {
+  const errors = await watch(page);
+  await page.goto("/");
+  await page.getByRole("link", { name: "Для кондитерских" }).first().click();
+  await expect(page).toHaveURL(/\/for\/cakes$/);
+  await expect(page).toHaveTitle(/Бот для кондитерской/);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    "https://www.frogflow.tech/for/cakes",
+  );
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("торты");
+  // Тарифы только этой ниши: без вкладок, со строкой кондитерской.
+  await expect(page.getByRole("tablist")).toHaveCount(0);
+  await expect(page.getByText("Задаток и ручной заказ")).toBeVisible();
+  await page.getByRole("link", { name: "KZ" }).click();
+  await expect(page).toHaveURL(/\/for\/cakes\?lang=kk$/);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    "https://www.frogflow.tech/for/cakes?lang=kk",
+  );
+  const missing = await page.goto("/for/unknown");
+  expect(missing?.status()).toBe(404);
+  expect(errors).toEqual([]);
+});
+
 test("вход продавца: неверный пароль — понятная фраза, а не сырой текст ошибки", async ({
   page,
 }) => {
@@ -169,6 +196,18 @@ test("витрина: разметка товара для поиска уже �
   expect(shopHtml).toMatch(
     new RegExp(`<link rel="canonical" href="https?://[^/]+/s/${F.SHOP_SLUG}"`),
   );
+});
+
+test("карта сайта платформы: в индексе есть карта страниц, в ней главная и ниши", async ({
+  request,
+}) => {
+  const index = await (await request.get("/sitemap.xml")).text();
+  expect(index).toContain("/sitemap-pages.xml</loc>");
+  const pages = await request.get("/sitemap-pages.xml");
+  expect(pages.status()).toBe(200);
+  const xml = await pages.text();
+  expect(xml).toContain("https://www.frogflow.tech/for/cakes</loc>");
+  expect(xml).toContain("https://www.frogflow.tech/?lang=kk</loc>");
 });
 
 test("витрина: вторая страница каталога открывается ссылкой без JS, со своим canonical", async ({

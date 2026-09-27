@@ -14,11 +14,13 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as OperatorRouteImport } from './routes/operator'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SitemapPagesDotxmlRouteImport } from './routes/sitemap-pages[.]xml'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AdminAuthedRouteImport } from './routes/admin._authed'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as ApiClientErrorRouteImport } from './routes/api/client-error'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ForNicheRouteImport } from './routes/for.$niche'
 import { Route as OperatorAuthedRouteImport } from './routes/operator._authed'
 import { Route as OperatorLoginRouteImport } from './routes/operator.login'
 import { Route as SSlugRouteImport } from './routes/s.$slug'
@@ -104,6 +106,11 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapPagesDotxmlRoute = SitemapPagesDotxmlRouteImport.update({
+  id: '/sitemap-pages.xml',
+  path: '/sitemap-pages.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -126,6 +133,11 @@ const ApiClientErrorRoute = ApiClientErrorRouteImport.update({
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForNicheRoute = ForNicheRouteImport.update({
+  id: '/for/$niche',
+  path: '/for/$niche',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OperatorAuthedRoute = OperatorAuthedRouteImport.update({
@@ -432,10 +444,12 @@ export interface FileRoutesByFullPath {
   '/operator': typeof OperatorRouteWithChildren
   '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
+  '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/login': typeof AdminLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
+  '/for/$niche': typeof ForNicheRoute
   '/operator/login': typeof OperatorLoginRoute
   '/s/$slug': typeof SSlugRouteWithChildren
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
@@ -501,10 +515,12 @@ export interface FileRoutesByTo {
   '/operator': typeof OperatorAuthedIndexRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
+  '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/login': typeof AdminLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
+  '/for/$niche': typeof ForNicheRoute
   '/operator/login': typeof OperatorLoginRoute
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
   '/admin/bot-preview': typeof AdminAuthedBotPreviewRoute
@@ -568,11 +584,13 @@ export interface FileRoutesById {
   '/operator': typeof OperatorRouteWithChildren
   '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
+  '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/_authed': typeof AdminAuthedRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
+  '/for/$niche': typeof ForNicheRoute
   '/operator/_authed': typeof OperatorAuthedRouteWithChildren
   '/operator/login': typeof OperatorLoginRoute
   '/s/$slug': typeof SSlugRouteWithChildren
@@ -641,10 +659,12 @@ export interface FileRouteTypes {
     | '/operator'
     | '/robots.txt'
     | '/signup'
+    | '/sitemap-pages.xml'
     | '/sitemap.xml'
     | '/admin/login'
     | '/api/client-error'
     | '/api/health'
+    | '/for/$niche'
     | '/operator/login'
     | '/s/$slug'
     | '/admin/analytics'
@@ -710,10 +730,12 @@ export interface FileRouteTypes {
     | '/operator'
     | '/robots.txt'
     | '/signup'
+    | '/sitemap-pages.xml'
     | '/sitemap.xml'
     | '/admin/login'
     | '/api/client-error'
     | '/api/health'
+    | '/for/$niche'
     | '/operator/login'
     | '/admin/analytics'
     | '/admin/bot-preview'
@@ -776,11 +798,13 @@ export interface FileRouteTypes {
     | '/operator'
     | '/robots.txt'
     | '/signup'
+    | '/sitemap-pages.xml'
     | '/sitemap.xml'
     | '/admin/_authed'
     | '/admin/login'
     | '/api/client-error'
     | '/api/health'
+    | '/for/$niche'
     | '/operator/_authed'
     | '/operator/login'
     | '/s/$slug'
@@ -848,9 +872,11 @@ export interface RootRouteChildren {
   OperatorRoute: typeof OperatorRouteWithChildren
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SignupRoute: typeof SignupRoute
+  SitemapPagesDotxmlRoute: typeof SitemapPagesDotxmlRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiClientErrorRoute: typeof ApiClientErrorRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ForNicheRoute: typeof ForNicheRoute
   SSlugRoute: typeof SSlugRouteWithChildren
   ApiAdminUploadRoute: typeof ApiAdminUploadRoute
   ApiCronJobRoute: typeof ApiCronJobRoute
@@ -902,6 +928,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sitemap-pages.xml': {
+      id: '/sitemap-pages.xml'
+      path: '/sitemap-pages.xml'
+      fullPath: '/sitemap-pages.xml'
+      preLoaderRoute: typeof SitemapPagesDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -935,6 +968,13 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/for/$niche': {
+      id: '/for/$niche'
+      path: '/for/$niche'
+      fullPath: '/for/$niche'
+      preLoaderRoute: typeof ForNicheRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/operator/_authed': {
@@ -1521,9 +1561,11 @@ const rootRouteChildren: RootRouteChildren = {
   OperatorRoute: OperatorRouteWithChildren,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SignupRoute: SignupRoute,
+  SitemapPagesDotxmlRoute: SitemapPagesDotxmlRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiClientErrorRoute: ApiClientErrorRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ForNicheRoute: ForNicheRoute,
   SSlugRoute: SSlugRouteWithChildren,
   ApiAdminUploadRoute: ApiAdminUploadRoute,
   ApiCronJobRoute: ApiCronJobRoute,

@@ -88,7 +88,7 @@ const ru = {
   "steps.3.text": "Вставьте токен из @BotFather. WhatsApp и Instagram подключим вместе с вами.",
   "pricing.title": "Цены",
   "pricing.sub":
-    "Абонентская плата в месяц и разовое подключение. Первые {days} дней бесплатно на любом тарифе.",
+    "Абонентская плата в месяц и разовое подключение. Первые {days} дней бесплатно на тарифе {tier}.",
   "pricing.from": "от {price}",
   "pricing.perMonth": "в месяц",
   "pricing.setup": "Подключение от {price}, разово",
@@ -172,6 +172,84 @@ const ru = {
   "final.login": "У меня уже есть магазин",
   "footer.tagline": "Магазины, ИИ-консультанты и автоматизация в мессенджерах",
   "footer.login": "Вход для продавца",
+  "niche.linksLabel": "Страницы для ниш",
+  "niche.featuresTitle": "Что делает бот",
+  "niche.others": "Другие ниши",
+  "niche.allPlatform": "Все возможности FrogFlow →",
+  "niche.courses.fromTier": "Курсы входят в тарифы с {tier}, без доплаты",
+  "niche.cakes.link": "Для кондитерских",
+  "niche.cakes.title": "Бот для кондитерской: заказы тортов в Telegram — FrogFlow",
+  "niche.cakes.description":
+    "Бот принимает заказы тортов и десертов: дата получения, доставка по зонам или самовывоз, задаток по чеку, напоминание за сутки. {days} дней бесплатно.",
+  "niche.cakes.h1": "Бот для кондитерской, который сам принимает заказы на торты",
+  "niche.cakes.lead":
+    "Покупатель выбирает торт, дату и способ получения, вносит задаток. Вы видите готовый заказ и не теряете его в переписке.",
+  "niche.cakes.f1.title": "Дата и способ получения",
+  "niche.cakes.f1.text":
+    "Покупатель выбирает день, самовывоз или доставку. У каждой зоны доставки своя цена.",
+  "niche.cakes.f2.title": "Задаток и остаток",
+  "niche.cakes.f2.text":
+    "Берёте часть суммы сразу, остаток при получении. Бот считает оба платежа сам.",
+  "niche.cakes.f3.title": "Торты на заказ и готовые десерты",
+  "niche.cakes.f3.text":
+    "У позиции на заказ свой срок изготовления, у готовых десертов учитывается остаток.",
+  "niche.cakes.f4.title": "Напоминание за сутки",
+  "niche.cakes.f4.text": "Бот напоминает вам и покупателю о получении заказа за день.",
+  "niche.cakes.b1": "Заказы теряются в переписке и звонках",
+  "niche.cakes.b2": "Путаница с датами, адресами и задатками",
+  "niche.cakes.b3": "Забываете напомнить клиенту о получении",
+  "niche.cakes.a1": "Покупатель сам выбирает торт, дату и доставку в боте",
+  "niche.cakes.a2": "Задаток и остаток считаются сами, у зон доставки своя цена",
+  "niche.cakes.a3": "Бот напоминает вам и покупателю за сутки",
+  "niche.materials.link": "Для учебных материалов",
+  "niche.materials.title": "Бот для продажи учебных материалов и PDF в Telegram — FrogFlow",
+  "niche.materials.description":
+    "Бот продаёт методички, прописи и дидактику: проверяет чек и сразу отправляет файл, в том числе ночью. Материалы на русском и казахском. {days} дней бесплатно.",
+  "niche.materials.h1": "Бот, который продаёт учебные материалы и сам отправляет файлы",
+  "niche.materials.lead":
+    "Педагоги и родители выбирают материал в каталоге бота, оплачивают и сразу получают файл. Вам не нужно сидеть в личке и проверять чеки ночью.",
+  "niche.materials.f1.title": "Файл сразу после оплаты",
+  "niche.materials.f1.text":
+    "Покупатель получает PDF или архив в бот, как только оплата подтверждена, в любое время суток.",
+  "niche.materials.f2.title": "Автопроверка чеков",
+  "niche.materials.f2.text":
+    "Бот читает чек перевода: сумма сошлась — файлы уходят сразу, вы не проверяете чеки руками.",
+  "niche.materials.f3.title": "Русский и казахский",
+  "niche.materials.f3.text":
+    "У материала может быть отдельная версия файла на каждом языке, покупатель выбирает нужную.",
+  "niche.materials.f4.title": "VIP-подписка",
+  "niche.materials.f4.text":
+    "Платный доступ в закрытый канал или группу: бот выдаёт и отзывает его сам.",
+  "niche.materials.b1": "Отвечаете в личке «сколько стоит» и «как оплатить»",
+  "niche.materials.b2": "Проверяете каждый чек глазами",
+  "niche.materials.b3": "Отправляете файлы вручную, иногда ночью",
+  "niche.materials.a1": "Покупатель сам выбирает материал в каталоге бота",
+  "niche.materials.a2": "Чек проверяется автоматически: сумма и получатель сверяются",
+  "niche.materials.a3": "Файл уходит сразу после оплаты, в том числе ночью",
+  "niche.courses.link": "Для онлайн-курсов",
+  "niche.courses.title": "Продажа онлайн-курсов через Telegram-бота — FrogFlow",
+  "niche.courses.description":
+    "Бот продаёт курс и открывает уроки по расписанию после оплаты: текст, видео и файлы, напоминание о каждом новом уроке.",
+  "niche.courses.h1": "Продавайте курсы через бота: уроки открываются сами после оплаты",
+  "niche.courses.lead":
+    "Ученик оплачивает курс в боте и получает ссылку на страницу курса. Уроки открываются по вашему расписанию, о каждом новом бот напоминает.",
+  "niche.courses.f1.title": "Уроки по расписанию",
+  "niche.courses.f1.text":
+    "По одному раз в несколько дней или все сразу. Отсчёт идёт от начала прохождения, а не от заказа.",
+  "niche.courses.f2.title": "Ссылка на курс после оплаты",
+  "niche.courses.f2.text":
+    "Как только оплата подтверждена, ученик получает ссылку на свой курс вместе с материалами.",
+  "niche.courses.f3.title": "Напоминание о новом уроке",
+  "niche.courses.f3.text": "Когда открывается урок, бот пишет ученику в Telegram.",
+  "niche.courses.f4.title": "Текст, видео и файлы",
+  "niche.courses.f4.text":
+    "В уроке текст, видео ссылкой или файлом и материалы. Ученик отмечает пройденные уроки.",
+  "niche.courses.b1": "Добавляете каждого ученика вручную",
+  "niche.courses.b2": "Рассылаете уроки по датам сами",
+  "niche.courses.b3": "Проверяете оплату каждого, прежде чем дать доступ",
+  "niche.courses.a1": "Доступ к курсу приходит сразу после оплаты",
+  "niche.courses.a2": "Уроки открываются по расписанию без вас",
+  "niche.courses.a3": "Бот сам напоминает ученику о новом уроке",
 } as const;
 
 export type LandingKey = keyof typeof ru;
@@ -264,7 +342,7 @@ const kk: Dict = {
     "@BotFather-дан алынған токенді қойыңыз. WhatsApp пен Instagram-ды сізбен бірге қосамыз.",
   "pricing.title": "Бағалар",
   "pricing.sub":
-    "Айлық абоненттік төлем және бір реттік қосылу. Кез келген тарифте алғашқы {days} күн тегін.",
+    "Айлық абоненттік төлем және бір реттік қосылу. {tier} тарифінде алғашқы {days} күн тегін.",
   "pricing.from": "{price} бастап",
   "pricing.perMonth": "айына",
   "pricing.setup": "Қосылу {price} бастап, бір рет",
@@ -348,6 +426,86 @@ const kk: Dict = {
   "final.login": "Менің дүкенім бар",
   "footer.tagline": "Мессенджерлердегі дүкендер, ЖИ-кеңесшілер және автоматтандыру",
   "footer.login": "Сатушыға кіру",
+  "niche.linksLabel": "Салаларға арналған беттер",
+  "niche.featuresTitle": "Бот не істейді",
+  "niche.others": "Басқа салалар",
+  "niche.allPlatform": "FrogFlow-дың барлық мүмкіндіктері →",
+  "niche.courses.fromTier": "Курстар {tier} тарифінен бастап қосымша төлемсіз кіреді",
+  "niche.cakes.link": "Кондитерлерге",
+  "niche.cakes.title": "Кондитерлікке арналған бот: Telegram-да торт тапсырыстары — FrogFlow",
+  "niche.cakes.description":
+    "Бот торт пен десерт тапсырыстарын қабылдайды: алу күні, аймақ бойынша жеткізу немесе өзі алып кету, чек бойынша алдын ала төлем, бір күн бұрын еске салу. {days} күн тегін.",
+  "niche.cakes.h1": "Торт тапсырыстарын өзі қабылдайтын кондитерлік боты",
+  "niche.cakes.lead":
+    "Сатып алушы тортты, күнді және алу тәсілін таңдап, алдын ала төлем жасайды. Сіз дайын тапсырысты көресіз, ол хат алмасуда жоғалмайды.",
+  "niche.cakes.f1.title": "Алу күні мен тәсілі",
+  "niche.cakes.f1.text":
+    "Сатып алушы күнді, өзі алып кетуді немесе жеткізуді таңдайды. Әр жеткізу аймағының өз бағасы бар.",
+  "niche.cakes.f2.title": "Алдын ала төлем мен қалдық",
+  "niche.cakes.f2.text":
+    "Соманың бір бөлігін бірден, қалғанын алған кезде аласыз. Бот екі төлемді де өзі есептейді.",
+  "niche.cakes.f3.title": "Тапсырыспен торттар және дайын десерттер",
+  "niche.cakes.f3.text":
+    "Тапсырыспен жасалатын позицияның өз дайындау мерзімі бар, дайын десерттердің қалдығы есептеледі.",
+  "niche.cakes.f4.title": "Бір күн бұрын еске салу",
+  "niche.cakes.f4.text":
+    "Бот сізге де, сатып алушыға да тапсырысты алу туралы бір күн бұрын еске салады.",
+  "niche.cakes.b1": "Тапсырыстар хат алмасу мен қоңырауларда жоғалады",
+  "niche.cakes.b2": "Күндер, мекенжайлар және алдын ала төлемдер шатасады",
+  "niche.cakes.b3": "Клиентке алу туралы еске салуды ұмытасыз",
+  "niche.cakes.a1": "Сатып алушы тортты, күнді және жеткізуді боттан өзі таңдайды",
+  "niche.cakes.a2": "Алдын ала төлем мен қалдық өзі есептеледі, жеткізу аймағының өз бағасы бар",
+  "niche.cakes.a3": "Бот сізге және сатып алушыға бір күн бұрын еске салады",
+  "niche.materials.link": "Оқу материалдарына",
+  "niche.materials.title": "Telegram-да оқу материалдары мен PDF сататын бот — FrogFlow",
+  "niche.materials.description":
+    "Бот әдістемелік құралдарды, жазу дәптерлерін және дидактиканы сатады: чекті тексеріп, файлды бірден, түнде де жібереді. Материалдар орыс және қазақ тілдерінде. {days} күн тегін.",
+  "niche.materials.h1": "Оқу материалдарын сатып, файлдарды өзі жіберетін бот",
+  "niche.materials.lead":
+    "Педагогтер мен ата-аналар бот каталогынан материал таңдап, төлейді және файлды бірден алады. Сізге жеке хатта отырып, түнде чек тексерудің қажеті жоқ.",
+  "niche.materials.f1.title": "Төлемнен кейін бірден файл",
+  "niche.materials.f1.text":
+    "Төлем расталған бойда сатып алушы PDF немесе архивті ботқа кез келген уақытта алады.",
+  "niche.materials.f2.title": "Чектерді автотексеру",
+  "niche.materials.f2.text":
+    "Бот аударым чегін оқиды: сома сәйкес келсе, файлдар бірден жіберіледі, чектерді қолмен тексермейсіз.",
+  "niche.materials.f3.title": "Орыс және қазақ тілдері",
+  "niche.materials.f3.text":
+    "Материалдың әр тілде жеке файл нұсқасы болуы мүмкін, сатып алушы керегін таңдайды.",
+  "niche.materials.f4.title": "VIP-жазылым",
+  "niche.materials.f4.text":
+    "Жабық арнаға немесе топқа ақылы кіру: бот оны өзі береді және өзі жабады.",
+  "niche.materials.b1":
+    "Жеке хатта «қанша тұрады» және «қалай төлеймін» деген сұрақтарға жауап бересіз",
+  "niche.materials.b2": "Әр чекті көзбен тексересіз",
+  "niche.materials.b3": "Файлдарды қолмен, кейде түнде жібересіз",
+  "niche.materials.a1": "Сатып алушы материалды бот каталогынан өзі таңдайды",
+  "niche.materials.a2": "Чек автоматты тексеріледі: сома мен алушы салыстырылады",
+  "niche.materials.a3": "Файл төлемнен кейін бірден, түнде де жіберіледі",
+  "niche.courses.link": "Онлайн-курстарға",
+  "niche.courses.title": "Telegram-бот арқылы онлайн-курстар сату — FrogFlow",
+  "niche.courses.description":
+    "Бот курсты сатады және төлемнен кейін сабақтарды кесте бойынша ашады: мәтін, бейне және файлдар, әр жаңа сабақ туралы еске салу.",
+  "niche.courses.h1": "Курстарды бот арқылы сатыңыз: сабақтар төлемнен кейін өзі ашылады",
+  "niche.courses.lead":
+    "Оқушы курсқа ботта төлейді және курс бетіне сілтеме алады. Сабақтар сіздің кестеңіз бойынша ашылады, әр жаңасы туралы бот еске салады.",
+  "niche.courses.f1.title": "Кесте бойынша сабақтар",
+  "niche.courses.f1.text":
+    "Бірнеше күнде біреуден немесе бәрі бірден. Санақ тапсырыстан емес, оқуды бастаған сәттен жүреді.",
+  "niche.courses.f2.title": "Төлемнен кейін курс сілтемесі",
+  "niche.courses.f2.text":
+    "Төлем расталған бойда оқушы өз курсына сілтемені материалдармен бірге алады.",
+  "niche.courses.f3.title": "Жаңа сабақ туралы еске салу",
+  "niche.courses.f3.text": "Сабақ ашылғанда бот оқушыға Telegram-да жазады.",
+  "niche.courses.f4.title": "Мәтін, бейне және файлдар",
+  "niche.courses.f4.text":
+    "Сабақта мәтін, сілтеме немесе файл түріндегі бейне және материалдар бар. Оқушы өткен сабақтарын белгілейді.",
+  "niche.courses.b1": "Әр оқушыны қолмен қосасыз",
+  "niche.courses.b2": "Сабақтарды күн сайын өзіңіз жібересіз",
+  "niche.courses.b3": "Кіруге рұқсат бермес бұрын әркімнің төлемін тексересіз",
+  "niche.courses.a1": "Курсқа кіру төлемнен кейін бірден келеді",
+  "niche.courses.a2": "Сабақтар сізсіз кесте бойынша ашылады",
+  "niche.courses.a3": "Бот оқушыға жаңа сабақ туралы өзі еске салады",
 };
 
 const en: Dict = {
@@ -433,7 +591,8 @@ const en: Dict = {
   "steps.3.text":
     "Paste the token from @BotFather. We connect WhatsApp and Instagram together with you.",
   "pricing.title": "Pricing",
-  "pricing.sub": "A monthly fee and a one-time setup. The first {days} days are free on any plan.",
+  "pricing.sub":
+    "A monthly fee and a one-time setup. The first {days} days are free on the {tier} plan.",
   "pricing.from": "from {price}",
   "pricing.perMonth": "per month",
   "pricing.setup": "Setup from {price}, one time",
@@ -517,6 +676,86 @@ const en: Dict = {
   "final.login": "I already have a shop",
   "footer.tagline": "Shops, AI consultants and automation in messengers",
   "footer.login": "Seller login",
+  "niche.linksLabel": "Pages by business type",
+  "niche.featuresTitle": "What the bot does",
+  "niche.others": "Other business types",
+  "niche.allPlatform": "Everything FrogFlow does →",
+  "niche.courses.fromTier": "Courses are included from the {tier} plan at no extra cost",
+  "niche.cakes.link": "For bakeries",
+  "niche.cakes.title": "Bakery bot: cake orders in Telegram — FrogFlow",
+  "niche.cakes.description":
+    "The bot takes cake and dessert orders: pickup date, delivery by zone or self-pickup, deposit by receipt, a reminder a day ahead. {days} days free.",
+  "niche.cakes.h1": "A bakery bot that takes cake orders by itself",
+  "niche.cakes.lead":
+    "The customer picks a cake, a date and how to receive it, and pays a deposit. You see a complete order instead of losing it in chats.",
+  "niche.cakes.f1.title": "Date and way of receiving",
+  "niche.cakes.f1.text":
+    "The customer picks a day, self-pickup or delivery. Each delivery zone has its own price.",
+  "niche.cakes.f2.title": "Deposit and balance",
+  "niche.cakes.f2.text":
+    "Take part of the amount up front and the rest on pickup. The bot works out both payments.",
+  "niche.cakes.f3.title": "Made-to-order cakes and ready desserts",
+  "niche.cakes.f3.text":
+    "Made-to-order items have their own lead time; ready desserts are tracked by stock.",
+  "niche.cakes.f4.title": "A reminder a day ahead",
+  "niche.cakes.f4.text":
+    "The bot reminds you and the customer about the order a day before pickup.",
+  "niche.cakes.b1": "Orders get lost in chats and calls",
+  "niche.cakes.b2": "Dates, addresses and deposits get mixed up",
+  "niche.cakes.b3": "You forget to remind the customer about pickup",
+  "niche.cakes.a1": "The customer picks the cake, date and delivery in the bot",
+  "niche.cakes.a2":
+    "Deposit and balance are calculated automatically, each delivery zone has its price",
+  "niche.cakes.a3": "The bot reminds you and the customer a day ahead",
+  "niche.materials.link": "For learning materials",
+  "niche.materials.title": "A Telegram bot for selling learning materials and PDFs — FrogFlow",
+  "niche.materials.description":
+    "The bot sells worksheets, handwriting books and teaching aids: it checks the receipt and sends the file right away, even at night. Materials in Russian and Kazakh. {days} days free.",
+  "niche.materials.h1": "A bot that sells learning materials and sends the files itself",
+  "niche.materials.lead":
+    "Teachers and parents pick a material in the bot catalog, pay and get the file right away. No more answering DMs and checking receipts at night.",
+  "niche.materials.f1.title": "The file right after payment",
+  "niche.materials.f1.text":
+    "The customer gets the PDF or archive in the bot as soon as payment is confirmed, any time of day.",
+  "niche.materials.f2.title": "Automatic receipt checks",
+  "niche.materials.f2.text":
+    "The bot reads the transfer receipt: if the amount matches, the files go out at once and you don't check receipts by hand.",
+  "niche.materials.f3.title": "Russian and Kazakh",
+  "niche.materials.f3.text":
+    "A material can have a separate file in each language, and the customer picks the one they need.",
+  "niche.materials.f4.title": "VIP subscription",
+  "niche.materials.f4.text":
+    "Paid access to a private channel or group: the bot grants and revokes it by itself.",
+  "niche.materials.b1": "You answer “how much” and “how do I pay” in DMs",
+  "niche.materials.b2": "You check every receipt by eye",
+  "niche.materials.b3": "You send files by hand, sometimes at night",
+  "niche.materials.a1": "The customer picks a material in the bot catalog",
+  "niche.materials.a2": "Receipts are checked automatically: amount and recipient are matched",
+  "niche.materials.a3": "The file goes out right after payment, even at night",
+  "niche.courses.link": "For online courses",
+  "niche.courses.title": "Sell online courses with a Telegram bot — FrogFlow",
+  "niche.courses.description":
+    "The bot sells a course and opens lessons on a schedule after payment: text, video and files, with a reminder for every new lesson.",
+  "niche.courses.h1": "Sell courses through a bot: lessons open by themselves after payment",
+  "niche.courses.lead":
+    "The student pays for the course in the bot and gets a link to the course page. Lessons open on your schedule, and the bot reminds about each new one.",
+  "niche.courses.f1.title": "Lessons on a schedule",
+  "niche.courses.f1.text":
+    "One every few days or all at once. The countdown starts when the student begins, not when they order.",
+  "niche.courses.f2.title": "Course link after payment",
+  "niche.courses.f2.text":
+    "As soon as payment is confirmed, the student gets a link to their course along with the materials.",
+  "niche.courses.f3.title": "New lesson reminders",
+  "niche.courses.f3.text": "When a lesson opens, the bot messages the student in Telegram.",
+  "niche.courses.f4.title": "Text, video and files",
+  "niche.courses.f4.text":
+    "A lesson holds text, video as a link or file, and materials. Students mark lessons as done.",
+  "niche.courses.b1": "You add every student by hand",
+  "niche.courses.b2": "You send lessons out by date yourself",
+  "niche.courses.b3": "You check each payment before granting access",
+  "niche.courses.a1": "Course access arrives right after payment",
+  "niche.courses.a2": "Lessons open on schedule without you",
+  "niche.courses.a3": "The bot reminds the student about each new lesson",
 };
 
 const uz: Dict = {
@@ -605,7 +844,7 @@ const uz: Dict = {
   "steps.3.text": "@BotFather tokenini qo‘ying. WhatsApp va Instagramni siz bilan birga ulaymiz.",
   "pricing.title": "Narxlar",
   "pricing.sub":
-    "Oylik abonent to‘lovi va bir martalik ulanish. Istalgan tarifda dastlabki {days} kun bepul.",
+    "Oylik abonent to‘lovi va bir martalik ulanish. {tier} tarifida dastlabki {days} kun bepul.",
   "pricing.from": "{price} dan",
   "pricing.perMonth": "oyiga",
   "pricing.setup": "Ulanish {price} dan, bir marta",
@@ -689,6 +928,87 @@ const uz: Dict = {
   "final.login": "Menda do‘kon bor",
   "footer.tagline": "Messenjerlardagi do‘konlar, AI-maslahatchilar va avtomatlashtirish",
   "footer.login": "Sotuvchi uchun kirish",
+  "niche.linksLabel": "Sohalar uchun sahifalar",
+  "niche.featuresTitle": "Bot nima qiladi",
+  "niche.others": "Boshqa sohalar",
+  "niche.allPlatform": "FrogFlow’ning barcha imkoniyatlari →",
+  "niche.courses.fromTier": "Kurslar {tier} tarifidan boshlab qo‘shimcha to‘lovsiz kiradi",
+  "niche.cakes.link": "Qandolatchilar uchun",
+  "niche.cakes.title": "Qandolatchilik uchun bot: Telegram’da tort buyurtmalari — FrogFlow",
+  "niche.cakes.description":
+    "Bot tort va desert buyurtmalarini qabul qiladi: olish sanasi, hududlar bo‘yicha yetkazish yoki olib ketish, chek bo‘yicha oldindan to‘lov, bir kun oldin eslatma. {days} kun bepul.",
+  "niche.cakes.h1": "Tort buyurtmalarini o‘zi qabul qiladigan qandolatchilik boti",
+  "niche.cakes.lead":
+    "Xaridor tort, sana va olish usulini tanlab, oldindan to‘lov qiladi. Siz tayyor buyurtmani ko‘rasiz, u yozishmalarda yo‘qolmaydi.",
+  "niche.cakes.f1.title": "Olish sanasi va usuli",
+  "niche.cakes.f1.text":
+    "Xaridor kunni, olib ketish yoki yetkazishni tanlaydi. Har bir yetkazish hududining o‘z narxi bor.",
+  "niche.cakes.f2.title": "Oldindan to‘lov va qoldiq",
+  "niche.cakes.f2.text":
+    "Summaning bir qismini darhol, qolganini olishda olasiz. Bot ikkala to‘lovni ham o‘zi hisoblaydi.",
+  "niche.cakes.f3.title": "Buyurtma tortlar va tayyor desertlar",
+  "niche.cakes.f3.text":
+    "Buyurtma asosidagi mahsulotning o‘z tayyorlash muddati bor, tayyor desertlar qoldig‘i hisobga olinadi.",
+  "niche.cakes.f4.title": "Bir kun oldin eslatma",
+  "niche.cakes.f4.text":
+    "Bot sizga ham, xaridorga ham buyurtmani olish haqida bir kun oldin eslatadi.",
+  "niche.cakes.b1": "Buyurtmalar yozishma va qo‘ng‘iroqlarda yo‘qoladi",
+  "niche.cakes.b2": "Sanalar, manzillar va oldindan to‘lovlar chalkashadi",
+  "niche.cakes.b3": "Mijozga olish haqida eslatishni unutasiz",
+  "niche.cakes.a1": "Xaridor tort, sana va yetkazishni botda o‘zi tanlaydi",
+  "niche.cakes.a2":
+    "Oldindan to‘lov va qoldiq o‘zi hisoblanadi, yetkazish hududining o‘z narxi bor",
+  "niche.cakes.a3": "Bot sizga va xaridorga bir kun oldin eslatadi",
+  "niche.materials.link": "O‘quv materiallari uchun",
+  "niche.materials.title": "Telegram’da o‘quv materiallari va PDF sotadigan bot — FrogFlow",
+  "niche.materials.description":
+    "Bot metodik qo‘llanmalar, husnixat daftarlari va didaktikani sotadi: chekni tekshirib, faylni darhol, tunda ham yuboradi. Materiallar rus va qozoq tillarida. {days} kun bepul.",
+  "niche.materials.h1": "O‘quv materiallarini sotib, fayllarni o‘zi yuboradigan bot",
+  "niche.materials.lead":
+    "O‘qituvchilar va ota-onalar bot katalogidan material tanlab, to‘laydi va faylni darhol oladi. Sizga shaxsiy xabarlarda o‘tirib, tunda chek tekshirish kerak emas.",
+  "niche.materials.f1.title": "To‘lovdan keyin darhol fayl",
+  "niche.materials.f1.text":
+    "To‘lov tasdiqlanishi bilan xaridor PDF yoki arxivni botda kunning istalgan vaqtida oladi.",
+  "niche.materials.f2.title": "Cheklarni avtomatik tekshirish",
+  "niche.materials.f2.text":
+    "Bot o‘tkazma chekini o‘qiydi: summa mos kelsa, fayllar darhol yuboriladi, cheklarni qo‘lda tekshirmaysiz.",
+  "niche.materials.f3.title": "Rus va qozoq tillari",
+  "niche.materials.f3.text":
+    "Materialning har bir tilda alohida fayli bo‘lishi mumkin, xaridor keraklisini tanlaydi.",
+  "niche.materials.f4.title": "VIP-obuna",
+  "niche.materials.f4.text":
+    "Yopiq kanal yoki guruhga pullik kirish: bot uni o‘zi beradi va o‘zi yopadi.",
+  "niche.materials.b1":
+    "Shaxsiy xabarlarda «qancha turadi» va «qanday to‘layman» savollariga javob berasiz",
+  "niche.materials.b2": "Har bir chekni ko‘z bilan tekshirasiz",
+  "niche.materials.b3": "Fayllarni qo‘lda, ba’zan tunda yuborasiz",
+  "niche.materials.a1": "Xaridor materialni bot katalogidan o‘zi tanlaydi",
+  "niche.materials.a2": "Chek avtomatik tekshiriladi: summa va oluvchi solishtiriladi",
+  "niche.materials.a3": "Fayl to‘lovdan keyin darhol, tunda ham yuboriladi",
+  "niche.courses.link": "Onlayn kurslar uchun",
+  "niche.courses.title": "Telegram-bot orqali onlayn kurslar sotish — FrogFlow",
+  "niche.courses.description":
+    "Bot kursni sotadi va to‘lovdan keyin darslarni jadval bo‘yicha ochadi: matn, video va fayllar, har bir yangi dars haqida eslatma.",
+  "niche.courses.h1": "Kurslarni bot orqali soting: darslar to‘lovdan keyin o‘zi ochiladi",
+  "niche.courses.lead":
+    "O‘quvchi kurs uchun botda to‘laydi va kurs sahifasiga havola oladi. Darslar sizning jadvalingiz bo‘yicha ochiladi, har bir yangisi haqida bot eslatadi.",
+  "niche.courses.f1.title": "Jadval bo‘yicha darslar",
+  "niche.courses.f1.text":
+    "Bir necha kunda bittadan yoki hammasi birdan. Hisob buyurtmadan emas, o‘qishni boshlagan paytdan boshlanadi.",
+  "niche.courses.f2.title": "To‘lovdan keyin kurs havolasi",
+  "niche.courses.f2.text":
+    "To‘lov tasdiqlanishi bilan o‘quvchi o‘z kursiga havolani materiallar bilan birga oladi.",
+  "niche.courses.f3.title": "Yangi dars haqida eslatma",
+  "niche.courses.f3.text": "Dars ochilganda bot o‘quvchiga Telegram’da yozadi.",
+  "niche.courses.f4.title": "Matn, video va fayllar",
+  "niche.courses.f4.text":
+    "Darsda matn, havola yoki fayl ko‘rinishidagi video va materiallar bor. O‘quvchi o‘tilgan darslarni belgilaydi.",
+  "niche.courses.b1": "Har bir o‘quvchini qo‘lda qo‘shasiz",
+  "niche.courses.b2": "Darslarni sanalar bo‘yicha o‘zingiz yuborasiz",
+  "niche.courses.b3": "Kirish berishdan oldin har birining to‘lovini tekshirasiz",
+  "niche.courses.a1": "Kursga kirish to‘lovdan keyin darhol keladi",
+  "niche.courses.a2": "Darslar sizsiz jadval bo‘yicha ochiladi",
+  "niche.courses.a3": "Bot o‘quvchiga yangi dars haqida o‘zi eslatadi",
 };
 
 const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };
