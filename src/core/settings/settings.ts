@@ -114,12 +114,16 @@ export async function updateSettingAtomic(
     if (!found.data) {
       const { error } = await ctx.db
         .from("app_settings")
-        .insert({ bot_id: ctx.tenant.id, key, value });
+        .insert({ bot_id: ctx.tenant.id, key, value, updated_at: new Date().toISOString() });
       if (!error) return "written";
       if (error.code !== "23505") return failed(ctx, key, error.message);
       continue;
     }
-    const q = ctx.db.from("app_settings").update({ value }).eq("key", key);
+    const q = ctx.db
+      .from("app_settings")
+      // Дата записи — по ней ночная уборка находит старые счётчики (core/retention).
+      .update({ value, updated_at: new Date().toISOString() })
+      .eq("key", key);
     const { data, error } = await (raw == null ? q.is("value", null) : q.eq("value", raw)).select(
       "key",
     );

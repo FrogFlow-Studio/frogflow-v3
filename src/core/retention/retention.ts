@@ -1,5 +1,6 @@
 import { serviceDb } from "@/core/db/client.server";
 import { servedByV2 } from "@/core/tenant/directory";
+import { RECEIPT_CHECKS_PREFIX, receiptChecksDay } from "@/core/receipts/attempts";
 
 /**
  * Ретеншн журналов — один проход на всех клиентов (serviceDb, правило 4).
@@ -26,6 +27,12 @@ export const RETENTION = {
   /** Получатели рассылок — по дате самой кампании: своей даты у строки нет. */
   broadcastRecipientsDays: 90,
   healthSnapshotsDays: 30,
+  /**
+   * Счётчики автопроверок чека покупателя (core/receipts/attempts). Дневной
+   * лимит живёт сутки, лимит заказа — пока жив заказ: неделя, как у v1 для
+   * неоплаченных заказов без чека.
+   */
+  receiptChecksDays: 7,
 } as const;
 
 export const BATCH = 2000;
@@ -172,6 +179,50 @@ export async function pruneSignupChallenges(now = Date.now()): Promise<PruneResu
   return { deleted: keys.length, done: rows.length < BATCH || keys.length === 0 };
 }
 
+/**
+ * Счётчики автопроверок чека — строки app_settings `receipt_checks:<покупатель>`
+ * по одной на покупателя, приславшего чек. Таблица общая с настройками
+ * магазина (и с v1), поэтому, как у броней регистрации, удаляем строго по
+ * префиксу: LIKE сверяется ещё раз `startsWith`, а удаляется только строка,
+ * значение которой — счётчик с днём старше окна. Только клиенты v2.
+ */
+export async function pruneReceiptChecks(now = Date.now(), scope?: Scope): Promise<PruneResult> {
+  if (scope && scope.length === 0) return none;
+  const db = serviceDb();
+  let q = db
+    .from("app_settings")
+    .select("bot_id, key, value")
+    .like("key", `${RECEIPT_CHECKS_PREFIX}%`)
+    // Дата записи счётчика (updateSettingAtomic ставит её сама): свежие строки
+    // в выборку не попадают и не заслоняют старые, сколько бы их ни было.
+    .lt("updated_at", cutoff(RETENTION.receiptChecksDays, now));
+  if (scope) q = q.in("bot_id", [...scope]);
+  const { data, error } = await q.order("updated_at", { ascending: true }).limit(BATCH);
+  if (error) throw new Error(`app_settings: ${error.message}`);
+  const rows = data ?? [];
+  const lastDay = cutoff(RETENTION.receiptChecksDays, now).slice(0, 10);
+  const byBot = new Map<string, string[]>();
+  for (const r of rows) {
+    if (!r.bot_id || !r.key.startsWith(RECEIPT_CHECKS_PREFIX)) continue;
+    const day = receiptChecksDay(r.value);
+    if (!day || day >= lastDay) continue;
+    byBot.set(r.bot_id, [...(byBot.get(r.bot_id) ?? []), r.key]);
+  }
+  let deleted = 0;
+  for (const [botId, keys] of byBot)
+    for (let i = 0; i < keys.length; i += DELETE_CHUNK) {
+      const { error: e2 } = await db
+        .from("app_settings")
+        .delete()
+        .eq("bot_id", botId)
+        .in("key", keys.slice(i, i + DELETE_CHUNK));
+      if (e2) throw new Error(`app_settings: ${e2.message}`);
+      deleted += Math.min(DELETE_CHUNK, keys.length - i);
+    }
+  // Полная порция свежих счётчиков — дальше не продвинемся, остаток в следующий раз.
+  return { deleted, done: rows.length < BATCH || deleted === 0 };
+}
+
 export async function pruneBroadcastRecipients(
   now = Date.now(),
   scope?: Scope,
@@ -226,6 +277,7 @@ export async function runRetention(
     broadcast_recipients: (n) => pruneBroadcastRecipients(n, s),
     // Платформенные брони регистрации, без bot_id: границы клиентов к ним не относятся.
     signup_challenges: pruneSignupChallenges,
+    receipt_checks: (n) => pruneReceiptChecks(n, s),
     // Копии PDF со знаком (core/delivery) — только клиенты v2 и только `<клиент>/wm/`.
     watermark_copies: async (n) =>
       (await import("@/core/delivery/watermark.server")).pruneStampedCopies(s ?? [], n),

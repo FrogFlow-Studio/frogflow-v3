@@ -1,14 +1,15 @@
 import { env } from "@/config/env";
 import { proofHashes } from "@/core/orders/proof-hash";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { setState, type Customer } from "@/core/customers/customers";
+import type { Customer } from "@/core/customers/customers";
 import {
   RECEIPT_CHECKS_PER_DAY,
   RECEIPT_CHECKS_PER_ORDER,
   receiptCheckBlocked,
+  receiptChecksKey,
   withReceiptCheck,
 } from "./attempts";
-import { getSetting, trySetSetting } from "@/core/settings/settings";
+import { getSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { convertForReceipt } from "@/core/pricing/pricing";
 import {
   analyzeReceiptText,
@@ -71,13 +72,12 @@ export function parseUsage(
   }
 }
 
+/** Прибавка атомарная: альбом из нескольких фото не теряет вызовы в месячном счётчике. */
 async function recordVisionCall(ctx: TenantContext): Promise<void> {
-  const u = parseUsage(await getSetting(ctx, OCR_USAGE_KEY));
-  await trySetSetting(
-    ctx,
-    OCR_USAGE_KEY,
-    JSON.stringify({ ...u, count: u.count + 1, monthCount: u.monthCount + 1 }),
-  );
+  await updateSettingAtomic(ctx, OCR_USAGE_KEY, (raw) => {
+    const u = parseUsage(raw);
+    return JSON.stringify({ ...u, count: u.count + 1, monthCount: u.monthCount + 1 });
+  });
 }
 
 type VisionPage = {
@@ -258,8 +258,9 @@ export async function verifyReceipt(
 
 /**
  * Проверка чека покупателя с его лимитом: сверх лимита Vision не зовём, чек
- * уходит продавцу. Попытку записываем до вызова — параллельные файлы не
- * проскочат мимо счётчика целой пачкой.
+ * уходит продавцу. Попытка записывается до вызова одной атомарной записью
+ * (сравнение и замена): альбом из десяти фото — десять параллельных
+ * обработчиков — не проскочит мимо счётчика.
  */
 export async function verifyCustomerReceipt(
   ctx: TenantContext,
@@ -267,8 +268,21 @@ export async function verifyCustomerReceipt(
   p: Parameters<typeof verifyReceipt>[1],
   now = new Date(),
 ): Promise<{ result: VerifyResult; customer: Customer }> {
-  const blocked = receiptCheckBlocked(customer.state, p.orderId, now);
-  if (blocked)
+  let blocked: "order" | "day" | null = null;
+  const written = await updateSettingAtomic(ctx, receiptChecksKey(customer.userKey), (raw) => {
+    blocked = receiptCheckBlocked(raw, p.orderId, now);
+    return blocked ? null : withReceiptCheck(raw, p.orderId, now);
+  });
+  if (written === "failed")
+    return {
+      customer,
+      result: {
+        ok: false,
+        reason: "ocr_unavailable",
+        detail: "Счётчик автопроверок не записался — чек посмотрит продавец.",
+      },
+    };
+  if (written === "skipped")
     return {
       customer,
       result: {
@@ -280,6 +294,5 @@ export async function verifyCustomerReceipt(
             : `Покупатель исчерпал ${RECEIPT_CHECKS_PER_DAY} автопроверок чека за сутки.`,
       },
     };
-  const next = await setState(ctx, customer, withReceiptCheck(customer.state, p.orderId, now));
-  return { customer: next, result: await verifyReceipt(ctx, p) };
+  return { customer, result: await verifyReceipt(ctx, p) };
 }

@@ -7,19 +7,20 @@ import { setFxProvider, resetPricingCache, defaultFxProvider } from "@/core/pric
 import { isRetryReason } from "./pure";
 import {
   OCR_AUTO_KEY,
+  OCR_USAGE_KEY,
   parseUsage,
   receiptOcrAutoEnabled,
   verifyCustomerReceipt,
   verifyReceipt,
 } from "./verify.server";
-import { RECEIPT_CHECKS_PER_ORDER } from "./attempts";
+import { RECEIPT_CHECKS_PER_ORDER, receiptChecksKey } from "./attempts";
 import type { Customer } from "@/core/customers/customers";
 
 const BOT = "00000000-0000-0000-0000-000000000001";
 const sha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
 
 function setup(opts: { ocrModule?: boolean; auto?: string } = {}) {
-  const db: FakeDb = fakeDb();
+  const db: FakeDb = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
   db.tables.app_settings =
     opts.auto === undefined ? [] : [{ bot_id: BOT, key: OCR_AUTO_KEY, value: opts.auto }];
   db.tables.orders = [];
@@ -294,7 +295,6 @@ describe("verifyCustomerReceipt — лимит проверок на покуп�
 
   it("«не чек» по кругу: сверх лимита заказа Vision не зовём, чек уходит продавцу", async () => {
     const { db, ctx } = setup();
-    db.tables.bot_users = [{ bot_id: BOT, user_key: "tg_1", state: {} }];
     const fetchMock = mockVision("котик на диване");
     let customer = buyer();
     for (let i = 0; i < RECEIPT_CHECKS_PER_ORDER; i++) {
@@ -308,15 +308,33 @@ describe("verifyCustomerReceipt — лимит проверок на покуп�
     expect(fetchMock).toHaveBeenCalledTimes(RECEIPT_CHECKS_PER_ORDER);
     expect(over.result).toMatchObject({ ok: false, reason: "check_limit" });
     if (!over.result.ok) expect(isRetryReason(over.result.reason)).toBe(false);
-    // Счётчик живёт в bot_users.state — переживает перезапуск и смену режима диалога.
-    expect(db.tables.bot_users![0]!.state).toMatchObject({
-      receipt_checks: { order_id: base.orderId, order_n: RECEIPT_CHECKS_PER_ORDER },
+    // Счётчик — своя строка app_settings покупателя: её не затрёт запись состояния диалога.
+    const row = db.tables.app_settings!.find((r) => r.key === receiptChecksKey("tg_1"));
+    expect(JSON.parse(String(row!.value))).toMatchObject({
+      order_id: base.orderId,
+      order_n: RECEIPT_CHECKS_PER_ORDER,
     });
   });
 
-  it("настоящий чек в пределах лимита проходит как раньше", async () => {
+  it("альбом из 10 фото разом: Vision вызван не больше лимита заказа, счётчик учёл каждое", async () => {
     const { db, ctx } = setup();
-    db.tables.bot_users = [{ bot_id: BOT, user_key: "tg_1", state: {} }];
+    const fetchMock = mockVision("котик на диване");
+    const results = await Promise.all(
+      Array.from({ length: 10 }, () => verifyCustomerReceipt(ctx, buyer(), base)),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(RECEIPT_CHECKS_PER_ORDER);
+    expect(results.filter((r) => !r.result.ok && r.result.reason === "check_limit")).toHaveLength(
+      10 - RECEIPT_CHECKS_PER_ORDER,
+    );
+    const row = db.tables.app_settings!.find((r) => r.key === receiptChecksKey("tg_1"));
+    expect(JSON.parse(String(row!.value)).order_n).toBe(RECEIPT_CHECKS_PER_ORDER);
+    // Месячный счётчик магазина тоже не теряет параллельные вызовы.
+    const usage = db.tables.app_settings!.find((r) => r.key === OCR_USAGE_KEY);
+    expect(parseUsage(String(usage!.value)).monthCount).toBe(RECEIPT_CHECKS_PER_ORDER);
+  });
+
+  it("настоящий чек в пределах лимита проходит как раньше", async () => {
+    const { ctx } = setup();
     mockVision("Kaspi Перевод успешно выполнен\nСумма 1 000 ₸\nКвитанция № 123");
     const r = await verifyCustomerReceipt(ctx, buyer(), base);
     expect(r.result.ok).toBe(true);

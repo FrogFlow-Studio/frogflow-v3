@@ -8,6 +8,7 @@ const {
   RETENTION,
   pruneBroadcastRecipients,
   pruneOperatorLoginAttempts,
+  pruneReceiptChecks,
   BATCH,
   pruneSignupChallenges,
   pruneZernioLogs,
@@ -118,5 +119,58 @@ describe("брони задач регистрации в operator_settings", ()
     }));
     expect(await pruneSignupChallenges(NOW)).toEqual({ deleted: 0, done: true });
     expect(db.tables.operator_settings).toHaveLength(BATCH);
+  });
+});
+
+describe("счётчики автопроверок чека покупателей", () => {
+  const counter = (day: string) => JSON.stringify({ day, n: 1, order_id: 5, order_n: 1 });
+  /** Строка счётчика, как её пишет updateSettingAtomic: дата записи = день счётчика. */
+  const row = (bot_id: string, key: string, daysOld: number, value?: string) => ({
+    bot_id,
+    key,
+    value: value ?? counter(daysAgo(daysOld).slice(0, 10)),
+    updated_at: daysAgo(daysOld),
+  });
+  const OLD = RETENTION.receiptChecksDays + 1;
+
+  it("pruneReceiptChecks удаляет строки receipt_checks: со старым днём, строго по префиксу", async () => {
+    db.tables.app_settings = [
+      row("bot-1", "receipt_checks:tg_1", OLD),
+      row("bot-1", "receipt_checks:tg_2", 1),
+      row("bot-2", "receipt_checks:tg_1", OLD),
+      // Не счётчики: чужой префикс, «_» в LIKE, битое значение, настройка магазина.
+      row("bot-1", "receiptXchecks:tg_3", OLD),
+      row("bot-1", "receipt_checks_total", OLD),
+      row("bot-1", "receipt_checks:tg_4", OLD, "abc"),
+      row("bot-1", "receipt_ocr_usage", OLD, '{"count":5}'),
+    ];
+    expect(await pruneReceiptChecks(NOW)).toEqual({ deleted: 2, done: true });
+    expect(db.tables.app_settings!.map((r) => `${r.bot_id} ${r.key}`)).toEqual([
+      "bot-1 receipt_checks:tg_2",
+      "bot-1 receiptXchecks:tg_3",
+      "bot-1 receipt_checks_total",
+      "bot-1 receipt_checks:tg_4",
+      "bot-1 receipt_ocr_usage",
+    ]);
+  });
+
+  it("больше порции свежих счётчиков не заслоняют старые", async () => {
+    db.tables.app_settings = [
+      ...Array.from({ length: BATCH + 5 }, (_, i) => row("bot-1", `receipt_checks:tg_f${i}`, 1)),
+      row("bot-1", "receipt_checks:tg_old", OLD),
+    ];
+    expect(await pruneReceiptChecks(NOW)).toEqual({ deleted: 1, done: true });
+    expect(db.tables.app_settings!.some((r) => r.key === "receipt_checks:tg_old")).toBe(false);
+    expect(db.tables.app_settings).toHaveLength(BATCH + 5);
+  });
+
+  it("только клиенты из границ прохода (v2)", async () => {
+    db.tables.app_settings = [
+      row("bot-1", "receipt_checks:tg_1", OLD),
+      row("bot-v1", "receipt_checks:tg_1", OLD),
+    ];
+    expect(await pruneReceiptChecks(NOW, ["bot-1"])).toEqual({ deleted: 1, done: true });
+    expect(db.tables.app_settings!.map((r) => r.bot_id)).toEqual(["bot-v1"]);
+    expect(await pruneReceiptChecks(NOW, [])).toEqual({ deleted: 0, done: true });
   });
 });
