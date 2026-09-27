@@ -911,7 +911,7 @@
     "does not close an order as delivered while a language choice is still pending": "tests/integration/delivery-languages.test.ts › без выбора: вопрос о языке при выдаче, заказ закрывается после ответа покупателя",
     "offers rating for delivered physical orders, unlike file resend": "src/channels/telegram/my-orders.test.ts › оценить можно и выданный физический заказ, а повторная отправка файлов — только у цифрового",
     "shares a working t.me deep link instead of the raw Mini App page URL": "drop: витрина v2 — публичная страница /s/:slug/p/:id, её ссылка открывается и вне Telegram",
-    "ships a purchased-materials library, sort chips and bottom tabs": "open: расхождение: библиотека и нижние вкладки есть (src/core/storefront/tabs.test.ts), сортировки каталога нет"
+    "ships a purchased-materials library, sort chips and bottom tabs": "src/core/storefront/catalog-sort.test.ts › «Новые», «Цена» и «Популярные» на 459 товарах начинаются с товаров из конца порядка продавца"
   },
   "tests/mini-app-related.test.ts": {
     "товар без категории всё равно получает блок похожих — fallback на весь каталог": "src/app/storefront/storefront.functions.test.ts › товар без категории всё равно получает похожие — из всего каталога",

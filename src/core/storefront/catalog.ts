@@ -160,13 +160,19 @@ export async function storeCatalog(
   // Выбранная категория включает подкатегории (как в v1), а jsonb-массив
   // category_ids одним запросом на «любой из» не отфильтровать — фильтруем
   // здесь, по всему активному каталогу.
-  let q = ctx.db
-    .from("products")
-    .select(PRODUCT_SELECT)
-    .eq("is_active", true)
-    .order("sort_order")
-    .order("name")
-    .limit(opts.categoryId ? 1000 : 200);
+  // Порядок — в запросе, а не только после него: иначе «Новые» и «Цена»
+  // сортировали бы первые N товаров порядка продавца, а не весь каталог.
+  // В конце каждого порядка — id, чтобы равные товары не менялись местами.
+  const sort = opts.sort ?? "catalog";
+  let q = ctx.db.from("products").select(PRODUCT_SELECT).eq("is_active", true);
+  if (sort === "popular")
+    q = q
+      .order("rating_count", { ascending: false, nullsFirst: false })
+      .order("rating_avg", { ascending: false, nullsFirst: false });
+  else if (sort === "new") q = q.order("created_at", { ascending: false });
+  else if (sort === "price") q = q.order("price");
+  else q = q.order("sort_order").order("name");
+  q = q.order("id").limit(opts.categoryId ? 1000 : 200);
   const pattern = searchPattern(opts.q ?? "");
   if (pattern) q = q.or(await productSearchFilter(ctx, pattern));
   const [{ data, error }, cats] = await Promise.all([q, listAllCategories(ctx)]);
@@ -182,7 +188,7 @@ export async function storeCatalog(
   // Сортировка — после фильтров и до обрезки списка, как в v1.
   const sellable = sortCatalog(
     rows.filter((p) => p.fulfillment_kind === "physical" || productSellable(p)),
-    opts.sort ?? "catalog",
+    sort,
   ).slice(0, 200);
   return Promise.all(sellable.map((p) => toStoreProduct(ctx, p)));
 }

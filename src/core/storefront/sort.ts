@@ -13,6 +13,7 @@ export function parseCatalogSort(v: unknown): CatalogSort {
 }
 
 type Sortable = {
+  id?: string;
   rating_count?: number | null;
   rating_avg?: number | string | null;
   created_at?: string | null;
@@ -21,14 +22,22 @@ type Sortable = {
 
 const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
+/** Равные по ключу сортировки — по id, как в запросе (catalog.ts): порядок не прыгает. */
+const byId = (a: Sortable, b: Sortable) =>
+  a.id === b.id ? 0 : String(a.id ?? "") < String(b.id ?? "") ? -1 : 1;
+
 export function sortCatalog<T extends Sortable>(rows: readonly T[], sort: CatalogSort): T[] {
   const out = rows.slice();
+  const time = (v: string | null | undefined) => Date.parse(v ?? "") || 0;
   if (sort === "popular")
     out.sort(
-      (a, b) => num(b.rating_count) - num(a.rating_count) || num(b.rating_avg) - num(a.rating_avg),
+      (a, b) =>
+        num(b.rating_count) - num(a.rating_count) ||
+        num(b.rating_avg) - num(a.rating_avg) ||
+        byId(a, b),
     );
   else if (sort === "new")
-    out.sort((a, b) => Date.parse(b.created_at ?? "") - Date.parse(a.created_at ?? "") || 0);
-  else if (sort === "price") out.sort((a, b) => num(a.price) - num(b.price));
+    out.sort((a, b) => time(b.created_at) - time(a.created_at) || byId(a, b));
+  else if (sort === "price") out.sort((a, b) => num(a.price) - num(b.price) || byId(a, b));
   return out;
 }

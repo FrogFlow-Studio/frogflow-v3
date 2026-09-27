@@ -619,7 +619,7 @@ const uz: Dict = {
   "catalog.all": "Barchasi",
   "catalog.allLanguages": "Barcha tillar",
   "catalog.sort.catalog": "Katalog",
-  "catalog.sort.popular": "Ommabop",
+  "catalog.sort.popular": "Mashhur",
   "catalog.sort.new": "Yangi",
   "catalog.sort.price": "Narx",
   "catalog.nothingFound": "Hech narsa topilmadi",
