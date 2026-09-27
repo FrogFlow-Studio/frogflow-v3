@@ -5,12 +5,9 @@
  */
 import type { LandingKey } from "@/app/i18n/landing";
 import type { Locale } from "@/core/i18n/locale";
-import {
-  COURSES_FROM_TIER,
-  COURSES_NICHES,
-  COURSES_SALE,
-  type PlanNiche,
-} from "@/core/plans/registry";
+import { moduleDef, type ModuleKey } from "@/core/modules/registry";
+import { planModules } from "@/core/plans/plans";
+import { PLAN_TIERS, type PlanNiche } from "@/core/plans/registry";
 
 export type PlanKey = "basic" | "pro" | "business";
 
@@ -37,20 +34,36 @@ const PLAN_NICHE: Record<PricingNiche, PlanNiche> = {
 };
 
 /**
+ * Модули, у которых на главной своя строка в тарифе. Строка стоит в самом
+ * младшем тарифе ниши, план которого включает модуль (core/plans), и только
+ * когда модуль готов: «в разработке» на главной не показывается. Старшие
+ * тарифы получают его через «Всё из …». Так главная следует реестру сама.
+ */
+export const LANDING_MODULE_LINES = {
+  courses: "pricing.courses",
+  crm_pipeline: "pricing.crm",
+  helpdesk: "pricing.helpdesk",
+  multi_bot: "pricing.multiBot",
+} as const satisfies Partial<Record<ModuleKey, LandingKey>>;
+
+/** С какого тарифа ниши модуль входит в план; null — ни в один или не готов. */
+export function moduleFromTier(niche: PricingNiche, m: ModuleKey): PlanKey | null {
+  if (moduleDef(m).status !== "available") return null;
+  return PLAN_TIERS.find((t) => planModules(PLAN_NICHE[niche], t).has(m)) ?? null;
+}
+
+/**
  * Что входит в план ниши: у Basic четыре пункта, у старших — «всё из
- * младшего» и три своих. «Курсы» — строкой в том тарифе, с которого они
- * входят в план (COURSES_SALE в реестре), старшие получают их «всем из Pro».
+ * младшего» и три своих; ниже — строки модулей, которые входят с этого тарифа.
  */
 export function planFeatureKeys(niche: PricingNiche, plan: PlanKey): LandingKey[] {
   const own = (n: number) =>
     Array.from({ length: n }, (_, i) => `pricing.${niche}.${plan}.f${i + 1}` as LandingKey);
   const keys: LandingKey[] =
     plan === "basic" ? own(4) : [plan === "pro" ? "pricing.allBasic" : "pricing.allPro", ...own(3)];
-  const courses =
-    COURSES_SALE === "plan" &&
-    COURSES_NICHES.includes(PLAN_NICHE[niche]) &&
-    plan === COURSES_FROM_TIER;
-  return courses ? [...keys, "pricing.courses"] : keys;
+  for (const [m, key] of Object.entries(LANDING_MODULE_LINES) as Array<[ModuleKey, LandingKey]>)
+    if (moduleFromTier(niche, m) === plan) keys.push(key);
+  return keys;
 }
 
 /** Тариф, который выделяется на странице. */

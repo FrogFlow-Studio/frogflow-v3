@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { LANDING_KEYS, landingT } from "./landing";
-import { formatTenge, landingUrl, planFeatureKeys } from "@/app/landing/config";
+import {
+  LANDING_MODULE_LINES,
+  formatTenge,
+  landingUrl,
+  moduleFromTier,
+  planFeatureKeys,
+} from "@/app/landing/config";
+import { MODULES } from "@/core/modules/registry";
 import { SUPPORTED_LOCALES } from "@/core/i18n/locale";
 
 describe("словарь главной", () => {
@@ -46,5 +53,21 @@ describe("тарифы на главной: «Курсы» входят в Pro+"
     for (const n of ["dig", "cake", "flow", "ai"] as const)
       for (const p of ["basic", "pro", "business"] as const)
         for (const k of planFeatureKeys(n, p)) expect(LANDING_KEYS).toContain(k);
+  });
+});
+
+describe("тарифы на главной следуют реестру планов", () => {
+  const niches = ["dig", "cake", "flow", "ai"] as const;
+  const tiers = ["basic", "pro", "business"] as const;
+
+  it("строка модуля — ровно в одном тарифе ниши, самом младшем с этим модулем, и только когда он готов", () => {
+    for (const n of niches)
+      for (const [m, key] of Object.entries(LANDING_MODULE_LINES)) {
+        const shown = tiers.filter((p) => planFeatureKeys(n, p).includes(key));
+        const from = moduleFromTier(n, m as keyof typeof MODULES);
+        expect(shown, `${n}: ${m}`).toEqual(from ? [from] : []);
+        if (MODULES[m as keyof typeof MODULES].status !== "available")
+          expect(shown, `${n}: ${m} в разработке`).toEqual([]);
+      }
   });
 });
