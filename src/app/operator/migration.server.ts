@@ -7,7 +7,7 @@
 import { env } from "@/config/env";
 import { serviceDb } from "@/core/db/client.server";
 import { MODULE_KEYS } from "@/core/modules/registry";
-import { requireTenant, tenantDirectory } from "@/core/tenant/resolve.server";
+import { requireTenant, tenantContext, tenantDirectory } from "@/core/tenant/resolve.server";
 import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
 import { decryptSecret, isEncryptedSecret } from "@/core/secrets/vault";
 import { evaluatePreflight, type Preflight } from "@/core/tenant/preflight";
@@ -16,6 +16,44 @@ import { MATERIAL_COLUMNS, productSellable, type ProductWithFiles } from "@/core
 import { computeState, readPolicy } from "@/core/billing/subscription";
 import { sellerIds } from "@/core/notify/recipients";
 import { pageAll } from "@/core/db/page";
+import { isMailConfigured } from "@/core/mail/mail.server";
+import { listStoryTags, STORY_TAGS_MAX } from "@/core/consultant/story-tags";
+import { serverFailure } from "@/lib/server-failure";
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Заказы клиента за 30 дней: из Instagram и WhatsApp и с почтой покупателя
+ * вне Telegram (сайт, копия выдачи письмом). Ошибка чтения — сбой проверки,
+ * а не ноль: ноль спрятал бы блокирующий пункт.
+ */
+async function recentOrders(botId: string, now = new Date()) {
+  const since = new Date(now.getTime() - 30 * DAY_MS).toISOString();
+  const recent = () =>
+    serviceDb()
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("bot_id", botId)
+      .gte("created_at", since);
+  const [channels, mailed] = await Promise.all([
+    recent().in("platform", ["instagram", "whatsapp"]),
+    recent().in("platform", ["instagram", "whatsapp", "web"]).not("customer_email", "is", null),
+  ]);
+  const error = channels.error ?? mailed.error;
+  if (error) throw serverFailure(`Проверка переезда: заказы не прочитаны (${error.message})`);
+  return { channels: channels.count ?? 0, mailed: mailed.count ?? 0 };
+}
+
+/** Теги сторис в v1 (story_product_tags) — столько переезд должен перенести. */
+async function legacyStoryTags(botId: string): Promise<number> {
+  const { count, error } = await serviceDb()
+    .from("story_product_tags")
+    .select("id", { count: "exact", head: true })
+    .eq("bot_id", botId);
+  if (error)
+    throw serverFailure(`Проверка переезда: теги сторис v1 не прочитаны (${error.message})`);
+  return count ?? 0;
+}
 
 /** Сколько продавцов жмут «подтвердить»: admin_chat_id плюс владелец из карточки. */
 async function sellerChats(botId: string): Promise<number> {
@@ -92,14 +130,28 @@ export async function preflight(botId: string): Promise<Preflight> {
       tokenOk = false;
     }
   }
-  const [paymentMethods, products, chats, delivering, unsellable, expiresAt] = await Promise.all([
+  const [
+    paymentMethods,
+    products,
+    chats,
+    delivering,
+    unsellable,
+    expiresAt,
+    orders30d,
+    tagsV1,
+    tagsV2,
+  ] = await Promise.all([
     countRows("payment_methods", botId),
     countRows("products", botId),
     sellerChats(botId),
     deliveringOrders(botId),
     unsellableProducts(botId),
     subscriptionExpiresAt(botId),
+    recentOrders(botId),
+    legacyStoryTags(botId),
+    listStoryTags(tenantContext(t)),
   ]);
+  const zernioAccountIds = t.settings.zernio?.account_ids ?? [];
   const policy = readPolicy(t.settings);
   return evaluatePreflight({
     modulesOn: MODULE_KEYS.filter((k) => t.modules[k]),
@@ -118,10 +170,15 @@ export async function preflight(botId: string): Promise<Preflight> {
       state: computeState(expiresAt, policy).state,
       suspend: policy.on_overdue === "suspend",
     },
-    zernioConflicts: foreignZernioAccounts(
-      await tenantDirectory(),
-      botId,
-      t.settings.zernio?.account_ids ?? [],
-    ).map((f) => f.id),
+    zernioConflicts: foreignZernioAccounts(await tenantDirectory(), botId, zernioAccountIds).map(
+      (f) => f.id,
+    ),
+    channelOrders30d: orders30d.channels,
+    zernioAccounts: zernioAccountIds.length,
+    mail: {
+      configured: isMailConfigured(),
+      needed: Boolean(t.modules.web_storefront) || orders30d.mailed > 0,
+    },
+    storyTags: { v1: tagsV1, v2: tagsV2.length, max: STORY_TAGS_MAX },
   });
 }

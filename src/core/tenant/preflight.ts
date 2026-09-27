@@ -37,6 +37,14 @@ export type PreflightInput = {
   slug?: string | null;
   /** Состояние подписки и включена ли политика «приостановить». */
   subscription?: { state: SubscriptionState; suspend: boolean };
+  /** Заказы из Instagram и WhatsApp за последние 30 дней. */
+  channelOrders30d?: number;
+  /** Сколько аккаунтов Zernio записано клиенту (settings.zernio.account_ids). */
+  zernioAccounts?: number;
+  /** Почта платформы: настроен ли SMTP и шлёт ли клиенту что-то письмом (сайт, копия выдачи). */
+  mail?: { configured: boolean; needed: boolean };
+  /** Теги сторис: в v1 (story_product_tags), в v2 (app_settings) и сколько v2 хранит. */
+  storyTags?: { v1: number; v2: number; max: number };
 };
 
 export function evaluatePreflight(i: PreflightInput): Preflight {
@@ -170,6 +178,42 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
       title: "Аккаунт Zernio числится у двух клиентов",
       detail: `Ключ Zernio один на платформу, и события аккаунта ${i.zernioConflicts.join(", ")} не уйдут никому. Уберите его у одного из клиентов.`,
     });
+  if (i.channelOrders30d && i.zernioAccounts === 0)
+    checks.push({
+      key: "zernio_accounts",
+      level: "block",
+      title: "Instagram и WhatsApp не подключены",
+      detail: `За 30 дней заказов из Instagram и WhatsApp: ${i.channelOrders30d}, а аккаунтов Zernio у клиента в v2 нет. После переезда эти покупатели останутся без ответа. Подключите аккаунты в карточке клиента.`,
+    });
+  if (i.mail && i.mail.needed && !i.mail.configured)
+    checks.push({
+      key: "mail",
+      level: "warn",
+      title: "Почта платформы не настроена",
+      detail:
+        "У клиента есть сайт или покупатели оставляют почту для копии материалов, а SMTP платформы не задан: писем не будет. Материалы останутся на странице заказа.",
+    });
+  const tags = i.storyTags;
+  if (tags && tags.v1 > 0) {
+    const expected = Math.min(tags.v1, tags.max);
+    if (tags.v2 === 0 && tags.v1 <= tags.max)
+      checks.push({
+        key: "story_tags",
+        level: "info",
+        title: "Теги сторис перенесутся при переключении",
+        detail: `В v1 тегов: ${tags.v1}. Они скопируются в v2 при переводе клиента; после переключения проверьте их в админке.`,
+      });
+    else if (tags.v2 < expected || tags.v1 > tags.max)
+      checks.push({
+        key: "story_tags",
+        level: "warn",
+        title: "Теги сторис перенесены не все",
+        detail:
+          tags.v1 > tags.max
+            ? `В v1 тегов: ${tags.v1}, а v2 хранит не больше ${tags.max}. Лишние продавцу нужно удалить в v1 или разобрать вручную.`
+            : `В v1 тегов: ${tags.v1}, в v2: ${tags.v2}. Не хватает ${tags.v1 - tags.v2}: повторно при переключении они не скопируются, потому что в v2 список уже не пуст.`,
+      });
+  }
   if (i.appUrl)
     checks.push({
       key: "v1",

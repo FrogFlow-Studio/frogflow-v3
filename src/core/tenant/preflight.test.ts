@@ -115,6 +115,61 @@ describe("evaluatePreflight", () => {
   });
 });
 
+describe("evaluatePreflight: что блокирует клиента с Instagram и WhatsApp", () => {
+  const shop = { ...base, modulesOn: ["shop"] as ["shop"] };
+
+  it("заказы из Instagram или WhatsApp за 30 дней без аккаунтов Zernio — блок", () => {
+    const p = evaluatePreflight({ ...shop, channelOrders30d: 12, zernioAccounts: 0 });
+    expect(preflightBlockers(p)).toEqual(["Instagram и WhatsApp не подключены"]);
+    expect(p.checks.find((c) => c.key === "zernio_accounts")!.detail).toContain("12");
+  });
+
+  it("аккаунты есть или заказов из каналов нет — не блок", () => {
+    for (const i of [
+      { channelOrders30d: 12, zernioAccounts: 1 },
+      { channelOrders30d: 0, zernioAccounts: 0 },
+    ]) {
+      const p = evaluatePreflight({ ...shop, ...i });
+      expect(p.checks.find((c) => c.key === "zernio_accounts")).toBeUndefined();
+      expect(p.ready).toBe(true);
+    }
+  });
+
+  it("почта платформы не настроена, а клиенту она нужна — предупреждение", () => {
+    const p = evaluatePreflight({ ...shop, mail: { configured: false, needed: true } });
+    expect(p.ready).toBe(true);
+    expect(p.checks.find((c) => c.key === "mail")?.level).toBe("warn");
+    for (const mail of [
+      { configured: true, needed: true },
+      { configured: false, needed: false },
+    ])
+      expect(evaluatePreflight({ ...shop, mail }).checks.find((c) => c.key === "mail")).toBe(
+        undefined,
+      );
+  });
+
+  it("сторис-теги v1: v2 пуст — перенесутся при переключении; перенесены не все — предупреждение", () => {
+    const pending = evaluatePreflight({ ...shop, storyTags: { v1: 40, v2: 0, max: 200 } });
+    expect(pending.checks.find((c) => c.key === "story_tags")?.level).toBe("info");
+    const partial = evaluatePreflight({ ...shop, storyTags: { v1: 40, v2: 10, max: 200 } });
+    expect(partial.checks.find((c) => c.key === "story_tags")?.level).toBe("warn");
+    expect(partial.checks.find((c) => c.key === "story_tags")!.detail).toContain("30");
+    const over = evaluatePreflight({ ...shop, storyTags: { v1: 250, v2: 0, max: 200 } });
+    expect(over.checks.find((c) => c.key === "story_tags")?.level).toBe("warn");
+    expect(over.checks.find((c) => c.key === "story_tags")!.detail).toContain("200");
+    // v2 заполнен до предела, но 50 тегов v1 всё равно не поместились.
+    const full = evaluatePreflight({ ...shop, storyTags: { v1: 250, v2: 200, max: 200 } });
+    expect(full.checks.find((c) => c.key === "story_tags")?.level).toBe("warn");
+    for (const storyTags of [
+      { v1: 40, v2: 40, max: 200 },
+      { v1: 0, v2: 0, max: 200 },
+    ])
+      expect(
+        evaluatePreflight({ ...shop, storyTags }).checks.find((c) => c.key === "story_tags"),
+      ).toBeUndefined();
+  });
+});
+
 describe("releasesTelegramOnSwitch", () => {
   it("сбрасывает меню бота только при настоящем откате с v2", () => {
     expect(releasesTelegramOnSwitch("v2", "v1")).toBe(true);
