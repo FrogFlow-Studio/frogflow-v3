@@ -26,6 +26,9 @@ import {
 } from "@/core/orders/orders";
 import { parseDeliveredLanguages } from "@/core/catalog/materials";
 import { imageUrl } from "@/core/catalog/catalog";
+import { robokassaFor } from "@/core/payments/payment";
+import { buildPaymentUrl } from "@/core/payments/robokassa";
+import { amountDueNow } from "@/core/fulfillment/fulfillment";
 
 /**
  * Заказ с витрины сайта без мессенджера. Покупатель — обычная строка
@@ -173,8 +176,11 @@ export type WebOrderView = {
   currency: string;
   createdAt: string;
   items: Array<{ name: string; qty: number; price: number }>;
-  /** Как платить: реквизиты и QR способа оплаты страны заказа; null — платить не нужно. */
-  payment: { instructions: string | null; qr: string | null } | null;
+  /**
+   * Как платить: реквизиты и QR способа оплаты страны заказа и/или карта
+   * через Robokassa продавца; null — платить не нужно.
+   */
+  payment: { instructions: string | null; qr: string | null; card: boolean } | null;
   materials: WebMaterial[];
   email: string | null;
 };
@@ -187,10 +193,10 @@ export async function webOrderView(
 ): Promise<WebOrderView | null> {
   const order = await getOrder(ctx, orderId);
   if (!order || order.platform !== "web") return null;
+  const payable = PAYABLE.has(order.status);
   const method =
-    PAYABLE.has(order.status) && order.country_code
-      ? await paymentMethodFor(ctx, order.country_code)
-      : null;
+    payable && order.country_code ? await paymentMethodFor(ctx, order.country_code) : null;
+  const card = payable && (await robokassaFor(ctx)).ready;
   return {
     id: order.id,
     no: displayNo(order),
@@ -203,13 +209,41 @@ export async function webOrderView(
       qty: Number(i.quantity),
       price: Number(i.price_snapshot),
     })),
-    payment: method
-      ? {
-          instructions: method.instructions ?? null,
-          qr: method.qr_code_path ? imageUrl(ctx, method.qr_code_path) : null,
-        }
-      : null,
+    payment:
+      method || card
+        ? {
+            instructions: method?.instructions ?? null,
+            qr: method?.qr_code_path ? imageUrl(ctx, method.qr_code_path) : null,
+            card,
+          }
+        : null,
     materials: await webOrderMaterials(ctx, order),
     email: order.customer_email,
   };
+}
+
+/**
+ * Ссылка на оплату картой через Robokassa продавца (его логин и пароли), на
+ * сумму к оплате сейчас. null — заказ уже не ждёт оплаты или Robokassa у
+ * продавца не подключена. Оплату подтверждает только колбэк result.
+ */
+export async function webCardPaymentUrl(
+  ctx: TenantContext,
+  orderId: number,
+): Promise<string | null> {
+  const order = await getOrder(ctx, orderId);
+  if (!order || order.platform !== "web" || !PAYABLE.has(order.status)) return null;
+  const rk = await robokassaFor(ctx);
+  if (!rk.ready) return null;
+  const due = await amountDueNow(ctx, {
+    total: Number(order.total),
+    fulfillment_kind: order.fulfillment_kind,
+  });
+  if (!(due > 0)) return null;
+  return buildPaymentUrl(rk, {
+    outSum: due,
+    invId: order.id,
+    description: `Заказ #${displayNo(order)}`,
+    botId: ctx.tenant.id,
+  });
 }

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 /**
  * Колбэки Robokassa: result (сервер → сервер, подпись pass2), success и
- * fail (браузер покупателя → назад в бота). Один адрес на платформу,
+ * fail (браузер покупателя → назад в бота или на страницу заказа с сайта). Один адрес на платформу,
  * арендатор — в пути: /api/robokassa/<bot_id>/result.
  */
 export const Route = createFileRoute("/api/robokassa/$botId/$action")({
@@ -28,6 +28,8 @@ async function handle(request: Request, botId: string, action: string): Promise<
       : new URL(request.url).searchParams;
 
   if (action === "success" || action === "fail") {
+    const web = await webOrderReturn(ctx, params, action === "success");
+    if (web) return Response.redirect(web, 302);
     const username = tenant.settings.telegram?.username;
     const back = username ? `https://t.me/${username}` : ctx.appUrl;
     const ok = action === "success";
@@ -74,19 +76,45 @@ async function handle(request: Request, botId: string, action: string): Promise<
     const { runInBackground } = await import("@/lib/background");
     await runInBackground(async () => {
       try {
-        const { env } = await import("@/config/env");
-        const { telegramApi } = await import("@/channels/telegram/api");
-        const { onOrderPaid } = await import("@/channels/telegram/handle-update");
-        if (order.platform === "telegram")
-          await onOrderPaid(
-            ctx,
-            telegramApi(ctx.secrets.telegramToken(), env().TELEGRAM_API_BASE),
-            orderId,
-          );
+        const { afterPaidOnline } = await import("@/app/payments/paid-online.server");
+        await afterPaidOnline(ctx, orderId);
       } catch (e) {
         console.error(`[robokassa:${botId}] выдача после оплаты`, e);
       }
     });
   }
   return new Response(`OK${invId}`);
+}
+
+/**
+ * Покупатель заказа с сайта возвращается на страницу заказа. После успеха —
+ * с подписанной ссылкой, но только если подпись Robokassa (пароль №1) верна;
+ * после отказа подписи нет, поэтому — без ссылки: страница возьмёт её из
+ * браузера, где покупатель оформлял заказ.
+ */
+async function webOrderReturn(
+  ctx: import("@/core/tenant/resolve.server").TenantContext,
+  params: URLSearchParams,
+  success: boolean,
+): Promise<string | null> {
+  const invId = params.get("InvId") ?? "";
+  const slug = ctx.tenant.settings.slug;
+  if (!/^\d{1,12}$/.test(invId) || !slug) return null;
+  const { getOrder } = await import("@/core/orders/orders");
+  const order = await getOrder(ctx, Number(invId));
+  if (!order || order.platform !== "web") return null;
+  const page = `${ctx.appUrl}/s/${encodeURIComponent(slug)}/order/${order.id}`;
+  if (!success) return page;
+  const { robokassaFor } = await import("@/core/payments/payment");
+  const { verifySuccessSignature } = await import("@/core/payments/robokassa");
+  const rk = await robokassaFor(ctx);
+  const outSum = params.get("OutSum");
+  const signature = params.get("SignatureValue");
+  if (!rk.ready || !outSum || !signature) return page;
+  const shp: Array<[string, string]> = [];
+  for (const [k, v] of params.entries()) if (k.toLowerCase().startsWith("shp_")) shp.push([k, v]);
+  if (!verifySuccessSignature({ outSum, invId, signature, pass1: rk.pass1, shp })) return page;
+  const { env } = await import("@/config/env");
+  const { orderAccessToken } = await import("@/core/storefront/web-order");
+  return `${page}?t=${orderAccessToken(env().SESSION_SECRET, ctx.tenant.id, order.id)}`;
 }

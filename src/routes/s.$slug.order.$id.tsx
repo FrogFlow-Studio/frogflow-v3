@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type ChangeEvent } from "react";
-import { webOrderFn, webProofFn } from "@/app/storefront/checkout.functions";
+import { webCardPayFn, webOrderFn, webProofFn } from "@/app/storefront/checkout.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
 import { ErrorBox, useAction } from "@/app/ui";
 import type { StorefrontKey } from "@/app/i18n/storefront";
+import { rememberOrderToken, savedOrderToken } from "@/app/storefront/order-token";
 
 export const Route = createFileRoute("/s/$slug/order/$id")({
   validateSearch: (s: Record<string, unknown>): { t: string } => ({
@@ -34,13 +35,24 @@ function toBase64(file: File): Promise<string> {
 /** Страница заказа с сайта: открывается по подписанной ссылке из оформления и письма. */
 function OrderPage() {
   const { slug, id } = Route.useParams();
-  const { t: token } = Route.useSearch();
+  const { t: fromUrl } = Route.useSearch();
+  const [token, setToken] = useState(fromUrl);
+  const [noLink, setNoLink] = useState(false);
+  useEffect(() => {
+    if (fromUrl) rememberOrderToken(slug, id, fromUrl);
+    else {
+      const saved = savedOrderToken(slug, id);
+      setToken(saved);
+      setNoLink(!saved);
+    }
+  }, [slug, id, fromUrl]);
   const { t } = useStorefrontLocale();
   const [view, setView] = useState<View | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
   const [note, setNote] = useState<StorefrontKey | null>(null);
   const ref = { slug, id: Number(id), t: token };
   const load = useCallback(() => {
+    if (!token) return;
     webOrderFn({ data: { slug, id: Number(id), t: token } })
       .then(setView)
       .catch(setLoadError);
@@ -56,6 +68,11 @@ function OrderPage() {
       );
     load();
   });
+  const card = useAction(async () => {
+    const r = await webCardPayFn({ data: ref });
+    window.location.assign(r.url);
+  });
+  if (noLink) return <p className="text-sm text-muted">{t("order.noLink")}</p>;
   if (loadError) return <ErrorBox error={loadError} />;
   if (!view) return <p className="text-sm text-muted">…</p>;
   const awaiting = view.status === "awaiting_payment";
@@ -87,28 +104,46 @@ function OrderPage() {
           <p className="text-lg font-semibold tabular-nums">
             {t("order.amount", { sum: formatMoney(view.total, view.currency) })}
           </p>
+          {view.payment.card && (
+            <div className="space-y-1">
+              <button
+                className="btn-primary w-full"
+                disabled={card.busy}
+                onClick={() => void card.run().catch(() => {})}
+              >
+                {t("order.payCard")}
+              </button>
+              <p className="text-xs text-muted">{t("order.payCardHint")}</p>
+              <ErrorBox error={card.error} />
+            </div>
+          )}
+          {view.payment.card && (view.payment.instructions || view.payment.qr) && (
+            <h3 className="pt-2 text-sm font-medium">{t("order.payTransfer")}</h3>
+          )}
           {view.payment.instructions && (
             <p className="text-sm whitespace-pre-line">{view.payment.instructions}</p>
           )}
           {view.payment.qr && (
             <img src={view.payment.qr} alt="QR" className="h-48 w-48 rounded object-contain" />
           )}
-          <div>
-            <h3 className="text-sm font-medium">{t("order.proofTitle")}</h3>
-            <p className="text-xs text-muted">{t("order.proofHint")}</p>
-            <input
-              type="file"
-              accept="image/*,application/pdf"
-              className="mt-2 block text-sm"
-              disabled={proof.busy}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                const f = e.currentTarget.files?.[0];
-                if (f) void proof.run(f).catch(() => {});
-                e.currentTarget.value = "";
-              }}
-            />
-            <ErrorBox error={proof.error} />
-          </div>
+          {(view.payment.instructions || view.payment.qr) && (
+            <div>
+              <h3 className="text-sm font-medium">{t("order.proofTitle")}</h3>
+              <p className="text-xs text-muted">{t("order.proofHint")}</p>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                className="mt-2 block text-sm"
+                disabled={proof.busy}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  const f = e.currentTarget.files?.[0];
+                  if (f) void proof.run(f).catch(() => {});
+                  e.currentTarget.value = "";
+                }}
+              />
+              <ErrorBox error={proof.error} />
+            </div>
+          )}
         </section>
       )}
       {checking && !note && (

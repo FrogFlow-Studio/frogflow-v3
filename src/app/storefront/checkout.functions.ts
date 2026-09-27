@@ -136,7 +136,10 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
     return { id: r.order.id, t: orderAccessToken(await secret(), ctx.tenant.id, r.order.id) };
   });
 
-async function orderCtx(data: { slug: string; id: number; t: string }, kind: "order" | "proof") {
+async function orderCtx(
+  data: { slug: string; id: number; t: string },
+  kind: "order" | "proof" | "card",
+) {
   const ctx = await checkoutCtx(data.slug);
   const { verifyOrderAccess } = await import("@/core/storefront/web-order");
   if (!verifyOrderAccess(await secret(), ctx.tenant.id, data.id, data.t)) throw notFound();
@@ -197,4 +200,15 @@ export const webProofFn = createServerFn({ method: "POST" })
       }
     }
     return r;
+  });
+
+/** Оплата картой: ссылка Robokassa продавца на этот заказ. */
+export const webCardPayFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object(orderRef).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await orderCtx(data, "card");
+    const { webCardPaymentUrl } = await import("@/core/storefront/web-order");
+    const url = await webCardPaymentUrl(ctx, data.id);
+    if (!url) throw shownError((await shopT(ctx))("checkout.proof.closed"));
+    return { url };
   });

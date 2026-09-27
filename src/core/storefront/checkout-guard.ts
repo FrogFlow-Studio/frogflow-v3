@@ -35,6 +35,7 @@ export const WEB_BUDGETS = {
   checkoutEmail: { limit: 3, windowMs: 10 * 60_000 },
   order: { limit: 30, windowMs: 60_000 },
   proof: { limit: 5, windowMs: 10 * 60_000 },
+  card: { limit: 10, windowMs: 10 * 60_000 },
 } as const satisfies Record<string, Budget>;
 
 const web = rateLimiter();

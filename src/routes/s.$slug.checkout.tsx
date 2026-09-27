@@ -3,6 +3,7 @@ import { type FormEvent } from "react";
 import { webCheckoutFn, webCheckoutInfoFn } from "@/app/storefront/checkout.functions";
 import { solveChallenge } from "@/app/signup/challenge-solve";
 import { useCart } from "@/app/storefront/cart";
+import { rememberOrderToken } from "@/app/storefront/order-token";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
 import { Empty, ErrorBox, Field, useAction } from "@/app/ui";
@@ -42,6 +43,7 @@ function CheckoutPage() {
       },
     });
     cart.clear();
+    rememberOrderToken(slug, String(r.id), r.t);
     await navigate({
       to: "/s/$slug/order/$id",
       params: { slug, id: String(r.id) },

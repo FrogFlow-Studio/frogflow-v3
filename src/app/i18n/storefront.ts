@@ -114,6 +114,11 @@ const ru = {
   "order.materials": "Ваши материалы",
   "order.linkHint":
     "Ссылки на файлы действуют сутки — откройте страницу снова, чтобы получить новые.",
+  "order.noLink": "Откройте заказ по ссылке, которую получили при оформлении.",
+  "order.payCard": "Оплатить картой",
+  "order.payCardHint":
+    "Оплата банковской картой через Robokassa; после оплаты вы вернётесь на эту страницу.",
+  "order.payTransfer": "Или переводом по реквизитам",
   "checkout.proof.retry": "Это не похоже на чек об оплате. Загрузите чек ещё раз.",
   "checkout.proof.paymentFailed":
     "По чеку платёж не прошёл. Проверьте оплату и загрузите чек ещё раз.",
@@ -280,6 +285,11 @@ const kk: Dict = {
   "order.materials": "Сіздің материалдарыңыз",
   "order.linkHint":
     "Файл сілтемелері бір тәулік жұмыс істейді — жаңаларын алу үшін бетті қайта ашыңыз.",
+  "order.noLink": "Тапсырысты рәсімдеу кезінде алған сілтеме арқылы ашыңыз.",
+  "order.payCard": "Картамен төлеу",
+  "order.payCardHint":
+    "Robokassa арқылы банк картасымен төлем; төлегеннен кейін осы бетке ораласыз.",
+  "order.payTransfer": "Немесе деректемелер бойынша аударым",
   "checkout.proof.retry": "Бұл төлем чегіне ұқсамайды. Чекті қайта жүктеңіз.",
   "checkout.proof.paymentFailed":
     "Чек бойынша төлем өтпеген. Төлемді тексеріп, чекті қайта жүктеңіз.",
@@ -436,6 +446,11 @@ const en: Dict = {
   "order.waiting": "The seller is checking your receipt — materials will appear here.",
   "order.materials": "Your materials",
   "order.linkHint": "File links work for one day — reopen the page to get new ones.",
+  "order.noLink": "Open the order using the link you received at checkout.",
+  "order.payCard": "Pay by card",
+  "order.payCardHint":
+    "Bank card payment via Robokassa; after paying you will return to this page.",
+  "order.payTransfer": "Or pay by transfer",
   "checkout.proof.retry": "This does not look like a payment receipt. Please upload it again.",
   "checkout.proof.paymentFailed":
     "The receipt shows the payment did not go through. Check the payment and upload the receipt again.",
@@ -594,6 +609,11 @@ const uz: Dict = {
   "order.materials": "Sizning materiallaringiz",
   "order.linkHint":
     "Fayl havolalari bir kun ishlaydi — yangilarini olish uchun sahifani qayta oching.",
+  "order.noLink": "Buyurtmani rasmiylashtirishda olgan havola orqali oching.",
+  "order.payCard": "Karta bilan to‘lash",
+  "order.payCardHint":
+    "Robokassa orqali bank kartasi bilan to‘lov; to‘lovdan so‘ng shu sahifaga qaytasiz.",
+  "order.payTransfer": "Yoki rekvizitlar bo‘yicha o‘tkazma",
   "checkout.proof.retry": "Bu to‘lov chekiga o‘xshamaydi. Chekni qayta yuklang.",
   "checkout.proof.paymentFailed":
     "Chek bo‘yicha to‘lov o‘tmagan. To‘lovni tekshirib, chekni qayta yuklang.",

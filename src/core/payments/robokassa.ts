@@ -66,3 +66,17 @@ export const ROBOKASSA_KEYS = [
   "robokassa_pass1_test",
   "robokassa_pass2_test",
 ] as const;
+
+/**
+ * Подпись возврата покупателя на SuccessURL: как у result, но паролем №1.
+ * Без неё адрес «успеха» с чужим InvId открыл бы страницу чужого заказа.
+ */
+export function verifySuccessSignature(p: {
+  outSum: string;
+  invId: string;
+  signature: string;
+  pass1: string;
+  shp: Array<[string, string]>;
+}): boolean {
+  return verifyResultSignature({ ...p, pass2: p.pass1 });
+}

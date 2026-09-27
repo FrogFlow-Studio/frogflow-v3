@@ -8,6 +8,11 @@ vi.mock("@/core/orders/orders", async (orig) => ({
   ...(await orig<typeof import("@/core/orders/orders")>()),
   placeOrder: (...a: unknown[]) => placeOrder(...a),
 }));
+const robokassa = vi.fn();
+vi.mock("@/core/payments/payment", () => ({ robokassaFor: () => robokassa() }));
+vi.mock("@/core/fulfillment/fulfillment", () => ({
+  amountDueNow: async (_c: unknown, o: { total: number }) => o.total,
+}));
 const importItems = vi.fn();
 vi.mock("./handoff", () => ({ importItems: (...a: unknown[]) => importItems(...a) }));
 
@@ -18,6 +23,7 @@ const {
   placeWebOrder,
   verifyOrderAccess,
   webCustomer,
+  webCardPaymentUrl,
   webCustomerId,
   webMaterialSender,
   webOrderView,
@@ -42,6 +48,8 @@ function setup() {
 }
 
 beforeEach(() => {
+  robokassa.mockReset();
+  robokassa.mockResolvedValue({ ready: false });
   placeOrder.mockReset();
   importItems.mockReset();
 });
@@ -198,6 +206,37 @@ describe("заказ с сайта: страница заказа", () => {
       materials: [],
     });
     expect(v!.payment!.qr).toMatch(/^https:\/\/shop\.test\/api\/img\/.+/);
+  });
+
+  it("Robokassa продавца подключена — есть оплата картой на сумму заказа", async () => {
+    const { ctx } = withOrder();
+    robokassa.mockResolvedValue({
+      ready: true,
+      login: "L",
+      pass1: "a",
+      pass2: "b",
+      testMode: false,
+    });
+    expect((await webOrderView(ctx, 9))!.payment!.card).toBe(true);
+    const url = new URL((await webCardPaymentUrl(ctx, 9))!);
+    expect(url.searchParams.get("InvId")).toBe("9");
+    expect(url.searchParams.get("OutSum")).toBe("2500.00");
+    expect(url.searchParams.get("MerchantLogin")).toBe("L");
+  });
+
+  it("без Robokassa оплаты картой нет; оплаченный заказ картой не оплатить", async () => {
+    const { ctx } = withOrder();
+    expect((await webOrderView(ctx, 9))!.payment!.card).toBe(false);
+    expect(await webCardPaymentUrl(ctx, 9)).toBeNull();
+    const paid = withOrder({ status: "paid" });
+    robokassa.mockResolvedValue({
+      ready: true,
+      login: "L",
+      pass1: "a",
+      pass2: "b",
+      testMode: false,
+    });
+    expect(await webCardPaymentUrl(paid.ctx, 9)).toBeNull();
   });
 
   it("чек на проверке — реквизиты больше не показываются", async () => {
