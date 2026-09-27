@@ -60,16 +60,38 @@ async function request<T>(
 
 export type DmButton = { type: "url" | "postback"; title: string; url?: string; payload?: string };
 
+/** Zernio принимает заголовок кнопки не длиннее 20 символов, иначе 400 на всё сообщение. */
+export const DM_BUTTON_TITLE_MAX = 20;
+
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+/**
+ * Заголовок кнопки в пределах лимита с «…» на конце. Лимит считается в
+ * единицах UTF-16 (`.length`, как у Meta), а режем по графемам: составной
+ * эмодзи (семья, флаг, тон кожи) либо входит целиком, либо не входит.
+ */
+export function buttonTitle(title: string): string {
+  const t = title.trim();
+  if (t.length <= DM_BUTTON_TITLE_MAX) return t;
+  let out = "";
+  for (const { segment } of graphemes.segment(t)) {
+    if (out.length + segment.length > DM_BUTTON_TITLE_MAX - 1) break;
+    out += segment;
+  }
+  return `${out.trimEnd()}…`;
+}
+
 /**
  * Кнопки в строгом формате Meta/Zernio: с URL — тип url без payload, без
- * URL — postback с непустым payload; не больше трёх (ограничение Direct).
+ * URL — postback с непустым payload; не больше трёх (ограничение Direct),
+ * заголовок не длиннее 20 символов.
  */
 export function normalizeDmButtons(buttons?: DmButton[]): DmButton[] {
   if (!Array.isArray(buttons)) return [];
   return buttons
     .filter((b) => b && typeof b.title === "string" && b.title.trim())
     .map((b) => {
-      const title = b.title.trim();
+      const title = buttonTitle(b.title);
       const url = typeof b.url === "string" ? b.url.trim() : "";
       if (/^https?:\/\//i.test(url)) return { type: "url" as const, title, url };
       return { type: "postback" as const, title, payload: b.payload?.trim() || "/start" };

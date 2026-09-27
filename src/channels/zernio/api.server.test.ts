@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setEnvForTests } from "@/config/env";
 import {
+  DM_BUTTON_TITLE_MAX,
+  buttonTitle,
   downloadAttachment,
+  normalizeDmButtons,
   listConversationMessages,
   listProfiles,
   readCapped,
@@ -125,5 +128,44 @@ describe("listConversationMessages — хвост переписки", () => {
     // Без sortOrder=desc длинный диалог отдавал первые сто — самые старые, без ответа менеджера.
     expect(u.searchParams.get("sortOrder")).toBe("desc");
     expect(tail.map((m) => m.message)).toEqual(["первое", "второе", "третье"]);
+  });
+});
+
+describe("кнопки Direct/WhatsApp — заголовок не длиннее 20 символов", () => {
+  it("длинная кнопка продавца обрезается с «…», короткая и эмодзи не портятся", () => {
+    const [long, short, emoji] = normalizeDmButtons([
+      { type: "postback", title: "  Получить бесплатный урок сейчас  ", payload: "LESSON" },
+      { type: "url", title: "Каталог", url: "https://example.com" },
+      { type: "postback", title: "🎁🎁🎁🎁🎁🎁🎁🎁🎁🎁🎁🎁🎁🎁🎁🎁🎁🎁🎁🎁🎁🎁", payload: "G" },
+    ]);
+    expect(long!.title).toBe("Получить бесплатный…");
+    expect(long!.title.length).toBe(DM_BUTTON_TITLE_MAX);
+    expect(long!.payload).toBe("LESSON");
+    expect(short!.title).toBe("Каталог");
+    // 🎁 — две единицы UTF-16: входит девять и «…».
+    expect(emoji!.title).toBe(`${"🎁".repeat(9)}…`);
+  });
+
+  it("составные эмодзи не рвутся, итог не длиннее 20 единиц UTF-16", () => {
+    const family = "👨‍👩‍👧‍👦"; // 11 единиц
+    const flag = "🇰🇿"; // 4
+    const thumb = "👍🏽"; // 4
+    const graphemes = (s: string) =>
+      Array.from(
+        new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(s),
+        (x) => x.segment,
+      );
+    for (const [input, expected] of [
+      [`Семья ${family} ура`, `Семья ${family} у…`],
+      [`${flag}${flag}${flag}${flag}${flag}${flag}`, `${flag}${flag}${flag}${flag}…`],
+      [`Класс ${thumb}${thumb}${thumb}${thumb}`, `Класс ${thumb}${thumb}${thumb}…`],
+    ] as const) {
+      const title = buttonTitle(input);
+      expect(title).toBe(expected);
+      expect(title.length).toBeLessThanOrEqual(DM_BUTTON_TITLE_MAX);
+      for (const g of graphemes(title.slice(0, -1))) expect(graphemes(input)).toContain(g);
+    }
+    expect(buttonTitle(`${family}${family}`)).toBe(`${family}…`);
+    expect(buttonTitle(`  ${flag} Казахстан  `)).toBe(`${flag} Казахстан`);
   });
 });
