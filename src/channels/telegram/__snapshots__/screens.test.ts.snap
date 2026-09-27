@@ -1,0 +1,1363 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`карточка товара > варианты без описания: base, en 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "add:22222222-2222-4222-8222-222222222222:v1",
+            "text": "Малый — 3000 ₸",
+          },
+        ],
+        [
+          {
+            "callback_data": "add:22222222-2222-4222-8222-222222222222:v2",
+            "text": "Большой — 7000 ₸",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+<i>Описание скоро появится.</i>
+
+💰 <b>from 3000 ₸</b>",
+  },
+]
+`;
+
+exports[`карточка товара > варианты без описания: base, ru 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "add:22222222-2222-4222-8222-222222222222:v1",
+            "text": "Малый — 3000 ₸",
+          },
+        ],
+        [
+          {
+            "callback_data": "add:22222222-2222-4222-8222-222222222222:v2",
+            "text": "Большой — 7000 ₸",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+<i>Описание скоро появится.</i>
+
+💰 <b>от 3000 ₸</b>",
+  },
+]
+`;
+
+exports[`карточка товара > варианты без описания: full, en 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "add:22222222-2222-4222-8222-222222222222:v1",
+            "text": "Малый — 2400 ₸",
+          },
+        ],
+        [
+          {
+            "callback_data": "add:22222222-2222-4222-8222-222222222222:v2",
+            "text": "Большой — 5600 ₸",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+<i>Описание скоро появится.</i>
+
+💰 <b>from 2400 ₸</b>
+<b>🔥 −20% until 31/12, 23:00</b>",
+  },
+]
+`;
+
+exports[`карточка товара > варианты без описания: full, ru 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "add:22222222-2222-4222-8222-222222222222:v1",
+            "text": "Малый — 2400 ₸",
+          },
+        ],
+        [
+          {
+            "callback_data": "add:22222222-2222-4222-8222-222222222222:v2",
+            "text": "Большой — 5600 ₸",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+<i>Описание скоро появится.</i>
+
+💰 <b>от 2400 ₸</b>
+<b>🔥 −20% до 31.12, 23:00</b>",
+  },
+]
+`;
+
+exports[`карточка товара > варианты без описания: stock_only, en 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "add:22222222-2222-4222-8222-222222222222:v1",
+            "text": "Малый — 3000 ₸",
+          },
+        ],
+        [
+          {
+            "callback_data": "add:22222222-2222-4222-8222-222222222222:v2",
+            "text": "Большой — 7000 ₸",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+<i>Описание скоро появится.</i>
+
+💰 <b>from 3000 ₸</b>",
+  },
+]
+`;
+
+exports[`карточка товара > варианты без описания: stock_only, ru 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "add:22222222-2222-4222-8222-222222222222:v1",
+            "text": "Малый — 3000 ₸",
+          },
+        ],
+        [
+          {
+            "callback_data": "add:22222222-2222-4222-8222-222222222222:v2",
+            "text": "Большой — 7000 ₸",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+<i>Описание скоро появится.</i>
+
+💰 <b>от 3000 ₸</b>",
+  },
+]
+`;
+
+exports[`карточка товара > нет в наличии: base, en 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "add:33333333-3333-4333-8333-333333333333",
+            "text": "🛒 Add to cart",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+Развивающий пазл
+для детей 3+
+
+💰 <b>4990 ₸</b>",
+  },
+]
+`;
+
+exports[`карточка товара > нет в наличии: base, ru 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "add:33333333-3333-4333-8333-333333333333",
+            "text": "🛒 В корзину",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+Развивающий пазл
+для детей 3+
+
+💰 <b>4990 ₸</b>",
+  },
+]
+`;
+
+exports[`карточка товара > нет в наличии: full, en 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "wait:33333333-3333-4333-8333-333333333333",
+            "text": "🔔 Notify me when available",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+Развивающий пазл
+для детей 3+
+
+💰 <b>4990 ₸</b>
+❌ Нет в наличии",
+  },
+]
+`;
+
+exports[`карточка товара > нет в наличии: full, ru 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "wait:33333333-3333-4333-8333-333333333333",
+            "text": "🔔 Сообщить о поступлении",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+Развивающий пазл
+для детей 3+
+
+💰 <b>4990 ₸</b>
+❌ Нет в наличии",
+  },
+]
+`;
+
+exports[`карточка товара > нет в наличии: stock_only, en 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "inline_keyboard": [],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+Развивающий пазл
+для детей 3+
+
+💰 <b>4990 ₸</b>
+❌ Нет в наличии",
+  },
+]
+`;
+
+exports[`карточка товара > нет в наличии: stock_only, ru 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "inline_keyboard": [],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+Развивающий пазл
+для детей 3+
+
+💰 <b>4990 ₸</b>
+❌ Нет в наличии",
+  },
+]
+`;
+
+exports[`карточка товара > фото, срок изготовления, оценка: base, en 1`] = `
+[
+  {
+    "method": "sendPhoto",
+    "photo": "https://app.test/api/img/bot-1/cC9hLmpwZw",
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "add:11111111-1111-4111-8111-111111111111",
+            "text": "🛒 Add to cart",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+Развивающий пазл
+для детей 3+
+
+💰 <b>4990 ₸</b>
+⏳ Срок изготовления: 3 дн.",
+  },
+]
+`;
+
+exports[`карточка товара > фото, срок изготовления, оценка: base, ru 1`] = `
+[
+  {
+    "method": "sendPhoto",
+    "photo": "https://app.test/api/img/bot-1/cC9hLmpwZw",
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "add:11111111-1111-4111-8111-111111111111",
+            "text": "🛒 В корзину",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+Развивающий пазл
+для детей 3+
+
+💰 <b>4990 ₸</b>
+⏳ Срок изготовления: 3 дн.",
+  },
+]
+`;
+
+exports[`карточка товара > фото, срок изготовления, оценка: full, en 1`] = `
+[
+  {
+    "method": "sendPhoto",
+    "photo": "https://app.test/api/img/bot-1/cC9hLmpwZw",
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "add:11111111-1111-4111-8111-111111111111",
+            "text": "🛒 Add to cart",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+Развивающий пазл
+для детей 3+
+
+💰 <b>4990 ₸</b>
+⏳ Срок изготовления: 3 дн.
+⭐ 4.6 (7)",
+  },
+]
+`;
+
+exports[`карточка товара > фото, срок изготовления, оценка: full, ru 1`] = `
+[
+  {
+    "method": "sendPhoto",
+    "photo": "https://app.test/api/img/bot-1/cC9hLmpwZw",
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "add:11111111-1111-4111-8111-111111111111",
+            "text": "🛒 В корзину",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+Развивающий пазл
+для детей 3+
+
+💰 <b>4990 ₸</b>
+⏳ Срок изготовления: 3 дн.
+⭐ 4.6 (7)",
+  },
+]
+`;
+
+exports[`карточка товара > фото, срок изготовления, оценка: stock_only, en 1`] = `
+[
+  {
+    "method": "sendPhoto",
+    "photo": "https://app.test/api/img/bot-1/cC9hLmpwZw",
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "add:11111111-1111-4111-8111-111111111111",
+            "text": "🛒 Add to cart",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+Развивающий пазл
+для детей 3+
+
+💰 <b>4990 ₸</b>
+⏳ Срок изготовления: 3 дн.",
+  },
+]
+`;
+
+exports[`карточка товара > фото, срок изготовления, оценка: stock_only, ru 1`] = `
+[
+  {
+    "method": "sendPhoto",
+    "photo": "https://app.test/api/img/bot-1/cC9hLmpwZw",
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "add:11111111-1111-4111-8111-111111111111",
+            "text": "🛒 В корзину",
+          },
+        ],
+      ],
+    },
+    "text": "📦 <b>Пазл &lt;мини&gt; &amp; ко</b>
+
+Развивающий пазл
+для детей 3+
+
+💰 <b>4990 ₸</b>
+⏳ Срок изготовления: 3 дн.",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > base, en 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "📚 Catalog",
+          },
+          {
+            "text": "🔍 Search",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Cart",
+          },
+          {
+            "text": "📋 My orders",
+          },
+        ],
+        [
+          {
+            "text": "📖 Guide",
+          },
+        ],
+        [
+          {
+            "text": "💬 Contact the author",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Welcome to the store!
+
+→ Learning materials catalog
+→ Payment and file delivery",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > base, kk 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "📚 Каталог",
+          },
+          {
+            "text": "🔍 Іздеу",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Себет",
+          },
+          {
+            "text": "📋 Тапсырыстарым",
+          },
+        ],
+        [
+          {
+            "text": "📖 Нұсқаулық",
+          },
+        ],
+        [
+          {
+            "text": "💬 Автормен байланысу",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Дүкенге қош келдіңіз!
+
+→ Оқу материалдарының каталогы
+→ Төлем және файлдарды алу",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > base, ru 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "📚 Каталог",
+          },
+          {
+            "text": "🔍 Поиск",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Корзина",
+          },
+          {
+            "text": "📋 Мои заказы",
+          },
+        ],
+        [
+          {
+            "text": "📖 Инструкция",
+          },
+        ],
+        [
+          {
+            "text": "💬 Связаться с автором",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Добро пожаловать в магазин.
+
+→ Каталог учебных материалов
+→ Оплата и выдача файлов",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > base, uz 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "📚 Katalog",
+          },
+          {
+            "text": "🔍 Qidirish",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Savat",
+          },
+          {
+            "text": "📋 Buyurtmalarim",
+          },
+        ],
+        [
+          {
+            "text": "📖 Yo‘riqnoma",
+          },
+        ],
+        [
+          {
+            "text": "💬 Muallif bilan bog‘lanish",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Do‘konga xush kelibsiz!
+
+→ O‘quv materiallari katalogi
+→ To‘lov va fayllarni yetkazib berish",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > legal_quiz, en 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "📚 Catalog",
+          },
+          {
+            "text": "🔍 Search",
+          },
+        ],
+        [
+          {
+            "text": "🧩 Find a product",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Cart",
+          },
+          {
+            "text": "📋 My orders",
+          },
+        ],
+        [
+          {
+            "text": "📖 Guide",
+          },
+          {
+            "text": "ℹ️ Information",
+          },
+        ],
+        [
+          {
+            "text": "💬 Contact the author",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Welcome to the store!
+
+→ Learning materials catalog
+→ Payment and file delivery",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > legal_quiz, kk 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "📚 Каталог",
+          },
+          {
+            "text": "🔍 Іздеу",
+          },
+        ],
+        [
+          {
+            "text": "🧩 Тауар таңдау",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Себет",
+          },
+          {
+            "text": "📋 Тапсырыстарым",
+          },
+        ],
+        [
+          {
+            "text": "📖 Нұсқаулық",
+          },
+          {
+            "text": "ℹ️ Ақпарат",
+          },
+        ],
+        [
+          {
+            "text": "💬 Автормен байланысу",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Дүкенге қош келдіңіз!
+
+→ Оқу материалдарының каталогы
+→ Төлем және файлдарды алу",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > legal_quiz, ru 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "📚 Каталог",
+          },
+          {
+            "text": "🔍 Поиск",
+          },
+        ],
+        [
+          {
+            "text": "🧩 Подобрать товар",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Корзина",
+          },
+          {
+            "text": "📋 Мои заказы",
+          },
+        ],
+        [
+          {
+            "text": "📖 Инструкция",
+          },
+          {
+            "text": "ℹ️ Информация",
+          },
+        ],
+        [
+          {
+            "text": "💬 Связаться с автором",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Добро пожаловать в магазин.
+
+→ Каталог учебных материалов
+→ Оплата и выдача файлов",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > legal_quiz, uz 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "📚 Katalog",
+          },
+          {
+            "text": "🔍 Qidirish",
+          },
+        ],
+        [
+          {
+            "text": "🧩 Mahsulot tanlash",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Savat",
+          },
+          {
+            "text": "📋 Buyurtmalarim",
+          },
+        ],
+        [
+          {
+            "text": "📖 Yo‘riqnoma",
+          },
+          {
+            "text": "ℹ️ Ma’lumot",
+          },
+        ],
+        [
+          {
+            "text": "💬 Muallif bilan bog‘lanish",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Do‘konga xush kelibsiz!
+
+→ O‘quv materiallari katalogi
+→ To‘lov va fayllarni yetkazib berish",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > mini_app, en 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "🛍 Магазин",
+            "web_app": {
+              "url": "https://app.test/s/bot-1",
+            },
+          },
+        ],
+        [
+          {
+            "text": "📚 Catalog",
+          },
+          {
+            "text": "🔍 Search",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Cart",
+          },
+          {
+            "text": "📋 My orders",
+          },
+        ],
+        [
+          {
+            "text": "📖 Guide",
+          },
+          {
+            "text": "ℹ️ Information",
+          },
+        ],
+        [
+          {
+            "text": "💬 Contact the author",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Welcome to the store!
+
+→ Learning materials catalog
+→ Payment and file delivery",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > mini_app, kk 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "🛍 Магазин",
+            "web_app": {
+              "url": "https://app.test/s/bot-1",
+            },
+          },
+        ],
+        [
+          {
+            "text": "📚 Каталог",
+          },
+          {
+            "text": "🔍 Іздеу",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Себет",
+          },
+          {
+            "text": "📋 Тапсырыстарым",
+          },
+        ],
+        [
+          {
+            "text": "📖 Нұсқаулық",
+          },
+          {
+            "text": "ℹ️ Ақпарат",
+          },
+        ],
+        [
+          {
+            "text": "💬 Автормен байланысу",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Дүкенге қош келдіңіз!
+
+→ Оқу материалдарының каталогы
+→ Төлем және файлдарды алу",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > mini_app, ru 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "🛍 Магазин",
+            "web_app": {
+              "url": "https://app.test/s/bot-1",
+            },
+          },
+        ],
+        [
+          {
+            "text": "📚 Каталог",
+          },
+          {
+            "text": "🔍 Поиск",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Корзина",
+          },
+          {
+            "text": "📋 Мои заказы",
+          },
+        ],
+        [
+          {
+            "text": "📖 Инструкция",
+          },
+          {
+            "text": "ℹ️ Информация",
+          },
+        ],
+        [
+          {
+            "text": "💬 Связаться с автором",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Добро пожаловать в магазин.
+
+→ Каталог учебных материалов
+→ Оплата и выдача файлов",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > mini_app, uz 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "🛍 Магазин",
+            "web_app": {
+              "url": "https://app.test/s/bot-1",
+            },
+          },
+        ],
+        [
+          {
+            "text": "📚 Katalog",
+          },
+          {
+            "text": "🔍 Qidirish",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Savat",
+          },
+          {
+            "text": "📋 Buyurtmalarim",
+          },
+        ],
+        [
+          {
+            "text": "📖 Yo‘riqnoma",
+          },
+          {
+            "text": "ℹ️ Ma’lumot",
+          },
+        ],
+        [
+          {
+            "text": "💬 Muallif bilan bog‘lanish",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Do‘konga xush kelibsiz!
+
+→ O‘quv materiallari katalogi
+→ To‘lov va fayllarni yetkazib berish",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > mini_app_no_shop, en 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "📚 Catalog",
+          },
+          {
+            "text": "🔍 Search",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Cart",
+          },
+          {
+            "text": "📋 My orders",
+          },
+        ],
+        [
+          {
+            "text": "📖 Guide",
+          },
+        ],
+        [
+          {
+            "text": "💬 Contact the author",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Welcome to the store!
+
+→ Learning materials catalog
+→ Payment and file delivery",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > mini_app_no_shop, kk 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "📚 Каталог",
+          },
+          {
+            "text": "🔍 Іздеу",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Себет",
+          },
+          {
+            "text": "📋 Тапсырыстарым",
+          },
+        ],
+        [
+          {
+            "text": "📖 Нұсқаулық",
+          },
+        ],
+        [
+          {
+            "text": "💬 Автормен байланысу",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Дүкенге қош келдіңіз!
+
+→ Оқу материалдарының каталогы
+→ Төлем және файлдарды алу",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > mini_app_no_shop, ru 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "📚 Каталог",
+          },
+          {
+            "text": "🔍 Поиск",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Корзина",
+          },
+          {
+            "text": "📋 Мои заказы",
+          },
+        ],
+        [
+          {
+            "text": "📖 Инструкция",
+          },
+        ],
+        [
+          {
+            "text": "💬 Связаться с автором",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Добро пожаловать в магазин.
+
+→ Каталог учебных материалов
+→ Оплата и выдача файлов",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > mini_app_no_shop, uz 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "📚 Katalog",
+          },
+          {
+            "text": "🔍 Qidirish",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Savat",
+          },
+          {
+            "text": "📋 Buyurtmalarim",
+          },
+        ],
+        [
+          {
+            "text": "📖 Yo‘riqnoma",
+          },
+        ],
+        [
+          {
+            "text": "💬 Muallif bilan bog‘lanish",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Do‘konga xush kelibsiz!
+
+→ O‘quv materiallari katalogi
+→ To‘lov va fayllarni yetkazib berish",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > другая ниша (цветы) 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "keyboard": [
+        [
+          {
+            "text": "📚 Каталог",
+          },
+          {
+            "text": "🔍 Поиск",
+          },
+        ],
+        [
+          {
+            "text": "🛒 Корзина",
+          },
+          {
+            "text": "📋 Мои заказы",
+          },
+        ],
+        [
+          {
+            "text": "📖 Инструкция",
+          },
+          {
+            "text": "ℹ️ Информация",
+          },
+        ],
+        [
+          {
+            "text": "💬 Связаться с флористом",
+          },
+        ],
+      ],
+      "resize_keyboard": true,
+    },
+    "text": "<b>Лавка «Ёж» &lt;1&gt;</b>
+Добро пожаловать в цветочную мастерскую!
+
+→ Каталог букетов, роз и подарков
+→ Оформление заказа и доставка",
+  },
+]
+`;
+
+exports[`приветствие и меню по /start > несколько языков — сначала выбор языка 1`] = `
+[
+  {
+    "method": "sendMessage",
+    "photo": undefined,
+    "reply_markup": {
+      "inline_keyboard": [
+        [
+          {
+            "callback_data": "locale:ru",
+            "text": "🇷🇺 Русский",
+          },
+        ],
+        [
+          {
+            "callback_data": "locale:kk",
+            "text": "🇰🇿 Қазақша",
+          },
+        ],
+        [
+          {
+            "callback_data": "locale:en",
+            "text": "🇬🇧 English",
+          },
+        ],
+        [
+          {
+            "callback_data": "locale:uz",
+            "text": "🇺🇿 O‘zbekcha",
+          },
+        ],
+      ],
+    },
+    "text": "Выберите язык",
+  },
+]
+`;

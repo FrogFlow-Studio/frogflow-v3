@@ -1,5 +1,4 @@
 import { REFERRAL_PREFIX, registerReferral, type ReferralGrant } from "@/core/referrals/referrals";
-import { shownLeadDays } from "@/core/catalog/lead-time";
 import { orderChannel } from "@/core/orders/pure";
 import {
   hasDeliveredPurchase,
@@ -7,7 +6,7 @@ import {
   saveComment,
   saveRating,
 } from "@/core/reviews/reviews";
-import { formatRatingSummary, isValidRating } from "@/core/reviews/pure";
+import { isValidRating } from "@/core/reviews/pure";
 import { inboundIntercepted, inboundLogText, tappedButtonText } from "@/core/chat/chat";
 import { recordClick, splitClickMark } from "@/core/broadcasts/clicks";
 import { adminRecipients } from "@/core/notify/recipients";
@@ -16,13 +15,8 @@ import { isDeliveryLangChoice } from "@/core/catalog/materials";
 import { stateFromJson } from "@/core/customers/customers";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { TelegramApi } from "./api";
-import type {
-  InlineButton,
-  InlineKeyboard,
-  TelegramCallbackQuery,
-  TelegramMessage,
-  TelegramUpdate,
-} from "./types";
+import { languageChoice, mainMenu as screenMainMenu, productCard, welcomeHtml } from "./screens";
+import type { InlineButton, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from "./types";
 import {
   COPY,
   categoryButtonLabel,
@@ -56,8 +50,6 @@ import {
   listChildCategories,
   listProductsInCategory,
   searchProducts,
-  sortedImages,
-  sortedVariants,
   type Product,
 } from "@/core/catalog/catalog";
 import { resolvePrice } from "@/core/pricing/pricing";
@@ -175,23 +167,7 @@ function contactLabels(ctx: TenantContext): string[] {
 }
 
 function mainMenu(b: Bot) {
-  const def = verticalDef(b.ctx.tenant.vertical);
-  const m = b.m;
-  const keyboard: Array<Array<Record<string, unknown>>> = [
-    [{ text: m.catalog }, { text: m.search }],
-    [{ text: m.cart }, { text: m.myOrders }],
-    // «Информация» ведёт на юр. страницы — только при модуле legal_docs.
-    b.ctx.tenant.modules.legal_docs
-      ? [{ text: m.instruction }, { text: m.information }]
-      : [{ text: m.instruction }],
-    [{ text: def.locales[b.locale].contactBtn }],
-  ];
-  const t = b.ctx.tenant;
-  if (t.modules.quiz) keyboard.splice(1, 0, [{ text: m.quizBtn }]);
-  if (t.modules.telegram_mini_app && t.modules.shop) {
-    keyboard.unshift([{ text: "🛍 Магазин", web_app: { url: storefrontBase(t, b.ctx.appUrl) } }]);
-  }
-  return { keyboard, resize_keyboard: true };
+  return screenMainMenu(b.ctx.tenant, b.locale, b.ctx.appUrl);
 }
 
 async function sendMain(b: Bot, text?: string) {
@@ -502,10 +478,7 @@ async function startFlow(b: Bot, payload = "") {
     if (p) return sendProductCard(b, p);
   }
   if (b.ctx.tenant.modules.multi_language) {
-    const buttons: InlineButton[][] = SUPPORTED_LOCALES.map((l) => [
-      { text: `${localeFlags[l]} ${localeNames[l]}`, callback_data: `locale:${l}` },
-    ]);
-    await send(b, b.m.chooseLanguage, { reply_markup: { inline_keyboard: buttons } });
+    await send(b, b.m.chooseLanguage, { reply_markup: { inline_keyboard: languageChoice() } });
     return;
   }
   await applyLocale(b, b.ctx.tenant.settings.default_locale ?? "ru");
@@ -515,12 +488,8 @@ async function applyLocale(b: Bot, locale: Locale) {
   b.customer = await setState(b.ctx, b.customer, { ...b.customer.state, locale, mode: "idle" });
   b.locale = locale;
   b.m = COPY[locale];
-  const v = verticalDef(b.ctx.tenant.vertical).locales[locale];
   const shopName = (await getSetting(b.ctx, "shop_name")) ?? b.ctx.tenant.name;
-  const welcome =
-    `<b>${escapeHtml(shopName)}</b>\n${escapeHtml(v.welcomeGreeting)}\n\n` +
-    `→ ${escapeHtml(v.welcomeCatalog)}\n→ ${escapeHtml(v.welcomePayment)}`;
-  await sendMain(b, welcome);
+  await sendMain(b, welcomeHtml(b.ctx.tenant, shopName, locale));
 }
 
 async function menuAction(b: Bot, action: ReturnType<typeof menuActionFor>) {
@@ -674,66 +643,19 @@ async function quizFinish(b: Bot): Promise<void> {
   });
 }
 
-/** Кнопка «Сообщить о поступлении» — только с модулем waitlist. */
-function waitlistRow(b: Bot, productId: string): InlineKeyboard["inline_keyboard"] {
-  return b.ctx.tenant.modules.waitlist
-    ? [[{ text: b.m.waitlistBtn, callback_data: `wait:${productId}` }]]
-    : [];
-}
-
 async function sendProductCard(b: Bot, p: Product) {
-  const country = b.customer.state.country_code ?? null;
-  const imgs = sortedImages(p);
-  const variants = sortedVariants(p);
-  const desc = p.description ? `\n\n${escapeHtml(p.description)}` : `\n\n<i>${b.m.descPending}</i>`;
-  const outOfStock =
-    b.ctx.tenant.modules.stock && p.stock_quantity != null && p.stock_quantity <= 0;
-  let caption: string;
-  let keyboard: InlineKeyboard;
-  if (variants.length > 0) {
-    const priced = await Promise.all(
-      variants.map(async (v) => ({ v, money: await resolvePrice(b.ctx, p, country, v) })),
-    );
-    const min = Math.min(...priced.map((r) => r.money.amount));
-    const currency = priced[0]?.money.currency ?? p.currency;
-    caption = `📦 <b>${escapeHtml(p.name)}</b>${desc}\n\n💰 <b>${b.m.priceFrom(formatMoney(min, currency))}</b>`;
-    keyboard = {
-      inline_keyboard: outOfStock
-        ? waitlistRow(b, p.id)
-        : priced.map(({ v, money }) => [
-            {
-              text: `${v.name} — ${formatMoney(money.amount, money.currency)}`,
-              callback_data: `add:${p.id}:${v.id}`,
-            },
-          ]),
-    };
-  } else {
-    const money = await resolvePrice(b.ctx, p, country);
-    caption = `📦 <b>${escapeHtml(p.name)}</b>${desc}\n\n💰 <b>${formatMoney(money.amount, money.currency)}</b>`;
-    keyboard = {
-      inline_keyboard: outOfStock
-        ? waitlistRow(b, p.id)
-        : [[{ text: b.m.addToCartBtn, callback_data: `add:${p.id}` }]],
-    };
-  }
-  const leadDays = shownLeadDays(p);
-  if (leadDays) caption += `\n${b.m.leadTimeLabel(leadDays)}`;
-  const rating = b.ctx.tenant.modules.review_request
-    ? formatRatingSummary(p.rating_avg, p.rating_count ?? 0)
-    : null;
-  if (rating) caption += `\n${rating}`;
-  if (outOfStock) caption += `\n${b.m.outOfStockLabel}`;
-  else if (b.ctx.tenant.modules.limited_offers) {
-    const { offerForProduct, offerLabel } = await import("@/core/offers/offers");
-    const offer = await offerForProduct(b.ctx, p.id);
-    if (offer) caption += `\n<b>${offerLabel(offer, b.ctx.timezone, b.locale)}</b>`;
-  }
-  if (imgs.length === 0) {
+  const { caption, keyboard, photo } = await productCard(
+    b.ctx,
+    p,
+    b.locale,
+    b.customer.state.country_code ?? null,
+  );
+  if (!photo) {
     await send(b, caption, { reply_markup: keyboard });
   } else {
     const res = await b.api.call("sendPhoto", {
       chat_id: b.chatId,
-      photo: imageUrl(b.ctx, imgs[0]!.image_path),
+      photo,
       caption: caption.slice(0, 1024),
       parse_mode: "HTML",
       reply_markup: keyboard,
