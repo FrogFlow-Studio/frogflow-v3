@@ -13,6 +13,7 @@ export const HANDLED_EVENTS = [
   "comment.received",
   "account.disconnected",
   "whatsapp.template.status_updated",
+  "message.failed",
 ] as const;
 
 export function isHandledEvent(event: string | undefined): boolean {
@@ -45,6 +46,14 @@ export async function dispatchZernioEvent(
       const r = await handleTemplateStatus(
         ctx,
         payload as import("./templates.server").TemplateStatusPayload,
+      );
+      return { status: "processed", note: r.note };
+    }
+    if (payload.event === "message.failed") {
+      const { handleMessageFailed } = await import("./message-failed.server");
+      const r = await handleMessageFailed(
+        ctx,
+        payload as import("./message-failed.server").MessageFailedPayload,
       );
       return { status: "processed", note: r.note };
     }

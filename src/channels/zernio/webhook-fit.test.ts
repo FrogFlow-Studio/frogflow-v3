@@ -55,6 +55,16 @@ describe("вебхук v2 в Zernio", () => {
     });
   });
 
+  it("своя запись без message.failed (подписана до сверки) — обновляется по кнопке оператора", () => {
+    expect(EVENTS).toContain("message.failed");
+    const old = { ...OWN, events: EVENTS.filter((e) => e !== "message.failed") };
+    expect(planV2Webhook([V1_STORE, old], URL_V2, ["p-a", "p-b"])).toMatchObject({
+      action: "update",
+      id: "own",
+      body: { events: EVENTS },
+    });
+  });
+
   it("своя запись с теми же профилями — ничего не пишется", () => {
     expect(planV2Webhook([V1_STORE, OWN], URL_V2, ["p-a", "p-b"])).toEqual({
       action: "unchanged",

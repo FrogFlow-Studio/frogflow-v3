@@ -16,6 +16,8 @@ export const ZERNIO_WEBHOOK_EVENTS = [
   "comment.received",
   "account.disconnected",
   "whatsapp.template.status_updated",
+  // WhatsApp принял отправку (200), но не доставил — других сигналов нет (сверка, п. 11).
+  "message.failed",
 ] as const;
 
 export type ZernioWebhookRecord = {
