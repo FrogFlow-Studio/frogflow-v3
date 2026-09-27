@@ -22,6 +22,7 @@ import {
   todayInTz,
 } from "@/core/fulfillment/pure";
 import { recordOrderEvent } from "./events";
+import { pageAll } from "@/core/db/page";
 import {
   manualCustomerTelegramId,
   manualCustomerUserKey,
@@ -174,6 +175,51 @@ async function resolveZone(
   if (!zone) throw new UserError("err.orders.zoneNotFound", "Зона доставки не найдена");
   const fee = await zoneFee(ctx, zone.price, countryCode);
   return { id: zone.id, name: zone.name, price: fee.amount, currency: fee.currency };
+}
+
+export type ManualOrderProduct = {
+  id: string;
+  name: string;
+  price: number;
+  currency: string;
+  leadDays: number;
+  stock: number | null;
+  variants: Array<{ id: string; name: string; price: number }>;
+};
+
+/**
+ * Физические товары для формы ручного заказа. PostgREST отдаёт не больше
+ * 1000 строк за запрос, поэтому читаем постранично; порядок заканчивается
+ * уникальным id — иначе на стыке страниц товары с одинаковым порядком и
+ * названием могли бы задвоиться или пропасть.
+ */
+export async function manualOrderProducts(ctx: TenantContext): Promise<ManualOrderProduct[]> {
+  const rows = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("products")
+        .select(
+          "id, name, price, currency, lead_time_days, stock_quantity, product_variants(id, name, price, sort_order)",
+        )
+        .eq("is_active", true)
+        .eq("fulfillment_kind", "physical")
+        .order("sort_order")
+        .order("name")
+        .order("id")
+        .range(from, to),
+    "products",
+  );
+  return rows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    price: Number(p.price),
+    currency: p.currency,
+    leadDays: Number(p.lead_time_days) || 0,
+    stock: ctx.tenant.modules.stock ? p.stock_quantity : null,
+    variants: [...(p.product_variants ?? [])]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((v) => ({ id: v.id, name: v.name, price: Number(v.price) })),
+  }));
 }
 
 export type ManualOrderInput = {

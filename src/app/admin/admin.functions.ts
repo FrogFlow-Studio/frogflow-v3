@@ -685,17 +685,7 @@ const isoDate = z
 export const manualOrderFormFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await admin();
   const { activeDeliveryZones, zoneFee } = await import("@/core/fulfillment/fulfillment");
-  const { minFulfillmentDate } = await import("@/core/orders/physical-admin");
-  const { data, error } = await ctx.db
-    .from("products")
-    .select(
-      "id, name, price, currency, lead_time_days, stock_quantity, product_variants(id, name, price, sort_order)",
-    )
-    .eq("is_active", true)
-    .eq("fulfillment_kind", "physical")
-    .order("sort_order")
-    .order("name");
-  if (error) throw new Error(error.message);
+  const { manualOrderProducts, minFulfillmentDate } = await import("@/core/orders/physical-admin");
   const zones = await Promise.all(
     (await activeDeliveryZones(ctx)).map(async (z) => {
       const fee = await zoneFee(ctx, z.price, null);
@@ -703,17 +693,7 @@ export const manualOrderFormFn = createServerFn({ method: "GET" }).handler(async
     }),
   );
   return {
-    products: (data ?? []).map((p) => ({
-      id: p.id,
-      name: p.name,
-      price: Number(p.price),
-      currency: p.currency,
-      leadDays: Number(p.lead_time_days) || 0,
-      stock: ctx.tenant.modules.stock ? p.stock_quantity : null,
-      variants: [...(p.product_variants ?? [])]
-        .sort((a, b) => a.sort_order - b.sort_order)
-        .map((v) => ({ id: v.id, name: v.name, price: Number(v.price) })),
-    })),
+    products: await manualOrderProducts(ctx),
     zones,
     today: minFulfillmentDate(ctx, 0),
   };
