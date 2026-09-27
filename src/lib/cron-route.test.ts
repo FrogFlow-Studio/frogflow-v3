@@ -81,6 +81,9 @@ vi.mock("@/channels/telegram/jobs", () => ({
 }));
 vi.mock("@/core/storefront/web-expire", () => ({ expireWebOrders: hit("webOrders") }));
 vi.mock("@/core/storefront/web-remind", () => ({ remindWebOrders: hit("webReminders") }));
+vi.mock("@/app/orders/pay-remind.server", () => ({
+  runChatPayReminders: hit("chatPayReminders"),
+}));
 vi.mock("@/channels/zernio/jobs", () => ({ runWhatsAppBroadcastBatch: hit("waBroadcast") }));
 vi.mock("@/app/outbox/senders.server", () => ({ runOutbox: hit("outbox") }));
 vi.mock("@/core/vip/cron", () => ({ runVipCron: hit("vip") }));
@@ -135,6 +138,7 @@ const JOBS: Record<string, string[]> = {
     "courses",
     "webOrders",
     "webReminders",
+    "chatPayReminders",
   ],
   vip: ["vip"],
   "comment-dm-fallback": ["commentDm"],

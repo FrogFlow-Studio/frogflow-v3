@@ -13,6 +13,7 @@ export const SETTING_KEYS = [
   "instruction_caption",
   "delivery_email_note",
   "cart_reminder_hours",
+  "chat_pay_reminder_hours",
   "delivery_lang_timing",
   "loyalty_earn_percent",
   "loyalty_max_redeem_percent",

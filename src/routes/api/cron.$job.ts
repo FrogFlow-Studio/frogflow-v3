@@ -119,6 +119,10 @@ export const Route = createFileRoute("/api/cron/$job")({
                     (await import("@/core/tenant/resolve.server")).tenantContext(t),
                     env().SESSION_SECRET,
                   ),
+                  // Заказ из бота, Instagram, WhatsApp ждёт оплаты N часов — одно напоминание (выкл. по умолчанию).
+                  chatPayReminders: await (
+                    await import("@/app/orders/pay-remind.server")
+                  ).runChatPayReminders(t),
                 }),
               }[params.job];
               // Клиенты — параллельно: пакет рассылки одного не задерживает других.

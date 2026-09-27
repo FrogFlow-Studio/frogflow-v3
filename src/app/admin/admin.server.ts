@@ -314,39 +314,44 @@ export async function runOrderAction(
     case "remind": {
       if (order.status !== "awaiting_payment")
         return { ok: false, message: t("msg.orders.remindOnlyAwaiting") };
-      const { claimOrderEvent, recordOrderEvent } = await import("@/core/orders/events");
+      const { claimOrderEvent } = await import("@/core/orders/events");
       const web = order.platform === "web";
-      // Заказ с сайта: тот же ключ, что у письма-напоминания крона (core/storefront/web-remind) —
-      // одно напоминание на заказ, двойной клик и крон второго письма не шлют.
-      if (
-        web &&
-        !(await claimOrderEvent(
+      if (web) {
+        // Заказ с сайта: тот же ключ, что у письма-напоминания крона (core/storefront/web-remind) —
+        // одно напоминание на заказ, двойной клик и крон второго письма не шлют.
+        const claimed = await claimOrderEvent(
           ctx,
           id,
           "reminded",
           "email",
-          {
-            channel: "email",
-            to: order.customer_email ?? "",
-          },
+          { channel: "email", to: order.customer_email ?? "" },
           actor,
-        ))
-      )
+        );
+        if (!claimed) return { ok: false, message: t("msg.orders.alreadyReminded") };
+        const { amountDueNow } = await import("@/core/fulfillment/fulfillment");
+        const { formatMoney } = await import("@/core/money/money");
+        const due = await amountDueNow(ctx, {
+          total: Number(order.total),
+          fulfillment_kind: order.fulfillment_kind,
+        });
+        const ok = await notifyCustomer(
+          ctx,
+          order,
+          `⏰ Напоминаем: заказ #${no} на ${formatMoney(due, order.currency)} ждёт оплаты. Оплатить можно на странице заказа.`,
+        );
+        return { ok, message: ok ? t("msg.orders.reminded") : t("msg.orders.remindFailed") };
+      }
+      // Заказ из чата: тот же ключ и тот же текст, что у напоминания крона
+      // (core/orders/pay-remind) — сумма, реквизиты или ссылка счёта.
+      const { claimPayReminder, payReminderFor } = await import("@/core/orders/pay-remind");
+      if (!(await claimPayReminder(ctx, id, order.platform ?? "telegram", actor)))
         return { ok: false, message: t("msg.orders.alreadyReminded") };
-      const { amountDueNow } = await import("@/core/fulfillment/fulfillment");
-      const { formatMoney } = await import("@/core/money/money");
-      const due = await amountDueNow(ctx, {
-        total: Number(order.total),
-        fulfillment_kind: order.fulfillment_kind,
-      });
+      const { reminderText } = await import("@/app/orders/pay-remind.server");
       const ok = await notifyCustomer(
         ctx,
         order,
-        `⏰ Напоминаем: заказ #${no} на ${formatMoney(due, order.currency)} ждёт оплаты. ${
-          web ? "Оплатить можно на странице заказа." : "Пришлите чек после перевода."
-        }`,
+        await reminderText(ctx, await payReminderFor(ctx, order)),
       );
-      if (ok && !web) await recordOrderEvent(ctx, id, "reminded", {}, actor);
       return {
         ok,
         message: ok ? t("msg.orders.reminded") : t("msg.orders.remindFailed"),

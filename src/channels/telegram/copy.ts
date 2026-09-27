@@ -123,6 +123,14 @@ export type Msg = {
   defaultInstructions: string;
   afterProofManual: string;
   sendReceiptPrompt: string;
+  /** Напоминание об оплате (core/orders/pay-remind): заголовок и просьба прислать чек. */
+  payReminderTitle: (no: number) => string;
+  payReminderAfter: string;
+  payReminderAmount: (amount: string) => string;
+  payReminderDeposit: (due: string, total: string) => string;
+  payReminderNoDetails: string;
+  /** Счёт ссылкой (#194): оплата и чек — на странице заказа. */
+  payReminderLink: (url: string) => string;
   proofReceived: (no: number) => string;
   /** Instagram/WhatsApp: почта для выдачи письмом (перенос из v1). */
   emailAsk: string;
@@ -382,6 +390,13 @@ const ru: Msg = {
   sendReceiptPrompt:
     "Пришлите, пожалуйста, фото или PDF чека об оплате. Чтобы вернуться в меню — нажмите любую кнопку ниже.",
   proofReceived: (no) => `✅ Чек по заказу #${no} получен. Ожидайте подтверждения продавца.`,
+  payReminderTitle: (no) => `⏰ <b>Заказ #${no} ждёт оплаты</b>`,
+  payReminderAfter: "После оплаты пришлите сюда фото или PDF чека.",
+  payReminderAmount: (a) => `💰 К оплате: <b>${a}</b>`,
+  payReminderDeposit: (due, total) =>
+    `Сейчас — задаток ${due}, остаток при получении (итого ${total}).`,
+  payReminderNoDetails: "Реквизиты для оплаты уточните у продавца.",
+  payReminderLink: (url) => `Оплатить и прислать чек можно на странице заказа:\n${url}`,
   proofDuplicate: "Этот чек уже был отправлен по другому заказу. Пришлите чек именно этой оплаты.",
   proofFailed: "Не удалось сохранить чек, попробуйте отправить ещё раз.",
   proofBadFile: "Чек нужен фотографией или PDF-файлом. Пришлите, пожалуйста, чек ещё раз.",
@@ -431,6 +446,13 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  payReminderTitle: (no) => `⏰ <b>#${no} тапсырыс төлемді күтуде</b>`,
+  payReminderAfter: "Төлегеннен кейін чектің фотосын немесе PDF файлын осында жіберіңіз.",
+  payReminderAmount: (a) => `💰 Төлеуге: <b>${a}</b>`,
+  payReminderDeposit: (due, total) =>
+    `Қазір — кепілақы ${due}, қалғаны алған кезде (барлығы ${total}).`,
+  payReminderNoDetails: "Төлем деректемелерін сатушыдан нақтылаңыз.",
+  payReminderLink: (url) => `Төлеуге және чекті жіберуге тапсырыс бетінде болады:\n${url}`,
   emailSaveFailed: "Поштаны сақтау мүмкін болмады. Мекенжайды қайта жіберіңізші.",
   emailAsk:
     "Төлемнен кейін материалдарды қай поштаға жіберейік? Instagram құжаттарды жібере алмайды, сондықтан файлдар хатпен кетеді.\n\nМекенжайды тексеріңіз: артық бос орынсыз және қатесіз, мысалы anna@mail.ru",
@@ -562,6 +584,13 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  payReminderTitle: (no) => `⏰ <b>Order #${no} is awaiting payment</b>`,
+  payReminderAfter: "After paying, send a photo or PDF of the receipt here.",
+  payReminderAmount: (a) => `💰 To pay: <b>${a}</b>`,
+  payReminderDeposit: (due, total) =>
+    `Now — a deposit of ${due}, the rest on receipt (total ${total}).`,
+  payReminderNoDetails: "Please ask the seller for payment details.",
+  payReminderLink: (url) => `You can pay and send the receipt on the order page:\n${url}`,
   emailSaveFailed: "Couldn't save the email. Please send the address again.",
   emailAsk:
     "Which email should we send the materials to after payment? Instagram can't forward documents, so files go out by email.\n\nPlease check the address: no extra spaces or typos, e.g. anna@mail.ru",
@@ -713,6 +742,12 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  payReminderTitle: (no) => `⏰ <b>#${no} buyurtma to‘lovni kutmoqda</b>`,
+  payReminderAfter: "To‘lovdan so‘ng chekning surati yoki PDF faylini shu yerga yuboring.",
+  payReminderAmount: (a) => `💰 To‘lov: <b>${a}</b>`,
+  payReminderDeposit: (due, total) => `Hozir — zaklad ${due}, qolgani olishda (jami ${total}).`,
+  payReminderNoDetails: "To‘lov rekvizitlarini sotuvchidan aniqlang.",
+  payReminderLink: (url) => `To‘lash va chekni yuborish buyurtma sahifasida:\n${url}`,
   emailSaveFailed: "Pochtani saqlab bo‘lmadi. Iltimos, manzilni qayta yuboring.",
   emailAsk:
     "To‘lovdan keyin materiallarni qaysi pochtaga yuboraylik? Instagram hujjatlarni yubora olmaydi, shuning uchun fayllar xat orqali ketadi.\n\nManzilni tekshiring: ortiqcha bo‘shliq va xatosiz, masalan anna@mail.ru",

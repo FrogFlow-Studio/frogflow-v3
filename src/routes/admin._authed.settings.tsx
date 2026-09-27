@@ -24,6 +24,7 @@ import {
 } from "@/app/admin/settings/payments";
 import {
   LegalCard,
+  PayReminderCard,
   SmartSearchCard,
   WatermarkCard,
   WeeklyReportCard,
@@ -319,6 +320,7 @@ function SettingsPage() {
           <SmartSearchCard settings={settings} hasKey={smartSearchKey} />
         )}
         <WeeklyReportCard settings={settings} />
+        <PayReminderCard settings={settings} />
         {shop.modules.legal_docs && <LegalCard settings={settings} />}
         {shop.modules.notify_in_bot && <NotifyCard />}
         {shop.modules.crm_integration && <CrmCard />}

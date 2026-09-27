@@ -77,4 +77,24 @@ describe("напомнить об оплате", () => {
     const { formatMoney } = await import("@/core/money/money");
     expect(notified[0]!.text).toContain(`на ${formatMoney(3000, "KZT")} ждёт`);
   });
+
+  it("заказ из бота: кнопка и крон делят одну метку — второе напоминание не уходит", async () => {
+    const { ctx, db } = shop();
+    db.tables.customers = [];
+    db.tables.payment_methods = [];
+    orders[3] = { ...base, id: 3, platform: "telegram", telegram_id: 42 };
+    notified.length = 0;
+    ctx.tenant.telegramTokenEnc = "enc";
+    expect((await runOrderAction(ctx, 3, "remind")).ok).toBe(true);
+    expect(notified).toHaveLength(1);
+    expect(notified[0]!.text).toContain("Заказ #7 ждёт оплаты");
+    expect(db.tables.zernio_logs!.map((r) => r.event_id)).toEqual(["order:3:reminded:chat"]);
+
+    const { claimPayReminder } = await import("@/core/orders/pay-remind");
+    expect(await claimPayReminder(ctx, 3, "telegram")).toBe(false);
+    expect(await runOrderAction(ctx, 3, "remind")).toEqual({
+      ok: false,
+      message: "msg.orders.alreadyReminded",
+    });
+  });
 });

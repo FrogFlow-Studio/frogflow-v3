@@ -241,6 +241,11 @@ export const ru = {
     "По понедельникам в 9:00 бот магазина присылает итоги прошлой недели: выручку, воронку покупателя, лучший канал и топ товаров.",
   "settings.weekly.on": "Включён",
   "settings.weekly.off": "Выключен",
+  "settings.payRemind.title": "Напоминание об оплате",
+  "settings.payRemind.intro":
+    "Если заказ из бота, Instagram или WhatsApp не оплачен, бот один раз напомнит покупателю сумму и реквизиты. В Instagram и WhatsApp — только если покупатель писал магазину в последние сутки.",
+  "settings.payRemind.off": "Не напоминать",
+  "settings.payRemind.after": "Через {n} ч после оформления",
   "settings.ocr.intro":
     "Чек, присланный в бот, читается автоматически: если сумма и признаки оплаты сошлись — файлы уходят покупателю сразу, без вашего участия; сомнительный чек попадает к вам с причиной; скрин без оплаты бот просит прислать заново. Тариф — $2 за 1000 распознаваний.",
   "settings.ocr.noKey":
@@ -511,6 +516,11 @@ export const kk: SectionDict<typeof ru> = {
     "Дүйсенбі сайын 9:00-де дүкен боты өткен аптаның қорытындысын жібереді: түсім, сатып алушы воронкасы, үздік арна және топ тауарлар.",
   "settings.weekly.on": "Қосулы",
   "settings.weekly.off": "Өшірулі",
+  "settings.payRemind.title": "Төлем туралы еске салу",
+  "settings.payRemind.intro":
+    "Боттағы, Instagram немесе WhatsApp-тағы тапсырыс төленбесе, бот сатып алушыға соманы мен деректемелерді бір рет еске салады. Instagram мен WhatsApp-та — сатып алушы соңғы тәулікте дүкенге жазған болса ғана.",
+  "settings.payRemind.off": "Еске салмау",
+  "settings.payRemind.after": "Рәсімдегеннен кейін {n} сағ",
   "settings.ocr.intro":
     "Ботқа жіберілген чек автоматты түрде оқылады: сома мен төлем белгілері сәйкес келсе — файлдар сізге қатыссыз бірден сатып алушыға кетеді; күмәнді чек себебімен сізге түседі; төлемсіз скринді бот қайта жіберуді сұрайды. Тариф — 1000 тануға $2.",
   "settings.ocr.noKey":
@@ -778,6 +788,11 @@ export const en: SectionDict<typeof ru> = {
     "Every Monday at 9:00 the shop bot sends last week’s results: revenue, the buyer funnel, the best channel and top products.",
   "settings.weekly.on": "On",
   "settings.weekly.off": "Off",
+  "settings.payRemind.title": "Payment reminder",
+  "settings.payRemind.intro":
+    "If an order from the bot, Instagram or WhatsApp is not paid, the bot reminds the buyer once of the amount and payment details. In Instagram and WhatsApp only if the buyer wrote to the shop within the last day.",
+  "settings.payRemind.off": "Don't remind",
+  "settings.payRemind.after": "{n} h after checkout",
   "settings.ocr.intro":
     "A receipt sent to the bot is read automatically: if the amount and payment markers match, the files go to the customer right away without you; a doubtful receipt comes to you with the reason; a screenshot without payment is asked to be resent. Rate — $2 per 1,000 recognitions.",
   "settings.ocr.noKey":
@@ -1048,6 +1063,11 @@ export const uz: SectionDict<typeof ru> = {
     "Har dushanba 9:00 da do‘kon boti o‘tgan hafta natijalarini yuboradi: tushum, xaridor voronkasi, eng yaxshi kanal va top mahsulotlar.",
   "settings.weekly.on": "Yoqilgan",
   "settings.weekly.off": "O‘chirilgan",
+  "settings.payRemind.title": "To‘lov haqida eslatma",
+  "settings.payRemind.intro":
+    "Botdagi, Instagram yoki WhatsApp’dagi buyurtma to‘lanmasa, bot xaridorga summa va rekvizitlarni bir marta eslatadi. Instagram va WhatsApp’da — faqat xaridor so‘nggi sutkada do‘konga yozgan bo‘lsa.",
+  "settings.payRemind.off": "Eslatmaslik",
+  "settings.payRemind.after": "Rasmiylashtirilgandan {n} soat keyin",
   "settings.ocr.intro":
     "Botga yuborilgan chek avtomatik o‘qiladi: summa va to‘lov belgilari mos kelsa — fayllar sizning ishtirokingizsiz darhol xaridorga ketadi; shubhali chek sababi bilan sizga tushadi; to‘lovsiz skrinni bot qayta yuborishni so‘raydi. Tarif — 1000 ta aniqlash uchun $2.",
   "settings.ocr.noKey":

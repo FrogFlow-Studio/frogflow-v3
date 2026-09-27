@@ -3,6 +3,11 @@ import { useState } from "react";
 import { saveSettingsFn, setPdfWatermarkFn } from "@/app/admin/admin.functions";
 import { Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
 import { adminT } from "@/app/i18n/admin";
+import {
+  PAY_REMIND_HOURS,
+  PAY_REMIND_KEY,
+  parsePayRemindHours,
+} from "@/core/orders/pay-remind-settings";
 import { settingsRoute } from "./route";
 
 export function LegalCard({ settings }: { settings: Record<string, string> }) {
@@ -178,6 +183,38 @@ export function WeeklyReportCard({ settings }: { settings: Record<string, string
         </span>
       </div>
       <ErrorBox error={toggle.error} />
+    </Card>
+  );
+}
+
+/** Напоминание об оплате заказов из бота, Instagram и WhatsApp (core/orders/pay-remind). */
+export function PayReminderCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const current = String(parsePayRemindHours(settings[PAY_REMIND_KEY]) ?? "");
+  const save = useAction(async (v: string) => {
+    await saveSettingsFn({ data: { [PAY_REMIND_KEY]: v } });
+    await router.invalidate();
+  });
+  return (
+    <Card title={t("settings.payRemind.title")}>
+      <p className="mb-3 text-sm text-muted">{t("settings.payRemind.intro")}</p>
+      <select
+        className="input"
+        aria-label={t("settings.payRemind.title")}
+        value={current}
+        disabled={save.busy || shop.role !== "owner"}
+        onChange={(e) => void save.run(e.target.value).catch(() => {})}
+      >
+        <option value="">{t("settings.payRemind.off")}</option>
+        {PAY_REMIND_HOURS.map((n) => (
+          <option key={n} value={String(n)}>
+            {t("settings.payRemind.after", { n })}
+          </option>
+        ))}
+      </select>
+      <ErrorBox error={save.error} />
     </Card>
   );
 }
