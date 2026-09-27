@@ -86,6 +86,9 @@ vi.mock("@/channels/zernio/dispatch.server", () => ({
   retryStuckEventsFor: hitList("zernioRetry"),
 }));
 vi.mock("@/channels/telegram/digest.server", () => ({ sendDueDigests: hitList("digest") }));
+vi.mock("@/channels/telegram/weekly.server", () => ({
+  sendDueWeeklyReports: hitList("weekly"),
+}));
 vi.mock("@/app/operator/billing.server", () => ({ sweepSubscriptions: async () => ({}) }));
 vi.mock("@/core/catalog/sheet.server", () => ({
   runSheetSync: (ctx: { tenant: { id: string } }) => {
@@ -119,7 +122,7 @@ describe("кроны обходят только клиентов v2", () => {
     "fulfillment-reminder": ["fulfillment", "winback", "funnel", "courses"],
     vip: ["vip"],
     "comment-dm-fallback": ["commentDm"],
-    health: ["zernioSync", "zernioRetry", "digest"],
+    health: ["zernioSync", "zernioRetry", "digest", "weekly"],
     subscriptions: ["catalogSheet", "sheetNotify"],
   };
 

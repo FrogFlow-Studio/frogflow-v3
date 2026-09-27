@@ -293,6 +293,7 @@ function SettingsPage() {
         {shop.modules.smart_search && (
           <SmartSearchCard settings={settings} hasKey={smartSearchKey} />
         )}
+        <WeeklyReportCard settings={settings} />
         {shop.modules.legal_docs && <LegalCard settings={settings} />}
         {shop.modules.notify_in_bot && <NotifyCard />}
         {shop.modules.crm_integration && <CrmCard />}
@@ -1418,6 +1419,35 @@ function ReceiptOcrCard({
         <dt className="text-muted">{t("settings.ocr.total")}</dt>
         <dd className="tabular-nums">{usage.count}</dd>
       </dl>
+      <ErrorBox error={toggle.error} />
+    </Card>
+  );
+}
+
+/** Недельный отчёт в бот магазина (core/analytics/weekly): по умолчанию включён. */
+function WeeklyReportCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const enabled = settings.weekly_report_enabled !== "false";
+  const toggle = useAction(async (v: boolean) => {
+    await saveSettingsFn({ data: { weekly_report_enabled: v ? "true" : "false" } });
+    await router.invalidate();
+  });
+  return (
+    <Card title={t("settings.weekly.title")}>
+      <p className="mb-3 text-sm text-muted">{t("settings.weekly.intro")}</p>
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={enabled}
+          disabled={toggle.busy || shop.role !== "owner"}
+          onChange={(v) => void toggle.run(v).catch(() => {})}
+          label={t("settings.weekly.title")}
+        />
+        <span className="text-sm">
+          {enabled ? t("settings.weekly.on") : t("settings.weekly.off")}
+        </span>
+      </div>
       <ErrorBox error={toggle.error} />
     </Card>
   );

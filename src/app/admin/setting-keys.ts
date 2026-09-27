@@ -22,6 +22,7 @@ export const SETTING_KEYS = [
   "smart_search_lifetime_spend",
   "smart_search_last_error",
   "receipt_ocr_auto",
+  "weekly_report_enabled",
   "receipt_ocr_usage",
   "consultant_enabled",
   "consultant_profile",

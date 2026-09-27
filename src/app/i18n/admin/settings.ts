@@ -230,6 +230,11 @@ export const ru = {
   "settings.ss.lastError": "Последняя ошибка: {error}",
   // распознавание чеков
   "settings.ocr.title": "Распознавание чеков",
+  "settings.weekly.title": "Недельный отчёт",
+  "settings.weekly.intro":
+    "По понедельникам в 9:00 бот магазина присылает итоги прошлой недели: выручку, воронку покупателя, лучший канал и топ товаров.",
+  "settings.weekly.on": "Включён",
+  "settings.weekly.off": "Выключен",
   "settings.ocr.intro":
     "Чек, присланный в бот, читается автоматически: если сумма и признаки оплаты сошлись — файлы уходят покупателю сразу, без вашего участия; сомнительный чек попадает к вам с причиной; скрин без оплаты бот просит прислать заново. Тариф — $2 за 1000 распознаваний.",
   "settings.ocr.noKey":
@@ -487,6 +492,11 @@ export const kk: SectionDict<typeof ru> = {
   "settings.ss.spendFor": "{n} шақыруға ${usd}",
   "settings.ss.lastError": "Соңғы қате: {error}",
   "settings.ocr.title": "Чектерді тану",
+  "settings.weekly.title": "Апталық есеп",
+  "settings.weekly.intro":
+    "Дүйсенбі сайын 9:00-де дүкен боты өткен аптаның қорытындысын жібереді: түсім, сатып алушы воронкасы, үздік арна және топ тауарлар.",
+  "settings.weekly.on": "Қосулы",
+  "settings.weekly.off": "Өшірулі",
   "settings.ocr.intro":
     "Ботқа жіберілген чек автоматты түрде оқылады: сома мен төлем белгілері сәйкес келсе — файлдар сізге қатыссыз бірден сатып алушыға кетеді; күмәнді чек себебімен сізге түседі; төлемсіз скринді бот қайта жіберуді сұрайды. Тариф — 1000 тануға $2.",
   "settings.ocr.noKey":
@@ -741,6 +751,11 @@ export const en: SectionDict<typeof ru> = {
   "settings.ss.spendFor": "${usd} for {n} calls",
   "settings.ss.lastError": "Last error: {error}",
   "settings.ocr.title": "Receipt recognition",
+  "settings.weekly.title": "Weekly report",
+  "settings.weekly.intro":
+    "Every Monday at 9:00 the shop bot sends last week’s results: revenue, the buyer funnel, the best channel and top products.",
+  "settings.weekly.on": "On",
+  "settings.weekly.off": "Off",
   "settings.ocr.intro":
     "A receipt sent to the bot is read automatically: if the amount and payment markers match, the files go to the customer right away without you; a doubtful receipt comes to you with the reason; a screenshot without payment is asked to be resent. Rate — $2 per 1,000 recognitions.",
   "settings.ocr.noKey":
@@ -998,6 +1013,11 @@ export const uz: SectionDict<typeof ru> = {
   "settings.ss.spendFor": "{n} chaqiruv uchun ${usd}",
   "settings.ss.lastError": "Oxirgi xato: {error}",
   "settings.ocr.title": "Cheklarni aniqlash",
+  "settings.weekly.title": "Haftalik hisobot",
+  "settings.weekly.intro":
+    "Har dushanba 9:00 da do‘kon boti o‘tgan hafta natijalarini yuboradi: tushum, xaridor voronkasi, eng yaxshi kanal va top mahsulotlar.",
+  "settings.weekly.on": "Yoqilgan",
+  "settings.weekly.off": "O‘chirilgan",
   "settings.ocr.intro":
     "Botga yuborilgan chek avtomatik o‘qiladi: summa va to‘lov belgilari mos kelsa — fayllar sizning ishtirokingizsiz darhol xaridorga ketadi; shubhali chek sababi bilan sizga tushadi; to‘lovsiz skrinni bot qayta yuborishni so‘raydi. Tarif — 1000 ta aniqlash uchun $2.",
   "settings.ocr.noKey":

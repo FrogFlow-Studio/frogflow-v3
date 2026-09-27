@@ -168,6 +168,9 @@ export const Route = createFileRoute("/api/cron/$job")({
               // Утренний дайджест продавцу — у кого настал его час.
               const { sendDueDigests } = await import("@/channels/telegram/digest.server");
               results.digest = await sendDueDigests(tenants);
+              // Недельный отчёт продавцу (понедельник с 9:00) — тем же ботом магазина.
+              const { sendDueWeeklyReports } = await import("@/channels/telegram/weekly.server");
+              results.weekly = await sendDueWeeklyReports(tenants);
               break;
             }
             case "subscriptions": {
