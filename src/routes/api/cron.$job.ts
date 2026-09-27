@@ -174,6 +174,23 @@ export const Route = createFileRoute("/api/cron/$job")({
               // Подписки клиентов на платформу: предупредить, приостановить по политике.
               const { sweepSubscriptions } = await import("@/app/operator/billing.server");
               results.subscriptions = await sweepSubscriptions();
+              // Раз в сутки — каталоги из Google Таблиц (отдельный крон не заводим:
+              // функция на Vercel одна). Не скачалась или закрыта — каталог не
+              // трогаем, продавцу одно сообщение.
+              const { runSheetSync } = await import("@/core/catalog/sheet.server");
+              const { tenantContext } = await import("@/core/tenant/resolve.server");
+              const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
+              for (const t of tenants) {
+                try {
+                  const ctx = tenantContext(t);
+                  const r = await runSheetSync(ctx, "nightly");
+                  if (!r) continue;
+                  if (r.notify) await notifyAdminsHtml(ctx, r.notify, { kind: "system" });
+                  results[`${t.id}:sheet`] = r.run.ok ? { ok: true } : r.run;
+                } catch (e) {
+                  results[`${t.id}:sheet`] = await tenantFailure(t.id, e);
+                }
+              }
               break;
             }
             case "retention": {

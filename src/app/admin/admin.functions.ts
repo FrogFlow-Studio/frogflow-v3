@@ -301,6 +301,74 @@ export const importCatalogFn = createServerFn({ method: "POST" })
     return { preview: null, result: await m.applyImport(ctx, data.csv) };
   });
 
+/** Каталог из Google Таблицы: ссылка, настройки и итог последнего обновления. */
+export const catalogSheetFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  return (await import("@/core/catalog/sheet.server")).loadSheet(ctx);
+});
+
+/** Предпросмотр таблицы по ссылке: ничего не пишет. */
+export const previewCatalogSheetFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ url: z.string().min(1).max(500) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    return (await import("@/core/catalog/sheet.server")).previewSheet(ctx, data.url);
+  });
+
+/** Подключить таблицу (или сменить настройки) и сразу загрузить её — после предпросмотра. */
+export const saveCatalogSheetFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        url: z.string().min(1).max(500),
+        hideMissing: z.boolean(),
+        overwriteManual: z.boolean(),
+        run: z.boolean().default(true),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { sheetCsvUrl, SHEET_CONFIG_KEY } = await import("@/core/catalog/sheet");
+    if (!sheetCsvUrl(data.url))
+      throw new UserError(
+        "err.catalog.sheetBadLink",
+        "Нужна ссылка на Google Таблицу (docs.google.com/spreadsheets/…)",
+      );
+    const { setSetting } = await import("@/core/settings/settings");
+    await setSetting(
+      ctx,
+      SHEET_CONFIG_KEY,
+      JSON.stringify({
+        url: data.url.trim(),
+        hideMissing: data.hideMissing,
+        overwriteManual: data.overwriteManual,
+      }),
+    );
+    if (!data.run) return null;
+    return (await (await import("@/core/catalog/sheet.server")).runSheetSync(ctx, "interactive"))
+      ?.run;
+  });
+
+/** Обновить каталог из таблицы сейчас, не дожидаясь ночи. */
+export const syncCatalogSheetFn = createServerFn({ method: "POST" }).handler(async () => {
+  const ctx = await adminWrite();
+  return (await (await import("@/core/catalog/sheet.server")).runSheetSync(ctx, "interactive"))
+    ?.run;
+});
+
+/** Отключить таблицу: товары остаются как есть, ночные обновления прекращаются. */
+export const disconnectCatalogSheetFn = createServerFn({ method: "POST" }).handler(async () => {
+  const ctx = await adminWrite();
+  const { SHEET_CONFIG_KEY, SHEET_STATUS_KEY } = await import("@/core/catalog/sheet");
+  const { error } = await ctx.db
+    .from("app_settings")
+    .delete()
+    .in("key", [SHEET_CONFIG_KEY, SHEET_STATUS_KEY]);
+  if (error) throw new Error(error.message);
+  return { ok: true };
+});
+
 export const categoriesFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await admin();
   return (await import("@/core/catalog/admin")).listAllCategories(ctx);

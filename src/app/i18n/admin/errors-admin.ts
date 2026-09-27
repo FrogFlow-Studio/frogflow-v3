@@ -8,6 +8,7 @@ export const ru = {
   "err.auth.moduleOff": "Модуль «{module}» не подключён к вашему тарифу.",
   "err.pipeline.leadNotFound": "Заявка не найдена.",
   "err.pipeline.badOwner": "Такого сотрудника нет в команде магазина.",
+  "err.catalog.sheetBadLink": "Нужна ссылка на Google Таблицу (docs.google.com/spreadsheets/…)",
   "err.auth.shopSwitch": "Этот магазин не связан с вашим.",
   // вход
   "err.login.tooMany": "Слишком много неудачных попыток. Попробуйте через 15 минут.",
@@ -121,6 +122,7 @@ export const kk: SectionDict<typeof ru> = {
   "err.auth.moduleOff": "«{module}» модулі тарифіңізге қосылмаған.",
   "err.pipeline.leadNotFound": "Өтінім табылмады.",
   "err.pipeline.badOwner": "Дүкен командасында мұндай қызметкер жоқ.",
+  "err.catalog.sheetBadLink": "Google Кестеге сілтеме керек (docs.google.com/spreadsheets/…)",
   "err.auth.shopSwitch": "Бұл дүкен сіздікімен байланыстырылмаған.",
   "err.login.tooMany": "Сәтсіз әрекеттер тым көп. 15 минуттан кейін қайталап көріңіз.",
   "err.login.oldPlatform":
@@ -228,6 +230,7 @@ export const en: SectionDict<typeof ru> = {
   "err.auth.moduleOff": "The “{module}” module is not included in your plan.",
   "err.pipeline.leadNotFound": "Lead not found.",
   "err.pipeline.badOwner": "There is no such team member in this shop.",
+  "err.catalog.sheetBadLink": "A Google Sheets link is needed (docs.google.com/spreadsheets/…)",
   "err.auth.shopSwitch": "This shop is not linked to yours.",
   "err.login.tooMany": "Too many failed attempts. Please try again in 15 minutes.",
   "err.login.oldPlatform":
@@ -335,6 +338,7 @@ export const uz: SectionDict<typeof ru> = {
   "err.auth.moduleOff": "«{module}» moduli tarifingizga ulanmagan.",
   "err.pipeline.leadNotFound": "Ariza topilmadi.",
   "err.pipeline.badOwner": "Doʻkon jamoasida bunday xodim yoʻq.",
+  "err.catalog.sheetBadLink": "Google Jadval havolasi kerak (docs.google.com/spreadsheets/…)",
   "err.auth.shopSwitch": "Bu doʻkon sizniki bilan bogʻlanmagan.",
   "err.login.tooMany":
     "Muvaffaqiyatsiz urinishlar juda koʻp. 15 daqiqadan keyin qayta urinib koʻring.",

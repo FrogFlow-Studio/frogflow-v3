@@ -28,10 +28,13 @@ export type ImportPreview = {
 
 async function catalogIndex(ctx: TenantContext) {
   const products = await pageAll(
-    (from, to) => ctx.db.from("products").select("id, name").range(from, to),
+    (from, to) => ctx.db.from("products").select("id, name").order("id").range(from, to),
     "товары для импорта",
   );
-  const { data: categories } = await ctx.db.from("categories").select("id, name");
+  const categories = await pageAll(
+    (from, to) => ctx.db.from("categories").select("id, name").order("id").range(from, to),
+    "категории для импорта",
+  );
   return { products, categories: categories ?? [] };
 }
 
@@ -75,10 +78,10 @@ export async function previewImport(ctx: TenantContext, csv: string): Promise<Im
   };
 }
 
-type ProductPatch = Database["public"]["Tables"]["products"]["Update"];
+export type ProductPatch = Database["public"]["Tables"]["products"]["Update"];
 
 /** Только присланные поля; имя — лишь при совпадении по id (по названию его не с чем сравнивать). */
-function patchOf(
+export function patchOf(
   d: ProductDraft,
   by: "id" | "name",
   categoryId: string | null | undefined,

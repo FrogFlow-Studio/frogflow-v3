@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * Маршрут /api/cron/<job> сам отбирает клиентов v2 — одной строкой фильтра
  * по settings.served_by. Всё, что крон делает дальше (рассылки, возврат
- * клиентов, автоворонка, уроки курсов, напоминания, вебхуки), получает уже
- * отобранный список. Сломайся фильтр — возврат клиентов написал бы
+ * клиентов, автоворонка, уроки курсов, напоминания, вебхуки, каталоги из
+ * Google Таблиц), получает уже отобранный список. Сломайся фильтр — возврат клиентов написал бы
  * покупателям магазинов, которые живут на v1. Здесь каждая задача каждого
  * крона подменена записью «кого обошли», и клиентов v1 в ней быть не должно.
  */
@@ -86,6 +86,14 @@ vi.mock("@/channels/zernio/dispatch.server", () => ({
   retryStuckEventsFor: hitList("zernioRetry"),
 }));
 vi.mock("@/channels/telegram/digest.server", () => ({ sendDueDigests: hitList("digest") }));
+vi.mock("@/app/operator/billing.server", () => ({ sweepSubscriptions: async () => ({}) }));
+vi.mock("@/core/catalog/sheet.server", () => ({
+  runSheetSync: (ctx: { tenant: { id: string } }) => {
+    hit("catalogSheet")(ctx);
+    return { run: { ok: true }, notify: "таблица закрыта" };
+  },
+}));
+vi.mock("@/channels/telegram/notify", () => ({ notifyAdminsHtml: hit("sheetNotify") }));
 
 const { Route } = await import("@/routes/api/cron.$job");
 
@@ -112,6 +120,7 @@ describe("кроны обходят только клиентов v2", () => {
     vip: ["vip"],
     "comment-dm-fallback": ["commentDm"],
     health: ["zernioSync", "zernioRetry", "digest"],
+    subscriptions: ["catalogSheet", "sheetNotify"],
   };
 
   for (const [job, tasks] of Object.entries(JOBS))

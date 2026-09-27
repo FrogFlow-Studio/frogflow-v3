@@ -34,7 +34,12 @@ export const CRON_JOBS = [
     everyMin: 15,
     title: "Резервные DM по комментариям",
   },
-  { job: "subscriptions", schedule: "0 4 * * *", everyMin: 1440, title: "Подписки клиентов" },
+  {
+    job: "subscriptions",
+    schedule: "0 4 * * *",
+    everyMin: 1440,
+    title: "Подписки клиентов и каталоги из Google Таблиц",
+  },
   { job: "retention", schedule: "20 3 * * *", everyMin: 1440, title: "Ретеншн журналов" },
 ] as const;
 
