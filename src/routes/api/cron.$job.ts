@@ -94,6 +94,8 @@ export const Route = createFileRoute("/api/cron/$job")({
                   outbox: await (await import("@/app/outbox/senders.server")).runOutbox(t),
                   // Уведомления о заказах, по которым решение принято 5 минут назад.
                   orderNotify: await jobs.flushOrderNotify(t),
+                  // Диалоги без ответа — напоминание продавцу (страница «Чат»).
+                  unanswered: await jobs.runUnansweredChats(t),
                 }),
                 "cart-reminder": jobs.runCartReminders,
                 // Раз в час: напоминание о дате получения, возвратные продажи, «похожие материалы», автоворонка,

@@ -1581,11 +1581,13 @@ export const chatConversationsFn = createServerFn({ method: "GET" }).handler(asy
   const inbox = await import("@/core/inbox/inbox");
   const { getSetting } = await import("@/core/settings/settings");
   const { adminIdentity } = await import("@/app/auth/guards.server");
-  const [list, unread, rawReplies, me] = await Promise.all([
+  const { UNANSWERED_KEY, parseUnansweredMinutes } = await import("@/core/chat/unanswered");
+  const [list, unread, rawReplies, me, rawUnanswered] = await Promise.all([
     listConversations(ctx),
     totalUnread(ctx),
     getSetting(ctx, inbox.QUICK_REPLIES_KEY),
     adminIdentity(),
+    getSetting(ctx, UNANSWERED_KEY),
   ]);
   const ids = list.map((c) => c.telegram_id);
   const [meta, tickets] = await Promise.all([
@@ -1598,8 +1600,21 @@ export const chatConversationsFn = createServerFn({ method: "GET" }).handler(asy
     me: me?.username ?? "",
     assignees: inboxAssignees(ctx),
     quickReplies: inbox.parseQuickReplies(rawReplies),
+    unansweredMinutes: parseUnansweredMinutes(rawUnanswered),
   };
 });
+
+/** Через сколько минут без ответа напомнить продавцу; 0 — не напоминать. */
+export const chatUnansweredSaveFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ minutes: z.number().int().min(0).max(1440) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await chatModule("manager");
+    const { UNANSWERED_KEY, parseUnansweredMinutes } = await import("@/core/chat/unanswered");
+    const minutes = parseUnansweredMinutes(String(data.minutes));
+    const { setSetting } = await import("@/core/settings/settings");
+    await setSetting(ctx, UNANSWERED_KEY, String(minutes));
+    return { minutes };
+  });
 
 export const inboxSetFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>

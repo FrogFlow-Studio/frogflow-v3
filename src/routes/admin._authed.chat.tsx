@@ -10,6 +10,7 @@ import {
   chatMessagesFn,
   chatReplyFn,
   chatResumeBotFn,
+  chatUnansweredSaveFn,
   inboxSetFn,
   invoiceCartFn,
   invoiceProductsFn,
@@ -19,6 +20,7 @@ import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { uploadFile } from "@/app/admin/upload-client";
 import type { ChatMessage, Conversation } from "@/core/chat/chat";
+import { UNANSWERED_OPTIONS } from "@/core/chat/unanswered";
 import { isIndefinite } from "@/core/consultant/pause";
 import {
   fillQuickReply,
@@ -194,6 +196,7 @@ function ChatPage() {
           resumeBot.error
         }
       />
+      <UnansweredAlert t={t} initial={initial.unansweredMinutes} canWrite={canWrite} />
       <InboxFilters t={t} filter={filter} counts={counts} onChange={setFilter} />
       <div className="card grid h-[calc(100vh-14rem)] min-h-[28rem] grid-cols-1 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <div className="overflow-y-auto border-b border-line md:border-r md:border-b-0">
@@ -716,6 +719,51 @@ function InvoicePanel({
           {t("chat.invoiceSend")}
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Через сколько минут без ответа напомнить продавцу в Telegram (крон, core/chat/unanswered). */
+function UnansweredAlert({
+  t,
+  initial,
+  canWrite,
+}: {
+  t: AdminT;
+  initial: number;
+  canWrite: boolean;
+}) {
+  const [minutes, setMinutes] = useState(initial);
+  const save = useAction(async (m: number) => {
+    const r = await chatUnansweredSaveFn({ data: { minutes: m } });
+    setMinutes(r.minutes);
+  });
+  const option = (m: number) =>
+    m === 0
+      ? t("chat.unansweredOff")
+      : m < 60
+        ? t("chat.unansweredMin", { n: m })
+        : t("chat.unansweredHours", { n: m / 60 });
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+      <label htmlFor="unanswered" className="text-muted">
+        {t("chat.unanswered")}
+      </label>
+      <select
+        id="unanswered"
+        className="input w-auto"
+        value={minutes}
+        disabled={!canWrite || save.busy}
+        onChange={(e) => void save.run(Number(e.target.value)).catch(() => {})}
+      >
+        {UNANSWERED_OPTIONS.map((m) => (
+          <option key={m} value={m}>
+            {option(m)}
+          </option>
+        ))}
+      </select>
+      <span className="text-xs text-muted">{t("chat.unansweredHint")}</span>
+      <ErrorBox error={save.error} />
     </div>
   );
 }

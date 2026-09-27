@@ -306,3 +306,50 @@ export async function runCourseLessons(tenant: Tenant) {
     return r.ok;
   });
 }
+
+/** «12 мин», «2 ч 5 мин» — сколько покупатель ждёт. */
+export function waitedLabel(since: string, now = Date.now()): string {
+  const min = Math.max(1, Math.round((now - Date.parse(since)) / 60_000));
+  if (min < 60) return `${min} мин`;
+  const h = Math.floor(min / 60);
+  const rest = min % 60;
+  return rest ? `${h} ч ${rest} мин` : `${h} ч`;
+}
+
+/**
+ * Диалог без ответа (страница «Чат», по умолчанию выключено): одно
+ * сообщение продавцу на отрезок ожидания, с именем ответственного, если он
+ * назначен. Своего Telegram у пользователей «Команды» нет, поэтому пишем
+ * туда же, куда уведомления магазина (тихие часы и матрица — там же).
+ */
+export async function runUnansweredChats(tenant: Tenant) {
+  if (!tenant.modules.manager_chat) return { skipped: "module off" };
+  const ctx = tenantContext(tenant);
+  const { getSetting } = await import("@/core/settings/settings");
+  const { UNANSWERED_KEY, parseUnansweredMinutes, remindUnanswered } =
+    await import("@/core/chat/unanswered");
+  const minutes = parseUnansweredMinutes(await getSetting(ctx, UNANSWERED_KEY));
+  if (!minutes) return { skipped: "off" };
+  const { getCustomerByTelegramId } = await import("@/core/customers/customers");
+  const channel: Record<string, string> = {
+    telegram: "Telegram",
+    instagram: "Instagram",
+    whatsapp: "WhatsApp",
+  };
+  return remindUnanswered(ctx, minutes, async (d) => {
+    const c = await getCustomerByTelegramId(ctx, d.telegramId);
+    const name =
+      [c?.firstName, c?.lastName].filter(Boolean).join(" ") ||
+      (c?.username ? `@${c.username}` : `id ${d.telegramId}`);
+    const preview = d.lastText.length > 200 ? `${d.lastText.slice(0, 200)}…` : d.lastText;
+    const lines = [
+      `⏳ <b>Покупатель ждёт ответа ${waitedLabel(d.waitingSince)}</b>`,
+      `${channel[c?.platform ?? "telegram"] ?? "Telegram"} · 👤 ${escapeHtml(name)}`,
+      d.assignee ? `Ответственный: ${escapeHtml(d.assignee)}` : "Ответственный не назначен",
+      `💬 ${escapeHtml(preview)}`,
+      "",
+      `Ответьте в разделе «Чат»: ${ctx.appUrl}/admin/chat?c=${d.telegramId}`,
+    ];
+    await notifyAdminsHtml(ctx, lines.join("\n"), { kind: "question" });
+  });
+}

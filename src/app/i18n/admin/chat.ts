@@ -73,6 +73,12 @@ export const ru = {
   "chat.quickRemove": "Удалить",
   "chat.quickSave": "Сохранить",
   "chat.quickCancel": "Отмена",
+  "chat.unanswered": "Напомнить о диалоге без ответа:",
+  "chat.unansweredOff": "не напоминать",
+  "chat.unansweredMin": "через {n} мин",
+  "chat.unansweredHours": "через {n} ч",
+  "chat.unansweredHint":
+    "Одно сообщение в Telegram на каждое ожидание, если вы подключены к диалогу, назначен ответственный или открыто обращение.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -147,6 +153,12 @@ export const kk: SectionDict<typeof ru> = {
   "chat.quickRemove": "Жою",
   "chat.quickSave": "Сақтау",
   "chat.quickCancel": "Болдырмау",
+  "chat.unanswered": "Жауапсыз диалог туралы еске салу:",
+  "chat.unansweredOff": "еске салмау",
+  "chat.unansweredMin": "{n} минуттан кейін",
+  "chat.unansweredHours": "{n} сағаттан кейін",
+  "chat.unansweredHint":
+    "Сіз диалогқа қосылсаңыз, жауапты тағайындалса немесе өтініш ашық болса, әр күтуге Telegram-ға бір хабар.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -223,6 +235,12 @@ export const en: SectionDict<typeof ru> = {
   "chat.quickRemove": "Remove",
   "chat.quickSave": "Save",
   "chat.quickCancel": "Cancel",
+  "chat.unanswered": "Remind me about unanswered chats:",
+  "chat.unansweredOff": "never",
+  "chat.unansweredMin": "after {n} min",
+  "chat.unansweredHours": "after {n} h",
+  "chat.unansweredHint":
+    "One Telegram message per wait, when you are connected to the chat, it has an assignee or an open ticket.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -299,4 +317,10 @@ export const uz: SectionDict<typeof ru> = {
   "chat.quickRemove": "O‘chirish",
   "chat.quickSave": "Saqlash",
   "chat.quickCancel": "Bekor qilish",
+  "chat.unanswered": "Javobsiz suhbat haqida eslatish:",
+  "chat.unansweredOff": "eslatmaslik",
+  "chat.unansweredMin": "{n} daqiqadan keyin",
+  "chat.unansweredHours": "{n} soatdan keyin",
+  "chat.unansweredHint":
+    "Suhbatga ulangan bo'lsangiz, mas'ul tayinlangan yoki murojaat ochiq bo'lsa, har bir kutish uchun Telegramga bitta xabar.",
 };

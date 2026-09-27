@@ -71,6 +71,7 @@ vi.mock("@/channels/zernio/connect.server", () => ({
 vi.mock("@/channels/telegram/jobs", () => ({
   runBroadcastBatch: hit("broadcast"),
   flushOrderNotify: hit("orderNotify"),
+  runUnansweredChats: hit("unanswered"),
   runCartReminders: hit("cartReminder"),
   runFulfillmentReminders: hit("fulfillment"),
   runWinbackFor: hit("winback"),
@@ -124,7 +125,7 @@ beforeEach(() => {
 
 const JOBS: Record<string, string[]> = {
   "ensure-webhook": ["webhook", "vipWebhook"],
-  broadcast: ["broadcast", "waBroadcast", "outbox", "orderNotify"],
+  broadcast: ["broadcast", "waBroadcast", "outbox", "orderNotify", "unanswered"],
   "cart-reminder": ["cartReminder"],
   "fulfillment-reminder": [
     "fulfillment",
