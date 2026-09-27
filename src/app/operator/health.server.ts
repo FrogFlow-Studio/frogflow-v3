@@ -1,5 +1,6 @@
 import { env } from "@/config/env";
 import { serviceDb } from "@/core/db/client.server";
+import { pageAll } from "@/core/db/page";
 import { telegramApi } from "@/channels/telegram/api";
 import { telegramWebhookUrl } from "@/channels/telegram/secret";
 import { tenantContext, tenantDirectory } from "@/core/tenant/resolve.server";
@@ -93,19 +94,32 @@ export type LatestHealth = {
   pending: number | null;
 };
 
-/** Последний снимок по каждому клиенту — для списка. */
+/** Сколько клиентов спрашиваем одновременно: запросы крошечные, но не всей пачкой разом. */
+const LATEST_PARALLEL = 20;
+
+/**
+ * Последний снимок по каждому клиенту — для списка. Отдельный запрос на
+ * клиента с limit(1): общий «последние N строк» терял клиентов, чей
+ * последний снимок старше чужих N (бот без токена, v1, архив), а при
+ * сотне ботов на v2 1500 строк — это меньше четырёх часов снимков.
+ */
 export async function latestHealth(ids?: string[]): Promise<Map<string, LatestHealth>> {
-  let q = serviceDb()
-    .from("bot_health_snapshots")
-    .select("bot_id, ok, at, error, pending_updates")
-    .order("at", { ascending: false })
-    .limit(1500);
-  if (ids) q = q.in("bot_id", ids);
-  const { data } = await q;
+  const botIds = ids ?? (await tenantDirectory(true)).map((t) => t.id);
   const out = new Map<string, LatestHealth>();
-  for (const r of data ?? [])
-    if (!out.has(r.bot_id))
-      out.set(r.bot_id, { ok: r.ok, at: r.at, error: r.error, pending: r.pending_updates });
+  for (let i = 0; i < botIds.length; i += LATEST_PARALLEL)
+    await Promise.all(
+      botIds.slice(i, i + LATEST_PARALLEL).map(async (id) => {
+        const { data, error } = await serviceDb()
+          .from("bot_health_snapshots")
+          .select("bot_id, ok, at, error, pending_updates")
+          .eq("bot_id", id)
+          .order("at", { ascending: false })
+          .limit(1);
+        if (error) throw new Error(`bot_health_snapshots: ${error.message}`);
+        const r = data?.[0];
+        if (r) out.set(id, { ok: r.ok, at: r.at, error: r.error, pending: r.pending_updates });
+      }),
+    );
   return out;
 }
 
@@ -119,14 +133,21 @@ export type HealthHistory = {
 /** Снимки за период схлопываются в интервалы простоя: оператору интересно «когда и сколько». */
 export async function getHealthHistory(botId: string, days = 14): Promise<HealthHistory> {
   const cutoff = new Date(Date.now() - days * 86_400_000).toISOString();
-  const { data, error } = await serviceDb()
-    .from("bot_health_snapshots")
-    .select("at, ok, error")
-    .eq("bot_id", botId)
-    .gte("at", cutoff)
-    .order("at", { ascending: true });
-  if (error) throw new Error(error.message);
-  const rows = data ?? [];
+  // Снимок раз в 15 минут — 1344 строки за 14 дней, больше потолка PostgREST
+  // в 1000: одним запросом терялись последние дни. Читаем постранично.
+  const rows = await pageAll(
+    (from, to) =>
+      serviceDb()
+        .from("bot_health_snapshots")
+        .select("at, ok, error")
+        .eq("bot_id", botId)
+        .gte("at", cutoff)
+        // Второй ключ сортировки — чтобы страницы не перекрывались при равных at.
+        .order("at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    "bot_health_snapshots",
+  );
   if (rows.length === 0) return { uptimeRatio: null, snapshotCount: 0, outages: [] };
   const outages: HealthOutage[] = [];
   let open: { startedAt: string; error: string | null } | null = null;
