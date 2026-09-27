@@ -5,12 +5,19 @@ import {
   THRESHOLD,
   alertSummaryText,
   alertText,
+  cronProbe,
   formatDowntime,
   parseAlertStates,
+  parsePlatformKey,
+  platformAlertText,
+  platformKey,
+  platformSummaryText,
   stepHealthAlerts,
+  zernioWebhookProbe,
   type AlertStates,
   type HealthProbe,
 } from "./health-alerts";
+import { platformProbes } from "./platform-alerts.server";
 
 const T = (min: number) => new Date(Date.UTC(2026, 8, 27, 3, 0) + min * 60_000).toISOString();
 const bad = (bot_id = "b", error = "вебхук: не установлен"): HealthProbe => ({
@@ -145,5 +152,126 @@ describe("сохранённое состояние и текст", () => {
     const up = alertText({ kind: "up", botId: "b", since: T(0), at: T(75) }, o);
     expect(up).toContain("снова отвечает");
     expect(up).toContain("Простой: 1 ч 15 мин.");
+  });
+});
+
+describe("платформа: кроны, вебхук Zernio, аккаунты", () => {
+  const job = { job: "broadcast", everyMin: 1 };
+
+  it("крон: молчит — сбой с понятной причиной; упал — его ошибка; в порядке — ок", () => {
+    // Ни одного запуска (новая задача, суточный крон после выкладки) — не проверяем.
+    expect(cronProbe({ ...job, stale: true, last: null })).toBeNull();
+    expect(
+      cronProbe({ ...job, stale: true, last: { at: T(0), ok: true, error: null } })?.error,
+    ).toBe("не запускался дольше 2 мин");
+    expect(
+      cronProbe({ ...job, stale: false, last: { at: T(0), ok: false, error: "таймаут" } }),
+    ).toMatchObject({ ok: false, error: "таймаут" });
+    expect(cronProbe({ ...job, stale: false, last: { at: T(0), ok: true, error: null } })?.ok).toBe(
+      true,
+    );
+  });
+
+  it("вебхук Zernio: запись, которую надо обновить, — сбой с подсказкой", () => {
+    expect(zernioWebhookProbe({ ok: true, action: "unchanged" }).ok).toBe(true);
+    expect(zernioWebhookProbe({ ok: false, action: "update" })).toEqual({
+      bot_id: "zernio:webhook",
+      ok: false,
+      error: "вебхук v2 выключен или не видит профили клиентов v2",
+    });
+    expect(zernioWebhookProbe({ ok: false, action: "error", error: "HTTP 500" }).error).toBe(
+      "HTTP 500",
+    );
+  });
+
+  it("ключи разбираются обратно", () => {
+    for (const s of [
+      { kind: "cron", job: "health" },
+      { kind: "zernio_webhook" },
+      { kind: "account", botId: "b", accountId: "acc:1" },
+    ] as const)
+      expect(parsePlatformKey(platformKey(s))).toEqual(s);
+    expect(parsePlatformKey("b")).toBeNull();
+  });
+
+  it("тексты: что сломалось, что делать и куда смотреть", () => {
+    const o = {
+      labels: new Map([["account:b:acc", "Instagram @aa_teach_ клиента «Education Bot»"]]),
+      base: "https://ff.example",
+      timeZone: "Asia/Almaty",
+    };
+    const zDown = platformAlertText(
+      { kind: "down", botId: "zernio:webhook", since: T(0), error: "вебхука v2 нет" },
+      o,
+    );
+    expect(zDown).toContain("Вебхук Zernio v2 не в порядке");
+    expect(zDown).toContain("«Привязать»");
+    expect(zDown).toContain("https://ff.example/operator/settings");
+    const accDown = platformAlertText(
+      { kind: "down", botId: "account:b:acc", since: T(0), error: "аккаунт отвязан" },
+      o,
+    );
+    expect(accDown).toContain("Instagram @aa_teach_ клиента «Education Bot» отключился");
+    expect(accDown).toContain("https://ff.example/operator/clients/b");
+    const accUp = platformAlertText(
+      { kind: "up", botId: "account:b:acc", since: T(0), at: T(90) },
+      o,
+    );
+    expect(accUp).toContain("снова подключён");
+    expect(accUp).toContain("Простой: 1 ч 30 мин.");
+    expect(
+      platformSummaryText(
+        [
+          { kind: "down", botId: "cron:vip", since: T(0), error: null },
+          { kind: "up", botId: "zernio:webhook", since: T(0), at: T(30) },
+        ],
+        { labels: new Map([["cron:vip", "VIP-подписки"]]), base: o.base },
+      ),
+    ).toContain("Платформа: сбоев 1, восстановлено 1");
+  });
+});
+
+describe("проверки платформы из показаний", () => {
+  const tenant = (id: string, served: "v1" | "v2", accounts: object[]) => ({
+    id,
+    name: `Клиент ${id}`,
+    archived: false,
+    settings: { served_by: served, zernio: { accounts } } as never,
+  });
+
+  it("кроны, вебхук и аккаунты только клиентов v2; отвязанный аккаунт — сбой", () => {
+    const { probes, labels } = platformProbes({
+      crons: [
+        { job: "vip", everyMin: 10, stale: false, last: { at: T(0), ok: true, error: null } },
+      ],
+      zernioWebhook: { ok: false, action: "create" },
+      tenants: [
+        tenant("b", "v2", [
+          { id: "ig1", platform: "instagram", username: "shop", expired: true },
+          { id: "wa1", platform: "whatsapp", name: "+7700" },
+        ]),
+        tenant("old", "v1", [{ id: "ig2", platform: "instagram", expired: true }]),
+      ],
+      cronTitles: new Map([["vip", "VIP-подписки"]]),
+    });
+    expect(probes.map((p) => [p.bot_id, p.ok])).toEqual([
+      ["cron:vip", true],
+      ["zernio:webhook", false],
+      ["account:b:ig1", false],
+      ["account:b:wa1", true],
+    ]);
+    expect(labels.get("cron:vip")).toBe("VIP-подписки");
+    expect(labels.get("account:b:ig1")).toBe("Instagram @shop клиента «Клиент b»");
+    expect(labels.get("account:b:wa1")).toBe("WhatsApp +7700 клиента «Клиент b»");
+  });
+
+  it("нет клиентов v2 с Zernio — вебхук не проверяется", () => {
+    const { probes } = platformProbes({
+      crons: [],
+      zernioWebhook: null,
+      tenants: [],
+      cronTitles: new Map(),
+    });
+    expect(probes).toEqual([]);
   });
 });

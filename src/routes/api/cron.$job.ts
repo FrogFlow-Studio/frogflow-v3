@@ -185,6 +185,10 @@ export const Route = createFileRoute("/api/cron/$job")({
               const { retryStuckEventsFor } = await import("@/channels/zernio/dispatch.server");
               const { tenantContext } = await import("@/core/tenant/resolve.server");
               results.zernioRetry = await retryStuckEventsFor(tenants, tenantContext);
+              // Оповещения оператору о платформе: кроны, вебхук Zernio v2, отвалившиеся
+              // аккаунты Instagram/WhatsApp (после сверки выше — по свежему снимку).
+              const { runPlatformAlerts } = await import("@/app/operator/platform-alerts.server");
+              results.platformAlerts = await runPlatformAlerts();
               // Утренний дайджест продавцу — у кого настал его час.
               const { sendDueDigests } = await import("@/channels/telegram/digest.server");
               results.digest = await sendDueDigests(tenants);

@@ -30,11 +30,13 @@ vi.mock("@/channels/telegram/api", () => ({
 }));
 
 const a = await import("./health-alerts.server");
+const { parseAlertStates } = await import("./health-alerts");
 const { ALERT_KEYS } = a;
 
 const TOKEN = "123456789:AAHfakeTokenForTests_abcdefghijklmn";
 const value = (key: string) =>
   (db.tables.operator_settings ?? []).find((r) => r.key === key)?.value as string | undefined;
+const st = (key: string) => parseAlertStates(value(key));
 const sends = () => calls.filter((c) => c.method === "sendMessage");
 const names = new Map([["b", "Дидактика"]]);
 const at = (min: number) => new Date(Date.UTC(2026, 8, 27, 3, 0) + min * 60_000).toISOString();
@@ -134,7 +136,7 @@ describe("прогон крона здоровья", () => {
     expect(texts[0]).toContain("/operator/clients/b");
     expect(texts[1]).toContain("снова отвечает");
     expect(texts[1]).toContain("Простой: 1 ч 30 мин.");
-    expect(JSON.parse(value(ALERT_KEYS.state)!)).toEqual({});
+    expect(st(ALERT_KEYS.state)).toEqual({});
   });
 
   it("канал не настроен: молчим; настроили во время сбоя — сообщение уходит", async () => {
@@ -183,7 +185,7 @@ describe("прогон крона здоровья", () => {
     ]);
     expect(sends()).toHaveLength(1);
     expect([r1.skipped, r2.skipped].filter(Boolean)).toHaveLength(1);
-    expect(JSON.parse(value(ALERT_KEYS.state)!).b).toMatchObject({ notified: true });
+    expect(st(ALERT_KEYS.state).b).toMatchObject({ notified: true });
     await a.processHealthAlerts([down], names, at(30));
     expect(sends()).toHaveLength(1);
   });
@@ -194,7 +196,7 @@ describe("прогон крона здоровья", () => {
       a.processHealthAlerts([down], names, at(0)),
     ]);
     expect(rs.filter((r) => r.skipped)).toHaveLength(1);
-    expect(JSON.parse(value(ALERT_KEYS.state)!).b).toMatchObject({ fails: 1 });
+    expect(st(ALERT_KEYS.state).b).toMatchObject({ fails: 1 });
   });
 
   it("«снова отвечает» не ушло — повтор на следующей удачной проверке", async () => {
@@ -210,7 +212,7 @@ describe("прогон крона здоровья", () => {
     expect(sends().map((c) => String(c.payload.text))).toEqual([
       expect.stringContaining("снова отвечает"),
     ]);
-    expect(JSON.parse(value(ALERT_KEYS.state)!)).toEqual({});
+    expect(st(ALERT_KEYS.state)).toEqual({});
   });
 
   it("много сбоев сразу — одно сводное сообщение", async () => {
@@ -222,5 +224,94 @@ describe("прогон крона здоровья", () => {
     expect(r).toMatchObject({ down: 5, sent: 1 });
     expect(sends()).toHaveLength(1);
     expect(String(sends()[0]!.payload.text)).toContain("Не отвечают боты клиентов: 5");
+  });
+});
+
+describe("оповещения о платформе", () => {
+  const cronDown = { bot_id: "cron:broadcast", ok: false, error: "не запускался дольше 2 мин" };
+  const cronUp = { bot_id: "cron:broadcast", ok: true, error: null };
+  const labels = new Map([["cron:broadcast", "Рассылки и outbox"]]);
+
+  it("крон: одно сообщение на сбой и одно на восстановление, ссылка на страницу кронов", async () => {
+    await a.saveAlertChannel({ token: TOKEN, chatId: "123456789" });
+    calls = [];
+    for (let i = 0; i < 4; i++) await a.processPlatformAlerts([cronDown], labels, at(i * 15));
+    await a.processPlatformAlerts([cronUp], labels, at(60));
+    await a.processPlatformAlerts([cronUp], labels, at(75));
+    const texts = sends().map((c) => String(c.payload.text));
+    expect(texts).toHaveLength(2);
+    expect(texts[0]).toContain("Крон «Рассылки и outbox» не работает");
+    expect(texts[0]).toContain("/operator/crons");
+    expect(texts[1]).toContain("снова работает");
+  });
+
+  it("состояния ботов и платформы раздельные: прогон одного не забывает сбой другого", async () => {
+    await a.saveAlertChannel({ token: TOKEN, chatId: "123456789" });
+    calls = [];
+    const botDown = { bot_id: "b", ok: false, error: "вебхук: не установлен" };
+    for (let i = 0; i < 2; i++) {
+      await a.processHealthAlerts([botDown], names, at(i * 15));
+      await a.processPlatformAlerts([cronDown], labels, at(i * 15));
+    }
+    expect(sends()).toHaveLength(2);
+    expect(Object.keys(st(ALERT_KEYS.state))).toEqual(["b"]);
+    expect(Object.keys(st(ALERT_KEYS.platformState))).toEqual(["cron:broadcast"]);
+    // Следующие прогоны не повторяют ни одно из сообщений.
+    await a.processHealthAlerts([botDown], names, at(30));
+    await a.processPlatformAlerts([cronDown], labels, at(30));
+    expect(sends()).toHaveLength(2);
+  });
+
+  it("массовый сбой: условная запись сравнивает только версию, а не всё состояние", async () => {
+    await a.saveAlertChannel({ token: TOKEN, chatId: "123456789" });
+    const long = "ошибка ".repeat(60);
+    const probes = Array.from({ length: 60 }, (_, i) => ({
+      bot_id: `account:bot-${i}:acc-${i}`,
+      ok: false,
+      error: long,
+    }));
+    // Условия запросов к базе: значения фильтров уходят в адрес запроса.
+    const filters: string[] = [];
+    const real = db;
+    const spy = (q: object): object =>
+      new Proxy(q, {
+        get: (qt, qp) => {
+          const f = Reflect.get(qt, qp) as unknown;
+          if (typeof f !== "function" || qp === "then") return f;
+          return (...args: unknown[]) => {
+            if (["eq", "like", "is"].includes(String(qp))) filters.push(String(args[1]));
+            const r = (f as (...x: unknown[]) => unknown).apply(qt, args);
+            return r && typeof r === "object" ? spy(r) : r;
+          };
+        },
+      });
+    db = new Proxy(real, {
+      get: (t, prop) =>
+        prop === "from" ? (table: string) => spy(t.from(table)) : Reflect.get(t, prop),
+    }) as FakeDb;
+    for (let i = 0; i < 3; i++) await a.processPlatformAlerts(probes, new Map(), at(i * 15));
+    db = real;
+    expect(value(ALERT_KEYS.platformState)!.length).toBeGreaterThan(8 * 1024);
+    expect(value(ALERT_KEYS.platformState)!.startsWith('{"@rev":"3"')).toBe(true);
+    expect(Object.keys(st(ALERT_KEYS.platformState))).toHaveLength(60);
+    expect(filters).toContain('{"@rev":"2"%');
+    expect(Math.max(...filters.map((f) => f.length))).toBeLessThan(100);
+    expect(sends()).toHaveLength(1);
+  });
+
+  it("состояние старого вида без версии подхватывается, сообщённое не повторяется", async () => {
+    await a.saveAlertChannel({ token: TOKEN, chatId: "123456789" });
+    db.tables.operator_settings!.push({
+      key: ALERT_KEYS.state,
+      value: JSON.stringify({
+        b: { fails: 3, oks: 0, since: at(0), error: "x", notified: true },
+      }),
+    });
+    calls = [];
+    const down = { bot_id: "b", ok: false, error: "вебхук: не установлен" };
+    await a.processHealthAlerts([down], names, at(45));
+    expect(sends()).toEqual([]);
+    expect(value(ALERT_KEYS.state)!.startsWith('{"@rev":"1"')).toBe(true);
+    expect(st(ALERT_KEYS.state).b).toMatchObject({ fails: 4, notified: true });
   });
 });

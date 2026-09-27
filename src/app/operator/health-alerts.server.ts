@@ -9,8 +9,11 @@ import {
   alertSummaryText,
   alertText,
   parseAlertStates,
+  platformAlertText,
+  platformSummaryText,
   stepHealthAlerts,
   type AlertEvent,
+  type AlertStates,
   type HealthProbe,
 } from "./health-alerts";
 
@@ -25,6 +28,8 @@ export const ALERT_KEYS = {
   username: "operator_alert_bot_username",
   /** Состояние сбоев по ботам (health-alerts.ts), JSON. */
   state: "operator_health_alerts",
+  /** Состояние сбоев платформы: кроны, вебхук Zernio, аккаунты (health-alerts.ts), JSON. */
+  platformState: "operator_platform_alerts",
 } as const;
 
 const TOKEN_RE = /^\d{5,}:[\w-]{30,}$/;
@@ -125,7 +130,7 @@ export async function sendOperatorAlert(html: string): Promise<SendResult> {
 /** Кнопка «Проверить»: пробное сообщение и понятная причина, если не дошло. */
 export async function testAlertChannel(): Promise<{ ok: boolean; message: string }> {
   const r = await sendOperatorAlert(
-    "✅ Проверка: уведомления FrogFlow о сбоях ботов клиентов будут приходить сюда.",
+    "✅ Проверка: уведомления FrogFlow о сбоях ботов клиентов и платформы будут приходить сюда.",
   );
   if (r.ok) return { ok: true, message: "Пробное сообщение отправлено." };
   if (r.reason === "not_configured")
@@ -136,37 +141,92 @@ export async function testAlertChannel(): Promise<{ ok: boolean; message: string
   return { ok: false, message: `Telegram не доставил сообщение: ${r.error}.${hint}` };
 }
 
-/** Строка состояния сбоев как есть: есть ли она и её значение — для условной записи. */
-async function readState(): Promise<{ exists: boolean; raw: string | null }> {
+/**
+ * Номер версии в начале строки состояния: условная запись сравнивает только
+ * его (like по префиксу), а не всё значение — при массовом сбое состояние
+ * вырастает, и сравнение целиком в адресе запроса упёрлось бы в 431.
+ */
+const REV = "@rev";
+const LEGACY_EQ_MAX = 2000;
+
+type StateRow = { exists: boolean; raw: string | null; rev: number | null };
+
+function revOf(raw: string | null): number | null {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw) as Record<string, unknown> | null;
+    const n = Number(v?.[REV]);
+    return typeof v?.[REV] === "string" && Number.isSafeInteger(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Состояние с версией первым полем: `{"@rev":"7",…}`. */
+export function stateWithRev(states: AlertStates, rev: number): string {
+  return JSON.stringify({ [REV]: String(rev), ...states });
+}
+
+/** Строка состояния сбоев: есть ли она, её значение и версия — для условной записи. */
+async function readState(key: string): Promise<StateRow> {
   const { data, error } = await serviceDb()
     .from("operator_settings")
     .select("value")
-    .eq("key", ALERT_KEYS.state)
+    .eq("key", key)
     .maybeSingle();
   if (error) throw new Error(`operator_settings: ${error.message}`);
-  return { exists: Boolean(data), raw: data?.value ?? null };
+  const raw = data?.value ?? null;
+  return { exists: Boolean(data), raw, rev: revOf(raw) };
 }
 
 /**
  * Записать состояние, только если его не поменял другой прогон с момента
- * чтения: сравнение со старым значением (или вставка, если строки не было).
+ * чтения: сравнивается версия (или вставка, если строки не было). Строка
+ * старого вида без версии сравнивается целиком, пока она короткая; длинная
+ * переписывается без условия один раз — дальше у неё есть версия.
  * false — опередили, этот прогон ничего не шлёт.
  */
-async function casState(prev: { exists: boolean; raw: string | null }, value: string) {
+async function casState(
+  key: string,
+  prev: StateRow,
+  states: AlertStates,
+): Promise<StateRow | null> {
   const db = serviceDb();
+  const rev = (prev.rev ?? 0) + 1;
+  const value = stateWithRev(states, rev);
+  const next = { exists: true, raw: value, rev };
   if (!prev.exists) {
-    const { error } = await db.from("operator_settings").insert({ key: ALERT_KEYS.state, value });
-    if (error?.code === "23505") return false;
+    const { error } = await db.from("operator_settings").insert({ key, value });
+    if (error?.code === "23505") return null;
     if (error) throw new Error(`operator_settings: ${error.message}`);
-    return true;
+    return next;
   }
-  const q = db.from("operator_settings").update({ value }).eq("key", ALERT_KEYS.state);
-  const { data, error } = await (
-    prev.raw === null ? q.is("value", null) : q.eq("value", prev.raw)
-  ).select("key");
+  const q = db.from("operator_settings").update({ value }).eq("key", key);
+  const cond =
+    prev.rev !== null
+      ? q.like("value", `{"${REV}":"${prev.rev}"%`)
+      : prev.raw === null
+        ? q.is("value", null)
+        : prev.raw.length <= LEGACY_EQ_MAX
+          ? q.eq("value", prev.raw)
+          : q;
+  const { data, error } = await cond.select("key");
   if (error) throw new Error(`operator_settings: ${error.message}`);
-  return (data ?? []).length > 0;
+  return (data ?? []).length > 0 ? next : null;
 }
+
+type AlertSummary = {
+  down: number;
+  up: number;
+  sent: number;
+  notConfigured: boolean;
+  skipped?: true;
+};
+
+type Render = {
+  one: (e: AlertEvent) => string;
+  summary: (events: AlertEvent[]) => string;
+};
 
 /**
  * Прогон крона здоровья: переходы «сбой / восстановление» и сообщения
@@ -181,45 +241,75 @@ export async function processHealthAlerts(
   probes: HealthProbe[],
   names: Map<string, string>,
   now = new Date().toISOString(),
-): Promise<{
-  down: number;
-  up: number;
-  sent: number;
-  notConfigured: boolean;
-  skipped?: true;
-}> {
-  const cur = await readState();
+): Promise<AlertSummary> {
+  const { APP_URL, APP_TIMEZONE } = env();
+  const base = APP_URL.replace(/\/$/, "");
+  return runAlerts(ALERT_KEYS.state, probes, now, {
+    one: (e) =>
+      alertText(e, {
+        name: names.get(e.botId) ?? e.botId,
+        panelUrl: `${base}/operator/clients/${e.botId}`,
+        timeZone: APP_TIMEZONE,
+      }),
+    summary: (events) => alertSummaryText(events, { names, panelUrl: `${base}/operator/clients` }),
+  });
+}
+
+/**
+ * То же для платформы: кроны, вебхук Zernio v2, отключившиеся аккаунты
+ * Instagram/WhatsApp (probes — из platform-alerts.server). Своё состояние:
+ * ключ, которого нет в прогоне, забывается, поэтому у ботов и у платформы
+ * состояния раздельные.
+ */
+export async function processPlatformAlerts(
+  probes: HealthProbe[],
+  labels: Map<string, string>,
+  now = new Date().toISOString(),
+): Promise<AlertSummary> {
+  const { APP_URL, APP_TIMEZONE } = env();
+  const base = APP_URL.replace(/\/$/, "");
+  return runAlerts(ALERT_KEYS.platformState, probes, now, {
+    one: (e) => platformAlertText(e, { labels, base, timeZone: APP_TIMEZONE }),
+    summary: (events) => platformSummaryText(events, { labels, base }),
+  });
+}
+
+async function runAlerts(
+  stateKey: string,
+  probes: HealthProbe[],
+  now: string,
+  render: Render,
+): Promise<AlertSummary> {
+  const cur = await readState(stateKey);
   const prev = parseAlertStates(cur.raw);
   const { next, events } = stepHealthAlerts(prev, probes, now);
   const count = (k: AlertEvent["kind"]) => events.filter((e) => e.kind === k).length;
-  const summary = { down: count("down"), up: count("up"), sent: 0, notConfigured: false };
+  const summary: AlertSummary = {
+    down: count("down"),
+    up: count("up"),
+    sent: 0,
+    notConfigured: false,
+  };
   const configured = events.length > 0 && (await alertChannelStatus()).configured;
   // Канал не настроен — событий не отмечаем: сбой сообщится, когда канал появится.
   if (configured) for (const e of events) if (e.kind === "down") next[e.botId]!.notified = true;
-  const claimed = JSON.stringify(next);
-  if (claimed !== (cur.raw ?? "{}") && !(await casState(cur, claimed)))
-    return { ...summary, skipped: true };
+  let row: StateRow = cur;
+  if (JSON.stringify(next) !== JSON.stringify(prev)) {
+    const claimed = await casState(stateKey, cur, next);
+    if (!claimed) return { ...summary, skipped: true };
+    row = claimed;
+  }
   if (!events.length) return summary;
   if (!configured) return { ...summary, notConfigured: true };
 
-  const { APP_URL, APP_TIMEZONE } = env();
-  const base = APP_URL.replace(/\/$/, "");
   const failed: AlertEvent[] = [];
   if (events.length >= SUMMARY_FROM) {
-    const r = await sendOperatorAlert(
-      alertSummaryText(events, { names, panelUrl: `${base}/operator/clients` }),
-    );
+    const r = await sendOperatorAlert(render.summary(events));
     if (r.ok) summary.sent = 1;
     else failed.push(...events);
   } else
     for (const e of events) {
-      const r = await sendOperatorAlert(
-        alertText(e, {
-          name: names.get(e.botId) ?? e.botId,
-          panelUrl: `${base}/operator/clients/${e.botId}`,
-          timeZone: APP_TIMEZONE,
-        }),
-      );
+      const r = await sendOperatorAlert(render.one(e));
       if (r.ok) summary.sent++;
       else failed.push(e);
     }
@@ -229,7 +319,7 @@ export async function processHealthAlerts(
       // «Снова отвечает» не ушло — сбой остаётся сообщённым, повтор на следующей удачной проверке.
       else next[e.botId] = { ...prev[e.botId]!, oks: RECOVER_THRESHOLD - 1 };
     }
-    await casState({ exists: true, raw: claimed }, JSON.stringify(next));
+    await casState(stateKey, row, next);
   }
   return summary;
 }

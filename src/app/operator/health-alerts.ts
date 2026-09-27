@@ -162,3 +162,146 @@ export function alertSummaryText(
     .filter(Boolean)
     .join("\n");
 }
+
+/* ── платформа: кроны, вебхук Zernio, аккаунты Instagram/WhatsApp ──── */
+
+/**
+ * Те же переходы «сбой → восстановился» (stepHealthAlerts), но не про бота,
+ * а про платформу. Ключ события говорит, о чём оно:
+ * `cron:<задача>`, `zernio:webhook`, `account:<bot_id>:<id аккаунта>`.
+ */
+export type PlatformSubject =
+  | { kind: "cron"; job: string }
+  | { kind: "zernio_webhook" }
+  | { kind: "account"; botId: string; accountId: string };
+
+export function platformKey(s: PlatformSubject): string {
+  if (s.kind === "cron") return `cron:${s.job}`;
+  if (s.kind === "zernio_webhook") return "zernio:webhook";
+  return `account:${s.botId}:${s.accountId}`;
+}
+
+export function parsePlatformKey(key: string): PlatformSubject | null {
+  if (key === "zernio:webhook") return { kind: "zernio_webhook" };
+  const cron = /^cron:(.+)$/.exec(key);
+  if (cron) return { kind: "cron", job: cron[1]! };
+  const acc = /^account:([^:]+):(.+)$/.exec(key);
+  if (acc) return { kind: "account", botId: acc[1]!, accountId: acc[2]! };
+  return null;
+}
+
+/**
+ * Крон в порядке, если последний запуск удался и был не раньше двух
+ * интервалов назад. Ни одного запуска ещё не было — не проверяем: новая
+ * задача или суточный крон сразу после выкладки не должны будить оператора
+ * (страница кронов показывает и такие).
+ */
+export function cronProbe(c: {
+  job: string;
+  everyMin: number;
+  stale: boolean;
+  last: { at: string; ok: boolean; error: string | null } | null;
+}): HealthProbe | null {
+  if (!c.last) return null;
+  const bot_id = platformKey({ kind: "cron", job: c.job });
+  if (c.stale)
+    return {
+      bot_id,
+      ok: false,
+      error: `не запускался дольше ${formatDowntime(2 * c.everyMin * 60_000)}`,
+    };
+  if (!c.last.ok) return { bot_id, ok: false, error: c.last.error ?? "запуск упал" };
+  return { bot_id, ok: true, error: null };
+}
+
+/** Вебхук Zernio v2: сбой чтения или запись, которую нужно обновить кнопкой «Привязать». */
+export function zernioWebhookProbe(s: {
+  ok: boolean;
+  action: string;
+  error?: string;
+}): HealthProbe {
+  const bot_id = platformKey({ kind: "zernio_webhook" });
+  if (s.ok) return { bot_id, ok: true, error: null };
+  const need: Record<string, string> = {
+    create: "вебхука v2 нет",
+    update: "вебхук v2 выключен или не видит профили клиентов v2",
+    disable: "вебхук v2 включён, а клиентов v2 с Zernio нет",
+  };
+  return { bot_id, ok: false, error: s.error || need[s.action] || s.action };
+}
+
+type PlatformTextOptions = {
+  /** Подпись по ключу: название крона, «Instagram @x клиента «Имя»». */
+  labels: Map<string, string>;
+  base: string;
+  timeZone: string;
+};
+
+function platformLink(key: string, base: string): string {
+  const s = parsePlatformKey(key);
+  const [href, title] =
+    s?.kind === "cron"
+      ? [`${base}/operator/crons`, "Открыть кроны"]
+      : s?.kind === "zernio_webhook"
+        ? [`${base}/operator/settings`, "Открыть настройки платформы"]
+        : s?.kind === "account"
+          ? [`${base}/operator/clients/${s.botId}`, "Открыть клиента в панели"]
+          : [`${base}/operator`, "Открыть панель"];
+  return `<a href="${escapeHtml(href).replace(/"/g, "&quot;")}">${title}</a>`;
+}
+
+function platformTitle(e: AlertEvent, label: string): string {
+  const s = parsePlatformKey(e.botId);
+  const down = e.kind === "down";
+  if (s?.kind === "cron") return `Крон «${label}» ${down ? "не работает" : "снова работает"}`;
+  if (s?.kind === "zernio_webhook")
+    return down ? "Вебхук Zernio v2 не в порядке" : "Вебхук Zernio v2 снова в порядке";
+  return `${label} ${down ? "отключился" : "снова подключён"}`;
+}
+
+/** Текст сообщения оператору о платформе (HTML Telegram). */
+export function platformAlertText(e: AlertEvent, o: PlatformTextOptions): string {
+  const label = escapeHtml(o.labels.get(e.botId) ?? e.botId);
+  const s = parsePlatformKey(e.botId);
+  const hint =
+    e.kind === "down"
+      ? s?.kind === "zernio_webhook"
+        ? "События Instagram и WhatsApp клиентов v2 не доходят. Нажмите «Привязать» в карточке «Вебхук Zernio»."
+        : s?.kind === "account"
+          ? "Бот в этом канале не видит сообщений. Продавцу ушло уведомление, аккаунт нужно подключить заново."
+          : null
+      : null;
+  if (e.kind === "down")
+    return [
+      `🔴 <b>${platformTitle(e, label)}</b>`,
+      `С ${formatTime(e.since, o.timeZone)}.`,
+      e.error ? `Причина: ${escapeHtml(e.error)}` : null,
+      hint,
+      platformLink(e.botId, o.base),
+    ]
+      .filter(Boolean)
+      .join("\n");
+  return [
+    `🟢 <b>${platformTitle(e, label)}</b>`,
+    `Простой: ${formatDowntime(Date.parse(e.at) - Date.parse(e.since))}.`,
+    platformLink(e.botId, o.base),
+  ].join("\n");
+}
+
+/** Сводка по платформе, когда событий много за один прогон. */
+export function platformSummaryText(
+  events: AlertEvent[],
+  o: { labels: Map<string, string>; base: string },
+): string {
+  const line = (e: AlertEvent) => {
+    const title = platformTitle(e, escapeHtml(o.labels.get(e.botId) ?? e.botId));
+    return e.kind === "down"
+      ? `🔴 ${title}${e.error ? ` — ${escapeHtml(e.error)}` : ""}`
+      : `🟢 ${title}`;
+  };
+  return [
+    `<b>Платформа: сбоев ${events.filter((e) => e.kind === "down").length}, восстановлено ${events.filter((e) => e.kind === "up").length}</b>`,
+    ...events.map(line),
+    `<a href="${escapeHtml(`${o.base}/operator/crons`).replace(/"/g, "&quot;")}">Открыть кроны</a>`,
+  ].join("\n");
+}
