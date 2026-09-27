@@ -1,0 +1,39 @@
+import { createServerFn } from "@tanstack/react-start";
+import { notFound } from "@tanstack/react-router";
+import { z } from "zod";
+import { SHOP_SLUG_RE } from "@/core/tenant/slug";
+import { CATALOG_SORTS } from "@/core/storefront/sort";
+
+/**
+ * Каталог витрины страницами (core/storefront/catalog, storeCatalogPage):
+ * весь каталог без потолка в 200 товаров, «Показать ещё» догружает дальше.
+ * Отдельно от storefront.functions — код оформления заказа не трогаем.
+ */
+export const storeCatalogPageFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        slug: z.string().regex(SHOP_SLUG_RE),
+        q: z.string().max(80).optional(),
+        category: z.string().uuid().optional(),
+        sort: z.enum(CATALOG_SORTS).optional(),
+        lang: z.string().max(5).optional(),
+        offset: z.number().int().min(0).max(10_000).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
+    const { storefrontOpen } = await import("@/core/storefront/access");
+    const t = await resolveTenant({ by: "slug", value: data.slug });
+    // Клиент прежней платформы, архив или витрина без модуля — «не найден».
+    if (!t || !storefrontOpen(t, "catalog")) throw notFound();
+    const { storeCatalogPage } = await import("@/core/storefront/catalog");
+    return storeCatalogPage(tenantContext(t), {
+      q: data.q,
+      categoryId: data.category ?? null,
+      sort: data.sort,
+      lang: data.lang,
+      offset: data.offset,
+    });
+  });

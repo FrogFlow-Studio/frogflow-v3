@@ -2,17 +2,23 @@ import { createFileRoute, Link, useLoaderData, useNavigate } from "@tanstack/rea
 import { cardBadge } from "@/core/catalog/lead-time";
 import { useState } from "react";
 import { z } from "zod";
-import { storeCatalogFn } from "@/app/storefront/storefront.functions";
+import { storeCatalogPageFn } from "@/app/storefront/catalog.functions";
+import type { StoreProduct } from "@/core/storefront/catalog";
+import { STORE_PAGE } from "@/core/storefront/paging";
 import { useCart } from "@/app/storefront/cart";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
 import { localeFlags } from "@/core/i18n/locale";
 import { categoryChips } from "@/core/storefront/categories";
-import { filterByLanguage, languageChips } from "@/core/storefront/lang-filter";
 import { CATALOG_SORTS, parseCatalogSort } from "@/core/storefront/sort";
 import { storefrontT } from "@/app/i18n/storefront";
 import { shareText } from "@/core/storefront/share";
-import { canonicalLink, categoryCanonical, shopCanonical } from "@/core/storefront/seo";
+import {
+  canonicalLink,
+  categoryCanonical,
+  pagedCanonical,
+  shopCanonical,
+} from "@/core/storefront/seo";
 import type { Locale } from "@/core/i18n/locale";
 
 export const Route = createFileRoute("/s/$slug/")({
@@ -22,12 +28,27 @@ export const Route = createFileRoute("/s/$slug/")({
     lang: z.string().max(5).optional(),
     // Сортировка как в Mini App v1; «catalog» (порядок продавца) в адрес не пишется.
     sort: z.enum(CATALOG_SORTS).optional().catch(undefined),
+    // Страница каталога: «Показать ещё» — настоящая ссылка, без JS открывает следующую.
+    page: z.number().int().min(2).max(200).optional().catch(undefined),
   }),
-  // Язык фильтруется в браузере: смена чипа не перезапрашивает каталог.
-  loaderDeps: ({ search }) => ({ q: search.q, category: search.category, sort: search.sort }),
+  // Язык тоже на сервере: фильтр до деления на страницы, чипы — по всему каталогу.
+  loaderDeps: ({ search }) => ({
+    q: search.q,
+    category: search.category,
+    sort: search.sort,
+    lang: search.lang,
+    page: search.page,
+  }),
   loader: ({ params, deps }) =>
-    storeCatalogFn({
-      data: { slug: params.slug, q: deps.q, category: deps.category, sort: deps.sort },
+    storeCatalogPageFn({
+      data: {
+        slug: params.slug,
+        q: deps.q,
+        category: deps.category,
+        sort: deps.sort,
+        lang: deps.lang,
+        offset: ((deps.page ?? 1) - 1) * STORE_PAGE,
+      },
     }),
   head: ({ match, matches }) => {
     const shop = matches.find((m) => (m.routeId as string) === "/s/$slug")?.loaderData as
@@ -41,11 +62,17 @@ export const Route = createFileRoute("/s/$slug/")({
         }
       | undefined;
     if (!shop) return {};
-    // Поиск, сортировка и язык — та же страница: canonical без них.
+    // Поиск, сортировка и язык — та же страница: canonical без них; номер страницы — свой адрес.
+    const page = match.search.page;
     const cat = match.search.category
       ? shop.categories.find((c) => c.id === match.search.category)
       : undefined;
-    if (!cat) return { links: [canonicalLink(shopCanonical(shop.share.canonical, shop.slug))] };
+    if (!cat)
+      return {
+        links: [
+          canonicalLink(pagedCanonical(shopCanonical(shop.share.canonical, shop.slug), page)),
+        ],
+      };
     const title = `${cat.name} — ${shop.name}`;
     const description = shareText(
       [
@@ -55,7 +82,7 @@ export const Route = createFileRoute("/s/$slug/")({
         .filter(Boolean)
         .join(". "),
     );
-    const url = categoryCanonical(shop.share.canonical, shop.slug, cat.id);
+    const url = pagedCanonical(categoryCanonical(shop.share.canonical, shop.slug, cat.id), page);
     return {
       meta: [
         { title },
@@ -71,7 +98,7 @@ export const Route = createFileRoute("/s/$slug/")({
 });
 
 function CatalogPage() {
-  const catalog = Route.useLoaderData();
+  const first = Route.useLoaderData();
   const { slug } = Route.useParams();
   const shop = useLoaderData({ from: "/s/$slug" });
   const { t } = useStorefrontLocale();
@@ -80,6 +107,48 @@ function CatalogPage() {
   const [q, setQ] = useState(s.q ?? "");
   const cart = useCart();
   const [added, setAdded] = useState<string | null>(null);
+  // Догруженные «Показать ещё» страницы — для текущих поиска, категории и
+  // сортировки; сменились они — начинаем с первой страницы из загрузчика.
+  const pageKey = JSON.stringify([slug, s.q, s.category, s.sort, s.lang, s.page]);
+  const firstPage = s.page ?? 1;
+  const [more, setMore] = useState<{
+    key: string;
+    items: StoreProduct[];
+    hasMore: boolean;
+  } | null>(null);
+  const extra = more?.key === pageKey ? more : null;
+  const catalog = extra ? [...first.items, ...extra.items] : first.items;
+  const hasMore = extra ? extra.hasMore : first.hasMore;
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreFailed, setMoreFailed] = useState(false);
+  const loadMore = async () => {
+    setLoadingMore(true);
+    setMoreFailed(false);
+    try {
+      const next = await storeCatalogPageFn({
+        data: {
+          slug,
+          q: s.q,
+          category: s.category,
+          sort: s.sort,
+          lang: s.lang,
+          offset: (firstPage - 1) * STORE_PAGE + catalog.length,
+        },
+      });
+      const seen = new Set(catalog.map((p) => p.id));
+      setMore({
+        key: pageKey,
+        items: [...(extra?.items ?? []), ...next.items.filter((p) => !seen.has(p.id))],
+        hasMore: next.hasMore,
+      });
+    } catch {
+      setMoreFailed(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+  // Ссылка «Показать ещё» ведёт на следующую ещё не показанную страницу.
+  const nextPage = firstPage + Math.ceil(catalog.length / STORE_PAGE);
   // Корень выбранной ветки подсвечивается в верхнем ряду; второй ряд —
   // подкатегории выбранной (у листа — его соседи), товары подкатегорий
   // сервер уже включил в родительскую.
@@ -91,9 +160,9 @@ function CatalogPage() {
     subParent,
     subs,
   } = categoryChips(shop.categories, s.category, shop.catalogLayout);
-  const langs = shop.langFilter ? languageChips(catalog) : [];
+  const langs = shop.langFilter ? first.languages : [];
   const lang = s.lang && langs.includes(s.lang as never) ? s.lang : null;
-  const products = filterByLanguage(catalog, lang);
+  const products = catalog;
   const sort = parseCatalogSort(s.sort);
   const digitalOnly = products.length > 0 && products.every((p) => p.kind === "digital");
 
@@ -117,7 +186,7 @@ function CatalogPage() {
             void navigate({
               to: "/s/$slug",
               params: { slug },
-              search: { ...s, q: q || undefined },
+              search: { ...s, q: q || undefined, page: undefined },
             });
           }}
         >
@@ -184,7 +253,7 @@ function CatalogPage() {
           <Link
             to="/s/$slug"
             params={{ slug }}
-            search={{ ...s, lang: undefined }}
+            search={{ ...s, lang: undefined, page: undefined }}
             className={`badge shrink-0 px-3 py-1 ${!lang ? "border-accent bg-accent/10 text-accent" : ""}`}
           >
             {t("catalog.allLanguages")}
@@ -194,7 +263,7 @@ function CatalogPage() {
               key={l}
               to="/s/$slug"
               params={{ slug }}
-              search={{ ...s, lang: l }}
+              search={{ ...s, lang: l, page: undefined }}
               className={`badge shrink-0 px-3 py-1 ${lang === l ? "border-accent bg-accent/10 text-accent" : ""}`}
             >
               {localeFlags[l]} {l === "kk" ? "KZ" : l.toUpperCase()}
@@ -210,7 +279,7 @@ function CatalogPage() {
               key={k}
               to="/s/$slug"
               params={{ slug }}
-              search={{ ...s, sort: k === "catalog" ? undefined : k }}
+              search={{ ...s, sort: k === "catalog" ? undefined : k, page: undefined }}
               aria-current={sort === k ? "page" : undefined}
               className={`badge shrink-0 px-3 py-1 ${sort === k ? "border-accent bg-accent/10 text-accent" : ""}`}
             >
@@ -318,6 +387,41 @@ function CatalogPage() {
               </div>
             </article>
           ))}
+        </div>
+      )}
+      {(hasMore || firstPage > 1) && (
+        <div className="mt-6 flex flex-col items-center gap-3">
+          {hasMore && (
+            <Link
+              to="/s/$slug"
+              params={{ slug }}
+              search={{ ...s, page: nextPage }}
+              className={`btn-secondary ${loadingMore ? "pointer-events-none opacity-60" : ""}`}
+              aria-disabled={loadingMore}
+              onClick={(e) => {
+                // С JS — догружаем на месте; без JS ссылка откроет следующую страницу.
+                e.preventDefault();
+                if (!loadingMore) void loadMore();
+              }}
+            >
+              {t("catalog.loadMore")}
+            </Link>
+          )}
+          {moreFailed && (
+            <p role="alert" className="text-sm text-danger">
+              {t("catalog.loadMoreFailed")}
+            </p>
+          )}
+          {firstPage > 1 && (
+            <Link
+              to="/s/$slug"
+              params={{ slug }}
+              search={{ ...s, page: undefined }}
+              className="text-sm text-muted hover:text-fg"
+            >
+              {t("catalog.firstPage")}
+            </Link>
+          )}
         </div>
       )}
       {added === "mixed" && (

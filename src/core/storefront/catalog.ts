@@ -15,6 +15,11 @@ import { imagePath } from "@/core/catalog/image-url";
 import { resolvePrice } from "@/core/pricing/pricing";
 import { productSellable } from "@/core/catalog/materials";
 import { getSettings } from "@/core/settings/settings";
+import { eachPage } from "@/core/db/page";
+import type { Locale } from "@/core/i18n/locale";
+import { languageChips } from "./lang-filter";
+import { listedOnStorefront } from "./sitemap";
+import { STORE_PAGE } from "./paging";
 import {
   categorySubtree,
   parseCatalogLayout,
@@ -143,13 +148,97 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
     inStock: !(stockOn && p.stock_quantity != null && p.stock_quantity <= 0),
     leadTimeDays: shownLeadDays(p),
     rating: p.rating_count ? { avg: Number(p.rating_avg ?? 0), count: p.rating_count } : null,
-    // Без модуля multi_language выдаётся только русский (itemAvailableLanguages),
-    // поэтому языков на витрине не показываем, сколько бы файлов ни было заведено.
-    languages: ctx.tenant.modules.multi_language
-      ? (p.product_material_files ?? [])
-          .map((f) => f.language ?? "ru")
-          .filter((l, i, a) => a.indexOf(l) === i)
-      : [],
+    languages: productLanguages(ctx, p),
+  };
+}
+
+/**
+ * Активные товары в порядке выбранной сортировки; в конце — id, чтобы
+ * равные товары не менялись местами и страницы не перекрывались.
+ */
+function catalogQuery(ctx: TenantContext, sort: CatalogSort, search: string | null) {
+  let q = ctx.db.from("products").select(PRODUCT_SELECT).eq("is_active", true);
+  if (sort === "popular")
+    q = q
+      .order("rating_count", { ascending: false, nullsFirst: false })
+      .order("rating_avg", { ascending: false, nullsFirst: false });
+  else if (sort === "new") q = q.order("created_at", { ascending: false });
+  else if (sort === "price") q = q.order("price");
+  else q = q.order("sort_order").order("name");
+  q = q.order("id");
+  return search ? q.or(search) : q;
+}
+
+export { STORE_PAGE };
+
+/**
+ * Языки материалов товара для чипов RU/KZ. Без модуля multi_language
+ * выдаётся только русский (itemAvailableLanguages), поэтому языков на
+ * витрине нет, сколько бы файлов ни было заведено.
+ */
+function productLanguages(ctx: TenantContext, p: Product): string[] {
+  if (!ctx.tenant.modules.multi_language) return [];
+  return (p.product_material_files ?? [])
+    .map((f) => f.language ?? "ru")
+    .filter((l, i, a) => a.indexOf(l) === i);
+}
+
+/**
+ * Страница каталога витрины по всему каталогу, без потолка в 200: товары
+ * читаются из базы страницами уже в порядке сортировки, видимость — как у
+ * карты сайта и разметки (listedOnStorefront). Язык фильтруется здесь же,
+ * до деления на страницы, а чипы языков строятся по всему каталогу — для
+ * этого при модуле multi_language каталог читается целиком; без него
+ * чтение останавливается, как только набралась страница и ещё один товар.
+ */
+export async function storeCatalogPage(
+  ctx: TenantContext,
+  opts: {
+    q?: string;
+    categoryId?: string | null;
+    sort?: CatalogSort;
+    lang?: string | null;
+    offset?: number;
+    limit?: number;
+  } = {},
+): Promise<{ items: StoreProduct[]; hasMore: boolean; languages: Locale[] }> {
+  const sort = opts.sort ?? "catalog";
+  const offset = Math.max(0, opts.offset ?? 0);
+  const limit = Math.min(Math.max(1, opts.limit ?? STORE_PAGE), 100);
+  const pattern = searchPattern(opts.q ?? "");
+  const [search, cats] = await Promise.all([
+    pattern ? productSearchFilter(ctx, pattern) : Promise.resolve(null),
+    listAllCategories(ctx),
+  ]);
+  const known = new Set(cats.map((c) => c.id));
+  const visible = visibleCategoryIds(cats);
+  const wanted = opts.categoryId ? categorySubtree(cats, opts.categoryId, visible) : null;
+  const multiLang = Boolean(ctx.tenant.modules.multi_language);
+  const need = offset + limit + 1;
+  const listed: Array<{ p: Product; langs: string[] }> = [];
+  await eachPage<Product>(
+    (a, b) => catalogQuery(ctx, sort, search).range(a, b),
+    "store catalog",
+    (rows) => {
+      for (const p of rows) {
+        const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
+        if (wanted && !ids.some((id) => wanted.has(id))) continue;
+        if (!listedOnStorefront(p, known, visible)) continue;
+        listed.push({ p, langs: productLanguages(ctx, p) });
+        if (!multiLang && listed.length >= need) return false;
+      }
+      return true;
+    },
+    500,
+  );
+  const languages = languageChips(listed.map((x) => ({ languages: x.langs })));
+  const lang = opts.lang && languages.includes(opts.lang as Locale) ? opts.lang : null;
+  const shown = lang ? listed.filter((x) => x.langs.includes(lang)) : listed;
+  const page = shown.slice(offset, offset + limit);
+  return {
+    items: await Promise.all(page.map((x) => toStoreProduct(ctx, x.p))),
+    hasMore: shown.length > offset + limit,
+    languages,
   };
 }
 
@@ -164,17 +253,9 @@ export async function storeCatalog(
   // сортировали бы первые N товаров порядка продавца, а не весь каталог.
   // В конце каждого порядка — id, чтобы равные товары не менялись местами.
   const sort = opts.sort ?? "catalog";
-  let q = ctx.db.from("products").select(PRODUCT_SELECT).eq("is_active", true);
-  if (sort === "popular")
-    q = q
-      .order("rating_count", { ascending: false, nullsFirst: false })
-      .order("rating_avg", { ascending: false, nullsFirst: false });
-  else if (sort === "new") q = q.order("created_at", { ascending: false });
-  else if (sort === "price") q = q.order("price");
-  else q = q.order("sort_order").order("name");
-  q = q.order("id").limit(opts.categoryId ? 1000 : 200);
   const pattern = searchPattern(opts.q ?? "");
-  if (pattern) q = q.or(await productSearchFilter(ctx, pattern));
+  const search = pattern ? await productSearchFilter(ctx, pattern) : null;
+  const q = catalogQuery(ctx, sort, search).limit(opts.categoryId ? 1000 : 200);
   const [{ data, error }, cats] = await Promise.all([q, listAllCategories(ctx)]);
   if (error) throw new Error(error.message);
   const known = new Set(cats.map((c) => c.id));

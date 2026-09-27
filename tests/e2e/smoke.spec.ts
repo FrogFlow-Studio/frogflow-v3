@@ -170,3 +170,15 @@ test("витрина: разметка товара для поиска уже �
     new RegExp(`<link rel="canonical" href="https?://[^/]+/s/${F.SHOP_SLUG}"`),
   );
 });
+
+test("витрина: вторая страница каталога открывается ссылкой без JS, со своим canonical", async ({
+  request,
+}) => {
+  const html = await (await request.get(`/s/${F.SHOP_SLUG}?page=2`)).text();
+  expect(html).toMatch(
+    new RegExp(`<link rel="canonical" href="https?://[^/]+/s/${F.SHOP_SLUG}\\?page=2"`),
+  );
+  // Товаров на второй странице нет (в магазине один), зато есть путь к началу.
+  expect(html).toContain("К началу каталога");
+  expect(html).not.toContain(F.PRODUCT_NAME);
+});

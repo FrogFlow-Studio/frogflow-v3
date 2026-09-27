@@ -32,6 +32,10 @@ export const productCanonical = (origin: string, slug: string, id: string) =>
 export const categoryCanonical = (origin: string, slug: string, id: string) =>
   `${shopCanonical(origin, slug)}?category=${encodeURIComponent(id)}`;
 
+/** Вторая и дальше страницы каталога — свои адреса: на них другие товары. */
+export const pagedCanonical = (url: string, page: number | undefined) =>
+  page && page > 1 ? `${url}${url.includes("?") ? "&" : "?"}page=${page}` : url;
+
 export const canonicalLink = (href: string) => ({ rel: "canonical", href });
 
 /** Цена для schema.org: число с точкой, без пробелов и знака валюты. */
