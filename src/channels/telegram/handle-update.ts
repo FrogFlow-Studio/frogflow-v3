@@ -90,6 +90,7 @@ import { shopAdminIds } from "@/core/notify/recipients";
 import { notifyAdminNewOrder } from "./admin-notify";
 import { notifyAdminsHtml, notifyDeliveryFailure } from "./notify";
 import { telegramLanguageAsker, telegramMaterialSender } from "./deliver";
+import { botCommandFor, type BotCommand } from "./commands";
 import { legacyLangItem, parseLegacyLang, parseSearchMore, searchPage } from "./legacy";
 import { findValidGift, findValidPromoCode } from "@/core/discounts/discounts";
 import { normalizeCode } from "@/core/discounts/pure";
@@ -244,6 +245,9 @@ async function handleMessage(
   // «Отписаться» / «подписаться» словом — вне оформления; и при чате с менеджером.
   const optCmd = optOutWordsApply(customer.state.mode) ? optOutCommand(text) : null;
   if (optCmd) return optOutReply(b, optCmd);
+  // Команды из меню «/» — как /start: работают и при чате с менеджером.
+  const command = botCommandFor(text);
+  if (command) return botCommand(b, command);
   if (intercepted && !text?.startsWith("/start") && !proofStep) return;
 
   if (text?.startsWith("/start")) {
@@ -461,6 +465,23 @@ async function consultantReply(b: Bot, text: string): Promise<boolean> {
 }
 
 /** Отписка или возврат к рассылкам; ответ — одинаковый и при повторе. */
+/**
+ * Команда из меню бота (channels/telegram/commands) ведёт на тот же экран,
+ * что кнопка главного меню; незаконченное оформление сбрасывается, как при
+ * нажатии кнопки.
+ */
+async function botCommand(b: Bot, command: BotCommand) {
+  if (command === "stop") return optOutReply(b, "unsubscribe");
+  if (command === "language") {
+    if (!b.ctx.tenant.modules.multi_language) return sendMain(b);
+    await send(b, b.m.chooseLanguage, { reply_markup: { inline_keyboard: languageChoice() } });
+    return;
+  }
+  if (b.customer.state.mode && b.customer.state.mode !== "idle")
+    b.customer = await setState(b.ctx, b.customer, { ...b.customer.state, mode: "idle" });
+  return menuAction(b, command === "orders" ? "myOrders" : command);
+}
+
 async function optOutReply(b: Bot, cmd: OptOutCommand) {
   await setOptOut(b.ctx, b.customer.userKey, cmd === "unsubscribe");
   await send(b, cmd === "unsubscribe" ? b.m.unsubscribed : b.m.resubscribed);

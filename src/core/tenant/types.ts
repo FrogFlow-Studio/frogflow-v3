@@ -25,6 +25,8 @@ export type TenantSettings = {
     username?: string;
     /** Вебхук поставлен на этот деплой (ensure-webhook сверяет). */
     webhook_ok?: boolean;
+    /** Отпечаток поставленного меню команд (channels/telegram/commands). */
+    commands_v?: string;
   };
   zernio?: {
     /** Профиль Zernio клиента; аккаунты Instagram/WhatsApp внутри него. */

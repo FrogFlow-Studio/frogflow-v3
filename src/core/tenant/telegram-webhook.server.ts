@@ -5,6 +5,11 @@ import { tenantContext, patchTenantSettings } from "./resolve.server";
 import type { Tenant } from "./types";
 import { storefrontBase } from "./custom-domain";
 import { servedByV2 } from "./directory";
+import {
+  botCommandsVersion,
+  clearBotCommands,
+  syncBotCommands,
+} from "@/channels/telegram/commands";
 
 /** Что бот получает от Telegram; pre_checkout_query — подтверждение оплаты Stars. */
 export const ALLOWED_UPDATES = ["message", "callback_query", "pre_checkout_query"];
@@ -35,7 +40,12 @@ export async function ensureTelegramWebhook(tenant: Tenant, force = false): Prom
   // Новый тип обновлений (pre_checkout_query для Stars) — повод переставить вебхук.
   const have = new Set(info.result?.allowed_updates ?? ["message", "callback_query"]);
   const sameUpdates = ALLOWED_UPDATES.every((u) => have.has(u));
-  if (!force && current === wantUrl && sameUpdates) return { ok: true, url: current, pending };
+  if (!force && current === wantUrl && sameUpdates) {
+    // Вебхук на месте, но меню команд старое (или его ещё не ставили).
+    if (tenant.settings.telegram?.commands_v !== botCommandsVersion(tenant))
+      await applyBotCommands(tenant, api);
+    return { ok: true, url: current, pending };
+  }
 
   const set = await api.call("setWebhook", {
     url: wantUrl,
@@ -47,7 +57,28 @@ export async function ensureTelegramWebhook(tenant: Tenant, force = false): Prom
 
   await patchTenantSettings(tenant.id, { telegram: { webhook_ok: true } });
   await syncMenuButton(tenant, api).catch(() => {});
+  await applyBotCommands(tenant, api);
   return { ok: true, url: wantUrl, pending };
+}
+
+/**
+ * Меню команд (/catalog, /cart, /orders, /language, /stop) на языках
+ * покупателей. Отпечаток набора — в settings.telegram.commands_v, чтобы
+ * крон не звал Telegram каждый прогон. Сбой меню вебхук не отменяет:
+ * отпечаток не пишем, крон попробует снова.
+ */
+async function applyBotCommands(
+  tenant: Tenant,
+  api: ReturnType<typeof telegramApi>,
+): Promise<void> {
+  try {
+    await syncBotCommands(tenant, api);
+    await patchTenantSettings(tenant.id, {
+      telegram: { commands_v: botCommandsVersion(tenant) },
+    });
+  } catch (e) {
+    console.warn(`[telegram-webhook:${tenant.id}] меню команд:`, e);
+  }
 }
 
 /** Кнопка меню бота: «Магазин» (Mini App) при включённом модуле, иначе стандартная. */
@@ -90,4 +121,7 @@ export async function releaseTelegramToV1(tenant: Tenant): Promise<void> {
   const { TELEGRAM_API_BASE } = env();
   const api = telegramApi(tenantContext(tenant).secrets.telegramToken(), TELEGRAM_API_BASE);
   await api.call("setChatMenuButton", { menu_button: { type: "default" } });
+  await clearBotCommands(api);
+  // Отпечаток сбрасываем: при возврате на v2 меню поставится заново.
+  await patchTenantSettings(tenant.id, { telegram: { commands_v: "" } });
 }
