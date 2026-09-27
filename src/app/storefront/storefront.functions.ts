@@ -115,7 +115,10 @@ export const miniAppCheckoutFn = createServerFn({ method: "POST" })
     const { takeMiniApp } = await import("@/core/storefront/rate-limit");
     if (!(await takeMiniApp(ctx, v.user.id, "checkout")))
       throw shownError((await shopT(ctx))("error.tooManyRequests"));
-    const { upsertCustomer } = await import("@/core/customers/customers");
+    const { isBlocked, upsertCustomer } = await import("@/core/customers/customers");
+    // Заблокированному бот не отвечает — и корзину из Mini App ему не шлём.
+    if (await isBlocked(ctx, v.user.id))
+      throw shownError((await shopT(ctx))("error.orderUnavailable"));
     const { importItems, parseHandoffItems } = await import("@/core/storefront/handoff");
     const customer = await upsertCustomer(ctx, "telegram", v.user.id, {
       username: v.user.username,

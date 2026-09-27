@@ -192,6 +192,7 @@ const ru = {
   "error.noBot": "У магазина ещё не подключён Telegram-бот — напишите продавцу.",
   "error.miniAppExpired": "Сессия Mini App устарела — откройте магазин заново.",
   "error.miniAppAuth": "Не удалось подтвердить Telegram-аккаунт.",
+  "error.orderUnavailable": "Оформить заказ сейчас нельзя. Свяжитесь с магазином.",
   "error.tooManyRequests": "Слишком много запросов подряд — подождите минуту и попробуйте снова.",
   "error.nothingImported":
     "Ни один товар не удалось положить в корзину — возможно, он снят с продажи.",
@@ -391,6 +392,7 @@ const kk: Dict = {
   "error.noBot": "Дүкенге Telegram-бот әлі қосылмаған — сатушыға жазыңыз.",
   "error.miniAppExpired": "Mini App сессиясы ескірген — дүкенді қайта ашыңыз.",
   "error.miniAppAuth": "Telegram-аккаунтты растау мүмкін болмады.",
+  "error.orderUnavailable": "Қазір тапсырыс рәсімдеу мүмкін емес. Дүкенмен байланысыңыз.",
   "error.tooManyRequests": "Сұраулар тым жиі — бір минут күтіп, қайта көріңіз.",
   "error.nothingImported":
     "Бірде-бір тауарды себетке салу мүмкін болмады — мүмкін, ол сатылымнан алынған.",
@@ -582,6 +584,7 @@ const en: Dict = {
   "error.noBot": "The shop has no Telegram bot connected yet — contact the seller.",
   "error.miniAppExpired": "The Mini App session has expired — open the shop again.",
   "error.miniAppAuth": "Could not verify your Telegram account.",
+  "error.orderUnavailable": "Ordering is not available right now. Please contact the shop.",
   "error.tooManyRequests": "Too many requests in a row — wait a minute and try again.",
   "error.nothingImported":
     "None of the products could be added to the cart — they may have been taken off sale.",
@@ -773,6 +776,7 @@ const uz: Dict = {
   "error.noBot": "Do‘konga hali Telegram-bot ulanmagan — sotuvchiga yozing.",
   "error.miniAppExpired": "Mini App sessiyasi eskirgan — do‘konni qayta oching.",
   "error.miniAppAuth": "Telegram-akkauntni tasdiqlab bo‘lmadi.",
+  "error.orderUnavailable": "Hozir buyurtma berib bo‘lmaydi. Do‘kon bilan bog‘laning.",
   "error.tooManyRequests": "So‘rovlar juda ko‘p — bir daqiqa kutib, qayta urinib ko‘ring.",
   "error.nothingImported":
     "Birorta mahsulotni savatga solib bo‘lmadi — ehtimol, u sotuvdan olingan.",

@@ -408,3 +408,25 @@ describe("лимит частоты Mini App", () => {
     expect(tables).toEqual([]);
   });
 });
+
+describe("Mini App: заблокированный покупатель", () => {
+  it("корзину в бота не переносит; отказ без слова «заблокирован»", async () => {
+    const db = fakeDb();
+    db.tables.blocked_users = [{ bot_id: BOT, telegram_id: 780 }];
+    db.tables.bot_users = [];
+    db.tables.cart_items = [];
+    tenantWith(db);
+    (ctx.tenant.modules as Record<string, boolean>).blocked = true;
+    const err = await miniAppCheckoutFn({
+      data: {
+        slug: "shop",
+        initData: initData(780),
+        items: [{ product_id: "aaaaaaaa-0000-4000-8000-000000000000", quantity: 1 }],
+      },
+    }).catch((e: Error) => e.message);
+    expect(err).toBe("Оформить заказ сейчас нельзя. Свяжитесь с магазином.");
+    expect(err).not.toMatch(/блок/i);
+    expect(db.tables.bot_users).toEqual([]);
+    expect(db.tables.cart_items).toEqual([]);
+  });
+});

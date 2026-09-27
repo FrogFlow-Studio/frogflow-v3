@@ -143,6 +143,11 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
     const customer =
       (tgId !== null ? await telegramWebCustomer(ctx, tgId, email) : null) ??
       (await webCustomer(ctx, { email, name: data.name, phone }));
+    // Заблокированный продавцом покупатель не оформляет и на сайте (в том числе
+    // вошедший через Telegram — по его id из бота). Отказ нейтральный: не
+    // подсказываем, что это блокировка.
+    const { isBlocked } = await import("@/core/customers/customers");
+    if (await isBlocked(ctx, customer.telegramId)) throw shownError(t("error.orderUnavailable"));
     const r = await placeWebOrder(ctx, customer, parseHandoffItems(data.items), data.country, {
       fulfillment: data.fulfillment,
       contact: { name: data.name, phone },
