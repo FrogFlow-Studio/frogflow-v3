@@ -175,7 +175,7 @@ export function seedDb(): StubDb {
       bot_name: F.SHOP_NAME,
       status: "active",
       vertical: "digital",
-      modules: { robokassa: true },
+      modules: { robokassa: true, shop: true, web_storefront: true },
       settings: {
         served_by: "v2",
         default_locale: "ru",
@@ -263,7 +263,15 @@ export function seedDb(): StubDb {
       created_at: now,
     }),
   ];
-  db.tables.product_images = [];
+  db.tables.product_images = [
+    shop({
+      id: "e2e00000-0000-4000-8000-0000000000d1",
+      product_id: F.PRODUCT_ID,
+      image_path: `${F.SHOP_ID}/propisi.jpg`,
+      sort_order: 0,
+      created_at: now,
+    }),
+  ];
   db.tables.product_variants = [];
   db.tables.categories = [];
 

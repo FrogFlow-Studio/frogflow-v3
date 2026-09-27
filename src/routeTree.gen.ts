@@ -60,6 +60,7 @@ import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
 import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
 import { Route as SSlugCheckoutRouteImport } from './routes/s.$slug.checkout'
 import { Route as SSlugOrdersRouteImport } from './routes/s.$slug.orders'
+import { Route as SSlugManifestDotwebmanifestRouteImport } from './routes/s.$slug_.manifest[.]webmanifest'
 import { Route as SSlugSitemapDotxmlRouteImport } from './routes/s.$slug_.sitemap[.]xml'
 import { Route as AdminAuthedCustomersKeyRouteImport } from './routes/admin._authed.customers_.$key'
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
@@ -75,6 +76,7 @@ import { Route as SSlugCourseItemIdRouteImport } from './routes/s.$slug.course.$
 import { Route as SSlugLegalDocRouteImport } from './routes/s.$slug.legal.$doc'
 import { Route as SSlugOrderIdRouteImport } from './routes/s.$slug.order.$id'
 import { Route as SSlugPIdRouteImport } from './routes/s.$slug.p.$id'
+import { Route as SSlugIconSizeRouteImport } from './routes/s.$slug_.icon.$size'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -329,6 +331,12 @@ const SSlugOrdersRoute = SSlugOrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => SSlugRoute,
 } as any)
+const SSlugManifestDotwebmanifestRoute =
+  SSlugManifestDotwebmanifestRouteImport.update({
+    id: '/s/$slug_/manifest.webmanifest',
+    path: '/s/$slug/manifest.webmanifest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const SSlugSitemapDotxmlRoute = SSlugSitemapDotxmlRouteImport.update({
   id: '/s/$slug_/sitemap.xml',
   path: '/s/$slug/sitemap.xml',
@@ -406,6 +414,11 @@ const SSlugPIdRoute = SSlugPIdRouteImport.update({
   path: '/p/$id',
   getParentRoute: () => SSlugRoute,
 } as any)
+const SSlugIconSizeRoute = SSlugIconSizeRouteImport.update({
+  id: '/s/$slug_/icon/$size',
+  path: '/s/$slug/icon/$size',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -454,6 +467,7 @@ export interface FileRoutesByFullPath {
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
+  '/s/$slug/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
   '/s/$slug/sitemap.xml': typeof SSlugSitemapDotxmlRoute
   '/admin/': typeof AdminAuthedIndexRoute
   '/operator/': typeof OperatorAuthedIndexRoute
@@ -472,6 +486,7 @@ export interface FileRoutesByFullPath {
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
   '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
+  '/s/$slug/icon/$size': typeof SSlugIconSizeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -519,6 +534,7 @@ export interface FileRoutesByTo {
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
+  '/s/$slug/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
   '/s/$slug/sitemap.xml': typeof SSlugSitemapDotxmlRoute
   '/s/$slug': typeof SSlugIndexRoute
   '/admin/customers/$key': typeof AdminAuthedCustomersKeyRoute
@@ -535,6 +551,7 @@ export interface FileRoutesByTo {
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
   '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
+  '/s/$slug/icon/$size': typeof SSlugIconSizeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -586,6 +603,7 @@ export interface FileRoutesById {
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
+  '/s/$slug_/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
   '/s/$slug_/sitemap.xml': typeof SSlugSitemapDotxmlRoute
   '/admin/_authed/': typeof AdminAuthedIndexRoute
   '/operator/_authed/': typeof OperatorAuthedIndexRoute
@@ -604,6 +622,7 @@ export interface FileRoutesById {
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
   '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
+  '/s/$slug_/icon/$size': typeof SSlugIconSizeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -654,6 +673,7 @@ export interface FileRouteTypes {
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
     | '/s/$slug/orders'
+    | '/s/$slug/manifest.webmanifest'
     | '/s/$slug/sitemap.xml'
     | '/admin/'
     | '/operator/'
@@ -672,6 +692,7 @@ export interface FileRouteTypes {
     | '/s/$slug/legal/$doc'
     | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
+    | '/s/$slug/icon/$size'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -719,6 +740,7 @@ export interface FileRouteTypes {
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
     | '/s/$slug/orders'
+    | '/s/$slug/manifest.webmanifest'
     | '/s/$slug/sitemap.xml'
     | '/s/$slug'
     | '/admin/customers/$key'
@@ -735,6 +757,7 @@ export interface FileRouteTypes {
     | '/s/$slug/legal/$doc'
     | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
+    | '/s/$slug/icon/$size'
   id:
     | '__root__'
     | '/'
@@ -785,6 +808,7 @@ export interface FileRouteTypes {
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
     | '/s/$slug/orders'
+    | '/s/$slug_/manifest.webmanifest'
     | '/s/$slug_/sitemap.xml'
     | '/admin/_authed/'
     | '/operator/_authed/'
@@ -803,6 +827,7 @@ export interface FileRouteTypes {
     | '/s/$slug/legal/$doc'
     | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
+    | '/s/$slug_/icon/$size'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -820,10 +845,12 @@ export interface RootRouteChildren {
   ApiOperatorBotsRoute: typeof ApiOperatorBotsRoute
   ApiTelegramBotIdRoute: typeof ApiTelegramBotIdRouteWithChildren
   ApiZernioWebhookRoute: typeof ApiZernioWebhookRoute
+  SSlugManifestDotwebmanifestRoute: typeof SSlugManifestDotwebmanifestRoute
   SSlugSitemapDotxmlRoute: typeof SSlugSitemapDotxmlRoute
   ApiAdminExportKindRoute: typeof ApiAdminExportKindRoute
   ApiImgBotIdSplatRoute: typeof ApiImgBotIdSplatRoute
   ApiRobokassaBotIdActionRoute: typeof ApiRobokassaBotIdActionRoute
+  SSlugIconSizeRoute: typeof SSlugIconSizeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1185,6 +1212,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugOrdersRouteImport
       parentRoute: typeof SSlugRoute
     }
+    '/s/$slug_/manifest.webmanifest': {
+      id: '/s/$slug_/manifest.webmanifest'
+      path: '/s/$slug/manifest.webmanifest'
+      fullPath: '/s/$slug/manifest.webmanifest'
+      preLoaderRoute: typeof SSlugManifestDotwebmanifestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/s/$slug_/sitemap.xml': {
       id: '/s/$slug_/sitemap.xml'
       path: '/s/$slug/sitemap.xml'
@@ -1289,6 +1323,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/s/$slug/p/$id'
       preLoaderRoute: typeof SSlugPIdRouteImport
       parentRoute: typeof SSlugRoute
+    }
+    '/s/$slug_/icon/$size': {
+      id: '/s/$slug_/icon/$size'
+      path: '/s/$slug/icon/$size'
+      fullPath: '/s/$slug/icon/$size'
+      preLoaderRoute: typeof SSlugIconSizeRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -1468,10 +1509,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOperatorBotsRoute: ApiOperatorBotsRoute,
   ApiTelegramBotIdRoute: ApiTelegramBotIdRouteWithChildren,
   ApiZernioWebhookRoute: ApiZernioWebhookRoute,
+  SSlugManifestDotwebmanifestRoute: SSlugManifestDotwebmanifestRoute,
   SSlugSitemapDotxmlRoute: SSlugSitemapDotxmlRoute,
   ApiAdminExportKindRoute: ApiAdminExportKindRoute,
   ApiImgBotIdSplatRoute: ApiImgBotIdSplatRoute,
   ApiRobokassaBotIdActionRoute: ApiRobokassaBotIdActionRoute,
+  SSlugIconSizeRoute: SSlugIconSizeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

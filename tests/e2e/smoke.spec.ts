@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import * as F from "./fixtures";
 
 /**
  * Сквозной прогон собранного приложения в браузере. Ловит то, чего не видят
@@ -66,6 +67,31 @@ test("витрина: неизвестный магазин — страница
   const res = await page.goto("/s/net-takogo-magazina");
   expect(res?.status()).toBe(404);
   await expect(page.getByRole("heading", { name: "Магазин не найден" })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("витрина: превью ссылки и установка на телефон", async ({ page, request }) => {
+  const errors = await watch(page);
+  // Мессенджеры не выполняют скрипты: теги должны быть уже в ответе сервера.
+  const html = await (await request.get(`/s/${F.SHOP_SLUG}/p/${F.PRODUCT_ID}`)).text();
+  expect(html).toMatch(/<meta property="og:image" content="https?:\/\/[^"]+\/api\/img\//);
+  await page.goto(`/s/${F.SHOP_SLUG}`);
+  const og = (p: string) => page.locator(`meta[property="${p}"]`).getAttribute("content");
+  expect(await og("og:title")).toBe(F.SHOP_NAME);
+  expect(await og("og:url")).toMatch(new RegExp(`^https?://[^/]+/s/${F.SHOP_SLUG}$`));
+  expect(await og("og:image")).toMatch(new RegExp(`^https?://[^/]+/api/img/${F.SHOP_ID}/`));
+  const manifest = await page.locator('link[rel="manifest"]').getAttribute("href");
+  expect(manifest).toBe(`/s/${F.SHOP_SLUG}/manifest.webmanifest`);
+  const m = await request.get(manifest!);
+  expect(m.headers()["content-type"]).toContain("application/manifest+json");
+  expect(await m.json()).toMatchObject({ name: F.SHOP_NAME, display: "standalone" });
+  const icon = await request.get(`/s/${F.SHOP_SLUG}/icon/192`);
+  expect(icon.headers()["content-type"]).toBe("image/png");
+  expect((await request.get(`/s/net-takogo-magazina/manifest.webmanifest`)).status()).toBe(404);
+
+  await page.goto(`/s/${F.SHOP_SLUG}/p/${F.PRODUCT_ID}`);
+  expect(await og("og:title")).toBe(`${F.PRODUCT_NAME} — ${F.SHOP_NAME}`);
+  expect(await og("og:type")).toBe("product");
   expect(errors).toEqual([]);
 });
 

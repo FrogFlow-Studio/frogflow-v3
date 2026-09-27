@@ -6,21 +6,38 @@ import { useStorefrontLocale } from "@/app/storefront/locale";
 import { reviewsWord } from "@/app/i18n/storefront";
 import { formatMoney } from "@/core/money/money";
 import { pageBadge } from "@/core/catalog/lead-time";
+import { productMeta } from "@/core/storefront/share";
 
 export const Route = createFileRoute("/s/$slug/p/$id")({
   loader: ({ params }) => storeProductFn({ data: { slug: params.slug, id: params.id } }),
-  head: ({ loaderData }) => ({
-    meta: loaderData
-      ? [
-          { title: loaderData.product.name },
-          { property: "og:title", content: loaderData.product.name },
-          { property: "og:description", content: loaderData.product.description.slice(0, 200) },
-          ...(loaderData.product.images[0]
-            ? [{ property: "og:image", content: loaderData.product.images[0] }]
-            : []),
-        ]
-      : [],
-  }),
+  head: ({ loaderData, matches }) => {
+    const shop = matches.find((m) => (m.routeId as string) === "/s/$slug")?.loaderData as
+      | {
+          slug: string;
+          name: string;
+          tagline: string | null;
+          accent: string | null;
+          share: { origin: string; cover: string | null };
+        }
+      | undefined;
+    return {
+      meta: loaderData
+        ? productMeta(
+            loaderData.product,
+            shop
+              ? {
+                  slug: shop.slug,
+                  name: shop.name,
+                  tagline: shop.tagline,
+                  accent: shop.accent,
+                  origin: shop.share.origin,
+                  cover: shop.share.cover,
+                }
+              : null,
+          )
+        : [],
+    };
+  },
   component: ProductPage,
 });
 

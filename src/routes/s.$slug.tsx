@@ -1,6 +1,8 @@
 import type React from "react";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { storeInfoFn } from "@/app/storefront/storefront.functions";
+import { storeShareFn } from "@/app/storefront/share.functions";
+import { shopLinks, shopMeta } from "@/core/storefront/share";
 import { CartProvider, useCart, useTelegramWebApp } from "@/app/storefront/cart";
 import { StorefrontLocaleProvider, useStorefrontLocale } from "@/app/storefront/locale";
 import { storefrontT } from "@/app/i18n/storefront";
@@ -8,15 +10,27 @@ import { ThemeToggle } from "@/app/ui";
 import { activeTab, miniAppTabs, type MiniAppTab } from "@/core/storefront/tabs";
 
 export const Route = createFileRoute("/s/$slug")({
-  loader: ({ params }) => storeInfoFn({ data: { slug: params.slug } }),
+  loader: async ({ params }) => {
+    const [info, share] = await Promise.all([
+      storeInfoFn({ data: { slug: params.slug } }),
+      storeShareFn({ data: { slug: params.slug } }),
+    ]);
+    return { ...info, share };
+  },
   head: ({ loaderData }) => {
     const fallback = storefrontT(loaderData?.locale ?? "ru")("meta.shop");
     return {
-      meta: [
-        { title: loaderData?.name ?? fallback },
-        { property: "og:title", content: loaderData?.name ?? fallback },
-        ...(loaderData?.tagline ? [{ name: "description", content: loaderData.tagline }] : []),
-      ],
+      meta: loaderData
+        ? shopMeta({
+            slug: loaderData.slug,
+            name: loaderData.name,
+            tagline: loaderData.tagline,
+            accent: loaderData.accent,
+            origin: loaderData.share.origin,
+            cover: loaderData.share.cover,
+          })
+        : [{ title: fallback }],
+      links: loaderData?.share.installable ? shopLinks(loaderData.slug) : [],
       scripts: [{ src: "https://telegram.org/js/telegram-web-app.js" }],
     };
   },
