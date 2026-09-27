@@ -175,7 +175,7 @@ export function seedDb(): StubDb {
       bot_name: F.SHOP_NAME,
       status: "active",
       vertical: "digital",
-      modules: { robokassa: true, shop: true, web_storefront: true },
+      modules: { robokassa: true, shop: true, web_storefront: true, upsell: true },
       settings: {
         served_by: "v2",
         default_locale: "ru",
@@ -212,6 +212,8 @@ export function seedDb(): StubDb {
     ["robokassa_pass2", F.ROBOKASSA.pass2],
     // Оформление на витрине сайта (web-checkout.spec.ts).
     ["storefront_checkout", '{"enabled":true}'],
+    // «С этим берут»: к прописям — раскраска (web-checkout.spec.ts).
+    ["upsell_rules", JSON.stringify({ [F.PRODUCT_ID]: [F.UPSELL_ID] })],
     // Отзывы на витрине: первый одобрен продавцом, второй ждёт решения.
     [`review_meta:${REVIEW_OK}`, '{"status":"approved","photos":[]}'],
   ].map(([key, value]) => shop({ key, value, updated_at: now }));
@@ -276,6 +278,31 @@ export function seedDb(): StubDb {
       rating_count: 0,
       created_at: now,
     }),
+    shop({
+      id: F.UPSELL_ID,
+      name: F.UPSELL_NAME,
+      description: "Раскраска в PDF.",
+      price: 900,
+      currency: "KZT",
+      country_prices: {},
+      is_active: true,
+      sort_order: 1,
+      category_ids: [],
+      fulfillment_kind: "digital",
+      stock_quantity: null,
+      lead_time_days: null,
+      ...nulls([
+        "file_path",
+        "file_name",
+        "file_url",
+        "file_path_kz",
+        "file_name_kz",
+        "file_url_kz",
+        "rating_avg",
+      ]),
+      rating_count: 0,
+      created_at: now,
+    }),
   ];
   db.tables.product_material_files = [
     shop({
@@ -284,6 +311,15 @@ export function seedDb(): StubDb {
       language: "ru",
       file_path: F.MATERIAL_PATH,
       file_name: "propisi.pdf",
+      sort_order: 0,
+      created_at: now,
+    }),
+    shop({
+      id: "e2e00000-0000-4000-8000-0000000000c2",
+      product_id: F.UPSELL_ID,
+      language: "ru",
+      file_path: F.MATERIAL_PATH,
+      file_name: "raskraska.pdf",
       sort_order: 0,
       created_at: now,
     }),

@@ -193,6 +193,43 @@ export async function storeCatalog(
   return Promise.all(sellable.map((p) => toStoreProduct(ctx, p)));
 }
 
+/**
+ * «С этим берут» в корзине витрины и Mini App — те же правила, что в боте и
+ * Instagram/WhatsApp (core/upsell: правила продавца, иначе популярное из тех
+ * же категорий). Сверху — фильтры витрины: скрытые категории и товары без
+ * материалов не предлагаем. Кандидатов берём с запасом, чтобы после фильтров
+ * осталось до трёх.
+ */
+export async function storeUpsell(
+  ctx: TenantContext,
+  cartIds: readonly string[],
+): Promise<StoreProduct[]> {
+  if (!ctx.tenant.modules.upsell || cartIds.length === 0) return [];
+  const { upsellFor, UPSELL_MAX } = await import("@/core/upsell/upsell");
+  const ids = (await upsellFor(ctx, cartIds, UPSELL_MAX * 3)).map((o) => o.id);
+  if (ids.length === 0) return [];
+  const [{ data, error }, cats] = await Promise.all([
+    ctx.db.from("products").select(PRODUCT_SELECT).in("id", ids).eq("is_active", true),
+    listAllCategories(ctx),
+  ]);
+  if (error) throw new Error(error.message);
+  const known = new Set(cats.map((c) => c.id));
+  const visible = visibleCategoryIds(cats);
+  const byId = new Map(((data ?? []) as Product[]).map((p) => [p.id, p]));
+  const shown = ids
+    .map((id) => byId.get(id))
+    .filter((p): p is Product => {
+      if (!p) return false;
+      const catIds = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
+      return (
+        productOnStorefront(catIds, known, visible) &&
+        (p.fulfillment_kind === "physical" || productSellable(p))
+      );
+    })
+    .slice(0, UPSELL_MAX);
+  return Promise.all(shown.map((p) => toStoreProduct(ctx, p)));
+}
+
 export async function storeProduct(ctx: TenantContext, id: string): Promise<StoreProduct | null> {
   const { data } = await ctx.db
     .from("products")

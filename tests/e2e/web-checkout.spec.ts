@@ -124,6 +124,25 @@ test("покупатель оформляет и оплачивает карто
   expect(errors).toEqual([]);
 });
 
+test("«С этим берут» в корзине сайта: правило продавца, товар добавляется одной кнопкой", async ({
+  page,
+}) => {
+  const { errors } = await watch(page);
+  await page.goto(`/s/${F.SHOP_SLUG}`);
+  await page
+    .locator("article", { hasText: F.PRODUCT_NAME })
+    .getByRole("button", { name: "В корзину" })
+    .click();
+  await page.goto(`/s/${F.SHOP_SLUG}/cart`);
+  const block = page.locator("section", { hasText: "С этим берут" });
+  await expect(block.getByText(F.UPSELL_NAME)).toBeVisible();
+  await block.getByRole("button", { name: "В корзину" }).click();
+  // Товар ушёл в корзину — и из предложений: в корзине его уже не предлагаем.
+  await expect(page.getByRole("list").first().getByText(F.UPSELL_NAME)).toBeVisible();
+  await expect(page.locator("section", { hasText: "С этим берут" })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 /** Чек-PDF со своим содержимым: один и тот же чек к двум заказам не принимается. */
 const receiptPdf = (tag: string) =>
   Buffer.from(`%PDF-1.4

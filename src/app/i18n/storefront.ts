@@ -88,6 +88,7 @@ const ru = {
   "cart.toCatalog": "В каталог",
   "cart.remove": "Убрать",
   "cart.total": "Итого",
+  "cart.upsell": "С этим берут",
   "cart.nextStep": "Промокоды, баллы и доставка применяются на следующем шаге.",
   "cart.nextStepTelegram": "Промокоды, баллы и доставка применяются на следующем шаге в Telegram.",
   "cart.checkout": "Оформить заказ",
@@ -289,6 +290,7 @@ const kk: Dict = {
   "cart.toCatalog": "Каталогқа",
   "cart.remove": "Алып тастау",
   "cart.total": "Барлығы",
+  "cart.upsell": "Бұнымен бірге алады",
   "cart.nextStep": "Промокодтар, ұпайлар мен жеткізу келесі қадамда қолданылады.",
   "cart.nextStepTelegram":
     "Промокодтар, ұпайлар мен жеткізу келесі қадамда Telegram-да қолданылады.",
@@ -482,6 +484,7 @@ const en: Dict = {
   "cart.toCatalog": "Go to catalog",
   "cart.remove": "Remove",
   "cart.total": "Total",
+  "cart.upsell": "Often bought together",
   "cart.nextStep": "Promo codes, points and delivery are applied at the next step.",
   "cart.nextStepTelegram":
     "Promo codes, points and delivery are applied at the next step in Telegram.",
@@ -673,6 +676,7 @@ const uz: Dict = {
   "cart.toCatalog": "Katalogga",
   "cart.remove": "Olib tashlash",
   "cart.total": "Jami",
+  "cart.upsell": "Bu bilan birga olishadi",
   "cart.nextStep": "Promokodlar, ballar va yetkazib berish keyingi qadamda qo‘llanadi.",
   "cart.nextStepTelegram":
     "Promokodlar, ballar va yetkazib berish keyingi qadamda Telegram-da qo‘llanadi.",

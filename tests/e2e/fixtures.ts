@@ -24,5 +24,8 @@ export const PRODUCT_ID = "e2e00000-0000-4000-8000-0000000000a1";
 export const PRODUCT_NAME = "Прописи для первого класса";
 export const PRODUCT_PRICE = 1500;
 export const MATERIAL_PATH = `${SHOP_ID}/propisi.pdf`;
+/** Второй товар — «С этим берут» к первому (правило продавца). */
+export const UPSELL_ID = "e2e00000-0000-4000-8000-0000000000a2";
+export const UPSELL_NAME = "Раскраска с буквами";
 
 export const ROBOKASSA = { login: "e2e-shop", pass1: "e2e-pass-1", pass2: "e2e-pass-2" };

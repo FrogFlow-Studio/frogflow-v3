@@ -83,6 +83,21 @@ const items = z
   .min(1)
   .max(40);
 
+/**
+ * «С этим берут» для корзины витрины и Mini App: те же правила, что в боте
+ * (core/upsell). Корзина живёт в браузере, поэтому товары корзины приходят
+ * списком; ответ — публичные карточки товаров, как в каталоге.
+ */
+export const storeUpsellFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ slug, ids: z.array(z.string().uuid()).min(1).max(40) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await shopCtx(data.slug, "catalog");
+    const { storeUpsell } = await import("@/core/storefront/catalog");
+    return storeUpsell(ctx, [...new Set(data.ids)]);
+  });
+
 /** Корзина с сайта → ссылка в Telegram-бота, где продолжится оформление. */
 export const createHandoffFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ slug, items }).parse(d))

@@ -1,6 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { createHandoffFn, miniAppCheckoutFn } from "@/app/storefront/storefront.functions";
+import { useEffect, useState } from "react";
+import {
+  createHandoffFn,
+  miniAppCheckoutFn,
+  storeUpsellFn,
+} from "@/app/storefront/storefront.functions";
 import { webCheckoutInfoFn } from "@/app/storefront/checkout.functions";
 import { useCart, useTelegramWebApp } from "@/app/storefront/cart";
 import { useStorefrontLocale } from "@/app/storefront/locale";
@@ -23,6 +27,10 @@ function CartPage() {
   // Оформление на сайте — вне Mini App: из Telegram заказ уходит в бота.
   const webCheckout = web && !wa;
   const [done, setDone] = useState<string | null>(null);
+  const upsell = useUpsell(
+    slug,
+    cart.lines.map((l) => l.productId),
+  );
   const checkout = useAction(async () => {
     const items = cart.lines.map((l) => ({
       product_id: l.productId,
@@ -120,8 +128,96 @@ function CartPage() {
             {wa ? t("cart.checkout") : t("cart.checkoutTelegram")}
           </button>
           <ErrorBox error={checkout.error} />
+          {upsell.length > 0 && <UpsellBlock slug={slug} offers={upsell} />}
         </>
       )}
     </div>
+  );
+}
+
+type Offer = Awaited<ReturnType<typeof storeUpsellFn>>[number];
+
+/**
+ * «С этим берут» — те же правила, что в боте. Корзина в браузере, поэтому
+ * предложения запрашиваем при каждом её изменении; сбой — просто без блока.
+ */
+function useUpsell(slug: string, ids: string[]): Offer[] {
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const key = [...new Set(ids)].sort().join(",");
+  useEffect(() => {
+    if (!key) {
+      setOffers([]);
+      return;
+    }
+    let live = true;
+    storeUpsellFn({ data: { slug, ids: key.split(",") } })
+      .then((r) => live && setOffers(r))
+      .catch(() => live && setOffers([]));
+    return () => {
+      live = false;
+    };
+  }, [slug, key]);
+  return offers;
+}
+
+function UpsellBlock({ slug, offers }: { slug: string; offers: Offer[] }) {
+  const { t } = useStorefrontLocale();
+  const cart = useCart();
+  const [mixed, setMixed] = useState(false);
+  return (
+    <section className="mt-8">
+      <h2 className="mb-3 text-base font-semibold">{t("cart.upsell")}</h2>
+      <ul className="divide-y divide-line">
+        {offers.map((p) => (
+          <li key={p.id} className="flex items-center gap-3 py-3">
+            {p.images[0] ? (
+              <img src={p.images[0]} alt="" className="h-12 w-12 rounded object-cover" />
+            ) : (
+              <div className="h-12 w-12 rounded bg-surface-2" />
+            )}
+            <Link
+              to="/s/$slug/p/$id"
+              params={{ slug, id: p.id }}
+              className="min-w-0 flex-1 hover:underline"
+            >
+              <div className="truncate text-sm font-medium">{p.name}</div>
+              <div className="text-xs text-muted">
+                {p.priceFrom
+                  ? t("catalog.priceFrom", { price: formatMoney(p.price, p.currency) })
+                  : formatMoney(p.price, p.currency)}
+              </div>
+            </Link>
+            {p.variants.length > 0 ? (
+              <Link
+                to="/s/$slug/p/$id"
+                params={{ slug, id: p.id }}
+                className="btn-secondary px-2.5 py-1 text-xs"
+              >
+                {t("catalog.choose")}
+              </Link>
+            ) : (
+              <button
+                className="btn-secondary px-2.5 py-1 text-xs"
+                onClick={() => {
+                  const r = cart.add({
+                    productId: p.id,
+                    variantId: null,
+                    name: p.name,
+                    price: p.price,
+                    currency: p.currency,
+                    image: p.images[0] ?? null,
+                    kind: p.kind,
+                  });
+                  setMixed(r === "mixed");
+                }}
+              >
+                {t("catalog.addToCart")}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {mixed && <p className="mt-2 text-xs text-muted">{t("catalog.mixed")}</p>}
+    </section>
   );
 }
