@@ -8,6 +8,7 @@ import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 import { OrderStatus } from "./admin._authed.orders";
 import { nextSetupStep } from "@/app/admin/setup";
+import { MovedWelcome } from "@/app/admin/moved-welcome";
 
 export const Route = createFileRoute("/admin/_authed/")({
   loader: () => dashboardFn(),
@@ -45,6 +46,15 @@ function Dashboard() {
         title={t("overview.title")}
         subtitle={`${t(verticalTitleKey(shop.vertical))}${shop.telegram ? ` · @${shop.telegram}` : ""}`}
       />
+      {d.setup.moved && (
+        <MovedWelcome
+          t={t}
+          modules={shop.modules}
+          payment={d.setup.payment}
+          notifications={d.setup.notifications}
+          testOrder={d.setup.testOrder}
+        />
+      )}
       {!d.setup.hidden && doneCount < steps.length && (
         <Card
           title={`${t("overview.steps")} · ${t("overview.stepsOf", { done: doneCount, total: steps.length })}`}

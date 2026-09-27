@@ -518,7 +518,13 @@ export async function setServedBy(botId: string, servedBy: "v1" | "v2", actor = 
       throw new Error(`Клиента нельзя перевести на v2: ${preflightBlockers(p).join("; ")}.`);
   }
   const before = await requireTenant({ by: "id", value: botId });
-  await patchTenantSettings(botId, { served_by: servedBy });
+  // Дата переезда — только при настоящем переходе с v1, повторное
+  // «v2» её не сдвигает.
+  const since =
+    servedBy === "v2" && before.settings.served_by !== "v2"
+      ? { served_by_since: new Date().toISOString() }
+      : {};
+  await patchTenantSettings(botId, { served_by: servedBy, ...since });
   await logEvent(botId, "webhook", { action: "served_by", value: servedBy }, actor);
   if (servedBy === "v2") {
     await importLegacyStoryTags(botId).catch((e) =>

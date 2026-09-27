@@ -209,7 +209,7 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
     ctx.db.from("products").select("id", { count: "exact", head: true }).eq("is_active", true),
     ctx.db.from("bot_users").select("user_key", { count: "exact", head: true }),
     listPaymentMethods(ctx),
-    getSettings(ctx, ["legal_requisites", "admin_chat_id", "setup_hidden"]),
+    getSettings(ctx, ["legal_requisites", "admin_chat_id", "setup_hidden", "moved_welcome_hidden"]),
     ctx.db.from("orders").select("id", { count: "exact", head: true }),
     // Первый включённый товар — на нём продавец делает тестовый заказ себе.
     ctx.db
@@ -220,7 +220,19 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
       .limit(1)
       .maybeSingle(),
   ]);
-  const { testOrderLink } = await import("./setup");
+  const { showMovedWelcome, testOrderLink } = await import("./setup");
+  // Переехавшему с v1 продавцу — карточка «что где теперь» (один раз).
+  const since = ctx.tenant.settings.served_by_since;
+  const movedCandidate =
+    ctx.tenant.settings.served_by === "v2" && since && settings.moved_welcome_hidden !== "1";
+  const ordersBeforeMove = movedCandidate
+    ? ((
+        await ctx.db
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .lt("created_at", since)
+      ).count ?? 0)
+    : 0;
   const { redactOrders } = await import("@/core/orders/redact");
   return {
     counts,
@@ -242,6 +254,12 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
         firstProduct?.id ?? null,
       ),
       hidden: settings.setup_hidden === "1",
+      moved: showMovedWelcome({
+        servedBy: ctx.tenant.settings.served_by,
+        since,
+        hidden: settings.moved_welcome_hidden === "1",
+        ordersBeforeMove,
+      }),
       slug: ctx.tenant.settings.slug ?? null,
       // Пустой магазин может начать с примеров своей ниши (core/templates).
       template:
@@ -262,6 +280,13 @@ export const applyNicheTemplateFn = createServerFn({ method: "POST" }).handler(a
 export const hideSetupFn = createServerFn({ method: "POST" }).handler(async () => {
   const ctx = await adminWrite();
   await (await import("@/core/settings/settings")).setSetting(ctx, "setup_hidden", "1");
+  return { ok: true };
+});
+
+/** Продавец, переехавший с v1, закрыл карточку «что где теперь». */
+export const hideMovedWelcomeFn = createServerFn({ method: "POST" }).handler(async () => {
+  const ctx = await adminWrite();
+  await (await import("@/core/settings/settings")).setSetting(ctx, "moved_welcome_hidden", "1");
   return { ok: true };
 });
 

@@ -179,6 +179,8 @@ describe.skipIf(!liveReady)("переезд и откат на демо-клие
     invalidateTenantDirectory();
     const t = await requireTenant({ by: "id", value: DEMO_BOT });
     expect(t.settings.served_by).toBe("v2");
+    // Дата переезда — по ней «Обзор» показывает карточку переехавшему продавцу.
+    expect(Date.parse(t.settings.served_by_since ?? "")).toBeGreaterThan(Date.now() - 60_000);
     expect(t.settings.telegram?.webhook_ok).toBe(true);
   });
 

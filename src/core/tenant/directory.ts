@@ -122,6 +122,10 @@ export function settingsFromJson(json: unknown): TenantSettings {
     },
     multi_bot: str(mb.group) ? { group: str(mb.group)!.toLowerCase() } : undefined,
     served_by: served,
+    served_by_since:
+      typeof s.served_by_since === "string" && !Number.isNaN(Date.parse(s.served_by_since))
+        ? s.served_by_since
+        : undefined,
     // Откуда пришёл продавец: из браузера при регистрации — перепроверяем при чтении.
     signup: signupOrigin(obj(s.signup)) ?? undefined,
     on_overdue:
