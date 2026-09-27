@@ -10,6 +10,7 @@ import {
   saveComment,
   saveRating,
 } from "@/core/reviews/reviews";
+import { parseReviewMeta, REVIEW_META_PREFIX, reviewMetaKey } from "@/core/reviews/photos";
 import {
   referralPercent,
   registerReferral,
@@ -22,6 +23,35 @@ const PRODUCT_NAME = "v2 probe · товар для отзыва";
 let ctx: TenantContext;
 let productId = "";
 const orderIds: number[] = [];
+const seenReviewIds: string[] = [];
+
+/**
+ * Строки review_meta, оставшиеся от прежних прогонов (до этой правки тест их
+ * не убирал): отзыва уже нет, фото нет. Строки с фото не трогаем — за ними
+ * файлы в Storage, их убирает только путь удаления v2.
+ */
+async function dropOrphanReviewMeta() {
+  const db = serviceDb();
+  const { data: metas } = await db
+    .from("app_settings")
+    .select("key, value")
+    .eq("bot_id", DEMO_BOT)
+    .like("key", `${REVIEW_META_PREFIX}%`)
+    .order("key")
+    .limit(500);
+  const bare = (metas ?? []).filter((m) => parseReviewMeta(m.value).photos.length === 0);
+  if (!bare.length) return;
+  const ids = bare.map((m) => m.key.slice(REVIEW_META_PREFIX.length));
+  const { data: alive } = await db
+    .from("product_reviews")
+    .select("id")
+    .eq("bot_id", DEMO_BOT)
+    .in("id", ids);
+  const keep = new Set((alive ?? []).map((r) => String(r.id)));
+  const orphans = ids.filter((id) => !keep.has(id)).map(reviewMetaKey);
+  if (orphans.length)
+    await db.from("app_settings").delete().eq("bot_id", DEMO_BOT).in("key", orphans);
+}
 
 async function cleanup() {
   const db = serviceDb();
@@ -32,11 +62,25 @@ async function cleanup() {
     .delete()
     .eq("bot_id", DEMO_BOT)
     .or("code.like.WELCOME-%,code.like.REF-%");
+  // Строка app_settings review_meta:<id> (статус и фото отзыва, #188) — вместе с отзывом.
+  const { data: reviews } = await db
+    .from("product_reviews")
+    .select("id")
+    .eq("bot_id", DEMO_BOT)
+    .in("telegram_id", [REFERRER, REFERRED]);
+  const reviewIds = (reviews ?? []).map((r) => String(r.id));
+  if (reviewIds.length)
+    await db
+      .from("app_settings")
+      .delete()
+      .eq("bot_id", DEMO_BOT)
+      .in("key", reviewIds.map(reviewMetaKey));
   await db
     .from("product_reviews")
     .delete()
     .eq("bot_id", DEMO_BOT)
     .in("telegram_id", [REFERRER, REFERRED]);
+  await dropOrphanReviewMeta();
   await db.from("products").delete().eq("bot_id", DEMO_BOT).eq("name", PRODUCT_NAME);
   await db
     .from("bot_users")
@@ -71,7 +115,16 @@ describe.skipIf(!liveReady)("отзывы и рефералы на демо-кл
       .single();
     productId = p!.id;
   });
-  afterAll(cleanup);
+  afterAll(async () => {
+    await cleanup();
+    // После теста в «Демо-тестер» не остаётся ни отзыва, ни его строки review_meta.
+    const { data: left } = await serviceDb()
+      .from("app_settings")
+      .select("key")
+      .eq("bot_id", DEMO_BOT)
+      .in("key", seenReviewIds.map(reviewMetaKey));
+    expect(left ?? []).toEqual([]);
+  });
 
   it("переход по ссылке даёт приглашённому промокод один раз; чужой и свой id — нет", async () => {
     expect(await registerReferral(ctx, REFERRED, String(REFERRED))).toBeNull();
@@ -128,6 +181,11 @@ describe.skipIf(!liveReady)("отзывы и рефералы на демо-кл
     expect(await saveComment(ctx, REFERRED, productId, "Отличный материал")).toBe(true);
     const reviews = await listProductReviews(ctx, productId);
     expect(reviews).toHaveLength(1);
+    const { data: saved } = await ctx.db
+      .from("product_reviews")
+      .select("id")
+      .eq("product_id", productId);
+    seenReviewIds.push(...(saved ?? []).map((r) => String(r.id)));
     expect(reviews[0]).toMatchObject({ rating: 4, comment: "Отличный материал" });
     const { data: p } = await ctx.db
       .from("products")
