@@ -176,6 +176,8 @@ export type Msg = {
   cartReminder: string;
   openCartBtn: string;
   fulfillmentReminder: (no: string, date: string) => string;
+  courseNewLesson: (no: number, title: string) => string;
+  courseOpenBtn: string;
   broadcastPick: string;
   openCatalogBtn: string;
   yourId: (id: number) => string;
@@ -226,6 +228,8 @@ const ru: Msg = {
     "🛒 Вы оставили товары в корзине — они всё ещё вас ждут! Оформить заказ можно в любой момент.",
   openCartBtn: "🛒 Открыть корзину",
   fulfillmentReminder: (no, d) => `⏰ Напоминаем: заказ #${no} — получение завтра, ${d}.`,
+  courseNewLesson: (no, title) => `📚 Открыт урок ${no}: «${title}».`,
+  courseOpenBtn: "Открыть курс",
   broadcastPick: "👇 Выберите материал:",
   openCatalogBtn: "📚 Открыть каталог",
   chooseLanguage: "Выберите язык",
@@ -457,6 +461,8 @@ const kk: Msg = {
     "🛒 Себетте тауарлар қалды — олар әлі де сізді күтуде! Тапсырысты кез келген уақытта рәсімдей аласыз.",
   openCartBtn: "🛒 Себетті ашу",
   fulfillmentReminder: (no, d) => `⏰ Еске саламыз: №${no} тапсырысты алу ертең, ${d}.`,
+  courseNewLesson: (no, title) => `📚 ${no}-сабақ ашылды: «${title}».`,
+  courseOpenBtn: "Курсты ашу",
   broadcastPick: "👇 Материалды таңдаңыз:",
   openCatalogBtn: "📚 Каталогты ашу",
   chooseLanguage: "Тілді таңдаңыз",
@@ -570,6 +576,8 @@ const en: Msg = {
     "🛒 You left some items in your cart — they're still waiting for you! You can check out anytime.",
   openCartBtn: "🛒 Open cart",
   fulfillmentReminder: (no, d) => `⏰ Reminder: order #${no} — pickup/delivery is tomorrow, ${d}.`,
+  courseNewLesson: (no, title) => `📚 Lesson ${no} is open: “${title}”.`,
+  courseOpenBtn: "Open the course",
   broadcastPick: "👇 Pick an item:",
   openCatalogBtn: "📚 Open catalog",
   chooseLanguage: "Choose your language",
@@ -702,6 +710,8 @@ const uz: Msg = {
     "🛒 Savatda mahsulotlar qoldi — ular hali ham sizni kutmoqda! Buyurtmani istalgan vaqtda rasmiylashtirishingiz mumkin.",
   openCartBtn: "🛒 Savatni ochish",
   fulfillmentReminder: (no, d) => `⏰ Eslatma: #${no} buyurtma ertaga, ${d} kuni olinadi.`,
+  courseNewLesson: (no, title) => `📚 ${no}-dars ochildi: «${title}».`,
+  courseOpenBtn: "Kursni ochish",
   broadcastPick: "👇 Materialni tanlang:",
   openCatalogBtn: "📚 Katalogni ochish",
   chooseLanguage: "Tilni tanlang",

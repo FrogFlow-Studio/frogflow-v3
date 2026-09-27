@@ -239,3 +239,25 @@ export async function runFunnelFor(tenant: Tenant) {
     return target ? sendToZernioTarget(target, text) : false;
   });
 }
+
+/**
+ * Курсы: сообщение о новом уроке по расписанию (правила — в core/courses).
+ * Название урока вставляется как текст (HTML экранируется), ссылка — кнопкой.
+ */
+export async function runCourseLessons(tenant: Tenant) {
+  if (!tenant.telegramTokenEnc) return { skipped: "no telegram" };
+  const ctx = tenantContext(tenant);
+  if (!ctx.tenant.modules.courses) return { skipped: "module off" };
+  const { announceNewLessons } = await import("@/core/courses/announce.server");
+  const tg = api(ctx);
+  const m = COPY[ctx.tenant.settings.default_locale ?? "ru"] ?? COPY.ru;
+  return announceNewLessons(ctx, async (a) => {
+    const r = await tg.call("sendMessage", {
+      chat_id: a.telegramId,
+      text: escapeHtml(m.courseNewLesson(a.lessonNo, a.title)),
+      parse_mode: "HTML",
+      reply_markup: { inline_keyboard: [[{ text: m.courseOpenBtn, url: a.url }]] },
+    });
+    return r.ok;
+  });
+}

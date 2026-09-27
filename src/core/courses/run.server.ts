@@ -12,7 +12,12 @@ import { courseKey, parseCourse, type Course } from "./course";
 export const RUN_KEY_PREFIX = "course_run_";
 export const runKey = (orderItemId: string) => `${RUN_KEY_PREFIX}${orderItemId}`;
 
-export type CourseRun = { startedAt: string; done: string[] };
+export type CourseRun = {
+  startedAt: string;
+  done: string[];
+  /** Сколько открытых уроков покупатель уже знает (сообщение бота о новом уроке). */
+  notified?: number;
+};
 
 export function parseRun(raw: string | null | undefined): CourseRun | null {
   if (!raw) return null;
@@ -22,7 +27,12 @@ export function parseRun(raw: string | null | undefined): CourseRun | null {
     const done = Array.isArray(o.done)
       ? [...new Set(o.done.filter((x): x is string => typeof x === "string"))].slice(0, 200)
       : [];
-    return { startedAt: o.startedAt, done };
+    const n = (o as { notified?: unknown }).notified;
+    return {
+      startedAt: o.startedAt,
+      done,
+      ...(Number.isInteger(n) && (n as number) >= 0 ? { notified: n as number } : {}),
+    };
   } catch {
     return null;
   }
@@ -82,7 +92,10 @@ export async function startRun(
   now = new Date(),
 ): Promise<CourseRun> {
   if (p.run) return p.run;
-  const run: CourseRun = { startedAt: now.toISOString(), done: [] };
+  // Уроки, открытые с первого дня, покупатель видит на странице: о них бот не пишет.
+  const startedAt = now.toISOString();
+  const notified = lessonsAccess(p.course, startedAt, now.getTime()).filter((a) => a.open).length;
+  const run: CourseRun = { startedAt, done: [], notified };
   await trySetSetting(ctx, runKey(p.orderItemId), JSON.stringify(run));
   return run;
 }

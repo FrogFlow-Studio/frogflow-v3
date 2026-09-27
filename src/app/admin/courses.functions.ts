@@ -55,3 +55,12 @@ export const saveCourseFn = createServerFn({ method: "POST" })
     await saveCourse(ctx, data.productId, data.course);
     return { ok: true };
   });
+
+/** Прогресс учеников курса: только чтение, видит вся команда. */
+export const courseStudentsFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ productId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin();
+    const { courseStudents } = await import("@/core/courses/progress.server");
+    return courseStudents(ctx, data.productId);
+  });

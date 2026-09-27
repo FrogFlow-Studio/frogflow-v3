@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { courseFn, saveCourseFn } from "@/app/admin/courses.functions";
+import { courseFn, courseStudentsFn, saveCourseFn } from "@/app/admin/courses.functions";
 import { uploadFile } from "@/app/admin/upload-client";
 import type { AdminT } from "@/app/i18n/admin";
 import { Card, ErrorBox, useAction } from "@/app/ui";
@@ -241,6 +241,44 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
         {saved && <span className="text-xs text-ok">✓</span>}
       </div>
       <ErrorBox error={save.error} />
+      <Students productId={productId} t={t} />
     </Card>
+  );
+}
+
+type StudentsData = Awaited<ReturnType<typeof courseStudentsFn>>;
+
+/** Прогресс учеников: кто купил, открывал ли курс, сколько уроков пройдено. */
+function Students({ productId, t }: { productId: string; t: AdminT }) {
+  const [data, setData] = useState<StudentsData | null>(null);
+  useEffect(() => {
+    void courseStudentsFn({ data: { productId } }).then(setData, () => setData(null));
+  }, [productId]);
+  if (!data) return null;
+  return (
+    <div className="mt-5 border-t border-line pt-4">
+      <h3 className="mb-2 text-sm font-medium">
+        {t("product.courseStudents")} · {data.students.length}
+      </h3>
+      {data.students.length === 0 ? (
+        <p className="text-sm text-muted">{t("product.courseStudentsEmpty")}</p>
+      ) : (
+        <ul className="divide-y divide-line text-sm">
+          {data.students.map((s) => (
+            <li key={s.orderNo} className="flex items-center justify-between gap-3 py-1.5">
+              <span className="min-w-0 truncate">
+                #{s.orderNo}
+                {s.buyer ? ` · ${s.buyer}` : ""}
+              </span>
+              <span className="shrink-0 text-xs text-muted tabular-nums">
+                {s.startedAt
+                  ? t("product.courseProgress", { done: s.done, total: data.total, open: s.open })
+                  : t("product.courseNotStarted")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
