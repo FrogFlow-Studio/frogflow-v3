@@ -7,6 +7,7 @@ vi.mock("@/core/db/client.server", () => ({ serviceDb: () => db }));
 const {
   RETENTION,
   pruneBroadcastRecipients,
+  pruneClosedLeads,
   pruneOperatorLoginAttempts,
   pruneReceiptChecks,
   BATCH,
@@ -172,5 +173,57 @@ describe("счётчики автопроверок чека покупател�
     expect(await pruneReceiptChecks(NOW, ["bot-1"])).toEqual({ deleted: 1, done: true });
     expect(db.tables.app_settings!.map((r) => r.bot_id)).toEqual(["bot-v1"]);
     expect(await pruneReceiptChecks(NOW, [])).toEqual({ deleted: 0, done: true });
+  });
+});
+
+describe("закрытые заявки воронки сделок", () => {
+  const lead = (id: string, stage: string, closedDaysAgo: number | null, createdDaysAgo = 200) =>
+    JSON.stringify({
+      id,
+      stage,
+      name: "Анна",
+      contact: "1",
+      source: "manual",
+      created_at: daysAgo(createdDaysAgo),
+      updated_at: daysAgo(closedDaysAgo ?? createdDaysAgo),
+      closed_at: closedDaysAgo == null ? null : daysAgo(closedDaysAgo),
+    });
+  const row = (bot_id: string, key: string, value: string, updatedDaysAgo: number) => ({
+    bot_id,
+    key,
+    value,
+    updated_at: daysAgo(updatedDaysAgo),
+  });
+  const OLD = RETENTION.closedLeadsDays + 1;
+
+  it("pruneClosedLeads удаляет закрытые раньше окна, открытые и свежие остаются", async () => {
+    db.tables.app_settings = [
+      row("bot-1", "crm:lead:a", lead("a", "lost", OLD), OLD),
+      row("bot-1", "crm:lead:b", lead("b", "won", OLD), OLD),
+      row("bot-1", "crm:lead:c", lead("c", "lost", 3), 3),
+      // Открытая, хоть и старая: продавец ещё работает с ней.
+      row("bot-1", "crm:lead:d", lead("d", "in_progress", null), OLD + 100),
+      // Не заявки: чужой префикс, «_» не при чём, битое значение.
+      row("bot-1", "crmXlead:e", lead("e", "lost", OLD), OLD),
+      row("bot-1", "crm:lead:f", "abc", OLD),
+      row("bot-1", "crm_webhook", "{}", OLD),
+    ];
+    expect(await pruneClosedLeads(NOW)).toEqual({ deleted: 2, done: true });
+    expect(db.tables.app_settings!.map((r) => r.key)).toEqual([
+      "crm:lead:c",
+      "crm:lead:d",
+      "crmXlead:e",
+      "crm:lead:f",
+      "crm_webhook",
+    ]);
+  });
+
+  it("только клиенты из границ прохода (v2)", async () => {
+    db.tables.app_settings = [
+      row("bot-1", "crm:lead:a", lead("a", "lost", OLD), OLD),
+      row("bot-v1", "crm:lead:a", lead("a", "lost", OLD), OLD),
+    ];
+    expect(await pruneClosedLeads(NOW, ["bot-1"])).toEqual({ deleted: 1, done: true });
+    expect(db.tables.app_settings!.map((r) => r.bot_id)).toEqual(["bot-v1"]);
   });
 });

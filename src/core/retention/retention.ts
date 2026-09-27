@@ -1,5 +1,6 @@
 import { serviceDb } from "@/core/db/client.server";
 import { servedByV2 } from "@/core/tenant/directory";
+import { LEAD_PREFIX, isClosedStage, parseLead } from "@/core/pipeline/stages";
 import { RECEIPT_CHECKS_PREFIX, receiptChecksDay } from "@/core/receipts/attempts";
 
 /**
@@ -27,6 +28,8 @@ export const RETENTION = {
   /** Получатели рассылок — по дате самой кампании: своей даты у строки нет. */
   broadcastRecipientsDays: 90,
   healthSnapshotsDays: 30,
+  /** Закрытые заявки воронки (выполнено, потеряно) — после закрытия. */
+  closedLeadsDays: 90,
   /**
    * Счётчики автопроверок чека покупателя (core/receipts/attempts). Дневной
    * лимит живёт сутки, лимит заказа — пока жив заказ: неделя, как у v1 для
@@ -223,6 +226,47 @@ export async function pruneReceiptChecks(now = Date.now(), scope?: Scope): Promi
   return { deleted, done: rows.length < BATCH || deleted === 0 };
 }
 
+/**
+ * Закрытые заявки воронки сделок — строки app_settings `crm:lead:<id>`.
+ * Удаляем строго по префиксу (LIKE ещё раз сверяется startsWith) и только
+ * заявку, закрытую раньше окна; открытые не трогаем, сколько бы им ни было.
+ * Дата записи строки не позже даты закрытия, поэтому фильтр по updated_at
+ * в запросе не пропускает ни одной подходящей строки. Только клиенты v2.
+ */
+export async function pruneClosedLeads(now = Date.now(), scope?: Scope): Promise<PruneResult> {
+  if (scope && scope.length === 0) return none;
+  const db = serviceDb();
+  const edge = cutoff(RETENTION.closedLeadsDays, now);
+  let q = db
+    .from("app_settings")
+    .select("bot_id, key, value")
+    .like("key", `${LEAD_PREFIX}%`)
+    .lt("updated_at", edge);
+  if (scope) q = q.in("bot_id", [...scope]);
+  const { data, error } = await q.order("updated_at", { ascending: true }).limit(BATCH);
+  if (error) throw new Error(`app_settings: ${error.message}`);
+  const rows = data ?? [];
+  const byBot = new Map<string, string[]>();
+  for (const r of rows) {
+    if (!r.bot_id || !r.key.startsWith(LEAD_PREFIX)) continue;
+    const lead = parseLead(r.value);
+    if (!lead || !isClosedStage(lead.stage) || !lead.closed_at || lead.closed_at >= edge) continue;
+    byBot.set(r.bot_id, [...(byBot.get(r.bot_id) ?? []), r.key]);
+  }
+  let deleted = 0;
+  for (const [botId, keys] of byBot)
+    for (let i = 0; i < keys.length; i += DELETE_CHUNK) {
+      const { error: e2 } = await db
+        .from("app_settings")
+        .delete()
+        .eq("bot_id", botId)
+        .in("key", keys.slice(i, i + DELETE_CHUNK));
+      if (e2) throw new Error(`app_settings: ${e2.message}`);
+      deleted += Math.min(DELETE_CHUNK, keys.length - i);
+    }
+  return { deleted, done: rows.length < BATCH || deleted === 0 };
+}
+
 export async function pruneBroadcastRecipients(
   now = Date.now(),
   scope?: Scope,
@@ -277,6 +321,7 @@ export async function runRetention(
     broadcast_recipients: (n) => pruneBroadcastRecipients(n, s),
     // Платформенные брони регистрации, без bot_id: границы клиентов к ним не относятся.
     signup_challenges: pruneSignupChallenges,
+    closed_leads: (n) => pruneClosedLeads(n, s),
     receipt_checks: (n) => pruneReceiptChecks(n, s),
     // Копии PDF со знаком (core/delivery) — только клиенты v2 и только `<клиент>/wm/`.
     watermark_copies: async (n) =>
