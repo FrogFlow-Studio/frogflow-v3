@@ -99,3 +99,18 @@ export async function notifyDeliveryFailure(
     { orderId: order.id, kind: "delivery_failure" },
   );
 }
+
+/** Покупатель прислал чек на остаток по задатку — продавцу проверить и внести оплату. */
+export async function notifyBalanceProof(
+  ctx: TenantContext,
+  order: { id: number; currency: string; display_no?: number | null; order_no: number },
+  due: number,
+): Promise<void> {
+  const { formatMoney } = await import("@/core/money/money");
+  const { escapeHtml } = await import("./copy");
+  await notifyAdminsHtml(
+    ctx,
+    `🧾 Покупатель прислал чек на остаток ${escapeHtml(formatMoney(due, order.currency))} по заказу #${order.display_no ?? order.order_no}. Проверьте чек в карточке заказа и нажмите «Внести оплату».`,
+    { orderId: order.id, kind: "proof" },
+  ).catch((e) => console.error(`[notify:${ctx.tenant.id}] уведомление о чеке на остаток`, e));
+}

@@ -51,6 +51,8 @@ vi.mock("@/channels/telegram/notify", () => ({
   adminTelegramApi: () => ({}),
   notifyAdminsHtml: (...a: unknown[]) => notifyAdmins(...a),
   notifyDeliveryFailure: (...a: unknown[]) => notifyFail(...a),
+  notifyBalanceProof: (c: unknown, o: { id: number }, due: number) =>
+    notifyAdmins(c, `Покупатель прислал чек на остаток ${due}`, { orderId: o.id, kind: "proof" }),
 }));
 vi.mock("@/channels/telegram/admin-notify", () => ({
   notifyAdminNewOrder: (...a: unknown[]) => notifyNew(...a),

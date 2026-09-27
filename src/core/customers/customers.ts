@@ -47,6 +47,8 @@ export type DialogMode =
   | "awaiting_contact"
   | "awaiting_payment"
   | "awaiting_proof"
+  /** Чек на остаток по задатку (core/orders/balance): заказ уже в работе. */
+  | "awaiting_balance_proof"
   | "choose_pay"
   | "awaiting_promo_code"
   | "awaiting_review_comment"

@@ -88,7 +88,14 @@ import {
 } from "@/core/customers/opt-out";
 import { shopAdminIds } from "@/core/notify/recipients";
 import { notifyAdminNewOrder } from "./admin-notify";
-import { notifyAdminsHtml, notifyDeliveryFailure } from "./notify";
+import { notifyAdminsHtml, notifyBalanceProof, notifyDeliveryFailure } from "./notify";
+import {
+  attachBalanceProof,
+  balanceDue,
+  balancePayable,
+  balanceProofPending,
+  claimBalanceInvId,
+} from "@/core/orders/balance";
 import { telegramLanguageAsker, telegramMaterialSender } from "./deliver";
 import { botCommandFor, type BotCommand } from "./commands";
 import { legacyLangItem, parseLegacyLang, parseSearchMore, searchPage } from "./legacy";
@@ -240,7 +247,10 @@ async function handleMessage(
 
   // Чат с менеджером: реплика в лог; если менеджер подключён — бот молчит.
   // Исключения: /start (покупатель хочет меню) и чек на шаге оплаты.
-  const proofStep = customer.state.mode === "awaiting_proof" && Boolean(msg.photo || msg.document);
+  const proofStep =
+    (customer.state.mode === "awaiting_proof" ||
+      customer.state.mode === "awaiting_balance_proof") &&
+    Boolean(msg.photo || msg.document);
   const intercepted = await inboundIntercepted(ctx, from.id, inboundLogText(msg));
   // «Отписаться» / «подписаться» словом — вне оформления; и при чате с менеджером.
   const optCmd = optOutWordsApply(customer.state.mode) ? optOutCommand(text) : null;
@@ -281,6 +291,14 @@ async function handleMessage(
     ctx.tenant.modules.review_request
   )
     return receiveReviewPhoto(b, msg, String(customer.state.review_product_id));
+
+  // Чек на остаток по задатку — после кнопки «Оплатить остаток».
+  if (
+    customer.state.mode === "awaiting_balance_proof" &&
+    customer.state.pending_order_id &&
+    (msg.photo || msg.document)
+  )
+    return receiveBalanceProof(b, msg, Number(customer.state.pending_order_id));
 
   // Чек оплаты: по состоянию либо по свежему открытому заказу.
   if (msg.photo || msg.document) {
@@ -394,7 +412,12 @@ async function handleMessage(
     return showCart(b);
   }
 
-  if (customer.state.mode === "awaiting_proof" && customer.state.pending_order_id && !action) {
+  if (
+    (customer.state.mode === "awaiting_proof" ||
+      customer.state.mode === "awaiting_balance_proof") &&
+    customer.state.pending_order_id &&
+    !action
+  ) {
     await send(b, b.m.sendReceiptPrompt);
     return;
   }
@@ -1582,6 +1605,9 @@ async function showMyOrders(b: Bot) {
       row.push({ text: `${b.m.reorderBtn} #${no}`, callback_data: `reorder:${o.id}` });
     if (o.status === "delivered" && b.ctx.tenant.modules.review_request)
       row.push({ text: b.m.rateBtn(String(no)), callback_data: `rate:${o.id}` });
+    // Задаток внесён, заказ в работе — доплатить остаток отсюда же.
+    if (balanceDue(o) > 0 && (await balancePayable(b.ctx, o)) > 0)
+      row.push({ text: b.m.payBalanceBtn(no), callback_data: `balance:${o.id}` });
     if (row.length) buttons.push(row);
   }
   await send(
@@ -1589,6 +1615,88 @@ async function showMyOrders(b: Bot) {
     text.slice(0, 4096),
     buttons.length ? { reply_markup: { inline_keyboard: buttons } } : {},
   );
+}
+
+/**
+ * «Оплатить остаток»: сумма с сервера (core/orders/balance), реквизиты
+ * страны заказа и кнопка оплаты картой, если Robokassa подключена. Дальше
+ * бот ждёт чек на остаток (awaiting_balance_proof).
+ */
+async function showBalancePayment(b: Bot, order: import("@/core/orders/orders").OrderWithItems) {
+  const due = await balancePayable(b.ctx, order);
+  if (!due) {
+    await send(b, balanceDue(order) > 0 ? b.m.balanceProofWaiting : b.m.balanceNotDue);
+    return;
+  }
+  const no = displayNo(order);
+  const method =
+    (await listActivePaymentMethods(b.ctx)).find((x) => x.country_code === order.country_code) ??
+    null;
+  const rk = await robokassaFor(b.ctx);
+  const url = rk.ready
+    ? buildPaymentUrl(rk, {
+        outSum: due,
+        invId: await claimBalanceInvId(b.ctx, order.id, due),
+        description: `Остаток по заказу #${no}`,
+        botId: b.ctx.tenant.id,
+      })
+    : null;
+  b.customer = await setState(b.ctx, b.customer, {
+    ...b.customer.state,
+    mode: "awaiting_balance_proof",
+    pending_order_id: order.id,
+    pending_display_no: no,
+  });
+  const text =
+    `${b.m.balanceTitle(no, formatMoney(due, order.currency))}\n\n` +
+    `${method?.instructions ? escapeHtml(method.instructions) : b.m.balanceNoDetails}\n\n` +
+    b.m.balanceHowTo(Boolean(url));
+  await send(
+    b,
+    text,
+    url ? { reply_markup: { inline_keyboard: [[{ text: b.m.payViaRobokassaBtn, url }]] } } : {},
+  );
+  if (method?.qr_code_path)
+    await b.api.call("sendPhoto", {
+      chat_id: b.chatId,
+      photo: imageUrl(b.ctx, method.qr_code_path),
+    });
+}
+
+/** Чек на остаток: в бакет рядом с чеком задатка, продавцу — проверить и внести оплату. */
+async function receiveBalanceProof(b: Bot, msg: TelegramMessage, orderId: number) {
+  const order = await getOrder(b.ctx, orderId);
+  const toIdle = async () => {
+    b.customer = await setState(b.ctx, b.customer, { ...b.customer.state, mode: "idle" });
+  };
+  if (!order || order.telegram_id !== b.customer.telegramId) return void (await toIdle());
+  if (balanceDue(order) > 0 && (await balanceProofPending(b.ctx, order.id, order.paid_amount))) {
+    await toIdle();
+    return void (await send(b, b.m.balanceProofWaiting, { reply_markup: mainMenu(b) }));
+  }
+  const fileId = msg.document?.file_id ?? msg.photo?.[msg.photo.length - 1]?.file_id;
+  if (!fileId) return;
+  const file = await downloadTelegramFile(b.api, fileId);
+  if (!file) return void (await send(b, b.m.proofFailed));
+  const r = await attachBalanceProof(b.ctx, order, { bytes: file.bytes, mime: file.mime });
+  if (!r) {
+    await toIdle();
+    return void (await send(b, b.m.balanceNotDue, { reply_markup: mainMenu(b) }));
+  }
+  if (!r.ok) {
+    const text =
+      r.reason === "duplicate"
+        ? b.m.proofDuplicate
+        : r.reason === "invalid_file"
+          ? b.m.proofBadFile
+          : r.reason === "file_too_large"
+            ? b.m.proofTooLarge
+            : b.m.proofFailed;
+    return void (await send(b, text));
+  }
+  await toIdle();
+  await send(b, b.m.balanceProofReceived(displayNo(order)), { reply_markup: mainMenu(b) });
+  await notifyBalanceProof(b.ctx, order, r.due);
 }
 
 /** Выдать позицию на выбранном языке; последний ответ закрывает заказ. */
@@ -1956,6 +2064,11 @@ async function handleCallback(
     const { review_product_id: _rp, ...rest } = b.customer.state;
     b.customer = await setState(ctx, b.customer, { ...rest, mode: "idle" });
     return send(b, b.m.useMenu);
+  }
+  if (data.startsWith("balance:")) {
+    const order = await getOrder(ctx, Number(data.slice(8)));
+    if (!order || order.telegram_id !== customer.telegramId) return;
+    return showBalancePayment(b, order);
   }
   if (data.startsWith("reorder:")) {
     const order = await getOrder(ctx, Number(data.slice(8)));

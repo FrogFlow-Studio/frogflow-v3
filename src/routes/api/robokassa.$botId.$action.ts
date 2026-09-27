@@ -149,6 +149,12 @@ async function balanceResult(
       orderId,
       kind: r === "recorded" ? "fulfillment" : "delivery_failure",
     }).catch((e) => console.error(`[robokassa:${ctx.tenant.id}] уведомление об остатке`, e));
+    if (r === "recorded") {
+      const { notifyBalancePaid } = await import("@/app/admin/balance.server");
+      await notifyBalancePaid(ctx, orderId, paid).catch((e) =>
+        console.error(`[robokassa:${ctx.tenant.id}] покупателю об остатке`, e),
+      );
+    }
   }
   return new Response(`OK${invId}`);
 }

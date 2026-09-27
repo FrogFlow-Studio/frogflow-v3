@@ -134,6 +134,14 @@ export type Msg = {
   payReminderLink: (url: string) => string;
   proofReceived: (no: number) => string;
   balanceProofRejected: (no: number) => string;
+  payBalanceBtn: (no: number) => string;
+  balanceTitle: (no: number, sum: string) => string;
+  balanceNoDetails: string;
+  balanceHowTo: (card: boolean) => string;
+  balanceNotDue: string;
+  balanceProofWaiting: string;
+  balanceProofReceived: (no: number) => string;
+  balancePaid: (no: number, sum: string) => string;
   /** Instagram/WhatsApp: почта для выдачи письмом (перенос из v1). */
   emailAsk: string;
   emailAskOptional: string;
@@ -215,6 +223,18 @@ export type Msg = {
 };
 
 const ru: Msg = {
+  payBalanceBtn: (no) => `💳 Оплатить остаток #${no}`,
+  balanceTitle: (no, sum) => `💳 <b>Остаток по заказу #${no}</b>\n\n💰 К оплате: <b>${sum}</b>`,
+  balanceNoDetails: "Реквизиты для оплаты уточните у продавца.",
+  balanceHowTo: (card) =>
+    card
+      ? "Оплатите картой по кнопке ниже — остаток отметится сам. Или переведите по реквизитам и пришлите сюда фото или PDF чека."
+      : "Переведите по реквизитам и пришлите сюда фото или PDF чека.",
+  balanceNotDue: "По этому заказу доплачивать нечего.",
+  balanceProofWaiting: "Чек на остаток уже у продавца на проверке.",
+  balanceProofReceived: (no) =>
+    `✅ Чек на остаток по заказу #${no} получен. Продавец проверит его и отметит оплату.`,
+  balancePaid: (no, sum) => `✅ Остаток ${sum} по заказу #${no} получен. Спасибо!`,
   balanceProofRejected: (no) =>
     `❌ Чек на остаток по заказу #${no} продавец не принял. Оплатите остаток ещё раз или пришлите другой чек; вопросы — продавцу.`,
   emailSaveFailed: "Не получилось сохранить почту. Пришлите адрес ещё раз, пожалуйста.",
@@ -452,6 +472,19 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  payBalanceBtn: (no) => `💳 Қалғанын төлеу #${no}`,
+  balanceTitle: (no, sum) =>
+    `💳 <b>#${no} тапсырыс бойынша қалған сома</b>\n\n💰 Төлеуге: <b>${sum}</b>`,
+  balanceNoDetails: "Төлем деректемелерін сатушыдан нақтылаңыз.",
+  balanceHowTo: (card) =>
+    card
+      ? "Төмендегі батырма арқылы картамен төлеңіз — қалған сома өзі белгіленеді. Немесе деректемелер бойынша аударып, чектің фотосын не PDF-ін осында жіберіңіз."
+      : "Деректемелер бойынша аударып, чектің фотосын не PDF-ін осында жіберіңіз.",
+  balanceNotDue: "Бұл тапсырыс бойынша қосымша төлеудің қажеті жоқ.",
+  balanceProofWaiting: "Қалған сомаға чек сатушыда тексеруде.",
+  balanceProofReceived: (no) =>
+    `✅ #${no} тапсырыс бойынша қалған сомаға чек алынды. Сатушы тексеріп, төлемді белгілейді.`,
+  balancePaid: (no, sum) => `✅ #${no} тапсырыс бойынша қалған ${sum} алынды. Рақмет!`,
   balanceProofRejected: (no) =>
     `❌ #${no} тапсырыс бойынша қалған сомаға чекті сатушы қабылдамады. Қалған соманы қайта төлеңіз немесе басқа чек жіберіңіз; сұрақтар болса — сатушыға.`,
   payReminderTitle: (no) => `⏰ <b>#${no} тапсырыс төлемді күтуде</b>`,
@@ -594,6 +627,18 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  payBalanceBtn: (no) => `💳 Pay the balance #${no}`,
+  balanceTitle: (no, sum) => `💳 <b>Balance for order #${no}</b>\n\n💰 To pay: <b>${sum}</b>`,
+  balanceNoDetails: "Please ask the seller for payment details.",
+  balanceHowTo: (card) =>
+    card
+      ? "Pay by card with the button below — the balance is recorded automatically. Or pay by transfer and send a photo or PDF of the receipt here."
+      : "Pay by transfer and send a photo or PDF of the receipt here.",
+  balanceNotDue: "There is nothing left to pay on this order.",
+  balanceProofWaiting: "Your balance receipt is already with the seller for review.",
+  balanceProofReceived: (no) =>
+    `✅ Balance receipt for order #${no} received. The seller will check it and record the payment.`,
+  balancePaid: (no, sum) => `✅ Balance of ${sum} for order #${no} received. Thank you!`,
   balanceProofRejected: (no) =>
     `❌ The seller did not accept the balance receipt for order #${no}. Please pay the balance again or send another receipt; questions go to the seller.`,
   payReminderTitle: (no) => `⏰ <b>Order #${no} is awaiting payment</b>`,
@@ -756,6 +801,19 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  payBalanceBtn: (no) => `💳 Qolganini to‘lash #${no}`,
+  balanceTitle: (no, sum) =>
+    `💳 <b>#${no} buyurtma bo‘yicha qolgan summa</b>\n\n💰 To‘lov: <b>${sum}</b>`,
+  balanceNoDetails: "To‘lov rekvizitlarini sotuvchidan aniqlang.",
+  balanceHowTo: (card) =>
+    card
+      ? "Quyidagi tugma orqali karta bilan to‘lang — qolgan summa o‘zi belgilanadi. Yoki rekvizitlar bo‘yicha o‘tkazib, chek surati yoki PDF faylini shu yerga yuboring."
+      : "Rekvizitlar bo‘yicha o‘tkazib, chek surati yoki PDF faylini shu yerga yuboring.",
+  balanceNotDue: "Bu buyurtma bo‘yicha to‘lanadigan qoldiq yo‘q.",
+  balanceProofWaiting: "Qolgan summa cheki allaqachon sotuvchida tekshiruvda.",
+  balanceProofReceived: (no) =>
+    `✅ #${no} buyurtma bo‘yicha qolgan summa cheki qabul qilindi. Sotuvchi tekshirib, to‘lovni belgilaydi.`,
+  balancePaid: (no, sum) => `✅ #${no} buyurtma bo‘yicha qolgan ${sum} qabul qilindi. Rahmat!`,
   balanceProofRejected: (no) =>
     `❌ #${no} buyurtma bo‘yicha qolgan summa chekini sotuvchi qabul qilmadi. Qolgan summani qayta to‘lang yoki boshqa chek yuboring; savollar — sotuvchiga.`,
   payReminderTitle: (no) => `⏰ <b>#${no} buyurtma to‘lovni kutmoqda</b>`,

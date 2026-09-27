@@ -3,7 +3,6 @@ import { getCustomer } from "@/core/customers/customers";
 import {
   PROOF_SWAPPED_NOTE,
   attachPaymentProof,
-  displayNo,
   deliverOrder,
   getOrder,
   markProofVerified,
@@ -197,13 +196,7 @@ async function receiveBalanceProof(
   const r = await attachBalanceProof(ctx, order, file);
   if (!r) return null;
   if (!r.ok) return { ok: false, reason: r.reason };
-  const { formatMoney } = await import("@/core/money/money");
-  const { escapeHtml } = await import("@/channels/telegram/copy");
-  const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
-  await notifyAdminsHtml(
-    ctx,
-    `🧾 Покупатель прислал чек на остаток ${escapeHtml(formatMoney(r.due, order.currency))} по заказу #${displayNo(order)}. Проверьте чек в карточке заказа и нажмите «Внести оплату».`,
-    { orderId, kind: "proof" },
-  ).catch((e) => console.error(`[web:${ctx.tenant.id}] уведомление о чеке на остаток`, e));
+  const { notifyBalanceProof } = await import("@/channels/telegram/notify");
+  await notifyBalanceProof(ctx, order, r.due);
   return { ok: true, result: "balance" };
 }

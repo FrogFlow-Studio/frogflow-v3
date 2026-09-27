@@ -41,6 +41,8 @@ type BalanceRes = Awaited<
   ReturnType<typeof import("@/core/orders/balance").recordBalancePaidOnline>
 >;
 const recordBalancePaidOnline = vi.fn(async (): Promise<BalanceRes> => ({ result: "recorded" }));
+const notifyBalancePaid = vi.fn(async () => ({ notified: true }));
+vi.mock("@/app/admin/balance.server", () => ({ notifyBalancePaid }));
 vi.mock("@/core/orders/balance", async (orig) => ({
   ...(await orig<typeof import("@/core/orders/balance")>()),
   recordBalancePaidOnline,
@@ -177,6 +179,7 @@ describe("Robokassa: оплата остатка по задатку", () => {
     afterPaidOnline.mockClear();
     notifyAdminsHtml.mockClear();
     recordBalancePaidOnline.mockClear();
+    notifyBalancePaid.mockClear();
   });
 
   it("остаток записан к заказу 42, продавцу — сообщение; заказ не «оплачивается заново»", async () => {
@@ -195,6 +198,8 @@ describe("Robokassa: оплата остатка по задатку", () => {
       expect.stringContaining("Остаток"),
       expect.objectContaining({ orderId: 42 }),
     );
+    // Покупателю — «остаток получен» в его канал.
+    expect(notifyBalancePaid).toHaveBeenCalledWith(expect.anything(), 42, 1050);
   });
 
   it("повтор колбэка — OK без второго сообщения", async () => {
@@ -206,6 +211,7 @@ describe("Robokassa: оплата остатка по задатку", () => {
   it("переплата — деньги пришли, не записаны: продавцу срочно вернуть разницу", async () => {
     recordBalancePaidOnline.mockResolvedValueOnce({ result: "refused" });
     expect(await (await callResult("1050.00", INV)).text()).toBe(`OK${INV}`);
+    expect(notifyBalancePaid).not.toHaveBeenCalled();
     expect(notifyAdminsHtml).toHaveBeenCalledWith(
       expect.anything(),
       expect.stringContaining("верните"),
