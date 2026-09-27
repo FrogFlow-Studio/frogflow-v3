@@ -61,57 +61,70 @@ function Layout() {
           </NavLink>
           <NavLink to="/admin/orders">{t("nav.orders")}</NavLink>
           {shop.modules.dashboard && <NavLink to="/admin/analytics">{t("nav.analytics")}</NavLink>}
-          <NavLink to="/admin/products">{t("nav.products")}</NavLink>
-          <NavLink to="/admin/categories">{t("nav.categories")}</NavLink>
-          <NavLink to="/admin/customers">{t("nav.customers")}</NavLink>
-          {shop.modules.review_request && <NavLink to="/admin/reviews">{t("nav.reviews")}</NavLink>}
-          {shop.modules.crm_pipeline && <NavLink to="/admin/pipeline">{t("nav.pipeline")}</NavLink>}
-          {shop.modules.manager_chat && (
-            <NavLink to="/admin/chat">
-              <span className="flex items-center justify-between gap-2">
-                {t("nav.chat")}
-                {shop.chatUnread > 0 && <Badge tone="accent">{shop.chatUnread}</Badge>}
-              </span>
-            </NavLink>
+          {/* Бухгалтеру — только обзор, заказы и аналитика (сервер закрывает остальное сам). */}
+          {shop.role !== "accountant" && (
+            <>
+              <NavLink to="/admin/products">{t("nav.products")}</NavLink>
+              <NavLink to="/admin/categories">{t("nav.categories")}</NavLink>
+              <NavLink to="/admin/customers">{t("nav.customers")}</NavLink>
+              {shop.modules.review_request && (
+                <NavLink to="/admin/reviews">{t("nav.reviews")}</NavLink>
+              )}
+              {shop.modules.crm_pipeline && (
+                <NavLink to="/admin/pipeline">{t("nav.pipeline")}</NavLink>
+              )}
+              {shop.modules.manager_chat && (
+                <NavLink to="/admin/chat">
+                  <span className="flex items-center justify-between gap-2">
+                    {t("nav.chat")}
+                    {shop.chatUnread > 0 && <Badge tone="accent">{shop.chatUnread}</Badge>}
+                  </span>
+                </NavLink>
+              )}
+              {shop.modules.helpdesk && shop.modules.manager_chat && (
+                <NavLink to="/admin/tickets">
+                  <span className="flex items-center justify-between gap-2">
+                    {t("nav.tickets")}
+                    {shop.ticketsOpen > 0 && <Badge tone="accent">{shop.ticketsOpen}</Badge>}
+                  </span>
+                </NavLink>
+              )}
+              {(shop.modules.coupons ||
+                shop.modules.gift_certificates ||
+                shop.modules.referral ||
+                shop.modules.limited_offers) && (
+                <NavLink to="/admin/discounts">{t("nav.discounts")}</NavLink>
+              )}
+              {(shop.modules.broadcasts ||
+                shop.modules.wa_broadcasts ||
+                shop.modules.winback ||
+                shop.modules.funnel) && (
+                <NavLink to="/admin/broadcasts">{t("nav.broadcasts")}</NavLink>
+              )}
+              <NavLink to="/admin/consultant">{t("nav.consultant")}</NavLink>
+              {shop.modules.instagram && (
+                <NavLink to="/admin/instagram">{t("nav.instagram")}</NavLink>
+              )}
+              {shop.modules.instagram && <NavLink to="/admin/posts">{t("nav.posts")}</NavLink>}
+              {shop.modules.vip && <NavLink to="/admin/vip">{t("nav.vip")}</NavLink>}
+              {shop.modules.quiz && <NavLink to="/admin/quiz">{t("nav.quiz")}</NavLink>}
+              {shop.undelivered > 0 && (
+                <NavLink to="/admin/undelivered">
+                  <span className="flex items-center justify-between gap-2">
+                    {t("nav.undelivered")}
+                    <Badge tone="danger">{shop.undelivered}</Badge>
+                  </span>
+                </NavLink>
+              )}
+              {owner && (
+                <NavLink to="/admin/settings">
+                  {physical ? t("nav.settingsPhysical") : t("nav.settings")}
+                </NavLink>
+              )}
+              {owner && <NavLink to="/admin/modules">{t("nav.modules")}</NavLink>}
+              {owner && <NavLink to="/admin/log">{t("audit.nav")}</NavLink>}
+            </>
           )}
-          {shop.modules.helpdesk && shop.modules.manager_chat && (
-            <NavLink to="/admin/tickets">
-              <span className="flex items-center justify-between gap-2">
-                {t("nav.tickets")}
-                {shop.ticketsOpen > 0 && <Badge tone="accent">{shop.ticketsOpen}</Badge>}
-              </span>
-            </NavLink>
-          )}
-          {(shop.modules.coupons ||
-            shop.modules.gift_certificates ||
-            shop.modules.referral ||
-            shop.modules.limited_offers) && (
-            <NavLink to="/admin/discounts">{t("nav.discounts")}</NavLink>
-          )}
-          {(shop.modules.broadcasts ||
-            shop.modules.wa_broadcasts ||
-            shop.modules.winback ||
-            shop.modules.funnel) && <NavLink to="/admin/broadcasts">{t("nav.broadcasts")}</NavLink>}
-          <NavLink to="/admin/consultant">{t("nav.consultant")}</NavLink>
-          {shop.modules.instagram && <NavLink to="/admin/instagram">{t("nav.instagram")}</NavLink>}
-          {shop.modules.instagram && <NavLink to="/admin/posts">{t("nav.posts")}</NavLink>}
-          {shop.modules.vip && <NavLink to="/admin/vip">{t("nav.vip")}</NavLink>}
-          {shop.modules.quiz && <NavLink to="/admin/quiz">{t("nav.quiz")}</NavLink>}
-          {shop.undelivered > 0 && (
-            <NavLink to="/admin/undelivered">
-              <span className="flex items-center justify-between gap-2">
-                {t("nav.undelivered")}
-                <Badge tone="danger">{shop.undelivered}</Badge>
-              </span>
-            </NavLink>
-          )}
-          {owner && (
-            <NavLink to="/admin/settings">
-              {physical ? t("nav.settingsPhysical") : t("nav.settings")}
-            </NavLink>
-          )}
-          {owner && <NavLink to="/admin/modules">{t("nav.modules")}</NavLink>}
-          {owner && <NavLink to="/admin/log">{t("audit.nav")}</NavLink>}
         </>
       }
       user={

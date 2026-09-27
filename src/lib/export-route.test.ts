@@ -11,13 +11,28 @@ let role: AdminRole | null = "owner";
 let moduleOn = true;
 const CTX = { tenant: { id: "shop-1" } };
 
+// Как настоящие гварды: бухгалтеру закрыто всё, кроме requireAdminFinance.
+const denyAccountant = () => {
+  if (role === "accountant") throw new UserError("err.auth.accountantDenied", "бухгалтер");
+};
+let ordersArgs: unknown[] = [];
+
 vi.mock("@/app/auth/guards.server", () => ({
   requireAdmin: async () => {
     if (!role) throw new Error("Unauthorized");
+    denyAccountant();
     return CTX;
+  },
+  requireAdminFinance: async () => {
+    if (!role) throw new Error("Unauthorized");
+    return {
+      ctx: { tenant: { ...CTX.tenant, modules: { excel_export: moduleOn } } },
+      accountant: role === "accountant",
+    };
   },
   requireAdminModule: async (_key: string, min?: AdminRole) => {
     if (!role) throw new Error("Unauthorized");
+    denyAccountant();
     if (min && !roleAllows(role, min)) throw new UserError("err.auth.viewOnly", "нет прав");
     if (!moduleOn) throw new UserError("err.auth.moduleOff", "модуль");
     return CTX;
@@ -27,7 +42,10 @@ vi.mock("@/core/export/export", async (orig) => ({
   ...(await orig<typeof import("@/core/export/export")>()),
   allDataZip: async () => ({ zip: Buffer.from("PK"), counts: {} }),
   customersCsv: async () => ({ csv: "c", count: 1 }),
-  ordersCsv: async () => ({ csv: "o", count: 1 }),
+  ordersCsv: async (...a: unknown[]) => {
+    ordersArgs = a;
+    return { csv: "o", count: 1 };
+  },
   productsCsv: async () => ({ csv: "p", count: 1 }),
 }));
 
@@ -41,6 +59,7 @@ const get = (kind: string) =>
 beforeEach(() => {
   role = "owner";
   moduleOn = true;
+  ordersArgs = [];
 });
 
 describe("выгрузки с контактами покупателей: кто скачивает", () => {
@@ -79,5 +98,32 @@ describe("выгрузки с контактами покупателей: кт�
     role = "viewer";
     moduleOn = false;
     expect((await get("products")).status).toBe(200);
+  });
+});
+
+describe("бухгалтер: выгрузка заказов без контактов, остальное закрыто", () => {
+  it("заказы — 200, и выгрузка просит убрать контакты", async () => {
+    role = "accountant";
+    expect((await get("orders")).status).toBe(200);
+    expect(ordersArgs[1]).toMatchObject({ noContacts: true });
+  });
+
+  it("владельцу и менеджеру заказы — с контактами", async () => {
+    for (const r of ["owner", "manager"] as const) {
+      role = r;
+      expect((await get("orders")).status).toBe(200);
+      expect(ordersArgs[1]).toMatchObject({ noContacts: false });
+    }
+  });
+
+  it("полный архив, покупатели и каталог бухгалтеру — 403", async () => {
+    role = "accountant";
+    for (const kind of ["all", "customers", "products"]) expect((await get(kind)).status).toBe(403);
+  });
+
+  it("без модуля выгрузки бухгалтеру и заказы — 403", async () => {
+    role = "accountant";
+    moduleOn = false;
+    expect((await get("orders")).status).toBe(403);
   });
 });

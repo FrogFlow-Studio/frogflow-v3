@@ -10,7 +10,8 @@ export function helpdeskTeam(tenant: Pick<Tenant, "settings">): TeamMember[] {
   const out: TeamMember[] = [];
   if (admin?.username) out.push({ username: admin.username, name: null });
   for (const u of admin?.users ?? [])
-    if (u.role !== "viewer" && u.username) out.push({ username: u.username, name: u.name ?? null });
+    if (u.role === "manager" && u.username)
+      out.push({ username: u.username, name: u.name ?? null });
   return out;
 }
 

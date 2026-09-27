@@ -5,16 +5,30 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        const { requireAdmin, requireAdminModule } = await import("@/app/auth/guards.server");
+        const { requireAdmin, requireAdminModule, requireAdminFinance } =
+          await import("@/app/auth/guards.server");
         const { CONTACTS_MIN_ROLE } = await import("@/core/export/export");
         let ctx;
+        // Бухгалтер: только заказы и только без контактов покупателей.
+        let noContacts = false;
         try {
           // Каталог выгружает любой продавец — это его данные для импорта обратно; заказы и покупатели — модуль.
           // Всё с контактами покупателей (архив, покупатели, заказы) — ещё и роль не ниже менеджера.
-          ctx =
-            params.kind === "products"
-              ? await requireAdmin()
-              : await requireAdminModule("excel_export", CONTACTS_MIN_ROLE);
+          const fin = params.kind === "orders" ? await requireAdminFinance() : null;
+          if (fin?.accountant) {
+            if (!fin.ctx.tenant.modules.excel_export)
+              throw new (await import("@/core/i18n/user-error")).UserError(
+                "err.auth.moduleOff",
+                "Модуль «{module}» не подключён к вашему тарифу.",
+                { module: "excel_export" },
+              );
+            ctx = fin.ctx;
+            noContacts = true;
+          } else
+            ctx =
+              params.kind === "products"
+                ? await requireAdmin()
+                : await requireAdminModule("excel_export", CONTACTS_MIN_ROLE);
         } catch (e) {
           const { isUserError } = await import("@/core/i18n/user-error");
           // Вошёл, но роли или модуля не хватает — 403; нет сессии — 401.
@@ -42,7 +56,7 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
         if (params.kind === "orders") {
           const from = day(url.searchParams.get("from"));
           const to = day(url.searchParams.get("to"));
-          result = await ordersCsv(ctx, { from, to });
+          result = await ordersCsv(ctx, { from, to, noContacts });
           name = `orders${from ? `-${from}` : ""}${to ? `-${to}` : ""}.csv`;
         } else if (params.kind === "customers") {
           result = await customersCsv(ctx);

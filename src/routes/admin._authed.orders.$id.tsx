@@ -1,3 +1,4 @@
+import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -23,6 +24,7 @@ function OrderPage() {
   const { order: o, proofUrl, events, zones, dueNow } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
+  const editable = canEdit(shop.role);
   const router = useRouter();
   const [msg, setMsg] = useState<string | null>(null);
   const act = useAction(async (action: "confirm" | "reject" | "next" | "prev" | "remind") => {
@@ -69,7 +71,8 @@ function OrderPage() {
           </Link>
         </div>
 
-        <div className="mb-4 flex flex-wrap gap-2">
+        {/* Бухгалтер и «просмотр» ничего не меняют: кнопок нет, сервер всё равно откажет. */}
+        <div className={editable ? "mb-4 flex flex-wrap gap-2" : "hidden"}>
           {canConfirm && (
             <button
               className="btn-primary"
@@ -156,7 +159,7 @@ function OrderPage() {
                 </>
               )}
             </dl>
-            {physical && !["delivered", "rejected", "cancelled"].includes(o.status) && (
+            {editable && physical && !["delivered", "rejected", "cancelled"].includes(o.status) && (
               <FulfillmentEditor order={o} zones={zones} />
             )}
           </Card>
@@ -259,27 +262,29 @@ function OrderPage() {
                 </div>
               )}
           </Card>
-          <Card title={t("order.note")}>
-            <form
-              className="space-y-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void note.run(String(new FormData(e.currentTarget).get("note"))).catch(() => {});
-              }}
-            >
-              <Field label={t("order.noteHint")}>
-                <textarea
-                  className="input"
-                  name="note"
-                  rows={2}
-                  defaultValue={o.admin_note ?? ""}
-                />
-              </Field>
-              <button className="btn-secondary" disabled={note.busy}>
-                {t("common.save")}
-              </button>
-            </form>
-          </Card>
+          {editable && (
+            <Card title={t("order.note")}>
+              <form
+                className="space-y-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void note.run(String(new FormData(e.currentTarget).get("note"))).catch(() => {});
+                }}
+              >
+                <Field label={t("order.noteHint")}>
+                  <textarea
+                    className="input"
+                    name="note"
+                    rows={2}
+                    defaultValue={o.admin_note ?? ""}
+                  />
+                </Field>
+                <button className="btn-secondary" disabled={note.busy}>
+                  {t("common.save")}
+                </button>
+              </form>
+            </Card>
+          )}
         </div>
       </div>
     </div>
@@ -322,7 +327,7 @@ function PaymentCard({ order: o, dueNow }: { order: Order; dueNow: number }) {
           {t("physical.dueNow", { sum: formatMoney(dueNow, o.currency) })}
         </p>
       )}
-      {remaining > 0 && !closed && (
+      {remaining > 0 && !closed && canEdit(shop.role) && (
         <form
           className="mt-3 flex flex-wrap items-end gap-2"
           onSubmit={(e) => {

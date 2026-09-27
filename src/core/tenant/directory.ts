@@ -103,7 +103,11 @@ export function settingsFromJson(json: unknown): TenantSettings {
             .map((u) => ({
               username: String(u.username ?? "").toLowerCase(),
               password_hash: String(u.password_hash ?? ""),
-              role: u.role === "viewer" ? ("viewer" as const) : ("manager" as const),
+              // Неизвестная роль — самая узкая (просмотр), а не менеджер.
+              role:
+                u.role === "manager" || u.role === "accountant"
+                  ? (u.role as "manager" | "accountant")
+                  : ("viewer" as const),
               name: str(u.name),
               created_at: str(u.created_at),
             }))

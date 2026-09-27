@@ -1,3 +1,4 @@
+import { isStaffRole, type StaffRole } from "@/core/auth/roles";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
@@ -1762,7 +1763,7 @@ function TeamCard() {
       data: {
         username: String(f.get("username")),
         name: String(f.get("name") || ""),
-        role: f.get("role") === "viewer" ? "viewer" : "manager",
+        role: isStaffRole(f.get("role")) ? (f.get("role") as StaffRole) : "manager",
         password: String(f.get("password") || "") || undefined,
       },
     });
@@ -1848,6 +1849,7 @@ function TeamCard() {
             <select className="input" name="role" defaultValue={current?.role ?? "manager"}>
               <option value="manager">{t("settings.team.roleManager")}</option>
               <option value="viewer">{t("settings.team.roleViewer")}</option>
+              <option value="accountant">{t("settings.team.roleAccountant")}</option>
             </select>
           </Field>
           <Field

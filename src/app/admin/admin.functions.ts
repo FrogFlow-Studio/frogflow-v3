@@ -4,6 +4,7 @@ import { shownError } from "@/lib/shown-error";
 import { MODULE_KEYS } from "@/core/modules/registry";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
+import { STAFF_ROLES } from "@/core/auth/roles";
 import { CATALOG_LAYOUTS, CATALOG_ORDER_MAX } from "@/core/storefront/categories";
 import { SETTING_KEYS, settingsForRole, WRITABLE_SETTING_KEYS } from "./setting-keys";
 
@@ -15,6 +16,8 @@ const admin = async () => (await import("@/app/auth/guards.server")).requireAdmi
 /** Изменения — менеджеру и владельцу; настройки, оплата, модули, команда — только владельцу (core/auth/roles). */
 const adminWrite = async () =>
   (await import("@/app/auth/guards.server")).requireAdminRole("manager");
+/** Разделы бухгалтера (guards.server requireAdminFinance): ответ без контактов, если это он. */
+const finance = async () => (await import("@/app/auth/guards.server")).requireAdminFinance();
 const adminOwner = async () => (await import("@/app/auth/guards.server")).requireAdminRole("owner");
 const actor = async () => (await import("@/app/auth/guards.server")).adminActor();
 const uuid = z.string().uuid();
@@ -120,7 +123,7 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
   const s = await appSession();
   if (!s.data.admin?.botId) return null;
   try {
-    const ctx = await admin();
+    const { ctx, accountant } = await finance();
     const { VERTICALS } = await import("@/core/verticals/registry");
     const { getSettings } = await import("@/core/settings/settings");
     const { isLocale } = await import("@/core/i18n/locale");
@@ -144,19 +147,19 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       status: ctx.tenant.status,
       telegram: ctx.tenant.settings.telegram?.username ?? null,
       slug: ctx.tenant.settings.slug ?? null,
-      chatUnread: ctx.tenant.modules.manager_chat
-        ? await (await import("@/core/chat/chat")).totalUnread(ctx).catch(() => 0)
-        : 0,
+      chatUnread:
+        ctx.tenant.modules.manager_chat && !accountant
+          ? await (await import("@/core/chat/chat")).totalUnread(ctx).catch(() => 0)
+          : 0,
       /** Открытые обращения helpdesk — бейдж «Обращения» в навигации. */
-      ticketsOpen: ctx.tenant.modules.helpdesk
-        ? await (await import("@/core/helpdesk/tickets")).countOpenTickets(ctx).catch(() => 0)
-        : 0,
+      ticketsOpen:
+        ctx.tenant.modules.helpdesk && !accountant
+          ? await (await import("@/core/helpdesk/tickets")).countOpenTickets(ctx).catch(() => 0)
+          : 0,
       /** Сколько исходящих не доставлено после всех повторов — бейдж в навигации. */
-      undelivered: await (
-        await import("@/core/outbox/outbox")
-      )
-        .countUndelivered(ctx)
-        .catch(() => 0),
+      undelivered: accountant
+        ? 0
+        : await (await import("@/core/outbox/outbox")).countUndelivered(ctx).catch(() => 0),
     };
   } catch {
     return null;
@@ -186,7 +189,7 @@ export const setAdminLocaleFn = createServerFn({ method: "POST" })
   });
 
 export const dashboardFn = createServerFn({ method: "GET" }).handler(async () => {
-  const ctx = await admin();
+  const { ctx, accountant } = await finance();
   const { orderCounts, revenue, listOrdersForAdmin } = await import("@/core/orders/admin");
   const [counts, rev30, recent] = await Promise.all([
     orderCounts(ctx),
@@ -218,10 +221,11 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
       .maybeSingle(),
   ]);
   const { testOrderLink } = await import("./setup");
+  const { redactOrders } = await import("@/core/orders/redact");
   return {
     counts,
     rev30,
-    recent,
+    recent: accountant ? redactOrders(recent) : recent,
     products: products ?? 0,
     customers: customers ?? 0,
     // Чек-лист первых шагов на «Обзоре» для только что открытого магазина.
@@ -274,7 +278,7 @@ export const saveTeamMemberFn = createServerFn({ method: "POST" })
       .object({
         username: z.string().min(3).max(40),
         name: z.string().max(80).optional(),
-        role: z.enum(["manager", "viewer"]),
+        role: z.enum(STAFF_ROLES),
         password: z.string().min(8).max(200).optional(),
       })
       .parse(d),
@@ -613,19 +617,22 @@ export const ordersFn = createServerFn({ method: "GET" })
       .parse(d ?? {}),
   )
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const { ctx, accountant } = await finance();
     const m = await import("@/core/orders/admin");
+    // Поиск по имени и телефону — это тоже контакты: бухгалтер ищет по номеру.
+    const { accountantSearch, redactOrders } = await import("@/core/orders/redact");
+    const q = accountant ? accountantSearch(data.q) : data.q;
     const [orders, counts] = await Promise.all([
-      m.listOrdersForAdmin(ctx, data),
+      m.listOrdersForAdmin(ctx, { ...data, q }),
       m.orderCounts(ctx),
     ]);
-    return { orders, counts };
+    return { orders: accountant ? redactOrders(orders) : orders, counts };
   });
 
 export const orderFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ id: z.number().int() }).parse(d))
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const { ctx, accountant } = await finance();
     const { getOrder } = await import("@/core/orders/orders");
     const { proofSignedUrl } = await import("@/core/orders/admin");
     const { listOrderEvents } = await import("@/core/orders/events");
@@ -640,7 +647,16 @@ export const orderFn = createServerFn({ method: "GET" })
       physical ? activeDeliveryZones(ctx) : Promise.resolve<DeliveryZone[]>([]),
       physical ? amountDueNow(ctx, order) : Number(order.total),
     ]);
-    return { order, proofUrl, events, zones, dueNow };
+    if (!accountant) return { order, proofUrl, events, zones, dueNow };
+    // Бухгалтеру: без контактов; журнал — только события и время, без текста.
+    const { redactOrder, redactEventPayload } = await import("@/core/orders/redact");
+    return {
+      order: redactOrder(order),
+      proofUrl,
+      events: events.map((e) => ({ ...e, actor: "", payload: redactEventPayload(e.payload) })),
+      zones,
+      dueNow,
+    };
   });
 
 export const undeliveredFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -1524,7 +1540,7 @@ export const analyticsFn = createServerFn({ method: "GET" })
     z.object({ days: z.union([z.literal(7), z.literal(30), z.literal(90)]) }).parse(d),
   )
   .handler(async ({ data }) => {
-    const ctx = await admin();
+    const { ctx } = await finance();
     const now = new Date();
     const from = new Date(now.getTime() - data.days * 86_400_000);
     const [a, funnel] = await Promise.all([

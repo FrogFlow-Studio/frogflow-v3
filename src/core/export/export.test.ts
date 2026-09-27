@@ -136,3 +136,43 @@ describe("полная выгрузка магазина одним архиво
     expect(roleAllows("viewer", CONTACTS_MIN_ROLE)).toBe(false);
   });
 });
+
+describe("выгрузка заказов для бухгалтера", () => {
+  it("без колонок и значений, по которым можно найти покупателя", async () => {
+    const { ordersCsv, ORDER_CONTACT_COLUMNS } = await import("./export");
+    db.tables.orders = [
+      order(1, SHOP, {
+        display_name: "Анна Иванова",
+        username: "anna_iv",
+        contact: "+7 700 111 22 33",
+        customer_email: "anna@example.com",
+        admin_note: "звонить вечером",
+        fulfillment_address: "ул. Абая, 1",
+        fulfillment_note: "домофон 12",
+      }),
+    ];
+    const full = (await ordersCsv(ctx())).csv;
+    const { csv, count } = await ordersCsv(ctx(), { noContacts: true });
+    expect(count).toBe(1);
+    const header = csv
+      .replace(/^\uFEFF/, "")
+      .split("\r\n")[0]!
+      .split(";");
+    for (const col of ORDER_CONTACT_COLUMNS) expect(header).not.toContain(col);
+    expect(header).toEqual(expect.arrayContaining(["Номер", "Сумма", "Внесено", "Статус"]));
+    for (const secret of [
+      "Анна Иванова",
+      "anna_iv",
+      "700 111",
+      "anna@example.com",
+      "Абая",
+      "домофон",
+      "звонить",
+      "101",
+    ])
+      expect(csv).not.toContain(secret);
+    // Владельцу — как раньше, с контактами.
+    expect(full).toContain("anna@example.com");
+    expect(full).toContain("Анна Иванова");
+  });
+});

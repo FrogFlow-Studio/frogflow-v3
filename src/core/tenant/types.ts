@@ -105,7 +105,8 @@ export type BillingSettings = {
 export type AdminUser = {
   username: string;
   password_hash: string;
-  role: "manager" | "viewer";
+  /** manager | viewer | accountant (core/auth/roles, STAFF_ROLES). */
+  role: "manager" | "viewer" | "accountant";
   name?: string;
   created_at?: string;
 };

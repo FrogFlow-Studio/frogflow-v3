@@ -4,7 +4,24 @@ import { ORDER_STATUS_RU as STATUS_RU } from "@/core/orders/pure";
 import { shopDateTime, toCsv, zonedDayToUtc } from "./csv";
 import { zipFiles } from "./zip";
 
-export type ExportRange = { from?: string | null; to?: string | null };
+export type ExportRange = {
+  from?: string | null;
+  to?: string | null;
+  /** Бухгалтеру: без колонок, по которым можно узнать или найти покупателя. */
+  noContacts?: boolean;
+};
+
+/** Колонки выгрузки заказов с контактами покупателя — их нет у бухгалтера. */
+export const ORDER_CONTACT_COLUMNS = [
+  "Покупатель",
+  "Username",
+  "Telegram ID",
+  "Контакт",
+  "E-mail",
+  "Заметка",
+  "Адрес",
+  "Комментарий покупателя",
+];
 
 /** Заказы за период (границы — дни в поясе клиента, включительно). */
 export async function ordersCsv(
@@ -21,70 +38,76 @@ export async function ordersCsv(
       // RLS и так отдаёт только свой магазин; фильтр — вторая стена.
       .eq("bot_id", ctx.tenant.id)
       .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .range(from, to);
     if (range.from) q = q.gte("created_at", zonedDayToUtc(range.from, tz));
     if (range.to) q = q.lte("created_at", zonedDayToUtc(range.to, tz, true));
     return q;
   }, "заказы для выгрузки");
+  const headers = [
+    "Номер",
+    "Дата",
+    "Статус",
+    "Сумма",
+    "Внесено",
+    "Валюта",
+    "Скидка",
+    "Сертификат",
+    "Баллы",
+    "Промокод",
+    "Покупатель",
+    "Username",
+    "Telegram ID",
+    "Канал",
+    "Контакт",
+    "E-mail",
+    "Страна",
+    "Заметка",
+    "Тип товара",
+    "Получение",
+    "Дата получения",
+    "Адрес",
+    "Комментарий покупателя",
+    "Зона доставки",
+    "Комиссия доставки",
+  ];
+  const table = rows.map((o) => [
+    o.display_no ?? o.order_no ?? o.id,
+    shopDateTime(o.created_at, tz),
+    STATUS_RU[o.status] ?? o.status,
+    o.total,
+    o.paid_amount ?? "",
+    o.currency,
+    o.discount_amount ?? "",
+    o.gift_certificate_discount ?? "",
+    o.points_used ?? "",
+    o.promo_code ?? "",
+    o.display_name,
+    o.username,
+    o.telegram_id,
+    o.platform ?? "telegram",
+    o.contact,
+    o.customer_email ?? "",
+    o.country_name,
+    o.admin_note,
+    o.fulfillment_kind === "physical" ? "физический" : "цифровой",
+    o.fulfillment_type === "delivery"
+      ? "доставка"
+      : o.fulfillment_type === "pickup"
+        ? "самовывоз"
+        : "",
+    o.fulfillment_at ? String(o.fulfillment_at).slice(0, 10) : "",
+    o.fulfillment_address ?? "",
+    o.fulfillment_note ?? "",
+    o.delivery_zone_name ?? "",
+    o.delivery_fee ?? "",
+  ]);
+  const keep = headers.map(
+    (h) => !range.noContacts || !(ORDER_CONTACT_COLUMNS as readonly string[]).includes(h),
+  );
   const csv = toCsv(
-    [
-      "Номер",
-      "Дата",
-      "Статус",
-      "Сумма",
-      "Внесено",
-      "Валюта",
-      "Скидка",
-      "Сертификат",
-      "Баллы",
-      "Промокод",
-      "Покупатель",
-      "Username",
-      "Telegram ID",
-      "Канал",
-      "Контакт",
-      "E-mail",
-      "Страна",
-      "Заметка",
-      "Тип товара",
-      "Получение",
-      "Дата получения",
-      "Адрес",
-      "Комментарий покупателя",
-      "Зона доставки",
-      "Комиссия доставки",
-    ],
-    rows.map((o) => [
-      o.display_no ?? o.order_no ?? o.id,
-      shopDateTime(o.created_at, tz),
-      STATUS_RU[o.status] ?? o.status,
-      o.total,
-      o.paid_amount ?? "",
-      o.currency,
-      o.discount_amount ?? "",
-      o.gift_certificate_discount ?? "",
-      o.points_used ?? "",
-      o.promo_code ?? "",
-      o.display_name,
-      o.username,
-      o.telegram_id,
-      o.platform ?? "telegram",
-      o.contact,
-      o.customer_email ?? "",
-      o.country_name,
-      o.admin_note,
-      o.fulfillment_kind === "physical" ? "физический" : "цифровой",
-      o.fulfillment_type === "delivery"
-        ? "доставка"
-        : o.fulfillment_type === "pickup"
-          ? "самовывоз"
-          : "",
-      o.fulfillment_at ? String(o.fulfillment_at).slice(0, 10) : "",
-      o.fulfillment_address ?? "",
-      o.fulfillment_note ?? "",
-      o.delivery_zone_name ?? "",
-      o.delivery_fee ?? "",
-    ]),
+    headers.filter((_, i) => keep[i]),
+    table.map((r) => r.filter((_, i) => keep[i])),
   );
   return { csv, count: rows.length };
 }

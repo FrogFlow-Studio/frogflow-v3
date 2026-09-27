@@ -47,7 +47,7 @@ type CurrentAdmin = {
  * (с точностью до минутного кеша справочника), роль берётся текущая, а не
  * записанная в cookie при входе.
  */
-async function currentAdmin(): Promise<CurrentAdmin> {
+async function currentAdmin(opts: { accountant?: boolean } = {}): Promise<CurrentAdmin> {
   const s = await appSession();
   const a = s.data.admin;
   if (!a?.botId || !a.username || !a.stamp) throw new Unauthorized("admin");
@@ -58,8 +58,22 @@ async function currentAdmin(): Promise<CurrentAdmin> {
   const login = loginInTenant(tenant, a.username);
   if (!login || a.stamp !== adminStamp(tenant.id, a.username, login.passwordHash))
     throw new Unauthorized("admin");
+  // Бухгалтеру закрыто всё, что явно не открыто (requireAdminFinance):
+  // новая серверная функция через requireAdmin() ему недоступна сама собой.
+  if (login.role === "accountant" && !opts.accountant)
+    throw new UserError("err.auth.accountantDenied", "Бухгалтеру этот раздел недоступен.");
   const active = await activeShop(tenant, login.role, a.activeBotId);
   return { ctx: tenantContext(active), role: login.role, username: a.username, home: tenant };
+}
+
+/**
+ * Разделы бухгалтера: заказы, оплаты, чеки, выручка, аналитика, выгрузка
+ * заказов. Открыто и остальным ролям; `accountant: true` — вызывающий сам
+ * убирает контакты покупателей из ответа (core/orders/redact).
+ */
+export async function requireAdminFinance(): Promise<{ ctx: TenantContext; accountant: boolean }> {
+  const { ctx, role } = await currentAdmin({ accountant: true });
+  return { ctx, accountant: role === "accountant" };
 }
 
 /**
@@ -76,7 +90,7 @@ async function activeShop(home: Tenant, role: AdminRole, activeBotId?: string): 
 
 /** Магазины группы, доступные текущему продавцу: свой первым; без модуля — только свой. */
 export async function adminShops(): Promise<{ current: string; shops: Tenant[] }> {
-  const { ctx, role, home } = await currentAdmin();
+  const { ctx, role, home } = await currentAdmin({ accountant: true });
   if (role !== "owner") return { current: ctx.tenant.id, shops: [home] };
   const { tenantDirectory } = await import("@/core/tenant/resolve.server");
   return { current: ctx.tenant.id, shops: groupShops(await tenantDirectory(), home) };
@@ -103,7 +117,7 @@ export async function switchAdminShop(botId: string): Promise<void> {
  */
 export async function adminIdentity(): Promise<{ botId: string; username: string } | null> {
   try {
-    const a = await currentAdmin();
+    const a = await currentAdmin({ accountant: true });
     return { botId: a.ctx.tenant.id, username: a.username };
   } catch {
     return null;
@@ -122,11 +136,11 @@ export async function requireAdmin(): Promise<TenantContext> {
 
 /** Текущая роль пользователя админки — из настроек магазина, не из cookie. */
 export async function adminRole(): Promise<AdminRole> {
-  return (await currentAdmin()).role;
+  return (await currentAdmin({ accountant: true })).role;
 }
 
 export async function adminActor(): Promise<string> {
-  return `admin:${(await currentAdmin()).username}`;
+  return `admin:${(await currentAdmin({ accountant: true })).username}`;
 }
 
 /** Изменение, требующее роли не ниже `min` (core/auth/roles). */

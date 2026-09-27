@@ -1,3 +1,4 @@
+import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { customerCardFn, saveCustomerNoteFn } from "@/app/admin/admin.functions";
@@ -17,7 +18,7 @@ function CustomerCardPage() {
   const t = adminT(shop.locale);
   const loc = intlLocale(shop.locale);
   const router = useRouter();
-  const canWrite = shop.role !== "viewer";
+  const canWrite = canEdit(shop.role);
   const [tags, setTags] = useState(c.seller.tags.join(", "));
   const [note, setNote] = useState(c.seller.note);
   const [saved, setSaved] = useState(false);

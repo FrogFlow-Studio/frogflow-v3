@@ -267,6 +267,8 @@ export const ru = {
   "settings.team.role": "Роль",
   "settings.team.roleManager": "Менеджер — заказы, товары, чат, рассылки",
   "settings.team.roleViewer": "Просмотр — только смотреть и выгружать",
+  "settings.team.roleAccountant":
+    "Бухгалтер — заказы, оплаты, чеки, выручка и выгрузка заказов без контактов покупателей",
   "settings.team.newPassword": "Новый пароль (пусто — не менять)",
   "settings.team.password": "Пароль",
   "settings.team.passwordHint": "не короче 8 символов",
@@ -531,6 +533,8 @@ export const kk: SectionDict<typeof ru> = {
   "settings.team.role": "Рөлі",
   "settings.team.roleManager": "Менеджер — тапсырыстар, тауарлар, чат, хабарламалар",
   "settings.team.roleViewer": "Қарау — тек қарау және жүктеп алу",
+  "settings.team.roleAccountant":
+    "Бухгалтер — тапсырыстар, төлемдер, чектер, түсім және сатып алушы байланыстарынсыз тапсырыстарды жүктеу",
   "settings.team.newPassword": "Жаңа құпиясөз (бос — өзгертпеу)",
   "settings.team.password": "Құпиясөз",
   "settings.team.passwordHint": "кемінде 8 таңба",
@@ -793,6 +797,8 @@ export const en: SectionDict<typeof ru> = {
   "settings.team.role": "Role",
   "settings.team.roleManager": "Manager — orders, products, chat, broadcasts",
   "settings.team.roleViewer": "Viewer — view and export only",
+  "settings.team.roleAccountant":
+    "Accountant — orders, payments, receipts, revenue and order export without customer contacts",
   "settings.team.newPassword": "New password (leave empty to keep)",
   "settings.team.password": "Password",
   "settings.team.passwordHint": "at least 8 characters",
@@ -1058,6 +1064,8 @@ export const uz: SectionDict<typeof ru> = {
   "settings.team.role": "Rol",
   "settings.team.roleManager": "Menejer — buyurtmalar, mahsulotlar, chat, xabarnomalar",
   "settings.team.roleViewer": "Faqat ko‘rish — faqat ko‘rish va yuklab olish",
+  "settings.team.roleAccountant":
+    "Buxgalter — buyurtmalar, to‘lovlar, cheklar, tushum va xaridor kontaktlarisiz buyurtmalarni yuklab olish",
   "settings.team.newPassword": "Yangi parol (bo‘sh — o‘zgartirmaslik)",
   "settings.team.password": "Parol",
   "settings.team.passwordHint": "kamida 8 belgi",

@@ -23,6 +23,7 @@ import {
   findAdminLogin,
   normalizeLogin,
   type AdminLogin,
+  type StaffRole,
 } from "@/core/auth/roles";
 
 /** Кто входит под логином: владелец или пользователь магазина (core/auth/roles). */
@@ -39,7 +40,7 @@ export function checkAdminPassword(login: AdminLogin, password: string): boolean
 export type TeamMember = {
   username: string;
   name: string | null;
-  role: "manager" | "viewer";
+  role: StaffRole;
   createdAt: string | null;
 };
 
@@ -54,7 +55,7 @@ export function listTeam(ctx: TenantContext): TeamMember[] {
 
 export async function saveTeamMember(
   ctx: TenantContext,
-  input: { username: string; name?: string; role: "manager" | "viewer"; password?: string },
+  input: { username: string; name?: string; role: StaffRole; password?: string },
 ): Promise<void> {
   const username = normalizeLogin(input.username);
   if (!/^[a-z0-9][a-z0-9_.-]{2,39}$/.test(username))

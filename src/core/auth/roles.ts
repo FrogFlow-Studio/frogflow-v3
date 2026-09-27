@@ -5,14 +5,20 @@
  *
  *   owner   — всё, включая настройки, оплату, модули и команду;
  *   manager — заказы, товары, покупатели, чат, рассылки, скидки;
- *   viewer  — только смотреть (бухгалтер, аналитик): любое изменение отклоняется.
+ *   viewer  — только смотреть (аналитик): любое изменение отклоняется;
+ *   accountant — бухгалтер: только заказы, оплаты, чеки, выручка, аналитика и
+ *             выгрузка заказов без контактов покупателей; ничего не меняет.
+ *             Сервер закрывает ему всё, что явно не открыто (guards.server).
  */
 import type { Tenant } from "@/core/tenant/types";
 
-export const ADMIN_ROLES = ["owner", "manager", "viewer"] as const;
+export const ADMIN_ROLES = ["owner", "manager", "viewer", "accountant"] as const;
+/** Роли, которые владелец выдаёт сотрудникам. */
+export const STAFF_ROLES = ["manager", "viewer", "accountant"] as const;
+export type StaffRole = (typeof STAFF_ROLES)[number];
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
-const RANK: Record<AdminRole, number> = { viewer: 0, manager: 1, owner: 2 };
+const RANK: Record<AdminRole, number> = { accountant: 0, viewer: 0, manager: 1, owner: 2 };
 
 export function isAdminRole(v: unknown): v is AdminRole {
   return typeof v === "string" && (ADMIN_ROLES as readonly string[]).includes(v);
@@ -27,7 +33,17 @@ export const ROLE_TITLES: Record<AdminRole, string> = {
   owner: "владелец",
   manager: "менеджер",
   viewer: "просмотр",
+  accountant: "бухгалтер",
 };
+
+/** Может ли роль что-то менять (кнопки в интерфейсе; сервер проверяет сам). */
+export function canEdit(role: AdminRole | undefined): boolean {
+  return roleAllows(role, "manager");
+}
+
+export function isStaffRole(v: unknown): v is StaffRole {
+  return typeof v === "string" && (STAFF_ROLES as readonly string[]).includes(v);
+}
 
 export type AdminLogin = {
   tenant: Tenant;

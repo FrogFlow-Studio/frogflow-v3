@@ -1,3 +1,4 @@
+import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { createLeadFn, pipelineFn, updateLeadFn } from "@/app/admin/pipeline.functions";
@@ -27,7 +28,7 @@ function PipelinePage() {
   const { board, team } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
-  const canWrite = shop.role !== "viewer";
+  const canWrite = canEdit(shop.role);
   const [adding, setAdding] = useState(false);
   const fmt = (iso: string) =>
     new Date(iso).toLocaleDateString(intlLocale(shop.locale), { dateStyle: "short" });

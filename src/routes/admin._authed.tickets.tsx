@@ -1,3 +1,4 @@
+import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
@@ -42,7 +43,7 @@ function TicketsPage() {
     setSeen(data.tickets);
     setTickets(data.tickets);
   }
-  const canWrite = shop.role !== "viewer";
+  const canWrite = canEdit(shop.role);
   const fmt = (iso: string) =>
     new Date(iso).toLocaleString(intlLocale(shop.locale), {
       dateStyle: "short",

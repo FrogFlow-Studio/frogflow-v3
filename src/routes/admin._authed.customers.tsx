@@ -1,3 +1,4 @@
+import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
@@ -34,7 +35,7 @@ function CustomersPage() {
         actions={
           // Контакты выгружают только владелец и менеджер (сервер проверяет то же).
           shop.modules.excel_export &&
-          shop.role !== "viewer" && (
+          canEdit(shop.role) && (
             <a className="btn-secondary text-xs" href="/api/admin/export/customers">
               {t("common.exportExcel")}
             </a>

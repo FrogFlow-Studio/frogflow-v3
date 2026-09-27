@@ -1,3 +1,4 @@
+import { canEdit } from "@/core/auth/roles";
 import {
   createFileRoute,
   Link,
@@ -148,7 +149,7 @@ function OrdersPage() {
         title={t("orders.title")}
         actions={
           <div className="flex gap-2">
-            {physical && shop.role !== "viewer" && (
+            {physical && canEdit(shop.role) && (
               <Link
                 to="/admin/orders/new"
                 search={{ status, q, pickup }}
@@ -158,7 +159,9 @@ function OrdersPage() {
               </Link>
             )}
             {/* В заказах имена и телефоны: роль «просмотр» их не выгружает (сервер тоже). */}
-            {shop.modules.excel_export && shop.role !== "viewer" && <ExportButton />}
+            {shop.modules.excel_export && (canEdit(shop.role) || shop.role === "accountant") && (
+              <ExportButton />
+            )}
           </div>
         }
       />

@@ -1,3 +1,4 @@
+import { canEdit } from "@/core/auth/roles";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
@@ -66,7 +67,7 @@ function ChatPage() {
   const [editingQuick, setEditingQuick] = useState(false);
   const [invoicing, setInvoicing] = useState(false);
   const [filter, setFilter] = useState<InboxFilter>({ status: "open", who: "all", channel: "all" });
-  const canWrite = shop.role !== "viewer";
+  const canWrite = canEdit(shop.role);
   const me = initial.me;
   const visible = filterInbox(conversations, filter, me);
   const counts = inboxCounts(conversations, me);

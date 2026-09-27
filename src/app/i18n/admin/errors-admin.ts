@@ -5,6 +5,7 @@ export const ru = {
   // права и модули (app/auth/guards.server)
   "err.auth.ownerOnly": "Это может изменить только владелец магазина.",
   "err.auth.viewOnly": "У вашей роли нет прав на изменения — только просмотр.",
+  "err.auth.accountantDenied": "Бухгалтеру этот раздел недоступен.",
   "err.auth.moduleOff": "Модуль «{module}» не подключён к вашему тарифу.",
   "err.pipeline.leadNotFound": "Заявка не найдена.",
   "err.pipeline.badOwner": "Такого сотрудника нет в команде магазина.",
@@ -122,6 +123,7 @@ export const ru = {
 export const kk: SectionDict<typeof ru> = {
   "err.auth.ownerOnly": "Мұны тек дүкен иесі өзгерте алады.",
   "err.auth.viewOnly": "Сіздің рөліңізге өзгерту құқығы берілмеген — тек қарау.",
+  "err.auth.accountantDenied": "Бұл бөлім бухгалтерге қолжетімсіз.",
   "err.auth.moduleOff": "«{module}» модулі тарифіңізге қосылмаған.",
   "err.pipeline.leadNotFound": "Өтінім табылмады.",
   "err.pipeline.badOwner": "Дүкен командасында мұндай қызметкер жоқ.",
@@ -233,6 +235,7 @@ export const kk: SectionDict<typeof ru> = {
 export const en: SectionDict<typeof ru> = {
   "err.auth.ownerOnly": "Only the shop owner can change this.",
   "err.auth.viewOnly": "Your role cannot make changes — view only.",
+  "err.auth.accountantDenied": "This section is not available to the accountant.",
   "err.auth.moduleOff": "The “{module}” module is not included in your plan.",
   "err.pipeline.leadNotFound": "Lead not found.",
   "err.pipeline.badOwner": "There is no such team member in this shop.",
@@ -344,6 +347,7 @@ export const en: SectionDict<typeof ru> = {
 export const uz: SectionDict<typeof ru> = {
   "err.auth.ownerOnly": "Buni faqat doʻkon egasi oʻzgartira oladi.",
   "err.auth.viewOnly": "Sizning rolingizda oʻzgartirish huquqi yoʻq — faqat koʻrish.",
+  "err.auth.accountantDenied": "Bu boʻlim buxgalter uchun yopiq.",
   "err.auth.moduleOff": "«{module}» moduli tarifingizga ulanmagan.",
   "err.pipeline.leadNotFound": "Ariza topilmadi.",
   "err.pipeline.badOwner": "Doʻkon jamoasida bunday xodim yoʻq.",

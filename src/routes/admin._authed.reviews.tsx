@@ -1,3 +1,4 @@
+import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
@@ -34,7 +35,7 @@ function ReviewsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const stats = reviewStats(rows);
-  const canWrite = shop.role !== "viewer";
+  const canWrite = canEdit(shop.role);
   const router = useRouter();
   const [legacyDone, setLegacyDone] = useState<number | null>(null);
   const legacy = useAction(async () => {
