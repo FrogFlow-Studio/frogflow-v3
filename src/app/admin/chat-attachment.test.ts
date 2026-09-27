@@ -25,6 +25,7 @@ const REAL: Record<string, number[]> = {
   png: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
   pdf: [0x25, 0x50, 0x44, 0x46, 0x2d, 0x31],
   docx: [0x50, 0x4b, 0x03, 0x04],
+  zip: [0x50, 0x4b, 0x03, 0x04],
 };
 const bytesFor = (key: string) => new Uint8Array(REAL[key.split(".").pop()!] ?? [0x4d, 0x5a]);
 let tgRefuse: string | null = null;
@@ -190,13 +191,35 @@ describe("ответ из «Чата» с фото или документом: 
     });
   });
 
-  it("Instagram документов не принимает — уходит ссылка на 7 дней", async () => {
+  it("Instagram: PDF уходит файлом", async () => {
     customer = zc("instagram");
     stored = { size: MB, contentType: "application/pdf" };
     await replyAsManager(ctx, 42, "Прайс", { kind: "file", key: `${KEY}.pdf`, name: "прайс.pdf" });
+    expect(zernio[0]!.opts).toEqual({
+      platform: "instagram",
+      attachmentType: "file",
+      attachmentName: "прайс.pdf",
+      attachmentUrl: `https://storage/${KEY}.pdf?download=прайс.pdf`,
+    });
+  });
+
+  it("Instagram: Word не принимает — уходит ссылка на 7 дней", async () => {
+    customer = zc("instagram");
+    stored = { size: MB, contentType: DOCX };
+    await replyAsManager(ctx, 42, "Договор", doc);
     expect(zernio[0]!.opts).toEqual({ platform: "instagram" });
     expect(zernio[0]!.message).toBe(
-      `Прайс\n\n📎 прайс.pdf: https://storage/${KEY}.pdf?download=прайс.pdf\nСсылка действует 7 дней.`,
+      `Договор\n\n📎 Договор.docx: https://storage/${doc.key}?download=Договор.docx\nСсылка действует 7 дней.`,
+    );
+  });
+
+  it("WhatsApp: ZIP файлом не принимает — уходит ссылкой", async () => {
+    customer = zc("whatsapp");
+    stored = { size: MB, contentType: "application/zip" };
+    await replyAsManager(ctx, 42, "", { kind: "file", key: `${KEY}.zip`, name: "архив.zip" });
+    expect(zernio[0]!.opts).toEqual({ platform: "whatsapp" });
+    expect(zernio[0]!.message).toBe(
+      `📎 архив.zip: https://storage/${KEY}.zip?download=архив.zip\nСсылка действует 7 дней.`,
     );
   });
 });

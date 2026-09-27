@@ -138,11 +138,27 @@ export async function sendTelegramAttachment(
 }
 
 /**
+ * Какие документы канал принимает файлом (документация Zernio): Instagram —
+ * только PDF до 25 МБ; WhatsApp — PDF, Word, Excel, PowerPoint и TXT до
+ * 100 МБ, ZIP — нет. Остальное уходит ссылкой. Документ из «Чата» не больше
+ * 20 МБ (core/storage/upload), в оба предела он укладывается. Фото из «Чата» —
+ * JPEG/PNG до 5 МБ: столько берёт WhatsApp, Instagram — до 8 МБ.
+ */
+const ZERNIO_FILE_EXTS: Record<"instagram" | "whatsapp", readonly string[]> = {
+  instagram: ["pdf"],
+  whatsapp: ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt"],
+};
+
+export function zernioSendsAsFile(platform: "instagram" | "whatsapp", key: string): boolean {
+  return ZERNIO_FILE_EXTS[platform].includes(uploadExt(key));
+}
+
+/**
  * Instagram и WhatsApp (через Zernio) берут вложение по ссылке. Фото — с
  * витринного адреса /api/img (постоянная ссылка, как у фото товаров).
- * Документ — подписанной ссылкой на 7 дней: WhatsApp показывает его файлом
- * с именем, Instagram документов в личке не принимает — туда уходит ссылка,
- * как у материалов заказа.
+ * Документ — подписанной ссылкой на 7 дней: файлом с именем, если канал
+ * такой формат принимает (zernioSendsAsFile), иначе ссылкой в тексте, как у
+ * материалов заказа.
  */
 export async function zernioAttachmentOptions(
   ctx: TenantContext,
@@ -160,7 +176,7 @@ export async function zernioAttachmentOptions(
   const { signedFileUrl } = await import("@/core/orders/orders");
   const url = await signedFileUrl(att.key, LINK_TTL_SEC, att.fileName);
   if (!url) throw notStored();
-  if (platform === "whatsapp")
+  if (zernioSendsAsFile(platform, att.key))
     return { text, attachmentUrl: url, attachmentType: "file", attachmentName: att.fileName };
   const link = `📎 ${att.fileName}: ${url}\nСсылка действует 7 дней.`;
   return { text: text ? `${text}\n\n${link}` : link };
