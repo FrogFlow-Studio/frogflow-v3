@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { PHYSICAL_NEXT, setPhysicalStatus } from "./admin";
+import { PHYSICAL_NEXT, proofKeysToTry, setPhysicalStatus } from "./admin";
 
 const BOT = "00000000-0000-0000-0000-000000000001";
 
@@ -46,5 +46,27 @@ describe("статусы физического заказа", () => {
     ]);
     expect(r.filter(Boolean)).toHaveLength(1);
     expect(order().status).toBe("in_production");
+  });
+});
+
+describe("чек в админке: какие ключи открывать", () => {
+  const OTHER = "11111111-2222-4333-8444-555555555555";
+
+  it("свой префикс — один ключ", () => {
+    expect(proofKeysToTry(BOT, `${BOT}/order-5/1.jpg`)).toEqual([`${BOT}/order-5/1.jpg`]);
+  });
+
+  it("старый чек v1 без префикса — как записан, потом в папке клиента", () => {
+    expect(proofKeysToTry(BOT, "order-16/1782643012614.jpg")).toEqual([
+      "order-16/1782643012614.jpg",
+      `${BOT}/order-16/1782643012614.jpg`,
+    ]);
+  });
+
+  it("чужой префикс и обход — ничего", () => {
+    expect(proofKeysToTry(BOT, `${OTHER}/order-1/a.jpg`)).toEqual([]);
+    expect(proofKeysToTry(BOT, `${BOT}/../${OTHER}/a.jpg`)).toEqual([]);
+    // Оплата Робокассой — отметка, а не файл.
+    expect(proofKeysToTry(BOT, "robokassa")).toEqual([]);
   });
 });

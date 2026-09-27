@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isDeliverableStorageKey, isSafeStorageKey, isTenantStorageKey } from "./keys";
+import {
+  isAdminInputStorageKey,
+  isDeliverableStorageKey,
+  isSafeStorageKey,
+  isTenantStorageKey,
+} from "./keys";
 
 const T = "0bac1f86-5231-4e57-838d-2faa44d427e7";
 const OTHER = "11111111-2222-4333-8444-555555555555";
@@ -72,5 +77,26 @@ describe("isDeliverableStorageKey", () => {
   it("пропускает ключ без префикса — файлы v1, залитые до разметки ключей", () => {
     expect(isDeliverableStorageKey(T, "1782643012614-ni1xub.pdf")).toBe(true);
     expect(isDeliverableStorageKey(T, "materials/урок.pdf")).toBe(true);
+  });
+});
+
+describe("isAdminInputStorageKey — ключ из формы админки", () => {
+  const stored = new Set(["1782643012614-ni1xub.pdf", `${OTHER}/a.pdf`]);
+
+  it("свой префикс — да, как раньше", () => {
+    expect(isAdminInputStorageKey(T, `${T}/a.png`, new Set())).toBe(true);
+  });
+
+  it("старый ключ v1 без префикса — только если он уже записан у этой строки", () => {
+    expect(isAdminInputStorageKey(T, "1782643012614-ni1xub.pdf", stored)).toBe(true);
+    // Новый ключ без префикса из формы — чужой файл v1 не подсунуть.
+    expect(isAdminInputStorageKey(T, "9999999999999-zzzz.pdf", stored)).toBe(false);
+    expect(isAdminInputStorageKey(T, "1782643012614-ni1xub.pdf", new Set())).toBe(false);
+  });
+
+  it("чужой префикс и обход — нет, даже если записан", () => {
+    expect(isAdminInputStorageKey(T, `${OTHER}/a.pdf`, stored)).toBe(false);
+    const bad = `a/%2e%2e/${OTHER}/a.pdf`;
+    expect(isAdminInputStorageKey(T, bad, new Set([bad]))).toBe(false);
   });
 });

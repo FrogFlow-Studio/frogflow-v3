@@ -43,3 +43,18 @@ export function isDeliverableStorageKey(tenantId: string, key: string): boolean 
   const m = key.match(UUID_PREFIX);
   return !m || m[1]!.toLowerCase() === tenantId.toLowerCase();
 }
+
+/**
+ * Ключ, пришедший из формы админки. Свой префикс — да. Ключ без префикса
+ * (файл v1) — только если он уже записан у этой же строки базы: товар v1
+ * сохраняется со своими старыми картинками и файлами, а новый ключ без
+ * префикса — возможно, чужой файл v1 — через форму не подсунуть.
+ */
+export function isAdminInputStorageKey(
+  tenantId: string,
+  key: string,
+  stored: ReadonlySet<string>,
+): boolean {
+  if (isTenantStorageKey(tenantId, key)) return true;
+  return stored.has(key) && !UUID_PREFIX.test(key) && isSafeStorageKey(key);
+}

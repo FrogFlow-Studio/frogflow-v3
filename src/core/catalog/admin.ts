@@ -2,7 +2,7 @@ import { UserError } from "@/core/i18n/user-error";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database, Json } from "@/core/db-types";
 import { serviceDb } from "@/core/db/client.server";
-import { isTenantStorageKey } from "@/core/storage/keys";
+import { isAdminInputStorageKey, isTenantStorageKey } from "@/core/storage/keys";
 import { PRODUCT_SELECT, type Product } from "./catalog";
 
 type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
@@ -230,8 +230,13 @@ export async function setProductImages(
   productId: string,
   paths: string[],
 ): Promise<void> {
+  const { data: had } = await ctx.db
+    .from("product_images")
+    .select("image_path")
+    .eq("product_id", productId);
+  const stored = new Set((had ?? []).map((r) => r.image_path));
   for (const p of paths)
-    if (!isTenantStorageKey(ctx.tenant.id, p))
+    if (!isAdminInputStorageKey(ctx.tenant.id, p, stored))
       throw new Error("Ключ картинки вне префикса клиента.");
   await ctx.db.from("product_images").delete().eq("product_id", productId);
   if (paths.length) {
@@ -258,8 +263,13 @@ export async function setProductMaterials(
   productId: string,
   files: MaterialInput[],
 ): Promise<void> {
+  const { data: had } = await ctx.db
+    .from("product_material_files")
+    .select("file_path")
+    .eq("product_id", productId);
+  const stored = new Set((had ?? []).map((r) => r.file_path));
   for (const f of files)
-    if (!isTenantStorageKey(ctx.tenant.id, f.filePath))
+    if (!isAdminInputStorageKey(ctx.tenant.id, f.filePath, stored))
       throw new Error("Ключ файла вне префикса клиента.");
   await ctx.db.from("product_material_files").delete().eq("product_id", productId);
   if (files.length) {

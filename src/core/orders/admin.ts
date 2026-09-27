@@ -1,7 +1,8 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { OrderWithItems } from "./orders";
 import { serviceDb } from "@/core/db/client.server";
-import { isTenantStorageKey } from "@/core/storage/keys";
+import { isDeliverableStorageKey } from "@/core/storage/keys";
+import { isAuditableProofPath, proofPathCandidates } from "@/core/receipts/audit";
 import {
   addDaysToIso,
   OPEN_PHYSICAL_STATUSES,
@@ -146,10 +147,23 @@ export async function setPhysicalStatus(
   return Boolean(data);
 }
 
+/**
+ * Какие ключи бакета payment-proofs пробовать для чека заказа. Путь берётся
+ * из строки заказа этого клиента, поэтому правило то же, что у выдачи
+ * покупателю: свой префикс или старый чек v1 без префикса (как записан, потом
+ * в папке клиента — куда его мог перенести v1), но не чужой префикс.
+ */
+export function proofKeysToTry(tenantId: string, path: string): string[] {
+  if (!isAuditableProofPath(path) || !isDeliverableStorageKey(tenantId, path)) return [];
+  return proofPathCandidates(path, tenantId).filter((k) => isDeliverableStorageKey(tenantId, k));
+}
+
 export async function proofSignedUrl(ctx: TenantContext, path: string): Promise<string | null> {
-  if (!isTenantStorageKey(ctx.tenant.id, path)) return null;
-  const { data } = await serviceDb().storage.from("payment-proofs").createSignedUrl(path, 600);
-  return data?.signedUrl ?? null;
+  for (const key of proofKeysToTry(ctx.tenant.id, path)) {
+    const { data } = await serviceDb().storage.from("payment-proofs").createSignedUrl(key, 600);
+    if (data?.signedUrl) return data.signedUrl;
+  }
+  return null;
 }
 
 export type CustomerRow = {
