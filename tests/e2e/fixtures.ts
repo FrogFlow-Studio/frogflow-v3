@@ -9,6 +9,11 @@ export const STUB = `http://127.0.0.1:${STUB_PORT}`;
 export const SECRETS_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 export const WEBHOOK_SECRET = "e2e-webhook-secret-e2e-webhook-secret-00";
 
+export const ZERNIO_WEBHOOK_SECRET = "e2e-zernio-secret-e2e-zernio-secret-00";
+/** Instagram магазина в Zernio: события этого аккаунта — магазину. */
+export const IG_ACCOUNT = "e2e-ig-account";
+export const IG_PROFILE = "e2e-zernio-profile";
+
 export const SHOP_ID = "e2e00000-0000-4000-8000-000000000001";
 export const SHOP_NAME = "Прописи E2E";
 export const SHOP_SLUG = "e2e-propisi";

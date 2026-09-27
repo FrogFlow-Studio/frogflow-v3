@@ -5,7 +5,14 @@
  * ходит.
  */
 import { spawn } from "node:child_process";
-import { E2E_PORT, SECRETS_KEY, STUB, STUB_PORT, WEBHOOK_SECRET } from "./fixtures.ts";
+import {
+  E2E_PORT,
+  SECRETS_KEY,
+  STUB,
+  STUB_PORT,
+  WEBHOOK_SECRET,
+  ZERNIO_WEBHOOK_SECRET,
+} from "./fixtures.ts";
 import { startPgStub } from "./pg-stub.ts";
 import { seedDb } from "./seed.ts";
 
@@ -19,6 +26,9 @@ const app = spawn(process.execPath, [".output/server/index.mjs"], {
     APP_URL: `http://127.0.0.1:${E2E_PORT}`,
     SUPABASE_URL: STUB,
     TELEGRAM_API_BASE: STUB,
+    ZERNIO_BASE_URL: `${STUB}/zernio/v1`,
+    ZERNIO_API_KEY: "e2e-zernio-key",
+    ZERNIO_WEBHOOK_SECRET,
     SUPABASE_PUBLISHABLE_KEY: "e2e",
     SUPABASE_SERVICE_ROLE_KEY: "e2e",
     SUPABASE_JWT_SECRET: "e2e-jwt-secret-e2e-jwt-secret-0000",

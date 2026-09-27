@@ -5,6 +5,7 @@
  * хранит всё в памяти процесса. Настоящую базу прогон не трогает.
  *
  * Тест читает состояние и сообщения бота через служебные адреса /__e2e/*.
+ * API Zernio — под /zernio/v1 (ZERNIO_BASE_URL), как Telegram в #159.
  */
 import { randomUUID } from "node:crypto";
 import { crc32 } from "node:zlib";
@@ -26,6 +27,8 @@ export type StubDb = {
   rpc: Record<string, Rpc>;
   storage: Map<string, { body: Buffer; type: string }>;
   telegram: { method: string; token: string; body: Row }[];
+  /** Запросы к API Zernio (Instagram/WhatsApp): что приложение отправило покупателю. */
+  zernio: { method: string; path: string; body: Row }[];
 };
 
 const rows = (db: StubDb, t: string) => (db.tables[t] ??= []);
@@ -594,6 +597,12 @@ function storage(
     });
     return send(res, 200, { Key: m[1], Id: randomUUID() });
   }
+  if (method === "GET" && (m = /^object\/info\/(.+)$/.exec(p))) {
+    // bucket.info(): размер и тип — по ним Instagram/WhatsApp решают, слать ли фото.
+    const f = db.storage.get(m[1]!);
+    if (!f) return notFound();
+    return send(res, 200, { name: m[1], size: f.body.length, content_type: f.type });
+  }
   if (method === "GET" && (m = /^object\/(.+)$/.exec(p))) {
     const f = db.storage.get(m[1]!);
     if (!f) return notFound();
@@ -716,6 +725,27 @@ async function telegram(
   return send(res, 200, { ok: true, result });
 }
 
+/**
+ * API Zernio: исходящие сообщения записываем и отвечаем успехом, вложения
+ * покупателя (/zernio/media/<имя>) отдаём картинкой со своим содержимым —
+ * разные чеки не совпадают по отпечатку.
+ */
+function zernio(db: StubDb, req: IncomingMessage, url: URL, body: Buffer, res: ServerResponse) {
+  const path = url.pathname.slice("/zernio".length);
+  const media = /^\/media\/(.+)$/.exec(path);
+  if (media) {
+    res.writeHead(200, { "content-type": "image/png" });
+    return res.end(pngWithText(media[1]!));
+  }
+  const args = body.length ? (JSON.parse(body.toString()) as Row) : {};
+  db.zernio.push({ method: req.method ?? "GET", path: path + url.search, body: args });
+  if (req.method === "GET" && /\/inbox\/conversations\/[^/]+\/messages$/.test(path))
+    return send(res, 200, { messages: [] });
+  if (req.method === "POST" && /\/inbox\/conversations\/[^/]+\/messages$/.test(path))
+    return send(res, 200, { success: true, data: { messageId: `zm-${++messageId}` } });
+  return send(res, 200, { success: true });
+}
+
 export function stubDb(init: Partial<StubDb> = {}): StubDb {
   return {
     tables: {},
@@ -725,6 +755,7 @@ export function stubDb(init: Partial<StubDb> = {}): StubDb {
     rpc: {},
     storage: new Map(),
     telegram: [],
+    zernio: [],
     ...init,
   };
 }
@@ -743,7 +774,9 @@ export function startPgStub(port: number, db: StubDb) {
         if (url.pathname.startsWith("/rest/v1/")) return rest(db, req, url, body, res);
         if (url.pathname.startsWith("/storage/v1/")) return storage(db, req, url, body, res, base);
         if (/^\/(bot|file\/bot)/.test(url.pathname)) return await telegram(db, req, url, body, res);
+        if (url.pathname.startsWith("/zernio/")) return zernio(db, req, url, body, res);
         if (url.pathname === "/__e2e/telegram") return send(res, 200, db.telegram);
+        if (url.pathname === "/__e2e/zernio") return send(res, 200, db.zernio);
         const t = /^\/__e2e\/tables\/(\w+)$/.exec(url.pathname);
         if (t && req.method === "GET") return send(res, 200, rows(db, t[1]!));
         if (t && req.method === "POST") {

@@ -5,7 +5,7 @@
  */
 import { createCipheriv, randomBytes, scryptSync } from "node:crypto";
 import * as F from "./fixtures.ts";
-import { stubDb, type Row, type StubDb } from "./pg-stub.ts";
+import { PIXEL_PNG, stubDb, type Row, type StubDb } from "./pg-stub.ts";
 
 function encrypt(plain: string, hexKey: string): string {
   const iv = randomBytes(12);
@@ -188,12 +188,20 @@ export function seedDb(): StubDb {
         gift_certificates: true,
         coupons: true,
         upsell: true,
+        // Магазин в Instagram Direct (instagram-purchase.spec.ts).
+        instagram: true,
+        dm_shop: true,
       },
       settings: {
         served_by: "v2",
         default_locale: "ru",
         slug: F.SHOP_SLUG,
         telegram: { username: "e2e_shop_bot", webhook_ok: true },
+        zernio: {
+          profile_id: F.IG_PROFILE,
+          account_ids: [F.IG_ACCOUNT],
+          accounts: [{ id: F.IG_ACCOUNT, platform: "instagram", username: "e2e_shop" }],
+        },
         admin: { username: F.SELLER_LOGIN, password_hash: hash(F.SELLER_PASSWORD) },
         // Продажа подарочных сертификатов на витрине (gift.spec.ts).
         gift_sale: { enabled: true, amounts: F.GIFT_AMOUNTS, currency: "KZT" },
@@ -365,6 +373,8 @@ export function seedDb(): StubDb {
   db.tables.product_variants = [];
   db.tables.categories = [];
 
+  // Фото товара: без него Instagram и WhatsApp шлют карточку без картинки.
+  db.storage.set(`product-images/${F.SHOP_ID}/propisi.jpg`, { body: PIXEL_PNG, type: "image/png" });
   db.storage.set(`product-files/${F.MATERIAL_PATH}`, {
     body: Buffer.from("%PDF-1.4\n% e2e\n"),
     type: "application/pdf",
