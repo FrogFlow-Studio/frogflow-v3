@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { webCardPayFn, webOrderFn, webProofFn } from "@/app/storefront/checkout.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
+import { isoToDisplay } from "@/core/fulfillment/pure";
 import { ErrorBox, useAction } from "@/app/ui";
 import type { StorefrontKey } from "@/app/i18n/storefront";
 import { rememberOrderToken, savedOrderToken } from "@/app/storefront/order-token";
@@ -97,13 +98,23 @@ function OrderPage() {
           </li>
         ))}
       </ul>
+      {view.fulfillment?.type && (
+        <p className="text-sm">
+          {t(view.fulfillment.type === "delivery" ? "order.deliveryOn" : "order.pickupOn", {
+            date: view.fulfillment.date ? isoToDisplay(view.fulfillment.date) : "—",
+          })}
+          {view.fulfillment.zone ? ` · ${view.fulfillment.zone}` : ""}
+          {view.fulfillment.address ? ` · ${view.fulfillment.address}` : ""}
+        </p>
+      )}
       {note && <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">{t(note)}</p>}
       {awaiting && view.payment && (
         <section className="card space-y-3 p-5">
           <h2 className="font-semibold">{t("order.pay")}</h2>
           <p className="text-lg font-semibold tabular-nums">
-            {t("order.amount", { sum: formatMoney(view.total, view.currency) })}
+            {t("order.amount", { sum: formatMoney(view.due, view.currency) })}
           </p>
+          {view.due < view.total && <p className="text-xs text-muted">{t("order.depositHint")}</p>}
           {view.payment.card && (
             <div className="space-y-1">
               <button
@@ -147,7 +158,15 @@ function OrderPage() {
         </section>
       )}
       {checking && !note && (
-        <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">{t("order.waiting")}</p>
+        <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">
+          {t(
+            !view.fulfillment
+              ? "order.waiting"
+              : view.proof
+                ? "order.waitingPhysical"
+                : "order.waitingSeller",
+          )}
+        </p>
       )}
       {view.materials.length > 0 && (
         <section className="card space-y-2 p-5">

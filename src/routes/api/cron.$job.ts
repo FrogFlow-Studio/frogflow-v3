@@ -104,6 +104,12 @@ export const Route = createFileRoute("/api/cron/$job")({
                   winback: await jobs.runWinbackFor(t),
                   funnel: await jobs.runFunnelFor(t),
                   courses: await jobs.runCourseLessons(t),
+                  // Неоплаченные сутки заказы с сайта — отмена и возврат остатка.
+                  webOrders: await (
+                    await import("@/core/storefront/web-expire")
+                  ).expireWebOrders(
+                    (await import("@/core/tenant/resolve.server")).tenantContext(t),
+                  ),
                 }),
               }[params.job];
               // Клиенты — параллельно: пакет рассылки одного не задерживает других.

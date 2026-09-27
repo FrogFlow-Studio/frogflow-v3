@@ -137,6 +137,26 @@ export async function restoreStock(
 }
 
 /**
+ * Вернуть на склад всё, что списал заказ (placeOrder списывает при модуле
+ * «Склад»). Для отклонённых и просроченных заказов с сайта: оформить их может
+ * кто угодно, и без возврата пачка брошенных заказов обнулила бы остатки.
+ */
+export async function restoreOrderStock(ctx: TenantContext, orderId: number): Promise<number> {
+  if (!ctx.tenant.modules.stock) return 0;
+  const { data } = await ctx.db
+    .from("order_items")
+    .select("product_id, quantity")
+    .eq("order_id", orderId);
+  let n = 0;
+  for (const it of data ?? []) {
+    if (!it.product_id) continue;
+    await restoreStock(ctx, it.product_id, Number(it.quantity) || 0);
+    n++;
+  }
+  return n;
+}
+
+/**
  * Дописать внесённую сумму к paid_amount CAS'ом по старому значению: два
  * одновременных «Внести оплату» не теряют друг друга. Сумма, с которой
  * внесённое превысит total, не пишется совсем (как в v1): обрезка молча

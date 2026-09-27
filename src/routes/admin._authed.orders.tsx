@@ -256,7 +256,9 @@ function OrdersPage() {
                   <td>
                     <OrderStatus status={o.status} />
                   </td>
-                  <td className="text-muted">{o.platform}</td>
+                  <td className="text-muted">
+                    {o.platform === "web" ? t("order.platformWeb") : o.platform}
+                  </td>
                   <td className="whitespace-nowrap text-muted">
                     {new Date(o.created_at).toLocaleString(intlLocale(shop.locale), {
                       dateStyle: "short",

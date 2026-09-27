@@ -1,9 +1,14 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { setEmail, upsertCustomer, type Customer } from "@/core/customers/customers";
+import { getCustomer, setEmail, upsertCustomer, type Customer } from "@/core/customers/customers";
 import { clearCart, listCart } from "@/core/cart/cart";
 import { getSetting } from "@/core/settings/settings";
 import { importItems, type HandoffItem } from "./handoff";
+import {
+  resolveWebFulfillment,
+  type WebFulfillmentCheck,
+  type WebFulfillmentRequest,
+} from "./web-fulfillment";
 import {
   parseWebCheckout,
   WEB_CHECKOUT_KEY,
@@ -56,14 +61,24 @@ export function webCustomerId(email: string): string {
   return createHash("sha256").update(`web:${email}`).digest("hex").slice(0, 32);
 }
 
+/**
+ * Покупатель сайта по почте. Почту никто не подтверждает, поэтому имя и
+ * телефон существующего покупателя не перезаписываются: иначе любой, введя
+ * чужую почту, подменил бы продавцу контакты. Контакты этого оформления
+ * ложатся в сам заказ (placeWebOrder).
+ */
 export async function webCustomer(
   ctx: TenantContext,
   input: { email: string; name: string; phone: string | null },
 ): Promise<Customer> {
-  const c = await upsertCustomer(ctx, "web", webCustomerId(input.email), {
-    firstName: input.name.slice(0, 64),
-    contactPhone: input.phone,
-  });
+  const id = webCustomerId(input.email);
+  const existing = await getCustomer(ctx, `web_${id}`);
+  const c =
+    existing ??
+    (await upsertCustomer(ctx, "web", id, {
+      firstName: input.name.slice(0, 64),
+      contactPhone: input.phone,
+    }));
   return c.email === input.email ? c : setEmail(ctx, c, input.email);
 }
 
@@ -88,30 +103,59 @@ export function verifyOrderAccess(
   return timingSafeEqual(Buffer.from(orderAccessToken(secret, botId, orderId)), Buffer.from(token));
 }
 
+/**
+ * Потолок штук одной позиции в заказе с сайта: оформляет его кто угодно,
+ * и без потолка один запрос списал бы со склада всё. Больше — через бота
+ * или продавца.
+ */
+export const WEB_MAX_QTY = 5;
+
 export type WebPlaceResult =
-  PlaceOrderResult | { ok: false; reason: "physical_not_supported" | "nothing_imported" };
+  | PlaceOrderResult
+  | { ok: false; reason: "nothing_imported" | "too_many" }
+  | Extract<WebFulfillmentCheck, { ok: false }>;
 
 /**
  * Корзина с сайта → заказ. Корзина покупателя в базе сначала очищается:
- * на сайте он видит только то, что сейчас в браузере. Физические товары на
- * сайте пока не оформляются (способ получения, дата и адрес — следующий
- * шаг), для них остаётся бот.
+ * на сайте он видит только то, что сейчас в браузере. Для физических
+ * товаров способ получения, дата и адрес проверяются по корзине в базе
+ * (срок изготовления её товаров) до placeOrder.
  */
 export async function placeWebOrder(
   ctx: TenantContext,
   customer: Customer,
   items: HandoffItem[],
   countryCode: string,
+  opts: {
+    fulfillment?: WebFulfillmentRequest | null;
+    /** Контакты, введённые в этом оформлении: в заказ, а не в покупателя. */
+    contact?: { name: string; phone: string | null };
+  } = {},
 ): Promise<WebPlaceResult> {
+  if (items.some((it) => Number(it.quantity) > WEB_MAX_QTY))
+    return { ok: false, reason: "too_many" };
   await clearCart(ctx, customer);
   if ((await importItems(ctx, customer, items)) === 0)
     return { ok: false, reason: "nothing_imported" };
   const cart = await listCart(ctx, customer);
-  if (cart.some((it) => it.products?.fulfillment_kind === "physical")) {
-    await clearCart(ctx, customer);
-    return { ok: false, reason: "physical_not_supported" };
+  let r: PlaceOrderResult;
+  if (!cart.some((it) => it.products?.fulfillment_kind === "physical")) {
+    r = await placeOrder(ctx, customer, countryCode);
+  } else {
+    const f = await resolveWebFulfillment(ctx, customer, opts.fulfillment, countryCode);
+    if (!f.ok) {
+      await clearCart(ctx, customer);
+      return f;
+    }
+    r = await placeOrder(ctx, customer, countryCode, { fulfillment: f.input });
   }
-  return placeOrder(ctx, customer, countryCode);
+  if (!r.ok || !opts.contact) return r;
+  const patch = {
+    display_name: opts.contact.name.slice(0, 64),
+    contact: opts.contact.phone,
+  };
+  await ctx.db.from("orders").update(patch).eq("id", r.order.id);
+  return { ...r, order: { ...r.order, ...patch } };
 }
 
 /** «Отправка» материалов покупателю с сайта: они уже на странице заказа. */
@@ -173,8 +217,18 @@ export type WebOrderView = {
   no: number;
   status: string;
   total: number;
+  /** Сколько платить сейчас: задаток у физического заказа, иначе вся сумма. */
+  due: number;
   currency: string;
   createdAt: string;
+  /** Физический заказ: как и когда получить. */
+  fulfillment: {
+    type: "pickup" | "delivery" | null;
+    date: string | null;
+    address: string | null;
+    zone: string | null;
+    fee: number;
+  } | null;
   items: Array<{ name: string; qty: number; price: number }>;
   /**
    * Как платить: реквизиты и QR способа оплаты страны заказа и/или карта
@@ -183,6 +237,8 @@ export type WebOrderView = {
   payment: { instructions: string | null; qr: string | null; card: boolean } | null;
   materials: WebMaterial[];
   email: string | null;
+  /** Чек загружен — заказ на проверке у продавца по чеку, а не по контактам. */
+  proof: boolean;
 };
 
 const PAYABLE = new Set(["awaiting_payment"]);
@@ -202,8 +258,27 @@ export async function webOrderView(
     no: displayNo(order),
     status: order.status,
     total: Number(order.total),
+    due: payable
+      ? await amountDueNow(ctx, {
+          total: Number(order.total),
+          fulfillment_kind: order.fulfillment_kind,
+        })
+      : 0,
     currency: order.currency,
     createdAt: order.created_at,
+    fulfillment:
+      order.fulfillment_kind === "physical"
+        ? {
+            type:
+              order.fulfillment_type === "pickup" || order.fulfillment_type === "delivery"
+                ? order.fulfillment_type
+                : null,
+            date: order.fulfillment_at ? String(order.fulfillment_at).slice(0, 10) : null,
+            address: order.fulfillment_address,
+            zone: order.delivery_zone_name,
+            fee: Number(order.delivery_fee) || 0,
+          }
+        : null,
     items: (order.order_items ?? []).map((i) => ({
       name: i.name_snapshot,
       qty: Number(i.quantity),
@@ -219,6 +294,7 @@ export async function webOrderView(
         : null,
     materials: await webOrderMaterials(ctx, order),
     email: order.customer_email,
+    proof: Boolean(order.payment_proof_path),
   };
 }
 

@@ -20,8 +20,8 @@ function CartPage() {
   const cart = useCart();
   const wa = useTelegramWebApp();
   const { web } = Route.useLoaderData();
-  // Оформление на сайте — для цифровых товаров; физические пока через бота.
-  const webCheckout = web && !wa && !cart.lines.some((l) => l.kind === "physical");
+  // Оформление на сайте — вне Mini App: из Telegram заказ уходит в бота.
+  const webCheckout = web && !wa;
   const [done, setDone] = useState<string | null>(null);
   const checkout = useAction(async () => {
     const items = cart.lines.map((l) => ({

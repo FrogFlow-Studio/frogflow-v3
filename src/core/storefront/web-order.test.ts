@@ -10,7 +10,8 @@ vi.mock("@/core/orders/orders", async (orig) => ({
 }));
 const robokassa = vi.fn();
 vi.mock("@/core/payments/payment", () => ({ robokassaFor: () => robokassa() }));
-vi.mock("@/core/fulfillment/fulfillment", () => ({
+vi.mock("@/core/fulfillment/fulfillment", async (orig) => ({
+  ...(await orig<typeof import("@/core/fulfillment/fulfillment")>()),
   amountDueNow: async (_c: unknown, o: { total: number }) => o.total,
 }));
 const importItems = vi.fn();
@@ -83,6 +84,45 @@ describe("заказ с сайта: доступ и покупатель", () =>
     expect(db.tables.bot_users![0]).toMatchObject({ email: "anna@mail.ru", platform: "web" });
   });
 
+  it("чужая почта не перезаписывает имя и телефон покупателя; контакты оформления — в заказе", async () => {
+    const { db, ctx } = setup();
+    const anna = await webCustomer(ctx, {
+      email: "anna@mail.ru",
+      name: "Анна",
+      phone: "+77001112233",
+    });
+    const other = await webCustomer(ctx, {
+      email: "anna@mail.ru",
+      name: "Чужой",
+      phone: "+79990000000",
+    });
+    expect(db.tables.bot_users![0]).toMatchObject({
+      first_name: "Анна",
+      contact_phone: "+77001112233",
+    });
+    db.tables.cart_items = [];
+    db.tables.orders = [{ id: 7, bot_id: BOT, display_name: "Анна", contact: "+77001112233" }];
+    importItems.mockImplementation(async () => {
+      db.tables.cart_items!.push({
+        id: "n",
+        bot_id: BOT,
+        telegram_id: anna.telegramId,
+        products: { id: "p1", fulfillment_kind: "digital" },
+      });
+      return 1;
+    });
+    placeOrder.mockResolvedValue({ ok: true, order: { id: 7, display_name: "Анна" } });
+    const r = await placeWebOrder(ctx, other, [{ product_id: "p1", quantity: 1 }], "KZ", {
+      contact: { name: "Чужой", phone: "+79990000000" },
+    });
+    expect(r).toMatchObject({
+      ok: true,
+      order: { display_name: "Чужой", contact: "+79990000000" },
+    });
+    expect(db.tables.orders![0]).toMatchObject({ display_name: "Чужой", contact: "+79990000000" });
+    expect(db.tables.bot_users![0]).toMatchObject({ first_name: "Анна" });
+  });
+
   it("оформление на сайте выключено, пока продавец его не включил", () => {
     expect(parseWebCheckout(null)).toEqual({ enabled: false });
     expect(parseWebCheckout("мусор")).toEqual({ enabled: false });
@@ -118,7 +158,31 @@ describe("заказ с сайта: оформление", () => {
     expect(db.tables.cart_items!.map((c) => c.id)).toEqual(["new"]);
   });
 
-  it("физические товары на сайте пока не оформляются — корзина не остаётся", async () => {
+  it("физические товары: выбор получения проверяется до placeOrder и уходит в заказ", async () => {
+    const { db, ctx } = setup();
+    db.tables.payment_methods = [];
+    db.tables.delivery_zones = [];
+    importItems.mockImplementation(async () => {
+      db.tables.cart_items!.push({
+        id: "cake",
+        bot_id: BOT,
+        telegram_id: -5,
+        products: { id: "cake", fulfillment_kind: "physical", lead_time_days: 0 },
+      });
+      return 1;
+    });
+    placeOrder.mockResolvedValue({ ok: true, order: { id: 8 } });
+    const date = "2099-01-10";
+    const r = await placeWebOrder(ctx, customer, [{ product_id: "cake", quantity: 1 }], "KZ", {
+      fulfillment: { type: "pickup", date },
+    });
+    expect(r).toMatchObject({ ok: true });
+    expect(placeOrder).toHaveBeenCalledWith(ctx, customer, "KZ", {
+      fulfillment: { type: "pickup", at: date, address: null, note: null, zone: null },
+    });
+  });
+
+  it("физические товары без выбора получения — отказ, корзина не остаётся", async () => {
     const { db, ctx } = setup();
     importItems.mockImplementation(async () => {
       db.tables.cart_items!.push({
@@ -130,7 +194,7 @@ describe("заказ с сайта: оформление", () => {
       return 1;
     });
     const r = await placeWebOrder(ctx, customer, [{ product_id: "cake", quantity: 1 }], "KZ");
-    expect(r).toEqual({ ok: false, reason: "physical_not_supported" });
+    expect(r).toEqual({ ok: false, reason: "missing" });
     expect(placeOrder).not.toHaveBeenCalled();
     expect(db.tables.cart_items).toHaveLength(0);
   });

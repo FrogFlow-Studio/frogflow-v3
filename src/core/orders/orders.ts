@@ -30,7 +30,12 @@ import {
   withDownloadName,
 } from "./pure";
 import { applyDiscounts, normalizeCode } from "@/core/discounts/pure";
-import { amountDueNow, decrementStock, restoreStock } from "@/core/fulfillment/fulfillment";
+import {
+  amountDueNow,
+  decrementStock,
+  restoreOrderStock,
+  restoreStock,
+} from "@/core/fulfillment/fulfillment";
 import {
   awardPointsForOrder,
   findValidGift,
@@ -653,15 +658,30 @@ export async function rejectOrder(
   ctx: TenantContext,
   orderId: number,
   actor = "bot",
+  opts: {
+    /** Из каких статусов можно отклонить; по умолчанию — все открытые. */
+    from?: readonly string[];
+    /** «cancelled» — заказ закрыт без решения продавца (истёк срок оплаты). */
+    to?: "rejected" | "cancelled";
+  } = {},
 ): Promise<boolean> {
   const { data } = await ctx.db
     .from("orders")
-    .update({ status: "rejected" })
+    .update({ status: opts.to ?? "rejected" })
     .eq("id", orderId)
-    .in("status", [...REJECTABLE_STATUSES])
-    .select("id")
+    .in("status", [...(opts.from ?? REJECTABLE_STATUSES)])
+    .select("id, platform")
     .maybeSingle();
-  if (data) await recordOrderEvent(ctx, orderId, "rejected", {}, actor);
+  if (data)
+    await recordOrderEvent(
+      ctx,
+      orderId,
+      "rejected",
+      opts.to === "cancelled" ? { to: "cancelled" } : {},
+      actor,
+    );
+  // Заказ с сайта оформляет кто угодно — отклонённый возвращает остаток.
+  if (data?.platform === "web") await restoreOrderStock(ctx, orderId);
   return Boolean(data);
 }
 

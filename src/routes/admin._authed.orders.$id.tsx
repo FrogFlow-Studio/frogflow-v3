@@ -59,7 +59,8 @@ function OrderPage() {
               {t("order.title", { no })} <OrderStatus status={o.status} />
             </h2>
             <p className="text-sm text-muted">
-              {new Date(o.created_at).toLocaleString(intlLocale(shop.locale))} · {o.platform} ·{" "}
+              {new Date(o.created_at).toLocaleString(intlLocale(shop.locale))} ·{" "}
+              {o.platform === "web" ? t("order.platformWeb") : o.platform} ·{" "}
               {physical ? t("order.physical") : t("order.digital")}
             </p>
           </div>

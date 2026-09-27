@@ -143,4 +143,32 @@ describe("чек с сайта", () => {
     expect(deliver).toHaveBeenCalledWith(ctx, 9);
     expect(notifyNew).toHaveBeenCalledTimes(1);
   });
+
+  it("физический с оплатой при получении — ждёт подтверждения продавца, продавцу о заказе", async () => {
+    const { ctx, db } = setup();
+    db.tables.orders![0]!.status = "awaiting_payment";
+    db.tables.orders![0]!.fulfillment_kind = "physical";
+    await afterWebOrderPlaced(
+      ctx,
+      { ...ORDER, status: "awaiting_payment", fulfillment_kind: "physical" } as never,
+      false,
+      0,
+    );
+    expect(db.tables.orders![0]!.status).toBe("awaiting_confirmation");
+    expect(notifyNew).toHaveBeenCalledTimes(1);
+    expect(deliver).not.toHaveBeenCalled();
+  });
+
+  it("физический с задатком — ждёт оплаты молча", async () => {
+    const { ctx, db } = setup();
+    db.tables.orders![0]!.status = "awaiting_payment";
+    await afterWebOrderPlaced(
+      ctx,
+      { ...ORDER, status: "awaiting_payment", fulfillment_kind: "physical" } as never,
+      false,
+      750,
+    );
+    expect(db.tables.orders![0]!.status).toBe("awaiting_payment");
+    expect(notifyNew).not.toHaveBeenCalled();
+  });
 });

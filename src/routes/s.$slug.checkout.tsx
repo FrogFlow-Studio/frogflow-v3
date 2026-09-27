@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { webCheckoutFn, webCheckoutInfoFn } from "@/app/storefront/checkout.functions";
 import { solveChallenge } from "@/app/signup/challenge-solve";
 import { useCart } from "@/app/storefront/cart";
@@ -21,6 +21,10 @@ function CheckoutPage() {
   const cart = useCart();
   const navigate = useNavigate();
   const physical = cart.lines.some((l) => l.kind === "physical");
+  const ff = info.enabled ? info.fulfillment : null;
+  const [ftype, setFtype] = useState<"pickup" | "delivery">(
+    ff && !ff.pickup && ff.delivery ? "delivery" : "pickup",
+  );
   const { run, busy, error } = useAction(async (f: FormData) => {
     if (!info.enabled) return;
     // Задача против ботов решается в браузере, пока кнопка «занята».
@@ -37,6 +41,15 @@ function CheckoutPage() {
         email: String(f.get("email") ?? ""),
         phone: String(f.get("phone") ?? "") || undefined,
         country: String(f.get("country") ?? ""),
+        fulfillment: physical
+          ? {
+              type: ftype,
+              date: String(f.get("date") ?? ""),
+              zoneId: ftype === "delivery" ? String(f.get("zone") ?? "") || null : null,
+              address: ftype === "delivery" ? String(f.get("address") ?? "") : null,
+              note: String(f.get("note") ?? "") || null,
+            }
+          : null,
         website: String(f.get("website") ?? ""),
         challenge: info.challenge,
         answer,
@@ -78,59 +91,105 @@ function CheckoutPage() {
         <span>{t("cart.total")}</span>
         <span className="tabular-nums">{formatMoney(cart.total, cart.currency)}</span>
       </div>
-      {physical ? (
-        <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">{t("checkout.physicalHint")}</p>
-      ) : (
-        <form
-          className="card space-y-4 p-5"
-          onSubmit={(e: FormEvent<HTMLFormElement>) => {
-            e.preventDefault();
-            void run(new FormData(e.currentTarget)).catch(() => {});
-          }}
-        >
-          <Field label={t("checkout.name")}>
-            <input className="input" name="name" required maxLength={64} autoComplete="name" />
-          </Field>
-          <Field label={t("checkout.email")}>
-            <input
-              className="input"
-              name="email"
-              type="email"
-              required
-              maxLength={254}
-              autoComplete="email"
-            />
-          </Field>
-          <Field label={t("checkout.phone")}>
-            <input className="input" name="phone" type="tel" maxLength={32} autoComplete="tel" />
-          </Field>
-          {info.countries.length > 1 ? (
-            <Field label={t("checkout.country")}>
-              <select className="input" name="country" defaultValue={info.countries[0]?.code}>
-                {info.countries.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          ) : (
-            <input type="hidden" name="country" value={info.countries[0]?.code ?? ""} />
-          )}
-          {/* Приманка для ботов: человек это поле не видит и не заполняет. */}
+      <form
+        className="card space-y-4 p-5"
+        onSubmit={(e: FormEvent<HTMLFormElement>) => {
+          e.preventDefault();
+          void run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        <Field label={t("checkout.name")}>
+          <input className="input" name="name" required maxLength={64} autoComplete="name" />
+        </Field>
+        <Field label={t("checkout.email")}>
           <input
-            name="website"
-            tabIndex={-1}
-            autoComplete="off"
-            className="hidden"
-            aria-hidden="true"
+            className="input"
+            name="email"
+            type="email"
+            required
+            maxLength={254}
+            autoComplete="email"
           />
-          <button className="btn-primary w-full" disabled={busy}>
-            {busy ? t("checkout.checking") : t("checkout.submit")}
-          </button>
-          <ErrorBox error={error} />
-        </form>
-      )}
+        </Field>
+        <Field label={t("checkout.phone")}>
+          <input className="input" name="phone" type="tel" maxLength={32} autoComplete="tel" />
+        </Field>
+        {info.countries.length > 1 ? (
+          <Field label={t("checkout.country")}>
+            <select className="input" name="country" defaultValue={info.countries[0]?.code}>
+              {info.countries.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        ) : (
+          <input type="hidden" name="country" value={info.countries[0]?.code ?? ""} />
+        )}
+        {physical && ff && (
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-medium">{t("checkout.fulfillment.title")}</legend>
+            {ff.pickup && ff.delivery && (
+              <div className="flex gap-4 text-sm">
+                {(["pickup", "delivery"] as const).map((k) => (
+                  <label key={k} className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="ftype"
+                      checked={ftype === k}
+                      onChange={() => setFtype(k)}
+                    />
+                    {t(`checkout.fulfillment.${k}`)}
+                  </label>
+                ))}
+              </div>
+            )}
+            <Field label={t("checkout.fulfillment.date")} hint={t("checkout.fulfillment.dateHint")}>
+              <input className="input" name="date" type="date" required min={ff.today} />
+            </Field>
+            {ftype === "delivery" && ff.zones.length > 0 && (
+              <Field label={t("checkout.fulfillment.zone")}>
+                <select className="input" name="zone" required defaultValue="">
+                  <option value="" disabled />
+                  {ff.zones.map((z) => (
+                    <option key={z.id} value={z.id}>
+                      {z.name} (+{formatMoney(z.fee.amount, z.fee.currency)})
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
+            {ftype === "delivery" && (
+              <Field label={t("checkout.fulfillment.address")}>
+                <textarea
+                  className="input"
+                  name="address"
+                  required
+                  maxLength={500}
+                  rows={2}
+                  autoComplete="street-address"
+                />
+              </Field>
+            )}
+            <Field label={t("checkout.fulfillment.note")}>
+              <textarea className="input" name="note" maxLength={500} rows={2} />
+            </Field>
+          </fieldset>
+        )}
+        {/* Приманка для ботов: человек это поле не видит и не заполняет. */}
+        <input
+          name="website"
+          tabIndex={-1}
+          autoComplete="off"
+          className="hidden"
+          aria-hidden="true"
+        />
+        <button className="btn-primary w-full" disabled={busy}>
+          {busy ? t("checkout.checking") : t("checkout.submit")}
+        </button>
+        <ErrorBox error={error} />
+      </form>
     </div>
   );
 }

@@ -37,14 +37,29 @@ async function deliverAndReport(ctx: TenantContext, order: OrderWithItems): Prom
 }
 
 /**
- * Заказ создан. Скидки покрыли всё — выдаём сразу и сообщаем продавцу; иначе
- * продавец узнает о заказе вместе с чеком, как в боте.
+ * Заказ создан — как в боте после оформления, с одной разницей: физический
+ * заказ с сайта, за который сейчас платить нечего (оплата при получении или
+ * скидки на всю сумму), не идёт сразу в работу, а ждёт подтверждения
+ * продавца — контакты с сайта никто не проверял. Цифровой, покрытый
+ * скидками, выдаётся сразу. В остальных случаях продавец узнает о заказе
+ * вместе с чеком или оплатой картой.
  */
 export async function afterWebOrderPlaced(
   ctx: TenantContext,
   order: OrderWithItems,
   zeroTotal: boolean,
+  amountDue = zeroTotal ? 0 : Number(order.total),
 ): Promise<void> {
+  const physical = order.fulfillment_kind === "physical";
+  if (physical && (zeroTotal || amountDue <= 0)) {
+    await ctx.db
+      .from("orders")
+      .update({ status: "awaiting_confirmation" })
+      .eq("id", order.id)
+      .eq("status", "awaiting_payment");
+    await notifySeller(ctx, (await getOrder(ctx, order.id)) ?? order);
+    return;
+  }
   if (!zeroTotal) return;
   const delivered = await deliverAndReport(ctx, order);
   await notifySeller(ctx, (await getOrder(ctx, order.id)) ?? order, { autoDelivered: delivered });

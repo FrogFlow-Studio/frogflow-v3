@@ -8,6 +8,8 @@ const BOT = "b41a34cb-7944-441b-8f71-503184fc0f1f";
 const markPaidOnline = vi.fn(async () => ({ ok: true, kind: "digital", alreadyDone: true }));
 const afterPaidOnline = vi.fn(async () => {});
 let platform = "telegram";
+let status = "awaiting_payment";
+const notifyAdminsHtml = vi.fn(async () => 1);
 
 vi.mock("@/core/tenant/resolve.server", () => ({
   resolveTenant: async () => ({
@@ -27,8 +29,11 @@ vi.mock("@/core/orders/orders", () => ({
     total: 1500,
     fulfillment_kind: "digital",
     platform,
+    status,
+    display_no: 7,
   }),
 }));
+vi.mock("@/channels/telegram/notify", () => ({ notifyAdminsHtml }));
 vi.mock("@/app/payments/paid-online.server", () => ({ afterPaidOnline }));
 vi.mock("@/lib/background", () => ({ runInBackground: (task: () => Promise<void>) => task() }));
 vi.mock("@/config/env", () => ({ env: () => ({ SESSION_SECRET: "s".repeat(40) }) }));
@@ -142,5 +147,15 @@ describe("Robokassa: заказ с сайта", () => {
     const res = await callReturn("success", { OutSum: "1500.00", InvId: "42" });
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("https://t.me/shop_bot");
+  });
+
+  it("оплата пришла по отменённому неоплаченным заказу — продавцу срочно, заказ не трогаем", async () => {
+    platform = "web";
+    status = "rejected";
+    markPaidOnline.mockResolvedValueOnce({ ok: true, kind: "digital", alreadyDone: true });
+    expect(await (await callResult("1500.00")).text()).toBe("OK42");
+    expect(afterPaidOnline).not.toHaveBeenCalled();
+    expect(notifyAdminsHtml).toHaveBeenCalledTimes(1);
+    status = "awaiting_payment";
   });
 });

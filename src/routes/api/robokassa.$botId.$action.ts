@@ -72,6 +72,16 @@ async function handle(request: Request, botId: string, action: string): Promise<
     return new Response("amount mismatch", { status: 400 });
   }
   const r = await markPaidOnline(ctx, orderId, paid, "Robokassa");
+  if (r.ok && r.alreadyDone && ["cancelled", "rejected"].includes(order.status)) {
+    // Покупатель заплатил по ссылке, открытой до отмены (отклонения) неоплаченного заказа
+    // с сайта: деньги пришли, заказ закрыт — решает продавец.
+    const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
+    await notifyAdminsHtml(
+      ctx,
+      `⚠️ Оплата ${paid} через Robokassa пришла по отклонённому заказу #${order.display_no ?? order.order_no}. Свяжитесь с покупателем: выдать заказ или вернуть деньги.`,
+      { orderId, kind: "delivery_failure" },
+    ).catch((e) => console.error(`[robokassa:${botId}] уведомление`, e));
+  }
   if (r.ok && !r.alreadyDone) {
     const { runInBackground } = await import("@/lib/background");
     await runInBackground(async () => {

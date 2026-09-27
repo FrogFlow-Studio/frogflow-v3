@@ -72,6 +72,7 @@ vi.mock("@/channels/telegram/jobs", () => ({
   runFunnelFor: hit("funnel"),
   runCourseLessons: hit("courses"),
 }));
+vi.mock("@/core/storefront/web-expire", () => ({ expireWebOrders: hit("webOrders") }));
 vi.mock("@/channels/zernio/jobs", () => ({ runWhatsAppBroadcastBatch: hit("waBroadcast") }));
 vi.mock("@/app/outbox/senders.server", () => ({ runOutbox: hit("outbox") }));
 vi.mock("@/core/vip/cron", () => ({ runVipCron: hit("vip") }));
@@ -119,7 +120,7 @@ describe("кроны обходят только клиентов v2", () => {
     "ensure-webhook": ["webhook", "vipWebhook"],
     broadcast: ["broadcast", "waBroadcast", "outbox", "orderNotify"],
     "cart-reminder": ["cartReminder"],
-    "fulfillment-reminder": ["fulfillment", "winback", "funnel", "courses"],
+    "fulfillment-reminder": ["fulfillment", "winback", "funnel", "courses", "webOrders"],
     vip: ["vip"],
     "comment-dm-fallback": ["commentDm"],
     health: ["zernioSync", "zernioRetry", "digest", "weekly"],

@@ -4,8 +4,22 @@ import type { TelegramApi } from "./api";
 import { adminRecipients } from "@/core/notify/recipients";
 import { displayNo, type OrderWithItems } from "@/core/orders/orders";
 import { escapeHtml } from "./copy";
+import { isoToDisplay } from "@/core/fulfillment/pure";
 import { collectTgMessageIds, type AdminNotifyTgRef } from "@/core/notify/order-pack";
 import { rememberOrderNotify } from "./order-notify";
+
+/** Как и когда получить физический заказ — продавцу в уведомлении. */
+export function fulfillmentLine(order: OrderWithItems): string {
+  if (order.fulfillment_kind !== "physical" || !order.fulfillment_type) return "";
+  const date = order.fulfillment_at ? isoToDisplay(String(order.fulfillment_at).slice(0, 10)) : "—";
+  const how = order.fulfillment_type === "delivery" ? "🚚 Доставка" : "🏪 Самовывоз";
+  const where = [order.delivery_zone_name, order.fulfillment_address].filter(Boolean).join(", ");
+  return (
+    `${how}: ${date}\n` +
+    (where ? `📍 ${escapeHtml(where)}\n` : "") +
+    (order.fulfillment_note ? `💬 ${escapeHtml(order.fulfillment_note)}\n` : "")
+  );
+}
 
 export type ProofRef = { fileId: string; kind: "photo" | "document" } | null;
 
@@ -42,9 +56,12 @@ export async function notifyAdminNewOrder(
         ? `💳 <b>Заказ #${no} оплачен онлайн</b>\n\n`
         : `🆕 <b>Новый заказ #${no}</b>\n\n`) +
     (opts.reviewReason ? `🔎 Автопроверка чека: ${escapeHtml(opts.reviewReason)}\n\n` : "") +
-    (orderChannel(order.platform) !== "telegram"
-      ? `📲 Канал: ${escapeHtml(order.platform)}\n`
-      : "") +
+    (order.platform === "web"
+      ? `🌐 С сайта — контакты не проверены${order.customer_email ? ` (${escapeHtml(order.customer_email)})` : ""}\n`
+      : orderChannel(order.platform) !== "telegram"
+        ? `📲 Канал: ${escapeHtml(order.platform)}\n`
+        : "") +
+    fulfillmentLine(order) +
     (opts.proofUrl ? `🧾 Чек: ${escapeHtml(opts.proofUrl)}\n` : "") +
     `👤 ${escapeHtml(order.display_name ?? "")}${order.username ? ` (@${escapeHtml(order.username)})` : ""}\n` +
     `📞 ${escapeHtml(order.contact ?? "—")}\n` +

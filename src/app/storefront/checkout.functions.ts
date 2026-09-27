@@ -49,6 +49,7 @@ export const webCheckoutInfoFn = createServerFn({ method: "GET" })
     }
     const { listActivePaymentMethods } = await import("@/core/orders/orders");
     const { issueChallenge } = await import("@/app/signup/challenge");
+    const { webFulfillmentOptions } = await import("@/core/storefront/web-fulfillment");
     const methods = await listActivePaymentMethods(ctx);
     const countries = [...new Map(methods.map((m) => [m.country_code, m.country_name])).entries()]
       .filter(([code]) => Boolean(code))
@@ -56,6 +57,7 @@ export const webCheckoutInfoFn = createServerFn({ method: "GET" })
     return {
       enabled: true as const,
       countries,
+      fulfillment: await webFulfillmentOptions(ctx, countries[0]?.code ?? null),
       challenge: issueChallenge(await secret(), Date.now(), "checkout"),
     };
   });
@@ -76,6 +78,17 @@ const checkoutInput = z.object({
   email: z.string().max(254),
   phone: z.string().max(32).optional(),
   country: z.string().regex(/^[A-Z]{2}$/),
+  /** Только для физических товаров; проверяет сервер по корзине. */
+  fulfillment: z
+    .object({
+      type: z.enum(["pickup", "delivery"]),
+      date: z.string().max(10),
+      zoneId: z.string().uuid().nullable().optional(),
+      address: z.string().max(500).nullable().optional(),
+      note: z.string().max(500).nullable().optional(),
+    })
+    .nullable()
+    .optional(),
   /** Приманка для ботов: поле скрыто, человек его не заполняет. */
   website: z.string().max(0).optional(),
   challenge: z.string().max(200),
@@ -113,11 +126,28 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
       await import("@/core/storefront/web-order");
     const phone = data.phone?.trim() ? normalizePhone(data.phone) : null;
     const customer = await webCustomer(ctx, { email, name: data.name, phone });
-    const r = await placeWebOrder(ctx, customer, parseHandoffItems(data.items), data.country);
+    const r = await placeWebOrder(ctx, customer, parseHandoffItems(data.items), data.country, {
+      fulfillment: data.fulfillment,
+      contact: { name: data.name, phone },
+    });
     if (!r.ok) {
       switch (r.reason) {
-        case "physical_not_supported":
-          throw shownError(t("checkout.error.physical"));
+        case "too_many": {
+          const { WEB_MAX_QTY } = await import("@/core/storefront/web-order");
+          throw shownError(t("checkout.error.tooMany", { n: WEB_MAX_QTY }));
+        }
+        case "missing":
+        case "type":
+        case "date":
+          throw shownError(t("checkout.error.fulfillment"));
+        case "date_early": {
+          const { isoToDisplay } = await import("@/core/fulfillment/pure");
+          throw shownError(t("checkout.error.dateEarly", { date: isoToDisplay(r.minDate) }));
+        }
+        case "zone":
+          throw shownError(t("checkout.error.zone"));
+        case "address":
+          throw shownError(t("checkout.error.address"));
         case "nothing_imported":
         case "empty_cart":
           throw shownError(t("error.nothingImported"));
@@ -132,7 +162,7 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
       }
     }
     const { afterWebOrderPlaced } = await import("@/channels/web/order.server");
-    await afterWebOrderPlaced(ctx, r.order, r.zeroTotal);
+    await afterWebOrderPlaced(ctx, r.order, r.zeroTotal, r.amountDue);
     return { id: r.order.id, t: orderAccessToken(await secret(), ctx.tenant.id, r.order.id) };
   });
 
