@@ -125,6 +125,49 @@ describe("verifyReceipt — повтор чека по хешу файла", () 
   });
 });
 
+describe("чек в валюте заказа — без недоплаты (решение 27.09)", () => {
+  it("ровная сумма — автопроверка проходит", async () => {
+    mockVision("Перевод выполнен. Сумма: 1000 KZT");
+    expect(await verifyReceipt(setup().ctx, base)).toMatchObject({ ok: true, matchedAmount: 1000 });
+  });
+  it("переплата — проходит", async () => {
+    mockVision("Перевод выполнен. Сумма: 1100 KZT");
+    expect(await verifyReceipt(setup().ctx, base)).toMatchObject({ ok: true, matchedAmount: 1100 });
+  });
+  it("недоплата на 1 ₸ — к продавцу, не автовыдача и не «пришлите заново»", async () => {
+    mockVision("Перевод выполнен. Сумма: 999 KZT");
+    const r = await verifyReceipt(setup().ctx, base);
+    expect(r).toMatchObject({ ok: false, reason: "amount_mismatch" });
+    if (!r.ok) {
+      expect(isRetryReason(r.reason)).toBe(false);
+      expect(r.detail).toContain("недоплата не принимается");
+    }
+  });
+  it.each([
+    ["Перевод выполнен. Сумма 999 ₸. Квитанция № 1150", 1000],
+    ["Перевод выполнен. 4 990 ₸. Остаток 5 400 ₸", 5000],
+    ["Перевод выполнен. Комиссия 0 ₸. Номер квитанции 1204", 1000],
+  ])("номер квитанции или остаток рядом с недоплатой не сходят за оплату: %s", async (t, sum) => {
+    mockVision(t);
+    const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: sum });
+    expect(r).toMatchObject({ ok: false, reason: "amount_mismatch" });
+  });
+  it("Kaspi: сумма и «Комиссия 0 ₸» — проходит", async () => {
+    mockVision("Перевод выполнен. 5 000 ₸. Комиссия 0 ₸. Квитанция № 12345");
+    expect(await verifyReceipt(setup().ctx, { ...base, expectedAmount: 5000 })).toMatchObject({
+      ok: true,
+      matchedAmount: 5000,
+    });
+  });
+  it("чек без знака валюты — считается валютой заказа, недоплата тоже к продавцу", async () => {
+    mockVision("Оплата успешно проведена. Сумма 900");
+    expect(await verifyReceipt(setup().ctx, base)).toMatchObject({
+      ok: false,
+      reason: "amount_mismatch",
+    });
+  });
+});
+
 describe("verifyReceipt — разбор текста и маршрут в Vision", () => {
   it("успешный чек с фразой «в случае ошибки» — автовыдача", async () => {
     const { ctx } = setup();
@@ -200,6 +243,13 @@ describe("чек в чужой валюте — сумма заказа пере
     mockVision("Чек по операции. Перевод выполнен. Сумма в местной валюте 1077.30 KZT");
     const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 228, currency: "RUB" });
     expect(r).toMatchObject({ ok: true, matchedAmount: 1077.3, matchedCurrency: "KZT" });
+  });
+
+  it("чек в другой валюте ниже суммы заказа по курсу — допуск ±30% остаётся", async () => {
+    // Заказ 1100 ₸ ≈ 227 ₽; 200 ₽ — на 12% меньше, но в допуске.
+    mockVision("Платёж выполнен. Перевод по номеру телефона. 200 ₽");
+    const r = await verifyReceipt(setup().ctx, { ...base, expectedAmount: 1100, currency: "KZT" });
+    expect(r).toMatchObject({ ok: true, matchedAmount: 200, matchedCurrency: "RUB" });
   });
 
   it("Сбер 661.50 KZT на заказ 152 ₽ — ниже рыночного курса, но в допуске ±30%", async () => {

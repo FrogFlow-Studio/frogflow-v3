@@ -1,11 +1,19 @@
 import { sniffProofMime } from "@/core/orders/proof-file";
 /**
  * Проверка чека по распознанному тексту — чистые правила, без Vision и базы.
- * Допуск ±30%: OCR и банк часто дают сумму рядом с заказом (комиссия,
- * «сумма в местной валюте»), а скрин карточки товара на +150% не проходит.
+ * Допуск ±30% (v1) — для чека в чужой валюте: курс и спред банка дают сумму
+ * рядом с заказом. В валюте заказа недоплата не проходит совсем
+ * (SAME_CURRENCY_UNDERPAY), переплата — до +30%: скрин карточки товара на
+ * +150% не проходит.
  */
 export const UNDERPAY_TOLERANCE = 0.3;
 export const OVERPAY_TOLERANCE = 0.3;
+/**
+ * Чек в валюте заказа: недоплата не проходит совсем (решение владельца
+ * 27.09) — любая меньшая сумма уходит продавцу на ручную проверку.
+ * Допуск ±30% остаётся для чеков в чужой валюте (сверка по курсу).
+ */
+export const SAME_CURRENCY_UNDERPAY = 0;
 
 const RECEIPT_MARKERS = [
   "оплат",
@@ -202,6 +210,42 @@ export function extractMoneyAmounts(text: string): number[] {
   return [...out];
 }
 
+/**
+ * Суммы, подписанные как деньги: со знаком валюты («999 ₸») или после
+ * «Сумма…/Итого». Нули («Комиссия 0 ₸») тоже здесь: подписанное число в
+ * чеке есть, и номер квитанции рядом уже не принимается за сумму.
+ * Суммы в чужой валюте (при заданной currency) отброшены.
+ */
+export function labeledAmounts(text: string, currency?: string): number[] {
+  const amount = `(?:${AMOUNT_TOKEN})${AMOUNT_DEC}`;
+  const parse = (raw: string) => {
+    const n = Number(raw.replace(/[\s\u00a0\u202f]/g, "").replace(",", "."));
+    return Number.isFinite(n) && n >= 0 && n <= 10_000_000 ? Math.round(n * 100) / 100 : null;
+  };
+  const tagged = currency ? extractTaggedCurrencyAmounts(text) : {};
+  const foreign = new Set(
+    Object.entries(tagged)
+      .filter(([c]) => c !== currency)
+      .flatMap(([, n]) => n),
+  );
+  const own = new Set(currency ? (tagged[currency] ?? []) : []);
+  const out = new Set<number>();
+  const add = (raw: string) => {
+    const n = parse(raw);
+    if (n != null && (own.has(n) || !foreign.has(n))) out.add(n);
+  };
+  for (const m of text.matchAll(new RegExp(`(${amount})\\s*${CURRENCY_TAIL}`, "gi")))
+    add(m[1] ?? "");
+  for (const m of text.matchAll(
+    new RegExp(
+      `(?:сумма(?:\\s+(?:операции|выплаты|перевода|платежа|в\\s+местной\\s+валюте))?|итого)\\s*[:\\-]?\\s*(${amount})`,
+      "gi",
+    ),
+  ))
+    add(m[1] ?? "");
+  return [...out];
+}
+
 /** Суммы с явно подписанной валютой: «228 ₽» → RUB. */
 export function extractTaggedCurrencyAmounts(text: string): Record<string, number[]> {
   const amount = `(?:${AMOUNT_TOKEN})${AMOUNT_DEC}`;
@@ -246,13 +290,18 @@ export function looksLikeReceipt(text: string): boolean {
   return hits >= 1 && extractMoneyAmounts(text).length >= 1;
 }
 
-export function findMatchingAmount(amounts: number[], expected: number): number | null {
+export function findMatchingAmount(
+  amounts: number[],
+  expected: number,
+  underpay = UNDERPAY_TOLERANCE,
+): number | null {
   if (!Number.isFinite(expected) || expected <= 0) return null;
   let best: number | null = null;
   let bestDiff = Infinity;
   for (const a of amounts) {
     const diff = (a - expected) / expected;
-    if (diff < -UNDERPAY_TOLERANCE || diff > OVERPAY_TOLERANCE) continue;
+    // Копейка округления — не недоплата.
+    if (a < expected * (1 - underpay) - 0.01 || diff > OVERPAY_TOLERANCE) continue;
     if (Math.abs(diff) < bestDiff) {
       best = a;
       bestDiff = Math.abs(diff);
@@ -290,7 +339,9 @@ export function analyzeReceiptText(
   text: string,
   expectedAmount: number,
   currency?: string,
+  opts: { underpay?: number } = {},
 ): ReceiptAnalysis {
+  const underpay = opts.underpay ?? UNDERPAY_TOLERANCE;
   if (!text || text.trim().length < 8)
     return { ok: false, reason: "not_receipt", detail: "В файле почти нет текста." };
   if (looksLikeShopScreenNotReceipt(text))
@@ -313,7 +364,30 @@ export function analyzeReceiptText(
     };
 
   const cur = currency?.trim().toUpperCase() || undefined;
-  const matched = findMatchingAmount(amountsForCurrency(text, cur), expectedAmount);
+  if (underpay <= 0) {
+    // Без недоплаты: если в чеке есть подписанные суммы, сверяем только с
+    // ними, и любая подписанная сумма меньше заказа — к продавцу. Иначе
+    // номер квитанции или «остаток» рядом с недоплатой сошёл бы за оплату.
+    const labeled = labeledAmounts(text, cur);
+    if (labeled.length > 0) {
+      const short = labeled.filter((n) => n > 0 && n < expectedAmount - 0.01);
+      if (short.length > 0)
+        return {
+          ok: false,
+          reason: "amount_mismatch",
+          detail: `В чеке сумма ${short.join(", ")}${cur ? ` ${cur}` : ""} меньше суммы заказа ${expectedAmount} (недоплата не принимается).`,
+        };
+      const hit = findMatchingAmount(labeled, expectedAmount, 0);
+      if (hit != null) return { ok: true, matchedAmount: hit };
+      if (!detectReceiptCurrencies(text).some((c) => c !== cur))
+        return {
+          ok: false,
+          reason: "amount_mismatch",
+          detail: `Сумма заказа ${expectedAmount}${cur ? ` ${cur}` : ""} не найдена среди сумм чека: ${labeled.join(", ")} (недоплата не принимается).`,
+        };
+    }
+  }
+  const matched = findMatchingAmount(amountsForCurrency(text, cur), expectedAmount, underpay);
   if (matched != null) return { ok: true, matchedAmount: matched };
 
   const foreign = detectReceiptCurrencies(text).filter((c) => c !== cur);
@@ -327,7 +401,7 @@ export function analyzeReceiptText(
   return {
     ok: false,
     reason: "amount_mismatch",
-    detail: `Сумма заказа ${expectedAmount}${cur ? ` ${cur}` : ""} не найдена в чеке (допуск ±30%). Найдены: ${all.slice(0, 8).join(", ") || "—"}.`,
+    detail: `Сумма заказа ${expectedAmount}${cur ? ` ${cur}` : ""} не найдена в чеке (${underpay > 0 ? `допуск −${Math.round(underpay * 100)}%…+${Math.round(OVERPAY_TOLERANCE * 100)}%` : "недоплата не принимается"}). Найдены: ${all.slice(0, 8).join(", ") || "—"}.`,
   };
 }
 

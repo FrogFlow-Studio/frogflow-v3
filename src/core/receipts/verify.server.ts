@@ -13,6 +13,7 @@ import { getSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { convertForReceipt } from "@/core/pricing/pricing";
 import {
   analyzeReceiptText,
+  SAME_CURRENCY_UNDERPAY,
   detectReceiptCurrencies,
   isPdf,
   looksLikeReceipt,
@@ -236,7 +237,12 @@ export async function verifyReceipt(
       detail: e instanceof Error ? e.message : String(e),
     };
   }
-  const analysis = await withFx(analyzeReceiptText(text, p.expectedAmount, p.currency), text, p);
+  // Своя валюта — без недоплаты; чужая (withFx) — прежний допуск по курсу.
+  const analysis = await withFx(
+    analyzeReceiptText(text, p.expectedAmount, p.currency, { underpay: SAME_CURRENCY_UNDERPAY }),
+    text,
+    p,
+  );
   const extractedText = text.slice(0, 2000);
   if (!analysis.ok) return { ...analysis, extractedText };
   const { data: reuse } = await ctx.db

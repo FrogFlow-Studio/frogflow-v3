@@ -87,6 +87,25 @@ describe("допуск суммы (перенос проверок v1)", () => {
   });
 });
 
+describe("без недоплаты (своя валюта)", () => {
+  it("меньшая сумма не проходит, ровная и большая — проходят, копейка округления — не недоплата", () => {
+    expect(findMatchingAmount([999], 1000, 0)).toBeNull();
+    expect(findMatchingAmount([1000], 1000, 0)).toBe(1000);
+    expect(findMatchingAmount([999.995], 1000, 0)).toBe(999.995);
+    expect(findMatchingAmount([1200], 1000, 0)).toBe(1200);
+    expect(findMatchingAmount([700, 1000], 1000, 0)).toBe(1000);
+  });
+  it("analyzeReceiptText с underpay: 0 — недоплата уходит в amount_mismatch", () => {
+    expect(
+      analyzeReceiptText("Перевод выполнен 4990 KZT", 5000, "KZT", { underpay: 0 }),
+    ).toMatchObject({ ok: false, reason: "amount_mismatch" });
+    expect(analyzeReceiptText("Перевод выполнен 5000 KZT", 5000, "KZT", { underpay: 0 })).toEqual({
+      ok: true,
+      matchedAmount: 5000,
+    });
+  });
+});
+
 describe("валюта чека", () => {
   it("своя валюта в чеке рядом с чужой — не конфликт, сверяем по своей", () => {
     const text = "Оплата 5000 тенге, комиссия 10 руб";
