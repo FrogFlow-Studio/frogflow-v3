@@ -14,6 +14,8 @@ import {
   TRIAL_DAYS,
   formatTenge,
   landingUrl,
+  planFeatureKeys,
+  type PricingNiche,
   type PlanKey,
 } from "@/app/landing/config";
 import { SUPPORTED_LOCALES, isLocale, type Locale } from "@/core/i18n/locale";
@@ -60,7 +62,6 @@ export const Route = createFileRoute("/")({
 
 type Channel = "tg" | "wa" | "ig";
 type Niche = "dig" | "phy" | "ai";
-type PricingNiche = "dig" | "cake" | "flow" | "ai";
 const PLANS: PlanKey[] = ["basic", "pro", "business"];
 
 /** Главная платформы — для владельцев магазинов. */
@@ -492,12 +493,8 @@ function Scenarios({ t }: { t: LandingT }) {
 
 const PRICING_NICHES: PricingNiche[] = ["dig", "cake", "flow", "ai"];
 
-/** Что входит в план ниши: у Basic четыре пункта, у старших — «всё из младшего» и три своих. */
 function planFeatures(t: LandingT, niche: PricingNiche, plan: PlanKey): string[] {
-  const own = (n: number) =>
-    Array.from({ length: n }, (_, i) => t(`pricing.${niche}.${plan}.f${i + 1}` as LandingKey));
-  if (plan === "basic") return own(4);
-  return [t(plan === "pro" ? "pricing.allBasic" : "pricing.allPro"), ...own(3)];
+  return planFeatureKeys(niche, plan).map((k) => t(k));
 }
 
 function Pricing({ t, signup }: { t: LandingT; signup: boolean }) {

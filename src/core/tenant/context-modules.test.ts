@@ -11,8 +11,9 @@ vi.mock("@/core/db/client.server", () => ({ serviceDb: () => ({}), tenantDb: () 
 const planned = MODULE_KEYS.filter((k) => MODULES[k].status === "planned");
 
 describe("модули «в разработке» ничего не открывают", () => {
-  it("в каталоге есть planned-модули, среди них курсы", () => {
-    expect(planned).toContain("courses");
+  it("в каталоге есть planned-модули; курсы готовы и в их число не входят", () => {
+    expect(planned.length).toBeGreaterThan(0);
+    expect(planned).not.toContain("courses");
   });
 
   it("availableModules снимает planned-флаги и оставляет готовые", () => {
@@ -23,18 +24,19 @@ describe("модули «в разработке» ничего не откры�
     expect(m.upsell).toBe(MODULES.upsell.status === "available");
   });
 
-  it("контекст клиента: courses=true в базе не открывает редактор уроков", async () => {
+  it("контекст клиента: planned-флаг в базе (crypto) ничего не открывает", async () => {
     const { tenantContext } = await import("./resolve.server");
     const raw = {
       id: "t",
       name: "Магазин",
       settings: {},
-      modules: modulesFromJson({ shop: true, courses: true }),
+      modules: modulesFromJson({ shop: true, crypto: true }),
     } as unknown as Tenant;
     const ctx = tenantContext(raw);
-    expect(ctx.tenant.modules.courses).toBe(false);
+    expect(MODULES.crypto.status).toBe("planned");
+    expect(ctx.tenant.modules.crypto).toBe(false);
     expect(ctx.tenant.modules.shop).toBe(true);
     // Сырые флаги справочника не тронуты — их видит проверка переезда у оператора.
-    expect(raw.modules.courses).toBe(true);
+    expect(raw.modules.crypto).toBe(true);
   });
 });

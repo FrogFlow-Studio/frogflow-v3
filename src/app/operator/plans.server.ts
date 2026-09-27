@@ -10,6 +10,7 @@ import type { Json } from "@/core/db-types";
 import { MODULE_KEYS, moduleDef, type ModuleKey } from "@/core/modules/registry";
 import {
   effectiveModules,
+  keptModules,
   missingRequirements,
   nextPeriod,
   planInvoice,
@@ -95,6 +96,11 @@ async function writeModules(botId: string, modules: Record<ModuleKey, boolean>):
   if (error) throw new Error(error.message);
 }
 
+/** Купленное сверх прежнего плана — в сохранённые нового (core/plans keptModules). */
+function kept(t: Tenant): ModuleKey[] {
+  return keptModules(parsePlan(t.plan), t.settings.billing, t.modules);
+}
+
 /** Пересчитать флаги по плану клиента; custom и без плана — не трогаем. */
 async function syncModules(t: Tenant, billing: BillingSettings): Promise<void> {
   const mods = effectiveModules(parsePlan(t.plan), billing);
@@ -153,8 +159,9 @@ export async function getPlanView(botId: string): Promise<PlanView> {
 }
 
 /**
- * Поставить план. Флаги модулей пересчитываются сразу: всё, что не в плане,
- * не в надбавках и не сохранено, выключается. `custom` — индивидуальные
+ * Поставить план. Флаги модулей пересчитываются сразу; купленное сверх
+ * прежнего плана переходит в сохранённые, модули прежнего плана и надбавок,
+ * не вошедшие в новый, выключаются. `custom` — индивидуальные
  * условия: модули остаются как есть и дальше включаются вручную.
  */
 export async function setPlan(
@@ -175,6 +182,7 @@ export async function setPlan(
   }
   const billing: BillingSettings = {
     ...(t.settings.billing ?? {}),
+    grandfathered: kept(t),
     period: input.period,
     addons: input.addons.filter((a) => a in ADDONS),
     plan_version: PLAN_VERSION,
@@ -204,7 +212,7 @@ export async function adoptSuggestedPlan(botId: string, actor: string): Promise<
   const plan = planKey(niche, s.tier);
   const billing: BillingSettings = {
     ...(t.settings.billing ?? {}),
-    grandfathered: s.grandfathered,
+    grandfathered: [...new Set([...kept(t), ...s.grandfathered])],
     connection_paid_at: t.settings.billing?.connection_paid_at ?? new Date().toISOString(),
     period: t.settings.billing?.period ?? "month",
     plan_version: PLAN_VERSION,
@@ -231,6 +239,7 @@ export async function startTrial(botId: string, actor: string): Promise<{ until:
   const plan = planKey(niche, TRIAL_TIER);
   const billing: BillingSettings = {
     ...(t.settings.billing ?? {}),
+    grandfathered: kept(t),
     trial_until: until,
     period: t.settings.billing?.period ?? "month",
     plan_version: PLAN_VERSION,

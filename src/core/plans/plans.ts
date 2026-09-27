@@ -50,6 +50,30 @@ export function planModules(
   return out;
 }
 
+/**
+ * Купленное не пропадает (правило Якова: старые клиенты сохраняют купленные
+ * модули бесплатно). При любом назначении плана включённые сейчас модули,
+ * которые не пришли из прежнего плана и его надбавок, переходят в
+ * сохранённые (billing.grandfathered) вместе с уже сохранёнными. Так
+ * понижение плана выключает модули прежнего плана, но не купленное сверх
+ * него. Базовые модули есть в каждом плане, «в разработке» — не хранятся.
+ */
+export function keptModules(
+  prev: ParsedPlan,
+  prevBilling: BillingSettings | undefined,
+  modulesOn: Partial<Record<string, boolean>>,
+): ModuleKey[] {
+  const fromPlan = new Set<ModuleKey>(BASE_MODULES);
+  if (prev?.kind === "tier") {
+    for (const m of planModules(prev.niche, prev.tier)) fromPlan.add(m);
+    for (const m of addonModules(prev.niche, prevBilling)) fromPlan.add(m);
+  }
+  const out = new Set<ModuleKey>(prevBilling?.grandfathered ?? []);
+  for (const k of MODULE_KEYS)
+    if (modulesOn[k] && !fromPlan.has(k) && moduleDef(k).status === "available") out.add(k);
+  return MODULE_KEYS.filter((k) => out.has(k));
+}
+
 /** Модули надбавок; у консультанта без кассы — без магазина в канале. */
 export function addonModules(niche: PlanNiche, billing: BillingSettings | undefined): ModuleKey[] {
   const out: ModuleKey[] = [];

@@ -32,11 +32,15 @@ function ctxWith(status = "delivered") {
 }
 
 describe("страница курса на витрине", () => {
-  it("открыта только при модуле курсов; флаг модуля «в разработке» её не открывает", () => {
+  it("открыта только при модуле курсов и только клиенту v2", () => {
     expect(storefrontAllows({ shop: true, courses: true }, "course")).toBe(true);
     expect(storefrontAllows({ shop: true }, "course")).toBe(false);
     const t = { archived: false, settings: { served_by: "v2" as const } };
-    expect(storefrontOpen({ ...t, modules: { shop: true, courses: true } }, "course")).toBe(false);
+    expect(storefrontOpen({ ...t, modules: { shop: true, courses: true } }, "course")).toBe(true);
+    expect(storefrontOpen({ ...t, modules: { shop: true } }, "course")).toBe(false);
+    // Клиент прежней платформы для v2 невидим, даже с включёнными курсами.
+    const v1 = { archived: false, settings: {}, modules: { shop: true, courses: true } };
+    expect(storefrontOpen(v1, "course")).toBe(false);
   });
 
   it("чужая подпись, невыданный заказ — не найдено", async () => {

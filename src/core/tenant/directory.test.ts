@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { availableModules } from "@/core/modules/registry";
 import {
   addressConflict,
   telegramBotTaken,
@@ -205,5 +206,61 @@ describe("ниша клиента из bots.vertical", () => {
     expect(tenantFromRow(row({ vertical: "confectionery" })).vertical).toBe("confectionery");
     expect(tenantFromRow(row({ vertical: "flowers" })).vertical).toBe("flowers");
     expect(tenantFromRow(row({ vertical: "consultant" })).vertical).toBe("consultant");
+  });
+});
+
+describe("модули клиента v2 на плане — по плану, а не по сохранённым флагам", () => {
+  const tenant = (settings: Record<string, unknown>, modules: Record<string, boolean>) =>
+    tenantFromRow({
+      id: "b",
+      bot_name: "Магазин",
+      status: "active",
+      vertical: "digital",
+      modules,
+      settings,
+      paused_message: null,
+      owner_telegram_id: null,
+      app_url: null,
+      archived_at: null,
+      bot_token: null,
+    } as unknown as TenantRow);
+
+  it("модуль, ставший готовым после записи плана (курсы), открывается сам на Pro", () => {
+    // Флаги записаны, когда курсы были «в разработке»: courses=false.
+    const saved = { shop: true, courses: false };
+    const pro = tenant({ served_by: "v2", billing: { plan: "digital.pro" } }, saved);
+    expect(pro.modules.courses).toBe(true);
+    expect(pro.modules.shop).toBe(true);
+    const basic = tenant({ served_by: "v2", billing: { plan: "digital.basic" } }, saved);
+    expect(basic.modules.courses).toBe(false);
+  });
+
+  it("сохранённые оператором модули сверх плана остаются", () => {
+    const t = tenant(
+      { served_by: "v2", billing: { plan: "digital.basic", grandfathered: ["courses"] } },
+      { shop: true },
+    );
+    expect(t.modules.courses).toBe(true);
+  });
+
+  it("включённое в базе вне плана не выключается молча (как у «Демо-тестера» на Pro)", () => {
+    const t = tenant(
+      { served_by: "v2", billing: { plan: "digital.pro" } },
+      { shop: true, instagram: true, wa_shop: true, referral: true, crypto: true },
+    );
+    expect(t.modules.instagram).toBe(true);
+    expect(t.modules.wa_shop).toBe(true);
+    expect(t.modules.referral).toBe(true);
+    // «В разработке» не открывается и так: его снимает контекст клиента.
+    expect(availableModules(t.modules).crypto).toBe(false);
+  });
+
+  it("клиент v1, индивидуальные условия и без плана — флаги как в базе", () => {
+    const flags = { shop: true, courses: false, crypto: true };
+    expect(tenant({ billing: { plan: "digital.pro" } }, flags).modules.courses).toBe(false);
+    expect(tenant({ served_by: "v2", billing: { plan: "custom" } }, flags).modules.crypto).toBe(
+      true,
+    );
+    expect(tenant({ served_by: "v2" }, flags).modules.courses).toBe(false);
   });
 });

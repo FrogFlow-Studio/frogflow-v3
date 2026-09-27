@@ -4,6 +4,8 @@ import { VERTICALS, type VerticalKey } from "@/core/verticals/registry";
 import type { Database } from "@/core/db-types";
 import type { BillingSettings, BotStatus, Tenant, TenantLookup, TenantSettings } from "./types";
 import { isLocale } from "@/core/i18n/locale";
+import { effectiveModules } from "@/core/plans/plans";
+import { parsePlan } from "@/core/plans/registry";
 
 type BotRow = Database["public"]["Tables"]["bots"]["Row"];
 
@@ -176,6 +178,25 @@ export function servedByV2(t: Pick<Tenant, "settings">): boolean {
   return t.settings.served_by === "v2";
 }
 
+/**
+ * Флаги модулей клиента. У клиента v2 на плане к флагам из `bots.modules`
+ * добавляется план (effectiveModules): флаги пишутся в базу только при
+ * смене плана, и модуль, который стал готовым позже (курсы), иначе не
+ * открылся бы, пока оператор не пересохранит план руками. Включённое в базе
+ * не убирается: ничего купленного молча не пропадает, а выключить модуль
+ * оператор может только записью в базу (сверх плана — через «сохранённые»,
+ * модуль плана — сменой плана). Клиент v1, custom и без плана — как в базе.
+ */
+function tenantModules(row: TenantRow, settings: TenantSettings): Record<ModuleKey, boolean> {
+  const saved = modulesFromJson(row.modules);
+  const plan = parsePlan(settings.billing?.plan ?? null);
+  const fromPlan = settings.served_by === "v2" ? effectiveModules(plan, settings.billing) : null;
+  if (!fromPlan) return saved;
+  const out = { ...saved };
+  for (const k of MODULE_KEYS) if (fromPlan[k]) out[k] = true;
+  return out;
+}
+
 export function tenantFromRow(row: TenantRow): Tenant {
   const settings = settingsFromJson(row.settings);
   return {
@@ -183,7 +204,7 @@ export function tenantFromRow(row: TenantRow): Tenant {
     name: row.bot_name,
     status: asStatus(row.status),
     vertical: asVertical(row.vertical),
-    modules: modulesFromJson(row.modules),
+    modules: tenantModules(row, settings),
     settings,
     pausedMessage: row.paused_message,
     ownerTelegramId: row.owner_telegram_id,

@@ -3,7 +3,14 @@
  * контакты, демо. Тексты — в `src/app/i18n/landing.ts`. Пустое значение
  * прячет свой блок, так что страница не показывает заглушек.
  */
+import type { LandingKey } from "@/app/i18n/landing";
 import type { Locale } from "@/core/i18n/locale";
+import {
+  COURSES_FROM_TIER,
+  COURSES_NICHES,
+  COURSES_SALE,
+  type PlanNiche,
+} from "@/core/plans/registry";
 
 export type PlanKey = "basic" | "pro" | "business";
 
@@ -19,6 +26,32 @@ export const SETUP_FEE_FROM = 15000;
 
 /** Пробный период, дней: тот же, что выдаёт оператор (`core/plans/registry`). */
 export { TRIAL_DAYS } from "@/core/plans/registry";
+
+/** Ниши на вкладках тарифов главной и их планы в реестре. */
+export type PricingNiche = "dig" | "cake" | "flow" | "ai";
+const PLAN_NICHE: Record<PricingNiche, PlanNiche> = {
+  dig: "digital",
+  cake: "confectionery",
+  flow: "flowers",
+  ai: "consultant_universal",
+};
+
+/**
+ * Что входит в план ниши: у Basic четыре пункта, у старших — «всё из
+ * младшего» и три своих. «Курсы» — строкой в том тарифе, с которого они
+ * входят в план (COURSES_SALE в реестре), старшие получают их «всем из Pro».
+ */
+export function planFeatureKeys(niche: PricingNiche, plan: PlanKey): LandingKey[] {
+  const own = (n: number) =>
+    Array.from({ length: n }, (_, i) => `pricing.${niche}.${plan}.f${i + 1}` as LandingKey);
+  const keys: LandingKey[] =
+    plan === "basic" ? own(4) : [plan === "pro" ? "pricing.allBasic" : "pricing.allPro", ...own(3)];
+  const courses =
+    COURSES_SALE === "plan" &&
+    COURSES_NICHES.includes(PLAN_NICHE[niche]) &&
+    plan === COURSES_FROM_TIER;
+  return courses ? [...keys, "pricing.courses"] : keys;
+}
 
 /** Тариф, который выделяется на странице. */
 export const FEATURED_PLAN: PlanKey = "pro";

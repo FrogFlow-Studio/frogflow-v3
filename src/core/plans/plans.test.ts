@@ -3,6 +3,7 @@ import { MODULE_KEYS, moduleDef } from "@/core/modules/registry";
 import {
   addonModules,
   effectiveModules,
+  keptModules,
   missingRequirements,
   nextPeriod,
   overLimit,
@@ -15,6 +16,7 @@ import {
 } from "./plans";
 import {
   ADDON_KEYS,
+  COURSES_SALE,
   CUSTOM_PLAN,
   DB_PLAN_VALUES,
   dbPlanFor,
@@ -421,9 +423,47 @@ describe("модуль «Курсы» в тарифах", () => {
     expect(mods!.courses).toBe(false);
   });
 
-  it("пока модуль не готов, план его не включает", () => {
-    // Строка тарифа уже на месте; флаг поднимется, когда модуль станет available.
-    expect(moduleDef("courses").status).toBe("planned");
-    expect(effectiveModules(parsePlan("digital.pro"), undefined, "plan")!.courses).toBe(false);
+  it("решение Якова: входит в Pro+ — модуль готов, Pro и Business открывают, Basic нет", () => {
+    expect(COURSES_SALE).toBe("plan");
+    expect(moduleDef("courses").status).toBe("available");
+    for (const n of ["digital", "confectionery", "flowers"] as const) {
+      expect(effectiveModules(parsePlan(`${n}.basic`), undefined)!.courses).toBe(false);
+      expect(effectiveModules(parsePlan(`${n}.pro`), undefined)!.courses).toBe(true);
+      expect(effectiveModules(parsePlan(`${n}.business`), undefined)!.courses).toBe(true);
+    }
+    expect(effectiveModules(parsePlan("consultant_universal.business"), undefined)!.courses).toBe(
+      false,
+    );
+  });
+});
+
+describe("купленное сверх плана не пропадает при назначении плана", () => {
+  const on = (...keys: string[]) => Object.fromEntries(keys.map((k) => [k, true]));
+
+  it("первый план (переезд, выбор оператора): всё включённое вне плана — в сохранённые", () => {
+    const kept = keptModules(null, undefined, on("shop", "instagram", "wa_shop", "referral"));
+    expect(kept).toEqual(expect.arrayContaining(["instagram", "wa_shop", "referral"]));
+    // Базовые модули и так в каждом плане.
+    expect(kept).not.toContain("shop");
+  });
+
+  it("смена плана: модули прежнего плана и надбавок не переносятся, купленные — да", () => {
+    const prev = parsePlan("digital.pro");
+    const proOnly = [...planModules("digital", "pro")].find(
+      (k) => !planModules("digital", "basic").has(k),
+    )!;
+    const kept = keptModules(
+      prev,
+      { addons: ["whatsapp"], grandfathered: ["telegram_stars"] },
+      on("shop", proOnly, "whatsapp", "instagram"),
+    );
+    expect(kept).toContain("instagram");
+    expect(kept).toContain("telegram_stars");
+    expect(kept).not.toContain(proOnly);
+    expect(kept).not.toContain("whatsapp");
+  });
+
+  it("модуль «в разработке» в сохранённые не попадает", () => {
+    expect(keptModules(null, undefined, on("crypto"))).toEqual([]);
   });
 });
