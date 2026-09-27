@@ -59,6 +59,9 @@ export type Msg = {
   removeItem: (name: string) => string;
   total: (amount: string) => string;
   checkoutBtn: string;
+  /** «Счёт из диалога»: продавец собрал корзину покупателю (core/cart/seller-cart). */
+  invoiceHeader: string;
+  invoiceFooter: string;
   clearBtn: string;
   cartCleared: string;
   promoCodeBtn: string;
@@ -281,6 +284,8 @@ const ru: Msg = {
   removeItem: (n) => `❌ Убрать: ${n.slice(0, 40)}`,
   total: (a) => `\n<b>Итого: ${a}</b>`,
   checkoutBtn: "✅ Оформить заказ",
+  invoiceHeader: "🧾 <b>Счёт от продавца</b>\n\n",
+  invoiceFooter: "\n\nНажмите «Оформить заказ» — дальше оплата как обычно.",
   clearBtn: "🗑 Очистить",
   cartCleared: "Корзина очищена.",
   promoCodeBtn: "🎟 Ввести промокод",
@@ -495,6 +500,8 @@ const kk: Msg = {
   cartHeader: "🛒 <b>Сіздің себетіңіз</b>\n\n",
   total: (a) => `\n<b>Барлығы: ${a}</b>`,
   checkoutBtn: "✅ Тапсырыс беру",
+  invoiceHeader: "🧾 <b>Сатушының шоты</b>\n\n",
+  invoiceFooter: "\n\n«Тапсырыс беру» батырмасын басыңыз — әрі қарай төлем әдеттегідей.",
   clearBtn: "🗑 Тазалау",
   promoCodeBtn: "🎟 Промокод енгізу",
   removePromoBtn: "❌ Промокодты алып тастау",
@@ -612,6 +619,8 @@ const en: Msg = {
   removeItem: (n) => `❌ Remove: ${n.slice(0, 40)}`,
   total: (a) => `\n<b>Total: ${a}</b>`,
   checkoutBtn: "✅ Checkout",
+  invoiceHeader: "🧾 <b>Invoice from the seller</b>\n\n",
+  invoiceFooter: "\n\nTap “Checkout” and pay as usual.",
   clearBtn: "🗑 Clear",
   promoCodeBtn: "🎟 Enter promo code",
   removePromoBtn: "❌ Remove promo code",
@@ -738,6 +747,8 @@ const uz: Msg = {
   cartEmpty: "🛒 Savat bo‘sh.",
   total: (a) => `\n<b>Jami: ${a}</b>`,
   checkoutBtn: "✅ Buyurtma berish",
+  invoiceHeader: "🧾 <b>Sotuvchidan hisob</b>\n\n",
+  invoiceFooter: "\n\n«Buyurtma berish» tugmasini bosing — keyin toʻlov odatdagidek.",
   clearBtn: "🗑 Tozalash",
   promoCodeBtn: "🎟 Promokod kiritish",
   removePromoBtn: "❌ Promokodni olib tashlash",

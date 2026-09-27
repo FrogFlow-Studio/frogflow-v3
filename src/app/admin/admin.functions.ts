@@ -1492,6 +1492,76 @@ export const chatMessagesFn = createServerFn({ method: "GET" })
     return messages;
   });
 
+/**
+ * Товары для счёта из диалога: поиск по названию, по 30 штук — у крупного
+ * магазина каталог в тысячи позиций, и список целиком форме не нужен.
+ */
+export const invoiceProductsFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ q: z.string().max(100).default("") }).parse(d ?? {}))
+  .handler(async ({ data }) => {
+    const ctx = await chatModule("manager");
+    let q = ctx.db
+      .from("products")
+      .select(
+        "id, name, price, currency, fulfillment_kind, product_variants(id, name, price, sort_order)",
+      )
+      .eq("is_active", true);
+    const term = data.q.trim().replace(/[%_,()]/g, " ");
+    if (term) q = q.ilike("name", `%${term}%`);
+    const { data: rows, error } = await q.order("sort_order").order("name").limit(INVOICE_PAGE);
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: Number(p.price),
+      currency: p.currency,
+      physical: p.fulfillment_kind === "physical",
+      variants: [...(p.product_variants ?? [])]
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((v) => ({ id: v.id, name: v.name, price: Number(v.price) })),
+    }));
+  });
+const INVOICE_PAGE = 30;
+
+/** Сколько позиций уже в корзине покупателя — продавца предупреждаем до замены. */
+export const invoiceCartFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ telegramId: tgId }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await chatModule("manager");
+    const { count } = await ctx.db
+      .from("cart_items")
+      .select("id", { count: "exact", head: true })
+      .eq("telegram_id", data.telegramId);
+    return { count: count ?? 0 };
+  });
+
+/** «Выставить счёт»: корзина покупателю и кнопка «Оформить заказ» в его канал. */
+export const chatInvoiceFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        telegramId: tgId,
+        items: z
+          .array(
+            z.object({
+              productId: uuid,
+              variantId: uuid.nullable(),
+              quantity: z.number().int().min(1).max(99),
+            }),
+          )
+          .min(1)
+          .max(20),
+        /** true — дописать к корзине покупателя, false — заменить её счётом. */
+        append: z.boolean().default(false),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await chatModule("manager");
+    const { sendDialogInvoice } = await import("./invoice.server");
+    return sendDialogInvoice(ctx, data.telegramId, data.items, { append: data.append });
+  });
+
 /** Консультант снова отвечает в диалоге, не дожидаясь конца паузы. */
 export const chatResumeBotFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ telegramId: tgId }).parse(d))
