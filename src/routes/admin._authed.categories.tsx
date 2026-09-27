@@ -1,15 +1,30 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { categoriesFn, deleteCategoryFn, saveCategoryFn } from "@/app/admin/admin.functions";
+import {
+  catalogLayoutFn,
+  categoriesFn,
+  deleteCategoryFn,
+  saveCatalogLayoutFn,
+  saveCategoryFn,
+} from "@/app/admin/admin.functions";
 import { adminT } from "@/app/i18n/admin";
+import {
+  CATALOG_LAYOUTS,
+  CATALOG_ORDER_MAX,
+  type CatalogLayout,
+} from "@/core/storefront/categories";
 import { Card, Empty, ErrorBox, PageTitle, Switch, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/admin/_authed/categories")({
-  loader: () => categoriesFn(),
+  loader: async () => {
+    const [cats, layout] = await Promise.all([categoriesFn(), catalogLayoutFn()]);
+    return { cats, layout };
+  },
   component: CategoriesPage,
 });
 
 type Cat = Awaited<ReturnType<typeof categoriesFn>>[number];
+type T = ReturnType<typeof adminT>;
 
 function tree(cats: Cat[]): Array<Cat & { depth: number }> {
   const byParent = new Map<string | null, Cat[]>();
@@ -26,7 +41,7 @@ function tree(cats: Cat[]): Array<Cat & { depth: number }> {
 }
 
 function CategoriesPage() {
-  const cats = Route.useLoaderData();
+  const { cats, layout } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const router = useRouter();
@@ -182,6 +197,139 @@ function CategoriesPage() {
           </Card>
         )}
       </div>
+      {rows.length > 0 && (
+        <LayoutCard key={JSON.stringify(layout)} rows={rows} initial={layout} t={t} />
+      )}
     </>
+  );
+}
+
+/** Верхний ряд категорий витрины: дерево, одним рядом или свой список (как в v1). */
+function LayoutCard({
+  rows,
+  initial,
+  t,
+}: {
+  rows: Array<Cat & { depth: number }>;
+  initial: CatalogLayout;
+  t: T;
+}) {
+  const router = useRouter();
+  const known = new Set(rows.map((c) => c.id));
+  const [layout, setLayout] = useState(initial.layout);
+  const [order, setOrder] = useState(initial.order.filter((id) => known.has(id)));
+  const [saved, setSaved] = useState(false);
+  const save = useAction(async () => {
+    await saveCatalogLayoutFn({ data: { layout, order } });
+    setSaved(true);
+    await router.invalidate();
+  });
+  const name = (id: string) => rows.find((c) => c.id === id)?.name ?? id;
+  const move = (i: number, d: -1 | 1) => {
+    const next = [...order];
+    [next[i], next[i + d]] = [next[i + d]!, next[i]!];
+    setOrder(next);
+    setSaved(false);
+  };
+  return (
+    <div className="mt-4 max-w-xl">
+      <Card title={t("categories.layout.title")}>
+        <p className="mb-3 text-sm text-muted">{t("categories.layout.hint")}</p>
+        <div className="space-y-1.5">
+          {CATALOG_LAYOUTS.map((k) => (
+            <label key={k} className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="catalogLayout"
+                checked={layout === k}
+                onChange={() => {
+                  setLayout(k);
+                  setSaved(false);
+                }}
+              />
+              {t(`categories.layout.${k}`)}
+            </label>
+          ))}
+        </div>
+        {layout === "custom" && (
+          <div className="mt-3 space-y-2">
+            {order.length === 0 ? (
+              <p className="text-sm text-muted">{t("categories.layout.empty")}</p>
+            ) : (
+              <ol className="space-y-1 text-sm">
+                {order.map((id, i) => (
+                  <li key={id} className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate">
+                      {i + 1}. {name(id)}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-ghost px-2 text-xs"
+                      disabled={i === 0}
+                      aria-label={t("categories.layout.up")}
+                      onClick={() => move(i, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost px-2 text-xs"
+                      disabled={i === order.length - 1}
+                      aria-label={t("categories.layout.down")}
+                      onClick={() => move(i, 1)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost px-2 text-xs text-danger"
+                      aria-label={t("categories.layout.remove")}
+                      onClick={() => {
+                        setOrder(order.filter((x) => x !== id));
+                        setSaved(false);
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {order.length < CATALOG_ORDER_MAX && (
+              <select
+                className="input"
+                value=""
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  setOrder([...order, e.target.value]);
+                  setSaved(false);
+                }}
+              >
+                <option value="">{t("categories.layout.add")}</option>
+                {rows
+                  .filter((c) => !order.includes(c.id))
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {"\u00a0".repeat(c.depth * 3)}
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+            )}
+          </div>
+        )}
+        <ErrorBox error={save.error} />
+        <div className="mt-3 flex items-center gap-3">
+          <button
+            className="btn-primary"
+            disabled={save.busy}
+            onClick={() => void save.run().catch(() => {})}
+          >
+            {t("common.save")}
+          </button>
+          {saved && <span className="text-sm text-muted">{t("categories.layout.saved")}</span>}
+        </div>
+      </Card>
+    </div>
   );
 }

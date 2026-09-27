@@ -45,9 +45,10 @@ function CatalogPage() {
     roots: categories,
     current,
     path,
+    active,
     subParent,
     subs,
-  } = categoryChips(shop.categories, s.category);
+  } = categoryChips(shop.categories, s.category, shop.catalogLayout);
   const langs = shop.langFilter ? languageChips(catalog) : [];
   const lang = s.lang && langs.includes(s.lang as never) ? s.lang : null;
   const products = filterByLanguage(catalog, lang);
@@ -104,7 +105,7 @@ function CatalogPage() {
               to="/s/$slug"
               params={{ slug }}
               search={{ q: s.q, category: c.id, lang: s.lang, sort: s.sort }}
-              className={`badge shrink-0 px-3 py-1.5 ${path[0] === c.id ? "border-accent bg-accent/10 text-accent" : ""}`}
+              className={`badge shrink-0 px-3 py-1.5 ${active === c.id ? "border-accent bg-accent/10 text-accent" : ""}`}
             >
               {c.name}
             </Link>

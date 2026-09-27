@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { categoryChips, categorySubtree, visibleCategoryIds } from "./categories";
+import {
+  categoryChips,
+  categorySubtree,
+  parseCatalogLayout,
+  visibleCategoryIds,
+} from "./categories";
 
 // Как в тесте v1 (tests/category-tree.test.ts): математика ⟶ 5 класс, физика, скрытая.
 const cats = [
@@ -55,5 +60,45 @@ describe("дерево категорий витрины, как в v1", () => {
       { id: "b", parent_id: "a" },
     ];
     expect(categoryChips(loop, "a").path).toEqual(["b", "a"]);
+  });
+});
+
+describe("раскладка категорий Mini App (mini_app_catalog), как в v1", () => {
+  it("настройка v1 читается как есть; пустая или битая — дерево", () => {
+    expect(parseCatalogLayout(null)).toEqual({ layout: "tree", order: [] });
+    expect(parseCatalogLayout("не json")).toEqual({ layout: "tree", order: [] });
+    expect(parseCatalogLayout('{"layout":"grid"}')).toEqual({ layout: "tree", order: [] });
+    expect(parseCatalogLayout('{"layout":"flat","order":[]}')).toEqual({
+      layout: "flat",
+      order: [],
+    });
+    const many = Array.from({ length: 90 }, (_, i) => `c${i}`);
+    const r = parseCatalogLayout(JSON.stringify({ layout: "custom", order: [...many, 5, ""] }));
+    expect(r.layout).toBe("custom");
+    expect(r.order).toEqual(many.slice(0, 80));
+  });
+
+  it("свой порядок верхнего ряда: подкатегорию можно поднять наверх", () => {
+    const layout = { layout: "custom" as const, order: ["grade5", "hidden", "gone", "physics"] };
+    const r = categoryChips(shown, null, layout);
+    // Скрытая и удалённая пропущены; порядок — продавца.
+    expect(ids(r.roots)).toEqual(["grade5", "physics"]);
+    // Открытая поднятая подкатегория подсвечена сама, а не её родитель.
+    expect(categoryChips(shown, "grade5", layout).active).toBe("grade5");
+    expect(categoryChips(shown, "grade5").active).toBe("math");
+    // Пустой свой порядок — обычное дерево.
+    expect(ids(categoryChips(shown, null, { layout: "custom", order: [] }).roots)).toEqual([
+      "math",
+      "physics",
+    ]);
+  });
+
+  it("плоский список — все категории деревом в одном ряду, второго ряда нет", () => {
+    const layout = { layout: "flat" as const, order: [] };
+    expect(ids(categoryChips(shown, null, layout).roots)).toEqual(["math", "grade5", "physics"]);
+    const open = categoryChips(shown, "math", layout);
+    expect(open.subs).toEqual([]);
+    expect(open.subParent).toBeNull();
+    expect(open.active).toBe("math");
   });
 });

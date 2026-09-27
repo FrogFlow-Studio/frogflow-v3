@@ -4,6 +4,7 @@ import { shownError } from "@/lib/shown-error";
 import { MODULE_KEYS } from "@/core/modules/registry";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
+import { CATALOG_LAYOUTS, CATALOG_ORDER_MAX } from "@/core/storefront/categories";
 import { SETTING_KEYS, settingsForRole, WRITABLE_SETTING_KEYS } from "./setting-keys";
 
 /**
@@ -289,6 +290,31 @@ export const saveCategoryFn = createServerFn({ method: "POST" })
       return { id };
     }
     return { id: await m.createCategory(ctx, input) };
+  });
+
+/** Раскладка верхнего ряда категорий витрины (app_settings mini_app_catalog, формат v1). */
+export const catalogLayoutFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  const { getSetting } = await import("@/core/settings/settings");
+  const { parseCatalogLayout } = await import("@/core/storefront/categories");
+  return parseCatalogLayout(await getSetting(ctx, "mini_app_catalog"));
+});
+
+export const saveCatalogLayoutFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        layout: z.enum(CATALOG_LAYOUTS),
+        order: z.array(uuid).max(CATALOG_ORDER_MAX),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { setSetting } = await import("@/core/settings/settings");
+    const order = [...new Set(data.order)];
+    await setSetting(ctx, "mini_app_catalog", JSON.stringify({ layout: data.layout, order }));
+    return { ok: true };
   });
 
 export const deleteCategoryFn = createServerFn({ method: "POST" })

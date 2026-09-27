@@ -15,7 +15,13 @@ import { imagePath } from "@/core/catalog/image-url";
 import { resolvePrice } from "@/core/pricing/pricing";
 import { productSellable } from "@/core/catalog/materials";
 import { getSettings } from "@/core/settings/settings";
-import { categorySubtree, productOnStorefront, visibleCategoryIds } from "./categories";
+import {
+  categorySubtree,
+  parseCatalogLayout,
+  productOnStorefront,
+  visibleCategoryIds,
+  type CatalogLayout,
+} from "./categories";
 
 /** Публичное представление товара для витрины и Mini App — без серверных полей. */
 export type StoreProduct = {
@@ -52,6 +58,8 @@ export type StoreInfo = {
   /** Короткий текст «О продавце» для шапки витрины. */
   tagline: string | null;
   categories: Array<{ id: string; name: string; parent_id: string | null }>;
+  /** Раскладка верхнего ряда категорий (mini_app_catalog, как в v1). */
+  catalogLayout: CatalogLayout;
   legal: Record<string, boolean>;
 };
 
@@ -68,6 +76,7 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
       "shop_currency",
       "shop_tagline",
       "storefront_accent",
+      "mini_app_catalog",
     ]),
   ]);
   const visible = visibleCategoryIds(cats);
@@ -96,6 +105,7 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
     categories: cats
       .filter((c) => visible.has(c.id))
       .map((c) => ({ id: c.id, name: c.name, parent_id: c.parent_id })),
+    catalogLayout: parseCatalogLayout(s.mini_app_catalog),
     // Ссылки на юр. страницы — только при модуле legal_docs (core/storefront/access).
     legal: {
       offer: legalOn && Boolean(s.legal_offer),

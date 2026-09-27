@@ -351,7 +351,7 @@
   "tests/category-tree.test.ts": {
     "defaults to the bot-like tree of root folders": "src/core/storefront/categories.test.ts › по умолчанию — только корневые папки, как в боте",
     "shows children after opening a main category": "src/core/storefront/categories.test.ts › открытая главная категория показывает детей, а товары детей входят в неё",
-    "uses a custom Mini App top-level order": "later: своего порядка категорий Mini App (layout custom) в v2 нет, первым клиентам не нужен"
+    "uses a custom Mini App top-level order": "src/core/storefront/categories.test.ts › свой порядок верхнего ряда: подкатегорию можно поднять наверх"
   },
   "tests/confectioner-admin.test.ts": {
     "без внесённого пишет весь задаток": "src/core/fulfillment/pure.test.ts › без внесённого пишет весь задаток",
