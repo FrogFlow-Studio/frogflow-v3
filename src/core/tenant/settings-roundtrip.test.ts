@@ -30,6 +30,8 @@ const SAVED = {
   consultant_limits: { daily_usd: 2, daily_calls: null, daily_tests: 5 },
   smart_search_limits: { daily_usd: 1 },
   billing: { plan: "flowers.pro", addons: ["whatsapp"], period: "year" },
+  // регистрация: откуда пришёл клиент (core/signup/origin)
+  signup: { source: "site:google/spring", page: "cakes" },
   // каналы
   telegram: { username: "shop_bot", webhook_ok: true },
   vip: { token_enc: "enc:v1:x", username: "vip_bot", webhook_ok: true },
@@ -70,6 +72,7 @@ describe("settingsFromJson не теряет сохранённые ключи",
       consultant_limits: { daily_usd: 2, daily_calls: null, daily_tests: 5 },
       smart_search_limits: { daily_usd: 1 },
       billing: { plan: "flowers.pro", addons: ["whatsapp"], period: "year" },
+      signup: { source: "site:google/spring", page: "cakes" },
       telegram: { username: "shop_bot", webhook_ok: true },
       vip: { token_enc: "enc:v1:x", username: "vip_bot", webhook_ok: true },
       zernio: { profile_id: "p1", account_ids: ["a1"] },

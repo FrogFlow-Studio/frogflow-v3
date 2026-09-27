@@ -210,6 +210,39 @@ test("карта сайта платформы: в индексе есть ка�
   expect(xml).toContain("https://www.frogflow.tech/?lang=kk</loc>");
 });
 
+test("регистрация со страницы ниши: ниша выбрана, метки видны оператору", async ({
+  page,
+}, info) => {
+  const errors = await watch(page);
+  const login = `e2e${Date.now()}${info.project.name[0]}`;
+  const name = `Кондитерская ${login}`;
+  await page.goto("/for/cakes?utm_source=google&utm_campaign=spring");
+  await page
+    .getByRole("link", { name: /бесплатно/ })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/signup\?.*vertical=confectionery/);
+  await expect(page.locator('select[name="vertical"]')).toHaveValue("confectionery");
+  await page.locator('input[name="name"]').fill(name);
+  await page.locator('input[name="username"]').fill(login);
+  await page.locator('input[name="password"]').fill("e2e-password-123");
+  // Защита от ботов не принимает форму быстрее 3 секунд (CHALLENGE_MIN_FILL_MS).
+  await page.waitForTimeout(3_100);
+  await page.getByRole("button", { name: "Создать магазин" }).click();
+  await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
+
+  await page.goto("/operator/login");
+  await page.locator('input[name="username"]').fill(F.OPERATOR_LOGIN);
+  await page.locator('input[name="password"]').fill(F.OPERATOR_PASSWORD);
+  await page.getByRole("button", { name: "Войти" }).click();
+  await expect(page).toHaveURL(/\/operator$/);
+  await page.getByRole("link", { name }).first().click();
+  await expect(
+    page.getByText("пришёл: метка google/spring · страница «для кондитерских»"),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("витрина: вторая страница каталога открывается ссылкой без JS, со своим canonical", async ({
   request,
 }) => {

@@ -1,5 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { rememberWebSource } from "@/app/storefront/source";
+import { PLATFORM_SOURCE_SLUG } from "@/core/signup/origin";
 import { z } from "zod";
 import { signupEnabledFn } from "@/app/signup/signup.functions";
 import { landingT, type LandingKey } from "@/app/i18n/landing";
@@ -21,6 +23,7 @@ import {
   Pricing,
   SectionTitle,
   Steps,
+  signupSearch,
 } from "@/app/landing/sections";
 import { SUPPORTED_LOCALES, isLocale, type Locale } from "@/core/i18n/locale";
 import { TIER_TITLES } from "@/core/plans/registry";
@@ -84,6 +87,8 @@ function NichePageView() {
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
+  // utm и ref рекламы запоминаются и уйдут с регистрацией (core/signup/origin).
+  useEffect(() => rememberWebSource(PLATFORM_SOURCE_SLUG, window.location.search), []);
   const tier = niche === "courses" ? coursesFromTier() : null;
 
   return (
@@ -103,7 +108,11 @@ function NichePageView() {
           )}
           <div className="mt-7 flex flex-wrap gap-3">
             {signup ? (
-              <Link to="/signup" className="btn-primary px-5 py-3 text-base">
+              <Link
+                to="/signup"
+                search={signupSearch(niche)}
+                className="btn-primary px-5 py-3 text-base"
+              >
                 {trialCoversNiche(niche)
                   ? t("hero.ctaSignup", { days: TRIAL_DAYS })
                   : t("final.cta")}
@@ -169,7 +178,7 @@ function NichePageView() {
         </section>
 
         <Steps t={t} />
-        <Pricing t={t} signup={signup} niche={NICHE_PRICING[niche]} />
+        <Pricing t={t} signup={signup} niche={NICHE_PRICING[niche]} page={niche} />
         <Faq t={t} />
 
         <section className="mx-auto w-full max-w-6xl px-4 pb-16">
@@ -189,7 +198,7 @@ function NichePageView() {
           </Link>
         </section>
 
-        <FinalCta t={t} signup={signup} />
+        <FinalCta t={t} signup={signup} page={niche} />
       </main>
 
       <Footer t={t} locale={locale} />

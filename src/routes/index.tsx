@@ -15,6 +15,8 @@ import {
   Steps,
 } from "@/app/landing/sections";
 import { SUPPORTED_LOCALES, isLocale, type Locale } from "@/core/i18n/locale";
+import { rememberWebSource } from "@/app/storefront/source";
+import { PLATFORM_SOURCE_SLUG } from "@/core/signup/origin";
 
 export const Route = createFileRoute("/")({
   validateSearch: z.object({ lang: z.string().optional() }),
@@ -65,6 +67,8 @@ function Landing() {
     // Корневой шаблон рисует lang="ru"; для чтения с экрана и переводчика браузера — язык страницы.
     document.documentElement.lang = locale;
   }, [locale]);
+  // utm и ref рекламы запоминаются и уйдут с регистрацией (core/signup/origin).
+  useEffect(() => rememberWebSource(PLATFORM_SOURCE_SLUG, window.location.search), []);
 
   const signupCta = signup ? (
     <Link to="/signup" className="btn-primary px-5 py-3 text-base">

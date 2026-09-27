@@ -1,4 +1,5 @@
 import { isReservedSlug } from "./slug";
+import { signupOrigin } from "@/core/signup/origin";
 import { MODULE_KEYS, type ModuleKey } from "@/core/modules/registry";
 import { VERTICALS, type VerticalKey } from "@/core/verticals/registry";
 import type { Database } from "@/core/db-types";
@@ -121,6 +122,8 @@ export function settingsFromJson(json: unknown): TenantSettings {
     },
     multi_bot: str(mb.group) ? { group: str(mb.group)!.toLowerCase() } : undefined,
     served_by: served,
+    // Откуда пришёл продавец: из браузера при регистрации — перепроверяем при чтении.
+    signup: signupOrigin(obj(s.signup)) ?? undefined,
     on_overdue:
       s.on_overdue === "suspend" ? "suspend" : s.on_overdue === "warn" ? "warn" : undefined,
     warn_days_before: typeof s.warn_days_before === "number" ? s.warn_days_before : undefined,

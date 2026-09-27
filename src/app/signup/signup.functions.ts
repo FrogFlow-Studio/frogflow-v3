@@ -13,6 +13,9 @@ const input = z.object({
   /** Задача со страницы и её решение браузером — см. challenge.ts. */
   challenge: z.string().max(200).optional(),
   answer: z.string().max(20).optional(),
+  /** Откуда пришёл (utm/ref лендинга, страница ниши); мусор отбрасывается и регистрацию не срывает. */
+  source: z.string().max(64).optional().catch(undefined),
+  page: z.string().max(20).optional().catch(undefined),
 });
 
 export const signupEnabledFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -44,6 +47,7 @@ export const signupFn = createServerFn({ method: "POST" })
     const claimed = await claimChallenge(nonce);
     if (claimed) throw new Error(claimed);
     const username = data.username.toLowerCase();
+    const { signupOrigin } = await import("@/core/signup/origin");
     const id = await createClient({
       name: data.name.trim(),
       ownerId: username,
@@ -53,6 +57,7 @@ export const signupFn = createServerFn({ method: "POST" })
       actor: "signup",
       ipHash: hash,
       challenge: nonce,
+      signup: signupOrigin({ source: data.source, page: data.page }),
     });
     // Пробный период Basic включается сам. Сбой не ломает регистрацию:
     // магазин уже создан, оператор включит пробный период кнопкой.

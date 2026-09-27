@@ -4,11 +4,14 @@
  * те же, что на главной, из реестра планов (`PricingNiche` → core/plans).
  */
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
+import { SIGNUP_PAGES, type SignupPage } from "@/core/signup/origin";
+import type { VerticalKey } from "@/core/verticals/registry";
 import { PLAN_TIERS, TRIAL_TIER } from "@/core/plans/registry";
 import { SITE_URL, landingUrl, moduleFromTier, type PlanKey, type PricingNiche } from "./config";
 
-export const NICHE_PAGES = ["cakes", "materials", "courses"] as const;
-export type NichePage = (typeof NICHE_PAGES)[number];
+/** Те же ключи, что пишутся в bots.settings.signup.page (core/signup/origin). */
+export const NICHE_PAGES = SIGNUP_PAGES;
+export type NichePage = SignupPage;
 
 /** Тарифы какой ниши показывает страница. */
 export const NICHE_PRICING: Record<NichePage, PricingNiche> = {
@@ -16,6 +19,13 @@ export const NICHE_PRICING: Record<NichePage, PricingNiche> = {
   materials: "dig",
   // Курсы продают магазины цифровых товаров: это их тарифы, «Курсы» — строка в них.
   courses: "dig",
+};
+
+/** Что выбрано в «Что продаёте» при регистрации со страницы ниши. */
+export const NICHE_VERTICAL: Record<NichePage, VerticalKey> = {
+  cakes: "confectionery",
+  materials: "digital",
+  courses: "digital",
 };
 
 export function isNichePage(v: unknown): v is NichePage {

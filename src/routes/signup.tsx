@@ -1,19 +1,39 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { type FormEvent } from "react";
+import { useEffect, type FormEvent } from "react";
+import { z } from "zod";
+import { readWebSource, rememberWebSource } from "@/app/storefront/source";
+import { PLATFORM_SOURCE_SLUG, SIGNUP_PAGES } from "@/core/signup/origin";
 import { signupEnabledFn, signupFn } from "@/app/signup/signup.functions";
 import { solveChallenge } from "@/app/signup/challenge-solve";
-import { VERTICAL_KEYS, VERTICALS } from "@/core/verticals/registry";
+import { VERTICAL_KEYS, VERTICALS, type VerticalKey } from "@/core/verticals/registry";
+
+/** Что продавец может выбрать сам: консультант подключается через оператора. */
+const SIGNUP_VERTICALS = VERTICAL_KEYS.filter((k) => !k.startsWith("consultant"));
 import { ErrorBox, Field, ThemeToggle, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "FrogFlow · Регистрация" }] }),
+  // Со страницы ниши лендинга: какая ниша выбрана и откуда пришли. Чужое — молча отбрасывается.
+  validateSearch: z.object({
+    vertical: z
+      .string()
+      .optional()
+      .catch(undefined)
+      .transform((v) =>
+        SIGNUP_VERTICALS.includes(v as VerticalKey) ? (v as VerticalKey) : undefined,
+      ),
+    from: z.enum(SIGNUP_PAGES).optional().catch(undefined),
+  }),
   loader: () => signupEnabledFn(),
   component: SignupPage,
 });
 
 function SignupPage() {
   const { enabled, challenge } = Route.useLoaderData();
+  const search = Route.useSearch();
   const navigate = useNavigate();
+  // Пришли на регистрацию сразу по ссылке с метками — тоже запоминаем.
+  useEffect(() => rememberWebSource(PLATFORM_SOURCE_SLUG, window.location.search), []);
   const { run, busy, error } = useAction(async (f: FormData) => {
     // Задача против ботов решается в браузере за секунду-две, пока кнопка «занята».
     const answer = await solveChallenge(challenge);
@@ -27,6 +47,8 @@ function SignupPage() {
         website: String(f.get("website") || ""),
         challenge,
         answer,
+        source: readWebSource(PLATFORM_SOURCE_SLUG),
+        page: search.from,
       },
     });
     await navigate({ to: "/admin" });
@@ -73,8 +95,8 @@ function SignupPage() {
             />
           </Field>
           <Field label="Что продаёте">
-            <select className="input" name="vertical" defaultValue="digital">
-              {VERTICAL_KEYS.filter((k) => !k.startsWith("consultant")).map((k) => (
+            <select className="input" name="vertical" defaultValue={search.vertical ?? "digital"}>
+              {SIGNUP_VERTICALS.map((k) => (
                 <option key={k} value={k}>
                   {VERTICALS[k].title}
                 </option>

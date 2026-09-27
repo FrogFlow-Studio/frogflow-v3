@@ -42,7 +42,7 @@ function ClientPage() {
             {c.name} <StatusBadge status={c.status} />
           </span>
         }
-        subtitle={`${c.verticalTitle} · создан ${c.createdAt ? new Date(c.createdAt).toLocaleDateString("ru") : "—"}`}
+        subtitle={`${c.verticalTitle} · создан ${c.createdAt ? new Date(c.createdAt).toLocaleDateString("ru") : "—"}${c.signupOrigin ? ` · пришёл: ${c.signupOrigin}` : ""}`}
         actions={
           <>
             {c.status === "active" ? (

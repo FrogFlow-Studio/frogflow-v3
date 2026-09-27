@@ -19,7 +19,11 @@ import {
   type PlanKey,
   type PricingNiche,
 } from "./config";
-import { openNichePages, type NichePage } from "./niches";
+import { NICHE_VERTICAL, openNichePages, type NichePage } from "./niches";
+
+/** Параметры ссылки на регистрацию: со страницы ниши — её ниша и откуда пришли. */
+export const signupSearch = (niche?: NichePage) =>
+  niche ? { vertical: NICHE_VERTICAL[niche], from: niche } : {};
 
 const LANG_LABELS: Record<Locale, string> = { ru: "RU", kk: "KZ", en: "EN", uz: "UZ" };
 const PLANS: PlanKey[] = ["basic", "pro", "business"];
@@ -133,10 +137,13 @@ export function Pricing({
   t,
   signup,
   niche: fixed,
+  page,
 }: {
   t: LandingT;
   signup: boolean;
   niche?: PricingNiche;
+  /** Страница ниши: регистрация откроется с её нишей. */
+  page?: NichePage;
 }) {
   const [picked, setNiche] = useState<PricingNiche>("dig");
   const niche = fixed ?? picked;
@@ -202,12 +209,22 @@ export function Pricing({
                   </li>
                 ))}
               </ul>
-              <Link
-                to={signup ? "/signup" : "/admin/login"}
-                className={`mt-auto ${featured ? "btn-primary" : "btn-secondary"} py-2.5`}
-              >
-                {t("pricing.cta")}
-              </Link>
+              {signup ? (
+                <Link
+                  to="/signup"
+                  search={signupSearch(page)}
+                  className={`mt-auto ${featured ? "btn-primary" : "btn-secondary"} py-2.5`}
+                >
+                  {t("pricing.cta")}
+                </Link>
+              ) : (
+                <Link
+                  to="/admin/login"
+                  className={`mt-auto ${featured ? "btn-primary" : "btn-secondary"} py-2.5`}
+                >
+                  {t("pricing.cta")}
+                </Link>
+              )}
             </div>
           );
         })}
@@ -240,7 +257,7 @@ export function Faq({ t }: { t: LandingT }) {
   );
 }
 
-export function FinalCta({ t, signup }: { t: LandingT; signup: boolean }) {
+export function FinalCta({ t, signup, page }: { t: LandingT; signup: boolean; page?: NichePage }) {
   const contacts = [
     CONTACTS.telegram && {
       label: "Telegram",
@@ -271,7 +288,11 @@ export function FinalCta({ t, signup }: { t: LandingT; signup: boolean }) {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             {signup && (
-              <Link to="/signup" className="btn-primary px-5 py-2.5 text-base">
+              <Link
+                to="/signup"
+                search={signupSearch(page)}
+                className="btn-primary px-5 py-2.5 text-base"
+              >
                 {t("final.cta")}
               </Link>
             )}

@@ -1,4 +1,5 @@
 import { env } from "@/config/env";
+import { signupOriginLabel, type SignupOrigin } from "@/core/signup/origin";
 import {
   computeState,
   readPolicy,
@@ -134,6 +135,8 @@ export type ClientView = {
   /** Последний снимок здоровья (крон health) — null, если снимков ещё нет. */
   health: { ok: boolean; at: string; error: string | null; pending: number | null } | null;
   createdAt: string | null;
+  /** Откуда пришёл продавец, зарегистрировавшийся сам; null — не знаем. */
+  signupOrigin: string | null;
   stats: ClientStats | null;
 };
 
@@ -196,6 +199,7 @@ function toView(
       return { state: st.state, daysLeft: st.daysLeft, policy: st.policy };
     })(),
     createdAt: extra.created_at,
+    signupOrigin: signupOriginLabel(t.settings.signup),
     stats,
     health,
   };
@@ -658,6 +662,8 @@ export async function createClient(input: {
   ipHash?: string;
   /** Отпечаток решённой задачи /signup — одна задача на одну регистрацию. */
   challenge?: string;
+  /** Откуда пришёл продавец (core/signup/origin); уже проверено. */
+  signup?: SignupOrigin | null;
 }) {
   const { data: dup } = await serviceDb()
     .from("bots")
@@ -676,6 +682,7 @@ export async function createClient(input: {
     MODULE_KEYS.map((k) => [k, moduleDef(k).price === null && moduleDef(k).status === "available"]),
   );
   const settings: Record<string, unknown> = { served_by: "v2", slug: input.ownerId };
+  if (input.signup) settings.signup = input.signup;
   if (input.admin) {
     settings.admin = {
       username: input.admin.username,
