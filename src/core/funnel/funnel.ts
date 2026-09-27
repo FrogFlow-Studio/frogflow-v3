@@ -2,6 +2,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Json } from "@/core/db-types";
 import { customerFromRow, isBlocked, setState, type Customer } from "@/core/customers/customers";
 import { getSetting, setSetting } from "@/core/settings/settings";
+import { claimMarketing, loadMarketingCap } from "@/core/marketing/cap";
 import { daytime } from "@/core/winback/winback";
 import { eachPage, pageAll } from "@/core/db/page";
 
@@ -109,6 +110,7 @@ export async function runFunnel(
   const cfg = await loadFunnel(ctx);
   if (!cfg.enabled || !cfg.steps.length) return { ...r, skipped: "disabled" };
   if (!daytime(now, ctx.timezone)) return { ...r, skipped: "night" };
+  const cap = await loadMarketingCap(ctx);
   const since = new Date(now.getTime() - FUNNEL_WINDOW_DAYS * 86_400_000).toISOString();
   const firstAfter = new Date(now.getTime() - cfg.steps[0]!.afterHours * 3600_000).toISOString();
   // Постранично: в окне 45 дней у крупного магазина больше 1000 новых
@@ -144,13 +146,16 @@ export async function runFunnel(
         const due = funnelDue(cfg, row.created_at, mem?.step ?? 0, now);
         if (due == null || (await isBlocked(ctx, c.telegramId))) continue;
         const step = cfg.steps[due]!;
+        // Потолок маркетинговых сообщений за сутки (core/marketing/cap).
+        const marked = await claimMarketing(ctx, c.userKey, row.state, cap, now);
+        if (!marked) continue;
         const ok = await send(c, fillFunnelText(step.text, c.firstName), step.catalogButton).catch(
           () => false,
         );
         if (ok) r.sent++;
         else r.failed++;
         await setState(ctx, c, {
-          ...c.state,
+          ...marked,
           funnel: { step: due + 1, at: now.toISOString() } as unknown as Json,
         });
       }

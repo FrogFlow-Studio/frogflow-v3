@@ -3,6 +3,7 @@ import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   SIMILAR_CURSOR_KEY,
+  SIMILAR_DEFERRED_KEY,
   SIMILAR_KEY,
   parseSimilar,
   pickSimilar,
@@ -174,6 +175,34 @@ describe("похожие материалы: крон", () => {
     const { sent, send } = collect();
     await runSimilar(ctx, send, NOW);
     expect(sent).toEqual([]);
+  });
+
+  it("общий потолок: сегодня уже было маркетинговое сообщение — «похожие» не шлём", async () => {
+    const { db, ctx } = setup();
+    const u = db.tables.bot_users!.find((x) => Number(x.telegram_id) === 1)!;
+    u.state = { last_marketing_at: new Date(NOW.getTime() - 3_600_000).toISOString() };
+    const { sent, send } = collect();
+    await runSimilar(ctx, send, NOW);
+    expect(sent).toEqual([]);
+    // Курсор заказ прошёл, но он не потерян: отложен до свободного места.
+    const deferred = db.tables.app_settings!.find((x) => x.key === SIMILAR_DEFERRED_KEY);
+    expect(JSON.parse(String(deferred?.value)).map((o: { id: number }) => o.id)).toHaveLength(1);
+
+    // Через сутки место освободилось — отложенные «похожие» уходят, и один раз.
+    const tomorrow = new Date(NOW.getTime() + DAY);
+    const next = collect();
+    await runSimilar(ctx, next.send, tomorrow);
+    expect(next.sent.map((x) => x.to)).toEqual([1]);
+    const again = collect();
+    await runSimilar(ctx, again.send, new Date(tomorrow.getTime() + 2 * DAY));
+    expect(again.sent).toEqual([]);
+  });
+
+  it("после отправки «похожих» у покупателя стоит метка потолка", async () => {
+    const { db, ctx } = setup();
+    await runSimilar(ctx, collect().send, NOW);
+    const u = db.tables.bot_users!.find((x) => Number(x.telegram_id) === 1)!;
+    expect(u.state).toMatchObject({ last_marketing_at: NOW.toISOString() });
   });
 
   it("есть заказ новее — по старому не пишет", async () => {

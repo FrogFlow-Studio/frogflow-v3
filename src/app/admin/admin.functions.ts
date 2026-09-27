@@ -1359,7 +1359,12 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
   const [broadcasts, countries, settings, templates, categories] = await Promise.all([
     listBroadcasts(ctx),
     audienceCountries(ctx),
-    getSettings(ctx, ["cart_reminder_hours", "admin_chat_id", "whatsapp_bot_excluded_phones"]),
+    getSettings(ctx, [
+      "cart_reminder_hours",
+      "marketing_daily_cap",
+      "admin_chat_id",
+      "whatsapp_bot_excluded_phones",
+    ]),
     wa ? listTemplates(ctx) : Promise.resolve([]),
     ctx.db
       .from("categories")
@@ -1378,6 +1383,7 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
     categories,
     countries,
     cartReminderHours: settings.cart_reminder_hours ?? "",
+    marketingCap: settings.marketing_daily_cap ?? "",
     hasAdminChat: Boolean(settings.admin_chat_id || ctx.tenant.ownerTelegramId),
     telegram: ctx.tenant.modules.broadcasts && Boolean(ctx.tenant.telegramTokenEnc),
     telegramModule: ctx.tenant.modules.broadcasts,

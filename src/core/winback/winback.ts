@@ -2,6 +2,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Json } from "@/core/db-types";
 import { customerFromRow, setState, type Customer } from "@/core/customers/customers";
 import { getSetting, setSetting } from "@/core/settings/settings";
+import { claimMarketing, loadMarketingCap } from "@/core/marketing/cap";
 import { minutesInTz } from "@/core/notify/prefs";
 import { eachPage } from "@/core/db/page";
 import { serverFailure } from "@/lib/server-failure";
@@ -122,6 +123,7 @@ export async function runWinback(
   const cfg = await loadWinback(ctx);
   if (!cfg.enabled) return { ...r, skipped: "disabled" };
   if (!daytime(now, ctx.timezone)) return { ...r, skipped: "night" };
+  const cap = await loadMarketingCap(ctx);
   const since = new Date(now.getTime() - WINBACK_MAX_AGE_DAYS * DAY).toISOString();
   // Все заказы окна, постранично (в 180 днях у крупного магазина больше
   // 5000 заказов); в памяти — только последний заказ каждого покупателя.
@@ -168,12 +170,16 @@ export async function runWinback(
       const mem = (c.state.winback ?? undefined) as WinbackMemory | undefined;
       const step = winbackStep(cfg, order, mem, now);
       if (!step || (await isBlocked(ctx, c.telegramId))) continue;
+      // Потолок маркетинговых сообщений за сутки (core/marketing/cap): место
+      // занято — шаг не отмечаем, напишем в следующий прогон.
+      const marked = await claimMarketing(ctx, c.userKey, row.state, cap, now);
+      if (!marked) continue;
       const ok = await send(c, winbackText(cfg, step, c.firstName)).catch(() => false);
       if (ok) r.sent++;
       else r.failed++;
       // Шаг отмечаем и при неудаче: не долбить одного и того же каждый час.
       await setState(ctx, c, {
-        ...c.state,
+        ...marked,
         winback: { order_id: order.id, step, at: now.toISOString() } as unknown as Json,
       });
     }

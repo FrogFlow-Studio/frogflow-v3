@@ -5,6 +5,8 @@ import { pageAll } from "@/core/db/page";
 import { isRealTelegramChat } from "@/core/broadcasts/pure";
 import { daytime } from "@/core/winback/winback";
 import { serverFailure } from "@/lib/server-failure";
+import { claimMarketing, loadMarketingCap } from "@/core/marketing/cap";
+import { stateFromJson } from "@/core/customers/customers";
 
 /**
  * «Похожие материалы» (модуль winback, повторные продажи): через N дней
@@ -13,8 +15,10 @@ import { serverFailure } from "@/lib/server-failure";
  *
  * Один раз на заказ: курсор — строка app_settings `similar_materials:cursor`
  * (id последнего разобранного заказа), сдвигается сравнением со старым
- * значением до отправки. Отметок в bot_users.state не пишем: state
- * переписывается диалогом целиком, отметка могла бы затереть оформление.
+ * значением до отправки. Упёрся в общий потолок — заказ уходит в список
+ * отложенных (SIMILAR_DEFERRED_KEY) и берётся в следующие проходы. В bot_users.state пишется только метка общего
+ * потолка маркетинговых сообщений (core/marketing/cap) — условной записью по
+ * всему state, так что оформление заказа она не затрёт.
  * Пишем только днём по поясу магазина, не больше SIMILAR_BATCH за проход,
  * отписавшимся и заблокированным — никогда. Один заказ — одно сообщение;
  * если у покупателя есть заказ новее, пишем по нему, а не по старому.
@@ -154,6 +158,7 @@ export async function runSimilar(
   const cfg = await loadSimilar(ctx);
   if (!cfg.enabled) return { ...r, skipped: "disabled" };
   if (!daytime(now, ctx.timezone)) return { ...r, skipped: "night" };
+  const cap = await loadMarketingCap(ctx);
 
   const dueEdge = now.getTime() - cfg.days * DAY;
   const lateEdge = new Date(dueEdge - SIMILAR_LATE_DAYS * DAY).toISOString();
@@ -179,15 +184,18 @@ export async function runSimilar(
     if (o.created_at >= lateEdge) due.push(o);
     if (due.length >= SIMILAR_BATCH) break;
   }
-  if (next === cursor) return r;
-
   // Захват: курсор сдвигаем до отправки и только если его не сдвинул
   // параллельный запуск. Упадём посередине — недошлём, но не повторим.
-  if (!(await claimCursor(ctx, cursorRaw, String(next)))) return { ...r, skipped: "busy" };
+  if (next !== cursor && !(await claimCursor(ctx, cursorRaw, String(next))))
+    return { ...r, skipped: "busy" };
+  // Отложенные потолком в прошлые проходы — забираем все разом (тоже захватом).
+  const deferred = (await takeDeferred(ctx)).filter((o) => o.created_at >= lateEdge);
+  if (next === cursor && !deferred.length) return r;
 
   // Один заказ на покупателя — самый новый из пачки.
   const latest = new Map<number, DueOrder>();
-  for (const o of due) {
+  const postponed: DueOrder[] = [];
+  for (const o of [...deferred, ...due]) {
     const id = Number(o.telegram_id);
     if (isRealTelegramChat(id) && (latest.get(id)?.id ?? 0) < o.id) latest.set(id, o);
   }
@@ -197,7 +205,7 @@ export async function runSimilar(
   const [{ data: users }, { data: blocked }, catalog, cats] = await Promise.all([
     ctx.db
       .from("bot_users")
-      .select("telegram_id, first_name, opt_out, state")
+      .select("user_key, telegram_id, first_name, opt_out, state")
       .eq("platform", "telegram")
       .in("telegram_id", ids),
     ctx.db.from("blocked_users").select("telegram_id").in("telegram_id", ids),
@@ -260,14 +268,97 @@ export async function runSimilar(
       .map((i) => String(i.product_id));
     const picks = pickSimilar(catalog as CatalogItem[], inOrder, bought, visible);
     if (!picks.length) continue;
-    const state = (u.state ?? {}) as { locale?: string };
+    // Потолок маркетинговых сообщений за сутки (core/marketing/cap).
+    const state = stateFromJson(u.state);
+    if (!(await claimMarketing(ctx, u.user_key, u.state, cap, now))) {
+      // Место занято другим сообщением: заказ откладываем, а не теряем —
+      // курсор его уже прошёл. Отложенное живёт до края опоздания (N + 3 дня).
+      postponed.push(order);
+      continue;
+    }
     const ok = await send(
-      { telegramId, firstName: u.first_name, locale: state.locale ?? "ru" },
+      {
+        telegramId,
+        firstName: u.first_name,
+        locale: typeof state.locale === "string" ? state.locale : "ru",
+      },
       similarText(cfg, u.first_name),
       picks.map((p) => ({ id: p.id, name: p.name })),
     ).catch(() => false);
     if (ok) r.sent++;
     else r.failed++;
   }
+  if (postponed.length) await addDeferred(ctx, postponed);
   return r;
+}
+
+/**
+ * Отложенные потолком заказы — строка app_settings `similar_materials:deferred`
+ * (JSON-массив, не больше SIMILAR_BATCH × 4). Меняется только условной
+ * записью по прежнему значению: два прохода не заберут одно и то же.
+ */
+export const SIMILAR_DEFERRED_KEY = "similar_materials:deferred";
+const DEFERRED_MAX = SIMILAR_BATCH * 4;
+
+function parseDeferred(raw: string | null): DueOrder[] {
+  try {
+    const v: unknown = JSON.parse(raw ?? "[]");
+    if (!Array.isArray(v)) return [];
+    return v.filter(
+      (o): o is DueOrder =>
+        !!o &&
+        typeof o === "object" &&
+        Number.isSafeInteger((o as DueOrder).id) &&
+        Number.isSafeInteger((o as DueOrder).telegram_id) &&
+        typeof (o as DueOrder).created_at === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
+async function readDeferred(ctx: TenantContext): Promise<string | null> {
+  const { data, error } = await ctx.db
+    .from("app_settings")
+    .select("value")
+    .eq("key", SIMILAR_DEFERRED_KEY)
+    .maybeSingle();
+  if (error) throw serverFailure(`похожие материалы: отложенные: ${error.message}`);
+  return data ? (data.value ?? "") : null;
+}
+
+/** Условно заменить значение; строки ещё нет — создать. */
+async function swapDeferred(ctx: TenantContext, from: string | null, to: string): Promise<boolean> {
+  const updated_at = new Date().toISOString();
+  if (from == null) {
+    const { error } = await ctx.db
+      .from("app_settings")
+      .insert({ bot_id: ctx.tenant.id, key: SIMILAR_DEFERRED_KEY, value: to, updated_at });
+    return !error;
+  }
+  const { data, error } = await ctx.db
+    .from("app_settings")
+    .update({ value: to, updated_at })
+    .eq("key", SIMILAR_DEFERRED_KEY)
+    .eq("value", from)
+    .select("key");
+  return !error && Boolean(data?.length);
+}
+
+async function takeDeferred(ctx: TenantContext): Promise<DueOrder[]> {
+  const raw = await readDeferred(ctx);
+  const list = parseDeferred(raw);
+  if (!list.length) return [];
+  return (await swapDeferred(ctx, raw, "[]")) ? list : [];
+}
+
+async function addDeferred(ctx: TenantContext, orders: DueOrder[]): Promise<void> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const raw = await readDeferred(ctx);
+    const have = parseDeferred(raw);
+    const ids = new Set(have.map((o) => o.id));
+    const next = [...have, ...orders.filter((o) => !ids.has(o.id))].slice(-DEFERRED_MAX);
+    if (await swapDeferred(ctx, raw, JSON.stringify(next))) return;
+  }
+  console.error(`[similar:${ctx.tenant.id}] отложенные не записались: ${orders.length}`);
 }

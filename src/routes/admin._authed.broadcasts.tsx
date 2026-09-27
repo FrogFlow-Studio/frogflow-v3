@@ -212,6 +212,9 @@ function BroadcastsPage() {
           </Card>
         )}
         <div className="space-y-4">
+          {(shop.modules.cart_reminder || shop.modules.winback || shop.modules.funnel) && (
+            <MarketingCapCard cap={data.marketingCap} />
+          )}
           {shop.modules.cart_reminder && channel === "telegram" && (
             <CartReminderCard hours={data.cartReminderHours} />
           )}
@@ -1172,6 +1175,46 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
         </ul>
       )}
       <ErrorBox error={cancel.error} />
+    </Card>
+  );
+}
+
+/** Общий потолок автосообщений (корзина, похожие, возврат, воронка) на покупателя в сутки. */
+function MarketingCapCard({ cap }: { cap: string }) {
+  const t = useT();
+  const router = useRouter();
+  const [value, setValue] = useState(cap);
+  const save = useAction(async () => {
+    await saveSettingsFn({ data: { marketing_daily_cap: value.trim() } });
+    await router.invalidate();
+  });
+  return (
+    <Card title={t("broadcasts.cap.title")}>
+      <p className="mb-3 text-sm text-muted">{t("broadcasts.cap.intro")}</p>
+      <form
+        className="flex items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save.run().catch(() => {});
+        }}
+      >
+        <Field label={t("broadcasts.cap.perDay")}>
+          <input
+            className="input w-32"
+            type="number"
+            min={0}
+            max={10}
+            step={1}
+            value={value}
+            placeholder="1"
+            onChange={(e) => setValue(e.target.value)}
+          />
+        </Field>
+        <button className="btn-secondary" disabled={save.busy}>
+          {t("common.save")}
+        </button>
+      </form>
+      <ErrorBox error={save.error} />
     </Card>
   );
 }

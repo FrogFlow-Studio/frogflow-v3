@@ -88,4 +88,61 @@ describe("автоворонка и отписка", () => {
     expect(sentTo).toEqual([1]);
     expect(r.sent).toBe(1);
   });
+
+  it("общий потолок: утром ушло другое маркетинговое — шаг воронки ждёт, метка остаётся", async () => {
+    const { fakeDb } = await import("../../../tests/fake-db");
+    const { runFunnel, FUNNEL_KEY } = await import("./funnel");
+    const db = fakeDb();
+    const now = new Date("2026-09-27T08:00:00Z");
+    const created = new Date(now.getTime() - 3 * 3600_000).toISOString();
+    const earlier = new Date(now.getTime() - 2 * 3600_000).toISOString();
+    db.tables.app_settings = [
+      {
+        key: FUNNEL_KEY,
+        value: JSON.stringify({
+          enabled: true,
+          stopOnOrder: false,
+          steps: [{ afterHours: 1, text: "Привет", catalogButton: false }],
+        }),
+      },
+    ];
+    db.tables.blocked_users = [];
+    db.tables.bot_users = [
+      {
+        user_key: "tg:1",
+        platform: "telegram",
+        telegram_id: 1,
+        opt_out: false,
+        state: { last_marketing_at: earlier },
+        created_at: created,
+      },
+      {
+        user_key: "tg:2",
+        platform: "telegram",
+        telegram_id: 2,
+        opt_out: false,
+        state: {},
+        created_at: created,
+      },
+    ];
+    const ctx = {
+      tenant: { id: "b", modules: { funnel: true }, settings: {} },
+      db,
+      timezone: "Asia/Almaty",
+    } as never;
+    const sentTo: number[] = [];
+    await runFunnel(
+      ctx,
+      async (c) => {
+        sentTo.push(c.telegramId);
+        return true;
+      },
+      now,
+    );
+    expect(sentTo).toEqual([2]);
+    const two = db.tables.bot_users[1]!.state as Record<string, unknown>;
+    // Метка потолка пережила запись шага воронки.
+    expect(two).toMatchObject({ last_marketing_at: now.toISOString(), funnel: { step: 1 } });
+    expect((db.tables.bot_users[0]!.state as Record<string, unknown>).funnel).toBeUndefined();
+  });
 });

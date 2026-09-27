@@ -4,6 +4,7 @@ import { isLocale } from "@/core/i18n/locale";
 import { getSetting } from "@/core/settings/settings";
 import { pageAll } from "@/core/db/page";
 import { stateFromJson } from "@/core/customers/customers";
+import { claimMarketing, loadMarketingCap, marketingAllowed } from "@/core/marketing/cap";
 import { parseReminderHours, shouldSendCartReminder } from "./pure";
 
 export type CartReminderTarget = { telegramId: number; locale: Locale; items: number };
@@ -25,6 +26,7 @@ export async function sendCartReminders(
   if (!ctx.tenant.modules.cart_reminder) return { checked: 0, sent: 0, hours: 0 };
   const hours = parseReminderHours(await getSetting(ctx, "cart_reminder_hours"));
   if (hours <= 0) return { checked: 0, sent: 0, hours };
+  const cap = await loadMarketingCap(ctx);
 
   const items = await pageAll(
     (from, to) =>
@@ -51,7 +53,7 @@ export async function sendCartReminders(
 
     const { data: user } = await ctx.db
       .from("bot_users")
-      .select("cart_reminder_sent_at, state, platform, opt_out")
+      .select("user_key, cart_reminder_sent_at, state, platform, opt_out")
       .eq("telegram_id", telegramId)
       .eq("platform", "telegram")
       .maybeSingle();
@@ -63,6 +65,10 @@ export async function sendCartReminders(
       user.cart_reminder_sent_at ? new Date(user.cart_reminder_sent_at) : null,
     );
     if (!eligible) continue;
+    // Потолок маркетинговых сообщений за сутки (core/marketing/cap): место занято —
+    // корзину не отмечаем, напомним в следующий прогон, когда оно освободится.
+    const state = stateFromJson(user.state);
+    if (!marketingAllowed(state, cap, now)) continue;
 
     // .is() сравнивает с NULL, .eq() — с прошлым значением; не взаимозаменяемы.
     const cas = ctx.db
@@ -78,8 +84,20 @@ export async function sendCartReminders(
       .select("telegram_id")
       .maybeSingle();
     if (!claimed) continue;
+    if (!(await claimMarketing(ctx, user.user_key, user.state, cap, now))) {
+      // Место за сутки ушло другому сообщению (или state успел измениться):
+      // возвращаем отметку корзины как была, иначе напоминание пропадёт насовсем.
+      const back = ctx.db
+        .from("bot_users")
+        .update({ cart_reminder_sent_at: user.cart_reminder_sent_at })
+        .eq("telegram_id", telegramId)
+        .eq("platform", "telegram")
+        .eq("cart_reminder_sent_at", now.toISOString());
+      const { error } = await back;
+      if (error) console.error(`[cart-reminder:${ctx.tenant.id}] ${telegramId}: ${error.message}`);
+      continue;
+    }
 
-    const state = stateFromJson(user.state);
     const locale: Locale = isLocale(state.locale)
       ? state.locale
       : (ctx.tenant.settings.default_locale ?? "ru");
