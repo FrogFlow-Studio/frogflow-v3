@@ -201,6 +201,10 @@ export const Route = createFileRoute("/api/cron/$job")({
               // аккаунты Instagram/WhatsApp (после сверки выше — по свежему снимку).
               const { runPlatformAlerts } = await import("@/app/operator/platform-alerts.server");
               results.platformAlerts = await runPlatformAlerts();
+              // Модель ИИ-консультанта перестала отвечать (баланс, ключ, лимит) — оператору.
+              const { runConsultantModelAlerts } =
+                await import("@/app/operator/consultant-alerts.server");
+              results.consultantModel = await runConsultantModelAlerts(tenants);
               // Утренний дайджест продавцу — у кого настал его час.
               const { sendDueDigests } = await import("@/channels/telegram/digest.server");
               results.digest = await sendDueDigests(tenants);
