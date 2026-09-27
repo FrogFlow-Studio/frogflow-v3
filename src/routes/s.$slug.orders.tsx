@@ -6,14 +6,24 @@ import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
 import { Empty, ErrorBox } from "@/app/ui";
 import { intlLocale } from "@/app/i18n/admin";
+import { ordersView } from "@/core/storefront/tabs";
 
-export const Route = createFileRoute("/s/$slug/orders")({ component: OrdersPage });
+export const Route = createFileRoute("/s/$slug/orders")({
+  validateSearch: (s: Record<string, unknown>): { tab?: "library" | "orders" } => {
+    const v = ordersView(s.tab);
+    return v === "all" ? {} : { tab: v };
+  },
+  component: OrdersPage,
+});
 
 type Data = Awaited<ReturnType<typeof miniAppOrdersFn>>;
 
 /** Mini App: мои заказы и библиотека выданных материалов — только внутри Telegram. */
 function OrdersPage() {
   const { slug } = Route.useParams();
+  const view = ordersView(Route.useSearch().tab);
+  const showOrders = view !== "library";
+  const showLibrary = view !== "orders";
   const { t, locale } = useStorefrontLocale();
   const wa = useTelegramWebApp();
   const [data, setData] = useState<Data | null>(null);
@@ -64,10 +74,12 @@ function OrdersPage() {
   }
   return (
     <div className="mx-auto max-w-xl space-y-6">
-      <h1 className="text-xl font-semibold">{t("orders.title")}</h1>
+      <h1 className="text-xl font-semibold">
+        {t(view === "library" ? "orders.library" : "orders.title")}
+      </h1>
       <ErrorBox error={error} />
-      {data && data.orders.length === 0 && <Empty>{t("orders.empty")}</Empty>}
-      {data && data.orders.length > 0 && (
+      {showOrders && data && data.orders.length === 0 && <Empty>{t("orders.empty")}</Empty>}
+      {showOrders && data && data.orders.length > 0 && (
         <ul className="divide-y divide-line rounded-md border border-line">
           {data.orders.map((o) => (
             <li key={o.id} className="px-3 py-2 text-sm">
@@ -86,7 +98,10 @@ function OrdersPage() {
           ))}
         </ul>
       )}
-      {data && data.library.length > 0 && (
+      {view === "library" && data && data.library.length === 0 && (
+        <Empty>{t("orders.libraryEmpty")}</Empty>
+      )}
+      {showLibrary && data && data.library.length > 0 && (
         <section>
           <h2 className="mb-2 text-sm font-semibold text-muted">{t("orders.library")}</h2>
           <p className="mb-2 text-xs text-muted">{t("orders.libraryHint")}</p>

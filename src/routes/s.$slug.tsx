@@ -1,10 +1,11 @@
 import type React from "react";
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { storeInfoFn } from "@/app/storefront/storefront.functions";
 import { CartProvider, useCart, useTelegramWebApp } from "@/app/storefront/cart";
 import { StorefrontLocaleProvider, useStorefrontLocale } from "@/app/storefront/locale";
 import { storefrontT } from "@/app/i18n/storefront";
 import { ThemeToggle } from "@/app/ui";
+import { activeTab, miniAppTabs, type MiniAppTab } from "@/core/storefront/tabs";
 
 export const Route = createFileRoute("/s/$slug")({
   loader: ({ params }) => storeInfoFn({ data: { slug: params.slug } }),
@@ -54,6 +55,7 @@ function StoreFrame() {
   const shop = Route.useLoaderData();
   const { t } = useStorefrontLocale();
   const themeLabels = { light: t("theme.light"), dark: t("theme.dark") };
+  const wa = useTelegramWebApp();
   return (
     <div
       className="flex min-h-screen flex-col"
@@ -90,15 +92,15 @@ function StoreFrame() {
                 {t("layout.openTelegram")}
               </a>
             )}
-            <OrdersLink slug={shop.slug} />
-            <CartButton slug={shop.slug} />
+            {/* В Mini App корзина и заказы — в нижних вкладках. */}
+            {!wa && <CartButton slug={shop.slug} />}
           </div>
         </div>
       </header>
       {shop.paused && (
         <div className="bg-warn/20 px-4 py-2 text-center text-sm">{t("layout.paused")}</div>
       )}
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+      <main className={`mx-auto w-full max-w-6xl flex-1 px-4 py-6${wa ? " pb-24" : ""}`}>
         <Outlet />
       </main>
       <footer className="border-t border-line">
@@ -145,19 +147,65 @@ function StoreFrame() {
           </div>
         </div>
       </footer>
+      {wa && <TabBar slug={shop.slug} vertical={shop.vertical} />}
     </div>
   );
 }
 
-/** «Мои заказы» — только внутри Telegram Mini App: там есть подписанный initData. */
-function OrdersLink({ slug }: { slug: string }) {
-  const wa = useTelegramWebApp();
+const TAB_ICON: Record<MiniAppTab, string> = {
+  catalog: "🏠",
+  library: "📚",
+  orders: "🧾",
+  cart: "🛒",
+};
+
+/** Нижние вкладки Mini App (только внутри Telegram), как в v1. */
+function TabBar({ slug, vertical }: { slug: string; vertical: string }) {
   const { t } = useStorefrontLocale();
-  if (!wa) return null;
+  const cart = useCart();
+  const location = useRouterState({ select: (s) => s.location });
+  const tab = (location.search as { tab?: unknown }).tab;
+  const active = activeTab(location.pathname, slug, typeof tab === "string" ? tab : undefined);
   return (
-    <Link to="/s/$slug/orders" params={{ slug }} className="btn-secondary">
-      {t("orders.link")}
-    </Link>
+    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+      <ul className="mx-auto flex max-w-md">
+        {miniAppTabs(vertical).map((key) => {
+          const cls = `relative flex flex-col items-center gap-0.5 py-2 text-xs ${
+            active === key ? "text-accent" : "text-muted"
+          }`;
+          const label = (
+            <>
+              <span className="text-lg leading-none" aria-hidden>
+                {TAB_ICON[key]}
+              </span>
+              {t(`tabs.${key}`)}
+              {key === "cart" && cart.count > 0 && (
+                <span className="absolute top-1 right-1/4 rounded-full bg-accent px-1.5 text-[10px] font-semibold text-accent-fg">
+                  {cart.count}
+                </span>
+              )}
+            </>
+          );
+          return (
+            <li key={key} className="flex-1">
+              {key === "catalog" ? (
+                <Link to="/s/$slug" params={{ slug }} className={cls}>
+                  {label}
+                </Link>
+              ) : key === "cart" ? (
+                <Link to="/s/$slug/cart" params={{ slug }} className={cls}>
+                  {label}
+                </Link>
+              ) : (
+                <Link to="/s/$slug/orders" params={{ slug }} search={{ tab: key }} className={cls}>
+                  {label}
+                </Link>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }
 
