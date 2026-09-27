@@ -3,6 +3,7 @@ import { orderChannel } from "@/core/orders/pure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { tenantDirectory } from "@/core/tenant/resolve.server";
 import { telegramApi } from "@/channels/telegram/api";
+import type { ChatAttachment } from "./chat-attachment.server";
 import { telegramLanguageAsker, telegramMaterialSender } from "@/channels/telegram/deliver";
 import { COPY } from "@/channels/telegram/copy";
 import {
@@ -315,9 +316,12 @@ export async function replyAsManager(
   ctx: TenantContext,
   telegramId: number,
   text: string,
+  attachment?: ChatAttachment,
 ): Promise<void> {
   const { getCustomerByTelegramId } = await import("@/core/customers/customers");
   const customer = await getCustomerByTelegramId(ctx, telegramId);
+  const att = await import("./chat-attachment.server");
+  const checked = attachment ? await att.checkChatAttachment(ctx, attachment) : null;
   // Как orderChannel: в Zernio только Instagram и WhatsApp, незнакомое — Telegram.
   if (customer && (customer.platform === "instagram" || customer.platform === "whatsapp")) {
     if (!customer.zernioConversationId || !customer.zernioAccountId)
@@ -326,30 +330,35 @@ export async function replyAsManager(
         "У покупателя нет диалога в Zernio — ответить некуда",
       );
     const { sendInboxMessage } = await import("@/channels/zernio/api.server");
+    const { text: message, ...media } = checked
+      ? await att.zernioAttachmentOptions(ctx, customer.platform, text, checked)
+      : { text };
     const r = await sendInboxMessage(
       customer.zernioConversationId,
       customer.zernioAccountId,
-      text,
-      {
-        platform: customer.platform,
-      },
+      message,
+      { platform: customer.platform, ...media },
     );
+    // Отказ Zernio уже объяснён словами продавца (describeSendError) — показываем его.
     if (!r.ok)
       throw r.error
-        ? new Error(r.error)
+        ? new UserError("err.admin.channelRefused", "Сообщение не ушло: {reason}", {
+            reason: r.error,
+          })
         : new UserError("err.admin.sendFailed", "Не удалось отправить сообщение");
+  } else if (checked) {
+    await att.sendTelegramAttachment(ctx, telegramId, text, checked);
   } else {
     const r = await api(ctx).call("sendMessage", { chat_id: telegramId, text });
-    if (!r.ok)
-      throw r.description
-        ? new Error(r.description)
-        : new UserError(
-            "err.admin.sendTelegramFailed",
-            "Не удалось отправить сообщение в Telegram",
-          );
+    if (!r.ok) throw att.telegramRefusal(r.description);
   }
   const { recordMessage } = await import("@/core/chat/chat");
-  await recordMessage(ctx, { telegramId, direction: "out", sender: "manager", text });
+  await recordMessage(ctx, {
+    telegramId,
+    direction: "out",
+    sender: "manager",
+    text: attachment ? att.attachmentLogText(attachment, text) : text,
+  });
 }
 
 /**

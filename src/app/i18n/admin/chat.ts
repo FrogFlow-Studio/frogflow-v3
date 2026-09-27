@@ -35,6 +35,12 @@ export const ru = {
   "chat.placeholderInactive":
     "Ответ уйдёт покупателю; чтобы бот не отвечал вместо вас — подключитесь к диалогу",
   "chat.send": "Отправить",
+  "chat.attach": "📎 Фото или файл",
+  "chat.attaching": "Загружаю…",
+  "chat.attachRemove": "Убрать вложение",
+  "chat.attachHint":
+    "Фото JPEG или PNG до 5 МБ; документ PDF, Word, Excel, PowerPoint, ZIP или TXT до 20 МБ",
+  "chat.attachFailed": "Файл не загрузился ({status})",
   "chat.fOpen": "Открытые",
   "chat.fClosed": "Решённые",
   "chat.fAll": "Все",
@@ -96,6 +102,12 @@ export const kk: SectionDict<typeof ru> = {
   "chat.placeholderInactive":
     "Жауап сатып алушыға кетеді; бот сіздің орныңызға жауап бермеуі үшін диалогқа қосылыңыз",
   "chat.send": "Жіберу",
+  "chat.attach": "📎 Фото немесе файл",
+  "chat.attaching": "Жүктеп жатырмын…",
+  "chat.attachRemove": "Тіркемені алып тастау",
+  "chat.attachHint":
+    "Фото — 5 МБ-қа дейінгі JPEG немесе PNG; құжат — 20 МБ-қа дейінгі PDF, Word, Excel, PowerPoint, ZIP немесе TXT",
+  "chat.attachFailed": "Файл жүктелмеді ({status})",
   "chat.fOpen": "Ашық",
   "chat.fClosed": "Шешілген",
   "chat.fAll": "Барлығы",
@@ -160,6 +172,12 @@ export const en: SectionDict<typeof ru> = {
   "chat.placeholderInactive":
     "Your reply goes to the customer; join the conversation so the bot doesn't answer in your place",
   "chat.send": "Send",
+  "chat.attach": "📎 Photo or file",
+  "chat.attaching": "Uploading…",
+  "chat.attachRemove": "Remove attachment",
+  "chat.attachHint":
+    "Photo: JPEG or PNG up to 5 MB; document: PDF, Word, Excel, PowerPoint, ZIP or TXT up to 20 MB",
+  "chat.attachFailed": "The file did not upload ({status})",
   "chat.fOpen": "Open",
   "chat.fClosed": "Resolved",
   "chat.fAll": "All",
@@ -222,6 +240,12 @@ export const uz: SectionDict<typeof ru> = {
   "chat.placeholderInactive":
     "Javob xaridorga yuboriladi; bot sizning o‘rningizga javob bermasligi uchun suhbatga ulaning",
   "chat.send": "Yuborish",
+  "chat.attach": "📎 Foto yoki fayl",
+  "chat.attaching": "Yuklanmoqda…",
+  "chat.attachRemove": "Ilovani olib tashlash",
+  "chat.attachHint":
+    "Foto — 5 MB gacha JPEG yoki PNG; hujjat — 20 MB gacha PDF, Word, Excel, PowerPoint, ZIP yoki TXT",
+  "chat.attachFailed": "Fayl yuklanmadi ({status})",
   "chat.fOpen": "Ochiq",
   "chat.fClosed": "Hal qilingan",
   "chat.fAll": "Hammasi",

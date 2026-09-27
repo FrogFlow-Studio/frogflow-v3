@@ -16,6 +16,7 @@ import {
 } from "@/app/admin/admin.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
+import { uploadFile } from "@/app/admin/upload-client";
 import type { ChatMessage, Conversation } from "@/core/chat/chat";
 import { isIndefinite } from "@/core/consultant/pause";
 import {
@@ -35,6 +36,10 @@ export const Route = createFileRoute("/admin/_authed/chat")({
 });
 
 const POLL_MS = 5000;
+/** Фото уходит картинкой, всё прочее — документом (правила — core/storage/upload). */
+const PHOTO_TYPES = ["image/jpeg", "image/png"];
+const ATTACH_ACCEPT = "image/jpeg,image/png,.pdf,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt";
+type ChatAttachment = { kind: "photo" | "file"; key: string; name: string };
 
 function label(c: Conversation): string {
   const name = [c.first_name, c.last_name].filter(Boolean).join(" ");
@@ -79,6 +84,9 @@ function ChatPage() {
   const [selectedId, setSelectedId] = useState<number | null>(Route.useSearch().c ?? null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [reply, setReply] = useState("");
+  // Фото или документ к ответу: уже в хранилище, уйдёт вместе с текстом.
+  const [attachment, setAttachment] = useState<ChatAttachment | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const selected = conversations.find((c) => c.telegram_id === selectedId) ?? null;
@@ -131,10 +139,25 @@ function ChatPage() {
     await chatResumeBotFn({ data: { telegramId: selected.telegram_id } });
     setConversations((await chatConversationsFn()).conversations);
   });
+  useEffect(() => setAttachment(null), [selectedId]);
+  const attach = useAction(async (file: File) => {
+    const kind = PHOTO_TYPES.includes(file.type) ? "photo" : "file";
+    const key = await uploadFile(kind === "photo" ? "chatPhoto" : "chatFile", file, t, (status) =>
+      t("chat.attachFailed", { status }),
+    );
+    setAttachment({ kind, key, name: file.name });
+  });
   const send = useAction(async () => {
-    if (selectedId === null || !reply.trim()) return;
-    await chatReplyFn({ data: { telegramId: selectedId, text: reply.trim() } });
+    if (selectedId === null || (!reply.trim() && !attachment)) return;
+    await chatReplyFn({
+      data: {
+        telegramId: selectedId,
+        text: reply.trim(),
+        ...(attachment ? { attachment } : {}),
+      },
+    });
     setReply("");
+    setAttachment(null);
     setMessages(await chatMessagesFn({ data: { telegramId: selectedId } }));
   });
 
@@ -142,7 +165,14 @@ function ChatPage() {
     <>
       <PageTitle title={t("chat.title")} subtitle={t("chat.subtitle")} />
       <ErrorBox
-        error={loadError ?? toggle.error ?? send.error ?? setMeta.error ?? resumeBot.error}
+        error={
+          loadError ??
+          toggle.error ??
+          send.error ??
+          attach.error ??
+          setMeta.error ??
+          resumeBot.error
+        }
       />
       <InboxFilters t={t} filter={filter} counts={counts} onChange={setFilter} />
       <div className="card grid h-[calc(100vh-14rem)] min-h-[28rem] grid-cols-1 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
@@ -345,9 +375,50 @@ function ChatPage() {
                         void send.run().catch(() => {});
                     }}
                   />
-                  <button className="btn-primary self-end" disabled={!reply.trim() || send.busy}>
-                    {t("chat.send")}
-                  </button>
+                  <div className="flex flex-col items-end gap-1 self-end">
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      className="hidden"
+                      accept={ATTACH_ACCEPT}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = "";
+                        if (f) void attach.run(f).catch(() => {});
+                      }}
+                    />
+                    {attachment ? (
+                      <span className="flex max-w-48 items-center gap-1 text-xs text-muted">
+                        <span className="truncate" title={attachment.name}>
+                          {attachment.kind === "photo" ? "🖼" : "📎"} {attachment.name}
+                        </span>
+                        <button
+                          type="button"
+                          className="text-accent hover:underline"
+                          aria-label={t("chat.attachRemove")}
+                          onClick={() => setAttachment(null)}
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn-secondary text-xs"
+                        title={t("chat.attachHint")}
+                        disabled={attach.busy}
+                        onClick={() => fileRef.current?.click()}
+                      >
+                        {attach.busy ? t("chat.attaching") : t("chat.attach")}
+                      </button>
+                    )}
+                    <button
+                      className="btn-primary"
+                      disabled={(!reply.trim() && !attachment) || send.busy || attach.busy}
+                    >
+                      {t("chat.send")}
+                    </button>
+                  </div>
                 </form>
               )}
             </>

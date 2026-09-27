@@ -80,6 +80,13 @@ export const ru = {
   "err.admin.inboxAssignee": "Такого пользователя нет в команде магазина.",
   "err.admin.sendFailed": "Не удалось отправить сообщение",
   "err.admin.sendTelegramFailed": "Не удалось отправить сообщение в Telegram",
+  "err.admin.chatAttachmentBad":
+    "Этот файл отправить нельзя: фото — JPEG или PNG до 5 МБ, документ — PDF, Word, Excel, PowerPoint, ZIP или TXT до 20 МБ.",
+  "err.admin.tgBuyerUnreachable":
+    "Покупатель недоступен в Telegram: он заблокировал бота или удалил аккаунт.",
+  "err.admin.tgFileRejected":
+    "Telegram не принял файл: проверьте размер и формат или отправьте его документом.",
+  "err.admin.channelRefused": "Сообщение не ушло: {reason}",
   // CRM, Instagram, акции, возвратные продажи
   "err.admin.crmUrl": "Адрес должен начинаться с https:// и вести на внешний сервер.",
   "err.admin.crmSaveFirst": "Сначала сохраните адрес вебхука.",
@@ -193,6 +200,13 @@ export const kk: SectionDict<typeof ru> = {
   "err.admin.inboxAssignee": "Мұндай пайдаланушы дүкен командасында жоқ.",
   "err.admin.sendFailed": "Хабарламаны жіберу мүмкін болмады",
   "err.admin.sendTelegramFailed": "Хабарламаны Telegram-ға жіберу мүмкін болмады",
+  "err.admin.chatAttachmentBad":
+    "Бұл файлды жіберуге болмайды: фото — 5 МБ-қа дейінгі JPEG немесе PNG, құжат — 20 МБ-қа дейінгі PDF, Word, Excel, PowerPoint, ZIP немесе TXT.",
+  "err.admin.tgBuyerUnreachable":
+    "Сатып алушы Telegram-да қолжетімсіз: ол ботты бұғаттаған немесе аккаунтын жойған.",
+  "err.admin.tgFileRejected":
+    "Telegram файлды қабылдамады: өлшемі мен пішімін тексеріңіз немесе құжат ретінде жіберіңіз.",
+  "err.admin.channelRefused": "Хабарлама жіберілмеді: {reason}",
   "err.admin.crmUrl": "Мекенжай https:// деп басталып, сыртқы серверге апаруы керек.",
   "err.admin.crmSaveFirst": "Алдымен вебхук мекенжайын сақтаңыз.",
   "err.admin.igPostNotFound":
@@ -306,6 +320,13 @@ export const en: SectionDict<typeof ru> = {
   "err.admin.inboxAssignee": "There is no such user in the shop team.",
   "err.admin.sendFailed": "Could not send the message",
   "err.admin.sendTelegramFailed": "Could not send the message to Telegram",
+  "err.admin.chatAttachmentBad":
+    "This file cannot be sent: a photo must be JPEG or PNG up to 5 MB, a document PDF, Word, Excel, PowerPoint, ZIP or TXT up to 20 MB.",
+  "err.admin.tgBuyerUnreachable":
+    "The buyer is unreachable in Telegram: they blocked the bot or deleted the account.",
+  "err.admin.tgFileRejected":
+    "Telegram did not accept the file: check its size and format or send it as a document.",
+  "err.admin.channelRefused": "The message was not sent: {reason}",
   "err.admin.crmUrl": "The address must start with https:// and point to an external server.",
   "err.admin.crmSaveFirst": "Save the webhook address first.",
   "err.admin.igPostNotFound":
@@ -420,6 +441,13 @@ export const uz: SectionDict<typeof ru> = {
   "err.admin.inboxAssignee": "Do‘kon jamoasida bunday foydalanuvchi yo‘q.",
   "err.admin.sendFailed": "Xabarni yuborib boʻlmadi",
   "err.admin.sendTelegramFailed": "Xabarni Telegramga yuborib boʻlmadi",
+  "err.admin.chatAttachmentBad":
+    "Bu faylni yuborib boʻlmaydi: foto — 5 MB gacha JPEG yoki PNG, hujjat — 20 MB gacha PDF, Word, Excel, PowerPoint, ZIP yoki TXT.",
+  "err.admin.tgBuyerUnreachable":
+    "Xaridor Telegramda mavjud emas: u botni bloklagan yoki akkauntini oʻchirgan.",
+  "err.admin.tgFileRejected":
+    "Telegram faylni qabul qilmadi: hajmi va formatini tekshiring yoki hujjat sifatida yuboring.",
+  "err.admin.channelRefused": "Xabar yuborilmadi: {reason}",
   "err.admin.crmUrl": "Manzil https:// bilan boshlanishi va tashqi serverga olib borishi kerak.",
   "err.admin.crmSaveFirst": "Avval webhook manzilini saqlang.",
   "err.admin.igPostNotFound":

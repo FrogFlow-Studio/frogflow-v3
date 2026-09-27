@@ -55,3 +55,47 @@ export function telegramApi(token: string, apiBase = "https://api.telegram.org")
     fileUrl: (filePath) => `${base}/file/bot${token}/${filePath}`,
   };
 }
+
+/**
+ * Отправка файла самим файлом (multipart/form-data): по ссылке Telegram
+ * принимает документы только PDF и ZIP и берёт имя из адреса. Повтор — как
+ * у call: сеть, 429 и 5xx, не больше трёх попыток.
+ */
+export async function telegramUpload(
+  token: string,
+  apiBase: string,
+  method: string,
+  fields: Record<string, string | number>,
+  file: { field: string; name: string; data: Blob },
+): Promise<TgResult> {
+  const url = `${apiBase.replace(/\/$/, "")}/bot${token}/${method}`;
+  const MAX = 3;
+  for (let attempt = 1; attempt <= MAX; attempt++) {
+    const form = new FormData();
+    for (const [k, v] of Object.entries(fields)) form.append(k, String(v));
+    form.append(file.field, file.data, file.name);
+    let res: Response;
+    try {
+      res = await fetch(url, { method: "POST", body: form });
+    } catch (e) {
+      console.error(`[tg] ${method}: сеть`, e);
+      await sleep(1000 * attempt);
+      continue;
+    }
+    const data = (await res.json().catch(() => ({}))) as TgResult & {
+      parameters?: { retry_after?: number };
+    };
+    if (res.status === 429 && attempt < MAX) {
+      await sleep((data.parameters?.retry_after ?? attempt * 2) * 1000);
+      continue;
+    }
+    if (res.status >= 500 && attempt < MAX) {
+      await sleep(Math.min(1000 * 2 ** (attempt - 1), 5000));
+      continue;
+    }
+    if (!res.ok || data.ok === false)
+      console.error(`[tg] ${method} failed`, res.status, data.description);
+    return data;
+  }
+  return { ok: false, description: "retries exhausted" };
+}

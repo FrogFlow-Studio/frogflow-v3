@@ -18,6 +18,30 @@ describe("uploadProblem", () => {
     expect(uploadProblem("file", 201 * MB, "application/zip")).toBe("too_big");
   });
 
+  it("фото в чат: JPEG или PNG до 5 МБ — общий предел Telegram, Instagram и WhatsApp", () => {
+    expect(uploadProblem("chatPhoto", 4 * MB, "image/jpeg", "фото.JPG")).toBeNull();
+    expect(uploadProblem("chatPhoto", 4 * MB, "image/png", `${T}/${HEX}.png`)).toBeNull();
+    expect(uploadProblem("chatPhoto", 6 * MB, "image/jpeg", "a.jpg")).toBe("too_big");
+    // WebP и GIF WhatsApp фото не примет.
+    expect(uploadProblem("chatPhoto", MB, "image/webp", "a.webp")).toBe("bad_type");
+    expect(uploadProblem("chatPhoto", MB, "image/gif", "a.gif")).toBe("bad_type");
+    // Тип картинки, а расширение — страница: не пропускаем.
+    expect(uploadProblem("chatPhoto", MB, "image/png", "a.html")).toBe("bad_type");
+  });
+
+  it("файл в чат: документы до 20 МБ по списку расширений", () => {
+    expect(uploadProblem("chatFile", 19 * MB, "application/pdf", "Прайс.pdf")).toBeNull();
+    const docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    expect(uploadProblem("chatFile", MB, docx, "договор.docx")).toBeNull();
+    // Браузер не знает тип — решает расширение.
+    expect(uploadProblem("chatFile", MB, "application/octet-stream", "смета.xlsx")).toBeNull();
+    expect(uploadProblem("chatFile", 21 * MB, "application/pdf", "a.pdf")).toBe("too_big");
+    expect(uploadProblem("chatFile", MB, "application/octet-stream", "setup.exe")).toBe("bad_type");
+    expect(uploadProblem("chatFile", MB, "text/html", "a.txt")).toBe("bad_type");
+    expect(uploadProblem("chatFile", MB, "application/pdf", "a.html")).toBe("bad_type");
+    expect(uploadProblem("chatFile", MB, "video/mp4", "a.mp4")).toBe("bad_type");
+  });
+
   it("пустой или непонятный размер не пропускает", () => {
     expect(uploadProblem("file", 0, "application/pdf")).toBe("empty");
     expect(uploadProblem("file", Number.NaN, "application/pdf")).toBe("empty");

@@ -1754,12 +1754,26 @@ export const chatConnectFn = createServerFn({ method: "POST" })
 
 export const chatReplyFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
-    z.object({ telegramId: tgId, text: z.string().trim().min(1).max(4000) }).parse(d),
+    z
+      .object({
+        telegramId: tgId,
+        text: z.string().trim().max(4000),
+        // Фото или документ, уже загруженные через /api/admin/upload.
+        attachment: z
+          .object({
+            kind: z.enum(["photo", "file"]),
+            key: z.string().min(1).max(200),
+            name: z.string().max(255).default(""),
+          })
+          .optional(),
+      })
+      .refine((v) => v.text.length > 0 || v.attachment, { message: "empty reply" })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const ctx = await chatModule("manager");
     const { replyAsManager, pauseBotAfterManagerReply } = await import("./admin.server");
-    await replyAsManager(ctx, data.telegramId, data.text);
+    await replyAsManager(ctx, data.telegramId, data.text, data.attachment);
     // Ответил человек — консультант не перебивает его на выбранное продавцом время.
     await pauseBotAfterManagerReply(ctx, data.telegramId);
     // Ничей диалог достаётся тому, кто ответил первым.

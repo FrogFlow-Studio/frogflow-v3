@@ -43,7 +43,12 @@ export const Route = createFileRoute("/api/admin/upload")({
         const bucket = serviceDb().storage.from(spec.bucket);
 
         if (body.action === "sign") {
-          const p = uploadProblem(kind, Number(body.size), String(body.type ?? ""));
+          const p = uploadProblem(
+            kind,
+            Number(body.size),
+            String(body.type ?? ""),
+            String(body.name ?? ""),
+          );
           if (p) return problem(p, spec.max);
           const key = newUploadKey(
             ctx.tenant.id,
@@ -61,7 +66,7 @@ export const Route = createFileRoute("/api/admin/upload")({
             return new Response("bad request", { status: 400 });
           const { data, error } = await bucket.info(key);
           if (error || !data) return Response.json({ problem: "not_stored" }, { status: 404 });
-          const p = uploadProblem(kind, Number(data.size), String(data.contentType ?? ""));
+          const p = uploadProblem(kind, Number(data.size), String(data.contentType ?? ""), key);
           if (p) {
             await bucket.remove([key]);
             return problem(p, spec.max);
