@@ -2,7 +2,8 @@ import { createCategory, createProduct } from "@/core/catalog/admin";
 import { UserError } from "@/core/i18n/user-error";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { EXAMPLE_PREFIX, NICHE_TEMPLATES, templateLang } from "./niches";
+import { saveCourse } from "@/core/courses/course.server";
+import { COURSE_EXAMPLE, EXAMPLE_PREFIX, NICHE_TEMPLATES, templateLang } from "./niches";
 
 const APPLIED_KEY = "niche_template_applied";
 
@@ -16,8 +17,9 @@ export async function templateAvailable(ctx: TenantContext): Promise<boolean> {
 }
 
 /**
- * Категории и скрытые примеры товаров ниши магазина. Повторно не
- * срабатывает: магазин уже не пуст. Возвращает, сколько товаров создано.
+ * Категории и скрытые примеры товаров ниши магазина; с включёнными
+ * «Курсами» — ещё скрытый пример курса с уроками. Повторно не срабатывает:
+ * магазин уже не пуст. Возвращает, сколько товаров создано.
  */
 export async function applyNicheTemplate(ctx: TenantContext): Promise<{ products: number }> {
   if (!(await templateAvailable(ctx)) || (await getSetting(ctx, APPLIED_KEY)))
@@ -48,5 +50,31 @@ export async function applyNicheTemplate(ctx: TenantContext): Promise<{ products
       stockQuantity: null,
       leadTimeDays: p.leadTimeDays ?? null,
     });
-  return { products: tpl.products.length };
+  if (!ctx.tenant.modules.courses) return { products: tpl.products.length };
+  const c = COURSE_EXAMPLE;
+  const courseId = await createProduct(ctx, {
+    name: `${EXAMPLE_PREFIX[lang]}${c.name[lang]}`,
+    description: c.description[lang],
+    keywords: "",
+    price: c.price,
+    currency,
+    countryPrices: {},
+    categoryIds: categoryIds[0] ? [categoryIds[0]] : [],
+    isActive: false,
+    sortOrder: tpl.products.length,
+    fulfillmentKind: "digital",
+    stockQuantity: null,
+    leadTimeDays: null,
+  });
+  await saveCourse(ctx, courseId, {
+    schedule: { mode: "drip", everyDays: c.everyDays },
+    lessons: c.lessons.map((l) => ({
+      id: crypto.randomUUID(),
+      title: l.title[lang],
+      text: l.text[lang],
+      files: [],
+      link: null,
+    })),
+  });
+  return { products: tpl.products.length + 1 };
 }

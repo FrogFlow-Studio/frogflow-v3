@@ -3,7 +3,8 @@ import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { VERTICAL_KEYS, VERTICALS } from "@/core/verticals/registry";
 import { applyNicheTemplate, templateAvailable } from "./apply.server";
-import { EXAMPLE_PREFIX, NICHE_TEMPLATES } from "./niches";
+import { COURSE_EXAMPLE, EXAMPLE_PREFIX, NICHE_TEMPLATES } from "./niches";
+import { courseKey, courseProblem, parseCourse } from "@/core/courses/course";
 
 describe("шаблоны ниш", () => {
   it("у каждой ниши есть шаблон, товары ссылаются на свои категории", () => {
@@ -28,11 +29,15 @@ describe("шаблоны ниш", () => {
   });
 });
 
-function ctxFor(vertical: "confectionery" | "digital", locale?: "kk") {
+function ctxFor(
+  vertical: "confectionery" | "digital",
+  locale?: "kk",
+  modules: Record<string, boolean> = {},
+) {
   const db = fakeDb();
   const ctx = {
     db,
-    tenant: { id: "t1", vertical, settings: locale ? { default_locale: locale } : {} },
+    tenant: { id: "t1", vertical, modules, settings: locale ? { default_locale: locale } : {} },
   } as unknown as TenantContext;
   return { db, ctx };
 }
@@ -66,5 +71,41 @@ describe("применение шаблона", () => {
     expect(await templateAvailable(ctx)).toBe(false);
     await expect(applyNicheTemplate(ctx)).rejects.toThrow();
     expect(db.tables.products).toHaveLength(1);
+  });
+});
+
+describe("шаблон «Курсы»", () => {
+  it("пример курса проходит проверку курса: уроки с текстом, по расписанию", () => {
+    expect(COURSE_EXAMPLE.lessons.length).toBeGreaterThanOrEqual(3);
+    for (const l of ["ru", "kk"] as const) {
+      expect(COURSE_EXAMPLE.name[l].trim()).not.toBe("");
+      for (const lesson of COURSE_EXAMPLE.lessons) {
+        expect(lesson.title[l].trim()).not.toBe("");
+        expect(lesson.text[l].trim()).not.toBe("");
+      }
+    }
+  });
+
+  it("с модулем курсов шаблон добавляет скрытый цифровой пример курса с уроками", async () => {
+    const { db, ctx } = ctxFor("confectionery", undefined, { courses: true });
+    const r = await applyNicheTemplate(ctx);
+    expect(r.products).toBe(NICHE_TEMPLATES.confectionery.products.length + 1);
+    const course = db.tables.products!.find((p) => p.fulfillment_kind === "digital")!;
+    expect(course.is_active).toBe(false);
+    expect(String(course.name)).toBe(`Пример · ${COURSE_EXAMPLE.name.ru}`);
+    const row = db.tables.app_settings!.find((s) => s.key === courseKey(String(course.id)))!;
+    const saved = parseCourse(String(row.value));
+    expect(saved.schedule).toEqual({ mode: "drip", everyDays: 1 });
+    expect(saved.lessons.map((l) => l.title)).toEqual(
+      COURSE_EXAMPLE.lessons.map((l) => l.title.ru),
+    );
+    expect(courseProblem("t1", saved)).toBeNull();
+  });
+
+  it("без модуля курсов примера курса нет", async () => {
+    const { db, ctx } = ctxFor("digital");
+    await applyNicheTemplate(ctx);
+    expect(db.tables.app_settings!.some((s) => String(s.key).startsWith("course_"))).toBe(false);
+    expect(db.tables.products).toHaveLength(NICHE_TEMPLATES.digital.products.length);
   });
 });
