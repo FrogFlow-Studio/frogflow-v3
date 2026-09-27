@@ -11,20 +11,26 @@ import {
   confirmTwoFactorFn,
   disableTwoFactorFn,
   regenerateBackupCodesFn,
+  alertChannelStatusFn,
+  saveAlertChannelFn,
+  clearAlertChannelFn,
+  testAlertChannelFn,
 } from "@/app/operator/operator.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { shownError } from "@/lib/shown-error";
 
 export const Route = createFileRoute("/operator/_authed/settings")({
   loader: async () => {
-    const [cred, payout, twoFactor] = await Promise.all([
+    const [cred, payout, twoFactor, alerts] = await Promise.all([
       operatorCredentialsFn(),
       payoutRequisitesFn(),
       twoFactorStatusFn(),
+      alertChannelStatusFn(),
     ]);
     return {
       ...cred,
       twoFactor,
+      alerts,
       requisites: payout.requisites,
       recipient: payout.recipient,
       kaspiLink: payout.kaspiLink,
@@ -60,6 +66,7 @@ function SettingsPage() {
           kaspiLink={cred.kaspiLink}
         />
         <ErrorTrackingCard />
+        <AlertsCard status={cred.alerts} />
         <TwoFactorCard status={cred.twoFactor} />
         <Card title="Учётка оператора">
           <p className="mb-3 text-sm text-muted">
@@ -215,18 +222,6 @@ function RequisitesCard({
             placeholder="https://pay.kaspi.kz/pay/…"
           />
         </Field>
-        <Field
-          label="Ссылка Kaspi Pay для оплаты подписки"
-          hint="Создаётся в вашем Kaspi Pay. Владелец по кнопке «Оплатить» получает её и QR с ней, вводит сумму счёта и платит. Пусто — только перевод по реквизитам."
-        >
-          <input
-            className="input"
-            name="kaspiLink"
-            defaultValue={kaspiLink}
-            placeholder="https://pay.kaspi.kz/pay/…"
-          />
-        </Field>
-
         <div className="flex items-center gap-3">
           <button className="btn-primary" disabled={save.busy}>
             Сохранить
@@ -234,6 +229,116 @@ function RequisitesCard({
           {saved && <span className="text-sm text-ok">Сохранено</span>}
         </div>
         <ErrorBox error={save.error} />
+      </form>
+    </Card>
+  );
+}
+
+/**
+ * Уведомления оператору о сбоях ботов клиентов (health-alerts): отдельный
+ * бот от BotFather пишет в чат оператора. Токен в панель не возвращается.
+ */
+function AlertsCard({
+  status,
+}: {
+  status: { configured: boolean; chatId: string | null; botUsername: string | null };
+}) {
+  const router = useRouter();
+  const [saved, setSaved] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const save = useAction(async (f: FormData) => {
+    await saveAlertChannelFn({
+      data: { token: String(f.get("token") ?? ""), chatId: String(f.get("chatId") ?? "") },
+    });
+    setSaved(true);
+    await router.invalidate();
+  });
+  const test = useAction(async () => setResult(await testAlertChannelFn()));
+  const clear = useAction(async () => {
+    await clearAlertChannelFn();
+    setResult(null);
+    await router.invalidate();
+  });
+  return (
+    <Card title="Уведомления оператору">
+      <p className="mb-3 text-sm text-muted">
+        Когда бот клиента на v2 перестаёт отвечать (вебхук сломан, токен отозван, ошибки две
+        проверки подряд), приходит одно сообщение о сбое и одно, когда бот снова ответит. Пишет
+        отдельный бот: создайте его у @BotFather, откройте и нажмите «Старт». Chat id своего
+        аккаунта можно узнать у @userinfobot.
+      </p>
+      <p className="mb-4 text-sm">
+        Сейчас:{" "}
+        {status.configured ? (
+          <Badge tone="ok">
+            настроены{status.botUsername ? `, бот @${status.botUsername}` : ""}
+          </Badge>
+        ) : (
+          <Badge tone="warn">не настроены, сообщения не отправляются</Badge>
+        )}
+      </p>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSaved(false);
+          setResult(null);
+          void save.run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        <Field
+          label="Токен бота от BotFather"
+          hint={
+            status.configured
+              ? "Сохранён в зашифрованном виде. Оставьте пустым, чтобы не менять."
+              : "Хранится в зашифрованном виде, как токены ботов клиентов."
+          }
+        >
+          <input
+            className="input font-mono"
+            name="token"
+            type="password"
+            autoComplete="off"
+            placeholder={status.configured ? "••••••••" : "123456789:AA…"}
+          />
+        </Field>
+        <Field label="Chat id оператора">
+          <input
+            className="input font-mono"
+            name="chatId"
+            inputMode="numeric"
+            defaultValue={status.chatId ?? ""}
+            placeholder="123456789"
+          />
+        </Field>
+        <div className="flex flex-wrap items-center gap-3">
+          <button className="btn-primary" disabled={save.busy}>
+            Сохранить
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={!status.configured || test.busy}
+            onClick={() => void test.run().catch(() => {})}
+          >
+            Проверить
+          </button>
+          {status.configured && (
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled={clear.busy}
+              onClick={() => void clear.run().catch(() => {})}
+            >
+              Выключить
+            </button>
+          )}
+          {saved && <span className="text-sm text-ok">Сохранено</span>}
+        </div>
+        {result && (
+          <p className={`text-sm ${result.ok ? "text-ok" : "text-danger"}`}>{result.message}</p>
+        )}
+        <ErrorBox error={save.error ?? test.error ?? clear.error} />
       </form>
     </Card>
   );

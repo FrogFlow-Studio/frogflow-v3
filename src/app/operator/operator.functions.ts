@@ -564,6 +564,36 @@ export const setPayoutRequisitesFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/* ── уведомления оператору о сбоях ботов (health-alerts.server.ts) ── */
+
+const alerts = () => import("./health-alerts.server");
+
+export const alertChannelStatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await alerts()).alertChannelStatus();
+});
+
+export const saveAlertChannelFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ token: z.string().max(200), chatId: z.string().max(40) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    await (await alerts()).saveAlertChannel(data);
+    return { ok: true };
+  });
+
+export const clearAlertChannelFn = createServerFn({ method: "POST" }).handler(async () => {
+  await guard();
+  await (await alerts()).clearAlertChannel();
+  return { ok: true };
+});
+
+export const testAlertChannelFn = createServerFn({ method: "POST" }).handler(async () => {
+  await guard();
+  return (await alerts()).testAlertChannel();
+});
+
 export const addPaymentFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

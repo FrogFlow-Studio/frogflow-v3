@@ -2,14 +2,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 
 let db: FakeDb;
-let tenants: Array<{ id: string }> = [];
+let tenants: Array<Record<string, unknown>> = [];
+const alertsSeen: Array<{ probes: unknown[]; names: Map<string, string> }> = [];
+vi.mock("./health-alerts.server", () => ({
+  processHealthAlerts: async (probes: unknown[], names: Map<string, string>) => {
+    alertsSeen.push({ probes, names });
+    return { down: 0, up: 0, sent: 0, notConfigured: true };
+  },
+}));
 vi.mock("@/core/db/client.server", () => ({ serviceDb: () => db }));
 vi.mock("@/core/tenant/resolve.server", () => ({
   tenantDirectory: async () => tenants,
   tenantContext: () => ({}),
 }));
 
-const { latestHealth, getHealthHistory } = await import("./health.server");
+const { latestHealth, getHealthHistory, recordHealthSnapshots } = await import("./health.server");
 
 const NOW = Date.now();
 const at = (minutesAgo: number) => new Date(NOW - minutesAgo * 60_000).toISOString();
@@ -27,6 +34,7 @@ beforeEach(() => {
   // Потолок ответа, как у Supabase.
   db = fakeDb({ maxRows: 1000 });
   seq = 0;
+  alertsSeen.length = 0;
 });
 
 describe("здоровье ботов в панели оператора", () => {
@@ -55,5 +63,31 @@ describe("здоровье ботов в панели оператора", () =>
     expect(h.outages).toHaveLength(1);
     expect(h.outages[0]!.startedAt).toBe(at(120));
     expect(h.outages[0]!.endedAt).toBe(at(60));
+  });
+
+  it("крон передаёт уведомлениям только клиентов v2 без архива; проверка из панели — нет", async () => {
+    tenants = [
+      {
+        id: "v2",
+        name: "Магазин",
+        settings: { served_by: "v2" },
+        archived: false,
+        telegramTokenEnc: null,
+      },
+      {
+        id: "old",
+        name: "Старый",
+        settings: { served_by: "v2" },
+        archived: true,
+        telegramTokenEnc: null,
+      },
+      { id: "v1", name: "На v1", settings: {}, archived: false, telegramTokenEnc: null },
+    ];
+    const r = await recordHealthSnapshots();
+    expect(r.alerts).toMatchObject({ notConfigured: true });
+    expect(alertsSeen).toHaveLength(1);
+    expect([...alertsSeen[0]!.names.keys()]).toEqual(["v2"]);
+    expect((await recordHealthSnapshots("v2")).alerts).toBeUndefined();
+    expect(alertsSeen).toHaveLength(1);
   });
 });

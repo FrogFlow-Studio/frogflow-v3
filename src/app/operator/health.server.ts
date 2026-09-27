@@ -66,18 +66,48 @@ export async function probeTenantHealth(
   }
 }
 
-export async function recordHealthSnapshots(
-  onlyBotId?: string,
-): Promise<{ inserted: number; failing: string[] }> {
+type HealthTenants = Awaited<ReturnType<typeof tenantDirectory>>;
+
+/**
+ * Без onlyBotId — прогон крона: снимки всех ботов v2 и уведомления
+ * оператору о сбоях (health-alerts). Проверка одного бота из панели в счёт
+ * «проверок подряд» не идёт.
+ */
+export async function recordHealthSnapshots(onlyBotId?: string): Promise<{
+  inserted: number;
+  failing: string[];
+  alerts?: Awaited<ReturnType<typeof processHealthAlertsSafe>>;
+}> {
   const tenants = (await tenantDirectory(true)).filter((t) =>
     onlyBotId ? t.id === onlyBotId : t.settings.served_by === "v2" && !t.archived,
   );
-  return recordHealthSnapshotsFor(tenants);
+  const rows = await probeAndInsert(tenants);
+  const summary = {
+    inserted: rows.length,
+    failing: rows.filter((r) => !r.ok).map((r) => r.bot_id),
+  };
+  if (onlyBotId) return summary;
+  return { ...summary, alerts: await processHealthAlertsSafe(rows, tenants) };
+}
+
+/** Сбой уведомлений не ломает запись снимков: ошибка уходит в итог крона. */
+async function processHealthAlertsSafe(rows: HealthSnapshot[], tenants: HealthTenants) {
+  try {
+    const { processHealthAlerts } = await import("./health-alerts.server");
+    return await processHealthAlerts(rows, new Map(tenants.map((t) => [t.id, t.name])));
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 export async function recordHealthSnapshotsFor(
-  tenants: Awaited<ReturnType<typeof tenantDirectory>>,
+  tenants: HealthTenants,
 ): Promise<{ inserted: number; failing: string[] }> {
+  const rows = await probeAndInsert(tenants);
+  return { inserted: rows.length, failing: rows.filter((r) => !r.ok).map((r) => r.bot_id) };
+}
+
+async function probeAndInsert(tenants: HealthTenants): Promise<HealthSnapshot[]> {
   const rows = (await Promise.all(tenants.map((t) => probeTenantHealth(t)))).filter(
     (r): r is HealthSnapshot => r !== null,
   );
@@ -85,7 +115,7 @@ export async function recordHealthSnapshotsFor(
     const { error } = await serviceDb().from("bot_health_snapshots").insert(rows);
     if (error) throw serverFailure(`Не удалось записать снимки: ${error.message}`);
   }
-  return { inserted: rows.length, failing: rows.filter((r) => !r.ok).map((r) => r.bot_id) };
+  return rows;
 }
 
 export type LatestHealth = {

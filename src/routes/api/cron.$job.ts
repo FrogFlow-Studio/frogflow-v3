@@ -168,7 +168,8 @@ export const Route = createFileRoute("/api/cron/$job")({
               break;
             }
             case "health": {
-              // Снимок здоровья каждого бота на v2 — история простоев в панели оператора.
+              // Снимок здоровья каждого бота на v2 — история простоев в панели оператора
+              // и сообщение оператору о сбое и восстановлении (health-alerts).
               const { recordHealthSnapshots } = await import("@/app/operator/health.server");
               results.health = await recordHealthSnapshots();
               // Аккаунты Instagram/WhatsApp: сверка профилей с Zernio, отвалившиеся — продавцу.
