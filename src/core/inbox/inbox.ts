@@ -2,6 +2,7 @@ import type { Json } from "@/core/db-types";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Conversation } from "@/core/chat/chat";
 import { OPEN_TICKET_DB_STATUSES, TICKET_PREFIX } from "@/core/helpdesk/tickets";
+import { pageAll } from "@/core/db/page";
 
 /**
  * Единый входящий: переписки Telegram, Instagram и WhatsApp в одном окне
@@ -158,14 +159,20 @@ export async function openTicketNumbers(
   const out = new Map<number, number[]>();
   if (!telegramIds.length) return out;
   const want = new Set(telegramIds);
-  const { data } = await ctx.db
-    .from("zernio_logs")
-    .select("payload")
-    .like("event_id", `${TICKET_PREFIX}%`)
-    .in("status", [...OPEN_TICKET_DB_STATUSES])
-    .order("created_at", { ascending: true })
-    .limit(500);
-  for (const row of data ?? []) {
+  // Все открытые, постранично: у покупателя с поздним обращением значок не пропадает.
+  const data = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("zernio_logs")
+        .select("payload")
+        .like("event_id", `${TICKET_PREFIX}%`)
+        .in("status", [...OPEN_TICKET_DB_STATUSES])
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    "открытые обращения",
+  );
+  for (const row of data) {
     const p = (row.payload ?? {}) as { telegram_id?: number; number?: number };
     const id = Number(p.telegram_id ?? 0);
     if (!want.has(id) || !p.number) continue;

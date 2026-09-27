@@ -1131,13 +1131,8 @@ export const connectTelegramAdminFn = createServerFn({ method: "POST" })
 
 export const promoCodesFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await admin();
-  const { data, error } = await ctx.db
-    .from("promo_codes")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(300);
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  const { listPromoCodes } = await import("@/core/discounts/lists");
+  return listPromoCodes(ctx);
 });
 
 export const savePromoCodeFn = createServerFn({ method: "POST" })
@@ -1190,13 +1185,8 @@ export const deletePromoCodeFn = createServerFn({ method: "POST" })
 
 export const giftCertificatesFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await admin();
-  const { data, error } = await ctx.db
-    .from("gift_certificates")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(300);
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  const { listGiftCertificates } = await import("@/core/discounts/lists");
+  return listGiftCertificates(ctx);
 });
 
 export const createGiftCertificateFn = createServerFn({ method: "POST" })

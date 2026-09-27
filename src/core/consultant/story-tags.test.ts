@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractInstagramMediaInfo,
   findStoryTag,
+  mergeLegacyStoryTags,
   storyContextLine,
   type StoryTag,
 } from "./story-tags";
@@ -48,5 +49,81 @@ describe("сторис-теги консультанта", () => {
     expect(storyContextLine(tag({}), "ABC123xyz")).toContain("Полотенце банное»");
     expect(storyContextLine(tag({}), null)).toContain("цена 12000");
     expect(storyContextLine(null, "x")).toContain("не отмечен");
+  });
+});
+
+describe("mergeLegacyStoryTags: перенос тегов v1", () => {
+  const v1 = (i: number) =>
+    tag({
+      id: `v1-${i}`,
+      story_id: `S${i}`,
+      created_at: `2026-09-${String(10 + (i % 18)).padStart(2, "0")}T00:00:00Z`,
+    });
+
+  it("дописывает недостающие, а не только в пустой список", () => {
+    const own = tag({ id: "own", story_id: "OWN", created_at: "2026-09-27T00:00:00Z" });
+    const r = mergeLegacyStoryTags([own, v1(1)], [v1(1), v1(2), v1(3)], 200);
+    expect(r.added).toBe(2);
+    expect(r.dropped).toBe(0);
+    expect(r.tags.map((t) => t.id).sort()).toEqual(["own", "v1-1", "v1-2", "v1-3"]);
+  });
+
+  it("тег той же сторис уже есть в v2 — остаётся версия v2", () => {
+    const own = tag({ id: "own", story_id: "S2", product_name: "из v2" });
+    const r = mergeLegacyStoryTags([own], [v1(2)], 200);
+    expect(r.added).toBe(0);
+    expect(r.tags).toEqual([own]);
+  });
+
+  it("теги v1 новее своих: свои 190 целы, из v1 влезают 10 самых новых", () => {
+    const own = Array.from({ length: 190 }, (_, i) =>
+      tag({ id: `own-${i}`, story_id: `O${i}`, created_at: "2026-01-01T00:00:00Z" }),
+    );
+    const legacy = Array.from({ length: 20 }, (_, i) =>
+      tag({
+        id: `v1-${i}`,
+        story_id: `S${i}`,
+        created_at: `2026-09-${String(1 + i).padStart(2, "0")}T00:00:00Z`,
+      }),
+    );
+    const r = mergeLegacyStoryTags(own, legacy, 200);
+    expect(r.added).toBe(10);
+    expect(r.dropped).toBe(10);
+    expect(r.tags).toHaveLength(200);
+    expect(r.tags.slice(0, 190)).toEqual(own);
+    expect(r.tags.slice(190).map((t) => t.id)).toEqual(
+      Array.from({ length: 10 }, (_, i) => `v1-${19 - i}`),
+    );
+  });
+
+  it("список v2 уже полон — свои не трогаются, из v1 ничего", () => {
+    const own = Array.from({ length: 200 }, (_, i) =>
+      tag({ id: `own-${i}`, story_id: `O${i}`, created_at: "2020-01-01T00:00:00Z" }),
+    );
+    const r = mergeLegacyStoryTags(own, [tag({ id: "v1-new", story_id: "NEW" })], 200);
+    expect(r).toEqual({ tags: own, added: 0, dropped: 1 });
+  });
+
+  it("повторный перенос ничего не добавляет", () => {
+    const first = mergeLegacyStoryTags([], [v1(1), v1(2)], 200);
+    const again = mergeLegacyStoryTags(first.tags, [v1(1), v1(2)], 200);
+    expect(again.added).toBe(0);
+    expect(again.tags).toEqual(first.tags);
+  });
+
+  it("больше предела — новые остаются, сколько не влезло, считается", () => {
+    const legacy = Array.from({ length: 250 }, (_, i) =>
+      tag({
+        id: `v1-${i}`,
+        story_id: `S${i}`,
+        created_at: new Date(Date.UTC(2026, 0, 1) + i * 60_000).toISOString(),
+      }),
+    );
+    const r = mergeLegacyStoryTags([], legacy, 200);
+    expect(r.tags).toHaveLength(200);
+    expect(r.dropped).toBe(50);
+    expect(r.added).toBe(200);
+    expect(r.tags[0]!.id).toBe("v1-249");
+    expect(r.tags.some((t) => t.id === "v1-0")).toBe(false);
   });
 });

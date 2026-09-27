@@ -19,7 +19,7 @@ import { computeState, readPolicy } from "@/core/billing/subscription";
 import { sellerIds } from "@/core/notify/recipients";
 import { pageAll } from "@/core/db/page";
 import { isMailConfigured } from "@/core/mail/mail.server";
-import { listStoryTags, STORY_TAGS_MAX } from "@/core/consultant/story-tags";
+import { planLegacyStoryTags } from "./story-tags-import.server";
 import { serverFailure } from "@/lib/server-failure";
 
 const DAY_MS = 86_400_000;
@@ -44,17 +44,6 @@ async function recentOrders(botId: string, now = new Date()) {
   const error = channels.error ?? mailed.error;
   if (error) throw serverFailure(`Проверка переезда: заказы не прочитаны (${error.message})`);
   return { channels: channels.count ?? 0, mailed: mailed.count ?? 0 };
-}
-
-/** Теги сторис в v1 (story_product_tags) — столько переезд должен перенести. */
-async function legacyStoryTags(botId: string): Promise<number> {
-  const { count, error } = await serviceDb()
-    .from("story_product_tags")
-    .select("id", { count: "exact", head: true })
-    .eq("bot_id", botId);
-  if (error)
-    throw serverFailure(`Проверка переезда: теги сторис v1 не прочитаны (${error.message})`);
-  return count ?? 0;
 }
 
 /** Сколько продавцов жмут «подтвердить»: admin_chat_id плюс владелец из карточки. */
@@ -134,27 +123,17 @@ export async function preflight(botId: string): Promise<Preflight> {
       tokenOk = false;
     }
   }
-  const [
-    paymentMethods,
-    products,
-    chats,
-    delivering,
-    unsellable,
-    expiresAt,
-    orders30d,
-    tagsV1,
-    tagsV2,
-  ] = await Promise.all([
-    countRows("payment_methods", botId),
-    countRows("products", botId),
-    sellerChats(botId),
-    deliveringOrders(botId),
-    unsellableProducts(botId),
-    subscriptionExpiresAt(botId),
-    recentOrders(botId),
-    legacyStoryTags(botId),
-    listStoryTags(tenantContext(t)),
-  ]);
+  const [paymentMethods, products, chats, delivering, unsellable, expiresAt, orders30d, storyTags] =
+    await Promise.all([
+      countRows("payment_methods", botId),
+      countRows("products", botId),
+      sellerChats(botId),
+      deliveringOrders(botId),
+      unsellableProducts(botId),
+      subscriptionExpiresAt(botId),
+      recentOrders(botId),
+      planLegacyStoryTags(tenantContext(t), botId),
+    ]);
   const zernioAccountIds = t.settings.zernio?.account_ids ?? [];
   const policy = readPolicy(t.settings);
   const vip = t.modules.vip ? await vipInput(t, mainBotId, chats) : null;
@@ -184,7 +163,13 @@ export async function preflight(botId: string): Promise<Preflight> {
       configured: isMailConfigured(),
       needed: Boolean(t.modules.web_storefront) || orders30d.mailed > 0,
     },
-    storyTags: { v1: tagsV1, v2: tagsV2.length, max: STORY_TAGS_MAX },
+    storyTags: {
+      v1: storyTags.v1,
+      v2: storyTags.v2,
+      add: storyTags.add,
+      dropped: storyTags.dropped,
+      max: storyTags.max,
+    },
   });
   return withVipChecks(base, vip);
 }

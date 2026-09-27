@@ -43,8 +43,12 @@ export type PreflightInput = {
   zernioAccounts?: number;
   /** Почта платформы: настроен ли SMTP и шлёт ли клиенту что-то письмом (сайт, копия выдачи). */
   mail?: { configured: boolean; needed: boolean };
-  /** Теги сторис: в v1 (story_product_tags), в v2 (app_settings) и сколько v2 хранит. */
-  storyTags?: { v1: number; v2: number; max: number };
+  /**
+   * Теги сторис: в v1 (story_product_tags), в v2 (app_settings), сколько
+   * допишет перенос при переключении и сколько не влезет в предел v2 —
+   * посчитано тем же слиянием, что и при переключении (mergeLegacyStoryTags).
+   */
+  storyTags?: { v1: number; v2: number; add: number; dropped: number; max: number };
 };
 
 export function evaluatePreflight(i: PreflightInput): Preflight {
@@ -194,26 +198,20 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
         "У клиента есть сайт или покупатели оставляют почту для копии материалов, а SMTP платформы не задан: писем не будет. Материалы останутся на странице заказа.",
     });
   const tags = i.storyTags;
-  if (tags && tags.v1 > 0) {
-    const expected = Math.min(tags.v1, tags.max);
-    if (tags.v2 === 0 && tags.v1 <= tags.max)
-      checks.push({
-        key: "story_tags",
-        level: "info",
-        title: "Теги сторис перенесутся при переключении",
-        detail: `В v1 тегов: ${tags.v1}. Они скопируются в v2 при переводе клиента; после переключения проверьте их в админке.`,
-      });
-    else if (tags.v2 < expected || tags.v1 > tags.max)
-      checks.push({
-        key: "story_tags",
-        level: "warn",
-        title: "Теги сторис перенесены не все",
-        detail:
-          tags.v1 > tags.max
-            ? `В v1 тегов: ${tags.v1}, а v2 хранит не больше ${tags.max}. Лишние продавцу нужно удалить в v1 или разобрать вручную.`
-            : `В v1 тегов: ${tags.v1}, в v2: ${tags.v2}. Не хватает ${tags.v1 - tags.v2}: повторно при переключении они не скопируются, потому что в v2 список уже не пуст.`,
-      });
-  }
+  if (tags?.dropped)
+    checks.push({
+      key: "story_tags",
+      level: "warn",
+      title: "Теги сторис не влезут",
+      detail: `В v1 тегов: ${tags.v1}, в v2 уже: ${tags.v2}, а v2 хранит не больше ${tags.max}. Свои теги v2 останутся все; из v1 при переключении перенесутся ${tags.add} самых новых, ${tags.dropped} не перенесутся. Если они нужны, продавцу стоит освободить место в v2 заранее.`,
+    });
+  else if (tags?.add)
+    checks.push({
+      key: "story_tags",
+      level: "info",
+      title: "Теги сторис перенесутся при переключении",
+      detail: `Из v1 допишутся ${tags.add} (всего в v1: ${tags.v1}, в v2 уже: ${tags.v2}). После переключения проверьте их в админке.`,
+    });
   if (i.appUrl)
     checks.push({
       key: "v1",

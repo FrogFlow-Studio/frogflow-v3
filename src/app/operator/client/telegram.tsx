@@ -1,5 +1,5 @@
 /** Карточка клиента у оператора: Telegram-бот, вебхук, проверки переезда на v2. */
-import { type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import {
   connectTelegramFn,
   reinstallWebhookFn,
@@ -49,9 +49,20 @@ export function TelegramCard({
     await connectTelegramFn({ data: { botId: c.id, token } });
     await onDone();
   });
+  // Итог переключения на v2: сколько тегов сторис перенесено и сколько не влезло.
+  const [served, setServed] = useState<string | null>(null);
   const serve = useAction(async (v: "v1" | "v2") => {
-    await setServedByFn({ data: { botId: c.id, servedBy: v } });
+    setServed(null);
+    const r = await setServedByFn({ data: { botId: c.id, servedBy: v } });
     await onDone();
+    const tags = r && "storyTags" in r ? r.storyTags : undefined;
+    if (tags && "error" in tags) setServed(`Теги сторис не перенесены: ${tags.error}`);
+    else if (tags && (tags.added || tags.dropped))
+      setServed(
+        `Теги сторис: перенесено ${tags.added}` +
+          (tags.dropped ? `, не влезло в предел ${tags.dropped}` : "") +
+          ".",
+      );
   });
   const reinstall = useAction(async () => {
     await reinstallWebhookFn({ data: { botId: c.id } });
@@ -93,6 +104,7 @@ export function TelegramCard({
         </button>
       </form>
       <ErrorBox error={connect.error ?? serve.error ?? reinstall.error} />
+      {served && <p className="text-xs text-muted">{served}</p>}
       {c.servedBy !== "v2" && (
         <div className="mt-4">
           <MigrationChecks m={migration} />

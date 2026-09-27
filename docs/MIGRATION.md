@@ -302,5 +302,8 @@ v1 — пока клиент на v2, кнопку не нажимать.
 Таблица v1 `story_product_tags` (bot_id TEXT, без RLS) ядром v2 не
 читается. При переключении `served_by = "v2"` оператор один раз копирует
 строки клиента в `app_settings.consultant_story_tags`
-(`importLegacyStoryTags` в `app/operator/operator.server.ts`); если у клиента
-в v2 теги уже есть, импорт пропускается.
+(`importLegacyStoryTags` в `app/operator/operator.server.ts`). Теги v1
+сливаются со своими тегами v2: при совпадении id или сторис остаётся тег v2,
+в пределе 200 — самые новые (`mergeLegacyStoryTags`). Готовность к переезду
+заранее показывает, сколько перенесётся и сколько не влезет, а после
+переключения карточка клиента пишет, сколько перенесено.

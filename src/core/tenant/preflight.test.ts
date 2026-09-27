@@ -148,25 +148,31 @@ describe("evaluatePreflight: что блокирует клиента с Instagr
       );
   });
 
-  it("сторис-теги v1: v2 пуст — перенесутся при переключении; перенесены не все — предупреждение", () => {
-    const pending = evaluatePreflight({ ...shop, storyTags: { v1: 40, v2: 0, max: 200 } });
-    expect(pending.checks.find((c) => c.key === "story_tags")?.level).toBe("info");
-    const partial = evaluatePreflight({ ...shop, storyTags: { v1: 40, v2: 10, max: 200 } });
-    expect(partial.checks.find((c) => c.key === "story_tags")?.level).toBe("warn");
-    expect(partial.checks.find((c) => c.key === "story_tags")!.detail).toContain("30");
-    const over = evaluatePreflight({ ...shop, storyTags: { v1: 250, v2: 0, max: 200 } });
-    expect(over.checks.find((c) => c.key === "story_tags")?.level).toBe("warn");
-    expect(over.checks.find((c) => c.key === "story_tags")!.detail).toContain("200");
-    // v2 заполнен до предела, но 50 тегов v1 всё равно не поместились.
-    const full = evaluatePreflight({ ...shop, storyTags: { v1: 250, v2: 200, max: 200 } });
-    expect(full.checks.find((c) => c.key === "story_tags")?.level).toBe("warn");
+  it("сторис-теги v1: сколько перенесётся при переключении и сколько не влезет в предел", () => {
+    const tag = (p: ReturnType<typeof evaluatePreflight>) =>
+      p.checks.find((c) => c.key === "story_tags");
+    // Всё влезает — справка, сколько перенесётся.
+    const fits = evaluatePreflight({
+      ...shop,
+      storyTags: { v1: 40, v2: 10, add: 30, dropped: 0, max: 200 },
+    });
+    expect(tag(fits)?.level).toBe("info");
+    expect(tag(fits)!.detail).toContain("30");
+    // 100 своих в v2 и 150 из v1: 50 не влезут в предел 200 — предупреждение с числом.
+    const over = evaluatePreflight({
+      ...shop,
+      storyTags: { v1: 150, v2: 100, add: 100, dropped: 50, max: 200 },
+    });
+    expect(tag(over)?.level).toBe("warn");
+    expect(tag(over)!.detail).toContain("50");
+    expect(tag(over)!.detail).toContain("200");
+    expect(over.ready).toBe(true);
+    // Всё уже перенесено или тегов в v1 нет — пункта нет.
     for (const storyTags of [
-      { v1: 40, v2: 40, max: 200 },
-      { v1: 0, v2: 0, max: 200 },
+      { v1: 40, v2: 40, add: 0, dropped: 0, max: 200 },
+      { v1: 0, v2: 5, add: 0, dropped: 0, max: 200 },
     ])
-      expect(
-        evaluatePreflight({ ...shop, storyTags }).checks.find((c) => c.key === "story_tags"),
-      ).toBeUndefined();
+      expect(tag(evaluatePreflight({ ...shop, storyTags }))).toBeUndefined();
   });
 });
 

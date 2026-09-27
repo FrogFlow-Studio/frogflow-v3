@@ -74,6 +74,7 @@ function MigrationPage() {
                   {r.ok ? <Badge tone="ok">переведён</Badge> : <Badge tone="danger">нет</Badge>}{" "}
                   {c?.name ?? r.id}
                   {r.error && <span className="text-muted"> — {r.error}</span>}
+                  {r.note && <span className="text-muted"> — {r.note}</span>}
                 </li>
               );
             })}

@@ -1,6 +1,7 @@
 import { UserError } from "@/core/i18n/user-error";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSetting, setSetting } from "@/core/settings/settings";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Теги товаров на сторис для консультанта: покупатель отвечает на сторис
@@ -126,8 +127,56 @@ export async function listStoryTags(ctx: TenantContext): Promise<StoryTag[]> {
   return parseTags(await getSetting(ctx, STORY_TAGS_KEY));
 }
 
+/**
+ * Теги для записи: сбой чтения — ServerFailure, а не пустой список. Иначе
+ * запись поверх «пустого» списка затёрла бы теги продавца.
+ */
+export async function readStoryTagsForWrite(ctx: TenantContext): Promise<StoryTag[]> {
+  const { data, error } = await ctx.db
+    .from("app_settings")
+    .select("value")
+    .eq("key", STORY_TAGS_KEY)
+    .maybeSingle();
+  if (error) throw serverFailure(`Теги сторис не прочитаны (${error.message})`);
+  return parseTags((data as { value: string | null } | null)?.value ?? null);
+}
+
 export async function saveStoryTags(ctx: TenantContext, tags: StoryTag[]): Promise<void> {
   await setSetting(ctx, STORY_TAGS_KEY, JSON.stringify(tags.slice(0, STORY_TAGS_MAX)));
+}
+
+/**
+ * Перенос тегов v1 в список v2: дописываются теги, которых в v2 ещё нет
+ * (ни по id, ни по сторис) — версия v2 той же сторис главнее, повторный
+ * перенос ничего не меняет. Свои теги v2 не убираются никогда: предел `max`
+ * урезает только дописываемые из v1 (сначала новые по времени), сколько не
+ * влезло — `dropped`, чтобы обрезка не была тихой.
+ */
+export function mergeLegacyStoryTags(
+  existing: readonly StoryTag[],
+  legacy: readonly StoryTag[],
+  max: number,
+): { tags: StoryTag[]; added: number; dropped: number } {
+  const ids = new Set(existing.map((t) => t.id));
+  const stories = new Set(existing.map((t) => t.story_id));
+  const fresh: StoryTag[] = [];
+  for (const t of legacy) {
+    if (ids.has(t.id) || stories.has(t.story_id)) continue;
+    ids.add(t.id);
+    stories.add(t.story_id);
+    fresh.push(t);
+  }
+  fresh.sort((a, b) =>
+    a.created_at === b.created_at
+      ? a.id.localeCompare(b.id)
+      : b.created_at.localeCompare(a.created_at),
+  );
+  const taken = fresh.slice(0, Math.max(0, max - existing.length));
+  return {
+    tags: [...existing, ...taken],
+    added: taken.length,
+    dropped: fresh.length - taken.length,
+  };
 }
 
 export type StoryTagInput = {
@@ -144,7 +193,7 @@ export async function upsertStoryTag(ctx: TenantContext, input: StoryTagInput): 
   const storyId = info.shortcode ?? input.story.trim();
   if (!storyId)
     throw new UserError("err.stories.idRequired", "Укажите ссылку на сторис или её id.");
-  const tags = await listStoryTags(ctx);
+  const tags = await readStoryTagsForWrite(ctx);
   const tag: StoryTag = {
     id: tags.find((t) => t.story_id === storyId)?.id ?? `st_${Date.now().toString(36)}`,
     story_id: storyId,
@@ -165,7 +214,7 @@ export async function upsertStoryTag(ctx: TenantContext, input: StoryTagInput): 
 }
 
 export async function deleteStoryTag(ctx: TenantContext, id: string): Promise<void> {
-  const tags = await listStoryTags(ctx);
+  const tags = await readStoryTagsForWrite(ctx);
   await saveStoryTags(
     ctx,
     tags.filter((t) => t.id !== id),
