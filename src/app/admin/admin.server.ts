@@ -105,8 +105,9 @@ export async function notifyCustomer(
 ): Promise<boolean> {
   const { sendOrEnqueue } = await import("@/core/outbox/outbox");
   const channel = orderChannel(order.platform);
-  // Ручной заказ продавец завёл сам — чата с покупателем нет (как в v1).
-  if (channel === "manual") return false;
+  // Ручной заказ продавец завёл сам — чата с покупателем нет (как в v1);
+  // у заказа с сайта чата тоже нет: покупатель видит статус на странице заказа.
+  if (channel === "manual" || channel === "web") return false;
   if (channel === "zernio") {
     const { zernioTargetForOrder } = await import("@/channels/zernio/outbound.server");
     const { zernioOutboxSender } = await import("@/channels/zernio/outbox.server");
@@ -216,7 +217,12 @@ export async function runOrderAction(
         ask: telegramLanguageAsker(api(ctx), order.telegram_id, m),
         actor,
       };
-      if (orderChannel(order.platform) !== "telegram") {
+      if (orderChannel(order.platform) === "web") {
+        // Заказ с сайта: материалы — на странице заказа и копией на почту.
+        const { webMaterialSender } = await import("@/core/storefront/web-order");
+        sender = webMaterialSender;
+        opts = { lang: "ru", allWhenAmbiguous: true, actor };
+      } else if (orderChannel(order.platform) !== "telegram") {
         const { zernioSenderFor, zernioTargetForOrder } =
           await import("@/channels/zernio/outbound.server");
         const target = await zernioTargetForOrder(ctx, order);

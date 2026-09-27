@@ -12,7 +12,8 @@ import type { Tenant } from "@/core/tenant/types";
  * «course» — страница купленного курса (модуль courses): ссылка приходит при
  * выдаче в любой канал, поэтому платная витрина для неё не нужна.
  */
-export type StorefrontPart = "info" | "catalog" | "web_handoff" | "mini_app" | "legal" | "course";
+export type StorefrontPart =
+  "info" | "catalog" | "web_handoff" | "web_checkout" | "mini_app" | "legal" | "course";
 
 export function storefrontAllows(
   modules: Partial<Record<ModuleKey, boolean>>,
@@ -31,6 +32,7 @@ export function storefrontAllows(
     case "catalog":
       return Boolean(modules.web_storefront || modules.telegram_mini_app);
     case "web_handoff":
+    case "web_checkout":
       return Boolean(modules.web_storefront);
     case "mini_app":
       return Boolean(modules.telegram_mini_app);

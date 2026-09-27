@@ -9,12 +9,14 @@ import type { Locale } from "@/core/i18n/locale";
  * формат, что у v1, — покупатель, переехавший с v1, не теряет ни состояние,
  * ни корзину.
  */
-export type Platform = "telegram" | "instagram" | "whatsapp";
+/** `web` — покупатель, оформивший заказ на витрине сайта без мессенджера. */
+export type Platform = "telegram" | "instagram" | "whatsapp" | "web";
 
 export const USER_KEY_PREFIX: Record<Platform, string> = {
   telegram: "tg_",
   instagram: "ig_",
   whatsapp: "wa_",
+  web: "web_",
 };
 
 export function userKey(platform: Platform, externalId: string | number): string {

@@ -1,18 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { createHandoffFn, miniAppCheckoutFn } from "@/app/storefront/storefront.functions";
+import { webCheckoutInfoFn } from "@/app/storefront/checkout.functions";
 import { useCart, useTelegramWebApp } from "@/app/storefront/cart";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
 import { Empty, ErrorBox, useAction } from "@/app/ui";
 
-export const Route = createFileRoute("/s/$slug/cart")({ component: CartPage });
+export const Route = createFileRoute("/s/$slug/cart")({
+  loader: async ({ params }) => ({
+    web: (await webCheckoutInfoFn({ data: { slug: params.slug } })).enabled,
+  }),
+  component: CartPage,
+});
 
 function CartPage() {
   const { slug } = Route.useParams();
   const { t } = useStorefrontLocale();
   const cart = useCart();
   const wa = useTelegramWebApp();
+  const { web } = Route.useLoaderData();
+  // Оформление на сайте — для цифровых товаров; физические пока через бота.
+  const webCheckout = web && !wa && !cart.lines.some((l) => l.kind === "physical");
   const [done, setDone] = useState<string | null>(null);
   const checkout = useAction(async () => {
     const items = cart.lines.map((l) => ({
@@ -94,8 +103,17 @@ function CartPage() {
           <p className="mt-1 text-xs text-muted">
             {wa ? t("cart.nextStep") : t("cart.nextStepTelegram")}
           </p>
+          {webCheckout && (
+            <Link
+              to="/s/$slug/checkout"
+              params={{ slug }}
+              className="btn-primary mt-4 block w-full text-center"
+            >
+              {t("cart.checkoutWeb")}
+            </Link>
+          )}
           <button
-            className="btn-primary mt-4 w-full"
+            className={`${webCheckout ? "btn-ghost" : "btn-primary"} mt-4 w-full`}
             disabled={checkout.busy}
             onClick={() => void checkout.run().catch(() => {})}
           >

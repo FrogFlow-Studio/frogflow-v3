@@ -36,6 +36,9 @@ export const ru = {
     "Одна строка под названием магазина на витрине; пусто — из «О продавце».",
   "settings.shop.accent": "Цвет витрины",
   "settings.shop.accentHint": "Кнопки и акценты на витрине /s/…; галочка снята — цвет платформы.",
+  "settings.shop.webCheckout": "Оформление заказа на сайте",
+  "settings.shop.webCheckoutHint":
+    "Покупатель оплачивает цифровые товары прямо на витрине по реквизитам страны и загружает чек; материалы открываются на странице заказа.",
   // способы оплаты
   "settings.pay.title": "Способы оплаты по странам",
   "settings.pay.addCountry": "+ Страна",
@@ -296,6 +299,9 @@ export const kk: SectionDict<typeof ru> = {
   "settings.shop.accent": "Витрина түсі",
   "settings.shop.accentHint":
     "/s/… витринасындағы түймелер мен акценттер; құсбелгі алынса — платформа түсі.",
+  "settings.shop.webCheckout": "Сайтта тапсырыс рәсімдеу",
+  "settings.shop.webCheckoutHint":
+    "Сатып алушы цифрлық тауарларды витринада ел деректемелері бойынша төлеп, чекті жүктейді; материалдар тапсырыс бетінде ашылады.",
   "settings.pay.title": "Елдер бойынша төлем тәсілдері",
   "settings.pay.addCountry": "+ Ел",
   "settings.pay.intro":
@@ -549,6 +555,9 @@ export const en: SectionDict<typeof ru> = {
   "settings.shop.accent": "Storefront color",
   "settings.shop.accentHint":
     "Buttons and accents on the /s/… storefront; unchecked — platform color.",
+  "settings.shop.webCheckout": "Checkout on the website",
+  "settings.shop.webCheckoutHint":
+    "Buyers pay for digital goods right on the storefront using the country payment details and upload a receipt; materials open on the order page.",
   "settings.pay.title": "Payment methods by country",
   "settings.pay.addCountry": "+ Country",
   "settings.pay.intro":
@@ -800,6 +809,9 @@ export const uz: SectionDict<typeof ru> = {
   "settings.shop.accent": "Vitrina rangi",
   "settings.shop.accentHint":
     "/s/… vitrinasidagi tugmalar va aksentlar; belgi olib tashlansa — platforma rangi.",
+  "settings.shop.webCheckout": "Saytda buyurtma rasmiylashtirish",
+  "settings.shop.webCheckoutHint":
+    "Xaridor raqamli tovarlarni vitrinada mamlakat rekvizitlari bo‘yicha to‘laydi va chekni yuklaydi; materiallar buyurtma sahifasida ochiladi.",
   "settings.pay.title": "Mamlakatlar bo‘yicha to‘lov usullari",
   "settings.pay.addCountry": "+ Mamlakat",
   "settings.pay.intro":

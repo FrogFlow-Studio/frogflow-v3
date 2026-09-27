@@ -2033,9 +2033,14 @@ async function adminDecision(
     return;
   }
   let sender = telegramMaterialSender(api, order.telegram_id, m);
+  const web = orderChannel(order.platform) === "web";
   if (zernioTarget) {
     const { zernioSenderFor } = await import("@/channels/zernio/outbound.server");
     sender = zernioSenderFor(zernioTarget);
+  } else if (web) {
+    // Заказ с сайта: материалы — на странице заказа и копией на почту.
+    const { webMaterialSender } = await import("@/core/storefront/web-order");
+    sender = webMaterialSender;
   } else if (orderChannel(order.platform) !== "telegram") {
     await api.call("sendMessage", {
       chat_id: chatId,
@@ -2047,7 +2052,7 @@ async function adminDecision(
     ctx,
     orderId,
     sender,
-    zernioTarget
+    zernioTarget || web
       ? { lang: buyerLocale, allWhenAmbiguous: true, actor: "admin" }
       : {
           lang: buyerLocale,

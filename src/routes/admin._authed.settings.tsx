@@ -29,6 +29,7 @@ import type { DirectBotSettings } from "@/core/instagram/direct-bot-settings";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { uploadFile } from "@/app/admin/upload-client";
 import { imagePath } from "@/core/catalog/image-url";
+import { parseWebCheckout } from "@/core/storefront/web-checkout-settings";
 
 export const Route = createFileRoute("/admin/_authed/settings")({
   loader: async () => {
@@ -91,6 +92,13 @@ function SettingsPage() {
         shop_currency: String(f.get("shop_currency") || "KZT").toUpperCase(),
         shop_tagline: String(f.get("shop_tagline") ?? ""),
         storefront_accent: String(f.get("storefront_accent_on") ? f.get("storefront_accent") : ""),
+        ...(shop.modules.web_storefront
+          ? {
+              storefront_checkout: JSON.stringify({
+                enabled: Boolean(f.get("storefront_checkout")),
+              }),
+            }
+          : {}),
         admin_chat_id: String(f.get("admin_chat_id")),
         admin_contact_link: String(f.get("admin_contact_link")),
         instruction_caption: String(f.get("instruction_caption")),
@@ -197,6 +205,18 @@ function SettingsPage() {
                 />
               </div>
             </Field>
+            {shop.modules.web_storefront && (
+              <Field
+                label={t("settings.shop.webCheckout")}
+                hint={t("settings.shop.webCheckoutHint")}
+              >
+                <input
+                  type="checkbox"
+                  name="storefront_checkout"
+                  defaultChecked={parseWebCheckout(settings.storefront_checkout ?? null).enabled}
+                />
+              </Field>
+            )}
             <Field label={t("settings.shop.contactLink")}>
               <input
                 className="input"

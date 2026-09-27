@@ -7,6 +7,7 @@ vi.mock("@/core/db/client.server", () => ({ serviceDb: () => db }));
 const {
   RETENTION,
   pruneBroadcastRecipients,
+  pruneCheckoutChallenges,
   pruneClosedLeads,
   pruneOperatorLoginAttempts,
   pruneReceiptChecks,
@@ -276,5 +277,31 @@ describe("закрытые заявки воронки сделок", () => {
     ];
     expect(await pruneClosedLeads(NOW, ["bot-1"])).toEqual({ deleted: 1, done: true });
     expect(db.tables.app_settings!.map((r) => r.bot_id)).toEqual(["bot-v1"]);
+  });
+});
+
+describe("брони задач оформления на витрине", () => {
+  const row = (bot_id: string, key: string, daysOld: number) => ({
+    bot_id,
+    key,
+    value: daysAgo(daysOld),
+    updated_at: daysAgo(daysOld),
+  });
+
+  it("удаляет брони старше суток, строго по префиксу и только у клиентов v2", async () => {
+    db.tables.app_settings = [
+      row("bot-1", "checkout_challenge:aaa", 2),
+      row("bot-1", "checkout_challenge:bbb", 0.5),
+      row("bot-2", "checkout_challenge:ccc", 2),
+      row("bot-1", "checkoutXchallenge:ddd", 2),
+      row("bot-1", "storefront_checkout", 2),
+    ];
+    expect(await pruneCheckoutChallenges(NOW, ["bot-1"])).toEqual({ deleted: 1, done: true });
+    expect(db.tables.app_settings!.map((r) => `${r.bot_id} ${r.key}`)).toEqual([
+      "bot-1 checkout_challenge:bbb",
+      "bot-2 checkout_challenge:ccc",
+      "bot-1 checkoutXchallenge:ddd",
+      "bot-1 storefront_checkout",
+    ]);
   });
 });

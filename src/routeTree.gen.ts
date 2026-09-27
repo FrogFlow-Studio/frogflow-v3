@@ -58,6 +58,7 @@ import { Route as OperatorAuthedRevenueRouteImport } from './routes/operator._au
 import { Route as OperatorAuthedSettingsRouteImport } from './routes/operator._authed.settings'
 import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
 import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
+import { Route as SSlugCheckoutRouteImport } from './routes/s.$slug.checkout'
 import { Route as SSlugOrdersRouteImport } from './routes/s.$slug.orders'
 import { Route as SSlugSitemapDotxmlRouteImport } from './routes/s.$slug_.sitemap[.]xml'
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
@@ -71,6 +72,7 @@ import { Route as OperatorAuthedClientsBotIdRouteImport } from './routes/operato
 import { Route as OperatorAuthedClientsNewRouteImport } from './routes/operator._authed.clients.new'
 import { Route as SSlugCourseItemIdRouteImport } from './routes/s.$slug.course.$itemId'
 import { Route as SSlugLegalDocRouteImport } from './routes/s.$slug.legal.$doc'
+import { Route as SSlugOrderIdRouteImport } from './routes/s.$slug.order.$id'
 import { Route as SSlugPIdRouteImport } from './routes/s.$slug.p.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -316,6 +318,11 @@ const SSlugCartRoute = SSlugCartRouteImport.update({
   path: '/cart',
   getParentRoute: () => SSlugRoute,
 } as any)
+const SSlugCheckoutRoute = SSlugCheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => SSlugRoute,
+} as any)
 const SSlugOrdersRoute = SSlugOrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
@@ -383,6 +390,11 @@ const SSlugLegalDocRoute = SSlugLegalDocRouteImport.update({
   path: '/legal/$doc',
   getParentRoute: () => SSlugRoute,
 } as any)
+const SSlugOrderIdRoute = SSlugOrderIdRouteImport.update({
+  id: '/order/$id',
+  path: '/order/$id',
+  getParentRoute: () => SSlugRoute,
+} as any)
 const SSlugPIdRoute = SSlugPIdRouteImport.update({
   id: '/p/$id',
   path: '/p/$id',
@@ -434,6 +446,7 @@ export interface FileRoutesByFullPath {
   '/operator/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
+  '/s/$slug/checkout': typeof SSlugCheckoutRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
   '/s/$slug/sitemap.xml': typeof SSlugSitemapDotxmlRoute
   '/admin/': typeof AdminAuthedIndexRoute
@@ -450,6 +463,7 @@ export interface FileRoutesByFullPath {
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
+  '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
 }
 export interface FileRoutesByTo {
@@ -496,6 +510,7 @@ export interface FileRoutesByTo {
   '/operator/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
+  '/s/$slug/checkout': typeof SSlugCheckoutRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
   '/s/$slug/sitemap.xml': typeof SSlugSitemapDotxmlRoute
   '/s/$slug': typeof SSlugIndexRoute
@@ -510,6 +525,7 @@ export interface FileRoutesByTo {
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
+  '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
 }
 export interface FileRoutesById {
@@ -560,6 +576,7 @@ export interface FileRoutesById {
   '/operator/_authed/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/_authed/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
+  '/s/$slug/checkout': typeof SSlugCheckoutRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
   '/s/$slug_/sitemap.xml': typeof SSlugSitemapDotxmlRoute
   '/admin/_authed/': typeof AdminAuthedIndexRoute
@@ -576,6 +593,7 @@ export interface FileRoutesById {
   '/operator/_authed/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
+  '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
 }
 export interface FileRouteTypes {
@@ -625,6 +643,7 @@ export interface FileRouteTypes {
     | '/operator/revenue'
     | '/operator/settings'
     | '/s/$slug/cart'
+    | '/s/$slug/checkout'
     | '/s/$slug/orders'
     | '/s/$slug/sitemap.xml'
     | '/admin/'
@@ -641,6 +660,7 @@ export interface FileRouteTypes {
     | '/operator/clients/new'
     | '/s/$slug/course/$itemId'
     | '/s/$slug/legal/$doc'
+    | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -687,6 +707,7 @@ export interface FileRouteTypes {
     | '/operator/revenue'
     | '/operator/settings'
     | '/s/$slug/cart'
+    | '/s/$slug/checkout'
     | '/s/$slug/orders'
     | '/s/$slug/sitemap.xml'
     | '/s/$slug'
@@ -701,6 +722,7 @@ export interface FileRouteTypes {
     | '/operator/clients/new'
     | '/s/$slug/course/$itemId'
     | '/s/$slug/legal/$doc'
+    | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
   id:
     | '__root__'
@@ -750,6 +772,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/revenue'
     | '/operator/_authed/settings'
     | '/s/$slug/cart'
+    | '/s/$slug/checkout'
     | '/s/$slug/orders'
     | '/s/$slug_/sitemap.xml'
     | '/admin/_authed/'
@@ -766,6 +789,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/clients/new'
     | '/s/$slug/course/$itemId'
     | '/s/$slug/legal/$doc'
+    | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
   fileRoutesById: FileRoutesById
 }
@@ -1135,6 +1159,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugCartRouteImport
       parentRoute: typeof SSlugRoute
     }
+    '/s/$slug/checkout': {
+      id: '/s/$slug/checkout'
+      path: '/checkout'
+      fullPath: '/s/$slug/checkout'
+      preLoaderRoute: typeof SSlugCheckoutRouteImport
+      parentRoute: typeof SSlugRoute
+    }
     '/s/$slug/orders': {
       id: '/s/$slug/orders'
       path: '/orders'
@@ -1224,6 +1255,13 @@ declare module '@tanstack/react-router' {
       path: '/legal/$doc'
       fullPath: '/s/$slug/legal/$doc'
       preLoaderRoute: typeof SSlugLegalDocRouteImport
+      parentRoute: typeof SSlugRoute
+    }
+    '/s/$slug/order/$id': {
+      id: '/s/$slug/order/$id'
+      path: '/order/$id'
+      fullPath: '/s/$slug/order/$id'
+      preLoaderRoute: typeof SSlugOrderIdRouteImport
       parentRoute: typeof SSlugRoute
     }
     '/s/$slug/p/$id': {
@@ -1361,19 +1399,23 @@ const OperatorRouteWithChildren = OperatorRoute._addFileChildren(
 
 interface SSlugRouteChildren {
   SSlugCartRoute: typeof SSlugCartRoute
+  SSlugCheckoutRoute: typeof SSlugCheckoutRoute
   SSlugOrdersRoute: typeof SSlugOrdersRoute
   SSlugIndexRoute: typeof SSlugIndexRoute
   SSlugCourseItemIdRoute: typeof SSlugCourseItemIdRoute
   SSlugLegalDocRoute: typeof SSlugLegalDocRoute
+  SSlugOrderIdRoute: typeof SSlugOrderIdRoute
   SSlugPIdRoute: typeof SSlugPIdRoute
 }
 
 const SSlugRouteChildren: SSlugRouteChildren = {
   SSlugCartRoute: SSlugCartRoute,
+  SSlugCheckoutRoute: SSlugCheckoutRoute,
   SSlugOrdersRoute: SSlugOrdersRoute,
   SSlugIndexRoute: SSlugIndexRoute,
   SSlugCourseItemIdRoute: SSlugCourseItemIdRoute,
   SSlugLegalDocRoute: SSlugLegalDocRoute,
+  SSlugOrderIdRoute: SSlugOrderIdRoute,
   SSlugPIdRoute: SSlugPIdRoute,
 }
 

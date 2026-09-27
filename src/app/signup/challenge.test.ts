@@ -75,3 +75,16 @@ describe("проверка регистрации на бота", () => {
     expect(leadingZeroBits(new Uint8Array([0xff]))).toBe(0);
   });
 });
+
+describe("назначение задачи", () => {
+  it("задача регистрации не подходит для оформления заказа и наоборот", async () => {
+    const c = issueChallenge(SECRET, T0);
+    const answer = await solve(c);
+    const later = T0 + CHALLENGE_MIN_FILL_MS + 1;
+    expect(verifyChallenge(SECRET, c, answer, later, BITS, "checkout")).not.toBeNull();
+    const k = issueChallenge(SECRET, T0, "checkout");
+    const kAnswer = await solve(k);
+    expect(verifyChallenge(SECRET, k, kAnswer, later, BITS, "checkout")).toBeNull();
+    expect(verify(k, kAnswer, later)).not.toBeNull();
+  });
+});

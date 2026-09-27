@@ -15,16 +15,26 @@ export const CHALLENGE_MAX_AGE_MS = 2 * 3600_000;
 
 const REFRESH = "Проверка устарела — обновите страницу и попробуйте ещё раз.";
 
-function mac(secret: string, body: string): string {
+/**
+ * Назначение задачи входит в подпись: задачу регистрации не подсунуть в
+ * оформление заказа на витрине и наоборот.
+ */
+export type ChallengePurpose = "signup" | "checkout";
+
+function mac(secret: string, body: string, purpose: ChallengePurpose): string {
   return createHmac("sha256", secret)
-    .update(`ff-signup-challenge\0${body}`)
+    .update(`ff-${purpose}-challenge\0${body}`)
     .digest("hex")
     .slice(0, 32);
 }
 
-export function issueChallenge(secret: string, now = Date.now()): string {
+export function issueChallenge(
+  secret: string,
+  now = Date.now(),
+  purpose: ChallengePurpose = "signup",
+): string {
   const body = `v1.${now}.${randomBytes(16).toString("hex")}`;
-  return `${body}.${mac(secret, body)}`;
+  return `${body}.${mac(secret, body, purpose)}`;
 }
 
 function parse(
@@ -47,10 +57,11 @@ export function verifyChallenge(
   now = Date.now(),
   /** Сложность; меньше — только в тестах, чтобы медленный CI не ждал десятки секунд. */
   bits = POW_BITS,
+  purpose: ChallengePurpose = "signup",
 ): string | null {
   const c = parse(challenge ?? "");
   if (!c) return REFRESH;
-  const want = Buffer.from(mac(secret, c.body));
+  const want = Buffer.from(mac(secret, c.body, purpose));
   if (!timingSafeEqual(want, Buffer.from(c.sig))) return REFRESH;
   const age = now - c.issued;
   if (age > CHALLENGE_MAX_AGE_MS || age < -60_000) return REFRESH;

@@ -33,8 +33,19 @@ export async function emailOrderMaterials(
   if (order.platform === "telegram") return { sent: false, reason: "telegram" };
   const to = order.customer_email?.trim();
   if (!to) return { sent: false, reason: "нет почты" };
-  if (mailer === smtpMailer && !isMailConfigured())
+  if (mailer === smtpMailer && !isMailConfigured()) {
+    // Покупатель с сайта ждёт письмо — продавец должен видеть, что его не будет
+    // (материалы при этом на странице заказа).
+    if (order.platform === "web")
+      await recordOrderEvent(
+        ctx,
+        order.id,
+        "email_failed",
+        { to, error: "SMTP не настроен" },
+        "bot",
+      );
     return { sent: false, reason: "SMTP не настроен" };
+  }
   const files: Array<{ name: string; url: string }> = [];
   for (const item of order.order_items) {
     const delivered = parseDeliveredLanguages(item.delivered_language);

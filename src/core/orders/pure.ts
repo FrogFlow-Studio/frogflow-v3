@@ -199,11 +199,14 @@ export function itemNeedsLanguageChoice(
  * Telegram. Сравнение `platform !== "telegram"` отправляло такой заказ в
  * Instagram/WhatsApp, где диалога нет, и покупатель оставался без ответа.
  * `manual` — заказ, который продавец завёл сам: чата с покупателем нет.
+ * `web` — заказ с витрины сайта: чата нет, материалы — на странице заказа
+ * по подписанной ссылке и письмом.
  */
-export type OrderChannel = "telegram" | "zernio" | "manual";
+export type OrderChannel = "telegram" | "zernio" | "manual" | "web";
 
 export function orderChannel(platform: string | null | undefined): OrderChannel {
   if (platform === "instagram" || platform === "whatsapp") return "zernio";
   if (platform === "manual") return "manual";
+  if (platform === "web") return "web";
   return "telegram";
 }

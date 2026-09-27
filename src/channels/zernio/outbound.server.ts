@@ -32,7 +32,7 @@ export async function zernioTargetForOrder(
   ctx: TenantContext,
   order: { user_key: string | null; telegram_id: number; platform: string },
 ): Promise<ZernioTarget | null> {
-  if (orderChannel(order.platform) === "telegram") return null;
+  if (orderChannel(order.platform) !== "zernio") return null;
   const customer = order.user_key
     ? await getCustomer(ctx, order.user_key)
     : await getCustomerByTelegramId(ctx, Number(order.telegram_id));
