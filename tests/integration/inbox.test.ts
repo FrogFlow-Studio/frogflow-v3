@@ -4,7 +4,7 @@ import { serviceDb } from "@/core/db/client.server";
 import { requireTenant, tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
 import { upsertCustomer, userKey } from "@/core/customers/customers";
 import { inboundIntercepted, listConversations } from "@/core/chat/chat";
-import { createTicket, getTicket } from "@/core/helpdesk/tickets";
+import { createTicket, getTicket, TICKET_SEQ_KEY } from "@/core/helpdesk/tickets";
 import {
   getInboxMeta,
   inboxEventId,
@@ -16,6 +16,25 @@ import {
 
 const INBOX_TG_ID = TEST_TG_ID + 21; // свой id: файлы тестов делят демо-клиента
 let ctx: TenantContext;
+/** Счётчик номеров обращений до теста: undefined — строки не было. */
+let seqBefore: { value: string | null } | undefined;
+
+async function seqRow() {
+  const { data } = await serviceDb()
+    .from("app_settings")
+    .select("value")
+    .eq("bot_id", DEMO_BOT)
+    .eq("key", TICKET_SEQ_KEY)
+    .maybeSingle();
+  return data ? { value: data.value } : undefined;
+}
+
+/** Счётчик helpdesk_seq возвращается как был: не было — удаляется. */
+async function restoreSeq() {
+  const q = serviceDb().from("app_settings");
+  if (seqBefore === undefined) await q.delete().eq("bot_id", DEMO_BOT).eq("key", TICKET_SEQ_KEY);
+  else await q.update({ value: seqBefore.value }).eq("bot_id", DEMO_BOT).eq("key", TICKET_SEQ_KEY);
+}
 
 async function cleanup() {
   const db = serviceDb();
@@ -51,9 +70,13 @@ describe.skipIf(!liveReady)("единый входящий на демо-кли�
       modules: { ...tenant.modules, manager_chat: true, helpdesk: true },
     });
     await cleanup();
+    seqBefore = await seqRow();
     await upsertCustomer(ctx, "telegram", INBOX_TG_ID, { firstName: "Входящий" });
   });
-  afterAll(cleanup);
+  afterAll(async () => {
+    await cleanup();
+    await restoreSeq();
+  });
 
   it("новый диалог — открыт и ничей, без строки учёта", async () => {
     await inboundIntercepted(ctx, INBOX_TG_ID, "Есть доставка?");

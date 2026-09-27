@@ -3,6 +3,8 @@ import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 
 let db: FakeDb;
 vi.mock("@/core/db/client.server", () => ({ serviceDb: () => db }));
+let directory: Array<{ id: string; archived?: boolean; settings: Record<string, unknown> }> = [];
+vi.mock("@/core/tenant/resolve.server", () => ({ tenantDirectory: async () => directory }));
 
 const {
   RETENTION,
@@ -15,6 +17,7 @@ const {
   BATCH,
   pruneSignupChallenges,
   pruneZernioLogs,
+  runRetention,
 } = await import("./retention");
 
 const NOW = Date.parse("2026-09-26T00:00:00Z");
@@ -365,5 +368,34 @@ describe("брони задач оформления на витрине", () =>
       "bot-1 checkoutXchallenge:ddd",
       "bot-1 storefront_checkout",
     ]);
+  });
+});
+
+describe("ночная уборка без явных границ — только клиенты v2 (переезд)", () => {
+  it("журналы и счётчики клиента v1 и клиента без served_by не трогаются", async () => {
+    directory = [
+      { id: "bot-v2", settings: { served_by: "v2" } },
+      { id: "bot-v1", settings: { served_by: "v1" } },
+      { id: "bot-none", settings: {} },
+    ];
+    const old = RETENTION.zernioLogsDays + 5;
+    const bots = ["bot-v2", "bot-v1", "bot-none"];
+    db.tables.zernio_logs = bots.map((b) => ({
+      id: `z-${b}`,
+      bot_id: b,
+      status: "processed",
+      created_at: daysAgo(old),
+    }));
+    const day = daysAgo(RETENTION.receiptChecksDays + 5);
+    db.tables.app_settings = bots.map((b) => ({
+      bot_id: b,
+      key: "receipt_checks:tg_1",
+      value: JSON.stringify({ day: day.slice(0, 10), n: 1, order_id: 1, order_n: 1 }),
+      updated_at: day,
+    }));
+    const out = await runRetention(NOW, 5_000);
+    expect(out.zernio_logs).toEqual({ deleted: 1, done: true });
+    expect(db.tables.zernio_logs.map((r) => r.bot_id)).toEqual(["bot-v1", "bot-none"]);
+    expect(db.tables.app_settings.map((r) => r.bot_id)).toEqual(["bot-v1", "bot-none"]);
   });
 });

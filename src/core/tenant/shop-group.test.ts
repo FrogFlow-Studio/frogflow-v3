@@ -91,3 +91,52 @@ describe("оператор связывает и отвязывает магаз
     expect(planUnlink(two, shop("z", {}, null))).toEqual([]);
   });
 });
+
+describe("VIP-клиент с двумя ботами при переезде", () => {
+  // Основной магазин и VIP-бот — две записи bots одного продавца. Переезжают
+  // по одному; связь ставит оператор (planLink), переключатель served_by её не трогает.
+  const main = (servedBy: "v1" | "v2", group: string | null) =>
+    shop(
+      "main",
+      { settings: { served_by: servedBy, ...(group ? { multi_bot: { group } } : {}) } } as never,
+      null,
+    );
+  const vipShop = (servedBy: "v1" | "v2", group: string | null) =>
+    shop(
+      "vip",
+      { settings: { served_by: servedBy, ...(group ? { multi_bot: { group } } : {}) } } as never,
+      null,
+    );
+
+  it("оператор связывает, пока второй ещё на v1; второй появляется у продавца только после своего переезда", () => {
+    const link = planLink(
+      main("v2", null),
+      vipShop("v1", null),
+      "4a8f0c1e-0000-4000-8000-000000000001",
+    );
+    expect("changes" in link && link.changes.map((c) => c.botId)).toEqual(["main", "vip"]);
+    const g = "4a8f0c1e-0000-4000-8000-000000000001";
+    // Второй ещё на v1: в его админку v2 не пускает (правило 6).
+    expect(groupShops([main("v2", g), vipShop("v1", g)], main("v2", g)).map((t) => t.id)).toEqual([
+      "main",
+    ]);
+    // Переехал — оба магазина под одним входом.
+    expect(groupShops([main("v2", g), vipShop("v2", g)], main("v2", g)).map((t) => t.id)).toEqual([
+      "main",
+      "vip",
+    ]);
+    // Откат второго на v1 снова прячет его, связь остаётся на повторный переезд.
+    const back = vipShop("v1", g);
+    expect(groupShops([main("v2", g), back], main("v2", g)).map((t) => t.id)).toEqual(["main"]);
+    expect(shopGroup(back)).toBe(g);
+  });
+
+  it("связать можно и после переезда обоих", () => {
+    const link = planLink(
+      main("v2", null),
+      vipShop("v2", null),
+      "4a8f0c1e-0000-4000-8000-000000000002",
+    );
+    expect("changes" in link).toBe(true);
+  });
+});

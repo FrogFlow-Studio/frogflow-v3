@@ -463,6 +463,20 @@ describe("купленное сверх плана не пропадает пр�
     expect(kept).not.toContain("whatsapp");
   });
 
+  it("переезд: любой первый план оставляет включённым всё, что было у клиента на v1", () => {
+    // Клиент v1 со всеми готовыми модулями — худший случай для «купленное не пропадает».
+    const v1 = Object.fromEntries(
+      MODULE_KEYS.filter((k) => moduleDef(k).status === "available").map((k) => [k, true]),
+    );
+    const grandfathered = keptModules(null, undefined, v1);
+    for (const n of PLAN_NICHES)
+      for (const tier of PLAN_TIERS) {
+        const mods = effectiveModules(parsePlan(`${n}.${tier}`), { grandfathered })!;
+        const lost = Object.keys(v1).filter((k) => !mods[k as keyof typeof mods]);
+        expect(lost, `${n}.${tier}`).toEqual([]);
+      }
+  });
+
   it("модуль «в разработке» в сохранённые не попадает", () => {
     expect(keptModules(null, undefined, on("crypto"))).toEqual([]);
   });

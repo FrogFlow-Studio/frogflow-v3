@@ -3,7 +3,7 @@ import { liveReady, DEMO_BOT } from "./live";
 import { serviceDb } from "@/core/db/client.server";
 import type { Json } from "@/core/db-types";
 import { invalidateTenantDirectory, requireTenant } from "@/core/tenant/resolve.server";
-import { effectiveModules } from "@/core/plans/plans";
+import { effectiveModules, keptModules } from "@/core/plans/plans";
 import { nicheForVertical, parsePlan } from "@/core/plans/registry";
 import { servedByV2 } from "@/core/tenant/directory";
 import {
@@ -88,7 +88,12 @@ describe.skipIf(!liveReady)("тарифы на демо-клиенте", () => {
     await setPlan(DEMO_BOT, { tier: "basic", period: "month", addons: ["instagram"] }, ACTOR);
     const t1 = await tenant();
     expect(t1.plan).toBe(`${niche}.basic`);
-    expect(t1.modules).toEqual(effectiveModules(parsePlan(t1.plan), { addons: ["instagram"] }));
+    // С #143 назначение плана сохраняет включённые модули сверх плана бесплатно.
+    const kept = keptModules(parsePlan(t0.plan), t0.settings.billing, t0.modules);
+    expect([...(t1.settings.billing?.grandfathered ?? [])].sort()).toEqual([...kept].sort());
+    expect(t1.modules).toEqual(
+      effectiveModules(parsePlan(t1.plan), { addons: ["instagram"], grandfathered: kept }),
+    );
     expect(t1.modules.instagram).toBe(true);
     expect(await dbPlan()).toBe("basic");
 

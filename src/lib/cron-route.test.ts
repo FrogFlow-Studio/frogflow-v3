@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -115,21 +116,42 @@ beforeEach(() => {
   for (const k of Object.keys(seen)) delete seen[k];
 });
 
-describe("кроны обходят только клиентов v2", () => {
-  const JOBS: Record<string, string[]> = {
-    "ensure-webhook": ["webhook", "vipWebhook"],
-    broadcast: ["broadcast", "waBroadcast", "outbox", "orderNotify"],
-    "cart-reminder": ["cartReminder"],
-    "fulfillment-reminder": ["fulfillment", "winback", "funnel", "courses", "webOrders"],
-    vip: ["vip"],
-    "comment-dm-fallback": ["commentDm"],
-    health: ["zernioSync", "zernioRetry", "digest", "weekly"],
-    subscriptions: ["catalogSheet", "sheetNotify"],
-  };
+const JOBS: Record<string, string[]> = {
+  "ensure-webhook": ["webhook", "vipWebhook"],
+  broadcast: ["broadcast", "waBroadcast", "outbox", "orderNotify"],
+  "cart-reminder": ["cartReminder"],
+  "fulfillment-reminder": ["fulfillment", "winback", "funnel", "courses", "webOrders"],
+  vip: ["vip"],
+  "comment-dm-fallback": ["commentDm"],
+  health: ["zernioSync", "zernioRetry", "digest", "weekly"],
+  subscriptions: ["catalogSheet", "sheetNotify"],
+};
 
+describe("кроны обходят только клиентов v2", () => {
   for (const [job, tasks] of Object.entries(JOBS))
     it(`${job}: клиент v1 и клиент без served_by не попадают ни в одну задачу`, async () => {
       expect((await run(job)).tenants).toBe(1);
       for (const task of tasks) expect(seen[task], task).toEqual(["bot-v2"]);
     });
+});
+
+describe("новый крон не проскакивает мимо проверки", () => {
+  // Отбирают клиентов v2 сами, их проверки — рядом с кодом:
+  // retention — core/retention (runRetention без границ), subscriptions — ещё и
+  // app/operator/subscription-sweep.test (sweepSubscriptions).
+  const SELF_SCOPED = ["retention"];
+  const covered = [...Object.keys(JOBS), ...SELF_SCOPED].sort();
+
+  it("каждая задача маршрута и каждый крон vercel.json есть в списке проверенных", () => {
+    const route = readFileSync("src/routes/api/cron.$job.ts", "utf8");
+    const cases = [...route.matchAll(/case "([a-z-]+)"/g)].map((m) => m[1]!).sort();
+    expect(cases).toEqual(covered);
+    const vercel = JSON.parse(readFileSync("vercel.json", "utf8")) as {
+      crons: Array<{ path: string }>;
+    };
+    for (const c of vercel.crons) {
+      const job = /^\/api\/cron\/([a-z-]+)$/.exec(c.path)?.[1];
+      expect(covered, c.path).toContain(job);
+    }
+  });
 });

@@ -4,7 +4,18 @@ import { liveReady, DEMO_BOT, TEST_TG_ID, dropOrderNotify } from "./live";
 import { env } from "@/config/env";
 import { serviceDb } from "@/core/db/client.server";
 import type { Json } from "@/core/db-types";
-import { invalidateTenantDirectory, requireTenant } from "@/core/tenant/resolve.server";
+import {
+  invalidateTenantDirectory,
+  requireTenant,
+  tenantContext,
+  tenantDirectory,
+} from "@/core/tenant/resolve.server";
+import { servedByV2 } from "@/core/tenant/directory";
+import { pageAll } from "@/core/db/page";
+import { getCustomerByTelegramId } from "@/core/customers/customers";
+import { effectiveModules, keptModules } from "@/core/plans/plans";
+import { PLAN_TIERS, nicheForVertical, parsePlan } from "@/core/plans/registry";
+import { moduleDef, type ModuleKey } from "@/core/modules/registry";
 import { preflight } from "@/app/operator/migration.server";
 import { webhookState } from "@/app/operator/operator.server";
 import { preflightBlockers } from "@/core/tenant/preflight";
@@ -17,6 +28,10 @@ import { Route as TelegramRoute } from "@/routes/api/telegram.$botId";
  * scripts/onboard.mjs: POST /api/operator/bots → проверка перед переездом →
  * вебхук v2 → покупатель проходит заказ через вебхук с подписью → продавец
  * подтверждает → откат {served_by: "v1"} → вебхук 503.
+ *
+ * Заодно — что новое в v2 (#142–#174) переезд не ломает: модули, тариф,
+ * сохранённые сверх плана, связь «Несколько ботов» и покупатели с баллами
+ * лояльности остаются как были; ни один крон не видит клиента, пока он на v1.
  *
  * Подменены только Telegram (у демо нет своего бота) и проверка пароля
  * оператора (учётка оператора живёт в базе, тесту её пароль не нужен).
@@ -34,6 +49,11 @@ vi.mock("@/app/auth/login-guard.server", () => ({
 const ACTOR = "api:rehearsal";
 const TG = TEST_TG_ID + 63;
 const SELLER = TEST_TG_ID + 64;
+/** Покупатель «из v1» с баллами лояльности и незаконченным диалогом. */
+const LOYAL = TEST_TG_ID + 65;
+const LOYAL_POINTS = 120;
+/** Связь «Несколько ботов» на время репетиции — как у VIP-клиента с двумя ботами. */
+const GROUP = "0e5c1f2a-7b3d-4c8e-9f10-5e6a7b8c9d0e";
 const TOKEN = `123456:${"r".repeat(35)}`;
 const PROBE = "v2 репетиция · материал";
 const FILE_PATH = `${DEMO_BOT}/v2-rehearsal/material.pdf`;
@@ -46,6 +66,14 @@ let saved: {
 } | null = null;
 let prevAdmins: { value: string | null } | null = null;
 let productId = "";
+/** Что у клиента было на v1 — сверяется после переезда и после отката. */
+let v1Snapshot: {
+  modules: Json | null;
+  subscription_plan: string | null;
+  billing: Json | null;
+  multi_bot: Json | null;
+  customers: string;
+} | null = null;
 const tg: Array<[string, Record<string, unknown>]> = [];
 let webhookUrlAtTelegram = "https://v1.example/api/telegram";
 const realFetch = globalThis.fetch;
@@ -152,7 +180,7 @@ async function cleanup() {
     .delete()
     .eq("bot_id", DEMO_BOT)
     .in("telegram_id", [TG, SELLER]);
-  await db.from("bot_users").delete().eq("bot_id", DEMO_BOT).in("telegram_id", [TG, SELLER]);
+  await db.from("bot_users").delete().eq("bot_id", DEMO_BOT).in("telegram_id", [TG, SELLER, LOYAL]);
   const { data: probes } = await db
     .from("products")
     .select("id")
@@ -164,6 +192,45 @@ async function cleanup() {
   await db.from("payment_methods").delete().eq("bot_id", DEMO_BOT).eq("country_name", COUNTRY);
   await db.storage.from("product-files").remove([FILE_PATH]);
   await db.from("bot_events").delete().eq("bot_id", DEMO_BOT).in("actor", [ACTOR, "api:operator"]);
+}
+
+/**
+ * Покупатели клиента одной строкой: число, сумма баллов и хэш пар
+ * «ключ — баллы». Читается постранично: у AATeach больше 10 000 покупателей.
+ */
+async function customersFingerprint(read: "service" | "v2"): Promise<string> {
+  const { createHash } = await import("node:crypto");
+  const db = read === "service" ? serviceDb() : tenantContext(await tenant()).db;
+  const rows = await pageAll((from, to) => {
+    let q = db.from("bot_users").select("user_key, loyalty_points");
+    if (read === "service") q = q.eq("bot_id", DEMO_BOT);
+    return q.order("user_key").range(from, to);
+  }, "покупатели для сверки");
+  const sum = rows.reduce((n, r) => n + (Number(r.loyalty_points) || 0), 0);
+  const h = createHash("sha256");
+  for (const r of rows) h.update(`${r.user_key}:${r.loyalty_points ?? 0}\n`);
+  return `${rows.length} покупателей, ${sum} баллов, ${h.digest("hex").slice(0, 16)}`;
+}
+
+async function tenant() {
+  invalidateTenantDirectory();
+  return requireTenant({ by: "id", value: DEMO_BOT });
+}
+
+async function snapshot() {
+  const { data } = await serviceDb()
+    .from("bots")
+    .select("modules, subscription_plan, settings")
+    .eq("id", DEMO_BOT)
+    .single();
+  const st = (data!.settings ?? {}) as Record<string, Json>;
+  return {
+    modules: data!.modules,
+    subscription_plan: data!.subscription_plan,
+    billing: st.billing ?? null,
+    multi_bot: st.multi_bot ?? null,
+    customers: await customersFingerprint("service"),
+  };
 }
 
 describe.skipIf(!liveReady)("репетиция переезда на демо-клиенте", () => {
@@ -211,9 +278,11 @@ describe.skipIf(!liveReady)("репетиция переезда на демо-�
     });
 
     // Клиент «как на v1»: токена в базе нет (он в проекте Vercel клиента), чата продавца нет.
+    // Связь с другим магазином оператор поставил заранее — как у VIP-клиента с двумя ботами.
     const settings: Record<string, unknown> = {
       ...(saved.settings as Record<string, unknown>),
       served_by: "v1",
+      multi_bot: { group: GROUP },
     };
     delete settings.telegram;
     await db
@@ -224,7 +293,19 @@ describe.skipIf(!liveReady)("репетиция переезда на демо-�
     await db
       .from("app_settings")
       .upsert({ bot_id: DEMO_BOT, key: "admin_chat_id", value: "" }, { onConflict: "bot_id,key" });
+    // Покупатель, пришедший при v1: баллы и незаконченный диалог.
+    await db.from("bot_users").insert({
+      bot_id: DEMO_BOT,
+      user_key: `tg_${LOYAL}`,
+      telegram_id: LOYAL,
+      platform: "telegram",
+      first_name: "Постоянный покупатель",
+      loyalty_points: LOYAL_POINTS,
+      state: { mode: "browsing" },
+    });
     invalidateTenantDirectory();
+    v1Snapshot = await snapshot();
+    console.log("[rehearsal] до переезда:", JSON.stringify(v1Snapshot));
   });
 
   afterAll(async () => {
@@ -240,6 +321,17 @@ describe.skipIf(!liveReady)("репетиция переезда на демо-�
     else await db.from("app_settings").delete().eq("bot_id", DEMO_BOT).eq("key", "admin_chat_id");
     await cleanup();
     invalidateTenantDirectory();
+  });
+
+  it("пока клиент на v1, ни один крон v2 его не видит", async () => {
+    // Тот же отбор, что в /api/cron/<job> (кроны), runRetention и sweepSubscriptions.
+    const dir = await tenantDirectory(true);
+    const cronTenants = dir.filter(servedByV2).map((t) => t.id);
+    expect(cronTenants).not.toContain(DEMO_BOT);
+    // Клиенты прежней платформы (только чтение) — тоже мимо.
+    const v1 = dir.filter((t) => !servedByV2(t));
+    for (const t of v1) expect(cronTenants).not.toContain(t.id);
+    console.log(`[rehearsal] кроны видят ${cronTenants.length}, клиентов v1 мимо: ${v1.length}`);
   });
 
   it("за день до переезда: проверка называет, чего не хватает", async () => {
@@ -325,6 +417,40 @@ describe.skipIf(!liveReady)("репетиция переезда на демо-�
     expect(state).toMatchObject({ ok: true, pending: 0 });
   });
 
+  it("после переезда ничего не потерялось: модули, тариф, связь ботов, покупатели и баллы", async () => {
+    const after = await snapshot();
+    expect(after).toEqual(v1Snapshot);
+    // v2 видит тех же покупателей под ключом арендатора (RLS), без обрезки на 1000.
+    expect(await customersFingerprint("v2")).toBe(v1Snapshot!.customers);
+    const t = await tenant();
+    expect(servedByV2(t)).toBe(true);
+    const loyal = await getCustomerByTelegramId(tenantContext(t), LOYAL);
+    expect(loyal?.loyaltyPoints).toBe(LOYAL_POINTS);
+    expect(loyal?.state).toMatchObject({ mode: "browsing" });
+    // Теперь клиент в кронах v2.
+    expect((await tenantDirectory(true)).filter(servedByV2).map((x) => x.id)).toContain(DEMO_BOT);
+  });
+
+  it("любой план, назначенный после переезда, сохраняет всё включённое сверх плана", async () => {
+    // Только расчёт, без записи: назначение плана — setPlan в tests/integration/plans.test.ts.
+    const t = await tenant();
+    const niche = nicheForVertical(t.vertical);
+    if (!niche) return;
+    const on = (Object.keys(t.modules) as ModuleKey[]).filter(
+      (k) => t.modules[k] && moduleDef(k).status === "available",
+    );
+    // Клиент v1 приходит без плана v2: первое назначение (как «Перевести на
+    // подобранный план») переносит всё включённое вне плана в сохранённые.
+    const grandfathered = keptModules(null, undefined, t.modules);
+    for (const tier of PLAN_TIERS) {
+      const mods = effectiveModules(parsePlan(`${niche}.${tier}`), { grandfathered })!;
+      expect(
+        on.filter((k) => !mods[k]),
+        `${niche}.${tier}`,
+      ).toEqual([]);
+    }
+  });
+
   it("покупатель проходит заказ через вебхук, продавец подтверждает, файл уходит", async () => {
     expect((await webhook(msg({ text: "/start" }))).status).toBe(200);
     await webhook(press(`prod:${productId}`));
@@ -375,5 +501,15 @@ describe.skipIf(!liveReady)("репетиция переезда на демо-�
     expect(tg.some(([m]) => m === "setWebhook" || m === "deleteWebhook")).toBe(false);
     invalidateTenantDirectory();
     expect((await webhook(msg({ text: "/start" }))).status).toBe(503);
+    // Откат тоже ничего не теряет, и кроны снова мимо клиента.
+    const back = await snapshot();
+    // Покупатель репетиции оформил заказ — его строка в bot_users могла обновиться,
+    // но не пропасть; сверяем всё, кроме покупателей, и отдельно баллы постоянного.
+    expect({ ...back, customers: null }).toEqual({ ...v1Snapshot, customers: null });
+    const loyal = await getCustomerByTelegramId(tenantContext(await tenant()), LOYAL);
+    expect(loyal?.loyaltyPoints).toBe(LOYAL_POINTS);
+    expect((await tenantDirectory(true)).filter(servedByV2).map((x) => x.id)).not.toContain(
+      DEMO_BOT,
+    );
   });
 });
