@@ -27,10 +27,18 @@ export async function buyerOrders(ctx: TenantContext, telegramId: number, offset
   } = await import("@/core/orders/orders");
   const { parseDeliveredLanguages } = await import("@/core/catalog/materials");
   const { protectMaterials } = await import("@/core/delivery/watermark.server");
-  const [orders, deliveredOrders] = await Promise.all([
+  // Заказы с сайта, оформленные до входа и привязанные по ссылке заказа (core/storefront/web-link).
+  const { linkedWebOrders, mergeOrders } = await import("@/core/storefront/web-link");
+  const [own, ownDelivered, linked] = await Promise.all([
     listCustomerOrders(ctx, customer, 30),
     listDeliveredOrders(ctx, customer),
+    linkedWebOrders(ctx, customer),
   ]);
+  const orders = mergeOrders(own, linked).slice(0, 30);
+  const deliveredOrders = mergeOrders(
+    ownDelivered,
+    linked.filter((o) => o.status === "delivered"),
+  );
   // Один товар — одна запись из самого свежего заказа (как в v1): повторная
   // покупка того же листа не дублирует его в библиотеке. Отбор — без походов
   // в Storage; тяжёлая часть — только для страницы.

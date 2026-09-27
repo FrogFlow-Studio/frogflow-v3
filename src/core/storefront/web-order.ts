@@ -122,8 +122,10 @@ export async function rememberFirstSource(
 ): Promise<void> {
   if (!isWebSource(source)) return;
   try {
-    // Условная запись: state меняется, только если он тот же, что прочитали.
-    // Параллельный шаг бота не теряется — перечитываем и пробуем снова.
+    // Условная запись по коротким полям: источника всё ещё нет и шаг
+    // диалога тот же (параллельный шаг бота не затираем — перечитываем).
+    // Весь state в условие не кладём: он уходит в адрес запроса, и у
+    // длинного state PostgREST отвечает 431.
     for (let attempt = 0; attempt < 3; attempt++) {
       const { data, error } = await ctx.db
         .from("bot_users")
@@ -134,16 +136,20 @@ export async function rememberFirstSource(
       if (!data) return;
       const state = (data.state ?? {}) as Record<string, unknown>;
       if (state.first_source) return;
-      const { data: written, error: werr } = await ctx.db
+      const q = ctx.db
         .from("bot_users")
         .update({ state: { ...state, first_source: source } as Json })
         .eq("user_key", customer.userKey)
-        .eq("state", JSON.stringify(data.state ?? {}))
-        .select("user_key");
+        .is("state->>first_source", null);
+      const { data: written, error: werr } = await (
+        typeof state.mode === "string" && state.mode
+          ? q.eq("state->>mode", state.mode)
+          : q.is("state->>mode", null)
+      ).select("user_key");
       if (werr) throw new Error(werr.message);
       if (written && written.length > 0) return;
     }
-    console.warn(`[web-source:${ctx.tenant.id}] источник не записан: state меняется параллельно`);
+    console.warn(`[web-source:${ctx.tenant.id}] источник не записан: его записали параллельно`);
   } catch (e) {
     // Источник — для аналитики продавца, заказ уже оформлен.
     console.warn(`[web-source:${ctx.tenant.id}] источник не записан: ${(e as Error).message}`);

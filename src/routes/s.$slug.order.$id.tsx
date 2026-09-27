@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { webCardPayFn, webOrderFn, webProofFn } from "@/app/storefront/checkout.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
+import { linkWebOrderFn, webOrderLinkStateFn } from "@/app/storefront/tg-login.functions";
 import { formatMoney } from "@/core/money/money";
 import { isoToDisplay } from "@/core/fulfillment/pure";
 import { ErrorBox, useAction } from "@/app/ui";
@@ -71,6 +72,19 @@ function OrderPage() {
         PROOF_NOTE[r.result === "retry" && r.paymentFailed ? "paymentFailed" : r.result] ?? null,
       );
     load();
+  });
+  // Привязка к Telegram: только вошедшему и только по подписанной ссылке этого заказа.
+  const me = Boolean(login.state?.me);
+  const [linkState, setLinkState] = useState<"linked" | "linkable" | null>(null);
+  useEffect(() => {
+    if (!token || !me) return setLinkState(null);
+    webOrderLinkStateFn({ data: { slug, id: Number(id), t: token } })
+      .then((r) => setLinkState(r.state))
+      .catch(() => setLinkState(null));
+  }, [slug, id, token, me]);
+  const link = useAction(async () => {
+    await linkWebOrderFn({ data: ref });
+    setLinkState("linked");
   });
   const card = useAction(async () => {
     const r = await webCardPayFn({ data: ref });
@@ -210,8 +224,22 @@ function OrderPage() {
           <p className="text-xs text-muted">{t("order.linkHint")}</p>
         </section>
       )}
-      {/* Баллы копятся у покупателя из бота: не вошедшему — вход с подсказкой. */}
-      {login.state?.points && login.state.bot && !login.state.me && !login.inTelegram && (
+      {linkState === "linkable" && (
+        <section className="card space-y-2 p-5">
+          <button
+            className="btn-primary w-full"
+            disabled={link.busy}
+            onClick={() => void link.run().catch(() => {})}
+          >
+            {t("order.link.button")}
+          </button>
+          <p className="text-xs text-muted">{t("order.link.hint")}</p>
+          <ErrorBox error={link.error} />
+        </section>
+      )}
+      {linkState === "linked" && <p className="text-sm text-muted">{t("order.link.done")}</p>}
+      {/* Не вошедшему — вход: ради баллов и чтобы привязать заказ к своему Telegram. */}
+      {login.state?.bot && !login.state.me && !login.inTelegram && (
         <div className="border-t border-line pt-4">
           <TgLoginBox login={login} />
         </div>

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { signInitData } from "@/core/storefront/init-data";
@@ -46,8 +46,15 @@ vi.mock("@/core/tenant/resolve.server", () => ({
   tenantContext: () => ctx,
 }));
 
-const { tgLoginFn, tgLoginStateFn, tgLogoutFn, webMyOrdersFn } =
-  await import("./tg-login.functions");
+const {
+  tgLoginFn,
+  tgLoginStateFn,
+  tgLogoutFn,
+  webMyOrdersFn,
+  linkWebOrderFn,
+  webOrderLinkStateFn,
+} = await import("./tg-login.functions");
+const { orderAccessToken } = await import("@/core/storefront/web-order");
 
 let db: FakeDb;
 const COOKIE = buyerCookieName(BOT);
@@ -215,5 +222,112 @@ describe("«Мои заказы» на сайте после входа", () => 
     const [, exp, mac] = jar.get(COOKIE)!.value.split(".");
     jar.set(COOKIE, { value: `43.${exp}.${mac}`, opts: {} });
     expect(await webMyOrdersFn({ data: { slug: "shop" } })).toBeNull();
+  });
+});
+
+describe("старые заказы с сайта: привязка к Telegram по ссылке заказа", () => {
+  const WEB_TG = -999;
+  const orderToken = (id: number) => orderAccessToken("session-secret-session-secret-42", BOT, id);
+  function withWebOrder() {
+    db.tables.bot_users!.push({
+      id: "web-1",
+      user_key: "web_abc",
+      platform: "web",
+      telegram_id: WEB_TG,
+      email: "anna@example.kz",
+      state: {},
+    });
+    db.tables.orders = [
+      {
+        id: 5,
+        bot_id: BOT,
+        order_no: 5,
+        display_no: 5,
+        telegram_id: WEB_TG,
+        user_key: "web_abc",
+        platform: "web",
+        status: "delivered",
+        total: 1000,
+        currency: "KZT",
+        fulfillment_kind: "digital",
+        customer_email: "anna@example.kz",
+        created_at: "2026-09-01T10:00:00Z",
+        order_items: [],
+      },
+    ];
+    db.tables.order_items = [];
+  }
+  const myOrderIds = async () =>
+    ((await webMyOrdersFn({ data: { slug: "shop" } }))?.orders ?? []).map((o) => o.id);
+  const tgRow = (id: number) => db.tables.bot_users!.find((u) => u.user_key === `tg_${id}`)!;
+  // Лимит входов с одного адреса общий на файл: каждый тест — в новом окне.
+  let clock = Date.now();
+  beforeEach(() => {
+    clock += 60 * 60_000;
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(clock);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("совпадение почты само по себе ничего не связывает", async () => {
+    withWebOrder();
+    await tgLoginFn({ data: { slug: "shop", widget: widget(42) } });
+    tgRow(42).email = "anna@example.kz";
+    expect(await myOrderIds()).toEqual([]);
+  });
+
+  it("без подписанной ссылки или без входа — не привязать", async () => {
+    withWebOrder();
+    await expect(
+      linkWebOrderFn({ data: { slug: "shop", id: 5, t: orderToken(5) } }),
+    ).rejects.toBeTruthy();
+    await tgLoginFn({ data: { slug: "shop", widget: widget(42) } });
+    await expect(
+      linkWebOrderFn({ data: { slug: "shop", id: 5, t: "0".repeat(32) } }),
+    ).rejects.toBeTruthy();
+    await expect(
+      linkWebOrderFn({ data: { slug: "shop", id: 5, t: orderToken(6) } }),
+    ).rejects.toBeTruthy();
+    expect(await myOrderIds()).toEqual([]);
+    expect(tgRow(42).state).not.toHaveProperty("web_orders");
+  });
+
+  it("по ссылке заказа и нажатию — заказ в «Моих заказах», строка заказа не меняется", async () => {
+    withWebOrder();
+    await tgLoginFn({ data: { slug: "shop", widget: widget(42) } });
+    const ref = { slug: "shop", id: 5, t: orderToken(5) };
+    expect(await webOrderLinkStateFn({ data: ref })).toEqual({ state: "linkable" });
+    expect(await linkWebOrderFn({ data: ref })).toEqual({ ok: true });
+    expect(await webOrderLinkStateFn({ data: ref })).toEqual({ state: "linked" });
+    expect(await myOrderIds()).toEqual([5]);
+    expect(db.tables.orders![0]!.telegram_id).toBe(WEB_TG);
+    expect(db.tables.orders![0]!.user_key).toBe("web_abc");
+    expect(tgRow(42).state).toMatchObject({ web_orders: [5] });
+    const web = db.tables.bot_users!.find((u) => u.user_key === "web_abc")!;
+    expect(web.state).toEqual({ telegram_links: { "5": 42 }, telegram_links_v: 1 });
+    // Повторное нажатие ничего не дублирует.
+    expect(await linkWebOrderFn({ data: ref })).toEqual({ ok: true });
+    expect(tgRow(42).state).toMatchObject({ web_orders: [5] });
+  });
+
+  it("заказ, привязанный к одному Telegram, другому не достаётся", async () => {
+    withWebOrder();
+    const ref = { slug: "shop", id: 5, t: orderToken(5) };
+    await tgLoginFn({ data: { slug: "shop", widget: widget(42) } });
+    await linkWebOrderFn({ data: ref });
+    await tgLoginFn({ data: { slug: "shop", widget: widget(43) } });
+    await expect(linkWebOrderFn({ data: ref })).rejects.toThrow(/другому Telegram/);
+    expect(await myOrderIds()).toEqual([]);
+  });
+
+  it("клиент прежней платформы — привязки нет", async () => {
+    shop({ servedBy: "v1" });
+    withWebOrder();
+    await expect(
+      linkWebOrderFn({ data: { slug: "shop", id: 5, t: orderToken(5) } }),
+    ).rejects.toBeTruthy();
+    expect(await webOrderLinkStateFn({ data: { slug: "shop", id: 5, t: orderToken(5) } })).toEqual({
+      state: null,
+    });
   });
 });

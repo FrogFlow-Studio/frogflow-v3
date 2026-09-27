@@ -1,6 +1,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
 import { HANDOFF_PREFIX } from "@/core/storefront/handoff";
+import { linkedWebOrderIds } from "@/core/storefront/web-link";
 import { allSellerNotes, readSellerNote, writeSellerNote, type SellerNote } from "./seller-notes";
 
 export { cleanTags, type SellerNote } from "./seller-notes";
@@ -109,7 +110,9 @@ export async function customerCard(
   const state = obj(u.state);
   const m = ctx.tenant.modules;
 
-  const [orders, blocked, tickets, leads, messages, seller] = await Promise.all([
+  // Привязанные покупателем заказы с сайта (core/storefront/web-link) — в ту же историю.
+  const linkedIds = linkedWebOrderIds(state);
+  const [ownOrders, blocked, tickets, leads, messages, seller, linkedOrders] = await Promise.all([
     pageAll(
       (from, to) =>
         ctx.db
@@ -149,7 +152,22 @@ export async function customerCard(
           .then((r) => r.data ?? [])
       : Promise.resolve([]),
     readSellerNote(ctx, userKey),
+    linkedIds.length
+      ? ctx.db
+          .from("orders")
+          .select("id, order_no, display_no, status, total, currency, created_at")
+          .in("id", linkedIds)
+          .eq("platform", "web")
+          .then((r) => {
+            if (r.error) throw new Error(r.error.message);
+            return r.data ?? [];
+          })
+      : Promise.resolve([]),
   ]);
+  const own = new Set(ownOrders.map((o) => o.id));
+  const orders = [...ownOrders, ...linkedOrders.filter((o) => !own.has(o.id))].sort(
+    (a, b) => b.id - a.id,
+  );
 
   const { displayNo } = await import("@/core/orders/pure");
   return {

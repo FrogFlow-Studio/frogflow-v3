@@ -135,3 +135,50 @@ export const webMyOrdersFn = createServerFn({ method: "POST" })
     const { buyerOrders } = await import("./buyer-orders.server");
     return buyerOrders(ctx, tgId, data.libraryOffset ?? 0);
   });
+
+const orderRef = { slug, id: z.number().int().positive(), t: z.string().max(64) };
+
+/**
+ * Вошедший покупатель и заказ, владение которым он доказал подписанной
+ * ссылкой. Почта заказа тут ни при чём: её никто не подтверждал.
+ */
+async function linkCtx(data: { slug: string; id: number; t: string }) {
+  const ctx = await loginCtx(data.slug);
+  if (!ctx) return null;
+  const { env } = await import("@/config/env");
+  const { verifyOrderAccess } = await import("@/core/storefront/web-order");
+  if (!verifyOrderAccess(env().SESSION_SECRET, ctx.tenant.id, data.id, data.t)) throw notFound();
+  const { buyerTelegramId } = await import("./tg-login.server");
+  const tgId = await buyerTelegramId(ctx);
+  if (tgId === null) return null;
+  const { takeWeb } = await import("@/core/storefront/checkout-guard");
+  if (!(await takeWeb(ctx, "myOrders", String(tgId))))
+    throw shownError((await shopT(ctx))("error.tooManyRequests"));
+  return { ctx, tgId };
+}
+
+/** Кнопка на странице заказа: «Привязать к моему Telegram» или «уже в ваших заказах». */
+export const webOrderLinkStateFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object(orderRef).parse(d))
+  .handler(async ({ data }) => {
+    const l = await linkCtx(data);
+    if (!l) return { state: null };
+    const { webOrderLinkState } = await import("@/core/storefront/web-link");
+    return { state: await webOrderLinkState(l.ctx, data.id, l.tgId) };
+  });
+
+/** Привязать заказ с сайта к вошедшему покупателю: только по подписанной ссылке заказа. */
+export const linkWebOrderFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object(orderRef).parse(d))
+  .handler(async ({ data }) => {
+    const l = await linkCtx(data);
+    if (!l) throw notFound();
+    const t = await shopT(l.ctx);
+    const { linkWebOrder } = await import("@/core/storefront/web-link");
+    const r = await linkWebOrder(l.ctx, data.id, l.tgId);
+    if (r === "linked" || r === "already") return { ok: true as const };
+    if (r === "taken") throw shownError(t("order.link.taken"));
+    if (r === "full") throw shownError(t("order.link.full"));
+    if (r === "busy") throw shownError(t("error.tooManyRequests"));
+    throw notFound();
+  });

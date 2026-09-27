@@ -100,6 +100,16 @@ export type DialogState = {
   direct?: { [key: string]: Json | undefined };
   /** Лист ожидания: id товаров, о поступлении которых покупатель просил сообщить. */
   waitlist?: string[];
+  /**
+   * Покупатель из Telegram: заказы с сайта, оформленные до входа по почте и
+   * привязанные им по подписанной ссылке заказа (core/storefront/web-link).
+   */
+  web_orders?: number[];
+  /** Покупатель сайта (по почте): какой заказ к какому Telegram привязан. */
+  telegram_links?: { [orderId: string]: number };
+  /** Счётчики условной записи web_orders / telegram_links (core/storefront/web-link). */
+  web_orders_v?: number;
+  telegram_links_v?: number;
   [key: string]: Json | undefined;
 };
 

@@ -210,4 +210,34 @@ describe("карточка покупателя: сводка", () => {
     expect(card!.tickets).toEqual([]);
     expect(await customerCard(ctx(), "tg_404")).toBeNull();
   });
+
+  it("заказы с сайта, привязанные по ссылке заказа, — в той же истории", async () => {
+    db.tables.bot_users![0]!.state = { web_orders: [7, 1] };
+    db.tables.orders!.push(
+      {
+        id: 7,
+        order_no: 17,
+        display_no: null,
+        telegram_id: -70,
+        platform: "web",
+        status: "delivered",
+        total: 100,
+        currency: "KZT",
+        created_at: "2026-09-12T10:00:00Z",
+      },
+      {
+        id: 8,
+        order_no: 18,
+        display_no: null,
+        telegram_id: -70,
+        platform: "web",
+        status: "delivered",
+        total: 100,
+        currency: "KZT",
+        created_at: "2026-09-13T10:00:00Z",
+      },
+    );
+    const card = await customerCard(ctx(), "tg_5");
+    expect(card!.orders.map((o) => o.no)).toEqual([17, 13, 12, 11]);
+  });
 });
