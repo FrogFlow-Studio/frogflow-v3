@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { readWebSource } from "@/app/storefront/source";
 import { useState, type FormEvent } from "react";
 import { webCheckoutFn, webCheckoutInfoFn } from "@/app/storefront/checkout.functions";
 import { CHALLENGE_MIN_FILL_MS, solveChallenge } from "@/app/signup/challenge-solve";
@@ -60,6 +61,7 @@ function CheckoutPage() {
             }
           : null,
         website: String(f.get("website") ?? ""),
+        source: readWebSource(slug),
         challenge: info.challenge,
         answer,
       },

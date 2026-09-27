@@ -93,6 +93,8 @@ const checkoutInput = z.object({
   website: z.string().max(0).optional(),
   challenge: z.string().max(200),
   answer: z.string().max(20),
+  /** Откуда пришёл (utm, ref), собрано браузером; мусор отбрасывается молча. */
+  source: z.string().max(64).optional(),
 });
 
 export const webCheckoutFn = createServerFn({ method: "POST" })
@@ -176,6 +178,8 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
           throw shownError(t("checkout.error.failed"));
       }
     }
+    const { rememberFirstSource } = await import("@/core/storefront/web-order");
+    await rememberFirstSource(ctx, customer, data.source);
     const { afterWebOrderPlaced } = await import("@/channels/web/order.server");
     await afterWebOrderPlaced(ctx, r.order, r.zeroTotal, r.amountDue);
     return { id: r.order.id, t: orderAccessToken(await secret(), ctx.tenant.id, r.order.id) };

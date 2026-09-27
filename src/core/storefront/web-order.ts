@@ -3,10 +3,12 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   getCustomer,
   setEmail,
+  setState,
   upsertCustomer,
   userKey,
   type Customer,
 } from "@/core/customers/customers";
+import { isWebSource } from "./web-source";
 import { clearCart, listCart } from "@/core/cart/cart";
 import { getSetting } from "@/core/settings/settings";
 import { importItems, type HandoffItem } from "./handoff";
@@ -105,6 +107,26 @@ export async function telegramWebCustomer(
   if (!c || c.platform !== "telegram" || c.telegramId !== telegramId) return null;
   const withEmail = c.email === email ? c : await setEmail(ctx, c, email);
   return { ...withEmail, platform: "web" };
+}
+
+/**
+ * Первый источник покупателя с сайта (utm, ref) — в state.first_source, как
+ * у бота, и только если источника ещё нет: первая ссылка не перезаписывается.
+ * Пишется после оформленного заказа; сбой записи заказ не срывает.
+ */
+export async function rememberFirstSource(
+  ctx: TenantContext,
+  customer: Customer,
+  source: unknown,
+): Promise<void> {
+  if (!isWebSource(source)) return;
+  const fresh = (await getCustomer(ctx, customer.userKey)) ?? customer;
+  if (fresh.state.first_source) return;
+  try {
+    await setState(ctx, fresh, { ...fresh.state, first_source: source });
+  } catch {
+    /* источник — для аналитики продавца, заказ уже оформлен */
+  }
 }
 
 /**
