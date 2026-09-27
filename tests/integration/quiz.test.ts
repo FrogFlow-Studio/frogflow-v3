@@ -66,6 +66,8 @@ describe.skipIf(!liveReady)("квиз-подбор в боте на демо-к�
     await setSetting(ctx, QUIZ_KEY, prev ?? "");
     const db = serviceDb();
     await db.from("products").delete().eq("id", productId);
+    // Нажатие кнопки квиза пишется в «Чат» покупателя — строка остаётся без уборки.
+    await db.from("manager_chat_messages").delete().eq("bot_id", DEMO_BOT).eq("telegram_id", TG);
     await db.from("bot_users").delete().eq("bot_id", DEMO_BOT).eq("telegram_id", TG);
   });
 
