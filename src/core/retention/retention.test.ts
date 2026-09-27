@@ -8,6 +8,7 @@ const {
   RETENTION,
   pruneBroadcastRecipients,
   pruneOperatorLoginAttempts,
+  BATCH,
   pruneSignupChallenges,
   pruneZernioLogs,
 } = await import("./retention");
@@ -108,5 +109,14 @@ describe("брони задач регистрации в operator_settings", ()
       "session_revoked:x",
       "signup_challenge:not-a-date",
     ]);
+  });
+
+  it("полная порция, где всё отсеяно сверкой, — конец уборки, а не бесконечный круг", async () => {
+    db.tables.operator_settings = Array.from({ length: BATCH }, (_, i) => ({
+      key: `signupXchallenge:${i}`,
+      value: new Date(NOW - 1000).toISOString(),
+    }));
+    expect(await pruneSignupChallenges(NOW)).toEqual({ deleted: 0, done: true });
+    expect(db.tables.operator_settings).toHaveLength(BATCH);
   });
 });

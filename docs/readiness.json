@@ -1,19 +1,19 @@
 {
   "fix": {
     "fix(consultant): считать запись в кеш по той ставке, по которой её берут": "drop: в v2 одна точка кеша с TTL 5 минут и одна ставка записи 1,25 (engine.server.ts), разбивки по TTL нет",
-    "fix(consultant): notify every manager listed, and say who did not get it": "open: adminRecipients (core/notify/recipients.ts) шлёт владельцу и всем admin_chat_id без дублей, но теста нет; тест-кнопки с отчётом кто не получил нет",
+    "fix(consultant): notify every manager listed, and say who did not get it": "src/core/notify/recipients.test.ts › уходит каждому из admin_chat_id и владельцу, а отчёт называет, кто не получил",
     "fix(consultant): keep quiet for half an hour after a manager speaks": "src/channels/zernio/manager-guard.test.ts › менеджер недавно писал — молчим, даже если бот успел ответить после него",
-    "fix(zernio): read the last hundred messages of a conversation, not the first": "open: listConversationMessages (channels/zernio/api.server.ts) просит sortOrder=desc и сортирует сам, теста нет",
+    "fix(zernio): read the last hundred messages of a conversation, not the first": "src/channels/zernio/api.server.test.ts › просит у Zernio последние сто сообщений (новые первыми) и отдаёт их по времени",
     "fix(consultant): show what Zernio returned, not just that it returned something": "drop: отладочный зонд формы ответа Zernio v1; в v2 обе формы сообщения нормализует inbox-types.ts",
     "fix(zernio): read the message text Zernio actually sends": "src/channels/zernio/manager-guard.test.ts › читает текст и время в написании вебхука",
-    "fix(consultant): say which build is live and what the manager check saw": "open: /api/health отдаёт commit и branch, пауза пишется итогом в zernio_logs (handle-message.ts), тестов нет",
+    "fix(consultant): say which build is live and what the manager check saw": "src/channels/zernio/handle-message.test.ts › менеджер ответил из приложения — консультант молчит, ставит паузу и пишет это итогом события",
     "fix(consultant): stop talking over a manager who is already in the chat": "src/channels/zernio/manager-guard.test.ts › ловит ответ менеджера, даже если после него написал покупатель",
     "fix(consultant): read 140x70 and 70x140 as one size, answer the question asked": "drop: правило нишевого консультанта BOVI v1; в v2 общий консультант (core/consultant)",
     "fix(consultant): answer broadly first, and say why the VTB rate is stuck": "drop: курс ВТБ/НБРК консультанта BOVI; в v2 общий консультант без курсов",
     "fix(consultant): stop offering medium-firmness mattresses and fix mangled category names": "drop: правило нишевого консультанта BOVI v1; в v2 общий консультант (core/consultant)",
     "fix(consultant): keep budget picks in category, latin brands, no emoji": "drop: правило нишевого консультанта BOVI v1; в v2 общий консультант (core/consultant)",
     "fix(consultant): keep cache tokens when summing rounds of one message": "drop: в v2 один вызов модели на сообщение, раундов инструментов для сложения нет (engine.server.ts)",
-    "fix(consultant): bill the cached prompt, and hold the cache for an hour": "open: engine.server.ts считает cache_creation и cache_read в расход, но теста нет; TTL кеша 5 минут",
+    "fix(consultant): bill the cached prompt, and hold the cache for an hour": "src/core/consultant/engine.server.test.ts › кеш промпта держится час, и запись в него считается по часовой ставке",
     "fix(consultant): treat a blank quantity in a stock report as \"not in stock\"": "drop: импорт остатков 1С консультанта BOVI; в v2 общий импорт CSV (core/catalog/import.ts)",
     "fix(consultant): read the real 1C price export instead of importing nothing": "drop: импорт прайса 1С консультанта BOVI; в v2 общий импорт CSV (core/catalog/import.ts)",
     "fix(consultant): stop losing knowledge base and store info writes": "src/core/settings/settings.test.ts › база отказала во вставке — честная ошибка продавцу и отчёт в Sentry",
@@ -30,7 +30,7 @@
     "fix(instagram): auto-deliver step 2 on any direct response and force zernio webhook in internal set-webhook": "tests/integration/instagram-automations.test.ts › comment.received: второе сообщение или очередь pending, доставка при первом DM",
     "fix(instagram): remove duplicate isTwoStep variable declaration in comment fallback": "drop: сборочная ошибка v1; в v2 такое ловит typecheck в npm run check",
     "fix(instagram): reliable 2-step comment-to-dm triggering, pending direct queue, and webhook fit": "tests/integration/instagram-automations.test.ts › comment.received: второе сообщение или очередь pending, доставка при первом DM",
-    "fix(instagram): resolve build type error and fully customize comment-to-dm buttons": "open: кнопки второго сообщения задаёт продавец (automations.server.ts), но тест не проверяет, что уходят именно его кнопки",
+    "fix(instagram): resolve build type error and fully customize comment-to-dm buttons": "src/channels/zernio/automations-buttons.test.ts › уходят именно кнопки, которые продавец задал для второго сообщения",
     "fix(consultant): update admin UI rate labels to VTB Online and show distinct VTB source status": "drop: курс ВТБ/НБРК консультанта BOVI; в v2 общий консультант без курсов",
     "fix(zernio): extract storyReply.storyId from Zernio metadata and protect colors formatting": "src/channels/zernio/message.test.ts › ответ на сторис: id из метаданных события, ссылка — из вложения",
     "fix(story-tags): add numeric digit extraction and latest active story tag fallback": "src/core/consultant/story-tags.test.ts › находит тег по id, по ссылке, по коду в ссылке и по числу в id",
@@ -40,15 +40,15 @@
     "fix(direct): restore original catalogNumberHint prompt after country selection": "drop: в v2 первым сообщением выбор языка и сразу каталог (zernio-shop, первый контакт), подсказки v1 после страны нет",
     "fix(consultant): export and import foldReply in state.ts for typecheck": "drop: сборочная ошибка v1; в v2 такое ловит typecheck в npm run check",
     "fix(consultant): eliminate script hallucinations with native multi-turn messages and stop sequences": "src/core/consultant/pure.test.ts › чистит markdown и сценарии",
-    "fix(consultant): pass customer_contact to dynamic prompt context": "open: engine.server.ts кладёт state.contact в данные диалога, теста нет",
+    "fix(consultant): pass customer_contact to dynamic prompt context": "src/core/consultant/engine.server.test.ts › контакт, который покупатель уже давал, попадает в данные диалога",
     "fix(consultant): complete audit overhaul and resolution of all failure modes": "src/channels/zernio/manager-guard.test.ts › свой же ответ бота менеджером не считает, включая пришедший в ленту с задержкой",
     "fix(consultant): handle photo/audio messages gracefully and polish cliché cleaning": "src/channels/zernio/message.test.ts › text=null у сообщения с одним вложением — пустая строка, вложение видно",
     "fix(consultant): deliver Claude responses directly, strip forbidden clichés instead of discarding, and disable broken quoted name check": "drop: валидатор ответов консультанта BOVI; в v2 ответ модели идёт после cleanReply без валидатора",
     "fix(consultant): permit CDEK delivery tariff explanations in validator and normalize size dimensions like 70-140": "drop: правило нишевого консультанта BOVI v1; в v2 общий консультант (core/consultant)",
-    "fix(consultant): fix looksLikeConsultantBotReply empty snippet bug that dropped all incoming messages": "open: findManagerMessage отбрасывает пустые ourReplies (filter(Boolean)), но теста с пустой репликой бота нет",
+    "fix(consultant): fix looksLikeConsultantBotReply empty snippet bug that dropped all incoming messages": "src/channels/zernio/manager-guard.test.ts › пустая или из одних знаков реплика бота не делает «своими» все исходящие",
     "fix(consultant): handle country emoji flags, enable RUB validation, remove pushy cross-sell and sanitize categories": "src/channels/zernio/shop-flow.test.ts › номер из списка, название с флагом и не до конца, код",
     "fix(analytics): add 'clarify' to ConsultantEventKind": "drop: тип событий аналитики консультанта BOVI v1; в v2 такой аналитики нет",
-    "fix(consultant): prevent duplicate replies and handle affirmative responses like 'интересует'": "open: «интересует» есть в AFFIRMATIVES (channels/zernio/shop-flow.ts), но тест classifyIncoming его не проверяет",
+    "fix(consultant): prevent duplicate replies and handle affirmative responses like 'интересует'": "src/channels/zernio/shop-flow.test.ts › «интересует» и «интересно» — согласие, а не вопрос консультанту",
     "fix(consultant): prevent bot from writing first or answering historical messages on activation/unpause": "src/channels/zernio/retry.test.ts › событие старше суток закрывается без ответа — на вчерашнее не пишем",
     "fix(consultant): ensure reset clears manager tasks and add task reset buttons in admin": "drop: задачи менеджера консультанта BOVI; в v2 сброс — resumeConsultant (пауза и история)"
   },
@@ -158,7 +158,7 @@
     "logs the tapped button with a 👉 prefix and mirrors the active flag": "src/core/chat/chat.test.ts › нажатая кнопка пишется подписью с 👉 и повторяет флаг подключения менеджера"
   },
   "src/lib/modules/registry.test.ts": {
-    "нашёл хотя бы один платный доступный модуль для проверки": "open: в v2 нет теста, что каждый платный доступный модуль реестра проверяется гейтом (core/modules/registry.ts)"
+    "нашёл хотя бы один платный доступный модуль для проверки": "src/core/modules/registry.test.ts › нашёл хотя бы один платный доступный модуль для проверки"
   },
   "src/lib/modules/require-module.test.ts": {
     "модуль подключён — пропускает молча": "src/app/auth/require-module.test.ts › админ и модуль подключён — пропускает",

@@ -242,6 +242,17 @@ describe("консультант: цена ответа и кеш промпта
     expect(u.usd).toBeCloseTo((100 * 1 + 50 * 5) / 1e6, 9);
   });
 
+  it("кеш промпта держится час, и запись в него считается по часовой ставке", async () => {
+    usage = { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 1_000_000 };
+    const ctx = ctxOf();
+    const r = await runConsultant(ctx, null, "привет", { platform: "telegram" });
+    const system = args().system as Array<{ cache_control?: { type: string; ttl?: string } }>;
+    expect(system[0]!.cache_control).toEqual({ type: "ephemeral", ttl: "1h" });
+    // Часовая запись — $2 за миллион (вдвое дороже входа), а не $1.25 пятиминутной.
+    expect(r!.usage.usd).toBeCloseTo(2, 9);
+    expect((await spent(ctx)).usd).toBeCloseTo(2, 6);
+  });
+
   it("чтение из кеша попадает в стоимость и в дневной предел", async () => {
     usage = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 1_000_000 };
     const ctx = ctxOf();
@@ -261,8 +272,8 @@ describe("консультант: цена ответа и кеш промпта
     };
     const ctx = ctxOf();
     const r = await runConsultant(ctx, null, "привет", { platform: "telegram" });
-    // Haiku 4.5: вход $1, выход $5, запись в кеш $1.25, чтение $0.10 за миллион.
-    const expected = (1000 * 1 + 400 * 5 + 2000 * 1.25 + 10_000 * 0.1) / 1e6;
+    // Haiku 4.5: вход $1, выход $5, запись в часовой кеш $2, чтение $0.10 за миллион.
+    const expected = (1000 * 1 + 400 * 5 + 2000 * 2 + 10_000 * 0.1) / 1e6;
     expect(r!.usage.usd).toBeCloseTo(expected, 9);
     expect((await spent(ctx)).usd).toBeCloseTo(expected, 6);
     expect(JSON.parse((await getSetting(ctx, KEYS.daily))!).usd).toBeCloseTo(expected, 6);

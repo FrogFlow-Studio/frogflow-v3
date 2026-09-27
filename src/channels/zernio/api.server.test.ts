@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setEnvForTests } from "@/config/env";
-import { downloadAttachment, listProfiles, readCapped } from "./api.server";
+import {
+  downloadAttachment,
+  listConversationMessages,
+  listProfiles,
+  readCapped,
+} from "./api.server";
 
 afterEach(() => {
   setEnvForTests(undefined);
@@ -95,5 +100,30 @@ describe("адрес API Zernio (опись v1: tests/zernio-base-url.test.ts)",
       ),
     );
     await expect(listProfiles()).rejects.toThrow(/Проверьте ZERNIO_BASE_URL/);
+  });
+});
+
+describe("listConversationMessages — хвост переписки", () => {
+  it("просит у Zernio последние сто сообщений (новые первыми) и отдаёт их по времени", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk_test" });
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        messages: [
+          { direction: "outgoing", message: "третье", createdAt: "2026-09-01T12:03:00Z" },
+          { direction: "incoming", message: "второе", createdAt: "2026-09-01T12:02:00Z" },
+          { direction: "incoming", message: "первое", createdAt: "2026-09-01T12:01:00Z" },
+        ],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const tail = await listConversationMessages("acc-1", "conv/1");
+    const [url] = fetchMock.mock.calls[0] as unknown as [string];
+    const u = new URL(url);
+    expect(u.pathname.endsWith("/inbox/conversations/conv%2F1/messages")).toBe(true);
+    expect(u.searchParams.get("accountId")).toBe("acc-1");
+    expect(u.searchParams.get("limit")).toBe("100");
+    // Без sortOrder=desc длинный диалог отдавал первые сто — самые старые, без ответа менеджера.
+    expect(u.searchParams.get("sortOrder")).toBe("desc");
+    expect(tail.map((m) => m.message)).toEqual(["первое", "второе", "третье"]);
   });
 });

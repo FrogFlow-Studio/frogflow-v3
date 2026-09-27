@@ -88,4 +88,14 @@ describe("менеджер в чате", () => {
   it("пустая переписка ничего не ломает", () => {
     expect(findManagerMessage([], { ourReplies: [] }, NOW)).toBeNull();
   });
+
+  it("пустая или из одних знаков реплика бота не делает «своими» все исходящие", () => {
+    // v1: пустой фрагмент совпадал с любым текстом, и менеджер «пропадал».
+    const found = findManagerMessage(
+      [{ direction: "outgoing", message: "Сейчас подключусь, минуту", createdAt: ago(min(2)) }],
+      { lastBotReplyAt: ago(min(60)), ourReplies: ["", "   ", "!!!", "👍"] },
+      NOW,
+    );
+    expect(found?.text).toBe("Сейчас подключусь, минуту");
+  });
 });

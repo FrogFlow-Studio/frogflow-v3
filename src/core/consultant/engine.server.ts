@@ -43,7 +43,14 @@ const TIMEOUT_MS = 20_000;
 const HISTORY_TURNS = 16;
 const CATALOG_LIMIT = 120;
 /** Цены Haiku 4.5 за миллион токенов: ввод, вывод, запись в кеш, чтение из кеша. */
-const PRICE = { in: 1, out: 5, cacheWrite: 1.25, cacheRead: 0.1 };
+/**
+ * Ставки Haiku 4.5, $ за миллион токенов. Кеш промпта держим час, как в v1
+ * (fix «hold the cache for an hour»): покупатель отвечает через минуты, а не
+ * секунды, и пятиминутный кеш остывал к следующему сообщению. Запись в
+ * часовой кеш — вдвое дороже входа, чтение — десятая часть.
+ */
+export const CACHE_TTL = "1h" as const;
+const PRICE = { in: 1, out: 5, cacheWrite: 2, cacheRead: 0.1 };
 
 export type ConsultantTurn = { role: "customer" | "assistant"; text: string };
 export type ConsultantState = {
@@ -398,7 +405,7 @@ export async function runConsultant(
       model,
       max_tokens: 700,
       system: [
-        { type: "text", text: system, cache_control: { type: "ephemeral" } },
+        { type: "text", text: system, cache_control: { type: "ephemeral", ttl: CACHE_TTL } },
         { type: "text", text: `ДАННЫЕ ТЕКУЩЕГО ДИАЛОГА:\n${session}` },
       ],
       tools: TOOLS,

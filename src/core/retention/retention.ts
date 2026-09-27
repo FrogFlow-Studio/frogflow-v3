@@ -166,7 +166,10 @@ export async function pruneSignupChallenges(now = Date.now()): Promise<PruneResu
       .in("key", keys.slice(i, i + DELETE_CHUNK));
     if (e2) throw new Error(`operator_settings: ${e2.message}`);
   }
-  return { deleted: keys.length, done: rows.length < BATCH };
+  // Полная порция, из которой ничего не удалено (все строки отсеяны сверкой),
+  // — тоже конец: следующий круг вернул бы те же строки, и уборка крутилась бы
+  // до конца бюджета времени.
+  return { deleted: keys.length, done: rows.length < BATCH || keys.length === 0 };
 }
 
 export async function pruneBroadcastRecipients(

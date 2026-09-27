@@ -257,6 +257,11 @@ describe("classifyIncoming", () => {
       expect(classifyIncoming(input).kind, input).toBe("dismissal");
     expect(classifyIncoming("Спасибо, а когда будет новый набор?").kind).toBe("question");
   });
+
+  it("«интересует» и «интересно» — согласие, а не вопрос консультанту", () => {
+    for (const input of ["интересует", "Интересует!", "интересует.", "Интересно"])
+      expect(classifyIncoming(input).kind, input).toBe("affirmative");
+  });
 });
 
 describe("isCancel", () => {

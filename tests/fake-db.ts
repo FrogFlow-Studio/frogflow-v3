@@ -134,6 +134,20 @@ class Query implements PromiseLike<Result> {
     this.filters.push((r) => re.test(String(r[col] ?? "")));
     return this;
   }
+  /** ilike — как like, без учёта регистра. */
+  ilike(col: string, pattern: string) {
+    const re = new RegExp(
+      "^" +
+        pattern
+          .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+          .replace(/%/g, ".*")
+          .replace(/_/g, ".") +
+        "$",
+      "i",
+    );
+    this.filters.push((r) => re.test(String(r[col] ?? "")));
+    return this;
+  }
   is(col: string, v: null) {
     this.filters.push((r) => (r[col] ?? null) === v);
     return this;
