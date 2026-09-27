@@ -28,29 +28,50 @@ const seenReviewIds: string[] = [];
 /**
  * Строки review_meta, оставшиеся от прежних прогонов (до этой правки тест их
  * не убирал): отзыва уже нет, фото нет. Строки с фото не трогаем — за ними
- * файлы в Storage, их убирает только путь удаления v2.
+ * файлы в Storage, их убирает только путь удаления v2. Читаем постранично по
+ * 200 ключей; любой сбой чтения — выходим, ничего не удалив: пустой ответ
+ * вместо ошибки иначе сделал бы «сиротами» все строки демо.
  */
+const ORPHAN_PAGE = 200;
+
 async function dropOrphanReviewMeta() {
   const db = serviceDb();
-  const { data: metas } = await db
-    .from("app_settings")
-    .select("key, value")
-    .eq("bot_id", DEMO_BOT)
-    .like("key", `${REVIEW_META_PREFIX}%`)
-    .order("key")
-    .limit(500);
-  const bare = (metas ?? []).filter((m) => parseReviewMeta(m.value).photos.length === 0);
-  if (!bare.length) return;
-  const ids = bare.map((m) => m.key.slice(REVIEW_META_PREFIX.length));
-  const { data: alive } = await db
-    .from("product_reviews")
-    .select("id")
-    .eq("bot_id", DEMO_BOT)
-    .in("id", ids);
-  const keep = new Set((alive ?? []).map((r) => String(r.id)));
-  const orphans = ids.filter((id) => !keep.has(id)).map(reviewMetaKey);
-  if (orphans.length)
-    await db.from("app_settings").delete().eq("bot_id", DEMO_BOT).in("key", orphans);
+  const orphans: string[] = [];
+  let after = "";
+  for (;;) {
+    let q = db
+      .from("app_settings")
+      .select("key, value")
+      .eq("bot_id", DEMO_BOT)
+      .like("key", `${REVIEW_META_PREFIX}%`)
+      .order("key")
+      .limit(ORPHAN_PAGE);
+    if (after) q = q.gt("key", after);
+    const { data: metas, error } = await q;
+    if (error || !metas) return;
+    if (!metas.length) break;
+    after = metas.at(-1)!.key;
+    const ids = metas
+      .filter((m) => parseReviewMeta(m.value).photos.length === 0)
+      .map((m) => m.key.slice(REVIEW_META_PREFIX.length));
+    if (ids.length) {
+      const { data: alive, error: aliveError } = await db
+        .from("product_reviews")
+        .select("id")
+        .eq("bot_id", DEMO_BOT)
+        .in("id", ids);
+      if (aliveError || !alive) return;
+      const keep = new Set(alive.map((r) => String(r.id)));
+      orphans.push(...ids.filter((id) => !keep.has(id)).map(reviewMetaKey));
+    }
+    if (metas.length < ORPHAN_PAGE) break;
+  }
+  for (let i = 0; i < orphans.length; i += ORPHAN_PAGE)
+    await db
+      .from("app_settings")
+      .delete()
+      .eq("bot_id", DEMO_BOT)
+      .in("key", orphans.slice(i, i + ORPHAN_PAGE));
 }
 
 async function cleanup() {
