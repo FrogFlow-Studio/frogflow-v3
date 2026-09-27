@@ -382,19 +382,32 @@ export async function replyAsManager(
         "У покупателя нет диалога в Zernio — ответить некуда",
       );
     const { sendInboxMessage } = await import("@/channels/zernio/api.server");
+    const { isAttachmentRejected } = await import("@/channels/zernio/errors");
     const { text: message, ...media } = checked
       ? await att.zernioAttachmentOptions(ctx, customer.platform, text, checked)
       : { text };
-    const r = await sendInboxMessage(
-      customer.zernioConversationId,
-      customer.zernioAccountId,
-      message,
-      {
-        platform: customer.platform,
-        ...media,
+    const conversationId = customer.zernioConversationId;
+    const accountId = customer.zernioAccountId;
+    const platform = customer.platform;
+    const send = (body: string, extra: typeof media) =>
+      sendInboxMessage(conversationId, accountId, body, {
+        platform,
+        ...extra,
         ...(draftId ? { idempotencyScope: `chat:${draftId}` } : {}),
-      },
-    );
+      });
+    let r = await send(message, media);
+    // Канал отклонил сам файл (Instagram — PDF больше лимита, битый и т. п.):
+    // та же ссылка на 7 дней уходит текстом, как у форматов, которые канал не берёт.
+    if (
+      !r.ok &&
+      isAttachmentRejected(r.failure) &&
+      media.attachmentType === "file" &&
+      media.attachmentUrl
+    )
+      r = await send(
+        att.withFileLink(text, media.attachmentName ?? "file", media.attachmentUrl),
+        {},
+      );
     // Отказ Zernio уже объяснён словами продавца (describeSendError) — показываем его.
     if (!r.ok)
       throw r.error

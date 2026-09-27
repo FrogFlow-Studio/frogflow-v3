@@ -178,6 +178,11 @@ export async function zernioAttachmentOptions(
   if (!url) throw notStored();
   if (zernioSendsAsFile(platform, att.key))
     return { text, attachmentUrl: url, attachmentType: "file", attachmentName: att.fileName };
-  const link = `📎 ${att.fileName}: ${url}\nСсылка действует 7 дней.`;
-  return { text: text ? `${text}\n\n${link}` : link };
+  return { text: withFileLink(text, att.fileName, url) };
+}
+
+/** Документ ссылкой в тексте: канал формат не принимает или файл отклонил. */
+export function withFileLink(text: string, fileName: string, url: string): string {
+  const link = `📎 ${fileName}: ${url}\nСсылка действует 7 дней.`;
+  return text ? `${text}\n\n${link}` : link;
 }

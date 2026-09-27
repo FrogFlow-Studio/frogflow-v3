@@ -33,6 +33,12 @@ const calls: { method: string; payload: Record<string, unknown> }[] = [];
 const uploads: { method: string; fields: Record<string, unknown>; field: string; name: string }[] =
   [];
 const zernio: { message: string; opts: Record<string, unknown> }[] = [];
+/** Ответ Zernio на отправку с файлом; без файла — всегда успех. */
+let zernioFileResult: {
+  ok: boolean;
+  error?: string;
+  failure?: { status: number | null; code?: string; platformCode?: number };
+} = { ok: true };
 const logged: string[] = [];
 
 vi.mock("@/config/env", () => ({ env: () => ({ TELEGRAM_API_BASE: "https://tg" }) }));
@@ -81,7 +87,9 @@ vi.mock("@/channels/telegram/api", () => ({
 vi.mock("@/channels/zernio/api.server", () => ({
   sendInboxMessage: async (_c: string, _a: string, message: string, opts: object) => {
     zernio.push({ message, opts: opts as Record<string, unknown> });
-    return { ok: true };
+    return (opts as { attachmentType?: string }).attachmentType === "file"
+      ? zernioFileResult
+      : { ok: true };
   },
 }));
 vi.mock("@/core/chat/chat", () => ({
@@ -109,6 +117,7 @@ beforeEach(() => {
   zernio.length = 0;
   logged.length = 0;
   tgRefuse = null;
+  zernioFileResult = { ok: true };
 });
 
 describe("ответ из «Чата» с фото или документом: Telegram", () => {
@@ -201,6 +210,49 @@ describe("ответ из «Чата» с фото или документом: 
       attachmentName: "прайс.pdf",
       attachmentUrl: `https://storage/${KEY}.pdf?download=прайс.pdf`,
     });
+  });
+
+  it("Instagram отклонил PDF файлом — та же ссылка на 7 дней уходит текстом", async () => {
+    customer = zc("instagram");
+    stored = { size: MB, contentType: "application/pdf" };
+    zernioFileResult = {
+      ok: false,
+      error: "Не удалось отправить",
+      failure: { status: 400, code: "PLATFORM_LIMITATION" },
+    };
+    await replyAsManager(ctx, 42, "Прайс", { kind: "file", key: `${KEY}.pdf`, name: "прайс.pdf" });
+    const url = `https://storage/${KEY}.pdf?download=прайс.pdf`;
+    expect(zernio).toEqual([
+      {
+        message: "Прайс",
+        opts: {
+          platform: "instagram",
+          attachmentUrl: url,
+          attachmentType: "file",
+          attachmentName: "прайс.pdf",
+        },
+      },
+      {
+        message: `Прайс\n\n📎 прайс.pdf: ${url}\nСсылка действует 7 дней.`,
+        opts: { platform: "instagram" },
+      },
+    ]);
+    expect(logged).toEqual(["[файл: прайс.pdf] Прайс"]);
+  });
+
+  it("отказ не из-за файла (окно 24 часа) — ссылкой не повторяем, продавцу причина", async () => {
+    customer = zc("whatsapp");
+    stored = { size: MB, contentType: "application/pdf" };
+    zernioFileResult = {
+      ok: false,
+      error: "Прошло больше 24 часов",
+      failure: { status: 400, platformCode: 131047 },
+    };
+    await expect(
+      replyAsManager(ctx, 42, "Прайс", { kind: "file", key: `${KEY}.pdf`, name: "прайс.pdf" }),
+    ).rejects.toMatchObject({ key: "err.admin.channelRefused" });
+    expect(zernio).toHaveLength(1);
+    expect(logged).toEqual([]);
   });
 
   it("Instagram: Word не принимает — уходит ссылка на 7 дней", async () => {
