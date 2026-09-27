@@ -4,6 +4,7 @@ import type { Database, Json } from "@/core/db-types";
 import { serviceDb } from "@/core/db/client.server";
 import { isAdminInputStorageKey, isTenantStorageKey } from "@/core/storage/keys";
 import { PRODUCT_SELECT, type Product } from "./catalog";
+import { pickerTerm } from "./picker";
 
 type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
 type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
@@ -129,7 +130,7 @@ export async function listProductsForAdmin(
   };
   const filtered = <Q extends Filterable<Q>>(q: Q): Q => {
     let r = q;
-    const term = opts.q?.trim().replace(/[%_,()*\\]/g, " ");
+    const term = pickerTerm(opts.q ?? "");
     if (term) r = r.ilike("name", `%${term}%`);
     if (opts.categoryId) r = r.contains("category_ids", JSON.stringify([opts.categoryId]));
     if (opts.onlyInactive) r = r.eq("is_active", false);

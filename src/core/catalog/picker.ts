@@ -9,13 +9,28 @@ export const PICKER_LIMIT = 30;
 
 export type PickerProduct = { id: string; name: string; price: number; currency: string };
 
-/** Строка поиска для ilike: без подстановочных знаков и символов синтаксиса фильтров. */
+/**
+ * Строка поиска для ilike: введённые «%», «_» и «\» ищутся буквально
+ * (экранированы), а символы синтаксиса фильтров PostgREST «, ( ) *»
+ * заменены на «_» — любой один символ, так что «Набор (5 шт)» находится.
+ */
 export function pickerTerm(q: string): string {
   return q
-    .replace(/[%_,()*\\]/g, " ")
     .trim()
-    .slice(0, 100);
+    .slice(0, 100)
+    .replace(/[\\%_]/g, "\\$&")
+    .replace(/[,()*]/g, "_");
 }
+
+/** Сколько уже показанных товаров перечитать при «Показать ещё» в списке товаров. */
+export const PAGE_OVERLAP = 10;
+
+/**
+ * Смещение следующей страницы — внахлёст: если товар выше исчез из выборки
+ * (скрыт при фильтре «только скрытые», удалён), список сдвинулся, и без
+ * перекрытия первый товар следующей страницы пропал бы. Повторы отсекаются по id.
+ */
+export const nextPageOffset = (loaded: number) => Math.max(0, loaded - PAGE_OVERLAP);
 
 const toPicker = (p: { id: string; name: string; price: unknown; currency: string }) => ({
   id: p.id,

@@ -185,29 +185,14 @@ class Query implements PromiseLike<Result> {
   /** like с «%» на конце — префикс, как ими пользуется код. */
   like(col: string, pattern: string) {
     this.col(col);
-    const re = new RegExp(
-      "^" +
-        pattern
-          .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-          .replace(/%/g, ".*")
-          .replace(/_/g, ".") +
-        "$",
-    );
+    const re = likeRegex(pattern, "");
     this.filters.push((r) => re.test(String(r[col] ?? "")));
     return this;
   }
   /** ilike — как like, без учёта регистра. */
   ilike(col: string, pattern: string) {
     this.col(col);
-    const re = new RegExp(
-      "^" +
-        pattern
-          .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-          .replace(/%/g, ".*")
-          .replace(/_/g, ".") +
-        "$",
-      "i",
-    );
+    const re = likeRegex(pattern, "i");
     this.filters.push((r) => re.test(String(r[col] ?? "")));
     return this;
   }
@@ -342,3 +327,18 @@ class Query implements PromiseLike<Result> {
     return this.shape(hit.slice(0, this.db.maxRows));
   }
 }
+
+/** Шаблон LIKE как в Postgres: «%» и «_» — подстановки, «\» экранирует следующий символ. */
+function likeRegex(pattern: string, flags: string): RegExp {
+  let out = "";
+  for (let i = 0; i < pattern.length; i++) {
+    const c = pattern[i]!;
+    if (c === "\\" && i + 1 < pattern.length) out += escapeRe(pattern[++i]!);
+    else if (c === "%") out += ".*";
+    else if (c === "_") out += ".";
+    else out += escapeRe(c);
+  }
+  return new RegExp(`^${out}$`, flags + "s");
+}
+
+const escapeRe = (c: string) => c.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");

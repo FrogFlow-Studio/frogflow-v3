@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { productPickerFn } from "@/app/admin/admin.functions";
 import type { AdminT } from "@/app/i18n/admin";
 import { ErrorBox, useAction } from "@/app/ui";
@@ -24,9 +24,13 @@ export function ProductSearch({
 }) {
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<PickerProduct[] | null>(null);
-  const search = useAction(async (q: string) =>
-    setFound(await productPickerFn({ data: { q, exclude: [...exclude].slice(0, 50) } })),
-  );
+  // Ответы приходят не по порядку: показываем только ответ на последний запрос.
+  const latest = useRef(0);
+  const search = useAction(async (q: string) => {
+    const n = ++latest.current;
+    const r = await productPickerFn({ data: { q, exclude: [...exclude].slice(0, 50) } });
+    if (n === latest.current) setFound(r);
+  });
   const excludeKey = exclude.join(",");
   useEffect(() => {
     const timer = setTimeout(() => void search.run(query).catch(() => {}), 250);

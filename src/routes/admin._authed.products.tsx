@@ -14,6 +14,7 @@ import { adminT, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, PageTitle, Switch, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { imagePath } from "@/core/catalog/image-url";
+import { nextPageOffset } from "@/core/catalog/picker";
 
 export const Route = createFileRoute("/admin/_authed/products")({
   validateSearch: z.object({
@@ -52,7 +53,7 @@ function ProductsPage() {
         q: s.q,
         categoryId: s.category ?? null,
         onlyInactive: s.inactive,
-        offset: products.length,
+        offset: nextPageOffset(products.length),
       },
     });
     setProducts((p) => {
