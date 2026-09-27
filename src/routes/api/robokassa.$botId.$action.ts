@@ -75,7 +75,7 @@ async function handle(request: Request, botId: string, action: string): Promise<
     );
     return new Response("amount mismatch", { status: 400 });
   }
-  const r = await markPaidOnline(ctx, orderId, paid, "Robokassa");
+  const r = await markPaidOnline(ctx, orderId, paid, "Robokassa", invId);
   if (r.ok && r.alreadyDone && ["cancelled", "rejected"].includes(order.status)) {
     // Покупатель заплатил по ссылке, открытой до отмены (отклонения) неоплаченного заказа
     // с сайта: деньги пришли, заказ закрыт — решает продавец.

@@ -68,7 +68,8 @@ export function OrderStatus({ status }: { status: string }) {
   );
 }
 
-function ExportButton() {
+/** `paymentsOnly` — роль «просмотр»: заказы с контактами ей не выгружаются, «Оплаты» без них — да. */
+function ExportButton({ paymentsOnly = false }: { paymentsOnly?: boolean }) {
   const { shop } = useRouteContext({ from: "/admin/_authed" });
   const t = adminT(shop.locale);
   const [open, setOpen] = useState(false);
@@ -100,24 +101,38 @@ function ExportButton() {
               onChange={(e) => setTo(e.target.value)}
             />
           </label>
+          {!paymentsOnly && (
+            <>
+              <a
+                className="btn-primary block text-center text-xs"
+                href={href}
+                onClick={() => setOpen(false)}
+              >
+                {t("common.downloadCsv")}
+              </a>
+              <p className="text-xs text-muted">{t("orders.export.hint")}</p>
+            </>
+          )}
           <a
-            className="btn-primary block text-center text-xs"
-            href={href}
+            className="btn-secondary block text-center text-xs"
+            href={`/api/admin/export/payments?from=${from}&to=${to}`}
             onClick={() => setOpen(false)}
           >
-            {t("common.downloadCsv")}
+            {t("orders.export.payments")}
           </a>
-          <p className="text-xs text-muted">{t("orders.export.hint")}</p>
-          <div className="space-y-1 border-t border-line pt-2">
-            <a
-              className="btn-secondary block text-center text-xs"
-              href="/api/admin/export/all"
-              onClick={() => setOpen(false)}
-            >
-              {t("orders.export.all")}
-            </a>
-            <p className="text-xs text-muted">{t("orders.export.allHint")}</p>
-          </div>
+          <p className="text-xs text-muted">{t("orders.export.paymentsHint")}</p>
+          {!paymentsOnly && (
+            <div className="space-y-1 border-t border-line pt-2">
+              <a
+                className="btn-secondary block text-center text-xs"
+                href="/api/admin/export/all"
+                onClick={() => setOpen(false)}
+              >
+                {t("orders.export.all")}
+              </a>
+              <p className="text-xs text-muted">{t("orders.export.allHint")}</p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -160,9 +175,9 @@ function OrdersPage() {
                 {t("physical.newOrder")}
               </Link>
             )}
-            {/* В заказах имена и телефоны: роль «просмотр» их не выгружает (сервер тоже). */}
-            {shop.modules.excel_export && (canEdit(shop.role) || shop.role === "accountant") && (
-              <ExportButton />
+            {/* В заказах имена и телефоны: роль «просмотр» выгружает только «Оплаты» (сервер тоже). */}
+            {shop.modules.excel_export && (
+              <ExportButton paymentsOnly={!canEdit(shop.role) && shop.role !== "accountant"} />
             )}
           </div>
         }

@@ -9,13 +9,15 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
           await import("@/app/auth/guards.server");
         const { CONTACTS_MIN_ROLE } = await import("@/core/export/export");
         let ctx;
-        // Бухгалтер: только заказы и только без контактов покупателей.
+        // Бухгалтер: только заказы и оплаты, без контактов покупателей.
         let noContacts = false;
         try {
           // Каталог выгружает любой продавец — это его данные для импорта обратно; заказы и покупатели — модуль.
           // Всё с контактами покупателей (архив, покупатели, заказы) — ещё и роль не ниже менеджера.
-          const fin = params.kind === "orders" ? await requireAdminFinance() : null;
-          if (fin?.accountant) {
+          const finance = params.kind === "orders" || params.kind === "payments";
+          const fin = finance ? await requireAdminFinance() : null;
+          // «Оплаты» — без контактов покупателей: любая роль раздела финансов.
+          if (fin && (fin.accountant || params.kind === "payments")) {
             if (!fin.ctx.tenant.modules.excel_export)
               throw new (await import("@/core/i18n/user-error")).UserError(
                 "err.auth.moduleOff",
@@ -58,6 +60,12 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
           const to = day(url.searchParams.get("to"));
           result = await ordersCsv(ctx, { from, to, noContacts });
           name = `orders${from ? `-${from}` : ""}${to ? `-${to}` : ""}.csv`;
+        } else if (params.kind === "payments") {
+          const from = day(url.searchParams.get("from"));
+          const to = day(url.searchParams.get("to"));
+          const { paymentsCsv } = await import("@/core/export/payments");
+          result = await paymentsCsv(ctx, { from, to });
+          name = `payments${from ? `-${from}` : ""}${to ? `-${to}` : ""}.csv`;
         } else if (params.kind === "customers") {
           result = await customersCsv(ctx);
           name = "customers.csv";

@@ -1312,6 +1312,7 @@ async function handleStarsPaid(
     orderId,
     due,
     `Telegram Stars (${pay.total_amount} ⭐${pay.telegram_payment_charge_id ? `, ${pay.telegram_payment_charge_id}` : ""})`,
+    pay.telegram_payment_charge_id || undefined,
   );
   if (r.ok && !r.alreadyDone) await onOrderPaid(ctx, api, orderId);
 }

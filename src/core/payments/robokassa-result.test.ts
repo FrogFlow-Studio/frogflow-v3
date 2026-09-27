@@ -103,7 +103,13 @@ describe("Robokassa result: сверка суммы", () => {
   it("сумма совпала с ожидаемой — заказ отмечается оплаченным", async () => {
     const res = await callResult("1500.00");
     expect(await res.text()).toBe("OK42");
-    expect(markPaidOnline).toHaveBeenCalledWith(expect.anything(), 42, 1500, "Robokassa");
+    expect(markPaidOnline).toHaveBeenCalledWith(
+      expect.anything(),
+      42,
+      1500,
+      "Robokassa",
+      expect.any(String),
+    );
   });
 });
 

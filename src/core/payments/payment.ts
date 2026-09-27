@@ -16,10 +16,12 @@ export async function markPaidOnline(
   orderId: number,
   amount: number,
   provider: string,
+  /** Номер платежа у шлюза (InvId Robokassa, charge id Telegram) — в выгрузку «Оплаты». */
+  ref?: string,
 ): Promise<{ ok: boolean; kind: "digital" | "physical" | null; alreadyDone: boolean }> {
   const { data: order } = await ctx.db
     .from("orders")
-    .select("status, fulfillment_kind, admin_note, paid_amount, total")
+    .select("status, fulfillment_kind, admin_note, paid_amount, total, currency")
     .eq("id", orderId)
     .maybeSingle();
   if (!order) return { ok: false, kind: null, alreadyDone: false };
@@ -43,5 +45,18 @@ export async function markPaidOnline(
     .in("status", ["awaiting_payment", "awaiting_confirmation"])
     .select("id")
     .maybeSingle();
+  // Платёж — в журнал заказа: из него собирается выгрузка «Оплаты».
+  if (data) {
+    const { recordOrderEvent } = await import("@/core/orders/events");
+    await recordOrderEvent(
+      ctx,
+      orderId,
+      "payment",
+      { amount, currency: order.currency, source: "online", provider, invId: ref },
+      "system",
+    ).catch((e) =>
+      console.error(`[payments] платёж #${orderId} через ${provider} не записан в журнал`, e),
+    );
+  }
   return { ok: Boolean(data), kind, alreadyDone: !data };
 }

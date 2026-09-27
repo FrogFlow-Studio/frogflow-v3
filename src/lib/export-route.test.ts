@@ -48,6 +48,9 @@ vi.mock("@/core/export/export", async (orig) => ({
   },
   productsCsv: async () => ({ csv: "p", count: 1 }),
 }));
+vi.mock("@/core/export/payments", () => ({
+  paymentsCsv: async () => ({ csv: "pay", count: 1 }),
+}));
 
 const { Route } = await import("@/routes/api/admin/export.$kind");
 type Get = (a: { request: Request; params: { kind: string } }) => Promise<Response>;
@@ -125,5 +128,23 @@ describe("бухгалтер: выгрузка заказов без конта�
     role = "accountant";
     moduleOn = false;
     expect((await get("orders")).status).toBe(403);
+  });
+});
+
+describe("оплаты: без контактов покупателей, любая роль раздела финансов", () => {
+  it("бухгалтер, просмотр, менеджер и владелец — 200", async () => {
+    for (const r of ["accountant", "viewer", "manager", "owner"] as const) {
+      role = r;
+      const res = await get("payments");
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-disposition")).toContain("payments");
+    }
+  });
+
+  it("без модуля выгрузки — 403, без сессии — 401", async () => {
+    moduleOn = false;
+    expect((await get("payments")).status).toBe(403);
+    role = null;
+    expect((await get("payments")).status).toBe(401);
   });
 });
