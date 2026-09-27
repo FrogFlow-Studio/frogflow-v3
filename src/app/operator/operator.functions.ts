@@ -762,6 +762,15 @@ export const setConsultantLimitsFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Консультант ищет по каталогу инструментом — для больших каталогов. */
+export const setConsultantSearchFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId, on: z.boolean() }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    await (await impl()).setConsultantSearch(data.botId, data.on, await actor());
+    return { ok: true };
+  });
+
 /** Дневной предел умного поиска клиента в долларах; null — общий предел. */
 export const setSmartSearchLimitFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>

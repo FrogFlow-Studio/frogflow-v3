@@ -11,7 +11,17 @@ import { parseKnowledge, retrieveKnowledge, type KnowledgeDoc } from "./knowledg
 import { parseProfile, type ConsultantProfile } from "./profile";
 import { buildSystemPrompt, cleanReply, isResetIntent } from "./prompt";
 import { checkReplyFacts, knownNumbers } from "./price-check";
+import {
+  CATALOG_TOOL_NAMES,
+  CATALOG_TOOLS,
+  catalogPromptSection,
+  catalogSearchEnabled,
+  loadCatalog,
+  runCatalogTool,
+} from "./catalog-tool.server";
 import { pauseHours, pausedUntilIso } from "./pause";
+import { takeAiCall } from "./rate.server";
+import { serverFailure } from "@/lib/server-failure";
 import {
   budgetBlock,
   limitsFor,
@@ -42,6 +52,15 @@ export const KEYS = {
 const DEFAULT_MODEL = "claude-haiku-4-5";
 const TIMEOUT_MS = 20_000;
 const HISTORY_TURNS = 16;
+/** Раундов с инструментами каталога на одно сообщение (v1: 4). */
+export const MAX_ROUNDS = 4;
+/**
+ * Общий потолок времени всех вызовов модели на одно сообщение с поиском:
+ * каждый вызов получает таймаут по остатку, меньше MIN_CALL_MS на вызов —
+ * нового не начинаем, вопрос уходит менеджеру.
+ */
+export const ROUNDS_DEADLINE_MS = 35_000;
+const MIN_CALL_MS = 3_000;
 const CATALOG_LIMIT = 120;
 /** Цены Haiku 4.5 за миллион токенов: ввод, вывод, запись в кеш, чтение из кеша. */
 /**
@@ -365,8 +384,38 @@ export async function runConsultant(
     };
   }
 
-  const catalog = await catalogSnippet(ctx);
-  const system = buildSystemPrompt(profile, retrieveKnowledge(incoming, docs, 6), catalog.text);
+  // Большой каталог — инструментом поиска (флаг оператора), иначе первые товары в подсказке.
+  const searchMode = catalogSearchEnabled(ctx);
+  let loaded: Awaited<ReturnType<typeof loadCatalog>> | null = null;
+  try {
+    loaded = searchMode ? await loadCatalog(ctx) : null;
+  } catch (e) {
+    // Каталог не прочитался — покупатель не остаётся без ответа: вопрос менеджеру.
+    await trySetSetting(
+      ctx,
+      KEYS.lastError,
+      `${new Date().toISOString()} — каталог для консультанта не прочитан: ${e instanceof Error ? e.message : String(e)}`.slice(
+        0,
+        500,
+      ),
+    );
+    if (opts.dryRun) throw serverFailure("Каталог не прочитался. Попробуйте ещё раз.");
+    return {
+      reply: "Сейчас не могу ответить — передаю вопрос менеджеру, он напишет вам.",
+      handoff: {
+        kind: "handoff",
+        reason: "unknown_question",
+        summary: `Сбой чтения каталога. Клиент написал: «${incoming.slice(0, 200)}»`,
+      },
+      usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
+    };
+  }
+  const catalog = loaded
+    ? { text: catalogPromptSection(loaded), prices: [] as number[] }
+    : await catalogSnippet(ctx);
+  const system = buildSystemPrompt(profile, retrieveKnowledge(incoming, docs, 6), catalog.text, {
+    catalogTools: Boolean(loaded),
+  });
   const session = [
     `Канал: ${opts.platform}`,
     customer?.firstName ? `Имя клиента в профиле: ${customer.firstName}` : "",
@@ -380,9 +429,12 @@ export async function runConsultant(
 
   // Бронь бюджета — проверка и прибавка одной атомарной записью: параллельные
   // сообщения видят брони друг друга и не проскакивают мимо предела.
+  // С поиском — бронь на все раунды сразу: у потолка параллельные сообщения
+  // видят полную цену друг друга, а не одного вызова.
+  const reserveUsd = loaded ? RESERVE_USD * MAX_ROUNDS : RESERVE_USD;
   let reserveBlock: string | null = null;
   const reserved = await updateSettingAtomic(ctx, KEYS.daily, (raw) => {
-    const r = reserveDaily(parseDaily(raw, date), kind, budgetLimits);
+    const r = reserveDaily(parseDaily(raw, date), kind, budgetLimits, reserveUsd);
     if ("blocked" in r) {
       reserveBlock = r.blocked;
       return null;
@@ -407,43 +459,133 @@ export async function runConsultant(
 
   const client = new Anthropic({ apiKey, maxRetries: 1, timeout: TIMEOUT_MS });
   const model = env().CONSULTANT_MODEL?.trim() || DEFAULT_MODEL;
+  const u = { input_tokens: 0, output_tokens: 0, cacheWrite: 0, cacheRead: 0 };
+  const costUsd = () =>
+    (u.input_tokens * PRICE.in +
+      u.cacheWrite * PRICE.cacheWrite +
+      u.cacheRead * PRICE.cacheRead +
+      u.output_tokens * PRICE.out) /
+    1_000_000;
+  // Расход записан и бронь закрыта — catch второй раз их не трогает.
+  let settled = false;
+  const started = Date.now();
+  const deadline = started + ROUNDS_DEADLINE_MS;
+  /**
+   * Один вызов модели. С поиском время ограничено общим потолком: таймаут —
+   * остаток до него, повтор — только если остатка хватит на два вызова.
+   * Каждый вызов проходит лимит частоты (core/consultant/rate.server).
+   */
+  const callModel = async (
+    params: Anthropic.MessageCreateParamsNonStreaming,
+  ): Promise<Anthropic.Message | "limited" | "late"> => {
+    const left = deadline - Date.now();
+    if (loaded && left < MIN_CALL_MS) return "late";
+    if (!(await takeAiCall(ctx))) return "limited";
+    const response = loaded
+      ? await client.messages.create(params, {
+          timeout: Math.min(TIMEOUT_MS, left),
+          // Повтор не уложится в потолок: таймаут вызова — до 20 с из 35.
+          maxRetries: 0,
+          signal: AbortSignal.timeout(left),
+        })
+      : await client.messages.create(params);
+    u.input_tokens += response.usage.input_tokens;
+    u.output_tokens += response.usage.output_tokens;
+    u.cacheWrite += response.usage.cache_creation_input_tokens ?? 0;
+    u.cacheRead += response.usage.cache_read_input_tokens ?? 0;
+    return response;
+  };
   try {
-    const response = await client.messages.create({
-      model,
-      max_tokens: 700,
-      system: [
-        { type: "text", text: system, cache_control: { type: "ephemeral", ttl: CACHE_TTL } },
-        { type: "text", text: `ДАННЫЕ ТЕКУЩЕГО ДИАЛОГА:\n${session}` },
-      ],
-      tools: TOOLS,
-      messages: buildConsultantMessages(state.recent ?? [], incoming),
-    });
-
+    const tools = loaded ? [...CATALOG_TOOLS, ...TOOLS] : TOOLS;
+    const messages: Anthropic.MessageParam[] = buildConsultantMessages(
+      state.recent ?? [],
+      incoming,
+    );
+    const toolTexts: string[] = [];
+    let stopped: "limited" | "late" | null = null;
     let reply = "";
     let handoff: Handoff | null = null;
-    for (const block of response.content) {
-      if (block.type === "text") reply += block.text;
-      else if (block.type === "tool_use") {
-        const input = block.input as Record<string, string | undefined>;
-        if (block.name === "handoff_to_manager")
-          handoff = {
-            kind: "handoff",
-            reason: input.reason ?? "human_requested",
-            customerName: input.customer_name,
-            customerContact: input.customer_contact,
-            summary: input.summary ?? "",
-          };
-        else if (block.name === "record_order_lead")
-          handoff = {
-            kind: "lead",
-            reason: input.lead_type ?? "order",
-            customerName: input.customer_name,
-            customerContact: input.customer_contact,
-            summary: input.details ?? "",
-          };
+    let response: Anthropic.Message | null = null;
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      const last = round === MAX_ROUNDS - 1;
+      const got = await callModel({
+        model,
+        max_tokens: 700,
+        system: [
+          { type: "text", text: system, cache_control: { type: "ephemeral", ttl: CACHE_TTL } },
+          { type: "text", text: `ДАННЫЕ ТЕКУЩЕГО ДИАЛОГА:\n${session}` },
+        ],
+        tools,
+        // Последний раунд — без инструментов: модель отвечает тем, что уже нашла.
+        ...(last && loaded ? { tool_choice: { type: "none" as const } } : {}),
+        messages,
+      });
+      if (typeof got === "string") {
+        stopped = got;
+        break;
       }
+      response = got;
+
+      let text = "";
+      const results: Anthropic.ToolResultBlockParam[] = [];
+      for (const block of response.content) {
+        if (block.type === "text") text += block.text;
+        else if (block.type === "tool_use") {
+          const input = (block.input ?? {}) as Record<string, unknown>;
+          if (loaded && CATALOG_TOOL_NAMES.has(block.name)) {
+            const run = runCatalogTool(loaded, block.name, input);
+            toolTexts.push(run.result);
+            catalog.prices.push(...run.prices);
+            results.push({ type: "tool_result", tool_use_id: block.id, content: run.result });
+            continue;
+          }
+          const str = (k: string) =>
+            typeof input[k] === "string" ? (input[k] as string) : undefined;
+          if (block.name === "handoff_to_manager")
+            handoff = {
+              kind: "handoff",
+              reason: str("reason") ?? "human_requested",
+              customerName: str("customer_name"),
+              customerContact: str("customer_contact"),
+              summary: str("summary") ?? "",
+            };
+          else if (block.name === "record_order_lead")
+            handoff = {
+              kind: "lead",
+              reason: str("lead_type") ?? "order",
+              customerName: str("customer_name"),
+              customerContact: str("customer_contact"),
+              summary: str("details") ?? "",
+            };
+          results.push({ type: "tool_result", tool_use_id: block.id, content: "ok" });
+        }
+      }
+      // Нужны данные каталога — ещё раунд с результатами; иначе ответ готов.
+      // Текст раунда, который ушёл за данными («секунду, посмотрю»), покупателю не уходит.
+      const needsData = response.content.some(
+        (b) => b.type === "tool_use" && CATALOG_TOOL_NAMES.has(b.name),
+      );
+      if (text.trim() && !needsData) reply = text;
+      if (last || !loaded || !needsData || response.stop_reason !== "tool_use" || handoff) break;
+      messages.push({ role: "assistant", content: response.content });
+      messages.push({ role: "user", content: results });
     }
-    if (response.stop_reason === "refusal") {
+
+    // Лимит частоты или потолок времени до готового ответа — вопрос менеджеру, молча.
+    if (!reply && !handoff && stopped) {
+      await trySetSetting(
+        ctx,
+        KEYS.lastError,
+        `${new Date().toISOString()} — ${stopped === "limited" ? "лимит частоты вызовов ИИ" : "не уложился в потолок времени"}; вопрос передан менеджеру`,
+      );
+      reply = "Передам ваш вопрос менеджеру — он ответит в ближайшее время.";
+      handoff = {
+        kind: "handoff",
+        reason: "unknown_question",
+        summary: `ИИ-консультант не ответил (${stopped === "limited" ? "лимит частоты" : "долго искал"}). Клиент написал: «${incoming.slice(0, 200)}»`,
+      };
+    }
+    if (response?.stop_reason === "refusal") {
       reply = "Передам ваш вопрос менеджеру — он ответит в ближайшее время.";
       handoff = handoff ?? {
         kind: "handoff",
@@ -457,7 +599,7 @@ export async function runConsultant(
       reply,
       knownNumbers({
         prices: catalog.prices,
-        texts: [system, session, incoming, ...history.map((h) => String(h.content))],
+        texts: [system, session, incoming, ...history.map((h) => String(h.content)), ...toolTexts],
       }),
     );
     if (!facts.ok) {
@@ -484,17 +626,10 @@ export async function runConsultant(
           : "Передаю диалог менеджеру — он ответит в ближайшее время.";
     if (!reply) reply = "Уточните, пожалуйста, что именно вас интересует — подскажу.";
 
-    const u = response.usage;
-    const cacheWrite = u.cache_creation_input_tokens ?? 0;
-    const cacheRead = u.cache_read_input_tokens ?? 0;
-    const usd =
-      (u.input_tokens * PRICE.in +
-        cacheWrite * PRICE.cacheWrite +
-        cacheRead * PRICE.cacheRead +
-        u.output_tokens * PRICE.out) /
-      1_000_000;
-    await recordUsage(ctx, usd, u.input_tokens + cacheWrite + cacheRead, u.output_tokens);
-    await updateSettingAtomic(ctx, KEYS.daily, (raw) => settleRaw(raw, date, RESERVE_USD, usd));
+    const usd = costUsd();
+    settled = true;
+    await recordUsage(ctx, usd, u.input_tokens + u.cacheWrite + u.cacheRead, u.output_tokens);
+    await updateSettingAtomic(ctx, KEYS.daily, (raw) => settleRaw(raw, date, reserveUsd, usd));
     if (newDialog)
       await trySetSetting(
         ctx,
@@ -509,12 +644,25 @@ export async function runConsultant(
         { role: "customer" as const, text: incoming.slice(0, 500) },
         { role: "assistant" as const, text: reply.slice(0, 700) },
       ].slice(-HISTORY_TURNS);
-      await saveState(ctx, customer, {
-        recent,
-        last_reply_at: new Date().toISOString(),
-        ...(handoff?.customerContact ? { contact: handoff.customerContact } : {}),
-        ...(handoff ? { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) } : {}),
-      });
+      // Ответ уже готов и оплачен: сбой записи истории его не отменяет.
+      try {
+        await saveState(ctx, customer, {
+          recent,
+          last_reply_at: new Date().toISOString(),
+          ...(handoff?.customerContact ? { contact: handoff.customerContact } : {}),
+          ...(handoff ? { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) } : {}),
+        });
+      } catch (e) {
+        console.error(`[consultant:${ctx.tenant.id}] состояние диалога не записано`, e);
+        await trySetSetting(
+          ctx,
+          KEYS.lastError,
+          `${new Date().toISOString()} — состояние диалога не записано: ${e instanceof Error ? e.message : String(e)}`.slice(
+            0,
+            500,
+          ),
+        );
+      }
     }
     return {
       reply,
@@ -534,6 +682,21 @@ export async function runConsultant(
       KEYS.lastError,
       `${new Date().toISOString()} — ${detail}`.slice(0, 500),
     );
+    // Бронь закрываем прошедшими раундами плюс одна бронь на упавший вызов:
+    // Anthropic мог успеть его списать, а мы этого не узнаем.
+    if (!settled) {
+      const spent = costUsd();
+      if (spent > 0)
+        await recordUsage(
+          ctx,
+          spent,
+          u.input_tokens + u.cacheWrite + u.cacheRead,
+          u.output_tokens,
+        ).catch(() => {});
+      await updateSettingAtomic(ctx, KEYS.daily, (raw) =>
+        settleRaw(raw, date, reserveUsd, spent + RESERVE_USD),
+      ).catch(() => {});
+    }
     return {
       reply: "Сейчас не могу ответить — передаю вопрос менеджеру, он напишет вам.",
       handoff: {

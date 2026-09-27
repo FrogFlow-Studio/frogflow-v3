@@ -1029,7 +1029,14 @@ export async function consultantBudget(botId: string) {
     defaults: CONSULTANT_LIMITS,
     max: CONSULTANT_LIMIT_MAX,
     today: parseDaily(data?.value, today()),
+    search: t.settings.consultant_search === true,
   };
+}
+
+/** Поиск консультанта по каталогу инструментом (core/consultant/catalog-tool.server). */
+export async function setConsultantSearch(botId: string, on: boolean, actor = "operator") {
+  await patchTenantSettings(botId, { consultant_search: on });
+  await logEvent(botId, "meta", { consultant_search: on }, actor);
 }
 
 /** Дневной предел умного поиска клиента в долларах: свой или общий, и расход сегодня. */

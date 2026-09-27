@@ -3,6 +3,7 @@ import { type FormEvent } from "react";
 import {
   type getClientFn,
   setConsultantLimitsFn,
+  setConsultantSearchFn,
   setSmartSearchLimitFn,
 } from "@/app/operator/operator.functions";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
@@ -23,6 +24,10 @@ export function ConsultantLimitsCard({
 }) {
   const save = useAction(async (limits: Limits | null) => {
     await setConsultantLimitsFn({ data: { botId: c.id, limits } });
+    await onDone();
+  });
+  const toggleSearch = useAction(async (on: boolean) => {
+    await setConsultantSearchFn({ data: { botId: c.id, on } });
     await onDone();
   });
   const { limits, defaults, max, today: t } = budget;
@@ -111,6 +116,22 @@ export function ConsultantLimitsCard({
         </div>
         <ErrorBox error={save.error} />
       </form>
+      <label className="mt-4 flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={budget.search}
+          disabled={toggleSearch.busy}
+          onChange={(e) => void toggleSearch.run(e.currentTarget.checked).catch(() => {})}
+        />
+        <span>
+          Поиск по каталогу
+          <span className="block text-xs text-muted">
+            Для больших каталогов: консультант ищет товары сам, в подсказке только категории.
+            Выключено — в подсказку идут первые 120 товаров.
+          </span>
+        </span>
+      </label>
+      <ErrorBox error={toggleSearch.error} />
     </Card>
   );
 }

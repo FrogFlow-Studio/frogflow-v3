@@ -76,6 +76,12 @@ export type TenantSettings = {
    * 1, 3, 12, 24 или 0 — «пока продавец не вернёт диалог боту». Нет — 12.
    */
   consultant_pause_hours?: number;
+  /**
+   * Консультант ищет по каталогу инструментом, а в подсказке — только карта
+   * ассортимента (core/consultant/catalog-tool.server). Для больших каталогов:
+   * без флага в подсказку идут первые 120 товаров. Ставит оператор.
+   */
+  consultant_search?: boolean;
   /** Свой дневной предел умного поиска в долларах (core/search). Меняет оператор. */
   smart_search_limits?: SmartSearchLimitsSetting | null;
   /** Поведение при неоплате подписки (те же ключи, что в v1; читает core/billing/subscription). */

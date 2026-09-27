@@ -118,9 +118,10 @@ export function reserveDaily(
   b: DailyBudget,
   kind: "customer" | "test",
   limits: ConsultantLimits = CONSULTANT_LIMITS,
+  reserveUsd = RESERVE_USD,
 ): { next: DailyBudget } | { blocked: string } {
   const blocked = budgetBlock(b, kind, limits);
-  return blocked ? { blocked } : { next: addDaily(b, RESERVE_USD, kind) };
+  return blocked ? { blocked } : { next: addDaily(b, reserveUsd, kind) };
 }
 
 /** Поменять бронь на настоящую цену: прибавить разницу (бывает отрицательной). */
