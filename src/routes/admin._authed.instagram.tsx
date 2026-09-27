@@ -14,7 +14,11 @@ import {
 } from "@/app/admin/instagram.functions";
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
-import { DM_LIMIT_PLAIN, DM_LIMIT_WITH_BUTTONS } from "@/core/instagram/comment-rules";
+import {
+  DEFAULT_REPLY_PROMPT,
+  DM_LIMIT_PLAIN,
+  withReplyPrompt,
+} from "@/core/instagram/comment-rules";
 
 export const Route = createFileRoute("/admin/_authed/instagram")({
   loader: () => instagramFn(),
@@ -493,8 +497,14 @@ function RuleForm({
   const [twoStepDm, setTwoStepDm] = useState(initial?.twoStepDm ?? false);
   const [secondDmMessage, setSecondDmMessage] = useState(initial?.secondDmMessage ?? "");
   const [unresolvedPrompt, setUnresolvedPrompt] = useState(initial?.unresolvedPrompt ?? "");
+  const [replyPrompt, setReplyPrompt] = useState(initial?.replyPrompt ?? DEFAULT_REPLY_PROMPT);
 
-  const limit = buttons.length && !twoStepDm ? DM_LIMIT_WITH_BUTTONS : DM_LIMIT_PLAIN;
+  // Кнопки всегда уходят вторым сообщением (первое — private-reply без кнопок),
+  // поэтому с кнопками два шага включены всегда.
+  const twoStepOn = twoStepDm || buttons.length > 0;
+  const limit = DM_LIMIT_PLAIN;
+  // Предел — у первого сообщения целиком, вместе с призывом ответить.
+  const firstLength = (twoStepOn ? withReplyPrompt(dmMessage, replyPrompt) : dmMessage).length;
   const save = useAction(async () => {
     await saveAutomationFn({
       data: {
@@ -524,6 +534,7 @@ function RuleForm({
         twoStepDm,
         secondDmMessage,
         unresolvedPrompt,
+        replyPrompt,
       },
     });
     await router.invalidate();
@@ -623,7 +634,7 @@ function RuleForm({
             <span className="text-sm">{t("instagram.form.replyToAllHint")}</span>
           </div>
         )}
-        <Field label={t("instagram.form.dmMessage")} hint={`${dmMessage.length} / ${limit}`}>
+        <Field label={t("instagram.form.dmMessage")} hint={`${firstLength} / ${limit}`}>
           <textarea
             className="input min-h-28"
             value={dmMessage}
@@ -644,14 +655,28 @@ function RuleForm({
         <div className="rounded-md border border-line p-3">
           <div className="flex items-center gap-3">
             <Switch
-              checked={twoStepDm}
+              checked={twoStepOn}
+              disabled={buttons.length > 0}
               onChange={setTwoStepDm}
               label={t("instagram.form.twoStep")}
             />
             <span className="text-sm">{t("instagram.form.twoStepLabel")}</span>
           </div>
           <p className="mt-1 text-xs text-muted">{t("instagram.form.twoStepHint")}</p>
-          {twoStepDm && (
+          {twoStepOn && (
+            <Field
+              label={t("instagram.form.replyPrompt")}
+              hint={t("instagram.form.replyPromptHint")}
+            >
+              <input
+                className="input mt-2"
+                value={replyPrompt}
+                maxLength={200}
+                onChange={(e) => setReplyPrompt(e.target.value)}
+              />
+            </Field>
+          )}
+          {twoStepOn && (
             <Field label={t("instagram.form.secondDm")}>
               <input
                 className="input mt-2"

@@ -49,6 +49,7 @@ export const instagramFn = createServerFn({ method: "GET" }).handler(async () =>
       twoStepDm: Boolean(x.twoStepDm),
       secondDmMessage: x.secondDmMessage ?? "",
       unresolvedPrompt: x.unresolvedPrompt ?? "",
+      replyPrompt: x.replyPrompt ?? null,
       stats: {
         triggered: x.stats?.triggered ?? 0,
         dmsSent: x.stats?.dmsSent ?? 0,
@@ -109,6 +110,7 @@ export const saveAutomationFn = createServerFn({ method: "POST" })
         twoStepDm: z.boolean().default(false),
         secondDmMessage: z.string().max(1000).default(""),
         unresolvedPrompt: z.string().max(500).default(""),
+        replyPrompt: z.string().max(200).optional(),
       })
       .parse(d),
   )
@@ -169,7 +171,8 @@ export const postCommentsFn = createServerFn({ method: "GET" })
       automation: r.automation
         ? {
             id: automationId(r.automation),
-            dmMessage: r.automation.dmMessage,
+            // Догоняющая рассылка шлёт первое сообщение целиком, с призывом ответить.
+            dmMessage: r.automation.firstMessage ?? r.automation.dmMessage,
             buttons: r.automation.buttons ?? [],
             commentReply: r.automation.commentReply ?? "",
             twoStepDm: Boolean(r.automation.twoStepDm),

@@ -18,6 +18,7 @@ import {
   type CommentAutomation,
   type InstagramComment,
 } from "@/channels/zernio/automations.server";
+import { DEFAULT_REPLY_PROMPT } from "@/core/instagram/comment-rules";
 
 const ACCOUNT = "acc-ig-v2-probe";
 const PROFILE = "prof-ig-v2-probe";
@@ -33,11 +34,11 @@ const store = { automations: [] as CommentAutomation[], logs: [] as AutomationLo
 const comments: InstagramComment[] = [];
 const sent = {
   privateReplies: [] as string[],
+  /** Текст и число кнопок каждого private-reply: `${commentId}:${кнопок}:${текст}`. */
+  privateTexts: [] as string[],
   inbox: [] as string[],
-  direct: [] as string[],
   publicReplies: [] as string[],
 };
-let directFails = false;
 let privateFails = false;
 const api: AutomationApi = {
   list: async (profileId) =>
@@ -57,10 +58,11 @@ const api: AutomationApi = {
   },
   logs: async () => store.logs,
   comments: async () => comments,
-  privateReply: async (_p, commentId) => {
+  privateReply: async (_p, commentId, _a, message, buttons) => {
     if (privateFails)
       return { ok: false, error: "Instagram отклонил private reply (код 2534066)." };
     sent.privateReplies.push(commentId);
+    sent.privateTexts.push(`${commentId}:${buttons?.length ?? 0}:${message}`);
     return { ok: true };
   },
   publicReply: async (_p, commentId) => {
@@ -70,11 +72,6 @@ const api: AutomationApi = {
   inbox: async (conv, _a, text) => {
     sent.inbox.push(`${conv}:${text}`);
     return { ok: true };
-  },
-  startDirect: async (p) => {
-    if (directFails) return { ok: false, error: "Instagram не даёт написать первым в Direct" };
-    sent.direct.push(`${p.username}:${p.message}`);
-    return { ok: true, conversationId: "conv-new" };
   },
 };
 
@@ -156,6 +153,8 @@ describe.skipIf(!liveReady)("Comment-to-DM Instagram на демо-клиент�
     expect(stored.profileId).toBe(PROFILE);
     expect(stored).not.toHaveProperty("buttons"); // двухшаговый режим: первое без кнопок
     expect(stored).not.toHaveProperty("twoStepDm");
+    // Первое сообщение просит ответить: без ответа второе с кнопками не уйдёт.
+    expect(stored.dmMessage).toBe(`Привет! Материалы тут.\n\n${DEFAULT_REPLY_PROMPT}`);
     const meta = await getAutomationsMeta(ctx);
     expect(meta[created.id]).toMatchObject({
       twoStepDm: true,
@@ -168,6 +167,8 @@ describe.skipIf(!liveReady)("Comment-to-DM Instagram на демо-клиент�
     expect(listed.map((a) => a.id)).toEqual([created.id]);
     expect(listed[0]?.twoStepDm).toBe(true);
     expect(listed[0]?.buttons?.[0]?.title).toBe("Бот");
+    // В форме — текст продавца без призыва.
+    expect(listed[0]?.dmMessage).toBe("Привет! Материалы тут.");
 
     // Тот же пост — PATCH, id сохраняется.
     const patched = await saveAutomation(
@@ -184,6 +185,8 @@ describe.skipIf(!liveReady)("Comment-to-DM Instagram на демо-клиент�
     );
     expect(patched).toEqual({ ok: true, id: created.id });
     expect(store.automations.find((a) => a.id === created.id)?.dmMessage).toBe("Обновлённый текст");
+    // PATCH явно очищает кнопки: поле, которого нет в PATCH, Zernio не меняет.
+    expect(store.automations.find((a) => a.id === created.id)?.buttons).toEqual([]);
     expect((await getAutomationsMeta(ctx))[created.id]?.twoStepDm).toBe(false);
 
     // Смена поста — пересоздание, старое удалено вместе с мета.
@@ -239,8 +242,7 @@ describe.skipIf(!liveReady)("Comment-to-DM Instagram на демо-клиент�
       (await handleCommentReceived(ctx, payload("c-probe-1", "спасибо"), api, { delayMs: 0 })).note,
     ).toMatch(/не совпало/);
 
-    // Direct закрыт — в очередь.
-    directFails = true;
+    // Диалога с покупателем нет — написать первым в Instagram нельзя: в очередь.
     const queued = await handleCommentReceived(ctx, payload("c-probe-2", "Хочу!"), api, {
       delayMs: 0,
     });
@@ -286,16 +288,21 @@ describe.skipIf(!liveReady)("Comment-to-DM Instagram на демо-клиент�
       ),
     ).toBe(false);
 
-    // Direct открыт — сразу, и повтор события не шлёт второй раз.
-    directFails = false;
+    // Незнакомый покупатель — снова очередь: в Direct ничего не уходит.
+    const inboxBefore = sent.inbox.length;
     expect(
       (await handleCommentReceived(ctx, payload("c-probe-3", "хочу"), api, { delayMs: 0 })).note,
-    ).toMatch(/второе сообщение/);
-    expect(sent.direct.at(-1)).toBe(`${COMMENTER}:Второе с кнопкой`);
-    expect(
-      (await handleCommentReceived(ctx, payload("c-probe-3", "хочу"), api, { delayMs: 0 })).note,
-    ).toMatch(/уже ушло/);
-    expect(sent.direct.length).toBe(1);
+    ).toMatch(/pending/);
+    expect(sent.inbox.length).toBe(inboxBefore);
+    const { data: queued3 } = await ctx.db
+      .from("zernio_logs")
+      .select("status, error_message")
+      .eq("event_id", "two-step-dm:c-probe-3")
+      .single();
+    expect(queued3).toEqual({
+      status: "pending",
+      error_message: "ждём ответа покупателя в Direct",
+    });
   });
 
   it("резервный крон: пропущенный комментарий получает DM, статусы в панели, эскалация", async () => {
@@ -351,11 +358,21 @@ describe.skipIf(!liveReady)("Comment-to-DM Instagram на демо-клиент�
     expect(annotated.comments.find((c) => c.id === "c-probe-15")?.blockReason).toBe("nested");
 
     sent.privateReplies = [];
-    sent.direct = [];
+    sent.privateTexts = [];
+    sent.inbox = [];
     const r1 = await runCommentDmFallback(ctx, api, now);
     expect(r1).toMatchObject({ automationsChecked: 1, sent: 1, failed: 0 });
     expect(sent.privateReplies).toEqual(["c-probe-10"]);
-    expect(sent.direct.at(-1)).toBe("u10:Второе с кнопкой"); // двухшаговое — второе после первого
+    // Первое — без кнопок и с призывом ответить.
+    expect(sent.privateTexts).toEqual([`c-probe-10:0:Первое\n\n${DEFAULT_REPLY_PROMPT}`]);
+    // Двухшаговое: диалога с u10 нет — второе ждёт его ответа, в Direct ничего не ушло.
+    expect(sent.inbox).toEqual([]);
+    const { data: queued10 } = await ctx.db
+      .from("zernio_logs")
+      .select("status")
+      .eq("event_id", "two-step-dm:c-probe-10")
+      .single();
+    expect(queued10).toEqual({ status: "pending" });
     const { data: sends } = await ctx.db
       .from("comment_dm_fallback_sends")
       .select("comment_id, status")
@@ -424,7 +441,7 @@ describe.skipIf(!liveReady)("Comment-to-DM Instagram на демо-клиент�
 
   it("догоняющая рассылка: последовательно, потолок 25, двухшаговая — второе сообщение", async () => {
     sent.privateReplies = [];
-    sent.direct = [];
+    sent.inbox = [];
     const results = await sendCatchupPrivateReplies(
       ctx,
       {
@@ -439,7 +456,15 @@ describe.skipIf(!liveReady)("Comment-to-DM Instagram на демо-клиент�
     );
     expect(results.map((r) => r.ok)).toEqual([true, true]);
     expect(sent.privateReplies).toEqual(["c-probe-10", "c-probe-12"]);
-    expect(sent.direct).toEqual(["u10:И кнопка"]); // у c-probe-12 нет username — второе некому
+    // Диалога нет — второе ждёт ответа покупателя в очереди, в Direct ничего не ушло.
+    expect(sent.inbox).toEqual([]);
+    const { data: pending } = await ctx.db
+      .from("zernio_logs")
+      .select("status, payload")
+      .eq("event_id", "two-step-dm:c-probe-10")
+      .single();
+    expect(pending?.status).toBe("pending");
+    expect((pending?.payload as { secondText?: string }).secondText).toBe("И кнопка");
     await expect(
       sendCatchupPrivateReplies(
         ctx,

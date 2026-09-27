@@ -84,7 +84,9 @@ export const ru = {
   "instagram.form.twoStep": "Два шага",
   "instagram.form.twoStepLabel": "Два шага: сначала текст без кнопок, кнопки — вторым сообщением",
   "instagram.form.twoStepHint":
-    "Meta пессимизирует кнопки в первом сообщении незнакомому человеку. В этом режиме кнопки уходят вторым сообщением; если Direct ещё закрыт — сразу после первого ответа покупателя.",
+    "Кнопки всегда уходят вторым сообщением: с конца августа 2026 Instagram не показывает кнопки в первом ответе тем, кто не подписан на аккаунт, и такой ответ пропадает. Если диалога с покупателем ещё нет, второе сообщение уйдёт после его первого ответа — для этого в конце первого сообщения стоит призыв ответить.",
+  "instagram.form.replyPrompt": "Призыв ответить в конце первого сообщения",
+  "instagram.form.replyPromptHint": "допишется к тексту выше; пусто — без призыва",
   "instagram.form.secondDm": "Текст второго сообщения",
   "instagram.form.secondDmPlaceholder":
     "Для перехода в бот и получения материалов нажмите кнопку ниже 👇",
@@ -205,7 +207,9 @@ export const kk: SectionDict<typeof ru> = {
   "instagram.form.twoStepLabel":
     "Екі қадам: алдымен түймесіз мәтін, түймелер — екінші хабарламамен",
   "instagram.form.twoStepHint":
-    "Meta бейтаныс адамға жіберілген бірінші хабарламадағы түймелерді төмендетеді. Бұл режимде түймелер екінші хабарламамен кетеді; Direct әлі жабық болса — сатып алушының бірінші жауабынан кейін бірден.",
+    "Түймелер әрқашан екінші хабарламамен кетеді: 2026 жылғы тамыздың соңынан бастап Instagram аккаунтқа жазылмағандарға бірінші жауаптағы түймелерді көрсетпейді, ондай жауап жоғалады. Сатып алушымен диалог әлі болмаса, екінші хабарлама оның бірінші жауабынан кейін кетеді — ол үшін бірінші хабарламаның соңында жауап беруге шақыру тұр.",
+  "instagram.form.replyPrompt": "Бірінші хабарлама соңындағы жауап беруге шақыру",
+  "instagram.form.replyPromptHint": "жоғарыдағы мәтінге қосылады; бос — шақырусыз",
   "instagram.form.secondDm": "Екінші хабарлама мәтіні",
   "instagram.form.secondDmPlaceholder":
     "Ботқа өтіп, материалдарды алу үшін төмендегі түймені басыңыз 👇",
@@ -324,7 +328,9 @@ export const en: SectionDict<typeof ru> = {
   "instagram.form.twoStepLabel":
     "Two steps: text without buttons first, buttons in a second message",
   "instagram.form.twoStepHint":
-    "Meta deprioritises buttons in the first message to a stranger. In this mode buttons go in a second message; if Direct is still closed — right after the customer's first reply.",
+    "Buttons always go in a second message: since late August 2026 Instagram does not show buttons in the first reply to people who don't follow the account, and such a reply is lost. If there is no conversation with the customer yet, the second message goes after their first reply — that is why the first message ends with a call to reply.",
+  "instagram.form.replyPrompt": "Call to reply at the end of the first message",
+  "instagram.form.replyPromptHint": "added to the text above; empty — no call",
   "instagram.form.secondDm": "Second message text",
   "instagram.form.secondDmPlaceholder":
     "To open the bot and get the materials, tap the button below 👇",
@@ -443,7 +449,9 @@ export const uz: SectionDict<typeof ru> = {
   "instagram.form.twoStep": "Ikki qadam",
   "instagram.form.twoStepLabel": "Ikki qadam: avval tugmasiz matn, tugmalar — ikkinchi xabar bilan",
   "instagram.form.twoStepHint":
-    "Meta notanish odamga yuborilgan birinchi xabardagi tugmalarni pasaytiradi. Bu rejimda tugmalar ikkinchi xabar bilan ketadi; Direct hali yopiq bo‘lsa — xaridorning birinchi javobidan keyin darhol.",
+    "Tugmalar har doim ikkinchi xabar bilan ketadi: 2026-yil avgust oxiridan Instagram akkauntga obuna bo‘lmaganlarga birinchi javobdagi tugmalarni ko‘rsatmaydi va bunday javob yo‘qoladi. Xaridor bilan suhbat hali bo‘lmasa, ikkinchi xabar uning birinchi javobidan keyin ketadi — shuning uchun birinchi xabar oxirida javob berishga chaqiriq turadi.",
+  "instagram.form.replyPrompt": "Birinchi xabar oxiridagi javob berishga chaqiriq",
+  "instagram.form.replyPromptHint": "yuqoridagi matnga qo‘shiladi; bo‘sh — chaqiriqsiz",
   "instagram.form.secondDm": "Ikkinchi xabar matni",
   "instagram.form.secondDmPlaceholder":
     "Botga o‘tish va materiallarni olish uchun pastdagi tugmani bosing 👇",

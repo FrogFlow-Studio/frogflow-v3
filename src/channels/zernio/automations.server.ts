@@ -9,9 +9,12 @@
  */
 import type { Json } from "@/core/db-types";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { servedByV2 } from "@/core/tenant/directory";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import {
+  DEFAULT_REPLY_PROMPT,
   DEFAULT_SECOND_DM,
+  DM_LIMIT_PLAIN,
   STALE_PENDING_MS,
   annotateCommentStatus,
   buildAutomationBody,
@@ -25,17 +28,13 @@ import {
   isZernioObjectId,
   pickZernioPostId,
   stalePendingAction,
+  stripReplyPrompt,
+  withReplyPrompt,
   type AutomationButton,
   type AutomationInput,
   type MatchMode,
 } from "@/core/instagram/comment-rules";
-import {
-  normalizeDmButtons,
-  sendInboxMessage,
-  startInstagramConversation,
-  zernioRequest,
-  type DmButton,
-} from "./api.server";
+import { normalizeDmButtons, sendInboxMessage, zernioRequest, type DmButton } from "./api.server";
 
 export type CommentAutomation = {
   id?: string;
@@ -71,6 +70,10 @@ export type CommentAutomation = {
   secondDmMessage?: string;
   secondDmButtons?: AutomationButton[];
   unresolvedPrompt?: string;
+  /** Призыв в конце первого сообщения («Ответьте «+»…»); "" — без призыва. */
+  replyPrompt?: string;
+  /** Первое сообщение целиком, как у Zernio (текст продавца + призыв). */
+  firstMessage?: string;
 };
 
 export type AutomationMeta = {
@@ -79,6 +82,11 @@ export type AutomationMeta = {
   secondDmButtons?: AutomationButton[];
   /** Публичный ответ «напишите нам в директ», если DM не доставилась никак. */
   unresolvedPrompt?: string;
+  /**
+   * Призыв ответить, дописанный в конец первого сообщения у Zernio: без
+   * ответа покупателя второе сообщение с кнопками не уйдёт. "" — без призыва.
+   */
+  replyPrompt?: string;
 };
 
 export type InstagramComment = {
@@ -120,7 +128,6 @@ export type AutomationApi = {
     message: string,
   ) => Promise<{ ok: boolean; error?: string }>;
   inbox: typeof sendInboxMessage;
-  startDirect: typeof startInstagramConversation;
 };
 
 const COMMENTS_MAX_PAGES = 20;
@@ -215,7 +222,6 @@ export const liveAutomationApi: AutomationApi = {
     }
   },
   inbox: sendInboxMessage,
-  startDirect: startInstagramConversation,
 };
 
 /* ── мета правил в app_settings ──────────────────────────────────────── */
@@ -278,20 +284,79 @@ export async function listAutomations(
   const z = ctx.tenant.settings.zernio;
   if (!z?.profile_id && !z?.accounts?.length && !z?.account_ids?.length) return [];
   const [all, meta] = await Promise.all([api.list(z.profile_id), getAutomationsMeta(ctx)]);
-  return all
-    .filter((a) => ownsZernioAccount(ctx, a.accountId))
-    .map((a) => {
-      const m = meta[automationId(a)];
-      if (!m) return a;
-      return {
-        ...a,
-        twoStepDm: m.twoStepDm,
-        secondDmMessage: m.secondDmMessage,
-        secondDmButtons: m.secondDmButtons,
-        unresolvedPrompt: m.unresolvedPrompt,
-        buttons: m.twoStepDm && m.secondDmButtons?.length ? m.secondDmButtons : a.buttons,
-      };
-    });
+  const own = all.filter((a) => ownsZernioAccount(ctx, a.accountId));
+  await upgradeLegacyButtons(ctx, own, meta, api);
+  return own.map((a) => {
+    const m = meta[automationId(a)];
+    if (!m) return { ...a, firstMessage: a.dmMessage };
+    return {
+      ...a,
+      // В форме — текст продавца без призыва: при сохранении он допишется снова.
+      dmMessage: stripReplyPrompt(a.dmMessage ?? "", m.replyPrompt),
+      firstMessage: a.dmMessage,
+      twoStepDm: m.twoStepDm,
+      secondDmMessage: m.secondDmMessage,
+      secondDmButtons: m.secondDmButtons,
+      unresolvedPrompt: m.unresolvedPrompt,
+      // Правило из двух шагов, сохранённое до призыва: "" — чтобы пересохранение
+      // не поменяло текст, который продавец писал сам.
+      replyPrompt: m.twoStepDm ? (m.replyPrompt ?? "") : undefined,
+      buttons: m.twoStepDm && m.secondDmButtons?.length ? m.secondDmButtons : a.buttons,
+    };
+  });
+}
+
+/**
+ * Правило, сохранённое раньше (в том числе в v1), у Zernio хранит кнопки
+ * первого сообщения: Zernio шлёт их в private-reply, а Instagram не
+ * показывает кнопки тем, кто не подписан, и тратит на отказ единственный
+ * ответ на комментарий. Приводим такое правило к новому виду при чтении,
+ * без пересохранения продавцом: кнопки — в мету второго сообщения (сначала
+ * мета, чтобы кнопки не потерялись), затем PATCH `buttons: []` — у Zernio
+ * это очистка кнопок, id и счётчики правила остаются. В тот же PATCH —
+ * призыв ответить в конце первого сообщения (если влезает в 1000 символов):
+ * без ответа покупателя кнопки не уйдут. Ответ на историю
+ * (story_reply) не трогаем: там покупатель уже написал сам. Только клиенты
+ * v2: правила клиента прежней платформы ведёт v1.
+ */
+async function upgradeLegacyButtons(
+  ctx: TenantContext,
+  rules: CommentAutomation[],
+  meta: Record<string, AutomationMeta>,
+  api: AutomationApi,
+): Promise<void> {
+  if (!servedByV2(ctx.tenant)) return;
+  for (const a of rules) {
+    const id = automationId(a);
+    if (!id || a.trigger === "story_reply" || !a.buttons?.length) continue;
+    const m = meta[id] ?? {};
+    let prompt = m.replyPrompt ?? DEFAULT_REPLY_PROMPT;
+    let first = withReplyPrompt(a.dmMessage ?? "", prompt);
+    if (first.length > DM_LIMIT_PLAIN) {
+      prompt = "";
+      first = a.dmMessage ?? "";
+    }
+    const next: AutomationMeta = {
+      ...m,
+      twoStepDm: true,
+      secondDmButtons: m.secondDmButtons?.length ? m.secondDmButtons : a.buttons,
+      replyPrompt: prompt,
+    };
+    try {
+      await setAutomationMeta(ctx, id, next);
+      meta[id] = next;
+      await api.update(
+        id,
+        first === a.dmMessage ? { buttons: [] } : { buttons: [], dmMessage: first },
+      );
+      a.buttons = [];
+      a.dmMessage = first;
+    } catch (e) {
+      console.warn(
+        `[comment-dm] ${ctx.tenant.id}: правило ${id} не приведено к двум шагам: ${e instanceof Error ? e.message : e}`,
+      );
+    }
+  }
 }
 
 export type SaveAutomationInput = AutomationInput & {
@@ -324,6 +389,14 @@ export async function saveAutomation(
   }
   const { id, original, replyToAll, ...rest } = input;
   const data: AutomationInput = { ...rest };
+  // Кнопки — всегда вторым сообщением: private-reply с кнопками Instagram не
+  // доставляет тем, кто не подписан на аккаунт, и тратит на отказ единственный
+  // ответ на комментарий (buildAutomationBody кнопки правилу Zernio не отдаёт).
+  // Второе уходит только после ответа покупателя — первое по умолчанию просит
+  // ответить.
+  const twoStep = Boolean(data.twoStepDm) || Boolean(data.buttons?.length);
+  const replyPrompt = twoStep ? (data.replyPrompt ?? DEFAULT_REPLY_PROMPT).trim() : "";
+  data.dmMessage = withReplyPrompt(data.dmMessage ?? "", replyPrompt);
   const specificPost = Boolean(data.platformPostId);
   if (replyToAll && specificPost) data.keywords = [];
   else if (!data.keywords?.length && !specificPost)
@@ -339,10 +412,11 @@ export async function saveAutomation(
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
   const meta: AutomationMeta = {
-    twoStepDm: Boolean(data.twoStepDm),
+    twoStepDm: twoStep,
     secondDmMessage: data.secondDmMessage?.trim() || undefined,
-    secondDmButtons: data.twoStepDm ? (data.buttons ?? []) : undefined,
+    secondDmButtons: twoStep ? (data.buttons ?? []) : undefined,
     unresolvedPrompt: data.unresolvedPrompt?.trim() || undefined,
+    replyPrompt: twoStep ? replyPrompt : undefined,
   };
   const norm = (v: string | null | undefined) => v || null;
   try {
@@ -353,12 +427,14 @@ export async function saveAutomation(
       norm(original?.postId) === norm(data.postId) &&
       (original?.trigger || "comment") === (data.trigger || "comment")
     ) {
-      // PATCH: пост и триггер не менять — Zernio их не принимает.
+      // PATCH: пост и триггер не менять — Zernio их не принимает. Поле, которого
+      // нет в PATCH, Zernio оставляет как было: кнопки старого правила снимает
+      // только явный `buttons: []`.
       const { platformPostId: _p, postId: _z, trigger: _t, ...patch } = body;
       void _p;
       void _z;
       void _t;
-      await api.update(id, patch);
+      await api.update(id, { ...patch, buttons: [] });
       savedId = id;
     } else {
       const created = await api.create(body);
@@ -613,9 +689,12 @@ async function upsertLog(
 }
 
 /**
- * Второе сообщение двухшаговой DM (с кнопками) — сразу в открывшийся Direct;
- * если Meta ещё не открыла окно — в очередь pending, доставится первым же
- * ответом покупателя (deliverPendingTwoStepDm).
+ * Второе сообщение двухшаговой DM (с кнопками) — в Direct, если диалог с
+ * покупателем уже есть. Написать первым в Instagram нельзя: Zernio «создать
+ * диалог» для Instagram не поддерживает, единственный путь к незнакомому —
+ * private-reply на комментарий (первое сообщение). Поэтому без диалога — в
+ * очередь pending: второе уйдёт первым же ответом покупателя
+ * (deliverPendingTwoStepDm).
  */
 async function sendSecondStep(
   ctx: TenantContext,
@@ -638,7 +717,7 @@ async function sendSecondStep(
     .ilike("username", p.username)
     .maybeSingle();
   let ok = false;
-  let error: string | undefined;
+  let error: string | undefined = "ждём ответа покупателя в Direct";
   if (known?.zernio_conversation_id) {
     const r = await api.inbox(known.zernio_conversation_id, p.accountId, p.secondText, {
       buttons,
@@ -646,15 +725,6 @@ async function sendSecondStep(
     });
     ok = r.ok;
     error = r.error;
-  } else {
-    const r = await api.startDirect({
-      accountId: p.accountId,
-      username: p.username,
-      message: p.secondText,
-      buttons,
-    });
-    ok = r.ok;
-    error = r.ok ? undefined : r.error;
   }
   await upsertLog(ctx, key, {
     event_type: ok ? "two_step_dm_sent" : "two_step_dm_pending",
@@ -753,6 +823,8 @@ export async function handleCommentReceived(
   return { note: ok ? `второе сообщение @${username}` : `в очередь pending @${username}` };
 }
 
+const PENDING_TWO_STEP_DAYS = 7;
+
 /** Покупатель написал в Direct первым — отдать ему обещанное второе сообщение из очереди. */
 export async function deliverPendingTwoStepDm(
   ctx: TenantContext,
@@ -760,7 +832,9 @@ export async function deliverPendingTwoStepDm(
   api: AutomationApi = liveAutomationApi,
 ): Promise<boolean> {
   if (!p.username) return false;
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  // Private-reply можно отправить в течение 7 дней после комментария — столько
+  // и ждём ответа покупателя.
+  const cutoff = new Date(Date.now() - PENDING_TWO_STEP_DAYS * 86_400_000).toISOString();
   const { data: logs } = await ctx.db
     .from("zernio_logs")
     .select("id, payload")
@@ -776,6 +850,20 @@ export async function deliverPendingTwoStepDm(
     );
   });
   if (!matched) return false;
+  // Два быстрых сообщения покупателя — два вебхука одновременно: строку
+  // забирает тот, чья условная запись pending → processing прошла, второй не
+  // шлёт. Второе сообщение уже в пути — «+» из второго вебхука тоже не разбираем.
+  const { data: claimed, error: claimError } = await ctx.db
+    .from("zernio_logs")
+    .update({ status: "processing" })
+    .eq("id", matched.id)
+    .eq("status", "pending")
+    .select("id");
+  if (claimError) {
+    console.warn(`[comment-dm] ${ctx.tenant.id}: второй шаг не захвачен: ${claimError.message}`);
+    return false;
+  }
+  if (!claimed?.length) return true;
   const pl = matched.payload as { secondText?: string; buttons?: DmButton[] };
   const buttons = normalizeDmButtons(Array.isArray(pl.buttons) ? pl.buttons : []);
   const r = await api.inbox(
@@ -787,7 +875,15 @@ export async function deliverPendingTwoStepDm(
       platform: "instagram",
     },
   );
-  if (!r.ok) return false;
+  if (!r.ok) {
+    // Не ушло — вернуть в очередь: следующий ответ покупателя попробует снова.
+    await ctx.db
+      .from("zernio_logs")
+      .update({ status: "pending", error_message: r.error ?? null })
+      .eq("id", matched.id)
+      .eq("status", "processing");
+    return false;
+  }
   await ctx.db
     .from("zernio_logs")
     .update({ event_type: "two_step_dm_sent", status: "processed", error_message: null })
@@ -820,9 +916,12 @@ export async function sendCatchupPrivateReplies(
       commentId,
       input.accountId,
       input.message,
-      input.twoStepDm ? [] : (input.buttons ?? []),
+      // Кнопки в private-reply Instagram не показывает тем, кто не подписан, а
+      // отказ тратит единственный ответ на комментарий: первое — только текст.
+      [],
     );
-    if (r.ok && input.twoStepDm) {
+    const twoStep = input.twoStepDm || Boolean(input.buttons?.length);
+    if (r.ok && twoStep) {
       await sleep(1500);
       comments ??= await api.comments(input.postId, input.accountId);
       const username = comments.find((c) => c.id === commentId)?.from?.username;
@@ -917,7 +1016,7 @@ export async function runCommentDmFallback(
         const commentId = comment.id;
         if (!commentId || comment.from?.isOwner) continue;
         result.commentsChecked++;
-        const twoStep = Boolean(automation.twoStepDm);
+        const twoStep = Boolean(automation.twoStepDm) || Boolean(automation.buttons?.length);
         if (sentByZernio.has(commentId)) {
           if (!twoStep) continue;
           // Первое ушло родным Zernio — проверяем второе.
@@ -1010,8 +1109,9 @@ export async function runCommentDmFallback(
           postId,
           commentId,
           automation.accountId,
-          automation.dmMessage,
-          twoStep ? [] : (automation.buttons ?? []),
+          automation.firstMessage ?? automation.dmMessage,
+          // Первое — только текст (как в догоняющей рассылке): кнопки — вторым сообщением.
+          [],
         );
         if (reply.ok) {
           result.sent++;

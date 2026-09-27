@@ -40,8 +40,6 @@ export const ru = {
   "err.catalog.hasSubcategories": "У категории есть подкатегории — сначала удалите их.",
   "err.instagram.dmRequired":
     "Текст сообщения в Direct обязателен — без него автоматизации нечего отправить.",
-  "err.instagram.dmTooLongButtons":
-    "Сообщение в Direct — {length} символов, а с кнопками помещается {limit}. Сократите текст или уберите кнопки.",
   "err.instagram.dmTooLong":
     "Сообщение в Direct — {length} символов, предел {limit}. Сократите текст.",
   "err.instagram.variantTooLong":
@@ -90,8 +88,6 @@ export const kk: SectionDict<typeof ru> = {
   "err.catalog.hasSubcategories": "Санаттың ішкі санаттары бар — алдымен оларды жойыңыз.",
   "err.instagram.dmRequired":
     "Direct хабарламасының мәтіні міндетті — онсыз автоматтандыруға жіберетін ештеңе жоқ.",
-  "err.instagram.dmTooLongButtons":
-    "Direct хабарламасы — {length} таңба, ал түймелермен {limit} таңба сыяды. Мәтінді қысқартыңыз немесе түймелерді алып тастаңыз.",
   "err.instagram.dmTooLong":
     "Direct хабарламасы — {length} таңба, шегі {limit}. Мәтінді қысқартыңыз.",
   "err.instagram.variantTooLong": "Мәтін нұсқаларының бірі {limit} таңбадан ұзын. Оны қысқартыңыз.",
@@ -138,8 +134,6 @@ export const en: SectionDict<typeof ru> = {
   "err.catalog.hasSubcategories": "The category has subcategories — delete them first.",
   "err.instagram.dmRequired":
     "The Direct message text is required — without it the automation has nothing to send.",
-  "err.instagram.dmTooLongButtons":
-    "The Direct message is {length} characters, but with buttons only {limit} fit. Shorten the text or remove the buttons.",
   "err.instagram.dmTooLong":
     "The Direct message is {length} characters, the limit is {limit}. Shorten the text.",
   "err.instagram.variantTooLong":
@@ -189,8 +183,6 @@ export const uz: SectionDict<typeof ru> = {
     "Kategoriyaning ichki kategoriyalari bor — avval ularni oʻchiring.",
   "err.instagram.dmRequired":
     "Direct xabari matni majburiy — usiz avtomatlashtirish hech narsa yubora olmaydi.",
-  "err.instagram.dmTooLongButtons":
-    "Direct xabari — {length} belgi, tugmalar bilan esa {limit} belgi sigʻadi. Matnni qisqartiring yoki tugmalarni olib tashlang.",
   "err.instagram.dmTooLong":
     "Direct xabari — {length} belgi, chegara {limit}. Matnni qisqartiring.",
   "err.instagram.variantTooLong":

@@ -260,14 +260,13 @@ describe("buildAutomationBody", () => {
   it("требует текст сообщения — без него отправлять нечего", () => {
     expect(() => buildAutomationBody({ ...base, dmMessage: "   " })).toThrow(/обязателен/i);
   });
-  it("с кнопками предел 640 символов", () => {
+  it("кнопки не уходят в первое сообщение и предел — 1000 символов, как без кнопок", () => {
     const buttons = [{ type: "postback" as const, title: "Купить", payload: "BUY" }];
-    expect(() => buildAutomationBody({ ...base, dmMessage: "я".repeat(641), buttons })).toThrow(
-      /640/,
+    const body = buildAutomationBody({ ...base, dmMessage: "я".repeat(1000), buttons });
+    expect(body).not.toHaveProperty("buttons");
+    expect(() => buildAutomationBody({ ...base, dmMessage: "я".repeat(1001), buttons })).toThrow(
+      /1000/,
     );
-    expect(() =>
-      buildAutomationBody({ ...base, dmMessage: "я".repeat(640), buttons }),
-    ).not.toThrow();
   });
   it("без кнопок предел 1000 символов", () => {
     expect(() => buildAutomationBody({ ...base, dmMessage: "я".repeat(1001) })).toThrow(/1000/);

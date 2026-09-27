@@ -247,8 +247,7 @@ export function describePostMediaKind(post: {
 
 /* ── Тело правила для Zernio ─────────────────────────────────────────── */
 
-/** Предел длины DM: с кнопками это button_template, и он строже. */
-export const DM_LIMIT_WITH_BUTTONS = 640;
+/** Предел длины первого сообщения (private-reply без кнопок). */
 export const DM_LIMIT_PLAIN = 1000;
 
 export type AutomationInput = {
@@ -274,6 +273,8 @@ export type AutomationInput = {
   secondDmMessage?: string;
   secondDmButtons?: AutomationButton[];
   unresolvedPrompt?: string;
+  /** Призыв ответить в конце первого сообщения двухшагового правила; "" — без призыва. */
+  replyPrompt?: string;
 };
 
 /**
@@ -291,13 +292,17 @@ export function buildAutomationBody(data: Partial<AutomationInput>): Record<stri
       key === "twoStepDm" ||
       key === "secondDmMessage" ||
       key === "secondDmButtons" ||
-      key === "unresolvedPrompt"
+      key === "unresolvedPrompt" ||
+      key === "replyPrompt"
     )
       continue;
     if ((key === "platformPostId" || key === "postId") && value === "") continue;
     body[key] = value;
   }
-  if (data.twoStepDm) delete body.buttons;
+  // Первое сообщение (private-reply) — всегда без кнопок: Instagram не показывает
+  // их тем, кто не подписан, а отказ тратит единственный ответ на комментарий.
+  // Кнопки уходят вторым сообщением (channels/zernio/automations: sendSecondStep).
+  delete body.buttons;
   if (Array.isArray(body.keywords))
     body.keywords = (body.keywords as string[]).map((k) => k.toLowerCase().trim()).filter(Boolean);
 
@@ -308,22 +313,13 @@ export function buildAutomationBody(data: Partial<AutomationInput>): Record<stri
       "Текст сообщения в Direct обязателен — без него автоматизации нечего отправить.",
     );
 
-  const hasButtons = Array.isArray(body.buttons) && (body.buttons as unknown[]).length > 0;
-  const limit = hasButtons ? DM_LIMIT_WITH_BUTTONS : DM_LIMIT_PLAIN;
-  if (dmMessage.length > limit) {
-    const vars = { length: dmMessage.length, limit };
-    if (hasButtons)
-      throw new UserError(
-        "err.instagram.dmTooLongButtons",
-        "Сообщение в Direct — {length} символов, а с кнопками помещается {limit}. Сократите текст или уберите кнопки.",
-        vars,
-      );
+  const limit = DM_LIMIT_PLAIN;
+  if (dmMessage.length > limit)
     throw new UserError(
       "err.instagram.dmTooLong",
       "Сообщение в Direct — {length} символов, предел {limit}. Сократите текст.",
-      vars,
+      { length: dmMessage.length, limit },
     );
-  }
   for (const field of ["dmMessageVariations", "commentReplyVariations"] as const) {
     const variations = body[field];
     if (!Array.isArray(variations)) continue;
@@ -335,6 +331,29 @@ export function buildAutomationBody(data: Partial<AutomationInput>): Record<stri
       );
   }
   return body;
+}
+
+/**
+ * Второе сообщение незнакомому покупателю уходит только после его ответа
+ * (написать первым в Instagram нельзя), поэтому первое по умолчанию просит
+ * ответить. «+» распознаёт isTwoStepAcknowledgement.
+ */
+export const DEFAULT_REPLY_PROMPT = "Ответьте «+» в этот чат, и я пришлю ссылку 👇";
+
+/** Первое сообщение с призывом в конце (если его там ещё нет). */
+export function withReplyPrompt(dm: string, prompt: string | null | undefined): string {
+  const p = prompt?.trim();
+  if (!p) return dm;
+  const base = dm.trimEnd();
+  return base.endsWith(p) ? base : `${base}\n\n${p}`;
+}
+
+/** Текст продавца без призыва — для формы: при сохранении призыв добавится снова. */
+export function stripReplyPrompt(dm: string, prompt: string | null | undefined): string {
+  const p = prompt?.trim();
+  if (!p) return dm;
+  const base = dm.trimEnd();
+  return base.endsWith(p) ? base.slice(0, -p.length).trimEnd() : dm;
 }
 
 /** Текст второго сообщения по умолчанию (двухшаговый режим). */
