@@ -170,6 +170,15 @@ describe("settings: свои пределы ИИ клиента", () => {
     expect(settingsFromJson({}).consultant_limits).toBeUndefined();
   });
 
+  it("пауза консультанта: только 1, 3, 12, 24 или 0", () => {
+    expect(settingsFromJson({ consultant_pause_hours: 3 }).consultant_pause_hours).toBe(3);
+    expect(settingsFromJson({ consultant_pause_hours: 0 }).consultant_pause_hours).toBe(0);
+    expect(settingsFromJson({ consultant_pause_hours: 5 }).consultant_pause_hours).toBeUndefined();
+    expect(
+      settingsFromJson({ consultant_pause_hours: "12" }).consultant_pause_hours,
+    ).toBeUndefined();
+  });
+
   it("свой предел умного поиска в долларах доходит до ядра", () => {
     expect(
       settingsFromJson({ smart_search_limits: { daily_usd: 10 } }).smart_search_limits,

@@ -1473,6 +1473,17 @@ export const chatMessagesFn = createServerFn({ method: "GET" })
     return messages;
   });
 
+/** Консультант снова отвечает в диалоге, не дожидаясь конца паузы. */
+export const chatResumeBotFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ telegramId: tgId }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await chatModule("manager");
+    const { getCustomerByTelegramId } = await import("@/core/customers/customers");
+    const c = await getCustomerByTelegramId(ctx, data.telegramId);
+    if (c) await (await import("@/core/consultant/engine.server")).resumeConsultant(ctx, c);
+    return { ok: true };
+  });
+
 export const chatConnectFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ telegramId: tgId, active: z.boolean() }).parse(d))
   .handler(async ({ data }) => {
@@ -1495,8 +1506,10 @@ export const chatReplyFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const ctx = await chatModule("manager");
-    const { replyAsManager } = await import("./admin.server");
+    const { replyAsManager, pauseBotAfterManagerReply } = await import("./admin.server");
     await replyAsManager(ctx, data.telegramId, data.text);
+    // Ответил человек — консультант не перебивает его на выбранное продавцом время.
+    await pauseBotAfterManagerReply(ctx, data.telegramId);
     // Ничей диалог достаётся тому, кто ответил первым.
     const { adminIdentity, adminActor } = await import("@/app/auth/guards.server");
     const inbox = await import("@/core/inbox/inbox");
@@ -1524,7 +1537,14 @@ export const consultantFn = createServerFn({ method: "GET" }).handler(async () =
   } catch {
     /* пусто */
   }
-  return { ...c, configured: consultantConfigured(), usage, lastError: s[KEYS.lastError] ?? "" };
+  const { pauseHours } = await import("@/core/consultant/pause");
+  return {
+    ...c,
+    configured: consultantConfigured(),
+    usage,
+    lastError: s[KEYS.lastError] ?? "",
+    pauseHours: pauseHours(ctx.tenant),
+  };
 });
 
 export const saveConsultantFn = createServerFn({ method: "POST" })
@@ -1556,6 +1576,9 @@ export const saveConsultantFn = createServerFn({ method: "POST" })
             }),
           )
           .max(60),
+        pauseHours: z
+          .union([z.literal(1), z.literal(3), z.literal(12), z.literal(24), z.literal(0)])
+          .optional(),
       })
       .parse(d),
   )
@@ -1566,6 +1589,14 @@ export const saveConsultantFn = createServerFn({ method: "POST" })
     await setSetting(ctx, KEYS.enabled, data.enabled ? "true" : "false");
     await setSetting(ctx, KEYS.profile, JSON.stringify(data.profile));
     await setSetting(ctx, KEYS.knowledge, JSON.stringify(data.docs));
+    if (
+      data.pauseHours !== undefined &&
+      data.pauseHours !== ctx.tenant.settings.consultant_pause_hours
+    ) {
+      // В bots.settings: пауза читается из контекста арендатора на каждом сообщении без похода в app_settings.
+      const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
+      await patchTenantSettings(ctx.tenant.id, { consultant_pause_hours: data.pauseHours });
+    }
     return { ok: true };
   });
 

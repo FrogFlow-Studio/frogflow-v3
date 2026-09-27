@@ -6,6 +6,7 @@ import type { BillingSettings, BotStatus, Tenant, TenantLookup, TenantSettings }
 import { isLocale } from "@/core/i18n/locale";
 import { effectiveModules } from "@/core/plans/plans";
 import { parsePlan } from "@/core/plans/registry";
+import { validPauseHours } from "@/core/consultant/pause";
 
 type BotRow = Database["public"]["Tables"]["bots"]["Row"];
 
@@ -129,6 +130,7 @@ export function settingsFromJson(json: unknown): TenantSettings {
             daily_tests: numOrNull(obj(cl).daily_tests),
           }
         : undefined,
+    consultant_pause_hours: validPauseHours(s.consultant_pause_hours),
     smart_search_limits:
       sl && typeof sl === "object" && !Array.isArray(sl)
         ? { daily_usd: numOrNull(obj(sl).daily_usd) }

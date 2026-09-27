@@ -345,6 +345,22 @@ export async function replyAsManager(
   await recordMessage(ctx, { telegramId, direction: "out", sender: "manager", text });
 }
 
+/**
+ * Продавец ответил из «Чата» — консультант молчит в этом диалоге столько,
+ * сколько выбрано в его настройках. Раньше ответ из панели паузу не ставил,
+ * и на следующее сообщение покупателя бот отвечал поверх продавца.
+ */
+export async function pauseBotAfterManagerReply(
+  ctx: TenantContext,
+  telegramId: number,
+): Promise<void> {
+  const { getCustomerByTelegramId } = await import("@/core/customers/customers");
+  const customer = await getCustomerByTelegramId(ctx, telegramId);
+  if (!customer) return;
+  const { pauseConsultant } = await import("@/core/consultant/engine.server");
+  await pauseConsultant(ctx, customer);
+}
+
 async function notifyReferralGrant(
   ctx: TenantContext,
   grant: { telegramId: number; code: string; percent: number } | null | undefined,

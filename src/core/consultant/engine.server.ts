@@ -11,6 +11,7 @@ import { parseKnowledge, retrieveKnowledge, type KnowledgeDoc } from "./knowledg
 import { parseProfile, type ConsultantProfile } from "./profile";
 import { buildSystemPrompt, cleanReply, isResetIntent } from "./prompt";
 import { checkReplyFacts, knownNumbers } from "./price-check";
+import { pauseHours, pausedUntilIso } from "./pause";
 import {
   budgetBlock,
   limitsFor,
@@ -227,11 +228,17 @@ async function saveState(ctx: TenantContext, customer: Customer, patch: Partial<
   return setState(ctx, customer, { ...customer.state, consultant: next as never });
 }
 
-/** Продавец подключился сам или клиент ушёл к менеджеру — консультант молчит 12 часов. */
-export async function pauseConsultant(ctx: TenantContext, customer: Customer, hours = 12) {
-  return saveState(ctx, customer, {
-    paused_until: new Date(Date.now() + hours * 3600_000).toISOString(),
-  });
+/**
+ * Продавец ответил сам или клиент ушёл к менеджеру — консультант молчит
+ * столько, сколько выбрал продавец (core/consultant/pause, по умолчанию 12 ч).
+ */
+export async function pauseConsultant(ctx: TenantContext, customer: Customer) {
+  return saveState(ctx, customer, { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) });
+}
+
+/** До какого времени консультант молчит в диалоге; null — не молчит. */
+export function pausedUntil(customer: Customer, now = Date.now()): string | null {
+  return isPaused(customer, now) ? (stateOf(customer).paused_until ?? null) : null;
 }
 
 export async function resumeConsultant(ctx: TenantContext, customer: Customer) {
@@ -316,7 +323,7 @@ export async function runConsultant(
     // Как при передаче менеджеру: пауза, чтобы продавец не получал уведомление на каждое сообщение.
     if (customer)
       await saveState(ctx, customer, {
-        paused_until: new Date(Date.now() + 12 * 3600_000).toISOString(),
+        paused_until: pausedUntilIso(pauseHours(ctx.tenant)),
       });
     return {
       reply: "Передам ваш вопрос менеджеру — он ответит в ближайшее время.",
@@ -345,7 +352,7 @@ export async function runConsultant(
     );
     if (customer)
       await saveState(ctx, customer, {
-        paused_until: new Date(Date.now() + 12 * 3600_000).toISOString(),
+        paused_until: pausedUntilIso(pauseHours(ctx.tenant)),
       });
     return {
       reply: "Передам ваш вопрос менеджеру — он ответит в ближайшее время.",
@@ -384,7 +391,7 @@ export async function runConsultant(
   });
   if (reserveBlock) return overBudget(reserveBlock);
   // Сбой базы или гонка не выиграна: без брони модель не зовём, но и паузу
-  // на 12 часов не ставим — это не исчерпанный предел.
+  // не ставим — это не исчерпанный предел.
   if (reserved !== "written") {
     if (opts.dryRun) throw new Error("Не удалось записать расход ИИ. Попробуйте ещё раз.");
     return {
@@ -506,7 +513,7 @@ export async function runConsultant(
         recent,
         last_reply_at: new Date().toISOString(),
         ...(handoff?.customerContact ? { contact: handoff.customerContact } : {}),
-        ...(handoff ? { paused_until: new Date(Date.now() + 12 * 3600_000).toISOString() } : {}),
+        ...(handoff ? { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) } : {}),
       });
     }
     return {

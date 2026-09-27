@@ -100,6 +100,24 @@ describe("обращения из WhatsApp и Instagram", () => {
     expect(db.tables.zernio_logs).toHaveLength(1);
   });
 
+  it("повторный вопрос через час при открытом обращении — снова с номером, а не общий ответ", async () => {
+    await handleZernioMessage(ctx(ON), payload("Когда привезёте букет?"), transport());
+    const direct = customer.state.direct as Record<string, unknown>;
+    customer = {
+      ...customer,
+      state: {
+        ...customer.state,
+        direct: { ...direct, forwarded_at: new Date(Date.now() - 2 * 3600_000).toISOString() },
+      },
+    };
+    const r = await handleZernioMessage(ctx(ON), payload("Вы тут?"), transport());
+    expect(r).toEqual({ status: "processed", note: "дополнение к обращению #1" });
+    expect(sent[1]).toBe(
+      "📨 Добавил к обращению #1. Ответим здесь. Чтобы заказать самостоятельно, напишите номер товара или «каталог».",
+    );
+    expect(notified).toHaveLength(1);
+  });
+
   it("без модуля «Поддержка» — как раньше: «передал продавцу», обращений нет", async () => {
     const r = await handleZernioMessage(
       ctx({ ...ON, helpdesk: false }),

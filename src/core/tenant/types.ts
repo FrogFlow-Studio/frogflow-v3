@@ -61,6 +61,11 @@ export type TenantSettings = {
    * null — общий предел платформы. Меняет оператор в карточке клиента.
    */
   consultant_limits?: ConsultantLimitsSetting | null;
+  /**
+   * Сколько часов консультант молчит, когда отвечает человек (core/consultant/pause):
+   * 1, 3, 12, 24 или 0 — «пока продавец не вернёт диалог боту». Нет — 12.
+   */
+  consultant_pause_hours?: number;
   /** Свой дневной предел умного поиска в долларах (core/search). Меняет оператор. */
   smart_search_limits?: SmartSearchLimitsSetting | null;
   /** Поведение при неоплате подписки (те же ключи, что в v1; читает core/billing/subscription). */

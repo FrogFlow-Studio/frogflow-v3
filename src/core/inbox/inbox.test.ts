@@ -27,6 +27,7 @@ const conv = (id: number, over: Partial<Conversation> = {}): Conversation => ({
   last_name: null,
   platform: "telegram",
   user_key: null,
+  bot_paused_until: null,
   ...over,
 });
 

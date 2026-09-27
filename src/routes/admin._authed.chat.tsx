@@ -6,12 +6,14 @@ import {
   chatConversationsFn,
   chatMessagesFn,
   chatReplyFn,
+  chatResumeBotFn,
   inboxSetFn,
   quickRepliesSaveFn,
 } from "@/app/admin/admin.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import type { ChatMessage, Conversation } from "@/core/chat/chat";
+import { isIndefinite } from "@/core/consultant/pause";
 import {
   fillQuickReply,
   filterInbox,
@@ -119,6 +121,11 @@ function ChatPage() {
     await chatConnectFn({ data: { telegramId: selected.telegram_id, active: !selected.active } });
     setConversations((await chatConversationsFn()).conversations);
   });
+  const resumeBot = useAction(async () => {
+    if (!selected) return;
+    await chatResumeBotFn({ data: { telegramId: selected.telegram_id } });
+    setConversations((await chatConversationsFn()).conversations);
+  });
   const send = useAction(async () => {
     if (selectedId === null || !reply.trim()) return;
     await chatReplyFn({ data: { telegramId: selectedId, text: reply.trim() } });
@@ -129,7 +136,9 @@ function ChatPage() {
   return (
     <>
       <PageTitle title={t("chat.title")} subtitle={t("chat.subtitle")} />
-      <ErrorBox error={loadError ?? toggle.error ?? send.error ?? setMeta.error} />
+      <ErrorBox
+        error={loadError ?? toggle.error ?? send.error ?? setMeta.error ?? resumeBot.error}
+      />
       <InboxFilters t={t} filter={filter} counts={counts} onChange={setFilter} />
       <div className="card grid h-[calc(100vh-14rem)] min-h-[28rem] grid-cols-1 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <div className="overflow-y-auto border-b border-line md:border-r md:border-b-0">
@@ -185,6 +194,20 @@ function ChatPage() {
                     {channelOf(selected) ??
                       (selected.username ? `@${selected.username}` : `id ${selected.telegram_id}`)}
                   </span>
+                  {selected.bot_paused_until && (
+                    <span className="block text-xs text-muted">
+                      {isIndefinite(selected.bot_paused_until)
+                        ? t("chat.botPausedForever")
+                        : t("chat.botPausedUntil", {
+                            time: new Date(selected.bot_paused_until).toLocaleString(loc, {
+                              day: "numeric",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }),
+                          })}
+                    </span>
+                  )}
                 </span>
                 {canWrite && (
                   <span className="flex flex-wrap items-center justify-end gap-2">
@@ -219,6 +242,16 @@ function ChatPage() {
                     >
                       {selected.status === "open" ? t("chat.resolve") : t("chat.reopen")}
                     </button>
+                    {selected.bot_paused_until && (
+                      <button
+                        type="button"
+                        className="btn-secondary text-xs"
+                        disabled={resumeBot.busy}
+                        onClick={() => void resumeBot.run().catch(() => {})}
+                      >
+                        {t("chat.resumeBot")}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className={selected.active ? "btn-secondary text-xs" : "btn-primary text-xs"}

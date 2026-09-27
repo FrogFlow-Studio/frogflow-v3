@@ -46,7 +46,7 @@ const { runConsultant, isPaused, buildConsultantMessages, KEYS } = await import(
 const { getSetting } = await import("@/core/settings/settings");
 
 const BOT = "11111111-1111-1111-1111-111111111111";
-function ctxOf(): TenantContext {
+function ctxOf(settings: Record<string, unknown> = {}): TenantContext {
   const db = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
   db.tables.products = [];
   db.tables.app_settings = [];
@@ -54,7 +54,7 @@ function ctxOf(): TenantContext {
     tenant: {
       id: BOT,
       name: "Магазин",
-      settings: {},
+      settings,
       modules: {},
       plan: null,
       vertical: "digital",
@@ -162,6 +162,24 @@ describe("консультант: передача менеджеру", () => {
     const pause = Date.parse(st.paused_until) - before;
     expect(pause).toBeGreaterThanOrEqual(12 * HOUR - 1000);
     expect(pause).toBeLessThanOrEqual(12 * HOUR + 5000);
+  });
+
+  it("пауза берётся из настроек продавца: 3 часа и «пока не верну сам»", async () => {
+    content = [tool("handoff_to_manager", { reason: "human_requested", summary: "менеджера" })];
+    const before = Date.now();
+    await runConsultant(ctxOf({ consultant_pause_hours: 3 }), customer(), "менеджера", {
+      platform: "instagram",
+    });
+    const three = (saved.at(-1) as { consultant: { paused_until: string } }).consultant;
+    const pause = Date.parse(three.paused_until) - before;
+    expect(pause).toBeGreaterThanOrEqual(3 * HOUR - 1000);
+    expect(pause).toBeLessThanOrEqual(3 * HOUR + 5000);
+
+    await runConsultant(ctxOf({ consultant_pause_hours: 0 }), customer(), "менеджера", {
+      platform: "instagram",
+    });
+    const forever = (saved.at(-1) as { consultant: { paused_until: string } }).consultant;
+    expect(Date.parse(forever.paused_until) - before).toBeGreaterThan(365 * 24 * HOUR);
   });
 
   it("покупка — заявка продавцу и пауза", async () => {

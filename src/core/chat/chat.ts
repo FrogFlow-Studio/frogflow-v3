@@ -144,7 +144,13 @@ export type Conversation = {
   /** telegram | instagram | whatsapp — куда уходит ответ менеджера. */
   platform: string;
   user_key: string | null;
+  /** До какого времени ИИ-консультант молчит в диалоге (core/consultant/pause); null — не молчит. */
+  bot_paused_until: string | null;
 };
+
+function activePause(until: unknown, now: number): string | null {
+  return typeof until === "string" && Date.parse(until) > now ? until : null;
+}
 
 export async function listConversations(ctx: TenantContext, limit = 200): Promise<Conversation[]> {
   const { data: states, error } = await ctx.db
@@ -158,12 +164,16 @@ export async function listConversations(ctx: TenantContext, limit = 200): Promis
   if (!states?.length) return [];
   const { data: users } = await ctx.db
     .from("bot_users")
-    .select("telegram_id, username, first_name, last_name, platform, user_key")
+    // Из состояния — только срок паузы: история консультанта в state тяжёлая, а список опрашивается.
+    .select(
+      "telegram_id, username, first_name, last_name, platform, user_key, bot_paused_until:state->consultant->>paused_until",
+    )
     .in(
       "telegram_id",
       states.map((s) => s.telegram_id),
     );
   const byId = new Map((users ?? []).map((u) => [Number(u.telegram_id), u]));
+  const now = Date.now();
   return states.map((s) => {
     const u = byId.get(Number(s.telegram_id));
     return {
@@ -174,6 +184,7 @@ export async function listConversations(ctx: TenantContext, limit = 200): Promis
       last_name: u?.last_name ?? null,
       platform: u?.platform ?? "telegram",
       user_key: u?.user_key ?? null,
+      bot_paused_until: activePause(u?.bot_paused_until, now),
     };
   });
 }

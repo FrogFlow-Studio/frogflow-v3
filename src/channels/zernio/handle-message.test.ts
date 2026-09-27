@@ -63,7 +63,7 @@ describe("консультант и менеджер из приложения",
     // Итог события уходит в zernio_logs (dispatch): видно, что проверка увидела менеджера.
     expect(r).toEqual({
       status: "processed",
-      note: "менеджер отвечает из приложения — консультант на паузе 12 ч",
+      note: "менеджер отвечает из приложения — консультант на паузе",
     });
     expect(pauseConsultant).toHaveBeenCalledOnce();
     expect(runConsultant).not.toHaveBeenCalled();

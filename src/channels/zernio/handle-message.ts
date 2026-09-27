@@ -4,6 +4,7 @@ import { COPY, escapeHtml } from "@/channels/telegram/copy";
 import { notifyAdminsHtml } from "@/channels/telegram/notify";
 import { liveTransport, type ZernioTransport } from "./api.server";
 import { findManagerMessage } from "./manager-guard";
+import { pauseHours, pauseNoticeRu } from "@/core/consultant/pause";
 import { messageAsText, parseZernioMessage, type ZernioWebhookMessagePayload } from "./message";
 import { PLATFORM_LABEL } from "./platform";
 
@@ -121,15 +122,7 @@ export async function handleZernioMessage(
   if (!(await consultant.consultantEnabled(ctx))) {
     // Модуль «Поддержка»: вопрос в Direct/WhatsApp — обращение с номером.
     const ticket = m.text ? await directTicket(ctx, customerNow, m.platform, m.text) : null;
-    if (shopOn && m.text)
-      await forwardedToSeller(
-        ctx,
-        customerNow,
-        m,
-        transport,
-        bot,
-        ticket?.created ? ticket.number : null,
-      );
+    if (shopOn && m.text) await forwardedToSeller(ctx, customerNow, m, transport, bot, ticket);
     return processed(
       ticket
         ? `${ticket.created ? "новое обращение" : "дополнение к обращению"} #${ticket.number}`
@@ -153,7 +146,7 @@ export async function handleZernioMessage(
   });
   if (manager) {
     await consultant.pauseConsultant(ctx, customer);
-    return processed("менеджер отвечает из приложения — консультант на паузе 12 ч");
+    return processed("менеджер отвечает из приложения — консультант на паузе");
   }
 
   const r = await consultant.runConsultant(ctx, customer, text, {
@@ -199,7 +192,7 @@ export async function handleZernioMessage(
       r.handoff.customerContact ? `📞 ${escapeHtml(r.handoff.customerContact)}` : "",
       `📋 ${escapeHtml(r.handoff.summary)}`,
       "",
-      `Ответьте в разделе «Чат» панели или прямо в ${PLATFORM_LABEL[m.platform]} — консультант в этом диалоге молчит 12 часов.`,
+      `Ответьте в разделе «Чат» панели или прямо в ${PLATFORM_LABEL[m.platform]} — консультант в этом диалоге ${pauseNoticeRu(pauseHours(ctx.tenant))}.`,
     ].filter((l) => l !== "");
     await notifyAdminsHtml(ctx, lines.join("\n"), { kind: r.handoff.kind }).catch(() => 0);
   }
@@ -220,7 +213,7 @@ async function forwardedToSeller(
   m: ReturnType<typeof parseZernioMessage>,
   transport: ZernioTransport,
   bot: import("@/core/instagram/direct-bot-settings").DirectBotSettings,
-  ticketNumber: number | null = null,
+  ticket: { number: number; created: boolean } | null = null,
 ) {
   // «Только по заказам»: вне сценария покупки бот молчит, чтобы диалог
   // остался непрочитанным для продавца в приложении (решение из v1).
@@ -234,8 +227,11 @@ async function forwardedToSeller(
   const locale = customer.state.locale ?? ctx.tenant.settings.default_locale ?? "ru";
   const text =
     bot.script ||
-    (ticketNumber
-      ? (COPY[locale] ?? COPY.ru).ticketCreated(ticketNumber) +
+    // Открытое обращение — и через час покупатель видит его номер, а не общий ответ.
+    (ticket
+      ? (ticket.created
+          ? (COPY[locale] ?? COPY.ru).ticketCreated(ticket.number)
+          : (COPY[locale] ?? COPY.ru).ticketAppended(ticket.number)) +
         (locale === "ru" ? ` ${ORDER_HINT_RU}` : "")
       : `Передал ваш вопрос продавцу — он ответит здесь. ${ORDER_HINT_RU}`);
   const r = await transport.send(m.conversationId!, m.accountId!, text, { platform: m.platform });

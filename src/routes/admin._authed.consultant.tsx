@@ -6,6 +6,7 @@ import { Badge, Card, ErrorBox, Field, PageTitle, Switch, useAction } from "@/ap
 import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { GOALS, TONES, type ConsultantProfile } from "@/core/consultant/profile";
 import type { KnowledgeDoc } from "@/core/consultant/knowledge";
+import { PAUSE_CHOICES, type PauseHours } from "@/core/consultant/pause";
 
 export const Route = createFileRoute("/admin/_authed/consultant")({
   loader: () => consultantFn(),
@@ -21,12 +22,14 @@ function ConsultantPage() {
   const [enabled, setEnabled] = useState(data.enabled);
   const [profile, setProfile] = useState<ConsultantProfile>(data.profile);
   const [docs, setDocs] = useState<KnowledgeDoc[]>(data.docs);
+  const [pause, setPause] = useState<PauseHours>(data.pauseHours);
   const [saved, setSaved] = useState(false);
   const save = useAction(async () => {
     setSaved(false);
     await saveConsultantFn({
       data: {
         enabled,
+        pauseHours: pause,
         profile,
         docs: docs
           .filter((d) => d.title.trim() && d.content.trim())
@@ -63,6 +66,19 @@ function ConsultantPage() {
                 {enabled ? t("consultant.enabledHint") : t("consultant.disabledHint")}
               </span>
             </div>
+            <Field label={t("consultant.pause")} hint={t("consultant.pauseHint")}>
+              <select
+                className="input mb-4 w-auto"
+                value={pause}
+                onChange={(e) => setPause(Number(e.target.value) as PauseHours)}
+              >
+                {PAUSE_CHOICES.map((h) => (
+                  <option key={h} value={h}>
+                    {t(`consultant.pause.h${h}` as AdminKey)}
+                  </option>
+                ))}
+              </select>
+            </Field>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label={t("consultant.brandName")}>
                 <input

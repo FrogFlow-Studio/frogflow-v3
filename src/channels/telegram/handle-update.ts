@@ -413,6 +413,7 @@ async function handleMessage(
 async function consultantReply(b: Bot, text: string): Promise<boolean> {
   const { consultantEnabled, isPaused, runConsultant } =
     await import("@/core/consultant/engine.server");
+  const { pauseHours, pauseNoticeRu } = await import("@/core/consultant/pause");
   if (!(await consultantEnabled(b.ctx))) return false;
   if (isPaused(b.customer)) return true; // менеджер ведёт диалог — бот молчит
   await b.api.call("sendChatAction", { chat_id: b.chatId, action: "typing" });
@@ -447,7 +448,7 @@ async function consultantReply(b: Bot, text: string): Promise<boolean> {
       r.handoff.customerContact ? `📞 ${escapeHtml(r.handoff.customerContact)}` : "",
       `📋 ${escapeHtml(r.handoff.summary)}`,
       "",
-      "Ответьте клиенту в разделе «Чат» панели — консультант в этом диалоге молчит 12 часов.",
+      `Ответьте клиенту в разделе «Чат» панели — консультант в этом диалоге ${pauseNoticeRu(pauseHours(b.ctx.tenant))}.`,
     ].filter((l) => l !== "");
     for (const chatId of await adminRecipients(b.ctx))
       await b.api.call("sendMessage", {
