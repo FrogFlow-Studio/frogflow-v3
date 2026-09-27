@@ -1,7 +1,12 @@
 import { tenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
-import { sendWeeklyReport, type WeeklyOutcome } from "@/core/analytics/weekly.server";
-import { notifyAdminsHtml } from "./notify";
+import {
+  sendWeeklyReport,
+  WeeklySendError,
+  type WeeklyOutcome,
+} from "@/core/analytics/weekly.server";
+import { reportError } from "@/lib/errors";
+import { adminTelegramApi, notifyAdminsHtml } from "./notify";
 
 /**
  * Крон (каждые 15 минут, вместе с дайджестом): недельный отчёт продавцу в
@@ -20,10 +25,27 @@ export async function sendDueWeeklyReports(
         ctx,
         (html) => notifyAdminsHtml(ctx, html, { kind: "digest" }),
         now,
+        {
+          // Токен не расшифровывается или его нет — постоянный отказ по типу:
+          // неделя отмечается сразу, без подсчёта и повторов каждые 15 минут.
+          ready: () => {
+            if (!adminTelegramApi(ctx)) throw new Error("нет токена бота");
+          },
+        },
       );
       if (r !== "notDue" && r !== "already") out[t.id] = r;
     } catch (e) {
-      out[t.id] = e instanceof Error ? e.message : String(e);
+      const message = e instanceof Error ? e.message : String(e);
+      if (e instanceof WeeklySendError && e.permanent) {
+        // Бот заблокирован продавцом или токен неверный: одна запись в журнал,
+        // повторов нет (отметка недели остаётся).
+        console.warn(`[cron:weekly][${t.id}] отчёт не доставлен: ${message}`);
+        out[t.id] = `blocked: ${message}`;
+      } else {
+        // Отметка недели снята — следующий прогон попробует снова.
+        await reportError(e, { where: "cron:weekly", botId: t.id });
+        out[t.id] = message;
+      }
     }
   }
   return out;

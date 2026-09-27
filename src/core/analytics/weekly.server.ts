@@ -5,6 +5,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { eachPage, pageAll } from "@/core/db/page";
 import { getSetting, updateSettingAtomic } from "@/core/settings/settings";
+import { outboxPermanentFailure } from "@/core/outbox/pure";
 import { buyerFunnel } from "./funnel.server";
 import {
   analyticsRevenue,
@@ -99,27 +100,93 @@ export async function weeklyStats(ctx: TenantContext, w: WeekWindow): Promise<We
 
 export type WeeklyOutcome = "off" | "notDue" | "already" | "sent" | "failed";
 
+/** Сколько раз за неделю пробуем после временных сбоев; дальше — как постоянный. */
+export const WEEKLY_MAX_ATTEMPTS = 4;
+export const WEEKLY_ATTEMPTS_KEY = "weekly_report_attempts";
+
 /**
  * Отправить отчёт за прошлую неделю, если пора и ещё не отправлен.
  * Неделю отмечаем атомарно (сравнение с прежним значением) до отправки:
  * два одновременных прогона крона — отправит только один. Выключен в
  * настройках — ничего не считаем и не пишем.
+ *
+ * `ready` — проверка канала до подсчёта (есть ли бот, расшифровывается ли
+ * токен). Её отказ — постоянный по типу, а не по тексту ошибки: неделя
+ * отмечается сразу, статистика не считается, повторов нет.
  */
 export async function sendWeeklyReport(
   ctx: TenantContext,
   send: (html: string) => Promise<unknown>,
   now = new Date(),
+  opts: { ready?: () => void } = {},
 ): Promise<WeeklyOutcome> {
   if (!weeklyEnabled(await getSetting(ctx, WEEKLY_ENABLED_KEY))) return "off";
   const w = weekWindow(now, ctx.timezone);
   if (!w.due) return "notDue";
   if ((await getSetting(ctx, WEEKLY_SENT_KEY)) === w.week) return "already";
+  let before: string | null = null;
+  const claimWeek = () =>
+    updateSettingAtomic(ctx, WEEKLY_SENT_KEY, (raw) => {
+      before = raw;
+      return raw === w.week ? null : w.week;
+    });
+  try {
+    opts.ready?.();
+  } catch (e) {
+    const claim = await claimWeek();
+    if (claim !== "written") return claim === "skipped" ? "already" : "failed";
+    throw new WeeklySendError(e instanceof Error ? e.message : String(e), true, e);
+  }
   const stats = await weeklyStats(ctx, w);
-  const claim = await updateSettingAtomic(ctx, WEEKLY_SENT_KEY, (raw) =>
-    raw === w.week ? null : w.week,
-  );
+  const claim = await claimWeek();
   if (claim === "skipped") return "already";
   if (claim === "failed") return "failed";
-  await send(renderWeekly(w.label, stats));
+  try {
+    await send(renderWeekly(w.label, stats));
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    // Бот заблокирован или попыток за неделю больше лимита — повторы по
+    // кругу ничего не дадут: отметка остаётся, сбой уходит в журнал. Иначе
+    // (база, сеть) снимаем отметку — следующий прогон попробует снова.
+    const permanent = weeklyPermanentFailure(message) || !(await countAttempt(ctx, w.week));
+    if (!permanent) {
+      const prev: string = before ?? "";
+      await updateSettingAtomic(ctx, WEEKLY_SENT_KEY, (raw) => (raw === w.week ? prev : null));
+    }
+    throw new WeeklySendError(message, permanent, e);
+  }
   return "sent";
+}
+
+/** +1 попытка за неделю; false — лимит исчерпан (эта была последней). */
+async function countAttempt(ctx: TenantContext, week: string): Promise<boolean> {
+  let n = 0;
+  await updateSettingAtomic(ctx, WEEKLY_ATTEMPTS_KEY, (raw) => {
+    const [wk, cnt] = (raw ?? "").split(":");
+    n = (wk === week ? Number(cnt) || 0 : 0) + 1;
+    return `${week}:${n}`;
+  });
+  return n < WEEKLY_MAX_ATTEMPTS;
+}
+
+/** Отчёт не ушёл; permanent — повторять бессмысленно (отметка недели оставлена). */
+export class WeeklySendError extends Error {
+  constructor(
+    message: string,
+    readonly permanent: boolean,
+    readonly cause?: unknown,
+  ) {
+    super(message);
+    this.name = "WeeklySendError";
+  }
+}
+
+/** Адресат недоступен навсегда (как в очереди отправки) или токен бота неверный. */
+export function weeklyPermanentFailure(message: string): boolean {
+  return (
+    outboxPermanentFailure(message) ||
+    /unauthorized|\b401\b|decrypt|unable to authenticate|не зашифрован|зашифрованный секрет|нет токена/i.test(
+      message,
+    )
+  );
 }

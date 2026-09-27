@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { isoWeekKey, renderWeekly, weekWindow, WEEKLY_SENT_KEY } from "./weekly";
-import { sendWeeklyReport } from "./weekly.server";
+import {
+  sendWeeklyReport,
+  WEEKLY_MAX_ATTEMPTS,
+  WeeklySendError,
+  weeklyPermanentFailure,
+} from "./weekly.server";
 
 const TZ = "Asia/Almaty"; // UTC+5
 // Понедельник 28.09.2026, 9:30 в Алматы.
@@ -146,5 +151,89 @@ describe("отправка отчёта", () => {
     expect(await sendWeeklyReport(ctx, send, nextMonday)).toBe("sent");
     expect(send).toHaveBeenCalledTimes(2);
     expect(sent()).toBe("2026-W40");
+  });
+});
+
+describe("сбой отправки отчёта", () => {
+  it("сбой по пути — отметка недели снята, следующий прогон отправляет", async () => {
+    const { ctx, sent } = shop();
+    const broken = vi.fn(async (_html: string): Promise<number> => {
+      throw new Error("fetch failed: ECONNRESET");
+    });
+    const err = await sendWeeklyReport(ctx, broken, MONDAY_0930).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(WeeklySendError);
+    expect((err as WeeklySendError).permanent).toBe(false);
+    expect(sent()).not.toBe("2026-W39");
+    const send = vi.fn(async (_html: string) => 1);
+    const later = new Date(MONDAY_0930.getTime() + 15 * 60_000);
+    expect(await sendWeeklyReport(ctx, send, later)).toBe("sent");
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(sent()).toBe("2026-W39");
+  });
+
+  it("бот заблокирован или токен неверный — отметка остаётся, повторов нет", async () => {
+    for (const reason of ["Forbidden: bot was blocked by the user", "401: Unauthorized"]) {
+      const { ctx, sent } = shop();
+      const broken = vi.fn(async (_html: string): Promise<number> => {
+        throw new Error(reason);
+      });
+      const err = await sendWeeklyReport(ctx, broken, MONDAY_0930).catch((e: unknown) => e);
+      expect((err as WeeklySendError).permanent).toBe(true);
+      expect(sent()).toBe("2026-W39");
+      const later = new Date(MONDAY_0930.getTime() + 15 * 60_000);
+      expect(await sendWeeklyReport(ctx, broken, later)).toBe("already");
+      expect(broken).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("классификация отказов", () => {
+    expect(weeklyPermanentFailure("Forbidden: bot was blocked by the user")).toBe(true);
+    expect(weeklyPermanentFailure("Unauthorized")).toBe(true);
+    expect(weeklyPermanentFailure("fetch failed")).toBe(false);
+    expect(weeklyPermanentFailure("relation app_settings timeout")).toBe(false);
+  });
+});
+
+describe("отказ канала до подсчёта и лимит повторов", () => {
+  it.each([
+    "Секрет не зашифрован: ожидался формат enc:v1:…",
+    "Повреждённый зашифрованный секрет",
+    "Unsupported state or unable to authenticate data",
+    "У клиента «X» не подключён Telegram-бот (нет токена)",
+  ])(
+    "токен «%s» — постоянный отказ: неделя отмечена сразу, без отправки и повторов",
+    async (msg) => {
+      const { ctx, sent } = shop();
+      const send = vi.fn(async (_html: string) => 1);
+      const ready = () => {
+        throw new Error(msg);
+      };
+      const err = await sendWeeklyReport(ctx, send, MONDAY_0930, { ready }).catch(
+        (e: unknown) => e,
+      );
+      expect(err).toBeInstanceOf(WeeklySendError);
+      expect((err as WeeklySendError).permanent).toBe(true);
+      expect(sent()).toBe("2026-W39");
+      expect(send).not.toHaveBeenCalled();
+      const later = new Date(MONDAY_0930.getTime() + 15 * 60_000);
+      expect(await sendWeeklyReport(ctx, send, later, { ready })).toBe("already");
+      expect(weeklyPermanentFailure(msg)).toBe(true);
+    },
+  );
+
+  it("временные сбои — не больше 4 попыток за неделю, потом отметка остаётся", async () => {
+    const { ctx, sent } = shop();
+    const broken = vi.fn(async (_html: string): Promise<number> => {
+      throw new Error("fetch failed");
+    });
+    const results: boolean[] = [];
+    for (let i = 0; i < 8; i++) {
+      const at = new Date(MONDAY_0930.getTime() + i * 15 * 60_000);
+      const r = await sendWeeklyReport(ctx, broken, at).catch((e: unknown) => e);
+      if (r instanceof WeeklySendError) results.push(r.permanent);
+    }
+    expect(broken).toHaveBeenCalledTimes(WEEKLY_MAX_ATTEMPTS);
+    expect(results).toEqual([false, false, false, true]);
+    expect(sent()).toBe("2026-W39");
   });
 });
