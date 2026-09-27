@@ -1,5 +1,5 @@
 import { env } from "@/config/env";
-import { getSettings, trySetSetting } from "@/core/settings/settings";
+import { getSettings, updateSettingAtomic } from "@/core/settings/settings";
 import { storefrontBase } from "@/core/tenant/custom-domain";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { lessonsAccess } from "./access";
@@ -74,20 +74,22 @@ export async function announceNewLessons(
     const course = item?.product_id ? courses.get(item.product_id) : undefined;
     if (!run || !order || order.status !== "delivered" || !course?.lessons.length) continue;
     const open = lessonsAccess(course, run.startedAt, now.getTime()).filter((a) => a.open);
-    // Запись без отметки (начата до этой версии): известны уроки первого дня.
-    const known =
-      run.notified ??
-      lessonsAccess(course, run.startedAt, Date.parse(run.startedAt)).filter((a) => a.open).length;
-    if (open.length <= known) continue;
+    const knownAt = (c: { startedAt: string; notified?: number }) =>
+      // Запись без отметки (начата до этой версии): известны уроки первого дня.
+      c.notified ??
+      lessonsAccess(course, c.startedAt, Date.parse(c.startedAt)).filter((a) => a.open).length;
+    if (open.length <= knownAt(run)) continue;
     const latest = open.at(-1)!;
     // Сначала отметка, потом отправка: сбой записи не должен дать повтор
-    // сообщения каждый час.
-    const saved = await trySetSetting(
-      ctx,
-      runKey(r.itemId),
-      JSON.stringify({ ...run, notified: open.length }),
-    );
-    if (!saved) {
+    // сообщения каждый час. Отметка — сравнением со значением в базе: два
+    // параллельных прогона крона не отправят одно сообщение дважды.
+    const mark = await updateSettingAtomic(ctx, runKey(r.itemId), (raw) => {
+      const cur = parseRun(raw);
+      if (!cur || open.length <= knownAt(cur)) return null;
+      return JSON.stringify({ ...cur, notified: open.length });
+    });
+    if (mark === "skipped") continue;
+    if (mark === "failed") {
       out.failed++;
       continue;
     }

@@ -72,6 +72,12 @@ describe("курс — сообщение о новом уроке", () => {
     expect(sent).toHaveLength(1);
   });
 
+  it("два параллельных прогона крона — одно сообщение", async () => {
+    const { ctx, sent, send } = setup();
+    await Promise.all([announceNewLessons(ctx, send, at(2)), announceNewLessons(ctx, send, at(2))]);
+    expect(sent).toHaveLength(1);
+  });
+
   it("пропущенные дни — одно сообщение о последнем открытом уроке, не пачка", async () => {
     const { ctx, sent, send, run } = setup();
     await announceNewLessons(ctx, send, at(10));
