@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { shownLeadDays } from "@/core/catalog/lead-time";
 import { productFiles, type ProductFile } from "./product-files";
 import { listAllCategories } from "@/core/catalog/admin";
 import {
@@ -129,7 +130,7 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
     categoryIds: Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [],
     kind: p.fulfillment_kind === "physical" ? "physical" : "digital",
     inStock: !(stockOn && p.stock_quantity != null && p.stock_quantity <= 0),
-    leadTimeDays: p.lead_time_days,
+    leadTimeDays: shownLeadDays(p),
     rating: p.rating_count ? { avg: Number(p.rating_avg ?? 0), count: p.rating_count } : null,
     // Без модуля multi_language выдаётся только русский (itemAvailableLanguages),
     // поэтому языков на витрине не показываем, сколько бы файлов ни было заведено.

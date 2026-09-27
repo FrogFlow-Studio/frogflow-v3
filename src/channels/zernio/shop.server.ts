@@ -1,4 +1,5 @@
 import { env } from "@/config/env";
+import { shownLeadDays } from "@/core/catalog/lead-time";
 import { orderChannel } from "@/core/orders/pure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
@@ -963,8 +964,8 @@ async function sendProductCard(s: Shop, p: Product, force: boolean) {
       title: plain(s.m.waitlistBtn).slice(0, 20),
       payload: `WAIT:${p.id}`,
     });
-  if (p.lead_time_days && p.lead_time_days > 0)
-    text += `\n${plain(s.m.leadTimeLabel(p.lead_time_days))}`;
+  const leadDays = shownLeadDays(p);
+  if (leadDays) text += `\n${plain(s.m.leadTimeLabel(leadDays))}`;
   const rating = s.ctx.tenant.modules.review_request
     ? formatRatingSummary(p.rating_avg, p.rating_count ?? 0)
     : null;

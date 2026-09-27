@@ -274,3 +274,15 @@ describe("storeCatalog: значки языков материалов", () => {
     expect((await storeCatalog(ctx))[0]!.languages).toEqual(["ru", "kk"]);
   });
 });
+
+describe("storeCatalog: срок изготовления", () => {
+  it("shows lead time on physical products and hides it for digital", async () => {
+    const { ctx } = ctxWith([
+      product("cake", { fulfillment_kind: "physical", lead_time_days: 3 }),
+      product("pdf", { fulfillment_kind: "digital", lead_time_days: 3 }),
+    ]);
+    const list = await storeCatalog(ctx);
+    expect(list.find((p) => p.id === "cake")!.leadTimeDays).toBe(3);
+    expect(list.find((p) => p.id === "pdf")!.leadTimeDays).toBeNull();
+  });
+});

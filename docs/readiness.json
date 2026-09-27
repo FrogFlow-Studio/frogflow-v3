@@ -861,7 +861,7 @@
     "treats the query as one phrase, like the bot, not AND of substrings": "src/core/storefront/catalog.test.ts › ищет запрос одной фразой, как бот, а не пересечением слов",
     "keeps uncategorized products only in the unfiltered catalog": "src/core/storefront/catalog.test.ts › товар без категории — только в общем каталоге, не в выбранной категории",
     "includes products from Mini App category subtrees": "src/core/storefront/catalog.test.ts › родительская категория включает товары всех своих подкатегорий",
-    "shows lead time on physical products and hides it for digital": "open: расхождение: на странице товара (routes/s.$slug.p.$id.tsx) срок изготовления показывается при любом leadTimeDays, в том числе у цифрового; у физического с 0 дней карточка пишет «Товар», а не «В наличии»; разметка в JSX без тестов",
+    "shows lead time on physical products and hides it for digital": "src/core/storefront/catalog.test.ts › shows lead time on physical products and hides it for digital",
     "uses a bakery placeholder on confectionery deploys": "drop: заглушка-эмодзи серверного HTML Mini App v1; витрина v2 рисует карточки сама",
     "shows compact RU/KZ chips, hides description, and keeps flags on named badges": "drop: вёрстка карточки серверного HTML Mini App v1; в v2 языки файлов — на странице товара витрины",
     "[Учителя-CRIT] hides language badges when the multi_language module is off": "src/core/storefront/catalog.test.ts › без модуля «Мультиязычность» значков нет: покупатель получит только русский",

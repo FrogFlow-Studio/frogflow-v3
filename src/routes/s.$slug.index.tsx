@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useLoaderData, useNavigate } from "@tanstack/react-router";
+import { cardBadge } from "@/core/catalog/lead-time";
 import { useState } from "react";
 import { z } from "zod";
 import { storeCatalogFn } from "@/app/storefront/storefront.functions";
@@ -190,11 +191,10 @@ function CatalogPage() {
                   </div>
                 )}
                 <span className="absolute top-2 left-2 rounded-md bg-surface/90 px-2 py-0.5 text-[11px] font-medium backdrop-blur">
-                  {p.kind === "digital"
-                    ? t("catalog.file")
-                    : p.leadTimeDays
-                      ? t("catalog.madeToOrder", { n: p.leadTimeDays })
-                      : t("catalog.product")}
+                  {(() => {
+                    const b = cardBadge(p);
+                    return b.key === "catalog.madeToOrder" ? t(b.key, { n: b.n }) : t(b.key);
+                  })()}
                 </span>
                 {!p.inStock && (
                   <span className="absolute top-2 right-2 rounded-md bg-fg/80 px-2 py-0.5 text-[11px] font-medium text-bg">

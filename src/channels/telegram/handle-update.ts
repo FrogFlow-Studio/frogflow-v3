@@ -1,4 +1,5 @@
 import { REFERRAL_PREFIX, registerReferral, type ReferralGrant } from "@/core/referrals/referrals";
+import { shownLeadDays } from "@/core/catalog/lead-time";
 import { orderChannel } from "@/core/orders/pure";
 import {
   hasDeliveredPurchase,
@@ -693,8 +694,8 @@ async function sendProductCard(b: Bot, p: Product) {
         : [[{ text: b.m.addToCartBtn, callback_data: `add:${p.id}` }]],
     };
   }
-  if (p.lead_time_days && p.lead_time_days > 0)
-    caption += `\n${b.m.leadTimeLabel(p.lead_time_days)}`;
+  const leadDays = shownLeadDays(p);
+  if (leadDays) caption += `\n${b.m.leadTimeLabel(leadDays)}`;
   const rating = b.ctx.tenant.modules.review_request
     ? formatRatingSummary(p.rating_avg, p.rating_count ?? 0)
     : null;
