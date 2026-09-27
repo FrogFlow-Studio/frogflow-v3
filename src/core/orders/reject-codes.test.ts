@@ -151,6 +151,31 @@ describe("возврат промокода и сертификата при о�
     }
   });
 
+  it("ждёт оплаты, но часть уже внесена («Внести оплату») — коды остаются погашенными", async () => {
+    const { db, ctx, customer } = setup();
+    const r = await placeOrder(ctx, customer, "KZ", codes);
+    if (!r.ok) throw new Error("не оформился");
+    db.tables.orders![0]!.paid_amount = 1000;
+    expect(await rejectOrder(ctx, r.order.id, "admin")).toBe(true);
+    expect(db.tables.orders![0]!.status).toBe("rejected");
+    expect(db.tables.promo_codes![0]!.used_count).toBe(5);
+    expect(db.tables.gift_certificates![0]!.status).toBe("redeemed");
+  });
+
+  it("два нажатия «Отклонить» сразу — коды возвращаются один раз", async () => {
+    const { db, ctx, customer } = setup();
+    const r = await placeOrder(ctx, customer, "KZ", codes);
+    if (!r.ok) throw new Error("не оформился");
+    const res = await Promise.all([
+      rejectOrder(ctx, r.order.id, "admin"),
+      rejectOrder(ctx, r.order.id, "admin"),
+    ]);
+    expect(res.filter(Boolean)).toHaveLength(1);
+    expect(db.tables.promo_codes![0]!.used_count).toBe(4);
+    expect(await rejectOrder(ctx, r.order.id, "admin")).toBe(false);
+    expect(db.tables.promo_codes![0]!.used_count).toBe(4);
+  });
+
   it("сертификат, который уже переписан на другой заказ, не трогается", async () => {
     const { db, ctx, customer } = setup();
     const r = await placeOrder(ctx, customer, "KZ", { giftCode: codes.giftCode });

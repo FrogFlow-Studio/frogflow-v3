@@ -676,20 +676,29 @@ export async function rejectOrder(
   // Переход статуса — CAS. Сначала из «ждёт оплаты»: так известно, что
   // заказ отменён неоплаченным, и его промокод и сертификат возвращаются.
   const from: string[] = [...(opts.from ?? REJECTABLE_STATUSES)];
-  const cas = async (statuses: string[]) =>
-    statuses.length === 0
-      ? null
-      : (
-          await ctx.db
-            .from("orders")
-            .update({ status: opts.to ?? "rejected" })
-            .eq("id", orderId)
-            .in("status", statuses)
-            .select("id, platform, telegram_id, points_used, points_earned, promo_code")
-            .maybeSingle()
-        ).data;
-  const unpaidData = from.includes("awaiting_payment") ? await cas(["awaiting_payment"]) : null;
-  const data = unpaidData ?? (await cas(from.filter((st) => st !== "awaiting_payment")));
+  // Неоплаченный — ещё и без внесённых денег: «Внести оплату» пишет
+  // paid_amount, не меняя статуса, и такой заказ кодов не возвращает.
+  // Условие — в самой условной записи, чтобы оплата в ту же секунду не
+  // проскочила между проверкой и отменой. «Чек на проверке» неоплаченным не
+  // считаем: покупатель, возможно, уже заплатил.
+  const cas = async (statuses: string[], unpaid: boolean) => {
+    if (statuses.length === 0) return null;
+    let q = ctx.db
+      .from("orders")
+      .update({ status: opts.to ?? "rejected" })
+      .eq("id", orderId)
+      .in("status", statuses);
+    if (unpaid) q = q.not("paid_amount", "gt", 0);
+    return (
+      await q
+        .select("id, platform, telegram_id, points_used, points_earned, promo_code")
+        .maybeSingle()
+    ).data;
+  };
+  const unpaidData = from.includes("awaiting_payment")
+    ? await cas(["awaiting_payment"], true)
+    : null;
+  const data = unpaidData ?? (await cas(from, false));
   // Брошенный неоплаченный заказ не сжигает сертификат покупателя и не
   // расходует лимит промокода; возвращает только выигравший CAS выше.
   const codesReturned = unpaidData

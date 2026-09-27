@@ -176,9 +176,17 @@ class Query implements PromiseLike<Result> {
     this.filters.push((r) => vs.includes(r[col]));
     return this;
   }
-  /** not(col, "in", "(a,b)") и not(col, "is", null) — как ими пользуется код. */
-  not(col: string, op: "in" | "is", v: string | null) {
+  /** not(col, "in", "(a,b)"), not(col, "is", null) и not(col, "gt", n) — как ими пользуется код. */
+  not(col: string, op: "in" | "is" | "gt", v: string | number | null) {
     this.col(col);
+    if (op === "gt") {
+      // NOT (col > n): у NULL сравнение неизвестно — строка не проходит, как в Postgres.
+      this.filters.push((r) => {
+        const have = pick(r, col);
+        return have !== null && !(((have ?? 0) as number) > (v as number));
+      });
+      return this;
+    }
     if (op === "is") {
       if (v !== null) throw new Error(`fakeDb: not is ${v} не поддержан`);
       this.filters.push((r) => pick(r, col) != null);
