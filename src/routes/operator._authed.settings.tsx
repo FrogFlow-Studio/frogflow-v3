@@ -15,6 +15,8 @@ import {
   saveAlertChannelFn,
   clearAlertChannelFn,
   testAlertChannelFn,
+  v2WebhookStatusFn,
+  syncV2WebhookFn,
 } from "@/app/operator/operator.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { shownError } from "@/lib/shown-error";
@@ -67,6 +69,7 @@ function SettingsPage() {
         />
         <ErrorTrackingCard />
         <AlertsCard status={cred.alerts} />
+        <ZernioWebhookCard />
         <TwoFactorCard status={cred.twoFactor} />
         <Card title="Учётка оператора">
           <p className="mb-3 text-sm text-muted">
@@ -345,6 +348,72 @@ function AlertsCard({
 }
 
 /** Учёт ошибок (src/lib/errors.ts): пробное событие в Sentry по кнопке. */
+const WEBHOOK_ACTION: Record<string, string> = {
+  unchanged: "привязан к профилям клиентов v2",
+  none: "клиентов v2 с Instagram/WhatsApp нет — вебхук не нужен",
+  create: "вебхука v2 нет — нажмите «Привязать»",
+  update: "список профилей устарел — нажмите «Привязать»",
+  disable: "клиентов v2 не осталось — «Привязать» выключит вебхук v2",
+  skipped: "Zernio на платформе не подключён",
+  error: "ошибка",
+};
+
+/**
+ * Вебхук v2 в Zernio: своя запись с фильтром по профилям клиентов на v2.
+ * Пишется только этой кнопкой (при переезде клиента); записи v1 с тем же
+ * ключом v2 не меняет и не удаляет.
+ */
+function ZernioWebhookCard() {
+  const [state, setState] = useState<Awaited<ReturnType<typeof v2WebhookStatusFn>> | null>(null);
+  const check = useAction(async () => setState(await v2WebhookStatusFn()));
+  const sync = useAction(async () => {
+    const r = await syncV2WebhookFn();
+    // Ошибку записи показываем как есть: повторная проверка её бы скрыла.
+    setState(r.ok ? await v2WebhookStatusFn() : r);
+  });
+  return (
+    <Card title="Вебхук Zernio (Instagram, WhatsApp)">
+      <p className="mb-3 text-sm text-muted">
+        У v2 свой вебхук: он получает события только профилей клиентов, переехавших на v2. Вебхуки
+        прежней платформы остаются как есть. После переезда клиента нажмите «Привязать».
+      </p>
+      {state && (
+        <div className="mb-3 space-y-1 text-sm">
+          <p>
+            <Badge tone={state.ok ? "ok" : "danger"}>
+              {WEBHOOK_ACTION[state.action] ?? state.action}
+            </Badge>{" "}
+            {state.profiles !== undefined && <span>профилей v2: {state.profiles}</span>}
+          </p>
+          {state.error && <p className="text-danger">{state.error}</p>}
+          {state.foreign?.length ? (
+            <p className="text-muted">
+              Другие вебхуки (не трогаем): {state.foreign.map((w) => w.name || w.url).join(", ")}
+            </p>
+          ) : null}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <button
+          className="btn-secondary"
+          disabled={check.busy || sync.busy}
+          onClick={() => void check.run().catch(() => {})}
+        >
+          Проверить
+        </button>
+        <button
+          className="btn-primary"
+          disabled={check.busy || sync.busy}
+          onClick={() => void sync.run().catch(() => {})}
+        >
+          Привязать
+        </button>
+      </div>
+      <ErrorBox error={check.error ?? sync.error} />
+    </Card>
+  );
+}
+
 function ErrorTrackingCard() {
   const [result, setResult] = useState<Awaited<ReturnType<typeof sendTestErrorFn>> | null>(null);
   const test = useAction(async () => setResult(await sendTestErrorFn()));

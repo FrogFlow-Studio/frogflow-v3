@@ -9,17 +9,18 @@ import {
   listAccounts,
   listProfiles,
   readWebhookSettings,
-  upsertWebhook,
+  writeV2Webhook,
   zernioConfigured,
 } from "./api.server";
 import { isZernioPlatform, type ZernioPlatform } from "./platform";
-import { describeWebhookFit, isOtherStoreWebhook } from "./webhook-fit";
+import { foreignWebhooks, planV2Webhook, v2ProfileIds, type V2WebhookPlan } from "./webhook-fit";
 
 /**
  * Подключение Instagram/WhatsApp клиентом из админки. У каждого клиента —
  * свой профиль Zernio (в v1 профиль задавался переменной деплоя); аккаунты
  * профиля синхронизируются в bots.settings.zernio.account_ids — по ним
- * вебхук находит арендатора. Ключ API и вебхук — одни на платформу.
+ * вебхук находит арендатора. Ключ API один на платформу, вебхук v2 — свой,
+ * с фильтром по профилям клиентов на v2 (webhook-fit.ts).
  */
 export async function ensureTenantProfile(tenant: Tenant): Promise<string> {
   const existing = tenant.settings.zernio?.profile_id;
@@ -97,41 +98,63 @@ export async function syncAccountsById(botId: string): Promise<SyncResult> {
   return syncAccounts(await requireTenant({ by: "id", value: botId }));
 }
 
-export type EnsureWebhookResult = {
+export type V2WebhookState = {
   ok: boolean;
-  action: "unchanged" | "set" | "skipped" | "error";
+  /** unchanged/none — в порядке; create/update/disable — нужно нажать кнопку оператора. */
+  action: V2WebhookPlan["action"] | "skipped" | "error";
   url?: string;
-  previousUrl?: string | null;
+  profiles?: number;
+  /** Записи других деплоев (v1): только показываем, v2 их не трогает. */
+  foreign?: { name?: string; url?: string }[];
   error?: string;
 };
 
-/**
- * Вебхук платформы: одна запись на ключ Zernio. Чужой деплой (v1 клиента с
- * тем же ключом) не перетягиваем без `force` — клиенты переезжают по одному.
- */
-export async function ensurePlatformWebhook(
-  opts: { force?: boolean } = {},
-): Promise<EnsureWebhookResult> {
-  if (!zernioConfigured()) return { ok: true, action: "skipped", error: "ZERNIO_API_KEY не задан" };
+async function planFor(): Promise<
+  | { ok: false; state: V2WebhookState }
+  | { ok: true; url: string; plan: V2WebhookPlan; state: V2WebhookState }
+> {
+  if (!zernioConfigured())
+    return { ok: false, state: { ok: true, action: "skipped", error: "ZERNIO_API_KEY не задан" } };
   const url = `${env().APP_URL.replace(/\/$/, "")}/api/zernio/webhook`;
   let webhooks;
   try {
     webhooks = await readWebhookSettings();
   } catch (e) {
-    return { ok: false, action: "error", url, error: e instanceof Error ? e.message : String(e) };
-  }
-  const { fit, current } = describeWebhookFit(webhooks, url);
-  if (fit === "ok") return { ok: true, action: "unchanged", url, previousUrl: current?.url };
-  if (!opts.force && isOtherStoreWebhook(current?.url, url))
     return {
-      ok: true,
-      action: "skipped",
-      url: current?.url,
-      previousUrl: current?.url,
-      error: `вебхук слушает ${current?.url}`,
+      ok: false,
+      state: { ok: false, action: "error", url, error: e instanceof Error ? e.message : String(e) },
     };
-  const r = await upsertWebhook(url);
-  if (!r.ok)
-    return { ok: false, action: "error", url, previousUrl: current?.url ?? null, error: r.error };
-  return { ok: true, action: "set", url, previousUrl: current?.url ?? null };
+  }
+  const profiles = v2ProfileIds(await tenantDirectory(true));
+  const plan = planV2Webhook(webhooks, url, profiles);
+  const foreign = foreignWebhooks(webhooks, url).map((w) => ({ name: w.name, url: w.url }));
+  return {
+    ok: true,
+    url,
+    plan,
+    state: {
+      ok: plan.action === "unchanged" || plan.action === "none",
+      action: plan.action,
+      url,
+      profiles: profiles.length,
+      foreign,
+    },
+  };
+}
+
+/** Состояние записи v2 — только чтение (крон и панель оператора). */
+export async function v2WebhookStatus(): Promise<V2WebhookState> {
+  return (await planFor()).state;
+}
+
+/**
+ * Привязать вебхук v2 к профилям клиентов на v2 — только по кнопке
+ * оператора (при переезде клиента), никогда крон или выкладка.
+ */
+export async function syncV2Webhook(): Promise<V2WebhookState> {
+  const p = await planFor();
+  if (!p.ok) return p.state;
+  const r = await writeV2Webhook(p.plan);
+  if (!r.ok) return { ...p.state, ok: false, action: "error", error: r.error };
+  return { ...p.state, ok: true };
 }

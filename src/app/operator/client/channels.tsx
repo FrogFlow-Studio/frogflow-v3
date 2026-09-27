@@ -35,8 +35,9 @@ export function ZernioCard({ c, onDone }: { c: C; onDone: () => Promise<void> })
       }
     >
       <p className="text-xs text-muted">
-        Ключ и вебхук Zernio одни на платформу; клиенты различаются профилем. События аккаунтов ниже
-        попадают этому клиенту.
+        Ключ Zernio один на платформу, клиенты различаются профилем. События аккаунтов ниже попадают
+        этому клиенту, когда профиль привязан к вебхуку v2 («Настройки платформы» → «Вебхук
+        Zernio»).
       </p>
       <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
         <dt className="text-muted">Профиль</dt>

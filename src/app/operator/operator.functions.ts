@@ -594,6 +594,17 @@ export const testAlertChannelFn = createServerFn({ method: "POST" }).handler(asy
   return (await alerts()).testAlertChannel();
 });
 
+/** Вебхук v2 в Zernio: состояние (только чтение) и привязка к профилям клиентов на v2. */
+export const v2WebhookStatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await import("@/channels/zernio/connect.server")).v2WebhookStatus();
+});
+
+export const syncV2WebhookFn = createServerFn({ method: "POST" }).handler(async () => {
+  await guard();
+  return (await import("@/channels/zernio/connect.server")).syncV2Webhook();
+});
+
 export const addPaymentFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

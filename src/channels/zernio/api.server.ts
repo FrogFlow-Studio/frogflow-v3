@@ -4,12 +4,7 @@ import { attachmentNeedsZernioKey, normalizeZernioBaseUrl, withReceivingAccount 
 import { idempotencyKeyFor } from "./event-context.server";
 import { normalizeInboxMessage, type ZernioInboxMessage } from "./inbox-types";
 import type { ZernioPlatform } from "./platform";
-import {
-  ZERNIO_WEBHOOK_EVENTS,
-  ZERNIO_WEBHOOK_NAME,
-  findStoreWebhook,
-  type ZernioWebhookRecord,
-} from "./webhook-fit";
+import type { V2WebhookPlan, ZernioWebhookRecord } from "./webhook-fit";
 
 /**
  * Клиент API Zernio. Ключ один на платформу (env), аккаунты клиентов — в
@@ -224,25 +219,27 @@ export async function readWebhookSettings(): Promise<ZernioWebhookRecord[]> {
 }
 
 /**
- * Записать store-webhook на этот деплой: существующую запись (в том числе
- * под старым именем) обновляем, а не заводим вторую — иначе каждое событие
- * приходило бы дважды.
+ * Записать вебхук v2 по плану planV2Webhook. План пишет только запись с
+ * адресом этого деплоя (её id взят из той же выборки), чужие записи не
+ * меняются и не удаляются. Секрет подписи уходит при создании и обновлении.
  */
-export async function upsertWebhook(url: string): Promise<{ ok: boolean; error?: string }> {
+export async function writeV2Webhook(
+  plan: V2WebhookPlan,
+): Promise<{ ok: boolean; error?: string }> {
+  if (plan.action === "none" || plan.action === "unchanged") return { ok: true };
   const secret = env().ZERNIO_WEBHOOK_SECRET?.trim();
-  if (!secret) return { ok: false, error: "ZERNIO_WEBHOOK_SECRET не задан" };
+  if (!secret && plan.action !== "disable")
+    return { ok: false, error: "ZERNIO_WEBHOOK_SECRET не задан" };
+  const body =
+    plan.action === "create"
+      ? { ...plan.body, secret }
+      : plan.action === "update"
+        ? { webhookId: plan.id, ...plan.body, secret }
+        : { webhookId: plan.id, isActive: false };
   try {
-    const existing = findStoreWebhook(await readWebhookSettings(), url);
     const r = await request<{ success?: boolean; error?: string }>("/webhooks/settings", {
-      method: existing ? "PUT" : "POST",
-      body: {
-        ...(existing ? { _id: existing._id || existing.id } : {}),
-        name: ZERNIO_WEBHOOK_NAME,
-        url,
-        secret,
-        events: [...ZERNIO_WEBHOOK_EVENTS],
-        isActive: true,
-      },
+      method: plan.action === "create" ? "POST" : "PUT",
+      body,
     });
     if (r.success === false)
       return { ok: false, error: r.error || "Zernio не принял настройки вебхука" };
