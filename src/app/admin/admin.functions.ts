@@ -1665,10 +1665,16 @@ export const chatMessagesFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ telegramId: tgId }).parse(d))
   .handler(async ({ data }) => {
     const ctx = await chatModule();
-    const { listMessages, markRead } = await import("@/core/chat/chat");
-    const messages = await listMessages(ctx, data.telegramId);
+    const { listMessages, markRead, lastInboundAt } = await import("@/core/chat/chat");
+    const [messages, inboundAt] = await Promise.all([
+      listMessages(ctx, data.telegramId),
+      lastInboundAt(ctx, data.telegramId),
+    ]);
     await markRead(ctx, data.telegramId);
-    return messages;
+    // Окно 24 часа Instagram/WhatsApp считается от последнего входящего, отдельным
+    // запросом: в последних 500 репликах его может не оказаться.
+    // serverNow — остаток окна браузер считает по часам сервера, не по своим.
+    return { messages, lastInboundAt: inboundAt, serverNow: new Date().toISOString() };
   });
 
 /**

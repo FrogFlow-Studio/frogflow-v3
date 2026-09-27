@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { inboundIntercepted, inboundLogText, tappedButtonText } from "./chat";
+import { inboundIntercepted, inboundLogText, lastInboundAt, tappedButtonText } from "./chat";
 
 const BOT = "11111111-1111-1111-1111-111111111111";
 
@@ -54,5 +54,29 @@ describe("чат с менеджером", () => {
     const off = setup(true, false);
     expect(await inboundIntercepted(off.ctx, 7, tappedButtonText("Каталог"))).toBe(false);
     expect(off.db.tables.manager_chat_messages).toHaveLength(1);
+  });
+});
+
+describe("окно 24 часа: последнее входящее", () => {
+  it("берётся последнее входящее покупателя; исходящие и чужие диалоги не считаются", async () => {
+    const s = setup(true, false);
+    const row = (telegram_id: number, direction: string, created_at: string, id: string) => ({
+      id,
+      bot_id: BOT,
+      telegram_id,
+      direction,
+      sender: direction === "in" ? "customer" : "bot",
+      text: "x",
+      created_at,
+    });
+    s.db.tables.manager_chat_messages = [
+      row(7, "in", "2026-09-26T10:00:00Z", "a"),
+      row(7, "in", "2026-09-26T12:00:00Z", "b"),
+      // Наши ответы окно не продлевают.
+      row(7, "out", "2026-09-27T09:00:00Z", "c"),
+      row(8, "in", "2026-09-27T11:00:00Z", "d"),
+    ];
+    expect(await lastInboundAt(s.ctx, 7)).toBe("2026-09-26T12:00:00Z");
+    expect(await lastInboundAt(s.ctx, 9)).toBeNull();
   });
 });

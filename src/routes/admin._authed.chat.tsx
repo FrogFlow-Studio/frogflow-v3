@@ -23,6 +23,12 @@ import type { ChatMessage, Conversation } from "@/core/chat/chat";
 import { UNANSWERED_OPTIONS } from "@/core/chat/unanswered";
 import { isIndefinite } from "@/core/consultant/pause";
 import {
+  replyWindow,
+  serverClockOffset,
+  windowLeftParts,
+  type ReplyWindow,
+} from "@/core/chat/reply-window";
+import {
   fillQuickReply,
   filterInbox,
   inboxCounts,
@@ -50,6 +56,37 @@ function label(c: Conversation): string {
 }
 
 const CHANNEL: Record<string, string> = { instagram: "Instagram", whatsapp: "WhatsApp" };
+
+/** Окно 24 часа Instagram/WhatsApp: сколько осталось или что закрыто. */
+/** Переписка с ответа сервера; смещение часов фиксируется в момент ответа. */
+function threadOf(
+  telegramId: number,
+  r: { messages: ChatMessage[]; lastInboundAt: string | null; serverNow: string },
+) {
+  return {
+    telegramId,
+    messages: r.messages,
+    lastInboundAt: r.lastInboundAt,
+    clockOffset: serverClockOffset(r.serverNow, Date.now()),
+  };
+}
+
+function WindowBadge({ t, w }: { t: AdminT; w: ReplyWindow }) {
+  if (w.state === "closed")
+    return (
+      <span className="mt-0.5 block">
+        <Badge tone="warn">{t("chat.windowClosed")}</Badge>
+      </span>
+    );
+  const { h, m } = windowLeftParts(w.leftMs);
+  return (
+    <span className="mt-0.5 block">
+      <Badge tone={w.leftMs < 2 * 3_600_000 ? "warn" : "ok"}>
+        {t("chat.windowOpen", { h, m })}
+      </Badge>
+    </span>
+  );
+}
 
 function channelOf(c: Conversation): string | null {
   return CHANNEL[c.platform] ?? null;
@@ -104,7 +141,15 @@ function ChatPage() {
     return a?.name ? `${a.name} (${u})` : u;
   };
   const [selectedId, setSelectedId] = useState<number | null>(Route.useSearch().c ?? null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Переписка и последнее входящее (окно 24 часа) — для диалога telegramId.
+  const [thread, setThread] = useState<{
+    telegramId: number | null;
+    messages: ChatMessage[];
+    lastInboundAt: string | null;
+    /** Разница часов сервера и браузера на момент ответа сервера. */
+    clockOffset: number;
+  }>({ telegramId: null, messages: [], lastInboundAt: null, clockOffset: 0 });
+  const messages = thread.messages;
   const [reply, setReply] = useState("");
   // Id черновика — ключ идемпотентности отправки в Instagram/WhatsApp (новый на каждый диалог).
   const draftId = useRef(crypto.randomUUID());
@@ -114,6 +159,11 @@ function ChatPage() {
   const [loadError, setLoadError] = useState<unknown>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const selected = conversations.find((c) => c.telegram_id === selectedId) ?? null;
+  // Окно ответа Instagram/WhatsApp — только когда переписка этого диалога уже загружена.
+  const window24 =
+    selected && thread.telegramId === selected.telegram_id
+      ? replyWindow(selected.platform, thread.lastInboundAt, Date.now() + thread.clockOffset)
+      : null;
 
   // Опрос: список — всегда, переписка — для открытого диалога.
   useEffect(() => {
@@ -124,7 +174,7 @@ function ChatPage() {
         if (alive) setConversations(r.conversations);
         if (selectedId !== null) {
           const m = await chatMessagesFn({ data: { telegramId: selectedId } });
-          if (alive) setMessages(m);
+          if (alive) setThread(threadOf(selectedId, m));
         }
         if (alive) setLoadError(null);
       } catch (e) {
@@ -188,7 +238,7 @@ function ChatPage() {
     draftId.current = crypto.randomUUID();
     setReply("");
     setAttachment(null);
-    setMessages(await chatMessagesFn({ data: { telegramId: selectedId } }));
+    setThread(threadOf(selectedId, await chatMessagesFn({ data: { telegramId: selectedId } })));
   });
 
   return (
@@ -274,6 +324,7 @@ function ChatPage() {
                           })}
                     </span>
                   )}
+                  {window24 && <WindowBadge t={t} w={window24} />}
                 </span>
                 {canWrite && (
                   <span className="flex flex-wrap items-center justify-end gap-2">
@@ -376,8 +427,11 @@ function ChatPage() {
                   telegramId={selected.telegram_id}
                   onClose={() => setInvoicing(false)}
                   onSent={async () => {
-                    setMessages(
-                      await chatMessagesFn({ data: { telegramId: selected.telegram_id } }),
+                    setThread(
+                      threadOf(
+                        selected.telegram_id,
+                        await chatMessagesFn({ data: { telegramId: selected.telegram_id } }),
+                      ),
                     );
                     setConversations((await chatConversationsFn()).conversations);
                   }}
@@ -396,6 +450,13 @@ function ChatPage() {
                     )
                   }
                 />
+              )}
+              {canWrite && window24?.state === "closed" && (
+                <p className="border-t border-line px-3 pt-2 text-xs text-warn">
+                  {selected.platform === "whatsapp"
+                    ? t("chat.windowClosedWhatsapp")
+                    : t("chat.windowClosedInstagram")}
+                </p>
               )}
               {canWrite && (
                 <form

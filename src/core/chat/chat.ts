@@ -212,6 +212,25 @@ export async function listMessages(
   return ((data ?? []) as ChatMessage[]).reverse();
 }
 
+/**
+ * Последнее входящее сообщение покупателя — от него считается окно ответа
+ * Instagram/WhatsApp (core/chat/reply-window). Исходящие окно не продлевают.
+ */
+export async function lastInboundAt(
+  ctx: TenantContext,
+  telegramId: number,
+): Promise<string | null> {
+  const { data, error } = await ctx.db
+    .from("manager_chat_messages")
+    .select("created_at")
+    .eq("telegram_id", telegramId)
+    .eq("direction", "in")
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return data?.[0]?.created_at ?? null;
+}
+
 export async function totalUnread(ctx: TenantContext): Promise<number> {
   const rows = await pageAll(
     (from, to) => ctx.db.from("manager_chat_state").select("unread_count").range(from, to),

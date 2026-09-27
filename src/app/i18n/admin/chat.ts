@@ -13,6 +13,12 @@ export const ru = {
   "chat.returnToBot": "Вернуть боту",
   "chat.botPausedUntil": "бот молчит до {time}",
   "chat.botPausedForever": "бот молчит, пока не снимете паузу",
+  "chat.windowOpen": "окно ответа: осталось {h} ч {m} мин",
+  "chat.windowClosed": "окно 24 часа закрыто",
+  "chat.windowClosedWhatsapp":
+    "Покупатель писал больше 24 часов назад: WhatsApp пропустит только одобренный шаблон, обычное сообщение не уйдёт. Окно откроется, когда покупатель напишет сам.",
+  "chat.windowClosedInstagram":
+    "Покупатель писал больше 24 часов назад: Instagram может не принять сообщение. Окно откроется, когда покупатель напишет сам.",
   "chat.resumeBot": "Снять паузу бота",
   "chat.invoice": "Выставить счёт",
   "chat.invoiceHint":
@@ -93,6 +99,12 @@ export const kk: SectionDict<typeof ru> = {
   "chat.returnToBot": "Ботқа қайтару",
   "chat.botPausedUntil": "бот {time} дейін үндемейді",
   "chat.botPausedForever": "кідірісті алғанша бот үндемейді",
+  "chat.windowOpen": "жауап терезесі: {h} сағ {m} мин қалды",
+  "chat.windowClosed": "24 сағаттық терезе жабық",
+  "chat.windowClosedWhatsapp":
+    "Сатып алушы 24 сағаттан бұрын жазған: WhatsApp тек бекітілген үлгіні өткізеді, қарапайым хабарлама кетпейді. Сатып алушы өзі жазғанда терезе ашылады.",
+  "chat.windowClosedInstagram":
+    "Сатып алушы 24 сағаттан бұрын жазған: Instagram хабарламаны қабылдамауы мүмкін. Сатып алушы өзі жазғанда терезе ашылады.",
   "chat.resumeBot": "Бот кідірісін алу",
   "chat.invoice": "Шот жіберу",
   "chat.invoiceHint":
@@ -174,6 +186,12 @@ export const en: SectionDict<typeof ru> = {
   "chat.returnToBot": "Hand back to the bot",
   "chat.botPausedUntil": "bot silent until {time}",
   "chat.botPausedForever": "bot silent until you resume it",
+  "chat.windowOpen": "reply window: {h} h {m} min left",
+  "chat.windowClosed": "24-hour window closed",
+  "chat.windowClosedWhatsapp":
+    "The customer last wrote more than 24 hours ago: WhatsApp only lets an approved template through, a regular message won't be delivered. The window reopens when the customer writes.",
+  "chat.windowClosedInstagram":
+    "The customer last wrote more than 24 hours ago: Instagram may reject the message. The window reopens when the customer writes.",
   "chat.resumeBot": "Resume the bot",
   "chat.invoice": "Send invoice",
   "chat.invoiceHint":
@@ -255,6 +273,12 @@ export const uz: SectionDict<typeof ru> = {
   "chat.returnToBot": "Botga qaytarish",
   "chat.botPausedUntil": "bot {time} gacha jim",
   "chat.botPausedForever": "pauzani olib tashlamaguningizcha bot jim",
+  "chat.windowOpen": "javob oynasi: {h} soat {m} daq qoldi",
+  "chat.windowClosed": "24 soatlik oyna yopiq",
+  "chat.windowClosedWhatsapp":
+    "Xaridor 24 soatdan oldin yozgan: WhatsApp faqat tasdiqlangan shablonni o‘tkazadi, oddiy xabar ketmaydi. Xaridor o‘zi yozganda oyna ochiladi.",
+  "chat.windowClosedInstagram":
+    "Xaridor 24 soatdan oldin yozgan: Instagram xabarni qabul qilmasligi mumkin. Xaridor o‘zi yozganda oyna ochiladi.",
   "chat.resumeBot": "Bot pauzasini olib tashlash",
   "chat.invoice": "Hisob yuborish",
   "chat.invoiceHint":
