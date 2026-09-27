@@ -30,18 +30,6 @@ vi.mock("@/core/tenant/resolve.server", () => ({
   tenantContext: (tenant: Tenant) => ({ tenant }),
   tenantDirectory: async () => [...shops.values()],
 }));
-// Модуль в реестре пока «planned»; для проверки переключения считаем его готовым.
-vi.mock("@/core/modules/registry", async (orig) => {
-  const real = await orig<typeof import("@/core/modules/registry")>();
-  return {
-    ...real,
-    availableModules: (m: Record<string, boolean>) => ({
-      ...real.availableModules(m),
-      multi_bot: m.multi_bot === true,
-    }),
-  };
-});
-
 const { adminShops, adminStamp, requireAdmin, switchAdminShop } = await import("./guards.server");
 
 const HOME = "11111111-1111-4111-8111-111111111111";

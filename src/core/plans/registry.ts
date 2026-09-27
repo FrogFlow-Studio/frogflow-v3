@@ -177,6 +177,13 @@ export const COURSES_FROM_TIER: PlanTier = "pro";
 /** Ниши с магазином; у консультанта нет кассы, курсы ему ни к чему. */
 export const COURSES_NICHES: readonly PlanNiche[] = ["digital", "confectionery", "flowers"];
 
+/**
+ * С какого уровня план включает «Несколько ботов» (multi_bot), во всех нишах;
+ * null — ни в один план, оператор подключает отдельно (billing.grandfathered).
+ * Решение за Яковом, до ответа — Business; меняется здесь одной строкой.
+ */
+export const MULTI_BOT_FROM_TIER: PlanTier | null = "business";
+
 /** Докупаются сверх плана только каналы: у них разная себестоимость. */
 export const ADDONS = {
   whatsapp: { title: "WhatsApp", modules: ["whatsapp", "wa_shop"] },

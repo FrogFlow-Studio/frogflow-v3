@@ -467,3 +467,20 @@ describe("купленное сверх плана не пропадает пр�
     expect(keptModules(null, undefined, on("crypto"))).toEqual([]);
   });
 });
+
+describe("модуль «Несколько ботов» в тарифах", () => {
+  it("по умолчанию входит в Business всех ниш, не в Basic и Pro", () => {
+    for (const n of PLAN_NICHES) {
+      expect(planModules(n, "basic").has("multi_bot")).toBe(false);
+      expect(planModules(n, "pro").has("multi_bot")).toBe(false);
+      expect(planModules(n, "business").has("multi_bot")).toBe(true);
+      expect(effectiveModules(parsePlan(`${n}.business`), undefined)!.multi_bot).toBe(true);
+    }
+  });
+
+  it("клиент на Pro, которому модуль оставлен сверх плана, его сохраняет", () => {
+    const mods = effectiveModules(parsePlan("digital.pro"), { grandfathered: ["multi_bot"] });
+    expect(mods!.multi_bot).toBe(true);
+    expect(effectiveModules(parsePlan("digital.pro"), undefined)!.multi_bot).toBe(false);
+  });
+});
