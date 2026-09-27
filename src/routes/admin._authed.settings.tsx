@@ -97,6 +97,7 @@ function SettingsPage() {
           ? {
               storefront_checkout: JSON.stringify({
                 enabled: Boolean(f.get("storefront_checkout")),
+                tgLogin: Boolean(f.get("storefront_tg_login")),
               }),
             }
           : {}),
@@ -218,6 +219,15 @@ function SettingsPage() {
                   type="checkbox"
                   name="storefront_checkout"
                   defaultChecked={parseWebCheckout(settings.storefront_checkout ?? null).enabled}
+                />
+              </Field>
+            )}
+            {shop.modules.web_storefront && (
+              <Field label={t("settings.shop.tgLogin")} hint={t("settings.shop.tgLoginHint")}>
+                <input
+                  type="checkbox"
+                  name="storefront_tg_login"
+                  defaultChecked={parseWebCheckout(settings.storefront_checkout ?? null).tgLogin}
                 />
               </Field>
             )}

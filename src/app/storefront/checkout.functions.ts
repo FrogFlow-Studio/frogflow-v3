@@ -134,7 +134,13 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
     const { placeWebOrder, webCustomer, orderAccessToken } =
       await import("@/core/storefront/web-order");
     const phone = data.phone?.trim() ? normalizePhone(data.phone) : null;
-    const customer = await webCustomer(ctx, { email, name: data.name, phone });
+    // Вошёл через Telegram — заказ ложится на покупателя из бота (одна карточка).
+    const { buyerTelegramId } = await import("./tg-login.server");
+    const tgId = await buyerTelegramId(ctx);
+    const { telegramWebCustomer } = await import("@/core/storefront/web-order");
+    const customer =
+      (tgId !== null ? await telegramWebCustomer(ctx, tgId, email) : null) ??
+      (await webCustomer(ctx, { email, name: data.name, phone }));
     const r = await placeWebOrder(ctx, customer, parseHandoffItems(data.items), data.country, {
       fulfillment: data.fulfillment,
       contact: { name: data.name, phone },

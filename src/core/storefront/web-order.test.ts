@@ -23,6 +23,7 @@ const {
   parseWebCheckout,
   placeWebOrder,
   verifyOrderAccess,
+  telegramWebCustomer,
   webCustomer,
   webCardPaymentUrl,
   webCustomerId,
@@ -124,9 +125,13 @@ describe("заказ с сайта: доступ и покупатель", () =>
   });
 
   it("оформление на сайте выключено, пока продавец его не включил", () => {
-    expect(parseWebCheckout(null)).toEqual({ enabled: false });
-    expect(parseWebCheckout("мусор")).toEqual({ enabled: false });
-    expect(parseWebCheckout('{"enabled":true}')).toEqual({ enabled: true });
+    expect(parseWebCheckout(null)).toEqual({ enabled: false, tgLogin: false });
+    expect(parseWebCheckout("мусор")).toEqual({ enabled: false, tgLogin: false });
+    expect(parseWebCheckout('{"enabled":true}')).toEqual({ enabled: true, tgLogin: false });
+    expect(parseWebCheckout('{"enabled":true,"tgLogin":true}')).toEqual({
+      enabled: true,
+      tgLogin: true,
+    });
   });
 
   it("оформление на сайте — часть веб-витрины, не Mini App", () => {
@@ -216,6 +221,89 @@ describe("заказ с сайта: оформление", () => {
     ]);
     expect([a, b].sort()).toEqual(["ok", "used"]);
     expect(await claimCheckoutChallenge(ctx, "nonce2")).toBe("ok");
+  });
+});
+
+describe("заказ с сайта после входа через Telegram", () => {
+  const tgRow = (extra: Record<string, unknown> = {}) => ({
+    bot_id: BOT,
+    user_key: "tg_42",
+    telegram_id: 42,
+    platform: "telegram",
+    first_name: "Анна",
+    email: null,
+    ...extra,
+  });
+
+  it("покупатель — тот же, что в боте, канал заказа — сайт, почта записана", async () => {
+    const { db, ctx } = setup();
+    db.tables.bot_users = [tgRow()];
+    const c = await telegramWebCustomer(ctx, 42, "anna@example.com");
+    expect(c).toMatchObject({ userKey: "tg_42", telegramId: 42, platform: "web" });
+    expect(c!.email).toBe("anna@example.com");
+    expect(db.tables.bot_users![0]!.email).toBe("anna@example.com");
+  });
+
+  it("нет такого покупателя в боте — null, оформление пойдёт по почте", async () => {
+    const { db, ctx } = setup();
+    expect(await telegramWebCustomer(ctx, 42, "a@b.cd")).toBeNull();
+    // Строка покупателя сайта с тем же числом в telegram_id — не он.
+    db.tables.bot_users = [tgRow({ user_key: "web_42", platform: "web" })];
+    expect(await telegramWebCustomer(ctx, 42, "a@b.cd")).toBeNull();
+  });
+
+  it("корзина покупателя в боте после заказа с сайта возвращается как была", async () => {
+    const { db, ctx } = setup();
+    db.tables.cart_items = [
+      {
+        id: "bot-1",
+        bot_id: BOT,
+        telegram_id: 42,
+        user_key: "tg_42",
+        product_id: "p-bot",
+        product_variant_id: null,
+        quantity: 2,
+        created_at: "2026-09-01T00:00:00Z",
+      },
+    ];
+    importItems.mockImplementation(async () => {
+      db.tables.cart_items!.push({
+        id: "site",
+        bot_id: BOT,
+        telegram_id: 42,
+        product_id: "p-site",
+        products: { id: "p-site", fulfillment_kind: "digital" },
+      });
+      return 1;
+    });
+    // placeOrder, как настоящий, очищает корзину после заказа.
+    placeOrder.mockImplementation(async () => {
+      db.tables.cart_items = [];
+      return { ok: true, order: { id: 9 } };
+    });
+    const customer = {
+      userKey: "tg_42",
+      telegramId: 42,
+      platform: "web",
+      state: {},
+    } as Customer;
+    const r = await placeWebOrder(ctx, customer, [{ product_id: "p-site", quantity: 1 }], "KZ");
+    expect(r).toMatchObject({ ok: true });
+    expect(
+      db.tables.cart_items!.map((c) => [c.product_id, c.quantity, c.user_key, c.telegram_id]),
+    ).toEqual([["p-bot", 2, "tg_42", 42]]);
+  });
+
+  it("корзина бота возвращается и когда оформление не удалось", async () => {
+    const { db, ctx } = setup();
+    db.tables.cart_items = [
+      { id: "bot-1", bot_id: BOT, telegram_id: 42, product_id: "p-bot", quantity: 1 },
+    ];
+    importItems.mockResolvedValue(0);
+    const customer = { userKey: "tg_42", telegramId: 42, platform: "web", state: {} } as Customer;
+    const r = await placeWebOrder(ctx, customer, [{ product_id: "gone", quantity: 1 }], "KZ");
+    expect(r).toEqual({ ok: false, reason: "nothing_imported" });
+    expect(db.tables.cart_items!.map((c) => c.product_id)).toEqual(["p-bot"]);
   });
 });
 

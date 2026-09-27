@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { miniAppOrdersFn } from "@/app/storefront/storefront.functions";
 import { useTelegramWebApp } from "@/app/storefront/cart";
+import { webMyOrdersFn } from "@/app/storefront/tg-login.functions";
+import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
 import { Empty, ErrorBox } from "@/app/ui";
@@ -18,7 +20,10 @@ export const Route = createFileRoute("/s/$slug/orders")({
 
 type Data = Awaited<ReturnType<typeof miniAppOrdersFn>>;
 
-/** Mini App: мои заказы и библиотека выданных материалов — только внутри Telegram. */
+/**
+ * Мои заказы и библиотека выданных материалов: внутри Telegram — по initData
+ * Mini App, на сайте — после входа через Telegram (если он включён у магазина).
+ */
 function OrdersPage() {
   const { slug } = Route.useParams();
   const view = ordersView(Route.useSearch().tab);
@@ -36,18 +41,26 @@ function OrdersPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const manyLangs =
     Boolean(data?.libraryLangs) && new Set(data?.library.map((f) => f.lang)).size > 1;
+  const login = useTgLogin(slug);
+  const webIn = !wa && Boolean(login.state?.me);
+  const fetchOrders = (libraryOffset?: number): Promise<Data | null> =>
+    wa
+      ? miniAppOrdersFn({ data: { slug, initData: wa.initData, libraryOffset } })
+      : webMyOrdersFn({ data: { slug, libraryOffset } });
   useEffect(() => {
-    if (!wa) return;
-    miniAppOrdersFn({ data: { slug, initData: wa.initData } }).then(setData, setError);
-  }, [wa, slug]);
+    if (!wa && !webIn) return;
+    fetchOrders().then(setData, setError);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wa, webIn, slug]);
   // Библиотека листается страницами: у постоянного покупателя вся история за
   // раз не соберётся (водяной знак и подпись ссылки на каждый файл).
   const loadMore = () => {
-    if (!wa || !data?.libraryNext) return;
+    if ((!wa && !webIn) || !data?.libraryNext) return;
     setLoadingMore(true);
-    miniAppOrdersFn({ data: { slug, initData: wa.initData, libraryOffset: data.libraryNext } })
+    fetchOrders(data.libraryNext)
       .then(
         (next) =>
+          next &&
           setData((cur) =>
             cur
               ? {
@@ -61,8 +74,16 @@ function OrdersPage() {
       )
       .finally(() => setLoadingMore(false));
   };
-  if (!wa) {
-    if (!checked) return null;
+  if (!wa && !webIn) {
+    if (!checked || login.state === null) return null;
+    if (login.state.available)
+      return (
+        <div className="mx-auto max-w-xl space-y-3">
+          <h1 className="text-xl font-semibold">{t("orders.title")}</h1>
+          <p className="text-sm text-muted">{t("orders.loginToSee")}</p>
+          <TgLoginBox login={login} hint={false} />
+        </div>
+      );
     return (
       <Empty>
         {t("orders.onlyTelegram")}{" "}
@@ -77,6 +98,7 @@ function OrdersPage() {
       <h1 className="text-xl font-semibold">
         {t(view === "library" ? "orders.library" : "orders.title")}
       </h1>
+      {webIn && <TgLoginBox login={login} />}
       <ErrorBox error={error} />
       {showOrders && data && data.orders.length === 0 && <Empty>{t("orders.empty")}</Empty>}
       {showOrders && data && data.orders.length > 0 && (

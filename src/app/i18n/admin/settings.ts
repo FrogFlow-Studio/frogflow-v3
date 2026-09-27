@@ -40,6 +40,9 @@ export const ru = {
   "settings.shop.accent": "Цвет витрины",
   "settings.shop.accentHint": "Кнопки и акценты на витрине /s/…; галочка снята — цвет платформы.",
   "settings.shop.webCheckout": "Оформление заказа на сайте",
+  "settings.shop.tgLogin": "Вход покупателей через Telegram на витрине",
+  "settings.shop.tgLoginHint":
+    "Заказы с сайта и из бота сойдутся в одной карточке покупателя. Сначала в @BotFather отправьте /setdomain, выберите бота магазина и укажите адрес витрины (например, www.frogflow.tech). Без этого кнопка Telegram покажет ошибку «Bot domain invalid». Работает вместе с оформлением на сайте.",
   "settings.shop.webCheckoutHint":
     "Покупатель оплачивает цифровые товары прямо на витрине по реквизитам страны и загружает чек; материалы открываются на странице заказа.",
   // способы оплаты
@@ -313,6 +316,9 @@ export const kk: SectionDict<typeof ru> = {
   "settings.shop.accentHint":
     "/s/… витринасындағы түймелер мен акценттер; құсбелгі алынса — платформа түсі.",
   "settings.shop.webCheckout": "Сайтта тапсырыс рәсімдеу",
+  "settings.shop.tgLogin": "Витринада сатып алушылардың Telegram арқылы кіруі",
+  "settings.shop.tgLoginHint":
+    "Сайттағы және боттағы тапсырыстар сатып алушының бір карточкасында болады. Алдымен @BotFather-ге /setdomain жіберіп, дүкен ботын таңдап, витрина мекенжайын көрсетіңіз (мысалы, www.frogflow.tech). Онсыз Telegram батырмасы «Bot domain invalid» қатесін көрсетеді. Сайтта рәсімдеумен бірге жұмыс істейді.",
   "settings.shop.webCheckoutHint":
     "Сатып алушы цифрлық тауарларды витринада ел деректемелері бойынша төлеп, чекті жүктейді; материалдар тапсырыс бетінде ашылады.",
   "settings.pay.title": "Елдер бойынша төлем тәсілдері",
@@ -579,6 +585,9 @@ export const en: SectionDict<typeof ru> = {
   "settings.shop.accentHint":
     "Buttons and accents on the /s/… storefront; unchecked — platform color.",
   "settings.shop.webCheckout": "Checkout on the website",
+  "settings.shop.tgLogin": "Buyer login with Telegram on the storefront",
+  "settings.shop.tgLoginHint":
+    "Orders from the website and the bot will meet in one buyer card. First send /setdomain to @BotFather, choose the shop bot and enter the storefront address (for example, www.frogflow.tech). Without it the Telegram button shows “Bot domain invalid”. Works together with website checkout.",
   "settings.shop.webCheckoutHint":
     "Buyers pay for digital goods right on the storefront using the country payment details and upload a receipt; materials open on the order page.",
   "settings.pay.title": "Payment methods by country",
@@ -843,6 +852,9 @@ export const uz: SectionDict<typeof ru> = {
   "settings.shop.accentHint":
     "/s/… vitrinasidagi tugmalar va aksentlar; belgi olib tashlansa — platforma rangi.",
   "settings.shop.webCheckout": "Saytda buyurtma rasmiylashtirish",
+  "settings.shop.tgLogin": "Vitrinada xaridorlarning Telegram orqali kirishi",
+  "settings.shop.tgLoginHint":
+    "Saytdagi va botdagi buyurtmalar xaridorning bitta kartochkasida bo‘ladi. Avval @BotFather’ga /setdomain yuboring, do‘kon botini tanlang va vitrina manzilini kiriting (masalan, www.frogflow.tech). Busiz Telegram tugmasi «Bot domain invalid» xatosini ko‘rsatadi. Saytda rasmiylashtirish bilan birga ishlaydi.",
   "settings.shop.webCheckoutHint":
     "Xaridor raqamli tovarlarni vitrinada mamlakat rekvizitlari bo‘yicha to‘laydi va chekni yuklaydi; materiallar buyurtma sahifasida ochiladi.",
   "settings.pay.title": "Mamlakatlar bo‘yicha to‘lov usullari",

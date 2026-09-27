@@ -5,6 +5,7 @@ import { CHALLENGE_MIN_FILL_MS, solveChallenge } from "@/app/signup/challenge-so
 import { useCart } from "@/app/storefront/cart";
 import { rememberOrderToken } from "@/app/storefront/order-token";
 import { useStorefrontLocale } from "@/app/storefront/locale";
+import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
 import { formatMoney } from "@/core/money/money";
 import { Empty, ErrorBox, Field, useAction } from "@/app/ui";
 
@@ -19,6 +20,8 @@ function CheckoutPage() {
   const info = Route.useLoaderData();
   const { t } = useStorefrontLocale();
   const cart = useCart();
+  // Вошёл через Telegram — заказ попадёт к тому же покупателю, что и в боте.
+  const login = useTgLogin(slug);
   const navigate = useNavigate();
   const physical = cart.lines.some((l) => l.kind === "physical");
   const ff = info.enabled ? info.fulfillment : null;
@@ -82,6 +85,9 @@ function CheckoutPage() {
   return (
     <div className="mx-auto max-w-xl">
       <h1 className="mb-4 text-xl font-semibold">{t("checkout.title")}</h1>
+      <div className="mb-4">
+        <TgLoginBox login={login} />
+      </div>
       <ul className="mb-4 divide-y divide-line text-sm">
         {cart.lines.map((l) => (
           <li key={`${l.productId}:${l.variantId}`} className="flex justify-between gap-3 py-2">

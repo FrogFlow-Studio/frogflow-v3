@@ -39,6 +39,9 @@ export const WEB_BUDGETS = {
   order: { limit: 30, windowMs: 60_000 },
   proof: { limit: 5, windowMs: 10 * 60_000 },
   card: { limit: 10, windowMs: 10 * 60_000 },
+  /** Вход через Telegram: с одного адреса и в «Мои заказы» на сайте. */
+  tgLogin: { limit: 10, windowMs: 10 * 60_000 },
+  myOrders: { limit: 30, windowMs: 60_000 },
 } as const satisfies Record<string, Budget>;
 
 export function webSubject(who: string): string {

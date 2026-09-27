@@ -1,6 +1,12 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getCustomer, setEmail, upsertCustomer, type Customer } from "@/core/customers/customers";
+import {
+  getCustomer,
+  setEmail,
+  upsertCustomer,
+  userKey,
+  type Customer,
+} from "@/core/customers/customers";
 import { clearCart, listCart } from "@/core/cart/cart";
 import { getSetting } from "@/core/settings/settings";
 import { importItems, type HandoffItem } from "./handoff";
@@ -83,6 +89,25 @@ export async function webCustomer(
 }
 
 /**
+ * Покупатель вошёл на витрину через Telegram: заказ с сайта ложится на того
+ * же покупателя, что и в боте (telegram_id и user_key из бота), поэтому в
+ * карточке продавца и в «Моих заказах» заказы бота и сайта вместе. Канал
+ * заказа остаётся `web`: страница заказа, оплата, письмо и срок неоплаченного
+ * работают как у любого заказа с сайта. Почта — его собственная: он вошёл.
+ * Нет такого покупателя в боте — null, оформление идёт по почте.
+ */
+export async function telegramWebCustomer(
+  ctx: TenantContext,
+  telegramId: number,
+  email: string,
+): Promise<Customer | null> {
+  const c = await getCustomer(ctx, userKey("telegram", telegramId));
+  if (!c || c.platform !== "telegram" || c.telegramId !== telegramId) return null;
+  const withEmail = c.email === email ? c : await setEmail(ctx, c, email);
+  return { ...withEmail, platform: "web" };
+}
+
+/**
  * Подпись ссылки на страницу заказа. Номер заказа сквозной и угадывается,
  * поэтому без подписи чужой заказ не открыть; секрет — платформенный.
  */
@@ -134,6 +159,56 @@ export async function placeWebOrder(
 ): Promise<WebPlaceResult> {
   if (items.some((it) => Number(it.quantity) > WEB_MAX_QTY))
     return { ok: false, reason: "too_many" };
+  // Покупатель из бота (вошёл через Telegram): его корзина в боте — не
+  // корзина сайта. Откладываем её и возвращаем после оформления.
+  const botCart = customer.userKey.startsWith("web_") ? null : await takeBotCart(ctx, customer);
+  try {
+    return await placeFromCart(ctx, customer, items, countryCode, opts);
+  } finally {
+    if (botCart) await restoreBotCart(ctx, customer, botCart);
+  }
+}
+
+type CartRow = { product_id: string; product_variant_id: string | null; quantity: number };
+
+async function takeBotCart(ctx: TenantContext, customer: Customer): Promise<CartRow[]> {
+  const { data, error } = await ctx.db
+    .from("cart_items")
+    .select("product_id, product_variant_id, quantity")
+    .eq("telegram_id", customer.telegramId)
+    .order("created_at")
+    .order("id");
+  if (error) throw new Error(`cart: ${error.message}`);
+  return data ?? [];
+}
+
+async function restoreBotCart(
+  ctx: TenantContext,
+  customer: Customer,
+  rows: CartRow[],
+): Promise<void> {
+  await clearCart(ctx, customer);
+  if (rows.length === 0) return;
+  const { error } = await ctx.db.from("cart_items").insert(
+    rows.map((r) => ({
+      bot_id: ctx.tenant.id,
+      telegram_id: customer.telegramId,
+      user_key: customer.userKey,
+      product_id: r.product_id,
+      product_variant_id: r.product_variant_id,
+      quantity: r.quantity,
+    })),
+  );
+  if (error) console.error(`[web-order:${ctx.tenant.id}] корзина бота не вернулась`, error.message);
+}
+
+async function placeFromCart(
+  ctx: TenantContext,
+  customer: Customer,
+  items: HandoffItem[],
+  countryCode: string,
+  opts: Parameters<typeof placeWebOrder>[4] = {},
+): Promise<WebPlaceResult> {
   await clearCart(ctx, customer);
   if ((await importItems(ctx, customer, items)) === 0)
     return { ok: false, reason: "nothing_imported" };
