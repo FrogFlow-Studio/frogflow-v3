@@ -8,15 +8,33 @@ export const Route = createFileRoute("/operator/login")({ component: LoginPage }
 function LoginPage() {
   const navigate = useNavigate();
   const [wrong, setWrong] = useState(false);
-  const { run, busy, error } = useAction(async (username: string, password: string) => {
-    const r = await operatorLogin({ data: { username, password } });
-    if (!r.ok) return setWrong(true);
-    await navigate({ to: "/operator" });
-  });
+  // Двухшаговый вход: после верного пароля — поле для кода.
+  const [needCode, setNeedCode] = useState(false);
+  const [badCode, setBadCode] = useState(false);
+  const { run, busy, error } = useAction(
+    async (username: string, password: string, code: string) => {
+      setWrong(false);
+      setBadCode(false);
+      const r = await operatorLogin({ data: { username, password, code: code || undefined } });
+      if (!r.ok) {
+        if ("needCode" in r && r.needCode) {
+          setNeedCode(true);
+          setBadCode(r.badCode);
+          return;
+        }
+        return setWrong(true);
+      }
+      await navigate({ to: "/operator" });
+    },
+  );
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    void run(String(f.get("username")), String(f.get("password"))).catch(() => {});
+    void run(
+      String(f.get("username")),
+      String(f.get("password")),
+      String(f.get("code") ?? "").trim(),
+    ).catch(() => {});
   };
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
@@ -35,7 +53,16 @@ function LoginPage() {
             required
           />
         </Field>
+        {needCode && (
+          <Field
+            label="Код из приложения"
+            hint="6 цифр из приложения-аутентификатора или резервный код"
+          >
+            <input className="input" name="code" autoComplete="one-time-code" autoFocus required />
+          </Field>
+        )}
         {wrong && <p className="text-sm text-danger">Неверный логин или пароль.</p>}
+        {badCode && <p className="text-sm text-danger">Код не подошёл. Введите новый код.</p>}
         <ErrorBox error={error} />
         <button className="btn-primary w-full" disabled={busy}>
           Войти

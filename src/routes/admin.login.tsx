@@ -46,6 +46,8 @@ function LoginPage() {
     setWrong(false);
     const r = await adminLogin({ data: { username, password } });
     if (!r.ok) return setWrong(true);
+    if (r.role === "operator" && "needCode" in r && r.needCode)
+      return navigate({ to: "/operator/login" });
     await navigate({ to: r.role === "operator" ? "/operator" : "/admin" });
   });
   return (

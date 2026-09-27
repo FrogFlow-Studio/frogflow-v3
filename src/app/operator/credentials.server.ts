@@ -11,12 +11,22 @@ import { timingSafeSecretEqual } from "@/channels/telegram/secret";
  */
 const KEY_USER = "operator_username";
 const KEY_HASH = "operator_password_hash";
+/** Секрет двухшагового входа (two-factor.server.ts) — часть отпечатка сессии. */
+const TOTP_SECRET = "operator_totp_secret";
+/**
+ * Эпоха сессий оператора: случайная строка, новая при каждом включении и
+ * выключении двухшагового входа. Без неё отпечаток после выключения снова
+ * совпал бы с тем, что был до включения, и украденная тогда cookie ожила бы.
+ * Пока строки нет (до первого включения), отпечаток прежний — деплой никого
+ * не выкидывает. При восстановлении доступа (docs/OPERATOR-2FA.md) не удаляется.
+ */
+export const SESSION_EPOCH = "operator_session_epoch";
 
 async function readSettings(): Promise<Record<string, string>> {
   const { data } = await serviceDb()
     .from("operator_settings")
     .select("key, value")
-    .in("key", [KEY_USER, KEY_HASH]);
+    .in("key", [KEY_USER, KEY_HASH, TOTP_SECRET, SESSION_EPOCH]);
   const out: Record<string, string> = {};
   for (const r of data ?? []) if (r.value) out[r.key] = r.value;
   return out;
@@ -63,10 +73,13 @@ export async function verifyOperator(username: string, password: string): Promis
 export async function operatorStamp(): Promise<string | null> {
   const { credentialStamp } = await import("@/app/auth/session.server");
   const s = await readSettings();
-  if (s[KEY_USER] && s[KEY_HASH]) return credentialStamp("db", s[KEY_USER], s[KEY_HASH]);
+  // Включение и выключение двухшагового входа гасит прежние сессии, как смена
+  // пароля: меняется эпоха (SESSION_EPOCH). Обе части — только если строки есть.
+  const extra = [s[SESSION_EPOCH], s[TOTP_SECRET]].filter((v): v is string => Boolean(v));
+  if (s[KEY_USER] && s[KEY_HASH]) return credentialStamp("db", s[KEY_USER], s[KEY_HASH], ...extra);
   const e = env();
   if (e.OPERATOR_USERNAME && e.OPERATOR_PASSWORD)
-    return credentialStamp("env", e.OPERATOR_USERNAME, e.OPERATOR_PASSWORD);
+    return credentialStamp("env", e.OPERATOR_USERNAME, e.OPERATOR_PASSWORD, ...extra);
   return null;
 }
 
@@ -77,6 +90,12 @@ async function upsert(key: string, value: string): Promise<void> {
     ? await db.from("operator_settings").update({ value }).eq("key", key)
     : await db.from("operator_settings").insert({ key, value });
   if (error) throw new Error(error.message);
+}
+
+/** Новая эпоха: все выданные ранее сессии оператора перестают действовать. */
+export async function rotateOperatorSessions(): Promise<void> {
+  const { randomBytes } = await import("node:crypto");
+  await upsert(SESSION_EPOCH, randomBytes(16).toString("base64url"));
 }
 
 export async function setOperatorCredentials(username: string, password: string): Promise<void> {

@@ -1,20 +1,30 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import {
   operatorCredentialsFn,
   payoutRequisitesFn,
   sendTestErrorFn,
   setOperatorCredentialsFn,
   setPayoutRequisitesFn,
+  twoFactorStatusFn,
+  startTwoFactorFn,
+  confirmTwoFactorFn,
+  disableTwoFactorFn,
+  regenerateBackupCodesFn,
 } from "@/app/operator/operator.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { shownError } from "@/lib/shown-error";
 
 export const Route = createFileRoute("/operator/_authed/settings")({
   loader: async () => {
-    const [cred, payout] = await Promise.all([operatorCredentialsFn(), payoutRequisitesFn()]);
+    const [cred, payout, twoFactor] = await Promise.all([
+      operatorCredentialsFn(),
+      payoutRequisitesFn(),
+      twoFactorStatusFn(),
+    ]);
     return {
       ...cred,
+      twoFactor,
       requisites: payout.requisites,
       recipient: payout.recipient,
       kaspiLink: payout.kaspiLink,
@@ -50,6 +60,7 @@ function SettingsPage() {
           kaspiLink={cred.kaspiLink}
         />
         <ErrorTrackingCard />
+        <TwoFactorCard status={cred.twoFactor} />
         <Card title="Учётка оператора">
           <p className="mb-3 text-sm text-muted">
             Логин и пароль хранятся в базе, а не в переменных деплоя. Ими вы входите с главной
@@ -254,6 +265,161 @@ function ErrorTrackingCard() {
           ))}
       </div>
       <ErrorBox error={test.error} />
+    </Card>
+  );
+}
+
+/**
+ * Двухшаговый вход: код из приложения после пароля. Включается только
+ * верным кодом из приложения; резервные коды показываются один раз.
+ */
+function TwoFactorCard({ status }: { status: { enabled: boolean; backupLeft: number } }) {
+  const router = useRouter();
+  const [setup, setSetup] = useState<{ secret: string; qrSvg: string } | null>(null);
+  const [codes, setCodes] = useState<string[] | null>(null);
+  const start = useAction(async () => {
+    setCodes(null);
+    setSetup(await startTwoFactorFn());
+  });
+  const confirm = useAction(async (code: string) => {
+    const r = await confirmTwoFactorFn({ data: { code } });
+    setSetup(null);
+    setCodes(r.backupCodes);
+    await router.invalidate();
+  });
+  const disable = useAction(async (code: string) => {
+    await disableTwoFactorFn({ data: { code } });
+    setCodes(null);
+    await router.invalidate();
+  });
+  const regen = useAction(async (code: string) => {
+    setCodes((await regenerateBackupCodesFn({ data: { code } })).backupCodes);
+    await router.invalidate();
+  });
+  const codeForm =
+    (act: { run: (code: string) => Promise<unknown> }) => (e: FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      const form = e.currentTarget;
+      void act
+        .run(String(new FormData(form).get("code") ?? "").trim())
+        .then(() => form.reset())
+        .catch(() => {});
+    };
+  return (
+    <Card title="Двухшаговый вход">
+      <p className="mb-3 text-sm text-muted">
+        После пароля панель спросит код из приложения-аутентификатора на телефоне (Google
+        Authenticator, Microsoft Authenticator и подобные). Украденного пароля тогда мало.
+      </p>
+      <p className="mb-4 text-sm">
+        Сейчас:{" "}
+        {status.enabled ? (
+          <>
+            <Badge tone="ok">включён</Badge>{" "}
+            <span className="text-muted">резервных кодов осталось: {status.backupLeft}</span>
+          </>
+        ) : (
+          <Badge>выключен</Badge>
+        )}
+      </p>
+
+      {codes && (
+        <div className="mb-4 rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm">
+          <p className="mb-2 font-medium">
+            Резервные коды — сохраните их сейчас, больше они не покажутся.
+          </p>
+          <p className="mb-2 text-xs">
+            Каждый код срабатывает один раз вместо кода из приложения, если телефон потерян.
+          </p>
+          <ul className="grid grid-cols-2 gap-1 font-mono">
+            {codes.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {!status.enabled && !setup && (
+        <>
+          <button
+            className="btn-primary"
+            disabled={start.busy}
+            onClick={() => void start.run().catch(() => {})}
+          >
+            Включить
+          </button>
+          <ErrorBox error={start.error} />
+        </>
+      )}
+
+      {!status.enabled && setup && (
+        <form className="space-y-3" onSubmit={codeForm(confirm)}>
+          <p className="text-sm">
+            1. Отсканируйте QR-код приложением-аутентификатором или введите ключ вручную.
+          </p>
+          <div
+            className="w-44 rounded-md bg-white p-2"
+            // SVG строим на сервере из ссылки otpauth (qrcode-generator), без внешних данных.
+            dangerouslySetInnerHTML={{ __html: setup.qrSvg }}
+          />
+          <p className="break-all font-mono text-xs">
+            {setup.secret.replace(/(.{4})/g, "$1 ").trim()}
+          </p>
+          <Field label="2. Код из приложения" hint="Защита включится только после верного кода">
+            <input
+              className="input"
+              name="code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              required
+            />
+          </Field>
+          <div className="flex gap-2">
+            <button className="btn-primary" disabled={confirm.busy}>
+              Подтвердить и включить
+            </button>
+            <button type="button" className="btn-ghost" onClick={() => setSetup(null)}>
+              Отмена
+            </button>
+          </div>
+          <ErrorBox error={confirm.error} />
+        </form>
+      )}
+
+      {status.enabled && (
+        <div className="space-y-4">
+          <form className="space-y-2" onSubmit={codeForm(regen)}>
+            <Field label="Новые резервные коды" hint="Старые перестанут работать">
+              <input
+                className="input"
+                name="code"
+                placeholder="Код из приложения"
+                autoComplete="one-time-code"
+                required
+              />
+            </Field>
+            <button className="btn-secondary" disabled={regen.busy}>
+              Выпустить новые коды
+            </button>
+            <ErrorBox error={regen.error} />
+          </form>
+          <form className="space-y-2" onSubmit={codeForm(disable)}>
+            <Field label="Выключить двухшаговый вход" hint="Код из приложения или резервный код">
+              <input
+                className="input"
+                name="code"
+                placeholder="Код"
+                autoComplete="one-time-code"
+                required
+              />
+            </Field>
+            <button className="btn-ghost" disabled={disable.busy}>
+              Выключить
+            </button>
+            <ErrorBox error={disable.error} />
+          </form>
+        </div>
+      )}
     </Card>
   );
 }

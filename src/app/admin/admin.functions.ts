@@ -48,9 +48,17 @@ export const adminLogin = createServerFn({ method: "POST" })
           },
         });
         if (route !== "shop") {
-          const ok = route === "operator";
-          await recordLogin("operator", ip, ok, data.username);
-          if (!ok) return { ok: false as const };
+          if (route !== "operator") {
+            await recordLogin("operator", ip, false, data.username);
+            return { ok: false as const };
+          }
+          // С двухшаговым входом сессию выдаёт только страница входа оператора,
+          // где спрашивают код; здесь — лишь отправляем туда. Вход ещё не
+          // состоялся, поэтому и удачным он не записывается.
+          const { twoFactorStatus } = await import("@/app/operator/two-factor.server");
+          if ((await twoFactorStatus()).enabled)
+            return { ok: true as const, role: "operator" as const, needCode: true as const };
+          await recordLogin("operator", ip, true, data.username);
           await (
             await appSession()
           ).update({

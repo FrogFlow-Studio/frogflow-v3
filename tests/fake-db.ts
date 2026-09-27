@@ -292,7 +292,8 @@ class Query implements PromiseLike<Result> {
     }
     if (this.op === "delete") {
       this.db.tables[this.table] = this.rows().filter((r) => !hit.includes(r));
-      return { data: null, error: null };
+      // .delete().select() отдаёт удалённые строки, как Prefer: return=representation.
+      return this.returning ? this.shape(hit) : { data: null, error: null };
     }
     if (this.headCount) return { data: null, error: null, count: hit.length };
     return this.shape(hit.slice(0, this.db.maxRows));

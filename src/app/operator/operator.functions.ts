@@ -23,7 +23,13 @@ const vertical = z.enum(VERTICAL_KEYS as [string, ...string[]]);
 
 export const operatorLogin = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
-    z.object({ username: z.string().min(1), password: z.string().min(1) }).parse(d),
+    z
+      .object({
+        username: z.string().min(1),
+        password: z.string().min(1),
+        code: z.string().max(40).optional(),
+      })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const { appSession } = await import("@/app/auth/session.server");
@@ -35,8 +41,19 @@ export const operatorLogin = createServerFn({ method: "POST" })
       throw new Error("Слишком много неудачных попыток. Попробуйте через 15 минут.");
     await loginDelay();
     const ok = await verifyOperator(data.username, data.password);
-    await recordLogin("operator", ip, ok, data.username);
-    if (!ok) return { ok: false as const };
+    if (!ok) {
+      await recordLogin("operator", ip, false, data.username);
+      return { ok: false as const };
+    }
+    // Двухшаговый вход: без кода сессии нет. Пустой код — не попытка, а
+    // вопрос «нужен ли код»; неверный — неудача, копится в замок входа.
+    const { verifySecondFactor } = await import("./two-factor.server");
+    if (!(await verifySecondFactor(data.code))) {
+      const tried = Boolean(data.code?.trim());
+      if (tried) await recordLogin("operator", ip, false, data.username);
+      return { ok: false as const, needCode: true as const, badCode: tried };
+    }
+    await recordLogin("operator", ip, true, data.username);
     const s = await appSession();
     const { operatorSessionMark } = await import("@/app/auth/session-id");
     await s.update({
@@ -781,4 +798,72 @@ export const unlinkShopFn = createServerFn({ method: "POST" })
     await guard();
     await (await impl()).unlinkShop(data.botId, await actor());
     return { ok: true };
+  });
+
+/* ── двухшаговый вход оператора (two-factor.server.ts) ────────────── */
+
+const twoFactor = () => import("./two-factor.server");
+/** Включение и выключение меняют отпечаток: прочие сессии гаснут, эта остаётся. */
+const keepThisSession = async () => {
+  const { appSession } = await import("@/app/auth/session.server");
+  const { operatorStamp } = await import("./credentials.server");
+  await (await appSession()).update({ operatorStamp: (await operatorStamp()) ?? undefined });
+};
+const otpCode = z.string().trim().min(6).max(40);
+
+export const twoFactorStatusFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await twoFactor()).twoFactorStatus();
+});
+
+export const startTwoFactorFn = createServerFn({ method: "POST" }).handler(async () => {
+  await guard();
+  return (await twoFactor()).startTwoFactorSetup(await actor());
+});
+
+export const confirmTwoFactorFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ code: otpCode }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    const codes = await (await twoFactor()).confirmTwoFactorSetup(data.code);
+    await keepThisSession();
+    return { backupCodes: codes };
+  });
+
+/**
+ * Действие по коду второго шага из настроек: неверный код — такая же
+ * неудача входа, как на странице входа, и копится в общий замок.
+ */
+async function withSecondFactor<T>(run: () => Promise<T>): Promise<T> {
+  const { clientIp, loginLocked, recordLogin } = await import("@/app/auth/login-guard.server");
+  const ip = clientIp();
+  if (await loginLocked("operator", ip))
+    throw new Error("Слишком много неудачных попыток. Попробуйте через 15 минут.");
+  try {
+    return await run();
+  } catch (e) {
+    if (e instanceof (await twoFactor()).BadSecondFactor)
+      await recordLogin("operator", ip, false, await actor());
+    throw e;
+  }
+}
+
+export const disableTwoFactorFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ code: otpCode }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    await withSecondFactor(async () => (await twoFactor()).disableTwoFactor(data.code));
+    await keepThisSession();
+    return { ok: true };
+  });
+
+export const regenerateBackupCodesFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ code: otpCode }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return {
+      backupCodes: await withSecondFactor(async () =>
+        (await twoFactor()).regenerateBackupCodes(data.code),
+      ),
+    };
   });
