@@ -41,6 +41,7 @@ import {
   findValidGift,
   findValidPromoCode,
   loyaltyBalance,
+  loyaltyMaxRedeemPercent,
   redeemGift,
   redeemPoints,
   redeemPromoCode,
@@ -188,9 +189,11 @@ export async function cartSummary(
   const gift = giftCode ? await findValidGift(ctx, giftCode) : null;
   const balance = m.loyalty ? await loyaltyBalance(ctx, customer.telegramId) : 0;
   const usePoints = Boolean(m.loyalty && opts.usePoints && balance > 0);
+  const pointsMaxPercent = usePoints ? await loyaltyMaxRedeemPercent(ctx) : 100;
   const r = applyDiscounts(priced.total, {
     promo: promo?.ok ? promo.promo : null,
     points: usePoints ? balance : 0,
+    pointsMaxPercent,
     gift: gift?.ok ? gift.certificate.amount : null,
   });
   return {

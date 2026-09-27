@@ -106,7 +106,10 @@ function SettingsPage() {
           ? { delivery_email_note: String(f.get("delivery_email_note") ?? "") }
           : {}),
         ...(shop.modules.loyalty
-          ? { loyalty_earn_percent: String(f.get("loyalty_earn_percent") || "5") }
+          ? {
+              loyalty_earn_percent: String(f.get("loyalty_earn_percent") || "5"),
+              loyalty_max_redeem_percent: String(f.get("loyalty_max_redeem_percent") || "100"),
+            }
           : {}),
         ...(shop.modules.multi_language
           ? { delivery_lang_timing: String(f.get("delivery_lang_timing") || "during") }
@@ -237,6 +240,21 @@ function SettingsPage() {
                   min={1}
                   max={100}
                   defaultValue={settings.loyalty_earn_percent ?? "5"}
+                />
+              </Field>
+            )}
+            {shop.modules.loyalty && (
+              <Field
+                label={t("settings.shop.loyaltyMaxRedeem")}
+                hint={t("settings.shop.loyaltyMaxRedeemHint")}
+              >
+                <input
+                  className="input w-32"
+                  name="loyalty_max_redeem_percent"
+                  type="number"
+                  min={0}
+                  max={100}
+                  defaultValue={settings.loyalty_max_redeem_percent ?? "100"}
                 />
               </Field>
             )}

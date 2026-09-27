@@ -17,6 +17,9 @@ export const ru = {
   "settings.shop.loyaltyPercent": "Баллы за покупку, % от суммы заказа",
   "settings.shop.loyaltyHint":
     "Начисляются после выдачи; 1 балл = 1 единица валюты при оплате следующего заказа.",
+  "settings.shop.loyaltyMaxRedeem": "Списывать баллами не больше, % суммы заказа",
+  "settings.shop.loyaltyMaxRedeemHint":
+    "100 — баллами можно оплатить весь заказ. Остаток покупатель платит как обычно; чек и Robokassa сверяют сумму уже после списания.",
   "settings.shop.langTiming": "Язык материалов",
   "settings.shop.langTimingHint":
     "До оформления покупатель может взять «все языки» — позиция стоит ×N по числу языков товара. При выдаче Telegram спрашивает язык кнопкой на каждую позицию, Instagram и WhatsApp получают все языки.",
@@ -284,6 +287,9 @@ export const kk: SectionDict<typeof ru> = {
   "settings.shop.loyaltyPercent": "Сатып алу үшін ұпай, тапсырыс сомасының %-ы",
   "settings.shop.loyaltyHint":
     "Беруден кейін есептеледі; 1 ұпай = келесі тапсырысты төлегенде 1 валюта бірлігі.",
+  "settings.shop.loyaltyMaxRedeem": "Ұпаймен ең көбі, тапсырыс сомасының %-ы",
+  "settings.shop.loyaltyMaxRedeemHint":
+    "100 — бүкіл тапсырысты ұпаймен төлеуге болады. Қалғанын сатып алушы әдеттегідей төлейді; чек пен Robokassa соманы ұпай шегерілгеннен кейін тексереді.",
   "settings.shop.langTiming": "Материалдар тілі",
   "settings.shop.langTimingHint":
     "Рәсімдеуге дейін сатып алушы «барлық тілдерді» ала алады — позиция тауар тілдерінің санына қарай ×N тұрады. Беру кезінде Telegram әр позиция үшін тілді түймемен сұрайды, Instagram мен WhatsApp барлық тілдерді алады.",
@@ -545,6 +551,9 @@ export const en: SectionDict<typeof ru> = {
   "settings.shop.loyaltyPercent": "Points per purchase, % of order total",
   "settings.shop.loyaltyHint":
     "Credited after delivery; 1 point = 1 currency unit when paying for the next order.",
+  "settings.shop.loyaltyMaxRedeem": "Pay with points at most, % of order total",
+  "settings.shop.loyaltyMaxRedeemHint":
+    "100 means points can cover the whole order. The buyer pays the rest as usual; receipts and Robokassa check the amount after points.",
   "settings.shop.langTiming": "Material language",
   "settings.shop.langTimingHint":
     "Before checkout the customer can take “all languages” — the item costs ×N by the number of product languages. On delivery Telegram asks the language with a button per item; Instagram and WhatsApp receive all languages.",
@@ -804,6 +813,9 @@ export const uz: SectionDict<typeof ru> = {
   "settings.shop.loyaltyPercent": "Xarid uchun ballar, buyurtma summasining %",
   "settings.shop.loyaltyHint":
     "Topshirilgandan keyin hisoblanadi; 1 ball = keyingi buyurtmani to‘lashda 1 valyuta birligi.",
+  "settings.shop.loyaltyMaxRedeem": "Ballar bilan ko‘pi bilan, buyurtma summasining %",
+  "settings.shop.loyaltyMaxRedeemHint":
+    "100 — butun buyurtmani ballar bilan to‘lash mumkin. Qolganini xaridor odatdagidek to‘laydi; chek va Robokassa summani ballar yechilgandan keyin tekshiradi.",
   "settings.shop.langTiming": "Materiallar tili",
   "settings.shop.langTimingHint":
     "Rasmiylashtirishdan oldin xaridor «barcha tillar»ni olishi mumkin — pozitsiya mahsulot tillari soniga ko‘ra ×N turadi. Topshirishda Telegram har bir pozitsiya uchun tilni tugma bilan so‘raydi, Instagram va WhatsApp barcha tillarni oladi.",

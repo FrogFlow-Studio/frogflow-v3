@@ -303,7 +303,7 @@ export const MODULES = {
     group: "Удержание",
     price: 14000,
     status: "available",
-    note: "Баллы за покупки (% от суммы после выдачи), списание баллами в корзине при следующем заказе.",
+    note: "Баллы в bot_users.loyalty_points (CAS). Начисление после выдачи — цифровой (deliverOrder) и физический («выдан»), идемпотентно по orders.points_earned. Списание в корзине, потолок loyalty_max_redeem_percent; итог заказа уже после баллов — чек и Robokassa сверяют его.",
   },
   referral: {
     title: "Реферальная программа",

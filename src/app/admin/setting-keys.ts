@@ -15,6 +15,7 @@ export const SETTING_KEYS = [
   "cart_reminder_hours",
   "delivery_lang_timing",
   "loyalty_earn_percent",
+  "loyalty_max_redeem_percent",
   "referral_discount_percent",
   "smart_search_enabled",
   "smart_search_daily_count",

@@ -3,6 +3,8 @@ import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { cartSummary, placeOrder } from "@/core/orders/orders";
+import { setPhysicalStatus } from "@/core/orders/admin";
+import { parseMaxRedeemPercent } from "./discounts";
 
 /**
  * Баллы лояльности списываются только с согласия покупателя
@@ -88,5 +90,60 @@ describe("баллы лояльности при оформлении", () => {
     expect(r.ok).toBe(true);
     expect(db.tables.orders?.[0]).toMatchObject({ total: 400, points_used: 100 });
     expect(db.tables.bot_users?.[0]?.loyalty_points).toBe(0);
+  });
+});
+
+describe("потолок списания баллами (loyalty_max_redeem_percent)", () => {
+  it("на балансе 400, потолок 20 % — списано 100, к оплате 400, остаток 300", async () => {
+    const { db, ctx, customer } = setup();
+    db.tables.bot_users![0]!.loyalty_points = 400;
+    db.tables.app_settings = [{ key: "loyalty_max_redeem_percent", value: "20" }];
+    const summary = await cartSummary(
+      ctx,
+      customer,
+      { total: 500, currency: "KZT" },
+      { usePoints: true },
+    );
+    expect(summary.points).toEqual({ balance: 400, discount: 100, used: true });
+    expect(summary.total).toBe(400);
+
+    const r = await placeOrder(ctx, customer, "KZ", { usePoints: true });
+    expect(r.ok && r.amountDue).toBe(400);
+    expect(db.tables.orders?.[0]).toMatchObject({ total: 400, points_used: 100 });
+    expect(db.tables.bot_users?.[0]?.loyalty_points).toBe(300);
+  });
+
+  it("неверное значение — как не задано: вся сумма, как в v1", () => {
+    expect(parseMaxRedeemPercent(null)).toBe(100);
+    expect(parseMaxRedeemPercent("")).toBe(100);
+    expect(parseMaxRedeemPercent("abc")).toBe(100);
+    expect(parseMaxRedeemPercent("150")).toBe(100);
+    expect(parseMaxRedeemPercent("0")).toBe(0);
+    expect(parseMaxRedeemPercent("33.7")).toBe(33);
+  });
+});
+
+describe("баллы за выданный физический заказ", () => {
+  it("физический заказ выдан — баллы за сумму после списания, повторно не начисляются", async () => {
+    const { db, ctx } = setup();
+    db.tables.app_settings = [{ key: "loyalty_earn_percent", value: "10" }];
+    db.tables.orders = [{ id: 5, telegram_id: TG, total: 400, points_earned: 0, status: "ready" }];
+    expect(await setPhysicalStatus(ctx, 5, "ready", "delivered")).toBe(true);
+    expect(db.tables.bot_users?.[0]?.loyalty_points).toBe(140);
+    db.tables.orders[0]!.status = "ready";
+    await setPhysicalStatus(ctx, 5, "ready", "delivered");
+    expect(db.tables.bot_users?.[0]?.loyalty_points).toBe(140);
+    // Шаг назад по статусам баллов не даёт.
+    db.tables.orders[0]!.status = "in_production";
+    await setPhysicalStatus(ctx, 5, "in_production", "ready");
+    expect(db.tables.bot_users?.[0]?.loyalty_points).toBe(140);
+  });
+
+  it("без модуля лояльности выдача баллов не начисляет", async () => {
+    const { db, ctx } = setup();
+    (ctx.tenant.modules as Record<string, boolean>).loyalty = false;
+    db.tables.orders = [{ id: 6, telegram_id: TG, total: 400, points_earned: 0, status: "ready" }];
+    await setPhysicalStatus(ctx, 6, "ready", "delivered");
+    expect(db.tables.bot_users?.[0]?.loyalty_points).toBe(100);
   });
 });

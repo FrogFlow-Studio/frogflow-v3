@@ -109,6 +109,19 @@ export async function loyaltyEarnPercent(ctx: TenantContext): Promise<number> {
   return Number.isFinite(n) && n > 0 && n <= 100 ? n : 5;
 }
 
+/** Потолок списания баллами, % суммы заказа; не задан — 100 (как в v1). */
+export const LOYALTY_MAX_REDEEM_KEY = "loyalty_max_redeem_percent";
+
+export function parseMaxRedeemPercent(raw: string | null | undefined): number {
+  if (raw == null || String(raw).trim() === "") return 100;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 && n <= 100 ? Math.floor(n) : 100;
+}
+
+export async function loyaltyMaxRedeemPercent(ctx: TenantContext): Promise<number> {
+  return parseMaxRedeemPercent(await getSetting(ctx, LOYALTY_MAX_REDEEM_KEY));
+}
+
 export async function loyaltyBalance(ctx: TenantContext, telegramId: number): Promise<number> {
   const { data } = await ctx.db
     .from("bot_users")
@@ -149,8 +162,11 @@ export async function redeemPoints(
   telegramId: number,
   subtotal: number,
 ): Promise<number> {
-  const balance = await loyaltyBalance(ctx, telegramId);
-  const discount = computePointsDiscount(subtotal, balance);
+  const [balance, maxPercent] = await Promise.all([
+    loyaltyBalance(ctx, telegramId),
+    loyaltyMaxRedeemPercent(ctx),
+  ]);
+  const discount = computePointsDiscount(subtotal, balance, maxPercent);
   if (discount <= 0) return 0;
   return (await adjustPoints(ctx, telegramId, -discount)) ? discount : 0;
 }

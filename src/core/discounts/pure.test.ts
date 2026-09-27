@@ -23,6 +23,12 @@ describe("discounts", () => {
     expect(computeGiftDiscount(1500, 1000)).toBe(1000);
     expect(computePointsDiscount(500, 120.7)).toBe(120);
     expect(computePointsDiscount(50, 120)).toBe(50);
+    // Потолок продавца: не больше 30 % суммы, дробь вниз.
+    expect(computePointsDiscount(1000, 500, 30)).toBe(300);
+    expect(computePointsDiscount(999, 500, 30)).toBe(299);
+    expect(computePointsDiscount(1000, 100, 30)).toBe(100);
+    expect(computePointsDiscount(1000, 500, 0)).toBe(0);
+    expect(computePointsDiscount(1000, 5000, 250)).toBe(1000);
     expect(computePointsEarned(1999, 5)).toBe(99);
   });
 
