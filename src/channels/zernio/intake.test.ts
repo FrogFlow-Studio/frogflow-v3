@@ -4,7 +4,13 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
 import { findZernioTenant } from "@/core/tenant/directory";
 import { intakeZernioEvent, type IntakeDeps } from "./intake.server";
-import { claimZernioEvent, retryStuckEvents, type DispatchOutcome } from "./dispatch.server";
+import {
+  claimZernioEvent,
+  markZernioEventSending,
+  retryStuckEvents,
+  type DispatchOutcome,
+} from "./dispatch.server";
+import { beforeExternalEffect } from "@/lib/external-effects";
 import type { ZernioWebhookMessagePayload } from "./message";
 
 /**
@@ -34,7 +40,7 @@ function setup(directory: Tenant[] = [SHOP, OTHER, V1]) {
     background: async (task) => {
       queued.push(task);
     },
-    claim: (ctx, id) => claimZernioEvent(ctx, id),
+    claim: (ctx, id) => claimZernioEvent(ctx, id, new Date(), "webhook"),
     dispatch: async (ctx, eventId): Promise<DispatchOutcome> => {
       dispatched.push({ eventId, tenant: ctx.tenant.id });
       return { status: "processed", note: "ок" };
@@ -45,6 +51,7 @@ function setup(directory: Tenant[] = [SHOP, OTHER, V1]) {
         .update({ status: r.status, error_message: r.note })
         .eq("event_id", eventId);
     },
+    markSending: (ctx, id) => markZernioEventSending(ctx, id),
     resync: async (t) => {
       resynced.push(t.id);
       return tenant(t.id, { profile_id: "prof-1", account_ids: ["acc-old", "acc-new"] });
@@ -125,6 +132,59 @@ describe("приём вебхука Zernio", () => {
       expect((await intakeZernioEvent(e, s.deps)).status).toBe(202);
     expect(s.db.tables.zernio_logs).toEqual([]);
     expect(s.queued).toEqual([]);
+  });
+});
+
+describe("брошенная обработка: повтор только без отправленного", () => {
+  const later = () => new Date(Date.now() + 11 * 60_000);
+  const redo = async (s: ReturnType<typeof setup>) => {
+    const again: string[] = [];
+    const r = await retryStuckEvents(s.deps.tenantContext(SHOP), later(), async (_c, id) => {
+      again.push(id);
+      return { status: "processed", note: null };
+    });
+    return { r, again };
+  };
+
+  it("фон умер до первой отправки — добор повторяет событие", async () => {
+    const s = setup();
+    s.deps.dispatch = async () => {
+      throw new Error("функция умерла");
+    };
+    await intakeZernioEvent(event("e1", { accountId: "acc-old" }), s.deps);
+    s.row("e1")!.created_at = new Date(Date.now() - 5 * 60_000).toISOString();
+    await s.drain().catch(() => {});
+    expect(s.row("e1")!.error_message).toMatch(/^обработка начата /);
+    const { r, again } = await redo(s);
+    expect(r).toMatchObject({ requeued: 1, processed: 1 });
+    expect(again).toEqual(["e1"]);
+  });
+
+  it("фон умер после начала отправки (ответ консультанта ушёл) — добор не повторяет", async () => {
+    const s = setup();
+    const sent: string[] = [];
+    s.deps.dispatch = async () => {
+      await beforeExternalEffect();
+      sent.push("ответ консультанта");
+      await beforeExternalEffect(); // вторая отправка отметку не переписывает
+      throw new Error("функция умерла");
+    };
+    await intakeZernioEvent(event("e1", { accountId: "acc-old" }), s.deps);
+    s.row("e1")!.created_at = new Date(Date.now() - 5 * 60_000).toISOString();
+    await s.drain().catch(() => {});
+    expect(sent).toHaveLength(1);
+    expect(s.row("e1")!.error_message).toMatch(/^отправка начата /);
+    const { r, again } = await redo(s);
+    expect(r).toMatchObject({ requeued: 0, abandoned: 1 });
+    expect(again).toEqual([]);
+    expect(s.row("e1")).toMatchObject({
+      status: "failed",
+      error_message: expect.stringMatching(/не повторяем/),
+    });
+  });
+
+  it("вне обработки события отметка ничего не делает", async () => {
+    await expect(beforeExternalEffect()).resolves.toBeUndefined();
   });
 });
 

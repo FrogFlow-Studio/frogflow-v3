@@ -1,6 +1,11 @@
 import { env } from "@/config/env";
 import type { Tenant, ZernioAccountSnapshot } from "@/core/tenant/types";
-import { patchTenantSettings, requireTenant, tenantDirectory } from "@/core/tenant/resolve.server";
+import {
+  patchTenantSettings,
+  patchZernioIfSyncedAt,
+  requireTenant,
+  tenantDirectory,
+} from "@/core/tenant/resolve.server";
 import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
 import {
   accountProfileId,
@@ -48,16 +53,8 @@ export type SyncResult = {
   conflicts: SyncConflict[];
 };
 
-/**
- * Аккаунты профиля → account_ids арендатора (ручные id оператора сохраняются).
- * Аккаунт, который числится у другого клиента, в список не попадает: ключ
- * один на платформу, и двое владельцев значили бы события «ничьи».
- */
-export async function syncAccounts(tenant: Tenant): Promise<SyncResult> {
-  if (!zernioConfigured()) throw new Error("Zernio не подключён на платформе.");
-  const profileId = tenant.settings.zernio?.profile_id;
-  if (!profileId)
-    return { accounts: [], accountIds: tenant.settings.zernio?.account_ids ?? [], conflicts: [] };
+/** Аккаунты профиля без чужих — что записать в settings.zernio. */
+async function accountSync(tenant: Tenant, profileId: string) {
   const accounts = (await listAccounts(profileId))
     .filter((a) => isZernioPlatform(a.platform))
     .filter((a) => (accountProfileId(a) ?? profileId) === profileId);
@@ -88,10 +85,52 @@ export async function syncAccounts(tenant: Tenant): Promise<SyncResult> {
     }));
   const manual = (tenant.settings.zernio?.account_ids ?? []).filter((id) => !foreign.has(id));
   const accountIds = Array.from(new Set([...manual, ...snapshot.map((a) => a.id)]));
-  await patchTenantSettings(tenant.id, {
-    zernio: { account_ids: accountIds, accounts: snapshot, synced_at: new Date().toISOString() },
-  });
   return { accounts: snapshot, accountIds, conflicts };
+}
+
+/**
+ * Аккаунты профиля → account_ids арендатора (ручные id оператора сохраняются).
+ * Аккаунт, который числится у другого клиента, в список не попадает: ключ
+ * один на платформу, и двое владельцев значили бы события «ничьи».
+ */
+export async function syncAccounts(tenant: Tenant): Promise<SyncResult> {
+  if (!zernioConfigured()) throw new Error("Zernio не подключён на платформе.");
+  const profileId = tenant.settings.zernio?.profile_id;
+  if (!profileId)
+    return { accounts: [], accountIds: tenant.settings.zernio?.account_ids ?? [], conflicts: [] };
+  const r = await accountSync(tenant, profileId);
+  await patchTenantSettings(tenant.id, {
+    zernio: {
+      account_ids: r.accountIds,
+      accounts: r.accounts,
+      synced_at: new Date().toISOString(),
+    },
+  });
+  return r;
+}
+
+/** Сверка после переподключения — не чаще раза в это окно на магазин. */
+export const RESYNC_WINDOW_MS = 5 * 60_000;
+
+/**
+ * Событие пришло с новым id аккаунта (магазин найден по профилю): дописать
+ * аккаунты профиля, не дожидаясь крона. Вызывается на каждое такое событие,
+ * поэтому не чаще раза в RESYNC_WINDOW_MS (по settings.zernio.synced_at) и
+ * условной записью: из одновременных прогонов пишет один, остальные молчат.
+ * Возвращает true, если записал.
+ */
+export async function resyncAfterReconnect(tenant: Tenant, now = new Date()): Promise<boolean> {
+  const profileId = tenant.settings.zernio?.profile_id;
+  if (!zernioConfigured() || !profileId) return false;
+  const prev = tenant.settings.zernio?.synced_at ?? null;
+  const last = prev ? Date.parse(prev) : NaN;
+  if (Number.isFinite(last) && now.getTime() - last < RESYNC_WINDOW_MS) return false;
+  const r = await accountSync(tenant, profileId);
+  return patchZernioIfSyncedAt(tenant.id, prev, {
+    account_ids: r.accountIds,
+    accounts: r.accounts,
+    synced_at: now.toISOString(),
+  });
 }
 
 export async function syncAccountsById(botId: string): Promise<SyncResult> {

@@ -9,6 +9,8 @@ export type TelegramApi = {
   fileUrl(filePath: string): string;
 };
 
+import { beforeExternalEffect } from "@/lib/external-effects";
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function telegramApi(token: string, apiBase = "https://api.telegram.org"): TelegramApi {
@@ -16,6 +18,8 @@ export function telegramApi(token: string, apiBase = "https://api.telegram.org")
   const url = (method: string) => `${base}/bot${token}/${method}`;
 
   async function call<T>(method: string, payload: unknown = {}): Promise<TgResult<T>> {
+    // Чтение (getMe, getFile…) — не отправка.
+    if (!/^get/i.test(method)) await beforeExternalEffect();
     const MAX = 3;
     for (let attempt = 1; attempt <= MAX; attempt++) {
       let res: Response;
@@ -69,6 +73,7 @@ export async function telegramUpload(
   file: { field: string; name: string; data: Blob },
 ): Promise<TgResult> {
   const url = `${apiBase.replace(/\/$/, "")}/bot${token}/${method}`;
+  await beforeExternalEffect();
   const MAX = 3;
   for (let attempt = 1; attempt <= MAX; attempt++) {
     const form = new FormData();

@@ -1,4 +1,5 @@
 import { env } from "@/config/env";
+import { beforeExternalEffect } from "@/lib/external-effects";
 import type { Json } from "@/core/db-types";
 import { attachmentNeedsZernioKey, normalizeZernioBaseUrl, withReceivingAccount } from "./base-url";
 import { idempotencyKeyFor } from "./event-context.server";
@@ -40,6 +41,7 @@ async function request<T>(
   if (!apiKey) throw new Error("ZERNIO_API_KEY не задан");
   let url = `${normalizeZernioBaseUrl(env().ZERNIO_BASE_URL)}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
   if (options.query) url += `?${new URLSearchParams(options.query).toString()}`;
+  if ((options.method ?? "GET") !== "GET") await beforeExternalEffect();
 
   let response: Response;
   try {

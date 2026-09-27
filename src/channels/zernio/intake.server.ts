@@ -2,6 +2,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
 import type { ZernioWebhookMessagePayload } from "./message";
 import type { DispatchOutcome } from "./dispatch.server";
+import { runNotingEffects } from "@/lib/external-effects";
 
 export type IntakeDeps = {
   resolve: (
@@ -18,6 +19,8 @@ export type IntakeDeps = {
     payload: ZernioWebhookMessagePayload,
   ) => Promise<DispatchOutcome>;
   settle: (ctx: TenantContext, eventId: string, r: DispatchOutcome) => Promise<void>;
+  /** Отметка на строке журнала перед первой отправкой наружу. */
+  markSending: (ctx: TenantContext, eventId: string) => Promise<void>;
   /** Магазин найден по профилю: записать новые id аккаунтов и вернуть свежего арендатора. */
   resync: (tenant: Tenant) => Promise<Tenant>;
 };
@@ -70,13 +73,27 @@ export async function intakeZernioEvent(
     let run = ctx;
     if (found.via === "profile") {
       // Аккаунт переподключён, новый id ещё не записан: записываем сразу, не
-      // дожидаясь сверки. Не вышло — событие всё равно обрабатываем.
+      // дожидаясь сверки. Не вышло — событие всё равно обрабатываем, а сбой
+      // сверки (чтение или запись settings) уходит в Sentry, а не теряется.
       run = await deps
         .resync(found.tenant)
         .then(deps.tenantContext)
-        .catch(() => ctx);
+        .catch(async (e) => {
+          const { reportError } = await import("@/lib/errors");
+          await reportError(e, {
+            where: "zernio.resync",
+            botId: found.tenant.id,
+            extra: { event_id: eventId },
+          });
+          return ctx;
+        });
     }
-    await deps.settle(run, eventId, await deps.dispatch(run, eventId, payload));
+    // Отметка перед первой отправкой: брошенное после неё событие добор не повторит.
+    const r = await runNotingEffects(
+      () => deps.markSending(ctx, eventId),
+      () => deps.dispatch(run, eventId, payload),
+    );
+    await deps.settle(run, eventId, r);
   });
   return { status: 200, body: "ok" };
 }
@@ -92,12 +109,13 @@ export async function liveIntakeDeps(): Promise<IntakeDeps> {
     resolve: resolveMod.resolveZernioTenant,
     tenantContext: resolveMod.tenantContext,
     background: (task) => runInBackground(task, "zernio.webhook"),
-    claim: (ctx, eventId) => dispatchMod.claimZernioEvent(ctx, eventId),
+    claim: (ctx, eventId) => dispatchMod.claimZernioEvent(ctx, eventId, new Date(), "webhook"),
     dispatch: dispatchMod.dispatchZernioEvent,
     settle: dispatchMod.settleZernioEvent,
+    markSending: (ctx, eventId) => dispatchMod.markZernioEventSending(ctx, eventId),
     resync: async (tenant) => {
-      const { syncAccounts } = await import("./connect.server");
-      await syncAccounts(tenant);
+      const { resyncAfterReconnect } = await import("./connect.server");
+      if (!(await resyncAfterReconnect(tenant))) return tenant;
       const fresh = await resolveMod.tenantDirectory(true);
       return fresh.find((t) => t.id === tenant.id) ?? tenant;
     },

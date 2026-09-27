@@ -68,6 +68,32 @@ describe("добор зависших событий Zernio", () => {
     expect(s.row("running").status).toBe("retrying");
   });
 
+  it("событие, забранное фоном вебхука и брошенное, добор повторяет, а не закрывает", async () => {
+    const s = setup([
+      {
+        event_id: "bg-dead",
+        status: "retrying",
+        created_at: ago(30 * MIN),
+        error_message: `обработка начата ${ago(20 * MIN)}`,
+      },
+      {
+        event_id: "bg-running",
+        status: "retrying",
+        created_at: ago(3 * MIN),
+        error_message: `обработка начата ${ago(1 * MIN)}`,
+      },
+    ]);
+    const r = await retryStuckEvents(s.ctx, NOW, s.dispatch);
+    expect(r).toMatchObject({ requeued: 1, abandoned: 0, processed: 1 });
+    expect(s.seen).toEqual(["bg-dead"]);
+    expect(s.row("bg-dead")).toMatchObject({ status: "processed", error_message: "добор: ок" });
+    // Фон, который работает прямо сейчас, не трогаем.
+    expect(s.row("bg-running").status).toBe("retrying");
+    // Второй прогон крона событие уже не повторяет.
+    await retryStuckEvents(s.ctx, NOW, s.dispatch);
+    expect(s.seen).toEqual(["bg-dead"]);
+  });
+
   it("забранная строка помечена временем захвата", async () => {
     const s = setup([{ event_id: "e", status: "received", created_at: ago(5 * MIN) }]);
     let during: unknown;

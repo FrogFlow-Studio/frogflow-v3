@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { beforeExternalEffect } from "@/lib/external-effects";
 import { env } from "@/config/env";
 import { maskEmailsIn } from "@/lib/log-mask";
 
@@ -33,6 +34,7 @@ export const smtpMailer: Mailer = async (mail) => {
       secure: port === 465,
       auth: { user: e.SMTP_USER, pass: e.SMTP_PASSWORD },
     });
+    await beforeExternalEffect();
     await transport.sendMail({ from: e.SMTP_FROM || e.SMTP_USER, ...mail });
     return { ok: true };
   } catch (err) {

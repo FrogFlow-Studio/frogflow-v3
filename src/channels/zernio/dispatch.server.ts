@@ -82,6 +82,10 @@ export const STALE_AFTER_MS = 24 * 60 * 60_000;
 /** Добор, который начал прогон и не закончил (функция умерла), — через столько считаем брошенным. */
 export const ABANDONED_AFTER_MS = 10 * 60_000;
 const CLAIM_NOTE = "добор начат ";
+/** Метка захвата фоном вебхука (intake.server) — первая попытка обработки. */
+const FIRST_CLAIM_NOTE = "обработка начата ";
+/** Фон вебхука начал отправлять наружу (lib/external-effects) — повторять нельзя. */
+const SENDING_NOTE = "отправка начата ";
 
 export type RetryResult = {
   found: number;
@@ -92,29 +96,57 @@ export type RetryResult = {
   expired: number;
   /** Прогон добора оборвался на полпути — закрыто без повтора. */
   abandoned: number;
+  /** Фон вебхука оборвался — событие возвращено в очередь добора. */
+  requeued: number;
 };
 
-/** Когда добор забрал строку (метка в error_message), или null. */
+/** Когда строку забрали в обработку (метка в error_message), или null. */
 export function claimedAt(note: string | null): number | null {
-  if (!note?.startsWith(CLAIM_NOTE)) return null;
-  const t = Date.parse(note.slice(CLAIM_NOTE.length));
+  const prefix = [CLAIM_NOTE, FIRST_CLAIM_NOTE, SENDING_NOTE].find((p) => note?.startsWith(p));
+  if (!prefix) return null;
+  const t = Date.parse(note!.slice(prefix.length));
   return Number.isNaN(t) ? null : t;
+}
+
+/** Строку забрал фон вебхука (первая попытка) и ещё ничего не отправил. */
+export const claimedByWebhook = (note: string | null) =>
+  Boolean(note?.startsWith(FIRST_CLAIM_NOTE));
+
+/**
+ * Перед первой отправкой фона вебхука (покупателю, продавцу, почтой):
+ * после этой отметки брошенное событие добор не повторяет — ответ
+ * консультанта или уведомление продавцу ушли бы второй раз.
+ */
+export async function markZernioEventSending(
+  ctx: TenantContext,
+  eventId: string,
+  now = new Date(),
+): Promise<void> {
+  const { error } = await ctx.db
+    .from("zernio_logs")
+    .update({ error_message: `${SENDING_NOTE}${now.toISOString()}` })
+    .eq("event_id", eventId)
+    .eq("status", "retrying");
+  if (error) throw new Error(`zernio_logs: ${error.message}`);
 }
 
 /**
  * Забрать строку журнала в обработку: received → retrying с меткой времени.
  * Условная запись по старому статусу — из фона вебхука и из добора событие
  * обрабатывает ровно один. Строку, забранную и не закрытую (функция умерла),
- * добор закрывает как сбой через ABANDONED_AFTER_MS.
+ * добор через ABANDONED_AFTER_MS возвращает в очередь, если это был фон
+ * вебхука, и закрывает как сбой, если это был уже повтор.
  */
 export async function claimZernioEvent(
   ctx: TenantContext,
   eventId: string,
   now = new Date(),
+  by: "webhook" | "retry" = "retry",
 ): Promise<boolean> {
+  const note = `${by === "webhook" ? FIRST_CLAIM_NOTE : CLAIM_NOTE}${now.toISOString()}`;
   const { data } = await ctx.db
     .from("zernio_logs")
-    .update({ status: "retrying", error_message: `${CLAIM_NOTE}${now.toISOString()}` })
+    .update({ status: "retrying", error_message: note })
     .eq("event_id", eventId)
     .eq("status", "received")
     .select("event_id");
@@ -132,7 +164,9 @@ export async function claimZernioEvent(
  * Два края: событие старше суток закрывается без ответа (окно переписки
  * закрыто, отвечать на вчерашнее поздно), а строка, которую прошлый добор
  * забрал и не закрыл, закрывается как сбой — второй повтор мог бы дважды
- * позвать консультанта и дважды написать продавцу.
+ * позвать консультанта и дважды написать продавцу. Строка, которую забрал и
+ * не закрыл фон вебхука, — первая попытка: её добор повторяет, только если
+ * фон ещё ничего не отправил (нет отметки markZernioEventSending).
  */
 export async function retryStuckEvents(
   ctx: TenantContext,
@@ -147,6 +181,7 @@ export async function retryStuckEvents(
     ignored: 0,
     expired: 0,
     abandoned: 0,
+    requeued: 0,
   };
   const t = now.getTime();
 
@@ -158,9 +193,26 @@ export async function retryStuckEvents(
   for (const row of hung ?? []) {
     const at = claimedAt(row.error_message);
     if (!row.event_id || (at !== null && t - at < ABANDONED_AFTER_MS)) continue;
+    if (claimedByWebhook(row.error_message)) {
+      // Условно по той же метке: второй крон, успевший раньше, уже вернул строку.
+      const { data: back } = await ctx.db
+        .from("zernio_logs")
+        .update({ status: "received", error_message: "фон вебхука прерван, повтор добором" })
+        .eq("event_id", row.event_id)
+        .eq("status", "retrying")
+        .eq("error_message", row.error_message!)
+        .select("event_id");
+      if (back?.length) res.requeued++;
+      continue;
+    }
     const { data: closed } = await ctx.db
       .from("zernio_logs")
-      .update({ status: "failed", error_message: "добор прерван: функция не завершилась" })
+      .update({
+        status: "failed",
+        error_message: row.error_message?.startsWith(SENDING_NOTE)
+          ? "фон вебхука прерван после начала отправки — не повторяем, чтобы не написать дважды"
+          : "добор прерван: функция не завершилась",
+      })
       .eq("event_id", row.event_id)
       .eq("status", "retrying")
       .select("event_id");
@@ -216,7 +268,7 @@ export async function retryStuckEventsFor(
     if (!t.modules.instagram && !t.modules.whatsapp) continue;
     try {
       const r = await retryStuckEvents(tenantContext(t));
-      if (r.found || r.abandoned) out[t.id] = r;
+      if (r.found || r.abandoned || r.requeued) out[t.id] = r;
     } catch (e) {
       out[t.id] = { error: e instanceof Error ? e.message : String(e) };
     }

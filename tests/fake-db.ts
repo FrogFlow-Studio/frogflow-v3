@@ -73,12 +73,14 @@ function jsonEqual(have: unknown, text: string): boolean {
   return jsonContains(have, want) && jsonContains(want, have);
 }
 
-/** Колонка или путь в jsonb «payload->>key», как в фильтрах PostgREST. */
+/** Колонка или путь в jsonb: `settings->>slug`, `settings->zernio->>synced_at`. */
 function pick(r: Row, col: string): unknown {
-  const m = /^(\w+)->>(\w+)$/.exec(col);
+  const m = /^(\w+)((?:->\w+)*)->>(\w+)$/.exec(col);
   if (!m) return r[col];
-  const obj = r[m[1]!];
-  const v = obj && typeof obj === "object" ? (obj as Row)[m[2]!] : undefined;
+  let obj: unknown = r[m[1]!];
+  for (const key of m[2]!.split("->").filter(Boolean))
+    obj = obj && typeof obj === "object" ? (obj as Row)[key] : undefined;
+  const v = obj && typeof obj === "object" ? (obj as Row)[m[3]!] : undefined;
   return v == null ? v : String(v);
 }
 
@@ -214,7 +216,7 @@ class Query implements PromiseLike<Result> {
   }
   is(col: string, v: null) {
     this.col(col);
-    this.filters.push((r) => (r[col] ?? null) === v);
+    this.filters.push((r) => (pick(r, col) ?? null) === v);
     return this;
   }
   gt(col: string, v: string | number) {

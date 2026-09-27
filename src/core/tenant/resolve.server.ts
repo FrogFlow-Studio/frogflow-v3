@@ -52,6 +52,20 @@ export function invalidateTenantDirectory(): void {
   directory = null;
 }
 
+const asObject = (v: unknown): Record<string, unknown> =>
+  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+
+/**
+ * Номер версии bots.settings (`settings.rev`). Его растит каждая запись
+ * settings в v2 (patchTenantSettings, сверка Zernio, API оператора), а
+ * условная запись сверяет его вместо всего settings: весь jsonb в фильтре
+ * строки запроса у магазина с командой не влезает в предел URL.
+ */
+export function settingsRev(raw: Record<string, unknown>): number | null {
+  return typeof raw.rev === "number" && Number.isInteger(raw.rev) ? raw.rev : null;
+}
+export const nextSettingsRev = (raw: Record<string, unknown>) => (settingsRev(raw) ?? 0) + 1;
+
 /**
  * Дописать ключи в bots.settings, не трогая остальные. Пишем поверх сырого
  * jsonb из базы, а не поверх разобранного Tenant.settings: там лежат и ключи
@@ -63,11 +77,15 @@ export async function patchTenantSettings(
   patch: Record<string, unknown>,
 ): Promise<void> {
   const db = serviceDb();
-  const { data } = await db.from("bots").select("settings").eq("id", botId).maybeSingle();
-  const raw =
-    data?.settings && typeof data.settings === "object" && !Array.isArray(data.settings)
-      ? (data.settings as Record<string, unknown>)
-      : {};
+  const { data, error: readError } = await db
+    .from("bots")
+    .select("settings")
+    .eq("id", botId)
+    .maybeSingle();
+  // Запись поверх непрочитанного снимка стёрла бы остальные ключи клиента.
+  if (readError) throw serverFailure(`bots.settings: не прочитаны (${readError.message})`);
+  if (!data) throw serverFailure(`bots.settings: магазин ${botId} не найден`);
+  const raw = asObject(data.settings);
   const next: Record<string, unknown> = { ...raw };
   for (const [k, v] of Object.entries(patch)) {
     const prev = next[k];
@@ -81,12 +99,57 @@ export async function patchTenantSettings(
         ? { ...(prev as object), ...(v as object) }
         : v;
   }
+  next.rev = nextSettingsRev(raw);
   const { error } = await db
     .from("bots")
     .update({ settings: next as never })
     .eq("id", botId);
-  if (error) throw new Error(`bots.settings: ${error.message}`);
+  if (error) throw serverFailure(`bots.settings: ${error.message}`);
   invalidateTenantDirectory();
+}
+
+/**
+ * Дописать в bots.settings.zernio, только если с прочтения его никто не
+ * сверял (settings.zernio.synced_at тот же): другой прогон, успевший раньше,
+ * выигрывает, этот ничего не пишет (false). Пишется весь settings, поэтому
+ * запись условна и по номеру версии settings.rev: если продавец или
+ * оператор успел сохранить другой ключ, перечитываем и пробуем снова. Не удалось
+ * прочитать — не пишем вовсе: запись поверх пустого снимка стёрла бы
+ * served_by, slug и profile_id.
+ */
+export async function patchZernioIfSyncedAt(
+  botId: string,
+  prevSyncedAt: string | null,
+  patch: Record<string, unknown>,
+): Promise<boolean> {
+  const db = serviceDb();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data, error } = await db.from("bots").select("settings").eq("id", botId).maybeSingle();
+    if (error)
+      throw serverFailure(`bots.settings: сверка не прочитала настройки (${error.message})`);
+    if (!data) throw serverFailure(`bots.settings: магазин ${botId} не найден`);
+    const raw = asObject(data.settings);
+    const zernio = asObject(raw.zernio);
+    const synced = typeof zernio.synced_at === "string" ? zernio.synced_at : null;
+    if (synced !== prevSyncedAt) return false;
+    const rev = settingsRev(raw);
+    const next = { ...raw, zernio: { ...zernio, ...patch }, rev: nextSettingsRev(raw) };
+    const syncedPath = "settings->zernio->>synced_at" as "id";
+    const revPath = "settings->>rev" as "id";
+    let q = db
+      .from("bots")
+      .update({ settings: next as never })
+      .eq("id", botId);
+    q = prevSyncedAt === null ? q.is(syncedPath, null as never) : q.eq(syncedPath, prevSyncedAt);
+    q = rev === null ? q.is(revPath, null as never) : q.eq(revPath, String(rev));
+    const { data: rows, error: writeError } = await q.select("id");
+    if (writeError) throw serverFailure(`bots.settings: ${writeError.message}`);
+    if (rows?.length) {
+      invalidateTenantDirectory();
+      return true;
+    }
+  }
+  return false;
 }
 
 export async function resolveTenant(lookup: TenantLookup): Promise<Tenant | null> {

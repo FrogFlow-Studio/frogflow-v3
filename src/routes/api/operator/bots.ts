@@ -164,6 +164,9 @@ export const Route = createFileRoute("/api/operator/bots")({
           !input.force;
         if (input.served_by && !needsPreflight) next.served_by = input.served_by;
 
+        // Версия settings — сверка Zernio пишет условно по ней (core/tenant/resolve.server).
+        const { nextSettingsRev } = await import("@/core/tenant/resolve.server");
+        next.rev = nextSettingsRev(settings);
         const patch: Database["public"]["Tables"]["bots"]["Update"] = { settings: next as never };
         if (input.telegram_token)
           patch.bot_token = encryptSecret(input.telegram_token, e.SECRETS_KEY);
