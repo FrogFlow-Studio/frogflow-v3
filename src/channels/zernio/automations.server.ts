@@ -1004,11 +1004,62 @@ export async function deliverPendingTwoStepDm(
   // перехватил другой вебхук, не трогаем.
   await ctx.db
     .from("zernio_logs")
-    .update({ event_type: "two_step_dm_sent", status: "processed", error_message: null })
+    .update({
+      event_type: "two_step_dm_sent",
+      status: "processed",
+      error_message: null,
+      // Когда ушло — для twoStepJustDelivered: «+», отправленный раньше, не уходит магазину.
+      payload: {
+        ...(matched.payload as Record<string, Json>),
+        attempts: attempts + 1,
+        sent_at: now().toISOString(),
+      },
+    })
     .eq("id", matched.id)
     .eq("status", "processing")
     .eq("error_message", token);
   return true;
+}
+
+const JUST_DELIVERED_MS = 2 * 60_000;
+
+/**
+ * Ответ покупателя пришёл вдогонку к уже забранному второму сообщению. Два
+ * быстрых «+» — два вебхука: если второй прочитал очередь после захвата
+ * первым, deliverPendingTwoStepDm вернёт false, и «+» ушёл бы магазину —
+ * покупатель получил бы выбор языка сразу после второго сообщения.
+ * Вдогонку — это пока второе сообщение ещё отправляется, или отправлено
+ * позже, чем покупатель написал (`sentAt` события): того, что набрано уже
+ * после второго сообщения («1» — страна оплаты), это не касается.
+ */
+export async function twoStepJustDelivered(
+  ctx: TenantContext,
+  username: string,
+  messageSentAt: string | null,
+): Promise<boolean> {
+  if (!username) return false;
+  const since = Date.now() - JUST_DELIVERED_MS;
+  const typedAt = messageSentAt ? Date.parse(messageSentAt) : NaN;
+  const { data } = await ctx.db
+    .from("zernio_logs")
+    .select("status, error_message, payload")
+    .like("event_id", "two-step-dm:%")
+    .in("status", ["processing", "processed"])
+    .gte("created_at", new Date(Date.now() - PENDING_TWO_STEP_DAYS * 86_400_000).toISOString())
+    .order("created_at", { ascending: false })
+    .limit(50);
+  return (data ?? []).some((l) => {
+    const pl = l.payload as { username?: string; sent_at?: string } | null;
+    if (typeof pl?.username !== "string" || pl.username.toLowerCase() !== username.toLowerCase())
+      return false;
+    if (l.status === "processing") {
+      const claim = parseClaim(l.error_message as string | null);
+      return claim !== null && claim.at >= since;
+    }
+    if (typeof pl.sent_at !== "string") return false;
+    const sentAt = Date.parse(pl.sent_at);
+    return sentAt >= since && typedAt < sentAt;
+  });
 }
 
 export type CatchupInput = {

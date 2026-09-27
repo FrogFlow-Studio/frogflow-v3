@@ -31,6 +31,8 @@ export type StubDb = {
   members: Set<string>;
   /** Запросы к API Zernio (Instagram/WhatsApp): что приложение отправило покупателю. */
   zernio: { method: string; path: string; body: Row }[];
+  /** Правила Comment-to-DM в Zernio (`/comment-automations`): список и правка. */
+  zernioAutomations: Row[];
 };
 
 const rows = (db: StubDb, t: string) => (db.tables[t] ??= []);
@@ -766,6 +768,16 @@ function zernio(db: StubDb, req: IncomingMessage, url: URL, body: Buffer, res: S
   }
   const args = body.length ? (JSON.parse(body.toString()) as Row) : {};
   db.zernio.push({ method: req.method ?? "GET", path: path + url.search, body: args });
+  if (path.startsWith("/v1/comment-automations")) {
+    const id = /^\/v1\/comment-automations\/([^/?]+)$/.exec(path)?.[1];
+    if (req.method === "GET" && !id) return send(res, 200, { automations: db.zernioAutomations });
+    const rule = db.zernioAutomations.find((a) => a.id === decodeURIComponent(id ?? ""));
+    if (req.method === "PATCH" && rule) {
+      Object.assign(rule, args);
+      return send(res, 200, { success: true, automation: rule });
+    }
+    return send(res, 404, { error: "automation not found" });
+  }
   if (req.method === "GET" && /\/inbox\/conversations\/[^/]+\/messages$/.test(path))
     return send(res, 200, { messages: [] });
   if (req.method === "POST" && /\/inbox\/conversations\/[^/]+\/messages$/.test(path))
@@ -784,6 +796,7 @@ export function stubDb(init: Partial<StubDb> = {}): StubDb {
     telegram: [],
     members: new Set(),
     zernio: [],
+    zernioAutomations: [],
     ...init,
   };
 }

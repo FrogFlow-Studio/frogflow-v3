@@ -33,6 +33,13 @@ vi.mock("@/core/customers/opt-out", async (orig) => ({
   setOptOut,
 }));
 
+// Comment-to-DM: второе сообщение этому покупателю только что забрал другой вебхук.
+const twoStepJustDelivered = vi.fn(async () => false);
+vi.mock("./automations.server", () => ({
+  deliverPendingTwoStepDm: vi.fn(async () => false),
+  twoStepJustDelivered,
+}));
+
 const { handleZernioMessage } = await import("./handle-message");
 
 const ctx = {
@@ -121,5 +128,47 @@ describe("«стоп» в WhatsApp", () => {
     const r = await handleZernioMessage(ctx, payload("стоп"), transport());
     expect(r.note).not.toBe("отписка от рассылок");
     expect(setOptOut).not.toHaveBeenCalled();
+  });
+});
+
+describe("Comment-to-DM: второй быстрый «+»", () => {
+  const igCtx = {
+    tenant: { id: "b", vertical: "digital", modules: { instagram: true }, settings: {} },
+  } as unknown as TenantContext;
+  const igEvent = (message: Record<string, unknown>, metadata?: Record<string, unknown>) =>
+    ({
+      account: { platform: "instagram", accountId: "acc-1" },
+      conversation: { id: "conv-1" },
+      message: {
+        platform: "instagram",
+        sender: { id: "ig-1", username: "boris" },
+        ...message,
+      },
+      ...(metadata ? { metadata } : {}),
+    }) as never;
+  const transport = { send: vi.fn(async () => ({ ok: true })), tail: async () => [] };
+
+  it("второе сообщение только что ушло — «+» не разбирается дальше", async () => {
+    twoStepJustDelivered.mockResolvedValueOnce(true);
+    const r = await handleZernioMessage(
+      igCtx,
+      igEvent({ text: "+" }),
+      transport as unknown as ZernioTransport,
+    );
+    expect(r).toEqual({ status: "processed", note: "второе сообщение по комментарию" });
+    expect(transport.send).not.toHaveBeenCalled();
+  });
+
+  it("нажатие кнопки второго сообщения сразу после него идёт дальше", async () => {
+    twoStepJustDelivered.mockClear();
+    twoStepJustDelivered.mockResolvedValue(true);
+    const r = await handleZernioMessage(
+      igCtx,
+      igEvent({ text: null }, { postbackPayload: "CATALOG" }),
+      transport as unknown as ZernioTransport,
+    );
+    twoStepJustDelivered.mockResolvedValue(false);
+    expect(r.note).not.toBe("второе сообщение по комментарию");
+    expect(twoStepJustDelivered).not.toHaveBeenCalled();
   });
 });

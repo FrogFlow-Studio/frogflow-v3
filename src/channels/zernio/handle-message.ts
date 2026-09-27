@@ -58,14 +58,22 @@ export async function handleZernioMessage(
   // Двухшаговая Comment-to-DM: покупатель написал первым после комментария —
   // отдаём обещанное второе сообщение с кнопками; «+»/«да» дальше не разбираем.
   if (m.platform === "instagram" && m.senderUsername && ctx.tenant.modules.instagram) {
-    const { deliverPendingTwoStepDm } = await import("./automations.server");
+    const { deliverPendingTwoStepDm, twoStepJustDelivered } = await import("./automations.server");
     const { isTwoStepAcknowledgement } = await import("@/core/instagram/comment-rules");
     const delivered = await deliverPendingTwoStepDm(ctx, {
       accountId: m.accountId,
       conversationId: m.conversationId,
       username: m.senderUsername,
     });
-    if (delivered && isTwoStepAcknowledgement(m.text))
+    // Второй быстрый «+» после уже отданного второго сообщения тоже не разбираем.
+    // Только набранный ответ: нажатие кнопки второго сообщения и фото чека идут дальше.
+    const typedOnly = !m.postbackPayload && m.attachments.length === 0 && !m.nativeOrder;
+    if (
+      isTwoStepAcknowledgement(m.text) &&
+      (delivered ||
+        (typedOnly &&
+          (await twoStepJustDelivered(ctx, m.senderUsername, payload.message?.sentAt ?? null))))
+    )
       return processed("второе сообщение по комментарию");
   }
 

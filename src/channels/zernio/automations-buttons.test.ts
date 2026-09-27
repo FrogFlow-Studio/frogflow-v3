@@ -6,6 +6,7 @@ import {
   TWO_STEP_CLAIM_STALE_MS,
   TWO_STEP_MAX_ATTEMPTS,
   deliverPendingTwoStepDm,
+  twoStepJustDelivered,
   handleCommentReceived,
   type AutomationApi,
 } from "./automations.server";
@@ -378,6 +379,42 @@ describe("Comment-to-DM: второй шаг из очереди уходит о
     // Третье сообщение — очередь пуста.
     expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(false);
     expect(inbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("«+» вдогонку ко второму сообщению узнаётся, набранное после него — нет", async () => {
+    const { ctx, db } = pendingSetup();
+    const api = { inbox: vi.fn(async () => ({ ok: true })) } as unknown as AutomationApi;
+    const before = new Date(Date.now() - 1000).toISOString();
+    expect(await twoStepJustDelivered(ctx, "boris", before)).toBe(false);
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(true);
+    // Очередь уже пуста: второму «+» deliverPending ответит false.
+    expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(false);
+    // «+» написан до того, как второе сообщение ушло, — вдогонку.
+    expect(await twoStepJustDelivered(ctx, "Boris", before)).toBe(true);
+    expect(await twoStepJustDelivered(ctx, "anya", before)).toBe(false);
+    // Набрано после второго сообщения (или время не известно) — обычное сообщение.
+    const after = new Date(Date.now() + 1000).toISOString();
+    expect(await twoStepJustDelivered(ctx, "boris", after)).toBe(false);
+    expect(await twoStepJustDelivered(ctx, "boris", null)).toBe(false);
+    // Пока второе сообщение отправляется — любой «+» вдогонку.
+    const row = db.tables.zernio_logs![0]!;
+    const tenMinAgo = new Date(Date.now() - 10 * 60_000).toISOString();
+    Object.assign(row, {
+      status: "processing",
+      error_message: `claim:${new Date().toISOString()}:1`,
+    });
+    expect(await twoStepJustDelivered(ctx, "boris", after)).toBe(true);
+    // Зависший захват и отправка несколько минут назад — снова обычное сообщение.
+    row.error_message = `claim:${tenMinAgo}:1`;
+    expect(await twoStepJustDelivered(ctx, "boris", before)).toBe(false);
+    Object.assign(row, {
+      status: "processed",
+      error_message: null,
+      payload: { ...(row.payload as object), sent_at: tenMinAgo },
+    });
+    expect(
+      await twoStepJustDelivered(ctx, "boris", new Date(Date.now() - 20 * 60_000).toISOString()),
+    ).toBe(false);
   });
 
   it("не ушло — строка возвращается в очередь до следующего ответа покупателя", async () => {
