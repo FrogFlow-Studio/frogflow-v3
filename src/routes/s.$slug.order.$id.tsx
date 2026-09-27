@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { webCardPayFn, webOrderFn, webProofFn } from "@/app/storefront/checkout.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
+import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
 import { formatMoney } from "@/core/money/money";
 import { isoToDisplay } from "@/core/fulfillment/pure";
 import { ErrorBox, useAction } from "@/app/ui";
@@ -48,6 +49,7 @@ function OrderPage() {
     }
   }, [slug, id, fromUrl]);
   const { t } = useStorefrontLocale();
+  const login = useTgLogin(slug);
   const [view, setView] = useState<View | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
   const [note, setNote] = useState<StorefrontKey | null>(null);
@@ -187,6 +189,12 @@ function OrderPage() {
           </ul>
           <p className="text-xs text-muted">{t("order.linkHint")}</p>
         </section>
+      )}
+      {/* Баллы копятся у покупателя из бота: не вошедшему — вход с подсказкой. */}
+      {login.state?.points && !login.state.me && !login.inTelegram && (
+        <div className="border-t border-line pt-4">
+          <TgLoginBox login={login} />
+        </div>
       )}
     </div>
   );

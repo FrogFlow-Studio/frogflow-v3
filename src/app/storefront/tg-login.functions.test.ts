@@ -102,6 +102,7 @@ describe("вход через Telegram на витрине", () => {
       available: true,
       bot: "shop_bot",
       me: null,
+      points: false,
     });
     expect(await tgLoginFn({ data: { slug: "shop", widget: widget(42) } })).toEqual({
       name: "Анна",
@@ -114,6 +115,15 @@ describe("вход через Telegram на витрине", () => {
     });
     expect(db.tables.bot_users!.map((u) => u.user_key)).toEqual(["tg_42"]);
     expect((await tgLoginStateFn({ data: { slug: "shop" } })).me).toEqual({ name: "Анна" });
+  });
+
+  it("у магазина есть баллы — состояние входа говорит об этом (подсказка «войдите ради баллов»)", async () => {
+    (ctx.tenant.modules as Record<string, boolean>).loyalty = true;
+    expect(await tgLoginStateFn({ data: { slug: "shop" } })).toMatchObject({
+      available: true,
+      me: null,
+      points: true,
+    });
   });
 
   it("подпись бота другого магазина — вход не состоялся, cookie нет", async () => {

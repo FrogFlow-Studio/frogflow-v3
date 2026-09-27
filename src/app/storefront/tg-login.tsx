@@ -18,7 +18,7 @@ export function useTgLogin(slug: string) {
 
   useEffect(() => {
     tgLoginStateFn({ data: { slug } }).then(setState, () =>
-      setState({ available: false, bot: null, me: null }),
+      setState({ available: false, bot: null, me: null, points: false }),
     );
   }, [slug]);
 
@@ -114,7 +114,9 @@ export function TgLoginBox({
     <div className="space-y-1">
       <ErrorBox error={l.error} />
       <TelegramWidget bot={s.bot} onAuth={(widget) => void l.login({ widget })} />
-      {hint && <p className="text-xs text-muted">{t("login.hint")}</p>}
+      {hint && (
+        <p className="text-xs text-muted">{t(s.points ? "login.pointsHint" : "login.hint")}</p>
+      )}
     </div>
   );
 }

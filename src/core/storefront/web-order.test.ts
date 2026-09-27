@@ -294,6 +294,47 @@ describe("заказ с сайта после входа через Telegram", (
     ).toEqual([["p-bot", 2, "tg_42", 42]]);
   });
 
+  it("баллы за заказ вошедшего покупателя — на его счёт в боте, не на счёт почты", async () => {
+    const { db, ctx } = setup();
+    (ctx.tenant.modules as Record<string, boolean>).loyalty = true;
+    db.tables.bot_users = [
+      tgRow({ loyalty_points: 100 }),
+      {
+        bot_id: BOT,
+        user_key: "web_x",
+        telegram_id: -7,
+        platform: "web",
+        email: "anna@example.com",
+        loyalty_points: 0,
+      },
+    ];
+    importItems.mockResolvedValue(1);
+    placeOrder.mockImplementation(async (_ctx: unknown, c: Customer) => {
+      db.tables.orders = [
+        {
+          id: 9,
+          bot_id: BOT,
+          telegram_id: c.telegramId,
+          user_key: c.userKey,
+          total: 2000,
+          points_earned: 0,
+        },
+      ];
+      return { ok: true, order: db.tables.orders[0] };
+    });
+    const customer = await telegramWebCustomer(ctx, 42, "anna@example.com");
+    const r = await placeWebOrder(ctx, customer!, [{ product_id: "p", quantity: 1 }], "KZ");
+    expect(r).toMatchObject({ ok: true });
+    const order = db.tables.orders![0]!;
+    expect(order).toMatchObject({ telegram_id: 42, user_key: "tg_42" });
+    const { awardPointsForOrder } = await import("@/core/discounts/discounts");
+    expect(await awardPointsForOrder(ctx, 9, Number(order.telegram_id), 2000)).toBe(100);
+    const points = Object.fromEntries(
+      db.tables.bot_users!.map((u) => [u.user_key, u.loyalty_points]),
+    );
+    expect(points).toEqual({ tg_42: 200, web_x: 0 });
+  });
+
   it("корзина бота возвращается и когда оформление не удалось", async () => {
     const { db, ctx } = setup();
     db.tables.cart_items = [

@@ -40,18 +40,20 @@ async function buyerName(
   );
 }
 
-/** Есть ли кнопка входа, от какого бота, и кто вошёл. */
+/** Есть ли кнопка входа, от какого бота, кто вошёл и есть ли у магазина баллы. */
 export const tgLoginStateFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ slug }).parse(d))
   .handler(async ({ data }) => {
     const ctx = await loginCtx(data.slug);
-    if (!ctx) return { available: false as const, bot: null, me: null };
+    if (!ctx) return { available: false as const, bot: null, me: null, points: false };
     const { buyerTelegramId } = await import("./tg-login.server");
     const tgId = await buyerTelegramId(ctx);
     return {
       available: true as const,
       bot: ctx.tenant.settings.telegram?.username ?? null,
       me: tgId === null ? null : { name: await buyerName(ctx, tgId) },
+      // Баллы копятся только у покупателя из бота: подсказка «войдите ради баллов».
+      points: ctx.tenant.modules.loyalty === true,
     };
   });
 
