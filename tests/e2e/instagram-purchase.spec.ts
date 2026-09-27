@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 import * as F from "./fixtures.ts";
+import { watch } from "./helpers.ts";
 
 /**
  * Главный путь Education Bot целиком на собранном приложении: покупатель
@@ -123,13 +124,6 @@ async function sellerTelegram(request: APIRequestContext) {
     body: Record<string, unknown>;
   }>;
   return all.filter((s) => Number(s.body.chat_id) === F.SELLER_TG);
-}
-
-async function watch(page: Page): Promise<string[]> {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => r.abort());
-  return errors;
 }
 
 test("покупка в Instagram Direct: каталог, заказ, чек, подтверждение продавцом — материалы в Direct", async ({

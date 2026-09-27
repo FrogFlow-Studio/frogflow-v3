@@ -1,6 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
-import { expect, test, type APIRequestContext, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type APIRequestContext, type TestInfo } from "@playwright/test";
 import * as F from "./fixtures.ts";
+import { watch } from "./helpers.ts";
 
 /**
  * Денежный путь целиком на собранном приложении: покупатель оформляет заказ
@@ -148,13 +149,6 @@ async function placeOrder(request: APIRequestContext, buyer: number): Promise<nu
     telegram_id: buyer,
   });
   return id;
-}
-
-async function watch(page: Page): Promise<string[]> {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => r.abort());
-  return errors;
 }
 
 /** Файл товара ушёл покупателю: документ по подписанной ссылке на наш PDF. */
