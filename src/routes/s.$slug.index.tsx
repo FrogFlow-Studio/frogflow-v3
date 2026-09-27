@@ -7,7 +7,7 @@ import type { StoreProduct } from "@/core/storefront/catalog";
 import { STORE_PAGE } from "@/core/storefront/paging";
 import { useCart } from "@/app/storefront/cart";
 import { useStorefrontLocale } from "@/app/storefront/locale";
-import { formatMoney } from "@/core/money/money";
+import { OfferNote, OfferPrice } from "@/app/storefront/offer";
 import { localeFlags } from "@/core/i18n/locale";
 import { categoryChips } from "@/core/storefront/categories";
 import { CATALOG_SORTS, parseCatalogSort } from "@/core/storefront/sort";
@@ -350,10 +350,20 @@ function CatalogPage() {
                   </div>
                 )}
                 <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-                  <span className="text-sm font-semibold tabular-nums">
-                    {p.priceFrom
-                      ? t("catalog.priceFrom", { price: formatMoney(p.price, p.currency) })
-                      : formatMoney(p.price, p.currency)}
+                  <span className="text-sm font-semibold">
+                    <OfferPrice
+                      price={p.price}
+                      oldPrice={p.offer?.oldPrice ?? null}
+                      currency={p.currency}
+                      offer={p.offer}
+                      label={(price) => (p.priceFrom ? t("catalog.priceFrom", { price }) : price)}
+                    />
+                    {p.offer && (
+                      <OfferNote
+                        offer={p.offer}
+                        className="block text-[11px] font-normal text-muted"
+                      />
+                    )}
                   </span>
                   {!p.inStock ? null : p.variants.length > 0 ? (
                     <Link

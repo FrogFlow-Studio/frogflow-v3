@@ -5,6 +5,7 @@ import { useCart } from "@/app/storefront/cart";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { reviewsWord } from "@/app/i18n/storefront";
 import { formatMoney } from "@/core/money/money";
+import { OfferNote, OfferPrice } from "@/app/storefront/offer";
 import { pageBadge } from "@/core/catalog/lead-time";
 import { ProductReviews } from "@/app/storefront/reviews";
 import { productMeta } from "@/core/storefront/share";
@@ -136,9 +137,15 @@ function ProductPage() {
               </span>
             )}
           </div>
-          <div className="mt-3 text-2xl font-semibold tabular-nums">
-            {formatMoney(price, currency)}
+          <div className="mt-3 text-2xl font-semibold">
+            <OfferPrice
+              price={price}
+              oldPrice={chosen ? chosen.oldPrice : (p.offer?.oldPrice ?? null)}
+              currency={currency}
+              offer={p.offer}
+            />
           </div>
+          {p.offer && <OfferNote offer={p.offer} className="mt-1 block text-sm text-accent" />}
           {p.leadTimeDays ? (
             <div className="mt-1 text-sm text-muted">
               {t("product.leadTime", { n: p.leadTimeDays })}

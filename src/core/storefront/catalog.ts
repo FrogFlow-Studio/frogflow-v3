@@ -12,7 +12,8 @@ import {
   type Product,
 } from "@/core/catalog/catalog";
 import { imagePath } from "@/core/catalog/image-url";
-import { resolvePrice } from "@/core/pricing/pricing";
+import { resolveListPrice, resolvePrice } from "@/core/pricing/pricing";
+import { offerForProduct } from "@/core/offers/offers";
 import { productSellable } from "@/core/catalog/materials";
 import { getSettings } from "@/core/settings/settings";
 import { eachPage } from "@/core/db/page";
@@ -37,13 +38,32 @@ export type StoreProduct = {
   priceFrom: boolean;
   currency: string;
   images: string[];
-  variants: Array<{ id: string; name: string; price: number; currency: string }>;
+  /** oldPrice — цена без акции, когда на товар действует акция (иначе null). */
+  variants: Array<{
+    id: string;
+    name: string;
+    price: number;
+    currency: string;
+    oldPrice: number | null;
+  }>;
   categoryIds: string[];
   kind: "digital" | "physical";
   inStock: boolean;
   leadTimeDays: number | null;
   rating: { avg: number; count: number } | null;
   languages: string[];
+  /**
+   * Действующая акция («Ограниченные предложения», core/offers): цена выше
+   * уже со скидкой, здесь — прежняя цена, процент, конец и остаток. Сроки
+   * показываются в часовом поясе магазина (tz).
+   */
+  offer: {
+    percent: number;
+    oldPrice: number;
+    endsAt: string;
+    left: number | null;
+    tz: string;
+  } | null;
   /** Файлы материала — только на странице товара (storeProduct), в каталоге не нужны. */
   files?: ProductFile[];
 };
@@ -129,6 +149,14 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
   const base = await resolvePrice(ctx, p, null);
   const min = priced.length ? priced.reduce((a, b) => (b.m.amount < a.m.amount ? b : a)) : null;
   const stockOn = ctx.tenant.modules.stock;
+  // Цена выше уже со скидкой акции (resolvePrice); прежняя — без неё.
+  const offer = await offerForProduct(ctx, p.id);
+  const oldOf = async (v: (typeof variants)[number] | null) =>
+    offer ? (await resolveListPrice(ctx, p, null, v)).amount : null;
+  const oldVariants = new Map(
+    await Promise.all(priced.map(async ({ v }) => [v.id, await oldOf(v)] as const)),
+  );
+  const oldPrice = offer ? await oldOf(min ? min.v : null) : null;
   return {
     id: p.id,
     name: p.name,
@@ -142,6 +170,7 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
       name: v.name,
       price: m.amount,
       currency: m.currency,
+      oldPrice: oldVariants.get(v.id) ?? null,
     })),
     categoryIds: Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [],
     kind: p.fulfillment_kind === "physical" ? "physical" : "digital",
@@ -149,6 +178,16 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
     leadTimeDays: shownLeadDays(p),
     rating: p.rating_count ? { avg: Number(p.rating_avg ?? 0), count: p.rating_count } : null,
     languages: productLanguages(ctx, p),
+    offer:
+      offer && oldPrice != null
+        ? {
+            percent: offer.percent,
+            oldPrice,
+            endsAt: offer.ends_at,
+            left: offer.left,
+            tz: ctx.timezone,
+          }
+        : null,
   };
 }
 
