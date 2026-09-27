@@ -4,6 +4,7 @@ import { decryptSecret, isEncryptedSecret } from "@/core/secrets/vault";
 import { availableModules } from "@/core/modules/registry";
 import { findTenant, tenantFromRow, TENANT_COLUMNS, type TenantRow } from "./directory";
 import type { Tenant, TenantLookup } from "./types";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Справочник арендаторов — все неархивные строки `bots`, в памяти на минуту.
@@ -22,7 +23,7 @@ async function loadDirectory(): Promise<Tenant[]> {
     .from("bots")
     .select(TENANT_COLUMNS)
     .is("archived_at", null);
-  if (error) throw new Error(`Не удалось прочитать справочник арендаторов: ${error.message}`);
+  if (error) throw serverFailure(`Не удалось прочитать справочник арендаторов: ${error.message}`);
   return (data as TenantRow[]).map(tenantFromRow);
 }
 

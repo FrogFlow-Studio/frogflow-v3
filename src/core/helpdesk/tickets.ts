@@ -1,6 +1,7 @@
 import type { Json } from "@/core/db-types";
 import { updateSettingAtomic } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Мини-helpdesk (модуль helpdesk, требует manager_chat): обращение
@@ -143,7 +144,7 @@ export async function createTicket(
     })
     .select("id")
     .single();
-  if (error || !data) throw new Error(`тикет не создан: ${error?.message}`);
+  if (error || !data) throw serverFailure(`тикет не создан: ${error?.message}`);
   return { ticket: { ...ticket, id: data.id }, created: true };
 }
 

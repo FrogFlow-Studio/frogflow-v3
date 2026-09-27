@@ -11,6 +11,7 @@ import {
   type LeadSource,
   type PipelineStage,
 } from "./stages";
+import { serverFailure } from "@/lib/server-failure";
 
 /** Закрытые сделки видны на доске столько дней; открытые — всегда. */
 export const CLOSED_WINDOW_DAYS = 30;
@@ -121,8 +122,8 @@ export async function pipelineBoard(ctx: TenantContext, now = new Date()): Promi
       .limit(ORDER_LIMIT),
     listLeads(ctx),
   ]);
-  if (open.error) throw new Error(`Заказы не прочитались: ${open.error.message}`);
-  if (recent.error) throw new Error(`Заказы не прочитались: ${recent.error.message}`);
+  if (open.error) throw serverFailure(`Заказы не прочитались: ${open.error.message}`);
+  if (recent.error) throw serverFailure(`Заказы не прочитались: ${recent.error.message}`);
 
   const cards: BoardCard[] = [];
   for (const o of [...(open.data ?? []), ...(recent.data ?? [])] as OrderRow[]) {

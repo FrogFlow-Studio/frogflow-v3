@@ -1,4 +1,5 @@
 import { createCsrfMiddleware, createMiddleware, createStart } from "@tanstack/react-start";
+import { shownErrorAdapter } from "@/lib/shown-error";
 
 // Серверные функции — same-origin RPC; чужой сайт не должен их дёргать
 // cookie-сессией продавца или оператора.
@@ -53,4 +54,6 @@ export const startInstance = createStart(() => ({
   // ошибку (UserError), а не переведённый на английский текст. Журнал
   // внутри перевода ошибок: отказ не пишется, текст переводится.
   functionMiddleware: [userErrors, failureReport, adminAudit],
+  // Отказ человеку доезжает до браузера с именем ShownError (lib/shown-error).
+  serializationAdapters: [shownErrorAdapter],
 }));

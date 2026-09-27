@@ -37,6 +37,7 @@ import { adminLoginTaken } from "@/core/auth/roles";
 import { hashPassword } from "@/app/auth/password";
 import { telegramWebhookUrl } from "@/channels/telegram/secret";
 import { NO_RECIPIENTS_REASON, type DeliveryReport } from "@/core/notify/deliver";
+import { serverFailure } from "@/lib/server-failure";
 
 type BotUpdate = Database["public"]["Tables"]["bots"]["Update"];
 type EventKind =
@@ -887,7 +888,7 @@ export async function resolveModuleRequest(
     .from("module_requests")
     .update({ status: "resolved", resolved_at: new Date().toISOString() })
     .eq("id", id);
-  if (updError) throw new Error(`Не удалось закрыть заявку: ${updError.message}`);
+  if (updError) throw serverFailure(`Не удалось закрыть заявку: ${updError.message}`);
   await logEvent(req.bot_id, "meta", { module_request: key, action }, actor);
   return { notified };
 }

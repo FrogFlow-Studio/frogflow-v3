@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database, Json } from "@/core/db-types";
 import type { Locale } from "@/core/i18n/locale";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Покупатель — строка bot_users, PK (bot_id, user_key).
@@ -223,7 +224,7 @@ export async function upsertCustomer(
     .select("*")
     .single();
   if (error || !inserted)
-    throw new Error(`Не удалось создать покупателя ${key}: ${error?.message}`);
+    throw serverFailure(`Не удалось создать покупателя ${key}: ${error?.message}`);
   return fromRow(inserted);
 }
 
@@ -264,7 +265,7 @@ export async function setState(
     .update({ state: next as Json })
     .eq("user_key", customer.userKey);
   if (error)
-    throw new Error(`Не удалось сохранить состояние ${customer.userKey}: ${error.message}`);
+    throw serverFailure(`Не удалось сохранить состояние ${customer.userKey}: ${error.message}`);
   return { ...customer, state: next };
 }
 
@@ -277,7 +278,7 @@ export async function setContactPhone(
     .from("bot_users")
     .update({ contact_phone: phone })
     .eq("user_key", customer.userKey);
-  if (error) throw new Error(`Не удалось сохранить телефон: ${error.message}`);
+  if (error) throw serverFailure(`Не удалось сохранить телефон: ${error.message}`);
   return { ...customer, contactPhone: phone };
 }
 
@@ -290,7 +291,7 @@ export async function setEmail(
     .from("bot_users")
     .update({ email })
     .eq("user_key", customer.userKey);
-  if (error) throw new Error(`Не удалось сохранить почту: ${error.message}`);
+  if (error) throw serverFailure(`Не удалось сохранить почту: ${error.message}`);
   return { ...customer, email };
 }
 

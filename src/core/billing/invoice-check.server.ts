@@ -4,6 +4,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { readReceiptText } from "@/core/receipts/verify.server";
 import { checkInvoiceReceipt, claimVerdict, operationKey, recipientNames } from "./invoice-check";
 import type { OpenInvoice } from "./invoices";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Чек за подписку: распознать (PDF Kaspi — бесплатно из текста, фото —
@@ -42,7 +43,7 @@ async function marksBy(
   const { data, error } = await (
     op === "eq" ? q.eq(`payload->>${field}`, value) : q.like(`payload->>${field}`, value)
   ).limit(50);
-  if (error) throw new Error(`Не удалось проверить повтор чека: ${error.message}`);
+  if (error) throw serverFailure(`Не удалось проверить повтор чека: ${error.message}`);
   return (data ?? []).map((r) => {
     const p = r.payload as { invoice_id?: unknown } | null;
     return { invoice_id: typeof p?.invoice_id === "string" ? p.invoice_id : null };

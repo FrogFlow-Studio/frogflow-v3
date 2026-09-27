@@ -21,6 +21,7 @@ import {
 } from "@/core/receipts/audit";
 import type { VerifyResult } from "@/core/receipts/verify.server";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { serverFailure } from "@/lib/server-failure";
 
 type OrderProofRow = {
   id: number;
@@ -91,7 +92,7 @@ async function countWithProof(botId: string, beforeId = 0): Promise<number> {
     .like("payment_proof_path", PROOF_PATH_LIKE);
   if (beforeId > 0) q = q.lt("id", beforeId);
   const { count, error } = await q;
-  if (error) throw new Error(`Не удалось посчитать чеки: ${error.message}`);
+  if (error) throw serverFailure(`Не удалось посчитать чеки: ${error.message}`);
   return count ?? 0;
 }
 
@@ -219,7 +220,7 @@ export async function scanNextReceipt(
     let q = proofOrders(botId).order("id", { ascending: false }).limit(1);
     if (afterId > 0) q = q.lt("id", afterId);
     const { data, error } = await q.maybeSingle();
-    if (error) throw new Error(`Не удалось взять следующий чек: ${error.message}`);
+    if (error) throw serverFailure(`Не удалось взять следующий чек: ${error.message}`);
     const order = data as OrderProofRow | null;
     if (!order) return finish(0);
     afterId = order.id;

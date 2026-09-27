@@ -1,5 +1,6 @@
 import { serviceDb } from "@/core/db/client.server";
 import { REVOKED_PREFIX, revocationExpiresAt, revokedKey } from "./session-id";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Отозванные сессии — строки `operator_settings` с ключом
@@ -22,7 +23,7 @@ export async function isSessionRevoked(sid: string, now = Date.now()): Promise<b
     .eq("key", revokedKey(sid))
     .maybeSingle();
   // Не смогли проверить — не пускаем: лучше войти заново, чем пустить отозванную.
-  if (error) throw new Error(`проверка сессии: ${error.message}`);
+  if (error) throw serverFailure(`проверка сессии: ${error.message}`);
   if (data) {
     revoked.add(sid);
     checkedAt.delete(sid);
@@ -41,7 +42,7 @@ export async function revokeSession(sid: string, iat: number | undefined, now = 
   const { error } = await db
     .from("operator_settings")
     .upsert({ key: revokedKey(sid), value: revocationExpiresAt(iat, now) });
-  if (error) throw new Error(`отзыв сессии: ${error.message}`);
+  if (error) throw serverFailure(`отзыв сессии: ${error.message}`);
   await db
     .from("operator_settings")
     .delete()

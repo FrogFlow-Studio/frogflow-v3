@@ -4,6 +4,7 @@ import { pageAll } from "@/core/db/page";
 import { telegramApi } from "@/channels/telegram/api";
 import { telegramWebhookUrl } from "@/channels/telegram/secret";
 import { tenantContext, tenantDirectory } from "@/core/tenant/resolve.server";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Снимки здоровья ботов — источник «Истории падений» в панели оператора.
@@ -82,7 +83,7 @@ export async function recordHealthSnapshotsFor(
   );
   if (rows.length) {
     const { error } = await serviceDb().from("bot_health_snapshots").insert(rows);
-    if (error) throw new Error(`Не удалось записать снимки: ${error.message}`);
+    if (error) throw serverFailure(`Не удалось записать снимки: ${error.message}`);
   }
   return { inserted: rows.length, failing: rows.filter((r) => !r.ok).map((r) => r.bot_id) };
 }

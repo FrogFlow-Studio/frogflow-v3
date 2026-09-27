@@ -10,6 +10,7 @@ import { operationKey } from "@/core/billing/invoice-check";
 import type { Tenant } from "@/core/tenant/types";
 import { logEvent, notifyOwner } from "./operator.server";
 import { NO_RECIPIENTS_REASON } from "@/core/notify/deliver";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Подписка клиента на платформу: платежи (subscription_payments — срок
@@ -36,7 +37,7 @@ async function setOperatorSetting(key: string, value: string): Promise<void> {
   const { error } = data
     ? await db.from("operator_settings").update({ value: v }).eq("key", key)
     : await db.from("operator_settings").insert({ key, value: v });
-  if (error) throw new Error(`Не удалось сохранить настройку: ${error.message}`);
+  if (error) throw serverFailure(`Не удалось сохранить настройку: ${error.message}`);
 }
 
 export async function setPayoutRequisites(value: string): Promise<void> {
@@ -95,7 +96,7 @@ export async function addPayment(
 ): Promise<{ expiresAt: string | null }> {
   const db = serviceDb();
   const { error } = await db.from("subscription_payments").insert({ bot_id: botId, ...p });
-  if (error) throw new Error(`Не удалось записать платёж: ${error.message}`);
+  if (error) throw serverFailure(`Не удалось записать платёж: ${error.message}`);
   await logEvent(
     botId,
     "payment",
@@ -182,7 +183,7 @@ async function invoiceOrThrow(id: string): Promise<Invoice & { proof_path: strin
     .select(SELECT)
     .eq("id", id)
     .maybeSingle();
-  if (error || !data) throw new Error(`Счёт не найден${error ? `: ${error.message}` : ""}`);
+  if (error || !data) throw serverFailure(`Счёт не найден${error ? `: ${error.message}` : ""}`);
   return { ...toInvoice(data as Row), proof_path: (data as Row).proof_path };
 }
 
@@ -256,7 +257,8 @@ export async function createInvoice(
     })
     .select(SELECT)
     .single();
-  if (error || !data) throw new Error(`Не удалось создать счёт: ${error?.message ?? "нет данных"}`);
+  if (error || !data)
+    throw serverFailure(`Не удалось создать счёт: ${error?.message ?? "нет данных"}`);
   const invoice = toInvoice(data as Row);
   // Способы могли отвалиться после вставки: тогда счёт остаётся в базе, а
   // владелец ничего не получает. Такой счёт сразу помечаем отменённым.
@@ -341,7 +343,7 @@ export async function confirmInvoice(
     .in("status", ["sent", "proof_uploaded"])
     .select("id")
     .maybeSingle();
-  if (error) throw new Error(`Не удалось подтвердить счёт: ${error.message}`);
+  if (error) throw serverFailure(`Не удалось подтвердить счёт: ${error.message}`);
   if (!claimed) throw new Error("Счёт уже обработан — обновите список");
   let r: { expiresAt: string | null };
   try {

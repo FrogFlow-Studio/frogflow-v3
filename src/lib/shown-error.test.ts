@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { toCrossJSONAsync, fromCrossJSON } from "seroval";
+import { makeSerovalPlugin } from "@tanstack/router-core";
+import { defaultSerovalPlugins } from "@tanstack/router-core/ssr/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { UserError } from "@/core/i18n/user-error";
 import { ADMIN_DICTS } from "@/app/i18n/admin";
@@ -17,7 +19,13 @@ import {
   SERVER_FAILED_TEXT,
   toScreenError,
 } from "./server-fn-errors";
-import { clientErrorReport, isBrowserFailure, screenErrorText, shownError } from "./shown-error";
+import {
+  clientErrorReport,
+  isBrowserFailure,
+  screenErrorText,
+  shownError,
+  shownErrorAdapter,
+} from "./shown-error";
 
 const ru = (e: UserError) => Promise.resolve(e.message);
 
@@ -56,13 +64,22 @@ describe("текст ошибки на экране", () => {
   });
 
   it("пометка переживает передачу из серверной функции в браузер", async () => {
-    const back = fromCrossJSON(
-      await toCrossJSONAsync(shownError("Заказ закрыт"), { refs: new Map() }),
-      {
+    // Те же плагины, что у TanStack Start: стандартный для Error отдаёт только
+    // message, поэтому без своего типа (start.ts) пометка терялась.
+    const transfer = async (e: unknown, adapters: (typeof shownErrorAdapter)[]) => {
+      const plugins = [...adapters.map((a) => makeSerovalPlugin(a)), ...defaultSerovalPlugins];
+      return fromCrossJSON(await toCrossJSONAsync(e, { refs: new Map(), plugins }), {
         refs: new Map(),
-      },
+        plugins,
+      });
+    };
+    expect(screenErrorText(await transfer(shownError("Заказ закрыт"), []))).toBe(
+      "Не удалось связаться с сервером. Попробуйте ещё раз.",
     );
+    const back = await transfer(shownError("Заказ закрыт"), [shownErrorAdapter]);
     expect(screenErrorText(back)).toBe("Заказ закрыт");
+    // Сбой по-прежнему идёт обычной ошибкой и остаётся сбоем.
+    expect(isBrowserFailure(await transfer(new Error("boom"), [shownErrorAdapter]))).toBe(true);
   });
 });
 

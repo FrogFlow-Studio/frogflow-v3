@@ -57,6 +57,7 @@ export {
   itemMaterials,
   materialDownloadName,
 } from "./pure";
+import { serverFailure } from "@/lib/server-failure";
 export { parseDeliveredLanguages } from "@/core/catalog/materials";
 
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
@@ -982,6 +983,7 @@ export async function setOrderEmail(
     .eq("id", orderId)
     .eq("telegram_id", telegramId)
     .select("id");
-  if (error) throw new Error(`Не удалось сохранить почту в заказе #${orderId}: ${error.message}`);
+  if (error)
+    throw serverFailure(`Не удалось сохранить почту в заказе #${orderId}: ${error.message}`);
   return (data ?? []).length > 0;
 }

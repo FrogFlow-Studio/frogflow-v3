@@ -12,6 +12,7 @@ import { errorMessage } from "./error-message";
  * в Sentry (серверные сбои — из src/start.ts, браузерные —
  * /api/client-error).
  */
+import { createSerializationAdapter } from "@tanstack/react-router";
 import type { Locale } from "@/core/i18n/locale";
 
 export const SHOWN_ERROR = "ShownError";
@@ -26,6 +27,19 @@ export function shownError(message: string): Error {
 export function isShownError(e: unknown): e is Error {
   return e instanceof Error && e.name === SHOWN_ERROR && e.message.trim() !== "";
 }
+
+/**
+ * Передача отказа из серверной функции в браузер (src/start.ts). Стандартная
+ * передача ошибок TanStack отдаёт только message, и имя ShownError терялось:
+ * вместо «Промокод не подошёл» человек видел «Не удалось связаться с
+ * сервером». Отказ идёт своим типом и в браузере снова становится ShownError.
+ */
+export const shownErrorAdapter = createSerializationAdapter({
+  key: "ff-shown-error",
+  test: (v: unknown): v is Error => isShownError(v),
+  toSerializable: (e: Error) => ({ message: e.message }),
+  fromSerializable: (v: { message: string }) => shownError(v.message),
+});
 
 export type ScreenErrorKind = "shown" | "session" | "aborted" | "failure";
 

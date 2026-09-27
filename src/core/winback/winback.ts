@@ -4,6 +4,7 @@ import { customerFromRow, setState, type Customer } from "@/core/customers/custo
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { minutesInTz } from "@/core/notify/prefs";
 import { eachPage } from "@/core/db/page";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Возвратные продажи (модуль winback): покупателю, который давно не
@@ -155,7 +156,7 @@ export async function runWinback(
       .from("bot_users")
       .select("*")
       .in("telegram_id", due.slice(i, i + 200));
-    if (error) throw new Error(`возврат клиентов: покупатели: ${error.message}`);
+    if (error) throw serverFailure(`возврат клиентов: покупатели: ${error.message}`);
     for (const row of users ?? []) {
       if (r.sent + r.failed >= WINBACK_BATCH) break;
       const c = customerFromRow(row);
