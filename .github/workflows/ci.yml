@@ -37,7 +37,7 @@ jobs:
           APP_URL: https://ci.invalid
 
   # Сквозной прогон в браузере: собранное приложение против подставной базы
-  # (tests/e2e/supabase-stub.ts) — ключи настоящей базы здесь не нужны.
+  # с демо-магазином (tests/e2e/pg-stub.ts, seed.ts) — ключи настоящей базы здесь не нужны.
   e2e:
     runs-on: ubuntu-latest
     steps:
