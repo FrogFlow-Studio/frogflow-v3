@@ -279,6 +279,16 @@ async function handleMessage(
     }
   }
 
+  // Фото к отзыву — до чека: на шаге комментария покупатель шлёт снимок
+  // товара, а не оплату, даже если у него есть неоплаченный заказ.
+  if (
+    customer.state.mode === "awaiting_review_comment" &&
+    customer.state.review_product_id &&
+    (msg.photo || msg.document) &&
+    ctx.tenant.modules.review_request
+  )
+    return receiveReviewPhoto(b, msg, String(customer.state.review_product_id));
+
   // Чек оплаты: по состоянию либо по свежему открытому заказу.
   if (msg.photo || msg.document) {
     const proofModes = new Set(["awaiting_proof", "awaiting_payment"]);
@@ -1525,6 +1535,25 @@ async function downloadTelegramFile(
     bytes: new Uint8Array(await res.arrayBuffer()),
     mime: res.headers.get("content-type") ?? "application/octet-stream",
   };
+}
+
+/** Фото к отзыву (core/reviews/photos): тип и размер проверяются по файлу. */
+async function receiveReviewPhoto(b: Bot, msg: TelegramMessage, productId: string) {
+  const { REVIEW_PHOTO_MAX_BYTES, REVIEW_PHOTOS_MAX } = await import("@/core/reviews/photos");
+  const photo = msg.photo?.[msg.photo.length - 1];
+  const fileId = msg.document?.file_id ?? photo?.file_id;
+  const declared = msg.document?.file_size ?? photo?.file_size ?? 0;
+  if (!fileId || declared > REVIEW_PHOTO_MAX_BYTES) return send(b, b.m.reviewPhotoBad);
+  const file = await downloadTelegramFile(b.api, fileId);
+  if (!file) return send(b, b.m.reviewPhotoBad);
+  const { addReviewPhoto } = await import("@/core/reviews/photos.server");
+  const r = await addReviewPhoto(b.ctx, b.customer.telegramId, productId, file.bytes);
+  const caption = msg.caption?.trim();
+  if (caption) await saveComment(b.ctx, b.customer.telegramId, productId, caption);
+  if (r.ok) return send(b, b.m.reviewPhotoAdded(r.count, REVIEW_PHOTOS_MAX));
+  if (r.reason === "limit") return send(b, b.m.reviewPhotoLimit(REVIEW_PHOTOS_MAX));
+  if (r.reason === "no_review") return send(b, b.m.reviewNotAllowed);
+  return send(b, b.m.reviewPhotoBad);
 }
 
 async function askRating(b: Bot, productId: string, name: string) {

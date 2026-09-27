@@ -171,6 +171,9 @@ export type Msg = {
   reviewSaved: string;
   reviewSkipBtn: string;
   reviewCommentSaved: string;
+  reviewPhotoAdded: (n: number, max: number) => string;
+  reviewPhotoLimit: (max: number) => string;
+  reviewPhotoBad: string;
   reviewNotAllowed: string;
   noReviewableProducts: string;
   inviteFriendBtn: string;
@@ -217,9 +220,14 @@ const ru: Msg = {
   rateBtn: (no) => `⭐ Оценить (#${no})`,
   chooseProductToRate: "Какой товар из этого заказа оцениваете?",
   chooseRatingPrompt: (name) => `Оцените «${name}»:`,
-  reviewSaved: "✅ Спасибо за оценку! Хотите добавить комментарий — просто напишите его.",
+  reviewSaved:
+    "✅ Спасибо за оценку! Хотите добавить комментарий или до 3 фото — просто пришлите их.",
   reviewSkipBtn: "Пропустить",
   reviewCommentSaved: "✅ Комментарий сохранён. Спасибо за отзыв!",
+  reviewPhotoAdded: (n, max) =>
+    `📷 Фото добавлено (${n} из ${max}). Можно прислать ещё или написать комментарий.`,
+  reviewPhotoLimit: (max) => `К отзыву можно приложить не больше ${max} фото.`,
+  reviewPhotoBad: "Не получилось добавить фото: нужна картинка JPEG, PNG или WebP до 5 МБ.",
   reviewNotAllowed: "⚠️ Оценить можно только то, что вы реально купили и получили.",
   noReviewableProducts: "В этом заказе нет товаров, которые можно оценить.",
   inviteFriendBtn: "🎁 Пригласить друга",
@@ -452,9 +460,14 @@ const kk: Msg = {
   rateBtn: (no) => `⭐ Бағалау (#${no})`,
   chooseProductToRate: "Осы тапсырыстан қай тауарды бағалайсыз?",
   chooseRatingPrompt: (name) => `«${name}» тауарын бағалаңыз:`,
-  reviewSaved: "✅ Бағалағаныңыз үшін рақмет! Пікір қосқыңыз келсе — жай ғана жазыңыз.",
+  reviewSaved:
+    "✅ Бағалағаныңыз үшін рақмет! Пікір немесе 3 фотоға дейін қосқыңыз келсе — жай ғана жіберіңіз.",
   reviewSkipBtn: "Өткізіп жіберу",
   reviewCommentSaved: "✅ Пікір сақталды. Пікіріңіз үшін рақмет!",
+  reviewPhotoAdded: (n, max) =>
+    `📷 Фото қосылды (${n} / ${max}). Тағы жіберуге немесе пікір жазуға болады.`,
+  reviewPhotoLimit: (max) => `Пікірге ${max} фотодан артық қосуға болмайды.`,
+  reviewPhotoBad: "Фото қосылмады: 5 МБ-қа дейінгі JPEG, PNG не WebP сурет керек.",
   reviewNotAllowed: "⚠️ Тек нақты сатып алып, алған тауарды ғана бағалауға болады.",
   noReviewableProducts: "Бұл тапсырыста бағалауға болатын тауар жоқ.",
   inviteFriendBtn: "🎁 Досты шақыру",
@@ -569,9 +582,14 @@ const en: Msg = {
   rateBtn: (no) => `⭐ Rate (#${no})`,
   chooseProductToRate: "Which product from this order are you rating?",
   chooseRatingPrompt: (name) => `Rate "${name}":`,
-  reviewSaved: "✅ Thanks for the rating! Want to add a comment — just type it.",
+  reviewSaved:
+    "✅ Thanks for the rating! Want to add a comment or up to 3 photos — just send them.",
   reviewSkipBtn: "Skip",
   reviewCommentSaved: "✅ Comment saved. Thanks for the review!",
+  reviewPhotoAdded: (n, max) =>
+    `📷 Photo added (${n} of ${max}). You can send more or write a comment.`,
+  reviewPhotoLimit: (max) => `You can attach at most ${max} photos to a review.`,
+  reviewPhotoBad: "Couldn't add the photo: send a JPEG, PNG or WebP image up to 5 MB.",
   reviewNotAllowed: "⚠️ You can only rate something you actually bought and received.",
   noReviewableProducts: "This order has no products you can rate.",
   inviteFriendBtn: "🎁 Invite a friend",
@@ -705,9 +723,14 @@ const uz: Msg = {
   rateBtn: (no) => `⭐ Baholash (#${no})`,
   chooseProductToRate: "Ushbu buyurtmadan qaysi mahsulotni baholaysiz?",
   chooseRatingPrompt: (name) => `«${name}» mahsulotini baholang:`,
-  reviewSaved: "✅ Baholaganingiz uchun rahmat! Izoh qo‘shmoqchi bo‘lsangiz — shunchaki yozing.",
+  reviewSaved:
+    "✅ Baholaganingiz uchun rahmat! Izoh yoki 3 tagacha rasm qo‘shmoqchi bo‘lsangiz — shunchaki yuboring.",
   reviewSkipBtn: "O‘tkazib yuborish",
   reviewCommentSaved: "✅ Izoh saqlandi. Fikringiz uchun rahmat!",
+  reviewPhotoAdded: (n, max) =>
+    `📷 Rasm qo‘shildi (${n} / ${max}). Yana yuborish yoki izoh yozish mumkin.`,
+  reviewPhotoLimit: (max) => `Fikrga ${max} tadan ortiq rasm qo‘shib bo‘lmaydi.`,
+  reviewPhotoBad: "Rasm qo‘shilmadi: 5 MB gacha JPEG, PNG yoki WebP rasm kerak.",
   reviewNotAllowed: "⚠️ Faqat haqiqatan sotib olib, qo‘lga kiritgan mahsulotni baholash mumkin.",
   noReviewableProducts: "Bu buyurtmada baholash mumkin bo‘lgan mahsulot yo‘q.",
   inviteFriendBtn: "🎁 Do‘stni taklif qilish",

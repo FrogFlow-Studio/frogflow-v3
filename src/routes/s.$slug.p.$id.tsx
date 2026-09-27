@@ -6,6 +6,7 @@ import { useStorefrontLocale } from "@/app/storefront/locale";
 import { reviewsWord } from "@/app/i18n/storefront";
 import { formatMoney } from "@/core/money/money";
 import { pageBadge } from "@/core/catalog/lead-time";
+import { ProductReviews } from "@/app/storefront/reviews";
 import { productMeta } from "@/core/storefront/share";
 
 export const Route = createFileRoute("/s/$slug/p/$id")({
@@ -194,6 +195,7 @@ function ProductPage() {
           )}
         </div>
       </div>
+      <ProductReviews slug={slug} productId={p.id} />
       {related.length > 0 && (
         <section className="mt-10">
           <h2 className="mb-3 text-sm font-semibold text-muted">{t("product.related")}</h2>

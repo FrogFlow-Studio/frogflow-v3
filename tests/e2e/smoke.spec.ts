@@ -95,6 +95,15 @@ test("витрина: превью ссылки и установка на те�
   expect(errors).toEqual([]);
 });
 
+test("витрина: на странице товара только одобренные отзывы", async ({ page }) => {
+  const errors = await watch(page);
+  await page.goto(`/s/${F.SHOP_SLUG}/p/${F.PRODUCT_ID}`);
+  await expect(page.getByRole("heading", { name: "Отзывы покупателей" })).toBeVisible();
+  await expect(page.getByText("Ребёнок пишет с удовольствием")).toBeVisible();
+  await expect(page.getByText("Неодобренный отзыв")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test("маршруты /api отвечают: крон без секрета — 401, а не 500", async ({ request }) => {
   expect((await request.get("/api/cron/health")).status()).toBe(401);
   expect((await request.get("/api/health")).status()).toBe(200);

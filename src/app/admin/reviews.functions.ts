@@ -64,3 +64,25 @@ export const replyToReviewFn = createServerFn({ method: "POST" })
       );
     return { ok: true };
   });
+
+/** Решение для витрины: показать отзыв покупателям или скрыть. */
+export const setReviewStatusFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ id: z.string().uuid(), status: z.enum(["approved", "hidden"]) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { ctx } = await reviewOrFail(data.id);
+    const { setReviewStatus } = await import("@/core/reviews/photos.server");
+    if (!(await setReviewStatus(ctx, data.id, data.status)))
+      throw new Error("review status not saved");
+    return { ok: true };
+  });
+
+/** «Одобрить все старые»: отзывы, оставленные до одобрения продавцом, — на витрину. */
+export const approveLegacyReviewsFn = createServerFn({ method: "POST" }).handler(async () => {
+  const ctx = await (
+    await import("@/app/auth/guards.server")
+  ).requireAdminModule("review_request", "manager");
+  const { approveLegacyReviews } = await import("@/core/reviews/photos.server");
+  return { approved: await approveLegacyReviews(ctx) };
+});

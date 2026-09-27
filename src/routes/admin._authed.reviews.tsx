@@ -1,7 +1,13 @@
 import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
-import { assistReviewReplyFn, replyToReviewFn, reviewsFn } from "@/app/admin/reviews.functions";
+import {
+  approveLegacyReviewsFn,
+  assistReviewReplyFn,
+  replyToReviewFn,
+  reviewsFn,
+  setReviewStatusFn,
+} from "@/app/admin/reviews.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { REVIEW_REPLY_MAX, reviewStats, type AdminReview } from "@/core/reviews/admin";
@@ -29,6 +35,14 @@ function ReviewsPage() {
   const navigate = useNavigate();
   const stats = reviewStats(rows);
   const canWrite = shop.role !== "viewer";
+  const router = useRouter();
+  const [legacyDone, setLegacyDone] = useState<number | null>(null);
+  const legacy = useAction(async () => {
+    if (!confirm(t("reviews.approveLegacyConfirm"))) return;
+    const { approved } = await approveLegacyReviewsFn();
+    setLegacyDone(approved);
+    await router.invalidate();
+  });
   const fmt = (iso: string) =>
     new Date(iso).toLocaleString(intlLocale(shop.locale), {
       dateStyle: "short",
@@ -76,6 +90,22 @@ function ReviewsPage() {
           {t("reviews.withComment")}
         </label>
       </div>
+      {canWrite && rows.some((r) => r.legacy) && (
+        <div className="card mb-4 flex flex-wrap items-center gap-3 p-3 text-sm">
+          <span className="min-w-0 flex-1 text-muted">{t("reviews.legacyHint")}</span>
+          <button
+            className="btn-secondary text-xs"
+            disabled={legacy.busy}
+            onClick={() => void legacy.run().catch(() => {})}
+          >
+            {t("reviews.approveLegacy")}
+          </button>
+        </div>
+      )}
+      {legacyDone != null && (
+        <p className="mb-4 text-xs text-ok">{t("reviews.approveLegacyDone", { n: legacyDone })}</p>
+      )}
+      {Boolean(legacy.error) && <ErrorBox error={legacy.error} />}
       {rows.length === 0 ? (
         <Empty>{t("reviews.empty")}</Empty>
       ) : (
@@ -117,6 +147,10 @@ function ReviewCard({
     const { text } = await assistReviewReplyFn({ data: { id: r.id, lang } });
     setText(text);
   });
+  const decide = useAction(async (status: "approved" | "hidden") => {
+    await setReviewStatusFn({ data: { id: r.id, status } });
+    await router.invalidate();
+  });
   const send = useAction(async () => {
     await replyToReviewFn({ data: { id: r.id, text } });
     setSent(true);
@@ -143,6 +177,48 @@ function ReviewCard({
       <p className={`mt-2 text-sm whitespace-pre-line ${r.comment ? "" : "text-muted"}`}>
         {r.comment ?? t("reviews.noComment")}
       </p>
+      {r.photos.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {r.photos.map((src) => (
+            <a key={src} href={src} target="_blank" rel="noreferrer">
+              <img
+                src={src}
+                alt={t("reviews.photoAlt")}
+                loading="lazy"
+                className="h-20 w-20 rounded-md border border-line object-cover"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+        <span
+          className={
+            r.status === "approved" ? "text-ok" : r.status === "hidden" ? "text-muted" : "text-warn"
+          }
+        >
+          {t(r.legacy ? "reviews.status.legacy" : `reviews.status.${r.status}`)}
+        </span>
+        {canWrite && r.status !== "approved" && (
+          <button
+            className="btn-secondary text-xs"
+            disabled={decide.busy}
+            onClick={() => void decide.run("approved").catch(() => {})}
+          >
+            {t("reviews.approve")}
+          </button>
+        )}
+        {canWrite && r.status !== "hidden" && (
+          <button
+            className="btn-ghost text-xs"
+            disabled={decide.busy}
+            onClick={() => void decide.run("hidden").catch(() => {})}
+          >
+            {t("reviews.hide")}
+          </button>
+        )}
+      </div>
+      {Boolean(decide.error) && <ErrorBox error={decide.error} />}
       {sent && <p className="mt-2 text-xs text-ok">{t("reviews.sent")}</p>}
       {canWrite && !open && (
         <button className="btn-secondary mt-3 text-xs" onClick={() => setOpen(true)}>

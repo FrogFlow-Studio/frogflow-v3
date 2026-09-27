@@ -201,8 +201,12 @@ export async function deleteProduct(ctx: TenantContext, id: string): Promise<voi
     .select("product_images(image_path), product_material_files(file_path)")
     .eq("id", id)
     .maybeSingle();
+  const { dropReviewExtras, productReviewIds } = await import("@/core/reviews/photos.server");
+  const reviewIds = await productReviewIds(ctx, id);
   const { error } = await ctx.db.from("products").delete().eq("id", id);
   if (error) throw new Error(error.message);
+  // Отзывы товара ушли вместе с ним — их фото и решения продавца следом.
+  await dropReviewExtras(ctx, reviewIds);
   // Файлы в общих бакетах — только под своим префиксом.
   const own = (k: string | null | undefined): k is string =>
     Boolean(k && isTenantStorageKey(ctx.tenant.id, k));

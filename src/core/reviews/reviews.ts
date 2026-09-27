@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { markReviewPending } from "./photos.server";
 
 /**
  * Право на отзыв — реально выданная покупка этого товара, а не просто
@@ -64,11 +65,20 @@ export async function saveRating(
     .eq("telegram_id", telegramId)
     .eq("product_id", productId)
     .maybeSingle();
-  const { error } = existing
-    ? await ctx.db.from("product_reviews").update({ rating, comment: null }).eq("id", existing.id)
+  const { data: saved, error } = existing
+    ? await ctx.db
+        .from("product_reviews")
+        .update({ rating, comment: null })
+        .eq("id", existing.id)
+        .select("id")
+        .maybeSingle()
     : await ctx.db
         .from("product_reviews")
-        .insert({ bot_id: ctx.tenant.id, telegram_id: telegramId, product_id: productId, rating });
+        .insert({ bot_id: ctx.tenant.id, telegram_id: telegramId, product_id: productId, rating })
+        .select("id")
+        .maybeSingle();
+  // Новая или изменённая оценка — на витрину только после решения продавца.
+  if (!error && saved) await markReviewPending(ctx, saved.id);
   return !error;
 }
 
@@ -85,6 +95,7 @@ export async function saveComment(
     .eq("telegram_id", telegramId)
     .eq("product_id", productId)
     .select("id");
+  for (const r of data ?? []) await markReviewPending(ctx, r.id);
   return !error && Boolean(data?.length);
 }
 

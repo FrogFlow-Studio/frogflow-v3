@@ -14,8 +14,8 @@ export type TelegramMessage = {
   text?: string;
   caption?: string;
   contact?: { phone_number: string };
-  document?: { file_id: string; file_name?: string; mime_type?: string };
-  photo?: Array<{ file_id: string }>;
+  document?: { file_id: string; file_name?: string; mime_type?: string; file_size?: number };
+  photo?: Array<{ file_id: string; file_size?: number }>;
   /** Оплата Telegram Stars прошла (счёт sendInvoice, валюта XTR). */
   successful_payment?: {
     currency: string;

@@ -202,6 +202,7 @@ export function seedDb(): StubDb {
   ];
 
   const shop = (r: Row) => ({ bot_id: F.SHOP_ID, ...r });
+  const REVIEW_OK = "e2e00000-0000-4000-8000-0000000000e1";
   db.tables.app_settings = [
     ["shop_name", F.SHOP_NAME],
     ["robokassa_enabled", "true"],
@@ -211,7 +212,29 @@ export function seedDb(): StubDb {
     ["robokassa_pass2", F.ROBOKASSA.pass2],
     // Оформление на витрине сайта (web-checkout.spec.ts).
     ["storefront_checkout", '{"enabled":true}'],
+    // Отзывы на витрине: первый одобрен продавцом, второй ждёт решения.
+    [`review_meta:${REVIEW_OK}`, '{"status":"approved","photos":[]}'],
   ].map(([key, value]) => shop({ key, value, updated_at: now }));
+  db.tables.product_reviews = [
+    shop({
+      id: REVIEW_OK,
+      product_id: F.PRODUCT_ID,
+      telegram_id: 900001,
+      rating: 5,
+      comment: "Ребёнок пишет с удовольствием",
+      created_at: now,
+      updated_at: now,
+    }),
+    shop({
+      id: "e2e00000-0000-4000-8000-0000000000e2",
+      product_id: F.PRODUCT_ID,
+      telegram_id: 900002,
+      rating: 1,
+      comment: "Неодобренный отзыв",
+      created_at: now,
+      updated_at: now,
+    }),
+  ];
 
   db.tables.payment_methods = [
     shop({

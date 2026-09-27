@@ -20,6 +20,18 @@ export const ru = {
   "reviews.send": "Отправить покупателю",
   "reviews.cancel": "Отмена",
   "reviews.sent": "Ответ отправлен покупателю.",
+  "reviews.status.pending": "Ждёт решения: на витрине не виден",
+  "reviews.status.approved": "Показан на витрине",
+  "reviews.status.hidden": "Скрыт с витрины",
+  "reviews.approve": "Показать на витрине",
+  "reviews.hide": "Скрыть",
+  "reviews.photoAlt": "Фото покупателя",
+  "reviews.status.legacy": "Старый отзыв: на витрине не виден, пока не одобрите",
+  "reviews.legacyHint": "Отзывы, оставленные до одобрения продавцом, на витрине не видны.",
+  "reviews.approveLegacy": "Одобрить все старые",
+  "reviews.approveLegacyConfirm":
+    "Показать на витрине все старые отзывы? Новые и скрытые вами не изменятся.",
+  "reviews.approveLegacyDone": "Одобрено старых отзывов: {n}",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -42,6 +54,18 @@ export const kk: SectionDict<typeof ru> = {
   "reviews.send": "Сатып алушыға жіберу",
   "reviews.cancel": "Болдырмау",
   "reviews.sent": "Жауап сатып алушыға жіберілді.",
+  "reviews.status.pending": "Шешім күтуде: дүкенде көрінбейді",
+  "reviews.status.approved": "Дүкенде көрсетіледі",
+  "reviews.status.hidden": "Дүкеннен жасырылған",
+  "reviews.approve": "Дүкенде көрсету",
+  "reviews.hide": "Жасыру",
+  "reviews.photoAlt": "Сатып алушының фотосы",
+  "reviews.status.legacy": "Ескі пікір: мақұлдамайынша дүкенде көрінбейді",
+  "reviews.legacyHint": "Сатушы мақұлдауы енгізілгенге дейінгі пікірлер дүкенде көрінбейді.",
+  "reviews.approveLegacy": "Барлық ескілерін мақұлдау",
+  "reviews.approveLegacyConfirm":
+    "Барлық ескі пікірлерді дүкенде көрсету керек пе? Жаңа және сіз жасырғандар өзгермейді.",
+  "reviews.approveLegacyDone": "Мақұлданған ескі пікірлер: {n}",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -63,6 +87,19 @@ export const en: SectionDict<typeof ru> = {
   "reviews.send": "Send to customer",
   "reviews.cancel": "Cancel",
   "reviews.sent": "The reply was sent to the customer.",
+  "reviews.status.pending": "Awaiting decision: not shown on the storefront",
+  "reviews.status.approved": "Shown on the storefront",
+  "reviews.status.hidden": "Hidden from the storefront",
+  "reviews.approve": "Show on storefront",
+  "reviews.hide": "Hide",
+  "reviews.photoAlt": "Customer photo",
+  "reviews.status.legacy": "Older review: not shown on the storefront until you approve it",
+  "reviews.legacyHint":
+    "Reviews left before seller approval existed are not shown on the storefront.",
+  "reviews.approveLegacy": "Approve all older reviews",
+  "reviews.approveLegacyConfirm":
+    "Show all older reviews on the storefront? New reviews and ones you hid stay as they are.",
+  "reviews.approveLegacyDone": "Older reviews approved: {n}",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -85,4 +122,17 @@ export const uz: SectionDict<typeof ru> = {
   "reviews.send": "Xaridorga yuborish",
   "reviews.cancel": "Bekor qilish",
   "reviews.sent": "Javob xaridorga yuborildi.",
+  "reviews.status.pending": "Qaror kutilmoqda: do‘konda ko‘rinmaydi",
+  "reviews.status.approved": "Do‘konda ko‘rsatiladi",
+  "reviews.status.hidden": "Do‘kondan yashirilgan",
+  "reviews.approve": "Do‘konda ko‘rsatish",
+  "reviews.hide": "Yashirish",
+  "reviews.photoAlt": "Xaridor rasmi",
+  "reviews.status.legacy": "Eski sharh: tasdiqlamaguningizcha do‘konda ko‘rinmaydi",
+  "reviews.legacyHint":
+    "Sotuvchi tasdig‘i joriy etilgunga qadar qoldirilgan sharhlar do‘konda ko‘rinmaydi.",
+  "reviews.approveLegacy": "Barcha eskilarini tasdiqlash",
+  "reviews.approveLegacyConfirm":
+    "Barcha eski sharhlar do‘konda ko‘rsatilsinmi? Yangi va siz yashirganlar o‘zgarmaydi.",
+  "reviews.approveLegacyDone": "Tasdiqlangan eski sharhlar: {n}",
 };

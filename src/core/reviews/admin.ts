@@ -1,4 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { imagePath } from "@/core/catalog/image-url";
+import { isReviewPhotoPath, type ReviewStatus } from "./photos";
 
 /**
  * Отзывы покупателей для продавца: оценка, комментарий, товар и покупатель.
@@ -20,6 +22,12 @@ export type AdminReview = {
     username: string | null;
     platform: string | null;
   };
+  /** Решение продавца для витрины (core/reviews/photos). */
+  status: ReviewStatus;
+  /** Старый отзыв: оставлен до одобрения продавцом, решения ещё не было. */
+  legacy: boolean;
+  /** Адреса фото покупателя (/api/img/…). */
+  photos: string[];
 };
 
 export type ReviewFilter = {
@@ -74,12 +82,19 @@ async function withNames(ctx: TenantContext, rows: ReviewRow[]): Promise<AdminRe
   if (rows.length === 0) return [];
   const productIds = [...new Set(rows.map((r) => r.product_id))];
   const buyerIds = [...new Set(rows.map((r) => Number(r.telegram_id)))];
-  const [products, buyers] = await Promise.all([
+  // Динамически: модуль читает и страница админки (reviewStats), а
+  // серверный код в клиентскую сборку не попадает.
+  const { reviewMetas } = await import("./photos.server");
+  const [products, buyers, metas] = await Promise.all([
     ctx.db.from("products").select("id, name").in("id", productIds),
     ctx.db
       .from("bot_users")
       .select("telegram_id, first_name, last_name, username, platform")
       .in("telegram_id", buyerIds),
+    reviewMetas(
+      ctx,
+      rows.map((r) => r.id),
+    ),
   ]);
   const productName = new Map(
     ((products.data ?? []) as Array<{ id: string; name: string }>).map((p) => [p.id, p.name]),
@@ -95,6 +110,7 @@ async function withNames(ctx: TenantContext, rows: ReviewRow[]): Promise<AdminRe
   return rows.map((r) => {
     const b = buyer.get(Number(r.telegram_id));
     const name = [b?.first_name, b?.last_name].filter((s) => s?.trim()).join(" ") || null;
+    const meta = metas.get(r.id) ?? { status: "pending" as const, photos: [], stored: false };
     return {
       id: r.id,
       productId: r.product_id,
@@ -109,6 +125,11 @@ async function withNames(ctx: TenantContext, rows: ReviewRow[]): Promise<AdminRe
         username: b?.username ?? null,
         platform: b?.platform ?? null,
       },
+      status: meta.status,
+      legacy: !meta.stored,
+      photos: meta.photos
+        .filter((p) => isReviewPhotoPath(r.id, p))
+        .map((p) => imagePath(ctx.tenant.id, p)),
     };
   });
 }
