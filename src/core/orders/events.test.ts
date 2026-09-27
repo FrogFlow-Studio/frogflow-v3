@@ -58,4 +58,17 @@ describe("describeOrderEvent", () => {
       describeOrderEvent({ kind: "fulfillment_changed", actor: "admin", payload: {} }).text,
     ).toBe("Получение изменено (продавец)");
   });
+
+  it("напоминание письмом покупателю с сайта видно отдельно от напоминания продавца", () => {
+    expect(
+      describeOrderEvent({
+        kind: "reminded",
+        actor: "bot",
+        payload: { channel: "email", to: "anna@mail.ru" },
+      }).text,
+    ).toBe("Напоминание об оплате — письмом на anna@mail.ru");
+    expect(describeOrderEvent({ kind: "reminded", actor: "admin", payload: {} }).text).toBe(
+      "Напоминание об оплате отправлено (продавец)",
+    );
+  });
 });

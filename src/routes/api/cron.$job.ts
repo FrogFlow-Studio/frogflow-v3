@@ -110,6 +110,13 @@ export const Route = createFileRoute("/api/cron/$job")({
                   ).expireWebOrders(
                     (await import("@/core/tenant/resolve.server")).tenantContext(t),
                   ),
+                  // Через 3 часа без оплаты — письмо покупателю со ссылкой на заказ.
+                  webReminders: await (
+                    await import("@/core/storefront/web-remind")
+                  ).remindWebOrders(
+                    (await import("@/core/tenant/resolve.server")).tenantContext(t),
+                    env().SESSION_SECRET,
+                  ),
                 }),
               }[params.job];
               // Клиенты — параллельно: пакет рассылки одного не задерживает других.

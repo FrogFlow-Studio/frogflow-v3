@@ -64,6 +64,33 @@ export async function recordOrderEvent(
   }
 }
 
+/**
+ * Событие, которое у заказа бывает один раз (например, письмо-напоминание):
+ * event_id без случайной части, уникальность event_id отбивает повтор, даже
+ * если два запуска крона пришли одновременно. true — событие записано этим
+ * вызовом; false — оно уже было или запись не удалась (тогда действие не
+ * делаем: лучше без письма, чем с двумя).
+ */
+export async function claimOrderEvent(
+  ctx: TenantContext,
+  orderId: number,
+  kind: OrderEventKind,
+  key: string,
+  payload: Record<string, Json | undefined> = {},
+  actor = "bot",
+): Promise<boolean> {
+  const { error } = await ctx.db.from("zernio_logs").insert({
+    bot_id: ctx.tenant.id,
+    event_id: `order:${orderId}:${kind}:${key}`,
+    event_type: `order.${kind}`,
+    status: ORDER_EVENT_STATUS,
+    payload: { order_id: orderId, actor, ...payload } as Json,
+  });
+  if (error && error.code !== "23505")
+    console.warn(`[orders] событие ${kind} для #${orderId} не записано: ${error.message}`);
+  return !error;
+}
+
 export async function listOrderEvents(ctx: TenantContext, orderId: number): Promise<OrderEvent[]> {
   const { data } = await ctx.db
     .from("zernio_logs")
@@ -140,7 +167,9 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
     case "rejected":
       return { text: `Заказ отклонён${who}`, tone: "danger" };
     case "reminded":
-      return { text: `Напоминание об оплате отправлено${who}`, tone: "neutral" };
+      return p.channel === "email"
+        ? { text: `Напоминание об оплате — письмом на ${str(p.to)}`, tone: "neutral" }
+        : { text: `Напоминание об оплате отправлено${who}`, tone: "neutral" };
     case "status":
       return { text: `Статус: ${str(p.to)}${who}`, tone: "neutral" };
     case "email_sent":

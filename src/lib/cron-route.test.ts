@@ -74,6 +74,7 @@ vi.mock("@/channels/telegram/jobs", () => ({
   runCourseLessons: hit("courses"),
 }));
 vi.mock("@/core/storefront/web-expire", () => ({ expireWebOrders: hit("webOrders") }));
+vi.mock("@/core/storefront/web-remind", () => ({ remindWebOrders: hit("webReminders") }));
 vi.mock("@/channels/zernio/jobs", () => ({ runWhatsAppBroadcastBatch: hit("waBroadcast") }));
 vi.mock("@/app/outbox/senders.server", () => ({ runOutbox: hit("outbox") }));
 vi.mock("@/core/vip/cron", () => ({ runVipCron: hit("vip") }));
@@ -120,7 +121,14 @@ const JOBS: Record<string, string[]> = {
   "ensure-webhook": ["webhook", "vipWebhook"],
   broadcast: ["broadcast", "waBroadcast", "outbox", "orderNotify"],
   "cart-reminder": ["cartReminder"],
-  "fulfillment-reminder": ["fulfillment", "winback", "funnel", "courses", "webOrders"],
+  "fulfillment-reminder": [
+    "fulfillment",
+    "winback",
+    "funnel",
+    "courses",
+    "webOrders",
+    "webReminders",
+  ],
   vip: ["vip"],
   "comment-dm-fallback": ["commentDm"],
   health: ["zernioSync", "zernioRetry", "digest", "weekly"],
