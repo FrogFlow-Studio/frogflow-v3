@@ -1,9 +1,9 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import type { Json } from "@/core/db-types";
 import {
   getCustomer,
   setEmail,
-  setState,
   upsertCustomer,
   userKey,
   type Customer,
@@ -120,12 +120,32 @@ export async function rememberFirstSource(
   source: unknown,
 ): Promise<void> {
   if (!isWebSource(source)) return;
-  const fresh = (await getCustomer(ctx, customer.userKey)) ?? customer;
-  if (fresh.state.first_source) return;
   try {
-    await setState(ctx, fresh, { ...fresh.state, first_source: source });
-  } catch {
-    /* источник — для аналитики продавца, заказ уже оформлен */
+    // Условная запись: state меняется, только если он тот же, что прочитали.
+    // Параллельный шаг бота не теряется — перечитываем и пробуем снова.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data, error } = await ctx.db
+        .from("bot_users")
+        .select("state")
+        .eq("user_key", customer.userKey)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) return;
+      const state = (data.state ?? {}) as Record<string, unknown>;
+      if (state.first_source) return;
+      const { data: written, error: werr } = await ctx.db
+        .from("bot_users")
+        .update({ state: { ...state, first_source: source } as Json })
+        .eq("user_key", customer.userKey)
+        .eq("state", JSON.stringify(data.state ?? {}))
+        .select("user_key");
+      if (werr) throw new Error(werr.message);
+      if (written && written.length > 0) return;
+    }
+    console.warn(`[web-source:${ctx.tenant.id}] источник не записан: state меняется параллельно`);
+  } catch (e) {
+    // Источник — для аналитики продавца, заказ уже оформлен.
+    console.warn(`[web-source:${ctx.tenant.id}] источник не записан: ${(e as Error).message}`);
   }
 }
 

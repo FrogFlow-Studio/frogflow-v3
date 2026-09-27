@@ -42,7 +42,7 @@ describe("запись в карточку покупателя", () => {
     } as unknown as TenantContext;
     const c = await upsertCustomer(ctx, "web", "abc", { firstName: "Анна", contactPhone: null });
     if (Object.keys(state).length) db.tables.bot_users![0]!.state = state;
-    return { ctx, c };
+    return { ctx, c, db };
   }
 
   it("первый источник пишется", async () => {
@@ -58,5 +58,27 @@ describe("запись в карточку покупателя", () => {
     const other = await setup();
     await rememberFirstSource(other.ctx, other.c, "<script>");
     expect((await getCustomer(other.ctx, other.c.userKey))!.state.first_source).toBeUndefined();
+  });
+
+  it("шаг бота, записанный между чтением и записью, не теряется", async () => {
+    const { ctx, c, db } = await setup({ mode: "catalog" });
+    // Бот меняет state после того, как источник прочитан, но до записи.
+    const from = db.from.bind(db);
+    let writes = 0;
+    (db as { from: typeof db.from }).from = ((t: string) => {
+      const q = from(t);
+      if (t !== "bot_users") return q;
+      const update = q.update.bind(q);
+      (q as { update: typeof q.update }).update = ((row: never) => {
+        if (writes++ === 0) db.tables.bot_users![0]!.state = { mode: "checkout" };
+        return update(row);
+      }) as typeof q.update;
+      return q;
+    }) as typeof db.from;
+    await rememberFirstSource(ctx, c, "site:google/spring");
+    const state = (await getCustomer(ctx, c.userKey))!.state;
+    expect(state.mode).toBe("checkout");
+    expect(state.first_source).toBe("site:google/spring");
+    expect(writes).toBe(2);
   });
 });

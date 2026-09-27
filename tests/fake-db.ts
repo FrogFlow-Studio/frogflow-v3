@@ -63,6 +63,16 @@ function jsonContains(have: unknown, want: unknown): boolean {
   return have === want;
 }
 
+function jsonEqual(have: unknown, text: string): boolean {
+  let want: unknown;
+  try {
+    want = JSON.parse(text);
+  } catch {
+    return false;
+  }
+  return jsonContains(have, want) && jsonContains(want, have);
+}
+
 /** Колонка или путь в jsonb «payload->>key», как в фильтрах PostgREST. */
 function pick(r: Row, col: string): unknown {
   const m = /^(\w+)->>(\w+)$/.exec(col);
@@ -145,7 +155,13 @@ class Query implements PromiseLike<Result> {
   }
   eq(col: string, v: unknown) {
     this.col(col);
-    this.filters.push((r) => pick(r, col) === v);
+    // Колонка jsonb сравнивается с JSON-текстом по значению, как в PostgREST.
+    this.filters.push((r) => {
+      const have = pick(r, col);
+      if (have !== null && typeof have === "object" && typeof v === "string")
+        return jsonEqual(have, v);
+      return have === v;
+    });
     return this;
   }
   neq(col: string, v: unknown) {

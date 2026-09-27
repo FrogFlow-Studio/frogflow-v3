@@ -93,8 +93,8 @@ const checkoutInput = z.object({
   website: z.string().max(0).optional(),
   challenge: z.string().max(200),
   answer: z.string().max(20),
-  /** Откуда пришёл (utm, ref), собрано браузером; мусор отбрасывается молча. */
-  source: z.string().max(64).optional(),
+  /** Откуда пришёл (utm, ref), собрано браузером; мусор отбрасывается молча и заказ не срывает. */
+  source: z.string().max(64).optional().catch(undefined),
 });
 
 export const webCheckoutFn = createServerFn({ method: "POST" })
