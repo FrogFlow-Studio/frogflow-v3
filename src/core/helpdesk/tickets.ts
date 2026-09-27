@@ -1,4 +1,5 @@
 import type { Json } from "@/core/db-types";
+import { updateSettingAtomic } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 
 /**
@@ -6,11 +7,25 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
  * покупателя — тикет со статусом, ответственным и историей. Переписка —
  * тот же чат с менеджером; тикет — надстройка для учёта. Своей таблицы нет:
  * строки в `zernio_logs` (`event_id = ticket:<uuid>`, `event_type = ticket`,
- * `status = open|pending|closed`), всё остальное — в payload.
+ * `status = open|waiting|closed`), всё остальное — в payload.
+ *
+ * «Ждём покупателя» хранится как `waiting`, а не `pending`: крон добора v1
+ * (zernio-retry) помечает «обработанными» все строки `pending` своего бота,
+ * и у клиента, чей деплой v1 ещё работает, обращения пропадали бы из списка.
+ * Старое `pending` читается как `waiting`.
  */
 export const TICKET_PREFIX = "ticket:";
-export const TICKET_STATUSES = ["open", "pending", "closed"] as const;
+export const TICKET_STATUSES = ["open", "waiting", "closed"] as const;
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
+/** Незакрытые — как они лежат в базе, включая старое `pending`. */
+export const OPEN_TICKET_DB_STATUSES = ["open", "waiting", "pending"] as const;
+/** Сквозной номер обращений магазина: не повторяется, даже когда старые строки удалит чистка журналов. */
+export const TICKET_SEQ_KEY = "helpdesk_seq";
+
+function statusFromDb(s: string): TicketStatus {
+  if (s === "pending") return "waiting";
+  return (TICKET_STATUSES as readonly string[]).includes(s) ? (s as TicketStatus) : "open";
+}
 
 export type TicketHistory = { at: string; actor: string; action: string; note?: string };
 
@@ -42,9 +57,7 @@ function rowToTicket(r: { id: string; status: string; payload: Json; created_at:
   return {
     id: r.id,
     number: Number(p.number ?? 0),
-    status: (TICKET_STATUSES as readonly string[]).includes(r.status)
-      ? (r.status as TicketStatus)
-      : "open",
+    status: statusFromDb(r.status),
     telegramId: Number(p.telegram_id ?? 0),
     customerName: p.customer_name ?? null,
     platform: p.platform ?? "telegram",
@@ -77,7 +90,7 @@ export async function openTicketFor(
     .from("zernio_logs")
     .select(SELECT)
     .like("event_id", `${TICKET_PREFIX}%`)
-    .in("status", ["open", "pending"])
+    .in("status", [...OPEN_TICKET_DB_STATUSES])
     .contains("payload", { telegram_id: telegramId })
     .order("created_at", { ascending: false })
     .limit(1);
@@ -106,13 +119,10 @@ export async function createTicket(
       .eq("id", existing.id);
     return { ticket: next, created: false };
   }
-  const { count } = await ctx.db
-    .from("zernio_logs")
-    .select("id", { count: "exact", head: true })
-    .like("event_id", `${TICKET_PREFIX}%`);
+  const number = await nextTicketNumber(ctx);
   const ticket: Ticket = {
     id: "",
-    number: (count ?? 0) + 1,
+    number,
     status: "open",
     telegramId: input.telegramId,
     customerName: input.customerName,
@@ -137,6 +147,30 @@ export async function createTicket(
   return { ticket: { ...ticket, id: data.id }, created: true };
 }
 
+/**
+ * Следующий номер обращения. Раньше номер был «число строк + 1»: чистка
+ * журналов удаляет старые строки, и номера пошли бы по второму кругу, а два
+ * одновременных обращения получали один номер. Теперь — атомарный счётчик в
+ * app_settings; при первом запуске он продолжает самый большой из уже
+ * выданных номеров.
+ */
+export async function nextTicketNumber(ctx: TenantContext): Promise<number> {
+  const { data: last } = await ctx.db
+    .from("zernio_logs")
+    .select("payload")
+    .like("event_id", `${TICKET_PREFIX}%`)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const seen = Number((last?.[0]?.payload as { number?: unknown } | null)?.number ?? 0) || 0;
+  let n = 0;
+  const r = await updateSettingAtomic(ctx, TICKET_SEQ_KEY, (raw) => {
+    n = Math.max(Number(raw) || 0, seen) + 1;
+    return String(n);
+  });
+  if (r !== "written") throw new Error("номер обращения не выдан: счётчик занят");
+  return n;
+}
+
 export async function listTickets(
   ctx: TenantContext,
   status?: TicketStatus | null,
@@ -148,7 +182,8 @@ export async function listTickets(
     .like("event_id", `${TICKET_PREFIX}%`)
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (status) q = q.eq("status", status);
+  if (status === "waiting") q = q.in("status", ["waiting", "pending"]);
+  else if (status) q = q.eq("status", status);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
   return (data ?? []).map(rowToTicket);

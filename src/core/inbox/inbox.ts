@@ -1,7 +1,7 @@
 import type { Json } from "@/core/db-types";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Conversation } from "@/core/chat/chat";
-import { TICKET_PREFIX } from "@/core/helpdesk/tickets";
+import { OPEN_TICKET_DB_STATUSES, TICKET_PREFIX } from "@/core/helpdesk/tickets";
 
 /**
  * Единый входящий: переписки Telegram, Instagram и WhatsApp в одном окне
@@ -143,7 +143,7 @@ async function closeTicketsFor(ctx: TenantContext, telegramId: number, actor: st
     .from("zernio_logs")
     .select("id")
     .like("event_id", `${TICKET_PREFIX}%`)
-    .in("status", ["open", "pending"])
+    .in("status", [...OPEN_TICKET_DB_STATUSES])
     .contains("payload", { telegram_id: telegramId });
   if (!data?.length) return;
   const { updateTicket } = await import("@/core/helpdesk/tickets");
@@ -162,7 +162,7 @@ export async function openTicketNumbers(
     .from("zernio_logs")
     .select("payload")
     .like("event_id", `${TICKET_PREFIX}%`)
-    .in("status", ["open", "pending"])
+    .in("status", [...OPEN_TICKET_DB_STATUSES])
     .order("created_at", { ascending: true })
     .limit(500);
   for (const row of data ?? []) {

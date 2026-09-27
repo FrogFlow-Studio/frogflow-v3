@@ -39,6 +39,8 @@ export const ru = {
   "err.assist.failed": "ИИ-помощник не ответил. Попробуйте ещё раз.",
   "err.assist.noProduct": "Товар не найден.",
   "err.review.notFound": "Отзыв не найден.",
+  "err.ticket.notFound": "Обращение не найдено.",
+  "err.ticket.badAssignee": "Такого сотрудника нет в команде магазина.",
   "err.review.notDelivered":
     "Ответ не доставлен: покупатель недоступен в своём канале (заблокировал бота или диалог закрыт).",
   "err.template.notEmpty":
@@ -134,6 +136,8 @@ export const kk: SectionDict<typeof ru> = {
   "err.assist.failed": "ЖИ-көмекші жауап бермеді. Қайта көріңіз.",
   "err.assist.noProduct": "Тауар табылмады.",
   "err.review.notFound": "Пікір табылмады.",
+  "err.ticket.notFound": "Өтініш табылмады.",
+  "err.ticket.badAssignee": "Дүкен командасында мұндай қызметкер жоқ.",
   "err.review.notDelivered":
     "Жауап жеткізілмеді: сатып алушы өз арнасында қолжетімсіз (ботты бұғаттаған немесе диалог жабық).",
   "err.template.notEmpty": "Үлгілер тек бос дүкенге қосылады — сізде тауарлар немесе санаттар бар.",
@@ -225,6 +229,8 @@ export const en: SectionDict<typeof ru> = {
   "err.assist.failed": "The AI assistant did not respond. Please try again.",
   "err.assist.noProduct": "Product not found.",
   "err.review.notFound": "Review not found.",
+  "err.ticket.notFound": "Request not found.",
+  "err.ticket.badAssignee": "There is no such member in the shop team.",
   "err.review.notDelivered":
     "The reply was not delivered: the customer is unreachable in their channel (blocked the bot or the chat is closed).",
   "err.template.notEmpty":
@@ -318,6 +324,8 @@ export const uz: SectionDict<typeof ru> = {
   "err.assist.failed": "AI-yordamchi javob bermadi. Qayta urinib koʻring.",
   "err.assist.noProduct": "Mahsulot topilmadi.",
   "err.review.notFound": "Sharh topilmadi.",
+  "err.ticket.notFound": "Murojaat topilmadi.",
+  "err.ticket.badAssignee": "Doʻkon jamoasida bunday xodim yoʻq.",
   "err.review.notDelivered":
     "Javob yetkazilmadi: xaridor oʻz kanalida mavjud emas (botni bloklagan yoki suhbat yopilgan).",
   "err.template.notEmpty":
