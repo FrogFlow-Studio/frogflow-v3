@@ -41,6 +41,20 @@ export const ru = {
   "analytics.funnel.ordered": "Заказ",
   "analytics.funnel.paid": "Оплата",
   "analytics.funnel.rate": "{pct} % от прошлого шага",
+  "analytics.sources.title": "Воронка по источникам",
+  "analytics.sources.hint":
+    "Источник — первая ссылка покупателя: метка /start в боте или utm и ref на витрине.",
+  "analytics.sources.col": "Источник",
+  "analytics.sources.all": "Все источники",
+  "analytics.sources.direct": "Без ссылки",
+  "analytics.sources.referral": "Приглашения друзей",
+  "analytics.sources.storefront": "Переход с витрины в бот",
+  "analytics.sources.product": "Ссылки на товар",
+  "analytics.sources.other": "Другие",
+  "analytics.sources.site": "Сайт: {label}",
+  "analytics.sources.bot": "Бот: {label}",
+  "analytics.sources.allNote":
+    "«Все источники» — заказы покупателей за выбранный период без ручных заказов, поэтому сумма может не совпадать с плиткой выручки.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -83,6 +97,20 @@ export const kk: SectionDict<typeof ru> = {
   "analytics.funnel.ordered": "Тапсырыс",
   "analytics.funnel.paid": "Төлем",
   "analytics.funnel.rate": "алдыңғы қадамнан {pct} %",
+  "analytics.sources.title": "Көздер бойынша воронка",
+  "analytics.sources.hint":
+    "Көз — сатып алушының алғашқы сілтемесі: боттағы /start белгісі немесе витринадағы utm және ref.",
+  "analytics.sources.col": "Көз",
+  "analytics.sources.all": "Барлық көздер",
+  "analytics.sources.direct": "Сілтемесіз",
+  "analytics.sources.referral": "Достарды шақыру",
+  "analytics.sources.storefront": "Витринадан ботқа өту",
+  "analytics.sources.product": "Тауар сілтемелері",
+  "analytics.sources.other": "Басқалар",
+  "analytics.sources.site": "Сайт: {label}",
+  "analytics.sources.bot": "Бот: {label}",
+  "analytics.sources.allNote":
+    "«Барлық көздер» — таңдалған кезеңдегі сатып алушылардың тапсырыстары, қолмен енгізілген тапсырыстарсыз, сондықтан сома түсім плиткасымен сәйкес келмеуі мүмкін.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -125,6 +153,20 @@ export const en: SectionDict<typeof ru> = {
   "analytics.funnel.ordered": "Order",
   "analytics.funnel.paid": "Paid",
   "analytics.funnel.rate": "{pct} % of the previous step",
+  "analytics.sources.title": "Funnel by source",
+  "analytics.sources.hint":
+    "The source is the customer's first link: the /start tag in the bot or utm and ref on the storefront.",
+  "analytics.sources.col": "Source",
+  "analytics.sources.all": "All sources",
+  "analytics.sources.direct": "No link",
+  "analytics.sources.referral": "Friend invites",
+  "analytics.sources.storefront": "From storefront to bot",
+  "analytics.sources.product": "Product links",
+  "analytics.sources.other": "Other",
+  "analytics.sources.site": "Site: {label}",
+  "analytics.sources.bot": "Bot: {label}",
+  "analytics.sources.allNote":
+    "“All sources” counts buyer orders for the selected period without manual orders, so the total may differ from the revenue tile.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -167,4 +209,18 @@ export const uz: SectionDict<typeof ru> = {
   "analytics.funnel.ordered": "Buyurtma",
   "analytics.funnel.paid": "To‘lov",
   "analytics.funnel.rate": "oldingi qadamdan {pct} %",
+  "analytics.sources.title": "Manbalar bo‘yicha voronka",
+  "analytics.sources.hint":
+    "Manba — xaridorning birinchi havolasi: botdagi /start belgisi yoki vitrinadagi utm va ref.",
+  "analytics.sources.col": "Manba",
+  "analytics.sources.all": "Barcha manbalar",
+  "analytics.sources.direct": "Havolasiz",
+  "analytics.sources.referral": "Do‘stlarni taklif qilish",
+  "analytics.sources.storefront": "Vitrinadan botga o‘tish",
+  "analytics.sources.product": "Mahsulot havolalari",
+  "analytics.sources.other": "Boshqalar",
+  "analytics.sources.site": "Sayt: {label}",
+  "analytics.sources.bot": "Bot: {label}",
+  "analytics.sources.allNote":
+    "«Barcha manbalar» — tanlangan davrdagi xaridorlar buyurtmalari, qo‘lda kiritilgan buyurtmalarsiz, shuning uchun summa tushum plitkasidan farq qilishi mumkin.",
 };

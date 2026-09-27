@@ -1575,11 +1575,13 @@ export const analyticsFn = createServerFn({ method: "GET" })
     const { ctx } = await finance();
     const now = new Date();
     const from = new Date(now.getTime() - data.days * 86_400_000);
-    const [a, funnel] = await Promise.all([
+    const funnels = await import("@/core/analytics/funnel.server");
+    const [a, funnel, sources] = await Promise.all([
       (await import("@/core/analytics/analytics")).analytics(ctx, data.days),
-      (await import("@/core/analytics/funnel.server")).buyerFunnel(ctx, from, now),
+      funnels.buyerFunnel(ctx, from, now),
+      funnels.sourceFunnel(ctx, from, now),
     ]);
-    return { ...a, funnel };
+    return { ...a, funnel, sources };
   });
 
 /* ── чат с менеджером ────────────────────────────────────────────── */

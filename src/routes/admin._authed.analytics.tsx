@@ -6,6 +6,7 @@ import { PageTitle } from "@/app/ui";
 import { BarList, ChartCard, DataTable, LineChart } from "@/app/ui/charts";
 import { compactNumber, shortDay } from "@/core/analytics/pure";
 import { FUNNEL_STAGES, stageRate } from "@/core/analytics/funnel";
+import { revenueParts } from "@/core/analytics/source-funnel";
 import { formatMoney } from "@/core/money/money";
 import { OrderStatus } from "./admin._authed.orders";
 
@@ -25,6 +26,16 @@ const PLATFORM: Record<string, string> = {
   instagram: "Instagram",
   whatsapp: "WhatsApp",
 };
+
+/** Подпись группы источника (core/analytics/source-funnel). */
+function sourceLabel(source: string, t: AdminT): string {
+  if (source === "all") return t("analytics.sources.all");
+  if (["direct", "referral", "storefront", "product", "other"].includes(source))
+    return t(`analytics.sources.${source}` as "analytics.sources.direct");
+  if (source.startsWith("site:"))
+    return t("analytics.sources.site", { label: source.slice("site:".length) });
+  return t("analytics.sources.bot", { label: source });
+}
 
 function platformLabel(platform: string, t: AdminT): string {
   if (platform === "web") return t("analytics.platform.web");
@@ -66,6 +77,10 @@ function AnalyticsPage() {
   const t = adminT(shop.locale);
   const loc = intlLocale(shop.locale);
   const money = (v: number) => formatMoney(v, a.currency);
+  const moneyAll = (revenue: Record<string, number>) =>
+    revenueParts(revenue, a.currency)
+      .map((p) => formatMoney(p.amount, p.currency))
+      .join(" · ");
   const short = (v: number) => compactNumber(v);
   const num = (v: number) => v.toLocaleString(loc);
   const dayLabel = (d: string) =>
@@ -155,6 +170,39 @@ function AnalyticsPage() {
               rows={a.funnel.map((r) => [
                 r.channel === "all" ? t("analytics.funnel.all") : platformLabel(r.channel, t),
                 ...FUNNEL_STAGES.map((st) => num(r[st])),
+              ])}
+            />
+          }
+        />
+        <ChartCard
+          className="lg:col-span-2"
+          title={t("analytics.sources.title")}
+          chart={
+            <>
+              <BarList
+                rows={a.sources.slice(1).map((r) => ({
+                  label: sourceLabel(r.source, t),
+                  value: r.ordered,
+                  hint: moneyAll(r.revenue),
+                }))}
+                format={num}
+                color="var(--chart-1)"
+              />
+              <p className="mt-2 text-xs text-muted">{t("analytics.sources.hint")}</p>
+              <p className="mt-1 text-xs text-muted">{t("analytics.sources.allNote")}</p>
+            </>
+          }
+          table={
+            <DataTable
+              head={[
+                t("analytics.sources.col"),
+                ...FUNNEL_STAGES.map((st) => t(`analytics.funnel.${st}`)),
+                t("analytics.col.revenue"),
+              ]}
+              rows={a.sources.map((r) => [
+                sourceLabel(r.source, t),
+                ...FUNNEL_STAGES.map((st) => num(r[st])),
+                moneyAll(r.revenue),
               ])}
             />
           }

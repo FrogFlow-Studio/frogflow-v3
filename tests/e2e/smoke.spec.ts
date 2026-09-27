@@ -198,6 +198,18 @@ test("витрина: разметка товара для поиска уже �
   );
 });
 
+test("аналитика: воронка по источникам рисуется", async ({ page }) => {
+  const errors = await watch(page);
+  await page.goto("/admin/login");
+  await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
+  await page.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
+  await page.getByRole("button", { name: "Войти" }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await page.goto("/admin/analytics");
+  await expect(page.getByText("Воронка по источникам")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("карта сайта платформы: в индексе есть карта страниц, в ней главная и ниши", async ({
   request,
 }) => {
