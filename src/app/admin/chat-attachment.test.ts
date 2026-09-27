@@ -92,6 +92,7 @@ vi.mock("@/channels/zernio/api.server", () => ({
       : { ok: true };
   },
 }));
+vi.mock("@/core/settings/settings", () => ({ getSetting: async () => null }));
 vi.mock("@/core/chat/chat", () => ({
   recordMessage: async (_ctx: unknown, m: { text: string }) => {
     logged.push(m.text);
@@ -240,7 +241,7 @@ describe("ответ из «Чата» с фото или документом: 
     expect(logged).toEqual(["[файл: прайс.pdf] Прайс"]);
   });
 
-  it("отказ не из-за файла (окно 24 часа) — ссылкой не повторяем, продавцу причина", async () => {
+  it("отказ не из-за файла (окно 24 часа, шаблона нет) — ссылкой не повторяем, продавцу где задать шаблон", async () => {
     customer = zc("whatsapp");
     stored = { size: MB, contentType: "application/pdf" };
     zernioFileResult = {
@@ -250,7 +251,7 @@ describe("ответ из «Чата» с фото или документом: 
     };
     await expect(
       replyAsManager(ctx, 42, "Прайс", { kind: "file", key: `${KEY}.pdf`, name: "прайс.pdf" }),
-    ).rejects.toMatchObject({ key: "err.admin.channelRefused" });
+    ).rejects.toMatchObject({ key: "err.admin.waWindowNoTemplate" });
     expect(zernio).toHaveLength(1);
     expect(logged).toEqual([]);
   });

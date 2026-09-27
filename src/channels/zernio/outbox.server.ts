@@ -59,6 +59,31 @@ export function findSent(tail: ZernioInboxMessage[], text: string, since: Date):
   return hit ? "found" : "absent";
 }
 
+/**
+ * Текст в параметр шаблона WhatsApp. В документации Zernio ограничений на
+ * параметр нет, но их ставит Meta (ошибка 132018): без переносов строк и
+ * табуляций, не больше четырёх пробелов подряд; всё тело шаблона — до 1024
+ * символов, поэтому параметр режем с запасом на текст самого шаблона.
+ */
+export const TEMPLATE_PARAM_MAX = 900;
+
+export function templateParam(text: string): string {
+  const one = text
+    .replace(/\s*[\r\n]+\s*/g, " · ")
+    .replace(/\t/g, " ")
+    .replace(/ {4,}/g, "   ")
+    .trim();
+  const chars = [...new Intl.Segmenter("ru", { granularity: "grapheme" }).segment(one)].map(
+    (x) => x.segment,
+  );
+  return chars.length <= TEMPLATE_PARAM_MAX
+    ? one
+    : `${chars
+        .slice(0, TEMPLATE_PARAM_MAX - 1)
+        .join("")
+        .trimEnd()}…`;
+}
+
 /** Настройка `whatsapp_bot_notify_template` — «имя:язык» одобренного шаблона с одним параметром. */
 export function parseNotifyTemplate(raw: string | null | undefined): {
   name: string;
@@ -111,7 +136,7 @@ export function zernioOutboxSender(
             phone: target.phone,
             templateName: tpl.name,
             templateLanguage: tpl.language,
-            templateParams: [text],
+            templateParams: [templateParam(text)],
             idempotencyScope,
           }
         : {

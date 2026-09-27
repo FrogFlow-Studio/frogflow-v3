@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseNotifyTemplate } from "./outbox.server";
+import { parseNotifyTemplate, templateParam, TEMPLATE_PARAM_MAX } from "./outbox.server";
 import { buttonsComponent } from "./templates.server";
 
 describe("WhatsApp: шаблон уведомлений и кнопки шаблона", () => {
@@ -70,5 +70,20 @@ describe("очередь Zernio: ключ идемпотентности", () =>
     });
     expect(r).toEqual({ ok: true });
     expect(scopes).toEqual(["outbox:abc", "outbox:abc"]);
+  });
+});
+
+describe("параметр шаблона WhatsApp (ограничения Meta)", () => {
+  it("без переносов и табуляций, не больше трёх пробелов подряд", () => {
+    expect(templateParam("Заказ готов.\n\nЗаберите\tзавтра     утром")).toBe(
+      "Заказ готов. · Заберите завтра   утром",
+    );
+  });
+  it("длинный текст режется по графемам с многоточием", () => {
+    const out = templateParam("👍🏽".repeat(TEMPLATE_PARAM_MAX + 50));
+    const graphemes = [...new Intl.Segmenter("ru", { granularity: "grapheme" }).segment(out)];
+    expect(graphemes).toHaveLength(TEMPLATE_PARAM_MAX);
+    expect(out.endsWith("…")).toBe(true);
+    expect(out).not.toContain("�");
   });
 });

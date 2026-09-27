@@ -96,7 +96,7 @@ export async function zernioDeliverySender(
     let how: string;
     if (target.platform === "whatsapp") {
       const { getSetting } = await import("@/core/settings/settings");
-      const { parseNotifyTemplate } = await import("./outbox.server");
+      const { parseNotifyTemplate, templateParam } = await import("./outbox.server");
       const tpl = parseNotifyTemplate(await getSetting(ctx, "whatsapp_bot_notify_template"));
       if (!tpl)
         how =
@@ -109,7 +109,7 @@ export async function zernioDeliverySender(
           templateName: tpl.name,
           templateLanguage: tpl.language,
           // Параметр шаблона Meta — одна строка, без переносов.
-          templateParams: [`Заказ №${no}: файлы на странице ${pageUrl}`],
+          templateParams: [templateParam(`Заказ №${no}: файлы на странице ${pageUrl}`)],
           idempotencyScope: `deliver-link:${order.id}`,
         });
         how = r.ok

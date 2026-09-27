@@ -93,6 +93,14 @@ export const ru = {
   "err.admin.tgFileRejected":
     "Telegram не принял файл: проверьте размер и формат или отправьте его документом.",
   "err.admin.channelRefused": "Сообщение не ушло: {reason}",
+  "err.admin.waWindowNoTemplate":
+    "Прошло больше 24 часов с последнего сообщения покупателя — WhatsApp разрешает писать только одобренным шаблоном. Задайте его: Настройки → «Автоответчик · WhatsApp» → «Шаблон для сообщений вне 24-часового окна».",
+  "err.admin.waNoPhone":
+    "Прошло больше 24 часов с последнего сообщения покупателя, а его номера нет — шаблон отправить некуда.",
+  "err.admin.igWindowClosed":
+    "Прошло больше 24 часов с последнего сообщения покупателя — Instagram не даёт написать ему первым. Ответ уйдёт, когда он напишет сам.",
+  "err.admin.igWindowLink":
+    "Прошло больше 24 часов с последнего сообщения покупателя — Instagram не даёт написать ему первым. Ответ уйдёт, когда он напишет сам. Ссылка на его заказ: {url}",
   // CRM, Instagram, акции, возвратные продажи
   "err.admin.crmUrl": "Адрес должен начинаться с https:// и вести на внешний сервер.",
   "err.admin.crmSaveFirst": "Сначала сохраните адрес вебхука.",
@@ -220,6 +228,14 @@ export const kk: SectionDict<typeof ru> = {
   "err.admin.tgFileRejected":
     "Telegram файлды қабылдамады: өлшемі мен пішімін тексеріңіз немесе құжат ретінде жіберіңіз.",
   "err.admin.channelRefused": "Хабарлама жіберілмеді: {reason}",
+  "err.admin.waWindowNoTemplate":
+    "Сатып алушының соңғы хабарламасынан бері 24 сағаттан көп өтті — WhatsApp тек бекітілген шаблонмен жазуға рұқсат береді. Оны орнатыңыз: Баптаулар → «Автожауап · WhatsApp» → «24 сағаттық терезеден тыс хабарламалар шаблоны».",
+  "err.admin.waNoPhone":
+    "Сатып алушының соңғы хабарламасынан бері 24 сағаттан көп өтті, ал оның нөмірі жоқ — шаблонды жіберетін жер жоқ.",
+  "err.admin.igWindowClosed":
+    "Сатып алушының соңғы хабарламасынан бері 24 сағаттан көп өтті — Instagram оған бірінші жазуға рұқсат бермейді. Ол өзі жазғанда жауап кетеді.",
+  "err.admin.igWindowLink":
+    "Сатып алушының соңғы хабарламасынан бері 24 сағаттан көп өтті — Instagram оған бірінші жазуға рұқсат бермейді. Ол өзі жазғанда жауап кетеді. Оның тапсырысының сілтемесі: {url}",
   "err.admin.crmUrl": "Мекенжай https:// деп басталып, сыртқы серверге апаруы керек.",
   "err.admin.crmSaveFirst": "Алдымен вебхук мекенжайын сақтаңыз.",
   "err.admin.igPostNotFound":
@@ -347,6 +363,14 @@ export const en: SectionDict<typeof ru> = {
   "err.admin.tgFileRejected":
     "Telegram did not accept the file: check its size and format or send it as a document.",
   "err.admin.channelRefused": "The message was not sent: {reason}",
+  "err.admin.waWindowNoTemplate":
+    "More than 24 hours have passed since the customer's last message — WhatsApp only allows an approved template. Set it in Settings → “Autoresponder · WhatsApp” → “Template for messages outside the 24-hour window”.",
+  "err.admin.waNoPhone":
+    "More than 24 hours have passed since the customer's last message and there is no phone number to send a template to.",
+  "err.admin.igWindowClosed":
+    "More than 24 hours have passed since the customer's last message — Instagram does not let you message them first. Your reply can go out once they write.",
+  "err.admin.igWindowLink":
+    "More than 24 hours have passed since the customer's last message — Instagram does not let you message them first. Your reply can go out once they write. Link to their order: {url}",
   "err.admin.crmUrl": "The address must start with https:// and point to an external server.",
   "err.admin.crmSaveFirst": "Save the webhook address first.",
   "err.admin.igPostNotFound":
@@ -475,6 +499,14 @@ export const uz: SectionDict<typeof ru> = {
   "err.admin.tgFileRejected":
     "Telegram faylni qabul qilmadi: hajmi va formatini tekshiring yoki hujjat sifatida yuboring.",
   "err.admin.channelRefused": "Xabar yuborilmadi: {reason}",
+  "err.admin.waWindowNoTemplate":
+    "Xaridorning oxirgi xabaridan beri 24 soatdan ko‘p vaqt o‘tdi — WhatsApp faqat tasdiqlangan shablon bilan yozishga ruxsat beradi. Uni sozlang: Sozlamalar → «Avtojavob · WhatsApp» → «24 soatlik oynadan tashqari xabarlar uchun shablon».",
+  "err.admin.waNoPhone":
+    "Xaridorning oxirgi xabaridan beri 24 soatdan ko‘p vaqt o‘tdi, uning raqami esa yo‘q — shablonni yuborib bo‘lmaydi.",
+  "err.admin.igWindowClosed":
+    "Xaridorning oxirgi xabaridan beri 24 soatdan ko‘p vaqt o‘tdi — Instagram unga birinchi bo‘lib yozishga ruxsat bermaydi. U o‘zi yozganda javob ketadi.",
+  "err.admin.igWindowLink":
+    "Xaridorning oxirgi xabaridan beri 24 soatdan ko‘p vaqt o‘tdi — Instagram unga birinchi bo‘lib yozishga ruxsat bermaydi. U o‘zi yozganda javob ketadi. Buyurtmasiga havola: {url}",
   "err.admin.crmUrl": "Manzil https:// bilan boshlanishi va tashqi serverga olib borishi kerak.",
   "err.admin.crmSaveFirst": "Avval webhook manzilini saqlang.",
   "err.admin.igPostNotFound":
