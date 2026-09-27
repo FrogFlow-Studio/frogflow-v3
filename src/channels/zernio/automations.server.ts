@@ -34,7 +34,14 @@ import {
   type AutomationInput,
   type MatchMode,
 } from "@/core/instagram/comment-rules";
-import { normalizeDmButtons, sendInboxMessage, zernioRequest, type DmButton } from "./api.server";
+import {
+  listConversationMessages,
+  normalizeDmButtons,
+  sendInboxMessage,
+  zernioRequest,
+  type DmButton,
+} from "./api.server";
+import type { ZernioInboxMessage } from "./inbox-types";
 
 export type CommentAutomation = {
   id?: string;
@@ -128,6 +135,8 @@ export type AutomationApi = {
     message: string,
   ) => Promise<{ ok: boolean; error?: string }>;
   inbox: typeof sendInboxMessage;
+  /** Хвост переписки — проверить, не ушло ли второе сообщение до сбоя. */
+  tail: (accountId: string, conversationId: string) => Promise<ZernioInboxMessage[]>;
 };
 
 const COMMENTS_MAX_PAGES = 20;
@@ -222,6 +231,7 @@ export const liveAutomationApi: AutomationApi = {
     }
   },
   inbox: sendInboxMessage,
+  tail: listConversationMessages,
 };
 
 /* ── мета правил в app_settings ──────────────────────────────────────── */
@@ -782,8 +792,13 @@ export async function handleCommentReceived(
     payload.post?.id ||
     "";
 
+  // «Или есть кнопки» — как в кроне: если мету при приведении старого правила
+  // записать не удалось, кнопки остались у Zernio, и правило всё равно двухшаговое.
   const automations = (await listAutomations(ctx, api)).filter(
-    (a) => a.twoStepDm && a.isActive !== false && a.accountId === accountId,
+    (a) =>
+      (a.twoStepDm || Boolean(a.buttons?.length)) &&
+      a.isActive !== false &&
+      a.accountId === accountId,
   );
   if (automations.length === 0) return { note: "двухшаговых правил нет" };
   const matched = automations.find((a) => {
@@ -824,70 +839,175 @@ export async function handleCommentReceived(
 }
 
 const PENDING_TWO_STEP_DAYS = 7;
+/** Захват старше этого — процесс, скорее всего, умер до отправки (таймаут функции). */
+export const TWO_STEP_CLAIM_STALE_MS = 5 * 60 * 1000;
+/** Сколько раз забираем строку второго шага, прежде чем сдаться. */
+export const TWO_STEP_MAX_ATTEMPTS = 3;
+
+/**
+ * Метка захвата в error_message: время и номер попытки. Условие «метка та же»
+ * в записи — защита от двух одновременных перехватов зависшей строки.
+ */
+const claimToken = (at: Date, attempt: number) => `claim:${at.toISOString()}:${attempt}`;
+function parseClaim(token: string | null): { at: number; attempt: number } | null {
+  const m = /^claim:(.+):(\d+)$/.exec(token ?? "");
+  if (!m) return null;
+  const at = Date.parse(m[1]!);
+  return Number.isFinite(at) ? { at, attempt: Number(m[2]) } : null;
+}
+
+type PendingRow = {
+  id: string;
+  status: string;
+  error_message: string | null;
+  payload: Json;
+};
+
+/**
+ * Зависший захват (процесс умер между захватом и отметкой): ушло ли второе
+ * сообщение, смотрим по хвосту переписки — исходящее с тем же текстом после
+ * захвата. Ушло — отмечаем отправленным, повторно не шлём. Хвост не
+ * прочитался или пуст — не знаем (как findSent в outbox), поэтому не шлём и
+ * ждём следующего ответа покупателя.
+ */
+async function alreadyDelivered(
+  api: AutomationApi,
+  p: { accountId: string; conversationId: string },
+  text: string,
+  since: number,
+): Promise<boolean | null> {
+  try {
+    const tail = await api.tail(p.accountId, p.conversationId);
+    // Пустой хвост — Zernio переписку не отдал: неизвестно, а не «не ушло».
+    if (tail.length === 0) return null;
+    return tail.some(
+      (m) =>
+        m.direction === "outgoing" &&
+        (m.message ?? "").trim() === text.trim() &&
+        Date.parse(m.createdAt ?? "") >= since - 60_000,
+    );
+  } catch {
+    return null;
+  }
+}
 
 /** Покупатель написал в Direct первым — отдать ему обещанное второе сообщение из очереди. */
 export async function deliverPendingTwoStepDm(
   ctx: TenantContext,
   p: { accountId: string; conversationId: string; username: string },
   api: AutomationApi = liveAutomationApi,
+  now: () => Date = () => new Date(),
 ): Promise<boolean> {
   if (!p.username) return false;
   // Private-reply можно отправить в течение 7 дней после комментария — столько
   // и ждём ответа покупателя.
-  const cutoff = new Date(Date.now() - PENDING_TWO_STEP_DAYS * 86_400_000).toISOString();
+  const cutoff = new Date(now().getTime() - PENDING_TWO_STEP_DAYS * 86_400_000).toISOString();
   const { data: logs } = await ctx.db
     .from("zernio_logs")
-    .select("id, payload")
+    .select("id, status, error_message, payload")
     .eq("event_type", "two_step_dm_pending")
-    .eq("status", "pending")
+    .in("status", ["pending", "processing"])
     .gte("created_at", cutoff)
     .order("created_at", { ascending: false })
     .limit(50);
-  const matched = (logs ?? []).find((l) => {
+  const own = ((logs ?? []) as PendingRow[]).filter((l) => {
     const pl = l.payload as { username?: string } | null;
     return (
       typeof pl?.username === "string" && pl.username.toLowerCase() === p.username.toLowerCase()
     );
   });
+  const matched = own.find((l) => l.status === "pending") ?? own[0];
   if (!matched) return false;
-  // Два быстрых сообщения покупателя — два вебхука одновременно: строку
-  // забирает тот, чья условная запись pending → processing прошла, второй не
-  // шлёт. Второе сообщение уже в пути — «+» из второго вебхука тоже не разбираем.
-  const { data: claimed, error: claimError } = await ctx.db
+  const pl = matched.payload as {
+    secondText?: string;
+    buttons?: DmButton[];
+    attempts?: number;
+  };
+  const text = pl.secondText?.trim() || DEFAULT_SECOND_DM;
+  const attempts = typeof pl.attempts === "number" ? pl.attempts : 0;
+
+  if (matched.status === "processing") {
+    // Два быстрых сообщения покупателя — второе сообщение уже в пути у
+    // соседнего вебхука; «+» отсюда тоже не разбираем.
+    const claim = parseClaim(matched.error_message);
+    if (claim && now().getTime() - claim.at < TWO_STEP_CLAIM_STALE_MS) return true;
+    const delivered = await alreadyDelivered(api, p, text, claim?.at ?? 0);
+    if (delivered === null) return false;
+    if (delivered) {
+      const done = ctx.db
+        .from("zernio_logs")
+        .update({ event_type: "two_step_dm_sent", status: "processed", error_message: null })
+        .eq("id", matched.id)
+        .eq("status", "processing");
+      await (matched.error_message == null
+        ? done.is("error_message", null)
+        : done.eq("error_message", matched.error_message));
+      return true;
+    }
+    if (attempts >= TWO_STEP_MAX_ATTEMPTS) {
+      await ctx.db
+        .from("zernio_logs")
+        .update({
+          status: "failed",
+          error_message: `второе сообщение не ушло за ${TWO_STEP_MAX_ATTEMPTS} попытки`,
+        })
+        .eq("id", matched.id)
+        .eq("status", "processing");
+      return false;
+    }
+  }
+
+  // Захват условной записью: забирает тот, чья запись прошла, остальные не
+  // шлют. Зависшую строку перехватываем по той же метке захвата.
+  const token = claimToken(now(), attempts + 1);
+  let claimQuery = ctx.db
     .from("zernio_logs")
-    .update({ status: "processing" })
+    .update({
+      status: "processing",
+      error_message: token,
+      payload: { ...(matched.payload as Record<string, Json>), attempts: attempts + 1 },
+    })
     .eq("id", matched.id)
-    .eq("status", "pending")
-    .select("id");
+    .eq("status", matched.status);
+  claimQuery =
+    matched.error_message == null
+      ? claimQuery.is("error_message", null)
+      : claimQuery.eq("error_message", matched.error_message);
+  const { data: claimed, error: claimError } = await claimQuery.select("id");
   if (claimError) {
     console.warn(`[comment-dm] ${ctx.tenant.id}: второй шаг не захвачен: ${claimError.message}`);
     return false;
   }
   if (!claimed?.length) return true;
-  const pl = matched.payload as { secondText?: string; buttons?: DmButton[] };
   const buttons = normalizeDmButtons(Array.isArray(pl.buttons) ? pl.buttons : []);
-  const r = await api.inbox(
-    p.conversationId,
-    p.accountId,
-    pl.secondText?.trim() || DEFAULT_SECOND_DM,
-    {
-      buttons: buttons.length ? buttons : undefined,
-      platform: "instagram",
-    },
-  );
+  // Ключ идемпотентности — от строки очереди, а не от вебхука: повтор после
+  // зависшего захвата приходит с другим вебхуком, и если первая отправка всё
+  // же ушла, Zernio вернёт её ответ, а не пошлёт второе сообщение.
+  const r = await api.inbox(p.conversationId, p.accountId, text, {
+    buttons: buttons.length ? buttons : undefined,
+    platform: "instagram",
+    idempotencyScope: `two-step-dm:${matched.id}`,
+  });
   if (!r.ok) {
-    // Не ушло — вернуть в очередь: следующий ответ покупателя попробует снова.
+    // Не ушло — вернуть в очередь (или сдаться после предела попыток):
+    // следующий ответ покупателя попробует снова.
+    const last = attempts + 1 >= TWO_STEP_MAX_ATTEMPTS;
     await ctx.db
       .from("zernio_logs")
-      .update({ status: "pending", error_message: r.error ?? null })
+      .update({ status: last ? "failed" : "pending", error_message: r.error ?? null })
       .eq("id", matched.id)
-      .eq("status", "processing");
+      .eq("status", "processing")
+      .eq("error_message", token);
     return false;
   }
+  // Отметка — только по своей метке захвата: строку, которую за это время
+  // перехватил другой вебхук, не трогаем.
   await ctx.db
     .from("zernio_logs")
     .update({ event_type: "two_step_dm_sent", status: "processed", error_message: null })
-    .eq("id", matched.id);
+    .eq("id", matched.id)
+    .eq("status", "processing")
+    .eq("error_message", token);
   return true;
 }
 

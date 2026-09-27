@@ -3,6 +3,8 @@ import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { DEFAULT_REPLY_PROMPT } from "@/core/instagram/comment-rules";
 import {
+  TWO_STEP_CLAIM_STALE_MS,
+  TWO_STEP_MAX_ATTEMPTS,
   deliverPendingTwoStepDm,
   handleCommentReceived,
   type AutomationApi,
@@ -393,5 +395,184 @@ describe("Comment-to-DM: второй шаг из очереди уходит о
     inbox.mockResolvedValueOnce({ ok: true });
     expect(await deliverPendingTwoStepDm(ctx, who, api)).toBe(true);
     expect(inbox).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("Comment-to-DM: правило с кнопками без меты — всё равно два шага", () => {
+  it("мета не записалась, кнопки остались у Zernio — второе сообщение уходит с ними", async () => {
+    const { ctx, api, inbox, db } = setup();
+    db.tables.app_settings = [];
+    const r = await handleCommentReceived(
+      ctx,
+      {
+        account: { id: "acc-1" },
+        comment: { id: "c-7", text: "хочу", author: { id: "u-1", username: "anya" } },
+      },
+      api,
+      { delayMs: 0 },
+    );
+    expect(r.note).toBe("второе сообщение @anya");
+    expect(inbox).toHaveBeenCalledWith("conv-1", "acc-1", expect.any(String), {
+      buttons: [{ type: "url", title: "Zernio", url: "https://zernio.example" }],
+      platform: "instagram",
+    });
+  });
+});
+
+describe("Comment-to-DM: зависший захват второго шага", () => {
+  const T0 = Date.parse("2026-09-27T12:00:00Z");
+  const who = { accountId: "acc-1", conversationId: "conv-9", username: "boris" };
+  function stuck(minutesAgo: number, attempts = 1) {
+    const { ctx, db } = setup();
+    const at = new Date(T0 - minutesAgo * 60_000).toISOString();
+    db.tables.zernio_logs = [
+      {
+        id: 1,
+        bot_id: BOT,
+        event_id: "two-step-dm:c-5",
+        event_type: "two_step_dm_pending",
+        status: "processing",
+        error_message: `claim:${at}:${attempts}`,
+        created_at: new Date(T0 - 3_600_000).toISOString(),
+        payload: { username: "boris", secondText: "Держите", buttons: [], attempts },
+      },
+    ];
+    return { ctx, db, row: db.tables.zernio_logs[0]! };
+  }
+  const api = (tail: () => Promise<unknown[]>, ok = true) => {
+    const inbox = vi.fn(async (): Promise<{ ok: boolean; error?: string }> =>
+      ok ? { ok: true } : { ok: false, error: "rate limit" },
+    );
+    return { inbox, api: { inbox, tail } as unknown as AutomationApi };
+  };
+  const now = () => new Date(T0);
+  // Хвост прочитан, второго сообщения в нём нет — только «+» покупателя.
+  const buyerPlus = [
+    { direction: "incoming", message: "+", createdAt: new Date(T0).toISOString() },
+  ];
+
+  it("свежий захват — соседний вебхук ещё шлёт, второй раз не шлём", async () => {
+    const { ctx, row } = stuck(1);
+    const a = api(async () => buyerPlus);
+    expect(await deliverPendingTwoStepDm(ctx, who, a.api, now)).toBe(true);
+    expect(a.inbox).not.toHaveBeenCalled();
+    expect(row.status).toBe("processing");
+  });
+
+  it("процесс умер до отправки — после срока строку забирают снова, попытка вторая", async () => {
+    const { ctx, row } = stuck(TWO_STEP_CLAIM_STALE_MS / 60_000 + 1);
+    const a = api(async () => [
+      { direction: "incoming", message: "+", createdAt: new Date(T0).toISOString() },
+    ]);
+    expect(await deliverPendingTwoStepDm(ctx, who, a.api, now)).toBe(true);
+    expect(a.inbox).toHaveBeenCalledTimes(1);
+    expect(row).toMatchObject({ status: "processed", event_type: "two_step_dm_sent" });
+    expect((row.payload as { attempts: number }).attempts).toBe(2);
+  });
+
+  it("процесс умер после отправки — сообщение уже в переписке, второй раз не шлём", async () => {
+    const { ctx, row } = stuck(10);
+    const a = api(async () => [
+      {
+        direction: "outgoing",
+        message: "Держите",
+        createdAt: new Date(T0 - 9 * 60_000).toISOString(),
+      },
+    ]);
+    expect(await deliverPendingTwoStepDm(ctx, who, a.api, now)).toBe(true);
+    expect(a.inbox).not.toHaveBeenCalled();
+    expect(row).toMatchObject({ status: "processed", event_type: "two_step_dm_sent" });
+  });
+
+  it("переписку прочитать не удалось — не шлём вслепую, строка ждёт", async () => {
+    const { ctx, row } = stuck(10);
+    const a = api(async () => {
+      throw new Error("Zernio down");
+    });
+    expect(await deliverPendingTwoStepDm(ctx, who, a.api, now)).toBe(false);
+    expect(a.inbox).not.toHaveBeenCalled();
+    expect(row.status).toBe("processing");
+  });
+
+  it("хвост пустой — ушло ли, неизвестно: не шлём, строка ждёт", async () => {
+    const { ctx, row } = stuck(10);
+    const a = api(async () => []);
+    expect(await deliverPendingTwoStepDm(ctx, who, a.api, now)).toBe(false);
+    expect(a.inbox).not.toHaveBeenCalled();
+    expect(row.status).toBe("processing");
+  });
+
+  it("предел попыток: зависшая строка после последней — failed, без отправки", async () => {
+    const { ctx, row } = stuck(10, TWO_STEP_MAX_ATTEMPTS);
+    const a = api(async () => buyerPlus);
+    expect(await deliverPendingTwoStepDm(ctx, who, a.api, now)).toBe(false);
+    expect(a.inbox).not.toHaveBeenCalled();
+    expect(row.status).toBe("failed");
+  });
+
+  it("предел попыток: неудачная последняя отправка — failed, а не снова в очередь", async () => {
+    const { ctx, row } = stuck(10, TWO_STEP_MAX_ATTEMPTS - 1);
+    const a = api(async () => buyerPlus, false);
+    expect(await deliverPendingTwoStepDm(ctx, who, a.api, now)).toBe(false);
+    expect(a.inbox).toHaveBeenCalledTimes(1);
+    expect(row).toMatchObject({ status: "failed", error_message: "rate limit" });
+  });
+
+  it("повтор идёт с тем же ключом идемпотентности, что и первая попытка", async () => {
+    const { ctx, row } = stuck(10);
+    const a = api(async () => buyerPlus, false);
+    expect(await deliverPendingTwoStepDm(ctx, who, a.api, now)).toBe(false);
+    row.status = "processing";
+    row.error_message = `claim:${new Date(T0 - 10 * 60_000).toISOString()}:2`;
+    a.inbox.mockResolvedValueOnce({ ok: true });
+    expect(await deliverPendingTwoStepDm(ctx, who, a.api, now)).toBe(true);
+    const keys = a.inbox.mock.calls.map(
+      (c) =>
+        (c as unknown as [string, string, string, { idempotencyScope?: string }])[3]
+          .idempotencyScope,
+    );
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).toBeTruthy();
+    expect(keys[1]).toBe(keys[0]);
+  });
+
+  it("пока шла отправка, строку перехватили — чужой захват не затираем", async () => {
+    const { ctx, row } = stuck(10);
+    const other = `claim:${new Date(T0).toISOString()}:3`;
+    const inbox = vi.fn(async () => {
+      row.error_message = other;
+      return { ok: true };
+    });
+    const tail = async () => buyerPlus;
+    await deliverPendingTwoStepDm(ctx, who, { inbox, tail } as unknown as AutomationApi, now);
+    expect(row).toMatchObject({ status: "processing", error_message: other });
+  });
+
+  it("уже ушло, но строку тем временем перехватили — отметку не ставим поверх", async () => {
+    const { ctx, row } = stuck(10);
+    const other = `claim:${new Date(T0).toISOString()}:3`;
+    const tail = async () => {
+      row.error_message = other;
+      return [
+        {
+          direction: "outgoing",
+          message: "Держите",
+          createdAt: new Date(T0 - 9 * 60_000).toISOString(),
+        },
+      ];
+    };
+    const a = api(tail);
+    await deliverPendingTwoStepDm(ctx, who, a.api, now);
+    expect(row).toMatchObject({ status: "processing", error_message: other });
+  });
+
+  it("два вебхука перехватывают зависшую строку одновременно — отправка одна", async () => {
+    const { ctx } = stuck(10);
+    const a = api(async () => buyerPlus);
+    await Promise.all([
+      deliverPendingTwoStepDm(ctx, who, a.api, now),
+      deliverPendingTwoStepDm(ctx, who, a.api, now),
+    ]);
+    expect(a.inbox).toHaveBeenCalledTimes(1);
   });
 });

@@ -73,6 +73,7 @@ const api: AutomationApi = {
     sent.inbox.push(`${conv}:${text}`);
     return { ok: true };
   },
+  tail: async () => [],
 };
 
 async function cleanup() {
