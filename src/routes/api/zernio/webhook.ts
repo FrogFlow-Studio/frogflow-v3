@@ -14,12 +14,9 @@ export function verifyZernioSignature(
 }
 
 /**
- * Один вебхук Zernio на всю платформу. Арендатор — по accountId события
- * (bots.settings.zernio.account_ids). Дедупликация — вставкой event_id в
- * zernio_logs с уникальным индексом: доставка у Zernio at-least-once, и
- * повтор события (в том числе по таймауту ответа) не должен обернуться
- * вторым ответом покупателю. Строка журнала заводится до обработки и
- * получает итог после: processed / ignored / failed с причиной.
+ * Один вебхук Zernio на всю платформу: проверка подписи здесь, приём —
+ * channels/zernio/intake.server (магазин по аккаунту или профилю, строка
+ * журнала до ответа, обработка в фоне после ответа 200).
  */
 export const Route = createFileRoute("/api/zernio/webhook")({
   server: {
@@ -39,37 +36,10 @@ export const Route = createFileRoute("/api/zernio/webhook")({
         } catch {
           return new Response("bad json", { status: 400 });
         }
-        const accountId =
-          payload.account?.accountId || payload.account?.id || payload.account?._id || null;
-        const eventId = payload.id ?? null;
-        if (!accountId || !eventId) return new Response("accepted", { status: 202 });
-
-        const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
-        const tenant = await resolveTenant({ by: "zernio_account", value: accountId });
-        if (!tenant || tenant.settings.served_by !== "v2")
-          return new Response("accepted", { status: 202 });
-        const ctx = tenantContext(tenant);
-
-        const { dispatchZernioEvent, isHandledEvent, settleZernioEvent } =
-          await import("@/channels/zernio/dispatch.server");
-        const handled = isHandledEvent(payload.event);
-        const { error } = await ctx.db.from("zernio_logs").insert({
-          bot_id: tenant.id,
-          event_id: eventId,
-          event_type: payload.event ?? "unknown",
-          status: handled ? "received" : "ignored",
-          payload: payload as never,
-          error_message: handled ? null : "v2: событие не обрабатывается",
-        });
-        if (error) {
-          // Конфликт по event_id — повторная доставка, уже принято.
-          if (/duplicate|unique/i.test(error.message)) return new Response("ok");
-          return new Response("error", { status: 500 });
-        }
-        if (!handled) return new Response("ok");
-
-        await settleZernioEvent(ctx, eventId, await dispatchZernioEvent(ctx, eventId, payload));
-        return new Response("ok");
+        const { intakeZernioEvent, liveIntakeDeps } =
+          await import("@/channels/zernio/intake.server");
+        const r = await intakeZernioEvent(payload, await liveIntakeDeps());
+        return new Response(r.body, { status: r.status });
       },
     },
   },

@@ -67,6 +67,8 @@ export type ZernioWebhookMessagePayload = {
     id?: string;
     _id?: string;
     accountId?: string;
+    /** Профиль Zernio: в отличие от id аккаунта, не меняется при переподключении. */
+    profileId?: string;
     platform?: string;
     username?: string;
   };

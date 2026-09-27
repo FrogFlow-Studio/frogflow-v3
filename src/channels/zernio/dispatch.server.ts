@@ -102,6 +102,26 @@ export function claimedAt(note: string | null): number | null {
 }
 
 /**
+ * Забрать строку журнала в обработку: received → retrying с меткой времени.
+ * Условная запись по старому статусу — из фона вебхука и из добора событие
+ * обрабатывает ровно один. Строку, забранную и не закрытую (функция умерла),
+ * добор закрывает как сбой через ABANDONED_AFTER_MS.
+ */
+export async function claimZernioEvent(
+  ctx: TenantContext,
+  eventId: string,
+  now = new Date(),
+): Promise<boolean> {
+  const { data } = await ctx.db
+    .from("zernio_logs")
+    .update({ status: "retrying", error_message: `${CLAIM_NOTE}${now.toISOString()}` })
+    .eq("event_id", eventId)
+    .eq("status", "received")
+    .select("event_id");
+  return Boolean(data?.length);
+}
+
+/**
  * Добор зависших событий. Вебхук пишет строку `received` до обработки;
  * если функция умерла по таймауту или изолят погасили после ответа, строка
  * остаётся `received` навсегда, а покупатель — без ответа (v1: 69
@@ -169,14 +189,8 @@ export async function retryStuckEvents(
       if (closed?.length) res.expired++;
       continue;
     }
-    // Забираем строку: второй запуск крона её не возьмёт.
-    const { data: claimed } = await ctx.db
-      .from("zernio_logs")
-      .update({ status: "retrying", error_message: `${CLAIM_NOTE}${now.toISOString()}` })
-      .eq("event_id", row.event_id)
-      .eq("status", "received")
-      .select("event_id");
-    if (!claimed?.length) continue;
+    // Забираем строку: второй запуск крона (и фон вебхука) её не возьмёт.
+    if (!(await claimZernioEvent(ctx, row.event_id, now))) continue;
     const r = await dispatch(ctx, row.event_id, payloadOf(row.payload));
     await settleZernioEvent(ctx, row.event_id, {
       ...r,

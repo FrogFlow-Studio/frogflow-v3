@@ -287,6 +287,34 @@ export function addressConflict(
 }
 
 /**
+ * Арендатор события Zernio. Сначала по аккаунту (bots.settings.zernio.account_ids).
+ * Если аккаунт не записан ни у кого — по профилю: при переподключении Instagram
+ * или WhatsApp id аккаунта у Zernio меняется, а id профиля нет, и до сверки
+ * аккаунтов события иначе терялись бы. Аккаунт, записанный у другого клиента
+ * (или у двух сразу), профилем не перехватывается.
+ */
+export function findZernioTenant(
+  directory: readonly Tenant[],
+  accountId: string | null,
+  profileId: string | null,
+): { tenant: Tenant; via: "account" | "profile" } | null {
+  const account = accountId?.trim().toLowerCase();
+  if (account) {
+    const owners = directory.filter((t) =>
+      t.settings.zernio?.account_ids?.some((a) => a.toLowerCase() === account),
+    );
+    if (owners.length === 1) return { tenant: owners[0]!, via: "account" };
+    if (owners.length > 1) return null;
+  }
+  const profile = profileId?.trim().toLowerCase();
+  if (!profile) return null;
+  const tenant = only(
+    directory.filter((t) => t.settings.zernio?.profile_id?.toLowerCase() === profile),
+  );
+  return tenant ? { tenant, via: "profile" } : null;
+}
+
+/**
  * Поиск арендатора в справочнике — чистая функция, чтобы правила
  * сопоставления проверялись тестами без базы. Справочник — все неархивные
  * строки `bots`; при десятках клиентов это дешевле любых jsonb-запросов

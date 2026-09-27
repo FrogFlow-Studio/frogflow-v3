@@ -2,7 +2,13 @@ import { serviceDb, tenantDb, type Db } from "@/core/db/client.server";
 import { env } from "@/config/env";
 import { decryptSecret, isEncryptedSecret } from "@/core/secrets/vault";
 import { availableModules } from "@/core/modules/registry";
-import { findTenant, tenantFromRow, TENANT_COLUMNS, type TenantRow } from "./directory";
+import {
+  findTenant,
+  findZernioTenant,
+  tenantFromRow,
+  TENANT_COLUMNS,
+  type TenantRow,
+} from "./directory";
 import type { Tenant, TenantLookup } from "./types";
 import { serverFailure } from "@/lib/server-failure";
 
@@ -88,6 +94,13 @@ export async function resolveTenant(lookup: TenantLookup): Promise<Tenant | null
   if (found) return found;
   // Промах по кешу может быть свежим клиентом — один раз перечитываем.
   return findTenant(await tenantDirectory(true), lookup);
+}
+
+/** Арендатор события Zernio: по аккаунту, иначе по профилю (directory.ts findZernioTenant). */
+export async function resolveZernioTenant(accountId: string | null, profileId: string | null) {
+  const found = findZernioTenant(await tenantDirectory(), accountId, profileId);
+  if (found) return found;
+  return findZernioTenant(await tenantDirectory(true), accountId, profileId);
 }
 
 export class TenantNotFound extends Error {
