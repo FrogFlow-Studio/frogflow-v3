@@ -757,3 +757,28 @@ export const receiptAuditScanFn = createServerFn({ method: "POST" })
       seenHashes: data.seenHashes,
     });
   });
+
+/* ── «Несколько ботов»: связать магазины одного продавца ─────────── */
+
+export const shopGroupFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await impl()).shopGroupView(data.botId);
+  });
+
+export const linkShopsFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId, otherId: botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    await (await impl()).linkShops(data.botId, data.otherId, await actor());
+    return { ok: true };
+  });
+
+export const unlinkShopFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    await (await impl()).unlinkShop(data.botId, await actor());
+    return { ok: true };
+  });

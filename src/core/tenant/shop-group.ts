@@ -41,3 +41,44 @@ export function groupShops(dir: readonly Tenant[], home: Tenant): Tenant[] {
     .sort((a, b) => a.name.localeCompare(b.name, "ru"));
   return others.length ? [home, ...others] : [home];
 }
+
+/** Что записать в `settings.multi_bot` магазинам: группа или null («отвязан»). */
+export type GroupChange = { botId: string; group: string | null };
+
+/**
+ * Связать два магазина. Группа — уже существующая у одного из них, иначе
+ * новая — `newGroup` (оператор передаёт свежий uuid). Два магазина из разных
+ * групп не сливаем: оператор сначала отвязывает, чтобы случайно не открыть
+ * одному продавцу магазины другого.
+ */
+export function planLink(
+  a: Pick<Tenant, "id" | "settings">,
+  b: Pick<Tenant, "id" | "settings">,
+  newGroup: string,
+): { changes: GroupChange[] } | { error: string } {
+  if (a.id === b.id) return { error: "Магазин нельзя связать с самим собой." };
+  const ga = shopGroup(a);
+  const gb = shopGroup(b);
+  if (ga && gb && ga !== gb)
+    return { error: "Оба магазина уже связаны с другими магазинами — сначала отвяжите один." };
+  const group = ga ?? gb ?? newGroup.toLowerCase();
+  return {
+    changes: [a, b].filter((t) => shopGroup(t) !== group).map((t) => ({ botId: t.id, group })),
+  };
+}
+
+/**
+ * Отвязать магазин от группы. Если в группе остаётся один магазин, отвязываем
+ * и его: группа из одного магазина ничего не значит и только мешает связать
+ * его заново с другим.
+ */
+export function planUnlink(
+  dir: readonly Pick<Tenant, "id" | "settings">[],
+  t: Pick<Tenant, "id" | "settings">,
+): GroupChange[] {
+  const g = shopGroup(t);
+  if (!g) return [];
+  const members = dir.filter((x) => shopGroup(x) === g);
+  const rest = members.filter((x) => x.id !== t.id);
+  return (rest.length <= 1 ? [t, ...rest] : [t]).map((x) => ({ botId: x.id, group: null }));
+}

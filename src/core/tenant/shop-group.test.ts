@@ -13,7 +13,7 @@ vi.mock("@/core/modules/registry", async (orig) => {
   };
 });
 
-const { canSwitchShop, groupShops, shopGroup } = await import("./shop-group");
+const { canSwitchShop, groupShops, planLink, planUnlink, shopGroup } = await import("./shop-group");
 const { settingsFromJson } = await import("./directory");
 
 const shop = (id: string, over: Partial<Tenant> = {}, group: string | null = "g1"): Tenant =>
@@ -62,5 +62,44 @@ describe("несколько ботов: группа магазинов одн�
     const dir = [shop("b"), home, shop("x", {}, "g2"), shop("a"), shop("d", { archived: true })];
     expect(groupShops(dir, home).map((t) => t.id)).toEqual(["c", "a", "b"]);
     expect(groupShops([shop("z", {}, null)], shop("z", {}, null)).map((t) => t.id)).toEqual(["z"]);
+  });
+});
+
+describe("оператор связывает и отвязывает магазины", () => {
+  it("два свободных магазина — новая группа из переданного uuid", () => {
+    const a = shop("a1", {}, null);
+    const b = shop("b2", {}, null);
+    expect(planLink(a, b, "NEW-G")).toEqual({
+      changes: [
+        { botId: "a1", group: "new-g" },
+        { botId: "b2", group: "new-g" },
+      ],
+    });
+  });
+
+  it("свободный магазин входит в существующую группу, остальные не трогаем", () => {
+    expect(planLink(shop("a", {}, "g1"), shop("b", {}, null), "n")).toEqual({
+      changes: [{ botId: "b", group: "g1" }],
+    });
+    expect(planLink(shop("a", {}, null), shop("b", {}, "g1"), "n")).toEqual({
+      changes: [{ botId: "a", group: "g1" }],
+    });
+    expect(planLink(shop("a"), shop("b"), "n")).toEqual({ changes: [] });
+  });
+
+  it("разные группы не сливаются, с собой не связывается", () => {
+    expect(planLink(shop("a", {}, "g1"), shop("b", {}, "g2"), "n")).toHaveProperty("error");
+    expect(planLink(shop("a"), shop("a"), "n")).toHaveProperty("error");
+  });
+
+  it("отвязка: из группы трёх уходит один, из группы двух — оба", () => {
+    const dir = [shop("a"), shop("b"), shop("c"), shop("x", {}, "g2")];
+    expect(planUnlink(dir, dir[0]!)).toEqual([{ botId: "a", group: null }]);
+    const two = [shop("a"), shop("b"), shop("x", {}, "g2")];
+    expect(planUnlink(two, two[0]!)).toEqual([
+      { botId: "a", group: null },
+      { botId: "b", group: null },
+    ]);
+    expect(planUnlink(two, shop("z", {}, null))).toEqual([]);
   });
 });
