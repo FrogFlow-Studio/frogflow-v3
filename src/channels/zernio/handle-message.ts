@@ -1,6 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { isBlocked, upsertCustomer, type Customer } from "@/core/customers/customers";
-import { escapeHtml } from "@/channels/telegram/copy";
+import { COPY, escapeHtml } from "@/channels/telegram/copy";
 import { notifyAdminsHtml } from "@/channels/telegram/notify";
 import { liveTransport, type ZernioTransport } from "./api.server";
 import { findManagerMessage } from "./manager-guard";
@@ -119,8 +119,22 @@ export async function handleZernioMessage(
 
   const consultant = await import("@/core/consultant/engine.server");
   if (!(await consultant.consultantEnabled(ctx))) {
-    if (shopOn && m.text) await forwardedToSeller(ctx, customerNow, m, transport, bot);
-    return processed("консультант выключен — сообщение в «Чате»");
+    // Модуль «Поддержка»: вопрос в Direct/WhatsApp — обращение с номером.
+    const ticket = m.text ? await directTicket(ctx, customerNow, m.platform, m.text) : null;
+    if (shopOn && m.text)
+      await forwardedToSeller(
+        ctx,
+        customerNow,
+        m,
+        transport,
+        bot,
+        ticket?.created ? ticket.number : null,
+      );
+    return processed(
+      ticket
+        ? `${ticket.created ? "новое обращение" : "дополнение к обращению"} #${ticket.number}`
+        : "консультант выключен — сообщение в «Чате»",
+    );
   }
   if (consultant.isPaused(customerNow)) return processed("консультант на паузе");
   customer = customerNow;
@@ -171,7 +185,12 @@ export async function handleZernioMessage(
     const { leadFromHandoff } = await import("@/core/pipeline/sources");
     await leadFromHandoff(ctx, customer, r.handoff);
     const who = customer.firstName || (customer.username ? `@${customer.username}` : m.senderId);
+    // Модуль «Поддержка»: передача менеджеру — обращение, итог консультанта — его тема.
+    const ticket = await directTicket(ctx, customer, m.platform, r.handoff.summary, {
+      notify: false,
+    });
     const lines = [
+      ticket ? `📨 Обращение #${ticket.number}` : "",
       r.handoff.kind === "lead"
         ? `📝 <b>Заявка от ИИ-консультанта</b> (${escapeHtml(r.handoff.reason)})`
         : `🙋 <b>Клиент ждёт менеджера</b> (${escapeHtml(r.handoff.reason)})`,
@@ -193,12 +212,15 @@ export async function handleZernioMessage(
  * часа подавляется — иначе на каждую реплику диалога прилетал бы один и
  * тот же ответ (v1: «Передал ваш вопрос продавцу» дважды подряд).
  */
+const ORDER_HINT_RU = "Чтобы заказать самостоятельно, напишите номер товара или «каталог».";
+
 async function forwardedToSeller(
   ctx: TenantContext,
   customer: Customer,
   m: ReturnType<typeof parseZernioMessage>,
   transport: ZernioTransport,
   bot: import("@/core/instagram/direct-bot-settings").DirectBotSettings,
+  ticketNumber: number | null = null,
 ) {
   // «Только по заказам»: вне сценария покупки бот молчит, чтобы диалог
   // остался непрочитанным для продавца в приложении (решение из v1).
@@ -209,9 +231,13 @@ async function forwardedToSeller(
   const mem = direct && typeof direct === "object" && !Array.isArray(direct) ? direct : {};
   const at = Date.parse(String(mem.forwarded_at ?? ""));
   if (Number.isFinite(at) && Date.now() - at < 3600_000) return;
+  const locale = customer.state.locale ?? ctx.tenant.settings.default_locale ?? "ru";
   const text =
     bot.script ||
-    "Передал ваш вопрос продавцу — он ответит здесь. Чтобы заказать самостоятельно, напишите номер товара или «каталог».";
+    (ticketNumber
+      ? (COPY[locale] ?? COPY.ru).ticketCreated(ticketNumber) +
+        (locale === "ru" ? ` ${ORDER_HINT_RU}` : "")
+      : `Передал ваш вопрос продавцу — он ответит здесь. ${ORDER_HINT_RU}`);
   const r = await transport.send(m.conversationId!, m.accountId!, text, { platform: m.platform });
   if (!r.ok) return;
   const { setState } = await import("@/core/customers/customers");
@@ -227,5 +253,43 @@ async function forwardedToSeller(
       sender: "bot",
       text,
     });
+  }
+}
+
+/**
+ * Модуль «Поддержка» (helpdesk при manager_chat): вопрос покупателя из
+ * Instagram/WhatsApp — обращение, как «Связаться» в Telegram. Пока
+ * обращение открыто, следующие вопросы дописываются в него. О новом
+ * обращении — админам (кроме передачи от консультанта: у неё своё
+ * уведомление). Сбой учёта не мешает переписке: null.
+ */
+async function directTicket(
+  ctx: TenantContext,
+  customer: Customer,
+  platform: string,
+  subject: string,
+  opts: { notify?: boolean } = {},
+): Promise<{ number: number; created: boolean } | null> {
+  if (!ctx.tenant.modules.helpdesk || !ctx.tenant.modules.manager_chat) return null;
+  if (!subject.trim()) return null;
+  try {
+    const { createTicket } = await import("@/core/helpdesk/tickets");
+    const who = customer.firstName || (customer.username ? `@${customer.username}` : null);
+    const { ticket, created } = await createTicket(ctx, {
+      telegramId: customer.telegramId,
+      customerName: who,
+      platform,
+      subject,
+    });
+    if (created && opts.notify !== false)
+      await notifyAdminsHtml(
+        ctx,
+        `📨 <b>Новое обращение #${ticket.number}</b>\n${PLATFORM_LABEL[platform as keyof typeof PLATFORM_LABEL] ?? platform} · 👤 ${escapeHtml(who ?? customer.userKey)}\n\n${escapeHtml(subject.slice(0, 1000))}\n\nОтветить — раздел «Чат», статус — «Обращения» в панели.`,
+        { kind: "question" },
+      ).catch(() => 0);
+    return { number: ticket.number, created };
+  } catch (e) {
+    console.error(`[zernio:${ctx.tenant.id}] обращение не записано`, e);
+    return null;
   }
 }
