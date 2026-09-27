@@ -123,3 +123,40 @@ export function unpaidOrderMail(p: {
 </div>`;
   return { subject, text, html };
 }
+
+/** Текст уведомления из мессенджера — в письмо: без HTML-разметки Telegram. */
+export function plainNotice(text: string): string {
+  return text
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .trim();
+}
+
+/**
+ * Письмо покупателю с сайта о его заказе (статус, отказ, напоминание) — то
+ * же, что покупатель из бота получает сообщением, и ссылка на страницу заказа.
+ */
+export function orderNoticeMail(p: {
+  orderNo: number | string;
+  shopName: string;
+  notice: string;
+  url: string;
+}): { subject: string; text: string; html: string } {
+  const notice = plainNotice(p.notice);
+  // Название магазина задаёт продавец: переводы строк в теме письма не пропускаем.
+  const subject = `Заказ №${p.orderNo} в магазине «${p.shopName}»`.replace(/[\r\n]+/g, " ");
+  const text = ["Здравствуйте!", "", notice, "", "Страница заказа:", p.url, "", p.shopName].join(
+    "\n",
+  );
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a">
+<p>Здравствуйте!</p>
+<p>${esc(notice).replace(/\n/g, "<br>")}</p>
+<p><a href="${esc(p.url)}" style="color:#0b57d0">Открыть заказ</a></p>
+<p>${esc(p.shopName)}</p>
+</div>`;
+  return { subject, text, html };
+}

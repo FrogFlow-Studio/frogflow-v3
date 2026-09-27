@@ -13,6 +13,9 @@ vi.mock("@/core/outbox/outbox", () => ({ sendOrEnqueue }));
 vi.mock("@/channels/zernio/outbound.server", () => ({ zernioTargetForOrder }));
 vi.mock("@/channels/zernio/outbox.server", () => ({ zernioOutboxSender: () => "zernio-sender" }));
 vi.mock("@/channels/telegram/outbox", () => ({ telegramOutboxSender: "telegram-sender" }));
+const emailOrderNotice = vi.fn(async (..._a: unknown[]) => true);
+vi.mock("@/core/storefront/web-notify", () => ({ emailOrderNotice }));
+vi.mock("@/config/env", () => ({ env: () => ({ SESSION_SECRET: "secret" }) }));
 
 const { notifyCustomer } = await import("./admin.server");
 
@@ -29,6 +32,7 @@ function lastTarget() {
 beforeEach(() => {
   sendOrEnqueue.mockClear();
   zernioTargetForOrder.mockClear();
+  emailOrderNotice.mockClear();
 });
 
 describe("notifyCustomer: заказ уведомляется в своём канале", () => {
@@ -73,5 +77,40 @@ describe("notifyCustomer: старые заказы с необычной пла
     expect(await notifyCustomer(ctx, order("manual"), "готово")).toBe(false);
     expect(sendOrEnqueue).not.toHaveBeenCalled();
     expect(zernioTargetForOrder).not.toHaveBeenCalled();
+  });
+});
+
+describe("notifyCustomer: заказ с сайта", () => {
+  const web = (telegram_id: number) =>
+    ({ id: "o2", platform: "web", telegram_id, user_key: "web_x" }) as unknown as OrderWithItems;
+
+  it("покупатель без входа через Telegram — письмом со ссылкой на заказ", async () => {
+    expect(await notifyCustomer(ctx, web(-555), "Заказ готов")).toBe(true);
+    expect(emailOrderNotice).toHaveBeenCalledWith(ctx, web(-555), "Заказ готов", "secret");
+    expect(sendOrEnqueue).not.toHaveBeenCalled();
+  });
+
+  it("вошёл через Telegram (настоящий id) — сообщением в Telegram, без письма", async () => {
+    expect(await notifyCustomer(ctx, web(42), "Заказ готов")).toBe(true);
+    expect(lastTarget()).toEqual({
+      target: { channel: "telegram", chatId: "42" },
+      sender: "telegram-sender",
+    });
+    expect(emailOrderNotice).not.toHaveBeenCalled();
+  });
+
+  it("у магазина нет бота — письмом, даже если id настоящий", async () => {
+    const noBot = {
+      tenant: { id: "t-notify", telegramTokenEnc: null },
+    } as unknown as TenantContext;
+    expect(await notifyCustomer(noBot, web(42), "x")).toBe(true);
+    expect(emailOrderNotice).toHaveBeenCalledTimes(1);
+    expect(sendOrEnqueue).not.toHaveBeenCalled();
+  });
+
+  it("email: false — письмом не дублируем (материалы уже ушли письмом)", async () => {
+    expect(await notifyCustomer(ctx, web(-555), "Выдан", { email: false })).toBe(false);
+    expect(emailOrderNotice).not.toHaveBeenCalled();
+    expect(sendOrEnqueue).not.toHaveBeenCalled();
   });
 });

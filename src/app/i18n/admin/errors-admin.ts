@@ -112,6 +112,7 @@ export const ru = {
   "msg.orders.statusChanged": "Статус уже изменился",
   "msg.orders.remindOnlyAwaiting": "Напоминание только для заказов, ждущих оплаты",
   "msg.orders.reminded": "Напоминание отправлено",
+  "msg.orders.alreadyReminded": "Напоминание об этом заказе уже отправлено",
   "msg.orders.remindFailed": "Не удалось отправить",
   // курсы (core/courses)
   "err.course.noProduct": "Товар не найден.",
@@ -232,6 +233,7 @@ export const kk: SectionDict<typeof ru> = {
   "msg.orders.statusChanged": "Мәртебе әлдеқашан өзгерген",
   "msg.orders.remindOnlyAwaiting": "Еске салу тек төлем күтіп тұрған тапсырыстарға жіберіледі",
   "msg.orders.reminded": "Еске салу жіберілді",
+  "msg.orders.alreadyReminded": "Бұл тапсырыс туралы еске салу жіберіліп қойған",
   "msg.orders.remindFailed": "Жіберу мүмкін болмады",
   "err.course.noProduct": "Тауар табылмады.",
   "err.course.physical": "Курсты тек цифрлық тауардан жасауға болады, физикалық тауардан емес.",
@@ -351,6 +353,7 @@ export const en: SectionDict<typeof ru> = {
   "msg.orders.statusChanged": "The status has already changed",
   "msg.orders.remindOnlyAwaiting": "Reminders are only for orders awaiting payment",
   "msg.orders.reminded": "Reminder sent",
+  "msg.orders.alreadyReminded": "A reminder for this order has already been sent",
   "msg.orders.remindFailed": "Could not send",
   "err.course.noProduct": "Product not found.",
   "err.course.physical": "A course can only be made from a digital product, not a physical one.",
@@ -473,6 +476,7 @@ export const uz: SectionDict<typeof ru> = {
   "msg.orders.statusChanged": "Holat allaqachon oʻzgargan",
   "msg.orders.remindOnlyAwaiting": "Eslatma faqat toʻlov kutayotgan buyurtmalar uchun",
   "msg.orders.reminded": "Eslatma yuborildi",
+  "msg.orders.alreadyReminded": "Bu buyurtma haqida eslatma allaqachon yuborilgan",
   "msg.orders.remindFailed": "Yuborib boʻlmadi",
   "err.course.noProduct": "Mahsulot topilmadi.",
   "err.course.physical":

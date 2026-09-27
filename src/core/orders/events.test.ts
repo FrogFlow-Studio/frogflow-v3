@@ -71,4 +71,13 @@ describe("describeOrderEvent", () => {
       "Напоминание об оплате отправлено (продавец)",
     );
   });
+
+  it("уведомление покупателю с сайта письмом — не «материалы (0 ссылок)»", () => {
+    const e = describeOrderEvent({
+      kind: "email_sent",
+      actor: "bot",
+      payload: { to: "a@b.kz", kind: "notice" },
+    });
+    expect(e).toEqual({ text: "Уведомление отправлено на почту a@b.kz", tone: "ok" });
+  });
 });

@@ -99,17 +99,28 @@ function api(ctx: TenantContext) {
   return telegramApi(ctx.secrets.telegramToken(), env().TELEGRAM_API_BASE);
 }
 
-/** Уведомить покупателя в его канале: Telegram или Instagram/WhatsApp через Zernio. */
+/**
+ * Уведомить покупателя в его канале: Telegram или Instagram/WhatsApp через
+ * Zernio. Заказ с сайта: покупатель вошёл через Telegram (у заказа его
+ * настоящий telegram_id) — сообщением в Telegram, иначе письмом со ссылкой
+ * на страницу заказа. `email: false` — письмом не дублировать (материалы
+ * уже ушли письмом при выдаче).
+ */
 export async function notifyCustomer(
   ctx: TenantContext,
   order: OrderWithItems,
   text: string,
+  opts: { email?: boolean } = {},
 ): Promise<boolean> {
   const { sendOrEnqueue } = await import("@/core/outbox/outbox");
   const channel = orderChannel(order.platform);
-  // Ручной заказ продавец завёл сам — чата с покупателем нет (как в v1);
-  // у заказа с сайта чата тоже нет: покупатель видит статус на странице заказа.
-  if (channel === "manual" || channel === "web") return false;
+  // Ручной заказ продавец завёл сам — чата с покупателем нет (как в v1).
+  if (channel === "manual") return false;
+  if (channel === "web" && !(Number(order.telegram_id) > 0 && ctx.tenant.telegramTokenEnc)) {
+    if (opts.email === false) return false;
+    const { emailOrderNotice } = await import("@/core/storefront/web-notify");
+    return emailOrderNotice(ctx, order, text, env().SESSION_SECRET);
+  }
   if (channel === "zernio") {
     const { zernioTargetForOrder } = await import("@/channels/zernio/outbound.server");
     const { zernioOutboxSender } = await import("@/channels/zernio/outbox.server");
@@ -247,12 +258,15 @@ export async function runOrderAction(
         };
       if (r.failed === 0) {
         const { deliveredMessage } = await import("@/core/delivery/note.server");
+        // Покупателю с сайта материалы уже ушли письмом — второе письмо не шлём.
         await notifyCustomer(
           ctx,
           order,
           await deliveredMessage(ctx, order.platform, m.orderDelivered(no)),
+          { email: false },
         );
-        if (r.pointsEarned > 0) await notifyCustomer(ctx, order, m.pointsEarned(r.pointsEarned));
+        if (r.pointsEarned > 0)
+          await notifyCustomer(ctx, order, m.pointsEarned(r.pointsEarned), { email: false });
         await notifyReferralGrant(ctx, r.referral);
         return { ok: true, message: t("msg.orders.delivered", { no, count: r.sent }) };
       }
@@ -293,15 +307,39 @@ export async function runOrderAction(
     case "remind": {
       if (order.status !== "awaiting_payment")
         return { ok: false, message: t("msg.orders.remindOnlyAwaiting") };
+      const { claimOrderEvent, recordOrderEvent } = await import("@/core/orders/events");
+      const web = order.platform === "web";
+      // Заказ с сайта: тот же ключ, что у письма-напоминания крона (core/storefront/web-remind) —
+      // одно напоминание на заказ, двойной клик и крон второго письма не шлют.
+      if (
+        web &&
+        !(await claimOrderEvent(
+          ctx,
+          id,
+          "reminded",
+          "email",
+          {
+            channel: "email",
+            to: order.customer_email ?? "",
+          },
+          actor,
+        ))
+      )
+        return { ok: false, message: t("msg.orders.alreadyReminded") };
+      const { amountDueNow } = await import("@/core/fulfillment/fulfillment");
+      const { formatMoney } = await import("@/core/money/money");
+      const due = await amountDueNow(ctx, {
+        total: Number(order.total),
+        fulfillment_kind: order.fulfillment_kind,
+      });
       const ok = await notifyCustomer(
         ctx,
         order,
-        `⏰ Напоминаем: заказ #${no} на ${order.total} ${order.currency} ждёт оплаты. Пришлите чек после перевода.`,
+        `⏰ Напоминаем: заказ #${no} на ${formatMoney(due, order.currency)} ждёт оплаты. ${
+          web ? "Оплатить можно на странице заказа." : "Пришлите чек после перевода."
+        }`,
       );
-      if (ok) {
-        const { recordOrderEvent } = await import("@/core/orders/events");
-        await recordOrderEvent(ctx, id, "reminded", {}, actor);
-      }
+      if (ok && !web) await recordOrderEvent(ctx, id, "reminded", {}, actor);
       return {
         ok,
         message: ok ? t("msg.orders.reminded") : t("msg.orders.remindFailed"),

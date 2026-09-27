@@ -173,6 +173,8 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
     case "status":
       return { text: `Статус: ${str(p.to)}${who}`, tone: "neutral" };
     case "email_sent":
+      if (p.kind === "notice")
+        return { text: `Уведомление отправлено на почту ${str(p.to)}`, tone: "ok" };
       return {
         text: `Материалы отправлены на почту ${str(p.to)} (${num(p.files)} ссылок)`,
         tone: "ok",
