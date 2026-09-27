@@ -974,12 +974,33 @@ export type FallbackResult = {
 };
 
 /**
+ * Резерв в существующий диалог покупателя — обычной отправкой, один раз.
+ * Повтора с тегом HUMAN_AGENT нет: Meta разрешает этот тег только для
+ * ответа живого сотрудника, автоответ с ним — риск блокировки аккаунта
+ * (сверка с документацией Zernio, п. 12). Окно закрыто — отказ остаётся
+ * отказом, дальше публичная просьба написать первым.
+ */
+export async function sendAltChannel(
+  api: Pick<AutomationApi, "inbox">,
+  conversationId: string,
+  automation: { accountId: string; dmMessage: string; buttons?: AutomationButton[] },
+): Promise<{ status: "sent" | "failed"; error: string | null }> {
+  const r = await api.inbox(conversationId, automation.accountId, automation.dmMessage, {
+    buttons: automation.buttons ?? [],
+    platform: "instagram",
+  });
+  return r.ok
+    ? { status: "sent", error: null }
+    : { status: "failed", error: (r.error ?? "").slice(0, 500) };
+}
+
+/**
  * Резервная DM по комментарию — на случай, если родное Comment-to-DM Zernio
  * молча замолкло на конкретном посте (живой инцидент: сотня клиентов без
  * ответа несколько дней). Раз в 15 минут сверяем комментарии per-post
  * правил с логами срабатываний: подходит под слова, но не «sent» — шлём
  * тем же private-reply. Не прошёл — эскалация: inbox в существующий диалог
- * (с тегом HUMAN_AGENT вне 24-часового окна), публичный ответ только если
+ * (обычной отправкой, без тега — см. sendAltChannel), публичный ответ только если
  * DM реально ушла, иначе — публичная просьба написать первым (если задана).
  * Строка comment_dm_fallback_sends резервируется ДО отправки: уникальность
  * (automation_id, comment_id) — единственная защита от повтора при гонке.
@@ -1146,33 +1167,9 @@ export async function runCommentDmFallback(
             .eq("user_key", `ig_${comment.from.id}`)
             .maybeSingle();
           if (buyer?.zernio_conversation_id) {
-            const opts = { buttons: automation.buttons ?? [], platform: "instagram" as const };
-            const alt = await api.inbox(
-              buyer.zernio_conversation_id,
-              automation.accountId,
-              automation.dmMessage,
-              opts,
-            );
-            if (alt.ok) altStatus = "sent";
-            else {
-              const tagged = await api.inbox(
-                buyer.zernio_conversation_id,
-                automation.accountId,
-                automation.dmMessage,
-                {
-                  ...opts,
-                  messagingType: "MESSAGE_TAG",
-                  messageTag: "HUMAN_AGENT",
-                },
-              );
-              altStatus = tagged.ok ? "sent" : "failed";
-              altError = tagged.ok
-                ? null
-                : `без тега: ${alt.error ?? ""}; с HUMAN_AGENT: ${tagged.error ?? ""}`.slice(
-                    0,
-                    500,
-                  );
-            }
+            const alt = await sendAltChannel(api, buyer.zernio_conversation_id, automation);
+            altStatus = alt.status;
+            altError = alt.error;
           }
         }
 

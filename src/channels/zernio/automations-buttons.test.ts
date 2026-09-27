@@ -87,6 +87,28 @@ describe("Comment-to-DM: второе сообщение с кнопками п�
   });
 });
 
+describe("резерв Comment-to-DM в существующий диалог", () => {
+  it("одна обычная отправка; при отказе повтора с тегом HUMAN_AGENT нет", async () => {
+    const calls: Array<Record<string, unknown> | undefined> = [];
+    const { sendAltChannel } = await import("./automations.server");
+    const api = {
+      inbox: async (_c: string, _a: string, _t: string, opts?: Record<string, unknown>) => {
+        calls.push(opts);
+        return { ok: false, error: "окно 24 часа закрыто" };
+      },
+    } as unknown as Pick<AutomationApi, "inbox">;
+    const r = await sendAltChannel(api, "conv-1", {
+      accountId: "acc-1",
+      dmMessage: "Привет",
+      buttons: [{ type: "postback", title: "Каталог", payload: "CATALOG" }],
+    });
+    expect(r).toEqual({ status: "failed", error: "окно 24 часа закрыто" });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).not.toHaveProperty("messagingType");
+    expect(calls[0]).not.toHaveProperty("messageTag");
+  });
+});
+
 describe("Comment-to-DM: незнакомому покупателю первым не пишем", () => {
   it("диалога нет — второе сообщение ждёт ответа покупателя в очереди", async () => {
     const { ctx, api, inbox, db } = setup();
