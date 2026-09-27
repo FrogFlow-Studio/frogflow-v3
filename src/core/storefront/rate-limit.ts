@@ -47,3 +47,15 @@ export function takeMiniApp(
 ): boolean {
   return miniApp.take(`${botId}:${tgId}:${kind}`, MINI_APP_BUDGETS[kind]);
 }
+
+/**
+ * Страница курса: каждый показ подписывает файлы открытых уроков, отметка
+ * урока пишет в базу. Счёт — на покупку (магазин + позиция заказа), только
+ * по верной ссылке: чужую покупку без её подписи не выесть.
+ */
+export const COURSE_BUDGET: Budget = { limit: 30, windowMs: 60_000 };
+const course = rateLimiter();
+
+export function takeCourse(botId: string, itemId: string): boolean {
+  return course.take(`${botId}:${itemId}`, COURSE_BUDGET);
+}

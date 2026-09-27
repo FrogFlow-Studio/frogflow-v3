@@ -66,4 +66,28 @@ describe("страница курса на витрине", () => {
     const run = db.tables.app_settings!.find((r) => r.key === runKey(ITEM));
     expect(JSON.parse(String(run!.value)).startedAt).toBe(now.toISOString());
   });
+
+  it("файл урока с чужим префиксом не подписывается, даже если попал в строку курса", async () => {
+    const { ctx, db } = ctxWith();
+    const foreign = "99999999-2222-3333-4444-555555555555/secret.pdf";
+    const tampered: Course = {
+      ...course,
+      schedule: { mode: "all" },
+      lessons: [
+        {
+          ...course.lessons[0]!,
+          files: [{ path: foreign, name: "x.pdf" }, ...course.lessons[0]!.files],
+        },
+      ],
+    };
+    db.tables.app_settings = [{ key: courseKey(P), value: JSON.stringify(tampered) }];
+    const p = (await openCourse(ctx, S, ITEM, courseToken(S, T, ITEM)))!;
+    const signed: string[] = [];
+    const v = await courseView(ctx, p, async (path) => {
+      signed.push(path);
+      return `https://files/${path}`;
+    });
+    expect(signed).toEqual([`${T}/l1.pdf`]);
+    expect(v.lessons[0]!.files.map((f) => f.name)).toEqual(["l1.pdf"]);
+  });
 });

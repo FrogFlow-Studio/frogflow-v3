@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MINI_APP_BUDGETS, rateLimiter } from "./rate-limit";
+import { COURSE_BUDGET, MINI_APP_BUDGETS, rateLimiter, takeCourse } from "./rate-limit";
 
 const B = { limit: 3, windowMs: 60_000 };
 
@@ -51,5 +51,15 @@ describe("лимит частоты Mini App", () => {
 
   it("у оформления бюджет строже, чем у просмотра заказов", () => {
     expect(MINI_APP_BUDGETS.checkout.limit).toBeLessThan(MINI_APP_BUDGETS.orders.limit);
+  });
+});
+
+describe("лимит частоты страницы курса", () => {
+  it("одна покупка не подписывает файлы без конца; другая покупка считается отдельно", () => {
+    const bot = "bot-course";
+    for (let i = 0; i < COURSE_BUDGET.limit; i++) expect(takeCourse(bot, "item-1")).toBe(true);
+    expect(takeCourse(bot, "item-1")).toBe(false);
+    expect(takeCourse(bot, "item-2")).toBe(true);
+    expect(takeCourse("other-bot", "item-1")).toBe(true);
   });
 });

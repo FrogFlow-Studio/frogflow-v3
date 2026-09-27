@@ -24,6 +24,12 @@ async function purchase(d: z.infer<typeof input>) {
   const { openCourse } = await import("./course.server");
   const p = await openCourse(ctx, env().SECRETS_KEY, d.itemId, d.k);
   if (!p) throw notFound();
+  const { takeCourse } = await import("@/core/storefront/rate-limit");
+  if (!takeCourse(t.id, d.itemId)) {
+    const { shownError } = await import("@/lib/shown-error");
+    const { storefrontT } = await import("@/app/i18n/storefront");
+    throw shownError(storefrontT(t.settings.default_locale ?? "ru")("error.tooManyRequests"));
+  }
   return { ctx, p };
 }
 

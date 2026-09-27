@@ -6,6 +6,7 @@ import {
   startRun,
   type CoursePurchase,
 } from "@/core/courses/run.server";
+import { isTenantStorageKey } from "@/core/storage/keys";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 
 /**
@@ -59,6 +60,9 @@ export async function courseView(
     const files: Array<{ name: string; url: string }> = [];
     if (a.open)
       for (const f of a.lesson.files) {
+        // Курс пишется только с путями своего магазина (courseProblem), но
+        // строке в базе не верим: чужой префикс не подписываем, как в #89.
+        if (!isTenantStorageKey(ctx.tenant.id, f.path)) continue;
         const url = await sign(f.path, f.name);
         if (url) files.push({ name: f.name ?? f.path.split("/").pop() ?? "", url });
       }
