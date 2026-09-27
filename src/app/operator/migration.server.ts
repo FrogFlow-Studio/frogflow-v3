@@ -11,6 +11,8 @@ import { requireTenant, tenantContext, tenantDirectory } from "@/core/tenant/res
 import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
 import { decryptSecret, isEncryptedSecret } from "@/core/secrets/vault";
 import { evaluatePreflight, type Preflight } from "@/core/tenant/preflight";
+import { withVipChecks, type VipPreflightInput } from "@/core/tenant/preflight-vip";
+import type { Tenant } from "@/core/tenant/types";
 import { telegramApi } from "@/channels/telegram/api";
 import { MATERIAL_COLUMNS, productSellable, type ProductWithFiles } from "@/core/catalog/materials";
 import { computeState, readPolicy } from "@/core/billing/subscription";
@@ -117,15 +119,17 @@ export async function preflight(botId: string): Promise<Preflight> {
   const tokenPresent = isEncryptedSecret(t.telegramTokenEnc);
   let tokenOk: boolean | null = null;
   let botUsername: string | null = t.settings.telegram?.username ?? null;
+  let mainBotId: number | null = null;
   if (tokenPresent) {
     try {
       const token = decryptSecret(t.telegramTokenEnc!, env().SECRETS_KEY);
-      const me = await telegramApi(token, env().TELEGRAM_API_BASE).call<{ username?: string }>(
-        "getMe",
-        {},
-      );
+      const me = await telegramApi(token, env().TELEGRAM_API_BASE).call<{
+        id?: number;
+        username?: string;
+      }>("getMe", {});
       tokenOk = me.ok;
       if (me.ok && me.result?.username) botUsername = me.result.username;
+      if (me.ok && me.result?.id) mainBotId = me.result.id;
     } catch {
       tokenOk = false;
     }
@@ -153,7 +157,8 @@ export async function preflight(botId: string): Promise<Preflight> {
   ]);
   const zernioAccountIds = t.settings.zernio?.account_ids ?? [];
   const policy = readPolicy(t.settings);
-  return evaluatePreflight({
+  const vip = t.modules.vip ? await vipInput(t, mainBotId, chats) : null;
+  const base = evaluatePreflight({
     modulesOn: MODULE_KEYS.filter((k) => t.modules[k]),
     tokenPresent,
     tokenOk,
@@ -181,4 +186,51 @@ export async function preflight(botId: string): Promise<Preflight> {
     },
     storyTags: { v1: tagsV1, v2: tagsV2.length, max: STORY_TAGS_MAX },
   });
+  return withVipChecks(base, vip);
+}
+
+/**
+ * VIP-бот клиента (модуль vip): свой токен в settings.vip.token_enc, группа в
+ * app_settings.vip_group_id. Без них после переезда VIP-бот замолчит, а
+ * продление подписок встанет (ensureVipWebhook такого клиента пропускает).
+ */
+async function vipInput(
+  t: Tenant,
+  mainBotId: number | null,
+  sellerChats: number,
+): Promise<VipPreflightInput> {
+  const enc = t.settings.vip?.token_enc;
+  const tokenPresent = isEncryptedSecret(enc);
+  let tokenOk: boolean | null = null;
+  let username: string | null = t.settings.vip?.username ?? null;
+  let vipBotId: number | null = null;
+  if (tokenPresent) {
+    try {
+      const token = decryptSecret(enc!, env().SECRETS_KEY);
+      const me = await telegramApi(token, env().TELEGRAM_API_BASE).call<{
+        id?: number;
+        username?: string;
+      }>("getMe", {});
+      tokenOk = me.ok;
+      if (me.ok && me.result?.username) username = me.result.username;
+      if (me.ok && me.result?.id) vipBotId = me.result.id;
+    } catch {
+      tokenOk = false;
+    }
+  }
+  const { data, error } = await serviceDb()
+    .from("app_settings")
+    .select("value")
+    .eq("bot_id", t.id)
+    .eq("key", "vip_group_id")
+    .maybeSingle();
+  if (error) throw serverFailure(`Проверка переезда: VIP-группа не прочитана (${error.message})`);
+  return {
+    tokenPresent,
+    tokenOk,
+    username,
+    sameAsMain: vipBotId !== null && vipBotId === mainBotId,
+    groupSet: Boolean(data?.value?.trim()),
+    sellerChats,
+  };
 }
