@@ -3,6 +3,7 @@ import type { SectionDict } from "../section";
 /** Физические заказы: ручной заказ, внесение оплаты, правка получения, фильтр «к выдаче». */
 export const ru = {
   "physical.newOrder": "+ Заказ вручную",
+  "physical.unpaid": "Не доплачено",
   "physical.pickupLabel": "К выдаче:",
   "physical.pickup.today": "сегодня",
   "physical.pickup.tomorrow": "завтра",
@@ -49,6 +50,7 @@ export const ru = {
 
 export const kk: SectionDict<typeof ru> = {
   "physical.newOrder": "+ Қолмен тапсырыс",
+  "physical.unpaid": "Толық төленбеген",
   "physical.pickupLabel": "Беруге:",
   "physical.pickup.today": "бүгін",
   "physical.pickup.tomorrow": "ертең",
@@ -95,6 +97,7 @@ export const kk: SectionDict<typeof ru> = {
 
 export const en: SectionDict<typeof ru> = {
   "physical.newOrder": "+ Manual order",
+  "physical.unpaid": "Balance due",
   "physical.pickupLabel": "Due:",
   "physical.pickup.today": "today",
   "physical.pickup.tomorrow": "tomorrow",
@@ -142,6 +145,7 @@ export const en: SectionDict<typeof ru> = {
 
 export const uz: SectionDict<typeof ru> = {
   "physical.newOrder": "+ Qoʻlda buyurtma",
+  "physical.unpaid": "Toʻliq toʻlanmagan",
   "physical.pickupLabel": "Berish:",
   "physical.pickup.today": "bugun",
   "physical.pickup.tomorrow": "ertaga",

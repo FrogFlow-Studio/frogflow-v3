@@ -2,6 +2,7 @@ import { awardPointsForOrder } from "@/core/discounts/discounts";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { OrderWithItems } from "./orders";
 import { serviceDb } from "@/core/db/client.server";
+import { eachPage } from "@/core/db/page";
 import { isDeliverableStorageKey } from "@/core/storage/keys";
 import { isAuditableProofPath, proofPathCandidates } from "@/core/receipts/audit";
 import {
@@ -17,7 +18,43 @@ export type OrderFilter = {
   limit?: number;
   /** «К выдаче»: открытые физические заказы по дню получения (matchesPickupFilter). */
   pickup?: PickupFilter;
+  /** «Не доплачено»: задаток внесён, остаток нет (underpaidOrderIds). */
+  unpaid?: boolean;
 };
+
+/** Статусы, где внесённое уже учтено и остаток ждут: в работе и выданные. */
+const UNDERPAID_STATUSES = ["accepted", "in_production", "ready", "delivered"] as const;
+
+/**
+ * Заказы «не доплачено»: физические, задаток внесён (paid_amount > 0), но
+ * меньше итога; отклонённые и отменённые не считаются. PostgREST не сравнивает
+ * две колонки, поэтому кандидатов читаем постранично (порядок заканчивается
+ * уникальным id) и сравниваем здесь; копейка округления — не долг. Новые сверху.
+ */
+export async function underpaidOrderIds(ctx: TenantContext): Promise<number[]> {
+  const ids: number[] = [];
+  await eachPage<{ id: number; total: number | string; paid_amount: number | string | null }>(
+    (from, to) =>
+      ctx.db
+        .from("orders")
+        .select("id, total, paid_amount")
+        .eq("fulfillment_kind", "physical")
+        .in("status", [...UNDERPAID_STATUSES])
+        .gt("paid_amount", 0)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to),
+    "underpaid",
+    (rows) => {
+      for (const o of rows)
+        if (Number(o.total) - (Number(o.paid_amount) || 0) > 0.01) ids.push(o.id);
+    },
+  );
+  return ids;
+}
+
+/** Сколько id за раз передаём в «id in (…)»: длина адреса запроса ограничена. */
+const UNDERPAID_LIST_MAX = 300;
 
 export async function listOrdersForAdmin(
   ctx: TenantContext,
@@ -27,6 +64,11 @@ export async function listOrdersForAdmin(
     .from("orders")
     .select("*, order_items(*)")
     .limit(f.limit ?? 100);
+  if (f.unpaid) {
+    const ids = (await underpaidOrderIds(ctx)).slice(0, UNDERPAID_LIST_MAX);
+    if (!ids.length) return [];
+    q = q.in("id", ids);
+  }
   if (f.status) q = q.eq("status", f.status);
   if (f.pickup) {
     // fulfillment_at хранится полночью UTC календарного дня получения.
@@ -71,15 +113,18 @@ export async function orderCounts(ctx: TenantContext): Promise<OrderCounts> {
     "rejected",
   ];
   const out: OrderCounts = {};
-  await Promise.all(
-    statuses.map(async (s) => {
+  await Promise.all([
+    underpaidOrderIds(ctx).then((ids) => {
+      out.unpaid = ids.length;
+    }),
+    ...statuses.map(async (s) => {
       const { count } = await ctx.db
         .from("orders")
         .select("id", { count: "exact", head: true })
         .eq("status", s);
       out[s] = count ?? 0;
     }),
-  );
+  ]);
   return out;
 }
 

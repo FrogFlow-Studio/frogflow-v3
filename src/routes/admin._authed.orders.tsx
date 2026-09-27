@@ -18,6 +18,8 @@ const search = z.object({
   status: z.string().optional(),
   q: z.string().optional(),
   pickup: z.enum(["today", "tomorrow", "overdue", "nodate"]).optional(),
+  /** «Не доплачено»: задаток внесён, остаток нет (core/orders/admin underpaidOrderIds). */
+  unpaid: z.boolean().optional(),
 });
 
 const PICKUP_KEYS = ["today", "tomorrow", "overdue", "nodate"] as const;
@@ -126,7 +128,7 @@ function OrdersPage() {
   const { orders, counts } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
-  const { status, q, pickup } = Route.useSearch();
+  const { status, q, pickup, unpaid } = Route.useSearch();
   const physical = shop.vertical === "confectionery" || shop.vertical === "flowers";
   const navigate = useNavigate();
   const [query, setQuery] = useState(q ?? "");
@@ -152,7 +154,7 @@ function OrdersPage() {
             {physical && canEdit(shop.role) && (
               <Link
                 to="/admin/orders/new"
-                search={{ status, q, pickup }}
+                search={{ status, q, pickup, unpaid }}
                 className="btn-primary text-xs"
               >
                 {t("physical.newOrder")}
@@ -172,7 +174,7 @@ function OrdersPage() {
             <Link
               key={k}
               to="/admin/orders"
-              search={{ status, q, pickup: pickup === k ? undefined : k }}
+              search={{ status, q, pickup: pickup === k ? undefined : k, unpaid }}
               className={`badge cursor-pointer ${pickup === k ? "border-accent bg-accent/10 text-accent" : ""}`}
             >
               {t(`physical.pickup.${k}`)}
@@ -180,12 +182,24 @@ function OrdersPage() {
           ))}
         </div>
       )}
+      {(physical || unpaid || (counts.unpaid ?? 0) > 0) && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+          <Link
+            to="/admin/orders"
+            search={{ status, q, pickup, unpaid: unpaid ? undefined : true }}
+            className={`badge cursor-pointer ${unpaid ? "border-accent bg-accent/10 text-accent" : ""}`}
+          >
+            {t("physical.unpaid")}
+            {counts.unpaid ? ` · ${counts.unpaid}` : ""}
+          </Link>
+        </div>
+      )}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {tabs.map(([s, label]) => (
           <Link
             key={label}
             to="/admin/orders"
-            search={{ status: s, q, pickup }}
+            search={{ status: s, q, pickup, unpaid }}
             className={`badge cursor-pointer ${status === s ? "border-accent bg-accent/10 text-accent" : ""}`}
           >
             {label}
@@ -198,7 +212,7 @@ function OrdersPage() {
             e.preventDefault();
             void navigate({
               to: "/admin/orders",
-              search: { status, q: query || undefined, pickup },
+              search: { status, q: query || undefined, pickup, unpaid },
             });
           }}
         >

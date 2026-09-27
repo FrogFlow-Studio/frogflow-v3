@@ -613,6 +613,7 @@ export const ordersFn = createServerFn({ method: "GET" })
         status: z.string().optional(),
         q: z.string().optional(),
         pickup: z.enum(["today", "tomorrow", "overdue", "nodate"]).optional(),
+        unpaid: z.boolean().optional(),
       })
       .parse(d ?? {}),
   )

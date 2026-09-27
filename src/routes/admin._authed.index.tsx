@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { applyNicheTemplateFn, dashboardFn, hideSetupFn } from "@/app/admin/admin.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { verticalTitleKey } from "@/app/i18n/admin/catalog";
-import { Card, Empty, ErrorBox, PageTitle, Stat, useAction } from "@/app/ui";
+import { Badge, Card, Empty, ErrorBox, PageTitle, Stat, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 import { OrderStatus } from "./admin._authed.orders";
@@ -242,6 +242,14 @@ function Dashboard() {
                   <span className="tabular-nums">{d.counts[s]}</span>
                 </li>
               ))}
+            {(d.counts.unpaid ?? 0) > 0 && (
+              <li className="flex items-center justify-between">
+                <Link to="/admin/orders" search={{ unpaid: true }} className="hover:underline">
+                  <Badge tone="warn">{t("physical.unpaid")}</Badge>
+                </Link>
+                <span className="tabular-nums">{d.counts.unpaid}</span>
+              </li>
+            )}
           </ul>
         </Card>
       </div>
