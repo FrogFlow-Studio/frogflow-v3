@@ -806,9 +806,12 @@ async function showCart(b: Bot) {
     text += b.m.pointsBalanceLine(sum.points.balance);
     if (sum.points.discount > 0)
       text += b.m.pointsDiscountLine(formatMoney(sum.points.discount, sum.currency));
+    if (sum.points.fx)
+      text += b.m.pointsFxLine(sum.points.spent, formatMoney(sum.points.discount, sum.currency));
   }
   if (sum.gift)
     text += b.m.giftCertificateDiscountLine(formatMoney(sum.gift.discount, sum.currency));
+  if (sum.discountFx) text += `${b.m.discountFx}\n`;
   text += b.m.total(formatMoney(sum.total, sum.currency));
   buttons.push([
     { text: b.m.checkoutBtn, callback_data: "checkout" },
@@ -1086,6 +1089,8 @@ async function finishCheckout(b: Bot, countryCode: string) {
         b.customer = await setState(b.ctx, b.customer, rest);
         return void (await send(b, b.m.promoCodeInvalid));
       }
+      case "discount_fx":
+        return void (await send(b, b.m.discountFx));
       case "gift_invalid": {
         const { gift_certificate_code: _gc, ...rest } = st;
         b.customer = await setState(b.ctx, b.customer, rest);

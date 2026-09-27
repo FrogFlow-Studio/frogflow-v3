@@ -438,6 +438,24 @@ export async function orderPageUrl(ctx: TenantContext, orderId: number): Promise
   return `${ctx.appUrl}/s/${encodeURIComponent(slug)}/order/${orderId}?t=${t}`;
 }
 
+/**
+ * Скидка заказа в его валюте: позиции и доставка минус итог. Сложить поля
+ * нельзя: points_used — это баллы (1 балл = 1 ₸), а заказ бывает в рублях
+ * или долларах, и 5 000 баллов показались бы скидкой в 5 000 $.
+ */
+export function orderDiscount(order: {
+  total: number | string;
+  delivery_fee?: number | string | null;
+  order_items?: Array<{ price_snapshot: number | string; quantity: number | string }> | null;
+}): number {
+  const items = (order.order_items ?? []).reduce(
+    (sum, i) => sum + (Number(i.price_snapshot) || 0) * (Number(i.quantity) || 0),
+    0,
+  );
+  const gross = items + (Number(order.delivery_fee) || 0);
+  return Math.max(0, Math.round((gross - (Number(order.total) || 0)) * 100) / 100);
+}
+
 export async function webOrderView(
   ctx: TenantContext,
   orderId: number,
@@ -480,10 +498,7 @@ export async function webOrderView(
       qty: Number(i.quantity),
       price: Number(i.price_snapshot),
     })),
-    discount:
-      (Number(order.discount_amount) || 0) +
-      (Number(order.points_used) || 0) +
-      (Number(order.gift_certificate_discount) || 0),
+    discount: orderDiscount(order),
     payment:
       method || card
         ? {

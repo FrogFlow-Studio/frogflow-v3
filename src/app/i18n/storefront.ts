@@ -145,6 +145,8 @@ const ru = {
   "checkout.gift": "Подарочный сертификат",
   "checkout.error.promo": "Промокод не подошёл: проверьте его или оформите без него.",
   "checkout.error.gift": "Сертификат не подошёл: проверьте код или оформите без него.",
+  "checkout.error.discountFx":
+    "Скидку сейчас не пересчитать в валюту заказа: курс валют недоступен. Попробуйте чуть позже или оформите без скидки.",
   "order.discount": "Скидка",
   "checkout.error.fulfillment": "Выберите способ получения и дату.",
   "checkout.error.dateEarly": "Самая ранняя дата — {date}.",
@@ -384,6 +386,8 @@ const kk: Dict = {
   "checkout.gift": "Сыйлық сертификаты",
   "checkout.error.promo": "Промокод жарамады: тексеріңіз немесе онсыз рәсімдеңіз.",
   "checkout.error.gift": "Сертификат жарамады: кодты тексеріңіз немесе онсыз рәсімдеңіз.",
+  "checkout.error.discountFx":
+    "Жеңілдікті қазір тапсырыс валютасына аудару мүмкін емес: валюта бағамы қолжетімсіз. Сәл кейінірек көріңіз немесе жеңілдіксіз рәсімдеңіз.",
   "order.discount": "Жеңілдік",
   "checkout.error.fulfillment": "Алу тәсілі мен күнін таңдаңыз.",
   "checkout.error.dateEarly": "Ең ерте күн — {date}.",
@@ -613,6 +617,8 @@ const en: Dict = {
   "checkout.gift": "Gift certificate",
   "checkout.error.promo": "The promo code didn't work: check it or order without it.",
   "checkout.error.gift": "The certificate didn't work: check the code or order without it.",
+  "checkout.error.discountFx":
+    "The discount can't be converted to the order currency right now: exchange rates are unavailable. Try again a bit later or order without the discount.",
   "order.discount": "Discount",
   "checkout.error.fulfillment": "Choose how and when to receive the order.",
   "checkout.error.dateEarly": "The earliest date is {date}.",
@@ -843,6 +849,8 @@ const uz: Dict = {
   "checkout.gift": "Sovg'a sertifikati",
   "checkout.error.promo": "Promokod mos kelmadi: tekshiring yoki usiz rasmiylashtiring.",
   "checkout.error.gift": "Sertifikat mos kelmadi: kodni tekshiring yoki usiz rasmiylashtiring.",
+  "checkout.error.discountFx":
+    "Chegirmani hozir buyurtma valyutasiga o‘tkazib bo‘lmaydi: valyuta kursi mavjud emas. Birozdan keyin urinib ko‘ring yoki chegirmasiz rasmiylashtiring.",
   "order.discount": "Chegirma",
   "checkout.error.fulfillment": "Qabul qilish usuli va sanasini tanlang.",
   "checkout.error.dateEarly": "Eng erta sana — {date}.",

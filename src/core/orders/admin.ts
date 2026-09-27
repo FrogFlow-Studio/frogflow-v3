@@ -188,12 +188,12 @@ export async function setPhysicalStatus(
     .update({ status: to })
     .eq("id", id)
     .eq("status", from)
-    .select("id, telegram_id, total")
+    .select("id, telegram_id, total, currency")
     .maybeSingle();
   // Физический заказ выдан — баллы, как за выданный цифровой (deliverOrder).
   // Повторно не начислится: awardPointsForOrder — CAS по points_earned.
   if (data && to === "delivered")
-    await awardPointsForOrder(ctx, id, Number(data.telegram_id), Number(data.total));
+    await awardPointsForOrder(ctx, id, Number(data.telegram_id), Number(data.total), data.currency);
   return Boolean(data);
 }
 

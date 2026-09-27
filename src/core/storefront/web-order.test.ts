@@ -32,6 +32,7 @@ const {
   webCustomerId,
   webMaterialSender,
   webOrderView,
+  orderDiscount,
   orderPageUrl,
 } = await import("./web-order");
 const { claimCheckoutChallenge } = await import("./checkout-guard");
@@ -464,6 +465,27 @@ describe("заказ с сайта: страница заказа", () => {
     });
     const v = await webOrderView(ctx, 9);
     expect(v).toMatchObject({ total: 1700, due: 1700, discount: 800 });
+  });
+
+  it("заказ в рублях с баллами: скидка — рубли из итога, а не число списанных баллов", async () => {
+    const { ctx } = withOrder({
+      currency: "RUB",
+      total: 2400,
+      discount_amount: 0,
+      points_used: 5000,
+      gift_certificate_discount: 0,
+    });
+    const v = await webOrderView(ctx, 9);
+    expect(v).toMatchObject({ total: 2400, currency: "RUB", discount: 100 });
+  });
+
+  it("скидка считается с доставкой и не бывает отрицательной", () => {
+    const items = [{ price_snapshot: 1000, quantity: 2 }];
+    expect(orderDiscount({ total: 2300, delivery_fee: 500, order_items: items })).toBe(200);
+    expect(orderDiscount({ total: 2600, delivery_fee: 500, order_items: items })).toBe(0);
+    expect(
+      orderDiscount({ total: 19.99, order_items: [{ price_snapshot: 24.99, quantity: 1 }] }),
+    ).toBe(5);
   });
 
   it("Robokassa продавца подключена — есть оплата картой на сумму заказа", async () => {

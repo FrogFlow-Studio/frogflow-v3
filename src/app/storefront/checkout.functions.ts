@@ -193,6 +193,8 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
           throw shownError(t("checkout.error.promo"));
         case "gift_invalid":
           throw shownError(t("checkout.error.gift"));
+        case "discount_fx":
+          throw shownError(t("checkout.error.discountFx"));
         case "country_unavailable":
           throw shownError(t("checkout.error.country"));
         case "busy":

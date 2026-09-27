@@ -72,12 +72,15 @@ export type Msg = {
   removePromoBtn: string;
   promoCodePrompt: string;
   promoCodeInvalid: string;
+  discountFx: string;
   promoCodeRemoved: string;
   discountLine: (amount: string) => string;
   usePointsBtn: string;
   removePointsBtn: string;
   pointsBalanceLine: (n: number) => string;
   pointsDiscountLine: (amount: string) => string;
+  /** Заказ не в валюте магазина: сколько баллов уходит за скидку (1 балл = 1 ₸). */
+  pointsFxLine: (points: number, amount: string) => string;
   pointsEarned: (n: number) => string;
   /** Direct/WhatsApp: шаг «списать баллы?» при оформлении. */
   pointsAsk: (n: number) => string;
@@ -354,6 +357,8 @@ const ru: Msg = {
   removePromoBtn: "❌ Убрать промокод",
   promoCodePrompt: "Введите промокод:",
   promoCodeInvalid: "⚠️ Промокод недействителен или больше не работает.",
+  discountFx:
+    "⚠️ Скидку сейчас не пересчитать в валюту заказа: курс валют недоступен. Попробуйте чуть позже или оформите без скидки.",
   promoCodeRemoved: "Промокод убран.",
   discountLine: (a) => `🎟 Скидка по промокоду: −${a}\n`,
   pointsAsk: (n) => `🏆 У вас ${n} баллов. Списать их в счёт этого заказа?`,
@@ -363,6 +368,7 @@ const ru: Msg = {
   removePointsBtn: "❌ Не списывать баллы",
   pointsBalanceLine: (n) => `🏆 Ваши баллы: ${n}\n`,
   pointsDiscountLine: (a) => `🏆 Оплата баллами: −${a}\n`,
+  pointsFxLine: (n, a) => `   списывается баллов: ${n} = ${a}\n`,
   pointsEarned: (n) =>
     `🏆 Вам начислено ${n} баллов за покупку. Баллами можно оплатить часть следующего заказа.`,
   giftCertificateBtn: "🎫 Ввести сертификат",
@@ -615,9 +621,12 @@ const kk: Msg = {
   promoCodeBtn: "🎟 Промокод енгізу",
   removePromoBtn: "❌ Промокодты алып тастау",
   promoCodeInvalid: "⚠️ Промокод жарамсыз немесе енді жұмыс істемейді.",
+  discountFx:
+    "⚠️ Жеңілдікті қазір тапсырыс валютасына аудару мүмкін емес: валюта бағамы қолжетімсіз. Сәл кейінірек көріңіз немесе жеңілдіксіз рәсімдеңіз.",
   pointsAsk: (n) => `🏆 Сізде ${n} балл бар. Осы тапсырысқа жұмсаймыз ба?`,
   pointsYesBtn: "Иә, жұмсау",
   pointsNoBtn: "Жоқ, жинау",
+  pointsFxLine: (n, a) => `   жұмсалатын балл: ${n} = ${a}\n`,
   usePointsBtn: "🏆 Баллдарды жұмсау",
   removePointsBtn: "❌ Баллдарды жұмсамау",
   giftCertificateBtn: "🎫 Сертификат енгізу",
@@ -774,6 +783,8 @@ const en: Msg = {
   removePromoBtn: "❌ Remove promo code",
   promoCodePrompt: "Enter your promo code:",
   promoCodeInvalid: "⚠️ This promo code is invalid or no longer works.",
+  discountFx:
+    "⚠️ The discount can't be converted to the order currency right now: exchange rates are unavailable. Try again a bit later or order without the discount.",
   promoCodeRemoved: "Promo code removed.",
   discountLine: (a) => `🎟 Promo discount: −${a}\n`,
   pointsAsk: (n) => `🏆 You have ${n} points. Use them for this order?`,
@@ -783,6 +794,7 @@ const en: Msg = {
   removePointsBtn: "❌ Don't use points",
   pointsBalanceLine: (n) => `🏆 Your points: ${n}\n`,
   pointsDiscountLine: (a) => `🏆 Paid with points: −${a}\n`,
+  pointsFxLine: (n, a) => `   points used: ${n} = ${a}\n`,
   pointsEarned: (n) => `🏆 You earned ${n} points. Use them on your next order.`,
   giftCertificateBtn: "🎫 Enter certificate code",
   removeGiftCertificateBtn: "❌ Remove certificate",
@@ -940,11 +952,14 @@ const uz: Msg = {
   promoCodeBtn: "🎟 Promokod kiritish",
   removePromoBtn: "❌ Promokodni olib tashlash",
   promoCodeInvalid: "⚠️ Promokod amal qilmaydi yoki endi ishlamaydi.",
+  discountFx:
+    "⚠️ Chegirmani hozir buyurtma valyutasiga o‘tkazib bo‘lmaydi: valyuta kursi mavjud emas. Birozdan keyin urinib ko‘ring yoki chegirmasiz rasmiylashtiring.",
   giftRestIssued: (code, sum) =>
     `🎁 Sertifikat buyurtma summasidan ko‘p — qolgan ${sum} yangi kod bilan saqlandi:\n<code>${code}</code>\nUni keyingi buyurtmada kiriting.`,
   pointsAsk: (n) => `🏆 Sizda ${n} ball bor. Ushbu buyurtma uchun sarflaymizmi?`,
   pointsYesBtn: "Ha, sarflash",
   pointsNoBtn: "Yo'q, jamlash",
+  pointsFxLine: (n, a) => `   sarflanadigan ball: ${n} = ${a}\n`,
   usePointsBtn: "🏆 Ballarni sarflash",
   removePointsBtn: "❌ Ballarni sarflamaslik",
   giftCertificateBtn: "🎫 Sertifikat kodini kiritish",

@@ -1,6 +1,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { getSetting } from "@/core/settings/settings";
+import { convertForReceipt, convertForTenant } from "@/core/pricing/pricing";
 import {
   computePointsDiscount,
   computePointsEarned,
@@ -45,11 +46,80 @@ export async function findValidPromoCode(ctx: TenantContext, raw: string): Promi
   };
 }
 
+/* ── валюта скидок ────────────────────────────────────────────────── */
+
+/**
+ * Валюта магазина (shop_currency): в ней фиксированный промокод и баллы
+ * (1 балл = 1 единица валюты магазина). Сертификат — в своей currency.
+ */
+export async function shopCurrency(ctx: TenantContext): Promise<string> {
+  return ((await getSetting(ctx, "shop_currency")) || "KZT").toUpperCase();
+}
+
+/** Сумма скидки в валюте заказа по тем же курсам, что у цен; null — курса нет. */
+export async function toOrderCurrency(
+  amount: number,
+  from: string | null | undefined,
+  orderCurrency: string | null | undefined,
+): Promise<number | null> {
+  const f = (from || "KZT").toUpperCase();
+  const t = (orderCurrency || f).toUpperCase();
+  if (f === t) return amount;
+  return convertForTenant(amount, f, t);
+}
+
+/** Промокод с фиксированной суммой — в валюте заказа; процентный не пересчитывается. */
+export async function promoInOrderCurrency<
+  P extends { discount_type: PromoDiscountType; discount_value: number },
+>(ctx: TenantContext, promo: P, orderCurrency?: string): Promise<P | null> {
+  if (promo.discount_type !== "fixed" || !orderCurrency) return promo;
+  const v = await toOrderCurrency(promo.discount_value, await shopCurrency(ctx), orderCurrency);
+  return v == null ? null : { ...promo, discount_value: v };
+}
+
+/**
+ * Баллы в валюте заказа: сколько денег дают `balance` баллов (до копеек,
+ * вниз), null — курса нет. В валюте магазина — 1 к 1.
+ */
+export async function pointsInOrderCurrency(
+  ctx: TenantContext,
+  balance: number,
+  orderCurrency?: string,
+): Promise<number | null> {
+  const shop = await shopCurrency(ctx);
+  if (!orderCurrency || shop === orderCurrency.toUpperCase()) return balance;
+  const v = await convertForReceipt(balance, shop, orderCurrency);
+  return v == null ? null : Math.floor(v);
+}
+
+/**
+ * Сколько баллов стоит скидка `discount` в валюте заказа: по курсу, вверх,
+ * но не больше баланса. null — курса нет.
+ */
+export async function pointsForDiscount(
+  ctx: TenantContext,
+  discount: number,
+  balance: number,
+  orderCurrency?: string,
+): Promise<number | null> {
+  const shop = await shopCurrency(ctx);
+  if (!orderCurrency || shop === orderCurrency.toUpperCase()) return Math.min(balance, discount);
+  const back = await convertForReceipt(discount, orderCurrency, shop);
+  return back == null ? null : Math.min(balance, Math.ceil(back));
+}
+
 /** Списание использования — CAS по used_count: два покупателя не возьмут последнее использование оба. */
-export async function redeemPromoCode(ctx: TenantContext, raw: string, subtotal: number) {
+export async function redeemPromoCode(
+  ctx: TenantContext,
+  raw: string,
+  subtotal: number,
+  orderCurrency?: string,
+) {
   const found = await findValidPromoCode(ctx, raw);
-  if (!found.ok) return { ok: false as const };
-  const discount = computePromoDiscount(subtotal, found.promo);
+  if (!found.ok) return { ok: false as const, reason: "invalid" as const };
+  const promo = await promoInOrderCurrency(ctx, found.promo, orderCurrency);
+  if (!promo) return { ok: false as const, reason: "fx" as const };
+  const discount = computePromoDiscount(subtotal, promo);
   const { data } = await ctx.db
     .from("promo_codes")
     .update({ used_count: found.promo.used_count + 1 })
@@ -57,7 +127,7 @@ export async function redeemPromoCode(ctx: TenantContext, raw: string, subtotal:
     .eq("used_count", found.promo.used_count)
     .select("id")
     .maybeSingle();
-  if (!data) return { ok: false as const };
+  if (!data) return { ok: false as const, reason: "invalid" as const };
   return {
     ok: true as const,
     discount,
@@ -91,10 +161,18 @@ export async function redeemGift(
   raw: string,
   subtotal: number,
   telegramId: number,
+  orderCurrency?: string,
 ) {
   const found = await findValidGift(ctx, raw);
-  if (!found.ok) return { ok: false as const };
-  const discount = Math.min(subtotal, found.certificate.amount);
+  if (!found.ok) return { ok: false as const, reason: "invalid" as const };
+  // Сертификат в своей валюте: на заказ в другой валюте — по курсу.
+  const amount = await toOrderCurrency(
+    found.certificate.amount,
+    found.certificate.currency,
+    orderCurrency,
+  );
+  if (amount == null) return { ok: false as const, reason: "fx" as const };
+  const discount = Math.min(subtotal, amount);
   const { data } = await ctx.db
     .from("gift_certificates")
     .update({
@@ -106,12 +184,21 @@ export async function redeemGift(
     .eq("status", "active")
     .select("id")
     .maybeSingle();
-  if (!data) return { ok: false as const };
+  if (!data) return { ok: false as const, reason: "invalid" as const };
+  // Остаток (#257) — в валюте сертификата: доля номинала, не списанная этим
+  // заказом, по тому же курсу, по которому считалась скидка.
+  const c = found.certificate;
+  const rest =
+    discount < amount && amount > 0
+      ? Math.max(0, Math.round(c.amount * (1 - discount / amount) * 100) / 100)
+      : 0;
   return {
     ok: true as const,
     discount,
-    certificateId: found.certificate.id,
-    certificate: found.certificate,
+    certificateId: c.id,
+    certificate: c,
+    /** Сколько осталось на сертификате, в его валюте; 0 — израсходован целиком. */
+    rest,
   };
 }
 
@@ -224,18 +311,36 @@ async function adjustPoints(
   return false;
 }
 
+/**
+ * Списать баллы на заказ: `points` — сколько баллов ушло с баланса,
+ * `discount` — скидка в валюте заказа. Баллы в валюте магазина; на заказ в
+ * другой валюте — по курсу. null — курса нет, ничего не списано.
+ */
 export async function redeemPoints(
   ctx: TenantContext,
   telegramId: number,
   subtotal: number,
-): Promise<number> {
+  orderCurrency?: string,
+): Promise<{ points: number; discount: number } | null> {
   const [balance, maxPercent] = await Promise.all([
     loyaltyBalance(ctx, telegramId),
     loyaltyMaxRedeemPercent(ctx),
   ]);
-  const discount = computePointsDiscount(subtotal, balance, maxPercent);
-  if (discount <= 0) return 0;
-  return (await adjustPoints(ctx, telegramId, -discount)) ? discount : 0;
+  const none = { points: 0, discount: 0 };
+  if (balance <= 0) return none;
+  const shop = await shopCurrency(ctx);
+  if (!orderCurrency || shop === orderCurrency.toUpperCase()) {
+    const discount = computePointsDiscount(subtotal, balance, maxPercent);
+    if (discount <= 0) return none;
+    return (await adjustPoints(ctx, telegramId, -discount)) ? { points: discount, discount } : none;
+  }
+  const worth = await pointsInOrderCurrency(ctx, balance, orderCurrency);
+  if (worth == null) return null;
+  const discount = computePointsDiscount(subtotal, worth, maxPercent);
+  if (discount <= 0) return none;
+  const points = await pointsForDiscount(ctx, discount, balance, orderCurrency);
+  if (points == null) return null;
+  return (await adjustPoints(ctx, telegramId, -points)) ? { points, discount } : none;
 }
 
 export async function restorePoints(
@@ -252,9 +357,18 @@ export async function awardPointsForOrder(
   orderId: number,
   telegramId: number,
   total: number,
+  currency?: string,
 ): Promise<number> {
   if (!ctx.tenant.modules.loyalty) return 0;
-  const points = computePointsEarned(total, await loyaltyEarnPercent(ctx));
+  // Баллы — в валюте магазина: заказ в другой валюте пересчитывается по
+  // курсу; нет курса — не начисляем (не 1 к 1).
+  const shop = await shopCurrency(ctx);
+  const base =
+    !currency || shop === currency.toUpperCase()
+      ? total
+      : await convertForReceipt(total, currency, shop);
+  if (base == null) return 0;
+  const points = computePointsEarned(base, await loyaltyEarnPercent(ctx));
   if (points <= 0) return 0;
   const { data: claimed } = await ctx.db
     .from("orders")

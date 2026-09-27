@@ -68,7 +68,7 @@ describe("баллы лояльности при оформлении", () => {
     const { db, ctx, customer } = setup();
     const summary = await cartSummary(ctx, customer, { total: 500, currency: "KZT" }, {});
     expect(summary.total).toBe(500);
-    expect(summary.points).toEqual({ balance: 100, discount: 0, used: false });
+    expect(summary.points).toEqual({ balance: 100, discount: 0, used: false, spent: 0, fx: false });
 
     const r = await placeOrder(ctx, customer, "KZ", { usePoints: false });
     expect(r.ok).toBe(true);
@@ -104,7 +104,13 @@ describe("потолок списания баллами (loyalty_max_redeem_per
       { total: 500, currency: "KZT" },
       { usePoints: true },
     );
-    expect(summary.points).toEqual({ balance: 400, discount: 100, used: true });
+    expect(summary.points).toEqual({
+      balance: 400,
+      discount: 100,
+      used: true,
+      spent: 100,
+      fx: false,
+    });
     expect(summary.total).toBe(400);
 
     const r = await placeOrder(ctx, customer, "KZ", { usePoints: true });

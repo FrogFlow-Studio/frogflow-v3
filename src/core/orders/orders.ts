@@ -42,12 +42,17 @@ import {
   findValidPromoCode,
   loyaltyBalance,
   loyaltyMaxRedeemPercent,
+  pointsForDiscount,
+  shopCurrency,
+  pointsInOrderCurrency,
+  promoInOrderCurrency,
   redeemGift,
   redeemPoints,
   redeemPromoCode,
   restorePoints,
   returnOrderCodes,
   rollbackRedemptions,
+  toOrderCurrency,
   type Redemptions,
 } from "@/core/discounts/discounts";
 
@@ -149,6 +154,8 @@ export type PlaceOrderResult =
         | "order_failed"
         | "promo_invalid"
         | "gift_invalid"
+        /** Скидку не перевести в валюту заказа: курса нет. */
+        | "discount_fx"
         | "out_of_stock";
     };
 
@@ -175,9 +182,15 @@ export type CartSummary = {
   currency: string;
   promo: { code: string; discount: number } | null;
   promoInvalid: boolean;
-  points: { balance: number; discount: number; used: boolean };
+  /**
+   * `spent` — сколько баллов уйдёт за скидку; `fx` — заказ не в валюте
+   * магазина, покупателю показываем пересчёт («500 баллов = 100 ₽»).
+   */
+  points: { balance: number; discount: number; used: boolean; spent: number; fx: boolean };
   gift: { code: string; discount: number } | null;
   giftInvalid: boolean;
+  /** Скидку не перевести в валюту заказа — курса нет (продавцу и покупателю — «позже»). */
+  discountFx: boolean;
   total: number;
 };
 
@@ -195,20 +208,36 @@ export async function cartSummary(
   const balance = m.loyalty ? await loyaltyBalance(ctx, customer.telegramId) : 0;
   const usePoints = Boolean(m.loyalty && opts.usePoints && balance > 0);
   const pointsMaxPercent = usePoints ? await loyaltyMaxRedeemPercent(ctx) : 100;
+  // Скидки — в валюте заказа (priced.currency): фиксированный промокод и
+  // баллы из валюты магазина, сертификат из своей. Нет курса — скидки нет.
+  const promoRule = promo?.ok
+    ? await promoInOrderCurrency(ctx, promo.promo, priced.currency)
+    : null;
+  const pointsWorth = usePoints ? await pointsInOrderCurrency(ctx, balance, priced.currency) : 0;
+  const giftAmount = gift?.ok
+    ? await toOrderCurrency(gift.certificate.amount, gift.certificate.currency, priced.currency)
+    : null;
   const r = applyDiscounts(priced.total, {
-    promo: promo?.ok ? promo.promo : null,
-    points: usePoints ? balance : 0,
+    promo: promoRule,
+    points: pointsWorth ?? 0,
     pointsMaxPercent,
-    gift: gift?.ok ? gift.certificate.amount : null,
+    gift: giftAmount,
   });
+  const pointsFx =
+    r.points > 0 && (await shopCurrency(ctx)) !== (priced.currency || "").toUpperCase();
+  const spent =
+    r.points > 0 ? ((await pointsForDiscount(ctx, r.points, balance, priced.currency)) ?? 0) : 0;
   return {
     subtotal: priced.total,
     currency: priced.currency,
-    promo: promoCode && promo?.ok ? { code: promoCode, discount: r.promo } : null,
-    promoInvalid: Boolean(promoCode && !promo?.ok),
-    points: { balance, discount: r.points, used: usePoints },
-    gift: giftCode && gift?.ok ? { code: giftCode, discount: r.gift } : null,
-    giftInvalid: Boolean(giftCode && !gift?.ok),
+    promo: promoCode && promoRule ? { code: promoCode, discount: r.promo } : null,
+    promoInvalid: Boolean(promoCode && !promoRule),
+    points: { balance, discount: r.points, used: usePoints, spent, fx: pointsFx },
+    gift: giftCode && giftAmount != null ? { code: giftCode, discount: r.gift } : null,
+    giftInvalid: Boolean(giftCode && giftAmount == null),
+    discountFx: Boolean(
+      (promo?.ok && !promoRule) || (gift?.ok && giftAmount == null) || pointsWorth == null,
+    ),
     total: r.total,
   };
 }
@@ -278,8 +307,8 @@ export async function placeOrder(
     let promoCode: string | null = null;
     let discountAmount = 0;
     if (m.coupons && opts.promoCode) {
-      const r = await redeemPromoCode(ctx, opts.promoCode, total);
-      if (!r.ok) return await fail("promo_invalid");
+      const r = await redeemPromoCode(ctx, opts.promoCode, total, priced.currency);
+      if (!r.ok) return await fail(r.reason === "fx" ? "discount_fx" : "promo_invalid");
       promoCode = normalizeCode(opts.promoCode);
       discountAmount = r.discount;
       redemptions.promo = { id: r.promoId, previousUsedCount: r.previousUsedCount };
@@ -287,19 +316,22 @@ export async function placeOrder(
     }
     let pointsUsed = 0;
     if (m.loyalty && opts.usePoints) {
-      pointsUsed = await redeemPoints(ctx, customer.telegramId, total);
+      // Баллы — в валюте магазина, скидка — в валюте заказа (по курсу).
+      const r = await redeemPoints(ctx, customer.telegramId, total, priced.currency);
+      if (!r) return await fail("discount_fx");
+      pointsUsed = r.points;
       redemptions.pointsUsed = pointsUsed;
-      total -= pointsUsed;
+      total -= r.discount;
     }
     let giftCode: string | null = null;
     let giftDiscount = 0;
-    let giftSource: { code: string; amount: number; currency: string } | null = null;
+    let giftSource: { code: string; currency: string; rest: number } | null = null;
     if (m.gift_certificates && opts.giftCode) {
-      const r = await redeemGift(ctx, opts.giftCode, total, customer.telegramId);
-      if (!r.ok) return await fail("gift_invalid");
+      const r = await redeemGift(ctx, opts.giftCode, total, customer.telegramId, priced.currency);
+      if (!r.ok) return await fail(r.reason === "fx" ? "discount_fx" : "gift_invalid");
       giftCode = normalizeCode(opts.giftCode);
       giftDiscount = r.discount;
-      giftSource = r.certificate;
+      giftSource = { code: r.certificate.code, currency: r.certificate.currency, rest: r.rest };
       redemptions.giftId = r.certificateId;
       total -= giftDiscount;
     }
@@ -379,13 +411,13 @@ export async function placeOrder(
     // Сертификат больше заказа — остаток новым кодом в той же валюте. Сбой
     // выдачи заказ не срывает: сертификат погашен, остаток выдаст продавец.
     let giftRest: import("@/core/discounts/gift-rest").GiftRest | null = null;
-    if (giftSource && giftSource.amount - giftDiscount > 0.01) {
+    if (giftSource && giftSource.rest > 0.01) {
       const { issueGiftRest } = await import("@/core/discounts/gift-rest");
       giftRest = await issueGiftRest(ctx, {
         orderId: finalOrder.id,
         orderNo: finalOrder.display_no ?? finalOrder.order_no,
         sourceCode: giftSource.code,
-        rest: giftSource.amount - giftDiscount,
+        rest: giftSource.rest,
         currency: giftSource.currency,
       }).catch((e) => {
         console.error(`[orders] остаток сертификата по заказу #${finalOrder.id}: ${String(e)}`);
@@ -399,7 +431,7 @@ export async function placeOrder(
           ? { code: giftRest.code, amount: giftRest.amount, currency: giftRest.currency }
           : {
               failed: true,
-              amount: giftSource.amount - giftDiscount,
+              amount: giftSource.rest,
               currency: giftSource.currency,
             },
       );
@@ -857,7 +889,13 @@ async function finalizeDelivery(
   const pointsEarned =
     failed || sale
       ? 0
-      : await awardPointsForOrder(ctx, order.id, order.telegram_id, Number(order.total));
+      : await awardPointsForOrder(
+          ctx,
+          order.id,
+          order.telegram_id,
+          Number(order.total),
+          order.currency,
+        );
   // Покупка сертификата — не покупка у магазина: ни баллов, ни награды пригласившему;
   // награда придёт, когда покупатель получит обычный заказ.
   const referral =

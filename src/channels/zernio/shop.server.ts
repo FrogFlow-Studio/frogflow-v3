@@ -1107,6 +1107,11 @@ async function showCart(s: Shop, force: boolean, prefix?: string) {
   });
   if (sum.promo) text += plain(s.m.discountLine(formatMoney(sum.promo.discount, sum.currency)));
   if (sum.points.balance > 0) text += plain(s.m.pointsBalanceLine(sum.points.balance));
+  if (sum.points.discount > 0) {
+    const pts = formatMoney(sum.points.discount, sum.currency);
+    text += plain(s.m.pointsDiscountLine(pts));
+    if (sum.points.fx) text += plain(s.m.pointsFxLine(sum.points.spent, pts));
+  }
   if (sum.gift)
     text += plain(s.m.giftCertificateDiscountLine(formatMoney(sum.gift.discount, sum.currency)));
   text += plain(s.m.total(formatMoney(sum.total, sum.currency)));
@@ -1466,6 +1471,8 @@ async function finishCheckout(s: Shop, countryCode: string) {
         s.customer = await setState(s.ctx, s.customer, rest);
         return void (await reply(s, s.m.promoCodeInvalid));
       }
+      case "discount_fx":
+        return void (await reply(s, s.m.discountFx));
       case "gift_invalid": {
         const { gift_certificate_code: _gc, ...rest } = st;
         s.customer = await setState(s.ctx, s.customer, rest);
