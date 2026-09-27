@@ -439,6 +439,11 @@ export type ZernioTransport = {
   ) => Promise<{ bytes: Uint8Array; mime: string } | null>;
   /** Готова ли почта платформы (SMTP) — в тестах подменяется; живое — isMailConfigured. */
   mailReady?: () => boolean;
+  /**
+   * Тип и размер фото в бакете — выбрать то, что примут Instagram/WhatsApp
+   * (media.server). Без него — только по расширению (тесты).
+   */
+  imageInfo?: import("./media.server").ImageInfoReader;
 };
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
@@ -516,4 +521,5 @@ export const liveTransport: ZernioTransport = {
   send: sendInboxMessage,
   tail: listConversationMessages,
   download: downloadAttachment,
+  imageInfo: async (ctx, path) => (await import("./media.server")).storageImageInfo(ctx, path),
 };

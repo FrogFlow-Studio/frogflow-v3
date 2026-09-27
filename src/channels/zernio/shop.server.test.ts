@@ -4,6 +4,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import type { Json } from "@/core/db-types";
 import { formatMoney } from "@/core/money/money";
+import { imageUrl } from "@/core/catalog/catalog";
 import type { ZernioTransport } from "./api.server";
 import type { ParsedZernioMessage } from "./message";
 import type { ZernioPlatform } from "./platform";
@@ -103,7 +104,7 @@ function setup(
       string,
       unknown
     >;
-  return { db, tables, sent, send, download, transport, direct };
+  return { db, tables, sent, send, download, transport, direct, ctx };
 }
 
 /** Строки списка WhatsApp из последнего отправленного сообщения. */
@@ -331,5 +332,93 @@ describe("кнопка «Купить» автоматизации Instagram (о
     });
     expect(r.outcome).toBe("question");
     expect(tables).not.toContain("categories");
+  });
+});
+
+describe("фото товара в Instagram и WhatsApp", () => {
+  const product = (images: string[]) => ({
+    id: "p1",
+    bot_id: BOT,
+    name: "Пазлы",
+    price: 600,
+    currency: "KZT",
+    category_ids: "[]",
+    is_active: true,
+    sort_order: 1,
+    product_variants: [],
+    product_images: images.map((image_path, i) => ({ id: `i${i}`, image_path, sort_order: i })),
+  });
+  const MB = 1024 * 1024;
+  const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+  it("WebP и тяжёлое фото пропускаются — уходит первое подходящее", async () => {
+    const { db, send, transport, ctx } = setup({ platform: "whatsapp" });
+    db.tables.products = [product(["a.webp", "big.jpg", "ok.png"])];
+    const info: Record<string, { size: number; contentType: string; head: Uint8Array }> = {
+      "a.webp": { size: MB, contentType: "image/webp", head: JPEG },
+      "big.jpg": { size: 6 * MB, contentType: "image/jpeg", head: JPEG },
+      "ok.png": { size: MB, contentType: "image/png", head: PNG },
+    };
+    transport.imageInfo = async (_ctx, path) => info[path] ?? null;
+    const urls: Array<string | undefined> = [];
+    transport.send = vi.fn(async (_c: string, _a: string, _t: string, o = {}) => {
+      urls.push((o as { attachmentUrl?: string }).attachmentUrl);
+      return { ok: true };
+    });
+    await send({ postbackPayload: "PROD:p1" });
+    expect(urls.at(-1)).toBe(imageUrl(ctx, "ok.png"));
+  });
+
+  it("в Instagram то же фото 6 МБ проходит (лимит 8 МБ)", async () => {
+    const { db, send, transport, ctx } = setup({ platform: "instagram" });
+    db.tables.products = [product(["big.jpg"])];
+    transport.imageInfo = async () => ({ size: 6 * MB, contentType: "image/jpeg", head: JPEG });
+    const urls: Array<string | undefined> = [];
+    transport.send = vi.fn(async (_c: string, _a: string, _t: string, o = {}) => {
+      urls.push((o as { attachmentUrl?: string }).attachmentUrl);
+      return { ok: true };
+    });
+    await send({ postbackPayload: "PROD:p1" });
+    expect(urls.at(-1)).toBe(imageUrl(ctx, "big.jpg"));
+  });
+
+  it("фото не приняли — карточка уходит текстом без фото", async () => {
+    const { db, send, transport } = setup({ platform: "instagram" });
+    db.tables.products = [product(["a.jpg"])];
+    transport.imageInfo = async () => ({ size: MB, contentType: "image/jpeg", head: JPEG });
+    const calls: Array<{ text: string; url?: string }> = [];
+    transport.send = vi.fn(async (_c: string, _a: string, text: string, o = {}) => {
+      const url = (o as { attachmentUrl?: string }).attachmentUrl;
+      calls.push({ text, url });
+      return url
+        ? {
+            ok: false,
+            error: "Не удалось отправить",
+            failure: { status: 400, code: "PLATFORM_LIMITATION" },
+          }
+        : { ok: true };
+    });
+    await send({ postbackPayload: "PROD:p1" });
+    expect(calls.map((c) => Boolean(c.url))).toEqual([true, false]);
+    expect(calls[1]!.text).toBe(calls[0]!.text);
+    expect(calls[1]!.text).toContain("Пазлы");
+  });
+
+  it("отказ не из-за фото (окно 24 часа, доступ) — без фото не повторяем", async () => {
+    const { db, send, transport } = setup({ platform: "whatsapp" });
+    db.tables.products = [product(["a.jpg"])];
+    transport.imageInfo = async () => ({ size: MB, contentType: "image/jpeg", head: JPEG });
+    const calls: Array<string | undefined> = [];
+    transport.send = vi.fn(async (_c: string, _a: string, _t: string, o = {}) => {
+      calls.push((o as { attachmentUrl?: string }).attachmentUrl);
+      return {
+        ok: false,
+        error: "Прошло больше 24 часов",
+        failure: { status: 400, platformCode: 131047 },
+      };
+    });
+    await send({ postbackPayload: "PROD:p1" });
+    expect(calls).toHaveLength(1);
   });
 });

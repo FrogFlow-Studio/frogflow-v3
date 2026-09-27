@@ -8,7 +8,9 @@ import {
   listConversationMessages,
   listProfiles,
   readCapped,
+  sendInboxMessage,
 } from "./api.server";
+import { isAttachmentRejected } from "./errors";
 
 afterEach(() => {
   setEnvForTests(undefined);
@@ -128,6 +130,37 @@ describe("listConversationMessages — хвост переписки", () => {
     // Без sortOrder=desc длинный диалог отдавал первые сто — самые старые, без ответа менеджера.
     expect(u.searchParams.get("sortOrder")).toBe("desc");
     expect(tail.map((m) => m.message)).toEqual(["первое", "второе", "третье"]);
+  });
+});
+
+describe("отказ из-за вложения — повторяем без него, иной отказ — нет", () => {
+  const limitation = '{"error":"Attachments are not supported","code":"PLATFORM_LIMITATION"}';
+  it("400 PLATFORM_LIMITATION на отправку с фото — отказ вложения по isAttachmentRejected", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk_test" });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(limitation, { status: 400 })),
+    );
+    const r = await sendInboxMessage("conv", "acc", "Пазлы", {
+      platform: "instagram",
+      attachmentUrl: "https://app.test/api/img/x.jpg",
+    });
+    expect(r.ok).toBe(false);
+    expect(isAttachmentRejected(r.failure)).toBe(true);
+  });
+
+  it("500 на отправку с фото — не отказ вложения (платформа могла уже принять)", async () => {
+    setEnvForTests({ ZERNIO_API_KEY: "sk_test" });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(limitation, { status: 500 })),
+    );
+    const r = await sendInboxMessage("conv", "acc", "Пазлы", {
+      platform: "instagram",
+      attachmentUrl: "https://app.test/api/img/x.jpg",
+    });
+    expect(r.ok).toBe(false);
+    expect(isAttachmentRejected(r.failure)).toBe(false);
   });
 });
 

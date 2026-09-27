@@ -13,7 +13,6 @@ import type { Json } from "@/core/db-types";
 import { isLocale, localeNames, type Locale } from "@/core/i18n/locale";
 import {
   getProduct,
-  imageUrl,
   listChildCategories,
   listProductsInCategory,
   searchProducts,
@@ -74,6 +73,7 @@ import {
   type ZernioTransport,
 } from "./api.server";
 import { zernioMaterialSender } from "./deliver";
+import { isAttachmentRejected } from "./errors";
 import { isMailConfigured } from "@/core/mail/mail.server";
 import type { NativeOrder, ParsedZernioMessage } from "./message";
 import { describeNativeCart, matchNativeItems } from "@/core/whatsapp/native-cart";
@@ -153,6 +153,17 @@ type Shop = {
   bot: DirectBotSettings;
 };
 
+/** Фото для Instagram/WhatsApp: первое, которое канал примет (JPEG/PNG в пределах лимита). */
+async function photoFor(
+  s: Shop,
+  paths: ReadonlyArray<string | null | undefined>,
+): Promise<string | undefined> {
+  // Без проверки фото (транспорт в тестах) — без фото: непроверенное Meta может отклонить.
+  if (!s.transport.imageInfo) return undefined;
+  const { zernioImageUrl } = await import("./media.server");
+  return (await zernioImageUrl(s.ctx, s.platform, paths, s.transport.imageInfo)) ?? undefined;
+}
+
 const LIST_TTL_MS = 30 * 60 * 1000;
 const REPEAT_WINDOW_MS = 90 * 1000;
 const PAGE = 10;
@@ -202,13 +213,21 @@ async function reply(
   const fresh =
     Boolean(mem.last_reply_at) && Date.now() - Date.parse(mem.last_reply_at!) < REPEAT_WINDOW_MS;
   if (!opts.force && mem.last_reply === mark && fresh) return false;
-  const r = await s.transport.send(s.conversationId, s.accountId, text, {
-    platform: s.platform,
-    buttons: opts.buttons,
-    attachmentUrl: opts.attachmentUrl,
-    attachmentType: opts.attachmentUrl ? "image" : undefined,
-    interactive: opts.interactive,
-  });
+  const send = (attachmentUrl?: string) =>
+    s.transport.send(s.conversationId, s.accountId, text, {
+      platform: s.platform,
+      buttons: opts.buttons,
+      attachmentUrl,
+      attachmentType: attachmentUrl ? "image" : undefined,
+      interactive: opts.interactive,
+    });
+  let r = await send(opts.attachmentUrl);
+  // Фото не приняли (формат, размер, ссылка) — карточка важнее картинки: текстом.
+  // Иной отказ (окно 24 часа, доступ, лимит) без фото тоже не пройдёт — не повторяем.
+  if (!r.ok && opts.attachmentUrl && isAttachmentRejected(r.failure)) {
+    console.warn(`[zernio-shop] фото не принято для ${s.customer.userKey}: ${r.error}`);
+    r = await send();
+  }
   if (!r.ok) {
     console.error(`[zernio-shop] reply failed for ${s.customer.userKey}: ${r.error}`);
     return false;
@@ -991,7 +1010,10 @@ async function sendProductCard(s: Shop, p: Product, force: boolean) {
       { mode: "awaiting_variant_choice" },
     );
   }
-  const attachmentUrl = imgs[0] ? imageUrl(s.ctx, imgs[0].image_path) : undefined;
+  const attachmentUrl = await photoFor(
+    s,
+    imgs.map((i) => i.image_path),
+  );
   await reply(s, text, { force, buttons: buttons.slice(0, 3), attachmentUrl });
 }
 
@@ -1517,7 +1539,7 @@ async function sendManualInstructions(
   const text =
     `${plain(s.m.manualTitleNew(p.no))}\n\n${plain(s.m.amountToPay(formatMoney(p.due, p.currency)))}\n${p.depositLine}\n` +
     `${p.instructions || plain(s.m.defaultInstructions)}\n\n${plain(p.physical ? s.m.afterProofPhysical : s.m.afterProofManual)}`;
-  await reply(s, text, { force: true, attachmentUrl: p.qr ? imageUrl(s.ctx, p.qr) : undefined });
+  await reply(s, text, { force: true, attachmentUrl: await photoFor(s, [p.qr]) });
 }
 
 async function choosePayment(s: Shop, kind: "rk" | "manual") {
