@@ -7,15 +7,28 @@ import type { LandingKey } from "@/app/i18n/landing";
 import type { Locale } from "@/core/i18n/locale";
 import { moduleDef, type ModuleKey } from "@/core/modules/registry";
 import { planModules } from "@/core/plans/plans";
-import { CONNECTION_PRICE, MONTHLY_PRICE, PLAN_TIERS, type PlanNiche } from "@/core/plans/registry";
+import {
+  ADDON_MONTHLY_PRICE,
+  ANNUAL_BILLED_MONTHS,
+  CONNECTION_PRICE,
+  MONTHLY_PRICE,
+  PLAN_TIERS,
+  type PlanNiche,
+} from "@/core/plans/registry";
 
 export type PlanKey = "basic" | "pro" | "business";
 
 /** Абонентская плата в месяц, ₸: та же, что выставляет оператор (`core/plans/registry`). */
 export const PLAN_PRICES: Record<PlanKey, number> = MONTHLY_PRICE;
 
-/** Разовое подключение «от», ₸: подключение младшего тарифа. */
-export const SETUP_FEE_FROM = CONNECTION_PRICE.basic;
+/** Разовое подключение по тарифам, ₸ — тоже из реестра. */
+export const SETUP_FEES: Record<PlanKey, number> = CONNECTION_PRICE;
+
+/** Сколько месяцев в подарок при оплате за год (реестр: платится ANNUAL_BILLED_MONTHS из 12). */
+export const ANNUAL_FREE_MONTHS = 12 - ANNUAL_BILLED_MONTHS;
+
+/** Канал сверх тарифа, ₸ в месяц: самая низкая из надбавок (сейчас у всех каналов одна). */
+export const ADDON_PRICE = Math.min(...Object.values(ADDON_MONTHLY_PRICE));
 
 /** Пробный период, дней: тот же, что выдаёт оператор (`core/plans/registry`). */
 export { TRIAL_DAYS } from "@/core/plans/registry";

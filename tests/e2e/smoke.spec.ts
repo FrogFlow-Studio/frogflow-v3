@@ -24,6 +24,11 @@ test("главная: страница рисуется, серверная фу
   await expect(page).toHaveTitle(/FrogFlow/);
   // Кнопка регистрации появляется, только если signupEnabledFn ответила.
   await expect(page.locator('a[href="/signup"]').first()).toBeVisible();
+  // Цены из реестра планов: подключение по тарифам, годовая оплата, канал сверх тарифа.
+  for (const setup of [/подключение 15\s000/, /подключение 30\s000/, /подключение 60\s000/])
+    await expect(page.getByText(setup)).toBeVisible();
+  await expect(page.getByText(/2 мес\. в подарок/)).toBeVisible();
+  await expect(page.getByText(/5\s000\s₸ в месяц за канал/)).toBeVisible();
   expect(errors).toEqual([]);
 });
 

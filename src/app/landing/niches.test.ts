@@ -5,10 +5,18 @@ import {
   COURSES_SALE,
   MONTHLY_PRICE,
   CONNECTION_PRICE,
+  ADDON_MONTHLY_PRICE,
+  ANNUAL_BILLED_MONTHS,
   PLAN_TIERS,
   TRIAL_TIER,
 } from "@/core/plans/registry";
-import { PLAN_PRICES, SETUP_FEE_FROM, planFeatureKeys } from "./config";
+import {
+  ADDON_PRICE,
+  ANNUAL_FREE_MONTHS,
+  PLAN_PRICES,
+  SETUP_FEES,
+  planFeatureKeys,
+} from "./config";
 import {
   NICHE_PAGES,
   NICHE_PRICING,
@@ -49,7 +57,9 @@ describe("страницы ниш", () => {
 
   it("цены главной и страниц ниш — из реестра планов", () => {
     expect(PLAN_PRICES).toEqual(MONTHLY_PRICE);
-    expect(SETUP_FEE_FROM).toBe(CONNECTION_PRICE.basic);
+    expect(SETUP_FEES).toEqual(CONNECTION_PRICE);
+    expect(ANNUAL_FREE_MONTHS).toBe(12 - ANNUAL_BILLED_MONTHS);
+    expect(ADDON_PRICE).toBe(Math.min(...Object.values(ADDON_MONTHLY_PRICE)));
   });
 
   it("страница курсов следует реестру: есть, только пока курсы входят в план, и с того же тарифа", () => {

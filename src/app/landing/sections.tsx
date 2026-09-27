@@ -12,7 +12,9 @@ import {
   CONTACTS,
   FEATURED_PLAN,
   PLAN_PRICES,
-  SETUP_FEE_FROM,
+  ADDON_PRICE,
+  ANNUAL_FREE_MONTHS,
+  SETUP_FEES,
   TRIAL_DAYS,
   formatTenge,
   planFeatureKeys,
@@ -202,6 +204,9 @@ export function Pricing({
                 {t("pricing.from", { price: formatTenge(PLAN_PRICES[p]) })}
               </div>
               <div className="text-sm text-muted">{t("pricing.perMonth")}</div>
+              <div className="mt-1 text-sm text-muted tabular-nums">
+                {t("pricing.setup", { price: formatTenge(SETUP_FEES[p]) })}
+              </div>
               <ul className="mt-5 mb-6 grid gap-2 text-sm">
                 {planFeatureKeys(niche, p).map((k) => (
                   <li key={k}>
@@ -230,7 +235,8 @@ export function Pricing({
         })}
       </div>
       <p className="mt-4 text-sm text-muted">
-        {t("pricing.setup", { price: formatTenge(SETUP_FEE_FROM) })}
+        {ANNUAL_FREE_MONTHS > 0 && <>{t("pricing.annual", { free: ANNUAL_FREE_MONTHS })} </>}
+        {t("pricing.addon", { price: formatTenge(ADDON_PRICE) })}
       </p>
     </section>
   );
