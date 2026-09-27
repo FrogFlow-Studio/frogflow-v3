@@ -139,6 +139,10 @@ export function settingsFromJson(json: unknown): TenantSettings {
       sl && typeof sl === "object" && !Array.isArray(sl)
         ? { daily_usd: numOrNull(obj(sl).daily_usd) }
         : undefined,
+    delivery:
+      s.delivery && typeof s.delivery === "object" && !Array.isArray(s.delivery)
+        ? { pdf_watermark: obj(s.delivery).pdf_watermark === true }
+        : undefined,
   };
 }
 
