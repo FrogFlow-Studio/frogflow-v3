@@ -305,10 +305,11 @@ describe("каталог WhatsApp: описание строки товара", 
     ];
     await send({ postbackPayload: "CATALOG" });
     const products = rows(sent).filter((r) => r.id.startsWith("PROD:"));
-    expect(products.map((r) => r.description)).toEqual([
-      formatMoney(600, "KZT"),
-      formatMoney(600, "KZT"),
-    ]);
+    const byTitle = Object.fromEntries(products.map((r) => [r.title, r.description]));
+    expect(byTitle).toEqual({
+      Пазлы: formatMoney(600, "KZT"),
+      "034. Декор на дверь к 1…": `сентября · ${formatMoney(600, "KZT")}`,
+    });
   });
 });
 

@@ -636,6 +636,23 @@ export function clipRowTitle(title: string, max = WA_ROW_TITLE_MAX): string {
   return t.length <= max ? t : `${t.slice(0, max - 1).trimEnd()}…`;
 }
 
+/**
+ * Вторая строка товара в списке WhatsApp. Название длиннее заголовка строки
+ * продолжается здесь — иначе «034. Декор на дверь к 1…» и «035. Декор на
+ * дверь к 1…» неразличимы. Цена идёт после хвоста, если влезает; не влезает
+ * вместе — хвост важнее: цену покупатель увидит в карточке, а чем товары
+ * отличаются — уже нет (как rowSubtitle в v1).
+ */
+export function rowSubtitle(name: string, price: string): string {
+  const t = name.replace(/\s+/g, " ").trim();
+  // Заголовок показывает первые WA_ROW_TITLE_MAX − 1 символов и «…» (clipRowTitle).
+  const tail = t.length > WA_ROW_TITLE_MAX ? t.slice(WA_ROW_TITLE_MAX - 1).trim() : "";
+  if (!tail) return price;
+  const withPrice = `${tail} · ${price}`;
+  if (withPrice.length <= WA_ROW_DESCRIPTION_MAX) return withPrice;
+  return tail;
+}
+
 /** Родной interactive-объект Meta типа list; общий лимит строк — на всё сообщение. */
 export function whatsappList(params: {
   body: string;

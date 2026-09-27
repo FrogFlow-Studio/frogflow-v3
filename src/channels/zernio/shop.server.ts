@@ -90,6 +90,7 @@ import {
   matchLocalePick,
   languagePickerText,
   stepAnswer,
+  rowSubtitle,
   whatsappList,
   STEP_PREFIX,
   WA_LIST_MAX_ROWS,
@@ -840,7 +841,7 @@ async function showProductList(
             rows: page.map((p, i) => ({
               id: `PROD:${p.id}`,
               title: p.name,
-              description: prices[i],
+              description: rowSubtitle(p.name, prices[i] ?? ""),
             })),
           },
           { title: "…", rows: buttons.map((b) => ({ id: b.payload!, title: b.title })) },

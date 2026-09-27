@@ -19,6 +19,7 @@ import {
   stepAnswer,
   whatsappList,
   clipRowTitle,
+  rowSubtitle,
   WA_LIST_MAX_ROWS,
   matchOrdinal,
   matchZone,
@@ -387,6 +388,35 @@ describe("списки WhatsApp", () => {
     expect(stepAnswer("CART")).toBeNull();
     expect(stepAnswer(null)).toBeNull();
     expect(stepAnswer("STEP:")).toBeNull();
+  });
+});
+
+describe("вторая строка товара в списке WhatsApp", () => {
+  it("короткому названию описание — просто цена", () => {
+    expect(rowSubtitle("Пазлы", "600 ₸")).toBe("600 ₸");
+  });
+
+  it("длинное название продолжается в описании — там товары и расходятся", () => {
+    const a = "034. Декор на дверь к 1 сентября";
+    const b = "034. Декор на дверь к 1 мая";
+    expect(clipRowTitle(a)).toBe(clipRowTitle(b));
+    expect(rowSubtitle(a, "600 ₸")).toBe("сентября · 600 ₸");
+    expect(rowSubtitle(b, "600 ₸")).toBe("мая · 600 ₸");
+    // Хвост начинается ровно там, где заголовок оборвался на «…».
+    expect(clipRowTitle(a).replace("…", "") + " " + "сентября").toBe(a);
+  });
+
+  it("цена дописывается, когда остаётся место", () => {
+    const name = `${"а".repeat(23)}${"б".repeat(30)}`;
+    expect(rowSubtitle(name, "1 200 ₸")).toBe(`${"б".repeat(30)} · 1 200 ₸`);
+  });
+
+  it("не влезает вместе — хвост названия важнее цены", () => {
+    const name = `${"а".repeat(23)}${"б".repeat(70)}`;
+    const d = rowSubtitle(name, "1 200 ₸");
+    expect(d).toBe("б".repeat(70));
+    expect(d).not.toContain("₸");
+    // Хвост длиннее 72 обрежет whatsappList — с многоточием, как заголовок.
   });
 });
 

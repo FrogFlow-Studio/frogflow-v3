@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { env } from "@/config/env";
+import { maskEmailsIn } from "@/lib/log-mask";
 
 /**
  * Письма покупателям через SMTP платформы (перенос из v1). Зачем: Instagram
@@ -35,7 +36,8 @@ export const smtpMailer: Mailer = async (mail) => {
     await transport.sendMail({ from: e.SMTP_FROM || e.SMTP_USER, ...mail });
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    // Ответ SMTP часто содержит адрес покупателя — в журнал и Sentry только маской.
+    return { ok: false, error: maskEmailsIn(err instanceof Error ? err.message : String(err)) };
   }
 };
 
