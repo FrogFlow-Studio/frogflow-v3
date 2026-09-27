@@ -45,6 +45,7 @@ import {
   redeemGift,
   redeemPoints,
   redeemPromoCode,
+  restorePoints,
   rollbackRedemptions,
   type Redemptions,
 } from "@/core/discounts/discounts";
@@ -673,14 +674,27 @@ export async function rejectOrder(
     .update({ status: opts.to ?? "rejected" })
     .eq("id", orderId)
     .in("status", [...(opts.from ?? REJECTABLE_STATUSES)])
-    .select("id, platform")
+    .select("id, platform, telegram_id, points_used, points_earned")
     .maybeSingle();
+  // Списанные в заказе баллы — обратно покупателю. Переход статуса выше —
+  // CAS, поэтому возвращает ровно один вызов, сколько бы их ни пришло
+  // (кнопка продавца, срок жизни неоплаченного заказа с сайта).
+  // Заказ уже был выдан и начислил баллы (продавец отклонил после неудачной
+  // повторной выдачи) — списанное не возвращаем: покупатель получил бы и
+  // скидку, и начисление за ту же покупку.
+  const earned = Number(data?.points_earned) || 0;
+  const pointsReturned =
+    data && earned <= 0 ? Math.max(0, Math.floor(Number(data.points_used) || 0)) : 0;
+  if (pointsReturned > 0) await restorePoints(ctx, Number(data!.telegram_id), pointsReturned);
   if (data)
     await recordOrderEvent(
       ctx,
       orderId,
       "rejected",
-      opts.to === "cancelled" ? { to: "cancelled" } : {},
+      {
+        ...(opts.to === "cancelled" ? { to: "cancelled" } : {}),
+        ...(pointsReturned > 0 ? { pointsReturned } : {}),
+      },
       actor,
     );
   // Заказ с сайта оформляет кто угодно — отклонённый возвращает остаток.
