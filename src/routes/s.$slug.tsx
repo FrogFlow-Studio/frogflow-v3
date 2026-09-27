@@ -110,6 +110,16 @@ function StoreFrame() {
                 {t("layout.openTelegram")}
               </a>
             )}
+            {shop.giftSale && !wa && (
+              <Link
+                to="/s/$slug/gift"
+                params={{ slug: shop.slug }}
+                className="btn-secondary"
+                aria-label={t("gift.title")}
+              >
+                🎁<span className="hidden sm:inline">{t("gift.nav")}</span>
+              </Link>
+            )}
             {/* В Mini App корзина и заказы — в нижних вкладках. */}
             {!wa && <CartButton slug={shop.slug} />}
           </div>

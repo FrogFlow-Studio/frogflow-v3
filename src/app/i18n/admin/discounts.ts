@@ -43,6 +43,13 @@ export const ru = {
   "discounts.gift.empty": "Сертификатов пока нет.",
   "discounts.gift.order": "заказ #{no}",
   "discounts.gift.cancel": "Аннулировать",
+  "discounts.gift.sale.title": "Продажа на сайте",
+  "discounts.gift.sale.enabled": "Продавать сертификаты на витрине сайта",
+  "discounts.gift.sale.amounts": "Номиналы через запятую (до 6)",
+  "discounts.gift.sale.hint":
+    "Покупатель платит как за обычный заказ с сайта; код создаётся только после подтверждённой оплаты и приходит на страницу заказа и на почту. Нужно включённое оформление на сайте и способ оплаты в этой валюте.",
+  "discounts.gift.sale.save": "Сохранить",
+  "discounts.gift.sale.saved": "Сохранено",
   // реферальная программа
   "discounts.referral.title": "Реферальная программа",
   "discounts.referral.intro":
@@ -100,6 +107,13 @@ export const kk: SectionDict<typeof ru> = {
   "discounts.gift.empty": "Сертификаттар әзірге жоқ.",
   "discounts.gift.order": "тапсырыс #{no}",
   "discounts.gift.cancel": "Жарамсыз ету",
+  "discounts.gift.sale.title": "Сайтта сату",
+  "discounts.gift.sale.enabled": "Сертификаттарды сайт витринасында сату",
+  "discounts.gift.sale.amounts": "Номиналдар үтір арқылы (6-ға дейін)",
+  "discounts.gift.sale.hint":
+    "Сатып алушы сайттағы кәдімгі тапсырыс сияқты төлейді; код тек расталған төлемнен кейін жасалады және тапсырыс бетіне әрі поштаға келеді. Сайтта рәсімдеу қосулы және осы валютада төлем тәсілі болуы керек.",
+  "discounts.gift.sale.save": "Сақтау",
+  "discounts.gift.sale.saved": "Сақталды",
   "discounts.referral.title": "Рефералдық бағдарлама",
   "discounts.referral.intro":
     "Сатып алушы боттағы «ℹ️ Ақпарат» бөліміндегі сілтемемен бөліседі{link}. Шақырылған адам бірінші сатып алуына бірреттік промокодты бірден алады, шақырған адам дәл сондай промокодты досының бірінші тапсырысы берілгеннен кейін алады. WELCOME-… және REF-… промокодтары сол жақтағы тізімде көрінеді.",
@@ -156,6 +170,13 @@ export const en: SectionDict<typeof ru> = {
   "discounts.gift.empty": "No certificates yet.",
   "discounts.gift.order": "order #{no}",
   "discounts.gift.cancel": "Cancel",
+  "discounts.gift.sale.title": "Selling on the website",
+  "discounts.gift.sale.enabled": "Sell gift cards on the website storefront",
+  "discounts.gift.sale.amounts": "Amounts, comma-separated (up to 6)",
+  "discounts.gift.sale.hint":
+    "The buyer pays as for a regular website order; the code is created only after confirmed payment and appears on the order page and in email. Website checkout must be on, with a payment method in this currency.",
+  "discounts.gift.sale.save": "Save",
+  "discounts.gift.sale.saved": "Saved",
   "discounts.referral.title": "Referral program",
   "discounts.referral.intro":
     "Customers share a link from the “ℹ️ Info” section of the bot{link}. The invited friend immediately gets a one-time promo code for their first purchase; the referrer gets the same code once the friend's first order is delivered. WELCOME-… and REF-… promo codes appear in the list on the left.",
@@ -212,6 +233,13 @@ export const uz: SectionDict<typeof ru> = {
   "discounts.gift.empty": "Sertifikatlar hali yo‘q.",
   "discounts.gift.order": "buyurtma #{no}",
   "discounts.gift.cancel": "Bekor qilish",
+  "discounts.gift.sale.title": "Saytda sotish",
+  "discounts.gift.sale.enabled": "Sertifikatlarni sayt vitrinasida sotish",
+  "discounts.gift.sale.amounts": "Nominallar vergul bilan (6 tagacha)",
+  "discounts.gift.sale.hint":
+    "Xaridor saytdagi oddiy buyurtma kabi toʻlaydi; kod faqat tasdiqlangan toʻlovdan keyin yaratiladi va buyurtma sahifasiga hamda pochtaga keladi. Saytda rasmiylashtirish yoqilgan va shu valyutada toʻlov usuli boʻlishi kerak.",
+  "discounts.gift.sale.save": "Saqlash",
+  "discounts.gift.sale.saved": "Saqlandi",
   "discounts.referral.title": "Referal dasturi",
   "discounts.referral.intro":
     "Xaridor botdagi «ℹ️ Ma’lumot» bo‘limidagi havolani ulashadi{link}. Taklif qilingan do‘st birinchi xaridi uchun bir martalik promokodni darhol oladi, taklif qilgan esa do‘stining birinchi buyurtmasi berilgandan keyin xuddi shunday promokod oladi. WELCOME-… va REF-… promokodlari chap tomondagi ro‘yxatda ko‘rinadi.",

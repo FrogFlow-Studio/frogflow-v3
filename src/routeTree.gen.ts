@@ -62,6 +62,7 @@ import { Route as OperatorAuthedSettingsRouteImport } from './routes/operator._a
 import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
 import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
 import { Route as SSlugCheckoutRouteImport } from './routes/s.$slug.checkout'
+import { Route as SSlugGiftRouteImport } from './routes/s.$slug.gift'
 import { Route as SSlugOrdersRouteImport } from './routes/s.$slug.orders'
 import { Route as SSlugManifestDotwebmanifestRouteImport } from './routes/s.$slug_.manifest[.]webmanifest'
 import { Route as SSlugSitemapDotxmlRouteImport } from './routes/s.$slug_.sitemap[.]xml'
@@ -344,6 +345,11 @@ const SSlugCheckoutRoute = SSlugCheckoutRouteImport.update({
   path: '/checkout',
   getParentRoute: () => SSlugRoute,
 } as any)
+const SSlugGiftRoute = SSlugGiftRouteImport.update({
+  id: '/gift',
+  path: '/gift',
+  getParentRoute: () => SSlugRoute,
+} as any)
 const SSlugOrdersRoute = SSlugOrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
@@ -487,6 +493,7 @@ export interface FileRoutesByFullPath {
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
+  '/s/$slug/gift': typeof SSlugGiftRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
   '/s/$slug/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
   '/s/$slug/sitemap.xml': typeof SSlugSitemapDotxmlRoute
@@ -557,6 +564,7 @@ export interface FileRoutesByTo {
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
+  '/s/$slug/gift': typeof SSlugGiftRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
   '/s/$slug/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
   '/s/$slug/sitemap.xml': typeof SSlugSitemapDotxmlRoute
@@ -629,6 +637,7 @@ export interface FileRoutesById {
   '/operator/_authed/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
+  '/s/$slug/gift': typeof SSlugGiftRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
   '/s/$slug_/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
   '/s/$slug_/sitemap.xml': typeof SSlugSitemapDotxmlRoute
@@ -702,6 +711,7 @@ export interface FileRouteTypes {
     | '/operator/settings'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
+    | '/s/$slug/gift'
     | '/s/$slug/orders'
     | '/s/$slug/manifest.webmanifest'
     | '/s/$slug/sitemap.xml'
@@ -772,6 +782,7 @@ export interface FileRouteTypes {
     | '/operator/settings'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
+    | '/s/$slug/gift'
     | '/s/$slug/orders'
     | '/s/$slug/manifest.webmanifest'
     | '/s/$slug/sitemap.xml'
@@ -843,6 +854,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/settings'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
+    | '/s/$slug/gift'
     | '/s/$slug/orders'
     | '/s/$slug_/manifest.webmanifest'
     | '/s/$slug_/sitemap.xml'
@@ -1264,6 +1276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugCheckoutRouteImport
       parentRoute: typeof SSlugRoute
     }
+    '/s/$slug/gift': {
+      id: '/s/$slug/gift'
+      path: '/gift'
+      fullPath: '/s/$slug/gift'
+      preLoaderRoute: typeof SSlugGiftRouteImport
+      parentRoute: typeof SSlugRoute
+    }
     '/s/$slug/orders': {
       id: '/s/$slug/orders'
       path: '/orders'
@@ -1523,6 +1542,7 @@ const OperatorRouteWithChildren = OperatorRoute._addFileChildren(
 interface SSlugRouteChildren {
   SSlugCartRoute: typeof SSlugCartRoute
   SSlugCheckoutRoute: typeof SSlugCheckoutRoute
+  SSlugGiftRoute: typeof SSlugGiftRoute
   SSlugOrdersRoute: typeof SSlugOrdersRoute
   SSlugIndexRoute: typeof SSlugIndexRoute
   SSlugCourseItemIdRoute: typeof SSlugCourseItemIdRoute
@@ -1534,6 +1554,7 @@ interface SSlugRouteChildren {
 const SSlugRouteChildren: SSlugRouteChildren = {
   SSlugCartRoute: SSlugCartRoute,
   SSlugCheckoutRoute: SSlugCheckoutRoute,
+  SSlugGiftRoute: SSlugGiftRoute,
   SSlugOrdersRoute: SSlugOrdersRoute,
   SSlugIndexRoute: SSlugIndexRoute,
   SSlugCourseItemIdRoute: SSlugCourseItemIdRoute,

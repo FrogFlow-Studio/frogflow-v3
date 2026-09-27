@@ -1189,6 +1189,37 @@ export const createGiftCertificateFn = createServerFn({ method: "POST" })
     throw new UserError("err.admin.codeGenFailed", "Не удалось подобрать уникальный код");
   });
 
+/** Продажа сертификатов на витрине сайта: включена ли, номиналы и валюта (bots.settings.gift_sale). */
+export const giftSaleFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  const { giftSaleSettings } = await import("@/core/discounts/gift-sale");
+  return giftSaleSettings(ctx);
+});
+
+export const saveGiftSaleFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        enabled: z.boolean(),
+        amounts: z.array(z.number().int().positive().max(10_000_000)).max(6),
+        currency: z.string().regex(/^[A-Za-z]{3}$/),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { requireAdminModule } = await import("@/app/auth/guards.server");
+    const ctx = await requireAdminModule("gift_certificates", "manager");
+    const { normalizeGiftAmounts } = await import("@/core/discounts/gift-sale");
+    const amounts = normalizeGiftAmounts(data.amounts);
+    if (data.enabled && amounts.length === 0)
+      throw new UserError("err.admin.giftSaleAmounts", "Укажите хотя бы один номинал.");
+    const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
+    await patchTenantSettings(ctx.tenant.id, {
+      gift_sale: { enabled: data.enabled, amounts, currency: data.currency.toUpperCase() },
+    });
+    return { ok: true };
+  });
+
 export const cancelGiftCertificateFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid }).parse(d))
   .handler(async ({ data }) => {

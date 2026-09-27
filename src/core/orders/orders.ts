@@ -738,6 +738,8 @@ export async function rejectOrder(
   return Boolean(data);
 }
 
+type IssuedGift = import("@/core/discounts/gift-sale").IssuedGift;
+
 export type MaterialSender = (
   item: OrderItemRow,
   materials: MaterialSnapshot[],
@@ -799,6 +801,8 @@ async function finalizeDelivery(
   order: OrderWithItems,
   failed: number,
   total: number,
+  /** Заказ — покупка сертификата: баллов нет (их дадут за покупку сертификатом), код — письмом. */
+  sale: { gift: IssuedGift | null } | null = null,
 ): Promise<{ pointsEarned: number; referral: ReferralGrant | null }> {
   await ctx.db
     .from("orders")
@@ -817,13 +821,22 @@ async function finalizeDelivery(
     failed ? "delivery_failed" : "delivered",
     failed ? { failed, total } : { sent: total },
   );
-  const pointsEarned = failed
-    ? 0
-    : await awardPointsForOrder(ctx, order.id, order.telegram_id, Number(order.total));
-  const referral = failed ? null : await rewardReferrerIfFirstDelivery(ctx, order.telegram_id);
+  const pointsEarned =
+    failed || sale
+      ? 0
+      : await awardPointsForOrder(ctx, order.id, order.telegram_id, Number(order.total));
+  // Покупка сертификата — не покупка у магазина: ни баллов, ни награды пригласившему;
+  // награда придёт, когда покупатель получит обычный заказ.
+  const referral =
+    failed || sale ? null : await rewardReferrerIfFirstDelivery(ctx, order.telegram_id);
   // Покупателю из Instagram/WhatsApp — копия материалов на почту: ссылки в
   // переписке живут 7 дней и теряются, письмо остаётся.
-  if (!failed && orderChannel(order.platform) !== "telegram" && order.customer_email) {
+  if (!failed && sale?.gift) {
+    const { emailGiftCode } = await import("@/core/discounts/gift-mail");
+    await emailGiftCode(ctx, order, sale.gift).catch((e) =>
+      console.warn(`[orders] письмо с сертификатом по заказу #${order.id}: ${String(e)}`),
+    );
+  } else if (!failed && orderChannel(order.platform) !== "telegram" && order.customer_email) {
     const fresh = await getOrder(ctx, order.id);
     const { emailOrderMaterials } = await import("./email");
     await emailOrderMaterials(ctx, fresh ?? order).catch((e) =>
@@ -854,6 +867,29 @@ export async function deliverOrder(
   const choice =
     multi && isDeliveryLangChoice(order.delivery_lang_choice) ? order.delivery_lang_choice : null;
   const items = order.order_items.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  // Покупка подарочного сертификата на сайте: позиция без товара, вместо
+  // файлов — код (core/discounts/gift-sale), один на заказ.
+  if (order.platform === "web" && items.length > 0 && items.every((i) => !i.product_id)) {
+    const { giftSaleOf, issueGiftForOrder } = await import("@/core/discounts/gift-sale");
+    if (await giftSaleOf(ctx, orderId)) {
+      const gift = await issueGiftForOrder(ctx, order);
+      const lang = opts.lang ?? ctx.tenant.settings.default_locale ?? "ru";
+      for (const item of items) {
+        if (gift) {
+          await markDelivered(ctx, item, item.delivered_language, lang);
+          await recordOrderEvent(ctx, orderId, "item_sent", { name: item.name_snapshot });
+        } else
+          await recordOrderEvent(ctx, orderId, "item_failed", {
+            name: item.name_snapshot,
+            reason: "не удалось создать код сертификата",
+          });
+      }
+      await ctx.db.from("orders").update({ delivery_index: items.length }).eq("id", orderId);
+      const failedGift = gift ? 0 : items.length;
+      const fin = await finalizeDelivery(ctx, order, failedGift, items.length, { gift });
+      return { ok: true, sent: items.length - failedGift, failed: failedGift, pending: 0, ...fin };
+    }
+  }
   let sent = 0;
   let failed = 0;
   let pending = 0;

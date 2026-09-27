@@ -38,6 +38,7 @@ export function seedDb(): StubDb {
     orders: [["bot_id", "order_no"]],
     zernio_logs: [["event_id"]],
     cart_items: [["bot_id", "user_key", "product_id", "product_variant_id"]],
+    gift_certificates: [["bot_id", "code"]],
   };
 
   db.defaults = {
@@ -124,6 +125,11 @@ export function seedDb(): StubDb {
     }),
     cart_items: () => ({ quantity: 1, product_variant_id: null, user_key: null }),
     app_settings: () => ({ value: null }),
+    gift_certificates: () => ({
+      status: "active",
+      currency: "KZT",
+      ...nulls(["note", "redeemed_by_telegram_id", "redeemed_order_id", "redeemed_at"]),
+    }),
     zernio_logs: () => ({ status: "pending", payload: {}, error_message: null }),
     subscription_invoices: () => ({
       status: "sent",
@@ -179,6 +185,7 @@ export function seedDb(): StubDb {
         robokassa: true,
         shop: true,
         web_storefront: true,
+        gift_certificates: true,
         coupons: true,
         upsell: true,
       },
@@ -188,6 +195,8 @@ export function seedDb(): StubDb {
         slug: F.SHOP_SLUG,
         telegram: { username: "e2e_shop_bot", webhook_ok: true },
         admin: { username: F.SELLER_LOGIN, password_hash: hash(F.SELLER_PASSWORD) },
+        // Продажа подарочных сертификатов на витрине (gift.spec.ts).
+        gift_sale: { enabled: true, amounts: F.GIFT_AMOUNTS, currency: "KZT" },
       },
       paused_message: null,
       owner_telegram_id: F.SELLER_TG,

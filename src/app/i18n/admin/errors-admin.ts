@@ -33,6 +33,7 @@ export const ru = {
   "err.admin.percentMax": "Процент не больше 100.",
   "err.admin.codeTaken": "Такой код уже есть.",
   "err.admin.codeGenFailed": "Не удалось подобрать уникальный код",
+  "err.admin.giftSaleAmounts": "Укажите хотя бы один номинал.",
   "err.server.failed":
     "Не удалось выполнить действие: сбой на сервере. Попробуйте ещё раз — мы уже получили отчёт.",
   "err.server.badInput": "Данные формы не прошли проверку. Проверьте поля и попробуйте ещё раз.",
@@ -162,6 +163,7 @@ export const kk: SectionDict<typeof ru> = {
   "err.admin.percentMax": "Пайыз 100-ден аспауы керек.",
   "err.admin.codeTaken": "Мұндай код бұрыннан бар.",
   "err.admin.codeGenFailed": "Бірегей код құрастыру мүмкін болмады",
+  "err.admin.giftSaleAmounts": "Кемінде бір номинал көрсетіңіз.",
   "err.server.failed":
     "Әрекетті орындау мүмкін болмады: серверде ақау. Қайта көріңіз — есеп бізге жетті.",
   "err.server.badInput": "Форма деректері тексерістен өтпеді. Өрістерді тексеріп, қайта көріңіз.",
@@ -287,6 +289,7 @@ export const en: SectionDict<typeof ru> = {
   "err.admin.percentMax": "The percentage cannot exceed 100.",
   "err.admin.codeTaken": "This code already exists.",
   "err.admin.codeGenFailed": "Could not generate a unique code",
+  "err.admin.giftSaleAmounts": "Enter at least one amount.",
   "err.server.failed":
     "The action failed because of a server error. Please try again — we have already received a report.",
   "err.server.badInput": "The form data did not pass validation. Check the fields and try again.",
@@ -413,6 +416,7 @@ export const uz: SectionDict<typeof ru> = {
   "err.admin.percentMax": "Foiz 100 dan oshmasligi kerak.",
   "err.admin.codeTaken": "Bunday kod allaqachon mavjud.",
   "err.admin.codeGenFailed": "Takrorlanmas kod tanlab boʻlmadi",
+  "err.admin.giftSaleAmounts": "Kamida bitta nominal kiriting.",
   "err.server.failed":
     "Amalni bajarib boʻlmadi: serverda nosozlik. Qayta urinib koʻring — hisobot bizga yetib keldi.",
   "err.server.badInput":

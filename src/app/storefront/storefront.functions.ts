@@ -34,8 +34,16 @@ export const storeInfoFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const ctx = await shopCtx(data.slug, "info");
     const { storeInfo } = await import("@/core/storefront/catalog");
+    const { giftSaleOpen } = await import("@/core/discounts/gift-sale");
+    const { storefrontOpen } = await import("@/core/storefront/access");
+    const { webCheckoutSettings } = await import("@/core/storefront/web-order");
     return {
       ...(await storeInfo(ctx)),
+      /** Ссылка «Сертификат» в шапке: продажа сертификатов и оформление на сайте открыты. */
+      giftSale:
+        giftSaleOpen(ctx) &&
+        storefrontOpen(ctx.tenant, "web_checkout") &&
+        (await webCheckoutSettings(ctx)).enabled,
       paused: ctx.tenant.status !== "active",
       /** Язык витрины — язык магазина; покупатель может сменить его через `?lang=`. */
       locale: (ctx.tenant.settings.default_locale ?? "ru") as Locale,

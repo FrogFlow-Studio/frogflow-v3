@@ -95,6 +95,8 @@ class Query implements PromiseLike<Result> {
   private skip = 0;
   private sorts: Array<{ col: string; asc: boolean }> = [];
   private one: "single" | "maybe" | null = null;
+  /** Встроенные связи один-ко-многим из select: `order_items(*)` у orders. */
+  private embeds: string[] = [];
 
   constructor(
     private db: FakeDb,
@@ -125,6 +127,7 @@ class Query implements PromiseLike<Result> {
 
   select(cols?: string, o?: { count?: string; head?: boolean }) {
     if (cols) for (const c of selectColumns(cols)) this.col(c);
+    if (cols) this.embeds = [...cols.matchAll(/(\w+)(?:![\w]+)?\s*\(/g)].map((m) => m[1]!);
     if (this.op === "select") {
       this.headCount = Boolean(o?.head);
     } else this.returning = true;
@@ -303,14 +306,30 @@ class Query implements PromiseLike<Result> {
     );
   }
 
+  /**
+   * Копия строки со встроенными дочерними строками: связь один-ко-многим,
+   * у дочерней таблицы колонка `<родитель в ед. числе>_id` (orders → order_id).
+   * Связи многие-к-одному (cart_items → products) не встраиваются.
+   */
+  private withEmbeds(r: Row): Row {
+    const out: Row = { ...r };
+    const fk = `${this.table.replace(/s$/, "")}_id`;
+    for (const name of this.embeds) {
+      // Тест положил связь в строку сам — оставляем как есть.
+      if (name in r || !schemaColumns().get(name)?.has(fk)) continue;
+      out[name] = (this.db.tables[name] ?? []).filter((c) => c[fk] === r.id).map((c) => ({ ...c }));
+    }
+    return out;
+  }
+
   private shape(rows: Row[]): Result {
     if (this.one) {
       if (rows.length > 1) return { data: null, error: { message: "multiple rows" } };
       if (!rows.length && this.one === "single")
         return { data: null, error: { message: "no rows" } };
-      return { data: rows[0] ? { ...rows[0] } : null, error: null };
+      return { data: rows[0] ? this.withEmbeds(rows[0]) : null, error: null };
     }
-    return { data: rows.map((r) => ({ ...r })), error: null };
+    return { data: rows.map((r) => this.withEmbeds(r)), error: null };
   }
 
   private run(): Result {

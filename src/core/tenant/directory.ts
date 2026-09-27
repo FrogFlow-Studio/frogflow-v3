@@ -143,6 +143,18 @@ export function settingsFromJson(json: unknown): TenantSettings {
       s.delivery && typeof s.delivery === "object" && !Array.isArray(s.delivery)
         ? { pdf_watermark: obj(s.delivery).pdf_watermark === true }
         : undefined,
+    gift_sale:
+      s.gift_sale && typeof s.gift_sale === "object" && !Array.isArray(s.gift_sale)
+        ? {
+            enabled: obj(s.gift_sale).enabled === true,
+            amounts: Array.isArray(obj(s.gift_sale).amounts)
+              ? (obj(s.gift_sale).amounts as unknown[]).filter(
+                  (x): x is number => typeof x === "number" && Number.isFinite(x),
+                )
+              : [],
+            currency: str(obj(s.gift_sale).currency),
+          }
+        : undefined,
   };
 }
 

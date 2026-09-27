@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { orderMaterialsMail, orderNoticeMail } from "./mail.server";
+import { giftCodeMail, orderMaterialsMail, orderNoticeMail } from "./mail.server";
 
 describe("письмо с материалами", () => {
   it("содержит номер, ссылки, срок и экранирует HTML", () => {
@@ -28,5 +28,35 @@ describe("письмо-уведомление о заказе", () => {
     });
     expect(m.subject).not.toMatch(/[\r\n]/);
     expect(m.subject).toBe("Заказ №5 в магазине «Shop Bcc: x@y.z»");
+  });
+});
+
+describe("письмо с кодом сертификата", () => {
+  const base = {
+    orderNo: 12,
+    shopName: "Прописи <1>",
+    code: "ABCD2345",
+    amount: "5 000 ₸",
+    shopUrl: "https://shop.test/s/propisi",
+  };
+
+  it("по умолчанию на русском, имя магазина экранировано", () => {
+    const m = giftCodeMail(base);
+    expect(m.subject).toBe("Подарочный сертификат на 5 000 ₸ — заказ №12");
+    expect(m.text).toContain("ABCD2345");
+    expect(m.html).toContain("Прописи &lt;1&gt;");
+    expect(m.html).toContain("Перейти в магазин");
+  });
+
+  it.each([
+    ["kk", "сыйлық сертификаты", "Дүкенге өту"],
+    ["en", "Gift certificate for 5 000 ₸", "Go to the shop"],
+    ["uz", "sovg‘a sertifikati", "Do‘konga o‘tish"],
+  ] as const)("на языке магазина: %s", (locale, subject, link) => {
+    const m = giftCodeMail({ ...base, locale });
+    expect(m.subject).toContain(subject);
+    expect(m.html).toContain(link);
+    expect(m.text).toContain("ABCD2345");
+    expect(m.text).not.toMatch(/[Зз]дравствуйте/);
   });
 });

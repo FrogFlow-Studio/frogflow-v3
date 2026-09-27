@@ -74,6 +74,11 @@ export type TenantSettings = {
   grace_days?: number;
   /** Тариф (core/plans): ключ плана, надбавки, льготы, лимиты. */
   billing?: BillingSettings;
+  /**
+   * Продажа подарочных сертификатов на витрине сайта (core/discounts/gift-sale):
+   * включает продавец, номиналы — до шести, валюта — одна на все номиналы.
+   */
+  gift_sale?: { enabled?: boolean; amounts?: number[]; currency?: string };
   /** Выдача цифровых товаров (core/delivery). */
   delivery?: {
     /** Водяной знак с покупателем и номером заказа на каждом выдаваемом PDF. */

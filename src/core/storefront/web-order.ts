@@ -370,6 +370,8 @@ export type WebOrderView = {
   email: string | null;
   /** Чек загружен — заказ на проверке у продавца по чеку, а не по контактам. */
   proof: boolean;
+  /** Покупка подарочного сертификата: номинал, а код — только после выдачи. */
+  gift: { amount: number; currency: string; code: string | null } | null;
 };
 
 const PAYABLE = new Set(["awaiting_payment"]);
@@ -445,6 +447,23 @@ export async function webOrderView(
     materials: await webOrderMaterials(ctx, order),
     email: order.customer_email,
     proof: Boolean(order.payment_proof_path),
+    gift: await webOrderGift(ctx, order),
+  };
+}
+
+async function webOrderGift(
+  ctx: TenantContext,
+  order: OrderWithItems,
+): Promise<WebOrderView["gift"]> {
+  const items = order.order_items ?? [];
+  if (items.length === 0 || items.some((i) => i.product_id)) return null;
+  const { giftSaleOf } = await import("@/core/discounts/gift-sale");
+  const sale = await giftSaleOf(ctx, order.id);
+  if (!sale) return null;
+  return {
+    amount: sale.amount,
+    currency: sale.currency,
+    code: order.status === "delivered" ? (sale.code ?? null) : null,
   };
 }
 

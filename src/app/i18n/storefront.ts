@@ -162,6 +162,19 @@ const ru = {
   "checkout.proof.tooLarge": "Файл больше 3 МБ — пришлите снимок экрана.",
   "cart.sentToBot": "Корзина отправлена в чат с ботом — там кнопка «Оформить заказ».",
   "cart.openingTelegram": "Открываем Telegram…",
+  "gift.nav": "Сертификат",
+  "gift.title": "Подарочный сертификат",
+  "gift.intro":
+    "Код сертификата придёт после оплаты — на странице заказа и на почту. Им можно оплатить заказ в этом магазине целиком или частично.",
+  "gift.amount": "Номинал",
+  "gift.email": "Почта — сюда придёт код сертификата",
+  "gift.closed": "Подарочные сертификаты сейчас не продаются.",
+  "gift.error.amount": "Выберите номинал из списка.",
+  "order.gift.title": "Ваш подарочный сертификат",
+  "order.gift.amount": "Номинал: {sum}",
+  "order.gift.hint":
+    "Введите код при оформлении заказа в поле «Подарочный сертификат». Копия кода — на почте.",
+  "order.gift.waiting": "Чек у продавца на проверке — код сертификата появится здесь.",
   // мои заказы (Mini App)
   "orders.link": "Мои заказы",
   "orders.title": "Мои заказы",
@@ -374,6 +387,19 @@ const kk: Dict = {
   "checkout.proof.tooLarge": "Файл 3 МБ-тан үлкен — экран суретін жіберіңіз.",
   "cart.sentToBot": "Себет ботпен чатқа жіберілді — онда «Тапсырысты рәсімдеу» түймесі бар.",
   "cart.openingTelegram": "Telegram ашылуда…",
+  "gift.nav": "Сертификат",
+  "gift.title": "Сыйлық сертификаты",
+  "gift.intro":
+    "Сертификат коды төлемнен кейін келеді — тапсырыс бетінде және поштаға. Онымен осы дүкендегі тапсырысты толық немесе ішінара төлеуге болады.",
+  "gift.amount": "Номинал",
+  "gift.email": "Пошта — сертификат коды осында келеді",
+  "gift.closed": "Сыйлық сертификаттары қазір сатылмайды.",
+  "gift.error.amount": "Тізімнен номинал таңдаңыз.",
+  "order.gift.title": "Сіздің сыйлық сертификатыңыз",
+  "order.gift.amount": "Номинал: {sum}",
+  "order.gift.hint":
+    "Тапсырысты рәсімдегенде кодты «Сыйлық сертификаты» өрісіне енгізіңіз. Код көшірмесі — поштада.",
+  "order.gift.waiting": "Чек сатушыда тексерілуде — сертификат коды осында шығады.",
   "orders.link": "Менің тапсырыстарым",
   "orders.title": "Менің тапсырыстарым",
   "orders.onlyTelegram":
@@ -576,6 +602,19 @@ const en: Dict = {
   "checkout.proof.tooLarge": "The file is over 3 MB — please send a screenshot.",
   "cart.sentToBot": "The cart was sent to the bot chat — tap “Place order” there.",
   "cart.openingTelegram": "Opening Telegram…",
+  "gift.nav": "Gift card",
+  "gift.title": "Gift card",
+  "gift.intro":
+    "The gift card code arrives after payment — on the order page and by email. It pays for an order in this shop in full or in part.",
+  "gift.amount": "Amount",
+  "gift.email": "Email — the gift card code will be sent here",
+  "gift.closed": "Gift cards are not on sale right now.",
+  "gift.error.amount": "Choose an amount from the list.",
+  "order.gift.title": "Your gift card",
+  "order.gift.amount": "Amount: {sum}",
+  "order.gift.hint":
+    "Enter the code at checkout in the “Gift card” field. A copy of the code is in your email.",
+  "order.gift.waiting": "The seller is checking the receipt — the gift card code will appear here.",
   "orders.link": "My orders",
   "orders.title": "My orders",
   "orders.onlyTelegram":
@@ -778,6 +817,19 @@ const uz: Dict = {
   "checkout.proof.tooLarge": "Fayl 3 MB dan katta — ekran suratini yuboring.",
   "cart.sentToBot": "Savat bot bilan chatga yuborildi — u yerda «Buyurtma berish» tugmasi bor.",
   "cart.openingTelegram": "Telegram ochilmoqda…",
+  "gift.nav": "Sertifikat",
+  "gift.title": "Sovgʻa sertifikati",
+  "gift.intro":
+    "Sertifikat kodi toʻlovdan keyin keladi — buyurtma sahifasida va pochtaga. U bilan shu doʻkondagi buyurtmani toʻliq yoki qisman toʻlash mumkin.",
+  "gift.amount": "Nominal",
+  "gift.email": "Pochta — sertifikat kodi shu yerga keladi",
+  "gift.closed": "Sovgʻa sertifikatlari hozir sotilmaydi.",
+  "gift.error.amount": "Roʻyxatdan nominal tanlang.",
+  "order.gift.title": "Sizning sovgʻa sertifikatingiz",
+  "order.gift.amount": "Nominal: {sum}",
+  "order.gift.hint":
+    "Buyurtma berishda kodni «Sovgʻa sertifikati» maydoniga kiriting. Kod nusxasi — pochtada.",
+  "order.gift.waiting": "Chek sotuvchida tekshirilmoqda — sertifikat kodi shu yerda chiqadi.",
   "orders.link": "Buyurtmalarim",
   "orders.title": "Buyurtmalarim",
   "orders.onlyTelegram":

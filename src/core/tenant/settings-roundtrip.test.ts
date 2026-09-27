@@ -13,6 +13,7 @@ const SAVED = {
   timezone: "Asia/Almaty",
   delivery: { pdf_watermark: true },
   consultant_pause_hours: 3,
+  gift_sale: { enabled: true, amounts: [5000, 10000], currency: "KZT" },
   admin: {
     username: "owner",
     password_hash: "scrypt$a$b",
@@ -53,6 +54,7 @@ describe("settingsFromJson не теряет сохранённые ключи",
     expect(s).toMatchObject({
       timezone: "Asia/Almaty",
       consultant_pause_hours: 3,
+      gift_sale: { enabled: true, amounts: [5000, 10000], currency: "KZT" },
       admin: {
         username: "owner",
         password_hash: "scrypt$a$b",

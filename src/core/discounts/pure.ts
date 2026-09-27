@@ -42,10 +42,16 @@ export function computePointsDiscount(
   return Math.max(0, Math.min(cap, Math.floor(pointsBalance)));
 }
 
+/**
+ * Код сертификата: 8 знаков из 32 без похожих (0/O, 1/I) — 40 бит из
+ * криптостойкого генератора. 256 делится на 32, поэтому остаток от деления
+ * не смещает распределение.
+ */
 export function generateGiftCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = globalThis.crypto.getRandomValues(new Uint8Array(8));
   let s = "";
-  for (let i = 0; i < 8; i++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
+  for (const b of bytes) s += alphabet[b % alphabet.length];
   return `GIFT-${s}`;
 }
 

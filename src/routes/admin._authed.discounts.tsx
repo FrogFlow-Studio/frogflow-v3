@@ -7,7 +7,9 @@ import {
   createGiftCertificateFn,
   deletePromoCodeFn,
   giftCertificatesFn,
+  giftSaleFn,
   promoCodesFn,
+  saveGiftSaleFn,
   savePromoCodeFn,
   saveSettingsFn,
   settingsFn,
@@ -18,12 +20,18 @@ import { formatMoney } from "@/core/money/money";
 
 export const Route = createFileRoute("/admin/_authed/discounts")({
   loader: async () => {
-    const [promos, gifts, settings] = await Promise.all([
+    const [promos, gifts, settings, giftSale] = await Promise.all([
       promoCodesFn(),
       giftCertificatesFn(),
       settingsFn(),
+      giftSaleFn(),
     ]);
-    return { promos, gifts, referralPercent: settings.settings.referral_discount_percent ?? "" };
+    return {
+      promos,
+      gifts,
+      giftSale,
+      referralPercent: settings.settings.referral_discount_percent ?? "",
+    };
   },
   component: DiscountsPage,
 });
@@ -31,7 +39,7 @@ export const Route = createFileRoute("/admin/_authed/discounts")({
 type Promo = Awaited<ReturnType<typeof promoCodesFn>>[number];
 
 function DiscountsPage() {
-  const { promos, gifts, referralPercent } = Route.useLoaderData();
+  const { promos, gifts, giftSale, referralPercent } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   return (
@@ -42,6 +50,7 @@ function DiscountsPage() {
         {shop.modules.gift_certificates && (
           <GiftCard gifts={gifts} currency={promos[0] ? "KZT" : "KZT"} />
         )}
+        {shop.modules.gift_certificates && <GiftSaleCard sale={giftSale} />}
         {shop.modules.referral && <ReferralCard percent={referralPercent} bot={shop.telegram} />}
         {shop.modules.limited_offers && <OffersCard />}
       </div>
@@ -520,6 +529,68 @@ function OffersCard() {
           </tbody>
         </table>
       )}
+    </Card>
+  );
+}
+
+type GiftSale = Awaited<ReturnType<typeof giftSaleFn>>;
+
+/** Продажа сертификатов на витрине сайта: переключатель, номиналы и валюта. */
+function GiftSaleCard({ sale }: { sale: GiftSale }) {
+  const router = useRouter();
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
+  const t = adminT(shop.locale);
+  const [saved, setSaved] = useState(false);
+  const save = useAction(async (f: FormData) => {
+    setSaved(false);
+    await saveGiftSaleFn({
+      data: {
+        enabled: f.get("enabled") === "on",
+        amounts: String(f.get("amounts") ?? "")
+          .split(/[,;\s]+/)
+          .map((x) => Number(x.replace(/[^\d]/g, "")))
+          .filter((x) => x > 0),
+        currency: String(f.get("currency") || "KZT"),
+      },
+    });
+    setSaved(true);
+    await router.invalidate();
+  });
+  return (
+    <Card title={t("discounts.gift.sale.title")}>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save.run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="enabled" defaultChecked={sale.enabled} />
+          {t("discounts.gift.sale.enabled")}
+        </label>
+        <div className="grid gap-3 sm:grid-cols-[1fr_100px]">
+          <Field label={t("discounts.gift.sale.amounts")}>
+            <input
+              className="input"
+              name="amounts"
+              defaultValue={sale.amounts.join(", ")}
+              placeholder="5000, 10000, 20000"
+            />
+          </Field>
+          <Field label={t("discounts.gift.currency")}>
+            <input className="input" name="currency" defaultValue={sale.currency} maxLength={3} />
+          </Field>
+        </div>
+        <p className="text-xs text-muted">{t("discounts.gift.sale.hint")}</p>
+        <div className="flex items-center gap-3">
+          <button className="btn-primary" disabled={save.busy}>
+            {t("discounts.gift.sale.save")}
+          </button>
+          {saved && <span className="text-sm text-muted">{t("discounts.gift.sale.saved")}</span>}
+        </div>
+        <ErrorBox error={save.error} />
+      </form>
     </Card>
   );
 }

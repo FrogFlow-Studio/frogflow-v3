@@ -174,13 +174,27 @@ function OrderPage() {
       {checking && !note && (
         <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">
           {t(
-            !view.fulfillment
-              ? "order.waiting"
-              : view.proof
-                ? "order.waitingPhysical"
-                : "order.waitingSeller",
+            view.gift
+              ? "order.gift.waiting"
+              : !view.fulfillment
+                ? "order.waiting"
+                : view.proof
+                  ? "order.waitingPhysical"
+                  : "order.waitingSeller",
           )}
         </p>
+      )}
+      {view.gift?.code && (
+        <section className="card space-y-2 p-5">
+          <h2 className="font-semibold">{t("order.gift.title")}</h2>
+          <p className="text-sm">
+            {t("order.gift.amount", { sum: formatMoney(view.gift.amount, view.gift.currency) })}
+          </p>
+          <p className="rounded-md bg-surface-2 px-3 py-2 text-center font-mono text-xl tracking-wider select-all">
+            {view.gift.code}
+          </p>
+          <p className="text-xs text-muted">{t("order.gift.hint")}</p>
+        </section>
       )}
       {view.materials.length > 0 && (
         <section className="card space-y-2 p-5">
