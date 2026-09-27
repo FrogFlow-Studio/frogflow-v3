@@ -27,6 +27,8 @@ export type StubDb = {
   rpc: Record<string, Rpc>;
   storage: Map<string, { body: Buffer; type: string }>;
   telegram: { method: string; token: string; body: Row }[];
+  /** Участники групп Telegram: «<chat_id>:<user_id>» (VIP-группа, vip.spec.ts). */
+  members: Set<string>;
   /** Запросы к API Zernio (Instagram/WhatsApp): что приложение отправило покупателю. */
   zernio: { method: string; path: string; body: Row }[];
 };
@@ -266,6 +268,12 @@ function parseSelect(select: string): { cols: string[]; embeds: Embed[] } {
   return { cols, embeds };
 }
 
+/** Внешние ключи, чьё имя не выводится из имени таблицы (vip_subscriptions.tariff_id). */
+const FK_COLUMN: Record<string, Record<string, string>> = {
+  vip_subscriptions: { vip_tariffs: "tariff_id" },
+  vip_member_profiles: { vip_tariffs: "assigned_tariff_id" },
+};
+
 const singular = (t: string) => t.replace(/ies$/, "y").replace(/s$/, "");
 
 function shape(
@@ -286,7 +294,7 @@ function shape(
     out[key] = pick(r, m[2]!);
   }
   for (const e of embeds) {
-    const fk = `${singular(e.table)}_id`;
+    const fk = FK_COLUMN[table]?.[e.table] ?? `${singular(e.table)}_id`;
     const back = `${singular(table)}_id`;
     const filters = embedFilters.get(e.alias) ?? embedFilters.get(e.table) ?? [];
     const ok = (x: Row) => filters.every(([c, v]) => test(pick(x, c), v));
@@ -706,6 +714,25 @@ async function telegram(
         };
       case "getWebhookInfo":
         return { url: "", pending_update_count: 0 };
+      case "createChatInviteLink":
+        return {
+          invite_link: `https://t.me/+e2e${++messageId}`,
+          creator: { id: 1, is_bot: true },
+          creates_join_request: false,
+          is_primary: false,
+          is_revoked: false,
+          name: args.name,
+        };
+      case "getChatMember":
+        return {
+          status: db.members.has(`${String(args.chat_id)}:${String(args.user_id)}`)
+            ? "member"
+            : "left",
+          user: { id: Number(args.user_id), is_bot: false, first_name: "E2E" },
+        };
+      case "banChatMember":
+        db.members.delete(`${String(args.chat_id)}:${String(args.user_id)}`);
+        return true;
       case "sendMessage":
       case "sendPhoto":
       case "sendDocument":
@@ -755,6 +782,7 @@ export function stubDb(init: Partial<StubDb> = {}): StubDb {
     rpc: {},
     storage: new Map(),
     telegram: [],
+    members: new Set(),
     zernio: [],
     ...init,
   };
@@ -782,6 +810,20 @@ export function startPgStub(port: number, db: StubDb) {
         if (t && req.method === "POST") {
           const list = JSON.parse(body.toString()) as Row[];
           return send(res, 201, insert(db, t[1]!, list, null));
+        }
+        // Покупатель вошёл в группу по ссылке: getChatMember дальше отвечает «member».
+        if (url.pathname === "/__e2e/telegram/join" && req.method === "POST") {
+          const j = JSON.parse(body.toString()) as { chat_id: string; user_id: number };
+          db.members.add(`${j.chat_id}:${j.user_id}`);
+          return send(res, 200, { ok: true });
+        }
+        // Сдвинуть время в строке (срок подписки): PATCH /__e2e/tables/<t>/<id>.
+        const one = /^\/__e2e\/tables\/(\w+)\/([\w-]+)$/.exec(url.pathname);
+        if (one && req.method === "PATCH") {
+          const hit = rows(db, one[1]!).find((r) => String(r.id) === one[2]);
+          if (!hit) return send(res, 404, { message: "no row" });
+          Object.assign(hit, JSON.parse(body.toString()) as Row);
+          return send(res, 200, hit);
         }
         if (url.pathname === "/__e2e/storage") return send(res, 200, [...db.storage.keys()]);
         return send(res, 404, { message: `pg-stub: ${req.method} ${url.pathname}` });

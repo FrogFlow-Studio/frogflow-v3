@@ -7,3 +7,4 @@ export * from "./fixtures/platform.ts";
 export * from "./fixtures/shop.ts";
 export * from "./fixtures/storefront.ts";
 export * from "./fixtures/instagram.ts";
+export * from "./fixtures/vip.ts";

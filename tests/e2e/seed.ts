@@ -9,6 +9,7 @@ import { seedInstagram } from "./seed/instagram.ts";
 import { seedOperator } from "./seed/operator.ts";
 import { seedShop } from "./seed/shop.ts";
 import { seedStorefront } from "./seed/storefront.ts";
+import { seedVip } from "./seed/vip.ts";
 
 export function seedDb(): StubDb {
   const db = stubDb();
@@ -18,5 +19,6 @@ export function seedDb(): StubDb {
   seedShop(db, now);
   seedStorefront(db, now);
   seedInstagram(db);
+  seedVip(db, now);
   return db;
 }
