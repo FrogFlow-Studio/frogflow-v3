@@ -5,6 +5,7 @@ import { useCart } from "@/app/storefront/cart";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { reviewsWord } from "@/app/i18n/storefront";
 import { formatMoney } from "@/core/money/money";
+import { pageBadge } from "@/core/catalog/lead-time";
 
 export const Route = createFileRoute("/s/$slug/p/$id")({
   loader: ({ params }) => storeProductFn({ data: { slug: params.slug, id: params.id } }),
@@ -86,9 +87,7 @@ function ProductPage() {
         <div>
           <h1 className="text-2xl font-semibold">{p.name}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
-            <span className="badge">
-              {p.kind === "digital" ? t("product.file") : t("product.physical")}
-            </span>
+            <span className="badge">{t(pageBadge(p))}</span>
             {p.rating && (
               <span>
                 ★ {p.rating.avg.toFixed(1)} · {p.rating.count} {reviewsWord(locale, p.rating.count)}

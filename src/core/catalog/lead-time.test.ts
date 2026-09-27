@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardBadge, shownLeadDays } from "./lead-time";
+import { cardBadge, pageBadge, shownLeadDays } from "./lead-time";
 
 describe("срок изготовления товара", () => {
   it("только у физического товара с положительным сроком", () => {
@@ -35,5 +35,24 @@ describe("значок на карточке витрины", () => {
     expect(cardBadge({ kind: "physical", leadTimeDays: null, inStock: false })).toEqual({
       key: "catalog.product",
     });
+  });
+});
+
+describe("значок на странице товара", () => {
+  it("физический без срока и в наличии — «В наличии», как на карточке", () => {
+    expect(pageBadge({ kind: "physical", leadTimeDays: null, inStock: true })).toBe(
+      "catalog.inStock",
+    );
+  });
+  it("со сроком или без остатка — «Товар»: срок и «Нет в наличии» показаны отдельно", () => {
+    expect(pageBadge({ kind: "physical", leadTimeDays: 3, inStock: true })).toBe(
+      "product.physical",
+    );
+    expect(pageBadge({ kind: "physical", leadTimeDays: null, inStock: false })).toBe(
+      "product.physical",
+    );
+  });
+  it("цифровой — «Файл»", () => {
+    expect(pageBadge({ kind: "digital", leadTimeDays: 3, inStock: true })).toBe("product.file");
   });
 });
