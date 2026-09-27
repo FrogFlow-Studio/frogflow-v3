@@ -7,6 +7,7 @@ import { Card, Empty, ErrorBox, PageTitle, Stat, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 import { OrderStatus } from "./admin._authed.orders";
+import { nextSetupStep } from "@/app/admin/setup";
 
 export const Route = createFileRoute("/admin/_authed/")({
   loader: () => dashboardFn(),
@@ -29,6 +30,7 @@ function Dashboard() {
     d.setup.firstOrder,
   ];
   const doneCount = steps.filter(Boolean).length;
+  const next = nextSetupStep(d.setup);
   const hide = useAction(async () => {
     await hideSetupFn();
     await router.invalidate();
@@ -65,31 +67,69 @@ function Dashboard() {
           </div>
           <p className="mb-3 text-sm text-muted">{t("overview.stepsIntro")}</p>
           <ol className="space-y-2 text-sm">
-            <Step done={d.setup.telegram} to="/admin/settings" title={t("overview.step.telegram")}>
+            <Step
+              current={next === "telegram" ? t("overview.next") : null}
+              done={d.setup.telegram}
+              to="/admin/settings"
+              title={t("overview.step.telegram")}
+            >
               {t("overview.step.telegramHint")}
             </Step>
-            <Step done={d.setup.products} to="/admin/products" title={t("overview.step.products")}>
+            <Step
+              current={next === "products" ? t("overview.next") : null}
+              done={d.setup.products}
+              to="/admin/products"
+              title={t("overview.step.products")}
+            >
               {t("overview.step.productsHint")}
             </Step>
-            <Step done={d.setup.payment} to="/admin/settings" title={t("overview.step.payment")}>
+            <Step
+              current={next === "payment" ? t("overview.next") : null}
+              done={d.setup.payment}
+              to="/admin/settings"
+              title={t("overview.step.payment")}
+            >
               {t("overview.step.paymentHint")}
             </Step>
             <Step
+              current={next === "notifications" ? t("overview.next") : null}
               done={d.setup.notifications}
               to="/admin/settings"
               title={t("overview.step.notifications")}
             >
               {t("overview.step.notificationsHint")}
             </Step>
-            <Step done={d.setup.legal} to="/admin/settings" title={t("overview.step.legal")}>
+            <Step
+              current={next === "legal" ? t("overview.next") : null}
+              done={d.setup.legal}
+              to="/admin/settings"
+              title={t("overview.step.legal")}
+            >
               {t("overview.step.legalHint")}
             </Step>
             <Step
+              current={next === "firstOrder" ? t("overview.next") : null}
               done={d.setup.firstOrder}
               to="/admin/orders"
               title={t("overview.step.firstOrder")}
             >
-              {t("overview.step.firstOrderHint")}
+              {"url" in d.setup.testOrder ? (
+                <>
+                  <a
+                    href={d.setup.testOrder.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-secondary my-1 inline-block text-sm"
+                  >
+                    {t("overview.testOrder.open")}
+                  </a>
+                  <span className="block">{t("overview.testOrder.how")}</span>
+                </>
+              ) : d.setup.testOrder.missing === "telegram" ? (
+                t("overview.testOrder.needTelegram")
+              ) : (
+                t("overview.testOrder.needProducts")
+              )}
             </Step>
           </ol>
           {d.setup.template && (
@@ -210,11 +250,14 @@ function Dashboard() {
 }
 
 function Step({
+  current,
   done,
   to,
   title,
   children,
 }: {
+  /** Подпись «Следующий шаг» у самого раннего несделанного, иначе null. */
+  current: string | null;
   done: boolean;
   to: "/admin/settings" | "/admin/products" | "/admin/orders";
   title: string;
@@ -223,7 +266,7 @@ function Step({
   return (
     <li className="flex gap-3">
       <span
-        className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full text-xs ${done ? "bg-ok text-white" : "border border-line text-muted"}`}
+        className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full text-xs ${done ? "bg-ok text-white" : current ? "border-2 border-accent text-accent" : "border border-line text-muted"}`}
       >
         {done ? "✓" : ""}
       </span>
@@ -235,7 +278,8 @@ function Step({
             {title}
           </Link>
         )}
-        {!done && <p className="text-muted">{children}</p>}
+        {current && <span className="badge ml-2 text-[11px]">{current}</span>}
+        {!done && <div className="text-muted">{children}</div>}
       </div>
     </li>
   );

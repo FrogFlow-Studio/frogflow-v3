@@ -187,14 +187,29 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
   ]);
   const { listPaymentMethods } = await import("@/core/settings/payment-methods");
   const { getSettings } = await import("@/core/settings/settings");
-  const [{ count: products }, { count: customers }, methods, settings, { count: anyOrders }] =
-    await Promise.all([
-      ctx.db.from("products").select("id", { count: "exact", head: true }).eq("is_active", true),
-      ctx.db.from("bot_users").select("user_key", { count: "exact", head: true }),
-      listPaymentMethods(ctx),
-      getSettings(ctx, ["legal_requisites", "admin_chat_id", "setup_hidden"]),
-      ctx.db.from("orders").select("id", { count: "exact", head: true }),
-    ]);
+  const [
+    { count: products },
+    { count: customers },
+    methods,
+    settings,
+    { count: anyOrders },
+    { data: firstProduct },
+  ] = await Promise.all([
+    ctx.db.from("products").select("id", { count: "exact", head: true }).eq("is_active", true),
+    ctx.db.from("bot_users").select("user_key", { count: "exact", head: true }),
+    listPaymentMethods(ctx),
+    getSettings(ctx, ["legal_requisites", "admin_chat_id", "setup_hidden"]),
+    ctx.db.from("orders").select("id", { count: "exact", head: true }),
+    // Первый включённый товар — на нём продавец делает тестовый заказ себе.
+    ctx.db
+      .from("products")
+      .select("id")
+      .eq("is_active", true)
+      .order("created_at")
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  const { testOrderLink } = await import("./setup");
   return {
     counts,
     rev30,
@@ -210,6 +225,10 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
       notifications: Boolean(settings.admin_chat_id || ctx.tenant.ownerTelegramId),
       // Первый заказ — хотя бы тестовый на себя: значит, путь до оплаты пройден.
       firstOrder: (anyOrders ?? 0) > 0,
+      testOrder: testOrderLink(
+        ctx.tenant.telegramTokenEnc ? (ctx.tenant.settings.telegram?.username ?? null) : null,
+        firstProduct?.id ?? null,
+      ),
       hidden: settings.setup_hidden === "1",
       slug: ctx.tenant.settings.slug ?? null,
       // Пустой магазин может начать с примеров своей ниши (core/templates).

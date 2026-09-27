@@ -116,6 +116,13 @@ const baseRu = {
   "overview.step.firstOrder": "Сделать тестовый заказ на себя",
   "overview.step.firstOrderHint":
     "Откройте бота, положите товар в корзину, оформите и пришлите любой чек — заказ появится здесь, и вы увидите весь путь покупателя.",
+  "overview.next": "Следующий шаг",
+  "overview.testOrder.open": "Тестовый заказ на себя",
+  "overview.testOrder.how":
+    "Откроется ваш бот на карточке товара. Оформите заказ, пришлите любой скриншот вместо чека, затем подтвердите заказ здесь, в «Заказах», — бот пришлёт вам выдачу, как покупателю.",
+  "overview.testOrder.needTelegram": "Сначала подключите бота — тестовый заказ делается в нём.",
+  "overview.testOrder.needProducts":
+    "Сначала включите хотя бы один товар — на нём и сделаете тестовый заказ.",
   "overview.storefront": "Витрина магазина:",
   "overview.bot": "бот:",
   "overview.attention": "Требуют действия",
@@ -387,6 +394,13 @@ const baseKk: Dict = {
   "overview.step.firstOrder": "Өзіңізге сынақ тапсырысы жасау",
   "overview.step.firstOrderHint":
     "Ботты ашып, тауарды себетке салыңыз, рәсімдеп, кез келген чек жіберіңіз — тапсырыс осында пайда болып, сатып алушының бүкіл жолын көресіз.",
+  "overview.next": "Келесі қадам",
+  "overview.testOrder.open": "Өзіңізге сынақ тапсырыс",
+  "overview.testOrder.how":
+    "Ботыңыз тауар карточкасында ашылады. Тапсырысты рәсімдеп, чектің орнына кез келген скриншот жіберіңіз, содан кейін осы жерде, «Тапсырыстарда» растаңыз — бот сізге сатып алушыға сияқты жібереді.",
+  "overview.testOrder.needTelegram": "Алдымен ботты қосыңыз — сынақ тапсырыс сонда жасалады.",
+  "overview.testOrder.needProducts":
+    "Алдымен кемінде бір тауарды қосыңыз — сынақ тапсырысты сонымен жасайсыз.",
   "overview.storefront": "Дүкен витринасы:",
   "overview.bot": "бот:",
   "overview.attention": "Әрекет қажет",
@@ -623,6 +637,13 @@ const baseEn: Dict = {
   "overview.step.firstOrder": "Place a test order on yourself",
   "overview.step.firstOrderHint":
     "Open the bot, add a product to the cart, check out and send any receipt — the order appears here and you see the whole customer journey.",
+  "overview.next": "Next step",
+  "overview.testOrder.open": "Test order to yourself",
+  "overview.testOrder.how":
+    "Your bot opens on the product card. Place the order, send any screenshot as the receipt, then confirm the order here in Orders — the bot delivers it to you like to a customer.",
+  "overview.testOrder.needTelegram": "Connect the bot first — the test order is placed in it.",
+  "overview.testOrder.needProducts":
+    "Turn on at least one product first — you'll place the test order on it.",
   "overview.storefront": "Storefront:",
   "overview.bot": "bot:",
   "overview.attention": "Need action",
@@ -862,6 +883,13 @@ const baseUz: Dict = {
   "overview.step.firstOrder": "O‘zingizga sinov buyurtmasi berish",
   "overview.step.firstOrderHint":
     "Botni oching, mahsulotni savatga soling, rasmiylashtiring va istalgan chekni yuboring — buyurtma shu yerda paydo bo‘ladi va xaridorning butun yo‘lini ko‘rasiz.",
+  "overview.next": "Keyingi qadam",
+  "overview.testOrder.open": "O‘zingizga sinov buyurtmasi",
+  "overview.testOrder.how":
+    "Botingiz mahsulot kartochkasida ochiladi. Buyurtma bering, chek o‘rniga istalgan skrinshotni yuboring, so‘ng shu yerda, «Buyurtmalar»da tasdiqlang — bot sizga xaridorga kabi yetkazib beradi.",
+  "overview.testOrder.needTelegram": "Avval botni ulang — sinov buyurtmasi unda beriladi.",
+  "overview.testOrder.needProducts":
+    "Avval kamida bitta mahsulotni yoqing — sinov buyurtmasini shunda berasiz.",
   "overview.storefront": "Do‘kon vitrinasi:",
   "overview.bot": "bot:",
   "overview.attention": "Harakat talab qiladi",
