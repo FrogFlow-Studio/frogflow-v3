@@ -9,6 +9,7 @@ import {
 } from "@/core/reviews/reviews";
 import { formatRatingSummary, isValidRating } from "@/core/reviews/pure";
 import { inboundIntercepted, inboundLogText, tappedButtonText } from "@/core/chat/chat";
+import { recordClick, splitClickMark } from "@/core/broadcasts/clicks";
 import { adminRecipients } from "@/core/notify/recipients";
 import { PRODUCT_SELECT } from "@/core/catalog/catalog";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
@@ -1621,7 +1622,9 @@ async function handleCallback(
 ): Promise<void> {
   const from = cq.from;
   const chatId = cq.message?.chat?.id;
-  const data = cq.data ?? "";
+  const raw = cq.data ?? "";
+  // Кнопка из рассылки несёт метку для счёта кликов; дальше — как без неё.
+  const { data, mark } = splitClickMark(raw);
   // «В корзину» отвечает своим текстом ниже; дважды ответить на один
   // callback Telegram не даёт.
   if (!data.startsWith("add:")) await api.call("answerCallbackQuery", { callback_query_id: cq.id });
@@ -1639,6 +1642,7 @@ async function handleCallback(
     });
     return;
   }
+  if (mark) await recordClick(ctx, mark).catch(() => {});
   const customer = await upsertCustomer(ctx, "telegram", from.id, {
     username: from.username,
     firstName: from.first_name,
@@ -1652,7 +1656,7 @@ async function handleCallback(
   if (ctx.tenant.modules.manager_chat) {
     const label = cq.message?.reply_markup?.inline_keyboard
       ?.flat()
-      .find((btn) => btn.callback_data === data)?.text;
+      .find((btn) => btn.callback_data === raw)?.text;
     if (await inboundIntercepted(ctx, from.id, tappedButtonText(label))) return;
   }
 

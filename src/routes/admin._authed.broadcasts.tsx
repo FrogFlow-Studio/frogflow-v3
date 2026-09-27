@@ -22,6 +22,7 @@ import {
   progressPercent,
   type AudienceType,
 } from "@/core/broadcasts/pure";
+import { SEGMENT_KINDS } from "@/core/broadcasts/segments";
 
 export const Route = createFileRoute("/admin/_authed/broadcasts")({
   loader: () => broadcastsFn(),
@@ -33,32 +34,74 @@ type Broadcast = Data["broadcasts"][number];
 type WhatsApp = NonNullable<Data["whatsapp"]>;
 type Template = WhatsApp["templates"][number];
 type Channel = "telegram" | "whatsapp";
+/** «Сегмент» — в форме отдельный вариант; на сервер уходит как «все» + segment. */
+type UiAudience = AudienceType | "segment";
+type SegmentKind = (typeof SEGMENT_KINDS)[number];
+type SegmentDraft = {
+  kind: SegmentKind;
+  productId: string;
+  categoryId: string;
+  days: string;
+  locale: string;
+  tag: string;
+};
+const EMPTY_SEGMENT: SegmentDraft = {
+  kind: "product",
+  productId: "",
+  categoryId: "",
+  days: "30",
+  locale: "ru",
+  tag: "",
+};
 
-const AUDIENCES: Array<{ value: AudienceType; label: AdminKey; hint: AdminKey; tgOnly?: boolean }> =
-  [
-    { value: "all", label: "broadcasts.audience.all", hint: "broadcasts.audience.allHint" },
-    {
-      value: "buyers",
-      label: "broadcasts.audience.buyers",
-      hint: "broadcasts.audience.buyersHint",
-    },
-    {
-      value: "non_buyers",
-      label: "broadcasts.audience.nonBuyers",
-      hint: "broadcasts.audience.nonBuyersHint",
-    },
-    {
-      value: "country",
-      label: "broadcasts.audience.country",
-      hint: "broadcasts.audience.countryHint",
-    },
-    {
-      value: "test",
-      label: "broadcasts.audience.test",
-      hint: "broadcasts.audience.testHint",
-      tgOnly: true,
-    },
-  ];
+/** Черновик сегмента → то, что примет parseSegment; незаполненный — undefined. */
+function segmentOf(d: SegmentDraft): Record<string, unknown> | undefined {
+  switch (d.kind) {
+    case "product":
+      return d.productId ? { kind: "product", productId: d.productId } : undefined;
+    case "category":
+      return d.categoryId ? { kind: "category", categoryId: d.categoryId } : undefined;
+    case "inactive":
+      return Number(d.days) >= 1 ? { kind: "inactive", days: Number(d.days) } : undefined;
+    case "language":
+      return { kind: "language", locale: d.locale };
+    case "cart":
+      return { kind: "cart" };
+    case "tag":
+      return d.tag.trim() ? { kind: "tag", tag: d.tag.trim() } : undefined;
+  }
+}
+
+const AUDIENCES: Array<{ value: UiAudience; label: AdminKey; hint: AdminKey; tgOnly?: boolean }> = [
+  { value: "all", label: "broadcasts.audience.all", hint: "broadcasts.audience.allHint" },
+  {
+    value: "buyers",
+    label: "broadcasts.audience.buyers",
+    hint: "broadcasts.audience.buyersHint",
+  },
+  {
+    value: "non_buyers",
+    label: "broadcasts.audience.nonBuyers",
+    hint: "broadcasts.audience.nonBuyersHint",
+  },
+  {
+    value: "country",
+    label: "broadcasts.audience.country",
+    hint: "broadcasts.audience.countryHint",
+  },
+  {
+    value: "segment",
+    label: "broadcasts.audience.segment",
+    hint: "broadcasts.audience.segmentHint",
+    tgOnly: true,
+  },
+  {
+    value: "test",
+    label: "broadcasts.audience.test",
+    hint: "broadcasts.audience.testHint",
+    tgOnly: true,
+  },
+];
 
 const STATUS: Record<
   string,
@@ -108,10 +151,13 @@ function BroadcastsPage() {
   const t = adminT(shop.locale);
   const router = useRouter();
   const [channel, setChannel] = useState<Channel>(data.telegramModule ? "telegram" : "whatsapp");
+  // Запланированная на будущее рассылка форму не блокирует и опрос не включает.
   const activeIn = (c: Channel) =>
-    data.broadcasts.some(
-      (b) => b.channel === c && (b.status === "queued" || b.status === "sending"),
-    );
+    data.broadcasts.some((b) => {
+      if (b.channel !== c || (b.status !== "queued" && b.status !== "sending")) return false;
+      const at = (b.audience_filter as { send_at?: string } | null)?.send_at;
+      return b.status === "sending" || !at || Date.parse(at) <= Date.now();
+    });
   const anyActive = activeIn("telegram") || activeIn("whatsapp");
 
   // Пока рассылка идёт — обновляем список раз в 5 секунд.
@@ -176,13 +222,28 @@ function BroadcastsPage() {
   );
 }
 
-function useAudienceCount(channel: Channel, audience: AudienceType, country: string) {
+function useAudienceCount(
+  channel: Channel,
+  audience: UiAudience,
+  country: string,
+  segment?: Record<string, unknown>,
+) {
   const [count, setCount] = useState<number | null>(null);
+  const segKey = JSON.stringify(segment ?? null);
   useEffect(() => {
     let cancelled = false;
     setCount(null);
+    if (audience === "segment" && !segment) {
+      setCount(0);
+      return;
+    }
     void audienceCountFn({
-      data: { channel, audience, countryCode: audience === "country" ? country : undefined },
+      data: {
+        channel,
+        audience: audience === "segment" ? "all" : audience,
+        countryCode: audience === "country" ? country : undefined,
+        segment: audience === "segment" ? segment : undefined,
+      },
     })
       .then((r) => {
         if (!cancelled) setCount(r.count);
@@ -193,8 +254,102 @@ function useAudienceCount(channel: Channel, audience: AudienceType, country: str
     return () => {
       cancelled = true;
     };
-  }, [channel, audience, country]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel, audience, country, segKey]);
   return count;
+}
+
+/** Выбор сегмента: что купили, давность, язык, корзина, тег продавца. */
+function SegmentPicker({
+  data,
+  value,
+  onChange,
+}: {
+  data: Data;
+  value: SegmentDraft;
+  onChange: (v: SegmentDraft) => void;
+}) {
+  const t = useT();
+  const set = (patch: Partial<SegmentDraft>) => onChange({ ...value, ...patch });
+  return (
+    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+      <select
+        className="input"
+        aria-label={t("broadcasts.segment.kind")}
+        value={value.kind}
+        onChange={(e) => set({ kind: e.target.value as SegmentKind })}
+      >
+        {SEGMENT_KINDS.map((k) => (
+          <option key={k} value={k}>
+            {t(`broadcasts.segment.${k}` as AdminKey)}
+          </option>
+        ))}
+      </select>
+      {value.kind === "product" && (
+        <select
+          className="input"
+          value={value.productId}
+          onChange={(e) => set({ productId: e.target.value })}
+        >
+          <option value="">{t("broadcasts.segment.pickProduct")}</option>
+          {data.products.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      )}
+      {value.kind === "category" && (
+        <select
+          className="input"
+          value={value.categoryId}
+          onChange={(e) => set({ categoryId: e.target.value })}
+        >
+          <option value="">{t("broadcasts.segment.pickCategory")}</option>
+          {data.categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      )}
+      {value.kind === "inactive" && (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="number"
+            className="input w-24"
+            min={1}
+            max={3650}
+            value={value.days}
+            onChange={(e) => set({ days: e.target.value })}
+          />
+          {t("broadcasts.segment.days")}
+        </label>
+      )}
+      {value.kind === "language" && (
+        <select
+          className="input"
+          value={value.locale}
+          onChange={(e) => set({ locale: e.target.value })}
+        >
+          {LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+      )}
+      {value.kind === "tag" && (
+        <input
+          className="input"
+          placeholder={t("broadcasts.segment.tagPlaceholder")}
+          value={value.tag}
+          maxLength={32}
+          onChange={(e) => set({ tag: e.target.value })}
+        />
+      )}
+    </div>
+  );
 }
 
 function AudiencePicker({
@@ -205,14 +360,18 @@ function AudiencePicker({
   country,
   setCountry,
   count,
+  segment,
+  setSegment,
 }: {
   channel: Channel;
   data: Data;
-  audience: AudienceType;
-  setAudience: (a: AudienceType) => void;
+  audience: UiAudience;
+  setAudience: (a: UiAudience) => void;
   country: string;
   setCountry: (c: string) => void;
   count: number | null;
+  segment?: SegmentDraft;
+  setSegment?: (s: SegmentDraft) => void;
 }) {
   const t = useT();
   return (
@@ -252,6 +411,9 @@ function AudiencePicker({
             ))}
         </select>
       )}
+      {audience === "segment" && segment && setSegment && (
+        <SegmentPicker data={data} value={segment} onChange={setSegment} />
+      )}
       {audience === "test" && !data.hasAdminChat && (
         <p className="mt-2 text-xs text-danger">{t("broadcasts.audience.noAdminChat")}</p>
       )}
@@ -270,12 +432,17 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
   const [photos, setPhotos] = useState<string[]>([]);
   const [products, setProducts] = useState<string[]>([]);
   const [showCatalog, setShowCatalog] = useState(false);
-  const [audience, setAudience] = useState<AudienceType>("all");
+  const [audience, setAudience] = useState<UiAudience>("all");
   const [country, setCountry] = useState(Object.keys(data.countries)[0] ?? "");
+  const [segment, setSegment] = useState<SegmentDraft>(EMPTY_SEGMENT);
+  const [later, setLater] = useState(false);
+  const [sendAt, setSendAt] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<unknown>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const count = useAudienceCount("telegram", audience, country);
+  const seg = audience === "segment" ? segmentOf(segment) : undefined;
+  const count = useAudienceCount("telegram", audience, country, seg);
+  const scheduled = later && audience !== "test" && sendAt;
 
   const send = useAction(async () => {
     const isTest = audience === "test";
@@ -287,8 +454,11 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
         photoKeys: photos,
         productIds: products,
         showCatalog,
-        audience,
+        audience: audience === "segment" ? "all" : audience,
         countryCode: audience === "country" ? country : undefined,
+        segment: seg,
+        // datetime-local — время браузера продавца; на сервер уходит абсолютное.
+        sendAt: scheduled ? new Date(sendAt).toISOString() : undefined,
       },
     });
     if (!isTest) {
@@ -323,7 +493,12 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
     );
 
   const canSend =
-    !disabled && !uploading && !send.busy && (text.trim() || photos.length > 0) && (count ?? 0) > 0;
+    !disabled &&
+    !uploading &&
+    !send.busy &&
+    (text.trim() || photos.length > 0) &&
+    (count ?? 0) > 0 &&
+    (!later || audience === "test" || Boolean(sendAt));
 
   return (
     <Card title={t("broadcasts.compose.telegramTitle")}>
@@ -430,7 +605,24 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
           country={country}
           setCountry={setCountry}
           count={count}
+          segment={segment}
+          setSegment={setSegment}
         />
+
+        {audience !== "test" && (
+          <div className="flex flex-wrap items-center gap-3">
+            <Switch checked={later} onChange={setLater} label={t("broadcasts.schedule.later")} />
+            <span className="text-sm">{t("broadcasts.schedule.later")}</span>
+            {later && (
+              <input
+                type="datetime-local"
+                className="input w-auto"
+                value={sendAt}
+                onChange={(e) => setSendAt(e.target.value)}
+              />
+            )}
+          </div>
+        )}
 
         <div className="flex items-center gap-3">
           <button
@@ -442,7 +634,9 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
               ? t("broadcasts.compose.sending")
               : audience === "test"
                 ? t("broadcasts.compose.sendSelf")
-                : t("broadcasts.compose.start")}
+                : scheduled
+                  ? t("broadcasts.schedule.button")
+                  : t("broadcasts.compose.start")}
           </button>
         </div>
         <ErrorBox error={send.error} />
@@ -573,7 +767,7 @@ function WhatsAppComposer({ data, wa, disabled }: { data: Data; wa: WhatsApp; di
             channel="whatsapp"
             data={data}
             audience={audience}
-            setAudience={setAudience}
+            setAudience={(a) => a !== "segment" && setAudience(a)}
             country={country}
             setCountry={setCountry}
             count={count}
@@ -879,7 +1073,16 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
             const st = STATUS[b.status];
             const live = b.status === "queued" || b.status === "sending";
             const pct = progressPercent(b);
-            const audienceKey = AUDIENCES.find((a) => a.value === b.audience_type)?.label;
+            const filter = (b.audience_filter ?? {}) as {
+              country_code?: string;
+              segment?: { kind?: string };
+              send_at?: string;
+            };
+            const audienceKey = AUDIENCES.find(
+              (a) => a.value === (filter.segment ? "segment" : b.audience_type),
+            )?.label;
+            const waiting =
+              b.status === "queued" && filter.send_at && Date.parse(filter.send_at) > Date.now();
             return (
               <li key={b.id} className="py-3">
                 <div className="flex items-start justify-between gap-3">
@@ -894,9 +1097,17 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
                       <span className="text-xs text-muted">
                         {new Date(b.created_at).toLocaleString(intlLocale(shop.locale))} ·{" "}
                         {audienceKey ? t(audienceKey) : b.audience_type}
-                        {b.audience_type === "country" &&
-                          ` (${(b.audience_filter as { country_code?: string })?.country_code ?? ""})`}
+                        {b.audience_type === "country" && ` (${filter.country_code ?? ""})`}
+                        {filter.segment?.kind &&
+                          ` (${t(`broadcasts.segment.${filter.segment.kind}` as AdminKey)})`}
                       </span>
+                      {waiting && (
+                        <Badge tone="accent">
+                          {t("broadcasts.schedule.at", {
+                            at: new Date(filter.send_at!).toLocaleString(intlLocale(shop.locale)),
+                          })}
+                        </Badge>
+                      )}
                     </div>
                     <p className="mt-1 line-clamp-2 text-sm">
                       {b.channel === "whatsapp"
@@ -937,6 +1148,11 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
                   {b.failed_count > 0 && (
                     <span className="text-danger">
                       {t("broadcasts.history.errors", { n: b.failed_count })}
+                    </span>
+                  )}
+                  {b.channel !== "whatsapp" && b.clicks > 0 && (
+                    <span className="text-accent">
+                      {t("broadcasts.history.clicks", { n: b.clicks })}
                     </span>
                   )}
                 </div>

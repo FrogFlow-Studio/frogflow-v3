@@ -16,10 +16,22 @@ import {
   type AudienceType,
   type BroadcastContent,
 } from "./pure";
+import { parseSegment, segmentMembers, type Segment } from "./segments";
 
 export type BroadcastRow = Database["public"]["Tables"]["broadcasts"]["Row"];
-export type AudienceFilter = { country_code?: string };
+export type AudienceFilter = {
+  country_code?: string;
+  /** Сегмент при аудитории «все» (core/broadcasts/segments). */
+  segment?: Segment;
+  /** Когда отправить (ISO); нет — сразу. Крон не берёт рассылку раньше срока. */
+  send_at?: string;
+};
 export type BroadcastChannel = "telegram" | "whatsapp";
+
+/** Сколько рассылок канала можно запланировать наперёд. */
+export const MAX_SCHEDULED = 20;
+/** Крон и проверка «канал занят» смотрят столько активных: запланированные плюс идущая. */
+const ACTIVE_SCAN = MAX_SCHEDULED + 5;
 
 /** Получатель WhatsApp-рассылки: номер плюс синтетический ключ покупателя. */
 export type WhatsAppRecipient = { telegramId: number; phone: string };
@@ -60,6 +72,7 @@ export async function resolveWhatsAppAudience(
         .from("bot_users")
         .select("telegram_id, user_key, contact_phone, state, opt_out")
         .eq("platform", "whatsapp")
+        .order("user_key")
         .range(from, to),
     "получатели WhatsApp",
   );
@@ -72,6 +85,7 @@ export async function resolveWhatsAppAudience(
           .select("user_key")
           .in("status", [...BUYER_STATUSES])
           .eq("platform", "whatsapp")
+          .order("id")
           .range(from, to),
       "покупатели WhatsApp",
     );
@@ -111,6 +125,24 @@ export async function resolveAudience(
     return (await adminRecipients(ctx)).map(Number).filter(isRealTelegramChat);
   }
 
+  // Отписавшиеся и заблокированные не получают рассылок ни в какой аудитории,
+  // в том числе «купившие»: покупатель мог купить, а потом отписаться.
+  const users = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("bot_users")
+        .select("telegram_id, user_key, state, opt_out")
+        .eq("platform", "telegram")
+        .order("user_key")
+        .range(from, to),
+    "получатели рассылки",
+  );
+  const blocked = await blockedIds(ctx);
+  const reachable = users
+    .filter((u) => !u.opt_out)
+    .map((u) => ({ id: Number(u.telegram_id), userKey: u.user_key, state: u.state }))
+    .filter((u) => isRealTelegramChat(u.id) && !blocked.has(u.id));
+
   const buyers = async () => {
     const orders = await pageAll(
       (from, to) =>
@@ -119,28 +151,17 @@ export async function resolveAudience(
           .select("telegram_id")
           .in("status", [...BUYER_STATUSES])
           .eq("platform", "telegram")
+          .order("id")
           .range(from, to),
       "покупатели для рассылки",
     );
     return new Set(orders.map((o) => Number(o.telegram_id)).filter(isRealTelegramChat));
   };
 
-  if (type === "buyers") return [...(await buyers())];
-
-  const users = await pageAll(
-    (from, to) =>
-      ctx.db
-        .from("bot_users")
-        .select("telegram_id, state, opt_out")
-        .eq("platform", "telegram")
-        .range(from, to),
-    "получатели рассылки",
-  );
-  const reachable = users
-    .filter((u) => !u.opt_out)
-    .map((u) => ({ id: Number(u.telegram_id), state: u.state }))
-    .filter((u) => isRealTelegramChat(u.id));
-
+  if (type === "buyers") {
+    const b = await buyers();
+    return reachable.filter((u) => b.has(u.id)).map((u) => u.id);
+  }
   if (type === "non_buyers") {
     const b = await buyers();
     return reachable.filter((u) => !b.has(u.id)).map((u) => u.id);
@@ -157,14 +178,33 @@ export async function resolveAudience(
       )
       .map((u) => u.id);
   }
+  const segment = parseSegment(filter.segment);
+  if (segment) {
+    const members = await segmentMembers(ctx, segment, reachable, BUYER_STATUSES);
+    return reachable.filter((u) => members.has(u.id)).map((u) => u.id);
+  }
   return reachable.map((u) => u.id);
+}
+
+async function blockedIds(ctx: TenantContext): Promise<Set<number>> {
+  const rows = await pageAll(
+    (from, to) =>
+      ctx.db.from("blocked_users").select("telegram_id").order("telegram_id").range(from, to),
+    "заблокированные покупатели",
+  );
+  return new Set(rows.map((r) => Number(r.telegram_id)));
 }
 
 /** Страны покупателей для фильтра аудитории: код → сколько человек. */
 export async function audienceCountries(ctx: TenantContext): Promise<Record<string, number>> {
   const users = await pageAll(
     (from, to) =>
-      ctx.db.from("bot_users").select("state").eq("platform", "telegram").range(from, to),
+      ctx.db
+        .from("bot_users")
+        .select("state")
+        .eq("platform", "telegram")
+        .order("user_key")
+        .range(from, to),
     "страны покупателей",
   );
   const out: Record<string, number> = {};
@@ -255,16 +295,31 @@ export async function createBroadcast(
           : "Для выбранной аудитории получателей не нашлось.",
     };
 
+  // Канал занят только идущей (или уже наступившей) рассылкой. Запланированная
+  // на будущее не мешает ни другой рассылке, ни пробной себе.
   const { data: active, error: activeError } = await ctx.db
     .from("broadcasts")
-    .select("id")
+    .select("id, audience_filter")
     .in("status", ["queued", "sending"])
     .eq("channel", channel)
-    .limit(1)
-    .maybeSingle();
+    .order("created_at", { ascending: true })
+    .limit(ACTIVE_SCAN);
   if (activeError) return { ok: false, reason: "db", message: activeError.message };
-  if (active)
-    return { ok: false, reason: "busy", message: "Уже идёт другая рассылка — дождитесь её." };
+  const now = Date.now();
+  const sendAt = input.filter?.send_at ? Date.parse(input.filter.send_at) : NaN;
+  const scheduled = Number.isFinite(sendAt) && sendAt > now;
+  if (!scheduled && (active ?? []).some((b) => isDue(b, now)))
+    return {
+      ok: false,
+      reason: "busy",
+      message: "Уже идёт рассылка — дождитесь её или остановите.",
+    };
+  if (scheduled && (active ?? []).filter((b) => !isDue(b, now)).length >= MAX_SCHEDULED)
+    return {
+      ok: false,
+      reason: "busy",
+      message: `Запланировано уже ${MAX_SCHEDULED} рассылок — дождитесь отправки или отмените лишние.`,
+    };
 
   const { data: broadcast, error } = await ctx.db
     .from("broadcasts")
@@ -356,14 +411,16 @@ export async function processBroadcastBatch(
     blocked: 0,
     done: true,
   };
-  const { data: broadcast } = await ctx.db
+  // Запланированная рассылка ждёт своего часа: берём самую старую из тех,
+  // чей срок наступил (или без срока).
+  const { data: active } = await ctx.db
     .from("broadcasts")
     .select("*")
     .in("status", ["queued", "sending"])
     .eq("channel", channel)
     .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .limit(ACTIVE_SCAN);
+  const broadcast = (active ?? []).find((b) => isDue(b, Date.now()));
   if (!broadcast) return none;
 
   if (broadcast.status === "queued") {
@@ -417,7 +474,29 @@ export async function processBroadcastBatch(
   let failed = stale?.length ?? 0;
   let blocked = 0;
 
-  const list = pending ?? [];
+  // Список получателей собран при создании; кто отписался или попал в
+  // блокировку с тех пор (рассылка могла ждать по расписанию), не получает.
+  const list: typeof pending = [];
+  const gone = await unreachableNow(
+    ctx,
+    (pending ?? []).map((r) => Number(r.telegram_id)),
+    channel,
+  );
+  for (const r of pending ?? []) {
+    if (!gone.has(Number(r.telegram_id))) {
+      list.push(r);
+      continue;
+    }
+    const { data: skipped } = await ctx.db
+      .from("broadcast_recipients")
+      .update({ status: "blocked", error_message: "отписался до отправки" })
+      .eq("id", r.id)
+      .eq("status", "pending")
+      .is("sent_at", null)
+      .select("id")
+      .maybeSingle();
+    if (skipped) blocked++;
+  }
   for (let i = 0; i < list.length; i++) {
     const r = list[i]!;
     // Отмену из панели уважаем между сообщениями, а не по концу пакета.
@@ -511,6 +590,38 @@ export async function processBroadcastBatch(
   return { broadcastId: broadcast.id, processed: list.length, sent, failed, blocked, done };
 }
 
+/** Срок рассылки наступил: без send_at — сразу. */
+export function isDue(b: Pick<BroadcastRow, "audience_filter">, now: number): boolean {
+  const at = (b.audience_filter as AudienceFilter | null)?.send_at;
+  if (!at) return true;
+  const t = Date.parse(at);
+  return !Number.isFinite(t) || t <= now;
+}
+
+/** Кто из пакета сейчас отписан или заблокирован (Telegram: ещё и blocked_users). */
+async function unreachableNow(
+  ctx: TenantContext,
+  ids: number[],
+  channel: BroadcastChannel,
+): Promise<Set<number>> {
+  if (ids.length === 0) return new Set();
+  const { data: optedOut } = await ctx.db
+    .from("bot_users")
+    .select("telegram_id")
+    .in("telegram_id", ids)
+    .eq("platform", channel)
+    .eq("opt_out", true);
+  const out = new Set((optedOut ?? []).map((u) => Number(u.telegram_id)));
+  if (channel === "telegram") {
+    const { data: blocked } = await ctx.db
+      .from("blocked_users")
+      .select("telegram_id")
+      .in("telegram_id", ids);
+    for (const b of blocked ?? []) out.add(Number(b.telegram_id));
+  }
+  return out;
+}
+
 export async function cancelBroadcast(ctx: TenantContext, id: string): Promise<boolean> {
   const { data } = await ctx.db
     .from("broadcasts")
@@ -544,10 +655,10 @@ export async function hasActiveBroadcast(
 ): Promise<boolean> {
   const { data } = await ctx.db
     .from("broadcasts")
-    .select("id")
+    .select("id, audience_filter")
     .in("status", ["queued", "sending"])
     .eq("channel", channel)
-    .limit(1)
-    .maybeSingle();
-  return Boolean(data);
+    .limit(ACTIVE_SCAN);
+  const now = Date.now();
+  return (data ?? []).some((b) => isDue(b, now));
 }

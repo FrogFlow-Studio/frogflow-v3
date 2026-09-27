@@ -15,6 +15,7 @@ import {
   type BroadcastSender,
 } from "@/core/broadcasts/broadcasts";
 import { buttonLabel, type BroadcastContent } from "@/core/broadcasts/pure";
+import { clickMark } from "@/core/broadcasts/clicks";
 import { sendCartReminders } from "@/core/reminders/cart";
 import { sendFulfillmentReminders } from "@/core/reminders/fulfillment";
 import { telegramApi, type TelegramApi } from "./api";
@@ -29,6 +30,7 @@ type InlineButton = { text: string; callback_data: string };
 async function broadcastKeyboard(
   ctx: TenantContext,
   content: BroadcastContent,
+  mark: string,
   locale: "ru" = "ru",
 ): Promise<{ inline_keyboard: InlineButton[][] } | undefined> {
   const rows: InlineButton[][] = [];
@@ -41,11 +43,12 @@ async function broadcastKeyboard(
     const byId = new Map((data ?? []).map((p) => [p.id, p.name]));
     for (const id of content.productIds) {
       const name = byId.get(id);
-      if (name) rows.push([{ text: `📖 ${buttonLabel(name)}`, callback_data: `prod:${id}` }]);
+      if (name)
+        rows.push([{ text: `📖 ${buttonLabel(name)}`, callback_data: `prod:${id}:${mark}` }]);
     }
   }
   if (content.showCatalog)
-    rows.push([{ text: COPY[locale].openCatalogBtn, callback_data: "cat:root:0" }]);
+    rows.push([{ text: COPY[locale].openCatalogBtn, callback_data: `cat:root:0:${mark}` }]);
   return rows.length ? { inline_keyboard: rows } : undefined;
 }
 
@@ -56,18 +59,20 @@ async function broadcastKeyboard(
  */
 export function telegramBroadcastSender(ctx: TenantContext, tg: TelegramApi): BroadcastSender {
   const cache = new Map<string, Awaited<ReturnType<typeof broadcastKeyboard>>>();
-  const keyboardFor = async (c: BroadcastContent) => {
-    const key = `${c.productIds.join(",")}|${c.showCatalog}`;
-    if (!cache.has(key)) cache.set(key, await broadcastKeyboard(ctx, c));
+  // Метка рассылки в кнопках — для счёта кликов (core/broadcasts/clicks).
+  const keyboardFor = async (c: BroadcastContent, broadcastId: string) => {
+    const mark = clickMark(broadcastId);
+    const key = `${mark}|${c.productIds.join(",")}|${c.showCatalog}`;
+    if (!cache.has(key)) cache.set(key, await broadcastKeyboard(ctx, c, mark));
     return cache.get(key);
   };
   const fail = (r: { ok: boolean; description?: string }, method: string) => {
     if (!r.ok) throw new Error(r.description || `${method} failed`);
   };
 
-  return async (recipient, content) => {
+  return async (recipient, content, broadcast) => {
     const chatId = recipient.telegramId;
-    const reply_markup = await keyboardFor(content);
+    const reply_markup = await keyboardFor(content, broadcast.id);
     const photos = content.photoKeys.map((k) => imageUrl(ctx, k));
     const text = content.text;
     const asCaption = text.length > 0 && text.length <= 1024;

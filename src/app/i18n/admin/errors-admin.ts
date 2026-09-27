@@ -115,6 +115,8 @@ export const ru = {
   "err.course.emptyLesson": "Урок {lesson} пустой: добавьте текст, файл или ссылку.",
   "err.course.badSchedule": "Уроки можно открывать раз в 1–60 дней.",
   "err.course.badLesson": "Урок {lesson} повреждён — удалите его и добавьте заново.",
+  "err.broadcast.badSegment": "Сегмент заполнен не полностью.",
+  "err.broadcast.badSchedule": "Время отправки — от минуты до 60 дней вперёд.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -224,6 +226,8 @@ export const kk: SectionDict<typeof ru> = {
   "err.course.emptyLesson": "{lesson}-сабақ бос: мәтін, файл немесе сілтеме қосыңыз.",
   "err.course.badSchedule": "Сабақтарды 1–60 күнде бір рет ашуға болады.",
   "err.course.badLesson": "{lesson}-сабақ бүлінген — оны өшіріп, қайта қосыңыз.",
+  "err.broadcast.badSegment": "Сегмент толық толтырылмаған.",
+  "err.broadcast.badSchedule": "Жіберу уақыты — бір минуттан 60 күнге дейін алда.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -333,6 +337,8 @@ export const en: SectionDict<typeof ru> = {
   "err.course.emptyLesson": "Lesson {lesson} is empty: add text, a file or a link.",
   "err.course.badSchedule": "Lessons can open once every 1–60 days.",
   "err.course.badLesson": "Lesson {lesson} is damaged — delete it and add it again.",
+  "err.broadcast.badSegment": "The segment is not filled in completely.",
+  "err.broadcast.badSchedule": "Send time must be from one minute to 60 days ahead.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -446,4 +452,6 @@ export const uz: SectionDict<typeof ru> = {
   "err.course.emptyLesson": "{lesson}-dars boʻsh: matn, fayl yoki havola qoʻshing.",
   "err.course.badSchedule": "Darslarni 1–60 kunda bir marta ochish mumkin.",
   "err.course.badLesson": "{lesson}-dars buzilgan — uni oʻchirib, qaytadan qoʻshing.",
+  "err.broadcast.badSegment": "Segment to'liq to'ldirilmagan.",
+  "err.broadcast.badSchedule": "Yuborish vaqti — bir daqiqadan 60 kungacha oldinda.",
 };

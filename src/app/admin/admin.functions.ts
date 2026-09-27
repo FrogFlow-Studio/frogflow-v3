@@ -1238,6 +1238,10 @@ export const deleteDeliveryZoneFn = createServerFn({ method: "POST" })
 
 const audienceSchema = z.enum(["all", "buyers", "non_buyers", "country", "test"]);
 const channelSchema = z.enum(["telegram", "whatsapp"]).default("telegram");
+/** Сегмент аудитории (core/broadcasts/segments); разбирается parseSegment, мусор — без сегмента. */
+const segmentSchema = z.record(z.string(), z.unknown()).optional();
+/** Отложенная отправка: не раньше чем через минуту и не позже 60 дней. */
+const MAX_SCHEDULE_MS = 60 * 24 * 3600_000;
 
 /** Аккаунты WhatsApp клиента из снимка Zernio — от чьего имени идёт рассылка шаблонами. */
 function whatsAppAccountsOf(ctx: TenantContext) {
@@ -1254,7 +1258,8 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
   const { listTemplates, templateBody, templateParamCount } =
     await import("@/core/whatsapp/templates");
   const wa = ctx.tenant.modules.wa_broadcasts;
-  const [broadcasts, countries, products, settings, templates] = await Promise.all([
+  const { clicksFor } = await import("@/core/broadcasts/clicks");
+  const [broadcasts, countries, products, settings, templates, categories] = await Promise.all([
     listBroadcasts(ctx),
     audienceCountries(ctx),
     ctx.db
@@ -1266,9 +1271,21 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
       .then((r) => r.data ?? []),
     getSettings(ctx, ["cart_reminder_hours", "admin_chat_id", "whatsapp_bot_excluded_phones"]),
     wa ? listTemplates(ctx) : Promise.resolve([]),
+    ctx.db
+      .from("categories")
+      .select("id, name")
+      .order("sort_order")
+      .order("name")
+      .limit(500)
+      .then((r) => r.data ?? []),
   ]);
+  const clicks = await clicksFor(
+    ctx,
+    broadcasts.filter((b) => b.channel !== "whatsapp").map((b) => b.id),
+  );
   return {
-    broadcasts,
+    broadcasts: broadcasts.map((b) => ({ ...b, clicks: clicks[b.id] ?? 0 })),
+    categories,
     countries,
     products,
     cartReminderHours: settings.cart_reminder_hours ?? "",
@@ -1303,12 +1320,15 @@ export const audienceCountFn = createServerFn({ method: "GET" })
         audience: audienceSchema,
         countryCode: z.string().max(3).optional(),
         channel: channelSchema,
+        segment: segmentSchema,
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
     const { requireAdminModule } = await import("@/app/auth/guards.server");
-    const filter = { country_code: data.countryCode };
+    const { parseSegment } = await import("@/core/broadcasts/segments");
+    const segment = data.channel === "telegram" ? parseSegment(data.segment) : null;
+    const filter = { country_code: data.countryCode, ...(segment ? { segment } : {}) };
     if (data.channel === "whatsapp") {
       const ctx = await requireAdminModule("wa_broadcasts");
       const { resolveWhatsAppAudience } = await import("@/core/broadcasts/broadcasts");
@@ -1330,6 +1350,8 @@ export const createBroadcastFn = createServerFn({ method: "POST" })
         showCatalog: z.boolean().default(false),
         audience: audienceSchema,
         countryCode: z.string().max(3).optional(),
+        segment: segmentSchema,
+        sendAt: z.string().datetime().optional(),
         whatsapp: z
           .object({
             accountId: z.string().min(1).max(100),
@@ -1386,6 +1408,26 @@ export const createBroadcastFn = createServerFn({ method: "POST" })
         );
       data.whatsapp.templateParams = params.slice(0, need);
     }
+    const { parseSegment } = await import("@/core/broadcasts/segments");
+    const segment =
+      data.channel === "telegram" && data.audience === "all" ? parseSegment(data.segment) : null;
+    if (data.segment && data.audience === "all" && data.channel === "telegram" && !segment)
+      throw new UserError("err.broadcast.badSegment", "Сегмент заполнен не полностью.");
+    let sendAt: string | undefined;
+    if (data.sendAt && data.audience !== "test") {
+      const at = Date.parse(data.sendAt);
+      if (at < Date.now() + 60_000 || at > Date.now() + MAX_SCHEDULE_MS)
+        throw new UserError(
+          "err.broadcast.badSchedule",
+          "Время отправки — от минуты до 60 дней вперёд.",
+        );
+      sendAt = new Date(at).toISOString();
+    }
+    const filter = {
+      ...(data.countryCode ? { country_code: data.countryCode } : {}),
+      ...(segment ? { segment } : {}),
+      ...(sendAt ? { send_at: sendAt } : {}),
+    };
     const r = await createBroadcast(ctx, {
       channel: data.channel,
       text: data.text,
@@ -1393,7 +1435,7 @@ export const createBroadcastFn = createServerFn({ method: "POST" })
       productIds: data.productIds,
       showCatalog: data.showCatalog,
       audience: data.audience,
-      filter: data.countryCode ? { country_code: data.countryCode } : undefined,
+      filter: Object.keys(filter).length ? filter : undefined,
       whatsapp: data.whatsapp,
     });
     if (!r.ok) throw new Error(r.message);
