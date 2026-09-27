@@ -70,6 +70,8 @@ import {
 } from "@/core/cart/cart";
 import {
   attachPaymentProof,
+  markProofVerified,
+  PROOF_SWAPPED_NOTE,
   canResendMaterials,
   cartSummary,
   deliverOrder,
@@ -1402,12 +1404,24 @@ async function receiveProof(b: Bot, msg: TelegramMessage, orderId: number) {
       await notifyAdminNewOrder(b.ctx, b.api, res.order, proof, { reviewReason: v.detail });
       return;
     }
-    await b.ctx.db
-      .from("orders")
-      .update({
-        admin_note: `OCR ok: сумма ${v.matchedAmount}${v.matchedCurrency ? ` ${v.matchedCurrency} (по курсу)` : ""}`,
-      })
-      .eq("id", orderId);
+    const verified = await markProofVerified(
+      b.ctx,
+      orderId,
+      res.hash,
+      `OCR ok: сумма ${v.matchedAmount}${v.matchedCurrency ? ` ${v.matchedCurrency} (по курсу)` : ""}`,
+    );
+    if (!verified) {
+      await b.ctx.db
+        .from("orders")
+        .update({ admin_note: PROOF_SWAPPED_NOTE })
+        .eq("id", orderId)
+        .eq("status", "awaiting_confirmation");
+      await send(b, b.m.receiptManualReview(String(no)), { reply_markup: mainMenu(b) });
+      await notifyAdminNewOrder(b.ctx, b.api, res.order, proof, {
+        reviewReason: PROOF_SWAPPED_NOTE,
+      });
+      return;
+    }
     await send(b, b.m.receiptVerified(String(no)), { reply_markup: mainMenu(b) });
     const r = await deliverOrder(b.ctx, orderId, telegramMaterialSender(b.api, b.chatId, b.m), {
       lang: b.locale,

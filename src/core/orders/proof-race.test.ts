@@ -29,7 +29,7 @@ vi.mock("@/core/db/client.server", () => ({
   }),
 }));
 
-const { attachPaymentProof, claimOrderForDelivery } = await import("./orders");
+const { attachPaymentProof, claimOrderForDelivery, markProofVerified } = await import("./orders");
 
 const BOT = "00000000-0000-0000-0000-00000000000d";
 const file = (n: number) => ({
@@ -133,5 +133,53 @@ describe("файл чека проверяется до загрузки", () =>
     const r = await attachPaymentProof(ctx(), 7, pdf);
     expect(r.ok).toBe(true);
     expect(order().payment_proof_path).toMatch(/\.pdf$/);
+  });
+});
+
+describe("одобренный автопроверкой чек не подменить другим файлом", () => {
+  const second = () => ({
+    id: 8,
+    bot_id: BOT,
+    status: "awaiting_payment",
+    fulfillment_kind: "digital",
+    payment_proof_path: null,
+    payment_proof_hash: null,
+    order_items: [],
+  });
+
+  it("пока настоящий чек проверялся, пришёл другой файл — заказ не «оплачен», идёт продавцу", async () => {
+    // Покупатель шлёт настоящий чек R и сразу второй файл X, пока R читает Vision.
+    const r = await attachPaymentProof(ctx(), 7, file(1));
+    const x = await attachPaymentProof(ctx(), 7, file(2));
+    if (!r.ok || !x.ok) throw new Error("чеки должны приняться");
+    // R одобрен, но у заказа уже отпечаток X: R ни к чему не привязан,
+    // и сам выдать заказ по нему нельзя, иначе R годился бы и для заказа 8.
+    expect(await markProofVerified(ctx(), 7, r.hash, "OCR ok")).toBe(false);
+    expect(order()).toMatchObject({ status: "awaiting_confirmation", payment_proof_hash: x.hash });
+  });
+
+  it("чек не менялся — заказ «оплачен», новые файлы к нему не принимаются, тот же чек к другому заказу — повтор", async () => {
+    db.tables.orders!.push(second());
+    const r = await attachPaymentProof(ctx(), 7, file(1));
+    if (!r.ok) throw new Error("чек должен приняться");
+    expect(await markProofVerified(ctx(), 7, r.hash, "OCR ok: сумма 100")).toBe(true);
+    expect(order()).toMatchObject({
+      status: "paid",
+      payment_proof_hash: r.hash,
+      admin_note: "OCR ok: сумма 100",
+    });
+    expect(await attachPaymentProof(ctx(), 7, file(2))).toEqual({ ok: false, reason: "closed" });
+    expect(order().payment_proof_hash).toBe(r.hash);
+    expect(await attachPaymentProof(ctx(), 8, file(1))).toEqual({ ok: false, reason: "duplicate" });
+    // «Оплачен» выдаётся как обычно.
+    expect(await claimOrderForDelivery(ctx(), 7)).not.toBeNull();
+  });
+
+  it("заказ уже забрали на выдачу или отклонили — повторно не «оплачивается»", async () => {
+    const r = await attachPaymentProof(ctx(), 7, file(1));
+    if (!r.ok) throw new Error("чек должен приняться");
+    order().status = "rejected";
+    expect(await markProofVerified(ctx(), 7, r.hash, "OCR ok")).toBe(false);
+    expect(order().status).toBe("rejected");
   });
 });

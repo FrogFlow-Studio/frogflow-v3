@@ -499,7 +499,7 @@ export async function recentAwaitingPaymentOrder(
 export type ProofFile = { bytes: Uint8Array; mime: string; ext: string };
 
 export type AttachProofResult =
-  | { ok: true; order: OrderWithItems }
+  | { ok: true; order: OrderWithItems; hash: string }
   | {
       ok: false;
       reason:
@@ -565,8 +565,38 @@ export async function attachPaymentProof(
     return { ok: false, reason: "closed" };
   }
   await recordOrderEvent(ctx, orderId, "proof", { path: key });
-  return { ok: true, order: updated as OrderWithItems };
+  return { ok: true, order: updated as OrderWithItems, hash };
 }
+
+/**
+ * Автопроверка одобрила чек с отпечатком `hash`: заказ становится
+ * «оплачен», только если у него всё ещё этот чек. Пока шла проверка,
+ * покупатель мог прислать другой файл — он перезаписал отпечаток, и
+ * одобренный чек больше ни к чему не привязан: его можно было бы принести
+ * к следующему заказу. Тогда false, и заказ идёт продавцу. «Оплачен»
+ * закрывает приём чеков (PROOF_STATUSES), так что после этой записи
+ * отпечаток уже не сменится.
+ */
+export async function markProofVerified(
+  ctx: TenantContext,
+  orderId: number,
+  hash: string,
+  note: string,
+): Promise<boolean> {
+  const { data, error } = await ctx.db
+    .from("orders")
+    .update({ status: "paid", admin_note: note.slice(0, 500) })
+    .eq("id", orderId)
+    .eq("status", "awaiting_confirmation")
+    .eq("payment_proof_hash", hash)
+    .select("id");
+  if (error) throw new Error(error.message);
+  return Boolean(data?.length);
+}
+
+/** Причина для продавца, когда одобренный чек сменился другим файлом. */
+export const PROOF_SWAPPED_NOTE =
+  "OCR: пока проверялся чек, покупатель прислал другой файл — проверьте вручную";
 
 /**
  * Повторная выдача по кнопке покупателя: выданный цифровой заказ снова

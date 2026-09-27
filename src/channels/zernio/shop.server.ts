@@ -33,6 +33,8 @@ import { formatMoney } from "@/core/money/money";
 import { resolvePrice } from "@/core/pricing/pricing";
 import {
   attachPaymentProof,
+  markProofVerified,
+  PROOF_SWAPPED_NOTE,
   cartSummary,
   deliverOrder,
   displayNo,
@@ -1649,12 +1651,22 @@ async function receiveProof(s: Shop, url: string, orderId: number) {
       await notifyAdmin(res.order, { reviewReason: v.detail });
       return;
     }
-    await s.ctx.db
-      .from("orders")
-      .update({
-        admin_note: `OCR ok: сумма ${v.matchedAmount}${v.matchedCurrency ? ` ${v.matchedCurrency} (по курсу)` : ""}`,
-      })
-      .eq("id", orderId);
+    const verified = await markProofVerified(
+      s.ctx,
+      orderId,
+      res.hash,
+      `OCR ok: сумма ${v.matchedAmount}${v.matchedCurrency ? ` ${v.matchedCurrency} (по курсу)` : ""}`,
+    );
+    if (!verified) {
+      await s.ctx.db
+        .from("orders")
+        .update({ admin_note: PROOF_SWAPPED_NOTE })
+        .eq("id", orderId)
+        .eq("status", "awaiting_confirmation");
+      await reply(s, s.m.receiptManualReview(String(no)), { force: true });
+      await notifyAdmin(res.order, { reviewReason: PROOF_SWAPPED_NOTE });
+      return;
+    }
     await reply(s, s.m.receiptVerified(String(no)), { force: true });
     const delivered = await deliverHere(s, orderId, no);
     const fresh = (await getOrder(s.ctx, orderId)) ?? res.order;
