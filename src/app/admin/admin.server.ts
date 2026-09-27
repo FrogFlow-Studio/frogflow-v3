@@ -236,15 +236,22 @@ export async function runOrderAction(
         sender = webMaterialSender;
         opts = { lang: "ru", allWhenAmbiguous: true, actor };
       } else if (orderChannel(order.platform) !== "telegram") {
-        const { zernioSenderFor, zernioTargetForOrder } =
-          await import("@/channels/zernio/outbound.server");
-        const target = await zernioTargetForOrder(ctx, order);
-        if (!target)
-          return {
-            ok: false,
-            message: t("msg.orders.noDialog", { platform: platformName(order.platform) }),
-          };
-        sender = zernioSenderFor(target);
+        const { isInvoiceLink } = await import("@/core/orders/invoice-link");
+        if (await isInvoiceLink(ctx, order.id)) {
+          // Счёт ссылкой: выдача на страницу заказа, в диалог — копия.
+          const { invoiceLinkSender } = await import("@/channels/web/order.server");
+          sender = await invoiceLinkSender(ctx, order);
+        } else {
+          const { zernioSenderFor, zernioTargetForOrder } =
+            await import("@/channels/zernio/outbound.server");
+          const target = await zernioTargetForOrder(ctx, order);
+          if (!target)
+            return {
+              ok: false,
+              message: t("msg.orders.noDialog", { platform: platformName(order.platform) }),
+            };
+          sender = zernioSenderFor(target);
+        }
         opts = { lang: "ru", allWhenAmbiguous: true, actor };
       }
       const r = await deliverOrder(ctx, id, sender, opts);

@@ -10,15 +10,29 @@ import type { PricedCart } from "@/core/cart/cart";
 import type { InvoiceItem } from "@/core/cart/seller-cart";
 
 /** Текст счёта: позиции, итог и подсказка «Оформить заказ» — на языке покупателя. */
-export function invoiceText(cart: PricedCart, locale: string): string {
+export function invoiceText(cart: PricedCart, locale: string, footer?: string): string {
   const m = COPY[isLocale(locale) ? locale : "ru"];
   let text = m.invoiceHeader;
   cart.lines.forEach((line, i) => {
     text += `${i + 1}. ${escapeHtml(line.name)} × ${line.item.quantity} — ${formatMoney(line.line, cart.currency)}\n`;
   });
   text += m.total(formatMoney(cart.total, cart.currency));
-  return text + m.invoiceFooter;
+  return text + (footer ?? m.invoiceFooter);
 }
+
+/**
+ * Текст счёта для Direct/WhatsApp — не длиннее 2000 знаков. Длинный состав
+ * обрезается, а подвал со ссылкой на оплату остаётся целым.
+ */
+export function fitDirect(cart: PricedCart, locale: string, footer?: string): string {
+  const full = plain(invoiceText(cart, locale, footer));
+  if (full.length <= DIRECT_MAX) return full;
+  const tail = plain(footer ?? COPY[isLocale(locale) ? locale : "ru"].invoiceFooter);
+  const head = plain(invoiceText(cart, locale, ""));
+  return `${head.slice(0, DIRECT_MAX - tail.length - 2)}…\n${tail}`.slice(0, DIRECT_MAX);
+}
+
+const DIRECT_MAX = 2000;
 
 /** Почему счёт не собрался — словами продавцу (те же проверки, что у корзины покупателя). */
 function invoiceError(reason: string): UserError {
@@ -42,6 +56,94 @@ function invoiceError(reason: string): UserError {
 }
 
 /**
+ * Как счёт дойдёт до покупателя этого канала: «channel» — кнопкой «Оформить
+ * заказ» в его мессенджере (оформление ведёт бот); «link» — Instagram/WhatsApp
+ * без оформления в канале, но с оплатой на витрине сайта: заказ создаётся
+ * сразу, покупателю уходит ссылка на страницу заказа; «none» — счёт выставить
+ * нельзя (тогда кнопки в «Чате» нет, есть подсказка).
+ */
+export type InvoiceMode = "channel" | "link" | "none";
+
+export async function webPayAvailable(ctx: TenantContext): Promise<boolean> {
+  if (!ctx.tenant.settings.slug) return false;
+  const { storefrontOpen } = await import("@/core/storefront/access");
+  if (!storefrontOpen(ctx.tenant, "web_checkout")) return false;
+  const { webCheckoutSettings } = await import("@/core/storefront/web-order");
+  return (await webCheckoutSettings(ctx)).enabled;
+}
+
+export async function invoiceMode(ctx: TenantContext, platform: string): Promise<InvoiceMode> {
+  if (platform !== "instagram" && platform !== "whatsapp")
+    return ctx.tenant.telegramTokenEnc ? "channel" : "none";
+  const shopOn = platform === "whatsapp" ? ctx.tenant.modules.wa_shop : ctx.tenant.modules.dm_shop;
+  const { loadDirectBotSettings } = await import("@/core/instagram/direct-bot-settings");
+  const bot = shopOn ? await loadDirectBotSettings(ctx, platform) : null;
+  if (bot?.enabled && bot.features.checkout) return "channel";
+  return (await webPayAvailable(ctx)) ? "link" : "none";
+}
+
+function linkPhysicalError(): UserError {
+  return new UserError(
+    "err.invoice.linkPhysical",
+    "Физические товары ссылкой на сайт не выставить: покупателю нужно выбрать дату и адрес. Включите оформление заказа в этом канале.",
+  );
+}
+
+async function hasPhysical(ctx: TenantContext, items: InvoiceItem[]): Promise<boolean> {
+  const ids = [...new Set(items.map((i) => i.productId))];
+  if (ids.length === 0) return false;
+  const { data } = await ctx.db
+    .from("products")
+    .select("id")
+    .in("id", ids)
+    .eq("fulfillment_kind", "physical")
+    .limit(1);
+  return (data ?? []).length > 0;
+}
+
+/**
+ * Счёт ссылкой: заказ из собранной корзины тем же placeOrder, что в боте
+ * (номер, склад, события), и ссылка на его страницу на сайте — там реквизиты,
+ * чек с автопроверкой и оплата картой. Только цифровые товары: физическим
+ * нужны дата и адрес, их спрашивает оформление в канале или на сайте.
+ */
+async function placeInvoiceOrder(
+  ctx: TenantContext,
+  customer: import("@/core/customers/customers").Customer,
+  cart: PricedCart,
+): Promise<{ id: number; no: number; url: string }> {
+  if (cart.kind === "physical") throw linkPhysicalError();
+  const { displayNo, listActivePaymentMethods, placeOrder } = await import("@/core/orders/orders");
+  const country =
+    customer.state.country_code ?? (await listActivePaymentMethods(ctx))[0]?.country_code ?? null;
+  if (!country)
+    throw new UserError("err.invoice.noPayment", "Не настроены способы оплаты магазина.");
+  const r = await placeOrder(ctx, customer, country);
+  if (!r.ok)
+    throw r.reason === "out_of_stock"
+      ? invoiceError("out_of_stock")
+      : r.reason === "country_unavailable"
+        ? new UserError("err.invoice.noPayment", "Не настроены способы оплаты магазина.")
+        : invoiceError(r.reason === "empty_cart" ? "empty" : "failed");
+  // Признак «счёт ссылкой»: страница заказа, срок оплаты и возврат остатка.
+  const { markInvoiceLink } = await import("@/core/orders/invoice-link");
+  await markInvoiceLink(ctx, r.order.id);
+  if (r.zeroTotal) {
+    // Скидки покрыли всё — выдаём сразу, как бот.
+    const { runOrderAction } = await import("./admin.server");
+    await runOrderAction(ctx, r.order.id, "confirm", "invoice");
+  }
+  const { orderAccessToken } = await import("@/core/storefront/web-order");
+  const token = orderAccessToken(env().SESSION_SECRET, ctx.tenant.id, r.order.id);
+  const slug = encodeURIComponent(ctx.tenant.settings.slug!);
+  return {
+    id: r.order.id,
+    no: displayNo(r.order),
+    url: `${ctx.appUrl}/s/${slug}/order/${r.order.id}?t=${token}`,
+  };
+}
+
+/**
  * «Выставить счёт» из «Чата»: корзина покупателю и сообщение с кнопкой
  * «Оформить заказ» в его канал. Оформление ведёт бот, поэтому диалог
  * возвращается боту: пока менеджер «в чате», нажатия кнопок бот не видит.
@@ -51,7 +153,7 @@ export async function sendDialogInvoice(
   telegramId: number,
   items: InvoiceItem[],
   opts: { append?: boolean } = {},
-): Promise<{ total: number; currency: string }> {
+): Promise<{ total: number; currency: string; orderId?: number; orderNo?: number }> {
   const { getCustomerByTelegramId, isBlocked } = await import("@/core/customers/customers");
   const customer = await getCustomerByTelegramId(ctx, telegramId);
   if (!customer) throw new UserError("err.invoice.noCustomer", "Покупатель не найден.");
@@ -60,24 +162,22 @@ export async function sendDialogInvoice(
 
   const platform = customer.platform;
   const zernio = platform === "instagram" || platform === "whatsapp";
-  if (zernio) {
-    const shopOn =
-      platform === "whatsapp" ? ctx.tenant.modules.wa_shop : ctx.tenant.modules.dm_shop;
-    const { loadDirectBotSettings } = await import("@/core/instagram/direct-bot-settings");
-    const bot = shopOn ? await loadDirectBotSettings(ctx, platform) : null;
-    if (!bot?.enabled || !bot.features.checkout)
-      throw new UserError(
-        "err.invoice.noShopInChannel",
-        "В этом канале выключено оформление заказа — счёт покупатель не сможет оплатить.",
-      );
-    if (!customer.zernioConversationId || !customer.zernioAccountId)
-      throw new UserError(
-        "err.admin.noZernioDialog",
-        "У покупателя нет диалога в Zernio — ответить некуда",
-      );
-  } else if (!ctx.tenant.telegramTokenEnc)
-    throw new UserError("err.invoice.noBot", "У магазина не подключён Telegram-бот.");
+  const mode = await invoiceMode(ctx, platform);
+  if (mode === "none")
+    throw zernio
+      ? new UserError(
+          "err.invoice.noShopInChannel",
+          "В этом канале выключено оформление заказа — счёт покупатель не сможет оплатить.",
+        )
+      : new UserError("err.invoice.noBot", "У магазина не подключён Telegram-бот.");
+  if (zernio && (!customer.zernioConversationId || !customer.zernioAccountId))
+    throw new UserError(
+      "err.admin.noZernioDialog",
+      "У покупателя нет диалога в Zernio — ответить некуда",
+    );
 
+  // Физические товары ссылкой не выставить — до того, как корзина покупателя заменена.
+  if (mode === "link" && (await hasPhysical(ctx, items))) throw linkPhysicalError();
   const { fillCartForCustomer } = await import("@/core/cart/seller-cart");
   const r = await fillCartForCustomer(ctx, customer, items, opts);
   if (!r.ok) {
@@ -85,18 +185,21 @@ export async function sendDialogInvoice(
   }
 
   const locale = customer.state.locale ?? ctx.tenant.settings.default_locale ?? "ru";
-  const html = invoiceText(r.cart, locale);
   const m = COPY[isLocale(locale) ? locale : "ru"];
+  const link = mode === "link" ? await placeInvoiceOrder(ctx, customer, r.cart) : null;
+  const html = invoiceText(r.cart, locale, link ? m.invoicePayLink(link.no, link.url) : undefined);
   if (zernio) {
     const { sendInboxMessage } = await import("@/channels/zernio/api.server");
     const sent = await sendInboxMessage(
       customer.zernioConversationId!,
       customer.zernioAccountId!,
-      plain(html).slice(0, 2000),
-      {
-        platform,
-        buttons: [{ type: "postback", title: plain(m.checkoutBtn), payload: "CHECKOUT" }],
-      },
+      fitDirect(r.cart, locale, link ? m.invoicePayLink(link.no, link.url) : undefined),
+      link
+        ? { platform }
+        : {
+            platform,
+            buttons: [{ type: "postback", title: plain(m.checkoutBtn), payload: "CHECKOUT" }],
+          },
     );
     if (!sent.ok)
       throw sent.error
@@ -128,6 +231,12 @@ export async function sendDialogInvoice(
     sender: "manager",
     text: plain(html),
   });
-  await chat.disconnect(ctx, telegramId).catch(() => {});
-  return { total: r.cart.total, currency: r.cart.currency };
+  // Кнопку «Оформить заказ» обрабатывает бот — диалог возвращаем ему. По
+  // ссылке оформлять уже нечего: менеджер остаётся в диалоге.
+  if (!link) await chat.disconnect(ctx, telegramId).catch(() => {});
+  return {
+    total: r.cart.total,
+    currency: r.cart.currency,
+    ...(link ? { orderId: link.id, orderNo: link.no } : {}),
+  };
 }

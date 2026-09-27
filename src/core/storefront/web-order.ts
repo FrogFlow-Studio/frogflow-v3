@@ -340,12 +340,27 @@ export type WebOrderView = {
 
 const PAYABLE = new Set(["awaiting_payment"]);
 
+/**
+ * Чьи заказы открываются страницей заказа на сайте (по подписанной ссылке):
+ * заказы с сайта и счета ссылкой из диалога Instagram/WhatsApp
+ * (core/orders/invoice-link). Остальные заказы каналов оплачиваются там.
+ */
+export async function hasOrderPage(
+  ctx: TenantContext,
+  order: { id: number; platform: string | null },
+): Promise<boolean> {
+  if (order.platform === "web") return true;
+  if (order.platform !== "instagram" && order.platform !== "whatsapp") return false;
+  const { isInvoiceLink } = await import("@/core/orders/invoice-link");
+  return isInvoiceLink(ctx, order.id);
+}
+
 export async function webOrderView(
   ctx: TenantContext,
   orderId: number,
 ): Promise<WebOrderView | null> {
   const order = await getOrder(ctx, orderId);
-  if (!order || order.platform !== "web") return null;
+  if (!order || !(await hasOrderPage(ctx, order))) return null;
   const payable = PAYABLE.has(order.status);
   const method =
     payable && order.country_code ? await paymentMethodFor(ctx, order.country_code) : null;
@@ -405,7 +420,7 @@ export async function webCardPaymentUrl(
   orderId: number,
 ): Promise<string | null> {
   const order = await getOrder(ctx, orderId);
-  if (!order || order.platform !== "web" || !PAYABLE.has(order.status)) return null;
+  if (!order || !PAYABLE.has(order.status) || !(await hasOrderPage(ctx, order))) return null;
   const rk = await robokassaFor(ctx);
   if (!rk.ready) return null;
   const due = await amountDueNow(ctx, {

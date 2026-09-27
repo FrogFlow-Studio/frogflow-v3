@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { rejectOrder } from "@/core/orders/orders";
+import { invoiceLinkOrderIds } from "@/core/orders/invoice-link";
 
 /**
  * Неоплаченный заказ с сайта живёт сутки: без чека и оплаты он отменяется
@@ -24,8 +25,20 @@ export async function expireWebOrders(
     .is("payment_proof_path", null)
     .lt("created_at", cutoff)
     .limit(200);
+  // Счета ссылкой из Instagram/WhatsApp: те же сутки на оплату. Метки
+  // старше трёх суток не смотрим — такие заказы уже отменены или оплачены.
+  const linkIds = await invoiceLinkOrderIds(ctx, new Date(now.getTime() - 3 * WEB_ORDER_TTL_MS));
+  const { data: links } = linkIds.length
+    ? await ctx.db
+        .from("orders")
+        .select("id")
+        .in("id", linkIds)
+        .eq("status", "awaiting_payment")
+        .is("payment_proof_path", null)
+        .lt("created_at", cutoff)
+    : { data: [] as Array<{ id: number }> };
   let cancelled = 0;
-  for (const o of data ?? []) {
+  for (const o of [...(data ?? []), ...(links ?? [])]) {
     // Та же отмена, что у продавца (возврат остатка и баллов), но только из
     // «ждёт оплаты»: чек или оплата картой в ту же минуту выигрывают.
     if (

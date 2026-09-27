@@ -112,7 +112,8 @@ async function webOrderReturn(
   if (!/^\d{1,12}$/.test(invId) || !slug) return null;
   const { getOrder } = await import("@/core/orders/orders");
   const order = await getOrder(ctx, Number(invId));
-  if (!order || order.platform !== "web") return null;
+  const { hasOrderPage } = await import("@/core/storefront/web-order");
+  if (!order || !(await hasOrderPage(ctx, order))) return null;
   const page = `${ctx.appUrl}/s/${encodeURIComponent(slug)}/order/${order.id}`;
   if (!success) return page;
   const { robokassaFor } = await import("@/core/payments/payment");

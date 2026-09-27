@@ -699,7 +699,12 @@ export async function rejectOrder(
       actor,
     );
   // Заказ с сайта оформляет кто угодно — отклонённый возвращает остаток.
+  // Так же счёт ссылкой из диалога: его повтор после сбоя не держит товар.
   if (data?.platform === "web") await restoreOrderStock(ctx, orderId);
+  else if (data) {
+    const { isInvoiceLink } = await import("./invoice-link");
+    if (await isInvoiceLink(ctx, orderId)) await restoreOrderStock(ctx, orderId);
+  }
   return Boolean(data);
 }
 

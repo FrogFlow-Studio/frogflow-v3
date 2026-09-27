@@ -3,9 +3,11 @@ import { getCustomer } from "@/core/customers/customers";
 import {
   PROOF_SWAPPED_NOTE,
   attachPaymentProof,
+  deliverOrder,
   getOrder,
   markProofVerified,
   type AttachProofResult,
+  type MaterialSender,
   type OrderWithItems,
 } from "@/core/orders/orders";
 import { deliverWebOrder } from "@/core/storefront/web-order";
@@ -29,9 +31,38 @@ async function notifySeller(ctx: TenantContext, order: OrderWithItems, opts: Not
   );
 }
 
+/**
+ * Выдача счёта ссылкой из Instagram/WhatsApp: материалы — на странице заказа,
+ * как у заказа с сайта, а в диалог — копия, если получится. Закрытое окно
+ * 24 часа или сбой Zernio не делают оплаченный заказ «не выдан»: деньги
+ * списаны, файлы ждут покупателя по его ссылке.
+ */
+export async function invoiceLinkSender(
+  ctx: TenantContext,
+  order: { user_key: string | null; telegram_id: number; platform: string },
+): Promise<MaterialSender> {
+  const { zernioSenderFor, zernioTargetForOrder } =
+    await import("@/channels/zernio/outbound.server");
+  const target = await zernioTargetForOrder(ctx, order).catch(() => null);
+  const copy = target ? zernioSenderFor(target) : null;
+  return async (item, materials) => {
+    if (copy)
+      await copy(item, materials).catch((e) =>
+        console.warn(`[web] копия материалов в диалог: ${String(e)}`),
+      );
+    return "sent";
+  };
+}
+
 /** Выдать и сообщить продавцу о сбое выдачи; true — всё выдано. */
 async function deliverAndReport(ctx: TenantContext, order: OrderWithItems): Promise<boolean> {
-  const r = await deliverWebOrder(ctx, order.id);
+  const r =
+    order.platform === "web"
+      ? await deliverWebOrder(ctx, order.id)
+      : await deliverOrder(ctx, order.id, await invoiceLinkSender(ctx, order), {
+          lang: ctx.tenant.settings.default_locale ?? "ru",
+          allWhenAmbiguous: true,
+        });
   if (r.failed > 0) await notifyDeliveryFailure(ctx, order, r);
   return r.failed === 0;
 }

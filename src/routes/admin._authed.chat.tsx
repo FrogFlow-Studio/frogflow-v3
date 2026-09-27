@@ -6,6 +6,7 @@ import {
   chatConnectFn,
   chatConversationsFn,
   chatInvoiceFn,
+  chatInvoiceModesFn,
   chatMessagesFn,
   chatReplyFn,
   chatResumeBotFn,
@@ -52,6 +53,16 @@ function channelOf(c: Conversation): string | null {
   return CHANNEL[c.platform] ?? null;
 }
 
+type InvoiceModes = Awaited<ReturnType<typeof chatInvoiceModesFn>>;
+
+/** Режим счёта для диалога; пока режимы не загрузились — как раньше, кнопкой. */
+function invoiceModeOf(modes: InvoiceModes | null, c: Conversation): string {
+  if (!modes) return "channel";
+  if (c.platform === "instagram") return modes.instagram;
+  if (c.platform === "whatsapp") return modes.whatsapp;
+  return modes.telegram;
+}
+
 function stripHtml(s: string): string {
   return s.replace(/<[^>]+>/g, "");
 }
@@ -71,6 +82,15 @@ function ChatPage() {
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>(initial.quickReplies);
   const [editingQuick, setEditingQuick] = useState(false);
   const [invoicing, setInvoicing] = useState(false);
+  // Как счёт дойдёт до покупателя каждого канала: кнопкой, ссылкой на сайт или никак.
+  const [invoiceModes, setInvoiceModes] = useState<Awaited<
+    ReturnType<typeof chatInvoiceModesFn>
+  > | null>(null);
+  useEffect(() => {
+    void chatInvoiceModesFn()
+      .then(setInvoiceModes)
+      .catch(() => {});
+  }, []);
   const [filter, setFilter] = useState<InboxFilter>({ status: "open", who: "all", channel: "all" });
   const canWrite = canEdit(shop.role);
   const me = initial.me;
@@ -287,13 +307,15 @@ function ChatPage() {
                         {t("chat.resumeBot")}
                       </button>
                     )}
-                    <button
-                      type="button"
-                      className="btn-secondary text-xs"
-                      onClick={() => setInvoicing((v) => !v)}
-                    >
-                      {t("chat.invoice")}
-                    </button>
+                    {invoiceModeOf(invoiceModes, selected) !== "none" && (
+                      <button
+                        type="button"
+                        className="btn-secondary text-xs"
+                        onClick={() => setInvoicing((v) => !v)}
+                      >
+                        {t("chat.invoice")}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className={selected.active ? "btn-secondary text-xs" : "btn-primary text-xs"}
@@ -326,10 +348,20 @@ function ChatPage() {
                   </div>
                 ))}
               </div>
-              {canWrite && invoicing && (
+              {canWrite &&
+                channelOf(selected) &&
+                invoiceModeOf(invoiceModes, selected) === "none" && (
+                  <p className="border-b border-line px-4 py-2 text-xs text-muted">
+                    {invoiceModes?.storefront
+                      ? t("chat.invoiceUnavailable")
+                      : t("chat.invoiceNoStorefront")}
+                  </p>
+                )}
+              {canWrite && invoicing && invoiceModeOf(invoiceModes, selected) !== "none" && (
                 <InvoicePanel
                   key={selected.telegram_id}
                   t={t}
+                  link={invoiceModeOf(invoiceModes, selected) === "link"}
                   telegramId={selected.telegram_id}
                   onClose={() => setInvoicing(false)}
                   onSent={async () => {
@@ -510,11 +542,14 @@ type InvoiceLine = { product: InvoiceProduct; variantId: string | null; quantity
  */
 function InvoicePanel({
   t,
+  link,
   telegramId,
   onClose,
   onSent,
 }: {
   t: AdminT;
+  /** Instagram/WhatsApp без оформления в канале: счёт — ссылкой на страницу заказа на сайте. */
+  link: boolean;
   telegramId: number;
   onClose: () => void;
   onSent: () => Promise<void>;
@@ -556,7 +591,12 @@ function InvoicePanel({
         })),
       },
     });
-    setDone(t("chat.invoiceSent", { total: `${r.total.toLocaleString()} ${r.currency}` }));
+    const total = `${r.total.toLocaleString()} ${r.currency}`;
+    setDone(
+      r.orderNo != null
+        ? t("chat.invoiceSentLink", { no: r.orderNo, total })
+        : t("chat.invoiceSent", { total }),
+    );
     setLines([]);
     await loadCart.run().catch(() => {});
     await onSent();
@@ -570,7 +610,9 @@ function InvoicePanel({
           {t("chat.invoiceClose")}
         </button>
       </div>
-      <p className="mb-2 text-xs text-muted">{t("chat.invoiceHint")}</p>
+      <p className="mb-2 text-xs text-muted">
+        {link ? t("chat.invoiceHintLink") : t("chat.invoiceHint")}
+      </p>
       {cartCount > 0 && (
         <div className="mb-2 rounded-md bg-surface-2 p-2 text-xs">
           <p>

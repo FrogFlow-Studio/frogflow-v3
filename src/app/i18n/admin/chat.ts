@@ -24,6 +24,13 @@ export const ru = {
   "chat.invoiceSend": "Отправить счёт",
   "chat.invoiceClose": "Закрыть",
   "chat.invoiceSent": "Счёт на {total} отправлен",
+  "chat.invoiceHintLink":
+    "Покупатель получит список с итогом и ссылку на страницу заказа на сайте: там оплата картой или по чеку, после оплаты — материалы. Физические товары ссылкой не выставить.",
+  "chat.invoiceSentLink": "Заказ №{no} на {total} создан, ссылка на оплату отправлена",
+  "chat.invoiceUnavailable":
+    "Счёт в этом канале выставить нельзя: включите оформление заказа в канале или оформление на сайте в настройках магазина.",
+  "chat.invoiceNoStorefront":
+    "Счёт в этом канале выставить нельзя: включите оформление заказа в канале или задайте адрес витрины и включите оформление на сайте в настройках магазина.",
   "chat.invoiceCartReplace": "В корзине покупателя уже {n} поз. Счёт их заменит.",
   "chat.invoiceCartAppend": "В корзине покупателя уже {n} поз. Счёт добавится к ним.",
   "chat.invoiceAppend": "Добавить к корзине, а не заменять",
@@ -91,6 +98,13 @@ export const kk: SectionDict<typeof ru> = {
   "chat.invoiceSend": "Шотты жіберу",
   "chat.invoiceClose": "Жабу",
   "chat.invoiceSent": "{total} сомасына шот жіберілді",
+  "chat.invoiceHintLink":
+    "Сатып алушы қорытындысы бар тізімді және сайттағы тапсырыс бетіне сілтемені алады: онда картамен немесе чек бойынша төлем, төлемнен кейін — материалдар. Физикалық тауарларды сілтемемен шығаруға болмайды.",
+  "chat.invoiceSentLink": "№{no} тапсырыс {total} сомасына жасалды, төлем сілтемесі жіберілді",
+  "chat.invoiceUnavailable":
+    "Бұл арнада шот шығаруға болмайды: дүкен баптауларында арнадағы тапсырыс рәсімдеуді немесе сайттағы рәсімдеуді қосыңыз.",
+  "chat.invoiceNoStorefront":
+    "Бұл арнада шот шығаруға болмайды: арнадағы тапсырыс рәсімдеуді қосыңыз немесе дүкен баптауларында витрина мекенжайын көрсетіп, сайттағы рәсімдеуді қосыңыз.",
   "chat.invoiceCartReplace": "Сатып алушының себетінде {n} позиция бар. Шот оларды ауыстырады.",
   "chat.invoiceCartAppend": "Сатып алушының себетінде {n} позиция бар. Шот соларға қосылады.",
   "chat.invoiceAppend": "Ауыстырмай, себетке қосу",
@@ -159,6 +173,13 @@ export const en: SectionDict<typeof ru> = {
   "chat.invoiceSend": "Send invoice",
   "chat.invoiceClose": "Close",
   "chat.invoiceSent": "Invoice for {total} sent",
+  "chat.invoiceHintLink":
+    "The customer gets the list with the total and a link to the order page on the website: pay by card or with a receipt there, and the materials appear after payment. Physical goods can't be invoiced by link.",
+  "chat.invoiceSentLink": "Order #{no} for {total} created, payment link sent",
+  "chat.invoiceUnavailable":
+    "You can't send an invoice in this channel: turn on checkout in the channel or checkout on the website in the shop settings.",
+  "chat.invoiceNoStorefront":
+    "You can't send an invoice in this channel: turn on checkout in the channel, or set the storefront address and turn on checkout on the website in the shop settings.",
   "chat.invoiceCartReplace":
     "The customer already has {n} items in the cart. The invoice will replace them.",
   "chat.invoiceCartAppend":
@@ -227,6 +248,13 @@ export const uz: SectionDict<typeof ru> = {
   "chat.invoiceSend": "Hisobni yuborish",
   "chat.invoiceClose": "Yopish",
   "chat.invoiceSent": "{total} summasiga hisob yuborildi",
+  "chat.invoiceHintLink":
+    "Xaridor jami summa bilan roʻyxat va saytdagi buyurtma sahifasiga havola oladi: u yerda karta yoki chek orqali toʻlov, toʻlovdan soʻng — materiallar. Jismoniy tovarlarni havola bilan chiqarib boʻlmaydi.",
+  "chat.invoiceSentLink": "Buyurtma №{no} {total} ga yaratildi, toʻlov havolasi yuborildi",
+  "chat.invoiceUnavailable":
+    "Bu kanalda hisob chiqarib boʻlmaydi: doʻkon sozlamalarida kanalda buyurtma berishni yoki saytda buyurtma berishni yoqing.",
+  "chat.invoiceNoStorefront":
+    "Bu kanalda hisob chiqarib boʻlmaydi: kanalda buyurtma berishni yoqing yoki doʻkon sozlamalarida vitrina manzilini kiriting va saytda buyurtma berishni yoqing.",
   "chat.invoiceCartReplace":
     "Xaridor savatida allaqachon {n} ta pozitsiya bor. Hisob ularni almashtiradi.",
   "chat.invoiceCartAppend":

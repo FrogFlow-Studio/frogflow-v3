@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 
 /** «Выставить счёт» из «Чата»: сообщение с кнопкой оформления в канал покупателя. */
 let customer: Record<string, unknown> | null;
@@ -9,13 +10,44 @@ const zernio: Array<{ text: string; opts: Record<string, unknown> }> = [];
 const log: string[] = [];
 const disconnected: number[] = [];
 let direct = { enabled: true, features: { checkout: true } };
+let webPay = true;
+let placed: Record<string, unknown>;
+const placeCalls: unknown[][] = [];
+const confirmed: number[] = [];
 
-vi.mock("@/config/env", () => ({ env: () => ({ TELEGRAM_API_BASE: "https://tg" }) }));
+vi.mock("@/config/env", () => ({
+  env: () => ({ TELEGRAM_API_BASE: "https://tg", SESSION_SECRET: "secret" }),
+}));
+vi.mock("@/core/storefront/access", () => ({ storefrontOpen: () => webPay }));
+vi.mock("@/core/storefront/web-order", () => ({
+  webCheckoutSettings: async () => ({ enabled: webPay }),
+  orderAccessToken: (_s: string, bot: string, id: number) => `tok-${bot}-${id}`,
+}));
+vi.mock("@/core/orders/orders", () => ({
+  displayNo: (o: { display_no: number }) => o.display_no,
+  listActivePaymentMethods: async () => [{ country_code: "KZ" }],
+  placeOrder: async (...a: unknown[]) => {
+    placeCalls.push(a);
+    return placed;
+  },
+}));
+vi.mock("./admin.server", () => ({
+  runOrderAction: async (_c: unknown, id: number) => {
+    confirmed.push(id);
+    return { ok: true, message: "" };
+  },
+}));
 vi.mock("@/core/customers/customers", () => ({
   getCustomerByTelegramId: async () => customer,
   isBlocked: async () => false,
 }));
-vi.mock("@/core/cart/seller-cart", () => ({ fillCartForCustomer: async () => fill }));
+let fillCalls = 0;
+vi.mock("@/core/cart/seller-cart", () => ({
+  fillCartForCustomer: async () => {
+    fillCalls++;
+    return fill;
+  },
+}));
 vi.mock("@/channels/telegram/api", () => ({
   telegramApi: () => ({
     call: async (method: string, body: Record<string, unknown>) => {
@@ -40,9 +72,12 @@ vi.mock("@/core/chat/chat", () => ({
 
 const { sendDialogInvoice } = await import("./invoice.server");
 
-const ctx = (modules: Record<string, boolean> = {}) =>
+let db: FakeDb;
+const ctx = (modules: Record<string, boolean> = {}, settings: Record<string, unknown> = {}) =>
   ({
-    tenant: { id: "b", modules, settings: {}, telegramTokenEnc: "enc" },
+    db,
+    tenant: { id: "b", modules, settings, telegramTokenEnc: "enc" },
+    appUrl: "https://shop.test",
     secrets: { telegramToken: () => "token" },
   }) as unknown as TenantContext;
 const cart = {
@@ -57,6 +92,10 @@ const cart = {
 const items = [{ productId: "p", variantId: null, quantity: 1 }];
 
 beforeEach(() => {
+  db = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
+  db.tables.app_settings = [];
+  db.tables.products = [{ id: "p", bot_id: "b", name: "Прописи", fulfillment_kind: "digital" }];
+  fillCalls = 0;
   customer = { telegramId: 5, platform: "telegram", state: {} };
   fill = { ok: true, cart };
   calls.length = 0;
@@ -64,6 +103,10 @@ beforeEach(() => {
   log.length = 0;
   disconnected.length = 0;
   direct = { enabled: true, features: { checkout: true } };
+  webPay = true;
+  placed = { ok: true, order: { id: 77, display_no: 12 }, zeroTotal: false };
+  placeCalls.length = 0;
+  confirmed.length = 0;
 });
 
 describe("счёт из диалога", () => {
@@ -103,7 +146,8 @@ describe("счёт из диалога", () => {
     ]);
   });
 
-  it("в канале нет оформления — отказ до того, как тронута корзина", async () => {
+  it("в канале нет оформления и нет оплаты на сайте — отказ до того, как тронута корзина", async () => {
+    webPay = false;
     customer = { telegramId: -7, platform: "whatsapp", state: {} };
     await expect(sendDialogInvoice(ctx({ wa_shop: false }), -7, items)).rejects.toMatchObject({
       key: "err.invoice.noShopInChannel",
@@ -122,5 +166,89 @@ describe("счёт из диалога", () => {
     });
     expect(calls).toHaveLength(0);
     expect(disconnected).toHaveLength(0);
+  });
+
+  const igNoShop = () => {
+    customer = {
+      telegramId: -7,
+      platform: "instagram",
+      state: {},
+      zernioConversationId: "conv",
+      zernioAccountId: "acc",
+    };
+    direct = { enabled: true, features: { checkout: false } };
+  };
+
+  it("Instagram без оформления в канале: заказ сразу и ссылка на его страницу на сайте", async () => {
+    igNoShop();
+    const r = await sendDialogInvoice(ctx({ dm_shop: true }, { slug: "propisi" }), -7, items);
+    expect(r).toEqual({ total: 4500, currency: "KZT", orderId: 77, orderNo: 12 });
+    expect(placeCalls).toHaveLength(1);
+    expect(placeCalls[0]![2]).toBe("KZ");
+    expect(zernio[0]!.text).toContain("Заказ №12");
+    expect(zernio[0]!.text).toContain("https://shop.test/s/propisi/order/77?t=tok-b-77");
+    expect(zernio[0]!.text).not.toContain("Нажмите «Оформить заказ»");
+    // Кнопки оформления нет: оформлять нечего, заказ уже создан.
+    expect(zernio[0]!.opts.buttons).toBeUndefined();
+    // Менеджер остаётся в диалоге: бот тут ничего не оформляет.
+    expect(disconnected).toHaveLength(0);
+    expect(confirmed).toHaveLength(0);
+    // Признак «счёт ссылкой»: по нему страница заказа, срок оплаты и возврат остатка.
+    expect(db.tables.app_settings).toEqual([
+      expect.objectContaining({ bot_id: "b", key: "invoice_link:77" }),
+    ]);
+  });
+
+  it("ссылкой — только цифровые товары, отказ до того, как корзина покупателя заменена", async () => {
+    igNoShop();
+    db.tables.products![0]!.fulfillment_kind = "physical";
+    await expect(
+      sendDialogInvoice(ctx({ dm_shop: true }, { slug: "propisi" }), -7, items),
+    ).rejects.toMatchObject({ key: "err.invoice.linkPhysical" });
+    expect(fillCalls).toBe(0);
+    expect(placeCalls).toHaveLength(0);
+    expect(zernio).toHaveLength(0);
+  });
+
+  it("длинный состав обрезается, а ссылка на оплату в конце остаётся целой", async () => {
+    igNoShop();
+    const many = Array.from({ length: 120 }, (_, i) => ({
+      item: { quantity: 1 },
+      name: `Очень длинное название набора для занятий номер ${i}`,
+      line: 100,
+    }));
+    fill = { ok: true, cart: { ...cart, lines: many } };
+    await sendDialogInvoice(ctx({ dm_shop: true }, { slug: "propisi" }), -7, items);
+    expect(zernio[0]!.text.length).toBeLessThanOrEqual(2000);
+    expect(zernio[0]!.text).toContain("https://shop.test/s/propisi/order/77?t=tok-b-77");
+  });
+
+  it("заказ не создался (закончился товар) — понятная ошибка, ничего не отправлено", async () => {
+    igNoShop();
+    placed = { ok: false, reason: "out_of_stock" };
+    await expect(
+      sendDialogInvoice(ctx({ dm_shop: true }, { slug: "propisi" }), -7, items),
+    ).rejects.toMatchObject({ key: "err.invoice.outOfStock" });
+    expect(zernio).toHaveLength(0);
+  });
+
+  it("скидки покрыли всё — заказ выдаётся сразу, уже как счёт ссылкой", async () => {
+    igNoShop();
+    placed = { ok: true, order: { id: 78, display_no: 13 }, zeroTotal: true };
+    await sendDialogInvoice(ctx({ dm_shop: true }, { slug: "propisi" }), -7, items);
+    expect(confirmed).toEqual([78]);
+    expect(db.tables.app_settings!.map((r) => r.key)).toEqual(["invoice_link:78"]);
+  });
+
+  it("режимы: Telegram кнопкой, Instagram без оформления — ссылкой, без витрины — никак", async () => {
+    igNoShop();
+    const { invoiceMode } = await import("./invoice.server");
+    expect(await invoiceMode(ctx({}, { slug: "s" }), "telegram")).toBe("channel");
+    expect(await invoiceMode(ctx({ dm_shop: true }, { slug: "s" }), "instagram")).toBe("link");
+    expect(await invoiceMode(ctx({ dm_shop: true }), "instagram")).toBe("none");
+    webPay = false;
+    expect(await invoiceMode(ctx({ dm_shop: true }, { slug: "s" }), "instagram")).toBe("none");
+    direct = { enabled: true, features: { checkout: true } };
+    expect(await invoiceMode(ctx({ dm_shop: true }), "instagram")).toBe("channel");
   });
 });

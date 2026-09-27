@@ -401,6 +401,22 @@ describe("заказ с сайта: страница заказа", () => {
     expect(await webOrderView(ctx, 9)).toBeNull();
   });
 
+  it("счёт ссылкой из Instagram/WhatsApp открывается, как заказ с сайта", async () => {
+    for (const platform of ["instagram", "whatsapp"]) {
+      const { ctx, db } = withOrder({ platform });
+      db.tables.app_settings!.push({ bot_id: BOT, key: "invoice_link:9", value: "1" });
+      expect(await webOrderView(ctx, 9)).toMatchObject({ no: 109, status: "awaiting_payment" });
+    }
+  });
+
+  it("обычный заказ из Instagram/WhatsApp и из Telegram страницей на сайте не открывается", async () => {
+    for (const platform of ["instagram", "whatsapp", "telegram"]) {
+      const { ctx } = withOrder({ platform });
+      expect(await webOrderView(ctx, 9)).toBeNull();
+      expect(await webCardPaymentUrl(ctx, 9)).toBeNull();
+    }
+  });
+
   it("выдача на сайт не шлёт сообщений: материалы уже на странице", async () => {
     expect(await webMaterialSender({} as never, [])).toBe("sent");
   });

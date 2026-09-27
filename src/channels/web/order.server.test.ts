@@ -13,12 +13,23 @@ const verify = vi.fn();
 const autoOn = vi.fn();
 const notifyNew = vi.fn();
 const notifyFail = vi.fn();
+const coreDeliver = vi.fn();
+const zernioCopy = vi.fn();
+let zernioTarget: unknown = { conversationId: "c", accountId: "a", platform: "instagram" };
 
 vi.mock("@/core/orders/orders", async (orig) => ({
   ...(await orig<typeof import("@/core/orders/orders")>()),
   attachPaymentProof: (...a: unknown[]) => attach(...a),
   markProofVerified: (...a: unknown[]) => markVerified(...a),
   getOrder: async () => null,
+  deliverOrder: (...a: unknown[]) => coreDeliver(...a),
+}));
+vi.mock("@/channels/zernio/outbound.server", () => ({
+  zernioTargetForOrder: async () => zernioTarget,
+  zernioSenderFor:
+    () =>
+    (...a: unknown[]) =>
+      zernioCopy(...a),
 }));
 vi.mock("@/core/storefront/web-order", () => ({
   deliverWebOrder: (...a: unknown[]) => deliver(...a),
@@ -65,8 +76,19 @@ function setup() {
 const file = { bytes: new Uint8Array([1, 2, 3]), mime: "image/png" };
 
 beforeEach(() => {
-  for (const f of [attach, markVerified, deliver, verify, autoOn, notifyNew, notifyFail])
+  for (const f of [
+    attach,
+    markVerified,
+    deliver,
+    verify,
+    autoOn,
+    notifyNew,
+    notifyFail,
+    coreDeliver,
+    zernioCopy,
+  ])
     f.mockReset();
+  zernioCopy.mockResolvedValue("sent");
   attach.mockResolvedValue({ ok: true, order: { ...ORDER }, hash: "h" });
   deliver.mockResolvedValue({ sent: 1, failed: 0, pending: 0 });
   markVerified.mockResolvedValue(true);
@@ -90,6 +112,44 @@ describe("чек с сайта", () => {
     expect(await receiveWebProof(ctx, 9, file)).toEqual({ ok: true, result: "delivered" });
     expect(deliver).toHaveBeenCalledWith(ctx, 9);
     expect(notifyNew.mock.calls[0]![4]).toEqual({ autoDelivered: true });
+  });
+
+  it("счёт ссылкой из Instagram: чек совпал — выдача на страницу заказа, в диалог копия", async () => {
+    const { ctx } = setup();
+    autoOn.mockResolvedValue(true);
+    attach.mockResolvedValue({ ok: true, order: { ...ORDER, platform: "instagram" }, hash: "h" });
+    verify.mockResolvedValue({ result: { ok: true, matchedAmount: 2500 } });
+    coreDeliver.mockImplementation(async (_c, _id, send) => {
+      await send({ name_snapshot: "Прописи" }, [{ path: "x.pdf" }]);
+      return { sent: 1, failed: 0, pending: 0 };
+    });
+    expect(await receiveWebProof(ctx, 9, file)).toEqual({ ok: true, result: "delivered" });
+    expect(coreDeliver).toHaveBeenCalledWith(ctx, 9, expect.any(Function), {
+      lang: "ru",
+      allWhenAmbiguous: true,
+    });
+    expect(zernioCopy).toHaveBeenCalledTimes(1);
+    expect(deliver).not.toHaveBeenCalled();
+  });
+
+  it("счёт ссылкой: окно Instagram закрыто или диалога нет — заказ всё равно выдан на странице", async () => {
+    const { invoiceLinkSender } = await import("./order.server");
+    const { ctx } = setup();
+    zernioCopy.mockRejectedValue(new Error("24h window closed"));
+    const send = await invoiceLinkSender(ctx, {
+      user_key: "ig_1",
+      telegram_id: -7,
+      platform: "instagram",
+    });
+    expect(await send({ name_snapshot: "Прописи" } as never, [])).toBe("sent");
+    zernioTarget = null;
+    const noDialog = await invoiceLinkSender(ctx, {
+      user_key: "ig_1",
+      telegram_id: -7,
+      platform: "instagram",
+    });
+    expect(await noDialog({ name_snapshot: "Прописи" } as never, [])).toBe("sent");
+    zernioTarget = { conversationId: "c", accountId: "a", platform: "instagram" };
   });
 
   it("не чек — можно загрузить другой, заказ снова ждёт оплаты, продавца не дёргаем", async () => {

@@ -62,6 +62,8 @@ export type Msg = {
   /** «Счёт из диалога»: продавец собрал корзину покупателю (core/cart/seller-cart). */
   invoiceHeader: string;
   invoiceFooter: string;
+  /** Счёт ссылкой на страницу заказа на сайте (Instagram/WhatsApp без оформления в канале). */
+  invoicePayLink: (no: number | string, url: string) => string;
   clearBtn: string;
   cartCleared: string;
   promoCodeBtn: string;
@@ -308,6 +310,8 @@ const ru: Msg = {
   checkoutBtn: "✅ Оформить заказ",
   invoiceHeader: "🧾 <b>Счёт от продавца</b>\n\n",
   invoiceFooter: "\n\nНажмите «Оформить заказ» — дальше оплата как обычно.",
+  invoicePayLink: (no, url) =>
+    `\n\nЗаказ №${no}. Оплатить и загрузить чек можно на странице заказа: ${url}\nПосле оплаты материалы появятся там же.`,
   clearBtn: "🗑 Очистить",
   cartCleared: "Корзина очищена.",
   promoCodeBtn: "🎟 Ввести промокод",
@@ -536,6 +540,8 @@ const kk: Msg = {
   checkoutBtn: "✅ Тапсырыс беру",
   invoiceHeader: "🧾 <b>Сатушының шоты</b>\n\n",
   invoiceFooter: "\n\n«Тапсырыс беру» батырмасын басыңыз — әрі қарай төлем әдеттегідей.",
+  invoicePayLink: (no, url) =>
+    `\n\n№${no} тапсырыс. Төлеп, чекті тапсырыс бетінде жүктеуге болады: ${url}\nТөлемнен кейін материалдар сол жерде пайда болады.`,
   clearBtn: "🗑 Тазалау",
   promoCodeBtn: "🎟 Промокод енгізу",
   removePromoBtn: "❌ Промокодты алып тастау",
@@ -667,6 +673,8 @@ const en: Msg = {
   checkoutBtn: "✅ Checkout",
   invoiceHeader: "🧾 <b>Invoice from the seller</b>\n\n",
   invoiceFooter: "\n\nTap “Checkout” and pay as usual.",
+  invoicePayLink: (no, url) =>
+    `\n\nOrder #${no}. Pay and upload the receipt on the order page: ${url}\nYour materials will appear there after payment.`,
   clearBtn: "🗑 Clear",
   promoCodeBtn: "🎟 Enter promo code",
   removePromoBtn: "❌ Remove promo code",
@@ -807,6 +815,8 @@ const uz: Msg = {
   checkoutBtn: "✅ Buyurtma berish",
   invoiceHeader: "🧾 <b>Sotuvchidan hisob</b>\n\n",
   invoiceFooter: "\n\n«Buyurtma berish» tugmasini bosing — keyin toʻlov odatdagidek.",
+  invoicePayLink: (no, url) =>
+    `\n\nBuyurtma №${no}. Toʻlash va chekni buyurtma sahifasida yuklash mumkin: ${url}\nToʻlovdan soʻng materiallar oʻsha yerda paydo boʻladi.`,
   clearBtn: "🗑 Tozalash",
   promoCodeBtn: "🎟 Promokod kiritish",
   removePromoBtn: "❌ Promokodni olib tashlash",

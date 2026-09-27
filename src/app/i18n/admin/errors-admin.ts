@@ -57,6 +57,9 @@ export const ru = {
   "err.invoice.noShopInChannel":
     "В этом канале выключено оформление заказа — счёт покупатель не сможет оплатить.",
   "err.invoice.noBot": "У магазина не подключён Telegram-бот.",
+  "err.invoice.linkPhysical":
+    "Физические товары ссылкой на сайт не выставить: покупателю нужно выбрать дату и адрес. Включите оформление заказа в этом канале.",
+  "err.invoice.noPayment": "Не настроены способы оплаты магазина.",
   "err.ticket.badAssignee": "Такого сотрудника нет в команде магазина.",
   "err.review.notDelivered":
     "Ответ не доставлен: покупатель недоступен в своём канале (заблокировал бота или диалог закрыт).",
@@ -181,6 +184,9 @@ export const kk: SectionDict<typeof ru> = {
   "err.invoice.noShopInChannel":
     "Бұл арнада тапсырыс беру өшірулі — сатып алушы шотты төлей алмайды.",
   "err.invoice.noBot": "Дүкенге Telegram-бот қосылмаған.",
+  "err.invoice.linkPhysical":
+    "Физикалық тауарларды сайтқа сілтемемен шығаруға болмайды: сатып алушыға күн мен мекенжайды таңдау керек. Осы арнада тапсырыс рәсімдеуді қосыңыз.",
+  "err.invoice.noPayment": "Дүкеннің төлем тәсілдері бапталмаған.",
   "err.ticket.badAssignee": "Дүкен командасында мұндай қызметкер жоқ.",
   "err.review.notDelivered":
     "Жауап жеткізілмеді: сатып алушы өз арнасында қолжетімсіз (ботты бұғаттаған немесе диалог жабық).",
@@ -301,6 +307,9 @@ export const en: SectionDict<typeof ru> = {
   "err.invoice.noShopInChannel":
     "Checkout is off in this channel, so the customer could not pay the invoice.",
   "err.invoice.noBot": "The shop has no Telegram bot connected.",
+  "err.invoice.linkPhysical":
+    "Physical goods can't be invoiced by a website link: the customer has to pick a date and address. Turn on checkout in this channel.",
+  "err.invoice.noPayment": "The shop has no payment methods set up.",
   "err.ticket.badAssignee": "There is no such member in the shop team.",
   "err.review.notDelivered":
     "The reply was not delivered: the customer is unreachable in their channel (blocked the bot or the chat is closed).",
@@ -423,6 +432,9 @@ export const uz: SectionDict<typeof ru> = {
   "err.invoice.noShopInChannel":
     "Bu kanalda buyurtma berish oʻchirilgan — xaridor hisobni toʻlay olmaydi.",
   "err.invoice.noBot": "Doʻkonga Telegram-bot ulanmagan.",
+  "err.invoice.linkPhysical":
+    "Jismoniy tovarlarni saytga havola bilan chiqarib boʻlmaydi: xaridor sana va manzilni tanlashi kerak. Bu kanalda buyurtma berishni yoqing.",
+  "err.invoice.noPayment": "Doʻkonning toʻlov usullari sozlanmagan.",
   "err.ticket.badAssignee": "Doʻkon jamoasida bunday xodim yoʻq.",
   "err.review.notDelivered":
     "Javob yetkazilmadi: xaridor oʻz kanalida mavjud emas (botni bloklagan yoki suhbat yopilgan).",

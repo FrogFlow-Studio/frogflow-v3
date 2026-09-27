@@ -1698,7 +1698,25 @@ export const invoiceCartFn = createServerFn({ method: "GET" })
     return { count: count ?? 0 };
   });
 
-/** «Выставить счёт»: корзина покупателю и кнопка «Оформить заказ» в его канал. */
+/**
+ * Можно ли выставить счёт в каждом канале и как (app/admin/invoice.server):
+ * кнопкой в канале, ссылкой на страницу заказа на сайте или никак. Есть ли у
+ * магазина адрес витрины — для подсказки, как включить оплату на сайте.
+ */
+export const chatInvoiceModesFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({}).parse(d ?? {}))
+  .handler(async () => {
+    const ctx = await chatModule("manager");
+    const { invoiceMode } = await import("./invoice.server");
+    return {
+      telegram: await invoiceMode(ctx, "telegram"),
+      instagram: await invoiceMode(ctx, "instagram"),
+      whatsapp: await invoiceMode(ctx, "whatsapp"),
+      storefront: Boolean(ctx.tenant.settings.slug),
+    };
+  });
+
+/** «Выставить счёт»: корзина покупателю и кнопка «Оформить заказ» (или ссылка на оплату на сайте) в его канал. */
 export const chatInvoiceFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z
