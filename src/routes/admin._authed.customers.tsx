@@ -32,7 +32,9 @@ function CustomersPage() {
         title={t("customers.title")}
         subtitle={t("customers.shown", { n: rows.length })}
         actions={
-          shop.modules.excel_export && (
+          // Контакты выгружают только владелец и менеджер (сервер проверяет то же).
+          shop.modules.excel_export &&
+          shop.role !== "viewer" && (
             <a className="btn-secondary text-xs" href="/api/admin/export/customers">
               {t("common.exportExcel")}
             </a>

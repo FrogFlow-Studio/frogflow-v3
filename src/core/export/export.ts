@@ -2,6 +2,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
 import { ORDER_STATUS_RU as STATUS_RU } from "@/core/orders/pure";
 import { shopDateTime, toCsv, zonedDayToUtc } from "./csv";
+import { zipFiles } from "./zip";
 
 export type ExportRange = { from?: string | null; to?: string | null };
 
@@ -17,6 +18,8 @@ export async function ordersCsv(
       .select(
         "id, order_no, display_no, created_at, status, total, paid_amount, currency, discount_amount, gift_certificate_discount, points_used, promo_code, display_name, username, telegram_id, platform, contact, customer_email, country_name, admin_note, fulfillment_kind, fulfillment_type, fulfillment_at, fulfillment_address, fulfillment_note, delivery_zone_name, delivery_fee",
       )
+      // RLS и так отдаёт только свой магазин; фильтр — вторая стена.
+      .eq("bot_id", ctx.tenant.id)
       .order("created_at", { ascending: false })
       .range(from, to);
     if (range.from) q = q.gte("created_at", zonedDayToUtc(range.from, tz));
@@ -97,6 +100,7 @@ export async function customersCsv(ctx: TenantContext): Promise<{ csv: string; c
           .select(
             "user_key, platform, telegram_id, first_name, last_name, username, contact_phone, email, language_code, loyalty_points, created_at",
           )
+          .eq("bot_id", ctx.tenant.id)
           .order("created_at", { ascending: false })
           .range(from, to),
       "покупатели для выгрузки",
@@ -106,6 +110,8 @@ export async function customersCsv(ctx: TenantContext): Promise<{ csv: string; c
         ctx.db
           .from("orders")
           .select("telegram_id, total, paid_amount, status, fulfillment_kind, created_at")
+          .eq("bot_id", ctx.tenant.id)
+          .order("id")
           .range(from, to),
       "заказы для выгрузки покупателей",
     ),
@@ -172,12 +178,14 @@ export async function productsCsv(ctx: TenantContext): Promise<{ csv: string; co
           .select(
             "id, name, price, currency, category_ids, description, keywords, is_active, stock_quantity, fulfillment_kind, file_url, file_url_kz, sort_order",
           )
+          .eq("bot_id", ctx.tenant.id)
           .order("sort_order")
           .order("name")
+          .order("id")
           .range(from, to),
       "товары для выгрузки",
     ),
-    ctx.db.from("categories").select("id, name"),
+    ctx.db.from("categories").select("id, name").eq("bot_id", ctx.tenant.id),
   ]);
   const catName = new Map((categories ?? []).map((c) => [c.id, c.name]));
   const csv = toCsv(
@@ -217,3 +225,100 @@ export async function productsCsv(ctx: TenantContext): Promise<{ csv: string; co
   );
   return { csv, count: rows.length };
 }
+
+/** Сколько номеров заказов в одном IN: длина адреса запроса PostgREST ограничена. */
+const ITEMS_IDS_CHUNK = 200;
+
+/**
+ * Позиции заказов: что куплено, сколько и почём. У старых позиций v1 bot_id
+ * бывает пустым, поэтому магазин задают номера его заказов, а не bot_id.
+ */
+export async function orderItemsCsv(ctx: TenantContext): Promise<{ csv: string; count: number }> {
+  const orders = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("orders")
+        .select("id, order_no, display_no")
+        .eq("bot_id", ctx.tenant.id)
+        .order("id", { ascending: false })
+        .range(from, to),
+    "заказы для выгрузки позиций",
+  );
+  const number = new Map(orders.map((o) => [o.id, o.display_no ?? o.order_no ?? o.id]));
+  const ids = orders.map((o) => o.id);
+  const items: Array<{
+    order_id: number;
+    name_snapshot: string;
+    quantity: number;
+    price_snapshot: number;
+    product_id: string | null;
+    delivered_language: string | null;
+  }> = [];
+  for (let i = 0; i < ids.length; i += ITEMS_IDS_CHUNK) {
+    const chunk = ids.slice(i, i + ITEMS_IDS_CHUNK);
+    items.push(
+      ...(await pageAll(
+        (from, to) =>
+          ctx.db
+            .from("order_items")
+            .select(
+              "order_id, name_snapshot, quantity, price_snapshot, product_id, delivered_language",
+            )
+            .in("order_id", chunk)
+            .order("order_id", { ascending: false })
+            .order("id")
+            .range(from, to),
+        "позиции заказов для выгрузки",
+      )),
+    );
+  }
+  const csv = toCsv(
+    ["Номер заказа", "Товар", "Количество", "Цена", "Сумма", "id товара", "Язык выдачи"],
+    items.map((it) => [
+      number.get(it.order_id) ?? it.order_id,
+      it.name_snapshot,
+      it.quantity,
+      it.price_snapshot,
+      Number(it.price_snapshot) * Number(it.quantity),
+      it.product_id ?? "",
+      it.delivered_language ?? "",
+    ]),
+  );
+  return { csv, count: items.length };
+}
+
+/**
+ * Все данные магазина одним архивом: заказы, их позиции, покупатели, каталог.
+ * Каждое чтение постраничное и только своего магазина.
+ */
+export async function allDataZip(
+  ctx: TenantContext,
+  now = new Date(),
+): Promise<{ zip: Buffer; counts: Record<string, number> }> {
+  const [orders, items, customers, products] = await Promise.all([
+    ordersCsv(ctx),
+    orderItemsCsv(ctx),
+    customersCsv(ctx),
+    productsCsv(ctx),
+  ]);
+  const files = {
+    "orders.csv": orders,
+    "order_items.csv": items,
+    "customers.csv": customers,
+    "products.csv": products,
+  };
+  return {
+    zip: zipFiles(
+      Object.entries(files).map(([name, f]) => ({ name, data: f.csv })),
+      now,
+    ),
+    counts: Object.fromEntries(Object.entries(files).map(([name, f]) => [name, f.count])),
+  };
+}
+
+/**
+ * Кто выгружает контакты покупателей (полный архив, покупатели, заказы с
+ * именем и телефоном): роль с доступом к покупателям — владелец или
+ * менеджер, а не «только просмотр». Каталог контактов не содержит.
+ */
+export const CONTACTS_MIN_ROLE = "manager" as const;

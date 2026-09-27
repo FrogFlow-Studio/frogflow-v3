@@ -1,0 +1,83 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { roleAllows, type AdminRole } from "@/core/auth/roles";
+import { UserError } from "@/core/i18n/user-error";
+
+/**
+ * Маршрут /api/admin/export/<вид>: всё с контактами покупателей (полный
+ * архив, покупатели, заказы) отдаётся только владельцу и менеджеру. Гварды
+ * подменены — роль и модуль задаются тестом, проверка роли настоящая.
+ */
+let role: AdminRole | null = "owner";
+let moduleOn = true;
+const CTX = { tenant: { id: "shop-1" } };
+
+vi.mock("@/app/auth/guards.server", () => ({
+  requireAdmin: async () => {
+    if (!role) throw new Error("Unauthorized");
+    return CTX;
+  },
+  requireAdminModule: async (_key: string, min?: AdminRole) => {
+    if (!role) throw new Error("Unauthorized");
+    if (min && !roleAllows(role, min)) throw new UserError("err.auth.viewOnly", "нет прав");
+    if (!moduleOn) throw new UserError("err.auth.moduleOff", "модуль");
+    return CTX;
+  },
+}));
+vi.mock("@/core/export/export", async (orig) => ({
+  ...(await orig<typeof import("@/core/export/export")>()),
+  allDataZip: async () => ({ zip: Buffer.from("PK"), counts: {} }),
+  customersCsv: async () => ({ csv: "c", count: 1 }),
+  ordersCsv: async () => ({ csv: "o", count: 1 }),
+  productsCsv: async () => ({ csv: "p", count: 1 }),
+}));
+
+const { Route } = await import("@/routes/api/admin/export.$kind");
+type Get = (a: { request: Request; params: { kind: string } }) => Promise<Response>;
+const GET = (Route.options as unknown as { server: { handlers: { GET: Get } } }).server.handlers
+  .GET;
+const get = (kind: string) =>
+  GET({ request: new Request(`http://x/api/admin/export/${kind}`), params: { kind } });
+
+beforeEach(() => {
+  role = "owner";
+  moduleOn = true;
+});
+
+describe("выгрузки с контактами покупателей: кто скачивает", () => {
+  it("владелец и менеджер получают ZIP", async () => {
+    for (const r of ["owner", "manager"] as const) {
+      role = r;
+      const res = await get("all");
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("application/zip");
+      expect(res.headers.get("cache-control")).toBe("no-store");
+    }
+  });
+
+  it("роль «просмотр» получает 403, без сессии — 401, без модуля — 403", async () => {
+    role = "viewer";
+    expect((await get("all")).status).toBe(403);
+    role = null;
+    expect((await get("all")).status).toBe(401);
+    role = "owner";
+    moduleOn = false;
+    expect((await get("all")).status).toBe(403);
+  });
+
+  it("контакты покупателей выгружают только владелец и менеджер", async () => {
+    for (const kind of ["customers", "orders"]) {
+      role = "viewer";
+      expect((await get(kind)).status).toBe(403);
+      for (const r of ["owner", "manager"] as const) {
+        role = r;
+        expect((await get(kind)).status).toBe(200);
+      }
+    }
+  });
+
+  it("каталог без контактов выгружает и роль «просмотр», даже без модуля", async () => {
+    role = "viewer";
+    moduleOn = false;
+    expect((await get("products")).status).toBe(200);
+  });
+});

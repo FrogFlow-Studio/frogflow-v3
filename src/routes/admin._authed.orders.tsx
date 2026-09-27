@@ -105,6 +105,16 @@ function ExportButton() {
             {t("common.downloadCsv")}
           </a>
           <p className="text-xs text-muted">{t("orders.export.hint")}</p>
+          <div className="space-y-1 border-t border-line pt-2">
+            <a
+              className="btn-secondary block text-center text-xs"
+              href="/api/admin/export/all"
+              onClick={() => setOpen(false)}
+            >
+              {t("orders.export.all")}
+            </a>
+            <p className="text-xs text-muted">{t("orders.export.allHint")}</p>
+          </div>
         </div>
       )}
     </div>
@@ -147,7 +157,8 @@ function OrdersPage() {
                 {t("physical.newOrder")}
               </Link>
             )}
-            {shop.modules.excel_export && <ExportButton />}
+            {/* В заказах имена и телефоны: роль «просмотр» их не выгружает (сервер тоже). */}
+            {shop.modules.excel_export && shop.role !== "viewer" && <ExportButton />}
           </div>
         }
       />

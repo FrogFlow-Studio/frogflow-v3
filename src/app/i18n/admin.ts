@@ -157,6 +157,8 @@ const baseRu = {
   "orders.export.from": "С даты",
   "orders.export.to": "По дату (включительно)",
   "orders.export.hint": "Без дат — все заказы. Файл открывается в Excel и Google Таблицах.",
+  "orders.export.all": "Все данные (ZIP)",
+  "orders.export.allHint": "Заказы, их позиции, покупатели и каталог одним архивом.",
   "orders.status.awaiting_payment": "ждёт оплаты",
   "orders.status.awaiting_confirmation": "чек на проверке",
   "orders.status.delivering": "выдаётся",
@@ -436,6 +438,9 @@ const baseKk: Dict = {
   "orders.export.from": "Басталу күні",
   "orders.export.to": "Аяқталу күні (қоса)",
   "orders.export.hint": "Күнсіз — барлық тапсырыстар. Файл Excel және Google Кестелерде ашылады.",
+  "orders.export.all": "Барлық деректер (ZIP)",
+  "orders.export.allHint":
+    "Тапсырыстар, олардың позициялары, сатып алушылар және каталог бір архивте.",
   "orders.status.awaiting_payment": "төлем күтуде",
   "orders.status.awaiting_confirmation": "чек тексеруде",
   "orders.status.delivering": "беріліп жатыр",
@@ -679,6 +684,8 @@ const baseEn: Dict = {
   "orders.export.from": "From date",
   "orders.export.to": "To date (inclusive)",
   "orders.export.hint": "Without dates — all orders. The file opens in Excel and Google Sheets.",
+  "orders.export.all": "All data (ZIP)",
+  "orders.export.allHint": "Orders, their items, customers and catalog in one archive.",
   "orders.status.awaiting_payment": "awaiting payment",
   "orders.status.awaiting_confirmation": "receipt review",
   "orders.status.delivering": "delivering",
@@ -926,6 +933,9 @@ const baseUz: Dict = {
   "orders.export.to": "Sanagacha (shu jumladan)",
   "orders.export.hint":
     "Sanalarsiz — barcha buyurtmalar. Fayl Excel va Google Jadvallarda ochiladi.",
+  "orders.export.all": "Barcha ma’lumotlar (ZIP)",
+  "orders.export.allHint":
+    "Buyurtmalar, ularning pozitsiyalari, xaridorlar va katalog bitta arxivda.",
   "orders.status.awaiting_payment": "to‘lov kutilmoqda",
   "orders.status.awaiting_confirmation": "chek tekshiruvda",
   "orders.status.delivering": "berilmoqda",

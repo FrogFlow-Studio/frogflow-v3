@@ -6,11 +6,14 @@
 export const BOM = "﻿";
 export const SEP = ";";
 
-/** Экранирование по RFC 4180 плюс защита: Excel исполняет значение с =, +, -, @. */
+/**
+ * Экранирование по RFC 4180 плюс защита: Excel исполняет значение с =, +, -, @
+ * (а табуляция и возврат каретки в начале перед ними — тоже, по OWASP).
+ */
 export function cell(value: unknown): string {
   if (value === null || value === undefined) return "";
   let s = String(value);
-  if (/^[=+\-@]/.test(s)) s = `'${s}`;
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   if (s.includes(SEP) || s.includes('"') || s.includes("\n") || s.includes("\r"))
     return `"${s.replace(/"/g, '""')}"`;
   return s;

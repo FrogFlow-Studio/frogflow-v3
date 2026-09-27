@@ -6,19 +6,37 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
     handlers: {
       GET: async ({ request, params }) => {
         const { requireAdmin, requireAdminModule } = await import("@/app/auth/guards.server");
+        const { CONTACTS_MIN_ROLE } = await import("@/core/export/export");
         let ctx;
         try {
           // Каталог выгружает любой продавец — это его данные для импорта обратно; заказы и покупатели — модуль.
+          // Всё с контактами покупателей (архив, покупатели, заказы) — ещё и роль не ниже менеджера.
           ctx =
             params.kind === "products"
               ? await requireAdmin()
-              : await requireAdminModule("excel_export");
-        } catch {
-          return new Response("unauthorized", { status: 401 });
+              : await requireAdminModule("excel_export", CONTACTS_MIN_ROLE);
+        } catch (e) {
+          const { isUserError } = await import("@/core/i18n/user-error");
+          // Вошёл, но роли или модуля не хватает — 403; нет сессии — 401.
+          return isUserError(e)
+            ? new Response("forbidden", { status: 403 })
+            : new Response("unauthorized", { status: 401 });
         }
         const url = new URL(request.url);
         const day = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
-        const { ordersCsv, customersCsv, productsCsv } = await import("@/core/export/export");
+        const { ordersCsv, customersCsv, productsCsv, allDataZip } =
+          await import("@/core/export/export");
+        if (params.kind === "all") {
+          const { zip } = await allDataZip(ctx);
+          const today = new Date().toISOString().slice(0, 10);
+          return new Response(new Uint8Array(zip), {
+            headers: {
+              "content-type": "application/zip",
+              "content-disposition": `attachment; filename="shop-data-${today}.zip"`,
+              "cache-control": "no-store",
+            },
+          });
+        }
         let result: { csv: string; count: number };
         let name: string;
         if (params.kind === "orders") {
