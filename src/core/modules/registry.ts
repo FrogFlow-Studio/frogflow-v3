@@ -287,7 +287,7 @@ export const MODULES = {
     group: "Удержание",
     price: 24000,
     status: "available",
-    note: "core/winback: app_settings.winback, прогресс серии — bot_users.state.winback; крон fulfillment-reminder раз в час, днём по поясу магазина, до 50 сообщений за проход. Брошенная корзина — отдельный модуль cart_reminder.",
+    note: "core/winback: app_settings.winback, прогресс серии — bot_users.state.winback; крон fulfillment-reminder раз в час, днём по поясу магазина, до 50 сообщений за проход. Там же «похожие материалы» (core/similar): через N дней после покупки до 3 товаров из тех же категорий, раз на заказ по курсору app_settings similar_materials:cursor. Брошенная корзина — отдельный модуль cart_reminder.",
   },
   funnel: {
     title: "Автоворонка",

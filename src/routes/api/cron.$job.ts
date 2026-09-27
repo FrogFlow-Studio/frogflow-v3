@@ -97,11 +97,12 @@ export const Route = createFileRoute("/api/cron/$job")({
                   orderNotify: await jobs.flushOrderNotify(t),
                 }),
                 "cart-reminder": jobs.runCartReminders,
-                // Раз в час: напоминание о дате получения, возвратные продажи, автоворонка,
+                // Раз в час: напоминание о дате получения, возвратные продажи, «похожие материалы», автоворонка,
                 // новые уроки курсов (отдельный крон не заводим: функция на Vercel одна).
                 "fulfillment-reminder": async (t: (typeof tenants)[number]) => ({
                   fulfillment: await jobs.runFulfillmentReminders(t),
                   winback: await jobs.runWinbackFor(t),
+                  similar: await jobs.runSimilarFor(t),
                   funnel: await jobs.runFunnelFor(t),
                   courses: await jobs.runCourseLessons(t),
                   // Неоплаченные сутки заказы с сайта — отмена и возврат остатка.

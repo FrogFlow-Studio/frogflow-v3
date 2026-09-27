@@ -1,4 +1,5 @@
 import { saveWinbackFn, winbackFn } from "@/app/admin/winback.functions";
+import { SimilarCard } from "@/app/admin/similar-card";
 import { funnelFn, saveFunnelFn } from "@/app/admin/funnel.functions";
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -215,6 +216,7 @@ function BroadcastsPage() {
             <CartReminderCard hours={data.cartReminderHours} />
           )}
           {shop.modules.winback && <WinbackCard />}
+          {shop.modules.winback && <SimilarCard t={t} />}
           {shop.modules.funnel && <FunnelCard />}
           <History
             broadcasts={data.broadcasts.filter((b) => (both ? b.channel === channel : true))}

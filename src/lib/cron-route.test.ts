@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * Маршрут /api/cron/<job> сам отбирает клиентов v2 — одной строкой фильтра
  * по settings.served_by. Всё, что крон делает дальше (рассылки, возврат
- * клиентов, автоворонка, уроки курсов, напоминания, вебхуки, каталоги из
+ * клиентов, «похожие материалы», автоворонка, уроки курсов, напоминания, вебхуки, каталоги из
  * Google Таблиц), получает уже отобранный список. Сломайся фильтр — возврат клиентов написал бы
  * покупателям магазинов, которые живут на v1. Здесь каждая задача каждого
  * крона подменена записью «кого обошли», и клиентов v1 в ней быть не должно.
@@ -70,6 +70,7 @@ vi.mock("@/channels/telegram/jobs", () => ({
   runCartReminders: hit("cartReminder"),
   runFulfillmentReminders: hit("fulfillment"),
   runWinbackFor: hit("winback"),
+  runSimilarFor: hit("similar"),
   runFunnelFor: hit("funnel"),
   runCourseLessons: hit("courses"),
 }));
@@ -124,6 +125,7 @@ const JOBS: Record<string, string[]> = {
   "fulfillment-reminder": [
     "fulfillment",
     "winback",
+    "similar",
     "funnel",
     "courses",
     "webOrders",

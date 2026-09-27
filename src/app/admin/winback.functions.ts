@@ -44,3 +44,27 @@ export const saveWinbackFn = createServerFn({ method: "POST" })
     await saveWinback(ctx, parseWinback(JSON.stringify({ ...data, promo })));
     return { ok: true };
   });
+
+/** «Похожие материалы» через N дней после покупки (тот же модуль winback). */
+export const similarFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await moduleAdmin();
+  const { loadSimilar } = await import("@/core/similar/similar");
+  return loadSimilar(ctx);
+});
+
+export const saveSimilarFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        enabled: z.boolean(),
+        days: z.number().int().min(1).max(60),
+        text: z.string().trim().min(1).max(1000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { saveSimilar } = await import("@/core/similar/similar");
+    await saveSimilar(ctx, data);
+    return { ok: true };
+  });

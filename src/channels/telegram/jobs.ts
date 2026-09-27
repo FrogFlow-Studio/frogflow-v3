@@ -217,6 +217,31 @@ export async function runWinbackFor(tenant: Tenant) {
   });
 }
 
+/**
+ * «Похожие материалы» (модуль winback): через N дней после покупки — до трёх
+ * товаров из тех же категорий кнопками. Только Telegram, через бота магазина.
+ */
+export async function runSimilarFor(tenant: Tenant) {
+  if (!tenant.modules.winback) return { skipped: "module off" };
+  if (!tenant.telegramTokenEnc) return { skipped: "no telegram" };
+  const ctx = tenantContext(tenant);
+  const { runSimilar } = await import("@/core/similar/similar");
+  const tg = api(ctx);
+  return runSimilar(ctx, async (to, text, products) => {
+    const r = await tg.call("sendMessage", {
+      chat_id: to.telegramId,
+      text: escapeHtml(text),
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: products.map((p) => [
+          { text: `📖 ${buttonLabel(p.name)}`, callback_data: `prod:${p.id}` },
+        ]),
+      },
+    });
+    return r.ok;
+  });
+}
+
 /** Автоворонка (модуль funnel): те же каналы, что у возвратных продаж. */
 export async function runFunnelFor(tenant: Tenant) {
   if (!tenant.modules.funnel) return { skipped: "module off" };

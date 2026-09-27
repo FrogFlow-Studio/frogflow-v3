@@ -27,6 +27,7 @@ import * as pipeline from "./admin/pipeline";
 import * as physical from "./admin/physical";
 import * as plan from "./admin/plan";
 import * as sheet from "./admin/sheet";
+import * as similar from "./admin/similar";
 import * as errorsCore from "./admin/errors-core";
 import * as errorsVip from "./admin/errors-vip";
 import * as errorsAdmin from "./admin/errors-admin";
@@ -318,6 +319,7 @@ const ru = {
   ...physical.ru,
   ...plan.ru,
   ...sheet.ru,
+  ...similar.ru,
   ...errorsCore.ru,
   ...errorsVip.ru,
   ...errorsAdmin.ru,
@@ -1114,6 +1116,7 @@ const kk: Dict = {
   ...physical.kk,
   ...plan.kk,
   ...sheet.kk,
+  ...similar.kk,
   ...errorsCore.kk,
   ...errorsVip.kk,
   ...errorsAdmin.kk,
@@ -1142,6 +1145,7 @@ const en: Dict = {
   ...physical.en,
   ...plan.en,
   ...sheet.en,
+  ...similar.en,
   ...errorsCore.en,
   ...errorsVip.en,
   ...errorsAdmin.en,
@@ -1170,6 +1174,7 @@ const uz: Dict = {
   ...physical.uz,
   ...plan.uz,
   ...sheet.uz,
+  ...similar.uz,
   ...errorsCore.uz,
   ...errorsVip.uz,
   ...errorsAdmin.uz,
