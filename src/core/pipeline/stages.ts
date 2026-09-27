@@ -34,6 +34,7 @@ const ORDER_STAGE: Record<string, PipelineStage> = {
   delivered: "won",
   rejected: "lost",
   cancelled: "lost",
+  refunded: "lost",
 };
 
 /** Этап заказа по его статусу; незнакомый статус — «В работе», а не пропажа с доски. */

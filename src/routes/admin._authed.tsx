@@ -51,6 +51,7 @@ function Layout() {
           <NavLink to="/admin/categories">{t("nav.categories")}</NavLink>
           <NavLink to="/admin/customers">{t("nav.customers")}</NavLink>
           {shop.modules.review_request && <NavLink to="/admin/reviews">{t("nav.reviews")}</NavLink>}
+          {shop.modules.crm_pipeline && <NavLink to="/admin/pipeline">{t("nav.pipeline")}</NavLink>}
           {shop.modules.manager_chat && (
             <NavLink to="/admin/chat">
               <span className="flex items-center justify-between gap-2">

@@ -34,6 +34,7 @@ import { Route as AdminAuthedInstagramRouteImport } from './routes/admin._authed
 import { Route as AdminAuthedLogRouteImport } from './routes/admin._authed.log'
 import { Route as AdminAuthedModulesRouteImport } from './routes/admin._authed.modules'
 import { Route as AdminAuthedOrdersRouteImport } from './routes/admin._authed.orders'
+import { Route as AdminAuthedPipelineRouteImport } from './routes/admin._authed.pipeline'
 import { Route as AdminAuthedPostsRouteImport } from './routes/admin._authed.posts'
 import { Route as AdminAuthedProductsRouteImport } from './routes/admin._authed.products'
 import { Route as AdminAuthedQuizRouteImport } from './routes/admin._authed.quiz'
@@ -192,6 +193,11 @@ const AdminAuthedModulesRoute = AdminAuthedModulesRouteImport.update({
 const AdminAuthedOrdersRoute = AdminAuthedOrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedPipelineRoute = AdminAuthedPipelineRouteImport.update({
+  id: '/pipeline',
+  path: '/pipeline',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedPostsRoute = AdminAuthedPostsRouteImport.update({
@@ -400,6 +406,7 @@ export interface FileRoutesByFullPath {
   '/admin/log': typeof AdminAuthedLogRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
   '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
+  '/admin/pipeline': typeof AdminAuthedPipelineRoute
   '/admin/posts': typeof AdminAuthedPostsRoute
   '/admin/products': typeof AdminAuthedProductsRoute
   '/admin/quiz': typeof AdminAuthedQuizRoute
@@ -460,6 +467,7 @@ export interface FileRoutesByTo {
   '/admin/log': typeof AdminAuthedLogRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
   '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
+  '/admin/pipeline': typeof AdminAuthedPipelineRoute
   '/admin/posts': typeof AdminAuthedPostsRoute
   '/admin/products': typeof AdminAuthedProductsRoute
   '/admin/quiz': typeof AdminAuthedQuizRoute
@@ -522,6 +530,7 @@ export interface FileRoutesById {
   '/admin/_authed/log': typeof AdminAuthedLogRoute
   '/admin/_authed/modules': typeof AdminAuthedModulesRoute
   '/admin/_authed/orders': typeof AdminAuthedOrdersRouteWithChildren
+  '/admin/_authed/pipeline': typeof AdminAuthedPipelineRoute
   '/admin/_authed/posts': typeof AdminAuthedPostsRoute
   '/admin/_authed/products': typeof AdminAuthedProductsRoute
   '/admin/_authed/quiz': typeof AdminAuthedQuizRoute
@@ -585,6 +594,7 @@ export interface FileRouteTypes {
     | '/admin/log'
     | '/admin/modules'
     | '/admin/orders'
+    | '/admin/pipeline'
     | '/admin/posts'
     | '/admin/products'
     | '/admin/quiz'
@@ -645,6 +655,7 @@ export interface FileRouteTypes {
     | '/admin/log'
     | '/admin/modules'
     | '/admin/orders'
+    | '/admin/pipeline'
     | '/admin/posts'
     | '/admin/products'
     | '/admin/quiz'
@@ -706,6 +717,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/log'
     | '/admin/_authed/modules'
     | '/admin/_authed/orders'
+    | '/admin/_authed/pipeline'
     | '/admin/_authed/posts'
     | '/admin/_authed/products'
     | '/admin/_authed/quiz'
@@ -941,6 +953,13 @@ declare module '@tanstack/react-router' {
       path: '/orders'
       fullPath: '/admin/orders'
       preLoaderRoute: typeof AdminAuthedOrdersRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/pipeline': {
+      id: '/admin/_authed/pipeline'
+      path: '/pipeline'
+      fullPath: '/admin/pipeline'
+      preLoaderRoute: typeof AdminAuthedPipelineRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/posts': {
@@ -1223,6 +1242,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedLogRoute: typeof AdminAuthedLogRoute
   AdminAuthedModulesRoute: typeof AdminAuthedModulesRoute
   AdminAuthedOrdersRoute: typeof AdminAuthedOrdersRouteWithChildren
+  AdminAuthedPipelineRoute: typeof AdminAuthedPipelineRoute
   AdminAuthedPostsRoute: typeof AdminAuthedPostsRoute
   AdminAuthedProductsRoute: typeof AdminAuthedProductsRoute
   AdminAuthedQuizRoute: typeof AdminAuthedQuizRoute
@@ -1246,6 +1266,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedLogRoute: AdminAuthedLogRoute,
   AdminAuthedModulesRoute: AdminAuthedModulesRoute,
   AdminAuthedOrdersRoute: AdminAuthedOrdersRouteWithChildren,
+  AdminAuthedPipelineRoute: AdminAuthedPipelineRoute,
   AdminAuthedPostsRoute: AdminAuthedPostsRoute,
   AdminAuthedProductsRoute: AdminAuthedProductsRoute,
   AdminAuthedQuizRoute: AdminAuthedQuizRoute,

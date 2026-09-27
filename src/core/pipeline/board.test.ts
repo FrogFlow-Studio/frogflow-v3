@@ -94,6 +94,21 @@ describe("доска воронки", () => {
     expect(ids(board, "lost")).toEqual(["order:6"]);
   });
 
+  it("открытых заказов больше потолка — на доске самые новые", async () => {
+    const { db, ctx } = setup();
+    db.tables.orders = Array.from({ length: 510 }, (_, i) =>
+      order(
+        1000 + i,
+        "awaiting_payment",
+        new Date(NOW.getTime() - (510 - i) * 60_000).toISOString(),
+      ),
+    );
+    const cards = ids(await pipelineBoard(ctx, NOW), "awaiting_payment");
+    expect(cards).toHaveLength(500);
+    expect(cards[0]).toBe("order:1509");
+    expect(cards).not.toContain("order:1000");
+  });
+
   it("без модуля доски нет", async () => {
     const { ctx } = setup();
     (ctx.tenant.modules as Record<string, boolean>).crm_pipeline = false;

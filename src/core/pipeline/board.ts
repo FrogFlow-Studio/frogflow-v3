@@ -68,14 +68,14 @@ export async function pipelineBoard(ctx: TenantContext, now = new Date()): Promi
       .from("orders")
       .select(ORDER_COLS)
       .not("status", "in", closedList)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(ORDER_LIMIT),
     ctx.db
       .from("orders")
       .select(ORDER_COLS)
       .in("status", CLOSED_ORDER_STATUSES)
       .gte("created_at", since)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(ORDER_LIMIT),
     listLeads(ctx),
   ]);

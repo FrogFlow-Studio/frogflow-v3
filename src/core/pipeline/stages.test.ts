@@ -28,6 +28,7 @@ describe("этапы воронки", () => {
     expect(orderStage("delivered")).toBe("won");
     expect(orderStage("rejected")).toBe("lost");
     expect(orderStage("cancelled")).toBe("lost");
+    expect(orderStage("refunded")).toBe("lost");
     // Незнакомый статус не теряет заказ с доски — он в работе.
     expect(orderStage("something_new")).toBe("in_progress");
   });
