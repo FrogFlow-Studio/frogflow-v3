@@ -149,6 +149,9 @@ const STORY_URL_PATHS = [
   ["story", "url"],
   ["story", "mediaUrl"],
 ];
+/** Ссылка на публикацию Instagram — рилс, пост или сторис, а не файл покупателя. */
+const PUBLICATION_URL = /instagram\.com\/(?:reels?|p|stories)\//i;
+const SHORTCODE = /instagram\.com\/(?:reels?|p)\/([\w-]+)/i;
 const STORY_ATTACHMENT_TYPES = new Set([
   "story",
   "story_mention",
@@ -285,6 +288,29 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
     storyMediaUrl ??= pick(src, STORY_URL_PATHS);
   }
   storyMediaUrl ??= attachments.find((a) => STORY_ATTACHMENT_TYPES.has(a.type))?.url ?? null;
+  // Ответ на рилс приходит вложением video со ссылкой на рилс (v1 9c92003):
+  // { type: "video", url: ".../reel/<шорткод>/", payload: { reel_video_id } }.
+  // Идентификатор — шорткод (его кладёт в привязку панель), reel_video_id —
+  // запасной. Фото и видео покупателя публикацией не считаются (v1 0f974b6).
+  if (!storyId || !storyMediaUrl) {
+    for (const a of rawAttachments) {
+      const type = str(a?.type).toLowerCase();
+      const p = (a?.payload && typeof a.payload === "object" ? a.payload : {}) as Record<
+        string,
+        unknown
+      >;
+      const url = str(a?.url) || str(p.url);
+      const published = PUBLICATION_URL.test(url);
+      const reelId =
+        str(p.reel_video_id) || str(p.reelVideoId) || str(p.reel_id) || str(p.story_id);
+      if (!published && !reelId) continue;
+      if (type && !["video", "image", "reel", "share", "ig_reel"].includes(type) && !published)
+        continue;
+      storyId ??= url.match(SHORTCODE)?.[1] ?? (reelId || null);
+      if (published) storyMediaUrl ??= url;
+      if (storyId && storyMediaUrl) break;
+    }
+  }
 
   return {
     conversationId: message.conversationId || conversation.id || null,

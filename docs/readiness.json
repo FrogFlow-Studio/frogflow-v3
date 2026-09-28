@@ -52,7 +52,8 @@
     "fix(consultant): prevent bot from writing first or answering historical messages on activation/unpause": "src/channels/zernio/retry.test.ts › событие старше суток закрывается без ответа — на вчерашнее не пишем",
     "fix(consultant): ensure reset clears manager tasks and add task reset buttons in admin": "drop: задачи менеджера консультанта BOVI; в v2 сброс — resumeConsultant (пауза и история)",
     "fix(comment-dm): резервный крон повторно слал сообщение тем, кто уже оплатил": "src/channels/zernio/comment-dm-fallback.test.ts › отказ Meta «уже отвечали» — без эскалации в открытый диалог",
-    "fix(consultant): вчерашний менеджер держал бота в паузе бесконечно; «вернуть бота» тут же отменялось": "src/channels/zernio/manager-guard.test.ts › «вернуть бота»: реплика менеджера до возврата паузу не ставит, после — ставит"
+    "fix(consultant): вчерашний менеджер держал бота в паузе бесконечно; «вернуть бота» тут же отменялось": "src/channels/zernio/manager-guard.test.ts › «вернуть бота»: реплика менеджера до возврата паузу не ставит, после — ставит",
+    "fix(zernio): ответ на рилс приходит вложением video, его никто не видел": "src/channels/zernio/story-reel-shapes.test.ts › читается из вложения: reel_video_id и ссылка на рилс"
   },
   "src/lib/comment-dm-fallback.test.ts": {
     "пустой список ключевых слов — совпадает любой комментарий": "src/core/instagram/comment-rules.test.ts › пустой список ключевых слов — совпадает любой комментарий",
