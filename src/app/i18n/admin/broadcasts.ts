@@ -47,6 +47,11 @@ export const ru = {
   "broadcasts.compose.botOff":
     "Telegram-бот не подключён — рассылка встанет в очередь и уйдёт после подключения.",
   "broadcasts.compose.text": "Текст сообщения",
+  "broadcasts.ab.toggle": "A/B-тест: второй текст половине аудитории",
+  "broadcasts.ab.textB": "Текст варианта B",
+  "broadcasts.ab.hint":
+    "Аудитория делится пополам случайно; вариант A уходит в срок, B — сразу за ним. В истории у каждого варианта видна доля нажатий на кнопки.",
+  "broadcasts.ab.badge": "A/B: вариант {v}",
   "broadcasts.compose.textHint":
     '{n} / 4000. Можно HTML: <b>жирный</b>, <i>курсив</i>, <a href="…">ссылка</a>.',
   "broadcasts.compose.textPlaceholder": "🎉 Новинка недели: …",
@@ -207,6 +212,11 @@ export const kk: SectionDict<typeof ru> = {
   "broadcasts.compose.botOff":
     "Telegram-бот қосылмаған — хабарлама кезекке тұрып, бот қосылған соң жіберіледі.",
   "broadcasts.compose.text": "Хабарлама мәтіні",
+  "broadcasts.ab.toggle": "A/B-тест: екінші мәтін аудиторияның жартысына",
+  "broadcasts.ab.textB": "B нұсқасының мәтіні",
+  "broadcasts.ab.hint":
+    "Аудитория кездейсоқ екіге бөлінеді; A нұсқасы уақытында, B — одан кейін бірден жіберіледі. Тарихта әр нұсқаның батырмаларды басу үлесі көрінеді.",
+  "broadcasts.ab.badge": "A/B: {v} нұсқасы",
   "broadcasts.compose.textHint":
     '{n} / 4000. HTML қолдануға болады: <b>қалың</b>, <i>көлбеу</i>, <a href="…">сілтеме</a>.',
   "broadcasts.compose.textPlaceholder": "🎉 Апта жаңалығы: …",
@@ -364,6 +374,11 @@ export const en: SectionDict<typeof ru> = {
   "broadcasts.compose.botOff":
     "Telegram bot is not connected — the broadcast will be queued and sent once it is.",
   "broadcasts.compose.text": "Message text",
+  "broadcasts.ab.toggle": "A/B test: a second text for half of the audience",
+  "broadcasts.ab.textB": "Variant B text",
+  "broadcasts.ab.hint":
+    "The audience is split in half at random; variant A goes out on time, B right after it. The history shows each variant’s button click rate.",
+  "broadcasts.ab.badge": "A/B: variant {v}",
   "broadcasts.compose.textHint":
     '{n} / 4000. HTML allowed: <b>bold</b>, <i>italic</i>, <a href="…">link</a>.',
   "broadcasts.compose.textPlaceholder": "🎉 New this week: …",
@@ -521,6 +536,11 @@ export const uz: SectionDict<typeof ru> = {
   "broadcasts.compose.botOff":
     "Telegram-bot ulanmagan — xabarnoma navbatga qo‘yiladi va bot ulangach yuboriladi.",
   "broadcasts.compose.text": "Xabar matni",
+  "broadcasts.ab.toggle": "A/B test: auditoriyaning yarmiga ikkinchi matn",
+  "broadcasts.ab.textB": "B variant matni",
+  "broadcasts.ab.hint":
+    "Auditoriya tasodifan teng boʻlinadi; A varianti oʻz vaqtida, B — undan keyin darhol yuboriladi. Tarixda har bir variant tugmalari bosilish ulushi koʻrinadi.",
+  "broadcasts.ab.badge": "A/B: {v} varianti",
   "broadcasts.compose.textHint":
     '{n} / 4000. HTML mumkin: <b>qalin</b>, <i>kursiv</i>, <a href="…">havola</a>.',
   "broadcasts.compose.textPlaceholder": "🎉 Hafta yangiligi: …",

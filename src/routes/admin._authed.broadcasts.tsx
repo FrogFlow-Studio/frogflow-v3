@@ -437,6 +437,9 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
   const t = useT();
   const router = useRouter();
   const [text, setText] = useState("");
+  // A/B-тест: второй текст — половине аудитории (core/broadcasts/ab).
+  const [abOn, setAbOn] = useState(false);
+  const [textB, setTextB] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [products, setProducts] = useState<PickerProduct[]>([]);
   const [showCatalog, setShowCatalog] = useState(false);
@@ -459,6 +462,7 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
       data: {
         channel: "telegram",
         text,
+        textB: abOn && !isTest && textB.trim() ? textB : undefined,
         photoKeys: photos,
         productIds: products.map((p) => p.id),
         showCatalog,
@@ -470,6 +474,8 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
       },
     });
     if (!isTest) {
+      setTextB("");
+      setAbOn(false);
       setText("");
       setPhotos([]);
       setProducts([]);
@@ -534,6 +540,20 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
             placeholder={t("broadcasts.compose.textPlaceholder")}
           />
         </Field>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={abOn} onChange={(e) => setAbOn(e.target.checked)} />
+          {t("broadcasts.ab.toggle")}
+        </label>
+        {abOn && (
+          <Field label={t("broadcasts.ab.textB")} hint={t("broadcasts.ab.hint")}>
+            <textarea
+              className="input min-h-24"
+              value={textB}
+              maxLength={4000}
+              onChange={(e) => setTextB(e.target.value)}
+            />
+          </Field>
+        )}
 
         <div>
           <span className="label">{t("broadcasts.compose.photos", { n: MAX_PHOTOS })}</span>
@@ -1090,6 +1110,7 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
               country_code?: string;
               segment?: { kind?: string };
               send_at?: string;
+              ab?: { variant?: "A" | "B" };
             };
             const audienceKey = AUDIENCES.find(
               (a) => a.value === (filter.segment ? "segment" : b.audience_type),
@@ -1114,6 +1135,13 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
                         {filter.segment?.kind &&
                           ` (${t(`broadcasts.segment.${filter.segment.kind}` as AdminKey)})`}
                       </span>
+                      {filter.ab?.variant && (
+                        <Badge tone="accent">
+                          {t("broadcasts.ab.badge", { v: filter.ab.variant })}
+                          {b.sent_count > 0 &&
+                            ` · ${Math.round((b.clicks / b.sent_count) * 1000) / 10}%`}
+                        </Badge>
+                      )}
                       {waiting && (
                         <Badge tone="accent">
                           {t("broadcasts.schedule.at", {

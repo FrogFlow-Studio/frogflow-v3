@@ -25,6 +25,8 @@ export type AudienceFilter = {
   segment?: Segment;
   /** Когда отправить (ISO); нет — сразу. Крон не берёт рассылку раньше срока. */
   send_at?: string;
+  /** Половина аудитории A/B-теста (core/broadcasts/ab) и какой это вариант. */
+  ab?: { group: string; half: 0 | 1; variant: "A" | "B" };
 };
 export type BroadcastChannel = "telegram" | "whatsapp";
 
@@ -283,6 +285,12 @@ export async function createBroadcast(
             ]),
           ).values(),
         ].map((r) => ({ telegram_id: r.telegramId, phone: r.phone }));
+  // A/B-тест: этой рассылке — своя половина аудитории.
+  if (input.filter?.ab) {
+    const { splitForAb } = await import("./ab");
+    const half = splitForAb(recipients, (r) => r.telegram_id, input.filter.ab);
+    recipients.splice(0, recipients.length, ...half);
+  }
   if (recipients.length === 0)
     return {
       ok: false,

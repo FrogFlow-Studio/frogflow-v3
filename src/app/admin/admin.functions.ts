@@ -1692,6 +1692,8 @@ export const createBroadcastFn = createServerFn({ method: "POST" })
       .object({
         channel: channelSchema,
         text: z.string().max(4000).default(""),
+        /** A/B-тест: второй текст — половине аудитории (core/broadcasts/ab). */
+        textB: z.string().max(4000).optional(),
         photoKeys: z.array(z.string().min(1).max(300)).max(10).default([]),
         productIds: z.array(uuid).max(8).default([]),
         showCatalog: z.boolean().default(false),
@@ -1775,7 +1777,7 @@ export const createBroadcastFn = createServerFn({ method: "POST" })
       ...(segment ? { segment } : {}),
       ...(sendAt ? { send_at: sendAt } : {}),
     };
-    const r = await createBroadcast(ctx, {
+    const base = {
       channel: data.channel,
       text: data.text,
       photoKeys: data.photoKeys,
@@ -1784,7 +1786,38 @@ export const createBroadcastFn = createServerFn({ method: "POST" })
       audience: data.audience,
       filter: Object.keys(filter).length ? filter : undefined,
       whatsapp: data.whatsapp,
-    });
+    };
+    const textB = data.textB?.trim();
+    if (textB && data.channel === "telegram" && data.audience !== "test") {
+      // A/B: вариант A — в срок, B — следом (две рассылки канала сразу не идут).
+      const { newAbGroup } = await import("@/core/broadcasts/ab");
+      const group = newAbGroup();
+      const a = await createBroadcast(ctx, {
+        ...base,
+        filter: { ...filter, ab: { group, half: 0, variant: "A" } },
+      });
+      if (!a.ok) throw new Error(a.message);
+      const bAt = Math.max(Date.parse(sendAt ?? "") || 0, Date.now() + 65_000);
+      const b = await createBroadcast(ctx, {
+        ...base,
+        text: textB,
+        filter: {
+          ...filter,
+          ab: { group, half: 1, variant: "B" },
+          send_at: new Date(bAt).toISOString(),
+        },
+      });
+      if (!b.ok) {
+        const { cancelBroadcast } = await import("@/core/broadcasts/broadcasts");
+        await cancelBroadcast(ctx, a.broadcast.id);
+        throw new Error(b.message);
+      }
+      return {
+        id: a.broadcast.id,
+        total: a.broadcast.total_count + b.broadcast.total_count,
+      };
+    }
+    const r = await createBroadcast(ctx, base);
     if (!r.ok) throw new Error(r.message);
     // Первый пакет — сразу: продавец видит результат на «себе», не ожидая крона.
     if (data.audience === "test" && data.channel === "telegram") {
