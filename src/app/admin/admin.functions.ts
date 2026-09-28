@@ -1827,10 +1827,11 @@ export const analyticsFn = createServerFn({ method: "GET" })
     const now = new Date();
     const from = new Date(now.getTime() - data.days * 86_400_000);
     const funnels = await import("@/core/analytics/funnel.server");
-    const [a, funnel, sources] = await Promise.all([
+    const [a, funnel, sources, cohorts] = await Promise.all([
       (await import("@/core/analytics/analytics")).analytics(ctx, data.days),
       funnels.buyerFunnel(ctx, from, now),
       funnels.sourceFunnel(ctx, from, now),
+      (await import("@/core/analytics/cohorts.server")).cohorts(ctx, now),
     ]);
     const { storefrontOpen } = await import("@/core/storefront/access");
     const { storefrontBase } = await import("@/core/tenant/custom-domain");
@@ -1842,7 +1843,7 @@ export const analyticsFn = createServerFn({ method: "GET" })
           ? storefrontBase(ctx.tenant, ctx.appUrl)
           : null,
     };
-    return { ...a, funnel, sources, links };
+    return { ...a, funnel, sources, links, cohorts };
   });
 
 /* ── чат с менеджером ────────────────────────────────────────────── */

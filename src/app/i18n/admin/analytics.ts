@@ -57,6 +57,14 @@ export const ru = {
   "analytics.sources.allNote":
     "«Все источники» — заказы покупателей за выбранный период без ручных заказов, поэтому сумма может не совпадать с плиткой выручки.",
   "analytics.links.title": "Ссылки с меткой",
+  "analytics.cohorts.title": "Когорты и повторные покупки",
+  "analytics.cohorts.repeat":
+    "Купили больше одного раза: {rate}% ({repeat} из {buyers}) за полгода.",
+  "analytics.cohorts.empty": "Покупок за полгода пока нет.",
+  "analytics.cohorts.month": "Первая покупка",
+  "analytics.cohorts.buyers": "Покупателей",
+  "analytics.cohorts.hint":
+    "Строка — покупатели с первой покупкой в этом месяце; +1, +2 … — доля из них, купившая снова через столько месяцев.",
   "analytics.links.intro":
     "Придумайте метку для места, где разместите ссылку: блогер, реклама, визитка. Заказы по ней появятся отдельной строкой в воронке по источникам.",
   "analytics.links.tag": "Метка",
@@ -130,6 +138,14 @@ export const kk: SectionDict<typeof ru> = {
   "analytics.sources.allNote":
     "«Барлық көздер» — таңдалған кезеңдегі сатып алушылардың тапсырыстары, қолмен енгізілген тапсырыстарсыз, сондықтан сома түсім плиткасымен сәйкес келмеуі мүмкін.",
   "analytics.links.title": "Белгісі бар сілтемелер",
+  "analytics.cohorts.title": "Когорталар және қайталама сатып алулар",
+  "analytics.cohorts.repeat":
+    "Бірнеше рет сатып алғандар: {rate}% ({buyers} ішінен {repeat}) жарты жылда.",
+  "analytics.cohorts.empty": "Жарты жылда әзірге сатып алу жоқ.",
+  "analytics.cohorts.month": "Алғашқы сатып алу",
+  "analytics.cohorts.buyers": "Сатып алушылар",
+  "analytics.cohorts.hint":
+    "Жол — осы айда алғаш сатып алғандар; +1, +2 … — солардың сонша айдан кейін қайта сатып алған үлесі.",
   "analytics.links.intro":
     "Сілтеме орналасатын орынға белгі ойлап табыңыз: блогер, жарнама, визитка. Ол бойынша тапсырыстар көздер воронкасында бөлек жолмен көрінеді.",
   "analytics.links.tag": "Белгі",
@@ -203,6 +219,14 @@ export const en: SectionDict<typeof ru> = {
   "analytics.sources.allNote":
     "“All sources” counts buyer orders for the selected period without manual orders, so the total may differ from the revenue tile.",
   "analytics.links.title": "Tagged links",
+  "analytics.cohorts.title": "Cohorts and repeat purchases",
+  "analytics.cohorts.repeat":
+    "Bought more than once: {rate}% ({repeat} of {buyers}) over six months.",
+  "analytics.cohorts.empty": "No purchases in the last six months yet.",
+  "analytics.cohorts.month": "First purchase",
+  "analytics.cohorts.buyers": "Customers",
+  "analytics.cohorts.hint":
+    "A row is customers whose first purchase was in that month; +1, +2 … is the share of them who bought again that many months later.",
   "analytics.links.intro":
     "Pick a tag for the place where you post the link: a blogger, an ad, a business card. Orders from it show up as a separate row in the funnel by source.",
   "analytics.links.tag": "Tag",
@@ -277,6 +301,14 @@ export const uz: SectionDict<typeof ru> = {
   "analytics.sources.allNote":
     "«Barcha manbalar» — tanlangan davrdagi xaridorlar buyurtmalari, qo‘lda kiritilgan buyurtmalarsiz, shuning uchun summa tushum plitkasidan farq qilishi mumkin.",
   "analytics.links.title": "Belgili havolalar",
+  "analytics.cohorts.title": "Kogortalar va takroriy xaridlar",
+  "analytics.cohorts.repeat":
+    "Bir martadan koʻp xarid qilganlar: {rate}% ({buyers} tadan {repeat}) yarim yilda.",
+  "analytics.cohorts.empty": "Yarim yilda hozircha xarid yoʻq.",
+  "analytics.cohorts.month": "Birinchi xarid",
+  "analytics.cohorts.buyers": "Xaridorlar",
+  "analytics.cohorts.hint":
+    "Qator — shu oyda birinchi marta xarid qilganlar; +1, +2 … — ulardan shuncha oydan keyin yana xarid qilganlar ulushi.",
   "analytics.links.intro":
     "Havolani joylashtiradigan joy uchun belgi o‘ylab toping: bloger, reklama, vizitka. Undan kelgan buyurtmalar manbalar voronkasida alohida qatorda ko‘rinadi.",
   "analytics.links.tag": "Belgi",
