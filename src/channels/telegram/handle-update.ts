@@ -338,6 +338,18 @@ async function handleMessage(
       });
       return afterDate(b);
     }
+    if (mode === "awaiting_fulfillment_slot") {
+      const { fulfillmentSlots, normalizeSlot, withSlot } =
+        await import("@/core/fulfillment/slots");
+      const slot = (await fulfillmentSlots(ctx)).find((x) => x === normalizeSlot(text));
+      const date = customer.state.checkout_fulfillment_at;
+      if (slot && date)
+        b.customer = await setState(ctx, customer, {
+          ...customer.state,
+          checkout_fulfillment_at: withSlot(date, slot),
+        });
+      return afterDate(b);
+    }
     if (mode === "awaiting_delivery_zone") {
       const zones = await activeDeliveryZones(ctx);
       const z =
@@ -953,6 +965,23 @@ async function askFulfillmentDate(b: Bot) {
 }
 
 async function afterDate(b: Bot) {
+  // Слоты магазина (core/fulfillment/slots): после даты — время, слот едет в дате.
+  const at = b.customer.state.checkout_fulfillment_at ?? "";
+  if (at && !at.includes("T")) {
+    const { fulfillmentSlots } = await import("@/core/fulfillment/slots");
+    const slots = await fulfillmentSlots(b.ctx);
+    if (slots.length) {
+      b.customer = await setState(b.ctx, b.customer, {
+        ...b.customer.state,
+        mode: "awaiting_fulfillment_slot",
+      });
+      return void (await send(b, b.m.fulfillmentSlotPrompt, {
+        reply_markup: {
+          inline_keyboard: slots.map((s, i) => [{ text: s, callback_data: `slot:${i}` }]),
+        },
+      }));
+    }
+  }
   if (b.customer.state.checkout_fulfillment_type === "delivery") return askZoneOrAddress(b);
   return askNote(b);
 }
@@ -1988,6 +2017,18 @@ async function handleCallback(
       checkout_fulfillment_type: type,
     });
     return askFulfillmentDate(b);
+  }
+  if (data.startsWith("slot:")) {
+    if (customer.state.mode !== "awaiting_fulfillment_slot") return;
+    const { fulfillmentSlots, withSlot } = await import("@/core/fulfillment/slots");
+    const slot = (await fulfillmentSlots(ctx))[Number(data.slice(5))];
+    const date = customer.state.checkout_fulfillment_at;
+    if (!slot || !date) return askFulfillmentDate(b);
+    b.customer = await setState(ctx, customer, {
+      ...customer.state,
+      checkout_fulfillment_at: withSlot(date, slot),
+    });
+    return afterDate(b);
   }
   if (data.startsWith("zone:")) {
     if (customer.state.mode !== "awaiting_delivery_zone") return;

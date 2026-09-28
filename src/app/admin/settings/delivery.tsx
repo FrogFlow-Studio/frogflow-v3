@@ -9,6 +9,7 @@ import {
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
+import { parseSlots } from "@/core/fulfillment/slots";
 
 export function FulfillmentCard({ settings }: { settings: Record<string, string> }) {
   const router = useRouter();
@@ -23,6 +24,8 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
         fulfillment_delivery_enabled: f.get("delivery") === "on" ? "true" : "false",
         payment_mode: String(f.get("payment_mode")),
         deposit_percent: String(f.get("deposit_percent") || "30"),
+        // Слоты — по строке, чистит parseSlots (core/fulfillment/slots).
+        fulfillment_slots: parseSlots(String(f.get("slots") ?? "")).join("\n"),
       },
     });
     setSaved(true);
@@ -80,6 +83,15 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
             />
           </Field>
         )}
+        <Field label={t("settings.ful.slots")} hint={t("settings.ful.slotsHint")}>
+          <textarea
+            className="input"
+            name="slots"
+            rows={3}
+            placeholder={"10:00–12:00\n12:00–14:00"}
+            defaultValue={settings.fulfillment_slots ?? ""}
+          />
+        </Field>
         <div className="flex items-center gap-3">
           <button className="btn-secondary" disabled={save.busy}>
             {t("common.save")}

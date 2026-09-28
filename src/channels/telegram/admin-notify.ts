@@ -5,13 +5,17 @@ import { adminRecipients } from "@/core/notify/recipients";
 import { displayNo, type OrderWithItems } from "@/core/orders/orders";
 import { escapeHtml } from "./copy";
 import { isoToDisplay } from "@/core/fulfillment/pure";
+import { slotOf } from "@/core/fulfillment/slots";
 import { collectTgMessageIds, type AdminNotifyTgRef } from "@/core/notify/order-pack";
 import { rememberOrderNotify } from "./order-notify";
 
 /** Как и когда получить физический заказ — продавцу в уведомлении. */
 export function fulfillmentLine(order: OrderWithItems): string {
   if (order.fulfillment_kind !== "physical" || !order.fulfillment_type) return "";
-  const date = order.fulfillment_at ? isoToDisplay(String(order.fulfillment_at).slice(0, 10)) : "—";
+  const slot = slotOf(order.fulfillment_at, []);
+  const date = order.fulfillment_at
+    ? `${isoToDisplay(String(order.fulfillment_at).slice(0, 10))}${slot ? `, ${slot}` : ""}`
+    : "—";
   const how = order.fulfillment_type === "delivery" ? "🚚 Доставка" : "🏪 Самовывоз";
   const where = [order.delivery_zone_name, order.fulfillment_address].filter(Boolean).join(", ");
   return (

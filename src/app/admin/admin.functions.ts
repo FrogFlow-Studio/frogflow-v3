@@ -674,11 +674,13 @@ export const orderFn = createServerFn({ method: "GET" })
     const { activeDeliveryZones, amountDueNow } = await import("@/core/fulfillment/fulfillment");
     type DeliveryZone = Awaited<ReturnType<typeof activeDeliveryZones>>[number];
     const physical = order.fulfillment_kind === "physical";
-    const [proofUrl, events, zones, dueNow] = await Promise.all([
+    const { fulfillmentSlots } = await import("@/core/fulfillment/slots");
+    const [proofUrl, events, zones, dueNow, slots] = await Promise.all([
       order.payment_proof_path ? proofSignedUrl(ctx, order.payment_proof_path) : null,
       listOrderEvents(ctx, data.id),
       physical ? activeDeliveryZones(ctx) : Promise.resolve<DeliveryZone[]>([]),
       physical ? amountDueNow(ctx, order) : Number(order.total),
+      physical ? fulfillmentSlots(ctx) : Promise.resolve<string[]>([]),
     ]);
     // Чек на остаток по задатку лежит событием заказа (core/orders/balance).
     const { balanceProofPending, lastBalanceProofPath } = await import("@/core/orders/balance");
@@ -713,6 +715,7 @@ export const orderFn = createServerFn({ method: "GET" })
         pageUrl,
         refunded,
         refundable,
+        slots,
       };
     // Бухгалтеру: без контактов; журнал — только события и время, без текста.
     const { redactOrder, redactEventPayload } = await import("@/core/orders/redact");
@@ -727,6 +730,7 @@ export const orderFn = createServerFn({ method: "GET" })
       pageUrl: null,
       refunded,
       refundable,
+      slots,
     };
   });
 
@@ -885,6 +889,7 @@ export const updateFulfillmentFn = createServerFn({ method: "POST" })
         note: z.string().trim().max(500).nullable(),
         fulfillmentType: z.enum(["pickup", "delivery"]).nullable().optional(),
         deliveryZoneId: uuid.nullable().optional(),
+        slot: z.string().max(20).nullable().optional(),
       })
       .parse(d),
   )

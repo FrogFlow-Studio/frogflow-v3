@@ -55,6 +55,7 @@ export type DialogMode =
   | "awaiting_gift_certificate_code"
   | "awaiting_fulfillment_type"
   | "awaiting_fulfillment_date"
+  | "awaiting_fulfillment_slot"
   | "awaiting_delivery_zone"
   | "awaiting_address"
   | "awaiting_fulfillment_note"

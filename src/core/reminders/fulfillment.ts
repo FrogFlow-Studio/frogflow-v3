@@ -3,6 +3,7 @@ import type { Locale } from "@/core/i18n/locale";
 import { isLocale } from "@/core/i18n/locale";
 import { stateFromJson } from "@/core/customers/customers";
 import { isoToDisplay } from "@/core/fulfillment/pure";
+import { slotOf } from "@/core/fulfillment/slots";
 import { isFulfillmentReminderEligible } from "./pure";
 
 export const OPEN_PHYSICAL_STATUSES = [
@@ -80,7 +81,9 @@ export async function sendFulfillmentReminders(
         telegramId: Number(o.telegram_id),
         platform: o.platform ?? "telegram",
         locale,
-        dateLabel: isoToDisplay(o.fulfillment_at!.slice(0, 10)),
+        dateLabel: [isoToDisplay(o.fulfillment_at!.slice(0, 10)), slotOf(o.fulfillment_at, [])]
+          .filter(Boolean)
+          .join(", "),
         type: o.fulfillment_type === "delivery" ? "delivery" : "pickup",
         address: o.fulfillment_address ?? null,
       });

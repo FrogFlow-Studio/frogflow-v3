@@ -58,6 +58,7 @@ function CheckoutPage() {
           ? {
               type: ftype,
               date: String(f.get("date") ?? ""),
+              slot: String(f.get("slot") ?? "") || null,
               zoneId: ftype === "delivery" ? String(f.get("zone") ?? "") || null : null,
               address: ftype === "delivery" ? String(f.get("address") ?? "") : null,
               note: String(f.get("note") ?? "") || null,
@@ -171,6 +172,18 @@ function CheckoutPage() {
             <Field label={t("checkout.fulfillment.date")} hint={t("checkout.fulfillment.dateHint")}>
               <input className="input" name="date" type="date" required min={ff.today} />
             </Field>
+            {ff.slots.length > 0 && (
+              <Field label={t("checkout.fulfillment.slot")}>
+                <select className="input" name="slot" required defaultValue="">
+                  <option value="" disabled />
+                  {ff.slots.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
             {ftype === "delivery" && ff.zones.length > 0 && (
               <Field label={t("checkout.fulfillment.zone")}>
                 <select className="input" name="zone" required defaultValue="">

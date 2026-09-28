@@ -426,6 +426,8 @@ export type FulfillmentEdit = {
   note: string | null;
   fulfillmentType?: "pickup" | "delivery" | null;
   deliveryZoneId?: string | null;
+  /** Слот «10:00–12:00» из списка магазина; null — только дата (core/fulfillment/slots). */
+  slot?: string | null;
 };
 
 /**
@@ -502,10 +504,13 @@ export async function updateOrderFulfillment(
       "Нельзя снять комиссию доставки — заказ уже оплачен на большую сумму. Сначала верните разницу покупателю.",
     );
   const nextType = typePatch.fulfillment_type ?? order.fulfillment_type;
+  const { fulfillmentAtValue, fulfillmentSlots, withSlot } =
+    await import("@/core/fulfillment/slots");
+  const slots = await fulfillmentSlots(ctx);
   const { error } = await ctx.db
     .from("orders")
     .update({
-      fulfillment_at: newDay ? `${newDay}T00:00:00Z` : null,
+      fulfillment_at: newDay ? fulfillmentAtValue(withSlot(newDay, input.slot), slots) : null,
       fulfillment_address: nextType === "delivery" ? input.address : null,
       fulfillment_note: input.note,
       fulfillment_reminder_sent_at: null,

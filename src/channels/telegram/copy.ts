@@ -98,6 +98,7 @@ export type Msg = {
   fulfillmentTypePickupBtn: string;
   fulfillmentTypeDeliveryBtn: string;
   fulfillmentDatePrompt: (minDate: string) => string;
+  fulfillmentSlotPrompt: string;
   fulfillmentDateInvalid: string;
   fulfillmentDateTooEarly: (minDate: string) => string;
   deliveryZonePrompt: string;
@@ -387,6 +388,7 @@ const ru: Msg = {
     `📅 На какую дату? Напишите в формате ДД.ММ.ГГГГ. Ближайшая возможная: ${d}.`,
   fulfillmentDateInvalid: "Не разобрал дату. Формат: ДД.ММ.ГГГГ, например 05.03.2026.",
   fulfillmentDateTooEarly: (d) => `Так быстро не успеем. Ближайшая дата: ${d}.`,
+  fulfillmentSlotPrompt: "🕒 В какое время удобно?",
   deliveryZonePrompt: "Выберите район доставки:",
   addressPrompt: "📍 Укажите адрес доставки одним сообщением.",
   fulfillmentNotePrompt:

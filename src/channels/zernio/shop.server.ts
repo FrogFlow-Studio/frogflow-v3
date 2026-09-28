@@ -510,6 +510,22 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       await afterDate(s);
       return "handled";
     }
+    case "awaiting_fulfillment_slot": {
+      const { fulfillmentSlots, normalizeSlot, withSlot } =
+        await import("@/core/fulfillment/slots");
+      const slots = await fulfillmentSlots(s.ctx);
+      const n = /^\s*(\d{1,2})\s*$/.exec(text)?.[1];
+      const slot = n ? slots[Number(n) - 1] : slots.find((x) => x === normalizeSlot(text));
+      const date = s.customer.state.checkout_fulfillment_at;
+      if (!slot || !date) {
+        await setMode(s, { checkout_fulfillment_at: date?.slice(0, 10) });
+        await afterDate(s);
+        return "handled";
+      }
+      await setMode(s, { checkout_fulfillment_at: withSlot(date, slot) });
+      await afterDate(s);
+      return "handled";
+    }
     case "awaiting_delivery_zone": {
       const zones = await activeDeliveryZones(s.ctx);
       const z = matchZone(text, zones);
@@ -1265,6 +1281,18 @@ async function askFulfillmentDate(s: Shop) {
 }
 
 async function afterDate(s: Shop) {
+  // Слоты магазина (core/fulfillment/slots): после даты — время нумерованным списком.
+  const at = s.customer.state.checkout_fulfillment_at ?? "";
+  if (at && !at.includes("T")) {
+    const { fulfillmentSlots } = await import("@/core/fulfillment/slots");
+    const slots = await fulfillmentSlots(s.ctx);
+    if (slots.length) {
+      await setMode(s, { mode: "awaiting_fulfillment_slot" });
+      const lines = slots.map((x, i) => `${i + 1}. ${x}`).join("\n");
+      await reply(s, `${plain(s.m.fulfillmentSlotPrompt)}\n\n${lines}`, { force: true });
+      return;
+    }
+  }
   if (s.customer.state.checkout_fulfillment_type === "delivery") return askZoneOrAddress(s);
   return askNote(s);
 }

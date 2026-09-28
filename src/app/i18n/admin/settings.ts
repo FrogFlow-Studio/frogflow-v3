@@ -177,6 +177,9 @@ export const ru = {
   "settings.ful.deposit": "Задаток по чеку, остаток при получении",
   "settings.ful.onReceipt": "Оплата при получении, без чека",
   "settings.ful.depositPercent": "Задаток, % от суммы",
+  "settings.ful.slots": "Слоты времени получения",
+  "settings.ful.slotsHint":
+    "По строке: «10:00–12:00». Покупатель выберет время после даты. Пусто — только дата.",
   // зоны доставки
   "settings.zones.title": "Зоны доставки",
   "settings.zones.add": "+ Зона",
@@ -469,6 +472,9 @@ export const kk: SectionDict<typeof ru> = {
   "settings.ful.deposit": "Чек бойынша кепілақы, қалғаны алғанда",
   "settings.ful.onReceipt": "Алғанда төлеу, чексіз",
   "settings.ful.depositPercent": "Кепілақы, соманың %-ы",
+  "settings.ful.slots": "Алу уақытының слоттары",
+  "settings.ful.slotsHint":
+    "Әр жолға біреу: «10:00–12:00». Сатып алушы күннен кейін уақытты таңдайды. Бос — тек күн.",
   "settings.zones.title": "Жеткізу аймақтары",
   "settings.zones.add": "+ Аймақ",
   "settings.zones.intro":
@@ -753,6 +759,9 @@ export const en: SectionDict<typeof ru> = {
   "settings.ful.deposit": "Deposit by receipt, balance on pickup",
   "settings.ful.onReceipt": "Payment on pickup, no receipt",
   "settings.ful.depositPercent": "Deposit, % of total",
+  "settings.ful.slots": "Time slots",
+  "settings.ful.slotsHint":
+    "One per line: “10:00–12:00”. The customer picks a time after the date. Empty — date only.",
   "settings.zones.title": "Delivery zones",
   "settings.zones.add": "+ Zone",
   "settings.zones.intro":
@@ -1040,6 +1049,9 @@ export const uz: SectionDict<typeof ru> = {
   "settings.ful.deposit": "Chek bo‘yicha zaklad, qolgani olishda",
   "settings.ful.onReceipt": "Olishda to‘lash, cheksiz",
   "settings.ful.depositPercent": "Zaklad, summaning %",
+  "settings.ful.slots": "Olish vaqti slotlari",
+  "settings.ful.slotsHint":
+    "Har qatorga bittadan: «10:00–12:00». Xaridor sanadan keyin vaqtni tanlaydi. Boʻsh — faqat sana.",
   "settings.zones.title": "Yetkazib berish hududlari",
   "settings.zones.add": "+ Hudud",
   "settings.zones.intro":

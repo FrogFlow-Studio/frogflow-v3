@@ -15,6 +15,7 @@ import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { describeOrderEvent } from "@/core/orders/events";
 import { formatMoney } from "@/core/money/money";
 import { displayNo, itemLanguages } from "@/core/orders/pure";
+import { slotOf } from "@/core/fulfillment/slots";
 import { OrderStatus } from "./admin._authed.orders";
 
 export const Route = createFileRoute("/admin/_authed/orders/$id")({
@@ -34,6 +35,7 @@ function OrderPage() {
     pageUrl,
     refunded,
     refundable,
+    slots,
   } = Route.useLoaderData();
   const [copied, setCopied] = useState(false);
   const { shop } = Route.useRouteContext();
@@ -177,6 +179,9 @@ function OrderPage() {
                           timeZone: "UTC",
                         })
                       : ""}
+                    {slotOf(o.fulfillment_at, slots) && (
+                      <span> · {slotOf(o.fulfillment_at, slots)}</span>
+                    )}
                     {o.delivery_zone_name && (
                       <span className="text-muted"> · {o.delivery_zone_name}</span>
                     )}
@@ -189,7 +194,7 @@ function OrderPage() {
             {editable &&
               physical &&
               !["delivered", "rejected", "cancelled", "refunded"].includes(o.status) && (
-                <FulfillmentEditor order={o} zones={zones} />
+                <FulfillmentEditor order={o} zones={zones} slots={slots} />
               )}
           </Card>
           {(refunded > 0 || (editable && refundable > 0)) && (
@@ -567,7 +572,15 @@ function PaymentCard({
 }
 
 /** Перенос даты, адрес, комментарий, доставка ↔ самовывоз. */
-function FulfillmentEditor({ order: o, zones }: { order: Order; zones: Zone[] }) {
+function FulfillmentEditor({
+  order: o,
+  zones,
+  slots,
+}: {
+  order: Order;
+  zones: Zone[];
+  slots: string[];
+}) {
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const router = useRouter();
@@ -581,6 +594,7 @@ function FulfillmentEditor({ order: o, zones }: { order: Order; zones: Zone[] })
       data: {
         id: o.id,
         fulfillmentAt: str("at"),
+        slot: str("slot"),
         address: type === "delivery" ? str("address") : null,
         note: str("note"),
         fulfillmentType: type,
@@ -624,6 +638,22 @@ function FulfillmentEditor({ order: o, zones }: { order: Order; zones: Zone[] })
           defaultValue={o.fulfillment_at ? o.fulfillment_at.slice(0, 10) : ""}
         />
       </Field>
+      {slots.length > 0 && (
+        <Field label={t("physical.slot")}>
+          <select
+            className="input"
+            name="slot"
+            defaultValue={slots.find((x) => x === slotOf(o.fulfillment_at, slots)) ?? ""}
+          >
+            <option value="">{t("physical.slotNone")}</option>
+            {slots.map((x) => (
+              <option key={x} value={x}>
+                {x}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       {type === "delivery" && (
         <>
           {zones.length > 0 && (

@@ -298,6 +298,9 @@ export async function placeOrder(
     }
     const f = priced.kind === "physical" ? (opts.fulfillment ?? null) : null;
     const deliveryFee = f?.type === "delivery" && f.zone ? f.zone.fee : 0;
+    // Слот получения — начало во времени fulfillment_at (core/fulfillment/slots).
+    const { fulfillmentAtValue, fulfillmentSlots } = await import("@/core/fulfillment/slots");
+    const fulfillmentAt = f?.at ? fulfillmentAtValue(f.at, await fulfillmentSlots(ctx)) : null;
 
     // Скидки в порядке v1: промокод → баллы → сертификат. Каждая списывается
     // атомарно; сорвалось ниже — всё возвращается через rollbackRedemptions.
@@ -365,7 +368,7 @@ export async function placeOrder(
         gift_certificate_code: giftCode,
         gift_certificate_discount: giftDiscount,
         fulfillment_type: f?.type ?? null,
-        fulfillment_at: f?.at ? `${f.at}T00:00:00Z` : null,
+        fulfillment_at: fulfillmentAt,
         fulfillment_address: f?.type === "delivery" ? f.address : null,
         fulfillment_note: f?.note ?? null,
         delivery_zone_id: f?.type === "delivery" ? (f.zone?.id ?? null) : null,

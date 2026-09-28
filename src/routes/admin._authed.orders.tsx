@@ -14,6 +14,7 @@ import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Empty, PageTitle } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
+import { slotOf } from "@/core/fulfillment/slots";
 
 const search = z.object({
   status: z.string().optional(),
@@ -309,6 +310,7 @@ function OrdersPage() {
                           day: "2-digit",
                           month: "2-digit",
                         })}
+                        {slotOf(o.fulfillment_at, []) && ` ${slotOf(o.fulfillment_at, [])}`}
                       </div>
                     )}
                   </td>

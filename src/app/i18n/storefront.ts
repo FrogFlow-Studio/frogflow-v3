@@ -136,6 +136,7 @@ const ru = {
   "checkout.fulfillment.pickup": "Самовывоз",
   "checkout.fulfillment.delivery": "Доставка",
   "checkout.fulfillment.date": "Дата",
+  "checkout.fulfillment.slot": "Время",
   "checkout.fulfillment.dateHint":
     "Если товару нужно время на изготовление, раньше срока дату не принять.",
   "checkout.fulfillment.zone": "Район доставки",
@@ -378,6 +379,7 @@ const kk: Dict = {
   "checkout.fulfillment.pickup": "Өзі алып кету",
   "checkout.fulfillment.delivery": "Жеткізу",
   "checkout.fulfillment.date": "Күні",
+  "checkout.fulfillment.slot": "Уақыты",
   "checkout.fulfillment.dateHint":
     "Тауарды дайындауға уақыт керек болса, мерзімнен ерте күн қабылданбайды.",
   "checkout.fulfillment.zone": "Жеткізу ауданы",
@@ -610,6 +612,7 @@ const en: Dict = {
   "checkout.fulfillment.pickup": "Pickup",
   "checkout.fulfillment.delivery": "Delivery",
   "checkout.fulfillment.date": "Date",
+  "checkout.fulfillment.slot": "Time",
   "checkout.fulfillment.dateHint":
     "If the item takes time to make, an earlier date will not be accepted.",
   "checkout.fulfillment.zone": "Delivery area",
@@ -843,6 +846,7 @@ const uz: Dict = {
   "checkout.fulfillment.pickup": "Olib ketish",
   "checkout.fulfillment.delivery": "Yetkazib berish",
   "checkout.fulfillment.date": "Sana",
+  "checkout.fulfillment.slot": "Vaqt",
   "checkout.fulfillment.dateHint":
     "Mahsulotni tayyorlashga vaqt kerak bo‘lsa, muddatdan oldingi sana qabul qilinmaydi.",
   "checkout.fulfillment.zone": "Yetkazib berish hududi",

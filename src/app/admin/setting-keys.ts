@@ -36,6 +36,7 @@ export const SETTING_KEYS = [
   "fulfillment_delivery_enabled",
   "payment_mode",
   "deposit_percent",
+  "fulfillment_slots",
   "legal_offer",
   "legal_privacy",
   "legal_requisites",

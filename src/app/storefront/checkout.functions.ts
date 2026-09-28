@@ -88,6 +88,7 @@ const checkoutInput = z.object({
     .object({
       type: z.enum(["pickup", "delivery"]),
       date: z.string().max(10),
+      slot: z.string().max(20).nullable().optional(),
       zoneId: z.string().uuid().nullable().optional(),
       address: z.string().max(500).nullable().optional(),
       note: z.string().max(500).nullable().optional(),
@@ -175,6 +176,7 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
         case "missing":
         case "type":
         case "date":
+        case "slot":
           throw shownError(t("checkout.error.fulfillment"));
         case "date_early": {
           const { isoToDisplay } = await import("@/core/fulfillment/pure");

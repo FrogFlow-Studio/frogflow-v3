@@ -9,6 +9,7 @@ import {
   zoneFee,
 } from "@/core/fulfillment/fulfillment";
 import { addDaysToIso, todayInTz } from "@/core/fulfillment/pure";
+import { fulfillmentSlots, withSlot } from "@/core/fulfillment/slots";
 
 /**
  * Физический заказ с сайта: способ получения, дата, зона и адрес — те же
@@ -19,6 +20,8 @@ export type WebFulfillmentRequest = {
   type: "pickup" | "delivery";
   /** YYYY-MM-DD из поля даты. */
   date: string;
+  /** Слот «10:00–12:00» из списка магазина (core/fulfillment/slots). */
+  slot?: string | null;
   zoneId?: string | null;
   address?: string | null;
   note?: string | null;
@@ -30,6 +33,8 @@ export type WebFulfillmentOptions = {
   zones: Array<{ id: string; name: string; fee: Money }>;
   /** Сегодня в поясе магазина: раньше дату не выбрать (срок изготовления — при оформлении). */
   today: string;
+  /** Слоты получения; пусто — только дата. */
+  slots: string[];
 };
 
 export async function webFulfillmentOptions(
@@ -49,12 +54,13 @@ export async function webFulfillmentOptions(
       })),
     ),
     today: todayInTz(ctx.timezone),
+    slots: await fulfillmentSlots(ctx),
   };
 }
 
 export type WebFulfillmentCheck =
   | { ok: true; input: FulfillmentInput }
-  | { ok: false; reason: "missing" | "type" | "date" | "zone" | "address" }
+  | { ok: false; reason: "missing" | "type" | "date" | "slot" | "zone" | "address" }
   | { ok: false; reason: "date_early"; minDate: string };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -79,10 +85,14 @@ export async function resolveWebFulfillment(
   const minDate = addDaysToIso(todayInTz(ctx.timezone), await maxLeadTimeDaysInCart(ctx, customer));
   if (req.date < minDate) return { ok: false, reason: "date_early", minDate };
   const note = req.note?.trim().slice(0, 500) || null;
+  // Слот — только из списка магазина; есть слоты — без слота нельзя.
+  const slots = await fulfillmentSlots(ctx);
+  if (slots.length && !slots.includes(req.slot ?? "")) return { ok: false, reason: "slot" };
+  const at = withSlot(req.date, slots.length ? req.slot : null);
   if (req.type === "pickup")
     return {
       ok: true,
-      input: { type: "pickup", at: req.date, address: null, note, zone: null },
+      input: { type: "pickup", at, address: null, note, zone: null },
     };
   const address = req.address?.trim().slice(0, 500) ?? "";
   if (!address) return { ok: false, reason: "address" };
@@ -93,5 +103,5 @@ export async function resolveWebFulfillment(
     if (!z) return { ok: false, reason: "zone" };
     zone = { id: z.id, name: z.name, fee: (await zoneFee(ctx, z.price, countryCode)).amount };
   }
-  return { ok: true, input: { type: "delivery", at: req.date, address, note, zone } };
+  return { ok: true, input: { type: "delivery", at, address, note, zone } };
 }
