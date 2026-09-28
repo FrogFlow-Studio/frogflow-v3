@@ -14,6 +14,7 @@ import * as vip from "./admin/vip";
 import * as product from "./admin/product";
 import * as discounts from "./admin/discounts";
 import * as consultant from "./admin/consultant";
+import * as pricelist from "./admin/pricelist";
 import * as analytics from "./admin/analytics";
 import * as chat from "./admin/chat";
 import * as outbox from "./admin/outbox";
@@ -355,6 +356,7 @@ const ru = {
   ...product.ru,
   ...discounts.ru,
   ...consultant.ru,
+  ...pricelist.ru,
   ...analytics.ru,
   ...chat.ru,
   ...outbox.ru,
@@ -1295,6 +1297,7 @@ const kk: Dict = {
   ...product.kk,
   ...discounts.kk,
   ...consultant.kk,
+  ...pricelist.kk,
   ...analytics.kk,
   ...chat.kk,
   ...outbox.kk,
@@ -1328,6 +1331,7 @@ const en: Dict = {
   ...product.en,
   ...discounts.en,
   ...consultant.en,
+  ...pricelist.en,
   ...analytics.en,
   ...chat.en,
   ...outbox.en,
@@ -1361,6 +1365,7 @@ const uz: Dict = {
   ...product.uz,
   ...discounts.uz,
   ...consultant.uz,
+  ...pricelist.uz,
   ...analytics.uz,
   ...chat.uz,
   ...outbox.uz,

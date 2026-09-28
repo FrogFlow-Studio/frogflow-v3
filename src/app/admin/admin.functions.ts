@@ -218,6 +218,8 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       vertical: ctx.tenant.vertical,
       verticalTitle: VERTICALS[ctx.tenant.vertical].title,
       modules: ctx.tenant.modules,
+      /** Консультант по прайсу (BOVI) — пункт «Прайс консультанта» в меню. */
+      pricelist: (await import("@/core/consultant/pricelist/mode")).pricelistMode(ctx.tenant),
       status: ctx.tenant.status,
       /** Владелец попросил удалить магазин: когда удалится (ISO) — баннер «Восстановить». */
       deletionAt: ctx.tenant.settings.deletion

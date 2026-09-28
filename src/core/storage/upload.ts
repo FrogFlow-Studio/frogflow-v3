@@ -7,7 +7,7 @@
  */
 import { isSafeStorageKey, isTenantStorageKey } from "./keys";
 
-export type UploadKind = "image" | "file" | "chatPhoto" | "chatFile";
+export type UploadKind = "image" | "file" | "chatPhoto" | "chatFile" | "consultantMedia";
 
 type UploadSpec = {
   bucket: "product-images" | "product-files";
@@ -43,6 +43,16 @@ export const UPLOAD_KINDS: Record<UploadKind, UploadSpec> = {
     types:
       /^(application\/(pdf|zip|x-zip-compressed|msword|vnd\.ms-excel|vnd\.ms-powerpoint|vnd\.openxmlformats-officedocument\.(wordprocessingml\.document|spreadsheetml\.sheet|presentationml\.presentation)|octet-stream)|text\/plain)$/,
     exts: ["pdf", "zip", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt"],
+  },
+  /**
+   * Фотобаза консультанта по прайсу: фото и короткие видео товара, которые
+   * консультант шлёт покупателю в директ. Instagram берёт вложение до 25 МБ.
+   */
+  consultantMedia: {
+    bucket: "product-images",
+    max: 25 * 1024 * 1024,
+    types: /^(image\/(jpeg|png|webp)|video\/(mp4|quicktime))$/,
+    exts: ["jpg", "jpeg", "png", "webp", "mp4", "mov"],
   },
 };
 

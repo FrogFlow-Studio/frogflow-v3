@@ -43,6 +43,7 @@ import { Route as AdminAuthedModulesRouteImport } from './routes/admin._authed.m
 import { Route as AdminAuthedOrdersRouteImport } from './routes/admin._authed.orders'
 import { Route as AdminAuthedPipelineRouteImport } from './routes/admin._authed.pipeline'
 import { Route as AdminAuthedPostsRouteImport } from './routes/admin._authed.posts'
+import { Route as AdminAuthedPricelistRouteImport } from './routes/admin._authed.pricelist'
 import { Route as AdminAuthedProductsRouteImport } from './routes/admin._authed.products'
 import { Route as AdminAuthedQuizRouteImport } from './routes/admin._authed.quiz'
 import { Route as AdminAuthedReviewsRouteImport } from './routes/admin._authed.reviews'
@@ -260,6 +261,11 @@ const AdminAuthedPipelineRoute = AdminAuthedPipelineRouteImport.update({
 const AdminAuthedPostsRoute = AdminAuthedPostsRouteImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedPricelistRoute = AdminAuthedPricelistRouteImport.update({
+  id: '/pricelist',
+  path: '/pricelist',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedProductsRoute = AdminAuthedProductsRouteImport.update({
@@ -548,6 +554,7 @@ export interface FileRoutesByFullPath {
   '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/pipeline': typeof AdminAuthedPipelineRoute
   '/admin/posts': typeof AdminAuthedPostsRoute
+  '/admin/pricelist': typeof AdminAuthedPricelistRoute
   '/admin/products': typeof AdminAuthedProductsRoute
   '/admin/quiz': typeof AdminAuthedQuizRoute
   '/admin/reviews': typeof AdminAuthedReviewsRoute
@@ -631,6 +638,7 @@ export interface FileRoutesByTo {
   '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/pipeline': typeof AdminAuthedPipelineRoute
   '/admin/posts': typeof AdminAuthedPostsRoute
+  '/admin/pricelist': typeof AdminAuthedPricelistRoute
   '/admin/products': typeof AdminAuthedProductsRoute
   '/admin/quiz': typeof AdminAuthedQuizRoute
   '/admin/reviews': typeof AdminAuthedReviewsRoute
@@ -716,6 +724,7 @@ export interface FileRoutesById {
   '/admin/_authed/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/_authed/pipeline': typeof AdminAuthedPipelineRoute
   '/admin/_authed/posts': typeof AdminAuthedPostsRoute
+  '/admin/_authed/pricelist': typeof AdminAuthedPricelistRoute
   '/admin/_authed/products': typeof AdminAuthedProductsRoute
   '/admin/_authed/quiz': typeof AdminAuthedQuizRoute
   '/admin/_authed/reviews': typeof AdminAuthedReviewsRoute
@@ -802,6 +811,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/pipeline'
     | '/admin/posts'
+    | '/admin/pricelist'
     | '/admin/products'
     | '/admin/quiz'
     | '/admin/reviews'
@@ -885,6 +895,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/pipeline'
     | '/admin/posts'
+    | '/admin/pricelist'
     | '/admin/products'
     | '/admin/quiz'
     | '/admin/reviews'
@@ -969,6 +980,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/orders'
     | '/admin/_authed/pipeline'
     | '/admin/_authed/posts'
+    | '/admin/_authed/pricelist'
     | '/admin/_authed/products'
     | '/admin/_authed/quiz'
     | '/admin/_authed/reviews'
@@ -1293,6 +1305,13 @@ declare module '@tanstack/react-router' {
       path: '/posts'
       fullPath: '/admin/posts'
       preLoaderRoute: typeof AdminAuthedPostsRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/pricelist': {
+      id: '/admin/_authed/pricelist'
+      path: '/pricelist'
+      fullPath: '/admin/pricelist'
+      preLoaderRoute: typeof AdminAuthedPricelistRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/products': {
@@ -1677,6 +1696,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedOrdersRoute: typeof AdminAuthedOrdersRouteWithChildren
   AdminAuthedPipelineRoute: typeof AdminAuthedPipelineRoute
   AdminAuthedPostsRoute: typeof AdminAuthedPostsRoute
+  AdminAuthedPricelistRoute: typeof AdminAuthedPricelistRoute
   AdminAuthedProductsRoute: typeof AdminAuthedProductsRoute
   AdminAuthedQuizRoute: typeof AdminAuthedQuizRoute
   AdminAuthedReviewsRoute: typeof AdminAuthedReviewsRoute
@@ -1705,6 +1725,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedOrdersRoute: AdminAuthedOrdersRouteWithChildren,
   AdminAuthedPipelineRoute: AdminAuthedPipelineRoute,
   AdminAuthedPostsRoute: AdminAuthedPostsRoute,
+  AdminAuthedPricelistRoute: AdminAuthedPricelistRoute,
   AdminAuthedProductsRoute: AdminAuthedProductsRoute,
   AdminAuthedQuizRoute: AdminAuthedQuizRoute,
   AdminAuthedReviewsRoute: AdminAuthedReviewsRoute,
