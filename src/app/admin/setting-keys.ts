@@ -54,6 +54,9 @@ export const SETTING_KEYS = [
   "robokassa_pass2",
   "robokassa_pass1_test",
   "robokassa_pass2_test",
+  "crypto_enabled",
+  "nowpayments_api_key",
+  "nowpayments_ipn_secret",
 ] as const;
 
 /**
@@ -79,12 +82,14 @@ export const WRITABLE_SETTING_KEYS = SETTING_KEYS.filter((k) => !PLATFORM_ONLY.h
   ...SettingKey[],
 ];
 
-/** Пароли Robokassa видит только владелец: менеджеру и просмотру они ни к чему. */
+/** Пароли Robokassa и ключи NOWPayments видит только владелец: менеджеру и просмотру они ни к чему. */
 const OWNER_ONLY_READ = [
   "robokassa_pass1",
   "robokassa_pass2",
   "robokassa_pass1_test",
   "robokassa_pass2_test",
+  "nowpayments_api_key",
+  "nowpayments_ipn_secret",
 ] as const;
 
 export function settingsForRole<T extends Partial<Record<string, string>>>(

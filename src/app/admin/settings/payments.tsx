@@ -416,3 +416,73 @@ export function ReceiptOcrCard({
     </Card>
   );
 }
+
+/** Оплата криптой через NOWPayments (core/payments/nowpayments): ключи — только владельцу. */
+export function CryptoCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const [saved, setSaved] = useState(false);
+  const save = useAction(async (f: FormData) => {
+    setSaved(false);
+    await saveSettingsFn({
+      data: {
+        crypto_enabled: f.get("enabled") === "on" ? "true" : "false",
+        nowpayments_api_key: String(f.get("apiKey")).trim(),
+        nowpayments_ipn_secret: String(f.get("ipnSecret")).trim(),
+      },
+    });
+    setSaved(true);
+    await router.invalidate();
+  });
+  // Адрес сайта известен только в браузере — как у Robokassa, после отрисовки.
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
+  return (
+    <Card title={t("settings.crypto.title")} className="lg:col-span-2">
+      <p className="mb-3 text-xs text-muted">
+        {t("settings.crypto.intro")}{" "}
+        <code className="rounded bg-surface-2 px-1">{`${origin}/api/nowpayments/${shop.botId}`}</code>
+      </p>
+      <form
+        className="grid gap-3 sm:grid-cols-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save.run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            name="enabled"
+            defaultChecked={settings.crypto_enabled === "true"}
+          />
+          {t("settings.crypto.enabled")}
+        </label>
+        <Field label={t("settings.crypto.apiKey")}>
+          <input
+            className="input"
+            name="apiKey"
+            autoComplete="off"
+            defaultValue={settings.nowpayments_api_key ?? ""}
+          />
+        </Field>
+        <Field label={t("settings.crypto.ipnSecret")}>
+          <input
+            className="input"
+            name="ipnSecret"
+            autoComplete="off"
+            defaultValue={settings.nowpayments_ipn_secret ?? ""}
+          />
+        </Field>
+        <div className="flex items-center gap-3 sm:col-span-2">
+          <button className="btn-primary" disabled={save.busy}>
+            {t("common.save")}
+          </button>
+          {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
+        </div>
+        <ErrorBox error={save.error} />
+      </form>
+    </Card>
+  );
+}

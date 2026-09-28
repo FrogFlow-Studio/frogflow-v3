@@ -1,4 +1,4 @@
-import { MODULES, type ModuleKey } from "@/core/modules/registry";
+import { moduleDef, type ModuleKey } from "@/core/modules/registry";
 import type { SubscriptionState } from "@/core/billing/subscription";
 
 /**
@@ -53,14 +53,14 @@ export type PreflightInput = {
 
 export function evaluatePreflight(i: PreflightInput): Preflight {
   const checks: PreflightCheck[] = [];
-  const planned = i.modulesOn.filter((k) => MODULES[k].status === "planned");
+  const planned = i.modulesOn.filter((k) => moduleDef(k).status === "planned");
   checks.push(
     planned.length
       ? {
           key: "modules",
           level: "block",
           title: "Не все модули перенесены",
-          detail: `Включены, но в v2 их ещё нет: ${planned.map((k) => MODULES[k].title).join(", ")}. Выключите их или подождите переноса.`,
+          detail: `Включены, но в v2 их ещё нет: ${planned.map((k) => moduleDef(k).title).join(", ")}. Выключите их или подождите переноса.`,
         }
       : {
           key: "modules",

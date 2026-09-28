@@ -46,6 +46,9 @@ export const ru = {
   "module.crypto.title": "Оплата криптой (NOWPayments)",
   "module.crypto.desc":
     "Оплата криптовалютой через счёт-инвойс; заказ выдаётся после подтверждения сети.",
+  "module.stripe.title": "Оплата картой из-за рубежа (Stripe, PayPal)",
+  "module.stripe.desc":
+    "Покупатели из других стран платят иностранной картой или PayPal; заказ выдаётся после подтверждения платежа.",
   "module.receipt_ocr.title": "Распознавание чека",
   "module.receipt_ocr.desc":
     "Чек с переводом читается автоматически: сумма сошлась — файлы уходят сразу, вы не проверяете чеки руками. $2 за 1000 чеков.",
@@ -220,6 +223,9 @@ export const kk: SectionDict<typeof ru> = {
   "module.crypto.title": "Криптовалютамен төлеу (NOWPayments)",
   "module.crypto.desc":
     "Шот-инвойс арқылы криптовалютамен төлеу; тапсырыс желі растағаннан кейін беріледі.",
+  "module.stripe.title": "Шетелден картамен төлеу (Stripe, PayPal)",
+  "module.stripe.desc":
+    "Басқа елдердің сатып алушылары шетелдік картамен немесе PayPal арқылы төлейді; тапсырыс төлем расталғаннан кейін беріледі.",
   "module.receipt_ocr.title": "Чекті тану",
   "module.receipt_ocr.desc":
     "Аударым чегі автоматты түрде оқылады: сомасы сәйкес келсе, файлдар бірден жіберіледі, чектерді қолмен тексермейсіз. 1000 чек үшін $2.",
@@ -362,6 +368,9 @@ export const en: SectionDict<typeof ru> = {
   "module.crypto.title": "Crypto payments (NOWPayments)",
   "module.crypto.desc":
     "Cryptocurrency payments via an invoice; the order is delivered once the network confirms the payment.",
+  "module.stripe.title": "Card payments from abroad (Stripe, PayPal)",
+  "module.stripe.desc":
+    "Customers from other countries pay with a foreign card or PayPal; the order is delivered once the payment is confirmed.",
   "module.receipt_ocr.title": "Receipt recognition",
   "module.receipt_ocr.desc":
     "Transfer receipts are read automatically: if the amount matches, the files go out right away — no more checking receipts by hand. $2 per 1,000 receipts.",
@@ -500,6 +509,9 @@ export const uz: SectionDict<typeof ru> = {
   "module.crypto.title": "Kripto orqali toʻlov (NOWPayments)",
   "module.crypto.desc":
     "Hisob-invoys orqali kriptovalyutada toʻlov; buyurtma tarmoq tasdiqlagandan keyin beriladi.",
+  "module.stripe.title": "Chet eldan karta orqali toʻlov (Stripe, PayPal)",
+  "module.stripe.desc":
+    "Boshqa mamlakatlardagi xaridorlar xorijiy karta yoki PayPal orqali toʻlaydi; buyurtma toʻlov tasdiqlangach beriladi.",
   "module.receipt_ocr.title": "Chekni aniqlash",
   "module.receipt_ocr.desc":
     "Oʻtkazma cheki avtomatik oʻqiladi: summa mos kelsa, fayllar darhol yuboriladi, cheklarni qoʻlda tekshirmaysiz. 1000 ta chek uchun $2.",

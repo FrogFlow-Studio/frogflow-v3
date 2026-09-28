@@ -49,6 +49,7 @@ import { Route as AdminAuthedUndeliveredRouteImport } from './routes/admin._auth
 import { Route as AdminAuthedVipRouteImport } from './routes/admin._authed.vip'
 import { Route as ApiAdminUploadRouteImport } from './routes/api/admin/upload'
 import { Route as ApiCronJobRouteImport } from './routes/api/cron.$job'
+import { Route as ApiNowpaymentsBotIdRouteImport } from './routes/api/nowpayments.$botId'
 import { Route as ApiOperatorBotsRouteImport } from './routes/api/operator/bots'
 import { Route as ApiTelegramBotIdRouteImport } from './routes/api/telegram.$botId'
 import { Route as ApiZernioWebhookRouteImport } from './routes/api/zernio/webhook'
@@ -281,6 +282,11 @@ const ApiCronJobRoute = ApiCronJobRouteImport.update({
   path: '/api/cron/$job',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiNowpaymentsBotIdRoute = ApiNowpaymentsBotIdRouteImport.update({
+  id: '/api/nowpayments/$botId',
+  path: '/api/nowpayments/$botId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOperatorBotsRoute = ApiOperatorBotsRouteImport.update({
   id: '/api/operator/bots',
   path: '/api/operator/bots',
@@ -488,6 +494,7 @@ export interface FileRoutesByFullPath {
   '/admin/vip': typeof AdminAuthedVipRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
+  '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
@@ -560,6 +567,7 @@ export interface FileRoutesByTo {
   '/admin/vip': typeof AdminAuthedVipRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
+  '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
@@ -634,6 +642,7 @@ export interface FileRoutesById {
   '/admin/_authed/vip': typeof AdminAuthedVipRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
+  '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
@@ -709,6 +718,7 @@ export interface FileRouteTypes {
     | '/admin/vip'
     | '/api/admin/upload'
     | '/api/cron/$job'
+    | '/api/nowpayments/$botId'
     | '/api/operator/bots'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
@@ -781,6 +791,7 @@ export interface FileRouteTypes {
     | '/admin/vip'
     | '/api/admin/upload'
     | '/api/cron/$job'
+    | '/api/nowpayments/$botId'
     | '/api/operator/bots'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
@@ -854,6 +865,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/vip'
     | '/api/admin/upload'
     | '/api/cron/$job'
+    | '/api/nowpayments/$botId'
     | '/api/operator/bots'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
@@ -904,6 +916,7 @@ export interface RootRouteChildren {
   SSlugRoute: typeof SSlugRouteWithChildren
   ApiAdminUploadRoute: typeof ApiAdminUploadRoute
   ApiCronJobRoute: typeof ApiCronJobRoute
+  ApiNowpaymentsBotIdRoute: typeof ApiNowpaymentsBotIdRoute
   ApiOperatorBotsRoute: typeof ApiOperatorBotsRoute
   ApiTelegramBotIdRoute: typeof ApiTelegramBotIdRouteWithChildren
   ApiZernioWebhookRoute: typeof ApiZernioWebhookRoute
@@ -1195,6 +1208,13 @@ declare module '@tanstack/react-router' {
       path: '/api/cron/$job'
       fullPath: '/api/cron/$job'
       preLoaderRoute: typeof ApiCronJobRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/nowpayments/$botId': {
+      id: '/api/nowpayments/$botId'
+      path: '/api/nowpayments/$botId'
+      fullPath: '/api/nowpayments/$botId'
+      preLoaderRoute: typeof ApiNowpaymentsBotIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/operator/bots': {
@@ -1611,6 +1631,7 @@ const rootRouteChildren: RootRouteChildren = {
   SSlugRoute: SSlugRouteWithChildren,
   ApiAdminUploadRoute: ApiAdminUploadRoute,
   ApiCronJobRoute: ApiCronJobRoute,
+  ApiNowpaymentsBotIdRoute: ApiNowpaymentsBotIdRoute,
   ApiOperatorBotsRoute: ApiOperatorBotsRoute,
   ApiTelegramBotIdRoute: ApiTelegramBotIdRouteWithChildren,
   ApiZernioWebhookRoute: ApiZernioWebhookRoute,

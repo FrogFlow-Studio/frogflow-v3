@@ -6,6 +6,12 @@ export async function robokassaFor(ctx: TenantContext) {
   return robokassaConfig(await getSettings(ctx, ROBOKASSA_KEYS), ctx.tenant.modules.robokassa);
 }
 
+/** Оплата криптой (модуль crypto, core/payments/nowpayments). */
+export async function nowpaymentsFor(ctx: TenantContext) {
+  const { NOWPAYMENTS_KEYS, nowpaymentsConfig } = await import("./nowpayments");
+  return nowpaymentsConfig(await getSettings(ctx, NOWPAYMENTS_KEYS), ctx.tenant.modules.crypto);
+}
+
 /**
  * Онлайн-оплата подтверждена шлюзом: отметить, что деньги получены.
  * Цифровой заказ дальше выдаёт канал, физический принимается в работу.

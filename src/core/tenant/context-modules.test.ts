@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { availableModules, MODULE_KEYS, MODULES } from "@/core/modules/registry";
+import { availableModules, moduleDef, MODULE_KEYS, MODULES } from "@/core/modules/registry";
 import { modulesFromJson } from "./directory";
 import type { Tenant } from "./types";
 
@@ -8,12 +8,13 @@ vi.mock("@/config/env", () => ({
 }));
 vi.mock("@/core/db/client.server", () => ({ serviceDb: () => ({}), tenantDb: () => ({}) }));
 
-const planned = MODULE_KEYS.filter((k) => MODULES[k].status === "planned");
+// «В разработке» — механизм на будущие позиции прайса; сейчас таких может не быть.
+const planned = MODULE_KEYS.filter((k) => moduleDef(k).status === "planned");
 
 describe("модули «в разработке» ничего не открывают", () => {
-  it("в каталоге есть planned-модули; курсы готовы и в их число не входят", () => {
-    expect(planned.length).toBeGreaterThan(0);
+  it("курсы и крипта готовы и в число planned не входят", () => {
     expect(planned).not.toContain("courses");
+    expect(planned).not.toContain("crypto");
   });
 
   it("availableModules снимает planned-флаги и оставляет готовые", () => {
@@ -24,18 +25,19 @@ describe("модули «в разработке» ничего не откры�
     expect(m.upsell).toBe(MODULES.upsell.status === "available");
   });
 
-  it("контекст клиента: planned-флаг в базе (crypto) ничего не открывает", async () => {
+  it("контекст клиента: planned-флаг в базе ничего не открывает, готовый — открывает", async () => {
     const { tenantContext } = await import("./resolve.server");
+    const flags = Object.fromEntries(MODULE_KEYS.map((k) => [k, true]));
     const raw = {
       id: "t",
       name: "Магазин",
       settings: {},
-      modules: modulesFromJson({ shop: true, crypto: true }),
+      modules: modulesFromJson(flags),
     } as unknown as Tenant;
     const ctx = tenantContext(raw);
-    expect(MODULES.crypto.status).toBe("planned");
-    expect(ctx.tenant.modules.crypto).toBe(false);
-    expect(ctx.tenant.modules.shop).toBe(true);
+    for (const k of MODULE_KEYS)
+      expect(ctx.tenant.modules[k], k).toBe(moduleDef(k).status === "available");
+    expect(ctx.tenant.modules.crypto).toBe(true);
     // Сырые флаги справочника не тронуты — их видит проверка переезда у оператора.
     expect(raw.modules.crypto).toBe(true);
   });

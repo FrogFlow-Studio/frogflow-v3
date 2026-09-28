@@ -89,10 +89,10 @@ describe("оператор и модули клиента на плане", () =
   });
 
   it("модуль «в разработке» не включается и сверх плана", async () => {
-    await expect(toggleModuleOnPlan(current(), "crypto", true, "op")).rejects.toThrow(
+    await expect(toggleModuleOnPlan(current(), "stripe", true, "op")).rejects.toThrow(
       /не реализован/,
     );
-    expect(current().modules.crypto).toBe(false);
+    expect(current().modules.stripe).toBe(false);
   });
 });
 

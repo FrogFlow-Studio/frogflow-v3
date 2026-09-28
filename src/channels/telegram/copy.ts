@@ -115,6 +115,9 @@ export type Msg = {
   leadTimeLabel: (days: number) => string;
   choosePayMethod: string;
   payViaRobokassaBtn: string;
+  payViaCryptoBtn: string;
+  cryptoHint: string;
+  cryptoUnavailable: string;
   payManualBtn: string;
   robokassaHint: string;
   paymentReceived: (no: number) => string;
@@ -410,6 +413,10 @@ const ru: Msg = {
   leadTimeLabel: (days) => `⏳ Срок изготовления: ${days} дн.`,
   choosePayMethod: "Выберите способ оплаты:",
   payViaRobokassaBtn: "💳 Оплатить картой онлайн",
+  payViaCryptoBtn: "₿ Оплатить криптовалютой",
+  cryptoHint:
+    "Откройте ссылку, выберите монету и оплатите. Заказ подтвердится сам, когда сеть подтвердит платёж.",
+  cryptoUnavailable: "Оплата криптовалютой сейчас недоступна — выберите другой способ.",
   payManualBtn: "🧾 Перевод по реквизитам + чек",
   robokassaHint: "Нажмите кнопку, оплатите картой — после оплаты всё придёт сюда автоматически.",
   paymentReceived: (no) => `✅ Оплата по заказу #${no} получена.`,

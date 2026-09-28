@@ -225,6 +225,12 @@ export const ru = {
   "settings.stars.rateHint":
     "Сумма заказа делится на курс и округляется вверх. Пусто — кнопка оплаты звёздами не показывается.",
   "settings.rk.title": "Robokassa: оплата картой",
+  "settings.crypto.title": "Криптовалюта: NOWPayments",
+  "settings.crypto.intro":
+    "Счёт-инвойс в криптовалюте из бота; заказ подтверждается сам после подтверждения сети. В кабинете NOWPayments укажите адрес IPN:",
+  "settings.crypto.enabled": "Принимать оплату криптовалютой",
+  "settings.crypto.apiKey": "Ключ API",
+  "settings.crypto.ipnSecret": "Секрет IPN",
   "settings.rk.introResult": "В личном кабинете Robokassa укажите Result URL",
   "settings.rk.introSuccess": ", Success URL",
   "settings.rk.introFail": ", Fail URL",
@@ -517,6 +523,12 @@ export const kk: SectionDict<typeof ru> = {
   "settings.stars.rateHint":
     "Тапсырыс сомасы бағамға бөлініп, жоғары қарай дөңгелектенеді. Бос — жұлдызбен төлеу түймесі көрсетілмейді.",
   "settings.rk.title": "Robokassa: картамен төлеу",
+  "settings.crypto.title": "Криптовалюта: NOWPayments",
+  "settings.crypto.intro":
+    "Боттан криптовалютадағы шот-инвойс; желі растағаннан кейін тапсырыс өзі расталады. NOWPayments кабинетінде IPN мекенжайын көрсетіңіз:",
+  "settings.crypto.enabled": "Криптовалютамен төлем қабылдау",
+  "settings.crypto.apiKey": "API кілті",
+  "settings.crypto.ipnSecret": "IPN құпиясы",
   "settings.rk.introResult": "Robokassa жеке кабинетінде Result URL көрсетіңіз:",
   "settings.rk.introSuccess": ", Success URL",
   "settings.rk.introFail": ", Fail URL",
@@ -804,6 +816,12 @@ export const en: SectionDict<typeof ru> = {
   "settings.stars.rateHint":
     "The order total is divided by the rate and rounded up. Empty — the Stars payment button is hidden.",
   "settings.rk.title": "Robokassa: card payments",
+  "settings.crypto.title": "Crypto: NOWPayments",
+  "settings.crypto.intro":
+    "A crypto invoice from the bot; the order is confirmed automatically once the network confirms. In your NOWPayments account set the IPN URL:",
+  "settings.crypto.enabled": "Accept crypto payments",
+  "settings.crypto.apiKey": "API key",
+  "settings.crypto.ipnSecret": "IPN secret",
   "settings.rk.introResult": "In your Robokassa account set Result URL",
   "settings.rk.introSuccess": ", Success URL",
   "settings.rk.introFail": ", Fail URL",
@@ -1094,6 +1112,12 @@ export const uz: SectionDict<typeof ru> = {
   "settings.stars.rateHint":
     "Buyurtma summasi kursga bo‘linadi va yuqoriga yaxlitlanadi. Bo‘sh — yulduzlar bilan to‘lov tugmasi ko‘rsatilmaydi.",
   "settings.rk.title": "Robokassa: karta orqali to‘lov",
+  "settings.crypto.title": "Kriptovalyuta: NOWPayments",
+  "settings.crypto.intro":
+    "Botdan kriptovalyutadagi hisob-invoys; tarmoq tasdiqlagach buyurtma oʻzi tasdiqlanadi. NOWPayments kabinetida IPN manzilini koʻrsating:",
+  "settings.crypto.enabled": "Kriptovalyutada toʻlov qabul qilish",
+  "settings.crypto.apiKey": "API kaliti",
+  "settings.crypto.ipnSecret": "IPN siri",
   "settings.rk.introResult": "Robokassa shaxsiy kabinetida Result URL ko‘rsating:",
   "settings.rk.introSuccess": ", Success URL",
   "settings.rk.introFail": ", Fail URL",

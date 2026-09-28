@@ -1242,7 +1242,9 @@ async function finishCheckout(b: Bot, countryCode: string) {
   const rk = await robokassaFor(b.ctx);
   const { starsForOrder } = await import("@/core/payments/stars");
   const stars = await starsForOrder(b.ctx, due, order.currency);
-  if (rk.ready || stars) {
+  const { nowpaymentsFor } = await import("@/core/payments/payment");
+  const crypto = await nowpaymentsFor(b.ctx);
+  if (rk.ready || stars || crypto.ready) {
     b.customer = await setState(b.ctx, b.customer, {
       ...rest,
       mode: "choose_pay",
@@ -1260,6 +1262,9 @@ async function finishCheckout(b: Bot, countryCode: string) {
               : []),
             ...(stars
               ? [[{ text: b.m.payViaStarsBtn(stars), callback_data: `pay:stars:${order.id}` }]]
+              : []),
+            ...(crypto.ready
+              ? [[{ text: b.m.payViaCryptoBtn, callback_data: `pay:crypto:${order.id}` }]]
               : []),
             [{ text: b.m.payManualBtn, callback_data: `pay:manual:${order.id}` }],
           ],
@@ -1992,6 +1997,39 @@ async function handleCallback(
         b,
         `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}\n\n${b.m.robokassaHint}`,
         { reply_markup: { inline_keyboard: [[{ text: b.m.payViaRobokassaBtn, url }]] } },
+      );
+      return;
+    }
+    if (kind === "crypto") {
+      const { nowpaymentsFor } = await import("@/core/payments/payment");
+      const cfg = await nowpaymentsFor(ctx);
+      if (!cfg.ready) return;
+      const { createInvoice } = await import("@/core/payments/nowpayments");
+      const username = ctx.tenant.settings.telegram?.username;
+      const back = username ? `https://t.me/${username}` : ctx.appUrl;
+      const inv = await createInvoice(cfg, {
+        amount: due,
+        currency: order.currency,
+        orderId: order.id,
+        description: `Заказ #${no}`,
+        ipnUrl: `${ctx.appUrl}/api/nowpayments/${ctx.tenant.id}`,
+        successUrl: back,
+        cancelUrl: back,
+      });
+      if (!inv.ok) {
+        console.error(`[nowpayments:${ctx.tenant.id}] счёт по заказу ${order.id}: ${inv.error}`);
+        return void (await send(b, b.m.cryptoUnavailable));
+      }
+      b.customer = await setState(ctx, customer, {
+        ...customer.state,
+        mode: "awaiting_payment",
+        pending_order_id: order.id,
+        pending_display_no: no,
+      });
+      await send(
+        b,
+        `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}\n\n${b.m.cryptoHint}`,
+        { reply_markup: { inline_keyboard: [[{ text: b.m.payViaCryptoBtn, url: inv.url }]] } },
       );
       return;
     }
