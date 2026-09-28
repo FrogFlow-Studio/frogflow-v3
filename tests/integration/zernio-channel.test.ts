@@ -53,6 +53,9 @@ describe.skipIf(!liveReady)("канал Instagram/WhatsApp на демо-кли�
     const tenant = await requireTenant({ by: "id", value: DEMO_BOT });
     ctx = tenantContext({
       ...tenant,
+      // Магазин на паузе молчит (handle-message); статус демо-клиента в полном
+      // прогоне меняют параллельные тесты подписок — здесь проверяем канал.
+      status: "active",
       modules: {
         ...tenant.modules,
         instagram: true,

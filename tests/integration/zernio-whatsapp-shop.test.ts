@@ -79,6 +79,9 @@ describe.skipIf(!liveReady)("магазин в WhatsApp списками на д
     const tenant = await requireTenant({ by: "id", value: DEMO_BOT });
     ctx = tenantContext({
       ...tenant,
+      // Магазин на паузе молчит (handle-message); статус демо-клиента в полном
+      // прогоне меняют параллельные тесты подписок — здесь проверяем канал.
+      status: "active",
       modules: {
         ...tenant.modules,
         whatsapp: true,

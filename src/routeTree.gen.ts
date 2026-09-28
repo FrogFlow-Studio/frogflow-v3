@@ -16,6 +16,7 @@ import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SitemapPagesDotxmlRouteImport } from './routes/sitemap-pages[.]xml'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as StatusRouteImport } from './routes/status'
 import { Route as AdminAuthedRouteImport } from './routes/admin._authed'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminTgLoginRouteImport } from './routes/admin.tg-login'
@@ -119,6 +120,11 @@ const SitemapPagesDotxmlRoute = SitemapPagesDotxmlRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatusRoute = StatusRouteImport.update({
+  id: '/status',
+  path: '/status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAuthedRoute = AdminAuthedRouteImport.update({
@@ -476,6 +482,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/status': typeof StatusRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/tg-login': typeof AdminTgLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
@@ -552,6 +559,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/status': typeof StatusRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/tg-login': typeof AdminTgLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
@@ -626,6 +634,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/status': typeof StatusRoute
   '/admin/_authed': typeof AdminAuthedRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
   '/admin/tg-login': typeof AdminTgLoginRoute
@@ -706,6 +715,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap-pages.xml'
     | '/sitemap.xml'
+    | '/status'
     | '/admin/login'
     | '/admin/tg-login'
     | '/api/client-error'
@@ -782,6 +792,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap-pages.xml'
     | '/sitemap.xml'
+    | '/status'
     | '/admin/login'
     | '/admin/tg-login'
     | '/api/client-error'
@@ -855,6 +866,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap-pages.xml'
     | '/sitemap.xml'
+    | '/status'
     | '/admin/_authed'
     | '/admin/login'
     | '/admin/tg-login'
@@ -934,6 +946,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SitemapPagesDotxmlRoute: typeof SitemapPagesDotxmlRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  StatusRoute: typeof StatusRoute
   ApiClientErrorRoute: typeof ApiClientErrorRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ForNicheRoute: typeof ForNicheRoute
@@ -1001,6 +1014,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/_authed': {
@@ -1667,6 +1687,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SitemapPagesDotxmlRoute: SitemapPagesDotxmlRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  StatusRoute: StatusRoute,
   ApiClientErrorRoute: ApiClientErrorRoute,
   ApiHealthRoute: ApiHealthRoute,
   ForNicheRoute: ForNicheRoute,

@@ -103,6 +103,9 @@ describe.skipIf(!liveReady)("магазин в Instagram Direct на демо-к
     const tenant = await requireTenant({ by: "id", value: DEMO_BOT });
     ctx = tenantContext({
       ...tenant,
+      // Магазин на паузе молчит в Direct (handle-message); статус демо-клиента
+      // в полном прогоне меняют параллельные тесты подписок — здесь проверяем магазин.
+      status: "active",
       modules: {
         ...tenant.modules,
         instagram: true,
