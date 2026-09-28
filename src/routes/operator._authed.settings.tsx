@@ -17,20 +17,24 @@ import {
   testAlertChannelFn,
   v2WebhookStatusFn,
   syncV2WebhookFn,
+  aiMarkupFn,
+  setAiMarkupFn,
 } from "@/app/operator/operator.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { shownError } from "@/lib/shown-error";
 
 export const Route = createFileRoute("/operator/_authed/settings")({
   loader: async () => {
-    const [cred, payout, twoFactor, alerts] = await Promise.all([
+    const [cred, payout, twoFactor, alerts, aiMarkup] = await Promise.all([
       operatorCredentialsFn(),
       payoutRequisitesFn(),
       twoFactorStatusFn(),
       alertChannelStatusFn(),
+      aiMarkupFn(),
     ]);
     return {
       ...cred,
+      aiMarkup: aiMarkup.percent,
       twoFactor,
       alerts,
       requisites: payout.requisites,
@@ -67,6 +71,7 @@ function SettingsPage() {
           recipient={cred.recipient}
           kaspiLink={cred.kaspiLink}
         />
+        <AiMarkupCard percent={cred.aiMarkup} />
         <ErrorTrackingCard />
         <AlertsCard status={cred.alerts} />
         <ZernioWebhookCard />
@@ -595,6 +600,53 @@ function TwoFactorCard({ status }: { status: { enabled: boolean; backupLeft: num
           </form>
         </div>
       )}
+    </Card>
+  );
+}
+
+/** Наценка на цену API в ИИ-балансе клиентов (core/ai/balance): одна на всех. */
+function AiMarkupCard({ percent }: { percent: number }) {
+  const router = useRouter();
+  const [saved, setSaved] = useState(false);
+  const save = useAction(async (f: FormData) => {
+    await setAiMarkupFn({
+      data: { percent: Number(String(f.get("percent") ?? "0").replace(",", ".")) || 0 },
+    });
+    setSaved(true);
+    await router.invalidate();
+  });
+  return (
+    <Card title="ИИ-баланс клиентов">
+      <p className="mb-3 text-sm text-muted">
+        Токены ИИ оплачивает клиент: при подключении у него $5, дальше он пополняет баланс. Каждый
+        ответ консультанта, черновик помощника, умный поиск и распознавание чека списывают цену API
+        плюс эта наценка.
+      </p>
+      <form
+        className="flex items-end gap-3"
+        onSubmit={(e: FormEvent<HTMLFormElement>) => {
+          e.preventDefault();
+          setSaved(false);
+          void save.run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        <Field label="Наценка, %">
+          <input
+            className="input w-28"
+            name="percent"
+            type="number"
+            min={0}
+            max={500}
+            step="1"
+            defaultValue={percent}
+          />
+        </Field>
+        <button className="btn-primary" disabled={save.busy}>
+          Сохранить
+        </button>
+        {saved && <span className="text-sm text-ok">Сохранено</span>}
+      </form>
+      <ErrorBox error={save.error} />
     </Card>
   );
 }

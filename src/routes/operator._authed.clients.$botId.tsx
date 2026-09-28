@@ -11,6 +11,7 @@ import { ShopGroupCard } from "@/app/operator/client/shop-group";
 import { BillingCard } from "@/app/operator/client/billing";
 import { HealthCard, MessageCard } from "@/app/operator/client/health";
 import { ReceiptAuditCard } from "@/app/operator/client/receipt-audit";
+import { AiBalanceCard } from "@/app/operator/client/ai-balance";
 import { StatusBadge } from "./operator._authed.index";
 
 export const Route = createFileRoute("/operator/_authed/clients/$botId")({
@@ -19,7 +20,15 @@ export const Route = createFileRoute("/operator/_authed/clients/$botId")({
 });
 
 function ClientPage() {
-  const { client: c, events, webhook, migration, consultant, smartSearch } = Route.useLoaderData();
+  const {
+    client: c,
+    events,
+    webhook,
+    migration,
+    consultant,
+    smartSearch,
+    ai,
+  } = Route.useLoaderData();
   const router = useRouter();
   const navigate = useNavigate();
   const refresh = () => router.invalidate();
@@ -106,6 +115,7 @@ function ClientPage() {
           <AddressingCard c={c} onDone={refresh} />
           <ZernioCard c={c} onDone={refresh} />
           <MetaCard c={c} onDone={refresh} />
+          <AiBalanceCard c={c} ai={ai} onDone={refresh} />
           <ConsultantLimitsCard c={c} budget={consultant} onDone={refresh} />
           <SmartSearchLimitCard c={c} budget={smartSearch} onDone={refresh} />
           <ShopGroupCard c={c} />

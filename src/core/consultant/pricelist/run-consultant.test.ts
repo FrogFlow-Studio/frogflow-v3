@@ -226,4 +226,28 @@ describe("консультант по прайсу в общем пути", () =
     expect(r?.reply).toContain("Uchino");
     expect(r?.tools).toContain("photo:1");
   });
+
+  it("ИИ-баланс: ответ по прайсу списывает цену API; баланс кончился — менеджеру", async () => {
+    rounds.push([{ type: "text", text: "Uchino 50х100 — 9 000 ₸." }]);
+    const ctx = ctxOf();
+    const rows = (ctx.db as unknown as { tables: Record<string, Array<Record<string, string>>> })
+      .tables.app_settings!;
+    const r = await runConsultant(ctx, customer(), "Полотенца есть?", { platform: "instagram" });
+    const bal = JSON.parse(rows.find((x) => x.key === "ai_balance")!.value!) as { usd: number };
+    expect(r!.usage.usd).toBeGreaterThan(0);
+    expect(bal.usd).toBeCloseTo(5 - r!.usage.usd, 6);
+
+    const empty = ctxOf();
+    (empty.db as unknown as { tables: Record<string, unknown[]> }).tables.app_settings!.push({
+      bot_id: empty.tenant.id,
+      key: "ai_balance",
+      value: JSON.stringify({ usd: 0.001, low: true, empty: false }),
+    });
+    create.mockClear();
+    const out = await runConsultant(empty, customer(), "Полотенца есть?", {
+      platform: "instagram",
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(out?.handoff?.summary).toMatch(/ИИ-баланс/);
+  });
 });

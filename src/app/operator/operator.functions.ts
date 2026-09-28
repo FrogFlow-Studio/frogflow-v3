@@ -16,6 +16,7 @@ const guard = async () => (await import("@/app/auth/guards.server")).requireOper
 const actor = async () =>
   (await (await import("./credentials.server")).operatorCredentialsSource()).username ?? "operator";
 const impl = () => import("./operator.server");
+const aiImpl = () => import("./ai-balance.server");
 
 const botId = z.string().uuid();
 const moduleKey = z.enum(MODULE_KEYS as [string, ...string[]]);
@@ -119,7 +120,8 @@ export const getClientFn = createServerFn({ method: "GET" })
       m.consultantBudget(data.botId),
       m.smartSearchBudget(data.botId),
     ]);
-    return { client, events, webhook, migration, consultant, smartSearch };
+    const ai = await (await aiImpl()).aiBalanceView(data.botId);
+    return { client, events, webhook, migration, consultant, smartSearch, ai };
   });
 
 export const updateClientMetaFn = createServerFn({ method: "POST" })
@@ -433,7 +435,21 @@ export const billingFn = createServerFn({ method: "GET" })
     const suggested = await (await import("./plans.server")).suggestedPeriod(data.botId);
     const { expiryBackedByPayments } = await import("@/core/billing/subscription");
     const backedByPayments = expiryBackedByPayments(expiresAt, payments.length);
-    return { requisites, payments, invoices, expiresAt, backedByPayments, suggested };
+    const uncreditedTopups = await (
+      await import("./ai-topup.server")
+    ).uncreditedAiTopups(
+      data.botId,
+      invoices.filter((i) => i.status === "paid").map((i) => i.id),
+    );
+    return {
+      requisites,
+      payments,
+      invoices,
+      expiresAt,
+      backedByPayments,
+      suggested,
+      uncreditedTopups,
+    };
   });
 
 /* ── тариф клиента (core/plans) ─────────────────────────────────── */
@@ -659,7 +675,7 @@ export const invoiceActionFn = createServerFn({ method: "POST" })
     z
       .object({
         id: z.string().uuid(),
-        action: z.enum(["confirm", "reject", "cancel"]),
+        action: z.enum(["confirm", "reject", "cancel", "recredit"]),
         periodStart: isoDate.optional(),
         periodEnd: isoDate.optional(),
         reason: z.string().max(500).optional(),
@@ -681,6 +697,10 @@ export const invoiceActionFn = createServerFn({ method: "POST" })
         ok: true,
         message: `Счёт оплачен, подписка до ${r.expiresAt ? new Date(r.expiresAt).toLocaleDateString("ru") : "—"}.`,
       };
+    }
+    if (data.action === "recredit") {
+      const after = await (await import("./ai-topup.server")).recreditAiTopup(data.id, who);
+      return { ok: true, message: `Зачислено. ИИ-баланс клиента: ${after.usd.toFixed(2)} $.` };
     }
     if (data.action === "reject") {
       await b.rejectInvoice(data.id, data.reason ?? "", who);
@@ -808,6 +828,42 @@ export const setSmartSearchLimitFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await guard();
     await (await impl()).setSmartSearchLimit(data.botId, data.dailyUsd, await actor());
+    return { ok: true };
+  });
+
+/* ── ИИ-баланс клиента (core/ai/balance) ─────────────────────────── */
+
+/** Ручная поправка баланса: + начислить, − снять; с записью в журнал баланса. */
+export const adjustAiBalanceFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId,
+        usd: z
+          .number()
+          .min(-1000)
+          .max(1000)
+          .refine((v) => v !== 0),
+        note: z.string().max(200),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await aiImpl()).adjustAiBalance(data.botId, data.usd, data.note, await actor());
+  });
+
+export const aiMarkupFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return { percent: await (await aiImpl()).getAiMarkup() };
+});
+
+/** Наценка на цену API для всех клиентов, %. */
+export const setAiMarkupFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ percent: z.number().min(0).max(500) }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    await (await aiImpl()).setAiMarkup(data.percent);
     return { ok: true };
   });
 

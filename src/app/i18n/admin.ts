@@ -11,6 +11,7 @@ import * as settings from "./admin/settings";
 import * as broadcasts from "./admin/broadcasts";
 import * as instagram from "./admin/instagram";
 import * as vip from "./admin/vip";
+import * as aiBalance from "./admin/ai-balance";
 import * as product from "./admin/product";
 import * as discounts from "./admin/discounts";
 import * as consultant from "./admin/consultant";
@@ -52,6 +53,7 @@ const baseRu = {
   "nav.consultant": "ИИ-консультант",
   "nav.instagram": "Instagram",
   "nav.vip": "VIP-подписки",
+  "nav.aiBalance": "ИИ-баланс",
   "nav.settingsPhysical": "Оплата и доставка",
   "nav.settings": "Оплата и настройки",
   "nav.modules": "Модули",
@@ -353,6 +355,7 @@ const ru = {
   ...broadcasts.ru,
   ...instagram.ru,
   ...vip.ru,
+  ...aiBalance.ru,
   ...product.ru,
   ...discounts.ru,
   ...consultant.ru,
@@ -397,6 +400,7 @@ const baseKk: Dict = {
   "nav.consultant": "ЖИ-кеңесші",
   "nav.instagram": "Instagram",
   "nav.vip": "VIP-жазылымдар",
+  "nav.aiBalance": "ЖИ-баланс",
   "nav.settingsPhysical": "Төлем және жеткізу",
   "nav.settings": "Төлем және баптаулар",
   "nav.modules": "Модульдер",
@@ -697,6 +701,7 @@ const baseEn: Dict = {
   "nav.consultant": "AI consultant",
   "nav.instagram": "Instagram",
   "nav.vip": "VIP subscriptions",
+  "nav.aiBalance": "AI balance",
   "nav.settingsPhysical": "Payment & delivery",
   "nav.settings": "Payment & settings",
   "nav.modules": "Modules",
@@ -997,6 +1002,7 @@ const baseUz: Dict = {
   "nav.consultant": "SI-maslahatchi",
   "nav.instagram": "Instagram",
   "nav.vip": "VIP obunalar",
+  "nav.aiBalance": "SI balansi",
   "nav.settingsPhysical": "To‘lov va yetkazib berish",
   "nav.settings": "To‘lov va sozlamalar",
   "nav.modules": "Modullar",
@@ -1294,6 +1300,7 @@ const kk: Dict = {
   ...broadcasts.kk,
   ...instagram.kk,
   ...vip.kk,
+  ...aiBalance.kk,
   ...product.kk,
   ...discounts.kk,
   ...consultant.kk,
@@ -1328,6 +1335,7 @@ const en: Dict = {
   ...broadcasts.en,
   ...instagram.en,
   ...vip.en,
+  ...aiBalance.en,
   ...product.en,
   ...discounts.en,
   ...consultant.en,
@@ -1362,6 +1370,7 @@ const uz: Dict = {
   ...broadcasts.uz,
   ...instagram.uz,
   ...vip.uz,
+  ...aiBalance.uz,
   ...product.uz,
   ...discounts.uz,
   ...consultant.uz,

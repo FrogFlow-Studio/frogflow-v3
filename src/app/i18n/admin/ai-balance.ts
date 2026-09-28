@@ -1,0 +1,134 @@
+import type { SectionDict } from "../section";
+
+/** Раздел «ИИ-баланс» — ключи с префиксом `aiBalance.`. */
+export const ru = {
+  "aiBalance.title": "ИИ-баланс",
+  "aiBalance.subtitle":
+    "ИИ-консультант, помощник по текстам, умный поиск и распознавание чеков тратят этот баланс по цене API. Когда он кончится, ИИ остановится: диалоги уйдут менеджеру, чеки будете проверять вы.",
+  "aiBalance.left": "Осталось",
+  "aiBalance.notStarted": "Стартовые {amount} начислятся при первом обращении к ИИ.",
+  "aiBalance.low": "почти закончился",
+  "aiBalance.empty": "закончился — ИИ остановлен",
+  "aiBalance.topup.title": "Пополнить",
+  "aiBalance.topup.amount": "Сумма, $",
+  "aiBalance.topup.rate": "≈ {kzt} ₸ по курсу {rate} ₸ за $",
+  "aiBalance.topup.noRate": "Счёт выставится в тенге по курсу на день выставления.",
+  "aiBalance.topup.range": "От {min} до {max} $.",
+  "aiBalance.topup.button": "Выставить счёт",
+  "aiBalance.topup.ownerOnly": "Пополнить баланс может владелец магазина.",
+  "aiBalance.pay.title": "Счёт на {amount} ₸ — пополнение на {usd} $",
+  "aiBalance.pay.open": "Оплатить в Kaspi",
+  "aiBalance.pay.hint":
+    "После оплаты пришлите чек в своего бота. Баланс пополнится, как только чек пройдёт проверку.",
+  "aiBalance.pay.transfer":
+    "Переведите {amount} ₸ по реквизитам и пришлите чек в своего бота — баланс пополнится после проверки.",
+  "aiBalance.journal.title": "Журнал",
+  "aiBalance.journal.empty": "Записей пока нет.",
+  "aiBalance.kind.start": "Стартовый баланс",
+  "aiBalance.kind.topup": "Пополнение",
+  "aiBalance.kind.adjust": "Поправка оператора",
+  "aiBalance.spent": "{label}: {calls} выз.",
+  "aiBalance.use.consultant": "ИИ-консультант",
+  "aiBalance.use.assistant": "ИИ-помощник (тексты товаров)",
+  "aiBalance.use.smart_search": "Умный поиск",
+  "aiBalance.use.receipt_ocr": "Распознавание чеков",
+};
+
+export const kk: SectionDict<typeof ru> = {
+  "aiBalance.title": "ЖИ-баланс",
+  "aiBalance.subtitle":
+    "ЖИ-кеңесші, мәтін көмекшісі, ақылды іздеу және чектерді тану осы балансты API бағасымен жұмсайды. Баланс біткенде ЖИ тоқтайды: диалогтар менеджерге өтеді, чектерді өзіңіз тексересіз.",
+  "aiBalance.left": "Қалды",
+  "aiBalance.notStarted": "Бастапқы {amount} ЖИ-ге алғаш жүгінгенде есептеледі.",
+  "aiBalance.low": "таусылуға жақын",
+  "aiBalance.empty": "таусылды — ЖИ тоқтады",
+  "aiBalance.topup.title": "Толтыру",
+  "aiBalance.topup.amount": "Сома, $",
+  "aiBalance.topup.rate": "≈ {kzt} ₸, бағам {rate} ₸ / $",
+  "aiBalance.topup.noRate": "Шот теңгемен шот шығарылған күнгі бағам бойынша шығады.",
+  "aiBalance.topup.range": "{min}-ден {max} $-ға дейін.",
+  "aiBalance.topup.button": "Шот шығару",
+  "aiBalance.topup.ownerOnly": "Балансты дүкен иесі толтыра алады.",
+  "aiBalance.pay.title": "{amount} ₸ шот — {usd} $ толтыру",
+  "aiBalance.pay.open": "Kaspi-де төлеу",
+  "aiBalance.pay.hint":
+    "Төлегеннен кейін чекті өз ботыңызға жіберіңіз. Чек тексеруден өткенде баланс толады.",
+  "aiBalance.pay.transfer":
+    "{amount} ₸ деректемелер бойынша аударып, чекті өз ботыңызға жіберіңіз — тексеруден кейін баланс толады.",
+  "aiBalance.journal.title": "Журнал",
+  "aiBalance.journal.empty": "Әзірге жазба жоқ.",
+  "aiBalance.kind.start": "Бастапқы баланс",
+  "aiBalance.kind.topup": "Толтыру",
+  "aiBalance.kind.adjust": "Оператор түзетуі",
+  "aiBalance.spent": "{label}: {calls} шақыру",
+  "aiBalance.use.consultant": "ЖИ-кеңесші",
+  "aiBalance.use.assistant": "ЖИ-көмекші (тауар мәтіндері)",
+  "aiBalance.use.smart_search": "Ақылды іздеу",
+  "aiBalance.use.receipt_ocr": "Чектерді тану",
+};
+
+export const en: SectionDict<typeof ru> = {
+  "aiBalance.title": "AI balance",
+  "aiBalance.subtitle":
+    "The AI consultant, the text assistant, smart search and receipt recognition spend this balance at API prices. When it runs out, AI stops: dialogs go to a manager and you check receipts yourself.",
+  "aiBalance.left": "Remaining",
+  "aiBalance.notStarted": "The starting {amount} is credited on the first AI request.",
+  "aiBalance.low": "almost empty",
+  "aiBalance.empty": "empty — AI stopped",
+  "aiBalance.topup.title": "Top up",
+  "aiBalance.topup.amount": "Amount, $",
+  "aiBalance.topup.rate": "≈ {kzt} ₸ at {rate} ₸ per $",
+  "aiBalance.topup.noRate": "The invoice is issued in tenge at the rate of the day.",
+  "aiBalance.topup.range": "From {min} to {max} $.",
+  "aiBalance.topup.button": "Issue invoice",
+  "aiBalance.topup.ownerOnly": "Only the shop owner can top up the balance.",
+  "aiBalance.pay.title": "Invoice for {amount} ₸ — top-up of {usd} $",
+  "aiBalance.pay.open": "Pay in Kaspi",
+  "aiBalance.pay.hint":
+    "After paying, send the receipt to your bot. The balance is topped up as soon as the receipt passes the check.",
+  "aiBalance.pay.transfer":
+    "Transfer {amount} ₸ using the details and send the receipt to your bot — the balance is topped up after the check.",
+  "aiBalance.journal.title": "Journal",
+  "aiBalance.journal.empty": "No entries yet.",
+  "aiBalance.kind.start": "Starting balance",
+  "aiBalance.kind.topup": "Top-up",
+  "aiBalance.kind.adjust": "Operator adjustment",
+  "aiBalance.spent": "{label}: {calls} calls",
+  "aiBalance.use.consultant": "AI consultant",
+  "aiBalance.use.assistant": "AI assistant (product texts)",
+  "aiBalance.use.smart_search": "Smart search",
+  "aiBalance.use.receipt_ocr": "Receipt recognition",
+};
+
+export const uz: SectionDict<typeof ru> = {
+  "aiBalance.title": "SI balansi",
+  "aiBalance.subtitle":
+    "SI-maslahatchi, matn yordamchisi, aqlli qidiruv va cheklarni tanish bu balansni API narxida sarflaydi. Balans tugasa, SI to‘xtaydi: dialoglar menejerga o‘tadi, cheklarni o‘zingiz tekshirasiz.",
+  "aiBalance.left": "Qoldi",
+  "aiBalance.notStarted": "Boshlang‘ich {amount} SI’ga birinchi murojaatda beriladi.",
+  "aiBalance.low": "tugab qolmoqda",
+  "aiBalance.empty": "tugadi — SI to‘xtadi",
+  "aiBalance.topup.title": "To‘ldirish",
+  "aiBalance.topup.amount": "Summa, $",
+  "aiBalance.topup.rate": "≈ {kzt} ₸, kurs {rate} ₸ / $",
+  "aiBalance.topup.noRate": "Hisob tengeda, chiqarilgan kundagi kurs bo‘yicha chiqadi.",
+  "aiBalance.topup.range": "{min} dan {max} $ gacha.",
+  "aiBalance.topup.button": "Hisob chiqarish",
+  "aiBalance.topup.ownerOnly": "Balansni do‘kon egasi to‘ldira oladi.",
+  "aiBalance.pay.title": "{amount} ₸ hisob — {usd} $ to‘ldirish",
+  "aiBalance.pay.open": "Kaspi’da to‘lash",
+  "aiBalance.pay.hint":
+    "To‘lovdan keyin chekni o‘z botingizga yuboring. Chek tekshiruvdan o‘tishi bilan balans to‘ladi.",
+  "aiBalance.pay.transfer":
+    "{amount} ₸ ni rekvizitlar bo‘yicha o‘tkazing va chekni o‘z botingizga yuboring — tekshiruvdan keyin balans to‘ladi.",
+  "aiBalance.journal.title": "Jurnal",
+  "aiBalance.journal.empty": "Hozircha yozuv yo‘q.",
+  "aiBalance.kind.start": "Boshlang‘ich balans",
+  "aiBalance.kind.topup": "To‘ldirish",
+  "aiBalance.kind.adjust": "Operator tuzatishi",
+  "aiBalance.spent": "{label}: {calls} ta chaqiruv",
+  "aiBalance.use.consultant": "SI-maslahatchi",
+  "aiBalance.use.assistant": "SI-yordamchi (mahsulot matnlari)",
+  "aiBalance.use.smart_search": "Aqlli qidiruv",
+  "aiBalance.use.receipt_ocr": "Cheklarni tanish",
+};

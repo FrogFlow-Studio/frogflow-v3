@@ -307,6 +307,51 @@ describe("консультант с поиском по каталогу", () =>
     const round1 = (100 * 1 + 10 * 5) / 1_000_000;
     expect(daily.usd).toBeCloseTo(round1 + RESERVE_USD, 6);
     expect(daily.usd).toBeLessThan(RESERVE_USD * MAX_ROUNDS);
+    // ИИ-баланс клиента: бронь закрыта, оплачен только прошедший раунд.
+    const bal = JSON.parse(rows.find((x) => x.key === "ai_balance")!.value!) as { usd: number };
+    expect(bal.usd).toBeCloseTo(5 - round1, 6);
+  });
+
+  it("ИИ-баланс: бронь на все раунды, один расчёт на их сумму", async () => {
+    const ctx = ctxOf({ consultant_search: true });
+    const rows = (ctx.db as unknown as { tables: Record<string, Array<Record<string, string>>> })
+      .tables.app_settings!;
+    const bal = () =>
+      (JSON.parse(rows.find((x) => x.key === "ai_balance")!.value!) as { usd: number }).usd;
+    let during = 0;
+    queue = [
+      () => {
+        during = bal();
+        return search({ query: "полотенце" });
+      },
+      say("Есть полотенце Aquanova."),
+    ];
+    await runConsultant(ctx, customer(), "полотенце", { platform: "instagram" });
+    expect(during).toBeCloseTo(5 - RESERVE_USD * MAX_ROUNDS, 6);
+    expect(bal()).toBeCloseTo(5 - (2 * (100 * 1 + 10 * 5)) / 1_000_000, 6);
+    const day = rows.find((x) => x.key?.startsWith("ai_charges:"))!;
+    expect(JSON.parse(day.value!).uses.consultant.calls).toBe(1);
+  });
+
+  it("потолок времени после первого раунда: бронь закрыта ценой этого раунда", async () => {
+    const t0 = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(t0);
+    queue = [
+      () => {
+        clock.mockReturnValue(t0 + ROUNDS_DEADLINE_MS);
+        return search({ query: "полотенце" });
+      },
+    ];
+    const ctx = ctxOf({ consultant_search: true });
+    try {
+      await runConsultant(ctx, customer(), "полотенце", { platform: "instagram" });
+    } finally {
+      clock.mockRestore();
+    }
+    const rows = (ctx.db as unknown as { tables: Record<string, Array<Record<string, string>>> })
+      .tables.app_settings!;
+    const bal = JSON.parse(rows.find((x) => x.key === "ai_balance")!.value!) as { usd: number };
+    expect(bal.usd).toBeCloseTo(5 - (100 * 1 + 10 * 5) / 1_000_000, 6);
   });
 
   it("get_product отдаёт карточку, неизвестный id — found: false", async () => {

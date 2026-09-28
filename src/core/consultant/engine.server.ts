@@ -466,7 +466,7 @@ export async function runConsultant(
       handoff: {
         kind: "handoff",
         reason: "unknown_question",
-        summary: `ИИ-консультант на сегодня выключен пределом. Клиент написал: «${incoming.slice(0, 200)}»`,
+        summary: `ИИ-консультант выключен: ${blocked} Клиент написал: «${incoming.slice(0, 200)}»`,
       },
       usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
     };
@@ -583,10 +583,39 @@ export async function runConsultant(
     };
   }
 
+  // ИИ-баланс клиента (core/ai/balance): кончился — вопрос менеджеру, как при пределе.
+  const { aiReserve, aiSettle, aiRelease } = await import("@/core/ai/balance");
+  // Бронь — на все раунды сразу, как дневной расход выше: расчёт один, после цикла.
+  const aiHold = await aiReserve(ctx, "consultant", reserveUsd);
+  if (typeof aiHold === "string") {
+    await updateSettingAtomic(ctx, KEYS.daily, (raw) => settleRaw(raw, date, reserveUsd, 0));
+    if (aiHold === "short")
+      return overBudget(
+        "ИИ-баланс клиента закончился — вопросы уходят менеджеру, пока баланс не пополнят.",
+      );
+    // Сбой учёта баланса — не пустой баланс: без паузы, как сбой дневного расхода.
+    if (opts.dryRun) throw serverFailure("Не удалось записать расход ИИ. Попробуйте ещё раз.");
+    return {
+      reply: "Сейчас не могу ответить — передаю вопрос менеджеру, он напишет вам.",
+      handoff: {
+        kind: "handoff",
+        reason: "unknown_question",
+        summary: `Сбой учёта ИИ-баланса. Клиент написал: «${incoming.slice(0, 200)}»`,
+      },
+      usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
+    };
+  }
+
   const client = new Anthropic({ apiKey, maxRetries: 1, timeout: TIMEOUT_MS });
   const baseModel = env().CONSULTANT_MODEL?.trim() || DEFAULT_MODEL;
+  // Модель «по прайсу» читается из настроек — сбой здесь, до try ниже, не держит бронь.
   const model = pricelist
-    ? await import("./pricelist/engine.server").then((m) => m.pricelistModel(ctx, baseModel))
+    ? await import("./pricelist/engine.server")
+        .then((m) => m.pricelistModel(ctx, baseModel))
+        .catch(async (e: unknown) => {
+          await aiRelease(ctx, aiHold);
+          throw e;
+        })
     : baseModel;
   const price = /sonnet/.test(model) ? PRICE_SONNET : PRICE;
   const u = { input_tokens: 0, output_tokens: 0, cacheWrite: 0, cacheRead: 0 };
@@ -644,6 +673,8 @@ export async function runConsultant(
     const { reply, handoff } = out;
     const usd = costUsd();
     settled = true;
+    // ИИ-баланс клиента: все раунды (и по прайсу) по фактической цене API, один расчёт брони.
+    await aiSettle(ctx, aiHold, usd);
     await recordUsage(ctx, usd, u.input_tokens + u.cacheWrite + u.cacheRead, u.output_tokens);
     await updateSettingAtomic(ctx, KEYS.daily, (raw) => settleRaw(raw, date, reserveUsd, usd));
     if (newDialog)
@@ -890,6 +921,13 @@ export async function runConsultant(
       patch: loaded ? { profile: known, contact_asked: contactAsked || undefined } : {},
     });
   } catch (e) {
+    // Бронь ИИ-баланса закрываем всегда: прошедшие раунды — по их цене, упавший
+    // вызов клиент не оплачивает; раундов не было — бронь назад целиком.
+    if (!settled) {
+      const spent = costUsd();
+      if (spent > 0) await aiSettle(ctx, aiHold, spent).catch(() => {});
+      else await aiRelease(ctx, aiHold).catch(() => {});
+    }
     const detail =
       e instanceof Anthropic.APIError
         ? `HTTP ${e.status ?? "?"}: ${e.message}`

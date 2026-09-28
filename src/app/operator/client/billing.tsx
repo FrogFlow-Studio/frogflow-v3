@@ -74,7 +74,7 @@ export function BillingCard({ c }: { c: C }) {
   const act = useAction(
     async (p: {
       id: string;
-      action: "confirm" | "reject" | "cancel";
+      action: "confirm" | "reject" | "cancel" | "recredit";
       periodStart?: string;
       periodEnd?: string;
       reason?: string;
@@ -237,6 +237,19 @@ export function BillingCard({ c }: { c: C }) {
                               Отклонить
                             </button>
                           </>
+                        )}
+                        {data.uncreditedTopups.includes(i.id) && (
+                          <button
+                            type="button"
+                            className="btn-primary text-xs"
+                            title="Оплата получена, а запись о зачислении на ИИ-баланс не найдена"
+                            disabled={act.busy}
+                            onClick={() =>
+                              void act.run({ id: i.id, action: "recredit" }).catch(() => {})
+                            }
+                          >
+                            Зачислить повторно
+                          </button>
                         )}
                         {i.status === "sent" && (
                           <button

@@ -430,14 +430,16 @@ export async function ownerPayInvoice(
   reused: boolean;
 }> {
   const billing = await import("./billing.server");
-  const { data: open } = await serviceDb()
+  const { data: sent } = await serviceDb()
     .from("subscription_invoices")
     .select("id, amount, currency, note, requisites_snapshot")
     .eq("bot_id", botId)
     .eq("status", "sent")
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(20);
+  // Открытое пополнение ИИ-баланса — не счёт за тариф.
+  const { openSubscriptionInvoices } = await import("./ai-topup.server");
+  const [open] = await openSubscriptionInvoices(botId, sent ?? []);
   if (open) {
     const { normalizeKaspiLink } = await import("@/core/billing/pay/kaspi-link");
     const payUrl =

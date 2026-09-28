@@ -89,6 +89,24 @@ export async function assistText(ctx: TenantContext, req: AssistRequest): Promis
     throw busy();
   }
 
+  // ИИ-баланс клиента (core/ai/balance): кончился — черновик и дневной расход назад.
+  const { aiReserve, aiSettle, aiRelease } = await import("@/core/ai/balance");
+  const hold = await aiReserve(ctx, "assistant", RESERVE_USD);
+  if (typeof hold === "string") {
+    await updateSettingAtomic(ctx, CONSULTANT_KEYS.daily, (raw) =>
+      settleRaw(raw, date, RESERVE_USD, 0),
+    );
+    await updateSettingAtomic(ctx, DAILY_KEY, (raw) => {
+      const mine = parseAssistDaily(raw, date);
+      return mine.count > 0 ? JSON.stringify({ date, count: mine.count - 1 }) : null;
+    });
+    if (hold === "failed") throw busy();
+    throw new UserError(
+      "err.assist.balance",
+      "ИИ-баланс закончился. Пополните его в разделе «ИИ-баланс».",
+    );
+  }
+
   const { system, user } = assistPrompt(req.task, req.product, req.lang, req.review);
   const client = new Anthropic({ apiKey, maxRetries: 1, timeout: TIMEOUT_MS });
   let response: Anthropic.Message;
@@ -100,6 +118,7 @@ export async function assistText(ctx: TenantContext, req: AssistRequest): Promis
       messages: [{ role: "user", content: user }],
     });
   } catch (e) {
+    await aiRelease(ctx, hold);
     const { reportError } = await import("@/lib/errors");
     await reportError(e, { where: "assistant", botId: ctx.tenant.id });
     throw new UserError("err.assist.failed", "ИИ-помощник не ответил. Попробуйте ещё раз.");
@@ -107,6 +126,7 @@ export async function assistText(ctx: TenantContext, req: AssistRequest): Promis
 
   const usd =
     (response.usage.input_tokens * PRICE.in + response.usage.output_tokens * PRICE.out) / 1_000_000;
+  await aiSettle(ctx, hold, usd);
   await updateSettingAtomic(ctx, CONSULTANT_KEYS.daily, (raw) =>
     settleRaw(raw, date, RESERVE_USD, usd),
   );

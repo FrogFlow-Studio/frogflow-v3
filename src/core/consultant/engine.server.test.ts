@@ -308,3 +308,40 @@ describe("консультант: цена ответа и кеш промпта
     expect(JSON.parse((await getSetting(ctx, KEYS.daily))!).usd).toBeCloseTo(expected, 6);
   });
 });
+
+describe("консультант: ИИ-баланс клиента", () => {
+  it("баланс кончился — модель не зовём, вопрос менеджеру, дневной счёт не тронут", async () => {
+    const ctx = ctxOf();
+    (ctx.db as unknown as { tables: Record<string, unknown[]> }).tables.app_settings!.push({
+      bot_id: BOT,
+      key: "ai_balance",
+      value: JSON.stringify({ usd: 0.001, low: true, empty: false }),
+    });
+    const r = await runConsultant(ctx, customer(), "Сколько стоит?", { platform: "instagram" });
+    expect(create).not.toHaveBeenCalled();
+    expect(r?.reply).toMatch(/менеджеру/);
+    expect(r?.handoff?.summary).toMatch(/ИИ-баланс/);
+    expect(JSON.parse((await getSetting(ctx, KEYS.daily))!).usd).toBe(0);
+  });
+
+  it("сбой учёта баланса — не «кончился»: модель не зовём, без паузы, дневной счёт назад", async () => {
+    const ctx = ctxOf();
+    (ctx.db as unknown as { tables: Record<string, unknown[]> }).tables.app_settings!.push({
+      bot_id: BOT,
+      key: "ai_balance",
+      value: "испорчено",
+    });
+    const r = await runConsultant(ctx, customer(), "Сколько стоит?", { platform: "instagram" });
+    expect(create).not.toHaveBeenCalled();
+    expect(r?.handoff?.summary).toMatch(/Сбой учёта ИИ-баланса/);
+    expect(saved).toHaveLength(0);
+    expect(JSON.parse((await getSetting(ctx, KEYS.daily))!).usd).toBe(0);
+  });
+
+  it("ответ модели списывает с баланса его цену", async () => {
+    const ctx = ctxOf();
+    const r = await runConsultant(ctx, customer(), "Сколько стоит?", { platform: "instagram" });
+    const bal = JSON.parse((await getSetting(ctx, "ai_balance"))!) as { usd: number };
+    expect(bal.usd).toBeCloseTo(5 - r!.usage.usd, 6);
+  });
+});

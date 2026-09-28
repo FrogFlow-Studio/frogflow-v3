@@ -1626,9 +1626,9 @@ async function ownerInvoiceProof(
 ): Promise<boolean> {
   const from = msg.from;
   if (!from || Number(ctx.tenant.ownerTelegramId) !== Number(from.id)) return false;
-  const { attachInvoiceProof, openInvoiceForOwner } = await import("@/core/billing/invoices");
-  const invoice = await openInvoiceForOwner(ctx, from.id);
-  if (!invoice) return false;
+  const { attachInvoiceProof, openInvoicesForOwner } = await import("@/core/billing/invoices");
+  const open = await openInvoicesForOwner(ctx, from.id);
+  if (!open.length) return false;
   const customer = await getCustomer(ctx, `tg_${from.id}`);
   if (customer && (await recentAwaitingPaymentOrder(ctx, customer))) return false;
   const fileId = msg.document?.file_id ?? msg.photo?.[msg.photo.length - 1]?.file_id;
@@ -1643,6 +1643,11 @@ async function ownerInvoiceProof(
   const ext =
     docName.match(/\.([a-z0-9]{1,8})$/)?.[1] ??
     (file.mime === "application/pdf" ? "pdf" : msg.document ? "bin" : "jpg");
+  // Несколько открытых счетов (подписка и пополнение ИИ-баланса) — чек к тому,
+  // с которым он сходится; не ровно к одному — к старейшему, проверяет оператор.
+  const { pickInvoiceForReceipt, verifyInvoiceProof } =
+    await import("@/core/billing/invoice-check.server");
+  const { invoice, ...pre } = await pickInvoiceForReceipt(ctx, open, file);
   const r = await attachInvoiceProof(ctx, invoice, { ...file, ext });
   if (!r.ok) {
     await reply(
@@ -1653,12 +1658,11 @@ async function ownerInvoiceProof(
     return true;
   }
   // Автопроверка: прошла — подписка продлена сразу; нет — чек ждёт оператора.
-  const { verifyInvoiceProof } = await import("@/core/billing/invoice-check.server");
   const { settleInvoiceProof } = await import("@/app/operator/billing.server");
   const settled = await settleInvoiceProof(
     ctx.tenant.id,
     invoice.id,
-    await verifyInvoiceProof(ctx, invoice, file),
+    await verifyInvoiceProof(ctx, invoice, file, pre),
   );
   if (settled.confirmed) {
     const until = settled.expiresAt

@@ -88,3 +88,28 @@ describe("ИИ-помощник продавца: пределы при пара
     expect(JSON.parse((await getSetting(ctx, "seller_assist_daily"))!).count).toBe(0);
   });
 });
+
+describe("ИИ-помощник: ИИ-баланс клиента", () => {
+  it("баланс кончился — модель не зовём, черновик и дневной расход возвращены", async () => {
+    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    const ctx = ctxOf();
+    await ctx.db.from("app_settings").insert({
+      bot_id: BOT,
+      key: "ai_balance",
+      value: JSON.stringify({ usd: 0.001, low: true, empty: true }),
+    });
+    await expect(assistText(ctx, req as never)).rejects.toMatchObject({
+      key: "err.assist.balance",
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(JSON.parse((await getSetting(ctx, "seller_assist_daily"))!).count).toBe(0);
+    expect(JSON.parse((await getSetting(ctx, "consultant_daily"))!).usd).toBe(0);
+  });
+
+  it("черновик списывает с баланса свою цену", async () => {
+    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    const ctx = ctxOf();
+    await assistText(ctx, req as never);
+    expect(JSON.parse((await getSetting(ctx, "ai_balance"))!).usd).toBeCloseTo(5 - 0.003, 6);
+  });
+});

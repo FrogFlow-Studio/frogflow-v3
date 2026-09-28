@@ -28,6 +28,12 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
 // Подставная база (tests/fake-db.ts) копит обращения к несуществующим
 // колонкам — даже те, чью ошибку код поймал и проглотил. Такой тест не зелёный.
 const { afterEach, expect } = await import("vitest");
+
+// Наценка ИИ-баланса — из operator_settings платформы; юнит-тесты в сеть не ходят.
+if (!process.env.SUPABASE_URL) {
+  const { setAiMarkupSource } = await import("@/core/ai/markup");
+  setAiMarkupSource(async () => 0);
+}
 const { schemaViolations } = await import("./fake-db");
 afterEach(() => {
   const found = schemaViolations.splice(0);

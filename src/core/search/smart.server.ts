@@ -11,6 +11,7 @@ import {
   SMART_SEARCH_MODEL,
   addSpend,
   buildPrompt,
+  estimateUsd,
   formatDailyCount,
   parseDailyCount,
   parseSmartSearchIds,
@@ -36,6 +37,8 @@ export const KEYS = {
 } as const;
 
 const TIMEOUT_MS = 40_000;
+/** Бронь ИИ-баланса на вызов: до 12 000 токенов ответа и сотни кандидатов в запросе. */
+const SMART_SEARCH_RESERVE_USD = 0.08;
 
 export function platformHasKey(): boolean {
   return Boolean(env().ANTHROPIC_API_KEY?.trim());
@@ -131,6 +134,20 @@ export async function smartSearchProductIds(
   const list = await candidates(ctx);
   if (!q || list.length === 0) return null;
 
+  // ИИ-баланс клиента (core/ai/balance): кончился — обычный поиск без ИИ.
+  const { aiReserve, aiSettle, aiRelease } = await import("@/core/ai/balance");
+  const hold = await aiReserve(ctx, "smart_search", SMART_SEARCH_RESERVE_USD);
+  if (typeof hold === "string") {
+    await trySetSetting(
+      ctx,
+      KEYS.lastError,
+      hold === "short"
+        ? `${new Date().toISOString()} — ИИ-баланс закончился, умный поиск ждёт пополнения`
+        : `${new Date().toISOString()} — сбой учёта ИИ-баланса, этот поиск без ИИ`,
+    );
+    return null;
+  }
+  let settled = false;
   const client = new Anthropic({ apiKey, maxRetries: 1, timeout: TIMEOUT_MS });
   try {
     const response = await client.messages.create({
@@ -139,6 +156,15 @@ export async function smartSearchProductIds(
       max_tokens: 12_000,
       messages: [{ role: "user", content: buildPrompt(ctx.tenant.vertical, q, list) }],
     });
+    await aiSettle(
+      ctx,
+      hold,
+      estimateUsd({
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+      }),
+    );
+    settled = true;
     await recordSpend(ctx, {
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
@@ -151,6 +177,7 @@ export async function smartSearchProductIds(
     await trySetSetting(ctx, KEYS.lastError, "");
     return ids;
   } catch (e) {
+    if (!settled) await aiRelease(ctx, hold);
     const detail =
       e instanceof Anthropic.APIError
         ? `HTTP ${e.status ?? "?"}: ${e.message}`

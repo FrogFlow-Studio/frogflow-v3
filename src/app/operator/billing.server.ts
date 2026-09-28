@@ -12,6 +12,8 @@ import type { Tenant } from "@/core/tenant/types";
 import { logEvent, notifyOwner } from "./operator.server";
 import { NO_RECIPIENTS_REASON } from "@/core/notify/deliver";
 import { serverFailure } from "@/lib/server-failure";
+import { reportError } from "@/lib/errors";
+import { shownError } from "@/lib/shown-error";
 
 /**
  * Подписка клиента на платформу: платежи (subscription_payments — срок
@@ -236,7 +238,11 @@ export async function createInvoice(
   botId: string,
   p: { amount: number; currency: string; note: string | null },
   actor: string,
-  opts: { deliver?: boolean } = {},
+  opts: {
+    deliver?: boolean;
+    /** После вставки и до выставления: сбой отменяет счёт, владелец его не получит. */
+    beforeIssue?: (invoiceId: string) => Promise<void>;
+  } = {},
 ): Promise<{
   invoice: Invoice;
   delivered: boolean;
@@ -274,6 +280,7 @@ export async function createInvoice(
   // владелец ничего не получает. Такой счёт сразу помечаем отменённым.
   let issued;
   try {
+    await opts.beforeIssue?.(invoice.id);
     ({ issued } = await issueWithFallback(ready, { ...reqBase, invoiceId: invoice.id }));
   } catch (e) {
     await serviceDb()
@@ -340,6 +347,8 @@ export async function confirmInvoice(
   id: string,
   period: { start: string; end: string },
   actor: string,
+  /** Номер операции из чека (автопроверка) — в событие сбоя зачисления. */
+  receiptOp?: string,
 ): Promise<{ expiresAt: string | null }> {
   const inv = await invoiceOrThrow(id);
   if (inv.status !== "sent" && inv.status !== "proof_uploaded")
@@ -355,6 +364,94 @@ export async function confirmInvoice(
     .maybeSingle();
   if (error) throw serverFailure(`Не удалось подтвердить счёт: ${error.message}`);
   if (!claimed) throw new InvoiceAlreadyHandled("Счёт уже обработан — обновите список");
+  /**
+   * Вернуть счёт в прежний статус. Не вышло — счёт остался «оплачен» без
+   * платежа или зачисления: сам он больше не подтвердится, только оператор,
+   * поэтому в журнал клиента и в учёт ошибок.
+   */
+  const rollback = async () => {
+    const { error: failed } = await db
+      .from("subscription_invoices")
+      .update({ status: inv.status, confirmed_at: null })
+      .eq("id", id);
+    if (!failed) return;
+    await logEvent(
+      inv.bot_id,
+      "payment",
+      {
+        action: "invoice_paid_without_payment",
+        invoice_id: id,
+        amount: inv.amount,
+        currency: inv.currency,
+        error: failed.message,
+      },
+      actor,
+    );
+    await reportError(
+      serverFailure(`Счёт ${id} остался оплаченным без платежа: ${failed.message}`),
+      { where: "billing.confirmInvoice", botId: inv.bot_id },
+    );
+  };
+  // Счёт пополнения ИИ-баланса: оплата зачисляет доллары, подписку не продлевает.
+  // Метка читается после захвата: сбой чтения возвращает счёт в прежний статус.
+  const { aiTopupMarks, creditAiTopup } = await import("./ai-topup.server");
+  let topup;
+  try {
+    topup = (await aiTopupMarks(inv.bot_id, [id])).get(id) ?? null;
+  } catch (e) {
+    await rollback();
+    throw e;
+  }
+  if (topup) {
+    let after;
+    try {
+      after = await creditAiTopup(inv.bot_id, id, topup, actor);
+    } catch (e) {
+      // Неизвестно, успел ли баланс измениться: счёт остаётся оплаченным, а
+      // оператор жмёт «Зачислить повторно» — зачисление по счёту идемпотентно
+      // (core/ai/balance aiCredit), второй раз не начислит.
+      const detail = e instanceof Error ? e.message : String(e);
+      await logEvent(
+        inv.bot_id,
+        "payment",
+        {
+          action: "ai_topup_failed",
+          invoice_id: id,
+          amount: inv.amount,
+          currency: inv.currency,
+          usd: topup.usd,
+          ...(receiptOp ? { receipt_op: receiptOp } : {}),
+          error: detail,
+        },
+        actor,
+      );
+      await reportError(e, {
+        where: "billing.ai_topup",
+        botId: inv.bot_id,
+        extra: { invoice_id: id, usd: topup.usd, receipt_op: receiptOp ?? null },
+      });
+      throw serverFailure(
+        `Счёт оплачен, но зачисление на ИИ-баланс не подтвердилось: ${detail}. Нажмите «Зачислить повторно» у счёта.`,
+      );
+    }
+    if (!after) {
+      await rollback();
+      throw shownError("ИИ-баланс сейчас меняется — подтвердите счёт ещё раз.");
+    }
+    await logEvent(
+      inv.bot_id,
+      "payment",
+      {
+        action: "invoice_confirmed",
+        invoice_id: id,
+        amount: inv.amount,
+        currency: inv.currency,
+        ai_topup_usd: topup.usd,
+      },
+      actor,
+    );
+    return { expiresAt: null };
+  }
   let r: { expiresAt: string | null };
   try {
     r = await addPayment(
@@ -369,31 +466,7 @@ export async function confirmInvoice(
       actor,
     );
   } catch (e) {
-    const { error: rollback } = await db
-      .from("subscription_invoices")
-      .update({ status: inv.status, confirmed_at: null })
-      .eq("id", id);
-    if (rollback) {
-      // Счёт остался «оплачен», а платежа нет: сам он больше не подтвердится —
-      // только оператор, поэтому в журнал клиента и в учёт ошибок.
-      await logEvent(
-        inv.bot_id,
-        "payment",
-        {
-          action: "invoice_paid_without_payment",
-          invoice_id: id,
-          amount: inv.amount,
-          currency: inv.currency,
-          error: rollback.message,
-        },
-        actor,
-      );
-      const { reportError } = await import("@/lib/errors");
-      await reportError(
-        serverFailure(`Счёт ${id} остался оплаченным без платежа: ${rollback.message}`),
-        { where: "billing.confirmInvoice", botId: inv.bot_id },
-      );
-    }
+    await rollback();
     throw e;
   }
   // Платёж записан — счёт оплачен, дальше его не откатываем: иначе повторное
@@ -461,7 +534,7 @@ export async function settleInvoiceProof(
   }
   try {
     const period = await (await import("./plans.server")).suggestedPeriod(botId);
-    const r = await confirmInvoice(invoiceId, period, "auto-check");
+    const r = await confirmInvoice(invoiceId, period, "auto-check", check.operationId);
     return { confirmed: true, expiresAt: r.expiresAt };
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
@@ -551,8 +624,10 @@ const defaultInvoicer: SweepInvoicer = async (t) => {
     .select("id")
     .eq("bot_id", t.id)
     .in("status", ["sent", "proof_uploaded"])
-    .limit(1);
-  if (open?.length) return null;
+    .limit(20);
+  // Открытое пополнение ИИ-баланса не заменяет счёт за подписку.
+  const { openSubscriptionInvoices } = await import("./ai-topup.server");
+  if ((await openSubscriptionInvoices(t.id, open ?? [])).length) return null;
   const r = await (
     await import("./plans.server")
   ).createPlanInvoice(

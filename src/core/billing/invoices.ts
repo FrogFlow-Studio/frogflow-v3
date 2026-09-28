@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serviceDb } from "@/core/db/client.server";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Счёт оператора владельцу бота — часть, которую видит сам бот: владелец
@@ -16,21 +17,32 @@ export type OpenInvoice = {
   created_at: string;
 };
 
+/**
+ * Открытые счета владельцу, старые первыми; отправитель не владелец — пусто.
+ * Сбой чтения — serverFailure: «счетов нет» отдало бы чек в поток заказов.
+ */
+export async function openInvoicesForOwner(
+  ctx: TenantContext,
+  telegramId: number,
+): Promise<OpenInvoice[]> {
+  if (!ctx.tenant.ownerTelegramId || Number(ctx.tenant.ownerTelegramId) !== Number(telegramId))
+    return [];
+  const { data, error } = await ctx.db
+    .from("subscription_invoices")
+    .select("id, amount, currency, note, created_at")
+    .eq("status", "sent")
+    .order("created_at", { ascending: true })
+    .limit(20);
+  if (error) throw serverFailure(`Не удалось прочитать открытые счета: ${error.message}`);
+  return (data ?? []).map((r) => ({ ...r, amount: Number(r.amount) }));
+}
+
 /** Старейший открытый счёт — если отправитель владелец бота; иначе null. */
 export async function openInvoiceForOwner(
   ctx: TenantContext,
   telegramId: number,
 ): Promise<OpenInvoice | null> {
-  if (!ctx.tenant.ownerTelegramId || Number(ctx.tenant.ownerTelegramId) !== Number(telegramId))
-    return null;
-  const { data } = await ctx.db
-    .from("subscription_invoices")
-    .select("id, amount, currency, note, created_at")
-    .eq("status", "sent")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  return data ? { ...data, amount: Number(data.amount) } : null;
+  return (await openInvoicesForOwner(ctx, telegramId))[0] ?? null;
 }
 
 export type AttachInvoiceProofResult =

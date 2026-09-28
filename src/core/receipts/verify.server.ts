@@ -176,8 +176,25 @@ export async function readReceiptText(
   }
   const apiKey = env().GOOGLE_VISION_API_KEY?.trim();
   if (!apiKey) throw new Error("GOOGLE_VISION_API_KEY не задан");
-  if (opts.countUsage !== false) await recordVisionCall(ctx);
-  return pdf ? visionPdf(bytes, apiKey) : visionImage(bytes, apiKey);
+  const read = () => (pdf ? visionPdf(bytes, apiKey) : visionImage(bytes, apiKey));
+  // Чек за подписку платформе — не за счёт клиента: ни лимита, ни ИИ-баланса.
+  if (opts.countUsage === false) return read();
+  // ИИ-баланс клиента (core/ai/balance): кончился — чек посмотрит продавец.
+  const { aiReserve, aiSettle, aiRelease } = await import("@/core/ai/balance");
+  const { VISION_USD_PER_CALL } = await import("./audit");
+  const hold = await aiReserve(ctx, "receipt_ocr", VISION_USD_PER_CALL);
+  if (hold === "short") throw new Error("ИИ-баланс магазина закончился — чек посмотрит продавец");
+  if (hold === "failed") throw new Error("Сбой учёта ИИ-баланса — чек посмотрит продавец");
+  await recordVisionCall(ctx);
+  let text: string;
+  try {
+    text = await read();
+  } catch (e) {
+    await aiRelease(ctx, hold);
+    throw e;
+  }
+  await aiSettle(ctx, hold, VISION_USD_PER_CALL);
+  return text;
 }
 
 export type VerifyResult = ReceiptAnalysis & { extractedText?: string };

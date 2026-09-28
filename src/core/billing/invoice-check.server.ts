@@ -2,7 +2,13 @@ import { createHash } from "node:crypto";
 import { serviceDb } from "@/core/db/client.server";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { readReceiptText } from "@/core/receipts/verify.server";
-import { checkInvoiceReceipt, claimVerdict, operationKey, recipientNames } from "./invoice-check";
+import {
+  checkInvoiceReceipt,
+  claimVerdict,
+  operationKey,
+  receiptOperationId,
+  recipientNames,
+} from "./invoice-check";
 import type { OpenInvoice } from "./invoices";
 import { serverFailure } from "@/lib/server-failure";
 
@@ -115,10 +121,59 @@ export async function claimReceipt(
   return null;
 }
 
+/** Несколько открытых счетов, а чек подходит не ровно к одному — сам чек не засчитываем. */
+export const SEVERAL_INVOICES = "Несколько открытых счетов — чек проверяет оператор.";
+
+async function receiptText(ctx: TenantContext, file: { bytes: Uint8Array; mime: string }) {
+  return readReceiptText(ctx, file.bytes, file.mime || "image/jpeg", { countUsage: false });
+}
+
+/**
+ * К какому из открытых счетов чек. Один счёт — к нему. Несколько — чек
+ * читается один раз и сверяется с каждым; подошёл ровно один — к нему (с
+ * прочитанным текстом, второй раз не распознаём). Иначе чек ложится на
+ * старейший счёт и ждёт оператора: чек за подписку не должен закрыть счёт
+ * пополнения на другую сумму, и наоборот.
+ */
+export async function pickInvoiceForReceipt(
+  ctx: TenantContext,
+  invoices: OpenInvoice[],
+  file: { bytes: Uint8Array; mime: string },
+): Promise<{ invoice: OpenInvoice; text?: string; manual?: string }> {
+  const oldest = invoices[0]!;
+  if (invoices.length === 1) return { invoice: oldest };
+  const recipient = await payoutRecipient();
+  if (!recipientNames(recipient).length) return { invoice: oldest, manual: SEVERAL_INVOICES };
+  let text: string;
+  try {
+    text = await receiptText(ctx, file);
+  } catch {
+    return { invoice: oldest, manual: SEVERAL_INVOICES };
+  }
+  const fits = invoices.filter(
+    (i) =>
+      checkInvoiceReceipt(text, {
+        amount: i.amount,
+        currency: i.currency,
+        createdAt: i.created_at,
+        recipient,
+      }).ok,
+  );
+  return fits.length === 1
+    ? { invoice: fits[0]!, text }
+    : { invoice: oldest, manual: SEVERAL_INVOICES };
+}
+
+/**
+ * Автопроверка чека по счёту. `pre` — итог pickInvoiceForReceipt: готовый
+ * текст чека или причина отдать чек оператору (отметка чека пишется всё
+ * равно — по ней тот же файл не пройдёт по другому счёту).
+ */
 export async function verifyInvoiceProof(
   ctx: TenantContext,
   invoice: OpenInvoice,
   file: { bytes: Uint8Array; mime: string },
+  pre: { text?: string; manual?: string } = {},
 ): Promise<InvoiceProofCheck> {
   const hash = createHash("sha256").update(file.bytes).digest("hex");
   const fail = (detail: string, operationId: string | null = null): InvoiceProofCheck => ({
@@ -128,6 +183,7 @@ export async function verifyInvoiceProof(
     detail,
   });
   // Без получателя автоматически не принимаем — и не тратим распознавание.
+  if (pre.manual) return fail(pre.manual, pre.text ? receiptOperationId(pre.text) : null);
   const recipient = await payoutRecipient();
   if (!recipientNames(recipient).length)
     return fail("Получатель платежей не указан в настройках оператора — чек проверяет оператор.");
@@ -135,9 +191,7 @@ export async function verifyInvoiceProof(
   if (sameFile) return fail(sameFile);
   let text: string;
   try {
-    text = await readReceiptText(ctx, file.bytes, file.mime || "image/jpeg", {
-      countUsage: false,
-    });
+    text = pre.text ?? (await receiptText(ctx, file));
   } catch (e) {
     return fail(`Чек не распознан: ${e instanceof Error ? e.message : String(e)}`);
   }
