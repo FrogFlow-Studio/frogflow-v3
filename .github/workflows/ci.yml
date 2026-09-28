@@ -8,6 +8,10 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Живые тесты в одной базе с ночным прогоном — по очереди, не вместе.
+    concurrency:
+      group: live-db
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

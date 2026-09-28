@@ -1,9 +1,9 @@
 import { env } from "@/config/env";
-import { telegramApi } from "@/channels/telegram/api";
-import { telegramWebhookSecret } from "@/channels/telegram/secret";
-import { tenantContext, patchTenantSettings } from "./resolve.server";
-import type { Tenant } from "./types";
-import type { WebhookState } from "./telegram-webhook.server";
+import { telegramApi } from "./api";
+import { telegramWebhookSecret } from "./secret";
+import { tenantContext, patchTenantSettings } from "@/core/tenant/resolve.server";
+import type { Tenant } from "@/core/tenant/types";
+import type { WebhookState } from "./webhook-setup.server";
 
 export function vipWebhookUrl(appUrl: string, botId: string): string {
   return `${appUrl.replace(/\/$/, "")}/api/telegram/${botId}/vip`;

@@ -1,15 +1,11 @@
 import { env } from "@/config/env";
-import { telegramApi } from "@/channels/telegram/api";
-import { telegramWebhookSecret, telegramWebhookUrl } from "@/channels/telegram/secret";
-import { tenantContext, patchTenantSettings } from "./resolve.server";
-import type { Tenant } from "./types";
-import { storefrontBase } from "./custom-domain";
-import { servedByV2 } from "./directory";
-import {
-  botCommandsVersion,
-  clearBotCommands,
-  syncBotCommands,
-} from "@/channels/telegram/commands";
+import { telegramApi } from "./api";
+import { telegramWebhookSecret, telegramWebhookUrl } from "./secret";
+import { tenantContext, patchTenantSettings } from "@/core/tenant/resolve.server";
+import type { Tenant } from "@/core/tenant/types";
+import { storefrontBase } from "@/core/tenant/custom-domain";
+import { servedByV2 } from "@/core/tenant/directory";
+import { botCommandsVersion, clearBotCommands, syncBotCommands } from "./commands";
 
 /** Что бот получает от Telegram; pre_checkout_query — подтверждение оплаты Stars. */
 export const ALLOWED_UPDATES = ["message", "callback_query", "pre_checkout_query"];

@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Tenant } from "./types";
+import type { Tenant } from "@/core/tenant/types";
 
 vi.mock("@/config/env", () => ({ env: () => ({ APP_URL: "https://app.test" }) }));
 
-const { syncMenuButton } = await import("./telegram-webhook.server");
+const { syncMenuButton } = await import("./webhook-setup.server");
 
 function apiSpy() {
   const calls: Array<[string, unknown]> = [];

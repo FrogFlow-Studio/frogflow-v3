@@ -47,6 +47,37 @@ export default tseslint.config(
     rules: { "no-restricted-syntax": "off" },
   },
   {
+    // Правило 3: ядро не знает канала — адаптеры src/channels зовут ядро, не наоборот.
+    files: ["src/core/**/*.ts"],
+    ignores: ["src/core/**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/channels/*", "@/channels/**"],
+              message: "src/core не импортирует src/channels (правило 3 в CLAUDE.md).",
+            },
+          ],
+        },
+      ],
+      // Динамический import() тоже: правила no-restricted-syntax не сливаются, поэтому здесь оба.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "MemberExpression[object.name='process'][property.name='env']",
+          message:
+            "process.env читается только в src/config/env.ts — остальной код получает настройки параметрами.",
+        },
+        {
+          selector: "ImportExpression[source.value=/^@\\/channels\\//]",
+          message: "src/core не импортирует src/channels (правило 3 в CLAUDE.md).",
+        },
+      ],
+    },
+  },
+  {
     // useSession из @tanstack/react-start/server — не React-хук.
     files: ["**/*.server.ts"],
     rules: { "react-hooks/rules-of-hooks": "off" },

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Tenant } from "./types";
+import type { Tenant } from "@/core/tenant/types";
 
 /** Меню команд ставится только боту v2 и только когда набор сменился. */
 vi.mock("@/config/env", () => ({
@@ -8,7 +8,7 @@ vi.mock("@/config/env", () => ({
 
 const calls: Array<[string, Record<string, unknown>]> = [];
 let webhookUrl: string | null = null;
-vi.mock("@/channels/telegram/api", () => ({
+vi.mock("./api", () => ({
   telegramApi: () => ({
     call: vi.fn(async (method: string, payload: Record<string, unknown> = {}) => {
       calls.push([method, payload]);
@@ -27,16 +27,16 @@ vi.mock("@/channels/telegram/api", () => ({
 }));
 
 const patches: Array<Record<string, unknown>> = [];
-vi.mock("./resolve.server", () => ({
+vi.mock("@/core/tenant/resolve.server", () => ({
   tenantContext: () => ({ secrets: { telegramToken: () => "t" } }),
   patchTenantSettings: vi.fn(async (_id: string, patch: Record<string, unknown>) => {
     patches.push(patch);
   }),
 }));
 
-const { ensureTelegramWebhook, releaseTelegramToV1 } = await import("./telegram-webhook.server");
-const { botCommandsVersion } = await import("@/channels/telegram/commands");
-const { telegramWebhookUrl } = await import("@/channels/telegram/secret");
+const { ensureTelegramWebhook, releaseTelegramToV1 } = await import("./webhook-setup.server");
+const { botCommandsVersion } = await import("./commands");
+const { telegramWebhookUrl } = await import("./secret");
 
 function tenant(settings: Record<string, unknown>): Tenant {
   return {

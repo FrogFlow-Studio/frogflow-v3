@@ -50,7 +50,7 @@ export const Route = createFileRoute("/api/cron/$job")({
           switch (params.job) {
             case "ensure-webhook": {
               const { ensureTelegramWebhook } =
-                await import("@/core/tenant/telegram-webhook.server");
+                await import("@/channels/telegram/webhook-setup.server");
               for (const t of tenants) {
                 try {
                   results[t.id] = await ensureTelegramWebhook(t);
@@ -59,7 +59,8 @@ export const Route = createFileRoute("/api/cron/$job")({
                 }
               }
               // VIP-боты: второй токен у клиентов с модулем.
-              const { ensureVipWebhook } = await import("@/core/tenant/vip-webhook.server");
+              const { ensureVipWebhook } =
+                await import("@/channels/telegram/vip-webhook-setup.server");
               for (const t of tenants) {
                 if (!t.modules.vip || !t.settings.vip?.token_enc) continue;
                 try {

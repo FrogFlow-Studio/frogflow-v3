@@ -59,8 +59,12 @@ vi.mock("@/core/tenant/resolve.server", () => ({
   tenantDirectory: async () => [V2, V1, NONE],
   tenantContext: (tenant: unknown) => ({ tenant }),
 }));
-vi.mock("@/core/tenant/telegram-webhook.server", () => ({ ensureTelegramWebhook: hit("webhook") }));
-vi.mock("@/core/tenant/vip-webhook.server", () => ({ ensureVipWebhook: hit("vipWebhook") }));
+vi.mock("@/channels/telegram/webhook-setup.server", () => ({
+  ensureTelegramWebhook: hit("webhook"),
+}));
+vi.mock("@/channels/telegram/vip-webhook-setup.server", () => ({
+  ensureVipWebhook: hit("vipWebhook"),
+}));
 vi.mock("@/channels/zernio/connect.server", () => ({
   v2WebhookStatus: async () => ({ ok: true }),
   // Запись вебхука Zernio пишет только оператор кнопкой — крон её не вызывает.

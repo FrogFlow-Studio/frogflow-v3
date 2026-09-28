@@ -30,7 +30,7 @@ import {
   tenantContext,
   tenantDirectory,
 } from "@/core/tenant/resolve.server";
-import { ensureTelegramWebhook } from "@/core/tenant/telegram-webhook.server";
+import { ensureTelegramWebhook } from "@/channels/telegram/webhook-setup.server";
 import type { Tenant } from "@/core/tenant/types";
 import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
 import { addressConflict, telegramBotTaken } from "@/core/tenant/directory";
@@ -503,7 +503,7 @@ export async function connectVipBot(botId: string, token: string, actor = "opera
     },
   });
   await logEvent(botId, "webhook", { action: "vip_token", username: me.result?.username }, actor);
-  const { ensureVipWebhook } = await import("@/core/tenant/vip-webhook.server");
+  const { ensureVipWebhook } = await import("@/channels/telegram/vip-webhook-setup.server");
   const webhook = await ensureVipWebhook(await requireTenant({ by: "id", value: botId }), true);
   await logEvent(botId, "webhook", { action: "vip_set", ...webhook }, actor);
   return { username: me.result?.username ?? null, webhook };
@@ -551,7 +551,7 @@ export async function setServedBy(botId: string, servedBy: "v1" | "v2", actor = 
   }
   const { releasesTelegramOnSwitch } = await import("@/core/tenant/preflight");
   if (releasesTelegramOnSwitch(before.settings.served_by, servedBy)) {
-    const { releaseTelegramToV1 } = await import("@/core/tenant/telegram-webhook.server");
+    const { releaseTelegramToV1 } = await import("@/channels/telegram/webhook-setup.server");
     await releaseTelegramToV1(before).catch((e) =>
       console.warn(`[operator] menu button reset for ${botId}: ${String(e)}`),
     );
@@ -631,7 +631,7 @@ export async function setAddressing(botId: string, slug: string | null, rawHosts
   await patchTenantSettings(botId, { slug: slug ?? "", hosts });
   await logEvent(botId, "meta", { slug, hosts });
   // Кнопка «Магазин» в боте — на новый адрес витрины; сбой Telegram адрес не отменяет.
-  const { refreshMenuButton } = await import("@/core/tenant/telegram-webhook.server");
+  const { refreshMenuButton } = await import("@/channels/telegram/webhook-setup.server");
   await refreshMenuButton(await requireTenant({ by: "id", value: botId })).catch((e) =>
     console.warn("[operator] menu button:", e),
   );

@@ -1,0 +1,46 @@
+name: Nightly live
+
+# Ночной прогон живых тестов (tests/integration) на настоящей базе, на
+# демо-клиенте «Демо-тестер». Ключи — секреты репозитория (те же, что у CI).
+# Без секретов тесты пропускают себя, и прогон ничего не проверяет — поэтому
+# первый шаг падает, если секретов нет: пустой зелёный прогон хуже красного.
+on:
+  schedule:
+    # 03:10 по Алматы: v1 и v2 почти без трафика, кроны рассылок молчат.
+    - cron: "10 21 * * *"
+  workflow_dispatch:
+
+# Живые тесты пишут в одного демо-клиента: два прогона сразу мешают друг другу.
+concurrency:
+  group: live-db
+  cancel-in-progress: false
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      APP_URL: https://ci.invalid
+      SECRETS_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      SESSION_SECRET: ci-session-secret-ci-session-secret-0000
+      WEBHOOK_SECRET: ci-webhook-secret-ci-webhook-secret-0000
+      CRON_SECRET: ci-cron-secret-0000
+      OPERATOR_USERNAME: operator
+      OPERATOR_PASSWORD: ci-operator-password
+    steps:
+      - name: Секреты базы заданы
+        run: |
+          for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_JWT_SECRET; do
+            if [ -z "${!v}" ]; then echo "::error::нет секрета $v"; exit 1; fi
+          done
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npx vitest run tests/integration

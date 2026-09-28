@@ -892,7 +892,7 @@
     "uses delivery zone price and never the nonexistent fee property": "tests/integration/shop-flow.test.ts › физический заказ: зона доставки в сумме, задаток 30 %, остаток списан",
     "releases order placement for terminal Mini App paths": "tests/integration/shop-flow.test.ts › покупатель → корзина → заказ со снимком позиций → очистка",
     "escapes cart product names and supports PDP variant controls": "drop: ручная сборка HTML рантайма v1; React витрины v2 экранирует сам, варианты — на странице товара",
-    "resets Telegram Menu Button when the module is disabled": "src/core/tenant/telegram-webhook.test.ts › модуль Mini App выключен — кнопка меню сбрасывается на стандартную",
+    "resets Telegram Menu Button when the module is disabled": "src/channels/telegram/webhook-setup.test.ts › модуль Mini App выключен — кнопка меню сбрасывается на стандартную",
     "does not accept initData credentials through URL query parameters": "drop: в v2 initData приходит только телом POST серверной функции (miniAppCheckoutFn, miniAppOrdersFn)",
     "exposes receipt upload, orders history and payment return polling": "drop: чека и опроса оплаты в окне нет, история — /s/:slug/orders; в v2 Mini App — витрина /s/:slug, оформление, оплата и чек — в чате бота",
     "lets a reviewer add a free-text comment after the star rating (Учителя, отзывы без комментариев)": "tests/integration/reviews-referrals.test.ts › после выдачи: оценка с комментарием, рейтинг на товаре, награда пригласившему один раз",

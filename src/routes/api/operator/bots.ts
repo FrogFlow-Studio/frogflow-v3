@@ -73,7 +73,7 @@ export const Route = createFileRoute("/api/operator/bots")({
         const { MODULE_KEYS } = await import("@/core/modules/registry");
         const { invalidateTenantDirectory, resolveTenant } =
           await import("@/core/tenant/resolve.server");
-        const { ensureTelegramWebhook } = await import("@/core/tenant/telegram-webhook.server");
+        const { ensureTelegramWebhook } = await import("@/channels/telegram/webhook-setup.server");
         const db = serviceDb();
 
         let botUsername: string | undefined;
@@ -209,7 +209,7 @@ export const Route = createFileRoute("/api/operator/bots")({
           tenant &&
           releasesTelegramOnSwitch(prevServedBy as string | undefined, input.served_by)
         ) {
-          const { releaseTelegramToV1 } = await import("@/core/tenant/telegram-webhook.server");
+          const { releaseTelegramToV1 } = await import("@/channels/telegram/webhook-setup.server");
           await releaseTelegramToV1(tenant).catch((x) =>
             console.warn(`[operator-api] menu button reset for ${botId}: ${String(x)}`),
           );

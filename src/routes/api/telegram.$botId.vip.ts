@@ -5,7 +5,7 @@ import { runInBackground } from "@/lib/background";
 
 /**
  * Вебхук VIP-бота клиента: /api/telegram/<bot_id>/vip. Секрет свой (см.
- * core/tenant/vip-webhook.server.ts), fail-closed как у основного бота.
+ * channels/telegram/vip-webhook-setup.server.ts), fail-closed как у основного бота.
  */
 export const Route = createFileRoute("/api/telegram/$botId/vip")({
   server: {
@@ -13,7 +13,7 @@ export const Route = createFileRoute("/api/telegram/$botId/vip")({
       POST: async ({ request, params }) => {
         const botId = params.botId;
         if (!/^[0-9a-f-]{36}$/i.test(botId)) return new Response("not found", { status: 404 });
-        const { vipWebhookSecret } = await import("@/core/tenant/vip-webhook.server");
+        const { vipWebhookSecret } = await import("@/channels/telegram/vip-webhook-setup.server");
         const header = request.headers.get("x-telegram-bot-api-secret-token");
         if (
           !header ||
