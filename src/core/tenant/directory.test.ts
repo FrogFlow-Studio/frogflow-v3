@@ -273,3 +273,17 @@ describe("модули клиента v2 на плане — по плану, а
     expect(tenant({ served_by: "v2" }, flags).modules.courses).toBe(false);
   });
 });
+
+describe("настройки клиента не теряются при чтении", () => {
+  it("флаг расширенного консультанта и отпечаток меню команд доходят до кода", () => {
+    const s = settingsFromJson({
+      consultant_search: true,
+      telegram: { username: "shop_bot", commands_v: "v3:ru" },
+      partner: "Agency-1",
+    });
+    expect(s.consultant_search).toBe(true);
+    expect(s.telegram?.commands_v).toBe("v3:ru");
+    expect(s.partner).toBe("agency-1");
+    expect(settingsFromJson({ consultant_search: "yes" }).consultant_search).toBeUndefined();
+  });
+});

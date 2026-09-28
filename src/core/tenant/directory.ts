@@ -77,7 +77,12 @@ export function settingsFromJson(json: unknown): TenantSettings {
     hosts: strList(s.hosts)?.map((h) => h.toLowerCase()),
     default_locale: isLocale(s.default_locale) ? s.default_locale : undefined,
     timezone: validTimezone(str(s.timezone)),
-    telegram: { username: str(tg.username), webhook_ok: tg.webhook_ok === true },
+    telegram: {
+      username: str(tg.username),
+      webhook_ok: tg.webhook_ok === true,
+      // Без отпечатка крон вебхука ставил меню команд заново на каждом проходе.
+      commands_v: str(tg.commands_v),
+    },
     zernio: {
       profile_id: str(zr.profile_id),
       account_ids: strList(zr.account_ids),
@@ -157,6 +162,8 @@ export function settingsFromJson(json: unknown): TenantSettings {
           }
         : undefined,
     consultant_pause_hours: validPauseHours(s.consultant_pause_hours),
+    // Флаг оператора «Расширенный консультант» (core/consultant/catalog-tool.server).
+    consultant_search: s.consultant_search === true ? true : undefined,
     smart_search_limits:
       sl && typeof sl === "object" && !Array.isArray(sl)
         ? { daily_usd: numOrNull(obj(sl).daily_usd) }
