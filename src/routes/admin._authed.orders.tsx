@@ -9,6 +9,7 @@ import {
 import { useState } from "react";
 import { z } from "zod";
 import { ordersFn } from "@/app/admin/admin.functions";
+import { useLiveOrders } from "@/app/admin/live-orders";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Empty, PageTitle } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
@@ -140,6 +141,7 @@ function ExportButton({ paymentsOnly = false }: { paymentsOnly?: boolean }) {
 }
 
 function OrdersPage() {
+  useLiveOrders();
   const { orders, counts } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);

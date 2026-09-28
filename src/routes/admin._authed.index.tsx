@@ -9,6 +9,7 @@ import { displayNo } from "@/core/orders/pure";
 import { OrderStatus } from "./admin._authed.orders";
 import { nextSetupStep } from "@/app/admin/setup";
 import { MovedWelcome } from "@/app/admin/moved-welcome";
+import { useLiveOrders } from "@/app/admin/live-orders";
 
 export const Route = createFileRoute("/admin/_authed/")({
   loader: () => dashboardFn(),
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/admin/_authed/")({
 });
 
 function Dashboard() {
+  useLiveOrders();
   const d = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);

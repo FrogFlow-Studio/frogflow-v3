@@ -655,6 +655,13 @@ export const ordersFn = createServerFn({ method: "GET" })
     return { orders: accountant ? redactOrders(orders) : orders, counts };
   });
 
+/** Отпечаток заказов для живого обновления страниц (core/orders/live). */
+export const ordersStampFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { ctx } = await finance();
+  const { ordersStamp } = await import("@/core/orders/live");
+  return ordersStamp(ctx);
+});
+
 export const orderFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ id: z.number().int() }).parse(d))
   .handler(async ({ data }) => {
