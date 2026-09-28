@@ -8,6 +8,7 @@ import {
   recordPaymentFn,
   refundOrderFn,
   rejectBalanceProofFn,
+  sendApprovalFn,
   updateFulfillmentFn,
 } from "@/app/admin/admin.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
@@ -36,6 +37,8 @@ function OrderPage() {
     refunded,
     refundable,
     slots,
+    approval,
+    approvalPhotoUrl,
   } = Route.useLoaderData();
   const [copied, setCopied] = useState(false);
   const { shop } = Route.useRouteContext();
@@ -197,6 +200,17 @@ function OrderPage() {
                 <FulfillmentEditor order={o} zones={zones} slots={slots} />
               )}
           </Card>
+          {physical &&
+            (approval.status !== "none" ||
+              (editable && ["accepted", "in_production", "ready"].includes(o.status))) && (
+              <ApprovalCard
+                order={o}
+                approval={approval}
+                photoUrl={approvalPhotoUrl}
+                editable={editable && ["accepted", "in_production", "ready"].includes(o.status)}
+                onDone={setMsg}
+              />
+            )}
           {(refunded > 0 || (editable && refundable > 0)) && (
             <RefundCard
               order={o}
@@ -352,6 +366,102 @@ function OrderPage() {
 }
 
 type Order = Awaited<ReturnType<typeof orderFn>>["order"];
+
+/** Фото готового заказа на согласование: отправить и увидеть ответ (core/orders/approval). */
+function ApprovalCard({
+  order: o,
+  approval,
+  photoUrl,
+  editable,
+  onDone,
+}: {
+  order: Order;
+  approval: Awaited<ReturnType<typeof orderFn>>["approval"];
+  photoUrl: string | null;
+  editable: boolean;
+  onDone: (msg: string) => void;
+}) {
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const router = useRouter();
+  const [file, setFile] = useState<File | null>(null);
+  const [note, setNote] = useState("");
+  const [open, setOpen] = useState(approval.status === "none");
+  const send = useAction(async () => {
+    if (!file) return;
+    const { uploadFile } = await import("@/app/admin/upload-client");
+    const key = await uploadFile("chatPhoto", file, t, (status) =>
+      t("approval.uploadFailed", { status }),
+    );
+    const r = await sendApprovalFn({ data: { id: o.id, key, note: note.trim() || null } });
+    onDone(r.message);
+    setFile(null);
+    setNote("");
+    setOpen(false);
+    await router.invalidate();
+  });
+  return (
+    <Card title={t("approval.title")}>
+      {approval.status !== "none" && (
+        <div className="mb-3 space-y-2">
+          {photoUrl && (
+            <a href={photoUrl} target="_blank" rel="noreferrer">
+              <img src={photoUrl} alt="" className="max-h-48 rounded-md border border-line" />
+            </a>
+          )}
+          <Badge
+            tone={
+              approval.status === "ok" ? "ok" : approval.status === "changes" ? "warn" : "neutral"
+            }
+          >
+            {approval.status === "ok"
+              ? t("approval.ok")
+              : approval.status === "changes"
+                ? t("approval.changes", { text: approval.text })
+                : t("approval.waiting")}
+          </Badge>
+        </div>
+      )}
+      {editable && !open && (
+        <button className="btn-secondary" onClick={() => setOpen(true)}>
+          {t("approval.again")}
+        </button>
+      )}
+      {editable && open && (
+        <form
+          className="space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send.run().catch(() => {});
+          }}
+        >
+          <p className="text-xs text-muted">{t("approval.hint")}</p>
+          <Field label={t("approval.photo")}>
+            <input
+              className="input"
+              type="file"
+              accept="image/jpeg,image/png"
+              required
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+          </Field>
+          <Field label={t("approval.note")}>
+            <input
+              className="input"
+              maxLength={500}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </Field>
+          <ErrorBox error={send.error} />
+          <button className="btn-primary" disabled={send.busy || !file}>
+            {send.busy ? t("approval.uploading") : t("approval.send")}
+          </button>
+        </form>
+      )}
+    </Card>
+  );
+}
 
 /** Возврат денег: сколько вернули, форма полного или частичного возврата (core/orders/refund). */
 function RefundCard({

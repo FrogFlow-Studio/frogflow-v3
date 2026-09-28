@@ -22,6 +22,7 @@ describe("журнал действий админки: что пишем", () =
       "createManualOrderFn",
       "recordPaymentFn",
       "refundOrderFn",
+      "sendApprovalFn",
       "updateFulfillmentFn",
       "outboxActionFn",
       "chatReplyFn",

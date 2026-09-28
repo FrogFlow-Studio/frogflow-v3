@@ -22,6 +22,7 @@ const NOT_AUDITED = new Set([
   "createManualOrderFn",
   "recordPaymentFn",
   "refundOrderFn",
+  "sendApprovalFn",
   "rejectBalanceProofFn",
   "updateFulfillmentFn",
   "outboxActionFn",

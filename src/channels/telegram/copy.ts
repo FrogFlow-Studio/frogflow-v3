@@ -99,6 +99,9 @@ export type Msg = {
   fulfillmentTypeDeliveryBtn: string;
   fulfillmentDatePrompt: (minDate: string) => string;
   fulfillmentSlotPrompt: string;
+  approvalAskChanges: string;
+  approvalChangesSent: string;
+  approvalThanks: string;
   fulfillmentDateInvalid: string;
   fulfillmentDateTooEarly: (minDate: string) => string;
   deliveryZonePrompt: string;
@@ -389,6 +392,9 @@ const ru: Msg = {
   fulfillmentDateInvalid: "Не разобрал дату. Формат: ДД.ММ.ГГГГ, например 05.03.2026.",
   fulfillmentDateTooEarly: (d) => `Так быстро не успеем. Ближайшая дата: ${d}.`,
   fulfillmentSlotPrompt: "🕒 В какое время удобно?",
+  approvalAskChanges: "✏️ Напишите одним сообщением, что поправить.",
+  approvalChangesSent: "Передал продавцу — он свяжется с вами 🙌",
+  approvalThanks: "Спасибо! Передал продавцу 🙌",
   deliveryZonePrompt: "Выберите район доставки:",
   addressPrompt: "📍 Укажите адрес доставки одним сообщением.",
   fulfillmentNotePrompt:

@@ -700,6 +700,11 @@ export const orderFn = createServerFn({ method: "GET" })
           .filter((e) => e.kind === "refund")
           .reduce((s, e) => s + (Number(e.payload.amount) || 0), 0) * 100,
       ) / 100;
+    // Фото на согласование — состояние по событиям таймлайна (core/orders/approval).
+    const { approvalState } = await import("@/core/orders/approval");
+    const approval = approvalState(events);
+    const { imageUrl } = await import("@/core/catalog/catalog");
+    const approvalPhotoUrl = approval.status === "none" ? null : imageUrl(ctx, approval.key);
     const refundable = (REFUNDABLE_STATUSES as readonly string[]).includes(order.status)
       ? Math.max(0, Math.round((receivedAmount(order) - refunded) * 100) / 100)
       : 0;
@@ -716,6 +721,8 @@ export const orderFn = createServerFn({ method: "GET" })
         refunded,
         refundable,
         slots,
+        approval,
+        approvalPhotoUrl,
       };
     // Бухгалтеру: без контактов; журнал — только события и время, без текста.
     const { redactOrder, redactEventPayload } = await import("@/core/orders/redact");
@@ -731,6 +738,8 @@ export const orderFn = createServerFn({ method: "GET" })
       refunded,
       refundable,
       slots,
+      approval,
+      approvalPhotoUrl,
     };
   });
 
@@ -849,6 +858,23 @@ export const recordPaymentFn = createServerFn({ method: "POST" })
     const ctx = await adminWrite();
     const { recordManualPayment } = await import("@/core/orders/physical-admin");
     return recordManualPayment(ctx, data.id, data.amount, await actor());
+  });
+
+/** Фото готового заказа покупателю на согласование (core/orders/approval). */
+export const sendApprovalFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        id: z.number().int(),
+        key: z.string().min(1).max(300),
+        note: z.string().max(500).nullable().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { sendApprovalPhoto } = await import("./admin.server");
+    return sendApprovalPhoto(ctx, data.id, data, await actor());
   });
 
 /** Возврат денег по заказу: полный или частичный (core/orders/refund), покупателю — сообщение. */

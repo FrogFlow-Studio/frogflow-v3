@@ -23,6 +23,21 @@ export const ru = {
   "err.refund.notRefundable": "По заказу в этом статусе денег не получено — возвращать нечего",
   "err.refund.overRefundable": "Можно вернуть не больше {remaining}",
   "err.refund.changed": "Заказ только что изменился — обновите страницу",
+  "approval.title": "Фото на согласование",
+  "approval.hint":
+    "Фото готового заказа уйдёт покупателю в его канал: он ответит «всё нравится» или напишет правки.",
+  "approval.photo": "Фото (JPEG или PNG до 5 МБ)",
+  "approval.note": "Комментарий к фото",
+  "approval.send": "Отправить покупателю",
+  "approval.uploading": "Загружаю…",
+  "approval.uploadFailed": "Фото не загрузилось ({status})",
+  "approval.waiting": "Ждём ответа покупателя",
+  "approval.ok": "Покупатель одобрил",
+  "approval.changes": "Покупатель просит правки: {text}",
+  "approval.again": "Отправить новое фото",
+  "msg.approval.sent": "Фото заказа #{no} отправлено покупателю",
+  "err.approval.status": "Фото на согласование — для физического заказа в работе",
+  "err.approval.noChat": "У ручного заказа нет переписки с покупателем",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -49,6 +64,21 @@ export const kk: SectionDict<typeof ru> = {
     "Бұл мәртебедегі тапсырыс бойынша ақша алынбаған — қайтаратын ештеңе жоқ",
   "err.refund.overRefundable": "{remaining} артық қайтаруға болмайды",
   "err.refund.changed": "Тапсырыс жаңа ғана өзгерді — бетті жаңартыңыз",
+  "approval.title": "Келісуге фото",
+  "approval.hint":
+    "Дайын тапсырыстың фотосы сатып алушыға оның арнасына жіберіледі: ол «бәрі ұнайды» деп жауап береді немесе түзетулерді жазады.",
+  "approval.photo": "Фото (JPEG немесе PNG, 5 МБ дейін)",
+  "approval.note": "Фотоға түсініктеме",
+  "approval.send": "Сатып алушыға жіберу",
+  "approval.uploading": "Жүктелуде…",
+  "approval.uploadFailed": "Фото жүктелмеді ({status})",
+  "approval.waiting": "Сатып алушының жауабын күтудеміз",
+  "approval.ok": "Сатып алушы мақұлдады",
+  "approval.changes": "Сатып алушы түзетулер сұрайды: {text}",
+  "approval.again": "Жаңа фото жіберу",
+  "msg.approval.sent": "#{no} тапсырыстың фотосы сатып алушыға жіберілді",
+  "err.approval.status": "Келісуге фото — жұмыстағы физикалық тапсырыс үшін",
+  "err.approval.noChat": "Қолмен енгізілген тапсырыста сатып алушымен хат алмасу жоқ",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -74,6 +104,21 @@ export const en: SectionDict<typeof ru> = {
     "No money was received for an order in this status — nothing to refund",
   "err.refund.overRefundable": "You can refund at most {remaining}",
   "err.refund.changed": "The order has just changed — refresh the page",
+  "approval.title": "Photo for approval",
+  "approval.hint":
+    "A photo of the finished order goes to the customer in their channel: they reply “looks great” or write what to change.",
+  "approval.photo": "Photo (JPEG or PNG up to 5 MB)",
+  "approval.note": "Comment to the photo",
+  "approval.send": "Send to the customer",
+  "approval.uploading": "Uploading…",
+  "approval.uploadFailed": "The photo did not upload ({status})",
+  "approval.waiting": "Waiting for the customer",
+  "approval.ok": "The customer approved",
+  "approval.changes": "The customer asks for changes: {text}",
+  "approval.again": "Send a new photo",
+  "msg.approval.sent": "Photo of order #{no} sent to the customer",
+  "err.approval.status": "Photo approval is for a physical order in progress",
+  "err.approval.noChat": "A manual order has no conversation with the customer",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -100,4 +145,19 @@ export const uz: SectionDict<typeof ru> = {
     "Bu holatdagi buyurtma bo‘yicha pul olinmagan — qaytaradigan narsa yo‘q",
   "err.refund.overRefundable": "{remaining} dan ortiq qaytarib bo‘lmaydi",
   "err.refund.changed": "Buyurtma hozirgina o‘zgardi — sahifani yangilang",
+  "approval.title": "Tasdiqlash uchun foto",
+  "approval.hint":
+    "Tayyor buyurtma fotosi xaridorga uning kanaliga yuboriladi: u «hammasi yoqdi» deb javob beradi yoki tuzatishlarni yozadi.",
+  "approval.photo": "Foto (JPEG yoki PNG, 5 MB gacha)",
+  "approval.note": "Fotoga izoh",
+  "approval.send": "Xaridorga yuborish",
+  "approval.uploading": "Yuklanmoqda…",
+  "approval.uploadFailed": "Foto yuklanmadi ({status})",
+  "approval.waiting": "Xaridor javobini kutyapmiz",
+  "approval.ok": "Xaridor tasdiqladi",
+  "approval.changes": "Xaridor tuzatish soʻrayapti: {text}",
+  "approval.again": "Yangi foto yuborish",
+  "msg.approval.sent": "#{no} buyurtma fotosi xaridorga yuborildi",
+  "err.approval.status": "Tasdiqlash uchun foto — ishdagi jismoniy buyurtma uchun",
+  "err.approval.noChat": "Qoʻlda kiritilgan buyurtmada xaridor bilan yozishma yoʻq",
 };

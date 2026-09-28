@@ -96,6 +96,37 @@ export async function handleZernioMessage(
   }
   if (intercepted) return processed("менеджер ведёт диалог в панели");
 
+  // Ответ на фото готового заказа (core/orders/approval): «да» — одобрено,
+  // любой другой текст — правки. Ответ один: дальше диалог идёт как обычно.
+  if (customer.state.mode === "awaiting_approval" && customer.state.approval_order_id) {
+    const orderId = Number(customer.state.approval_order_id);
+    const { recordApprovalAnswer, isApprovalYes } = await import("@/core/orders/approval");
+    const { setState } = await import("@/core/customers/customers");
+    const { approval_order_id: _ao, ...rest } = customer.state;
+    await setState(ctx, customer, { ...rest, mode: "idle" });
+    const ok = isApprovalYes(text);
+    if (await recordApprovalAnswer(ctx, orderId, ok ? { ok: true } : { ok: false, text })) {
+      const { getOrder, displayNo } = await import("@/core/orders/orders");
+      const order = await getOrder(ctx, orderId);
+      const no = order ? displayNo(order) : orderId;
+      await notifyAdminsHtml(
+        ctx,
+        ok
+          ? `✅ Покупатель одобрил фото заказа #${no}`
+          : `✏️ <b>Правки к заказу #${no}</b>\n\n${escapeHtml(text.slice(0, 1000))}`,
+        { kind: "question", orderId },
+      ).catch(() => 0);
+    }
+    const m2 = COPY.ru;
+    await transport.send(
+      m.conversationId,
+      m.accountId,
+      ok ? m2.approvalThanks : m2.approvalChangesSent,
+      { platform: m.platform },
+    );
+    return processed(ok ? "фото заказа одобрено" : "правки к фото заказа");
+  }
+
   // Настройки автоответчика канала (те же ключи, что в v1). Выключенный —
   // молчит вовсе; консультантские ниши тумблер не читают: у них консультант
   // и есть канал.

@@ -35,7 +35,10 @@ export type OrderEventKind =
   | "balance_credited"
   | "balance_link"
   | "balance_proof_rejected"
-  | "refund";
+  | "refund"
+  | "approval_sent"
+  | "approval_ok"
+  | "approval_changes";
 
 export type OrderEvent = {
   id: string;
@@ -217,6 +220,12 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       };
     case "rejected":
       return { text: `Заказ отклонён${who}`, tone: "danger" };
+    case "approval_sent":
+      return { text: `Фото отправлено покупателю на согласование${who}`, tone: "neutral" };
+    case "approval_ok":
+      return { text: "Покупатель одобрил фото", tone: "ok" };
+    case "approval_changes":
+      return { text: `Покупатель просит правки: ${str(p.text)}`, tone: "warn" };
     case "refund": {
       const extra = [
         p.reason ? `: ${str(p.reason)}` : "",

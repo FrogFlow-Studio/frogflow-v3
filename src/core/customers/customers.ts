@@ -56,6 +56,9 @@ export type DialogMode =
   | "awaiting_fulfillment_type"
   | "awaiting_fulfillment_date"
   | "awaiting_fulfillment_slot"
+  /** Фото готового заказа: ждём «да» или правки (core/orders/approval). */
+  | "awaiting_approval"
+  | "awaiting_approval_changes"
   | "awaiting_delivery_zone"
   | "awaiting_address"
   | "awaiting_fulfillment_note"
@@ -79,6 +82,8 @@ export type DialogState = {
   country_code?: string;
   country_name?: string;
   pending_order_id?: number;
+  /** Заказ, фото которого покупатель согласует (core/orders/approval). */
+  approval_order_id?: number;
   promo_code?: string;
   use_points?: boolean;
   gift_certificate_code?: string;

@@ -389,6 +389,19 @@ async function handleMessage(
     await send(b, created ? b.m.ticketCreated(ticket.number) : b.m.ticketAppended(ticket.number));
     return;
   }
+  // Правки к фото готового заказа (core/orders/approval) — после «Нужны правки».
+  if (
+    customer.state.mode === "awaiting_approval_changes" &&
+    customer.state.approval_order_id &&
+    text &&
+    !action
+  ) {
+    const orderId = Number(customer.state.approval_order_id);
+    const { approval_order_id: _ao, ...rest } = customer.state;
+    b.customer = await setState(ctx, customer, { ...rest, mode: "idle" });
+    await answerApproval(b, orderId, { ok: false, text });
+    return;
+  }
   if (customer.state.mode === "awaiting_review_comment") {
     const { review_product_id: productId, ...rest } = customer.state;
     b.customer = await setState(ctx, customer, { ...rest, mode: "idle" });
@@ -962,6 +975,28 @@ async function askFulfillmentDate(b: Bot) {
     checkout_min_fulfillment_date: minIso,
   });
   await send(b, b.m.fulfillmentDatePrompt(isoToDisplay(minIso)));
+}
+
+/** Ответ покупателя на фото готового заказа: в таймлайн и продавцу (core/orders/approval). */
+async function answerApproval(
+  b: Bot,
+  orderId: number,
+  answer: { ok: true } | { ok: false; text: string },
+) {
+  const { recordApprovalAnswer } = await import("@/core/orders/approval");
+  const recorded = await recordApprovalAnswer(b.ctx, orderId, answer);
+  if (recorded) {
+    const order = await getOrder(b.ctx, orderId);
+    const no = order ? displayNo(order) : orderId;
+    await notifyAdminsHtml(
+      b.ctx,
+      answer.ok
+        ? `✅ Покупатель одобрил фото заказа #${no}`
+        : `✏️ <b>Правки к заказу #${no}</b>\n\n${escapeHtml(answer.text.slice(0, 1000))}`,
+      { kind: "question", orderId },
+    ).catch(() => 0);
+  }
+  await send(b, answer.ok ? b.m.approvalThanks : b.m.approvalChangesSent);
 }
 
 async function afterDate(b: Bot) {
@@ -2029,6 +2064,24 @@ async function handleCallback(
       checkout_fulfillment_at: withSlot(date, slot),
     });
     return afterDate(b);
+  }
+  if (data.startsWith("appr:")) {
+    const [, what, id] = data.split(":");
+    const orderId = Number(id);
+    const { data: o } = await ctx.db
+      .from("orders")
+      .select("telegram_id")
+      .eq("id", orderId)
+      .maybeSingle();
+    // Кнопка чужого заказа (пересланное сообщение) ничего не делает.
+    if (!o || Number(o.telegram_id) !== customer.telegramId) return;
+    if (what === "ok") return answerApproval(b, orderId, { ok: true });
+    b.customer = await setState(ctx, customer, {
+      ...customer.state,
+      mode: "awaiting_approval_changes",
+      approval_order_id: orderId,
+    });
+    return void (await send(b, b.m.approvalAskChanges));
   }
   if (data.startsWith("zone:")) {
     if (customer.state.mode !== "awaiting_delivery_zone") return;

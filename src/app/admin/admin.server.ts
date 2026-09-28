@@ -182,6 +182,111 @@ function platformName(platform: string): string {
 }
 
 /**
+ * Фото готового заказа покупателю на согласование (core/orders/approval).
+ * Telegram — фото с кнопками «Всё нравится» / «Нужны правки»; Instagram и
+ * WhatsApp — фото с просьбой ответить «да» или написать правки (ответ ловит
+ * магазин в переписке по mode = awaiting_approval); сайт без Telegram —
+ * письмом со ссылкой на фото, ответ покупатель пишет продавцу сам.
+ */
+export async function sendApprovalPhoto(
+  ctx: TenantContext,
+  id: number,
+  input: { key: string; note?: string | null },
+  actor = "admin",
+): Promise<{ ok: true; message: string }> {
+  const t = await adminTFor(ctx);
+  const order = await getOrder(ctx, id);
+  if (!order) throw new UserError("err.admin.orderNotFound", "Заказ не найден");
+  const { APPROVAL_STATUSES } = await import("@/core/orders/approval");
+  if (
+    order.fulfillment_kind !== "physical" ||
+    !(APPROVAL_STATUSES as readonly string[]).includes(order.status)
+  )
+    throw new UserError(
+      "err.approval.status",
+      "Фото на согласование — для физического заказа в работе",
+    );
+  const att = await import("./chat-attachment.server");
+  const checked = await att.checkChatAttachment(ctx, {
+    kind: "photo",
+    key: input.key,
+    name: "photo",
+  });
+  const no = displayNo(order);
+  const note = input.note?.trim().slice(0, 500);
+  const intro = `📸 Ваш заказ #${no} готов — посмотрите, всё ли так.${note ? `\n${note}` : ""}`;
+  const channel = orderChannel(order.platform);
+  const tgId = Number(order.telegram_id);
+  const { getCustomerByTelegramId, setState } = await import("@/core/customers/customers");
+  if (channel === "manual")
+    throw new UserError("err.approval.noChat", "У ручного заказа нет переписки с покупателем");
+  if (channel === "telegram" || (channel === "web" && tgId > 0 && ctx.tenant.telegramTokenEnc)) {
+    const { telegramUpload } = await import("@/channels/telegram/api");
+    const r = await telegramUpload(
+      ctx.secrets.telegramToken(),
+      env().TELEGRAM_API_BASE,
+      "sendPhoto",
+      {
+        chat_id: tgId,
+        caption: intro,
+        reply_markup: JSON.stringify({
+          inline_keyboard: [
+            [
+              { text: "✅ Всё нравится", callback_data: `appr:ok:${order.id}` },
+              { text: "✏️ Нужны правки", callback_data: `appr:fix:${order.id}` },
+            ],
+          ],
+        }),
+      },
+      { field: "photo", name: checked.fileName, data: checked.data },
+    );
+    if (!r.ok) throw att.telegramRefusal(r.description);
+  } else if (channel === "zernio") {
+    const { zernioTargetForOrder } = await import("@/channels/zernio/outbound.server");
+    const target = await zernioTargetForOrder(ctx, order);
+    if (!target)
+      throw new UserError(
+        "err.admin.noZernioDialog",
+        "У покупателя нет диалога в Zernio — ответить некуда",
+      );
+    const { sendInboxMessage } = await import("@/channels/zernio/api.server");
+    const media = await att.zernioAttachmentOptions(ctx, target.platform, intro, checked);
+    const r = await sendInboxMessage(
+      target.conversationId,
+      target.accountId,
+      `${media.text}\n\nЕсли всё нравится — ответьте «да». Если нужно что-то поправить — напишите что.`,
+      {
+        platform: target.platform,
+        ...media,
+        idempotencyScope: `approval:${order.id}:${input.key}`,
+      },
+    );
+    if (!r.ok)
+      throw new UserError("err.admin.channelRefused", "Сообщение не ушло: {reason}", {
+        reason: r.error ?? "",
+      });
+    const customer = await getCustomerByTelegramId(ctx, tgId);
+    if (customer)
+      await setState(ctx, customer, {
+        ...customer.state,
+        mode: "awaiting_approval",
+        approval_order_id: order.id,
+      });
+  } else {
+    const { imageUrl } = await import("@/core/catalog/catalog");
+    const sent = await notifyCustomer(
+      ctx,
+      order,
+      `${intro}\n${imageUrl(ctx, input.key)}\nЕсли что-то поправить — напишите продавцу.`,
+    );
+    if (!sent) throw new UserError("err.admin.sendFailed", "Не удалось отправить сообщение");
+  }
+  const { recordOrderEvent } = await import("@/core/orders/events");
+  await recordOrderEvent(ctx, order.id, "approval_sent", { key: input.key, channel }, actor);
+  return { ok: true, message: t("msg.approval.sent", { no }) };
+}
+
+/**
  * Возврат из карточки заказа: запись возврата (core/orders/refund) и, если
  * продавец не снял галочку, сообщение покупателю в его канал — сумма и
  * причина. Недоставленное сообщение возврат не отменяет.
