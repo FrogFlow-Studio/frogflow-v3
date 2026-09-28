@@ -4,6 +4,7 @@ import type { Database, Json } from "@/core/db-types";
 import { serviceDb } from "@/core/db/client.server";
 import { isAdminInputStorageKey, isTenantStorageKey } from "@/core/storage/keys";
 import { PRODUCT_SELECT, type Product } from "./catalog";
+import { materialCount } from "./materials";
 import { pickerTerm } from "./picker";
 
 type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
@@ -141,7 +142,7 @@ export async function listProductsForAdmin(
       ctx.db
         .from("products")
         .select(
-          "id, name, price, currency, is_active, sort_order, fulfillment_kind, stock_quantity, category_ids, created_at, product_images(image_path, sort_order), product_material_files(id), product_variants(id)",
+          "id, name, price, currency, is_active, sort_order, fulfillment_kind, stock_quantity, category_ids, created_at, file_path, file_url, file_path_kz, file_url_kz, product_images(image_path, sort_order), product_material_files(language, file_path), product_variants(id)",
         ),
     )
       .order("sort_order")
@@ -164,7 +165,8 @@ export async function listProductsForAdmin(
     category_ids: p.category_ids,
     created_at: p.created_at,
     images: p.product_images?.length ?? 0,
-    files: p.product_material_files?.length ?? 0,
+    // Товар v1 с файлом в старых полях — не «нет файла» (core/catalog/materials).
+    files: materialCount(p),
     variants: p.product_variants?.length ?? 0,
     cover:
       p.product_images?.slice().sort((a, b) => a.sort_order - b.sort_order)[0]?.image_path ?? null,
@@ -303,11 +305,16 @@ export async function setProductMaterials(
   productId: string,
   files: MaterialInput[],
 ): Promise<void> {
-  const { data: had } = await ctx.db
-    .from("product_material_files")
-    .select("file_path")
-    .eq("product_id", productId);
-  const stored = new Set((had ?? []).map((r) => r.file_path));
+  const [{ data: had }, { data: legacy }] = await Promise.all([
+    ctx.db.from("product_material_files").select("file_path").eq("product_id", productId),
+    ctx.db.from("products").select("file_path, file_path_kz").eq("id", productId).maybeSingle(),
+  ]);
+  // Старый файл v1 из полей товара (editableMaterials) — тоже «уже записан у строки».
+  const stored = new Set(
+    [...(had ?? []).map((r) => r.file_path), legacy?.file_path, legacy?.file_path_kz].filter(
+      (k): k is string => Boolean(k),
+    ),
+  );
   for (const f of files)
     if (!isAdminInputStorageKey(ctx.tenant.id, f.filePath, stored))
       throw new Error("Ключ файла вне префикса клиента.");

@@ -13,6 +13,19 @@
  */
 import { z } from "zod";
 
+const DEFAULT_TIMEZONE = "Asia/Almaty";
+
+/** Пояс, который понимает Intl; пустой или неизвестный — undefined. */
+function knownTimeZone(tz: string | undefined): string | undefined {
+  if (!tz) return undefined;
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: tz });
+    return tz;
+  } catch {
+    return undefined;
+  }
+}
+
 const schema = z.object({
   /** Публичный адрес деплоя без хвостового слэша: https://app.frogflow.kz */
   APP_URL: z
@@ -91,7 +104,15 @@ const schema = z.object({
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().optional(),
 
-  APP_TIMEZONE: z.string().default("Asia/Almaty"),
+  /**
+   * Часовой пояс платформы (IANA). Пустая строка или опечатка в Vercel —
+   * пояс по умолчанию: иначе Intl бросает «Invalid time zone specified» в
+   * аналитике и кронах каждого клиента без своего settings.timezone.
+   */
+  APP_TIMEZONE: z
+    .string()
+    .optional()
+    .transform((v) => knownTimeZone(v?.trim()) ?? DEFAULT_TIMEZONE),
 
   /**
    * Самостоятельная регистрация продавцов на /signup: "1" — открыта. По

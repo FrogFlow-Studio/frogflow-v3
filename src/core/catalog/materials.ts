@@ -64,6 +64,47 @@ export function materialsForProduct(
   return [];
 }
 
+/**
+ * Файлы товара для формы админки. Товар из v1 часто хранит один файл в
+ * старых полях file_path / file_path_kz, без строк product_material_files
+ * (у Print KZ Art так заведены товары 0001–0027): без этого форма показывала
+ * «нет файла» и не давала сохранить товар, хотя бот его продаёт и выдаёт.
+ * Ссылка file_url в форму не попадает: у формы есть только файлы хранилища.
+ */
+export function editableMaterials(
+  product: ProductWithFiles | null | undefined,
+): Array<{ language: Locale; filePath: string; fileName: string | null }> {
+  const rows = (product?.product_material_files ?? [])
+    .filter((f) => f.file_path)
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map((f) => ({
+      language: isLocale(f.language) ? f.language : ("ru" as Locale),
+      filePath: f.file_path!,
+      fileName: f.file_name ?? null,
+    }));
+  if (rows.length) return rows;
+  const legacy: Array<{ language: Locale; filePath: string; fileName: string | null }> = [];
+  if (product?.file_path)
+    legacy.push({
+      language: "ru",
+      filePath: product.file_path,
+      fileName: product.file_name ?? null,
+    });
+  if (product?.file_path_kz)
+    legacy.push({
+      language: "kk",
+      filePath: product.file_path_kz,
+      fileName: product.file_name_kz ?? null,
+    });
+  return legacy;
+}
+
+/** Сколько файлов выдаст товар по всем языкам — с учётом старых полей v1. */
+export function materialCount(product: ProductWithFiles | null | undefined): number {
+  return MATERIAL_LANGUAGES.reduce((n, l) => n + materialsForProduct(product, l).length, 0);
+}
+
 export function materialLanguages(product: ProductWithFiles | null | undefined): Locale[] {
   return MATERIAL_LANGUAGES.filter((l) => materialsForProduct(product, l).length > 0);
 }

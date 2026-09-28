@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { materialLanguages, materialsForProduct, productSellable } from "./materials";
+import {
+  editableMaterials,
+  materialCount,
+  materialLanguages,
+  materialsForProduct,
+  productSellable,
+} from "./materials";
 
 describe("materials", () => {
   it("product_material_files важнее старых одиночных полей и сортируются", () => {
@@ -73,5 +79,44 @@ describe("materials", () => {
       expect(materialsForProduct({ file_name: "Материал" }, lang)).toEqual([]);
       expect(materialsForProduct(null, lang)).toEqual([]);
     }
+  });
+});
+
+describe("форма админки и список товаров видят старый файл v1", () => {
+  const v1 = {
+    fulfillment_kind: "digital",
+    file_path: "1786287439581-c8fvy2.pdf",
+    file_name: "Фотобутафория.pdf",
+    product_material_files: [],
+  };
+
+  it("файл только в products.file_path — одна строка ru в форме и 1 в списке", () => {
+    expect(editableMaterials(v1)).toEqual([
+      { language: "ru", filePath: "1786287439581-c8fvy2.pdf", fileName: "Фотобутафория.pdf" },
+    ]);
+    expect(materialCount(v1)).toBe(1);
+  });
+
+  it("казахский файл в file_path_kz — строка kk", () => {
+    const p = { ...v1, file_path_kz: "kz.pdf", file_name_kz: "kz.pdf" };
+    expect(editableMaterials(p).map((m) => m.language)).toEqual(["ru", "kk"]);
+    expect(materialCount(p)).toBe(2);
+  });
+
+  it("есть строки product_material_files — берутся они, по порядку", () => {
+    const p = {
+      ...v1,
+      product_material_files: [
+        { language: "kk", file_path: "b/2.pdf", file_name: "2", sort_order: 1 },
+        { language: "ru", file_path: "b/1.pdf", file_name: "1", sort_order: 0 },
+      ],
+    };
+    expect(editableMaterials(p).map((m) => m.filePath)).toEqual(["b/1.pdf", "b/2.pdf"]);
+    expect(materialCount(p)).toBe(2);
+  });
+
+  it("без файлов вовсе — пусто и 0", () => {
+    expect(editableMaterials({ fulfillment_kind: "digital" })).toEqual([]);
+    expect(materialCount({ fulfillment_kind: "digital" })).toBe(0);
   });
 });

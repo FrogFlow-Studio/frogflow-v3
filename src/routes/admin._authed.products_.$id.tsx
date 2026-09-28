@@ -17,7 +17,7 @@ import { CourseCard } from "@/app/admin/course-card";
 import { assistDescriptionFn } from "@/app/admin/assistant.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
-import { MATERIAL_LANGUAGES } from "@/core/catalog/materials";
+import { editableMaterials, MATERIAL_LANGUAGES } from "@/core/catalog/materials";
 import { localeNames, type Locale } from "@/core/i18n/locale";
 
 export const Route = createFileRoute("/admin/_authed/products_/$id")({
@@ -51,16 +51,7 @@ function ProductEditor() {
       .sort((a, b) => a.sort_order - b.sort_order)
       .map((i) => ({ key: i.image_path })),
   );
-  const [materials, setMaterials] = useState<Mat[]>(
-    (p?.product_material_files ?? [])
-      .slice()
-      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-      .map((f) => ({
-        language: (f.language as Locale) ?? "ru",
-        filePath: f.file_path ?? "",
-        fileName: f.file_name,
-      })),
-  );
+  const [materials, setMaterials] = useState<Mat[]>(editableMaterials(p));
   const [variants, setVariants] = useState<Variant[]>(
     (p?.product_variants ?? [])
       .slice()
