@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { setEnvForTests } from "@/config/env";
 
 // API оператора /api/operator/bots: при включённом двухшаговом входе пароля мало.
 let second: "none" | "totp" | null = null;
@@ -16,6 +17,9 @@ vi.mock("@/app/auth/login-guard.server", () => ({
   loginLocked: async () => false,
   recordLogin: async () => undefined,
 }));
+
+// Без ключей живой базы окружение пустое: маршрут читает env() до проверки входа.
+setEnvForTests({});
 
 const { Route } = await import("@/routes/api/operator/bots");
 const post = (

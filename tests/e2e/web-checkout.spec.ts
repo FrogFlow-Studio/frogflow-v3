@@ -218,7 +218,7 @@ test("покупатель платит переводом Kaspi и присыл
   await seller.goto("/admin/login");
   await seller.locator('input[name="username"]').fill(F.SELLER_LOGIN);
   await seller.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
-  await seller.getByRole("button", { name: "Войти" }).click();
+  await seller.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(seller).toHaveURL(/\/admin$/);
   await seller.goto(`/admin/orders/${id}`);
   await seller.getByRole("button", { name: "✅ Подтвердить и выдать" }).click();

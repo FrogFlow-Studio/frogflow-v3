@@ -192,7 +192,7 @@ test("покупатель платит чеком, продавец подтв�
   await page.goto("/admin/login");
   await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
   await page.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
-  await page.getByRole("button", { name: "Войти" }).click();
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto(`/admin/orders/${id}`);
   await page.getByRole("button", { name: "✅ Подтвердить и выдать" }).click();
@@ -243,7 +243,7 @@ test("оператор выставляет счёт за подписку и о
   await page.goto("/operator/login");
   await page.locator('input[name="username"]').fill(F.OPERATOR_LOGIN);
   await page.locator('input[name="password"]').fill(F.OPERATOR_PASSWORD);
-  await page.getByRole("button", { name: "Войти" }).click();
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/operator$/);
 
   const ownerBefore = (await sent(request, F.SELLER_TG)).length;

@@ -232,7 +232,7 @@ test("покупка в Instagram Direct: каталог, заказ, чек, п
   await page.goto("/admin/login");
   await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
   await page.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
-  await page.getByRole("button", { name: "Войти" }).click();
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto(`/admin/orders/${id}`);
   await page.getByRole("button", { name: "✅ Подтвердить и выдать" }).click();

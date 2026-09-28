@@ -96,7 +96,7 @@ test("регистрация со страницы ниши: ниша выбра
   await page.goto("/operator/login");
   await page.locator('input[name="username"]').fill(F.OPERATOR_LOGIN);
   await page.locator('input[name="password"]').fill(F.OPERATOR_PASSWORD);
-  await page.getByRole("button", { name: "Войти" }).click();
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/operator$/);
   await page.getByRole("link", { name }).first().click();
   await expect(

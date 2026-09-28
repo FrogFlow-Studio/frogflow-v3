@@ -15,7 +15,7 @@ test("вход продавца: неверный пароль — понятн�
   await expect(page.getByRole("heading", { name: "Вход в панель магазина" })).toBeVisible();
   await page.locator('input[name="username"]').fill("nobody");
   await page.locator('input[name="password"]').fill("wrong-password");
-  await page.getByRole("button", { name: "Войти" }).click();
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page.getByText("Неверный логин или пароль")).toBeVisible();
   await expect(page.locator("body")).not.toContainText(
     /Cannot read|undefined|TypeError|Internal Server Error/,
@@ -45,7 +45,7 @@ test("предпросмотр бота: приветствие, карточк�
   await page.goto("/admin/login");
   await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
   await page.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
-  await page.getByRole("button", { name: "Войти" }).click();
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto("/admin/bot-preview");
   await expect(page.getByRole("heading", { name: "Предпросмотр бота" })).toBeVisible();
@@ -60,7 +60,7 @@ test("настройки продавца: разделы рисуются и о
   await page.goto("/admin/login");
   await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
   await page.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
-  await page.getByRole("button", { name: "Войти" }).click();
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto("/admin/settings");
   // Разделы, которые видны на тарифе e2e-магазина (остальные — по модулям).
@@ -87,7 +87,7 @@ test("аналитика: воронка по источникам и ссылк
   await page.goto("/admin/login");
   await page.locator('input[name="username"]').fill(F.SELLER_LOGIN);
   await page.locator('input[name="password"]').fill(F.SELLER_PASSWORD);
-  await page.getByRole("button", { name: "Войти" }).click();
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto("/admin/analytics");
   await expect(page.getByText("Воронка по источникам")).toBeVisible();
