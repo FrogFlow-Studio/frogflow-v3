@@ -85,6 +85,55 @@ async function unsellableProducts(botId: string): Promise<number> {
   return rows.filter((p) => !productSellable(p as unknown as ProductWithFiles)).length;
 }
 
+/** Консультант по прайсу: флаг, позиций в прайсе консультанта, свежесть курса. */
+async function pricelistInput(t: Tenant) {
+  const { snapshotOf, CATALOG_KEY } = await import("@/core/consultant/pricelist/catalog.server");
+  const { VTB_RATE_KEY } = await import("@/core/consultant/pricelist/rate.server");
+  const { isRateFresh, parseStoredRate } = await import("@/core/consultant/pricelist/rate");
+  const { data, error } = await serviceDb()
+    .from("app_settings")
+    .select("key, value")
+    .eq("bot_id", t.id)
+    .in("key", [CATALOG_KEY, VTB_RATE_KEY]);
+  if (error)
+    throw serverFailure(`Проверка переезда: прайс консультанта не прочитан (${error.message})`);
+  const v = new Map((data ?? []).map((r) => [r.key as string, r.value as string | null]));
+  return {
+    enabled: t.settings.consultant_pricelist?.enabled === true,
+    items: snapshotOf(v.get(CATALOG_KEY)).products.length,
+    rateFresh: isRateFresh(parseStoredRate(v.get(VTB_RATE_KEY))),
+  };
+}
+
+/** Баллы: у кого есть и сколько заказов за 30 дней было не в валюте магазина. */
+async function loyaltyInput(botId: string, now = new Date()) {
+  const db = serviceDb();
+  const since = new Date(now.getTime() - 30 * DAY_MS).toISOString();
+  const [{ data: cur }, holders] = await Promise.all([
+    db
+      .from("app_settings")
+      .select("value")
+      .eq("bot_id", botId)
+      .eq("key", "shop_currency")
+      .maybeSingle(),
+    db
+      .from("bot_users")
+      .select("user_key", { count: "exact", head: true })
+      .eq("bot_id", botId)
+      .gt("loyalty_points", 0),
+  ]);
+  const shopCurrency = (cur?.value ?? "KZT").toUpperCase();
+  const foreign = await db
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("bot_id", botId)
+    .gte("created_at", since)
+    .neq("currency", shopCurrency);
+  const error = holders.error ?? foreign.error;
+  if (error) throw serverFailure(`Проверка переезда: баллы не прочитаны (${error.message})`);
+  return { holders: holders.count ?? 0, foreignOrders30d: foreign.count ?? 0, shopCurrency };
+}
+
 async function subscriptionExpiresAt(botId: string): Promise<string | null> {
   const { data } = await serviceDb()
     .from("bots")
@@ -123,17 +172,29 @@ export async function preflight(botId: string): Promise<Preflight> {
       tokenOk = false;
     }
   }
-  const [paymentMethods, products, chats, delivering, unsellable, expiresAt, orders30d, storyTags] =
-    await Promise.all([
-      countRows("payment_methods", botId),
-      countRows("products", botId),
-      sellerChats(botId),
-      deliveringOrders(botId),
-      unsellableProducts(botId),
-      subscriptionExpiresAt(botId),
-      recentOrders(botId),
-      planLegacyStoryTags(tenantContext(t), botId),
-    ]);
+  const [
+    paymentMethods,
+    products,
+    chats,
+    delivering,
+    unsellable,
+    expiresAt,
+    orders30d,
+    storyTags,
+    pricelist,
+    loyalty,
+  ] = await Promise.all([
+    countRows("payment_methods", botId),
+    countRows("products", botId),
+    sellerChats(botId),
+    deliveringOrders(botId),
+    unsellableProducts(botId),
+    subscriptionExpiresAt(botId),
+    recentOrders(botId),
+    planLegacyStoryTags(tenantContext(t), botId),
+    pricelistInput(t),
+    t.modules.loyalty ? loyaltyInput(botId) : Promise.resolve(undefined),
+  ]);
   const zernioAccountIds = t.settings.zernio?.account_ids ?? [];
   const policy = readPolicy(t.settings);
   const vip = t.modules.vip ? await vipInput(t, mainBotId, chats) : null;
@@ -170,6 +231,8 @@ export async function preflight(botId: string): Promise<Preflight> {
       dropped: storyTags.dropped,
       max: storyTags.max,
     },
+    pricelist,
+    ...(loyalty ? { loyalty } : {}),
   });
   return withVipChecks(base, vip);
 }

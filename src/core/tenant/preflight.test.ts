@@ -12,6 +12,45 @@ const base = {
   appUrl: "https://client.vercel.app",
 };
 
+describe("консультант по прайсу и баллы", () => {
+  const run = (extra: object) =>
+    evaluatePreflight({ ...base, modulesOn: [...base.modulesOn], ...extra });
+  const check = (extra: object, key: string) => run(extra).checks.find((c) => c.key === key);
+
+  it("флаг включён, а прайс пуст — переезд блокируется", () => {
+    const p = run({ pricelist: { enabled: true, items: 0, rateFresh: true } });
+    expect(p.ready).toBe(false);
+    expect(preflightBlockers(p)).toContain("Консультант по прайсу без прайса");
+  });
+
+  it("прайс консультанта v1 есть, а флаг выключен — предупреждение", () => {
+    expect(
+      check({ pricelist: { enabled: false, items: 792, rateFresh: false } }, "pricelist"),
+    ).toMatchObject({ level: "warn", detail: expect.stringContaining("792") });
+  });
+
+  it("курс устарел — предупреждение; всё на месте — пункта нет", () => {
+    expect(
+      check({ pricelist: { enabled: true, items: 792, rateFresh: false } }, "pricelist"),
+    ).toMatchObject({ level: "warn", title: "Курс рубля для консультанта устарел" });
+    expect(
+      check({ pricelist: { enabled: true, items: 792, rateFresh: true } }, "pricelist"),
+    ).toBeUndefined();
+    expect(
+      check({ pricelist: { enabled: false, items: 0, rateFresh: false } }, "pricelist"),
+    ).toBeUndefined();
+  });
+
+  it("баллы у покупателей в другой валюте — предупредить продавца", () => {
+    expect(
+      check({ loyalty: { holders: 40, foreignOrders30d: 12, shopCurrency: "KZT" } }, "loyalty"),
+    ).toMatchObject({ level: "warn", detail: expect.stringContaining("12 заказов не в KZT") });
+    expect(
+      check({ loyalty: { holders: 40, foreignOrders30d: 0, shopCurrency: "KZT" } }, "loyalty"),
+    ).toBeUndefined();
+  });
+});
+
 describe("evaluatePreflight", () => {
   it("всё на месте — готов, с напоминанием про крон v1", () => {
     const p = evaluatePreflight({ ...base, modulesOn: [...base.modulesOn] });

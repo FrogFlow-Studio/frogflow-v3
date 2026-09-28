@@ -49,6 +49,17 @@ export type PreflightInput = {
    * посчитано тем же слиянием, что и при переключении (mergeLegacyStoryTags).
    */
   storyTags?: { v1: number; v2: number; add: number; dropped: number; max: number };
+  /**
+   * Консультант по прайсу (BOVI): включён ли флаг, сколько позиций в прайсе
+   * консультанта (consultant_catalog_json, общая с v1 строка) и свежий ли курс.
+   */
+  pricelist?: { enabled: boolean; items: number; rateFresh: boolean };
+  /**
+   * Баллы лояльности: у скольких покупателей они есть и сколько заказов за
+   * 30 дней было не в валюте магазина — у таких покупателей цена балла
+   * меняется (в v1 балл списывался в валюте заказа, в v2 — в валюте магазина).
+   */
+  loyalty?: { holders: number; foreignOrders30d: number; shopCurrency: string };
 };
 
 export function evaluatePreflight(i: PreflightInput): Preflight {
@@ -211,6 +222,38 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
       level: "info",
       title: "Теги сторис перенесутся при переключении",
       detail: `Из v1 допишутся ${tags.add} (всего в v1: ${tags.v1}, в v2 уже: ${tags.v2}). После переключения проверьте их в админке.`,
+    });
+  const pl = i.pricelist;
+  if (pl?.enabled && pl.items === 0)
+    checks.push({
+      key: "pricelist",
+      level: "block",
+      title: "Консультант по прайсу без прайса",
+      detail:
+        "Флаг «Консультант по прайсу» включён, а прайс консультанта пуст: на любой вопрос о товаре консультант ответит, что ничего нет. Загрузите выгрузку 1С на странице продавца «Прайс консультанта» или выключите флаг.",
+    });
+  else if (pl && !pl.enabled && pl.items > 0)
+    checks.push({
+      key: "pricelist",
+      level: "warn",
+      title: "У клиента прайс консультанта v1, а флаг выключен",
+      detail: `В прайсе консультанта ${pl.items} позиций (консультант BOVI v1). Без флага «Консультант по прайсу» консультант v2 будет отвечать по товарам магазина, а не по прайсу. Включите флаг в карточке клиента.`,
+    });
+  else if (pl?.enabled && !pl.rateFresh)
+    checks.push({
+      key: "pricelist",
+      level: "warn",
+      title: "Курс рубля для консультанта устарел",
+      detail:
+        "Курса нет или он старше трёх дней: покупателям из России консультант не назовёт цены в рублях. Проверьте источник курса у оператора или введите курс вручную у продавца.",
+    });
+  const loyalty = i.loyalty;
+  if (loyalty?.holders && loyalty.foreignOrders30d)
+    checks.push({
+      key: "loyalty",
+      level: "warn",
+      title: "Цена балла изменится у покупателей в другой валюте",
+      detail: `Баллы есть у ${loyalty.holders} покупателей, за 30 дней ${loyalty.foreignOrders30d} заказов не в ${loyalty.shopCurrency}. В v1 балл списывался 1 к 1 в валюте заказа, в v2 — 1 балл = 1 ${loyalty.shopCurrency} по курсу; балансы не пересчитываются. Предупредите продавца до переезда.`,
     });
   if (i.appUrl)
     checks.push({
