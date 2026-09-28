@@ -4,6 +4,7 @@ import {
   findStoryTag,
   mergeLegacyStoryTags,
   storyContextLine,
+  storyProductsOf,
   type StoryTag,
 } from "./story-tags";
 
@@ -125,5 +126,50 @@ describe("mergeLegacyStoryTags: перенос тегов v1", () => {
     expect(r.added).toBe(200);
     expect(r.tags[0]!.id).toBe("v1-249");
     expect(r.tags.some((t) => t.id === "v1-0")).toBe(false);
+  });
+});
+
+describe("несколько товаров на одной истории", () => {
+  const base = {
+    id: "st1",
+    story_id: "Dcaih_PMAZ2",
+    story_url: null,
+    product_id: "p1",
+    product_name: "Простыня",
+    price: 30000,
+    notes: null,
+    created_at: "2026-09-24T00:00:00Z",
+  };
+
+  it("список из колонки products v1, без дублей; без него — один товар по старым полям", () => {
+    expect(
+      storyProductsOf({
+        ...base,
+        products: JSON.stringify([
+          { id: "p1", name: "Простыня", price_kzt: 30000 },
+          { id: "p2", name: "Пододеяльник", price_kzt: 45000 },
+          { id: "p1", name: "Простыня", price_kzt: 30000 },
+        ]),
+      }),
+    ).toEqual([
+      { id: "p1", name: "Простыня", price: 30000 },
+      { id: "p2", name: "Пододеяльник", price: 45000 },
+    ]);
+    expect(storyProductsOf(base)).toEqual([{ id: "p1", name: "Простыня", price: 30000 }]);
+  });
+
+  it("бот перечисляет товары истории с ценами и спрашивает, какой интересует", () => {
+    const line = storyContextLine(
+      {
+        ...base,
+        products: [
+          { id: "p1", name: "Простыня", price: 30000 },
+          { id: "p2", name: "Пододеяльник", price: 45000 },
+        ],
+      },
+      "Dcaih_PMAZ2",
+    );
+    expect(line).toContain("«Простыня» — 30000; «Пододеяльник» — 45000");
+    expect(line).toContain("уточните, какой интересует");
   });
 });

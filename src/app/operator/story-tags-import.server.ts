@@ -9,6 +9,7 @@ import { pageAll } from "@/core/db/page";
 import {
   mergeLegacyStoryTags,
   readStoryTagsForWrite,
+  storyProductsOf,
   STORY_TAGS_MAX,
   type StoryTag,
 } from "@/core/consultant/story-tags";
@@ -24,6 +25,8 @@ type LegacyRow = {
   product_price_kzt: number | null;
   notes: string | null;
   created_at: string | null;
+  /** Все товары истории (MIGRATION-71 v1) — колонки может не быть, select("*") её не требует. */
+  products?: unknown;
 };
 
 /** Все теги v1 клиента, постранично; последний ключ сортировки уникальный. */
@@ -43,16 +46,21 @@ export async function readLegacyStoryTags(botId: string): Promise<StoryTag[]> {
       `Теги сторис v1 не прочитаны (${e instanceof Error ? e.message : String(e)})`,
     );
   })) as LegacyRow[];
-  return rows.map((r) => ({
-    id: r.id,
-    story_id: r.story_id,
-    story_url: r.story_url,
-    product_id: r.product_id,
-    product_name: r.product_name,
-    price: r.product_price_kzt,
-    notes: r.notes,
-    created_at: r.created_at ?? new Date().toISOString(),
-  }));
+  return rows.map((r) => {
+    const tag: StoryTag = {
+      id: r.id,
+      story_id: r.story_id,
+      story_url: r.story_url,
+      product_id: r.product_id,
+      product_name: r.product_name,
+      price: r.product_price_kzt,
+      notes: r.notes,
+      created_at: r.created_at ?? new Date().toISOString(),
+    };
+    // Несколько товаров истории переезжают все, а не только первый.
+    const products = storyProductsOf({ ...tag, products: r.products });
+    return products.length > 1 ? { ...tag, products } : tag;
+  });
 }
 
 export type StoryTagPlan = {

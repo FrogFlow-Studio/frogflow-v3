@@ -23,7 +23,53 @@ export type StoryTag = {
   price: number | null;
   notes: string | null;
   created_at: string;
+  /**
+   * Все товары истории (v1 8d31840, MIGRATION-71): простыня, пододеяльник и
+   * наволочки на одной сторис. product_* — первый из них, как у v1.
+   */
+  products?: StoryProduct[];
 };
+
+export type StoryProduct = { id: string | null; name: string; price: number | null };
+
+/** Товары истории всегда списком: есть products — он, нет — один по старым полям. */
+export function storyProductsOf(
+  tag: Pick<StoryTag, "product_id" | "product_name" | "price"> & { products?: unknown },
+): StoryProduct[] {
+  const norm = (raw: unknown): StoryProduct | null => {
+    if (!raw || typeof raw !== "object") return null;
+    const r = raw as Record<string, unknown>;
+    const name = typeof r.name === "string" ? r.name.trim() : "";
+    if (!name) return null;
+    const price = Number(r.price ?? r.price_kzt ?? r.priceKzt);
+    return {
+      id: typeof r.id === "string" && r.id.trim() ? r.id.trim() : null,
+      name,
+      price: Number.isFinite(price) && price > 0 ? price : null,
+    };
+  };
+  let raw = tag.products;
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      raw = null;
+    }
+  }
+  if (Array.isArray(raw)) {
+    const seen = new Set<string>();
+    const list = raw
+      .map(norm)
+      .filter((p): p is StoryProduct => p !== null)
+      .filter((p) => {
+        const k = p.id ?? p.name.toLowerCase();
+        return seen.has(k) ? false : (seen.add(k), true);
+      });
+    if (list.length) return list;
+  }
+  const single = norm({ id: tag.product_id, name: tag.product_name, price: tag.price });
+  return single ? [single] : [];
+}
 
 export type InstagramMediaInfo = {
   shortcode: string | null;
@@ -223,10 +269,18 @@ export async function deleteStoryTag(ctx: TenantContext, id: string): Promise<vo
 
 /** Контекст для модели: что на сторис, на которую ответил покупатель. */
 export function storyContextLine(tag: StoryTag | null, storyId: string | null): string {
+  const head = `[Клиент ответил на сторис/рилс${storyId ? ` ${storyId}` : ""}`;
   if (tag) {
-    const price = tag.price != null ? `, цена ${tag.price}` : "";
     const notes = tag.notes ? `. Заметка продавца: ${tag.notes}` : "";
-    return `[Клиент ответил на сторис/рилс${storyId ? ` ${storyId}` : ""}. На ней товар «${tag.product_name}»${price}${notes}. Отвечайте про этот товар.]`;
+    const items = storyProductsOf(tag);
+    if (items.length > 1) {
+      const list = items
+        .map((p) => `«${p.name}»${p.price != null ? ` — ${p.price}` : ""}`)
+        .join("; ");
+      return `${head}. На ней несколько товаров: ${list}${notes}. Назовите их с ценами и уточните, какой интересует.]`;
+    }
+    const price = tag.price != null ? `, цена ${tag.price}` : "";
+    return `${head}. На ней товар «${tag.product_name}»${price}${notes}. Отвечайте про этот товар.]`;
   }
-  return `[Клиент ответил на сторис/рилс${storyId ? ` ${storyId}` : ""}, товар к ней не отмечен. Вежливо уточните, какой именно товар со сторис его интересует.]`;
+  return `${head}, товар к ней не отмечен. Вежливо уточните, какой именно товар со сторис его интересует.]`;
 }
