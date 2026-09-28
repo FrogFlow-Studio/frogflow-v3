@@ -9,7 +9,7 @@
 import { UserError } from "@/core/i18n/user-error";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { eachPage } from "@/core/db/page";
-import { listOrderEvents, ORDER_EVENT_STATUS, recordOrderEvent } from "./events";
+import { claimOrderEvent, listOrderEvents, ORDER_EVENT_STATUS } from "./events";
 
 /** Статусы, где деньги у продавца: из них возврат возможен. */
 export const REFUNDABLE_STATUSES = [
@@ -112,9 +112,10 @@ export type RefundResult = {
 };
 
 /**
- * Оформить возврат. Условная запись по `updated_at` (его двигает триггер
- * `trg_orders_touch`): два одновременных нажатия не вернут больше
- * полученного — второе увидит изменившийся заказ и откажет.
+ * Оформить возврат. Событие возврата пишется под номером (n0, n1, …):
+ * два одновременных возврата претендуют на один номер, и второй откажет —
+ * больше полученного не вернуть. Статус — условной записью по `updated_at`
+ * (его двигает триггер `trg_orders_touch`); не прошла — событие снимается.
  */
 export async function refundOrder(
   ctx: TenantContext,
@@ -136,13 +137,25 @@ export async function refundOrder(
       "err.refund.notRefundable",
       "По заказу в этом статусе денег не получено — возвращать нечего",
     );
-  const check = checkRefund(receivedAmount(o), await refundedAmount(ctx, orderId), input.amount);
+  // Возвраты заказа — по событиям; номер следующего — ключ события: два
+  // одновременных возврата претендуют на один ключ, запишется только первый.
+  const refunds = (await listOrderEvents(ctx, orderId)).filter((e) => e.kind === "refund");
+  const refunded = cents(refunds.reduce((sum, e) => sum + amountOf(e.payload), 0));
+  const check = checkRefund(receivedAmount(o), refunded, input.amount);
   if (!check.ok)
     throw check.reason === "amount"
       ? new UserError("err.orders.amountPositive", "Сумма должна быть больше нуля")
       : new UserError("err.refund.overRefundable", "Можно вернуть не больше {remaining}", {
           remaining: `${check.remaining} ${o.currency}`,
         });
+  const amount = cents(input.amount);
+  const reason = input.reason?.trim().slice(0, 500) || undefined;
+  const key = `n${refunds.length}`;
+  const base = { amount, currency: o.currency, full: check.full, ...(reason ? { reason } : {}) };
+  const changed = () =>
+    new UserError("err.refund.changed", "Заказ только что изменился — обновите страницу");
+  if (!(await claimOrderEvent(ctx, orderId, "refund", key, base, actor))) throw changed();
+  const eventId = `order:${orderId}:refund:${key}`;
   const { data: won } = await ctx.db
     .from("orders")
     .update({ status: check.full ? "refunded" : o.status })
@@ -150,10 +163,11 @@ export async function refundOrder(
     .eq("updated_at", o.updated_at)
     .select("id")
     .maybeSingle();
-  if (!won)
-    throw new UserError("err.refund.changed", "Заказ только что изменился — обновите страницу");
+  if (!won) {
+    await ctx.db.from("zernio_logs").delete().eq("event_id", eventId);
+    throw changed();
+  }
 
-  const amount = cents(input.amount);
   let pointsReturned = 0;
   let pointsRevoked = 0;
   let codes = { promo: false, gift: false };
@@ -167,29 +181,31 @@ export async function refundOrder(
     if (earned > 0 && (await revokePoints(ctx, tg, earned))) pointsRevoked = earned;
     codes = await returnOrderCodes(ctx, orderId, o.promo_code).catch(() => codes);
   }
+  // Склад возвращается один раз на заказ: restoreOrderStock кладёт все позиции целиком.
   let restocked = 0;
-  if (input.restock) {
+  if (input.restock && !refunds.some((e) => Number(e.payload.restocked) > 0)) {
     const { restoreOrderStock } = await import("@/core/fulfillment/fulfillment");
     restocked = await restoreOrderStock(ctx, orderId);
   }
-  const reason = input.reason?.trim().slice(0, 500) || undefined;
-  await recordOrderEvent(
-    ctx,
-    orderId,
-    "refund",
-    {
-      amount,
-      currency: o.currency,
-      full: check.full,
-      ...(reason ? { reason } : {}),
-      ...(pointsReturned ? { pointsReturned } : {}),
-      ...(pointsRevoked ? { pointsRevoked } : {}),
-      ...(codes.promo ? { promoReturned: true } : {}),
-      ...(codes.gift ? { giftReturned: true } : {}),
-      ...(restocked ? { restocked } : {}),
-    },
+  const payload = {
+    order_id: orderId,
     actor,
-  );
+    ...base,
+    ...(pointsReturned ? { pointsReturned } : {}),
+    ...(pointsRevoked ? { pointsRevoked } : {}),
+    ...(codes.promo ? { promoReturned: true } : {}),
+    ...(codes.gift ? { giftReturned: true } : {}),
+    ...(restocked ? { restocked } : {}),
+  };
+  if (pointsReturned || pointsRevoked || codes.promo || codes.gift || restocked)
+    await ctx.db.from("zernio_logs").update({ payload }).eq("event_id", eventId);
+  // Событие записано ключом, мимо recordOrderEvent: во внешнюю CRM — отдельно.
+  if (ctx.tenant.modules.crm_integration) {
+    const { queueCrmEvent } = await import("@/core/crm/webhook");
+    await queueCrmEvent(ctx, "refund", orderId, payload).catch((e) =>
+      console.warn(`[crm] событие refund для #${orderId}: ${String(e)}`),
+    );
+  }
   return {
     full: check.full,
     amount,

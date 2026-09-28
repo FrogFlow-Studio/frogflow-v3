@@ -85,6 +85,18 @@ describe("возврат по заказу", () => {
     await expect(refundOrder(ctx, 5, { amount: 7000.01 })).rejects.toThrow(/не больше/);
   });
 
+  it("два одновременных частичных возврата не вернут больше полученного", async () => {
+    const r = await Promise.allSettled([
+      refundOrder(ctx, 5, { amount: 6000 }),
+      refundOrder(ctx, 5, { amount: 6000 }),
+    ]);
+    expect(r.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+    expect(await refundedAmount(ctx, 5)).toBe(6000);
+    // Следующий возврат — уже под следующим номером.
+    await refundOrder(ctx, 5, { amount: 4000 });
+    expect(await refundedAmount(ctx, 5)).toBe(10000);
+  });
+
   it("полный: статус refunded, списанные баллы вернулись, начисленные сняты", async () => {
     db.tables.orders = [order({ points_used: 20, points_earned: 10 })];
     const r = await refundOrder(ctx, 5, { amount: 10000 });
