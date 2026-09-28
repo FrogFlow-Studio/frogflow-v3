@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Вход владельца в админку через Telegram: вместо пароля бот магазина
@@ -32,7 +33,7 @@ export async function issueLoginToken(
     key: `${TG_LOGIN_PREFIX}${tokenHash(token)}`,
     value: JSON.stringify({ username, exp: now + TG_LOGIN_TTL_MS }),
   });
-  if (error) throw new Error(`вход через Telegram: ${error.message}`);
+  if (error) throw serverFailure(`вход через Telegram: ${error.message}`);
   return token;
 }
 
