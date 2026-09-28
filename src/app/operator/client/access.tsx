@@ -118,11 +118,24 @@ export function AdminAccessCard({ c, onDone }: { c: C; onDone: () => Promise<voi
           <button className="btn-secondary" disabled={set.busy}>
             Сохранить
           </button>
-          {done && <span className="text-xs text-ok">Сохранено. Вход: </span>}
+          {done && (
+            <span className="text-xs text-ok">
+              {c.servedBy === "v2"
+                ? "Сохранено. Вход: "
+                : "Сохранено для v2. Вход после переезда: "}
+            </span>
+          )}
           <Link to="/admin/login" className="text-xs text-accent hover:underline">
             /admin/login
           </Link>
         </div>
+        {c.servedBy !== "v2" && (
+          <p className="text-xs text-muted">
+            Клиента пока обслуживает v1: вход в /admin v2 для него закрыт до переезда, и этот пароль
+            заработает только после переключения на v2. В прежнюю панель продавец входит по
+            ADMIN_USERNAME и ADMIN_PASSWORD из проекта клиента в Vercel, отсюда они не меняются.
+          </p>
+        )}
         <ErrorBox error={set.error} />
       </form>
     </Card>
