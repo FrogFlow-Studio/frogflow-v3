@@ -165,6 +165,11 @@ const ru = {
   "order.payCard": "Оплатить картой",
   "order.payCardHint":
     "Оплата банковской картой через Robokassa; после оплаты вы вернётесь на эту страницу.",
+  "order.payAbroad": "Оплатить иностранной картой / PayPal",
+  "order.payAbroadHint":
+    "Stripe: карта любой страны или PayPal; после оплаты вы вернётесь на эту страницу.",
+  "order.payAbroadFailed":
+    "Не удалось открыть оплату иностранной картой — попробуйте позже или выберите другой способ.",
   "order.payTransfer": "Или переводом по реквизитам",
   "checkout.proof.retry": "Это не похоже на чек об оплате. Загрузите чек ещё раз.",
   "checkout.proof.paymentFailed":
@@ -409,6 +414,11 @@ const kk: Dict = {
   "order.payCard": "Картамен төлеу",
   "order.payCardHint":
     "Robokassa арқылы банк картасымен төлем; төлегеннен кейін осы бетке ораласыз.",
+  "order.payAbroad": "Шетелдік картамен / PayPal төлеу",
+  "order.payAbroadHint":
+    "Stripe: кез келген елдің картасы немесе PayPal; төлегеннен кейін осы бетке ораласыз.",
+  "order.payAbroadFailed":
+    "Шетелдік картамен төлеуді ашу мүмкін болмады — кейінірек көріңіз немесе басқа тәсілді таңдаңыз.",
   "order.payTransfer": "Немесе деректемелер бойынша аударым",
   "checkout.proof.retry": "Бұл төлем чегіне ұқсамайды. Чекті қайта жүктеңіз.",
   "checkout.proof.paymentFailed":
@@ -644,6 +654,11 @@ const en: Dict = {
   "order.payCard": "Pay by card",
   "order.payCardHint":
     "Bank card payment via Robokassa; after paying you will return to this page.",
+  "order.payAbroad": "Pay with a foreign card / PayPal",
+  "order.payAbroadHint":
+    "Stripe: a card from any country or PayPal; after paying you will return to this page.",
+  "order.payAbroadFailed":
+    "Could not open foreign card payment — try again later or choose another method.",
   "order.payTransfer": "Or pay by transfer",
   "checkout.proof.retry": "This does not look like a payment receipt. Please upload it again.",
   "checkout.proof.paymentFailed":
@@ -879,6 +894,11 @@ const uz: Dict = {
   "order.payCard": "Karta bilan to‘lash",
   "order.payCardHint":
     "Robokassa orqali bank kartasi bilan to‘lov; to‘lovdan so‘ng shu sahifaga qaytasiz.",
+  "order.payAbroad": "Xorijiy karta / PayPal bilan toʻlash",
+  "order.payAbroadHint":
+    "Stripe: istalgan mamlakat kartasi yoki PayPal; toʻlovdan keyin shu sahifaga qaytasiz.",
+  "order.payAbroadFailed":
+    "Xorijiy karta bilan toʻlovni ochib boʻlmadi — keyinroq urinib koʻring yoki boshqa usulni tanlang.",
   "order.payTransfer": "Yoki rekvizitlar bo‘yicha o‘tkazma",
   "checkout.proof.retry": "Bu to‘lov chekiga o‘xshamaydi. Chekni qayta yuklang.",
   "checkout.proof.paymentFailed":

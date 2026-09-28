@@ -54,6 +54,7 @@ import { Route as ApiAdminUploadRouteImport } from './routes/api/admin/upload'
 import { Route as ApiCronJobRouteImport } from './routes/api/cron.$job'
 import { Route as ApiNowpaymentsBotIdRouteImport } from './routes/api/nowpayments.$botId'
 import { Route as ApiOperatorBotsRouteImport } from './routes/api/operator/bots'
+import { Route as ApiStripeBotIdRouteImport } from './routes/api/stripe.$botId'
 import { Route as ApiTelegramBotIdRouteImport } from './routes/api/telegram.$botId'
 import { Route as ApiZernioWebhookRouteImport } from './routes/api/zernio/webhook'
 import { Route as OperatorAuthedIndexRouteImport } from './routes/operator._authed.index'
@@ -310,6 +311,11 @@ const ApiOperatorBotsRoute = ApiOperatorBotsRouteImport.update({
   path: '/api/operator/bots',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStripeBotIdRoute = ApiStripeBotIdRouteImport.update({
+  id: '/api/stripe/$botId',
+  path: '/api/stripe/$botId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTelegramBotIdRoute = ApiTelegramBotIdRouteImport.update({
   id: '/api/telegram/$botId',
   path: '/api/telegram/$botId',
@@ -517,6 +523,7 @@ export interface FileRoutesByFullPath {
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
+  '/api/stripe/$botId': typeof ApiStripeBotIdRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
@@ -593,6 +600,7 @@ export interface FileRoutesByTo {
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
+  '/api/stripe/$botId': typeof ApiStripeBotIdRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
@@ -671,6 +679,7 @@ export interface FileRoutesById {
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
+  '/api/stripe/$botId': typeof ApiStripeBotIdRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/_authed/broadcast': typeof OperatorAuthedBroadcastRoute
@@ -750,6 +759,7 @@ export interface FileRouteTypes {
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
     | '/api/operator/bots'
+    | '/api/stripe/$botId'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
     | '/operator/broadcast'
@@ -826,6 +836,7 @@ export interface FileRouteTypes {
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
     | '/api/operator/bots'
+    | '/api/stripe/$botId'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
     | '/operator/broadcast'
@@ -903,6 +914,7 @@ export interface FileRouteTypes {
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
     | '/api/operator/bots'
+    | '/api/stripe/$botId'
     | '/api/telegram/$botId'
     | '/api/zernio/webhook'
     | '/operator/_authed/broadcast'
@@ -955,6 +967,7 @@ export interface RootRouteChildren {
   ApiCronJobRoute: typeof ApiCronJobRoute
   ApiNowpaymentsBotIdRoute: typeof ApiNowpaymentsBotIdRoute
   ApiOperatorBotsRoute: typeof ApiOperatorBotsRoute
+  ApiStripeBotIdRoute: typeof ApiStripeBotIdRoute
   ApiTelegramBotIdRoute: typeof ApiTelegramBotIdRouteWithChildren
   ApiZernioWebhookRoute: typeof ApiZernioWebhookRoute
   SSlugManifestDotwebmanifestRoute: typeof SSlugManifestDotwebmanifestRoute
@@ -1280,6 +1293,13 @@ declare module '@tanstack/react-router' {
       path: '/api/operator/bots'
       fullPath: '/api/operator/bots'
       preLoaderRoute: typeof ApiOperatorBotsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stripe/$botId': {
+      id: '/api/stripe/$botId'
+      path: '/api/stripe/$botId'
+      fullPath: '/api/stripe/$botId'
+      preLoaderRoute: typeof ApiStripeBotIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/telegram/$botId': {
@@ -1696,6 +1716,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCronJobRoute: ApiCronJobRoute,
   ApiNowpaymentsBotIdRoute: ApiNowpaymentsBotIdRoute,
   ApiOperatorBotsRoute: ApiOperatorBotsRoute,
+  ApiStripeBotIdRoute: ApiStripeBotIdRoute,
   ApiTelegramBotIdRoute: ApiTelegramBotIdRouteWithChildren,
   ApiZernioWebhookRoute: ApiZernioWebhookRoute,
   SSlugManifestDotwebmanifestRoute: SSlugManifestDotwebmanifestRoute,

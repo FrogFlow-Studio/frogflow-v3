@@ -122,6 +122,9 @@ export type Msg = {
   payViaCryptoBtn: string;
   cryptoHint: string;
   cryptoUnavailable: string;
+  payViaStripeBtn: string;
+  stripeHint: string;
+  stripeUnavailable: string;
   payManualBtn: string;
   robokassaHint: string;
   paymentReceived: (no: number) => string;
@@ -426,6 +429,10 @@ const ru: Msg = {
   cryptoHint:
     "Откройте ссылку, выберите монету и оплатите. Заказ подтвердится сам, когда сеть подтвердит платёж.",
   cryptoUnavailable: "Оплата криптовалютой сейчас недоступна — выберите другой способ.",
+  payViaStripeBtn: "🌍 Иностранной картой / PayPal",
+  stripeHint:
+    "Откройте ссылку и оплатите картой любой страны. Заказ подтвердится сам сразу после оплаты.",
+  stripeUnavailable: "Оплата иностранной картой сейчас недоступна — выберите другой способ.",
   payManualBtn: "🧾 Перевод по реквизитам + чек",
   robokassaHint: "Нажмите кнопку, оплатите картой — после оплаты всё придёт сюда автоматически.",
   paymentReceived: (no) => `✅ Оплата по заказу #${no} получена.`,
@@ -667,6 +674,11 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  payViaStripeBtn: "🌍 Foreign card / PayPal",
+  stripeHint:
+    "Open the link and pay with a card from any country. The order is confirmed automatically right after payment.",
+  stripeUnavailable:
+    "Foreign card payment is unavailable right now — please choose another method.",
   payBalanceBtn: (no) => `💳 Pay the balance #${no}`,
   balanceTitle: (no, sum) => `💳 <b>Balance for order #${no}</b>\n\n💰 To pay: <b>${sum}</b>`,
   balanceNoDetails: "Please ask the seller for payment details.",

@@ -20,7 +20,10 @@ vi.mock("@/core/orders/orders", async (orig) => ({
   ...(await orig<typeof import("@/core/orders/orders")>()),
   claimOrderPlacement: async () => true,
 }));
-vi.mock("@/core/payments/payment", () => ({ robokassaFor: async () => ({ ready: false }) }));
+vi.mock("@/core/payments/payment", () => ({
+  robokassaFor: async () => ({ ready: false }),
+  stripeFor: async () => ({ ready: false }),
+}));
 
 const { placeGiftOrder, giftSaleCountries } = await import("./gift-order");
 const { deliverWebOrder, webCustomer, webOrderView } = await import("./web-order");

@@ -486,3 +486,72 @@ export function CryptoCard({ settings }: { settings: Record<string, string> }) {
     </Card>
   );
 }
+
+/** Оплата иностранной картой через Stripe (core/payments/stripe): ключи — только владельцу. */
+export function StripeCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const [saved, setSaved] = useState(false);
+  const save = useAction(async (f: FormData) => {
+    setSaved(false);
+    await saveSettingsFn({
+      data: {
+        stripe_enabled: f.get("enabled") === "on" ? "true" : "false",
+        stripe_secret_key: String(f.get("secretKey")).trim(),
+        stripe_webhook_secret: String(f.get("webhookSecret")).trim(),
+      },
+    });
+    setSaved(true);
+    await router.invalidate();
+  });
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
+  return (
+    <Card title={t("settings.stripe.title")} className="lg:col-span-2">
+      <p className="mb-3 text-xs text-muted">
+        {t("settings.stripe.intro")}{" "}
+        <code className="rounded bg-surface-2 px-1">{`${origin}/api/stripe/${shop.botId}`}</code>
+      </p>
+      <form
+        className="grid gap-3 sm:grid-cols-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save.run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            name="enabled"
+            defaultChecked={settings.stripe_enabled === "true"}
+          />
+          {t("settings.stripe.enabled")}
+        </label>
+        <Field label={t("settings.stripe.secretKey")}>
+          <input
+            className="input"
+            name="secretKey"
+            autoComplete="off"
+            defaultValue={settings.stripe_secret_key ?? ""}
+          />
+        </Field>
+        <Field label={t("settings.stripe.webhookSecret")}>
+          <input
+            className="input"
+            name="webhookSecret"
+            autoComplete="off"
+            defaultValue={settings.stripe_webhook_secret ?? ""}
+          />
+        </Field>
+        <div className="flex items-center gap-3 sm:col-span-2">
+          <button className="btn-primary" disabled={save.busy}>
+            {t("common.save")}
+          </button>
+          {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
+        </div>
+        <ErrorBox error={save.error} />
+      </form>
+    </Card>
+  );
+}

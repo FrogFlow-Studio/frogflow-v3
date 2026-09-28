@@ -12,6 +12,12 @@ export async function nowpaymentsFor(ctx: TenantContext) {
   return nowpaymentsConfig(await getSettings(ctx, NOWPAYMENTS_KEYS), ctx.tenant.modules.crypto);
 }
 
+/** Оплата иностранной картой (модуль stripe, core/payments/stripe). */
+export async function stripeFor(ctx: TenantContext) {
+  const { STRIPE_KEYS, stripeConfig } = await import("./stripe");
+  return stripeConfig(await getSettings(ctx, STRIPE_KEYS), ctx.tenant.modules.stripe);
+}
+
 /**
  * Онлайн-оплата подтверждена шлюзом: отметить, что деньги получены.
  * Цифровой заказ дальше выдаёт канал, физический принимается в работу.

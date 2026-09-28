@@ -307,3 +307,19 @@ export const webCardPayFn = createServerFn({ method: "POST" })
     if (!url) throw shownError((await shopT(ctx))("checkout.proof.closed"));
     return { url };
   });
+
+/** Оплата иностранной картой: сессия Stripe Checkout продавца на этот заказ. */
+export const webStripePayFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object(orderRef).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await orderCtx(data, "card");
+    const { webStripePaymentUrl } = await import("@/core/storefront/web-order");
+    const r = await webStripePaymentUrl(ctx, data.id);
+    if (!r.ok)
+      throw shownError(
+        (await shopT(ctx))(
+          r.reason === "closed" ? "checkout.proof.closed" : "order.payAbroadFailed",
+        ),
+      );
+    return { url: r.url };
+  });

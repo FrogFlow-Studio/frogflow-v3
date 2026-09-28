@@ -40,7 +40,7 @@ import {
 } from "@/core/orders/orders";
 import { parseDeliveredLanguages } from "@/core/catalog/materials";
 import { imageUrl } from "@/core/catalog/catalog";
-import { robokassaFor } from "@/core/payments/payment";
+import { robokassaFor, stripeFor } from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
 import { amountDueNow } from "@/core/fulfillment/fulfillment";
 
@@ -369,10 +369,16 @@ export type WebOrderView = {
   /** Скидка промокодом, баллами и сертификатом вместе; total — уже после неё. */
   discount: number;
   /**
-   * Как платить: реквизиты и QR способа оплаты страны заказа и/или карта
-   * через Robokassa продавца; null — платить не нужно.
+   * Как платить: реквизиты и QR способа оплаты страны заказа, карта через
+   * Robokassa продавца и/или иностранная карта через Stripe (abroad);
+   * null — платить не нужно.
    */
-  payment: { instructions: string | null; qr: string | null; card: boolean } | null;
+  payment: {
+    instructions: string | null;
+    qr: string | null;
+    card: boolean;
+    abroad: boolean;
+  } | null;
   materials: WebMaterial[];
   email: string | null;
   /** Чек загружен — заказ на проверке у продавца по чеку, а не по контактам. */
@@ -466,6 +472,7 @@ export async function webOrderView(
   const method =
     payable && order.country_code ? await paymentMethodFor(ctx, order.country_code) : null;
   const card = payable && (await robokassaFor(ctx)).ready;
+  const abroad = payable && (await stripeFor(ctx)).ready;
   const { balance, balancePending } = await balanceView(ctx, order);
   return {
     id: order.id,
@@ -500,11 +507,12 @@ export async function webOrderView(
     })),
     discount: orderDiscount(order),
     payment:
-      method || card
+      method || card || abroad
         ? {
             instructions: method?.instructions ?? null,
             qr: method?.qr_code_path ? imageUrl(ctx, method.qr_code_path) : null,
             card,
+            abroad,
           }
         : null,
     materials: await webOrderMaterials(ctx, order),
@@ -601,4 +609,43 @@ export async function webCardPaymentUrl(
     description: `Заказ #${displayNo(order)}`,
     botId: ctx.tenant.id,
   });
+}
+
+/**
+ * Оплата иностранной картой: сессия Stripe Checkout продавца на сумму к
+ * оплате сейчас, возврат — на подписанную страницу заказа. null — заказ уже
+ * не ждёт оплаты или Stripe не подключён; остаток по задатку Stripe не берёт.
+ * Оплату подтверждает только вебхук /api/stripe/<bot_id>.
+ */
+export async function webStripePaymentUrl(
+  ctx: TenantContext,
+  orderId: number,
+): Promise<{ ok: true; url: string } | { ok: false; reason: "closed" | "failed" }> {
+  const order = await getOrder(ctx, orderId);
+  if (!order || !(await hasOrderPage(ctx, order)) || !PAYABLE.has(order.status))
+    return { ok: false, reason: "closed" };
+  const cfg = await stripeFor(ctx);
+  if (!cfg.ready) return { ok: false, reason: "closed" };
+  const due = await amountDueNow(ctx, {
+    total: Number(order.total),
+    fulfillment_kind: order.fulfillment_kind,
+  });
+  const page = await orderPageUrl(ctx, order.id);
+  if (!(due > 0) || !page) return { ok: false, reason: "closed" };
+  const { createCheckoutSession } = await import("@/core/payments/stripe");
+  const r = await createCheckoutSession(cfg, {
+    amount: due,
+    currency: order.currency,
+    orderId: order.id,
+    botId: ctx.tenant.id,
+    description: `Заказ #${displayNo(order)}`,
+    successUrl: page,
+    cancelUrl: page,
+    email: order.customer_email,
+  });
+  if (!r.ok) {
+    console.error(`[stripe:${ctx.tenant.id}] сессия по заказу ${order.id}: ${r.error}`);
+    return { ok: false, reason: "failed" };
+  }
+  return { ok: true, url: r.url };
 }

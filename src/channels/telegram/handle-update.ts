@@ -1275,7 +1275,9 @@ async function finishCheckout(b: Bot, countryCode: string) {
   const stars = await starsForOrder(b.ctx, due, order.currency);
   const { nowpaymentsFor } = await import("@/core/payments/payment");
   const crypto = await nowpaymentsFor(b.ctx);
-  if (rk.ready || stars || crypto.ready) {
+  const { stripeFor } = await import("@/core/payments/payment");
+  const stripe = await stripeFor(b.ctx);
+  if (rk.ready || stars || crypto.ready || stripe.ready) {
     b.customer = await setState(b.ctx, b.customer, {
       ...rest,
       mode: "choose_pay",
@@ -1296,6 +1298,9 @@ async function finishCheckout(b: Bot, countryCode: string) {
               : []),
             ...(crypto.ready
               ? [[{ text: b.m.payViaCryptoBtn, callback_data: `pay:crypto:${order.id}` }]]
+              : []),
+            ...(stripe.ready
+              ? [[{ text: b.m.payViaStripeBtn, callback_data: `pay:stripe:${order.id}` }]]
               : []),
             [{ text: b.m.payManualBtn, callback_data: `pay:manual:${order.id}` }],
           ],
@@ -2061,6 +2066,40 @@ async function handleCallback(
         b,
         `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}\n\n${b.m.cryptoHint}`,
         { reply_markup: { inline_keyboard: [[{ text: b.m.payViaCryptoBtn, url: inv.url }]] } },
+      );
+      return;
+    }
+    if (kind === "stripe") {
+      const { stripeFor } = await import("@/core/payments/payment");
+      const cfg = await stripeFor(ctx);
+      if (!cfg.ready) return;
+      const { createCheckoutSession } = await import("@/core/payments/stripe");
+      const username = ctx.tenant.settings.telegram?.username;
+      const back = username ? `https://t.me/${username}` : ctx.appUrl;
+      const session = await createCheckoutSession(cfg, {
+        amount: due,
+        currency: order.currency,
+        orderId: order.id,
+        botId: ctx.tenant.id,
+        description: `Заказ #${no}`,
+        successUrl: back,
+        cancelUrl: back,
+        email: order.customer_email,
+      });
+      if (!session.ok) {
+        console.error(`[stripe:${ctx.tenant.id}] сессия по заказу ${order.id}: ${session.error}`);
+        return void (await send(b, b.m.stripeUnavailable));
+      }
+      b.customer = await setState(ctx, customer, {
+        ...customer.state,
+        mode: "awaiting_payment",
+        pending_order_id: order.id,
+        pending_display_no: no,
+      });
+      await send(
+        b,
+        `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}\n\n${b.m.stripeHint}`,
+        { reply_markup: { inline_keyboard: [[{ text: b.m.payViaStripeBtn, url: session.url }]] } },
       );
       return;
     }

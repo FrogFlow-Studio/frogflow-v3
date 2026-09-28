@@ -9,7 +9,12 @@ vi.mock("@/core/orders/orders", async (orig) => ({
   placeOrder: (...a: unknown[]) => placeOrder(...a),
 }));
 const robokassa = vi.fn();
-vi.mock("@/core/payments/payment", () => ({ robokassaFor: () => robokassa() }));
+let stripeReady = false;
+vi.mock("@/core/payments/payment", () => ({
+  robokassaFor: () => robokassa(),
+  stripeFor: async () =>
+    stripeReady ? { ready: true, secretKey: "sk", webhookSecret: "wh" } : { ready: false },
+}));
 vi.mock("@/core/fulfillment/fulfillment", async (orig) => ({
   ...(await orig<typeof import("@/core/fulfillment/fulfillment")>()),
   amountDueNow: async (_c: unknown, o: { total: number }) => o.total,
@@ -29,6 +34,7 @@ const {
   telegramWebCustomer,
   webCustomer,
   webCardPaymentUrl,
+  webStripePaymentUrl,
   webCustomerId,
   webMaterialSender,
   webOrderView,
@@ -57,6 +63,7 @@ function setup() {
 beforeEach(() => {
   robokassa.mockReset();
   robokassa.mockResolvedValue({ ready: false });
+  stripeReady = false;
   placeOrder.mockReset();
   importItems.mockReset();
 });
@@ -517,6 +524,35 @@ describe("заказ с сайта: страница заказа", () => {
       testMode: false,
     });
     expect(await webCardPaymentUrl(paid.ctx, 9)).toBeNull();
+  });
+
+  it("Stripe продавца подключён — сессия Checkout на сумму заказа с возвратом на его страницу", async () => {
+    const { ctx } = withOrder();
+    // Возврат — на страницу заказа, а она есть только у магазина с адресом.
+    Object.assign(ctx.tenant.settings, { slug: "shop", served_by: "v2" });
+    expect((await webOrderView(ctx, 9))!.payment!.abroad).toBe(false);
+    stripeReady = true;
+    expect((await webOrderView(ctx, 9))!.payment!.abroad).toBe(true);
+    const fetchMock = vi.fn(async () =>
+      Response.json({ id: "cs_1", url: "https://checkout.stripe.com/c/cs_1" }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      expect(await webStripePaymentUrl(ctx, 9)).toEqual({
+        ok: true,
+        url: "https://checkout.stripe.com/c/cs_1",
+      });
+      const body = new URLSearchParams(
+        String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body),
+      );
+      expect(body.get("line_items[0][price_data][unit_amount]")).toBe("250000");
+      expect(body.get("client_reference_id")).toBe("9");
+      expect(body.get("success_url")).toMatch(/\/order\/9\?t=/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    const paid = withOrder({ status: "paid" });
+    expect(await webStripePaymentUrl(paid.ctx, 9)).toEqual({ ok: false, reason: "closed" });
   });
 
   it("чек на проверке — реквизиты больше не показываются", async () => {

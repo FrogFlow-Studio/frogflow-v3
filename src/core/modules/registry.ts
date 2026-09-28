@@ -117,8 +117,8 @@ export const MODULES = {
     desc: "Покупатели из других стран платят иностранной картой или PayPal; заказ выдаётся после подтверждения платежа.",
     group: "Оплата",
     price: 25000,
-    status: "planned",
-    note: "Блок 5, P2 (docs/ROADMAP.md): кода оплаты ещё нет — тумблер серый. Цену в прайсе уточнить.",
+    status: "available",
+    note: "Свой аккаунт Stripe у продавца: секретный ключ и секрет вебхука в «Настройки → Оплата» (видит только владелец). Сессия Checkout из бота и со страницы заказа, подтверждение вебхуком /api/stripe/<bot_id> (core/payments/stripe). PayPal и другие способы включаются в кабинете Stripe.",
   },
   receipt_ocr: {
     title: "Распознавание чека",
@@ -416,6 +416,14 @@ export const MODULES = {
     status: "available",
     requires: ["stock"],
     note: "Кнопка на товаре без остатка в Telegram и Direct; подписка — bot_users.state.waitlist; рассылка при возврате в продажу из админки (core/waitlist).",
+  },
+  courier: {
+    title: "Курьер по вызову (Яндекс Доставка, inDrive)",
+    desc: "Курьер вызывается из карточки заказа, покупатель получает ссылку на отслеживание.",
+    group: "Физические товары",
+    price: 15000,
+    status: "planned",
+    note: "Блок 5, P2 (docs/ROADMAP.md): кода вызова курьера ещё нет — тумблер серый. Нужен договор продавца с Яндекс Доставкой (B2B API).",
   },
 } as const satisfies Record<string, ModuleDef>;
 

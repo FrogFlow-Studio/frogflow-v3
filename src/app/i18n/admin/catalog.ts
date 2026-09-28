@@ -46,6 +46,9 @@ export const ru = {
   "module.crypto.title": "Оплата криптой (NOWPayments)",
   "module.crypto.desc":
     "Оплата криптовалютой через счёт-инвойс; заказ выдаётся после подтверждения сети.",
+  "module.courier.title": "Курьер по вызову (Яндекс Доставка, inDrive)",
+  "module.courier.desc":
+    "Курьер вызывается из карточки заказа, покупатель получает ссылку на отслеживание.",
   "module.stripe.title": "Оплата картой из-за рубежа (Stripe, PayPal)",
   "module.stripe.desc":
     "Покупатели из других стран платят иностранной картой или PayPal; заказ выдаётся после подтверждения платежа.",
@@ -223,6 +226,9 @@ export const kk: SectionDict<typeof ru> = {
   "module.crypto.title": "Криптовалютамен төлеу (NOWPayments)",
   "module.crypto.desc":
     "Шот-инвойс арқылы криптовалютамен төлеу; тапсырыс желі растағаннан кейін беріледі.",
+  "module.courier.title": "Шақыру бойынша курьер (Яндекс Жеткізу, inDrive)",
+  "module.courier.desc":
+    "Курьер тапсырыс карточкасынан шақырылады, сатып алушы бақылау сілтемесін алады.",
   "module.stripe.title": "Шетелден картамен төлеу (Stripe, PayPal)",
   "module.stripe.desc":
     "Басқа елдердің сатып алушылары шетелдік картамен немесе PayPal арқылы төлейді; тапсырыс төлем расталғаннан кейін беріледі.",
@@ -368,6 +374,8 @@ export const en: SectionDict<typeof ru> = {
   "module.crypto.title": "Crypto payments (NOWPayments)",
   "module.crypto.desc":
     "Cryptocurrency payments via an invoice; the order is delivered once the network confirms the payment.",
+  "module.courier.title": "On-demand courier (Yandex Delivery, inDrive)",
+  "module.courier.desc": "Call a courier from the order card; the customer gets a tracking link.",
   "module.stripe.title": "Card payments from abroad (Stripe, PayPal)",
   "module.stripe.desc":
     "Customers from other countries pay with a foreign card or PayPal; the order is delivered once the payment is confirmed.",
@@ -509,6 +517,9 @@ export const uz: SectionDict<typeof ru> = {
   "module.crypto.title": "Kripto orqali toʻlov (NOWPayments)",
   "module.crypto.desc":
     "Hisob-invoys orqali kriptovalyutada toʻlov; buyurtma tarmoq tasdiqlagandan keyin beriladi.",
+  "module.courier.title": "Chaqiruv boʻyicha kuryer (Yandex Yetkazish, inDrive)",
+  "module.courier.desc":
+    "Kuryer buyurtma kartasidan chaqiriladi, xaridor kuzatish havolasini oladi.",
   "module.stripe.title": "Chet eldan karta orqali toʻlov (Stripe, PayPal)",
   "module.stripe.desc":
     "Boshqa mamlakatlardagi xaridorlar xorijiy karta yoki PayPal orqali toʻlaydi; buyurtma toʻlov tasdiqlangach beriladi.",

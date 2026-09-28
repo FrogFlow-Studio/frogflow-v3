@@ -23,6 +23,7 @@ import {
   ReceiptOcrCard,
   RobokassaCard,
   CryptoCard,
+  StripeCard,
   StarsCard,
 } from "@/app/admin/settings/payments";
 import {
@@ -319,6 +320,7 @@ function SettingsPage() {
         <WatermarkCard enabled={pdfWatermark} />
         {shop.modules.robokassa && <RobokassaCard settings={settings} />}
         {shop.modules.crypto && shop.role === "owner" && <CryptoCard settings={settings} />}
+        {shop.modules.stripe && shop.role === "owner" && <StripeCard settings={settings} />}
         {shop.modules.telegram_stars && <StarsCard settings={settings} />}
         {shop.modules.receipt_ocr && <ReceiptOcrCard settings={settings} hasKey={visionKey} />}
         {shop.modules.smart_search && (

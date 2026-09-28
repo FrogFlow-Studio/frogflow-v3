@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type ChangeEvent } from "react";
-import { webCardPayFn, webOrderFn, webProofFn } from "@/app/storefront/checkout.functions";
+import {
+  webCardPayFn,
+  webOrderFn,
+  webProofFn,
+  webStripePayFn,
+} from "@/app/storefront/checkout.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
 import { linkWebOrderFn, webOrderLinkStateFn } from "@/app/storefront/tg-login.functions";
@@ -90,6 +95,10 @@ function OrderPage() {
     const r = await webCardPayFn({ data: ref });
     window.location.assign(r.url);
   });
+  const abroad = useAction(async () => {
+    const r = await webStripePayFn({ data: ref });
+    window.location.assign(r.url);
+  });
   if (noLink) return <p className="text-sm text-muted">{t("order.noLink")}</p>;
   if (loadError) return <ErrorBox error={loadError} />;
   if (!view) return <p className="text-sm text-muted">…</p>;
@@ -145,6 +154,7 @@ function OrderPage() {
           hint={view.due < view.total ? t("order.depositHint") : null}
           payment={view.payment}
           card={card}
+          abroad={abroad}
           proof={proof}
         />
       )}
@@ -263,12 +273,13 @@ function PayBox(props: {
   due: number;
   currency: string;
   hint: string | null;
-  payment: { instructions: string | null; qr: string | null; card: boolean };
+  payment: { instructions: string | null; qr: string | null; card: boolean; abroad?: boolean };
   card: Action<[]>;
+  abroad?: Action<[]>;
   proof: Action<[File]>;
 }) {
   const { t } = useStorefrontLocale();
-  const { payment, card, proof } = props;
+  const { payment, card, abroad, proof } = props;
   return (
     <section className="card space-y-3 p-5">
       <h2 className="font-semibold">{props.title}</h2>
@@ -289,7 +300,20 @@ function PayBox(props: {
           <ErrorBox error={card.error} />
         </div>
       )}
-      {payment.card && (payment.instructions || payment.qr) && (
+      {payment.abroad && abroad && (
+        <div className="space-y-1">
+          <button
+            className={payment.card ? "btn-secondary w-full" : "btn-primary w-full"}
+            disabled={abroad.busy}
+            onClick={() => void abroad.run().catch(() => {})}
+          >
+            {t("order.payAbroad")}
+          </button>
+          <p className="text-xs text-muted">{t("order.payAbroadHint")}</p>
+          <ErrorBox error={abroad.error} />
+        </div>
+      )}
+      {(payment.card || payment.abroad) && (payment.instructions || payment.qr) && (
         <h3 className="pt-2 text-sm font-medium">{t("order.payTransfer")}</h3>
       )}
       {payment.instructions && (
