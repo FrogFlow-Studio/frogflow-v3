@@ -3,6 +3,7 @@ import { pageAll } from "@/core/db/page";
 import { HANDOFF_PREFIX } from "@/core/storefront/handoff";
 import { linkedWebOrderIds } from "@/core/storefront/web-link";
 import { allSellerNotes, readSellerNote, writeSellerNote, type SellerNote } from "./seller-notes";
+import { linkedProfiles, type LinkedProfile } from "./identity";
 
 export { cleanTags, type SellerNote } from "./seller-notes";
 
@@ -54,6 +55,8 @@ export function orderStats(
 export type CardOrder = {
   id: number;
   no: number;
+  /** Канал заказа: история общая для всех профилей покупателя (core/customers/identity). */
+  platform: string;
   status: string;
   total: number;
   currency: string;
@@ -77,6 +80,8 @@ export type CustomerCard = {
   /** Откуда пришёл: первая ссылка /start (реферал, товар, корзина с витрины). */
   firstSource: string | null;
   seller: SellerNote;
+  /** Этот же человек в других каналах: по телефону, почте или связи продавца. */
+  linked: LinkedProfile[];
   stats: OrderStats;
   orders: CardOrder[];
   tickets: Array<{
@@ -112,13 +117,15 @@ export async function customerCard(
 
   // Привязанные покупателем заказы с сайта (core/storefront/web-link) — в ту же историю.
   const linkedIds = linkedWebOrderIds(state);
+  const linked = await linkedProfiles(ctx, u);
+  const buyerIds = [telegramId, ...linked.map((l) => l.telegramId)];
   const [ownOrders, blocked, tickets, leads, messages, seller, linkedOrders] = await Promise.all([
     pageAll(
       (from, to) =>
         ctx.db
           .from("orders")
-          .select("id, order_no, display_no, status, total, currency, created_at")
-          .eq("telegram_id", telegramId)
+          .select("id, order_no, display_no, status, total, currency, created_at, platform")
+          .in("telegram_id", buyerIds)
           .order("id", { ascending: false })
           .range(from, to),
       "Заказы покупателя не прочитались",
@@ -146,7 +153,7 @@ export async function customerCard(
       ? ctx.db
           .from("manager_chat_messages")
           .select("direction, sender, text, created_at")
-          .eq("telegram_id", telegramId)
+          .in("telegram_id", buyerIds)
           .order("created_at", { ascending: false })
           .limit(RECENT_MESSAGES)
           .then((r) => r.data ?? [])
@@ -155,7 +162,7 @@ export async function customerCard(
     linkedIds.length
       ? ctx.db
           .from("orders")
-          .select("id, order_no, display_no, status, total, currency, created_at")
+          .select("id, order_no, display_no, status, total, currency, created_at, platform")
           .in("id", linkedIds)
           .eq("platform", "web")
           .then((r) => {
@@ -186,10 +193,12 @@ export async function customerCard(
     blocked,
     firstSource: sourceLabel(state.first_source),
     seller,
+    linked,
     stats: orderStats(orders),
     orders: orders.slice(0, RECENT_ORDERS).map((o) => ({
       id: o.id,
       no: displayNo(o),
+      platform: o.platform ?? "telegram",
       status: o.status,
       total: Number(o.total),
       currency: o.currency,

@@ -934,6 +934,30 @@ export const saveCustomerNoteFn = createServerFn({ method: "POST" })
     return r;
   });
 
+/** «Это тот же человек»: ручная связь двух профилей покупателя (core/customers/identity). */
+export const linkCustomerFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ key: z.string().min(1).max(200), other: z.string().min(1).max(200) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { linkProfiles } = await import("@/core/customers/identity");
+    if (!(await linkProfiles(ctx, data.key, data.other)))
+      throw new UserError("err.customer.notFound", "Покупатель не найден.");
+    return { ok: true };
+  });
+
+export const unlinkCustomerFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ key: z.string().min(1).max(200), other: z.string().min(1).max(200) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { unlinkProfiles } = await import("@/core/customers/identity");
+    await unlinkProfiles(ctx, data.key, data.other);
+    return { ok: true };
+  });
+
 export const setBlockedFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

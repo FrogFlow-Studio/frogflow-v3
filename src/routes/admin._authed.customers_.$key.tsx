@@ -1,7 +1,13 @@
 import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { customerCardFn, saveCustomerNoteFn } from "@/app/admin/admin.functions";
+import {
+  customerCardFn,
+  customersFn,
+  linkCustomerFn,
+  saveCustomerNoteFn,
+  unlinkCustomerFn,
+} from "@/app/admin/admin.functions";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
@@ -129,6 +135,7 @@ function CustomerCardPage() {
             </div>
           )}
         </Card>
+        <LinkedCard />
         <Card title={t("customer.ordersTitle")}>
           {c.orders.length === 0 ? (
             <p className="text-sm text-muted">{t("customer.noOrders")}</p>
@@ -143,6 +150,7 @@ function CustomerCardPage() {
                 >
                   <span>
                     #{o.no} · {date(o.createdAt)}
+                    {c.linked.length > 0 && <span className="text-muted"> · {o.platform}</span>}
                   </span>
                   <span className="flex items-center gap-2">
                     {formatMoney(o.total, o.currency)}
@@ -204,5 +212,108 @@ function CustomerCardPage() {
         )}
       </div>
     </>
+  );
+}
+
+/** Профили этого покупателя в других каналах и ручная связь (core/customers/identity). */
+function LinkedCard() {
+  const { card: c } = Route.useLoaderData();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const router = useRouter();
+  const canWrite = canEdit(shop.role);
+  const [q, setQ] = useState("");
+  const [found, setFound] = useState<Awaited<ReturnType<typeof customersFn>> | null>(null);
+  const search = useAction(async () => {
+    const rows = await customersFn({ data: { q } });
+    const linked = new Set(c.linked.map((l) => l.userKey));
+    setFound(rows.filter((r) => r.user_key !== c.userKey && !linked.has(r.user_key)).slice(0, 8));
+  });
+  const link = useAction(async (other: string, on: boolean) => {
+    const data = { key: c.userKey, other };
+    await (on ? linkCustomerFn({ data }) : unlinkCustomerFn({ data }));
+    setFound(null);
+    setQ("");
+    await router.invalidate();
+  });
+  if (c.linked.length === 0 && !canWrite) return null;
+  return (
+    <Card title={t("customer.linkedTitle")}>
+      <ErrorBox error={search.error ?? link.error} />
+      {c.linked.length > 0 && (
+        <>
+          <p className="mb-2 text-xs text-muted">{t("customer.linkedHint")}</p>
+          {c.linked.map((l) => (
+            <div
+              key={l.userKey}
+              className="flex items-center justify-between gap-2 border-b border-line py-1.5 text-sm last:border-b-0"
+            >
+              <Link
+                to="/admin/customers/$key"
+                params={{ key: l.userKey }}
+                className="truncate hover:text-accent"
+              >
+                {l.platform} · {l.name || (l.username ? `@${l.username}` : l.userKey)}
+              </Link>
+              <span className="flex shrink-0 items-center gap-1">
+                {l.reasons.map((r) => (
+                  <Badge key={r}>{t(`customer.reason.${r}`)}</Badge>
+                ))}
+                {canWrite && l.reasons.includes("manual") && (
+                  <button
+                    className="btn-ghost text-xs"
+                    disabled={link.busy}
+                    onClick={() => void link.run(l.userKey, false).catch(() => {})}
+                  >
+                    {t("customer.unlink")}
+                  </button>
+                )}
+              </span>
+            </div>
+          ))}
+        </>
+      )}
+      {canWrite && (
+        <form
+          className="mt-2 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (q.trim()) void search.run().catch(() => {});
+          }}
+        >
+          <input
+            className="input"
+            placeholder={t("customer.linkSearch")}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          <button className="btn-secondary text-xs" disabled={search.busy}>
+            {t("customer.find")}
+          </button>
+        </form>
+      )}
+      {found && (
+        <div className="mt-2">
+          {found.length === 0 && <p className="text-sm text-muted">{t("customer.linkNone")}</p>}
+          {found.map((r) => (
+            <div key={r.user_key} className="flex items-center justify-between gap-2 py-1 text-sm">
+              <span className="truncate">
+                {r.platform} ·{" "}
+                {[r.first_name, r.last_name].filter(Boolean).join(" ") ||
+                  (r.username ? `@${r.username}` : r.user_key)}
+                {r.contact_phone && <span className="text-muted"> · {r.contact_phone}</span>}
+              </span>
+              <button
+                className="btn-secondary text-xs"
+                disabled={link.busy}
+                onClick={() => void link.run(r.user_key, true).catch(() => {})}
+              >
+                {t("customer.link")}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
