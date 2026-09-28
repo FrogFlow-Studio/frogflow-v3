@@ -16,6 +16,7 @@ const OPEN_TO_ACCOUNTANT = new Set([
   "admin.functions.ts:dashboardFn",
   "admin.functions.ts:ordersFn",
   "admin.functions.ts:ordersStampFn",
+  "admin.functions.ts:adminSearchFn",
   "admin.functions.ts:orderFn",
   "admin.functions.ts:analyticsFn",
 ]);
