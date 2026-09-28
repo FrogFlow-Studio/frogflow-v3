@@ -103,6 +103,8 @@ export type TenantSettings = {
     hours?: { open: number; close: number };
     /** Откуда курс рубля: ВТБ, finkaz или вручную (core/consultant/pricelist/rate). */
     rate_source?: "vtb" | "finkaz" | "manual";
+    /** Страница банка на finkaz.kz (по умолчанию Kaspi). */
+    rate_url?: string;
   };
   /** Свой дневной предел умного поиска в долларах (core/search). Меняет оператор. */
   smart_search_limits?: SmartSearchLimitsSetting | null;

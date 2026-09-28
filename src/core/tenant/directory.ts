@@ -179,6 +179,11 @@ export function settingsFromJson(json: unknown): TenantSettings {
           p.rate_source === "vtb" || p.rate_source === "finkaz" || p.rate_source === "manual"
             ? p.rate_source
             : undefined,
+        rate_url:
+          typeof p.rate_url === "string" &&
+          /^https:\/\/finkaz\.kz\/[a-z0-9-]+\/exchange-rates/i.test(p.rate_url)
+            ? p.rate_url
+            : undefined,
       };
     })(),
     smart_search_limits:

@@ -67,6 +67,9 @@ const schema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   SMTP_FROM: z.string().optional(),
+  // Курс ВТБ Казахстан для консультанта по прайсу: ВТБ рвёт соединения из-за
+  // рубежа, нужен адрес внутри Казахстана, отдающий ответ ВТБ как есть.
+  CONSULTANT_VTB_RELAY_URL: z.string().url().optional(),
   // Push-уведомления админки (core/push): ключи VAPID P-256 в base64url —
   // открытый (65 байт) и закрытый (32 байта); контакт для служб push.
   VAPID_PUBLIC_KEY: z.string().optional(),
