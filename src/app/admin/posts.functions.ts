@@ -51,3 +51,46 @@ export const cancelPostFn = createServerFn({ method: "POST" })
       throw new Error("Публикация не найдена среди ваших.");
     return { ok: true };
   });
+
+/** Импорт товаров из постов Instagram: посты с черновиком по подписи (app/admin/ig-import). */
+export const igImportCandidatesFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await igWrite();
+  const { zernioConfigured } = await import("@/channels/zernio/api.server");
+  if (!zernioConfigured()) return { configured: false, posts: [] };
+  const { igImportCandidates } = await import("./ig-import.server");
+  const { listAllCategories } = await import("@/core/catalog/admin");
+  const [posts, categories] = await Promise.all([igImportCandidates(ctx), listAllCategories(ctx)]);
+  return {
+    configured: true,
+    posts,
+    categories: categories.map((c) => ({ id: c.id, name: c.name })),
+    vertical: ctx.tenant.vertical,
+  };
+});
+
+export const igImportFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        kind: z.enum(["digital", "physical"]),
+        categoryId: z.string().uuid().nullable(),
+        items: z
+          .array(
+            z.object({
+              postId: z.string().min(1).max(100),
+              name: z.string().max(200),
+              price: z.number().min(0).max(1e9),
+              description: z.string().max(5000),
+              keywords: z.string().max(500),
+            }),
+          )
+          .min(1)
+          .max(60),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await igWrite();
+    const { igImportPosts } = await import("./ig-import.server");
+    return igImportPosts(ctx, data.items, { kind: data.kind, categoryId: data.categoryId });
+  });

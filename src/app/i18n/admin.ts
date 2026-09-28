@@ -27,6 +27,7 @@ import * as customer from "./admin/customer";
 import * as pipeline from "./admin/pipeline";
 import * as physical from "./admin/physical";
 import * as refund from "./admin/refund";
+import * as igImport from "./admin/ig-import";
 import * as plan from "./admin/plan";
 import * as sheet from "./admin/sheet";
 import * as similar from "./admin/similar";
@@ -354,6 +355,7 @@ const ru = {
   ...pipeline.ru,
   ...physical.ru,
   ...refund.ru,
+  ...igImport.ru,
   ...plan.ru,
   ...sheet.ru,
   ...similar.ru,
@@ -1253,6 +1255,7 @@ const kk: Dict = {
   ...pipeline.kk,
   ...physical.kk,
   ...refund.kk,
+  ...igImport.kk,
   ...plan.kk,
   ...sheet.kk,
   ...similar.kk,
@@ -1284,6 +1287,7 @@ const en: Dict = {
   ...pipeline.en,
   ...physical.en,
   ...refund.en,
+  ...igImport.en,
   ...plan.en,
   ...sheet.en,
   ...similar.en,
@@ -1315,6 +1319,7 @@ const uz: Dict = {
   ...pipeline.uz,
   ...physical.uz,
   ...refund.uz,
+  ...igImport.uz,
   ...plan.uz,
   ...sheet.uz,
   ...similar.uz,

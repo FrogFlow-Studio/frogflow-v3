@@ -525,7 +525,7 @@ const asArr = (v: Json | undefined): RawPost[] => (Array.isArray(v) ? (v as RawP
 const asText = (v: Json | undefined): string =>
   typeof v === "string" ? v : typeof v === "number" ? String(v) : "";
 
-function normalizePost(p: RawPost, accountId: string): PostSummary | null {
+function normalizePost(p: RawPost, accountId: string, captionMax = 200): PostSummary | null {
   const platform = [...asArr(p.platformAnalytics), ...asArr(p.platforms)].find(
     (x) => asText(x.accountId) === accountId || x.platform === "instagram",
   );
@@ -548,10 +548,19 @@ function normalizePost(p: RawPost, accountId: string): PostSummary | null {
   return {
     platformPostId,
     zernioPostId: pickZernioPostId(p),
-    caption: (asText(p.caption) || asText(p.text) || asText(p.content) || asText(metadata.caption))
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 200),
+    // Для правил — строка до 200 знаков; импорт товаров берёт подпись целиком, с переносами.
+    caption:
+      captionMax > 200
+        ? (
+            asText(p.caption) ||
+            asText(p.text) ||
+            asText(p.content) ||
+            asText(metadata.caption)
+          ).slice(0, captionMax)
+        : (asText(p.caption) || asText(p.text) || asText(p.content) || asText(metadata.caption))
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, captionMax),
     thumbnail: asText(p.thumbnailUrl) || asText(media?.thumbnail) || asText(media?.url) || null,
     publishedAt: d && !Number.isNaN(d.getTime()) ? d.toISOString() : null,
     kind: describePostMediaKind({
@@ -569,7 +578,11 @@ function normalizePost(p: RawPost, accountId: string): PostSummary | null {
  * Instagram; sync-external — свежий пост, которого фоновая синхронизация
  * Zernio (раз в ~90 минут) ещё не видела; /posts — id записи Zernio.
  */
-export async function listPosts(ctx: TenantContext, accountId: string): Promise<PostSummary[]> {
+export async function listPosts(
+  ctx: TenantContext,
+  accountId: string,
+  captionMax = 200,
+): Promise<PostSummary[]> {
   if (!ownsZernioAccount(ctx, accountId)) return [];
   const settled = await Promise.allSettled([
     zernioRequest<{ posts?: RawPost[] }>("/analytics", {
@@ -589,7 +602,7 @@ export async function listPosts(ctx: TenantContext, accountId: string): Promise<
   const lists = settled.map((r) => (r.status === "fulfilled" ? (r.value.posts ?? []) : []));
   const byPlatformId = new Map<string, PostSummary>();
   for (const raw of lists.flat()) {
-    const p = normalizePost(raw, accountId);
+    const p = normalizePost(raw, accountId, captionMax);
     if (!p) continue;
     const prev = byPlatformId.get(p.platformPostId);
     byPlatformId.set(p.platformPostId, {

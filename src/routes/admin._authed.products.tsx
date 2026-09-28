@@ -1,3 +1,4 @@
+import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
@@ -78,6 +79,11 @@ function ProductsPage() {
             <button className="btn-secondary" onClick={() => setImportOpen((v) => !v)}>
               {t("products.importExport")}
             </button>
+            {shop.modules.instagram && canEdit(shop.role) && (
+              <Link to="/admin/ig-import" className="btn-secondary">
+                {t("igImport.button")}
+              </Link>
+            )}
             <Link to="/admin/products/$id" params={{ id: "new" }} className="btn-primary">
               {t("products.new")}
             </Link>
