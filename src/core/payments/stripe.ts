@@ -34,9 +34,18 @@ const ZERO_DECIMAL = new Set(
   "bif clp djf gnf jpy kmf krw mga pyg rwf ugx vnd vuv xaf xof xpf".split(" "),
 );
 
-/** Сумма в минимальных единицах валюты, как её ждёт и присылает Stripe. */
+/** Валюты с тремя знаками после запятой: минимальная единица — тысячная. */
+const THREE_DECIMAL = new Set("bhd jod kwd omr tnd".split(" "));
+
+/**
+ * Сумма в минимальных единицах валюты, как её ждёт и присылает Stripe. У
+ * трёхзнаковых валют Stripe требует последнюю цифру 0 — округляем до сотых.
+ */
 export function toMinor(amount: number, currency: string): number {
-  return ZERO_DECIMAL.has(currency.toLowerCase()) ? Math.round(amount) : Math.round(amount * 100);
+  const c = currency.toLowerCase();
+  if (ZERO_DECIMAL.has(c)) return Math.round(amount);
+  if (THREE_DECIMAL.has(c)) return Math.round(amount * 100) * 10;
+  return Math.round(amount * 100);
 }
 
 /** Окно свежести подписи, как у библиотек Stripe: старое событие — повтор. */

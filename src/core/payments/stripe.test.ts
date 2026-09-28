@@ -36,6 +36,9 @@ describe("Stripe", () => {
     expect(toMinor(12000, "KZT")).toBe(1_200_000);
     expect(toMinor(19.99, "usd")).toBe(1999);
     expect(toMinor(1500, "JPY")).toBe(1500);
+    // Трёхзнаковые: 10 KWD — 10 000 филсов, а не 1 000.
+    expect(toMinor(10, "KWD")).toBe(10_000);
+    expect(toMinor(1.234, "BHD")).toBe(1_230);
   });
 
   it("подпись: HMAC-SHA256 по «t.тело», свежая, любой из v1", () => {
