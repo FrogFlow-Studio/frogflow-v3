@@ -23,6 +23,11 @@ export const Route = createFileRoute("/signup")({
         SIGNUP_VERTICALS.includes(v as VerticalKey) ? (v as VerticalKey) : undefined,
       ),
     from: z.enum(SIGNUP_PAGES).optional().catch(undefined),
+    partner: z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9-]{2,29}$/)
+      .optional()
+      .catch(undefined),
   }),
   loader: () => signupEnabledFn(),
   component: SignupPage,
@@ -49,6 +54,7 @@ function SignupPage() {
         answer,
         source: readWebSource(PLATFORM_SOURCE_SLUG),
         page: search.from,
+        partner: search.partner,
       },
     });
     await navigate({ to: "/admin" });

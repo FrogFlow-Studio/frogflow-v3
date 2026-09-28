@@ -16,6 +16,8 @@ const input = z.object({
   /** Откуда пришёл (utm/ref лендинга, страница ниши); мусор отбрасывается и регистрацию не срывает. */
   source: z.string().max(64).optional().catch(undefined),
   page: z.string().max(20).optional().catch(undefined),
+  /** Код агентства-партнёра из ссылки `/signup?partner=…` (core/partners); чужой — без партнёра. */
+  partner: z.string().max(30).optional().catch(undefined),
 });
 
 export const signupEnabledFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -59,6 +61,15 @@ export const signupFn = createServerFn({ method: "POST" })
       challenge: nonce,
       signup: signupOrigin({ source: data.source, page: data.page }),
     });
+    // Партнёр из ссылки: только существующий код. Сбой не ломает регистрацию.
+    try {
+      const { partnerForSignup } = await import("@/app/operator/partners.server");
+      const partner = await partnerForSignup(data.partner);
+      if (partner)
+        await (await import("@/core/tenant/resolve.server")).patchTenantSettings(id, { partner });
+    } catch (e) {
+      console.error(`[signup] partner for ${id}: ${e instanceof Error ? e.message : e}`);
+    }
     // Пробный период Basic включается сам. Сбой не ломает регистрацию:
     // магазин уже создан, оператор включит пробный период кнопкой.
     try {

@@ -137,6 +137,10 @@ export function settingsFromJson(json: unknown): TenantSettings {
         prev_status: asStatus(typeof d.prev_status === "string" ? d.prev_status : null),
       };
     })(),
+    partner: (() => {
+      const code = str(s.partner)?.toLowerCase();
+      return code && /^[a-z0-9][a-z0-9-]{2,29}$/.test(code) ? code : undefined;
+    })(),
     // Откуда пришёл продавец: из браузера при регистрации — перепроверяем при чтении.
     signup: signupOrigin(obj(s.signup)) ?? undefined,
     on_overdue:

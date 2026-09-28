@@ -72,6 +72,8 @@ export type TenantSettings = {
    * архивирует и удаляет файлы. prev_status — статус до запроса.
    */
   deletion?: { requested_at: string; by: string; prev_status: BotStatus };
+  /** Код агентства-партнёра, которое привело клиента (core/partners). */
+  partner?: string;
   /** Откуда пришёл продавец, зарегистрировавшийся сам (core/signup/origin). */
   signup?: { source?: string; page?: "cakes" | "materials" | "courses" };
   /**

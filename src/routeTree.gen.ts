@@ -25,6 +25,7 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ForNicheRouteImport } from './routes/for.$niche'
 import { Route as OperatorAuthedRouteImport } from './routes/operator._authed'
 import { Route as OperatorLoginRouteImport } from './routes/operator.login'
+import { Route as PartnerCodeRouteImport } from './routes/partner.$code'
 import { Route as SSlugRouteImport } from './routes/s.$slug'
 import { Route as AdminAuthedIndexRouteImport } from './routes/admin._authed.index'
 import { Route as AdminAuthedAnalyticsRouteImport } from './routes/admin._authed.analytics'
@@ -63,6 +64,7 @@ import { Route as OperatorAuthedBroadcastRouteImport } from './routes/operator._
 import { Route as OperatorAuthedCronsRouteImport } from './routes/operator._authed.crons'
 import { Route as OperatorAuthedLogRouteImport } from './routes/operator._authed.log'
 import { Route as OperatorAuthedMigrationRouteImport } from './routes/operator._authed.migration'
+import { Route as OperatorAuthedPartnersRouteImport } from './routes/operator._authed.partners'
 import { Route as OperatorAuthedRequestsRouteImport } from './routes/operator._authed.requests'
 import { Route as OperatorAuthedRevenueRouteImport } from './routes/operator._authed.revenue'
 import { Route as OperatorAuthedSettingsRouteImport } from './routes/operator._authed.settings'
@@ -166,6 +168,11 @@ const OperatorLoginRoute = OperatorLoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => OperatorRoute,
+} as any)
+const PartnerCodeRoute = PartnerCodeRouteImport.update({
+  id: '/partner/$code',
+  path: '/partner/$code',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const SSlugRoute = SSlugRouteImport.update({
   id: '/s/$slug',
@@ -357,6 +364,11 @@ const OperatorAuthedMigrationRoute = OperatorAuthedMigrationRouteImport.update({
   path: '/migration',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
+const OperatorAuthedPartnersRoute = OperatorAuthedPartnersRouteImport.update({
+  id: '/partners',
+  path: '/partners',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
 const OperatorAuthedRequestsRoute = OperatorAuthedRequestsRouteImport.update({
   id: '/requests',
   path: '/requests',
@@ -501,6 +513,7 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/for/$niche': typeof ForNicheRoute
   '/operator/login': typeof OperatorLoginRoute
+  '/partner/$code': typeof PartnerCodeRoute
   '/s/$slug': typeof SSlugRouteWithChildren
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
   '/admin/bot-preview': typeof AdminAuthedBotPreviewRoute
@@ -537,6 +550,7 @@ export interface FileRoutesByFullPath {
   '/operator/crons': typeof OperatorAuthedCronsRoute
   '/operator/log': typeof OperatorAuthedLogRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
+  '/operator/partners': typeof OperatorAuthedPartnersRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
   '/operator/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
@@ -580,6 +594,7 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/for/$niche': typeof ForNicheRoute
   '/operator/login': typeof OperatorLoginRoute
+  '/partner/$code': typeof PartnerCodeRoute
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
   '/admin/bot-preview': typeof AdminAuthedBotPreviewRoute
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
@@ -615,6 +630,7 @@ export interface FileRoutesByTo {
   '/operator/crons': typeof OperatorAuthedCronsRoute
   '/operator/log': typeof OperatorAuthedLogRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
+  '/operator/partners': typeof OperatorAuthedPartnersRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
   '/operator/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
@@ -659,6 +675,7 @@ export interface FileRoutesById {
   '/for/$niche': typeof ForNicheRoute
   '/operator/_authed': typeof OperatorAuthedRouteWithChildren
   '/operator/login': typeof OperatorLoginRoute
+  '/partner/$code': typeof PartnerCodeRoute
   '/s/$slug': typeof SSlugRouteWithChildren
   '/admin/_authed/analytics': typeof AdminAuthedAnalyticsRoute
   '/admin/_authed/bot-preview': typeof AdminAuthedBotPreviewRoute
@@ -695,6 +712,7 @@ export interface FileRoutesById {
   '/operator/_authed/crons': typeof OperatorAuthedCronsRoute
   '/operator/_authed/log': typeof OperatorAuthedLogRoute
   '/operator/_authed/migration': typeof OperatorAuthedMigrationRoute
+  '/operator/_authed/partners': typeof OperatorAuthedPartnersRoute
   '/operator/_authed/requests': typeof OperatorAuthedRequestsRoute
   '/operator/_authed/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/_authed/settings': typeof OperatorAuthedSettingsRoute
@@ -740,6 +758,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/for/$niche'
     | '/operator/login'
+    | '/partner/$code'
     | '/s/$slug'
     | '/admin/analytics'
     | '/admin/bot-preview'
@@ -776,6 +795,7 @@ export interface FileRouteTypes {
     | '/operator/crons'
     | '/operator/log'
     | '/operator/migration'
+    | '/operator/partners'
     | '/operator/requests'
     | '/operator/revenue'
     | '/operator/settings'
@@ -819,6 +839,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/for/$niche'
     | '/operator/login'
+    | '/partner/$code'
     | '/admin/analytics'
     | '/admin/bot-preview'
     | '/admin/broadcasts'
@@ -854,6 +875,7 @@ export interface FileRouteTypes {
     | '/operator/crons'
     | '/operator/log'
     | '/operator/migration'
+    | '/operator/partners'
     | '/operator/requests'
     | '/operator/revenue'
     | '/operator/settings'
@@ -897,6 +919,7 @@ export interface FileRouteTypes {
     | '/for/$niche'
     | '/operator/_authed'
     | '/operator/login'
+    | '/partner/$code'
     | '/s/$slug'
     | '/admin/_authed/analytics'
     | '/admin/_authed/bot-preview'
@@ -933,6 +956,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/crons'
     | '/operator/_authed/log'
     | '/operator/_authed/migration'
+    | '/operator/_authed/partners'
     | '/operator/_authed/requests'
     | '/operator/_authed/revenue'
     | '/operator/_authed/settings'
@@ -974,6 +998,7 @@ export interface RootRouteChildren {
   ApiClientErrorRoute: typeof ApiClientErrorRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ForNicheRoute: typeof ForNicheRoute
+  PartnerCodeRoute: typeof PartnerCodeRoute
   SSlugRoute: typeof SSlugRouteWithChildren
   ApiAdminUploadRoute: typeof ApiAdminUploadRoute
   ApiCronJobRoute: typeof ApiCronJobRoute
@@ -1104,6 +1129,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/operator/login'
       preLoaderRoute: typeof OperatorLoginRouteImport
       parentRoute: typeof OperatorRoute
+    }
+    '/partner/$code': {
+      id: '/partner/$code'
+      path: '/partner/$code'
+      fullPath: '/partner/$code'
+      preLoaderRoute: typeof PartnerCodeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/s/$slug': {
       id: '/s/$slug'
@@ -1369,6 +1401,13 @@ declare module '@tanstack/react-router' {
       path: '/migration'
       fullPath: '/operator/migration'
       preLoaderRoute: typeof OperatorAuthedMigrationRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
+    '/operator/_authed/partners': {
+      id: '/operator/_authed/partners'
+      path: '/partners'
+      fullPath: '/operator/partners'
+      preLoaderRoute: typeof OperatorAuthedPartnersRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
     '/operator/_authed/requests': {
@@ -1643,6 +1682,7 @@ interface OperatorAuthedRouteChildren {
   OperatorAuthedCronsRoute: typeof OperatorAuthedCronsRoute
   OperatorAuthedLogRoute: typeof OperatorAuthedLogRoute
   OperatorAuthedMigrationRoute: typeof OperatorAuthedMigrationRoute
+  OperatorAuthedPartnersRoute: typeof OperatorAuthedPartnersRoute
   OperatorAuthedRequestsRoute: typeof OperatorAuthedRequestsRoute
   OperatorAuthedRevenueRoute: typeof OperatorAuthedRevenueRoute
   OperatorAuthedSettingsRoute: typeof OperatorAuthedSettingsRoute
@@ -1656,6 +1696,7 @@ const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedCronsRoute: OperatorAuthedCronsRoute,
   OperatorAuthedLogRoute: OperatorAuthedLogRoute,
   OperatorAuthedMigrationRoute: OperatorAuthedMigrationRoute,
+  OperatorAuthedPartnersRoute: OperatorAuthedPartnersRoute,
   OperatorAuthedRequestsRoute: OperatorAuthedRequestsRoute,
   OperatorAuthedRevenueRoute: OperatorAuthedRevenueRoute,
   OperatorAuthedSettingsRoute: OperatorAuthedSettingsRoute,
@@ -1731,6 +1772,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiClientErrorRoute: ApiClientErrorRoute,
   ApiHealthRoute: ApiHealthRoute,
   ForNicheRoute: ForNicheRoute,
+  PartnerCodeRoute: PartnerCodeRoute,
   SSlugRoute: SSlugRouteWithChildren,
   ApiAdminUploadRoute: ApiAdminUploadRoute,
   ApiCronJobRoute: ApiCronJobRoute,
