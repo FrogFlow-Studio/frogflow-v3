@@ -28,6 +28,7 @@ type ConsultantMemory = {
   recent?: Array<{ role: string; text: string }>;
   last_reply_at?: string;
   resumed_at?: string;
+  relayed?: string[];
 };
 
 function consultantMemory(customer: Customer): ConsultantMemory {
@@ -201,7 +202,11 @@ export async function handleZernioMessage(
   const hours = pauseHours(ctx.tenant);
   const manager = findManagerMessage(tail, {
     lastBotReplyAt: memory.last_reply_at,
-    ourReplies: (memory.recent ?? []).filter((t) => t.role === "assistant").map((t) => t.text),
+    ourReplies: [
+      ...(memory.recent ?? []).filter((t) => t.role === "assistant").map((t) => t.text),
+      // Ответы менеджера, пересланные из Telegram, — тоже «наши» (core/consultant/relay).
+      ...(memory.relayed ?? []),
+    ],
     resumedAt: memory.resumed_at,
     // «Пока не верну сам» — окна нет, смотрим обычные 12 часов.
     pauseWindowMs: hours === 0 ? undefined : hours * 3600_000,
@@ -256,6 +261,10 @@ export async function handleZernioMessage(
       "",
       `Ответьте в разделе «Чат» панели или прямо в ${PLATFORM_LABEL[m.platform]} — консультант в этом диалоге ${pauseNoticeRu(pauseHours(ctx.tenant))}.`,
     ].filter((l) => l !== "");
+    // Метка для ответа свайпом в Telegram — он уйдёт покупателю (core/consultant/relay).
+    const { handoffRefLine, issueHandoffRef } = await import("@/core/consultant/relay");
+    const ref = await issueHandoffRef(ctx, customer.userKey).catch(() => null);
+    if (ref) lines.push(handoffRefLine(ref));
     await notifyAdminsHtml(ctx, lines.join("\n"), { kind: r.handoff.kind }).catch(() => 0);
   }
   return processed(r.handoff ? `ответ + передача менеджеру (${r.handoff.reason})` : undefined);

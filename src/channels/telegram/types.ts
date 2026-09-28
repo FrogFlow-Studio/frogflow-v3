@@ -16,6 +16,8 @@ export type TelegramMessage = {
   contact?: { phone_number: string };
   document?: { file_id: string; file_name?: string; mime_type?: string; file_size?: number };
   photo?: Array<{ file_id: string; file_size?: number }>;
+  /** Ответ свайпом: на какое сообщение (нужен текст уведомления с меткой покупателя). */
+  reply_to_message?: { message_id?: number; text?: string; caption?: string };
   /** Оплата Telegram Stars прошла (счёт sendInvoice, валюта XTR). */
   successful_payment?: {
     currency: string;

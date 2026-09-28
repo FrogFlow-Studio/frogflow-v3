@@ -94,6 +94,8 @@ export type ConsultantState = {
   contact_asked?: boolean;
   /** Когда человек вернул диалог боту — проверка менеджера не смотрит раньше. */
   resumed_at?: string;
+  /** Ответы менеджера, пересланные из Telegram (core/consultant/relay), — последние 10. */
+  relayed?: string[];
 };
 
 export type Handoff = {
@@ -283,6 +285,18 @@ async function saveState(ctx: TenantContext, customer: Customer, patch: Partial<
  */
 export async function pauseConsultant(ctx: TenantContext, customer: Customer) {
   return saveState(ctx, customer, { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) });
+}
+
+/**
+ * Менеджер ответил из Telegram на уведомление о передаче: пауза продлевается,
+ * текст запоминается — проверка «менеджер в чате» не примет его за чужого.
+ */
+export async function recordRelayedReply(ctx: TenantContext, customer: Customer, text: string) {
+  const prev = stateOf(customer).relayed ?? [];
+  return saveState(ctx, customer, {
+    paused_until: pausedUntilIso(pauseHours(ctx.tenant)),
+    relayed: [...prev, text].slice(-10),
+  });
 }
 
 /** До какого времени консультант молчит в диалоге; null — не молчит. */

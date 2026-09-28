@@ -222,6 +222,9 @@ async function handleMessage(
   }
   if (msg.chat.type !== undefined && msg.chat.type !== "private") return;
 
+  // Менеджер ответил свайпом на уведомление о передаче — ответ покупателю в Direct.
+  if (msg.reply_to_message && msg.text?.trim() && (await relayManagerReply(ctx, api, msg))) return;
+
   // Чек по счёту оператора от владельца бота — до гварда паузы: счёт и
   // выставляется как раз тогда, когда бот приостановлен за просрочку.
   if ((msg.photo || msg.document) && (await ownerInvoiceProof(ctx, api, msg))) return;
@@ -2464,4 +2467,48 @@ async function adminDecision(
       text: `⚠️ Заказ #${no}: выдано ${r.sent}, не удалось ${r.failed}. Заказ возвращён в «чек на проверке» — повторите после проверки файлов товара.`,
     });
   }
+}
+
+/**
+ * Ответ продавца на уведомление «Клиент ждёт менеджера» (core/consultant/relay):
+ * метка в тексте уведомления → покупатель → сообщение ему в Instagram/WhatsApp.
+ * false — это не такой ответ, сообщение обрабатывается как обычно.
+ */
+async function relayManagerReply(
+  ctx: TenantContext,
+  api: TelegramApi,
+  msg: TelegramMessage,
+): Promise<boolean> {
+  const { handoffRefOf, resolveHandoffRef } = await import("@/core/consultant/relay");
+  const token = handoffRefOf(msg.reply_to_message?.text ?? msg.reply_to_message?.caption);
+  if (!token || !msg.from) return false;
+  const { shopAdminIds } = await import("@/core/notify/recipients");
+  if (!(await shopAdminIds(ctx)).includes(String(msg.from.id))) return false;
+  const reply = (text: string) => api.call("sendMessage", { chat_id: msg.chat.id, text });
+  const userKey = await resolveHandoffRef(ctx, token);
+  const buyer = userKey ? await getCustomer(ctx, userKey) : null;
+  const { sendToZernioTarget, zernioTargetOf } = await import("@/channels/zernio/outbound.server");
+  const target = zernioTargetOf(buyer);
+  if (!buyer || !target) {
+    await reply("Не нашёл диалог покупателя — ответьте в разделе «Чат» панели.");
+    return true;
+  }
+  const text = msg.text!.trim();
+  if (!(await sendToZernioTarget(target, escapeHtml(text)))) {
+    await reply("Не удалось отправить покупателю — попробуйте из раздела «Чат» панели.");
+    return true;
+  }
+  const { recordRelayedReply } = await import("@/core/consultant/engine.server");
+  await recordRelayedReply(ctx, buyer, text);
+  if (ctx.tenant.modules.manager_chat) {
+    const { recordMessage } = await import("@/core/chat/chat");
+    await recordMessage(ctx, {
+      telegramId: buyer.telegramId,
+      direction: "out",
+      sender: "manager",
+      text,
+    }).catch(() => {});
+  }
+  await reply("✅ Ответ отправлен покупателю. Консультант в этом диалоге пока молчит.");
+  return true;
 }
