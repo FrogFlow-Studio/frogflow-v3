@@ -51,7 +51,8 @@
     "fix(consultant): prevent duplicate replies and handle affirmative responses like 'интересует'": "src/channels/zernio/shop-flow.test.ts › «интересует» и «интересно» — согласие, а не вопрос консультанту",
     "fix(consultant): prevent bot from writing first or answering historical messages on activation/unpause": "src/channels/zernio/retry.test.ts › событие старше суток закрывается без ответа — на вчерашнее не пишем",
     "fix(consultant): ensure reset clears manager tasks and add task reset buttons in admin": "drop: задачи менеджера консультанта BOVI; в v2 сброс — resumeConsultant (пауза и история)",
-    "fix(comment-dm): резервный крон повторно слал сообщение тем, кто уже оплатил": "src/channels/zernio/comment-dm-fallback.test.ts › отказ Meta «уже отвечали» — без эскалации в открытый диалог"
+    "fix(comment-dm): резервный крон повторно слал сообщение тем, кто уже оплатил": "src/channels/zernio/comment-dm-fallback.test.ts › отказ Meta «уже отвечали» — без эскалации в открытый диалог",
+    "fix(consultant): вчерашний менеджер держал бота в паузе бесконечно; «вернуть бота» тут же отменялось": "src/channels/zernio/manager-guard.test.ts › «вернуть бота»: реплика менеджера до возврата паузу не ставит, после — ставит"
   },
   "src/lib/comment-dm-fallback.test.ts": {
     "пустой список ключевых слов — совпадает любой комментарий": "src/core/instagram/comment-rules.test.ts › пустой список ключевых слов — совпадает любой комментарий",

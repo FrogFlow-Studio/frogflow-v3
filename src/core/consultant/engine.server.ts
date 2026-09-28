@@ -92,6 +92,8 @@ export type ConsultantState = {
   profile?: CustomerProfile;
   /** Телефон перед покупкой уже спрашивали — второй раз не спрашиваем. */
   contact_asked?: boolean;
+  /** Когда человек вернул диалог боту — проверка менеджера не смотрит раньше. */
+  resumed_at?: string;
 };
 
 export type Handoff = {
@@ -291,6 +293,7 @@ export function pausedUntil(customer: Customer, now = Date.now()): string | null
 export async function resumeConsultant(ctx: TenantContext, customer: Customer) {
   return saveState(ctx, customer, {
     paused_until: undefined,
+    resumed_at: new Date().toISOString(),
     recent: [],
     profile: undefined,
     contact_asked: undefined,

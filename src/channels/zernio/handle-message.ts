@@ -27,6 +27,7 @@ const processed = (note?: string): HandleResult => ({ status: "processed", note 
 type ConsultantMemory = {
   recent?: Array<{ role: string; text: string }>;
   last_reply_at?: string;
+  resumed_at?: string;
 };
 
 function consultantMemory(customer: Customer): ConsultantMemory {
@@ -197,9 +198,13 @@ export async function handleZernioMessage(
     // Переписку не прочитали — отвечаем как есть: молчание дороже одного лишнего ответа.
     console.warn(`[zernio] tail unavailable for ${m.conversationId}: ${String(e)}`);
   }
+  const hours = pauseHours(ctx.tenant);
   const manager = findManagerMessage(tail, {
     lastBotReplyAt: memory.last_reply_at,
     ourReplies: (memory.recent ?? []).filter((t) => t.role === "assistant").map((t) => t.text),
+    resumedAt: memory.resumed_at,
+    // «Пока не верну сам» — окна нет, смотрим обычные 12 часов.
+    pauseWindowMs: hours === 0 ? undefined : hours * 3600_000,
   });
   if (manager) {
     await consultant.pauseConsultant(ctx, customer);

@@ -98,4 +98,31 @@ describe("менеджер в чате", () => {
     );
     expect(found?.text).toBe("Сейчас подключусь, минуту");
   });
+
+  it("вчерашний менеджер не держит бота в паузе: окно поиска не длиннее паузы", () => {
+    // Бот последний раз отвечал вчера — окно поиска раньше уходило на сутки назад.
+    const tail = [
+      {
+        direction: "outgoing" as const,
+        message: "Добрый вечер, я менеджер",
+        createdAt: ago(min(20 * 60)),
+      },
+    ];
+    const state = { lastBotReplyAt: ago(min(24 * 60)), ourReplies: [] };
+    expect(findManagerMessage(tail, state, NOW)?.text).toBe("Добрый вечер, я менеджер");
+    expect(findManagerMessage(tail, { ...state, pauseWindowMs: min(12 * 60) }, NOW)).toBeNull();
+  });
+
+  it("«вернуть бота»: реплика менеджера до возврата паузу не ставит, после — ставит", () => {
+    const tail = [
+      { direction: "outgoing" as const, message: "Ответил сам", createdAt: ago(min(10)) },
+    ];
+    const state = { lastBotReplyAt: ago(min(20)), ourReplies: [], resumedAt: ago(min(5)) };
+    expect(findManagerMessage(tail, state, NOW)).toBeNull();
+    const later = [
+      ...tail,
+      { direction: "outgoing" as const, message: "Ещё раз я", createdAt: ago(min(2)) },
+    ];
+    expect(findManagerMessage(later, state, NOW)?.text).toBe("Ещё раз я");
+  });
 });

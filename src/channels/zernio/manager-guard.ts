@@ -23,6 +23,16 @@ export type GuardState = {
   lastBotReplyAt?: string | null;
   /** Наши прошлые ответы — по журналу, а не по памяти процесса: serverless живёт минуты. */
   ourReplies: string[];
+  /**
+   * Когда человек вернул диалог боту: раньше этого момента не смотрим, иначе
+   * та же реплика менеджера сразу ставит паузу заново (v1 5fe7da2).
+   */
+  resumedAt?: string | null;
+  /**
+   * Окно паузы магазина: реплика старше него не значит, что менеджер в чате.
+   * Без этого вчерашний менеджер держал бота в паузе бесконечно (v1 5e31727).
+   */
+  pauseWindowMs?: number;
 };
 
 export type ManagerMessage = { text: string; at: number };
@@ -42,9 +52,13 @@ export function findManagerMessage(
   now: number = Date.now(),
 ): ManagerMessage | null {
   const botAt = Date.parse(state.lastBotReplyAt ?? "");
-  const since = Number.isFinite(botAt)
+  let since = Number.isFinite(botAt)
     ? Math.min(botAt + BOT_ECHO_GRACE_MS, now - ACTIVE_MANAGER_WINDOW_MS)
     : now - MANAGER_LOOKBACK_MS;
+  if (state.pauseWindowMs && state.pauseWindowMs > 0)
+    since = Math.max(since, now - state.pauseWindowMs);
+  const resumed = Date.parse(state.resumedAt ?? "");
+  if (Number.isFinite(resumed)) since = Math.max(since, resumed);
   const ourVoice = new Set(state.ourReplies.map(foldReply).filter(Boolean));
   const tail = messages.slice(-TAIL);
   for (let i = tail.length - 1; i >= 0; i--) {
