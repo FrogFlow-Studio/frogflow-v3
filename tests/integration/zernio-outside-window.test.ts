@@ -14,6 +14,8 @@ const closed: ZernioTransport = {
     ok: false,
     error:
       "Прошло больше 24 часов с последнего сообщения покупателя — WhatsApp разрешает писать только одобренным шаблоном.",
+    // Окно узнаётся по коду Meta, а не по тексту (errors.ts, #228).
+    failure: { status: 400, platformCode: 131047 },
   }),
   tail: async () => [],
 };

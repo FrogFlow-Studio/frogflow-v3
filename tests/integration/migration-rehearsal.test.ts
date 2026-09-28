@@ -283,6 +283,9 @@ describe.skipIf(!liveReady)("репетиция переезда на демо-�
       ...(saved.settings as Record<string, unknown>),
       served_by: "v1",
       multi_bot: { group: GROUP },
+      // Аккаунт Zernio для проверки переезда: у «Демо-тестера» бывают заказы из
+      // Instagram, а без аккаунта проверка блокирует переезд (preflight, #238).
+      zernio: { account_ids: ["acc-demo-migration-test"] },
     };
     delete settings.telegram;
     await db
@@ -451,6 +454,7 @@ describe.skipIf(!liveReady)("репетиция переезда на демо-�
     }
   });
 
+  // Полный путь заказа — десяток обращений к живой базе по 2–4 с каждое.
   it("покупатель проходит заказ через вебхук, продавец подтверждает, файл уходит", async () => {
     expect((await webhook(msg({ text: "/start" }))).status).toBe(200);
     await webhook(press(`prod:${productId}`));
@@ -489,7 +493,7 @@ describe.skipIf(!liveReady)("репетиция переезда на демо-�
     expect(tg.some(([m, p]) => m === "sendDocument" && String(p.chat_id) === String(TG))).toBe(
       true,
     );
-  });
+  }, 120_000);
 
   it("откат: onboard {served_by: v1} — кнопка меню стандартная, вебхук v2 отвечает 503", async () => {
     tg.length = 0;

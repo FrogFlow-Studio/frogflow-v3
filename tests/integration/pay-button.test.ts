@@ -22,7 +22,7 @@ vi.mock("@/app/operator/billing.server", async (orig) => {
 });
 
 const ACTOR = "v2-pay-button-test";
-let before: { billing: Json | undefined; plan: string | null };
+let before: { servedBy: string | undefined; billing: Json | undefined; plan: string | null };
 const invoiceIds: string[] = [];
 
 async function cleanup() {
@@ -45,8 +45,12 @@ describe.skipIf(!liveReady)("кнопка «Оплатить» на демо-к�
       .select("settings, subscription_plan")
       .eq("id", DEMO_BOT)
       .single();
-    const settings = (data?.settings ?? {}) as { billing?: Record<string, unknown> };
+    const settings = (data?.settings ?? {}) as {
+      billing?: Record<string, unknown>;
+      served_by?: string;
+    };
     before = {
+      servedBy: settings.served_by,
       billing: settings.billing as Json | undefined,
       plan: data?.subscription_plan ?? null,
     };
@@ -59,7 +63,9 @@ describe.skipIf(!liveReady)("кнопка «Оплатить» на демо-к�
     expect(count ?? 0).toBe(0);
     const { patchTenantSettings, invalidateTenantDirectory } =
       await import("@/core/tenant/resolve.server");
+    // Тариф и счёт — только у клиента v2 (planWriteBlock); демо-клиент может быть на v1.
     await patchTenantSettings(DEMO_BOT, {
+      served_by: "v2",
       billing: { ...(settings.billing ?? {}), plan: "digital.basic", period: "month" },
     });
     invalidateTenantDirectory();
@@ -71,6 +77,8 @@ describe.skipIf(!liveReady)("кнопка «Оплатить» на демо-к�
     const settings = { ...(data?.settings as Record<string, unknown>) };
     if (before.billing === undefined) delete settings.billing;
     else settings.billing = before.billing;
+    if (before.servedBy === undefined) delete settings.served_by;
+    else settings.served_by = before.servedBy;
     await serviceDb()
       .from("bots")
       .update({ settings: settings as Json, subscription_plan: before.plan })

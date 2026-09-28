@@ -113,7 +113,13 @@ describe.skipIf(!liveReady)("переезд и откат на демо-клие
     });
 
     // Клиент «на v1» с токеном и реквизитами, но пока без чата продавца.
-    const settings = { ...(saved.settings as Record<string, unknown>), served_by: "v1" };
+    const settings = {
+      ...(saved.settings as Record<string, unknown>),
+      served_by: "v1",
+      // Аккаунт Zernio для проверки переезда: у «Демо-тестера» бывают заказы из
+      // Instagram, а без аккаунта проверка блокирует переезд (preflight, #238).
+      zernio: { account_ids: ["acc-demo-migration-test"] },
+    };
     await db
       .from("bots")
       // Владелец из карточки тоже подтверждает заказы — на время «нет продавца» его нет.

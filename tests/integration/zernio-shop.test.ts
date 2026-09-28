@@ -32,7 +32,12 @@ let ctx: TenantContext;
 let productId = "";
 let orderId = 0;
 const sent: Array<{ text: string; buttons?: string[]; attachment?: string }> = [];
-const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 1, 2, 3]);
+// Хвост уникален для прогона: повтор чека узнаётся по sha256 байтов, а тот же
+// заголовок PNG шлют billing и order-events, которые идут параллельно.
+const PNG = new Uint8Array([
+  ...[137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 1, 2, 3],
+  ...new TextEncoder().encode(`zernio-shop-${Date.now()}-${Math.random()}`),
+]);
 const fake: ZernioTransport = {
   send: async (_c, _a, text, opts) => {
     sent.push({
