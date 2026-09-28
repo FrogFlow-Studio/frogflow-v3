@@ -44,6 +44,17 @@ export const FLOOD_NOTE = "частые сообщения";
  * крон добора не обработают одно событие дважды. Если фон не дожил до
  * захвата, строку через 3 минуты подберёт добор.
  */
+/** Событие старше недели — повтор перехваченного запроса, а не доставка. */
+export const MAX_EVENT_AGE_MS = 7 * 24 * 3600_000;
+
+export function eventTooOld(
+  payload: Pick<ZernioWebhookMessagePayload, "timestamp" | "message">,
+  now = Date.now(),
+): boolean {
+  const at = Date.parse(payload.timestamp ?? payload.message?.sentAt ?? "");
+  return Number.isFinite(at) && now - at > MAX_EVENT_AGE_MS;
+}
+
 export async function intakeZernioEvent(
   payload: ZernioWebhookMessagePayload,
   deps: IntakeDeps,
@@ -53,6 +64,9 @@ export async function intakeZernioEvent(
   const profileId = account?.profileId || null;
   const eventId = payload.id ?? null;
   if ((!accountId && !profileId) || !eventId) return { status: 202, body: "accepted" };
+  // Подпись без времени: защита от повтора — строка журнала по event_id, а её
+  // ретеншн снимает через 30 дней. Старое событие — не обрабатываем вовсе.
+  if (eventTooOld(payload)) return { status: 202, body: "accepted" };
 
   const found = await deps.resolve(accountId, profileId);
   if (!found || found.tenant.settings.served_by !== "v2") return { status: 202, body: "accepted" };

@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 /**
  * Витринные картинки из закрытого бакета product-images. Ключ обязан лежать
  * под префиксом bot_id из адреса — изоляция хранилища держится на путях.
+ * Только клиенты на v2 (servedByV2): картинки клиента v1 отдаёт v1.
  */
 export const Route = createFileRoute("/api/img/$botId/$")({
   server: {
@@ -13,6 +14,11 @@ export const Route = createFileRoute("/api/img/$botId/$")({
         const rel = decodeImageKey(params._splat ?? "");
         if (!/^[0-9a-f-]{36}$/i.test(botId) || !rel)
           return new Response("not found", { status: 404 });
+        // Клиент прежней платформы для v2 невидим (правило 6): его картинки отдаёт v1.
+        const { resolveTenant } = await import("@/core/tenant/resolve.server");
+        const { servedByV2 } = await import("@/core/tenant/directory");
+        const tenant = await resolveTenant({ by: "id", value: botId });
+        if (!tenant || !servedByV2(tenant)) return new Response("not found", { status: 404 });
         const { serviceDb } = await import("@/core/db/client.server");
         const storage = serviceDb().storage.from("product-images");
         // Новый ключ с префиксом арендатора; если такого нет — старый ключ без

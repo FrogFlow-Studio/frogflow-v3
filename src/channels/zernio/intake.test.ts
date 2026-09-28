@@ -6,6 +6,7 @@ import { findZernioTenant } from "@/core/tenant/directory";
 import {
   FLOOD_NOTE,
   admitZernioInbound,
+  eventTooOld,
   intakeZernioEvent,
   type IntakeDeps,
 } from "./intake.server";
@@ -266,5 +267,16 @@ describe("лимит входящих: что считается", () => {
       String(r.key).startsWith("rate_limit:inbound:"),
     );
     expect(JSON.parse(String(row?.value)).c).toBe(1);
+  });
+});
+
+describe("повтор старого события Zernio", () => {
+  const now = Date.parse("2026-09-28T12:00:00Z");
+  it("событие старше недели — не обрабатывается; свежее и без времени — да", () => {
+    expect(eventTooOld({ timestamp: "2026-08-01T00:00:00Z" }, now)).toBe(true);
+    expect(eventTooOld({ message: { sentAt: "2026-09-01T00:00:00Z" } } as never, now)).toBe(true);
+    expect(eventTooOld({ timestamp: "2026-09-28T11:59:00Z" }, now)).toBe(false);
+    expect(eventTooOld({}, now)).toBe(false);
+    expect(eventTooOld({ timestamp: "мусор" }, now)).toBe(false);
   });
 });
