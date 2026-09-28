@@ -81,6 +81,14 @@ const CATALOG_LIMIT = 120;
  */
 export const CACHE_TTL = "1h" as const;
 const PRICE = { in: 1, out: 5, cacheWrite: 2, cacheRead: 0.1 };
+/** Sonnet — консультант по прайсу может работать на нём (настройка consultant_model). */
+const PRICE_SONNET = { in: 3, out: 15, cacheWrite: 6, cacheRead: 0.3 };
+/**
+ * Вызовов модели на одно сообщение консультанта по прайсу, на которые
+ * бронируется бюджет: четыре раунда, переспрос о рублях, два на сверку
+ * черновика и последний без инструментов.
+ */
+const PRICELIST_RESERVE_CALLS = 8;
 
 export type ConsultantTurn = { role: "customer" | "assistant"; text: string };
 export type ConsultantState = {
@@ -96,6 +104,17 @@ export type ConsultantState = {
   resumed_at?: string;
   /** Ответы менеджера, пересланные из Telegram (core/consultant/relay), — последние 10. */
   relayed?: string[];
+  /** Консультант по прайсу: покупатель смотрит цены в рублях (переводит код). */
+  rub?: boolean;
+  /** Консультант по прайсу: файлы фотобазы, которые покупатель уже получил. */
+  media_sent?: string[];
+  /** Консультант по прайсу: товары последних ответов — для «а другой цвет?». */
+  last_product_ids?: string[];
+  /** Имена v1 у диалогов BOVI, начатых до переезда (читаются, не пишутся). */
+  v2_profile?: CustomerProfile;
+  v2_rub?: boolean;
+  v2_contact_asked?: boolean;
+  v2_media_sent?: string[];
 };
 
 export type Handoff = {
@@ -116,6 +135,8 @@ export type ConsultantResult = {
    * каналах.
    */
   tools?: string[];
+  /** Фото и видео товара к ответу (консультант по прайсу, send_product_photo). */
+  attachments?: { url: string; kind: "image" | "video" }[];
 };
 
 export function consultantConfigured(): boolean {
@@ -311,6 +332,13 @@ export async function resumeConsultant(ctx: TenantContext, customer: Customer) {
     recent: [],
     profile: undefined,
     contact_asked: undefined,
+    rub: undefined,
+    media_sent: undefined,
+    last_product_ids: undefined,
+    v2_profile: undefined,
+    v2_rub: undefined,
+    v2_contact_asked: undefined,
+    v2_media_sent: undefined,
   });
 }
 
@@ -353,13 +381,21 @@ export async function runConsultant(
     dryRun?: boolean;
     /** Ответ на сторис/рилс — консультант узнаёт товар по тегу продавца. */
     story?: { storyId: string | null; mediaUrl: string | null };
+    /** Фото покупателя: ссылки (директ) или уже скачанные (Telegram) — консультант по прайсу. */
+    imageUrls?: string[];
+    images?: import("./pricelist/images").V2Image[];
   } = { platform: "telegram" },
 ): Promise<ConsultantResult | null> {
   const apiKey = env().ANTHROPIC_API_KEY?.trim();
   if (!apiKey) return null;
+  const { pricelistMode } = await import("./pricelist/mode");
+  const pricelist = pricelistMode(ctx.tenant);
+  const photos = (opts.imageUrls?.length ?? 0) + (opts.images?.length ?? 0) > 0;
   let incoming = text.trim().slice(0, 1500);
-  if (!incoming) return null;
-  if (opts.story && (opts.story.storyId || opts.story.mediaUrl)) {
+  // По прайсу фото без подписи — тоже вопрос: модель смотрит на снимок.
+  if (!incoming && !(pricelist && photos)) return null;
+  // По прайсу товары публикации приходят пометкой (pricelist/engine.server).
+  if (!pricelist && opts.story && (opts.story.storyId || opts.story.mediaUrl)) {
     const { findStoryTag, listStoryTags, storyContextLine } = await import("./story-tags");
     const tag = findStoryTag(await listStoryTags(ctx), opts.story.storyId, opts.story.mediaUrl);
     incoming = `${storyContextLine(tag, opts.story.storyId)}\n\n${incoming}`;
@@ -371,10 +407,29 @@ export async function runConsultant(
   if (customer && !opts.dryRun && isResetIntent(incoming)) {
     await resumeConsultant(ctx, customer);
     return {
-      reply: `Начнём заново. Я консультант «${profile.brand_name}» — чем помочь?`,
+      reply: pricelist
+        ? "Начнём заново. Что подсказать?"
+        : `Начнём заново. Я консультант «${profile.brand_name}» — чем помочь?`,
       handoff: null,
       usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
     };
+  }
+  // Попытка взломать подсказку — менеджеру, модель её не видит (v1 BOVI).
+  if (pricelist) {
+    const { looksLikePromptInjection } = await import("./pricelist/finalize");
+    if (looksLikePromptInjection(incoming)) {
+      if (customer && !opts.dryRun)
+        await saveState(ctx, customer, { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) });
+      return {
+        reply: "Передам ваш вопрос менеджеру — он ответит в ближайшее время.",
+        handoff: {
+          kind: "handoff",
+          reason: "injection",
+          summary: `Сообщение похоже на попытку управлять ботом: «${incoming.slice(0, 200)}»`,
+        },
+        usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
+      };
+    }
   }
 
   // Предел на клиента — до вызова модели (core/consultant/budget).
@@ -435,7 +490,7 @@ export async function runConsultant(
   }
 
   // Большой каталог — инструментом поиска (флаг оператора), иначе первые товары в подсказке.
-  const searchMode = catalogSearchEnabled(ctx);
+  const searchMode = !pricelist && catalogSearchEnabled(ctx);
   let loaded: Awaited<ReturnType<typeof loadCatalog>> | null = null;
   try {
     loaded = searchMode ? await loadCatalog(ctx) : null;
@@ -486,7 +541,11 @@ export async function runConsultant(
   // сообщения видят брони друг друга и не проскакивают мимо предела.
   // С поиском — бронь на все раунды сразу: у потолка параллельные сообщения
   // видят полную цену друг друга, а не одного вызова.
-  const reserveUsd = loaded ? RESERVE_USD * MAX_ROUNDS : RESERVE_USD;
+  const reserveUsd = pricelist
+    ? RESERVE_USD * PRICELIST_RESERVE_CALLS
+    : loaded
+      ? RESERVE_USD * MAX_ROUNDS
+      : RESERVE_USD;
   let reserveBlock: string | null = null;
   const reserved = await updateSettingAtomic(ctx, KEYS.daily, (raw) => {
     const r = reserveDaily(parseDaily(raw, date), kind, budgetLimits, reserveUsd);
@@ -513,13 +572,17 @@ export async function runConsultant(
   }
 
   const client = new Anthropic({ apiKey, maxRetries: 1, timeout: TIMEOUT_MS });
-  const model = env().CONSULTANT_MODEL?.trim() || DEFAULT_MODEL;
+  const baseModel = env().CONSULTANT_MODEL?.trim() || DEFAULT_MODEL;
+  const model = pricelist
+    ? await import("./pricelist/engine.server").then((m) => m.pricelistModel(ctx, baseModel))
+    : baseModel;
+  const price = /sonnet/.test(model) ? PRICE_SONNET : PRICE;
   const u = { input_tokens: 0, output_tokens: 0, cacheWrite: 0, cacheRead: 0 };
   const costUsd = () =>
-    (u.input_tokens * PRICE.in +
-      u.cacheWrite * PRICE.cacheWrite +
-      u.cacheRead * PRICE.cacheRead +
-      u.output_tokens * PRICE.out) /
+    (u.input_tokens * price.in +
+      u.cacheWrite * price.cacheWrite +
+      u.cacheRead * price.cacheRead +
+      u.output_tokens * price.out) /
     1_000_000;
   // Расход записан и бронь закрыта — catch второй раз их не трогает.
   let settled = false;
@@ -535,9 +598,10 @@ export async function runConsultant(
     params: Anthropic.MessageCreateParamsNonStreaming,
   ): Promise<Anthropic.Message | "limited" | "late"> => {
     const left = deadline - Date.now();
-    if (loaded && left < MIN_CALL_MS) return "late";
+    const bounded = Boolean(loaded) || pricelist;
+    if (bounded && left < MIN_CALL_MS) return "late";
     if (!(await takeAiCall(ctx))) return "limited";
-    const response = loaded
+    const response = bounded
       ? await client.messages.create(params, {
           timeout: Math.min(TIMEOUT_MS, left),
           // Повтор не уложится в потолок: таймаут вызова — до 20 с из 35.
@@ -551,7 +615,82 @@ export async function runConsultant(
     u.cacheRead += response.usage.cache_read_input_tokens ?? 0;
     return response;
   };
+  /**
+   * Ответ готов: расход записан, бронь закрыта, история и состояние — в
+   * диалог. Общее для обычного консультанта и консультанта по прайсу.
+   */
+  const finish = async (out: {
+    reply: string;
+    handoff: Handoff | null;
+    clearError: boolean;
+    patch: Partial<ConsultantState>;
+    /** В историю, если покупателю ушло другое (рубли вместо тенге). */
+    historyReply?: string;
+    attachments?: ConsultantResult["attachments"];
+  }): Promise<ConsultantResult> => {
+    const { reply, handoff } = out;
+    const usd = costUsd();
+    settled = true;
+    await recordUsage(ctx, usd, u.input_tokens + u.cacheWrite + u.cacheRead, u.output_tokens);
+    await updateSettingAtomic(ctx, KEYS.daily, (raw) => settleRaw(raw, date, reserveUsd, usd));
+    if (newDialog)
+      await trySetSetting(
+        ctx,
+        KEYS.dialogs,
+        JSON.stringify({ month: dialogs.month, count: dialogs.count + 1 }),
+      );
+    if (out.clearError) await trySetSetting(ctx, KEYS.lastError, "");
+
+    if (customer && !opts.dryRun) {
+      const recent: ConsultantTurn[] = [
+        ...(state.recent ?? []),
+        { role: "customer" as const, text: incoming.slice(0, 500) },
+        { role: "assistant" as const, text: (out.historyReply || reply).slice(0, 700) },
+      ].slice(-HISTORY_TURNS);
+      // Ответ уже готов и оплачен: сбой записи истории его не отменяет.
+      try {
+        await saveState(ctx, customer, {
+          recent,
+          last_reply_at: new Date().toISOString(),
+          ...(handoff?.customerContact ? { contact: handoff.customerContact } : {}),
+          ...out.patch,
+          ...(handoff ? { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) } : {}),
+        });
+      } catch (e) {
+        console.error(`[consultant:${ctx.tenant.id}] состояние диалога не записано`, e);
+        await trySetSetting(
+          ctx,
+          KEYS.lastError,
+          `${new Date().toISOString()} — состояние диалога не записано: ${e instanceof Error ? e.message : String(e)}`.slice(
+            0,
+            500,
+          ),
+        );
+      }
+    }
+    return {
+      reply,
+      handoff,
+      usage: { inputTokens: u.input_tokens, outputTokens: u.output_tokens, usd },
+      tools: toolsUsed,
+      ...(out.attachments?.length ? { attachments: out.attachments } : {}),
+    };
+  };
   try {
+    if (pricelist) {
+      const { runPricelistTurn } = await import("./pricelist/turn.server");
+      const out = await runPricelistTurn(ctx, {
+        text: incoming,
+        state,
+        model,
+        callModel,
+        story: opts.story,
+        imageUrls: opts.imageUrls,
+        images: opts.images,
+      });
+      toolsUsed.push(...out.tools);
+      return await finish(out);
+    }
     const tools = loaded ? [...CATALOG_TOOLS, REMEMBER_TOOL, ...TOOLS] : TOOLS;
     let contactAsked = Boolean(state.contact_asked);
     const phoneNow = phoneIn(incoming);
@@ -723,51 +862,12 @@ export async function runConsultant(
           : "Передаю диалог менеджеру — он ответит в ближайшее время.";
     if (!reply) reply = "Уточните, пожалуйста, что именно вас интересует — подскажу.";
 
-    const usd = costUsd();
-    settled = true;
-    await recordUsage(ctx, usd, u.input_tokens + u.cacheWrite + u.cacheRead, u.output_tokens);
-    await updateSettingAtomic(ctx, KEYS.daily, (raw) => settleRaw(raw, date, reserveUsd, usd));
-    if (newDialog)
-      await trySetSetting(
-        ctx,
-        KEYS.dialogs,
-        JSON.stringify({ month: dialogs.month, count: dialogs.count + 1 }),
-      );
-    if (facts.ok) await trySetSetting(ctx, KEYS.lastError, "");
-
-    if (customer && !opts.dryRun) {
-      const recent: ConsultantTurn[] = [
-        ...(state.recent ?? []),
-        { role: "customer" as const, text: incoming.slice(0, 500) },
-        { role: "assistant" as const, text: reply.slice(0, 700) },
-      ].slice(-HISTORY_TURNS);
-      // Ответ уже готов и оплачен: сбой записи истории его не отменяет.
-      try {
-        await saveState(ctx, customer, {
-          recent,
-          last_reply_at: new Date().toISOString(),
-          ...(handoff?.customerContact ? { contact: handoff.customerContact } : {}),
-          ...(loaded ? { profile: known, contact_asked: contactAsked || undefined } : {}),
-          ...(handoff ? { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) } : {}),
-        });
-      } catch (e) {
-        console.error(`[consultant:${ctx.tenant.id}] состояние диалога не записано`, e);
-        await trySetSetting(
-          ctx,
-          KEYS.lastError,
-          `${new Date().toISOString()} — состояние диалога не записано: ${e instanceof Error ? e.message : String(e)}`.slice(
-            0,
-            500,
-          ),
-        );
-      }
-    }
-    return {
+    return await finish({
       reply,
       handoff,
-      usage: { inputTokens: u.input_tokens, outputTokens: u.output_tokens, usd },
-      tools: toolsUsed,
-    };
+      clearError: facts.ok,
+      patch: loaded ? { profile: known, contact_asked: contactAsked || undefined } : {},
+    });
   } catch (e) {
     const detail =
       e instanceof Anthropic.APIError

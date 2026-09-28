@@ -486,6 +486,14 @@ async function consultantReply(b: Bot, text: string): Promise<boolean> {
   const r = await runConsultant(b.ctx, b.customer, text, { platform: "telegram" });
   if (!r) return false;
   await b.api.call("sendMessage", { chat_id: b.chatId, text: r.reply });
+  // Фото и видео товара (консультант по прайсу) — следом, по ссылке /api/img.
+  for (const a of r.attachments ?? [])
+    await b.api
+      .call(a.kind === "video" ? "sendVideo" : "sendPhoto", {
+        chat_id: b.chatId,
+        [a.kind === "video" ? "video" : "photo"]: a.url,
+      })
+      .catch(() => null);
   if (b.ctx.tenant.modules.manager_chat) {
     const { recordMessage } = await import("@/core/chat/chat");
     await recordMessage(b.ctx, {

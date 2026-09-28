@@ -216,9 +216,14 @@ export async function handleZernioMessage(
     return processed("менеджер отвечает из приложения — консультант на паузе");
   }
 
-  const r = await consultant.runConsultant(ctx, customer, text, {
+  // Консультант по прайсу видит фото покупателя (v1 BOVI): ссылки на снимки,
+  // кроме самой публикации и гифок-реакций; подпись «[вложение: …]» ему не нужна.
+  const { pricelistMode } = await import("@/core/consultant/pricelist/mode");
+  const imageUrls = pricelistMode(ctx.tenant) ? customerImageUrls(m) : [];
+  const r = await consultant.runConsultant(ctx, customer, imageUrls.length ? m.text : text, {
     platform: m.platform,
     story: { storyId: m.storyId, mediaUrl: m.storyMediaUrl },
+    ...(imageUrls.length ? { imageUrls } : {}),
   });
   if (!r) return { status: "failed", note: "консультант не ответил (см. consultant_last_error)" };
 
@@ -226,6 +231,16 @@ export async function handleZernioMessage(
     platform: m.platform,
   });
   if (!sent.ok) return { status: "failed", note: sent.error };
+  // Фото и видео товара из фотобазы — следом за ответом, каждое отдельно.
+  // Не принял Instagram файл — ответ уже ушёл, остальное не держим.
+  for (const a of r.attachments ?? []) {
+    const media = await transport.send(m.conversationId, m.accountId, "", {
+      platform: m.platform,
+      attachmentUrl: a.url,
+      attachmentType: a.kind,
+    });
+    if (!media.ok) console.warn(`[zernio] фото товара не ушло ${customer.userKey}: ${media.error}`);
+  }
 
   if (ctx.tenant.modules.manager_chat) {
     const { recordMessage } = await import("@/core/chat/chat");
@@ -416,4 +431,12 @@ async function directTicket(
     console.error(`[zernio:${ctx.tenant.id}] обращение не записано`, e);
     return null;
   }
+}
+
+/** Фото покупателя в сообщении: не публикация (сторис, рилс) и не гифка из стикеров (v1 incomingImageUrls). */
+export function customerImageUrls(m: ReturnType<typeof parseZernioMessage>): string[] {
+  return m.attachments
+    .filter((a) => a.type === "image" && a.url !== m.storyMediaUrl && !/giphy\.com/i.test(a.url))
+    .map((a) => a.url)
+    .slice(0, 3);
 }
