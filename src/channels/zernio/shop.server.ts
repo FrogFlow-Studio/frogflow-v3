@@ -1501,6 +1501,8 @@ async function finishCheckout(s: Shop, countryCode: string) {
       }
       case "discount_fx":
         return void (await reply(s, s.m.discountFx));
+      case "mixed_currency":
+        return void (await reply(s, s.m.mixedCurrency));
       case "gift_invalid": {
         const { gift_certificate_code: _gc, ...rest } = st;
         s.customer = await setState(s.ctx, s.customer, rest);

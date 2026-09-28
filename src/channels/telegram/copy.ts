@@ -73,6 +73,7 @@ export type Msg = {
   promoCodePrompt: string;
   promoCodeInvalid: string;
   discountFx: string;
+  mixedCurrency: string;
   promoCodeRemoved: string;
   discountLine: (amount: string) => string;
   usePointsBtn: string;
@@ -377,6 +378,7 @@ const ru: Msg = {
   promoCodeInvalid: "⚠️ Промокод недействителен или больше не работает.",
   discountFx:
     "⚠️ Скидку сейчас не пересчитать в валюту заказа: курс валют недоступен. Попробуйте чуть позже или оформите без скидки.",
+  mixedCurrency: "В корзине товары в разных валютах — оформите их отдельными заказами.",
   promoCodeRemoved: "Промокод убран.",
   discountLine: (a) => `🎟 Скидка по промокоду: −${a}\n`,
   pointsAsk: (n) => `🏆 У вас ${n} баллов. Списать их в счёт этого заказа?`,
@@ -663,6 +665,8 @@ const kk: Msg = {
   promoCodeInvalid: "⚠️ Промокод жарамсыз немесе енді жұмыс істемейді.",
   discountFx:
     "⚠️ Жеңілдікті қазір тапсырыс валютасына аудару мүмкін емес: валюта бағамы қолжетімсіз. Сәл кейінірек көріңіз немесе жеңілдіксіз рәсімдеңіз.",
+  mixedCurrency:
+    "Себетте әртүрлі валютадағы тауарлар бар — оларды бөлек тапсырыстармен рәсімдеңіз.",
   pointsAsk: (n) => `🏆 Сізде ${n} балл бар. Осы тапсырысқа жұмсаймыз ба?`,
   pointsYesBtn: "Иә, жұмсау",
   pointsNoBtn: "Жоқ, жинау",
@@ -834,6 +838,7 @@ const en: Msg = {
   promoCodeInvalid: "⚠️ This promo code is invalid or no longer works.",
   discountFx:
     "⚠️ The discount can't be converted to the order currency right now: exchange rates are unavailable. Try again a bit later or order without the discount.",
+  mixedCurrency: "Your cart has items in different currencies — please order them separately.",
   promoCodeRemoved: "Promo code removed.",
   discountLine: (a) => `🎟 Promo discount: −${a}\n`,
   pointsAsk: (n) => `🏆 You have ${n} points. Use them for this order?`,
@@ -1003,6 +1008,7 @@ const uz: Msg = {
   promoCodeInvalid: "⚠️ Promokod amal qilmaydi yoki endi ishlamaydi.",
   discountFx:
     "⚠️ Chegirmani hozir buyurtma valyutasiga o‘tkazib bo‘lmaydi: valyuta kursi mavjud emas. Birozdan keyin urinib ko‘ring yoki chegirmasiz rasmiylashtiring.",
+  mixedCurrency: "Savatda turli valyutadagi tovarlar bor — ularni alohida buyurtma qiling.",
   giftRestIssued: (code, sum) =>
     `🎁 Sertifikat buyurtma summasidan ko‘p — qolgan ${sum} yangi kod bilan saqlandi:\n<code>${code}</code>\nUni keyingi buyurtmada kiriting.`,
   pointsAsk: (n) => `🏆 Sizda ${n} ball bor. Ushbu buyurtma uchun sarflaymizmi?`,

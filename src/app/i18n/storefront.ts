@@ -149,6 +149,8 @@ const ru = {
   "checkout.error.gift": "Сертификат не подошёл: проверьте код или оформите без него.",
   "checkout.error.discountFx":
     "Скидку сейчас не пересчитать в валюту заказа: курс валют недоступен. Попробуйте чуть позже или оформите без скидки.",
+  "checkout.error.mixedCurrency":
+    "В корзине товары в разных валютах — оформите их отдельными заказами.",
   "order.discount": "Скидка",
   "checkout.error.fulfillment": "Выберите способ получения и дату.",
   "checkout.error.dateEarly": "Самая ранняя дата — {date}.",
@@ -404,6 +406,8 @@ const kk: Dict = {
   "checkout.error.gift": "Сертификат жарамады: кодты тексеріңіз немесе онсыз рәсімдеңіз.",
   "checkout.error.discountFx":
     "Жеңілдікті қазір тапсырыс валютасына аудару мүмкін емес: валюта бағамы қолжетімсіз. Сәл кейінірек көріңіз немесе жеңілдіксіз рәсімдеңіз.",
+  "checkout.error.mixedCurrency":
+    "Себетте әртүрлі валютадағы тауарлар бар — оларды бөлек тапсырыстармен рәсімдеңіз.",
   "order.discount": "Жеңілдік",
   "checkout.error.fulfillment": "Алу тәсілі мен күнін таңдаңыз.",
   "checkout.error.dateEarly": "Ең ерте күн — {date}.",
@@ -649,6 +653,8 @@ const en: Dict = {
   "checkout.error.gift": "The certificate didn't work: check the code or order without it.",
   "checkout.error.discountFx":
     "The discount can't be converted to the order currency right now: exchange rates are unavailable. Try again a bit later or order without the discount.",
+  "checkout.error.mixedCurrency":
+    "Your cart has items in different currencies — please order them separately.",
   "order.discount": "Discount",
   "checkout.error.fulfillment": "Choose how and when to receive the order.",
   "checkout.error.dateEarly": "The earliest date is {date}.",
@@ -895,6 +901,8 @@ const uz: Dict = {
   "checkout.error.gift": "Sertifikat mos kelmadi: kodni tekshiring yoki usiz rasmiylashtiring.",
   "checkout.error.discountFx":
     "Chegirmani hozir buyurtma valyutasiga o‘tkazib bo‘lmaydi: valyuta kursi mavjud emas. Birozdan keyin urinib ko‘ring yoki chegirmasiz rasmiylashtiring.",
+  "checkout.error.mixedCurrency":
+    "Savatda turli valyutadagi tovarlar bor — ularni alohida buyurtma qiling.",
   "order.discount": "Chegirma",
   "checkout.error.fulfillment": "Qabul qilish usuli va sanasini tanlang.",
   "checkout.error.dateEarly": "Eng erta sana — {date}.",

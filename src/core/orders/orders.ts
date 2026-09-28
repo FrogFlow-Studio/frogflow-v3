@@ -156,6 +156,8 @@ export type PlaceOrderResult =
         | "gift_invalid"
         /** Скидку не перевести в валюту заказа: курса нет. */
         | "discount_fx"
+        /** В корзине товары в разных валютах: сумму не сложить. */
+        | "mixed_currency"
         | "out_of_stock";
     };
 
@@ -283,6 +285,7 @@ export async function placeOrder(
         ? opts.deliveryLang
         : null;
     const priced = await priceCart(ctx, items, countryCode, { deliveryLang });
+    if (priced.mixedCurrency) return await fail("mixed_currency");
 
     // Складской учёт — до создания заказа: не хватило, откатываем уже
     // списанное и убираем раскупленную строку из корзины.

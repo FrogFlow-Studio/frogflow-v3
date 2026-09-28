@@ -166,6 +166,8 @@ export type PricedCart = {
   total: number;
   currency: string;
   kind: "digital" | "physical";
+  /** Строки в разных валютах: сумму не сложить — заказ не оформляется. */
+  mixedCurrency: boolean;
 };
 
 /** Тот же расчёт, что показывает цены в каталоге: корзина, заказ и карточка не расходятся. */
@@ -179,12 +181,16 @@ export async function priceCart(
   let total = 0;
   let currency = "KZT";
   let kind: "digital" | "physical" = "digital";
+  let mixedCurrency = false;
   const choice = ctx.tenant.modules.multi_language ? (opts.deliveryLang ?? null) : null;
   for (const item of items) {
     const p = item.products;
     if (!p) continue;
     if (p.fulfillment_kind === "physical") kind = "physical";
     const unit = await resolvePrice(ctx, p, countryCode, item.product_variants);
+    // $50 и 2000 ₸ не складываются в «2050 ₸»: курса нет — оформлять нельзя.
+    if (lines.length > 0 && unit.currency.toUpperCase() !== currency.toUpperCase())
+      mixedCurrency = true;
     currency = unit.currency;
     // «Все языки» — как N комплектов по числу языков этого товара.
     const copies =
@@ -196,5 +202,5 @@ export async function priceCart(
     const name = item.product_variants ? `${p.name} (${item.product_variants.name})` : p.name;
     lines.push({ item, name, unit, line, copies });
   }
-  return { lines, total, currency, kind };
+  return { lines, total, currency, kind, mixedCurrency };
 }
