@@ -95,6 +95,10 @@ export async function handleZernioMessage(
     return processed(optCmd === "unsubscribe" ? "отписка от рассылок" : "возврат к рассылкам");
   }
   if (intercepted) return processed("менеджер ведёт диалог в панели");
+  // Магазин на паузе (неоплата, удаление по запросу владельца): переписка
+  // сохранена в «Чате», автоответы молчат — как бот Telegram на паузе.
+  if (ctx.tenant.status === "paused" || ctx.tenant.status === "suspended")
+    return processed("магазин на паузе");
 
   // Ответ на фото готового заказа (core/orders/approval): «да» — одобрено,
   // любой другой текст — правки. Ответ один: дальше диалог идёт как обычно.

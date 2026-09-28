@@ -1,3 +1,4 @@
+import { DeleteShopCard } from "@/app/admin/deletion-ui";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -329,6 +330,9 @@ function SettingsPage() {
         {shop.modules.notify_in_bot && <NotifyCard />}
         {shop.modules.crm_integration && <CrmCard />}
         {shop.modules.admin_roles && <TeamCard />}
+        {shop.role === "owner" && !shop.deletionAt && (
+          <DeleteShopCard locale={shop.locale} shopName={shop.name} />
+        )}
       </div>
     </>
   );

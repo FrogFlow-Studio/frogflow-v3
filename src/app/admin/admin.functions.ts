@@ -145,6 +145,12 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       verticalTitle: VERTICALS[ctx.tenant.vertical].title,
       modules: ctx.tenant.modules,
       status: ctx.tenant.status,
+      /** Владелец попросил удалить магазин: когда удалится (ISO) — баннер «Восстановить». */
+      deletionAt: ctx.tenant.settings.deletion
+        ? (await import("@/core/tenant/deletion"))
+            .deletionDueAt(ctx.tenant.settings.deletion.requested_at)
+            .toISOString()
+        : null,
       telegram: ctx.tenant.settings.telegram?.username ?? null,
       slug: ctx.tenant.settings.slug ?? null,
       chatUnread:
@@ -164,6 +170,24 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
   } catch {
     return null;
   }
+});
+
+/** Удалить магазин: пауза и 30 дней на восстановление (app/admin/deletion.server). Только владелец. */
+export const deleteShopFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ confirm: z.string().max(200) }).parse(d))
+  .handler(async ({ data }) => {
+    const { requireAdminRole } = await import("@/app/auth/guards.server");
+    const ctx = await requireAdminRole("owner");
+    const { requestShopDeletion } = await import("./deletion.server");
+    return requestShopDeletion(ctx, data.confirm, await actor());
+  });
+
+export const restoreShopFn = createServerFn({ method: "POST" }).handler(async () => {
+  const { requireAdminRole } = await import("@/app/auth/guards.server");
+  const ctx = await requireAdminRole("owner");
+  const { cancelShopDeletion } = await import("./deletion.server");
+  await cancelShopDeletion(ctx, await actor());
+  return { ok: true };
 });
 
 /** Модуль «Несколько ботов»: магазины группы для переключателя в шапке. */

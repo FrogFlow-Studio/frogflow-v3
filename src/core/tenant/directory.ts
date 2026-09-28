@@ -127,6 +127,16 @@ export function settingsFromJson(json: unknown): TenantSettings {
       typeof s.served_by_since === "string" && !Number.isNaN(Date.parse(s.served_by_since))
         ? s.served_by_since
         : undefined,
+    deletion: (() => {
+      const d = obj(s.deletion);
+      if (typeof d.requested_at !== "string" || Number.isNaN(Date.parse(d.requested_at)))
+        return undefined;
+      return {
+        requested_at: d.requested_at,
+        by: typeof d.by === "string" ? d.by : "",
+        prev_status: asStatus(typeof d.prev_status === "string" ? d.prev_status : null),
+      };
+    })(),
     // Откуда пришёл продавец: из браузера при регистрации — перепроверяем при чтении.
     signup: signupOrigin(obj(s.signup)) ?? undefined,
     on_overdue:

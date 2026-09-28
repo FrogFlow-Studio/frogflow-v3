@@ -66,6 +66,12 @@ export type TenantSettings = {
    * продавца (заказы старше этой даты) от нового.
    */
   served_by_since?: string;
+  /**
+   * Владелец попросил удалить магазин (app/admin/deletion.server): магазин на
+   * паузе 30 дней, владелец может восстановить; потом крон ретеншна его
+   * архивирует и удаляет файлы. prev_status — статус до запроса.
+   */
+  deletion?: { requested_at: string; by: string; prev_status: BotStatus };
   /** Откуда пришёл продавец, зарегистрировавшийся сам (core/signup/origin). */
   signup?: { source?: string; page?: "cakes" | "materials" | "courses" };
   /**

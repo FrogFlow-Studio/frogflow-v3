@@ -9,6 +9,7 @@ import {
 } from "@/app/admin/admin.functions";
 import { ADMIN_LOCALE_LABELS, adminT } from "@/app/i18n/admin";
 import { Badge, NavLink, Shell, ThemeToggle } from "@/app/ui";
+import { DeletionBanner } from "@/app/admin/deletion-ui";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
 export const Route = createFileRoute("/admin/_authed")({
@@ -173,6 +174,13 @@ function Layout() {
         </div>
       }
     >
+      {shop.deletionAt && (
+        <DeletionBanner
+          locale={shop.locale}
+          deletionAt={shop.deletionAt}
+          owner={shop.role === "owner"}
+        />
+      )}
       <Outlet />
     </Shell>
   );

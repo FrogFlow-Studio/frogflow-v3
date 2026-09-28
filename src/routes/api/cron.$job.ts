@@ -240,6 +240,9 @@ export const Route = createFileRoute("/api/cron/$job")({
               // Один проход на всех клиентов: журналы, переписка, попытки входа.
               const { runRetention } = await import("@/core/retention/retention");
               results.retention = await runRetention();
+              // Удаление магазина по запросу владельца: холд 30 дней истёк — архив и файлы.
+              const { finalizeDueDeletions } = await import("@/app/admin/deletion.server");
+              results.deletion = await finalizeDueDeletions(tenants);
               break;
             }
             default:
