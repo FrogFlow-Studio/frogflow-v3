@@ -18,6 +18,7 @@ import { Route as SitemapPagesDotxmlRouteImport } from './routes/sitemap-pages[.
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AdminAuthedRouteImport } from './routes/admin._authed'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminTgLoginRouteImport } from './routes/admin.tg-login'
 import { Route as ApiClientErrorRouteImport } from './routes/api/client-error'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ForNicheRouteImport } from './routes/for.$niche'
@@ -126,6 +127,11 @@ const AdminAuthedRoute = AdminAuthedRouteImport.update({
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTgLoginRoute = AdminTgLoginRouteImport.update({
+  id: '/tg-login',
+  path: '/tg-login',
   getParentRoute: () => AdminRoute,
 } as any)
 const ApiClientErrorRoute = ApiClientErrorRouteImport.update({
@@ -465,6 +471,7 @@ export interface FileRoutesByFullPath {
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/tg-login': typeof AdminTgLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
   '/for/$niche': typeof ForNicheRoute
@@ -539,6 +546,7 @@ export interface FileRoutesByTo {
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/tg-login': typeof AdminTgLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
   '/for/$niche': typeof ForNicheRoute
@@ -612,6 +620,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/_authed': typeof AdminAuthedRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
+  '/admin/tg-login': typeof AdminTgLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
   '/for/$niche': typeof ForNicheRoute
@@ -689,6 +698,7 @@ export interface FileRouteTypes {
     | '/sitemap-pages.xml'
     | '/sitemap.xml'
     | '/admin/login'
+    | '/admin/tg-login'
     | '/api/client-error'
     | '/api/health'
     | '/for/$niche'
@@ -763,6 +773,7 @@ export interface FileRouteTypes {
     | '/sitemap-pages.xml'
     | '/sitemap.xml'
     | '/admin/login'
+    | '/admin/tg-login'
     | '/api/client-error'
     | '/api/health'
     | '/for/$niche'
@@ -835,6 +846,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/admin/_authed'
     | '/admin/login'
+    | '/admin/tg-login'
     | '/api/client-error'
     | '/api/health'
     | '/for/$niche'
@@ -991,6 +1003,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/admin/login'
       preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/tg-login': {
+      id: '/admin/tg-login'
+      path: '/tg-login'
+      fullPath: '/admin/tg-login'
+      preLoaderRoute: typeof AdminTgLoginRouteImport
       parentRoute: typeof AdminRoute
     }
     '/api/client-error': {
@@ -1527,11 +1546,13 @@ const AdminAuthedRouteWithChildren = AdminAuthedRoute._addFileChildren(
 interface AdminRouteChildren {
   AdminAuthedRoute: typeof AdminAuthedRouteWithChildren
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminTgLoginRoute: typeof AdminTgLoginRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAuthedRoute: AdminAuthedRouteWithChildren,
   AdminLoginRoute: AdminLoginRoute,
+  AdminTgLoginRoute: AdminTgLoginRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

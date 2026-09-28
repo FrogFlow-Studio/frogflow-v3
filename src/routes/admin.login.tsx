@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { adminLogin } from "@/app/admin/admin.functions";
+import { adminLogin, adminTgLoginRequest } from "@/app/admin/admin.functions";
 import { ADMIN_LOCALE_LABELS, adminT } from "@/app/i18n/admin";
 import { signupEnabledFn } from "@/app/signup/signup.functions";
 import { ErrorBox, Field, ThemeToggle, useAction } from "@/app/ui";
@@ -108,6 +108,7 @@ function LoginPage() {
             {busy ? t("login.busy") : t("login.submit")}
           </button>
         </form>
+        <TelegramLogin t={t} />
         <div className="mt-6 space-y-2 text-sm text-muted">
           {signup && (
             <p>
@@ -121,5 +122,50 @@ function LoginPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+/** Вход владельца по ссылке от бота магазина (app/auth/tg-login.server). */
+function TelegramLogin({ t }: { t: ReturnType<typeof adminT> }) {
+  const [open, setOpen] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [username, setUsername] = useState("");
+  const { run, busy, error } = useAction(async () => {
+    await adminTgLoginRequest({ data: { username } });
+    setSent(true);
+  });
+  if (!open)
+    return (
+      <button type="button" className="btn-secondary mt-3 w-full" onClick={() => setOpen(true)}>
+        {t("login.tg.button")}
+      </button>
+    );
+  return (
+    <form
+      className="card mt-3 space-y-3 p-5"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void run().catch(() => {});
+      }}
+    >
+      <p className="text-sm text-muted">{t("login.tg.hint")}</p>
+      <Field label={t("login.username")}>
+        <input
+          className="input"
+          autoComplete="username"
+          required
+          value={username}
+          onChange={(e) => {
+            setUsername(e.target.value);
+            setSent(false);
+          }}
+        />
+      </Field>
+      {sent && <p className="text-sm text-ok">{t("login.tg.sent")}</p>}
+      <ErrorBox error={error} />
+      <button className="btn-primary w-full" disabled={busy || !username.trim()}>
+        {t("login.tg.send")}
+      </button>
+    </form>
   );
 }

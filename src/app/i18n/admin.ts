@@ -97,6 +97,14 @@ const baseRu = {
   "login.noShop": "Ещё нет магазина?",
   "login.signup": "Зарегистрировать за пять минут",
   "login.forgot": "Забыли пароль — напишите в поддержку FrogFlow, мы выдадим новый.",
+  "login.tg.button": "Войти через Telegram",
+  "login.tg.hint": "Введите логин магазина — бот магазина пришлёт владельцу ссылку для входа.",
+  "login.tg.send": "Прислать ссылку",
+  "login.tg.sent":
+    "Если логин верный и Telegram владельца привязан к магазину, ссылка уже в боте. Она действует 10 минут.",
+  "login.tg.title": "Вход в панель магазина",
+  "login.tg.enter": "Войти в панель",
+  "login.tg.expired": "Ссылка устарела или уже использована. Запросите новую на странице входа.",
   // обзор
   "overview.title": "Обзор",
   "overview.steps": "Первые шаги",
@@ -427,6 +435,15 @@ const baseKk: Dict = {
   "login.noShop": "Дүкеніңіз әлі жоқ па?",
   "login.signup": "Бес минутта тіркелу",
   "login.forgot": "Құпиясөзді ұмыттыңыз ба — FrogFlow қолдау қызметіне жазыңыз, жаңасын береміз.",
+  "login.tg.button": "Telegram арқылы кіру",
+  "login.tg.hint": "Дүкен логинін енгізіңіз — дүкен боты иесіне кіру сілтемесін жібереді.",
+  "login.tg.send": "Сілтеме жіберу",
+  "login.tg.sent":
+    "Логин дұрыс болса және иесінің Telegram-ы дүкенге байланған болса, сілтеме ботта. Ол 10 минут жарамды.",
+  "login.tg.title": "Дүкен панеліне кіру",
+  "login.tg.enter": "Панельге кіру",
+  "login.tg.expired":
+    "Сілтеменің мерзімі өтті немесе ол пайдаланылған. Кіру бетінде жаңасын сұраңыз.",
   "overview.title": "Шолу",
   "overview.steps": "Алғашқы қадамдар",
   "overview.stepsOf": "{total} ішінен {done}",
@@ -714,6 +731,15 @@ const baseEn: Dict = {
   "login.noShop": "No shop yet?",
   "login.signup": "Register in five minutes",
   "login.forgot": "Forgot your password? Write to FrogFlow support and we will issue a new one.",
+  "login.tg.button": "Sign in with Telegram",
+  "login.tg.hint": "Enter the shop login — the shop bot will send the owner a sign-in link.",
+  "login.tg.send": "Send the link",
+  "login.tg.sent":
+    "If the login is right and the owner’s Telegram is linked to the shop, the link is in the bot. It is valid for 10 minutes.",
+  "login.tg.title": "Shop panel sign-in",
+  "login.tg.enter": "Open the panel",
+  "login.tg.expired":
+    "The link has expired or was already used. Request a new one on the sign-in page.",
   "overview.title": "Overview",
   "overview.steps": "First steps",
   "overview.stepsOf": "{done} of {total}",
@@ -1002,6 +1028,15 @@ const baseUz: Dict = {
   "login.signup": "Besh daqiqada ro‘yxatdan o‘tish",
   "login.forgot":
     "Parolni unutdingizmi — FrogFlow qo‘llab-quvvatlashiga yozing, yangisini beramiz.",
+  "login.tg.button": "Telegram orqali kirish",
+  "login.tg.hint": "Doʻkon loginini kiriting — doʻkon boti egasiga kirish havolasini yuboradi.",
+  "login.tg.send": "Havola yuborish",
+  "login.tg.sent":
+    "Login toʻgʻri boʻlsa va egasining Telegrami doʻkonga bogʻlangan boʻlsa, havola botda. U 10 daqiqa amal qiladi.",
+  "login.tg.title": "Doʻkon paneliga kirish",
+  "login.tg.enter": "Panelga kirish",
+  "login.tg.expired":
+    "Havola eskirgan yoki allaqachon ishlatilgan. Kirish sahifasida yangisini soʻrang.",
   "overview.title": "Umumiy",
   "overview.steps": "Birinchi qadamlar",
   "overview.stepsOf": "{total} dan {done}",

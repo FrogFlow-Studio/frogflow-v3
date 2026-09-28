@@ -33,6 +33,8 @@ const NOT_AUDITED = new Set([
   // вход и выход — в admin_login_attempts
   "adminLogin",
   "adminLogout",
+  "adminTgLoginRequest",
+  "adminTgLoginConsume",
   // ничего не меняют
   "previewQuizFn",
   "consultantTestFn",

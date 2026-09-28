@@ -20,7 +20,12 @@ const OPEN_TO_ACCOUNTANT = new Set([
   "admin.functions.ts:analyticsFn",
 ]);
 /** Без сессии продавца по смыслу: вход и выход. */
-const PUBLIC = new Set(["admin.functions.ts:adminLogin", "admin.functions.ts:adminLogout"]);
+const PUBLIC = new Set([
+  "admin.functions.ts:adminLogin",
+  "admin.functions.ts:adminLogout",
+  "admin.functions.ts:adminTgLoginRequest",
+  "admin.functions.ts:adminTgLoginConsume",
+]);
 
 const DENY =
   /\b(requireAdmin|requireAdminRole|requireAdminModule|requireAdminAnyModule|switchAdminShop)\b/;

@@ -1,3 +1,4 @@
+import { env } from "@/config/env";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { shownError } from "@/lib/shown-error";
@@ -103,6 +104,79 @@ export const adminLogin = createServerFn({ method: "POST" })
       },
     });
     return { ok: true as const, role: "admin" as const };
+  });
+
+/**
+ * Вход владельца через Telegram (app/auth/tg-login.server): бот магазина
+ * присылает владельцу одноразовую ссылку. Ответ всегда один и тот же — по
+ * нему не узнать, есть ли логин и привязан ли Telegram.
+ */
+export const adminTgLoginRequest = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ username: z.string().min(1).max(100) }).parse(d))
+  .handler(async ({ data }) => {
+    const done = { ok: true as const };
+    const { resolveAdminLogin } = await import("./admin.server");
+    const { clientIp, loginLocked, recordLogin, loginDelay } =
+      await import("@/app/auth/login-guard.server");
+    const ip = clientIp();
+    await loginDelay();
+    const login = await resolveAdminLogin(data.username);
+    if (!login || login.role !== "owner") return done;
+    const t = login.tenant;
+    const { servedByV2 } = await import("@/core/tenant/directory");
+    if (!servedByV2(t) || t.archived || !t.ownerTelegramId || !t.telegramTokenEnc) return done;
+    if (await loginLocked({ botId: t.id }, ip)) return done;
+    // Каждая ссылка — попытка входа: поток запросов упрётся в тот же предел, что и пароль.
+    await recordLogin({ botId: t.id }, ip, false, `tg:${data.username}`);
+    const { tenantContext } = await import("@/core/tenant/resolve.server");
+    const ctx = tenantContext(t);
+    const { issueLoginToken } = await import("@/app/auth/tg-login.server");
+    const { normalizeLogin } = await import("@/core/auth/roles");
+    const token = await issueLoginToken(ctx, normalizeLogin(data.username));
+    const link = `${env().APP_URL}/admin/tg-login?b=${t.id}&t=${token}`;
+    const { telegramApi } = await import("@/channels/telegram/api");
+    await telegramApi(ctx.secrets.telegramToken(), env().TELEGRAM_API_BASE)
+      .call("sendMessage", {
+        chat_id: t.ownerTelegramId,
+        text: `🔐 Вход в панель магазина. Ссылка действует 10 минут и работает один раз:\n${link}\n\nЕсли входите не вы — не открывайте её.`,
+        link_preview_options: { is_disabled: true },
+      })
+      .catch(() => undefined);
+    return done;
+  });
+
+export const adminTgLoginConsume = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ b: z.string().uuid(), t: z.string().min(1).max(100) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
+    const t = await resolveTenant({ by: "id", value: data.b });
+    const { servedByV2 } = await import("@/core/tenant/directory");
+    if (!t || t.archived || !servedByV2(t)) return { ok: false as const };
+    const { consumeLoginToken } = await import("@/app/auth/tg-login.server");
+    const username = await consumeLoginToken(tenantContext(t), data.t);
+    if (!username) return { ok: false as const };
+    const { resolveAdminLogin } = await import("./admin.server");
+    const login = await resolveAdminLogin(username);
+    if (!login || login.role !== "owner" || login.tenant.id !== t.id) return { ok: false as const };
+    const { clientIp, recordLogin } = await import("@/app/auth/login-guard.server");
+    await recordLogin({ botId: t.id }, clientIp(), true, `tg:${username}`);
+    const { appSession } = await import("@/app/auth/session.server");
+    const { issueSession } = await import("@/app/auth/session-id");
+    const { adminStamp } = await import("@/app/auth/guards.server");
+    await (
+      await appSession()
+    ).update({
+      admin: {
+        botId: t.id,
+        username,
+        role: login.role,
+        stamp: adminStamp(t.id, username, login.passwordHash),
+        ...issueSession(),
+      },
+    });
+    return { ok: true as const };
   });
 
 export const adminLogout = createServerFn({ method: "POST" }).handler(async () => {
