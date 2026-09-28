@@ -208,6 +208,9 @@ export const Route = createFileRoute("/api/cron/$job")({
               const { runConsultantModelAlerts } =
                 await import("@/app/operator/consultant-alerts.server");
               results.consultantModel = await runConsultantModelAlerts(tenants);
+              // Консультант по прайсу: свежий курс рубля и напоминание замолчавшему покупателю.
+              const { runPricelistJobs } = await import("@/channels/zernio/consultant-jobs.server");
+              results.pricelist = await runPricelistJobs(tenants);
               // Утренний дайджест продавцу — у кого настал его час.
               const { sendDueDigests } = await import("@/channels/telegram/digest.server");
               results.digest = await sendDueDigests(tenants);

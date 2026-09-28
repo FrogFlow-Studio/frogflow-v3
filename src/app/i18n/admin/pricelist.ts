@@ -24,6 +24,9 @@ export const ru = {
   "pricelist.settings.address": "Адрес бутика",
   "pricelist.settings.phone": "Телефон",
   "pricelist.settings.storeHours": "Часы работы бутика",
+  "pricelist.settings.followUp": "Напоминать замолчавшему покупателю",
+  "pricelist.settings.followUpHint":
+    "Через 3 часа после ответа с товаром — одна строка «Остались вопросы по …?», не ночью и не после передачи менеджеру.",
   "pricelist.save": "Сохранить",
   "pricelist.saved": "Сохранено.",
   "pricelist.hours":
@@ -86,6 +89,9 @@ export const kk: SectionDict<typeof ru> = {
   "pricelist.settings.address": "Бутик мекенжайы",
   "pricelist.settings.phone": "Телефон",
   "pricelist.settings.storeHours": "Бутиктің жұмыс уақыты",
+  "pricelist.settings.followUp": "Үнсіз қалған сатып алушыға еске салу",
+  "pricelist.settings.followUpHint":
+    "Тауармен жауаптан 3 сағат өткен соң — бір жол «… бойынша сұрақтар қалды ма?», түнде емес және менеджерге бергеннен кейін емес.",
   "pricelist.save": "Сақтау",
   "pricelist.saved": "Сақталды.",
   "pricelist.hours":
@@ -148,6 +154,9 @@ export const en: SectionDict<typeof ru> = {
   "pricelist.settings.address": "Store address",
   "pricelist.settings.phone": "Phone",
   "pricelist.settings.storeHours": "Store opening hours",
+  "pricelist.settings.followUp": "Follow up with customers who went quiet",
+  "pricelist.settings.followUpHint":
+    "Three hours after a reply about a product — one line “Any questions about …?”, not at night and not after a manager handoff.",
   "pricelist.save": "Save",
   "pricelist.saved": "Saved.",
   "pricelist.hours":
@@ -211,6 +220,9 @@ export const uz: SectionDict<typeof ru> = {
   "pricelist.settings.address": "Butik manzili",
   "pricelist.settings.phone": "Telefon",
   "pricelist.settings.storeHours": "Butik ish vaqti",
+  "pricelist.settings.followUp": "Jim qolgan xaridorga eslatish",
+  "pricelist.settings.followUpHint":
+    "Mahsulot haqidagi javobdan 3 soat o‘tib — bitta qator «… bo‘yicha savollar qoldimi?», tunda emas va menejerga berilgandan keyin emas.",
   "pricelist.save": "Saqlash",
   "pricelist.saved": "Saqlandi.",
   "pricelist.hours":

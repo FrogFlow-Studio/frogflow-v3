@@ -103,6 +103,9 @@ vi.mock("@/channels/zernio/health.server", () => ({
 vi.mock("@/channels/zernio/dispatch.server", () => ({
   retryStuckEventsFor: hitList("zernioRetry"),
 }));
+vi.mock("@/channels/zernio/consultant-jobs.server", () => ({
+  runPricelistJobs: hitList("pricelist"),
+}));
 vi.mock("@/channels/telegram/digest.server", () => ({ sendDueDigests: hitList("digest") }));
 vi.mock("@/channels/telegram/weekly.server", () => ({
   sendDueWeeklyReports: hitList("weekly"),
@@ -148,7 +151,7 @@ const JOBS: Record<string, string[]> = {
   ],
   vip: ["vip"],
   "comment-dm-fallback": ["commentDm"],
-  health: ["zernioSync", "zernioRetry", "digest", "weekly"],
+  health: ["zernioSync", "zernioRetry", "pricelist", "digest", "weekly"],
   subscriptions: ["catalogSheet", "sheetNotify"],
 };
 

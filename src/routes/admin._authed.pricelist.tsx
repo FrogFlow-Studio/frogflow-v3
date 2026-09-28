@@ -216,10 +216,11 @@ function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
   const [synonyms, setSynonyms] = useState(data.synonyms);
   const [shopUrl, setShopUrl] = useState(data.shopUrl);
   const [store, setStore] = useState(data.store);
+  const [followUp, setFollowUp] = useState(data.followUp);
   const [saved, setSaved] = useState(false);
   const save = useAction(async () => {
     setSaved(false);
-    await savePricelistSettingsFn({ data: { synonyms, shopUrl, store } });
+    await savePricelistSettingsFn({ data: { synonyms, shopUrl, store, followUp } });
     setSaved(true);
     await onDone();
   });
@@ -272,6 +273,19 @@ function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
         <p className="text-xs text-muted">
           {t("pricelist.hours", { open: data.hours.open, close: data.hours.close })}
         </p>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={followUp}
+            disabled={!canEdit}
+            onChange={(e) => setFollowUp(e.target.checked)}
+          />
+          <span>
+            {t("pricelist.settings.followUp")}
+            <span className="block text-xs text-muted">{t("pricelist.settings.followUpHint")}</span>
+          </span>
+        </label>
         {canEdit && (
           <div className="flex items-center gap-3">
             <button

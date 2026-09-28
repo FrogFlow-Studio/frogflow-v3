@@ -110,6 +110,8 @@ export type ConsultantState = {
   media_sent?: string[];
   /** Консультант по прайсу: товары последних ответов — для «а другой цвет?». */
   last_product_ids?: string[];
+  /** Напоминание замолчавшему покупателю уже ушло после ответа с этим временем. */
+  followup_for?: string;
   /** Имена v1 у диалогов BOVI, начатых до переезда (читаются, не пишутся). */
   v2_profile?: CustomerProfile;
   v2_rub?: boolean;

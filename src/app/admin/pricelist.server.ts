@@ -29,7 +29,8 @@ import {
   type StoreInfo,
 } from "@/core/consultant/pricelist/store-info.server";
 import { pricelistHours, pricelistMode } from "@/core/consultant/pricelist/mode";
-import { setSetting } from "@/core/settings/settings";
+import { getSetting, setSetting } from "@/core/settings/settings";
+import { FOLLOW_UP_SETTING_KEY } from "@/core/consultant/pricelist/follow-up";
 import { loadConsultantUsage } from "@/core/consultant/runs";
 import { isIssuedUploadKey } from "@/core/storage/upload";
 
@@ -81,6 +82,7 @@ export async function pricelistOverview(ctx: TenantContext) {
     media: media.map((m) => ({ ...m, url: productMediaUrl(ctx, m.path) })),
     articles: articles.map((a) => ({ id: a.id, title: a.title, tags: a.tags, content: a.content })),
     usage,
+    followUp: (await getSetting(ctx, FOLLOW_UP_SETTING_KEY))?.trim() === "on",
   };
 }
 
@@ -99,7 +101,7 @@ export async function importPricelist(ctx: TenantContext, csv: string, fileName:
 
 export async function savePricelistSettings(
   ctx: TenantContext,
-  data: { synonyms: string; shopUrl: string; store: StoreInfo },
+  data: { synonyms: string; shopUrl: string; store: StoreInfo; followUp?: boolean },
 ) {
   requirePricelist(ctx);
   const url = data.shopUrl.trim();
@@ -108,6 +110,8 @@ export async function savePricelistSettings(
   await saveSynonyms(ctx, data.synonyms);
   await setSetting(ctx, SHOP_URL_KEY, url);
   await saveStoreInfo(ctx, data.store);
+  if (data.followUp !== undefined)
+    await setSetting(ctx, FOLLOW_UP_SETTING_KEY, data.followUp ? "on" : "off");
   return { ok: true };
 }
 

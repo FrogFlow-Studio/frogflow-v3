@@ -35,6 +35,7 @@ export const savePricelistSettingsFn = createServerFn({ method: "POST" })
           phone: z.string().max(100),
           hours: z.string().max(200),
         }),
+        followUp: z.boolean().optional(),
       })
       .parse(d),
   )
