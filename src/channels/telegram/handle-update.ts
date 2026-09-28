@@ -2289,6 +2289,26 @@ async function handleCallback(
     if (!order || order.telegram_id !== customer.telegramId) return;
     return showBalancePayment(b, order);
   }
+  if (data.startsWith("subren:")) {
+    // Продление товара-подписки (core/catalog/subscription): товар из прошлого заказа — в корзину.
+    const [, orderRaw, productId = ""] = data.split(":");
+    const order = await getOrder(ctx, Number(orderRaw));
+    if (!order || order.telegram_id !== customer.telegramId) return;
+    const item = order.order_items.find((i) => i.product_id === productId);
+    if (!item) return;
+    const r = await addToCart(ctx, customer, productId, item.product_variant_id ?? null);
+    if (r !== "ok") return void (await send(b, b.m.renewUnavailable));
+    return startCheckout(b);
+  }
+  if (data.startsWith("suboff:")) {
+    const { withSubscriptionOff } = await import("@/core/catalog/subscription");
+    b.customer = await setState(
+      ctx,
+      customer,
+      withSubscriptionOff(customer.state, data.slice(7), true),
+    );
+    return void (await send(b, b.m.subOffDone));
+  }
   if (data.startsWith("reorder:")) {
     const order = await getOrder(ctx, Number(data.slice(8)));
     if (!order || order.telegram_id !== customer.telegramId) return;

@@ -41,6 +41,11 @@ export const ru = {
   "product.onSale": "В продаже",
   "product.card.photos": "Фото",
   "product.card.preview": "Пример товара",
+  "product.card.subscription": "Подписка",
+  "product.subscriptionHint":
+    "Товар по подписке: через выбранный срок после оплаты бот сам напомнит покупателю продлить — в Telegram кнопкой, в Instagram/WhatsApp и на почту ссылкой на товар. Автосписания нет: покупатель оплачивает продление как обычный заказ.",
+  "product.subscriptionOn": "Продаётся по подписке",
+  "product.subscriptionDays": "Продлевать каждые, дней",
   "product.previewHint":
     "До 5 картинок: страницы методички, обложки уроков. Покупатель увидит их на витрине и по кнопке «👀 Пример» в боте.",
   "product.uploading": "Загрузка: {name}",
@@ -116,6 +121,11 @@ export const kk: SectionDict<typeof ru> = {
   "product.onSale": "Сатылымда",
   "product.card.photos": "Фото",
   "product.card.preview": "Тауар үлгісі",
+  "product.card.subscription": "Жазылым",
+  "product.subscriptionHint":
+    "Жазылым тауары: төлемнен кейін таңдалған мерзімде бот сатып алушыға ұзартуды өзі еске салады — Telegram-да батырмамен, Instagram/WhatsApp пен поштада тауар сілтемесімен. Автоматты есептен шығару жоқ: сатып алушы ұзартуды кәдімгі тапсырыс сияқты төлейді.",
+  "product.subscriptionOn": "Жазылыммен сатылады",
+  "product.subscriptionDays": "Әр неше күн сайын ұзарту",
   "product.previewHint":
     "5 суретке дейін: әдістеме беттері, сабақ мұқабалары. Сатып алушы оларды витринада және боттағы «👀 Үлгі» батырмасы арқылы көреді.",
   "product.uploading": "Жүктелуде: {name}",
@@ -192,6 +202,11 @@ export const en: SectionDict<typeof ru> = {
   "product.onSale": "On sale",
   "product.card.photos": "Photos",
   "product.card.preview": "Product preview",
+  "product.card.subscription": "Subscription",
+  "product.subscriptionHint":
+    "A subscription product: after the chosen period the bot reminds the customer to renew — with a button in Telegram, with a product link in Instagram/WhatsApp and by email. There is no automatic charge: the customer pays for renewal like a normal order.",
+  "product.subscriptionOn": "Sold as a subscription",
+  "product.subscriptionDays": "Renew every, days",
   "product.previewHint":
     "Up to 5 images: workbook pages, lesson covers. Customers see them on the storefront and via the “👀 Preview” button in the bot.",
   "product.uploading": "Uploading: {name}",
@@ -268,6 +283,11 @@ export const uz: SectionDict<typeof ru> = {
   "product.onSale": "Sotuvda",
   "product.card.photos": "Foto",
   "product.card.preview": "Tovar namunasi",
+  "product.card.subscription": "Obuna",
+  "product.subscriptionHint":
+    "Obuna tovari: toʻlovdan keyin tanlangan muddatda bot xaridorga uzaytirishni oʻzi eslatadi — Telegramda tugma bilan, Instagram/WhatsApp va pochtada tovar havolasi bilan. Avtomatik yechib olish yoʻq: xaridor uzaytirishni oddiy buyurtma kabi toʻlaydi.",
+  "product.subscriptionOn": "Obuna orqali sotiladi",
+  "product.subscriptionDays": "Har necha kunda uzaytirish",
   "product.previewHint":
     "5 tagacha rasm: qoʻllanma sahifalari, dars muqovalari. Xaridor ularni vitrinada va botdagi «👀 Namuna» tugmasi orqali koʻradi.",
   "product.uploading": "Yuklanmoqda: {name}",

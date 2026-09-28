@@ -104,6 +104,10 @@ export type Msg = {
   approvalThanks: string;
   birthdayAsk: string;
   previewBtn: string;
+  renewBtn: string;
+  subOffBtn: string;
+  subOffDone: string;
+  renewUnavailable: string;
   birthdayInvalid: string;
   birthdaySaved: string;
   fulfillmentDateInvalid: string;
@@ -406,6 +410,10 @@ const ru: Msg = {
   approvalChangesSent: "Передал продавцу — он свяжется с вами 🙌",
   approvalThanks: "Спасибо! Передал продавцу 🙌",
   previewBtn: "👀 Пример",
+  renewBtn: "🔁 Продлить",
+  subOffBtn: "Отменить подписку",
+  subOffDone: "Подписка отменена — напоминаний о продлении больше не будет.",
+  renewUnavailable: "Этот товар сейчас недоступен — напишите нам, подскажем.",
   birthdayAsk:
     "🎂 Когда у вас день рождения? Напишите дату, например 15.03 — поздравим с подарком.",
   birthdayInvalid: "Не разобрал дату. Напишите день и месяц, например 15.03.",
@@ -674,6 +682,10 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  renewBtn: "🔁 Renew",
+  subOffBtn: "Cancel subscription",
+  subOffDone: "Subscription cancelled — no more renewal reminders.",
+  renewUnavailable: "This product is unavailable right now — message us and we'll help.",
   payViaStripeBtn: "🌍 Foreign card / PayPal",
   stripeHint:
     "Open the link and pay with a card from any country. The order is confirmed automatically right after payment.",

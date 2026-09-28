@@ -315,6 +315,55 @@ export async function runBirthdaysFor(tenant: Tenant) {
 }
 
 /**
+ * Товары-подписки (core/catalog/subscription): напоминание продлить. Telegram
+ * — кнопки «Продлить» (товар в корзину и оформление) и «Отменить подписку»;
+ * Instagram/WhatsApp — ссылка на товар на витрине или «напишите нам»; заказ с
+ * сайта без Telegram — письмом со ссылкой на товар.
+ */
+export async function runSubscriptionsFor(tenant: Tenant) {
+  if (!tenant.modules.subscriptions) return { skipped: "module off" };
+  const ctx = tenantContext(tenant);
+  const { runSubscriptionRenewals, renewalText } = await import("@/core/catalog/subscription");
+  const { storefrontOpen } = await import("@/core/storefront/access");
+  const slug = tenant.settings.slug;
+  const productUrl = (id: string) =>
+    slug && storefrontOpen(tenant, "catalog")
+      ? `${ctx.appUrl}/s/${encodeURIComponent(slug)}/p/${id}`
+      : null;
+  const tg = tenant.telegramTokenEnc ? api(ctx) : null;
+  const { sendToZernioTarget, zernioTargetOf } = await import("@/channels/zernio/outbound.server");
+  return runSubscriptionRenewals(ctx, async (r, c) => {
+    const platform = c?.platform ?? r.order.platform;
+    if (platform === "telegram" && c && tg) {
+      const m = COPY[(c.state.locale as keyof typeof COPY) ?? "ru"] ?? COPY.ru;
+      const res = await tg.call("sendMessage", {
+        chat_id: c.telegramId,
+        text: escapeHtml(renewalText(r.name, r.days, null)),
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: m.renewBtn, callback_data: `subren:${r.order.id}:${r.productId}` }],
+            [{ text: m.subOffBtn, callback_data: `suboff:${r.productId}` }],
+          ],
+        },
+      });
+      return res.ok;
+    }
+    const url = productUrl(r.productId);
+    const how = url ? `Продлить: ${url}` : "Чтобы продлить, напишите нам «продлить».";
+    if (c && (c.platform === "instagram" || c.platform === "whatsapp")) {
+      const target = zernioTargetOf(c);
+      return target ? sendToZernioTarget(target, renewalText(r.name, r.days, how)) : false;
+    }
+    if (r.order.customer_email && url) {
+      const { emailOrderNotice } = await import("@/core/storefront/web-notify");
+      return emailOrderNotice(ctx, r.order, renewalText(r.name, r.days, how), env().SESSION_SECRET);
+    }
+    return false;
+  });
+}
+
+/**
  * Курсы: сообщение о новом уроке по расписанию (правила — в core/courses).
  * Название урока вставляется как текст (HTML экранируется), ссылка — кнопкой.
  */

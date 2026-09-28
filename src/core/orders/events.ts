@@ -39,7 +39,8 @@ export type OrderEventKind =
   | "approval_sent"
   | "approval_ok"
   | "approval_changes"
-  | "courier";
+  | "courier"
+  | "subscription_renewal";
 
 export type OrderEvent = {
   id: string;
@@ -227,6 +228,8 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       return { text: "Покупатель одобрил фото", tone: "ok" };
     case "approval_changes":
       return { text: `Покупатель просит правки: ${str(p.text)}`, tone: "warn" };
+    case "subscription_renewal":
+      return { text: "Покупателю напомнили продлить подписку", tone: "neutral" };
     case "courier": {
       const names: Record<string, string> = {
         yandex: "Яндекс Доставка",

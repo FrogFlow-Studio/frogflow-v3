@@ -6,8 +6,10 @@ import {
   deleteProductFn,
   productFn,
   productPreviewFn,
+  productSubscriptionFn,
   saveProductFn,
   saveProductPreviewFn,
+  saveProductSubscriptionFn,
 } from "@/app/admin/admin.functions";
 import { adminT, type AdminT } from "@/app/i18n/admin";
 import { uploadFile } from "@/app/admin/upload-client";
@@ -498,6 +500,7 @@ function ProductEditor() {
             </Card>
           )}
           {p?.id && kind === "digital" && <PreviewCard productId={p.id} t={t} botId={shop.botId} />}
+          {shop.modules.subscriptions && p?.id && <SubscriptionCard productId={p.id} t={t} />}
           {shop.modules.courses && p?.id && kind === "digital" && (
             <CourseCard productId={p.id} t={t} />
           )}
@@ -684,6 +687,67 @@ function PreviewCard({ productId, t, botId }: { productId: string; t: AdminT; bo
         )}
       </div>
       <ErrorBox error={add.error ?? save.error} />
+    </Card>
+  );
+}
+
+/** Товар-подписка: раз в N дней бот напомнит покупателю продлить (core/catalog/subscription). */
+function SubscriptionCard({ productId, t }: { productId: string; t: AdminT }) {
+  const [days, setDays] = useState<number | null | undefined>(undefined);
+  const [draft, setDraft] = useState("30");
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    void productSubscriptionFn({ data: { id: productId } }).then((r) => {
+      setDays(r.days);
+      if (r.days) setDraft(String(r.days));
+    });
+  }, [productId]);
+  const save = useAction(async (next: number | null) => {
+    setSaved(false);
+    const r = await saveProductSubscriptionFn({ data: { id: productId, days: next } });
+    setDays(r.days);
+    setSaved(true);
+  });
+  if (days === undefined) return null;
+  const n = Number(draft);
+  const valid = Number.isInteger(n) && n >= 7 && n <= 365;
+  return (
+    <Card title={t("product.card.subscription")}>
+      <p className="mb-3 text-xs text-muted">{t("product.subscriptionHint")}</p>
+      <label className="mb-3 flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={days !== null}
+          disabled={save.busy}
+          onChange={(e) =>
+            void save.run(e.target.checked ? (valid ? n : 30) : null).catch(() => {})
+          }
+        />
+        {t("product.subscriptionOn")}
+      </label>
+      {days !== null && (
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label={t("product.subscriptionDays")}>
+            <input
+              className="input w-28"
+              type="number"
+              min={7}
+              max={365}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+            />
+          </Field>
+          <button
+            className="btn-secondary"
+            disabled={save.busy || !valid || n === days}
+            onClick={() => void save.run(n).catch(() => {})}
+          >
+            {t("common.save")}
+          </button>
+          {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
+        </div>
+      )}
+      <ErrorBox error={save.error} />
     </Card>
   );
 }

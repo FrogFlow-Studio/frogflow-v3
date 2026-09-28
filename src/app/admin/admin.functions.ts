@@ -699,6 +699,26 @@ export const saveProductPreviewFn = createServerFn({ method: "POST" })
     return savePreview(ctx, data.id, data.keys);
   });
 
+/** Товар-подписка: период продления в днях (модуль subscriptions); null — не подписка. */
+export const productSubscriptionFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ id: uuid }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    const { loadSubscriptionDays } = await import("@/core/catalog/subscription");
+    return { days: await loadSubscriptionDays(ctx, data.id) };
+  });
+
+export const saveProductSubscriptionFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ id: uuid, days: z.number().int().min(7).max(365).nullable() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { requireAdminModule } = await import("@/app/auth/guards.server");
+    const ctx = await requireAdminModule("subscriptions", "manager");
+    const { saveSubscriptionDays } = await import("@/core/catalog/subscription");
+    return { days: await saveSubscriptionDays(ctx, data.id, data.days) };
+  });
+
 export const saveProductFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid.nullable(), product: productInput }).parse(d))
   .handler(async ({ data }) => {

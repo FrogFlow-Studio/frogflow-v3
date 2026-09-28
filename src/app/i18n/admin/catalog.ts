@@ -49,6 +49,9 @@ export const ru = {
   "module.courier.title": "Курьер и отслеживание (Яндекс Доставка, inDrive)",
   "module.courier.desc":
     "Заказ передаётся курьеру из карточки, покупатель сразу получает ссылку на отслеживание и телефон курьера.",
+  "module.subscriptions.title": "Товары-подписки",
+  "module.subscriptions.desc":
+    "Товар по подписке раз в месяц или другой срок: бот сам напомнит продлить, продление — в два нажатия.",
   "module.kaspi_pay.title": "Оплата Kaspi Pay",
   "module.kaspi_pay.desc":
     "Оплата через Kaspi.kz по QR или ссылке; заказ подтверждается и выдаётся автоматически.",
@@ -232,6 +235,9 @@ export const kk: SectionDict<typeof ru> = {
   "module.courier.title": "Курьер және бақылау (Яндекс Жеткізу, inDrive)",
   "module.courier.desc":
     "Тапсырыс карточкадан курьерге беріледі, сатып алушы бақылау сілтемесі мен курьер телефонын бірден алады.",
+  "module.subscriptions.title": "Жазылым тауарлары",
+  "module.subscriptions.desc":
+    "Айына бір рет немесе басқа мерзіммен жазылым тауары: бот ұзартуды өзі еске салады, ұзарту — екі басумен.",
   "module.kaspi_pay.title": "Kaspi Pay арқылы төлеу",
   "module.kaspi_pay.desc":
     "Kaspi.kz арқылы QR немесе сілтеме бойынша төлем; тапсырыс автоматты түрде расталып, беріледі.",
@@ -383,6 +389,9 @@ export const en: SectionDict<typeof ru> = {
   "module.courier.title": "Courier and tracking (Yandex Delivery, inDrive)",
   "module.courier.desc":
     "Hand the order to a courier from its card; the customer instantly gets a tracking link and the courier’s phone.",
+  "module.subscriptions.title": "Subscription products",
+  "module.subscriptions.desc":
+    "A product bought monthly or on another cycle: the bot reminds the customer to renew, renewal takes two taps.",
   "module.kaspi_pay.title": "Kaspi Pay payments",
   "module.kaspi_pay.desc":
     "Payment via Kaspi.kz by QR or link; the order is confirmed and delivered automatically.",
@@ -530,6 +539,9 @@ export const uz: SectionDict<typeof ru> = {
   "module.courier.title": "Kuryer va kuzatish (Yandex Yetkazish, inDrive)",
   "module.courier.desc":
     "Buyurtma kartadan kuryerga topshiriladi, xaridor darhol kuzatish havolasi va kuryer telefonini oladi.",
+  "module.subscriptions.title": "Obuna tovarlari",
+  "module.subscriptions.desc":
+    "Oyiga bir marta yoki boshqa muddatda obuna tovari: bot uzaytirishni oʻzi eslatadi, uzaytirish — ikki bosishda.",
   "module.kaspi_pay.title": "Kaspi Pay orqali toʻlov",
   "module.kaspi_pay.desc":
     "Kaspi.kz orqali QR yoki havola boʻyicha toʻlov; buyurtma avtomatik tasdiqlanadi va beriladi.",
