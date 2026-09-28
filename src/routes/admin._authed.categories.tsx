@@ -6,6 +6,7 @@ import {
   deleteCategoryFn,
   saveCatalogLayoutFn,
   saveCategoryFn,
+  reorderFn,
 } from "@/app/admin/admin.functions";
 import { adminT } from "@/app/i18n/admin";
 import {
@@ -77,6 +78,18 @@ function CategoriesPage() {
     await router.invalidate();
   });
   const rows = tree(cats);
+  // Перетаскивание — только среди соседей (один родитель): так дерево не ломается.
+  const [drag, setDrag] = useState<string | null>(null);
+  const reorder = useAction(async (fromId: string, toId: string) => {
+    const from = cats.find((c) => c.id === fromId);
+    const to = cats.find((c) => c.id === toId);
+    if (!from || !to || from.id === to.id || from.parent_id !== to.parent_id) return;
+    const siblings = rows.filter((c) => c.parent_id === from.parent_id).map((c) => c.id);
+    const { moveItem } = await import("@/core/catalog/reorder");
+    const ids = moveItem(siblings, siblings.indexOf(fromId), siblings.indexOf(toId));
+    await reorderFn({ data: { table: "categories", ids, start: 10 } });
+    await router.invalidate();
+  });
   const current = editing === "new" ? null : editing;
   return (
     <>
@@ -89,7 +102,7 @@ function CategoriesPage() {
           </button>
         }
       />
-      <ErrorBox error={del.error ?? vis.error} />
+      <ErrorBox error={del.error ?? vis.error ?? reorder.error} />
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         {rows.length === 0 ? (
           <Empty>{t("categories.empty")}</Empty>
@@ -106,8 +119,26 @@ function CategoriesPage() {
               </thead>
               <tbody>
                 {rows.map((c) => (
-                  <tr key={c.id}>
-                    <td style={{ paddingLeft: 12 + c.depth * 20 }}>{c.name}</td>
+                  <tr
+                    key={c.id}
+                    draggable
+                    onDragStart={() => setDrag(c.id)}
+                    onDragOver={(e) => {
+                      if (drag && cats.find((x) => x.id === drag)?.parent_id === c.parent_id)
+                        e.preventDefault();
+                    }}
+                    onDrop={() => {
+                      if (drag) void reorder.run(drag, c.id).catch(() => {});
+                      setDrag(null);
+                    }}
+                    className={drag === c.id ? "opacity-50" : "cursor-grab"}
+                  >
+                    <td style={{ paddingLeft: 12 + c.depth * 20 }}>
+                      <span className="mr-2 text-muted" aria-hidden>
+                        ⠿
+                      </span>
+                      {c.name}
+                    </td>
                     <td className="text-muted">{c.sort_order}</td>
                     <td>
                       <Switch

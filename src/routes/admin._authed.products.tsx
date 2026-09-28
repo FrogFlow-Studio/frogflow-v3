@@ -10,6 +10,7 @@ import {
   productsFn,
   saveCatalogSheetFn,
   setProductActiveFn,
+  reorderFn,
 } from "@/app/admin/admin.functions";
 import { adminT, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, PageTitle, Switch, useAction } from "@/app/ui";
@@ -69,6 +70,17 @@ function ProductsPage() {
     setProducts((p) => p.map((x) => (x.id === id ? { ...x, is_active: on } : x)));
   });
   const catName = new Map(categories.map((c) => [c.id, c.name]));
+  // Порядок перетаскиванием — когда виден весь каталог без фильтров: иначе
+  // перенумерованная часть перемешалась бы с невидимыми товарами.
+  const canReorder = canEdit(shop.role) && !s.q && !s.category && !s.inactive && !hasMore;
+  const [drag, setDrag] = useState<string | null>(null);
+  const reorder = useAction(async (fromId: string, toId: string) => {
+    const { moveItem } = await import("@/core/catalog/reorder");
+    const ids = products.map((p) => p.id);
+    const next = moveItem(ids, ids.indexOf(fromId), ids.indexOf(toId));
+    setProducts((p) => next.map((id) => p.find((x) => x.id === id)!));
+    await reorderFn({ data: { table: "products", ids: next, start: 10 } });
+  });
   return (
     <>
       <PageTitle
@@ -167,7 +179,19 @@ function ProductsPage() {
             </thead>
             <tbody>
               {products.map((p) => (
-                <tr key={p.id} className="hover:bg-surface-2/60">
+                <tr
+                  key={p.id}
+                  draggable={canReorder}
+                  onDragStart={() => setDrag(p.id)}
+                  onDragOver={(e) => {
+                    if (canReorder && drag) e.preventDefault();
+                  }}
+                  onDrop={() => {
+                    if (drag && drag !== p.id) void reorder.run(drag, p.id).catch(() => {});
+                    setDrag(null);
+                  }}
+                  className={`hover:bg-surface-2/60 ${canReorder ? "cursor-grab" : ""} ${drag === p.id ? "opacity-50" : ""}`}
+                >
                   <td className="w-12">
                     {p.cover ? (
                       <img
@@ -238,7 +262,7 @@ function ProductsPage() {
                   {t("products.showMore")}
                 </button>
               )}
-              <ErrorBox error={more.error ?? toggle.error} />
+              <ErrorBox error={more.error ?? toggle.error ?? reorder.error} />
             </div>
           )}
         </div>

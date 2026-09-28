@@ -557,6 +557,24 @@ export const saveCatalogLayoutFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Порядок перетаскиванием: товары страницы или соседние категории (core/catalog/reorder). */
+export const reorderFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        table: z.enum(["products", "categories"]),
+        ids: z.array(z.string().uuid()).min(1).max(200),
+        start: z.number().int().min(0).max(1e7).default(10),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { applyOrder } = await import("@/core/catalog/reorder");
+    await applyOrder(ctx, data.table, data.ids, data.start);
+    return { ok: true };
+  });
+
 export const deleteCategoryFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid }).parse(d))
   .handler(async ({ data }) => {
