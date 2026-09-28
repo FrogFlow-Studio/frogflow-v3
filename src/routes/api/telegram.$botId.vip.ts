@@ -40,6 +40,23 @@ export const Route = createFileRoute("/api/telegram/$botId/vip")({
         const { claimTelegramUpdate } = await import("@/channels/telegram/dedupe");
         if (!(await claimTelegramUpdate(ctx, (update as { update_id?: number }).update_id, "vip")))
           return new Response("ok");
+        // Вход в группу: вошедшего по чужой ссылке подписки выгоняем (core/vip/join-guard).
+        const chatMember = (update as { chat_member?: unknown }).chat_member;
+        if (chatMember) {
+          await runInBackground(async () => {
+            const [{ guardVipJoin }, { vipGroupApi }, { vipTelegramApi }, { notifyAdminsHtml }] =
+              await Promise.all([
+                import("@/core/vip/join-guard"),
+                import("@/channels/telegram/vip/group"),
+                import("@/channels/telegram/vip/handle"),
+                import("@/channels/telegram/notify"),
+              ]);
+            await guardVipJoin(ctx, vipGroupApi(vipTelegramApi(ctx)), chatMember as never, (html) =>
+              notifyAdminsHtml(ctx, html, { kind: "system" }).then(() => undefined),
+            );
+          }, "telegram.vip.join");
+          return new Response("ok");
+        }
         const run = async () => {
           const { handleVipUpdate, vipTelegramApi } =
             await import("@/channels/telegram/vip/handle");
