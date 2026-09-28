@@ -1,6 +1,7 @@
 /** Карточка клиента у оператора: Instagram/WhatsApp (Zernio) и данные клиента. */
 import { useState, type FormEvent } from "react";
 import {
+  adoptZernioProfileFn,
   setZernioAccountsFn,
   syncZernioFn,
   updateClientMetaFn,
@@ -19,19 +20,26 @@ export function ZernioCard({ c, onDone }: { c: C; onDone: () => Promise<void> })
     await setZernioAccountsFn({ data: { botId: c.id, accountIds: ids } });
     await onDone();
   });
+  const adopt = useAction(async (profileId: string) => {
+    setResult(await adoptZernioProfileFn({ data: { botId: c.id, profileId } }));
+    await onDone();
+  });
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString("ru") : "—");
   const manual = c.zernioAccounts.filter((id) => !c.zernio.accounts.some((a) => a.id === id));
   return (
     <Card
       title="Instagram и WhatsApp (Zernio)"
       actions={
-        <button
-          className="btn-secondary text-xs"
-          disabled={sync.busy}
-          onClick={() => void sync.run().catch(() => {})}
-        >
-          {sync.busy ? "Сверяем…" : c.zernio.profileId ? "Сверить аккаунты" : "Создать профиль"}
-        </button>
+        // Новый профиль клиенту с профилем v1 не создаём: его Instagram остался бы в старом.
+        (c.zernio.profileId || !c.zernio.seenProfileId) && (
+          <button
+            className="btn-secondary text-xs"
+            disabled={sync.busy}
+            onClick={() => void sync.run().catch(() => {})}
+          >
+            {sync.busy ? "Сверяем…" : c.zernio.profileId ? "Сверить аккаунты" : "Создать профиль"}
+          </button>
+        )
       }
     >
       <p className="text-xs text-muted">
@@ -87,6 +95,31 @@ export function ZernioCard({ c, onDone }: { c: C; onDone: () => Promise<void> })
         </p>
       )}
       <ErrorBox error={sync.error} />
+      {c.zernio.seenProfileId && c.zernio.seenProfileId !== c.zernio.profileId && (
+        <form
+          className="mt-4 space-y-3 border-t border-line pt-4"
+          onSubmit={(e: FormEvent<HTMLFormElement>) => {
+            e.preventDefault();
+            const id = String(new FormData(e.currentTarget).get("profile")).trim();
+            void adopt.run(id).catch(() => {});
+          }}
+        >
+          <Field
+            label="Профиль Zernio из v1"
+            hint="События клиента приходят из этого профиля. Привяжите его до переезда, а не создавайте новый: Instagram не придётся подключать заново, вебхук v2 получит события именно этого профиля."
+          >
+            <input
+              className="input font-mono"
+              name="profile"
+              defaultValue={c.zernio.seenProfileId}
+            />
+          </Field>
+          <button className="btn-secondary" disabled={adopt.busy}>
+            {adopt.busy ? "Привязываем…" : "Привязать профиль v1"}
+          </button>
+          <ErrorBox error={adopt.error} />
+        </form>
+      )}
       <form
         className="mt-4 space-y-3 border-t border-line pt-4"
         onSubmit={(e: FormEvent<HTMLFormElement>) => {

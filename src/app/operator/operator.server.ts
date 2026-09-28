@@ -117,6 +117,8 @@ export type ClientView = {
     }>;
     syncedAt: string | null;
     lastEventAt: string | null;
+    /** Профиль Zernio из последнего события в журнале (у клиента v1 — профиль деплоя v1). */
+    seenProfileId: string | null;
   };
   adminUsername: string | null;
   modules: Record<ModuleKey, boolean>;
@@ -182,6 +184,7 @@ function toView(
       })),
       syncedAt: t.settings.zernio?.synced_at ?? null,
       lastEventAt: zernioEvents.get("*") ?? null,
+      seenProfileId: zernioEvents.get(PROFILE_KEY) ?? null,
     },
     adminUsername: t.settings.admin?.username ?? null,
     modules: t.modules,
@@ -273,10 +276,14 @@ export async function getClient(botId: string): Promise<ClientView> {
   );
 }
 
+/** Ключ в карте zernioLastEvents: профиль Zernio последнего события (у клиента v1 — профиль v1). */
+const PROFILE_KEY = "@profile";
+
 /**
  * Когда аккаунт последний раз присылал событие: по журналу zernio_logs,
  * ключ — accountId из payload, «*» — любое событие клиента. Оператор по
- * этому видит, что вебхук доходит именно до этого клиента.
+ * этому видит, что вебхук доходит именно до этого клиента. Под PROFILE_KEY —
+ * профиль из последнего события: его записывают клиенту v1 перед переездом.
  */
 export async function zernioLastEvents(botId: string, limit = 300): Promise<Map<string, string>> {
   const { data } = await serviceDb()
@@ -290,9 +297,14 @@ export async function zernioLastEvents(botId: string, limit = 300): Promise<Map<
   const out = new Map<string, string>();
   for (const row of data ?? []) {
     if (!out.has("*")) out.set("*", row.created_at);
-    const p = row.payload as { account?: { accountId?: string; id?: string; _id?: string } } | null;
+    const p = row.payload as {
+      account?: { accountId?: string; id?: string; _id?: string; profileId?: string };
+    } | null;
     const id = p?.account?.accountId || p?.account?.id || p?.account?._id;
     if (id && !out.has(id)) out.set(id, row.created_at);
+    const profile = p?.account?.profileId;
+    if (typeof profile === "string" && profile && !out.has(PROFILE_KEY))
+      out.set(PROFILE_KEY, profile);
   }
   return out;
 }

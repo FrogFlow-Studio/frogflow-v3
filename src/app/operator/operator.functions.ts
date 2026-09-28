@@ -295,6 +295,36 @@ export const syncZernioFn = createServerFn({ method: "POST" })
     return { profileId, ...r };
   });
 
+/** Профиль Zernio клиента из v1: записать его, а не создавать новый, и сверить аккаунты. */
+export const adoptZernioProfileFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId,
+        profileId: z
+          .string()
+          .trim()
+          .regex(/^[A-Za-z0-9_-]{6,80}$/),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const { adoptTenantProfile } = await import("@/channels/zernio/connect.server");
+    const { requireTenant } = await import("@/core/tenant/resolve.server");
+    const tenant = await requireTenant({ by: "id", value: data.botId });
+    const r = await adoptTenantProfile(tenant, data.profileId);
+    await (
+      await impl()
+    ).logEvent(data.botId, "meta", {
+      zernio_profile_id: data.profileId,
+      zernio_profile_adopted: true,
+      zernio_account_ids: r.accountIds,
+      zernio_conflicts: r.conflicts.map((c) => c.id),
+    });
+    return { profileId: data.profileId, ...r };
+  });
+
 export const setAdminCredentialsFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

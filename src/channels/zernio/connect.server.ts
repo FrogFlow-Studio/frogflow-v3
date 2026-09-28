@@ -6,7 +6,7 @@ import {
   requireTenant,
   tenantDirectory,
 } from "@/core/tenant/resolve.server";
-import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
+import { foreignZernioAccounts, zernioProfileOwner } from "@/core/tenant/zernio-accounts";
 import {
   accountProfileId,
   connectUrl,
@@ -35,6 +35,30 @@ export async function ensureTenantProfile(tenant: Tenant): Promise<string> {
   const profile = found ?? (await createProfile(name, `FrogFlow: ${tenant.name}`));
   await patchTenantSettings(tenant.id, { zernio: { profile_id: profile._id } });
   return profile._id;
+}
+
+/**
+ * Записать клиенту профиль Zernio, который у него уже есть в v1
+ * (ZERNIO_PROFILE_ID деплоя v1): Instagram не переподключается, id
+ * аккаунта и автоматизации в Zernio остаются прежними. Профиль должен быть
+ * виден ключу платформы (та же команда Zernio) и не числиться у другого
+ * клиента. Затем — обычная сверка аккаунтов профиля.
+ */
+export async function adoptTenantProfile(tenant: Tenant, profileId: string): Promise<SyncResult> {
+  if (!zernioConfigured()) throw new Error("Zernio не подключён на платформе.");
+  const id = profileId.trim();
+  const owner = zernioProfileOwner(await tenantDirectory(true), tenant.id, id);
+  if (owner) throw new Error(`Профиль ${id} уже у клиента «${owner.name}».`);
+  if (!(await listProfiles()).some((p) => p._id === id))
+    throw new Error(
+      `Ключ Zernio платформы не видит профиль ${id}: он в другой команде Zernio. ` +
+        "Нужен ключ той же команды или новое подключение Instagram в профиль v2.",
+    );
+  await patchTenantSettings(tenant.id, { zernio: { profile_id: id } });
+  return syncAccounts({
+    ...tenant,
+    settings: { ...tenant.settings, zernio: { ...tenant.settings.zernio, profile_id: id } },
+  });
 }
 
 export async function connectLink(tenant: Tenant, platform: ZernioPlatform): Promise<string> {

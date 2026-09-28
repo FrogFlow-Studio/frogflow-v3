@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { tenantFromRow, type TenantRow } from "./directory";
-import { diffZernioSnapshots, foreignZernioAccounts, zernioAccountOwners } from "./zernio-accounts";
+import {
+  diffZernioSnapshots,
+  foreignZernioAccounts,
+  zernioAccountOwners,
+  zernioProfileOwner,
+} from "./zernio-accounts";
 
 const row = (id: string, ids: string[], archived = false): TenantRow => ({
   id,
@@ -49,5 +54,22 @@ describe("владение аккаунтами Zernio на одном ключ�
     expect(d.restored.map((x) => x.id)).toEqual(["2"]);
     expect(d.added.map((x) => x.id)).toEqual(["4"]);
     expect(d.removed.map((x) => x.id)).toEqual(["3"]);
+  });
+});
+
+describe("профиль Zernio у одного клиента", () => {
+  const withProfile = (id: string, profile: string, archived = false) =>
+    tenantFromRow({
+      ...row(id, [], archived),
+      settings: { zernio: { profile_id: profile, account_ids: [] } },
+    });
+
+  it("профиль v1 уже записан другому клиенту — владелец найден, себя и архив не считаем", () => {
+    const x = withProfile("x", "p1");
+    const old = withProfile("old", "p2", true);
+    expect(zernioProfileOwner([x, old], "y", " p1 ")?.id).toBe("x");
+    expect(zernioProfileOwner([x, old], "x", "p1")).toBeUndefined();
+    expect(zernioProfileOwner([x, old], "y", "p2")).toBeUndefined();
+    expect(zernioProfileOwner([x], "y", "  ")).toBeUndefined();
   });
 });

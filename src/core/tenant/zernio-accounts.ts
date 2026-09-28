@@ -32,6 +32,23 @@ export function foreignZernioAccounts(
   return out;
 }
 
+/**
+ * Клиент, у которого этот профиль Zernio уже записан (кроме botId). Вебхук
+ * v2 фильтрует события по профилям, и профиль у двух клиентов отдал бы
+ * события обоих одному.
+ */
+export function zernioProfileOwner(
+  directory: readonly Tenant[],
+  botId: string,
+  profileId: string,
+): Tenant | undefined {
+  const id = profileId.trim();
+  if (!id) return undefined;
+  return directory.find(
+    (t) => t.id !== botId && !t.archived && t.settings.zernio?.profile_id?.trim() === id,
+  );
+}
+
 export type SnapshotDiff = {
   added: ZernioAccountSnapshot[];
   removed: ZernioAccountSnapshot[];

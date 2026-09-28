@@ -41,6 +41,8 @@ export type PreflightInput = {
   channelOrders30d?: number;
   /** Сколько аккаунтов Zernio записано клиенту (settings.zernio.account_ids). */
   zernioAccounts?: number;
+  /** Записан ли клиенту профиль Zernio: вебхук v2 получает события только профилей клиентов v2. */
+  zernioProfile?: boolean;
   /** Почта платформы: настроен ли SMTP и шлёт ли клиенту что-то письмом (сайт, копия выдачи). */
   mail?: { configured: boolean; needed: boolean };
   /**
@@ -199,6 +201,14 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
       level: "block",
       title: "Instagram и WhatsApp не подключены",
       detail: `За 30 дней заказов из Instagram и WhatsApp: ${i.channelOrders30d}, а аккаунтов Zernio у клиента в v2 нет. После переезда эти покупатели останутся без ответа. Подключите аккаунты в карточке клиента.`,
+    });
+  if (i.zernioAccounts && i.zernioProfile === false)
+    checks.push({
+      key: "zernio_profile",
+      level: "block",
+      title: "Нет профиля Zernio",
+      detail:
+        "Аккаунты Instagram/WhatsApp записаны, а профиль нет. Вебхук v2 получает события только профилей клиентов v2, поэтому после переезда сообщения этих аккаунтов не дойдут. В карточке клиента нажмите «Привязать профиль v1».",
     });
   if (i.mail && i.mail.needed && !i.mail.configured)
     checks.push({

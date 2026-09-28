@@ -174,6 +174,24 @@ describe("evaluatePreflight: что блокирует клиента с Instagr
     }
   });
 
+  it("аккаунты Zernio без профиля — блок: вебхук v2 фильтрует по профилям", () => {
+    const p = evaluatePreflight({
+      ...shop,
+      channelOrders30d: 12,
+      zernioAccounts: 1,
+      zernioProfile: false,
+    });
+    expect(preflightBlockers(p)).toEqual(["Нет профиля Zernio"]);
+    for (const i of [
+      { zernioAccounts: 1, zernioProfile: true },
+      { zernioAccounts: 0, zernioProfile: false },
+      { zernioAccounts: 1 },
+    ]) {
+      const ok = evaluatePreflight({ ...shop, ...i });
+      expect(ok.checks.find((c) => c.key === "zernio_profile")).toBeUndefined();
+    }
+  });
+
   it("почта платформы не настроена, а клиенту она нужна — предупреждение", () => {
     const p = evaluatePreflight({ ...shop, mail: { configured: false, needed: true } });
     expect(p.ready).toBe(true);

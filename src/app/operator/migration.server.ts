@@ -220,6 +220,7 @@ export async function preflight(botId: string): Promise<Preflight> {
     ),
     channelOrders30d: orders30d.channels,
     zernioAccounts: zernioAccountIds.length,
+    zernioProfile: Boolean(t.settings.zernio?.profile_id?.trim()),
     mail: {
       configured: isMailConfigured(),
       needed: Boolean(t.modules.web_storefront) || orders30d.mailed > 0,
