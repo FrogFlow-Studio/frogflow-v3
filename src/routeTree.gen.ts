@@ -56,6 +56,7 @@ import { Route as ApiNowpaymentsBotIdRouteImport } from './routes/api/nowpayment
 import { Route as ApiOperatorBotsRouteImport } from './routes/api/operator/bots'
 import { Route as ApiStripeBotIdRouteImport } from './routes/api/stripe.$botId'
 import { Route as ApiTelegramBotIdRouteImport } from './routes/api/telegram.$botId'
+import { Route as ApiV1SplatRouteImport } from './routes/api/v1.$'
 import { Route as ApiZernioWebhookRouteImport } from './routes/api/zernio/webhook'
 import { Route as OperatorAuthedIndexRouteImport } from './routes/operator._authed.index'
 import { Route as OperatorAuthedBroadcastRouteImport } from './routes/operator._authed.broadcast'
@@ -321,6 +322,11 @@ const ApiTelegramBotIdRoute = ApiTelegramBotIdRouteImport.update({
   path: '/api/telegram/$botId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1SplatRoute = ApiV1SplatRouteImport.update({
+  id: '/api/v1/$',
+  path: '/api/v1/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiZernioWebhookRoute = ApiZernioWebhookRouteImport.update({
   id: '/api/zernio/webhook',
   path: '/api/zernio/webhook',
@@ -525,6 +531,7 @@ export interface FileRoutesByFullPath {
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/stripe/$botId': typeof ApiStripeBotIdRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
+  '/api/v1/$': typeof ApiV1SplatRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/crons': typeof OperatorAuthedCronsRoute
@@ -602,6 +609,7 @@ export interface FileRoutesByTo {
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/stripe/$botId': typeof ApiStripeBotIdRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
+  '/api/v1/$': typeof ApiV1SplatRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/crons': typeof OperatorAuthedCronsRoute
@@ -681,6 +689,7 @@ export interface FileRoutesById {
   '/api/operator/bots': typeof ApiOperatorBotsRoute
   '/api/stripe/$botId': typeof ApiStripeBotIdRoute
   '/api/telegram/$botId': typeof ApiTelegramBotIdRouteWithChildren
+  '/api/v1/$': typeof ApiV1SplatRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/_authed/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/_authed/crons': typeof OperatorAuthedCronsRoute
@@ -761,6 +770,7 @@ export interface FileRouteTypes {
     | '/api/operator/bots'
     | '/api/stripe/$botId'
     | '/api/telegram/$botId'
+    | '/api/v1/$'
     | '/api/zernio/webhook'
     | '/operator/broadcast'
     | '/operator/crons'
@@ -838,6 +848,7 @@ export interface FileRouteTypes {
     | '/api/operator/bots'
     | '/api/stripe/$botId'
     | '/api/telegram/$botId'
+    | '/api/v1/$'
     | '/api/zernio/webhook'
     | '/operator/broadcast'
     | '/operator/crons'
@@ -916,6 +927,7 @@ export interface FileRouteTypes {
     | '/api/operator/bots'
     | '/api/stripe/$botId'
     | '/api/telegram/$botId'
+    | '/api/v1/$'
     | '/api/zernio/webhook'
     | '/operator/_authed/broadcast'
     | '/operator/_authed/crons'
@@ -969,6 +981,7 @@ export interface RootRouteChildren {
   ApiOperatorBotsRoute: typeof ApiOperatorBotsRoute
   ApiStripeBotIdRoute: typeof ApiStripeBotIdRoute
   ApiTelegramBotIdRoute: typeof ApiTelegramBotIdRouteWithChildren
+  ApiV1SplatRoute: typeof ApiV1SplatRoute
   ApiZernioWebhookRoute: typeof ApiZernioWebhookRoute
   SSlugManifestDotwebmanifestRoute: typeof SSlugManifestDotwebmanifestRoute
   SSlugSitemapDotxmlRoute: typeof SSlugSitemapDotxmlRoute
@@ -1307,6 +1320,13 @@ declare module '@tanstack/react-router' {
       path: '/api/telegram/$botId'
       fullPath: '/api/telegram/$botId'
       preLoaderRoute: typeof ApiTelegramBotIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/$': {
+      id: '/api/v1/$'
+      path: '/api/v1/$'
+      fullPath: '/api/v1/$'
+      preLoaderRoute: typeof ApiV1SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/zernio/webhook': {
@@ -1718,6 +1738,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOperatorBotsRoute: ApiOperatorBotsRoute,
   ApiStripeBotIdRoute: ApiStripeBotIdRoute,
   ApiTelegramBotIdRoute: ApiTelegramBotIdRouteWithChildren,
+  ApiV1SplatRoute: ApiV1SplatRoute,
   ApiZernioWebhookRoute: ApiZernioWebhookRoute,
   SSlugManifestDotwebmanifestRoute: SSlugManifestDotwebmanifestRoute,
   SSlugSitemapDotxmlRoute: SSlugSitemapDotxmlRoute,

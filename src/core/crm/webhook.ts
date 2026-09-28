@@ -21,6 +21,9 @@ export const CRM_EVENTS = [
   "delivery_failed",
   "rejected",
   "status",
+  "payment",
+  "refund",
+  "courier",
 ] as const;
 export type CrmEvent = (typeof CRM_EVENTS)[number];
 

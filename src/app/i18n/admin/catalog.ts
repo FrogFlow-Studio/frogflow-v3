@@ -52,6 +52,9 @@ export const ru = {
   "module.subscriptions.title": "Товары-подписки",
   "module.subscriptions.desc":
     "Товар по подписке раз в месяц или другой срок: бот сам напомнит продлить, продление — в два нажатия.",
+  "module.public_api.title": "API для разработчиков",
+  "module.public_api.desc":
+    "Заказы и товары — в вашу учётную систему (1С, МойСклад, таблицы): чтение заказов, выгрузка каталога, обновление остатков и цен.",
   "module.kaspi_pay.title": "Оплата Kaspi Pay",
   "module.kaspi_pay.desc":
     "Оплата через Kaspi.kz по QR или ссылке; заказ подтверждается и выдаётся автоматически.",
@@ -238,6 +241,9 @@ export const kk: SectionDict<typeof ru> = {
   "module.subscriptions.title": "Жазылым тауарлары",
   "module.subscriptions.desc":
     "Айына бір рет немесе басқа мерзіммен жазылым тауары: бот ұзартуды өзі еске салады, ұзарту — екі басумен.",
+  "module.public_api.title": "Әзірлеушілерге арналған API",
+  "module.public_api.desc":
+    "Тапсырыстар мен тауарлар — сіздің есеп жүйеңізге (1С, МойСклад, кестелер): тапсырыстарды оқу, каталогты түсіру, қалдықтар мен бағаларды жаңарту.",
   "module.kaspi_pay.title": "Kaspi Pay арқылы төлеу",
   "module.kaspi_pay.desc":
     "Kaspi.kz арқылы QR немесе сілтеме бойынша төлем; тапсырыс автоматты түрде расталып, беріледі.",
@@ -392,6 +398,9 @@ export const en: SectionDict<typeof ru> = {
   "module.subscriptions.title": "Subscription products",
   "module.subscriptions.desc":
     "A product bought monthly or on another cycle: the bot reminds the customer to renew, renewal takes two taps.",
+  "module.public_api.title": "Developer API",
+  "module.public_api.desc":
+    "Orders and products in your accounting system (1C, MoySklad, spreadsheets): read orders, export the catalog, update stock and prices.",
   "module.kaspi_pay.title": "Kaspi Pay payments",
   "module.kaspi_pay.desc":
     "Payment via Kaspi.kz by QR or link; the order is confirmed and delivered automatically.",
@@ -542,6 +551,9 @@ export const uz: SectionDict<typeof ru> = {
   "module.subscriptions.title": "Obuna tovarlari",
   "module.subscriptions.desc":
     "Oyiga bir marta yoki boshqa muddatda obuna tovari: bot uzaytirishni oʻzi eslatadi, uzaytirish — ikki bosishda.",
+  "module.public_api.title": "Dasturchilar uchun API",
+  "module.public_api.desc":
+    "Buyurtmalar va tovarlar — hisob tizimingizga (1C, MoySklad, jadvallar): buyurtmalarni oʻqish, katalogni yuklab olish, qoldiq va narxlarni yangilash.",
   "module.kaspi_pay.title": "Kaspi Pay orqali toʻlov",
   "module.kaspi_pay.desc":
     "Kaspi.kz orqali QR yoki havola boʻyicha toʻlov; buyurtma avtomatik tasdiqlanadi va beriladi.",

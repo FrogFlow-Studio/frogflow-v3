@@ -390,6 +390,14 @@ export const MODULES = {
     status: "available",
     note: "core/crm/webhook: POST JSON на https-адрес продавца с подписью HMAC, доставка через outbox с повторами; настройка и тестовое событие — карточка в настройках.",
   },
+  public_api: {
+    title: "API для разработчиков",
+    desc: "Заказы и товары — в вашу учётную систему (1С, МойСклад, таблицы): чтение заказов, выгрузка каталога, обновление остатков и цен.",
+    group: "Аналитика",
+    price: 15000,
+    status: "available",
+    note: "REST /api/v1 по ключу магазина (Bearer ffk_<bot_id>_<секрет>, в базе только SHA-256): GET orders, GET orders/<id>, GET products, PATCH products/<id> (stock, price, active). Ключ создаёт владелец в «Настройках» (core/api/public-api). События заказов наружу — модуль crm_integration.",
+  },
   multi_bot: {
     title: "Управление несколькими ботами",
     desc: "Несколько ботов и магазинов под одним входом в панель.",
