@@ -34,6 +34,37 @@ function dropSentences(text: string, drop: (sentence: string) => boolean): strin
     .trim();
 }
 
+/**
+ * Матрасы средней жёсткости сняты с производства — продавец просил не
+ * упоминать их вовсе. Из прайса и поиска они убраны (catalog.ts), но те же
+ * линейки описаны в статьях базы знаний, и модель может назвать MEDIUM, ничего
+ * не искав. Вырезается предложение, где такой матрас предлагается; честный
+ * отказ («матрасов средней жёсткости сейчас нет») остаётся (v1 validate.ts).
+ */
+const MATTRESS_WORD_RE = /(?<![а-яё])матрас|mattress/i;
+/** Линейки матрасов магазина: слово «матрас» модель часто опускает. Топперы — не матрасы. */
+const MATTRESS_LINE_RE =
+  /(?<![a-zа-яё])(?:former|levant|tresor|sfera|epic|frankenstolz)(?![a-zа-яё])/i;
+// \w в JavaScript — только латиница: окончания перечислены кириллическим классом.
+const MEDIUM_HARDNESS_RE =
+  /(?<![a-zа-яё])medium(?![a-zа-яё])|средн[а-яё]*\s+(?:по\s+)?(?:жёстк|жестк)[а-яё]*|(?:жёстк|жестк)[а-яё]*\s+средн[а-яё]*/i;
+const HARDNESS_DENIAL_RE =
+  /(?<![а-яё])нет(?![а-яё])|не\s+прода|сн[ня]т[а-яё]*\s+с\s+производств|не\s+выпуска|закончил|не\s+остал|больше\s+не|отсутству/i;
+
+export function offersDiscontinuedMattress(sentence: string): boolean {
+  if (!MATTRESS_WORD_RE.test(sentence) && !MATTRESS_LINE_RE.test(sentence)) return false;
+  if (!MEDIUM_HARDNESS_RE.test(sentence)) return false;
+  return !HARDNESS_DENIAL_RE.test(sentence);
+}
+
+/** Ответ на случай, когда от текста после вырезания ничего не осталось. */
+export const DISCONTINUED_MEDIUM_MATTRESS_REPLY =
+  "Матрасов средней жёсткости сейчас нет — эту линейку сняли с производства. Есть комфортные (Soft) и упругие (Firm), показать варианты?";
+
+export function cleanDiscontinuedMattressOffers(text: string): string {
+  return dropSentences(text, offersDiscontinuedMattress);
+}
+
 /** Очистка markdown-разметки (*, **, #), которую Instagram Direct не показывает. */
 export function stripMarkdownFormatting(text: string): string {
   if (!text) return "";
@@ -114,6 +145,11 @@ export function stripLeadingAcknowledgement(text: string): string {
 export function finalizePricelistText(raw: string, catalog: ConsultantProduct[]): string {
   let text = cleanScriptHallucinations(raw ?? "");
   text = cleanInstructionEcho(text);
+  // Снятый матрас — вырезать; ничего не осталось — честный отказ.
+  if (text.trim())
+    text = cleanDiscontinuedMattressOffers(text) || DISCONTINUED_MEDIUM_MATTRESS_REPLY;
+  // «В каталоге не указан состав» — покупателю не объясняют устройство базы.
+  text = cleanCatalogExcuses(text);
   text = fixBrandSpelling(text, brandVocabulary(catalog));
   text = stripLeadingAcknowledgement(text);
   return humanizePunctuation(stripExclamationsAndEmoji(stripMarkdownFormatting(text))).trim();

@@ -112,4 +112,14 @@ describe("журнал ответов консультанта", () => {
     ).tables.consultant_message_runs![0]!.received_at = new Date().toISOString();
     expect((await loadConsultantUsage(ctx)).messages).toBe(1);
   });
+
+  it("пустой журнал не делит на ноль", () => {
+    expect(summarizeConsultantRuns([])).toEqual({
+      days: [],
+      messages: 0,
+      usd: 0,
+      usdPerMessage: 0,
+      cacheReadShare: 0,
+    });
+  });
 });
