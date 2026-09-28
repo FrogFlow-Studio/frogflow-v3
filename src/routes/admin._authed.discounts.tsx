@@ -75,6 +75,7 @@ function PromoCard({ promos }: { promos: Promo[] }) {
         maxUses: mu ? Number(mu) : null,
         validUntil: vu || null,
         isActive: f.get("isActive") === "on",
+        oncePerBuyer: f.get("oncePerBuyer") === "on",
       },
     });
     setEditing(null);
@@ -118,6 +119,7 @@ function PromoCard({ promos }: { promos: Promo[] }) {
                     {p.code} {!p.is_active && <Badge>{t("discounts.promo.off")}</Badge>}
                     {expired && <Badge tone="warn">{t("discounts.promo.expired")}</Badge>}
                     {exhausted && <Badge tone="warn">{t("discounts.promo.exhausted")}</Badge>}
+                    {p.once_per_buyer && <Badge>{t("discounts.promo.onceBadge")}</Badge>}
                   </td>
                   <td>
                     {p.discount_type === "percent"
@@ -213,6 +215,14 @@ function PromoCard({ promos }: { promos: Promo[] }) {
             <label className="flex items-center gap-2 self-end pb-2 text-sm">
               <input type="checkbox" name="isActive" defaultChecked={cur?.is_active ?? true} />{" "}
               {t("discounts.promo.active")}
+            </label>
+            <label className="flex items-center gap-2 self-end pb-2 text-sm">
+              <input
+                type="checkbox"
+                name="oncePerBuyer"
+                defaultChecked={cur?.once_per_buyer ?? false}
+              />{" "}
+              {t("discounts.promo.oncePerBuyer")}
             </label>
           </div>
           <ErrorBox error={save.error} />

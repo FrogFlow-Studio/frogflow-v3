@@ -427,10 +427,10 @@ async function handleMessage(
   }
   if (customer.state.mode === "awaiting_promo_code" && text && !action) {
     const idle = { ...customer.state, mode: "idle" as const };
-    const found = await findValidPromoCode(ctx, text);
+    const found = await findValidPromoCode(ctx, text, customer);
     if (!found.ok) {
       b.customer = await setState(ctx, customer, idle);
-      await send(b, b.m.promoCodeInvalid);
+      await send(b, found.reason === "used_by_buyer" ? b.m.promoCodeUsed : b.m.promoCodeInvalid);
     } else {
       b.customer = await setState(ctx, customer, { ...idle, promo_code: normalizeCode(text) });
     }
@@ -1210,10 +1210,14 @@ async function finishCheckout(b: Bot, countryCode: string) {
       case "country_unavailable":
         await send(b, b.m.countryNoLongerAvailable);
         return askCountry(b, true);
-      case "promo_invalid": {
+      case "promo_invalid":
+      case "promo_used": {
         const { promo_code: _pc, ...rest } = st;
         b.customer = await setState(b.ctx, b.customer, rest);
-        return void (await send(b, b.m.promoCodeInvalid));
+        return void (await send(
+          b,
+          result.reason === "promo_used" ? b.m.promoCodeUsed : b.m.promoCodeInvalid,
+        ));
       }
       case "discount_fx":
         return void (await send(b, b.m.discountFx));

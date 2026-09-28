@@ -72,6 +72,7 @@ export type Msg = {
   removePromoBtn: string;
   promoCodePrompt: string;
   promoCodeInvalid: string;
+  promoCodeUsed: string;
   discountFx: string;
   mixedCurrency: string;
   promoCodeRemoved: string;
@@ -376,6 +377,8 @@ const ru: Msg = {
   removePromoBtn: "❌ Убрать промокод",
   promoCodePrompt: "Введите промокод:",
   promoCodeInvalid: "⚠️ Промокод недействителен или больше не работает.",
+  promoCodeUsed:
+    "⚠️ Этот промокод можно использовать только один раз — вы уже применили его в заказе.",
   discountFx:
     "⚠️ Скидку сейчас не пересчитать в валюту заказа: курс валют недоступен. Попробуйте чуть позже или оформите без скидки.",
   mixedCurrency: "В корзине товары в разных валютах — оформите их отдельными заказами.",
@@ -663,6 +666,8 @@ const kk: Msg = {
   promoCodeBtn: "🎟 Промокод енгізу",
   removePromoBtn: "❌ Промокодты алып тастау",
   promoCodeInvalid: "⚠️ Промокод жарамсыз немесе енді жұмыс істемейді.",
+  promoCodeUsed:
+    "⚠️ Бұл промокодты бір рет қана қолдануға болады — сіз оны тапсырыста қолдандыңыз.",
   discountFx:
     "⚠️ Жеңілдікті қазір тапсырыс валютасына аудару мүмкін емес: валюта бағамы қолжетімсіз. Сәл кейінірек көріңіз немесе жеңілдіксіз рәсімдеңіз.",
   mixedCurrency:
@@ -836,6 +841,8 @@ const en: Msg = {
   removePromoBtn: "❌ Remove promo code",
   promoCodePrompt: "Enter your promo code:",
   promoCodeInvalid: "⚠️ This promo code is invalid or no longer works.",
+  promoCodeUsed:
+    "⚠️ This promo code can be used only once, and you have already used it in an order.",
   discountFx:
     "⚠️ The discount can't be converted to the order currency right now: exchange rates are unavailable. Try again a bit later or order without the discount.",
   mixedCurrency: "Your cart has items in different currencies — please order them separately.",
@@ -1006,6 +1013,8 @@ const uz: Msg = {
   promoCodeBtn: "🎟 Promokod kiritish",
   removePromoBtn: "❌ Promokodni olib tashlash",
   promoCodeInvalid: "⚠️ Promokod amal qilmaydi yoki endi ishlamaydi.",
+  promoCodeUsed:
+    "⚠️ Bu promokodni faqat bir marta ishlatish mumkin — siz uni buyurtmada qo‘llagansiz.",
   discountFx:
     "⚠️ Chegirmani hozir buyurtma valyutasiga o‘tkazib bo‘lmaydi: valyuta kursi mavjud emas. Birozdan keyin urinib ko‘ring yoki chegirmasiz rasmiylashtiring.",
   mixedCurrency: "Savatda turli valyutadagi tovarlar bor — ularni alohida buyurtma qiling.",

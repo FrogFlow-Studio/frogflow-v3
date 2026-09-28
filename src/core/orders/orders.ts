@@ -153,6 +153,8 @@ export type PlaceOrderResult =
         | "country_unavailable"
         | "order_failed"
         | "promo_invalid"
+        /** Код «один раз на покупателя», а покупатель его уже брал. */
+        | "promo_used"
         | "gift_invalid"
         /** Скидку не перевести в валюту заказа: курса нет. */
         | "discount_fx"
@@ -204,7 +206,7 @@ export async function cartSummary(
 ): Promise<CartSummary> {
   const m = ctx.tenant.modules;
   const promoCode = m.coupons && opts.promoCode ? normalizeCode(opts.promoCode) : null;
-  const promo = promoCode ? await findValidPromoCode(ctx, promoCode) : null;
+  const promo = promoCode ? await findValidPromoCode(ctx, promoCode, customer) : null;
   const giftCode = m.gift_certificates && opts.giftCode ? normalizeCode(opts.giftCode) : null;
   const gift = giftCode ? await findValidGift(ctx, giftCode) : null;
   const balance = m.loyalty ? await loyaltyBalance(ctx, customer.telegramId) : 0;
@@ -313,8 +315,11 @@ export async function placeOrder(
     let promoCode: string | null = null;
     let discountAmount = 0;
     if (m.coupons && opts.promoCode) {
-      const r = await redeemPromoCode(ctx, opts.promoCode, total, priced.currency);
-      if (!r.ok) return await fail(r.reason === "fx" ? "discount_fx" : "promo_invalid");
+      const r = await redeemPromoCode(ctx, opts.promoCode, total, priced.currency, customer);
+      if (!r.ok)
+        return await fail(
+          r.reason === "fx" ? "discount_fx" : r.reason === "used" ? "promo_used" : "promo_invalid",
+        );
       promoCode = normalizeCode(opts.promoCode);
       discountAmount = r.discount;
       redemptions.promo = { id: r.promoId, previousUsedCount: r.previousUsedCount };

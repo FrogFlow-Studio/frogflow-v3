@@ -2,6 +2,7 @@ import { env } from "@/config/env";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { shownError } from "@/lib/shown-error";
+import { serverFailure } from "@/lib/server-failure";
 import { MODULE_KEYS } from "@/core/modules/registry";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
@@ -1477,7 +1478,9 @@ export const connectTelegramAdminFn = createServerFn({ method: "POST" })
 export const promoCodesFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await admin();
   const { listPromoCodes } = await import("@/core/discounts/lists");
-  return listPromoCodes(ctx);
+  const { promoOnceIds } = await import("@/core/discounts/promo-once");
+  const [list, once] = await Promise.all([listPromoCodes(ctx), promoOnceIds(ctx)]);
+  return list.map((p) => ({ ...p, once_per_buyer: once.has(p.id) }));
 });
 
 export const savePromoCodeFn = createServerFn({ method: "POST" })
@@ -1491,6 +1494,7 @@ export const savePromoCodeFn = createServerFn({ method: "POST" })
         maxUses: z.number().int().positive().nullable(),
         validUntil: z.string().nullable(),
         isActive: z.boolean(),
+        oncePerBuyer: z.boolean().optional(),
       })
       .parse(d),
   )
@@ -1509,13 +1513,23 @@ export const savePromoCodeFn = createServerFn({ method: "POST" })
       is_active: data.isActive,
     };
     const q = data.id
-      ? ctx.db.from("promo_codes").update(row).eq("id", data.id)
-      : ctx.db.from("promo_codes").insert({ bot_id: ctx.tenant.id, ...row });
-    const { error } = await q;
+      ? ctx.db.from("promo_codes").update(row).eq("id", data.id).select("id").maybeSingle()
+      : ctx.db
+          .from("promo_codes")
+          .insert({ bot_id: ctx.tenant.id, ...row })
+          .select("id")
+          .maybeSingle();
+    const { data: saved, error } = await q;
     if (error)
       throw /duplicate|unique/i.test(error.message)
         ? new UserError("err.admin.codeTaken", "Такой код уже есть.")
         : new Error(error.message);
+    // «Один раз на покупателя» — список id в app_settings (схема не меняется).
+    if (saved && data.oncePerBuyer !== undefined) {
+      const { setPromoOnce } = await import("@/core/discounts/promo-once");
+      if (!(await setPromoOnce(ctx, saved.id, data.oncePerBuyer)))
+        throw serverFailure(`[promo] флаг «один раз на покупателя» для ${saved.id} не записан`);
+    }
     return { ok: true };
   });
 
@@ -1525,6 +1539,8 @@ export const deletePromoCodeFn = createServerFn({ method: "POST" })
     const ctx = await adminWrite();
     const { error } = await ctx.db.from("promo_codes").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
+    const { setPromoOnce } = await import("@/core/discounts/promo-once");
+    await setPromoOnce(ctx, data.id, false);
     return { ok: true };
   });
 

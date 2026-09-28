@@ -2,6 +2,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { getSetting } from "@/core/settings/settings";
 import { convertForReceipt, convertForTenant } from "@/core/pricing/pricing";
+import { buyerUsedPromo, promoOnceIds, type PromoBuyer } from "./promo-once";
 import {
   computePointsDiscount,
   computePointsEarned,
@@ -22,9 +23,21 @@ export type PromoLookup =
         discount_value: number;
       };
     }
-  | { ok: false; reason: "not_found" | "inactive" | "expired" | "exhausted" };
+  | {
+      ok: false;
+      reason: "not_found" | "inactive" | "expired" | "exhausted" | "used_by_buyer";
+    };
 
-export async function findValidPromoCode(ctx: TenantContext, raw: string): Promise<PromoLookup> {
+/**
+ * buyer — кто применяет код: для кода «один раз на покупателя» проверяется,
+ * не брал ли он его уже (core/discounts/promo-once). Без buyer (превью
+ * продавца) это правило не проверяется.
+ */
+export async function findValidPromoCode(
+  ctx: TenantContext,
+  raw: string,
+  buyer?: PromoBuyer,
+): Promise<PromoLookup> {
   const { data: p } = await ctx.db
     .from("promo_codes")
     .select("id, used_count, discount_type, discount_value, max_uses, valid_until, is_active")
@@ -35,6 +48,12 @@ export async function findValidPromoCode(ctx: TenantContext, raw: string): Promi
   if (p.valid_until && new Date(p.valid_until).getTime() < Date.now())
     return { ok: false, reason: "expired" };
   if (p.max_uses !== null && p.used_count >= p.max_uses) return { ok: false, reason: "exhausted" };
+  if (
+    buyer &&
+    (await promoOnceIds(ctx)).has(p.id) &&
+    (await buyerUsedPromo(ctx, normalizeCode(raw), buyer))
+  )
+    return { ok: false, reason: "used_by_buyer" };
   return {
     ok: true,
     promo: {
@@ -114,9 +133,14 @@ export async function redeemPromoCode(
   raw: string,
   subtotal: number,
   orderCurrency?: string,
+  buyer?: PromoBuyer,
 ) {
-  const found = await findValidPromoCode(ctx, raw);
-  if (!found.ok) return { ok: false as const, reason: "invalid" as const };
+  const found = await findValidPromoCode(ctx, raw, buyer);
+  if (!found.ok)
+    return {
+      ok: false as const,
+      reason: found.reason === "used_by_buyer" ? ("used" as const) : ("invalid" as const),
+    };
   const promo = await promoInOrderCurrency(ctx, found.promo, orderCurrency);
   if (!promo) return { ok: false as const, reason: "fx" as const };
   const discount = computePromoDiscount(subtotal, promo);

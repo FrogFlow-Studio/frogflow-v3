@@ -193,6 +193,8 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
           throw shownError(t("checkout.error.outOfStock"));
         case "promo_invalid":
           throw shownError(t("checkout.error.promo"));
+        case "promo_used":
+          throw shownError(t("checkout.error.promoUsed"));
         case "gift_invalid":
           throw shownError(t("checkout.error.gift"));
         case "discount_fx":

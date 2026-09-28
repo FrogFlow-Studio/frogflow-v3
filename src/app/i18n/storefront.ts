@@ -146,6 +146,8 @@ const ru = {
   "checkout.promo": "Промокод",
   "checkout.gift": "Подарочный сертификат",
   "checkout.error.promo": "Промокод не подошёл: проверьте его или оформите без него.",
+  "checkout.error.promoUsed":
+    "Этот промокод действует один раз на покупателя, и вы его уже использовали.",
   "checkout.error.gift": "Сертификат не подошёл: проверьте код или оформите без него.",
   "checkout.error.discountFx":
     "Скидку сейчас не пересчитать в валюту заказа: курс валют недоступен. Попробуйте чуть позже или оформите без скидки.",
@@ -403,6 +405,8 @@ const kk: Dict = {
   "checkout.promo": "Промокод",
   "checkout.gift": "Сыйлық сертификаты",
   "checkout.error.promo": "Промокод жарамады: тексеріңіз немесе онсыз рәсімдеңіз.",
+  "checkout.error.promoUsed":
+    "Бұл промокод бір сатып алушыға бір рет қана жарамды, сіз оны қолдандыңыз.",
   "checkout.error.gift": "Сертификат жарамады: кодты тексеріңіз немесе онсыз рәсімдеңіз.",
   "checkout.error.discountFx":
     "Жеңілдікті қазір тапсырыс валютасына аудару мүмкін емес: валюта бағамы қолжетімсіз. Сәл кейінірек көріңіз немесе жеңілдіксіз рәсімдеңіз.",
@@ -650,6 +654,7 @@ const en: Dict = {
   "checkout.promo": "Promo code",
   "checkout.gift": "Gift certificate",
   "checkout.error.promo": "The promo code didn't work: check it or order without it.",
+  "checkout.error.promoUsed": "This promo code is once per customer, and you have already used it.",
   "checkout.error.gift": "The certificate didn't work: check the code or order without it.",
   "checkout.error.discountFx":
     "The discount can't be converted to the order currency right now: exchange rates are unavailable. Try again a bit later or order without the discount.",
@@ -898,6 +903,8 @@ const uz: Dict = {
   "checkout.promo": "Promokod",
   "checkout.gift": "Sovg'a sertifikati",
   "checkout.error.promo": "Promokod mos kelmadi: tekshiring yoki usiz rasmiylashtiring.",
+  "checkout.error.promoUsed":
+    "Bu promokod har bir xaridor uchun bir marta amal qiladi, siz uni allaqachon ishlatgansiz.",
   "checkout.error.gift": "Sertifikat mos kelmadi: kodni tekshiring yoki usiz rasmiylashtiring.",
   "checkout.error.discountFx":
     "Chegirmani hozir buyurtma valyutasiga o‘tkazib bo‘lmaydi: valyuta kursi mavjud emas. Birozdan keyin urinib ko‘ring yoki chegirmasiz rasmiylashtiring.",

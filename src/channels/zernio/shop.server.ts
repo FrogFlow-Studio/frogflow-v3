@@ -1494,10 +1494,14 @@ async function finishCheckout(s: Shop, countryCode: string) {
       case "country_unavailable":
         await reply(s, s.m.countryNoLongerAvailable, { force: true });
         return askCountry(s, true);
-      case "promo_invalid": {
+      case "promo_invalid":
+      case "promo_used": {
         const { promo_code: _pc, ...rest } = st;
         s.customer = await setState(s.ctx, s.customer, rest);
-        return void (await reply(s, s.m.promoCodeInvalid));
+        return void (await reply(
+          s,
+          result.reason === "promo_used" ? s.m.promoCodeUsed : s.m.promoCodeInvalid,
+        ));
       }
       case "discount_fx":
         return void (await reply(s, s.m.discountFx));
