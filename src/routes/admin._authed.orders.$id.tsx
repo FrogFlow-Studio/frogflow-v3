@@ -133,6 +133,11 @@ function OrderPage() {
               {t("order.remind")}
             </button>
           )}
+          {o.fulfillment_kind === "physical" && (
+            <a href={`/admin/print/${o.id}`} target="_blank" rel="noreferrer" className="btn-ghost">
+              {t("print.button")}
+            </a>
+          )}
           {pageUrl && (
             <button
               className="btn-ghost"

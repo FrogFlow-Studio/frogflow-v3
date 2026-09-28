@@ -48,6 +48,7 @@ import { Route as AdminAuthedSettingsRouteImport } from './routes/admin._authed.
 import { Route as AdminAuthedTicketsRouteImport } from './routes/admin._authed.tickets'
 import { Route as AdminAuthedUndeliveredRouteImport } from './routes/admin._authed.undelivered'
 import { Route as AdminAuthedVipRouteImport } from './routes/admin._authed.vip'
+import { Route as AdminPrintIdRouteImport } from './routes/admin.print.$id'
 import { Route as ApiAdminUploadRouteImport } from './routes/api/admin/upload'
 import { Route as ApiCronJobRouteImport } from './routes/api/cron.$job'
 import { Route as ApiNowpaymentsBotIdRouteImport } from './routes/api/nowpayments.$botId'
@@ -278,6 +279,11 @@ const AdminAuthedVipRoute = AdminAuthedVipRouteImport.update({
   path: '/vip',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
+const AdminPrintIdRoute = AdminPrintIdRouteImport.update({
+  id: '/print/$id',
+  path: '/print/$id',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ApiAdminUploadRoute = ApiAdminUploadRouteImport.update({
   id: '/api/admin/upload',
   path: '/api/admin/upload',
@@ -499,6 +505,7 @@ export interface FileRoutesByFullPath {
   '/admin/tickets': typeof AdminAuthedTicketsRoute
   '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/vip': typeof AdminAuthedVipRoute
+  '/admin/print/$id': typeof AdminPrintIdRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
@@ -573,6 +580,7 @@ export interface FileRoutesByTo {
   '/admin/tickets': typeof AdminAuthedTicketsRoute
   '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/vip': typeof AdminAuthedVipRoute
+  '/admin/print/$id': typeof AdminPrintIdRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
@@ -649,6 +657,7 @@ export interface FileRoutesById {
   '/admin/_authed/tickets': typeof AdminAuthedTicketsRoute
   '/admin/_authed/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/_authed/vip': typeof AdminAuthedVipRoute
+  '/admin/print/$id': typeof AdminPrintIdRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
@@ -726,6 +735,7 @@ export interface FileRouteTypes {
     | '/admin/tickets'
     | '/admin/undelivered'
     | '/admin/vip'
+    | '/admin/print/$id'
     | '/api/admin/upload'
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
@@ -800,6 +810,7 @@ export interface FileRouteTypes {
     | '/admin/tickets'
     | '/admin/undelivered'
     | '/admin/vip'
+    | '/admin/print/$id'
     | '/api/admin/upload'
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
@@ -875,6 +886,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/tickets'
     | '/admin/_authed/undelivered'
     | '/admin/_authed/vip'
+    | '/admin/print/$id'
     | '/api/admin/upload'
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
@@ -1215,6 +1227,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedVipRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/print/$id': {
+      id: '/admin/print/$id'
+      path: '/print/$id'
+      fullPath: '/admin/print/$id'
+      preLoaderRoute: typeof AdminPrintIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/admin/upload': {
       id: '/api/admin/upload'
       path: '/api/admin/upload'
@@ -1547,12 +1566,14 @@ interface AdminRouteChildren {
   AdminAuthedRoute: typeof AdminAuthedRouteWithChildren
   AdminLoginRoute: typeof AdminLoginRoute
   AdminTgLoginRoute: typeof AdminTgLoginRoute
+  AdminPrintIdRoute: typeof AdminPrintIdRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAuthedRoute: AdminAuthedRouteWithChildren,
   AdminLoginRoute: AdminLoginRoute,
   AdminTgLoginRoute: AdminTgLoginRoute,
+  AdminPrintIdRoute: AdminPrintIdRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
