@@ -126,12 +126,14 @@ export async function sourceFunnel(ctx: TenantContext, from: Date, to: Date): Pr
       for (const k of keys) acc.cartItem(k, known.get(k) ?? SOURCE_DIRECT);
     },
   );
+  const { refundsSince } = await import("@/core/orders/refund");
+  const refunds = await refundsSince(ctx, since);
   await eachPage(
     (a, b) =>
       ctx.db
         .from("orders")
         .select(
-          "platform, user_key, telegram_id, status, fulfillment_kind, total, paid_amount, currency",
+          "id, platform, user_key, telegram_id, status, fulfillment_kind, total, paid_amount, currency",
         )
         .gte("created_at", since)
         .lt("created_at", until)
@@ -142,7 +144,11 @@ export async function sourceFunnel(ctx: TenantContext, from: Date, to: Date): Pr
     async (rows) => {
       await resolve(rows.map((o) => buyerKey(o.user_key, o.telegram_id)));
       for (const o of rows)
-        acc.order(o, known.get(buyerKey(o.user_key, o.telegram_id)) ?? SOURCE_DIRECT);
+        acc.order(
+          o,
+          known.get(buyerKey(o.user_key, o.telegram_id)) ?? SOURCE_DIRECT,
+          refunds.get(o.id),
+        );
     },
   );
   return acc.rows();

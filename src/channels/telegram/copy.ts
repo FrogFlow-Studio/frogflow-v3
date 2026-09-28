@@ -458,6 +458,7 @@ const ru: Msg = {
     delivered: "выдан",
     rejected: "отклонён",
     cancelled: "отменён",
+    refunded: "деньги возвращены",
     accepted: "принят",
     in_production: "готовится",
     ready: "готов",

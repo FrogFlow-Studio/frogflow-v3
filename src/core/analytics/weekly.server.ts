@@ -30,6 +30,8 @@ export async function weeklyStats(ctx: TenantContext, w: WeekWindow): Promise<We
   const prev = new Map<string, Money>();
   const blank = (): Money => ({ revenue: 0, orders: 0, ids: [], scale: new Map() });
   const fromIso = w.from.toISOString();
+  const { netOfRefunds, refundsSince } = await import("@/core/orders/refund");
+  const refunds = await refundsSince(ctx, w.prevFrom.toISOString());
   await eachPage(
     (a, b) =>
       ctx.db
@@ -48,7 +50,7 @@ export async function weeklyStats(ctx: TenantContext, w: WeekWindow): Promise<We
         const c = o.currency || "—";
         const m = map.get(c) ?? blank();
         map.set(c, m);
-        const revenue = analyticsRevenue(o);
+        const revenue = netOfRefunds(analyticsRevenue(o), refunds.get(o.id));
         m.revenue += revenue;
         m.orders += 1;
         m.ids.push(o.id);

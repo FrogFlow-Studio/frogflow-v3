@@ -34,7 +34,8 @@ export type OrderEventKind =
   | "balance_closed"
   | "balance_credited"
   | "balance_link"
-  | "balance_proof_rejected";
+  | "balance_proof_rejected"
+  | "refund";
 
 export type OrderEvent = {
   id: string;
@@ -216,6 +217,19 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       };
     case "rejected":
       return { text: `Заказ отклонён${who}`, tone: "danger" };
+    case "refund": {
+      const extra = [
+        p.reason ? `: ${str(p.reason)}` : "",
+        p.pointsReturned ? ` · баллы ${num(p.pointsReturned)} возвращены` : "",
+        p.pointsRevoked ? ` · начисленные ${num(p.pointsRevoked)} сняты` : "",
+        p.promoReturned || p.giftReturned ? " · коды возвращены" : "",
+        p.restocked ? " · товар на склад" : "",
+      ].join("");
+      return {
+        text: `${p.full ? "Возврат" : "Частичный возврат"} ${num(p.amount)}${p.currency ? ` ${str(p.currency)}` : ""}${who}${extra}`,
+        tone: "warn",
+      };
+    }
     case "reminded":
       return p.channel === "email"
         ? { text: `Напоминание об оплате — письмом на ${str(p.to)}`, tone: "neutral" }

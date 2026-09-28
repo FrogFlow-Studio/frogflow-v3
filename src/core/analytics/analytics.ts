@@ -90,6 +90,9 @@ export async function analytics(ctx: TenantContext, days: number): Promise<Analy
   const buyers = { cur: new Set<number>(), prev: new Set<number>() };
   const byStatus = new Map<string, number>();
   const customers = { cur: 0, prev: 0, byDay: new Map<string, number>() };
+  // Возвраты (core/orders/refund) уменьшают выручку заказа.
+  const { netOfRefunds, refundsSince } = await import("@/core/orders/refund");
+  const refunds = await refundsSince(ctx, since);
 
   await Promise.all([
     eachPage(
@@ -110,7 +113,7 @@ export async function analytics(ctx: TenantContext, days: number): Promise<Analy
           const inCurrent = day >= firstDay;
           if (inCurrent) byStatus.set(o.status, (byStatus.get(o.status) ?? 0) + 1);
           if (!includeOrderInAnalytics(o)) continue;
-          const revenue = analyticsRevenue(o);
+          const revenue = netOfRefunds(analyticsRevenue(o), refunds.get(o.id));
           // Покупатель — в любой валюте; деньги и число заказов — по своей валюте.
           (inCurrent ? buyers.cur : buyers.prev).add(Number(o.telegram_id));
           const cur = o.currency || "—";

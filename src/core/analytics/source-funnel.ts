@@ -106,6 +106,8 @@ export class SourceFunnelAcc {
       currency: string | null;
     },
     source: string,
+    /** Возвращено по заказу (core/orders/refund) — вычитается из выручки. */
+    refunded = 0,
   ) {
     const key = buyerKey(o.user_key, o.telegram_id);
     if (!funnelChannel(o.platform, key)) return;
@@ -115,7 +117,7 @@ export class SourceFunnelAcc {
     if (includeOrderInAnalytics(o)) {
       a.paid.add(key);
       const cur = o.currency || "—";
-      a.revenue[cur] = (a.revenue[cur] ?? 0) + analyticsRevenue(o);
+      a.revenue[cur] = (a.revenue[cur] ?? 0) + Math.max(0, analyticsRevenue(o) - refunded);
     }
   }
 

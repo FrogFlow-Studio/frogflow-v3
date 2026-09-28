@@ -351,6 +351,19 @@ export async function restorePoints(
   if (points > 0) await adjustPoints(ctx, telegramId, points);
 }
 
+/**
+ * Снять начисленное за заказ, по которому оформлен полный возврат. Баланса
+ * не хватает (баллы уже потрачены) — не снимаем ничего: false, продавец
+ * видит это в таймлайне заказа.
+ */
+export async function revokePoints(
+  ctx: TenantContext,
+  telegramId: number,
+  points: number,
+): Promise<boolean> {
+  return points > 0 ? adjustPoints(ctx, telegramId, -points) : false;
+}
+
 /** Начисление за выданный заказ, идемпотентно через orders.points_earned (CAS 0 → N). */
 export async function awardPointsForOrder(
   ctx: TenantContext,

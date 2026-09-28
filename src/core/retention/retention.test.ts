@@ -126,13 +126,30 @@ describe("ретеншн zernio_logs", () => {
         status: "closed",
         created_at: daysAgo(400),
       },
+      {
+        id: "refund",
+        bot_id: "b",
+        event_id: "order:7:refund:x",
+        event_type: "order.refund",
+        status: "event",
+        created_at: daysAgo(400),
+      },
+      {
+        id: "old-order-event",
+        bot_id: "b",
+        event_id: "order:7:placed:x",
+        event_type: "order.placed",
+        status: "event",
+        created_at: daysAgo(400),
+      },
     ];
-    expect(await pruneZernioLogs(NOW)).toEqual({ deleted: 1, done: true });
+    expect(await pruneZernioLogs(NOW)).toEqual({ deleted: 2, done: true });
     expect(db.tables.zernio_logs.map((r) => r.id)).toEqual([
       "t-open",
       "t-wait",
       "t-old",
       "t-closed",
+      "refund",
     ]);
   });
 

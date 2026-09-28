@@ -690,8 +690,30 @@ export const orderFn = createServerFn({ method: "GET" })
     // Ссылка на страницу заказа — отправить покупателю, когда канал не донёс выдачу.
     const { orderPageUrl, viewsOrderPage } = await import("@/core/storefront/web-order");
     const pageUrl = viewsOrderPage(order) ? await orderPageUrl(ctx, order.id) : null;
+    // Возвраты — события таймлайна (core/orders/refund): сколько вернули и сколько ещё можно.
+    const { receivedAmount, REFUNDABLE_STATUSES } = await import("@/core/orders/refund");
+    const refunded =
+      Math.round(
+        events
+          .filter((e) => e.kind === "refund")
+          .reduce((s, e) => s + (Number(e.payload.amount) || 0), 0) * 100,
+      ) / 100;
+    const refundable = (REFUNDABLE_STATUSES as readonly string[]).includes(order.status)
+      ? Math.max(0, Math.round((receivedAmount(order) - refunded) * 100) / 100)
+      : 0;
     if (!accountant)
-      return { order, proofUrl, balanceProofUrl, balancePending, events, zones, dueNow, pageUrl };
+      return {
+        order,
+        proofUrl,
+        balanceProofUrl,
+        balancePending,
+        events,
+        zones,
+        dueNow,
+        pageUrl,
+        refunded,
+        refundable,
+      };
     // Бухгалтеру: без контактов; журнал — только события и время, без текста.
     const { redactOrder, redactEventPayload } = await import("@/core/orders/redact");
     return {
@@ -703,6 +725,8 @@ export const orderFn = createServerFn({ method: "GET" })
       zones,
       dueNow,
       pageUrl: null,
+      refunded,
+      refundable,
     };
   });
 
@@ -821,6 +845,25 @@ export const recordPaymentFn = createServerFn({ method: "POST" })
     const ctx = await adminWrite();
     const { recordManualPayment } = await import("@/core/orders/physical-admin");
     return recordManualPayment(ctx, data.id, data.amount, await actor());
+  });
+
+/** Возврат денег по заказу: полный или частичный (core/orders/refund), покупателю — сообщение. */
+export const refundOrderFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        id: z.number().int(),
+        amount: z.number().positive(),
+        reason: z.string().max(500).nullable().optional(),
+        restock: z.boolean().optional(),
+        notify: z.boolean().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { refundAndNotify } = await import("./admin.server");
+    return refundAndNotify(ctx, data.id, data, await actor());
   });
 
 /** «Отклонить чек на остаток»: покупатель снова может доплатить (core/orders/balance). */

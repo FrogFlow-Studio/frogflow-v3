@@ -43,6 +43,7 @@ const STATUS_TONE: Record<string, "neutral" | "ok" | "warn" | "danger" | "accent
   ready: "warn",
   rejected: "danger",
   cancelled: "danger",
+  refunded: "danger",
 };
 
 const STATUS_KEYS = [
@@ -56,6 +57,7 @@ const STATUS_KEYS = [
   "ready",
   "rejected",
   "cancelled",
+  "refunded",
 ] as const;
 
 export function OrderStatus({ status }: { status: string }) {
@@ -159,6 +161,7 @@ function OrdersPage() {
         "ready",
         "delivered",
         "rejected",
+        "refunded",
       ] as const
     ).map((k): [string, string] => [k, t(`orders.tab.${k}` as AdminKey)]),
   ];

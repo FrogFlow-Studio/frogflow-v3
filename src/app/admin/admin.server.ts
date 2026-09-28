@@ -181,6 +181,36 @@ function platformName(platform: string): string {
   );
 }
 
+/**
+ * Возврат из карточки заказа: запись возврата (core/orders/refund) и, если
+ * продавец не снял галочку, сообщение покупателю в его канал — сумма и
+ * причина. Недоставленное сообщение возврат не отменяет.
+ */
+export async function refundAndNotify(
+  ctx: TenantContext,
+  id: number,
+  input: { amount: number; reason?: string | null; restock?: boolean; notify?: boolean },
+  actor = "admin",
+): Promise<{ ok: true; message: string; notified: boolean }> {
+  const t = await adminTFor(ctx);
+  const { refundOrder } = await import("@/core/orders/refund");
+  const r = await refundOrder(ctx, id, input, actor);
+  const order = await getOrder(ctx, id);
+  const no = order ? displayNo(order) : id;
+  const sum = `${r.amount} ${r.currency}`;
+  let notified = false;
+  if (order && input.notify !== false) {
+    const reason = input.reason?.trim();
+    const text = `↩️ По заказу #${no} оформлен ${r.full ? "возврат" : "частичный возврат"}: ${sum}.${reason ? `\n${reason}` : ""}`;
+    notified = await notifyCustomer(ctx, order, text).catch(() => false);
+  }
+  return {
+    ok: true,
+    notified,
+    message: t(r.full ? "msg.refund.full" : "msg.refund.partial", { no, sum }),
+  };
+}
+
 export async function runOrderAction(
   ctx: TenantContext,
   id: number,

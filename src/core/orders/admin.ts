@@ -111,6 +111,7 @@ export async function orderCounts(ctx: TenantContext): Promise<OrderCounts> {
     "in_production",
     "ready",
     "rejected",
+    "refunded",
   ];
   const out: OrderCounts = {};
   await Promise.all([
@@ -140,9 +141,11 @@ export async function revenue(
   const { analyticsRevenue, dominantCurrency, includeOrderInAnalytics } =
     await import("@/core/analytics/pure");
   const since = new Date(Date.now() - days * 86400_000).toISOString();
+  const { netOfRefunds, refundsSince } = await import("./refund");
+  const refunds = await refundsSince(ctx, since);
   const { data } = await ctx.db
     .from("orders")
-    .select("total, paid_amount, currency, status, fulfillment_kind")
+    .select("id, total, paid_amount, currency, status, fulfillment_kind")
     .in("status", ["delivered", "accepted", "in_production", "ready"])
     .gte("created_at", since);
   const counted = (data ?? []).filter((o) => includeOrderInAnalytics(o));
@@ -151,7 +154,7 @@ export async function revenue(
   let orders = 0;
   for (const o of counted)
     if ((o.currency || "—") === currency) {
-      total += analyticsRevenue(o);
+      total += netOfRefunds(analyticsRevenue(o), refunds.get(o.id));
       orders += 1;
     }
   return { total: Math.round(total), currency, orders };

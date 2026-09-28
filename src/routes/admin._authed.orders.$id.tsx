@@ -6,6 +6,7 @@ import {
   orderFn,
   orderNoteFn,
   recordPaymentFn,
+  refundOrderFn,
   rejectBalanceProofFn,
   updateFulfillmentFn,
 } from "@/app/admin/admin.functions";
@@ -31,6 +32,8 @@ function OrderPage() {
     zones,
     dueNow,
     pageUrl,
+    refunded,
+    refundable,
   } = Route.useLoaderData();
   const [copied, setCopied] = useState(false);
   const { shop } = Route.useRouteContext();
@@ -183,10 +186,20 @@ function OrderPage() {
                 </>
               )}
             </dl>
-            {editable && physical && !["delivered", "rejected", "cancelled"].includes(o.status) && (
-              <FulfillmentEditor order={o} zones={zones} />
-            )}
+            {editable &&
+              physical &&
+              !["delivered", "rejected", "cancelled", "refunded"].includes(o.status) && (
+                <FulfillmentEditor order={o} zones={zones} />
+              )}
           </Card>
+          {(refunded > 0 || (editable && refundable > 0)) && (
+            <RefundCard
+              order={o}
+              refunded={refunded}
+              refundable={editable ? refundable : 0}
+              onDone={setMsg}
+            />
+          )}
           {physical && (
             <PaymentCard
               order={o}
@@ -334,6 +347,115 @@ function OrderPage() {
 }
 
 type Order = Awaited<ReturnType<typeof orderFn>>["order"];
+
+/** Возврат денег: сколько вернули, форма полного или частичного возврата (core/orders/refund). */
+function RefundCard({
+  order: o,
+  refunded,
+  refundable,
+  onDone,
+}: {
+  order: Order;
+  refunded: number;
+  refundable: number;
+  onDone: (msg: string) => void;
+}) {
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState(String(refundable));
+  const [reason, setReason] = useState("");
+  const [restock, setRestock] = useState(false);
+  const [notify, setNotify] = useState(true);
+  const run = useAction(async () => {
+    const sum = Number(amount.replace(",", "."));
+    if (!confirm(t("refund.confirm", { sum: formatMoney(sum, o.currency), no: displayNo(o) })))
+      return;
+    const r = await refundOrderFn({
+      data: { id: o.id, amount: sum, reason: reason.trim() || null, restock, notify },
+    });
+    onDone(r.message);
+    setOpen(false);
+    await router.invalidate();
+  });
+  return (
+    <Card title={t("refund.title")}>
+      {refunded > 0 && (
+        <p className="mb-2 text-sm">
+          {t("refund.done", { sum: formatMoney(refunded, o.currency) })}
+        </p>
+      )}
+      {refundable > 0 && !open && (
+        <button className="btn-secondary" onClick={() => setOpen(true)}>
+          {t("refund.button")}
+        </button>
+      )}
+      {refundable > 0 && open && (
+        <form
+          className="space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void run.run().catch(() => {});
+          }}
+        >
+          <p className="text-xs text-muted">
+            {t("refund.available", { sum: formatMoney(refundable, o.currency) })}
+          </p>
+          <Field label={t("refund.amount")}>
+            <div className="flex gap-2">
+              <input
+                className="input"
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn-ghost text-xs"
+                onClick={() => setAmount(String(refundable))}
+              >
+                {t("refund.all")}
+              </button>
+            </div>
+          </Field>
+          <Field label={t("refund.reason")}>
+            <input
+              className="input"
+              maxLength={500}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </Field>
+          {shop.modules.stock && (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={restock}
+                onChange={(e) => setRestock(e.target.checked)}
+              />
+              {t("refund.restock")}
+            </label>
+          )}
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
+            {t("refund.notify")}
+          </label>
+          <p className="text-xs text-muted">{t("refund.hint")}</p>
+          <ErrorBox error={run.error} />
+          <div className="flex gap-2">
+            <button className="btn-primary" disabled={run.busy}>
+              {t("refund.submit")}
+            </button>
+            <button type="button" className="btn-ghost" onClick={() => setOpen(false)}>
+              {t("refund.cancel")}
+            </button>
+          </div>
+        </form>
+      )}
+    </Card>
+  );
+}
 type Zone = { id: string; name: string; price: number };
 
 /** Внесено / осталось по физическому заказу и ручное внесение оплаты. */

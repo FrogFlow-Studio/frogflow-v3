@@ -64,6 +64,9 @@ export function redactEventPayload(
     if (typeof p[k] === "string" && EVENT_STATUSES.has(p[k] as string)) out[k] = p[k] as string;
   if (typeof p.amount === "number" && Number.isFinite(p.amount)) out.amount = p.amount;
   if (typeof p.method === "string" && /^[a-z_]{1,24}$/.test(p.method)) out.method = p.method;
+  // Возврат: полный или частичный и валюта — для учёта, без причины.
+  if (typeof p.full === "boolean") out.full = p.full;
+  if (typeof p.currency === "string" && /^[A-Z]{3}$/.test(p.currency)) out.currency = p.currency;
   return out;
 }
 
