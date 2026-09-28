@@ -26,10 +26,12 @@ async function groupOf(ctx: TenantContext) {
 export const vipStateFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await vip();
   const core = await import("@/core/vip/vip");
-  const [settings, tariffs, subscriptions] = await Promise.all([
+  const { receiptOcrAutoEnabled } = await import("@/core/receipts/verify.server");
+  const [settings, tariffs, subscriptions, autoCheckReady] = await Promise.all([
     core.vipSettings(ctx),
     core.listTariffs(ctx),
     core.listSubscriptions(ctx, { limit: 300 }),
+    receiptOcrAutoEnabled(ctx),
   ]);
   const v = ctx.tenant.settings.vip;
   return {
@@ -39,6 +41,7 @@ export const vipStateFn = createServerFn({ method: "GET" }).handler(async () => 
       webhookOk: v?.webhook_ok === true,
     },
     settings,
+    autoCheckReady,
     tariffs,
     subscriptions: subscriptions.map((s) => ({
       id: s.id,

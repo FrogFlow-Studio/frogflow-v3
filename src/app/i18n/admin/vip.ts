@@ -40,6 +40,11 @@ export const ru = {
   "vip.settings.testMode": "Тест-режим: сроки в минутах вместо дней",
   "vip.settings.on": "Включён",
   "vip.settings.off": "Выключен",
+  "vip.settings.autoConfirm": "Автопроверка чека: сошёлся — подписка продлевается сама",
+  "vip.settings.autoConfirmHint":
+    "Чек сверяется с ценой тарифа так же, как у заказов: в той же валюте недоплата не принимается. Сомнительный чек приходит вам с кнопками.",
+  "vip.settings.autoConfirmUnavailable":
+    "Нужен модуль «Автопроверка чеков» в тарифе — сейчас он не подключён или лимит проверок месяца исчерпан.",
   "vip.settings.welcome": "Сообщение при активации",
   "vip.settings.instructions": "Реквизиты для оплаты",
   "vip.settings.instructionsHint":
@@ -154,6 +159,11 @@ export const kk: SectionDict<typeof ru> = {
   "vip.settings.testMode": "Тест режимі: мерзімдер күн орнына минутпен",
   "vip.settings.on": "Қосулы",
   "vip.settings.off": "Өшірулі",
+  "vip.settings.autoConfirm": "Чекті автотексеру: сәйкес келсе — жазылым өзі ұзартылады",
+  "vip.settings.autoConfirmHint":
+    "Чек тариф бағасымен тапсырыстардағыдай салыстырылады: сол валютада кем төлем қабылданбайды. Күмәнді чек сізге батырмалармен келеді.",
+  "vip.settings.autoConfirmUnavailable":
+    "Тарифте «Чектерді автотексеру» модулі керек — қазір ол қосылмаған немесе айлық тексеру лимиті таусылған.",
   "vip.settings.welcome": "Белсендіру кезіндегі хабарлама",
   "vip.settings.instructions": "Төлем деректемелері",
   "vip.settings.instructionsHint":
@@ -266,6 +276,12 @@ export const en: SectionDict<typeof ru> = {
   "vip.settings.testMode": "Test mode: periods in minutes instead of days",
   "vip.settings.on": "On",
   "vip.settings.off": "Off",
+  "vip.settings.autoConfirm":
+    "Automatic receipt check: if it matches, the subscription renews itself",
+  "vip.settings.autoConfirmHint":
+    "The receipt is compared with the tariff price the same way as for orders: underpayment in the same currency is not accepted. Doubtful receipts come to you with buttons.",
+  "vip.settings.autoConfirmUnavailable":
+    "Requires the “Automatic receipt check” module in the plan — it is not connected now or the monthly check limit is used up.",
   "vip.settings.welcome": "Activation message",
   "vip.settings.instructions": "Payment details",
   "vip.settings.instructionsHint":
@@ -378,6 +394,11 @@ export const uz: SectionDict<typeof ru> = {
   "vip.settings.testMode": "Test rejimi: muddatlar kun o‘rniga daqiqada",
   "vip.settings.on": "Yoqilgan",
   "vip.settings.off": "O‘chirilgan",
+  "vip.settings.autoConfirm": "Chekni avtotekshirish: mos kelsa — obuna o‘zi uzaytiriladi",
+  "vip.settings.autoConfirmHint":
+    "Chek tarif narxi bilan buyurtmalardagidek solishtiriladi: shu valyutada kam to‘lov qabul qilinmaydi. Shubhali chek sizga tugmalar bilan keladi.",
+  "vip.settings.autoConfirmUnavailable":
+    "Tarifda «Cheklarni avtotekshirish» moduli kerak — hozir u ulanmagan yoki oylik tekshiruv limiti tugagan.",
   "vip.settings.welcome": "Faollashtirishdagi xabar",
   "vip.settings.instructions": "To‘lov rekvizitlari",
   "vip.settings.instructionsHint":

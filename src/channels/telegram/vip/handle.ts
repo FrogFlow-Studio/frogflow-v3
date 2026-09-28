@@ -294,18 +294,42 @@ async function receiveProof(v: Vip, fileId: string, kind: "photo" | "document") 
 
   const file = await downloadFile(v.api, fileId);
   const saved = file ? await attachProof(v.ctx, pending.id, file) : null;
+
+  // Автопроверка (core/vip/auto-check, настройка продавца): сошлось — подписка
+  // продлена, продавцу только сведение; сомнение — кнопки с причиной.
+  let review = "";
+  if (file) {
+    const { markVipProof } = await import("@/core/vip/auto-check");
+    // Отпечаток — за этой заявкой при любом решении (и при ручном подтверждении).
+    await markVipProof(v.ctx, pending.id, file.bytes);
+  }
+  // Чек не сохранился — продавцу нечего открыть потом: решает он, по файлу в сообщении.
+  if (file && saved) {
+    const { autoCheckVipProof } = await import("@/core/vip/auto-check");
+    const auto = await autoCheckVipProof(v.ctx, vipGroupApi(v.api), pending, file).catch(
+      (e: unknown) => ({ status: "manual" as const, reason: `Сбой автопроверки: ${String(e)}` }),
+    );
+    if (auto.status === "confirmed") {
+      const head = auto.renewed
+        ? "✅ <b>VIP-подписка продлена автоматически</b>"
+        : "✅ <b>VIP-подписка оформлена автоматически</b> — участнику отправлена ссылка в группу";
+      await notifySellers(
+        v,
+        `${head}\n\n${buyerLine(v, pending)}\nТариф: <b>${escapeHtml(pending.vip_tariffs?.name ?? "")}</b>\nЧек сошёлся: <b>${escapeHtml(String(auto.amount))} ${escapeHtml(auto.currency)}</b>${auto.paymentNo ? `, № ${escapeHtml(auto.paymentNo)}` : ""}${auto.deliveryFailed ? "\n\n⚠️ Ссылку не удалось отправить пользователю. Используйте «Переотправить» в разделе VIP панели." : ""}`,
+        { fileId, kind },
+      );
+      return;
+    }
+    if (auto.status === "manual") review = auto.reason;
+  }
   if (!notify) return;
 
   const tariff = pending.vip_tariffs;
-  const name =
-    [pending.first_name, pending.last_name].filter(Boolean).join(" ").trim() ||
-    (pending.username ? `@${pending.username}` : "");
-  const buyer = name ? `${escapeHtml(name)} (ID ${v.from.id})` : `ID ${v.from.id}`;
   const text =
     `🆕 <b>Оплата VIP-подписки${resubmit ? " (повторный чек)" : ""}</b>\n\n` +
-    `Пользователь: <a href="tg://user?id=${v.from.id}">${buyer}</a>\n` +
+    `${buyerLine(v, pending)}\n` +
     `Тариф: <b>${escapeHtml(tariff?.name ?? "")}</b>\nСумма: <b>${escapeHtml(String(tariff?.price ?? ""))} ${escapeHtml(tariff?.currency ?? "")}</b>\n\n` +
-    `Проверьте чек и подтвердите подписку.${saved ? "" : "\n\n⚠️ Чек не сохранён в хранилище — смотрите файл в этом сообщении."}`;
+    `Проверьте чек и подтвердите подписку.${review ? `\n\n🔎 Автопроверка: ${escapeHtml(review)}` : ""}${saved ? "" : "\n\n⚠️ Чек не сохранён в хранилище — смотрите файл в этом сообщении."}`;
   const reply_markup = {
     inline_keyboard: [
       [
@@ -314,17 +338,38 @@ async function receiveProof(v: Vip, fileId: string, kind: "photo" | "document") 
       ],
     ],
   };
+  await notifySellers(v, text, { fileId, kind }, reply_markup);
+}
+
+function buyerLine(
+  v: Vip,
+  sub: { first_name: string | null; last_name: string | null; username: string | null },
+) {
+  const name =
+    [sub.first_name, sub.last_name].filter(Boolean).join(" ").trim() ||
+    (sub.username ? `@${sub.username}` : "");
+  const buyer = name ? `${escapeHtml(name)} (ID ${v.from.id})` : `ID ${v.from.id}`;
+  return `Пользователь: <a href="tg://user?id=${v.from.id}">${buyer}</a>`;
+}
+
+/** Чек продавцам: файлом с подписью (и кнопками, если решение за ними). */
+async function notifySellers(
+  v: Vip,
+  text: string,
+  proof: { fileId: string; kind: "photo" | "document" },
+  reply_markup?: unknown,
+) {
   const admins = await adminRecipients(v.ctx);
   if (admins.length === 0)
     console.warn(`[vip:${v.ctx.tenant.id}] некому отправить чек — admin_chat_id пуст`);
   for (const chatId of admins) {
     // file_id документа не отправляется как фото и наоборот.
-    await v.api.call(kind === "document" ? "sendDocument" : "sendPhoto", {
+    await v.api.call(proof.kind === "document" ? "sendDocument" : "sendPhoto", {
       chat_id: chatId,
-      [kind === "document" ? "document" : "photo"]: fileId,
+      [proof.kind === "document" ? "document" : "photo"]: proof.fileId,
       caption: text.slice(0, 1024),
       parse_mode: "HTML",
-      reply_markup,
+      ...(reply_markup ? { reply_markup } : {}),
     });
   }
 }

@@ -42,6 +42,7 @@ export const SETTING_KEYS = [
   "legal_requisites",
   "legal_about",
   "vip_group_id",
+  "vip_auto_confirm",
   "vip_payment_instructions",
   "vip_test_mode",
   "vip_warn_days",

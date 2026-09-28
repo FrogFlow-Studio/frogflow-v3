@@ -117,6 +117,7 @@ function SettingsCard({ state, t }: { state: State; t: AdminT }) {
   const router = useRouter();
   const s = state.settings;
   const [test, setTest] = useState(s.testMode);
+  const [auto, setAuto] = useState(s.autoConfirm);
   const [saved, setSaved] = useState(false);
   const [cron, setCron] = useState<string | null>(null);
   const save = useAction(async (f: FormData) => {
@@ -126,6 +127,7 @@ function SettingsCard({ state, t }: { state: State; t: AdminT }) {
         vip_warn_days: String(f.get("warn_days") ?? "3"),
         vip_warn_days_2: String(f.get("warn_days_2") ?? "1"),
         vip_test_mode: test ? "true" : "false",
+        vip_auto_confirm: auto ? "true" : "false",
         vip_welcome_message: String(f.get("welcome") ?? ""),
         vip_payment_instructions: String(f.get("instructions") ?? ""),
       },
@@ -181,6 +183,13 @@ function SettingsCard({ state, t }: { state: State; t: AdminT }) {
         <div className="flex items-center gap-3">
           <Switch checked={test} onChange={setTest} label={t("vip.settings.testMode")} />
           <span className="text-sm">{test ? t("vip.settings.on") : t("vip.settings.off")}</span>
+        </div>
+        <div>
+          <Switch checked={auto} onChange={setAuto} label={t("vip.settings.autoConfirm")} />
+          <p className="mt-1 text-sm text-muted">{t("vip.settings.autoConfirmHint")}</p>
+          {auto && !state.autoCheckReady && (
+            <p className="mt-1 text-sm text-warn">{t("vip.settings.autoConfirmUnavailable")}</p>
+          )}
         </div>
         <Field label={t("vip.settings.welcome")}>
           <input className="input" name="welcome" defaultValue={s.welcome} />

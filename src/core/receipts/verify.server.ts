@@ -259,6 +259,28 @@ export async function verifyReceipt(
       detail: `Этот же чек уже был принят по заказу №${reuse.display_no ?? reuse.order_no ?? reuse.id}.`,
       extractedText,
     };
+  // Чек заказа, уже присланный за VIP-подписку (core/vip/auto-check). У VIP
+  // номер «заказа» отрицательный — свои отпечатки он сверяет сам.
+  if (p.orderId > 0) {
+    const { VIP_PROOF_PREFIX } = await import("@/core/vip/auto-check");
+    const { data: vip, error: vipError } = await ctx.db
+      .from("app_settings")
+      .select("key")
+      .in(
+        "key",
+        proofHashes(p.bytes).all.map((h) => `${VIP_PROOF_PREFIX}${h}`),
+      )
+      .limit(1);
+    if (vipError || vip?.length)
+      return {
+        ok: false,
+        reason: "receipt_reused",
+        detail: vipError
+          ? "Не удалось сверить чек с заявками VIP."
+          : "Этот же чек уже был прислан за VIP-подписку.",
+        extractedText,
+      };
+  }
   return { ...analysis, extractedText };
 }
 

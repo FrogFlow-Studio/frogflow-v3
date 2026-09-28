@@ -46,6 +46,7 @@ export type VipGroup = {
 
 export const VIP_SETTING_KEYS = [
   "vip_group_id",
+  "vip_auto_confirm",
   "vip_payment_instructions",
   "vip_payment_qr_path",
   "vip_test_mode",
@@ -59,6 +60,8 @@ export type VipSettings = {
   instructions: string;
   qrPath: string;
   testMode: boolean;
+  /** Автопроверка чека подписки (core/vip/auto-check): по умолчанию выключена, как в v1. */
+  autoConfirm: boolean;
   warnDays: number;
   warnDays2: number;
   welcome: string;
@@ -72,6 +75,7 @@ export async function vipSettings(ctx: TenantContext): Promise<VipSettings> {
     instructions: s.vip_payment_instructions ?? "",
     qrPath: s.vip_payment_qr_path ?? "",
     testMode: s.vip_test_mode === "true",
+    autoConfirm: s.vip_auto_confirm === "true",
     warnDays: w.warnDays,
     warnDays2: w.warnDays2,
     welcome: s.vip_welcome_message || "Ваша VIP подписка активна!",
@@ -468,7 +472,13 @@ async function latestActiveExpiry(
   return data?.expires_at ? new Date(data.expires_at) : null;
 }
 
-export type ActivateResult = { ok: true; deliveryFailed: boolean; expiresAt: string };
+export type ActivateResult = {
+  ok: true;
+  deliveryFailed: boolean;
+  expiresAt: string;
+  /** Продление: участник уже в группе или прошлая подписка ещё идёт. */
+  renewed: boolean;
+};
 
 /**
  * Подтверждённый платёж → доступ. Инвайт создаётся ДО перевода в active
@@ -553,7 +563,12 @@ export async function activateSubscription(
   const t = sub.vip_tariffs;
   if (t && t.is_public === false && !t.is_entry)
     await assignMemberTariff(ctx, sub.telegram_id, sub, t.id, "payment");
-  return { ok: true, deliveryFailed: !sent, expiresAt: expiresAt.toISOString() };
+  return {
+    ok: true,
+    deliveryFailed: !sent,
+    expiresAt: expiresAt.toISOString(),
+    renewed: inGroup || stacked,
+  };
 }
 
 export async function rejectSubscription(
