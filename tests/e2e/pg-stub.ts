@@ -670,6 +670,24 @@ export function pngWithText(text: string): Buffer {
   ]);
 }
 
+/** JPEG не меньше `size` байт: комментарий с текстом и заполнение сегментами COM. */
+export function jpegOfSize(text: string, size: number): Buffer {
+  const com = (data: Buffer) => {
+    const len = Buffer.alloc(2);
+    len.writeUInt16BE(data.length + 2);
+    return Buffer.concat([Buffer.from([0xff, 0xfe]), len, data]);
+  };
+  const parts = [Buffer.from([0xff, 0xd8]), com(Buffer.from(text))];
+  let total = parts[0]!.length + parts[1]!.length + 2;
+  while (total < size) {
+    const chunk = com(Buffer.alloc(Math.min(65_000, size - total), 0x20));
+    parts.push(chunk);
+    total += chunk.length;
+  }
+  parts.push(Buffer.from([0xff, 0xd9]));
+  return Buffer.concat(parts);
+}
+
 let messageId = 1000;
 
 /** Telegram Bot API: всё записываем, отвечаем как Telegram. */
@@ -768,8 +786,19 @@ function zernio(db: StubDb, req: IncomingMessage, url: URL, body: Buffer, res: S
   const path = url.pathname.slice("/zernio".length);
   const media = /^\/media\/(.+)$/.exec(path);
   if (media) {
+    const name = media[1]!;
+    // Архив вместо чека (WhatsApp пускает документы): приложение его не примет.
+    if (name.endsWith(".zip")) {
+      res.writeHead(200, { "content-type": "application/zip" });
+      return res.end(Buffer.concat([Buffer.from("PK\x03\x04", "latin1"), Buffer.from(name)]));
+    }
+    // Фото с телефона нужного размера (?bytes=): JPEG с комментарием-именем.
+    if (name.endsWith(".jpg")) {
+      res.writeHead(200, { "content-type": "image/jpeg" });
+      return res.end(jpegOfSize(name, Number(url.searchParams.get("bytes") ?? 0)));
+    }
     res.writeHead(200, { "content-type": "image/png" });
-    return res.end(pngWithText(media[1]!));
+    return res.end(pngWithText(name));
   }
   const args = body.length ? (JSON.parse(body.toString()) as Row) : {};
   db.zernio.push({ method: req.method ?? "GET", path: path + url.search, body: args });
