@@ -8,9 +8,12 @@ import { courseToken, courseUrl } from "./link";
 
 /** Подпись ссылки на уроки в сообщении о выдаче. */
 export const COURSE_LINK_NAME = "Уроки курса";
+/** Подпись ссылки в закрытый канал: ведёт на страницу курса, та выдаёт личное приглашение. */
+export const COURSE_CHANNEL_LINK_NAME = "Вступить в закрытый канал курса";
 
 /**
- * Ссылка на курс как ещё один материал позиции: канал отправляет её тем же
+ * Ссылка на курс (и, если у курса есть закрытый канал, — на вступление)
+ * как ещё один материал позиции: канал отправляет её тем же
  * путём, что и внешние ссылки товара (Telegram — сообщением, Direct и
  * WhatsApp — строкой). Пусто, если модуль выключен, у товара нет уроков
  * или у магазина нет адреса витрины (slug).
@@ -24,5 +27,12 @@ export async function courseMaterials(
   if (course.lessons.length === 0) return [];
   const token = courseToken(env().SECRETS_KEY, ctx.tenant.id, item.id);
   const url = courseUrl(storefrontBase(ctx.tenant, ctx.appUrl), item.id, token);
-  return [{ path: null, name: COURSE_LINK_NAME, url }];
+  // Канал — через страницу курса (`join=1`): приглашение личное и одно на
+  // покупку, его выпускает страница в момент перехода, а не выдача заранее.
+  return [
+    { path: null, name: COURSE_LINK_NAME, url },
+    ...(course.channel
+      ? [{ path: null, name: COURSE_CHANNEL_LINK_NAME, url: `${url}&join=1` }]
+      : []),
+  ];
 }

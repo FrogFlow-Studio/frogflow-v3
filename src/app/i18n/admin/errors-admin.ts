@@ -7,6 +7,10 @@ export const ru = {
   "err.auth.viewOnly": "У вашей роли нет прав на изменения — только просмотр.",
   "err.auth.accountantDenied": "Бухгалтеру этот раздел недоступен.",
   "err.auth.moduleOff": "Модуль «{module}» не подключён к вашему тарифу.",
+  "err.homework.emptyRevise":
+    "Напишите, что исправить: без комментария ученик не поймёт, что не так.",
+  "err.homework.stale": "Ученик прислал новую версию, пока вы смотрели прежнюю. Обновите страницу.",
+  "err.homework.notWaiting": "Эта работа уже проверена.",
   "err.pricelist.off": "Консультант по прайсу у магазина не включён — его включает оператор.",
   "err.pricelist.empty":
     "В файле не нашлось ни одной позиции. Нужна выгрузка 1С в CSV: название, раздел, размер, цена.",
@@ -145,6 +149,10 @@ export const ru = {
   "err.course.tooManyFiles": "В уроке {lesson} не больше {max} файлов.",
   "err.course.emptyLesson": "Урок {lesson} пустой: добавьте текст, файл или ссылку.",
   "err.course.badSchedule": "Уроки можно открывать раз в 1–60 дней.",
+  "err.course.badChannel": "Канал курса: id вида -1001234567890 или @имя_канала.",
+  "err.course.badCohort":
+    "Поток {cohort}: укажите дату и время старта; последний день набора — датой.",
+  "err.course.badTariff": "Срок доступа тарифа — от 1 до 3650 дней.",
   "err.course.badLesson": "Урок {lesson} повреждён — удалите его и добавьте заново.",
   "err.broadcast.badSegment": "Сегмент заполнен не полностью.",
   "err.broadcast.badSchedule": "Время отправки — от минуты до 60 дней вперёд.",
@@ -155,6 +163,11 @@ export const kk: SectionDict<typeof ru> = {
   "err.auth.viewOnly": "Сіздің рөліңізге өзгерту құқығы берілмеген — тек қарау.",
   "err.auth.accountantDenied": "Бұл бөлім бухгалтерге қолжетімсіз.",
   "err.auth.moduleOff": "«{module}» модулі тарифіңізге қосылмаған.",
+  "err.homework.emptyRevise":
+    "Нені түзету керегін жазыңыз: түсініктемесіз оқушы не дұрыс емес екенін түсінбейді.",
+  "err.homework.stale":
+    "Сіз бұрынғы нұсқаны қарап отырғанда оқушы жаңа нұсқа жіберді. Бетті жаңартыңыз.",
+  "err.homework.notWaiting": "Бұл жұмыс тексеріліп қойған.",
   "err.pricelist.off": "Прайс бойынша кеңесші дүкенде қосылмаған — оны оператор қосады.",
   "err.pricelist.empty":
     "Файлда бірде-бір позиция табылмады. 1С-тен CSV түсірілімі керек: атауы, бөлімі, өлшемі, бағасы.",
@@ -287,6 +300,10 @@ export const kk: SectionDict<typeof ru> = {
   "err.course.tooManyFiles": "{lesson}-сабақта {max} файлдан көп болмайды.",
   "err.course.emptyLesson": "{lesson}-сабақ бос: мәтін, файл немесе сілтеме қосыңыз.",
   "err.course.badSchedule": "Сабақтарды 1–60 күнде бір рет ашуға болады.",
+  "err.course.badChannel": "Курс арнасы: -1001234567890 түріндегі id немесе @арна_аты.",
+  "err.course.badCohort":
+    "{cohort}-ағын: басталу күні мен уақытын көрсетіңіз; қабылдаудың соңғы күні — күнмен.",
+  "err.course.badTariff": "Тарифтің қолжетімділік мерзімі — 1-ден 3650 күнге дейін.",
   "err.course.badLesson": "{lesson}-сабақ бүлінген — оны өшіріп, қайта қосыңыз.",
   "err.broadcast.badSegment": "Сегмент толық толтырылмаған.",
   "err.broadcast.badSchedule": "Жіберу уақыты — бір минуттан 60 күнге дейін алда.",
@@ -297,6 +314,11 @@ export const en: SectionDict<typeof ru> = {
   "err.auth.viewOnly": "Your role cannot make changes — view only.",
   "err.auth.accountantDenied": "This section is not available to the accountant.",
   "err.auth.moduleOff": "The “{module}” module is not included in your plan.",
+  "err.homework.emptyRevise":
+    "Write what to fix: without a comment the student won't know what's wrong.",
+  "err.homework.stale":
+    "The student sent a new version while you were viewing the previous one. Refresh the page.",
+  "err.homework.notWaiting": "This work has already been reviewed.",
   "err.pricelist.off":
     "The price-list consultant is not enabled for this shop — the operator turns it on.",
   "err.pricelist.empty":
@@ -430,6 +452,10 @@ export const en: SectionDict<typeof ru> = {
   "err.course.tooManyFiles": "Lesson {lesson} can have at most {max} files.",
   "err.course.emptyLesson": "Lesson {lesson} is empty: add text, a file or a link.",
   "err.course.badSchedule": "Lessons can open once every 1–60 days.",
+  "err.course.badChannel": "Course channel: an id like -1001234567890 or @channel_name.",
+  "err.course.badCohort":
+    "Cohort {cohort}: set the start date and time; the last enrolment day as a date.",
+  "err.course.badTariff": "A tariff’s access period is 1 to 3650 days.",
   "err.course.badLesson": "Lesson {lesson} is damaged — delete it and add it again.",
   "err.broadcast.badSegment": "The segment is not filled in completely.",
   "err.broadcast.badSchedule": "Send time must be from one minute to 60 days ahead.",
@@ -440,6 +466,11 @@ export const uz: SectionDict<typeof ru> = {
   "err.auth.viewOnly": "Sizning rolingizda oʻzgartirish huquqi yoʻq — faqat koʻrish.",
   "err.auth.accountantDenied": "Bu boʻlim buxgalter uchun yopiq.",
   "err.auth.moduleOff": "«{module}» moduli tarifingizga ulanmagan.",
+  "err.homework.emptyRevise":
+    "Nimani tuzatish kerakligini yozing: izohsiz o‘quvchi nima noto‘g‘ri ekanini tushunmaydi.",
+  "err.homework.stale":
+    "Siz avvalgi versiyani ko‘rayotganingizda o‘quvchi yangi versiya yubordi. Sahifani yangilang.",
+  "err.homework.notWaiting": "Bu ish allaqachon tekshirilgan.",
   "err.pricelist.off": "Narxnoma bo‘yicha maslahatchi do‘konda yoqilmagan — uni operator yoqadi.",
   "err.pricelist.empty":
     "Faylda birorta ham pozitsiya topilmadi. 1C dan CSV eksport kerak: nomi, bo‘lim, o‘lcham, narx.",
@@ -576,6 +607,10 @@ export const uz: SectionDict<typeof ru> = {
   "err.course.tooManyFiles": "{lesson}-darsda {max} tadan ortiq fayl boʻlmaydi.",
   "err.course.emptyLesson": "{lesson}-dars boʻsh: matn, fayl yoki havola qoʻshing.",
   "err.course.badSchedule": "Darslarni 1–60 kunda bir marta ochish mumkin.",
+  "err.course.badChannel": "Kurs kanali: -1001234567890 ko‘rinishidagi id yoki @kanal_nomi.",
+  "err.course.badCohort":
+    "{cohort}-oqim: boshlanish sanasi va vaqtini kiriting; qabulning oxirgi kuni — sana bilan.",
+  "err.course.badTariff": "Tarifning kirish muddati — 1 dan 3650 kungacha.",
   "err.course.badLesson": "{lesson}-dars buzilgan — uni oʻchirib, qaytadan qoʻshing.",
   "err.broadcast.badSegment": "Segment to'liq to'ldirilmagan.",
   "err.broadcast.badSchedule": "Yuborish vaqti — bir daqiqadan 60 kungacha oldinda.",

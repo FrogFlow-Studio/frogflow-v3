@@ -40,7 +40,9 @@ export type OrderEventKind =
   | "approval_ok"
   | "approval_changes"
   | "courier"
-  | "subscription_renewal";
+  | "subscription_renewal"
+  /** Покупатель принял оферту и/или согласие на обработку данных при оформлении. */
+  | "consent";
 
 export type OrderEvent = {
   id: string;
@@ -230,6 +232,11 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       return { text: `Покупатель просит правки: ${str(p.text)}`, tone: "warn" };
     case "subscription_renewal":
       return { text: "Покупателю напомнили продлить подписку", tone: "neutral" };
+    case "consent":
+      return {
+        text: `Покупатель принял ${[p.offer ? "оферту" : "", p.privacy ? "согласие на обработку персональных данных" : ""].filter(Boolean).join(" и ")}`,
+        tone: "neutral",
+      };
     case "courier": {
       const names: Record<string, string> = {
         yandex: "Яндекс Доставка",

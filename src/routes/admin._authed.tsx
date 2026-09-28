@@ -105,6 +105,12 @@ function Layout() {
               )}
               <NavLink to="/admin/consultant">{t("nav.consultant")}</NavLink>
               {shop.pricelist && <NavLink to="/admin/pricelist">{t("pricelist.nav")}</NavLink>}
+              {shop.modules.courses && (
+                <NavLink to="/admin/homework">
+                  {t("homework.nav")}
+                  {shop.homeworkWaiting > 0 && <Badge tone="warn">{shop.homeworkWaiting}</Badge>}
+                </NavLink>
+              )}
               {shop.modules.instagram && (
                 <NavLink to="/admin/instagram">{t("nav.instagram")}</NavLink>
               )}

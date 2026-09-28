@@ -18,6 +18,7 @@ import { assistDescriptionFn } from "@/app/admin/assistant.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
 import { editableMaterials, MATERIAL_LANGUAGES } from "@/core/catalog/materials";
+import { isCourseProduct } from "@/core/courses/marker";
 import { localeNames, type Locale } from "@/core/i18n/locale";
 
 export const Route = createFileRoute("/admin/_authed/products_/$id")({
@@ -61,6 +62,10 @@ function ProductEditor() {
   const [kind, setKind] = useState<"digital" | "physical">(
     (p?.fulfillment_kind as "digital" | "physical") ?? defaultFulfillment,
   );
+  // Курс: уроки вместо файлов. Новый товар онлайн-школы — курс по умолчанию.
+  const [isCourse, setIsCourse] = useState<boolean>(
+    p ? isCourseProduct(p) : shop.modules.courses && shop.vertical === "courses",
+  );
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<unknown>(null);
 
@@ -95,6 +100,7 @@ function ProductEditor() {
           images: images.map((i) => i.key),
           materials,
           variants: variants.filter((v) => v.name.trim()),
+          isCourse: shop.modules.courses && kind === "digital" && isCourse,
         },
       },
     });
@@ -428,11 +434,27 @@ function ProductEditor() {
             <p className="mt-1 text-xs text-muted">{t("product.firstIsCover")}</p>
           </Card>
 
+          {shop.modules.courses && kind === "digital" && (
+            <label className="card flex items-start gap-2 p-4 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={isCourse}
+                onChange={(e) => setIsCourse(e.target.checked)}
+              />
+              <span>
+                {t("product.isCourse")}
+                <span className="block text-xs text-muted">{t("product.isCourseHint")}</span>
+              </span>
+            </label>
+          )}
           {kind === "digital" && (
             <Card
               title={t("product.card.files")}
               actions={
-                materials.length === 0 ? (
+                materials.length === 0 && isCourse && shop.modules.courses ? (
+                  <Badge>{t("product.filesOptional")}</Badge>
+                ) : materials.length === 0 ? (
                   <Badge tone="danger">{t("product.needFile")}</Badge>
                 ) : (
                   <Badge tone="ok">{materials.length}</Badge>

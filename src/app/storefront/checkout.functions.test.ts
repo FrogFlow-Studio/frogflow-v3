@@ -121,3 +121,36 @@ describe("оформление на сайте: заблокированный �
     expect(placeWebOrder).not.toHaveBeenCalled();
   });
 });
+
+describe("оформление на сайте: согласие с офертой", () => {
+  const legal = () => {
+    (ctx.tenant.modules as Record<string, boolean>).legal_docs = true;
+    db.tables.app_settings = [
+      { bot_id: BOT, key: "legal_offer", value: "Оферта школы" },
+      { bot_id: BOT, key: "legal_privacy", value: "Политика" },
+    ];
+  };
+
+  it("оферта опубликована — без галочки заказ не создаётся", async () => {
+    legal();
+    const err = await webCheckoutFn({ data: input }).catch((e: Error) => e.message);
+    expect(err).toBe("Отметьте согласие с условиями, чтобы оформить заказ.");
+    expect(placeWebOrder).not.toHaveBeenCalled();
+  });
+
+  it("с галочкой — заказ создан, в истории заказа — принятые документы", async () => {
+    legal();
+    await expect(webCheckoutFn({ data: { ...input, consent: true } })).resolves.toMatchObject({
+      id: 5,
+    });
+    const ev = (db.tables.zernio_logs ?? []).find(
+      (r) => (r as { event_type?: string }).event_type === "order.consent",
+    ) as { payload?: Record<string, unknown> } | undefined;
+    expect(ev?.payload).toMatchObject({ offer: true, privacy: true });
+  });
+
+  it("документов нет — галочки нет, оформление как раньше", async () => {
+    (ctx.tenant.modules as Record<string, boolean>).legal_docs = true;
+    await expect(webCheckoutFn({ data: input })).resolves.toMatchObject({ id: 5 });
+  });
+});

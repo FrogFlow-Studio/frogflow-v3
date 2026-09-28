@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { convertViaUsd, formatMoney, manualCountryPrice } from "./money";
 
 describe("money", () => {
-  it("formatMoney: тенге со знаком, остальные с кодом, дроби до двух знаков", () => {
+  it("formatMoney: тенге и рубль со знаком, остальные с кодом, дроби до двух знаков", () => {
     expect(formatMoney(1000, "KZT")).toBe("1000 ₸");
     expect(formatMoney("12.5", "USD")).toBe("12.50 USD");
-    expect(formatMoney(7, "rub")).toBe("7 rub");
+    expect(formatMoney(7, "rub")).toBe("7 ₽");
+    expect(formatMoney(4900, "RUB")).toBe("4900 ₽");
     expect(formatMoney("abc", "KZT")).toBe("abc ₸");
   });
 

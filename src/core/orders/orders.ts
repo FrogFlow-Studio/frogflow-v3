@@ -852,7 +852,13 @@ export type DeliverResult = {
 async function courseLink(ctx: TenantContext, item: OrderItemRow): Promise<MaterialSnapshot[]> {
   if (!ctx.tenant.modules.courses) return [];
   const { courseMaterials } = await import("@/core/courses/delivery.server");
-  return courseMaterials(ctx, item);
+  const links = await courseMaterials(ctx, item);
+  if (links.length) {
+    // Прохождение — с выдачи: ученик потока получит сообщение о старте.
+    const { startRunAtDelivery } = await import("@/core/courses/run.server");
+    await startRunAtDelivery(ctx, item).catch(() => {});
+  }
+  return links;
 }
 
 /** Отметить язык выданным; возвращает новое значение колонки — следующий язык копится поверх него. */
@@ -988,11 +994,13 @@ export async function deliverOrder(
       for (const l of list) {
         const materials = itemMaterials(item, l);
         if (materials.length === 0) continue;
-        const r = await send(itemLabel(item, l, list.length > 1), [
-          ...(await protectMaterials(ctx, order, materials)),
-          ...course,
-        ]);
+        const payload = [...(await protectMaterials(ctx, order, materials)), ...course];
         course = [];
+        // Курс без уроков или без адреса витрины: отправлять нечего — сбой
+        // выдачи, продавец увидит его, а покупатель не получит пустое сообщение.
+        const r = payload.length
+          ? await send(itemLabel(item, l, list.length > 1), payload)
+          : "failed";
         if (r === "sent") {
           current = await markDelivered(ctx, item, current, l);
           await recordOrderEvent(ctx, orderId, "item_sent", { name: item.name_snapshot, lang: l });
@@ -1079,7 +1087,8 @@ export async function completeLanguageDelivery(
   const materials = itemMaterials(item, p.lang);
   if (materials.length === 0) return { status: "no_materials" };
   const course = item.delivered_language ? [] : await courseLink(ctx, item);
-  const r = await send(item, [...(await protectMaterials(ctx, order, materials)), ...course]);
+  const payload = [...(await protectMaterials(ctx, order, materials)), ...course];
+  const r = payload.length ? await send(item, payload) : "failed";
   if (r !== "sent") {
     await recordOrderEvent(ctx, p.orderId, "item_failed", {
       name: item.name_snapshot,

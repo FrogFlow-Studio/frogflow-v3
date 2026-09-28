@@ -37,6 +37,7 @@ import { Route as AdminAuthedChatRouteImport } from './routes/admin._authed.chat
 import { Route as AdminAuthedConsultantRouteImport } from './routes/admin._authed.consultant'
 import { Route as AdminAuthedCustomersRouteImport } from './routes/admin._authed.customers'
 import { Route as AdminAuthedDiscountsRouteImport } from './routes/admin._authed.discounts'
+import { Route as AdminAuthedHomeworkRouteImport } from './routes/admin._authed.homework'
 import { Route as AdminAuthedIgImportRouteImport } from './routes/admin._authed.ig-import'
 import { Route as AdminAuthedInstagramRouteImport } from './routes/admin._authed.instagram'
 import { Route as AdminAuthedLogRouteImport } from './routes/admin._authed.log'
@@ -233,6 +234,11 @@ const AdminAuthedCustomersRoute = AdminAuthedCustomersRouteImport.update({
 const AdminAuthedDiscountsRoute = AdminAuthedDiscountsRouteImport.update({
   id: '/discounts',
   path: '/discounts',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedHomeworkRoute = AdminAuthedHomeworkRouteImport.update({
+  id: '/homework',
+  path: '/homework',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedIgImportRoute = AdminAuthedIgImportRouteImport.update({
@@ -560,6 +566,7 @@ export interface FileRoutesByFullPath {
   '/admin/consultant': typeof AdminAuthedConsultantRoute
   '/admin/customers': typeof AdminAuthedCustomersRoute
   '/admin/discounts': typeof AdminAuthedDiscountsRoute
+  '/admin/homework': typeof AdminAuthedHomeworkRoute
   '/admin/ig-import': typeof AdminAuthedIgImportRoute
   '/admin/instagram': typeof AdminAuthedInstagramRoute
   '/admin/log': typeof AdminAuthedLogRoute
@@ -646,6 +653,7 @@ export interface FileRoutesByTo {
   '/admin/consultant': typeof AdminAuthedConsultantRoute
   '/admin/customers': typeof AdminAuthedCustomersRoute
   '/admin/discounts': typeof AdminAuthedDiscountsRoute
+  '/admin/homework': typeof AdminAuthedHomeworkRoute
   '/admin/ig-import': typeof AdminAuthedIgImportRoute
   '/admin/instagram': typeof AdminAuthedInstagramRoute
   '/admin/log': typeof AdminAuthedLogRoute
@@ -734,6 +742,7 @@ export interface FileRoutesById {
   '/admin/_authed/consultant': typeof AdminAuthedConsultantRoute
   '/admin/_authed/customers': typeof AdminAuthedCustomersRoute
   '/admin/_authed/discounts': typeof AdminAuthedDiscountsRoute
+  '/admin/_authed/homework': typeof AdminAuthedHomeworkRoute
   '/admin/_authed/ig-import': typeof AdminAuthedIgImportRoute
   '/admin/_authed/instagram': typeof AdminAuthedInstagramRoute
   '/admin/_authed/log': typeof AdminAuthedLogRoute
@@ -823,6 +832,7 @@ export interface FileRouteTypes {
     | '/admin/consultant'
     | '/admin/customers'
     | '/admin/discounts'
+    | '/admin/homework'
     | '/admin/ig-import'
     | '/admin/instagram'
     | '/admin/log'
@@ -909,6 +919,7 @@ export interface FileRouteTypes {
     | '/admin/consultant'
     | '/admin/customers'
     | '/admin/discounts'
+    | '/admin/homework'
     | '/admin/ig-import'
     | '/admin/instagram'
     | '/admin/log'
@@ -996,6 +1007,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/consultant'
     | '/admin/_authed/customers'
     | '/admin/_authed/discounts'
+    | '/admin/_authed/homework'
     | '/admin/_authed/ig-import'
     | '/admin/_authed/instagram'
     | '/admin/_authed/log'
@@ -1288,6 +1300,13 @@ declare module '@tanstack/react-router' {
       path: '/discounts'
       fullPath: '/admin/discounts'
       preLoaderRoute: typeof AdminAuthedDiscountsRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/homework': {
+      id: '/admin/_authed/homework'
+      path: '/homework'
+      fullPath: '/admin/homework'
+      preLoaderRoute: typeof AdminAuthedHomeworkRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/ig-import': {
@@ -1729,6 +1748,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedConsultantRoute: typeof AdminAuthedConsultantRoute
   AdminAuthedCustomersRoute: typeof AdminAuthedCustomersRoute
   AdminAuthedDiscountsRoute: typeof AdminAuthedDiscountsRoute
+  AdminAuthedHomeworkRoute: typeof AdminAuthedHomeworkRoute
   AdminAuthedIgImportRoute: typeof AdminAuthedIgImportRoute
   AdminAuthedInstagramRoute: typeof AdminAuthedInstagramRoute
   AdminAuthedLogRoute: typeof AdminAuthedLogRoute
@@ -1759,6 +1779,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedConsultantRoute: AdminAuthedConsultantRoute,
   AdminAuthedCustomersRoute: AdminAuthedCustomersRoute,
   AdminAuthedDiscountsRoute: AdminAuthedDiscountsRoute,
+  AdminAuthedHomeworkRoute: AdminAuthedHomeworkRoute,
   AdminAuthedIgImportRoute: AdminAuthedIgImportRoute,
   AdminAuthedInstagramRoute: AdminAuthedInstagramRoute,
   AdminAuthedLogRoute: AdminAuthedLogRoute,

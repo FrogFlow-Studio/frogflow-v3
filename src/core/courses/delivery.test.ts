@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { fakeDb } from "../../../tests/fake-db";
 import { courseKey, type Course } from "./course";
-import { COURSE_LINK_NAME, courseMaterials } from "./delivery.server";
+import { COURSE_CHANNEL_LINK_NAME, COURSE_LINK_NAME, courseMaterials } from "./delivery.server";
 import { isCourseToken } from "./link";
 
 vi.mock("@/config/env", () => ({
@@ -51,5 +51,15 @@ describe("курс — ссылка в выдаче", () => {
     expect(await courseMaterials(ctxWith({ lessons: false }), item)).toEqual([]);
     expect(await courseMaterials(ctxWith({ slug: null }), item)).toEqual([]);
     expect(await courseMaterials(ctxWith(), { id: ITEM, product_id: null })).toEqual([]);
+  });
+
+  it("курс с закрытым каналом — вторая ссылка: вступление через страницу курса", async () => {
+    const ctx = ctxWith();
+    (ctx.db as unknown as ReturnType<typeof fakeDb>).tables.app_settings = [
+      { key: courseKey(P), value: JSON.stringify({ ...course, channel: "@school_club" }) },
+    ];
+    const [lessons, join] = await courseMaterials(ctx, { id: ITEM, product_id: P });
+    expect(join!.name).toBe(COURSE_CHANNEL_LINK_NAME);
+    expect(join!.url).toBe(`${lessons!.url}&join=1`);
   });
 });

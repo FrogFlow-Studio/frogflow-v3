@@ -1,6 +1,8 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
 import { getSetting, setSetting } from "@/core/settings/settings";
+import { serverFailure } from "@/lib/server-failure";
+import { COURSE_MARKER_URL } from "./marker";
 import {
   courseFilePaths,
   courseKey,
@@ -51,6 +53,19 @@ function problemError(p: CourseProblem): UserError {
       );
     case "badSchedule":
       return new UserError("err.course.badSchedule", "Уроки можно открывать раз в 1–60 дней.");
+    case "badCohort":
+      return new UserError(
+        "err.course.badCohort",
+        "Поток {cohort}: укажите дату и время старта; последний день набора — датой.",
+        { cohort: p.cohort },
+      );
+    case "badTariff":
+      return new UserError("err.course.badTariff", "Срок доступа тарифа — от 1 до 3650 дней.");
+    case "badChannel":
+      return new UserError(
+        "err.course.badChannel",
+        "Канал курса: id вида -1001234567890 или @имя_канала.",
+      );
     case "duplicateId":
     case "foreignFile":
       return new UserError(
@@ -68,7 +83,7 @@ export async function saveCourse(
 ): Promise<void> {
   const { data: product } = await ctx.db
     .from("products")
-    .select("id, fulfillment_kind")
+    .select("id, fulfillment_kind, file_url")
     .eq("id", productId)
     .maybeSingle();
   if (!product) throw new UserError("err.course.noProduct", "Товар не найден.");
@@ -87,9 +102,69 @@ export async function saveCourse(
       text: l.text.trim(),
       files: l.files.map((f) => ({ path: f.path, name: f.name?.trim() || null })),
       link: l.link?.trim() || null,
+      ...(l.homework?.trim() ? { homework: l.homework.trim() } : {}),
     })),
+    ...(course.channel?.trim() ? { channel: course.channel.trim() } : {}),
+    ...(course.cohorts?.length
+      ? {
+          cohorts: course.cohorts.map((c) => ({
+            id: c.id,
+            title: c.title.trim(),
+            start: c.start,
+            enrollUntil: c.enrollUntil || null,
+          })),
+        }
+      : {}),
+    ...(course.homeworkDays ? { homeworkDays: course.homeworkDays } : {}),
+    ...(course.tariffs && Object.keys(course.tariffs).length
+      ? { tariffs: await ownVariantTariffs(ctx, productId, course.tariffs) }
+      : {}),
   };
   await setSetting(ctx, courseKey(productId), JSON.stringify(clean));
+  await syncCourseMarker(ctx, productId, product.file_url, clean.lessons.length > 0);
+}
+
+/** Тарифы только для вариантов этого товара: чужой id из запроса отбрасывается. */
+async function ownVariantTariffs(
+  ctx: TenantContext,
+  productId: string,
+  tariffs: NonNullable<Course["tariffs"]>,
+): Promise<NonNullable<Course["tariffs"]>> {
+  const { data, error } = await ctx.db
+    .from("product_variants")
+    .select("id")
+    .eq("product_id", productId);
+  if (error) throw serverFailure(`Варианты товара не прочитаны: ${error.message}`);
+  const own = new Set((data ?? []).map((v) => v.id));
+  return Object.fromEntries(Object.entries(tariffs).filter(([id]) => own.has(id)));
+}
+
+/**
+ * Метка товара-курса (core/courses/marker): с уроками товар продаётся и без
+ * файлов, без уроков — снова только с файлами (выдать было бы нечего).
+ * Чужую ссылку v1 в file_url не трогаем: условие записи — пусто или метка.
+ */
+async function syncCourseMarker(
+  ctx: TenantContext,
+  productId: string,
+  fileUrl: string | null,
+  hasLessons: boolean,
+) {
+  if (hasLessons && !fileUrl) {
+    const { error } = await ctx.db
+      .from("products")
+      .update({ file_url: COURSE_MARKER_URL })
+      .eq("id", productId)
+      .is("file_url", null);
+    if (error) throw serverFailure(`Курс сохранён, но товар не отмечен курсом: ${error.message}`);
+  } else if (!hasLessons && fileUrl === COURSE_MARKER_URL) {
+    const { error } = await ctx.db
+      .from("products")
+      .update({ file_url: null })
+      .eq("id", productId)
+      .eq("file_url", COURSE_MARKER_URL);
+    if (error) throw serverFailure(`Метка курса не снята: ${error.message}`);
+  }
 }
 
 /** Курс товара, который удаляют: запись убрать, файлы вернуть на удаление из бакета. */

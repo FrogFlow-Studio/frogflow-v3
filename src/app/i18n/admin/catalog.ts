@@ -160,6 +160,7 @@ export const ru = {
   "vertical.confectionery": "Кондитерская",
   "vertical.consultant": "Консультант (ун. BOVI)",
   "vertical.flowers": "Цветы и букеты",
+  "vertical.courses": "Онлайн-школа",
   "vertical.consultant_universal": "Универсальный консультант",
 } as const;
 
@@ -352,6 +353,7 @@ export const kk: SectionDict<typeof ru> = {
   "vertical.confectionery": "Кондитерлік",
   "vertical.consultant": "Кеңесші (BOVI)",
   "vertical.flowers": "Гүлдер мен букеттер",
+  "vertical.courses": "Онлайн-мектеп",
   "vertical.consultant_universal": "Әмбебап кеңесші",
 };
 
@@ -505,6 +507,7 @@ export const en: SectionDict<typeof ru> = {
   "vertical.confectionery": "Confectionery",
   "vertical.consultant": "Consultant (BOVI)",
   "vertical.flowers": "Flowers and bouquets",
+  "vertical.courses": "Online school",
   "vertical.consultant_universal": "Universal consultant",
 };
 
@@ -659,5 +662,6 @@ export const uz: SectionDict<typeof ru> = {
   "vertical.confectionery": "Qandolatchilik",
   "vertical.consultant": "Maslahatchi (BOVI)",
   "vertical.flowers": "Gullar va guldastalar",
+  "vertical.courses": "Onlayn maktab",
   "vertical.consultant_universal": "Universal maslahatchi",
 };

@@ -12,6 +12,8 @@ export type Msg = {
   search: string;
   cart: string;
   myOrders: string;
+  /** Модуль courses: «Мои курсы» (channels/telegram/courses). */
+  myCourses: string;
   instruction: string;
   information: string;
   catalogHeader: string;
@@ -124,6 +126,8 @@ export type Msg = {
   afterProofPhysical: string;
   leadTimeLabel: (days: number) => string;
   choosePayMethod: string;
+  /** Оплата — акцепт оферты; ссылки на опубликованные документы. */
+  payConsent: (offer: string | null, privacy: string | null) => string;
   payViaRobokassaBtn: string;
   payViaCryptoBtn: string;
   cryptoHint: string;
@@ -229,6 +233,10 @@ export type Msg = {
   fulfillmentReminder: (no: string, date: string) => string;
   courseNewLesson: (no: number, title: string) => string;
   courseOpenBtn: string;
+  /** Напоминание до старта потока (core/courses/reminders). */
+  coursePreStart: (course: string, days: number, date: string) => string;
+  /** Срок сдачи задания прошёл, работы нет. */
+  courseHomeworkDue: (course: string, no: number, title: string) => string;
   broadcastPick: string;
   openCatalogBtn: string;
   /** Кнопка под рассылкой и ответы на отписку/возврат. */
@@ -307,6 +315,10 @@ const ru: Msg = {
   fulfillmentReminder: (no, d) => `⏰ Напоминаем: заказ #${no} — получение завтра, ${d}.`,
   courseNewLesson: (no, title) => `📚 Открыт урок ${no}: «${title}».`,
   courseOpenBtn: "Открыть курс",
+  coursePreStart: (course, days, date) =>
+    `⏳ Курс «${course}» начнётся ${days === 1 ? "завтра" : `через ${days} дн.`} — ${date}. Первый урок придёт сюда.`,
+  courseHomeworkDue: (course, no, title) =>
+    `📝 Напоминаем: задание урока ${no} «${title}» курса «${course}» ещё не сдано. Пришлите ответ — преподаватель ждёт.`,
   broadcastPick: "👇 Выберите материал:",
   openCatalogBtn: "📚 Открыть каталог",
   unsubscribeBtn: "🔕 Отписаться от рассылок",
@@ -323,6 +335,7 @@ const ru: Msg = {
   search: "🔍 Поиск",
   cart: "🛒 Корзина",
   myOrders: "📋 Мои заказы",
+  myCourses: "🎓 Мои курсы",
   instruction: "📖 Инструкция",
   information: "ℹ️ Информация",
   catalogHeader: "📚 Выберите категорию:",
@@ -437,6 +450,8 @@ const ru: Msg = {
     "После оплаты пришлите сюда фото или PDF чека — продавец подтвердит заказ и возьмёт в работу.",
   leadTimeLabel: (days) => `⏳ Срок изготовления: ${days} дн.`,
   choosePayMethod: "Выберите способ оплаты:",
+  payConsent: (offer, privacy) =>
+    `Оплачивая заказ, вы принимаете ${[offer && `<a href="${offer}">условия оферты</a>`, privacy && `<a href="${privacy}">согласие на обработку персональных данных</a>`].filter(Boolean).join(" и ")}.`,
   payViaRobokassaBtn: "💳 Оплатить картой онлайн",
   payViaCryptoBtn: "₿ Оплатить криптовалютой",
   cryptoHint:
@@ -527,6 +542,8 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  payConsent: (offer, privacy) =>
+    `Тапсырысты төлей отырып, сіз ${[offer && `<a href="${offer}">оферта шарттарын</a>`, privacy && `<a href="${privacy}">дербес деректерді өңдеуге келісімді</a>`].filter(Boolean).join(" және ")} қабылдайсыз.`,
   payBalanceBtn: (no) => `💳 Қалғанын төлеу #${no}`,
   balanceTitle: (no, sum) =>
     `💳 <b>#${no} тапсырыс бойынша қалған сома</b>\n\n💰 Төлеуге: <b>${sum}</b>`,
@@ -619,6 +636,10 @@ const kk: Msg = {
   fulfillmentReminder: (no, d) => `⏰ Еске саламыз: №${no} тапсырысты алу ертең, ${d}.`,
   courseNewLesson: (no, title) => `📚 ${no}-сабақ ашылды: «${title}».`,
   courseOpenBtn: "Курсты ашу",
+  coursePreStart: (course, days, date) =>
+    `⏳ «${course}» курсы ${days === 1 ? "ертең" : `${days} күннен кейін`} басталады — ${date}. Бірінші сабақ осында келеді.`,
+  courseHomeworkDue: (course, no, title) =>
+    `📝 Еске саламыз: «${course}» курсының ${no}-сабағы «${title}» тапсырмасы әлі тапсырылмаған. Жауабыңызды жіберіңіз — оқытушы күтуде.`,
   broadcastPick: "👇 Материалды таңдаңыз:",
   openCatalogBtn: "📚 Каталогты ашу",
   unsubscribeBtn: "🔕 Таратылымнан бас тарту",
@@ -644,6 +665,7 @@ const kk: Msg = {
   search: "🔍 Іздеу",
   cart: "🛒 Себет",
   myOrders: "📋 Тапсырыстарым",
+  myCourses: "🎓 Курстарым",
   instruction: "📖 Нұсқаулық",
   information: "ℹ️ Ақпарат",
   catalogHeader: "📚 Санатты таңдаңыз:",
@@ -691,6 +713,8 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  payConsent: (offer, privacy) =>
+    `By paying for the order you accept ${[offer && `<a href="${offer}">the terms of the offer</a>`, privacy && `<a href="${privacy}">the personal data processing consent</a>`].filter(Boolean).join(" and ")}.`,
   renewBtn: "🔁 Renew",
   subOffBtn: "Cancel subscription",
   subOffDone: "Subscription cancelled — no more renewal reminders.",
@@ -791,6 +815,10 @@ const en: Msg = {
   fulfillmentReminder: (no, d) => `⏰ Reminder: order #${no} — pickup/delivery is tomorrow, ${d}.`,
   courseNewLesson: (no, title) => `📚 Lesson ${no} is open: “${title}”.`,
   courseOpenBtn: "Open the course",
+  coursePreStart: (course, days, date) =>
+    `⏳ The course “${course}” starts ${days === 1 ? "tomorrow" : `in ${days} days`} — ${date}. The first lesson will arrive here.`,
+  courseHomeworkDue: (course, no, title) =>
+    `📝 Reminder: the homework for lesson ${no} “${title}” of “${course}” hasn't been submitted yet. Send your answer — the teacher is waiting.`,
   broadcastPick: "👇 Pick an item:",
   openCatalogBtn: "📚 Open catalog",
   unsubscribeBtn: "🔕 Unsubscribe",
@@ -816,6 +844,7 @@ const en: Msg = {
   search: "🔍 Search",
   cart: "🛒 Cart",
   myOrders: "📋 My orders",
+  myCourses: "🎓 My courses",
   instruction: "📖 Guide",
   information: "ℹ️ Information",
   catalogHeader: "📚 Choose a category:",
@@ -882,6 +911,8 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  payConsent: (offer, privacy) =>
+    `Buyurtma uchun to‘lab, siz ${[offer && `<a href="${offer}">oferta shartlarini</a>`, privacy && `<a href="${privacy}">shaxsiy ma’lumotlarni qayta ishlashga rozilikni</a>`].filter(Boolean).join(" va ")} qabul qilasiz.`,
   payBalanceBtn: (no) => `💳 Qolganini to‘lash #${no}`,
   balanceTitle: (no, sum) =>
     `💳 <b>#${no} buyurtma bo‘yicha qolgan summa</b>\n\n💰 To‘lov: <b>${sum}</b>`,
@@ -972,6 +1003,10 @@ const uz: Msg = {
   fulfillmentReminder: (no, d) => `⏰ Eslatma: #${no} buyurtma ertaga, ${d} kuni olinadi.`,
   courseNewLesson: (no, title) => `📚 ${no}-dars ochildi: «${title}».`,
   courseOpenBtn: "Kursni ochish",
+  coursePreStart: (course, days, date) =>
+    `⏳ «${course}» kursi ${days === 1 ? "ertaga" : `${days} kundan keyin`} boshlanadi — ${date}. Birinchi dars shu yerga keladi.`,
+  courseHomeworkDue: (course, no, title) =>
+    `📝 Eslatma: «${course}» kursining ${no}-darsi «${title}» vazifasi hali topshirilmagan. Javobingizni yuboring — o‘qituvchi kutmoqda.`,
   broadcastPick: "👇 Materialni tanlang:",
   openCatalogBtn: "📚 Katalogni ochish",
   unsubscribeBtn: "🔕 Obunani bekor qilish",
@@ -997,6 +1032,7 @@ const uz: Msg = {
   search: "🔍 Qidirish",
   cart: "🛒 Savat",
   myOrders: "📋 Buyurtmalarim",
+  myCourses: "🎓 Kurslarim",
   instruction: "📖 Yo‘riqnoma",
   information: "ℹ️ Ma’lumot",
   catalogHeader: "📚 Kategoriyani tanlang:",
@@ -1036,7 +1072,15 @@ const uz: Msg = {
 export const COPY: Record<Locale, Msg> = { ru, kk, en, uz };
 
 export type MenuAction =
-  "catalog" | "search" | "cart" | "myOrders" | "instruction" | "information" | "contact" | "quiz";
+  | "catalog"
+  | "search"
+  | "cart"
+  | "myOrders"
+  | "myCourses"
+  | "instruction"
+  | "information"
+  | "contact"
+  | "quiz";
 
 /** Текст кнопки меню на любом языке → каноническое действие. */
 export function menuActionFor(
@@ -1050,6 +1094,7 @@ export function menuActionFor(
     if (t === m.search) return "search";
     if (t === m.cart) return "cart";
     if (t === m.myOrders) return "myOrders";
+    if (t === m.myCourses) return "myCourses";
     if (t === m.instruction) return "instruction";
     if (t === m.information) return "information";
     if (t === m.quizBtn) return "quiz";

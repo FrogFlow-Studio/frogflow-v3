@@ -133,6 +133,53 @@ export async function updateSettingAtomic(
   return failed(ctx, key, `не удалось записать за ${tries} попыток: параллельные изменения`);
 }
 
+/**
+ * Как updateSettingAtomic, но для больших значений (журналы, ответы учеников):
+ * условие записи — метка `updated_at`, а не всё значение. Значение в WHERE
+ * уходит в адрес запроса, и после ~8 КБ PostgREST отвечает 431 — запись
+ * молча перестала бы работать. Метка меняется при каждой записи (не меньше
+ * чем на 1 мс), поэтому проигравший гонку не затрёт чужое. Годится только
+ * для ключей, которые пишет одна v2 и всегда этой функцией.
+ */
+export async function updateSettingStamped(
+  ctx: TenantContext,
+  key: string,
+  next: (raw: string | null) => string | null,
+  tries = ATOMIC_TRIES,
+): Promise<"written" | "skipped" | "failed"> {
+  for (let i = 0; i < tries; i++) {
+    if (i > 0) await backoff(i);
+    const found = await ctx.db
+      .from("app_settings")
+      .select("value, updated_at")
+      .eq("key", key)
+      .maybeSingle();
+    if (found.error) return failed(ctx, key, found.error.message);
+    const raw = found.data ? (found.data.value ?? null) : null;
+    const value = next(raw);
+    if (value == null) return "skipped";
+    const prev = found.data?.updated_at ?? null;
+    const stamp = new Date(
+      Math.max(Date.now(), prev ? Date.parse(prev) + 1 : 0) || Date.now(),
+    ).toISOString();
+    if (!found.data) {
+      const { error } = await ctx.db
+        .from("app_settings")
+        .insert({ bot_id: ctx.tenant.id, key, value, updated_at: stamp });
+      if (!error) return "written";
+      if (error.code !== "23505") return failed(ctx, key, error.message);
+      continue;
+    }
+    const q = ctx.db.from("app_settings").update({ value, updated_at: stamp }).eq("key", key);
+    const { data, error } = await (
+      prev == null ? q.is("updated_at", null) : q.eq("updated_at", prev)
+    ).select("key");
+    if (error) return failed(ctx, key, error.message);
+    if (data?.length) return "written";
+  }
+  return failed(ctx, key, `не удалось записать за ${tries} попыток: параллельные изменения`);
+}
+
 /** Попыток хватает на сотню одновременных запросов: каждый круг кто-то выигрывает. */
 export const ATOMIC_TRIES = 60;
 

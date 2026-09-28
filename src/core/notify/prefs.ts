@@ -125,9 +125,11 @@ export function notifyKindOf(raw: string | undefined): NotifyKind {
       return "delivery_failure";
     case "complaint":
       return "complaint";
+    // homework — ученик сдал домашнее задание и ждёт ответа преподавателя, как вопрос.
     case "question":
     case "handoff":
     case "lead":
+    case "homework":
       return "question";
     case "native_cart":
       return "native_cart";

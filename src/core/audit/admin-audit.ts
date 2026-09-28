@@ -40,6 +40,7 @@ const NOT_AUDITED = new Set([
   "previewQuizFn",
   "consultantTestFn",
   "testCrmFn",
+  "checkCourseChannelFn",
   "vipProofUrlFn",
   "zernioConnectLinkFn",
   "hideSetupFn",

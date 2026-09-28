@@ -95,3 +95,28 @@ describe("страница курса на витрине", () => {
     expect(v.lessons[0]!.files.map((f) => f.name)).toEqual(["l1.pdf"]);
   });
 });
+
+describe("домашнее задание на странице курса", () => {
+  it("у открытого урока с заданием — задание и статус последней сдачи; у закрытого — ничего", async () => {
+    const { submitHomework } = await import("@/core/courses/homework.server");
+    const { ctx, db } = ctxWith();
+    const withHw: Course = {
+      ...course,
+      lessons: course.lessons.map((l) => ({ ...l, homework: `Задание к ${l.title}` })),
+    };
+    (db.tables.app_settings as Array<{ key: string; value: string }>)[0]!.value =
+      JSON.stringify(withHw);
+    db.tables.orders = [{ id: 5, status: "delivered", display_name: "Ученик" }];
+    const p = (await openCourse(ctx, S, ITEM, courseToken(S, T, ITEM)))!;
+    await submitHomework(ctx, p, withHw.lessons[0]!.id, { text: "мой ответ", files: [] });
+    const view = await courseView(ctx, p, async (path) => `https://files/${path}`);
+    expect(view.lessons[0]!.homework).toMatchObject({
+      task: "Задание к Урок 1",
+      status: "submitted",
+      last: { text: "мой ответ", files: [] },
+      feedback: null,
+    });
+    // Урок 2 по расписанию ещё закрыт: задание не уходит в браузер.
+    expect(view.lessons[1]!.homework).toBeNull();
+  });
+});

@@ -1,11 +1,12 @@
 import { env } from "@/config/env";
-import { getSettings, updateSettingAtomic } from "@/core/settings/settings";
+import { updateSettingAtomic } from "@/core/settings/settings";
 import { storefrontBase } from "@/core/tenant/custom-domain";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { lessonsAccess } from "./access";
-import { courseKey, parseCourse, type Course } from "./course";
+import { courseTimeline } from "./cohort";
 import { courseToken, courseUrl } from "./link";
-import { parseRun, RUN_KEY_PREFIX, runKey } from "./run.server";
+import { parseRun, runKey } from "./run.server";
+import { loadRuns } from "./runs.server";
 
 /**
  * Сообщение бота о новом уроке (модуль courses). Раз в час крон проходит
@@ -25,8 +26,6 @@ export type LessonAnnouncement = {
   url: string;
 };
 
-type RunRow = { itemId: string; raw: string };
-
 export async function announceNewLessons(
   ctx: TenantContext,
   send: (a: LessonAnnouncement) => Promise<boolean>,
@@ -34,46 +33,20 @@ export async function announceNewLessons(
 ): Promise<{ sent: number; failed: number; silent: number } | { skipped: string }> {
   if (!ctx.tenant.modules.courses) return { skipped: "module off" };
   if (!ctx.tenant.settings.slug) return { skipped: "no storefront" };
-  const { data: rows } = await ctx.db
-    .from("app_settings")
-    .select("key, value")
-    .like("key", `${RUN_KEY_PREFIX}%`);
-  const runs: RunRow[] = (rows ?? []).flatMap((r) =>
-    r.value && r.key.startsWith(RUN_KEY_PREFIX)
-      ? [{ itemId: r.key.slice(RUN_KEY_PREFIX.length), raw: r.value }]
-      : [],
-  );
   const out = { sent: 0, failed: 0, silent: 0 };
+  const runs = await loadRuns(ctx);
   if (runs.length === 0) return out;
-
-  const { data: items } = await ctx.db
-    .from("order_items")
-    .select("id, order_id, product_id")
-    .in(
-      "id",
-      runs.map((r) => r.itemId),
-    );
-  const orderIds = [...new Set((items ?? []).map((i) => i.order_id))];
-  const { data: orders } = orderIds.length
-    ? await ctx.db.from("orders").select("id, status, platform, telegram_id").in("id", orderIds)
-    : { data: [] };
-  const productIds = [
-    ...new Set((items ?? []).flatMap((i) => (i.product_id ? [i.product_id] : []))),
-  ];
-  const courseRaw = productIds.length ? await getSettings(ctx, productIds.map(courseKey)) : {};
-  const itemById = new Map((items ?? []).map((i) => [i.id, i]));
-  const orderById = new Map((orders ?? []).map((o) => [o.id, o]));
-  const courses = new Map<string, Course>();
-  for (const id of productIds) courses.set(id, parseCourse(courseRaw[courseKey(id)]));
   const base = storefrontBase(ctx.tenant, ctx.appUrl);
 
   for (const r of runs) {
-    const run = parseRun(r.raw);
-    const item = itemById.get(r.itemId);
-    const order = item ? orderById.get(item.order_id) : undefined;
-    const course = item?.product_id ? courses.get(item.product_id) : undefined;
-    if (!run || !order || order.status !== "delivered" || !course?.lessons.length) continue;
-    const open = lessonsAccess(course, run.startedAt, now.getTime()).filter((a) => a.open);
+    const { run, order, course } = r;
+    if (order.status !== "delivered") continue;
+    // Календарь покупки: поток (старт для всех один), тариф, конец доступа.
+    const open = courseTimeline(
+      { course, run, boughtAt: order.created_at, variantId: r.variantId },
+      ctx.timezone,
+      now,
+    ).access.filter((a) => a.open);
     const knownAt = (c: { startedAt: string; notified?: number }) =>
       // Запись без отметки (начата до этой версии): известны уроки первого дня.
       c.notified ??

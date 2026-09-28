@@ -2,7 +2,7 @@ import type { Json } from "@/core/db-types";
 
 export type Money = { amount: number; currency: string };
 
-/** «1000 ₸», «12.50 USD» — одна функция на все каналы. */
+/** «1000 ₸», «4900 ₽», «12.50 USD» — одна функция на все каналы. */
 export function formatMoney(amount: number | string, currency: string): string {
   const n = typeof amount === "number" ? amount : Number(amount);
   const value = Number.isFinite(n)
@@ -12,6 +12,7 @@ export function formatMoney(amount: number | string, currency: string): string {
     : String(amount);
   const cur = (currency || "").toUpperCase();
   if (cur === "KZT") return `${value} ₸`;
+  if (cur === "RUB") return `${value} ₽`;
   return `${value} ${currency}`;
 }
 

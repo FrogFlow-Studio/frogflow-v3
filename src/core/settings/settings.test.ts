@@ -10,7 +10,8 @@ vi.mock("@/lib/errors", () => ({
   }),
 }));
 
-const { setSetting, trySetSetting, getSetting, updateSettingAtomic } = await import("./settings");
+const { setSetting, trySetSetting, getSetting, updateSettingAtomic, updateSettingStamped } =
+  await import("./settings");
 
 const BOT = "11111111-1111-1111-1111-111111111111";
 type Op = "select" | "insert" | "update";
@@ -191,5 +192,50 @@ describe("updateSettingAtomic — параллельные изменения н
     expect(res).toContain("failed");
     expect(await getSetting(ctx, "n")).toBe(String(written));
     expect(reported.some((r) => r.where === "settings.atomic")).toBe(true);
+  });
+});
+
+describe("updateSettingStamped — большие значения", () => {
+  const db = () => fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
+
+  /** Какие значения уходят в условия запросов (в адрес запроса PostgREST). */
+  function spy(inner: FakeDb) {
+    const filters: string[] = [];
+    const wrap = (q: object): object =>
+      new Proxy(q, {
+        get(target, prop, recv) {
+          const v = Reflect.get(target, prop, recv) as unknown;
+          if (typeof v !== "function") return v;
+          return (...args: unknown[]) => {
+            if (prop === "eq" || prop === "is") filters.push(String(args[1]));
+            const r = (v as (...a: unknown[]) => unknown).apply(target, args);
+            return r && typeof r === "object" && r !== target ? r : wrap(target);
+          };
+        },
+      });
+    return { db: { from: (t: string) => wrap(inner.from(t)) }, filters };
+  }
+
+  it("условие записи — метка времени, а не значение: 30 КБ записываются и дописываются", async () => {
+    const inner = db();
+    const { db: spied, filters } = spy(inner);
+    const ctx = ctxWith(spied);
+    const big = "я".repeat(30_000);
+    expect(await updateSettingStamped(ctx, "hw_x", () => big)).toBe("written");
+    expect(await updateSettingStamped(ctx, "hw_x", (raw) => `${raw}!`)).toBe("written");
+    expect(await getSetting(ctxWith(inner), "hw_x")).toBe(`${big}!`);
+    expect(filters.length).toBeGreaterThan(0);
+    expect(Math.max(...filters.map((f) => f.length))).toBeLessThan(100);
+  });
+
+  it("10 параллельных дописываний не теряются", async () => {
+    const ctx = ctxWith(db());
+    const add = (raw: string | null) =>
+      JSON.stringify([...(JSON.parse(raw ?? "[]") as number[]), 1]);
+    const res = await Promise.all(
+      Array.from({ length: 10 }, () => updateSettingStamped(ctx, "hw_y", add, 50)),
+    );
+    expect(res.every((r) => r === "written")).toBe(true);
+    expect(JSON.parse((await getSetting(ctx, "hw_y"))!)).toHaveLength(10);
   });
 });

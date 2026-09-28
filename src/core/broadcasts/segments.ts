@@ -21,7 +21,14 @@ export type Segment =
   /** В корзине что-то лежит, заказа нет. */
   | { kind: "cart" }
   /** Тег продавца из карточки покупателя (app_settings customer_note:<user_key>). */
-  | { kind: "tag"; tag: string };
+  | { kind: "tag"; tag: string }
+  /** Ученики курса (модуль courses): все, отстающие, не сдавшие ДЗ, прошедшие; поток — по желанию. */
+  | {
+      kind: "course";
+      productId: string;
+      who: "all" | "behind" | "homework" | "completed";
+      cohortId: string | null;
+    };
 
 export const SEGMENT_KINDS = [
   "product",
@@ -30,6 +37,7 @@ export const SEGMENT_KINDS = [
   "language",
   "cart",
   "tag",
+  "course",
 ] as const;
 export const MAX_INACTIVE_DAYS = 3650;
 
@@ -56,6 +64,19 @@ export function parseSegment(v: unknown): Segment | null {
       return isLocale(s.locale) ? { kind: "language", locale: s.locale } : null;
     case "cart":
       return { kind: "cart" };
+    case "course": {
+      const who = ["all", "behind", "homework", "completed"].includes(String(s.who))
+        ? (s.who as "all" | "behind" | "homework" | "completed")
+        : null;
+      return typeof s.productId === "string" && UUID.test(s.productId) && who
+        ? {
+            kind: "course",
+            productId: s.productId,
+            who,
+            cohortId: typeof s.cohortId === "string" && UUID.test(s.cohortId) ? s.cohortId : null,
+          }
+        : null;
+    }
     case "tag": {
       const tag = typeof s.tag === "string" ? s.tag.trim().slice(0, 32) : "";
       return tag ? { kind: "tag", tag } : null;
@@ -112,6 +133,11 @@ export async function segmentMembers(
     for (const [key, note] of await allSellerNotes(ctx))
       if (note.tags.some((t) => t.toLowerCase() === want)) keys.add(key);
     return new Set(reachable.filter((u) => keys.has(u.userKey)).map((u) => u.id));
+  }
+
+  if (seg.kind === "course") {
+    const { courseSegmentMembers } = await import("@/core/courses/segment.server");
+    return courseSegmentMembers(ctx, seg.productId, seg.who, seg.cohortId, new Date(now));
   }
 
   if (seg.kind === "cart") {

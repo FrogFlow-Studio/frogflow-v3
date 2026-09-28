@@ -9,6 +9,7 @@ import {
 import { Badge, Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
 import { adminT } from "@/app/i18n/admin";
 import { uploadFile } from "@/app/admin/upload-client";
+import { RECEIPT_SNO, RECEIPT_TAX } from "@/core/payments/receipt";
 import { imagePath } from "@/core/catalog/image-url";
 import { settingsRoute } from "./route";
 
@@ -264,6 +265,10 @@ export function RobokassaCard({ settings }: { settings: Record<string, string> }
         robokassa_pass2: String(f.get("pass2")).trim(),
         robokassa_pass1_test: String(f.get("pass1t")).trim(),
         robokassa_pass2_test: String(f.get("pass2t")).trim(),
+        robokassa_region: f.get("region") === "ru" ? "ru" : "kz",
+        robokassa_receipt: f.get("receipt") === "on" ? "true" : "false",
+        robokassa_sno: String(f.get("sno") ?? ""),
+        robokassa_tax: String(f.get("tax") ?? "none"),
       },
     });
     setSaved(true);
@@ -274,6 +279,9 @@ export function RobokassaCard({ settings }: { settings: Record<string, string> }
   const [origin, setOrigin] = useState("");
   useEffect(() => setOrigin(window.location.origin), []);
   const resultUrl = `${origin}/api/robokassa/${shop.botId}/result`;
+  const [region, setRegion] = useState<"kz" | "ru">(
+    settings.robokassa_region === "ru" ? "ru" : "kz",
+  );
   return (
     <Card title={t("settings.rk.title")} className="lg:col-span-2">
       <p className="mb-3 text-xs text-muted">
@@ -310,6 +318,50 @@ export function RobokassaCard({ settings }: { settings: Record<string, string> }
             {t("settings.rk.test")}
           </label>
         </div>
+        <Field label={t("settings.rk.region")}>
+          <select
+            className="input"
+            name="region"
+            value={region}
+            onChange={(e) => setRegion(e.target.value === "ru" ? "ru" : "kz")}
+          >
+            <option value="kz">{t("settings.rk.regionKz")}</option>
+            <option value="ru">{t("settings.rk.regionRu")}</option>
+          </select>
+        </Field>
+        <p className="self-end text-xs text-muted">{t("settings.rk.regionHint")}</p>
+        {region === "ru" && (
+          <>
+            <label className="flex items-center gap-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                name="receipt"
+                defaultChecked={settings.robokassa_receipt === "true"}
+              />
+              {t("settings.rk.receipt")}
+            </label>
+            <Field label={t("settings.rk.sno")}>
+              <select className="input" name="sno" defaultValue={settings.robokassa_sno ?? ""}>
+                <option value="">{t("settings.rk.snoAccount")}</option>
+                {RECEIPT_SNO.map((x) => (
+                  <option key={x} value={x}>
+                    {x}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label={t("settings.rk.tax")}>
+              <select className="input" name="tax" defaultValue={settings.robokassa_tax ?? "none"}>
+                {RECEIPT_TAX.map((x) => (
+                  <option key={x} value={x}>
+                    {x}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <p className="text-xs text-muted sm:col-span-2">{t("settings.rk.receiptHint")}</p>
+          </>
+        )}
         <Field label="MerchantLogin">
           <input
             className="input"

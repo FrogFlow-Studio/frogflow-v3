@@ -40,7 +40,7 @@ import {
 } from "@/core/orders/orders";
 import { parseDeliveredLanguages } from "@/core/catalog/materials";
 import { imageUrl } from "@/core/catalog/catalog";
-import { robokassaFor, stripeFor } from "@/core/payments/payment";
+import { robokassaFor, robokassaReceipt, stripeFor } from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
 import { amountDueNow } from "@/core/fulfillment/fulfillment";
 
@@ -344,6 +344,18 @@ export async function webOrderMaterials(
           });
       }
     }
+    // Курс (модуль «Курсы»): ссылка на уроки — как в сообщении о выдаче.
+    if (ctx.tenant.modules.courses) {
+      const { courseMaterials } = await import("@/core/courses/delivery.server");
+      for (const c of await courseMaterials(ctx, item))
+        if (c.url)
+          out.push({
+            item: item.name_snapshot,
+            name: c.name ?? item.name_snapshot,
+            url: c.url,
+            lang: "",
+          });
+    }
   }
   return out;
 }
@@ -608,11 +620,13 @@ export async function webCardPaymentUrl(
     const { claimBalanceInvId, balancePayable } = await import("@/core/orders/balance");
     const left = await balancePayable(ctx, order);
     if (!left) return null;
+    const what = `Остаток по заказу #${displayNo(order)}`;
     return buildPaymentUrl(rk, {
       outSum: left,
       invId: await claimBalanceInvId(ctx, order.id, left),
-      description: `Остаток по заказу #${displayNo(order)}`,
+      description: what,
       botId: ctx.tenant.id,
+      receipt: robokassaReceipt(rk, order, left, what),
     });
   }
   const due = await amountDueNow(ctx, {
@@ -625,6 +639,7 @@ export async function webCardPaymentUrl(
     invId: order.id,
     description: `Заказ #${displayNo(order)}`,
     botId: ctx.tenant.id,
+    receipt: robokassaReceipt(rk, order, due, `Заказ #${displayNo(order)}`),
   });
 }
 

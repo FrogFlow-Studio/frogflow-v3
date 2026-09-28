@@ -65,6 +65,11 @@ export async function addToCart(
   const kind = product.fulfillment_kind === "physical" ? "physical" : "digital";
   // Цифровой товар без файла — оплата без выдачи; отказ до корзины, не после.
   if (kind === "digital" && !productSellable(product)) return "unavailable";
+  // Курс с потоками: набор во все потоки закончился — не продаём.
+  if (kind === "digital" && ctx.tenant.modules.courses) {
+    const { courseEnrollOpen } = await import("@/core/courses/enroll.server");
+    if (!(await courseEnrollOpen(ctx, productId))) return "unavailable";
+  }
 
   // Смешанная корзина не поддерживается: у цифрового и физического заказа
   // разные машины выдачи.

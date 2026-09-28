@@ -213,6 +213,9 @@ export const ADDON_MONTHLY_PRICE: Record<AddonKey, number> = { whatsapp: 5000, i
 export const SHOP_CHANNEL_MODULES: readonly ModuleKey[] = ["wa_shop", "dm_shop"];
 
 export function nicheForVertical(v: VerticalKey): PlanNiche | null {
+  // Онлайн-школа продаёт цифровое: тарифы магазинов цифровых товаров, «Курсы»
+  // входят в них по COURSES_FROM_TIER. Свои тарифы ниши — решение Якова.
+  if (v === "courses") return "digital";
   return (PLAN_NICHES as readonly string[]).includes(v) ? (v as PlanNiche) : null;
 }
 

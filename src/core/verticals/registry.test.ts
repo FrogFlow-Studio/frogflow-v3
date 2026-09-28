@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isConsultantVertical,
   isFlowersVertical,
+  isCoursesVertical,
   isPhysicalShopVertical,
   verticalDef,
 } from "./registry";
@@ -27,5 +28,13 @@ describe("ниши: витрина, физический чекаут и кон�
     expect(isPhysicalShopVertical("flowers")).toBe(true);
     expect(isFlowersVertical("flowers")).toBe(true);
     expect(verticalDef("flowers").suggestedModules).toContain("whatsapp");
+  });
+
+  it("courses — онлайн-школа: цифровой магазин с курсами и закрытым каналом", () => {
+    expect(verticalDef("courses").mode).toBe("shop");
+    expect(verticalDef("courses").defaultFulfillment).toBe("digital");
+    expect(isPhysicalShopVertical("courses")).toBe(false);
+    expect(isCoursesVertical("courses")).toBe(true);
+    expect(verticalDef("courses").suggestedModules).toEqual(["courses", "vip", "manager_chat"]);
   });
 });

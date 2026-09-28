@@ -197,6 +197,10 @@ export const ru = {
   "settings.legal.offer": "Публичная оферта",
   "settings.legal.privacy": "Политика конфиденциальности",
   "settings.legal.requisites": "Реквизиты продавца",
+  "settings.legal.templateSchool": "Вставить шаблон для онлайн-школы (РФ)",
+  "settings.legal.templateReplace": "Заменить текущий текст шаблоном?",
+  "settings.legal.templateHint":
+    "Шаблон — отправная точка: заполните данные в [квадратных скобках] и покажите текст своему юристу перед публикацией. Когда оферта или политика опубликованы, покупатель на сайте ставит галочку согласия, а в боте видит строку об акцепте при оплате.",
   "settings.legal.about": "О продавце",
   // Robokassa
   "settings.crm.title": "CRM и Google Таблицы",
@@ -271,6 +275,17 @@ export const ru = {
   "settings.rk.pass1": "Пароль #1 (боевой)",
   "settings.rk.pass2": "Пароль #2 (боевой)",
   "settings.rk.pass1Test": "Тестовый пароль #1",
+  "settings.rk.region": "Страна кассы",
+  "settings.rk.regionKz": "Казахстан (robokassa.kz, тенге)",
+  "settings.rk.regionRu": "Россия (robokassa.ru, рубли)",
+  "settings.rk.regionHint":
+    "Касса списывает в своей валюте: оплата картой показывается только для заказов в тенге (Казахстан) или в рублях (Россия).",
+  "settings.rk.receipt": "Передавать чек 54-ФЗ (онлайн-касса Robokassa)",
+  "settings.rk.sno": "Система налогообложения",
+  "settings.rk.snoAccount": "Как в личном кабинете",
+  "settings.rk.tax": "НДС",
+  "settings.rk.receiptHint":
+    "В чек уходят позиции заказа и доставка; скидка раскладывается по позициям, сумма чека равна сумме оплаты. Курс и цифровой товар — услуга, физический — товар.",
   "settings.rk.pass2Test": "Тестовый пароль #2",
   // умный поиск
   "settings.ss.title": "Умный поиск по каталогу",
@@ -527,6 +542,10 @@ export const kk: SectionDict<typeof ru> = {
   "settings.legal.offer": "Жария оферта",
   "settings.legal.privacy": "Құпиялылық саясаты",
   "settings.legal.requisites": "Сатушының реквизиттері",
+  "settings.legal.templateSchool": "Онлайн-мектепке арналған үлгіні қою (РФ)",
+  "settings.legal.templateReplace": "Ағымдағы мәтінді үлгімен ауыстыру керек пе?",
+  "settings.legal.templateHint":
+    "Үлгі — бастапқы нүкте: [шаршы жақшадағы] деректерді толтырыңыз және жарияламас бұрын мәтінді заңгеріңізге көрсетіңіз. Оферта немесе саясат жарияланғанда, сайттағы сатып алушы келісім белгісін қояды, ал ботта төлем кезінде акцепт туралы жолды көреді.",
   "settings.legal.about": "Сатушы туралы",
   "settings.crm.title": "CRM және Google Кестелер",
   "settings.crm.intro":
@@ -602,6 +621,17 @@ export const kk: SectionDict<typeof ru> = {
   "settings.rk.pass1": "Құпиясөз #1 (жұмыс)",
   "settings.rk.pass2": "Құпиясөз #2 (жұмыс)",
   "settings.rk.pass1Test": "Тест құпиясөзі #1",
+  "settings.rk.region": "Касса елі",
+  "settings.rk.regionKz": "Қазақстан (robokassa.kz, теңге)",
+  "settings.rk.regionRu": "Ресей (robokassa.ru, рубль)",
+  "settings.rk.regionHint":
+    "Касса өз валютасында есептен шығарады: картамен төлем тек теңгедегі (Қазақстан) немесе рубльдегі (Ресей) тапсырыстарға көрсетіледі.",
+  "settings.rk.receipt": "54-ФЗ чегін жіберу (Robokassa онлайн-кассасы)",
+  "settings.rk.sno": "Салық салу жүйесі",
+  "settings.rk.snoAccount": "Жеке кабинеттегідей",
+  "settings.rk.tax": "ҚҚС",
+  "settings.rk.receiptHint":
+    "Чекке тапсырыс позициялары мен жеткізу кіреді; жеңілдік позицияларға бөлінеді, чек сомасы төлем сомасына тең. Курс пен цифрлық тауар — қызмет, физикалық — тауар.",
   "settings.rk.pass2Test": "Тест құпиясөзі #2",
   "settings.ss.title": "Каталог бойынша ақылды іздеу",
   "settings.ss.intro":
@@ -853,6 +883,10 @@ export const en: SectionDict<typeof ru> = {
   "settings.legal.offer": "Public offer",
   "settings.legal.privacy": "Privacy policy",
   "settings.legal.requisites": "Seller details",
+  "settings.legal.templateSchool": "Insert the online school template (Russia)",
+  "settings.legal.templateReplace": "Replace the current text with the template?",
+  "settings.legal.templateHint":
+    "The template is a starting point: fill in the data in [square brackets] and have your lawyer review it before publishing. Once the offer or policy is published, buyers tick a consent box on the website and see an acceptance line at payment in the bot.",
   "settings.legal.about": "About the seller",
   "settings.crm.title": "CRM and Google Sheets",
   "settings.crm.intro":
@@ -927,6 +961,17 @@ export const en: SectionDict<typeof ru> = {
   "settings.rk.pass1": "Password #1 (live)",
   "settings.rk.pass2": "Password #2 (live)",
   "settings.rk.pass1Test": "Test password #1",
+  "settings.rk.region": "Merchant country",
+  "settings.rk.regionKz": "Kazakhstan (robokassa.kz, tenge)",
+  "settings.rk.regionRu": "Russia (robokassa.ru, roubles)",
+  "settings.rk.regionHint":
+    "The merchant charges in its own currency: card payment is offered only for orders in tenge (Kazakhstan) or roubles (Russia).",
+  "settings.rk.receipt": "Send a 54-FZ receipt (Robokassa online cash register)",
+  "settings.rk.sno": "Taxation system",
+  "settings.rk.snoAccount": "As in the merchant account",
+  "settings.rk.tax": "VAT",
+  "settings.rk.receiptHint":
+    "The receipt lists order items and delivery; discounts are spread across items so the receipt total equals the payment. Courses and digital goods are services, physical ones are goods.",
   "settings.rk.pass2Test": "Test password #2",
   "settings.ss.title": "Smart catalog search",
   "settings.ss.intro":
@@ -1181,6 +1226,10 @@ export const uz: SectionDict<typeof ru> = {
   "settings.legal.offer": "Ommaviy oferta",
   "settings.legal.privacy": "Maxfiylik siyosati",
   "settings.legal.requisites": "Sotuvchi rekvizitlari",
+  "settings.legal.templateSchool": "Onlayn maktab uchun shablonni qo‘yish (RF)",
+  "settings.legal.templateReplace": "Joriy matn shablon bilan almashtirilsinmi?",
+  "settings.legal.templateHint":
+    "Shablon — boshlang‘ich nuqta: [kvadrat qavslardagi] ma’lumotlarni to‘ldiring va e’lon qilishdan oldin matnni yuristingizga ko‘rsating. Oferta yoki siyosat e’lon qilinganda, saytdagi xaridor rozilik belgisini qo‘yadi, botda esa to‘lovda aksept haqidagi qatorni ko‘radi.",
   "settings.legal.about": "Sotuvchi haqida",
   "settings.crm.title": "CRM va Google Jadvallar",
   "settings.crm.intro":
@@ -1255,6 +1304,17 @@ export const uz: SectionDict<typeof ru> = {
   "settings.rk.pass1": "Parol #1 (ishchi)",
   "settings.rk.pass2": "Parol #2 (ishchi)",
   "settings.rk.pass1Test": "Test paroli #1",
+  "settings.rk.region": "Kassa mamlakati",
+  "settings.rk.regionKz": "Qozog‘iston (robokassa.kz, tenge)",
+  "settings.rk.regionRu": "Rossiya (robokassa.ru, rubl)",
+  "settings.rk.regionHint":
+    "Kassa o‘z valyutasida yechadi: karta orqali to‘lov faqat tengedagi (Qozog‘iston) yoki rubldagi (Rossiya) buyurtmalar uchun ko‘rsatiladi.",
+  "settings.rk.receipt": "54-FZ chekini yuborish (Robokassa onlayn-kassasi)",
+  "settings.rk.sno": "Soliq tizimi",
+  "settings.rk.snoAccount": "Shaxsiy kabinetdagidek",
+  "settings.rk.tax": "QQS",
+  "settings.rk.receiptHint":
+    "Chekka buyurtma pozitsiyalari va yetkazib berish kiradi; chegirma pozitsiyalarga taqsimlanadi, chek summasi to‘lov summasiga teng. Kurs va raqamli mahsulot — xizmat, jismoniy — tovar.",
   "settings.rk.pass2Test": "Test paroli #2",
   "settings.ss.title": "Katalog bo‘yicha aqlli qidiruv",
   "settings.ss.intro":

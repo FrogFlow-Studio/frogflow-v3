@@ -2,6 +2,7 @@ import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { saveSettingsFn, setPdfWatermarkFn } from "@/app/admin/admin.functions";
 import { Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
+import { SCHOOL_OFFER_RU, SCHOOL_PRIVACY_RU } from "@/app/admin/legal-templates";
 import { adminT } from "@/app/i18n/admin";
 import {
   PAY_REMIND_HOURS,
@@ -48,9 +49,25 @@ export function LegalCard({ settings }: { settings: Record<string, string> }) {
       >
         {docs.map(([k, title]) => (
           <Field key={k} label={title}>
-            <textarea className="input" name={k} rows={5} defaultValue={settings[k] ?? ""} />
+            <textarea id={k} className="input" name={k} rows={5} defaultValue={settings[k] ?? ""} />
+            {(k === "legal_offer" || k === "legal_privacy") && (
+              <button
+                type="button"
+                className="mt-1 text-xs text-accent hover:underline"
+                onClick={() => {
+                  const el = document.getElementById(k) as HTMLTextAreaElement | null;
+                  if (!el) return;
+                  if (el.value.trim() && !window.confirm(t("settings.legal.templateReplace")))
+                    return;
+                  el.value = k === "legal_offer" ? SCHOOL_OFFER_RU : SCHOOL_PRIVACY_RU;
+                }}
+              >
+                {t("settings.legal.templateSchool")}
+              </button>
+            )}
           </Field>
         ))}
+        <p className="text-xs text-muted md:col-span-2">{t("settings.legal.templateHint")}</p>
         <div className="flex items-center gap-3 md:col-span-2">
           <button className="btn-secondary" disabled={save.busy}>
             {t("common.save")}

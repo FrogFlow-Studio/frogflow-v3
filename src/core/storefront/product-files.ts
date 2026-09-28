@@ -1,3 +1,4 @@
+import { withoutCourseMarker } from "@/core/courses/marker";
 import {
   MATERIAL_LANGUAGES,
   materialsForProduct,
@@ -21,7 +22,8 @@ export function productFiles(
   const langs: readonly Locale[] = multiLanguage ? MATERIAL_LANGUAGES : ["ru"];
   const out: ProductFile[] = [];
   for (const lang of langs) {
-    const list = materialsForProduct(product, lang);
+    // Метка товара-курса — не файл (core/courses/marker).
+    const list = withoutCourseMarker(materialsForProduct(product, lang));
     list.forEach((m, i) => {
       const name = m.name?.trim() || (list.length > 1 ? `${i + 1}` : "");
       out.push({ name, lang });

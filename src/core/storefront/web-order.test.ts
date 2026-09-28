@@ -10,7 +10,9 @@ vi.mock("@/core/orders/orders", async (orig) => ({
 }));
 const robokassa = vi.fn();
 let stripeReady = false;
-vi.mock("@/core/payments/payment", () => ({
+vi.mock("@/core/payments/payment", async (orig) => ({
+  // Чек 54-ФЗ — настоящий: у кассы Казахстана его нет.
+  robokassaReceipt: (await orig<typeof import("@/core/payments/payment")>()).robokassaReceipt,
   robokassaFor: () => robokassa(),
   stripeFor: async () =>
     stripeReady ? { ready: true, secretKey: "sk", webhookSecret: "wh" } : { ready: false },

@@ -374,7 +374,7 @@ export async function runCourseLessons(tenant: Tenant) {
   const { announceNewLessons } = await import("@/core/courses/announce.server");
   const tg = api(ctx);
   const m = COPY[ctx.tenant.settings.default_locale ?? "ru"] ?? COPY.ru;
-  return announceNewLessons(ctx, async (a) => {
+  const lessons = await announceNewLessons(ctx, async (a) => {
     const r = await tg.call("sendMessage", {
       chat_id: a.telegramId,
       text: escapeHtml(m.courseNewLesson(a.lessonNo, a.title)),
@@ -383,6 +383,36 @@ export async function runCourseLessons(tenant: Tenant) {
     });
     return r.ok;
   });
+  // Напоминания до старта, о несданном задании и конец доступа к каналу.
+  const { courseReminders } = await import("@/core/courses/reminders.server");
+  const { telegramChannelInviter } = await import("./courses");
+  const day = new Intl.DateTimeFormat(ctx.tenant.settings.default_locale ?? "ru", {
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: ctx.timezone,
+  });
+  const reminders = await courseReminders(
+    ctx,
+    async (x) => {
+      const text =
+        x.kind === "pre"
+          ? m.coursePreStart(x.course, x.days, day.format(new Date(x.start)))
+          : m.courseHomeworkDue(x.course, x.lessonNo, x.title);
+      const r = await tg.call("sendMessage", {
+        chat_id: x.telegramId,
+        text: escapeHtml(text),
+        parse_mode: "HTML",
+        ...(x.url
+          ? { reply_markup: { inline_keyboard: [[{ text: m.courseOpenBtn, url: x.url }]] } }
+          : {}),
+      });
+      return r.ok;
+    },
+    telegramChannelInviter(tg),
+  );
+  return { lessons, reminders };
 }
 
 /** «12 мин», «2 ч 5 мин» — сколько покупатель ждёт. */

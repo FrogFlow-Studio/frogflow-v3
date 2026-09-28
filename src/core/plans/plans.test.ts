@@ -87,6 +87,7 @@ describe("реестр планов", () => {
     expect(nicheForVertical("consultant")).toBeNull();
     expect(nicheForVertical("consultant_universal")).toBe("consultant_universal");
     expect(nicheForVertical("confectionery")).toBe("confectionery");
+    expect(nicheForVertical("courses")).toBe("digital");
   });
 });
 

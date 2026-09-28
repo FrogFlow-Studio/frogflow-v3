@@ -54,7 +54,7 @@ import {
   zoneFee,
 } from "@/core/fulfillment/fulfillment";
 import { addDaysToIso, isoToDisplay, parseDateInput, todayInTz } from "@/core/fulfillment/pure";
-import { robokassaFor } from "@/core/payments/payment";
+import { robokassaFor, robokassaReceipt } from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
 import { formatRatingSummary } from "@/core/reviews/pure";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
@@ -1662,6 +1662,7 @@ async function choosePayment(s: Shop, kind: "rk" | "manual") {
       invId: order.id,
       description: `Заказ #${no}`,
       botId: s.ctx.tenant.id,
+      receipt: robokassaReceipt(rk, order, due, `Заказ #${no}`),
     });
     await setMode(s, {
       mode: "awaiting_payment",

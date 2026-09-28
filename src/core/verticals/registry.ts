@@ -282,6 +282,63 @@ export const VERTICALS = {
       },
     },
   },
+  courses: {
+    title: "Онлайн-школа",
+    mode: "shop",
+    defaultFulfillment: "digital",
+    botDescriptionIntro:
+      `🎓 Онлайн-обучение: курсы, уроки и домашние задания.\n` +
+      `→ Уроки открываются по расписанию после оплаты\n` +
+      `→ Домашние задания с проверкой преподавателя\n` +
+      `→ Закрытый канал для учеников`,
+    shortDescription:
+      "Онлайн-курсы с проверкой домашних заданий. Нажимая /start, вы принимаете оферту и политику конфиденциальности.",
+    // courses — уроки и домашние задания, vip — закрытый канал по подписке,
+    // manager_chat — вопросы преподавателю в «Чате» админки.
+    suggestedModules: ["courses", "vip", "manager_chat"],
+    locales: {
+      ru: {
+        welcomeGreeting: "Добро пожаловать в онлайн-школу!",
+        welcomeCatalog: "Курсы и программы обучения",
+        welcomePayment: "Оплата и доступ к урокам",
+        contactBtn: "💬 Написать преподавателю",
+        instructionComingSoon:
+          "📖 Инструкция скоро появится.\nПока: «Каталог» → выберите курс → оплата. После оплаты придёт ссылка на уроки, там же сдаются домашние задания.",
+        instructionDefaultCaption:
+          "📖 Как учиться: выберите курс → оплатите → откройте ссылку на уроки. Уроки открываются по расписанию, домашние задания сдаются на странице курса, преподаватель проверит и ответит.",
+      },
+      kk: {
+        welcomeGreeting: "Онлайн-мектепке қош келдіңіз!",
+        welcomeCatalog: "Курстар мен оқу бағдарламалары",
+        welcomePayment: "Төлем және сабақтарға қолжетімділік",
+        contactBtn: "💬 Оқытушыға жазу",
+        instructionComingSoon:
+          "📖 Нұсқаулық жақында қосылады.\nӘзірге: «Каталог» → курсты таңдаңыз → төлем. Төлемнен кейін сабақтарға сілтеме келеді, үй тапсырмасы да сонда тапсырылады.",
+        instructionDefaultCaption:
+          "📖 Қалай оқу керек: курсты таңдаңыз → төлеңіз → сабақтар сілтемесін ашыңыз. Сабақтар кесте бойынша ашылады, үй тапсырмасы курс бетінде тапсырылады, оқытушы тексеріп жауап береді.",
+      },
+      en: {
+        welcomeGreeting: "Welcome to the online school!",
+        welcomeCatalog: "Courses and learning programs",
+        welcomePayment: "Payment and access to lessons",
+        contactBtn: "💬 Message the teacher",
+        instructionComingSoon:
+          "📖 The guide is coming soon.\nFor now: “Catalog” → choose a course → pay. After payment you get a link to the lessons, where homework is submitted too.",
+        instructionDefaultCaption:
+          "📖 How to study: choose a course → pay → open the lessons link. Lessons open on schedule, homework is submitted on the course page, the teacher reviews it and replies.",
+      },
+      uz: {
+        welcomeGreeting: "Onlayn maktabga xush kelibsiz!",
+        welcomeCatalog: "Kurslar va o‘quv dasturlari",
+        welcomePayment: "To‘lov va darslarga kirish",
+        contactBtn: "💬 O‘qituvchiga yozish",
+        instructionComingSoon:
+          "📖 Yo‘riqnoma tez orada qo‘shiladi.\nHozircha: «Katalog» → kursni tanlang → to‘lov. To‘lovdan so‘ng darslar havolasi keladi, uy vazifasi ham o‘sha yerda topshiriladi.",
+        instructionDefaultCaption:
+          "📖 Qanday o‘qish kerak: kursni tanlang → to‘lang → darslar havolasini oching. Darslar jadval bo‘yicha ochiladi, uy vazifasi kurs sahifasida topshiriladi, o‘qituvchi tekshirib javob beradi.",
+      },
+    },
+  },
   consultant_universal: {
     title: "Универсальный консультант",
     mode: "consultant",
@@ -367,4 +424,9 @@ export function isUniversalConsultantVertical(key: VerticalKey): boolean {
 
 export function isFlowersVertical(key: VerticalKey): boolean {
   return key === "flowers";
+}
+
+/** Онлайн-школа: курсы с уроками и домашними заданиями (docs/COURSES-NICHE.md). */
+export function isCoursesVertical(key: VerticalKey): boolean {
+  return key === "courses";
 }

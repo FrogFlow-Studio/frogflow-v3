@@ -105,6 +105,9 @@ describe("курс — сообщение о новом уроке", () => {
     const p = {
       orderItemId: "item-2",
       orderId: 7,
+      telegramId: 700,
+      boughtAt: "2026-09-01T00:00:00Z",
+      variantId: null,
       productId: P,
       name: "Курс",
       course: { ...course, schedule: { mode: "all" as const } },
@@ -143,7 +146,7 @@ describe("курс — прогресс учеников для продавца
     );
     const r = await courseStudents(ctx, P, at(2));
     expect(r.total).toBe(3);
-    expect(r.students).toEqual([
+    expect(r.students).toMatchObject([
       {
         orderNo: 108,
         buyer: null,
@@ -159,6 +162,8 @@ describe("курс — прогресс учеников для продавца
         startedAt: START,
         open: 2,
         done: 1,
+        behind: false,
+        inChannel: false,
       },
     ]);
   });

@@ -2,6 +2,7 @@ import { saveWinbackFn, winbackFn } from "@/app/admin/winback.functions";
 import { SimilarCard } from "@/app/admin/similar-card";
 import { birthdayFn, funnelFn, saveBirthdayFn, saveFunnelFn } from "@/app/admin/funnel.functions";
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
+import { courseFn } from "@/app/admin/courses.functions";
 import { useEffect, useRef, useState } from "react";
 import {
   audienceCountFn,
@@ -48,6 +49,8 @@ type SegmentDraft = {
   days: string;
   locale: string;
   tag: string;
+  who: "all" | "behind" | "homework" | "completed";
+  cohortId: string;
 };
 const EMPTY_SEGMENT: SegmentDraft = {
   kind: "product",
@@ -57,6 +60,8 @@ const EMPTY_SEGMENT: SegmentDraft = {
   days: "30",
   locale: "ru",
   tag: "",
+  who: "all",
+  cohortId: "",
 };
 
 /** Черновик сегмента → то, что примет parseSegment; незаполненный — undefined. */
@@ -74,6 +79,10 @@ function segmentOf(d: SegmentDraft): Record<string, unknown> | undefined {
       return { kind: "cart" };
     case "tag":
       return d.tag.trim() ? { kind: "tag", tag: d.tag.trim() } : undefined;
+    case "course":
+      return d.productId
+        ? { kind: "course", productId: d.productId, who: d.who, cohortId: d.cohortId || null }
+        : undefined;
   }
 }
 
@@ -280,7 +289,17 @@ function SegmentPicker({
   onChange: (v: SegmentDraft) => void;
 }) {
   const t = useT();
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
   const set = (patch: Partial<SegmentDraft>) => onChange({ ...value, ...patch });
+  // Потоки выбранного курса — для «ученики потока».
+  const [cohorts, setCohorts] = useState<Array<{ id: string; title: string }>>([]);
+  useEffect(() => {
+    if (value.kind !== "course" || !value.productId) return setCohorts([]);
+    void courseFn({ data: { productId: value.productId } }).then(
+      (c) => setCohorts((c.cohorts ?? []).map((k) => ({ id: k.id, title: k.title || k.start }))),
+      () => setCohorts([]),
+    );
+  }, [value.kind, value.productId]);
   return (
     <div className="mt-2 grid gap-2 sm:grid-cols-2">
       <select
@@ -289,12 +308,54 @@ function SegmentPicker({
         value={value.kind}
         onChange={(e) => set({ kind: e.target.value as SegmentKind })}
       >
-        {SEGMENT_KINDS.map((k) => (
+        {SEGMENT_KINDS.filter((k) => k !== "course" || shop.modules.courses).map((k) => (
           <option key={k} value={k}>
             {t(`broadcasts.segment.${k}` as AdminKey)}
           </option>
         ))}
       </select>
+      {value.kind === "course" && (
+        <>
+          <div aria-label={t("broadcasts.segment.pickProduct")}>
+            <ProductPicker
+              t={t}
+              value={
+                value.productId
+                  ? { id: value.productId, name: value.productName, price: 0, currency: "" }
+                  : null
+              }
+              onChange={(p) =>
+                set({ productId: p?.id ?? "", productName: p?.name ?? "", cohortId: "" })
+              }
+            />
+          </div>
+          <select
+            className="input"
+            value={value.who}
+            onChange={(e) => set({ who: e.target.value as SegmentDraft["who"] })}
+          >
+            {(["all", "behind", "homework", "completed"] as const).map((w) => (
+              <option key={w} value={w}>
+                {t(`broadcasts.segment.who.${w}`)}
+              </option>
+            ))}
+          </select>
+          {cohorts.length > 0 && (
+            <select
+              className="input"
+              value={value.cohortId}
+              onChange={(e) => set({ cohortId: e.target.value })}
+            >
+              <option value="">{t("broadcasts.segment.allCohorts")}</option>
+              {cohorts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          )}
+        </>
+      )}
       {value.kind === "product" && (
         <div aria-label={t("broadcasts.segment.pickProduct")}>
           <ProductPicker

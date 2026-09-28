@@ -28,6 +28,9 @@ function CheckoutPage() {
   // закончился) берём новую, чтобы покупатель исправил поле и отправил снова.
   const [challenge, setChallenge] = useState(info.enabled ? info.challenge : "");
   const physical = cart.lines.some((l) => l.kind === "physical");
+  // Порядок слов у языков разный («Я принимаю …» / «Мен … қабылдаймын»):
+  // ссылки встают на место {docs}.
+  const consentText = t("checkout.consent", { docs: "\u0000" }).split("\u0000");
   const ff = info.enabled ? info.fulfillment : null;
   const [ftype, setFtype] = useState<"pickup" | "delivery">(
     ff && !ff.pickup && ff.delivery ? "delivery" : "pickup",
@@ -66,6 +69,7 @@ function CheckoutPage() {
           : null,
         promo: String(f.get("promo") ?? "") || undefined,
         gift: String(f.get("gift") ?? "") || undefined,
+        consent: f.get("consent") === "on",
         website: String(f.get("website") ?? ""),
         source: readWebSource(slug),
         challenge,
@@ -222,6 +226,36 @@ function CheckoutPage() {
           <Field label={t("checkout.gift")}>
             <input className="input" name="gift" maxLength={40} autoComplete="off" />
           </Field>
+        )}
+        {(info.consent.offer || info.consent.privacy) && (
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="consent" required className="mt-1" />
+            <span>
+              {consentText[0]}
+              {info.consent.offer && (
+                <Link
+                  to="/s/$slug/legal/$doc"
+                  params={{ slug, doc: "offer" }}
+                  target="_blank"
+                  className="text-accent hover:underline"
+                >
+                  {t("checkout.consentOffer")}
+                </Link>
+              )}
+              {info.consent.offer && info.consent.privacy && t("checkout.consentAnd")}
+              {info.consent.privacy && (
+                <Link
+                  to="/s/$slug/legal/$doc"
+                  params={{ slug, doc: "privacy" }}
+                  target="_blank"
+                  className="text-accent hover:underline"
+                >
+                  {t("checkout.consentPrivacy")}
+                </Link>
+              )}
+              {consentText[1]}
+            </span>
+          </label>
         )}
         {/* Приманка для ботов: человек это поле не видит и не заполняет. */}
         <input

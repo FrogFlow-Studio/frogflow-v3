@@ -10,7 +10,9 @@ describe("шаблоны ниш", () => {
   it("у каждой ниши есть шаблон, товары ссылаются на свои категории", () => {
     for (const v of VERTICAL_KEYS) {
       const tpl = NICHE_TEMPLATES[v];
-      expect(tpl.products.length).toBeGreaterThan(0);
+      // У онлайн-школы главный пример — курс (COURSE_EXAMPLE), товаров-файлов нет.
+      if (v === "courses") expect(tpl.categories.length).toBeGreaterThan(0);
+      else expect(tpl.products.length).toBeGreaterThan(0);
       for (const p of tpl.products) {
         expect(tpl.categories[p.category]).toBeDefined();
         for (const l of ["ru", "kk"] as const) {
@@ -30,7 +32,7 @@ describe("шаблоны ниш", () => {
 });
 
 function ctxFor(
-  vertical: "confectionery" | "digital",
+  vertical: "confectionery" | "digital" | "courses",
   locale?: "kk",
   modules: Record<string, boolean> = {},
 ) {
@@ -107,5 +109,22 @@ describe("шаблон «Курсы»", () => {
     await applyNicheTemplate(ctx);
     expect(db.tables.app_settings!.some((s) => String(s.key).startsWith("course_"))).toBe(false);
     expect(db.tables.products).toHaveLength(NICHE_TEMPLATES.digital.products.length);
+  });
+});
+
+describe("шаблон онлайн-школы", () => {
+  it("разделы и пример курса с домашним заданием; курс сразу продаётся без файлов", async () => {
+    const { db, ctx } = ctxFor("courses", undefined, { courses: true });
+    db.tables.app_settings = [];
+    const r = await applyNicheTemplate(ctx);
+    expect(r.products).toBe(1);
+    expect(db.tables.categories!.map((c) => c.name)).toEqual(["Курсы", "Мастер-классы"]);
+    const product = db.tables.products![0]!;
+    expect(product.file_url).toBe("frogflow:course");
+    const saved = (db.tables.app_settings as Array<{ key: string; value: string }>).find(
+      (x) => x.key === courseKey(String(product.id)),
+    );
+    const course = parseCourse(saved?.value);
+    expect(course.lessons.some((l) => l.homework)).toBe(true);
   });
 });

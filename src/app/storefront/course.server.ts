@@ -1,12 +1,15 @@
-import { lessonsAccess, nextOpening } from "@/core/courses/access";
+import { nextOpening } from "@/core/courses/access";
 import { isCourseToken } from "@/core/courses/link";
 import {
   coursePurchase,
   markLesson,
+  purchaseTimeline,
   startRun,
   type CoursePurchase,
 } from "@/core/courses/run.server";
 import { isTenantStorageKey } from "@/core/storage/keys";
+import type { Homework, HomeworkStatus } from "@/core/courses/homework";
+import { purchaseHomework } from "@/core/courses/homework.server";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 
 /**
@@ -27,6 +30,17 @@ export async function openCourse(
 /** Ссылка на файл урока; на сутки — страница открывается заново, ссылки обновляются. */
 export type FileSigner = (path: string, name: string | null) => Promise<string | null>;
 
+export type LessonHomeworkView = {
+  task: string;
+  /** null — ещё не сдано. */
+  status: HomeworkStatus | null;
+  feedback: { text: string; at: string; status: HomeworkStatus } | null;
+  /** Последняя сдача: что ученик уже отправил. */
+  last: { at: string; text: string; files: Array<{ name: string; url: string }> } | null;
+  /** Проверка ДЗ входит в тариф: иначе задание видно, сдать нельзя. */
+  canSubmit: boolean;
+};
+
 export type CourseView = {
   name: string;
   lessons: Array<{
@@ -40,9 +54,19 @@ export type CourseView = {
     text: string;
     link: string | null;
     files: Array<{ name: string; url: string }>;
+    /** Домашнее задание открытого урока; null — у урока его нет. */
+    homework: LessonHomeworkView | null;
   }>;
   doneCount: number;
   nextAt: string | null;
+  /** У курса есть закрытый канал: ученик берёт личную ссылку кнопкой. */
+  channel: boolean;
+  /** Поток: название и старт (ISO); null — курс без потоков. */
+  cohort: { title: string; start: string } | null;
+  beforeStart: boolean;
+  /** До когда открыт доступ; null — бессрочно. */
+  expiresAt: string | null;
+  expired: boolean;
 };
 
 export async function courseView(
@@ -51,10 +75,13 @@ export async function courseView(
   sign: FileSigner,
   now = new Date(),
 ): Promise<CourseView> {
-  // Отсчёт расписания — с первого открытия страницы.
+  // Отсчёт расписания — со старта потока или с первого открытия страницы.
   const run = await startRun(ctx, p, now);
-  const access = lessonsAccess(p.course, run.startedAt, now.getTime());
+  const tl = purchaseTimeline(ctx, { ...p, run }, now);
+  const access = tl.access;
   const done = new Set(run.done);
+  const hasHomework = p.course.lessons.some((l) => l.homework);
+  const submitted = hasHomework ? await purchaseHomework(ctx, p.orderItemId) : new Map();
   const lessons: CourseView["lessons"] = [];
   for (const a of access) {
     const files: Array<{ name: string; url: string }> = [];
@@ -76,13 +103,28 @@ export async function courseView(
       text: a.open ? a.lesson.text : "",
       link: a.open ? a.lesson.link : null,
       files,
+      homework:
+        a.open && a.lesson.homework
+          ? await homeworkView(
+              ctx,
+              a.lesson.homework,
+              submitted.get(a.lesson.id) ?? null,
+              sign,
+              tl.tariff.homework,
+            )
+          : null,
     });
   }
   return {
     name: p.name,
     lessons,
     doneCount: lessons.filter((l) => l.done).length,
-    nextAt: nextOpening(access)?.opensAt ?? null,
+    channel: Boolean(p.course.channel) && tl.tariff.channel && !tl.expired,
+    nextAt: tl.expired ? null : (nextOpening(access)?.opensAt ?? null),
+    cohort: tl.cohort ? { title: tl.cohort.title, start: tl.start } : null,
+    beforeStart: tl.beforeStart,
+    expiresAt: tl.expiresAt,
+    expired: tl.expired,
   };
 }
 
@@ -94,4 +136,30 @@ export async function setLessonDone(
   now = new Date(),
 ): Promise<string[]> {
   return (await markLesson(ctx, p, lessonId, done, now)).done;
+}
+
+async function homeworkView(
+  ctx: TenantContext,
+  task: string,
+  hw: Homework | null,
+  sign: FileSigner,
+  canSubmit: boolean,
+): Promise<LessonHomeworkView> {
+  const last = hw?.attempts.at(-1) ?? null;
+  const files: Array<{ name: string; url: string }> = [];
+  for (const f of last?.files ?? []) {
+    // Свой ответ ученик видит только из своей папки своего магазина.
+    if (!isTenantStorageKey(ctx.tenant.id, f.path)) continue;
+    const url = await sign(f.path, f.name);
+    if (url) files.push({ name: f.name ?? f.path.split("/").pop() ?? "", url });
+  }
+  return {
+    task,
+    status: hw?.status ?? null,
+    feedback: hw?.feedback
+      ? { text: hw.feedback.text, at: hw.feedback.at, status: hw.feedback.status }
+      : null,
+    last: last ? { at: last.at, text: last.text, files } : null,
+    canSubmit,
+  };
 }

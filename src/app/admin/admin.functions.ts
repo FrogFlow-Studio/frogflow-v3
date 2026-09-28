@@ -219,6 +219,13 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       vertical: ctx.tenant.vertical,
       verticalTitle: VERTICALS[ctx.tenant.vertical].title,
       modules: ctx.tenant.modules,
+      /** Работы учеников на проверке (модуль «Курсы») — бейдж «Домашние задания». */
+      homeworkWaiting:
+        ctx.tenant.modules.courses && !accountant
+          ? await import("@/core/courses/homework.server")
+              .then(async (m) => m.waitingCount(await m.listHomework(ctx)))
+              .catch(() => 0)
+          : 0,
       /** Консультант по прайсу (BOVI) — пункт «Прайс консультанта» в меню. */
       pricelist: (await import("@/core/consultant/pricelist/mode")).pricelistMode(ctx.tenant),
       status: ctx.tenant.status,
@@ -681,6 +688,8 @@ const productInput = z.object({
     .array(z.object({ name: z.string().min(1).max(80), price: z.number().min(0) }))
     .max(30)
     .default([]),
+  /** Курс (модуль «Курсы»): уроки вместо файлов — файл не обязателен (core/courses/marker). */
+  isCourse: z.boolean().default(false),
 });
 
 /** Пример цифрового товара: до 5 картинок (core/catalog/preview). */
@@ -727,8 +736,11 @@ export const saveProductFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await adminWrite();
     const m = await import("@/core/catalog/admin");
-    const { images, materials, variants, ...fields } = data.product;
-    if (fields.fulfillmentKind === "digital" && materials.length === 0)
+    const { images, materials, variants, isCourse, ...fields } = data.product;
+    // Курс продаётся, когда у него появятся уроки: без них товар не попадёт
+    // на витрину (core/courses/course.server syncCourseMarker).
+    const course = isCourse && ctx.tenant.modules.courses;
+    if (fields.fulfillmentKind === "digital" && materials.length === 0 && !course)
       throw new UserError(
         "err.admin.digitalNeedsFile",
         "Цифровому товару нужен хотя бы один файл — иначе покупатель заплатит и ничего не получит.",

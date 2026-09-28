@@ -74,6 +74,7 @@ export async function applyNicheTemplate(ctx: TenantContext): Promise<{ products
       text: l.text[lang],
       files: [],
       link: null,
+      ...(l.homework ? { homework: l.homework[lang] } : {}),
     })),
   });
   return { products: tpl.products.length + 1 };

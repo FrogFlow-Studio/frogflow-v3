@@ -81,7 +81,10 @@ export const storeProductFn = createServerFn({ method: "GET" })
     const { loadPreview } = await import("@/core/catalog/preview");
     const { imageUrl } = await import("@/core/catalog/catalog");
     const preview = (await loadPreview(ctx, product.id)).map((k) => imageUrl(ctx, k));
-    return { product, related, preview };
+    // Курс (модуль courses): программа, поток, тарифы — как лендинг курса.
+    const { coursePreview } = await import("@/core/courses/preview.server");
+    const course = product.kind === "digital" ? await coursePreview(ctx, product.id) : null;
+    return { product, related, preview, course };
   });
 
 const items = z

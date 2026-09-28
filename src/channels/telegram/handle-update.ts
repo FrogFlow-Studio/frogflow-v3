@@ -16,6 +16,13 @@ import { stateFromJson } from "@/core/customers/customers";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { TelegramApi } from "./api";
 import { languageChoice, mainMenu as screenMainMenu, productCard, welcomeHtml } from "./screens";
+import {
+  isHomeworkMessage,
+  receiveHomework,
+  sendChannelInvite,
+  showMyCourses,
+  startHomework,
+} from "./courses";
 import type { InlineButton, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from "./types";
 import {
   COPY,
@@ -102,7 +109,7 @@ import { legacyLangItem, parseLegacyLang, parseSearchMore, searchPage } from "./
 import { findValidGift, findValidPromoCode } from "@/core/discounts/discounts";
 import { normalizeCode } from "@/core/discounts/pure";
 import { claimHandoff, HANDOFF_PREFIX } from "@/core/storefront/handoff";
-import { robokassaFor } from "@/core/payments/payment";
+import { robokassaFor, robokassaReceipt } from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
 import {
   activeDeliveryZones,
@@ -137,6 +144,10 @@ export async function handleTelegramUpdate(
       return await handlePreCheckout(ctx, api, update.pre_checkout_query);
     if (update.message?.successful_payment) return await handleStarsPaid(ctx, api, update.message);
     if (update.message) return await handleMessage(ctx, api, update.message);
+    if (update.chat_member) {
+      const { handleCourseChannelMember } = await import("./courses");
+      return await handleCourseChannelMember(ctx, update.chat_member);
+    }
   } catch (e) {
     const { reportError } = await import("@/lib/errors");
     await reportError(e, {
@@ -220,6 +231,12 @@ async function handleMessage(
     await api.call("sendMessage", { chat_id: chatId, text, parse_mode: "HTML" });
     return;
   }
+  // Преподаватель ответил свайпом на уведомление о домашнем задании — и в
+  // личке, и в группе продавца (admin_chat_id бывает группой).
+  if (msg.reply_to_message && msg.text?.trim()) {
+    const { homeworkReply } = await import("./homework-review");
+    if (await homeworkReply(ctx, api, msg)) return;
+  }
   if (msg.chat.type !== undefined && msg.chat.type !== "private") return;
 
   // Менеджер ответил свайпом на уведомление о передаче — ответ покупателю в Direct.
@@ -283,6 +300,21 @@ async function handleMessage(
       await send(b, b.m.contactSaved, { reply_markup: mainMenu(b) });
       return continueCheckout(b);
     }
+  }
+
+  // Ответ на домашнее задание (онлайн-школа) — до чека: фото работы — не
+  // оплата. Кнопка меню или команда выводят из ожидания ответа.
+  if (ctx.tenant.modules.courses && isHomeworkMessage(customer, msg)) {
+    const menu = menuActionFor(text, contactLabels(ctx));
+    if (!menu && !text?.startsWith("/"))
+      return receiveHomework(b, msg, (id) =>
+        downloadTelegramFile(b.api, id).then((f) => f?.bytes ?? null),
+      );
+    b.customer = await setState(ctx, customer, {
+      ...customer.state,
+      mode: "idle",
+      hw_group: undefined,
+    });
   }
 
   // Фото к отзыву — до чека: на шаге комментария покупатель шлёт снимок
@@ -644,6 +676,8 @@ async function menuAction(b: Bot, action: ReturnType<typeof menuActionFor>) {
       return showCart(b);
     case "myOrders":
       return showMyOrders(b);
+    case "myCourses":
+      return b.ctx.tenant.modules.courses ? showMyCourses(b) : showMyOrders(b);
     case "instruction": {
       const v = verticalDef(b.ctx.tenant.vertical).locales[b.locale];
       const caption =
@@ -1323,7 +1357,7 @@ async function finishCheckout(b: Bot, countryCode: string) {
     });
     await send(
       b,
-      `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}\n\n${b.m.choosePayMethod}`,
+      `${b.m.manualTitleNew(no)}\n\n${b.m.amountToPay(formatMoney(due, order.currency))}${await consentLine(b)}\n\n${b.m.choosePayMethod}`,
       {
         reply_markup: {
           inline_keyboard: [
@@ -1362,6 +1396,18 @@ async function finishCheckout(b: Bot, countryCode: string) {
   });
 }
 
+/**
+ * Оплата — акцепт оферты: строка со ссылками на опубликованные документы
+ * (модуль legal_docs, адрес витрины). Нет документов — пусто.
+ */
+async function consentLine(b: Bot): Promise<string> {
+  const { legalConsentNeeded } = await import("@/core/storefront/consent");
+  const c = await legalConsentNeeded(b.ctx);
+  if ((!c.offer && !c.privacy) || !b.ctx.tenant.settings.slug) return "";
+  const base = `${storefrontBase(b.ctx.tenant, b.ctx.appUrl)}/legal`;
+  return `\n\n${b.m.payConsent(c.offer ? `${base}/offer` : null, c.privacy ? `${base}/privacy` : null)}`;
+}
+
 async function sendManualInstructions(
   b: Bot,
   p: {
@@ -1376,7 +1422,7 @@ async function sendManualInstructions(
   },
 ) {
   const text =
-    `${b.m.manualTitleNew(p.no)}\n\n${b.m.amountToPay(formatMoney(p.due, p.currency))}\n${p.depositLine}\n` +
+    `${b.m.manualTitleNew(p.no)}\n\n${b.m.amountToPay(formatMoney(p.due, p.currency))}${await consentLine(b)}\n${p.depositLine}\n` +
     `${escapeHtml(p.instructions || b.m.defaultInstructions)}\n\n${p.physical ? b.m.afterProofPhysical : b.m.afterProofManual}`;
   if (p.qr && text.length <= 1024) {
     const r = await b.api.call("sendPhoto", {
@@ -1800,6 +1846,7 @@ async function showBalancePayment(b: Bot, order: import("@/core/orders/orders").
         invId: await claimBalanceInvId(b.ctx, order.id, due),
         description: `Остаток по заказу #${no}`,
         botId: b.ctx.tenant.id,
+        receipt: robokassaReceipt(rk, order, due, `Остаток по заказу #${no}`),
       })
     : null;
   b.customer = await setState(b.ctx, b.customer, {
@@ -1902,6 +1949,12 @@ async function handleCallback(
   // Кнопки продавца в его чате/группе — до всех покупательских гвардов.
   if (data.startsWith("confirm:") || data.startsWith("reject:"))
     return adminDecision(ctx, api, from.id, chatId, data);
+  // Проверка домашнего задания из уведомления преподавателю (онлайн-школа).
+  if ((data.startsWith("hwa:") || data.startsWith("hwv:")) && ctx.tenant.modules.courses) {
+    const { homeworkDecision } = await import("./homework-review");
+    const messageId = cq.message?.message_id;
+    return homeworkDecision(ctx, api, from, chatId, data, messageId ? { messageId } : undefined);
+  }
 
   if (await isBlocked(ctx, from.id)) return;
   if (ctx.tenant.status !== "active") {
@@ -2072,6 +2125,7 @@ async function handleCallback(
         invId: order.id,
         description: `Заказ #${no}`,
         botId: ctx.tenant.id,
+        receipt: robokassaReceipt(rk, order, due, `Заказ #${no}`),
       });
       b.customer = await setState(ctx, customer, {
         ...customer.state,
@@ -2359,6 +2413,12 @@ async function handleCallback(
     );
     return void (await send(b, b.m.subOffDone));
   }
+  if (data.startsWith("hw:") && ctx.tenant.modules.courses) return startHomework(b, data);
+  if ((data.startsWith("lsl:") || data.startsWith("lsn:")) && ctx.tenant.modules.courses) {
+    const { showLessonList, showLesson } = await import("./courses");
+    return data.startsWith("lsl:") ? showLessonList(b, data) : showLesson(b, data);
+  }
+  if (data.startsWith("cinv:") && ctx.tenant.modules.courses) return sendChannelInvite(b, data);
   if (data.startsWith("reorder:")) {
     const order = await getOrder(ctx, Number(data.slice(8)));
     if (!order || order.telegram_id !== customer.telegramId) return;

@@ -25,7 +25,9 @@ export const NICHE_PRICING: Record<NichePage, PricingNiche> = {
 export const NICHE_VERTICAL: Record<NichePage, VerticalKey> = {
   cakes: "confectionery",
   materials: "digital",
-  courses: "digital",
+  // Своя ниша «Онлайн-школа»: тексты бота под школу; тарифы — цифровых
+  // товаров (core/plans nicheForVertical).
+  courses: "courses",
 };
 
 export function isNichePage(v: unknown): v is NichePage {

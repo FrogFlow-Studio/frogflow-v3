@@ -20,7 +20,8 @@ vi.mock("@/core/orders/orders", async (orig) => ({
   ...(await orig<typeof import("@/core/orders/orders")>()),
   claimOrderPlacement: async () => true,
 }));
-vi.mock("@/core/payments/payment", () => ({
+vi.mock("@/core/payments/payment", async (orig) => ({
+  robokassaReceipt: (await orig<typeof import("@/core/payments/payment")>()).robokassaReceipt,
   robokassaFor: async () => ({ ready: false }),
   stripeFor: async () => ({ ready: false }),
 }));

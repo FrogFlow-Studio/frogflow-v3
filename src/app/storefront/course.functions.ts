@@ -51,3 +51,113 @@ export const markLessonFn = createServerFn({ method: "POST" })
     const { setLessonDone } = await import("./course.server");
     return { done: await setLessonDone(ctx, p, data.lessonId, data.done) };
   });
+
+/** Файл ответа на домашнее задание: до 3 МБ в base64 (тело запроса Vercel ~4,5 МБ). */
+export const uploadHomeworkFileFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    input
+      .extend({
+        name: z.string().max(200).nullable(),
+        data: z.string().max(Math.ceil((3 * 1024 * 1024 * 4) / 3) + 8),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { ctx, p } = await purchase(data);
+    const { uploadHomeworkFile } = await import("@/core/courses/homework.server");
+    const r = await uploadHomeworkFile(
+      ctx,
+      p.orderItemId,
+      new Uint8Array(Buffer.from(data.data, "base64")),
+      data.name,
+    );
+    if (!r.ok) throw await homeworkError(ctx, r.reason === "tooLarge" ? "tooLarge" : "badFile");
+    return r.file;
+  });
+
+export const submitHomeworkFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    input
+      .extend({
+        lessonId: z.string().uuid(),
+        text: z.string().max(4000),
+        files: z
+          .array(
+            z.object({
+              path: z.string().min(1).max(300),
+              name: z.string().max(200).nullable(),
+              mime: z.string().max(100),
+            }),
+          )
+          .max(5),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { ctx, p } = await purchase(data);
+    const { submitHomework } = await import("@/core/courses/homework.server");
+    const r = await submitHomework(ctx, p, data.lessonId, { text: data.text, files: data.files });
+    if (!r.ok)
+      throw await homeworkError(
+        ctx,
+        r.reason === "empty"
+          ? "empty"
+          : r.reason === "accepted"
+            ? "accepted"
+            : r.reason === "closed" || r.reason === "noHomework"
+              ? "closed"
+              : r.reason === "notInTariff"
+                ? "notInTariff"
+                : "failed",
+      );
+    // Преподавателю — сразу, как вопрос покупателя (матрица уведомлений продавца).
+    const { notifyHomework } = await import("@/channels/telegram/course-notify");
+    await notifyHomework(ctx, r.homework).catch(() => 0);
+    return { status: r.homework.status };
+  });
+
+/** Личная ссылка в закрытый канал курса (core/courses/channel.server). */
+export const courseChannelInviteFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => input.parse(d))
+  .handler(async ({ data }) => {
+    const { ctx, p } = await purchase(data);
+    const { shownError } = await import("@/lib/shown-error");
+    const { storefrontT } = await import("@/app/i18n/storefront");
+    const t = storefrontT(ctx.tenant.settings.default_locale ?? "ru");
+    let token: string;
+    try {
+      token = ctx.secrets.telegramToken();
+    } catch {
+      throw shownError(t("course.channel.failed"));
+    }
+    const { env } = await import("@/config/env");
+    const { telegramApi } = await import("@/channels/telegram/api");
+    const { telegramChannelInviter } = await import("@/channels/telegram/courses");
+    const { courseChannelInvite } = await import("@/core/courses/channel.server");
+    const r = await courseChannelInvite(
+      ctx,
+      p,
+      telegramChannelInviter(telegramApi(token, env().TELEGRAM_API_BASE)),
+    );
+    if (r.ok) return { link: r.link };
+    throw shownError(
+      t(
+        r.reason === "busy"
+          ? "course.channel.busy"
+          : r.reason === "alreadyMember"
+            ? "course.channel.already"
+            : "course.channel.failed",
+      ),
+    );
+  });
+
+async function homeworkError(
+  ctx: import("@/core/tenant/resolve.server").TenantContext,
+  kind: "empty" | "accepted" | "closed" | "notInTariff" | "tooLarge" | "badFile" | "failed",
+) {
+  const { shownError } = await import("@/lib/shown-error");
+  const { storefrontT } = await import("@/app/i18n/storefront");
+  return shownError(
+    storefrontT(ctx.tenant.settings.default_locale ?? "ru")(`course.hw.err.${kind}`),
+  );
+}

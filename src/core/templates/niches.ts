@@ -247,8 +247,21 @@ const universal: NicheTemplate = {
   ],
 };
 
+/**
+ * Онлайн-школа: разделы каталога без примеров-файлов — главный пример здесь
+ * курс с уроками и домашними заданиями (COURSE_EXAMPLE, модуль «Курсы»).
+ */
+const courses: NicheTemplate = {
+  categories: [
+    { ru: "Курсы", kk: "Курстар" },
+    { ru: "Мастер-классы", kk: "Шеберлік сабақтары" },
+  ],
+  products: [],
+};
+
 export const NICHE_TEMPLATES: Record<VerticalKey, NicheTemplate> = {
   digital,
+  courses,
   confectionery,
   flowers,
   consultant,
@@ -268,7 +281,7 @@ export type CourseExample = {
   price: number;
   /** Уроки открываются по одному раз в столько дней после оплаты. */
   everyDays: number;
-  lessons: Array<{ title: Text; text: Text }>;
+  lessons: Array<{ title: Text; text: Text; homework?: Text }>;
 };
 
 /**
@@ -297,6 +310,10 @@ export const COURSE_EXAMPLE: CourseExample = {
       text: {
         ru: "Главное задание курса: шаги, пример, частые ошибки.",
         kk: "Курстың негізгі тапсырмасы: қадамдар, мысал, жиі қателер.",
+      },
+      homework: {
+        ru: "Повторите пример из урока и пришлите фото результата. Преподаватель проверит и ответит.",
+        kk: "Сабақтағы мысалды қайталап, нәтиженің фотосын жіберіңіз. Оқытушы тексеріп, жауап береді.",
       },
     },
     {

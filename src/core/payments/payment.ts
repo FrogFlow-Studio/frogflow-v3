@@ -1,14 +1,38 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSettings } from "@/core/settings/settings";
-import { ROBOKASSA_KEYS, robokassaAccepts, robokassaConfig } from "./robokassa";
+import { receiptFor, type Receipt } from "./receipt";
+import {
+  ROBOKASSA_KEYS,
+  robokassaAccepts,
+  robokassaConfig,
+  type RobokassaConfig,
+} from "./robokassa";
 
 /**
- * Robokassa продавца. С валютой заказа — только для тенге: auth.robokassa.kz
- * списывает OutSum в тенге, и заказ в долларах на 20 оплатился бы 20 ₸.
+ * Robokassa продавца. С валютой заказа — только в валюте его кассы:
+ * Казахстан списывает OutSum в тенге, Россия — в рублях, и заказ в долларах
+ * на 20 оплатился бы 20 ₸ (или 20 ₽).
  */
 export async function robokassaFor(ctx: TenantContext, currency?: string | null) {
-  if (currency != null && !robokassaAccepts(currency)) return { ready: false as const };
-  return robokassaConfig(await getSettings(ctx, ROBOKASSA_KEYS), ctx.tenant.modules.robokassa);
+  const cfg = robokassaConfig(await getSettings(ctx, ROBOKASSA_KEYS), ctx.tenant.modules.robokassa);
+  if (cfg.ready && currency != null && !robokassaAccepts(currency, cfg.region))
+    return { ready: false as const };
+  return cfg;
+}
+
+/**
+ * Чек 54-ФЗ к ссылке Robokassa (только Россия с включённым чеком): позиции
+ * заказа на сумму платежа. undefined — касса без чека.
+ */
+export function robokassaReceipt(
+  rk: RobokassaConfig,
+  order: Parameters<typeof receiptFor>[0],
+  outSum: number,
+  description: string,
+): Receipt | undefined {
+  return rk.region === "ru" && rk.receipt
+    ? receiptFor(order, outSum, rk.receipt, description)
+    : undefined;
 }
 
 /** Оплата криптой (модуль crypto, core/payments/nowpayments). */

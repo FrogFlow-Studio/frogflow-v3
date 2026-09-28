@@ -5,6 +5,7 @@ import { useCart } from "@/app/storefront/cart";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { reviewsWord } from "@/app/i18n/storefront";
 import { formatMoney } from "@/core/money/money";
+import { intlLocale } from "@/app/i18n/admin";
 import { OfferNote, OfferPrice } from "@/app/storefront/offer";
 import { pageBadge } from "@/core/catalog/lead-time";
 import { ProductReviews } from "@/app/storefront/reviews";
@@ -68,7 +69,7 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
 });
 
 function ProductPage() {
-  const { product: p, related, preview } = Route.useLoaderData();
+  const { product: p, related, preview, course } = Route.useLoaderData();
   const { slug } = Route.useParams();
   const { locale, t } = useStorefrontLocale();
   const cart = useCart();
@@ -78,6 +79,21 @@ function ProductPage() {
   const chosen = p.variants.find((v) => v.id === variant) ?? null;
   const price = chosen ? chosen.price : p.price;
   const currency = chosen ? chosen.currency : p.currency;
+  const tariff = course
+    ? {
+        homework: true,
+        channel: true,
+        accessDays: null,
+        ...(chosen ? course.tariffs[chosen.id] : {}),
+      }
+    : null;
+  const courseDate = (iso: string) =>
+    new Date(iso).toLocaleString(intlLocale(locale), {
+      day: "numeric",
+      month: "long",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   const add = () => {
     const r = cart.add({
       productId: p.id,
@@ -194,8 +210,38 @@ function ProductPage() {
               </div>
             </div>
           )}
+          {course && tariff && (
+            <div className="mt-4 space-y-1 text-sm">
+              {course.cohort && (
+                <div className="font-medium">
+                  {t("product.course.cohort", {
+                    title: course.cohort.title,
+                    date: courseDate(course.cohort.start),
+                  })}
+                </div>
+              )}
+              <div className="label">{t("product.course.includes")}</div>
+              <ul className="space-y-0.5">
+                {course.lessons.some((l) => l.homework) && (
+                  <li>
+                    {tariff.homework
+                      ? t("product.course.incHomework")
+                      : t("product.course.noHomework")}
+                  </li>
+                )}
+                {course.channel && tariff.channel && <li>{t("product.course.incChannel")}</li>}
+                <li>
+                  {tariff.accessDays
+                    ? t("product.course.access", { n: tariff.accessDays })
+                    : t("product.course.accessForever")}
+                </li>
+              </ul>
+            </div>
+          )}
           <div className="mt-5 flex items-center gap-3">
-            {p.inStock ? (
+            {course && !course.enrollOpen ? (
+              <span className="badge">{t("product.course.closed")}</span>
+            ) : p.inStock ? (
               <button className="btn-primary px-5 py-2.5 text-base" onClick={add}>
                 {t("product.addToCart")}
               </button>
@@ -205,7 +251,9 @@ function ProductPage() {
             {msg && <span className="text-sm text-muted">{msg}</span>}
           </div>
           <ul className="mt-5 space-y-1.5 text-sm text-muted">
-            {p.kind === "digital" ? (
+            {course ? (
+              <li>{t("product.course.instant")}</li>
+            ) : p.kind === "digital" ? (
               <>
                 <li>{t("product.digitalInstant")}</li>
                 <li>{t("product.digitalResend")}</li>
@@ -226,6 +274,29 @@ function ProductPage() {
           )}
         </div>
       </div>
+      {course && (
+        <section className="mt-10">
+          <h2 className="mb-1 text-sm font-semibold">
+            {t("product.course.program", { n: course.lessons.length })}
+          </h2>
+          <p className="mb-3 text-xs text-muted">
+            {course.everyDays
+              ? t("product.course.drip", { n: course.everyDays })
+              : t("product.course.all")}
+          </p>
+          <ol className="space-y-1 text-sm">
+            {course.lessons.map((l) => (
+              <li key={l.no} className="flex gap-2">
+                <span className="w-6 shrink-0 text-right text-muted tabular-nums">{l.no}.</span>
+                <span className="min-w-0 flex-1">{l.title}</span>
+                {l.homework && (
+                  <span className="shrink-0 text-xs text-muted">📝 {t("product.course.hw")}</span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
       {preview.length > 0 && (
         <section className="mt-10">
           <h2 className="mb-3 text-sm font-semibold text-muted">{t("product.preview")}</h2>

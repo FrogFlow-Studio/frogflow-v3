@@ -17,7 +17,14 @@ export function adminTelegramApi(ctx: TenantContext): TelegramApi | null {
 export async function notifyAdminsHtml(
   ctx: TenantContext,
   html: string,
-  opts: { orderId?: number; kind?: string } = {},
+  opts: {
+    orderId?: number;
+    kind?: string;
+    /** Кнопки под сообщением; в очередь повтора сообщение уходит без них (в тексте — ссылка). */
+    replyMarkup?: { inline_keyboard: Array<Array<Record<string, string>>> };
+    /** Картинки перед текстом (публичные или подписанные ссылки), лучшее усилие, до 10. */
+    photos?: string[];
+  } = {},
 ): Promise<number> {
   const api = adminTelegramApi(ctx);
   // Без бота Telegram — только push в админку, если он настроен (core/push).
@@ -54,7 +61,18 @@ export async function notifyAdminsHtml(
   const { sendOrEnqueue } = await import("@/core/outbox/outbox");
   const { telegramOutboxSender } = await import("./outbox");
   let sent = 0;
+  const photos = (opts.photos ?? []).slice(0, 10);
   for (const chatId of await adminRecipients(ctx)) {
+    if (photos.length === 1)
+      await api.call("sendPhoto", { chat_id: chatId, photo: photos[0] }).catch(() => null);
+    else if (photos.length > 1)
+      await api
+        .call("sendMediaGroup", {
+          chat_id: chatId,
+          media: photos.map((url) => ({ type: "photo", media: url })),
+        })
+        .catch(() => null);
+    const markup = opts.replyMarkup;
     // Не ушло — в очередь: крон повторит, продавец не останется без заказа.
     const ok = await sendOrEnqueue(
       ctx,
@@ -65,7 +83,19 @@ export async function notifyAdminsHtml(
         orderId: opts.orderId,
         audience: "admin",
       },
-      telegramOutboxSender,
+      markup
+        ? async (_ctx, msg) => {
+            const r = await api.call("sendMessage", {
+              chat_id: chatId,
+              text: msg.text ?? "",
+              parse_mode: "HTML",
+              reply_markup: markup,
+            });
+            return r.ok
+              ? { ok: true }
+              : { ok: false, error: r.description ?? "sendMessage failed" };
+          }
+        : telegramOutboxSender,
     );
     if (ok) sent += 1;
   }

@@ -1,3 +1,4 @@
+import { withoutCourseMarker } from "@/core/courses/marker";
 import { createHash } from "node:crypto";
 import { degrees, PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import type { MaterialSnapshot } from "@/core/catalog/materials";
@@ -85,6 +86,8 @@ export async function protectMaterials(
   order: Order,
   materials: MaterialSnapshot[],
 ): Promise<MaterialSnapshot[]> {
+  // Метка товара-курса — не файл: вместо неё канал получает ссылку на уроки.
+  materials = withoutCourseMarker(materials);
   const foreign = (m: MaterialSnapshot) =>
     Boolean(m.path) && !isDeliverableStorageKey(ctx.tenant.id, m.path!);
   if (materials.some(foreign)) {

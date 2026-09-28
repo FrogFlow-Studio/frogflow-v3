@@ -10,6 +10,14 @@ import { botCommandsVersion, clearBotCommands, syncBotCommands } from "./command
 /** Что бот получает от Telegram; pre_checkout_query — подтверждение оплаты Stars. */
 export const ALLOWED_UPDATES = ["message", "callback_query", "pre_checkout_query"];
 
+/**
+ * Модуль courses: ещё chat_member — кто вступил в закрытый канал курса по
+ * личной ссылке (Telegram шлёт его, только если попросить явно).
+ */
+export function allowedUpdatesFor(tenant: Tenant): string[] {
+  return tenant.modules.courses ? [...ALLOWED_UPDATES, "chat_member"] : ALLOWED_UPDATES;
+}
+
 export type WebhookState = { ok: boolean; url: string | null; pending: number; error?: string };
 
 /**
@@ -35,7 +43,8 @@ export async function ensureTelegramWebhook(tenant: Tenant, force = false): Prom
   const pending = info.result?.pending_update_count ?? 0;
   // Новый тип обновлений (pre_checkout_query для Stars) — повод переставить вебхук.
   const have = new Set(info.result?.allowed_updates ?? ["message", "callback_query"]);
-  const sameUpdates = ALLOWED_UPDATES.every((u) => have.has(u));
+  const want = allowedUpdatesFor(tenant);
+  const sameUpdates = want.every((u) => have.has(u));
   if (!force && current === wantUrl && sameUpdates) {
     // Вебхук на месте, но меню команд старое (или его ещё не ставили).
     if (tenant.settings.telegram?.commands_v !== botCommandsVersion(tenant))
@@ -46,7 +55,7 @@ export async function ensureTelegramWebhook(tenant: Tenant, force = false): Prom
   const set = await api.call("setWebhook", {
     url: wantUrl,
     secret_token: telegramWebhookSecret(tenant.id, WEBHOOK_SECRET),
-    allowed_updates: ALLOWED_UPDATES,
+    allowed_updates: want,
     drop_pending_updates: false,
   });
   if (!set.ok) return { ok: false, url: current, pending, error: set.description };

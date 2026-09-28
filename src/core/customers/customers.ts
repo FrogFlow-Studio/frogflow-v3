@@ -76,7 +76,9 @@ export type DialogMode =
   | "awaiting_email"
   | "awaiting_order_email"
   /** Instagram/WhatsApp, модуль loyalty: «списать баллы?» перед оформлением. */
-  | "awaiting_points_choice";
+  | "awaiting_points_choice"
+  /** Онлайн-школа: ответ на задание урока (hw_item, hw_lesson) — текстом, фото или файлом. */
+  | "awaiting_homework";
 
 export type DialogState = {
   mode?: DialogMode;
@@ -120,6 +122,10 @@ export type DialogState = {
   /** Счётчики условной записи web_orders / telegram_links (core/storefront/web-link). */
   web_orders_v?: number;
   telegram_links_v?: number;
+  /** Онлайн-школа: какое задание сдаёт ученик и альбом, который уже начал приходить. */
+  hw_item?: string;
+  hw_lesson?: string;
+  hw_group?: string;
   [key: string]: Json | undefined;
 };
 

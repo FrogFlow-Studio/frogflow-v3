@@ -34,6 +34,8 @@ export function mainMenu(tenant: Tenant, locale: Locale, appUrl: string): MainMe
     [{ text: def.locales[locale].contactBtn }],
   ];
   if (tenant.modules.quiz) keyboard.splice(1, 0, [{ text: m.quizBtn }]);
+  // Онлайн-школа: уроки, задания и канал курса — отдельной кнопкой под заказами.
+  if (tenant.modules.courses) keyboard.splice(keyboard.length - 2, 0, [{ text: m.myCourses }]);
   if (tenant.modules.telegram_mini_app && tenant.modules.shop) {
     keyboard.unshift([{ text: "🛍 Магазин", web_app: { url: storefrontBase(tenant, appUrl) } }]);
   }
@@ -131,5 +133,51 @@ export async function productCard(
     const offer = await offerForProduct(ctx, p.id);
     if (offer) caption += `\n<b>${offerLabel(offer, ctx.timezone, locale)}</b>`;
   }
+  // Курс (модуль courses): уроков, старт потока; набор закрыт — без кнопок покупки.
+  if (t.modules.courses && p.fulfillment_kind !== "physical") {
+    const { coursePreview } = await import("@/core/courses/preview.server");
+    const course = await coursePreview(ctx, p.id);
+    if (course) {
+      caption += `\n${COURSE_CARD[locale].lessons(course.lessons.length)}`;
+      if (course.cohort) {
+        const day = new Intl.DateTimeFormat(locale, {
+          day: "numeric",
+          month: "long",
+          timeZone: ctx.timezone,
+        }).format(new Date(course.cohort.start));
+        caption += `\n${COURSE_CARD[locale].start(escapeHtml(course.cohort.title), day)}`;
+      }
+      if (!course.enrollOpen) {
+        caption += `\n<b>${COURSE_CARD[locale].closed}</b>`;
+        keyboard = { inline_keyboard: [] };
+      }
+    }
+  }
   return { caption, keyboard, photo: imgs[0] ? imageUrl(ctx, imgs[0].image_path) : null };
 }
+
+const COURSE_CARD: Record<
+  Locale,
+  { lessons: (n: number) => string; start: (title: string, day: string) => string; closed: string }
+> = {
+  ru: {
+    lessons: (n) => `🎓 Уроков в курсе: ${n}`,
+    start: (title, day) => `🗓 Поток «${title}» — старт ${day}`,
+    closed: "Набор закрыт",
+  },
+  kk: {
+    lessons: (n) => `🎓 Курстағы сабақтар: ${n}`,
+    start: (title, day) => `🗓 «${title}» ағыны — басталуы ${day}`,
+    closed: "Қабылдау жабық",
+  },
+  en: {
+    lessons: (n) => `🎓 Lessons in the course: ${n}`,
+    start: (title, day) => `🗓 Cohort «${title}» — starts ${day}`,
+    closed: "Enrolment closed",
+  },
+  uz: {
+    lessons: (n) => `🎓 Kursdagi darslar: ${n}`,
+    start: (title, day) => `🗓 «${title}» oqimi — boshlanishi ${day}`,
+    closed: "Qabul yopilgan",
+  },
+};

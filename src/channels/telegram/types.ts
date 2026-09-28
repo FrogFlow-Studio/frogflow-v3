@@ -16,6 +16,8 @@ export type TelegramMessage = {
   contact?: { phone_number: string };
   document?: { file_id: string; file_name?: string; mime_type?: string; file_size?: number };
   photo?: Array<{ file_id: string; file_size?: number }>;
+  /** Часть альбома: у всех сообщений одного альбома одинаковый. */
+  media_group_id?: string;
   /** Ответ свайпом: на какое сообщение (нужен текст уведомления с меткой покупателя). */
   reply_to_message?: { message_id?: number; text?: string; caption?: string };
   /** Оплата Telegram Stars прошла (счёт sendInvoice, валюта XTR). */
@@ -47,6 +49,12 @@ export type TelegramUpdate = {
   message?: TelegramMessage;
   callback_query?: TelegramCallbackQuery;
   pre_checkout_query?: TelegramPreCheckoutQuery;
+  /** Изменение участника в чате, где бот — администратор (канал курса). */
+  chat_member?: {
+    chat: { id: number };
+    new_chat_member?: { status?: string; user?: { id: number } };
+    invite_link?: { invite_link?: string };
+  };
 };
 
 export type InlineButton = {

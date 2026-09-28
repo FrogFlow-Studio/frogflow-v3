@@ -57,15 +57,16 @@ async function handle(request: Request, botId: string, action: string): Promise<
   const { parseRobokassaInvId } = await import("@/core/orders/balance");
   const inv = parseRobokassaInvId(invId);
   if (!inv) return new Response("bad request", { status: 400 });
-  if (inv.balance) return balanceResult(ctx, inv.orderId, outSum, invId);
+  if (inv.balance) return balanceResult(ctx, inv.orderId, outSum, invId, rk.region ?? "kz");
   const orderId = inv.orderId;
   const { getOrder } = await import("@/core/orders/orders");
   const order = await getOrder(ctx, orderId);
   if (!order) return new Response("order not found", { status: 404 });
-  // Robokassa.kz списывает тенге: платёж по заказу в другой валюте — не оплата его суммы.
+  // Касса списывает в своей валюте (Казахстан — тенге, Россия — рубли):
+  // платёж по заказу в другой валюте — не оплата его суммы.
   const { robokassaAccepts } = await import("@/core/payments/robokassa");
-  if (!robokassaAccepts(order.currency)) {
-    console.error(`[robokassa:${botId}] заказ ${orderId} в ${order.currency}, не в тенге`);
+  if (!robokassaAccepts(order.currency, rk.region)) {
+    console.error(`[robokassa:${botId}] заказ ${orderId} в ${order.currency}, не в валюте кассы`);
     return new Response("currency mismatch", { status: 400 });
   }
   const { amountDueNow } = await import("@/core/fulfillment/fulfillment");
@@ -116,6 +117,7 @@ async function balanceResult(
   orderId: number,
   outSum: string,
   invId: string,
+  region: import("@/core/payments/robokassa").RobokassaRegion,
 ): Promise<Response> {
   const paid = Number(outSum);
   if (!Number.isFinite(paid) || paid <= 0) {
@@ -126,7 +128,7 @@ async function balanceResult(
   const order = await getOrder(ctx, orderId);
   if (!order) return new Response("order not found", { status: 404 });
   const { robokassaAccepts } = await import("@/core/payments/robokassa");
-  if (!robokassaAccepts(order.currency)) {
+  if (!robokassaAccepts(order.currency, region)) {
     console.error(`[robokassa:${ctx.tenant.id}] остаток: заказ ${orderId} в ${order.currency}`);
     return new Response("currency mismatch", { status: 400 });
   }

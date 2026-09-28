@@ -13,6 +13,7 @@ import { seedOperator } from "./seed/operator.ts";
 import { seedShop } from "./seed/shop.ts";
 import { seedStorefront } from "./seed/storefront.ts";
 import { seedVip } from "./seed/vip.ts";
+import { seedSchool } from "./seed/school.ts";
 
 export function seedDb(): StubDb {
   const db = stubDb();
@@ -26,5 +27,6 @@ export function seedDb(): StubDb {
   seedWhatsapp(db);
   seedConsultant(db, now);
   seedCommentToDm(db, now);
+  seedSchool(db, now);
   return db;
 }

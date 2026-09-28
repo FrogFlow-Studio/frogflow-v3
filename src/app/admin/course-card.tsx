@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { courseFn, courseStudentsFn, saveCourseFn } from "@/app/admin/courses.functions";
+import {
+  checkCourseChannelFn,
+  courseFn,
+  courseVariantsFn,
+  courseStudentsFn,
+  revokeStudentChannelFn,
+  saveCourseFn,
+} from "@/app/admin/courses.functions";
 import { uploadFile } from "@/app/admin/upload-client";
 import type { AdminT } from "@/app/i18n/admin";
 import { Card, ErrorBox, useAction } from "@/app/ui";
@@ -11,7 +18,11 @@ import {
   lessonOpensAfterDays,
   type Course,
   type Lesson,
+  ACCESS_DAYS_MAX,
+  COHORTS_MAX,
+  HOMEWORK_DAYS_MAX,
 } from "@/core/courses/course";
+import { DEFAULT_TARIFF, type Cohort, type Tariff } from "@/core/courses/cohort";
 
 /**
  * Уроки курса в карточке цифрового товара (модуль courses): порядок,
@@ -115,6 +126,44 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
         )}
       </div>
 
+      <label className="mb-3 block text-sm">
+        <span className="text-xs text-muted">{t("product.courseHomeworkDays")}</span>
+        <input
+          id="course-homework-days"
+          type="number"
+          className="input mt-1 w-24"
+          min={1}
+          max={HOMEWORK_DAYS_MAX}
+          value={course.homeworkDays ?? ""}
+          onChange={(e) => {
+            const n = Math.round(Number(e.target.value));
+            change({
+              ...course,
+              homeworkDays: e.target.value && n >= 1 ? Math.min(n, HOMEWORK_DAYS_MAX) : null,
+            });
+          }}
+        />
+        <span className="mt-1 block text-xs text-muted">{t("product.courseHomeworkDaysHint")}</span>
+      </label>
+      <p className="mb-3 text-xs text-muted">{t("product.lessonVideoHint")}</p>
+      <ChannelField
+        value={course.channel ?? ""}
+        onChange={(v) => change({ ...course, channel: v || null })}
+        t={t}
+      />
+
+      <CohortsField
+        cohorts={course.cohorts ?? []}
+        onChange={(cohorts) => change({ ...course, cohorts })}
+        t={t}
+      />
+      <TariffsField
+        productId={productId}
+        tariffs={course.tariffs ?? {}}
+        onChange={(tariffs) => change({ ...course, tariffs })}
+        t={t}
+      />
+
       {course.lessons.length === 0 && (
         <p className="mb-2 text-sm text-muted">{t("product.courseEmpty")}</p>
       )}
@@ -177,6 +226,14 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
                 placeholder={t("product.lessonLink")}
                 value={l.link ?? ""}
                 onChange={(e) => edit(i, (x) => ({ ...x, link: e.target.value.trim() || null }))}
+              />
+              <textarea
+                id={`lesson-homework-${l.id}`}
+                className="input mb-2 min-h-16"
+                placeholder={t("product.lessonHomework")}
+                maxLength={2000}
+                value={l.homework ?? ""}
+                onChange={(e) => edit(i, (x) => ({ ...x, homework: e.target.value || null }))}
               />
               <ul className="mb-2 space-y-1 text-sm">
                 {l.files.map((f, j) => (
@@ -246,39 +303,314 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
   );
 }
 
+/** Потоки: название, старт, последний день набора. */
+function CohortsField({
+  cohorts,
+  onChange,
+  t,
+}: {
+  cohorts: Cohort[];
+  onChange: (c: Cohort[]) => void;
+  t: AdminT;
+}) {
+  const edit = (i: number, patch: Partial<Cohort>) =>
+    onChange(cohorts.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+  return (
+    <div className="mb-3 space-y-2 text-sm">
+      <p className="text-xs text-muted">{t("product.courseCohorts")}</p>
+      {cohorts.map((c, i) => (
+        <div key={c.id} className="flex flex-wrap items-end gap-2 rounded border border-line p-2">
+          <input
+            id={`cohort-title-${c.id}`}
+            className="input min-w-0 flex-1"
+            placeholder={t("product.cohortTitle")}
+            maxLength={100}
+            value={c.title}
+            onChange={(e) => edit(i, { title: e.target.value })}
+          />
+          <label className="text-xs">
+            {t("product.cohortStart")}
+            <input
+              id={`cohort-start-${c.id}`}
+              type="datetime-local"
+              className="input mt-1 block w-auto"
+              value={c.start}
+              onChange={(e) => edit(i, { start: e.target.value.slice(0, 16) })}
+            />
+          </label>
+          <label className="text-xs">
+            {t("product.cohortEnrollUntil")}
+            <input
+              id={`cohort-until-${c.id}`}
+              type="date"
+              className="input mt-1 block w-auto"
+              value={c.enrollUntil ?? ""}
+              onChange={(e) => edit(i, { enrollUntil: e.target.value || null })}
+            />
+          </label>
+          <button
+            type="button"
+            className="btn-ghost"
+            aria-label={t("product.cohortDelete")}
+            onClick={() => onChange(cohorts.filter((_, j) => j !== i))}
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+      {cohorts.length < COHORTS_MAX && (
+        <button
+          type="button"
+          className="btn-secondary text-xs"
+          onClick={() =>
+            onChange([
+              ...cohorts,
+              {
+                id: crypto.randomUUID(),
+                title: "",
+                start: new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 11) + "10:00",
+                enrollUntil: null,
+              },
+            ])
+          }
+        >
+          {t("product.cohortAdd")}
+        </button>
+      )}
+      <p className="text-xs text-muted">{t("product.courseCohortsHint")}</p>
+    </div>
+  );
+}
+
+/** Тарифы — по вариантам товара: проверка ДЗ, канал, срок доступа. */
+function TariffsField({
+  productId,
+  tariffs,
+  onChange,
+  t,
+}: {
+  productId: string;
+  tariffs: Record<string, Tariff>;
+  onChange: (t: Record<string, Tariff>) => void;
+  t: AdminT;
+}) {
+  const [variants, setVariants] = useState<Array<{ id: string; name: string }> | null>(null);
+  useEffect(() => {
+    void courseVariantsFn({ data: { productId } }).then(setVariants, () => setVariants([]));
+  }, [productId]);
+  if (!variants) return null;
+  const set = (id: string, patch: Partial<Tariff>) =>
+    onChange({ ...tariffs, [id]: { ...DEFAULT_TARIFF, ...tariffs[id], ...patch } });
+  return (
+    <div className="mb-3 space-y-2 text-sm">
+      <p className="text-xs text-muted">{t("product.courseTariffs")}</p>
+      {variants.length === 0 ? (
+        <p className="text-xs text-muted">{t("product.courseTariffsNone")}</p>
+      ) : (
+        <>
+          {variants.map((v) => {
+            const cur = { ...DEFAULT_TARIFF, ...tariffs[v.id] };
+            return (
+              <div
+                key={v.id}
+                className="flex flex-wrap items-center gap-3 rounded border border-line p-2"
+              >
+                <span className="min-w-0 flex-1 font-medium">{v.name}</span>
+                <label className="flex items-center gap-1 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={cur.homework}
+                    onChange={(e) => set(v.id, { homework: e.target.checked })}
+                  />
+                  {t("product.tariffHomework")}
+                </label>
+                <label className="flex items-center gap-1 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={cur.channel}
+                    onChange={(e) => set(v.id, { channel: e.target.checked })}
+                  />
+                  {t("product.tariffChannel")}
+                </label>
+                <label className="flex items-center gap-1 text-xs">
+                  {t("product.tariffAccessDays")}
+                  <input
+                    type="number"
+                    className="input w-20"
+                    min={1}
+                    max={ACCESS_DAYS_MAX}
+                    value={cur.accessDays ?? ""}
+                    onChange={(e) => {
+                      const n = Math.round(Number(e.target.value));
+                      set(v.id, {
+                        accessDays: e.target.value && n >= 1 ? Math.min(n, ACCESS_DAYS_MAX) : null,
+                      });
+                    }}
+                  />
+                </label>
+              </div>
+            );
+          })}
+          <p className="text-xs text-muted">{t("product.courseTariffsHint")}</p>
+        </>
+      )}
+    </div>
+  );
+}
+
+type ChannelCheck = Awaited<ReturnType<typeof checkCourseChannelFn>>;
+
+/** Закрытый канал курса: id или @имя и проверка, что бот может приглашать. */
+function ChannelField({
+  value,
+  onChange,
+  t,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  t: AdminT;
+}) {
+  const [checked, setChecked] = useState<ChannelCheck | null>(null);
+  const check = useAction(async () => {
+    setChecked(await checkCourseChannelFn({ data: { channel: value } }));
+  });
+  return (
+    <div className="mb-3 space-y-1 text-sm">
+      <label className="block text-xs text-muted" htmlFor="course-channel">
+        {t("product.courseChannel")}
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <input
+          id="course-channel"
+          className="input min-w-0 flex-1"
+          placeholder="-1001234567890"
+          maxLength={40}
+          value={value}
+          onChange={(e) => {
+            setChecked(null);
+            onChange(e.target.value.trim());
+          }}
+        />
+        {value && (
+          <button
+            type="button"
+            className="btn-secondary text-sm"
+            disabled={check.busy}
+            onClick={() => void check.run().catch(() => {})}
+          >
+            {t("product.courseChannelCheck")}
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-muted">{t("product.courseChannelHint")}</p>
+      {checked && (
+        <p className={`text-xs ${checked.ok ? "text-ok" : "text-warn"}`}>
+          {checked.ok
+            ? t("product.courseChannelOk", { title: checked.title })
+            : t(`product.courseChannelErr.${checked.reason}`)}
+        </p>
+      )}
+      <ErrorBox error={check.error} />
+    </div>
+  );
+}
+
 type StudentsData = Awaited<ReturnType<typeof courseStudentsFn>>;
 
 /** Прогресс учеников: кто купил, открывал ли курс, сколько уроков пройдено. */
 function Students({ productId, t }: { productId: string; t: AdminT }) {
   const [data, setData] = useState<StudentsData | null>(null);
+  const [cohort, setCohort] = useState<string>("");
+  const [onlyBehind, setOnlyBehind] = useState(false);
+  const load = () => courseStudentsFn({ data: { productId } }).then(setData, () => setData(null));
   useEffect(() => {
-    void courseStudentsFn({ data: { productId } }).then(setData, () => setData(null));
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
+  const revoke = useAction(async (orderItemId: string) => {
+    if (!window.confirm(t("product.studentRevokeConfirm"))) return;
+    await revokeStudentChannelFn({ data: { orderItemId } });
+    await load();
+  });
   if (!data) return null;
+  const cohorts = [...new Set(data.students.flatMap((s) => (s.cohort ? [s.cohort] : [])))];
+  const shown = data.students.filter(
+    (s) => (!cohort || s.cohort === cohort) && (!onlyBehind || s.behind),
+  );
   return (
     <div className="mt-5 border-t border-line pt-4">
-      <h3 className="mb-2 text-sm font-medium">
-        {t("product.courseStudents")} · {data.students.length}
-      </h3>
-      {data.students.length === 0 ? (
+      <div className="mb-2 flex flex-wrap items-center gap-3">
+        <h3 className="text-sm font-medium">
+          {t("product.courseStudents")} · {shown.length}
+        </h3>
+        {cohorts.length > 0 && (
+          <select
+            className="input w-auto text-xs"
+            value={cohort}
+            onChange={(e) => setCohort(e.target.value)}
+          >
+            <option value="">{t("product.studentAllCohorts")}</option>
+            {cohorts.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        )}
+        <label className="flex items-center gap-1 text-xs">
+          <input
+            type="checkbox"
+            checked={onlyBehind}
+            onChange={(e) => setOnlyBehind(e.target.checked)}
+          />
+          {t("product.studentBehindOnly")}
+        </label>
+      </div>
+      {shown.length === 0 ? (
         <p className="text-sm text-muted">{t("product.courseStudentsEmpty")}</p>
       ) : (
         <ul className="divide-y divide-line text-sm">
-          {data.students.map((s) => (
-            <li key={s.orderNo} className="flex items-center justify-between gap-3 py-1.5">
-              <span className="min-w-0 truncate">
+          {shown.map((s) => (
+            <li key={s.orderItemId} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
+              <span className="min-w-0 flex-1 truncate">
                 #{s.orderNo}
                 {s.buyer ? ` · ${s.buyer}` : ""}
+                {s.tariff ? ` · ${s.tariff}` : ""}
+                {s.cohort ? ` · ${s.cohort}` : ""}
               </span>
+              {s.behind && (
+                <span className="badge text-xs text-warn">{t("product.studentBehind")}</span>
+              )}
+              {s.expired && <span className="badge text-xs">{t("product.studentExpired")}</span>}
               <span className="shrink-0 text-xs text-muted tabular-nums">
                 {s.startedAt
                   ? t("product.courseProgress", { done: s.done, total: data.total, open: s.open })
                   : t("product.courseNotStarted")}
+                {s.homework.submitted + s.homework.accepted + s.homework.revise > 0 &&
+                  ` · 📝 ${t("product.studentHomework", {
+                    accepted: s.homework.accepted,
+                    waiting: s.homework.submitted,
+                    revise: s.homework.revise,
+                  })}`}
               </span>
+              {s.inChannel && (
+                <button
+                  type="button"
+                  className="btn-ghost text-xs"
+                  disabled={revoke.busy}
+                  onClick={() => void revoke.run(s.orderItemId).catch(() => {})}
+                >
+                  {t("product.studentRevoke")}
+                </button>
+              )}
+              {s.channelRevoked && (
+                <span className="text-xs text-muted">{t("product.studentRevoked")}</span>
+              )}
             </li>
           ))}
         </ul>
       )}
+      <ErrorBox error={revoke.error} />
     </div>
   );
 }

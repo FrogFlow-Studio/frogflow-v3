@@ -54,9 +54,12 @@ export const webCheckoutInfoFn = createServerFn({ method: "GET" })
     const countries = [...new Map(methods.map((m) => [m.country_code, m.country_name])).entries()]
       .filter(([code]) => Boolean(code))
       .map(([code, name]) => ({ code, name: name || code }));
+    const { legalConsentNeeded } = await import("@/core/storefront/consent");
     return {
       enabled: true as const,
       countries,
+      /** Опубликованы оферта и/или политика — покупатель ставит галочку согласия. */
+      consent: await legalConsentNeeded(ctx),
       fulfillment: await webFulfillmentOptions(ctx, countries[0]?.code ?? null),
       /** Поля кодов скидки — только при включённых модулях. */
       codes: {
@@ -97,6 +100,8 @@ const checkoutInput = z.object({
     .optional(),
   promo: z.string().trim().max(40).optional(),
   gift: z.string().trim().max(40).optional(),
+  /** Согласие с офертой и обработкой данных (галочка оформления). */
+  consent: z.boolean().optional(),
   /** Приманка для ботов: поле скрыто, человек его не заполняет. */
   website: z.string().max(0).optional(),
   challenge: z.string().max(200),
@@ -128,6 +133,11 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
     const { normalizeEmail } = await import("@/core/storefront/web-order");
     const email = normalizeEmail(data.email);
     if (!email) throw shownError(t("checkout.error.email"));
+    // Галочка согласия проверяется и на сервере: без неё заказ не создаётся.
+    const { legalConsentNeeded } = await import("@/core/storefront/consent");
+    const consent = await legalConsentNeeded(ctx);
+    if ((consent.offer || consent.privacy) && data.consent !== true)
+      throw shownError(t("checkout.error.consent"));
     const { clientIp } = await import("@/app/auth/login-guard.server");
     const { claimCheckoutChallenge, takeWeb } = await import("@/core/storefront/checkout-guard");
     const ip = clientIp() ?? "unknown";
@@ -208,6 +218,10 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
         default:
           throw shownError(t("checkout.error.failed"));
       }
+    }
+    if (consent.offer || consent.privacy) {
+      const { recordOrderEvent } = await import("@/core/orders/events");
+      await recordOrderEvent(ctx, r.order.id, "consent", { ...consent }, "buyer").catch(() => {});
     }
     const { rememberFirstSource } = await import("@/core/storefront/web-order");
     await rememberFirstSource(ctx, customer, data.source);
