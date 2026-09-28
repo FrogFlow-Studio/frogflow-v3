@@ -1045,6 +1045,9 @@ export type LanguagePickResult =
       referral: ReferralGrant | null;
     };
 
+/** Заказ, по которому покупатель может выбрать язык файла: оплачен и выдаётся. */
+export const LANGUAGE_PICK_STATUSES = ["paid", "delivering", "delivered"] as const;
+
 /**
  * Покупатель ответил на вопрос о языке позиции: выдать её на этом языке и,
  * если ни одна позиция больше не ждёт выбора, закрыть заказ.
@@ -1056,9 +1059,15 @@ export async function completeLanguageDelivery(
 ): Promise<LanguagePickResult> {
   const order = await getOrder(ctx, p.orderId);
   if (!order || order.telegram_id !== p.telegramId) return { status: "not_found" };
+  // Кнопку языка можно подделать: файлы — только по оплаченному заказу в выдаче.
+  if (!(LANGUAGE_PICK_STATUSES as readonly string[]).includes(order.status))
+    return { status: "not_found" };
   const item = order.order_items.find((i) => i.id === p.itemId);
   if (!item) return { status: "not_found" };
-  if (parseDeliveredLanguages(item.delivered_language).has(p.lang)) return { status: "already" };
+  const delivered = parseDeliveredLanguages(item.delivered_language);
+  if (delivered.has(p.lang)) return { status: "already" };
+  // Оплачен один язык: после первого выбора другие — только за «все языки».
+  if (delivered.size > 0 && order.delivery_lang_choice !== "all") return { status: "already" };
   const materials = itemMaterials(item, p.lang);
   if (materials.length === 0) return { status: "no_materials" };
   const course = item.delivered_language ? [] : await courseLink(ctx, item);
