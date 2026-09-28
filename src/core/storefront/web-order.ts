@@ -473,7 +473,7 @@ export async function webOrderView(
   const payable = PAYABLE.has(order.status) && (await hasOrderPage(ctx, order));
   const method =
     payable && order.country_code ? await paymentMethodFor(ctx, order.country_code) : null;
-  const card = payable && (await robokassaFor(ctx)).ready;
+  const card = payable && (await robokassaFor(ctx, order.currency)).ready;
   const abroad = payable && (await stripeFor(ctx)).ready;
   const { balance, balancePending } = await balanceView(ctx, order);
   return {
@@ -545,7 +545,7 @@ async function balanceView(
     return { balance: null, balancePending: true };
   const [method, rk] = await Promise.all([
     order.country_code ? paymentMethodFor(ctx, order.country_code) : null,
-    robokassaFor(ctx),
+    robokassaFor(ctx, order.currency),
   ]);
   if (!method && !rk.ready) return { balance: null, balancePending: false };
   return {
@@ -601,7 +601,7 @@ export async function webCardPaymentUrl(
 ): Promise<string | null> {
   const order = await getOrder(ctx, orderId);
   if (!order || !(await hasOrderPage(ctx, order))) return null;
-  const rk = await robokassaFor(ctx);
+  const rk = await robokassaFor(ctx, order.currency);
   if (!rk.ready) return null;
   if (!PAYABLE.has(order.status)) {
     // Остаток по задатку: свой InvId, сумма — остаток с сервера.

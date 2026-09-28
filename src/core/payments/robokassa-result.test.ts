@@ -9,6 +9,7 @@ const markPaidOnline = vi.fn(async () => ({ ok: true, kind: "digital", alreadyDo
 const afterPaidOnline = vi.fn(async () => {});
 let platform = "telegram";
 let status = "awaiting_payment";
+let currency = "KZT";
 const notifyAdminsHtml = vi.fn(async () => 1);
 
 vi.mock("@/core/tenant/resolve.server", () => ({
@@ -30,6 +31,7 @@ vi.mock("@/core/orders/orders", () => ({
     fulfillment_kind: "digital",
     platform,
     status,
+    currency,
     display_no: 7,
   }),
 }));
@@ -98,6 +100,22 @@ describe("Robokassa result: сверка суммы", () => {
     expect(res.status).toBe(400);
     expect(await res.text()).toBe("amount mismatch");
     expect(markPaidOnline).not.toHaveBeenCalled();
+  });
+
+  it("заказ не в тенге — 400: Robokassa.kz списала бы ту же цифру в тенге", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    currency = "USD";
+    try {
+      const res = await callResult("1500.00");
+      expect(res.status).toBe(400);
+      expect(await res.text()).toBe("currency mismatch");
+      expect(markPaidOnline).not.toHaveBeenCalled();
+      const bal = await callResult("100.00", "1000000000420001");
+      expect(bal.status).toBe(400);
+      expect(recordBalancePaidOnline).not.toHaveBeenCalled();
+    } finally {
+      currency = "KZT";
+    }
   });
 
   it("сумма совпала с ожидаемой — заказ отмечается оплаченным", async () => {

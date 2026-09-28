@@ -1270,7 +1270,7 @@ async function finishCheckout(b: Bot, countryCode: string) {
     pending_display_no: no,
   });
   const due = result.amountDue;
-  const rk = await robokassaFor(b.ctx);
+  const rk = await robokassaFor(b.ctx, order.currency);
   const { starsForOrder } = await import("@/core/payments/stars");
   const stars = await starsForOrder(b.ctx, due, order.currency);
   const { nowpaymentsFor } = await import("@/core/payments/payment");
@@ -1743,7 +1743,7 @@ async function showBalancePayment(b: Bot, order: import("@/core/orders/orders").
   const method =
     (await listActivePaymentMethods(b.ctx)).find((x) => x.country_code === order.country_code) ??
     null;
-  const rk = await robokassaFor(b.ctx);
+  const rk = await robokassaFor(b.ctx, order.currency);
   const url = rk.ready
     ? buildPaymentUrl(rk, {
         outSum: due,
@@ -2015,7 +2015,7 @@ async function handleCallback(
       fulfillment_kind: order.fulfillment_kind,
     });
     if (kind === "rk") {
-      const rk = await robokassaFor(ctx);
+      const rk = await robokassaFor(ctx, order.currency);
       if (!rk.ready) return;
       const url = buildPaymentUrl(rk, {
         outSum: due,

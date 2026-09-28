@@ -62,6 +62,12 @@ async function handle(request: Request, botId: string, action: string): Promise<
   const { getOrder } = await import("@/core/orders/orders");
   const order = await getOrder(ctx, orderId);
   if (!order) return new Response("order not found", { status: 404 });
+  // Robokassa.kz списывает тенге: платёж по заказу в другой валюте — не оплата его суммы.
+  const { robokassaAccepts } = await import("@/core/payments/robokassa");
+  if (!robokassaAccepts(order.currency)) {
+    console.error(`[robokassa:${botId}] заказ ${orderId} в ${order.currency}, не в тенге`);
+    return new Response("currency mismatch", { status: 400 });
+  }
   const { amountDueNow } = await import("@/core/fulfillment/fulfillment");
   const expected = await amountDueNow(ctx, {
     total: Number(order.total),
@@ -119,6 +125,11 @@ async function balanceResult(
   const { getOrder } = await import("@/core/orders/orders");
   const order = await getOrder(ctx, orderId);
   if (!order) return new Response("order not found", { status: 404 });
+  const { robokassaAccepts } = await import("@/core/payments/robokassa");
+  if (!robokassaAccepts(order.currency)) {
+    console.error(`[robokassa:${ctx.tenant.id}] остаток: заказ ${orderId} в ${order.currency}`);
+    return new Response("currency mismatch", { status: 400 });
+  }
   const { recordBalancePaidOnline } = await import("@/core/orders/balance");
   const { result: r, proofPending } = await recordBalancePaidOnline(
     ctx,

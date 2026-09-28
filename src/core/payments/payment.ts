@@ -1,8 +1,13 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSettings } from "@/core/settings/settings";
-import { ROBOKASSA_KEYS, robokassaConfig } from "./robokassa";
+import { ROBOKASSA_KEYS, robokassaAccepts, robokassaConfig } from "./robokassa";
 
-export async function robokassaFor(ctx: TenantContext) {
+/**
+ * Robokassa продавца. С валютой заказа — только для тенге: auth.robokassa.kz
+ * списывает OutSum в тенге, и заказ в долларах на 20 оплатился бы 20 ₸.
+ */
+export async function robokassaFor(ctx: TenantContext, currency?: string | null) {
+  if (currency != null && !robokassaAccepts(currency)) return { ready: false as const };
   return robokassaConfig(await getSettings(ctx, ROBOKASSA_KEYS), ctx.tenant.modules.robokassa);
 }
 

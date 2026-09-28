@@ -1578,7 +1578,7 @@ async function finishCheckout(s: Shop, countryCode: string) {
     return;
   }
   const due = result.amountDue;
-  const rk = await robokassaFor(s.ctx);
+  const rk = await robokassaFor(s.ctx, order.currency);
   if (rk.ready) {
     s.customer = await setState(s.ctx, s.customer, {
       ...rest,
@@ -1649,7 +1649,7 @@ async function choosePayment(s: Shop, kind: "rk" | "manual") {
     fulfillment_kind: order.fulfillment_kind,
   });
   if (kind === "rk") {
-    const rk = await robokassaFor(s.ctx);
+    const rk = await robokassaFor(s.ctx, order.currency);
     if (!rk.ready) return;
     const url = buildPaymentUrl(rk, {
       outSum: due,

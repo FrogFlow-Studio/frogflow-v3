@@ -5,6 +5,13 @@ export function md5Hex(input: string): string {
   return createHash("md5").update(input).digest("hex");
 }
 
+/** Robokassa.kz принимает и списывает только тенге (OutSum без OutSumCurrency). */
+export const ROBOKASSA_CURRENCY = "KZT";
+
+export function robokassaAccepts(currency: string | null | undefined): boolean {
+  return (currency ?? "").toUpperCase() === ROBOKASSA_CURRENCY;
+}
+
 export type RobokassaConfig = { login: string; pass1: string; pass2: string; testMode: boolean };
 
 export function buildPaymentUrl(
