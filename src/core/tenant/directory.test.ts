@@ -255,19 +255,19 @@ describe("модули клиента v2 на плане — по плану, а
   it("включённое в базе вне плана не выключается молча (как у «Демо-тестера» на Pro)", () => {
     const t = tenant(
       { served_by: "v2", billing: { plan: "digital.pro" } },
-      { shop: true, instagram: true, wa_shop: true, referral: true, courier: true },
+      { shop: true, instagram: true, wa_shop: true, referral: true, kaspi_pay: true },
     );
     expect(t.modules.instagram).toBe(true);
     expect(t.modules.wa_shop).toBe(true);
     expect(t.modules.referral).toBe(true);
     // «В разработке» не открывается и так: его снимает контекст клиента.
-    expect(availableModules(t.modules).courier).toBe(false);
+    expect(availableModules(t.modules).kaspi_pay).toBe(false);
   });
 
   it("клиент v1, индивидуальные условия и без плана — флаги как в базе", () => {
-    const flags = { shop: true, courses: false, courier: true };
+    const flags = { shop: true, courses: false, kaspi_pay: true };
     expect(tenant({ billing: { plan: "digital.pro" } }, flags).modules.courses).toBe(false);
-    expect(tenant({ served_by: "v2", billing: { plan: "custom" } }, flags).modules.courier).toBe(
+    expect(tenant({ served_by: "v2", billing: { plan: "custom" } }, flags).modules.kaspi_pay).toBe(
       true,
     );
     expect(tenant({ served_by: "v2" }, flags).modules.courses).toBe(false);

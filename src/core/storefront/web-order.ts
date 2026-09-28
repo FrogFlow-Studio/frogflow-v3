@@ -396,6 +396,8 @@ export type WebOrderView = {
   } | null;
   /** Чек на остаток прислан и ждёт продавца. */
   balancePending: boolean;
+  /** Заказ у курьера (модуль courier): служба и ссылка на отслеживание. */
+  courier: { provider: string; trackUrl: string | null } | null;
   /** Покупка подарочного сертификата: номинал, а код — только после выдачи. */
   gift: { amount: number; currency: string; code: string | null } | null;
   /** Остаток сертификата, применённого к заказу, — новым кодом (core/discounts/gift-rest). */
@@ -521,6 +523,7 @@ export async function webOrderView(
     balance,
     balancePending,
     gift: await webOrderGift(ctx, order),
+    courier: await webOrderCourier(ctx, order),
     giftRest: order.gift_certificate_code
       ? await (
           await import("@/core/discounts/gift-rest")
@@ -555,6 +558,20 @@ async function balanceView(
     },
     balancePending: false,
   };
+}
+
+async function webOrderCourier(
+  ctx: TenantContext,
+  order: OrderWithItems,
+): Promise<WebOrderView["courier"]> {
+  if (order.fulfillment_kind !== "physical") return null;
+  if (!["accepted", "in_production", "ready", "delivered"].includes(order.status)) return null;
+  const [{ listOrderEvents }, { courierState }] = await Promise.all([
+    import("@/core/orders/events"),
+    import("@/core/fulfillment/courier"),
+  ]);
+  const c = courierState(await listOrderEvents(ctx, order.id));
+  return c ? { provider: c.provider, trackUrl: c.trackUrl } : null;
 }
 
 async function webOrderGift(

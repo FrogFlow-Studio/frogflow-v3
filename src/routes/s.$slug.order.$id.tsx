@@ -145,6 +145,27 @@ function OrderPage() {
           {view.fulfillment.address ? ` · ${view.fulfillment.address}` : ""}
         </p>
       )}
+      {view.courier && (
+        <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">
+          🚚{" "}
+          {t("order.courier", {
+            provider: t(`order.courier.${view.courier.provider}` as StorefrontKey),
+          })}
+          {view.courier.trackUrl && (
+            <>
+              {" · "}
+              <a
+                className="underline"
+                href={view.courier.trackUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {t("order.courierTrack")}
+              </a>
+            </>
+          )}
+        </p>
+      )}
       {note && <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">{t(note)}</p>}
       {awaiting && view.payment && (
         <PayBox

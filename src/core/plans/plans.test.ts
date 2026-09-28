@@ -478,7 +478,7 @@ describe("купленное сверх плана не пропадает пр�
   });
 
   it("модуль «в разработке» в сохранённые не попадает", () => {
-    expect(keptModules(null, undefined, on("courier"))).toEqual([]);
+    expect(keptModules(null, undefined, on("kaspi_pay"))).toEqual([]);
   });
 });
 

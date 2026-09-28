@@ -38,7 +38,8 @@ export type OrderEventKind =
   | "refund"
   | "approval_sent"
   | "approval_ok"
-  | "approval_changes";
+  | "approval_changes"
+  | "courier";
 
 export type OrderEvent = {
   id: string;
@@ -226,6 +227,18 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       return { text: "Покупатель одобрил фото", tone: "ok" };
     case "approval_changes":
       return { text: `Покупатель просит правки: ${str(p.text)}`, tone: "warn" };
+    case "courier": {
+      const names: Record<string, string> = {
+        yandex: "Яндекс Доставка",
+        indrive: "inDrive",
+        own: "свой курьер",
+        other: "курьерская служба",
+      };
+      return {
+        text: `Передан курьеру: ${names[str(p.provider)] ?? str(p.provider)}${p.trackUrl ? " · ссылка отслеживания" : ""}${who}`,
+        tone: "neutral",
+      };
+    }
     case "refund": {
       const extra = [
         p.reason ? `: ${str(p.reason)}` : "",

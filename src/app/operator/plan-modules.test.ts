@@ -89,10 +89,10 @@ describe("оператор и модули клиента на плане", () =
   });
 
   it("модуль «в разработке» не включается и сверх плана", async () => {
-    await expect(toggleModuleOnPlan(current(), "courier", true, "op")).rejects.toThrow(
+    await expect(toggleModuleOnPlan(current(), "kaspi_pay", true, "op")).rejects.toThrow(
       /не реализован/,
     );
-    expect(current().modules.courier).toBe(false);
+    expect(current().modules.kaspi_pay).toBe(false);
   });
 });
 

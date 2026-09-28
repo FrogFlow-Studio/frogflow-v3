@@ -170,6 +170,12 @@ const ru = {
     "Stripe: карта любой страны или PayPal; после оплаты вы вернётесь на эту страницу.",
   "order.payAbroadFailed":
     "Не удалось открыть оплату иностранной картой — попробуйте позже или выберите другой способ.",
+  "order.courier": "Заказ у курьера: {provider}",
+  "order.courierTrack": "Отследить доставку",
+  "order.courier.yandex": "Яндекс Доставка",
+  "order.courier.indrive": "inDrive",
+  "order.courier.own": "курьер магазина",
+  "order.courier.other": "курьерская служба",
   "order.payTransfer": "Или переводом по реквизитам",
   "checkout.proof.retry": "Это не похоже на чек об оплате. Загрузите чек ещё раз.",
   "checkout.proof.paymentFailed":
@@ -419,6 +425,12 @@ const kk: Dict = {
     "Stripe: кез келген елдің картасы немесе PayPal; төлегеннен кейін осы бетке ораласыз.",
   "order.payAbroadFailed":
     "Шетелдік картамен төлеуді ашу мүмкін болмады — кейінірек көріңіз немесе басқа тәсілді таңдаңыз.",
+  "order.courier": "Тапсырыс курьерде: {provider}",
+  "order.courierTrack": "Жеткізуді бақылау",
+  "order.courier.yandex": "Яндекс Жеткізу",
+  "order.courier.indrive": "inDrive",
+  "order.courier.own": "дүкен курьері",
+  "order.courier.other": "курьерлік қызмет",
   "order.payTransfer": "Немесе деректемелер бойынша аударым",
   "checkout.proof.retry": "Бұл төлем чегіне ұқсамайды. Чекті қайта жүктеңіз.",
   "checkout.proof.paymentFailed":
@@ -659,6 +671,12 @@ const en: Dict = {
     "Stripe: a card from any country or PayPal; after paying you will return to this page.",
   "order.payAbroadFailed":
     "Could not open foreign card payment — try again later or choose another method.",
+  "order.courier": "With the courier: {provider}",
+  "order.courierTrack": "Track delivery",
+  "order.courier.yandex": "Yandex Delivery",
+  "order.courier.indrive": "inDrive",
+  "order.courier.own": "shop courier",
+  "order.courier.other": "courier service",
   "order.payTransfer": "Or pay by transfer",
   "checkout.proof.retry": "This does not look like a payment receipt. Please upload it again.",
   "checkout.proof.paymentFailed":
@@ -899,6 +917,12 @@ const uz: Dict = {
     "Stripe: istalgan mamlakat kartasi yoki PayPal; toʻlovdan keyin shu sahifaga qaytasiz.",
   "order.payAbroadFailed":
     "Xorijiy karta bilan toʻlovni ochib boʻlmadi — keyinroq urinib koʻring yoki boshqa usulni tanlang.",
+  "order.courier": "Buyurtma kuryerda: {provider}",
+  "order.courierTrack": "Yetkazishni kuzatish",
+  "order.courier.yandex": "Yandex Yetkazish",
+  "order.courier.indrive": "inDrive",
+  "order.courier.own": "doʻkon kuryeri",
+  "order.courier.other": "kuryerlik xizmati",
   "order.payTransfer": "Yoki rekvizitlar bo‘yicha o‘tkazma",
   "checkout.proof.retry": "Bu to‘lov chekiga o‘xshamaydi. Chekni qayta yuklang.",
   "checkout.proof.paymentFailed":

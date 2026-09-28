@@ -182,6 +182,51 @@ function platformName(platform: string): string {
 }
 
 /**
+ * Передать физический заказ курьеру (модуль courier, core/fulfillment/courier):
+ * событие таймлайна со службой, ссылкой и телефоном, покупателю — сообщение
+ * со ссылкой в его канале. Заказ сохраняется, даже если сообщение не дошло.
+ */
+export async function dispatchCourier(
+  ctx: TenantContext,
+  id: number,
+  input: { provider: string; trackUrl?: string | null; phone?: string | null },
+  actor = "admin",
+): Promise<{ ok: true; message: string; notified: boolean }> {
+  const t = await adminTFor(ctx);
+  const order = await getOrder(ctx, id);
+  if (!order) throw new UserError("err.admin.orderNotFound", "Заказ не найден");
+  const c = await import("@/core/fulfillment/courier");
+  if (
+    order.fulfillment_kind !== "physical" ||
+    !(c.COURIER_STATUSES as readonly string[]).includes(order.status)
+  )
+    throw new UserError("err.courier.status", "Передать курьеру можно физический заказ в работе");
+  const provider = c.COURIER_PROVIDERS.find((p) => p === input.provider) ?? "other";
+  const trackUrl = input.trackUrl?.trim() ? c.safeTrackUrl(input.trackUrl) : null;
+  if (input.trackUrl?.trim() && !trackUrl)
+    throw new UserError(
+      "err.courier.badUrl",
+      "Ссылка на отслеживание должна начинаться с https://",
+    );
+  const phone = input.phone?.trim() ? c.cleanPhone(input.phone) : null;
+  if (input.phone?.trim() && !phone)
+    throw new UserError("err.courier.badPhone", "Телефон курьера — цифры, от 5 знаков");
+  const { recordOrderEvent } = await import("@/core/orders/events");
+  await recordOrderEvent(ctx, order.id, "courier", { provider, trackUrl, phone }, actor);
+  const no = displayNo(order);
+  const notified = await notifyCustomer(
+    ctx,
+    order,
+    c.courierMessage(no, { provider, trackUrl, phone }),
+  ).catch(() => false);
+  return {
+    ok: true,
+    notified,
+    message: t(notified ? "msg.courier.sent" : "msg.courier.saved", { no: String(no) }),
+  };
+}
+
+/**
  * Фото готового заказа покупателю на согласование (core/orders/approval).
  * Telegram — фото с кнопками «Всё нравится» / «Нужны правки»; Instagram и
  * WhatsApp — фото с просьбой ответить «да» или написать правки (ответ ловит

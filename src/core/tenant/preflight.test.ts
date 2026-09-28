@@ -29,7 +29,7 @@ describe("evaluatePreflight", () => {
   it("не перенесённый модуль и отсутствие токена блокируют переезд", () => {
     const p = evaluatePreflight({
       ...base,
-      modulesOn: ["shop", "courier"],
+      modulesOn: ["shop", "kaspi_pay"],
       tokenPresent: false,
       tokenOk: null,
     });

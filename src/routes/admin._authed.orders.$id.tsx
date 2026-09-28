@@ -2,6 +2,7 @@ import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
+  dispatchCourierFn,
   orderActionFn,
   orderFn,
   orderNoteFn,
@@ -39,6 +40,7 @@ function OrderPage() {
     slots,
     approval,
     approvalPhotoUrl,
+    courier,
   } = Route.useLoaderData();
   const [copied, setCopied] = useState(false);
   const { shop } = Route.useRouteContext();
@@ -213,6 +215,22 @@ function OrderPage() {
                 approval={approval}
                 photoUrl={approvalPhotoUrl}
                 editable={editable && ["accepted", "in_production", "ready"].includes(o.status)}
+                onDone={setMsg}
+              />
+            )}
+          {physical &&
+            (courier ||
+              (shop.modules.courier &&
+                editable &&
+                ["accepted", "in_production", "ready"].includes(o.status))) && (
+              <CourierCard
+                order={o}
+                courier={courier}
+                editable={
+                  shop.modules.courier &&
+                  editable &&
+                  ["accepted", "in_production", "ready"].includes(o.status)
+                }
                 onDone={setMsg}
               />
             )}
@@ -802,5 +820,98 @@ function FulfillmentEditor({
         </button>
       </div>
     </form>
+  );
+}
+
+const COURIER_PROVIDERS = ["yandex", "indrive", "own", "other"] as const;
+
+/** Передача заказа курьеру со ссылкой на отслеживание (core/fulfillment/courier). */
+function CourierCard({
+  order: o,
+  courier,
+  editable,
+  onDone,
+}: {
+  order: Order;
+  courier: Awaited<ReturnType<typeof orderFn>>["courier"];
+  editable: boolean;
+  onDone: (msg: string) => void;
+}) {
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const router = useRouter();
+  const [open, setOpen] = useState(!courier);
+  const send = useAction(async (f: FormData) => {
+    const provider = String(f.get("provider")) as (typeof COURIER_PROVIDERS)[number];
+    const r = await dispatchCourierFn({
+      data: {
+        id: o.id,
+        provider,
+        trackUrl: String(f.get("trackUrl") ?? "").trim() || null,
+        phone: String(f.get("phone") ?? "").trim() || null,
+      },
+    });
+    onDone(r.message);
+    setOpen(false);
+    await router.invalidate();
+  });
+  return (
+    <Card title={t("courier.title")}>
+      {courier && (
+        <div className="mb-3 space-y-1 text-sm">
+          <Badge tone="neutral">
+            {t("courier.current", { provider: t(`courier.provider.${courier.provider}`) })}
+          </Badge>
+          {courier.trackUrl && (
+            <div>
+              <a
+                className="text-accent underline"
+                href={courier.trackUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {t("courier.track")}
+              </a>
+            </div>
+          )}
+          {courier.phone && <div className="text-muted">{courier.phone}</div>}
+        </div>
+      )}
+      {editable && !open && (
+        <button className="btn-secondary" onClick={() => setOpen(true)}>
+          {t("courier.again")}
+        </button>
+      )}
+      {editable && open && (
+        <form
+          className="space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send.run(new FormData(e.currentTarget)).catch(() => {});
+          }}
+        >
+          <p className="text-xs text-muted">{t("courier.hint")}</p>
+          <Field label={t("courier.provider")}>
+            <select className="input" name="provider" defaultValue={courier?.provider ?? "yandex"}>
+              {COURIER_PROVIDERS.map((p) => (
+                <option key={p} value={p}>
+                  {t(`courier.provider.${p}`)}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label={t("courier.trackUrl")}>
+            <input className="input" name="trackUrl" type="url" maxLength={500} />
+          </Field>
+          <Field label={t("courier.phone")}>
+            <input className="input" name="phone" type="tel" maxLength={40} />
+          </Field>
+          <ErrorBox error={send.error} />
+          <button className="btn-primary" disabled={send.busy}>
+            {t("courier.send")}
+          </button>
+        </form>
+      )}
+    </Card>
   );
 }
