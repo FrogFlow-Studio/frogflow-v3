@@ -43,6 +43,8 @@ export type PreflightInput = {
   zernioAccounts?: number;
   /** Записан ли клиенту профиль Zernio: вебхук v2 получает события только профилей клиентов v2. */
   zernioProfile?: boolean;
+  /** Задан ли ZERNIO_WEBHOOK_SECRET: без него вебхук v2 отвечает 503 и «Привязать» не срабатывает. */
+  zernioSecret?: boolean;
   /** Почта платформы: настроен ли SMTP и шлёт ли клиенту что-то письмом (сайт, копия выдачи). */
   mail?: { configured: boolean; needed: boolean };
   /**
@@ -209,6 +211,14 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
       title: "Нет профиля Zernio",
       detail:
         "Аккаунты Instagram/WhatsApp записаны, а профиль нет. Вебхук v2 получает события только профилей клиентов v2, поэтому после переезда сообщения этих аккаунтов не дойдут. В карточке клиента нажмите «Привязать профиль v1».",
+    });
+  if (i.channelOrders30d && i.zernioSecret === false)
+    checks.push({
+      key: "zernio_secret",
+      level: "block",
+      title: "Не задан секрет вебхука Zernio",
+      detail:
+        "В окружении платформы нет ZERNIO_WEBHOOK_SECRET: вебхук v2 не принимает события и «Привязать» его не создаст, Instagram и WhatsApp после переезда замолчат. Задайте переменную в Vercel и сделайте Redeploy.",
     });
   if (i.mail && i.mail.needed && !i.mail.configured)
     checks.push({

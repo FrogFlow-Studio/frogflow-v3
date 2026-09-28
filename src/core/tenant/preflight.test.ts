@@ -192,6 +192,23 @@ describe("evaluatePreflight: что блокирует клиента с Instagr
     }
   });
 
+  it("заказы из Instagram/WhatsApp без секрета вебхука Zernio — блок", () => {
+    const p = evaluatePreflight({
+      ...shop,
+      channelOrders30d: 5,
+      zernioAccounts: 1,
+      zernioSecret: false,
+    });
+    expect(preflightBlockers(p)).toEqual(["Не задан секрет вебхука Zernio"]);
+    for (const i of [
+      { channelOrders30d: 5, zernioAccounts: 1, zernioSecret: true },
+      { channelOrders30d: 0, zernioSecret: false },
+    ])
+      expect(
+        evaluatePreflight({ ...shop, ...i }).checks.find((c) => c.key === "zernio_secret"),
+      ).toBeUndefined();
+  });
+
   it("почта платформы не настроена, а клиенту она нужна — предупреждение", () => {
     const p = evaluatePreflight({ ...shop, mail: { configured: false, needed: true } });
     expect(p.ready).toBe(true);
