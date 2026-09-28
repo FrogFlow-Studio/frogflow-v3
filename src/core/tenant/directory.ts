@@ -164,6 +164,23 @@ export function settingsFromJson(json: unknown): TenantSettings {
     consultant_pause_hours: validPauseHours(s.consultant_pause_hours),
     // Флаг оператора «Расширенный консультант» (core/consultant/catalog-tool.server).
     consultant_search: s.consultant_search === true ? true : undefined,
+    consultant_pricelist: (() => {
+      const p = obj(s.consultant_pricelist);
+      if (!Object.keys(p).length) return undefined;
+      const h = obj(p.hours);
+      const hour = (v: unknown) =>
+        typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 24 ? v : null;
+      const open = hour(h.open);
+      const close = hour(h.close);
+      return {
+        enabled: p.enabled === true,
+        hours: open !== null && close !== null && open !== close ? { open, close } : undefined,
+        rate_source:
+          p.rate_source === "vtb" || p.rate_source === "finkaz" || p.rate_source === "manual"
+            ? p.rate_source
+            : undefined,
+      };
+    })(),
     smart_search_limits:
       sl && typeof sl === "object" && !Array.isArray(sl)
         ? { daily_usd: numOrNull(obj(sl).daily_usd) }

@@ -1032,6 +1032,7 @@ export async function consultantBudget(botId: string) {
     max: CONSULTANT_LIMIT_MAX,
     today: parseDaily(data?.value, today()),
     search: t.settings.consultant_search === true,
+    pricelist: t.settings.consultant_pricelist?.enabled === true,
   };
 }
 
@@ -1039,6 +1040,12 @@ export async function consultantBudget(botId: string) {
 export async function setConsultantSearch(botId: string, on: boolean, actor = "operator") {
   await patchTenantSettings(botId, { consultant_search: on });
   await logEvent(botId, "meta", { consultant_search: on }, actor);
+}
+
+/** Консультант «по прайсу» BOVI (core/consultant/pricelist) — включает оператор. */
+export async function setConsultantPricelist(botId: string, on: boolean, actor = "operator") {
+  await patchTenantSettings(botId, { consultant_pricelist: { enabled: on } });
+  await logEvent(botId, "meta", { consultant_pricelist: on }, actor);
 }
 
 /** Дневной предел умного поиска клиента в долларах: свой или общий, и расход сегодня. */

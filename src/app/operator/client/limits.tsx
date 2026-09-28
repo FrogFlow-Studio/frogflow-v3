@@ -3,6 +3,7 @@ import { type FormEvent } from "react";
 import {
   type getClientFn,
   setConsultantLimitsFn,
+  setConsultantPricelistFn,
   setConsultantSearchFn,
   setSmartSearchLimitFn,
 } from "@/app/operator/operator.functions";
@@ -28,6 +29,10 @@ export function ConsultantLimitsCard({
   });
   const toggleSearch = useAction(async (on: boolean) => {
     await setConsultantSearchFn({ data: { botId: c.id, on } });
+    await onDone();
+  });
+  const togglePricelist = useAction(async (on: boolean) => {
+    await setConsultantPricelistFn({ data: { botId: c.id, on } });
     await onDone();
   });
   const { limits, defaults, max, today: t } = budget;
@@ -133,6 +138,22 @@ export function ConsultantLimitsCard({
         </span>
       </label>
       <ErrorBox error={toggleSearch.error} />
+      <label className="mt-4 flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={budget.pricelist}
+          disabled={togglePricelist.busy}
+          onChange={(e) => void togglePricelist.run(e.currentTarget.checked).catch(() => {})}
+        />
+        <span>
+          Консультант по прайсу (BOVI)
+          <span className="block text-xs text-muted">
+            Отвечает по прайсу 1С из настроек консультанта, а не по товарам магазина: размеры,
+            цвета, жёсткость, бюджет, цены в рублях по курсу банка, нерабочие часы.
+          </span>
+        </span>
+      </label>
+      <ErrorBox error={togglePricelist.error} />
     </Card>
   );
 }

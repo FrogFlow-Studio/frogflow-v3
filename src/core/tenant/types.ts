@@ -92,6 +92,18 @@ export type TenantSettings = {
    * без флага в подсказку идут первые 120 товаров. Ставит оператор.
    */
   consultant_search?: boolean;
+  /**
+   * Консультант «по прайсу» (BOVI, core/consultant/pricelist): прайс 1С в
+   * app_settings вместо товаров магазина, рубли по курсу банка, нерабочие
+   * часы. Включает оператор.
+   */
+  consultant_pricelist?: {
+    enabled?: boolean;
+    /** Рабочие часы магазина по его поясу: с open до close (0–24). */
+    hours?: { open: number; close: number };
+    /** Откуда курс рубля: ВТБ, finkaz или вручную (core/consultant/pricelist/rate). */
+    rate_source?: "vtb" | "finkaz" | "manual";
+  };
   /** Свой дневной предел умного поиска в долларах (core/search). Меняет оператор. */
   smart_search_limits?: SmartSearchLimitsSetting | null;
   /** Поведение при неоплате подписки (те же ключи, что в v1; читает core/billing/subscription). */
