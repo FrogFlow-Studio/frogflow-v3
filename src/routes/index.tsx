@@ -3,7 +3,14 @@ import { useEffect, useState, type ReactNode } from "react";
 import { z } from "zod";
 import { signupEnabledFn } from "@/app/signup/signup.functions";
 import { landingT, type LandingKey, type LandingT } from "@/app/i18n/landing";
-import { CLIENTS, DEMO_URL, REVIEWS, TRIAL_DAYS, landingUrl } from "@/app/landing/config";
+import {
+  CLIENTS,
+  DEMO_URL,
+  OG_LOCALE,
+  REVIEWS,
+  TRIAL_DAYS,
+  landingUrl,
+} from "@/app/landing/config";
 import {
   Faq,
   FinalCta,
@@ -15,6 +22,8 @@ import {
   Steps,
 } from "@/app/landing/sections";
 import { SUPPORTED_LOCALES, isLocale, type Locale } from "@/core/i18n/locale";
+import { jsonLdScript } from "@/core/storefront/seo";
+import { landingJsonLd } from "@/app/landing/structured-data";
 import { rememberWebSource } from "@/app/storefront/source";
 import { PLATFORM_SOURCE_SLUG } from "@/core/signup/origin";
 
@@ -39,6 +48,18 @@ export const Route = createFileRoute("/")({
         { property: "og:description", content: t("meta.description", { days: TRIAL_DAYS }) },
         { property: "og:type", content: "website" },
         { property: "og:url", content: landingUrl(locale) },
+        { property: "og:locale", content: OG_LOCALE[locale] },
+        { property: "og:site_name", content: "FrogFlow" },
+      ],
+      scripts: [
+        jsonLdScript(
+          landingJsonLd({
+            url: landingUrl(locale),
+            name: t("meta.title"),
+            description: t("meta.description", { days: TRIAL_DAYS }),
+            locale,
+          }),
+        ),
       ],
       links: [
         { rel: "canonical", href: landingUrl(locale) },

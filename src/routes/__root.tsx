@@ -1,4 +1,11 @@
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import {
+  createRootRoute,
+  HeadContent,
+  Outlet,
+  Scripts,
+  useRouterState,
+} from "@tanstack/react-router";
+import { isLocale } from "@/core/i18n/locale";
 import type { ReactNode } from "react";
 import appCss from "../styles.css?url";
 
@@ -21,9 +28,26 @@ export const Route = createRootRoute({
   ),
 });
 
+/**
+ * Язык страницы уже в ответе сервера: поисковики читают `lang` до скриптов.
+ * `?lang=` — только у главной и страниц ниш; остальные страницы ставят язык
+ * сами в браузере (витрина, админка).
+ */
+function useServerLang(): string {
+  return useRouterState({
+    select: (s) => {
+      const { pathname, search } = s.location;
+      const lang = (search as { lang?: unknown }).lang;
+      const landing = pathname === "/" || pathname.startsWith("/for/");
+      return landing && isLocale(lang) ? lang : "ru";
+    },
+  });
+}
+
 function Shell({ children }: { children: ReactNode }) {
+  const lang = useServerLang();
   return (
-    <html lang="ru">
+    <html lang={lang}>
       <head>
         <HeadContent />
       </head>

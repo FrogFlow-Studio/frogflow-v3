@@ -148,6 +148,14 @@ export const CONTACTS: { telegram: string | null; whatsapp: string | null } = {
 /** Адрес главной без хвостового слэша: canonical, og:url и языковые версии. */
 export const SITE_URL = "https://www.frogflow.tech";
 
+/** Язык страницы для превью ссылок (og:locale). */
+export const OG_LOCALE: Record<Locale, string> = {
+  ru: "ru_RU",
+  kk: "kk_KZ",
+  en: "en_US",
+  uz: "uz_UZ",
+};
+
 /** Адрес главной на языке: русский — без параметра, остальные — `?lang=`. */
 export function landingUrl(locale: Locale): string {
   return locale === "ru" ? `${SITE_URL}/` : `${SITE_URL}/?lang=${locale}`;

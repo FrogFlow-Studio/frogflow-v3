@@ -26,6 +26,9 @@ import {
   signupSearch,
 } from "@/app/landing/sections";
 import { SUPPORTED_LOCALES, isLocale, type Locale } from "@/core/i18n/locale";
+import { jsonLdScript } from "@/core/storefront/seo";
+import { landingJsonLd } from "@/app/landing/structured-data";
+import { OG_LOCALE } from "@/app/landing/config";
 import { TIER_TITLES } from "@/core/plans/registry";
 
 /**
@@ -58,7 +61,10 @@ export const Route = createFileRoute("/for/$niche")({
         { property: "og:description", content: description },
         { property: "og:type", content: "website" },
         { property: "og:url", content: url },
+        { property: "og:locale", content: OG_LOCALE[locale] },
+        { property: "og:site_name", content: "FrogFlow" },
       ],
+      scripts: [jsonLdScript(landingJsonLd({ url, name: title, description, locale }))],
       links: [
         { rel: "canonical", href: url },
         ...SUPPORTED_LOCALES.map((l) => ({
