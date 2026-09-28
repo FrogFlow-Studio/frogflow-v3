@@ -468,7 +468,20 @@ async function handleMessage(
   }
   if (customer.state.mode === "search" && text) return showSearch(b, text);
   if (text && (await consultantReply(b, text))) return;
+  // Консультант по прайсу видит фото покупателя (не чек — чеки разобраны выше).
+  if (msg.photo?.length && !text && (await pricelistPhoto(b, msg))) return;
   await sendMain(b, b.m.useMenu);
+}
+
+/** Фото покупателя с подписью или без — консультанту по прайсу картинкой. */
+async function pricelistPhoto(b: Bot, msg: TelegramMessage): Promise<boolean> {
+  const { pricelistMode } = await import("@/core/consultant/pricelist/mode");
+  if (!pricelistMode(b.ctx.tenant)) return false;
+  const fileId = msg.photo![msg.photo!.length - 1]!.file_id;
+  const file = await downloadTelegramFile(b.api, fileId);
+  const { imageFromBytes } = await import("@/core/consultant/pricelist/images");
+  const image = file ? imageFromBytes(file.bytes) : null;
+  return consultantReply(b, msg.caption?.trim() ?? "", image ? [image] : []);
 }
 
 /**
@@ -476,14 +489,21 @@ async function handleMessage(
  * каталогу; при передаче менеджеру — уведомление продавцу и пауза, чтобы
  * дальше отвечал человек (в /admin/chat диалог помечается «вы в чате»).
  */
-async function consultantReply(b: Bot, text: string): Promise<boolean> {
+async function consultantReply(
+  b: Bot,
+  text: string,
+  images?: import("@/core/consultant/pricelist/images").V2Image[],
+): Promise<boolean> {
   const { consultantEnabled, isPaused, runConsultant } =
     await import("@/core/consultant/engine.server");
   const { pauseHours, pauseNoticeRu } = await import("@/core/consultant/pause");
   if (!(await consultantEnabled(b.ctx))) return false;
   if (isPaused(b.customer)) return true; // менеджер ведёт диалог — бот молчит
   await b.api.call("sendChatAction", { chat_id: b.chatId, action: "typing" });
-  const r = await runConsultant(b.ctx, b.customer, text, { platform: "telegram" });
+  const r = await runConsultant(b.ctx, b.customer, text, {
+    platform: "telegram",
+    ...(images ? { images } : {}),
+  });
   if (!r) return false;
   await b.api.call("sendMessage", { chat_id: b.chatId, text: r.reply });
   // Фото и видео товара (консультант по прайсу) — следом, по ссылке /api/img.
