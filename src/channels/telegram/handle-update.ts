@@ -402,6 +402,17 @@ async function handleMessage(
     await answerApproval(b, orderId, { ok: false, text });
     return;
   }
+  if (customer.state.mode === "awaiting_birthday" && text && !action) {
+    const { parseBirthday, setCustomerBirthday } = await import("@/core/funnel/birthday");
+    const day = parseBirthday(text);
+    if (!day) return void (await send(b, b.m.birthdayInvalid));
+    await setCustomerBirthday(
+      ctx,
+      { ...customer, state: { ...customer.state, mode: "idle" } },
+      day,
+    );
+    return void (await send(b, b.m.birthdaySaved));
+  }
   if (customer.state.mode === "awaiting_review_comment") {
     const { review_product_id: productId, ...rest } = customer.state;
     b.customer = await setState(ctx, customer, { ...rest, mode: "idle" });
@@ -550,6 +561,14 @@ async function startFlow(b: Bot, payload = "") {
     );
     if (gift) await send(b, b.m.referralWelcome(gift.percent, gift.code));
     payload = "";
+  }
+  // Ссылка продавца ?start=bday: покупатель сам вводит день рождения (модуль funnel).
+  if (payload === "bday" && b.ctx.tenant.modules.funnel) {
+    b.customer = await setState(b.ctx, b.customer, {
+      ...b.customer.state,
+      mode: "awaiting_birthday",
+    });
+    return void (await send(b, b.m.birthdayAsk));
   }
   if (payload.startsWith(HANDOFF_PREFIX)) {
     const r = await claimHandoff(b.ctx, b.customer, payload.slice(HANDOFF_PREFIX.length));

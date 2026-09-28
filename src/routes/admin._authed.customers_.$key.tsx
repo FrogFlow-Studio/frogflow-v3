@@ -5,6 +5,7 @@ import {
   customerCardFn,
   customersFn,
   linkCustomerFn,
+  saveCustomerBirthdayFn,
   saveCustomerNoteFn,
   unlinkCustomerFn,
 } from "@/app/admin/admin.functions";
@@ -79,6 +80,7 @@ function CustomerCardPage() {
           {row("customer.email", c.email)}
           {row("customer.language", c.language)}
           {row("customer.country", c.country)}
+          <BirthdayRow />
           {row("customer.points", c.points)}
           {row("customer.since", date(c.createdAt))}
           {row(
@@ -315,5 +317,49 @@ function LinkedCard() {
         </div>
       )}
     </Card>
+  );
+}
+
+/** День рождения в карточке: видно всем ролям, править — менеджер и выше. */
+function BirthdayRow() {
+  const { card: c } = Route.useLoaderData();
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const router = useRouter();
+  const shown = c.birthday ? `${c.birthday.slice(3)}.${c.birthday.slice(0, 2)}` : "";
+  const [value, setValue] = useState(shown);
+  const save = useAction(async () => {
+    await saveCustomerBirthdayFn({ data: { key: c.userKey, birthday: value } });
+    await router.invalidate();
+  });
+  if (!canEdit(shop.role))
+    return (
+      <div className="flex justify-between gap-3 py-1 text-sm">
+        <span className="text-muted">{t("birthday.customer")}</span>
+        <span>{shown || "—"}</span>
+      </div>
+    );
+  return (
+    <div className="flex items-center justify-between gap-3 py-1 text-sm">
+      <span className="text-muted">{t("birthday.customer")}</span>
+      <span className="flex items-center gap-2">
+        <input
+          className="input h-8 w-24 text-right"
+          placeholder={t("birthday.customerHint")}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+        {value !== shown && (
+          <button
+            className="btn-secondary text-xs"
+            disabled={save.busy}
+            onClick={() => void save.run().catch(() => {})}
+          >
+            {t("common.save")}
+          </button>
+        )}
+      </span>
+      <ErrorBox error={save.error} />
+    </div>
   );
 }

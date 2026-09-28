@@ -39,3 +39,31 @@ export const saveFunnelFn = createServerFn({ method: "POST" })
     await saveFunnel(ctx, parseFunnel(JSON.stringify(data)));
     return { ok: true };
   });
+
+/** Поздравление с днём рождения (core/funnel/birthday). */
+export const birthdayFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await moduleAdmin();
+  const { loadBirthday } = await import("@/core/funnel/birthday");
+  const username = ctx.tenant.settings.telegram?.username ?? null;
+  return {
+    cfg: await loadBirthday(ctx),
+    link: username ? `https://t.me/${username}?start=bday` : null,
+  };
+});
+
+export const saveBirthdayFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        enabled: z.boolean(),
+        text: z.string().max(2000),
+        promo: z.string().max(40),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { saveBirthday } = await import("@/core/funnel/birthday");
+    await saveBirthday(ctx, data);
+    return { ok: true };
+  });

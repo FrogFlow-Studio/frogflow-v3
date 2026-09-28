@@ -1,6 +1,6 @@
 import { saveWinbackFn, winbackFn } from "@/app/admin/winback.functions";
 import { SimilarCard } from "@/app/admin/similar-card";
-import { funnelFn, saveFunnelFn } from "@/app/admin/funnel.functions";
+import { birthdayFn, funnelFn, saveBirthdayFn, saveFunnelFn } from "@/app/admin/funnel.functions";
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -221,6 +221,7 @@ function BroadcastsPage() {
           {shop.modules.winback && <WinbackCard />}
           {shop.modules.winback && <SimilarCard t={t} />}
           {shop.modules.funnel && <FunnelCard />}
+          {shop.modules.funnel && <BirthdayCard />}
           <History
             broadcasts={data.broadcasts.filter((b) => (both ? b.channel === channel : true))}
             showChannel={!both}
@@ -1373,6 +1374,73 @@ function WinbackCard() {
         </div>
         <ErrorBox error={save.error} />
       </form>
+    </Card>
+  );
+}
+
+/** Поздравление с днём рождения (core/funnel/birthday). */
+function BirthdayCard() {
+  const t = useT();
+  const [d, setD] = useState<Awaited<ReturnType<typeof birthdayFn>> | null>(null);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    void birthdayFn().then(setD);
+  }, []);
+  const save = useAction(async () => {
+    if (!d) return;
+    await saveBirthdayFn({ data: d.cfg });
+    setSaved(true);
+  });
+  if (!d) return null;
+  const set = (patch: Partial<typeof d.cfg>) => {
+    setSaved(false);
+    setD({ ...d, cfg: { ...d.cfg, ...patch } });
+  };
+  return (
+    <Card title={t("birthday.title")}>
+      <div className="space-y-3">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={d.cfg.enabled}
+            onChange={(e) => set({ enabled: e.target.checked })}
+          />
+          {t("birthday.enabled")}
+        </label>
+        <Field label={t("birthday.text")} hint={t("birthday.textHint")}>
+          <textarea
+            className="input min-h-20"
+            maxLength={2000}
+            value={d.cfg.text}
+            placeholder={t("birthday.placeholder")}
+            onChange={(e) => set({ text: e.target.value })}
+          />
+        </Field>
+        <Field label={t("birthday.promo")} hint={t("birthday.promoHint")}>
+          <input
+            className="input w-48"
+            maxLength={40}
+            value={d.cfg.promo}
+            onChange={(e) => set({ promo: e.target.value })}
+          />
+        </Field>
+        {d.link && (
+          <p className="text-xs text-muted">
+            {t("birthday.link")} <code className="rounded bg-surface-2 px-1">{d.link}</code>
+          </p>
+        )}
+        <ErrorBox error={save.error} />
+        <div className="flex items-center gap-3">
+          <button
+            className="btn-primary"
+            disabled={save.busy}
+            onClick={() => void save.run().catch(() => {})}
+          >
+            {t("common.save")}
+          </button>
+          {saved && <span className="text-xs text-ok">{t("settings.saved")}</span>}
+        </div>
+      </div>
     </Card>
   );
 }

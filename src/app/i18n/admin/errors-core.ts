@@ -3,6 +3,7 @@ import type { SectionDict } from "../section";
 /** Ошибки и сообщения сервера для продавца (UserError и ответы действий): errors-core. */
 export const ru = {
   "err.orders.notFound": "Заказ не найден",
+  "err.customer.badBirthday": "Не разобрал дату — например 15.03",
   "err.orders.amountPositive": "Сумма должна быть больше нуля",
   "err.orders.rejectedNoPayment": "Заказ отклонён — оплата по нему не принимается",
   "err.orders.manualPaymentPhysicalOnly":
@@ -50,6 +51,7 @@ export const ru = {
 
 export const kk: SectionDict<typeof ru> = {
   "err.orders.notFound": "Тапсырыс табылмады",
+  "err.customer.badBirthday": "Күнді түсінбедім — мысалы 15.03",
   "err.orders.amountPositive": "Сома нөлден үлкен болуы керек",
   "err.orders.rejectedNoPayment": "Тапсырыс қабылданбаған — ол бойынша төлем алынбайды",
   "err.orders.manualPaymentPhysicalOnly":
@@ -98,6 +100,7 @@ export const kk: SectionDict<typeof ru> = {
 
 export const en: SectionDict<typeof ru> = {
   "err.orders.notFound": "Order not found",
+  "err.customer.badBirthday": "Could not read the date — e.g. 15.03",
   "err.orders.amountPositive": "The amount must be greater than zero",
   "err.orders.rejectedNoPayment": "The order was rejected — payments for it are not accepted",
   "err.orders.manualPaymentPhysicalOnly": "Manual payments are only available for physical orders",
@@ -146,6 +149,7 @@ export const en: SectionDict<typeof ru> = {
 
 export const uz: SectionDict<typeof ru> = {
   "err.orders.notFound": "Buyurtma topilmadi",
+  "err.customer.badBirthday": "Sanani tushunmadim — masalan 15.03",
   "err.orders.amountPositive": "Summa noldan katta boʻlishi kerak",
   "err.orders.rejectedNoPayment": "Buyurtma rad etilgan — u boʻyicha toʻlov qabul qilinmaydi",
   "err.orders.manualPaymentPhysicalOnly":

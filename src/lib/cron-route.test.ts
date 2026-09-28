@@ -77,6 +77,7 @@ vi.mock("@/channels/telegram/jobs", () => ({
   runWinbackFor: hit("winback"),
   runSimilarFor: hit("similar"),
   runFunnelFor: hit("funnel"),
+  runBirthdaysFor: hit("birthdays"),
   runCourseLessons: hit("courses"),
 }));
 vi.mock("@/core/storefront/web-expire", () => ({ expireWebOrders: hit("webOrders") }));

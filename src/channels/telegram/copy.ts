@@ -102,6 +102,9 @@ export type Msg = {
   approvalAskChanges: string;
   approvalChangesSent: string;
   approvalThanks: string;
+  birthdayAsk: string;
+  birthdayInvalid: string;
+  birthdaySaved: string;
   fulfillmentDateInvalid: string;
   fulfillmentDateTooEarly: (minDate: string) => string;
   deliveryZonePrompt: string;
@@ -398,6 +401,10 @@ const ru: Msg = {
   approvalAskChanges: "✏️ Напишите одним сообщением, что поправить.",
   approvalChangesSent: "Передал продавцу — он свяжется с вами 🙌",
   approvalThanks: "Спасибо! Передал продавцу 🙌",
+  birthdayAsk:
+    "🎂 Когда у вас день рождения? Напишите дату, например 15.03 — поздравим с подарком.",
+  birthdayInvalid: "Не разобрал дату. Напишите день и месяц, например 15.03.",
+  birthdaySaved: "Запомнил 🎉 Поздравим в ваш день!",
   deliveryZonePrompt: "Выберите район доставки:",
   addressPrompt: "📍 Укажите адрес доставки одним сообщением.",
   fulfillmentNotePrompt:

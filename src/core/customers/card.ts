@@ -73,6 +73,8 @@ export type CustomerCard = {
   email: string | null;
   language: string | null;
   country: string | null;
+  /** День рождения «MM-DD» (core/funnel/birthday). */
+  birthday: string | null;
   points: number;
   createdAt: string;
   optOut: boolean;
@@ -187,6 +189,7 @@ export async function customerCard(
     email: u.email,
     language: typeof state.locale === "string" ? state.locale : u.language_code,
     country: typeof state.country_name === "string" ? state.country_name : null,
+    birthday: typeof state.birthday === "string" ? state.birthday : null,
     points: Number(u.loyalty_points) || 0,
     createdAt: u.created_at,
     optOut: u.opt_out === true,

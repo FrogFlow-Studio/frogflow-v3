@@ -59,6 +59,8 @@ export type DialogMode =
   /** Фото готового заказа: ждём «да» или правки (core/orders/approval). */
   | "awaiting_approval"
   | "awaiting_approval_changes"
+  /** Покупатель вводит день рождения по ссылке ?start=bday (core/funnel/birthday). */
+  | "awaiting_birthday"
   | "awaiting_delivery_zone"
   | "awaiting_address"
   | "awaiting_fulfillment_note"

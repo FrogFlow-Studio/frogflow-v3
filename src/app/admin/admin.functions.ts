@@ -1142,6 +1142,24 @@ export const unlinkCustomerFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** День рождения покупателя из карточки (core/funnel/birthday); пусто — убрать. */
+export const saveCustomerBirthdayFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ key: z.string().min(1).max(200), birthday: z.string().max(20) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { parseBirthday, setCustomerBirthday } = await import("@/core/funnel/birthday");
+    const day = data.birthday.trim() ? parseBirthday(data.birthday) : null;
+    if (data.birthday.trim() && !day)
+      throw new UserError("err.customer.badBirthday", "Не разобрал дату — например 15.03");
+    const { getCustomer } = await import("@/core/customers/customers");
+    const c = await getCustomer(ctx, data.key);
+    if (!c) throw new UserError("err.customer.notFound", "Покупатель не найден.");
+    await setCustomerBirthday(ctx, c, day);
+    return { birthday: day };
+  });
+
 export const setBlockedFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

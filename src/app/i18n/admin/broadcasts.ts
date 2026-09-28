@@ -47,6 +47,17 @@ export const ru = {
   "broadcasts.compose.botOff":
     "Telegram-бот не подключён — рассылка встанет в очередь и уйдёт после подключения.",
   "broadcasts.compose.text": "Текст сообщения",
+  "birthday.title": "Поздравление с днём рождения",
+  "birthday.enabled": "Поздравлять покупателей в их день рождения",
+  "birthday.text": "Текст поздравления",
+  "birthday.textHint":
+    "{name} — имя покупателя, {promo} — промокод. Уходит днём по времени магазина, один раз в год.",
+  "birthday.placeholder": "{name}, с днём рождения! Дарим скидку по промокоду {promo} 🎁",
+  "birthday.promo": "Промокод в подарок",
+  "birthday.promoHint": "Заведите его в «Скидках» заранее.",
+  "birthday.link": "Покупатель сам укажет дату по ссылке:",
+  "birthday.customer": "День рождения",
+  "birthday.customerHint": "Например 15.03",
   "broadcasts.ab.toggle": "A/B-тест: второй текст половине аудитории",
   "broadcasts.ab.textB": "Текст варианта B",
   "broadcasts.ab.hint":
@@ -212,6 +223,18 @@ export const kk: SectionDict<typeof ru> = {
   "broadcasts.compose.botOff":
     "Telegram-бот қосылмаған — хабарлама кезекке тұрып, бот қосылған соң жіберіледі.",
   "broadcasts.compose.text": "Хабарлама мәтіні",
+  "birthday.title": "Туған күнмен құттықтау",
+  "birthday.enabled": "Сатып алушыларды туған күнінде құттықтау",
+  "birthday.text": "Құттықтау мәтіні",
+  "birthday.textHint":
+    "{name} — сатып алушының аты, {promo} — промокод. Дүкен уақыты бойынша күндіз, жылына бір рет жіберіледі.",
+  "birthday.placeholder":
+    "{name}, туған күніңізбен! {promo} промокоды бойынша жеңілдік сыйлаймыз 🎁",
+  "birthday.promo": "Сыйлық промокод",
+  "birthday.promoHint": "Оны «Жеңілдіктер» бөлімінде алдын ала жасаңыз.",
+  "birthday.link": "Сатып алушы күнді сілтеме арқылы өзі көрсетеді:",
+  "birthday.customer": "Туған күні",
+  "birthday.customerHint": "Мысалы 15.03",
   "broadcasts.ab.toggle": "A/B-тест: екінші мәтін аудиторияның жартысына",
   "broadcasts.ab.textB": "B нұсқасының мәтіні",
   "broadcasts.ab.hint":
@@ -374,6 +397,17 @@ export const en: SectionDict<typeof ru> = {
   "broadcasts.compose.botOff":
     "Telegram bot is not connected — the broadcast will be queued and sent once it is.",
   "broadcasts.compose.text": "Message text",
+  "birthday.title": "Birthday greeting",
+  "birthday.enabled": "Greet customers on their birthday",
+  "birthday.text": "Greeting text",
+  "birthday.textHint":
+    "{name} — the customer’s name, {promo} — the promo code. Sent in the daytime by the shop’s time, once a year.",
+  "birthday.placeholder": "Happy birthday, {name}! Here is a discount with code {promo} 🎁",
+  "birthday.promo": "Gift promo code",
+  "birthday.promoHint": "Create it in “Discounts” beforehand.",
+  "birthday.link": "The customer can set the date via this link:",
+  "birthday.customer": "Birthday",
+  "birthday.customerHint": "E.g. 15.03",
   "broadcasts.ab.toggle": "A/B test: a second text for half of the audience",
   "broadcasts.ab.textB": "Variant B text",
   "broadcasts.ab.hint":
@@ -536,6 +570,18 @@ export const uz: SectionDict<typeof ru> = {
   "broadcasts.compose.botOff":
     "Telegram-bot ulanmagan — xabarnoma navbatga qo‘yiladi va bot ulangach yuboriladi.",
   "broadcasts.compose.text": "Xabar matni",
+  "birthday.title": "Tugʻilgan kun bilan tabriklash",
+  "birthday.enabled": "Xaridorlarni tugʻilgan kunida tabriklash",
+  "birthday.text": "Tabrik matni",
+  "birthday.textHint":
+    "{name} — xaridor ismi, {promo} — promokod. Doʻkon vaqti boʻyicha kunduzi, yiliga bir marta yuboriladi.",
+  "birthday.placeholder":
+    "{name}, tugʻilgan kuningiz bilan! {promo} promokodi bilan chegirma sovgʻa qilamiz 🎁",
+  "birthday.promo": "Sovgʻa promokodi",
+  "birthday.promoHint": "Uni «Chegirmalar»da oldindan yarating.",
+  "birthday.link": "Xaridor sanani havola orqali oʻzi koʻrsatadi:",
+  "birthday.customer": "Tugʻilgan kun",
+  "birthday.customerHint": "Masalan 15.03",
   "broadcasts.ab.toggle": "A/B test: auditoriyaning yarmiga ikkinchi matn",
   "broadcasts.ab.textB": "B variant matni",
   "broadcasts.ab.hint":

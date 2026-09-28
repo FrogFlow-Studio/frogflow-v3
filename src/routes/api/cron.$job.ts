@@ -117,6 +117,7 @@ export const Route = createFileRoute("/api/cron/$job")({
                   winback: await jobs.runWinbackFor(t),
                   similar: await jobs.runSimilarFor(t),
                   funnel: await jobs.runFunnelFor(t),
+                  birthdays: await jobs.runBirthdaysFor(t),
                   courses: await jobs.runCourseLessons(t),
                   // Неоплаченные сутки заказы с сайта — отмена и возврат остатка.
                   webOrders: await (

@@ -285,6 +285,35 @@ export async function runFunnelFor(tenant: Tenant) {
   });
 }
 
+/** Поздравления с днём рождения (core/funnel/birthday) — в канал покупателя. */
+export async function runBirthdaysFor(tenant: Tenant) {
+  if (!tenant.modules.funnel) return { skipped: "module off" };
+  const ctx = tenantContext(tenant);
+  const { runBirthdays } = await import("@/core/funnel/birthday");
+  const tg = tenant.telegramTokenEnc ? api(ctx) : null;
+  const { sendToZernioTarget, zernioTargetOf } = await import("@/channels/zernio/outbound.server");
+  return runBirthdays(ctx, async (c, text) => {
+    if (c.platform === "telegram") {
+      if (!tg) return false;
+      const m = COPY[(c.state.locale as keyof typeof COPY) ?? "ru"] ?? COPY.ru;
+      const r = await tg.call("sendMessage", {
+        chat_id: c.telegramId,
+        text: escapeHtml(text),
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: m.catalog, callback_data: "cat:root" }],
+            [{ text: m.unsubscribeBtn, callback_data: "unsub" }],
+          ],
+        },
+      });
+      return r.ok;
+    }
+    const target = zernioTargetOf(c);
+    return target ? sendToZernioTarget(target, text) : false;
+  });
+}
+
 /**
  * Курсы: сообщение о новом уроке по расписанию (правила — в core/courses).
  * Название урока вставляется как текст (HTML экранируется), ссылка — кнопкой.
