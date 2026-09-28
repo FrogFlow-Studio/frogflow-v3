@@ -7,6 +7,7 @@ import {
   type OverduePolicy,
 } from "@/core/billing/subscription";
 import { operationKey } from "@/core/billing/invoice-check";
+import { InvoiceAlreadyHandled } from "@/core/billing/invoice-state";
 import type { Tenant } from "@/core/tenant/types";
 import { logEvent, notifyOwner } from "./operator.server";
 import { NO_RECIPIENTS_REASON } from "@/core/notify/deliver";
@@ -207,13 +208,22 @@ export async function setKaspiPayLink(value: string): Promise<void> {
 }
 
 /**
- * Способы оплаты подписки по порядку перебора: ссылка Kaspi Pay, если
- * оператор её задал, потом перевод по реквизитам (запасной путь).
+ * Способы оплаты подписки по порядку перебора: ссылка ApiPay, если ключ
+ * задан в окружении, ссылка Kaspi Pay, если оператор её задал, потом перевод
+ * по реквизитам (запасной путь).
  */
 async function payProviders() {
   const { transferProvider } = await import("@/core/billing/pay/transfer");
   const { kaspiLinkProvider } = await import("@/core/billing/pay/kaspi-link");
-  return [kaspiLinkProvider(getKaspiPayLink), transferProvider];
+  const { apipayProvider } = await import("@/core/billing/pay/apipay");
+  const { apipayConfig } = await import("./apipay.server");
+  // Не настроенный ApiPay не в списке вовсе: причина отказа счёта — про настроенные способы.
+  const apipay = apipayConfig();
+  return [
+    ...(apipay ? [apipayProvider(apipay)] : []),
+    kaspiLinkProvider(getKaspiPayLink),
+    transferProvider,
+  ];
 }
 
 /**
@@ -333,7 +343,7 @@ export async function confirmInvoice(
 ): Promise<{ expiresAt: string | null }> {
   const inv = await invoiceOrThrow(id);
   if (inv.status !== "sent" && inv.status !== "proof_uploaded")
-    throw new Error(`Счёт уже в статусе «${inv.status}» — подтверждать нечего`);
+    throw new InvoiceAlreadyHandled(`Счёт уже в статусе «${inv.status}» — подтверждать нечего`);
   if (period.end < period.start) throw new Error("Конец периода раньше начала");
   const db = serviceDb();
   const { data: claimed, error } = await db
@@ -344,7 +354,7 @@ export async function confirmInvoice(
     .select("id")
     .maybeSingle();
   if (error) throw serverFailure(`Не удалось подтвердить счёт: ${error.message}`);
-  if (!claimed) throw new Error("Счёт уже обработан — обновите список");
+  if (!claimed) throw new InvoiceAlreadyHandled("Счёт уже обработан — обновите список");
   let r: { expiresAt: string | null };
   try {
     r = await addPayment(
@@ -359,10 +369,31 @@ export async function confirmInvoice(
       actor,
     );
   } catch (e) {
-    await db
+    const { error: rollback } = await db
       .from("subscription_invoices")
       .update({ status: inv.status, confirmed_at: null })
       .eq("id", id);
+    if (rollback) {
+      // Счёт остался «оплачен», а платежа нет: сам он больше не подтвердится —
+      // только оператор, поэтому в журнал клиента и в учёт ошибок.
+      await logEvent(
+        inv.bot_id,
+        "payment",
+        {
+          action: "invoice_paid_without_payment",
+          invoice_id: id,
+          amount: inv.amount,
+          currency: inv.currency,
+          error: rollback.message,
+        },
+        actor,
+      );
+      const { reportError } = await import("@/lib/errors");
+      await reportError(
+        serverFailure(`Счёт ${id} остался оплаченным без платежа: ${rollback.message}`),
+        { where: "billing.confirmInvoice", botId: inv.bot_id },
+      );
+    }
     throw e;
   }
   // Платёж записан — счёт оплачен, дальше его не откатываем: иначе повторное

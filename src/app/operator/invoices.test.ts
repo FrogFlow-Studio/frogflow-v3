@@ -8,6 +8,8 @@ import { fakeDb, type FakeDb } from "../../../tests/fake-db";
  */
 let base: FakeDb;
 let failPayment = false;
+let failRollback = false;
+const reported: string[] = [];
 const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
 const toOwner: string[] = [];
 let ownerDelivered = true;
@@ -31,6 +33,14 @@ function wrap(b: FakeDb): FakeDb {
             ...(r as object),
           });
       }
+      if (table === "subscription_invoices" && failRollback) {
+        // Откат статуса после сбоя платежа (confirmed_at: null) тоже падает.
+        const update = q.update!.bind(q);
+        q.update = (v) =>
+          (v as { confirmed_at?: unknown }).confirmed_at === null
+            ? { eq: () => Promise.resolve({ data: null, error: { message: "сбой отката" } }) }
+            : update(v);
+      }
       if (table === "subscription_payments" && failPayment)
         q.insert = () => Promise.resolve({ data: null, error: { message: "сбой базы" } });
       return q as never;
@@ -50,6 +60,11 @@ vi.mock("@/core/db/client.server", () => ({
       }),
     },
   }),
+}));
+vi.mock("@/lib/errors", () => ({
+  reportError: async (e: unknown) => {
+    reported.push(e instanceof Error ? e.message : String(e));
+  },
 }));
 vi.mock("./operator.server", () => ({
   logEvent: async (_bot: string, kind: string, payload: Record<string, unknown> = {}) => {
@@ -159,6 +174,41 @@ describe("счета за подписку", () => {
     await billing.confirmInvoice(invoice.id, PERIOD, "op");
     expect(inv(invoice.id).status).toBe("paid");
     expect(base.tables.subscription_payments).toHaveLength(1);
+  });
+
+  it("платёж не записался и откат не прошёл — счёт «оплачен без платежа» виден в журнале и учёте ошибок", async () => {
+    await withRequisites();
+    const { invoice } = await billing.createInvoice(
+      BOT,
+      { amount: 9900, currency: "KZT", note: null },
+      "op",
+    );
+    failPayment = true;
+    failRollback = true;
+    try {
+      await expect(billing.confirmInvoice(invoice.id, PERIOD, "op")).rejects.toThrow(/платёж/);
+    } finally {
+      failPayment = false;
+      failRollback = false;
+    }
+    expect(inv(invoice.id).status).toBe("paid");
+    expect(base.tables.subscription_payments ?? []).toHaveLength(0);
+    expect(events.map((e) => e.payload.action)).toContain("invoice_paid_without_payment");
+    expect(reported.some((m) => m.includes("без платежа"))).toBe(true);
+  });
+
+  it("уже закрытый счёт — отдельный тип ошибки «уже обработан»", async () => {
+    await withRequisites();
+    const { invoice } = await billing.createInvoice(
+      BOT,
+      { amount: 9900, currency: "KZT", note: null },
+      "op",
+    );
+    await billing.confirmInvoice(invoice.id, PERIOD, "op");
+    const { InvoiceAlreadyHandled } = await import("@/core/billing/invoice-state");
+    await expect(billing.confirmInvoice(invoice.id, PERIOD, "op")).rejects.toBeInstanceOf(
+      InvoiceAlreadyHandled,
+    );
   });
 
   it("двойное подтверждение подряд не задваивает addPayment", async () => {

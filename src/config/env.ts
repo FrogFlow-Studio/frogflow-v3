@@ -55,6 +55,21 @@ const schema = z.object({
   ZERNIO_WEBHOOK_SECRET: z.string().optional(),
   ZERNIO_BASE_URL: z.string().url().optional(),
 
+  /**
+   * ApiPay (apipay.kz) — ссылка на оплату счёта платформы через Kaspi
+   * (core/billing/pay/apipay.ts). Ключ — кабинет ApiPay → Настройки →
+   * Подключение; секрет вебхука показывается один раз при добавлении адреса
+   * <APP_URL>/api/apipay/webhook. Без ключа способ пропускается.
+   */
+  APIPAY_API_KEY: z.string().optional(),
+  APIPAY_WEBHOOK_SECRET: z.string().optional(),
+  /** Пусто — https://api.apipay.kz/api/v1. */
+  APIPAY_BASE_URL: z.string().optional(),
+  /** "1" — боевой режим. Иначе песочница: ссылку получает только APIPAY_SANDBOX_BOT_ID. */
+  APIPAY_LIVE: z.string().default("0"),
+  // Не .uuid(): опечатка в необязательной переменной не должна ронять весь деплой.
+  APIPAY_SANDBOX_BOT_ID: z.string().optional(),
+
   TELEGRAM_API_BASE: z.string().url().default("https://api.telegram.org"),
 
   ANTHROPIC_API_KEY: z.string().optional(),

@@ -56,6 +56,7 @@ import { Route as ApiAdminIconRouteImport } from './routes/api/admin/icon'
 import { Route as ApiAdminManifestRouteImport } from './routes/api/admin/manifest'
 import { Route as ApiAdminSwRouteImport } from './routes/api/admin/sw'
 import { Route as ApiAdminUploadRouteImport } from './routes/api/admin/upload'
+import { Route as ApiApipayWebhookRouteImport } from './routes/api/apipay.webhook'
 import { Route as ApiCronJobRouteImport } from './routes/api/cron.$job'
 import { Route as ApiNowpaymentsBotIdRouteImport } from './routes/api/nowpayments.$botId'
 import { Route as ApiOperatorBotsRouteImport } from './routes/api/operator/bots'
@@ -328,6 +329,11 @@ const ApiAdminUploadRoute = ApiAdminUploadRouteImport.update({
   path: '/api/admin/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiApipayWebhookRoute = ApiApipayWebhookRouteImport.update({
+  id: '/api/apipay/webhook',
+  path: '/api/apipay/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronJobRoute = ApiCronJobRouteImport.update({
   id: '/api/cron/$job',
   path: '/api/cron/$job',
@@ -567,6 +573,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/manifest': typeof ApiAdminManifestRoute
   '/api/admin/sw': typeof ApiAdminSwRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
+  '/api/apipay/webhook': typeof ApiApipayWebhookRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
@@ -651,6 +658,7 @@ export interface FileRoutesByTo {
   '/api/admin/manifest': typeof ApiAdminManifestRoute
   '/api/admin/sw': typeof ApiAdminSwRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
+  '/api/apipay/webhook': typeof ApiApipayWebhookRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
@@ -737,6 +745,7 @@ export interface FileRoutesById {
   '/api/admin/manifest': typeof ApiAdminManifestRoute
   '/api/admin/sw': typeof ApiAdminSwRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
+  '/api/apipay/webhook': typeof ApiApipayWebhookRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
   '/api/operator/bots': typeof ApiOperatorBotsRoute
@@ -824,6 +833,7 @@ export interface FileRouteTypes {
     | '/api/admin/manifest'
     | '/api/admin/sw'
     | '/api/admin/upload'
+    | '/api/apipay/webhook'
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
     | '/api/operator/bots'
@@ -908,6 +918,7 @@ export interface FileRouteTypes {
     | '/api/admin/manifest'
     | '/api/admin/sw'
     | '/api/admin/upload'
+    | '/api/apipay/webhook'
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
     | '/api/operator/bots'
@@ -993,6 +1004,7 @@ export interface FileRouteTypes {
     | '/api/admin/manifest'
     | '/api/admin/sw'
     | '/api/admin/upload'
+    | '/api/apipay/webhook'
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
     | '/api/operator/bots'
@@ -1052,6 +1064,7 @@ export interface RootRouteChildren {
   ApiAdminManifestRoute: typeof ApiAdminManifestRoute
   ApiAdminSwRoute: typeof ApiAdminSwRoute
   ApiAdminUploadRoute: typeof ApiAdminUploadRoute
+  ApiApipayWebhookRoute: typeof ApiApipayWebhookRoute
   ApiCronJobRoute: typeof ApiCronJobRoute
   ApiNowpaymentsBotIdRoute: typeof ApiNowpaymentsBotIdRoute
   ApiOperatorBotsRoute: typeof ApiOperatorBotsRoute
@@ -1396,6 +1409,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/upload'
       fullPath: '/api/admin/upload'
       preLoaderRoute: typeof ApiAdminUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/apipay/webhook': {
+      id: '/api/apipay/webhook'
+      path: '/api/apipay/webhook'
+      fullPath: '/api/apipay/webhook'
+      preLoaderRoute: typeof ApiApipayWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cron/$job': {
@@ -1859,6 +1879,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminManifestRoute: ApiAdminManifestRoute,
   ApiAdminSwRoute: ApiAdminSwRoute,
   ApiAdminUploadRoute: ApiAdminUploadRoute,
+  ApiApipayWebhookRoute: ApiApipayWebhookRoute,
   ApiCronJobRoute: ApiCronJobRoute,
   ApiNowpaymentsBotIdRoute: ApiNowpaymentsBotIdRoute,
   ApiOperatorBotsRoute: ApiOperatorBotsRoute,
