@@ -55,7 +55,8 @@
     "fix(consultant): вчерашний менеджер держал бота в паузе бесконечно; «вернуть бота» тут же отменялось": "src/channels/zernio/manager-guard.test.ts › «вернуть бота»: реплика менеджера до возврата паузу не ставит, после — ставит",
     "fix(zernio): ответ на рилс приходит вложением video, его никто не видел": "src/channels/zernio/story-reel-shapes.test.ts › читается из вложения: reel_video_id и ссылка на рилс",
     "feat(consultant): к истории можно привязать несколько товаров": "src/core/consultant/story-tags.test.ts › бот перечисляет товары истории с ценами и спрашивает, какой интересует",
-    "feat(consultant): ответ менеджера на уведомление в Telegram уходит покупателю": "src/channels/telegram/manager-relay.test.ts › ответ свайпом на уведомление уходит покупателю в Direct, пауза остаётся"
+    "feat(consultant): ответ менеджера на уведомление в Telegram уходит покупателю": "src/channels/telegram/manager-relay.test.ts › ответ свайпом на уведомление уходит покупателю в Direct, пауза остаётся",
+    "feat(instagram): автоответы на комментарии без сообщения в Direct": "src/channels/zernio/comment-replies.test.ts › отвечает публично один раз, варианты по кругу, отметка — после отправки"
   },
   "src/lib/comment-dm-fallback.test.ts": {
     "пустой список ключевых слов — совпадает любой комментарий": "src/core/instagram/comment-rules.test.ts › пустой список ключевых слов — совпадает любой комментарий",

@@ -39,6 +39,31 @@ export async function dispatchZernioEvent(
             ),
           )
         : { note: "модуль «instagram» у клиента выключен" };
+      // Правила «ответить публично, в Direct не писать» (v1 4cfbae3) — их
+      // сбой не роняет двухшаговую рассылку рядом.
+      if (ctx.tenant.modules.instagram) {
+        const c = payload as {
+          account?: { accountId?: string; id?: string; username?: string };
+          post?: { platformPostId?: string; id?: string };
+          comment?: {
+            id?: string;
+            text?: string;
+            postId?: string;
+            platformPostId?: string;
+            author?: { username?: string };
+          };
+        };
+        const { replyToCommentByRules } = await import("./comment-replies.server");
+        await replyToCommentByRules(ctx, {
+          accountId: c.account?.accountId || c.account?.id,
+          commentId: c.comment?.id,
+          commentText: c.comment?.text,
+          platformPostId: c.comment?.platformPostId || c.post?.platformPostId,
+          postId: c.comment?.postId || c.post?.id,
+          authorUsername: c.comment?.author?.username,
+          accountUsername: c.account?.username,
+        }).catch((e: unknown) => console.error("[comment-reply] правило не отработало", e));
+      }
       return { status: "processed", note: r.note };
     }
     if (payload.event === "whatsapp.template.status_updated") {
