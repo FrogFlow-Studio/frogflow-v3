@@ -51,6 +51,9 @@ import { Route as AdminAuthedTicketsRouteImport } from './routes/admin._authed.t
 import { Route as AdminAuthedUndeliveredRouteImport } from './routes/admin._authed.undelivered'
 import { Route as AdminAuthedVipRouteImport } from './routes/admin._authed.vip'
 import { Route as AdminPrintIdRouteImport } from './routes/admin.print.$id'
+import { Route as ApiAdminIconRouteImport } from './routes/api/admin/icon'
+import { Route as ApiAdminManifestRouteImport } from './routes/api/admin/manifest'
+import { Route as ApiAdminSwRouteImport } from './routes/api/admin/sw'
 import { Route as ApiAdminUploadRouteImport } from './routes/api/admin/upload'
 import { Route as ApiCronJobRouteImport } from './routes/api/cron.$job'
 import { Route as ApiNowpaymentsBotIdRouteImport } from './routes/api/nowpayments.$botId'
@@ -299,6 +302,21 @@ const AdminPrintIdRoute = AdminPrintIdRouteImport.update({
   path: '/print/$id',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiAdminIconRoute = ApiAdminIconRouteImport.update({
+  id: '/api/admin/icon',
+  path: '/api/admin/icon',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminManifestRoute = ApiAdminManifestRouteImport.update({
+  id: '/api/admin/manifest',
+  path: '/api/admin/manifest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminSwRoute = ApiAdminSwRouteImport.update({
+  id: '/api/admin/sw',
+  path: '/api/admin/sw',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminUploadRoute = ApiAdminUploadRouteImport.update({
   id: '/api/admin/upload',
   path: '/api/admin/upload',
@@ -538,6 +556,9 @@ export interface FileRoutesByFullPath {
   '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/vip': typeof AdminAuthedVipRoute
   '/admin/print/$id': typeof AdminPrintIdRoute
+  '/api/admin/icon': typeof ApiAdminIconRoute
+  '/api/admin/manifest': typeof ApiAdminManifestRoute
+  '/api/admin/sw': typeof ApiAdminSwRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
@@ -618,6 +639,9 @@ export interface FileRoutesByTo {
   '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/vip': typeof AdminAuthedVipRoute
   '/admin/print/$id': typeof AdminPrintIdRoute
+  '/api/admin/icon': typeof ApiAdminIconRoute
+  '/api/admin/manifest': typeof ApiAdminManifestRoute
+  '/api/admin/sw': typeof ApiAdminSwRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
@@ -700,6 +724,9 @@ export interface FileRoutesById {
   '/admin/_authed/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/_authed/vip': typeof AdminAuthedVipRoute
   '/admin/print/$id': typeof AdminPrintIdRoute
+  '/api/admin/icon': typeof ApiAdminIconRoute
+  '/api/admin/manifest': typeof ApiAdminManifestRoute
+  '/api/admin/sw': typeof ApiAdminSwRoute
   '/api/admin/upload': typeof ApiAdminUploadRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/nowpayments/$botId': typeof ApiNowpaymentsBotIdRoute
@@ -783,6 +810,9 @@ export interface FileRouteTypes {
     | '/admin/undelivered'
     | '/admin/vip'
     | '/admin/print/$id'
+    | '/api/admin/icon'
+    | '/api/admin/manifest'
+    | '/api/admin/sw'
     | '/api/admin/upload'
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
@@ -863,6 +893,9 @@ export interface FileRouteTypes {
     | '/admin/undelivered'
     | '/admin/vip'
     | '/admin/print/$id'
+    | '/api/admin/icon'
+    | '/api/admin/manifest'
+    | '/api/admin/sw'
     | '/api/admin/upload'
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
@@ -944,6 +977,9 @@ export interface FileRouteTypes {
     | '/admin/_authed/undelivered'
     | '/admin/_authed/vip'
     | '/admin/print/$id'
+    | '/api/admin/icon'
+    | '/api/admin/manifest'
+    | '/api/admin/sw'
     | '/api/admin/upload'
     | '/api/cron/$job'
     | '/api/nowpayments/$botId'
@@ -1000,6 +1036,9 @@ export interface RootRouteChildren {
   ForNicheRoute: typeof ForNicheRoute
   PartnerCodeRoute: typeof PartnerCodeRoute
   SSlugRoute: typeof SSlugRouteWithChildren
+  ApiAdminIconRoute: typeof ApiAdminIconRoute
+  ApiAdminManifestRoute: typeof ApiAdminManifestRoute
+  ApiAdminSwRoute: typeof ApiAdminSwRoute
   ApiAdminUploadRoute: typeof ApiAdminUploadRoute
   ApiCronJobRoute: typeof ApiCronJobRoute
   ApiNowpaymentsBotIdRoute: typeof ApiNowpaymentsBotIdRoute
@@ -1311,6 +1350,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/print/$id'
       preLoaderRoute: typeof AdminPrintIdRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/api/admin/icon': {
+      id: '/api/admin/icon'
+      path: '/api/admin/icon'
+      fullPath: '/api/admin/icon'
+      preLoaderRoute: typeof ApiAdminIconRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/manifest': {
+      id: '/api/admin/manifest'
+      path: '/api/admin/manifest'
+      fullPath: '/api/admin/manifest'
+      preLoaderRoute: typeof ApiAdminManifestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/sw': {
+      id: '/api/admin/sw'
+      path: '/api/admin/sw'
+      fullPath: '/api/admin/sw'
+      preLoaderRoute: typeof ApiAdminSwRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/admin/upload': {
       id: '/api/admin/upload'
@@ -1774,6 +1834,9 @@ const rootRouteChildren: RootRouteChildren = {
   ForNicheRoute: ForNicheRoute,
   PartnerCodeRoute: PartnerCodeRoute,
   SSlugRoute: SSlugRouteWithChildren,
+  ApiAdminIconRoute: ApiAdminIconRoute,
+  ApiAdminManifestRoute: ApiAdminManifestRoute,
+  ApiAdminSwRoute: ApiAdminSwRoute,
   ApiAdminUploadRoute: ApiAdminUploadRoute,
   ApiCronJobRoute: ApiCronJobRoute,
   ApiNowpaymentsBotIdRoute: ApiNowpaymentsBotIdRoute,

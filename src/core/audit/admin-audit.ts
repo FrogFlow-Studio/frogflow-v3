@@ -44,6 +44,8 @@ const NOT_AUDITED = new Set([
   "zernioConnectLinkFn",
   "hideSetupFn",
   "hideMovedWelcomeFn",
+  "savePushFn",
+  "removePushFn",
   "assistDescriptionFn",
   "assistPostFn",
   "assistReviewReplyFn",

@@ -16,6 +16,7 @@ import { parseWebCheckout } from "@/core/storefront/web-checkout-settings";
 import { ChannelsCard, DirectBotCard, TelegramCard } from "@/app/admin/settings/channels";
 import { CrmCard } from "@/app/admin/settings/crm";
 import { ApiKeyCard } from "@/app/admin/settings/api-key";
+import { PushCard } from "@/app/admin/settings/push";
 import { IceBreakersCard } from "@/app/admin/settings/ice-breakers";
 import { FulfillmentCard, ZonesCard } from "@/app/admin/settings/delivery";
 import { NotifyCard } from "@/app/admin/settings/notify";
@@ -331,6 +332,7 @@ function SettingsPage() {
         <PayReminderCard settings={settings} />
         {shop.modules.legal_docs && <LegalCard settings={settings} />}
         {shop.modules.notify_in_bot && <NotifyCard />}
+        <PushCard />
         {shop.modules.crm_integration && <CrmCard />}
         {shop.modules.public_api && shop.role === "owner" && <ApiKeyCard />}
         {shop.modules.admin_roles && <TeamCard />}

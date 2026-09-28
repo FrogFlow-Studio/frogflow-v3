@@ -67,6 +67,11 @@ const schema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   SMTP_FROM: z.string().optional(),
+  // Push-уведомления админки (core/push): ключи VAPID P-256 в base64url —
+  // открытый (65 байт) и закрытый (32 байта); контакт для служб push.
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().optional(),
 
   APP_TIMEZONE: z.string().default("Asia/Almaty"),
 

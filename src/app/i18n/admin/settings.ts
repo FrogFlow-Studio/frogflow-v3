@@ -209,6 +209,15 @@ export const ru = {
     "Необязательно. Подпись — заголовок X-FrogFlow-Signature: sha256=HMAC тела.",
   "settings.crm.secretSet": "Секрет задан; введите новый, чтобы заменить.",
   "settings.crm.events": "Какие события отправлять",
+  "settings.push.title": "Push на этом устройстве",
+  "settings.push.intro":
+    "Уведомления о заказах приходят прямо на телефон или компьютер. На телефоне сначала добавьте админку на главный экран («Поделиться → На экран „Домой“» или «Установить приложение»), затем включите push.",
+  "settings.push.enable": "Включить push",
+  "settings.push.disable": "Выключить",
+  "settings.push.on": "Push включён на этом устройстве",
+  "settings.push.denied": "Уведомления запрещены в браузере — разрешите их в настройках сайта.",
+  "settings.push.unsupported":
+    "Этот браузер не поддерживает push. На iPhone — сначала добавьте админку на экран «Домой».",
   "settings.api.title": "API для разработчиков",
   "settings.api.intro":
     "Ключ даёт доступ к заказам и товарам магазина из вашей учётной системы. Храните его как пароль: у кого ключ, тот видит заказы с контактами покупателей.",
@@ -529,6 +538,16 @@ export const kk: SectionDict<typeof ru> = {
     "Міндетті емес. Қолтаңба — X-FrogFlow-Signature тақырыбы: дененің sha256=HMAC.",
   "settings.crm.secretSet": "Құпия берілген; ауыстыру үшін жаңасын енгізіңіз.",
   "settings.crm.events": "Қандай оқиғаларды жіберу",
+  "settings.push.title": "Осы құрылғыдағы push",
+  "settings.push.intro":
+    "Тапсырыстар туралы хабарламалар тікелей телефонға немесе компьютерге келеді. Телефонда алдымен әкімшілікті басты экранға қосыңыз («Бөлісу → Басты экранға» немесе «Қолданбаны орнату»), содан кейін push-ты қосыңыз.",
+  "settings.push.enable": "Push қосу",
+  "settings.push.disable": "Өшіру",
+  "settings.push.on": "Бұл құрылғыда push қосулы",
+  "settings.push.denied":
+    "Хабарламаларға браузерде тыйым салынған — сайт баптауларында рұқсат етіңіз.",
+  "settings.push.unsupported":
+    "Бұл браузер push-ты қолдамайды. iPhone-да алдымен әкімшілікті «Басты экранға» қосыңыз.",
   "settings.api.title": "Әзірлеушілерге арналған API",
   "settings.api.intro":
     "Кілт сіздің есеп жүйеңізден дүкеннің тапсырыстары мен тауарларына қол жеткізеді. Оны құпиясөз сияқты сақтаңыз: кілті бар адам сатып алушылардың байланыстары бар тапсырыстарды көреді.",
@@ -845,6 +864,16 @@ export const en: SectionDict<typeof ru> = {
     "Optional. Signature header X-FrogFlow-Signature: sha256=HMAC of the body.",
   "settings.crm.secretSet": "A secret is set; enter a new one to replace it.",
   "settings.crm.events": "Events to send",
+  "settings.push.title": "Push on this device",
+  "settings.push.intro":
+    "Order notifications arrive right on your phone or computer. On a phone, first add the admin panel to the home screen (“Share → Add to Home Screen” or “Install app”), then enable push.",
+  "settings.push.enable": "Enable push",
+  "settings.push.disable": "Turn off",
+  "settings.push.on": "Push is on for this device",
+  "settings.push.denied":
+    "Notifications are blocked in the browser — allow them in the site settings.",
+  "settings.push.unsupported":
+    "This browser does not support push. On iPhone, add the admin panel to the Home Screen first.",
   "settings.api.title": "Developer API",
   "settings.api.intro":
     "The key gives your accounting system access to the shop's orders and products. Keep it like a password: whoever has the key sees orders with customer contacts.",
@@ -1163,6 +1192,16 @@ export const uz: SectionDict<typeof ru> = {
     "Ixtiyoriy. Imzo — X-FrogFlow-Signature sarlavhasi: tananing sha256=HMAC.",
   "settings.crm.secretSet": "Sir berilgan; almashtirish uchun yangisini kiriting.",
   "settings.crm.events": "Qaysi hodisalarni yuborish",
+  "settings.push.title": "Ushbu qurilmada push",
+  "settings.push.intro":
+    "Buyurtmalar haqida bildirishnomalar toʻgʻridan-toʻgʻri telefon yoki kompyuterga keladi. Telefonda avval admin panelni bosh ekranga qoʻshing («Ulashish → Bosh ekranga» yoki «Ilovani oʻrnatish»), soʻng push-ni yoqing.",
+  "settings.push.enable": "Push-ni yoqish",
+  "settings.push.disable": "Oʻchirish",
+  "settings.push.on": "Ushbu qurilmada push yoqilgan",
+  "settings.push.denied":
+    "Bildirishnomalar brauzerda taqiqlangan — sayt sozlamalarida ruxsat bering.",
+  "settings.push.unsupported":
+    "Bu brauzer push-ni qoʻllab-quvvatlamaydi. iPhone-da avval admin panelni «Bosh ekran»ga qoʻshing.",
   "settings.api.title": "Dasturchilar uchun API",
   "settings.api.intro":
     "Kalit hisob tizimingizga doʻkon buyurtmalari va tovarlariga kirish beradi. Uni parol kabi saqlang: kaliti bor odam xaridorlar kontaktlari bilan buyurtmalarni koʻradi.",

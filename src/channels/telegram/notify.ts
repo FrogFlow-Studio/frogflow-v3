@@ -20,7 +20,8 @@ export async function notifyAdminsHtml(
   opts: { orderId?: number; kind?: string } = {},
 ): Promise<number> {
   const api = adminTelegramApi(ctx);
-  if (!api) return 0;
+  // Без бота Telegram — только push в админку, если он настроен (core/push).
+  if (!api) return pushOnly(ctx, html, opts);
   // Матрица «событие → канал», тихие часы, почта (core/notify/prefs). Дайджест
   // сам себя не откладывает и не фильтрует.
   const isDigest = opts.kind === "digest";
@@ -47,6 +48,8 @@ export async function notifyAdminsHtml(
       }).catch(() => ({ ok: false }));
     }
   }
+  // Push в админку как приложение (core/push) — тем же мгновенным каналом, что Telegram.
+  if (d.telegram) await sendAdminPush(ctx, html, opts);
   if (!d.telegram) return d.email ? 1 : 0;
   const { sendOrEnqueue } = await import("@/core/outbox/outbox");
   const { telegramOutboxSender } = await import("./outbox");
@@ -113,4 +116,36 @@ export async function notifyBalanceProof(
     `🧾 Покупатель прислал чек на остаток ${escapeHtml(formatMoney(due, order.currency))} по заказу #${order.display_no ?? order.order_no}. Проверьте чек в карточке заказа и нажмите «Внести оплату».`,
     { orderId: order.id, kind: "proof" },
   ).catch((e) => console.error(`[notify:${ctx.tenant.id}] уведомление о чеке на остаток`, e));
+}
+
+async function sendAdminPush(
+  ctx: TenantContext,
+  html: string,
+  opts: { orderId?: number },
+): Promise<number> {
+  const { pushAdmins, pushFromHtml, vapidFromEnv } = await import("@/core/push/admin-push");
+  if (!vapidFromEnv()) return 0;
+  return pushAdmins(ctx, {
+    ...pushFromHtml(html),
+    url: opts.orderId ? `/admin/orders/${opts.orderId}` : "/admin",
+    tag: opts.orderId ? `order-${opts.orderId}` : undefined,
+  }).catch(() => 0);
+}
+
+/** Магазин без бота Telegram: push по той же матрице и тихим часам, без дайджеста. */
+async function pushOnly(
+  ctx: TenantContext,
+  html: string,
+  opts: { orderId?: number; kind?: string },
+): Promise<number> {
+  const { vapidFromEnv } = await import("@/core/push/admin-push");
+  if (!vapidFromEnv() || opts.kind === "digest") return 0;
+  const { decideDelivery, loadNotifyPrefs, notifyKindOf } = await import("@/core/notify/prefs");
+  const d = decideDelivery(
+    await loadNotifyPrefs(ctx),
+    notifyKindOf(opts.kind),
+    new Date(),
+    ctx.timezone,
+  );
+  return d.telegram ? sendAdminPush(ctx, html, opts) : 0;
 }

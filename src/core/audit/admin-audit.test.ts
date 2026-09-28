@@ -38,6 +38,8 @@ describe("журнал действий админки: что пишем", () =
       "zernioConnectLinkFn",
       "hideSetupFn",
       "hideMovedWelcomeFn",
+      "savePushFn",
+      "removePushFn",
     ])
       expect(auditedAdminAction(fn(name), "POST"), name).toBeNull();
     expect(auditedAdminAction(fn("saveProductFn"), "GET")).toBeNull();
