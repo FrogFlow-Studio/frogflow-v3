@@ -77,7 +77,11 @@ export const storeProductFn = createServerFn({ method: "GET" })
     const related = (await storeCatalog(ctx, { categoryId: product.categoryIds[0] ?? null }))
       .filter((p) => p.id !== product.id)
       .slice(0, 4);
-    return { product, related };
+    // Пример цифрового товара (core/catalog/preview): публичные картинки.
+    const { loadPreview } = await import("@/core/catalog/preview");
+    const { imageUrl } = await import("@/core/catalog/catalog");
+    const preview = (await loadPreview(ctx, product.id)).map((k) => imageUrl(ctx, k));
+    return { product, related, preview };
   });
 
 const items = z

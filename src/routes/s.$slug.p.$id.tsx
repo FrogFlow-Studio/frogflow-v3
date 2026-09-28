@@ -68,7 +68,7 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
 });
 
 function ProductPage() {
-  const { product: p, related } = Route.useLoaderData();
+  const { product: p, related, preview } = Route.useLoaderData();
   const { slug } = Route.useParams();
   const { locale, t } = useStorefrontLocale();
   const cart = useCart();
@@ -226,6 +226,23 @@ function ProductPage() {
           )}
         </div>
       </div>
+      {preview.length > 0 && (
+        <section className="mt-10">
+          <h2 className="mb-3 text-sm font-semibold text-muted">{t("product.preview")}</h2>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {preview.map((src) => (
+              <a key={src} href={src} target="_blank" rel="noreferrer" className="shrink-0">
+                <img
+                  src={src}
+                  alt=""
+                  loading="lazy"
+                  className="h-56 rounded-md border border-line object-cover"
+                />
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
       <ProductReviews slug={slug} productId={p.id} />
       {related.length > 0 && (
         <section className="mt-10">

@@ -751,12 +751,24 @@ async function quizFinish(b: Bot): Promise<void> {
 }
 
 async function sendProductCard(b: Bot, p: Product) {
-  const { caption, keyboard, photo } = await productCard(
-    b.ctx,
-    p,
-    b.locale,
-    b.customer.state.country_code ?? null,
-  );
+  const {
+    caption,
+    keyboard: base,
+    photo,
+  } = await productCard(b.ctx, p, b.locale, b.customer.state.country_code ?? null);
+  // Пример цифрового товара (core/catalog/preview) — кнопкой под карточкой.
+  const { loadPreview } = await import("@/core/catalog/preview");
+  const hasPreview =
+    p.fulfillment_kind !== "physical" && (await loadPreview(b.ctx, p.id)).length > 0;
+  const keyboard = hasPreview
+    ? {
+        ...base,
+        inline_keyboard: [
+          ...(base.inline_keyboard ?? []),
+          [{ text: b.m.previewBtn, callback_data: `prev:${p.id}` }],
+        ],
+      }
+    : base;
   if (!photo) {
     await send(b, caption, { reply_markup: keyboard });
   } else {
@@ -2121,6 +2133,17 @@ async function handleCallback(
       checkout_fulfillment_at: withSlot(date, slot),
     });
     return afterDate(b);
+  }
+  if (data.startsWith("prev:")) {
+    const { loadPreview } = await import("@/core/catalog/preview");
+    const { imageUrl } = await import("@/core/catalog/catalog");
+    const keys = await loadPreview(ctx, data.slice(5));
+    if (!keys.length) return;
+    await b.api.call("sendMediaGroup", {
+      chat_id: b.chatId,
+      media: keys.map((k) => ({ type: "photo", media: imageUrl(ctx, k) })),
+    });
+    return;
   }
   if (data.startsWith("appr:")) {
     const [, what, id] = data.split(":");

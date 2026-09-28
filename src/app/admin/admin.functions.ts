@@ -680,6 +680,25 @@ const productInput = z.object({
     .default([]),
 });
 
+/** Пример цифрового товара: до 5 картинок (core/catalog/preview). */
+export const productPreviewFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ id: uuid }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    const { loadPreview } = await import("@/core/catalog/preview");
+    return loadPreview(ctx, data.id);
+  });
+
+export const saveProductPreviewFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ id: uuid, keys: z.array(z.string().min(1).max(300)).max(5) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { savePreview } = await import("@/core/catalog/preview");
+    return savePreview(ctx, data.id, data.keys);
+  });
+
 export const saveProductFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid.nullable(), product: productInput }).parse(d))
   .handler(async ({ data }) => {

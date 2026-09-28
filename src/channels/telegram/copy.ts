@@ -103,6 +103,7 @@ export type Msg = {
   approvalChangesSent: string;
   approvalThanks: string;
   birthdayAsk: string;
+  previewBtn: string;
   birthdayInvalid: string;
   birthdaySaved: string;
   fulfillmentDateInvalid: string;
@@ -401,6 +402,7 @@ const ru: Msg = {
   approvalAskChanges: "✏️ Напишите одним сообщением, что поправить.",
   approvalChangesSent: "Передал продавцу — он свяжется с вами 🙌",
   approvalThanks: "Спасибо! Передал продавцу 🙌",
+  previewBtn: "👀 Пример",
   birthdayAsk:
     "🎂 Когда у вас день рождения? Напишите дату, например 15.03 — поздравим с подарком.",
   birthdayInvalid: "Не разобрал дату. Напишите день и месяц, например 15.03.",

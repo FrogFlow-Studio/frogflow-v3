@@ -40,6 +40,9 @@ export const ru = {
   "product.leadTime": "Срок изготовления, дней",
   "product.onSale": "В продаже",
   "product.card.photos": "Фото",
+  "product.card.preview": "Пример товара",
+  "product.previewHint":
+    "До 5 картинок: страницы методички, обложки уроков. Покупатель увидит их на витрине и по кнопке «👀 Пример» в боте.",
   "product.uploading": "Загрузка: {name}",
   "product.addPhoto": "+ Добавить фото",
   "product.firstIsCover": "Первое фото — обложка.",
@@ -112,6 +115,9 @@ export const kk: SectionDict<typeof ru> = {
   "product.leadTime": "Дайындау мерзімі, күн",
   "product.onSale": "Сатылымда",
   "product.card.photos": "Фото",
+  "product.card.preview": "Тауар үлгісі",
+  "product.previewHint":
+    "5 суретке дейін: әдістеме беттері, сабақ мұқабалары. Сатып алушы оларды витринада және боттағы «👀 Үлгі» батырмасы арқылы көреді.",
   "product.uploading": "Жүктелуде: {name}",
   "product.addPhoto": "+ Фото қосу",
   "product.firstIsCover": "Бірінші фото — мұқаба.",
@@ -185,6 +191,9 @@ export const en: SectionDict<typeof ru> = {
   "product.leadTime": "Production time, days",
   "product.onSale": "On sale",
   "product.card.photos": "Photos",
+  "product.card.preview": "Product preview",
+  "product.previewHint":
+    "Up to 5 images: workbook pages, lesson covers. Customers see them on the storefront and via the “👀 Preview” button in the bot.",
   "product.uploading": "Uploading: {name}",
   "product.addPhoto": "+ Add photo",
   "product.firstIsCover": "The first photo is the cover.",
@@ -258,6 +267,9 @@ export const uz: SectionDict<typeof ru> = {
   "product.leadTime": "Tayyorlash muddati, kun",
   "product.onSale": "Sotuvda",
   "product.card.photos": "Foto",
+  "product.card.preview": "Tovar namunasi",
+  "product.previewHint":
+    "5 tagacha rasm: qoʻllanma sahifalari, dars muqovalari. Xaridor ularni vitrinada va botdagi «👀 Namuna» tugmasi orqali koʻradi.",
   "product.uploading": "Yuklanmoqda: {name}",
   "product.addPhoto": "+ Foto qo‘shish",
   "product.firstIsCover": "Birinchi foto — muqova.",

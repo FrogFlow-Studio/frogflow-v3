@@ -2,7 +2,13 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ProductSearch, type PickerProduct } from "@/app/admin/product-picker";
 import { useEffect, useState } from "react";
 import { saveUpsellFn, upsellForProductFn } from "@/app/admin/upsell.functions";
-import { deleteProductFn, productFn, saveProductFn } from "@/app/admin/admin.functions";
+import {
+  deleteProductFn,
+  productFn,
+  productPreviewFn,
+  saveProductFn,
+  saveProductPreviewFn,
+} from "@/app/admin/admin.functions";
 import { adminT, type AdminT } from "@/app/i18n/admin";
 import { uploadFile } from "@/app/admin/upload-client";
 import { CourseCard } from "@/app/admin/course-card";
@@ -491,6 +497,7 @@ function ProductEditor() {
               <p className="mt-2 text-xs text-muted">{t("product.filesHint")}</p>
             </Card>
           )}
+          {p?.id && kind === "digital" && <PreviewCard productId={p.id} t={t} botId={shop.botId} />}
           {shop.modules.courses && p?.id && kind === "digital" && (
             <CourseCard productId={p.id} t={t} />
           )}
@@ -627,5 +634,56 @@ function DescriptionAssist({
       <p className="text-xs text-muted">{t("product.assist.hint")}</p>
       <ErrorBox error={write.error} />
     </div>
+  );
+}
+
+/** Пример цифрового товара: до 5 картинок — витрина и кнопка «👀 Пример» в боте. */
+function PreviewCard({ productId, t, botId }: { productId: string; t: AdminT; botId: string }) {
+  const [keys, setKeys] = useState<string[] | null>(null);
+  useEffect(() => {
+    void productPreviewFn({ data: { id: productId } }).then(setKeys);
+  }, [productId]);
+  const save = useAction(async (next: string[]) => {
+    setKeys(await saveProductPreviewFn({ data: { id: productId, keys: next } }));
+  });
+  const add = useAction(async (files: FileList | null) => {
+    if (!files?.length || !keys) return;
+    const added: string[] = [];
+    for (const f of [...files].slice(0, 5 - keys.length))
+      added.push((await upload("image", f, t)).key);
+    await save.run([...keys, ...added]);
+  });
+  if (!keys) return null;
+  return (
+    <Card title={t("product.card.preview")}>
+      <p className="mb-2 text-xs text-muted">{t("product.previewHint")}</p>
+      <div className="flex flex-wrap gap-2">
+        {keys.map((k) => (
+          <div key={k} className="relative">
+            <img src={imagePath(botId, k)} alt="" className="h-20 w-20 rounded object-cover" />
+            <button
+              type="button"
+              className="absolute -top-2 -right-2 rounded-full bg-danger px-1.5 text-xs text-white"
+              onClick={() => void save.run(keys.filter((x) => x !== k)).catch(() => {})}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        {keys.length < 5 && (
+          <label className="btn-secondary flex h-20 w-20 cursor-pointer items-center justify-center text-xs">
+            +
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="hidden"
+              onChange={(e) => void add.run(e.target.files).catch(() => {})}
+            />
+          </label>
+        )}
+      </div>
+      <ErrorBox error={add.error ?? save.error} />
+    </Card>
   );
 }
