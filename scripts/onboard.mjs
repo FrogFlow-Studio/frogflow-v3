@@ -22,7 +22,7 @@ const list = (name) =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-const { APP_URL, OPERATOR_USERNAME, OPERATOR_PASSWORD } = process.env;
+const { APP_URL, OPERATOR_USERNAME, OPERATOR_PASSWORD, OPERATOR_OTP } = process.env;
 if (!APP_URL || !OPERATOR_USERNAME || !OPERATOR_PASSWORD) {
   console.error("Нужны APP_URL, OPERATOR_USERNAME, OPERATOR_PASSWORD в окружении");
   process.exit(1);
@@ -48,6 +48,8 @@ const res = await fetch(`${APP_URL.replace(/\/$/, "")}/api/operator/bots`, {
     "content-type": "application/json",
     authorization:
       "Basic " + Buffer.from(`${OPERATOR_USERNAME}:${OPERATOR_PASSWORD}`).toString("base64"),
+    // Двухшаговый вход оператора включён — код из приложения: OPERATOR_OTP=123456.
+    ...(OPERATOR_OTP ? { "x-operator-otp": OPERATOR_OTP } : {}),
   },
   body: JSON.stringify(body),
 });

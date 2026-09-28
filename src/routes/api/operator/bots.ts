@@ -27,7 +27,8 @@ const body = z.object({
 /**
  * Минимальный API оператора: подключить клиента к v2 без Vercel и без
  * переменных окружения. Пока панели оператора в v2 нет, этим пользуется
- * scripts/onboard.mjs. Basic-auth учётной записью оператора.
+ * scripts/onboard.mjs. Basic-auth учётной записью оператора; при включённом
+ * двухшаговом входе — ещё код в заголовке X-Operator-OTP.
  *
  * Переезд клиента с v1: PATCH {bot_id, telegram_token, served_by: "v2"} —
  * токен шифруется, затем предполётная проверка (как переключатель в панели:
@@ -60,8 +61,20 @@ export const Route = createFileRoute("/api/operator/bots")({
             headers: { "retry-after": "900" },
           });
         const ok = await verifyOperator(cred.username, cred.password);
-        await recordLogin("operator", ip, ok, cred.username.slice(0, 80));
-        if (!ok) return unauthorized();
+        if (!ok) {
+          await recordLogin("operator", ip, false, cred.username.slice(0, 80));
+          return unauthorized();
+        }
+        // Двухшаговый вход, как у формы: включён — без кода из заголовка
+        // X-Operator-OTP (приложение или резервный код) ничего не делаем.
+        const { verifySecondFactor } = await import("@/app/operator/two-factor.server");
+        const second = await verifySecondFactor(request.headers.get("x-operator-otp") ?? undefined);
+        await recordLogin("operator", ip, Boolean(second), cred.username.slice(0, 80));
+        if (!second)
+          return new Response("second factor required", {
+            status: 401,
+            headers: { "www-authenticate": "Basic", "x-operator-otp": "required" },
+          });
         const parsed = body.safeParse(await request.json().catch(() => null));
         if (!parsed.success)
           return Response.json({ error: parsed.error.flatten() }, { status: 400 });

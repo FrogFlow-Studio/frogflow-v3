@@ -39,6 +39,8 @@ import { Route as TelegramRoute } from "@/routes/api/telegram.$botId";
  * возвращаются как были.
  */
 vi.mock("@/app/operator/credentials.server", () => ({ verifyOperator: async () => true }));
+// Двухшаговый вход живого оператора здесь ни при чём: код не спрашиваем.
+vi.mock("@/app/operator/two-factor.server", () => ({ verifySecondFactor: async () => "none" }));
 vi.mock("@/app/auth/login-guard.server", () => ({
   clientIp: () => "127.0.0.1",
   loginDelay: async () => undefined,
