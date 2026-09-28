@@ -4,6 +4,7 @@ import {
   type getClientFn,
   setConsultantLimitsFn,
   setConsultantPricelistFn,
+  setConsultantPricelistOptionsFn,
   setConsultantSearchFn,
   setSmartSearchLimitFn,
 } from "@/app/operator/operator.functions";
@@ -154,7 +155,85 @@ export function ConsultantLimitsCard({
         </span>
       </label>
       <ErrorBox error={togglePricelist.error} />
+      {budget.pricelist && <PricelistOptions c={c} budget={budget} onDone={onDone} />}
     </Card>
+  );
+}
+
+/** Часы магазина и источник курса рубля консультанта по прайсу. */
+function PricelistOptions({
+  c,
+  budget,
+  onDone,
+}: {
+  c: C;
+  budget: CB;
+  onDone: () => Promise<void>;
+}) {
+  const o = budget.pricelistOptions;
+  const save = useAction(async (f: FormData) => {
+    const open = String(f.get("open") ?? "").trim();
+    const close = String(f.get("close") ?? "").trim();
+    await setConsultantPricelistOptionsFn({
+      data: {
+        botId: c.id,
+        hours: open && close ? { open: Number(open), close: Number(close) } : null,
+        rateSource: String(f.get("rateSource")) as "vtb" | "finkaz" | "manual",
+        rateUrl: String(f.get("rateUrl") ?? ""),
+      },
+    });
+    await onDone();
+  });
+  return (
+    <form
+      className="mt-3 space-y-3 border-t border-line pt-3"
+      onSubmit={(e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        void save.run(new FormData(e.currentTarget)).catch(() => {});
+      }}
+    >
+      <div className="grid gap-3 sm:grid-cols-4">
+        <Field label="Открытие, час" hint="по поясу магазина; пусто — 10">
+          <input
+            className="input"
+            name="open"
+            type="number"
+            min={0}
+            max={24}
+            defaultValue={o.hours?.open ?? ""}
+          />
+        </Field>
+        <Field label="Закрытие, час" hint="пусто — 21">
+          <input
+            className="input"
+            name="close"
+            type="number"
+            min={0}
+            max={24}
+            defaultValue={o.hours?.close ?? ""}
+          />
+        </Field>
+        <Field label="Курс рубля">
+          <select className="input" name="rateSource" defaultValue={o.rateSource}>
+            <option value="vtb">ВТБ (через ретранслятор)</option>
+            <option value="finkaz">finkaz.kz</option>
+            <option value="manual">вручную у продавца</option>
+          </select>
+        </Field>
+        <Field label="Страница finkaz" hint="по умолчанию Kaspi">
+          <input
+            className="input"
+            name="rateUrl"
+            defaultValue={o.rateUrl}
+            placeholder="https://finkaz.kz/kaspi-bank/exchange-rates"
+          />
+        </Field>
+      </div>
+      <button className="btn-secondary" disabled={save.busy}>
+        Сохранить часы и курс
+      </button>
+      <ErrorBox error={save.error} />
+    </form>
   );
 }
 

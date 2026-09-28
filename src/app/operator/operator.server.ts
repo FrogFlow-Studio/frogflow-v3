@@ -1033,6 +1033,11 @@ export async function consultantBudget(botId: string) {
     today: parseDaily(data?.value, today()),
     search: t.settings.consultant_search === true,
     pricelist: t.settings.consultant_pricelist?.enabled === true,
+    pricelistOptions: {
+      hours: t.settings.consultant_pricelist?.hours ?? null,
+      rateSource: t.settings.consultant_pricelist?.rate_source ?? "vtb",
+      rateUrl: t.settings.consultant_pricelist?.rate_url ?? "",
+    },
   };
 }
 
@@ -1046,6 +1051,35 @@ export async function setConsultantSearch(botId: string, on: boolean, actor = "o
 export async function setConsultantPricelist(botId: string, on: boolean, actor = "operator") {
   await patchTenantSettings(botId, { consultant_pricelist: { enabled: on } });
   await logEvent(botId, "meta", { consultant_pricelist: on }, actor);
+}
+
+/**
+ * Часы магазина, источник курса и страница банка на finkaz для консультанта
+ * по прайсу. Проверка значений — та же, что при чтении (settingsFromJson):
+ * записываем только то, что потом прочтётся.
+ */
+export async function setConsultantPricelistOptions(
+  botId: string,
+  o: {
+    hours: { open: number; close: number } | null;
+    rateSource: "vtb" | "finkaz" | "manual";
+    rateUrl: string;
+  },
+  actor = "operator",
+) {
+  const h = o.hours;
+  if (h && (h.open === h.close || [h.open, h.close].some((n) => !(n >= 0 && n <= 24))))
+    throw new Error("Часы работы — от 0 до 24, открытие и закрытие не совпадают.");
+  const url = o.rateUrl.trim();
+  if (url && !/^https:\/\/finkaz\.kz\/[a-z0-9-]+\/exchange-rates\/?$/i.test(url))
+    throw new Error("Страница курса — адрес вида https://finkaz.kz/kaspi-bank/exchange-rates.");
+  const patch = {
+    hours: h ?? undefined,
+    rate_source: o.rateSource,
+    rate_url: url || undefined,
+  };
+  await patchTenantSettings(botId, { consultant_pricelist: patch });
+  await logEvent(botId, "meta", { consultant_pricelist_options: patch }, actor);
 }
 
 /** Дневной предел умного поиска клиента в долларах: свой или общий, и расход сегодня. */

@@ -780,6 +780,26 @@ export const setConsultantPricelistFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const setConsultantPricelistOptionsFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId,
+        hours: z
+          .object({ open: z.number().int().min(0).max(24), close: z.number().int().min(0).max(24) })
+          .nullable(),
+        rateSource: z.enum(["vtb", "finkaz", "manual"]),
+        rateUrl: z.string().max(200),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const { botId: id, ...options } = data;
+    await (await impl()).setConsultantPricelistOptions(id, options, await actor());
+    return { ok: true };
+  });
+
 /** Дневной предел умного поиска клиента в долларах; null — общий предел. */
 export const setSmartSearchLimitFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
