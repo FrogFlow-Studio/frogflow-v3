@@ -17,6 +17,11 @@ export function runWithZernioEvent<T>(eventId: string | null, task: () => Promis
   return store.run({ eventId }, task);
 }
 
+/** Событие Zernio, в обработке которого идёт код, — ключ строки журнала ответов. */
+export function currentZernioEventId(): string | null {
+  return store.getStore()?.eventId ?? null;
+}
+
 /**
  * Ключ одной отправки: область + тело. Область — явная (`outbox:<id>`,
  * `chat:<id черновика>`, `deliver:<позиция>`) или событие Zernio, в

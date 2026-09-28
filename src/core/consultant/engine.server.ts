@@ -128,7 +128,17 @@ export type Handoff = {
 export type ConsultantResult = {
   reply: string;
   handoff: Handoff | null;
-  usage: { inputTokens: number; outputTokens: number; usd: number };
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    usd: number;
+    cacheWriteTokens?: number;
+    cacheReadTokens?: number;
+  };
+  /** Модель ответа — для журнала ответов (core/consultant/runs). */
+  model?: string;
+  /** Курс рубля, по которому консультант по прайсу считал цены. */
+  rate?: { value: number; updatedAt: string; source: string | null } | null;
   /**
    * Что делал консультант по порядку: имена вызванных инструментов, а также
    * `ask_contact` (спросил телефон вместо передачи). Для журнала ответов в
@@ -627,6 +637,7 @@ export async function runConsultant(
     /** В историю, если покупателю ушло другое (рубли вместо тенге). */
     historyReply?: string;
     attachments?: ConsultantResult["attachments"];
+    rate?: ConsultantResult["rate"];
   }): Promise<ConsultantResult> => {
     const { reply, handoff } = out;
     const usd = costUsd();
@@ -671,9 +682,17 @@ export async function runConsultant(
     return {
       reply,
       handoff,
-      usage: { inputTokens: u.input_tokens, outputTokens: u.output_tokens, usd },
+      usage: {
+        inputTokens: u.input_tokens,
+        outputTokens: u.output_tokens,
+        usd,
+        cacheWriteTokens: u.cacheWrite,
+        cacheReadTokens: u.cacheRead,
+      },
+      model,
       tools: toolsUsed,
       ...(out.attachments?.length ? { attachments: out.attachments } : {}),
+      ...(out.rate !== undefined ? { rate: out.rate } : {}),
     };
   };
   try {

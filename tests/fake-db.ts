@@ -336,8 +336,11 @@ class Query implements PromiseLike<Result> {
     if (this.op === "upsert") {
       const list = Array.isArray(this.payload) ? this.payload : [this.payload];
       for (const r of list) {
-        const col = this.conflictCol;
-        const existing = this.rows().find((x) => x[col] != null && x[col] === r[col]);
+        // onConflict бывает составным: «bot_id,message_id».
+        const cols = this.conflictCol.split(",").map((c) => c.trim());
+        const existing = this.rows().find((x) =>
+          cols.every((col) => x[col] != null && x[col] === r[col]),
+        );
         if (existing) Object.assign(existing, r);
         else this.rows().push({ id: `row-${++seq}`, created_at: new Date().toISOString(), ...r });
       }

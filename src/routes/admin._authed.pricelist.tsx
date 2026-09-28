@@ -46,6 +46,18 @@ function PricelistPage() {
           <FileCard t={t} data={data} date={date} canEdit={canEdit} onDone={router.invalidate} />
           <RateCard t={t} data={data} date={date} canEdit={canEdit} onDone={router.invalidate} />
           <SettingsCard t={t} data={data} canEdit={canEdit} onDone={router.invalidate} />
+          <Card title={t("pricelist.usage.title")}>
+            <p className="text-sm">
+              {data.usage.messages
+                ? t("pricelist.usage.summary", {
+                    messages: data.usage.messages,
+                    usd: data.usage.usd.toFixed(2),
+                    per: data.usage.usdPerMessage.toFixed(4),
+                    share: Math.round(data.usage.cacheReadShare * 100),
+                  })
+                : t("pricelist.usage.empty")}
+            </p>
+          </Card>
         </div>
         <div className="space-y-4">
           <MediaCard t={t} data={data} canEdit={canEdit} onDone={router.invalidate} />

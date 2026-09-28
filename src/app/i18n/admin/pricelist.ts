@@ -57,6 +57,10 @@ export const ru = {
   "pricelist.kb.content": "Текст статьи",
   "pricelist.kb.add": "Добавить статью",
   "pricelist.uploadFailed": "Файл не загрузился (код {status}).",
+  "pricelist.usage.title": "Расход консультанта за 7 дней",
+  "pricelist.usage.summary":
+    "{messages} ответов · ${usd} · в среднем ${per} за ответ · из кеша {share}% ввода",
+  "pricelist.usage.empty": "Ответов за неделю пока нет.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -115,6 +119,10 @@ export const kk: SectionDict<typeof ru> = {
   "pricelist.kb.content": "Мақала мәтіні",
   "pricelist.kb.add": "Мақала қосу",
   "pricelist.uploadFailed": "Файл жүктелмеді (код {status}).",
+  "pricelist.usage.title": "Кеңесшінің 7 күндегі шығыны",
+  "pricelist.usage.summary":
+    "{messages} жауап · ${usd} · бір жауапқа орта есеппен ${per} · енгізудің {share}%-ы кэштен",
+  "pricelist.usage.empty": "Аптада әлі жауап жоқ.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -174,6 +182,10 @@ export const en: SectionDict<typeof ru> = {
   "pricelist.kb.content": "Article text",
   "pricelist.kb.add": "Add article",
   "pricelist.uploadFailed": "The file did not upload (code {status}).",
+  "pricelist.usage.title": "Consultant spend, last 7 days",
+  "pricelist.usage.summary":
+    "{messages} replies · ${usd} · ${per} per reply on average · {share}% of input from cache",
+  "pricelist.usage.empty": "No replies this week yet.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -232,4 +244,8 @@ export const uz: SectionDict<typeof ru> = {
   "pricelist.kb.content": "Maqola matni",
   "pricelist.kb.add": "Maqola qo‘shish",
   "pricelist.uploadFailed": "Fayl yuklanmadi (kod {status}).",
+  "pricelist.usage.title": "Maslahatchining 7 kunlik xarajati",
+  "pricelist.usage.summary":
+    "{messages} javob · ${usd} · bir javobga o‘rtacha ${per} · kirishning {share}% keshdan",
+  "pricelist.usage.empty": "Haftada hali javoblar yo‘q.",
 };

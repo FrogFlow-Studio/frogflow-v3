@@ -230,6 +230,24 @@ export async function handleZernioMessage(
   const sent = await transport.send(m.conversationId, m.accountId, r.reply, {
     platform: m.platform,
   });
+  // Журнал ответов: цена ответа, кеш, инструменты — и что ответ не ушёл.
+  const { recordConsultantRun } = await import("@/core/consultant/runs");
+  const { currentZernioEventId } = await import("./event-context.server");
+  await recordConsultantRun(ctx, {
+    messageId: m.platformMessageId ?? currentZernioEventId() ?? "",
+    conversationId: m.conversationId,
+    accountId: m.accountId,
+    userKey: customer.userKey,
+    source: "webhook",
+    incomingText: text,
+    replyText: r.reply,
+    replyKind: r.handoff ? `handoff:${r.handoff.reason}` : "reply",
+    model: r.model ?? null,
+    usage: r.usage,
+    rate: r.rate ?? null,
+    tools: r.tools,
+    ...(sent.ok ? {} : { status: "terminal_failed" as const, errorCode: "send_failed" }),
+  });
   if (!sent.ok) return { status: "failed", note: sent.error };
   // Фото и видео товара из фотобазы — следом за ответом, каждое отдельно.
   // Не принял Instagram файл — ответ уже ушёл, остальное не держим.

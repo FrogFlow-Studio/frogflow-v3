@@ -30,6 +30,7 @@ import {
 } from "@/core/consultant/pricelist/store-info.server";
 import { pricelistHours, pricelistMode } from "@/core/consultant/pricelist/mode";
 import { setSetting } from "@/core/settings/settings";
+import { loadConsultantUsage } from "@/core/consultant/runs";
 import { isIssuedUploadKey } from "@/core/storage/upload";
 
 /**
@@ -48,13 +49,14 @@ export function requirePricelist(ctx: TenantContext): TenantContext {
 
 export async function pricelistOverview(ctx: TenantContext) {
   requirePricelist(ctx);
-  const [snap, stored, attempt, store, media, articles] = await Promise.all([
+  const [snap, stored, attempt, store, media, articles, usage] = await Promise.all([
     loadPricelist(ctx, 0),
     getStoredRate(ctx),
     loadAttemptLog(ctx),
     getStoreInfo(ctx),
     loadProductMedia(ctx),
     loadKnowledge(ctx),
+    loadConsultantUsage(ctx),
   ]);
   const p = ctx.tenant.settings.consultant_pricelist ?? {};
   return {
@@ -78,6 +80,7 @@ export async function pricelistOverview(ctx: TenantContext) {
     attempt,
     media: media.map((m) => ({ ...m, url: productMediaUrl(ctx, m.path) })),
     articles: articles.map((a) => ({ id: a.id, title: a.title, tags: a.tags, content: a.content })),
+    usage,
   };
 }
 

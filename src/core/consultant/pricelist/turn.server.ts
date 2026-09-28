@@ -23,6 +23,7 @@ export type PricelistTurn = {
   historyReply?: string;
   attachments?: ConsultantResult["attachments"];
   tools: string[];
+  rate?: ConsultantResult["rate"];
 };
 
 /**
@@ -59,7 +60,11 @@ export async function runPricelistTurn(
     fetchImage: args.fetchImage,
     call: (req) => args.callModel({ model: args.model, ...req, ...modelParams(args.model) }),
   });
-  return toTurn(decision, args.text);
+  const r = data.rate;
+  return {
+    ...toTurn(decision, args.text),
+    rate: r ? { value: r.rate, updatedAt: r.updatedAt, source: r.source ?? null } : null,
+  };
 }
 
 /** Решение модели → общий результат консультанта. */
