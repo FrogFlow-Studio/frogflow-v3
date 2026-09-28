@@ -27,6 +27,9 @@ export const ru = {
   "pricelist.settings.followUp": "Напоминать замолчавшему покупателю",
   "pricelist.settings.followUpHint":
     "Через 3 часа после ответа с товаром — одна строка «Остались вопросы по …?», не ночью и не после передачи менеджеру.",
+  "pricelist.settings.digest": "Сводка качества ответов каждое утро",
+  "pricelist.settings.digestHint":
+    "После 9:00 — сколько ответов за вчера, сколько передано менеджеру, замечания к ценам и форме, расход.",
   "pricelist.save": "Сохранить",
   "pricelist.saved": "Сохранено.",
   "pricelist.hours":
@@ -92,6 +95,9 @@ export const kk: SectionDict<typeof ru> = {
   "pricelist.settings.followUp": "Үнсіз қалған сатып алушыға еске салу",
   "pricelist.settings.followUpHint":
     "Тауармен жауаптан 3 сағат өткен соң — бір жол «… бойынша сұрақтар қалды ма?», түнде емес және менеджерге бергеннен кейін емес.",
+  "pricelist.settings.digest": "Әр таң сайын жауап сапасының жиынтығы",
+  "pricelist.settings.digestHint":
+    "9:00-ден кейін — кешегі жауаптар саны, менеджерге берілгені, баға мен пішінге ескертулер, шығын.",
   "pricelist.save": "Сақтау",
   "pricelist.saved": "Сақталды.",
   "pricelist.hours":
@@ -157,6 +163,9 @@ export const en: SectionDict<typeof ru> = {
   "pricelist.settings.followUp": "Follow up with customers who went quiet",
   "pricelist.settings.followUpHint":
     "Three hours after a reply about a product — one line “Any questions about …?”, not at night and not after a manager handoff.",
+  "pricelist.settings.digest": "Reply quality summary every morning",
+  "pricelist.settings.digestHint":
+    "After 9:00 — yesterday's replies, handoffs to a manager, price and form remarks, spend.",
   "pricelist.save": "Save",
   "pricelist.saved": "Saved.",
   "pricelist.hours":
@@ -223,6 +232,9 @@ export const uz: SectionDict<typeof ru> = {
   "pricelist.settings.followUp": "Jim qolgan xaridorga eslatish",
   "pricelist.settings.followUpHint":
     "Mahsulot haqidagi javobdan 3 soat o‘tib — bitta qator «… bo‘yicha savollar qoldimi?», tunda emas va menejerga berilgandan keyin emas.",
+  "pricelist.settings.digest": "Har tongda javoblar sifati xulosasi",
+  "pricelist.settings.digestHint":
+    "9:00 dan keyin — kechagi javoblar soni, menejerga berilganlari, narx va shakl bo‘yicha izohlar, xarajat.",
   "pricelist.save": "Saqlash",
   "pricelist.saved": "Saqlandi.",
   "pricelist.hours":

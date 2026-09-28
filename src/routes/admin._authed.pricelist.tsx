@@ -217,10 +217,11 @@ function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
   const [shopUrl, setShopUrl] = useState(data.shopUrl);
   const [store, setStore] = useState(data.store);
   const [followUp, setFollowUp] = useState(data.followUp);
+  const [qualityDigest, setQualityDigest] = useState(data.qualityDigest);
   const [saved, setSaved] = useState(false);
   const save = useAction(async () => {
     setSaved(false);
-    await savePricelistSettingsFn({ data: { synonyms, shopUrl, store, followUp } });
+    await savePricelistSettingsFn({ data: { synonyms, shopUrl, store, followUp, qualityDigest } });
     setSaved(true);
     await onDone();
   });
@@ -284,6 +285,19 @@ function SettingsCard({ t, data, canEdit, onDone }: CardProps) {
           <span>
             {t("pricelist.settings.followUp")}
             <span className="block text-xs text-muted">{t("pricelist.settings.followUpHint")}</span>
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={qualityDigest}
+            disabled={!canEdit}
+            onChange={(e) => setQualityDigest(e.target.checked)}
+          />
+          <span>
+            {t("pricelist.settings.digest")}
+            <span className="block text-xs text-muted">{t("pricelist.settings.digestHint")}</span>
           </span>
         </label>
         {canEdit && (

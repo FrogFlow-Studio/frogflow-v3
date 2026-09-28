@@ -1,7 +1,16 @@
 import type { Tenant } from "@/core/tenant/types";
 import { tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
 import { customerFromRow, updateStateSection } from "@/core/customers/customers";
-import { getSetting } from "@/core/settings/settings";
+import { getSetting, getSettings, setSetting } from "@/core/settings/settings";
+import {
+  buildQualityDigest,
+  DIGEST_HOUR,
+  DIGEST_SENT_KEY,
+  DIGEST_SETTING_KEY,
+  previousLocalDay,
+  type DigestRun,
+} from "@/core/consultant/pricelist/quality-digest";
+import { escapeHtml } from "@/channels/telegram/copy";
 import { pricelistMode, isOffHours, pricelistHours } from "@/core/consultant/pricelist/mode";
 import { loadPricelist } from "@/core/consultant/pricelist/catalog.server";
 import { refreshRate } from "@/core/consultant/pricelist/rate.server";
@@ -36,9 +45,11 @@ export async function runPricelistJobs(
     try {
       const rate = await refreshRate(ctx);
       const followUps = await sendPricelistFollowUps(ctx, now, transport);
+      const digest = await sendQualityDigest(ctx, now);
       out[t.id] = {
         rate: rate.fetched ? rate.stored?.rate : (rate.error ?? "kept"),
         followUps,
+        digest,
       };
     } catch (e) {
       out[t.id] = { ok: false, error: e instanceof Error ? e.message : String(e) };
@@ -123,4 +134,34 @@ export async function sendPricelistFollowUps(
     sent++;
   }
   return { checked: rows.length, sent };
+}
+
+/**
+ * Сводка качества за вчера (шаг 17): после 9:00 по поясу магазина, один раз
+ * в сутки, если продавец включил. Отметка — до отправки: два крона подряд
+ * не дадут две сводки.
+ */
+export async function sendQualityDigest(
+  ctx: TenantContext,
+  now = new Date(),
+  notify: (ctx: TenantContext, html: string) => Promise<number> = async (c, html) =>
+    (await import("@/channels/telegram/notify")).notifyAdminsHtml(c, html, { kind: "digest" }),
+): Promise<{ sent: boolean; reason?: string }> {
+  const s = await getSettings(ctx, [DIGEST_SETTING_KEY, DIGEST_SENT_KEY]);
+  if (s[DIGEST_SETTING_KEY]?.trim() !== "on") return { sent: false, reason: "off" };
+  const { day, from, to, hour } = previousLocalDay(now, ctx.timezone);
+  if (hour < DIGEST_HOUR) return { sent: false, reason: "early" };
+  if (s[DIGEST_SENT_KEY] === day) return { sent: false, reason: "already" };
+  await setSetting(ctx, DIGEST_SENT_KEY, day);
+  const { data } = await ctx.db
+    .from("consultant_message_runs")
+    .select("conversation_id, incoming_text, reply_text, reply_kind, status, model, token_usage")
+    .gte("received_at", from)
+    .lt("received_at", to)
+    .order("received_at", { ascending: true })
+    .limit(2000);
+  const { products } = await loadPricelist(ctx);
+  const text = buildQualityDigest((data ?? []) as DigestRun[], products, { day });
+  if (!text) return { sent: false, reason: "empty" };
+  return { sent: (await notify(ctx, escapeHtml(text))) > 0 };
 }

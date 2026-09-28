@@ -116,3 +116,52 @@ describe("напоминание замолчавшему покупателю",
     expect(send).not.toHaveBeenCalled();
   });
 });
+
+describe("сводка качества за сутки", () => {
+  const morning = new Date("2026-09-26T04:30:00Z"); // 9:30 по Алматы
+  const withRuns = (on: string) => {
+    const ctx = ctxOf();
+    const tables = (ctx.db as unknown as { tables: Record<string, Record<string, unknown>[]> })
+      .tables;
+    tables.app_settings!.push({ bot_id: "b1", key: "consultant_quality_digest", value: on });
+    tables.consultant_message_runs = [
+      {
+        bot_id: "b1",
+        message_id: "m1",
+        conversation_id: "c1",
+        incoming_text: "Цена?",
+        reply_text: "Отличный выбор! Премиальные полотенца. Какой размер? Какой цвет?",
+        reply_kind: "reply",
+        status: "replied",
+        model: "claude-haiku-4-5",
+        token_usage: { usd: 0.01 },
+        received_at: "2026-09-25T08:00:00.000Z",
+      },
+    ];
+    return ctx;
+  };
+
+  it("утром — сводка за вчера продавцу, один раз в сутки", async () => {
+    const ctx = withRuns("on");
+    const sent: string[] = [];
+    const notify = async (_c: unknown, html: string) => (sent.push(html), 1);
+    const { sendQualityDigest } = await import("./consultant-jobs.server");
+    expect(await sendQualityDigest(ctx, morning, notify)).toEqual({ sent: true });
+    expect(sent[0]).toContain("Консультант за 25.09");
+    expect(sent[0]).toContain("рекламные слова");
+    expect(await sendQualityDigest(ctx, morning, notify)).toMatchObject({ reason: "already" });
+    expect(sent).toHaveLength(1);
+  });
+
+  it("выключена или рано — не шлём", async () => {
+    const { sendQualityDigest } = await import("./consultant-jobs.server");
+    const notify = vi.fn(async () => 1);
+    expect(await sendQualityDigest(withRuns("off"), morning, notify)).toMatchObject({
+      reason: "off",
+    });
+    expect(
+      await sendQualityDigest(withRuns("on"), new Date("2026-09-26T02:00:00Z"), notify),
+    ).toMatchObject({ reason: "early" });
+    expect(notify).not.toHaveBeenCalled();
+  });
+});
