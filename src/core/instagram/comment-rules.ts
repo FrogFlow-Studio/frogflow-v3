@@ -142,6 +142,104 @@ export function commentPrivateReplyBlockReason(
  * невалидный comment ID) и не говорит, какая; выдавать одну за факт нельзя —
  * живой случай опроверг версию «холодный DM».
  */
+/**
+ * Логи правила читаем страницами по 200, не больше пяти страниц за проход
+ * (v1 0a8bba4). Одна страница из 200 на ходовом рилсе покрывала сутки-двое:
+ * всё старше выглядело «пропущенным», Meta отклоняла повторный private-reply,
+ * и крон слал тот же текст в открытый диалог — ровно тем, кто уже оплатил.
+ */
+export const LOG_PAGE_SIZE = 200;
+export const LOG_MAX_PAGES = 5;
+
+/** Запас на задержку между комментарием и записью о нём в логах Zernio. */
+export const LOG_LAG_MS = 10 * 60 * 1000;
+
+export type LogCoverage = { from: number; to: number };
+
+/**
+ * За комментарии какого времени прочитанные логи отвечают: «Zernio его видел»
+ * или «не видел». complete — прочитаны все логи правила, тогда за любой.
+ * Порядок выдачи у Zernio не документирован — определяем по самим записям.
+ * Без разбираемых дат не отвечаем ни за один комментарий — null.
+ */
+export function logCoverage(
+  logs: ReadonlyArray<{ createdAt?: unknown }>,
+  complete: boolean,
+): LogCoverage | null {
+  if (complete) return { from: -Infinity, to: Infinity };
+  const times = logs.map((row) => Date.parse(String(row.createdAt ?? "")));
+  if (times.length === 0 || times.some((t) => Number.isNaN(t))) return null;
+  const first = times[0]!;
+  const last = times[times.length - 1]!;
+  // Новые сверху: прочитано всё от самой старой записи до сегодня.
+  if (first >= last) return { from: Math.min(...times), to: Infinity };
+  // Старые сверху: прочитано начало истории, про всё новее — ничего не известно.
+  return { from: first, to: last - LOG_LAG_MS };
+}
+
+export function commentCoveredByLogs(
+  createdTimeIso: string,
+  coverage: LogCoverage | null,
+): boolean {
+  if (!coverage) return false;
+  const created = Date.parse(createdTimeIso);
+  if (Number.isNaN(created)) return false;
+  return created >= coverage.from && created <= coverage.to;
+}
+
+/** Дошли ли логи до записи старше cutoff — дальше листать незачем. */
+export function logsReachBack(
+  logs: ReadonlyArray<{ createdAt?: unknown }>,
+  cutoffMs: number,
+): boolean {
+  return logs.some((row) => {
+    const t = Date.parse(String(row.createdAt ?? ""));
+    return !Number.isNaN(t) && t <= cutoffMs;
+  });
+}
+
+/**
+ * Комментарии, которые Zernio уже обработал. skipped — видел и сознательно не
+ * писал (этому человеку правило уже отвечало): слать за него — тот самый
+ * повтор. failed — пытался и не смог: это работа резервного пути.
+ */
+export function commentIdsHandledByZernio(
+  logs: ReadonlyArray<{ status?: unknown; commentId?: unknown }>,
+): Set<string> {
+  return new Set(
+    logs
+      .filter((row) => {
+        const status = String(row.status ?? "");
+        return status === "sent" || status === "skipped";
+      })
+      .map((row) => String(row.commentId ?? ""))
+      .filter(Boolean),
+  );
+}
+
+/** Авторы, которым по этому посту уже писали: второй комментарий не догоняем. */
+export function commenterIdsOf(
+  comments: ReadonlyArray<{ id?: string; from?: { id?: string } }>,
+  commentIds: ReadonlySet<string>,
+): Set<string> {
+  return new Set(
+    comments
+      .filter((c) => c.id && commentIds.has(c.id))
+      .map((c) => c.from?.id ?? "")
+      .filter(Boolean),
+  );
+}
+
+/** Meta отказала: на этот комментарий уже отвечали — человек сообщение получил. */
+export function isPrivateReplyAlreadySent(raw: string): boolean {
+  const text = raw.toLowerCase();
+  return (
+    text.includes("2534023") ||
+    text.includes("privatereplyconsumed") ||
+    text.includes("already sent a private reply")
+  );
+}
+
 export function explainInstagramPrivateReplyError(raw: string): string {
   const text = raw.toLowerCase();
   if (
@@ -161,11 +259,7 @@ export function explainInstagramPrivateReplyError(raw: string): string {
     );
   if (text.includes("2534025") || text.includes("older than") || /\b7\s*day/.test(text))
     return "Instagram не принимает приватный ответ: комментарию больше 7 дней.";
-  if (
-    text.includes("2534023") ||
-    text.includes("privatereplyconsumed") ||
-    text.includes("already sent a private reply")
-  )
+  if (isPrivateReplyAlreadySent(raw))
     return "На этот комментарий приватный ответ уже уходил — Instagram даёт только один.";
   if (text.includes("1545133"))
     return (

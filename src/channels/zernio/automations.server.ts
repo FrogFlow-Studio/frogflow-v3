@@ -23,6 +23,16 @@ import {
   commentPrivateReplyBlockReason,
   describePostMediaKind,
   explainInstagramPrivateReplyError,
+  commentCoveredByLogs,
+  commentIdsHandledByZernio,
+  commenterIdsOf,
+  FALLBACK_MAX_AGE_MS,
+  isPrivateReplyAlreadySent,
+  logCoverage,
+  logsReachBack,
+  LOG_MAX_PAGES,
+  LOG_PAGE_SIZE,
+  type LogCoverage,
   fallbackRecordStatus,
   isInstagramMediaId,
   isZernioObjectId,
@@ -1148,7 +1158,26 @@ export async function sendCatchupCommentReplies(
 
 const MAX_AUTOMATIONS_PER_RUN = 20;
 const MAX_SENDS_PER_RUN = 5;
-const LOG_CHECK_LIMIT = 200;
+/**
+ * Логи правила постранично, пока не дойдём до записей старше окна
+ * private-reply или до потолка страниц; вместе с ними — за комментарии
+ * какого времени они отвечают (logCoverage).
+ */
+async function readAutomationLogs(
+  api: AutomationApi,
+  automationId: string,
+  now: Date,
+): Promise<{ logs: AutomationLog[]; coverage: LogCoverage | null }> {
+  const logs: AutomationLog[] = [];
+  const cutoff = now.getTime() - FALLBACK_MAX_AGE_MS;
+  for (let page = 0; page < LOG_MAX_PAGES; page++) {
+    const rows = await api.logs(automationId, { limit: LOG_PAGE_SIZE, skip: page * LOG_PAGE_SIZE });
+    logs.push(...rows);
+    if (rows.length < LOG_PAGE_SIZE) return { logs, coverage: logCoverage(logs, true) };
+    if (logsReachBack(rows, cutoff)) break;
+  }
+  return { logs, coverage: logCoverage(logs, false) };
+}
 
 export type FallbackResult = {
   automationsChecked: number;
@@ -1207,10 +1236,15 @@ export async function runCommentDmFallback(
     const postId = automation.platformPostId!;
     if (!autoId) continue;
     try {
-      const [comments, logs] = await Promise.all([
+      // Ошибка чтения логов — исключение и пропуск правила: без логов любой
+      // комментарий выглядит пропущенным, а это повтор всем, кто уже получил.
+      const [comments, { logs, coverage }] = await Promise.all([
         api.comments(postId, automation.accountId),
-        api.logs(autoId, { limit: LOG_CHECK_LIMIT }),
+        readAutomationLogs(api, autoId, now),
       ]);
+      const handledByZernio = commentIdsHandledByZernio(logs);
+      // Кому по этому посту уже писали — Zernio или этот проход.
+      const writtenCommenters = commenterIdsOf(comments, handledByZernio);
       const sentByZernio = new Set(
         logs.filter((r) => r.status === "sent").map((r) => String(r.commentId ?? "")),
       );
@@ -1254,6 +1288,7 @@ export async function runCommentDmFallback(
             result.sent++;
           continue;
         }
+        if (handledByZernio.has(commentId)) continue; // skipped: Zernio видел и сознательно не писал
         if (
           !commentMatchesAutomation(
             comment.message ?? "",
@@ -1264,7 +1299,30 @@ export async function runCommentDmFallback(
           continue;
         if (commentAgeVerdict(comment.createdTime ?? "", now) !== "eligible") continue;
         if (commentPrivateReplyBlockReason(comment, now)) continue;
+        // Комментарий старше прочитанных логов: был ли он обработан — не знаем.
+        if (!commentCoveredByLogs(comment.createdTime ?? "", coverage)) continue;
         if (sendsThisRun >= MAX_SENDS_PER_RUN) continue;
+
+        // Второй комментарий того же автора к посту не догоняем.
+        const authorId = comment.from?.id;
+        if (authorId && writtenCommenters.has(authorId)) continue;
+        if (authorId) {
+          const siblingIds = comments
+            .filter((c) => c.id && c.id !== commentId && c.from?.id === authorId)
+            .map((c) => c.id as string);
+          if (siblingIds.length > 0) {
+            const { data: earlier } = await ctx.db
+              .from("comment_dm_fallback_sends")
+              .select("comment_id")
+              .eq("automation_id", autoId)
+              .in("comment_id", siblingIds)
+              .limit(1);
+            if (earlier?.length) {
+              writtenCommenters.add(authorId);
+              continue;
+            }
+          }
+        }
 
         const { error: reserveError } = await ctx.db.from("comment_dm_fallback_sends").insert({
           bot_id: ctx.tenant.id,
@@ -1310,6 +1368,7 @@ export async function runCommentDmFallback(
         }
 
         sendsThisRun++;
+        if (authorId) writtenCommenters.add(authorId);
         const reply = await api.privateReply(
           postId,
           commentId,
@@ -1340,11 +1399,15 @@ export async function runCommentDmFallback(
               api,
             );
           }
-        } else result.failed++;
+        }
+        // Meta: на этот комментарий уже отвечали — человек своё сообщение
+        // получил. Альт-канал прислал бы ему то же самое второй раз.
+        const alreadyReplied = !reply.ok && isPrivateReplyAlreadySent(reply.error ?? "");
+        if (!reply.ok && !alreadyReplied) result.failed++;
 
         let altStatus: "skipped" | "sent" | "failed" = "skipped";
         let altError: string | null = null;
-        if (!reply.ok && allowAltChannel && comment.from?.id) {
+        if (!reply.ok && allowAltChannel && !alreadyReplied && comment.from?.id) {
           const { data: buyer } = await ctx.db
             .from("bot_users")
             .select("zernio_conversation_id")
@@ -1370,7 +1433,13 @@ export async function runCommentDmFallback(
           const r = await api.publicReply(postId, commentId, automation.accountId, commentReply);
           publicStatus = r.ok ? "sent" : "failed";
           publicError = r.ok ? null : (r.error?.slice(0, 500) ?? null);
-        } else if (!reply.ok && altStatus !== "sent" && allowAltChannel && prompt) {
+        } else if (
+          !reply.ok &&
+          !alreadyReplied &&
+          altStatus !== "sent" &&
+          allowAltChannel &&
+          prompt
+        ) {
           const r = await api.publicReply(postId, commentId, automation.accountId, prompt);
           publicError = r.ok ? "prompt_sent" : `prompt_failed: ${r.error ?? ""}`.slice(0, 500);
         }
@@ -1378,7 +1447,7 @@ export async function runCommentDmFallback(
         const { error: finishError } = await ctx.db
           .from("comment_dm_fallback_sends")
           .update({
-            status: fallbackRecordStatus(reply.ok, altStatus),
+            status: fallbackRecordStatus(reply.ok || alreadyReplied, altStatus),
             error: reply.error?.slice(0, 500) ?? null,
             alt_channel_status: altStatus,
             alt_channel_error: altError,
