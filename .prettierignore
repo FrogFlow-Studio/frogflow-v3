@@ -13,3 +13,6 @@ docs/inherited-knowledge.md
 docs/READINESS.md
 test-results
 playwright-report
+
+# Файлы подтверждения поисковиков: содержимое строго как выдал поисковик.
+public/google*.html
