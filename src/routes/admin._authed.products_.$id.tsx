@@ -262,6 +262,14 @@ function ProductEditor() {
                 />
               </Field>
             </div>
+            {shop.modules.multi_currency && countries.length === 0 && (
+              <p className="mt-4 text-sm text-muted">
+                {t("product.countryPricesEmpty")}{" "}
+                <Link to="/admin/settings" className="underline">
+                  {t("product.countryPricesSetup")}
+                </Link>
+              </p>
+            )}
             {shop.modules.multi_currency && countries.length > 0 && (
               <div className="mt-4">
                 <div className="label">{t("product.countryPrices")}</div>
@@ -284,7 +292,9 @@ function ProductEditor() {
               </div>
             )}
             <div className="mt-4">
-              <div className="label">{t("product.variants")}</div>
+              <div className="label">
+                {t(school ? "product.variantsCourse" : "product.variants")}
+              </div>
               <div className="space-y-2">
                 {variants.map((v, i) => (
                   <div key={i} className="flex gap-2">

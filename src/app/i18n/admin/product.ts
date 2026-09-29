@@ -32,6 +32,11 @@ export const ru = {
   "product.currency": "Валюта",
   "product.sortOrder": "Порядок в списке",
   "product.countryPrices": "Цена по странам (пусто — по курсу от базовой)",
+  "product.countryPricesEmpty":
+    "Цена по странам появится, когда в настройках оплаты будут страны: для каждой страны оплаты — своя цена.",
+  "product.countryPricesSetup": "Добавить страны оплаты",
+  "product.variantsCourse":
+    "Тарифы курса (например, «Самостоятельно», «С проверкой ДЗ») — цена тарифа вместо базовой; что входит в тариф, настраивается в карточке курса",
   "product.variants": "Варианты (например, «1 кг», «2 кг») — цена варианта вместо базовой",
   "product.variantName": "Название",
   "product.addVariant": "+ Вариант",
@@ -163,6 +168,11 @@ export const kk: SectionDict<typeof ru> = {
   "product.currency": "Валюта",
   "product.sortOrder": "Тізімдегі реті",
   "product.countryPrices": "Елдер бойынша баға (бос болса — негізгі бағадан бағам бойынша)",
+  "product.countryPricesEmpty":
+    "Елдер бойынша баға төлем баптауларында елдер қосылғанда шығады: әр төлем елі үшін — өз бағасы.",
+  "product.countryPricesSetup": "Төлем елдерін қосу",
+  "product.variantsCourse":
+    "Курс тарифтері (мысалы, «Өз бетінше», «ҮТ тексерумен») — негізгі бағаның орнына тариф бағасы; тарифке не кіретіні курс карточкасында бапталады",
   "product.variants": "Нұсқалар (мысалы, «1 кг», «2 кг») — нұсқа бағасы негізгі бағаның орнына",
   "product.variantName": "Атауы",
   "product.addVariant": "+ Нұсқа",
@@ -296,6 +306,11 @@ export const en: SectionDict<typeof ru> = {
   "product.currency": "Currency",
   "product.sortOrder": "Position in list",
   "product.countryPrices": "Price by country (leave empty to convert from the base price)",
+  "product.countryPricesEmpty":
+    "Prices by country appear once payment countries are added in payment settings: each payment country gets its own price.",
+  "product.countryPricesSetup": "Add payment countries",
+  "product.variantsCourse":
+    "Course tariffs (e.g. “Self-paced”, “With homework review”) — the tariff price replaces the base price; what each tariff includes is set in the course card",
   "product.variants": "Variants (e.g. “1 kg”, “2 kg”) — the variant price replaces the base price",
   "product.variantName": "Name",
   "product.addVariant": "+ Variant",
@@ -428,6 +443,11 @@ export const uz: SectionDict<typeof ru> = {
   "product.currency": "Valyuta",
   "product.sortOrder": "Ro‘yxatdagi tartibi",
   "product.countryPrices": "Davlatlar bo‘yicha narx (bo‘sh bo‘lsa — asosiy narxdan kurs bo‘yicha)",
+  "product.countryPricesEmpty":
+    "Davlatlar bo‘yicha narx to‘lov sozlamalarida davlatlar qo‘shilganda paydo bo‘ladi: har bir to‘lov davlati uchun — o‘z narxi.",
+  "product.countryPricesSetup": "To‘lov davlatlarini qo‘shish",
+  "product.variantsCourse":
+    "Kurs tariflari (masalan, «Mustaqil», «Uy vazifasi tekshiruvi bilan») — asosiy narx o‘rniga tarif narxi; tarifga nima kirishi kurs kartochkasida sozlanadi",
   "product.variants": "Variantlar (masalan, «1 kg», «2 kg») — variant narxi asosiy narx o‘rniga",
   "product.variantName": "Nomi",
   "product.addVariant": "+ Variant",
