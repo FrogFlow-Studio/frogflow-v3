@@ -38,6 +38,7 @@ function Layout() {
   }, [shop.locale]);
   const physical = shop.vertical === "confectionery" || shop.vertical === "flowers";
   const owner = shop.role === "owner";
+  const school = shop.vertical === "courses";
   const switchLocale = async (locale: Locale) => {
     await setAdminLocaleFn({ data: { locale } });
     await router.invalidate();
@@ -66,7 +67,25 @@ function Layout() {
           {/* Бухгалтеру — только обзор, заказы и аналитика (сервер закрывает остальное сам). */}
           {shop.role !== "accountant" && (
             <>
-              <NavLink to="/admin/products">{t("nav.products")}</NavLink>
+              {school ? (
+                // Онлайн-школа: курсы, ученики и задания — первыми.
+                <>
+                  <NavLink to="/admin/products">{t("nav.courses")}</NavLink>
+                  {shop.modules.courses && (
+                    <NavLink to="/admin/students">{t("nav.students")}</NavLink>
+                  )}
+                  {shop.modules.courses && (
+                    <NavLink to="/admin/homework">
+                      {t("homework.nav")}
+                      {shop.homeworkWaiting > 0 && (
+                        <Badge tone="warn">{shop.homeworkWaiting}</Badge>
+                      )}
+                    </NavLink>
+                  )}
+                </>
+              ) : (
+                <NavLink to="/admin/products">{t("nav.products")}</NavLink>
+              )}
               <NavLink to="/admin/categories">{t("nav.categories")}</NavLink>
               <NavLink to="/admin/customers">{t("nav.customers")}</NavLink>
               {shop.modules.review_request && (
@@ -105,7 +124,7 @@ function Layout() {
               )}
               <NavLink to="/admin/consultant">{t("nav.consultant")}</NavLink>
               {shop.pricelist && <NavLink to="/admin/pricelist">{t("pricelist.nav")}</NavLink>}
-              {shop.modules.courses && (
+              {!school && shop.modules.courses && (
                 <NavLink to="/admin/homework">
                   {t("homework.nav")}
                   {shop.homeworkWaiting > 0 && <Badge tone="warn">{shop.homeworkWaiting}</Badge>}

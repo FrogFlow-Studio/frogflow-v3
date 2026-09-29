@@ -36,6 +36,7 @@ function ProductsPage() {
   const first = Route.useLoaderData();
   const { categories } = first;
   const { shop } = Route.useRouteContext();
+  const school = shop.vertical === "courses";
   const t = adminT(shop.locale);
   const s = Route.useSearch();
   const navigate = useNavigate();
@@ -84,7 +85,7 @@ function ProductsPage() {
   return (
     <>
       <PageTitle
-        title={t("products.title")}
+        title={t(school ? "products.titleCourses" : "products.title")}
         subtitle={t("products.count", { n: first.total })}
         actions={
           <div className="flex gap-2">
@@ -97,7 +98,7 @@ function ProductsPage() {
               </Link>
             )}
             <Link to="/admin/products/$id" params={{ id: "new" }} className="btn-primary">
-              {t("products.new")}
+              {t(school ? "products.newCourse" : "products.new")}
             </Link>
           </div>
         }
@@ -155,13 +156,13 @@ function ProductsPage() {
       </form>
       {products.length === 0 ? (
         <Empty>
-          {t("products.empty")}{" "}
+          {t(school ? "products.emptyCourses" : "products.empty")}{" "}
           <Link
             to="/admin/products/$id"
             params={{ id: "new" }}
             className="text-accent hover:underline"
           >
-            {t("products.addFirst")}
+            {t(school ? "products.addFirstCourse" : "products.addFirst")}
           </Link>
         </Empty>
       ) : (

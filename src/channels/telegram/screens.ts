@@ -24,8 +24,11 @@ export type MainMenu = { keyboard: MenuButton[][]; resize_keyboard: true };
 export function mainMenu(tenant: Tenant, locale: Locale, appUrl: string): MainMenu {
   const def = verticalDef(tenant.vertical);
   const m = COPY[locale];
+  // Онлайн-школа: «Мои курсы» — первая кнопка, каталог — «Все курсы».
+  const school = tenant.vertical === "courses" && tenant.modules.courses;
   const keyboard: MenuButton[][] = [
-    [{ text: m.catalog }, { text: m.search }],
+    ...(school ? [[{ text: m.myCourses }]] : []),
+    [{ text: school ? m.catalogCourses : m.catalog }, { text: m.search }],
     [{ text: m.cart }, { text: m.myOrders }],
     // «Информация» ведёт на юр. страницы — только при модуле legal_docs.
     tenant.modules.legal_docs
@@ -35,7 +38,8 @@ export function mainMenu(tenant: Tenant, locale: Locale, appUrl: string): MainMe
   ];
   if (tenant.modules.quiz) keyboard.splice(1, 0, [{ text: m.quizBtn }]);
   // Онлайн-школа: уроки, задания и канал курса — отдельной кнопкой под заказами.
-  if (tenant.modules.courses) keyboard.splice(keyboard.length - 2, 0, [{ text: m.myCourses }]);
+  if (tenant.modules.courses && !school)
+    keyboard.splice(keyboard.length - 2, 0, [{ text: m.myCourses }]);
   if (tenant.modules.telegram_mini_app && tenant.modules.shop) {
     keyboard.unshift([{ text: "🛍 Магазин", web_app: { url: storefrontBase(tenant, appUrl) } }]);
   }

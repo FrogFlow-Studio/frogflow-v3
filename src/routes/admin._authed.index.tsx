@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { applyNicheTemplateFn, dashboardFn, hideSetupFn } from "@/app/admin/admin.functions";
-import { adminT, intlLocale } from "@/app/i18n/admin";
+import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
+import { schoolOverviewFn } from "@/app/admin/courses.functions";
 import { verticalTitleKey } from "@/app/i18n/admin/catalog";
 import { Badge, Card, Empty, ErrorBox, PageTitle, Stat, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
@@ -57,6 +58,7 @@ function Dashboard() {
           testOrder={d.setup.testOrder}
         />
       )}
+      {shop.vertical === "courses" && shop.modules.courses && <SchoolCard t={t} loc={loc} />}
       {!d.setup.hidden && doneCount < steps.length && (
         <Card
           title={`${t("overview.steps")} · ${t("overview.stepsOf", { done: doneCount, total: steps.length })}`}
@@ -302,5 +304,48 @@ function Step({
         {!done && <div className="text-muted">{children}</div>}
       </div>
     </li>
+  );
+}
+
+/** Онлайн-школа: ученики, работы на проверке, отстающие, ближайший старт потока. */
+function SchoolCard({ t, loc }: { t: AdminT; loc: string }) {
+  const [d, setD] = useState<Awaited<ReturnType<typeof schoolOverviewFn>> | null>(null);
+  useEffect(() => {
+    void schoolOverviewFn().then(setD, () => setD(null));
+  }, []);
+  if (!d) return null;
+  return (
+    <Card title={t("school.title")} className="mb-4">
+      <div className="grid gap-3 sm:grid-cols-4">
+        <Link to="/admin/products" className="hover:underline">
+          <Stat label={t("school.courses")} value={d.courses} />
+        </Link>
+        <Link to="/admin/students" className="hover:underline">
+          <Stat label={t("school.students")} value={d.students} />
+        </Link>
+        <Link to="/admin/homework" className="hover:underline">
+          <Stat label={t("school.homework")} value={d.homeworkWaiting} />
+        </Link>
+        <Link to="/admin/students" className="hover:underline">
+          <Stat label={t("school.behind")} value={d.behind} />
+        </Link>
+      </div>
+      <p className="mt-3 text-sm text-muted">
+        {d.nextStart
+          ? t("school.nextStart", {
+              course: d.nextStart.course,
+              cohort: d.nextStart.cohort,
+              date: new Date(d.nextStart.at).toLocaleString(loc, {
+                day: "numeric",
+                month: "long",
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            })
+          : d.courses === 0
+            ? t("school.noCourses")
+            : t("school.noStart")}
+      </p>
+    </Card>
   );
 }

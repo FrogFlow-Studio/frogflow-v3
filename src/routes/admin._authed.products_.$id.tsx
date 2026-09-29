@@ -45,6 +45,8 @@ function ProductEditor() {
   const t = adminT(shop.locale);
   const navigate = useNavigate();
   const isNew = !p;
+  // Онлайн-школа: товар — это курс, уроки и потоки — главное в карточке.
+  const school = shop.vertical === "courses";
 
   const [images, setImages] = useState<Img[]>(
     (p?.product_images ?? [])
@@ -143,10 +145,10 @@ function ProductEditor() {
       }}
     >
       <PageTitle
-        title={isNew ? t("product.newTitle") : p.name}
+        title={isNew ? t(school ? "product.newCourseTitle" : "product.newTitle") : p.name}
         subtitle={
           <Link to="/admin/products" className="hover:underline">
-            {t("product.backToList")}
+            {t(school ? "product.backToCourses" : "product.backToList")}
           </Link>
         }
         actions={
@@ -175,6 +177,11 @@ function ProductEditor() {
       <ErrorBox error={save.error ?? del.error ?? uploadError} />
       <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_340px]">
         <div className="space-y-4">
+          {school && isNew && (
+            <p className="rounded-md border border-accent/40 bg-accent/5 p-3 text-sm">
+              {t("product.courseSaveFirst")}
+            </p>
+          )}
           <Card title={t("product.card.description")}>
             <div className="space-y-3">
               <Field label={t("product.name")}>
@@ -221,6 +228,9 @@ function ProductEditor() {
               </Field>
             </div>
           </Card>
+          {school && shop.modules.courses && p?.id && kind === "digital" && (
+            <CourseCard productId={p.id} t={t} />
+          )}
 
           <Card title={t("product.card.price")}>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -514,7 +524,7 @@ function ProductEditor() {
           )}
           {p?.id && kind === "digital" && <PreviewCard productId={p.id} t={t} botId={shop.botId} />}
           {shop.modules.subscriptions && p?.id && <SubscriptionCard productId={p.id} t={t} />}
-          {shop.modules.courses && p?.id && kind === "digital" && (
+          {!school && shop.modules.courses && p?.id && kind === "digital" && (
             <CourseCard productId={p.id} t={t} />
           )}
           {shop.modules.upsell && p?.id && <UpsellCard productId={p.id} t={t} />}

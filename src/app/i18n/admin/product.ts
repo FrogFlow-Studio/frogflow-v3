@@ -5,6 +5,10 @@ import type { SectionDict } from "../section";
  * товаров (`products.noFile`, `products.onSaleLabel`).
  */
 export const ru = {
+  "product.newCourseTitle": "Новый курс",
+  "product.backToCourses": "← Ко всем курсам",
+  "product.courseSaveFirst":
+    "Заполните название, цену и описание и нажмите «Сохранить» — сразу откроются уроки, задания, расписание, потоки и тарифы курса.",
   "product.newTitle": "Новый товар",
   "product.backToList": "← к списку",
   "product.deleteConfirm": "Удалить товар вместе с файлами? Заказы с ним сохранятся.",
@@ -131,6 +135,10 @@ export const ru = {
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
+  "product.newCourseTitle": "Жаңа курс",
+  "product.backToCourses": "← Барлық курстарға",
+  "product.courseSaveFirst":
+    "Атауын, бағасын және сипаттамасын толтырып, «Сақтау» басыңыз — курстың сабақтары, тапсырмалары, кестесі, ағындары мен тарифтері бірден ашылады.",
   "product.newTitle": "Жаңа тауар",
   "product.backToList": "← тізімге",
   "product.deleteConfirm":
@@ -260,6 +268,10 @@ export const kk: SectionDict<typeof ru> = {
 };
 
 export const en: SectionDict<typeof ru> = {
+  "product.newCourseTitle": "New course",
+  "product.backToCourses": "← All courses",
+  "product.courseSaveFirst":
+    "Fill in the name, price and description and press “Save” — lessons, homework, schedule, cohorts and plans open right away.",
   "product.newTitle": "New product",
   "product.backToList": "← back to list",
   "product.deleteConfirm":
@@ -388,6 +400,10 @@ export const en: SectionDict<typeof ru> = {
 };
 
 export const uz: SectionDict<typeof ru> = {
+  "product.newCourseTitle": "Yangi kurs",
+  "product.backToCourses": "← Barcha kurslarga",
+  "product.courseSaveFirst":
+    "Nomi, narxi va tavsifini to‘ldirib, «Saqlash»ni bosing — kursning darslari, vazifalari, jadvali, oqimlari va tariflari darhol ochiladi.",
   "product.newTitle": "Yangi mahsulot",
   "product.backToList": "← ro‘yxatga",
   "product.deleteConfirm":

@@ -115,6 +115,33 @@ describe("флаги модулей по плану", () => {
     expect(addonModules("flowers", { addons: ["instagram"] })).toEqual(["instagram", "dm_shop"]);
   });
 
+  it("онлайн-школа: «Курсы» в любом тарифе, у магазина материалов — с Pro", async () => {
+    expect(effectiveModules(parsePlan("digital.basic"), undefined)!.courses).toBe(false);
+    expect(
+      effectiveModules(parsePlan("digital.basic"), undefined, undefined, "courses")!.courses,
+    ).toBe(true);
+    const { tenantFromRow } = await import("@/core/tenant/directory");
+    const row = (vertical: string, settings: object) =>
+      ({
+        id: "b",
+        bot_name: "Школа",
+        status: "active",
+        vertical,
+        modules: { shop: true },
+        settings,
+        paused_message: null,
+        owner_telegram_id: 1,
+        app_url: null,
+        archived_at: null,
+        bot_token: null,
+      }) as never;
+    // Пробный Basic и вовсе без плана — у школы курсы есть.
+    const trial = { served_by: "v2", billing: { plan: "digital.basic" } };
+    expect(tenantFromRow(row("courses", trial)).modules.courses).toBe(true);
+    expect(tenantFromRow(row("courses", { served_by: "v2" })).modules.courses).toBe(true);
+    expect(tenantFromRow(row("digital", trial)).modules.courses).toBe(false);
+  });
+
   it("custom и клиент без плана — модули не трогаем", () => {
     expect(effectiveModules(parsePlan("custom"), undefined)).toBeNull();
     expect(effectiveModules(null, undefined)).toBeNull();

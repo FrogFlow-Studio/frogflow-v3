@@ -1,9 +1,16 @@
 import { createCategory, createProduct } from "@/core/catalog/admin";
+import { serverFailure } from "@/lib/server-failure";
 import { UserError } from "@/core/i18n/user-error";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { saveCourse } from "@/core/courses/course.server";
-import { COURSE_EXAMPLE, EXAMPLE_PREFIX, NICHE_TEMPLATES, templateLang } from "./niches";
+import {
+  COURSE_EXAMPLE,
+  EXAMPLE_PREFIX,
+  NICHE_TEMPLATES,
+  SCHOOL_EXAMPLE,
+  templateLang,
+} from "./niches";
 
 const APPLIED_KEY = "niche_template_applied";
 
@@ -66,16 +73,56 @@ export async function applyNicheTemplate(ctx: TenantContext): Promise<{ products
     stockQuantity: null,
     leadTimeDays: null,
   });
-  await saveCourse(ctx, courseId, {
-    schedule: { mode: "drip", everyDays: c.everyDays },
-    lessons: c.lessons.map((l) => ({
-      id: crypto.randomUUID(),
-      title: l.title[lang],
-      text: l.text[lang],
-      files: [],
-      link: null,
-      ...(l.homework ? { homework: l.homework[lang] } : {}),
+  const lessons = c.lessons.map((l) => ({
+    id: crypto.randomUUID(),
+    title: l.title[lang],
+    text: l.text[lang],
+    files: [],
+    link: null,
+    ...(l.homework ? { homework: l.homework[lang] } : {}),
+  }));
+  if (ctx.tenant.vertical !== "courses") {
+    await saveCourse(ctx, courseId, {
+      schedule: { mode: "drip", everyDays: c.everyDays },
+      lessons,
+    });
+    return { products: tpl.products.length + 1 };
+  }
+  // Онлайн-школа: пример — сразу школа. Поток через две недели, урок раз в
+  // неделю, два тарифа: «Самостоятельно» и «С проверкой ДЗ» с каналом.
+  const s = SCHOOL_EXAMPLE;
+  const base = { id: crypto.randomUUID(), name: s.selfPaced[lang], price: c.price };
+  const pro = { id: crypto.randomUUID(), name: s.withReview[lang], price: c.price * 2 };
+  const { error } = await ctx.db.from("product_variants").insert(
+    [base, pro].map((v, i) => ({
+      id: v.id,
+      bot_id: ctx.tenant.id,
+      product_id: courseId,
+      name: v.name,
+      price: v.price,
+      sort_order: i,
     })),
+  );
+  if (error) throw serverFailure(`Тарифы примера не сохранены: ${error.message}`);
+  const { todayInTz } = await import("@/core/fulfillment/pure");
+  const start = new Date(`${todayInTz(ctx.timezone)}T00:00:00Z`);
+  start.setUTCDate(start.getUTCDate() + 14);
+  await saveCourse(ctx, courseId, {
+    schedule: { mode: "drip", everyDays: 7 },
+    lessons,
+    cohorts: [
+      {
+        id: crypto.randomUUID(),
+        title: s.cohort[lang],
+        start: `${start.toISOString().slice(0, 10)}T10:00`,
+        enrollUntil: null,
+      },
+    ],
+    homeworkDays: 3,
+    tariffs: {
+      [base.id]: { homework: false, channel: false, accessDays: 90 },
+      [pro.id]: { homework: true, channel: true, accessDays: null },
+    },
   });
   return { products: tpl.products.length + 1 };
 }

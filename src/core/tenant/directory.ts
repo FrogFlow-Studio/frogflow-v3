@@ -6,7 +6,7 @@ import type { Database } from "@/core/db-types";
 import type { BillingSettings, BotStatus, Tenant, TenantLookup, TenantSettings } from "./types";
 import { isLocale } from "@/core/i18n/locale";
 import { effectiveModules } from "@/core/plans/plans";
-import { parsePlan } from "@/core/plans/registry";
+import { COURSES_SALE, parsePlan } from "@/core/plans/registry";
 import { validPauseHours } from "@/core/consultant/pause";
 
 type BotRow = Database["public"]["Tables"]["bots"]["Row"];
@@ -263,8 +263,14 @@ export function servedByV2(t: Pick<Tenant, "settings">): boolean {
 function tenantModules(row: TenantRow, settings: TenantSettings): Record<ModuleKey, boolean> {
   const saved = modulesFromJson(row.modules);
   const plan = parsePlan(settings.billing?.plan ?? null);
-  const fromPlan = settings.served_by === "v2" ? effectiveModules(plan, settings.billing) : null;
-  if (!fromPlan) return saved;
+  const vertical = asVertical(row.vertical);
+  const fromPlan =
+    settings.served_by === "v2"
+      ? effectiveModules(plan, settings.billing, COURSES_SALE, vertical)
+      : null;
+  // «Онлайн-школа»: курсы — сам продукт ниши, включены при любом плане и без него.
+  const school = vertical === "courses" && COURSES_SALE !== "off";
+  if (!fromPlan) return school ? { ...saved, courses: true } : saved;
   const out = { ...saved };
   for (const k of MODULE_KEYS) if (fromPlan[k]) out[k] = true;
   return out;

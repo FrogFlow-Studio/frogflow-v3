@@ -275,6 +275,13 @@ export function templateLang(locale: Locale | undefined): "ru" | "kk" {
   return locale === "kk" ? "kk" : "ru";
 }
 
+/** Онлайн-школа: пример курса с потоком и двумя тарифами (core/templates/apply). */
+export const SCHOOL_EXAMPLE: { cohort: Text; selfPaced: Text; withReview: Text } = {
+  cohort: { ru: "Первый поток", kk: "Бірінші ағын" },
+  selfPaced: { ru: "Самостоятельно", kk: "Өз бетінше" },
+  withReview: { ru: "С проверкой ДЗ", kk: "ҮТ тексерумен" },
+};
+
 export type CourseExample = {
   name: Text;
   description: Text;

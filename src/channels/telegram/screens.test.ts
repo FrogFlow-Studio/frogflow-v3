@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import type { Tenant } from "@/core/tenant/types";
 import { userKey } from "@/core/customers/customers";
 import { handleTelegramUpdate } from "./handle-update";
 import type { TelegramApi } from "./api";
@@ -176,4 +177,33 @@ describe("карточка товара", () => {
         it(`${label}: ${name}, ${locale}`, async () => {
           expect(await start(botFor(modules, { locale }), `p_${id}`)).toMatchSnapshot();
         });
+});
+
+describe("главное меню онлайн-школы", () => {
+  const base = { vertical: "courses", settings: {} };
+  it("«Мои курсы» первой кнопкой, каталог — «Все курсы»", async () => {
+    const { mainMenu } = await import("./screens");
+    const menu = mainMenu(
+      { ...base, modules: { courses: true, legal_docs: false } } as unknown as Tenant,
+      "ru",
+      "https://app.test",
+    );
+    expect(menu.keyboard[0]).toEqual([{ text: "🎓 Мои курсы" }]);
+    expect(menu.keyboard[1]![0]!.text).toBe("📚 Все курсы");
+    expect(menu.keyboard.flat().filter((b) => b.text === "🎓 Мои курсы")).toHaveLength(1);
+  });
+  it("«Все курсы» открывает каталог", async () => {
+    const { menuActionFor } = await import("./copy");
+    expect(menuActionFor("📚 Все курсы", [])).toBe("catalog");
+  });
+  it("не школа с модулем курсов — прежнее меню", async () => {
+    const { mainMenu } = await import("./screens");
+    const menu = mainMenu(
+      { vertical: "digital", settings: {}, modules: { courses: true } } as unknown as Tenant,
+      "ru",
+      "https://app.test",
+    );
+    expect(menu.keyboard[0]![0]!.text).not.toBe("🎓 Мои курсы");
+    expect(menu.keyboard.flat().some((b) => b.text === "🎓 Мои курсы")).toBe(true);
+  });
 });

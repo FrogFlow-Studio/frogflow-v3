@@ -126,5 +126,16 @@ describe("шаблон онлайн-школы", () => {
     );
     const course = parseCourse(saved?.value);
     expect(course.lessons.some((l) => l.homework)).toBe(true);
+    // Пример — сразу школа: поток, срок сдачи ДЗ, два тарифа по вариантам.
+    expect(course.cohorts?.[0]?.title).toBe("Первый поток");
+    expect(course.homeworkDays).toBe(3);
+    const variants = db.tables.product_variants as Array<{ id: string; name: string }>;
+    expect(variants.map((v) => v.name)).toEqual(["Самостоятельно", "С проверкой ДЗ"]);
+    expect(course.tariffs?.[variants[0]!.id]).toEqual({
+      homework: false,
+      channel: false,
+      accessDays: 90,
+    });
+    expect(course.tariffs?.[variants[1]!.id]?.homework).toBe(true);
   });
 });

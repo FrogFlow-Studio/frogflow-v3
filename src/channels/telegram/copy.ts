@@ -14,6 +14,8 @@ export type Msg = {
   myOrders: string;
   /** Модуль courses: «Мои курсы» (channels/telegram/courses). */
   myCourses: string;
+  /** Онлайн-школа: каталог называется «Курсы». */
+  catalogCourses: string;
   instruction: string;
   information: string;
   catalogHeader: string;
@@ -336,6 +338,7 @@ const ru: Msg = {
   cart: "🛒 Корзина",
   myOrders: "📋 Мои заказы",
   myCourses: "🎓 Мои курсы",
+  catalogCourses: "📚 Все курсы",
   instruction: "📖 Инструкция",
   information: "ℹ️ Информация",
   catalogHeader: "📚 Выберите категорию:",
@@ -666,6 +669,7 @@ const kk: Msg = {
   cart: "🛒 Себет",
   myOrders: "📋 Тапсырыстарым",
   myCourses: "🎓 Курстарым",
+  catalogCourses: "📚 Барлық курстар",
   instruction: "📖 Нұсқаулық",
   information: "ℹ️ Ақпарат",
   catalogHeader: "📚 Санатты таңдаңыз:",
@@ -845,6 +849,7 @@ const en: Msg = {
   cart: "🛒 Cart",
   myOrders: "📋 My orders",
   myCourses: "🎓 My courses",
+  catalogCourses: "📚 All courses",
   instruction: "📖 Guide",
   information: "ℹ️ Information",
   catalogHeader: "📚 Choose a category:",
@@ -1033,6 +1038,7 @@ const uz: Msg = {
   cart: "🛒 Savat",
   myOrders: "📋 Buyurtmalarim",
   myCourses: "🎓 Kurslarim",
+  catalogCourses: "📚 Barcha kurslar",
   instruction: "📖 Yo‘riqnoma",
   information: "ℹ️ Ma’lumot",
   catalogHeader: "📚 Kategoriyani tanlang:",
@@ -1090,7 +1096,7 @@ export function menuActionFor(
   if (!text) return undefined;
   const t = text.trim();
   for (const m of Object.values(COPY)) {
-    if (t === m.catalog) return "catalog";
+    if (t === m.catalog || t === m.catalogCourses) return "catalog";
     if (t === m.search) return "search";
     if (t === m.cart) return "cart";
     if (t === m.myOrders) return "myOrders";

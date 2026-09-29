@@ -103,7 +103,7 @@ function kept(t: Tenant): ModuleKey[] {
 
 /** Пересчитать флаги по плану клиента; custom и без плана — не трогаем. */
 async function syncModules(t: Tenant, billing: BillingSettings): Promise<void> {
-  const mods = effectiveModules(parsePlan(t.plan), billing);
+  const mods = effectiveModules(parsePlan(t.plan), billing, undefined, t.vertical);
   if (mods) await writeModules(t.id, mods);
 }
 
@@ -140,7 +140,7 @@ export async function getPlanView(botId: string): Promise<PlanView> {
   const suggestion = niche && !parsed ? suggestPlan(niche, t.modules) : null;
   let outsidePlan: ModuleKey[] = [];
   if (parsed?.kind === "tier") {
-    const allowed = planModules(parsed.niche, parsed.tier);
+    const allowed = planModules(parsed.niche, parsed.tier, undefined, t.vertical);
     for (const m of addonModules(parsed.niche, billing)) allowed.add(m);
     for (const m of billing.grandfathered ?? []) allowed.add(m);
     outsidePlan = MODULE_KEYS.filter((k) => t.modules[k] && !allowed.has(k));
@@ -317,7 +317,7 @@ export async function toggleModuleOnPlan(
   const parsed = parsePlan(t.plan);
   if (parsed?.kind !== "tier") throw new Error("У клиента нет плана");
   const billing = t.settings.billing ?? {};
-  const inPlan = planModules(parsed.niche, parsed.tier).has(key);
+  const inPlan = planModules(parsed.niche, parsed.tier, undefined, t.vertical).has(key);
   const inAddon = addonModules(parsed.niche, billing).includes(key);
   if (!on && (inPlan || inAddon))
     throw new Error(
@@ -329,7 +329,7 @@ export async function toggleModuleOnPlan(
   if (on && !inPlan && !inAddon) set.add(key);
   if (!on) set.delete(key);
   const next: BillingSettings = { ...billing, grandfathered: [...set] };
-  const mods = effectiveModules(parsed, next)!;
+  const mods = effectiveModules(parsed, next, undefined, t.vertical)!;
   const missing = missingRequirements(mods);
   if (missing.length) throw new Error(`Сначала включите зависимость: ${missing.join(", ")}`);
   await patchTenantSettings(t.id, { billing: next });

@@ -131,3 +131,17 @@ export const revokeStudentChannelFn = createServerFn({ method: "POST" })
     const { revokeStudentChannel } = await import("./course-channel.server");
     return revokeStudentChannel(ctx, data.orderItemId);
   });
+
+/** «Ученики» онлайн-школы: все курсы магазина с учениками (только чтение). */
+export const schoolStudentsFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await moduleAdmin();
+  const { schoolStudents } = await import("./students.server");
+  return schoolStudents(ctx);
+});
+
+/** Сводка онлайн-школы для главной админки. */
+export const schoolOverviewFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await moduleAdmin();
+  const { schoolOverview } = await import("./students.server");
+  return schoolOverview(ctx);
+});

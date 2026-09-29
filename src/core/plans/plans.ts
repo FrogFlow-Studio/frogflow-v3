@@ -36,6 +36,8 @@ export function planModules(
   niche: PlanNiche,
   tier: PlanTier,
   sale: CoursesSale = COURSES_SALE,
+  /** Ниша клиента: у «Онлайн-школы» курсы — сам продукт, в любом тарифе. */
+  vertical?: string | null,
 ): Set<ModuleKey> {
   const out = new Set<ModuleKey>(BASE_MODULES);
   for (const t of PLAN_TIERS) {
@@ -48,6 +50,7 @@ export function planModules(
     PLAN_TIERS.indexOf(tier) >= PLAN_TIERS.indexOf(COURSES_FROM_TIER)
   )
     out.add("courses");
+  if (sale !== "off" && vertical === "courses") out.add("courses");
   if (MULTI_BOT_FROM_TIER && PLAN_TIERS.indexOf(tier) >= PLAN_TIERS.indexOf(MULTI_BOT_FROM_TIER))
     out.add("multi_bot");
   return out;
@@ -96,9 +99,10 @@ export function effectiveModules(
   plan: ParsedPlan,
   billing: BillingSettings | undefined,
   sale: CoursesSale = COURSES_SALE,
+  vertical?: string | null,
 ): Record<ModuleKey, boolean> | null {
   if (!plan || plan.kind !== "tier") return null;
-  const on = planModules(plan.niche, plan.tier, sale);
+  const on = planModules(plan.niche, plan.tier, sale, vertical);
   for (const m of addonModules(plan.niche, billing)) on.add(m);
   for (const m of billing?.grandfathered ?? []) on.add(m);
   if (sale === "off") on.delete("courses");
