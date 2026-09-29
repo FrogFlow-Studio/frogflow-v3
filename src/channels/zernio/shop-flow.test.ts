@@ -15,7 +15,9 @@ import {
   matchDirectCommand,
   matchLocalePick,
   languagePickerText,
-  needsLocalePick,
+  extractNumberList,
+  isStepStale,
+  STEP_TTL_MS,
   stepAnswer,
   whatsappList,
   clipRowTitle,
@@ -113,13 +115,36 @@ describe("matchCountry", () => {
   });
 });
 
-describe("выбор языка первым сообщением", () => {
-  it("спрашивает только нового покупателя вне сценария, текст — на четырёх языках", () => {
-    expect(needsLocalePick({})).toBe(true);
-    expect(needsLocalePick({ mode: "idle" })).toBe(true);
-    expect(needsLocalePick({ locale: "ru" })).toBe(false);
-    expect(needsLocalePick({ locale_picked_at: "2026-01-01T00:00:00Z" })).toBe(false);
-    expect(needsLocalePick({ mode: "awaiting_proof" })).toBe(false);
+describe("несколько номеров одним сообщением", () => {
+  it("«2 4 7», «2, 4, 7», столбиком и с решёткой — список; один номер и текст — нет", () => {
+    expect(extractNumberList("2 4 7")).toEqual(["2", "4", "7"]);
+    expect(extractNumberList("2, 4, 7")).toEqual(["2", "4", "7"]);
+    expect(extractNumberList("2\n4\n7")).toEqual(["2", "4", "7"]);
+    expect(extractNumberList("#130 #134, 130")).toEqual(["130", "134"]);
+    expect(extractNumberList("2 и 4")).toEqual(["2", "4"]);
+    expect(extractNumberList("5")).toBeNull();
+    expect(extractNumberList("Россия")).toBeNull();
+    expect(extractNumberList("хочу 2 и 4")).toBeNull();
+  });
+});
+
+describe("шаг сценария истекает", () => {
+  const now = Date.parse("2026-09-29T12:00:00Z");
+  const ago = (ms: number) => new Date(now - ms).toISOString();
+  it("вопрос бота давностью больше срока — реплика уже не ответ на него", () => {
+    expect(isStepStale("awaiting_country", ago(STEP_TTL_MS + 1), now)).toBe(true);
+    expect(isStepStale("awaiting_country", ago(60_000), now)).toBe(false);
+    expect(isStepStale("idle", ago(STEP_TTL_MS * 10), now)).toBe(false);
+  });
+  it("шаги оплаты не истекают; без отметки истекает только выбор языка", () => {
+    expect(isStepStale("awaiting_proof", ago(STEP_TTL_MS * 10), now)).toBe(false);
+    expect(isStepStale("awaiting_locale", undefined, now)).toBe(true);
+    expect(isStepStale("awaiting_country", undefined, now)).toBe(false);
+  });
+});
+
+describe("выбор языка по слову «язык»", () => {
+  it("текст — на четырёх языках", () => {
     const text = languagePickerText();
     for (const part of [
       "Выберите язык",

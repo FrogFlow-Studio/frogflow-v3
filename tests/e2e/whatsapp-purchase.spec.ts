@@ -142,15 +142,9 @@ test("покупка в WhatsApp: списки, архив вместо чека
   test.slow();
   const buyer = `77${info.parallelIndex}${info.project.name.length}${String(Date.now()).slice(-8)}`;
 
-  // Первое сообщение — выбор языка списком WhatsApp.
-  await step(
-    request,
-    buyer,
-    () => say(request, buyer, "Здравствуйте"),
-    (s) => text(s).includes("Выберите язык") && offers("STEP:1")(s),
-  );
-  // Русский — каталог списком: строка товара PROD:<id>.
-  await step(request, buyer, () => tap(request, buyer, "STEP:1"), offers(`PROD:${F.PRODUCT_ID}`));
+  // Слово-вызов — каталог списком (строка товара PROD:<id>); язык сам не
+  // спрашивается, единственная страна оплаты ставится сама.
+  await step(request, buyer, () => say(request, buyer, "каталог"), offers(`PROD:${F.PRODUCT_ID}`));
 
   // Карточка с фото (в пределах 5 МБ WhatsApp) и кнопкой «В корзину».
   const card = await step(
@@ -163,12 +157,11 @@ test("покупка в WhatsApp: списки, архив вместо чека
   expect(String(card.body.attachmentUrl)).toContain(`/api/img/${F.SHOP_ID}/`);
 
   await step(request, buyer, () => tap(request, buyer, `BUY:${F.PRODUCT_ID}`), offers("CHECKOUT"));
-  // Страна оплаты — тоже список.
-  await step(request, buyer, () => tap(request, buyer, "CHECKOUT"), offers("STEP:1"));
+  // Страна уже известна — оформление сразу к оплате.
   const placed = await step(
     request,
     buyer,
-    () => tap(request, buyer, "STEP:1"),
+    () => tap(request, buyer, "CHECKOUT"),
     offers("PAY:manual"),
   );
   expect(text(placed)).toContain(`К оплате: ${F.PRODUCT_PRICE} ₸`);

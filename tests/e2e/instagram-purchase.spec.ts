@@ -135,17 +135,12 @@ test("покупка в Instagram Direct: каталог, заказ, чек, п
   // Покупатель у каждого проекта (desktop/phone) свой: оба идут в одну базу.
   const buyer = `17${info.parallelIndex}${info.project.name.length}${Date.now()}`;
 
-  // Первое сообщение нового покупателя — выбор языка, затем каталог.
-  await step(
-    request,
-    buyer,
-    () => say(request, buyer, "Здравствуйте"),
-    (s) => text(s).includes("Выберите язык"),
-  );
+  // Бот просыпается словом-вызовом, язык сам не спрашивает. Страна оплаты
+  // у магазина одна — ставится сама, каталог сразу в её валюте.
   const catalog = await step(
     request,
     buyer,
-    () => say(request, buyer, "1"),
+    () => say(request, buyer, "каталог"),
     (s) => text(s).includes(`1. ${F.PRODUCT_NAME}`),
   );
   expect(text(catalog)).toContain(`${F.PRODUCT_PRICE} ₸`);
@@ -166,16 +161,11 @@ test("покупка в Instagram Direct: каталог, заказ, чек, п
     () => press(request, buyer, `BUY:${F.PRODUCT_ID}`),
     hasPayload("CHECKOUT"),
   );
-  await step(
-    request,
-    buyer,
-    () => press(request, buyer, "CHECKOUT"),
-    (s) => text(s).includes("Выберите страну оплаты"),
-  );
+  // Страна уже известна — оформление сразу к оплате.
   const placed = await step(
     request,
     buyer,
-    () => say(request, buyer, "1"),
+    () => press(request, buyer, "CHECKOUT"),
     hasPayload("PAY:manual"),
   );
   expect(text(placed)).toContain(`К оплате: ${F.PRODUCT_PRICE} ₸`);

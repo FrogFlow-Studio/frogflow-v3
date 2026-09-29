@@ -28,6 +28,20 @@ export function extractProductNumber(text: string): string | null {
   return match ? normalizeNumber(match[1]!) : null;
 }
 
+/**
+ * Несколько номеров одним сообщением: «2 4 7», «2, 4, 7», «2\n4\n7», «#130 #134».
+ * Покупатели так выбирают сразу несколько товаров из списка (Educational
+ * Bot, 29.09). Одиночный номер — не список (его разбирает extractProductNumber).
+ * Повторы убираются, больше 10 номеров не берём.
+ */
+export function extractNumberList(text: string): string[] | null {
+  const raw = text.trim();
+  if (!/^[№#]?\s*\d{1,5}(?:\s*[.)]?\s*(?:[,;+и]|and)?\s*[№#]?\s*\d{1,5})+\s*[.)]?$/iu.test(raw))
+    return null;
+  const numbers = Array.from(new Set((raw.match(/\d{1,5}/g) ?? []).map(normalizeNumber)));
+  return numbers.length >= 2 ? numbers.slice(0, 10) : null;
+}
+
 /** Номер из названия: «018. Набор …», «236) Пазлы …», «081 | Дни недели», «165 Календари». */
 export function productNumberFromName(name: string | null | undefined): string | null {
   if (!name) return null;
@@ -105,18 +119,71 @@ export function languagePickerText(): string {
   );
 }
 
+/**
+ * Шаг сценария (страна, телефон, вариант…) ждёт ответа не дольше этого после
+ * последней реплики бота. Позже реплика — уже не ответ на вопрос бота, а
+ * обычная переписка с продавцом: «Россия» в ответ на его сообщение не должна
+ * будить бота вопросом, заданным неделю назад (Educational Bot, 29.09).
+ * Шаги оплаты не истекают: чек присылают и через день.
+ */
+export const STEP_TTL_MS = 3 * 3600_000;
+const PAYMENT_STEPS = new Set(["awaiting_proof", "choose_pay", "awaiting_payment"]);
+
+export function isStepStale(
+  mode: string | undefined,
+  lastReplyAt: string | undefined,
+  now = Date.now(),
+): boolean {
+  if (!mode || mode === "idle" || PAYMENT_STEPS.has(mode)) return false;
+  const at = Date.parse(lastReplyAt ?? "");
+  // Без отметки: выбор языка больше сам не задаётся — такой шаг остался от
+  // прежнего сценария; остальные (переезд с v1 посреди оформления) не трогаем.
+  if (!Number.isFinite(at)) return mode === "awaiting_locale";
+  return now - at > STEP_TTL_MS;
+}
+
+/** Подсказка под списком товаров: номер — карточка, несколько — сразу в корзину. */
+export const PRODUCT_LIST_HINT: Record<Locale, string> = {
+  ru: "Напишите номер товара, чтобы посмотреть подробнее. Несколько номеров через запятую — положу их в корзину.",
+  kk: "Толығырақ көру үшін тауар нөмірін жазыңыз. Бірнеше нөмірді үтір арқылы жазсаңыз — себетке саламын.",
+  en: "Send a product number to see details. Several numbers separated by commas go straight to the cart.",
+  uz: "Batafsil ko‘rish uchun mahsulot raqamini yozing. Bir nechta raqamni vergul bilan yozsangiz — savatga solaman.",
+};
+
+/** Несколько номеров в ответ на список разделов: открываем первый. */
+export const ONE_SECTION_HINT: Record<Locale, string> = {
+  ru: "Разделы открываются по одному — показываю первый. Другой раздел: «каталог».",
+  kk: "Бөлімдер бір-бірден ашылады — біріншісін көрсетемін. Басқа бөлім: «каталог».",
+  en: "Sections open one at a time — here is the first one. Another section: “catalog”.",
+  uz: "Bo‘limlar bittadan ochiladi — birinchisini ko‘rsataman. Boshqa bo‘lim: «katalog».",
+};
+
+/** Итог «несколько номеров»: что положили и что не нашли / нужно выбрать вариант. */
+export const MULTI_ADD_COPY: Record<
+  Locale,
+  { notFound: (n: string[]) => string; needsVariant: (names: string[]) => string }
+> = {
+  ru: {
+    notFound: (n) => `Не нашёл: ${n.join(", ")}.`,
+    needsVariant: (names) => `Нужно выбрать вариант, откройте по номеру: ${names.join("; ")}.`,
+  },
+  kk: {
+    notFound: (n) => `Табылмады: ${n.join(", ")}.`,
+    needsVariant: (names) => `Нұсқасын таңдау керек, нөмірі бойынша ашыңыз: ${names.join("; ")}.`,
+  },
+  en: {
+    notFound: (n) => `Not found: ${n.join(", ")}.`,
+    needsVariant: (names) => `Choose an option — open by number: ${names.join("; ")}.`,
+  },
+  uz: {
+    notFound: (n) => `Topilmadi: ${n.join(", ")}.`,
+    needsVariant: (names) =>
+      `Variantni tanlash kerak, raqami bo‘yicha oching: ${names.join("; ")}.`,
+  },
+};
+
 /** После стольких нераспознанных ответов на выбор языка отвечаем на языке магазина, не держим человека на шаге вечно. */
 export const MAX_LOCALE_MISSES = 2;
-
-/** Новый покупатель: язык ещё не выбирали и сценарий не начат — первым делом спрашиваем язык. */
-export function needsLocalePick(state: {
-  mode?: string;
-  locale?: string;
-  locale_picked_at?: unknown;
-}): boolean {
-  if (state.locale || state.locale_picked_at) return false;
-  return !state.mode || state.mode === "idle";
-}
 
 /** Повтор цифры из списка языков сразу после выбора — не номер товара. */
 export const LOCALE_PICK_ECHO_MS = 2 * 60 * 1000;
@@ -509,6 +576,7 @@ export function isPaymentComplaint(text: string): boolean {
 
 export type IncomingKind =
   | { kind: "product_number"; number: string }
+  | { kind: "product_numbers"; numbers: string[] }
   | { kind: "affirmative" }
   | { kind: "dismissal" }
   | { kind: "question"; text: string };
@@ -517,6 +585,8 @@ export type IncomingKind =
 export function classifyIncoming(text: string): IncomingKind {
   const number = extractProductNumber(text);
   if (number !== null) return { kind: "product_number", number };
+  const numbers = extractNumberList(text);
+  if (numbers) return { kind: "product_numbers", numbers };
   if (isDismissal(text)) return { kind: "dismissal" };
   if (isAffirmative(text)) return { kind: "affirmative" };
   return { kind: "question", text: text.trim() };

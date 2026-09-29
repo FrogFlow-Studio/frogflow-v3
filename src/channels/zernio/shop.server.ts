@@ -99,8 +99,11 @@ import {
   STEP_PREFIX,
   WA_LIST_MAX_ROWS,
   WA_LIST_PAGE,
-  needsLocalePick,
   MAX_LOCALE_MISSES,
+  isStepStale,
+  MULTI_ADD_COPY,
+  ONE_SECTION_HINT,
+  PRODUCT_LIST_HINT,
   matchOrdinal,
   matchZone,
   parseRemoveCommand,
@@ -142,6 +145,8 @@ type DirectMemory = {
   email_skipped?: boolean;
   /** Быстрый вопрос «Связаться с продавцом»: следующий вопрос — продавцу (handle-message). */
   contact_requested_at?: string;
+  /** Страну спросили первым делом: что показать после ответа (каталог или товар). */
+  after_country?: string;
 };
 
 type Shop = {
@@ -296,7 +301,7 @@ export async function handleShopMessage(
 
 async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const text = msg.text;
-  const mode = s.customer.state.mode;
+  let mode = s.customer.state.mode;
 
   // Корзина из каталога Meta — штатная корзина WhatsApp мимо бота.
   if (msg.nativeOrder) return handleNativeCart(s, msg.nativeOrder);
@@ -352,10 +357,12 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
 
   if (!text) return "question";
 
-  // Новому покупателю — выбор языка раньше чего бы то ни было, один раз.
-  if (needsLocalePick(s.customer.state) && !memory(s.customer).locale_picked_at) {
-    await askLocale(s);
-    return "handled";
+  // Шаг, заданный давно, реплику не забирает: это уже переписка с продавцом.
+  // Язык сам не спрашивается (только словом «язык»): покупатели путались, а
+  // бот просыпался на ответ продавцу (Educational Bot, 29.09).
+  if (isStepStale(mode, memory(s.customer).last_reply_at)) {
+    await setMode(s, { mode: "idle", placing_order: undefined, locale_misses: undefined });
+    mode = "idle";
   }
 
   if (isCancel(text)) {
@@ -374,8 +381,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     if (mode && mode !== "idle" && mode !== "awaiting_proof") await setMode(s, { mode: "idle" });
     switch (command) {
       case "catalog":
-        await showCatalog(s, null, 0, true);
-        return "handled";
+        return openShop(s);
       case "cart":
         await showCart(s, true);
         return "handled";
@@ -443,6 +449,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       });
       await reply(s, s.m.countrySaved(picked.name), { force: true });
       if (forCheckout) await proceedToFulfillmentOrPlace(s, picked.code);
+      else await continueAfterCountry(s);
       return "handled";
     }
     case "awaiting_contact": {
@@ -594,8 +601,14 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       await pickByNumber(s, kind.number);
       return "handled";
     }
+    case "product_numbers": {
+      if (!s.bot.features.search) return "question";
+      await pickSeveral(s, kind.numbers);
+      return "handled";
+    }
     case "affirmative": {
-      if (!s.bot.features.catalog) return "question";
+      // «Только по заказам»: «да» в переписке с продавцом бота не будит.
+      if (!s.bot.features.catalog || s.bot.scope === "purchases") return "question";
       await showCatalog(s, null, 0, true);
       return "handled";
     }
@@ -676,8 +689,7 @@ function featureAllows(s: Shop, command: DirectCommand | string): boolean {
 /**
  * Быстрый вопрос Instagram (core/instagram/ice-breakers) — первое нажатие в
  * новом диалоге. Ведёт на те же команды, что и слова «каталог», «мои
- * заказы»; новому покупателю сначала выбор языка, как на любое первое
- * сообщение. «Как оплатить» с пустой корзиной — способы оплаты (без
+ * заказы». «Как оплатить» с пустой корзиной — способы оплаты (без
  * реквизитов: они — при оформлении). «Связаться с продавцом» — просьба
  * описать вопрос и метка: следующий вопрос handle-message отдаёт продавцу.
  */
@@ -690,10 +702,6 @@ async function handleIceBreaker(s: Shop, kind: IceBreakerKind): Promise<ShopOutc
   if (kind === "catalog") return openShop(s);
   const command: DirectCommand = kind === "pay" ? "checkout" : "orders";
   if (!featureAllows(s, command)) return "question";
-  if (needsLocalePick(s.customer.state) && !memory(s.customer).locale_picked_at) {
-    await askLocale(s);
-    return "handled";
-  }
   const mode = s.customer.state.mode;
   if (mode && mode !== "idle" && mode !== "awaiting_proof") await setMode(s, { mode: "idle" });
   if (command === "orders") {
@@ -716,15 +724,43 @@ async function handleIceBreaker(s: Shop, kind: IceBreakerKind): Promise<ShopOutc
 
 /** Магазин с начала: язык новому покупателю, иначе каталог со сбросом шага. */
 async function openShop(s: Shop): Promise<ShopOutcome> {
-  if (needsLocalePick(s.customer.state) && !memory(s.customer).locale_picked_at) {
-    await askLocale(s);
-    return "handled";
-  }
   if (!featureAllows(s, "catalog")) return "question";
   const mode = s.customer.state.mode;
   if (mode && mode !== "idle" && mode !== "awaiting_proof") await setMode(s, { mode: "idle" });
+  if (await askCountryFirst(s, "catalog")) return "handled";
   await showCatalog(s, null, 0, true);
   return "handled";
+}
+
+/**
+ * Страна — первым делом, чтобы цены в каталоге и карточке были в валюте
+ * покупателя. Одна страна оплаты — ставим её молча; ни одной — не спрашиваем.
+ * true — спросили, дальше покажет ответ на шаг (continueAfterCountry).
+ */
+async function askCountryFirst(s: Shop, then: string): Promise<boolean> {
+  if (s.customer.state.country_code) return false;
+  const methods = await listActivePaymentMethods(s.ctx);
+  if (methods.length === 1) {
+    await setMode(s, {
+      country_code: methods[0]!.country_code,
+      country_name: methods[0]!.country_name,
+    });
+    return false;
+  }
+  if (methods.length === 0) return false;
+  await remember(s, { after_country: then });
+  await askCountry(s, false);
+  return true;
+}
+
+async function continueAfterCountry(s: Shop) {
+  const then = memory(s.customer).after_country;
+  if (!then) return;
+  await remember(s, { after_country: undefined });
+  if (then === "catalog") return showCatalog(s, null, 0, true);
+  const id = then.startsWith("product:") ? then.slice("product:".length) : null;
+  const p = id ? await getProduct(s.ctx, id) : null;
+  if (p) await sendProductCard(s, p, true);
 }
 
 async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
@@ -940,11 +976,10 @@ async function showProductList(
     });
     return;
   }
-  await reply(
-    s,
-    `${lines.join("\n")}\n\n${s.locale === "ru" ? "Напишите номер товара, чтобы посмотреть подробнее." : plain(s.m.searchPrompt)}`,
-    { force, buttons: buttons.slice(0, 3) },
-  );
+  await reply(s, `${lines.join("\n")}\n\n${PRODUCT_LIST_HINT[s.locale]}`, {
+    force,
+    buttons: buttons.slice(0, 3),
+  });
 }
 
 /**
@@ -1003,10 +1038,84 @@ async function pickByNumber(s: Shop, number: string) {
     if (candidates.length) break;
   }
   const p = candidates[0];
-  if (p) return sendProductCard(s, p, true);
+  if (p) {
+    if (await askCountryFirst(s, `product:${p.id}`)) return;
+    return sendProductCard(s, p, true);
+  }
   await reply(s, `${plain(s.m.productNotFound)}\n\n${hint(s)}`, {
     buttons: [BTN.catalog(s.m), BTN.cart(s.m)],
   });
+}
+
+/**
+ * Несколько номеров одним сообщением («2 4 7», «2, 4, 7»). Ответ на список
+ * разделов — открываем первый; на список товаров или коды — кладём в
+ * корзину всё, что без выбора варианта, и показываем корзину.
+ */
+async function pickSeveral(s: Shop, numbers: string[]) {
+  const list = memory(s.customer).list;
+  const listFresh = list && Date.now() - Date.parse(list.at) < LIST_TTL_MS;
+  if (listFresh && list.kind === "categories") {
+    const idx = numbers.map(Number).find((n) => n >= 1 && n <= list.ids.length);
+    if (idx) {
+      await reply(s, ONE_SECTION_HINT[s.locale], { force: true });
+      return showCatalog(s, list.ids[idx - 1]!, 0, true);
+    }
+  }
+  const found: Product[] = [];
+  const missing: string[] = [];
+  for (const number of numbers) {
+    const n = Number(number);
+    const fromList =
+      listFresh && list.kind === "products" && n >= 1 && n <= list.ids.length
+        ? await getProduct(s.ctx, list.ids[n - 1]!)
+        : null;
+    const p = fromList ?? (await productByCode(s, number));
+    if (p && !found.some((x) => x.id === p.id)) found.push(p);
+    else if (!p) missing.push(number);
+  }
+  if (found.length === 0) {
+    await reply(s, `${plain(s.m.productNotFound)}\n\n${hint(s)}`, {
+      buttons: [BTN.catalog(s.m), BTN.cart(s.m)],
+    });
+    return;
+  }
+  const withVariants = found.filter((p) => sortedVariants(p).length > 0);
+  let added = 0;
+  const failed: string[] = [];
+  for (const p of found.filter((x) => sortedVariants(x).length === 0)) {
+    const r = await addToCart(s.ctx, s.customer, p.id, null);
+    if (r === "ok") added++;
+    else failed.push(p.name);
+  }
+  const copy = MULTI_ADD_COPY[s.locale];
+  const notes = [
+    missing.length ? copy.notFound(missing) : "",
+    failed.length ? `${plain(s.m.unavailable).replace(/[.!]\s*$/, "")}: ${failed.join("; ")}` : "",
+    withVariants.length ? copy.needsVariant(withVariants.map((p) => p.name)) : "",
+  ].filter(Boolean);
+  if (added === 0) {
+    await reply(s, notes.join("\n") || plain(s.m.unavailable), {
+      force: true,
+      buttons: [BTN.cart(s.m), BTN.catalog(s.m)],
+    });
+    return;
+  }
+  await showCart(s, true, [plain(s.m.added), ...notes].join("\n"));
+}
+
+/** Товар по коду из названия или ключевых слов: «018. Набор …». */
+async function productByCode(s: Shop, number: string): Promise<Product | null> {
+  const padded = Array.from(new Set([number, number.padStart(2, "0"), number.padStart(3, "0")]));
+  for (const q of padded) {
+    for (const p of await searchProducts(s.ctx, q, 30))
+      if (
+        productNumberFromName(p.name) === number ||
+        productNumberFromKeywords(p.keywords) === number
+      )
+        return p;
+  }
+  return null;
 }
 
 async function sendProductCard(s: Shop, p: Product, force: boolean) {

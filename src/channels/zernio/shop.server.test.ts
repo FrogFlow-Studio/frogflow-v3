@@ -129,8 +129,13 @@ function setup(
     outgoing: false,
     ...m,
   });
-  const send = (m: Partial<ParsedZernioMessage>) =>
-    handleShopMessage(ctx, customer, msg(m), transport);
+  // Следующее сообщение видит состояние после предыдущего, как в handle-message.
+  let current = customer;
+  const send = async (m: Partial<ParsedZernioMessage>) => {
+    const r = await handleShopMessage(ctx, current, msg(m), transport);
+    current = r.customer;
+    return r;
+  };
   const direct = () =>
     ((db.tables.bot_users![0]!.state as Record<string, unknown>).direct ?? {}) as Record<
       string,
@@ -577,15 +582,114 @@ describe("быстрые вопросы Instagram: постбэк IB:<вид>", 
     expect(sent.at(-1)!.text).toBe(COPY.ru.paymentNotConfigured);
   });
 
-  it("новому покупателю сначала выбор языка, как на любое первое сообщение", async () => {
-    const { send, db } = setup({ platform: "instagram", state: {} });
+  it("новому покупателю — сразу ответ по делу, без выбора языка", async () => {
+    const { send, sent, db } = setup({ platform: "instagram", state: {} });
+    db.tables.payment_methods = [];
     await send({ postbackPayload: "IB:pay" });
-    expect((db.tables.bot_users![0]!.state as { mode?: string }).mode).toBe("awaiting_locale");
+    expect((db.tables.bot_users![0]!.state as { mode?: string }).mode).not.toBe("awaiting_locale");
+    expect(sent.at(-1)!.text).toBe(COPY.ru.paymentNotConfigured);
   });
 
   it("незнакомый вид подсказки — не наш постбэк", async () => {
     const { send, sent } = setup({ platform: "instagram" });
     expect((await send({ postbackPayload: "IB:other" })).outcome).toBe("question");
     expect(sent).toEqual([]);
+  });
+});
+
+describe("бот просыпается только по делу (Educational Bot, 29.09)", () => {
+  const methods = [
+    {
+      id: "pm1",
+      bot_id: BOT,
+      is_active: true,
+      sort_order: 1,
+      country_code: "KZ",
+      country_name: "Казахстан",
+      currency: "KZT",
+    },
+    {
+      id: "pm2",
+      bot_id: BOT,
+      is_active: true,
+      sort_order: 2,
+      country_code: "RU",
+      country_name: "Россия",
+      currency: "RUB",
+    },
+  ];
+  const item = (id: string, name: string, sort: number) => ({
+    id,
+    bot_id: BOT,
+    name,
+    price: 500,
+    currency: "KZT",
+    category_ids: "[]",
+    is_active: true,
+    sort_order: sort,
+    product_variants: [],
+    file_path: `${BOT}/${id}.pdf`,
+  });
+
+  it("новый покупатель пишет «Россия» продавцу — бот молчит, язык не спрашивает", async () => {
+    const { send, sent, db } = setup({ platform: "instagram", state: {} });
+    db.tables.payment_methods = methods;
+    const r = await send({ text: "Россия" });
+    expect(r.outcome).toBe("question");
+    expect(sent).toEqual([]);
+    expect((db.tables.bot_users![0]!.state as { mode?: string }).mode).toBeUndefined();
+  });
+
+  it("шаг, заданный давно, реплику не забирает", async () => {
+    const old = new Date(Date.now() - 24 * 3600_000).toISOString();
+    const { send, sent, db } = setup({
+      platform: "instagram",
+      state: { mode: "awaiting_locale", direct: { last_reply_at: old } },
+    });
+    db.tables.payment_methods = methods;
+    const r = await send({ text: "Россия" });
+    expect(r.outcome).toBe("question");
+    expect(sent).toEqual([]);
+    expect((db.tables.bot_users![0]!.state as { mode?: string }).mode).toBe("idle");
+  });
+
+  it("«каталог»: сначала страна, после ответа — каталог", async () => {
+    const { send, sent, db } = setup({ platform: "instagram", state: {} });
+    db.tables.payment_methods = methods;
+    db.tables.products = [item("p1", "130. Сердечки", 1)];
+    await send({ text: "каталог" });
+    expect(sent.at(-1)!.text).toContain("2. Россия");
+    await send({ text: "Россия" });
+    const st = db.tables.bot_users![0]!.state as { country_code?: string; mode?: string };
+    expect(st.country_code).toBe("RU");
+    expect(st.mode).toBe("idle");
+    expect(sent.at(-1)!.text).toContain("130. Сердечки");
+  });
+
+  it("одна страна оплаты — не спрашиваем, ставим её сами", async () => {
+    const { send, sent, db } = setup({ platform: "instagram", state: {} });
+    db.tables.payment_methods = [methods[0]!];
+    db.tables.products = [item("p1", "130. Сердечки", 1)];
+    await send({ text: "каталог" });
+    expect((db.tables.bot_users![0]!.state as { country_code?: string }).country_code).toBe("KZ");
+    expect(sent.at(-1)!.text).toContain("130. Сердечки");
+  });
+
+  it("«2 4» в ответ на список товаров — оба в корзине", async () => {
+    const { send, sent, db } = setup({
+      platform: "instagram",
+      state: { locale: "ru", country_code: "KZ" },
+    });
+    db.tables.payment_methods = methods;
+    db.tables.products = [
+      item("p1", "130. Сердечки", 1),
+      item("p2", "134. Оформление", 2),
+      item("p3", "446. Обертка", 3),
+    ];
+    await send({ text: "каталог" });
+    await send({ text: "1, 3" });
+    const cart = db.tables.cart_items!.map((c) => c.product_id).sort();
+    expect(cart).toEqual(["p1", "p3"]);
+    expect(sent.at(-1)!.text).toContain(COPY.ru.cartHeader.replace(/<[^>]+>/g, ""));
   });
 });
