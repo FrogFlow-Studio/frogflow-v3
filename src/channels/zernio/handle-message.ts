@@ -61,7 +61,8 @@ export async function handleZernioMessage(
   // отдаём обещанное второе сообщение с кнопками; «+»/«да» дальше не разбираем.
   if (m.platform === "instagram" && m.senderUsername && ctx.tenant.modules.instagram) {
     const { deliverPendingTwoStepDm, twoStepJustDelivered } = await import("./automations.server");
-    const { isTwoStepAcknowledgement } = await import("@/core/instagram/comment-rules");
+    const { isTwoStepAcknowledgement, isShopStartWord } =
+      await import("@/core/instagram/comment-rules");
     const delivered = await deliverPendingTwoStepDm(ctx, {
       accountId: m.accountId,
       conversationId: m.conversationId,
@@ -70,7 +71,9 @@ export async function handleZernioMessage(
     // Второй быстрый «+» после уже отданного второго сообщения тоже не разбираем.
     // Только набранный ответ: нажатие кнопки второго сообщения и фото чека идут дальше.
     const typedOnly = !m.postbackPayload && m.attachments.length === 0 && !m.nativeOrder;
+    const toShop = ctx.tenant.modules.dm_shop && isShopStartWord(m.text);
     if (
+      !toShop &&
       isTwoStepAcknowledgement(m.text) &&
       (delivered ||
         (typedOnly &&

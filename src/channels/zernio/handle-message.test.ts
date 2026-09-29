@@ -53,6 +53,10 @@ vi.mock("@/core/customers/opt-out", async (orig) => ({
 
 // Comment-to-DM: второе сообщение этому покупателю только что забрал другой вебхук.
 const twoStepJustDelivered = vi.fn(async () => false);
+// Магазин в переписке — отдельный модуль со своими тестами; здесь важно, дошло ли до него.
+vi.mock("./shop.server", () => ({
+  handleShopMessage: async (_ctx: unknown, customer: unknown) => ({ outcome: "handled", customer }),
+}));
 vi.mock("./automations.server", () => ({
   deliverPendingTwoStepDm: vi.fn(async () => false),
   twoStepJustDelivered,
@@ -175,6 +179,20 @@ describe("Comment-to-DM: второй быстрый «+»", () => {
     );
     expect(r).toEqual({ status: "processed", note: "второе сообщение по комментарию" });
     expect(transport.send).not.toHaveBeenCalled();
+  });
+
+  it("«/start» сразу после второго сообщения при магазине в Direct идёт магазину", async () => {
+    twoStepJustDelivered.mockClear();
+    twoStepJustDelivered.mockResolvedValueOnce(true);
+    const shopCtx = {
+      tenant: { ...igCtx.tenant, modules: { instagram: true, dm_shop: true } },
+    } as unknown as TenantContext;
+    const r = await handleZernioMessage(
+      shopCtx,
+      igEvent({ text: "/start" }),
+      transport as unknown as ZernioTransport,
+    );
+    expect(r).toEqual({ status: "processed", note: "магазин" });
   });
 
   it("нажатие кнопки второго сообщения сразу после него идёт дальше", async () => {

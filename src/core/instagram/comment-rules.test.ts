@@ -14,6 +14,7 @@ import {
   fallbackRecordStatus,
   isInstagramMediaId,
   isTwoStepAcknowledgement,
+  isShopStartWord,
   isZernioObjectId,
   pickZernioPostId,
   stalePendingAction,
@@ -296,6 +297,16 @@ describe("buildAutomationBody", () => {
     expect(body).not.toHaveProperty("twoStepDm");
     expect(body).not.toHaveProperty("secondDmMessage");
     expect(body).not.toHaveProperty("unresolvedPrompt");
+  });
+});
+
+describe("isShopStartWord", () => {
+  it("«/start», «Старт», «каталог» — зов магазина; «+» и вопрос — нет", () => {
+    expect(isShopStartWord("/start")).toBe(true);
+    expect(isShopStartWord(" Старт ")).toBe(true);
+    expect(isShopStartWord("каталог")).toBe(true);
+    expect(isShopStartWord("+")).toBe(false);
+    expect(isShopStartWord("сколько стоит?")).toBe(false);
   });
 });
 

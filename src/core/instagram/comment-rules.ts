@@ -458,6 +458,17 @@ export const DEFAULT_SECOND_DM = "Для перехода в бот и полу�
  * это «+», «1», «да»: он выполнил просьбу «напишите нам», и отвечать на это
  * консультантом или магазином не нужно.
  */
+/**
+ * Слово, которым покупатель зовёт магазин в переписке. При включённом
+ * магазине оно идёт боту, даже сразу после второго сообщения: «/start» —
+ * явная просьба показать каталог, а не «принято» (Educational Bot, 29.09:
+ * «/start» после автоматизации оставался без ответа).
+ */
+export function isShopStartWord(text: string | null | undefined): boolean {
+  const t = (text ?? "").trim().toLowerCase();
+  return ["старт", "/start", "start", "купить", "материалы", "каталог"].includes(t);
+}
+
 export function isTwoStepAcknowledgement(text: string | null | undefined): boolean {
   const t = (text ?? "").trim().toLowerCase();
   return (
