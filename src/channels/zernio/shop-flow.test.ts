@@ -16,6 +16,7 @@ import {
   matchLocalePick,
   languagePickerText,
   extractNumberList,
+  taggedProductNumber,
   isStepStale,
   STEP_TTL_MS,
   stepAnswer,
@@ -125,6 +126,20 @@ describe("несколько номеров одним сообщением", ()
     expect(extractNumberList("5")).toBeNull();
     expect(extractNumberList("Россия")).toBeNull();
     expect(extractNumberList("хочу 2 и 4")).toBeNull();
+  });
+});
+
+describe("код с решёткой в приветствии рекламы", () => {
+  it("«Хочу материал #245» — товар 245; два кода или без решётки — нет", () => {
+    expect(taggedProductNumber("Здравствуйте! Хочу материал #245")).toBe("245");
+    expect(taggedProductNumber("Сборник № 018, можно подробнее?")).toBe("18");
+    expect(taggedProductNumber("#12 и #13")).toBeNull();
+    expect(taggedProductNumber("Привет! Можно узнать об этом подробнее?")).toBeNull();
+    expect(taggedProductNumber("мне 245 штук")).toBeNull();
+    expect(classifyIncoming("Хочу материал #245")).toEqual({
+      kind: "product_number",
+      number: "245",
+    });
   });
 });
 

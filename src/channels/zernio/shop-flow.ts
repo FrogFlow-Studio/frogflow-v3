@@ -42,6 +42,19 @@ export function extractNumberList(text: string): string[] | null {
   return numbers.length >= 2 ? numbers.slice(0, 10) : null;
 }
 
+/**
+ * Код материала с решёткой внутри фразы: «Здравствуйте! Хочу материал #245».
+ * Так продавец подписывает приветствие в рекламе «Написать в WhatsApp/Direct»:
+ * без кода бот не знает, с какого ролика пришёл человек (Дидактика, 29.09).
+ * Ровно один код — иначе это не выбор, а вопрос.
+ */
+export function taggedProductNumber(text: string): string | null {
+  const codes = Array.from(
+    new Set([...text.matchAll(/[#№]\s?(\d{1,5})(?!\d)/g)].map((m) => normalizeNumber(m[1]!))),
+  );
+  return codes.length === 1 ? codes[0]! : null;
+}
+
 /** Номер из названия: «018. Набор …», «236) Пазлы …», «081 | Дни недели», «165 Календари». */
 export function productNumberFromName(name: string | null | undefined): string | null {
   if (!name) return null;
@@ -587,6 +600,8 @@ export function classifyIncoming(text: string): IncomingKind {
   if (number !== null) return { kind: "product_number", number };
   const numbers = extractNumberList(text);
   if (numbers) return { kind: "product_numbers", numbers };
+  const tagged = taggedProductNumber(text);
+  if (tagged !== null) return { kind: "product_number", number: tagged };
   if (isDismissal(text)) return { kind: "dismissal" };
   if (isAffirmative(text)) return { kind: "affirmative" };
   return { kind: "question", text: text.trim() };
