@@ -99,7 +99,16 @@ export async function handleZernioMessage(
     await directOptOut(ctx, customer, m, transport, optCmd);
     return processed(optCmd === "unsubscribe" ? "отписка от рассылок" : "возврат к рассылкам");
   }
-  if (intercepted) return processed("менеджер ведёт диалог в панели");
+  // Как в Telegram: при чате с менеджером «/start» и чек на шаге оплаты всё
+  // равно идут боту — иначе покупатель, позвавший магазин, молчание получал
+  // навсегда (перехват сам не снимается; Educational Bot, 30.09).
+  if (intercepted) {
+    const { isShopStartWord } = await import("@/core/instagram/comment-rules");
+    const proofStep =
+      ["awaiting_proof", "awaiting_payment", "choose_pay"].includes(customer.state.mode ?? "") &&
+      m.attachments.length > 0;
+    if (!isShopStartWord(m.text) && !proofStep) return processed("менеджер ведёт диалог в панели");
+  }
   // Магазин на паузе (неоплата, удаление по запросу владельца): переписка
   // сохранена в «Чате», автоответы молчат — как бот Telegram на паузе.
   if (ctx.tenant.status === "paused" || ctx.tenant.status === "suspended")

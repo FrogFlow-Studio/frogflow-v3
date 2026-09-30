@@ -195,6 +195,20 @@ describe("Comment-to-DM: второй быстрый «+»", () => {
     expect(r).toEqual({ status: "processed", note: "магазин" });
   });
 
+  it("чат с менеджером: «/start» всё равно идёт магазину, вопрос — нет", async () => {
+    const { inboundIntercepted } = await import("@/core/chat/chat");
+    vi.mocked(inboundIntercepted).mockResolvedValue(true);
+    const shopCtx = {
+      tenant: { ...igCtx.tenant, modules: { instagram: true, dm_shop: true, manager_chat: true } },
+    } as unknown as TenantContext;
+    const t = transport as unknown as ZernioTransport;
+    const start = await handleZernioMessage(shopCtx, igEvent({ text: "/start" }), t);
+    const question = await handleZernioMessage(shopCtx, igEvent({ text: "а когда?" }), t);
+    vi.mocked(inboundIntercepted).mockResolvedValue(false);
+    expect(start).toEqual({ status: "processed", note: "магазин" });
+    expect(question).toEqual({ status: "processed", note: "менеджер ведёт диалог в панели" });
+  });
+
   it("нажатие кнопки второго сообщения сразу после него идёт дальше", async () => {
     twoStepJustDelivered.mockClear();
     twoStepJustDelivered.mockResolvedValue(true);
