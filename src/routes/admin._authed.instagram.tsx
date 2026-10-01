@@ -133,7 +133,11 @@ function RulesCard({ data, onEdit }: { data: Data; onEdit: (a: Automation | "new
         </button>
       }
     >
-      {data.automations.length === 0 ? (
+      {data.automationsError ? (
+        <p className="text-sm text-danger">
+          {t(data.automationsError.key as never) || data.automationsError.message}
+        </p>
+      ) : data.automations.length === 0 ? (
         <Empty>{t("instagram.rules.empty")}</Empty>
       ) : (
         <ul className="divide-y divide-line">

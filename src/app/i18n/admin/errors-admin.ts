@@ -117,6 +117,10 @@ export const ru = {
   "err.admin.crmUrl": "Адрес должен начинаться с https:// и вести на внешний сервер.",
   "err.admin.crmSaveFirst": "Сначала сохраните адрес вебхука.",
   "err.admin.igPostNotFound": "Zernio не нашёл публикацию по ссылке — проверьте ссылку и аккаунт.",
+  "err.admin.igZernioDenied":
+    "Zernio не даёт доступа к профилю или аккаунту Instagram этого магазина, поэтому правила и публикации не видны. Напишите оператору платформы: нужно заново привязать профиль Zernio.",
+  "err.admin.igZernioUnavailable":
+    "Zernio сейчас не отвечает — правила и публикации не загрузились. Обновите страницу через пару минут.",
   "err.admin.offerEnd": "Окончание акции должно быть позже начала.",
   "err.admin.winbackOrder": "Второе сообщение должно идти позже первого.",
   "err.admin.winbackPromo":
@@ -269,6 +273,10 @@ export const kk: SectionDict<typeof ru> = {
   "err.admin.crmSaveFirst": "Алдымен вебхук мекенжайын сақтаңыз.",
   "err.admin.igPostNotFound":
     "Zernio сілтеме бойынша жарияланымды таппады — сілтеме мен аккаунтты тексеріңіз.",
+  "err.admin.igZernioDenied":
+    "Zernio бұл дүкеннің профиліне не Instagram аккаунтына рұқсат бермейді, сондықтан ережелер мен жарияланымдар көрінбейді. Платформа операторына жазыңыз: Zernio профилін қайта байлау керек.",
+  "err.admin.igZernioUnavailable":
+    "Zernio қазір жауап бермейді — ережелер мен жарияланымдар жүктелмеді. Бірнеше минуттан кейін бетті жаңартыңыз.",
   "err.admin.offerEnd": "Акция басталғаннан кейін аяқталуы керек.",
   "err.admin.winbackOrder": "Екінші хабарлама біріншісінен кейін жіберілуі керек.",
   "err.admin.winbackPromo":
@@ -422,6 +430,10 @@ export const en: SectionDict<typeof ru> = {
   "err.admin.crmSaveFirst": "Save the webhook address first.",
   "err.admin.igPostNotFound":
     "Zernio could not find a post at this link — check the link and the account.",
+  "err.admin.igZernioDenied":
+    "Zernio denies access to this shop’s profile or Instagram account, so rules and posts are not visible. Contact the platform operator: the Zernio profile needs to be linked again.",
+  "err.admin.igZernioUnavailable":
+    "Zernio is not responding right now — rules and posts did not load. Refresh the page in a couple of minutes.",
   "err.admin.offerEnd": "The offer must end after it starts.",
   "err.admin.winbackOrder": "The second message must be sent later than the first.",
   "err.admin.winbackPromo":
@@ -575,6 +587,10 @@ export const uz: SectionDict<typeof ru> = {
   "err.admin.crmSaveFirst": "Avval webhook manzilini saqlang.",
   "err.admin.igPostNotFound":
     "Zernio havola boʻyicha postni topmadi — havola va akkauntni tekshiring.",
+  "err.admin.igZernioDenied":
+    "Zernio bu doʻkonning profili yoki Instagram akkauntiga ruxsat bermaydi, shuning uchun qoidalar va postlar koʻrinmaydi. Platforma operatoriga yozing: Zernio profilini qayta bogʻlash kerak.",
+  "err.admin.igZernioUnavailable":
+    "Zernio hozir javob bermayapti — qoidalar va postlar yuklanmadi. Bir necha daqiqadan soʻng sahifani yangilang.",
   "err.admin.offerEnd": "Aksiya boshlanganidan keyin tugashi kerak.",
   "err.admin.winbackOrder": "Ikkinchi xabar birinchisidan keyin yuborilishi kerak.",
   "err.admin.winbackPromo":

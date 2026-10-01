@@ -609,6 +609,11 @@ export async function listPosts(
       query: { accountId, source: "zernio", limit: "50" },
     }),
   ]);
+  // Все четыре запроса отказали — это не «публикаций нет», а Zernio не пускает
+  // (ключ не видит профиль, аккаунт отключён) или лежит: продавцу — причину.
+  const firstFailure = settled.find((r) => r.status === "rejected");
+  if (firstFailure && settled.every((r) => r.status === "rejected"))
+    throw (firstFailure as PromiseRejectedResult).reason;
   const lists = settled.map((r) => (r.status === "fulfilled" ? (r.value.posts ?? []) : []));
   const byPlatformId = new Map<string, PostSummary>();
   for (const raw of lists.flat()) {

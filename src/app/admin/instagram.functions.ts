@@ -12,6 +12,26 @@ const igWrite = async () =>
   (await import("@/app/auth/guards.server")).requireAdminModule("instagram", "manager");
 const accountId = z.string().min(1).max(100);
 
+/**
+ * Отказ Zernio при чтении правил и публикаций — понятной причиной, а не
+ * пустым списком: «правил нет, видео нет» при чужом профиле Zernio путало
+ * продавца (Educational Bot, 01.10).
+ */
+async function zernioReadError(e: unknown): Promise<UserError> {
+  const { zernioFailureOf } = await import("@/channels/zernio/errors");
+  const status = zernioFailureOf(e).status;
+  console.error(`[instagram] Zernio: ${String(e)}`);
+  return status !== null && [401, 403, 404].includes(status)
+    ? new UserError(
+        "err.admin.igZernioDenied",
+        "Zernio не даёт доступа к профилю или аккаунту Instagram этого магазина, поэтому правила и публикации не видны. Напишите оператору платформы: нужно заново привязать профиль Zernio.",
+      )
+    : new UserError(
+        "err.admin.igZernioUnavailable",
+        "Zernio сейчас не отвечает — правила и публикации не загрузились. Обновите страницу через пару минут.",
+      );
+}
+
 const buttonSchema = z.object({
   type: z.enum(["url", "postback"]),
   title: z.string().min(1).max(40),
@@ -25,13 +45,21 @@ export const instagramFn = createServerFn({ method: "GET" }).handler(async () =>
   const { zernioConfigured } = await import("@/channels/zernio/api.server");
   const accounts = a.instagramAccounts(ctx);
   const configured = zernioConfigured();
+  let automationsError: { key: string; message: string } | null = null;
   const [automations, fallbackSends] = await Promise.all([
-    configured && accounts.length ? a.listAutomations(ctx).catch(() => []) : Promise.resolve([]),
+    configured && accounts.length
+      ? a.listAutomations(ctx).catch(async (e) => {
+          const err = await zernioReadError(e);
+          automationsError = { key: err.key, message: err.message };
+          return [];
+        })
+      : Promise.resolve([]),
     a.listFallbackSends(ctx, 30),
   ]);
   return {
     configured,
     accounts,
+    automationsError: automationsError as { key: string; message: string } | null,
     automations: automations.map((x) => ({
       id: a.automationId(x),
       name: x.name,
@@ -66,7 +94,11 @@ export const instagramPostsFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const ctx = await ig();
     const { listPosts } = await import("@/channels/zernio/automations.server");
-    return { posts: await listPosts(ctx, data.accountId) };
+    try {
+      return { posts: await listPosts(ctx, data.accountId) };
+    } catch (e) {
+      throw await zernioReadError(e);
+    }
   });
 
 export const syncInstagramPostFn = createServerFn({ method: "POST" })
