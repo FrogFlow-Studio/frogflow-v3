@@ -33,7 +33,8 @@ import {
 import { ensureTelegramWebhook } from "@/channels/telegram/webhook-setup.server";
 import type { Tenant } from "@/core/tenant/types";
 import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
-import { addressConflict, telegramBotTaken } from "@/core/tenant/directory";
+import { addressConflict, telegramBotTaken, vipBotTaken } from "@/core/tenant/directory";
+import { UserError } from "@/core/i18n/user-error";
 import { adminLoginTaken } from "@/core/auth/roles";
 import { hashPassword } from "@/app/auth/password";
 import { telegramWebhookUrl } from "@/channels/telegram/secret";
@@ -507,6 +508,13 @@ export async function connectVipBot(botId: string, token: string, actor = "opera
   const e = env();
   const me = await telegramApi(token, e.TELEGRAM_API_BASE).call<{ username?: string }>("getMe");
   if (!me.ok) throw new Error(`Telegram отверг токен: ${me.description ?? "getMe failed"}`);
+  const taken = vipBotTaken(await tenantDirectory(true), botId, me.result?.username);
+  if (taken)
+    throw new UserError(
+      "err.vip.botTaken",
+      "Бот @{username} уже подключён к магазину «{shop}». Сначала отключите его там.",
+      { username: me.result?.username ?? "", shop: taken },
+    );
   await patchTenantSettings(botId, {
     vip: {
       token_enc: encryptSecret(token, e.SECRETS_KEY),
@@ -519,6 +527,20 @@ export async function connectVipBot(botId: string, token: string, actor = "opera
   const webhook = await ensureVipWebhook(await requireTenant({ by: "id", value: botId }), true);
   await logEvent(botId, "webhook", { action: "vip_set", ...webhook }, actor);
   return { username: me.result?.username ?? null, webhook };
+}
+
+/**
+ * Снять VIP-бота с магазина: токен из settings.vip стирается, VIP-маршрут и
+ * кроны этого магазина бота больше не трогают. Вебхук в Telegram не удаляем:
+ * бот мог уже уйти другому магазину, и его вебхук сломался бы; события на
+ * старый адрес отвергает сам маршрут (без токена — 404).
+ */
+export async function disconnectVipBot(botId: string, actor = "operator") {
+  const before = await requireTenant({ by: "id", value: botId });
+  const username = before.settings.vip?.username ?? null;
+  await patchTenantSettings(botId, { vip: null });
+  await logEvent(botId, "webhook", { action: "vip_disconnect", username }, actor);
+  return { username };
 }
 
 export async function setServedBy(botId: string, servedBy: "v1" | "v2", actor = "operator") {

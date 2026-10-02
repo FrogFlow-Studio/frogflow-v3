@@ -81,6 +81,12 @@ export const connectVipBotFn = createServerFn({ method: "POST" })
     return connectVipBot(ctx.tenant.id, data.token, "admin");
   });
 
+export const disconnectVipBotFn = createServerFn({ method: "POST" }).handler(async () => {
+  const ctx = await vipWrite();
+  const { disconnectVipBot } = await import("@/app/operator/operator.server");
+  return disconnectVipBot(ctx.tenant.id, "admin");
+});
+
 const tariffInput = z.object({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(1).max(120),

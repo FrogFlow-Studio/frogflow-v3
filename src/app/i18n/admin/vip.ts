@@ -26,6 +26,10 @@ export const ru = {
   "vip.bot.tokenPlaceholder": "Токен VIP-бота",
   "vip.bot.replace": "Заменить",
   "vip.bot.connect": "Подключить",
+  "vip.bot.disconnect": "Отключить VIP-бота",
+  "vip.bot.disconnectConfirm":
+    "Отключить @{username} от этого магазина? Подписчики перестанут получать от него ответы и напоминания здесь; бота можно будет подключить к другому магазину.",
+  "vip.bot.disconnected": "VIP-бот @{username} отключён от этого магазина.",
   // настройки
   "vip.settings.title": "Настройки VIP",
   "vip.settings.cronResult":
@@ -146,6 +150,10 @@ export const kk: SectionDict<typeof ru> = {
   "vip.bot.tokenPlaceholder": "VIP-бот токені",
   "vip.bot.replace": "Ауыстыру",
   "vip.bot.connect": "Қосу",
+  "vip.bot.disconnect": "VIP-ботты ажырату",
+  "vip.bot.disconnectConfirm":
+    "@{username} ботын бұл дүкеннен ажырату керек пе? Жазылушылар одан мұнда жауап пен ескертпе алмайды; ботты басқа дүкенге қосуға болады.",
+  "vip.bot.disconnected": "VIP-бот @{username} бұл дүкеннен ажыратылды.",
   "vip.settings.title": "VIP баптаулары",
   "vip.settings.cronResult":
     "Еске салулар: {warned} + {warned2}, мерзімі бітті: {expired}, шығару мүмкін болмады: {kickFailed}.",
@@ -263,6 +271,10 @@ export const en: SectionDict<typeof ru> = {
   "vip.bot.tokenPlaceholder": "VIP bot token",
   "vip.bot.replace": "Replace",
   "vip.bot.connect": "Connect",
+  "vip.bot.disconnect": "Disconnect the VIP bot",
+  "vip.bot.disconnectConfirm":
+    "Disconnect @{username} from this shop? Subscribers will stop getting replies and reminders from it here; the bot can then be connected to another shop.",
+  "vip.bot.disconnected": "VIP bot @{username} has been disconnected from this shop.",
   "vip.settings.title": "VIP settings",
   "vip.settings.cronResult":
     "Reminders: {warned} + {warned2}, expired: {expired}, failed to remove: {kickFailed}.",
@@ -381,6 +393,10 @@ export const uz: SectionDict<typeof ru> = {
   "vip.bot.tokenPlaceholder": "VIP-bot tokeni",
   "vip.bot.replace": "Almashtirish",
   "vip.bot.connect": "Ulash",
+  "vip.bot.disconnect": "VIP-botni uzish",
+  "vip.bot.disconnectConfirm":
+    "@{username} botini bu doʻkondan uzasizmi? Obunachilar bu yerda undan javob va eslatma olmaydi; botni boshqa doʻkonga ulash mumkin boʻladi.",
+  "vip.bot.disconnected": "VIP-bot @{username} bu doʻkondan uzildi.",
   "vip.settings.title": "VIP sozlamalari",
   "vip.settings.cronResult":
     "Eslatmalar: {warned} + {warned2}, muddati tugadi: {expired}, chiqarib bo‘lmadi: {kickFailed}.",

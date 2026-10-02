@@ -4,6 +4,8 @@ import type { SectionDict } from "../section";
 export const ru = {
   // ошибки (UserError)
   "err.vip.connectBotFirst": "Сначала подключите VIP-бота — токен в разделе «VIP-бот».",
+  "err.vip.botTaken":
+    "Бот @{username} уже подключён к магазину «{shop}». Сначала отключите его там.",
   "err.vip.tariffHasSubscriptions": "По тарифу есть подписки — выключите его, а не удаляйте.",
   "err.vip.tariffNotFound": "Тариф не найден",
   "err.vip.subscriptionNotFound": "Подписка не найдена",
@@ -48,6 +50,8 @@ export const ru = {
 
 export const kk: SectionDict<typeof ru> = {
   "err.vip.connectBotFirst": "Алдымен VIP-ботты қосыңыз — токен «VIP-бот» бөлімінде.",
+  "err.vip.botTaken":
+    "@{username} боты «{shop}» дүкеніне қосылған. Алдымен оны сол жерде ажыратыңыз.",
   "err.vip.tariffHasSubscriptions":
     "Бұл тариф бойынша жазылымдар бар — оны жоймай, өшіріп қойыңыз.",
   "err.vip.tariffNotFound": "Тариф табылмады",
@@ -92,6 +96,8 @@ export const kk: SectionDict<typeof ru> = {
 
 export const en: SectionDict<typeof ru> = {
   "err.vip.connectBotFirst": "Connect the VIP bot first — add its token in the “VIP bot” section.",
+  "err.vip.botTaken":
+    "The bot @{username} is already connected to the shop “{shop}”. Disconnect it there first.",
   "err.vip.tariffHasSubscriptions":
     "This tariff has subscriptions — turn it off instead of deleting it.",
   "err.vip.tariffNotFound": "Tariff not found",
@@ -136,6 +142,7 @@ export const en: SectionDict<typeof ru> = {
 
 export const uz: SectionDict<typeof ru> = {
   "err.vip.connectBotFirst": "Avval VIP-botni ulang — token «VIP-bot» boʻlimida kiritiladi.",
+  "err.vip.botTaken": "@{username} boti «{shop}» doʻkoniga ulangan. Avval uni oʻsha yerda uzing.",
   "err.vip.tariffHasSubscriptions":
     "Bu tarif boʻyicha obunalar bor — uni oʻchirib tashlamang, faolsizlantiring.",
   "err.vip.tariffNotFound": "Tarif topilmadi",

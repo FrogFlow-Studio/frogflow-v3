@@ -3,6 +3,7 @@ import { availableModules } from "@/core/modules/registry";
 import {
   addressConflict,
   telegramBotTaken,
+  vipBotTaken,
   servedByV2,
   findTenant,
   modulesFromJson,
@@ -112,6 +113,18 @@ describe("tenant directory", () => {
     expect(telegramBotTaken([a], a.id, "ShopBot")).toBeNull();
     expect(telegramBotTaken([a], "other-id", "another_bot")).toBeNull();
     expect(telegramBotTaken([a], "other-id", undefined)).toBeNull();
+  });
+
+  it("vipBotTaken: VIP-бот или основной бот другого магазина занят; после отключения — свободен", () => {
+    const a = tenantFromRow(
+      row({ settings: { vip: { username: "kkp_vip_bot" }, telegram: { username: "ShopBot" } } }),
+    );
+    expect(vipBotTaken([a], "other-id", "KKP_vip_bot")).toBe(a.name);
+    expect(vipBotTaken([a], "other-id", "shopbot")).toBe(a.name);
+    expect(vipBotTaken([a], a.id, "kkp_vip_bot")).toBeNull();
+    const off = tenantFromRow(row({ settings: { vip: null, telegram: { username: "ShopBot" } } }));
+    expect(off.settings.vip?.token_enc).toBeUndefined();
+    expect(vipBotTaken([off], "other-id", "kkp_vip_bot")).toBeNull();
   });
 
   it("addressConflict: занятый slug или домен другого клиента, свой — не конфликт", () => {

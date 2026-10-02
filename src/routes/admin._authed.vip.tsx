@@ -5,6 +5,7 @@ import {
   addVipManualFn,
   connectVipBotFn,
   deleteVipTariffFn,
+  disconnectVipBotFn,
   runVipCronFn,
   saveVipTariffFn,
   vipProofUrlFn,
@@ -62,6 +63,12 @@ function BotCard({ state, t }: { state: State; t: AdminT }) {
     );
     await router.invalidate();
   });
+  const disconnect = useAction(async () => {
+    if (!confirm(t("vip.bot.disconnectConfirm", { username: state.bot.username ?? "" }))) return;
+    const r = await disconnectVipBotFn();
+    setNote(t("vip.bot.disconnected", { username: r.username ?? "" }));
+    await router.invalidate();
+  });
   const ok = state.bot.connected && state.bot.webhookOk;
   return (
     <Card
@@ -107,8 +114,17 @@ function BotCard({ state, t }: { state: State; t: AdminT }) {
           {state.bot.connected ? t("vip.bot.replace") : t("vip.bot.connect")}
         </button>
       </form>
+      {state.bot.connected && (
+        <button
+          className="btn-secondary mt-3 text-xs"
+          disabled={disconnect.busy}
+          onClick={() => void disconnect.run().catch(() => {})}
+        >
+          {t("vip.bot.disconnect")}
+        </button>
+      )}
       {note && <p className="mt-2 text-sm text-muted">{note}</p>}
-      <ErrorBox error={connect.error} />
+      <ErrorBox error={connect.error ?? disconnect.error} />
     </Card>
   );
 }

@@ -329,6 +329,27 @@ export function telegramBotTaken(
   return other ? other.name : null;
 }
 
+/**
+ * VIP-бот занят другим магазином — его VIP-ботом или основным ботом. Один
+ * токен у двух магазинов: крон вебхуков каждый раз переставлял бы вебхук на
+ * себя, и подписчики попадали бы то в один магазин, то в другой.
+ */
+export function vipBotTaken(
+  directory: readonly Tenant[],
+  botId: string,
+  username: string | null | undefined,
+): string | null {
+  const u = username?.trim().toLowerCase();
+  if (!u) return null;
+  const other = directory.find(
+    (t) =>
+      t.id !== botId &&
+      (t.settings.vip?.username?.toLowerCase() === u ||
+        t.settings.telegram?.username?.toLowerCase() === u),
+  );
+  return other ? other.name : null;
+}
+
 const only = (list: Tenant[]): Tenant | null => (list.length === 1 ? list[0]! : null);
 
 /**
