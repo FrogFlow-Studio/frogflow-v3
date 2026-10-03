@@ -202,6 +202,17 @@ export const extendStudentAccessFn = createServerFn({ method: "POST" })
     return extendStudentAccess(ctx, data.orderItemId, data.day, data.reason);
   });
 
+/** «Создать следующий поток»: копия последнего потока со сдвигом старта (менеджер и выше). */
+export const createNextCohortFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ productId: z.string().uuid(), startDay: z.string().regex(LOCAL_DAY_RE) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { createNextCohort } = await import("@/core/courses/course.server");
+    return createNextCohort(ctx, data.productId, data.startDay);
+  });
+
 /** Перевести ученика в другой поток (менеджер и выше). */
 export const moveStudentCohortFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>

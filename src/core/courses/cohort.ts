@@ -1,5 +1,5 @@
 import { lessonsAccess, type LessonAccess, type TaskGate } from "./access";
-import type { Course } from "./course";
+import { COHORT_TITLE_MAX, COHORTS_MAX, LOCAL_DAY_RE, type Course } from "./course";
 
 export {
   ACCESS_DAYS_MAX,
@@ -174,5 +174,68 @@ export function courseTimeline(x: TimelineInput, tz: string, now = new Date()): 
     expired,
     beforeStart: Date.parse(start) > now.getTime(),
     access,
+  };
+}
+
+const DAY_MS = 86_400_000;
+/** Календарный день «YYYY-MM-DD» как число суток: арифметика без часовых поясов и перехода на летнее время. */
+const dayNumber = (day: string) => Math.floor(Date.parse(`${day}T00:00:00Z`) / DAY_MS);
+
+/** День «YYYY-MM-DD» со сдвигом на `days` суток (через конец месяца и года). */
+export function shiftDay(day: string, days: number): string {
+  return new Date((dayNumber(day) + days) * DAY_MS).toISOString().slice(0, 10);
+}
+
+/** Следующее название: «Поток 3» → «Поток 4», «Октябрь» → «Октябрь 2»; занятое пропускается. */
+export function nextCohortTitle(title: string, taken: readonly string[]): string {
+  const m = /^(.*?)(\d+)\s*$/.exec(title.trim());
+  const base = m ? m[1]!.trimEnd() : title.trim();
+  let n = m ? Number(m[2]) + 1 : 2;
+  const used = new Set(taken.map((t) => t.trim()));
+  const make = (k: number) => (base ? `${base} ${k}` : String(k));
+  while (used.has(make(n))) n++;
+  return make(n);
+}
+
+export type NextCohort =
+  | { ok: true; cohort: Cohort }
+  | { ok: false; reason: "noCohorts" | "badDay" | "notLater" | "tooMany" };
+
+/**
+ * Копия последнего потока со сдвигом: старт — на выбранный день (время
+ * суток то же), конец набора — на столько же суток. Всё в местном времени
+ * магазина строками, поэтому сдвиг не зависит от часового пояса. Название —
+ * с номером; чат потока не копируется (у нового потока своя группа).
+ * Ученики и прохождения не трогаются: поток — только календарь.
+ */
+export function nextCohortAfter(
+  cohorts: readonly Cohort[],
+  startDay: string,
+  tz: string,
+  id: string,
+): NextCohort {
+  if (cohorts.length === 0) return { ok: false, reason: "noCohorts" };
+  // Туда-обратно: 31 февраля парсер молча превращает в март.
+  if (
+    !LOCAL_DAY_RE.test(startDay) ||
+    !Number.isFinite(dayNumber(startDay)) ||
+    shiftDay(startDay, 0) !== startDay
+  )
+    return { ok: false, reason: "badDay" };
+  if (cohorts.length >= COHORTS_MAX) return { ok: false, reason: "tooMany" };
+  const last = [...cohorts].sort(byStart(tz)).at(-1)!;
+  const delta = dayNumber(startDay) - dayNumber(last.start.slice(0, 10));
+  if (delta <= 0) return { ok: false, reason: "notLater" };
+  return {
+    ok: true,
+    cohort: {
+      id,
+      title: nextCohortTitle(
+        last.title,
+        cohorts.map((c) => c.title),
+      ).slice(0, COHORT_TITLE_MAX),
+      start: `${startDay}${last.start.slice(10)}`,
+      enrollUntil: last.enrollUntil ? shiftDay(last.enrollUntil, delta) : null,
+    },
   };
 }

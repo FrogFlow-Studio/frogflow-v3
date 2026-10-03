@@ -7,6 +7,7 @@ import {
   moveStudentCohortFn,
   courseFn,
   courseVariantsFn,
+  createNextCohortFn,
   courseStudentsFn,
   revokeStudentChannelFn,
   saveCourseFn,
@@ -192,6 +193,7 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
       />
 
       <CohortsField
+        productId={productId}
         cohorts={course.cohorts ?? []}
         onChange={(cohorts) => change({ ...course, cohorts })}
         t={t}
@@ -379,16 +381,25 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
 
 /** Потоки: название, старт, последний день набора. */
 function CohortsField({
+  productId,
   cohorts,
   onChange,
   t,
 }: {
+  productId: string;
   cohorts: Cohort[];
   onChange: (c: Cohort[]) => void;
   t: AdminT;
 }) {
   const edit = (i: number, patch: Partial<Cohort>) =>
     onChange(cohorts.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+  const [nextDay, setNextDay] = useState("");
+  // Копию создаёт сервер (уже записанного курса); здесь поток только добавляется в форму.
+  const createNext = useAction(async () => {
+    const created = await createNextCohortFn({ data: { productId, startDay: nextDay } });
+    onChange([...cohorts, created]);
+    setNextDay("");
+  });
   return (
     <div className="mb-3 space-y-2 text-sm">
       <p className="text-xs text-muted">{t("product.courseCohorts")}</p>
@@ -462,6 +473,31 @@ function CohortsField({
         >
           {t("product.cohortAdd")}
         </button>
+      )}
+      {cohorts.length > 0 && cohorts.length < COHORTS_MAX && (
+        <div className="flex flex-wrap items-end gap-2 rounded border border-line p-2">
+          <label className="text-xs">
+            {t("school.nextCohortStart")}
+            <input
+              id="cohort-next-day"
+              type="date"
+              className="input mt-1 block w-auto"
+              value={nextDay}
+              onChange={(e) => setNextDay(e.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            id="cohort-next-create"
+            className="btn-secondary text-xs"
+            disabled={!nextDay || createNext.busy}
+            onClick={() => void createNext.run().catch(() => {})}
+          >
+            {t("school.nextCohortCreate")}
+          </button>
+          <p className="w-full text-xs text-muted">{t("school.nextCohortHint")}</p>
+          <ErrorBox error={createNext.error} />
+        </div>
       )}
       <p className="text-xs text-muted">{t("product.courseCohortsHint")}</p>
       {cohorts.some((c) => c.chat) && (

@@ -1,6 +1,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
-import { setSetting } from "@/core/settings/settings";
+import { setSetting, updateSettingStamped } from "@/core/settings/settings";
+import { COHORTS_MAX, nextCohortAfter, type Cohort, type NextCohort } from "./cohort";
 import { serverFailure } from "@/lib/server-failure";
 import { COURSE_MARKER_URL } from "./marker";
 import {
@@ -143,6 +144,59 @@ export async function saveCourse(
   };
   await setSetting(ctx, courseKey(productId), JSON.stringify(clean));
   await syncCourseMarker(ctx, productId, product.file_url, clean.lessons.length > 0);
+}
+
+/**
+ * «Создать следующий поток»: копия последнего потока со сдвигом на выбранный
+ * день (core/courses/cohort). Читает и пишет запись курса одной условной
+ * записью по метке `updated_at`, а не по всему jsonb (он может быть длинным):
+ * параллельное сохранение курса не потеряется, а повтор не создаст два потока.
+ * Остальные поля записи (уроки, тарифы, неизвестные) не трогаются.
+ */
+export async function createNextCohort(
+  ctx: TenantContext,
+  productId: string,
+  startDay: string,
+): Promise<Cohort> {
+  let created: Cohort | null = null;
+  let refused: Extract<NextCohort, { ok: false }>["reason"] | null = null;
+  const r = await updateSettingStamped(ctx, courseKey(productId), (raw) => {
+    const course = parseCourse(raw);
+    const next = nextCohortAfter(course.cohorts ?? [], startDay, ctx.timezone, crypto.randomUUID());
+    if (!next.ok) {
+      refused = next.reason;
+      return null;
+    }
+    created = next.cohort;
+    const obj = (JSON.parse(raw ?? "{}") as Record<string, unknown>) ?? {};
+    const own = Array.isArray(obj.cohorts) ? obj.cohorts : [];
+    return JSON.stringify({ ...obj, cohorts: [...own, next.cohort] });
+  });
+  if (refused) throw cohortRefusal(refused);
+  if (r !== "written" || !created)
+    throw serverFailure("Следующий поток не записан: курс менялся параллельно");
+  return created;
+}
+
+function cohortRefusal(reason: "noCohorts" | "badDay" | "notLater" | "tooMany"): UserError {
+  switch (reason) {
+    case "noCohorts":
+      return new UserError(
+        "err.course.nextNoCohorts",
+        "Сначала создайте и сохраните хотя бы один поток: следующий — его копия.",
+      );
+    case "badDay":
+      return new UserError("err.course.nextBadDay", "Выберите дату старта следующего потока.");
+    case "notLater":
+      return new UserError(
+        "err.course.nextNotLater",
+        "Старт следующего потока должен быть позже старта последнего.",
+      );
+    case "tooMany":
+      return new UserError("err.course.nextTooMany", "В курсе не больше {max} потоков.", {
+        max: COHORTS_MAX,
+      });
+  }
 }
 
 /** Тарифы только для вариантов этого товара: чужой id из запроса отбрасывается. */
