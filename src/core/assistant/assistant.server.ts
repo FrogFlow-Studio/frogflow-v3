@@ -1,3 +1,4 @@
+import { PREVIEW_AI_OFF, previewReadonly } from "@/lib/preview";
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/config/env";
 import { limitsFor, parseDaily, RESERVE_USD, settleRaw, today } from "@/core/consultant/budget";
@@ -39,6 +40,7 @@ export type AssistRequest = {
  * проскочит мимо пределов. После ответа бронь меняется на настоящую цену.
  */
 export async function assistText(ctx: TenantContext, req: AssistRequest): Promise<string> {
+  if (previewReadonly()) throw new UserError("err.assist.preview", PREVIEW_AI_OFF);
   const apiKey = env().ANTHROPIC_API_KEY?.trim();
   if (!apiKey)
     throw new UserError("err.assist.noKey", "ИИ-помощник недоступен: на платформе не задан ключ.");

@@ -1,3 +1,4 @@
+import { previewReadonly } from "@/lib/preview";
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -128,6 +129,7 @@ export async function smartSearchProductIds(
   ctx: TenantContext,
   query: string,
 ): Promise<string[] | null> {
+  if (previewReadonly()) return null;
   const apiKey = env().ANTHROPIC_API_KEY?.trim();
   if (!apiKey) return null;
   const q = query.trim().slice(0, MAX_QUERY_LEN);

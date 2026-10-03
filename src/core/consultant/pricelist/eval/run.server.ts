@@ -1,3 +1,4 @@
+import { PREVIEW_AI_OFF, previewReadonly } from "@/lib/preview";
 import Anthropic from "@anthropic-ai/sdk";
 import { isResetIntent } from "../../prompt";
 import {
@@ -46,6 +47,7 @@ export function evalModelCall(
   apiKey: string,
   model: string,
 ): { call: ModelCall; spent: () => number } {
+  if (previewReadonly()) throw new Error(PREVIEW_AI_OFF);
   const client = new Anthropic({ apiKey, maxRetries: 2, timeout: 60_000 });
   const p = PRICE[/sonnet/.test(model) ? "sonnet" : "haiku"]!;
   let usd = 0;

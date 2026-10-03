@@ -50,6 +50,7 @@ export const ru = {
     "Не удалось выполнить действие: сбой на сервере. Попробуйте ещё раз — мы уже получили отчёт.",
   "err.server.badInput": "Данные формы не прошли проверку. Проверьте поля и попробуйте ещё раз.",
   "err.assist.noKey": "ИИ-помощник недоступен: на платформе не задан ключ.",
+  "err.assist.preview": "Предпросмотр: вызовы ИИ выключены, чтобы не тратить деньги платформы.",
   "err.assist.noName": "Сначала напишите название товара.",
   "err.assist.limit": "На сегодня черновики закончились ({limit} в день). Попробуйте завтра.",
   "err.assist.budget": "Дневной предел расходов ИИ исчерпан. Попробуйте завтра.",
@@ -212,6 +213,8 @@ export const kk: SectionDict<typeof ru> = {
     "Әрекетті орындау мүмкін болмады: серверде ақау. Қайта көріңіз — есеп бізге жетті.",
   "err.server.badInput": "Форма деректері тексерістен өтпеді. Өрістерді тексеріп, қайта көріңіз.",
   "err.assist.noKey": "ЖИ-көмекші қолжетімсіз: платформада кілт берілмеген.",
+  "err.assist.preview":
+    "Алдын ала қарау: платформаның ақшасын жұмсамау үшін ЖИ шақырулары өшірулі.",
   "err.assist.noName": "Алдымен тауардың атауын жазыңыз.",
   "err.assist.limit": "Бүгінгі жобалар таусылды (күніне {limit}). Ертең қайталаңыз.",
   "err.assist.budget": "ЖИ шығынының күндік шегі таусылды. Ертең қайталаңыз.",
@@ -372,6 +375,8 @@ export const en: SectionDict<typeof ru> = {
     "The action failed because of a server error. Please try again — we have already received a report.",
   "err.server.badInput": "The form data did not pass validation. Check the fields and try again.",
   "err.assist.noKey": "The AI assistant is unavailable: the platform has no API key.",
+  "err.assist.preview":
+    "Preview mode: AI calls are turned off so the platform does not spend money.",
   "err.assist.noName": "Enter the product name first.",
   "err.assist.limit": "No drafts left for today ({limit} per day). Try again tomorrow.",
   "err.assist.budget": "The daily AI spending limit is used up. Try again tomorrow.",
@@ -533,6 +538,8 @@ export const uz: SectionDict<typeof ru> = {
   "err.server.badInput":
     "Forma maʼlumotlari tekshiruvdan oʻtmadi. Maydonlarni tekshirib, qayta urinib koʻring.",
   "err.assist.noKey": "AI-yordamchi mavjud emas: platformada kalit berilmagan.",
+  "err.assist.preview":
+    "Oldindan ko‘rish: platforma pulini sarflamaslik uchun AI chaqiruvlari o‘chirilgan.",
   "err.assist.noName": "Avval mahsulot nomini yozing.",
   "err.assist.limit": "Bugungi qoralamalar tugadi (kuniga {limit}). Ertaga urinib koʻring.",
   "err.assist.budget": "AI xarajatlarining kunlik chegarasi tugadi. Ertaga urinib koʻring.",

@@ -1,3 +1,4 @@
+import { PREVIEW_AI_OFF, previewReadonly } from "@/lib/preview";
 import { env } from "@/config/env";
 import { proofHashes } from "@/core/orders/proof-hash";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -176,6 +177,7 @@ export async function readReceiptText(
     const embedded = await embeddedPdfText(bytes);
     if (looksLikeReceipt(embedded) && extractMoneyAmounts(embedded).length >= 1) return embedded;
   }
+  if (previewReadonly()) throw new Error(PREVIEW_AI_OFF);
   const apiKey = env().GOOGLE_VISION_API_KEY?.trim();
   if (!apiKey) throw new Error("GOOGLE_VISION_API_KEY не задан");
   const read = () => (pdf ? visionPdf(bytes, apiKey) : visionImage(bytes, apiKey));

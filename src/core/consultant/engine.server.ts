@@ -1,3 +1,4 @@
+import { previewReadonly } from "@/lib/preview";
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -398,6 +399,8 @@ export async function runConsultant(
     images?: import("./pricelist/images").V2Image[];
   } = { platform: "telegram" },
 ): Promise<ConsultantResult | null> {
+  // Предпросмотр: до брони ИИ-баланса и до клиента — как «ИИ недоступен».
+  if (previewReadonly()) return null;
   const apiKey = env().ANTHROPIC_API_KEY?.trim();
   if (!apiKey) return null;
   const { pricelistMode } = await import("./pricelist/mode");

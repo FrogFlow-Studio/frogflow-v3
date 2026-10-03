@@ -2,8 +2,12 @@ import { env } from "@/config/env";
 
 /**
  * Режим предпросмотра (PREVIEW_READONLY=1): сборку можно открыть на общей
- * базе, не трогая клиентов. Кроны и вебхуки отвечают 200 без работы, а
- * отправка в Telegram, Zernio и почту выключена. Прочее окружение не меняется.
+ * базе, не трогая клиентов. Кроны и вебхуки отвечают 200 без работы, отправка
+ * в Telegram, Zernio, почту и push выключена, вызовы ИИ (Anthropic), Google
+ * Vision и выставление счетов ApiPay тоже: они стоят денег. Запись в базу из
+ * панелей остаётся — продавец и оператор в предпросмотре работают как обычно.
+ * Каждый внешний клиент сам спрашивает `previewReadonly()`; список клиентов
+ * держит тест preview-clients.test.ts.
  */
 export function previewReadonly(): boolean {
   try {
@@ -21,6 +25,9 @@ export function previewWebhookResponse(): Response | null {
     ? Response.json({ ok: true, preview: true, skipped: "PREVIEW_READONLY" })
     : null;
 }
+
+/** Ошибка вызова ИИ в предпросмотре: каждый вызов модели — деньги платформы. */
+export const PREVIEW_AI_OFF = "Предпросмотр (PREVIEW_READONLY): вызовы ИИ выключены";
 
 /** Причина отказа отправки в предпросмотре — видна в журнале и в ответе вызывающему. */
 export const PREVIEW_SEND_OFF = "Предпросмотр (PREVIEW_READONLY): отправка выключена";

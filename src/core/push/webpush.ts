@@ -1,3 +1,4 @@
+import { previewReadonly } from "@/lib/preview";
 import {
   createCipheriv,
   createECDH,
@@ -110,6 +111,8 @@ export async function sendWebPush(
   fetchImpl: typeof fetch = fetch,
 ): Promise<PushResult> {
   if (!validPushEndpoint(sub.endpoint)) return "gone";
+  // Предпросмотр: не отправляем и не снимаем подписку.
+  if (previewReadonly()) return "failed";
   try {
     const res = await fetchImpl(sub.endpoint, {
       method: "POST",

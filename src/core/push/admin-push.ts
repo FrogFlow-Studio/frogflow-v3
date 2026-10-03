@@ -1,3 +1,4 @@
+import { previewReadonly } from "@/lib/preview";
 import { createHash } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { env } from "@/config/env";
@@ -90,7 +91,7 @@ export async function pushAdmins(
   vapid: Vapid | null = vapidFromEnv(),
   send: typeof sendWebPush = sendWebPush,
 ): Promise<number> {
-  if (!vapid) return 0;
+  if (!vapid || previewReadonly()) return 0;
   const subs = await listStored(ctx);
   let sent = 0;
   for (const s of subs) {

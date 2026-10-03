@@ -1,3 +1,4 @@
+import { PREVIEW_SEND_OFF, previewReadonly } from "@/lib/preview";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { serverFailure } from "@/lib/server-failure";
 import type { IssueRequest, SubscriptionPayProvider } from "./provider";
@@ -87,6 +88,7 @@ export function apipayProvider(
     key: "apipay",
     async unavailable(req) {
       if (!cfg) return "ApiPay не настроен.";
+      if (previewReadonly()) return PREVIEW_SEND_OFF;
       if (req.currency !== "KZT") return "Kaspi принимает только тенге.";
       if (!(req.amount > 0)) return "Сумма счёта должна быть больше нуля.";
       if (!cfg.live && req.botId !== cfg.sandboxBotId)
@@ -95,6 +97,7 @@ export function apipayProvider(
     },
     async issue(req) {
       if (!cfg) throw new Error("ApiPay не настроен.");
+      if (previewReadonly()) throw new Error(PREVIEW_SEND_OFF);
       let res: Response;
       try {
         res = await fetchImpl(`${cfg.baseUrl}/invoices/qr`, {
