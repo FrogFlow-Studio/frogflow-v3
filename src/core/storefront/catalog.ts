@@ -17,7 +17,7 @@ import { resolveListPrice, resolvePrice } from "@/core/pricing/pricing";
 import { offerForProduct } from "@/core/offers/offers";
 import { productSellable } from "@/core/catalog/materials";
 import { getSettings } from "@/core/settings/settings";
-import { eachPage } from "@/core/db/page";
+import { eachPage, pageAll } from "@/core/db/page";
 import { inChunks } from "@/lib/in-chunks";
 import type { Locale } from "@/core/i18n/locale";
 import { languageChips } from "./lang-filter";
@@ -328,13 +328,18 @@ export async function storeCatalog(
   const sort = opts.sort ?? "catalog";
   const pattern = searchPattern(opts.q ?? "");
   const search = pattern ? await productSearchFilter(ctx, pattern) : null;
-  const q = catalogQuery(ctx, sort, search).limit(opts.categoryId ? 1000 : 200);
-  const [{ data, error }, cats] = await Promise.all([q, listAllCategories(ctx)]);
-  if (error) throw new Error(error.message);
+  // Весь активный каталог постранично: порядок кончается id, страницы не пересекаются.
+  const [data, cats] = await Promise.all([
+    pageAll<Product>(
+      (from, to) => catalogQuery(ctx, sort, search).range(from, to) as never,
+      "Витрина: каталог",
+    ),
+    listAllCategories(ctx),
+  ]);
   const known = new Set(cats.map((c) => c.id));
   const visible = visibleCategoryIds(cats);
   const wanted = opts.categoryId ? categorySubtree(cats, opts.categoryId, visible) : null;
-  const rows = ((data ?? []) as Product[]).filter((p) => {
+  const rows = data.filter((p) => {
     const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
     if (wanted && !ids.some((id) => wanted.has(id))) return false;
     return productOnStorefront(ids, known, visible);

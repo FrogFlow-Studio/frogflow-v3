@@ -23,7 +23,7 @@ function CronsPage() {
         .filter((j) => (j.last?.budgetStreak ?? 0) >= BUDGET_STREAK_WARN)
         .map((j) => (
           <div key={j.job} className="card mb-3 border-danger text-sm text-danger">
-            {j.job}: {j.last?.budgetStreak} запуска подряд упёрлись в бюджет времени, клиентов не
+            {j.job}: запусков подряд с упором в бюджет времени — {j.last?.budgetStreak}, клиентов не
             хватает одного запуска. Следующие запуски продолжают с отложенных; если так остаётся,
             расписание крона надо учащать.
           </div>

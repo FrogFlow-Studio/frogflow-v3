@@ -57,6 +57,7 @@ function productsDb(rows: Row[], categories: Row[] = []) {
         select: () => q,
         order: () => q,
         limit: () => q,
+        range: () => q,
         eq(col: string, v: unknown) {
           filters.push((r) => r[col] === v);
           return q;

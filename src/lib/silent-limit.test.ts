@@ -13,16 +13,12 @@ export function countLimits(source: string): number {
   return [...source.matchAll(/\.limit\((?!1\))/g)].length;
 }
 
-const NEXT = "следующая партия: папка трека А/В, правится там";
 const SHOWN = "последние N на экране: список не обязан быть полным";
 const BATCH = "пачка за запуск: остальное в следующий; обработанные из выборки уходят";
 
 const ALLOWED: Record<string, string[]> = {
   "src/app/admin/audit.server.ts": [`${SHOWN} (журнал действий команды)`],
-  "src/app/admin/admin.functions.ts": [
-    `${NEXT} (разделы товаров в настройках, 500)`,
-    `${NEXT} (подбор товара в счёт, INVOICE_PAGE)`,
-  ],
+  "src/app/admin/admin.functions.ts": [`${SHOWN} (подбор товара в счёт: поиск, INVOICE_PAGE)`],
   "src/app/operator/ai-topup.server.ts": [`${SHOWN} (открытые счета пополнения ИИ — их единицы)`],
   "src/app/operator/plans.server.ts": [`${SHOWN} (открытые счета клиента)`],
   "src/app/operator/billing.server.ts": [
@@ -46,9 +42,11 @@ const ALLOWED: Record<string, string[]> = {
   ],
   "src/channels/zernio/automations.server.ts": [`${SHOWN} (отправки по правилам)`],
   "src/channels/zernio/posts.server.ts": [`${SHOWN} (последние публикации)`],
-  "src/core/catalog/picker.ts": [NEXT],
-  "src/core/catalog/catalog.ts": [NEXT, NEXT],
-  "src/core/catalog/subscription.ts": [NEXT, NEXT, NEXT],
+  "src/core/catalog/picker.ts": [`${SHOWN} (подбор товара: поиск, limit + число исключённых)`],
+  "src/core/catalog/catalog.ts": [
+    "варианты по поиску: их id уходят в адрес `or(id.in.(…))`, больше 200 — 431",
+    `${SHOWN} (результаты поиска, limit от вызывающего)`,
+  ],
   "src/core/upsell/upsell.ts": ["подборка: берём самые популярные, остальные не нужны"],
   "src/core/ai/balance.ts": [`${SHOWN} (журнал ИИ-баланса)`],
   "src/core/similar/similar.ts": [`${BATCH} (курсор по id: следующий запуск продолжает)`],
@@ -80,16 +78,21 @@ const ALLOWED: Record<string, string[]> = {
   "src/core/search/smart.server.ts": [
     "потолок кандидатов для модели: больше не помещается в запрос",
   ],
-  "src/core/chat/chat.ts": [`${NEXT} (чат с менеджером)`, `${NEXT} (чат с менеджером)`],
+  "src/core/chat/chat.ts": [
+    `${SHOWN} (диалоги чата, ≤ 200)`,
+    `${SHOWN} (последние сообщения диалога, ≤ 500)`,
+  ],
   "src/core/waitlist/waitlist.ts": ["постраничный обход: страница PAGE, курсор по user_key"],
   "src/core/billing/invoice-check.server.ts": [
     "проверка существования: нужен лишь факт, что подтверждение есть",
   ],
   "src/core/billing/invoices.ts": [`${SHOWN} (открытые счета владельца)`],
-  "src/core/storefront/catalog.ts": [NEXT],
-  "src/core/storefront/web-expire.ts": [NEXT],
-  "src/core/storefront/share.server.ts": [NEXT],
-  "src/core/storefront/sitemap.ts": [NEXT],
+  "src/core/storefront/share.server.ts": [
+    "обложка: хватает первых COVER_SCAN товаров порядка продавца",
+  ],
+  "src/core/storefront/sitemap.ts": [
+    "потолок карты сайта: SITEMAP_MAX_PRODUCTS (протокол — до 50 000 адресов)",
+  ],
   "src/core/push/admin-push.ts": ["подписок не больше MAX_DEVICES (20), лимит 100 — с запасом"],
   "src/core/outbox/outbox.ts": [
     `${BATCH} (очередь исходящих)`,

@@ -1,5 +1,5 @@
+import { pageAll } from "@/core/db/page";
 import { inChunks } from "@/lib/in-chunks";
-import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { rejectOrder } from "@/core/orders/orders";
 import { invoiceLinkOrderIds } from "@/core/orders/invoice-link";
@@ -19,15 +19,19 @@ export async function expireWebOrders(
   now = new Date(),
 ): Promise<{ cancelled: number }> {
   const cutoff = new Date(now.getTime() - WEB_ORDER_TTL_MS).toISOString();
-  const { data, error: dataError } = await ctx.db
-    .from("orders")
-    .select("id")
-    .eq("platform", "web")
-    .eq("status", "awaiting_payment")
-    .is("payment_proof_path", null)
-    .lt("created_at", cutoff)
-    .limit(200);
-  if (dataError) throw serverFailure(`Витрина: просрочка: ${dataError.message}`);
+  const data = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("orders")
+        .select("id")
+        .eq("platform", "web")
+        .eq("status", "awaiting_payment")
+        .is("payment_proof_path", null)
+        .lt("created_at", cutoff)
+        .order("id")
+        .range(from, to),
+    "Витрина: просрочка",
+  );
   // Счета ссылкой из Instagram/WhatsApp: те же сутки на оплату. Метки
   // старше трёх суток не смотрим — такие заказы уже отменены или оплачены.
   const linkIds = await invoiceLinkOrderIds(ctx, new Date(now.getTime() - 3 * WEB_ORDER_TTL_MS));
@@ -44,7 +48,7 @@ export async function expireWebOrders(
     "Витрина: просрочка по ссылке",
   );
   let cancelled = 0;
-  for (const o of [...(data ?? []), ...links]) {
+  for (const o of [...data, ...links]) {
     // Та же отмена, что у продавца (возврат остатка и баллов), но только из
     // «ждёт оплаты»: чек или оплата картой в ту же минуту выигрывают.
     if (

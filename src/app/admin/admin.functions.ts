@@ -1786,6 +1786,7 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
     await import("@/core/whatsapp/templates");
   const wa = ctx.tenant.modules.wa_broadcasts;
   const { clicksFor } = await import("@/core/broadcasts/clicks");
+  const { pageAll } = await import("@/core/db/page");
   // Товары для кнопок и сегмента выбираются поиском (productPickerFn), не списком.
   const [broadcasts, countries, settings, templates, categories] = await Promise.all([
     listBroadcasts(ctx),
@@ -1797,13 +1798,17 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
       "whatsapp_bot_excluded_phones",
     ]),
     wa ? listTemplates(ctx) : Promise.resolve([]),
-    ctx.db
-      .from("categories")
-      .select("id, name")
-      .order("sort_order")
-      .order("name")
-      .limit(500)
-      .then((r) => r.data ?? []),
+    pageAll(
+      (from, to) =>
+        ctx.db
+          .from("categories")
+          .select("id, name")
+          .order("sort_order")
+          .order("name")
+          .order("id")
+          .range(from, to),
+      "Категории для рассылки",
+    ),
   ]);
   const clicks = await clicksFor(
     ctx,
