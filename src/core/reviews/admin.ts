@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { imagePath } from "@/core/catalog/image-url";
 import { isReviewPhotoPath, type ReviewStatus } from "./photos";
@@ -70,11 +71,12 @@ export async function getReviewForAdmin(
   ctx: TenantContext,
   id: string,
 ): Promise<AdminReview | null> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("product_reviews")
     .select("id, product_id, telegram_id, rating, comment, created_at, updated_at")
     .eq("id", id)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Отзывы: ${dataError.message}`);
   return data ? ((await withNames(ctx, [data as ReviewRow]))[0] ?? null) : null;
 }
 

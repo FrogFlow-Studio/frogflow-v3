@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { getSettings } from "@/core/settings/settings";
@@ -42,10 +43,11 @@ export async function maxLeadTimeDaysInCart(
   ctx: TenantContext,
   customer: Customer,
 ): Promise<number> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("cart_items")
     .select("products(lead_time_days)")
     .eq("telegram_id", customer.telegramId);
+  if (dataError) throw serverFailure(`Выдача: ${dataError.message}`);
   let max = 0;
   for (const row of data ?? []) {
     const d = row.products?.lead_time_days;
@@ -57,11 +59,12 @@ export async function maxLeadTimeDaysInCart(
 export type DeliveryZone = { id: string; name: string; price: number };
 
 export async function activeDeliveryZones(ctx: TenantContext): Promise<DeliveryZone[]> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("delivery_zones")
     .select("id, name, price")
     .eq("is_active", true)
     .order("sort_order");
+  if (dataError) throw serverFailure(`Выдача: ${dataError.message}`);
   return (data ?? []).map((z) => ({ id: z.id, name: z.name, price: Number(z.price) || 0 }));
 }
 
@@ -94,20 +97,22 @@ export async function decrementStock(
   qty: number,
 ): Promise<boolean> {
   for (let attempt = 0; attempt < 5; attempt++) {
-    const { data: p } = await ctx.db
+    const { data: p, error: pError } = await ctx.db
       .from("products")
       .select("stock_quantity")
       .eq("id", productId)
       .maybeSingle();
+    if (pError) throw serverFailure(`Выдача: ${pError.message}`);
     if (!p || p.stock_quantity === null) return true;
     if (p.stock_quantity < qty) return false;
-    const { data } = await ctx.db
+    const { data, error: dataError } = await ctx.db
       .from("products")
       .update({ stock_quantity: p.stock_quantity - qty })
       .eq("id", productId)
       .eq("stock_quantity", p.stock_quantity)
       .select("id")
       .maybeSingle();
+    if (dataError) throw serverFailure(`Выдача: ${dataError.message}`);
     if (data) return true;
   }
   return false;
@@ -119,19 +124,21 @@ export async function restoreStock(
   qty: number,
 ): Promise<void> {
   for (let attempt = 0; attempt < 5; attempt++) {
-    const { data: p } = await ctx.db
+    const { data: p, error: pError } = await ctx.db
       .from("products")
       .select("stock_quantity")
       .eq("id", productId)
       .maybeSingle();
+    if (pError) throw serverFailure(`Выдача: ${pError.message}`);
     if (!p || p.stock_quantity === null) return;
-    const { data } = await ctx.db
+    const { data, error: dataError } = await ctx.db
       .from("products")
       .update({ stock_quantity: p.stock_quantity + qty })
       .eq("id", productId)
       .eq("stock_quantity", p.stock_quantity)
       .select("id")
       .maybeSingle();
+    if (dataError) throw serverFailure(`Выдача: ${dataError.message}`);
     if (data) return;
   }
 }
@@ -143,10 +150,11 @@ export async function restoreStock(
  */
 export async function restoreOrderStock(ctx: TenantContext, orderId: number): Promise<number> {
   if (!ctx.tenant.modules.stock) return 0;
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("order_items")
     .select("product_id, quantity")
     .eq("order_id", orderId);
+  if (dataError) throw serverFailure(`Выдача: ${dataError.message}`);
   let n = 0;
   for (const it of data ?? []) {
     if (!it.product_id) continue;
@@ -171,24 +179,26 @@ export async function recordPayment(
 ): Promise<boolean> {
   if (!Number.isFinite(amount) || amount <= 0) return false;
   for (let attempt = 0; attempt < 5; attempt++) {
-    const { data: order } = await ctx.db
+    const { data: order, error: orderError } = await ctx.db
       .from("orders")
       .select("paid_amount, total")
       .eq("id", orderId)
       .maybeSingle();
+    if (orderError) throw serverFailure(`Выдача: ${orderError.message}`);
     if (!order) return false;
     const current = Number(order.paid_amount) || 0;
     const total = Number(order.total);
     const sum = Math.round((current + amount) * 100) / 100;
     if (sum > total + 0.01) return false;
     const next = Math.min(total, sum);
-    const { data: updated } = await ctx.db
+    const { data: updated, error: updatedError } = await ctx.db
       .from("orders")
       .update({ paid_amount: next })
       .eq("id", orderId)
       .eq("paid_amount", current)
       .select("id")
       .maybeSingle();
+    if (updatedError) throw serverFailure(`Выдача: ${updatedError.message}`);
     if (updated) return true;
   }
   return false;

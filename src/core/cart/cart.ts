@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { PRODUCT_SELECT, type Product } from "@/core/catalog/catalog";
@@ -45,20 +46,22 @@ export async function addToCart(
   // callback_data приходит от клиента: вариант обязан принадлежать товару, а
   // товар с вариантами нельзя положить «без варианта» по служебной цене «от».
   if (variantId) {
-    const { data: v } = await ctx.db
+    const { data: v, error: vError } = await ctx.db
       .from("product_variants")
       .select("id")
       .eq("id", variantId)
       .eq("product_id", productId)
       .maybeSingle();
+    if (vError) throw serverFailure(`Корзина: ${vError.message}`);
     if (!v) return "unavailable";
   } else {
-    const { data: any } = await ctx.db
+    const { data: any, error: anyError } = await ctx.db
       .from("product_variants")
       .select("id")
       .eq("product_id", productId)
       .limit(1)
       .maybeSingle();
+    if (anyError) throw serverFailure(`Корзина: ${anyError.message}`);
     if (any) return "unavailable";
   }
 
@@ -73,13 +76,14 @@ export async function addToCart(
 
   // Смешанная корзина не поддерживается: у цифрового и физического заказа
   // разные машины выдачи.
-  const { data: other } = await ctx.db
+  const { data: other, error: otherError } = await ctx.db
     .from("cart_items")
     .select("products(fulfillment_kind)")
     .eq("telegram_id", customer.telegramId)
     .neq("product_id", productId)
     .limit(1)
     .maybeSingle();
+  if (otherError) throw serverFailure(`Корзина: ${otherError.message}`);
   if (other) {
     const otherKind = other.products?.fulfillment_kind === "physical" ? "physical" : "digital";
     if (otherKind !== kind) return "mixed_cart";
@@ -99,11 +103,12 @@ export async function addToCart(
   if (kind === "digital" && existing) return "digital_limit";
 
   if (ctx.tenant.modules.stock && product.stock_quantity !== null) {
-    const { data: rows } = await ctx.db
+    const { data: rows, error: rowsError } = await ctx.db
       .from("cart_items")
       .select("quantity")
       .eq("telegram_id", customer.telegramId)
       .eq("product_id", productId);
+    if (rowsError) throw serverFailure(`Корзина: ${rowsError.message}`);
     const already = (rows ?? []).reduce((s, r) => s + (Number(r.quantity) || 0), 0);
     if (already + 1 > product.stock_quantity) return "out_of_stock";
   }
@@ -139,10 +144,11 @@ export async function listCart(ctx: TenantContext, customer: Customer): Promise<
 }
 
 export async function cartCount(ctx: TenantContext, customer: Customer): Promise<number> {
-  const { count } = await ctx.db
+  const { count, error: countError } = await ctx.db
     .from("cart_items")
     .select("id", { count: "exact", head: true })
     .eq("telegram_id", customer.telegramId);
+  if (countError) throw serverFailure(`Корзина: ${countError.message}`);
   return count ?? 0;
 }
 
@@ -151,11 +157,17 @@ export async function removeCartItem(
   customer: Customer,
   itemId: string,
 ): Promise<void> {
-  await ctx.db.from("cart_items").delete().eq("id", itemId).eq("telegram_id", customer.telegramId);
+  const { error } = await ctx.db
+    .from("cart_items")
+    .delete()
+    .eq("id", itemId)
+    .eq("telegram_id", customer.telegramId);
+  if (error) throw serverFailure(`Корзина: ${error.message}`);
 }
 
 export async function clearCart(ctx: TenantContext, customer: Customer): Promise<void> {
-  await ctx.db.from("cart_items").delete().eq("telegram_id", customer.telegramId);
+  const { error } = await ctx.db.from("cart_items").delete().eq("telegram_id", customer.telegramId);
+  if (error) throw serverFailure(`Корзина: ${error.message}`);
 }
 
 export type PricedLine = {

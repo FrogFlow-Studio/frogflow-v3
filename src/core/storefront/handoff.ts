@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import { randomBytes } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
@@ -65,21 +66,24 @@ export async function claimHandoff(
 ): Promise<ClaimResult> {
   const t = token.trim();
   if (!/^[0-9a-f]{32}$/.test(t)) return "missing";
-  const { data: row } = await serviceDb()
+  const { data: row, error: rowError } = await serviceDb()
     .from("web_cart_handoffs")
     .select("bot_id, items, expires_at, claimed_at")
     .eq("token", t)
     .maybeSingle();
+  if (rowError) throw serverFailure(`Витрина: передача: ${rowError.message}`);
   if (!row || row.bot_id !== ctx.tenant.id) return "missing";
   if (row.claimed_at) return "claimed";
   if (new Date(row.expires_at).getTime() < Date.now()) return "expired";
   const imported = await importItems(ctx, customer, parseHandoffItems(row.items));
   if (imported === 0) return "empty";
-  await serviceDb()
+  const marked = await serviceDb()
     .from("web_cart_handoffs")
     .update({ claimed_at: new Date().toISOString(), claimed_telegram_id: customer.telegramId })
     .eq("token", t)
     .is("claimed_at", null);
+  // Позиции уже в корзине: сбой отметки не отменяет импорт, но виден в журнале.
+  if (marked.error) console.error("[handoff] отметка не записана", marked.error.message);
   return "ok";
 }
 

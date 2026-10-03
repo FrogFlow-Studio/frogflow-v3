@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Json } from "@/core/db-types";
 import { getSetting, setSetting } from "@/core/settings/settings";
@@ -59,12 +60,13 @@ export async function saveSubscriptionDays(
 
 /** Все товары-подписки магазина: id → период в днях. */
 export async function listSubscriptionProducts(ctx: TenantContext): Promise<Map<string, number>> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("app_settings")
     .select("key, value")
     .eq("bot_id", ctx.tenant.id)
     .like("key", `${SUBSCRIPTION_PREFIX}%`)
     .limit(1000);
+  if (dataError) throw serverFailure(`Подписка на товар: ${dataError.message}`);
   const out = new Map<string, number>();
   for (const r of data ?? []) {
     const days = parseSubscriptionDays(r.value);
@@ -122,7 +124,7 @@ export async function runSubscriptionRenewals(
   const { claimOrderEvent } = await import("@/core/orders/events");
   const maxDays = Math.max(...products.values());
   const minDays = Math.min(...products.values());
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("orders")
     .select("*, order_items(*)")
     .in("status", [...PAID_STATUSES])
@@ -133,6 +135,7 @@ export async function runSubscriptionRenewals(
     .lte("created_at", new Date(now.getTime() - minDays * 86400_000).toISOString())
     .order("created_at", { ascending: false })
     .limit(1000);
+  if (dataError) throw serverFailure(`Подписка на товар: ${dataError.message}`);
   const orders = (data ?? []) as unknown as OrderWithItems[];
   // Самый свежий заказ покупателя с товаром — только он продлевается.
   const seen = new Set<string>();
@@ -179,12 +182,13 @@ async function renewedSince(
   order: OrderWithItems,
   productId: string,
 ): Promise<boolean> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("orders")
     .select("id, status, order_items(product_id)")
     .eq("telegram_id", order.telegram_id)
     .gt("created_at", order.created_at)
     .limit(50);
+  if (dataError) throw serverFailure(`Подписка на товар: ${dataError.message}`);
   return (data ?? []).some(
     (o) =>
       !["rejected", "cancelled"].includes(o.status) &&

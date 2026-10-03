@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { claimOrderEvent, recordOrderEvent } from "@/core/orders/events";
 import {
@@ -108,12 +109,13 @@ type UnpaidRow = {
 
 /** Перечитать перед отправкой: заказ всё ещё ждёт оплаты и чека к нему нет. */
 async function stillUnpaid(ctx: TenantContext, id: number): Promise<boolean> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("orders")
     .select("id")
     .eq("id", id)
     .eq("status", "awaiting_payment")
     .is("payment_proof_path", null)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Витрина: напоминание: ${dataError.message}`);
   return data != null;
 }

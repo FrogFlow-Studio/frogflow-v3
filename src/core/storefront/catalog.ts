@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { sortCatalog, type CatalogSort } from "./sort";
 import { shownLeadDays } from "@/core/catalog/lead-time";
@@ -351,12 +352,13 @@ export async function storeUpsell(
 }
 
 export async function storeProduct(ctx: TenantContext, id: string): Promise<StoreProduct | null> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("products")
     .select(PRODUCT_SELECT)
     .eq("id", id)
     .eq("is_active", true)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Витрина: ${dataError.message}`);
   if (!data) return null;
   const files = productFiles(data as Product, Boolean(ctx.tenant.modules.multi_language));
   return { ...(await toStoreProduct(ctx, data as Product)), files };

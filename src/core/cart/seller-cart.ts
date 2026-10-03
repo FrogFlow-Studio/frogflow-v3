@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import {
@@ -75,5 +76,8 @@ export async function fillCartForCustomer(
 
 async function restore(ctx: TenantContext, customer: Customer, rows: CartRow[]): Promise<void> {
   await clearCart(ctx, customer);
-  if (rows.length) await ctx.db.from("cart_items").insert(rows);
+  if (rows.length) {
+    const { error } = await ctx.db.from("cart_items").insert(rows);
+    if (error) throw serverFailure(`Корзина: возврат прежних позиций: ${error.message}`);
+  }
 }

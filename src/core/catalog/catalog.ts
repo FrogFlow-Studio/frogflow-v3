@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database } from "@/core/db-types";
 import { imagePath } from "./image-url";
@@ -43,7 +44,12 @@ export async function listChildCategories(
 }
 
 export async function categoryParentId(ctx: TenantContext, id: string): Promise<string | null> {
-  const { data } = await ctx.db.from("categories").select("parent_id").eq("id", id).maybeSingle();
+  const { data, error: dataError } = await ctx.db
+    .from("categories")
+    .select("parent_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (dataError) throw serverFailure(`Каталог: ${dataError.message}`);
   return data?.parent_id ?? null;
 }
 
@@ -69,12 +75,13 @@ export async function listProductsInCategory(
 }
 
 export async function getProduct(ctx: TenantContext, id: string): Promise<Product | null> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("products")
     .select(PRODUCT_SELECT)
     .eq("id", id)
     .eq("is_active", true)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Каталог: ${dataError.message}`);
   return (data as Product | null) ?? null;
 }
 

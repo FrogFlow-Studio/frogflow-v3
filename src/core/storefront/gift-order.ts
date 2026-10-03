@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import {
@@ -93,11 +94,12 @@ export async function placeGiftOrder(
       await ctx.db.from("orders").delete().eq("id", order.id);
       return { ok: false, reason: "order_failed" };
     }
-    const { data: full } = await ctx.db
+    const { data: full, error: fullError } = await ctx.db
       .from("orders")
       .select("*, order_items(*)")
       .eq("id", order.id)
       .single();
+    if (fullError) throw serverFailure(`Витрина: подарок: ${fullError.message}`);
     await recordOrderEvent(ctx, order.id, "placed", {
       platform: order.platform,
       total: amount,

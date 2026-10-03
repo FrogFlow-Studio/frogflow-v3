@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import { UserError } from "@/core/i18n/user-error";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database, Json } from "@/core/db-types";
@@ -62,20 +63,22 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(ctx: TenantContext, id: string): Promise<void> {
-  const { count } = await ctx.db
+  const { count, error: countError } = await ctx.db
     .from("products")
     .select("id", { count: "exact", head: true })
     .contains("category_ids", JSON.stringify([id]));
+  if (countError) throw serverFailure(`Каталог: ${countError.message}`);
   if (count)
     throw new UserError(
       "err.catalog.hasProducts",
       "В категории {count} товаров — сначала перенесите их.",
       { count },
     );
-  const { count: kids } = await ctx.db
+  const { count: kids, error: kidsError } = await ctx.db
     .from("categories")
     .select("id", { count: "exact", head: true })
     .eq("parent_id", id);
+  if (kidsError) throw serverFailure(`Каталог: ${kidsError.message}`);
   if (kids)
     throw new UserError(
       "err.catalog.hasSubcategories",
@@ -176,7 +179,12 @@ export async function listProductsForAdmin(
 }
 
 export async function getProductForAdmin(ctx: TenantContext, id: string): Promise<Product | null> {
-  const { data } = await ctx.db.from("products").select(PRODUCT_SELECT).eq("id", id).maybeSingle();
+  const { data, error: dataError } = await ctx.db
+    .from("products")
+    .select(PRODUCT_SELECT)
+    .eq("id", id)
+    .maybeSingle();
+  if (dataError) throw serverFailure(`Каталог: ${dataError.message}`);
   return (data as Product | null) ?? null;
 }
 
@@ -234,11 +242,12 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(ctx: TenantContext, id: string): Promise<void> {
-  const { data: p } = await ctx.db
+  const { data: p, error: pError } = await ctx.db
     .from("products")
     .select("product_images(image_path), product_material_files(file_path)")
     .eq("id", id)
     .maybeSingle();
+  if (pError) throw serverFailure(`Каталог: ${pError.message}`);
   const { dropReviewExtras, productReviewIds } = await import("@/core/reviews/photos.server");
   const reviewIds = await productReviewIds(ctx, id);
   const { error } = await ctx.db.from("products").delete().eq("id", id);
@@ -272,15 +281,17 @@ export async function setProductImages(
   productId: string,
   paths: string[],
 ): Promise<void> {
-  const { data: had } = await ctx.db
+  const { data: had, error: hadError } = await ctx.db
     .from("product_images")
     .select("image_path")
     .eq("product_id", productId);
+  if (hadError) throw serverFailure(`Каталог: ${hadError.message}`);
   const stored = new Set((had ?? []).map((r) => r.image_path));
   for (const p of paths)
     if (!isAdminInputStorageKey(ctx.tenant.id, p, stored))
       throw new Error("Ключ картинки вне префикса клиента.");
-  await ctx.db.from("product_images").delete().eq("product_id", productId);
+  const cleared = await ctx.db.from("product_images").delete().eq("product_id", productId);
+  if (cleared.error) throw serverFailure(`Каталог: ${cleared.error.message}`);
   if (paths.length) {
     const { error } = await ctx.db.from("product_images").insert(
       paths.map((image_path, i) => ({
@@ -305,10 +316,12 @@ export async function setProductMaterials(
   productId: string,
   files: MaterialInput[],
 ): Promise<void> {
-  const [{ data: had }, { data: legacy }] = await Promise.all([
+  const [{ data: had, error: hadError }, { data: legacy, error: legacyError }] = await Promise.all([
     ctx.db.from("product_material_files").select("file_path").eq("product_id", productId),
     ctx.db.from("products").select("file_path, file_path_kz").eq("id", productId).maybeSingle(),
   ]);
+  if (hadError) throw serverFailure(`Каталог: ${hadError.message}`);
+  if (legacyError) throw serverFailure(`Каталог: ${legacyError.message}`);
   // Старый файл v1 из полей товара (editableMaterials) — тоже «уже записан у строки».
   const stored = new Set(
     [...(had ?? []).map((r) => r.file_path), legacy?.file_path, legacy?.file_path_kz].filter(
@@ -318,7 +331,8 @@ export async function setProductMaterials(
   for (const f of files)
     if (!isAdminInputStorageKey(ctx.tenant.id, f.filePath, stored))
       throw new Error("Ключ файла вне префикса клиента.");
-  await ctx.db.from("product_material_files").delete().eq("product_id", productId);
+  const cleared = await ctx.db.from("product_material_files").delete().eq("product_id", productId);
+  if (cleared.error) throw serverFailure(`Каталог: ${cleared.error.message}`);
   if (files.length) {
     const { error } = await ctx.db.from("product_material_files").insert(
       files.map((f, i) => ({
@@ -341,7 +355,8 @@ export async function setProductVariants(
   productId: string,
   variants: VariantInput[],
 ): Promise<void> {
-  await ctx.db.from("product_variants").delete().eq("product_id", productId);
+  const cleared = await ctx.db.from("product_variants").delete().eq("product_id", productId);
+  if (cleared.error) throw serverFailure(`Каталог: ${cleared.error.message}`);
   if (variants.length) {
     const { error } = await ctx.db.from("product_variants").insert(
       variants.map((v, i) => ({

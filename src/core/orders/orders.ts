@@ -414,7 +414,10 @@ export async function placeOrder(
       await ctx.db.from("orders").delete().eq("id", order.id);
       return await fail("order_failed");
     }
-    await clearCart(ctx, customer);
+    // Заказ уже создан: сбой очистки корзины не должен откатывать его.
+    await clearCart(ctx, customer).catch((e) =>
+      console.error(`[orders] корзина после заказа #${order.id} не очищена: ${String(e)}`),
+    );
     // Захват снимается здесь, а не в канале: иначе следующая кнопка
     // «Оформить» молча упирается в placing_order (поймано интеграционным
     // тестом на живой базе).
@@ -829,11 +832,15 @@ export async function rejectOrder(
     );
   // Заказ с сайта оформляет кто угодно — отклонённый возвращает остаток.
   // Так же счёт ссылкой из диалога: его повтор после сбоя не держит товар.
-  if (data?.platform === "web" || (data && opts.restoreStock))
-    await restoreOrderStock(ctx, orderId);
+  // Статус уже сменён: сбой возврата на склад не должен терять событие и баллы ниже.
+  const restock = () =>
+    restoreOrderStock(ctx, orderId).catch((e) =>
+      console.error(`[orders] возврат на склад заказа #${orderId}: ${String(e)}`),
+    );
+  if (data?.platform === "web" || (data && opts.restoreStock)) await restock();
   else if (data) {
     const { isInvoiceLink } = await import("./invoice-link");
-    if (await isInvoiceLink(ctx, orderId)) await restoreOrderStock(ctx, orderId);
+    if (await isInvoiceLink(ctx, orderId)) await restock();
   }
   return Boolean(data);
 }

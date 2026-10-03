@@ -290,7 +290,9 @@ async function placeFromCart(
     display_name: opts.contact.name.slice(0, 64),
     contact: opts.contact.phone,
   };
-  await ctx.db.from("orders").update(patch).eq("id", r.order.id);
+  const named = await ctx.db.from("orders").update(patch).eq("id", r.order.id);
+  // Заказ уже оформлен: сбой имени и телефона не отменяет его, но виден в журнале.
+  if (named.error) console.error("[web-order] контакт не записан", named.error.message);
   return { ...r, order: { ...r.order, ...patch } };
 }
 

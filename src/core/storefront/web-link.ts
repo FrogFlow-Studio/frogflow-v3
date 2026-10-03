@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Json } from "@/core/db-types";
 import { getCustomer, stateFromJson, userKey, type Customer } from "@/core/customers/customers";
@@ -162,11 +163,12 @@ export async function webOrderLinkState(
   orderId: number,
   telegramId: number,
 ): Promise<"linked" | "linkable" | null> {
-  const { data: order } = await ctx.db
+  const { data: order, error: orderError } = await ctx.db
     .from("orders")
     .select("id, platform, telegram_id")
     .eq("id", orderId)
     .maybeSingle();
+  if (orderError) throw serverFailure(`Витрина: ссылка: ${orderError.message}`);
   if (!order || order.platform !== "web") return null;
   if (Number(order.telegram_id) === telegramId) return "linked";
   const tg = await getCustomer(ctx, userKey("telegram", telegramId));

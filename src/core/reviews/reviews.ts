@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { markReviewPending } from "./photos.server";
 
@@ -11,20 +12,22 @@ export async function hasDeliveredPurchase(
   telegramId: number,
   productId: string,
 ): Promise<boolean> {
-  const { data: orders } = await ctx.db
+  const { data: orders, error: ordersError } = await ctx.db
     .from("orders")
     .select("id")
     .eq("telegram_id", telegramId)
     .eq("status", "delivered");
+  if (ordersError) throw serverFailure(`Отзывы: ${ordersError.message}`);
   const ids = (orders ?? []).map((o) => o.id);
   if (ids.length === 0) return false;
-  const { data: item } = await ctx.db
+  const { data: item, error: itemError } = await ctx.db
     .from("order_items")
     .select("id")
     .eq("product_id", productId)
     .in("order_id", ids)
     .limit(1)
     .maybeSingle();
+  if (itemError) throw serverFailure(`Отзывы: ${itemError.message}`);
   return Boolean(item);
 }
 
@@ -34,13 +37,14 @@ export async function reviewableProductsForOrder(
   orderId: number,
   telegramId: number,
 ): Promise<Array<{ productId: string; name: string }>> {
-  const { data: order } = await ctx.db
+  const { data: order, error: orderError } = await ctx.db
     .from("orders")
     .select("id, order_items(product_id, name_snapshot)")
     .eq("id", orderId)
     .eq("telegram_id", telegramId)
     .eq("status", "delivered")
     .maybeSingle();
+  if (orderError) throw serverFailure(`Отзывы: ${orderError.message}`);
   if (!order) return [];
   const seen = new Set<string>();
   const out: Array<{ productId: string; name: string }> = [];
@@ -59,12 +63,13 @@ export async function saveRating(
   productId: string,
   rating: number,
 ): Promise<boolean> {
-  const { data: existing } = await ctx.db
+  const { data: existing, error: existingError } = await ctx.db
     .from("product_reviews")
     .select("id")
     .eq("telegram_id", telegramId)
     .eq("product_id", productId)
     .maybeSingle();
+  if (existingError) throw serverFailure(`Отзывы: ${existingError.message}`);
   const { data: saved, error } = existing
     ? await ctx.db
         .from("product_reviews")
@@ -104,11 +109,12 @@ export async function listProductReviews(
   productId: string,
   limit = 5,
 ): Promise<Array<{ rating: number; comment: string | null; created_at: string }>> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("product_reviews")
     .select("rating, comment, created_at")
     .eq("product_id", productId)
     .order("created_at", { ascending: false })
     .limit(Math.max(1, Math.min(20, limit)));
+  if (dataError) throw serverFailure(`Отзывы: ${dataError.message}`);
   return (data ?? []).map((r) => ({ ...r, rating: Number(r.rating) }));
 }

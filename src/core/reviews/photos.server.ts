@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import { randomUUID } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serviceDb } from "@/core/db/client.server";
@@ -49,12 +50,13 @@ async function buyerReviewId(
   telegramId: number,
   productId: string,
 ): Promise<string | null> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("product_reviews")
     .select("id")
     .eq("telegram_id", telegramId)
     .eq("product_id", productId)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Фото отзывов: ${dataError.message}`);
   return data?.id ?? null;
 }
 
@@ -245,10 +247,11 @@ export async function approvedReviews(
     200,
   );
   if (picked.length === 0) return [];
-  const { data: users } = await ctx.db
+  const { data: users, error: usersError } = await ctx.db
     .from("bot_users")
     .select("telegram_id, first_name, last_name")
     .in("telegram_id", [...new Set(picked.map((r) => Number(r.telegram_id)))]);
+  if (usersError) throw serverFailure(`Фото отзывов: ${usersError.message}`);
   const names = new Map(
     (users ?? []).map((u) => [Number(u.telegram_id), publicBuyerName(u.first_name, u.last_name)]),
   );
