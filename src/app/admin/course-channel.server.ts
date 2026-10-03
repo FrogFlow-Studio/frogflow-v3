@@ -84,3 +84,31 @@ export async function revokeStudentChannel(
   );
   return { kicked };
 }
+
+/** «В канале без доступа»: кого бот видел вступившим, а действующей покупки нет. */
+export async function listChannelStrangers(ctx: TenantContext) {
+  const { channelStrangers } = await import("@/core/courses/channel-seen.server");
+  return channelStrangers(ctx);
+}
+
+/** Продавец исключает постороннего из канала курса (кнопка «Исключить»). */
+export async function kickStranger(
+  ctx: TenantContext,
+  channel: string,
+  userId: number,
+): Promise<{ kicked: boolean }> {
+  let token: string;
+  try {
+    token = ctx.secrets.telegramToken();
+  } catch {
+    return { kicked: false };
+  }
+  const { kickChannelStranger } = await import("@/core/courses/channel-seen.server");
+  const { telegramChannelInviter } = await import("@/channels/telegram/courses");
+  return kickChannelStranger(
+    ctx,
+    channel,
+    userId,
+    telegramChannelInviter(telegramApi(token, env().TELEGRAM_API_BASE)),
+  );
+}

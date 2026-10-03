@@ -56,8 +56,11 @@ export type TelegramUpdate = {
   pre_checkout_query?: TelegramPreCheckoutQuery;
   /** Изменение участника в чате, где бот — администратор (канал курса). */
   chat_member?: {
-    chat: { id: number };
-    new_chat_member?: { status?: string; user?: { id: number } };
+    chat: { id: number; username?: string };
+    new_chat_member?: {
+      status?: string;
+      user?: { id: number; is_bot?: boolean; first_name?: string; username?: string };
+    };
     invite_link?: { invite_link?: string };
   };
 };

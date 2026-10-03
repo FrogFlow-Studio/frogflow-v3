@@ -132,6 +132,24 @@ export const revokeStudentChannelFn = createServerFn({ method: "POST" })
     return revokeStudentChannel(ctx, data.orderItemId);
   });
 
+/** Видимые боту участники закрытых каналов без действующей покупки (только чтение). */
+export const channelStrangersFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await moduleAdmin("manager");
+  const { listChannelStrangers } = await import("./course-channel.server");
+  return listChannelStrangers(ctx);
+});
+
+/** Исключить постороннего из закрытого канала курса (менеджер и выше). */
+export const kickChannelStrangerFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ channel: z.string().max(40), userId: z.number().int().positive() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { kickStranger } = await import("./course-channel.server");
+    return kickStranger(ctx, data.channel, data.userId);
+  });
+
 /** «Ученики» онлайн-школы: все курсы магазина с учениками (только чтение). */
 export const schoolStudentsFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await moduleAdmin();

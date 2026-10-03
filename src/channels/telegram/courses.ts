@@ -489,22 +489,36 @@ export async function sendChannelInvite(b: CourseBot, data: string): Promise<voi
 
 /**
  * Событие chat_member в канале курса: вступил по личной ссылке — запомнить,
- * кто именно (core/courses/channel.server). Прочие события молча пропускаем.
+ * кто именно (core/courses/channel.server); любое вступление и выход —
+ * на учёт сверки «в канале без доступа» (channel-seen.server).
  */
 export async function handleCourseChannelMember(
   ctx: TenantContext,
   upd: {
-    new_chat_member?: { status?: string; user?: { id: number } };
+    chat?: { id: number; username?: string };
+    new_chat_member?: {
+      status?: string;
+      user?: { id: number; is_bot?: boolean; first_name?: string; username?: string };
+    };
     invite_link?: { invite_link?: string };
   },
 ): Promise<void> {
   if (!ctx.tenant.modules.courses) return;
   const link = upd.invite_link?.invite_link;
-  const userId = upd.new_chat_member?.user?.id;
+  const user = upd.new_chat_member?.user;
   const status = upd.new_chat_member?.status ?? "";
-  if (!link || !userId || !["member", "restricted"].includes(status)) return;
-  const { recordChannelJoin } = await import("@/core/courses/channel.server");
-  await recordChannelJoin(ctx, link, userId);
+  if (!user?.id) return;
+  if (link && ["member", "restricted"].includes(status)) {
+    const { recordChannelJoin } = await import("@/core/courses/channel.server");
+    await recordChannelJoin(ctx, link, user.id);
+  }
+  if (upd.chat) {
+    const { recordChannelSighting } = await import("@/core/courses/channel-seen.server");
+    await recordChannelSighting(ctx, upd.chat, user.id, status, {
+      name: user.first_name ?? (user.username ? `@${user.username}` : ""),
+      isBot: user.is_bot,
+    });
+  }
 }
 
 // ── урок в чате ──────────────────────────────────────────────────────

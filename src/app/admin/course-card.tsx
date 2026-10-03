@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import {
+  channelStrangersFn,
   checkCourseChannelFn,
+  kickChannelStrangerFn,
   courseFn,
   courseVariantsFn,
   courseStudentsFn,
@@ -299,6 +301,7 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
       </div>
       <ErrorBox error={save.error} />
       <Students productId={productId} t={t} />
+      {course.channel && <Strangers channel={course.channel} t={t} />}
     </Card>
   );
 }
@@ -611,6 +614,53 @@ function Students({ productId, t }: { productId: string; t: AdminT }) {
         </ul>
       )}
       <ErrorBox error={revoke.error} />
+    </div>
+  );
+}
+
+/**
+ * «В канале без доступа»: бот видел их вступившими, а действующей покупки
+ * нет. Telegram не отдаёт полный список участников — только тех, кого увидел бот.
+ */
+function Strangers({ channel, t }: { channel: string; t: AdminT }) {
+  const [list, setList] = useState<Awaited<ReturnType<typeof channelStrangersFn>> | null>(null);
+  const load = () => channelStrangersFn().then(setList, () => setList(null));
+  useEffect(() => {
+    void load();
+  }, [channel]);
+  const kick = useAction(async (userId: number) => {
+    if (!window.confirm(t("product.strangerKickConfirm"))) return;
+    const r = await kickChannelStrangerFn({ data: { channel, userId } });
+    if (!r.kicked) throw new Error(t("product.strangerKickFailed"));
+    await load();
+  });
+  const mine = (list ?? []).filter((x) => x.channel === channel);
+  return (
+    <div className="mt-5 border-t border-line pt-4">
+      <h3 className="mb-1 text-sm font-medium">
+        {t("product.strangers")} · {mine.length}
+      </h3>
+      <p className="mb-2 text-xs text-muted">{t("product.strangersHint")}</p>
+      {mine.length > 0 && (
+        <ul className="divide-y divide-line text-sm">
+          {mine.map((x) => (
+            <li key={x.userId} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
+              <span className="min-w-0 flex-1 truncate">
+                {x.name || t("product.strangerNoName")} · id {x.userId}
+              </span>
+              <button
+                type="button"
+                className="btn-ghost text-xs"
+                disabled={kick.busy}
+                onClick={() => void kick.run(x.userId).catch(() => {})}
+              >
+                {t("product.strangerKick")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <ErrorBox error={kick.error} />
     </div>
   );
 }
