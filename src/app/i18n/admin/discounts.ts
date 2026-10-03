@@ -79,8 +79,6 @@ export const ru = {
   "discounts.tiers.save": "Сохранить уровни",
   "discounts.tiers.empty": "Уровни не заданы — начисление идёт по общему проценту.",
   "discounts.offers.title": "Ограниченные предложения",
-  "discounts.offers.intro":
-    "Скидка на товар до даты и, если нужно, на ограниченное число штук. Цена со скидкой сразу видна в боте, Direct и на витрине, в карточке — таймер и остаток.",
   "discounts.offers.product": "Товар",
   "discounts.offers.limit": "Штук (необяз.)",
   "discounts.offers.add": "Запустить",
@@ -89,6 +87,24 @@ export const ru = {
   "discounts.offers.sold": "Продано",
   "discounts.offers.running": "идёт",
   "discounts.offers.ended": "закончилась",
+  "discounts.offers.intro":
+    "Скидка на товар или на всю категорию до даты: процентом или новой ценой. Цена со скидкой сразу видна в боте, Direct и на витрине; время — по часам магазина.",
+  "discounts.offers.scope": "На что акция",
+  "discounts.offers.scopeProduct": "Товар",
+  "discounts.offers.scopeCategory": "Категория",
+  "discounts.offers.category": "Категория",
+  "discounts.offers.mode": "Как считать",
+  "discounts.offers.modePercent": "Скидка в процентах",
+  "discounts.offers.modePrice": "Новая цена",
+  "discounts.offers.newPrice": "Новая цена",
+  "discounts.offers.from": "С (пусто — сразу)",
+  "discounts.offers.save": "Сохранить",
+  "discounts.offers.tz": "Часовой пояс магазина:",
+  "discounts.offers.discount": "Скидка",
+  "discounts.offers.period": "Срок",
+  "discounts.offers.planned": "ожидает",
+  "discounts.offers.end": "Закончить сейчас",
+  "discounts.offers.endConfirm": "Закончить акцию сейчас? Цены вернутся к обычным.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -165,8 +181,6 @@ export const kk: SectionDict<typeof ru> = {
   "discounts.tiers.save": "Деңгейлерді сақтау",
   "discounts.tiers.empty": "Деңгейлер берілмеген — есептеу жалпы пайызбен жүреді.",
   "discounts.offers.title": "Шектеулі ұсыныстар",
-  "discounts.offers.intro":
-    "Тауарға белгілі күнге дейін және қажет болса шектеулі санға жеңілдік. Жеңілдікпен баға ботта, Direct-те және витринада бірден көрінеді, карточкада — таймер мен қалдық.",
   "discounts.offers.product": "Тауар",
   "discounts.offers.limit": "Дана (міндетті емес)",
   "discounts.offers.add": "Іске қосу",
@@ -175,6 +189,24 @@ export const kk: SectionDict<typeof ru> = {
   "discounts.offers.sold": "Сатылды",
   "discounts.offers.running": "жүріп жатыр",
   "discounts.offers.ended": "аяқталды",
+  "discounts.offers.intro":
+    "Тауарға немесе бүкіл санатқа күнге дейін жеңілдік: пайызбен немесе жаңа бағамен. Жеңілдікпен баға ботта, Direct-те және витринада бірден көрінеді; уақыт — дүкеннің сағаты бойынша.",
+  "discounts.offers.scope": "Акция неге",
+  "discounts.offers.scopeProduct": "Тауар",
+  "discounts.offers.scopeCategory": "Санат",
+  "discounts.offers.category": "Санат",
+  "discounts.offers.mode": "Қалай есептеу",
+  "discounts.offers.modePercent": "Пайыздық жеңілдік",
+  "discounts.offers.modePrice": "Жаңа баға",
+  "discounts.offers.newPrice": "Жаңа баға",
+  "discounts.offers.from": "Бастап (бос — бірден)",
+  "discounts.offers.save": "Сақтау",
+  "discounts.offers.tz": "Дүкеннің уақыт белдеуі:",
+  "discounts.offers.discount": "Жеңілдік",
+  "discounts.offers.period": "Мерзімі",
+  "discounts.offers.planned": "күтуде",
+  "discounts.offers.end": "Қазір аяқтау",
+  "discounts.offers.endConfirm": "Акцияны қазір аяқтау керек пе? Бағалар әдеттегідей болады.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -251,8 +283,6 @@ export const en: SectionDict<typeof ru> = {
   "discounts.tiers.save": "Save levels",
   "discounts.tiers.empty": "No levels set — points are earned at the general percent.",
   "discounts.offers.title": "Limited offers",
-  "discounts.offers.intro":
-    "A discount on a product until a date and, if needed, for a limited number of units. The discounted price shows in the bot, Direct and the storefront right away; the card shows a timer and units left.",
   "discounts.offers.product": "Product",
   "discounts.offers.limit": "Units (optional)",
   "discounts.offers.add": "Launch",
@@ -261,6 +291,24 @@ export const en: SectionDict<typeof ru> = {
   "discounts.offers.sold": "Sold",
   "discounts.offers.running": "running",
   "discounts.offers.ended": "ended",
+  "discounts.offers.intro":
+    "A discount on a product or a whole category until a date: a percentage or a new price. The sale price shows at once in the bot, Direct and the storefront; times are in the shop's time zone.",
+  "discounts.offers.scope": "Applies to",
+  "discounts.offers.scopeProduct": "Product",
+  "discounts.offers.scopeCategory": "Category",
+  "discounts.offers.category": "Category",
+  "discounts.offers.mode": "How to price",
+  "discounts.offers.modePercent": "Percent off",
+  "discounts.offers.modePrice": "New price",
+  "discounts.offers.newPrice": "New price",
+  "discounts.offers.from": "From (empty — now)",
+  "discounts.offers.save": "Save",
+  "discounts.offers.tz": "Shop time zone:",
+  "discounts.offers.discount": "Discount",
+  "discounts.offers.period": "Period",
+  "discounts.offers.planned": "scheduled",
+  "discounts.offers.end": "End now",
+  "discounts.offers.endConfirm": "End the sale now? Prices go back to normal.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -337,8 +385,6 @@ export const uz: SectionDict<typeof ru> = {
   "discounts.tiers.save": "Darajalarni saqlash",
   "discounts.tiers.empty": "Darajalar belgilanmagan — ballar umumiy foizda hisoblanadi.",
   "discounts.offers.title": "Cheklangan takliflar",
-  "discounts.offers.intro":
-    "Mahsulotga ma’lum sanagacha va kerak bo‘lsa cheklangan miqdorga chegirma. Chegirmali narx botda, Direct va vitrinada darhol ko‘rinadi, kartochkada — taymer va qoldiq.",
   "discounts.offers.product": "Mahsulot",
   "discounts.offers.limit": "Dona (ixtiyoriy)",
   "discounts.offers.add": "Ishga tushirish",
@@ -347,4 +393,22 @@ export const uz: SectionDict<typeof ru> = {
   "discounts.offers.sold": "Sotildi",
   "discounts.offers.running": "davom etmoqda",
   "discounts.offers.ended": "tugadi",
+  "discounts.offers.intro":
+    "Mahsulotga yoki butun toifaga sanagacha chegirma: foizda yoki yangi narxda. Chegirmali narx botda, Direct’da va vitrinada darrov ko‘rinadi; vaqt — do‘kon soati bo‘yicha.",
+  "discounts.offers.scope": "Nimaga",
+  "discounts.offers.scopeProduct": "Mahsulot",
+  "discounts.offers.scopeCategory": "Toifa",
+  "discounts.offers.category": "Toifa",
+  "discounts.offers.mode": "Qanday hisoblash",
+  "discounts.offers.modePercent": "Foizli chegirma",
+  "discounts.offers.modePrice": "Yangi narx",
+  "discounts.offers.newPrice": "Yangi narx",
+  "discounts.offers.from": "Boshlanishi (bo‘sh — hozir)",
+  "discounts.offers.save": "Saqlash",
+  "discounts.offers.tz": "Do‘kon vaqt mintaqasi:",
+  "discounts.offers.discount": "Chegirma",
+  "discounts.offers.period": "Muddati",
+  "discounts.offers.planned": "kutilmoqda",
+  "discounts.offers.end": "Hozir tugatish",
+  "discounts.offers.endConfirm": "Aksiyani hozir tugatamizmi? Narxlar odatdagiga qaytadi.",
 };

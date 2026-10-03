@@ -133,6 +133,12 @@ export const ru = {
   "err.admin.igZernioUnavailable":
     "Zernio сейчас не отвечает — правила и публикации не загрузились. Обновите страницу через пару минут.",
   "err.admin.offerEnd": "Окончание акции должно быть позже начала.",
+  "err.admin.offerPriceScope": "Новую цену можно задать только для товара, не для категории.",
+  "err.admin.offerPriceHigher": "Новая цена должна быть ниже обычной цены товара.",
+  "err.admin.offerPercent": "Скидка — от 1 до 99 процентов.",
+  "err.admin.offerCategory": "Выберите категорию.",
+  "err.admin.offerProduct": "Выберите товар.",
+  "err.admin.offersFull": "Слишком много акций: удалите прошедшие, прежде чем добавлять новые.",
   "err.admin.winbackOrder": "Второе сообщение должно идти позже первого.",
   "err.admin.winbackPromo":
     "Промокод {code} не найден или не действует — заведите его в «Скидках».",
@@ -302,6 +308,12 @@ export const kk: SectionDict<typeof ru> = {
   "err.admin.igZernioUnavailable":
     "Zernio қазір жауап бермейді — ережелер мен жарияланымдар жүктелмеді. Бірнеше минуттан кейін бетті жаңартыңыз.",
   "err.admin.offerEnd": "Акция басталғаннан кейін аяқталуы керек.",
+  "err.admin.offerPriceScope": "Жаңа бағаны тек тауарға қоюға болады, санатқа емес.",
+  "err.admin.offerPriceHigher": "Жаңа баға тауардың әдеттегі бағасынан төмен болуы керек.",
+  "err.admin.offerPercent": "Жеңілдік — 1-ден 99 пайызға дейін.",
+  "err.admin.offerCategory": "Санатты таңдаңыз.",
+  "err.admin.offerProduct": "Тауарды таңдаңыз.",
+  "err.admin.offersFull": "Акция тым көп: жаңасын қосар алдында өткендерін жойыңыз.",
   "err.admin.winbackOrder": "Екінші хабарлама біріншісінен кейін жіберілуі керек.",
   "err.admin.winbackPromo":
     "{code} промокоды табылмады немесе жарамсыз — оны «Жеңілдіктер» бөлімінде жасаңыз.",
@@ -472,6 +484,12 @@ export const en: SectionDict<typeof ru> = {
   "err.admin.igZernioUnavailable":
     "Zernio is not responding right now — rules and posts did not load. Refresh the page in a couple of minutes.",
   "err.admin.offerEnd": "The offer must end after it starts.",
+  "err.admin.offerPriceScope": "A new price can be set for a product only, not for a category.",
+  "err.admin.offerPriceHigher": "The new price must be lower than the product's regular price.",
+  "err.admin.offerPercent": "The discount is from 1 to 99 percent.",
+  "err.admin.offerCategory": "Choose a category.",
+  "err.admin.offerProduct": "Choose a product.",
+  "err.admin.offersFull": "Too many offers: delete past ones before adding new ones.",
   "err.admin.winbackOrder": "The second message must be sent later than the first.",
   "err.admin.winbackPromo":
     "Promo code {code} was not found or is not active — create it in “Discounts”.",
@@ -642,6 +660,13 @@ export const uz: SectionDict<typeof ru> = {
   "err.admin.igZernioUnavailable":
     "Zernio hozir javob bermayapti — qoidalar va postlar yuklanmadi. Bir necha daqiqadan soʻng sahifani yangilang.",
   "err.admin.offerEnd": "Aksiya boshlanganidan keyin tugashi kerak.",
+  "err.admin.offerPriceScope": "Yangi narxni faqat mahsulotga qo‘yish mumkin, toifaga emas.",
+  "err.admin.offerPriceHigher": "Yangi narx mahsulotning odatdagi narxidan past bo‘lishi kerak.",
+  "err.admin.offerPercent": "Chegirma — 1 dan 99 foizgacha.",
+  "err.admin.offerCategory": "Toifani tanlang.",
+  "err.admin.offerProduct": "Mahsulotni tanlang.",
+  "err.admin.offersFull":
+    "Aksiyalar juda ko‘p: yangisini qo‘shishdan oldin o‘tganlarini o‘chiring.",
   "err.admin.winbackOrder": "Ikkinchi xabar birinchisidan keyin yuborilishi kerak.",
   "err.admin.winbackPromo":
     "{code} promokodi topilmadi yoki amal qilmaydi — uni «Chegirmalar» boʻlimida yarating.",

@@ -60,6 +60,22 @@ function tzOffsetMinutes(d: Date, tz: string): number {
 }
 
 /**
+ * Момент «2026-10-12T23:59» по стенным часам пояса клиента → UTC (ISO).
+ * Поле datetime-local не знает пояса: продавец вводит время магазина, а не
+ * своего браузера.
+ */
+export function zonedLocalToUtc(local: string, tz: string): string {
+  const guess = new Date(`${local.length === 16 ? `${local}:00` : local}.000Z`);
+  return new Date(guess.getTime() - tzOffsetMinutes(guess, tz) * 60_000).toISOString();
+}
+
+/** Обратное к `zonedLocalToUtc`: момент → «2026-10-12T23:59» по часам пояса (для datetime-local). */
+export function utcToZonedLocal(iso: string, tz: string): string {
+  const d = new Date(iso);
+  return new Date(d.getTime() + tzOffsetMinutes(d, tz) * 60_000).toISOString().slice(0, 16);
+}
+
+/**
  * Граница дня клиента в UTC: «по 31 августа» значит весь этот день в его
  * поясе, а голая дата без зоны Postgres трактует как UTC.
  */

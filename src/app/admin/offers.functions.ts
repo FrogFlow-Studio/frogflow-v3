@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { UserError } from "@/core/i18n/user-error";
 
 /** Ограниченные предложения (модуль limited_offers): список, добавление, удаление. */
 const moduleAdmin = async (min?: "manager") =>
@@ -12,21 +11,28 @@ export const offersFn = createServerFn({ method: "GET" }).handler(async () => {
   const { productsByIds } = await import("@/core/catalog/picker");
   const offers = await listOffers(ctx);
   // Названия товаров из предложений; выбор нового — поиском (productPickerFn).
-  const products = await productsByIds(
-    ctx,
-    offers.map((o) => o.product_id),
-  );
-  return { offers, products };
+  const products = await productsByIds(ctx, offers.map((o) => o.product_id).filter(Boolean));
+  const { listAllCategories } = await import("@/core/catalog/admin");
+  const categories = (await listAllCategories(ctx)).map((c) => ({ id: c.id, name: c.name }));
+  return { offers, products, categories, timezone: ctx.timezone };
 });
+
+const localTime = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
 
 export const saveOfferFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z
       .object({
-        productId: z.string().uuid(),
-        percent: z.number().int().min(1).max(99),
-        startsAt: z.string().datetime({ offset: true }).nullable(),
-        endsAt: z.string().datetime({ offset: true }),
+        id: z.string().min(1).max(40).optional(),
+        scope: z.enum(["product", "category"]),
+        productId: z.string().uuid().optional(),
+        categoryId: z.string().uuid().optional(),
+        mode: z.enum(["percent", "price"]),
+        percent: z.number().int().min(1).max(99).optional(),
+        newPrice: z.number().positive().max(1e9).optional(),
+        // Время магазина, как в поле datetime-local: пояс подставляет сервер.
+        startsAt: localTime.nullable(),
+        endsAt: localTime,
         limit: z.number().int().min(1).max(100000).nullable(),
         title: z.string().max(80).optional(),
       })
@@ -34,24 +40,17 @@ export const saveOfferFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const ctx = await moduleAdmin("manager");
-    const { listOffers, saveOffers } = await import("@/core/offers/offers");
-    const starts = data.startsAt ?? new Date().toISOString();
-    if (Date.parse(data.endsAt) <= Date.parse(starts))
-      throw new UserError("err.admin.offerEnd", "Окончание акции должно быть позже начала.");
-    const current = (await listOffers(ctx)).map(({ sold: _s, left: _l, ...o }) => o);
-    await saveOffers(ctx, [
-      {
-        id: `lo_${Date.now().toString(36)}`,
-        product_id: data.productId,
-        percent: data.percent,
-        starts_at: starts,
-        ends_at: data.endsAt,
-        limit: data.limit,
-        title: data.title?.trim() || undefined,
-      },
-      // Закончившиеся старше месяца — вон из списка, чтобы он не рос бесконечно.
-      ...current.filter((o) => Date.parse(o.ends_at) > Date.now() - 30 * 86_400_000),
-    ]);
+    const { saveOfferForm } = await import("@/core/offers/admin");
+    await saveOfferForm(ctx, data);
+    return { ok: true };
+  });
+
+export const endOfferFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: z.string().min(1).max(40) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { endOfferNow } = await import("@/core/offers/admin");
+    await endOfferNow(ctx, data.id);
     return { ok: true };
   });
 
