@@ -610,7 +610,8 @@ export async function showLesson(b: CourseBot, data: string): Promise<void> {
 /**
  * Открытый урок до покупки: кнопка под карточкой курса, `opl:<товар>:<номер>`.
  * Отдаём только урок с галочкой «Открытый урок» и без задания; номер чужого
- * или закрытого урока — тишина, как и подделанная кнопка.
+ * или закрытого урока — то же сообщение «закрыто», без содержимого. Молчим
+ * только на подделанный идентификатор товара.
  */
 export async function showOpenLesson(b: CourseBot, data: string): Promise<void> {
   const c = COPY[b.locale];
