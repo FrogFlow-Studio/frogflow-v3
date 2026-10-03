@@ -1,12 +1,6 @@
 import { serviceDb } from "@/core/db/client.server";
 import { pageAll } from "@/core/db/page";
-import {
-  computeState,
-  readPolicy,
-  suspendText,
-  warnText,
-  type OverduePolicy,
-} from "@/core/billing/subscription";
+import { computeState, readPolicy, type OverduePolicy } from "@/core/billing/subscription";
 import { operationKey } from "@/core/billing/invoice-check";
 import { InvoiceAlreadyHandled } from "@/core/billing/invoice-state";
 import type { Tenant } from "@/core/tenant/types";
@@ -17,6 +11,7 @@ import { reportError } from "@/lib/errors";
 import { shownError } from "@/lib/shown-error";
 import { inChunks } from "@/lib/in-chunks";
 import { trialState } from "@/core/plans/trial";
+import type { AdminT } from "@/app/i18n/admin";
 
 /**
  * Подписка клиента на платформу: платежи (subscription_payments — срок
@@ -705,6 +700,23 @@ async function releaseSweep(botId: string, marker: string): Promise<void> {
   if (error) console.error(`[operator] sweep release failed for ${botId}: ${error.message}`);
 }
 
+/** Текст продавцу на его языке; язык не прочитался — по-русски, напоминание из-за этого не теряется. */
+async function sellerText(
+  t: Tenant,
+  make: (m: typeof import("./subscription-text").subscriptionMessages, tr: AdminT) => string,
+): Promise<string> {
+  const { subscriptionMessages } = await import("./subscription-text");
+  const { adminT } = await import("@/app/i18n/admin");
+  try {
+    const { tenantContext } = await import("@/core/tenant/resolve.server");
+    const { adminLocale } = await import("@/app/admin/locale.server");
+    return make(subscriptionMessages, adminT(await adminLocale(tenantContext(t))));
+  } catch (e) {
+    console.warn(`[billing] язык продавца ${t.id} не прочитан, шлём по-русски:`, e);
+    return make(subscriptionMessages, adminT("ru"));
+  }
+}
+
 /**
  * Ежедневный обход подписок клиентов на v2: предупредить заранее, применить
  * политику после отсрочки. Идемпотентность — метка `sweep_marker` в
@@ -774,7 +786,7 @@ export async function sweepSubscriptions(
         { reason: "subscription_overdue", sweep_marker: marker },
         "cron",
       );
-      const n = await notify(t.id, suspendText(sub.daysLeft));
+      const n = await notify(t.id, await sellerText(t, (m, tr) => m.suspended(tr, sub.daysLeft)));
       results.push({
         ...base,
         action: "suspended",
@@ -817,7 +829,10 @@ export async function sweepSubscriptions(
       });
       continue;
     }
-    const n = await notify(t.id, warnText(sub.daysLeft, policy.on_overdue === "suspend"));
+    const n = await notify(
+      t.id,
+      await sellerText(t, (m, tr) => m.warn(tr, sub.daysLeft, policy.on_overdue === "suspend")),
+    );
     if (!n.ok) {
       await releaseSweep(t.id, marker);
       results.push({ ...base, action: "failed", detail: n.detail });

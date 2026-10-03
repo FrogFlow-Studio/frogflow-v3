@@ -14,6 +14,7 @@ vi.mock("@/core/tenant/resolve.server", () => ({
   // Копии: у каждого прогона свой снимок справочника, как у двух кронов на проде.
   tenantDirectory: async () => tenants.map((t) => ({ ...t })),
   invalidateTenantDirectory: () => {},
+  tenantContext: (t: Tenant) => ({ tenant: t, db }),
 }));
 
 const { sweepSubscriptions } = await import("./billing.server");
@@ -254,5 +255,41 @@ describe("обход подписок: два крона одновременн�
     const [r] = await sweep();
     expect(r).toMatchObject({ state: "overdue", action: "warned" });
     expect(sent).toHaveLength(1);
+  });
+});
+
+describe("обход подписок: язык продавца", () => {
+  const langs = {
+    kk: ["жазылым", "тоқтатылды"],
+    en: ["subscription", "paused"],
+    uz: ["obuna", "to‘xtatildi"],
+    ru: ["Подписка", "приостановлен"],
+  } as const;
+  for (const [lang, [warnWord, stopWord]] of Object.entries(langs)) {
+    it(`${lang}: напоминание и сообщение о приостановке на языке админки`, async () => {
+      setup(day(-1), { on_overdue: "suspend" });
+      db.tables.app_settings = [{ bot_id: BOT, key: "admin_locale", value: lang }];
+      const [warned] = await sweep();
+      expect(warned).toMatchObject({ action: "warned" });
+      expect(sent[0]!.toLowerCase()).toContain(warnWord.toLowerCase());
+      expect(sent[0]).not.toMatch(/\{|undefined/);
+      sent = [];
+      setup(day(-5), { on_overdue: "suspend" });
+      db.tables.app_settings = [{ bot_id: BOT, key: "admin_locale", value: lang }];
+      const [stopped] = await sweep();
+      expect(stopped).toMatchObject({ action: "suspended" });
+      expect(sent[0]!.toLowerCase()).toContain(stopWord.toLowerCase());
+    });
+  }
+
+  it("язык не задан — язык магазина, иначе русский", async () => {
+    setup(day(-1), { on_overdue: "warn", default_locale: "en" });
+    await sweep();
+    expect(sent[0]).toContain("overdue");
+    sent = [];
+    db.tables.zernio_logs = [];
+    setup(day(-1), { on_overdue: "warn" });
+    await sweep();
+    expect(sent[0]).toContain("просрочена");
   });
 });

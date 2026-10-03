@@ -17,6 +17,13 @@ export const ru = {
   "trial.remind.d3": "Ваш пробный период заканчивается {date}, осталось дней: {n}.",
   "trial.remind.last": "Сегодня последний день пробного периода ({date}).",
   "trial.remind.where": "Выбрать тариф и оплатить можно в админке, раздел «Модули».",
+  "sub.msg.warnLeft":
+    "Подписка на бота заканчивается через {n} дн. Продлите, пожалуйста, чтобы всё работало без перерыва.",
+  "sub.msg.warnOver": "Подписка на бота просрочена на {n} дн. Продлите, пожалуйста.",
+  "sub.msg.tailSuspend": "После окончания отсрочки бот будет временно приостановлен.",
+  "sub.msg.tailWarn": "Бот продолжит работать — просто напоминаем.",
+  "sub.msg.suspended":
+    "Бот временно приостановлен: подписка просрочена на {n} дн. Как только оплата поступит, всё включится обратно — данные и настройки на месте.",
   "billing.nav": "История оплат",
   "billing.title": "История оплат подписки",
   "billing.payments": "Платежи",
@@ -88,6 +95,13 @@ export const kk: SectionDict<typeof ru> = {
   "trial.remind.last": "Бүгін сынақ кезеңінің соңғы күні ({date}).",
   "trial.remind.where":
     "Тарифті таңдап, төлеуді әкімшілік панелінің «Модульдер» бөлімінде жасауға болады.",
+  "sub.msg.warnLeft":
+    "Боттың жазылымы {n} күннен кейін аяқталады. Үзіліссіз жұмыс істеуі үшін ұзартыңыз.",
+  "sub.msg.warnOver": "Боттың жазылымы {n} күнге кешіктірілді. Ұзартыңыз, өтінеміз.",
+  "sub.msg.tailSuspend": "Кешіктіру мерзімі біткеннен кейін бот уақытша тоқтатылады.",
+  "sub.msg.tailWarn": "Бот жұмысын жалғастырады — жай ғана еске саламыз.",
+  "sub.msg.suspended":
+    "Бот уақытша тоқтатылды: жазылым {n} күнге кешіктірілді. Төлем түскен бойда бәрі қайта қосылады — деректер мен баптаулар орнында.",
   "billing.nav": "Төлем тарихы",
   "billing.title": "Жазылым төлемдерінің тарихы",
   "billing.payments": "Төлемдер",
@@ -157,6 +171,13 @@ export const en: SectionDict<typeof ru> = {
   "trial.remind.d3": "Your trial ends on {date}, days left: {n}.",
   "trial.remind.last": "Today is the last day of your trial ({date}).",
   "trial.remind.where": "You can choose a plan and pay in the admin panel, the “Modules” section.",
+  "sub.msg.warnLeft":
+    "Your bot subscription ends in {n} days. Please renew so everything keeps working without a break.",
+  "sub.msg.warnOver": "Your bot subscription is {n} days overdue. Please renew.",
+  "sub.msg.tailSuspend": "After the grace period ends, the bot will be paused.",
+  "sub.msg.tailWarn": "The bot keeps working — this is just a reminder.",
+  "sub.msg.suspended":
+    "The bot is paused: the subscription is {n} days overdue. As soon as the payment arrives, everything turns back on — your data and settings are intact.",
   "billing.nav": "Payment history",
   "billing.title": "Subscription payment history",
   "billing.payments": "Payments",
@@ -227,6 +248,12 @@ export const uz: SectionDict<typeof ru> = {
   "trial.remind.d3": "Sinov davringiz {date} da tugaydi, qolgan kunlar: {n}.",
   "trial.remind.last": "Bugun sinov davrining oxirgi kuni ({date}).",
   "trial.remind.where": "Tarifni tanlash va to‘lash admin panelining «Modullar» bo‘limida mumkin.",
+  "sub.msg.warnLeft": "Bot obunasi {n} kundan keyin tugaydi. Uzilishsiz ishlashi uchun uzaytiring.",
+  "sub.msg.warnOver": "Bot obunasi {n} kunga kechikdi. Iltimos, uzaytiring.",
+  "sub.msg.tailSuspend": "Kechiktirish muddati tugagach, bot vaqtincha to‘xtatiladi.",
+  "sub.msg.tailWarn": "Bot ishlashda davom etadi — shunchaki eslatamiz.",
+  "sub.msg.suspended":
+    "Bot vaqtincha to‘xtatildi: obuna {n} kunga kechikdi. To‘lov kelishi bilan hammasi qayta yoqiladi — ma’lumotlar va sozlamalar joyida.",
   "billing.nav": "To‘lovlar tarixi",
   "billing.title": "Obuna to‘lovlari tarixi",
   "billing.payments": "To‘lovlar",

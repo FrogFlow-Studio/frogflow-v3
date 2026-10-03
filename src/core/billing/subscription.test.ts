@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  computeState,
-  DEFAULT_POLICY,
-  expiryBackedByPayments,
-  readPolicy,
-  warnText,
-} from "./subscription";
+import { computeState, DEFAULT_POLICY, expiryBackedByPayments, readPolicy } from "./subscription";
 
 const P = { on_overdue: "suspend" as const, warn_days_before: 5, grace_days: 3 };
 const at = (s: string) => new Date(s);
@@ -65,13 +59,6 @@ describe("readPolicy", () => {
       warn_days_before: 0,
       grace_days: 0,
     });
-  });
-});
-
-describe("тексты владельцу", () => {
-  it("до истечения — «заканчивается через», после — «просрочена на»", () => {
-    expect(warnText(3, true)).toMatch(/через 3 дн\..*приостановлен/s);
-    expect(warnText(-2, false)).toMatch(/просрочена на 2 дн\..*продолжит работать/s);
   });
 });
 

@@ -74,19 +74,3 @@ export function computeState(
 export function expiryBackedByPayments(expiresAt: string | null, paymentCount: number): boolean {
   return !expiresAt || paymentCount > 0;
 }
-
-export function warnText(daysLeft: number | null, willSuspend: boolean): string {
-  const tail = willSuspend
-    ? "После окончания отсрочки бот будет временно приостановлен."
-    : "Бот продолжит работать — просто напоминаем.";
-  if (daysLeft !== null && daysLeft >= 0)
-    return `Подписка на бота заканчивается через ${daysLeft} дн. Продлите, пожалуйста, чтобы всё работало без перерыва.\n\n${tail}`;
-  return `Подписка на бота просрочена${daysLeft !== null ? ` на ${-daysLeft} дн.` : ""}. Продлите, пожалуйста.\n\n${tail}`;
-}
-
-export function suspendText(daysLeft: number | null): string {
-  return (
-    `Бот временно приостановлен: подписка просрочена${daysLeft !== null ? ` на ${-daysLeft} дн.` : ""}. ` +
-    "Как только оплата поступит, всё включится обратно — данные и настройки на месте."
-  );
-}
