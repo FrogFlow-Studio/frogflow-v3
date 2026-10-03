@@ -22,7 +22,7 @@ function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
 }
 
-function fetchWith(apiKey: string, bearer: string): typeof fetch {
+export function fetchWith(apiKey: string, bearer: string): typeof fetch {
   return (input, init) => {
     const headers = new Headers(
       typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
@@ -31,8 +31,20 @@ function fetchWith(apiKey: string, bearer: string): typeof fetch {
     headers.set("apikey", apiKey);
     if (isNewSupabaseApiKey(bearer)) headers.delete("Authorization");
     else headers.set("Authorization", `Bearer ${bearer}`);
-    return fetch(input, { ...init, headers });
+    // Свой тайм-аут на каждый запрос; вызывающий может оборвать раньше (init.signal).
+    const timeout = AbortSignal.timeout(requestTimeoutMs(input));
+    const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+    return fetch(input, { ...init, headers, signal });
   };
+}
+
+/** Запросы к PostgREST быстрые; файлы в Storage дольше. Оба меньше бюджета функции (120 с). */
+export const DB_TIMEOUT_MS = 25_000;
+export const STORAGE_TIMEOUT_MS = 90_000;
+
+function requestTimeoutMs(input: Parameters<typeof fetch>[0]): number {
+  const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  return url.includes("/storage/v1/") ? STORAGE_TIMEOUT_MS : DB_TIMEOUT_MS;
 }
 
 function build(bearer: string): Db {

@@ -7,16 +7,27 @@ import type { AdminKey, AdminT } from "@/app/i18n/admin";
 import type { UploadKind } from "@/core/storage/upload";
 import { shownError } from "@/lib/shown-error";
 
+/** Ответ сервера на подпись и подтверждение: мс; сам файл идёт отдельно. */
+const CALL_TIMEOUT_MS = 30_000;
+/** Загрузка файла без хода отправки: до 50 МБ при плохой связи. */
+const PUT_TIMEOUT_MS = 5 * 60_000;
+
 type Answer = { key?: string; url?: string; problem?: string; mb?: number };
 
 async function call(body: Record<string, unknown>): Promise<{ status: number; j: Answer }> {
-  const r = await fetch("/api/admin/upload", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const j = (await r.json().catch(() => ({}))) as Answer;
-  return { status: r.ok ? 200 : r.status, j };
+  try {
+    const r = await fetch("/api/admin/upload", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
+    });
+    const j = (await r.json().catch(() => ({}))) as Answer;
+    return { status: r.ok ? 200 : r.status, j };
+  } catch {
+    // Обрыв или тайм-аут: статус 0, как у неудачной загрузки файла.
+    return { status: 0, j: {} };
+  }
 }
 
 const PROBLEM_TEXT: Record<string, AdminKey> = {
@@ -43,7 +54,12 @@ function put(
   onProgress?: (sent: number, total: number) => void,
 ): Promise<{ ok: boolean; status: number }> {
   if (!onProgress)
-    return fetch(url, { method: "PUT", body: file, headers })
+    return fetch(url, {
+      method: "PUT",
+      body: file,
+      headers,
+      signal: AbortSignal.timeout(PUT_TIMEOUT_MS),
+    })
       .then((r) => ({ ok: r.ok, status: r.status }))
       .catch(() => ({ ok: false, status: 0 }));
   return new Promise((resolve) => {

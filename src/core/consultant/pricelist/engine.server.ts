@@ -217,7 +217,7 @@ export type PricelistDecision = {
 async function storyNote(
   data: PricelistData,
   input: PricelistInput,
-  fetch: (url: string) => Promise<V2Image | null>,
+  loadImage: (url: string) => Promise<V2Image | null>,
 ): Promise<{ note: string; products: ConsultantProduct[]; image?: V2Image }> {
   const story = input.story;
   if (!story?.storyId && !story?.mediaUrl && !input.storyProductIds) {
@@ -238,7 +238,7 @@ async function storyNote(
   if (products.length === 0) {
     // Отметки нет — модель смотрит на саму публикацию. Видео (рилс) и
     // устаревшая ссылка не скачаются — тогда вопрос покупателю.
-    const image = story?.mediaUrl ? await fetch(story.mediaUrl) : null;
+    const image = story?.mediaUrl ? await loadImage(story.mediaUrl) : null;
     if (image) {
       return {
         note: "[Покупатель пишет из публикации (сторис или рилс); товары к ней не привязаны. Картинка публикации — ниже: поймите, что на ней, и найдите похожее поиском. Не уверены — спросите, что понравилось.]",
@@ -307,7 +307,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
   const { catalog, articles, rate: rateRow } = data;
   const { state, text } = input;
   const rate = rateRow?.rate ?? null;
-  const fetch = input.fetchImage ?? fetchImage;
+  const loadImage = input.fetchImage ?? fetchImage;
   const ttl = input.cacheTtl ?? "1h";
   const savedProfile = state.profile ?? state.v2_profile;
   const mediaSentBefore = state.media_sent ?? state.v2_media_sent ?? [];
@@ -343,7 +343,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
   const notes: string[] = [];
   const profileNote = formatProfile(knownProfile);
   if (profileNote) notes.push(profileNote);
-  const story = await storyNote(data, input, fetch);
+  const story = await storyNote(data, input, loadImage);
   if (story.note) notes.push(story.note);
   const article = text.trim()
     ? pickArticleForQuestion(text, articles, catalog, KNOWLEDGE_ATTACH_MIN_SCORE)
@@ -376,7 +376,7 @@ async function decide(data: PricelistData, input: PricelistInput): Promise<Price
     MAX_IMAGES_PER_TURN,
   );
   const fetched = await Promise.all(
-    (input.imageUrls ?? []).slice(0, MAX_IMAGES_PER_TURN - ready.length).map((u) => fetch(u)),
+    (input.imageUrls ?? []).slice(0, MAX_IMAGES_PER_TURN - ready.length).map((u) => loadImage(u)),
   );
   const images = [...ready, ...fetched.filter((img): img is V2Image => img !== null)];
   const sentPhoto = (input.imageUrls?.length ?? 0) + (input.images?.length ?? 0) > 0;

@@ -26,6 +26,8 @@ export type ImageInfo = { size: number; contentType: string; head: Uint8Array } 
 export type ImageInfoReader = (ctx: TenantContext, path: string) => Promise<ImageInfo>;
 
 const HEAD_BYTES = 16;
+/** Читаем только первые байты: ждём недолго. */
+const MEDIA_HEAD_TIMEOUT_MS = 15_000;
 
 /**
  * Первые байты файла из закрытого бакета: подписанная ссылка на минуту и
@@ -40,7 +42,10 @@ async function readHead(
 ): Promise<Uint8Array> {
   const { data, error } = await bucket.createSignedUrl(key, 60);
   if (error || !data?.signedUrl) throw new Error(`нет подписанной ссылки на ${key}`);
-  const res = await fetch(data.signedUrl, { headers: { Range: `bytes=0-${HEAD_BYTES - 1}` } });
+  const res = await fetch(data.signedUrl, {
+    headers: { Range: `bytes=0-${HEAD_BYTES - 1}` },
+    signal: AbortSignal.timeout(MEDIA_HEAD_TIMEOUT_MS),
+  });
   if (!res.ok || !res.body) throw new Error(`хранилище ответило ${res.status} на ${key}`);
   const reader = res.body.getReader();
   const head = new Uint8Array(HEAD_BYTES);
