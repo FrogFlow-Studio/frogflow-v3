@@ -661,12 +661,15 @@ async function startFlow(b: Bot, payload = "") {
       return void (await send(b, b.m.waitlistJoined));
     }
     if (p) return sendProductCard(b, p);
+    // Скрытый или удалённый товар: ни карточки, ни записи в лист ожидания.
+    return void (await send(b, b.m.unavailable));
   }
   if (payload.startsWith("p_")) {
     if (!b.customer.state.locale)
       await applyLocale(b, b.ctx.tenant.settings.default_locale ?? "ru");
     const p = await getProduct(b.ctx, payload.slice(2));
     if (p) return sendProductCard(b, p);
+    return void (await send(b, b.m.unavailable));
   }
   if (b.ctx.tenant.modules.multi_language) {
     await send(b, b.m.chooseLanguage, { reply_markup: { inline_keyboard: languageChoice() } });

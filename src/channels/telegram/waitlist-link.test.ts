@@ -14,6 +14,7 @@ import type { TelegramApi } from "./api";
 const TG = 42;
 const OUT = "00000000-0000-4000-8000-000000000001";
 const IN = "00000000-0000-4000-8000-000000000002";
+const HIDDEN = "00000000-0000-4000-8000-000000000003";
 
 const product = (id: string, stock: number | null) => ({
   id,
@@ -36,7 +37,7 @@ const product = (id: string, stock: number | null) => ({
   product_material_files: [],
 });
 
-function bot(modules: Record<string, boolean>) {
+function bot(modules: Record<string, boolean>, seed?: (db: FakeDb) => void) {
   const db: FakeDb = fakeDb();
   db.tables.bot_users = [
     {
@@ -50,6 +51,7 @@ function bot(modules: Record<string, boolean>) {
   ];
   db.tables.products = [product(OUT, 0), product(IN, 5)];
   db.tables.categories = [];
+  seed?.(db);
   const ctx = {
     tenant: {
       id: "bot-1",
@@ -109,6 +111,32 @@ describe("/start w_<товар> — лист ожидания с сайта", ()
     expect(b.waitlist()).toEqual([]);
     expect(b.texts().join("\n")).not.toContain(COPY.ru.waitlistJoined);
     expect(b.texts().join("\n")).toContain("Товар 2");
+  });
+
+  it("скрытый товар: «недоступен», ни карточки, ни записи в лист", async () => {
+    const b = bot({ waitlist: true, stock: true }, (db) => {
+      db.tables.products!.push({ ...product(HIDDEN, 0), is_active: false });
+    });
+    await b.start(`w_${HIDDEN}`);
+    expect(b.waitlist()).toEqual([]);
+    expect(b.texts()).toContain(COPY.ru.unavailable);
+    expect(b.texts().join("\n")).not.toContain("Товар 3");
+  });
+
+  it("p_<скрытый товар>: «недоступен», без карточки", async () => {
+    const b = bot({ waitlist: true, stock: true }, (db) => {
+      db.tables.products!.push({ ...product(HIDDEN, 5), is_active: false });
+    });
+    await b.start(`p_${HIDDEN}`);
+    expect(b.texts()).toContain(COPY.ru.unavailable);
+    expect(b.texts().join("\n")).not.toContain("Товар 3");
+  });
+
+  it("w_<несуществующий товар>: «недоступен», без записи", async () => {
+    const b = bot({ waitlist: true, stock: true });
+    await b.start("w_00000000-0000-4000-8000-0000000000ff");
+    expect(b.waitlist()).toEqual([]);
+    expect(b.texts()).toContain(COPY.ru.unavailable);
   });
 
   it("без модуля waitlist ссылка никого не записывает", async () => {
