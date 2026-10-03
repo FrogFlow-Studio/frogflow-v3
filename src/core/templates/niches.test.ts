@@ -15,7 +15,7 @@ describe("шаблоны ниш", () => {
       else expect(tpl.products.length).toBeGreaterThan(0);
       for (const p of tpl.products) {
         expect(tpl.categories[p.category]).toBeDefined();
-        for (const l of ["ru", "kk"] as const) {
+        for (const l of ["ru", "kk", "en", "uz"] as const) {
           expect(p.name[l].trim()).not.toBe("");
           expect(p.description[l].trim()).not.toBe("");
           expect((EXAMPLE_PREFIX[l] + p.name[l]).length).toBeLessThanOrEqual(200);
@@ -33,7 +33,7 @@ describe("шаблоны ниш", () => {
 
 function ctxFor(
   vertical: "confectionery" | "digital" | "courses",
-  locale?: "kk",
+  locale?: "kk" | "en" | "uz",
   modules: Record<string, boolean> = {},
 ) {
   const db = fakeDb();
@@ -67,6 +67,22 @@ describe("применение шаблона", () => {
     expect(db.tables.categories![0]!.name).toBe("Мектепке дейінгілерге");
   });
 
+  it.each([
+    ["en", "Example · ", "Preschoolers"],
+    ["uz", "Namuna · ", "Maktabgacha yoshdagilar uchun"],
+  ] as const)("магазин на %s получает свои тексты, без русских", async (loc, prefix, cat) => {
+    const { db, ctx } = ctxFor("digital", loc, { courses: true });
+    await applyNicheTemplate(ctx);
+    const products = db.tables.products!;
+    expect(products.every((p) => String(p.name).startsWith(prefix))).toBe(true);
+    expect(db.tables.categories![0]!.name).toBe(cat);
+    const texts = [...products, ...db.tables.categories!].flatMap((r) => [
+      String(r.name),
+      String(r.description ?? ""),
+    ]);
+    expect(texts.filter((x) => /[А-Яа-яЁёӘәҒғҚқҢңӨөҰұҮүҺһІі]/.test(x))).toEqual([]);
+  });
+
   it("в магазин с товарами не кладёт", async () => {
     const { db, ctx } = ctxFor("digital");
     db.tables.products = [{ id: "p1", name: "Свой товар" }];
@@ -79,7 +95,7 @@ describe("применение шаблона", () => {
 describe("шаблон «Курсы»", () => {
   it("пример курса проходит проверку курса: уроки с текстом, по расписанию", () => {
     expect(COURSE_EXAMPLE.lessons.length).toBeGreaterThanOrEqual(3);
-    for (const l of ["ru", "kk"] as const) {
+    for (const l of ["ru", "kk", "en", "uz"] as const) {
       expect(COURSE_EXAMPLE.name[l].trim()).not.toBe("");
       for (const lesson of COURSE_EXAMPLE.lessons) {
         expect(lesson.title[l].trim()).not.toBe("");
