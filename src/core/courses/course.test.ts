@@ -5,8 +5,10 @@ import { dropCourse, getCourse, saveCourse } from "./course.server";
 import {
   courseKey,
   courseProblem,
+  LESSONS_MAX,
   lessonOpensAfterDays,
   parseCourse,
+  parseLessonList,
   type Course,
   type Lesson,
 } from "./course";
@@ -161,5 +163,72 @@ describe("курс — запись в настройки клиента", () =>
     expect(await dropCourse(ctx, P)).toEqual([f.path]);
     expect(db.tables.app_settings).toEqual([]);
     expect(await dropCourse(ctx, P)).toEqual([]);
+  });
+});
+
+describe("уроки списком (А34)", () => {
+  it("«Название — ссылка», без ссылки и разные разделители; пустые строки не считаются", () => {
+    const r = parseLessonList(
+      [
+        "Введение — https://youtu.be/abc",
+        "",
+        "   ",
+        "Кисти - и краски – https://youtu.be/def",
+        "Только название",
+        "Урок | https://vimeo.com/1",
+        "Урок 5\thttps://rutube.ru/x",
+      ].join("\r\n"),
+      0,
+    );
+    expect(r.lessons).toEqual([
+      { title: "Введение", link: "https://youtu.be/abc" },
+      { title: "Кисти - и краски", link: "https://youtu.be/def" },
+      { title: "Только название", link: null },
+      { title: "Урок", link: "https://vimeo.com/1" },
+      { title: "Урок 5", link: "https://rutube.ru/x" },
+    ]);
+    expect(r.skipped).toEqual([]);
+    expect(r.overLimit).toBe(0);
+  });
+
+  it("не https, одна голая ссылка и слишком длинное название — в пропущенных, с номером строки", () => {
+    const r = parseLessonList(
+      [
+        "Ок — https://youtu.be/ok",
+        "Плохая — http://example.com/a",
+        "Файл — ftp://example.com/a",
+        "https://youtu.be/bare",
+        `${"я".repeat(201)} — https://youtu.be/x`,
+        "Рядом — www.example.com/a",
+        "Название с дефисом - не ссылка",
+      ].join("\n"),
+      0,
+    );
+    expect(r.lessons.map((l) => l.title)).toEqual(["Ок", "Название с дефисом - не ссылка"]);
+    expect(r.leftover.split("\n")).toHaveLength(5);
+    expect(r.leftover.split("\n")[0]).toBe("Плохая — http://example.com/a");
+    expect(r.skipped).toEqual([
+      { line: 2, reason: "notHttps" },
+      { line: 3, reason: "notHttps" },
+      { line: 4, reason: "noTitle" },
+      { line: 5, reason: "titleTooLong" },
+      { line: 6, reason: "notHttps" },
+    ]);
+  });
+
+  it("лимит уроков: берём свободные места, остальное считаем, а не теряем молча", () => {
+    const text = Array.from({ length: 5 }, (_, i) => `Урок ${i + 1}`).join("\n");
+    const r = parseLessonList(text, LESSONS_MAX - 3);
+    expect(r.lessons).toHaveLength(3);
+    expect(r.overLimit).toBe(2);
+    expect(r.leftover).toBe("Урок 4\nУрок 5");
+    const full = parseLessonList(text, LESSONS_MAX);
+    expect(full.lessons).toHaveLength(0);
+    expect(full.overLimit).toBe(5);
+    // Испорченные строки в лимит не входят.
+    expect(parseLessonList("Плохая — http://a.b\nХорошая", LESSONS_MAX - 1)).toMatchObject({
+      lessons: [{ title: "Хорошая" }],
+      overLimit: 0,
+    });
   });
 });

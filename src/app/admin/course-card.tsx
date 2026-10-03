@@ -28,6 +28,7 @@ import {
   COHORTS_MAX,
   HOMEWORK_DAYS_MAX,
 } from "@/core/courses/course";
+import { LessonListAdd } from "@/app/admin/lesson-list-add";
 import { LessonQuizEditor } from "@/app/admin/lesson-quiz-editor";
 import { DEFAULT_TARIFF, type Cohort, type Tariff } from "@/core/courses/cohort";
 
@@ -90,6 +91,20 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
       lessons: [
         ...course.lessons,
         { id: crypto.randomUUID(), title: "", text: "", files: [], link: null },
+      ],
+    });
+  const addList = (list: Array<{ title: string; link: string | null }>) =>
+    change({
+      ...course,
+      lessons: [
+        ...course.lessons,
+        ...list.map((x) => ({
+          id: crypto.randomUUID(),
+          title: x.title,
+          text: "",
+          files: [],
+          link: x.link,
+        })),
       ],
     });
   const drip = course.schedule.mode === "drip" ? course.schedule.everyDays : null;
@@ -341,12 +356,13 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
       )}
       <ErrorBox error={upload.error} />
 
-      <div className="mt-3 flex items-center gap-3">
+      <div className="mt-3 flex flex-wrap items-center gap-3">
         {course.lessons.length < LESSONS_MAX && (
           <button type="button" className="btn-secondary" onClick={add}>
             {t("product.lessonAdd")}
           </button>
         )}
+        <LessonListAdd existing={course.lessons.length} onAdd={addList} t={t} />
         <button
           type="button"
           className="btn-primary"

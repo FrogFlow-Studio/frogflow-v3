@@ -97,6 +97,67 @@ export function isHttpsLink(v: string): boolean {
   }
 }
 
+/** Строка списка, которую не взяли в уроки: номер строки (с единицы) и причина. */
+export type LessonListSkip = { line: number; reason: "notHttps" | "titleTooLong" | "noTitle" };
+export type LessonListResult = {
+  lessons: Array<{ title: string; link: string | null }>;
+  skipped: LessonListSkip[];
+  /** Строк с верным уроком, не поместившихся в лимит уроков курса. */
+  overLimit: number;
+  /** Строки, не ставшие уроками (пропущенные и не вошедшие в лимит), как они были введены: их можно поправить и отправить снова. */
+  leftover: string;
+};
+
+// Название и ссылка разделены « — », « – », « - », « | » или табуляцией; делится по последнему разделителю.
+const LIST_SPLIT = /^(.*\S)(?:\s+[—–|-]\s+|\t+)(\S+)$/;
+// Всё, что похоже на адрес: со схемой или «www.». Остальное — часть названия.
+const URL_LIKE = /^(?:[a-z][a-z0-9+.-]*:\/\/|www\.)/i;
+
+/**
+ * Уроки списком («Добавить уроки списком»): строка «Название — ссылка» → урок;
+ * без ссылки — урок без ссылки. Пустые строки пропускаются без счёта. Ссылка
+ * разбирается как у урока (`isHttpsLink`): не https — строка не берётся и
+ * попадает в `skipped`, а не теряется молча. Берём не больше свободных мест
+ * (`LESSONS_MAX` минус уже имеющиеся), остаток считается в `overLimit`.
+ */
+export function parseLessonList(text: string, existing: number): LessonListResult {
+  const lessons: LessonListResult["lessons"] = [];
+  const skipped: LessonListSkip[] = [];
+  let overLimit = 0;
+  const leftover: string[] = [];
+  const room = Math.max(0, LESSONS_MAX - existing);
+  for (const [i, raw] of text.split(/\r?\n/).entries()) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (URL_LIKE.test(line) && !/\s/.test(line)) {
+      skipped.push({ line: i + 1, reason: "noTitle" });
+      leftover.push(line);
+      continue;
+    }
+    const m = LIST_SPLIT.exec(line);
+    const urlLike = Boolean(m && URL_LIKE.test(m[2]!));
+    const title = (urlLike ? m![1]! : line).trim();
+    const link = urlLike ? m![2]! : null;
+    if (title.length > LESSON_TITLE_MAX) {
+      skipped.push({ line: i + 1, reason: "titleTooLong" });
+      leftover.push(line);
+      continue;
+    }
+    if (link && !isHttpsLink(link)) {
+      skipped.push({ line: i + 1, reason: "notHttps" });
+      leftover.push(line);
+      continue;
+    }
+    if (lessons.length >= room) {
+      overLimit++;
+      leftover.push(line);
+      continue;
+    }
+    lessons.push({ title, link });
+  }
+  return { lessons, skipped, overLimit, leftover: leftover.join("\n") };
+}
+
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
 function parseSchedule(v: unknown): CourseSchedule {
