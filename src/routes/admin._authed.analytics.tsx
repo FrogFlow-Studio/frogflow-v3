@@ -2,8 +2,10 @@ import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { z } from "zod";
 import { analyticsFn } from "@/app/admin/admin.functions";
+import { explainSalesFn } from "@/app/admin/analytics.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
-import { Card, Field, PageTitle } from "@/app/ui";
+import { Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
+import { canEdit } from "@/core/auth/roles";
 import { BarList, ChartCard, DataTable, LineChart } from "@/app/ui/charts";
 import { compactNumber, shortDay } from "@/core/analytics/pure";
 import { FUNNEL_STAGES, stageRate } from "@/core/analytics/funnel";
@@ -313,6 +315,7 @@ function AnalyticsPage() {
           }
         />
         <SourceLinksCard bot={a.links.bot} store={a.links.store} />
+        {canEdit(shop.role) && <ExplainCard days={days} />}
         <SpeedCard rows={a.speed} />
         <CohortsCard cohorts={a.cohorts} />
         <CustomersCard c={a.customers} currencyFallback={a.currency} />
@@ -669,6 +672,34 @@ function SpeedCard({ rows }: { rows: SpeedRow[] }) {
         </>
       )}
       <p className="mt-2 text-xs text-muted">{t("analytics.speed.hint")}</p>
+    </Card>
+  );
+}
+
+/** ИИ-разбор: «Почему изменились продажи». Тратит ИИ-баланс клиента, текст нигде не сохраняется. */
+function ExplainCard({ days }: { days: 7 | 30 | 90 }) {
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const [text, setText] = useState("");
+  const explain = useAction(async () => {
+    const r = await explainSalesFn({ data: { days, lang: shop.locale } });
+    setText(r.text);
+  });
+  return (
+    <Card title={t("analytics.explain.title")} className="lg:col-span-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          className="btn-secondary text-sm"
+          disabled={explain.busy}
+          onClick={() => void explain.run().catch(() => {})}
+        >
+          {explain.busy ? t("analytics.explain.busy") : t("analytics.explain.button")}
+        </button>
+        <p className="text-xs text-muted">{t("analytics.explain.hint", { n: days })}</p>
+      </div>
+      <ErrorBox error={explain.error} />
+      {text && <p className="mt-3 whitespace-pre-line text-sm">{text}</p>}
     </Card>
   );
 }

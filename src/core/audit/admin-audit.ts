@@ -50,6 +50,7 @@ const NOT_AUDITED = new Set([
   "assistDescriptionFn",
   "assistPostFn",
   "assistReviewReplyFn",
+  "explainSalesFn",
 ]);
 
 const ADMIN_FUNCTIONS_FILE = /(^|\/)src\/app\/admin\/[^/]+\.functions\.ts$/;

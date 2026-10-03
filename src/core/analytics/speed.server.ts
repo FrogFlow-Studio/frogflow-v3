@@ -4,7 +4,17 @@ import { eachPage } from "@/core/db/page";
 import { ORDER_EVENT_STATUS } from "@/core/orders/events";
 import { orderSpeed, SPEED_EVENT_TYPES, type SpeedEvent, type SpeedRow } from "./speed";
 
-export async function speedStats(ctx: TenantContext, from: Date, to: Date): Promise<SpeedRow[]> {
+/**
+ * Заказы, оформленные в [from, to). События оплаты и выдачи читаются до
+ * `readUntil` (по умолчанию `to`): для прошлого периода это «сейчас», иначе
+ * оплаты после его границы потерялись бы.
+ */
+export async function speedStats(
+  ctx: TenantContext,
+  from: Date,
+  to: Date,
+  readUntil: Date = to,
+): Promise<SpeedRow[]> {
   const events: SpeedEvent[] = [];
   await eachPage<{
     created_at: string;
@@ -18,7 +28,7 @@ export async function speedStats(ctx: TenantContext, from: Date, to: Date): Prom
         .eq("status", ORDER_EVENT_STATUS)
         .in("event_type", SPEED_EVENT_TYPES)
         .gte("created_at", from.toISOString())
-        .lt("created_at", to.toISOString())
+        .lt("created_at", readUntil.toISOString())
         .order("created_at")
         .order("id")
         .range(a, b),

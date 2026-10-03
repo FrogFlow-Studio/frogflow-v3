@@ -113,6 +113,11 @@ export const ru = {
   "analytics.speed.fmt.m": "{n} мин",
   "analytics.speed.fmt.h": "{n} ч",
   "analytics.speed.fmt.d": "{n} дн",
+  "analytics.explain.title": "Почему изменились продажи",
+  "analytics.explain.button": "Разобрать с ИИ",
+  "analytics.explain.busy": "Разбираю…",
+  "analytics.explain.hint":
+    "ИИ сравнит последние {n} дней с предыдущими и напишет 3–5 пунктов. Каждый разбор тратит ИИ-баланс магазина (доли цента), результат нигде не сохраняется.",
   "analytics.export.daily": "Скачать CSV",
   "analytics.export.products": "Товары (CSV)",
   "analytics.export.hint":
@@ -231,6 +236,11 @@ export const kk: SectionDict<typeof ru> = {
   "analytics.speed.fmt.m": "{n} мин",
   "analytics.speed.fmt.h": "{n} сағ",
   "analytics.speed.fmt.d": "{n} күн",
+  "analytics.explain.title": "Сатылым неге өзгерді",
+  "analytics.explain.button": "ЖИ-мен талдау",
+  "analytics.explain.busy": "Талдап жатырмын…",
+  "analytics.explain.hint":
+    "ЖИ соңғы {n} күнді алдыңғысымен салыстырып, 3–5 тармақ жазады. Әр талдау дүкеннің ЖИ балансын жұмсайды (центтің үлесі), нәтиже еш жерде сақталмайды.",
   "analytics.export.daily": "CSV жүктеу",
   "analytics.export.products": "Тауарлар (CSV)",
   "analytics.export.hint":
@@ -350,6 +360,11 @@ export const en: SectionDict<typeof ru> = {
   "analytics.speed.fmt.m": "{n} min",
   "analytics.speed.fmt.h": "{n} h",
   "analytics.speed.fmt.d": "{n} d",
+  "analytics.explain.title": "Why sales changed",
+  "analytics.explain.button": "Explain with AI",
+  "analytics.explain.busy": "Analysing…",
+  "analytics.explain.hint":
+    "The AI compares the last {n} days with the previous ones and writes 3–5 points. Each run spends the shop’s AI balance (fractions of a cent); the result is not saved anywhere.",
   "analytics.export.daily": "Download CSV",
   "analytics.export.products": "Products (CSV)",
   "analytics.export.hint":
@@ -469,6 +484,11 @@ export const uz: SectionDict<typeof ru> = {
   "analytics.speed.fmt.m": "{n} daq",
   "analytics.speed.fmt.h": "{n} soat",
   "analytics.speed.fmt.d": "{n} kun",
+  "analytics.explain.title": "Savdo nega o‘zgardi",
+  "analytics.explain.button": "AI bilan tahlil qilish",
+  "analytics.explain.busy": "Tahlil qilinmoqda…",
+  "analytics.explain.hint":
+    "AI oxirgi {n} kunni oldingisi bilan solishtirib, 3–5 band yozadi. Har bir tahlil do‘konning AI balansidan sarflaydi (sentning ulushi), natija hech qayerda saqlanmaydi.",
   "analytics.export.daily": "CSV yuklab olish",
   "analytics.export.products": "Mahsulotlar (CSV)",
   "analytics.export.hint":

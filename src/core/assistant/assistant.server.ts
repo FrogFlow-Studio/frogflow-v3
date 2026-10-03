@@ -15,6 +15,9 @@ import {
   type AssistProduct,
   type AssistReview,
   type AssistTask,
+  cleanSalesText,
+  salesPrompt,
+  type SalesDigest,
 } from "./prompts";
 
 /** Модель та же, что у консультанта: платформа уже выбрала её по цене (CONSULTANT_MODEL). */
@@ -41,11 +44,48 @@ export type AssistRequest = {
  */
 export async function assistText(ctx: TenantContext, req: AssistRequest): Promise<string> {
   if (previewReadonly()) throw new UserError("err.assist.preview", PREVIEW_AI_OFF);
+  if (!req.product.name.trim())
+    throw new UserError("err.assist.noName", "Сначала напишите название товара.");
+  const { system, user } = assistPrompt(req.task, req.product, req.lang, req.review);
+  const raw = await callAssist(ctx, { system, user, maxTokens: 1200 });
+  const text = cleanAssistText(req.task, raw);
+  if (!text)
+    throw new UserError("err.assist.failed", "ИИ-помощник не ответил. Попробуйте ещё раз.");
+  return text;
+}
+
+/**
+ * «Почему изменились продажи»: 3–5 пунктов по сводке двух периодов. Те же
+ * пределы и расход, что у черновиков: нет баланса — отказ без вызова модели.
+ */
+export async function explainSales(
+  ctx: TenantContext,
+  digest: SalesDigest,
+  lang: Locale,
+): Promise<string> {
+  if (previewReadonly()) throw new UserError("err.assist.preview", PREVIEW_AI_OFF);
+  if (!digest.current.orders && !digest.previous.orders)
+    throw new UserError("err.assist.salesEmpty", "За оба периода нет продаж — объяснять нечего.");
+  const { system, user } = salesPrompt(digest, lang);
+  const raw = await callAssist(ctx, { system, user, maxTokens: 900 });
+  const text = cleanSalesText(raw);
+  if (!text)
+    throw new UserError("err.assist.failed", "ИИ-помощник не ответил. Попробуйте ещё раз.");
+  return text;
+}
+
+/**
+ * Один вызов модели с бронью: ключ платформы, пределы в день (черновики и
+ * доллары), ИИ-баланс клиента. Сбой модели снимает все брони; ответ меняет
+ * бронь на настоящую цену. Возвращает сырой текст ответа.
+ */
+async function callAssist(
+  ctx: TenantContext,
+  req: { system: string; user: string; maxTokens: number },
+): Promise<string> {
   const apiKey = env().ANTHROPIC_API_KEY?.trim();
   if (!apiKey)
     throw new UserError("err.assist.noKey", "ИИ-помощник недоступен: на платформе не задан ключ.");
-  if (!req.product.name.trim())
-    throw new UserError("err.assist.noName", "Сначала напишите название товара.");
 
   const date = today();
   let overLimit = false;
@@ -109,18 +149,21 @@ export async function assistText(ctx: TenantContext, req: AssistRequest): Promis
     );
   }
 
-  const { system, user } = assistPrompt(req.task, req.product, req.lang, req.review);
   const client = new Anthropic({ apiKey, maxRetries: 1, timeout: TIMEOUT_MS });
   let response: Anthropic.Message;
   try {
     response = await client.messages.create({
       model: env().CONSULTANT_MODEL?.trim() || DEFAULT_MODEL,
-      max_tokens: 1200,
-      system,
-      messages: [{ role: "user", content: user }],
+      max_tokens: req.maxTokens,
+      system: req.system,
+      messages: [{ role: "user", content: req.user }],
     });
   } catch (e) {
     await aiRelease(ctx, hold);
+    // Модель не ответила — дневная бронь в долларах тоже не нужна.
+    await updateSettingAtomic(ctx, CONSULTANT_KEYS.daily, (raw) =>
+      settleRaw(raw, date, RESERVE_USD, 0),
+    ).catch(() => {});
     const { reportError } = await import("@/lib/errors");
     await reportError(e, { where: "assistant", botId: ctx.tenant.id });
     throw new UserError("err.assist.failed", "ИИ-помощник не ответил. Попробуйте ещё раз.");
@@ -135,11 +178,7 @@ export async function assistText(ctx: TenantContext, req: AssistRequest): Promis
 
   if (response.stop_reason === "refusal")
     throw new UserError("err.assist.failed", "ИИ-помощник не ответил. Попробуйте ещё раз.");
-  const raw = response.content.map((b) => (b.type === "text" ? b.text : "")).join("");
-  const text = cleanAssistText(req.task, raw);
-  if (!text)
-    throw new UserError("err.assist.failed", "ИИ-помощник не ответил. Попробуйте ещё раз.");
-  return text;
+  return response.content.map((b) => (b.type === "text" ? b.text : "")).join("");
 }
 
 /** Учёт расхода не записался (сбой базы или сотня параллельных запросов). */
