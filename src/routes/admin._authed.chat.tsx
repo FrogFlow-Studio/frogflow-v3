@@ -24,6 +24,7 @@ import { UNANSWERED_OPTIONS } from "@/core/chat/unanswered";
 import { isIndefinite } from "@/core/consultant/pause";
 import {
   replyWindow,
+  windowNotice,
   serverClockOffset,
   windowLeftParts,
   type ReplyWindow,
@@ -61,12 +62,18 @@ const CHANNEL: Record<string, string> = { instagram: "Instagram", whatsapp: "Wha
 /** Переписка с ответа сервера; смещение часов фиксируется в момент ответа. */
 function threadOf(
   telegramId: number,
-  r: { messages: ChatMessage[]; lastInboundAt: string | null; serverNow: string },
+  r: {
+    messages: ChatMessage[];
+    lastInboundAt: string | null;
+    serverNow: string;
+    waTemplate: string | null;
+  },
 ) {
   return {
     telegramId,
     messages: r.messages,
     lastInboundAt: r.lastInboundAt,
+    waTemplate: r.waTemplate,
     clockOffset: serverClockOffset(r.serverNow, Date.now()),
   };
 }
@@ -146,9 +153,11 @@ function ChatPage() {
     telegramId: number | null;
     messages: ChatMessage[];
     lastInboundAt: string | null;
+    /** Имя шаблона WhatsApp для ответа вне окна; null — не задан. */
+    waTemplate: string | null;
     /** Разница часов сервера и браузера на момент ответа сервера. */
     clockOffset: number;
-  }>({ telegramId: null, messages: [], lastInboundAt: null, clockOffset: 0 });
+  }>({ telegramId: null, messages: [], lastInboundAt: null, waTemplate: null, clockOffset: 0 });
   const messages = thread.messages;
   const [reply, setReply] = useState("");
   // Id черновика — ключ идемпотентности отправки в Instagram/WhatsApp (новый на каждый диалог).
@@ -164,6 +173,8 @@ function ChatPage() {
     selected && thread.telegramId === selected.telegram_id
       ? replyWindow(selected.platform, thread.lastInboundAt, Date.now() + thread.clockOffset)
       : null;
+
+  const notice = selected ? windowNotice(selected.platform, window24, thread.waTemplate) : null;
 
   // Опрос: список — всегда, переписка — для открытого диалога.
   useEffect(() => {
@@ -451,11 +462,13 @@ function ChatPage() {
                   }
                 />
               )}
-              {canWrite && window24?.state === "closed" && (
+              {canWrite && notice && (
                 <p className="border-t border-line px-3 pt-2 text-xs text-warn">
-                  {selected.platform === "whatsapp"
-                    ? t("chat.windowClosedWhatsapp")
-                    : t("chat.windowClosedInstagram")}
+                  {notice.key === "whatsappTemplate"
+                    ? t("chat.windowTemplate", { name: notice.template })
+                    : notice.key === "whatsappNoTemplate"
+                      ? t("chat.windowClosedWhatsapp")
+                      : t("chat.windowClosedInstagram")}
                 </p>
               )}
               {canWrite && (

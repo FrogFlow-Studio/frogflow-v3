@@ -2197,7 +2197,16 @@ export const chatMessagesFn = createServerFn({ method: "GET" })
     // Окно 24 часа Instagram/WhatsApp считается от последнего входящего, отдельным
     // запросом: в последних 500 репликах его может не оказаться.
     // serverNow — остаток окна браузер считает по часам сервера, не по своим.
-    return { messages, lastInboundAt: inboundAt, serverNow: new Date().toISOString() };
+    // Шаблон WhatsApp для ответа вне окна: поле ответа заранее говорит, уйдёт ли сообщение.
+    const { getSetting } = await import("@/core/settings/settings");
+    const { parseNotifyTemplate } = await import("@/channels/zernio/outbox.server");
+    const template = parseNotifyTemplate(await getSetting(ctx, "whatsapp_bot_notify_template"));
+    return {
+      messages,
+      lastInboundAt: inboundAt,
+      serverNow: new Date().toISOString(),
+      waTemplate: template?.name ?? null,
+    };
   });
 
 /**

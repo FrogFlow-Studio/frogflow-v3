@@ -17,6 +17,8 @@ export const ru = {
   "chat.windowClosed": "окно 24 часа закрыто",
   "chat.windowClosedWhatsapp":
     "Покупатель писал больше 24 часов назад: WhatsApp пропустит только одобренный шаблон, обычное сообщение не уйдёт. Окно откроется, когда покупатель напишет сам.",
+  "chat.windowTemplate":
+    "Покупатель писал больше 24 часов назад: сообщение уйдёт одобренным шаблоном «{name}», а ваш текст станет его параметром (одной строкой; вложение — ссылкой в тексте).",
   "chat.windowClosedInstagram":
     "Покупатель писал больше 24 часов назад: Instagram может не принять сообщение. Окно откроется, когда покупатель напишет сам.",
   "chat.resumeBot": "Снять паузу бота",
@@ -103,6 +105,8 @@ export const kk: SectionDict<typeof ru> = {
   "chat.windowClosed": "24 сағаттық терезе жабық",
   "chat.windowClosedWhatsapp":
     "Сатып алушы 24 сағаттан бұрын жазған: WhatsApp тек бекітілген үлгіні өткізеді, қарапайым хабарлама кетпейді. Сатып алушы өзі жазғанда терезе ашылады.",
+  "chat.windowTemplate":
+    "Сатып алушы 24 сағаттан бұрын жазған: хабарлама бекітілген «{name}» үлгісімен кетеді, ал сіздің мәтініңіз оның параметрі болады (бір жолмен; тіркеме мәтінде сілтеме болып кетеді).",
   "chat.windowClosedInstagram":
     "Сатып алушы 24 сағаттан бұрын жазған: Instagram хабарламаны қабылдамауы мүмкін. Сатып алушы өзі жазғанда терезе ашылады.",
   "chat.resumeBot": "Бот кідірісін алу",
@@ -190,6 +194,8 @@ export const en: SectionDict<typeof ru> = {
   "chat.windowClosed": "24-hour window closed",
   "chat.windowClosedWhatsapp":
     "The customer last wrote more than 24 hours ago: WhatsApp only lets an approved template through, a regular message won't be delivered. The window reopens when the customer writes.",
+  "chat.windowTemplate":
+    "The customer last wrote more than 24 hours ago: the message will go as the approved template “{name}”, and your text becomes its parameter (one line; an attachment goes as a link in the text).",
   "chat.windowClosedInstagram":
     "The customer last wrote more than 24 hours ago: Instagram may reject the message. The window reopens when the customer writes.",
   "chat.resumeBot": "Resume the bot",
@@ -277,6 +283,8 @@ export const uz: SectionDict<typeof ru> = {
   "chat.windowClosed": "24 soatlik oyna yopiq",
   "chat.windowClosedWhatsapp":
     "Xaridor 24 soatdan oldin yozgan: WhatsApp faqat tasdiqlangan shablonni o‘tkazadi, oddiy xabar ketmaydi. Xaridor o‘zi yozganda oyna ochiladi.",
+  "chat.windowTemplate":
+    "Xaridor 24 soatdan oldin yozgan: xabar tasdiqlangan «{name}» shabloni bilan ketadi, sizning matningiz esa uning parametriga aylanadi (bir qatorda; ilova matnda havola sifatida ketadi).",
   "chat.windowClosedInstagram":
     "Xaridor 24 soatdan oldin yozgan: Instagram xabarni qabul qilmasligi mumkin. Xaridor o‘zi yozganda oyna ochiladi.",
   "chat.resumeBot": "Bot pauzasini olib tashlash",

@@ -41,3 +41,24 @@ export function serverClockOffset(serverNow: string | null | undefined, clientNo
   const at = serverNow ? Date.parse(serverNow) : NaN;
   return Number.isFinite(at) ? at - clientNow : 0;
 }
+
+/**
+ * Подсказка над полем ответа, пока окно закрыто: что произойдёт с сообщением.
+ * WhatsApp с заданным шаблоном — уйдёт шаблоном; без шаблона — не уйдёт, пока
+ * его не задали; Instagram шаблонов не знает. Открытое окно и Telegram — без подсказки.
+ */
+export type WindowNotice =
+  | { key: "whatsappTemplate"; template: string }
+  | { key: "whatsappNoTemplate" }
+  | { key: "instagram" };
+
+export function windowNotice(
+  platform: string,
+  w: ReplyWindow | null,
+  template: string | null | undefined,
+): WindowNotice | null {
+  if (!w || w.state !== "closed") return null;
+  if (platform === "instagram") return { key: "instagram" };
+  if (platform !== "whatsapp") return null;
+  return template ? { key: "whatsappTemplate", template } : { key: "whatsappNoTemplate" };
+}

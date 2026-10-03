@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { replyWindow, windowLeftParts, serverClockOffset } from "./reply-window";
+import {
+  REPLY_WINDOW_MS,
+  replyWindow,
+  windowLeftParts,
+  windowNotice,
+  serverClockOffset,
+} from "./reply-window";
 
 const NOW = Date.parse("2026-09-27T12:00:00Z");
 const ago = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
@@ -54,5 +60,33 @@ describe("окно 24 часа — по часам сервера, а не бр�
   it("время сервера не пришло или битое — смещения нет", () => {
     expect(serverClockOffset(undefined, 1000)).toBe(0);
     expect(serverClockOffset("не дата", 1000)).toBe(0);
+  });
+});
+
+describe("подсказка над полем ответа вне окна", () => {
+  const closed = { state: "closed", since: null } as const;
+  const open = { state: "open", closesAt: "2026-10-04T00:00:00Z", leftMs: 1000 } as const;
+
+  it("WhatsApp: с шаблоном — уйдёт шаблоном, без — задайте шаблон", () => {
+    expect(windowNotice("whatsapp", closed, "order_update")).toEqual({
+      key: "whatsappTemplate",
+      template: "order_update",
+    });
+    expect(windowNotice("whatsapp", closed, null)).toEqual({ key: "whatsappNoTemplate" });
+    expect(windowNotice("whatsapp", closed, "")).toEqual({ key: "whatsappNoTemplate" });
+  });
+
+  it("Instagram — без шаблона; открытое окно и Telegram — без подсказки", () => {
+    expect(windowNotice("instagram", closed, "x")).toEqual({ key: "instagram" });
+    expect(windowNotice("whatsapp", open, "x")).toBeNull();
+    expect(windowNotice("telegram", null, "x")).toBeNull();
+    expect(windowNotice("whatsapp", null, "x")).toBeNull();
+  });
+
+  it("граница 24 часов: за секунду до — открыто, ровно 24 часа — подсказка", () => {
+    const at = Date.parse("2026-10-03T10:00:00Z");
+    const w = (now: number) => replyWindow("whatsapp", "2026-10-03T10:00:00Z", now);
+    expect(windowNotice("whatsapp", w(at + REPLY_WINDOW_MS - 1000), "t")).toBeNull();
+    expect(windowNotice("whatsapp", w(at + REPLY_WINDOW_MS), "t")?.key).toBe("whatsappTemplate");
   });
 });
