@@ -79,7 +79,15 @@ export const signupFn = createServerFn({ method: "POST" })
     } catch (e) {
       console.error(`[signup] trial for ${id} failed: ${e instanceof Error ? e.message : e}`);
     }
-    const { requireTenant } = await import("@/core/tenant/resolve.server");
+    const { requireTenant, tenantContext } = await import("@/core/tenant/resolve.server");
+    // Магазин не пустой: 2–3 категории и скрытые примеры товаров ниши. Сбой
+    // набора не ломает регистрацию — «Добавить примеры» остаётся на «Обзоре».
+    try {
+      const { applyNicheTemplate } = await import("@/core/templates/apply.server");
+      await applyNicheTemplate(tenantContext(await requireTenant({ by: "id", value: id })));
+    } catch (e) {
+      console.error(`[signup] starter for ${id} failed: ${e instanceof Error ? e.message : e}`);
+    }
     const { loginInTenant } = await import("@/core/auth/roles");
     const { adminStamp } = await import("@/app/auth/guards.server");
     const login = loginInTenant(await requireTenant({ by: "id", value: id }), username);

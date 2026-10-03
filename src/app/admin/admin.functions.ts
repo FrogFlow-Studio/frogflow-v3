@@ -317,7 +317,13 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
     ctx.db.from("products").select("id", { count: "exact", head: true }).eq("is_active", true),
     ctx.db.from("bot_users").select("user_key", { count: "exact", head: true }),
     listPaymentMethods(ctx),
-    getSettings(ctx, ["legal_requisites", "admin_chat_id", "setup_hidden", "moved_welcome_hidden"]),
+    getSettings(ctx, [
+      "legal_requisites",
+      "admin_chat_id",
+      "setup_hidden",
+      "moved_welcome_hidden",
+      "starter_ids",
+    ]),
     ctx.db.from("orders").select("id", { count: "exact", head: true }),
     // Первый включённый товар — на нём продавец делает тестовый заказ себе.
     ctx.db
@@ -343,6 +349,8 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
     ordersBeforeMove = before.count ?? 0;
   }
   const { redactOrders } = await import("@/core/orders/redact");
+  const { starterLeft } = await import("@/core/templates/apply.server");
+  const starter = settings.starter_ids ? await starterLeft(ctx, settings.starter_ids) : 0;
   return {
     counts,
     rev30,
@@ -370,6 +378,8 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
         ordersBeforeMove,
       }),
       slug: ctx.tenant.settings.slug ?? null,
+      // Скрытые примеры набора, которые ещё лежат в магазине: плашка «Убрать примеры».
+      starter,
       // Пустой магазин может начать с примеров своей ниши (core/templates).
       template:
         (products ?? 0) === 0 &&
@@ -383,6 +393,13 @@ export const applyNicheTemplateFn = createServerFn({ method: "POST" }).handler(a
   const ctx = await adminWrite();
   const { applyNicheTemplate } = await import("@/core/templates/apply.server");
   return applyNicheTemplate(ctx);
+});
+
+/** «Убрать примеры»: удаляет только созданное стартовым набором (core/templates). */
+export const removeStarterFn = createServerFn({ method: "POST" }).handler(async () => {
+  const ctx = await adminWrite();
+  const { removeStarter } = await import("@/core/templates/apply.server");
+  return removeStarter(ctx);
 });
 
 /** Продавец убрал чек-лист первых шагов с обзора. */

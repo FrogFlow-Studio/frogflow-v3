@@ -1,6 +1,11 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { applyNicheTemplateFn, dashboardFn, hideSetupFn } from "@/app/admin/admin.functions";
+import {
+  applyNicheTemplateFn,
+  dashboardFn,
+  hideSetupFn,
+  removeStarterFn,
+} from "@/app/admin/admin.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { schoolLaunchFn, schoolOverviewFn } from "@/app/admin/courses.functions";
 import { verticalTitleKey } from "@/app/i18n/admin/catalog";
@@ -44,12 +49,32 @@ function Dashboard() {
     await applyNicheTemplateFn();
     await router.navigate({ to: "/admin/products" });
   });
+  const removeStarter = useAction(async () => {
+    await removeStarterFn();
+    await router.invalidate();
+  });
   return (
     <>
       <PageTitle
         title={t("overview.title")}
         subtitle={`${t(verticalTitleKey(shop.vertical))}${shop.telegram ? ` · @${shop.telegram}` : ""}`}
       />
+      {d.setup.starter > 0 && (
+        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-line p-3 text-sm">
+          <span className="min-w-0 flex-1">{t("overview.starter.banner")}</span>
+          <Link to="/admin/products" className="btn-secondary text-sm">
+            {t("overview.starter.open")}
+          </Link>
+          <button
+            className="btn-ghost text-sm"
+            disabled={removeStarter.busy}
+            onClick={() => void removeStarter.run().catch(() => {})}
+          >
+            {t("overview.starter.remove")}
+          </button>
+          <ErrorBox error={removeStarter.error} />
+        </div>
+      )}
       {d.setup.moved && (
         <MovedWelcome
           t={t}

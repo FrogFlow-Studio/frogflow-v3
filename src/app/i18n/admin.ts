@@ -138,6 +138,10 @@ const baseRu = {
   "overview.template.hint":
     "Добавим категории и несколько скрытых примеров товаров. Покупатели их не видят: поменяйте фото, цену и текст и включите.",
   "overview.template.apply": "Добавить примеры",
+  "overview.starter.banner":
+    "Это примеры — посмотрите, как выглядит карточка. Покупатели их не видят: поменяйте фото, цену и текст и включите свои.",
+  "overview.starter.open": "Открыть товары",
+  "overview.starter.remove": "Убрать примеры",
   "overview.step.productsHint":
     "Название, цена, фото; для цифрового материала — файл, который получит покупатель.",
   "overview.step.payment": "Указать, как вам платить",
@@ -525,6 +529,10 @@ const baseKk: Dict = {
   "overview.template.hint":
     "Санаттар мен бірнеше жасырын тауар үлгісін қосамыз. Сатып алушылар оларды көрмейді: фото, баға мен мәтінді ауыстырып, қосыңыз.",
   "overview.template.apply": "Үлгілерді қосу",
+  "overview.starter.banner":
+    "Бұл — үлгілер: карточканың қалай көрінетінін қараңыз. Сатып алушылар оларды көрмейді: суретті, бағаны және мәтінді өзгертіп, өзіңіздікін қосыңыз.",
+  "overview.starter.open": "Тауарларды ашу",
+  "overview.starter.remove": "Үлгілерді алып тастау",
   "overview.step.productsHint":
     "Атауы, бағасы, фотосы; цифрлық материал үшін — сатып алушы алатын файл.",
   "overview.step.payment": "Төлемді қалай қабылдайтыныңызды көрсету",
@@ -860,6 +868,10 @@ const baseEn: Dict = {
   "overview.template.hint":
     "We will add categories and a few hidden sample products. Buyers do not see them: change the photo, price and text, then switch them on.",
   "overview.template.apply": "Add examples",
+  "overview.starter.banner":
+    "These are examples — see how a product card looks. Buyers cannot see them: change the photo, price and text and turn on your own.",
+  "overview.starter.open": "Open products",
+  "overview.starter.remove": "Remove examples",
   "overview.step.productsHint":
     "Name, price, photo; for a digital product — the file the customer will receive.",
   "overview.step.payment": "Tell customers how to pay you",
@@ -1195,6 +1207,10 @@ const baseUz: Dict = {
   "overview.template.hint":
     "Toifalar va bir nechta yashirin mahsulot namunalarini qo‘shamiz. Xaridorlar ularni ko‘rmaydi: rasm, narx va matnni almashtirib, yoqing.",
   "overview.template.apply": "Namunalarni qo‘shish",
+  "overview.starter.banner":
+    "Bu namunalar — mahsulot kartochkasi qanday ko‘rinishini ko‘ring. Xaridorlar ularni ko‘rmaydi: rasm, narx va matnni o‘zgartirib, o‘zingizniki yoqing.",
+  "overview.starter.open": "Mahsulotlarni ochish",
+  "overview.starter.remove": "Namunalarni olib tashlash",
   "overview.step.productsHint":
     "Nomi, narxi, rasmi; raqamli material uchun — xaridor oladigan fayl.",
   "overview.step.payment": "Qanday to‘lashni ko‘rsatish",
