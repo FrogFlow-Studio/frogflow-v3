@@ -4,6 +4,7 @@ import {
   addLeadFn,
   draftLeadFn,
   leadEventsFn,
+  huntLeadsFn,
   leadsFn,
   markLeadContactedFn,
   saveLeadDraftFn,
@@ -120,6 +121,14 @@ function LeadsPage() {
         {shown.map((l) => (
           <LeadCard key={l.id} lead={l} aiAvailable={aiAvailable} onChanged={(m) => setNotice(m)} />
         ))}
+        {aiAvailable && (
+          <HuntCard
+            onDone={async (msg) => {
+              setNotice(msg);
+              await router.invalidate();
+            }}
+          />
+        )}
         <Card title="Новый лид">
           <form
             className="grid gap-3 sm:grid-cols-2"
@@ -167,6 +176,50 @@ function LeadsPage() {
         </Card>
       </div>
     </>
+  );
+}
+
+function HuntCard({ onDone }: { onDone: (msg: string) => Promise<void> }) {
+  const [result, setResult] = useState<string | null>(null);
+  const hunt = useAction(async (f: FormData) => {
+    setResult(null);
+    const r = await huntLeadsFn({
+      data: { niche: String(f.get("niche") ?? ""), city: String(f.get("city") ?? "") },
+    });
+    const summary = r.note
+      ? r.note
+      : `Найдено ${r.found}, добавлено ${r.added}, уже были в воронке ${r.duplicates}`;
+    setResult(r.names.length ? `${summary}: ${r.names.join(", ")}` : summary);
+    if (r.added > 0) await onDone(`Автопоиск: добавлено лидов — ${r.added}`);
+  });
+  return (
+    <Card title="Автопоиск лидов">
+      <form
+        className="grid gap-3 sm:grid-cols-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void hunt.run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        <Field label="Ниша для поиска">
+          <input className="input" name="niche" required maxLength={80} />
+        </Field>
+        <Field label="Город (можно пусто)">
+          <input className="input" name="city" maxLength={80} />
+        </Field>
+        <div className="sm:col-span-2">
+          <button className="btn-secondary" disabled={hunt.busy}>
+            {hunt.busy ? "Ищу… до минуты" : "Найти лидов"}
+          </button>
+        </div>
+      </form>
+      <p className="mt-2 text-xs text-muted">
+        Ищет в DuckDuckGo, ИИ достаёт бизнесы и контакты из выдачи. Расход ИИ — на счёт платформы.
+        Найденные попадают в «Новый» без отправки сообщений.
+      </p>
+      {result && <p className="mt-2 text-sm">{result}</p>}
+      <ErrorBox error={hunt.error} />
+    </Card>
   );
 }
 

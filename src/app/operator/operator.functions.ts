@@ -1165,6 +1165,15 @@ export const scoreLeadFn = createServerFn({ method: "POST" })
     return (await leadsImpl()).scoreLead(data.id, await actor());
   });
 
+export const huntLeadsFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ niche: z.string().max(200), city: z.string().max(200) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await import("./hunt.server")).huntLeads(data, await actor());
+  });
+
 export const draftLeadFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: leadId }).parse(d))
   .handler(async ({ data }) => {

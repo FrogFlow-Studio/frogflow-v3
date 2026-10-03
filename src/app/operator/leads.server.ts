@@ -63,6 +63,35 @@ async function logEvent(leadId: string, actor: string, kind: string, detail: str
 
 export type AddLeadResult = { ok: true; id: string } | { ok: false; duplicate: string };
 
+/** Запись нового лида на стадию «Новый» и событие «created» (дубли проверяет вызывающий). */
+export async function insertLead(
+  input: LeadInput,
+  actor: string,
+  source: string,
+  detail: string,
+): Promise<string> {
+  const { data, error } = await serviceDb()
+    .from("sales_leads")
+    .insert({
+      business_name: input.businessName,
+      niche: input.niche,
+      city: input.city,
+      website_url: input.websiteUrl,
+      instagram_handle: input.instagramHandle,
+      phone: input.phone,
+      email: input.email,
+      signals: input.signals,
+      source,
+      stage: "new",
+      created_by: actor,
+    })
+    .select("id")
+    .single();
+  if (error || !data) throw serverFailure(`лид не сохранён: ${error?.message ?? "нет ответа"}`);
+  await logEvent(data.id, actor, "created", detail);
+  return data.id;
+}
+
 export async function addLead(input: LeadInput, actor: string): Promise<AddLeadResult> {
   const existing = duplicateOf(
     (await listLeads()).map((l) => ({
@@ -76,26 +105,7 @@ export async function addLead(input: LeadInput, actor: string): Promise<AddLeadR
     input,
   );
   if (existing) return { ok: false, duplicate: existing.name };
-  const { data, error } = await serviceDb()
-    .from("sales_leads")
-    .insert({
-      business_name: input.businessName,
-      niche: input.niche,
-      city: input.city,
-      website_url: input.websiteUrl,
-      instagram_handle: input.instagramHandle,
-      phone: input.phone,
-      email: input.email,
-      signals: input.signals,
-      source: "manual",
-      stage: "new",
-      created_by: actor,
-    })
-    .select("id")
-    .single();
-  if (error || !data) throw serverFailure(`лид не сохранён: ${error?.message ?? "нет ответа"}`);
-  await logEvent(data.id, actor, "created", "Добавлен вручную");
-  return { ok: true, id: data.id };
+  return { ok: true, id: await insertLead(input, actor, "manual", "Добавлен вручную") };
 }
 
 export type SetStageResult = { ok: true } | { ok: false; reason: "not_found" | "changed" };
