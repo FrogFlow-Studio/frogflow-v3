@@ -53,6 +53,7 @@ vi.mock("@/lib/cron-auth", () => ({ isCronAuthorized: () => true }));
 vi.mock("@/lib/errors", () => ({ reportError: async () => undefined }));
 vi.mock("@/app/operator/cron-status.server", () => ({
   recordCronRun: async () => undefined,
+  readCronResume: async () => null,
   summarizeResults: () => "",
 }));
 vi.mock("@/core/tenant/resolve.server", () => ({

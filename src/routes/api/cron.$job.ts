@@ -3,6 +3,7 @@ import { previewWebhookResponse } from "@/lib/preview";
 import { env } from "@/config/env";
 import { isCronAuthorized } from "@/lib/cron-auth";
 import { reportError } from "@/lib/errors";
+import { cronBudget, eachWithin, inTurn, mapWithin, resumeOf } from "@/lib/cron-budget";
 
 /**
  * Кроны одного деплоя обходят всех арендаторов. Каждая задача — функция
@@ -20,9 +21,17 @@ export const Route = createFileRoute("/api/cron/$job")({
         const tenants = (await tenantDirectory(true)).filter((t) => t.settings.served_by === "v2");
         const results: Record<string, unknown> = {};
         const startedAt = Date.now();
-        const { recordCronRun, summarizeResults } =
+        const { recordCronRun, summarizeResults, readCronResume } =
           await import("@/app/operator/cron-status.server");
+        // Общий бюджет времени: работа по клиентам останавливается до предела
+        // функции, следующий запуск продолжает с первого пропущенного (lib/cron-budget).
+        const budget = cronBudget(startedAt);
+        const resumeFrom = await readCronResume(params.job).catch(() => null);
+        const ordered = inTurn(tenants, resumeFrom);
+        const skipped = new Set<string>();
+        let resume: string | null = null;
         const finish = async (ok: boolean, error: string | null) => {
+          if (skipped.size) results.budget = { skipped: skipped.size, resume };
           await recordCronRun(params.job, {
             at: new Date().toISOString(),
             ok,
@@ -30,6 +39,7 @@ export const Route = createFileRoute("/api/cron/$job")({
             tenants: tenants.length,
             summary: summarizeResults(results),
             error,
+            resume,
           }).catch(() => undefined);
         };
         // Сбой у одного клиента — в итог крона и в учёт ошибок, остальные идут дальше.
@@ -54,28 +64,28 @@ export const Route = createFileRoute("/api/cron/$job")({
             case "ensure-webhook": {
               const { ensureTelegramWebhook } =
                 await import("@/channels/telegram/webhook-setup.server");
-              for (const t of tenants) {
+              await eachWithin(ordered, budget, skipped, async (t) => {
                 try {
                   results[t.id] = await ensureTelegramWebhook(t);
                 } catch (e) {
                   results[t.id] = await tenantFailure(t.id, e);
                 }
-              }
+              });
               // VIP-боты: второй токен у клиентов с модулем.
               const { ensureVipWebhook } =
                 await import("@/channels/telegram/vip-webhook-setup.server");
-              for (const t of tenants) {
-                if (!t.modules.vip || !t.settings.vip?.token_enc) continue;
+              await eachWithin(ordered, budget, skipped, async (t) => {
+                if (!t.modules.vip || !t.settings.vip?.token_enc) return;
                 try {
                   results[`${t.id}:vip`] = await ensureVipWebhook(t);
                 } catch (e) {
                   results[`${t.id}:vip`] = await tenantFailure(t.id, e);
                 }
-              }
+              });
               // Быстрые вопросы Instagram: только клиентам v2 и только когда набор сменился.
               const { ensureIceBreakers } = await import("@/channels/zernio/ice-breakers.server");
-              for (const t of tenants) {
-                if (!t.settings.zernio?.accounts?.length) continue;
+              await eachWithin(ordered, budget, skipped, async (t) => {
+                if (!t.settings.zernio?.accounts?.length) return;
                 try {
                   const r = await ensureIceBreakers(t);
                   if (r.action !== "skipped" && r.action !== "unchanged")
@@ -83,7 +93,7 @@ export const Route = createFileRoute("/api/cron/$job")({
                 } catch (e) {
                   results[`${t.id}:ice_breakers`] = await tenantFailure(t.id, e);
                 }
-              }
+              });
               // Zernio: запись вебхука v2 крон только читает — писать её может лишь
               // оператор кнопкой (записи v1 с тем же ключом код v2 не трогает).
               const zernioInUse = tenants.some(
@@ -94,6 +104,7 @@ export const Route = createFileRoute("/api/cron/$job")({
                 results.zernio = await v2WebhookStatus();
               } else
                 results.zernio = { ok: true, action: "skipped", error: "нет клиентов v2 с Zernio" };
+              resume = resumeOf(ordered, skipped);
               break;
             }
             case "broadcast":
@@ -143,16 +154,21 @@ export const Route = createFileRoute("/api/cron/$job")({
                   ).runChatPayReminders(t),
                 }),
               }[params.job];
-              // Клиенты — параллельно: пакет рассылки одного не задерживает других.
-              const settled = await Promise.allSettled(tenants.map((t) => run(t)));
-              const failures = new Map<string, unknown>();
-              for (const [i, r] of settled.entries())
-                if (r.status === "rejected")
-                  failures.set(tenants[i]!.id, await tenantFailure(tenants[i]!.id, r.reason));
-              settled.forEach((r, i) => {
-                const id = tenants[i]!.id;
-                results[id] = r.status === "fulfilled" ? r.value : failures.get(id);
-              });
+              // Клиенты — параллельно (по CRON_CONCURRENCY): пакет рассылки одного не
+              // задерживает других; не начатые к концу бюджета ждут следующего запуска.
+              const settled = await mapWithin<(typeof ordered)[number], unknown>(
+                ordered,
+                budget,
+                skipped,
+                (t) => run(t),
+              );
+              for (const t of ordered) {
+                const r = settled.get(t.id);
+                if (!r || r.status === "skipped") continue;
+                results[t.id] =
+                  r.status === "fulfilled" ? r.value : await tenantFailure(t.id, r.reason);
+              }
+              resume = resumeOf(ordered, skipped);
               break;
             }
             case "vip": {
@@ -161,8 +177,8 @@ export const Route = createFileRoute("/api/cron/$job")({
               const { tenantContext } = await import("@/core/tenant/resolve.server");
               const { vipGroupApi } = await import("@/channels/telegram/vip/group");
               const { vipTelegramApi } = await import("@/channels/telegram/vip/handle");
-              for (const t of tenants) {
-                if (!t.modules.vip || !t.settings.vip?.token_enc) continue;
+              await eachWithin(ordered, budget, skipped, async (t) => {
+                if (!t.modules.vip || !t.settings.vip?.token_enc) return;
                 try {
                   const ctx = tenantContext(t);
                   const api = vipTelegramApi(ctx);
@@ -174,52 +190,107 @@ export const Route = createFileRoute("/api/cron/$job")({
                 } catch (e) {
                   results[t.id] = await tenantFailure(t.id, e);
                 }
-              }
+              });
+              resume = resumeOf(ordered, skipped);
               break;
             }
             case "comment-dm-fallback": {
               // Резервная DM по комментариям Instagram, если родное правило Zernio замолчало.
               const { runCommentDmFallback } = await import("@/channels/zernio/automations.server");
               const { tenantContext } = await import("@/core/tenant/resolve.server");
-              for (const t of tenants) {
-                if (!t.modules.instagram || !t.settings.zernio?.profile_id) continue;
+              await eachWithin(ordered, budget, skipped, async (t) => {
+                if (!t.modules.instagram || !t.settings.zernio?.profile_id) return;
                 try {
                   results[t.id] = await runCommentDmFallback(tenantContext(t));
                 } catch (e) {
                   results[t.id] = await tenantFailure(t.id, e);
                 }
-              }
+              });
+              resume = resumeOf(ordered, skipped);
               break;
             }
             case "health": {
-              // Снимок здоровья каждого бота на v2 — история простоев в панели оператора
-              // и сообщение оператору о сбое и восстановлении (health-alerts).
-              const { recordHealthSnapshots } = await import("@/app/operator/health.server");
-              results.health = await recordHealthSnapshots();
-              // Аккаунты Instagram/WhatsApp: сверка профилей с Zernio, отвалившиеся — продавцу.
-              const { syncZernioAccountsFor } = await import("@/channels/zernio/health.server");
-              results.zernio = await syncZernioAccountsFor(tenants);
-              // Зависшие события вебхука (received старше трёх минут) — тем же обработчиком.
-              const { retryStuckEventsFor } = await import("@/channels/zernio/dispatch.server");
+              // Восемь этапов; каждый обходит клиентов сам. На бюджете останавливаемся
+              // между этапами, следующий запуск начинает с первого пропущенного, чтобы
+              // дайджест и недельный отчёт в хвосте не голодали (resume — имя этапа).
               const { tenantContext } = await import("@/core/tenant/resolve.server");
-              results.zernioRetry = await retryStuckEventsFor(tenants, tenantContext);
-              // Оповещения оператору о платформе: кроны, вебхук Zernio v2, отвалившиеся
-              // аккаунты Instagram/WhatsApp (после сверки выше — по свежему снимку).
-              const { runPlatformAlerts } = await import("@/app/operator/platform-alerts.server");
-              results.platformAlerts = await runPlatformAlerts();
-              // Модель ИИ-консультанта перестала отвечать (баланс, ключ, лимит) — оператору.
-              const { runConsultantModelAlerts } =
-                await import("@/app/operator/consultant-alerts.server");
-              results.consultantModel = await runConsultantModelAlerts(tenants);
-              // Консультант по прайсу: свежий курс рубля и напоминание замолчавшему покупателю.
-              const { runPricelistJobs } = await import("@/channels/zernio/consultant-jobs.server");
-              results.pricelist = await runPricelistJobs(tenants);
-              // Утренний дайджест продавцу — у кого настал его час.
-              const { sendDueDigests } = await import("@/channels/telegram/digest.server");
-              results.digest = await sendDueDigests(tenants);
-              // Недельный отчёт продавцу (понедельник с 9:00) — тем же ботом магазина.
-              const { sendDueWeeklyReports } = await import("@/channels/telegram/weekly.server");
-              results.weekly = await sendDueWeeklyReports(tenants);
+              const stages: Array<{ id: string; run: () => Promise<void> }> = [
+                {
+                  // Снимок здоровья каждого бота на v2 — история простоев в панели оператора
+                  // и сообщение оператору о сбое и восстановлении (health-alerts).
+                  id: "health",
+                  run: async () => {
+                    const { recordHealthSnapshots } = await import("@/app/operator/health.server");
+                    results.health = await recordHealthSnapshots();
+                  },
+                },
+                {
+                  // Аккаунты Instagram/WhatsApp: сверка профилей с Zernio, отвалившиеся — продавцу.
+                  id: "zernio",
+                  run: async () => {
+                    const { syncZernioAccountsFor } =
+                      await import("@/channels/zernio/health.server");
+                    results.zernio = await syncZernioAccountsFor(tenants);
+                  },
+                },
+                {
+                  // Зависшие события вебхука (received старше трёх минут) — тем же обработчиком.
+                  id: "zernioRetry",
+                  run: async () => {
+                    const { retryStuckEventsFor } =
+                      await import("@/channels/zernio/dispatch.server");
+                    results.zernioRetry = await retryStuckEventsFor(tenants, tenantContext);
+                  },
+                },
+                {
+                  // Оповещения оператору о платформе: кроны, вебхук Zernio v2, отвалившиеся
+                  // аккаунты Instagram/WhatsApp (после сверки выше — по свежему снимку).
+                  id: "platformAlerts",
+                  run: async () => {
+                    const { runPlatformAlerts } =
+                      await import("@/app/operator/platform-alerts.server");
+                    results.platformAlerts = await runPlatformAlerts();
+                  },
+                },
+                {
+                  // Модель ИИ-консультанта перестала отвечать (баланс, ключ, лимит) — оператору.
+                  id: "consultantModel",
+                  run: async () => {
+                    const { runConsultantModelAlerts } =
+                      await import("@/app/operator/consultant-alerts.server");
+                    results.consultantModel = await runConsultantModelAlerts(tenants);
+                  },
+                },
+                {
+                  // Консультант по прайсу: свежий курс рубля и напоминание замолчавшему покупателю.
+                  id: "pricelist",
+                  run: async () => {
+                    const { runPricelistJobs } =
+                      await import("@/channels/zernio/consultant-jobs.server");
+                    results.pricelist = await runPricelistJobs(tenants);
+                  },
+                },
+                {
+                  // Утренний дайджест продавцу — у кого настал его час.
+                  id: "digest",
+                  run: async () => {
+                    const { sendDueDigests } = await import("@/channels/telegram/digest.server");
+                    results.digest = await sendDueDigests(tenants);
+                  },
+                },
+                {
+                  // Недельный отчёт продавцу (понедельник с 9:00) — тем же ботом магазина.
+                  id: "weekly",
+                  run: async () => {
+                    const { sendDueWeeklyReports } =
+                      await import("@/channels/telegram/weekly.server");
+                    results.weekly = await sendDueWeeklyReports(tenants);
+                  },
+                },
+              ];
+              const turn = inTurn(stages, resumeFrom, false);
+              await eachWithin(turn, budget, skipped, (stage) => stage.run());
+              resume = resumeOf(turn, skipped);
               break;
             }
             case "subscriptions": {
@@ -232,17 +303,18 @@ export const Route = createFileRoute("/api/cron/$job")({
               const { runSheetSync } = await import("@/core/catalog/sheet.server");
               const { tenantContext } = await import("@/core/tenant/resolve.server");
               const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
-              for (const t of tenants) {
+              await eachWithin(ordered, budget, skipped, async (t) => {
                 try {
                   const ctx = tenantContext(t);
                   const r = await runSheetSync(ctx, "nightly");
-                  if (!r) continue;
+                  if (!r) return;
                   if (r.notify) await notifyAdminsHtml(ctx, r.notify, { kind: "system" });
                   results[`${t.id}:sheet`] = r.run.ok ? { ok: true } : r.run;
                 } catch (e) {
                   results[`${t.id}:sheet`] = await tenantFailure(t.id, e);
                 }
-              }
+              });
+              resume = resumeOf(ordered, skipped);
               break;
             }
             case "retention": {

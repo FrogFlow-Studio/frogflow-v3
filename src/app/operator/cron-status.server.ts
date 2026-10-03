@@ -55,6 +55,8 @@ export type CronRun = {
   /** Короткая сводка результатов — первые строки JSON без вложенности. */
   summary: string;
   error: string | null;
+  /** С кого (или с какого этапа) начать следующий запуск: бюджет времени вышел (lib/cron-budget). */
+  resume?: string | null;
 };
 
 const key = (job: string) => `cron:${job}`;
@@ -81,6 +83,22 @@ export async function recordCronRun(job: string, run: CronRun): Promise<void> {
     ? await db.from("operator_settings").update({ value }).eq("key", key(job))
     : await db.from("operator_settings").insert({ key: key(job), value });
   if (r.error) console.warn(`[cron] статус ${job} не записан: ${r.error.message}`);
+}
+
+/** Откуда продолжить: первый пропущенный по бюджету в прошлом запуске, иначе `null`. */
+export async function readCronResume(job: string): Promise<string | null> {
+  const { data, error } = await serviceDb()
+    .from("operator_settings")
+    .select("value")
+    .eq("key", key(job))
+    .maybeSingle();
+  if (error) throw serverFailure(`[cron] прошлый запуск не прочитан: ${error.message}`);
+  try {
+    const resume = data?.value ? (JSON.parse(data.value) as CronRun).resume : null;
+    return typeof resume === "string" ? resume : null;
+  } catch {
+    return null;
+  }
 }
 
 export type CronStatus = (typeof CRON_JOBS)[number] & {
