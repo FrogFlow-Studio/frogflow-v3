@@ -113,6 +113,10 @@ export const ru = {
   "analytics.speed.fmt.m": "{n} мин",
   "analytics.speed.fmt.h": "{n} ч",
   "analytics.speed.fmt.d": "{n} дн",
+  "analytics.export.daily": "Скачать CSV",
+  "analytics.export.products": "Товары (CSV)",
+  "analytics.export.hint":
+    "Файлы открываются в Excel. По дням: выручка, заказы и средний чек по каналам и валютам. Товары: штуки, заказы и выручка за выбранный период. Суммы разных валют не складываются — валюта в отдельном столбце.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -227,6 +231,10 @@ export const kk: SectionDict<typeof ru> = {
   "analytics.speed.fmt.m": "{n} мин",
   "analytics.speed.fmt.h": "{n} сағ",
   "analytics.speed.fmt.d": "{n} күн",
+  "analytics.export.daily": "CSV жүктеу",
+  "analytics.export.products": "Тауарлар (CSV)",
+  "analytics.export.hint":
+    "Файлдар Excel-де ашылады. Күндер бойынша: арналар мен валюталар бөлінісінде түсім, тапсырыстар және орташа чек. Тауарлар: таңдалған кезеңдегі дана, тапсырыс және түсім. Әртүрлі валюталар қосылмайды — валюта бөлек бағанда.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -342,6 +350,10 @@ export const en: SectionDict<typeof ru> = {
   "analytics.speed.fmt.m": "{n} min",
   "analytics.speed.fmt.h": "{n} h",
   "analytics.speed.fmt.d": "{n} d",
+  "analytics.export.daily": "Download CSV",
+  "analytics.export.products": "Products (CSV)",
+  "analytics.export.hint":
+    "Files open in Excel. By day: revenue, orders and average check by channel and currency. Products: units, orders and revenue for the selected period. Amounts in different currencies are not added up — currency is a separate column.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -457,4 +469,8 @@ export const uz: SectionDict<typeof ru> = {
   "analytics.speed.fmt.m": "{n} daq",
   "analytics.speed.fmt.h": "{n} soat",
   "analytics.speed.fmt.d": "{n} kun",
+  "analytics.export.daily": "CSV yuklab olish",
+  "analytics.export.products": "Mahsulotlar (CSV)",
+  "analytics.export.hint":
+    "Fayllar Excel’da ochiladi. Kunlar bo‘yicha: kanallar va valyutalar kesimida tushum, buyurtmalar va o‘rtacha chek. Mahsulotlar: tanlangan davr uchun dona, buyurtma va tushum. Turli valyutalar qo‘shilmaydi — valyuta alohida ustunda.",
 };

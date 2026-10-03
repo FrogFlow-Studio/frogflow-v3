@@ -189,6 +189,22 @@ function AnalyticsPage() {
             {t("analytics.days", { n: d })}
           </Link>
         ))}
+        <span className="ml-auto flex flex-wrap items-center gap-2">
+          <a
+            className="btn-secondary text-sm"
+            href={`/api/admin/export/analytics?days=${days}`}
+            title={t("analytics.export.hint")}
+          >
+            {t("analytics.export.daily")}
+          </a>
+          <a
+            className="btn-secondary text-sm"
+            href={`/api/admin/export/analytics-products?days=${days}`}
+            title={t("analytics.export.hint")}
+          >
+            {t("analytics.export.products")}
+          </a>
+        </span>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">

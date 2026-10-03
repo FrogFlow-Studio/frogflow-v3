@@ -14,10 +14,19 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
         try {
           // Каталог выгружает любой продавец — это его данные для импорта обратно; заказы и покупатели — модуль.
           // Всё с контактами покупателей (архив, покупатели, заказы) — ещё и роль не ниже менеджера.
-          const finance = params.kind === "orders" || params.kind === "payments";
+          const finance =
+            params.kind === "orders" ||
+            params.kind === "payments" ||
+            params.kind === "analytics" ||
+            params.kind === "analytics-products";
           const fin = finance ? await requireAdminFinance() : null;
           // «Оплаты» — без контактов покупателей: любая роль раздела финансов.
-          if (fin && (fin.accountant || params.kind === "payments")) {
+          const noModule = params.kind === "analytics" || params.kind === "analytics-products";
+          // Аналитика — как её страница: любая роль раздела финансов, без модуля и без контактов.
+          if (fin && noModule) {
+            ctx = fin.ctx;
+            noContacts = true;
+          } else if (fin && (fin.accountant || params.kind === "payments")) {
             if (!fin.ctx.tenant.modules.excel_export)
               throw new (await import("@/core/i18n/user-error")).UserError(
                 "err.auth.moduleOff",
@@ -69,6 +78,17 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
           const { paymentsCsv } = await import("@/core/export/payments");
           result = await paymentsCsv(ctx, { from, to });
           name = `payments${from ? `-${from}` : ""}${to ? `-${to}` : ""}.csv`;
+        } else if (params.kind === "analytics" || params.kind === "analytics-products") {
+          const d = Number(url.searchParams.get("days"));
+          const days = d === 7 || d === 90 ? d : 30;
+          const { analyticsCsv } = await import("@/core/analytics/export.server");
+          result = await analyticsCsv(
+            ctx,
+            params.kind === "analytics" ? "daily" : "products",
+            days,
+          );
+          const today = new Date().toISOString().slice(0, 10);
+          name = `${params.kind}-${days}d-${today}.csv`;
         } else if (params.kind === "students") {
           const id = url.searchParams.get("productId");
           const { studentsCsv } = await import("@/app/admin/students-export.server");

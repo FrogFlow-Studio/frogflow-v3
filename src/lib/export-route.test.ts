@@ -48,6 +48,13 @@ vi.mock("@/core/export/export", async (orig) => ({
   },
   productsCsv: async () => ({ csv: "p", count: 1 }),
 }));
+let analyticsArgs: unknown[] = [];
+vi.mock("@/core/analytics/export.server", () => ({
+  analyticsCsv: async (...a: unknown[]) => {
+    analyticsArgs = a;
+    return { csv: "an", count: 1 };
+  },
+}));
 vi.mock("@/core/export/payments", () => ({
   paymentsCsv: async () => ({ csv: "pay", count: 1 }),
 }));
@@ -146,5 +153,39 @@ describe("оплаты: без контактов покупателей, люб
     expect((await get("payments")).status).toBe(403);
     role = null;
     expect((await get("payments")).status).toBe(401);
+  });
+});
+
+describe("аналитика: как её страница, любая роль раздела финансов, без модуля", () => {
+  it("бухгалтер, просмотр, менеджер и владелец — 200, даже без модуля выгрузки", async () => {
+    moduleOn = false;
+    for (const r of ["accountant", "viewer", "manager", "owner"] as const) {
+      role = r;
+      for (const kind of ["analytics", "analytics-products"]) {
+        const res = await get(kind);
+        expect(res.status).toBe(200);
+        expect(res.headers.get("content-disposition")).toContain(kind);
+        expect(res.headers.get("content-type")).toContain("text/csv");
+      }
+    }
+  });
+
+  it("вид и период доходят до выгрузки; лишний период — 30 дней", async () => {
+    const one = (kind: string, q: string) =>
+      GET({
+        request: new Request(`http://x/api/admin/export/${kind}?days=${q}`),
+        params: { kind },
+      });
+    await one("analytics", "90");
+    expect(analyticsArgs.slice(1, 3)).toEqual(["daily", 90]);
+    await one("analytics-products", "7");
+    expect(analyticsArgs.slice(1, 3)).toEqual(["products", 7]);
+    await one("analytics", "365");
+    expect(analyticsArgs[2]).toBe(30);
+  });
+
+  it("без сессии — 401", async () => {
+    role = null;
+    expect((await get("analytics")).status).toBe(401);
   });
 });
