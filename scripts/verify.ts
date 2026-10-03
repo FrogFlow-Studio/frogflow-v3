@@ -42,6 +42,7 @@ export function steps(withBuild: boolean): Step[] {
   if (withBuild) {
     list.push({ name: "build", cmd: ["npx", "vite", "build"] });
     list.push({ name: "build-output", cmd: ["node", "scripts/check-vercel-output.mjs"] });
+    list.push({ name: "certificate-output", cmd: ["node", "scripts/certificate-output.ts"] });
   }
   return list;
 }

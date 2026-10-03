@@ -16,6 +16,7 @@ describe("npm run verify", () => {
       "test",
       "build",
       "build-output",
+      "certificate-output",
     ]);
     expect(steps(false).map((s) => s.name)).toEqual(["lint", "typecheck", "test"]);
   });
