@@ -1,6 +1,6 @@
 import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSetting } from "@/core/settings/settings";
+import { getSettingStrict } from "@/core/settings/settings";
 import { pageAll } from "@/core/db/page";
 import { inChunks } from "@/lib/in-chunks";
 
@@ -16,7 +16,8 @@ export const REFERRAL_PREFIX = "ref_";
 export type ReferralGrant = { telegramId: number; code: string; percent: number };
 
 export async function referralPercent(ctx: TenantContext): Promise<number> {
-  const n = Number(await getSetting(ctx, "referral_discount_percent"));
+  // Сбой чтения — ошибка, а не молчаливые 10 %: код со скидкой не по настройке продавца хуже отказа.
+  const n = Number(await getSettingStrict(ctx, "referral_discount_percent"));
   return Number.isFinite(n) && n > 0 && n <= 100 ? n : 10;
 }
 

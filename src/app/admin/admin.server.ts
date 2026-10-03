@@ -720,10 +720,6 @@ async function notifyReferralGrant(
   ctx: TenantContext,
   grant: { telegramId: number; code: string; percent: number } | null | undefined,
 ): Promise<void> {
-  if (!grant || !ctx.tenant.telegramTokenEnc) return;
-  await api(ctx).call("sendMessage", {
-    chat_id: grant.telegramId,
-    text: COPY.ru.referralReward(grant.percent, grant.code),
-    parse_mode: "HTML",
-  });
+  const { notifyReferralReward } = await import("@/channels/telegram/referral-notify");
+  await notifyReferralReward(ctx, grant, ctx.tenant.telegramTokenEnc ? api(ctx) : null);
 }

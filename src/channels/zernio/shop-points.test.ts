@@ -69,7 +69,7 @@ function shopFor(opts: { loyalty: boolean; points: number; locale?: string; maxR
       } as unknown as ParsedZernioMessage,
       transport,
     );
-  return { say, sent, transport };
+  return { db, say, sent, transport };
 }
 
 describe("Direct: слово «баллы»", () => {
@@ -94,6 +94,24 @@ describe("Direct: слово «баллы»", () => {
     expect(sent.at(-1)).toContain("350");
     expect(sent.at(-1)).toContain("1 балл = 1 KZT");
     expect(sent.at(-1)).toContain("до 30%");
+  });
+
+  it("уровень и сколько до следующего — из уровней лояльности и выданных заказов", async () => {
+    const sh = shopFor({ loyalty: true, points: 120 });
+    sh.db.tables.app_settings!.push({
+      bot_id: "bot-1",
+      key: "loyalty_tiers",
+      value: JSON.stringify([
+        { name: "Серебро", from: 10000, percent: 7 },
+        { name: "Золото", from: 50000, percent: 10 },
+      ]),
+    });
+    sh.db.tables.orders = [
+      { id: 1, telegram_id: -1, status: "delivered", total: 12000, currency: "KZT" },
+    ];
+    await sh.say("баллы");
+    expect(sh.sent.at(-1)).toContain("Серебро");
+    expect(sh.sent.at(-1)).toContain("38000");
   });
 
   it("баллов нет — объясняет, как они копятся", async () => {

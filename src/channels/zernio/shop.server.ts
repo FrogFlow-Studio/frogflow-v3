@@ -62,6 +62,8 @@ import { askDeliveryLangBeforeOrder, cartLanguageChoices } from "@/core/cart/lan
 import { belowMinimum } from "@/core/cart/min-order";
 import { localeFlags as flags, SUPPORTED_LOCALES } from "@/core/i18n/locale";
 import { COPY, escapeHtml, minOrderText, normalizePhone, type Msg } from "@/channels/telegram/copy";
+import { notifyReferralReward } from "@/channels/telegram/referral-notify";
+import { customerTierStatus } from "@/core/loyalty/tiers";
 import { getSettingStrict } from "@/core/settings/settings";
 import {
   LOYALTY_MAX_REDEEM_KEY,
@@ -2098,15 +2100,7 @@ async function deliverHere(s: Shop, orderId: number, no: number): Promise<boolea
   if (r.failed > 0)
     await notifyDeliveryFailure(s.ctx, { id: orderId, display_no: no, order_no: no }, r);
   if (r.pointsEarned > 0) await reply(s, s.m.pointsEarned(r.pointsEarned), { force: true });
-  if (r.referral) {
-    const api = adminTelegramApi(s.ctx);
-    if (api)
-      await api.call("sendMessage", {
-        chat_id: r.referral.telegramId,
-        text: COPY.ru.referralReward(r.referral.percent, r.referral.code),
-        parse_mode: "HTML",
-      });
-  }
+  await notifyReferralReward(s.ctx, r.referral);
   return r.failed === 0;
 }
 
@@ -2146,10 +2140,22 @@ async function showPoints(s: Shop) {
     shopCurrency(s.ctx),
     loyaltyEarnPercent(s.ctx),
   ]);
-  const text =
+  let text =
     balance > 0
       ? s.m.pointsInfo(balance, currency, parseMaxRedeemPercent(maxRaw))
       : s.m.pointsNone(percent);
+  // Уровень лояльности (если задан и покупатель его достиг) и «до следующего».
+  const tier = await customerTierStatus(s.ctx, s.customer.telegramId, currency);
+  if (tier?.tier)
+    text +=
+      "\n" +
+      s.m.loyaltyTierLine(
+        tier.tier.name,
+        tier.tier.percent,
+        tier.next
+          ? s.m.loyaltyTierNext(formatMoney(tier.next.remaining, currency), tier.next.tier.name)
+          : null,
+      );
   await reply(s, plain(text), { force: true, buttons: [BTN.catalog(s.m), BTN.cart(s.m)] });
 }
 

@@ -5,6 +5,7 @@ import {
   type ReferralGrant,
 } from "@/core/referrals/referrals";
 import { orderChannel } from "@/core/orders/pure";
+import { notifyReferralReward } from "./referral-notify";
 import {
   hasDeliveredPurchase,
   reviewableProductsForOrder,
@@ -17,7 +18,6 @@ import { recordClick, splitClickMark } from "@/core/broadcasts/clicks";
 import { adminRecipients } from "@/core/notify/recipients";
 import { PRODUCT_SELECT } from "@/core/catalog/catalog";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
-import { stateFromJson } from "@/core/customers/customers";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { TelegramApi } from "./api";
 import { languageChoice, mainMenu as screenMainMenu, productCard, welcomeHtml } from "./screens";
@@ -1849,26 +1849,12 @@ async function askRating(b: Bot, productId: string, name: string) {
 }
 
 /** Награда пригласившему после выдачи — своим сообщением, на своём языке. */
-async function notifyReferral(
+function notifyReferral(
   ctx: TenantContext,
   api: TelegramApi,
   grant: ReferralGrant | null | undefined,
 ) {
-  if (!grant) return;
-  const { data: u, error: uErr } = await ctx.db
-    .from("bot_users")
-    .select("state")
-    .eq("telegram_id", grant.telegramId)
-    .maybeSingle();
-  if (uErr)
-    console.error(`[telegram] язык покупателя не прочитан, награда без перевода: ${uErr.message}`);
-  const st = stateFromJson(u?.state);
-  const locale = isLocale(st.locale) ? st.locale : (ctx.tenant.settings.default_locale ?? "ru");
-  await api.call("sendMessage", {
-    chat_id: grant.telegramId,
-    text: COPY[locale].referralReward(grant.percent, grant.code),
-    parse_mode: "HTML",
-  });
+  return notifyReferralReward(ctx, grant, api);
 }
 
 async function showMyOrders(b: Bot) {

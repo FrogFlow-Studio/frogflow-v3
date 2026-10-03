@@ -10,6 +10,7 @@ import {
   type MaterialSender,
   type OrderWithItems,
 } from "@/core/orders/orders";
+import { notifyReferralReward } from "@/channels/telegram/referral-notify";
 import { deliverWebOrder } from "@/core/storefront/web-order";
 import { adminTelegramApi, notifyDeliveryFailure } from "@/channels/telegram/notify";
 
@@ -64,6 +65,7 @@ async function deliverAndReport(ctx: TenantContext, order: OrderWithItems): Prom
           allWhenAmbiguous: true,
         });
   if (r.failed > 0) await notifyDeliveryFailure(ctx, order, r);
+  await notifyReferralReward(ctx, r.referral);
   return r.failed === 0;
 }
 

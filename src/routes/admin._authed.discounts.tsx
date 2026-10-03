@@ -418,13 +418,18 @@ function ReferralCard({ percent, bot }: { percent: string; bot: string | null })
 function ReferralReportCard() {
   const { shop } = useRouteContext({ from: "/admin/_authed" });
   const t = adminT(shop.locale);
-  const [report, setReport] = useState<Awaited<ReturnType<typeof referralReportFn>> | null>(null);
+  const [report, setReport] = useState<Awaited<ReturnType<typeof referralReportFn>>>(null);
+  const [error, setError] = useState<unknown>(null);
   useEffect(() => {
-    // Отчёт видит менеджер и владелец; остальным карточка просто не открывается.
-    referralReportFn()
-      .then(setReport)
-      .catch(() => setReport(null));
+    // null — роли не хватает (отчёт видит менеджер и владелец); сбой чтения показываем.
+    referralReportFn().then(setReport).catch(setError);
   }, []);
+  if (error)
+    return (
+      <Card title={t("discounts.referral.report.title")} className="lg:col-span-2">
+        <ErrorBox error={error} />
+      </Card>
+    );
   if (!report) return null;
   return (
     <Card title={t("discounts.referral.report.title")} className="lg:col-span-2">

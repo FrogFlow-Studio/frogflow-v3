@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { UserError } from "@/core/i18n/user-error";
+import { UserError, isUserError } from "@/core/i18n/user-error";
 import { LOYALTY_TIERS_KEY, loyaltyTiers, validateTiers } from "@/core/loyalty/tiers";
 import { ADJUST_REASON_MAX, ADJUST_REASON_MIN, MAX_POINTS_ADJUST } from "@/core/loyalty/adjust";
 
@@ -46,9 +46,16 @@ export const adjustPointsFn = createServerFn({ method: "POST" })
 /** Отчёт «Рефералы» в «Скидках»: имена покупателей — роль не ниже менеджера, как у выгрузки покупателей. */
 export const referralReportFn = createServerFn({ method: "GET" }).handler(async () => {
   const { CONTACTS_MIN_ROLE } = await import("@/core/export/export");
-  const ctx = await (
-    await import("@/app/auth/guards.server")
-  ).requireAdminModule("referral", CONTACTS_MIN_ROLE);
+  let ctx;
+  try {
+    ctx = await (
+      await import("@/app/auth/guards.server")
+    ).requireAdminModule("referral", CONTACTS_MIN_ROLE);
+  } catch (e) {
+    // Не хватает роли или модуля — отчёта нет (null), карточка не рисуется; остальные сбои уходят наружу.
+    if (isUserError(e)) return null;
+    throw e;
+  }
   return (await import("@/core/referrals/report")).referralReport(ctx);
 });
 
