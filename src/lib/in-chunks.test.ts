@@ -62,7 +62,6 @@ const ALLOWED: Record<string, string[]> = {
     "комментарии одного автора под одним постом — единицы",
   ],
   "src/channels/zernio/ice-breakers.server.ts": [FIXED],
-  "src/channels/zernio/message-failed.server.ts": [`${PAGE} (≤ 20 заказов)`],
   "src/core/broadcasts/broadcasts.ts": [
     "пакет получателей: BATCH_SIZE = 25",
     "пакет получателей: BATCH_SIZE = 25",

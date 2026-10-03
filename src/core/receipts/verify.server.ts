@@ -403,11 +403,14 @@ export async function claimReceiptNumber(
     .maybeSingle();
   if (readError || !row) return "Не удалось сверить номер квитанции — чек посмотрит продавец.";
   if (String(row.value) === String(orderId)) return null;
-  const { data: other } = await ctx.db
+  const { data: other, error: orderError } = await ctx.db
     .from("orders")
     .select("display_no, order_no, id")
     .eq("id", Number(row.value))
     .maybeSingle();
+  // Не прочитали заказ — причина та же, только без номера: чек всё равно уходит продавцу.
+  if (orderError)
+    return `Квитанция №${operationId} уже принята по другому заказу — возможно, тот же перевод.`;
   const shown = other ? (other.display_no ?? other.order_no ?? other.id) : row.value;
   return `Квитанция №${operationId} уже принята по заказу №${shown} — возможно, тот же перевод.`;
 }
