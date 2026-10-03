@@ -5,6 +5,7 @@ import {
   leadEventsFn,
   leadsFn,
   saveLeadNoteFn,
+  scoreLeadFn,
   setLeadStageFn,
 } from "@/app/operator/operator.functions";
 import type { LeadEventRow, LeadRow } from "@/app/operator/leads.server";
@@ -50,7 +51,7 @@ const isoToLocal = (iso: string | null) => {
  * автоматическая рассылка v1 сюда не перенесены.
  */
 function LeadsPage() {
-  const { leads } = Route.useLoaderData();
+  const { leads, aiAvailable } = Route.useLoaderData();
   const router = useRouter();
   const [stage, setStage] = useState<LeadStage | "all">("all");
   const [query, setQuery] = useState("");
@@ -113,7 +114,7 @@ function LeadsPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         {shown.length === 0 && <Empty>Лидов с такими условиями нет.</Empty>}
         {shown.map((l) => (
-          <LeadCard key={l.id} lead={l} onChanged={(m) => setNotice(m)} />
+          <LeadCard key={l.id} lead={l} aiAvailable={aiAvailable} onChanged={(m) => setNotice(m)} />
         ))}
         <Card title="Новый лид">
           <form
@@ -165,7 +166,15 @@ function LeadsPage() {
   );
 }
 
-function LeadCard({ lead, onChanged }: { lead: LeadRow; onChanged: (msg: string) => void }) {
+function LeadCard({
+  lead,
+  aiAvailable,
+  onChanged,
+}: {
+  lead: LeadRow;
+  aiAvailable: boolean;
+  onChanged: (msg: string) => void;
+}) {
   const router = useRouter();
   const current: LeadStage = isLeadStage(lead.stage) ? lead.stage : "new";
   const [events, setEvents] = useState<LeadEventRow[] | null>(null);
@@ -194,6 +203,20 @@ function LeadCard({ lead, onChanged }: { lead: LeadRow; onChanged: (msg: string)
     onChanged(`${lead.business_name}: заметка сохранена`);
     await router.invalidate();
   });
+  const score = useAction(async () => {
+    const r = await scoreLeadFn({ data: { id: lead.id } });
+    onChanged(
+      !r.ok
+        ? r.reason === "not_found"
+          ? "Лид уже удалён — список обновлён"
+          : "ИИ ответил непонятно — оценка не записана, попробуйте ещё раз"
+        : `${lead.business_name}: оценка ${r.score}${
+            r.movedTo ? ` → ${LEAD_STAGE_LABEL[r.movedTo]}` : ""
+          }`,
+    );
+    setEvents(null);
+    await router.invalidate();
+  });
   const log = useAction(async () => {
     setEvents((await leadEventsFn({ data: { id: lead.id } })).events);
   });
@@ -219,6 +242,7 @@ function LeadCard({ lead, onChanged }: { lead: LeadRow; onChanged: (msg: string)
           {[lead.niche, lead.city].filter(Boolean).join(" · ") || "Ниша и город не указаны"}
           {typeof lead.score === "number" ? ` · оценка ${lead.score}` : ""}
         </div>
+        {lead.score_reason && <p className="text-muted">{lead.score_reason}</p>}
         {links.length > 0 && (
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             {links.map((x) => (
@@ -293,6 +317,16 @@ function LeadCard({ lead, onChanged }: { lead: LeadRow; onChanged: (msg: string)
             <button className="btn-secondary" disabled={save.busy}>
               Сохранить заметку
             </button>
+            {aiAvailable && (
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={score.busy}
+                onClick={() => void score.run().catch(() => {})}
+              >
+                {score.busy ? "Оцениваю…" : "Оценить"}
+              </button>
+            )}
             <button
               type="button"
               className="text-xs text-muted underline"
@@ -312,7 +346,7 @@ function LeadCard({ lead, onChanged }: { lead: LeadRow; onChanged: (msg: string)
             ))}
           </ul>
         )}
-        <ErrorBox error={move.error ?? save.error ?? log.error} />
+        <ErrorBox error={move.error ?? save.error ?? score.error ?? log.error} />
       </div>
     </Card>
   );

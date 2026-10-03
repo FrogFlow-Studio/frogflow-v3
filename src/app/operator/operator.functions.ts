@@ -1089,7 +1089,8 @@ const leadStage = z.enum(LEAD_STAGES);
 
 export const leadsFn = createServerFn({ method: "GET" }).handler(async () => {
   await guard();
-  return { leads: await (await leadsImpl()).listLeads() };
+  const impl = await leadsImpl();
+  return { leads: await impl.listLeads(), aiAvailable: impl.leadsAiAvailable() };
 });
 
 export const addLeadFn = createServerFn({ method: "POST" })
@@ -1154,4 +1155,11 @@ export const leadEventsFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await guard();
     return { events: await (await leadsImpl()).listLeadEvents(data.id) };
+  });
+
+export const scoreLeadFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: leadId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await leadsImpl()).scoreLead(data.id, await actor());
   });

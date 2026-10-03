@@ -1,3 +1,5 @@
+import Anthropic from "@anthropic-ai/sdk";
+import { env } from "@/config/env";
 import { serviceDb } from "@/core/db/client.server";
 import type { Database } from "@/core/db-types";
 import { pageAll } from "@/core/db/page";
@@ -8,6 +10,14 @@ import {
   type LeadInput,
   type LeadStage,
 } from "@/core/leads/leads";
+import {
+  LEAD_SCORE_MODEL,
+  buildScorePrompt,
+  normalizeThresholds,
+  parseScore,
+  stageForScore,
+  type LeadThresholds,
+} from "@/core/leads/score";
 import { serverFailure } from "@/lib/server-failure";
 
 /**
@@ -153,4 +163,87 @@ export async function listLeadEvents(leadId: string): Promise<LeadEventRow[]> {
   } catch (e) {
     throw serverFailure(e instanceof Error ? e.message : "события лида не прочитаны");
   }
+}
+
+/** Ключ ИИ платформенный (ANTHROPIC_API_KEY): без него кнопка «Оценить» скрыта. */
+export function leadsAiAvailable(): boolean {
+  return Boolean(env().ANTHROPIC_API_KEY?.trim());
+}
+
+const PIPELINE_KEY = "lead_pipeline";
+
+/** Пороги «Подходит»/«Не подходит» из настроек оператора; нет записи — по умолчанию. */
+export async function getLeadThresholds(): Promise<LeadThresholds> {
+  const { data, error } = await serviceDb()
+    .from("operator_settings")
+    .select("value")
+    .eq("key", PIPELINE_KEY)
+    .maybeSingle();
+  if (error) throw serverFailure(`настройки конвейера лидов не прочитаны: ${error.message}`);
+  return normalizeThresholds(data?.value);
+}
+
+const SCORE_TIMEOUT_MS = 30_000;
+
+export type ScoreLeadResult =
+  | { ok: true; score: number; reason: string; movedTo: "qualified" | "rejected" | null }
+  | { ok: false; reason: "not_found" | "unreadable" };
+
+/**
+ * ИИ-оценка лида: 0–100 и причина пишутся в лид, в журнал уходит событие
+ * `scored`. Из «Новый» оценка по порогам двигает лид в «Подходит»/«Не подходит» —
+ * через setLeadStage, то есть условно: если стадию успели сменить, оценка
+ * остаётся, а стадия нет.
+ */
+export async function scoreLead(
+  id: string,
+  actor: string,
+  now = new Date(),
+): Promise<ScoreLeadResult> {
+  const apiKey = env().ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) throw serverFailure("ИИ-ключ платформы не задан — оценка лидов недоступна");
+  const db = serviceDb();
+  const { data: lead, error } = await db.from("sales_leads").select("*").eq("id", id).maybeSingle();
+  if (error) throw serverFailure(`лид не прочитан: ${error.message}`);
+  if (!lead) return { ok: false, reason: "not_found" };
+  const thresholds = await getLeadThresholds();
+
+  let text: string;
+  try {
+    const response = await new Anthropic({
+      apiKey,
+      maxRetries: 1,
+      timeout: SCORE_TIMEOUT_MS,
+    }).messages.create({
+      model: LEAD_SCORE_MODEL,
+      max_tokens: 400,
+      messages: [{ role: "user", content: buildScorePrompt(lead) }],
+    });
+    text = response.content.find((b) => b.type === "text")?.text ?? "";
+  } catch (e) {
+    throw serverFailure(`ИИ-оценка лида ${id}: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  const parsed = parseScore(text);
+  if (!parsed) return { ok: false, reason: "unreadable" };
+
+  const { error: writeError } = await db
+    .from("sales_leads")
+    .update({
+      score: parsed.score,
+      score_reason: parsed.reason || null,
+      updated_at: now.toISOString(),
+    })
+    .eq("id", id);
+  if (writeError) throw serverFailure(`оценка лида не сохранена: ${writeError.message}`);
+  await logEvent(
+    id,
+    actor,
+    "scored",
+    `Оценка ${parsed.score}${parsed.reason ? `: ${parsed.reason}` : ""}`,
+  );
+
+  const to = stageForScore(parsed.score, lead.stage, thresholds);
+  let movedTo: "qualified" | "rejected" | null = null;
+  if (to && (await setLeadStage({ id, from: lead.stage, to }, actor, now)).ok) movedTo = to;
+  return { ok: true, score: parsed.score, reason: parsed.reason, movedTo };
 }
