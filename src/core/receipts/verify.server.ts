@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import { PREVIEW_AI_OFF, previewReadonly } from "@/lib/preview";
 import { env } from "@/config/env";
 import { proofHashes } from "@/core/orders/proof-hash";
+import { operationKey, receiptOperationId } from "@/core/billing/invoice-check";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import {
@@ -241,6 +243,9 @@ async function withFx(
   };
 }
 
+/** Отметка «этот номер квитанции уже принят»: receipt_no:<sha256 цифр номера> → id заказа. */
+export const RECEIPT_NO_PREFIX = "receipt_no:";
+
 /** Полная проверка: OCR → правила → повтор того же файла по другому заказу. */
 export async function verifyReceipt(
   ctx: TenantContext,
@@ -352,7 +357,59 @@ export async function verifyReceipt(
         extractedText,
       };
   }
+  // Тот же перевод новым скриншотом: файл другой, номер квитанции тот же.
+  // Аудит чеков оператора (countUsage: false) отметок не оставляет.
+  if (p.orderId > 0 && p.countUsage !== false) {
+    const taken = await claimReceiptNumber(ctx, p.orderId, text);
+    if (taken) return { ok: false, reason: "receipt_reused", detail: taken, extractedText };
+  }
   return { ...analysis, extractedText };
+}
+
+/** Ключ отметки номера квитанции в app_settings: хэш цифр номера, сам номер не храним. */
+export function receiptNoKey(operationId: string): string {
+  const digits = operationKey(operationId);
+  return `${RECEIPT_NO_PREFIX}${createHash("sha256").update(digits).digest("hex")}`;
+}
+
+/**
+ * Занять номер квитанции из чека за заказом: условная запись (уникальность
+ * bot_id+key) — из двух одновременных заказов номер достанется одному.
+ * null — номер свободен или его уже занял этот же заказ (повторный чек по
+ * нему же); иначе причина отдать чек продавцу. Номера в чеке нет — повтор
+ * ловит только отпечаток файла.
+ */
+export async function claimReceiptNumber(
+  ctx: TenantContext,
+  orderId: number,
+  text: string,
+): Promise<string | null> {
+  const operationId = receiptOperationId(text);
+  if (!operationId) return null;
+  const key = receiptNoKey(operationId);
+  const { error } = await ctx.db.from("app_settings").insert({
+    bot_id: ctx.tenant.id,
+    key,
+    value: String(orderId),
+    updated_at: new Date().toISOString(),
+  });
+  if (!error) return null;
+  if (error.code !== "23505") return "Не удалось сверить номер квитанции — чек посмотрит продавец.";
+  const { data: row, error: readError } = await ctx.db
+    .from("app_settings")
+    .select("value")
+    .eq("bot_id", ctx.tenant.id)
+    .eq("key", key)
+    .maybeSingle();
+  if (readError || !row) return "Не удалось сверить номер квитанции — чек посмотрит продавец.";
+  if (String(row.value) === String(orderId)) return null;
+  const { data: other } = await ctx.db
+    .from("orders")
+    .select("display_no, order_no, id")
+    .eq("id", Number(row.value))
+    .maybeSingle();
+  const shown = other ? (other.display_no ?? other.order_no ?? other.id) : row.value;
+  return `Квитанция №${operationId} уже принята по заказу №${shown} — возможно, тот же перевод.`;
 }
 
 /**

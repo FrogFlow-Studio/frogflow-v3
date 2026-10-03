@@ -441,3 +441,62 @@ describe("verifyReceipt — получатель в чеке", () => {
     expect(await verifyReceipt(ctx, opts)).toMatchObject({ ok: true });
   });
 });
+
+describe("verifyReceipt — повтор того же перевода по номеру квитанции", () => {
+  const KASPI = "Kaspi Gold\nПеревод выполнен\nСумма операции 1 000 ₸\nКвитанция № 1234567890";
+  const FILE_B = new Uint8Array([9, 9, 9]);
+
+  it("тот же номер, другой файл, другой заказ — receipt_reused со ссылкой на первый заказ", async () => {
+    const { db, ctx } = setup();
+    db.tables.orders = [{ id: 98, display_no: 98, order_no: 98 }];
+    mockVision(KASPI);
+    expect(await verifyReceipt(ctx, { ...base, orderId: 98 })).toMatchObject({ ok: true });
+    const r = await verifyReceipt(ctx, { ...base, bytes: FILE_B, orderId: 99 });
+    expect(r).toMatchObject({ ok: false, reason: "receipt_reused" });
+    if (!r.ok) expect(r.detail).toContain("98");
+    // Сам номер в базе не лежит: только хэш цифр.
+    const keys = db.tables.app_settings!.map((x) => String(x.key));
+    expect(keys.some((k) => k.startsWith("receipt_no:") && !k.includes("1234567890"))).toBe(true);
+  });
+
+  it("тот же заказ присылает чек ещё раз — не повтор", async () => {
+    const { ctx } = setup();
+    mockVision(KASPI);
+    await verifyReceipt(ctx, { ...base, orderId: 98 });
+    expect(await verifyReceipt(ctx, { ...base, bytes: FILE_B, orderId: 98 })).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it("формат с пробелами и буквами («QR 123 456 7890») — тот же номер", async () => {
+    const { ctx } = setup();
+    mockVision(KASPI);
+    await verifyReceipt(ctx, { ...base, orderId: 98 });
+    mockVision("Kaspi Pay\nСумма операции 1 000 ₸\nКвитанция № QR 12 345 67890");
+    expect(await verifyReceipt(ctx, { ...base, bytes: FILE_B, orderId: 99 })).toMatchObject({
+      ok: false,
+      reason: "receipt_reused",
+    });
+  });
+
+  it("два заказа одновременно — номер достаётся одному", async () => {
+    const { ctx } = setup();
+    mockVision(KASPI);
+    const [a, b] = await Promise.all([
+      verifyReceipt(ctx, { ...base, orderId: 98 }),
+      verifyReceipt(ctx, { ...base, bytes: FILE_B, orderId: 99 }),
+    ]);
+    expect([a.ok, b.ok].sort()).toEqual([false, true]);
+  });
+
+  it("чека без номера — работает как раньше; аудит оператора номер не занимает", async () => {
+    const { db, ctx } = setup();
+    mockVision("Оплата успешно. Сумма: 1000 KZT");
+    expect(await verifyReceipt(ctx, base)).toMatchObject({ ok: true });
+    mockVision(KASPI);
+    await verifyReceipt(ctx, { ...base, orderId: 98, countUsage: false });
+    expect(db.tables.app_settings!.some((x) => String(x.key).startsWith("receipt_no:"))).toBe(
+      false,
+    );
+  });
+});
