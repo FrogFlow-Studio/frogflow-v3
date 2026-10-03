@@ -1085,6 +1085,7 @@ export const setClientPartnerFn = createServerFn({ method: "POST" })
 
 /** Воронка лидов отдела продаж FrogFlow (core/leads): список, добавление, стадия, заметки, журнал. */
 const leadsImpl = () => import("./leads.server");
+const pipelineImpl = () => import("./leads-pipeline.server");
 const leadId = z.string().uuid();
 const leadStage = z.enum(LEAD_STAGES);
 
@@ -1156,6 +1157,26 @@ export const leadEventsFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await guard();
     return { events: await (await leadsImpl()).listLeadEvents(data.id) };
+  });
+
+export const leadPipelineFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await pipelineImpl()).getPipelineConfig();
+});
+
+export const saveLeadPipelineFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        enabled: z.boolean(),
+        followUpDays: z.number().int().min(1).max(30),
+        lostDays: z.number().int().min(3).max(120),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await pipelineImpl()).savePipelineConfig(data);
   });
 
 export const scoreLeadFn = createServerFn({ method: "POST" })

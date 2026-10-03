@@ -167,7 +167,9 @@ describe("новый крон не проскакивает мимо прове�
   // Отбирают клиентов v2 сами, их проверки — рядом с кодом:
   // retention — core/retention (runRetention без границ), subscriptions — ещё и
   // app/operator/subscription-sweep.test (sweepSubscriptions).
-  const SELF_SCOPED = ["retention"];
+  // leads — задача платформы (лиды оператора), не арендатора; выключена флагом
+  // v3_lead_cron, проверка — app/operator/leads-pipeline.server.test.
+  const SELF_SCOPED = ["leads", "retention"];
   const covered = [...Object.keys(JOBS), ...SELF_SCOPED].sort();
 
   it("каждая задача маршрута и каждый крон vercel.json есть в списке проверенных", () => {

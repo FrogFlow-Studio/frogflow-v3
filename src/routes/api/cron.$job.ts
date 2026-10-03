@@ -254,6 +254,13 @@ export const Route = createFileRoute("/api/cron/$job")({
               results.deletion = await finalizeDueDeletions(tenants);
               break;
             }
+            case "leads": {
+              // Конвейер лидов оператора: платформа, не арендатор. По умолчанию выключен
+              // (флаг v3_lead_cron): v1 гоняет свой крон по той же sales_leads.
+              const { runLeadPipeline } = await import("@/app/operator/leads-pipeline.server");
+              results.leads = await runLeadPipeline();
+              break;
+            }
             default:
               return new Response("unknown job", { status: 404 });
           }

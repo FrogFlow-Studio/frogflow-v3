@@ -42,6 +42,7 @@ export const CRON_JOBS = [
     title: "Подписки клиентов и каталоги из Google Таблиц",
   },
   { job: "retention", schedule: "20 3 * * *", everyMin: 1440, title: "Ретеншн журналов" },
+  { job: "leads", schedule: "0 6 * * *", everyMin: 1440, title: "Конвейер лидов оператора" },
 ] as const;
 
 export type CronJob = (typeof CRON_JOBS)[number]["job"];

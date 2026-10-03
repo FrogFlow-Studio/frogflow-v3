@@ -1,13 +1,15 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   addLeadFn,
   draftLeadFn,
   leadEventsFn,
   huntLeadsFn,
+  leadPipelineFn,
   leadsFn,
   markLeadContactedFn,
   saveLeadDraftFn,
+  saveLeadPipelineFn,
   saveLeadNoteFn,
   scoreLeadFn,
   setLeadStageFn,
@@ -91,6 +93,7 @@ function LeadsPage() {
         subtitle="Воронка продаж FrogFlow: кого нашли, кому написали, кто ответил. Данные общие с v1."
       />
       {notice && <p className="mb-3 text-sm text-ok">{notice}</p>}
+      <PipelineCard />
       <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Стадии">
         <button
           className={stage === "all" ? "btn-primary" : "btn-secondary"}
@@ -538,6 +541,81 @@ function LeadCard({
           }
         />
       </div>
+    </Card>
+  );
+}
+
+/**
+ * Крон конвейера лидов: подсказка следующего шага, напоминание оператору и
+ * «Потерян» после молчания. Выключен: у v1 свой крон по той же таблице,
+ * включать только после того, как v1 перестал вести лидов.
+ */
+function PipelineCard() {
+  const [cfg, setCfg] = useState<{
+    enabled: boolean;
+    followUpDays: number;
+    lostDays: number;
+  } | null>(null);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    void leadPipelineFn().then(setCfg, () => undefined);
+  }, []);
+  const save = useAction(async () => {
+    if (!cfg) return;
+    setCfg(await saveLeadPipelineFn({ data: cfg }));
+    setSaved(true);
+  });
+  if (!cfg) return null;
+  return (
+    <Card title="Конвейер лидов (раз в сутки)">
+      <p className="mb-3 text-sm text-muted">
+        Подсказывает следующий шаг по стадии, напоминает вам в Telegram о лидах, которым пора
+        написать, и переводит в «Потерян» тех, кто не ответил после «Написали». Лидам ничего не
+        отправляет. Включайте только после того, как v1 перестал вести лидов: у него свой крон по
+        этим же строкам.
+      </p>
+      <form
+        className="flex flex-wrap items-end gap-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSaved(false);
+          void save.run().catch(() => {});
+        }}
+      >
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={cfg.enabled}
+            onChange={(e) => setCfg({ ...cfg, enabled: e.target.checked })}
+          />
+          Крон включён
+        </label>
+        <Field label="Напомнить через, дней">
+          <input
+            className="input w-24"
+            type="number"
+            min={1}
+            max={30}
+            value={cfg.followUpDays}
+            onChange={(e) => setCfg({ ...cfg, followUpDays: Number(e.target.value) })}
+          />
+        </Field>
+        <Field label="«Потерян» через, дней">
+          <input
+            className="input w-24"
+            type="number"
+            min={3}
+            max={120}
+            value={cfg.lostDays}
+            onChange={(e) => setCfg({ ...cfg, lostDays: Number(e.target.value) })}
+          />
+        </Field>
+        <button className="btn-primary" disabled={save.busy}>
+          Сохранить
+        </button>
+        {saved && <span className="text-sm text-ok">Сохранено</span>}
+        <ErrorBox error={save.error} />
+      </form>
     </Card>
   );
 }

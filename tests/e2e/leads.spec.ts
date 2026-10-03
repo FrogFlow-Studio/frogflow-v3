@@ -85,6 +85,23 @@ test("лиды: новый лид сохраняется, тот же Instagram 
   expect(errors).toEqual([]);
 });
 
+test("лиды: крон конвейера по умолчанию выключен, срок напоминания сохраняется", async ({
+  page,
+}) => {
+  const errors = await watch(page);
+  await operatorLogin(page);
+  await page.goto("/operator/leads");
+  const card = page.locator("section", { hasText: "Конвейер лидов" });
+  await expect(card.getByLabel("Крон включён")).not.toBeChecked();
+  await card.getByLabel("Напомнить через, дней").fill("5");
+  await card.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await expect(card.getByText("Сохранено")).toBeVisible();
+  await page.reload();
+  await expect(card.getByLabel("Напомнить через, дней")).toHaveValue("5");
+  await expect(card.getByLabel("Крон включён")).not.toBeChecked();
+  expect(errors).toEqual([]);
+});
+
 test("лиды: черновик, ссылка WhatsApp с текстом и «Связались» двигают лид в «Написали»", async ({
   page,
 }, info) => {
