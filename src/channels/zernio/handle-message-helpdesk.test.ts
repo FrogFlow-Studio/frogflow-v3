@@ -128,4 +128,57 @@ describe("обращения из WhatsApp и Instagram", () => {
     expect(sent[0]).toMatch(/^Передал ваш вопрос продавцу/);
     expect(db.tables.zernio_logs ?? []).toHaveLength(0);
   });
+
+  it("закрыли обращение, покупатель ответил «2» — оценка записана один раз, вторая цифра идёт как обычный текст", async () => {
+    const { updateTicket, markRatingAsked } = await import("@/core/helpdesk/tickets");
+    await handleZernioMessage(ctx(ON), payload("Когда привезёте букет?"), transport());
+    const row = db.tables.zernio_logs![0]!;
+    await updateTicket(ctx(ON), row.id as string, { status: "closed" }, "admin:owner");
+    await markRatingAsked(ctx(ON), row.id as string);
+    sent.length = 0;
+    notified.length = 0;
+    const r = await handleZernioMessage(ctx(ON), payload("2"), transport());
+    expect(r).toEqual({ status: "processed", note: "оценка обращения #1: 2" });
+    expect(sent).toEqual(["Спасибо за оценку: ⭐⭐! Нам это важно."]);
+    expect((db.tables.zernio_logs![0]!.payload as { rating: number }).rating).toBe(2);
+    // Просьба принята: следующая «5» — уже не оценка, а новый вопрос.
+    const again = await handleZernioMessage(ctx(ON), payload("5"), transport());
+    expect(again.note).toBe("новое обращение #2");
+    expect((db.tables.zernio_logs![0]!.payload as { rating: number }).rating).toBe(2);
+  });
+
+  it("цифра без просьбы об оценке — обычное сообщение, не оценка", async () => {
+    const r = await handleZernioMessage(ctx(ON), payload("3"), transport());
+    expect(r.note).toBe("новое обращение #1");
+  });
+
+  async function closedAndAsked() {
+    const { updateTicket, markRatingAsked } = await import("@/core/helpdesk/tickets");
+    await handleZernioMessage(ctx(ON), payload("Когда привезёте букет?"), transport());
+    const id = db.tables.zernio_logs![0]!.id as string;
+    await updateTicket(ctx(ON), id, { status: "closed" }, "admin:owner");
+    await markRatingAsked(ctx(ON), id);
+    sent.length = 0;
+  }
+  const ratingOf = () => (db.tables.zernio_logs![0]!.payload as { rating?: number | null }).rating;
+
+  it("просьба → «привет» → «3»: цифра уходит дальше (в магазин), оценки нет", async () => {
+    await closedAndAsked();
+    await handleZernioMessage(ctx(ON), payload("привет"), transport());
+    const r = await handleZernioMessage(ctx(ON), payload("3"), transport());
+    expect(r.note).not.toContain("оценка обращения");
+    expect(ratingOf() ?? null).toBeNull();
+  });
+
+  it("«3» на шаге оформления — не оценка, оценка так и не поставлена", async () => {
+    await closedAndAsked();
+    customer = { ...customer, state: { ...customer.state, mode: "choose_pay" } };
+    const r = await handleZernioMessage(ctx(ON), payload("3"), transport());
+    expect(r.note).not.toContain("оценка обращения");
+    expect(ratingOf() ?? null).toBeNull();
+    // Шаг кончился, цифра больше не оценка: ожидание снято.
+    customer = { ...customer, state: { ...customer.state, mode: "idle" } };
+    const again = await handleZernioMessage(ctx(ON), payload("4"), transport());
+    expect(again.note).not.toContain("оценка обращения");
+  });
 });

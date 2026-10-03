@@ -17,21 +17,53 @@ export function helpdeskTeam(tenant: Pick<Tenant, "settings">): TeamMember[] {
 
 /**
  * Продавец закрыл обращение — покупателю приходит «Обращение #N закрыто»
- * в его канал, как ответ менеджера (запись попадает и в «Чат»). Не
+ * в его канал, как ответ менеджера (запись попадает и в «Чат»), и просьба
+ * оценить 1–5: в Telegram — кнопками, в Direct/WhatsApp — ответом цифрой. Не
  * доставилось — не беда: статус уже сменён, продавец видит это в чате.
  */
 export async function notifyTicketClosed(
   ctx: TenantContext,
-  ticket: Pick<Ticket, "number" | "telegramId">,
+  ticket: Pick<Ticket, "id" | "number" | "telegramId">,
 ): Promise<boolean> {
   const { getCustomerByTelegramId } = await import("@/core/customers/customers");
   const { COPY } = await import("@/channels/telegram/copy");
   const customer = await getCustomerByTelegramId(ctx, ticket.telegramId);
   const locale = customer?.state.locale ?? ctx.tenant.settings.default_locale ?? "ru";
-  const text = (COPY[locale] ?? COPY.ru).ticketClosed(ticket.number);
+  // Уже оценённое (закрыли повторно после переоткрытия) — снова не просим.
+  const { getTicket } = await import("@/core/helpdesk/tickets");
+  const rated = (await getTicket(ctx, ticket.id).catch(() => null))?.rating != null;
+  const m = COPY[locale] ?? COPY.ru;
+  const inTelegram = !customer || customer.platform === "telegram";
+  const text = rated
+    ? m.ticketClosed(ticket.number)
+    : `${m.ticketClosed(ticket.number)}\n\n${inTelegram ? m.ticketRateTg : m.ticketRateDm}`;
   try {
     const { replyAsManager } = await import("./admin.server");
-    await replyAsManager(ctx, ticket.telegramId, text);
+    await replyAsManager(
+      ctx,
+      ticket.telegramId,
+      text,
+      undefined,
+      undefined,
+      inTelegram && !rated
+        ? {
+            replyMarkup: {
+              inline_keyboard: [
+                [1, 2, 3, 4, 5].map((n) => ({
+                  text: "⭐".repeat(n),
+                  callback_data: `tkr:${ticket.id}:${n}`,
+                })),
+              ],
+            },
+          }
+        : {},
+    );
+    // Окно ответа цифрой отсчитывается от отправки; не записалось — оценку всё равно можно дать кнопкой.
+    if (rated) return true;
+    const { markRatingAsked } = await import("@/core/helpdesk/tickets");
+    await markRatingAsked(ctx, ticket.id).catch((e) =>
+      console.error(`[helpdesk:${ctx.tenant.id}] отметка просьбы об оценке #${ticket.number}`, e),
+    );
     return true;
   } catch (e) {
     console.error(`[helpdesk:${ctx.tenant.id}] закрытие #${ticket.number} не доставлено`, e);

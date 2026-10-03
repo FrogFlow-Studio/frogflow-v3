@@ -85,6 +85,36 @@ export async function handleZernioMessage(
   const text = messageAsText(m);
   if (!text) return ignored("пустое сообщение");
 
+  // Ответ цифрой 1–5 на просьбу оценить закрытое обращение — раньше «менеджер ведёт диалог».
+  // Цифра — оценка, только если это первое сообщение после просьбы и покупатель не в шаге
+  // сценария магазина (там цифра — выбор товара, оплаты, языка). Любое другое сообщение
+  // снимает ожидание: «привет», а потом «3» — уже выбор в магазине.
+  if (ctx.tenant.modules.helpdesk && !m.postbackPayload) {
+    const { ticketAwaitingRating, rateTicket, clearRatingAsked } =
+      await import("@/core/helpdesk/tickets");
+    const asked = await ticketAwaitingRating(ctx, customer.telegramId);
+    if (asked) {
+      const mode = customer.state.mode;
+      const inStep = Boolean(mode) && mode !== "idle";
+      if (/^[1-5]$/.test(text.trim()) && !inStep) {
+        const score = Number(text.trim());
+        const r = await rateTicket(ctx, asked.id, customer.telegramId, score);
+        if (r !== "invalid") {
+          const locale = customer.state.locale ?? ctx.tenant.settings.default_locale ?? "ru";
+          const mm = COPY[locale] ?? COPY.ru;
+          await transport.send(
+            m.conversationId,
+            m.accountId,
+            r === "rated" ? mm.ticketRateThanks(score) : mm.ticketRateAlready,
+            { platform: m.platform },
+          );
+          return processed(`оценка обращения #${asked.number}: ${score}`);
+        }
+      }
+      await clearRatingAsked(ctx, asked.id);
+    }
+  }
+
   let intercepted = false;
   if (ctx.tenant.modules.manager_chat) {
     const { inboundIntercepted } = await import("@/core/chat/chat");

@@ -70,6 +70,35 @@ function TicketsPage() {
           </button>
         ))}
       </div>
+      {data.ratings.count > 0 && (
+        <div className="card mb-4 space-y-3 p-4">
+          <p className="font-medium">
+            {t("tickets.rating.avg", {
+              avg: String(data.ratings.average),
+              count: String(data.ratings.count),
+            })}
+          </p>
+          {data.ratings.low.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-sm font-medium">
+                {t("tickets.rating.low", { count: String(data.ratings.lowCount) })}
+              </h3>
+              <ul className="space-y-1 text-sm">
+                {data.ratings.low.map((tk) => (
+                  <li key={tk.id}>
+                    <Link to="/admin/chat" search={{ c: tk.telegramId }} className="underline">
+                      #{tk.number} · {"⭐".repeat(tk.rating ?? 0)}
+                    </Link>{" "}
+                    <span className="text-muted">
+                      {tk.customerName ?? t("tickets.buyer")} — {tk.subject.slice(0, 80)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
       {tickets.length === 0 ? (
         <Empty>{t("tickets.empty")}</Empty>
       ) : (
@@ -135,6 +164,9 @@ function TicketCard({
             <span>#{tk.number}</span>
             <Badge tone={TONE[tk.status]}>{t(`tickets.status.${tk.status}`)}</Badge>
             <span className="text-sm text-muted">{CHANNEL[tk.platform] ?? tk.platform}</span>
+            {tk.rating !== null && (
+              <span title={t("tickets.rating.title")}>{"⭐".repeat(tk.rating)}</span>
+            )}
           </div>
           <p className="mt-1 line-clamp-2 break-words">{tk.subject}</p>
           <p className="mt-1 text-sm text-muted">

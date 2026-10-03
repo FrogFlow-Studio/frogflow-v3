@@ -25,6 +25,7 @@ export function historyLine(
     });
   else if (kind === "assignee")
     what = t("tickets.h.assignee", { who: who(value === "-" ? null : value) });
+  else if (kind === "rating") what = t("tickets.h.rating", { score: value });
   else if (kind === "opened" || kind === "message" || kind === "note")
     what = t(`tickets.h.${kind}`);
   else what = h.action;

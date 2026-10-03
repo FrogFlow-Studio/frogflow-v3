@@ -13,13 +13,14 @@ export const ticketsFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ status: status.nullish() }).parse(d ?? {}))
   .handler(async ({ data }) => {
     const ctx = await (await import("@/app/auth/guards.server")).requireAdminModule("helpdesk");
-    const { listTickets, countOpenTickets } = await import("@/core/helpdesk/tickets");
+    const { listTickets, countOpenTickets, ratingStats } = await import("@/core/helpdesk/tickets");
     const { helpdeskTeam } = await import("./helpdesk.server");
-    const [tickets, openCount] = await Promise.all([
+    const [tickets, openCount, ratings] = await Promise.all([
       listTickets(ctx, data.status ?? null),
       countOpenTickets(ctx),
+      ratingStats(ctx),
     ]);
-    return { tickets, openCount, team: helpdeskTeam(ctx.tenant) };
+    return { tickets, openCount, ratings, team: helpdeskTeam(ctx.tenant) };
   });
 
 export const ticketFn = createServerFn({ method: "GET" })

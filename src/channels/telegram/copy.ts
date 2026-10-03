@@ -43,6 +43,11 @@ export type Msg = {
   ticketCreated: (no: number) => string;
   ticketAppended: (no: number) => string;
   ticketClosed: (no: number) => string;
+  /** Просьба оценить после закрытия: в Telegram — кнопки 1–5, в Direct/WhatsApp — ответ цифрой. */
+  ticketRateTg: string;
+  ticketRateDm: string;
+  ticketRateThanks: (score: number) => string;
+  ticketRateAlready: string;
   quizResult: string;
   quizNothing: string;
   quizNotReady: string;
@@ -389,6 +394,10 @@ const ru: Msg = {
   ticketCreated: (no) => `📨 Обращение #${no} принято. Ответим здесь, в этом чате.`,
   ticketAppended: (no) => `📨 Добавил к обращению #${no}. Ответим здесь.`,
   ticketClosed: (no) => `✅ Обращение #${no} закрыто. Если вопрос остался — напишите снова.`,
+  ticketRateTg: "Оцените, пожалуйста, нашу помощь:",
+  ticketRateDm: "Оцените нашу помощь — ответьте цифрой от 1 до 5 (5 — отлично).",
+  ticketRateThanks: (n) => `Спасибо за оценку: ${"⭐".repeat(n)}! Нам это важно.`,
+  ticketRateAlready: "Оценка уже принята, спасибо!",
   quizResult: "Вот что вам подойдёт:",
   quizNothing: "Точного совпадения не нашлось — загляните в каталог.",
   quizNotReady: "Подбор ещё не настроен — загляните в каталог.",
@@ -644,6 +653,10 @@ const kk: Msg = {
   ticketCreated: (no) => `📨 #${no} өтініш қабылданды. Осы чатта жауап береміз.`,
   ticketAppended: (no) => `📨 #${no} өтінішке қостым. Осында жауап береміз.`,
   ticketClosed: (no) => `✅ #${no} өтініш жабылды. Сұрақ қалса — қайта жазыңыз.`,
+  ticketRateTg: "Көмегімізді бағалаңыз:",
+  ticketRateDm: "Көмегімізді бағалаңыз — 1-ден 5-ке дейінгі санмен жауап беріңіз (5 — тамаша).",
+  ticketRateThanks: (n) => `Бағаңызға рахмет: ${"⭐".repeat(n)}! Бұл біз үшін маңызды.`,
+  ticketRateAlready: "Баға қабылданған, рахмет!",
   quizResult: "Сізге мыналар сәйкес келеді:",
   quizNothing: "Дәл сәйкестік табылмады — каталогқа қараңыз.",
   quizNotReady: "Таңдау әлі бапталмаған — каталогқа қараңыз.",
@@ -850,6 +863,10 @@ const en: Msg = {
   ticketAppended: (no) => `📨 Added to request #${no}. We will reply here.`,
   ticketClosed: (no) =>
     `✅ Request #${no} is closed. If you still have a question, just write again.`,
+  ticketRateTg: "Please rate our help:",
+  ticketRateDm: "Please rate our help — reply with a number from 1 to 5 (5 is great).",
+  ticketRateThanks: (n) => `Thanks for your rating: ${"⭐".repeat(n)}! It matters to us.`,
+  ticketRateAlready: "Your rating is already recorded, thank you!",
   quizResult: "Here is what suits you:",
   quizNothing: "No exact match — have a look at the catalog.",
   quizNotReady: "The picker is not set up yet — have a look at the catalog.",
@@ -1063,6 +1080,10 @@ const uz: Msg = {
   ticketCreated: (no) => `📨 #${no} murojaat qabul qilindi. Shu chatda javob beramiz.`,
   ticketAppended: (no) => `📨 #${no} murojaatga qo‘shdim. Shu yerda javob beramiz.`,
   ticketClosed: (no) => `✅ #${no} murojaat yopildi. Savol qolsa — yana yozing.`,
+  ticketRateTg: "Yordamimizni baholang:",
+  ticketRateDm: "Yordamimizni baholang — 1 dan 5 gacha raqam bilan javob bering (5 — a’lo).",
+  ticketRateThanks: (n) => `Bahoyingiz uchun rahmat: ${"⭐".repeat(n)}! Bu biz uchun muhim.`,
+  ticketRateAlready: "Baho qabul qilingan, rahmat!",
   quizResult: "Sizga mos keladiganlari:",
   quizNothing: "Aniq moslik topilmadi — katalogga qarang.",
   quizNotReady: "Tanlash hali sozlanmagan — katalogga qarang.",

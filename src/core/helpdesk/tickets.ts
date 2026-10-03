@@ -1,4 +1,5 @@
 import type { Json } from "@/core/db-types";
+import { pageAll } from "@/core/db/page";
 import { updateSettingAtomic } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serverFailure } from "@/lib/server-failure";
@@ -41,6 +42,11 @@ export type Ticket = {
   assignee: string | null;
   createdAt: string;
   history: TicketHistory[];
+  /** Оценка покупателя 1–5 после закрытия; null — не ставил. */
+  rating: number | null;
+  ratedAt: string | null;
+  /** Когда покупателю отправили просьбу об оценке (окно ответа цифрой в Direct/WhatsApp). */
+  ratingAskedAt: string | null;
 };
 
 type Payload = {
@@ -51,6 +57,9 @@ type Payload = {
   subject: string;
   assignee: string | null;
   history: TicketHistory[];
+  rating?: number | null;
+  rated_at?: string | null;
+  rating_asked_at?: string | null;
 };
 
 function rowToTicket(r: { id: string; status: string; payload: Json; created_at: string }): Ticket {
@@ -66,6 +75,9 @@ function rowToTicket(r: { id: string; status: string; payload: Json; created_at:
     assignee: p.assignee ?? null,
     createdAt: r.created_at,
     history: Array.isArray(p.history) ? p.history : [],
+    rating: validRating(p.rating) ? Number(p.rating) : null,
+    ratedAt: p.rated_at ?? null,
+    ratingAskedAt: p.rating_asked_at ?? null,
   };
 }
 
@@ -80,6 +92,9 @@ function toPayload(t: Ticket): Json {
     subject: t.subject,
     assignee: t.assignee,
     history: t.history.slice(-50),
+    rating: t.rating,
+    rated_at: t.ratedAt,
+    rating_asked_at: t.ratingAskedAt,
   } as unknown as Json;
 }
 
@@ -135,6 +150,9 @@ export async function createTicket(
     assignee: null,
     createdAt: now,
     history: [{ at: now, actor: "customer", action: "opened" }],
+    rating: null,
+    ratedAt: null,
+    ratingAskedAt: null,
   };
   const { data, error } = await ctx.db
     .from("zernio_logs")
@@ -244,4 +262,146 @@ export async function countOpenTickets(ctx: TenantContext): Promise<number> {
     .eq("status", "open");
   if (countError) throw serverFailure(`Поддержка: ${countError.message}`);
   return count ?? 0;
+}
+
+// ── Оценка работы поддержки ────────────────────────────────────────────
+
+export const RATING_ASK_WINDOW_MS = 7 * 24 * 3600 * 1000;
+/** Оценки не выше этого числа — «низкие»: попадают в верх страницы «Обращения». */
+export const LOW_RATING_MAX = 2;
+/** Отметка «оценка поставлена»: вставка с уникальным ключом — выигрывает одна. */
+export const ratingMarkKey = (ticketId: string) => `ticket_rating:${ticketId}`;
+
+export function validRating(n: unknown): n is number {
+  return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 5;
+}
+
+/** Покупателю ушла просьба об оценке — запоминаем момент (для ответа цифрой в Direct/WhatsApp). */
+export async function markRatingAsked(ctx: TenantContext, ticketId: string): Promise<void> {
+  const t = await getTicket(ctx, ticketId);
+  if (!t || t.rating !== null) return;
+  const next: Ticket = { ...t, ratingAskedAt: new Date().toISOString() };
+  const { error } = await ctx.db
+    .from("zernio_logs")
+    .update({ payload: toPayload(next) })
+    .eq("id", ticketId);
+  if (error) throw serverFailure(`Поддержка: ${error.message}`);
+}
+
+/** Покупатель написал что-то другое — просьба об оценке больше не ждёт цифры. */
+export async function clearRatingAsked(ctx: TenantContext, ticketId: string): Promise<void> {
+  const t = await getTicket(ctx, ticketId);
+  if (!t || t.ratingAskedAt === null) return;
+  const { error } = await ctx.db
+    .from("zernio_logs")
+    .update({ payload: toPayload({ ...t, ratingAskedAt: null }) })
+    .eq("id", ticketId);
+  if (error) throw serverFailure(`Поддержка: ${error.message}`);
+}
+
+export type RateResult = "rated" | "already" | "invalid";
+
+/**
+ * Оценка закрытого обращения. Один раз: сначала занимается отметка
+ * (`app_settings`, уникальный ключ), потом оценка пишется в обращение.
+ * Повторное нажатие кнопки или вторая цифра — «already», оценка не меняется.
+ * Чужое обращение или не закрытое — «invalid».
+ */
+export async function rateTicket(
+  ctx: TenantContext,
+  ticketId: string,
+  telegramId: number,
+  score: number,
+): Promise<RateResult> {
+  if (!validRating(score)) return "invalid";
+  const t = await getTicket(ctx, ticketId);
+  if (!t || t.telegramId !== telegramId || t.status !== "closed") return "invalid";
+  if (t.rating !== null) return "already";
+  const key = ratingMarkKey(ticketId);
+  const { error: markError } = await ctx.db
+    .from("app_settings")
+    .insert({ bot_id: ctx.tenant.id, key, value: String(score) });
+  if (markError) {
+    if (markError.code === "23505") return "already";
+    throw serverFailure(`Поддержка: оценка не записана: ${markError.message}`);
+  }
+  const now = new Date().toISOString();
+  const next: Ticket = {
+    ...t,
+    rating: score,
+    ratedAt: now,
+    history: [...t.history, { at: now, actor: "customer", action: `rating:${score}` }],
+  };
+  const { error } = await ctx.db
+    .from("zernio_logs")
+    .update({ payload: toPayload(next) })
+    .eq("id", ticketId);
+  if (error) {
+    // Оценка не легла в обращение — снимаем отметку, чтобы покупатель мог повторить.
+    await ctx.db.from("app_settings").delete().eq("bot_id", ctx.tenant.id).eq("key", key);
+    throw serverFailure(`Поддержка: оценка не записана: ${error.message}`);
+  }
+  return "rated";
+}
+
+/** Закрытое обращение покупателя, по которому недавно просили оценку и ответа ещё нет. */
+export async function ticketAwaitingRating(
+  ctx: TenantContext,
+  telegramId: number,
+  now = new Date(),
+): Promise<Ticket | null> {
+  const rows = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("zernio_logs")
+        .select(SELECT)
+        .like("event_id", `${TICKET_PREFIX}%`)
+        .eq("status", "closed")
+        .contains("payload", { telegram_id: telegramId })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to),
+    "Поддержка: обращения покупателя",
+  );
+  let best: Ticket | null = null;
+  for (const r of rows) {
+    const t = rowToTicket(r);
+    if (t.rating !== null || !t.ratingAskedAt) continue;
+    const asked = Date.parse(t.ratingAskedAt);
+    if (!(now.getTime() - asked <= RATING_ASK_WINDOW_MS)) continue;
+    if (!best || asked > Date.parse(best.ratingAskedAt!)) best = t;
+  }
+  return best;
+}
+
+export type RatingStats = {
+  count: number;
+  average: number | null;
+  low: Ticket[];
+  lowCount: number;
+};
+
+/** Средняя оценка магазина и обращения с низкими оценками (свежие первыми, не больше `lowShown`). */
+export async function ratingStats(ctx: TenantContext, lowShown = 10): Promise<RatingStats> {
+  const rows = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("zernio_logs")
+        .select(SELECT)
+        .like("event_id", `${TICKET_PREFIX}%`)
+        .eq("status", "closed")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to),
+    "Поддержка: оценки",
+  );
+  const rated = rows.map(rowToTicket).filter((t) => t.rating !== null);
+  const sum = rated.reduce((a, t) => a + (t.rating ?? 0), 0);
+  const low = rated.filter((t) => (t.rating ?? 5) <= LOW_RATING_MAX);
+  return {
+    count: rated.length,
+    average: rated.length ? Math.round((sum / rated.length) * 10) / 10 : null,
+    low: low.slice(0, lowShown),
+    lowCount: low.length,
+  };
 }

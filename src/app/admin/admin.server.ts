@@ -567,6 +567,8 @@ export async function replyAsManager(
   attachment?: ChatAttachment,
   /** Id черновика со страницы «Чат»: повтор отправки после ошибки не удвоит сообщение. */
   draftId?: string,
+  /** Кнопки под сообщением — только в Telegram (Direct/WhatsApp их здесь не рисуют). */
+  options: { replyMarkup?: { inline_keyboard: { text: string; callback_data: string }[][] } } = {},
 ): Promise<void> {
   const { getCustomerByTelegramId } = await import("@/core/customers/customers");
   const customer = await getCustomerByTelegramId(ctx, telegramId);
@@ -630,7 +632,11 @@ export async function replyAsManager(
   } else if (checked) {
     await att.sendTelegramAttachment(ctx, telegramId, text, checked);
   } else {
-    const r = await api(ctx).call("sendMessage", { chat_id: telegramId, text });
+    const r = await api(ctx).call("sendMessage", {
+      chat_id: telegramId,
+      text,
+      ...(options.replyMarkup ? { reply_markup: options.replyMarkup } : {}),
+    });
     if (!r.ok) throw att.telegramRefusal(r.description);
   }
   const { recordMessage } = await import("@/core/chat/chat");

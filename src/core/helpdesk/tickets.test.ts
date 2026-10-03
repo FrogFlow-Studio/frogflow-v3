@@ -2,7 +2,17 @@ import { describe, expect, it } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { openTicketNumbers } from "@/core/inbox/inbox";
-import { createTicket, listTickets, openTicketFor, TICKET_SEQ_KEY, updateTicket } from "./tickets";
+import {
+  createTicket,
+  listTickets,
+  markRatingAsked,
+  openTicketFor,
+  ratingStats,
+  rateTicket,
+  ticketAwaitingRating,
+  TICKET_SEQ_KEY,
+  updateTicket,
+} from "./tickets";
 
 const BOT = "11111111-1111-1111-1111-111111111111";
 function ctxWith(): { ctx: TenantContext; db: FakeDb } {
@@ -103,5 +113,74 @@ describe("обращения: статус «ждём покупателя»", (
     // Закрытое больше не «открытое»: следующий вопрос — новое обращение.
     expect(await openTicketFor(ctx, 1)).toBeNull();
     expect((await createTicket(ctx, ask(1))).created).toBe(true);
+  });
+});
+
+describe("обращения: оценка после закрытия", () => {
+  async function closed(ctx: TenantContext, tg = 1) {
+    const { ticket } = await createTicket(ctx, ask(tg));
+    await updateTicket(ctx, ticket.id, { status: "closed" }, "admin:owner");
+    await markRatingAsked(ctx, ticket.id);
+    return ticket;
+  }
+
+  it("оценка пишется один раз: повторное нажатие и вторая цифра ничего не меняют", async () => {
+    const { ctx } = ctxWith();
+    const t = await closed(ctx);
+    expect(await rateTicket(ctx, t.id, 1, 2)).toBe("rated");
+    expect(await rateTicket(ctx, t.id, 1, 5)).toBe("already");
+    const [got] = await listTickets(ctx, "closed");
+    expect(got).toMatchObject({ rating: 2 });
+    expect(got!.history.filter((h) => h.action.startsWith("rating:"))).toHaveLength(1);
+  });
+
+  it("два нажатия одновременно: выигрывает одно, оценка одна", async () => {
+    const { ctx } = ctxWith();
+    const t = await closed(ctx);
+    const r = await Promise.all([rateTicket(ctx, t.id, 1, 4), rateTicket(ctx, t.id, 1, 1)]);
+    expect(r.filter((x) => x === "rated")).toHaveLength(1);
+    const [got] = await listTickets(ctx, "closed");
+    expect([4, 1]).toContain(got!.rating);
+  });
+
+  it("чужое, не закрытое и неверная цифра — invalid, ничего не пишется", async () => {
+    const { ctx, db } = ctxWith();
+    const t = await closed(ctx, 1);
+    expect(await rateTicket(ctx, t.id, 2, 5)).toBe("invalid");
+    expect(await rateTicket(ctx, t.id, 1, 6)).toBe("invalid");
+    expect(await rateTicket(ctx, t.id, 1, 0)).toBe("invalid");
+    const open = (await createTicket(ctx, ask(3))).ticket;
+    expect(await rateTicket(ctx, open.id, 3, 5)).toBe("invalid");
+    expect(db.tables.app_settings!.some((r) => String(r.key).startsWith("ticket_rating:"))).toBe(
+      false,
+    );
+  });
+
+  it("цифра в Direct относится к обращению этого покупателя, которое просили оценить; через неделю — нет", async () => {
+    const { ctx } = ctxWith();
+    const mine = await closed(ctx, 1);
+    await closed(ctx, 2);
+    const now = new Date();
+    expect((await ticketAwaitingRating(ctx, 1, now))?.id).toBe(mine.id);
+    expect(await ticketAwaitingRating(ctx, 9, now)).toBeNull();
+    expect(
+      await ticketAwaitingRating(ctx, 1, new Date(now.getTime() + 8 * 24 * 3600 * 1000)),
+    ).toBeNull();
+    await rateTicket(ctx, mine.id, 1, 5);
+    expect(await ticketAwaitingRating(ctx, 1, now)).toBeNull();
+  });
+
+  it("средняя оценка и низкие оценки для страницы «Обращения»", async () => {
+    const { ctx } = ctxWith();
+    const a = await closed(ctx, 1);
+    const b = await closed(ctx, 2);
+    const c = await closed(ctx, 3);
+    await rateTicket(ctx, a.id, 1, 5);
+    await rateTicket(ctx, b.id, 2, 1);
+    await closed(ctx, 4); // не оценено — в среднее не входит
+    expect(await rateTicket(ctx, c.id, 3, 2)).toBe("rated");
+    const st = await ratingStats(ctx);
+    expect(st).toMatchObject({ count: 3, average: 2.7, lowCount: 2 });
+    expect(st.low.map((t) => t.rating).sort()).toEqual([1, 2]);
   });
 });

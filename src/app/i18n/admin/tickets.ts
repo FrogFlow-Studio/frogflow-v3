@@ -26,6 +26,10 @@ export const ru = {
   "tickets.h.assignee": "ответственный: {who}",
   "tickets.h.note": "заметка",
   "tickets.h.customer": "покупатель",
+  "tickets.rating.avg": "Средняя оценка: {avg} из 5 · оценок: {count}",
+  "tickets.rating.low": "Низкие оценки (1–2): {count}",
+  "tickets.rating.title": "Оценка покупателя",
+  "tickets.h.rating": "оценка: {score} из 5",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -53,6 +57,10 @@ export const kk: SectionDict<typeof ru> = {
   "tickets.h.assignee": "жауапты: {who}",
   "tickets.h.note": "жазба",
   "tickets.h.customer": "сатып алушы",
+  "tickets.rating.avg": "Орташа баға: {avg} / 5 · бағалар саны: {count}",
+  "tickets.rating.low": "Төмен бағалар (1–2): {count}",
+  "tickets.rating.title": "Сатып алушының бағасы",
+  "tickets.h.rating": "баға: {score} / 5",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -80,6 +88,10 @@ export const en: SectionDict<typeof ru> = {
   "tickets.h.assignee": "assignee: {who}",
   "tickets.h.note": "note",
   "tickets.h.customer": "customer",
+  "tickets.rating.avg": "Average rating: {avg} of 5 · ratings: {count}",
+  "tickets.rating.low": "Low ratings (1–2): {count}",
+  "tickets.rating.title": "Customer rating",
+  "tickets.h.rating": "rating: {score} of 5",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -107,4 +119,8 @@ export const uz: SectionDict<typeof ru> = {
   "tickets.h.assignee": "masʼul: {who}",
   "tickets.h.note": "izoh",
   "tickets.h.customer": "xaridor",
+  "tickets.rating.avg": "Oʻrtacha baho: {avg} / 5 · baholar soni: {count}",
+  "tickets.rating.low": "Past baholar (1–2): {count}",
+  "tickets.rating.title": "Xaridor bahosi",
+  "tickets.h.rating": "baho: {score} / 5",
 };

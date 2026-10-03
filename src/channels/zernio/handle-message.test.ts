@@ -38,7 +38,12 @@ vi.mock("@/core/consultant/engine.server", () => ({
 const claimContactRequest = vi.fn(async (_ctx: unknown, c: Customer) => c as Customer | null);
 vi.mock("@/core/instagram/contact-request", () => ({ claimContactRequest }));
 const createTicket = vi.fn(async () => ({ ticket: { number: 7 }, created: true }));
-vi.mock("@/core/helpdesk/tickets", () => ({ createTicket }));
+vi.mock("@/core/helpdesk/tickets", () => ({
+  createTicket,
+  ticketAwaitingRating: async () => null,
+  rateTicket: async () => "invalid",
+  clearRatingAsked: async () => {},
+}));
 vi.mock("@/core/chat/chat", () => ({
   inboundIntercepted: vi.fn(async () => false),
   recordMessage: vi.fn(async () => {}),

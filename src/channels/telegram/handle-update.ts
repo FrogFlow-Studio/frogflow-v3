@@ -2364,6 +2364,16 @@ async function handleCallback(
     });
     return;
   }
+  if (data.startsWith("tkr:") && ctx.tenant.modules.helpdesk) {
+    const [, ticketId = "", scoreRaw = ""] = data.split(":");
+    const { rateTicket } = await import("@/core/helpdesk/tickets");
+    const r = await rateTicket(ctx, ticketId, customer.telegramId, Number(scoreRaw));
+    if (r === "invalid") return;
+    return void (await send(
+      b,
+      r === "rated" ? b.m.ticketRateThanks(Number(scoreRaw)) : b.m.ticketRateAlready,
+    ));
+  }
   if (data.startsWith("appr:")) {
     const [, what, id] = data.split(":");
     const orderId = Number(id);
