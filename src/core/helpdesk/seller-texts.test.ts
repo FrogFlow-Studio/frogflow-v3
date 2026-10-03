@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SUPPORTED_LOCALES as LOCALES } from "@/core/i18n/locale";
 import {
   overdueTicketText,
-  ticketAppendedText,
+  ticketNoticeText,
   unansweredChatText,
   waitedText,
 } from "./seller-texts";
@@ -35,19 +35,16 @@ describe("тексты продавцу об ожидании ответа", () 
   });
 });
 
-describe("дополнение к обращению из Mini App — продавцу на его языке", () => {
-  it("на всех четырёх языках: номер, покупатель, текст и подсказка", () => {
-    const c = { who: "Аня", text: "Добавлю: заказ №5" };
-    const seen = new Set<string>();
+describe("уведомление продавцу об обращении", () => {
+  it("новое и дополнение на четырёх языках, с номером, автором и текстом", () => {
     for (const l of LOCALES) {
-      const t = ticketAppendedText(l, 7, c);
-      expect(t).toContain("7");
-      expect(t).toContain("Аня");
-      expect(t).toContain("Добавлю: заказ №5");
-      seen.add(t.split("\n")[0]!);
+      const n = ticketNoticeText(l, true, 5, "👤 Аня", "где заказ");
+      const a = ticketNoticeText(l, false, 5, "👤 Аня", "где заказ");
+      for (const t of [n, a]) expect(t).toMatch(/#5|№5/);
+      for (const t of [n, a]) expect(t).toContain("👤 Аня\n\nгде заказ\n\n");
+      expect(n).not.toBe(a);
     }
-    expect(seen.size).toBe(4);
-    expect(ticketAppendedText("ru", 7, c)).toContain("Дополнение к обращению #7");
-    expect(ticketAppendedText("en", 7, c)).toContain("Addition to request #7");
+    expect(ticketNoticeText("ru", false, 2, "x", "y")).toContain("Дополнение к обращению #2");
+    expect(ticketNoticeText("en", true, 2, "x", "y")).toContain("New request #2");
   });
 });

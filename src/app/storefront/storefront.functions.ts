@@ -330,14 +330,16 @@ export const miniAppTicketAppendFn = createServerFn({ method: "POST" })
     }
     const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
     const { escapeHtml } = await import("@/channels/telegram/copy");
-    const { sellerLocale } = await import("@/core/catalog/low-stock");
-    const { ticketAppendedText } = await import("@/core/helpdesk/seller-texts");
+    const { noticeLocale, ticketNoticeText } = await import("@/core/helpdesk/seller-texts");
     await notifyAdminsHtml(
       ctx,
-      ticketAppendedText(await sellerLocale(ctx), ticket.number, {
-        who: escapeHtml(who ?? String(user.id)),
-        text: escapeHtml(data.text.slice(0, 1000)),
-      }),
+      ticketNoticeText(
+        await noticeLocale(ctx),
+        false,
+        ticket.number,
+        `👤 ${escapeHtml(who ?? String(user.id))}`,
+        escapeHtml(data.text.slice(0, 1000)),
+      ),
       { kind: "question" },
     ).catch(() => 0);
     return { ok: true, number: ticket.number };

@@ -427,9 +427,16 @@ async function handleMessage(
       const { recordMessage } = await import("@/core/chat/chat");
       await recordMessage(ctx, { telegramId: from.id, direction: "in", sender: "customer", text });
     }
+    const { noticeLocale, ticketNoticeText } = await import("@/core/helpdesk/seller-texts");
     await notifyAdminsHtml(
       ctx,
-      `📨 <b>${created ? "Новое обращение" : "Дополнение к обращению"} #${ticket.number}</b>\n👤 ${escapeHtml(who ?? String(from.id))}\n\n${escapeHtml(text.slice(0, 1000))}\n\nОтветить — раздел «Чат», статус — «Обращения» в панели.`,
+      ticketNoticeText(
+        await noticeLocale(ctx),
+        created,
+        ticket.number,
+        `👤 ${escapeHtml(who ?? String(from.id))}`,
+        escapeHtml(text.slice(0, 1000)),
+      ),
       { kind: "question" },
     ).catch(() => 0);
     await send(b, created ? b.m.ticketCreated(ticket.number) : b.m.ticketAppended(ticket.number));

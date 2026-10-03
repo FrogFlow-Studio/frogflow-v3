@@ -1,4 +1,6 @@
 import type { Locale } from "@/core/i18n/locale";
+import type { TenantContext } from "@/core/tenant/resolve.server";
+import { sellerLocale } from "@/core/catalog/low-stock";
 
 /**
  * Сообщения продавцу о том, что покупатель или обращение ждёт ответа
@@ -81,35 +83,6 @@ function body(w: Words, c: WaitingCard, head: string): string {
   ].join("\n");
 }
 
-const APPENDED: Record<Locale, { title: (n: number) => string; hint: string }> = {
-  ru: {
-    title: (n) => `Дополнение к обращению #${n}`,
-    hint: "Ответить — раздел «Чат», статус — «Обращения» в панели.",
-  },
-  kk: {
-    title: (n) => `№${n} өтінішке қосымша`,
-    hint: "Жауап беру — «Чат» бөлімі, мәртебе — панельдегі «Өтініштер».",
-  },
-  en: {
-    title: (n) => `Addition to request #${n}`,
-    hint: "Reply in the “Chat” section, change the status in “Requests” in the panel.",
-  },
-  uz: {
-    title: (n) => `#${n} murojaatga qoʻshimcha`,
-    hint: "Javob berish — «Chat» boʻlimi, holat — paneldagi «Murojaatlar».",
-  },
-};
-
-/** Покупатель дописал в открытое обращение (Mini App): `who` и `text` — уже экранированы. */
-export function ticketAppendedText(
-  locale: Locale,
-  number: number,
-  c: { who: string; text: string },
-): string {
-  const a = APPENDED[locale];
-  return `📨 <b>${a.title(number)}</b>\n👤 ${c.who}\n\n${c.text}\n\n${a.hint}`;
-}
-
 export function unansweredChatText(locale: Locale, waited: string, c: WaitingCard): string {
   const w = WORDS[locale];
   return body(w, c, w.chatTitle(waited));
@@ -123,4 +96,55 @@ export function overdueTicketText(
 ): string {
   const w = WORDS[locale];
   return body(w, c, w.ticketTitle(number, waited));
+}
+
+const NOTICE: Record<
+  Locale,
+  { created: (n: number) => string; appended: (n: number) => string; tail: string }
+> = {
+  ru: {
+    created: (n) => `Новое обращение #${n}`,
+    appended: (n) => `Дополнение к обращению #${n}`,
+    tail: "Ответить — раздел «Чат», статус — «Обращения» в панели.",
+  },
+  kk: {
+    created: (n) => `Жаңа өтініш №${n}`,
+    appended: (n) => `№${n} өтінішке қосымша`,
+    tail: "Жауап беру — панельдегі «Чат» бөлімі, күйі — «Өтініштер» бөлімі.",
+  },
+  en: {
+    created: (n) => `New request #${n}`,
+    appended: (n) => `Addition to request #${n}`,
+    tail: "Reply in “Chat”, change the status in “Requests” in the panel.",
+  },
+  uz: {
+    created: (n) => `Yangi murojaat #${n}`,
+    appended: (n) => `#${n} murojaatga qoʻshimcha`,
+    tail: "Javob berish — panelning «Chat» boʻlimi, holati — «Murojaatlar» boʻlimi.",
+  },
+};
+
+/** Продавцу: покупатель завёл обращение или дописал в открытое. `who` и `text` уже экранированы. */
+export function ticketNoticeText(
+  locale: Locale,
+  created: boolean,
+  number: number,
+  who: string,
+  text: string,
+): string {
+  const w = NOTICE[locale];
+  return `📨 <b>${created ? w.created(number) : w.appended(number)}</b>\n${who}\n\n${text}\n\n${w.tail}`;
+}
+
+/**
+ * Язык уведомления об обращении. Обращение уже записано, а сообщение продавцу
+ * не должно пропасть из-за сбоя чтения настройки языка: при сбое — русский, в журнал.
+ */
+export async function noticeLocale(ctx: TenantContext): Promise<Locale> {
+  try {
+    return await sellerLocale(ctx);
+  } catch (e) {
+    console.error(`[ticket-notice:${ctx.tenant.id}] язык продавца не прочитан:`, e);
+    return "ru";
+  }
 }

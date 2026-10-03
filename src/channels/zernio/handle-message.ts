@@ -506,12 +506,20 @@ async function directTicket(
       platform,
       subject,
     });
-    if (created && opts.notify !== false)
+    if (created && opts.notify !== false) {
+      const { noticeLocale, ticketNoticeText } = await import("@/core/helpdesk/seller-texts");
       await notifyAdminsHtml(
         ctx,
-        `📨 <b>Новое обращение #${ticket.number}</b>\n${PLATFORM_LABEL[platform as keyof typeof PLATFORM_LABEL] ?? platform} · 👤 ${escapeHtml(who ?? customer.userKey)}\n\n${escapeHtml(subject.slice(0, 1000))}\n\nОтветить — раздел «Чат», статус — «Обращения» в панели.`,
+        ticketNoticeText(
+          await noticeLocale(ctx),
+          true,
+          ticket.number,
+          `${PLATFORM_LABEL[platform as keyof typeof PLATFORM_LABEL] ?? platform} · 👤 ${escapeHtml(who ?? customer.userKey)}`,
+          escapeHtml(subject.slice(0, 1000)),
+        ),
         { kind: "question" },
       ).catch(() => 0);
+    }
     return { number: ticket.number, created };
   } catch (e) {
     console.error(`[zernio:${ctx.tenant.id}] обращение не записано`, e);
