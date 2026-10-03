@@ -1,4 +1,5 @@
 import { serviceDb } from "@/core/db/client.server";
+import { pageAll } from "@/core/db/page";
 import {
   computeState,
   readPolicy,
@@ -179,15 +180,18 @@ function toInvoice(r: Row): Invoice {
 }
 
 export async function listInvoices(botId?: string): Promise<Invoice[]> {
-  let q = serviceDb()
-    .from("subscription_invoices")
-    .select(SELECT)
-    .order("created_at", { ascending: false })
-    .limit(200);
-  if (botId) q = q.eq("bot_id", botId);
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((r) => toInvoice(r as Row));
+  // Постранично и с уникальным ключом в сортировке: старые неоплаченные счета не теряются.
+  const rows = await pageAll<Row>((from, to) => {
+    let q = serviceDb()
+      .from("subscription_invoices")
+      .select(SELECT)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, to);
+    if (botId) q = q.eq("bot_id", botId);
+    return q;
+  }, "Счета не прочитаны");
+  return rows.map(toInvoice);
 }
 
 async function invoiceOrThrow(id: string): Promise<Invoice & { proof_path: string | null }> {

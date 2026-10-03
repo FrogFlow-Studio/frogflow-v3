@@ -757,7 +757,9 @@ export async function markProofVerified(
   const ok = Boolean(data?.length);
   if (ok && receipt && before) {
     // Платёж в журнал: из него собирается выгрузка «Оплаты». Переплата — отдельным полем.
-    const over = foreign ? 0 : Math.round((receipt.amount - total) * 100) / 100;
+    const over = foreign
+      ? 0
+      : Math.round((Number(before.paid_amount ?? 0) + receipt.amount - total) * 100) / 100;
     const { recordOrderEvent } = await import("./events");
     await recordOrderEvent(
       ctx,
@@ -795,7 +797,7 @@ export async function reopenForResend(
     .eq("id", order.id)
     .eq("status", "delivered")
     .select("id");
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`reopenForResend: заказ #${order.id}: ${error.message}`);
   return Boolean(data?.length);
 }
 

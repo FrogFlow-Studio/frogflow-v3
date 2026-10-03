@@ -52,6 +52,13 @@ describe("markProofVerified пишет платёж", () => {
     expect(payments()[0]!.payload).not.toHaveProperty("overpaid");
   });
 
+  it("был задаток: переплата считается с учётом уже внесённого", async () => {
+    db.tables.orders![0]!.paid_amount = 3000;
+    await markProofVerified(ctx(), 7, "h1", "OCR ok", { amount: 8000 });
+    expect(db.tables.orders![0]).toMatchObject({ paid_amount: 10000 });
+    expect(payments()[0]!.payload).toMatchObject({ amount: 8000, overpaid: 1000 });
+  });
+
   it("чек в другой валюте (по курсу): сумма и валюта чека, заказ оплачен целиком", async () => {
     await markProofVerified(ctx(), 7, "h1", "OCR ok", { amount: 20, currency: "USD" });
     expect(db.tables.orders![0]).toMatchObject({ status: "paid", paid_amount: 10000 });

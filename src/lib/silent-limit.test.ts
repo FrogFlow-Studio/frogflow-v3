@@ -23,7 +23,6 @@ const ALLOWED: Record<string, string[]> = {
   "src/app/operator/plans.server.ts": [`${SHOWN} (открытые счета клиента)`],
   "src/app/operator/billing.server.ts": [
     `${SHOWN} (платежи клиента)`,
-    `${SHOWN} (счета оператора)`,
     "проверка существования: нужен лишь факт, что открытый счёт есть",
   ],
   "src/app/operator/operator.server.ts": [

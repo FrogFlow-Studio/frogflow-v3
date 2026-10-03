@@ -9,6 +9,7 @@ import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 let base: FakeDb;
 let failPayment = false;
 let failRollback = false;
+let failList = false;
 const reported: string[] = [];
 const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
 const toOwner: string[] = [];
@@ -40,6 +41,13 @@ function wrap(b: FakeDb): FakeDb {
           (v as { confirmed_at?: unknown }).confirmed_at === null
             ? { eq: () => Promise.resolve({ data: null, error: { message: "сбой отката" } }) }
             : update(v);
+      }
+      if (table === "subscription_invoices" && failList) {
+        const failing: Record<string, unknown> = {};
+        for (const m of ["order", "range", "eq"]) failing[m] = () => failing;
+        failing.then = (ok: (v: unknown) => unknown) =>
+          ok({ data: null, error: { message: "connection reset by peer" } });
+        q.select = () => failing;
       }
       if (table === "subscription_payments" && failPayment)
         q.insert = () => Promise.resolve({ data: null, error: { message: "сбой базы" } });
@@ -97,6 +105,7 @@ beforeEach(() => {
   base.tables.subscription_payments = [];
   base.tables.bots = [{ id: BOT, status: "active", subscription_expires_at: null }];
   failPayment = false;
+  failList = false;
   hookFails = false;
   ownerDelivered = true;
   events.length = 0;
@@ -332,5 +341,36 @@ describe("счета за подписку", () => {
     expect(await billing.invoiceProofUrl(invoice.id)).toBe(
       `https://s.test/${BOT}/invoice-1.jpg?ttl=300`,
     );
+  });
+});
+
+describe("listInvoices — все счета, а не первые 200", () => {
+  it("старый неоплаченный счёт не пропадает из списка оператора", async () => {
+    // Потолок ответа 1000, как у Supabase: без постраничного чтения хвост терялся бы молча.
+    base = fakeDb({ maxRows: 1000 });
+    base.tables.subscription_invoices = Array.from({ length: 1205 }, (_, i) => ({
+      id: `inv-${String(i).padStart(4, "0")}`,
+      bot_id: BOT,
+      amount: 100,
+      currency: "KZT",
+      note: null,
+      requisites_snapshot: "",
+      status: i === 0 ? "sent" : "paid",
+      proof_path: null,
+      proof_uploaded_at: null,
+      created_at: new Date(Date.UTC(2026, 0, 1) + i * 3_600_000).toISOString(),
+      created_by: null,
+      confirmed_at: null,
+      reject_reason: null,
+    }));
+    const all = await billing.listInvoices();
+    expect(all).toHaveLength(1205);
+    expect(all.at(-1)).toMatchObject({ id: "inv-0000", status: "sent" });
+  });
+
+  it("сбой чтения — serverFailure без сырого текста базы", async () => {
+    failList = true;
+    const err = await billing.listInvoices().catch((e) => e);
+    expect((err as Error).name).toBe("ServerFailure");
   });
 });

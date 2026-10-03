@@ -1542,7 +1542,12 @@ async function handlePreCheckout(
   const { parseStarsPayload } = await import("@/core/payments/stars");
   const orderId = parseStarsPayload(q.invoice_payload);
   const order = orderId ? await getOrder(ctx, orderId) : null;
-  const m = COPY[ctx.tenant.settings.default_locale ?? "ru"];
+  // Ответ покупателю — на его языке, а не на языке магазина.
+  // Сбой чтения профиля не должен оставить pre_checkout без ответа: orderBuyerLocale падает на язык магазина.
+  const m =
+    COPY[
+      await orderBuyerLocale(ctx, order ?? { user_key: `tg_${q.from.id}`, telegram_id: q.from.id })
+    ];
   const expected = order ? await starsDue(ctx, order) : null;
   const ok =
     Boolean(order) &&
