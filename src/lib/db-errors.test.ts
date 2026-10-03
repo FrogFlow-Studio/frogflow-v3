@@ -46,10 +46,6 @@ const ALLOWED: Record<string, { n: number; why: string }> = {
     n: 1,
     why: "вебхук CRM — best effort: сбой чтения заказа = вебхук не уходит, заказ не страдает",
   },
-  "src/core/notify/digest.ts": {
-    n: 1,
-    why: "очередь дайджеста: строки остаются queued, уйдут со следующим запуском",
-  },
   "src/core/push/admin-push.ts": {
     n: 1,
     why: "подписки push: сбой = уведомление не ушло, сам заказ не страдает (файл А18)",

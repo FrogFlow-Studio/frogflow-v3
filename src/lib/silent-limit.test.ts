@@ -45,7 +45,6 @@ const ALLOWED: Record<string, string[]> = {
   "src/core/upsell/upsell.ts": ["подборка: берём самые популярные, остальные не нужны"],
   "src/core/ai/balance.ts": [`${SHOWN} (журнал ИИ-баланса)`],
   "src/core/similar/similar.ts": [`${BATCH} (курсор по id: следующий запуск продолжает)`],
-  "src/core/notify/digest.ts": [`${BATCH} (очередь дайджеста)`],
   "src/core/consultant/engine.server.ts": [
     "потолок каталога в подсказке модели: больше не помещается в запрос",
   ],

@@ -73,7 +73,6 @@ const ALLOWED: Record<string, string[]> = {
     "keys — кусок CHECK_CHUNK (100), нарезка у вызывающего",
   ),
   "src/core/inbox/inbox.ts": [`${PAGE} (диалоги на экране, ≤ 200)`],
-  "src/core/notify/digest.ts": [`${PAGE} (пачка дайджеста, ≤ 100)`],
   "src/core/orders/admin.ts": ["заказы с недоплатой: UNDERPAID_LIST_MAX"],
   "src/core/orders/balance.ts": [FEW, FEW],
   "src/core/orders/orders.ts": [FEW, FIXED],
