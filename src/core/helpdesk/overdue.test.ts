@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { createTicket, updateTicket } from "./tickets";
-import { claimOverdue, overdueAmong, parseOverdueHours, remindOverdue } from "./overdue";
+import { claimOverdue, isoMicros, overdueAmong, parseOverdueHours, remindOverdue } from "./overdue";
 
 const BOT = "11111111-1111-1111-1111-111111111111";
 const NOW = new Date("2026-10-03T12:00:00Z");
@@ -143,5 +143,41 @@ describe("просроченные обращения", () => {
     managerSays(db, 2, ago(8)); // позже вопроса — ответ
     const ids = (await overdueAmong(ctx, [a, b], 4, NOW)).map((o) => o.ticket.id);
     expect(ids).toEqual([a.id]);
+  });
+});
+
+describe("микросекунды created_at", () => {
+  it("isoMicros различает то, что Date.parse слепляет", () => {
+    expect(isoMicros("2026-10-03T07:00:00.123456Z")).toBeGreaterThan(
+      isoMicros("2026-10-03T07:00:00.123Z"),
+    );
+    expect(isoMicros("2026-10-03T07:00:00.123Z")).toBe(
+      isoMicros("2026-10-03T07:00:00.123000+00:00"),
+    );
+    expect(isoMicros("2026-10-03T07:00:00Z")).toBe(isoMicros("2026-10-03T07:00:00.000000Z"));
+  });
+
+  async function ticketAt(since: string) {
+    const { db, ctx } = setup();
+    const t = await ticketAgo(ctx, db, 1, 6);
+    const row = db.tables.zernio_logs!.find((r) => r.id === t.id)!;
+    (row.payload as { history: { at: string }[] }).history[0]!.at = since;
+    row.created_at = since;
+    return { db, ctx };
+  }
+
+  it("ответ продавца в ту же миллисекунду, но на микросекунды позже вопроса — не просрочено", async () => {
+    const { db, ctx } = await ticketAt("2026-10-03T06:00:00.123000Z");
+    managerSays(db, 1, "2026-10-03T06:00:00.123456Z");
+    expect(
+      await overdueAmong(ctx, await (await import("./tickets")).listTickets(ctx), 4, NOW),
+    ).toEqual([]);
+  });
+
+  it("ответ раньше вопроса или ровно в его момент — по-прежнему просрочено", async () => {
+    const { db, ctx } = await ticketAt("2026-10-03T06:00:00.123456Z");
+    managerSays(db, 1, "2026-10-03T06:00:00.123456Z");
+    const tickets = await (await import("./tickets")).listTickets(ctx);
+    expect(await overdueAmong(ctx, tickets, 4, NOW)).toHaveLength(1);
   });
 });

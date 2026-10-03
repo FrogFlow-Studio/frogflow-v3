@@ -37,7 +37,17 @@ export function balanceWarning(locale: Locale, kind: "low" | "empty", usd: numbe
   return kind === "empty" ? EMPTY[locale] : LOW[locale](Math.max(0, usd).toFixed(2));
 }
 
-type Note = "accounting" | "balance" | "limit" | "catalog" | "failure";
+export type Note =
+  | "accounting"
+  | "balance"
+  | "limit"
+  | "catalog"
+  | "failure"
+  | "budget"
+  | "empty"
+  | "slow"
+  | "price"
+  | "injection";
 const NOTES: Record<Note, Record<Locale, string>> = {
   accounting: {
     ru: "Сбой учёта расхода консультанта.",
@@ -62,6 +72,36 @@ const NOTES: Record<Note, Record<Locale, string>> = {
     kk: "Каталогты оқу сәтсіз болды.",
     en: "Failed to read the catalog.",
     uz: "Katalogni o‘qishda nosozlik.",
+  },
+  budget: {
+    ru: "ИИ-консультант: дневной предел расходов или ответов исчерпан, до полуночи UTC вопросы уходят менеджеру.",
+    kk: "ЖИ-кеңесші: шығын немесе жауаптың күндік шегі таусылды, UTC түн ортасына дейін сұрақтар менеджерге барады.",
+    en: "AI consultant: the daily spend or reply limit is used up; until midnight UTC questions go to the manager.",
+    uz: "SI maslahatchi: xarajat yoki javoblarning kunlik chegarasi tugadi, UTC yarim tungacha savollar menejerga boradi.",
+  },
+  empty: {
+    ru: "ИИ-консультант: ИИ-баланс закончился, вопросы уходят менеджеру, пока баланс не пополнят.",
+    kk: "ЖИ-кеңесші: ЖИ-баланс таусылды, баланс толықтырылғанша сұрақтар менеджерге барады.",
+    en: "AI consultant: the AI balance has run out; questions go to the manager until it is topped up.",
+    uz: "SI maslahatchi: SI balansi tugadi, balans to‘ldirilgunga qadar savollar menejerga boradi.",
+  },
+  slow: {
+    ru: "ИИ-консультант не ответил: лимит частоты вызовов или слишком долгий поиск.",
+    kk: "ЖИ-кеңесші жауап бермеді: шақыру жиілігі шегі немесе іздеу тым ұзақ болды.",
+    en: "The AI consultant did not answer: call-rate limit or the search took too long.",
+    uz: "SI maslahatchi javob bermadi: chaqiruvlar chastotasi chegarasi yoki qidiruv juda uzoq cho‘zildi.",
+  },
+  price: {
+    ru: "Консультант назвал цену или стоимость доставки не из каталога и условий продавца, ответ заменён.",
+    kk: "Кеңесші бағаны немесе жеткізу құнын каталогтан және сатушы шарттарынан тыс атады, жауап ауыстырылды.",
+    en: "The consultant quoted a price or delivery cost that is not from the catalog or the seller's terms; the reply was replaced.",
+    uz: "Maslahatchi narxni yoki yetkazib berish narxini katalog va sotuvchi shartlaridan tashqari aytdi, javob almashtirildi.",
+  },
+  injection: {
+    ru: "Сообщение похоже на попытку управлять ботом.",
+    kk: "Хабарлама ботты басқаруға әрекет сияқты.",
+    en: "The message looks like an attempt to control the bot.",
+    uz: "Xabar botni boshqarishga urinishga o‘xshaydi.",
   },
   failure: {
     ru: "Сбой консультанта.",

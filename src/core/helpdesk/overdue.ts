@@ -25,6 +25,17 @@ export function parseOverdueHours(raw: string | null | undefined): number {
   return (OVERDUE_OPTIONS as readonly number[]).includes(n) ? n : 0;
 }
 
+/**
+ * Время в микросекундах: Postgres отдаёт `created_at` с микросекундами, а
+ * `Date.parse` их отбрасывает — ответ продавца в ту же миллисекунду, что вопрос
+ * покупателя, иначе считался бы «до».
+ */
+export function isoMicros(iso: string): number {
+  const frac = /\.(\d+)/.exec(iso)?.[1] ?? "";
+  const subMs = Number(frac.padEnd(6, "0").slice(3, 6));
+  return Date.parse(iso) * 1000 + subMs;
+}
+
 /** Когда покупатель в последний раз написал в обращении; null — записей покупателя нет. */
 export function customerWaitingSince(t: Pick<Ticket, "history" | "createdAt">): string | null {
   for (let i = t.history.length - 1; i >= 0; i--) {
@@ -61,7 +72,7 @@ async function lastManagerReplies(
       "Просроченные обращения: ответ продавца",
     );
     for (const r of rows) {
-      const at = Date.parse(r.created_at);
+      const at = isoMicros(r.created_at);
       if (at > (last.get(r.telegram_id) ?? 0)) last.set(r.telegram_id, at);
     }
   }
@@ -92,7 +103,7 @@ export async function overdueAmong(
     earliest,
   );
   return waiting
-    .filter((w) => (replies.get(w.ticket.telegramId) ?? 0) <= Date.parse(w.since))
+    .filter((w) => (replies.get(w.ticket.telegramId) ?? 0) <= isoMicros(w.since))
     .map(({ ticket, since }) => ({
       ticket,
       waitingSince: since,

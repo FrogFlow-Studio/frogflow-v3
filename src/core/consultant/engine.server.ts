@@ -468,7 +468,7 @@ export async function runConsultant(
         handoff: {
           kind: "handoff",
           reason: "injection",
-          summary: `Сообщение похоже на попытку управлять ботом: «${incoming.slice(0, 200)}»`,
+          summary: handoffSummary(await sellerLocaleSafe(ctx), "injection", incoming),
         },
         usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
       };
@@ -480,7 +480,10 @@ export async function runConsultant(
   const date = today();
   const budgetLimits = limitsFor(ctx.tenant.settings.consultant_limits);
   const daily = parseDaily((await getSettings(ctx, [KEYS.daily]))[KEYS.daily], date);
-  const overBudget = async (blocked: string): Promise<ConsultantResult> => {
+  const overBudget = async (
+    blocked: string,
+    note: "budget" | "empty",
+  ): Promise<ConsultantResult> => {
     if (opts.dryRun) throw new Error(blocked);
     await trySetSetting(
       ctx,
@@ -497,13 +500,13 @@ export async function runConsultant(
       handoff: {
         kind: "handoff",
         reason: "unknown_question",
-        summary: `ИИ-консультант выключен: ${blocked} Клиент написал: «${incoming.slice(0, 200)}»`,
+        summary: handoffSummary(await sellerLocaleSafe(ctx), note, incoming),
       },
       usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
     };
   };
   const early = budgetBlock(daily, kind, budgetLimits);
-  if (early) return overBudget(early);
+  if (early) return overBudget(early, "budget");
 
   // Лимит ИИ-диалогов плана на месяц: новый диалог сверх лимита — сразу менеджеру.
   const newDialog = Boolean(customer) && !opts.dryRun && startsNewDialog(state.last_reply_at);
@@ -598,7 +601,7 @@ export async function runConsultant(
     }
     return JSON.stringify(r.next);
   });
-  if (reserveBlock) return overBudget(reserveBlock);
+  if (reserveBlock) return overBudget(reserveBlock, "budget");
   // Сбой базы или гонка не выиграна: без брони модель не зовём, но и паузу
   // не ставим — это не исчерпанный предел.
   if (reserved !== "written") {
@@ -623,6 +626,7 @@ export async function runConsultant(
     if (aiHold === "short")
       return overBudget(
         "ИИ-баланс клиента закончился — вопросы уходят менеджеру, пока баланс не пополнят.",
+        "empty",
       );
     // Сбой учёта баланса — не пустой баланс: без паузы, как сбой дневного расхода.
     if (opts.dryRun) throw serverFailure("Не удалось записать расход ИИ. Попробуйте ещё раз.");
@@ -903,7 +907,7 @@ export async function runConsultant(
       handoff = {
         kind: "handoff",
         reason: "unknown_question",
-        summary: `ИИ-консультант не ответил (${stopped === "limited" ? "лимит частоты" : "долго искал"}). Клиент написал: «${incoming.slice(0, 200)}»`,
+        summary: handoffSummary(await sellerLocaleSafe(ctx), "slow", incoming),
       };
     }
     if (response?.stop_reason === "refusal") {
@@ -937,7 +941,7 @@ export async function runConsultant(
       handoff = handoff ?? {
         kind: "handoff",
         reason: "unknown_question",
-        summary: `Консультант назвал ${facts.reason}. Клиент написал: «${incoming.slice(0, 200)}»`,
+        summary: handoffSummary(await sellerLocaleSafe(ctx), "price", incoming),
       };
     }
     if (!reply && handoff)
