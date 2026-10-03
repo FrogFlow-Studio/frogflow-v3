@@ -105,6 +105,7 @@ export async function saveCourse(
       files: l.files.map((f) => ({ path: f.path, name: f.name?.trim() || null })),
       link: l.link?.trim() || null,
       ...(l.homework?.trim() ? { homework: l.homework.trim() } : {}),
+      ...(l.preview ? { preview: true } : {}),
     })),
     ...(course.channel?.trim() ? { channel: course.channel.trim() } : {}),
     ...(course.cohorts?.length

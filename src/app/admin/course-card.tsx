@@ -238,6 +238,16 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
                 value={l.link ?? ""}
                 onChange={(e) => edit(i, (x) => ({ ...x, link: e.target.value.trim() || null }))}
               />
+              <label className="mb-2 flex items-start gap-2 text-sm">
+                <input
+                  id={`lesson-preview-${l.id}`}
+                  type="checkbox"
+                  className="mt-1"
+                  checked={Boolean(l.preview)}
+                  onChange={(e) => edit(i, (x) => ({ ...x, preview: e.target.checked }))}
+                />
+                <span>{t("school.lessonPreview")}</span>
+              </label>
               <textarea
                 id={`lesson-homework-${l.id}`}
                 className="input mb-2 min-h-16"

@@ -604,3 +604,39 @@ export async function showLesson(b: CourseBot, data: string): Promise<void> {
     rows.length ? { reply_markup: { inline_keyboard: rows } } : {},
   );
 }
+
+/**
+ * Открытый урок до покупки: кнопка под карточкой курса, `opl:<товар>:<номер>`.
+ * Отдаём только урок с галочкой «Открытый урок» и без задания; номер чужого
+ * или закрытого урока — тишина, как и подделанная кнопка.
+ */
+export async function showOpenLesson(b: CourseBot, data: string): Promise<void> {
+  const c = COPY[b.locale];
+  const [, productId = "", noRaw = ""] = data.split(":");
+  if (!/^[0-9a-f-]{36}$/i.test(productId)) return;
+  const { previewLesson } = await import("@/core/courses/preview.server");
+  const { signedFileUrl } = await import("@/core/orders/orders");
+  const found = await previewLesson(b.ctx, productId, Number(noRaw), (path, name) =>
+    signedFileUrl(path, 3600, name ?? undefined),
+  );
+  if (!found) return send(b, c.closed);
+  const parts = [`🔓 <b>${noRaw}. ${escapeHtml(found.title)}</b>`];
+  if (found.open.text) parts.push(escapeHtml(found.open.text));
+  if (found.open.files.length)
+    parts.push(
+      `${c.lessonFiles}\n${found.open.files
+        .map((f) => `• <a href="${escapeHtml(f.url)}">${escapeHtml(f.name)}</a>`)
+        .join("\n")}`,
+    );
+  await send(
+    b,
+    parts.join("\n\n").slice(0, 4096),
+    found.open.link
+      ? {
+          reply_markup: {
+            inline_keyboard: [[{ text: "▶️ " + found.title.slice(0, 40), url: found.open.link }]],
+          },
+        }
+      : {},
+  );
+}

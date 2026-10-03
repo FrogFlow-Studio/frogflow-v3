@@ -42,6 +42,7 @@ const lesson = z.object({
     .default([]),
   link: z.string().max(LESSON_LINK_MAX).nullable().default(null),
   homework: z.string().max(HOMEWORK_TASK_MAX).nullable().optional(),
+  preview: z.boolean().optional(),
 });
 
 const course = z.object({

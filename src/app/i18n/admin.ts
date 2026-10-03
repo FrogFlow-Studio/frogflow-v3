@@ -17,6 +17,7 @@ import * as discounts from "./admin/discounts";
 import * as consultant from "./admin/consultant";
 import * as pricelist from "./admin/pricelist";
 import * as homework from "./admin/homework";
+import * as school4 from "./admin/school4";
 import * as analytics from "./admin/analytics";
 import * as chat from "./admin/chat";
 import * as outbox from "./admin/outbox";
@@ -395,6 +396,7 @@ const ru = {
   ...consultant.ru,
   ...pricelist.ru,
   ...homework.ru,
+  ...school4.ru,
   ...analytics.ru,
   ...chat.ru,
   ...outbox.ru,
@@ -1440,6 +1442,7 @@ const kk: Dict = {
   ...consultant.kk,
   ...pricelist.kk,
   ...homework.kk,
+  ...school4.kk,
   ...analytics.kk,
   ...chat.kk,
   ...outbox.kk,
@@ -1476,6 +1479,7 @@ const en: Dict = {
   ...consultant.en,
   ...pricelist.en,
   ...homework.en,
+  ...school4.en,
   ...analytics.en,
   ...chat.en,
   ...outbox.en,
@@ -1512,6 +1516,7 @@ const uz: Dict = {
   ...consultant.uz,
   ...pricelist.uz,
   ...homework.uz,
+  ...school4.uz,
   ...analytics.uz,
   ...chat.uz,
   ...outbox.uz,

@@ -33,6 +33,8 @@ export type Lesson = {
   link: string | null;
   /** Домашнее задание: текст задания; нет — урок без ДЗ (core/courses/homework). */
   homework?: string | null;
+  /** Открытый урок: текст, ссылка и файлы видны до покупки (core/courses/preview). */
+  preview?: boolean;
 };
 /** all — все уроки сразу после оплаты; drip — по одному раз в everyDays дней. */
 export type CourseSchedule = { mode: "all" } | { mode: "drip"; everyDays: number };
@@ -137,6 +139,7 @@ export function parseCourse(raw: string | null | undefined): Course {
       files: files.slice(0, LESSON_FILES_MAX),
       link: link && isHttpsLink(link) ? link : null,
       ...(homework ? { homework } : {}),
+      ...(x.preview === true ? { preview: true } : {}),
     });
     if (lessons.length >= LESSONS_MAX) break;
   }

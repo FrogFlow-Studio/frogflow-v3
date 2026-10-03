@@ -46,7 +46,15 @@ const course: Course = {
   schedule: { mode: "drip", everyDays: 7 },
   lessons: [
     { id: id(1), title: "Кисти", text: "Урок", files: [], link: null, homework: "Нарисуйте круг" },
-    { id: id(2), title: "Цвет", text: "Урок", files: [], link: null, homework: "Смешайте" },
+    {
+      id: id(2),
+      title: "Цвет",
+      text: "Урок",
+      files: [],
+      link: "https://youtu.be/free",
+      homework: "Смешайте",
+      preview: true,
+    },
   ],
   channel: "-1001234567890",
 };
@@ -366,6 +374,19 @@ describe("урок в чате", () => {
     expect(String(lesson.text)).toContain("Нарисуйте круг");
     expect(buttons(lesson).map((x) => x.callback_data)).toContain(`hw:${ITEM}:1`);
     await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:2`, 3));
+    expect(messages(calls).at(-1)!.text).toBe("Этот урок ещё не открыт.");
+  });
+});
+
+describe("открытый урок до покупки", () => {
+  it("кнопка с карточки отдаёт открытый урок без задания; закрытый — «не открыт»", async () => {
+    const { ctx, api, calls } = school();
+    await handleTelegramUpdate(ctx, api, press(`opl:${P}:2`));
+    const lesson = messages(calls).at(-1)!;
+    expect(String(lesson.text)).toContain("2. Цвет");
+    expect(String(lesson.text)).not.toContain("Смешайте");
+    expect(buttons(lesson).map((x) => x.url)).toEqual(["https://youtu.be/free"]);
+    await handleTelegramUpdate(ctx, api, press(`opl:${P}:1`, 2));
     expect(messages(calls).at(-1)!.text).toBe("Этот урок ещё не открыт.");
   });
 });

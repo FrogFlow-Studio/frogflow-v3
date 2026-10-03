@@ -288,7 +288,40 @@ function ProductPage() {
             {course.lessons.map((l) => (
               <li key={l.no} className="flex gap-2">
                 <span className="w-6 shrink-0 text-right text-muted tabular-nums">{l.no}.</span>
-                <span className="min-w-0 flex-1">{l.title}</span>
+                <div className="min-w-0 flex-1">
+                  <span>{l.title}</span>
+                  {l.open && (
+                    <details className="mt-1 rounded border border-line p-2">
+                      <summary className="cursor-pointer text-xs">
+                        🔓 {t("product.course.openLesson")}
+                      </summary>
+                      {l.open.text && (
+                        <p className="mt-2 whitespace-pre-line text-sm">{l.open.text}</p>
+                      )}
+                      {l.open.link && (
+                        <a
+                          className="mt-2 block text-sm underline"
+                          href={l.open.link}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          ▶️ {t("product.course.openLink")}
+                        </a>
+                      )}
+                      {l.open.files.map((f) => (
+                        <a
+                          key={f.url}
+                          className="mt-1 block text-sm underline"
+                          href={f.url}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          📎 {f.name}
+                        </a>
+                      ))}
+                    </details>
+                  )}
+                </div>
                 {l.homework && (
                   <span className="shrink-0 text-xs text-muted">📝 {t("product.course.hw")}</span>
                 )}

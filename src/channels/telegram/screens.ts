@@ -142,6 +142,16 @@ export async function productCard(
     const { coursePreview } = await import("@/core/courses/preview.server");
     const course = await coursePreview(ctx, p.id);
     if (course) {
+      // Открытые уроки — кнопками под карточкой: содержимое до покупки.
+      const openRows = course.lessons
+        .filter((l) => l.open)
+        .slice(0, 5)
+        .map((l) => [
+          {
+            text: `🔓 ${COURSE_CARD[locale].openLesson(l.no, l.title)}`.slice(0, 60),
+            callback_data: `opl:${p.id}:${l.no}`,
+          },
+        ]);
       caption += `\n${COURSE_CARD[locale].lessons(course.lessons.length)}`;
       if (course.cohort) {
         const day = new Intl.DateTimeFormat(locale, {
@@ -155,6 +165,8 @@ export async function productCard(
         caption += `\n<b>${COURSE_CARD[locale].closed}</b>`;
         keyboard = { inline_keyboard: [] };
       }
+      if (openRows.length)
+        keyboard = { inline_keyboard: [...openRows, ...(keyboard.inline_keyboard ?? [])] };
     }
   }
   return { caption, keyboard, photo: imgs[0] ? imageUrl(ctx, imgs[0].image_path) : null };
@@ -162,26 +174,35 @@ export async function productCard(
 
 const COURSE_CARD: Record<
   Locale,
-  { lessons: (n: number) => string; start: (title: string, day: string) => string; closed: string }
+  {
+    lessons: (n: number) => string;
+    start: (title: string, day: string) => string;
+    closed: string;
+    openLesson: (no: number, title: string) => string;
+  }
 > = {
   ru: {
     lessons: (n) => `🎓 Уроков в курсе: ${n}`,
     start: (title, day) => `🗓 Поток «${title}» — старт ${day}`,
     closed: "Набор закрыт",
+    openLesson: (no, title) => `Открытый урок ${no}: ${title}`,
   },
   kk: {
     lessons: (n) => `🎓 Курстағы сабақтар: ${n}`,
     start: (title, day) => `🗓 «${title}» ағыны — басталуы ${day}`,
     closed: "Қабылдау жабық",
+    openLesson: (no, title) => `Ашық сабақ ${no}: ${title}`,
   },
   en: {
     lessons: (n) => `🎓 Lessons in the course: ${n}`,
     start: (title, day) => `🗓 Cohort «${title}» — starts ${day}`,
     closed: "Enrolment closed",
+    openLesson: (no, title) => `Open lesson ${no}: ${title}`,
   },
   uz: {
     lessons: (n) => `🎓 Kursdagi darslar: ${n}`,
     start: (title, day) => `🗓 «${title}» oqimi — boshlanishi ${day}`,
     closed: "Qabul yopilgan",
+    openLesson: (no, title) => `Ochiq dars ${no}: ${title}`,
   },
 };
