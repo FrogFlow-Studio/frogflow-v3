@@ -80,6 +80,23 @@ export const ru = {
     "В метке можно только буквы, цифры, пробел, _ и -. Кириллица станет латиницей, эмодзи и другие знаки не подойдут.",
   "analytics.links.err.long": "Метка слишком длинная: до 40 латинских знаков.",
   "analytics.links.err.reserved": "Метки на «ref-» заняты приглашениями друзей, выберите другую.",
+  "analytics.customers.title": "Покупатели",
+  "analytics.customers.weeks": "Новые и вернувшиеся по неделям",
+  "analytics.customers.week": "Неделя с",
+  "analytics.customers.fresh": "Новые",
+  "analytics.customers.returning": "Вернулись",
+  "analytics.customers.weeksHint":
+    "Считаются покупатели с оплаченными заказами за последний год: «новый» — первая покупка пришлась на эту неделю, «вернулся» — первая была раньше.",
+  "analytics.customers.top": "Топ-20 по сумме покупок за год",
+  "analytics.customers.topEmpty": "Покупок за год пока нет.",
+  "analytics.customers.buyer": "Покупатель",
+  "analytics.customers.topHint":
+    "Сумма за вычетом возвратов, в основной валюте магазина; покупатели с покупками только в другой валюте сюда не попадают.",
+  "analytics.customers.dormant":
+    "Уснувших покупателей: {n} (две и больше покупок, но ничего не покупали {days} дней).",
+  "analytics.customers.broadcast": "Рассылка им",
+  "analytics.customers.dormantHint":
+    "Кнопка откроет рассылку Telegram с сегментом «не покупали {days} дней» — туда войдут и те, кто покупал один раз; проверьте охват перед отправкой.",
   "analytics.speed.title": "Скорость заказа",
   "analytics.speed.hint":
     "Минуты от оформления до оплаты и от оплаты до выдачи у заказов, оформленных за период. Медиана — типичный заказ, 90% — медленные. Оплатой цифрового заказа по чеку считается момент, когда чек принят и пошла выдача.",
@@ -177,6 +194,23 @@ export const kk: SectionDict<typeof ru> = {
     "Белгіде тек әріптер, сандар, бос орын, _ және - болады. Кирилл әріптері латыншаға ауысады, эмодзи және басқа белгілер жарамайды.",
   "analytics.links.err.long": "Белгі тым ұзын: 40 латын таңбасына дейін.",
   "analytics.links.err.reserved": "«ref-» белгілері дос шақыруларына арналған, басқасын таңдаңыз.",
+  "analytics.customers.title": "Сатып алушылар",
+  "analytics.customers.weeks": "Апта бойынша жаңа және қайта оралғандар",
+  "analytics.customers.week": "Апта басы",
+  "analytics.customers.fresh": "Жаңа",
+  "analytics.customers.returning": "Қайта оралды",
+  "analytics.customers.weeksHint":
+    "Соңғы жылдағы төленген тапсырыстары бар сатып алушылар саналады: «жаңа» — алғашқы сатып алу осы аптада болды, «қайта оралды» — алғашқысы бұрын болған.",
+  "analytics.customers.top": "Жыл бойынша сатып алу сомасы бойынша топ-20",
+  "analytics.customers.topEmpty": "Жыл бойы сатып алу әлі жоқ.",
+  "analytics.customers.buyer": "Сатып алушы",
+  "analytics.customers.topHint":
+    "Қайтарымдарды шегергендегі сома, дүкеннің негізгі валютасында; тек басқа валютада сатып алғандар мұнда кірмейді.",
+  "analytics.customers.dormant":
+    "«Ұйықтап қалған» сатып алушылар: {n} (екі және одан көп сатып алу, бірақ {days} күн ештеңе алмаған).",
+  "analytics.customers.broadcast": "Оларға тарату",
+  "analytics.customers.dormantHint":
+    "Түйме Telegram таратуын «{days} күн сатып алмағандар» сегментімен ашады — бір рет сатып алғандар да кіреді; жібермес бұрын қамтуды тексеріңіз.",
   "analytics.speed.title": "Тапсырыс жылдамдығы",
   "analytics.speed.hint":
     "Кезеңде рәсімделген тапсырыстар бойынша рәсімдеуден төлемге дейінгі және төлемнен беруге дейінгі минуттар. Медиана — әдеттегі тапсырыс, 90% — баяулары. Чек бойынша сандық тапсырыстың төлемі ретінде чек қабылданып, беру басталған сәт саналады.",
@@ -275,6 +309,23 @@ export const en: SectionDict<typeof ru> = {
   "analytics.links.err.long": "The tag is too long: up to 40 Latin characters.",
   "analytics.links.err.reserved":
     "Tags starting with «ref-» are reserved for friend invites, pick another.",
+  "analytics.customers.title": "Customers",
+  "analytics.customers.weeks": "New and returning by week",
+  "analytics.customers.week": "Week of",
+  "analytics.customers.fresh": "New",
+  "analytics.customers.returning": "Returning",
+  "analytics.customers.weeksHint":
+    'Counts buyers with paid orders over the last year: "new" means their first purchase fell in this week, "returning" means the first one was earlier.',
+  "analytics.customers.top": "Top 20 by purchase total over the year",
+  "analytics.customers.topEmpty": "No purchases in the last year yet.",
+  "analytics.customers.buyer": "Customer",
+  "analytics.customers.topHint":
+    "Total net of refunds, in the shop’s main currency; customers who only bought in another currency are not listed.",
+  "analytics.customers.dormant":
+    "Dormant customers: {n} (two or more purchases, nothing bought in {days} days).",
+  "analytics.customers.broadcast": "Message them",
+  "analytics.customers.dormantHint":
+    'The button opens a Telegram broadcast with the "no purchase in {days} days" segment — it also includes one-time buyers, so check the reach before sending.',
   "analytics.speed.title": "Order speed",
   "analytics.speed.hint":
     "Minutes from checkout to payment and from payment to delivery for orders placed in the period. Median is the typical order, 90% is the slow ones. For a digital order paid by receipt, payment is the moment the receipt was accepted and delivery started.",
@@ -373,6 +424,23 @@ export const uz: SectionDict<typeof ru> = {
   "analytics.links.err.long": "Belgi juda uzun: 40 ta lotin belgisigacha.",
   "analytics.links.err.reserved":
     "«ref-» bilan boshlanuvchi belgilar do‘st taklifi uchun band, boshqasini tanlang.",
+  "analytics.customers.title": "Xaridorlar",
+  "analytics.customers.weeks": "Haftalar bo‘yicha yangi va qaytganlar",
+  "analytics.customers.week": "Hafta boshi",
+  "analytics.customers.fresh": "Yangi",
+  "analytics.customers.returning": "Qaytdi",
+  "analytics.customers.weeksHint":
+    "So‘nggi yil davomida to‘langan buyurtmasi bor xaridorlar sanaladi: «yangi» — birinchi xarid shu haftada bo‘lgan, «qaytdi» — birinchisi avval bo‘lgan.",
+  "analytics.customers.top": "Yil bo‘yicha xarid summasi bo‘yicha top-20",
+  "analytics.customers.topEmpty": "Yil davomida xarid hali yo‘q.",
+  "analytics.customers.buyer": "Xaridor",
+  "analytics.customers.topHint":
+    "Qaytarishlarni chegirgandagi summa, do‘konning asosiy valyutasida; faqat boshqa valyutada xarid qilganlar bu yerga kirmaydi.",
+  "analytics.customers.dormant":
+    "«Uxlab qolgan» xaridorlar: {n} (ikki va undan ko‘p xarid, lekin {days} kun hech narsa olmagan).",
+  "analytics.customers.broadcast": "Ularga xabar yuborish",
+  "analytics.customers.dormantHint":
+    "Tugma Telegram xabarini «{days} kun xarid qilmaganlar» segmenti bilan ochadi — bir marta xarid qilganlar ham kiradi; yuborishdan oldin qamrovni tekshiring.",
   "analytics.speed.title": "Buyurtma tezligi",
   "analytics.speed.hint":
     "Davrda rasmiylashtirilgan buyurtmalar uchun rasmiylashtirishdan to‘lovgacha va to‘lovdan topshirishgacha bo‘lgan daqiqalar. Mediana — oddiy buyurtma, 90% — sekinlari. Chek bilan to‘langan raqamli buyurtmada to‘lov — chek qabul qilinib, topshirish boshlangan payt.",

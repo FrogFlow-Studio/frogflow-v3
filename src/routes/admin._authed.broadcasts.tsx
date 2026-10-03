@@ -25,9 +25,15 @@ import {
   progressPercent,
   type AudienceType,
 } from "@/core/broadcasts/pure";
+import { parseSegmentParam } from "@/core/broadcasts/segment-link";
 import { SEGMENT_KINDS } from "@/core/broadcasts/segments";
 
 export const Route = createFileRoute("/admin/_authed/broadcasts")({
+  // Готовый сегмент из аналитики (?segment=inactive&days=60): подставляется в форму, не отправляется.
+  validateSearch: (s: Record<string, unknown>) => ({
+    segment: s.segment === "inactive" ? ("inactive" as const) : undefined,
+    days: Number.isInteger(Number(s.days)) && Number(s.days) > 0 ? Number(s.days) : undefined,
+  }),
   loader: () => broadcastsFn(),
   component: BroadcastsPage,
 });
@@ -505,9 +511,12 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
   const [photos, setPhotos] = useState<string[]>([]);
   const [products, setProducts] = useState<PickerProduct[]>([]);
   const [showCatalog, setShowCatalog] = useState(false);
-  const [audience, setAudience] = useState<UiAudience>("all");
+  const preset = parseSegmentParam(Route.useSearch());
+  const [audience, setAudience] = useState<UiAudience>(preset ? "segment" : "all");
   const [country, setCountry] = useState(Object.keys(data.countries)[0] ?? "");
-  const [segment, setSegment] = useState<SegmentDraft>(EMPTY_SEGMENT);
+  const [segment, setSegment] = useState<SegmentDraft>(
+    preset ? { ...EMPTY_SEGMENT, kind: "inactive", days: String(preset.days) } : EMPTY_SEGMENT,
+  );
   const [later, setLater] = useState(false);
   const [sendAt, setSendAt] = useState("");
   const [uploading, setUploading] = useState(false);
