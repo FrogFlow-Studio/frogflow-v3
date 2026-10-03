@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getProduct, PRODUCT_SELECT, searchProducts, type Product } from "@/core/catalog/catalog";
 import { getSetting } from "@/core/settings/settings";
@@ -30,13 +31,14 @@ export type BotPreview = {
 };
 
 async function firstProduct(ctx: TenantContext): Promise<Product | null> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("products")
     .select(PRODUCT_SELECT)
     .eq("is_active", true)
     .order("sort_order")
     .order("id")
     .limit(1);
+  if (dataError) throw serverFailure(`Предпросмотр бота: ${dataError.message}`);
   return ((data ?? [])[0] as Product | undefined) ?? null;
 }
 

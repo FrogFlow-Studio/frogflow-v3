@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 /**
  * Outbox — очередь исходящих одного арендатора. Сообщение покупателю или
  * продавцу сначала отправляется сразу; не вышло — ложится в журнал и крон
@@ -239,12 +240,13 @@ export async function processOutbox(
     if (limitedRecipients.has(recipientKey(row.target))) continue;
     res.tried++;
     // Забираем строку себе: второй запуск крона в ту же минуту её не возьмёт.
-    const { data: claimed } = await ctx.db
+    const { data: claimed, error: claimedError } = await ctx.db
       .from("zernio_logs")
       .update({ status: "sending" })
       .eq("id", row.id)
       .eq("status", "queued")
       .select("id");
+    if (claimedError) throw serverFailure(`Очередь отправки: ${claimedError.message}`);
     if (!claimed?.length) continue;
     let failure: OutboxFailure | null = null;
     try {
@@ -269,7 +271,7 @@ export async function processOutbox(
       Boolean(error) &&
       (nextAt === null || Boolean(failure?.permanent) || outboxPermanentFailure(error));
     const status = !error ? "processed" : dead ? "dead" : "queued";
-    await ctx.db
+    const settled = await ctx.db
       .from("zernio_logs")
       .update({
         status,
@@ -285,6 +287,10 @@ export async function processOutbox(
         } as unknown as Json,
       })
       .eq("id", row.id);
+    // Итог не записался: строка остаётся в «sending», крон её не берёт, продавец видит её
+    // среди недоставленных; в логе — причина.
+    if (settled.error)
+      console.error(`[outbox] итог строки ${row.id} не записан: ${settled.error.message}`);
     if (!error) res.sent++;
     else if (dead) {
       res.dead++;
@@ -321,22 +327,24 @@ export async function listUndelivered(ctx: TenantContext, limit = 200): Promise<
 }
 
 export async function countUndelivered(ctx: TenantContext): Promise<number> {
-  const { count } = await ctx.db
+  const { count, error: countError } = await ctx.db
     .from("zernio_logs")
     .select("id", { count: "exact", head: true })
     .like("event_id", `${OUTBOX_PREFIX}%`)
     .eq("status", "dead");
+  if (countError) throw serverFailure(`Очередь отправки: ${countError.message}`);
   return count ?? 0;
 }
 
 /** Продавец нажал «повторить»: попытки обнуляются, крон возьмёт в ближайшую минуту. */
 export async function retryOutbox(ctx: TenantContext, id: string, now = new Date()) {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("zernio_logs")
     .select(SELECT)
     .eq("id", id)
     .like("event_id", `${OUTBOX_PREFIX}%`)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Очередь отправки: ${dataError.message}`);
   if (!data) return false;
   const row = rowOf(data);
   const { error } = await ctx.db

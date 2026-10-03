@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import { previewReadonly } from "@/lib/preview";
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/config/env";
@@ -60,10 +61,15 @@ export async function consumeQuota(ctx: TenantContext, customer: Customer): Prom
   const last = customer.state.last_smart_search_at;
   if (typeof last === "string" && now - new Date(last).getTime() < COOLDOWN_SECONDS * 1000)
     return false;
-  await ctx.db
+  const mark = await ctx.db
     .from("bot_users")
     .update({ state: { ...customer.state, last_smart_search_at: new Date(now).toISOString() } })
     .eq("user_key", customer.userKey);
+  // Метку кулдауна не записали — вызова модели нет (предохранитель расхода не обходится).
+  if (mark.error) {
+    console.error(`[smart-search] кулдаун ${customer.userKey}: ${mark.error.message}`);
+    return false;
+  }
 
   const s = await getSettings(ctx, [KEYS.dailyCount, KEYS.dailySpend, KEYS.lastError]);
   const usdLimit = smartSearchUsdLimit(ctx.tenant.settings.smart_search_limits);
@@ -105,12 +111,13 @@ async function recordSpend(
 }
 
 async function candidates(ctx: TenantContext): Promise<Candidate[]> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("products")
     .select("id, name, description, keywords")
     .eq("is_active", true)
     .order("sort_order")
     .limit(MAX_CANDIDATES);
+  if (dataError) throw serverFailure(`Поиск: ${dataError.message}`);
   return (data ?? []).map((p) => ({
     id: p.id,
     name: p.name,

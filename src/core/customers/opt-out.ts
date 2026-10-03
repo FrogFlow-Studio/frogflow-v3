@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 /**
  * Отписка покупателя от рассылок и прочих маркетинговых сообщений
  * (рассылки, напоминание о корзине, возврат клиентов, автоворонка).
@@ -72,10 +73,11 @@ export async function setOptOut(
 
 /** Отписан ли покупатель сейчас. */
 export async function isOptedOut(ctx: TenantContext, userKey: string): Promise<boolean> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("bot_users")
     .select("opt_out")
     .eq("user_key", userKey)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Покупатели: отписка: ${dataError.message}`);
   return data?.opt_out === true;
 }

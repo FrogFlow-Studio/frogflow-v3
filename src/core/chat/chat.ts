@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
 
@@ -41,19 +42,23 @@ export async function recordMessage(
 
 async function bumpUnread(ctx: TenantContext, telegramId: number): Promise<void> {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const { data: row } = await ctx.db
+    const { data: row, error: rowError } = await ctx.db
       .from("manager_chat_state")
       .select("unread_count")
       .eq("telegram_id", telegramId)
       .maybeSingle();
+    // Реплика уже записана в журнал: счётчик непрочитанного — best-effort.
+    if (rowError) return void console.error(`[chat:${ctx.tenant.id}] unread`, rowError.message);
     if (!row) return;
-    const { data: updated } = await ctx.db
+    const { data: updated, error: updatedError } = await ctx.db
       .from("manager_chat_state")
       .update({ unread_count: (row.unread_count ?? 0) + 1 })
       .eq("telegram_id", telegramId)
       .eq("unread_count", row.unread_count ?? 0)
       .select("telegram_id")
       .maybeSingle();
+    if (updatedError)
+      return void console.error(`[chat:${ctx.tenant.id}] unread`, updatedError.message);
     if (updated) return;
   }
 }
@@ -79,11 +84,12 @@ export function tappedButtonText(label: string | null | undefined): string {
 }
 
 export async function isManagerConnected(ctx: TenantContext, telegramId: number): Promise<boolean> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("manager_chat_state")
     .select("active")
     .eq("telegram_id", telegramId)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Чат: ${dataError.message}`);
   return data?.active === true;
 }
 
@@ -105,11 +111,12 @@ export async function inboundIntercepted(
 }
 
 export async function connect(ctx: TenantContext, telegramId: number): Promise<void> {
-  const { data: existing } = await ctx.db
+  const { data: existing, error: existingError } = await ctx.db
     .from("manager_chat_state")
     .select("telegram_id")
     .eq("telegram_id", telegramId)
     .maybeSingle();
+  if (existingError) throw serverFailure(`Чат: ${existingError.message}`);
   const patch = { active: true, connected_at: new Date().toISOString() };
   const { error } = existing
     ? await ctx.db.from("manager_chat_state").update(patch).eq("telegram_id", telegramId)
@@ -128,7 +135,11 @@ export async function disconnect(ctx: TenantContext, telegramId: number): Promis
 }
 
 export async function markRead(ctx: TenantContext, telegramId: number): Promise<void> {
-  await ctx.db.from("manager_chat_state").update({ unread_count: 0 }).eq("telegram_id", telegramId);
+  const { error } = await ctx.db
+    .from("manager_chat_state")
+    .update({ unread_count: 0 })
+    .eq("telegram_id", telegramId);
+  if (error) throw serverFailure(`Чат: ${error.message}`);
 }
 
 export type Conversation = {
@@ -162,7 +173,7 @@ export async function listConversations(ctx: TenantContext, limit = 200): Promis
     .limit(limit);
   if (error) throw new Error(error.message);
   if (!states?.length) return [];
-  const { data: users } = await ctx.db
+  const { data: users, error: usersError } = await ctx.db
     .from("bot_users")
     // Из состояния — только срок паузы: история консультанта в state тяжёлая, а список опрашивается.
     .select(
@@ -172,6 +183,7 @@ export async function listConversations(ctx: TenantContext, limit = 200): Promis
       "telegram_id",
       states.map((s) => s.telegram_id),
     );
+  if (usersError) throw serverFailure(`Чат: ${usersError.message}`);
   const byId = new Map((users ?? []).map((u) => [Number(u.telegram_id), u]));
   const now = Date.now();
   return states.map((s) => {

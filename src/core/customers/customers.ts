@@ -204,11 +204,12 @@ export async function upsertCustomer(
   profile: Profile,
 ): Promise<Customer> {
   const key = userKey(platform, externalId);
-  const { data: existing } = await ctx.db
+  const { data: existing, error: existingError } = await ctx.db
     .from("bot_users")
     .select("*")
     .eq("user_key", key)
     .maybeSingle();
+  if (existingError) throw serverFailure(`Покупатели: ${existingError.message}`);
   if (existing) {
     const metadata = mergeMetadata(existing.metadata, profile.metadata);
     const patch = {
@@ -221,12 +222,15 @@ export async function upsertCustomer(
       contact_phone: profile.contactPhone ?? existing.contact_phone,
       ...(metadata !== undefined ? { metadata } : {}),
     };
-    const { data: updated } = await ctx.db
+    const { data: updated, error: updatedError } = await ctx.db
       .from("bot_users")
       .update(patch)
       .eq("user_key", key)
       .select("*")
       .single();
+    // Покупатель найден, обновление профиля — попутное: сбой не обрывает разговор.
+    if (updatedError)
+      console.error(`[customers] профиль ${key} не обновлён: ${updatedError.message}`);
     return fromRow(updated ?? existing);
   }
   const telegramId = platform === "telegram" ? Number(externalId) : syntheticTelegramId(key);
@@ -255,7 +259,12 @@ export async function upsertCustomer(
 }
 
 export async function getCustomer(ctx: TenantContext, key: string): Promise<Customer | null> {
-  const { data } = await ctx.db.from("bot_users").select("*").eq("user_key", key).maybeSingle();
+  const { data, error: dataError } = await ctx.db
+    .from("bot_users")
+    .select("*")
+    .eq("user_key", key)
+    .maybeSingle();
+  if (dataError) throw serverFailure(`Покупатели: ${dataError.message}`);
   return data ? fromRow(data) : null;
 }
 
@@ -264,11 +273,12 @@ export async function getCustomerByTelegramId(
   ctx: TenantContext,
   telegramId: number,
 ): Promise<Customer | null> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("bot_users")
     .select("*")
     .eq("telegram_id", telegramId)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Покупатели: ${dataError.message}`);
   return data ? fromRow(data) : null;
 }
 
@@ -370,10 +380,11 @@ export async function setEmail(
 
 export async function isBlocked(ctx: TenantContext, telegramId: number): Promise<boolean> {
   if (!ctx.tenant.modules.blocked) return false;
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("blocked_users")
     .select("telegram_id")
     .eq("telegram_id", telegramId)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Покупатели: ${dataError.message}`);
   return Boolean(data);
 }

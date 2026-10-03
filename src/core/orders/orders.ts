@@ -400,10 +400,17 @@ export async function placeOrder(
     if (error || !order) return await fail("order_failed");
     redemptions.orderId = order.id;
     if (redemptions.giftId) {
-      await ctx.db
+      const link = await ctx.db
         .from("gift_certificates")
         .update({ redeemed_order_id: order.id })
         .eq("id", redemptions.giftId);
+      // Без привязки к заказу сертификат не вернуть при отмене: заказ удаляется,
+      // скидки откатываются (как при сбое позиций ниже).
+      if (link.error) {
+        console.error(`[orders] привязка сертификата к заказу #${order.id}: ${link.error.message}`);
+        await ctx.db.from("orders").delete().eq("id", order.id);
+        return await fail("order_failed");
+      }
     }
 
     const rows = priced.lines.map(({ item, unit, name }) =>
@@ -900,13 +907,45 @@ async function markDelivered(
   lang: Locale,
 ): Promise<string> {
   const next = addDeliveredLanguage(current, lang);
-  await ctx.db.from("order_items").update({ delivered_language: next }).eq("id", item.id);
+  const marked = await ctx.db
+    .from("order_items")
+    .update({ delivered_language: next })
+    .eq("id", item.id);
+  if (marked.error)
+    console.error(`[orders] язык выдачи позиции ${item.id} не записан: ${marked.error.message}`);
   return next;
 }
 
 /** Имя позиции с языком, когда языков у выдачи больше одного. */
 export function itemLabel(item: OrderItemRow, lang: Locale, many: boolean): OrderItemRow {
   return many ? { ...item, name_snapshot: `${item.name_snapshot} (${localeNames[lang]})` } : item;
+}
+
+/**
+ * Ход выдачи не записался: дальше не шлём, но заказ не оставляем в «delivering»
+ * (его не берёт ни повтор, ни кнопки продавца). Переводим туда, откуда продавец
+ * повторит выдачу, — «ждёт подтверждения» с пометкой и событием; best effort,
+ * потом бросаем сбой.
+ */
+async function abortDelivery(
+  ctx: TenantContext,
+  order: OrderWithItems,
+  remaining: number,
+  total: number,
+  dbMessage: string,
+): Promise<never> {
+  try {
+    const { error } = await ctx.db
+      .from("orders")
+      .update({ status: "awaiting_confirmation", admin_note: "Выдача прервана: сбой базы" })
+      .eq("id", order.id);
+    if (error)
+      console.error(`[orders] заказ #${order.id} не переведён после сбоя: ${error.message}`);
+    await recordOrderEvent(ctx, order.id, "delivery_failed", { failed: remaining, total });
+  } catch (e) {
+    console.error(`[orders] разбор сбоя выдачи заказа #${order.id}: ${String(e)}`);
+  }
+  throw serverFailure(`Заказы: ход выдачи: ${dbMessage}`);
 }
 
 async function finalizeDelivery(
@@ -917,7 +956,7 @@ async function finalizeDelivery(
   /** Заказ — покупка сертификата: баллов нет (их дадут за покупку сертификатом), код — письмом. */
   sale: { gift: IssuedGift | null } | null = null,
 ): Promise<{ pointsEarned: number; referral: ReferralGrant | null }> {
-  await ctx.db
+  const closed = await ctx.db
     .from("orders")
     .update(
       failed
@@ -928,6 +967,8 @@ async function finalizeDelivery(
         : { status: "delivered" },
     )
     .eq("id", order.id);
+  // «Выдан» не записан — ни событий, ни баллов, ни награды: статус не врёт.
+  if (closed.error) throw serverFailure(`Заказы: статус после выдачи: ${closed.error.message}`);
   await recordOrderEvent(
     ctx,
     order.id,
@@ -1012,7 +1053,12 @@ export async function deliverOrder(
             reason: "не удалось создать код сертификата",
           });
       }
-      await ctx.db.from("orders").update({ delivery_index: items.length }).eq("id", orderId);
+      const indexed = await ctx.db
+        .from("orders")
+        .update({ delivery_index: items.length })
+        .eq("id", orderId);
+      if (indexed.error)
+        await abortDelivery(ctx, order, items.length, items.length, indexed.error.message);
       const failedGift = gift ? 0 : items.length;
       const fin = await finalizeDelivery(ctx, order, failedGift, items.length, { gift });
       return { ok: true, sent: items.length - failedGift, failed: failedGift, pending: 0, ...fin };
@@ -1080,10 +1126,19 @@ export async function deliverOrder(
           reason: "у товара нет файлов или ссылок",
         });
     }
-    await ctx.db
+    const progress = await ctx.db
       .from("orders")
       .update({ delivery_index: i + 1 })
       .eq("id", orderId);
+    // Ход выдачи не записан — дальше не шлём, иначе повтор отправит позицию второй раз.
+    if (progress.error)
+      await abortDelivery(
+        ctx,
+        order,
+        Math.max(1, failed + (items.length - i - 1)),
+        items.length,
+        progress.error.message,
+      );
   }
   if (pending > 0 && failed === 0)
     return { ok: true, sent, failed, pending, pointsEarned: 0, referral: null };

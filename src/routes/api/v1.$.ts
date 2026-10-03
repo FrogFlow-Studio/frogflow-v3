@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import { createFileRoute } from "@tanstack/react-router";
 
 /**
@@ -136,11 +137,12 @@ async function patchProduct(
     patch.is_active = body.active;
   }
   if (Object.keys(patch).length === 0) return fail(400, "nothing_to_update");
-  const { data: before } = await ctx.db
+  const { data: before, error: beforeError } = await ctx.db
     .from("products")
     .select("is_active, stock_quantity, name")
     .eq("id", id)
     .maybeSingle();
+  if (beforeError) throw serverFailure(`API: ${beforeError.message}`);
   if (!before) return fail(404, "not_found");
   const { data, error } = await ctx.db
     .from("products")

@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 /**
  * Таймлайн заказа — доказательство того, что произошло: создан, чек,
  * выдача каждой позиции, что не выдалось и почему. Своей таблицы у
@@ -115,7 +116,7 @@ export async function claimOrderEvent(
 }
 
 export async function listOrderEvents(ctx: TenantContext, orderId: number): Promise<OrderEvent[]> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("zernio_logs")
     .select("id, created_at, event_type, payload")
     .eq("status", ORDER_EVENT_STATUS)
@@ -123,6 +124,7 @@ export async function listOrderEvents(ctx: TenantContext, orderId: number): Prom
     .eq("payload->>order_id", String(orderId))
     .order("created_at", { ascending: true })
     .limit(200);
+  if (dataError) throw serverFailure(`Заказы: события: ${dataError.message}`);
   return (data ?? []).map((r) => {
     const p =
       r.payload && typeof r.payload === "object" && !Array.isArray(r.payload)

@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import { createFileRoute } from "@tanstack/react-router";
 
 /**
@@ -28,13 +29,14 @@ export const Route = createFileRoute("/api/img/$botId/$")({
         let file = first.data;
         if (first.error) console.warn(`[img] ${botId}/${rel}: ${first.error.message}`);
         if (!file) {
-          const { data: owned } = await serviceDb()
+          const { data: owned, error: ownedError } = await serviceDb()
             .from("product_images")
             .select("id")
             .eq("bot_id", botId)
             .eq("image_path", rel)
             .limit(1)
             .maybeSingle();
+          if (ownedError) throw serverFailure(`Картинки: ${ownedError.message}`);
           if (owned) file = (await storage.download(rel)).data;
         }
         if (!file) return new Response("not found", { status: 404 });

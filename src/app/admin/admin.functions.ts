@@ -333,14 +333,15 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
   const since = ctx.tenant.settings.served_by_since;
   const movedCandidate =
     ctx.tenant.settings.served_by === "v2" && since && settings.moved_welcome_hidden !== "1";
-  const ordersBeforeMove = movedCandidate
-    ? ((
-        await ctx.db
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .lt("created_at", since)
-      ).count ?? 0)
-    : 0;
+  let ordersBeforeMove = 0;
+  if (movedCandidate) {
+    const before = await ctx.db
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .lt("created_at", since);
+    if (before.error) throw serverFailure(`Админка: ${before.error.message}`);
+    ordersBeforeMove = before.count ?? 0;
+  }
   const { redactOrders } = await import("@/core/orders/redact");
   return {
     counts,
@@ -759,11 +760,12 @@ export const saveProductFn = createServerFn({ method: "POST" })
   });
 
 async function stockState(ctx: TenantContext, id: string) {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("products")
     .select("is_active, stock_quantity, name")
     .eq("id", id)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Админка: ${dataError.message}`);
   return data;
 }
 
@@ -923,9 +925,13 @@ export const undeliveredFn = createServerFn({ method: "GET" }).handler(async () 
   const { listUndelivered } = await import("@/core/outbox/outbox");
   const rows = await listUndelivered(ctx);
   const ids = Array.from(new Set(rows.map((r) => r.orderId).filter((x): x is number => !!x)));
-  const { data } = ids.length
+  const { data, error: namesError } = ids.length
     ? await ctx.db.from("orders").select("id, order_no, display_no").in("id", ids)
-    : { data: [] as Array<{ id: number; order_no: number; display_no: number | null }> };
+    : {
+        data: [] as Array<{ id: number; order_no: number; display_no: number | null }>,
+        error: null,
+      };
+  if (namesError) throw serverFailure(`Админка: ${namesError.message}`);
   const no = new Map((data ?? []).map((o) => [o.id, o.display_no ?? o.order_no]));
   return rows.map((r) => ({ ...r, orderNo: r.orderId ? (no.get(r.orderId) ?? null) : null }));
 });
@@ -1371,10 +1377,11 @@ export const myPlanFn = createServerFn({ method: "GET" }).handler(async () => {
   const { getSettings } = await import("@/core/settings/settings");
   const plan = parsePlan(ctx.tenant.plan);
   const values = await getSettings(ctx, Object.values(USAGE_KEYS));
-  const { data: pending } = await ctx.db
+  const { data: pending, error: pendingError } = await ctx.db
     .from("module_requests")
     .select("module_key")
     .eq("status", "pending");
+  if (pendingError) throw serverFailure(`Админка: ${pendingError.message}`);
   const billing = ctx.tenant.settings.billing ?? {};
   return {
     plan: plan?.kind === "tier" ? plan.tier : plan?.kind === "custom" ? ("custom" as const) : null,
@@ -1839,13 +1846,14 @@ export const createBroadcastFn = createServerFn({ method: "POST" })
           "err.admin.waNotYours",
           "Этот аккаунт WhatsApp не подключён к вашему магазину.",
         );
-      const { data: tpl } = await ctx.db
+      const { data: tpl, error: tplError } = await ctx.db
         .from("whatsapp_templates")
         .select("status, components")
         .eq("account_id", data.whatsapp.accountId)
         .eq("name", data.whatsapp.templateName)
         .eq("language", data.whatsapp.templateLanguage)
         .maybeSingle();
+      if (tplError) throw serverFailure(`Админка: ${tplError.message}`);
       if (!tpl)
         throw new UserError(
           "err.admin.waTemplateMissing",
@@ -2207,10 +2215,11 @@ export const invoiceCartFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ telegramId: tgId }).parse(d))
   .handler(async ({ data }) => {
     const ctx = await chatModule("manager");
-    const { count } = await ctx.db
+    const { count, error: countError } = await ctx.db
       .from("cart_items")
       .select("id", { count: "exact", head: true })
       .eq("telegram_id", data.telegramId);
+    if (countError) throw serverFailure(`Админка: ${countError.message}`);
     return { count: count ?? 0 };
   });
 

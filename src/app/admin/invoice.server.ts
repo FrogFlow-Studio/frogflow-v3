@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
@@ -92,12 +93,13 @@ function linkPhysicalError(): UserError {
 async function hasPhysical(ctx: TenantContext, items: InvoiceItem[]): Promise<boolean> {
   const ids = [...new Set(items.map((i) => i.productId))];
   if (ids.length === 0) return false;
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("products")
     .select("id")
     .in("id", ids)
     .eq("fulfillment_kind", "physical")
     .limit(1);
+  if (dataError) throw serverFailure(`Счёт: ${dataError.message}`);
   return (data ?? []).length > 0;
 }
 

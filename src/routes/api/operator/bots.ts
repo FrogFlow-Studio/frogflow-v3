@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import { SHOP_SLUG_RE } from "@/core/tenant/slug";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
@@ -126,11 +127,12 @@ export const Route = createFileRoute("/api/operator/bots")({
           botId = data.id;
         }
 
-        const { data: row } = await db
+        const { data: row, error: rowError } = await db
           .from("bots")
           .select("settings, bot_token")
           .eq("id", botId)
           .maybeSingle();
+        if (rowError) throw serverFailure(`Оператор: ${rowError.message}`);
         if (!row) return Response.json({ error: "клиент не найден" }, { status: 404 });
         const settings = (
           row.settings && typeof row.settings === "object" && !Array.isArray(row.settings)

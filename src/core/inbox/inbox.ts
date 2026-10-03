@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { Json } from "@/core/db-types";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Conversation } from "@/core/chat/chat";
@@ -106,11 +107,12 @@ export async function setInboxMeta(
     updated_by: next.updatedBy,
   } as unknown as Json;
   const eventId = inboxEventId(ctx.tenant.id, telegramId);
-  const { data: existing } = await ctx.db
+  const { data: existing, error: existingError } = await ctx.db
     .from("zernio_logs")
     .select("id")
     .eq("event_id", eventId)
     .maybeSingle();
+  if (existingError) throw serverFailure(`Входящие: ${existingError.message}`);
   const { error } = existing
     ? await ctx.db
         .from("zernio_logs")
@@ -140,12 +142,13 @@ export async function reopenOnInbound(ctx: TenantContext, telegramId: number): P
 
 /** «Решено» в диалоге закрывает и обращения helpdesk этого покупателя. */
 async function closeTicketsFor(ctx: TenantContext, telegramId: number, actor: string) {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("zernio_logs")
     .select("id")
     .like("event_id", `${TICKET_PREFIX}%`)
     .in("status", [...OPEN_TICKET_DB_STATUSES])
     .contains("payload", { telegram_id: telegramId });
+  if (dataError) throw serverFailure(`Входящие: ${dataError.message}`);
   if (!data?.length) return;
   const { updateTicket } = await import("@/core/helpdesk/tickets");
   for (const t of data) await updateTicket(ctx, t.id, { status: "closed" }, actor);

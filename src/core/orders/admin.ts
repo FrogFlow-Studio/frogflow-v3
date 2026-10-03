@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import { awardPointsForOrder } from "@/core/discounts/discounts";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { OrderWithItems } from "./orders";
@@ -119,10 +120,11 @@ export async function orderCounts(ctx: TenantContext): Promise<OrderCounts> {
       out.unpaid = ids.length;
     }),
     ...statuses.map(async (s) => {
-      const { count } = await ctx.db
+      const { count, error: countError } = await ctx.db
         .from("orders")
         .select("id", { count: "exact", head: true })
         .eq("status", s);
+      if (countError) throw serverFailure(`Заказы: ${countError.message}`);
       out[s] = count ?? 0;
     }),
   ]);
@@ -143,11 +145,12 @@ export async function revenue(
   const since = new Date(Date.now() - days * 86400_000).toISOString();
   const { netOfRefunds, refundsSince } = await import("./refund");
   const refunds = await refundsSince(ctx, since);
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("orders")
     .select("id, total, paid_amount, currency, status, fulfillment_kind")
     .in("status", ["delivered", "accepted", "in_production", "ready"])
     .gte("created_at", since);
+  if (dataError) throw serverFailure(`Заказы: ${dataError.message}`);
   const counted = (data ?? []).filter((o) => includeOrderInAnalytics(o));
   const currency = dominantCurrency(counted) ?? "KZT";
   let total = 0;
@@ -186,13 +189,14 @@ export async function setPhysicalStatus(
   from: string,
   to: string,
 ): Promise<boolean> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("orders")
     .update({ status: to })
     .eq("id", id)
     .eq("status", from)
     .select("id, telegram_id, total, currency")
     .maybeSingle();
+  if (dataError) throw serverFailure(`Заказы: ${dataError.message}`);
   // Физический заказ выдан — баллы, как за выданный цифровой (deliverOrder).
   // Повторно не начислится: awardPointsForOrder — CAS по points_earned.
   if (data && to === "delivered")
@@ -286,6 +290,7 @@ export async function setBlocked(
     });
     if (error) throw new Error(error.message);
   } else {
-    await ctx.db.from("blocked_users").delete().eq("telegram_id", telegramId);
+    const { error } = await ctx.db.from("blocked_users").delete().eq("telegram_id", telegramId);
+    if (error) throw serverFailure(`Заказы: разблокировка: ${error.message}`);
   }
 }

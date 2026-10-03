@@ -21,24 +21,26 @@ export async function markInvoiceLink(ctx: TenantContext, orderId: number): Prom
 }
 
 export async function isInvoiceLink(ctx: TenantContext, orderId: number): Promise<boolean> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("app_settings")
     .select("key")
     .eq("bot_id", ctx.tenant.id)
     .eq("key", `${INVOICE_LINK_PREFIX}${orderId}`)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Заказы: счёт ссылкой: ${dataError.message}`);
   return Boolean(data);
 }
 
 /** Заказы-счета ссылкой, выставленные после `since`, — для отмены по сроку. */
 export async function invoiceLinkOrderIds(ctx: TenantContext, since: Date): Promise<number[]> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("app_settings")
     .select("key")
     .eq("bot_id", ctx.tenant.id)
     .like("key", `${INVOICE_LINK_PREFIX}%`)
     .gt("updated_at", since.toISOString())
     .limit(1000);
+  if (dataError) throw serverFailure(`Заказы: счёт ссылкой: ${dataError.message}`);
   return (data ?? [])
     .map((r) => Number(r.key.slice(INVOICE_LINK_PREFIX.length)))
     .filter((n) => Number.isInteger(n) && n > 0);

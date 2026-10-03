@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { claimOrderEvent } from "@/core/orders/events";
 import { paymentMethodFor } from "@/core/orders/orders";
@@ -164,7 +165,7 @@ export async function remindChatOrders(
 async function chatWindowOpen(ctx: TenantContext, o: PayReminderOrder, now: Date) {
   const since = now.getTime() - CHAT_WINDOW_MS;
   if (!(await isInvoiceLink(ctx, o.id))) return Date.parse(o.created_at) > since;
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("manager_chat_messages")
     .select("id")
     .eq("telegram_id", Number(o.telegram_id))
@@ -172,17 +173,19 @@ async function chatWindowOpen(ctx: TenantContext, o: PayReminderOrder, now: Date
     .gt("created_at", new Date(since).toISOString())
     .limit(1)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Заказы: напоминание: ${dataError.message}`);
   return data != null;
 }
 
 /** Перечитать перед отправкой: заказ всё ещё ждёт оплаты и чека к нему нет. */
 async function stillUnpaid(ctx: TenantContext, id: number): Promise<boolean> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("orders")
     .select("id")
     .eq("id", id)
     .eq("status", "awaiting_payment")
     .is("payment_proof_path", null)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Заказы: напоминание: ${dataError.message}`);
   return data != null;
 }

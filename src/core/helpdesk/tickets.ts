@@ -87,7 +87,7 @@ export async function openTicketFor(
   ctx: TenantContext,
   telegramId: number,
 ): Promise<Ticket | null> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("zernio_logs")
     .select(SELECT)
     .like("event_id", `${TICKET_PREFIX}%`)
@@ -95,6 +95,7 @@ export async function openTicketFor(
     .contains("payload", { telegram_id: telegramId })
     .order("created_at", { ascending: false })
     .limit(1);
+  if (dataError) throw serverFailure(`Поддержка: ${dataError.message}`);
   return data?.[0] ? rowToTicket(data[0]) : null;
 }
 
@@ -114,10 +115,12 @@ export async function createTicket(
         { at: now, actor: "customer", action: "message", note: input.subject.slice(0, 300) },
       ],
     };
-    await ctx.db
+    const { error } = await ctx.db
       .from("zernio_logs")
       .update({ status: "open", payload: toPayload(next) })
       .eq("id", existing.id);
+    // Не записали — не говорим покупателю, что обращение дополнено.
+    if (error) throw serverFailure(`Поддержка: ${error.message}`);
     return { ticket: next, created: false };
   }
   const number = await nextTicketNumber(ctx);
@@ -156,12 +159,13 @@ export async function createTicket(
  * выданных номеров.
  */
 export async function nextTicketNumber(ctx: TenantContext): Promise<number> {
-  const { data: last } = await ctx.db
+  const { data: last, error: lastError } = await ctx.db
     .from("zernio_logs")
     .select("payload")
     .like("event_id", `${TICKET_PREFIX}%`)
     .order("created_at", { ascending: false })
     .limit(1);
+  if (lastError) throw serverFailure(`Поддержка: ${lastError.message}`);
   const seen = Number((last?.[0]?.payload as { number?: unknown } | null)?.number ?? 0) || 0;
   let n = 0;
   const r = await updateSettingAtomic(ctx, TICKET_SEQ_KEY, (raw) => {
@@ -191,12 +195,13 @@ export async function listTickets(
 }
 
 export async function getTicket(ctx: TenantContext, id: string): Promise<Ticket | null> {
-  const { data } = await ctx.db
+  const { data, error: dataError } = await ctx.db
     .from("zernio_logs")
     .select(SELECT)
     .eq("id", id)
     .like("event_id", `${TICKET_PREFIX}%`)
     .maybeSingle();
+  if (dataError) throw serverFailure(`Поддержка: ${dataError.message}`);
   return data ? rowToTicket(data) : null;
 }
 
@@ -232,10 +237,11 @@ export async function updateTicket(
 }
 
 export async function countOpenTickets(ctx: TenantContext): Promise<number> {
-  const { count } = await ctx.db
+  const { count, error: countError } = await ctx.db
     .from("zernio_logs")
     .select("id", { count: "exact", head: true })
     .like("event_id", `${TICKET_PREFIX}%`)
     .eq("status", "open");
+  if (countError) throw serverFailure(`Поддержка: ${countError.message}`);
   return count ?? 0;
 }
