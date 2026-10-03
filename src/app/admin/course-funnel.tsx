@@ -41,6 +41,7 @@ export function CourseFunnel({ productId, t }: { productId: string; t: AdminT })
       </button>
     );
   };
+  const hasQuiz = Boolean(data?.lessons.some((l) => l.hasQuiz));
   return (
     <details
       className="mt-3 rounded border border-line p-3 text-sm"
@@ -87,6 +88,7 @@ export function CourseFunnel({ productId, t }: { productId: string; t: AdminT })
                     <th className="py-1 pr-3 font-normal">{t("school.funnelLesson")}</th>
                     <th className="py-1 pr-3 font-normal">{t("school.funnelOpened")}</th>
                     <th className="py-1 pr-3 font-normal">{t("school.funnelHomework")}</th>
+                    {hasQuiz && <th className="py-1 pr-3 font-normal">{t("school.funnelQuiz")}</th>}
                     <th className="py-1 font-normal">{t("school.funnelDone")}</th>
                   </tr>
                 </thead>
@@ -114,6 +116,19 @@ export function CourseFunnel({ productId, t }: { productId: string; t: AdminT })
                           <span className="text-muted">—</span>
                         )}
                       </td>
+                      {hasQuiz && (
+                        <td className="py-1 pr-3">
+                          {l.hasQuiz ? (
+                            cell(l.quiz, {
+                              kind: "quiz",
+                              lessonNo: l.no,
+                              label: t("school.funnelQuizOf", { no: l.no }),
+                            })
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </td>
+                      )}
                       <td className="py-1">
                         {cell(l.done, {
                           kind: "done",
@@ -125,7 +140,7 @@ export function CourseFunnel({ productId, t }: { productId: string; t: AdminT })
                   ))}
                   <tr className="border-t border-line font-medium">
                     <td className="py-1 pr-3">{t("school.funnelFinished")}</td>
-                    <td className="py-1 pr-3" colSpan={3}>
+                    <td className="py-1 pr-3" colSpan={hasQuiz ? 4 : 3}>
                       {cell(data.finished, {
                         kind: "finished",
                         lessonNo: 0,

@@ -108,14 +108,16 @@ test("сквозной путь школы: открытый урок, тест,
   await funnel.locator("summary").first().click();
   await expect(funnel.getByText("1. Основы лепки")).toBeVisible();
   await expect(funnel.getByText("2. Первый сосуд")).toBeVisible();
-  // Колонки: открыли, сдали ДЗ, прошли урок.
+  // Колонки: открыли, сдали ДЗ, прошли тест (только у уроков с тестом), прошли урок.
   const lesson1 = funnel.locator("tr").filter({ hasText: "1. Основы лепки" }).locator("td");
   await expect(lesson1.nth(1)).toHaveText("1 (100%)");
   await expect(lesson1.nth(2)).toHaveText("1 (100%)");
   await expect(lesson1.nth(3)).toHaveText("1 (100%)");
+  await expect(lesson1.nth(4)).toHaveText("1 (100%)");
   const lesson2 = funnel.locator("tr").filter({ hasText: "2. Первый сосуд" }).locator("td");
   await expect(lesson2.nth(1)).toHaveText("1 (100%)");
-  await expect(lesson2.nth(3)).toHaveText("0 (0%)");
+  await expect(lesson2.nth(3)).toHaveText("—");
+  await expect(lesson2.nth(4)).toHaveText("0 (0%)");
   // Клик по цифре открывает список: число совпадает с цифрой.
   await lesson1.nth(2).getByRole("button").click();
   await expect(funnel.getByText("Мария").first()).toBeVisible();

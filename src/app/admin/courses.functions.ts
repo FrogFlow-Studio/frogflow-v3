@@ -160,7 +160,7 @@ export const funnelStudentsFn = createServerFn({ method: "GET" })
       .object({
         productId: z.string().uuid(),
         cohortId: z.string().uuid().nullable(),
-        kind: z.enum(["opened", "homework", "done", "finished"]),
+        kind: z.enum(["opened", "homework", "quiz", "done", "finished"]),
         lessonNo: z.number().int().min(0).max(100),
       })
       .parse(d),

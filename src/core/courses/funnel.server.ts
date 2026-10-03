@@ -22,14 +22,18 @@ import { parseRun, runKey } from "./run.server";
  * воронка при упавшей базе выглядела бы как «все отвалились».
  */
 type Loaded = {
-  lessons: Array<{ title: string; hasHomework: boolean }>;
+  lessons: Array<{ title: string; hasHomework: boolean; hasQuiz: boolean }>;
   cohorts: Array<{ id: string; title: string }>;
   rows: Array<FunnelRow & { orderNo: number; buyer: string | null; cohortId: string | null }>;
 };
 
 async function loadFunnelRows(ctx: TenantContext, productId: string, now: Date): Promise<Loaded> {
   const course = parseCourse(await readSetting(ctx, courseKey(productId)));
-  const lessons = course.lessons.map((l) => ({ title: l.title, hasHomework: Boolean(l.homework) }));
+  const lessons = course.lessons.map((l) => ({
+    title: l.title,
+    hasHomework: Boolean(l.homework),
+    hasQuiz: Boolean(l.quiz),
+  }));
   const cohorts = (course.cohorts ?? []).map((c) => ({ id: c.id, title: c.title }));
   const items = await pageAll<{ id: string; order_id: number; product_variant_id: string | null }>(
     (from, to) =>
@@ -79,6 +83,11 @@ async function loadFunnelRows(ctx: TenantContext, productId: string, now: Date):
     const status = new Map<string, HomeworkStatus>(
       course.lessons.flatMap((l, k) => (hw[k] ? ([[l.id, hw[k]!]] as const) : [])),
     );
+    const passedQuiz = new Set(
+      quizLessons
+        .filter((l) => parseQuizResult(quizRaw.get(quizKey(i.id, l.id))).passed)
+        .map((l) => l.id),
+    );
     const tl = courseTimeline(
       {
         course,
@@ -86,11 +95,7 @@ async function loadFunnelRows(ctx: TenantContext, productId: string, now: Date):
         boughtAt: o.created_at,
         variantId: i.product_variant_id ?? null,
         hw: status,
-        quiz: new Set(
-          quizLessons
-            .filter((l) => parseQuizResult(quizRaw.get(quizKey(i.id, l.id))).passed)
-            .map((l) => l.id),
-        ),
+        quiz: passedQuiz,
       },
       ctx.timezone,
       now,
@@ -112,6 +117,7 @@ async function loadFunnelRows(ctx: TenantContext, productId: string, now: Date):
       itemId: i.id,
       opened,
       hw,
+      quiz: course.lessons.map((l) => passedQuiz.has(l.id)),
       done,
       finished,
       orderNo: displayNo(o),

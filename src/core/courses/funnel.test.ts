@@ -6,6 +6,7 @@ import { buildFunnel, pickFunnel, type FunnelRow } from "./funnel";
 import { courseFunnel, funnelStudents } from "./funnel.server";
 import { courseKey, type Course } from "./course";
 import { hwKey } from "./homework";
+import { quizKey } from "./lesson-quiz";
 import { runKey } from "./run.server";
 
 /** Воронка курса (А26): где ученики отваливаются. */
@@ -21,7 +22,15 @@ const course: Course = {
   schedule: { mode: "all" },
   lessons: [
     { id: id(1), title: "Кисти", text: "т", files: [], link: null, homework: "Круг" },
-    { id: id(2), title: "Цвет", text: "т", files: [], link: null, homework: "Смешать" },
+    {
+      id: id(2),
+      title: "Цвет",
+      text: "т",
+      files: [],
+      link: null,
+      homework: "Смешать",
+      quiz: { pass: 100, questions: [{ text: "2+2?", options: ["3", "4"], correct: [1] }] },
+    },
     { id: id(3), title: "Итог", text: "т", files: [], link: null },
   ],
   cohorts: [
@@ -47,6 +56,11 @@ const hw = (it: number, lesson: string, status: string) => ({
     feedback: null,
     updatedAt: "2026-10-02T00:00:00Z",
   }),
+});
+const quizRec = (it: number, passed: boolean) => ({
+  bot_id: T,
+  key: quizKey(item(it), id(2)),
+  value: JSON.stringify({ attempts: 2, from: 0, passed, best: passed ? 100 : 0, log: [] }),
 });
 const run = (it: number, done: string[]) => ({
   bot_id: T,
@@ -84,6 +98,7 @@ function school(c: Course = course) {
     run(1, [id(1), id(2), id(3)]),
     hw(1, id(1), "accepted"),
     hw(1, id(2), "accepted"),
+    quizRec(1, true),
     // 2 — сдал первое ДЗ, ничего не отмечено.
     run(2, []),
     hw(2, id(1), "submitted"),
@@ -91,6 +106,7 @@ function school(c: Course = course) {
     run(3, [id(1)]),
     hw(3, id(1), "accepted"),
     hw(3, id(2), "revise"),
+    quizRec(3, false),
     // 4 — купил, но прохождение не начато.
     // 5 — заказ не выдан. 6 — купил в ноябре: свой поток.
     {
@@ -110,19 +126,26 @@ function school(c: Course = course) {
 
 describe("подсчёт воронки на наборе прохождений", () => {
   const lessons = [
-    { title: "А", hasHomework: true },
-    { title: "Б", hasHomework: false },
+    { title: "А", hasHomework: true, hasQuiz: false },
+    { title: "Б", hasHomework: false, hasQuiz: true },
   ];
   const row = (n: number, p: Partial<FunnelRow>): FunnelRow => ({
     itemId: `i${n}`,
     opened: [false, false],
     hw: [null, null],
+    quiz: [false, false],
     done: [false, false],
     finished: false,
     ...p,
   });
   const rows = [
-    row(1, { opened: [true, true], hw: ["accepted", null], done: [true, true], finished: true }),
+    row(1, {
+      opened: [true, true],
+      hw: ["accepted", null],
+      quiz: [false, true],
+      done: [true, true],
+      finished: true,
+    }),
     row(2, { opened: [true, true], hw: ["submitted", null], done: [false, false] }),
     row(3, { opened: [true, false], hw: ["revise", null], done: [false, false] }),
     row(4, {}),
@@ -132,8 +155,26 @@ describe("подсчёт воронки на наборе прохождений
     expect(buildFunnel(lessons, rows)).toEqual({
       students: 4,
       lessons: [
-        { no: 1, title: "А", hasHomework: true, opened: 3, homework: 3, done: 1 },
-        { no: 2, title: "Б", hasHomework: false, opened: 2, homework: 0, done: 1 },
+        {
+          no: 1,
+          title: "А",
+          hasHomework: true,
+          hasQuiz: false,
+          opened: 3,
+          homework: 3,
+          quiz: 0,
+          done: 1,
+        },
+        {
+          no: 2,
+          title: "Б",
+          hasHomework: false,
+          hasQuiz: true,
+          opened: 2,
+          homework: 0,
+          quiz: 1,
+          done: 1,
+        },
       ],
       finished: 1,
     });
@@ -142,6 +183,7 @@ describe("подсчёт воронки на наборе прохождений
   it("клик по шагу даёт тех же учеников, что и счёт", () => {
     expect(pickFunnel(rows, "opened", 1).map((r) => r.itemId)).toEqual(["i1", "i2", "i3"]);
     expect(pickFunnel(rows, "homework", 1).map((r) => r.itemId)).toEqual(["i1", "i2", "i3"]);
+    expect(pickFunnel(rows, "quiz", 2).map((r) => r.itemId)).toEqual(["i1"]);
     expect(pickFunnel(rows, "done", 2).map((r) => r.itemId)).toEqual(["i1"]);
     expect(pickFunnel(rows, "finished").map((r) => r.itemId)).toEqual(["i1"]);
     expect(pickFunnel([], "opened", 1)).toEqual([]);
@@ -168,6 +210,19 @@ describe("воронка курса из базы", () => {
     const nov = await courseFunnel(s.ctx, P, NOV, NOW);
     expect(nov.students).toBe(1);
     expect(nov.lessons.every((l) => l.opened === 0 && l.done === 0)).toBe(true);
+  });
+
+  it("шаг «прошли тест»: только уроки с тестом, непройденный и чужой тест не считаются", async () => {
+    const s = school();
+    const f = await courseFunnel(s.ctx, P, null, NOW);
+    expect(f.lessons.map((l) => [l.hasQuiz, l.quiz])).toEqual([
+      [false, 0],
+      [true, 1], // у 1 пройден, у 3 попытки были, но не прошёл
+      [false, 0],
+    ]);
+    const who = await funnelStudents(s.ctx, P, null, "quiz", 2, NOW);
+    expect(who.map((w) => w.orderNo)).toEqual([1]);
+    expect(who.length).toBe(f.lessons[1]!.quiz);
   });
 
   it("клик по цифре: список учеников шага, по номеру заказа", async () => {

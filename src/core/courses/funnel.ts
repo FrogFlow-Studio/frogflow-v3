@@ -6,7 +6,7 @@ import type { HomeworkStatus } from "./homework";
  * Чистый модуль: строки по ученикам собирает funnel.server.ts, здесь счёт и
  * выбор учеников по шагу.
  */
-export type FunnelKind = "opened" | "homework" | "done" | "finished";
+export type FunnelKind = "opened" | "homework" | "quiz" | "done" | "finished";
 
 /** Один ученик: факты по урокам в порядке курса. */
 export type FunnelRow = {
@@ -15,6 +15,8 @@ export type FunnelRow = {
   opened: boolean[];
   /** Статус сдачи ДЗ по уроку; null — не сдавал или у урока нет задания. */
   hw: Array<HomeworkStatus | null>;
+  /** Тест урока пройден; false — не проходил или у урока нет теста. */
+  quiz: boolean[];
   /** Урок отмечен пройденным (принятое ДЗ, пройденный тест или отметка ученика). */
   done: boolean[];
   /** Курс пройден (условие сертификата). */
@@ -25,9 +27,12 @@ export type FunnelLesson = {
   no: number;
   title: string;
   hasHomework: boolean;
+  hasQuiz: boolean;
   opened: number;
   /** Сдали ДЗ (на проверке, принято или возвращено); 0 у урока без задания. */
   homework: number;
+  /** Прошли тест; 0 у урока без теста. */
+  quiz: number;
   done: number;
 };
 
@@ -39,7 +44,7 @@ export type CourseFunnel = {
 };
 
 export function buildFunnel(
-  lessons: ReadonlyArray<{ title: string; hasHomework: boolean }>,
+  lessons: ReadonlyArray<{ title: string; hasHomework: boolean; hasQuiz: boolean }>,
   rows: readonly FunnelRow[],
 ): CourseFunnel {
   return {
@@ -48,8 +53,10 @@ export function buildFunnel(
       no: i + 1,
       title: l.title,
       hasHomework: l.hasHomework,
+      hasQuiz: l.hasQuiz,
       opened: rows.filter((r) => r.opened[i]).length,
       homework: rows.filter((r) => r.hw[i] != null).length,
+      quiz: rows.filter((r) => r.quiz[i]).length,
       done: rows.filter((r) => r.done[i]).length,
     })),
     finished: rows.filter((r) => r.finished).length,
@@ -68,6 +75,8 @@ export function pickFunnel(
       return rows.filter((r) => r.opened[i]);
     case "homework":
       return rows.filter((r) => r.hw[i] != null);
+    case "quiz":
+      return rows.filter((r) => r.quiz[i]);
     case "done":
       return rows.filter((r) => r.done[i]);
     case "finished":

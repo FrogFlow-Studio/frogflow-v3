@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { courseKey, type Course } from "@/core/courses/course";
+import { quizKey } from "@/core/courses/lesson-quiz";
 import { runKey } from "@/core/courses/run.server";
 import { fakeDb } from "../../../tests/fake-db";
 import { STUDENT_COLUMNS, studentsCsv } from "./students-export.server";
@@ -21,7 +22,7 @@ const course: Course = {
 };
 const NOW = new Date("2026-10-10T10:00:00Z");
 
-function shop(n: number) {
+function shop(n: number, c: Course = course) {
   const db = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
   db.tables.products = [{ id: P, name: "Аквагрим" }];
   db.tables.product_variants = [{ id: V, name: "Стандарт" }];
@@ -40,7 +41,7 @@ function shop(n: number) {
     created_at: "2026-10-01T00:00:00Z",
   }));
   db.tables.app_settings = [
-    { bot_id: T, key: courseKey(P), value: JSON.stringify(course) },
+    { bot_id: T, key: courseKey(P), value: JSON.stringify(c) },
     {
       bot_id: T,
       key: runKey("item-00000"),
@@ -56,6 +57,40 @@ function shop(n: number) {
 }
 
 describe("выгрузка учеников", () => {
+  it("тесты: пройдено и число попыток по каждому ученику", async () => {
+    const withQuiz: Course = {
+      ...course,
+      lessons: [
+        course.lessons[0]!,
+        {
+          ...course.lessons[1]!,
+          quiz: { pass: 100, questions: [{ text: "2+2?", options: ["3", "4"], correct: [1] }] },
+        },
+      ],
+    };
+    const ctx = shop(2, withQuiz);
+    const rec = (n: number, attempts: number, passed: boolean) => ({
+      bot_id: T,
+      key: quizKey(`item-0000${n}`, L2),
+      value: JSON.stringify({ attempts, from: 0, passed, best: passed ? 100 : 0, log: [] }),
+    });
+    (ctx.db as unknown as { tables: { app_settings: unknown[] } }).tables.app_settings.push(
+      rec(0, 3, true),
+      rec(1, 1, false),
+    );
+    const { csv } = await studentsCsv(ctx, null, NOW);
+    const [head, ...lines] = csv.replace(/^\uFEFF/, "").split("\r\n");
+    // Имя «Аня; Т.» содержит «;» — колонки считаем с конца строки.
+    const names = head!.split(";");
+    const col = (line: string, name: string) =>
+      line.split(";").at(names.indexOf(name) - names.length);
+    const byName = (n: string) => lines.find((l) => l.includes(n))!;
+    expect(col(byName("Аня"), "Тестов пройдено")).toBe("1");
+    expect(col(byName("Аня"), "Попыток теста")).toBe("3");
+    expect(col(byName("Ученик 1"), "Тестов пройдено")).toBe("0");
+    expect(col(byName("Ученик 1"), "Попыток теста")).toBe("1");
+  });
+
   it("колонки, значения и защита от формул", async () => {
     const { csv, count } = await studentsCsv(shop(2), null, NOW);
     const lines = csv.replace(/^\uFEFF/, "").split("\r\n");
@@ -67,6 +102,13 @@ describe("выгрузка учеников", () => {
     expect(first).toContain("Стандарт");
     expect(first).toContain(";2;2;1;"); // уроков 2, открыто 2, пройден 1
     expect(first).toContain("2026-10-31"); // доступ до: старт + 30 дней
+    expect(STUDENT_COLUMNS.slice(10, 15)).toEqual([
+      "ДЗ принято",
+      "ДЗ ждёт проверки",
+      "ДЗ на доработке",
+      "Тестов пройдено",
+      "Попыток теста",
+    ]);
   });
 
   it("больше тысячи учеников — все на месте (постранично, без обрезки)", async () => {

@@ -17,6 +17,8 @@ export const ru = {
   "school.funnelOpenedOf": "Открыли урок {no}",
   "school.funnelHomeworkOf": "Сдали ДЗ к уроку {no}",
   "school.funnelDoneOf": "Прошли урок {no}",
+  "school.funnelQuiz": "Прошли тест",
+  "school.funnelQuizOf": "Прошли тест урока {no}",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -35,6 +37,8 @@ export const kk: SectionDict<typeof ru> = {
   "school.funnelOpenedOf": "{no}-сабақты ашты",
   "school.funnelHomeworkOf": "{no}-сабақтың ҮТ-н тапсырды",
   "school.funnelDoneOf": "{no}-сабақты өтті",
+  "school.funnelQuiz": "Тестті өтті",
+  "school.funnelQuizOf": "{no}-сабақтың тестін өтті",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -53,6 +57,8 @@ export const en: SectionDict<typeof ru> = {
   "school.funnelOpenedOf": "Opened lesson {no}",
   "school.funnelHomeworkOf": "Submitted homework for lesson {no}",
   "school.funnelDoneOf": "Passed lesson {no}",
+  "school.funnelQuiz": "Passed the quiz",
+  "school.funnelQuizOf": "Passed the quiz of lesson {no}",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -71,4 +77,6 @@ export const uz: SectionDict<typeof ru> = {
   "school.funnelOpenedOf": "{no}-darsni ochdi",
   "school.funnelHomeworkOf": "{no}-dars vazifasini topshirdi",
   "school.funnelDoneOf": "{no}-darsdan o‘tdi",
+  "school.funnelQuiz": "Testdan o‘tdi",
+  "school.funnelQuizOf": "{no}-dars testidan o‘tdi",
 };
