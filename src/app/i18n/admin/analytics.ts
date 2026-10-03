@@ -80,6 +80,22 @@ export const ru = {
     "В метке можно только буквы, цифры, пробел, _ и -. Кириллица станет латиницей, эмодзи и другие знаки не подойдут.",
   "analytics.links.err.long": "Метка слишком длинная: до 40 латинских знаков.",
   "analytics.links.err.reserved": "Метки на «ref-» заняты приглашениями друзей, выберите другую.",
+  "analytics.speed.title": "Скорость заказа",
+  "analytics.speed.hint":
+    "Минуты от оформления до оплаты и от оплаты до выдачи у заказов, оформленных за период. Медиана — типичный заказ, 90% — медленные. Оплатой цифрового заказа по чеку считается момент, когда чек принят и пошла выдача.",
+  "analytics.speed.empty": "Заказов за период нет.",
+  "analytics.speed.col.placed": "Оформлено",
+  "analytics.speed.col.payMedian": "До оплаты, медиана",
+  "analytics.speed.col.payP90": "До оплаты, 90%",
+  "analytics.speed.col.deliverMedian": "До выдачи, медиана",
+  "analytics.speed.col.deliverP90": "До выдачи, 90%",
+  "analytics.speed.col.auto": "Без продавца",
+  "analytics.speed.auto":
+    "Без действия продавца выдано {pct}% заказов ({auto} из {delivered}): оплата картой, автопроверка чека, автовыдача.",
+  "analytics.speed.autoNone": "Выданных заказов за период пока нет.",
+  "analytics.speed.fmt.m": "{n} мин",
+  "analytics.speed.fmt.h": "{n} ч",
+  "analytics.speed.fmt.d": "{n} дн",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -161,6 +177,22 @@ export const kk: SectionDict<typeof ru> = {
     "Белгіде тек әріптер, сандар, бос орын, _ және - болады. Кирилл әріптері латыншаға ауысады, эмодзи және басқа белгілер жарамайды.",
   "analytics.links.err.long": "Белгі тым ұзын: 40 латын таңбасына дейін.",
   "analytics.links.err.reserved": "«ref-» белгілері дос шақыруларына арналған, басқасын таңдаңыз.",
+  "analytics.speed.title": "Тапсырыс жылдамдығы",
+  "analytics.speed.hint":
+    "Кезеңде рәсімделген тапсырыстар бойынша рәсімдеуден төлемге дейінгі және төлемнен беруге дейінгі минуттар. Медиана — әдеттегі тапсырыс, 90% — баяулары. Чек бойынша сандық тапсырыстың төлемі ретінде чек қабылданып, беру басталған сәт саналады.",
+  "analytics.speed.empty": "Кезеңде тапсырыс жоқ.",
+  "analytics.speed.col.placed": "Рәсімделді",
+  "analytics.speed.col.payMedian": "Төлемге дейін, медиана",
+  "analytics.speed.col.payP90": "Төлемге дейін, 90%",
+  "analytics.speed.col.deliverMedian": "Беруге дейін, медиана",
+  "analytics.speed.col.deliverP90": "Беруге дейін, 90%",
+  "analytics.speed.col.auto": "Сатушысыз",
+  "analytics.speed.auto":
+    "Сатушының әрекетінсіз берілген тапсырыстар: {pct}% ({delivered} ішінен {auto}): картамен төлем, чекті автотексеру, автоберу.",
+  "analytics.speed.autoNone": "Кезеңде берілген тапсырыс әлі жоқ.",
+  "analytics.speed.fmt.m": "{n} мин",
+  "analytics.speed.fmt.h": "{n} сағ",
+  "analytics.speed.fmt.d": "{n} күн",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -243,6 +275,22 @@ export const en: SectionDict<typeof ru> = {
   "analytics.links.err.long": "The tag is too long: up to 40 Latin characters.",
   "analytics.links.err.reserved":
     "Tags starting with «ref-» are reserved for friend invites, pick another.",
+  "analytics.speed.title": "Order speed",
+  "analytics.speed.hint":
+    "Minutes from checkout to payment and from payment to delivery for orders placed in the period. Median is the typical order, 90% is the slow ones. For a digital order paid by receipt, payment is the moment the receipt was accepted and delivery started.",
+  "analytics.speed.empty": "No orders in this period.",
+  "analytics.speed.col.placed": "Placed",
+  "analytics.speed.col.payMedian": "To payment, median",
+  "analytics.speed.col.payP90": "To payment, 90%",
+  "analytics.speed.col.deliverMedian": "To delivery, median",
+  "analytics.speed.col.deliverP90": "To delivery, 90%",
+  "analytics.speed.col.auto": "No seller action",
+  "analytics.speed.auto":
+    "{pct}% of orders were delivered without any seller action ({auto} of {delivered}): card payment, receipt auto-check, auto-delivery.",
+  "analytics.speed.autoNone": "No delivered orders in this period yet.",
+  "analytics.speed.fmt.m": "{n} min",
+  "analytics.speed.fmt.h": "{n} h",
+  "analytics.speed.fmt.d": "{n} d",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -325,4 +373,20 @@ export const uz: SectionDict<typeof ru> = {
   "analytics.links.err.long": "Belgi juda uzun: 40 ta lotin belgisigacha.",
   "analytics.links.err.reserved":
     "«ref-» bilan boshlanuvchi belgilar do‘st taklifi uchun band, boshqasini tanlang.",
+  "analytics.speed.title": "Buyurtma tezligi",
+  "analytics.speed.hint":
+    "Davrda rasmiylashtirilgan buyurtmalar uchun rasmiylashtirishdan to‘lovgacha va to‘lovdan topshirishgacha bo‘lgan daqiqalar. Mediana — oddiy buyurtma, 90% — sekinlari. Chek bilan to‘langan raqamli buyurtmada to‘lov — chek qabul qilinib, topshirish boshlangan payt.",
+  "analytics.speed.empty": "Davrda buyurtma yo‘q.",
+  "analytics.speed.col.placed": "Rasmiylashtirildi",
+  "analytics.speed.col.payMedian": "To‘lovgacha, mediana",
+  "analytics.speed.col.payP90": "To‘lovgacha, 90%",
+  "analytics.speed.col.deliverMedian": "Topshirishgacha, mediana",
+  "analytics.speed.col.deliverP90": "Topshirishgacha, 90%",
+  "analytics.speed.col.auto": "Sotuvchisiz",
+  "analytics.speed.auto":
+    "Buyurtmalarning {pct}% i sotuvchi aralashuvisiz topshirilgan ({delivered} dan {auto}): karta bilan to‘lov, chekni avtotekshirish, avtotopshirish.",
+  "analytics.speed.autoNone": "Davrda topshirilgan buyurtma hali yo‘q.",
+  "analytics.speed.fmt.m": "{n} daq",
+  "analytics.speed.fmt.h": "{n} soat",
+  "analytics.speed.fmt.d": "{n} kun",
 };

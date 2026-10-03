@@ -7,6 +7,7 @@ import { Card, Field, PageTitle } from "@/app/ui";
 import { BarList, ChartCard, DataTable, LineChart } from "@/app/ui/charts";
 import { compactNumber, shortDay } from "@/core/analytics/pure";
 import { FUNNEL_STAGES, stageRate } from "@/core/analytics/funnel";
+import { autoShare, type SpeedRow } from "@/core/analytics/speed";
 import { revenueParts, SOURCE_TAG_GROUP } from "@/core/analytics/source-funnel";
 import {
   botSourceLink,
@@ -296,6 +297,7 @@ function AnalyticsPage() {
           }
         />
         <SourceLinksCard bot={a.links.bot} store={a.links.store} />
+        <SpeedCard rows={a.speed} />
         <CohortsCard cohorts={a.cohorts} />
         <ChartCard
           title={t("analytics.chart.revenueByDay")}
@@ -504,6 +506,74 @@ function CohortsCard({
         </div>
       )}
       <p className="mt-2 text-xs text-muted">{t("analytics.cohorts.hint")}</p>
+    </Card>
+  );
+}
+
+/** Минуты → «5 мин», «2 ч 10 мин», «1 дн 3 ч». */
+function duration(min: number | null, t: AdminT): string {
+  if (min === null) return "—";
+  const m = Math.round(min);
+  if (m < 60) return t("analytics.speed.fmt.m", { n: m });
+  if (m < 1440) {
+    const h = Math.floor(m / 60);
+    const rest = m % 60;
+    return [
+      t("analytics.speed.fmt.h", { n: h }),
+      rest ? t("analytics.speed.fmt.m", { n: rest }) : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+  const d = Math.floor(m / 1440);
+  const h = Math.floor((m % 1440) / 60);
+  return [t("analytics.speed.fmt.d", { n: d }), h ? t("analytics.speed.fmt.h", { n: h }) : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** Скорость заказа: оплата и выдача по каналам, доля выданных без продавца (core/analytics/speed). */
+function SpeedCard({ rows }: { rows: SpeedRow[] }) {
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const all = rows[0]!;
+  const share = autoShare(all);
+  return (
+    <Card title={t("analytics.speed.title")} className="lg:col-span-2">
+      {all.placed === 0 ? (
+        <p className="text-sm text-muted">{t("analytics.speed.empty")}</p>
+      ) : (
+        <>
+          <p className="mb-3 text-sm">
+            {share === null
+              ? t("analytics.speed.autoNone")
+              : t("analytics.speed.auto", { pct: share, auto: all.auto, delivered: all.delivered })}
+          </p>
+          <div className="overflow-x-auto">
+            <DataTable
+              head={[
+                t("analytics.col.channel"),
+                t("analytics.speed.col.placed"),
+                t("analytics.speed.col.payMedian"),
+                t("analytics.speed.col.payP90"),
+                t("analytics.speed.col.deliverMedian"),
+                t("analytics.speed.col.deliverP90"),
+                t("analytics.speed.col.auto"),
+              ]}
+              rows={rows.map((r) => [
+                r.channel === "all" ? t("analytics.funnel.all") : platformLabel(r.channel, t),
+                r.placed,
+                duration(r.pay.median, t),
+                duration(r.pay.p90, t),
+                duration(r.deliver.median, t),
+                duration(r.deliver.p90, t),
+                autoShare(r) === null ? "—" : `${autoShare(r)}%`,
+              ])}
+            />
+          </div>
+        </>
+      )}
+      <p className="mt-2 text-xs text-muted">{t("analytics.speed.hint")}</p>
     </Card>
   );
 }
