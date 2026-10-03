@@ -31,23 +31,52 @@ function fail(t: AdminT, j: Answer, fallback: string): Error {
   return shownError(key ? t(key, { mb: j.mb ?? "" }) : fallback);
 }
 
+/**
+ * PUT в Storage. С `onProgress` — через XMLHttpRequest: у fetch нет хода
+ * отправки, а на большом файле при плохой связи продавцу нужно видеть,
+ * идёт загрузка или оборвалась (было в прежней админке).
+ */
+function put(
+  url: string,
+  file: File,
+  headers: Record<string, string>,
+  onProgress?: (sent: number, total: number) => void,
+): Promise<{ ok: boolean; status: number }> {
+  if (!onProgress)
+    return fetch(url, { method: "PUT", body: file, headers })
+      .then((r) => ({ ok: r.ok, status: r.status }))
+      .catch(() => ({ ok: false, status: 0 }));
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
+    xhr.upload.onprogress = (e) => onProgress(e.loaded, e.lengthComputable ? e.total : file.size);
+    xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status });
+    xhr.onerror = () => resolve({ ok: false, status: 0 });
+    xhr.onabort = () => resolve({ ok: false, status: 0 });
+    xhr.send(file);
+  });
+}
+
 export async function uploadFile(
   kind: UploadKind,
   file: File,
   t: AdminT,
   fallback: (status: number) => string,
+  onProgress?: (sent: number, total: number) => void,
 ): Promise<string> {
   const type = file.type || "application/octet-stream";
   const sign = await call({ action: "sign", kind, name: file.name, size: file.size, type });
   if (sign.status !== 200 || !sign.j.key || !sign.j.url)
     throw fail(t, sign.j, fallback(sign.status));
 
-  const put = await fetch(sign.j.url, {
-    method: "PUT",
-    body: file,
-    headers: { "content-type": type, "cache-control": "max-age=3600", "x-upsert": "false" },
-  }).catch(() => null);
-  if (!put?.ok) throw shownError(fallback(put?.status ?? 0));
+  const sent = await put(
+    sign.j.url,
+    file,
+    { "content-type": type, "cache-control": "max-age=3600", "x-upsert": "false" },
+    onProgress,
+  );
+  if (!sent.ok) throw shownError(fallback(sent.status));
 
   const done = await call({ action: "confirm", kind, key: sign.j.key });
   if (done.status !== 200 || !done.j.key) throw fail(t, done.j, fallback(done.status));

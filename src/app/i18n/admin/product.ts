@@ -58,6 +58,10 @@ export const ru = {
   "product.previewHint":
     "До 5 картинок: страницы методички, обложки уроков. Покупатель увидит их на витрине и по кнопке «👀 Пример» в боте.",
   "product.uploading": "Загрузка: {name}",
+  "product.uploadedOf": "{sent} из {total} МБ",
+  "product.uploadBroken": "Загрузка прервалась — проверьте интернет и выберите файл ещё раз.",
+  "product.categorySearch": "Поиск раздела",
+  "product.categoryNone": "Ничего не нашлось",
   "product.addPhoto": "+ Добавить фото",
   "product.firstIsCover": "Первое фото — обложка.",
   "product.card.files": "Файлы материала",
@@ -194,6 +198,10 @@ export const kk: SectionDict<typeof ru> = {
   "product.previewHint":
     "5 суретке дейін: әдістеме беттері, сабақ мұқабалары. Сатып алушы оларды витринада және боттағы «👀 Үлгі» батырмасы арқылы көреді.",
   "product.uploading": "Жүктелуде: {name}",
+  "product.uploadedOf": "{sent} / {total} МБ",
+  "product.uploadBroken": "Жүктеу үзілді — интернетті тексеріп, файлды қайта таңдаңыз.",
+  "product.categorySearch": "Бөлімді іздеу",
+  "product.categoryNone": "Ештеңе табылмады",
   "product.addPhoto": "+ Фото қосу",
   "product.firstIsCover": "Бірінші фото — мұқаба.",
   "product.card.files": "Материал файлдары",
@@ -332,6 +340,11 @@ export const en: SectionDict<typeof ru> = {
   "product.previewHint":
     "Up to 5 images: workbook pages, lesson covers. Customers see them on the storefront and via the “👀 Preview” button in the bot.",
   "product.uploading": "Uploading: {name}",
+  "product.uploadedOf": "{sent} of {total} MB",
+  "product.uploadBroken":
+    "The upload was interrupted — check your connection and choose the file again.",
+  "product.categorySearch": "Search sections",
+  "product.categoryNone": "Nothing found",
   "product.addPhoto": "+ Add photo",
   "product.firstIsCover": "The first photo is the cover.",
   "product.card.files": "Material files",
@@ -469,6 +482,10 @@ export const uz: SectionDict<typeof ru> = {
   "product.previewHint":
     "5 tagacha rasm: qoʻllanma sahifalari, dars muqovalari. Xaridor ularni vitrinada va botdagi «👀 Namuna» tugmasi orqali koʻradi.",
   "product.uploading": "Yuklanmoqda: {name}",
+  "product.uploadedOf": "{sent} / {total} MB",
+  "product.uploadBroken": "Yuklash uzildi — internetni tekshirib, faylni qayta tanlang.",
+  "product.categorySearch": "Boʻlimni qidirish",
+  "product.categoryNone": "Hech narsa topilmadi",
   "product.addPhoto": "+ Foto qo‘shish",
   "product.firstIsCover": "Birinchi foto — muqova.",
   "product.card.files": "Material fayllari",

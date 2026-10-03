@@ -19,6 +19,7 @@ import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
 import { editableMaterials, MATERIAL_LANGUAGES } from "@/core/catalog/materials";
 import { isCourseProduct } from "@/core/courses/marker";
+import { categoryPaths, type CategoryOption } from "@/app/admin/category-paths";
 import { localeNames, type Locale } from "@/core/i18n/locale";
 
 export const Route = createFileRoute("/admin/_authed/products_/$id")({
@@ -34,9 +35,100 @@ async function upload(
   kind: "image" | "file",
   file: File,
   t: AdminT,
+  onProgress?: (sent: number, total: number) => void,
 ): Promise<{ key: string; name: string }> {
-  const key = await uploadFile(kind, file, t, (status) => t("product.uploadFailed", { status }));
+  const key = await uploadFile(
+    kind,
+    file,
+    t,
+    (status) => (status === 0 ? t("product.uploadBroken") : t("product.uploadFailed", { status })),
+    onProgress,
+  );
   return { key, name: file.name };
+}
+
+type Progress = { name: string; sent: number; total: number };
+
+const mb = (n: number) => (n / 1048576).toFixed(1);
+
+/** Ход загрузки: имя, процент и мегабайты — видно, идёт ли файл или встал. */
+function UploadProgress({ p, t }: { p: Progress; t: AdminT }) {
+  const pct = p.total > 0 ? Math.min(100, Math.round((p.sent / p.total) * 100)) : 0;
+  return (
+    <div className="mt-3 space-y-1" role="status" aria-live="polite">
+      <div className="flex justify-between gap-2 text-xs text-muted">
+        <span className="min-w-0 truncate">{t("product.uploading", { name: p.name })}</span>
+        <span className="shrink-0">
+          {pct}% · {t("product.uploadedOf", { sent: mb(p.sent), total: mb(p.total) })}
+        </span>
+      </div>
+      <div className="h-2 overflow-hidden rounded bg-line">
+        <div className="h-full bg-accent transition-[width]" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Разделы товара: поиск и полный путь. Скрытые поиском галочки остаются в
+ * форме (display: none), отмеченное не теряется.
+ */
+function CategoryPicker({
+  categories,
+  selected,
+  t,
+}: {
+  categories: CategoryOption[];
+  selected: string[];
+  t: AdminT;
+}) {
+  const [q, setQ] = useState("");
+  const paths = categoryPaths(categories);
+  const sorted = [...categories].sort((a, b) =>
+    (paths.get(a.id) ?? "").localeCompare(paths.get(b.id) ?? ""),
+  );
+  const needle = q.trim().toLowerCase();
+  const shown = (id: string) => !needle || (paths.get(id) ?? "").toLowerCase().includes(needle);
+  const visible = sorted.filter((c) => shown(c.id)).length;
+  if (categories.length === 0)
+    return <span className="text-sm text-muted">{t("product.noCategories")}</span>;
+  return (
+    <div className="space-y-2">
+      {categories.length > 8 && (
+        <input
+          className="input"
+          type="search"
+          placeholder={t("product.categorySearch")}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      )}
+      <div className="grid max-h-72 gap-1 overflow-y-auto sm:grid-cols-2">
+        {sorted.map((c) => (
+          <label
+            key={c.id}
+            className={`flex items-center gap-2 text-sm ${shown(c.id) ? "" : "hidden"}`}
+          >
+            <input
+              type="checkbox"
+              name="categoryIds"
+              value={c.id}
+              defaultChecked={selected.includes(c.id)}
+            />
+            <span>
+              {c.parent_id && (
+                <span className="text-muted">
+                  {(paths.get(c.id) ?? "").split(" › ").slice(0, -1).join(" › ")} ›{" "}
+                </span>
+              )}
+              {c.name}
+            </span>
+          </label>
+        ))}
+        {visible === 0 && <span className="text-sm text-muted">{t("product.categoryNone")}</span>}
+      </div>
+    </div>
+  );
 }
 
 function ProductEditor() {
@@ -68,7 +160,7 @@ function ProductEditor() {
   const [isCourse, setIsCourse] = useState<boolean>(
     p ? isCourseProduct(p) : shop.modules.courses && shop.vertical === "courses",
   );
-  const [uploading, setUploading] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<Progress | null>(null);
   const [uploadError, setUploadError] = useState<unknown>(null);
 
   const save = useAction(async (f: FormData) => {
@@ -119,9 +211,11 @@ function ProductEditor() {
     if (!files?.length) return;
     setUploadError(null);
     for (const file of Array.from(files)) {
-      setUploading(file.name);
+      setUploading({ name: file.name, sent: 0, total: file.size });
       try {
-        const r = await upload(kind, file, t);
+        const r = await upload(kind, file, t, (sent, total) =>
+          setUploading({ name: file.name, sent, total }),
+        );
         if (kind === "image") setImages((x) => [...x, { key: r.key }]);
         else
           setMaterials((x) => [
@@ -206,25 +300,11 @@ function ProductEditor() {
                 <input className="input" name="keywords" defaultValue={p?.keywords ?? ""} />
               </Field>
               <Field label={t("product.categories")}>
-                <div className="grid gap-1 sm:grid-cols-2">
-                  {categories.length === 0 && (
-                    <span className="text-sm text-muted">{t("product.noCategories")}</span>
-                  )}
-                  {categories.map((c) => (
-                    <label key={c.id} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        name="categoryIds"
-                        value={c.id}
-                        defaultChecked={
-                          Array.isArray(p?.category_ids) &&
-                          (p!.category_ids as string[]).includes(c.id)
-                        }
-                      />
-                      {c.name}
-                    </label>
-                  ))}
-                </div>
+                <CategoryPicker
+                  categories={categories}
+                  selected={Array.isArray(p?.category_ids) ? (p.category_ids as string[]) : []}
+                  t={t}
+                />
               </Field>
             </div>
           </Card>
@@ -442,7 +522,7 @@ function ProductEditor() {
               ))}
             </div>
             <label className="btn-secondary mt-3 w-full cursor-pointer">
-              {uploading ? t("product.uploading", { name: uploading }) : t("product.addPhoto")}
+              {uploading ? t("product.uploading", { name: uploading.name }) : t("product.addPhoto")}
               <input
                 type="file"
                 accept="image/*"
@@ -451,6 +531,7 @@ function ProductEditor() {
                 onChange={(e) => void onUpload("image", e.target.files)}
               />
             </label>
+            {uploading && <UploadProgress p={uploading} t={t} />}
             <p className="mt-1 text-xs text-muted">{t("product.firstIsCover")}</p>
           </Card>
 
@@ -529,6 +610,7 @@ function ProductEditor() {
                   </label>
                 ))}
               </div>
+              {uploading && <UploadProgress p={uploading} t={t} />}
               <p className="mt-2 text-xs text-muted">{t("product.filesHint")}</p>
             </Card>
           )}
