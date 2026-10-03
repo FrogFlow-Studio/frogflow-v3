@@ -69,7 +69,7 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
 });
 
 function ProductPage() {
-  const { product: p, related, preview, course } = Route.useLoaderData();
+  const { product: p, related, preview, course, waitlistUrl } = Route.useLoaderData();
   const { slug } = Route.useParams();
   const { locale, t } = useStorefrontLocale();
   const cart = useCart();
@@ -246,7 +246,19 @@ function ProductPage() {
                 {t("product.addToCart")}
               </button>
             ) : (
-              <span className="badge">{t("product.outOfStock")}</span>
+              <>
+                <span className="badge">{t("product.outOfStock")}</span>
+                {waitlistUrl && (
+                  <a
+                    href={waitlistUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-secondary px-4 py-2"
+                  >
+                    {t("product.notify")}
+                  </a>
+                )}
+              </>
             )}
             {msg && <span className="text-sm text-muted">{msg}</span>}
           </div>

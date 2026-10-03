@@ -90,7 +90,16 @@ export const storeProductFn = createServerFn({ method: "GET" })
             signedFileUrl(path, 3600, name ?? undefined),
           )
         : null;
-    return { product, related, preview, course };
+    // «Сообщить о поступлении»: ссылка в бота, только у товара без остатка (core/waitlist/link).
+    const { waitlistLink } = await import("@/core/waitlist/link");
+    const waitlistUrl = course
+      ? null
+      : waitlistLink(
+          ctx.tenant.settings.telegram?.username,
+          product,
+          Boolean(ctx.tenant.modules.waitlist),
+        );
+    return { product, related, preview, course, waitlistUrl };
   });
 
 const items = z

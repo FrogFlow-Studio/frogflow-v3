@@ -111,6 +111,7 @@ import { legacyLangItem, parseLegacyLang, parseSearchMore, searchPage } from "./
 import { findValidGift, findValidPromoCode } from "@/core/discounts/discounts";
 import { normalizeCode } from "@/core/discounts/pure";
 import { claimHandoff, HANDOFF_PREFIX } from "@/core/storefront/handoff";
+import { parseWaitlistPayload, shouldJoinWaitlist } from "@/core/waitlist/link";
 import { robokassaFor, robokassaReceipt } from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
 import {
@@ -647,6 +648,19 @@ async function startFlow(b: Bot, payload = "") {
     if (r === "ok" || r === "claimed") return showCart(b);
     await send(b, b.m.cartEmpty);
     return;
+  }
+  // Ссылка «Сообщить о поступлении» с сайта: товар без остатка — в лист ожидания, иначе карточка.
+  const waitId = b.ctx.tenant.modules.waitlist ? parseWaitlistPayload(payload) : null;
+  if (waitId) {
+    if (!b.customer.state.locale)
+      await applyLocale(b, b.ctx.tenant.settings.default_locale ?? "ru");
+    const p = await getProduct(b.ctx, waitId);
+    if (p && shouldJoinWaitlist(b.ctx.tenant.modules.stock, p)) {
+      const { joinWaitlist } = await import("@/core/waitlist/waitlist");
+      b.customer = await joinWaitlist(b.ctx, b.customer, p.id);
+      return void (await send(b, b.m.waitlistJoined));
+    }
+    if (p) return sendProductCard(b, p);
   }
   if (payload.startsWith("p_")) {
     if (!b.customer.state.locale)

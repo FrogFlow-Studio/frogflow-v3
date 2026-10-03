@@ -15,6 +15,7 @@ import { seedStorefront } from "./seed/storefront.ts";
 import { seedVip } from "./seed/vip.ts";
 import { seedSchool } from "./seed/school.ts";
 import { seedLeads } from "./seed/leads.ts";
+import { seedShop4Waitlist } from "./seed/shop4-waitlist.ts";
 import { seedShop4Filters } from "./seed/shop4-filters.ts";
 
 export function seedDb(): StubDb {
@@ -31,6 +32,7 @@ export function seedDb(): StubDb {
   seedCommentToDm(db, now);
   seedSchool(db, now);
   seedLeads(db, now);
+  seedShop4Waitlist(db, now);
   seedShop4Filters(db);
   return db;
 }
