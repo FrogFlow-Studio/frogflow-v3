@@ -236,4 +236,23 @@ describe("обход подписок: два крона одновременн�
     expect((await sweepSubscriptions(NOW, failing, BOT, invoicer))[0]!.action).toBe("failed");
     expect((await sweep())[0]!.action).toBe("warned");
   });
+
+  it("пробный период: общее предупреждение не шлёт (напоминает отдельный обход), счёт выставляет", async () => {
+    setup(day(2), { billing: { trial_until: day(2).slice(0, 10) } });
+    let invoiced = 0;
+    const [r] = await sweepSubscriptions(NOW, notify, BOT, async () => {
+      invoiced++;
+      return { amount: 9900, delivered: true };
+    });
+    expect(r).toMatchObject({ state: "expiring", action: "skipped" });
+    expect(sent).toEqual([]);
+    expect(invoiced).toBe(1);
+  });
+
+  it("после пробного периода предупреждает как обычно", async () => {
+    setup(day(-1), { billing: { trial_until: day(-1).slice(0, 10) } });
+    const [r] = await sweep();
+    expect(r).toMatchObject({ state: "overdue", action: "warned" });
+    expect(sent).toHaveLength(1);
+  });
 });

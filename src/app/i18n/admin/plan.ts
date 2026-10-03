@@ -7,6 +7,16 @@ export const ru = {
   "plan.perMonth": "{price} ₸ в месяц",
   "plan.perYear": "оплата за год: 12 месяцев по цене 10",
   "plan.trial": "Пробный период до {date}",
+  "trial.banner": "Пробный период до {date}, осталось дней: {n}.",
+  "trial.bannerLast": "Пробный период заканчивается сегодня ({date}).",
+  "trial.after.warn":
+    "После него платформа присылает счёт на ваш тариф; бот продолжит работать, а мы будем напоминать об оплате.",
+  "trial.after.suspend":
+    "После него платформа присылает счёт на ваш тариф; если не оплатить, бот будет приостановлен после отсрочки в {grace} дн.",
+  "trial.choose": "Выбрать тариф",
+  "trial.remind.d3": "Ваш пробный период заканчивается {date}, осталось дней: {n}.",
+  "trial.remind.last": "Сегодня последний день пробного периода ({date}).",
+  "trial.remind.where": "Выбрать тариф и оплатить можно в админке, раздел «Модули».",
   "plan.usage": "ИИ в этом месяце",
   "plan.dialogs": "Диалоги консультанта",
   "plan.receipts": "Проверки чеков",
@@ -36,6 +46,17 @@ export const kk: SectionDict<typeof ru> = {
   "plan.perMonth": "айына {price} ₸",
   "plan.perYear": "жылдық төлем: 10 айдың бағасымен 12 ай",
   "plan.trial": "Сынақ кезеңі {date} дейін",
+  "trial.banner": "Сынақ кезеңі {date} дейін, қалған күн: {n}.",
+  "trial.bannerLast": "Сынақ кезеңі бүгін аяқталады ({date}).",
+  "trial.after.warn":
+    "Содан кейін платформа тарифіңізге шот жібереді; бот жұмысын жалғастырады, біз төлем туралы еске салып тұрамыз.",
+  "trial.after.suspend":
+    "Содан кейін платформа тарифіңізге шот жібереді; төленбесе, {grace} күн кешіктіруден кейін бот тоқтатылады.",
+  "trial.choose": "Тарифті таңдау",
+  "trial.remind.d3": "Сынақ кезеңіңіз {date} аяқталады, қалған күн: {n}.",
+  "trial.remind.last": "Бүгін сынақ кезеңінің соңғы күні ({date}).",
+  "trial.remind.where":
+    "Тарифті таңдап, төлеуді әкімшілік панелінің «Модульдер» бөлімінде жасауға болады.",
   "plan.usage": "Осы айдағы ЖИ",
   "plan.dialogs": "Кеңесші диалогтары",
   "plan.receipts": "Чек тексерулері",
@@ -65,6 +86,16 @@ export const en: SectionDict<typeof ru> = {
   "plan.perMonth": "{price} ₸ per month",
   "plan.perYear": "billed yearly: 12 months for the price of 10",
   "plan.trial": "Trial until {date}",
+  "trial.banner": "Trial until {date}, days left: {n}.",
+  "trial.bannerLast": "The trial ends today ({date}).",
+  "trial.after.warn":
+    "After it the platform sends an invoice for your plan; the bot keeps working and we will remind you to pay.",
+  "trial.after.suspend":
+    "After it the platform sends an invoice for your plan; if it is not paid, the bot is suspended after a {grace}-day grace period.",
+  "trial.choose": "Choose a plan",
+  "trial.remind.d3": "Your trial ends on {date}, days left: {n}.",
+  "trial.remind.last": "Today is the last day of your trial ({date}).",
+  "trial.remind.where": "You can choose a plan and pay in the admin panel, the “Modules” section.",
   "plan.usage": "AI this month",
   "plan.dialogs": "Consultant dialogs",
   "plan.receipts": "Receipt checks",
@@ -94,6 +125,16 @@ export const uz: SectionDict<typeof ru> = {
   "plan.perMonth": "oyiga {price} ₸",
   "plan.perYear": "yillik toʻlov: 12 oy 10 oy narxida",
   "plan.trial": "Sinov muddati {date} gacha",
+  "trial.banner": "Sinov davri {date} gacha, qolgan kunlar: {n}.",
+  "trial.bannerLast": "Sinov davri bugun tugaydi ({date}).",
+  "trial.after.warn":
+    "Undan keyin platforma tarifingiz uchun hisob yuboradi; bot ishlashda davom etadi, biz to‘lovni eslatib turamiz.",
+  "trial.after.suspend":
+    "Undan keyin platforma tarifingiz uchun hisob yuboradi; to‘lanmasa, {grace} kunlik muhlatdan so‘ng bot to‘xtatiladi.",
+  "trial.choose": "Tarifni tanlash",
+  "trial.remind.d3": "Sinov davringiz {date} da tugaydi, qolgan kunlar: {n}.",
+  "trial.remind.last": "Bugun sinov davrining oxirgi kuni ({date}).",
+  "trial.remind.where": "Tarifni tanlash va to‘lash admin panelining «Modullar» bo‘limida mumkin.",
   "plan.usage": "Shu oydagi SI",
   "plan.dialogs": "Maslahatchi dialoglari",
   "plan.receipts": "Chek tekshiruvlari",

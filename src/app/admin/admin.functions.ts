@@ -193,6 +193,28 @@ export const adminLogout = createServerFn({ method: "POST" }).handler(async () =
   return { ok: true };
 });
 
+/** Плашка пробного периода. Сбой чтения срока не должен выкидывать продавца из админки — без плашки. */
+async function trialBanner(ctx: import("@/core/tenant/resolve.server").TenantContext) {
+  try {
+    const { todayInTz } = await import("@/core/fulfillment/pure");
+    const today = todayInTz(ctx.timezone);
+    const until = ctx.tenant.settings.billing?.trial_until;
+    if (!until || until < today) return null;
+    const { subscriptionExpiresAt } = await import("@/app/operator/billing.server");
+    const { trialState, afterTrial } = await import("@/core/plans/trial");
+    const { readPolicy } = await import("@/core/billing/subscription");
+    const state = trialState(
+      ctx.tenant.settings.billing,
+      await subscriptionExpiresAt(ctx.tenant.id),
+      today,
+    );
+    return state ? { ...state, after: afterTrial(readPolicy(ctx.tenant.settings)) } : null;
+  } catch (e) {
+    console.warn(`[admin] плашка пробного периода ${ctx.tenant.id}:`, e);
+    return null;
+  }
+}
+
 export const adminShopFn = createServerFn({ method: "GET" }).handler(async () => {
   const { appSession } = await import("@/app/auth/session.server");
   const s = await appSession();
@@ -229,6 +251,8 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       /** Консультант по прайсу (BOVI) — пункт «Прайс консультанта» в меню. */
       pricelist: (await import("@/core/consultant/pricelist/mode")).pricelistMode(ctx.tenant),
       status: ctx.tenant.status,
+      /** Пробный период на виду: до какого дня, сколько осталось и что будет после (плашка в шапке). */
+      trial: accountant ? null : await trialBanner(ctx),
       /** Владелец попросил удалить магазин: когда удалится (ISO) — баннер «Восстановить». */
       deletionAt: ctx.tenant.settings.deletion
         ? (await import("@/core/tenant/deletion"))

@@ -15,6 +15,7 @@ import { serverFailure } from "@/lib/server-failure";
 import { reportError } from "@/lib/errors";
 import { shownError } from "@/lib/shown-error";
 import { inChunks } from "@/lib/in-chunks";
+import { trialState } from "@/core/plans/trial";
 
 /**
  * Подписка клиента на платформу: платежи (subscription_payments — срок
@@ -793,6 +794,19 @@ export async function sweepSubscriptions(
           `[operator] auto invoice for ${t.id} failed: ${e instanceof Error ? e.message : e}`,
         );
       }
+    }
+    // Пробный период: общее «заканчивается подписка» не шлём — продавцу уже идут
+    // свои два напоминания (trial-remind.server.ts), счёт выше выставлен как обычно.
+    if (
+      sub.state === "expiring" &&
+      trialState(t.settings.billing, expires.get(t.id) ?? null, dayKey)
+    ) {
+      results.push({
+        ...base,
+        action: "skipped",
+        detail: "пробный период: напоминает отдельный обход",
+      });
+      continue;
     }
     const n = await notify(t.id, warnText(sub.daysLeft, policy.on_overdue === "suspend"));
     if (!n.ok) {

@@ -10,6 +10,7 @@ import {
 import { ADMIN_LOCALE_LABELS, adminT } from "@/app/i18n/admin";
 import { Badge, NavLink, Shell, ThemeToggle } from "@/app/ui";
 import { DeletionBanner } from "@/app/admin/deletion-ui";
+import { TrialBanner } from "@/app/admin/trial-banner";
 import { CommandPalette } from "@/app/admin/command-palette";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
@@ -209,6 +210,7 @@ function Layout() {
           owner={shop.role === "owner"}
         />
       )}
+      {shop.trial && <TrialBanner locale={shop.locale} trial={shop.trial} owner={owner} />}
       <Outlet />
       <CommandPalette locale={shop.locale} />
     </Shell>

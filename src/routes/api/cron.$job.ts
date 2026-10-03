@@ -298,6 +298,13 @@ export const Route = createFileRoute("/api/cron/$job")({
               // Подписки клиентов на платформу: предупредить, приостановить по политике.
               const { sweepSubscriptions } = await import("@/app/operator/billing.server");
               results.subscriptions = await sweepSubscriptions();
+              // Пробный период: одно напоминание за 3 дня и одно в последний день.
+              try {
+                const { remindTrials } = await import("@/app/operator/trial-remind.server");
+                results.trials = await remindTrials(tenants);
+              } catch (e) {
+                results.trials = await tenantFailure("trial", e);
+              }
               // Раз в сутки — каталоги из Google Таблиц (отдельный крон не заводим:
               // функция на Vercel одна). Не скачалась или закрыта — каталог не
               // трогаем, продавцу одно сообщение.
