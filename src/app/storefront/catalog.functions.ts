@@ -18,6 +18,9 @@ export const storeCatalogPageFn = createServerFn({ method: "GET" })
         category: z.string().uuid().optional(),
         sort: z.enum(CATALOG_SORTS).optional(),
         lang: z.string().max(5).optional(),
+        stock: z.boolean().optional(),
+        min: z.number().min(0).max(1_000_000_000).optional(),
+        max: z.number().min(0).max(1_000_000_000).optional(),
         offset: z.number().int().min(0).max(10_000).optional(),
       })
       .parse(d),
@@ -34,6 +37,9 @@ export const storeCatalogPageFn = createServerFn({ method: "GET" })
       categoryId: data.category ?? null,
       sort: data.sort,
       lang: data.lang,
+      inStock: data.stock,
+      minPrice: data.min,
+      maxPrice: data.max,
       offset: data.offset,
     });
   });

@@ -20,6 +20,7 @@ import { getSettings } from "@/core/settings/settings";
 import { eachPage } from "@/core/db/page";
 import type { Locale } from "@/core/i18n/locale";
 import { languageChips } from "./lang-filter";
+import { priceRange } from "./filters";
 import { listedOnStorefront } from "./sitemap";
 import { STORE_PAGE } from "./paging";
 import {
@@ -81,6 +82,8 @@ export type StoreInfo = {
   miniApp: boolean;
   /** Чипы языков материала над каталогом (модуль multi_language). */
   langFilter: boolean;
+  /** Модуль «Склад»: на главной есть фильтр «в наличии». */
+  stockFilter: boolean;
   /** Короткий текст «О продавце» для шапки витрины. */
   tagline: string | null;
   categories: Array<{ id: string; name: string; parent_id: string | null }>;
@@ -119,6 +122,7 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
     accent: /^#[0-9a-f]{6}$/i.test(s.storefront_accent ?? "") ? s.storefront_accent! : null,
     miniApp: Boolean(ctx.tenant.modules.telegram_mini_app && ctx.tenant.modules.shop),
     langFilter: Boolean(ctx.tenant.modules.multi_language),
+    stockFilter: Boolean(ctx.tenant.modules.stock),
     tagline: s.shop_tagline?.trim()
       ? s.shop_tagline.trim().slice(0, 160)
       : s.legal_about
@@ -142,6 +146,11 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
   };
 }
 
+/** Товар можно купить: остаток не нулевой (или не ведётся, или модуль «Склад» выключен). */
+function isInStock(ctx: TenantContext, p: Pick<Product, "stock_quantity">): boolean {
+  return !(ctx.tenant.modules.stock && p.stock_quantity != null && p.stock_quantity <= 0);
+}
+
 async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProduct> {
   const variants = sortedVariants(p);
   const priced = variants.length
@@ -149,7 +158,6 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
     : [];
   const base = await resolvePrice(ctx, p, null);
   const min = priced.length ? priced.reduce((a, b) => (b.m.amount < a.m.amount ? b : a)) : null;
-  const stockOn = ctx.tenant.modules.stock;
   // Цена выше уже со скидкой акции (resolvePrice); прежняя — без неё.
   const offer = await offerForProduct(ctx, p.id);
   const oldOf = async (v: (typeof variants)[number] | null) =>
@@ -175,7 +183,7 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
     })),
     categoryIds: Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [],
     kind: p.fulfillment_kind === "physical" ? "physical" : "digital",
-    inStock: !(stockOn && p.stock_quantity != null && p.stock_quantity <= 0),
+    inStock: isInStock(ctx, p),
     leadTimeDays: shownLeadDays(p),
     rating: p.rating_count ? { avg: Number(p.rating_avg ?? 0), count: p.rating_count } : null,
     languages: productLanguages(ctx, p),
@@ -196,8 +204,16 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
  * Активные товары в порядке выбранной сортировки; в конце — id, чтобы
  * равные товары не менялись местами и страницы не перекрывались.
  */
-function catalogQuery(ctx: TenantContext, sort: CatalogSort, search: string | null) {
+function catalogQuery(
+  ctx: TenantContext,
+  sort: CatalogSort,
+  search: string | null,
+  price: { min: number | null; max: number | null } = { min: null, max: null },
+) {
   let q = ctx.db.from("products").select(PRODUCT_SELECT).eq("is_active", true);
+  // Цена от–до — в запросе: страницы считаются уже по отфильтрованному каталогу.
+  if (price.min !== null) q = q.gte("price", price.min);
+  if (price.max !== null) q = q.lte("price", price.max);
   if (sort === "popular")
     q = q
       .order("rating_count", { ascending: false, nullsFirst: false })
@@ -238,6 +254,11 @@ export async function storeCatalogPage(
     categoryId?: string | null;
     sort?: CatalogSort;
     lang?: string | null;
+    /** Только товары, которые можно купить сейчас (фильтр «в наличии»). */
+    inStock?: boolean;
+    /** Цена от и до включительно, в валюте магазина; null — граница не задана. */
+    minPrice?: number | null;
+    maxPrice?: number | null;
     offset?: number;
     limit?: number;
   } = {},
@@ -255,14 +276,16 @@ export async function storeCatalogPage(
   const wanted = opts.categoryId ? categorySubtree(cats, opts.categoryId, visible) : null;
   const multiLang = Boolean(ctx.tenant.modules.multi_language);
   const need = offset + limit + 1;
+  const price = priceRange(opts.minPrice, opts.maxPrice);
   const listed: Array<{ p: Product; langs: string[] }> = [];
   await eachPage<Product>(
-    (a, b) => catalogQuery(ctx, sort, search).range(a, b),
+    (a, b) => catalogQuery(ctx, sort, search, price).range(a, b),
     "store catalog",
     (rows) => {
       for (const p of rows) {
         const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
         if (wanted && !ids.some((id) => wanted.has(id))) continue;
+        if (opts.inStock && !isInStock(ctx, p)) continue;
         if (!listedOnStorefront(p, known, visible)) continue;
         listed.push({ p, langs: productLanguages(ctx, p) });
         if (!multiLang && listed.length >= need) return false;

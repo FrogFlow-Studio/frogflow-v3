@@ -30,6 +30,10 @@ export const Route = createFileRoute("/s/$slug/")({
     sort: z.enum(CATALOG_SORTS).optional().catch(undefined),
     // Страница каталога: «Показать ещё» — настоящая ссылка, без JS открывает следующую.
     page: z.number().int().min(2).max(200).optional().catch(undefined),
+    // Фильтры: «в наличии» и цена от–до (core/storefront/filters), в запросе к базе.
+    stock: z.literal(1).optional().catch(undefined),
+    min: z.number().min(0).max(1_000_000_000).optional().catch(undefined),
+    max: z.number().min(0).max(1_000_000_000).optional().catch(undefined),
   }),
   // Язык тоже на сервере: фильтр до деления на страницы, чипы — по всему каталогу.
   loaderDeps: ({ search }) => ({
@@ -38,6 +42,9 @@ export const Route = createFileRoute("/s/$slug/")({
     sort: search.sort,
     lang: search.lang,
     page: search.page,
+    stock: search.stock,
+    min: search.min,
+    max: search.max,
   }),
   loader: ({ params, deps }) =>
     storeCatalogPageFn({
@@ -47,6 +54,9 @@ export const Route = createFileRoute("/s/$slug/")({
         category: deps.category,
         sort: deps.sort,
         lang: deps.lang,
+        stock: deps.stock === 1 ? true : undefined,
+        min: deps.min,
+        max: deps.max,
         offset: ((deps.page ?? 1) - 1) * STORE_PAGE,
       },
     }),
@@ -109,7 +119,17 @@ function CatalogPage() {
   const [added, setAdded] = useState<string | null>(null);
   // Догруженные «Показать ещё» страницы — для текущих поиска, категории и
   // сортировки; сменились они — начинаем с первой страницы из загрузчика.
-  const pageKey = JSON.stringify([slug, s.q, s.category, s.sort, s.lang, s.page]);
+  const pageKey = JSON.stringify([
+    slug,
+    s.q,
+    s.category,
+    s.sort,
+    s.lang,
+    s.page,
+    s.stock,
+    s.min,
+    s.max,
+  ]);
   const firstPage = s.page ?? 1;
   const [more, setMore] = useState<{
     key: string;
@@ -132,6 +152,9 @@ function CatalogPage() {
           category: s.category,
           sort: s.sort,
           lang: s.lang,
+          stock: s.stock === 1 ? true : undefined,
+          min: s.min,
+          max: s.max,
           offset: (firstPage - 1) * STORE_PAGE + catalog.length,
         },
       });
@@ -163,6 +186,7 @@ function CatalogPage() {
   const langs = shop.langFilter ? first.languages : [];
   const lang = s.lang && langs.includes(s.lang as never) ? s.lang : null;
   const products = catalog;
+  const filtered = s.stock === 1 || s.min !== undefined || s.max !== undefined;
   const sort = parseCatalogSort(s.sort);
   const digitalOnly = products.length > 0 && products.every((p) => p.kind === "digital");
 
@@ -205,7 +229,7 @@ function CatalogPage() {
           <Link
             to="/s/$slug"
             params={{ slug }}
-            search={{ q: s.q, lang: s.lang, sort: s.sort }}
+            search={{ q: s.q, lang: s.lang, sort: s.sort, stock: s.stock, min: s.min, max: s.max }}
             className={`badge shrink-0 px-3 py-1.5 ${!s.category ? "border-accent bg-accent/10 text-accent" : ""}`}
           >
             {t("catalog.all")}
@@ -215,7 +239,15 @@ function CatalogPage() {
               key={c.id}
               to="/s/$slug"
               params={{ slug }}
-              search={{ q: s.q, category: c.id, lang: s.lang, sort: s.sort }}
+              search={{
+                q: s.q,
+                category: c.id,
+                lang: s.lang,
+                sort: s.sort,
+                stock: s.stock,
+                min: s.min,
+                max: s.max,
+              }}
               className={`badge shrink-0 px-3 py-1.5 ${active === c.id ? "border-accent bg-accent/10 text-accent" : ""}`}
             >
               {c.name}
@@ -229,7 +261,15 @@ function CatalogPage() {
           <Link
             to="/s/$slug"
             params={{ slug }}
-            search={{ q: s.q, category: subParent, lang: s.lang, sort: s.sort }}
+            search={{
+              q: s.q,
+              category: subParent,
+              lang: s.lang,
+              sort: s.sort,
+              stock: s.stock,
+              min: s.min,
+              max: s.max,
+            }}
             className={`badge shrink-0 px-3 py-1 ${s.category === subParent ? "border-accent bg-accent/10 text-accent" : ""}`}
           >
             {t("catalog.all")}
@@ -239,7 +279,15 @@ function CatalogPage() {
               key={c.id}
               to="/s/$slug"
               params={{ slug }}
-              search={{ q: s.q, category: c.id, lang: s.lang, sort: s.sort }}
+              search={{
+                q: s.q,
+                category: c.id,
+                lang: s.lang,
+                sort: s.sort,
+                stock: s.stock,
+                min: s.min,
+                max: s.max,
+              }}
               className={`badge shrink-0 px-3 py-1 ${path.includes(c.id) ? "border-accent bg-accent/10 text-accent" : ""}`}
             >
               {c.name}
@@ -272,6 +320,67 @@ function CatalogPage() {
         </div>
       )}
 
+      <form
+        className="-mt-3 mb-6 flex flex-wrap items-center gap-2 text-sm"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const f = new FormData(e.currentTarget);
+          const num = (name: string) => {
+            const v = String(f.get(name) ?? "")
+              .trim()
+              .replace(",", ".");
+            return v !== "" && Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : undefined;
+          };
+          void navigate({
+            to: "/s/$slug",
+            params: { slug },
+            search: {
+              ...s,
+              stock: f.get("stock") === "on" ? 1 : undefined,
+              min: num("min"),
+              max: num("max"),
+              page: undefined,
+            },
+          });
+        }}
+      >
+        {shop.stockFilter && (
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" name="stock" defaultChecked={s.stock === 1} />
+            {t("catalog.filter.stock")}
+          </label>
+        )}
+        <label className="flex items-center gap-1.5">
+          {t("catalog.filter.priceFrom")}
+          <input
+            className="input w-24 py-1"
+            name="min"
+            inputMode="decimal"
+            defaultValue={s.min ?? ""}
+          />
+        </label>
+        <label className="flex items-center gap-1.5">
+          {t("catalog.filter.priceTo")}
+          <input
+            className="input w-24 py-1"
+            name="max"
+            inputMode="decimal"
+            defaultValue={s.max ?? ""}
+          />
+        </label>
+        <button className="btn-secondary shrink-0 px-3 py-1">{t("catalog.filter.apply")}</button>
+        {filtered && (
+          <Link
+            to="/s/$slug"
+            params={{ slug }}
+            search={{ ...s, stock: undefined, min: undefined, max: undefined, page: undefined }}
+            className="text-accent hover:underline"
+          >
+            {t("catalog.filter.reset")}
+          </Link>
+        )}
+      </form>
+
       {catalog.length > 1 && (
         <div className="-mt-3 mb-6 flex gap-2 overflow-x-auto pb-1 text-sm">
           {CATALOG_SORTS.map((k) => (
@@ -293,10 +402,10 @@ function CatalogPage() {
         <div className="rounded-lg border border-dashed border-line px-4 py-16 text-center">
           <div className="text-3xl">🛍</div>
           <p className="mt-3 font-medium">
-            {s.q ? t("catalog.nothingFound") : t("catalog.filling")}
+            {s.q || filtered ? t("catalog.nothingFound") : t("catalog.filling")}
           </p>
           <p className="mt-1 text-sm text-muted">
-            {s.q ? t("catalog.tryAnother") : t("catalog.comeLater")}
+            {s.q || filtered ? t("catalog.tryAnother") : t("catalog.comeLater")}
           </p>
           {s.q && (
             <Link to="/s/$slug" params={{ slug }} className="btn-secondary mt-4">
