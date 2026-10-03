@@ -30,15 +30,11 @@ const ALLOWED: Record<string, string[]> = {
     "последнее событие по каналам: свежие 300 записей хватает для «когда было последнее»",
     `${SHOWN} (события клиента)`,
     `${SHOWN} (события платформы)`,
-    `${SHOWN} (очередь заявок на модули — их единицы)`,
     `${SHOWN} (рассылки оператора)`,
   ],
   "src/channels/zernio/dispatch.server.ts": [
     `${BATCH} (зависшие «повтор» → заново)`,
     `${BATCH} (необработанные вебхуки)`,
-  ],
-  "src/channels/zernio/message-failed.server.ts": [
-    `${SHOWN} (последние доставленные заказы покупателя)`,
   ],
   "src/channels/zernio/automations.server.ts": [`${SHOWN} (отправки по правилам)`],
   "src/channels/zernio/posts.server.ts": [`${SHOWN} (последние публикации)`],
@@ -64,7 +60,6 @@ const ALLOWED: Record<string, string[]> = {
   "src/core/orders/balance.ts": ["счёт попыток: достаточно RK_ATTEMPTS, дальше всё равно отказ"],
   "src/core/orders/orders.ts": [`${SHOWN} (последние заказы покупателя)`],
   "src/core/orders/events.ts": [`${SHOWN} (история одного заказа — десятки записей)`],
-  "src/core/vip/vip.ts": [`${SHOWN} (подписки в админке, есть фильтр)`],
   "src/core/pipeline/board.ts": [
     `${SHOWN} (открытые заказы на доске)`,
     `${SHOWN} (закрытые за окно на доске)`,
