@@ -31,6 +31,7 @@ const TWICE: Record<string, Evidence> = {
   webOrders: { test: ["src/core/orders/reject-points.test.ts"] },
   webReminders: { test: ["src/core/storefront/web-remind.test.ts"] },
   chatPayReminders: { test: ["src/core/orders/pay-remind.test.ts"] },
+  saleEnding: { test: ["src/core/offers/announce.test.ts"] },
   // vip
   vip: { test: ["src/core/vip/cron-twice.test.ts"] },
   // comment-dm-fallback

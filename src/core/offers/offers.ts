@@ -22,6 +22,9 @@ export type LimitedOffer = {
    */
   new_price?: number;
   percent: number;
+  /** Продавец позвал покупателей (core/offers/announce): рассылка и время; по ним кроны шлют напоминание. */
+  broadcast_id?: string;
+  announced_at?: string;
   starts_at: string;
   ends_at: string;
   /** Сколько штук по акции; null — без лимита. */

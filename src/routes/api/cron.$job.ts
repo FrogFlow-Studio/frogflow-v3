@@ -136,6 +136,8 @@ export const Route = createFileRoute("/api/cron/$job")({
                   similar: await jobs.runSimilarFor(t),
                   funnel: await jobs.runFunnelFor(t),
                   birthdays: await jobs.runBirthdaysFor(t),
+                  // Акция кончается завтра — тем, кого звали на неё рассылкой.
+                  saleEnding: await jobs.runSaleReminders(t),
                   subscriptions: await jobs.runSubscriptionsFor(t),
                   courses: await jobs.runCourseLessons(t),
                   // Неоплаченные сутки заказы с сайта — отмена и возврат остатка.

@@ -139,6 +139,14 @@ export const ru = {
   "err.admin.offerCategory": "Выберите категорию.",
   "err.admin.offerProduct": "Выберите товар.",
   "err.admin.offersFull": "Слишком много акций: удалите прошедшие, прежде чем добавлять новые.",
+  "err.admin.offerAnnounceModule":
+    "Рассылка недоступна: нужен модуль «Рассылки» и подключённый Telegram-бот.",
+  "err.admin.offerGone": "Акция не найдена.",
+  "err.admin.offerAnnounceEnded": "Акция уже закончилась.",
+  "err.admin.offerAnnounced":
+    "Покупателей уже звали на эту акцию — повторная рассылка не отправляется.",
+  "err.admin.offerAnnounceBusy": "Уже идёт другая рассылка — дождитесь её и нажмите снова.",
+  "err.admin.offerAnnounceNone": "Некому писать: в боте нет покупателей.",
   "err.admin.winbackOrder": "Второе сообщение должно идти позже первого.",
   "err.admin.winbackPromo":
     "Промокод {code} не найден или не действует — заведите его в «Скидках».",
@@ -314,6 +322,13 @@ export const kk: SectionDict<typeof ru> = {
   "err.admin.offerCategory": "Санатты таңдаңыз.",
   "err.admin.offerProduct": "Тауарды таңдаңыз.",
   "err.admin.offersFull": "Акция тым көп: жаңасын қосар алдында өткендерін жойыңыз.",
+  "err.admin.offerAnnounceModule":
+    "Жіберу қолжетімсіз: «Тарату» модулі мен қосылған Telegram-бот керек.",
+  "err.admin.offerGone": "Акция табылмады.",
+  "err.admin.offerAnnounceEnded": "Акция аяқталып қойған.",
+  "err.admin.offerAnnounced": "Сатып алушылар бұл акцияға шақырылған — қайта жіберілмейді.",
+  "err.admin.offerAnnounceBusy": "Басқа тарату жүріп жатыр — аяқталуын күтіп, қайта басыңыз.",
+  "err.admin.offerAnnounceNone": "Жазатын адам жоқ: ботта сатып алушылар жоқ.",
   "err.admin.winbackOrder": "Екінші хабарлама біріншісінен кейін жіберілуі керек.",
   "err.admin.winbackPromo":
     "{code} промокоды табылмады немесе жарамсыз — оны «Жеңілдіктер» бөлімінде жасаңыз.",
@@ -490,6 +505,14 @@ export const en: SectionDict<typeof ru> = {
   "err.admin.offerCategory": "Choose a category.",
   "err.admin.offerProduct": "Choose a product.",
   "err.admin.offersFull": "Too many offers: delete past ones before adding new ones.",
+  "err.admin.offerAnnounceModule":
+    "Sending is unavailable: the Broadcasts module and a connected Telegram bot are required.",
+  "err.admin.offerGone": "Offer not found.",
+  "err.admin.offerAnnounceEnded": "The offer has already ended.",
+  "err.admin.offerAnnounced":
+    "Buyers were already invited to this offer — it will not be sent again.",
+  "err.admin.offerAnnounceBusy": "Another broadcast is running — wait for it and press again.",
+  "err.admin.offerAnnounceNone": "Nobody to write to: the bot has no buyers.",
   "err.admin.winbackOrder": "The second message must be sent later than the first.",
   "err.admin.winbackPromo":
     "Promo code {code} was not found or is not active — create it in “Discounts”.",
@@ -667,6 +690,13 @@ export const uz: SectionDict<typeof ru> = {
   "err.admin.offerProduct": "Mahsulotni tanlang.",
   "err.admin.offersFull":
     "Aksiyalar juda ko‘p: yangisini qo‘shishdan oldin o‘tganlarini o‘chiring.",
+  "err.admin.offerAnnounceModule":
+    "Yuborish mavjud emas: «Xabarnomalar» moduli va ulangan Telegram-bot kerak.",
+  "err.admin.offerGone": "Aksiya topilmadi.",
+  "err.admin.offerAnnounceEnded": "Aksiya allaqachon tugagan.",
+  "err.admin.offerAnnounced": "Xaridorlar bu aksiyaga allaqachon chaqirilgan — qayta yuborilmaydi.",
+  "err.admin.offerAnnounceBusy": "Boshqa xabar yuborilmoqda — tugashini kutib, qayta bosing.",
+  "err.admin.offerAnnounceNone": "Yozadigan odam yo‘q: botda xaridorlar yo‘q.",
   "err.admin.winbackOrder": "Ikkinchi xabar birinchisidan keyin yuborilishi kerak.",
   "err.admin.winbackPromo":
     "{code} promokodi topilmadi yoki amal qilmaydi — uni «Chegirmalar» boʻlimida yarating.",

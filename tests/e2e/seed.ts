@@ -18,6 +18,7 @@ import { seedLeads } from "./seed/leads.ts";
 import { seedShop4Waitlist } from "./seed/shop4-waitlist.ts";
 import { seedShop4Filters } from "./seed/shop4-filters.ts";
 import { seedShop4Chat } from "./seed/shop4-chat.ts";
+import { seedShop4Sale } from "./seed/shop4-sale.ts";
 
 export function seedDb(): StubDb {
   const db = stubDb();
@@ -36,5 +37,6 @@ export function seedDb(): StubDb {
   seedShop4Waitlist(db, now);
   seedShop4Chat(db, now);
   seedShop4Filters(db, now);
+  seedShop4Sale(db, now);
   return db;
 }

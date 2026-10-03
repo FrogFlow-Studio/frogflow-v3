@@ -54,6 +54,14 @@ export const endOfferFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const announceOfferFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: z.string().min(1).max(40) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { announceOffer } = await import("@/core/offers/announce");
+    return announceOffer(ctx, data.id);
+  });
+
 export const deleteOfferFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: z.string().min(1).max(40) }).parse(d))
   .handler(async ({ data }) => {

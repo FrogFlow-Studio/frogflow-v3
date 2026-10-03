@@ -105,6 +105,10 @@ export const ru = {
   "discounts.offers.planned": "ожидает",
   "discounts.offers.end": "Закончить сейчас",
   "discounts.offers.endConfirm": "Закончить акцию сейчас? Цены вернутся к обычным.",
+  "discounts.offers.announce": "Позвать покупателей",
+  "discounts.offers.announced": "звали",
+  "discounts.offers.announceConfirm":
+    "Отправить покупателям в Telegram сообщение об акции? За день до конца придёт одно напоминание тем, кому оно дошло.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -207,6 +211,10 @@ export const kk: SectionDict<typeof ru> = {
   "discounts.offers.planned": "күтуде",
   "discounts.offers.end": "Қазір аяқтау",
   "discounts.offers.endConfirm": "Акцияны қазір аяқтау керек пе? Бағалар әдеттегідей болады.",
+  "discounts.offers.announce": "Сатып алушыларды шақыру",
+  "discounts.offers.announced": "шақырылды",
+  "discounts.offers.announceConfirm":
+    "Сатып алушыларға Telegram-да акция туралы хабарлама жіберілсін бе? Аяқталуына бір күн қалғанда хабарлама жеткендерге бір еске салу келеді.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -309,6 +317,10 @@ export const en: SectionDict<typeof ru> = {
   "discounts.offers.planned": "scheduled",
   "discounts.offers.end": "End now",
   "discounts.offers.endConfirm": "End the sale now? Prices go back to normal.",
+  "discounts.offers.announce": "Invite buyers",
+  "discounts.offers.announced": "invited",
+  "discounts.offers.announceConfirm":
+    "Send buyers a Telegram message about the sale? One day before it ends, those who got it receive a single reminder.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -411,4 +423,8 @@ export const uz: SectionDict<typeof ru> = {
   "discounts.offers.planned": "kutilmoqda",
   "discounts.offers.end": "Hozir tugatish",
   "discounts.offers.endConfirm": "Aksiyani hozir tugatamizmi? Narxlar odatdagiga qaytadi.",
+  "discounts.offers.announce": "Xaridorlarni chaqirish",
+  "discounts.offers.announced": "chaqirilgan",
+  "discounts.offers.announceConfirm":
+    "Xaridorlarga Telegram’da aksiya haqida xabar yuborilsinmi? Tugashiga bir kun qolganda xabar yetib borganlarga bitta eslatma keladi.",
 };

@@ -84,6 +84,7 @@ vi.mock("@/channels/telegram/jobs", () => ({
   runSimilarFor: hit("similar"),
   runFunnelFor: hit("funnel"),
   runBirthdaysFor: hit("birthdays"),
+  runSaleReminders: hit("saleEnding"),
   runSubscriptionsFor: hit("subscriptions"),
   runCourseLessons: hit("courses"),
 }));
@@ -147,6 +148,7 @@ const JOBS: Record<string, string[]> = {
     "similar",
     "funnel",
     "courses",
+    "saleEnding",
     "webOrders",
     "webReminders",
     "chatPayReminders",

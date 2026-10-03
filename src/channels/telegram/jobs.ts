@@ -286,6 +286,34 @@ export async function runFunnelFor(tenant: Tenant) {
   });
 }
 
+/**
+ * «Акция кончается завтра» (core/offers/remind): тем, кому ушло сообщение
+ * «Позвать покупателей», — одно напоминание на языке покупателя с кнопкой в
+ * каталог и отпиской. Недоставленное не повторяется.
+ */
+export async function runSaleReminders(tenant: Tenant) {
+  if (!tenant.modules.limited_offers) return { skipped: "module off" };
+  if (!tenant.telegramTokenEnc) return { skipped: "no telegram" };
+  const ctx = tenantContext(tenant);
+  const tg = api(ctx);
+  const { runOfferReminders } = await import("@/core/offers/remind");
+  return runOfferReminders(ctx, async ({ telegramId, locale, text }) => {
+    const m = COPY[locale] ?? COPY.ru;
+    const r = await tg.call("sendMessage", {
+      chat_id: telegramId,
+      text: escapeHtml(text),
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: m.catalog, callback_data: "cat:root" }],
+          [{ text: m.unsubscribeBtn, callback_data: "unsub" }],
+        ],
+      },
+    });
+    return r.ok;
+  });
+}
+
 /** Поздравления с днём рождения (core/funnel/birthday) — в канал покупателя. */
 export async function runBirthdaysFor(tenant: Tenant) {
   if (!tenant.modules.funnel) return { skipped: "module off" };

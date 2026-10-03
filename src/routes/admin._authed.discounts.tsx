@@ -2,7 +2,13 @@ import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-rou
 import { ProductPicker, type PickerProduct } from "@/app/admin/product-picker";
 import { useEffect, useState } from "react";
 import { loyaltyTiersFn, saveLoyaltyTiersFn } from "@/app/admin/loyalty.functions";
-import { deleteOfferFn, endOfferFn, offersFn, saveOfferFn } from "@/app/admin/offers.functions";
+import {
+  announceOfferFn,
+  deleteOfferFn,
+  endOfferFn,
+  offersFn,
+  saveOfferFn,
+} from "@/app/admin/offers.functions";
 import {
   cancelGiftCertificateFn,
   createGiftCertificateFn,
@@ -627,6 +633,11 @@ function OffersCard() {
     await deleteOfferFn({ data: { id } });
     await reload();
   });
+  const announce = useAction(async (id: string) => {
+    if (!confirm(t("discounts.offers.announceConfirm"))) return;
+    await announceOfferFn({ data: { id } });
+    await reload();
+  });
   const end = useAction(async (id: string) => {
     if (!confirm(t("discounts.offers.endConfirm"))) return;
     await endOfferFn({ data: { id } });
@@ -777,7 +788,7 @@ function OffersCard() {
       <p className="mt-2 text-xs text-muted">
         {t("discounts.offers.tz")} {tz}
       </p>
-      <ErrorBox error={add.error ?? del.error ?? end.error} />
+      <ErrorBox error={add.error ?? del.error ?? end.error ?? announce.error} />
       {data && data.offers.length === 0 && (
         <p className="mt-3 text-sm text-muted">{t("discounts.offers.empty")}</p>
       )}
@@ -828,6 +839,16 @@ function OffersCard() {
                     <button className="btn-ghost text-xs" onClick={() => edit(o)}>
                       {t("common.edit")}
                     </button>
+                    {(running || planned) && shop.modules.broadcasts && !o.announced_at && (
+                      <button
+                        className="btn-ghost text-xs"
+                        disabled={announce.busy}
+                        onClick={() => void announce.run(o.id).catch(() => {})}
+                      >
+                        {t("discounts.offers.announce")}
+                      </button>
+                    )}
+                    {o.announced_at && <Badge>{t("discounts.offers.announced")}</Badge>}
                     {(running || planned) && (
                       <button
                         className="btn-ghost text-xs"
