@@ -133,6 +133,23 @@ export const revokeStudentChannelFn = createServerFn({ method: "POST" })
     return revokeStudentChannel(ctx, data.orderItemId);
   });
 
+/** Продлить ученику доступ вручную до конца дня, с причиной (менеджер и выше). */
+export const extendStudentAccessFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        orderItemId: z.string().uuid(),
+        day: z.string().regex(LOCAL_DAY_RE),
+        reason: z.string().max(300),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { extendStudentAccess } = await import("@/core/courses/extend.server");
+    return extendStudentAccess(ctx, data.orderItemId, data.day, data.reason);
+  });
+
 /** Перевести ученика в другой поток (менеджер и выше). */
 export const moveStudentCohortFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>

@@ -93,6 +93,16 @@ export const ru = {
   "product.studentRevokeConfirm":
     "Исключить ученика из закрытого канала курса? Новую ссылку по этой покупке он не получит.",
   "product.studentRevoked": "канал закрыт",
+  "product.studentExtend": "Продлить доступ",
+  "product.studentExtendUntil": "доступ до {date}",
+  "product.studentExtendDay": "Продлить до (включительно)",
+  "product.studentExtendReason": "Причина (обязательно)",
+  "product.studentExtendSave": "Продлить",
+  "product.studentExtendNotLater":
+    "Новая дата должна быть позже текущего срока и позже сегодняшнего дня.",
+  "product.studentExtendNoReason": "Укажите причину продления.",
+  "product.studentExtendFailed":
+    "Не удалось продлить: ученик не найден, у тарифа нет срока доступа или запись только что изменили — обновите список.",
   "product.studentMove": "Перевести в поток…",
   "product.studentMoveConfirm":
     "Перевести ученика в поток «{cohort}»? Расписание и срок доступа пойдут от нового потока, из чата прежнего потока ученик будет исключён. Пройденные уроки и задания сохранятся.",
@@ -252,6 +262,16 @@ export const kk: SectionDict<typeof ru> = {
   "product.studentRevokeConfirm":
     "Оқушыны курстың жабық арнасынан шығару керек пе? Осы сатып алу бойынша жаңа сілтеме алмайды.",
   "product.studentRevoked": "арна жабық",
+  "product.studentExtend": "Қолжетімділікті ұзарту",
+  "product.studentExtendUntil": "қолжетімділік {date} дейін",
+  "product.studentExtendDay": "Дейін ұзарту (қоса алғанда)",
+  "product.studentExtendReason": "Себебі (міндетті)",
+  "product.studentExtendSave": "Ұзарту",
+  "product.studentExtendNotLater":
+    "Жаңа күн қазіргі мерзімнен де, бүгінгі күннен де кеш болуы керек.",
+  "product.studentExtendNoReason": "Ұзарту себебін көрсетіңіз.",
+  "product.studentExtendFailed":
+    "Ұзарту мүмкін болмады: оқушы табылмады, тарифте қолжетімділік мерзімі жоқ немесе жазба жаңа ғана өзгерді — тізімді жаңартыңыз.",
   "product.studentMove": "Ағынға ауыстыру…",
   "product.studentMoveConfirm":
     "Оқушыны «{cohort}» ағынына ауыстыру керек пе? Кесте мен қолжетімділік мерзімі жаңа ағыннан есептеледі, оқушы бұрынғы ағын чатынан шығарылады. Өтілген сабақтар мен тапсырмалар сақталады.",
@@ -413,6 +433,16 @@ export const en: SectionDict<typeof ru> = {
   "product.studentRevokeConfirm":
     "Remove the student from the private course channel? They won’t get a new link for this purchase.",
   "product.studentRevoked": "channel closed",
+  "product.studentExtend": "Extend access",
+  "product.studentExtendUntil": "access until {date}",
+  "product.studentExtendDay": "Extend until (inclusive)",
+  "product.studentExtendReason": "Reason (required)",
+  "product.studentExtendSave": "Extend",
+  "product.studentExtendNotLater":
+    "The new date must be later than the current term and later than today.",
+  "product.studentExtendNoReason": "Enter a reason for the extension.",
+  "product.studentExtendFailed":
+    "Could not extend: the student was not found, the tariff has no access term, or the record was just changed — refresh the list.",
   "product.studentMove": "Move to cohort…",
   "product.studentMoveConfirm":
     "Move the student to cohort “{cohort}”? The schedule and access term will follow the new cohort, and the student will be removed from the previous cohort’s chat. Completed lessons and homework are kept.",
@@ -571,6 +601,16 @@ export const uz: SectionDict<typeof ru> = {
   "product.studentRevokeConfirm":
     "O‘quvchini kursning yopiq kanalidan chiqarasizmi? Bu xarid bo‘yicha yangi havola olmaydi.",
   "product.studentRevoked": "kanal yopilgan",
+  "product.studentExtend": "Kirishni uzaytirish",
+  "product.studentExtendUntil": "kirish {date} gacha",
+  "product.studentExtendDay": "Qachongacha uzaytirish (shu kun kiradi)",
+  "product.studentExtendReason": "Sabab (majburiy)",
+  "product.studentExtendSave": "Uzaytirish",
+  "product.studentExtendNotLater":
+    "Yangi sana joriy muddatdan ham, bugundan ham keyin bo‘lishi kerak.",
+  "product.studentExtendNoReason": "Uzaytirish sababini kiriting.",
+  "product.studentExtendFailed":
+    "Uzaytirib bo‘lmadi: o‘quvchi topilmadi, tarifda kirish muddati yo‘q yoki yozuv hozirgina o‘zgardi — ro‘yxatni yangilang.",
   "product.studentMove": "Oqimga o‘tkazish…",
   "product.studentMoveConfirm":
     "O‘quvchini «{cohort}» oqimiga o‘tkazasizmi? Jadval va kirish muddati yangi oqimdan hisoblanadi, o‘quvchi oldingi oqim chatidan chiqariladi. O‘tilgan darslar va topshiriqlar saqlanadi.",

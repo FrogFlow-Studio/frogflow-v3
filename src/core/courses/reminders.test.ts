@@ -133,6 +133,34 @@ describe("напоминания курса", () => {
     expect(r).toMatchObject({ accessEnded: 1 });
     expect(kicks).toEqual([555]);
   });
+
+  it("доступ продлён вручную — крон окончания срока никого не исключает", async () => {
+    const { ctx, db } = school();
+    const row = (db.tables.app_settings as Array<Record<string, string>>).find((r) =>
+      r.key?.startsWith("course_run_"),
+    )!;
+    row.value = JSON.stringify({ ...JSON.parse(row.value!), until: "2026-11-20T20:59:59.999Z" });
+    const kicks: number[] = [];
+    const access = {
+      createInvite: async () => null,
+      kick: async (_c: string, u: number) => (kicks.push(u), true),
+    };
+    const r = await courseReminders(
+      ctx,
+      async () => true,
+      access,
+      new Date("2026-11-15T08:00:00Z"),
+    );
+    expect(r).toMatchObject({ accessEnded: 0 });
+    expect(kicks).toEqual([]);
+    const later = await courseReminders(
+      ctx,
+      async () => true,
+      access,
+      new Date("2026-11-21T08:00:00Z"),
+    );
+    expect(later).toMatchObject({ accessEnded: 1 });
+  });
 });
 
 describe("сегмент рассылки «ученики курса»", () => {

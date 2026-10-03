@@ -159,8 +159,16 @@ export async function courseReminders(
     // Конец доступа по тарифу: закрытый канал — только пока доступ открыт.
     const chat = tl.cohort?.chat ?? null;
     if (tl.expired && (r.course.channel || chat) && access && !r.run.accessEnded) {
+      // Срок перечитываем из свежей записи: продавец мог продлить доступ, пока шёл прогон.
       const ok = await mark(r.itemId, (cur) =>
-        cur.accessEnded ? null : { ...cur, accessEnded: now.toISOString() },
+        cur.accessEnded ||
+        !courseTimeline(
+          { course: r.course, run: cur, boughtAt: r.order.created_at, variantId: r.variantId },
+          ctx.timezone,
+          now,
+        ).expired
+          ? null
+          : { ...cur, accessEnded: now.toISOString() },
       );
       if (ok) {
         if (r.course.channel)

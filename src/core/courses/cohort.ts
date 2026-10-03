@@ -111,7 +111,7 @@ export function tariffFor(course: Course, variantId: string | null | undefined):
 
 export type TimelineInput = {
   course: Course;
-  run: { startedAt: string; cohortId?: string } | null;
+  run: { startedAt: string; cohortId?: string; until?: string } | null;
   /** Когда куплено (создан заказ): по нему выбирается поток. */
   boughtAt: string;
   variantId: string | null;
@@ -145,9 +145,13 @@ export function courseTimeline(x: TimelineInput, tz: string, now = new Date()): 
     ? cohortStart(cohort, tz).toISOString()
     : (x.run?.startedAt ?? now.toISOString());
   const tariff = tariffFor(x.course, x.variantId);
-  const expiresAt = tariff.accessDays
-    ? new Date(Date.parse(start) + tariff.accessDays * 86_400_000).toISOString()
-    : null;
+  // Продление вручную (run.until) только удлиняет срок тарифа, не сокращает.
+  const byTariff = tariff.accessDays ? Date.parse(start) + tariff.accessDays * 86_400_000 : null;
+  const extended = x.run?.until ? Date.parse(x.run.until) : NaN;
+  const expiresAt =
+    byTariff == null
+      ? null
+      : new Date(Number.isFinite(extended) ? Math.max(byTariff, extended) : byTariff).toISOString();
   const expired = expiresAt != null && Date.parse(expiresAt) <= now.getTime();
   const access = lessonsAccess(x.course, start, now.getTime()).map((a) =>
     expired ? { ...a, open: false } : a,

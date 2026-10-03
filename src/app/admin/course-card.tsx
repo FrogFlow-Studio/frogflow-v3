@@ -3,6 +3,7 @@ import {
   channelStrangersFn,
   checkCourseChannelFn,
   kickChannelStrangerFn,
+  extendStudentAccessFn,
   moveStudentCohortFn,
   courseFn,
   courseVariantsFn,
@@ -639,6 +640,14 @@ function Students({
                 <span className="badge text-xs text-warn">{t("product.studentBehind")}</span>
               )}
               {s.expired && <span className="badge text-xs">{t("product.studentExpired")}</span>}
+              {s.accessLimited && s.expiresAt && !s.expired && (
+                <span className="text-xs text-muted">
+                  {t("product.studentExtendUntil", {
+                    date: new Date(s.expiresAt).toLocaleDateString(),
+                  })}
+                </span>
+              )}
+              {s.accessLimited && <ExtendAccess orderItemId={s.orderItemId} t={t} onDone={load} />}
               <span className="shrink-0 text-xs text-muted tabular-nums">
                 {s.startedAt
                   ? t("product.courseProgress", { done: s.done, total: data.total, open: s.open })
@@ -690,6 +699,72 @@ function Students({
       )}
       <ErrorBox error={revoke.error ?? move.error} />
     </div>
+  );
+}
+
+/** Продление доступа одному ученику: дата и обязательная причина. */
+function ExtendAccess({
+  orderItemId,
+  t,
+  onDone,
+}: {
+  orderItemId: string;
+  t: AdminT;
+  onDone: () => Promise<unknown>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [day, setDay] = useState("");
+  const [reason, setReason] = useState("");
+  const extend = useAction(async () => {
+    const r = await extendStudentAccessFn({ data: { orderItemId, day, reason } });
+    if (!r.ok) {
+      throw new Error(
+        r.reason === "notLater"
+          ? t("product.studentExtendNotLater")
+          : r.reason === "noReason"
+            ? t("product.studentExtendNoReason")
+            : t("product.studentExtendFailed"),
+      );
+    }
+    setOpen(false);
+    setDay("");
+    setReason("");
+    await onDone();
+  });
+  if (!open)
+    return (
+      <button type="button" className="btn-ghost text-xs" onClick={() => setOpen(true)}>
+        {t("product.studentExtend")}
+      </button>
+    );
+  return (
+    <span className="flex w-full flex-wrap items-center gap-2">
+      <label className="flex items-center gap-1 text-xs">
+        {t("product.studentExtendDay")}
+        <input
+          type="date"
+          className="input w-auto text-xs"
+          value={day}
+          onChange={(e) => setDay(e.target.value)}
+        />
+      </label>
+      <input
+        className="input min-w-0 flex-1 text-xs"
+        placeholder={t("product.studentExtendReason")}
+        maxLength={300}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+      />
+      <button
+        type="button"
+        className="btn-ghost text-xs"
+        disabled={extend.busy || !day || !reason.trim()}
+        onClick={() => void extend.run().catch(() => {})}
+      >
+        {t("product.studentExtendSave")}
+      </button>
+      <ErrorBox error={extend.error} />
+    </span>
   );
 }
 

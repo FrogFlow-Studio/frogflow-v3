@@ -31,6 +31,10 @@ export type CourseStudent = {
   /** Открыто на 2 урока больше, чем пройдено, или есть работы на доработке. */
   behind: boolean;
   expired: boolean;
+  /** Тариф со сроком доступа: можно продлить вручную. */
+  accessLimited: boolean;
+  /** Когда закончится доступ (ISO); null — бессрочно. */
+  expiresAt: string | null;
   /** Вступил в закрытый канал по личной ссылке. */
   inChannel: boolean;
   /** Доступ к каналу снят (возврат, конец срока, продавец). */
@@ -129,6 +133,8 @@ export async function courseStudents(
       homework: hw,
       behind: !tl.expired && (open - done >= 2 || hw.revise > 0),
       expired: tl.expired,
+      accessLimited: tl.tariff.accessDays != null,
+      expiresAt: tl.expiresAt,
       inChannel: Boolean(inv.member) && !inv.revoked,
       channelRevoked: Boolean(inv.revoked),
     };
