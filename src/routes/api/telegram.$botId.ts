@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { previewWebhookResponse } from "@/lib/preview";
 import { env } from "@/config/env";
 import { verifyTelegramWebhookHeader } from "@/channels/telegram/secret";
 import { runInBackground } from "@/lib/background";
@@ -12,6 +13,8 @@ export const Route = createFileRoute("/api/telegram/$botId")({
   server: {
     handlers: {
       POST: async ({ request, params }) => {
+        const preview = previewWebhookResponse();
+        if (preview) return preview;
         const botId = params.botId;
         if (!/^[0-9a-f-]{36}$/i.test(botId)) return new Response("not found", { status: 404 });
         if (

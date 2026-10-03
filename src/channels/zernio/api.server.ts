@@ -1,5 +1,6 @@
 import { env } from "@/config/env";
 import { beforeExternalEffect } from "@/lib/external-effects";
+import { PREVIEW_SEND_OFF, previewReadonly } from "@/lib/preview";
 import type { Json } from "@/core/db-types";
 import { readCapped } from "@/lib/read-capped";
 import { attachmentNeedsZernioKey, normalizeZernioBaseUrl, withReceivingAccount } from "./base-url";
@@ -42,7 +43,10 @@ async function request<T>(
   if (!apiKey) throw new Error("ZERNIO_API_KEY не задан");
   let url = `${normalizeZernioBaseUrl(env().ZERNIO_BASE_URL)}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
   if (options.query) url += `?${new URLSearchParams(options.query).toString()}`;
-  if ((options.method ?? "GET") !== "GET") await beforeExternalEffect();
+  if ((options.method ?? "GET") !== "GET") {
+    if (previewReadonly()) throw new ZernioApiError(PREVIEW_SEND_OFF, { status: null });
+    await beforeExternalEffect();
+  }
 
   let response: Response;
   try {

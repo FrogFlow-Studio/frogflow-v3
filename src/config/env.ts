@@ -141,6 +141,13 @@ const schema = z.object({
     .optional()
     .transform((v) => (v && /^[A-Za-z0-9]{8,64}$/.test(v.trim()) ? v.trim() : undefined)),
 
+  /**
+   * "1" — режим предпросмотра (src/lib/preview.ts): кроны и вебхуки отвечают
+   * 200 без работы, отправка в Telegram/Zernio/почту выключена. Для сборки,
+   * которую открывают на общей базе, не трогая клиентов.
+   */
+  PREVIEW_READONLY: z.string().default("0"),
+
   VERCEL_ENV: z.string().optional(),
   VERCEL_GIT_COMMIT_SHA: z.string().optional(),
   VERCEL_GIT_COMMIT_REF: z.string().optional(),

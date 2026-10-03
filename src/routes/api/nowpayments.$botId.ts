@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { previewWebhookResponse } from "@/lib/preview";
 
 /**
  * IPN NOWPayments (оплата криптой, core/payments/nowpayments): один адрес на
@@ -15,6 +16,8 @@ export const Route = createFileRoute("/api/nowpayments/$botId")({
 });
 
 async function handle(request: Request, botId: string): Promise<Response> {
+  const preview = previewWebhookResponse();
+  if (preview) return preview;
   if (!/^[0-9a-f-]{36}$/i.test(botId)) return new Response("not found", { status: 404 });
   const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
   const tenant = await resolveTenant({ by: "id", value: botId });

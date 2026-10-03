@@ -1,6 +1,7 @@
 import type { Locale } from "@/core/i18n/locale";
 import nodemailer from "nodemailer";
 import { beforeExternalEffect } from "@/lib/external-effects";
+import { PREVIEW_SEND_OFF, previewReadonly } from "@/lib/preview";
 import { env } from "@/config/env";
 import { maskEmailsIn } from "@/lib/log-mask";
 
@@ -35,6 +36,7 @@ export const smtpMailer: Mailer = async (mail) => {
       secure: port === 465,
       auth: { user: e.SMTP_USER, pass: e.SMTP_PASSWORD },
     });
+    if (previewReadonly()) return { ok: false, error: PREVIEW_SEND_OFF };
     await beforeExternalEffect();
     await transport.sendMail({ from: e.SMTP_FROM || e.SMTP_USER, ...mail });
     return { ok: true };

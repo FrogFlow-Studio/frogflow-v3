@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { previewWebhookResponse } from "@/lib/preview";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { env } from "@/config/env";
 
@@ -22,6 +23,8 @@ export const Route = createFileRoute("/api/zernio/webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const preview = previewWebhookResponse();
+        if (preview) return preview;
         const raw = await request.text();
         const secret = env().ZERNIO_WEBHOOK_SECRET?.trim();
         if (!secret) return new Response("webhook secret is not configured", { status: 503 });

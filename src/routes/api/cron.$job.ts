@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { previewWebhookResponse } from "@/lib/preview";
 import { env } from "@/config/env";
 import { isCronAuthorized } from "@/lib/cron-auth";
 import { reportError } from "@/lib/errors";
@@ -13,6 +14,8 @@ export const Route = createFileRoute("/api/cron/$job")({
       GET: async ({ request, params }) => {
         if (!isCronAuthorized(request, env().CRON_SECRET))
           return new Response("unauthorized", { status: 401 });
+        const preview = previewWebhookResponse();
+        if (preview) return preview;
         const { tenantDirectory } = await import("@/core/tenant/resolve.server");
         const tenants = (await tenantDirectory(true)).filter((t) => t.settings.served_by === "v2");
         const results: Record<string, unknown> = {};

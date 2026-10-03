@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { previewWebhookResponse } from "@/lib/preview";
 import { env } from "@/config/env";
 
 /**
@@ -11,6 +12,8 @@ export const Route = createFileRoute("/api/apipay/webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const preview = previewWebhookResponse();
+        if (preview) return preview;
         // Подпись — по байтам тела как пришли, без перекодирования в строку.
         const raw = Buffer.from(await request.arrayBuffer());
         const secret = env().APIPAY_WEBHOOK_SECRET?.trim();

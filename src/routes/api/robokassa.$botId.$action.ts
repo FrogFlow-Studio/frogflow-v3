@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { previewWebhookResponse } from "@/lib/preview";
 
 /**
  * Колбэки Robokassa: result (сервер → сервер, подпись pass2), success и
@@ -15,6 +16,8 @@ export const Route = createFileRoute("/api/robokassa/$botId/$action")({
 });
 
 async function handle(request: Request, botId: string, action: string): Promise<Response> {
+  const preview = action === "result" ? previewWebhookResponse() : null;
+  if (preview) return preview;
   if (!/^[0-9a-f-]{36}$/i.test(botId)) return new Response("not found", { status: 404 });
   const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
   const tenant = await resolveTenant({ by: "id", value: botId });

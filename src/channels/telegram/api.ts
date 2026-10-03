@@ -48,6 +48,7 @@ export type TelegramApi = {
 };
 
 import { beforeExternalEffect } from "@/lib/external-effects";
+import { PREVIEW_SEND_OFF, previewReadonly } from "@/lib/preview";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -57,7 +58,11 @@ export function telegramApi(token: string, apiBase = "https://api.telegram.org")
 
   async function call<T>(method: string, payload: unknown = {}): Promise<TgResult<T>> {
     // Чтение (getMe, getFile…) — не отправка.
-    if (!/^get/i.test(method)) await beforeExternalEffect();
+    if (!/^get/i.test(method)) {
+      // Без error_code: «неизвестно», как обрыв — ни повтора, ни другого способа отправки.
+      if (previewReadonly()) return { ok: false, description: PREVIEW_SEND_OFF };
+      await beforeExternalEffect();
+    }
     const MAX = 3;
     for (let attempt = 1; attempt <= MAX; attempt++) {
       let res: Response;
@@ -114,6 +119,7 @@ export async function telegramUpload(
   opts: TelegramUploadOptions = {},
 ): Promise<TgResult> {
   const url = `${apiBase.replace(/\/$/, "")}/bot${token}/${method}`;
+  if (previewReadonly()) return { ok: false, description: PREVIEW_SEND_OFF };
   await beforeExternalEffect();
   const MAX = opts.once ? 1 : 3;
   for (let attempt = 1; attempt <= MAX; attempt++) {
