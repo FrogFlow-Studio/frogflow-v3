@@ -93,6 +93,33 @@ beforeEach(() => {
   } as unknown as TenantContext;
 });
 
+describe("оформление на сайте: минимальная сумма заказа", () => {
+  it("корзина меньше минимума — понятный отказ с суммами, заказ не создан", async () => {
+    placeWebOrder.mockResolvedValueOnce({
+      ok: false,
+      reason: "below_min",
+      min: 2500,
+      shortfall: 1500,
+      currency: "KZT",
+    } as never);
+    const err = await webCheckoutFn({ data: input }).catch((e: Error) => e.message);
+    expect(err).toBe("Минимальная сумма заказа — 2500 ₸. Добавьте товаров ещё на 1500 ₸.");
+  });
+
+  it("то же на английском: язык магазина", async () => {
+    (ctx.tenant.settings as Record<string, unknown>).default_locale = "en";
+    placeWebOrder.mockResolvedValueOnce({
+      ok: false,
+      reason: "below_min",
+      min: 2500,
+      shortfall: 1500,
+      currency: "KZT",
+    } as never);
+    const err = await webCheckoutFn({ data: input }).catch((e: Error) => e.message);
+    expect(err).toBe("The minimum order is 2500 ₸. Add 1500 ₸ more to your cart.");
+  });
+});
+
 describe("оформление на сайте: заблокированный покупатель", () => {
   it("заказ не создаётся; отказ нейтральный", async () => {
     db.tables.blocked_users = [{ bot_id: BOT, telegram_id: -777 }];

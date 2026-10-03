@@ -1,4 +1,5 @@
 import type { Locale } from "@/core/i18n/locale";
+import { formatMoney } from "@/core/money/money";
 
 /**
  * Тексты бота на четырёх языках. Раскладка главного меню и подписи кнопок —
@@ -79,6 +80,8 @@ export type Msg = {
   promoCodeUsed: string;
   discountFx: string;
   mixedCurrency: string;
+  /** Корзина меньше минимальной суммы заказа магазина: минимум и сколько добрать. */
+  minOrderBelow: (min: string, shortfall: string) => string;
   promoCodeRemoved: string;
   discountLine: (amount: string) => string;
   usePointsBtn: string;
@@ -398,6 +401,8 @@ const ru: Msg = {
   discountFx:
     "⚠️ Скидку сейчас не пересчитать в валюту заказа: курс валют недоступен. Попробуйте чуть позже или оформите без скидки.",
   mixedCurrency: "В корзине товары в разных валютах — оформите их отдельными заказами.",
+  minOrderBelow: (min, short) =>
+    `⚠️ Минимальная сумма заказа — ${min}. Добавьте товаров ещё на ${short}.`,
   promoCodeRemoved: "Промокод убран.",
   discountLine: (a) => `🎟 Скидка по промокоду: −${a}\n`,
   pointsAsk: (n) => `🏆 У вас ${n} баллов. Списать их в счёт этого заказа?`,
@@ -698,6 +703,8 @@ const kk: Msg = {
     "⚠️ Жеңілдікті қазір тапсырыс валютасына аудару мүмкін емес: валюта бағамы қолжетімсіз. Сәл кейінірек көріңіз немесе жеңілдіксіз рәсімдеңіз.",
   mixedCurrency:
     "Себетте әртүрлі валютадағы тауарлар бар — оларды бөлек тапсырыстармен рәсімдеңіз.",
+  minOrderBelow: (min, short) =>
+    `⚠️ Тапсырыстың ең аз сомасы — ${min}. Тағы ${short} сомасына тауар қосыңыз.`,
   pointsAsk: (n) => `🏆 Сізде ${n} балл бар. Осы тапсырысқа жұмсаймыз ба?`,
   pointsYesBtn: "Иә, жұмсау",
   pointsNoBtn: "Жоқ, жинау",
@@ -880,6 +887,7 @@ const en: Msg = {
   discountFx:
     "⚠️ The discount can't be converted to the order currency right now: exchange rates are unavailable. Try again a bit later or order without the discount.",
   mixedCurrency: "Your cart has items in different currencies — please order them separately.",
+  minOrderBelow: (min, short) => `⚠️ The minimum order is ${min}. Add ${short} more to your cart.`,
   promoCodeRemoved: "Promo code removed.",
   discountLine: (a) => `🎟 Promo discount: −${a}\n`,
   pointsAsk: (n) => `🏆 You have ${n} points. Use them for this order?`,
@@ -1060,6 +1068,8 @@ const uz: Msg = {
   discountFx:
     "⚠️ Chegirmani hozir buyurtma valyutasiga o‘tkazib bo‘lmaydi: valyuta kursi mavjud emas. Birozdan keyin urinib ko‘ring yoki chegirmasiz rasmiylashtiring.",
   mixedCurrency: "Savatda turli valyutadagi tovarlar bor — ularni alohida buyurtma qiling.",
+  minOrderBelow: (min, short) =>
+    `⚠️ Buyurtmaning minimal summasi — ${min}. Savatga yana ${short} miqdorida mahsulot qoʻshing.`,
   giftRestIssued: (code, sum) =>
     `🎁 Sertifikat buyurtma summasidan ko‘p — qolgan ${sum} yangi kod bilan saqlandi:\n<code>${code}</code>\nUni keyingi buyurtmada kiriting.`,
   pointsAsk: (n) => `🏆 Sizda ${n} ball bor. Ushbu buyurtma uchun sarflaymizmi?`,
@@ -1076,6 +1086,17 @@ const uz: Msg = {
 };
 
 export const COPY: Record<Locale, Msg> = { ru, kk, en, uz };
+
+/** «Минимальная сумма заказа — …, добавьте ещё на …» — одним текстом для бота и Instagram/WhatsApp. */
+export function minOrderText(
+  m: Pick<Msg, "minOrderBelow">,
+  below: { min: number; shortfall: number; currency: string },
+): string {
+  return m.minOrderBelow(
+    formatMoney(below.min, below.currency),
+    formatMoney(below.shortfall, below.currency),
+  );
+}
 
 export type MenuAction =
   | "catalog"

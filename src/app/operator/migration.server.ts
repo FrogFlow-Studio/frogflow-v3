@@ -7,7 +7,12 @@
 import { env } from "@/config/env";
 import { serviceDb } from "@/core/db/client.server";
 import { MODULE_KEYS } from "@/core/modules/registry";
-import { requireTenant, tenantContext, tenantDirectory } from "@/core/tenant/resolve.server";
+import {
+  requireTenant,
+  tenantContext,
+  tenantDirectory,
+  type TenantContext,
+} from "@/core/tenant/resolve.server";
 import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
 import { decryptSecret, isEncryptedSecret } from "@/core/secrets/vault";
 import { launchCourses } from "@/app/admin/school-launch.server";
@@ -206,6 +211,7 @@ export async function preflight(botId: string): Promise<Preflight> {
         withoutChannel: cs.filter((c) => !c.channel).length,
       }))
     : undefined;
+  const minOrder = await minOrderInput(tenantContext(t));
   const zernioAccountIds = t.settings.zernio?.account_ids ?? [];
   const policy = readPolicy(t.settings);
   const vip = t.modules.vip ? await vipInput(t, mainBotId, chats) : null;
@@ -247,8 +253,17 @@ export async function preflight(botId: string): Promise<Preflight> {
     pricelist,
     ...(loyalty ? { loyalty } : {}),
     ...(school ? { school } : {}),
+    ...(minOrder ? { minOrder } : {}),
   });
   return withVipChecks(base, vip);
+}
+
+/** Минимальная сумма заказа магазина для проверки переезда; не задана — undefined. */
+async function minOrderInput(ctx: TenantContext) {
+  const { loadMinOrder } = await import("@/core/cart/min-order");
+  const { shopCurrency } = await import("@/core/discounts/discounts");
+  const amount = await loadMinOrder(ctx);
+  return amount > 0 ? { amount, currency: await shopCurrency(ctx) } : undefined;
 }
 
 /**

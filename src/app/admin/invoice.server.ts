@@ -121,7 +121,7 @@ async function placeInvoiceOrder(
     customer.state.country_code ?? (await listActivePaymentMethods(ctx))[0]?.country_code ?? null;
   if (!country)
     throw new UserError("err.invoice.noPayment", "Не настроены способы оплаты магазина.");
-  const r = await placeOrder(ctx, customer, country);
+  const r = await placeOrder(ctx, customer, country, { skipMinOrder: true });
   if (!r.ok)
     throw r.reason === "out_of_stock"
       ? invoiceError("out_of_stock")

@@ -293,3 +293,23 @@ describe("онлайн-школа в проверке переезда", () => {
     });
   });
 });
+
+describe("минимальная сумма заказа в проверке переезда", () => {
+  const check = (minOrder?: { amount: number; currency: string }) =>
+    evaluatePreflight({
+      ...base,
+      modulesOn: [...base.modulesOn],
+      ...(minOrder ? { minOrder } : {}),
+    }).checks.find((c) => c.key === "min_order");
+
+  it("не задана — пункта нет", () => {
+    expect(check()).toBeUndefined();
+  });
+
+  it("задана — подсказка с суммой и тем, что делает код, не блок", () => {
+    const c = check({ amount: 2500, currency: "KZT" });
+    expect(c).toMatchObject({ level: "info", title: "Задана минимальная сумма заказа" });
+    expect(c!.detail).toContain("2500 KZT");
+    expect(c!.detail).toContain("счёт ссылкой");
+  });
+});

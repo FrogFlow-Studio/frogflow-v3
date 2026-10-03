@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
+import { withBrokenReads } from "../../../tests/broken-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { attachPaymentProof, placeOrder, type FulfillmentInput } from "./orders";
@@ -273,5 +274,74 @@ describe("attachPaymentProof", () => {
     });
     expect(r).toEqual({ ok: false, reason: "closed" });
     expect(db.tables.orders[0]).toMatchObject({ status: "paid", payment_proof_path: null });
+  });
+});
+
+describe("placeOrder: минимальная сумма заказа", () => {
+  const minRow = (value: string) => ({ bot_id: BOT, key: "min_order_amount", value });
+
+  it("корзина меньше минимума — отказ с суммой, заказ не создан, остаток и корзина целы", async () => {
+    const { db, ctx, customer, stock, userState } = setup({
+      modules: { stock: true },
+      products: [product("p1", { stock_quantity: 5 })],
+      cart: [{ product: "p1" }],
+    });
+    db.tables.app_settings = [minRow("2500")];
+    expect(await placeOrder(ctx, customer, "KZ")).toEqual({
+      ok: false,
+      reason: "below_min",
+      min: 2500,
+      shortfall: 1500,
+      currency: "KZT",
+    });
+    expect(db.tables.orders ?? []).toHaveLength(0);
+    expect(db.tables.cart_items).toHaveLength(1);
+    expect(stock("p1")).toBe(5);
+    expect(userState().placing_order).toBeUndefined();
+  });
+
+  it("ровно минимум и выше — заказ оформляется; без настройки и при 0 — тоже", async () => {
+    for (const value of ["1000", "999", "0", null]) {
+      const { db, ctx, customer } = setup({
+        products: [product("p1")],
+        cart: [{ product: "p1" }],
+      });
+      db.tables.app_settings = value === null ? [] : [minRow(value)];
+      expect((await placeOrder(ctx, customer, "KZ")).ok).toBe(true);
+    }
+  });
+
+  it("бесплатный товар минимум не блокирует; счёт продавца (skipMinOrder) — тоже", async () => {
+    const free = setup({
+      products: [product("gift", { price: 0 })],
+      cart: [{ product: "gift" }],
+    });
+    free.db.tables.app_settings = [minRow("5000")];
+    expect((await placeOrder(free.ctx, free.customer, "KZ")).ok).toBe(true);
+    const invoice = setup({ products: [product("p1")], cart: [{ product: "p1" }] });
+    invoice.db.tables.app_settings = [minRow("5000")];
+    expect((await placeOrder(invoice.ctx, invoice.customer, "KZ", { skipMinOrder: true })).ok).toBe(
+      true,
+    );
+  });
+
+  it("минимум считается по сумме корзины, а не по одной позиции", async () => {
+    const { db, ctx, customer } = setup({
+      products: [product("a"), product("b")],
+      cart: [{ product: "a" }, { product: "b" }],
+    });
+    db.tables.app_settings = [minRow("2000")];
+    expect((await placeOrder(ctx, customer, "KZ")).ok).toBe(true);
+  });
+
+  it("ошибка чтения настройки — отказ, а не «минимума нет»", async () => {
+    const { db, ctx, customer } = setup({ products: [product("p1")], cart: [{ product: "p1" }] });
+    const broken = withBrokenReads(db, ["app_settings"]);
+    (ctx as unknown as { db: unknown }).db = {
+      from: broken.from,
+      rpc: (ctx.db as unknown as { rpc: unknown }).rpc,
+    };
+    await expect(placeOrder(ctx, customer, "KZ")).rejects.toThrow();
+    expect(db.tables.orders ?? []).toHaveLength(0);
   });
 });

@@ -69,6 +69,8 @@ export type PreflightInput = {
    * урока и у скольких не подключён закрытый канал.
    */
   school?: { courses: number; withoutLessons: number; withoutChannel: number };
+  /** Минимальная сумма заказа магазина (core/cart/min-order); не задана — поле не передаётся. */
+  minOrder?: { amount: number; currency: string };
 };
 
 export function evaluatePreflight(i: PreflightInput): Preflight {
@@ -302,6 +304,13 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
       level: "info",
       title: "У курсов нет закрытого канала",
       detail: `Курсов без канала: ${school.withoutChannel} из ${school.courses}. Ученики получат уроки только в боте; канал подключается в карточке курса (бот магазина — администратор с правом приглашать).`,
+    });
+  if (i.minOrder)
+    checks.push({
+      key: "min_order",
+      level: "info",
+      title: "Задана минимальная сумма заказа",
+      detail: `Минимум ${i.minOrder.amount} ${i.minOrder.currency}: бот, сайт и Instagram/WhatsApp в v2 не дадут оформить заказ меньше и подскажут, сколько добрать. v1 этой настройки не знает, поэтому проверьте, что она нужна продавцу и что цены товаров её не нарушают; счёт ссылкой, выставленный продавцом, минимум не проверяет.`,
     });
   if (i.appUrl)
     checks.push({

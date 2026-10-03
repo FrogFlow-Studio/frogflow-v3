@@ -59,8 +59,9 @@ import { buildPaymentUrl } from "@/core/payments/robokassa";
 import { formatRatingSummary } from "@/core/reviews/pure";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
 import { askDeliveryLangBeforeOrder, cartLanguageChoices } from "@/core/cart/languages";
+import { belowMinimum } from "@/core/cart/min-order";
 import { localeFlags as flags, SUPPORTED_LOCALES } from "@/core/i18n/locale";
-import { COPY, escapeHtml, normalizePhone, type Msg } from "@/channels/telegram/copy";
+import { COPY, escapeHtml, minOrderText, normalizePhone, type Msg } from "@/channels/telegram/copy";
 import {
   adminTelegramApi,
   notifyAdminsHtml,
@@ -1348,6 +1349,8 @@ async function showCart(s: Shop, force: boolean, prefix?: string) {
   if (sum.gift)
     text += plain(s.m.giftCertificateDiscountLine(formatMoney(sum.gift.discount, sum.currency)));
   text += plain(s.m.total(formatMoney(sum.total, sum.currency)));
+  const below = await belowMinimum(s.ctx, priced);
+  if (below) text += plain(`${minOrderText(s.m, below)}\n`);
   if (s.locale === "ru") text += "\n\nУбрать позицию: «убрать 1».";
   await reply(s, text, { force, buttons: [BTN.checkout(s.m), BTN.catalog(s.m), BTN.clear(s.m)] });
   if (s.ctx.tenant.modules.upsell) {
@@ -1731,6 +1734,8 @@ async function finishCheckout(s: Shop, countryCode: string) {
       }
       case "out_of_stock":
         return void (await reply(s, s.m.outOfStockAtCheckout));
+      case "below_min":
+        return void (await reply(s, minOrderText(s.m, result)));
       default:
         return void (await reply(s, s.m.orderCreateFailed));
     }

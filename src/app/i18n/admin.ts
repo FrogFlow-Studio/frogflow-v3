@@ -35,6 +35,7 @@ import * as igImport from "./admin/ig-import";
 import * as deletion from "./admin/deletion";
 import * as plan from "./admin/plan";
 import * as sheet from "./admin/sheet";
+import * as shop4MinOrder from "./admin/shop4-minorder";
 import * as similar from "./admin/similar";
 import * as schoolQuiz from "./admin/school-quiz";
 import * as errorsCore from "./admin/errors-core";
@@ -416,6 +417,7 @@ const ru = {
   ...deletion.ru,
   ...plan.ru,
   ...sheet.ru,
+  ...shop4MinOrder.ru,
   ...similar.ru,
   ...schoolQuiz.ru,
   ...errorsCore.ru,
@@ -1464,6 +1466,7 @@ const kk: Dict = {
   ...deletion.kk,
   ...plan.kk,
   ...sheet.kk,
+  ...shop4MinOrder.kk,
   ...similar.kk,
   ...schoolQuiz.kk,
   ...errorsCore.kk,
@@ -1503,6 +1506,7 @@ const en: Dict = {
   ...deletion.en,
   ...plan.en,
   ...sheet.en,
+  ...shop4MinOrder.en,
   ...similar.en,
   ...schoolQuiz.en,
   ...errorsCore.en,
@@ -1542,6 +1546,7 @@ const uz: Dict = {
   ...deletion.uz,
   ...plan.uz,
   ...sheet.uz,
+  ...shop4MinOrder.uz,
   ...similar.uz,
   ...schoolQuiz.uz,
   ...errorsCore.uz,

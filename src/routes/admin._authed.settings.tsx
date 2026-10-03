@@ -19,6 +19,7 @@ import { ApiKeyCard } from "@/app/admin/settings/api-key";
 import { PushCard } from "@/app/admin/settings/push";
 import { IceBreakersCard } from "@/app/admin/settings/ice-breakers";
 import { FulfillmentCard, ZonesCard } from "@/app/admin/settings/delivery";
+import { MinOrderCard } from "@/app/admin/settings/min-order";
 import { NotifyCard } from "@/app/admin/settings/notify";
 import {
   PaymentMethods,
@@ -318,6 +319,7 @@ function SettingsPage() {
         </Card>
         <PaymentMethods methods={methods} />
         <FulfillmentCard settings={settings} />
+        <MinOrderCard />
         <ZonesCard zones={zones} />
         <WatermarkCard enabled={pdfWatermark} />
         {shop.modules.robokassa && <RobokassaCard settings={settings} />}

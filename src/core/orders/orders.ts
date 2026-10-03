@@ -30,6 +30,7 @@ import {
   withDownloadName,
 } from "./pure";
 import { applyDiscounts, normalizeCode } from "@/core/discounts/pure";
+import { belowMinimum } from "@/core/cart/min-order";
 import {
   amountDueNow,
   decrementStock,
@@ -163,6 +164,14 @@ export type PlaceOrderResult =
         /** В корзине товары в разных валютах: сумму не сложить. */
         | "mixed_currency"
         | "out_of_stock";
+    }
+  | {
+      ok: false;
+      /** Корзина меньше минимальной суммы заказа магазина (core/cart/min-order). */
+      reason: "below_min";
+      min: number;
+      shortfall: number;
+      currency: string;
     };
 
 export type FulfillmentInput = {
@@ -180,6 +189,8 @@ export type PlaceOrderOptions = {
   fulfillment?: FulfillmentInput | null;
   /** Язык материалов, выбранный до оформления (multi_language, delivery_lang_timing = before). */
   deliveryLang?: DeliveryLangChoice | null;
+  /** Счёт, выставленный продавцом сам: минимальная сумма заказа его не касается. */
+  skipMinOrder?: boolean;
 };
 
 /** Скидки корзины для показа — без списания. */
@@ -266,7 +277,9 @@ export async function placeOrder(
   if (!(await claimOrderPlacement(ctx, customer))) return { ok: false, reason: "busy" };
   const redemptions: Redemptions = {};
   const reserved: Array<{ productId: string; qty: number }> = [];
-  const fail = async (reason: Extract<PlaceOrderResult, { ok: false }>["reason"]) => {
+  const fail = async (
+    reason: Exclude<Extract<PlaceOrderResult, { ok: false }>["reason"], "below_min">,
+  ) => {
     // Каждый шаг отката не мешает остальным; освобождение покупателя — всегда.
     try {
       for (const r of reserved) await restoreStock(ctx, r.productId, r.qty);
@@ -299,6 +312,14 @@ export async function placeOrder(
         : null;
     const priced = await priceCart(ctx, items, countryCode, { deliveryLang });
     if (priced.mixedCurrency) return await fail("mixed_currency");
+    // Минимум — до списания остатка и скидок: отказ ничего не трогает.
+    if (!opts.skipMinOrder) {
+      const below = await belowMinimum(ctx, priced);
+      if (below) {
+        await releaseOrderPlacement(ctx, customer);
+        return { ok: false, reason: "below_min", ...below };
+      }
+    }
 
     // Складской учёт — до создания заказа: не хватило, откатываем уже
     // списанное и убираем раскупленную строку из корзины.

@@ -29,6 +29,7 @@ import {
   categoryButtonLabel,
   escapeHtml,
   menuActionFor,
+  minOrderText,
   normalizePhone,
   type Msg,
 } from "./copy";
@@ -68,6 +69,7 @@ import {
   priceCart,
   removeCartItem,
 } from "@/core/cart/cart";
+import { belowMinimum } from "@/core/cart/min-order";
 import {
   attachPaymentProof,
   markProofVerified,
@@ -940,6 +942,8 @@ async function showCart(b: Bot) {
     text += b.m.giftCertificateDiscountLine(formatMoney(sum.gift.discount, sum.currency));
   if (sum.discountFx) text += `${b.m.discountFx}\n`;
   text += b.m.total(formatMoney(sum.total, sum.currency));
+  const below = await belowMinimum(b.ctx, priced);
+  if (below) text += `${minOrderText(b.m, below)}\n`;
   buttons.push([
     { text: b.m.checkoutBtn, callback_data: "checkout" },
     { text: b.m.clearBtn, callback_data: "clear" },
@@ -1270,6 +1274,8 @@ async function finishCheckout(b: Bot, countryCode: string) {
       }
       case "out_of_stock":
         return void (await send(b, b.m.outOfStockAtCheckout));
+      case "below_min":
+        return void (await send(b, minOrderText(b.m, result)));
       default:
         return void (await send(b, b.m.orderCreateFailed));
     }

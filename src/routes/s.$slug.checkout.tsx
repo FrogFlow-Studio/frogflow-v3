@@ -28,6 +28,16 @@ function CheckoutPage() {
   // закончился) берём новую, чтобы покупатель исправил поле и отправил снова.
   const [challenge, setChallenge] = useState(info.enabled ? info.challenge : "");
   const physical = cart.lines.some((l) => l.kind === "physical");
+  // Корзина в валюте магазина меньше минимума — подсказка и кнопка закрыта; в другой
+  // валюте (цена страны) сравнит сервер при оформлении.
+  const minOrder = info.enabled ? info.minOrder : null;
+  const shortfall =
+    minOrder &&
+    minOrder.currency === cart.currency &&
+    cart.total > 0 &&
+    cart.total < minOrder.amount
+      ? Math.ceil(minOrder.amount - cart.total)
+      : 0;
   // Порядок слов у языков разный («Я принимаю …» / «Мен … қабылдаймын»):
   // ссылки встают на место {docs}.
   const consentText = t("checkout.consent", { docs: "\u0000" }).split("\u0000");
@@ -265,7 +275,15 @@ function CheckoutPage() {
           className="hidden"
           aria-hidden="true"
         />
-        <button className="btn-primary w-full" disabled={busy}>
+        {shortfall > 0 && minOrder && (
+          <p className="rounded-md border border-warn/40 bg-warn/5 p-3 text-sm" role="status">
+            {t("checkout.error.belowMin", {
+              min: formatMoney(minOrder.amount, minOrder.currency),
+              short: formatMoney(shortfall, minOrder.currency),
+            })}
+          </p>
+        )}
+        <button className="btn-primary w-full" disabled={busy || shortfall > 0}>
           {busy ? t("checkout.checking") : t("checkout.submit")}
         </button>
         <ErrorBox error={error} />

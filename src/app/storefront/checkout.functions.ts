@@ -4,6 +4,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { shownError } from "@/lib/shown-error";
 import type { Locale } from "@/core/i18n/locale";
+import type { TenantContext } from "@/core/tenant/resolve.server";
+import { formatMoney } from "@/core/money/money";
 
 /**
  * Оформление заказа на витрине сайта, без мессенджера (модуль web_storefront
@@ -66,9 +68,19 @@ export const webCheckoutInfoFn = createServerFn({ method: "GET" })
         promo: Boolean(ctx.tenant.modules.coupons),
         gift: Boolean(ctx.tenant.modules.gift_certificates),
       },
+      /** Минимальная сумма заказа в валюте магазина; страница сверяет её с корзиной в той же валюте. */
+      minOrder: await minOrderInfo(ctx),
       challenge: issueChallenge(await secret(), Date.now(), "checkout"),
     };
   });
+
+async function minOrderInfo(ctx: TenantContext) {
+  const { loadMinOrder } = await import("@/core/cart/min-order");
+  const amount = await loadMinOrder(ctx);
+  if (amount === 0) return null;
+  const { shopCurrency } = await import("@/core/discounts/discounts");
+  return { amount, currency: await shopCurrency(ctx) };
+}
 
 const checkoutInput = z.object({
   slug,
@@ -211,6 +223,13 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
           throw shownError(t("checkout.error.discountFx"));
         case "mixed_currency":
           throw shownError(t("checkout.error.mixedCurrency"));
+        case "below_min":
+          throw shownError(
+            t("checkout.error.belowMin", {
+              min: formatMoney(r.min, r.currency),
+              short: formatMoney(r.shortfall, r.currency),
+            }),
+          );
         case "country_unavailable":
           throw shownError(t("checkout.error.country"));
         case "busy":
