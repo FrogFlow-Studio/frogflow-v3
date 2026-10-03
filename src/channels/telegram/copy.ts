@@ -233,6 +233,10 @@ export type Msg = {
   inviteFriendBtn: string;
   referralWelcome: (percent: number, code: string) => string;
   referralReward: (percent: number, code: string) => string;
+  /** Экран «Пригласить друга»: ссылка, счётчики и коды за друзей. */
+  inviteScreen: (link: string, came: number, bought: number, codes: string) => string;
+  inviteCodeUsed: string;
+  inviteShareBtn: string;
   cartReminder: string;
   openCartBtn: string;
   fulfillmentReminder: (no: string, date: string) => string;
@@ -316,6 +320,10 @@ const ru: Msg = {
     `🎁 Вам подарок за переход по приглашению — промокод на скидку ${p}% на первую покупку: <code>${c}</code>`,
   referralReward: (p, c) =>
     `🎉 Ваш приглашённый друг совершил первую покупку! Промокод на скидку ${p}% для вас: <code>${c}</code>`,
+  inviteScreen: (link, came, bought, codes) =>
+    `🎁 <b>Пригласить друга</b>\n\nВаша личная ссылка:\n${link}\n\nПришло друзей: <b>${came}</b>\nКупили: <b>${bought}</b>\n\nКогда друг сделает первую покупку, вы получите промокод.${codes ? `\n\nВаши коды за друзей:\n${codes}` : ""}`,
+  inviteCodeUsed: "использован",
+  inviteShareBtn: "🎁 Поделиться ссылкой",
   cartReminder:
     "🛒 Вы оставили товары в корзине — они всё ещё вас ждут! Оформить заказ можно в любой момент.",
   openCartBtn: "🛒 Открыть корзину",
@@ -642,6 +650,10 @@ const kk: Msg = {
     `🎁 Шақыру сілтемесі бойынша өткеніңіз үшін сыйлық — алғашқы сатып алуға ${p}% жеңілдік промокоды: <code>${c}</code>`,
   referralReward: (p, c) =>
     `🎉 Сіз шақырған дос алғашқы сатып алуын жасады! Сізге ${p}% жеңілдік промокоды: <code>${c}</code>`,
+  inviteScreen: (link, came, bought, codes) =>
+    `🎁 <b>Досты шақыру</b>\n\nСіздің жеке сілтемеңіз:\n${link}\n\nКелген достар: <b>${came}</b>\nСатып алғандар: <b>${bought}</b>\n\nДосыңыз алғашқы сатып алуды жасағанда, сіз промокод аласыз.${codes ? `\n\nДостарыңыз үшін кодтарыңыз:\n${codes}` : ""}`,
+  inviteCodeUsed: "қолданылған",
+  inviteShareBtn: "🎁 Сілтемені бөлісу",
   cartReminder:
     "🛒 Себетте тауарлар қалды — олар әлі де сізді күтуде! Тапсырысты кез келген уақытта рәсімдей аласыз.",
   openCartBtn: "🛒 Себетті ашу",
@@ -826,6 +838,10 @@ const en: Msg = {
     `🎁 A gift for joining via an invitation — a ${p}% discount code for your first purchase: <code>${c}</code>`,
   referralReward: (p, c) =>
     `🎉 Your invited friend made their first purchase! Here is a ${p}% discount code for you: <code>${c}</code>`,
+  inviteScreen: (link, came, bought, codes) =>
+    `🎁 <b>Invite a friend</b>\n\nYour personal link:\n${link}\n\nFriends joined: <b>${came}</b>\nBought: <b>${bought}</b>\n\nWhen a friend makes a first purchase, you get a promo code.${codes ? `\n\nYour codes for friends:\n${codes}` : ""}`,
+  inviteCodeUsed: "used",
+  inviteShareBtn: "🎁 Share the link",
   cartReminder:
     "🛒 You left some items in your cart — they're still waiting for you! You can check out anytime.",
   openCartBtn: "🛒 Open cart",
@@ -1018,6 +1034,10 @@ const uz: Msg = {
     `🎁 Taklif havolasi orqali o‘tganingiz uchun sovg‘a — birinchi xaridga ${p}% chegirma promokodi: <code>${c}</code>`,
   referralReward: (p, c) =>
     `🎉 Siz taklif qilgan do‘stingiz birinchi xaridini qildi! Sizga ${p}% chegirma promokodi: <code>${c}</code>`,
+  inviteScreen: (link, came, bought, codes) =>
+    `🎁 <b>Do‘stni taklif qilish</b>\n\nShaxsiy havolangiz:\n${link}\n\nKelgan do‘stlar: <b>${came}</b>\nXarid qilganlar: <b>${bought}</b>\n\nDo‘stingiz birinchi xaridni qilganda, siz promokod olasiz.${codes ? `\n\nDo‘stlar uchun kodlaringiz:\n${codes}` : ""}`,
+  inviteCodeUsed: "ishlatilgan",
+  inviteShareBtn: "🎁 Havolani ulashish",
   cartReminder:
     "🛒 Savatda mahsulotlar qoldi — ular hali ham sizni kutmoqda! Buyurtmani istalgan vaqtda rasmiylashtirishingiz mumkin.",
   openCartBtn: "🛒 Savatni ochish",
@@ -1116,6 +1136,7 @@ export type MenuAction =
   | "myCourses"
   | "instruction"
   | "information"
+  | "invite"
   | "contact"
   | "quiz";
 
@@ -1134,6 +1155,7 @@ export function menuActionFor(
     if (t === m.myCourses) return "myCourses";
     if (t === m.instruction) return "instruction";
     if (t === m.information) return "information";
+    if (t === m.inviteFriendBtn) return "invite";
     if (t === m.quizBtn) return "quiz";
   }
   if (contactLabels.includes(t)) return "contact";

@@ -1,6 +1,8 @@
 import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSetting } from "@/core/settings/settings";
+import { pageAll } from "@/core/db/page";
+import { inChunks } from "@/lib/in-chunks";
 
 /**
  * Реферальная программа: ссылка t.me/<бот>?start=ref_<telegram_id> —
@@ -139,4 +141,47 @@ export async function rewardReferrerIfFirstDelivery(
   // Код уже выдан — награду отдаём, а не теряем; сбой записи кода только в журнал.
   if (saved.error) console.error("[referral] код награды не записан", saved.error.message);
   return { telegramId: Number(ref.referrer_telegram_id), code, percent };
+}
+
+export type ReferralCode = { code: string; used: boolean };
+export type ReferralStats = { came: number; bought: number; codes: ReferralCode[] };
+
+/**
+ * Сводка для самого покупателя: сколько друзей пришло по его ссылке, сколько
+ * из них купили (награда выдана) и какие коды получены за них. Любой сбой
+ * чтения — наружу: «0 друзей» по упавшему чтению соврал бы человеку.
+ */
+export async function referralStats(
+  ctx: TenantContext,
+  referrerId: number,
+): Promise<ReferralStats> {
+  if (!ctx.tenant.modules.referral) return { came: 0, bought: 0, codes: [] };
+  const rows = await pageAll<{
+    id: string;
+    status: string;
+    reward_promo_code: string | null;
+  }>(
+    (from, to) =>
+      ctx.db
+        .from("referrals")
+        .select("id, status, reward_promo_code")
+        .eq("referrer_telegram_id", referrerId)
+        .order("id")
+        .range(from, to),
+    "[referral] сводка приглашений",
+  );
+  const codes = rows.flatMap((r) => (r.reward_promo_code ? [r.reward_promo_code] : []));
+  const promos = await inChunks(
+    codes,
+    (chunk) => ctx.db.from("promo_codes").select("code, used_count, max_uses").in("code", chunk),
+    "[referral] коды наград",
+  );
+  const spent = new Map(
+    promos.map((p) => [p.code, p.max_uses != null && (p.used_count ?? 0) >= p.max_uses]),
+  );
+  return {
+    came: rows.length,
+    bought: rows.filter((r) => r.status === "rewarded").length,
+    codes: codes.map((code) => ({ code, used: spent.get(code) ?? false })),
+  };
 }

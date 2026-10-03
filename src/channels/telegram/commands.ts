@@ -9,13 +9,14 @@ import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
  * Ставится только при включении v2 для бота (core/tenant/telegram-webhook):
  * боту клиента v1 ничего не ставим.
  */
-export type BotCommand = "catalog" | "cart" | "orders" | "language" | "stop";
+export type BotCommand = "catalog" | "cart" | "orders" | "invite" | "language" | "stop";
 
 const DESCRIPTIONS: Record<Locale, Record<BotCommand, string>> = {
   ru: {
     catalog: "Каталог",
     cart: "Корзина",
     orders: "Мои заказы",
+    invite: "Пригласить друга",
     language: "Сменить язык",
     stop: "Отписаться от рассылок",
   },
@@ -23,6 +24,7 @@ const DESCRIPTIONS: Record<Locale, Record<BotCommand, string>> = {
     catalog: "Каталог",
     cart: "Себет",
     orders: "Менің тапсырыстарым",
+    invite: "Досты шақыру",
     language: "Тілді ауыстыру",
     stop: "Хабарламалардан бас тарту",
   },
@@ -30,6 +32,7 @@ const DESCRIPTIONS: Record<Locale, Record<BotCommand, string>> = {
     catalog: "Catalog",
     cart: "Cart",
     orders: "My orders",
+    invite: "Invite a friend",
     language: "Change language",
     stop: "Unsubscribe from mailings",
   },
@@ -37,14 +40,19 @@ const DESCRIPTIONS: Record<Locale, Record<BotCommand, string>> = {
     catalog: "Katalog",
     cart: "Savat",
     orders: "Buyurtmalarim",
+    invite: "Do‘stni taklif qilish",
     language: "Tilni o‘zgartirish",
     stop: "Xabarnomalardan voz kechish",
   },
 };
 
-/** Какие команды у этого бота: /language — только с модулем «Несколько языков». */
+/**
+ * Какие команды у этого бота: /invite — только с модулем «Рефералы»,
+ * /language — только с модулем «Несколько языков».
+ */
 export function botCommandNames(tenant: Tenant): BotCommand[] {
   const out: BotCommand[] = ["catalog", "cart", "orders"];
+  if (tenant.modules.referral) out.push("invite");
   if (tenant.modules.multi_language) out.push("language");
   out.push("stop");
   return out;
@@ -72,7 +80,12 @@ export function botCommandsVersion(tenant: Tenant): string {
 export function botCommandFor(text: string | null | undefined): BotCommand | null {
   const m = /^\/([a-z]+)(@\w+)?$/i.exec(text?.trim() ?? "");
   const c = m?.[1]?.toLowerCase();
-  return c === "catalog" || c === "cart" || c === "orders" || c === "language" || c === "stop"
+  return c === "catalog" ||
+    c === "cart" ||
+    c === "orders" ||
+    c === "invite" ||
+    c === "language" ||
+    c === "stop"
     ? c
     : null;
 }

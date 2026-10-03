@@ -1,4 +1,9 @@
-import { REFERRAL_PREFIX, registerReferral, type ReferralGrant } from "@/core/referrals/referrals";
+import {
+  REFERRAL_PREFIX,
+  referralStats,
+  registerReferral,
+  type ReferralGrant,
+} from "@/core/referrals/referrals";
 import { orderChannel } from "@/core/orders/pure";
 import {
   hasDeliveredPurchase,
@@ -733,6 +738,28 @@ async function menuAction(b: Bot, action: ReturnType<typeof menuActionFor>) {
           },
         ]);
       await send(b, b.m.infoText, { reply_markup: { inline_keyboard: buttons } });
+      return;
+    }
+    case "invite": {
+      const botName = b.ctx.tenant.settings.telegram?.username;
+      if (!b.ctx.tenant.modules.referral || !botName) return sendMain(b);
+      const link = `https://t.me/${botName}?start=${REFERRAL_PREFIX}${b.customer.telegramId}`;
+      const stats = await referralStats(b.ctx, b.customer.telegramId);
+      const codes = stats.codes
+        .map((c) => `<code>${escapeHtml(c.code)}</code>${c.used ? ` — ${b.m.inviteCodeUsed}` : ""}`)
+        .join("\n");
+      await send(b, b.m.inviteScreen(link, stats.came, stats.bought, codes), {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: b.m.inviteShareBtn,
+                url: `https://t.me/share/url?url=${encodeURIComponent(link)}`,
+              },
+            ],
+          ],
+        },
+      });
       return;
     }
     case "contact": {

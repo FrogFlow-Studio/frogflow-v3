@@ -34,6 +34,7 @@ export function mainMenu(tenant: Tenant, locale: Locale, appUrl: string): MainMe
     tenant.modules.legal_docs
       ? [{ text: m.instruction }, { text: m.information }]
       : [{ text: m.instruction }],
+    ...(tenant.modules.referral ? [[{ text: m.inviteFriendBtn }]] : []),
     [{ text: def.locales[locale].contactBtn }],
   ];
   if (tenant.modules.quiz) keyboard.splice(1, 0, [{ text: m.quizBtn }]);
