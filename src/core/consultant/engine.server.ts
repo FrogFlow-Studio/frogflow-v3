@@ -4,6 +4,7 @@ import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { updateStateSection } from "@/core/customers/customers";
+import { buyerLocale, handoffReply, unavailableReply } from "./messages";
 import { getSettings, trySetSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { resolvePrice } from "@/core/pricing/pricing";
 import { PRODUCT_SELECT, sortedVariants, type Product } from "@/core/catalog/catalog";
@@ -401,6 +402,7 @@ export async function runConsultant(
 ): Promise<ConsultantResult | null> {
   // Предпросмотр: до брони ИИ-баланса и до клиента — как «ИИ недоступен».
   if (previewReadonly()) return null;
+  const bLocale = buyerLocale(ctx, customer);
   const apiKey = env().ANTHROPIC_API_KEY?.trim();
   if (!apiKey) return null;
   const { pricelistMode } = await import("./pricelist/mode");
@@ -436,7 +438,7 @@ export async function runConsultant(
       if (customer && !opts.dryRun)
         await saveState(ctx, customer, { paused_until: pausedUntilIso(pauseHours(ctx.tenant)) });
       return {
-        reply: "Передам ваш вопрос менеджеру — он ответит в ближайшее время.",
+        reply: handoffReply(bLocale),
         handoff: {
           kind: "handoff",
           reason: "injection",
@@ -465,7 +467,7 @@ export async function runConsultant(
         paused_until: pausedUntilIso(pauseHours(ctx.tenant)),
       });
     return {
-      reply: "Передам ваш вопрос менеджеру — он ответит в ближайшее время.",
+      reply: handoffReply(bLocale),
       handoff: {
         kind: "handoff",
         reason: "unknown_question",
@@ -494,7 +496,7 @@ export async function runConsultant(
         paused_until: pausedUntilIso(pauseHours(ctx.tenant)),
       });
     return {
-      reply: "Передам ваш вопрос менеджеру — он ответит в ближайшее время.",
+      reply: handoffReply(bLocale),
       handoff: {
         kind: "handoff",
         reason: "unknown_question",
@@ -521,7 +523,7 @@ export async function runConsultant(
     );
     if (opts.dryRun) throw serverFailure("Каталог не прочитался. Попробуйте ещё раз.");
     return {
-      reply: "Сейчас не могу ответить — передаю вопрос менеджеру, он напишет вам.",
+      reply: unavailableReply(bLocale),
       handoff: {
         kind: "handoff",
         reason: "unknown_question",
@@ -576,7 +578,7 @@ export async function runConsultant(
   if (reserved !== "written") {
     if (opts.dryRun) throw new Error("Не удалось записать расход ИИ. Попробуйте ещё раз.");
     return {
-      reply: "Сейчас не могу ответить — передаю вопрос менеджеру, он напишет вам.",
+      reply: unavailableReply(bLocale),
       handoff: {
         kind: "handoff",
         reason: "unknown_question",
@@ -599,7 +601,7 @@ export async function runConsultant(
     // Сбой учёта баланса — не пустой баланс: без паузы, как сбой дневного расхода.
     if (opts.dryRun) throw serverFailure("Не удалось записать расход ИИ. Попробуйте ещё раз.");
     return {
-      reply: "Сейчас не могу ответить — передаю вопрос менеджеру, он напишет вам.",
+      reply: unavailableReply(bLocale),
       handoff: {
         kind: "handoff",
         reason: "unknown_question",
@@ -871,7 +873,7 @@ export async function runConsultant(
         KEYS.lastError,
         `${new Date().toISOString()} — ${stopped === "limited" ? "лимит частоты вызовов ИИ" : "не уложился в потолок времени"}; вопрос передан менеджеру`,
       );
-      reply = "Передам ваш вопрос менеджеру — он ответит в ближайшее время.";
+      reply = handoffReply(bLocale);
       handoff = {
         kind: "handoff",
         reason: "unknown_question",
@@ -879,7 +881,7 @@ export async function runConsultant(
       };
     }
     if (response?.stop_reason === "refusal") {
-      reply = "Передам ваш вопрос менеджеру — он ответит в ближайшее время.";
+      reply = handoffReply(bLocale);
       handoff = handoff ?? {
         kind: "handoff",
         reason: "unknown_question",
@@ -961,7 +963,7 @@ export async function runConsultant(
       ).catch(() => {});
     }
     return {
-      reply: "Сейчас не могу ответить — передаю вопрос менеджеру, он напишет вам.",
+      reply: unavailableReply(bLocale),
       handoff: {
         kind: "handoff",
         reason: "unknown_question",

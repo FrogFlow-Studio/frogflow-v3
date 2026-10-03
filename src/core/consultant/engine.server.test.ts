@@ -346,6 +346,36 @@ describe("консультант: ИИ-баланс клиента", () => {
   });
 });
 
+describe("консультант: ответы-передачи на языке покупателя", () => {
+  const empty = () => {
+    const ctx = ctxOf({ default_locale: "ru" });
+    (ctx.db as unknown as { tables: Record<string, unknown[]> }).tables.app_settings!.push({
+      bot_id: BOT,
+      key: "ai_balance",
+      value: JSON.stringify({ usd: 0.001, low: true, empty: false }),
+    });
+    return ctx;
+  };
+  it.each([
+    ["kk", /менеджерге/],
+    ["uz", /menejerga/],
+    ["en", /manager/],
+    ["ru", /менеджеру/],
+  ] as const)("баланс кончился, покупатель на %s — ответ на его языке", async (locale, re) => {
+    const r = await runConsultant(empty(), customer({ locale }), "Сколько стоит?", {
+      platform: "instagram",
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(r?.reply).toMatch(re);
+  });
+  it("язык не выбран — язык магазина", async () => {
+    const ctx = empty();
+    ctx.tenant.settings.default_locale = "kk";
+    const r = await runConsultant(ctx, customer(), "Сколько стоит?", { platform: "instagram" });
+    expect(r?.reply).toMatch(/менеджерге/);
+  });
+});
+
 describe("консультант: счётчик ИИ-диалогов месяца", () => {
   it("два покупателя начинают диалог одновременно — в счётчике оба", async () => {
     const ctx = ctxOf();
