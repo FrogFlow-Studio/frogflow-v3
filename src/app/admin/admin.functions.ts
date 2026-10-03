@@ -1578,6 +1578,27 @@ export const myPlanFn = createServerFn({ method: "GET" }).handler(async () => {
   };
 });
 
+/** «История оплат» в «Ваш план»: платежи или счета подписки, постранично. Видит и бухгалтер. */
+export const billingHistoryFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z
+      .object({ kind: z.enum(["payments", "invoices"]), page: z.number().int().min(0).max(10_000) })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { ctx } = await finance();
+    const { billingHistory } = await import("./billing-history.server");
+    return data.kind === "payments"
+      ? {
+          kind: "payments" as const,
+          ...(await billingHistory(ctx.tenant.id, "payments", data.page)),
+        }
+      : {
+          kind: "invoices" as const,
+          ...(await billingHistory(ctx.tenant.id, "invoices", data.page)),
+        };
+  });
+
 export const requestPlanFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

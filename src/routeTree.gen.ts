@@ -31,6 +31,7 @@ import { Route as SSlugRouteImport } from './routes/s.$slug'
 import { Route as AdminAuthedIndexRouteImport } from './routes/admin._authed.index'
 import { Route as AdminAuthedAiBalanceRouteImport } from './routes/admin._authed.ai-balance'
 import { Route as AdminAuthedAnalyticsRouteImport } from './routes/admin._authed.analytics'
+import { Route as AdminAuthedBillingRouteImport } from './routes/admin._authed.billing'
 import { Route as AdminAuthedBotPreviewRouteImport } from './routes/admin._authed.bot-preview'
 import { Route as AdminAuthedBroadcastsRouteImport } from './routes/admin._authed.broadcasts'
 import { Route as AdminAuthedCategoriesRouteImport } from './routes/admin._authed.categories'
@@ -211,6 +212,11 @@ const AdminAuthedAiBalanceRoute = AdminAuthedAiBalanceRouteImport.update({
 const AdminAuthedAnalyticsRoute = AdminAuthedAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedBillingRoute = AdminAuthedBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedBotPreviewRoute = AdminAuthedBotPreviewRouteImport.update({
@@ -603,6 +609,7 @@ export interface FileRoutesByFullPath {
   '/s/$slug': typeof SSlugRouteWithChildren
   '/admin/ai-balance': typeof AdminAuthedAiBalanceRoute
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
+  '/admin/billing': typeof AdminAuthedBillingRoute
   '/admin/bot-preview': typeof AdminAuthedBotPreviewRoute
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
@@ -697,6 +704,7 @@ export interface FileRoutesByTo {
   '/partner/$code': typeof PartnerCodeRoute
   '/admin/ai-balance': typeof AdminAuthedAiBalanceRoute
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
+  '/admin/billing': typeof AdminAuthedBillingRoute
   '/admin/bot-preview': typeof AdminAuthedBotPreviewRoute
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
@@ -793,6 +801,7 @@ export interface FileRoutesById {
   '/s/$slug': typeof SSlugRouteWithChildren
   '/admin/_authed/ai-balance': typeof AdminAuthedAiBalanceRoute
   '/admin/_authed/analytics': typeof AdminAuthedAnalyticsRoute
+  '/admin/_authed/billing': typeof AdminAuthedBillingRoute
   '/admin/_authed/bot-preview': typeof AdminAuthedBotPreviewRoute
   '/admin/_authed/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/_authed/categories': typeof AdminAuthedCategoriesRoute
@@ -890,6 +899,7 @@ export interface FileRouteTypes {
     | '/s/$slug'
     | '/admin/ai-balance'
     | '/admin/analytics'
+    | '/admin/billing'
     | '/admin/bot-preview'
     | '/admin/broadcasts'
     | '/admin/categories'
@@ -984,6 +994,7 @@ export interface FileRouteTypes {
     | '/partner/$code'
     | '/admin/ai-balance'
     | '/admin/analytics'
+    | '/admin/billing'
     | '/admin/bot-preview'
     | '/admin/broadcasts'
     | '/admin/categories'
@@ -1079,6 +1090,7 @@ export interface FileRouteTypes {
     | '/s/$slug'
     | '/admin/_authed/ai-balance'
     | '/admin/_authed/analytics'
+    | '/admin/_authed/billing'
     | '/admin/_authed/bot-preview'
     | '/admin/_authed/broadcasts'
     | '/admin/_authed/categories'
@@ -1346,6 +1358,13 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/admin/analytics'
       preLoaderRoute: typeof AdminAuthedAnalyticsRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/billing': {
+      id: '/admin/_authed/billing'
+      path: '/billing'
+      fullPath: '/admin/billing'
+      preLoaderRoute: typeof AdminAuthedBillingRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/bot-preview': {
@@ -1878,6 +1897,7 @@ const AdminAuthedOrdersRouteWithChildren =
 interface AdminAuthedRouteChildren {
   AdminAuthedAiBalanceRoute: typeof AdminAuthedAiBalanceRoute
   AdminAuthedAnalyticsRoute: typeof AdminAuthedAnalyticsRoute
+  AdminAuthedBillingRoute: typeof AdminAuthedBillingRoute
   AdminAuthedBotPreviewRoute: typeof AdminAuthedBotPreviewRoute
   AdminAuthedBroadcastsRoute: typeof AdminAuthedBroadcastsRoute
   AdminAuthedCategoriesRoute: typeof AdminAuthedCategoriesRoute
@@ -1910,6 +1930,7 @@ interface AdminAuthedRouteChildren {
 const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedAiBalanceRoute: AdminAuthedAiBalanceRoute,
   AdminAuthedAnalyticsRoute: AdminAuthedAnalyticsRoute,
+  AdminAuthedBillingRoute: AdminAuthedBillingRoute,
   AdminAuthedBotPreviewRoute: AdminAuthedBotPreviewRoute,
   AdminAuthedBroadcastsRoute: AdminAuthedBroadcastsRoute,
   AdminAuthedCategoriesRoute: AdminAuthedCategoriesRoute,

@@ -102,6 +102,9 @@ class Query implements PromiseLike<Result> {
   private one: "single" | "maybe" | null = null;
   /** Встроенные связи один-ко-многим из select: `order_items(*)` у orders. */
   private embeds: string[] = [];
+  /** select(..., { count }) вместе со строками: сколько всего подошло, до .range()/.limit(). */
+  private wantCount = false;
+  private matched = 0;
 
   constructor(
     private db: FakeDb,
@@ -135,6 +138,7 @@ class Query implements PromiseLike<Result> {
     if (cols) this.embeds = [...cols.matchAll(/(\w+)(?:![\w]+)?\s*\(/g)].map((m) => m[1]!);
     if (this.op === "select") {
       this.headCount = Boolean(o?.head);
+      this.wantCount = Boolean(o?.count) && !o?.head;
     } else this.returning = true;
     return this;
   }
@@ -320,6 +324,7 @@ class Query implements PromiseLike<Result> {
         return 0;
       });
     }
+    this.matched = out.length;
     return out.slice(this.skip, this.skip + this.max);
   }
 
@@ -397,7 +402,8 @@ class Query implements PromiseLike<Result> {
       return this.returning ? this.shape(hit) : { data: null, error: null };
     }
     if (this.headCount) return { data: null, error: null, count: hit.length };
-    return this.shape(hit.slice(0, this.db.maxRows));
+    const shaped = this.shape(hit.slice(0, this.db.maxRows));
+    return this.wantCount ? { ...shaped, count: this.matched } : shaped;
   }
 }
 

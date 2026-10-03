@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { myPlanFn, payPlanFn, requestModuleFn, requestPlanFn } from "@/app/admin/admin.functions";
 import { subscriptionLine } from "@/app/admin/subscription-banner";
@@ -154,6 +154,9 @@ function PlanPanel({
         </div>
       </div>
       <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3">
+        <Link to="/admin/billing" className="btn-secondary text-xs">
+          {t("billing.open")}
+        </Link>
         <button
           className="btn-primary text-xs"
           disabled={pay.busy}
