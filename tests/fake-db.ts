@@ -233,14 +233,14 @@ class Query implements PromiseLike<Result> {
   like(col: string, pattern: string) {
     this.col(col);
     const re = likeRegex(pattern, "");
-    this.filters.push((r) => re.test(String(r[col] ?? "")));
+    this.filters.push((r) => re.test(String(pick(r, col) ?? "")));
     return this;
   }
   /** ilike — как like, без учёта регистра. */
   ilike(col: string, pattern: string) {
     this.col(col);
     const re = likeRegex(pattern, "i");
-    this.filters.push((r) => re.test(String(r[col] ?? "")));
+    this.filters.push((r) => re.test(String(pick(r, col) ?? "")));
     return this;
   }
   /** or("a.ilike.%x%,b.ilike.%x%") — только ilike-термы; запятых в шаблонах нет. */

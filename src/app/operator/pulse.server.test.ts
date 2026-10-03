@@ -5,6 +5,7 @@ import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 let db: FakeDb;
 let orders: Record<string, unknown>[];
 let logins: Record<string, unknown>[];
+let logs: Record<string, unknown>[];
 vi.mock("@/core/db/client.server", () => ({ serviceDb: () => db }));
 const { loadPulse } = await import("./pulse.server");
 
@@ -20,6 +21,8 @@ beforeEach(() => {
   db.tables.admin_login_attempts = [];
   orders = db.tables.orders;
   logins = db.tables.admin_login_attempts;
+  db.tables.zernio_logs = [];
+  logs = db.tables.zernio_logs;
 });
 
 describe("loadPulse", () => {
@@ -42,13 +45,36 @@ describe("loadPulse", () => {
     expect(m.get(B)?.quiet).toBe(true);
   });
 
-  for (const table of ["orders", "admin_login_attempts"])
+  it("продавец не заходил в админку, но подтверждал заказы в Telegram — не затих", async () => {
+    const ev = (id: string, bot: string, actor: string, status = "event") => ({
+      id,
+      bot_id: bot,
+      event_type: "order.status",
+      status,
+      created_at: ago(2),
+      payload: { order_id: 1, actor },
+    });
+    logs.push(
+      ev("1", A, "admin"), // подтвердил заказ в боте
+      ev("2", B, "bot"), // только автоматика
+    );
+    logins.push(
+      { id: "1", bot_id: A, at: ago(30), ok: true },
+      { id: "2", bot_id: B, at: ago(30), ok: true },
+    );
+    orders.push({ id: 1, bot_id: A, created_at: ago(1) }, { id: 2, bot_id: B, created_at: ago(1) });
+    const m = await loadPulse([client(A), client(B)], now);
+    expect(m.get(A)).toMatchObject({ noLogin: false, quiet: false });
+    expect(m.get(B)).toMatchObject({ noLogin: true, quiet: true });
+  });
+
+  for (const table of ["orders", "admin_login_attempts", "zernio_logs"])
     it(`${table}: база вернула { data: null, error } — исключение, а не пустой пульс`, async () => {
       const orig = db.from.bind(db);
       db.from = ((t: string) => {
         if (t !== table) return orig(t);
         const q: Record<string, unknown> = {};
-        for (const m of ["select", "gte", "eq", "order"]) q[m] = () => q;
+        for (const m of ["select", "gte", "eq", "order", "like", "in"]) q[m] = () => q;
         q.range = async () => ({ data: null, error: { message: "база недоступна" } });
         return q;
       }) as unknown as typeof db.from;

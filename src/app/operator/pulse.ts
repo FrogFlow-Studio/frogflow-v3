@@ -22,9 +22,11 @@ export type Pulse = {
   lastLoginAt: string | null;
   /** Дней с последнего входа; null — не заходил за весь срок хранения журнала. */
   daysSinceLogin: number | null;
+  /** Последнее действие продавца с заказом (подтверждение, статус, оплата) за 14 дней; null — не было. */
+  lastActionAt: string | null;
   /** Заказы упали вдвое и больше. */
   ordersDropped: boolean;
-  /** Нет входа 14 дней. */
+  /** Нет входа в админку 14 дней и нет действий продавца с заказами (бот, чат). */
   noLogin: boolean;
   /** Затих: упали заказы или нет входа. */
   quiet: boolean;
@@ -35,6 +37,8 @@ export type Pulse = {
 export type PulseInput = {
   ordersAt: string[];
   lastLoginAt: string | null;
+  /** Последнее действие продавца с заказом (журнал заказа, actor admin*); null/не задано — не было. */
+  lastSellerActionAt?: string | null;
   /** undefined — статистика не прочиталась (≠ null: заказов не было). */
   lastOrderAt: string | null | undefined;
   createdAt: string | null;
@@ -64,7 +68,11 @@ export function computePulse(i: PulseInput): Pulse {
     i.status === "active" &&
     !(i.createdAt && nowMs - Date.parse(i.createdAt) < PULSE_DAYS * DAY_MS);
   const ordersDropped = tracked && previous >= 2 && recent * 2 <= previous;
-  const noLogin = tracked && (daysSinceLogin === null || daysSinceLogin >= PULSE_DAYS);
+  const daysSinceAction = i.lastSellerActionAt ? daysBetween(i.lastSellerActionAt, i.now) : null;
+  // Продавец, который работает из бота, в админку не ходит: «нет входа» тревожит только без его действий.
+  const worksInBot = daysSinceAction !== null && daysSinceAction < PULSE_DAYS;
+  const noLogin =
+    tracked && !worksInBot && (daysSinceLogin === null || daysSinceLogin >= PULSE_DAYS);
   const risk =
     (ordersDropped ? 50 + Math.min(50, Math.round(100 - (recent / previous) * 100) / 2) : 0) +
     (noLogin ? 30 + Math.min(20, (daysSinceLogin ?? 90) / 2) : 0);
@@ -76,6 +84,7 @@ export function computePulse(i: PulseInput): Pulse {
     orderKnown: i.lastOrderAt !== undefined,
     lastLoginAt: i.lastLoginAt,
     daysSinceLogin,
+    lastActionAt: i.lastSellerActionAt ?? null,
     ordersDropped,
     noLogin,
     quiet: ordersDropped || noLogin,

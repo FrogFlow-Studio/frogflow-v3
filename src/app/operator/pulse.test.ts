@@ -35,6 +35,27 @@ describe("computePulse", () => {
     expect(p.quiet).toBe(true);
     expect(computePulse({ ...base, lastLoginAt: ago(13), ordersAt: [ago(1)] }).noLogin).toBe(false);
   });
+  it("нет входа, но продавец подтверждает заказы в боте — не затих", () => {
+    const p = computePulse({
+      ...base,
+      lastLoginAt: ago(30),
+      lastSellerActionAt: ago(2),
+      ordersAt: [ago(1), ago(2), ago(3), ago(20)],
+    });
+    expect(p.noLogin).toBe(false);
+    expect(p.quiet).toBe(false);
+    expect(p.risk).toBe(0);
+  });
+  it("нет входа и последнее действие продавца старше 14 дней — затих", () => {
+    const p = computePulse({
+      ...base,
+      lastLoginAt: ago(30),
+      lastSellerActionAt: ago(14),
+      ordersAt: [ago(1)],
+    });
+    expect(p.noLogin).toBe(true);
+    expect(p.quiet).toBe(true);
+  });
   it("вход не найден в журнале за 90 дней — нет входа", () => {
     const p = computePulse({ ...base, lastLoginAt: null, ordersAt: [] });
     expect(p.daysSinceLogin).toBeNull();
