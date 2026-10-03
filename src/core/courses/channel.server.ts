@@ -179,13 +179,30 @@ export async function revokeCourseChannels(
   access: ChannelAccess,
   now = new Date(),
 ): Promise<number> {
-  if (!ctx.tenant.modules.courses) return 0;
+  return (await revokeCourseChannelsDetailed(ctx, orderId, access, now)).kicked;
+}
+
+export type RevokeReport = {
+  /** Исключено человек. */
+  kicked: number;
+  /** Известен, кого исключать, но Telegram не исключил (бот не админ, сбой). */
+  failed: number;
+};
+
+async function revokeCourseChannelsDetailed(
+  ctx: TenantContext,
+  orderId: number,
+  access: ChannelAccess,
+  now: Date,
+): Promise<RevokeReport> {
+  const report: RevokeReport = { kicked: 0, failed: 0 };
+  if (!ctx.tenant.modules.courses) return report;
   const { data: order, error } = await ctx.db
     .from("orders")
     .select("id, platform, telegram_id")
     .eq("id", orderId)
     .maybeSingle();
-  if (error || !order) return 0;
+  if (error || !order) return report;
   const items = await selectIn<{ id: string; product_id: string | null }>(
     "позиции заказа",
     [orderId],
@@ -195,14 +212,44 @@ export async function revokeCourseChannels(
         .select("id, product_id")
         .in("order_id", chunk as number[]),
   );
-  let kicked = 0;
   for (const it of items) {
     if (!it.product_id) continue;
     const chat = parseCourse(await getSetting(ctx, courseKey(it.product_id))).channel;
     if (!chat) continue;
-    if (await revokeItemChannel(ctx, it.id, chat, order, access, now)) kicked++;
+    const r = await revokeItemChannelDetailed(ctx, it.id, chat, order, access, now);
+    if (r === "kicked") report.kicked++;
+    else if (r === "failed") report.failed++;
   }
-  return kicked;
+  return report;
+}
+
+/**
+ * Любой возврат курса (кнопка продавца, возврат от платёжного шлюза): снять
+ * доступ и оставить итог в истории заказа — исключили, или Telegram отказал и
+ * продавцу надо убрать человека из канала самому. Сбой не бросается: возврат
+ * денег уже записан.
+ */
+export async function revokeChannelsOnRefund(
+  ctx: TenantContext,
+  orderId: number,
+  access: ChannelAccess,
+  actor = "admin",
+  now = new Date(),
+): Promise<RevokeReport> {
+  const { recordOrderEvent } = await import("@/core/orders/events");
+  let report: RevokeReport;
+  try {
+    report = await revokeCourseChannelsDetailed(ctx, orderId, access, now);
+  } catch (e) {
+    console.warn(`[courses] исключение из канала по заказу #${orderId}: ${String(e)}`);
+    await recordOrderEvent(ctx, orderId, "channel_revoke_failed", { error: "exception" }, actor);
+    return { kicked: 0, failed: 1 };
+  }
+  if (report.kicked > 0)
+    await recordOrderEvent(ctx, orderId, "channel_revoked", { kicked: report.kicked }, actor);
+  if (report.failed > 0)
+    await recordOrderEvent(ctx, orderId, "channel_revoke_failed", { failed: report.failed }, actor);
+  return report;
 }
 
 /**
@@ -218,6 +265,17 @@ export async function revokeItemChannel(
   access: ChannelAccess,
   now = new Date(),
 ): Promise<boolean> {
+  return (await revokeItemChannelDetailed(ctx, orderItemId, chat, order, access, now)) === "kicked";
+}
+
+async function revokeItemChannelDetailed(
+  ctx: TenantContext,
+  orderItemId: string,
+  chat: string,
+  order: { platform: string | null; telegram_id: number | null },
+  access: ChannelAccess,
+  now: Date,
+): Promise<"kicked" | "none" | "failed"> {
   let rec: InviteRecord = {};
   const mark = await updateSettingAtomic(ctx, inviteKey(orderItemId), (raw) => {
     rec = parseInvite(raw);
@@ -225,12 +283,14 @@ export async function revokeItemChannel(
     const { pending: _pending, ...rest } = rec;
     return JSON.stringify({ ...rest, revoked: now.toISOString() });
   });
-  if (mark !== "written") return false;
+  if (mark !== "written") return "none";
   const who =
     rec.member ??
     (order.platform === "telegram" && Number(order.telegram_id) > 0
       ? Number(order.telegram_id)
       : null);
   if (rec.link && access.revokeInvite) await access.revokeInvite(chat, rec.link).catch(() => {});
-  return Boolean(who && access.kick && (await access.kick(chat, who).catch(() => false)));
+  if (!who) return "none";
+  if (!access.kick) return "failed";
+  return (await access.kick(chat, who).catch(() => false)) ? "kicked" : "failed";
 }

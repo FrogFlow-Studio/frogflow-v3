@@ -36,6 +36,9 @@ export type OrderEventKind =
   | "balance_link"
   | "balance_proof_rejected"
   | "refund"
+  /** Возврат курса: покупателя исключили из закрытого канала / Telegram не исключил. */
+  | "channel_revoked"
+  | "channel_revoke_failed"
   | "approval_sent"
   | "approval_ok"
   | "approval_changes"
@@ -262,6 +265,16 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
         tone: "warn",
       };
     }
+    case "channel_revoked":
+      return {
+        text: `Покупатель исключён из закрытого канала курса (${num(p.kicked)})${who}`,
+        tone: "ok",
+      };
+    case "channel_revoke_failed":
+      return {
+        text: "Не удалось исключить покупателя из закрытого канала курса — удалите его из канала вручную",
+        tone: "danger",
+      };
     case "reminded":
       return p.channel === "email"
         ? { text: `Напоминание об оплате — письмом на ${str(p.to)}`, tone: "neutral" }

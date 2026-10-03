@@ -43,6 +43,26 @@ async function handle(request: Request, botId: string): Promise<Response> {
     total: Number(order.total),
     fulfillment_kind: order.fulfillment_kind,
   });
+  if ((ipn.payment_status ?? "").toLowerCase() === "refunded") {
+    const { applyProviderRefund } = await import("@/app/payments/provider-refund.server");
+    const payRef = String(ipn.payment_id ?? ipn.invoice_id ?? "");
+    try {
+      const r = await applyProviderRefund(ctx, orderId, "NOWPayments", payRef);
+      if (r === "unmatched") {
+        const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
+        const shown = order.display_no ?? order.order_no ?? order.id;
+        await notifyAdminsHtml(
+          ctx,
+          `⚠️ NOWPayments вернул платёж ${payRef} по заказу #${shown}, он не засчитан в оплату — проверьте кабинет NOWPayments.`,
+          { orderId, kind: "delivery_failure" },
+        ).catch((e) => console.error(`[nowpayments:${botId}] уведомление`, e));
+      }
+    } catch (e) {
+      console.error(`[nowpayments:${botId}] возврат по заказу #${orderId}`, e);
+      return new Response("failed", { status: 500 });
+    }
+    return new Response("ok");
+  }
   const outcome = ipnOutcome(ipn, { amount: expected, currency: order.currency });
   const ref = String(ipn.payment_id ?? ipn.invoice_id ?? "");
   const no = order.display_no ?? order.order_no ?? order.id;

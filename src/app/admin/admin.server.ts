@@ -346,11 +346,12 @@ export async function refundAndNotify(
   const { refundOrder } = await import("@/core/orders/refund");
   const r = await refundOrder(ctx, id, input, actor);
   // Полный возврат курса — доступ в закрытый канал снимается (исключение и
-  // отзыв личной ссылки); страница курса закрывается сама: заказ не «выдан».
+  // отзыв личной ссылки), итог — событием в истории заказа; страница курса
+  // закрывается сама: заказ не «выдан».
   if (r.full && ctx.tenant.modules.courses && ctx.tenant.telegramTokenEnc) {
-    const { revokeCourseChannels } = await import("@/core/courses/channel.server");
+    const { revokeChannelsOnRefund } = await import("@/core/courses/channel.server");
     const { telegramChannelInviter } = await import("@/channels/telegram/courses");
-    await revokeCourseChannels(ctx, id, telegramChannelInviter(api(ctx))).catch(() => 0);
+    await revokeChannelsOnRefund(ctx, id, telegramChannelInviter(api(ctx)), actor);
   }
   const order = await getOrder(ctx, id);
   const no = order ? displayNo(order) : id;

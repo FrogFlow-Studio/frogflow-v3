@@ -148,4 +148,50 @@ describe("участник канала и возврат", () => {
     expect(await courseChannelInvite(ctx, p, port, T0)).toEqual({ ok: false, reason: "noChannel" });
     expect(await revokeCourseChannels(ctx, 5, port, T0)).toBe(0);
   });
+
+  async function courseOrder() {
+    const ctx = ctxWith();
+    const db = ctx.db as unknown as ReturnType<typeof fakeDb>;
+    db.tables.orders = [{ id: 5, platform: "web", telegram_id: -1 }];
+    db.tables.order_items = [{ id: ITEM, order_id: 5, product_id: "p" }];
+    (db.tables.app_settings ??= []).push({
+      bot_id: T,
+      key: "course_p",
+      value: JSON.stringify({ schedule: { mode: "all" }, lessons: [], channel: "@school_club" }),
+    });
+    (ctx.tenant as unknown as { modules: Record<string, boolean> }).modules = { courses: true };
+    return { ctx, db };
+  }
+  const kinds = (db: ReturnType<typeof fakeDb>) =>
+    (db.tables.zernio_logs ?? []).map((r) => String(r.event_type));
+
+  it("возврат: итог исключения пишется в историю заказа", async () => {
+    const { recordChannelJoin, revokeChannelsOnRefund } = await import("./channel.server");
+    const { ctx, db } = await courseOrder();
+    const { port } = access(new Set([4242]));
+    await courseChannelInvite(ctx, p, port, T0);
+    await recordChannelJoin(ctx, "https://t.me/+link1", 4242);
+    expect(await revokeChannelsOnRefund(ctx, 5, port, "admin", T0)).toEqual({
+      kicked: 1,
+      failed: 0,
+    });
+    expect(kinds(db)).toEqual(["order.channel_revoked"]);
+    // Повтор ничего не меняет и не дублирует запись.
+    await revokeChannelsOnRefund(ctx, 5, port, "admin", T0);
+    expect(kinds(db)).toEqual(["order.channel_revoked"]);
+  });
+
+  it("Telegram не исключил — продавец видит это в истории заказа", async () => {
+    const { recordChannelJoin, revokeChannelsOnRefund } = await import("./channel.server");
+    const { ctx, db } = await courseOrder();
+    const { port } = access(new Set([4242]));
+    await courseChannelInvite(ctx, p, port, T0);
+    await recordChannelJoin(ctx, "https://t.me/+link1", 4242);
+    const refusing = { ...port, kick: async () => false };
+    expect(await revokeChannelsOnRefund(ctx, 5, refusing, "admin", T0)).toEqual({
+      kicked: 0,
+      failed: 1,
+    });
+    expect(kinds(db)).toEqual(["order.channel_revoke_failed"]);
+  });
 });
