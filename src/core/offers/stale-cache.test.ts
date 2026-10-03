@@ -4,7 +4,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { placeOrder } from "@/core/orders/orders";
 import { resolvePrice } from "@/core/pricing/pricing";
-import { OFFERS_KEY, resetOffersCache } from "./offers";
+import { OFFERS_KEY, OFFER_ROW_MARK, resetOffersCache } from "./offers";
 
 /**
  * Н2: акция кешируется на минуту, но цена заказа — деньги. «Закончить сейчас»
@@ -91,5 +91,26 @@ describe("акция и оформление заказа", () => {
     const r = await placeOrder(ctx, customer, "KZ", {});
     if (!r.ok) throw new Error(`не оформился: ${r.reason}`);
     expect(Number(r.order.total)).toBe(1000);
+  });
+
+  it("в корзине больше остатка акции: по акции остаток, остальные штуки по полной цене", async () => {
+    const { db, ctx, customer } = setup();
+    db.tables.cart_items![0]!.quantity = 5;
+    const r = await placeOrder(ctx, customer, "KZ", {});
+    if (!r.ok) throw new Error(`не оформился: ${r.reason}`);
+    // Лимит 3: три по 700 и две по 1000, а не пять по 700.
+    expect(Number(r.order.total)).toBe(3 * 700 + 2 * 1000);
+    const rows = (db.tables.order_items ?? []).map((i) => [
+      i.name_snapshot,
+      Number(i.quantity),
+      Number(i.price_snapshot),
+    ]);
+    expect(rows).toEqual([
+      [`Торт ${OFFER_ROW_MARK}`, 3, 700],
+      ["Торт", 2, 1000],
+    ]);
+    // Занятые штуки сняты: следующий заказ не упрётся в них.
+    const holds = db.tables.app_settings!.find((x) => x.key === "offer_holds");
+    expect(JSON.parse(String(holds?.value ?? '{"h":{}}')).h).toEqual({});
   });
 });

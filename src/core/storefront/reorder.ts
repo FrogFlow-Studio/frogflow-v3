@@ -39,7 +39,9 @@ export async function planReorder(
   ctx: TenantContext,
   order: Pick<OrderWithItems, "order_items">,
 ): Promise<ReorderPlan> {
-  const items = order.order_items ?? [];
+  const { mergeOrderItems, stripOfferMark } = await import("@/core/offers/offers");
+  // Позиции «по акции» и «по полной» одного товара — одна строка, штуки складываются.
+  const items = mergeOrderItems(order.order_items ?? []);
   const ids = [...new Set(items.flatMap((i) => (i.product_id ? [i.product_id] : [])))];
   const [products, stockRows] = await Promise.all([
     storeProductsByIds(ctx, ids),
@@ -68,7 +70,7 @@ export async function planReorder(
   const lines: ReorderLine[] = [];
   const skipped: ReorderSkip[] = [];
   for (const item of items) {
-    const name = item.name_snapshot;
+    const name = stripOfferMark(item.name_snapshot);
     const p = item.product_id ? byId.get(item.product_id) : undefined;
     if (!p) {
       skipped.push({ name, reason: "gone" });

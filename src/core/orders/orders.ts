@@ -31,6 +31,8 @@ import {
 } from "./pure";
 import { applyDiscounts, normalizeCode } from "@/core/discounts/pure";
 import { belowMinimum } from "@/core/cart/min-order";
+import { OFFER_ROW_MARK } from "@/core/offers/offers";
+import { releaseOfferHolds } from "@/core/offers/holds";
 import {
   amountDueNow,
   decrementStock,
@@ -276,6 +278,8 @@ export async function placeOrder(
 ): Promise<PlaceOrderResult> {
   if (!(await claimOrderPlacement(ctx, customer))) return { ok: false, reason: "busy" };
   const redemptions: Redemptions = {};
+  const holdToken = crypto.randomUUID();
+  let offerHeld = false;
   const reserved: Array<{ productId: string; qty: number }> = [];
   const preorderLines: import("@/core/preorder/preorder").PreorderLine[] = [];
   const fail = async (
@@ -311,7 +315,12 @@ export async function placeOrder(
       ctx.tenant.modules.multi_language && isDeliveryLangChoice(opts.deliveryLang)
         ? opts.deliveryLang
         : null;
-    const priced = await priceCart(ctx, items, countryCode, { deliveryLang, freshOffers: true });
+    const priced = await priceCart(ctx, items, countryCode, {
+      deliveryLang,
+      freshOffers: true,
+      holdToken,
+    });
+    offerHeld = Boolean(priced.offerHeld);
     if (priced.mixedCurrency) return await fail("mixed_currency");
     // Минимум — до списания остатка и скидок: отказ ничего не трогает.
     if (!opts.skipMinOrder) {
@@ -448,9 +457,28 @@ export async function placeOrder(
       }
     }
 
-    const rows = priced.lines.map(({ item, unit, name }) =>
-      orderItemSnapshot(ctx, order.id, item, unit.amount, name),
-    );
+    // Акция с лимитом: штуки по акции и остальные по полной — двумя позициями; метка акции
+    // на первой, по ней считается проданное по лимиту (soldForOffer).
+    const rows = priced.lines.flatMap(({ item, unit, name, offerSplit }) => {
+      if (!offerSplit) return [orderItemSnapshot(ctx, order.id, item, unit.amount, name)];
+      const out = [];
+      if (offerSplit.offerQty > 0)
+        out.push(
+          orderItemSnapshot(
+            ctx,
+            order.id,
+            item,
+            unit.amount,
+            `${name} ${OFFER_ROW_MARK}`,
+            offerSplit.offerQty,
+          ),
+        );
+      if (offerSplit.restQty > 0)
+        out.push(
+          orderItemSnapshot(ctx, order.id, item, offerSplit.restUnit, name, offerSplit.restQty),
+        );
+      return out;
+    });
     const { error: itemsError } = await ctx.db.from("order_items").insert(rows);
     if (itemsError) {
       await ctx.db.from("orders").delete().eq("id", order.id);
@@ -533,6 +561,9 @@ export async function placeOrder(
     await rollbackRedemptions(ctx, customer, redemptions).catch(() => {});
     await releaseOrderPlacement(ctx, customer).catch(() => {});
     throw e;
+  } finally {
+    // Позиции заказа записаны (их видно в проданном) или оформление сорвалось: штуки отпускаем.
+    if (offerHeld) await releaseOfferHolds(ctx, holdToken);
   }
 }
 
@@ -542,6 +573,7 @@ function orderItemSnapshot(
   item: CartItem,
   price: number,
   name: string,
+  quantity: number = Number(item.quantity),
 ) {
   const p = item.products!;
   const byLang: Record<string, MaterialSnapshot[]> = {};
@@ -553,7 +585,7 @@ function orderItemSnapshot(
     product_variant_id: item.product_variant_id,
     name_snapshot: name,
     price_snapshot: price,
-    quantity: item.quantity,
+    quantity,
     file_path_snapshot: p.file_path ?? null,
     file_name_snapshot: p.file_name ?? null,
     file_path_kz_snapshot: p.file_path_kz ?? null,
@@ -629,8 +661,10 @@ export async function reorderIntoCart(
   order: OrderWithItems,
 ): Promise<number> {
   const { addToCart } = await import("@/core/cart/cart");
+  const { mergeOrderItems } = await import("@/core/offers/offers");
   let added = 0;
-  for (const item of order.order_items) {
+  // Строки «по акции» и «по полной» одного товара — вместе: потолок 20 штук на товар, не на строку.
+  for (const item of mergeOrderItems(order.order_items)) {
     if (!item.product_id) continue;
     for (let i = 0; i < Math.min(Number(item.quantity) || 1, 20); i++)
       if ((await addToCart(ctx, customer, item.product_id, item.product_variant_id)) === "ok")

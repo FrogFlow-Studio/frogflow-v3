@@ -8,7 +8,7 @@ import {
   productSellable,
   type DeliveryLangChoice,
 } from "@/core/catalog/materials";
-import { resolvePrice } from "@/core/pricing/pricing";
+import { resolveListPrice, resolvePrice } from "@/core/pricing/pricing";
 import type { Money } from "@/core/money/money";
 
 export type AddToCartResult =
@@ -181,6 +181,11 @@ export type PricedLine = {
   line: number;
   /** ×N за «все языки» (модуль multi_language): сколько комплектов в цене. */
   copies: number;
+  /**
+   * Акция с лимитом штук: `offerQty` штук по акционной цене `unit`, остальные `restQty` —
+   * по полной `restUnit`. В заказ уходят двумя позициями (`placeOrder`).
+   */
+  offerSplit?: { offerQty: number; restQty: number; restUnit: number };
 };
 export type PricedCart = {
   lines: PricedLine[];
@@ -189,6 +194,8 @@ export type PricedCart = {
   kind: "digital" | "physical";
   /** Строки в разных валютах: сумму не сложить — заказ не оформляется. */
   mixedCurrency: boolean;
+  /** Штуки по акциям с лимитом заняты под `holdToken`: после записи заказа их надо снять. */
+  offerHeld?: boolean;
 };
 
 /** Тот же расчёт, что показывает цены в каталоге: корзина, заказ и карточка не расходятся. */
@@ -200,6 +207,8 @@ export async function priceCart(
     deliveryLang?: DeliveryLangChoice | null;
     /** Оформление заказа: акции читаем заново, без минутного кеша (лимит штук, «Закончить сейчас»). */
     freshOffers?: boolean;
+    /** Оформление заказа: занять штуки по акциям с лимитом (core/offers/holds), иначе берём «осталось». */
+    holdToken?: string;
   } = {},
 ): Promise<PricedCart> {
   if (opts.freshOffers && ctx.tenant.modules.limited_offers) {
@@ -212,24 +221,71 @@ export async function priceCart(
   let kind: "digital" | "physical" = "digital";
   let mixedCurrency = false;
   const choice = ctx.tenant.modules.multi_language ? (opts.deliveryLang ?? null) : null;
-  for (const item of items) {
-    const p = item.products;
-    if (!p) continue;
-    if (p.fulfillment_kind === "physical") kind = "physical";
-    const unit = await resolvePrice(ctx, p, countryCode, item.product_variants);
-    // $50 и 2000 ₸ не складываются в «2050 ₸»: курса нет — оформлять нельзя.
-    if (lines.length > 0 && unit.currency.toUpperCase() !== currency.toUpperCase())
-      mixedCurrency = true;
-    currency = unit.currency;
-    // «Все языки» — как N комплектов по числу языков этого товара.
-    const copies =
-      p.fulfillment_kind === "physical"
-        ? 1
-        : deliveryPriceMultiplier(choice, materialLanguages(p).length);
-    const line = unit.amount * copies * Number(item.quantity);
-    total += line;
-    const name = item.product_variants ? `${p.name} (${item.product_variants.name})` : p.name;
-    lines.push({ item, name, unit, line, copies });
+
+  // Акции с лимитом штук: по акции идут только оставшиеся штуки, остальные — по полной цене.
+  const limited = new Map<CartItem, import("@/core/offers/offers").OfferState>();
+  const want = new Map<
+    string,
+    { offer: import("@/core/offers/offers").OfferState; want: number }
+  >();
+  if (ctx.tenant.modules.limited_offers) {
+    const { offerForProductRow } = await import("@/core/offers/offers");
+    for (const item of items) {
+      if (!item.products) continue;
+      const offer = await offerForProductRow(ctx, item.products);
+      if (!offer || offer.limit == null) continue;
+      limited.set(item, offer);
+      const w = want.get(offer.id) ?? { offer, want: 0 };
+      w.want += Number(item.quantity);
+      want.set(offer.id, w);
+    }
   }
-  return { lines, total, currency, kind, mixedCurrency };
+  const allowance = new Map<string, number>();
+  let held = false;
+  const { releaseOfferHolds } = await import("@/core/offers/holds");
+  try {
+    if (want.size > 0 && opts.holdToken) {
+      const { reserveOfferUnits } = await import("@/core/offers/holds");
+      held = true;
+      const granted = await reserveOfferUnits(ctx, opts.holdToken, [...want.values()]);
+      for (const [id, n] of granted) allowance.set(id, n);
+    } else {
+      for (const [id, w] of want) allowance.set(id, Math.max(0, w.offer.left ?? w.want));
+    }
+    for (const item of items) {
+      const p = item.products;
+      if (!p) continue;
+      if (p.fulfillment_kind === "physical") kind = "physical";
+      let unit = await resolvePrice(ctx, p, countryCode, item.product_variants);
+      const qty = Number(item.quantity);
+      let offerSplit: PricedLine["offerSplit"];
+      const offer = limited.get(item);
+      if (offer) {
+        const take = Math.min(qty, allowance.get(offer.id) ?? 0);
+        allowance.set(offer.id, (allowance.get(offer.id) ?? 0) - take);
+        const list = await resolveListPrice(ctx, p, countryCode, item.product_variants);
+        offerSplit = { offerQty: take, restQty: qty - take, restUnit: list.amount };
+        if (take === 0) unit = list;
+      }
+      // $50 и 2000 ₸ не складываются в «2050 ₸»: курса нет — оформлять нельзя.
+      if (lines.length > 0 && unit.currency.toUpperCase() !== currency.toUpperCase())
+        mixedCurrency = true;
+      currency = unit.currency;
+      // «Все языки» — как N комплектов по числу языков этого товара.
+      const copies =
+        p.fulfillment_kind === "physical"
+          ? 1
+          : deliveryPriceMultiplier(choice, materialLanguages(p).length);
+      const line = offerSplit
+        ? (unit.amount * offerSplit.offerQty + offerSplit.restUnit * offerSplit.restQty) * copies
+        : unit.amount * copies * qty;
+      total += line;
+      const name = item.product_variants ? `${p.name} (${item.product_variants.name})` : p.name;
+      lines.push({ item, name, unit, line, copies, offerSplit });
+    }
+  } catch (e) {
+    if (held && opts.holdToken) await releaseOfferHolds(ctx, opts.holdToken);
+    throw e;
+  }
+  return { lines, total, currency, kind, mixedCurrency, offerHeld: held };
 }

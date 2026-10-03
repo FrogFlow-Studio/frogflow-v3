@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSettingStrict, updateSettingStamped } from "@/core/settings/settings";
+import { pageAll } from "@/core/db/page";
 import { serverFailure } from "@/lib/server-failure";
 
 /**
@@ -114,23 +115,77 @@ export function resetOffersCache(tenantId?: string): void {
   else cache.clear();
 }
 
+/**
+ * Метка позиции заказа, оформленной по акции: по ней считается проданное по лимиту.
+ * Видимая «🔥» и невидимый разделитель U+2063: считаем только по разделителю, потому что
+ * «🔥» бывает в самом названии товара («Хит 🔥»).
+ */
+export const OFFER_ROW_MARK = "🔥\u2063";
+const OFFER_ROW_TAIL = "\u2063";
+
+/** Название позиции без метки акции — для сообщений и повтора заказа. */
+export function stripOfferMark(name: string): string {
+  return name.endsWith(OFFER_ROW_MARK) ? name.slice(0, -OFFER_ROW_MARK.length).trimEnd() : name;
+}
+
+/**
+ * Позиции заказа для повтора: «по акции» и «по полной» — две строки одного товара —
+ * сводятся в одну (сумма штук), чтобы остаток и потолок штук считались на товар, а не на строку.
+ */
+export function mergeOrderItems<
+  T extends { product_id: string | null; product_variant_id: string | null; quantity: unknown },
+>(items: readonly T[]): Array<T & { quantity: number }> {
+  const out = new Map<string, T & { quantity: number }>();
+  for (const it of items) {
+    const key = `${it.product_id ?? ""}:${it.product_variant_id ?? ""}`;
+    const qty = Number(it.quantity) || 1;
+    const have = out.get(key);
+    if (have && it.product_id) have.quantity += qty;
+    else out.set(it.product_id ? key : `${key}:${out.size}`, { ...it, quantity: qty });
+  }
+  return [...out.values()];
+}
+/** Заказы до этой даты записывали все штуки товара по акции, без метки и без деления на «по акции» и «остальные». */
+const OFFER_MARK_SINCE = Date.parse("2026-10-04T00:00:00Z");
+
+/**
+ * Сколько штук продано по акции с лимитом. Считаются позиции с меткой акции
+ * (и все позиции старых заказов); «остальные штуки по полной цене» в лимит
+ * не входят. Отклонённые и отменённые заказы не в счёт.
+ */
+export async function soldForOffer(ctx: TenantContext, o: LimitedOffer): Promise<number> {
+  const rows = await pageAll<{
+    quantity: number | string;
+    name_snapshot: string | null;
+    orders: { created_at: string } | { created_at: string }[] | null;
+  }>(
+    (from, to) =>
+      ctx.db
+        .from("order_items")
+        .select("quantity, name_snapshot, orders!inner(status, created_at)")
+        .eq("product_id", o.product_id)
+        .gte("orders.created_at", o.starts_at)
+        .not("orders.status", "in", "(rejected,cancelled)")
+        .order("id")
+        .range(from, to),
+    // Без проданного число «осталось» завысилось бы, и лимит акции не удержался бы.
+    `Продано по акции ${o.id}`,
+  );
+  let sold = 0;
+  for (const r of rows) {
+    const ord = Array.isArray(r.orders) ? r.orders[0] : r.orders;
+    const legacy = !ord || Date.parse(ord.created_at) < OFFER_MARK_SINCE;
+    if (legacy || (r.name_snapshot ?? "").endsWith(OFFER_ROW_TAIL)) sold += Number(r.quantity) || 0;
+  }
+  return sold;
+}
+
 async function soldCounts(ctx: TenantContext, offers: readonly LimitedOffer[]) {
   const sold = new Map<string, number>();
   const now = Date.now();
   for (const o of offers) {
     if (o.limit == null || o.category_id || now >= Date.parse(o.ends_at)) continue;
-    const { data, error } = await ctx.db
-      .from("order_items")
-      .select("quantity, orders!inner(status, created_at)")
-      .eq("product_id", o.product_id)
-      .gte("orders.created_at", o.starts_at)
-      .not("orders.status", "in", "(rejected,cancelled)");
-    // Без проданного число «осталось» завысилось бы, и лимит акции не удержался бы.
-    if (error) throw serverFailure(`Продано по акции ${o.id}: ${error.message}`);
-    sold.set(
-      o.id,
-      (data ?? []).reduce((s, r) => s + (Number(r.quantity) || 0), 0),
-    );
+    sold.set(o.id, await soldForOffer(ctx, o));
   }
   return sold;
 }

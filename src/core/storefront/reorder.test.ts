@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { planReorder, planReorderForBuyer } from "./reorder";
+import { OFFER_ROW_MARK } from "@/core/offers/offers";
 
 const BOT = "00000000-0000-0000-0000-0000000000aa";
 const P = (n: number) => `00000000-0000-0000-0000-00000000010${n}`;
@@ -172,5 +173,27 @@ describe("повтор заказа на витрине", () => {
     expect(await planReorderForBuyer(ctx, 333, 8)).toBeNull();
     // Привязка не открывает обычный заказ бота.
     expect(await planReorderForBuyer(ctx, 222, 7)).toBeNull();
+  });
+
+  it("позиции «по акции» и «по полной» одного товара — одна строка с суммой штук и потолком 20", async () => {
+    const { ctx, order } = setup(
+      [product(1, { stock_quantity: 4 }), product(2)],
+      [
+        { product_id: P(1), quantity: 3, name_snapshot: `Хит 🔥 ${OFFER_ROW_MARK}` },
+        { product_id: P(1), quantity: 2, name_snapshot: "Хит 🔥" },
+        { product_id: P(2), quantity: 15, name_snapshot: `Товар 2 ${OFFER_ROW_MARK}` },
+        { product_id: P(2), quantity: 10, name_snapshot: "Товар 2" },
+      ],
+    );
+    const plan = await planReorder(ctx, order(7));
+    // Остаток 4 делят обе строки заказа: по товару одна строка, а не две по 3 и 1.
+    expect(plan.lines.map((l) => [l.productId, l.qty])).toEqual([
+      [P(1), 4],
+      [P(2), 20],
+    ]);
+    expect(plan.skipped).toEqual([
+      { name: "Хит 🔥", reason: "less", left: 4 },
+      { name: "Товар 2", reason: "less", left: 20 },
+    ]);
   });
 });
