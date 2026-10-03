@@ -10,6 +10,7 @@ import { purchaseHomework, studentName } from "./homework.server";
 import { parseRun, purchaseTimeline, type CoursePurchase } from "./run.server";
 import { runKey } from "./run.server";
 import { readSetting } from "./db.server";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Выдача сертификата. «Один раз на покупку»: код ложится в
@@ -113,4 +114,26 @@ export async function issueCertificate(
   if (wrote === "written") return { certificate: made, created: true };
   const winner = parseCertificate(await readSetting(ctx, certKey(code)));
   return winner ? { certificate: winner, created: false } : null;
+}
+
+/**
+ * Сертификат отозван, если заказ покупки больше не «выдан» (возврат,
+ * отмена): деньги вернули — подтверждать нечего. Частичный возврат оставляет
+ * заказ выданным и сертификат в силе. Упавшее чтение — ошибка, не «действителен».
+ */
+export async function certificateRevoked(ctx: TenantContext, cert: Certificate): Promise<boolean> {
+  const { data: item, error: itemError } = await ctx.db
+    .from("order_items")
+    .select("order_id")
+    .eq("id", cert.orderItemId)
+    .maybeSingle();
+  if (itemError) throw serverFailure(`Покупка сертификата не прочитана: ${itemError.message}`);
+  if (!item) return true;
+  const { data: order, error: orderError } = await ctx.db
+    .from("orders")
+    .select("status")
+    .eq("id", item.order_id)
+    .maybeSingle();
+  if (orderError) throw serverFailure(`Заказ сертификата не прочитан: ${orderError.message}`);
+  return order?.status !== "delivered";
 }

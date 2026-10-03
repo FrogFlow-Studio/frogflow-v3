@@ -6,7 +6,9 @@ import { CERT_CODE_RE, certificateReady, certificateNo } from "./certificate";
 import { hwKey } from "./homework";
 import { runKey, type CoursePurchase } from "./run.server";
 
-const { certificateByCode, certificateOf, issueCertificate } = await import("./certificate.server");
+const { certificateByCode, certificateOf, certificateRevoked, issueCertificate } =
+  await import("./certificate.server");
+const { refundOrder } = await import("@/core/orders/refund");
 const { certificatePdf } = await import("./certificate-pdf.server");
 
 /** Сертификат: когда курс пройден, один раз на покупку, подлинность по коду, PDF с кириллицей. */
@@ -156,5 +158,67 @@ describe("PDF сертификата", () => {
       expect(Buffer.from(pdf.slice(0, 5)).toString()).toBe("%PDF-");
       expect(pdf.length).toBeGreaterThan(5_000);
     }
+  });
+});
+
+describe("отзыв сертификата при возврате", () => {
+  /** Школа с заказом покупки: выданный, оплаченный, с позицией курса. */
+  function paidSchool() {
+    const { ctx, p } = school(true);
+    const db = ctx.db as unknown as { tables: Record<string, Array<Record<string, unknown>>> };
+    db.tables.orders = [
+      {
+        id: 5,
+        bot_id: T,
+        status: "delivered",
+        total: 10000,
+        paid_amount: 0,
+        currency: "KZT",
+        fulfillment_kind: "digital",
+        telegram_id: 42,
+        points_used: 0,
+        points_earned: 0,
+        promo_code: null,
+        updated_at: "2026-10-01T00:00:00.000Z",
+        display_name: "Айгерим Қасымова",
+      },
+    ];
+    db.tables.order_items = [{ id: ITEM, order_id: 5, product_id: P }];
+    db.tables.zernio_logs = [];
+    db.tables.gift_certificates = [];
+    db.tables.promo_codes = [];
+    db.tables.bot_users = [];
+    return { ctx, p };
+  }
+
+  it("пока заказ выдан — сертификат в силе", async () => {
+    const { ctx, p } = paidSchool();
+    const cert = (await issueCertificate(ctx, p, NOW))!.certificate;
+    expect(await certificateRevoked(ctx, cert)).toBe(false);
+  });
+
+  it("полный возврат через настоящий путь — сертификат отозван", async () => {
+    const { ctx, p } = paidSchool();
+    const cert = (await issueCertificate(ctx, p, NOW))!.certificate;
+    await refundOrder(ctx, 5, { amount: 10000 });
+    expect(await certificateRevoked(ctx, cert)).toBe(true);
+  });
+
+  it("частичный возврат оставляет сертификат в силе", async () => {
+    const { ctx, p } = paidSchool();
+    const cert = (await issueCertificate(ctx, p, NOW))!.certificate;
+    await refundOrder(ctx, 5, { amount: 1000 });
+    expect(await certificateRevoked(ctx, cert)).toBe(false);
+  });
+
+  it("отменённый заказ или удалённая позиция — отозван", async () => {
+    const { ctx, p } = paidSchool();
+    const cert = (await issueCertificate(ctx, p, NOW))!.certificate;
+    const db = ctx.db as unknown as { tables: Record<string, Array<Record<string, unknown>>> };
+    db.tables.orders![0]!.status = "cancelled";
+    expect(await certificateRevoked(ctx, cert)).toBe(true);
+    db.tables.orders![0]!.status = "delivered";
+    db.tables.order_items = [];
+    expect(await certificateRevoked(ctx, cert)).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
 import { CERT_CODE_RE, certificateNo } from "@/core/courses/certificate";
-import { certificateByCode } from "@/core/courses/certificate.server";
+import { certificateByCode, certificateRevoked } from "@/core/courses/certificate.server";
 import { storefrontOpen } from "@/core/storefront/access";
 import { SHOP_SLUG_RE } from "@/core/tenant/slug";
 import { storefrontBase } from "@/core/tenant/custom-domain";
@@ -27,6 +27,13 @@ export async function openCertificate(
   return cert ? { ctx, cert } : null;
 }
 
+/** Возврат или отмена покупки отзывает сертификат: «действителен» ему не показываем. */
+export async function openValidCertificate(slug: string, code: string) {
+  const found = await openCertificate(slug, code);
+  if (!found) return null;
+  return { ...found, revoked: await certificateRevoked(found.ctx, found.cert) };
+}
+
 export type CertificateView = {
   student: string;
   course: string;
@@ -34,12 +41,14 @@ export type CertificateView = {
   no: string;
   shop: string;
   pdfPath: string;
+  revoked: boolean;
 };
 
 export async function certificateView(slug: string, code: string): Promise<CertificateView | null> {
-  const found = await openCertificate(slug, code);
+  const found = await openValidCertificate(slug, code);
   if (!found) return null;
   return {
+    revoked: found.revoked,
     student: found.cert.student,
     course: found.cert.course,
     issuedAt: found.cert.issuedAt,
@@ -50,8 +59,9 @@ export async function certificateView(slug: string, code: string): Promise<Certi
 }
 
 export async function certificateResponse(slug: string, code: string): Promise<Response> {
-  const found = await openCertificate(slug, code);
+  const found = await openValidCertificate(slug, code);
   if (!found) return new Response("Not found", { status: 404 });
+  if (found.revoked) return new Response("Revoked", { status: 410 });
   const { ctx, cert } = found;
   const { certificatePdf } = await import("@/core/courses/certificate-pdf.server");
   const pdf = await certificatePdf(cert, {

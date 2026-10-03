@@ -28,6 +28,15 @@ function CertificatePage() {
     month: "long",
     year: "numeric",
   });
+  if (c.revoked)
+    return (
+      <article className="mx-auto max-w-md space-y-3 rounded-md border border-line p-6 text-center">
+        <p className="text-sm font-medium text-danger">✕ {t("course.cert.revoked")}</p>
+        <p className="font-medium text-balance">«{c.course}»</p>
+        <p className="text-xs text-muted tabular-nums">{t("course.cert.number", { no: c.no })}</p>
+        <p className="text-xs text-muted">{c.shop}</p>
+      </article>
+    );
   return (
     <article className="mx-auto max-w-md space-y-3 rounded-md border border-line p-6 text-center">
       <p className="text-sm font-medium text-ok">✓ {t("course.cert.valid")}</p>
