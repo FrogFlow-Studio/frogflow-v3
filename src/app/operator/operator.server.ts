@@ -40,6 +40,7 @@ import { adminLoginTaken } from "@/core/auth/roles";
 import type { Pulse } from "./pulse";
 import type { Locale } from "@/core/i18n/locale";
 import { sellerLocaleSafe } from "@/core/ai/seller-text";
+import { intlLocale } from "@/app/i18n/admin";
 import { ownerTemplates, type OwnerTemplateKey } from "@/core/notify/owner-templates";
 import { hashPassword } from "@/app/auth/password";
 import { telegramWebhookUrl } from "@/channels/telegram/secret";
@@ -861,7 +862,7 @@ export async function ownerMessageDraft(botId: string): Promise<OwnerMessageDraf
   const ex = (await extras([botId])).get(botId);
   const until = ex?.subscription_expires_at ?? null;
   const paidUntil = until
-    ? new Date(until).toLocaleDateString("ru-RU", { timeZone: env().APP_TIMEZONE })
+    ? new Date(until).toLocaleDateString(intlLocale(locale), { timeZone: env().APP_TIMEZONE })
     : null;
   return { locale, templates: ownerTemplates(locale, { shop: t.name, paidUntil }) };
 }

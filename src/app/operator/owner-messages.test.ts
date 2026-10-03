@@ -54,6 +54,14 @@ describe("сообщение владельцу", () => {
     expect(pay.text).toContain("жазылымы");
   });
 
+  it("дата в шаблоне — в формате языка продавца, а не всегда ru-RU", async () => {
+    locale = "en";
+    const d = await ownerMessageDraft("b1");
+    const pay = d.templates.find((t) => t.key === "payment")!;
+    expect(pay.text).toContain("20/10/2026");
+    expect(pay.text).not.toContain("20.10.2026");
+  });
+
   it("отправка: сообщение дошло и осталось в журнале целиком, с шаблоном и итогом", async () => {
     const text = "Здравствуйте! ".repeat(40);
     const r = await notifyOwner("b1", text, "checkin");

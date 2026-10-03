@@ -5,6 +5,7 @@ import { isInternalTenant } from "@/core/tenant/internal";
 import { patchTenantSettings, tenantDirectory } from "@/core/tenant/resolve.server";
 import { TIER_TITLES, parsePlan } from "@/core/plans/registry";
 import { serverFailure } from "@/lib/server-failure";
+import { shownError } from "@/lib/shown-error";
 import {
   PARTNERS_KEY,
   cleanPartner,
@@ -122,6 +123,13 @@ export async function partnersOverview(appUrl: string, now = new Date()): Promis
     ),
     link: `${appUrl}/partner/${partner.code}?t=${partnerToken(env().SESSION_SECRET, partner.code)}`,
   }));
+}
+
+/** То же для страницы партнёра: недействительная ссылка — отказ, текст которого можно показать как есть. */
+export async function partnerReportOrFail(code: string, token: string): Promise<PartnerReport> {
+  const r = await partnerPublicReport(code, token);
+  if (!r) throw shownError("Ссылка недействительна");
+  return r;
 }
 
 /** Отчёт по подписанной ссылке — для самого партнёра, без контактов и чужих клиентов. */

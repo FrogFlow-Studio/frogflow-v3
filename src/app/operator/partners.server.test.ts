@@ -63,6 +63,10 @@ describe("партнёры: хранение и доступ", () => {
   it("отчёт по ссылке — только по верной подписи, свои клиенты, без контакта", async () => {
     await srv.savePartner({ code: "agency", name: "A", contact: "+7 700", percent: 20 });
     expect(await srv.partnerPublicReport("agency", "подделка")).toBeNull();
+    // Для страницы партнёра: отказ помечен как показываемый человеку, а не безымянный Error.
+    const refused = await srv.partnerReportOrFail("agency", "подделка").catch((e: unknown) => e);
+    expect((refused as Error).name).toBe("ShownError");
+    expect((refused as Error).message).toBe("Ссылка недействительна");
     const r = await srv.partnerPublicReport("agency", partnerToken("s".repeat(40), "agency"));
     expect(r!.clients.map((c) => c.name)).toEqual(["Свой"]);
     expect(r!.totals).toEqual([{ currency: "KZT", paid: 10000, commission: 2000 }]);
