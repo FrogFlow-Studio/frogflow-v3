@@ -292,7 +292,8 @@ describe("telegramUpload с once: одна попытка", () => {
       });
       expect(f).toHaveBeenCalledTimes(1);
       expect(r.ok).toBe(false);
-      expect(r.error_code).toBe(status);
+      // 5xx — «неизвестно»: без кода, как обрыв.
+      expect(r.error_code).toBe(status >= 500 ? undefined : status);
       expect(rejectedForSure(r)).toBe(sure);
     }
   });

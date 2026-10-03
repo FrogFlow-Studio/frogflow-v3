@@ -52,49 +52,80 @@ import { PREVIEW_SEND_OFF, previewReadonly } from "@/lib/preview";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Сколько ждать ответа на обычный вызов Bot API, мс. */
+export const CALL_TIMEOUT_MS = 20_000;
+
+type TgBody<T> = TgResult<T> & { parameters?: { retry_after?: number } };
+
+/**
+ * Одна отправка с повторами. Чтение (`retryable`) повторяется на обрыве,
+ * тайм-ауте, 5xx и 429. Отправка — только на 429: Telegram явно сказал, что
+ * не принял, и назвал паузу (`retry_after`). Обрыв, тайм-аут и 5xx — неизвестно,
+ * дошло ли: результат без `error_code`, повтора нет.
+ */
+async function attempts<T>(
+  method: string,
+  retryable: boolean,
+  max: number,
+  send: () => Promise<Response>,
+): Promise<TgResult<T>> {
+  for (let attempt = 1; attempt <= max; attempt++) {
+    let res: Response;
+    try {
+      res = await send();
+    } catch (e) {
+      const timeout = e instanceof Error && e.name === "TimeoutError";
+      console.error(`[tg] ${method}: ${timeout ? "тайм-аут" : "сеть"}`, e);
+      if (!retryable || attempt === max) {
+        return { ok: false, description: timeout ? "timeout" : "network error" };
+      }
+      await sleep(1000 * attempt);
+      continue;
+    }
+    const data = (await res.json().catch(() => ({}))) as TgBody<T>;
+    if (res.status === 429 && attempt < max) {
+      await sleep((data.parameters?.retry_after ?? attempt * 2) * 1000);
+      continue;
+    }
+    if (res.status >= 500) {
+      if (retryable && attempt < max) {
+        await sleep(Math.min(1000 * 2 ** (attempt - 1), 5000));
+        continue;
+      }
+      console.error(`[tg] ${method} failed`, res.status, data.description);
+      // Без error_code: «неизвестно», как обрыв.
+      return { ok: false, description: data.description ?? `http ${res.status}` };
+    }
+    const benign = /message is not modified/i.test(data.description ?? "");
+    if ((!res.ok || data.ok === false) && !benign) {
+      console.error(`[tg] ${method} failed`, res.status, data.description);
+      return { ...data, ok: false, error_code: data.error_code ?? res.status };
+    }
+    return data;
+  }
+  return { ok: false, description: "retries exhausted" };
+}
+
 export function telegramApi(token: string, apiBase = "https://api.telegram.org"): TelegramApi {
   const base = apiBase.replace(/\/$/, "");
   const url = (method: string) => `${base}/bot${token}/${method}`;
 
   async function call<T>(method: string, payload: unknown = {}): Promise<TgResult<T>> {
     // Чтение (getMe, getFile…) — не отправка.
-    if (!/^get/i.test(method)) {
+    const read = /^get/i.test(method);
+    if (!read) {
       // Без error_code: «неизвестно», как обрыв — ни повтора, ни другого способа отправки.
       if (previewReadonly()) return { ok: false, description: PREVIEW_SEND_OFF };
       await beforeExternalEffect();
     }
-    const MAX = 3;
-    for (let attempt = 1; attempt <= MAX; attempt++) {
-      let res: Response;
-      try {
-        res = await fetch(url(method), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } catch (e) {
-        console.error(`[tg] ${method}: сеть`, e);
-        await sleep(1000 * attempt);
-        continue;
-      }
-      const data = (await res.json().catch(() => ({}))) as TgResult<T> & {
-        parameters?: { retry_after?: number };
-      };
-      if (res.status === 429 && attempt < MAX) {
-        await sleep((data.parameters?.retry_after ?? attempt * 2) * 1000);
-        continue;
-      }
-      if (res.status >= 500 && attempt < MAX) {
-        await sleep(Math.min(1000 * 2 ** (attempt - 1), 5000));
-        continue;
-      }
-      const benign = /message is not modified/i.test(data.description ?? "");
-      if ((!res.ok || data.ok === false) && !benign) {
-        console.error(`[tg] ${method} failed`, res.status, data.description);
-      }
-      return data;
-    }
-    return { ok: false, description: "retries exhausted" };
+    return attempts<T>(method, read, 3, () =>
+      fetch(url(method), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
+      }),
+    );
   }
 
   return {
@@ -107,8 +138,8 @@ export function telegramApi(token: string, apiBase = "https://api.telegram.org")
 /**
  * Отправка файла самим файлом (multipart/form-data): по ссылке Telegram
  * принимает документы только PDF и ZIP и берёт имя из адреса. Каждая попытка
- * ограничена по времени. Повтор — как у call (сеть, 429 и 5xx, не больше
- * трёх попыток), с `once` — без повтора.
+ * ограничена по времени. Повтор — только на 429 с `retry_after` (не больше
+ * трёх попыток); с `once` — без повтора совсем.
  */
 export async function telegramUpload(
   token: string,
@@ -121,41 +152,14 @@ export async function telegramUpload(
   const url = `${apiBase.replace(/\/$/, "")}/bot${token}/${method}`;
   if (previewReadonly()) return { ok: false, description: PREVIEW_SEND_OFF };
   await beforeExternalEffect();
-  const MAX = opts.once ? 1 : 3;
-  for (let attempt = 1; attempt <= MAX; attempt++) {
+  return attempts(method, false, opts.once ? 1 : 3, () => {
     const form = new FormData();
     for (const [k, v] of Object.entries(fields)) form.append(k, String(v));
     form.append(file.field, file.data, file.name);
-    let res: Response;
-    try {
-      res = await fetch(url, {
-        method: "POST",
-        body: form,
-        signal: AbortSignal.timeout(opts.timeoutMs ?? UPLOAD_TIMEOUT_MS),
-      });
-    } catch (e) {
-      const timeout = e instanceof Error && e.name === "TimeoutError";
-      console.error(`[tg] ${method}: ${timeout ? "тайм-аут" : "сеть"}`, e);
-      if (attempt === MAX) return { ok: false, description: timeout ? "timeout" : "network error" };
-      await sleep(1000 * attempt);
-      continue;
-    }
-    const data = (await res.json().catch(() => ({}))) as TgResult & {
-      parameters?: { retry_after?: number };
-    };
-    if (res.status === 429 && attempt < MAX) {
-      await sleep((data.parameters?.retry_after ?? attempt * 2) * 1000);
-      continue;
-    }
-    if (res.status >= 500 && attempt < MAX) {
-      await sleep(Math.min(1000 * 2 ** (attempt - 1), 5000));
-      continue;
-    }
-    if (!res.ok || data.ok === false) {
-      console.error(`[tg] ${method} failed`, res.status, data.description);
-      return { ...data, ok: false, error_code: data.error_code ?? res.status };
-    }
-    return data;
-  }
-  return { ok: false, description: "retries exhausted" };
+    return fetch(url, {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(opts.timeoutMs ?? UPLOAD_TIMEOUT_MS),
+    });
+  });
 }
