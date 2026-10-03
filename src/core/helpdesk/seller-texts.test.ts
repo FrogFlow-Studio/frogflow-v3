@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { SUPPORTED_LOCALES as LOCALES } from "@/core/i18n/locale";
-import { overdueTicketText, unansweredChatText, waitedText } from "./seller-texts";
+import {
+  overdueTicketText,
+  ticketAppendedText,
+  unansweredChatText,
+  waitedText,
+} from "./seller-texts";
 
 const card = {
   who: "👤 Аня",
@@ -27,5 +32,22 @@ describe("тексты продавцу об ожидании ответа", () 
     expect(unansweredChatText("en", "5 min", card)).toContain("No one assigned");
     expect(unansweredChatText("kk", "5 мин", card)).not.toContain("Покупатель");
     expect(overdueTicketText("uz", 7, "1 soat", card)).not.toContain("Обращение");
+  });
+});
+
+describe("дополнение к обращению из Mini App — продавцу на его языке", () => {
+  it("на всех четырёх языках: номер, покупатель, текст и подсказка", () => {
+    const c = { who: "Аня", text: "Добавлю: заказ №5" };
+    const seen = new Set<string>();
+    for (const l of LOCALES) {
+      const t = ticketAppendedText(l, 7, c);
+      expect(t).toContain("7");
+      expect(t).toContain("Аня");
+      expect(t).toContain("Добавлю: заказ №5");
+      seen.add(t.split("\n")[0]!);
+    }
+    expect(seen.size).toBe(4);
+    expect(ticketAppendedText("ru", 7, c)).toContain("Дополнение к обращению #7");
+    expect(ticketAppendedText("en", 7, c)).toContain("Addition to request #7");
   });
 });

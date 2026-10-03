@@ -36,6 +36,12 @@ export const ru = {
   "tickets.overdue.hint":
     "Просрочено: покупатель ждёт ответа дольше выбранного срока. Напоминание придёт в Telegram продавца один раз.",
   "tickets.overdue.badge": "просрочено",
+  "tickets.reply.title": "Ответ покупателю",
+  "tickets.reply.placeholder": "Напишите ответ — он уйдёт покупателю в его канал и попадёт в «Чат»",
+  "tickets.reply.send": "Отправить ответ",
+  "tickets.reply.sent": "Ответ отправлен",
+  "tickets.reply.quick": "Быстрые ответы",
+  "tickets.reply.quickHint": "Настроить быстрые ответы — в «Чате»",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -73,6 +79,13 @@ export const kk: SectionDict<typeof ru> = {
   "tickets.overdue.hint":
     "Мерзімі өтті: сатып алушы таңдалған уақыттан ұзақ жауап күтіп тұр. Еске салу сатушының Telegram-ына бір рет келеді.",
   "tickets.overdue.badge": "мерзімі өтті",
+  "tickets.reply.title": "Сатып алушыға жауап",
+  "tickets.reply.placeholder":
+    "Жауап жазыңыз — ол сатып алушының арнасына кетеді және «Чатқа» түседі",
+  "tickets.reply.send": "Жауап жіберу",
+  "tickets.reply.sent": "Жауап жіберілді",
+  "tickets.reply.quick": "Жылдам жауаптар",
+  "tickets.reply.quickHint": "Жылдам жауаптарды «Чатта» баптаңыз",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -110,6 +123,13 @@ export const en: SectionDict<typeof ru> = {
   "tickets.overdue.hint":
     "Overdue: the buyer has waited longer than the chosen time. One reminder goes to the seller’s Telegram.",
   "tickets.overdue.badge": "overdue",
+  "tickets.reply.title": "Reply to the customer",
+  "tickets.reply.placeholder":
+    "Write a reply — it goes to the customer in their channel and appears in the Chat",
+  "tickets.reply.send": "Send reply",
+  "tickets.reply.sent": "Reply sent",
+  "tickets.reply.quick": "Saved replies",
+  "tickets.reply.quickHint": "Edit saved replies in the Chat",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -147,4 +167,10 @@ export const uz: SectionDict<typeof ru> = {
   "tickets.overdue.hint":
     "Muddati oʻtdi: xaridor tanlangan vaqtdan uzoq javob kutmoqda. Eslatma sotuvchining Telegramiga bir marta keladi.",
   "tickets.overdue.badge": "muddati oʻtdi",
+  "tickets.reply.title": "Xaridorga javob",
+  "tickets.reply.placeholder": "Javob yozing — u xaridorning kanaliga ketadi va «Chat»da koʻrinadi",
+  "tickets.reply.send": "Javob yuborish",
+  "tickets.reply.sent": "Javob yuborildi",
+  "tickets.reply.quick": "Tezkor javoblar",
+  "tickets.reply.quickHint": "Tezkor javoblarni «Chat»da sozlang",
 };

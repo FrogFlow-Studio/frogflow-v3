@@ -76,7 +76,8 @@ export const ru = {
   "chat.quickEmpty":
     "Быстрых ответов пока нет. Добавьте частые ответы, чтобы вставлять их одним нажатием.",
   "chat.quickTitle": "Название",
-  "chat.quickText": "Текст; {name} заменится на имя покупателя",
+  "chat.quickText":
+    "Текст; {name} — имя покупателя, {order} — номер его последнего заказа, {ticket} — номер его обращения",
   "chat.quickAdd": "Добавить ответ",
   "chat.quickRemove": "Удалить",
   "chat.quickSave": "Сохранить",
@@ -164,7 +165,8 @@ export const kk: SectionDict<typeof ru> = {
   "chat.quickEmpty":
     "Жылдам жауаптар әзірге жоқ. Жиі жауаптарды қосыңыз — оларды бір басумен қоюға болады.",
   "chat.quickTitle": "Атауы",
-  "chat.quickText": "Мәтін; {name} сатып алушының атымен ауыстырылады",
+  "chat.quickText":
+    "Мәтін; {name} — сатып алушының аты, {order} — соңғы тапсырыс нөмірі, {ticket} — өтініш нөмірі",
   "chat.quickAdd": "Жауап қосу",
   "chat.quickRemove": "Жою",
   "chat.quickSave": "Сақтау",
@@ -254,7 +256,8 @@ export const en: SectionDict<typeof ru> = {
   "chat.quickEdit": "Edit",
   "chat.quickEmpty": "No saved replies yet. Add frequent answers to insert them in one tap.",
   "chat.quickTitle": "Title",
-  "chat.quickText": "Text; {name} becomes the customer's name",
+  "chat.quickText":
+    "Text; {name} is the customer's name, {order} is the number of their last order, {ticket} is their request number",
   "chat.quickAdd": "Add reply",
   "chat.quickRemove": "Remove",
   "chat.quickSave": "Save",
@@ -344,7 +347,8 @@ export const uz: SectionDict<typeof ru> = {
   "chat.quickEmpty":
     "Tezkor javoblar hali yo‘q. Ko‘p beriladigan javoblarni qo‘shing — ularni bir bosishda qo‘yish mumkin.",
   "chat.quickTitle": "Nomi",
-  "chat.quickText": "Matn; {name} xaridor ismiga almashtiriladi",
+  "chat.quickText":
+    "Matn; {name} — xaridor ismi, {order} — oxirgi buyurtma raqami, {ticket} — murojaat raqami",
   "chat.quickAdd": "Javob qo‘shish",
   "chat.quickRemove": "O‘chirish",
   "chat.quickSave": "Saqlash",

@@ -2276,6 +2276,28 @@ export const chatConversationsFn = createServerFn({ method: "GET" }).handler(asy
   };
 });
 
+/**
+ * Быстрый ответ с подстановками ({name}, {order}, {ticket}) для выбранного
+ * покупателя — одно место для «Чата» и «Обращений». Только читает: ничего не отправляет.
+ */
+export const quickReplyFillFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        telegramId: tgId,
+        text: z.string().max(2000),
+        ticketNo: z.number().int().positive().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await chatModule("manager");
+    const { quickReplyVars, fillQuickReply } = await import("@/core/inbox/inbox");
+    return {
+      text: fillQuickReply(data.text, await quickReplyVars(ctx, data.telegramId, data.ticketNo)),
+    };
+  });
+
 /** Через сколько минут без ответа напомнить продавцу; 0 — не напоминать. */
 export const chatUnansweredSaveFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ minutes: z.number().int().min(0).max(1440) }).parse(d))

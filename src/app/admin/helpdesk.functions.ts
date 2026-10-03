@@ -17,6 +17,7 @@ export const ticketsFn = createServerFn({ method: "GET" })
     const { OVERDUE_KEY, parseOverdueHours, overdueAmong } =
       await import("@/core/helpdesk/overdue");
     const { getSetting } = await import("@/core/settings/settings");
+    const { QUICK_REPLIES_KEY, parseQuickReplies } = await import("@/core/inbox/inbox");
     const { helpdeskTeam } = await import("./helpdesk.server");
     const [tickets, openCount, ratings] = await Promise.all([
       listTickets(ctx, data.status ?? null),
@@ -25,10 +26,12 @@ export const ticketsFn = createServerFn({ method: "GET" })
     ]);
     const overdueHours = parseOverdueHours(await getSetting(ctx, OVERDUE_KEY));
     const overdueIds = (await overdueAmong(ctx, tickets, overdueHours)).map((o) => o.ticket.id);
+    const quickReplies = parseQuickReplies(await getSetting(ctx, QUICK_REPLIES_KEY));
     return {
       tickets,
       openCount,
       ratings,
+      quickReplies,
       overdueHours,
       overdueIds,
       team: helpdeskTeam(ctx.tenant),
@@ -94,4 +97,35 @@ export const ticketOverdueSaveFn = createServerFn({ method: "POST" })
     const { setSetting } = await import("@/core/settings/settings");
     await setSetting(ctx, OVERDUE_KEY, String(hours));
     return { hours };
+  });
+
+/**
+ * Ответ покупателю прямо из обращения — тот же путь, что «Чат»: в канал
+ * покупателя (Telegram, Direct, WhatsApp), запись в историю чата, бот на
+ * время замолкает. Ничьё обращение достаётся ответившему.
+ */
+export const ticketReplyFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        text: z.string().trim().min(1).max(4000),
+        draftId: z.string().uuid().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const guards = await import("@/app/auth/guards.server");
+    const ctx = await guards.requireAdminModule("helpdesk", "manager");
+    const { getTicket, updateTicket } = await import("@/core/helpdesk/tickets");
+    const ticket = await getTicket(ctx, data.id);
+    if (!ticket) throw new UserError("err.ticket.notFound", "Обращение не найдено.");
+    const { replyAsManager, pauseBotAfterManagerReply } = await import("./admin.server");
+    await replyAsManager(ctx, ticket.telegramId, data.text, undefined, data.draftId);
+    await pauseBotAfterManagerReply(ctx, ticket.telegramId);
+    const me = await guards.adminIdentity();
+    const { helpdeskTeam } = await import("./helpdesk.server");
+    if (me && !ticket.assignee && helpdeskTeam(ctx.tenant).some((m) => m.username === me.username))
+      await updateTicket(ctx, ticket.id, { assignee: me.username }, await guards.adminActor());
+    return { ok: true };
   });

@@ -2,8 +2,14 @@ import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
-import { ticketOverdueSaveFn, ticketsFn, updateTicketFn } from "@/app/admin/helpdesk.functions";
+import {
+  ticketOverdueSaveFn,
+  ticketReplyFn,
+  ticketsFn,
+  updateTicketFn,
+} from "@/app/admin/helpdesk.functions";
 import type { TeamMember } from "@/app/admin/helpdesk.server";
+import { quickReplyFillFn } from "@/app/admin/admin.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { OVERDUE_OPTIONS } from "@/core/helpdesk/overdue";
@@ -110,6 +116,7 @@ function TicketsPage() {
               key={tk.id}
               ticket={tk}
               overdue={data.overdueIds.includes(tk.id)}
+              quickReplies={data.quickReplies}
               team={data.team}
               t={t}
               fmt={fmt}
@@ -164,9 +171,87 @@ function OverdueSetting({
   );
 }
 
+/**
+ * Ответ покупателю из обращения: быстрые ответы (те же, что в «Чате», с
+ * подстановкой имени, номера заказа и обращения) вставляют текст, продавец
+ * правит и отправляет — в канал покупателя, как из «Чата».
+ */
+function ReplyBox({
+  ticket,
+  quickReplies,
+  t,
+}: {
+  ticket: Ticket;
+  quickReplies: { title: string; text: string }[];
+  t: AdminT;
+}) {
+  const [text, setText] = useState("");
+  const [draftId, setDraftId] = useState(() => crypto.randomUUID());
+  const [sent, setSent] = useState(false);
+  const pick = async (raw: string) => {
+    const filled = await quickReplyFillFn({
+      data: { telegramId: ticket.telegramId, text: raw, ticketNo: ticket.number },
+    }).then(
+      (x) => x.text,
+      () => raw,
+    );
+    setText((cur) => (cur.trim() ? `${cur}\n` : "") + filled);
+    setSent(false);
+  };
+  const send = useAction(async () => {
+    await ticketReplyFn({ data: { id: ticket.id, text: text.trim(), draftId } });
+    setText("");
+    setDraftId(crypto.randomUUID());
+    setSent(true);
+  });
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-medium">{t("tickets.reply.title")}</h3>
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-muted">{t("tickets.reply.quick")}:</span>
+        {quickReplies.map((r, i) => (
+          <button
+            key={i}
+            type="button"
+            title={r.text}
+            className="badge cursor-pointer hover:bg-surface-2"
+            onClick={() => void pick(r.text)}
+          >
+            {r.title}
+          </button>
+        ))}
+        <Link to="/admin/chat" className="text-muted underline">
+          {t("tickets.reply.quickHint")}
+        </Link>
+      </div>
+      <textarea
+        className="input min-h-20 w-full"
+        maxLength={4000}
+        placeholder={t("tickets.reply.placeholder")}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setSent(false);
+        }}
+      />
+      <button
+        type="button"
+        className="btn-primary"
+        disabled={!text.trim() || send.busy}
+        onClick={() => void send.run().catch(() => {})}
+      >
+        {t("tickets.reply.send")}
+      </button>
+      {sent && <p className="text-xs text-muted">{t("tickets.reply.sent")}</p>}
+      <ErrorBox error={send.error} />
+    </div>
+  );
+}
+
 function TicketCard({
   ticket: tk,
   overdue,
+  quickReplies,
   team,
   t,
   fmt,
@@ -175,6 +260,7 @@ function TicketCard({
 }: {
   ticket: Ticket;
   overdue: boolean;
+  quickReplies: { title: string; text: string }[];
   team: TeamMember[];
   t: AdminT;
   fmt: (iso: string) => string;
@@ -253,6 +339,9 @@ function TicketCard({
               ))}
             </select>
           </label>
+          {canWrite && tk.status !== "closed" && (
+            <ReplyBox ticket={tk} quickReplies={quickReplies} t={t} />
+          )}
           {canWrite && (
             <div className="space-y-2">
               <textarea

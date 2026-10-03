@@ -15,6 +15,7 @@ import {
   invoiceCartFn,
   invoiceProductsFn,
   quickRepliesSaveFn,
+  quickReplyFillFn,
 } from "@/app/admin/admin.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
@@ -30,7 +31,6 @@ import {
   type ReplyWindow,
 } from "@/core/chat/reply-window";
 import {
-  fillQuickReply,
   filterInbox,
   inboxCounts,
   type InboxFilter,
@@ -455,11 +455,17 @@ function ChatPage() {
                   editing={editingQuick}
                   onEdit={setEditingQuick}
                   onSaved={setQuickReplies}
-                  onPick={(r) =>
-                    setReply(
-                      (cur) => (cur.trim() ? `${cur}\n` : "") + fillQuickReply(r.text, selected),
-                    )
-                  }
+                  onPick={async (r) => {
+                    // Подстановки ({name}, {order}, {ticket}) собирает сервер: заказ и обращение — из базы.
+                    // Не получилось — вставляем как есть: продавец увидит {name} и поправит.
+                    const text = await quickReplyFillFn({
+                      data: { telegramId: selected.telegram_id, text: r.text },
+                    }).then(
+                      (x) => x.text,
+                      () => r.text,
+                    );
+                    setReply((cur) => (cur.trim() ? `${cur}\n` : "") + text);
+                  }}
                 />
               )}
               {canWrite && notice && (
@@ -863,7 +869,7 @@ function QuickReplies({
   editing: boolean;
   onEdit: (v: boolean) => void;
   onSaved: (r: QuickReply[]) => void;
-  onPick: (r: QuickReply) => void;
+  onPick: (r: QuickReply) => void | Promise<void>;
 }) {
   const [draft, setDraft] = useState<QuickReply[]>(replies);
   const save = useAction(async () => {

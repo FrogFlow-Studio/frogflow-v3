@@ -29,6 +29,7 @@ const NOT_AUDITED = new Set([
   "outboxActionFn",
   // переписка с покупателями
   "chatReplyFn",
+  "ticketReplyFn",
   "chatConnectFn",
   "inboxSetFn",
   // вход и выход — в admin_login_attempts
@@ -51,6 +52,7 @@ const NOT_AUDITED = new Set([
   "assistPostFn",
   "assistReviewReplyFn",
   "explainSalesFn",
+  "quickReplyFillFn",
 ]);
 
 const ADMIN_FUNCTIONS_FILE = /(^|\/)src\/app\/admin\/[^/]+\.functions\.ts$/;

@@ -280,10 +280,52 @@ export function cleanQuickReplies(list: readonly Partial<QuickReply>[]): QuickRe
   return out;
 }
 
-/** Подстановка {name} — имя покупателя; без имени «Здравствуйте, {name}!» → «Здравствуйте!». */
-export function fillQuickReply(text: string, c: Pick<Conversation, "first_name">): string {
+/**
+ * Подстановки быстрого ответа: {name} — имя покупателя, {order} — номер его
+ * последнего заказа («№123»), {ticket} — номер открытого обращения («№7»).
+ * Чего нет — убирается вместе с пробелом перед ним: «по заказу {order} уже
+ * едем» → «по заказу уже едем»; «Здравствуйте, {name}!» → «Здравствуйте!».
+ */
+export type QuickReplyVars = {
+  first_name: string | null;
+  orderNo?: number | string | null;
+  ticketNo?: number | string | null;
+};
+
+function fillToken(text: string, token: string, value: number | string | null | undefined) {
+  const re = new RegExp(`\\{${token}\\}`, "g");
+  return value
+    ? text.replace(re, `№${value}`)
+    : text.replace(new RegExp(`[ \\t]*\\{${token}\\}`, "g"), "");
+}
+
+export function fillQuickReply(text: string, c: QuickReplyVars): string {
   const name = c.first_name?.trim();
-  return name
+  const named = name
     ? text.replace(/\{name\}/g, name)
     : text.replace(/,[ \t]*\{name\}/g, "").replace(/\{name\},?[ \t]*/g, "");
+  return fillToken(fillToken(named, "order", c.orderNo), "ticket", c.ticketNo);
+}
+
+/** Что известно о покупателе для подстановок: имя, последний заказ и открытое обращение. */
+export async function quickReplyVars(
+  ctx: TenantContext,
+  telegramId: number,
+  ticketNo?: number | null,
+): Promise<QuickReplyVars> {
+  const { getCustomerByTelegramId } = await import("@/core/customers/customers");
+  const customer = await getCustomerByTelegramId(ctx, telegramId);
+  if (!customer) return { first_name: null, orderNo: null, ticketNo: ticketNo ?? null };
+  const { listCustomerOrders, displayNo } = await import("@/core/orders/orders");
+  const last = (await listCustomerOrders(ctx, customer, 1))[0];
+  let ticket = ticketNo ?? null;
+  if (ticket === null && ctx.tenant.modules.helpdesk) {
+    const { openTicketFor } = await import("@/core/helpdesk/tickets");
+    ticket = (await openTicketFor(ctx, telegramId))?.number ?? null;
+  }
+  return {
+    first_name: customer.firstName ?? null,
+    orderNo: last ? displayNo(last) : null,
+    ticketNo: ticket,
+  };
 }

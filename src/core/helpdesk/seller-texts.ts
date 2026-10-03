@@ -81,6 +81,35 @@ function body(w: Words, c: WaitingCard, head: string): string {
   ].join("\n");
 }
 
+const APPENDED: Record<Locale, { title: (n: number) => string; hint: string }> = {
+  ru: {
+    title: (n) => `Дополнение к обращению #${n}`,
+    hint: "Ответить — раздел «Чат», статус — «Обращения» в панели.",
+  },
+  kk: {
+    title: (n) => `№${n} өтінішке қосымша`,
+    hint: "Жауап беру — «Чат» бөлімі, мәртебе — панельдегі «Өтініштер».",
+  },
+  en: {
+    title: (n) => `Addition to request #${n}`,
+    hint: "Reply in the “Chat” section, change the status in “Requests” in the panel.",
+  },
+  uz: {
+    title: (n) => `#${n} murojaatga qoʻshimcha`,
+    hint: "Javob berish — «Chat» boʻlimi, holat — paneldagi «Murojaatlar».",
+  },
+};
+
+/** Покупатель дописал в открытое обращение (Mini App): `who` и `text` — уже экранированы. */
+export function ticketAppendedText(
+  locale: Locale,
+  number: number,
+  c: { who: string; text: string },
+): string {
+  const a = APPENDED[locale];
+  return `📨 <b>${a.title(number)}</b>\n👤 ${c.who}\n\n${c.text}\n\n${a.hint}`;
+}
+
 export function unansweredChatText(locale: Locale, waited: string, c: WaitingCard): string {
   const w = WORDS[locale];
   return body(w, c, w.chatTitle(waited));

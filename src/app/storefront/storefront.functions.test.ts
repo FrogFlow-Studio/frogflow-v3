@@ -520,6 +520,17 @@ describe("Mini App «Поддержка»: мои обращения", () => {
     expect(foreign.history).toHaveLength(1);
     expect(rows.filter((x) => String(x.event_id).startsWith("ticket:"))).toHaveLength(3);
     expect(notified[0]).toContain("Дополнение к обращению #2");
+    expect(notified[0]).toContain("Добавлю: заказ №5");
+  });
+
+  it("уведомление продавцу — на языке магазина (казахский), а не по-русски", async () => {
+    withTickets();
+    (ctx.tenant.settings as Record<string, unknown>).default_locale = "kk";
+    await miniAppTicketAppendFn({
+      data: { slug: "shop", initData: initData(TG), text: "Қосамын" },
+    });
+    expect(notified[0]).toContain("№2 өтінішке қосымша");
+    expect(notified[0]).not.toContain("Дополнение");
   });
 
   it("открытого обращения нет — дописать некуда, новое не создаётся", async () => {

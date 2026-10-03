@@ -159,4 +159,19 @@ describe("быстрые ответы", () => {
     expect(fillQuickReply("{name}, спасибо", { first_name: " " })).toBe("спасибо");
     expect(fillQuickReply("Привет {name} как дела", { first_name: null })).toBe("Привет как дела");
   });
+
+  it("{order} и {ticket} — номера с «№»; чего нет, убирается вместе с пробелом перед ним", () => {
+    const vars = { first_name: "Анна", orderNo: 128, ticketNo: 7 };
+    expect(fillQuickReply("{name}, заказ {order} уже едет (обращение {ticket}).", vars)).toBe(
+      "Анна, заказ №128 уже едет (обращение №7).",
+    );
+    expect(
+      fillQuickReply("{name}, заказ {order} уже едет (обращение {ticket}).", {
+        first_name: "Анна",
+      }),
+    ).toBe("Анна, заказ уже едет (обращение).");
+    expect(fillQuickReply("Заказ {order}, {order}", { first_name: null, orderNo: 5 })).toBe(
+      "Заказ №5, №5",
+    );
+  });
 });
