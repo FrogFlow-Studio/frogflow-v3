@@ -23,6 +23,8 @@ export type FakeDb = {
   rpc: (name: string, args: Record<string, unknown>) => Promise<Result>;
   /** Потолок строк одного ответа, как max-rows у PostgREST (там 1000). */
   maxRows: number;
+  /** Потолок значений в `.in(...)`: длиннее — ошибка, как 431 у PostgREST (адрес ~8 КБ). */
+  maxIn: number;
 };
 
 export function fakeDb(
@@ -31,11 +33,14 @@ export function fakeDb(
     rpc?: Record<string, (db: FakeDb, args: Record<string, unknown>) => void>;
     /** Включить потолок ответа, как у Supabase: `maxRows: 1000`. */
     maxRows?: number;
+    /** Включить потолок `.in(...)`, как у адреса запроса: `maxIn: 200`. */
+    maxIn?: number;
   } = {},
 ): FakeDb {
   const db: FakeDb = {
     tables: {},
     maxRows: opts.maxRows ?? Infinity,
+    maxIn: opts.maxIn ?? Infinity,
     from: (table) => new Query(db, table, opts.unique?.[table] ?? []),
     rpc: async (name, args) => {
       await Promise.resolve();
@@ -176,6 +181,10 @@ class Query implements PromiseLike<Result> {
   }
   in(col: string, vs: unknown[]) {
     this.col(col);
+    if (vs.length > this.db.maxIn)
+      throw new Error(
+        `431: .in("${col}") на ${vs.length} значений — адрес запроса слишком длинный`,
+      );
     this.filters.push((r) => vs.includes(pick(r, col)));
     return this;
   }

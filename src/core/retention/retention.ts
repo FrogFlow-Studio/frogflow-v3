@@ -4,6 +4,7 @@ import { LEAD_PREFIX, isClosedStage, parseLead } from "@/core/pipeline/stages";
 import { RECEIPT_CHECKS_PREFIX, receiptChecksDay } from "@/core/receipts/attempts";
 import { RATE_LIMIT_PREFIX, parseCounter } from "@/core/storefront/rate-limit";
 import { CHECKOUT_CHALLENGE_PREFIX } from "@/core/storefront/checkout-guard";
+import { chunksOf, IN_CHUNK } from "@/lib/in-chunks";
 
 /**
  * Ретеншн журналов — один проход на всех клиентов (serviceDb, правило 4).
@@ -336,16 +337,18 @@ export async function pruneBroadcastRecipients(
   const { data: old, error } = await q.limit(BATCH);
   if (error) throw new Error(`broadcasts: ${error.message}`);
   if (!old?.length) return { deleted: 0, done: true };
-  const { data, error: e2 } = await db
-    .from("broadcast_recipients")
-    .select("id")
-    .in(
-      "broadcast_id",
-      old.map((b) => b.id),
-    )
-    .limit(BATCH);
-  if (e2) throw new Error(`broadcast_recipients: ${e2.message}`);
-  const ids = (data ?? []).map((r) => r.id);
+  // Рассылки идут в адрес запроса кусками: 2000 uuid разом — это 431.
+  const ids: string[] = [];
+  const oldIds = old.map((b) => b.id);
+  for (let i = 0; i < oldIds.length && ids.length < BATCH; i += IN_CHUNK) {
+    const { data, error: e2 } = await db
+      .from("broadcast_recipients")
+      .select("id")
+      .in("broadcast_id", oldIds.slice(i, i + IN_CHUNK))
+      .limit(BATCH - ids.length);
+    if (e2) throw new Error(`broadcast_recipients: ${e2.message}`);
+    ids.push(...(data ?? []).map((r) => r.id));
+  }
   await deleteIds("broadcast_recipients", ids);
   return { deleted: ids.length, done: ids.length < BATCH };
 }
@@ -404,37 +407,45 @@ export async function runRetention(
     const { tenantDirectory } = await import("@/core/tenant/resolve.server");
     scope = (await tenantDirectory(true)).filter(servedByV2).map((t) => t.id);
   }
-  const s = scope;
-  const jobs: Record<string, (n: number) => Promise<PruneResult>> = {
-    zernio_logs: (n) => pruneZernioLogs(n, s),
-    manager_chat_messages: (n) => pruneManagerChatMessages(n, s),
-    admin_login_attempts: (n) => pruneAdminLoginAttempts(n, s),
-    operator_login_attempts: pruneOperatorLoginAttempts,
-    bot_events: (n) => pruneBotEvents(n, s),
-    bot_health_snapshots: (n) => pruneHealthSnapshots(n, s),
-    broadcast_recipients: (n) => pruneBroadcastRecipients(n, s),
+  // Список клиентов идёт в `.in("bot_id", …)`: чистим по IN_CHUNK клиентов за раз.
+  const all: readonly string[] = scope ?? [];
+  const parts: Scope[] = all.length > IN_CHUNK ? chunksOf(all, IN_CHUNK) : [all];
+  const jobs: Record<string, (n: number, s: Scope) => Promise<PruneResult>> = {
+    zernio_logs: (n, s) => pruneZernioLogs(n, s),
+    manager_chat_messages: (n, s) => pruneManagerChatMessages(n, s),
+    admin_login_attempts: (n, s) => pruneAdminLoginAttempts(n, s),
+    operator_login_attempts: (n) => pruneOperatorLoginAttempts(n),
+    bot_events: (n, s) => pruneBotEvents(n, s),
+    bot_health_snapshots: (n, s) => pruneHealthSnapshots(n, s),
+    broadcast_recipients: (n, s) => pruneBroadcastRecipients(n, s),
     // Платформенные брони регистрации, без bot_id: границы клиентов к ним не относятся.
-    signup_challenges: pruneSignupChallenges,
-    closed_leads: (n) => pruneClosedLeads(n, s),
-    receipt_checks: (n) => pruneReceiptChecks(n, s),
-    rate_limits: (n) => pruneRateLimits(n, s),
-    checkout_challenges: (n) => pruneCheckoutChallenges(n, s),
+    signup_challenges: (n) => pruneSignupChallenges(n),
+    closed_leads: (n, s) => pruneClosedLeads(n, s),
+    receipt_checks: (n, s) => pruneReceiptChecks(n, s),
+    rate_limits: (n, s) => pruneRateLimits(n, s),
+    checkout_challenges: (n, s) => pruneCheckoutChallenges(n, s),
     // Копии PDF со знаком (core/delivery) — только клиенты v2 и только `<клиент>/wm/`.
-    watermark_copies: async (n) =>
+    watermark_copies: async (n, s) =>
       (await import("@/core/delivery/watermark.server")).pruneStampedCopies(s ?? [], n),
   };
+  // Без границ клиентов — один проход на всех, а не по куску.
+  const platformWide = new Set(["operator_login_attempts", "signup_challenges"]);
   const out: Record<string, PruneResult | { error: string }> = {};
   const startedAt = Date.now();
   for (const [name, job] of Object.entries(jobs)) {
     try {
       let deleted = 0;
-      let done = false;
-      while (!done && Date.now() - startedAt < budgetMs) {
-        const r = await job(now);
-        deleted += r.deleted;
-        done = r.done;
+      let allDone = true;
+      for (const part of platformWide.has(name) ? [all] : parts) {
+        let done = false;
+        while (!done && Date.now() - startedAt < budgetMs) {
+          const r = await job(now, part);
+          deleted += r.deleted;
+          done = r.done;
+        }
+        if (!done) allDone = false;
       }
-      out[name] = { deleted, done };
+      out[name] = { deleted, done: allDone };
     } catch (e) {
       out[name] = { error: e instanceof Error ? e.message : String(e) };
     }

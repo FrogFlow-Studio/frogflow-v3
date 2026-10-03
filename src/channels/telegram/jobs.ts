@@ -20,7 +20,7 @@ import { sendCartReminders } from "@/core/reminders/cart";
 import { sendFulfillmentReminders } from "@/core/reminders/fulfillment";
 import { telegramApi, type TelegramApi } from "./api";
 import { COPY, escapeHtml } from "./copy";
-import { serverFailure } from "@/lib/server-failure";
+import { inChunks } from "@/lib/in-chunks";
 
 function api(ctx: TenantContext): TelegramApi {
   return telegramApi(ctx.secrets.telegramToken(), env().TELEGRAM_API_BASE);
@@ -36,13 +36,12 @@ async function broadcastKeyboard(
   const locale = ctx.tenant.settings.default_locale ?? "ru";
   const rows: InlineButton[][] = [];
   if (content.productIds.length > 0) {
-    const { data, error: readErr } = await ctx.db
-      .from("products")
-      .select("id, name")
-      .in("id", content.productIds)
-      .eq("is_active", true);
-    if (readErr) throw serverFailure(`[telegram] товары рассылки не прочитаны: ${readErr.message}`);
-    const byId = new Map((data ?? []).map((p) => [p.id, p.name]));
+    const data = await inChunks(
+      content.productIds,
+      (chunk) => ctx.db.from("products").select("id, name").in("id", chunk).eq("is_active", true),
+      "[telegram] товары рассылки не прочитаны",
+    );
+    const byId = new Map(data.map((p) => [p.id, p.name]));
     for (const id of content.productIds) {
       const name = byId.get(id);
       if (name)

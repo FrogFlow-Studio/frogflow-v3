@@ -10,6 +10,7 @@ import {
   type AlertMarks,
   type ClientReading,
 } from "./consultant-alerts";
+import { inChunks } from "@/lib/in-chunks";
 
 /** Когда оператору писали о каждом виде сбоя модели — operator_settings, JSON. */
 export const MODEL_ALERTS_KEY = "operator_consultant_model_alerts";
@@ -19,17 +20,18 @@ type Scope = readonly Pick<Tenant, "id" | "name" | "vertical" | "settings" | "ar
 /** Настройки консультанта у клиентов одним запросом (крон по всем, serviceDb). */
 async function readings(tenants: Scope): Promise<ClientReading[]> {
   if (!tenants.length) return [];
-  const { data, error } = await serviceDb()
-    .from("app_settings")
-    .select("bot_id, key, value")
-    .in("key", [ENABLED_KEY, LAST_ERROR_KEY])
-    .in(
-      "bot_id",
-      tenants.map((t) => t.id),
-    );
-  if (error) throw new Error(`app_settings: ${error.message}`);
+  const data = await inChunks(
+    tenants.map((t) => t.id),
+    (chunk) =>
+      serviceDb()
+        .from("app_settings")
+        .select("bot_id, key, value")
+        .in("key", [ENABLED_KEY, LAST_ERROR_KEY])
+        .in("bot_id", chunk),
+    "app_settings",
+  );
   const get = (id: string, key: string) =>
-    (data ?? []).find((r) => r.bot_id === id && r.key === key)?.value ?? null;
+    data.find((r) => r.bot_id === id && r.key === key)?.value ?? null;
   return tenants.map((t) => {
     const flag = get(t.id, ENABLED_KEY);
     return {

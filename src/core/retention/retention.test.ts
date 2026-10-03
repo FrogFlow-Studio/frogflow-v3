@@ -416,3 +416,33 @@ describe("ночная уборка без явных границ — толь�
     expect(db.tables.app_settings.map((r) => r.bot_id)).toEqual(["bot-v1", "bot-none"]);
   });
 });
+
+describe("уборка при сотнях клиентов: `.in` кусками (Б29)", () => {
+  it("450 клиентов и 450 рассылок — ни один запрос не длиннее 200 значений, всё убрано", async () => {
+    db = fakeDb({ maxIn: 200 });
+    const ids = Array.from({ length: 450 }, (_, i) => `bot-${i}`);
+    directory = ids.map((id) => ({ id, settings: { served_by: "v2" } }));
+    const old = RETENTION.zernioLogsDays + 5;
+    db.tables.zernio_logs = ids.map((b) => ({
+      id: `z-${b}`,
+      bot_id: b,
+      status: "processed",
+      created_at: daysAgo(old),
+    }));
+    db.tables.broadcasts = ids.map((b, i) => ({
+      id: `br-${i}`,
+      bot_id: b,
+      created_at: daysAgo(RETENTION.broadcastRecipientsDays + 5),
+    }));
+    db.tables.broadcast_recipients = ids.map((_, i) => ({
+      id: `r-${i}`,
+      broadcast_id: `br-${i}`,
+      status: "sent",
+    }));
+    const out = await runRetention(NOW, 5_000);
+    expect(out.zernio_logs).toEqual({ deleted: 450, done: true });
+    expect(out.broadcast_recipients).toEqual({ deleted: 450, done: true });
+    expect(db.tables.zernio_logs).toHaveLength(0);
+    expect(db.tables.broadcast_recipients).toHaveLength(0);
+  });
+});

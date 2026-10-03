@@ -14,6 +14,7 @@ import { NO_RECIPIENTS_REASON } from "@/core/notify/deliver";
 import { serverFailure } from "@/lib/server-failure";
 import { reportError } from "@/lib/errors";
 import { shownError } from "@/lib/shown-error";
+import { inChunks } from "@/lib/in-chunks";
 
 /**
  * Подписка клиента на платформу: платежи (subscription_payments — срок
@@ -714,15 +715,13 @@ export async function sweepSubscriptions(
     onlyBotId ? t.id === onlyBotId : t.settings.served_by === "v2" && !t.archived,
   );
   const ids = tenants.map((t) => t.id);
-  const { data: rows, error: rowsErr } = ids.length
-    ? await serviceDb().from("bots").select("id, subscription_expires_at").in("id", ids)
-    : {
-        data: [] as Array<{ id: string; subscription_expires_at: string | null }>,
-        error: null,
-      };
   // Не прочиталось — не «срока нет»: иначе обход молча пропустит всех просроченных.
-  if (rowsErr) throw serverFailure(`[billing] сроки подписок не прочитаны: ${rowsErr.message}`);
-  const expires = new Map((rows ?? []).map((r) => [r.id, r.subscription_expires_at]));
+  const rows = await inChunks(
+    ids,
+    (chunk) => serviceDb().from("bots").select("id, subscription_expires_at").in("id", chunk),
+    "[billing] сроки подписок не прочитаны",
+  );
+  const expires = new Map(rows.map((r) => [r.id, r.subscription_expires_at]));
   const results: SweepEntry[] = [];
   const dayKey = now.toISOString().slice(0, 10);
 
