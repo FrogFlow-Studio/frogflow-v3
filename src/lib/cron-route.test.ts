@@ -77,6 +77,7 @@ vi.mock("@/channels/telegram/jobs", () => ({
   runBroadcastBatch: hit("broadcast"),
   flushOrderNotify: hit("orderNotify"),
   runUnansweredChats: hit("unanswered"),
+  runOverdueTickets: hit("overdueTickets"),
   runCartReminders: hit("cartReminder"),
   runFulfillmentReminders: hit("fulfillment"),
   runWinbackFor: hit("winback"),
@@ -138,7 +139,7 @@ beforeEach(() => {
 
 const JOBS: Record<string, string[]> = {
   "ensure-webhook": ["webhook", "vipWebhook"],
-  broadcast: ["broadcast", "waBroadcast", "outbox", "orderNotify", "unanswered"],
+  broadcast: ["broadcast", "waBroadcast", "outbox", "orderNotify", "unanswered", "overdueTickets"],
   "cart-reminder": ["cartReminder"],
   "fulfillment-reminder": [
     "fulfillment",

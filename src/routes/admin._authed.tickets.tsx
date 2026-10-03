@@ -2,10 +2,11 @@ import { canEdit } from "@/core/auth/roles";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
-import { ticketsFn, updateTicketFn } from "@/app/admin/helpdesk.functions";
+import { ticketOverdueSaveFn, ticketsFn, updateTicketFn } from "@/app/admin/helpdesk.functions";
 import type { TeamMember } from "@/app/admin/helpdesk.server";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
+import { OVERDUE_OPTIONS } from "@/core/helpdesk/overdue";
 import { historyLine, TICKET_FILTERS, type TicketFilter } from "@/core/helpdesk/view";
 import type { Ticket, TicketStatus } from "@/core/helpdesk/tickets";
 
@@ -70,6 +71,7 @@ function TicketsPage() {
           </button>
         ))}
       </div>
+      <OverdueSetting t={t} initial={data.overdueHours} canWrite={canWrite} />
       {data.ratings.count > 0 && (
         <div className="card mb-4 space-y-3 p-4">
           <p className="font-medium">
@@ -107,6 +109,7 @@ function TicketsPage() {
             <TicketCard
               key={tk.id}
               ticket={tk}
+              overdue={data.overdueIds.includes(tk.id)}
               team={data.team}
               t={t}
               fmt={fmt}
@@ -122,8 +125,48 @@ function TicketsPage() {
   );
 }
 
+/** Порог «обращение просрочено» (крон, core/helpdesk/overdue). */
+function OverdueSetting({
+  t,
+  initial,
+  canWrite,
+}: {
+  t: AdminT;
+  initial: number;
+  canWrite: boolean;
+}) {
+  const [hours, setHours] = useState(initial);
+  const save = useAction(async (h: number) => {
+    const r = await ticketOverdueSaveFn({ data: { hours: h } });
+    setHours(r.hours);
+  });
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+      <label htmlFor="overdue" className="text-muted">
+        {t("tickets.overdue.label")}
+      </label>
+      <select
+        id="overdue"
+        className="input w-auto"
+        value={hours}
+        disabled={!canWrite || save.busy}
+        onChange={(e) => void save.run(Number(e.target.value)).catch(() => {})}
+      >
+        {OVERDUE_OPTIONS.map((h) => (
+          <option key={h} value={h}>
+            {h === 0 ? t("tickets.overdue.off") : t("tickets.overdue.hours", { n: String(h) })}
+          </option>
+        ))}
+      </select>
+      <span className="text-xs text-muted">{t("tickets.overdue.hint")}</span>
+      <ErrorBox error={save.error} />
+    </div>
+  );
+}
+
 function TicketCard({
   ticket: tk,
+  overdue,
   team,
   t,
   fmt,
@@ -131,6 +174,7 @@ function TicketCard({
   onChange,
 }: {
   ticket: Ticket;
+  overdue: boolean;
   team: TeamMember[];
   t: AdminT;
   fmt: (iso: string) => string;
@@ -152,7 +196,7 @@ function TicketCard({
     return m?.name ? `${m.name} (${u})` : u;
   };
   return (
-    <div className="card p-4">
+    <div className={`card p-4 ${overdue ? "border-warn" : ""}`}>
       <button
         type="button"
         className="flex w-full flex-wrap items-start justify-between gap-2 text-left"
@@ -163,6 +207,7 @@ function TicketCard({
           <div className="flex flex-wrap items-center gap-2 font-medium">
             <span>#{tk.number}</span>
             <Badge tone={TONE[tk.status]}>{t(`tickets.status.${tk.status}`)}</Badge>
+            {overdue && <Badge tone="warn">⏳ {t("tickets.overdue.badge")}</Badge>}
             <span className="text-sm text-muted">{CHANNEL[tk.platform] ?? tk.platform}</span>
             {tk.rating !== null && (
               <span title={t("tickets.rating.title")}>{"⭐".repeat(tk.rating)}</span>

@@ -30,6 +30,12 @@ export const ru = {
   "tickets.rating.low": "Низкие оценки (1–2): {count}",
   "tickets.rating.title": "Оценка покупателя",
   "tickets.h.rating": "оценка: {score} из 5",
+  "tickets.overdue.label": "Напомнить об обращении без ответа:",
+  "tickets.overdue.off": "не напоминать",
+  "tickets.overdue.hours": "через {n} ч",
+  "tickets.overdue.hint":
+    "Просрочено: покупатель ждёт ответа дольше выбранного срока. Напоминание придёт в Telegram продавца один раз.",
+  "tickets.overdue.badge": "просрочено",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -61,6 +67,12 @@ export const kk: SectionDict<typeof ru> = {
   "tickets.rating.low": "Төмен бағалар (1–2): {count}",
   "tickets.rating.title": "Сатып алушының бағасы",
   "tickets.h.rating": "баға: {score} / 5",
+  "tickets.overdue.label": "Жауапсыз өтініш туралы еске салу:",
+  "tickets.overdue.off": "еске салмау",
+  "tickets.overdue.hours": "{n} сағаттан кейін",
+  "tickets.overdue.hint":
+    "Мерзімі өтті: сатып алушы таңдалған уақыттан ұзақ жауап күтіп тұр. Еске салу сатушының Telegram-ына бір рет келеді.",
+  "tickets.overdue.badge": "мерзімі өтті",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -92,6 +104,12 @@ export const en: SectionDict<typeof ru> = {
   "tickets.rating.low": "Low ratings (1–2): {count}",
   "tickets.rating.title": "Customer rating",
   "tickets.h.rating": "rating: {score} of 5",
+  "tickets.overdue.label": "Remind me about unanswered requests:",
+  "tickets.overdue.off": "don’t remind",
+  "tickets.overdue.hours": "after {n} h",
+  "tickets.overdue.hint":
+    "Overdue: the buyer has waited longer than the chosen time. One reminder goes to the seller’s Telegram.",
+  "tickets.overdue.badge": "overdue",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -123,4 +141,10 @@ export const uz: SectionDict<typeof ru> = {
   "tickets.rating.low": "Past baholar (1–2): {count}",
   "tickets.rating.title": "Xaridor bahosi",
   "tickets.h.rating": "baho: {score} / 5",
+  "tickets.overdue.label": "Javobsiz murojaat haqida eslatish:",
+  "tickets.overdue.off": "eslatmaslik",
+  "tickets.overdue.hours": "{n} soatdan keyin",
+  "tickets.overdue.hint":
+    "Muddati oʻtdi: xaridor tanlangan vaqtdan uzoq javob kutmoqda. Eslatma sotuvchining Telegramiga bir marta keladi.",
+  "tickets.overdue.badge": "muddati oʻtdi",
 };

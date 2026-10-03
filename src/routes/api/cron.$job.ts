@@ -124,6 +124,8 @@ export const Route = createFileRoute("/api/cron/$job")({
                   orderNotify: await jobs.flushOrderNotify(t),
                   // Диалоги без ответа — напоминание продавцу (страница «Чат»).
                   unanswered: await jobs.runUnansweredChats(t),
+                  // Обращения без ответа дольше N часов — напоминание продавцу (страница «Обращения»).
+                  overdueTickets: await jobs.runOverdueTickets(t),
                 }),
                 "cart-reminder": jobs.runCartReminders,
                 // Раз в час: напоминание о дате получения, возвратные продажи, «похожие материалы», автоворонка,

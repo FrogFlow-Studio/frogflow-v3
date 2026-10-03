@@ -83,6 +83,13 @@ function rowToTicket(r: { id: string; status: string; payload: Json; created_at:
 
 const SELECT = "id, status, payload, created_at";
 
+/** Для заданий: строки журнала → обращения. */
+export function rowToTicketForJobs(
+  rows: { id: string; status: string; payload: Json; created_at: string }[],
+): Ticket[] {
+  return rows.map(rowToTicket);
+}
+
 function toPayload(t: Ticket): Json {
   return {
     number: t.number,

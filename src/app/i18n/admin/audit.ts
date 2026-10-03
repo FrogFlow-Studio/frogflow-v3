@@ -129,6 +129,7 @@ export const ru = {
   "audit.action.cancelPostFn": "отменил запланированный пост",
   "audit.action.quickRepliesSaveFn": "изменил быстрые ответы во входящих",
   "audit.action.chatUnansweredSaveFn": "изменил напоминание о диалогах без ответа",
+  "audit.action.ticketOverdueSaveFn": "изменил напоминание об обращениях без ответа",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -259,6 +260,7 @@ export const kk: SectionDict<typeof ru> = {
   "audit.action.cancelPostFn": "жоспарланған жазбаны тоқтатты",
   "audit.action.quickRepliesSaveFn": "кіріс хаттардағы жылдам жауаптарды өзгертті",
   "audit.action.chatUnansweredSaveFn": "жауапсыз диалогтар туралы еске салуды өзгертті",
+  "audit.action.ticketOverdueSaveFn": "жауапсыз өтініштер туралы еске салуды өзгертті",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -389,6 +391,7 @@ export const en: SectionDict<typeof ru> = {
   "audit.action.cancelPostFn": "cancelled a scheduled post",
   "audit.action.quickRepliesSaveFn": "changed saved replies in the inbox",
   "audit.action.chatUnansweredSaveFn": "changed the unanswered chat reminder",
+  "audit.action.ticketOverdueSaveFn": "changed the overdue request reminder",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -519,4 +522,5 @@ export const uz: SectionDict<typeof ru> = {
   "audit.action.cancelPostFn": "rejalashtirilgan postni bekor qildi",
   "audit.action.quickRepliesSaveFn": "kiruvchi xabarlardagi tezkor javoblarni o‘zgartirdi",
   "audit.action.chatUnansweredSaveFn": "javobsiz suhbatlar haqidagi eslatmani o‘zgartirdi",
+  "audit.action.ticketOverdueSaveFn": "javobsiz murojaatlar haqidagi eslatmani o‘zgartirdi",
 };

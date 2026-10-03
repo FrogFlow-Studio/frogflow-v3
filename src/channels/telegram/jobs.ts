@@ -472,3 +472,33 @@ export async function runUnansweredChats(tenant: Tenant) {
     await notifyAdminsHtml(ctx, lines.join("\n"), { kind: "question" });
   });
 }
+
+/**
+ * Обращение без ответа дольше N часов (страница «Обращения», по умолчанию
+ * выключено): одно сообщение продавцу на отрезок ожидания, с номером
+ * обращения и ссылкой на диалог. Адресат — как у напоминаний о диалогах.
+ */
+export async function runOverdueTickets(tenant: Tenant) {
+  if (!tenant.modules.helpdesk || !tenant.modules.manager_chat) return { skipped: "module off" };
+  const ctx = tenantContext(tenant);
+  const { getSetting } = await import("@/core/settings/settings");
+  const { OVERDUE_KEY, parseOverdueHours, remindOverdue } = await import("@/core/helpdesk/overdue");
+  const hours = parseOverdueHours(await getSetting(ctx, OVERDUE_KEY));
+  if (!hours) return { skipped: "off" };
+  return remindOverdue(ctx, hours, async ({ ticket, waitingSince }) => {
+    const name = ticket.customerName ?? `id ${ticket.telegramId}`;
+    const preview =
+      ticket.subject.length > 200 ? `${ticket.subject.slice(0, 200)}…` : ticket.subject;
+    const lines = [
+      `⏳ <b>Обращение #${ticket.number} без ответа ${waitedLabel(waitingSince)}</b>`,
+      `👤 ${escapeHtml(name)}`,
+      ticket.assignee
+        ? `Ответственный: ${escapeHtml(ticket.assignee)}`
+        : "Ответственный не назначен",
+      `💬 ${escapeHtml(preview)}`,
+      "",
+      `Ответьте в разделе «Чат»: ${ctx.appUrl}/admin/chat?c=${ticket.telegramId}`,
+    ];
+    await notifyAdminsHtml(ctx, lines.join("\n"), { kind: "question" });
+  });
+}

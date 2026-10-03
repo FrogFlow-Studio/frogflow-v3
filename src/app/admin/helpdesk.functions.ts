@@ -14,13 +14,25 @@ export const ticketsFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const ctx = await (await import("@/app/auth/guards.server")).requireAdminModule("helpdesk");
     const { listTickets, countOpenTickets, ratingStats } = await import("@/core/helpdesk/tickets");
+    const { OVERDUE_KEY, parseOverdueHours, overdueAmong } =
+      await import("@/core/helpdesk/overdue");
+    const { getSetting } = await import("@/core/settings/settings");
     const { helpdeskTeam } = await import("./helpdesk.server");
     const [tickets, openCount, ratings] = await Promise.all([
       listTickets(ctx, data.status ?? null),
       countOpenTickets(ctx),
       ratingStats(ctx),
     ]);
-    return { tickets, openCount, ratings, team: helpdeskTeam(ctx.tenant) };
+    const overdueHours = parseOverdueHours(await getSetting(ctx, OVERDUE_KEY));
+    const overdueIds = (await overdueAmong(ctx, tickets, overdueHours)).map((o) => o.ticket.id);
+    return {
+      tickets,
+      openCount,
+      ratings,
+      overdueHours,
+      overdueIds,
+      team: helpdeskTeam(ctx.tenant),
+    };
   });
 
 export const ticketFn = createServerFn({ method: "GET" })
@@ -68,4 +80,18 @@ export const updateTicketFn = createServerFn({ method: "POST" })
         ? await notifyTicketClosed(ctx, ticket)
         : null;
     return { ticket, notified };
+  });
+
+/** Через сколько часов без ответа обращение считается просроченным и приходит напоминанием; 0 — выключено. */
+export const ticketOverdueSaveFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ hours: z.number().int().min(0).max(168) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await (
+      await import("@/app/auth/guards.server")
+    ).requireAdminModule("helpdesk", "manager");
+    const { OVERDUE_KEY, parseOverdueHours } = await import("@/core/helpdesk/overdue");
+    const hours = parseOverdueHours(String(data.hours));
+    const { setSetting } = await import("@/core/settings/settings");
+    await setSetting(ctx, OVERDUE_KEY, String(hours));
+    return { hours };
   });
