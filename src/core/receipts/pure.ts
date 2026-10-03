@@ -310,6 +310,94 @@ export function findMatchingAmount(
   return best;
 }
 
+/** Чек старше этого числа суток (по календарю Алматы) автопроверка не принимает. */
+export const RECEIPT_MAX_AGE_DAYS = 3;
+/** Алматы — UTC+5 круглый год (с 2024). */
+const ALMATY_OFFSET_MS = 5 * 3_600_000;
+
+const MONTH_NAMES: Record<string, number> = {
+  января: 1,
+  февраля: 2,
+  марта: 3,
+  апреля: 4,
+  мая: 5,
+  июня: 6,
+  июля: 7,
+  августа: 8,
+  сентября: 9,
+  октября: 10,
+  ноября: 11,
+  декабря: 12,
+  january: 1,
+  february: 2,
+  march: 3,
+  april: 4,
+  june: 6,
+  july: 7,
+  august: 8,
+  september: 9,
+  october: 10,
+  november: 11,
+  december: 12,
+  қаңтар: 1,
+  ақпан: 2,
+  наурыз: 3,
+  сәуір: 4,
+  мамыр: 5,
+  маусым: 6,
+  шілде: 7,
+  тамыз: 8,
+  қыркүйек: 9,
+  қазан: 10,
+  қараша: 11,
+  желтоқсан: 12,
+};
+
+/** Дни с 1970-01-01 для календарной даты; null, если такой даты нет. */
+function dayNumber(y: number, m: number, d: number): number | null {
+  if (m < 1 || m > 12 || d < 1 || d > 31 || y < 2000 || y > 2100) return null;
+  const t = Date.UTC(y, m - 1, d);
+  const back = new Date(t);
+  if (back.getUTCMonth() !== m - 1) return null;
+  return Math.floor(t / 86_400_000);
+}
+
+/**
+ * Полные даты чека (с годом): 05.10.2026, 05.10.26, 2026-10-05, «5 октября 2026».
+ * «05.10» без года и номера квитанции не даты. Результат — номера дней.
+ */
+export function extractFullDates(text: string): number[] {
+  const t = text.toLowerCase().replace(/ё/g, "е");
+  const out = new Set<number>();
+  const add = (y: number, m: number, d: number) => {
+    const n = dayNumber(y, m, d);
+    if (n != null) out.add(n);
+  };
+  for (const m of t.matchAll(/(?<!\d)(\d{1,2})[./](\d{1,2})[./](\d{4}|\d{2})(?!\d)/g)) {
+    const y = Number(m[3]);
+    add(y < 100 ? 2000 + y : y, Number(m[2]), Number(m[1]));
+  }
+  for (const m of t.matchAll(/(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)/g))
+    add(Number(m[1]), Number(m[2]), Number(m[3]));
+  for (const m of t.matchAll(/(?<!\d)(\d{1,2})\s+([a-zа-яәіңғүұқөһ]+)\s+(\d{4})(?!\d)/g)) {
+    const month = MONTH_NAMES[m[2] ?? ""];
+    if (month) add(Number(m[3]), month, Number(m[1]));
+  }
+  return [...out];
+}
+
+/** Чек устарел: полные даты в нём есть, и все старше порога по календарю Алматы. */
+export function isStaleReceipt(
+  text: string,
+  now: Date,
+  maxAgeDays = RECEIPT_MAX_AGE_DAYS,
+): boolean {
+  const dates = extractFullDates(text);
+  if (dates.length === 0) return false;
+  const today = Math.floor((now.getTime() + ALMATY_OFFSET_MS) / 86_400_000);
+  return dates.every((d) => today - d > maxAgeDays);
+}
+
 export type ReceiptReason =
   | "not_receipt"
   | "payment_failed"
@@ -317,6 +405,8 @@ export type ReceiptReason =
   | "currency_mismatch"
   | "receipt_reused"
   | "ocr_unavailable"
+  /** Все полные даты в чеке старше RECEIPT_MAX_AGE_DAYS по Алматы — чек смотрит продавец. */
+  | "receipt_stale"
   /** Покупатель исчерпал автопроверки (src/core/receipts/attempts) — чек смотрит продавец. */
   | "check_limit";
 
@@ -339,7 +429,7 @@ export function analyzeReceiptText(
   text: string,
   expectedAmount: number,
   currency?: string,
-  opts: { underpay?: number } = {},
+  opts: { underpay?: number; now?: Date } = {},
 ): ReceiptAnalysis {
   const underpay = opts.underpay ?? UNDERPAY_TOLERANCE;
   if (!text || text.trim().length < 8)
@@ -361,6 +451,16 @@ export function analyzeReceiptText(
       ok: false,
       reason: "payment_failed",
       detail: "В тексте чека банк пишет, что платёж не прошёл.",
+    };
+  // Пересохранённый старый чек на ту же сумму: автопроверка его не принимает,
+  // решает продавец. Чек без полной даты этим правилом не отсекается.
+  // Проверка включена, только если вызывающий передал `now` (счета подписки
+  // сверяют даты со счётом сами, core/billing).
+  if (opts.now && isStaleReceipt(text, opts.now))
+    return {
+      ok: false,
+      reason: "receipt_stale",
+      detail: `Все даты в чеке старше ${RECEIPT_MAX_AGE_DAYS} суток — возможно, это старый чек.`,
     };
 
   const cur = currency?.trim().toUpperCase() || undefined;

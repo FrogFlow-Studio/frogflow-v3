@@ -153,6 +153,7 @@ export async function autoCheckVipProof(
     expectedAmount: price,
     currency: tariff.currency,
     orderId: vipCheckId(sub.id),
+    ageCheck: false, // дату сверяем ниже с заявкой (receiptDateProblem)
   });
   if (!v.ok) return { status: "manual", reason: v.detail };
 

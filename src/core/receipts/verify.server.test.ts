@@ -389,4 +389,22 @@ describe("verifyCustomerReceipt — лимит проверок на покуп�
     const r = await verifyCustomerReceipt(ctx, buyer(), base);
     expect(r.result.ok).toBe(true);
   });
+
+  it("старый чек на ту же сумму — receipt_stale, продавцу; свежий — принят", async () => {
+    const now = new Date("2026-10-03T07:00:00Z");
+    const text = (date: string) =>
+      `Kaspi Перевод успешно выполнен\nСумма 1 000 ₸\n${date} 14:12\nКвитанция № 123`;
+    const { ctx } = setup();
+    mockVision(text("03.09.2026"));
+    const old = await verifyCustomerReceipt(ctx, buyer(), base, now);
+    expect(old.result).toMatchObject({ ok: false, reason: "receipt_stale" });
+    mockVision(text("02.10.2026"));
+    const fresh = await verifyCustomerReceipt(ctx, buyer(), { ...base, orderId: 100 }, now);
+    expect(fresh.result).toMatchObject({ ok: true, matchedAmount: 1000 });
+  });
+
+  it("аудит оператора (без now) старый чек не отсекает", async () => {
+    mockVision("Kaspi Перевод успешно выполнен\nСумма 1 000 ₸\n03.09.2026 14:12\nКвитанция № 123");
+    expect(await verifyReceipt(setup().ctx, base)).toMatchObject({ ok: true });
+  });
 });

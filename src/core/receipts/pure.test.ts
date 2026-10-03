@@ -3,10 +3,12 @@ import {
   amountsForCurrency,
   analyzeReceiptText,
   detectReceiptCurrencies,
+  extractFullDates,
   extractMoneyAmounts,
   findMatchingAmount,
   isPdf,
   isRetryReason,
+  isStaleReceipt,
   looksLikeFailedPayment,
   looksLikeReceipt,
   looksLikeShopScreenNotReceipt,
@@ -245,5 +247,58 @@ describe("не чек и неудачный платёж", () => {
     `;
     expect(looksLikeShopScreenNotReceipt(mixed)).toBe(false);
     expect(looksLikeReceipt(mixed)).toBe(true);
+  });
+});
+
+describe("старый чек — receipt_stale", () => {
+  // 03.10.2026 12:00 по Алматы (UTC+5).
+  const NOW = new Date("2026-10-03T07:00:00Z");
+  const receipt = (date: string) =>
+    `Kaspi Gold\nПеревод выполнен\nСумма операции 1 900 ₸\n${date} 14:12\nКвитанция № 1234567890`;
+
+  it("находит полные даты и не принимает за дату номер квитанции и «05.10» без года", () => {
+    const days = (d: string) => Math.floor(Date.parse(`${d}T00:00:00Z`) / 86_400_000);
+    expect(extractFullDates("06.09.2026 14:12")).toEqual([days("2026-09-06")]);
+    expect(extractFullDates("06/09/26")).toEqual([days("2026-09-06")]);
+    expect(extractFullDates("2026-09-06 14:12")).toEqual([days("2026-09-06")]);
+    expect(extractFullDates("6 сентября 2026")).toEqual([days("2026-09-06")]);
+    expect(extractFullDates("06.09 14:12 Квитанция № 1234567890 сумма 1.000.000")).toEqual([]);
+    expect(extractFullDates("31.02.2026")).toEqual([]);
+  });
+
+  it("чек месячной давности на ту же сумму уходит продавцу", () => {
+    expect(analyzeReceiptText(receipt("03.09.2026"), 1900, "KZT", { now: NOW })).toMatchObject({
+      ok: false,
+      reason: "receipt_stale",
+    });
+    expect(isRetryReason("receipt_stale")).toBe(false);
+  });
+
+  it("граница: 3 суток по календарю Алматы ещё можно, 4 — уже нет", () => {
+    expect(isStaleReceipt(receipt("30.09.2026"), NOW)).toBe(false);
+    expect(isStaleReceipt(receipt("29.09.2026"), NOW)).toBe(true);
+  });
+
+  it("сутки считаются по Алматы, а не по UTC", () => {
+    // 29.09 23:00 UTC = 30.09 04:00 по Алматы; «сегодня» по Алматы — 03.10, разница 3.
+    expect(isStaleReceipt(receipt("30.09.2026"), new Date("2026-10-03T00:30:00Z"))).toBe(false);
+    // 03.10 20:00 UTC = 04.10 01:00 по Алматы: «сегодня» уже 04.10, 30.09 — 4 дня назад.
+    expect(isStaleReceipt(receipt("30.09.2026"), new Date("2026-10-03T20:00:00Z"))).toBe(true);
+  });
+
+  it("свежая дата рядом со старой — не устарел; будущая дата — не устарел", () => {
+    expect(isStaleReceipt(`${receipt("03.09.2026")}\nСчёт от 02.10.2026`, NOW)).toBe(false);
+    expect(isStaleReceipt(receipt("10.10.2026"), NOW)).toBe(false);
+  });
+
+  it("чек без полной даты не отсекается, без now проверка выключена", () => {
+    expect(analyzeReceiptText(receipt("03.09"), 1900, "KZT", { now: NOW })).toEqual({
+      ok: true,
+      matchedAmount: 1900,
+    });
+    expect(analyzeReceiptText(receipt("03.09.2026"), 1900, "KZT")).toEqual({
+      ok: true,
+      matchedAmount: 1900,
+    });
   });
 });

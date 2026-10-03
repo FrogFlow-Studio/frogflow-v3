@@ -67,6 +67,7 @@ export const OCR_REASON_LABEL: Record<OcrFailReason | "ok", string> = {
   amount_mismatch: "сумма заказа в чеке не найдена",
   currency_mismatch: "в чеке другая валюта",
   receipt_reused: "этот же файл уже принимали по другому заказу",
+  receipt_stale: "все даты в чеке старше 3 суток",
   ocr_unavailable: "Vision не ответил или нет ключа",
   check_limit: "покупатель исчерпал автопроверки чека",
   skip: "файл не прочитан",

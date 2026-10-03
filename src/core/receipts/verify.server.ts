@@ -240,6 +240,8 @@ export async function verifyReceipt(
     orderId: number;
     /** Аудит чеков оператора — не проверка клиента, в его лимит не идёт. */
     countUsage?: boolean;
+    /** Время проверки: задано — устаревший чек (`receipt_stale`) идёт продавцу; аудит не задаёт. */
+    now?: Date;
   },
 ): Promise<VerifyResult> {
   let text: string;
@@ -256,7 +258,10 @@ export async function verifyReceipt(
   }
   // Своя валюта — без недоплаты; чужая (withFx) — прежний допуск по курсу.
   const analysis = await withFx(
-    analyzeReceiptText(text, p.expectedAmount, p.currency, { underpay: SAME_CURRENCY_UNDERPAY }),
+    analyzeReceiptText(text, p.expectedAmount, p.currency, {
+      underpay: SAME_CURRENCY_UNDERPAY,
+      now: p.now,
+    }),
     text,
     p,
   );
@@ -310,7 +315,10 @@ export async function verifyReceipt(
 export async function verifyCustomerReceipt(
   ctx: TenantContext,
   customer: Customer,
-  p: Parameters<typeof verifyReceipt>[1],
+  p: Parameters<typeof verifyReceipt>[1] & {
+    /** false — вызывающий сверяет дату сам (VIP: чек не старше заявки). По умолчанию чек старше 3 суток идёт продавцу. */
+    ageCheck?: boolean;
+  },
   now = new Date(),
 ): Promise<{ result: VerifyResult; customer: Customer }> {
   let blocked: "order" | "day" | null = null;
@@ -339,5 +347,11 @@ export async function verifyCustomerReceipt(
             : `Покупатель исчерпал ${RECEIPT_CHECKS_PER_DAY} автопроверок чека за сутки.`,
       },
     };
-  return { customer, result: await verifyReceipt(ctx, p) };
+  return {
+    customer,
+    result: await verifyReceipt(ctx, {
+      ...p,
+      now: p.ageCheck === false ? undefined : (p.now ?? now),
+    }),
+  };
 }
