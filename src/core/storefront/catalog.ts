@@ -6,7 +6,7 @@ import { productFiles, type ProductFile } from "./product-files";
 import { listAllCategories } from "@/core/catalog/admin";
 import {
   PRODUCT_SELECT,
-  productSearchFilter,
+  productSearchIds,
   searchPattern,
   sortedImages,
   sortedVariants,
@@ -205,7 +205,7 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
  * Активные товары в порядке выбранной сортировки; в конце — id, чтобы
  * равные товары не менялись местами и страницы не перекрывались.
  */
-function catalogQuery(ctx: TenantContext, sort: CatalogSort, search: string | null) {
+function catalogQuery(ctx: TenantContext, sort: CatalogSort) {
   let q = ctx.db.from("products").select(PRODUCT_SELECT).eq("is_active", true);
   if (sort === "popular")
     q = q
@@ -214,8 +214,7 @@ function catalogQuery(ctx: TenantContext, sort: CatalogSort, search: string | nu
   else if (sort === "new") q = q.order("created_at", { ascending: false });
   else if (sort === "price") q = q.order("price");
   else q = q.order("sort_order").order("name");
-  q = q.order("id");
-  return search ? q.or(search) : q;
+  return q.order("id");
 }
 
 /**
@@ -273,7 +272,7 @@ export async function storeCatalogPage(
   const limit = Math.min(Math.max(1, opts.limit ?? STORE_PAGE), 100);
   const pattern = searchPattern(opts.q ?? "");
   const [search, cats] = await Promise.all([
-    pattern ? productSearchFilter(ctx, pattern) : Promise.resolve(null),
+    pattern ? productSearchIds(ctx, pattern) : Promise.resolve(null),
     listAllCategories(ctx),
   ]);
   const known = new Set(cats.map((c) => c.id));
@@ -284,10 +283,11 @@ export async function storeCatalogPage(
   const price = priceRange(opts.minPrice, opts.maxPrice);
   const listed: Array<{ p: Product; langs: string[] }> = [];
   await eachPage<Product>(
-    (a, b) => catalogQuery(ctx, sort, search).range(a, b),
+    (a, b) => catalogQuery(ctx, sort).range(a, b),
     "store catalog",
     (rows) => {
       for (const p of rows) {
+        if (search && !search.has(p.id)) continue;
         const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
         if (wanted && !ids.some((id) => wanted.has(id))) continue;
         if (opts.inStock && !isInStock(ctx, p)) continue;
@@ -327,11 +327,11 @@ export async function storeCatalog(
   // В конце каждого порядка — id, чтобы равные товары не менялись местами.
   const sort = opts.sort ?? "catalog";
   const pattern = searchPattern(opts.q ?? "");
-  const search = pattern ? await productSearchFilter(ctx, pattern) : null;
+  const search = pattern ? await productSearchIds(ctx, pattern) : null;
   // Весь активный каталог постранично: порядок кончается id, страницы не пересекаются.
   const [data, cats] = await Promise.all([
     pageAll<Product>(
-      (from, to) => catalogQuery(ctx, sort, search).range(from, to) as never,
+      (from, to) => catalogQuery(ctx, sort).range(from, to) as never,
       "Витрина: каталог",
     ),
     listAllCategories(ctx),
@@ -340,6 +340,7 @@ export async function storeCatalog(
   const visible = visibleCategoryIds(cats);
   const wanted = opts.categoryId ? categorySubtree(cats, opts.categoryId, visible) : null;
   const rows = data.filter((p) => {
+    if (search && !search.has(p.id)) return false;
     const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
     if (wanted && !ids.some((id) => wanted.has(id))) return false;
     return productOnStorefront(ids, known, visible);

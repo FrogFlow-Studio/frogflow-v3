@@ -239,6 +239,17 @@ class Query implements PromiseLike<Result> {
     this.filters.push((r) => re.test(String(r[col] ?? "")));
     return this;
   }
+  /** or("a.ilike.%x%,b.ilike.%x%") — только ilike-термы; запятых в шаблонах нет. */
+  or(expr: string) {
+    const terms = expr.split(",").map((t) => {
+      const m = /^([^.]+)\.ilike\.(.*)$/.exec(t);
+      if (!m) throw new Error(`fakeDb: or() понимает только ilike, а не «${t}»`);
+      this.col(m[1]!);
+      return { col: m[1]!, re: likeRegex(m[2]!, "i") };
+    });
+    this.filters.push((r) => terms.some((t) => t.re.test(String(r[t.col] ?? ""))));
+    return this;
+  }
   is(col: string, v: null) {
     this.col(col);
     this.filters.push((r) => (pick(r, col) ?? null) === v);

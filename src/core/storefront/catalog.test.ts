@@ -36,6 +36,8 @@ function productsDb(rows: Row[], categories: Row[] = []) {
         const q = {
           select: () => q,
           limit: () => q,
+          order: () => q,
+          range: () => q,
           ilike(col: string, pat: string) {
             const needle = pat.replace(/^%|%$/g, "").toLowerCase();
             hit = hit.filter((v) =>

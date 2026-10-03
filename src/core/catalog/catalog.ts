@@ -1,4 +1,6 @@
 import { serverFailure } from "@/lib/server-failure";
+import { inChunks } from "@/lib/in-chunks";
+import { pageAll } from "@/core/db/page";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database } from "@/core/db-types";
 import { imagePath } from "./image-url";
@@ -95,23 +97,43 @@ export function searchPattern(query: string): string | null {
 }
 
 /**
- * Фильтр `or` для поиска товара: название, ключевые слова, описание и
- * названия вариантов. Варианты — отдельная таблица, её не встроить в `or`
- * по products, поэтому id товаров с подходящим вариантом добавляются как
- * `id.in.(…)`.
+ * id всех товаров, подходящих под поисковый шаблон: по названию, ключевым
+ * словам, описанию и названию варианта. Всё постранично, без потолка в 1000 и
+ * без длинного фильтра в адресе: витрина отбирает по этому набору сама.
  */
-export async function productSearchFilter(ctx: TenantContext, pattern: string): Promise<string> {
-  const { data, error } = await ctx.db
-    .from("product_variants")
-    .select("product_id")
-    .ilike("name", pattern)
-    .limit(200);
-  if (error) throw new Error(`search variants: ${error.message}`);
-  const ids = [...new Set((data ?? []).map((v) => v.product_id))];
-  const text = `name.ilike.${pattern},keywords.ilike.${pattern},description.ilike.${pattern}`;
-  return ids.length ? `${text},id.in.(${ids.join(",")})` : text;
+export async function productSearchIds(ctx: TenantContext, pattern: string): Promise<Set<string>> {
+  const [byText, byVariant] = await Promise.all([
+    pageAll<{ id: string }>(
+      (from, to) =>
+        ctx.db
+          .from("products")
+          .select("id")
+          .or(`name.ilike.${pattern},keywords.ilike.${pattern},description.ilike.${pattern}`)
+          .order("id")
+          .range(from, to),
+      "Поиск по товарам",
+    ),
+    pageAll<{ product_id: string }>(
+      (from, to) =>
+        ctx.db
+          .from("product_variants")
+          .select("product_id")
+          .ilike("name", pattern)
+          .order("id")
+          .range(from, to),
+      "Поиск по вариантам",
+    ),
+  ]);
+  return new Set([...byText.map((p) => p.id), ...byVariant.map((v) => v.product_id)]);
 }
 
+/**
+ * Поиск товара: название, ключевые слова, описание и названия вариантов.
+ * Варианты — отдельная таблица, поэтому ищем их своим запросом (постранично),
+ * а товары с подходящим вариантом читаем кусками по 200 id: длинный `id.in`
+ * внутри `or` уходил в адрес запроса (больше ~8 КБ — 431), а совпадения
+ * сверх 200 терялись. Результаты объединяются и сортируются как в базе.
+ */
 export async function searchProducts(
   ctx: TenantContext,
   query: string,
@@ -119,16 +141,51 @@ export async function searchProducts(
 ): Promise<Product[]> {
   const pattern = searchPattern(query);
   if (!pattern) return [];
-  const { data, error } = await ctx.db
+  const variants = await pageAll<{ product_id: string }>(
+    (from, to) =>
+      ctx.db
+        .from("product_variants")
+        .select("product_id")
+        .ilike("name", pattern)
+        .order("id")
+        .range(from, to),
+    "Поиск по вариантам",
+  );
+  const byText = await ctx.db
     .from("products")
     .select(PRODUCT_SELECT)
     .eq("is_active", true)
-    .or(await productSearchFilter(ctx, pattern))
+    .or(`name.ilike.${pattern},keywords.ilike.${pattern},description.ilike.${pattern}`)
     .order("sort_order")
     .order("name")
+    .order("id")
     .limit(limit);
-  if (error) throw new Error(`search: ${error.message}`);
-  return (data ?? []) as Product[];
+  if (byText.error) throw serverFailure(`Поиск: ${byText.error.message}`);
+  const byVariant = await inChunks(
+    variants.map((v) => v.product_id),
+    (chunk) =>
+      ctx.db
+        .from("products")
+        .select(PRODUCT_SELECT)
+        .eq("is_active", true)
+        .in("id", chunk)
+        .order("sort_order")
+        .order("name")
+        .order("id")
+        .limit(limit),
+    "Поиск",
+  );
+  const found = new Map<string, Product>();
+  for (const p of [...((byText.data ?? []) as Product[]), ...(byVariant as Product[])])
+    found.set(p.id, p);
+  return [...found.values()]
+    .sort(
+      (a, b) =>
+        (a.sort_order ?? 0) - (b.sort_order ?? 0) ||
+        (a.name < b.name ? -1 : a.name > b.name ? 1 : 0) ||
+        (a.id < b.id ? -1 : 1),
+    )
+    .slice(0, limit);
 }
 
 export function sortedImages(p: Pick<Product, "product_images">): ProductImage[] {
