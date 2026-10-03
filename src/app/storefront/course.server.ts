@@ -1,3 +1,4 @@
+import { videoEmbed } from "@/core/courses/video";
 import { nextOpening } from "@/core/courses/access";
 import { issueCertificate } from "@/core/courses/certificate.server";
 import { isCourseToken } from "@/core/courses/link";
@@ -54,6 +55,8 @@ export type CourseView = {
     /** У закрытого урока — пусто: текст, ссылка и файлы не уходят в браузер. */
     text: string;
     link: string | null;
+    /** Адрес встроенного плеера для ссылки на видео (core/courses/video); иначе null. */
+    embed: string | null;
     files: Array<{ name: string; url: string }>;
     /** Домашнее задание открытого урока; null — у урока его нет. */
     homework: LessonHomeworkView | null;
@@ -107,6 +110,7 @@ export async function courseView(
       done: a.open && done.has(a.lesson.id),
       text: a.open ? a.lesson.text : "",
       link: a.open ? a.lesson.link : null,
+      embed: a.open && a.lesson.link ? videoEmbed(a.lesson.link) : null,
       files,
       homework:
         a.open && a.lesson.homework

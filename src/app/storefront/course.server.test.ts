@@ -64,7 +64,9 @@ describe("страница курса на витрине", () => {
     expect(v.name).toBe("Курс лепки");
     expect(v.lessons.map((l) => l.open)).toEqual([true, false]);
     expect(v.lessons[0]).toMatchObject({ text: "Текст 1", link: "https://youtu.be/1" });
-    expect(v.lessons[1]).toMatchObject({ text: "", link: null, files: [] });
+    // «1» — не id YouTube из 11 знаков: плеера нет, остаётся кнопка-ссылка.
+    expect(v.lessons[0]!.embed).toBeNull();
+    expect(v.lessons[1]).toMatchObject({ text: "", link: null, embed: null, files: [] });
     expect(signed).toEqual([`${T}/l1.pdf`]);
     expect(v.nextAt).toBe("2026-10-04T10:00:00.000Z");
     const run = db.tables.app_settings!.find((r) => r.key === runKey(ITEM));
@@ -118,5 +120,22 @@ describe("домашнее задание на странице курса", () 
     });
     // Урок 2 по расписанию ещё закрыт: задание не уходит в браузер.
     expect(view.lessons[1]!.homework).toBeNull();
+  });
+});
+
+describe("плеер урока", () => {
+  it("у открытого урока с видео — адрес плеера, у закрытого — нет", async () => {
+    const { ctx, db } = ctxWith();
+    const yt = "dQw4w9WgXcQ";
+    (db.tables.app_settings as Array<{ key: string; value: string }>)[0]!.value = JSON.stringify({
+      ...course,
+      lessons: course.lessons.map((l) => ({ ...l, link: `https://youtu.be/${yt}` })),
+    });
+    const p = (await openCourse(ctx, S, ITEM, courseToken(S, T, ITEM)))!;
+    const v = await courseView(ctx, p, async (path) => path, new Date("2026-10-01T10:00:00Z"));
+    expect(v.lessons.map((l) => l.embed)).toEqual([
+      `https://www.youtube-nocookie.com/embed/${yt}`,
+      null,
+    ]);
   });
 });

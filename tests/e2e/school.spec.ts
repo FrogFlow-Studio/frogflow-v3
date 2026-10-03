@@ -35,6 +35,11 @@ test("страница курса: урок открыт, задание сда�
   await page.goto(`/s/${F.SCHOOL_SLUG}/course/${item}?k=${token(item)}`);
   await expect(page.getByText("Разбираем инструменты.")).toBeVisible();
   await expect(page.getByText("Нарисуйте круг и пришлите фото.")).toBeVisible();
+  // Ссылка на YouTube — встроенный плеер, а не только кнопка.
+  await expect(page.locator("iframe").first()).toHaveAttribute(
+    "src",
+    "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+  );
   await page.getByPlaceholder("Ответ или комментарий к работе").first().fill("Круг готов");
   await page.getByRole("button", { name: "Отправить на проверку", exact: true }).click();
   await expect(page.getByText("Отправлено. Преподаватель проверит и ответит.")).toBeVisible();

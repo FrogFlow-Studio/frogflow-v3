@@ -10,6 +10,7 @@ import {
 } from "@/app/storefront/course.functions";
 import type { CourseView } from "@/app/storefront/course.server";
 import { useStorefrontLocale } from "@/app/storefront/locale";
+import { COURSE_PAGE_CSP } from "@/core/courses/video";
 import { intlLocale } from "@/app/i18n/admin";
 import { ErrorBox, useAction } from "@/app/ui";
 
@@ -28,6 +29,8 @@ export const Route = createFileRoute("/s/$slug/course/$itemId")({
   loader: ({ params, deps }) =>
     courseViewFn({ data: { slug: params.slug, itemId: params.itemId, k: deps.k } }),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
+  // Видео урока во встроенном плеере: во фреймах — только белый список хостов.
+  headers: () => ({ "Content-Security-Policy": COURSE_PAGE_CSP }),
   component: CoursePage,
 });
 
@@ -159,6 +162,17 @@ function CoursePage() {
             {l.open && (
               <div className="mt-2 space-y-2 text-sm">
                 {l.text && <p className="leading-relaxed whitespace-pre-line">{l.text}</p>}
+                {l.embed && (
+                  <iframe
+                    src={l.embed}
+                    title={l.title}
+                    className="aspect-video w-full rounded-md border-0"
+                    loading="lazy"
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                )}
                 {l.link && (
                   <a
                     href={l.link}

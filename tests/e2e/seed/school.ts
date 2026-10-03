@@ -72,7 +72,7 @@ export function seedSchool(db: StubDb, now: string) {
         title: "Кисти и краски",
         text: "Разбираем инструменты.",
         files: [],
-        link: null,
+        link: "https://youtu.be/dQw4w9WgXcQ",
         homework: "Нарисуйте круг и пришлите фото.",
       },
       { id: F.SCHOOL_LESSON_2, title: "Первый образ", text: "Бабочка.", files: [], link: null },
