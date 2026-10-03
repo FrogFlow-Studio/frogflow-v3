@@ -13,4 +13,5 @@ export * from "./fixtures/comment-to-dm.ts";
 export * from "./fixtures/consultant.ts";
 export * from "./fixtures/school.ts";
 export * from "./fixtures/shop4-waitlist.ts";
+export * from "./fixtures/shop4-chat.ts";
 export * from "./fixtures/shop4-filters.ts";
