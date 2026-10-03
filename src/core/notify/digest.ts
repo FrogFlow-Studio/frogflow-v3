@@ -1,3 +1,5 @@
+import { adminT } from "@/app/i18n/admin";
+import type { Locale } from "@/core/i18n/locale";
 import type { Json } from "@/core/db-types";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
@@ -81,28 +83,72 @@ export type DigestStats = {
   undelivered: number;
 };
 
-/** Текст сводки — чистая часть, чтобы проверять без базы. */
+const DIGEST_TEXT = {
+  ru: {
+    title: (d: string) => `☀️ <b>Сводка за ${d}</b>`,
+    orders: (n: number) => `Заказов: ${n}`,
+    revenue: (sum: string) => ` на ${sum}`,
+    awaiting: (n: number) => `Ждут подтверждения: ${n}`,
+    undelivered: (n: number, section: string) =>
+      `Не доставлено сообщений: ${n} — см. «${section}» в панели`,
+    night: (n: number) => `<b>За ночь (${n}):</b>`,
+    more: (n: number) => `… и ещё ${n}`,
+  },
+  kk: {
+    title: (d: string) => `☀️ <b>${d} бойынша жиынтық</b>`,
+    orders: (n: number) => `Тапсырыс: ${n}`,
+    revenue: (sum: string) => `, сомасы ${sum}`,
+    awaiting: (n: number) => `Растауды күтуде: ${n}`,
+    undelivered: (n: number, section: string) =>
+      `Жеткізілмеген хабарлама: ${n} — панельдегі «${section}» бөлімін қараңыз`,
+    night: (n: number) => `<b>Түнде (${n}):</b>`,
+    more: (n: number) => `… және тағы ${n}`,
+  },
+  en: {
+    title: (d: string) => `☀️ <b>Summary for ${d}</b>`,
+    orders: (n: number) => `Orders: ${n}`,
+    revenue: (sum: string) => ` totalling ${sum}`,
+    awaiting: (n: number) => `Awaiting confirmation: ${n}`,
+    undelivered: (n: number, section: string) =>
+      `Undelivered messages: ${n} — see "${section}" in the panel`,
+    night: (n: number) => `<b>Overnight (${n}):</b>`,
+    more: (n: number) => `… and ${n} more`,
+  },
+  uz: {
+    title: (d: string) => `☀️ <b>${d} uchun xulosa</b>`,
+    orders: (n: number) => `Buyurtmalar: ${n}`,
+    revenue: (sum: string) => `, jami ${sum}`,
+    awaiting: (n: number) => `Tasdiqlashni kutmoqda: ${n}`,
+    undelivered: (n: number, section: string) =>
+      `Yetkazilmagan xabarlar: ${n} — paneldagi «${section}» boʻlimiga qarang`,
+    night: (n: number) => `<b>Kechasi (${n}):</b>`,
+    more: (n: number) => `… va yana ${n} ta`,
+  },
+} as const;
+
+/** Текст сводки — чистая часть, чтобы проверять без базы. Язык — продавца, по умолчанию русский. */
 export function renderDigest(
   dateLabel: string,
   stats: DigestStats,
   items: readonly DigestItem[],
+  locale: Locale = "ru",
 ): string {
+  const t = DIGEST_TEXT[locale];
   const lines = [
-    `☀️ <b>Сводка за ${dateLabel}</b>`,
+    t.title(dateLabel),
     "",
-    `Заказов: ${stats.ordersYesterday}${
-      stats.ordersYesterday
-        ? ` на ${stats.revenueYesterday.total} ${stats.revenueYesterday.currency}`
-        : ""
-    }`,
-    `Ждут подтверждения: ${stats.awaitingConfirmation}`,
+    t.orders(stats.ordersYesterday) +
+      (stats.ordersYesterday
+        ? t.revenue(`${stats.revenueYesterday.total} ${stats.revenueYesterday.currency}`)
+        : ""),
+    t.awaiting(stats.awaitingConfirmation),
   ];
   if (stats.undelivered)
-    lines.push(`Не доставлено сообщений: ${stats.undelivered} — см. «Не доставлено» в панели`);
+    lines.push(t.undelivered(stats.undelivered, adminT(locale)("outbox.title")));
   if (items.length) {
-    lines.push("", `<b>За ночь (${items.length}):</b>`);
+    lines.push("", t.night(items.length));
     for (const it of items.slice(0, 20)) lines.push(`• ${it.text.split("\n")[0]!.slice(0, 200)}`);
-    if (items.length > 20) lines.push(`… и ещё ${items.length - 20}`);
+    if (items.length > 20) lines.push(t.more(items.length - 20));
   }
   return lines.join("\n");
 }

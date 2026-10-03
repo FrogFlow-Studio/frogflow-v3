@@ -13,6 +13,7 @@ import {
   type DigestStats,
 } from "@/core/notify/digest";
 import { loadNotifyPrefs } from "@/core/notify/prefs";
+import { sellerLocaleSafe } from "@/core/ai/seller-text";
 import { notifyAdminsHtml } from "./notify";
 
 async function digestStats(ctx: TenantContext): Promise<DigestStats> {
@@ -57,9 +58,13 @@ export async function sendDueDigests(
           day: "2-digit",
           month: "2-digit",
         });
-        sent = await notifyAdminsHtml(ctx, renderDigest(yesterday, stats, items), {
-          kind: "digest",
-        });
+        sent = await notifyAdminsHtml(
+          ctx,
+          renderDigest(yesterday, stats, items, await sellerLocaleSafe(ctx)),
+          {
+            kind: "digest",
+          },
+        );
         // Сообщение ушло: отметка не должна его откатывать (иначе завтра те же пункты
         // придут второй раз). Один повтор, дальше — в журнал.
         if (sent > 0) {

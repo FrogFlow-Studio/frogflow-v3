@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { adminT } from "@/app/i18n/admin";
 import { defaultNotifyPrefs } from "./prefs";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -33,6 +34,36 @@ describe("дайджест продавцу", () => {
     expect(text).toContain("Не доставлено сообщений: 1");
     expect(text).toContain("• 🙋 Клиент ждёт менеджера");
     expect(text).not.toContain("подробности");
+  });
+});
+
+describe("сводка на языке продавца", () => {
+  const stats = {
+    ordersYesterday: 3,
+    revenueYesterday: { total: 15000, currency: "KZT" },
+    awaitingConfirmation: 2,
+    undelivered: 1,
+  };
+  const items = Array.from({ length: 21 }, (_, i) => ({
+    id: String(i),
+    kind: "question",
+    text: `пункт ${i}`,
+    at: "",
+  }));
+  it("kk, en, uz — без русских подписей, цифры на месте", () => {
+    for (const l of ["kk", "en", "uz"] as const) {
+      const text = renderDigest("25.09", stats, items, l);
+      expect(text, l).not.toMatch(/Сводка|Заказов|Ждут подтверждения|Не доставлено|За ночь|и ещё/);
+      expect(text).toContain("25.09");
+      expect(text).toContain("15000 KZT");
+      expect(text).toContain("(21)");
+      // Название раздела — из словаря админки, чтобы не разошлось с панелью.
+      expect(text).toContain(`${adminT(l)("outbox.title")}`);
+    }
+    expect(renderDigest("25.09", stats, [], "en")).toContain("Orders: 3");
+  });
+  it("без языка — по-русски, как раньше", () => {
+    expect(renderDigest("25.09", stats, [])).toContain("Сводка за 25.09");
   });
 });
 
