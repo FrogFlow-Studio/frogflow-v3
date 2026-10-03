@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { listClientsFn } from "@/app/operator/operator.functions";
+import type { Pulse } from "@/app/operator/pulse";
 import { Badge, Empty, PageTitle, Stat } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed/")({
@@ -13,12 +14,24 @@ function ClientsPage() {
   const [q, setQ] = useState("");
   const [served, setServed] = useState<"" | "v1" | "v2">("");
   const [status, setStatus] = useState("");
+  const [quietOnly, setQuietOnly] = useState(false);
+  const [byRisk, setByRisk] = useState(true);
   const shown = clients.filter(
     (c) =>
       (!q || c.name.toLowerCase().includes(q.toLowerCase()) || c.slug?.includes(q.toLowerCase())) &&
       (!served || (served === "v2" ? c.servedBy === "v2" : c.servedBy !== "v2")) &&
-      (!status || c.status === status),
+      (!status || c.status === status) &&
+      (!quietOnly || c.pulse?.quiet),
   );
+  // Сервер отдаёт список по риску; без галочки — прежний порядок: по заказам за 30 дней.
+  if (!byRisk)
+    shown.sort(
+      (a, b) =>
+        (b.stats?.orders_30d ?? 0) - (a.stats?.orders_30d ?? 0) ||
+        a.name.localeCompare(b.name, "ru"),
+    );
+  const v2Clients = clients.filter((c) => c.servedBy === "v2");
+  const pulseMissing = v2Clients.length > 0 && v2Clients.every((c) => !c.pulse);
   const orders30 = clients.reduce((s, c) => s + (c.stats?.orders_30d ?? 0), 0);
   const customers = clients.reduce((s, c) => s + (c.stats?.customers_total ?? 0), 0);
   return (
@@ -68,6 +81,19 @@ function ClientsPage() {
           <option value="paused">пауза</option>
           <option value="suspended">приостановлен</option>
         </select>
+        <label className="flex items-center gap-1 self-center text-sm">
+          <input
+            type="checkbox"
+            checked={quietOnly}
+            onChange={(e) => setQuietOnly(e.target.checked)}
+          />
+          Затихли ({clients.filter((c) => c.pulse?.quiet).length})
+          {pulseMissing && <span className="text-warn"> · пульс не прочитан</span>}
+        </label>
+        <label className="flex items-center gap-1 self-center text-sm">
+          <input type="checkbox" checked={byRisk} onChange={(e) => setByRisk(e.target.checked)} />
+          По риску
+        </label>
         <span className="self-center text-sm text-muted">Показано: {shown.length}</span>
       </div>
       {shown.length === 0 ? (
@@ -83,6 +109,7 @@ function ClientsPage() {
                 <th>Подписка</th>
                 <th>Здоровье</th>
                 <th>Каналы</th>
+                <th>Пульс</th>
                 <th className="text-right">Заказов / 30 дн</th>
                 <th className="text-right">Товаров</th>
                 <th className="text-right">Покупателей</th>
@@ -124,6 +151,9 @@ function ClientsPage() {
                     )}
                     {c.zernioAccounts.length > 0 && <Badge tone="accent">IG/WA</Badge>}
                   </td>
+                  <td>
+                    <PulseCell p={c.pulse} v2={c.servedBy === "v2"} />
+                  </td>
                   <td className="text-right tabular-nums">{c.stats?.orders_30d ?? "—"}</td>
                   <td className="text-right tabular-nums">{c.stats?.products_total ?? "—"}</td>
                   <td className="text-right tabular-nums">
@@ -137,6 +167,39 @@ function ClientsPage() {
         </div>
       )}
     </>
+  );
+}
+
+function PulseCell({ p, v2 }: { p: Pulse | null; v2: boolean }) {
+  if (!p)
+    return v2 ? (
+      <span className="text-warn">пульс не прочитан</span>
+    ) : (
+      <span className="text-muted">—</span>
+    );
+  const arrow = p.changePct === null ? "" : p.changePct > 0 ? "↑" : p.changePct < 0 ? "↓" : "→";
+  const login =
+    p.daysSinceLogin === null
+      ? "не заходил 90+ дн"
+      : p.daysSinceLogin === 0
+        ? "вход сегодня"
+        : `вход ${p.daysSinceLogin} дн назад`;
+  return (
+    <div className="text-xs">
+      <div className="tabular-nums">
+        {p.recent} vs {p.previous} {arrow}
+        {p.changePct !== null && ` ${p.changePct > 0 ? "+" : ""}${p.changePct}%`}{" "}
+        {p.quiet && <Badge tone="warn">затих</Badge>}
+      </div>
+      <div className={p.noLogin ? "text-warn" : "text-muted"}>{login}</div>
+      <div className="text-muted">
+        {!p.orderKnown
+          ? "—"
+          : p.daysSinceOrder === null
+            ? "заказов не было"
+            : `без заказов ${p.daysSinceOrder} дн`}
+      </div>
+    </div>
   );
 }
 

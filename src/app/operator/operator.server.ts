@@ -37,6 +37,7 @@ import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
 import { addressConflict, telegramBotTaken, vipBotTaken } from "@/core/tenant/directory";
 import { UserError } from "@/core/i18n/user-error";
 import { adminLoginTaken } from "@/core/auth/roles";
+import type { Pulse } from "./pulse";
 import { hashPassword } from "@/app/auth/password";
 import { telegramWebhookUrl } from "@/channels/telegram/secret";
 import { NO_RECIPIENTS_REASON, type DeliveryReport } from "@/core/notify/deliver";
@@ -143,6 +144,8 @@ export type ClientView = {
   /** Откуда пришёл продавец, зарегистрировавшийся сам; null — не знаем. */
   signupOrigin: string | null;
   stats: ClientStats | null;
+  /** Пульс (заказы 14/14, последний вход) — только у клиентов v2, у остальных null. */
+  pulse: Pulse | null;
 };
 
 function toView(
@@ -158,6 +161,7 @@ function toView(
   stats: ClientStats | null,
   health: ClientView["health"] = null,
   zernioEvents: Map<string, string> = new Map(),
+  pulse: Pulse | null = null,
 ): ClientView {
   return {
     id: t.id,
@@ -208,6 +212,7 @@ function toView(
     signupOrigin: signupOriginLabel(t.settings.signup),
     stats,
     health,
+    pulse,
   };
 }
 
@@ -223,12 +228,27 @@ async function extras(ids?: string[]) {
 
 export async function listClients(): Promise<ClientView[]> {
   const { latestHealth } = await import("./health.server");
+  const { loadPulse } = await import("./pulse.server");
   const [tenants, stats, ex, health] = await Promise.all([
     tenantDirectory(true),
     clientStats().catch(() => new Map<string, ClientStats>()),
     extras(),
     latestHealth().catch(() => new Map()),
   ]);
+  // Пульс считаем только клиентам v2; упавшее чтение — «нет данных», а не «затих».
+  const pulses = await loadPulse(
+    tenants
+      .filter((t) => t.settings.served_by === "v2")
+      .map((t) => ({
+        id: t.id,
+        status: t.status,
+        createdAt: ex.get(t.id)?.created_at ?? null,
+        lastOrderAt: stats.has(t.id) ? (stats.get(t.id)?.last_order_at ?? null) : undefined,
+      })),
+  ).catch((e) => {
+    console.warn("[operator] пульс клиентов не прочитан:", e);
+    return new Map<string, Pulse>();
+  });
   return tenants
     .map((t) => {
       const e = ex.get(t.id);
@@ -244,10 +264,13 @@ export async function listClients(): Promise<ClientView[]> {
         },
         stats.get(t.id) ?? null,
         health.get(t.id) ?? null,
+        undefined,
+        pulses.get(t.id) ?? null,
       );
     })
     .sort(
       (a, b) =>
+        (b.pulse?.risk ?? 0) - (a.pulse?.risk ?? 0) ||
         (b.stats?.orders_30d ?? 0) - (a.stats?.orders_30d ?? 0) ||
         a.name.localeCompare(b.name, "ru"),
     );
