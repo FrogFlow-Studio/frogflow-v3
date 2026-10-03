@@ -136,10 +136,11 @@ export const adminTgLoginRequest = createServerFn({ method: "POST" })
     const token = await issueLoginToken(ctx, normalizeLogin(data.username));
     const link = `${env().APP_URL}/admin/tg-login?b=${t.id}&t=${token}`;
     const { telegramApi } = await import("@/channels/telegram/api");
+    const { tgLoginMessage } = await import("@/app/auth/tg-login-text");
     await telegramApi(ctx.secrets.telegramToken(), env().TELEGRAM_API_BASE)
       .call("sendMessage", {
         chat_id: t.ownerTelegramId,
-        text: `🔐 Вход в панель магазина. Ссылка действует 10 минут и работает один раз:\n${link}\n\nЕсли входите не вы — не открывайте её.`,
+        text: tgLoginMessage(t.settings.default_locale ?? "ru", link),
         link_preview_options: { is_disabled: true },
       })
       .catch(() => undefined);
