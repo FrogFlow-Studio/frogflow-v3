@@ -63,11 +63,12 @@ async function sellerChats(botId: string): Promise<number> {
 }
 
 async function deliveringOrders(botId: string): Promise<number> {
-  const { count } = await serviceDb()
+  const { count, error: readErr3 } = await serviceDb()
     .from("orders")
     .select("id", { count: "exact", head: true })
     .eq("bot_id", botId)
     .eq("status", "delivering");
+  if (readErr3) throw serverFailure(`[migration] выдачи не посчитаны: ${readErr3.message}`);
   return count ?? 0;
 }
 
@@ -136,20 +137,22 @@ async function loyaltyInput(botId: string, now = new Date()) {
 }
 
 async function subscriptionExpiresAt(botId: string): Promise<string | null> {
-  const { data } = await serviceDb()
+  const { data, error: readErr2 } = await serviceDb()
     .from("bots")
     .select("subscription_expires_at")
     .eq("id", botId)
     .maybeSingle();
+  if (readErr2) throw serverFailure(`[migration] срок подписки не прочитан: ${readErr2.message}`);
   return data?.subscription_expires_at ?? null;
 }
 
 async function countRows(table: "payment_methods" | "products", botId: string): Promise<number> {
-  const { count } = await serviceDb()
+  const { count, error: readErr } = await serviceDb()
     .from(table)
     .select("id", { count: "exact", head: true })
     .eq("bot_id", botId)
     .eq("is_active", true);
+  if (readErr) throw serverFailure(`[migration] строки не посчитаны: ${readErr.message}`);
   return count ?? 0;
 }
 

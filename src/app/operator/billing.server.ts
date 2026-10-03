@@ -25,18 +25,24 @@ import { shownError } from "@/lib/shown-error";
 const REQUISITES_KEY = "payout_requisites";
 
 export async function getPayoutRequisites(): Promise<string> {
-  const { data } = await serviceDb()
+  const { data, error: readErr4 } = await serviceDb()
     .from("operator_settings")
     .select("value")
     .eq("key", REQUISITES_KEY)
     .maybeSingle();
+  if (readErr4) throw serverFailure(`[billing] реквизиты не прочитаны: ${readErr4.message}`);
   return data?.value ?? "";
 }
 
 async function setOperatorSetting(key: string, value: string): Promise<void> {
   const db = serviceDb();
   const v = value.trim();
-  const { data } = await db.from("operator_settings").select("key").eq("key", key).maybeSingle();
+  const { data, error: readErr3 } = await db
+    .from("operator_settings")
+    .select("key")
+    .eq("key", key)
+    .maybeSingle();
+  if (readErr3) throw serverFailure(`[billing] настройка не прочитана: ${readErr3.message}`);
   const { error } = data
     ? await db.from("operator_settings").update({ value: v }).eq("key", key)
     : await db.from("operator_settings").insert({ key, value: v });
@@ -83,11 +89,12 @@ export type NewPayment = {
 };
 
 export async function subscriptionExpiresAt(botId: string): Promise<string | null> {
-  const { data } = await serviceDb()
+  const { data, error: readErr2 } = await serviceDb()
     .from("bots")
     .select("subscription_expires_at")
     .eq("id", botId)
     .maybeSingle();
+  if (readErr2) throw serverFailure(`[billing] срок подписки не прочитан: ${readErr2.message}`);
   return data?.subscription_expires_at ?? null;
 }
 
@@ -106,11 +113,12 @@ export async function addPayment(
     { action: "added", period_end: p.period_end, amount: p.amount, currency: p.currency },
     actor,
   );
-  const { data: bot } = await db
+  const { data: bot, error: botErr } = await db
     .from("bots")
     .select("status, subscription_expires_at")
     .eq("id", botId)
     .maybeSingle();
+  if (botErr) throw serverFailure(`[billing] бот не прочитан после платежа: ${botErr.message}`);
   const expiresAt = bot?.subscription_expires_at ?? null;
   if (bot?.status === "suspended" && expiresAt && new Date(expiresAt).getTime() > Date.now()) {
     await db.from("bots").update({ status: "active" }).eq("id", botId);
@@ -193,11 +201,12 @@ async function invoiceOrThrow(id: string): Promise<Invoice & { proof_path: strin
 /** Ссылка Kaspi Pay платформы (core/billing/pay/kaspi-link); пусто — не задана. */
 export async function getKaspiPayLink(): Promise<string> {
   const { KASPI_LINK_KEY } = await import("@/core/billing/pay/kaspi-link");
-  const { data } = await serviceDb()
+  const { data, error: readErr } = await serviceDb()
     .from("operator_settings")
     .select("value")
     .eq("key", KASPI_LINK_KEY)
     .maybeSingle();
+  if (readErr) throw serverFailure(`[billing] ссылка Kaspi Pay не прочитана: ${readErr.message}`);
   return data?.value?.trim() ?? "";
 }
 
@@ -619,12 +628,13 @@ export type SweepInvoicer = (t: Tenant) => Promise<{ amount: number; delivered: 
 const defaultInvoicer: SweepInvoicer = async (t) => {
   const { parsePlan } = await import("@/core/plans/registry");
   if (parsePlan(t.plan)?.kind !== "tier") return null;
-  const { data: open } = await serviceDb()
+  const { data: open, error: openErr } = await serviceDb()
     .from("subscription_invoices")
     .select("id")
     .eq("bot_id", t.id)
     .in("status", ["sent", "proof_uploaded"])
     .limit(20);
+  if (openErr) throw serverFailure(`[billing] открытые счета не прочитаны: ${openErr.message}`);
   // Открытое пополнение ИИ-баланса не заменяет счёт за подписку.
   const { openSubscriptionInvoices } = await import("./ai-topup.server");
   if ((await openSubscriptionInvoices(t.id, open ?? [])).length) return null;
@@ -673,9 +683,14 @@ export async function sweepSubscriptions(
     onlyBotId ? t.id === onlyBotId : t.settings.served_by === "v2" && !t.archived,
   );
   const ids = tenants.map((t) => t.id);
-  const { data: rows } = ids.length
+  const { data: rows, error: rowsErr } = ids.length
     ? await serviceDb().from("bots").select("id, subscription_expires_at").in("id", ids)
-    : { data: [] as Array<{ id: string; subscription_expires_at: string | null }> };
+    : {
+        data: [] as Array<{ id: string; subscription_expires_at: string | null }>,
+        error: null,
+      };
+  // Не прочиталось — не «срока нет»: иначе обход молча пропустит всех просроченных.
+  if (rowsErr) throw serverFailure(`[billing] сроки подписок не прочитаны: ${rowsErr.message}`);
   const expires = new Map((rows ?? []).map((r) => [r.id, r.subscription_expires_at]));
   const results: SweepEntry[] = [];
   const dayKey = now.toISOString().slice(0, 10);

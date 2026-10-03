@@ -40,11 +40,12 @@ export async function adjustAiBalance(botId: string, usd: number, note: string, 
 
 export async function getAiMarkup(): Promise<number> {
   const { AI_MARKUP_KEY } = await import("@/core/ai/markup");
-  const { data } = await serviceDb()
+  const { data, error: readErr2 } = await serviceDb()
     .from("operator_settings")
     .select("value")
     .eq("key", AI_MARKUP_KEY)
     .maybeSingle();
+  if (readErr2) throw serverFailure(`[ai] наценка не прочитана: ${readErr2.message}`);
   const n = Number(data?.value);
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
@@ -55,11 +56,12 @@ export async function setAiMarkup(percent: number): Promise<void> {
   const { AI_MARKUP_KEY, resetAiMarkupCache } = await import("@/core/ai/markup");
   const db = serviceDb();
   const value = String(Math.round(percent * 100) / 100);
-  const { data } = await db
+  const { data, error: readErr } = await db
     .from("operator_settings")
     .select("key")
     .eq("key", AI_MARKUP_KEY)
     .maybeSingle();
+  if (readErr) throw serverFailure(`[ai] наценка не прочитана: ${readErr.message}`);
   const { error } = data
     ? await db.from("operator_settings").update({ value }).eq("key", AI_MARKUP_KEY)
     : await db.from("operator_settings").insert({ key: AI_MARKUP_KEY, value });

@@ -33,11 +33,12 @@ export async function loadPartners(): Promise<Partner[]> {
 async function storePartners(list: Partner[]): Promise<void> {
   const db = serviceDb();
   const value = JSON.stringify(list);
-  const { data } = await db
+  const { data, error: readErr } = await db
     .from("operator_settings")
     .select("key")
     .eq("key", PARTNERS_KEY)
     .maybeSingle();
+  if (readErr) throw serverFailure(`[partners] настройка не прочитана: ${readErr.message}`);
   const r = data
     ? await db.from("operator_settings").update({ value }).eq("key", PARTNERS_KEY)
     : await db.from("operator_settings").insert({ key: PARTNERS_KEY, value });

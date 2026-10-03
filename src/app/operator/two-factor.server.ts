@@ -9,6 +9,7 @@ import {
   useBackupCode,
   verifyTotp,
 } from "@/core/auth/totp";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Двухшаговый вход оператора: код из приложения-аутентификатора после пароля.
@@ -47,7 +48,12 @@ async function read(keys: string[]): Promise<Record<string, string>> {
 
 async function write(key: string, value: string): Promise<void> {
   const db = serviceDb();
-  const { data } = await db.from("operator_settings").select("key").eq("key", key).maybeSingle();
+  const { data, error: readErr } = await db
+    .from("operator_settings")
+    .select("key")
+    .eq("key", key)
+    .maybeSingle();
+  if (readErr) throw serverFailure(`[2fa] настройка не прочитана: ${readErr.message}`);
   const { error } = data
     ? await db.from("operator_settings").update({ value }).eq("key", key)
     : await db.from("operator_settings").insert({ key, value });

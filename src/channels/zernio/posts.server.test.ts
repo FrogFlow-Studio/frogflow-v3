@@ -150,3 +150,12 @@ describe("cancelScheduledPost и listOwnPosts", () => {
     expect(rows[0]).toMatchObject({ postId: "p-9", state: "cancelled" });
   });
 });
+
+describe("сбой чтения журнала не создаёт пост", () => {
+  it("не прочиталась проверка повтора — ошибка, в Zernio ничего не ушло", async () => {
+    const { withBrokenReads } = await import("../../../tests/broken-db");
+    const { ctx } = ctxFor(withBrokenReads(fakeDb(), ["zernio_logs"]));
+    await expect(publishPost(ctx, input(), NOW)).rejects.toThrow(/журнал постов не прочитан/);
+    expect(requests).toHaveLength(0);
+  });
+});

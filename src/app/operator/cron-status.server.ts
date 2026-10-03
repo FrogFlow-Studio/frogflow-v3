@@ -1,4 +1,5 @@
 import { serviceDb } from "@/core/db/client.server";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Состояние кронов для панели оператора: последний запуск, итог, длительность,
@@ -68,11 +69,12 @@ export function summarizeResults(results: Record<string, unknown>): string {
 
 export async function recordCronRun(job: string, run: CronRun): Promise<void> {
   const db = serviceDb();
-  const { data } = await db
+  const { data, error: readErr2 } = await db
     .from("operator_settings")
     .select("key")
     .eq("key", key(job))
     .maybeSingle();
+  if (readErr2) throw serverFailure(`[cron] статус не прочитан: ${readErr2.message}`);
   const value = JSON.stringify(run);
   const r = data
     ? await db.from("operator_settings").update({ value }).eq("key", key(job))
@@ -92,10 +94,11 @@ export function cronStale(everyMin: number, lastAt: string | null, now = new Dat
 }
 
 export async function listCronStatus(now = new Date()): Promise<CronStatus[]> {
-  const { data } = await serviceDb()
+  const { data, error: readErr } = await serviceDb()
     .from("operator_settings")
     .select("key, value")
     .like("key", "cron:%");
+  if (readErr) throw serverFailure(`[cron] статусы не прочитаны: ${readErr.message}`);
   const map = new Map<string, CronRun>();
   for (const row of data ?? []) {
     try {

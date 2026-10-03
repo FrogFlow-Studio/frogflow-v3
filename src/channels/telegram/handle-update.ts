@@ -124,6 +124,7 @@ import {
   parseDateInput,
   todayInTz,
 } from "@/core/fulfillment/pure";
+import { serverFailure } from "@/lib/server-failure";
 
 const PAGE = 5;
 const DEFAULT_PAUSED = "Бот временно недоступен. Загляните чуть позже — мы уже разбираемся.";
@@ -891,11 +892,12 @@ async function smartSearchFallback(b: Bot, query: string): Promise<Product[]> {
   if (!(await consumeQuota(b.ctx, b.customer))) return [];
   const ids = await smartSearchProductIds(b.ctx, query);
   if (!ids?.length) return [];
-  const { data } = await b.ctx.db
+  const { data, error: readErr } = await b.ctx.db
     .from("products")
     .select(PRODUCT_SELECT)
     .in("id", ids.slice(0, PAGE))
     .eq("is_active", true);
+  if (readErr) throw serverFailure(`[telegram] товары не прочитаны: ${readErr.message}`);
   const byId = new Map(((data ?? []) as unknown as Product[]).map((p) => [p.id, p]));
   return ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
 }
@@ -1778,11 +1780,13 @@ async function notifyReferral(
   grant: ReferralGrant | null | undefined,
 ) {
   if (!grant) return;
-  const { data: u } = await ctx.db
+  const { data: u, error: uErr } = await ctx.db
     .from("bot_users")
     .select("state")
     .eq("telegram_id", grant.telegramId)
     .maybeSingle();
+  if (uErr)
+    console.error(`[telegram] язык покупателя не прочитан, награда без перевода: ${uErr.message}`);
   const st = stateFromJson(u?.state);
   const locale = isLocale(st.locale) ? st.locale : (ctx.tenant.settings.default_locale ?? "ru");
   await api.call("sendMessage", {
@@ -2292,11 +2296,12 @@ async function handleCallback(
   if (data.startsWith("appr:")) {
     const [, what, id] = data.split(":");
     const orderId = Number(id);
-    const { data: o } = await ctx.db
+    const { data: o, error: oErr } = await ctx.db
       .from("orders")
       .select("telegram_id")
       .eq("id", orderId)
       .maybeSingle();
+    if (oErr) throw serverFailure(`[telegram] заказ не прочитан: ${oErr.message}`);
     // Кнопка чужого заказа (пересланное сообщение) ничего не делает.
     if (!o || Number(o.telegram_id) !== customer.telegramId) return;
     if (what === "ok") return answerApproval(b, orderId, { ok: true });

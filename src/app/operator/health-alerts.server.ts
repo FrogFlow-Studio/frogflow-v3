@@ -48,7 +48,12 @@ async function readKeys(keys: string[]): Promise<Record<string, string>> {
 
 async function writeKey(key: string, value: string): Promise<void> {
   const db = serviceDb();
-  const { data } = await db.from("operator_settings").select("key").eq("key", key).maybeSingle();
+  const { data, error: readErr } = await db
+    .from("operator_settings")
+    .select("key")
+    .eq("key", key)
+    .maybeSingle();
+  if (readErr) throw serverFailure(`[health] настройка не прочитана: ${readErr.message}`);
   const { error } = data
     ? await db.from("operator_settings").update({ value }).eq("key", key)
     : await db.from("operator_settings").insert({ key, value });

@@ -3,6 +3,7 @@ import type { Json } from "@/core/db-types";
 import type { Tenant } from "@/core/tenant/types";
 import { runWithZernioEvent } from "./event-context.server";
 import type { ZernioWebhookMessagePayload } from "./message";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Обработка одного события Zernio по типу — общая для вебхука и добора
@@ -178,12 +179,13 @@ export async function claimZernioEvent(
   by: "webhook" | "retry" = "retry",
 ): Promise<boolean> {
   const note = `${by === "webhook" ? FIRST_CLAIM_NOTE : CLAIM_NOTE}${now.toISOString()}`;
-  const { data } = await ctx.db
+  const { data, error: readErr } = await ctx.db
     .from("zernio_logs")
     .update({ status: "retrying", error_message: note })
     .eq("event_id", eventId)
     .eq("status", "received")
     .select("event_id");
+  if (readErr) throw serverFailure(`[zernio] событие не взято в работу: ${readErr.message}`);
   return Boolean(data?.length);
 }
 
@@ -219,27 +221,29 @@ export async function retryStuckEvents(
   };
   const t = now.getTime();
 
-  const { data: hung } = await ctx.db
+  const { data: hung, error: hungErr } = await ctx.db
     .from("zernio_logs")
     .select("event_id, error_message")
     .eq("status", "retrying")
     .limit(50);
+  if (hungErr) throw serverFailure(`[zernio] зависшие события не прочитаны: ${hungErr.message}`);
   for (const row of hung ?? []) {
     const at = claimedAt(row.error_message);
     if (!row.event_id || (at !== null && t - at < ABANDONED_AFTER_MS)) continue;
     if (claimedByWebhook(row.error_message)) {
       // Условно по той же метке: второй крон, успевший раньше, уже вернул строку.
-      const { data: back } = await ctx.db
+      const { data: back, error: backErr } = await ctx.db
         .from("zernio_logs")
         .update({ status: "received", error_message: "фон вебхука прерван, повтор добором" })
         .eq("event_id", row.event_id)
         .eq("status", "retrying")
         .eq("error_message", row.error_message!)
         .select("event_id");
+      if (backErr) console.error(`[zernio] событие не возвращено в очередь: ${backErr.message}`);
       if (back?.length) res.requeued++;
       continue;
     }
-    const { data: closed } = await ctx.db
+    const { data: closed, error: closedErr2 } = await ctx.db
       .from("zernio_logs")
       .update({
         status: "failed",
@@ -250,6 +254,7 @@ export async function retryStuckEvents(
       .eq("event_id", row.event_id)
       .eq("status", "retrying")
       .select("event_id");
+    if (closedErr2) console.error(`[zernio] событие не закрыто: ${closedErr2.message}`);
     if (closed?.length) res.abandoned++;
   }
 
@@ -266,12 +271,13 @@ export async function retryStuckEvents(
     if (!row.event_id) continue;
     res.found++;
     if (t - Date.parse(row.created_at) > STALE_AFTER_MS) {
-      const { data: closed } = await ctx.db
+      const { data: closed, error: closedErr } = await ctx.db
         .from("zernio_logs")
         .update({ status: "failed", error_message: "добор: старше суток, окно ответа закрыто" })
         .eq("event_id", row.event_id)
         .eq("status", "received")
         .select("event_id");
+      if (closedErr) console.error(`[zernio] событие не закрыто по сроку: ${closedErr.message}`);
       if (closed?.length) res.expired++;
       continue;
     }

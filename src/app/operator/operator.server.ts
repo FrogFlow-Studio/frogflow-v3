@@ -215,7 +215,8 @@ async function extras(ids?: string[]) {
     .from("bots")
     .select("id, owner_name, owner_contact, notes, tags, subscription_expires_at, created_at");
   if (ids) q = q.in("id", ids);
-  const { data } = await q;
+  const { data, error: readErr8 } = await q;
+  if (readErr8) throw serverFailure(`[operator] данные клиентов не прочитаны: ${readErr8.message}`);
   return new Map((data ?? []).map((r) => [r.id, r]));
 }
 
@@ -287,7 +288,7 @@ const PROFILE_KEY = "@profile";
  * профиль из последнего события: его записывают клиенту v1 перед переездом.
  */
 export async function zernioLastEvents(botId: string, limit = 300): Promise<Map<string, string>> {
-  const { data } = await serviceDb()
+  const { data, error: readErr7 } = await serviceDb()
     .from("zernio_logs")
     .select("payload, created_at")
     .eq("bot_id", botId)
@@ -295,6 +296,7 @@ export async function zernioLastEvents(botId: string, limit = 300): Promise<Map<
     .neq("event_type", "telegram.update")
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (readErr7) throw serverFailure(`[operator] журнал вебхуков не прочитан: ${readErr7.message}`);
   const out = new Map<string, string>();
   for (const row of data ?? []) {
     if (!out.has("*")) out.set("*", row.created_at);
@@ -313,12 +315,13 @@ export async function zernioLastEvents(botId: string, limit = 300): Promise<Map<
 export type EventView = { id: string; at: string; actor: string; kind: string; payload: Json };
 
 export async function listEvents(botId: string, limit = 40): Promise<EventView[]> {
-  const { data } = await serviceDb()
+  const { data, error: readErr6 } = await serviceDb()
     .from("bot_events")
     .select("id, at, actor, kind, payload")
     .eq("bot_id", botId)
     .order("at", { ascending: false })
     .limit(limit);
+  if (readErr6) throw serverFailure(`[operator] события клиента не прочитаны: ${readErr6.message}`);
   return data ?? [];
 }
 
@@ -343,7 +346,8 @@ export async function listAllEvents(
   if (opts.kind) q = q.eq("kind", opts.kind);
   if (opts.who === "shop") q = q.like("actor", "admin:%");
   if (opts.who === "platform") q = q.not("actor", "like", "admin:%");
-  const { data } = await q;
+  const { data, error: readErr5 } = await q;
+  if (readErr5) throw serverFailure(`[operator] журнал действий не прочитан: ${readErr5.message}`);
   const names = new Map((await tenantDirectory()).map((t) => [t.id, t.name]));
   return (data ?? []).map((r) => ({
     id: r.id,
@@ -461,7 +465,12 @@ export async function setModule(botId: string, key: ModuleKey, on: boolean, acto
   const def = moduleDef(key);
   if (on && def.status !== "available")
     throw new Error(`Модуль «${def.title}» ещё не реализован — включить нельзя.`);
-  const { data } = await serviceDb().from("bots").select("modules").eq("id", botId).single();
+  const { data, error: readErr4 } = await serviceDb()
+    .from("bots")
+    .select("modules")
+    .eq("id", botId)
+    .single();
+  if (readErr4) throw serverFailure(`[operator] модули клиента не прочитаны: ${readErr4.message}`);
   const cur = (
     data?.modules && typeof data.modules === "object" && !Array.isArray(data.modules)
       ? data.modules
@@ -707,12 +716,14 @@ export async function createClient(input: {
   /** Откуда пришёл продавец (core/signup/origin); уже проверено. */
   signup?: SignupOrigin | null;
 }) {
-  const { data: dup } = await serviceDb()
+  const { data: dup, error: dupErr } = await serviceDb()
     .from("bots")
     .select("id")
     .eq("owner_id", input.ownerId)
     .limit(1)
     .maybeSingle();
+  if (dupErr)
+    throw serverFailure(`[operator] идентификатор клиента не проверен: ${dupErr.message}`);
   if (dup) throw new Error(`Идентификатор «${input.ownerId}» уже занят.`);
   const dir = await tenantDirectory(true);
   if (input.admin && adminLoginTaken(dir, input.admin.username))
@@ -893,10 +904,12 @@ export async function listModuleRequests(): Promise<ModuleRequestView[]> {
 }
 
 export async function pendingModuleRequestCount(): Promise<number> {
-  const { count } = await serviceDb()
+  const { count, error: readErr3 } = await serviceDb()
     .from("module_requests")
     .select("id", { count: "exact", head: true })
     .eq("status", "pending");
+  if (readErr3)
+    throw serverFailure(`[operator] заявки на модули не посчитаны: ${readErr3.message}`);
   return count ?? 0;
 }
 
@@ -909,11 +922,12 @@ export async function resolveModuleRequest(
   action: "enable" | "dismiss",
   actor = "operator",
 ): Promise<{ notified: boolean }> {
-  const { data: req } = await serviceDb()
+  const { data: req, error: reqErr } = await serviceDb()
     .from("module_requests")
     .select("id, bot_id, module_key, status")
     .eq("id", id)
     .maybeSingle();
+  if (reqErr) throw serverFailure(`[operator] заявка не прочитана: ${reqErr.message}`);
   if (!req) throw new Error("Заявка не найдена.");
   if (req.status !== "pending") return { notified: false };
   const key = req.module_key as ModuleKey;
@@ -1050,12 +1064,14 @@ export async function consultantBudget(botId: string) {
   const { CONSULTANT_LIMITS, CONSULTANT_LIMIT_MAX, limitsFor, parseDaily, today } =
     await import("@/core/consultant/budget");
   const t = await requireTenant({ by: "id", value: botId });
-  const { data } = await serviceDb()
+  const { data, error: readErr2 } = await serviceDb()
     .from("app_settings")
     .select("value")
     .eq("bot_id", botId)
     .eq("key", "consultant_daily")
     .maybeSingle();
+  if (readErr2)
+    throw serverFailure(`[operator] расход консультанта не прочитан: ${readErr2.message}`);
   const custom = t.settings.consultant_limits ?? null;
   return {
     limits: limitsFor(custom),
@@ -1121,12 +1137,14 @@ export async function smartSearchBudget(botId: string) {
   const { DAILY_USD_LIMIT, SMART_SEARCH_USD_MAX, dailySpendUsd, smartSearchUsdLimit } =
     await import("@/core/search/smart-pure");
   const t = await requireTenant({ by: "id", value: botId });
-  const { data } = await serviceDb()
+  const { data, error: readErr } = await serviceDb()
     .from("app_settings")
     .select("value")
     .eq("bot_id", botId)
     .eq("key", "smart_search_daily_spend")
     .maybeSingle();
+  if (readErr)
+    throw serverFailure(`[operator] расход умного поиска не прочитан: ${readErr.message}`);
   const custom = t.settings.smart_search_limits?.daily_usd;
   return {
     limitUsd: smartSearchUsdLimit(t.settings.smart_search_limits),

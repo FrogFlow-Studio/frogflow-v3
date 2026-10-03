@@ -2,6 +2,7 @@ import { env } from "@/config/env";
 import { serviceDb } from "@/core/db/client.server";
 import { hashPassword, verifyPassword } from "@/app/auth/password";
 import { timingSafeSecretEqual } from "@/channels/telegram/secret";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Учётка оператора живёт в базе (operator_settings: operator_username,
@@ -23,10 +24,11 @@ const TOTP_SECRET = "operator_totp_secret";
 export const SESSION_EPOCH = "operator_session_epoch";
 
 async function readSettings(): Promise<Record<string, string>> {
-  const { data } = await serviceDb()
+  const { data, error: readErr2 } = await serviceDb()
     .from("operator_settings")
     .select("key, value")
     .in("key", [KEY_USER, KEY_HASH, TOTP_SECRET, SESSION_EPOCH]);
+  if (readErr2) throw serverFailure(`[operator] учётные данные не прочитаны: ${readErr2.message}`);
   const out: Record<string, string> = {};
   for (const r of data ?? []) if (r.value) out[r.key] = r.value;
   return out;
@@ -85,7 +87,12 @@ export async function operatorStamp(): Promise<string | null> {
 
 async function upsert(key: string, value: string): Promise<void> {
   const db = serviceDb();
-  const { data } = await db.from("operator_settings").select("key").eq("key", key).maybeSingle();
+  const { data, error: readErr } = await db
+    .from("operator_settings")
+    .select("key")
+    .eq("key", key)
+    .maybeSingle();
+  if (readErr) throw serverFailure(`[operator] настройка не прочитана: ${readErr.message}`);
   const { error } = data
     ? await db.from("operator_settings").update({ value }).eq("key", key)
     : await db.from("operator_settings").insert({ key, value });

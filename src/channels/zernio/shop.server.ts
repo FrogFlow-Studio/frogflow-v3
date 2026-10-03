@@ -121,6 +121,7 @@ import {
   type DirectBotSettings,
 } from "@/core/instagram/direct-bot-settings";
 import { iceBreakerKind, type IceBreakerKind } from "@/core/instagram/ice-breakers";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Магазин в Instagram Direct и WhatsApp (модули dm_shop / wa_shop). Тот же
@@ -1087,11 +1088,12 @@ async function showProductList(
  * терял место и начинал с начала.
  */
 async function backPayload(s: Shop, categoryId: string): Promise<string> {
-  const { data } = await s.ctx.db
+  const { data, error: readErr } = await s.ctx.db
     .from("categories")
     .select("parent_id")
     .eq("id", categoryId)
     .maybeSingle();
+  if (readErr) throw serverFailure(`[zernio] категория не прочитана: ${readErr.message}`);
   return data?.parent_id ? `CAT:${data.parent_id}:0` : "CATALOG";
 }
 

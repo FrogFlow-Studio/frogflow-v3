@@ -50,6 +50,7 @@ import {
 } from "@/core/tenant/resolve.server";
 import type { BillingSettings, Tenant } from "@/core/tenant/types";
 import { logEvent } from "./operator.server";
+import { serverFailure } from "@/lib/server-failure";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -109,11 +110,12 @@ async function syncModules(t: Tenant, billing: BillingSettings): Promise<void> {
 
 /** Расход ИИ за месяц против лимитов плана. */
 async function usageOf(t: Tenant): Promise<PlanUsage> {
-  const { data } = await serviceDb()
+  const { data, error: readErr2 } = await serviceDb()
     .from("app_settings")
     .select("key, value")
     .eq("bot_id", t.id)
     .in("key", Object.values(USAGE_KEYS));
+  if (readErr2) throw serverFailure(`[plans] расход плана не прочитан: ${readErr2.message}`);
   return planUsage(t, Object.fromEntries((data ?? []).map((r) => [r.key, r.value])));
 }
 
@@ -430,13 +432,14 @@ export async function ownerPayInvoice(
   reused: boolean;
 }> {
   const billing = await import("./billing.server");
-  const { data: sent } = await serviceDb()
+  const { data: sent, error: sentErr } = await serviceDb()
     .from("subscription_invoices")
     .select("id, amount, currency, note, requisites_snapshot")
     .eq("bot_id", botId)
     .eq("status", "sent")
     .order("created_at", { ascending: false })
     .limit(20);
+  if (sentErr) throw serverFailure(`[plans] счета клиента не прочитаны: ${sentErr.message}`);
   // Открытое пополнение ИИ-баланса — не счёт за тариф.
   const { openSubscriptionInvoices } = await import("./ai-topup.server");
   const [open] = await openSubscriptionInvoices(botId, sent ?? []);
@@ -486,11 +489,12 @@ export async function onInvoicePaid(botId: string, invoiceId: string): Promise<v
 /** Период для подтверждения счёта: продолжение подписки на месяц или год клиента. */
 export async function suggestedPeriod(botId: string): Promise<{ start: string; end: string }> {
   const t = await load(botId);
-  const { data } = await serviceDb()
+  const { data, error: readErr } = await serviceDb()
     .from("bots")
     .select("subscription_expires_at")
     .eq("id", botId)
     .maybeSingle();
+  if (readErr) throw serverFailure(`[plans] срок подписки не прочитан: ${readErr.message}`);
   return nextPeriod(
     data?.subscription_expires_at ?? null,
     t.settings.billing?.period ?? "month",

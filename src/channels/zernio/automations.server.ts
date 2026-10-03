@@ -52,6 +52,7 @@ import {
   type DmButton,
 } from "./api.server";
 import type { ZernioInboxMessage } from "./inbox-types";
+import { serverFailure } from "@/lib/server-failure";
 
 export type CommentAutomation = {
   id?: string;
@@ -716,11 +717,12 @@ async function upsertLog(
   eventId: string,
   row: { event_type: string; status: string; error_message?: string | null; payload: Json },
 ): Promise<void> {
-  const { data } = await ctx.db
+  const { data, error: readErr3 } = await ctx.db
     .from("zernio_logs")
     .select("id")
     .eq("event_id", eventId)
     .maybeSingle();
+  if (readErr3) throw serverFailure(`[zernio] журнал не прочитан: ${readErr3.message}`);
   if (data) await ctx.db.from("zernio_logs").update(row).eq("id", data.id);
   else
     await ctx.db.from("zernio_logs").insert({ bot_id: ctx.tenant.id, event_id: eventId, ...row });
@@ -748,12 +750,13 @@ async function sendSecondStep(
 ): Promise<boolean> {
   const key = `two-step-dm:${p.commentId}`;
   const buttons = normalizeDmButtons(p.buttons as DmButton[]);
-  const { data: known } = await ctx.db
+  const { data: known, error: knownErr } = await ctx.db
     .from("bot_users")
     .select("zernio_conversation_id")
     .eq("platform", "instagram")
     .ilike("username", p.username)
     .maybeSingle();
+  if (knownErr) console.error(`[zernio] переписка покупателя не прочитана: ${knownErr.message}`);
   let ok = false;
   let error: string | undefined = "ждём ответа покупателя в Direct";
   if (known?.zernio_conversation_id) {
@@ -837,11 +840,13 @@ export async function handleCommentReceived(
   });
   if (!matched) return { note: "правило не совпало" };
 
-  const { data: existing } = await ctx.db
+  const { data: existing, error: existingErr2 } = await ctx.db
     .from("zernio_logs")
     .select("status")
     .eq("event_id", `two-step-dm:${commentId}`)
     .maybeSingle();
+  if (existingErr2)
+    throw serverFailure(`[zernio] журнал второго сообщения не прочитан: ${existingErr2.message}`);
   if (existing?.status === "processed") return { note: "второе сообщение уже ушло" };
 
   // Пауза: даём Zernio и Meta доставить первое сообщение без кнопок.
@@ -930,7 +935,7 @@ export async function deliverPendingTwoStepDm(
   // Private-reply можно отправить в течение 7 дней после комментария — столько
   // и ждём ответа покупателя.
   const cutoff = new Date(now().getTime() - PENDING_TWO_STEP_DAYS * 86_400_000).toISOString();
-  const { data: logs } = await ctx.db
+  const { data: logs, error: logsErr } = await ctx.db
     .from("zernio_logs")
     .select("id, status, error_message, payload")
     .eq("event_type", "two_step_dm_pending")
@@ -938,6 +943,8 @@ export async function deliverPendingTwoStepDm(
     .gte("created_at", cutoff)
     .order("created_at", { ascending: false })
     .limit(50);
+  if (logsErr)
+    throw serverFailure(`[zernio] очередь вторых сообщений не прочитана: ${logsErr.message}`);
   const own = ((logs ?? []) as PendingRow[]).filter((l) => {
     const pl = l.payload as { username?: string } | null;
     return (
@@ -1068,7 +1075,7 @@ export async function twoStepJustDelivered(
   if (!username) return false;
   const since = Date.now() - JUST_DELIVERED_MS;
   const typedAt = messageSentAt ? Date.parse(messageSentAt) : NaN;
-  const { data } = await ctx.db
+  const { data, error: readErr2 } = await ctx.db
     .from("zernio_logs")
     .select("status, error_message, payload")
     .like("event_id", "two-step-dm:%")
@@ -1076,6 +1083,8 @@ export async function twoStepJustDelivered(
     .gte("created_at", new Date(Date.now() - PENDING_TWO_STEP_DAYS * 86_400_000).toISOString())
     .order("created_at", { ascending: false })
     .limit(50);
+  if (readErr2)
+    throw serverFailure(`[zernio] отправки вторых сообщений не прочитаны: ${readErr2.message}`);
   return (data ?? []).some((l) => {
     const pl = l.payload as { username?: string; sent_at?: string } | null;
     if (typeof pl?.username !== "string" || pl.username.toLowerCase() !== username.toLowerCase())
@@ -1264,11 +1273,17 @@ export async function runCommentDmFallback(
         if (sentByZernio.has(commentId)) {
           if (!twoStep) continue;
           // Первое ушло родным Zernio — проверяем второе.
-          const { data: log } = await ctx.db
+          const { data: log, error: logErr } = await ctx.db
             .from("zernio_logs")
             .select("status")
             .eq("event_id", `two-step-dm:${commentId}`)
             .maybeSingle();
+          if (logErr) {
+            console.error(
+              `[zernio] журнал второго сообщения не прочитан, комментарий пропущен до следующего запуска: ${logErr.message}`,
+            );
+            continue;
+          }
           if (log) continue; // ушло или уже ждёт в очереди
           const username = comment.from?.username;
           if (!username) continue;
@@ -1316,12 +1331,18 @@ export async function runCommentDmFallback(
             .filter((c) => c.id && c.id !== commentId && c.from?.id === authorId)
             .map((c) => c.id as string);
           if (siblingIds.length > 0) {
-            const { data: earlier } = await ctx.db
+            const { data: earlier, error: earlierErr } = await ctx.db
               .from("comment_dm_fallback_sends")
               .select("comment_id")
               .eq("automation_id", autoId)
               .in("comment_id", siblingIds)
               .limit(1);
+            if (earlierErr) {
+              console.error(
+                `[zernio] прежние отправки не прочитаны, комментарий пропущен: ${earlierErr.message}`,
+              );
+              continue;
+            }
             if (earlier?.length) {
               writtenCommenters.add(authorId);
               continue;
@@ -1338,12 +1359,18 @@ export async function runCommentDmFallback(
         });
         let allowAltChannel = true;
         if (reserveError) {
-          const { data: existing } = await ctx.db
+          const { data: existing, error: existingErr } = await ctx.db
             .from("comment_dm_fallback_sends")
             .select("status, created_at, updated_at")
             .eq("automation_id", autoId)
             .eq("comment_id", commentId)
             .maybeSingle();
+          if (existingErr) {
+            console.error(
+              `[zernio] запасная отправка не прочитана, комментарий пропущен: ${existingErr.message}`,
+            );
+            continue;
+          }
           const action = existing ? stalePendingAction(existing, now) : "wait";
           if (action === "wait" || action === "skip") continue;
           if (action === "abandon") {
@@ -1360,7 +1387,7 @@ export async function runCommentDmFallback(
               .eq("status", "pending");
             continue;
           }
-          const { data: takeover } = await ctx.db
+          const { data: takeover, error: takeoverErr } = await ctx.db
             .from("comment_dm_fallback_sends")
             .update({ updated_at: now.toISOString() })
             .eq("automation_id", autoId)
@@ -1368,6 +1395,8 @@ export async function runCommentDmFallback(
             .eq("status", "pending")
             .lt("updated_at", new Date(now.getTime() - STALE_PENDING_MS).toISOString())
             .select("id");
+          if (takeoverErr)
+            console.error(`[zernio] зависшая отправка не перехвачена: ${takeoverErr.message}`);
           if (!takeover?.length) continue;
           allowAltChannel = false;
         }
@@ -1413,11 +1442,15 @@ export async function runCommentDmFallback(
         let altStatus: "skipped" | "sent" | "failed" = "skipped";
         let altError: string | null = null;
         if (!reply.ok && allowAltChannel && !alreadyReplied && comment.from?.id) {
-          const { data: buyer } = await ctx.db
+          const { data: buyer, error: buyerErr } = await ctx.db
             .from("bot_users")
             .select("zernio_conversation_id")
             .eq("user_key", `ig_${comment.from.id}`)
             .maybeSingle();
+          if (buyerErr)
+            console.error(
+              `[zernio] переписка для запасного канала не прочитана: ${buyerErr.message}`,
+            );
           if (buyer?.zernio_conversation_id) {
             const alt = await sendAltChannel(api, buyer.zernio_conversation_id, automation);
             altStatus = alt.status;
@@ -1474,10 +1507,12 @@ export async function runCommentDmFallback(
 }
 
 export async function listFallbackSends(ctx: TenantContext, limit = 50) {
-  const { data } = await ctx.db
+  const { data, error: readErr } = await ctx.db
     .from("comment_dm_fallback_sends")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (readErr)
+    throw serverFailure(`[zernio] журнал запасных отправок не прочитан: ${readErr.message}`);
   return data ?? [];
 }

@@ -14,6 +14,7 @@ import {
 } from "@/core/social/post-draft";
 import { zernioRequest } from "./api.server";
 import { instagramAccounts } from "./automations.server";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Публикация постов, Reels и сторис в Instagram клиента через Zernio.
@@ -121,7 +122,7 @@ export async function publishPost(
   // обрыва связи) отдаёт первую. Idempotency-Key Zernio тут не поможет:
   // подписанные ссылки в теле каждый раз новые.
   const key = publishIdempotencyKey(ctx.tenant.id, input);
-  const { data: same } = await ctx.db
+  const { data: same, error: sameErr } = await ctx.db
     .from("zernio_logs")
     .select("payload")
     .eq("event_type", "post.created")
@@ -130,6 +131,8 @@ export async function publishPost(
     .gte("created_at", new Date(now.getTime() - 10 * 60_000).toISOString())
     .limit(1)
     .maybeSingle();
+  if (sameErr)
+    throw serverFailure(`[zernio] журнал постов не прочитан — пост не создан: ${sameErr.message}`);
   const prevId = (same?.payload as { postId?: string } | null)?.postId;
   if (prevId)
     return { ok: true, postId: prevId, state: input.scheduledFor ? "scheduled" : "publishing" };
@@ -215,12 +218,13 @@ type JournalPayload = {
 
 /** Последние публикации клиента из журнала; статус — свежий из Zernio. */
 export async function listOwnPosts(ctx: TenantContext, limit = 20): Promise<PostRow[]> {
-  const { data } = await ctx.db
+  const { data, error: readErr2 } = await ctx.db
     .from("zernio_logs")
     .select("payload, status, error_message, created_at")
     .eq("event_type", "post.created")
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (readErr2) throw serverFailure(`[zernio] журнал постов не прочитан: ${readErr2.message}`);
   return Promise.all(
     (data ?? []).map(async (row) => {
       const p = (row.payload ?? {}) as JournalPayload;
@@ -260,12 +264,13 @@ export async function listOwnPosts(ctx: TenantContext, limit = 20): Promise<Post
 
 /** Снять отложенный пост: только свой (есть в журнале клиента). */
 export async function cancelScheduledPost(ctx: TenantContext, postId: string): Promise<boolean> {
-  const { data } = await ctx.db
+  const { data, error: readErr } = await ctx.db
     .from("zernio_logs")
     .select("id")
     .eq("event_type", "post.created")
     .eq("event_id", `post:${postId}`)
     .maybeSingle();
+  if (readErr) throw serverFailure(`[zernio] пост не найден из-за сбоя чтения: ${readErr.message}`);
   if (!data) return false;
   await zernioRequest(`/posts/${encodeURIComponent(postId)}`, { method: "DELETE" });
   await ctx.db

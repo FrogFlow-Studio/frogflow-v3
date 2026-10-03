@@ -24,6 +24,7 @@ import {
 } from "@/core/consultant/pricelist/follow-up";
 import { liveTransport, type ZernioTransport } from "./api.server";
 import type { ZernioPlatform } from "./platform";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Фоновые задачи консультанта по прайсу (крон health, раз в 15 минут, как
@@ -68,13 +69,14 @@ export async function sendPricelistFollowUps(
   if (isOffHours(now, pricelistHours(ctx.tenant), ctx.timezone))
     return { checked: 0, sent: 0, skipped: "off_hours" };
   const since = new Date(now.getTime() - FOLLOW_UP_UNTIL_MS - 3600_000).toISOString();
-  const { data } = await ctx.db
+  const { data, error: readErr2 } = await ctx.db
     .from("bot_users")
     .select("*")
     .gte("updated_at", since)
     .not("zernio_conversation_id", "is", null)
     .order("updated_at", { ascending: false })
     .limit(300);
+  if (readErr2) throw serverFailure(`[consultant] диалоги не прочитаны: ${readErr2.message}`);
   const rows = data ?? [];
   const memoryOf = (state: unknown): FollowUpState => {
     const c = (state as { consultant?: unknown } | null)?.consultant;
@@ -153,13 +155,14 @@ export async function sendQualityDigest(
   if (hour < DIGEST_HOUR) return { sent: false, reason: "early" };
   if (s[DIGEST_SENT_KEY] === day) return { sent: false, reason: "already" };
   await setSetting(ctx, DIGEST_SENT_KEY, day);
-  const { data } = await ctx.db
+  const { data, error: readErr } = await ctx.db
     .from("consultant_message_runs")
     .select("conversation_id, incoming_text, reply_text, reply_kind, status, model, token_usage")
     .gte("received_at", from)
     .lt("received_at", to)
     .order("received_at", { ascending: true })
     .limit(2000);
+  if (readErr) throw serverFailure(`[consultant] запуски не прочитаны: ${readErr.message}`);
   const { products } = await loadPricelist(ctx);
   const text = buildQualityDigest((data ?? []) as DigestRun[], products, { day });
   if (!text) return { sent: false, reason: "empty" };
