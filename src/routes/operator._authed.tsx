@@ -29,6 +29,7 @@ function Layout() {
           <NavLink to="/operator/clients/new">Подключить клиента</NavLink>
           <NavLink to="/operator/revenue">Выручка</NavLink>
           <NavLink to="/operator/partners">Партнёры</NavLink>
+          <NavLink to="/operator/leads">Лиды</NavLink>
           <NavLink to="/operator/broadcast">Сообщение владельцам</NavLink>
           <NavLink to="/operator/migration">Переезд на v2</NavLink>
           <NavLink to="/operator/log">Журнал действий</NavLink>

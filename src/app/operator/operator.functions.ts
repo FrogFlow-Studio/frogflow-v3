@@ -5,6 +5,7 @@ import { CONSULTANT_LIMIT_MAX } from "@/core/consultant/budget";
 import { SMART_SEARCH_USD_MAX } from "@/core/search/smart-pure";
 import { MODULE_KEYS } from "@/core/modules/registry";
 import { VERTICAL_KEYS } from "@/core/verticals/registry";
+import { LEAD_STAGES, cleanLeadInput } from "@/core/leads/leads";
 
 /**
  * Серверные функции панели оператора. Каждая начинается с requireOperator():
@@ -1079,4 +1080,78 @@ export const setClientPartnerFn = createServerFn({ method: "POST" })
     const { logEvent } = await import("./operator.server");
     await logEvent(data.botId, "meta", { action: "partner", partner: data.code }, await actor());
     return { ok: true };
+  });
+
+/** Воронка лидов отдела продаж FrogFlow (core/leads): список, добавление, стадия, заметки, журнал. */
+const leadsImpl = () => import("./leads.server");
+const leadId = z.string().uuid();
+const leadStage = z.enum(LEAD_STAGES);
+
+export const leadsFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return { leads: await (await leadsImpl()).listLeads() };
+});
+
+export const addLeadFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        businessName: z.string().max(200),
+        niche: z.string().max(200),
+        city: z.string().max(200),
+        websiteUrl: z.string().max(400),
+        instagramHandle: z.string().max(300),
+        phone: z.string().max(60),
+        email: z.string().max(200),
+        signals: z.string().max(2000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const input = cleanLeadInput(data);
+    if (!input)
+      throw new Error(
+        "Нужны название и хотя бы один контакт: Instagram, телефон, почта или сайт (в правильном виде)",
+      );
+    return (await leadsImpl()).addLead(input, await actor());
+  });
+
+export const setLeadStageFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        id: leadId,
+        from: z.string().max(40),
+        to: leadStage,
+        lostReason: z.string().max(300).nullable().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await leadsImpl()).setLeadStage(data, await actor());
+  });
+
+export const saveLeadNoteFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        id: leadId,
+        notes: z.string().max(4000).nullable(),
+        nextAction: z.string().max(300).nullable(),
+        nextActionAt: z.string().datetime().nullable(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return { saved: await (await leadsImpl()).saveLeadNote(data) };
+  });
+
+export const leadEventsFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ id: leadId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return { events: await (await leadsImpl()).listLeadEvents(data.id) };
   });

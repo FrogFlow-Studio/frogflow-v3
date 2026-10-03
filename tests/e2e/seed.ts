@@ -14,6 +14,7 @@ import { seedShop } from "./seed/shop.ts";
 import { seedStorefront } from "./seed/storefront.ts";
 import { seedVip } from "./seed/vip.ts";
 import { seedSchool } from "./seed/school.ts";
+import { seedLeads } from "./seed/leads.ts";
 
 export function seedDb(): StubDb {
   const db = stubDb();
@@ -28,5 +29,6 @@ export function seedDb(): StubDb {
   seedConsultant(db, now);
   seedCommentToDm(db, now);
   seedSchool(db, now);
+  seedLeads(db, now);
   return db;
 }

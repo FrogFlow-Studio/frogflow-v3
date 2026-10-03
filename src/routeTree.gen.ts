@@ -71,6 +71,7 @@ import { Route as ApiZernioWebhookRouteImport } from './routes/api/zernio/webhoo
 import { Route as OperatorAuthedIndexRouteImport } from './routes/operator._authed.index'
 import { Route as OperatorAuthedBroadcastRouteImport } from './routes/operator._authed.broadcast'
 import { Route as OperatorAuthedCronsRouteImport } from './routes/operator._authed.crons'
+import { Route as OperatorAuthedLeadsRouteImport } from './routes/operator._authed.leads'
 import { Route as OperatorAuthedLogRouteImport } from './routes/operator._authed.log'
 import { Route as OperatorAuthedMigrationRouteImport } from './routes/operator._authed.migration'
 import { Route as OperatorAuthedPartnersRouteImport } from './routes/operator._authed.partners'
@@ -408,6 +409,11 @@ const OperatorAuthedCronsRoute = OperatorAuthedCronsRouteImport.update({
   path: '/crons',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
+const OperatorAuthedLeadsRoute = OperatorAuthedLeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
 const OperatorAuthedLogRoute = OperatorAuthedLogRouteImport.update({
   id: '/log',
   path: '/log',
@@ -611,6 +617,7 @@ export interface FileRoutesByFullPath {
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/crons': typeof OperatorAuthedCronsRoute
+  '/operator/leads': typeof OperatorAuthedLeadsRoute
   '/operator/log': typeof OperatorAuthedLogRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
   '/operator/partners': typeof OperatorAuthedPartnersRoute
@@ -700,6 +707,7 @@ export interface FileRoutesByTo {
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/crons': typeof OperatorAuthedCronsRoute
+  '/operator/leads': typeof OperatorAuthedLeadsRoute
   '/operator/log': typeof OperatorAuthedLogRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
   '/operator/partners': typeof OperatorAuthedPartnersRoute
@@ -791,6 +799,7 @@ export interface FileRoutesById {
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/_authed/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/_authed/crons': typeof OperatorAuthedCronsRoute
+  '/operator/_authed/leads': typeof OperatorAuthedLeadsRoute
   '/operator/_authed/log': typeof OperatorAuthedLogRoute
   '/operator/_authed/migration': typeof OperatorAuthedMigrationRoute
   '/operator/_authed/partners': typeof OperatorAuthedPartnersRoute
@@ -883,6 +892,7 @@ export interface FileRouteTypes {
     | '/api/zernio/webhook'
     | '/operator/broadcast'
     | '/operator/crons'
+    | '/operator/leads'
     | '/operator/log'
     | '/operator/migration'
     | '/operator/partners'
@@ -972,6 +982,7 @@ export interface FileRouteTypes {
     | '/api/zernio/webhook'
     | '/operator/broadcast'
     | '/operator/crons'
+    | '/operator/leads'
     | '/operator/log'
     | '/operator/migration'
     | '/operator/partners'
@@ -1062,6 +1073,7 @@ export interface FileRouteTypes {
     | '/api/zernio/webhook'
     | '/operator/_authed/broadcast'
     | '/operator/_authed/crons'
+    | '/operator/_authed/leads'
     | '/operator/_authed/log'
     | '/operator/_authed/migration'
     | '/operator/_authed/partners'
@@ -1565,6 +1577,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedCronsRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/operator/_authed/leads': {
+      id: '/operator/_authed/leads'
+      path: '/leads'
+      fullPath: '/operator/leads'
+      preLoaderRoute: typeof OperatorAuthedLeadsRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
     '/operator/_authed/log': {
       id: '/operator/_authed/log'
       path: '/log'
@@ -1864,6 +1883,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface OperatorAuthedRouteChildren {
   OperatorAuthedBroadcastRoute: typeof OperatorAuthedBroadcastRoute
   OperatorAuthedCronsRoute: typeof OperatorAuthedCronsRoute
+  OperatorAuthedLeadsRoute: typeof OperatorAuthedLeadsRoute
   OperatorAuthedLogRoute: typeof OperatorAuthedLogRoute
   OperatorAuthedMigrationRoute: typeof OperatorAuthedMigrationRoute
   OperatorAuthedPartnersRoute: typeof OperatorAuthedPartnersRoute
@@ -1878,6 +1898,7 @@ interface OperatorAuthedRouteChildren {
 const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedBroadcastRoute: OperatorAuthedBroadcastRoute,
   OperatorAuthedCronsRoute: OperatorAuthedCronsRoute,
+  OperatorAuthedLeadsRoute: OperatorAuthedLeadsRoute,
   OperatorAuthedLogRoute: OperatorAuthedLogRoute,
   OperatorAuthedMigrationRoute: OperatorAuthedMigrationRoute,
   OperatorAuthedPartnersRoute: OperatorAuthedPartnersRoute,
