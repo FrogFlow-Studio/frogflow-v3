@@ -17,6 +17,7 @@ import {
 import { hashPassword, verifyPassword } from "@/app/auth/password";
 import { UserError } from "@/core/i18n/user-error";
 import { isAdminKey, type AdminT } from "@/app/i18n/admin";
+import { orderBuyerLocale } from "@/core/orders/buyer-locale";
 import { adminTFor } from "./locale.server";
 import { patchTenantSettings } from "@/core/tenant/resolve.server";
 import {
@@ -359,7 +360,8 @@ export async function refundAndNotify(
   let notified = false;
   if (order && input.notify !== false) {
     const reason = input.reason?.trim();
-    const text = `↩️ По заказу #${no} оформлен ${r.full ? "возврат" : "частичный возврат"}: ${sum}.${reason ? `\n${reason}` : ""}`;
+    const buyerM = COPY[await orderBuyerLocale(ctx, order)];
+    const text = `${buyerM.orderRefunded(no, r.full, sum)}${reason ? `\n${reason}` : ""}`;
     notified = await notifyCustomer(ctx, order, text).catch(() => false);
   }
   return {
@@ -380,7 +382,9 @@ export async function runOrderAction(
   if (!order) return { ok: false, message: t("err.admin.orderNotFound") };
   const no = displayNo(order);
   const status = statusName(t, order.status);
-  const m = COPY.ru;
+  // Покупателю — на его языке, не на языке продавца.
+  const buyerLocale = await orderBuyerLocale(ctx, order);
+  const m = COPY[buyerLocale];
   // Решение из админки — как кнопка в Telegram: снять кнопки уведомления,
   // через 5 минут убрать его из чатов продавцов.
   const decided = async () => {
@@ -402,7 +406,7 @@ export async function runOrderAction(
         const { acceptPhysicalOrder } = await import("@/core/orders/physical-admin");
         const r = await acceptPhysicalOrder(ctx, id, actor);
         if (r.ok) await decided();
-        if (r.ok) await notifyCustomer(ctx, order, `✅ Заказ #${no} принят в работу.`);
+        if (r.ok) await notifyCustomer(ctx, order, m.orderAccepted(no));
         return {
           ok: r.ok,
           message: r.ok
@@ -415,7 +419,7 @@ export async function runOrderAction(
       let sender = telegramMaterialSender(api(ctx), order.telegram_id, m);
       let channelNotes: string[] = [];
       let opts: DeliverOptions = {
-        lang: "ru",
+        lang: buyerLocale,
         ask: telegramLanguageAsker(api(ctx), order.telegram_id, m),
         actor,
       };
@@ -423,7 +427,7 @@ export async function runOrderAction(
         // Заказ с сайта: материалы — на странице заказа и копией на почту.
         const { webMaterialSender } = await import("@/core/storefront/web-order");
         sender = webMaterialSender;
-        opts = { lang: "ru", allWhenAmbiguous: true, actor };
+        opts = { lang: buyerLocale, allWhenAmbiguous: true, actor };
       } else if (orderChannel(order.platform) !== "telegram") {
         const { isInvoiceLink } = await import("@/core/orders/invoice-link");
         if (await isInvoiceLink(ctx, order.id)) {
@@ -444,7 +448,7 @@ export async function runOrderAction(
           // Окно 24 часа закрыто: причина и что ушло покупателю — продавцу в ответ.
           channelNotes = d.notes;
         }
-        opts = { lang: "ru", allWhenAmbiguous: true, actor };
+        opts = { lang: buyerLocale, allWhenAmbiguous: true, actor };
       }
       const r = await deliverOrder(ctx, id, sender, opts);
       if (r.failed === 0) await decided();

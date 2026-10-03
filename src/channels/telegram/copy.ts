@@ -198,6 +198,8 @@ export type Msg = {
   proofOrderClosed: string;
   orderDelivered: (no: number) => string;
   orderRejected: (no: number) => string;
+  orderAccepted: (no: number) => string;
+  orderRefunded: (no: number, full: boolean, sum: string) => string;
   searchPrompt: string;
   searchNothing: (q: string) => string;
   searchResults: (q: string, n: number) => string;
@@ -532,6 +534,9 @@ const ru: Msg = {
   proofOrderClosed: "Этот заказ уже закрыт.",
   orderDelivered: (no) => `🎉 Заказ #${no} выдан. Спасибо за покупку!`,
   orderRejected: (no) => `❌ Заказ #${no} отклонён продавцом. Если это ошибка — напишите ему.`,
+  orderAccepted: (no) => `✅ Заказ #${no} принят в работу.`,
+  orderRefunded: (no, full, sum) =>
+    `↩️ По заказу #${no} оформлен ${full ? "возврат" : "частичный возврат"}: ${sum}.`,
   searchPrompt: "🔍 Введите слово для поиска по каталогу:",
   searchNothing: (q) => `По запросу «${q}» ничего не найдено.`,
   searchResults: (q, n) => `🔍 «${q}»: найдено ${n}`,
@@ -575,6 +580,12 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  orderDelivered: (no) => `🎉 #${no} тапсырыс берілді. Сатып алғаныңызға рахмет!`,
+  orderRejected: (no) =>
+    `❌ #${no} тапсырысты сатушы қабылдамады. Егер бұл қате болса — сатушыға жазыңыз.`,
+  orderAccepted: (no) => `✅ #${no} тапсырыс жұмысқа қабылданды.`,
+  orderRefunded: (no, full, sum) =>
+    `↩️ #${no} тапсырыс бойынша ${full ? "қайтарым" : "ішінара қайтарым"} рәсімделді: ${sum}.`,
   payConsent: (offer, privacy) =>
     `Тапсырысты төлей отырып, сіз ${[offer && `<a href="${offer}">оферта шарттарын</a>`, privacy && `<a href="${privacy}">дербес деректерді өңдеуге келісімді</a>`].filter(Boolean).join(" және ")} қабылдайсыз.`,
   payBalanceBtn: (no) => `💳 Қалғанын төлеу #${no}`,
@@ -762,6 +773,12 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  orderDelivered: (no) => `🎉 Order #${no} has been delivered. Thank you for your purchase!`,
+  orderRejected: (no) =>
+    `❌ Order #${no} was declined by the seller. If this is a mistake, please message them.`,
+  orderAccepted: (no) => `✅ Order #${no} has been accepted and is in progress.`,
+  orderRefunded: (no, full, sum) =>
+    `↩️ ${full ? "A refund" : "A partial refund"} was issued for order #${no}: ${sum}.`,
   payConsent: (offer, privacy) =>
     `By paying for the order you accept ${[offer && `<a href="${offer}">the terms of the offer</a>`, privacy && `<a href="${privacy}">the personal data processing consent</a>`].filter(Boolean).join(" and ")}.`,
   renewBtn: "🔁 Renew",
@@ -975,6 +992,12 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  orderDelivered: (no) => `🎉 #${no}-buyurtma topshirildi. Xaridingiz uchun rahmat!`,
+  orderRejected: (no) =>
+    `❌ #${no}-buyurtma sotuvchi tomonidan rad etildi. Agar bu xato bo'lsa, sotuvchiga yozing.`,
+  orderAccepted: (no) => `✅ #${no}-buyurtma ishga qabul qilindi.`,
+  orderRefunded: (no, full, sum) =>
+    `↩️ #${no}-buyurtma bo'yicha ${full ? "pulni qaytarish" : "qisman qaytarish"} rasmiylashtirildi: ${sum}.`,
   payConsent: (offer, privacy) =>
     `Buyurtma uchun to‘lab, siz ${[offer && `<a href="${offer}">oferta shartlarini</a>`, privacy && `<a href="${privacy}">shaxsiy ma’lumotlarni qayta ishlashga rozilikni</a>`].filter(Boolean).join(" va ")} qabul qilasiz.`,
   payBalanceBtn: (no) => `💳 Qolganini to‘lash #${no}`,

@@ -1,3 +1,4 @@
+import { orderBuyerLocale } from "@/core/orders/buyer-locale";
 import {
   REFERRAL_PREFIX,
   referralStats,
@@ -2545,7 +2546,7 @@ async function adminDecision(
       text: `Заказ #${orderId} не найден.`,
     }));
   const no = displayNo(order);
-  const buyerLocale: Locale = "ru";
+  const buyerLocale: Locale = await orderBuyerLocale(ctx, order);
   const m = COPY[buyerLocale];
   // Покупатель из Instagram/WhatsApp — ответы и выдача уходят через Zernio.
   const { sendToZernioTarget, zernioTargetForOrder } =
@@ -2584,7 +2585,7 @@ async function adminDecision(
       return;
     }
     await api.call("sendMessage", { chat_id: chatId, text: `✅ Заказ #${no} принят в работу.` });
-    await tellBuyer(`✅ Заказ #${no} принят в работу.`);
+    await tellBuyer(m.orderAccepted(no));
     await decided();
     return;
   }
