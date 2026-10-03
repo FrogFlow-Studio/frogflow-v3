@@ -1708,6 +1708,7 @@ async function receiveProof(b: Bot, msg: TelegramMessage, orderId: number) {
       orderId,
       res.hash,
       `OCR ok: сумма ${v.matchedAmount}${v.matchedCurrency ? ` ${v.matchedCurrency} (по курсу)` : ""}`,
+      { amount: v.matchedAmount, currency: v.matchedCurrency },
     );
     if (!verified) {
       await b.ctx.db

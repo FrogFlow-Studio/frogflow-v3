@@ -194,15 +194,17 @@ export async function paymentsCsv(
         kind:
           source === "deposit" || onlineDeposit
             ? "задаток"
-            : source === "online"
+            : source === "online" || source === "receipt"
               ? "оплата заказа"
               : "внесено",
         method:
           source === "deposit"
             ? "перевод по чеку"
-            : source === "online"
-              ? proofMethod(str(p.provider))
-              : "вручную продавцом",
+            : source === "receipt"
+              ? "перевод по чеку"
+              : source === "online"
+                ? proofMethod(str(p.provider))
+                : "вручную продавцом",
         invId: str(p.invId),
       });
     } else if (e.event_type === "order.balance_credited") {

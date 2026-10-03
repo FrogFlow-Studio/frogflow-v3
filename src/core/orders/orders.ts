@@ -720,16 +720,59 @@ export async function markProofVerified(
   orderId: number,
   hash: string,
   note: string,
+  /**
+   * Сумма, найденная в чеке. `currency` — только если чек в другой валюте, чем
+   * заказ (принят по курсу): тогда в журнал идёт сумма чека в его валюте, а
+   * оплаченным считается весь заказ.
+   */
+  receipt?: { amount: number; currency?: string },
 ): Promise<boolean> {
+  const { data: before, error: readError } = receipt
+    ? await ctx.db
+        .from("orders")
+        .select("total, currency, paid_amount")
+        .eq("id", orderId)
+        .maybeSingle()
+    : { data: null, error: null };
+  if (readError) throw serverFailure(`markProofVerified: заказ #${orderId}: ${readError.message}`);
+  const total = Number(before?.total ?? 0);
+  const foreign = Boolean(receipt?.currency);
+  const paidNow = receipt
+    ? foreign
+      ? total
+      : Math.min(total, Number(before?.paid_amount ?? 0) + receipt.amount)
+    : null;
   const { data, error } = await ctx.db
     .from("orders")
-    .update({ status: "paid", admin_note: note.slice(0, 500) })
+    .update({
+      status: "paid",
+      admin_note: note.slice(0, 500),
+      ...(paidNow != null ? { paid_amount: paidNow } : {}),
+    })
     .eq("id", orderId)
     .eq("status", "awaiting_confirmation")
     .eq("payment_proof_hash", hash)
     .select("id");
-  if (error) throw new Error(error.message);
-  return Boolean(data?.length);
+  if (error) throw serverFailure(`markProofVerified: заказ #${orderId}: ${error.message}`);
+  const ok = Boolean(data?.length);
+  if (ok && receipt && before) {
+    // Платёж в журнал: из него собирается выгрузка «Оплаты». Переплата — отдельным полем.
+    const over = foreign ? 0 : Math.round((receipt.amount - total) * 100) / 100;
+    const { recordOrderEvent } = await import("./events");
+    await recordOrderEvent(
+      ctx,
+      orderId,
+      "payment",
+      {
+        amount: receipt.amount,
+        currency: receipt.currency ?? before.currency,
+        source: "receipt",
+        ...(over > 0.01 ? { overpaid: over } : {}),
+      },
+      "system",
+    );
+  }
+  return ok;
 }
 
 /** Причина для продавца, когда одобренный чек сменился другим файлом. */

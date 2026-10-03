@@ -165,7 +165,7 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
         : { text: `Заказ создан${p.platform ? ` · ${str(p.platform)}` : ""}`, tone: "neutral" };
     case "payment":
       return {
-        text: `Внесено ${num(p.amount)}${p.currency ? ` ${str(p.currency)}` : ""}${p.source === "deposit" ? " (задаток по чеку)" : p.source === "online" ? ` через ${str(p.provider)}` : ""}${who}`,
+        text: `Внесено ${num(p.amount)}${p.currency ? ` ${str(p.currency)}` : ""}${p.source === "deposit" ? " (задаток по чеку)" : p.source === "online" ? ` через ${str(p.provider)}` : p.source === "receipt" ? ` по чеку${num(p.overpaid) > 0 ? `, переплата ${num(p.overpaid)}` : ""}` : ""}${who}`,
         tone: "ok",
       };
     case "payment_on_closed":

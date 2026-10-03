@@ -2045,6 +2045,7 @@ async function receiveProof(
       orderId,
       res.hash,
       `OCR ok: сумма ${v.matchedAmount}${v.matchedCurrency ? ` ${v.matchedCurrency} (по курсу)` : ""}`,
+      { amount: v.matchedAmount, currency: v.matchedCurrency },
     );
     if (!verified) {
       await s.ctx.db
