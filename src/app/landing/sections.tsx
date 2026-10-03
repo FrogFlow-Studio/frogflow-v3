@@ -7,10 +7,12 @@ import { Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import type { LandingKey, LandingT } from "@/app/i18n/landing";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
-import { TIER_TITLES, TRIAL_TIER } from "@/core/plans/registry";
+import { CALC_CHANNELS, calculate, type CalcChannel } from "@/core/plans/calculator";
+import { ADDONS, TIER_TITLES, TRIAL_TIER } from "@/core/plans/registry";
 import {
   CONTACTS,
   FEATURED_PLAN,
+  PLAN_NICHE,
   PLAN_PRICES,
   ADDON_PRICE,
   ANNUAL_FREE_MONTHS,
@@ -157,6 +159,114 @@ export function Steps({ t }: { t: LandingT }) {
   );
 }
 
+const CHANNEL_LABEL: Record<CalcChannel, LandingKey> = {
+  telegram: "calc.telegram",
+  instagram: "calc.instagram",
+  whatsapp: "calc.whatsapp",
+};
+
+/** Калькулятор тарифа: только расчёт по реестру и кнопка регистрации, ничего не пишет. */
+function TariffCalculator({
+  t,
+  signup,
+  niche,
+  page,
+}: {
+  t: LandingT;
+  signup: boolean;
+  niche: PricingNiche;
+  page?: NichePage;
+}) {
+  const [channels, setChannels] = useState<CalcChannel[]>(["telegram"]);
+  const [annual, setAnnual] = useState(false);
+  const { quotes, recommended } = calculate(PLAN_NICHE[niche], channels, annual);
+  const best = quotes.find((q) => q.tier === recommended)!;
+  const names = (keys: string[]) =>
+    keys.map((k) => ADDONS[k as keyof typeof ADDONS].title).join(", ");
+  const toggle = (c: CalcChannel) =>
+    setChannels((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
+  return (
+    <div className="mt-8 rounded-2xl border border-line bg-surface p-6" data-testid="tariff-calc">
+      <h3 className="font-display text-xl font-bold">{t("calc.title")}</h3>
+      <p className="mt-1 text-sm text-muted">{t("calc.sub")}</p>
+      <fieldset className="mt-4">
+        <legend className="text-sm font-semibold">{t("calc.channels")}</legend>
+        <div className="mt-2 flex flex-wrap gap-3">
+          {CALC_CHANNELS.map((c) => (
+            <label
+              key={c}
+              className="flex cursor-pointer items-center gap-2 rounded-full border border-line px-4 py-2 text-sm"
+            >
+              <input
+                type="checkbox"
+                checked={channels.includes(c)}
+                disabled={c === "telegram"}
+                onChange={() => toggle(c)}
+              />
+              {t(CHANNEL_LABEL[c])}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm">
+        <input type="checkbox" checked={annual} onChange={() => setAnnual((v) => !v)} />
+        {t("calc.annual", { free: ANNUAL_FREE_MONTHS })}
+      </label>
+      <div className="mt-5 grid gap-1" aria-live="polite">
+        <div className="font-display text-2xl font-bold">
+          {t("calc.reco", { tier: TIER_TITLES[best.tier] })}
+        </div>
+        <div className="text-lg font-semibold tabular-nums">
+          {t(annual ? "calc.perMonthYear" : "calc.perMonth", { price: formatTenge(best.perMonth) })}
+        </div>
+        {annual && (
+          <div className="text-sm text-muted tabular-nums">
+            {t("calc.year", {
+              price: formatTenge(best.yearTotal),
+              saving: formatTenge(best.yearSaving),
+            })}
+          </div>
+        )}
+        <div className="text-sm text-muted tabular-nums">
+          {t("calc.setup", { price: formatTenge(best.connection) })}
+        </div>
+        {best.included.length > 0 && (
+          <div className="text-sm text-muted">
+            {t("calc.included", { list: names(best.included) })}
+          </div>
+        )}
+        {best.extra.length > 0 && (
+          <div className="text-sm text-muted tabular-nums">
+            {t("calc.extras", { list: names(best.extra), price: formatTenge(ADDON_PRICE) })}
+          </div>
+        )}
+      </div>
+      <div className="mt-4">
+        <div className="text-sm font-semibold">{t("calc.all")}</div>
+        <ul className="mt-1 grid gap-1 text-sm text-muted tabular-nums">
+          {quotes.map((q) => (
+            <li key={q.tier}>
+              {TIER_TITLES[q.tier]}: {t("calc.perMonth", { price: formatTenge(q.perMonth) })}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="mt-5">
+        {signup ? (
+          <Link to="/signup" search={signupSearch(page)} className="btn-primary px-5 py-2.5">
+            {t("calc.cta")}
+          </Link>
+        ) : (
+          <Link to="/admin/login" className="btn-primary px-5 py-2.5">
+            {t("calc.cta")}
+          </Link>
+        )}
+      </div>
+      <p className="mt-3 text-xs text-muted">{t("calc.note")}</p>
+    </div>
+  );
+}
+
 const PRICING_NICHES: PricingNiche[] = ["dig", "cake", "flow", "ai"];
 
 /** Тарифы; с `niche` — только этой ниши, без вкладок. */
@@ -263,6 +373,7 @@ export function Pricing({
         {ANNUAL_FREE_MONTHS > 0 && <>{t("pricing.annual", { free: ANNUAL_FREE_MONTHS })} </>}
         {t("pricing.addon", { price: formatTenge(ADDON_PRICE) })}
       </p>
+      <TariffCalculator t={t} signup={signup} niche={niche} page={page} />
     </section>
   );
 }

@@ -36,7 +36,7 @@ export { TRIAL_DAYS } from "@/core/plans/registry";
 /** Ниши на вкладках тарифов главной и их планы в реестре. */
 /** `school` — тарифы школы; вкладки на главной их не показывают, они только на /for/courses. */
 export type PricingNiche = "dig" | "cake" | "flow" | "ai" | "school";
-const PLAN_NICHE: Record<PricingNiche, PlanNiche> = {
+export const PLAN_NICHE: Record<PricingNiche, PlanNiche> = {
   dig: "digital",
   school: "courses",
   cake: "confectionery",

@@ -52,6 +52,27 @@ test("страница ниши: свой заголовок и canonical, та�
   expect(errors).toEqual([]);
 });
 
+test("калькулятор тарифа: каналы и годовая оплата меняют цену, кнопка ведёт на регистрацию", async ({
+  page,
+}) => {
+  const errors = await watch(page);
+  await page.goto("/for/cakes");
+  const calc = page.getByTestId("tariff-calc");
+  await expect(calc.getByText("Рекомендуем Basic")).toBeVisible();
+  await expect(calc.getByText(/^9\s900\s₸ в месяц$/)).toBeVisible();
+  // Instagram у кондитерской — с Business, на Basic это доплата 5 000.
+  await calc.getByLabel("Instagram").check();
+  await expect(calc.getByText(/^14\s900\s₸ в месяц$/)).toBeVisible();
+  await expect(calc.getByText(/Доплата за каналы \(Instagram\)/)).toBeVisible();
+  await calc.getByLabel(/Годовая оплата/).check();
+  await expect(calc.getByText(/в месяц при оплате за год/)).toBeVisible();
+  await expect(calc.getByText(/Подключение 15\s000/)).toBeVisible();
+  await expect(
+    calc.getByRole("link", { name: "Зарегистрироваться с этим тарифом", exact: true }),
+  ).toHaveAttribute("href", /\/signup/);
+  expect(errors).toEqual([]);
+});
+
 test("регистрация открыта: форма на месте", async ({ page }) => {
   const errors = await watch(page);
   await page.goto("/signup");
