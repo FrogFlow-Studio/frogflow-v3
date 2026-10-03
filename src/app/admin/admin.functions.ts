@@ -811,6 +811,46 @@ export const setProductActiveFn = createServerFn({ method: "POST" })
     return { ok: true, waitlist };
   });
 
+/** Массовые действия над выбранными товарами списка (core/catalog/bulk). */
+export const bulkProductsFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        ids: z.array(uuid).min(1).max(500),
+        action: z.discriminatedUnion("kind", [
+          z.object({ kind: z.literal("active"), active: z.boolean() }),
+          z.object({
+            kind: z.literal("category"),
+            categoryId: uuid.nullable(),
+            mode: z.enum(["add", "set"]),
+          }),
+          z.object({ kind: z.literal("price"), percent: z.number().min(-90).max(500) }),
+        ]),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { bulkUpdateProducts } = await import("@/core/catalog/bulk");
+    const r = await bulkUpdateProducts(ctx, data.ids, data.action);
+    // Товары, вернувшиеся в продажу, будят лист ожидания — как одиночное «показать».
+    if (data.action.kind === "active" && data.action.active && ctx.tenant.modules.waitlist)
+      for (const id of r.changed) {
+        const was = r.before.get(id);
+        if (!was) continue;
+        try {
+          await maybeNotifyWaitlist(ctx, id, {
+            is_active: false,
+            stock_quantity: was.stock_quantity,
+            name: was.name,
+          });
+        } catch {
+          // Уведомление — на лучшее усилие: товар уже показан.
+        }
+      }
+    return { changed: r.changed.length, skipped: r.skipped };
+  });
+
 /** Копия товара (core/catalog/copy): скрытая, без продаж и отзывов; суффикс названия — на языке продавца. */
 export const copyProductFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>

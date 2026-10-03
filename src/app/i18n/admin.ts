@@ -11,6 +11,7 @@ import * as settings from "./admin/settings";
 import * as broadcasts from "./admin/broadcasts";
 import * as instagram from "./admin/instagram";
 import * as vip from "./admin/vip";
+import * as shop4Bulk from "./admin/shop4-bulk";
 import * as aiBalance from "./admin/ai-balance";
 import * as product from "./admin/product";
 import * as discounts from "./admin/discounts";
@@ -397,6 +398,7 @@ const ru = {
   ...broadcasts.ru,
   ...instagram.ru,
   ...vip.ru,
+  ...shop4Bulk.ru,
   ...aiBalance.ru,
   ...product.ru,
   ...discounts.ru,
@@ -1450,6 +1452,7 @@ const kk: Dict = {
   ...broadcasts.kk,
   ...instagram.kk,
   ...vip.kk,
+  ...shop4Bulk.kk,
   ...aiBalance.kk,
   ...product.kk,
   ...discounts.kk,
@@ -1494,6 +1497,7 @@ const en: Dict = {
   ...broadcasts.en,
   ...instagram.en,
   ...vip.en,
+  ...shop4Bulk.en,
   ...aiBalance.en,
   ...product.en,
   ...discounts.en,
@@ -1538,6 +1542,7 @@ const uz: Dict = {
   ...broadcasts.uz,
   ...instagram.uz,
   ...vip.uz,
+  ...shop4Bulk.uz,
   ...aiBalance.uz,
   ...product.uz,
   ...discounts.uz,

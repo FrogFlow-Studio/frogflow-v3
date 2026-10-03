@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-r
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import {
+  bulkProductsFn,
   catalogSheetFn,
   disconnectCatalogSheetFn,
   importCatalogFn,
@@ -17,6 +18,7 @@ import { Badge, Card, Empty, ErrorBox, PageTitle, Switch, useAction } from "@/ap
 import { formatMoney } from "@/core/money/money";
 import { imagePath } from "@/core/catalog/image-url";
 import { nextPageOffset } from "@/core/catalog/picker";
+import type { BulkAction } from "@/core/catalog/bulk";
 
 export const Route = createFileRoute("/admin/_authed/products")({
   validateSearch: z.object({
@@ -71,6 +73,26 @@ function ProductsPage() {
     setProducts((p) => p.map((x) => (x.id === id ? { ...x, is_active: on } : x)));
   });
   const catName = new Map(categories.map((c) => [c.id, c.name]));
+  // Выбор для массовых действий: по id, переживает «Показать ещё».
+  const editable = canEdit(shop.role);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [bulkResult, setBulkResult] = useState<Awaited<ReturnType<typeof bulkProductsFn>> | null>(
+    null,
+  );
+  const bulk = useAction(async (action: BulkAction) => {
+    if (!confirm(t("products.bulk.confirm", { n: picked.size }))) return;
+    const r = await bulkProductsFn({ data: { ids: [...picked], action } });
+    setBulkResult(r);
+    setPicked(new Set());
+    await router.invalidate();
+  });
+  const togglePick = (id: string, on: boolean) =>
+    setPicked((p) => {
+      const n = new Set(p);
+      if (on) n.add(id);
+      else n.delete(id);
+      return n;
+    });
   // Порядок перетаскиванием — когда виден весь каталог без фильтров: иначе
   // перенумерованная часть перемешалась бы с невидимыми товарами.
   const canReorder = canEdit(shop.role) && !s.q && !s.category && !s.inactive && !hasMore;
@@ -154,6 +176,30 @@ function ProductsPage() {
         </label>
         <button className="btn-secondary">{t("common.search")}</button>
       </form>
+      {(bulkResult || bulk.error) && (
+        <div className="mb-3 text-sm">
+          <ErrorBox error={bulk.error} />
+          {bulkResult && (
+            <>
+              <p>
+                {t("products.bulk.result", {
+                  changed: bulkResult.changed,
+                  skipped: bulkResult.skipped.length,
+                })}
+              </p>
+              {bulkResult.skipped.length > 0 && (
+                <ul className="mt-1 max-h-32 overflow-auto text-xs text-muted">
+                  {bulkResult.skipped.map((x) => (
+                    <li key={x.id}>
+                      {x.name || x.id}: {t(`products.bulk.reason.${x.reason}` as const)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
+      )}
       {products.length === 0 ? (
         <Empty>
           {t(school ? "products.emptyCourses" : "products.empty")}{" "}
@@ -167,9 +213,31 @@ function ProductsPage() {
         </Empty>
       ) : (
         <div className="card overflow-x-auto">
+          {editable && picked.size > 0 && (
+            <BulkBar
+              t={t}
+              n={picked.size}
+              categories={categories}
+              busy={bulk.busy}
+              onClear={() => setPicked(new Set())}
+              onRun={(a) => void bulk.run(a).catch(() => {})}
+            />
+          )}
           <table className="table">
             <thead>
               <tr>
+                {editable && (
+                  <th className="w-8">
+                    <input
+                      type="checkbox"
+                      aria-label={t("products.bulk.selectAll")}
+                      checked={products.length > 0 && products.every((p) => picked.has(p.id))}
+                      onChange={(e) =>
+                        setPicked(e.target.checked ? new Set(products.map((p) => p.id)) : new Set())
+                      }
+                    />
+                  </th>
+                )}
                 <th></th>
                 <th>{t("products.col.name")}</th>
                 <th>{t("products.col.categories")}</th>
@@ -193,6 +261,16 @@ function ProductsPage() {
                   }}
                   className={`hover:bg-surface-2/60 ${canReorder ? "cursor-grab" : ""} ${drag === p.id ? "opacity-50" : ""}`}
                 >
+                  {editable && (
+                    <td className="w-8">
+                      <input
+                        type="checkbox"
+                        aria-label={t("products.bulk.rowSelect", { name: p.name })}
+                        checked={picked.has(p.id)}
+                        onChange={(e) => togglePick(p.id, e.target.checked)}
+                      />
+                    </td>
+                  )}
                   <td className="w-12">
                     {p.cover ? (
                       <img
@@ -269,6 +347,104 @@ function ProductsPage() {
         </div>
       )}
     </>
+  );
+}
+
+/** Панель над списком: что сделать с выбранными товарами. */
+function BulkBar({
+  t,
+  n,
+  categories,
+  busy,
+  onClear,
+  onRun,
+}: {
+  t: AdminT;
+  n: number;
+  categories: Array<{ id: string; name: string }>;
+  busy: boolean;
+  onClear: () => void;
+  onRun: (a: BulkAction) => void;
+}) {
+  const [category, setCategory] = useState("");
+  const [percent, setPercent] = useState("");
+  const pct = Number(percent.replace(",", "."));
+  const pctOk = percent.trim() !== "" && Number.isFinite(pct) && pct !== 0;
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-line p-3 text-sm">
+      <b>{t("products.bulk.selected", { n })}</b>
+      <button type="button" className="btn-ghost" onClick={onClear}>
+        {t("products.bulk.clear")}
+      </button>
+      <button
+        type="button"
+        className="btn-secondary"
+        disabled={busy}
+        onClick={() => onRun({ kind: "active", active: true })}
+      >
+        {t("products.bulk.show")}
+      </button>
+      <button
+        type="button"
+        className="btn-secondary"
+        disabled={busy}
+        onClick={() => onRun({ kind: "active", active: false })}
+      >
+        {t("products.bulk.hide")}
+      </button>
+      <select
+        className="input w-48"
+        aria-label={t("products.bulk.categoryPick")}
+        value={category}
+        onChange={(e) => setCategory(e.target.value)}
+      >
+        <option value="">{t("products.bulk.categoryPick")}</option>
+        <option value="none">{t("products.bulk.categoryNone")}</option>
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        className="btn-secondary"
+        disabled={busy || !category || category === "none"}
+        onClick={() => onRun({ kind: "category", categoryId: category, mode: "add" })}
+      >
+        {t("products.bulk.categoryAdd")}
+      </button>
+      <button
+        type="button"
+        className="btn-secondary"
+        disabled={busy || !category}
+        onClick={() =>
+          onRun({
+            kind: "category",
+            categoryId: category === "none" ? null : category,
+            mode: "set",
+          })
+        }
+      >
+        {t("products.bulk.categorySet")}
+      </button>
+      <input
+        className="input w-44"
+        inputMode="decimal"
+        placeholder={t("products.bulk.percent")}
+        aria-label={t("products.bulk.percent")}
+        value={percent}
+        onChange={(e) => setPercent(e.target.value)}
+      />
+      <button
+        type="button"
+        className="btn-secondary"
+        disabled={busy || !pctOk}
+        onClick={() => onRun({ kind: "price", percent: pct })}
+      >
+        {t("products.bulk.priceApply")}
+      </button>
+    </div>
   );
 }
 
