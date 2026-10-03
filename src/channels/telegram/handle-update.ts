@@ -622,7 +622,11 @@ async function startFlow(b: Bot, payload = "") {
       b.ctx,
       b.customer.telegramId,
       payload.slice(REFERRAL_PREFIX.length),
-    );
+    ).catch((e) => {
+      // /start не должен молчать из-за сбоя реферала: продолжаем без подарка.
+      console.error(`[telegram] реферал: ${String(e)}`);
+      return null;
+    });
     if (gift) await send(b, b.m.referralWelcome(gift.percent, gift.code));
     payload = "";
   }

@@ -497,7 +497,12 @@ export async function runOrderAction(
       if (ok && action === "next") await notifyCustomer(ctx, order, `${labels[to] ?? to} — #${no}`);
       if (ok && to === "delivered") {
         const { rewardReferrerIfFirstDelivery } = await import("@/core/referrals/referrals");
-        await notifyReferralGrant(ctx, await rewardReferrerIfFirstDelivery(ctx, order.telegram_id));
+        // Статус уже сменён: сбой награды не должен выглядеть как сбой смены.
+        const grant = await rewardReferrerIfFirstDelivery(ctx, order.telegram_id).catch((e) => {
+          console.error(`[admin] награда пригласившему, заказ #${no}: ${String(e)}`);
+          return null;
+        });
+        await notifyReferralGrant(ctx, grant);
       }
       return {
         ok,

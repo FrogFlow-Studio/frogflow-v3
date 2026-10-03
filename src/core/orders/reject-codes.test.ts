@@ -188,3 +188,65 @@ describe("возврат промокода и сертификата при о�
     });
   });
 });
+
+/** Запрос `op` №`nth` к `table` падает ошибкой базы, остальные идут как есть. */
+function flaky(db: ReturnType<typeof fakeDb>, table: string, op: string, nth: number) {
+  let n = 0;
+  const broken: unknown = new Proxy(() => undefined, {
+    get: (_t, prop) =>
+      prop === "then"
+        ? (ok: (v: unknown) => unknown) =>
+            ok({ data: null, count: null, error: { message: "boom" } })
+        : () => broken,
+  });
+  return new Proxy(db, {
+    get: (t, prop, r) => {
+      if (prop !== "from") return Reflect.get(t, prop, r);
+      return (name: string) => {
+        const q = t.from(name);
+        if (name !== table) return q;
+        return new Proxy(q, {
+          get: (qt, qp, qr) =>
+            qp === op
+              ? (...args: unknown[]) =>
+                  ++n === nth
+                    ? broken
+                    : (qt as unknown as Record<string, (...a: unknown[]) => unknown>)[op]!(...args)
+              : Reflect.get(qt, qp, qr),
+        });
+      };
+    },
+  });
+}
+
+describe("сбой при возврате кодов не рвёт то, что уже сделано", () => {
+  it("отклонение: возврат промокода упал — заказ всё равно отклонён, событие записано", async () => {
+    const { db, ctx, customer } = setup();
+    const r = await placeOrder(ctx, customer, "KZ", codes);
+    if (!r.ok) throw new Error("не оформился");
+    const broken = {
+      ...ctx,
+      db: flaky(db, "promo_codes", "select", 1),
+    } as unknown as TenantContext;
+    expect(await rejectOrder(broken, r.order.id, "admin")).toBe(true);
+    expect(db.tables.orders![0]!.status).toBe("rejected");
+    expect((db.tables.zernio_logs ?? []).some((e) => e.event_type === "order.rejected")).toBe(true);
+  });
+
+  it("оформление сорвалось, а откат сертификата упал — покупатель не застрял в «оформляется»", async () => {
+    const { db, ctx, customer } = setup();
+    // order_failed: вставка заказа падает; откат: второй update сертификатов тоже.
+    const stage1 = flaky(db, "orders", "insert", 1);
+    const stage2 = flaky(
+      stage1 as unknown as ReturnType<typeof fakeDb>,
+      "gift_certificates",
+      "update",
+      2,
+    );
+    const broken = { ...ctx, db: stage2 } as unknown as TenantContext;
+    const res = await placeOrder(broken, customer, "KZ", { giftCode: codes.giftCode });
+    expect(res).toMatchObject({ ok: false, reason: "order_failed" });
+    const st = db.tables.bot_users![0]!.state as Record<string, unknown>;
+    expect(st.placing_order).toBeFalsy();
+  });
+});

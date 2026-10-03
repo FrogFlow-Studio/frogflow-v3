@@ -110,12 +110,14 @@ export async function voidGiftRest(ctx: TenantContext, orderId: number): Promise
   if (error) throw serverFailure(`[gift] остаток заказа ${orderId}: ${error.message}`);
   // Сертификата под меткой нет (вставка не прошла) — гасить нечего.
   if (!data?.length) {
-    const { data: exists } = await ctx.db
+    const { data: exists, error: existsError } = await ctx.db
       .from("gift_certificates")
       .select("id")
       .eq("bot_id", ctx.tenant.id)
       .eq("code", rest.code)
       .maybeSingle();
+    if (existsError)
+      throw serverFailure(`[gift] остаток заказа ${orderId}: ${existsError.message}`);
     return !exists;
   }
   return true;

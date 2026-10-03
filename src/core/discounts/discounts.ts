@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { getSetting } from "@/core/settings/settings";
@@ -38,11 +39,13 @@ export async function findValidPromoCode(
   raw: string,
   buyer?: PromoBuyer,
 ): Promise<PromoLookup> {
-  const { data: p } = await ctx.db
+  const { data: p, error } = await ctx.db
     .from("promo_codes")
     .select("id, used_count, discount_type, discount_value, max_uses, valid_until, is_active")
     .eq("code", normalizeCode(raw))
     .maybeSingle();
+  // Не прочитали — не «код не найден»: покупателю не говорим, что кода нет.
+  if (error) throw serverFailure(`[promo] чтение кода: ${error.message}`);
   if (!p) return { ok: false, reason: "not_found" };
   if (!p.is_active) return { ok: false, reason: "inactive" };
   if (p.valid_until && new Date(p.valid_until).getTime() < Date.now())
@@ -144,13 +147,14 @@ export async function redeemPromoCode(
   const promo = await promoInOrderCurrency(ctx, found.promo, orderCurrency);
   if (!promo) return { ok: false as const, reason: "fx" as const };
   const discount = computePromoDiscount(subtotal, promo);
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("promo_codes")
     .update({ used_count: found.promo.used_count + 1 })
     .eq("id", found.promo.id)
     .eq("used_count", found.promo.used_count)
     .select("id")
     .maybeSingle();
+  if (error) throw serverFailure(`[promo] списание использования: ${error.message}`);
   if (!data) return { ok: false as const, reason: "invalid" as const };
   return {
     ok: true as const,
@@ -163,11 +167,12 @@ export async function redeemPromoCode(
 /* ── сертификаты ──────────────────────────────────────────────────── */
 
 export async function findValidGift(ctx: TenantContext, raw: string) {
-  const { data: c } = await ctx.db
+  const { data: c, error } = await ctx.db
     .from("gift_certificates")
     .select("id, code, amount, currency, status")
     .eq("code", normalizeCode(raw))
     .maybeSingle();
+  if (error) throw serverFailure(`[gift] чтение сертификата: ${error.message}`);
   if (!c || c.status !== "active") return { ok: false as const };
   return {
     ok: true as const,
@@ -197,7 +202,7 @@ export async function redeemGift(
   );
   if (amount == null) return { ok: false as const, reason: "fx" as const };
   const discount = Math.min(subtotal, amount);
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("gift_certificates")
     .update({
       status: "redeemed",
@@ -208,6 +213,7 @@ export async function redeemGift(
     .eq("status", "active")
     .select("id")
     .maybeSingle();
+  if (error) throw serverFailure(`[gift] погашение сертификата: ${error.message}`);
   if (!data) return { ok: false as const, reason: "invalid" as const };
   // Остаток (#257) — в валюте сертификата: доля номинала, не списанная этим
   // заказом, по тому же курсу, по которому считалась скидка.
@@ -245,8 +251,8 @@ export async function returnOrderCodes(
     console.error(`[discounts] остаток сертификата заказа #${orderId}: ${String(e)}`);
     return false;
   });
-  const { data: gift } = !restVoided
-    ? { data: [] as Array<{ id: string }> }
+  const { data: gift, error: giftError } = !restVoided
+    ? { data: [] as Array<{ id: string }>, error: null }
     : await ctx.db
         .from("gift_certificates")
         .update({
@@ -258,22 +264,28 @@ export async function returnOrderCodes(
         .eq("redeemed_order_id", orderId)
         .eq("status", "redeemed")
         .select("id");
+  if (giftError)
+    throw serverFailure(`[gift] возврат сертификата заказа #${orderId}: ${giftError.message}`);
   let promo = false;
   if (promoCode) {
     for (let i = 0; i < 5 && !promo; i++) {
-      const { data: p } = await ctx.db
+      const { data: p, error: readError } = await ctx.db
         .from("promo_codes")
         .select("id, used_count")
         .eq("code", normalizeCode(promoCode))
         .maybeSingle();
+      if (readError)
+        throw serverFailure(`[promo] возврат кода заказа #${orderId}: ${readError.message}`);
       if (!p || p.used_count <= 0) break;
-      const { data: done } = await ctx.db
+      const { data: done, error: doneError } = await ctx.db
         .from("promo_codes")
         .update({ used_count: p.used_count - 1 })
         .eq("id", p.id)
         .eq("used_count", p.used_count)
         .select("id")
         .maybeSingle();
+      if (doneError)
+        throw serverFailure(`[promo] возврат кода заказа #${orderId}: ${doneError.message}`);
       promo = Boolean(done);
     }
   }
@@ -301,11 +313,12 @@ export async function loyaltyMaxRedeemPercent(ctx: TenantContext): Promise<numbe
 }
 
 export async function loyaltyBalance(ctx: TenantContext, telegramId: number): Promise<number> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("bot_users")
     .select("loyalty_points")
     .eq("telegram_id", telegramId)
     .maybeSingle();
+  if (error) throw serverFailure(`[loyalty] баланс: ${error.message}`);
   return Math.max(0, Math.floor(Number(data?.loyalty_points ?? 0)));
 }
 
@@ -315,21 +328,23 @@ async function adjustPoints(
   delta: number,
 ): Promise<boolean> {
   for (let attempt = 0; attempt < 4; attempt++) {
-    const { data: u } = await ctx.db
+    const { data: u, error: readError } = await ctx.db
       .from("bot_users")
       .select("loyalty_points")
       .eq("telegram_id", telegramId)
       .maybeSingle();
+    if (readError) throw serverFailure(`[loyalty] баланс: ${readError.message}`);
     if (!u) return false;
     const current = Number(u.loyalty_points ?? 0);
     if (current + delta < 0) return false;
-    const { data } = await ctx.db
+    const { data, error } = await ctx.db
       .from("bot_users")
       .update({ loyalty_points: current + delta })
       .eq("telegram_id", telegramId)
       .eq("loyalty_points", current)
       .select("telegram_id")
       .maybeSingle();
+    if (error) throw serverFailure(`[loyalty] запись баллов: ${error.message}`);
     if (data) return true;
   }
   return false;
@@ -407,15 +422,39 @@ export async function awardPointsForOrder(
   if (base == null) return 0;
   const points = computePointsEarned(base, await loyaltyEarnPercent(ctx));
   if (points <= 0) return 0;
-  const { data: claimed } = await ctx.db
+  const { data: claimed, error } = await ctx.db
     .from("orders")
     .update({ points_earned: points })
     .eq("id", orderId)
     .eq("points_earned", 0)
     .select("id")
     .maybeSingle();
+  if (error)
+    throw serverFailure(`[loyalty] отметка начисления заказа #${orderId}: ${error.message}`);
   if (!claimed) return 0;
-  return (await adjustPoints(ctx, telegramId, points)) ? points : 0;
+  // Отметка уже стоит; не начислили (сбой или нет покупателя) — снять её
+  // условно, иначе баллы за этот заказ потеряны навсегда.
+  const release = async () => {
+    const { error: undoError } = await ctx.db
+      .from("orders")
+      .update({ points_earned: 0 })
+      .eq("id", orderId)
+      .eq("points_earned", points);
+    if (undoError)
+      console.error(`[loyalty] отметка заказа #${orderId} не снята: ${undoError.message}`);
+  };
+  let done = false;
+  try {
+    done = await adjustPoints(ctx, telegramId, points);
+  } catch (e) {
+    await release();
+    throw e;
+  }
+  if (!done) {
+    await release();
+    return 0;
+  }
+  return points;
 }
 
 /* ── откат при сорвавшемся оформлении ─────────────────────────────── */
@@ -432,26 +471,39 @@ export async function rollbackRedemptions(
   customer: Customer,
   r: Redemptions,
 ): Promise<void> {
+  // Откат идёт до конца, даже если один шаг упал: первый сбой — наружу в конце.
+  let failure: Error | null = null;
   if (r.promo) {
     for (let attempt = 0; attempt < 4; attempt++) {
-      const { data: p } = await ctx.db
+      const { data: p, error: readError } = await ctx.db
         .from("promo_codes")
         .select("used_count")
         .eq("id", r.promo.id)
         .maybeSingle();
+      if (readError) {
+        failure ??= serverFailure(`[promo] откат: ${readError.message}`);
+        break;
+      }
       const current = Number(p?.used_count ?? 0);
       if (current <= r.promo.previousUsedCount) break;
-      const { data } = await ctx.db
+      const { data, error } = await ctx.db
         .from("promo_codes")
         .update({ used_count: current - 1 })
         .eq("id", r.promo.id)
         .eq("used_count", current)
         .select("id")
         .maybeSingle();
+      if (error) {
+        failure ??= serverFailure(`[promo] откат: ${error.message}`);
+        break;
+      }
       if (data) break;
     }
   }
-  if (r.pointsUsed && r.pointsUsed > 0) await restorePoints(ctx, customer.telegramId, r.pointsUsed);
+  if (r.pointsUsed && r.pointsUsed > 0)
+    await restorePoints(ctx, customer.telegramId, r.pointsUsed).catch((e) => {
+      failure ??= e instanceof Error ? e : serverFailure(String(e));
+    });
   if (r.giftId) {
     let q = ctx.db
       .from("gift_certificates")
@@ -467,6 +519,8 @@ export async function rollbackRedemptions(
     q = r.orderId
       ? q.or(`redeemed_order_id.eq.${r.orderId},redeemed_order_id.is.null`)
       : q.is("redeemed_order_id", null);
-    await q;
+    const { error } = await q;
+    if (error) failure ??= serverFailure(`[gift] откат сертификата: ${error.message}`);
   }
+  if (failure) throw failure;
 }

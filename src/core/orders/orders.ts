@@ -267,8 +267,17 @@ export async function placeOrder(
   const redemptions: Redemptions = {};
   const reserved: Array<{ productId: string; qty: number }> = [];
   const fail = async (reason: Extract<PlaceOrderResult, { ok: false }>["reason"]) => {
-    for (const r of reserved) await restoreStock(ctx, r.productId, r.qty);
-    await rollbackRedemptions(ctx, customer, redemptions);
+    // Каждый шаг отката не мешает остальным; освобождение покупателя — всегда.
+    try {
+      for (const r of reserved) await restoreStock(ctx, r.productId, r.qty);
+    } catch (e) {
+      console.error(`[orders] возврат остатка при откате: ${String(e)}`);
+    }
+    try {
+      await rollbackRedemptions(ctx, customer, redemptions);
+    } catch (e) {
+      console.error(`[orders] откат скидок и баллов: ${String(e)}`);
+    }
     await releaseOrderPlacement(ctx, customer);
     return { ok: false as const, reason };
   };
@@ -790,7 +799,10 @@ export async function rejectOrder(
   // Брошенный неоплаченный заказ не сжигает сертификат покупателя и не
   // расходует лимит промокода; возвращает только выигравший CAS выше.
   const codesReturned = unpaidData
-    ? await returnOrderCodes(ctx, orderId, unpaidData.promo_code)
+    ? await returnOrderCodes(ctx, orderId, unpaidData.promo_code).catch((e) => {
+        console.error(`[orders] возврат кодов заказа #${orderId}: ${String(e)}`);
+        return null;
+      })
     : null;
   // Списанные в заказе баллы — обратно покупателю. Переход статуса выше —
   // CAS, поэтому возвращает ровно один вызов, сколько бы их ни пришло
@@ -924,11 +936,20 @@ async function finalizeDelivery(
           order.telegram_id,
           Number(order.total),
           order.currency,
-        );
+        ).catch((e) => {
+          // Заказ уже выдан: сбой начисления не рвёт выдачу (отметка снята — повторится).
+          console.error(`[orders] баллы за заказ #${order.id}: ${String(e)}`);
+          return 0;
+        });
   // Покупка сертификата — не покупка у магазина: ни баллов, ни награды пригласившему;
   // награда придёт, когда покупатель получит обычный заказ.
   const referral =
-    failed || sale ? null : await rewardReferrerIfFirstDelivery(ctx, order.telegram_id);
+    failed || sale
+      ? null
+      : await rewardReferrerIfFirstDelivery(ctx, order.telegram_id).catch((e) => {
+          console.error(`[orders] награда пригласившему, заказ #${order.id}: ${String(e)}`);
+          return null;
+        });
   // Покупателю из Instagram/WhatsApp — копия материалов на почту: ссылки в
   // переписке живут 7 дней и теряются, письмо остаётся.
   if (!failed && sale?.gift) {

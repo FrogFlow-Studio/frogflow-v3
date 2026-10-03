@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSetting } from "@/core/settings/settings";
 
@@ -37,6 +38,8 @@ async function issuePersonalPromo(
       is_active: true,
     });
     if (!error) return code;
+    // Занятый код — пробуем другой; любой иной сбой не прячем за «не получилось».
+    if (error.code !== "23505") throw serverFailure(`[referral] выпуск кода: ${error.message}`);
   }
   return null;
 }
@@ -54,18 +57,23 @@ export async function registerReferral(
   const referrerId = Number(referrerRaw);
   if (!Number.isFinite(referrerId) || referrerId <= 0 || referrerId === referredId) return null;
   // Реферер — реальный покупатель этого же бота, иначе ссылка чужая.
-  const { data: referrer } = await ctx.db
+  const { data: referrer, error: referrerError } = await ctx.db
     .from("bot_users")
     .select("telegram_id")
     .eq("telegram_id", referrerId)
     .maybeSingle();
+  if (referrerError) throw serverFailure(`[referral] реферер: ${referrerError.message}`);
   if (!referrer) return null;
   const { error } = await ctx.db.from("referrals").insert({
     bot_id: ctx.tenant.id,
     referrer_telegram_id: referrerId,
     referred_telegram_id: referredId,
   });
-  if (error) return null;
+  // 23505 — уже записан (повтор /start); любой другой сбой — не «ссылка не сработала».
+  if (error) {
+    if (error.code === "23505") return null;
+    throw serverFailure(`[referral] запись приглашения: ${error.message}`);
+  }
   const percent = await referralPercent(ctx);
   const code = await issuePersonalPromo(ctx, "WELCOME", percent);
   return code ? { telegramId: referredId, code, percent } : null;
@@ -80,30 +88,55 @@ export async function rewardReferrerIfFirstDelivery(
   referredId: number,
 ): Promise<ReferralGrant | null> {
   if (!ctx.tenant.modules.referral) return null;
-  const { data: ref } = await ctx.db
+  const { data: ref, error: refError } = await ctx.db
     .from("referrals")
     .select("id, referrer_telegram_id, status, created_at")
     .eq("referred_telegram_id", referredId)
     .maybeSingle();
+  // Награда не выдаётся по упавшему чтению: сбой наружу, повтор — на следующей выдаче.
+  if (refError) throw serverFailure(`[referral] чтение приглашения: ${refError.message}`);
   if (!ref || ref.status !== "pending") return null;
-  const { count } = await ctx.db
+  const { count, error: countError } = await ctx.db
     .from("orders")
     .select("id", { count: "exact", head: true })
     .eq("telegram_id", referredId)
     .eq("status", "delivered")
     .gte("created_at", ref.created_at);
+  if (countError) throw serverFailure(`[referral] выданные заказы: ${countError.message}`);
   if ((count ?? 0) < 1) return null;
-  const { data: claimed } = await ctx.db
+  const { data: claimed, error: claimError } = await ctx.db
     .from("referrals")
     .update({ status: "rewarded", rewarded_at: new Date().toISOString() })
     .eq("id", ref.id)
     .eq("status", "pending")
     .select("id")
     .maybeSingle();
+  if (claimError) throw serverFailure(`[referral] отметка награды: ${claimError.message}`);
   if (!claimed) return null;
-  const percent = await referralPercent(ctx);
-  const code = await issuePersonalPromo(ctx, "REF", percent);
-  if (!code) return null;
-  await ctx.db.from("referrals").update({ reward_promo_code: code }).eq("id", ref.id);
+  // Отметка уже поставлена; не вышло выпустить код — вернуть «ожидает»,
+  // чтобы награда не пропала и ушла на следующей выдаче.
+  const release = () =>
+    ctx.db
+      .from("referrals")
+      .update({ status: "pending", rewarded_at: null })
+      .eq("id", ref.id)
+      .eq("status", "rewarded")
+      .is("reward_promo_code", null);
+  let percent: number;
+  let code: string | null;
+  try {
+    percent = await referralPercent(ctx);
+    code = await issuePersonalPromo(ctx, "REF", percent);
+  } catch (e) {
+    await release();
+    throw e;
+  }
+  if (!code) {
+    await release();
+    return null;
+  }
+  const saved = await ctx.db.from("referrals").update({ reward_promo_code: code }).eq("id", ref.id);
+  // Код уже выдан — награду отдаём, а не теряем; сбой записи кода только в журнал.
+  if (saved.error) console.error("[referral] код награды не записан", saved.error.message);
   return { telegramId: Number(ref.referrer_telegram_id), code, percent };
 }
