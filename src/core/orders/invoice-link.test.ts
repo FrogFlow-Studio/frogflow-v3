@@ -74,13 +74,14 @@ describe("счёт ссылкой: срок оплаты и возврат ос�
     expect(await expireWebOrders(ctx, NOW)).toEqual({ cancelled: 0 });
   });
 
-  it("продавец отклонил счёт ссылкой — остаток на склад; обычный заказ Instagram — склад не трогаем", async () => {
+  it("продавец отклонил счёт ссылкой или неоплаченный заказ Instagram — остаток возвращается", async () => {
     const { db, ctx } = setup();
     await markInvoiceLink(ctx, 1);
     expect(await rejectOrder(ctx, 1, "admin")).toBe(true);
     expect(db.tables.products![0]!.stock_quantity).toBe(4);
+    // Заказ 2 тоже неоплаченный: остаток списан при оформлении (З1).
     expect(await rejectOrder(ctx, 2, "admin")).toBe(true);
-    expect(db.tables.products![0]!.stock_quantity).toBe(4);
+    expect(db.tables.products![0]!.stock_quantity).toBe(5);
   });
 });
 

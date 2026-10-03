@@ -860,12 +860,14 @@ export async function rejectOrder(
     );
   // Заказ с сайта оформляет кто угодно — отклонённый возвращает остаток.
   // Так же счёт ссылкой из диалога: его повтор после сбоя не держит товар.
+  // И любой неоплаченный заказ (в том числе из бота и Direct): остаток списан
+  // при оформлении, а сам такой заказ не истекает. Оплаченный решает возврат.
   // Статус уже сменён: сбой возврата на склад не должен терять событие и баллы ниже.
   const restock = () =>
     restoreOrderStock(ctx, orderId).catch((e) =>
       console.error(`[orders] возврат на склад заказа #${orderId}: ${String(e)}`),
     );
-  if (data?.platform === "web" || (data && opts.restoreStock)) await restock();
+  if (data?.platform === "web" || unpaidData || (data && opts.restoreStock)) await restock();
   else if (data) {
     const { isInvoiceLink } = await import("./invoice-link");
     if (await isInvoiceLink(ctx, orderId)) await restock();
