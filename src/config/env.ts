@@ -131,6 +131,16 @@ const schema = z.object({
     .optional()
     .or(z.literal("").transform(() => undefined)),
 
+  /**
+   * Код подтверждения сайта в Яндекс Вебмастере (метатег `yandex-verification`
+   * на главной): только само значение, не весь тег. Пусто или не буквы-цифры
+   * — тега нет, остальное не страдает. Файл подтверждения Google лежит в public/.
+   */
+  YANDEX_VERIFICATION: z
+    .string()
+    .optional()
+    .transform((v) => (v && /^[A-Za-z0-9]{8,64}$/.test(v.trim()) ? v.trim() : undefined)),
+
   VERCEL_ENV: z.string().optional(),
   VERCEL_GIT_COMMIT_SHA: z.string().optional(),
   VERCEL_GIT_COMMIT_REF: z.string().optional(),

@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { z } from "zod";
 import { signupEnabledFn } from "@/app/signup/signup.functions";
+import { siteVerificationFn } from "@/app/landing/verification.functions";
+import { yandexVerificationMeta } from "@/app/landing/verification";
 import { landingT, type LandingKey, type LandingT } from "@/app/i18n/landing";
 import {
   CLIENTS,
@@ -34,8 +36,9 @@ export const Route = createFileRoute("/")({
     // Сбой запроса не должен ронять главную: клиент TanStack на ответ 500 без
     // сериализации возвращает не ошибку, а что попало (бывало и undefined).
     const res = await signupEnabledFn().catch(() => null);
+    const verification = await siteVerificationFn().catch(() => null);
     const locale: Locale = isLocale(deps.lang) ? deps.lang : "ru";
-    return { signup: res?.enabled === true, locale };
+    return { signup: res?.enabled === true, locale, yandex: verification?.yandex ?? null };
   },
   head: ({ loaderData }) => {
     const locale = loaderData?.locale ?? "ru";
@@ -50,6 +53,7 @@ export const Route = createFileRoute("/")({
         { property: "og:url", content: landingUrl(locale) },
         { property: "og:locale", content: OG_LOCALE[locale] },
         { property: "og:site_name", content: "FrogFlow" },
+        ...yandexVerificationMeta(loaderData?.yandex),
       ],
       scripts: [
         jsonLdScript(
