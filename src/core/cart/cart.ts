@@ -196,8 +196,16 @@ export async function priceCart(
   ctx: TenantContext,
   items: CartItem[],
   countryCode: string | null,
-  opts: { deliveryLang?: DeliveryLangChoice | null } = {},
+  opts: {
+    deliveryLang?: DeliveryLangChoice | null;
+    /** Оформление заказа: акции читаем заново, без минутного кеша (лимит штук, «Закончить сейчас»). */
+    freshOffers?: boolean;
+  } = {},
 ): Promise<PricedCart> {
+  if (opts.freshOffers && ctx.tenant.modules.limited_offers) {
+    const { resetOffersCache } = await import("@/core/offers/offers");
+    resetOffersCache(ctx.tenant.id);
+  }
   const lines: PricedLine[] = [];
   let total = 0;
   let currency = "KZT";

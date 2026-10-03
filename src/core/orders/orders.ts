@@ -311,7 +311,7 @@ export async function placeOrder(
       ctx.tenant.modules.multi_language && isDeliveryLangChoice(opts.deliveryLang)
         ? opts.deliveryLang
         : null;
-    const priced = await priceCart(ctx, items, countryCode, { deliveryLang });
+    const priced = await priceCart(ctx, items, countryCode, { deliveryLang, freshOffers: true });
     if (priced.mixedCurrency) return await fail("mixed_currency");
     // Минимум — до списания остатка и скидок: отказ ничего не трогает.
     if (!opts.skipMinOrder) {
