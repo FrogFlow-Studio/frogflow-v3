@@ -55,13 +55,15 @@ export async function runVipCron(
     return group.send(telegramId, text + renew);
   };
 
-  const { data: stage1 } = await ctx.db
+  const { data: stage1, error: stage1Error } = await ctx.db
     .from("vip_subscriptions")
     .select("*")
     .eq("status", "active")
     .lte("expires_at", t1)
     .gt("expires_at", nowIso)
     .is("admin_note", null);
+  // Сбой чтения — не «некому напоминать»: ошибка в итог, этап пропущен.
+  if (stage1Error) r.errors.push(`warn1 read: ${stage1Error.message}`);
   for (const sub of pickLatestPerUser(stage1 ?? [])) {
     try {
       if (await warn(sub.telegram_id, sub.expires_at, 1)) {
@@ -76,13 +78,14 @@ export async function runVipCron(
     }
   }
 
-  const { data: stage2 } = await ctx.db
+  const { data: stage2, error: stage2Error } = await ctx.db
     .from("vip_subscriptions")
     .select("*")
     .eq("status", "active")
     .lte("expires_at", t2)
     .gt("expires_at", nowIso)
     .eq("admin_note", WARN_STAGE_1);
+  if (stage2Error) r.errors.push(`warn2 read: ${stage2Error.message}`);
   for (const sub of pickLatestPerUser(stage2 ?? [])) {
     try {
       if (await warn(sub.telegram_id, sub.expires_at, 2)) {
@@ -97,11 +100,12 @@ export async function runVipCron(
     }
   }
 
-  const { data: toExpire } = await ctx.db
+  const { data: toExpire, error: expireError } = await ctx.db
     .from("vip_subscriptions")
     .select("*")
     .eq("status", "active")
     .lte("expires_at", nowIso);
+  if (expireError) r.errors.push(`expire read: ${expireError.message}`);
   for (const sub of toExpire ?? []) {
     try {
       const close = async () => {
@@ -113,13 +117,15 @@ export async function runVipCron(
         if (error) throw new Error(`expire-write: ${error.message}`);
         r.expired++;
       };
-      const { count: otherActive } = await ctx.db
+      const { count: otherActive, error: otherError } = await ctx.db
         .from("vip_subscriptions")
         .select("id", { count: "exact", head: true })
         .eq("telegram_id", sub.telegram_id)
         .eq("status", "active")
         .gt("expires_at", nowIso)
         .neq("id", sub.id);
+      // Не знаем, есть ли другая действующая подписка, — человека не исключаем.
+      if (otherError) throw new Error(`other-active read: ${otherError.message}`);
       if ((otherActive ?? 0) > 0) {
         await close();
         continue;

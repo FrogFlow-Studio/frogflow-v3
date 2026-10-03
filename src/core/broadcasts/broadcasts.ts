@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database } from "@/core/db-types";
 import { pageAll } from "@/core/db/page";
@@ -421,30 +422,35 @@ export async function processBroadcastBatch(
   };
   // Запланированная рассылка ждёт своего часа: берём самую старую из тех,
   // чей срок наступил (или без срока).
-  const { data: active } = await ctx.db
+  const { data: active, error: activeError } = await ctx.db
     .from("broadcasts")
     .select("*")
     .in("status", ["queued", "sending"])
     .eq("channel", channel)
     .order("created_at", { ascending: true })
     .limit(ACTIVE_SCAN);
+  // Сбой чтения — не «рассылок нет»: крон падает, а не молча проходит.
+  if (activeError) throw serverFailure(`Рассылки: активные: ${activeError.message}`);
   const broadcast = (active ?? []).find((b) => isDue(b, Date.now()));
   if (!broadcast) return none;
 
   if (broadcast.status === "queued") {
-    await ctx.db
+    const { error } = await ctx.db
       .from("broadcasts")
       .update({ status: "sending", started_at: new Date().toISOString() })
       .eq("id", broadcast.id)
       .eq("status", "queued");
+    if (error) throw serverFailure(`Рассылки: старт: ${error.message}`);
   }
 
   const finish = async () => {
-    const { data: fresh } = await ctx.db
+    const { data: fresh, error } = await ctx.db
       .from("broadcasts")
       .select("sent_count, total_count, status")
       .eq("id", broadcast.id)
       .single();
+    // Не прочитали — не закрываем: следующий запуск крона закроет сам.
+    if (error) throw serverFailure(`Рассылки: итог: ${error.message}`);
     if (fresh && fresh.status !== "cancelled")
       await ctx.db
         .from("broadcasts")
@@ -461,21 +467,23 @@ export async function processBroadcastBatch(
   // строку не выберет и не отправит второй раз. Итог пишется CAS-ом.
   // Захваченные и брошенные упавшим запуском — недоставлены, без повтора.
   const now = Date.now();
-  const { data: stale } = await ctx.db
+  const { data: stale, error: staleError } = await ctx.db
     .from("broadcast_recipients")
     .update({ status: "failed", error_message: STALE_CLAIM_ERROR, sent_at: null })
     .eq("broadcast_id", broadcast.id)
     .eq("status", "pending")
     .lt("sent_at", new Date(now - CLAIM_STALE_MS).toISOString())
     .select("id");
+  if (staleError) throw serverFailure(`Рассылки: брошенные: ${staleError.message}`);
 
-  const { data: pending } = await ctx.db
+  const { data: pending, error: pendingError } = await ctx.db
     .from("broadcast_recipients")
     .select("id, telegram_id, phone")
     .eq("broadcast_id", broadcast.id)
     .eq("status", "pending")
     .is("sent_at", null)
     .limit(BATCH_SIZE);
+  if (pendingError) throw serverFailure(`Рассылки: получатели: ${pendingError.message}`);
 
   const content = contentOf(broadcast);
   let sent = 0;
@@ -485,6 +493,9 @@ export async function processBroadcastBatch(
   // Список получателей собран при создании; кто отписался или попал в
   // блокировку с тех пор (рассылка могла ждать по расписанию), не получает.
   const list: typeof pending = [];
+  // Сбой посреди пакета: доделанное (отправлено, помечено blocked) всё равно
+  // попадает в счётчики, и только потом бросаем ошибку.
+  let failure: Error | null = null;
   const gone = await unreachableNow(
     ctx,
     (pending ?? []).map((r) => Number(r.telegram_id)),
@@ -495,7 +506,7 @@ export async function processBroadcastBatch(
       list.push(r);
       continue;
     }
-    const { data: skipped } = await ctx.db
+    const { data: skipped, error: skipError } = await ctx.db
       .from("broadcast_recipients")
       .update({ status: "blocked", error_message: "отписался до отправки" })
       .eq("id", r.id)
@@ -503,21 +514,27 @@ export async function processBroadcastBatch(
       .is("sent_at", null)
       .select("id")
       .maybeSingle();
+    if (skipError) {
+      failure = serverFailure(`Рассылки: отписка до отправки: ${skipError.message}`);
+      list.length = 0; // не знаем, кто ещё отписан, — отправку пакета не начинаем
+      break;
+    }
     if (skipped) blocked++;
   }
   for (let i = 0; i < list.length; i++) {
     const r = list[i]!;
     // Отмену из панели уважаем между сообщениями, а не по концу пакета.
     if (i > 0 && i % 10 === 0) {
-      const { data: st } = await ctx.db
+      const { data: st, error: stError } = await ctx.db
         .from("broadcasts")
         .select("status")
         .eq("id", broadcast.id)
         .single();
-      if (st?.status === "cancelled") break;
+      // Не знаем, не отменили ли рассылку, — не шлём дальше.
+      if (stError || st?.status === "cancelled") break;
     }
     const claimedAt = new Date().toISOString();
-    const { data: claimed } = await ctx.db
+    const { data: claimed, error: claimError } = await ctx.db
       .from("broadcast_recipients")
       .update({ sent_at: claimedAt })
       .eq("id", r.id)
@@ -525,6 +542,10 @@ export async function processBroadcastBatch(
       .is("sent_at", null)
       .select("id")
       .maybeSingle();
+    if (claimError) {
+      failure = serverFailure(`Рассылки: захват получателя: ${claimError.message}`);
+      break;
+    }
     if (!claimed) continue;
     // Итог — CAS-ом по нашей метке захвата: отмена или чужой запуск,
     // успевшие поменять строку, не будут перезаписаны и посчитаны дважды.
@@ -570,11 +591,13 @@ export async function processBroadcastBatch(
       p_blocked: blocked,
     });
     if (error) {
-      const { data: fresh } = await ctx.db
+      const { data: fresh, error: freshError } = await ctx.db
         .from("broadcasts")
         .select("sent_count, failed_count, blocked_count")
         .eq("id", broadcast.id)
         .single();
+      // Без прочитанных счётчиков запись «0 + отправлено» затёрла бы накопленное.
+      if (freshError) throw serverFailure(`Рассылки: счётчики: ${freshError.message}`);
       await ctx.db
         .from("broadcasts")
         .update({
@@ -586,11 +609,15 @@ export async function processBroadcastBatch(
     }
   }
 
-  const { count } = await ctx.db
+  if (failure) throw failure;
+
+  const { count, error: countError } = await ctx.db
     .from("broadcast_recipients")
     .select("id", { count: "exact", head: true })
     .eq("broadcast_id", broadcast.id)
     .eq("status", "pending");
+  // Не сосчитали остаток — рассылку не закрываем (иначе «0 ожидающих» по сбою).
+  if (countError) throw serverFailure(`Рассылки: остаток: ${countError.message}`);
   // В счёт идут и захваченные параллельным запуском: пока он шлёт,
   // рассылка не закрывается.
   const done = !count;
@@ -613,37 +640,42 @@ async function unreachableNow(
   channel: BroadcastChannel,
 ): Promise<Set<number>> {
   if (ids.length === 0) return new Set();
-  const { data: optedOut } = await ctx.db
+  const { data: optedOut, error: optError } = await ctx.db
     .from("bot_users")
     .select("telegram_id")
     .in("telegram_id", ids)
     .eq("platform", channel)
     .eq("opt_out", true);
+  // Не прочитали, кто отписан, — не шлём никому из пакета.
+  if (optError) throw serverFailure(`Рассылки: отписавшиеся: ${optError.message}`);
   const out = new Set((optedOut ?? []).map((u) => Number(u.telegram_id)));
   if (channel === "telegram") {
-    const { data: blocked } = await ctx.db
+    const { data: blocked, error: blockedError } = await ctx.db
       .from("blocked_users")
       .select("telegram_id")
       .in("telegram_id", ids);
+    if (blockedError) throw serverFailure(`Рассылки: блокировки: ${blockedError.message}`);
     for (const b of blocked ?? []) out.add(Number(b.telegram_id));
   }
   return out;
 }
 
 export async function cancelBroadcast(ctx: TenantContext, id: string): Promise<boolean> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("broadcasts")
     .update({ status: "cancelled", completed_at: new Date().toISOString() })
     .eq("id", id)
     .in("status", ["queued", "sending"])
     .select("id")
     .maybeSingle();
+  if (error) throw serverFailure(`Рассылки: отмена: ${error.message}`);
   if (!data) return false;
-  await ctx.db
+  const rest = await ctx.db
     .from("broadcast_recipients")
     .update({ status: "failed", error_message: "cancelled" })
     .eq("broadcast_id", id)
     .eq("status", "pending");
+  if (rest.error) throw serverFailure(`Рассылки: получатели отменённой: ${rest.error.message}`);
   return true;
 }
 
@@ -661,12 +693,13 @@ export async function hasActiveBroadcast(
   ctx: TenantContext,
   channel: BroadcastChannel = "telegram",
 ): Promise<boolean> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("broadcasts")
     .select("id, audience_filter")
     .in("status", ["queued", "sending"])
     .eq("channel", channel)
     .limit(ACTIVE_SCAN);
+  if (error) throw serverFailure(`Рассылки: активные: ${error.message}`);
   const now = Date.now();
   return (data ?? []).some((b) => isDue(b, now));
 }

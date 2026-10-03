@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { updateSettingAtomic } from "@/core/settings/settings";
 
@@ -34,10 +35,11 @@ export async function clicksFor(
 ): Promise<Record<string, number>> {
   if (broadcastIds.length === 0) return {};
   const byMark = new Map(broadcastIds.map((id) => [`${CLICKS_PREFIX}${clickMark(id)}`, id]));
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("app_settings")
     .select("key, value")
     .in("key", [...byMark.keys()]);
+  if (error) throw serverFailure(`Рассылки: клики: ${error.message}`);
   const out: Record<string, number> = {};
   for (const r of data ?? []) {
     const id = byMark.get(r.key);

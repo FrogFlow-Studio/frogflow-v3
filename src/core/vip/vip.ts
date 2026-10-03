@@ -4,6 +4,7 @@ import { getSettings } from "@/core/settings/settings";
 import { serviceDb } from "@/core/db/client.server";
 import { isLocale, type Locale } from "@/core/i18n/locale";
 import { UserError } from "@/core/i18n/user-error";
+import { serverFailure } from "@/lib/server-failure";
 import {
   addTariffDuration,
   formatDateTime,
@@ -105,18 +106,20 @@ export async function renewTariffs(ctx: TenantContext): Promise<TariffRow[]> {
 }
 
 export async function entryTariff(ctx: TenantContext): Promise<TariffRow | null> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("vip_tariffs")
     .select("*")
     .eq("is_entry", true)
     .eq("is_active", true)
     .limit(1)
     .maybeSingle();
+  if (error) throw serverFailure(`VIP: тариф «первый вход»: ${error.message}`);
   return data ?? null;
 }
 
 export async function getTariff(ctx: TenantContext, id: string): Promise<TariffRow | null> {
-  const { data } = await ctx.db.from("vip_tariffs").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await ctx.db.from("vip_tariffs").select("*").eq("id", id).maybeSingle();
+  if (error) throw serverFailure(`VIP: тариф: ${error.message}`);
   return data ?? null;
 }
 
@@ -169,10 +172,11 @@ export async function saveTariff(ctx: TenantContext, input: TariffInput): Promis
 }
 
 export async function deleteTariff(ctx: TenantContext, id: string): Promise<void> {
-  const { count } = await ctx.db
+  const { count, error: countError } = await ctx.db
     .from("vip_subscriptions")
     .select("id", { count: "exact", head: true })
     .eq("tariff_id", id);
+  if (countError) throw serverFailure(`VIP: подписки тарифа: ${countError.message}`);
   if ((count ?? 0) > 0)
     throw new UserError(
       "err.vip.tariffHasSubscriptions",
@@ -212,22 +216,24 @@ export async function memberAssignedTariff(
   ctx: TenantContext,
   telegramId: number,
 ): Promise<TariffRow | null> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("vip_member_profiles")
     .select("assigned_tariff_id, vip_tariffs(*)")
     .eq("telegram_id", telegramId)
     .maybeSingle();
+  if (error) throw serverFailure(`VIP: персональный тариф: ${error.message}`);
   const t = (data?.vip_tariffs as TariffRow | null) ?? null;
   return data?.assigned_tariff_id && t?.is_active ? t : null;
 }
 
 /** Язык покупателя VIP-бота — выбран явно, не по языку устройства; null — первый контакт. */
 export async function memberLocale(ctx: TenantContext, telegramId: number): Promise<Locale | null> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("vip_member_profiles")
     .select("locale")
     .eq("telegram_id", telegramId)
     .maybeSingle();
+  if (error) throw serverFailure(`VIP: язык участника: ${error.message}`);
   return isLocale(data?.locale) ? data!.locale : null;
 }
 
@@ -260,7 +266,7 @@ export async function activeSubscription(
   telegramId: number,
   now = new Date(),
 ): Promise<SubscriptionWithTariff | null> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("vip_subscriptions")
     .select(WITH_TARIFF)
     .eq("telegram_id", telegramId)
@@ -269,6 +275,7 @@ export async function activeSubscription(
     .order("expires_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (error) throw serverFailure(`VIP: действующая подписка: ${error.message}`);
   return (data as SubscriptionWithTariff | null) ?? null;
 }
 
@@ -290,11 +297,12 @@ export async function pendingSubscription(
 
 /** Был ли когда-нибудь оплаченный доступ (active/expired) — тогда «первый вход» недоступен. */
 export async function hadPaidAccess(ctx: TenantContext, telegramId: number): Promise<boolean> {
-  const { count } = await ctx.db
+  const { count, error } = await ctx.db
     .from("vip_subscriptions")
     .select("id", { count: "exact", head: true })
     .eq("telegram_id", telegramId)
     .in("status", ["active", "expired"]);
+  if (error) throw serverFailure(`VIP: была ли оплата: ${error.message}`);
   return (count ?? 0) > 0;
 }
 
@@ -302,11 +310,12 @@ export async function getSubscription(
   ctx: TenantContext,
   id: string,
 ): Promise<SubscriptionWithTariff | null> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("vip_subscriptions")
     .select(WITH_TARIFF)
     .eq("id", id)
     .maybeSingle();
+  if (error) throw serverFailure(`VIP: подписка: ${error.message}`);
   return (data as SubscriptionWithTariff | null) ?? null;
 }
 
@@ -351,26 +360,34 @@ export async function startPending(
     first_name: user.first_name ?? null,
     last_name: user.last_name ?? null,
   };
-  const { data: pendings } = await ctx.db
+  const { data: pendings, error: pendingsError } = await ctx.db
     .from("vip_subscriptions")
     .select("id")
     .eq("telegram_id", telegramId)
     .eq("status", "pending_payment")
     .order("created_at", { ascending: false });
+  if (pendingsError) throw serverFailure(`VIP: ожидающие заявки: ${pendingsError.message}`);
   const existing = pendings?.[0];
   if (existing) {
-    await ctx.db.from("vip_subscriptions").update(person).eq("id", existing.id);
+    const upd = await ctx.db.from("vip_subscriptions").update(person).eq("id", existing.id);
+    if (upd.error) throw serverFailure(`VIP: заявка не обновлена: ${upd.error.message}`);
     const older = (pendings ?? []).slice(1).map((p) => p.id);
-    if (older.length)
-      await ctx.db.from("vip_subscriptions").update({ status: "cancelled" }).in("id", older);
+    if (older.length) {
+      const cancel = await ctx.db
+        .from("vip_subscriptions")
+        .update({ status: "cancelled" })
+        .in("id", older);
+      if (cancel.error) throw serverFailure(`VIP: старые заявки: ${cancel.error.message}`);
+    }
     return { id: existing.id };
   }
-  const { data: cancelled } = await ctx.db
+  const { data: cancelled, error: cancelledError } = await ctx.db
     .from("vip_subscriptions")
     .select("id")
     .eq("telegram_id", telegramId)
     .eq("status", "cancelled")
     .order("created_at", { ascending: false });
+  if (cancelledError) throw serverFailure(`VIP: отклонённые заявки: ${cancelledError.message}`);
   const reuse = cancelled?.[0];
   if (reuse) {
     const { error } = await ctx.db
@@ -386,7 +403,10 @@ export async function startPending(
       .eq("status", "cancelled");
     if (error) throw new Error(error.message);
     const extra = (cancelled ?? []).slice(1).map((r) => r.id);
-    if (extra.length) await ctx.db.from("vip_subscriptions").delete().in("id", extra);
+    if (extra.length) {
+      const del = await ctx.db.from("vip_subscriptions").delete().in("id", extra);
+      if (del.error) throw serverFailure(`VIP: лишние заявки: ${del.error.message}`);
+    }
     return { id: reuse.id };
   }
   const { data, error } = await ctx.db
@@ -420,10 +440,14 @@ export async function attachProof(
     console.error("[vip] proof upload failed", up.error.message);
     return null;
   }
-  await ctx.db
+  const saved = await ctx.db
     .from("vip_subscriptions")
     .update({ payment_proof_path: key })
     .eq("id", subscriptionId);
+  if (saved.error) {
+    console.error("[vip] proof path not saved", saved.error.message);
+    return null;
+  }
   return key;
 }
 
@@ -468,7 +492,8 @@ async function latestActiveExpiry(
     .eq("status", "active")
     .gt("expires_at", new Date().toISOString());
   if (excludeId) q = q.neq("id", excludeId);
-  const { data } = await q.order("expires_at", { ascending: false }).limit(1).maybeSingle();
+  const { data, error } = await q.order("expires_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw serverFailure(`VIP: срок другой подписки: ${error.message}`);
   return data?.expires_at ? new Date(data.expires_at) : null;
 }
 
@@ -592,12 +617,13 @@ export async function rejectSubscription(
   if (error) throw new Error(error.message);
   if (!updated) return { ok: true, alreadyProcessed: true };
   // Одна «отклонённая» на человека.
-  await ctx.db
+  const cleanup = await ctx.db
     .from("vip_subscriptions")
     .delete()
     .eq("telegram_id", updated.telegram_id)
     .eq("status", "cancelled")
     .neq("id", id);
+  if (cleanup.error) console.error("[vip] old rejected not removed", cleanup.error.message);
   await group.send(
     updated.telegram_id,
     `❌ Ваша оплата была отклонена.${note ? `\n\nПричина: ${esc(note)}` : ""} Если это ошибка, свяжитесь с поддержкой.`,
@@ -859,11 +885,12 @@ export async function excludeMember(
   if (!sub) throw new UserError("err.vip.subscriptionNotFound", "Подписка не найдена");
   const { groupId } = await vipSettings(ctx);
   if (!groupId) throw new UserError("err.vip.groupIdMissing", "Не настроен ID VIP-группы");
-  const { data: rows } = await ctx.db
+  const { data: rows, error: rowsError } = await ctx.db
     .from("vip_subscriptions")
     .select("id, group_invite_link")
     .eq("telegram_id", sub.telegram_id)
     .in("status", ["active", "pending_payment"]);
+  if (rowsError) throw serverFailure(`VIP: ссылки участника: ${rowsError.message}`);
   for (const r of rows ?? [])
     if (r.group_invite_link) await group.revokeInvite(groupId, r.group_invite_link);
   const ban = await group.kick(groupId, sub.telegram_id);
@@ -874,16 +901,18 @@ export async function excludeMember(
           "err.vip.kickFailed",
           "Не удалось исключить из группы (бот админ? право ban users?)",
         );
-  await ctx.db
+  const closed = await ctx.db
     .from("vip_subscriptions")
     .update({ status: "expired", group_invite_link: null, admin_note: "admin_excluded" })
     .eq("telegram_id", sub.telegram_id)
     .eq("status", "active");
-  await ctx.db
+  if (closed.error) throw serverFailure(`VIP: доступ не закрыт: ${closed.error.message}`);
+  const dropped = await ctx.db
     .from("vip_subscriptions")
     .update({ status: "cancelled", group_invite_link: null })
     .eq("telegram_id", sub.telegram_id)
     .eq("status", "pending_payment");
+  if (dropped.error) throw serverFailure(`VIP: заявка не отменена: ${dropped.error.message}`);
   await group.send(
     sub.telegram_id,
     "❌ <b>Доступ к VIP-сообществу отозван администратором.</b>\n\nВы исключены из группы. Чтобы вернуться — оформите подписку заново в боте.",
@@ -905,12 +934,18 @@ export async function deleteSubscription(
   }
   const { error } = await ctx.db.from("vip_subscriptions").delete().eq("id", id);
   if (error) throw new Error(error.message);
-  const { count } = await ctx.db
+  const { count, error: leftError } = await ctx.db
     .from("vip_subscriptions")
     .select("id", { count: "exact", head: true })
     .eq("telegram_id", sub.telegram_id);
+  if (leftError) throw serverFailure(`VIP: остаток подписок: ${leftError.message}`);
   const forgotProfile = (count ?? 0) === 0;
-  if (forgotProfile)
-    await ctx.db.from("vip_member_profiles").delete().eq("telegram_id", sub.telegram_id);
+  if (forgotProfile) {
+    const gone = await ctx.db
+      .from("vip_member_profiles")
+      .delete()
+      .eq("telegram_id", sub.telegram_id);
+    if (gone.error) throw serverFailure(`VIP: профиль не удалён: ${gone.error.message}`);
+  }
   return { forgotProfile };
 }
