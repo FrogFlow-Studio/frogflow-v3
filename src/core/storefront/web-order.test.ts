@@ -488,6 +488,36 @@ describe("заказ с сайта: страница заказа", () => {
     expect(v).toMatchObject({ total: 2400, currency: "RUB", discount: 100 });
   });
 
+  it("предзаказ в заказе: страница называет самую позднюю дату отправки", async () => {
+    const { ctx, db } = withOrder();
+    (ctx.tenant.modules as Record<string, boolean>).stock = true;
+    const ev = (id: string, lines: unknown) => ({
+      id,
+      bot_id: BOT,
+      event_id: `order:9:preorder:${id}`,
+      event_type: "order.preorder",
+      status: "event",
+      payload: { order_id: 9, actor: "bot", lines },
+    });
+    db.tables.zernio_logs = [
+      ev("e1", [
+        { product_id: "a", quantity: 1, from: "2026-11-01" },
+        { product_id: "b", quantity: 1, from: "2026-12-10" },
+        { product_id: "c", quantity: 1, from: null },
+      ]),
+    ];
+    expect((await webOrderView(ctx, 9))!.preorder).toEqual({ from: "2026-12-10" });
+    db.tables.zernio_logs = [ev("e2", [{ product_id: "a", quantity: 2, from: null }])];
+    expect((await webOrderView(ctx, 9))!.preorder).toEqual({ from: null });
+  });
+
+  it("обычный заказ без предзаказа: пометки нет", async () => {
+    const { ctx, db } = withOrder();
+    (ctx.tenant.modules as Record<string, boolean>).stock = true;
+    db.tables.zernio_logs = [];
+    expect((await webOrderView(ctx, 9))!.preorder).toBeNull();
+  });
+
   it("скидка считается с доставкой и не бывает отрицательной", () => {
     const items = [{ price_snapshot: 1000, quantity: 2 }];
     expect(orderDiscount({ total: 2300, delivery_fee: 500, order_items: items })).toBe(200);

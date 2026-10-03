@@ -70,6 +70,9 @@ const ru = {
   "catalog.product": "Товар",
   "catalog.outOfStock": "нет в наличии",
   "catalog.preorder": "предзаказ",
+  "order.preorder": "🕒 В заказе есть предзаказ: товара пока нет в наличии, отправка с {date}.",
+  "order.preorderNoDate":
+    "🕒 В заказе есть предзаказ: товара пока нет в наличии, срок отправки продавец уточнит.",
   "product.preorder": "Предзаказ: товара пока нет в наличии, отправка с {date}",
   "product.preorderNoDate":
     "Предзаказ: товара пока нет в наличии, срок отправки уточним после заказа",
@@ -469,6 +472,10 @@ const kk: Dict = {
   "catalog.product": "Тауар",
   "catalog.outOfStock": "қоймада жоқ",
   "catalog.preorder": "алдын ала тапсырыс",
+  "order.preorder":
+    "🕒 Тапсырыста алдын ала тапсырыс бар: тауар әзірге қоймада жоқ, {date} күнінен бастап жіберіледі.",
+  "order.preorderNoDate":
+    "🕒 Тапсырыста алдын ала тапсырыс бар: тауар әзірге қоймада жоқ, жіберу мерзімін сатушы нақтылайды.",
   "product.preorder":
     "Алдын ала тапсырыс: тауар әзірге қоймада жоқ, {date} күнінен бастап жіберіледі",
   "product.preorderNoDate":
@@ -860,6 +867,9 @@ const en: Dict = {
   "catalog.product": "Product",
   "catalog.outOfStock": "out of stock",
   "catalog.preorder": "pre-order",
+  "order.preorder": "🕒 Your order includes a pre-order: not in stock yet, ships from {date}.",
+  "order.preorderNoDate":
+    "🕒 Your order includes a pre-order: not in stock yet, the seller will confirm the shipping date.",
   "product.preorder": "Pre-order: not in stock yet, ships from {date}",
   "product.preorderNoDate":
     "Pre-order: not in stock yet, we will confirm the shipping date after you order",
@@ -1250,6 +1260,10 @@ const uz: Dict = {
   "catalog.product": "Mahsulot",
   "catalog.outOfStock": "mavjud emas",
   "catalog.preorder": "oldindan buyurtma",
+  "order.preorder":
+    "🕒 Buyurtmada oldindan buyurtma bor: mahsulot hozircha omborda yo‘q, {date} dan boshlab jo‘natiladi.",
+  "order.preorderNoDate":
+    "🕒 Buyurtmada oldindan buyurtma bor: mahsulot hozircha omborda yo‘q, jo‘natish muddatini sotuvchi aniqlaydi.",
   "product.preorder":
     "Oldindan buyurtma: mahsulot hozircha omborda yo‘q, {date} dan boshlab jo‘natiladi",
   "product.preorderNoDate":

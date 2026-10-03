@@ -380,6 +380,11 @@ export type WebOrderView = {
     fee: number;
   } | null;
   items: Array<{ name: string; qty: number; price: number }>;
+  /**
+   * Часть заказа взята предзаказом (core/preorder): остаток не списан, отправка
+   * не раньше `from` (самая поздняя из названных дат; null — срок не назван).
+   */
+  preorder: { from: string | null } | null;
   /** Скидка промокодом, баллами и сертификатом вместе; total — уже после неё. */
   discount: number;
   /**
@@ -478,6 +483,27 @@ export function orderDiscount(order: {
   return Math.max(0, Math.round((gross - (Number(order.total) || 0)) * 100) / 100);
 }
 
+/**
+ * Предзаказ по заказу — по событию `order.preorder`. Это подсказка на странице:
+ * не прочиталось — страница открывается без неё (деньги и выдачу событие не решает).
+ */
+async function webOrderPreorder(
+  ctx: TenantContext,
+  orderId: number,
+): Promise<WebOrderView["preorder"]> {
+  if (!ctx.tenant.modules.stock) return null;
+  try {
+    const { preorderLinesOfOrder } = await import("@/core/preorder/preorder");
+    const lines = await preorderLinesOfOrder(ctx, orderId);
+    if (lines.length === 0) return null;
+    const dates = lines.flatMap((l) => (l.from ? [l.from] : [])).sort();
+    return { from: dates.at(-1) ?? null };
+  } catch (e) {
+    console.error(`[web-order] предзаказ заказа #${orderId} не прочитан: ${String(e)}`);
+    return null;
+  }
+}
+
 export async function webOrderView(
   ctx: TenantContext,
   orderId: number,
@@ -521,6 +547,7 @@ export async function webOrderView(
       qty: Number(i.quantity),
       price: Number(i.price_snapshot),
     })),
+    preorder: await webOrderPreorder(ctx, order.id),
     discount: orderDiscount(order),
     payment:
       method || card || abroad

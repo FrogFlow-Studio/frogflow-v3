@@ -12,6 +12,7 @@ import { ReorderButton } from "@/app/storefront/reorder";
 import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
 import { linkWebOrderFn, webOrderLinkStateFn } from "@/app/storefront/tg-login.functions";
 import { formatMoney } from "@/core/money/money";
+import { intlLocale } from "@/app/i18n/admin";
 import { isoToDisplay } from "@/core/fulfillment/pure";
 import { ErrorBox, useAction } from "@/app/ui";
 import type { StorefrontKey } from "@/app/i18n/storefront";
@@ -57,7 +58,7 @@ function OrderPage() {
       setNoLink(!saved);
     }
   }, [slug, id, fromUrl]);
-  const { t } = useStorefrontLocale();
+  const { t, locale } = useStorefrontLocale();
   const login = useTgLogin(slug);
   const [view, setView] = useState<View | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
@@ -127,6 +128,18 @@ function OrderPage() {
         ))}
       </ul>
       <ReorderButton slug={slug} plan={() => webOrderReorderFn({ data: ref })} />
+      {view.preorder && (
+        <p className="text-sm text-muted">
+          {view.preorder.from
+            ? t("order.preorder", {
+                date: new Date(`${view.preorder.from}T12:00:00`).toLocaleDateString(
+                  intlLocale(locale),
+                  { day: "numeric", month: "long", year: "numeric" },
+                ),
+              })
+            : t("order.preorderNoDate")}
+        </p>
+      )}
       {view.discount > 0 && (
         <div className="space-y-1 text-sm">
           <div className="flex justify-between gap-3">
