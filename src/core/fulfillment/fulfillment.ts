@@ -139,7 +139,15 @@ export async function restoreStock(
       .select("id")
       .maybeSingle();
     if (dataError) throw serverFailure(`Выдача: ${dataError.message}`);
-    if (data) return;
+    if (data) {
+      // Возврат выше порога снимает отметку «заканчивается»; сбой сюда не относится.
+      await (
+        await import("@/core/catalog/low-stock")
+      )
+        .resetLowStock(ctx, productId)
+        .catch(() => {});
+      return;
+    }
   }
 }
 

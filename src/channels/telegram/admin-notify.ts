@@ -41,6 +41,8 @@ export async function notifyAdminNewOrder(
     proofUrl?: string;
   } = {},
 ): Promise<void> {
+  // Остаток после этого заказа — отдельное сообщение, независимо от матрицы «новый заказ».
+  await (await import("./low-stock-notify")).notifyLowStock(ctx, order);
   const { loadNotifyPrefs } = await import("@/core/notify/prefs");
   const prefs = await loadNotifyPrefs(ctx);
   const recipients = prefs.kinds.new_order.telegram ? await adminRecipients(ctx) : [];

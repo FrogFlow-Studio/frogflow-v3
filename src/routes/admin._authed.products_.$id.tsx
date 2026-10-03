@@ -133,7 +133,14 @@ function CategoryPicker({
 }
 
 function ProductEditor() {
-  const { product: p, waiting, categories, countries, defaultFulfillment } = Route.useLoaderData();
+  const {
+    product: p,
+    waiting,
+    lowStock,
+    categories,
+    countries,
+    defaultFulfillment,
+  } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const navigate = useNavigate();
@@ -176,6 +183,7 @@ function ProductEditor() {
     };
     const stock = num("stockQuantity");
     const lead = num("leadTimeDays");
+    const lowAt = num("lowStockAt");
     const { id } = await saveProductFn({
       data: {
         id: p?.id ?? null,
@@ -192,6 +200,7 @@ function ProductEditor() {
           fulfillmentKind: kind,
           stockQuantity: stock,
           leadTimeDays: lead,
+          lowStockAt: lowAt,
           images: images.map((i) => i.key),
           materials,
           variants: variants.filter((v) => v.name.trim()),
@@ -474,6 +483,20 @@ function ProductEditor() {
                   defaultValue={p?.stock_quantity ?? ""}
                 />
               </Field>
+              {shop.modules.stock && (
+                <Field
+                  label={t("product.lowStock")}
+                  hint={t("product.lowStockHint", { n: lowStock.shop })}
+                >
+                  <input
+                    className="input"
+                    name="lowStockAt"
+                    type="number"
+                    min={0}
+                    defaultValue={lowStock.own ?? ""}
+                  />
+                </Field>
+              )}
               {kind === "physical" && (
                 <Field label={t("product.leadTime")}>
                   <input

@@ -649,9 +649,13 @@ export const productFn = createServerFn({ method: "GET" })
       data.id && ctx.tenant.modules.waitlist
         ? await (await import("@/core/waitlist/waitlist")).countWaiting(ctx, data.id)
         : 0;
+    const low = ctx.tenant.modules.stock
+      ? await (await import("@/core/catalog/low-stock")).loadThresholds(ctx, data.id)
+      : { shop: 0, own: null };
     return {
       product,
       waiting,
+      lowStock: low,
       categories,
       countries: methods
         .filter((x) => x.is_active)
@@ -689,6 +693,8 @@ const productInput = z.object({
     .array(z.object({ name: z.string().min(1).max(80), price: z.number().min(0) }))
     .max(30)
     .default([]),
+  /** Предупредить продавцу, когда остаток ≤ этого числа; null — порог магазина (core/catalog/low-stock). */
+  lowStockAt: z.number().int().min(0).max(100_000).nullable().default(null),
   /** Курс (модуль «Курсы»): уроки вместо файлов — файл не обязателен (core/courses/marker). */
   isCourse: z.boolean().default(false),
 });
@@ -737,7 +743,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await adminWrite();
     const m = await import("@/core/catalog/admin");
-    const { images, materials, variants, isCourse, ...fields } = data.product;
+    const { images, materials, variants, isCourse, lowStockAt, ...fields } = data.product;
     // Курс продаётся, когда у него появятся уроки: без них товар не попадёт
     // на витрину (core/courses/course.server syncCourseMarker).
     const course = isCourse && ctx.tenant.modules.courses;
@@ -755,6 +761,10 @@ export const saveProductFn = createServerFn({ method: "POST" })
       m.setProductMaterials(ctx, id, materials),
       m.setProductVariants(ctx, id, variants),
     ]);
+    if (ctx.tenant.modules.stock) {
+      const { saveProductThreshold } = await import("@/core/catalog/low-stock");
+      await saveProductThreshold(ctx, id, lowStockAt);
+    }
     const waitlist = await maybeNotifyWaitlist(ctx, id, before);
     return { id, waitlist };
   });

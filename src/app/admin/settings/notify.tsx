@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { Card, ErrorBox, Field, useAction } from "@/app/ui";
-import { notifyPrefsFn, saveNotifyPrefsFn } from "@/app/admin/notify.functions";
+import {
+  lowStockFn,
+  notifyPrefsFn,
+  saveLowStockFn,
+  saveNotifyPrefsFn,
+} from "@/app/admin/notify.functions";
 import { NOTIFY_KINDS, type NotifyPrefs } from "@/core/notify/prefs";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
@@ -158,6 +163,60 @@ export function NotifyCard() {
         {owner && (
           <div className="flex items-center gap-3">
             <button className="btn-primary" disabled={save.busy}>
+              {t("common.save")}
+            </button>
+            {saved && <span className="text-sm text-ok">{t("settings.saved")}</span>}
+          </div>
+        )}
+        <ErrorBox error={save.error} />
+      </form>
+    </Card>
+  );
+}
+
+/**
+ * Порог «заканчивается на складе»: когда остаток товара падает до него или
+ * ниже, продавцу приходит одно сообщение. У товара может быть свой порог.
+ * 0 — не предупреждать. Владелец меняет, остальные видят.
+ */
+export function LowStockCard() {
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const [value, setValue] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    void lowStockFn().then((r) => setValue(String(r.threshold)));
+  }, []);
+  const owner = shop.role === "owner";
+  const save = useAction(async () => {
+    await saveLowStockFn({ data: { threshold: Number(value) || 0 } });
+    setSaved(true);
+  });
+  return (
+    <Card title={t("settings.lowStock.title")}>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSaved(false);
+          void save.run().catch(() => {});
+        }}
+      >
+        <p className="text-sm text-muted">{t("settings.lowStock.intro")}</p>
+        <Field label={t("settings.lowStock.label")} hint={t("settings.lowStock.hint")}>
+          <input
+            className="input w-32"
+            type="number"
+            min={0}
+            max={100000}
+            value={value ?? ""}
+            disabled={!owner || value === null}
+            onChange={(e) => setValue(e.target.value)}
+          />
+        </Field>
+        {owner && (
+          <div className="flex items-center gap-3">
+            <button className="btn-primary" disabled={save.busy || value === null}>
               {t("common.save")}
             </button>
             {saved && <span className="text-sm text-ok">{t("settings.saved")}</span>}

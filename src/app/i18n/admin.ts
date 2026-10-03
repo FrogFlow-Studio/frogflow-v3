@@ -30,6 +30,7 @@ import * as botPreview from "./admin/bot-preview";
 import * as tickets from "./admin/tickets";
 import * as customer from "./admin/customer";
 import * as pipeline from "./admin/pipeline";
+import * as shop4Stock from "./admin/shop4-stock";
 import * as physical from "./admin/physical";
 import * as refund from "./admin/refund";
 import * as igImport from "./admin/ig-import";
@@ -415,6 +416,7 @@ const ru = {
   ...tickets.ru,
   ...customer.ru,
   ...pipeline.ru,
+  ...shop4Stock.ru,
   ...physical.ru,
   ...refund.ru,
   ...igImport.ru,
@@ -1467,6 +1469,7 @@ const kk: Dict = {
   ...tickets.kk,
   ...customer.kk,
   ...pipeline.kk,
+  ...shop4Stock.kk,
   ...physical.kk,
   ...refund.kk,
   ...igImport.kk,
@@ -1510,6 +1513,7 @@ const en: Dict = {
   ...tickets.en,
   ...customer.en,
   ...pipeline.en,
+  ...shop4Stock.en,
   ...physical.en,
   ...refund.en,
   ...igImport.en,
@@ -1553,6 +1557,7 @@ const uz: Dict = {
   ...tickets.uz,
   ...customer.uz,
   ...pipeline.uz,
+  ...shop4Stock.uz,
   ...physical.uz,
   ...refund.uz,
   ...igImport.uz,
