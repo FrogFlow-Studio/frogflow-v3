@@ -2,7 +2,7 @@ import { pageAll } from "@/core/db/page";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { courseKey, parseCourse, type Course } from "./course";
 import type { TaskGate } from "./access";
-import { loadHwStatusesFor } from "./gate.server";
+import { loadHwStatusesFor, loadQuizPassedFor } from "./gate.server";
 import { readSettings, selectIn } from "./db.server";
 import { parseRun, RUN_KEY_PREFIX, type CourseRun } from "./run.server";
 
@@ -21,6 +21,7 @@ export type ActiveRun = {
   variantId: string | null;
   /** Сдачи ДЗ по урокам — только у курсов в режиме «по заданиям». */
   hw?: TaskGate["hw"];
+  quiz?: TaskGate["quiz"];
   order: {
     id: number;
     status: string;
@@ -84,6 +85,10 @@ export async function loadRuns(ctx: TenantContext): Promise<ActiveRun[]> {
     ctx,
     taskItems.map((r) => r.itemId),
   );
+  const quizByItem = await loadQuizPassedFor(
+    ctx,
+    taskItems.map((r) => r.itemId),
+  );
   return runs.flatMap((r) => {
     const item = itemById.get(r.itemId);
     const order = item ? orderById.get(item.order_id) : undefined;
@@ -98,6 +103,7 @@ export async function loadRuns(ctx: TenantContext): Promise<ActiveRun[]> {
             course,
             variantId: item.product_variant_id,
             ...(hwByItem.has(r.itemId) ? { hw: hwByItem.get(r.itemId) } : {}),
+            ...(quizByItem.has(r.itemId) ? { quiz: quizByItem.get(r.itemId) } : {}),
             order,
           },
         ]

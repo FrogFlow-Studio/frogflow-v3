@@ -5,7 +5,7 @@ import { cohortForPurchase, courseTimeline, type Timeline } from "./cohort";
 import { courseKey, parseCourse, type Course } from "./course";
 import { readSetting } from "./db.server";
 import type { TaskGate } from "./access";
-import { loadHwStatuses } from "./gate.server";
+import { loadHwStatuses, loadQuizPassed } from "./gate.server";
 
 /**
  * Прохождение курса одной покупкой (позицией заказа): когда начато и какие
@@ -95,6 +95,8 @@ export type CoursePurchase = {
   run: CourseRun | null;
   /** Сдачи ДЗ по урокам; читаются только в режиме «по заданиям» (А24). */
   hw?: TaskGate["hw"];
+  /** Уроки с пройденным тестом; читаются вместе со сдачами (А25). */
+  quiz?: TaskGate["quiz"];
 };
 
 /**
@@ -133,7 +135,9 @@ export async function coursePurchase(
     name: item.name_snapshot,
     course,
     run: parseRun(await readSetting(ctx, runKey(item.id))),
-    ...(course.schedule.mode === "tasks" ? { hw: await loadHwStatuses(ctx, item.id) } : {}),
+    ...(course.schedule.mode === "tasks"
+      ? { hw: await loadHwStatuses(ctx, item.id), quiz: await loadQuizPassed(ctx, item.id) }
+      : {}),
   };
 }
 

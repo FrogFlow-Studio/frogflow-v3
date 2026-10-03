@@ -111,6 +111,9 @@ export async function courseStudents(
         return h ? ([[l.id, h.status]] as const) : [];
       }),
     );
+    const quizResults = new Map(
+      quizLessons.map((l) => [l.id, parseQuizResult(quizRaw.get(quizKey(i.id, l.id)))] as const),
+    );
     const tl = courseTimeline(
       {
         course,
@@ -118,6 +121,7 @@ export async function courseStudents(
         boughtAt: o.created_at,
         variantId: i.product_variant_id ?? null,
         hw: parsedHw,
+        quiz: new Set([...quizResults].filter(([, r]) => r.passed).map(([id]) => id)),
       },
       ctx.timezone,
       now,
@@ -125,9 +129,6 @@ export async function courseStudents(
     const open = run ? tl.access.filter((a) => a.open).length : 0;
     // Отметки удалённых уроков не считаем.
     const done = run ? run.done.filter((id) => ids.has(id)).length : 0;
-    const quizResults = new Map(
-      quizLessons.map((l) => [l.id, parseQuizResult(quizRaw.get(quizKey(i.id, l.id)))] as const),
-    );
     const hw = { submitted: 0, accepted: 0, revise: 0 };
     for (const l of course.lessons) {
       const h = l.homework ? parseHomework(hwRaw.get(hwKey(i.id, l.id))) : null;

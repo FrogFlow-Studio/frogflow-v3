@@ -13,6 +13,7 @@ import {
   type FunnelRow,
 } from "./funnel";
 import { hwKey, parseHomework, type HomeworkStatus } from "./homework";
+import { parseQuizResult, quizKey } from "./lesson-quiz";
 import { parseRun, runKey } from "./run.server";
 
 /**
@@ -53,7 +54,8 @@ async function loadFunnelRows(ctx: TenantContext, productId: string, now: Date):
   );
   const orderById = new Map(orders.map((o) => [o.id, o]));
   const bought = items.filter((i) => orderById.has(i.order_id));
-  const [runs, hwRaw] = await Promise.all([
+  const quizLessons = course.lessons.filter((l) => l.quiz);
+  const [runs, hwRaw, quizRaw] = await Promise.all([
     readSettings(
       ctx,
       bought.map((i) => runKey(i.id)),
@@ -61,6 +63,10 @@ async function loadFunnelRows(ctx: TenantContext, productId: string, now: Date):
     readSettings(
       ctx,
       bought.flatMap((i) => course.lessons.filter((l) => l.homework).map((l) => hwKey(i.id, l.id))),
+    ),
+    readSettings(
+      ctx,
+      bought.flatMap((i) => quizLessons.map((l) => quizKey(i.id, l.id))),
     ),
   ]);
   const rows = bought.map((i) => {
@@ -80,6 +86,11 @@ async function loadFunnelRows(ctx: TenantContext, productId: string, now: Date):
         boughtAt: o.created_at,
         variantId: i.product_variant_id ?? null,
         hw: status,
+        quiz: new Set(
+          quizLessons
+            .filter((l) => parseQuizResult(quizRaw.get(quizKey(i.id, l.id))).passed)
+            .map((l) => l.id),
+        ),
       },
       ctx.timezone,
       now,

@@ -25,6 +25,8 @@ export type LessonAccess = {
 export type TaskGate = {
   hw: ReadonlyMap<string, "submitted" | "accepted" | "revise">;
   done: readonly string[];
+  /** Уроки с пройденным тестом (А25): урок с тестом закрыт, пока тест не пройден. */
+  quiz: ReadonlySet<string>;
   /** Тариф без проверки ДЗ: сдавать некому, урок засчитывается по отметке «пройден». */
   byDone: boolean;
 };
@@ -36,6 +38,8 @@ export type TaskGate = {
  * доработку уже открытый урок не закрывает.
  */
 export function lessonCleared(lesson: Lesson, unlock: HwUnlock, gate: TaskGate): boolean {
+  // Пройденный тест — как принятое задание: нужны и ДЗ (если есть), и тест (если есть).
+  if (lesson.quiz && !gate.quiz.has(lesson.id)) return false;
   if (!lesson.homework) return true;
   if (gate.byDone) return gate.done.includes(lesson.id);
   const status = gate.hw.get(lesson.id);

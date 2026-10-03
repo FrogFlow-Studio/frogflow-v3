@@ -36,6 +36,7 @@ export async function courseSegmentMembers(
         boughtAt: r.order.created_at,
         variantId: r.variantId,
         hw: r.hw,
+        quiz: r.quiz,
       },
       ctx.timezone,
       now,

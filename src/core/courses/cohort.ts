@@ -117,6 +117,8 @@ export type TimelineInput = {
    * в этом режиме открыт только первый урок.
    */
   hw?: TaskGate["hw"];
+  /** Уроки с пройденным тестом (А25): в режиме «по заданиям» тоже открывают следующий. */
+  quiz?: TaskGate["quiz"];
   /** Когда куплено (создан заказ): по нему выбирается поток. */
   boughtAt: string;
   variantId: string | null;
@@ -161,6 +163,7 @@ export function courseTimeline(x: TimelineInput, tz: string, now = new Date()): 
   const gate: TaskGate = {
     hw: x.hw ?? new Map(),
     done: x.run?.done ?? [],
+    quiz: x.quiz ?? new Set(),
     byDone: !tariff.homework,
   };
   const access = lessonsAccess(x.course, start, now.getTime(), gate).map((a) =>

@@ -12,6 +12,7 @@ const { reviewHomework, submitHomework } = await import("./homework.server");
 const { coursePurchase, markLesson, purchaseTimeline } = await import("./run.server");
 const { loadRuns } = await import("./runs.server");
 const { announceNewLessons } = await import("./announce.server");
+const { submitQuiz } = await import("./lesson-quiz.server");
 
 /** Расписание «по заданиям» (А24): следующий урок открывается после ДЗ предыдущего. */
 const T = "11111111-2222-3333-4444-555555555555";
@@ -93,7 +94,12 @@ describe("урок после ДЗ: чистая логика", () => {
   });
 
   it("урок без задания следующий не задерживает", () => {
-    const gate = { hw: new Map([[id(2), "accepted" as const]]), done: [], byDone: false };
+    const gate = {
+      hw: new Map([[id(2), "accepted" as const]]),
+      done: [],
+      quiz: new Set<string>(),
+      byDone: false,
+    };
     const a = lessonsAccess(c, START, now, {
       ...gate,
       hw: new Map([
@@ -214,5 +220,56 @@ describe("урок после ДЗ: крон «новый урок»", () => {
     } finally {
       setEnvForTests(undefined);
     }
+  });
+});
+
+describe("урок с тестом в режиме «по заданиям»: тест и ДЗ вместе", () => {
+  const quiz = { pass: 100, questions: [{ text: "2+2?", options: ["3", "4"], correct: [1] }] };
+  const withQuiz: Course = {
+    schedule: { mode: "tasks", unlock: "accepted" },
+    lessons: [{ ...lessons[0]!, quiz }, { ...lessons[2]!, id: id(2), quiz }, { ...lessons[2]! }],
+  };
+  const takeQuiz = async (ctx: TenantContext, lesson: string, answer: number) =>
+    submitQuiz(ctx, (await coursePurchase(ctx, ITEM))!, lesson, [[answer]], 0, NOW);
+
+  it("нужны и принятое ДЗ, и пройденный тест: по отдельности следующий урок закрыт", async () => {
+    const { ctx } = shop(withQuiz);
+    expect(await opens(ctx)).toEqual([true, false, false]);
+    // Только тест — ДЗ не принято.
+    expect((await takeQuiz(ctx, id(1), 1)).ok).toBe(true);
+    expect(await opens(ctx)).toEqual([true, false, false]);
+    // Принятое ДЗ при пройденном тесте открывает урок 2.
+    const hw = await submit(ctx, id(1));
+    await review(ctx, id(1), hw.ok ? hw.homework.rev : -1, "accepted");
+    expect(await opens(ctx)).toEqual([true, true, false]);
+  });
+
+  it("принятое ДЗ без теста урок не открывает; непройденный тест — тоже", async () => {
+    const { ctx } = shop(withQuiz);
+    const hw = await submit(ctx, id(1));
+    await review(ctx, id(1), hw.ok ? hw.homework.rev : -1, "accepted");
+    expect(await opens(ctx)).toEqual([true, false, false]);
+    const wrong = await takeQuiz(ctx, id(1), 0);
+    expect(wrong.ok && wrong.grade.passed).toBe(false);
+    expect(await opens(ctx)).toEqual([true, false, false]);
+  });
+
+  it("урок только с тестом: пройденный тест открывает следующий", async () => {
+    const { ctx } = shop(withQuiz);
+    const hw = await submit(ctx, id(1));
+    await review(ctx, id(1), hw.ok ? hw.homework.rev : -1, "accepted");
+    await takeQuiz(ctx, id(1), 1);
+    expect(await opens(ctx)).toEqual([true, true, false]);
+    expect((await takeQuiz(ctx, id(2), 1)).ok).toBe(true);
+    expect(await opens(ctx)).toEqual([true, true, true]);
+  });
+
+  it("крон видит тот же набор: пройденные тесты читаются для всех покупок", async () => {
+    const { ctx } = shop(withQuiz);
+    const hw = await submit(ctx, id(1));
+    await review(ctx, id(1), hw.ok ? hw.homework.rev : -1, "accepted");
+    await takeQuiz(ctx, id(1), 1);
+    const run = (await loadRuns(ctx)).find((r) => r.itemId === ITEM)!;
+    expect([...(run.quiz ?? [])]).toEqual([id(1)]);
   });
 });

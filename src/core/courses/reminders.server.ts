@@ -70,6 +70,7 @@ export async function courseReminders(
         boughtAt: r.order.created_at,
         variantId: r.variantId,
         hw: r.hw,
+        quiz: r.quiz,
       },
       ctx.timezone,
       now,
