@@ -13,6 +13,9 @@ export const SPEED_EVENT_KINDS = [
   "status",
 ] as const;
 
+/** Типы событий журнала (`order.<вид>`) для запроса `.in(...)` — фиксированный набор. */
+export const SPEED_EVENT_TYPES = SPEED_EVENT_KINDS.map((k) => `order.${k}`);
+
 export type SpeedEvent = {
   orderId: number;
   /** Время события, ISO. */

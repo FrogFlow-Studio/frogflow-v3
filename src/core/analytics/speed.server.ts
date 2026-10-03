@@ -2,7 +2,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { eachPage } from "@/core/db/page";
 import { ORDER_EVENT_STATUS } from "@/core/orders/events";
-import { orderSpeed, SPEED_EVENT_KINDS, type SpeedEvent, type SpeedRow } from "./speed";
+import { orderSpeed, SPEED_EVENT_TYPES, type SpeedEvent, type SpeedRow } from "./speed";
 
 export async function speedStats(ctx: TenantContext, from: Date, to: Date): Promise<SpeedRow[]> {
   const events: SpeedEvent[] = [];
@@ -16,10 +16,7 @@ export async function speedStats(ctx: TenantContext, from: Date, to: Date): Prom
         .from("zernio_logs")
         .select("id, created_at, event_type, payload")
         .eq("status", ORDER_EVENT_STATUS)
-        .in(
-          "event_type",
-          SPEED_EVENT_KINDS.map((k) => `order.${k}`),
-        )
+        .in("event_type", SPEED_EVENT_TYPES)
         .gte("created_at", from.toISOString())
         .lt("created_at", to.toISOString())
         .order("created_at")
