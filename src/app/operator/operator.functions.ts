@@ -5,6 +5,7 @@ import { CONSULTANT_LIMIT_MAX } from "@/core/consultant/budget";
 import { SMART_SEARCH_USD_MAX } from "@/core/search/smart-pure";
 import { MODULE_KEYS } from "@/core/modules/registry";
 import { VERTICAL_KEYS } from "@/core/verticals/registry";
+import { isOutreachChannel, type OutreachChannel } from "@/core/leads/draft";
 import { LEAD_STAGES, cleanLeadInput } from "@/core/leads/leads";
 
 /**
@@ -1162,4 +1163,37 @@ export const scoreLeadFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await guard();
     return (await leadsImpl()).scoreLead(data.id, await actor());
+  });
+
+export const draftLeadFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: leadId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await leadsImpl()).draftLead(data.id, await actor());
+  });
+
+export const saveLeadDraftFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ id: leadId, draft: z.string().max(2000).nullable() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return { saved: await (await leadsImpl()).saveLeadDraft(data) };
+  });
+
+export const markLeadContactedFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        id: leadId,
+        channel: z
+          .string()
+          .refine(isOutreachChannel)
+          .transform((c) => c as OutreachChannel),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await leadsImpl()).markLeadContacted(data, await actor());
   });

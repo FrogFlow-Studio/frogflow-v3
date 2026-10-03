@@ -2,13 +2,17 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   addLeadFn,
+  draftLeadFn,
   leadEventsFn,
   leadsFn,
+  markLeadContactedFn,
+  saveLeadDraftFn,
   saveLeadNoteFn,
   scoreLeadFn,
   setLeadStageFn,
 } from "@/app/operator/operator.functions";
 import type { LeadEventRow, LeadRow } from "@/app/operator/leads.server";
+import { OUTREACH_LABEL, outreachLinks, type OutreachChannel } from "@/core/leads/draft";
 import {
   LEAD_STAGES,
   LEAD_STAGE_LABEL,
@@ -217,6 +221,45 @@ function LeadCard({
     setEvents(null);
     await router.invalidate();
   });
+  const [draft, setDraft] = useState(lead.draft_message ?? "");
+  const outreach = outreachLinks(lead, draft);
+  const [channel, setChannel] = useState<OutreachChannel | "">("");
+  const write = useAction(async () => {
+    const r = await draftLeadFn({ data: { id: lead.id } });
+    if (r.ok) setDraft(r.draft);
+    onChanged(
+      r.ok
+        ? `${lead.business_name}: черновик готов — проверьте и поправьте текст`
+        : r.reason === "not_found"
+          ? "Лид уже удалён — список обновлён"
+          : "ИИ ответил пусто — попробуйте ещё раз",
+    );
+    setEvents(null);
+    await router.invalidate();
+  });
+  const saveDraft = useAction(async () => {
+    await saveLeadDraftFn({ data: { id: lead.id, draft: draft || null } });
+    onChanged(`${lead.business_name}: черновик сохранён`);
+    await router.invalidate();
+  });
+  const contacted = useAction(async () => {
+    const via = outreach.find((o) => o.channel === channel) ?? outreach[0];
+    if (!via) return;
+    const r = await markLeadContactedFn({ data: { id: lead.id, channel: via.channel } });
+    onChanged(
+      !r.ok
+        ? "Лид уже удалён — список обновлён"
+        : r.movedTo
+          ? `${lead.business_name}: ${OUTREACH_LABEL[via.channel]}, стадия «${LEAD_STAGE_LABEL[r.movedTo]}»`
+          : `${lead.business_name}: касание записано (${OUTREACH_LABEL[via.channel]})`,
+    );
+    setEvents(null);
+    await router.invalidate();
+  });
+  const copyDraft = useAction(async () => {
+    await navigator.clipboard.writeText(draft);
+    onChanged("Текст скопирован — вставьте его в Direct");
+  });
   const log = useAction(async () => {
     setEvents((await leadEventsFn({ data: { id: lead.id } })).events);
   });
@@ -336,6 +379,89 @@ function LeadCard({
             </button>
           </div>
         </form>
+        <div className="grid gap-2">
+          <textarea
+            className="input"
+            rows={4}
+            maxLength={2000}
+            placeholder="Черновик первого сообщения"
+            aria-label="Черновик сообщения"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            {aiAvailable && (
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={write.busy}
+                onClick={() => void write.run().catch(() => {})}
+              >
+                {write.busy
+                  ? "Пишу…"
+                  : lead.draft_message
+                    ? "Написать заново"
+                    : "Написать черновик"}
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={saveDraft.busy}
+              onClick={() => void saveDraft.run().catch(() => {})}
+            >
+              Сохранить черновик
+            </button>
+            {outreach.some((o) => o.channel === "instagram") && draft && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => void copyDraft.run().catch(() => {})}
+              >
+                Скопировать текст
+              </button>
+            )}
+          </div>
+          {outreach.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {outreach.map((o) => (
+                <a
+                  key={o.channel}
+                  className="btn-secondary"
+                  href={o.href}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Открыть {o.label}
+                </a>
+              ))}
+              <select
+                className="input w-auto"
+                aria-label="Канал, в котором написали"
+                value={channel || outreach[0]!.channel}
+                onChange={(e) => setChannel(e.target.value as OutreachChannel)}
+              >
+                {outreach.map((o) => (
+                  <option key={o.channel} value={o.channel}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={contacted.busy}
+                onClick={() => void contacted.run().catch(() => {})}
+              >
+                Связались
+              </button>
+            </div>
+          )}
+          <p className="text-xs text-muted">
+            Из платформы ничего не отправляется: ссылка открывает WhatsApp или почту с готовым
+            текстом, в Instagram текст копируется. После отправки нажмите «Связались».
+          </p>
+        </div>
         {events && (
           <ul className="grid gap-1 text-xs text-muted">
             {events.length === 0 && <li>Событий пока нет</li>}
@@ -346,7 +472,18 @@ function LeadCard({
             ))}
           </ul>
         )}
-        <ErrorBox error={move.error ?? save.error ?? score.error ?? log.error} />
+        <ErrorBox
+          error={
+            move.error ??
+            save.error ??
+            score.error ??
+            write.error ??
+            saveDraft.error ??
+            contacted.error ??
+            copyDraft.error ??
+            log.error
+          }
+        />
       </div>
     </Card>
   );

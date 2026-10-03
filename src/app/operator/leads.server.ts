@@ -11,6 +11,13 @@ import {
   type LeadStage,
 } from "@/core/leads/leads";
 import {
+  MAX_DRAFT_LEN,
+  buildDraftPrompt,
+  cleanDraft,
+  stageAfterContact,
+  type OutreachChannel,
+} from "@/core/leads/draft";
+import {
   LEAD_SCORE_MODEL,
   buildScorePrompt,
   normalizeThresholds,
@@ -185,6 +192,31 @@ export async function getLeadThresholds(): Promise<LeadThresholds> {
 
 const SCORE_TIMEOUT_MS = 30_000;
 
+function requireLeadsAi(): string {
+  const apiKey = env().ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) throw serverFailure("ИИ-ключ платформы не задан — ИИ для лидов недоступен");
+  return apiKey;
+}
+
+/** Один вызов модели для лида: тайм-аут 30 с, сбой — serverFailure. */
+async function askLeadModel(prompt: string, maxTokens: number, what: string): Promise<string> {
+  const apiKey = requireLeadsAi();
+  try {
+    const response = await new Anthropic({
+      apiKey,
+      maxRetries: 1,
+      timeout: SCORE_TIMEOUT_MS,
+    }).messages.create({
+      model: LEAD_SCORE_MODEL,
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: prompt }],
+    });
+    return response.content.find((b) => b.type === "text")?.text ?? "";
+  } catch (e) {
+    throw serverFailure(`ИИ: ${what}: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
 export type ScoreLeadResult =
   | { ok: true; score: number; reason: string; movedTo: "qualified" | "rejected" | null }
   | { ok: false; reason: "not_found" | "unreadable" };
@@ -200,29 +232,14 @@ export async function scoreLead(
   actor: string,
   now = new Date(),
 ): Promise<ScoreLeadResult> {
-  const apiKey = env().ANTHROPIC_API_KEY?.trim();
-  if (!apiKey) throw serverFailure("ИИ-ключ платформы не задан — оценка лидов недоступна");
+  requireLeadsAi();
   const db = serviceDb();
   const { data: lead, error } = await db.from("sales_leads").select("*").eq("id", id).maybeSingle();
   if (error) throw serverFailure(`лид не прочитан: ${error.message}`);
   if (!lead) return { ok: false, reason: "not_found" };
   const thresholds = await getLeadThresholds();
 
-  let text: string;
-  try {
-    const response = await new Anthropic({
-      apiKey,
-      maxRetries: 1,
-      timeout: SCORE_TIMEOUT_MS,
-    }).messages.create({
-      model: LEAD_SCORE_MODEL,
-      max_tokens: 400,
-      messages: [{ role: "user", content: buildScorePrompt(lead) }],
-    });
-    text = response.content.find((b) => b.type === "text")?.text ?? "";
-  } catch (e) {
-    throw serverFailure(`ИИ-оценка лида ${id}: ${e instanceof Error ? e.message : String(e)}`);
-  }
+  const text = await askLeadModel(buildScorePrompt(lead), 400, `оценка лида ${id}`);
   const parsed = parseScore(text);
   if (!parsed) return { ok: false, reason: "unreadable" };
 
@@ -246,4 +263,84 @@ export async function scoreLead(
   let movedTo: "qualified" | "rejected" | null = null;
   if (to && (await setLeadStage({ id, from: lead.stage, to }, actor, now)).ok) movedTo = to;
   return { ok: true, score: parsed.score, reason: parsed.reason, movedTo };
+}
+
+export type DraftLeadResult =
+  { ok: true; draft: string } | { ok: false; reason: "not_found" | "unreadable" };
+
+/** Черновик первого сообщения по нише и сигналам лида: пишется в лид, в журнале — `drafted`. */
+export async function draftLead(
+  id: string,
+  actor: string,
+  now = new Date(),
+): Promise<DraftLeadResult> {
+  requireLeadsAi();
+  const db = serviceDb();
+  const { data: lead, error } = await db.from("sales_leads").select("*").eq("id", id).maybeSingle();
+  if (error) throw serverFailure(`лид не прочитан: ${error.message}`);
+  if (!lead) return { ok: false, reason: "not_found" };
+  const draft = cleanDraft(await askLeadModel(buildDraftPrompt(lead), 600, `черновик лида ${id}`));
+  if (!draft) return { ok: false, reason: "unreadable" };
+  const { error: writeError } = await db
+    .from("sales_leads")
+    .update({ draft_message: draft, updated_at: now.toISOString() })
+    .eq("id", id);
+  if (writeError) throw serverFailure(`черновик лида не сохранён: ${writeError.message}`);
+  await logEvent(id, actor, "drafted", "ИИ написал черновик первого сообщения");
+  return { ok: true, draft };
+}
+
+/** Правка черновика вручную: оператор поправил текст перед отправкой. */
+export async function saveLeadDraft(
+  p: { id: string; draft: string | null },
+  now = new Date(),
+): Promise<boolean> {
+  const { data, error } = await serviceDb()
+    .from("sales_leads")
+    .update({
+      draft_message: p.draft?.trim().slice(0, MAX_DRAFT_LEN) || null,
+      updated_at: now.toISOString(),
+    })
+    .eq("id", p.id)
+    .select("id");
+  if (error) throw serverFailure(`черновик лида не сохранён: ${error.message}`);
+  return (data?.length ?? 0) > 0;
+}
+
+export type ContactedResult =
+  { ok: true; movedTo: "contacted" | null } | { ok: false; reason: "not_found" };
+
+/**
+ * «Связались»: канал и время касания записываются в лид, в журнале — `contacted`.
+ * Из «Новый» и «Подходит» лид уходит в «Написали» (условно, через setLeadStage);
+ * на других стадиях (ответил, горячий…) стадию не откатываем.
+ */
+export async function markLeadContacted(
+  p: { id: string; channel: OutreachChannel },
+  actor: string,
+  now = new Date(),
+): Promise<ContactedResult> {
+  const db = serviceDb();
+  const { data: lead, error } = await db
+    .from("sales_leads")
+    .select("id, stage")
+    .eq("id", p.id)
+    .maybeSingle();
+  if (error) throw serverFailure(`лид не прочитан: ${error.message}`);
+  if (!lead) return { ok: false, reason: "not_found" };
+  const { error: writeError } = await db
+    .from("sales_leads")
+    .update({
+      outreach_channel: p.channel,
+      last_touch_at: now.toISOString(),
+      updated_at: now.toISOString(),
+    })
+    .eq("id", p.id);
+  if (writeError) throw serverFailure(`касание лида не сохранено: ${writeError.message}`);
+  await logEvent(p.id, actor, "contacted", `Написали: ${p.channel}`);
+  const to = stageAfterContact(lead.stage);
+  const moved = to
+    ? (await setLeadStage({ id: p.id, from: lead.stage, to }, actor, now)).ok
+    : false;
+  return { ok: true, movedTo: moved ? to : null };
 }

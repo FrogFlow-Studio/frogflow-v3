@@ -84,3 +84,37 @@ test("лиды: новый лид сохраняется, тот же Instagram 
   await expect(page.getByText(`Такой лид уже есть: ${name}`)).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("лиды: черновик, ссылка WhatsApp с текстом и «Связались» двигают лид в «Написали»", async ({
+  page,
+}, info) => {
+  const errors = await watch(page);
+  const mine = `E2E Черновик ${info.project.name} ${Date.now()}`;
+  const phone = `7${String(Date.now()).slice(-10)}`;
+  await operatorLogin(page);
+  await page.goto("/operator/leads");
+  const form = page.locator("form", { hasText: "Добавить лид" });
+  await form.locator('input[name="businessName"]').fill(mine);
+  await form.locator('input[name="phone"]').fill(phone);
+  await form.getByRole("button", { name: "Добавить лид", exact: true }).click();
+  await expect(page.getByText("Лид добавлен")).toBeVisible();
+
+  const card = page.locator("section", { hasText: mine }).first();
+  // Подставная модель отвечает фиксированным текстом: он попадает в черновик (какой именно — зависит от слов в подсказке).
+  await card.getByRole("button", { name: "Написать черновик", exact: true }).click();
+  await expect(card.getByLabel("Черновик сообщения")).not.toHaveValue("");
+  await expect(page.getByText(`${mine}: черновик готов`, { exact: false })).toBeVisible();
+  await card.getByLabel("Черновик сообщения").fill("Здравствуйте, расскажу про бота");
+  await expect(card.getByRole("link", { name: "Открыть WhatsApp", exact: true })).toHaveAttribute(
+    "href",
+    `https://wa.me/${phone}?text=${encodeURIComponent("Здравствуйте, расскажу про бота")}`,
+  );
+  await card.getByRole("button", { name: "Сохранить черновик", exact: true }).click();
+  await expect(page.getByText(`${mine}: черновик сохранён`)).toBeVisible();
+
+  await card.getByRole("button", { name: "Связались", exact: true }).click();
+  await expect(page.getByText(`${mine}: WhatsApp, стадия «Написали»`)).toBeVisible();
+  await card.getByRole("button", { name: "Журнал", exact: true }).click();
+  await expect(card.getByText("Написали: whatsapp")).toBeVisible();
+  expect(errors).toEqual([]);
+});

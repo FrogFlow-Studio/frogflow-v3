@@ -86,7 +86,7 @@ describe("scoreLead", () => {
 
   it("сбой модели — serverFailure, лид не тронут", async () => {
     reply = new Error("timeout");
-    await expect(srv.scoreLead("l1", "a", NOW)).rejects.toThrow(/ИИ-оценка лида/);
+    await expect(srv.scoreLead("l1", "a", NOW)).rejects.toThrow(/оценка лида/);
     expect(db.tables.sales_leads![0]!.score).toBeNull();
   });
 
@@ -99,5 +99,74 @@ describe("scoreLead", () => {
     expect(srv.leadsAiAvailable()).toBe(true);
     expect(await srv.scoreLead("zzz", "a", NOW)).toEqual({ ok: false, reason: "not_found" });
     expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe("draftLead", () => {
+  it("пишет черновик в лид и событие drafted", async () => {
+    reply = "  «Здравствуйте, Кофейня Север!»  ";
+    expect(await srv.draftLead("l1", "a", NOW)).toEqual({
+      ok: true,
+      draft: "Здравствуйте, Кофейня Север!",
+    });
+    expect(db.tables.sales_leads![0]!.draft_message).toBe("Здравствуйте, Кофейня Север!");
+    expect(db.tables.sales_lead_events!.map((e) => e.kind)).toEqual(["drafted"]);
+  });
+
+  it("пустой ответ — ничего не пишем; сбой модели — serverFailure; нет лида — not_found", async () => {
+    reply = "   ";
+    expect(await srv.draftLead("l1", "a", NOW)).toEqual({ ok: false, reason: "unreadable" });
+    expect(db.tables.sales_leads![0]!.draft_message).toBeUndefined();
+    reply = new Error("timeout");
+    await expect(srv.draftLead("l1", "a", NOW)).rejects.toThrow(/черновик лида/);
+    reply = "текст";
+    expect(await srv.draftLead("zzz", "a", NOW)).toEqual({ ok: false, reason: "not_found" });
+  });
+
+  it("правка черновика меняет только текст", async () => {
+    seed({ stage: "hot", score: 80 });
+    expect(await srv.saveLeadDraft({ id: "l1", draft: "  свой текст " }, NOW)).toBe(true);
+    expect(db.tables.sales_leads![0]).toMatchObject({
+      draft_message: "свой текст",
+      stage: "hot",
+      score: 80,
+    });
+    expect(await srv.saveLeadDraft({ id: "nope", draft: null })).toBe(false);
+  });
+});
+
+describe("markLeadContacted", () => {
+  it("новый лид → «Написали»: канал, касание, два события", async () => {
+    expect(await srv.markLeadContacted({ id: "l1", channel: "whatsapp" }, "a", NOW)).toEqual({
+      ok: true,
+      movedTo: "contacted",
+    });
+    expect(db.tables.sales_leads![0]).toMatchObject({
+      stage: "contacted",
+      outreach_channel: "whatsapp",
+      last_touch_at: NOW.toISOString(),
+      contacted_at: NOW.toISOString(),
+    });
+    expect(db.tables.sales_lead_events!.map((e) => e.kind)).toEqual(["contacted", "stage"]);
+  });
+
+  it("ответивший лид стадию не откатывает, касание записывается", async () => {
+    seed({ stage: "replied" });
+    expect(await srv.markLeadContacted({ id: "l1", channel: "email" }, "a", NOW)).toEqual({
+      ok: true,
+      movedTo: null,
+    });
+    expect(db.tables.sales_leads![0]).toMatchObject({
+      stage: "replied",
+      outreach_channel: "email",
+    });
+  });
+
+  it("нет лида — not_found, ничего не пишем", async () => {
+    expect(await srv.markLeadContacted({ id: "zzz", channel: "email" }, "a", NOW)).toEqual({
+      ok: false,
+      reason: "not_found",
+    });
+    expect(db.tables.sales_lead_events).toHaveLength(0);
   });
 });
