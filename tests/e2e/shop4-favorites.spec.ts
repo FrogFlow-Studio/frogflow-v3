@@ -50,3 +50,21 @@ test("избранное: с карточки товара; исчезнувши
     .toBe(JSON.stringify([F.PRODUCT_ID]));
   expect(errors).toEqual([]);
 });
+
+test("избранное: «Открыть в Telegram» ведёт в бота с токеном переноса", async ({ page }) => {
+  const errors = await watch(page);
+  // Переход на t.me перехватываем: проверяем только адрес.
+  let target = "";
+  await page.route("https://t.me/**", async (route) => {
+    target = route.request().url();
+    await route.fulfill({ status: 200, contentType: "text/html", body: "<html></html>" });
+  });
+  await page.goto(`/s/${F.SHOP_SLUG}/p/${F.PRODUCT_ID}`);
+  await page.getByRole("button", { name: "В избранное", exact: true }).click();
+  await page.goto(`/s/${F.SHOP_SLUG}/favorites`);
+  await expect(page.locator("article")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Открыть в Telegram", exact: true }).click();
+  await expect.poll(() => target).toMatch(/^https:\/\/t\.me\/e2e_shop_bot\?start=wc_[0-9a-f]{32}$/);
+  expect(errors).toEqual([]);
+});

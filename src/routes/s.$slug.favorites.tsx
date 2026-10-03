@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { storeFavoritesFn } from "@/app/storefront/catalog.functions";
+import { createHandoffFn, miniAppCheckoutFn } from "@/app/storefront/storefront.functions";
+import { useTelegramWebApp } from "@/app/storefront/cart";
 import { FavoriteButton, useFavorites } from "@/app/storefront/favorites";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { OfferPrice } from "@/app/storefront/offer";
 import type { StoreProduct } from "@/core/storefront/catalog";
-import { Empty, ErrorBox } from "@/app/ui";
+import { Empty, ErrorBox, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/s/$slug/favorites")({
   component: FavoritesPage,
@@ -22,6 +24,28 @@ function FavoritesPage() {
   const fav = useFavorites();
   const [items, setItems] = useState<StoreProduct[] | null>(null);
   const [failed, setFailed] = useState<unknown>(null);
+  const wa = useTelegramWebApp();
+  const [done, setDone] = useState("");
+  // Товар с вариантами в корзину «без варианта» не ложится, а закончившийся не купить: в бот идут остальные.
+  const sendable =
+    items?.filter((p) => fav.has(p.id) && p.inStock && p.variants.length === 0) ?? [];
+  const skipped = (items?.filter((p) => fav.has(p.id)).length ?? 0) - sendable.length;
+  const toTelegram = useAction(async () => {
+    const lines = sendable.map((p) => ({
+      product_id: p.id,
+      product_variant_id: null,
+      quantity: 1,
+    }));
+    if (wa) {
+      await miniAppCheckoutFn({ data: { slug, initData: wa.initData, items: lines } });
+      setDone(t("cart.sentToBot"));
+      setTimeout(() => wa.close(), 1200);
+      return;
+    }
+    const { url } = await createHandoffFn({ data: { slug, items: lines } });
+    setDone(t("cart.openingTelegram"));
+    window.location.href = url;
+  });
   useEffect(() => {
     if (!fav.ready) return;
     if (items !== null) return;
@@ -57,6 +81,22 @@ function FavoritesPage() {
   return (
     <div>
       <h1 className="mb-4 text-xl font-semibold">{t("fav.title")}</h1>
+      {sendable.length > 0 && (
+        <div className="mb-4">
+          <button
+            className="btn-primary"
+            disabled={toTelegram.busy}
+            onClick={() => void toTelegram.run().catch(() => {})}
+          >
+            {t("fav.toTelegram")}
+          </button>
+          {skipped > 0 && (
+            <p className="mt-2 text-xs text-muted">{t("fav.variantsSkipped", { n: skipped })}</p>
+          )}
+          {done && <p className="mt-2 rounded-md bg-ok/10 px-3 py-2 text-sm text-ok">{done}</p>}
+          <ErrorBox error={toTelegram.error} />
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {shown.map((p) => (
           <article key={p.id} className="card relative flex flex-col overflow-hidden">

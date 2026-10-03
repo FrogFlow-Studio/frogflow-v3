@@ -21,6 +21,9 @@ const ru = {
   "fav.remove": "Убрать из избранного",
   "fav.title": "Избранное",
   "fav.empty": "В избранном пока пусто. Нажмите ♡ на товаре, чтобы сохранить его.",
+  "fav.toTelegram": "Открыть в Telegram",
+  "fav.variantsSkipped":
+    "Товары с вариантами и закончившиеся в бот не переносятся (вариант выберите на странице товара). Не перенесено: {n}",
   "tabs.catalog": "Каталог",
   "tabs.library": "Материалы",
   "tabs.orders": "Заказы",
@@ -378,6 +381,9 @@ const kk: Dict = {
   "fav.remove": "Таңдаулылардан алып тастау",
   "fav.title": "Таңдаулылар",
   "fav.empty": "Таңдаулыларда әзірге ештеңе жоқ. Сақтау үшін тауардағы ♡ түймесін басыңыз.",
+  "fav.toTelegram": "Telegram-да ашу",
+  "fav.variantsSkipped":
+    "Нұсқасы бар және таусылған тауарлар ботқа көшірілмейді (нұсқаны тауар бетінде таңдаңыз). Көшірілмегені: {n}",
   "tabs.catalog": "Каталог",
   "tabs.library": "Материалдар",
   "tabs.orders": "Тапсырыстар",
@@ -726,6 +732,9 @@ const en: Dict = {
   "fav.remove": "Remove from favorites",
   "fav.title": "Favorites",
   "fav.empty": "No favorites yet. Tap ♡ on a product to save it.",
+  "fav.toTelegram": "Open in Telegram",
+  "fav.variantsSkipped":
+    "Products with variants and sold-out products are not sent to the bot (choose a variant on the product page). Not sent: {n}",
   "tabs.catalog": "Catalog",
   "tabs.library": "Materials",
   "tabs.orders": "Orders",
@@ -1074,6 +1083,9 @@ const uz: Dict = {
   "fav.remove": "Sevimlilardan olib tashlash",
   "fav.title": "Sevimlilar",
   "fav.empty": "Hozircha sevimlilar yoʻq. Saqlash uchun mahsulotdagi ♡ tugmasini bosing.",
+  "fav.toTelegram": "Telegramda ochish",
+  "fav.variantsSkipped":
+    "Variantli va tugagan mahsulotlar botga oʻtkazilmaydi (variantni mahsulot sahifasida tanlang). Oʻtkazilmadi: {n}",
   "tabs.catalog": "Katalog",
   "tabs.library": "Materiallar",
   "tabs.orders": "Buyurtmalar",
