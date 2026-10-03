@@ -229,3 +229,82 @@ describe("проверка ДЗ из Telegram", () => {
     expect(hw(db)?.status).toBe("submitted");
   });
 });
+
+describe("быстрые ответы куратора в Telegram (А35)", () => {
+  const swipe = async (ctx: TenantContext, note: Record<string, unknown>, text: string, id = 90) =>
+    handleTelegramUpdate(
+      ctx,
+      spyApi as never,
+      {
+        update_id: id,
+        message: {
+          message_id: id,
+          date: 0,
+          chat: { id: TEACHER, type: "private" },
+          from: teacher,
+          text,
+          reply_to_message: { message_id: 1, text: String(note.text).replace(/<[^>]+>/g, "") },
+        },
+      } as never,
+    );
+  const withReplies = async () => {
+    calls.length = 0;
+    const { ctx, db } = school();
+    (ctx.tenant.settings as Record<string, unknown>).homework_replies = [
+      { title: "Молодец", text: "Отлично, {name}! Работа принята." },
+      { title: "Доработать", text: "Переделайте второй шаг." },
+    ];
+    await notifyHomework(ctx, await submitted(ctx));
+    return { ctx, db, note: lastTo(TEACHER)! };
+  };
+  const draftOf = (db: FakeDb) =>
+    (db.tables.app_settings as Array<{ key: string; value: string }>).find((r) =>
+      r.key.startsWith("course_hwdraft_"),
+    )?.value;
+
+  it("«#» отвечает списком шаблонов и ничего не пишет в работу", async () => {
+    const { ctx, db, note } = await withReplies();
+    await swipe(ctx, note, "#");
+    const list = String(lastTo(TEACHER)?.text);
+    expect(list).toContain("1. Молодец");
+    expect(list).toContain("2. Доработать");
+    expect(buttonsOf(lastTo(TEACHER))).toEqual([]);
+    expect(hw(db)).toMatchObject({ status: "submitted" });
+    expect(draftOf(db)).toBeUndefined();
+  });
+
+  it("«#1 слова» — комментарий из шаблона с именем ученика; кнопки оценивают именно его", async () => {
+    const { ctx, db, note } = await withReplies();
+    await swipe(ctx, note, "#1 Так держать.");
+    const ask = lastTo(TEACHER)!;
+    expect(String(ask.text)).toContain("Отлично, Мария! Работа принята.");
+    const accept = buttonsOf(ask).find((d) => d.startsWith("hwa:"))!;
+    await handleTelegramUpdate(
+      ctx,
+      spyApi as never,
+      {
+        update_id: 91,
+        callback_query: {
+          id: "cq91",
+          from: teacher,
+          data: accept,
+          message: { message_id: 600, date: 0, chat: { id: TEACHER, type: "private" } },
+        },
+      } as never,
+    );
+    expect(hw(db)).toMatchObject({
+      status: "accepted",
+      feedback: { text: "Отлично, Мария! Работа принята.\n\nТак держать." },
+    });
+    expect(String(lastTo(STUDENT)?.text)).toContain("Отлично, Мария!");
+  });
+
+  it("несуществующий номер — подсказка, обычный текст с «#» в середине остаётся комментарием", async () => {
+    const { ctx, note } = await withReplies();
+    await swipe(ctx, note, "#7");
+    expect(String(lastTo(TEACHER)?.text)).toContain("№7 нет");
+    await swipe(ctx, note, "Круг кривоват #1", 92);
+    expect(String(lastTo(TEACHER)?.text)).toContain("Как отметить?");
+    expect(String(lastTo(TEACHER)?.text)).not.toContain("Отлично");
+  });
+});

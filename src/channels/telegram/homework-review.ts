@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { hwCommentFromReply, parseHwReplies, parseHwReplyCommand } from "@/core/courses/hw-replies";
 import type { TelegramApi } from "./api";
 import { escapeHtml } from "./copy";
 import type { TelegramMessage } from "./types";
@@ -34,6 +35,34 @@ async function mayReview(ctx: TenantContext, fromId: number, orderItemId: string
   return (await assignedCurator(ctx, orderItemId))?.id === me.id;
 }
 
+const REPLY_COPY = {
+  ru: {
+    none: "Быстрых ответов пока нет: добавьте их в «Домашних заданиях» в панели.",
+    list: "Быстрые ответы. Ответьте на уведомление «#номер» (можно дописать свои слова после номера):",
+    missing: (n: number) => `Быстрого ответа №${n} нет. Ответьте «#» — покажу список.`,
+    comment: "Комментарий:",
+  },
+  kk: {
+    none: "Жылдам жауаптар әзірге жоқ: оларды панельдегі «Үй тапсырмалары» бөлімінде қосыңыз.",
+    list: "Жылдам жауаптар. Хабарламаға «#нөмір» деп жауап беріңіз (нөмірден кейін өз сөздеріңізді қосуға болады):",
+    missing: (n: number) => `№${n} жылдам жауап жоқ. «#» деп жауап беріңіз — тізімді көрсетемін.`,
+    comment: "Пікір:",
+  },
+  en: {
+    none: "No quick replies yet: add them under “Homework” in the panel.",
+    list: "Quick replies. Reply to the notification with “#number” (you can add your own words after the number):",
+    missing: (n: number) => `There is no quick reply #${n}. Reply “#” to see the list.`,
+    comment: "Comment:",
+  },
+  uz: {
+    none: "Tezkor javoblar hozircha yo‘q: ularni paneldagi «Uy vazifalari» bo‘limida qo‘shing.",
+    list: "Tezkor javoblar. Xabarga «#raqam» deb javob bering (raqamdan keyin o‘z so‘zlaringizni qo‘shishingiz mumkin):",
+    missing: (n: number) =>
+      `№${n} tezkor javob yo‘q. «#» deb javob bering — ro‘yxatni ko‘rsataman.`,
+    comment: "Izoh:",
+  },
+} as const;
+
 /** Ответ свайпом на уведомление о работе. false — это не такой ответ. */
 export async function homeworkReply(
   ctx: TenantContext,
@@ -43,7 +72,7 @@ export async function homeworkReply(
   if (!ctx.tenant.modules.courses || !msg.from || !msg.message_id) return false;
   const { hwRefOf, resolveHwRef, saveHwDraft } = await import("@/core/courses/review-ref");
   const ref = hwRefOf(msg.reply_to_message?.text ?? msg.reply_to_message?.caption);
-  const text = msg.text?.trim();
+  let text = msg.text?.trim();
   if (!ref || !text) return false;
   if (!(await isSeller(ctx, msg.from.id)) && !(await curatorByTelegram(ctx, msg.from.id)))
     return false;
@@ -62,6 +91,30 @@ export async function homeworkReply(
     await say(api, msg.chat.id, "Эта работа уже проверена.");
     return true;
   }
+  // «#» — список быстрых ответов, «#2 [слова]» — комментарий из шаблона №2.
+  const cmd = parseHwReplyCommand(text);
+  let fromReply = false;
+  if (cmd) {
+    const rc = REPLY_COPY[ctx.tenant.settings.default_locale ?? "ru"] ?? REPLY_COPY.ru;
+    const replies = parseHwReplies(ctx.tenant.settings.homework_replies);
+    if (cmd.kind === "list") {
+      await say(
+        api,
+        msg.chat.id,
+        replies.length
+          ? [rc.list, ...replies.map((r, i) => `${i + 1}. ${escapeHtml(r.title)}`)].join("\n")
+          : rc.none,
+      );
+      return true;
+    }
+    const filled = hwCommentFromReply(replies, cmd, hw.student);
+    if (!filled) {
+      await say(api, msg.chat.id, rc.missing(cmd.n));
+      return true;
+    }
+    text = filled;
+    fromReply = true;
+  }
   if (!(await saveHwDraft(ctx, ref, msg.message_id, text))) {
     await say(api, msg.chat.id, "Не удалось сохранить комментарий — попробуйте ещё раз.");
     return true;
@@ -70,7 +123,10 @@ export async function homeworkReply(
   await say(
     api,
     msg.chat.id,
-    `Комментарий к работе «${escapeHtml(hw.student)}» (урок ${hw.lessonNo}). Как отметить?`,
+    `Комментарий к работе «${escapeHtml(hw.student)}» (урок ${hw.lessonNo}). Как отметить?` +
+      (fromReply
+        ? `\n\n<i>${(REPLY_COPY[ctx.tenant.settings.default_locale ?? "ru"] ?? REPLY_COPY.ru).comment}</i> ${escapeHtml(text.slice(0, 500))}`
+        : ""),
     {
       reply_to_message_id: msg.message_id,
       reply_markup: {

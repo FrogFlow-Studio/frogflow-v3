@@ -43,6 +43,16 @@ export const ru = {
   "homework.curatorsSave": "Сохранить кураторов",
   "homework.curatorsSaved":
     "Кураторы сохранены. Уже закреплённые ученики остаются за своими кураторами; у убранного куратора работы получат нового при следующей сдаче.",
+  "homework.replies": "Быстрые ответы",
+  "homework.repliesHint":
+    "Готовые комментарии к работам. {name} подставит имя ученика. На странице нажмите ответ рядом с полем комментария; в Telegram ответьте свайпом на уведомление о работе: «#» покажет список, «#2» возьмёт ответ №2 (после номера можно дописать свои слова).",
+  "homework.replyTitle": "Название",
+  "homework.replyText": "Текст комментария",
+  "homework.replyAdd": "+ быстрый ответ",
+  "homework.replyRemove": "Убрать быстрый ответ",
+  "homework.repliesSave": "Сохранить быстрые ответы",
+  "homework.repliesSaved": "Быстрые ответы сохранены.",
+  "homework.replyInsert": "Быстрый ответ:",
   "homework.curatorOf": "Куратор: {name}",
   "homework.mine": "Мои",
 } as const;
@@ -89,6 +99,16 @@ export const kk: SectionDict<typeof ru> = {
   "homework.curatorsSave": "Кураторларды сақтау",
   "homework.curatorsSaved":
     "Кураторлар сақталды. Бекітілген оқушылар өз кураторында қалады; алынып тасталған куратордың оқушысы келесі тапсырғанда жаңа куратор алады.",
+  "homework.replies": "Жылдам жауаптар",
+  "homework.repliesHint":
+    "Жұмыстарға дайын пікірлер. {name} оқушының атын қояды. Бетте пікір өрісінің жанындағы жауапты басыңыз; Telegram-да жұмыс туралы хабарламаға жауап беріңіз: «#» тізімді көрсетеді, «#2» №2 жауапты алады (нөмірден кейін өз сөздеріңізді қосуға болады).",
+  "homework.replyTitle": "Атауы",
+  "homework.replyText": "Пікір мәтіні",
+  "homework.replyAdd": "+ жылдам жауап",
+  "homework.replyRemove": "Жылдам жауапты алып тастау",
+  "homework.repliesSave": "Жылдам жауаптарды сақтау",
+  "homework.repliesSaved": "Жылдам жауаптар сақталды.",
+  "homework.replyInsert": "Жылдам жауап:",
   "homework.curatorOf": "Куратор: {name}",
   "homework.mine": "Менікі",
 };
@@ -136,6 +156,16 @@ export const en: SectionDict<typeof ru> = {
   "homework.curatorsSave": "Save curators",
   "homework.curatorsSaved":
     "Curators saved. Students already assigned stay with their curators; a removed curator’s students get a new one on their next submission.",
+  "homework.replies": "Quick replies",
+  "homework.repliesHint":
+    "Ready-made comments for homework. {name} inserts the student’s name. On this page click a reply next to the comment field; in Telegram reply to the homework notification: “#” shows the list, “#2” takes reply no. 2 (you can add your own words after the number).",
+  "homework.replyTitle": "Title",
+  "homework.replyText": "Comment text",
+  "homework.replyAdd": "+ quick reply",
+  "homework.replyRemove": "Remove the quick reply",
+  "homework.repliesSave": "Save quick replies",
+  "homework.repliesSaved": "Quick replies saved.",
+  "homework.replyInsert": "Quick reply:",
   "homework.curatorOf": "Curator: {name}",
   "homework.mine": "Mine",
 };
@@ -182,6 +212,16 @@ export const uz: SectionDict<typeof ru> = {
   "homework.curatorsSave": "Kuratorlarni saqlash",
   "homework.curatorsSaved":
     "Kuratorlar saqlandi. Biriktirilgan o‘quvchilar o‘z kuratorida qoladi; olib tashlangan kuratorning o‘quvchilari keyingi topshirishda yangisini oladi.",
+  "homework.replies": "Tezkor javoblar",
+  "homework.repliesHint":
+    "Ishlarga tayyor izohlar. {name} o‘quvchining ismini qo‘yadi. Sahifada izoh maydoni yonidagi javobni bosing; Telegram’da ish haqidagi xabarga javob bering: «#» ro‘yxatni ko‘rsatadi, «#2» №2 javobni oladi (raqamdan keyin o‘z so‘zlaringizni qo‘shishingiz mumkin).",
+  "homework.replyTitle": "Nomi",
+  "homework.replyText": "Izoh matni",
+  "homework.replyAdd": "+ tezkor javob",
+  "homework.replyRemove": "Tezkor javobni olib tashlash",
+  "homework.repliesSave": "Tezkor javoblarni saqlash",
+  "homework.repliesSaved": "Tezkor javoblar saqlandi.",
+  "homework.replyInsert": "Tezkor javob:",
   "homework.curatorOf": "Kurator: {name}",
   "homework.mine": "Meniki",
 };

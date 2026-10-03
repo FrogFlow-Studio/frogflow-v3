@@ -1,6 +1,18 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { homeworkQueueFn, reviewHomeworkFn, saveCuratorsFn } from "@/app/admin/homework.functions";
+import {
+  homeworkQueueFn,
+  reviewHomeworkFn,
+  saveCuratorsFn,
+  saveHwRepliesFn,
+} from "@/app/admin/homework.functions";
+import {
+  fillHwReply,
+  HW_REPLIES_MAX,
+  HW_REPLY_TEXT_MAX,
+  HW_REPLY_TITLE_MAX,
+} from "@/core/courses/hw-replies";
+import type { HomeworkReply } from "@/core/tenant/types";
 import type { HomeworkRow } from "@/app/admin/homework.server";
 import { Badge, Card, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
@@ -15,7 +27,7 @@ export const Route = createFileRoute("/admin/_authed/homework")({
 });
 
 function HomeworkPage() {
-  const { items: all, curators, cohorts, load } = Route.useLoaderData();
+  const { items: all, curators, cohorts, load, replies } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const router = useRouter();
@@ -39,6 +51,7 @@ function HomeworkPage() {
       {canEdit && (
         <CuratorsCard curators={curators} cohorts={cohorts} load={load} date={date} t={t} />
       )}
+      {canEdit && <RepliesCard replies={replies} t={t} />}
       <div className="mb-4 flex flex-wrap gap-2">
         {curators.items.length > 0 && (
           <button
@@ -78,6 +91,7 @@ function HomeworkPage() {
               t={t}
               date={date}
               canEdit={canEdit}
+              replies={replies}
               onDone={router.invalidate}
             />
           ))}
@@ -92,12 +106,14 @@ function HomeworkCard({
   t,
   date,
   canEdit,
+  replies,
   onDone,
 }: {
   h: HomeworkRow;
   t: AdminT;
   date: (iso: string) => string;
   canEdit: boolean;
+  replies: HomeworkReply[];
   onDone: () => Promise<void>;
 }) {
   const [text, setText] = useState("");
@@ -151,6 +167,26 @@ function HomeworkCard({
       )}
       {canEdit && h.status === "submitted" && (
         <div className="mt-3 space-y-2">
+          {replies.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1 text-xs">
+              <span className="text-muted">{t("homework.replyInsert")}</span>
+              {replies.map((r, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className="btn-ghost border border-line text-xs"
+                  title={r.text}
+                  onClick={() =>
+                    setText((cur) =>
+                      [cur.trim(), fillHwReply(r.text, h.student)].filter(Boolean).join("\n\n"),
+                    )
+                  }
+                >
+                  {r.title}
+                </button>
+              ))}
+            </div>
+          )}
           <textarea
             className="input min-h-20"
             value={text}
@@ -423,6 +459,84 @@ function CuratorsCard({
       </div>
       {saved && <p className="mt-2 text-xs text-ok">{t("homework.curatorsSaved")}</p>}
       <ErrorBox error={save.error} />
+    </details>
+  );
+}
+
+/** Быстрые ответы куратора: шаблоны комментариев (в Telegram — «#номер» ответом на уведомление). */
+function RepliesCard({ replies, t }: { replies: HomeworkReply[]; t: AdminT }) {
+  const router = useRouter();
+  const [rows, setRows] = useState<HomeworkReply[]>(replies);
+  const [saved, setSaved] = useState(false);
+  const edit = (i: number, patch: Partial<HomeworkReply>) => {
+    setSaved(false);
+    setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  };
+  const save = useAction(async () => {
+    const r = await saveHwRepliesFn({ data: { replies: rows } });
+    setRows(r.replies);
+    setSaved(true);
+    await router.invalidate();
+  });
+  return (
+    <details className="mb-4 rounded-md border border-line p-3 text-sm" open={rows.length > 0}>
+      <summary className="cursor-pointer font-medium">
+        {t("homework.replies")} · {rows.length}
+      </summary>
+      <p className="mt-2 text-xs text-muted">{t("homework.repliesHint")}</p>
+      <div className="mt-3 space-y-2">
+        {rows.map((r, i) => (
+          <div key={i} className="flex flex-wrap items-start gap-2">
+            <span className="w-5 pt-2 text-xs tabular-nums text-muted">{i + 1}.</span>
+            <input
+              className="input w-40"
+              maxLength={HW_REPLY_TITLE_MAX}
+              placeholder={t("homework.replyTitle")}
+              value={r.title}
+              onChange={(e) => edit(i, { title: e.target.value })}
+            />
+            <textarea
+              className="input min-h-10 min-w-0 flex-1"
+              maxLength={HW_REPLY_TEXT_MAX}
+              placeholder={t("homework.replyText")}
+              value={r.text}
+              onChange={(e) => edit(i, { text: e.target.value })}
+            />
+            <button
+              type="button"
+              className="btn-ghost text-xs"
+              aria-label={t("homework.replyRemove")}
+              onClick={() => {
+                setSaved(false);
+                setRows(rows.filter((_, j) => j !== i));
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        <div className="flex flex-wrap items-center gap-2">
+          {rows.length < HW_REPLIES_MAX && (
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              onClick={() => setRows([...rows, { title: "", text: "" }])}
+            >
+              {t("homework.replyAdd")}
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn-primary text-sm"
+            disabled={save.busy}
+            onClick={() => void save.run().catch(() => {})}
+          >
+            {t("homework.repliesSave")}
+          </button>
+          {saved && <span className="text-xs text-ok">{t("homework.repliesSaved")}</span>}
+        </div>
+        <ErrorBox error={save.error} />
+      </div>
     </details>
   );
 }

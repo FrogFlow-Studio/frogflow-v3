@@ -18,7 +18,15 @@ vi.mock("./admin.server", () => ({
   }),
 }));
 
-const { homeworkQueue, reviewAndNotify } = await import("./homework.server");
+const patches: Array<Record<string, unknown>> = [];
+vi.mock("@/core/tenant/resolve.server", async (orig) => ({
+  ...(await orig<typeof import("@/core/tenant/resolve.server")>()),
+  patchTenantSettings: vi.fn(async (_id: string, patch: Record<string, unknown>) => {
+    patches.push(patch);
+  }),
+}));
+
+const { homeworkQueue, reviewAndNotify, saveHwReplies } = await import("./homework.server");
 const { submitHomework } = await import("@/core/courses/homework.server");
 const { coursePurchase } = await import("@/core/courses/run.server");
 
@@ -117,5 +125,27 @@ describe("домашние задания в админке", () => {
         by: "a",
       }),
     ).rejects.toMatchObject({ key: "err.homework.emptyRevise" });
+  });
+});
+
+describe("быстрые ответы куратора: сохранение", () => {
+  it("пишутся в bots.settings только чистыми: пустые уходят, лимит держится, остальные ключи не трогаем", async () => {
+    patches.length = 0;
+    const saved = await saveHwReplies(ctxWith(), [
+      { title: " Молодец ", text: " Отлично, {name}! " },
+      { title: "пусто", text: "  " },
+      ...Array.from({ length: 40 }, (_, i) => ({ title: `Т${i}`, text: `Текст ${i}` })),
+    ]);
+    expect(saved).toHaveLength(20);
+    expect(saved[0]).toEqual({ title: "Молодец", text: "Отлично, {name}!" });
+    expect(patches).toHaveLength(1);
+    expect(Object.keys(patches[0]!)).toEqual(["homework_replies"]);
+    expect(patches[0]!.homework_replies).toEqual(saved);
+  });
+
+  it("пустой список снимает все ответы", async () => {
+    patches.length = 0;
+    expect(await saveHwReplies(ctxWith(), [])).toEqual([]);
+    expect(patches[0]).toEqual({ homework_replies: [] });
   });
 });

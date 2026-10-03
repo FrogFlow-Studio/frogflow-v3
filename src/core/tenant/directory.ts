@@ -8,6 +8,8 @@ import { isLocale } from "@/core/i18n/locale";
 import { effectiveModules } from "@/core/plans/plans";
 import { COURSES_SALE, parsePlan } from "@/core/plans/registry";
 import { validPauseHours } from "@/core/consultant/pause";
+import { parseCurators } from "@/core/courses/curators";
+import { parseHwReplies } from "@/core/courses/hw-replies";
 
 type BotRow = Database["public"]["Tables"]["bots"]["Row"];
 
@@ -194,6 +196,14 @@ export function settingsFromJson(json: unknown): TenantSettings {
       s.delivery && typeof s.delivery === "object" && !Array.isArray(s.delivery)
         ? { pdf_watermark: obj(s.delivery).pdf_watermark === true }
         : undefined,
+    // Без этих двух строк сохранённое продавцом (кураторы, быстрые ответы) не доходило до чтения.
+    curators:
+      s.curators && typeof s.curators === "object" && !Array.isArray(s.curators)
+        ? parseCurators(s.curators)
+        : undefined,
+    homework_replies: Array.isArray(s.homework_replies)
+      ? parseHwReplies(s.homework_replies)
+      : undefined,
     gift_sale:
       s.gift_sale && typeof s.gift_sale === "object" && !Array.isArray(s.gift_sale)
         ? {

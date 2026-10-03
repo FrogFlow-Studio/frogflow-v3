@@ -300,3 +300,17 @@ describe("настройки клиента не теряются при чте�
     expect(settingsFromJson({ consultant_search: "yes" }).consultant_search).toBeUndefined();
   });
 });
+
+describe("settingsFromJson: ключи школы доходят до чтения (А35)", () => {
+  it("кураторы и быстрые ответы куратора не теряются, мусор чистится", () => {
+    const id = "00000000-0000-4000-8000-000000000001";
+    const s = settingsFromJson({
+      curators: { mode: "cohort", items: [{ id, name: "Анна", telegram_id: 5 }] },
+      homework_replies: [{ title: "Молодец", text: "Отлично, {name}!" }, { text: " " }, 7],
+    });
+    expect(s.curators).toMatchObject({ mode: "cohort", items: [{ id, name: "Анна" }] });
+    expect(s.homework_replies).toEqual([{ title: "Молодец", text: "Отлично, {name}!" }]);
+    expect(settingsFromJson({}).curators).toBeUndefined();
+    expect(settingsFromJson({ homework_replies: "x" }).homework_replies).toBeUndefined();
+  });
+});

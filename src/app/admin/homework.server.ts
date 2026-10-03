@@ -4,7 +4,8 @@ import { UserError } from "@/core/i18n/user-error";
 import { isTenantStorageKey } from "@/core/storage/keys";
 import { curatorsOf } from "@/core/courses/curators.server";
 import { parseCurators, CURATORS_MAX, CURATOR_COHORTS_MAX } from "@/core/courses/curators";
-import type { CuratorSetting } from "@/core/tenant/types";
+import { parseHwReplies } from "@/core/courses/hw-replies";
+import type { CuratorSetting, HomeworkReply } from "@/core/tenant/types";
 import { listHomework, reviewHomework } from "@/core/courses/homework.server";
 import type { Homework } from "@/core/courses/homework";
 import { courseToken, courseUrl } from "@/core/courses/link";
@@ -178,6 +179,20 @@ export async function saveCurators(ctx: TenantContext, input: CuratorsInput): Pr
     );
   const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
   await patchTenantSettings(ctx.tenant.id, { curators: { mode: input.mode, items } });
+}
+
+/**
+ * Сохранить быстрые ответы куратора в bots.settings (patchTenantSettings:
+ * остальные ключи клиента не затираются). Возвращает то, что записано.
+ */
+export async function saveHwReplies(
+  ctx: TenantContext,
+  replies: ReadonlyArray<{ title: string; text: string }>,
+): Promise<HomeworkReply[]> {
+  const clean = parseHwReplies(replies);
+  const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
+  await patchTenantSettings(ctx.tenant.id, { homework_replies: clean });
+  return clean;
 }
 
 /** Выдать сертификат, если курс окончен; ссылка на PDF — только когда он выдан именно сейчас. */

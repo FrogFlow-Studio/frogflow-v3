@@ -64,6 +64,8 @@ export type TenantSettings = {
    * свои потоки (остальные — по кругу).
    */
   curators?: { mode?: "rotate" | "cohort"; items?: CuratorSetting[] };
+  /** Быстрые ответы куратора к домашним заданиям (core/courses/hw-replies). */
+  homework_replies?: HomeworkReply[];
   /** Переключатель миграции: пока v1 обслуживает клиента, v2 отвечает 409 на его вебхуки. */
   served_by?: "v1" | "v2";
   /**
@@ -152,6 +154,9 @@ export type BillingSettings = {
   /** Пробный период: до какой даты и был ли он уже. */
   trial_until?: string;
 };
+
+/** Быстрый ответ куратора: название на кнопке и текст комментария ({name} — имя ученика). */
+export type HomeworkReply = { title: string; text: string };
 
 export type CuratorSetting = {
   /** Стабильный id: к нему привязаны уже назначенные ученики. */
