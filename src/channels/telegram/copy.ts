@@ -222,6 +222,9 @@ export type Msg = {
   useMenu: string;
   /** Корзина из каталога Meta не совпала с товарами — заказ ушёл продавцу. */
   nativeCartForwarded: string;
+  /** Выдача ссылками в Direct и WhatsApp (channels/zernio/deliver). */
+  deliveryLinksExpire: string;
+  deliveryOrderPage: string;
   notReceiptLike: (no: string) => string;
   receiptPaymentFailed: (no: string) => string;
   receiptManualReview: (no: string) => string;
@@ -568,6 +571,8 @@ const ru: Msg = {
   useMenu: "Выберите раздел в меню ниже 👇",
   nativeCartForwarded:
     "Получил вашу корзину из каталога и передал продавцу — он подтвердит заказ и напишет здесь.",
+  deliveryLinksExpire: "Ссылки на файлы действуют 7 дней.",
+  deliveryOrderPage: "Все файлы заказа — на странице:",
   yourId: (id) => `Ваш Telegram ID: <code>${id}</code>`,
   fileLink: "📥 Нажмите здесь, чтобы скачать файл",
   fileLinkTtl: "Ссылка действует 7 дней",
@@ -769,6 +774,8 @@ const kk: Msg = {
   useMenu: "Төмендегі мәзірден бөлімді таңдаңыз 👇",
   nativeCartForwarded:
     "Каталогтан жиналған себетіңізді алдым және сатушыға бердім — ол тапсырысты растап, осында жазады.",
+  deliveryLinksExpire: "Файл сілтемелері 7 күн жарамды.",
+  deliveryOrderPage: "Тапсырыстың барлық файлдары — бетте:",
 };
 
 const en: Msg = {
@@ -988,6 +995,8 @@ const en: Msg = {
   useMenu: "Pick a section from the menu below 👇",
   nativeCartForwarded:
     "Got your cart from the catalog and passed it to the seller — they will confirm the order and reply here.",
+  deliveryLinksExpire: "Links to the files are valid for 7 days.",
+  deliveryOrderPage: "All order files are on the page:",
 };
 
 const uz: Msg = {
@@ -1170,6 +1179,8 @@ const uz: Msg = {
   useMenu: "Quyidagi menyudan bo‘limni tanlang 👇",
   nativeCartForwarded:
     "Katalogdan yig‘ilgan savatingizni oldim va sotuvchiga uzatdim — u buyurtmani tasdiqlab, shu yerda yozadi.",
+  deliveryLinksExpire: "Fayl havolalari 7 kun amal qiladi.",
+  deliveryOrderPage: "Buyurtmaning barcha fayllari — sahifada:",
 };
 
 export const COPY: Record<Locale, Msg> = { ru, kk, en, uz };

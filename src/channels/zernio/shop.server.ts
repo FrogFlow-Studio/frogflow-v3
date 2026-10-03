@@ -2088,6 +2088,7 @@ async function deliverHere(s: Shop, orderId: number, no: number): Promise<boolea
     orderId,
     zernioMaterialSender(s.transport, s.conversationId, s.accountId, s.platform, {
       pageUrl: await orderPageUrl(s.ctx, orderId),
+      locale: s.locale,
     }),
     // Direct не умеет спросить язык после оплаты — при нескольких языках отдаём все.
     { lang: s.locale, allWhenAmbiguous: true },

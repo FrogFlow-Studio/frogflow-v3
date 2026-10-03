@@ -12,6 +12,10 @@ vi.mock("@/channels/telegram/notify", () => ({
     return 1;
   }),
 }));
+vi.mock("@/core/orders/orders", async (orig) => ({
+  ...(await orig<typeof import("@/core/orders/orders")>()),
+  signedFileUrl: async (path: string) => `https://s.test/${path}`,
+}));
 let mailOn = false;
 vi.mock("@/core/mail/mail.server", () => ({ isMailConfigured: () => mailOn }));
 
@@ -119,5 +123,47 @@ describe("выдача при закрытом окне 24 часа", () => {
     expect(d.pageUrl).toBeNull();
     expect(await d.send(item, mats)).toBe("failed");
     expect(alerts).toEqual([]);
+  });
+});
+
+describe("язык покупателя в выдаче после подтверждения чека", () => {
+  const okTransport = () => {
+    const texts: string[] = [];
+    const t = {
+      send: vi.fn(async (_c: string, _a: string, text: string) => {
+        texts.push(text);
+        return { ok: true };
+      }),
+    } as unknown as ZernioTransport;
+    return { t, texts };
+  };
+  const uzItem = { id: "i2", name_snapshot: "Yozuv" } as never;
+
+  it("zernioDeliverySender: узбекский покупатель — без русских строк", async () => {
+    const { t, texts } = okTransport();
+    const d = await zernioDeliverySender(setup(), { ...wa, locale: "uz" as const }, order, {
+      transport: t,
+    });
+    await d.send(uzItem, [{ path: "p/f.pdf", name: "Dars", url: null }]);
+    expect(texts[0]).toContain("Fayl havolalari 7 kun amal qiladi.");
+    expect(texts[0]).not.toMatch(/[а-яё]/i);
+  });
+
+  it("zernioSenderFor (витрина) и zernioTargetOf берут язык из state.locale", async () => {
+    const { zernioSenderFor, zernioTargetOf } = await import("./outbound.server");
+    const target = zernioTargetOf(
+      {
+        platform: "whatsapp",
+        zernioConversationId: "c",
+        zernioAccountId: "a",
+        contactPhone: null,
+        state: { locale: "uz" },
+      } as never,
+      "ru",
+    );
+    expect(target?.locale).toBe("uz");
+    const { t, texts } = okTransport();
+    await zernioSenderFor(target!, t)(uzItem, [{ path: "p/f.pdf", name: "Dars", url: null }]);
+    expect(texts[0]).toContain("Fayl havolalari 7 kun amal qiladi.");
   });
 });

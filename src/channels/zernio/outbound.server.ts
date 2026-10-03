@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { isLocale, type Locale } from "@/core/i18n/locale";
 import { orderChannel } from "@/core/orders/pure";
 import { getCustomer, getCustomerByTelegramId, type Customer } from "@/core/customers/customers";
 import type { MaterialSender } from "@/core/orders/orders";
@@ -19,9 +20,14 @@ export type ZernioTarget = {
   platform: ZernioPlatform;
   /** Номер WhatsApp — чтобы написать первым, когда 24-часовое окно закрылось. */
   phone?: string | null;
+  /** Язык покупателя (bot_users.state.locale, иначе язык магазина) — для строк выдачи. */
+  locale?: Locale;
 };
 
-export function zernioTargetOf(customer: Customer | null): ZernioTarget | null {
+export function zernioTargetOf(
+  customer: Customer | null,
+  fallbackLocale?: Locale,
+): ZernioTarget | null {
   if (!customer || !isZernioPlatform(customer.platform)) return null;
   if (!customer.zernioConversationId || !customer.zernioAccountId) return null;
   return {
@@ -29,6 +35,7 @@ export function zernioTargetOf(customer: Customer | null): ZernioTarget | null {
     accountId: customer.zernioAccountId,
     platform: customer.platform,
     phone: customer.contactPhone,
+    locale: isLocale(customer.state.locale) ? customer.state.locale : fallbackLocale,
   };
 }
 
@@ -41,7 +48,7 @@ export async function zernioTargetForOrder(
   const customer = order.user_key
     ? await getCustomer(ctx, order.user_key)
     : await getCustomerByTelegramId(ctx, Number(order.telegram_id));
-  return zernioTargetOf(customer);
+  return zernioTargetOf(customer, ctx.tenant.settings.default_locale);
 }
 
 /** Текст покупателю в его канал (HTML снимается — Direct его не рисует). */
@@ -60,7 +67,9 @@ export function zernioSenderFor(
   target: ZernioTarget,
   transport: ZernioTransport = liveTransport,
 ): MaterialSender {
-  return zernioMaterialSender(transport, target.conversationId, target.accountId, target.platform);
+  return zernioMaterialSender(transport, target.conversationId, target.accountId, target.platform, {
+    locale: target.locale,
+  });
 }
 
 /** Заказ для выдачи в канал: номер для текста, почта для письма при закрытом окне. */
@@ -141,7 +150,7 @@ export async function zernioDeliverySender(
     target.conversationId,
     target.accountId,
     target.platform,
-    { pageUrl, onWindowClosed },
+    { pageUrl, onWindowClosed, locale: target.locale },
   );
   return { send, notes, pageUrl };
 }

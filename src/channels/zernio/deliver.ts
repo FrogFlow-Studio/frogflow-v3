@@ -1,7 +1,9 @@
+import type { Locale } from "@/core/i18n/locale";
 import type { MaterialSender } from "@/core/orders/orders";
 import { signedFileUrl } from "@/core/orders/orders";
 import { materialDownloadName } from "@/core/orders/pure";
 import type { ZernioTransport } from "./api.server";
+import { COPY } from "@/channels/telegram/copy";
 import { classifyZernioFailure } from "./errors";
 import type { ZernioPlatform } from "./platform";
 
@@ -19,6 +21,8 @@ export type ZernioDeliveryOptions = {
    * Зовётся один раз на выдачу.
    */
   onWindowClosed?: () => Promise<void>;
+  /** Язык покупателя для строк сообщения; по умолчанию русский. */
+  locale?: Locale;
 };
 
 /**
@@ -36,6 +40,7 @@ export function zernioMaterialSender(
   opts: ZernioDeliveryOptions = {},
 ): MaterialSender {
   let windowClosed: Promise<void> | null = null;
+  const m = COPY[opts.locale ?? "ru"];
   return async (item, materials) => {
     const lines: string[] = [`📁 ${item.name_snapshot}`];
     for (const mat of materials) {
@@ -51,8 +56,8 @@ export function zernioMaterialSender(
       if (!url) return "failed";
       lines.push(`${mat.name ? `${mat.name}: ` : ""}${url}`);
     }
-    if (materials.some((m) => m.path)) lines.push("", "Ссылки на файлы действуют 7 дней.");
-    if (opts.pageUrl) lines.push("", `Все файлы заказа — на странице: ${opts.pageUrl}`);
+    if (materials.some((m) => m.path)) lines.push("", m.deliveryLinksExpire);
+    if (opts.pageUrl) lines.push("", `${m.deliveryOrderPage} ${opts.pageUrl}`);
     // Позиция + тело: повтор после таймаута не шлёт ссылки второй раз.
     const r = await transport.send(conversationId, accountId, lines.join("\n"), {
       platform,

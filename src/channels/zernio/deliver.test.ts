@@ -116,3 +116,19 @@ describe("выдача материалов в Direct/WhatsApp", () => {
     expect(await other(item, mats)).toBe("failed");
   });
 });
+
+describe("язык выдачи в Direct/WhatsApp", () => {
+  it("на узбекском нет русских строк", async () => {
+    const { t, texts } = transport();
+    const send = zernioMaterialSender(t, "c", "a", "whatsapp", {
+      pageUrl: "https://app.test/o/1",
+      locale: "uz",
+    });
+    await send({ name_snapshot: "Yozuv" } as typeof item, [
+      { path: "p/f.pdf", name: "Dars", url: null },
+    ]);
+    expect(texts[0]).toContain("Fayl havolalari 7 kun amal qiladi.");
+    expect(texts[0]).toContain("Buyurtmaning barcha fayllari — sahifada: https://app.test/o/1");
+    expect(texts[0]).not.toMatch(/[а-яё]/i);
+  });
+});
