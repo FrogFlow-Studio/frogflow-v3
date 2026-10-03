@@ -288,6 +288,22 @@ export const webOrderFn = createServerFn({ method: "POST" })
   });
 
 /**
+ * «Повторить заказ» со страницы заказа: владение доказано подписанной ссылкой,
+ * вход через Telegram не нужен. Состав берётся из самого заказа, цены — сегодняшние.
+ */
+export const webOrderReorderFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object(orderRef).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await orderCtx(data, "order");
+    const { getOrder } = await import("@/core/orders/orders");
+    const { viewsOrderPage } = await import("@/core/storefront/web-order");
+    const order = await getOrder(ctx, data.id);
+    if (!order || !viewsOrderPage(order)) throw notFound();
+    const { planReorder } = await import("@/core/storefront/reorder");
+    return planReorder(ctx, order);
+  });
+
+/**
  * Чек с сайта. Тело запроса функции ограничено (~4,5 МБ на Vercel), поэтому
  * файл — до 3 МБ в base64: снимка экрана или PDF из банка хватает.
  */

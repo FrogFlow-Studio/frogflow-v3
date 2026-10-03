@@ -252,6 +252,17 @@ const ru = {
   "orders.title": "Мои заказы",
   "orders.onlyTelegram": "Заказы и материалы видны внутри Telegram — откройте магазин через бота.",
   "orders.empty": "Заказов пока нет.",
+  "reorder.button": "🔁 Повторить заказ",
+  "reorder.done": "Добавлено в корзину: {n} поз.",
+  "reorder.nothing": "Из этого заказа сейчас ничего нельзя добавить.",
+  "reorder.toCart": "Перейти в корзину",
+  "reorder.skip.gone": "{name} — снят с продажи.",
+  "reorder.skip.variant_gone":
+    "{name} — такого варианта больше нет: выберите заново на странице товара.",
+  "reorder.skip.out_of_stock": "{name} — нет в наличии.",
+  "reorder.skip.less": "{name} — в наличии только {left}, добавлено {left}.",
+  "reorder.skip.mixed":
+    "{name} — в корзине уже товары другого вида: файлы и физические товары оформляются отдельно.",
   "rewards.title": "Мои баллы и приглашения",
   "rewards.balance": "🏆 Баллы: {n} (1 балл = 1 {cur})",
   "rewards.none": "Баллов пока нет. Они начисляются за выданные заказы: {p}% от суммы.",
@@ -627,6 +638,16 @@ const kk: Dict = {
   "orders.onlyTelegram":
     "Тапсырыстар мен материалдар Telegram ішінде көрінеді — дүкенді бот арқылы ашыңыз.",
   "orders.empty": "Тапсырыстар әзірге жоқ.",
+  "reorder.button": "🔁 Тапсырысты қайталау",
+  "reorder.done": "Себетке қосылды: {n} поз.",
+  "reorder.nothing": "Бұл тапсырыстан қазір ештеңе қосу мүмкін емес.",
+  "reorder.toCart": "Себетке өту",
+  "reorder.skip.gone": "{name} — сатылымнан алынған.",
+  "reorder.skip.variant_gone": "{name} — мұндай нұсқа енді жоқ: тауар бетінде қайта таңдаңыз.",
+  "reorder.skip.out_of_stock": "{name} — қоймада жоқ.",
+  "reorder.skip.less": "{name} — қоймада тек {left}, қосылғаны {left}.",
+  "reorder.skip.mixed":
+    "{name} — себетте басқа түрдегі тауарлар бар: файлдар мен физикалық тауарлар бөлек рәсімделеді.",
   "rewards.title": "Менің баллдарым және шақырулар",
   "rewards.balance": "🏆 Баллдар: {n} (1 балл = 1 {cur})",
   "rewards.none": "Баллдар әзірге жоқ. Олар берілген тапсырыстар үшін есептеледі: сомасының {p}%.",
@@ -993,6 +1014,16 @@ const en: Dict = {
   "orders.onlyTelegram":
     "Orders and materials are visible inside Telegram — open the shop from the bot.",
   "orders.empty": "No orders yet.",
+  "reorder.button": "🔁 Order again",
+  "reorder.done": "Added to cart: {n} item(s).",
+  "reorder.nothing": "Nothing from this order can be added right now.",
+  "reorder.toCart": "Go to cart",
+  "reorder.skip.gone": "{name} — no longer on sale.",
+  "reorder.skip.variant_gone": "{name} — this option is gone: pick it again on the product page.",
+  "reorder.skip.out_of_stock": "{name} — out of stock.",
+  "reorder.skip.less": "{name} — only {left} in stock, added {left}.",
+  "reorder.skip.mixed":
+    "{name} — the cart already has items of another kind: files and physical products are ordered separately.",
   "rewards.title": "My points and invitations",
   "rewards.balance": "🏆 Points: {n} (1 point = 1 {cur})",
   "rewards.none": "No points yet. They are earned on delivered orders: {p}% of the amount.",
@@ -1362,6 +1393,17 @@ const uz: Dict = {
   "orders.onlyTelegram":
     "Buyurtmalar va materiallar Telegram ichida ko‘rinadi — do‘konni bot orqali oching.",
   "orders.empty": "Hozircha buyurtmalar yo‘q.",
+  "reorder.button": "🔁 Buyurtmani takrorlash",
+  "reorder.done": "Savatga qo‘shildi: {n} ta.",
+  "reorder.nothing": "Bu buyurtmadan hozir hech narsa qo‘shib bo‘lmaydi.",
+  "reorder.toCart": "Savatga o‘tish",
+  "reorder.skip.gone": "{name} — sotuvdan olingan.",
+  "reorder.skip.variant_gone":
+    "{name} — bunday variant endi yo‘q: mahsulot sahifasida qayta tanlang.",
+  "reorder.skip.out_of_stock": "{name} — omborda yo‘q.",
+  "reorder.skip.less": "{name} — omborda faqat {left} ta, qo‘shildi: {left}.",
+  "reorder.skip.mixed":
+    "{name} — savatda boshqa turdagi mahsulotlar bor: fayllar va jismoniy mahsulotlar alohida rasmiylashtiriladi.",
   "rewards.title": "Ballarim va takliflar",
   "rewards.balance": "🏆 Ballar: {n} (1 ball = 1 {cur})",
   "rewards.none":

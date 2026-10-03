@@ -3,10 +3,12 @@ import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import {
   webCardPayFn,
   webOrderFn,
+  webOrderReorderFn,
   webProofFn,
   webStripePayFn,
 } from "@/app/storefront/checkout.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
+import { ReorderButton } from "@/app/storefront/reorder";
 import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
 import { linkWebOrderFn, webOrderLinkStateFn } from "@/app/storefront/tg-login.functions";
 import { formatMoney } from "@/core/money/money";
@@ -124,6 +126,7 @@ function OrderPage() {
           </li>
         ))}
       </ul>
+      <ReorderButton slug={slug} plan={() => webOrderReorderFn({ data: ref })} />
       {view.discount > 0 && (
         <div className="space-y-1 text-sm">
           <div className="flex justify-between gap-3">

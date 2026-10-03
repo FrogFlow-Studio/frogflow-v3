@@ -1,10 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { miniAppOrdersFn, miniAppRewardsFn } from "@/app/storefront/storefront.functions";
+import {
+  miniAppOrdersFn,
+  miniAppReorderFn,
+  miniAppRewardsFn,
+} from "@/app/storefront/storefront.functions";
 import { useTelegramWebApp } from "@/app/storefront/cart";
-import { webMyOrdersFn, webMyRewardsFn } from "@/app/storefront/tg-login.functions";
+import { webMyOrdersFn, webMyReorderFn, webMyRewardsFn } from "@/app/storefront/tg-login.functions";
 import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
 import { MyRewardsBox } from "@/app/storefront/my-rewards";
+import { ReorderButton } from "@/app/storefront/reorder";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
 import { Empty, ErrorBox } from "@/app/ui";
@@ -126,6 +131,14 @@ function OrdersPage() {
               <div className="text-xs text-muted">
                 {o.items.map((i) => `${i.name} × ${i.qty}`).join(", ")}
               </div>
+              <ReorderButton
+                slug={slug}
+                plan={() =>
+                  wa
+                    ? miniAppReorderFn({ data: { slug, initData: wa.initData, orderId: o.id } })
+                    : webMyReorderFn({ data: { slug, orderId: o.id } })
+                }
+              />
             </li>
           ))}
         </ul>

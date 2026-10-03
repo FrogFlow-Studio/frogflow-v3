@@ -219,6 +219,34 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
     return buyerOrders(ctx, v.user.id, data.libraryOffset ?? 0);
   });
 
+/**
+ * «Повторить заказ» в Mini App: те же товары в корзину витрины. Сервер лишь
+ * считает план (что можно взять сегодня и что нет, core/storefront/reorder) —
+ * корзина лежит в браузере покупателя. Свой заказ — по подписанному initData.
+ */
+export const miniAppReorderFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({ slug, initData: z.string().min(1).max(8000), orderId: z.number().int().positive() })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await shopCtx(data.slug, "mini_app");
+    const t = await shopT(ctx);
+    if (!ctx.tenant.telegramTokenEnc) throw shownError(t("error.noBot"));
+    const { validateInitData } = await import("@/core/storefront/init-data");
+    const v = validateInitData(data.initData, ctx.secrets.telegramToken());
+    if (!v.ok)
+      throw shownError(t(v.reason === "expired" ? "error.miniAppExpired" : "error.miniAppAuth"));
+    const { takeMiniApp } = await import("@/core/storefront/rate-limit");
+    if (!(await takeMiniApp(ctx, v.user.id, "orders")))
+      throw shownError(t("error.tooManyRequests"));
+    const { planReorderForBuyer } = await import("@/core/storefront/reorder");
+    const plan = await planReorderForBuyer(ctx, v.user.id, data.orderId);
+    if (!plan) throw notFound();
+    return plan;
+  });
+
 /** «Мои баллы и приглашения» в Mini App: баланс, уровень, личная ссылка и итоги приглашений. */
 export const miniAppRewardsFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ slug, initData: z.string().min(1).max(8000) }).parse(d))

@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { mergeCartLines } from "./cart-merge";
 import { captureLaunchParams, pickInitData } from "./tg-init-data";
 
 /** Корзина витрины: в браузере покупателя, по магазину. Сервер её не видит до оформления. */
@@ -28,6 +29,8 @@ type CartApi = {
   currency: string;
   add: (line: Omit<CartLine, "qty">, qty?: number) => "ok" | "mixed";
   setQty: (productId: string, variantId: string | null, qty: number) => void;
+  /** Несколько позиций сразу (повтор заказа): какие легли и какие не подошли по виду. */
+  addMany: (incoming: CartLine[]) => { added: CartLine[]; mixed: CartLine[] };
   clear: () => void;
 };
 
@@ -87,6 +90,11 @@ export function CartProvider({ slug, children }: { slug: string; children: React
                   : l,
               ),
         );
+      },
+      addMany: (incoming) => {
+        const r = mergeCartLines(lines, incoming);
+        if (r.added.length) persist(r.lines);
+        return { added: r.added, mixed: r.mixed };
       },
       clear: () => persist([]),
     };

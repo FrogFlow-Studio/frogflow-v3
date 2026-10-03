@@ -152,6 +152,24 @@ export const webMyRewardsFn = createServerFn({ method: "POST" })
     return myRewards(ctx, tgId);
   });
 
+/** «Повторить заказ» из списка «Мои заказы» на сайте — для вошедшего покупателя. */
+export const webMyReorderFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ slug, orderId: z.number().int().positive() }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await loginCtx(data.slug);
+    if (!ctx) throw notFound();
+    const { buyerTelegramId } = await import("./tg-login.server");
+    const tgId = await buyerTelegramId(ctx);
+    if (tgId === null) throw notFound();
+    const { takeWeb } = await import("@/core/storefront/checkout-guard");
+    if (!(await takeWeb(ctx, "myOrders", String(tgId))))
+      throw shownError((await shopT(ctx))("error.tooManyRequests"));
+    const { planReorderForBuyer } = await import("@/core/storefront/reorder");
+    const plan = await planReorderForBuyer(ctx, tgId, data.orderId);
+    if (!plan) throw notFound();
+    return plan;
+  });
+
 const orderRef = { slug, id: z.number().int().positive(), t: z.string().max(64) };
 
 /**
