@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSetting, setSetting } from "@/core/settings/settings";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Ограниченные предложения (модуль limited_offers): скидка в процентах на
@@ -81,12 +82,14 @@ async function soldCounts(ctx: TenantContext, offers: readonly LimitedOffer[]) {
   const now = Date.now();
   for (const o of offers) {
     if (o.limit == null || now >= Date.parse(o.ends_at)) continue;
-    const { data } = await ctx.db
+    const { data, error } = await ctx.db
       .from("order_items")
       .select("quantity, orders!inner(status, created_at)")
       .eq("product_id", o.product_id)
       .gte("orders.created_at", o.starts_at)
       .not("orders.status", "in", "(rejected,cancelled)");
+    // Без проданного число «осталось» завысилось бы, и лимит акции не удержался бы.
+    if (error) throw serverFailure(`Продано по акции ${o.id}: ${error.message}`);
     sold.set(
       o.id,
       (data ?? []).reduce((s, r) => s + (Number(r.quantity) || 0), 0),

@@ -6,6 +6,7 @@ import {
   type Money,
 } from "@/core/money/money";
 import type { Json } from "@/core/db-types";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Цена товара для конкретного покупателя — одна функция на все каналы.
@@ -33,12 +34,14 @@ const METHODS_TTL_MS = 5 * 60 * 1000;
 async function loadMethods(ctx: TenantContext): Promise<Methods> {
   const cached = methodsCache.get(ctx.tenant.id);
   if (cached && Date.now() - cached.ts < METHODS_TTL_MS) return cached.methods;
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("payment_methods")
     .select("country_code, currency, sort_order")
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("country_code", { ascending: true });
+  // Пустой ответ при сбое пять минут держался бы в кэше: цены в чужой валюте.
+  if (error) throw serverFailure(`Способы оплаты: ${error.message}`);
   const currencies = new Map<string, string>();
   let defaultCode: string | null = null;
   for (const row of data ?? []) {

@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database, Json } from "@/core/db-types";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Шаблоны WhatsApp (Meta) — локальная копия `whatsapp_templates`, чтобы
@@ -67,7 +68,7 @@ export async function applyTemplateStatus(
   ctx: TenantContext,
   p: { accountId: string; name: string; language: string; status: string; reason?: string | null },
 ): Promise<boolean> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("whatsapp_templates")
     .update({
       status: p.status || "PENDING",
@@ -78,6 +79,8 @@ export async function applyTemplateStatus(
     .eq("name", p.name)
     .eq("language", p.language)
     .select("id");
+  // Сбой — не «шаблона нет»: вебхук получит ошибку и придёт повторно.
+  if (error) throw serverFailure(`Статус шаблона ${p.name}: ${error.message}`);
   return Boolean(data?.length);
 }
 
