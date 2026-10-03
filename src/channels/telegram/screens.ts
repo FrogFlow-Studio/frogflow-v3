@@ -2,7 +2,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
 import { shownLeadDays } from "@/core/catalog/lead-time";
 import { sortedImages, sortedVariants, imageUrl, type Product } from "@/core/catalog/catalog";
-import { resolvePrice } from "@/core/pricing/pricing";
+import { resolvePrice, strikePrice } from "@/core/pricing/pricing";
 import { formatRatingSummary } from "@/core/reviews/pure";
 import { formatMoney } from "@/core/money/money";
 import { verticalDef } from "@/core/verticals/registry";
@@ -118,8 +118,10 @@ export async function productCard(
           ]),
     };
   } else {
-    const money = await resolvePrice(ctx, p, country);
-    caption = `📦 <b>${escapeHtml(p.name)}</b>${desc}\n\n💰 <b>${formatMoney(money.amount, money.currency)}</b>`;
+    const { price: money, old } = await strikePrice(ctx, p, country);
+    // Акция: прежняя цена зачёркнута, рядом новая.
+    const was = old != null ? `<s>${formatMoney(old, money.currency)}</s> ` : "";
+    caption = `📦 <b>${escapeHtml(p.name)}</b>${desc}\n\n💰 ${was}<b>${formatMoney(money.amount, money.currency)}</b>`;
     keyboard = {
       inline_keyboard: outOfStock
         ? waitlistRow(t, locale, p.id)

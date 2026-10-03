@@ -166,6 +166,17 @@ export function productCategoryIds(p: { category_ids?: unknown }): string[] {
     : [];
 }
 
+/** Идёт ли сейчас хоть одна акция — показывать ли на витрине фильтр «Со скидкой». */
+export async function hasActiveOffers(ctx: TenantContext): Promise<boolean> {
+  if (!ctx.tenant.modules.limited_offers) return false;
+  const { offers, sold } = await loadOfferState(ctx);
+  const now = new Date();
+  return offers.some((o) => {
+    if (now < new Date(o.starts_at) || now >= new Date(o.ends_at)) return false;
+    return o.limit == null || (sold.get(o.id) ?? 0) < o.limit;
+  });
+}
+
 export async function listOffers(ctx: TenantContext): Promise<OfferState[]> {
   resetOffersCache(ctx.tenant.id);
   const { offers, sold } = await loadOfferState(ctx);

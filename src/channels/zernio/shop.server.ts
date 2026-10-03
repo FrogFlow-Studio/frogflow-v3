@@ -29,7 +29,7 @@ import {
   removeCartItem,
 } from "@/core/cart/cart";
 import { formatMoney } from "@/core/money/money";
-import { resolvePrice } from "@/core/pricing/pricing";
+import { resolvePrice, strikePrice } from "@/core/pricing/pricing";
 import {
   attachPaymentProof,
   markProofVerified,
@@ -1277,8 +1277,9 @@ async function sendProductCard(s: Shop, p: Product, force: boolean) {
       }
     }
   } else {
-    const money = await resolvePrice(s.ctx, p, country);
-    text += `\n\n${formatMoney(money.amount, money.currency)}`;
+    const { price: money, old } = await strikePrice(s.ctx, p, country);
+    // Директ без разметки: прежняя цена словами, «было … → стало …».
+    text += `\n\n${old != null ? `${formatMoney(old, money.currency)} → ` : ""}${formatMoney(money.amount, money.currency)}`;
     if (!outOfStock)
       buttons.push({ type: "postback", title: plain(s.m.addToCartBtn), payload: `BUY:${p.id}` });
   }

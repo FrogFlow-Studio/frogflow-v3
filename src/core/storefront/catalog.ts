@@ -14,7 +14,13 @@ import {
 } from "@/core/catalog/catalog";
 import { imagePath } from "@/core/catalog/image-url";
 import { resolveListPrice, resolvePrice } from "@/core/pricing/pricing";
-import { offerForProductRow } from "@/core/offers/offers";
+import {
+  activeOfferFor,
+  hasActiveOffers,
+  loadOfferState,
+  offerForProductRow,
+  productCategoryIds,
+} from "@/core/offers/offers";
 import { productSellable } from "@/core/catalog/materials";
 import { getSettings } from "@/core/settings/settings";
 import { eachPage, pageAll } from "@/core/db/page";
@@ -85,6 +91,8 @@ export type StoreInfo = {
   langFilter: boolean;
   /** Модуль «Склад»: на главной есть фильтр «в наличии». */
   stockFilter: boolean;
+  /** Идёт хотя бы одна акция: на главной есть фильтр «Со скидкой». */
+  saleFilter: boolean;
   /** Короткий текст «О продавце» для шапки витрины. */
   tagline: string | null;
   categories: Array<{ id: string; name: string; parent_id: string | null }>;
@@ -94,8 +102,9 @@ export type StoreInfo = {
 };
 
 export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
-  const [cats, s] = await Promise.all([
+  const [cats, saleFilter, s] = await Promise.all([
     listAllCategories(ctx),
+    hasActiveOffers(ctx),
     getSettings(ctx, [
       "shop_name",
       "admin_contact_link",
@@ -124,6 +133,7 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
     miniApp: Boolean(ctx.tenant.modules.telegram_mini_app && ctx.tenant.modules.shop),
     langFilter: Boolean(ctx.tenant.modules.multi_language),
     stockFilter: Boolean(ctx.tenant.modules.stock),
+    saleFilter,
     tagline: s.shop_tagline?.trim()
       ? s.shop_tagline.trim().slice(0, 160)
       : s.legal_about
@@ -260,6 +270,8 @@ export async function storeCatalogPage(
     lang?: string | null;
     /** Только товары, которые можно купить сейчас (фильтр «в наличии»). */
     inStock?: boolean;
+    /** Только товары с действующей акцией (фильтр «Со скидкой»). */
+    sale?: boolean;
     /** Цена от и до включительно, в валюте магазина; null — граница не задана. */
     minPrice?: number | null;
     maxPrice?: number | null;
@@ -282,6 +294,9 @@ export async function storeCatalogPage(
   const need = offset + limit + 1;
   const price = priceRange(opts.minPrice, opts.maxPrice);
   const listed: Array<{ p: Product; langs: string[] }> = [];
+  // Акции читаются один раз на запрос: по ним же считается цена на карточках.
+  const sales = opts.sale && ctx.tenant.modules.limited_offers ? await loadOfferState(ctx) : null;
+  const saleNow = new Date();
   await eachPage<Product>(
     (a, b) => catalogQuery(ctx, sort).range(a, b),
     "store catalog",
@@ -291,6 +306,11 @@ export async function storeCatalogPage(
         const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
         if (wanted && !ids.some((id) => wanted.has(id))) continue;
         if (opts.inStock && !isInStock(ctx, p)) continue;
+        if (
+          opts.sale &&
+          !(sales && activeOfferFor(sales.offers, p.id, sales.sold, saleNow, productCategoryIds(p)))
+        )
+          continue;
         if (price.min !== null || price.max !== null) {
           const fp = filterPrice(p);
           if ((price.min !== null && fp < price.min) || (price.max !== null && fp > price.max))

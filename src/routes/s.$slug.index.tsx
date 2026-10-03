@@ -33,6 +33,8 @@ export const Route = createFileRoute("/s/$slug/")({
     page: z.number().int().min(2).max(200).optional().catch(undefined),
     // Фильтры: «в наличии» и цена от–до (core/storefront/filters), в запросе к базе.
     stock: z.literal(1).optional().catch(undefined),
+    // «Со скидкой»: только товары с идущей акцией.
+    sale: z.literal(1).optional().catch(undefined),
     min: z.number().min(0).max(1_000_000_000).optional().catch(undefined),
     max: z.number().min(0).max(1_000_000_000).optional().catch(undefined),
   }),
@@ -44,6 +46,7 @@ export const Route = createFileRoute("/s/$slug/")({
     lang: search.lang,
     page: search.page,
     stock: search.stock,
+    sale: search.sale,
     min: search.min,
     max: search.max,
   }),
@@ -56,6 +59,7 @@ export const Route = createFileRoute("/s/$slug/")({
         sort: deps.sort,
         lang: deps.lang,
         stock: deps.stock === 1 ? true : undefined,
+        sale: deps.sale === 1 ? true : undefined,
         min: deps.min,
         max: deps.max,
         offset: ((deps.page ?? 1) - 1) * STORE_PAGE,
@@ -128,6 +132,7 @@ function CatalogPage() {
     s.lang,
     s.page,
     s.stock,
+    s.sale,
     s.min,
     s.max,
   ]);
@@ -154,6 +159,7 @@ function CatalogPage() {
           sort: s.sort,
           lang: s.lang,
           stock: s.stock === 1 ? true : undefined,
+          sale: s.sale === 1 ? true : undefined,
           min: s.min,
           max: s.max,
           offset: (firstPage - 1) * STORE_PAGE + catalog.length,
@@ -187,7 +193,7 @@ function CatalogPage() {
   const langs = shop.langFilter ? first.languages : [];
   const lang = s.lang && langs.includes(s.lang as never) ? s.lang : null;
   const products = catalog;
-  const filtered = s.stock === 1 || s.min !== undefined || s.max !== undefined;
+  const filtered = s.stock === 1 || s.sale === 1 || s.min !== undefined || s.max !== undefined;
   const sort = parseCatalogSort(s.sort);
   const digitalOnly = products.length > 0 && products.every((p) => p.kind === "digital");
 
@@ -230,7 +236,15 @@ function CatalogPage() {
           <Link
             to="/s/$slug"
             params={{ slug }}
-            search={{ q: s.q, lang: s.lang, sort: s.sort, stock: s.stock, min: s.min, max: s.max }}
+            search={{
+              q: s.q,
+              lang: s.lang,
+              sort: s.sort,
+              stock: s.stock,
+              sale: s.sale,
+              min: s.min,
+              max: s.max,
+            }}
             className={`badge shrink-0 px-3 py-1.5 ${!s.category ? "border-accent bg-accent/10 text-accent" : ""}`}
           >
             {t("catalog.all")}
@@ -246,6 +260,7 @@ function CatalogPage() {
                 lang: s.lang,
                 sort: s.sort,
                 stock: s.stock,
+                sale: s.sale,
                 min: s.min,
                 max: s.max,
               }}
@@ -268,6 +283,7 @@ function CatalogPage() {
               lang: s.lang,
               sort: s.sort,
               stock: s.stock,
+              sale: s.sale,
               min: s.min,
               max: s.max,
             }}
@@ -286,6 +302,7 @@ function CatalogPage() {
                 lang: s.lang,
                 sort: s.sort,
                 stock: s.stock,
+                sale: s.sale,
                 min: s.min,
                 max: s.max,
               }}
@@ -338,6 +355,7 @@ function CatalogPage() {
             search: {
               ...s,
               stock: f.get("stock") === "on" ? 1 : undefined,
+              sale: f.get("sale") === "on" ? 1 : undefined,
               min: num("min"),
               max: num("max"),
               page: undefined,
@@ -349,6 +367,12 @@ function CatalogPage() {
           <label className="flex items-center gap-1.5">
             <input type="checkbox" name="stock" defaultChecked={s.stock === 1} />
             {t("catalog.filter.stock")}
+          </label>
+        )}
+        {(shop.saleFilter || s.sale === 1) && (
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" name="sale" defaultChecked={s.sale === 1} />
+            {t("catalog.filter.sale")}
           </label>
         )}
         <label className="flex items-center gap-1.5">
@@ -374,7 +398,14 @@ function CatalogPage() {
           <Link
             to="/s/$slug"
             params={{ slug }}
-            search={{ ...s, stock: undefined, min: undefined, max: undefined, page: undefined }}
+            search={{
+              ...s,
+              stock: undefined,
+              sale: undefined,
+              min: undefined,
+              max: undefined,
+              page: undefined,
+            }}
             className="text-accent hover:underline"
           >
             {t("catalog.filter.reset")}

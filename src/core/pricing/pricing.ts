@@ -168,6 +168,22 @@ export async function resolvePrice(
     : money;
 }
 
+/**
+ * Прежняя цена для зачёркивания: есть, только если по товару идёт акция и
+ * цена со скидкой правда ниже. Для карточки товара в боте и Direct.
+ */
+export async function strikePrice(
+  ctx: TenantContext,
+  product: PricedProduct,
+  countryCode: string | null | undefined,
+  variant?: { price: number | string } | null,
+): Promise<{ price: Money; old: number | null }> {
+  const price = await resolvePrice(ctx, product, countryCode, variant);
+  if (!ctx.tenant.modules.limited_offers || !product.id) return { price, old: null };
+  const list = await resolveListPrice(ctx, product, countryCode, variant);
+  return { price, old: list.amount > price.amount ? list.amount : null };
+}
+
 /** Цена без акций — по стране и курсу. */
 export async function resolveListPrice(
   ctx: TenantContext,
