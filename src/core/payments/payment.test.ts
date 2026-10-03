@@ -45,3 +45,47 @@ describe("онлайн-оплата пишет платёж в журнал за
     });
   });
 });
+
+describe("сбой базы в колбэке оплаты", () => {
+  const brokenCtx = (failOn: "read" | "update") => {
+    const real = ctx();
+    const failing = (): unknown => {
+      const chain: Record<string, unknown> = {};
+      for (const m of ["select", "eq", "in", "update"]) chain[m] = () => chain;
+      chain.maybeSingle = async () => ({ data: null, error: { message: "connection reset" } });
+      return chain;
+    };
+    return {
+      ...real,
+      db: {
+        from: (t: string) => {
+          const builder = (db as FakeDb).from(t) as unknown as {
+            update: (...a: unknown[]) => unknown;
+          };
+          if (failOn === "read") return failing();
+          return new Proxy(builder, {
+            get: (target, key) =>
+              key === "update"
+                ? () => failing()
+                : (target as Record<string | symbol, unknown>)[key],
+          });
+        },
+      },
+    } as unknown as TenantContext;
+  };
+
+  it("не прочитался заказ — сбой (шлюз повторит колбэк), а не «заказ не найден»", async () => {
+    await expect(markPaidOnline(brokenCtx("read"), 7, 3000, "Robokassa", "7")).rejects.toThrow(
+      /не прочитан заказ #7/,
+    );
+    expect(db.tables.orders![0]!.status).toBe("awaiting_payment");
+  });
+
+  it("не записалась оплата — сбой, заказ не помечен оплаченным, события в журнале нет", async () => {
+    await expect(markPaidOnline(brokenCtx("update"), 7, 3000, "Robokassa", "7")).rejects.toThrow(
+      /не записана оплата заказа #7/,
+    );
+    expect(db.tables.orders![0]!.status).toBe("awaiting_payment");
+    expect(db.tables.zernio_logs).toHaveLength(0);
+  });
+});

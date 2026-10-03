@@ -82,11 +82,12 @@ export const REJECTABLE_STATUSES = [
 ] as const;
 
 export async function listActivePaymentMethods(ctx: TenantContext): Promise<PaymentMethodRow[]> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("payment_methods")
     .select("*")
     .eq("is_active", true)
     .order("sort_order");
+  if (error) throw serverFailure(`Способы оплаты не прочитаны: ${error.message}`);
   return data ?? [];
 }
 
@@ -94,7 +95,7 @@ export async function paymentMethodFor(
   ctx: TenantContext,
   countryCode: string,
 ): Promise<PaymentMethodRow | null> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("payment_methods")
     .select("*")
     .eq("country_code", countryCode)
@@ -102,6 +103,7 @@ export async function paymentMethodFor(
     .order("sort_order")
     .limit(1)
     .maybeSingle();
+  if (error) throw serverFailure(`Способ оплаты для ${countryCode} не прочитан: ${error.message}`);
   return data ?? null;
 }
 
@@ -408,11 +410,13 @@ export async function placeOrder(
     // «Оформить» молча упирается в placing_order (поймано интеграционным
     // тестом на живой базе).
     await releaseOrderPlacement(ctx, customer);
-    const { data: full } = await ctx.db
+    const { data: full, error: fullError } = await ctx.db
       .from("orders")
       .select("*, order_items(*)")
       .eq("id", order.id)
       .single();
+    // Заказ уже создан: сбой перечитывания его не срывает, берём то, что есть.
+    if (fullError) console.error(`[orders] заказ #${order.id} не перечитан: ${fullError.message}`);
     const finalOrder = (full ?? { ...order, order_items: [] }) as OrderWithItems;
     await recordOrderEvent(ctx, finalOrder.id, "placed", {
       platform: finalOrder.platform,
@@ -495,11 +499,12 @@ function orderItemSnapshot(
 }
 
 export async function getOrder(ctx: TenantContext, id: number): Promise<OrderWithItems | null> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("orders")
     .select("*, order_items(*)")
     .eq("id", id)
     .maybeSingle();
+  if (error) throw serverFailure(`Заказ #${id} не прочитан: ${error.message}`);
   return (data as OrderWithItems | null) ?? null;
 }
 
@@ -508,12 +513,14 @@ export async function listCustomerOrders(
   customer: Customer,
   limit = 20,
 ): Promise<OrderWithItems[]> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("orders")
     .select("*, order_items(*)")
     .eq("telegram_id", customer.telegramId)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(limit);
+  if (error) throw serverFailure(`Заказы покупателя не прочитаны: ${error.message}`);
   return (data ?? []) as OrderWithItems[];
 }
 
@@ -571,7 +578,7 @@ export async function recentAwaitingPaymentOrder(
   windowMs = 24 * 3600_000,
 ): Promise<number | null> {
   const since = new Date(Date.now() - windowMs).toISOString();
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("orders")
     .select("id")
     .eq("telegram_id", customer.telegramId)
@@ -580,6 +587,7 @@ export async function recentAwaitingPaymentOrder(
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (error) throw serverFailure(`Неоплаченный заказ не прочитан: ${error.message}`);
   return data?.id ?? null;
 }
 
@@ -615,13 +623,16 @@ export async function attachPaymentProof(
   // Отпечаток содержимого, а не сырых байтов; старые чеки — и по сырому (proof-hash).
   const hashes = proofHashes(file.bytes);
   const hash = hashes.stored;
-  const { data: dup } = await ctx.db
+  const { data: dup, error: dupError } = await ctx.db
     .from("orders")
     .select("id")
     .in("payment_proof_hash", hashes.all)
     .neq("id", orderId)
     .limit(1)
     .maybeSingle();
+  // Не прочиталось — не «дубля нет»: чужой чек не должен пройти из-за сбоя.
+  if (dupError)
+    throw serverFailure(`Чек заказа #${orderId} не сверен с прежними: ${dupError.message}`);
   if (dup) return { ok: false, reason: "duplicate" };
 
   const key = `${ctx.tenant.id}/order-${orderId}/${Date.now()}.${file.ext}`;
@@ -723,11 +734,12 @@ export async function claimOrderForDelivery(
     await recordOrderEvent(ctx, orderId, "delivery_started", {}, actor);
     return data as OrderWithItems;
   }
-  const { data: existing } = await ctx.db
+  const { data: existing, error: existingError } = await ctx.db
     .from("orders")
     .select("status")
     .eq("id", orderId)
     .maybeSingle();
+  if (existingError) throw serverFailure(`Заказ #${orderId} не прочитан: ${existingError.message}`);
   if (!existing) throw new UserError("err.orders.notFound", "Заказ не найден");
   if (existing.status === "delivered" || existing.status === "delivering") return null;
   throw new UserError("err.orders.cannotDeliver", "Заказ #{no} нельзя выдать (статус: {status})", {

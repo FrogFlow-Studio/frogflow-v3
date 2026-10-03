@@ -104,11 +104,13 @@ async function proofSlot(
 }
 
 async function hasEvent(ctx: TenantContext, eventId: string): Promise<boolean> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("zernio_logs")
     .select("id")
     .eq("event_id", eventId)
     .maybeSingle();
+  // Сбой чтения — не «метки нет»: иначе чек на остаток пропадёт из очереди продавца.
+  if (error) throw serverFailure(`[balance] метка ${eventId} не прочитана: ${error.message}`);
   return data != null;
 }
 
@@ -216,11 +218,14 @@ export async function attachBalanceProof(
   }
   // Остаток оплатили картой, пока чек загружался: чек не нужен — снимаем
   // его, покупатель видит, что заказ уже оплачен.
-  const { data: now } = await ctx.db
+  const { data: now, error: nowError } = await ctx.db
     .from("orders")
     .select("paid_amount")
     .eq("id", order.id)
     .maybeSingle();
+  // Не прочиталось — чек остаётся у продавца: лишний чек безвреден, потерянный — нет.
+  if (nowError)
+    console.error(`[balance] оплата заказа ${order.id} не перечитана: ${nowError.message}`);
   if (now && Number(now.paid_amount) !== Number(order.paid_amount)) {
     await ctx.db
       .from("zernio_logs")
@@ -277,12 +282,12 @@ export async function recordBalancePaidOnline(
   const eventId = `order:${orderId}:balance_paid:${key}`;
   if (!(await claimOrderEvent(ctx, orderId, "balance_paid", key, payload, actor))) {
     // Метки нет — это сбой записи, а не повтор: пусть шлюз пришлёт колбэк снова.
-    const { data: seen } = await ctx.db
+    const { data: seen, error: seenError } = await ctx.db
       .from("zernio_logs")
       .select("id")
       .eq("event_id", eventId)
       .maybeSingle();
-    return { result: seen ? "duplicate" : "retry" };
+    return { result: seen && !seenError ? "duplicate" : "retry" };
   }
   if (order.status === "cancelled" || order.status === "rejected") {
     await recordOrderEvent(ctx, orderId, "balance_closed", payload, actor);
@@ -301,11 +306,13 @@ export async function recordBalancePaidOnline(
   }
   // recordPayment отказывает и при переплате, и при сбое (нет ответа, CAS не
   // сошёлся). Переплата — только если сумма и правда больше итога.
-  const { data: now } = await ctx.db
+  const { data: now, error: overError } = await ctx.db
     .from("orders")
     .select("paid_amount, total")
     .eq("id", orderId)
     .maybeSingle();
+  // Не прочиталось — переплату не объявляем, идём в «повторить».
+  if (overError) console.error(`[balance] заказ ${orderId} не перечитан: ${overError.message}`);
   if (
     now &&
     Math.round(((Number(now.paid_amount) || 0) + amount) * 100) / 100 > Number(now.total) + 0.01

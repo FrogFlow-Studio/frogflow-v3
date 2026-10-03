@@ -298,13 +298,21 @@ export async function verifyReceipt(
         extractedText,
       };
   }
-  const { data: reuse } = await ctx.db
+  const { data: reuse, error: reuseError } = await ctx.db
     .from("orders")
     .select("id, display_no, order_no")
     .in("payment_proof_hash", proofHashes(p.bytes).all)
     .neq("id", p.orderId)
     .limit(1)
     .maybeSingle();
+  // Не прочиталось — не «повтора нет»: чек уходит продавцу, как и при сбое сверки с VIP.
+  if (reuseError)
+    return {
+      ok: false,
+      reason: "receipt_reused",
+      detail: "Не удалось сверить чек с прежними заказами — чек посмотрит продавец.",
+      extractedText,
+    };
   if (reuse)
     return {
       ok: false,

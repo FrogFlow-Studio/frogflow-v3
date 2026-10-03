@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSettings } from "@/core/settings/settings";
+import { serverFailure } from "@/lib/server-failure";
 import { receiptFor, type Receipt } from "./receipt";
 import {
   ROBOKASSA_KEYS,
@@ -60,11 +61,14 @@ export async function markPaidOnline(
   /** Номер платежа у шлюза (InvId Robokassa, charge id Telegram) — в выгрузку «Оплаты». */
   ref?: string,
 ): Promise<{ ok: boolean; kind: "digital" | "physical" | null; alreadyDone: boolean }> {
-  const { data: order } = await ctx.db
+  const { data: order, error: readError } = await ctx.db
     .from("orders")
     .select("status, fulfillment_kind, admin_note, paid_amount, total, currency")
     .eq("id", orderId)
     .maybeSingle();
+  // Сбой чтения — не «заказ не найден»: шлюз получит 5xx и повторит колбэк.
+  if (readError)
+    throw serverFailure(`markPaidOnline: не прочитан заказ #${orderId}: ${readError.message}`);
   if (!order) return { ok: false, kind: null, alreadyDone: false };
   const kind = order.fulfillment_kind === "physical" ? "physical" : "digital";
   if (!["awaiting_payment", "awaiting_confirmation"].includes(order.status))
@@ -79,13 +83,17 @@ export async function markPaidOnline(
     kind === "physical"
       ? { status: "accepted", payment_proof_path: provider, admin_note: note, paid_amount: paid }
       : { status: "paid", payment_proof_path: provider, admin_note: note, paid_amount: paid };
-  const { data } = await ctx.db
+  const { data, error: updateError } = await ctx.db
     .from("orders")
     .update(patch)
     .eq("id", orderId)
     .in("status", ["awaiting_payment", "awaiting_confirmation"])
     .select("id")
     .maybeSingle();
+  if (updateError)
+    throw serverFailure(
+      `markPaidOnline: не записана оплата заказа #${orderId}: ${updateError.message}`,
+    );
   // Платёж — в журнал заказа: из него собирается выгрузка «Оплаты».
   if (data) {
     const { recordOrderEvent } = await import("@/core/orders/events");

@@ -8,6 +8,7 @@
  */
 import { UserError } from "@/core/i18n/user-error";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { serverFailure } from "@/lib/server-failure";
 import { eachPage } from "@/core/db/page";
 import { claimOrderEvent, listOrderEvents, ORDER_EVENT_STATUS } from "./events";
 
@@ -130,7 +131,7 @@ export async function refundOrder(
     )
     .eq("id", orderId)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`[refund] заказ #${orderId} не прочитан: ${error.message}`);
   if (!o) throw new UserError("err.orders.notFound", "Заказ не найден");
   if (!(REFUNDABLE_STATUSES as readonly string[]).includes(o.status))
     throw new UserError(
@@ -156,15 +157,24 @@ export async function refundOrder(
     new UserError("err.refund.changed", "Заказ только что изменился — обновите страницу");
   if (!(await claimOrderEvent(ctx, orderId, "refund", key, base, actor))) throw changed();
   const eventId = `order:${orderId}:refund:${key}`;
-  const { data: won } = await ctx.db
+  const { data: won, error: wonError } = await ctx.db
     .from("orders")
     .update({ status: check.full ? "refunded" : o.status })
     .eq("id", orderId)
     .eq("updated_at", o.updated_at)
     .select("id")
     .maybeSingle();
-  if (!won) {
-    await ctx.db.from("zernio_logs").delete().eq("event_id", eventId);
+  if (wonError || !won) {
+    // Метку возврата снимаем и при сбое записи: иначе сумма уже посчитана в журнале,
+    // а статус заказа не менялся.
+    const { error: releaseError } = await ctx.db
+      .from("zernio_logs")
+      .delete()
+      .eq("event_id", eventId);
+    if (releaseError)
+      console.error(`[refund] метка возврата ${eventId} не снята: ${releaseError.message}`);
+    if (wonError)
+      throw serverFailure(`[refund] статус заказа #${orderId} не записан: ${wonError.message}`);
     throw changed();
   }
 
@@ -198,7 +208,14 @@ export async function refundOrder(
     ...(restocked ? { restocked } : {}),
   };
   if (pointsReturned || pointsRevoked || codes.promo || codes.gift || restocked)
-    await ctx.db.from("zernio_logs").update({ payload }).eq("event_id", eventId);
+    await ctx.db
+      .from("zernio_logs")
+      .update({ payload })
+      .eq("event_id", eventId)
+      .then(({ error: payloadError }) => {
+        if (payloadError)
+          console.error(`[refund] детали возврата ${eventId} не записаны: ${payloadError.message}`);
+      });
   // Событие записано ключом, мимо recordOrderEvent: во внешнюю CRM — отдельно.
   if (ctx.tenant.modules.crm_integration) {
     const { queueCrmEvent } = await import("@/core/crm/webhook");

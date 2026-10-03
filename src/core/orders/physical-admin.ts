@@ -4,6 +4,7 @@
  * знает ни одна из функций — админка и кнопки в Telegram зовут одно и то же.
  */
 import { UserError } from "@/core/i18n/user-error";
+import { serverFailure } from "@/lib/server-failure";
 import { randomUUID } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
@@ -45,22 +46,25 @@ export async function acceptPhysicalOrder(
   id: number,
   actor = "admin",
 ): Promise<AcceptResult> {
-  const { data: order } = await ctx.db
+  const { data: order, error: orderError } = await ctx.db
     .from("orders")
     .select("status, total, paid_amount, fulfillment_kind, currency")
     .eq("id", id)
     .maybeSingle();
+  if (orderError) throw serverFailure(`Заказ #${id} не прочитан: ${orderError.message}`);
   if (!order || order.fulfillment_kind !== "physical")
     return { ok: false, alreadyAccepted: false, recorded: 0 };
   if (order.status !== "awaiting_confirmation" && order.status !== "awaiting_payment")
     return { ok: false, alreadyAccepted: true, recorded: 0 };
-  const { data: moved } = await ctx.db
+  const { data: moved, error: movedError } = await ctx.db
     .from("orders")
     .update({ status: "accepted" })
     .eq("id", id)
     .eq("status", order.status)
     .select("id")
     .maybeSingle();
+  // Сбой записи — не «уже принят»: продавец должен повторить, а не поверить, что всё сделано.
+  if (movedError) throw serverFailure(`Заказ #${id} не принят: ${movedError.message}`);
   if (!moved) return { ok: false, alreadyAccepted: true, recorded: 0 };
   await recordOrderEvent(ctx, id, "status", { to: "accepted" }, actor);
   let recorded = 0;
@@ -103,7 +107,7 @@ export async function recordManualPayment(
     .select("total, paid_amount, fulfillment_kind, status, currency")
     .eq("id", id)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`Заказ #${id} не прочитан: ${error.message}`);
   if (!order) throw new UserError("err.orders.notFound", "Заказ не найден");
   if (order.status === "rejected" || order.status === "cancelled")
     throw new UserError(
@@ -126,11 +130,12 @@ export async function recordManualPayment(
     );
   if (!(await recordPayment(ctx, id, amount))) {
     // Пока проверяли остаток, по заказу успели внести другой платёж.
-    const { data: fresh } = await ctx.db
+    const { data: fresh, error: freshError } = await ctx.db
       .from("orders")
       .select("total, paid_amount")
       .eq("id", id)
       .maybeSingle();
+    if (freshError) throw serverFailure(`Заказ #${id} не перечитан: ${freshError.message}`);
     const left = fresh ? Number(fresh.total) - (Number(fresh.paid_amount) || 0) : remaining;
     if (amount > left + 0.01)
       throw new UserError(
@@ -146,13 +151,16 @@ export async function recordManualPayment(
   await recordOrderEvent(ctx, id, "payment", { amount, currency: order.currency }, actor);
   // Деньги пришли по заказу, который ещё ждал оплату, — он в работе.
   if (order.status === "awaiting_payment" || order.status === "awaiting_confirmation") {
-    const { data: moved } = await ctx.db
+    const { data: moved, error: movedError } = await ctx.db
       .from("orders")
       .update({ status: "accepted" })
       .eq("id", id)
       .eq("status", order.status)
       .select("id")
       .maybeSingle();
+    // Платёж уже записан: сбой смены статуса не отменяет его, продавец примет заказ вручную.
+    if (movedError)
+      console.error(`[orders] заказ #${id} не принят после оплаты: ${movedError.message}`);
     if (moved) await recordOrderEvent(ctx, id, "status", { to: "accepted" }, actor);
   }
   return {
@@ -268,11 +276,12 @@ export async function createManualOrder(
     .from("products")
     .select("id, name, price, currency, is_active, fulfillment_kind, lead_time_days")
     .in("id", productIds);
-  if (prodErr) throw new Error(prodErr.message);
-  const { data: variants } = await ctx.db
+  if (prodErr) throw serverFailure(prodErr.message);
+  const { data: variants, error: variantsErr } = await ctx.db
     .from("product_variants")
     .select("id, product_id, name, price")
     .in("product_id", productIds);
+  if (variantsErr) throw serverFailure(variantsErr.message);
   const byId = new Map((products ?? []).map((p) => [p.id, p]));
 
   const lines: ManualLine[] = [];
@@ -407,7 +416,7 @@ export async function createManualOrder(
     );
     if (itemsError) {
       await ctx.db.from("orders").delete().eq("id", order.id);
-      throw new Error(itemsError.message);
+      throw serverFailure(itemsError.message);
     }
     await recordOrderEvent(ctx, order.id, "placed", { platform: "manual", total, currency }, actor);
     if (paid > 0)
@@ -449,7 +458,7 @@ export async function updateOrderFulfillment(
     )
     .eq("id", input.id)
     .maybeSingle();
-  if (readErr) throw new Error(readErr.message);
+  if (readErr) throw serverFailure(readErr.message);
   if (!order) throw new UserError("err.orders.notFound", "Заказ не найден");
   if (order.fulfillment_kind !== "physical")
     throw new UserError(
