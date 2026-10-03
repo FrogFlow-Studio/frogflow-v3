@@ -2597,20 +2597,18 @@ async function adminDecision(
   data: string,
 ) {
   const admins = await shopAdminIds(ctx);
+  // Ответы продавцу — на его языке; покупателю — на языке покупателя (m ниже).
+  const { SELLER_DECISION } = await import("./seller-decision-texts");
+  const { sellerLocale } = await import("@/core/catalog/low-stock");
+  const st = SELLER_DECISION[await sellerLocale(ctx)];
   if (!admins.includes(String(fromId))) {
-    await api.call("sendMessage", {
-      chat_id: chatId,
-      text: "⛔ Кнопка доступна только продавцу этого магазина.",
-    });
+    await api.call("sendMessage", { chat_id: chatId, text: st.onlyAdmin });
     return;
   }
   const orderId = Number(data.split(":")[1]);
   const order = await getOrder(ctx, orderId);
   if (!order)
-    return void (await api.call("sendMessage", {
-      chat_id: chatId,
-      text: `Заказ #${orderId} не найден.`,
-    }));
+    return void (await api.call("sendMessage", { chat_id: chatId, text: st.notFound(orderId) }));
   const no = displayNo(order);
   const buyerLocale: Locale = await orderBuyerLocale(ctx, order);
   const m = COPY[buyerLocale];
@@ -2633,7 +2631,7 @@ async function adminDecision(
     const ok = await rejectOrder(ctx, orderId, "admin");
     await api.call("sendMessage", {
       chat_id: chatId,
-      text: ok ? `❌ Заказ #${no} отклонён.` : `Заказ #${no} уже закрыт (${order.status}).`,
+      text: ok ? st.rejected(no) : st.alreadyClosed(no, order.status),
     });
     if (ok) await tellBuyer(m.orderRejected(no));
     await decided();
@@ -2646,11 +2644,11 @@ async function adminDecision(
     if (!r.ok) {
       await api.call("sendMessage", {
         chat_id: chatId,
-        text: `Заказ #${no} уже принят или закрыт (${order.status}).`,
+        text: st.alreadyAcceptedOrClosed(no, order.status),
       });
       return;
     }
-    await api.call("sendMessage", { chat_id: chatId, text: `✅ Заказ #${no} принят в работу.` });
+    await api.call("sendMessage", { chat_id: chatId, text: st.accepted(no) });
     await tellBuyer(m.orderAccepted(no));
     await decided();
     return;
@@ -2668,7 +2666,7 @@ async function adminDecision(
   } else if (orderChannel(order.platform) !== "telegram") {
     await api.call("sendMessage", {
       chat_id: chatId,
-      text: `Заказ #${no} из ${order.platform}: у покупателя нет диалога для выдачи.`,
+      text: st.noDialog(no, order.platform),
     });
     return;
   }
@@ -2689,12 +2687,12 @@ async function adminDecision(
   if (r.alreadyDelivered)
     return void (await api.call("sendMessage", {
       chat_id: chatId,
-      text: `Заказ #${no} уже выдан.`,
+      text: st.alreadyDelivered(no),
     }));
   if (r.failed === 0 && r.pending > 0)
     return void (await api.call("sendMessage", {
       chat_id: chatId,
-      text: `📚 Заказ #${no}: покупателю задан вопрос о языке материалов (${r.pending} поз.) — файлы уйдут после ответа.`,
+      text: st.languageAsked(no, r.pending),
     }));
   if (r.failed === 0) {
     const { deliveredMessage } = await import("@/core/delivery/note.server");
@@ -2703,12 +2701,12 @@ async function adminDecision(
     await notifyReferral(ctx, api, r.referral);
     await api.call("sendMessage", {
       chat_id: chatId,
-      text: `✅ Заказ #${no} выдан (${r.sent} поз.).`,
+      text: st.delivered(no, r.sent),
     });
   } else {
     await api.call("sendMessage", {
       chat_id: chatId,
-      text: `⚠️ Заказ #${no}: выдано ${r.sent}, не удалось ${r.failed}. Заказ возвращён в «чек на проверке» — повторите после проверки файлов товара.`,
+      text: st.partial(no, r.sent, r.failed),
     });
   }
 }
@@ -2728,18 +2726,21 @@ async function relayManagerReply(
   if (!token || !msg.from) return false;
   const { shopAdminIds } = await import("@/core/notify/recipients");
   if (!(await shopAdminIds(ctx)).includes(String(msg.from.id))) return false;
+  const { SELLER_DECISION } = await import("./seller-decision-texts");
+  const { sellerLocale } = await import("@/core/catalog/low-stock");
+  const st = SELLER_DECISION[await sellerLocale(ctx)];
   const reply = (text: string) => api.call("sendMessage", { chat_id: msg.chat.id, text });
   const userKey = await resolveHandoffRef(ctx, token);
   const buyer = userKey ? await getCustomer(ctx, userKey) : null;
   const { sendToZernioTarget, zernioTargetOf } = await import("@/channels/zernio/outbound.server");
   const target = zernioTargetOf(buyer);
   if (!buyer || !target) {
-    await reply("Не нашёл диалог покупателя — ответьте в разделе «Чат» панели.");
+    await reply(st.relayNoDialog);
     return true;
   }
   const text = msg.text!.trim();
   if (!(await sendToZernioTarget(target, escapeHtml(text)))) {
-    await reply("Не удалось отправить покупателю — попробуйте из раздела «Чат» панели.");
+    await reply(st.relayNotSent);
     return true;
   }
   const { recordRelayedReply } = await import("@/core/consultant/engine.server");
@@ -2753,6 +2754,6 @@ async function relayManagerReply(
       text,
     }).catch(() => {});
   }
-  await reply("✅ Ответ отправлен покупателю. Консультант в этом диалоге пока молчит.");
+  await reply(st.relaySent);
   return true;
 }
