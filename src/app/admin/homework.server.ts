@@ -95,6 +95,8 @@ export async function reviewAndNotify(
             courseToken(env().SECRETS_KEY, ctx.tenant.id, hw.orderItemId),
           )
         : null;
+      // Принята последняя работа — курс окончен: сертификат выдаётся здесь же.
+      const certUrl = hw.status === "accepted" ? await certificateLink(ctx, hw.orderItemId) : null;
       const text = [
         t(hw.status === "accepted" ? "course.hw.notify.accepted" : "course.hw.notify.revise", {
           course: hw.course,
@@ -102,6 +104,7 @@ export async function reviewAndNotify(
         }),
         hw.feedback?.text ?? "",
         link ? t("course.hw.notify.open", { url: link }) : "",
+        certUrl ? t("course.cert.ready", { course: hw.course, url: certUrl }) : "",
       ]
         .filter(Boolean)
         .join("\n\n");
@@ -110,4 +113,18 @@ export async function reviewAndNotify(
     }
   }
   return { status: hw.status, notified };
+}
+
+/** Выдать сертификат, если курс окончен; ссылка на PDF — только когда он выдан именно сейчас. */
+async function certificateLink(ctx: TenantContext, orderItemId: string): Promise<string | null> {
+  try {
+    const { coursePurchase } = await import("@/core/courses/run.server");
+    const { issueCertificate } = await import("@/core/courses/certificate.server");
+    const p = await coursePurchase(ctx, orderItemId);
+    const r = p ? await issueCertificate(ctx, p) : null;
+    if (!r?.created || !ctx.tenant.settings.slug) return null;
+    return `${storefrontBase(ctx.tenant, ctx.appUrl)}/cert/${r.certificate.code}/pdf`;
+  } catch {
+    return null;
+  }
 }

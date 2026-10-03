@@ -38,9 +38,11 @@ function CoursePage() {
   const [done, setDone] = useState(
     () => new Set(view.lessons.filter((l) => l.done).map((l) => l.id)),
   );
+  const [certificate, setCertificate] = useState(view.certificate);
   const mark = useAction(async (lessonId: string, on: boolean) => {
     const r = await markLessonFn({ data: { slug, itemId, k, lessonId, done: on } });
     setDone(new Set(r.done));
+    if (r.certificate) setCertificate(r.certificate);
   });
   const date = (iso: string) =>
     new Date(iso).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "long" });
@@ -83,6 +85,27 @@ function CoursePage() {
           </p>
         )}
       </header>
+      {certificate && (
+        <div className="space-y-1 rounded-md border border-line p-4">
+          <p className="font-medium">🎓 {t("course.cert.yours")}</p>
+          <div className="flex flex-wrap gap-3 text-sm">
+            <a
+              className="btn-primary"
+              href={`/s/${encodeURIComponent(slug)}/cert/${certificate}/pdf`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("course.cert.download")}
+            </a>
+            <a
+              className="self-center text-accent hover:underline"
+              href={`/s/${encodeURIComponent(slug)}/cert/${certificate}`}
+            >
+              {t("course.cert.valid")}
+            </a>
+          </div>
+        </div>
+      )}
       {view.channel && (
         <div className="space-y-1">
           <button

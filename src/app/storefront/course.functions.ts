@@ -49,7 +49,7 @@ export const markLessonFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { ctx, p } = await purchase(data);
     const { setLessonDone } = await import("./course.server");
-    return { done: await setLessonDone(ctx, p, data.lessonId, data.done) };
+    return setLessonDone(ctx, p, data.lessonId, data.done);
   });
 
 /** Файл ответа на домашнее задание: до 3 МБ в base64 (тело запроса Vercel ~4,5 МБ). */

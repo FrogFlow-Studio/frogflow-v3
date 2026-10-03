@@ -126,7 +126,7 @@ export async function purchaseHomework(
 }
 
 /** Кто учится: имя из заказа, иначе @логин, иначе ключ покупателя. */
-async function studentName(ctx: TenantContext, orderId: number): Promise<string> {
+export async function studentName(ctx: TenantContext, orderId: number): Promise<string> {
   const { data } = await ctx.db
     .from("orders")
     .select("display_name, username, user_key")

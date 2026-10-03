@@ -1,4 +1,5 @@
 import { nextOpening } from "@/core/courses/access";
+import { issueCertificate } from "@/core/courses/certificate.server";
 import { isCourseToken } from "@/core/courses/link";
 import {
   coursePurchase,
@@ -67,6 +68,8 @@ export type CourseView = {
   /** До когда открыт доступ; null — бессрочно. */
   expiresAt: string | null;
   expired: boolean;
+  /** Код сертификата, когда курс пройден (core/courses/certificate); иначе null. */
+  certificate: string | null;
 };
 
 export async function courseView(
@@ -115,6 +118,7 @@ export async function courseView(
           : null,
     });
   }
+  const cert = await issueCertificate(ctx, { ...p, run }, now).catch(() => null);
   return {
     name: p.name,
     lessons,
@@ -125,6 +129,7 @@ export async function courseView(
     beforeStart: tl.beforeStart,
     expiresAt: tl.expiresAt,
     expired: tl.expired,
+    certificate: cert?.certificate.code ?? null,
   };
 }
 
@@ -134,8 +139,11 @@ export async function setLessonDone(
   lessonId: string,
   done: boolean,
   now = new Date(),
-): Promise<string[]> {
-  return (await markLesson(ctx, p, lessonId, done, now)).done;
+): Promise<{ done: string[]; certificate: string | null }> {
+  const run = await markLesson(ctx, p, lessonId, done, now);
+  // Последний урок отмечен — курс без проверяемых заданий окончен.
+  const cert = done ? await issueCertificate(ctx, { ...p, run }, now).catch(() => null) : null;
+  return { done: run.done, certificate: cert?.certificate.code ?? null };
 }
 
 async function homeworkView(

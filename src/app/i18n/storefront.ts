@@ -314,6 +314,17 @@ const ru = {
   "course.hw.notify.accepted": "✅ Домашнее задание принято: {course}, урок {no}.",
   "course.hw.notify.revise": "✏️ Домашнее задание вернули на доработку: {course}, урок {no}.",
   "course.hw.notify.open": "Открыть курс: {url}",
+  "course.cert.title": "Сертификат",
+  "course.cert.certifies": "Настоящим подтверждается, что",
+  "course.cert.completed": "успешно прошёл(а) курс",
+  "course.cert.issued": "Выдан {date}",
+  "course.cert.number": "№ {no}",
+  "course.cert.verify": "Проверить подлинность: {url}",
+  "course.cert.download": "Скачать сертификат (PDF)",
+  "course.cert.valid": "Сертификат подлинный",
+  "course.cert.notFound": "Сертификат с таким кодом не найден.",
+  "course.cert.ready": "🎓 Курс «{course}» пройден! Ваш сертификат: {url}",
+  "course.cert.yours": "Ваш сертификат",
 } as const;
 
 export type StorefrontKey = keyof typeof ru;
@@ -622,6 +633,17 @@ const kk: Dict = {
   "course.hw.notify.accepted": "✅ Үй тапсырмасы қабылданды: {course}, {no}-сабақ.",
   "course.hw.notify.revise": "✏️ Үй тапсырмасы пысықтауға қайтарылды: {course}, {no}-сабақ.",
   "course.hw.notify.open": "Курсты ашу: {url}",
+  "course.cert.title": "Сертификат",
+  "course.cert.certifies": "Осымен расталады:",
+  "course.cert.completed": "курсты сәтті аяқтады",
+  "course.cert.issued": "Берілген күні: {date}",
+  "course.cert.number": "№ {no}",
+  "course.cert.verify": "Түпнұсқалығын тексеру: {url}",
+  "course.cert.download": "Сертификатты жүктеу (PDF)",
+  "course.cert.valid": "Сертификат түпнұсқа",
+  "course.cert.notFound": "Мұндай кодты сертификат табылмады.",
+  "course.cert.ready": "🎓 «{course}» курсы аяқталды! Сертификатыңыз: {url}",
+  "course.cert.yours": "Сіздің сертификатыңыз",
 };
 
 const en: Dict = {
@@ -923,6 +945,17 @@ const en: Dict = {
   "course.hw.notify.accepted": "✅ Homework accepted: {course}, lesson {no}.",
   "course.hw.notify.revise": "✏️ Homework returned for revision: {course}, lesson {no}.",
   "course.hw.notify.open": "Open the course: {url}",
+  "course.cert.title": "Certificate",
+  "course.cert.certifies": "This is to certify that",
+  "course.cert.completed": "has successfully completed the course",
+  "course.cert.issued": "Issued {date}",
+  "course.cert.number": "No. {no}",
+  "course.cert.verify": "Verify authenticity: {url}",
+  "course.cert.download": "Download certificate (PDF)",
+  "course.cert.valid": "This certificate is genuine",
+  "course.cert.notFound": "No certificate with this code was found.",
+  "course.cert.ready": "🎓 You’ve completed “{course}”! Your certificate: {url}",
+  "course.cert.yours": "Your certificate",
 };
 
 const uz: Dict = {
@@ -1227,6 +1260,17 @@ const uz: Dict = {
   "course.hw.notify.accepted": "✅ Uy vazifasi qabul qilindi: {course}, {no}-dars.",
   "course.hw.notify.revise": "✏️ Uy vazifasi qayta ishlashga qaytarildi: {course}, {no}-dars.",
   "course.hw.notify.open": "Kursni ochish: {url}",
+  "course.cert.title": "Sertifikat",
+  "course.cert.certifies": "Shu bilan tasdiqlanadiki,",
+  "course.cert.completed": "kursni muvaffaqiyatli tugatdi",
+  "course.cert.issued": "Berilgan sana: {date}",
+  "course.cert.number": "№ {no}",
+  "course.cert.verify": "Haqiqiyligini tekshirish: {url}",
+  "course.cert.download": "Sertifikatni yuklab olish (PDF)",
+  "course.cert.valid": "Sertifikat haqiqiy",
+  "course.cert.notFound": "Bunday kodli sertifikat topilmadi.",
+  "course.cert.ready": "🎓 «{course}» kursi tugadi! Sertifikatingiz: {url}",
+  "course.cert.yours": "Sizning sertifikatingiz",
 };
 
 const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };

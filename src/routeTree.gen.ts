@@ -95,11 +95,13 @@ import { Route as ApiRobokassaBotIdActionRouteImport } from './routes/api/roboka
 import { Route as ApiTelegramBotIdVipRouteImport } from './routes/api/telegram.$botId.vip'
 import { Route as OperatorAuthedClientsBotIdRouteImport } from './routes/operator._authed.clients.$botId'
 import { Route as OperatorAuthedClientsNewRouteImport } from './routes/operator._authed.clients.new'
+import { Route as SSlugCertCodeRouteImport } from './routes/s.$slug.cert.$code'
 import { Route as SSlugCourseItemIdRouteImport } from './routes/s.$slug.course.$itemId'
 import { Route as SSlugLegalDocRouteImport } from './routes/s.$slug.legal.$doc'
 import { Route as SSlugOrderIdRouteImport } from './routes/s.$slug.order.$id'
 import { Route as SSlugPIdRouteImport } from './routes/s.$slug.p.$id'
 import { Route as SSlugIconSizeRouteImport } from './routes/s.$slug_.icon.$size'
+import { Route as SSlugCertCodePdfRouteImport } from './routes/s.$slug_.cert.$code.pdf'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -532,6 +534,11 @@ const OperatorAuthedClientsNewRoute =
     path: '/clients/new',
     getParentRoute: () => OperatorAuthedRoute,
   } as any)
+const SSlugCertCodeRoute = SSlugCertCodeRouteImport.update({
+  id: '/cert/$code',
+  path: '/cert/$code',
+  getParentRoute: () => SSlugRoute,
+} as any)
 const SSlugCourseItemIdRoute = SSlugCourseItemIdRouteImport.update({
   id: '/course/$itemId',
   path: '/course/$itemId',
@@ -555,6 +562,11 @@ const SSlugPIdRoute = SSlugPIdRouteImport.update({
 const SSlugIconSizeRoute = SSlugIconSizeRouteImport.update({
   id: '/s/$slug_/icon/$size',
   path: '/s/$slug/icon/$size',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SSlugCertCodePdfRoute = SSlugCertCodePdfRouteImport.update({
+  id: '/s/$slug_/cert/$code/pdf',
+  path: '/s/$slug/cert/$code/pdf',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -643,11 +655,13 @@ export interface FileRoutesByFullPath {
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
+  '/s/$slug/cert/$code': typeof SSlugCertCodeRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
   '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
   '/s/$slug/icon/$size': typeof SSlugIconSizeRoute
+  '/s/$slug/cert/$code/pdf': typeof SSlugCertCodePdfRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -731,11 +745,13 @@ export interface FileRoutesByTo {
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
+  '/s/$slug/cert/$code': typeof SSlugCertCodeRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
   '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
   '/s/$slug/icon/$size': typeof SSlugIconSizeRoute
+  '/s/$slug/cert/$code/pdf': typeof SSlugCertCodePdfRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -825,11 +841,13 @@ export interface FileRoutesById {
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
   '/operator/_authed/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/_authed/clients/new': typeof OperatorAuthedClientsNewRoute
+  '/s/$slug/cert/$code': typeof SSlugCertCodeRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
   '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
   '/s/$slug_/icon/$size': typeof SSlugIconSizeRoute
+  '/s/$slug_/cert/$code/pdf': typeof SSlugCertCodePdfRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -918,11 +936,13 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId/vip'
     | '/operator/clients/$botId'
     | '/operator/clients/new'
+    | '/s/$slug/cert/$code'
     | '/s/$slug/course/$itemId'
     | '/s/$slug/legal/$doc'
     | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
     | '/s/$slug/icon/$size'
+    | '/s/$slug/cert/$code/pdf'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1006,11 +1026,13 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId/vip'
     | '/operator/clients/$botId'
     | '/operator/clients/new'
+    | '/s/$slug/cert/$code'
     | '/s/$slug/course/$itemId'
     | '/s/$slug/legal/$doc'
     | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
     | '/s/$slug/icon/$size'
+    | '/s/$slug/cert/$code/pdf'
   id:
     | '__root__'
     | '/'
@@ -1099,11 +1121,13 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId/vip'
     | '/operator/_authed/clients/$botId'
     | '/operator/_authed/clients/new'
+    | '/s/$slug/cert/$code'
     | '/s/$slug/course/$itemId'
     | '/s/$slug/legal/$doc'
     | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
     | '/s/$slug_/icon/$size'
+    | '/s/$slug_/cert/$code/pdf'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1139,6 +1163,7 @@ export interface RootRouteChildren {
   ApiImgBotIdSplatRoute: typeof ApiImgBotIdSplatRoute
   ApiRobokassaBotIdActionRoute: typeof ApiRobokassaBotIdActionRoute
   SSlugIconSizeRoute: typeof SSlugIconSizeRoute
+  SSlugCertCodePdfRoute: typeof SSlugCertCodePdfRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1745,6 +1770,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedClientsNewRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/s/$slug/cert/$code': {
+      id: '/s/$slug/cert/$code'
+      path: '/cert/$code'
+      fullPath: '/s/$slug/cert/$code'
+      preLoaderRoute: typeof SSlugCertCodeRouteImport
+      parentRoute: typeof SSlugRoute
+    }
     '/s/$slug/course/$itemId': {
       id: '/s/$slug/course/$itemId'
       path: '/course/$itemId'
@@ -1778,6 +1810,13 @@ declare module '@tanstack/react-router' {
       path: '/s/$slug/icon/$size'
       fullPath: '/s/$slug/icon/$size'
       preLoaderRoute: typeof SSlugIconSizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/s/$slug_/cert/$code/pdf': {
+      id: '/s/$slug_/cert/$code/pdf'
+      path: '/s/$slug/cert/$code/pdf'
+      fullPath: '/s/$slug/cert/$code/pdf'
+      preLoaderRoute: typeof SSlugCertCodePdfRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -1934,6 +1973,7 @@ interface SSlugRouteChildren {
   SSlugGiftRoute: typeof SSlugGiftRoute
   SSlugOrdersRoute: typeof SSlugOrdersRoute
   SSlugIndexRoute: typeof SSlugIndexRoute
+  SSlugCertCodeRoute: typeof SSlugCertCodeRoute
   SSlugCourseItemIdRoute: typeof SSlugCourseItemIdRoute
   SSlugLegalDocRoute: typeof SSlugLegalDocRoute
   SSlugOrderIdRoute: typeof SSlugOrderIdRoute
@@ -1946,6 +1986,7 @@ const SSlugRouteChildren: SSlugRouteChildren = {
   SSlugGiftRoute: SSlugGiftRoute,
   SSlugOrdersRoute: SSlugOrdersRoute,
   SSlugIndexRoute: SSlugIndexRoute,
+  SSlugCertCodeRoute: SSlugCertCodeRoute,
   SSlugCourseItemIdRoute: SSlugCourseItemIdRoute,
   SSlugLegalDocRoute: SSlugLegalDocRoute,
   SSlugOrderIdRoute: SSlugOrderIdRoute,
@@ -1998,6 +2039,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiImgBotIdSplatRoute: ApiImgBotIdSplatRoute,
   ApiRobokassaBotIdActionRoute: ApiRobokassaBotIdActionRoute,
   SSlugIconSizeRoute: SSlugIconSizeRoute,
+  SSlugCertCodePdfRoute: SSlugCertCodePdfRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
