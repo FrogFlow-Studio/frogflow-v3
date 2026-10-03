@@ -94,3 +94,20 @@ export const saveIceBreakersFn = createServerFn({ method: "POST" })
     const r = await refreshIceBreakers(ctx.tenant.id);
     return { ok: true, applied: r.ok };
   });
+
+/**
+ * «Проверить бота» (Telegram): токен, вебхук, события, команды — только чтение.
+ * «Починить» — та же установка вебхука и команд, что при подключении; её
+ * делает владелец.
+ */
+export const checkBotFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  const { checkBot } = await import("@/channels/telegram/bot-check.server");
+  return checkBot(ctx.tenant);
+});
+
+export const repairBotFn = createServerFn({ method: "POST" }).handler(async () => {
+  const ctx = await adminOwner();
+  const { repairBot } = await import("@/channels/telegram/bot-check.server");
+  return repairBot(ctx.tenant.id, "admin");
+});

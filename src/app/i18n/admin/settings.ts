@@ -85,6 +85,37 @@ export const ru = {
   "settings.tg.legacy":
     "Магазин обслуживается старой платформой — вставьте токен ещё раз, чтобы перевести сюда.",
   "settings.tg.reinstall": "Вставьте токен ещё раз, чтобы переустановить.",
+  "settings.tg.checkBot": "Проверить бота",
+  "settings.tg.repair": "Починить",
+  "settings.tg.checkOk": "Всё в порядке: бот готов принимать сообщения.",
+  "settings.tg.skip.not_v2": "Магазин обслуживается старой платформой — проверять нечего.",
+  "settings.tg.skip.no_token": "Бот не подключён — сначала вставьте токен.",
+  "settings.tg.repairFailed.telegram": "Telegram не принял установку: {reason}",
+  "settings.tg.repairFailed.unknown": "Установка не удалась — повторите позже.",
+  "settings.tg.check.token.ok": "Токен рабочий: @{username}.",
+  "settings.tg.check.token.dead":
+    "Токен недействителен: Telegram его не принимает. Вставьте новый токен из BotFather.",
+  "settings.tg.check.token.noReply": "Telegram не ответил — повторите проверку позже.",
+  "settings.tg.check.webhook.ok": "Вебхук стоит на нашем адресе, в очереди обновлений: {pending}.",
+  "settings.tg.check.webhook.none":
+    "Вебхук не установлен, бот не получает сообщения. Нажмите «Починить».",
+  "settings.tg.check.webhook.foreign":
+    "Вебхук смотрит на другой адрес ({host}), сообщения идут не к нам. «Починить» вернёт его на наш адрес.",
+  "settings.tg.check.webhook.error":
+    "Telegram не смог доставить обновление: {error}. В очереди: {pending}.",
+  "settings.tg.check.webhook.noReply": "Telegram не ответил про вебхук — повторите проверку позже.",
+  "settings.tg.check.updates.ok": "Нужные типы обновлений включены.",
+  "settings.tg.check.updates.missing":
+    "Не включены типы обновлений: {list}. «Починить» включит их.",
+  "settings.tg.check.updates.needWebhook": "Проверим после того, как вебхук встанет на наш адрес.",
+  "settings.tg.check.updates.noReply":
+    "Telegram не ответил про типы обновлений — повторите проверку позже.",
+  "settings.tg.check.commands.ok": "Меню команд бота установлено.",
+  "settings.tg.check.commands.none": "Меню команд не установлено. «Починить» поставит его.",
+  "settings.tg.check.commands.stale": "Меню команд устарело. «Починить» обновит его.",
+  "settings.tg.check.commands.noReply":
+    "Telegram не ответил про меню команд — повторите проверку позже.",
+  "settings.tg.check.late": "Не успели проверить за отведённое время — повторите проверку.",
   // Instagram и WhatsApp
   "settings.ch.title": "Instagram и WhatsApp",
   "settings.ch.syncedCount": "Подключено аккаунтов: {n}.",
@@ -431,6 +462,39 @@ export const kk: SectionDict<typeof ru> = {
   "settings.tg.legacy":
     "Дүкенге ескі платформа қызмет көрсетіп тұр — осында көшіру үшін токенді қайта қойыңыз.",
   "settings.tg.reinstall": "Қайта орнату үшін токенді тағы бір рет қойыңыз.",
+  "settings.tg.checkBot": "Ботты тексеру",
+  "settings.tg.repair": "Түзету",
+  "settings.tg.checkOk": "Бәрі дұрыс: бот хабарламаларды қабылдауға дайын.",
+  "settings.tg.skip.not_v2": "Дүкенге ескі платформа қызмет көрсетеді — тексеретін ештеңе жоқ.",
+  "settings.tg.skip.no_token": "Бот қосылмаған — алдымен токенді қойыңыз.",
+  "settings.tg.repairFailed.telegram": "Telegram орнатуды қабылдамады: {reason}",
+  "settings.tg.repairFailed.unknown": "Орнату сәтсіз болды — кейінірек қайталаңыз.",
+  "settings.tg.check.token.ok": "Токен жұмыс істейді: @{username}.",
+  "settings.tg.check.token.dead":
+    "Токен жарамсыз: Telegram оны қабылдамайды. BotFather-ден жаңа токен қойыңыз.",
+  "settings.tg.check.token.noReply": "Telegram жауап бермеді — тексеруді кейінірек қайталаңыз.",
+  "settings.tg.check.webhook.ok": "Вебхук біздің мекенжайда тұр, жаңартулар кезегінде: {pending}.",
+  "settings.tg.check.webhook.none":
+    "Вебхук орнатылмаған, бот хабарламаларды алмайды. «Түзету» түймесін басыңыз.",
+  "settings.tg.check.webhook.foreign":
+    "Вебхук басқа мекенжайға қарайды ({host}), хабарламалар бізге келмейді. «Түзету» оны біздің мекенжайға қайтарады.",
+  "settings.tg.check.webhook.error":
+    "Telegram жаңартуды жеткізе алмады: {error}. Кезекте: {pending}.",
+  "settings.tg.check.webhook.noReply":
+    "Telegram вебхук туралы жауап бермеді — тексеруді кейінірек қайталаңыз.",
+  "settings.tg.check.updates.ok": "Қажетті жаңарту түрлері қосулы.",
+  "settings.tg.check.updates.missing":
+    "Жаңарту түрлері қосылмаған: {list}. «Түзету» оларды қосады.",
+  "settings.tg.check.updates.needWebhook":
+    "Вебхук біздің мекенжайға орнатылғаннан кейін тексереміз.",
+  "settings.tg.check.updates.noReply":
+    "Telegram жаңарту түрлері туралы жауап бермеді — тексеруді кейінірек қайталаңыз.",
+  "settings.tg.check.commands.ok": "Бот командаларының мәзірі орнатылған.",
+  "settings.tg.check.commands.none": "Командалар мәзірі орнатылмаған. «Түзету» оны орнатады.",
+  "settings.tg.check.commands.stale": "Командалар мәзірі ескірген. «Түзету» оны жаңартады.",
+  "settings.tg.check.commands.noReply":
+    "Telegram командалар мәзірі туралы жауап бермеді — тексеруді кейінірек қайталаңыз.",
+  "settings.tg.check.late": "Белгіленген уақытта тексеріп үлгермедік — тексеруді қайталаңыз.",
   "settings.ch.title": "Instagram және WhatsApp",
   "settings.ch.syncedCount": "Қосылған аккаунттар: {n}.",
   "settings.ch.syncedNone":
@@ -774,6 +838,39 @@ export const en: SectionDict<typeof ru> = {
   "settings.tg.legacy":
     "The shop is served by the old platform — paste the token again to move it here.",
   "settings.tg.reinstall": "Paste the token again to reinstall it.",
+  "settings.tg.checkBot": "Check the bot",
+  "settings.tg.repair": "Fix it",
+  "settings.tg.checkOk": "All good: the bot is ready to receive messages.",
+  "settings.tg.skip.not_v2": "The shop is served by the old platform — nothing to check.",
+  "settings.tg.skip.no_token": "No bot connected — paste the token first.",
+  "settings.tg.repairFailed.telegram": "Telegram did not accept the installation: {reason}",
+  "settings.tg.repairFailed.unknown": "Installation failed — try again later.",
+  "settings.tg.check.token.ok": "The token works: @{username}.",
+  "settings.tg.check.token.dead":
+    "The token is invalid: Telegram rejects it. Paste a new token from BotFather.",
+  "settings.tg.check.token.noReply": "Telegram did not answer — try the check again later.",
+  "settings.tg.check.webhook.ok":
+    "The webhook points to our address, updates in the queue: {pending}.",
+  "settings.tg.check.webhook.none":
+    "No webhook is set, so the bot gets no messages. Press “Fix it”.",
+  "settings.tg.check.webhook.foreign":
+    "The webhook points to another address ({host}), so messages do not come to us. “Fix it” will point it back to our address.",
+  "settings.tg.check.webhook.error":
+    "Telegram could not deliver an update: {error}. In the queue: {pending}.",
+  "settings.tg.check.webhook.noReply":
+    "Telegram did not answer about the webhook — try the check again later.",
+  "settings.tg.check.updates.ok": "The required update types are enabled.",
+  "settings.tg.check.updates.missing":
+    "These update types are not enabled: {list}. “Fix it” will enable them.",
+  "settings.tg.check.updates.needWebhook": "We will check once the webhook points to our address.",
+  "settings.tg.check.updates.noReply":
+    "Telegram did not answer about update types — try the check again later.",
+  "settings.tg.check.commands.ok": "The bot command menu is set.",
+  "settings.tg.check.commands.none": "The command menu is not set. “Fix it” will set it.",
+  "settings.tg.check.commands.stale": "The command menu is out of date. “Fix it” will update it.",
+  "settings.tg.check.commands.noReply":
+    "Telegram did not answer about the command menu — try the check again later.",
+  "settings.tg.check.late": "The check did not finish in time — run it again.",
   "settings.ch.title": "Instagram and WhatsApp",
   "settings.ch.syncedCount": "Accounts connected: {n}.",
   "settings.ch.syncedNone": "No accounts connected yet — finish authorisation and click “Refresh”.",
@@ -1115,6 +1212,40 @@ export const uz: SectionDict<typeof ru> = {
   "settings.tg.legacy":
     "Do‘konga eski platforma xizmat ko‘rsatmoqda — bu yerga o‘tkazish uchun tokenni qayta kiriting.",
   "settings.tg.reinstall": "Qayta o‘rnatish uchun tokenni yana bir bor kiriting.",
+  "settings.tg.checkBot": "Botni tekshirish",
+  "settings.tg.repair": "Tuzatish",
+  "settings.tg.checkOk": "Hammasi joyida: bot xabarlarni qabul qilishga tayyor.",
+  "settings.tg.skip.not_v2":
+    "Do‘konga eski platforma xizmat ko‘rsatadi — tekshiradigan narsa yo‘q.",
+  "settings.tg.skip.no_token": "Bot ulanmagan — avval tokenni kiriting.",
+  "settings.tg.repairFailed.telegram": "Telegram o‘rnatishni qabul qilmadi: {reason}",
+  "settings.tg.repairFailed.unknown": "O‘rnatish amalga oshmadi — keyinroq qayta urinib ko‘ring.",
+  "settings.tg.check.token.ok": "Token ishlayapti: @{username}.",
+  "settings.tg.check.token.dead":
+    "Token yaroqsiz: Telegram uni qabul qilmayapti. BotFather’dan yangi token kiriting.",
+  "settings.tg.check.token.noReply": "Telegram javob bermadi — tekshirishni keyinroq takrorlang.",
+  "settings.tg.check.webhook.ok":
+    "Vebhuk bizning manzilda turibdi, yangilanishlar navbatida: {pending}.",
+  "settings.tg.check.webhook.none":
+    "Vebhuk o‘rnatilmagan, bot xabarlarni olmayapti. «Tuzatish» tugmasini bosing.",
+  "settings.tg.check.webhook.foreign":
+    "Vebhuk boshqa manzilga qaraydi ({host}), xabarlar bizga kelmayapti. «Tuzatish» uni bizning manzilga qaytaradi.",
+  "settings.tg.check.webhook.error":
+    "Telegram yangilanishni yetkaza olmadi: {error}. Navbatda: {pending}.",
+  "settings.tg.check.webhook.noReply":
+    "Telegram vebhuk haqida javob bermadi — tekshirishni keyinroq takrorlang.",
+  "settings.tg.check.updates.ok": "Kerakli yangilanish turlari yoqilgan.",
+  "settings.tg.check.updates.missing":
+    "Yangilanish turlari yoqilmagan: {list}. «Tuzatish» ularni yoqadi.",
+  "settings.tg.check.updates.needWebhook": "Vebhuk bizning manzilga o‘rnatilgach tekshiramiz.",
+  "settings.tg.check.updates.noReply":
+    "Telegram yangilanish turlari haqida javob bermadi — tekshirishni keyinroq takrorlang.",
+  "settings.tg.check.commands.ok": "Bot buyruqlari menyusi o‘rnatilgan.",
+  "settings.tg.check.commands.none": "Buyruqlar menyusi o‘rnatilmagan. «Tuzatish» uni o‘rnatadi.",
+  "settings.tg.check.commands.stale": "Buyruqlar menyusi eskirgan. «Tuzatish» uni yangilaydi.",
+  "settings.tg.check.commands.noReply":
+    "Telegram buyruqlar menyusi haqida javob bermadi — tekshirishni keyinroq takrorlang.",
+  "settings.tg.check.late": "Tekshirish belgilangan vaqtda tugamadi — qayta urinib ko‘ring.",
   "settings.ch.title": "Instagram va WhatsApp",
   "settings.ch.syncedCount": "Ulangan akkauntlar: {n}.",
   "settings.ch.syncedNone":

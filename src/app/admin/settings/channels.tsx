@@ -8,12 +8,90 @@ import {
   telegramStateFn,
 } from "@/app/admin/admin.functions";
 import { Badge, Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
-import { directBotSettingsFn, saveDirectBotSettingsFn } from "@/app/admin/channels.functions";
+import {
+  checkBotFn,
+  directBotSettingsFn,
+  repairBotFn,
+  saveDirectBotSettingsFn,
+} from "@/app/admin/channels.functions";
 import { type DirectBotSettings } from "@/core/instagram/direct-bot-settings";
-import { adminT, intlLocale } from "@/app/i18n/admin";
+import type { InstallError } from "@/channels/telegram/bot-check";
+import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
 
 type TelegramState = Awaited<ReturnType<typeof telegramStateFn>>;
+type BotCheckState = Awaited<ReturnType<typeof checkBotFn>>;
+
+const CHECK_MARK = { ok: "✅", fail: "⚠️", unknown: "❔" } as const;
+
+/** «Проверить бота» / «Починить»: результат по пунктам, тексты на языке продавца. */
+function BotCheckPanel() {
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const [check, setCheck] = useState<BotCheckState | null>(null);
+  const [installError, setInstallError] = useState<InstallError | null>(null);
+  const run = useAction(async () => {
+    setInstallError(null);
+    setCheck(await checkBotFn());
+  });
+  const repair = useAction(async () => {
+    const r = await repairBotFn();
+    setCheck(r.check);
+    setInstallError(r.installError ?? null);
+  });
+  const busy = run.busy || repair.busy;
+  return (
+    <div className="mt-3 border-t border-line pt-3">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="btn"
+          disabled={busy}
+          onClick={() => void run.run().catch(() => {})}
+        >
+          {t("settings.tg.checkBot")}
+        </button>
+        {check && !check.ok && !check.skipped && (
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={() => void repair.run().catch(() => {})}
+          >
+            {t("settings.tg.repair")}
+          </button>
+        )}
+      </div>
+      {check?.skipped && (
+        <p className="mt-2 text-sm text-muted">{t(`settings.tg.skip.${check.skipped}`)}</p>
+      )}
+      {check && !check.skipped && (
+        <ul className="mt-2 space-y-1 text-sm">
+          {check.items.map((i) => (
+            <li key={i.key}>
+              {CHECK_MARK[i.status]}{" "}
+              {t(
+                (i.code === "late"
+                  ? "settings.tg.check.late"
+                  : `settings.tg.check.${i.key}.${i.code}`) as AdminKey,
+                i.params,
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {check?.ok && <p className="mt-2 text-sm text-ok">{t("settings.tg.checkOk")}</p>}
+      {installError && (
+        <p className="mt-2 text-sm text-warn">
+          {installError.code === "telegram"
+            ? t("settings.tg.repairFailed.telegram", { reason: installError.reason })
+            : t("settings.tg.repairFailed.unknown")}
+        </p>
+      )}
+      <ErrorBox error={run.error ?? repair.error} />
+    </div>
+  );
+}
 
 export function TelegramCard({ telegram }: { telegram: TelegramState }) {
   const router = useRouter();
@@ -94,6 +172,7 @@ export function TelegramCard({ telegram }: { telegram: TelegramState }) {
       </form>
       {result && <p className="mt-2 text-sm text-muted">{result}</p>}
       <ErrorBox error={connect.error} />
+      {telegram.connected && <BotCheckPanel />}
       {telegram.connected && telegram.webhook && !telegram.webhook.ok && (
         <p className="mt-2 text-xs text-warn">
           {t("settings.tg.webhookNow", {
