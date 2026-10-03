@@ -59,6 +59,8 @@ export const ru = {
   "err.review.notFound": "Отзыв не найден.",
   "err.ticket.notFound": "Обращение не найдено.",
   "err.customer.notFound": "Покупатель не найден.",
+  "err.loyalty.negative": "Нельзя списать больше баллов, чем есть: на балансе {points}.",
+  "err.loyalty.busy": "Баланс менялся одновременно с вашей правкой. Обновите страницу и повторите.",
   "err.invoice.empty": "Добавьте хотя бы одну позицию.",
   "err.invoice.unavailable": "Товар скрыт, удалён или вариант выбран неверно.",
   "err.invoice.mixed": "Цифровые и физические товары — разными счетами.",
@@ -218,6 +220,9 @@ export const kk: SectionDict<typeof ru> = {
   "err.review.notFound": "Пікір табылмады.",
   "err.ticket.notFound": "Өтініш табылмады.",
   "err.customer.notFound": "Сатып алушы табылмады.",
+  "err.loyalty.negative": "Бар ұпайдан артық шегеруге болмайды: балансте {points}.",
+  "err.loyalty.busy":
+    "Баланс сіздің өзгертуіңізбен бір мезгілде өзгерді. Бетті жаңартып, қайталаңыз.",
   "err.invoice.empty": "Кемінде бір позиция қосыңыз.",
   "err.invoice.unavailable": "Тауар жасырылған, жойылған немесе нұсқа қате таңдалған.",
   "err.invoice.mixed": "Цифрлық және физикалық тауарлар — бөлек шоттармен.",
@@ -374,6 +379,9 @@ export const en: SectionDict<typeof ru> = {
   "err.review.notFound": "Review not found.",
   "err.ticket.notFound": "Request not found.",
   "err.customer.notFound": "Customer not found.",
+  "err.loyalty.negative": "You cannot subtract more points than the balance: {points} available.",
+  "err.loyalty.busy":
+    "The balance changed at the same time as your edit. Refresh the page and try again.",
   "err.invoice.empty": "Add at least one item.",
   "err.invoice.unavailable": "The product is hidden, deleted or the variant is wrong.",
   "err.invoice.mixed": "Digital and physical products go in separate invoices.",
@@ -531,6 +539,9 @@ export const uz: SectionDict<typeof ru> = {
   "err.review.notFound": "Sharh topilmadi.",
   "err.ticket.notFound": "Murojaat topilmadi.",
   "err.customer.notFound": "Xaridor topilmadi.",
+  "err.loyalty.negative": "Balansdagidan koʻp ball ayirib boʻlmaydi: balansda {points}.",
+  "err.loyalty.busy":
+    "Balans siz oʻzgartirgan paytda oʻzgardi. Sahifani yangilab, qayta urinib koʻring.",
   "err.invoice.empty": "Kamida bitta pozitsiya qoʻshing.",
   "err.invoice.unavailable": "Mahsulot yashirilgan, oʻchirilgan yoki variant notoʻgʻri tanlangan.",
   "err.invoice.mixed": "Raqamli va jismoniy mahsulotlar — alohida hisoblar bilan.",

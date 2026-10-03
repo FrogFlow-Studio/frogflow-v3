@@ -9,6 +9,7 @@ import {
   saveCustomerNoteFn,
   unlinkCustomerFn,
 } from "@/app/admin/admin.functions";
+import { adjustPointsFn } from "@/app/admin/loyalty.functions";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
@@ -37,6 +38,21 @@ function CustomerCardPage() {
     setSaved(true);
     await router.invalidate();
   });
+  const [sign, setSign] = useState<1 | -1>(1);
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [adjusted, setAdjusted] = useState<string | null>(null);
+  const adjust = useAction(async () => {
+    setAdjusted(null);
+    const r = await adjustPointsFn({
+      data: { key: c.userKey, delta: sign * Number(amount), reason: reason.trim() },
+    });
+    setAdjusted(t("customer.adjust.done", { before: r.before, after: r.after }));
+    setAmount("");
+    setReason("");
+    await router.invalidate();
+  });
+  const amountOk = /^\d+$/.test(amount) && Number(amount) > 0 && Number(amount) <= 1_000_000;
   const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(loc) : "—");
   const title = c.name || (c.username ? `@${c.username}` : `id ${c.telegramId}`);
   const row = (label: AdminKey, value: string | null | number) => (
@@ -137,6 +153,52 @@ function CustomerCardPage() {
             </div>
           )}
         </Card>
+        {shop.modules.loyalty && canWrite && (
+          <Card title={t("customer.adjust.title")}>
+            <ErrorBox error={adjust.error} />
+            <div className="mb-2 flex gap-2">
+              <select
+                className="input w-auto"
+                value={sign}
+                onChange={(e) => setSign(e.target.value === "-1" ? -1 : 1)}
+              >
+                <option value={1}>{t("customer.adjust.add")}</option>
+                <option value={-1}>{t("customer.adjust.sub")}</option>
+              </select>
+              <input
+                className="input"
+                inputMode="numeric"
+                placeholder={t("customer.adjust.amount")}
+                value={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value.trim());
+                  setAdjusted(null);
+                }}
+              />
+            </div>
+            <Field label={t("customer.adjust.reason")}>
+              <input
+                className="input"
+                maxLength={120}
+                value={reason}
+                onChange={(e) => {
+                  setReason(e.target.value);
+                  setAdjusted(null);
+                }}
+              />
+            </Field>
+            <div className="flex items-center justify-end gap-2">
+              {adjusted && <span className="text-xs text-muted">{adjusted}</span>}
+              <button
+                className="btn-primary text-xs"
+                disabled={adjust.busy || !amountOk || reason.trim().length < 3}
+                onClick={() => void adjust.run().catch(() => {})}
+              >
+                {t("customer.adjust.apply")}
+              </button>
+            </div>
+          </Card>
+        )}
         <LinkedCard />
         <Card title={t("customer.ordersTitle")}>
           {c.orders.length === 0 ? (
