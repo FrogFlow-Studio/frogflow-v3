@@ -1,5 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSetting, updateSettingAtomic } from "@/core/settings/settings";
+import { updateSettingAtomic } from "@/core/settings/settings";
 import {
   certificateReady,
   newCertificateCode,
@@ -9,6 +9,7 @@ import {
 import { purchaseHomework, studentName } from "./homework.server";
 import { parseRun, purchaseTimeline, type CoursePurchase } from "./run.server";
 import { runKey } from "./run.server";
+import { readSetting } from "./db.server";
 
 /**
  * Выдача сертификата. «Один раз на покупку»: код ложится в
@@ -29,7 +30,7 @@ export async function courseFinished(
   p: CoursePurchase,
   now = new Date(),
 ): Promise<boolean> {
-  const run = parseRun(await getSetting(ctx, runKey(p.orderItemId)));
+  const run = parseRun(await readSetting(ctx, runKey(p.orderItemId)));
   if (!run) return false;
   const tl = purchaseTimeline(ctx, { ...p, run }, now);
   const hw = p.course.lessons.some((l) => l.homework)
@@ -49,16 +50,16 @@ export async function certificateOf(
   ctx: TenantContext,
   orderItemId: string,
 ): Promise<Certificate | null> {
-  const code = await getSetting(ctx, itemKey(orderItemId));
+  const code = await readSetting(ctx, itemKey(orderItemId));
   if (!code) return null;
-  return parseCertificate(await getSetting(ctx, certKey(code)));
+  return parseCertificate(await readSetting(ctx, certKey(code)));
 }
 
 export async function certificateByCode(
   ctx: TenantContext,
   code: string,
 ): Promise<Certificate | null> {
-  return parseCertificate(await getSetting(ctx, certKey(code)));
+  return parseCertificate(await readSetting(ctx, certKey(code)));
 }
 
 /**
@@ -89,7 +90,7 @@ export async function issueCertificate(
   // Запись сертификата. Победитель пишет её сразу; если на прошлом разе
   // оборвались между бронью и записью, запись допишет следующий вызов.
   // Номер берётся только под запись; потерянный в гонке номер — пропуск.
-  const have = parseCertificate(await getSetting(ctx, certKey(code)));
+  const have = parseCertificate(await readSetting(ctx, certKey(code)));
   if (have) return { certificate: have, created: false };
   let counter = 0;
   const n = await updateSettingAtomic(ctx, NO_KEY, (raw) => {
@@ -110,6 +111,6 @@ export async function issueCertificate(
   );
   if (wrote === "failed") return null;
   if (wrote === "written") return { certificate: made, created: true };
-  const winner = parseCertificate(await getSetting(ctx, certKey(code)));
+  const winner = parseCertificate(await readSetting(ctx, certKey(code)));
   return winner ? { certificate: winner, created: false } : null;
 }

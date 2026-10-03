@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSetting, trySetSetting } from "@/core/settings/settings";
+import { trySetSetting } from "@/core/settings/settings";
 import { HW_FEEDBACK_MAX } from "./homework";
+import { readSetting } from "./db.server";
 
 /**
  * Проверка ДЗ из Telegram: в уведомлении преподавателю — короткая метка
@@ -40,7 +41,7 @@ export async function saveHwRef(ctx: TenantContext, t: HwTarget): Promise<string
 export async function resolveHwRef(ctx: TenantContext, ref: string): Promise<HwTarget | null> {
   if (!/^[0-9a-f]{12}$/.test(ref)) return null;
   try {
-    const o = JSON.parse((await getSetting(ctx, `${HW_REF_PREFIX}${ref}`)) ?? "null") as HwTarget;
+    const o = JSON.parse((await readSetting(ctx, `${HW_REF_PREFIX}${ref}`)) ?? "null") as HwTarget;
     // Метка сверяется с содержимым: чужая или битая запись не подменит работу.
     return o && hwRef(o.orderItemId, o.lessonId) === ref ? o : null;
   } catch {
@@ -77,7 +78,7 @@ export async function readHwDraft(
   now = new Date(),
 ): Promise<string | null> {
   try {
-    const o = JSON.parse((await getSetting(ctx, draftKey(ref, messageId))) ?? "null") as {
+    const o = JSON.parse((await readSetting(ctx, draftKey(ref, messageId))) ?? "null") as {
       text?: string;
       at?: string;
     } | null;
@@ -90,5 +91,6 @@ export async function readHwDraft(
 
 /** Использованный комментарий — убрать (сбой уборки не мешает проверке). */
 export async function dropHwDraft(ctx: TenantContext, ref: string, messageId: number) {
-  await ctx.db.from("app_settings").delete().eq("key", draftKey(ref, messageId));
+  const { error } = await ctx.db.from("app_settings").delete().eq("key", draftKey(ref, messageId));
+  if (error) console.warn(`[courses] черновик отзыва не убран: ${error.message}`);
 }

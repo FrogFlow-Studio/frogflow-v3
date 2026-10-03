@@ -1,5 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSetting, updateSettingAtomic } from "@/core/settings/settings";
+import { updateSettingAtomic } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
 import { courseKey, parseCourse } from "./course";
 import {
@@ -10,6 +10,7 @@ import {
   type ChannelAccess,
 } from "./channel.server";
 import { parseRun, purchaseTimeline, runKey, startRun, type CoursePurchase } from "./run.server";
+import { readSetting } from "./db.server";
 
 /**
  * Перевод ученика в другой поток (болел, не успел). Поток покупки хранится в
@@ -45,7 +46,7 @@ export async function moveStudentCohort(
     .maybeSingle();
   if (orderError) throw serverFailure(`Заказ не прочитан: ${orderError.message}`);
   if (order?.status !== "delivered") return { ok: false, reason: "notFound" };
-  const course = parseCourse(await getSetting(ctx, courseKey(item.product_id)));
+  const course = parseCourse(await readSetting(ctx, courseKey(item.product_id)));
   const target = (course.cohorts ?? []).find((c) => c.id === toCohortId);
   if (!target) return { ok: false, reason: "noCohort" };
 
@@ -58,7 +59,7 @@ export async function moveStudentCohort(
     productId: item.product_id,
     name: item.name_snapshot,
     course,
-    run: parseRun(await getSetting(ctx, runKey(item.id))),
+    run: parseRun(await readSetting(ctx, runKey(item.id))),
   };
   // Курс ещё не начат — запись прохождения создаётся сейчас (как при выдаче).
   const run = await startRun(ctx, base, now);
@@ -92,7 +93,7 @@ export async function moveStudentCohort(
   const newChat = purchaseChat(ctx, { ...base, run: { ...run, cohortId: toCohortId } }, now);
   let resetFailed = false;
   if (oldChat && oldChat !== newChat) {
-    const old = parseInvite(await getSetting(ctx, CHAT_SLOT.key(item.id)));
+    const old = parseInvite(await readSetting(ctx, CHAT_SLOT.key(item.id)));
     if (access) {
       // «none» — в чат не вступал, исключать некого: это не сбой.
       const r = await revokeItemChannelDetailed(

@@ -1,7 +1,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSetting } from "@/core/settings/settings";
 import { enrollOpen } from "./cohort";
 import { courseKey, parseCourse } from "./course";
+import { readSetting } from "./db.server";
 
 /**
  * Идёт ли набор на курс (модуль courses): у курса с потоками — пока не
@@ -14,6 +14,6 @@ export async function courseEnrollOpen(
   now = new Date(),
 ): Promise<boolean> {
   if (!ctx.tenant.modules.courses) return true;
-  const course = parseCourse(await getSetting(ctx, courseKey(productId)));
+  const course = parseCourse(await readSetting(ctx, courseKey(productId)));
   return course.lessons.length === 0 || enrollOpen(course, now, ctx.timezone);
 }

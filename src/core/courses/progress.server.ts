@@ -1,10 +1,9 @@
 import { displayNo } from "@/core/orders/pure";
 import { pageAll } from "@/core/db/page";
-import { getSetting } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { courseTimeline } from "./cohort";
 import { courseKey, parseCourse } from "./course";
-import { readSettings, selectIn } from "./db.server";
+import { readSetting, readSettings, selectIn } from "./db.server";
 import { inviteKey } from "./channel.server";
 import { hwKey, parseHomework } from "./homework";
 import { parseRun, runKey } from "./run.server";
@@ -46,7 +45,7 @@ export async function courseStudents(
   productId: string,
   now = new Date(),
 ): Promise<{ total: number; students: CourseStudent[] }> {
-  const course = parseCourse(await getSetting(ctx, courseKey(productId)));
+  const course = parseCourse(await readSetting(ctx, courseKey(productId)));
   const total = course.lessons.length;
   // Все покупки курса, постранично: ученик сверх первой сотни не теряется.
   const items = await pageAll<{ id: string; order_id: number; product_variant_id: string | null }>(

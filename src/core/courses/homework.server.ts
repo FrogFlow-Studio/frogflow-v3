@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serviceDb } from "@/core/db/client.server";
 import { pageAll } from "@/core/db/page";
-import { getSetting, updateSettingStamped } from "@/core/settings/settings";
+import { updateSettingStamped } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
 import {
   HW_FILE_MAX_BYTES,
@@ -30,6 +30,7 @@ import {
   startRun,
   type CoursePurchase,
 } from "./run.server";
+import { readSetting } from "./db.server";
 
 /**
  * Домашние задания: сдача учеником (страница курса, позже — бот), очередь и
@@ -127,11 +128,12 @@ export async function purchaseHomework(
 
 /** Кто учится: имя из заказа, иначе @логин, иначе ключ покупателя. */
 export async function studentName(ctx: TenantContext, orderId: number): Promise<string> {
-  const { data } = await ctx.db
+  const { data, error } = await ctx.db
     .from("orders")
     .select("display_name, username, user_key")
     .eq("id", orderId)
     .maybeSingle();
+  if (error) throw serverFailure(`Заказ ученика не прочитан: ${error.message}`);
   return (
     data?.display_name?.trim() ||
     (data?.username ? `@${data.username}` : "") ||
@@ -225,7 +227,7 @@ export async function getHomework(
   orderItemId: string,
   lessonId: string,
 ): Promise<Homework | null> {
-  return parseHomework(await getSetting(ctx, hwKey(orderItemId, lessonId)));
+  return parseHomework(await readSetting(ctx, hwKey(orderItemId, lessonId)));
 }
 
 export type ReviewResult =
@@ -263,11 +265,20 @@ export async function reviewHomework(
     await markLesson(ctx, purchase, lessonId, true, now);
   let notify: { telegramId: number | null; platform: string | null; orderId: number } | null = null;
   if (purchase) {
-    const { data } = await ctx.db
+    const { data, error } = await ctx.db
       .from("orders")
       .select("telegram_id, platform")
       .eq("id", purchase.orderId)
       .maybeSingle();
+    // Проверка уже записана: сбой чтения не отменяет её, но ученика уведомит
+    // админка по самому заказу (orderId), а в Sentry остаётся след.
+    if (error) {
+      const { reportError } = await import("@/lib/errors");
+      await reportError(serverFailure(`Заказ для уведомления об оценке: ${error.message}`), {
+        where: "homework.notify",
+        botId: ctx.tenant.id,
+      });
+    }
     notify = {
       telegramId: data?.platform === "telegram" ? (data.telegram_id ?? null) : null,
       platform: data?.platform ?? null,

@@ -1,7 +1,9 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSetting, updateSettingAtomic } from "@/core/settings/settings";
+import { serverFailure } from "@/lib/server-failure";
+import { updateSettingAtomic } from "@/core/settings/settings";
 import { cohortForPurchase, courseTimeline, type Timeline } from "./cohort";
 import { courseKey, parseCourse, type Course } from "./course";
+import { readSetting } from "./db.server";
 
 /**
  * Прохождение курса одной покупкой (позицией заказа): когда начато и какие
@@ -97,19 +99,21 @@ export async function coursePurchase(
   ctx: TenantContext,
   orderItemId: string,
 ): Promise<CoursePurchase | null> {
-  const { data: item } = await ctx.db
+  const { data: item, error: itemError } = await ctx.db
     .from("order_items")
     .select("id, order_id, product_id, product_variant_id, name_snapshot")
     .eq("id", orderItemId)
     .maybeSingle();
+  if (itemError) throw serverFailure(`Покупка курса не прочитана: ${itemError.message}`);
   if (!item?.product_id) return null;
-  const { data: order } = await ctx.db
+  const { data: order, error: orderError } = await ctx.db
     .from("orders")
     .select("id, status, telegram_id, created_at")
     .eq("id", item.order_id)
     .maybeSingle();
+  if (orderError) throw serverFailure(`Заказ курса не прочитан: ${orderError.message}`);
   if (order?.status !== "delivered") return null;
-  const course = parseCourse(await getSetting(ctx, courseKey(item.product_id)));
+  const course = parseCourse(await readSetting(ctx, courseKey(item.product_id)));
   if (course.lessons.length === 0) return null;
   return {
     orderItemId: item.id,
@@ -120,7 +124,7 @@ export async function coursePurchase(
     productId: item.product_id,
     name: item.name_snapshot,
     course,
-    run: parseRun(await getSetting(ctx, runKey(item.id))),
+    run: parseRun(await readSetting(ctx, runKey(item.id))),
   };
 }
 
@@ -204,14 +208,15 @@ export async function startRunAtDelivery(
   now = new Date(),
 ): Promise<void> {
   if (!item.product_id) return;
-  const course = parseCourse(await getSetting(ctx, courseKey(item.product_id)));
+  const course = parseCourse(await readSetting(ctx, courseKey(item.product_id)));
   if (course.lessons.length === 0) return;
   const { data: order, error } = await ctx.db
     .from("orders")
     .select("created_at")
     .eq("id", item.order_id)
     .maybeSingle();
-  if (error || !order) return;
+  if (error) throw serverFailure(`Заказ для записи прохождения не прочитан: ${error.message}`);
+  if (!order) return;
   await startRun(
     ctx,
     {
@@ -223,7 +228,7 @@ export async function startRunAtDelivery(
       productId: item.product_id,
       name: "",
       course,
-      run: parseRun(await getSetting(ctx, runKey(item.id))),
+      run: parseRun(await readSetting(ctx, runKey(item.id))),
     },
     now,
   );

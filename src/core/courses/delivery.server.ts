@@ -1,10 +1,10 @@
 import { env } from "@/config/env";
 import type { MaterialSnapshot } from "@/core/catalog/materials";
-import { getSetting } from "@/core/settings/settings";
 import { storefrontBase } from "@/core/tenant/custom-domain";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { courseKey, parseCourse } from "./course";
 import { courseToken, courseUrl } from "./link";
+import { readSetting } from "./db.server";
 
 /** Подпись ссылки на уроки в сообщении о выдаче. */
 export const COURSE_LINK_NAME = "Уроки курса";
@@ -23,7 +23,7 @@ export async function courseMaterials(
   item: { id: string; product_id: string | null },
 ): Promise<MaterialSnapshot[]> {
   if (!ctx.tenant.modules.courses || !item.product_id || !ctx.tenant.settings.slug) return [];
-  const course = parseCourse(await getSetting(ctx, courseKey(item.product_id)));
+  const course = parseCourse(await readSetting(ctx, courseKey(item.product_id)));
   if (course.lessons.length === 0) return [];
   const token = courseToken(env().SECRETS_KEY, ctx.tenant.id, item.id);
   const url = courseUrl(storefrontBase(ctx.tenant, ctx.appUrl), item.id, token);

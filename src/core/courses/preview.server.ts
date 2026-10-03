@@ -1,7 +1,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSetting } from "@/core/settings/settings";
 import { cohortStart, enrollingCohort, enrollOpen, type Tariff } from "./cohort";
 import { courseKey, parseCourse } from "./course";
+import { readSetting } from "./db.server";
 
 /**
  * Курс на витрине до покупки: программа (названия уроков без содержимого),
@@ -24,7 +24,7 @@ export async function coursePreview(
   now = new Date(),
 ): Promise<CoursePreview | null> {
   if (!ctx.tenant.modules.courses) return null;
-  const course = parseCourse(await getSetting(ctx, courseKey(productId)));
+  const course = parseCourse(await readSetting(ctx, courseKey(productId)));
   if (course.lessons.length === 0) return null;
   const next = enrollingCohort(course, now, ctx.timezone);
   return {

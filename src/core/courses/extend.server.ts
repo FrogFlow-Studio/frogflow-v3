@@ -1,10 +1,11 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSetting, updateSettingAtomic } from "@/core/settings/settings";
+import { updateSettingAtomic } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
 import { localToInstant } from "./cohort";
 import { CHANNEL_SLOT, CHAT_SLOT } from "./channel.server";
 import { LOCAL_DAY_RE, courseKey, parseCourse } from "./course";
 import { parseRun, purchaseTimeline, runKey, startRun, type CoursePurchase } from "./run.server";
+import { readSetting } from "./db.server";
 
 /**
  * Продление доступа вручную (компенсация, рассрочка): у тарифа со сроком
@@ -52,7 +53,7 @@ export async function extendStudentAccess(
     .maybeSingle();
   if (orderError) throw serverFailure(`Заказ не прочитан: ${orderError.message}`);
   if (order?.status !== "delivered") return { ok: false, reason: "notFound" };
-  const course = parseCourse(await getSetting(ctx, courseKey(item.product_id)));
+  const course = parseCourse(await readSetting(ctx, courseKey(item.product_id)));
   const base: CoursePurchase = {
     orderItemId: item.id,
     orderId: item.order_id,
@@ -62,7 +63,7 @@ export async function extendStudentAccess(
     productId: item.product_id,
     name: item.name_snapshot,
     course,
-    run: parseRun(await getSetting(ctx, runKey(item.id))),
+    run: parseRun(await readSetting(ctx, runKey(item.id))),
   };
   const run = await startRun(ctx, base, now);
   if (purchaseTimeline(ctx, { ...base, run }, now).tariff.accessDays == null)

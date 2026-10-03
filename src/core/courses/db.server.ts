@@ -43,3 +43,18 @@ export async function readSettings(
   for (const r of rows) if (r.value != null) out.set(r.key, r.value);
   return out;
 }
+
+/**
+ * Одна настройка по ключу; нет строки — null, сбой чтения — `serverFailure`.
+ * Общий `getSetting` сбой прячет за «пусто»: для школы это опасно (курс без
+ * канала, запись приглашения без «снято»), поэтому тут — строго.
+ */
+export async function readSetting(ctx: TenantContext, key: string): Promise<string | null> {
+  const { data, error } = await ctx.db
+    .from("app_settings")
+    .select("value")
+    .eq("key", key)
+    .maybeSingle();
+  if (error) throw serverFailure(`Настройка ${key.slice(0, 20)}…: ${error.message}`);
+  return data?.value ?? null;
+}

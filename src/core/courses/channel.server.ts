@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSetting, trySetSetting, updateSettingAtomic } from "@/core/settings/settings";
+import { trySetSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { courseTimeline } from "./cohort";
 import { courseKey, parseCourse } from "./course";
-import { selectIn } from "./db.server";
+import { readSetting, selectIn } from "./db.server";
 import { parseRun, runKey, type CoursePurchase } from "./run.server";
 
 /**
@@ -134,7 +135,7 @@ async function invite(
   const t = now.getTime();
 
   // Уже вступил и всё ещё в канале — вторая ссылка ему не нужна (а другу не положена).
-  const before = parseInvite(await getSetting(ctx, key));
+  const before = parseInvite(await readSetting(ctx, key));
   if (before.revoked) return { ok: false, reason: "noChannel" };
   if (before.member && access.isMember) {
     const inside = await access.isMember(chat, before.member);
@@ -199,13 +200,15 @@ export async function recordChannelJoin(
   userId: number,
 ): Promise<boolean> {
   for (const slot of [CHANNEL_SLOT, CHAT_SLOT]) {
-    const itemId = await getSetting(ctx, linkKey(link, slot.linkPrefix));
+    const itemId = await readSetting(ctx, linkKey(link, slot.linkPrefix));
     if (!itemId) continue;
-    await updateSettingAtomic(ctx, slot.key(itemId), (raw) => {
+    const r = await updateSettingAtomic(ctx, slot.key(itemId), (raw) => {
       const cur = parseInvite(raw);
       if (cur.member === userId) return null;
       return JSON.stringify({ ...cur, member: userId });
     });
+    // Не записали, кто вступил, — потом не знаем, кого исключать при возврате: пусть Telegram повторит событие.
+    if (r === "failed") throw serverFailure("Вступивший в канал курса не записан");
     return true;
   }
   return false;
@@ -246,7 +249,9 @@ async function revokeCourseChannelsDetailed(
     .select("id, platform, telegram_id, created_at")
     .eq("id", orderId)
     .maybeSingle();
-  if (error || !order) return report;
+  // Не прочитали заказ — не «исключать некого», а сбой: возврат запишет «не удалось исключить».
+  if (error) throw serverFailure(`Заказ для снятия доступа не прочитан: ${error.message}`);
+  if (!order) return report;
   const items = await selectIn<{
     id: string;
     product_id: string | null;
@@ -259,8 +264,8 @@ async function revokeCourseChannelsDetailed(
   );
   for (const it of items) {
     if (!it.product_id) continue;
-    const course = parseCourse(await getSetting(ctx, courseKey(it.product_id)));
-    const run = parseRun(await getSetting(ctx, runKey(it.id)));
+    const course = parseCourse(await readSetting(ctx, courseKey(it.product_id)));
+    const run = parseRun(await readSetting(ctx, runKey(it.id)));
     const targets: Array<[string | null | undefined, Slot]> = [
       [course.channel, CHANNEL_SLOT],
       [
@@ -346,6 +351,9 @@ export async function revokeItemChannelDetailed(
     const { pending: _pending, ...rest } = rec;
     return JSON.stringify({ ...rest, revoked: now.toISOString() });
   });
+  // «skipped» — доступ уже снят; «failed» — не смогли даже поставить отметку: исключения
+  // не было, продавцу надо убрать человека самому.
+  if (mark === "failed") return "failed";
   if (mark !== "written") return "none";
   const who =
     rec.member ??

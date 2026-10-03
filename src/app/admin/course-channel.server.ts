@@ -63,11 +63,16 @@ export async function revokeStudentChannel(
   const course = parseCourse(await getSetting(ctx, courseKey(item.product_id)));
   const { parseRun, runKey } = await import("@/core/courses/run.server");
   const run = parseRun(await getSetting(ctx, runKey(item.id)));
-  const { data: order } = await ctx.db
+  const { data: order, error: orderError } = await ctx.db
     .from("orders")
     .select("platform, telegram_id, created_at")
     .eq("id", item.order_id)
     .maybeSingle();
+  // Заказ не прочитан — не «исключать некого»: отметку «снято» вслепую не ставим.
+  if (orderError) {
+    const { serverFailure } = await import("@/lib/server-failure");
+    throw serverFailure(`Заказ ученика не прочитан: ${orderError.message}`);
+  }
   const { CHANNEL_SLOT, CHAT_SLOT, purchaseChat, revokeItemChannel } =
     await import("@/core/courses/channel.server");
   const chat = order

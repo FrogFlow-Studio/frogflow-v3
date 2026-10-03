@@ -1,8 +1,8 @@
 import type { CuratorSetting } from "@/core/tenant/types";
-import { getSetting, updateSettingAtomic } from "@/core/settings/settings";
+import { updateSettingAtomic } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { parseCurators, pickCurator } from "./curators";
-import { readSettings } from "./db.server";
+import { readSetting, readSettings } from "./db.server";
 import { parseRun, runKey } from "./run.server";
 
 /**
@@ -21,7 +21,7 @@ export async function assignedCurator(
   ctx: TenantContext,
   orderItemId: string,
 ): Promise<CuratorSetting | null> {
-  const id = await getSetting(ctx, curatorKey(orderItemId));
+  const id = await readSetting(ctx, curatorKey(orderItemId));
   return config(ctx).items.find((c) => c.id === id) ?? null;
 }
 
@@ -33,7 +33,7 @@ export async function ensureCurator(
   const cfg = config(ctx);
   if (cfg.items.length === 0) return null;
   const known = new Set(cfg.items.map((c) => c.id));
-  const current = await getSetting(ctx, curatorKey(orderItemId));
+  const current = await readSetting(ctx, curatorKey(orderItemId));
   if (current && known.has(current)) return cfg.items.find((c) => c.id === current)!;
 
   let turn = 0;
@@ -42,7 +42,7 @@ export async function ensureCurator(
     return String(turn + 1);
   });
   if (t !== "written") return null;
-  const run = parseRun(await getSetting(ctx, runKey(orderItemId)));
+  const run = parseRun(await readSetting(ctx, runKey(orderItemId)));
   const pick = pickCurator(cfg, run?.cohortId, turn);
   if (!pick) return null;
   let winner = pick.id;

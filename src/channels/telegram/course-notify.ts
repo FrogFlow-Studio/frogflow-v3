@@ -14,6 +14,7 @@ export async function notifyHomework(ctx: TenantContext, hw: Homework): Promise<
   const ref = await saveHwRef(ctx, { orderItemId: hw.orderItemId, lessonId: hw.lessonId });
   // Школа с кураторами: работа уходит одному назначенному куратору, а не всем.
   const { ensureCurator } = await import("@/core/courses/curators.server");
+  // Сбой назначения куратора не теряет работу: она уходит продавцам, как без кураторов.
   const curator = await ensureCurator(ctx, hw.orderItemId).catch(() => null);
   const last = hw.attempts.at(-1);
   const again = hw.attempts.length > 1;

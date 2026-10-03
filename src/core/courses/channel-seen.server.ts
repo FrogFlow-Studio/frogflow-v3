@@ -1,11 +1,10 @@
 import { createHash } from "node:crypto";
 import { pageAll } from "@/core/db/page";
-import { getSetting } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serverFailure } from "@/lib/server-failure";
 import { courseTimeline } from "./cohort";
 import { COURSE_KEY_PREFIX, courseKey, parseCourse } from "./course";
-import { readSettings, selectIn } from "./db.server";
+import { readSetting, readSettings, selectIn } from "./db.server";
 import { CHANNEL_SLOT, CHAT_SLOT, type ChannelAccess } from "./channel.server";
 import { parseRun, runKey } from "./run.server";
 
@@ -52,7 +51,7 @@ async function courseChannels(ctx: TenantContext): Promise<Map<string, Guard[]>>
   for (const k of keys) {
     const id = COURSE_KEY_RE.exec(k.key)?.[1];
     if (!id) continue;
-    const course = parseCourse(await getSetting(ctx, k.key));
+    const course = parseCourse(await readSetting(ctx, k.key));
     add(course.channel, { productId: id, cohortId: null });
     for (const c of course.cohorts ?? []) add(c.chat, { productId: id, cohortId: c.id });
   }
@@ -119,7 +118,7 @@ async function authorizedMembers(
   const ok = new Set<number>();
   for (const { productId, cohortId } of guards) {
     const slot = cohortId ? CHAT_SLOT : CHANNEL_SLOT;
-    const course = parseCourse(await getSetting(ctx, courseKey(productId)));
+    const course = parseCourse(await readSetting(ctx, courseKey(productId)));
     const items = await pageAll<{
       id: string;
       order_id: number;
@@ -240,6 +239,9 @@ export async function kickChannelStranger(
   );
   if (!still || !access.kick) return { kicked: false };
   if (!(await access.kick(channel, userId).catch(() => false))) return { kicked: false };
-  await ctx.db.from("app_settings").delete().eq("key", seenKey(channel, userId));
+  // Исключён — это уже случилось; не убрали строку «видели в канале» — сверка
+  // перепроверит человека сама (Telegram скажет, что его там нет).
+  const { error } = await ctx.db.from("app_settings").delete().eq("key", seenKey(channel, userId));
+  if (error) console.warn(`[courses] строка «видели в канале» не убрана: ${error.message}`);
   return { kicked: true };
 }

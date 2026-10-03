@@ -1,6 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
-import { getSetting, setSetting } from "@/core/settings/settings";
+import { setSetting } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
 import { COURSE_MARKER_URL } from "./marker";
 import {
@@ -13,6 +13,7 @@ import {
   type Course,
   type CourseProblem,
 } from "./course";
+import { readSetting } from "./db.server";
 
 /**
  * Уроки курса в админке продавца: прочитать и сохранить. Курс привязан к
@@ -20,7 +21,7 @@ import {
  * товар, а файлы проверяет courseProblem.
  */
 export async function getCourse(ctx: TenantContext, productId: string): Promise<Course> {
-  return parseCourse(await getSetting(ctx, courseKey(productId)));
+  return parseCourse(await readSetting(ctx, courseKey(productId)));
 }
 
 /** Отказ продавцу; номер урока — с единицы, как он видит список. */
@@ -81,11 +82,12 @@ export async function saveCourse(
   productId: string,
   course: Course,
 ): Promise<void> {
-  const { data: product } = await ctx.db
+  const { data: product, error: productError } = await ctx.db
     .from("products")
     .select("id, fulfillment_kind, file_url")
     .eq("id", productId)
     .maybeSingle();
+  if (productError) throw serverFailure(`Товар не прочитан: ${productError.message}`);
   if (!product) throw new UserError("err.course.noProduct", "Товар не найден.");
   if (product.fulfillment_kind === "physical")
     throw new UserError(
@@ -171,8 +173,9 @@ async function syncCourseMarker(
 /** Курс товара, который удаляют: запись убрать, файлы вернуть на удаление из бакета. */
 export async function dropCourse(ctx: TenantContext, productId: string): Promise<string[]> {
   const key = courseKey(productId);
-  const raw = await getSetting(ctx, key);
+  const raw = await readSetting(ctx, key);
   if (raw == null) return [];
-  await ctx.db.from("app_settings").delete().eq("key", key);
+  const { error } = await ctx.db.from("app_settings").delete().eq("key", key);
+  if (error) throw serverFailure(`Курс товара не удалён: ${error.message}`);
   return courseFilePaths(parseCourse(raw));
 }
