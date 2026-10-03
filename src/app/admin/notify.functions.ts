@@ -63,3 +63,54 @@ export const saveLowStockFn = createServerFn({ method: "POST" })
     await saveShopThreshold(ctx, data.threshold);
     return { ok: true };
   });
+
+/** Не чаще раза в 20 с на магазин: проверка шлёт настоящие сообщения. */
+const lastCheck = new Map<string, number>();
+
+/** «Проверить уведомления»: тестовое сообщение каждому получателю по каждому каналу, итог по каждому. */
+export const checkNotifyFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ locale: z.enum(["ru", "kk", "en", "uz"]) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("owner");
+    const now = Date.now();
+    if (now - (lastCheck.get(ctx.tenant.id) ?? 0) < 20_000)
+      throw new UserError(
+        "err.notify.checkTooOften",
+        "Проверка только что запускалась — подождите несколько секунд.",
+      );
+    lastCheck.set(ctx.tenant.id, now);
+    const [{ runNotifyCheck, checkText }, { loadNotifyPrefs }, { adminRecipients }] =
+      await Promise.all([
+        import("@/core/notify/check"),
+        import("@/core/notify/prefs"),
+        import("@/core/notify/recipients"),
+      ]);
+    const { adminTelegramApi } = await import("@/channels/telegram/notify");
+    const { smtpMailer, isMailConfigured } = await import("@/core/mail/mail.server");
+    const { pushAdmins, vapidFromEnv } = await import("@/core/push/admin-push");
+    const text = checkText(data.locale);
+    const api = adminTelegramApi(ctx);
+    const lines = await runNotifyCheck(await loadNotifyPrefs(ctx), {
+      hasBot: Boolean(api),
+      recipients: api ? await adminRecipients(ctx) : [],
+      sendTelegram: (chatId) => api!.call("sendMessage", { chat_id: chatId, text }),
+      mailConfigured: isMailConfigured(),
+      // Письмо могло дойти и при сбое — повторов нет; предел ожидания меньше бюджета функции.
+      sendMail: (to) =>
+        Promise.race([
+          smtpMailer({ to, subject: "FrogFlow", text, html: text }),
+          new Promise<{ ok: boolean; error: string }>((r) =>
+            setTimeout(() => r({ ok: false, error: "timeout" }), 25_000),
+          ),
+        ]),
+      pushConfigured: Boolean(vapidFromEnv()),
+      sendPush: () =>
+        pushAdmins(ctx, {
+          title: "FrogFlow",
+          body: text.replace(/^✅ /, ""),
+          url: "/admin/settings",
+          tag: "notify-check",
+        }),
+    });
+    return { lines };
+  });

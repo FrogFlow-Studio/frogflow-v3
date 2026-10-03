@@ -16,6 +16,8 @@ export const ADMIN_AUDIT_ACTOR_PREFIX = "admin:";
 export const ADMIN_AUDIT_KIND = "meta" as const;
 
 const NOT_AUDITED = new Set([
+  // проверка уведомлений: без изменений, только тестовые сообщения
+  "checkNotifyFn",
   // заказы
   "orderActionFn",
   "orderNoteFn",

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, ErrorBox, Field, useAction } from "@/app/ui";
 import {
+  checkNotifyFn,
   lowStockFn,
   notifyPrefsFn,
   saveLowStockFn,
@@ -45,6 +46,13 @@ export function NotifyCard() {
       },
     });
     setSaved(true);
+  });
+  const [check, setCheck] = useState<Awaited<ReturnType<typeof checkNotifyFn>>["lines"] | null>(
+    null,
+  );
+  const runCheck = useAction(async () => {
+    setCheck(null);
+    setCheck((await checkNotifyFn({ data: { locale: shop.locale } })).lines);
   });
   const setKind = (k: (typeof NOTIFY_KINDS)[number], ch: "telegram" | "email", v: boolean) =>
     p && setP({ ...p, kinds: { ...p.kinds, [k]: { ...p.kinds[k], [ch]: v } } });
@@ -185,9 +193,39 @@ export function NotifyCard() {
         )}
         <ErrorBox error={save.error} />
       </form>
+      {owner && (
+        <div className="mt-4 space-y-2 border-t border-line pt-4">
+          <p className="text-sm text-muted">{t("settings.notify.checkHint")}</p>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={runCheck.busy}
+            onClick={() => void runCheck.run().catch(() => {})}
+          >
+            {runCheck.busy ? t("settings.notify.checking") : t("settings.notify.check")}
+          </button>
+          <ErrorBox error={runCheck.error} />
+          {check && (
+            <ul className="space-y-1 text-sm">
+              {check.map((l, i) => (
+                <li key={i} className={l.ok ? "text-ok" : "text-danger"}>
+                  {l.ok ? "✓" : "✗"} {t(`settings.notify.check.ch${CHANNEL_KEY[l.channel]}`)}
+                  {l.target && l.channel !== "push" ? ` ${l.target}` : ""}:{" "}
+                  {l.code === "ok" && l.channel === "push"
+                    ? t("settings.notify.check.pushOk", { n: l.target })
+                    : t(`settings.notify.check.${l.code}`)}
+                  {l.code === "other" && l.detail ? ` (${l.detail})` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </Card>
   );
 }
+
+const CHANNEL_KEY = { telegram: "Telegram", email: "Email", push: "Push" } as const;
 
 /**
  * Порог «заканчивается на складе»: когда остаток товара падает до него или

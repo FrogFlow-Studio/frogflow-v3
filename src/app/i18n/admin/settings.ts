@@ -182,6 +182,33 @@ export const ru = {
   "settings.notify.digestHint":
     "Сводка за сутки: заказы, ожидающие подтверждения, недоставленное и всё отложенное за ночь.",
   "settings.notify.digestAt": "присылать в",
+  "settings.notify.check": "Проверить уведомления",
+  "settings.notify.checking": "Отправляем…",
+  "settings.notify.checkHint":
+    "Отправит тестовое сообщение каждому получателю по каждому включённому каналу и покажет, дошло ли. Это настоящие сообщения: проверьте телефон.",
+  "settings.notify.check.ok": "дошло",
+  "settings.notify.check.blocked": "получатель заблокировал бота",
+  "settings.notify.check.deactivated": "аккаунт Telegram удалён",
+  "settings.notify.check.chat_not_found":
+    "неверный чат: получатель не писал боту /start или id указан с ошибкой",
+  "settings.notify.check.is_bot": "это id другого бота, а не человека",
+  "settings.notify.check.no_rights": "у бота нет права писать в этот чат",
+  "settings.notify.check.unauthorized": "токен бота недействителен",
+  "settings.notify.check.rate_limit": "Telegram просит подождать — повторите позже",
+  "settings.notify.check.no_answer":
+    "Telegram не ответил: сообщение могло дойти, проверьте телефон",
+  "settings.notify.check.other": "не дошло",
+  "settings.notify.check.no_recipients":
+    "получателей нет: укажите Telegram ID в настройках магазина",
+  "settings.notify.check.no_bot": "бот Telegram не подключён",
+  "settings.notify.check.mail_off": "почта платформы не настроена — письма не уходят",
+  "settings.notify.check.mail_no_address": "адрес почты не указан",
+  "settings.notify.check.mail_failed": "письмо не ушло",
+  "settings.notify.check.push_none": "нет устройств с включённым push или не дошло",
+  "settings.notify.check.pushOk": "устройств: {n}",
+  "settings.notify.check.chTelegram": "Telegram",
+  "settings.notify.check.chEmail": "Почта",
+  "settings.notify.check.chPush": "Push в админку",
   "settings.dbot.nativeCatalogHint":
     "Корзина из каталога Meta: чтобы бот оформил такой заказ сам, укажите в каталоге Meta артикулом (Content ID) id товара, его номер или точное название из админки.",
   "settings.ib.title": "Быстрые вопросы в Instagram",
@@ -564,6 +591,32 @@ export const kk: SectionDict<typeof ru> = {
   "settings.notify.digestHint":
     "Тәуліктік қорытынды: тапсырыстар, растауды күткендер, жеткізілмегені және түнде кейінге қалдырылғанның бәрі.",
   "settings.notify.digestAt": "жіберу уақыты",
+  "settings.notify.check": "Хабарландыруларды тексеру",
+  "settings.notify.checking": "Жіберілуде…",
+  "settings.notify.checkHint":
+    "Қосылған әр арна бойынша әр алушыға сынақ хабарлама жібереді және жеткенін көрсетеді. Бұл нақты хабарламалар: телефонды қараңыз.",
+  "settings.notify.check.ok": "жетті",
+  "settings.notify.check.blocked": "алушы ботты бұғаттаған",
+  "settings.notify.check.deactivated": "Telegram аккаунты жойылған",
+  "settings.notify.check.chat_not_found":
+    "чат дұрыс емес: алушы ботқа /start жазбаған немесе id қате",
+  "settings.notify.check.is_bot": "бұл адамның емес, басқа боттың id-і",
+  "settings.notify.check.no_rights": "ботта бұл чатқа жазуға құқық жоқ",
+  "settings.notify.check.unauthorized": "бот токені жарамсыз",
+  "settings.notify.check.rate_limit": "Telegram күте тұруды сұрайды — кейінірек қайталаңыз",
+  "settings.notify.check.no_answer":
+    "Telegram жауап бермеді: хабарлама жетуі мүмкін, телефонды қараңыз",
+  "settings.notify.check.other": "жетпеді",
+  "settings.notify.check.no_recipients": "алушылар жоқ: дүкен баптауларында Telegram ID көрсетіңіз",
+  "settings.notify.check.no_bot": "Telegram боты қосылмаған",
+  "settings.notify.check.mail_off": "платформаның поштасы бапталмаған — хаттар кетпейді",
+  "settings.notify.check.mail_no_address": "пошта мекенжайы көрсетілмеген",
+  "settings.notify.check.mail_failed": "хат кетпеді",
+  "settings.notify.check.push_none": "push қосылған құрылғы жоқ немесе жетпеді",
+  "settings.notify.check.pushOk": "құрылғы: {n}",
+  "settings.notify.check.chTelegram": "Telegram",
+  "settings.notify.check.chEmail": "Пошта",
+  "settings.notify.check.chPush": "Әкімшілікке push",
   "settings.dbot.nativeCatalogHint":
     "Meta каталогынан себет: бот мұндай тапсырысты өзі рәсімдеуі үшін Meta каталогында артикул (Content ID) ретінде тауар id-ін, нөмірін немесе әкімші панеліндегі нақты атауын көрсетіңіз.",
   "settings.ib.title": "Instagram-дағы жылдам сұрақтар",
@@ -939,6 +992,32 @@ export const en: SectionDict<typeof ru> = {
   "settings.notify.digestHint":
     "Daily summary: orders, awaiting confirmation, undelivered and everything deferred overnight.",
   "settings.notify.digestAt": "send at",
+  "settings.notify.check": "Check notifications",
+  "settings.notify.checking": "Sending…",
+  "settings.notify.checkHint":
+    "Sends a test message to every recipient on every enabled channel and shows whether it arrived. These are real messages: check your phone.",
+  "settings.notify.check.ok": "delivered",
+  "settings.notify.check.blocked": "the recipient blocked the bot",
+  "settings.notify.check.deactivated": "the Telegram account was deleted",
+  "settings.notify.check.chat_not_found":
+    "wrong chat: the recipient has not sent /start to the bot or the id is mistyped",
+  "settings.notify.check.is_bot": "this is another bot's id, not a person's",
+  "settings.notify.check.no_rights": "the bot has no right to write to this chat",
+  "settings.notify.check.unauthorized": "the bot token is invalid",
+  "settings.notify.check.rate_limit": "Telegram asks to wait — try again later",
+  "settings.notify.check.no_answer":
+    "Telegram did not answer: the message may have arrived, check your phone",
+  "settings.notify.check.other": "not delivered",
+  "settings.notify.check.no_recipients": "no recipients: add a Telegram ID in the shop settings",
+  "settings.notify.check.no_bot": "the Telegram bot is not connected",
+  "settings.notify.check.mail_off": "platform email is not configured — emails are not sent",
+  "settings.notify.check.mail_no_address": "no email address set",
+  "settings.notify.check.mail_failed": "the email was not sent",
+  "settings.notify.check.push_none": "no devices with push enabled, or it did not arrive",
+  "settings.notify.check.pushOk": "devices: {n}",
+  "settings.notify.check.chTelegram": "Telegram",
+  "settings.notify.check.chEmail": "Email",
+  "settings.notify.check.chPush": "Admin push",
   "settings.dbot.nativeCatalogHint":
     "Meta catalog cart: for the bot to place such an order itself, set the product id, its number or the exact name from this panel as the Content ID in the Meta catalog.",
   "settings.ib.title": "Instagram quick questions",
@@ -1317,6 +1396,34 @@ export const uz: SectionDict<typeof ru> = {
   "settings.notify.digestHint":
     "Kunlik xulosa: buyurtmalar, tasdiqni kutayotganlar, yetkazilmaganlar va tunda kechiktirilganlarning hammasi.",
   "settings.notify.digestAt": "yuborish vaqti",
+  "settings.notify.check": "Bildirishnomalarni tekshirish",
+  "settings.notify.checking": "Yuborilmoqda…",
+  "settings.notify.checkHint":
+    "Yoqilgan har bir kanal boʼyicha har bir qabul qiluvchiga sinov xabarini yuboradi va yetib borganini koʼrsatadi. Bu haqiqiy xabarlar: telefoningizni tekshiring.",
+  "settings.notify.check.ok": "yetib bordi",
+  "settings.notify.check.blocked": "qabul qiluvchi botni bloklagan",
+  "settings.notify.check.deactivated": "Telegram akkaunti oʼchirilgan",
+  "settings.notify.check.chat_not_found":
+    "chat notoʼgʻri: qabul qiluvchi botga /start yozmagan yoki id xato",
+  "settings.notify.check.is_bot": "bu odamniki emas, boshqa botning idʼi",
+  "settings.notify.check.no_rights": "botda bu chatga yozish huquqi yoʼq",
+  "settings.notify.check.unauthorized": "bot tokeni yaroqsiz",
+  "settings.notify.check.rate_limit":
+    "Telegram kutishni soʼrayapti — keyinroq qayta urinib koʼring",
+  "settings.notify.check.no_answer":
+    "Telegram javob bermadi: xabar yetib borgan boʼlishi mumkin, telefoningizni tekshiring",
+  "settings.notify.check.other": "yetib bormadi",
+  "settings.notify.check.no_recipients":
+    "qabul qiluvchilar yoʼq: doʼkon sozlamalarida Telegram ID kiriting",
+  "settings.notify.check.no_bot": "Telegram boti ulanmagan",
+  "settings.notify.check.mail_off": "platforma pochtasi sozlanmagan — xatlar yuborilmaydi",
+  "settings.notify.check.mail_no_address": "pochta manzili koʼrsatilmagan",
+  "settings.notify.check.mail_failed": "xat yuborilmadi",
+  "settings.notify.check.push_none": "push yoqilgan qurilma yoʼq yoki yetib bormadi",
+  "settings.notify.check.pushOk": "qurilmalar: {n}",
+  "settings.notify.check.chTelegram": "Telegram",
+  "settings.notify.check.chEmail": "Pochta",
+  "settings.notify.check.chPush": "Admin push",
   "settings.dbot.nativeCatalogHint":
     "Meta katalogidan savat: bot bunday buyurtmani o‘zi rasmiylashtirishi uchun Meta katalogida artikul (Content ID) sifatida mahsulot id-si, raqami yoki paneldagi aniq nomini ko‘rsating.",
   "settings.ib.title": "Instagramdagi tezkor savollar",

@@ -65,3 +65,35 @@ export function humanTelegramReason(description: string | null | undefined): str
   const hit = REASONS.find(([re]) => re.test(raw));
   return hit ? `${hit[1]} (${raw})` : raw;
 }
+
+/**
+ * Причина отказа Telegram одним кодом — чтобы панель продавца показала её на
+ * его языке (текст `humanTelegramReason` русский, для оператора).
+ */
+export type TelegramFailureCode =
+  | "blocked"
+  | "deactivated"
+  | "chat_not_found"
+  | "is_bot"
+  | "no_rights"
+  | "unauthorized"
+  | "rate_limit"
+  | "no_answer"
+  | "other";
+
+const FAILURE_CODES: Array<[RegExp, TelegramFailureCode]> = [
+  [/bot was blocked by the user/i, "blocked"],
+  [/user is deactivated/i, "deactivated"],
+  [/chat not found|bot can't initiate conversation/i, "chat_not_found"],
+  [/bots can't send messages to bots/i, "is_bot"],
+  [/have no rights to send|not enough rights/i, "no_rights"],
+  [/unauthorized/i, "unauthorized"],
+  [/too many requests|retry after/i, "rate_limit"],
+  [/retries exhausted|fetch failed|network|timeout/i, "no_answer"],
+];
+
+export function telegramFailureCode(description: string | null | undefined): TelegramFailureCode {
+  const raw = (description ?? "").trim();
+  if (!raw) return "no_answer";
+  return FAILURE_CODES.find(([re]) => re.test(raw))?.[1] ?? "other";
+}

@@ -36,6 +36,7 @@ export const ru = {
   "err.admin.teamLimit": "Не больше 20 пользователей у магазина.",
   "err.notify.urgentTelegram":
     "Срочные события (заказ, сбой выдачи, жалоба) нельзя отключить в Telegram: они всегда приходят туда, почта — дополнительно.",
+  "err.notify.checkTooOften": "Проверка только что запускалась — подождите несколько секунд.",
   // товары, заказы, настройки
   "err.admin.digitalNeedsFile":
     "Цифровому товару нужен хотя бы один файл — иначе покупатель заплатит и ничего не получит.",
@@ -223,6 +224,7 @@ export const kk: SectionDict<typeof ru> = {
   "err.admin.teamLimit": "Бір дүкенде 20-дан артық пайдаланушы болмайды.",
   "err.notify.urgentTelegram":
     "Шұғыл оқиғаларды (тапсырыс, беру іркілісі, шағым) Telegram-да өшіруге болмайды: олар әрқашан сонда келеді, пошта — қосымша.",
+  "err.notify.checkTooOften": "Тексеру дәл қазір іске қосылды — бірнеше секунд күте тұрыңыз.",
   "err.admin.digitalNeedsFile":
     "Цифрлық тауарға кемінде бір файл қажет — әйтпесе сатып алушы төлейді де, ештеңе алмайды.",
   "err.admin.orderNotFound": "Тапсырыс табылмады",
@@ -407,6 +409,7 @@ export const en: SectionDict<typeof ru> = {
   "err.admin.teamLimit": "A shop can have no more than 20 users.",
   "err.notify.urgentTelegram":
     "Urgent events (order, delivery failure, complaint) can't be turned off in Telegram: they always arrive there, email is in addition.",
+  "err.notify.checkTooOften": "The check has just been run — wait a few seconds.",
   "err.admin.digitalNeedsFile":
     "A digital product needs at least one file — otherwise the buyer pays and gets nothing.",
   "err.admin.orderNotFound": "Order not found",
@@ -592,6 +595,7 @@ export const uz: SectionDict<typeof ru> = {
   "err.admin.teamLimit": "Bitta doʻkonda 20 tadan ortiq foydalanuvchi boʻlmaydi.",
   "err.notify.urgentTelegram":
     "Shoshilinch hodisalarni (buyurtma, topshirish xatosi, shikoyat) Telegram'da o'chirib bo'lmaydi: ular doim shu yerga keladi, pochta — qo'shimcha.",
+  "err.notify.checkTooOften": "Tekshiruv hozirgina ishga tushirilgan — bir necha soniya kuting.",
   "err.admin.digitalNeedsFile":
     "Raqamli mahsulotga kamida bitta fayl kerak — aks holda xaridor pul toʻlaydi-yu, hech narsa olmaydi.",
   "err.admin.orderNotFound": "Buyurtma topilmadi",
