@@ -336,7 +336,7 @@ export const ru = {
   "settings.ocr.title": "Распознавание чеков",
   "settings.weekly.title": "Недельный отчёт",
   "settings.weekly.intro":
-    "По понедельникам в 9:00 бот магазина присылает итоги прошлой недели: выручку, воронку покупателя, лучший канал и топ товаров.",
+    "По понедельникам в 9:00 бот магазина присылает итоги прошлой недели: выручку, скорость оплаты и выдачи, вернувшихся покупателей, одну строку «что изменилось», воронку покупателя, лучший канал и топ товаров. Отчёт приходит на языке админки.",
   "settings.weekly.on": "Включён",
   "settings.weekly.off": "Выключен",
   "settings.payRemind.title": "Напоминание об оплате",
@@ -713,7 +713,7 @@ export const kk: SectionDict<typeof ru> = {
   "settings.ocr.title": "Чектерді тану",
   "settings.weekly.title": "Апталық есеп",
   "settings.weekly.intro":
-    "Дүйсенбі сайын 9:00-де дүкен боты өткен аптаның қорытындысын жібереді: түсім, сатып алушы воронкасы, үздік арна және топ тауарлар.",
+    "Дүйсенбі сайын 9:00-де дүкен боты өткен аптаның қорытындысын жібереді: түсім, төлем мен беру жылдамдығы, қайта оралған сатып алушылар, «не өзгерді» деген бір жол, сатып алушы воронкасы, үздік арна және топ тауарлар. Есеп әкімшілік тілінде келеді.",
   "settings.weekly.on": "Қосулы",
   "settings.weekly.off": "Өшірулі",
   "settings.payRemind.title": "Төлем туралы еске салу",
@@ -1086,7 +1086,7 @@ export const en: SectionDict<typeof ru> = {
   "settings.ocr.title": "Receipt recognition",
   "settings.weekly.title": "Weekly report",
   "settings.weekly.intro":
-    "Every Monday at 9:00 the shop bot sends last week’s results: revenue, the buyer funnel, the best channel and top products.",
+    "Every Monday at 9:00 the shop bot sends last week’s results: revenue, payment and delivery speed, returning customers, one “what changed” line, the buyer funnel, the best channel and top products. The report comes in the admin language.",
   "settings.weekly.on": "On",
   "settings.weekly.off": "Off",
   "settings.payRemind.title": "Payment reminder",
@@ -1463,7 +1463,7 @@ export const uz: SectionDict<typeof ru> = {
   "settings.ocr.title": "Cheklarni aniqlash",
   "settings.weekly.title": "Haftalik hisobot",
   "settings.weekly.intro":
-    "Har dushanba 9:00 da do‘kon boti o‘tgan hafta natijalarini yuboradi: tushum, xaridor voronkasi, eng yaxshi kanal va top mahsulotlar.",
+    "Har dushanba 9:00 da do‘kon boti o‘tgan hafta natijalarini yuboradi: tushum, to‘lov va topshirish tezligi, qaytgan xaridorlar, «nima o‘zgardi» degan bitta qator, xaridor voronkasi, eng yaxshi kanal va top mahsulotlar. Hisobot admin tilida keladi.",
   "settings.weekly.on": "Yoqilgan",
   "settings.weekly.off": "O‘chirilgan",
   "settings.payRemind.title": "To‘lov haqida eslatma",

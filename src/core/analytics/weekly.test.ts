@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { isoWeekKey, renderWeekly, weekWindow, WEEKLY_SENT_KEY } from "./weekly";
+import {
+  isoWeekKey,
+  renderWeekly,
+  weeklyChange,
+  weeklyDuration,
+  weekWindow,
+  WEEKLY_SENT_KEY,
+  type WeeklyStats,
+} from "./weekly";
 import {
   sendWeeklyReport,
   WEEKLY_MAX_ATTEMPTS,
@@ -64,6 +72,82 @@ describe("текст отчёта", () => {
   });
 });
 
+const BASE: WeeklyStats = {
+  currency: "KZT",
+  revenue: 150000,
+  orders: 12,
+  prevRevenue: 100000,
+  prevOrders: 12,
+  funnel: [{ channel: "all", arrived: 40, cart: 20, ordered: 15, paid: 12 }],
+  top: [],
+  speed: { payMedian: 12, payP90: 90, deliverMedian: 1, autoShare: 80 },
+  buyers: { fresh: 10, returning: 15, prevReturning: 15 },
+};
+
+describe("недельный отчёт: скорость, вернувшиеся, что изменилось", () => {
+  it("на четырёх языках: скорость и выдача, доля без продавца, вернувшиеся, изменение", () => {
+    const want: Record<"ru" | "kk" | "en" | "uz", string[]> = {
+      ru: [
+        "Скорость: оплата — медиана 12 мин, 90 % заказов — до 1 ч 30 мин; выдача после оплаты — 1 мин",
+        "Выдано без вашего участия: 80 %",
+        "Вернувшихся покупателей: 15 (новых 10)",
+        "Что изменилось: выручка ▲ 50 %",
+      ],
+      kk: [
+        "Жылдамдық: төлем — медиана 12 мин, тапсырыстардың 90 % — 1 сағ 30 мин дейін; төлемнен кейін беру — 1 мин",
+        "Сіздің қатысуыңызсыз берілді: 80 %",
+        "Қайта оралған сатып алушылар: 15 (жаңа 10)",
+        "Не өзгерді: түсім ▲ 50 %",
+      ],
+      en: [
+        "Speed: payment — median 12 min, 90% of orders within 1 h 30 min; delivery after payment — 1 min",
+        "Delivered without your action: 80%",
+        "Returning customers: 15 (new 10)",
+        "What changed: revenue ▲ 50%",
+      ],
+      uz: [
+        "Tezlik: to‘lov — mediana 12 daq, buyurtmalarning 90 % i 1 soat 30 daq gacha; to‘lovdan keyin topshirish — 1 daq",
+        "Sizning ishtirokingizsiz topshirilgan: 80 %",
+        "Qaytgan xaridorlar: 15 (yangi 10)",
+        "Nima o‘zgardi: tushum ▲ 50 %",
+      ],
+    };
+    for (const lang of ["ru", "kk", "en", "uz"] as const) {
+      const html = renderWeekly("21.09–27.09", BASE, lang);
+      for (const line of want[lang]) expect(html).toContain(line);
+    }
+  });
+
+  it("без данных о скорости и покупателях строк нет, остальной отчёт прежний", () => {
+    const html = renderWeekly("21.09–27.09", { ...BASE, speed: null, buyers: null });
+    expect(html).not.toContain("Скорость");
+    expect(html).not.toContain("Вернувшихся");
+    expect(html).toContain("Выручка: 150000 ₸ (▲ 50 % к прошлой неделе)");
+  });
+
+  it("что изменилось: самый большой сдвиг; мелочь — без заметных", () => {
+    expect(
+      weeklyChange({ ...BASE, buyers: { fresh: 1, returning: 3, prevReturning: 12 } }),
+    ).toEqual({ metric: "returning", pct: -75 });
+    expect(
+      weeklyChange({
+        ...BASE,
+        revenue: 102000,
+        buyers: { fresh: 1, returning: 15, prevReturning: 15 },
+      }),
+    ).toBeNull();
+    const calm = renderWeekly("x", { ...BASE, revenue: 102000 }, "en");
+    expect(calm).toContain("What changed: nothing notable vs last week");
+  });
+
+  it("длительность: минуты, часы, дни", () => {
+    expect(weeklyDuration(0)).toBe("0 мин");
+    expect(weeklyDuration(59.6)).toBe("1 ч");
+    expect(weeklyDuration(150, "en")).toBe("2 h 30 min");
+    expect(weeklyDuration(1500)).toBe("1 дн 1 ч");
+  });
+});
+
 function shop(settings: Record<string, string> = {}) {
   const db = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
   db.tables.app_settings = Object.entries(settings).map(([key, value]) => ({
@@ -99,7 +183,7 @@ function shop(settings: Record<string, string> = {}) {
       quantity: 1,
     },
   ];
-  const ctx = { db, tenant: { id: "t1" }, timezone: TZ } as unknown as TenantContext;
+  const ctx = { db, tenant: { id: "t1", settings: {} }, timezone: TZ } as unknown as TenantContext;
   const sent = (db: ReturnType<typeof fakeDb>) =>
     db.tables.app_settings!.find((s) => s.key === WEEKLY_SENT_KEY)?.value;
   return { db, ctx, sent: () => sent(db) };
@@ -151,6 +235,50 @@ describe("отправка отчёта", () => {
     expect(await sendWeeklyReport(ctx, send, nextMonday)).toBe("sent");
     expect(send).toHaveBeenCalledTimes(2);
     expect(sent()).toBe("2026-W40");
+  });
+});
+
+describe("отправка отчёта: скорость и вернувшиеся из журнала заказов", () => {
+  it("скорость недели и вернувшиеся попадают в отчёт на языке админки", async () => {
+    const { db, ctx } = shop({ admin_locale: "en" });
+    db.tables.orders!.push({
+      id: 2,
+      user_key: "tg_1",
+      telegram_id: 1,
+      platform: "telegram",
+      status: "delivered",
+      fulfillment_kind: "digital",
+      total: 3000,
+      paid_amount: 3000,
+      currency: "KZT",
+      created_at: "2026-09-24T08:00:00Z",
+    });
+    const ev = (id: string, order: number, kind: string, at: string, extra = {}) => ({
+      id,
+      bot_id: "t1",
+      event_id: `order:${order}:${kind}:${id}`,
+      event_type: `order.${kind}`,
+      status: "event",
+      created_at: at,
+      payload: { order_id: order, actor: "bot", ...extra },
+    });
+    db.tables.zernio_logs = [
+      ev("a", 1, "placed", "2026-09-23T08:00:00Z", { platform: "telegram" }),
+      ev("b", 1, "payment", "2026-09-23T08:10:00Z", { actor: "system" }),
+      ev("c", 1, "delivered", "2026-09-23T08:11:00Z"),
+      ev("d", 2, "placed", "2026-09-24T08:00:00Z", { platform: "telegram" }),
+      ev("e", 2, "delivery_started", "2026-09-24T09:00:00Z", { actor: "admin:anna" }),
+      ev("f", 2, "delivered", "2026-09-24T09:01:00Z"),
+    ];
+    const send = vi.fn(async (_html: string) => 1);
+    expect(await sendWeeklyReport(ctx, send, MONDAY_0930)).toBe("sent");
+    const html = send.mock.calls[0]![0];
+    expect(html).toContain("Week results 21.09–27.09");
+    expect(html).toContain("Speed: payment — median 10 min, 90% of orders within 1 h");
+    expect(html).toContain("delivery after payment — 1 min");
+    expect(html).toContain("Delivered without your action: 50%");
+    // Покупатель tg_1: первая покупка 23.09, вторая 24.09 — в той же неделе: новый, не вернувшийся.
+    expect(html).toContain("Returning customers: 0 (new 1)");
   });
 });
 

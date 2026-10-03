@@ -67,7 +67,7 @@ export async function explainSales(
   if (!digest.current.orders && !digest.previous.orders)
     throw new UserError("err.assist.salesEmpty", "За оба периода нет продаж — объяснять нечего.");
   const { system, user } = salesPrompt(digest, lang);
-  const raw = await callAssist(ctx, { system, user, maxTokens: 900 });
+  const raw = await callAssist(ctx, { system, user, maxTokens: 900, sales: true });
   const text = cleanSalesText(raw);
   if (!text)
     throw new UserError("err.assist.failed", "ИИ-помощник не ответил. Попробуйте ещё раз.");
@@ -81,7 +81,7 @@ export async function explainSales(
  */
 async function callAssist(
   ctx: TenantContext,
-  req: { system: string; user: string; maxTokens: number },
+  req: { system: string; user: string; maxTokens: number; sales?: boolean },
 ): Promise<string> {
   const apiKey = env().ANTHROPIC_API_KEY?.trim();
   if (!apiKey)
@@ -98,11 +98,17 @@ async function callAssist(
     return JSON.stringify({ date, count: mine.count + 1 });
   });
   if (overLimit)
-    throw new UserError(
-      "err.assist.limit",
-      "На сегодня черновики закончились ({limit} в день). Попробуйте завтра.",
-      { limit: ASSIST_DAILY_LIMIT },
-    );
+    throw req.sales
+      ? new UserError(
+          "err.assist.salesLimit",
+          "Дневной предел запросов к ИИ-помощнику исчерпан ({limit} в день вместе с черновиками). Попробуйте завтра.",
+          { limit: ASSIST_DAILY_LIMIT },
+        )
+      : new UserError(
+          "err.assist.limit",
+          "На сегодня черновики закончились ({limit} в день). Попробуйте завтра.",
+          { limit: ASSIST_DAILY_LIMIT },
+        );
   if (slot !== "written") throw busy();
   const usdCap = limitsFor(ctx.tenant.settings.consultant_limits).dailyUsd;
   let overBudget = false;

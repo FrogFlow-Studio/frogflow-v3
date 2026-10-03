@@ -58,6 +58,8 @@ export const ru = {
   "err.assist.busy": "ИИ-помощник сейчас занят. Попробуйте ещё раз.",
   "err.assist.failed": "ИИ-помощник не ответил. Попробуйте ещё раз.",
   "err.assist.salesEmpty": "За оба периода нет продаж — объяснять нечего.",
+  "err.assist.salesLimit":
+    "Дневной предел запросов к ИИ-помощнику исчерпан ({limit} в день вместе с черновиками). Попробуйте завтра.",
   "err.assist.noProduct": "Товар не найден.",
   "err.review.notFound": "Отзыв не найден.",
   "err.ticket.notFound": "Обращение не найдено.",
@@ -227,6 +229,8 @@ export const kk: SectionDict<typeof ru> = {
   "err.assist.busy": "ЖИ-көмекші қазір бос емес. Қайта көріңіз.",
   "err.assist.failed": "ЖИ-көмекші жауап бермеді. Қайта көріңіз.",
   "err.assist.salesEmpty": "Екі кезеңде де сатылым жоқ — түсіндіретін ештеңе жоқ.",
+  "err.assist.salesLimit":
+    "ЖИ-көмекшіге күндізгі сұраныс шегі таусылды (жобалармен бірге күніне {limit}). Ертең қайталаңыз.",
   "err.assist.noProduct": "Тауар табылмады.",
   "err.review.notFound": "Пікір табылмады.",
   "err.ticket.notFound": "Өтініш табылмады.",
@@ -394,6 +398,8 @@ export const en: SectionDict<typeof ru> = {
   "err.assist.busy": "The AI assistant is busy right now. Please try again.",
   "err.assist.failed": "The AI assistant did not respond. Please try again.",
   "err.assist.salesEmpty": "There are no sales in either period — nothing to explain.",
+  "err.assist.salesLimit":
+    "The daily limit of AI assistant requests is used up ({limit} a day, drafts included). Try again tomorrow.",
   "err.assist.noProduct": "Product not found.",
   "err.review.notFound": "Review not found.",
   "err.ticket.notFound": "Request not found.",
@@ -562,6 +568,8 @@ export const uz: SectionDict<typeof ru> = {
   "err.assist.busy": "AI yordamchi hozir band. Qayta urinib koʻring.",
   "err.assist.failed": "AI-yordamchi javob bermadi. Qayta urinib koʻring.",
   "err.assist.salesEmpty": "Ikkala davrda ham savdo yo‘q — tushuntiradigan narsa yo‘q.",
+  "err.assist.salesLimit":
+    "AI yordamchiga kunlik so‘rovlar chegarasi tugadi (qoralamalar bilan birga kuniga {limit} ta). Ertaga urinib ko‘ring.",
   "err.assist.noProduct": "Mahsulot topilmadi.",
   "err.review.notFound": "Sharh topilmadi.",
   "err.ticket.notFound": "Murojaat topilmadi.",

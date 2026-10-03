@@ -4,7 +4,7 @@ import { eachPage } from "@/core/db/page";
 import { serverFailure } from "@/lib/server-failure";
 import { buyerKey } from "./funnel";
 import { analyticsRevenue, includeOrderInAnalytics } from "./pure";
-import { customersReport, type CustomersReport } from "./customers";
+import { customersReport, type CustomersReport, type Purchase } from "./customers";
 
 const WINDOW_DAYS = 365;
 const CHUNK = 200;
@@ -13,15 +13,12 @@ export type CustomersBlock = Omit<CustomersReport, "top"> & {
   top: Array<CustomersReport["top"][number] & { name: string }>;
 };
 
-export async function customersBlock(
-  ctx: TenantContext,
-  days: number,
-  now = new Date(),
-): Promise<CustomersBlock> {
+/** Покупки за год (заказы, входящие в выручку, за вычетом возвратов) — постранично. */
+export async function readPurchases(ctx: TenantContext, now = new Date()): Promise<Purchase[]> {
   const since = new Date(now.getTime() - WINDOW_DAYS * 86_400_000).toISOString();
   const { netOfRefunds, refundsSince } = await import("@/core/orders/refund");
   const refunds = await refundsSince(ctx, since);
-  const purchases: Array<{ buyer: string; at: string; amount: number; currency: string }> = [];
+  const purchases: Purchase[] = [];
   await eachPage<{
     id: number;
     user_key: string | null;
@@ -56,6 +53,15 @@ export async function customersBlock(
       }
     },
   );
+  return purchases;
+}
+
+export async function customersBlock(
+  ctx: TenantContext,
+  days: number,
+  now = new Date(),
+): Promise<CustomersBlock> {
+  const purchases = await readPurchases(ctx, now);
   const weeks = Math.max(4, Math.ceil(days / 7));
   const report = customersReport(purchases, ctx.timezone, { now, weeks });
   const names = new Map<string, string>();

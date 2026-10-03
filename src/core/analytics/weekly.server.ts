@@ -6,7 +6,12 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { eachPage, pageAll } from "@/core/db/page";
 import { getSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { outboxPermanentFailure } from "@/core/outbox/pure";
+import { sellerLocale } from "@/core/catalog/low-stock";
 import { buyerFunnel } from "./funnel.server";
+import { customersReport, weekStart } from "./customers";
+import { readPurchases } from "./customers.server";
+import { autoShare } from "./speed";
+import { speedStats } from "./speed.server";
 import {
   analyticsRevenue,
   includeOrderInAnalytics,
@@ -25,7 +30,11 @@ import {
 
 type Money = { revenue: number; orders: number; ids: number[]; scale: Map<number, number> };
 
-export async function weeklyStats(ctx: TenantContext, w: WeekWindow): Promise<WeeklyStats> {
+export async function weeklyStats(
+  ctx: TenantContext,
+  w: WeekWindow,
+  now = new Date(),
+): Promise<WeeklyStats> {
   const cur = new Map<string, Money>();
   const prev = new Map<string, Money>();
   const blank = (): Money => ({ revenue: 0, orders: 0, ids: [], scale: new Map() });
@@ -89,7 +98,36 @@ export async function weeklyStats(ctx: TenantContext, w: WeekWindow): Promise<We
     );
   }
   const top = topProductsBySales(items, new Set(main.ids), 3, main.scale);
+
+  // Скорость заказов, оформленных за неделю (оплата и выдача читаются до «сейчас»).
+  const speedAll = (await speedStats(ctx, w.from, w.to, now))[0];
+  const round = (v: number | null | undefined) => (v == null ? null : Math.round(v));
+  const speed =
+    speedAll && speedAll.placed > 0
+      ? {
+          payMedian: round(speedAll.pay.median),
+          payP90: round(speedAll.pay.p90),
+          deliverMedian: round(speedAll.deliver.median),
+          autoShare: autoShare(speedAll),
+        }
+      : null;
+  // Новые и вернувшиеся: недели считаются от понедельника после отчётной — неделя отчёта и ей предыдущая.
+  const report = customersReport(await readPurchases(ctx, now), ctx.timezone, {
+    now: w.to,
+    weeks: 4,
+  });
+  const weekRow = (d: Date) => report.weeks.find((r) => r.week === weekStart(d, ctx.timezone));
+  const thisWeek = weekRow(w.from);
+  const buyers = thisWeek
+    ? {
+        fresh: thisWeek.fresh,
+        returning: thisWeek.returning,
+        prevReturning: weekRow(w.prevFrom)?.returning ?? 0,
+      }
+    : null;
   return {
+    speed,
+    buyers,
     currency,
     revenue: Math.round(main.revenue),
     orders: main.orders,
@@ -139,12 +177,13 @@ export async function sendWeeklyReport(
     if (claim !== "written") return claim === "skipped" ? "already" : "failed";
     throw new WeeklySendError(e instanceof Error ? e.message : String(e), true, e);
   }
-  const stats = await weeklyStats(ctx, w);
+  const stats = await weeklyStats(ctx, w, now);
+  const lang = await sellerLocale(ctx);
   const claim = await claimWeek();
   if (claim === "skipped") return "already";
   if (claim === "failed") return "failed";
   try {
-    await send(renderWeekly(w.label, stats));
+    await send(renderWeekly(w.label, stats, lang));
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     // Бот заблокирован или попыток за неделю больше лимита — повторы по

@@ -204,4 +204,20 @@ describe("«Почему изменились продажи»: explainSales", (
     ).rejects.toMatchObject({ key: "err.assist.salesEmpty" });
     expect(create).not.toHaveBeenCalled();
   });
+
+  it("дневной счётчик исчерпан — свой текст отказа, не «черновики закончились»", async () => {
+    setEnvForTests({ ANTHROPIC_API_KEY: "sk-test" });
+    const ctx = ctxOf();
+    const d = new Date().toISOString().slice(0, 10);
+    await ctx.db.from("app_settings").insert({
+      bot_id: BOT,
+      key: "seller_assist_daily",
+      value: JSON.stringify({ date: d, count: ASSIST_DAILY_LIMIT }),
+    });
+    await expect(explainSales(ctx, digest, "ru")).rejects.toMatchObject({
+      key: "err.assist.salesLimit",
+    });
+    await expect(assistText(ctx, req as never)).rejects.toMatchObject({ key: "err.assist.limit" });
+    expect(create).not.toHaveBeenCalled();
+  });
 });
