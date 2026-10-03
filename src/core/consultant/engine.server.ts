@@ -4,6 +4,8 @@ import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { updateStateSection } from "@/core/customers/customers";
+import { offerForProductRow } from "@/core/offers/offers";
+import { activePreorder, preordersFor } from "@/core/preorder/preorder";
 import { buyerLocale, handoffReply, unavailableReply } from "./messages";
 import { getSettings, trySetSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { resolvePrice } from "@/core/pricing/pricing";
@@ -180,6 +182,17 @@ export async function loadConsultant(
   };
 }
 
+/** «30.09 23:59» в часовом поясе магазина — срок акции для подсказки модели. */
+function untilText(iso: string, timeZone: string | undefined): string {
+  return new Date(iso).toLocaleString("ru-RU", {
+    timeZone,
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 /** Каталог одной строкой на товар — наличие и цены только отсюда. */
 /** Каталог для подсказки и цены из него — для сверки ответа (price-check). */
 async function catalogSnippet(ctx: TenantContext): Promise<{ text: string; prices: number[] }> {
@@ -190,6 +203,10 @@ async function catalogSnippet(ctx: TenantContext): Promise<{ text: string; price
     .order("sort_order")
     .limit(CATALOG_LIMIT);
   const rows = (data ?? []) as Product[];
+  const preorders = await preordersFor(
+    ctx,
+    rows.map((p) => p.id),
+  );
   const prices: number[] = [];
   const lines = await Promise.all(
     rows.map(async (p) => {
@@ -204,14 +221,22 @@ async function catalogSnippet(ctx: TenantContext): Promise<{ text: string; price
       const price = priced.length
         ? priced.map(({ v, m }) => `${v.name} — ${m.amount} ${m.currency}`).join(", ")
         : `${base.amount} ${base.currency}`;
-      const stock =
-        ctx.tenant.modules.stock && p.stock_quantity != null
-          ? p.stock_quantity > 0
-            ? `, в наличии ${p.stock_quantity}`
-            : ", нет в наличии"
-          : "";
+      const pre = activePreorder(ctx, p, preorders.get(p.id));
+      const stock = !ctx.tenant.modules.stock
+        ? ""
+        : pre
+          ? `, предзаказ: сейчас нет на складе, ${pre.from ? `отправка с ${pre.from}` : "срок отправки уточнит менеджер"}`
+          : p.stock_quantity != null
+            ? p.stock_quantity > 0
+              ? `, в наличии ${p.stock_quantity}`
+              : ", нет в наличии"
+            : "";
+      const offer = await offerForProductRow(ctx, p);
+      const promo = offer
+        ? `, по акции −${offer.percent}% до ${untilText(offer.ends_at, ctx.timezone)}${offer.left != null ? `, осталось ${offer.left} шт.` : ""}`
+        : "";
       const desc = (p.description ?? "").replace(/\s+/g, " ").slice(0, 160);
-      return `- ${p.name}: ${price}${stock}${desc ? `. ${desc}` : ""}`;
+      return `- ${p.name}: ${price}${promo}${stock}${desc ? `. ${desc}` : ""}`;
     }),
   );
   return { text: lines.join("\n"), prices };

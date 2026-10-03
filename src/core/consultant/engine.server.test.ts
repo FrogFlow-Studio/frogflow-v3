@@ -346,6 +346,65 @@ describe("консультант: ИИ-баланс клиента", () => {
   });
 });
 
+describe("консультант: каталог знает предзаказ и акции", () => {
+  const catalogOf = async (ctx: TenantContext) => {
+    await runConsultant(ctx, customer(), "Есть ли X?", { platform: "instagram" });
+    return (args().system as Array<{ text: string }>).map((b) => b.text).join("\n");
+  };
+  const withProduct = (modules: Record<string, boolean>, stock: number) => {
+    const ctx = ctxOf();
+    (ctx.tenant as { modules: unknown }).modules = modules;
+    (ctx.db as unknown as { tables: Record<string, unknown[]> }).tables.products!.push({
+      id: "p1",
+      name: "Свеча",
+      price: 1000,
+      is_active: true,
+      sort_order: 1,
+      stock_quantity: stock,
+      category_ids: [],
+    });
+    return ctx;
+  };
+  const setting = (ctx: TenantContext, key: string, value: string) =>
+    (ctx.db as unknown as { tables: Record<string, unknown[]> }).tables.app_settings!.push({
+      bot_id: BOT,
+      key,
+      value,
+    });
+  it("нулевой остаток и предзаказ — «предзаказ с датой», а не «нет в наличии»", async () => {
+    const ctx = withProduct({ stock: true }, 0);
+    setting(ctx, "preorder:p1", "2099-01-15");
+    const sys = await catalogOf(ctx);
+    expect(sys).toContain("Свеча");
+    expect(sys).toContain("предзаказ");
+    expect(sys).toContain("отправка с 2099-01-15");
+    expect(sys).not.toContain("нет в наличии");
+  });
+  it("нулевой остаток без предзаказа — по-прежнему «нет в наличии»", async () => {
+    expect(await catalogOf(withProduct({ stock: true }, 0))).toContain("нет в наличии");
+  });
+  it("товар по акции — в каталоге процент и срок, цена со скидкой", async () => {
+    const ctx = withProduct({ limited_offers: true }, 5);
+    setting(
+      ctx,
+      "limited_offers",
+      JSON.stringify([
+        {
+          id: "o1",
+          product_id: "p1",
+          percent: 30,
+          starts_at: "2000-01-01T00:00:00Z",
+          ends_at: "2099-01-01T00:00:00Z",
+          limit: null,
+        },
+      ]),
+    );
+    const sys = await catalogOf(ctx);
+    expect(sys).toContain("700");
+    expect(sys).toContain("по акции −30% до 01.01");
+  });
+});
+
 describe("консультант: ответы-передачи на языке покупателя", () => {
   const empty = () => {
     const ctx = ctxOf({ default_locale: "ru" });
