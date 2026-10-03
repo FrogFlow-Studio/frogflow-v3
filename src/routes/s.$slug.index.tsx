@@ -6,6 +6,7 @@ import { storeCatalogPageFn } from "@/app/storefront/catalog.functions";
 import type { StoreProduct } from "@/core/storefront/catalog";
 import { STORE_PAGE } from "@/core/storefront/paging";
 import { useCart } from "@/app/storefront/cart";
+import { FavoriteButton } from "@/app/storefront/favorites";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { OfferNote, OfferPrice } from "@/app/storefront/offer";
 import { localeFlags } from "@/core/i18n/locale";
@@ -418,7 +419,7 @@ function CatalogPage() {
           {products.map((p) => (
             <article
               key={p.id}
-              className="card group flex flex-col overflow-hidden transition-shadow hover:shadow-md"
+              className="card group relative flex flex-col overflow-hidden transition-shadow hover:shadow-md"
             >
               <Link to="/s/$slug/p/$id" params={{ slug, id: p.id }} className="relative block">
                 {p.images[0] ? (
@@ -440,11 +441,17 @@ function CatalogPage() {
                   })()}
                 </span>
                 {!p.inStock && (
-                  <span className="absolute top-2 right-2 rounded-md bg-fg/80 px-2 py-0.5 text-[11px] font-medium text-bg">
+                  <span className="absolute right-2 bottom-2 rounded-md bg-fg/80 px-2 py-0.5 text-[11px] font-medium text-bg">
                     {t("catalog.outOfStock")}
                   </span>
                 )}
               </Link>
+              <FavoriteButton
+                id={p.id}
+                addLabel={t("fav.add")}
+                removeLabel={t("fav.remove")}
+                className="absolute top-2 right-2"
+              />
               <div className="flex flex-1 flex-col p-3">
                 <Link
                   to="/s/$slug/p/$id"

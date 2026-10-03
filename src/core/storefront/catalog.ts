@@ -18,6 +18,7 @@ import { offerForProduct } from "@/core/offers/offers";
 import { productSellable } from "@/core/catalog/materials";
 import { getSettings } from "@/core/settings/settings";
 import { eachPage } from "@/core/db/page";
+import { inChunks } from "@/lib/in-chunks";
 import type { Locale } from "@/core/i18n/locale";
 import { languageChips } from "./lang-filter";
 import { priceRange } from "./filters";
@@ -335,6 +336,34 @@ export async function storeCatalog(
     sort,
   ).slice(0, 200);
   return Promise.all(sellable.map((p) => toStoreProduct(ctx, p)));
+}
+
+/**
+ * Товары по списку id — избранное покупателя на сайте. Порядок как в списке;
+ * снятое с продажи, скрытое и без материалов не отдаём (страница «Избранное»
+ * тихо убирает их из браузера).
+ */
+export async function storeProductsByIds(
+  ctx: TenantContext,
+  ids: readonly string[],
+): Promise<StoreProduct[]> {
+  if (ids.length === 0) return [];
+  const [rows, cats] = await Promise.all([
+    inChunks(
+      ids,
+      (chunk) =>
+        ctx.db.from("products").select(PRODUCT_SELECT).in("id", chunk).eq("is_active", true),
+      "Витрина",
+    ),
+    listAllCategories(ctx),
+  ]);
+  const known = new Set(cats.map((c) => c.id));
+  const visible = visibleCategoryIds(cats);
+  const byId = new Map((rows as Product[]).map((p) => [p.id, p]));
+  const shown = ids
+    .map((id) => byId.get(id))
+    .filter((p): p is Product => Boolean(p) && listedOnStorefront(p!, known, visible));
+  return Promise.all(shown.map((p) => toStoreProduct(ctx, p)));
 }
 
 /**

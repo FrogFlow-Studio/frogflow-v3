@@ -6,6 +6,7 @@ import { storeInfoFn } from "@/app/storefront/storefront.functions";
 import { storeShareFn } from "@/app/storefront/share.functions";
 import { shopLinks, shopMeta } from "@/core/storefront/share";
 import { CartProvider, useCart, useTelegramWebApp } from "@/app/storefront/cart";
+import { FavoritesProvider, useFavorites } from "@/app/storefront/favorites";
 import { StorefrontLocaleProvider, useStorefrontLocale } from "@/app/storefront/locale";
 import { storefrontT } from "@/app/i18n/storefront";
 import { ThemeToggle } from "@/app/ui";
@@ -63,7 +64,9 @@ function StoreLayout() {
   return (
     <StorefrontLocaleProvider slug={shop.slug} initial={shop.locale}>
       <CartProvider slug={shop.slug}>
-        <StoreFrame />
+        <FavoritesProvider slug={shop.slug}>
+          <StoreFrame />
+        </FavoritesProvider>
       </CartProvider>
     </StorefrontLocaleProvider>
   );
@@ -120,6 +123,7 @@ function StoreFrame() {
                 🎁<span className="hidden sm:inline">{t("gift.nav")}</span>
               </Link>
             )}
+            {!wa && <FavoritesLink slug={shop.slug} />}
             {/* В Mini App корзина и заказы — в нижних вкладках. */}
             {!wa && <CartButton slug={shop.slug} />}
           </div>
@@ -234,6 +238,26 @@ function TabBar({ slug, vertical }: { slug: string; vertical: string }) {
         })}
       </ul>
     </nav>
+  );
+}
+
+function FavoritesLink({ slug }: { slug: string }) {
+  const fav = useFavorites();
+  const { t } = useStorefrontLocale();
+  return (
+    <Link
+      to="/s/$slug/favorites"
+      params={{ slug }}
+      className="btn-secondary relative"
+      aria-label={t("layout.favorites")}
+    >
+      ♡<span className="hidden sm:inline">{t("layout.favorites")}</span>
+      {fav.ids.length > 0 && (
+        <span className="absolute -top-2 -right-2 rounded-full border-2 border-surface bg-fg px-1.5 text-xs font-semibold text-bg">
+          {fav.ids.length}
+        </span>
+      )}
+    </Link>
   );
 }
 

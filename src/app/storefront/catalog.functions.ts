@@ -3,6 +3,7 @@ import { notFound } from "@tanstack/react-router";
 import { z } from "zod";
 import { SHOP_SLUG_RE } from "@/core/tenant/slug";
 import { CATALOG_SORTS } from "@/core/storefront/sort";
+import { FAVORITES_MAX } from "@/core/storefront/favorites";
 
 /**
  * Каталог витрины страницами (core/storefront/catalog, storeCatalogPage):
@@ -42,4 +43,26 @@ export const storeCatalogPageFn = createServerFn({ method: "GET" })
       maxPrice: data.max,
       offset: data.offset,
     });
+  });
+
+/**
+ * Избранное витрины: id товаров из браузера покупателя → карточки (core/storefront/catalog,
+ * storeProductsByIds). Исчезнувших в ответе нет — страница убирает их у себя.
+ */
+export const storeFavoritesFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        slug: z.string().regex(SHOP_SLUG_RE),
+        ids: z.array(z.string().uuid()).max(FAVORITES_MAX),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
+    const { storefrontOpen } = await import("@/core/storefront/access");
+    const t = await resolveTenant({ by: "slug", value: data.slug });
+    if (!t || !storefrontOpen(t, "catalog")) throw notFound();
+    const { storeProductsByIds } = await import("@/core/storefront/catalog");
+    return storeProductsByIds(tenantContext(t), data.ids);
   });

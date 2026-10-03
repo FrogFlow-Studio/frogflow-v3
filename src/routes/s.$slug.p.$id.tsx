@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { storeProductFn } from "@/app/storefront/storefront.functions";
 import { useCart } from "@/app/storefront/cart";
+import { FavoriteButton } from "@/app/storefront/favorites";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { reviewsWord } from "@/app/i18n/storefront";
 import { formatMoney } from "@/core/money/money";
@@ -260,6 +261,12 @@ function ProductPage() {
                 )}
               </>
             )}
+            <FavoriteButton
+              id={p.id}
+              addLabel={t("fav.add")}
+              removeLabel={t("fav.remove")}
+              className="border border-line"
+            />
             {msg && <span className="text-sm text-muted">{msg}</span>}
           </div>
           <ul className="mt-5 space-y-1.5 text-sm text-muted">

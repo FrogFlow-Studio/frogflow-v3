@@ -81,6 +81,7 @@ import { Route as OperatorAuthedSettingsRouteImport } from './routes/operator._a
 import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
 import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
 import { Route as SSlugCheckoutRouteImport } from './routes/s.$slug.checkout'
+import { Route as SSlugFavoritesRouteImport } from './routes/s.$slug.favorites'
 import { Route as SSlugGiftRouteImport } from './routes/s.$slug.gift'
 import { Route as SSlugOrdersRouteImport } from './routes/s.$slug.orders'
 import { Route as SSlugManifestDotwebmanifestRouteImport } from './routes/s.$slug_.manifest[.]webmanifest'
@@ -461,6 +462,11 @@ const SSlugCheckoutRoute = SSlugCheckoutRouteImport.update({
   path: '/checkout',
   getParentRoute: () => SSlugRoute,
 } as any)
+const SSlugFavoritesRoute = SSlugFavoritesRouteImport.update({
+  id: '/favorites',
+  path: '/favorites',
+  getParentRoute: () => SSlugRoute,
+} as any)
 const SSlugGiftRoute = SSlugGiftRouteImport.update({
   id: '/gift',
   path: '/gift',
@@ -638,6 +644,7 @@ export interface FileRoutesByFullPath {
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
+  '/s/$slug/favorites': typeof SSlugFavoritesRoute
   '/s/$slug/gift': typeof SSlugGiftRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
   '/s/$slug/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
@@ -730,6 +737,7 @@ export interface FileRoutesByTo {
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
+  '/s/$slug/favorites': typeof SSlugFavoritesRoute
   '/s/$slug/gift': typeof SSlugGiftRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
   '/s/$slug/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
@@ -824,6 +832,7 @@ export interface FileRoutesById {
   '/operator/_authed/settings': typeof OperatorAuthedSettingsRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
+  '/s/$slug/favorites': typeof SSlugFavoritesRoute
   '/s/$slug/gift': typeof SSlugGiftRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
   '/s/$slug_/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
@@ -919,6 +928,7 @@ export interface FileRouteTypes {
     | '/operator/settings'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
+    | '/s/$slug/favorites'
     | '/s/$slug/gift'
     | '/s/$slug/orders'
     | '/s/$slug/manifest.webmanifest'
@@ -1011,6 +1021,7 @@ export interface FileRouteTypes {
     | '/operator/settings'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
+    | '/s/$slug/favorites'
     | '/s/$slug/gift'
     | '/s/$slug/orders'
     | '/s/$slug/manifest.webmanifest'
@@ -1104,6 +1115,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/settings'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
+    | '/s/$slug/favorites'
     | '/s/$slug/gift'
     | '/s/$slug/orders'
     | '/s/$slug_/manifest.webmanifest'
@@ -1672,6 +1684,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugCheckoutRouteImport
       parentRoute: typeof SSlugRoute
     }
+    '/s/$slug/favorites': {
+      id: '/s/$slug/favorites'
+      path: '/favorites'
+      fullPath: '/s/$slug/favorites'
+      preLoaderRoute: typeof SSlugFavoritesRouteImport
+      parentRoute: typeof SSlugRoute
+    }
     '/s/$slug/gift': {
       id: '/s/$slug/gift'
       path: '/gift'
@@ -1970,6 +1989,7 @@ const OperatorRouteWithChildren = OperatorRoute._addFileChildren(
 interface SSlugRouteChildren {
   SSlugCartRoute: typeof SSlugCartRoute
   SSlugCheckoutRoute: typeof SSlugCheckoutRoute
+  SSlugFavoritesRoute: typeof SSlugFavoritesRoute
   SSlugGiftRoute: typeof SSlugGiftRoute
   SSlugOrdersRoute: typeof SSlugOrdersRoute
   SSlugIndexRoute: typeof SSlugIndexRoute
@@ -1983,6 +2003,7 @@ interface SSlugRouteChildren {
 const SSlugRouteChildren: SSlugRouteChildren = {
   SSlugCartRoute: SSlugCartRoute,
   SSlugCheckoutRoute: SSlugCheckoutRoute,
+  SSlugFavoritesRoute: SSlugFavoritesRoute,
   SSlugGiftRoute: SSlugGiftRoute,
   SSlugOrdersRoute: SSlugOrdersRoute,
   SSlugIndexRoute: SSlugIndexRoute,
