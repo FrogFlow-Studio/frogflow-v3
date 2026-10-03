@@ -5,7 +5,13 @@ import { md5Hex } from "./robokassa";
 // сверяет он сам, поэтому тест идёт через обработчик маршрута, а база,
 // арендатор и отметка оплаты подменены.
 const BOT = "b41a34cb-7944-441b-8f71-503184fc0f1f";
-const markPaidOnline = vi.fn(async () => ({ ok: true, kind: "digital", alreadyDone: true }));
+const markPaidOnline = vi.fn(async (): Promise<Record<string, unknown>> => ({
+  ok: true,
+  kind: "digital",
+  alreadyDone: true,
+}));
+let firstDelivery = true;
+const recordUnappliedPayment = vi.fn(async (..._a: unknown[]) => firstDelivery);
 const afterPaidOnline = vi.fn(async () => {});
 let platform = "telegram";
 let status = "awaiting_payment";
@@ -23,6 +29,7 @@ vi.mock("@/core/tenant/resolve.server", () => ({
 vi.mock("@/core/payments/payment", () => ({
   robokassaFor: async () => ({ ready: true, login: "shop", pass1: "p1", pass2: "p2" }),
   markPaidOnline,
+  recordUnappliedPayment,
 }));
 vi.mock("@/core/orders/orders", () => ({
   getOrder: async (_ctx: unknown, id: number) => ({
@@ -92,7 +99,11 @@ function callResult(outSum: string, invId = "42") {
 }
 
 describe("Robokassa result: сверка суммы", () => {
-  beforeEach(() => markPaidOnline.mockClear());
+  beforeEach(() => {
+    markPaidOnline.mockClear();
+    recordUnappliedPayment.mockClear();
+    firstDelivery = true;
+  });
 
   it("NaN от нечислового OutSum не считается прошедшей проверку суммы", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -100,6 +111,22 @@ describe("Robokassa result: сверка суммы", () => {
     expect(res.status).toBe(400);
     expect(await res.text()).toBe("amount mismatch");
     expect(markPaidOnline).not.toHaveBeenCalled();
+    expect(recordUnappliedPayment).not.toHaveBeenCalled();
+  });
+
+  it("настоящая сумма не та — 400, но платёж остаётся в журнале и продавцу уходит уведомление", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    notifyAdminsHtml.mockClear();
+    const res = await callResult("900.00");
+    expect(res.status).toBe(400);
+    expect(markPaidOnline).not.toHaveBeenCalled();
+    expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), 42, "payment_mismatch", {
+      amount: 900,
+      currency: "KZT",
+      provider: "Robokassa",
+      ref: "42",
+    });
+    expect(notifyAdminsHtml).toHaveBeenCalledTimes(1);
   });
 
   it("заказ не в тенге — 400: Robokassa.kz списала бы ту же цифру в тенге", async () => {
@@ -186,10 +213,35 @@ describe("Robokassa: заказ с сайта", () => {
   it("оплата пришла по отменённому неоплаченным заказу — продавцу срочно, заказ не трогаем", async () => {
     platform = "web";
     status = "rejected";
-    markPaidOnline.mockResolvedValueOnce({ ok: true, kind: "digital", alreadyDone: true });
+    notifyAdminsHtml.mockClear();
+    markPaidOnline.mockResolvedValue({
+      ok: true,
+      kind: "digital",
+      alreadyDone: true,
+      closed: true,
+      status: "rejected",
+    });
     expect(await (await callResult("1500.00")).text()).toBe("OK42");
     expect(afterPaidOnline).not.toHaveBeenCalled();
+    expect(recordUnappliedPayment).toHaveBeenCalledWith(
+      expect.anything(),
+      42,
+      "payment_on_closed",
+      {
+        amount: 1500,
+        currency: "KZT",
+        provider: "Robokassa",
+        ref: "42",
+        status: "rejected",
+      },
+    );
     expect(notifyAdminsHtml).toHaveBeenCalledTimes(1);
+    // Повтор колбэка (шлюз не получил OK): второго уведомления нет.
+    firstDelivery = false;
+    await callResult("1500.00");
+    expect(notifyAdminsHtml).toHaveBeenCalledTimes(1);
+    firstDelivery = true;
+    markPaidOnline.mockResolvedValue({ ok: true, kind: "digital", alreadyDone: true });
     status = "awaiting_payment";
   });
 });

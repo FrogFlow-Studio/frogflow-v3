@@ -57,21 +57,32 @@ async function handle(request: Request, botId: string): Promise<Response> {
   const outcome = stripeOutcome(ev, { amount: expected, currency: order.currency });
   const s = ev.data?.object;
   const ref = String(s?.payment_intent ?? s?.id ?? "");
-  const no = order.display_no ?? order.order_no ?? order.id;
 
+  const unapplied = { currency: order.currency, provider: "Stripe", ref };
   if (outcome === "mismatch") {
-    const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
-    await notifyAdminsHtml(
-      ctx,
-      `⚠️ Платёж Stripe ${ref} не совпал с заказом #${no} по сумме или валюте — заказ не подтверждён. Проверьте кабинет Stripe.`,
-      { orderId, kind: "delivery_failure" },
-    ).catch((e) => console.error(`[stripe:${botId}] уведомление`, e));
+    // Деньги пришли не на ту сумму или в той валюте: пишем то, что списал Stripe.
+    const { fromMinor } = await import("@/core/payments/stripe");
+    const paidCurrency = String(s?.currency ?? order.currency).toUpperCase();
+    const { reportUnappliedPayment } = await import("@/app/payments/unapplied-payment.server");
+    await reportUnappliedPayment(ctx, order, "payment_mismatch", {
+      ...unapplied,
+      currency: paidCurrency,
+      amount: fromMinor(Number(s?.amount_total ?? 0), paidCurrency),
+    });
     return new Response("ok");
   }
   if (outcome !== "paid") return new Response("ok");
 
   const { markPaidOnline } = await import("@/core/payments/payment");
   const r = await markPaidOnline(ctx, orderId, expected, "Stripe", ref);
+  if (r.closed) {
+    const { reportUnappliedPayment } = await import("@/app/payments/unapplied-payment.server");
+    await reportUnappliedPayment(ctx, order, "payment_on_closed", {
+      ...unapplied,
+      amount: expected,
+      status: r.status,
+    });
+  }
   if (r.ok && !r.alreadyDone) {
     const { runInBackground } = await import("@/lib/background");
     await runInBackground(async () => {

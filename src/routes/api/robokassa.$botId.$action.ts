@@ -83,18 +83,29 @@ async function handle(request: Request, botId: string, action: string): Promise<
     console.error(
       `[robokassa:${botId}] сумма ${outSum} ≠ ожидаемой ${expected} по заказу ${orderId}`,
     );
+    if (Number.isFinite(paid)) {
+      const { reportUnappliedPayment } = await import("@/app/payments/unapplied-payment.server");
+      await reportUnappliedPayment(ctx, order, "payment_mismatch", {
+        amount: paid,
+        currency: order.currency,
+        provider: "Robokassa",
+        ref: invId,
+      });
+    }
     return new Response("amount mismatch", { status: 400 });
   }
   const r = await markPaidOnline(ctx, orderId, paid, "Robokassa", invId);
-  if (r.ok && r.alreadyDone && ["cancelled", "rejected"].includes(order.status)) {
+  if (r.closed) {
     // Покупатель заплатил по ссылке, открытой до отмены (отклонения) неоплаченного заказа
     // с сайта: деньги пришли, заказ закрыт — решает продавец.
-    const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
-    await notifyAdminsHtml(
-      ctx,
-      `⚠️ Оплата ${paid} через Robokassa пришла по отклонённому заказу #${order.display_no ?? order.order_no}. Свяжитесь с покупателем: выдать заказ или вернуть деньги.`,
-      { orderId, kind: "delivery_failure" },
-    ).catch((e) => console.error(`[robokassa:${botId}] уведомление`, e));
+    const { reportUnappliedPayment } = await import("@/app/payments/unapplied-payment.server");
+    await reportUnappliedPayment(ctx, order, "payment_on_closed", {
+      amount: paid,
+      currency: order.currency,
+      provider: "Robokassa",
+      ref: invId,
+      status: r.status,
+    });
   }
   if (r.ok && !r.alreadyDone) {
     const { runInBackground } = await import("@/lib/background");

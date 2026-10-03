@@ -68,23 +68,34 @@ async function handle(request: Request, botId: string): Promise<Response> {
   }
   const outcome = ipnOutcome(ipn, { amount: expected, currency: order.currency });
   const ref = String(ipn.payment_id ?? ipn.invoice_id ?? "");
-  const no = order.display_no ?? order.order_no ?? order.id;
 
+  const unapplied = {
+    amount: Number(ipn.price_amount) || expected,
+    currency: String(ipn.price_currency ?? order.currency).toUpperCase(),
+    provider: "NOWPayments",
+    ref,
+  };
   if (outcome === "partial" || outcome === "mismatch") {
-    const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
-    await notifyAdminsHtml(
-      ctx,
-      outcome === "partial"
-        ? `⚠️ По заказу #${no} криптой оплачено не полностью (NOWPayments, платёж ${ref}). Проверьте кабинет NOWPayments и свяжитесь с покупателем.`
-        : `⚠️ Платёж NOWPayments ${ref} не совпал с заказом #${no} по сумме или валюте — заказ не подтверждён. Проверьте кабинет NOWPayments.`,
-      { orderId, kind: "delivery_failure" },
-    ).catch((e) => console.error(`[nowpayments:${botId}] уведомление`, e));
+    // Не полная оплата и чужая сумма: заказ не подтверждаем, платёж остаётся в журнале.
+    const { reportUnappliedPayment } = await import("@/app/payments/unapplied-payment.server");
+    await reportUnappliedPayment(ctx, order, "payment_mismatch", {
+      ...unapplied,
+      status: outcome === "partial" ? "partially_paid" : undefined,
+    });
     return new Response("ok");
   }
   if (outcome !== "paid") return new Response("ok");
 
   const { markPaidOnline } = await import("@/core/payments/payment");
   const r = await markPaidOnline(ctx, orderId, expected, "NOWPayments", ref);
+  if (r.closed) {
+    const { reportUnappliedPayment } = await import("@/app/payments/unapplied-payment.server");
+    await reportUnappliedPayment(ctx, order, "payment_on_closed", {
+      ...unapplied,
+      amount: expected,
+      status: r.status,
+    });
+  }
   if (r.ok && !r.alreadyDone) {
     const { runInBackground } = await import("@/lib/background");
     await runInBackground(async () => {

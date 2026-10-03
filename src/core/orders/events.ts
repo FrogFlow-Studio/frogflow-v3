@@ -28,6 +28,10 @@ export type OrderEventKind =
   | "email_sent"
   | "email_failed"
   | "payment"
+  /** Шлюз прислал деньги по закрытому заказу: в оплату не записаны, решает продавец. */
+  | "payment_on_closed"
+  /** Сумма или валюта платежа не совпали с заказом: заказ не подтверждён. */
+  | "payment_mismatch"
   | "fulfillment_changed"
   | "balance_proof"
   | "balance_paid"
@@ -163,6 +167,16 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       return {
         text: `Внесено ${num(p.amount)}${p.currency ? ` ${str(p.currency)}` : ""}${p.source === "deposit" ? " (задаток по чеку)" : p.source === "online" ? ` через ${str(p.provider)}` : ""}${who}`,
         tone: "ok",
+      };
+    case "payment_on_closed":
+      return {
+        text: `Оплата ${num(p.amount)}${p.currency ? ` ${str(p.currency)}` : ""} через ${str(p.provider)}${p.invId ? ` (платёж ${str(p.invId)})` : ""} пришла по закрытому заказу — выполните заказ или верните деньги`,
+        tone: "danger",
+      };
+    case "payment_mismatch":
+      return {
+        text: `Платёж ${num(p.amount)}${p.currency ? ` ${str(p.currency)}` : ""} через ${str(p.provider)}${p.invId ? ` (${str(p.invId)})` : ""} не совпал с заказом по сумме или валюте — заказ не подтверждён`,
+        tone: "danger",
       };
     case "fulfillment_changed":
       return { text: `Получение изменено${who}`, tone: "neutral" };

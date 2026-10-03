@@ -54,6 +54,69 @@ export async function stripeFor(ctx: TenantContext) {
   return stripeConfig(await getSettingsStrict(ctx, STRIPE_KEYS), ctx.tenant.modules.stripe);
 }
 
+/** Заказ, по которому оплату уже не ждут: отменён, отклонён или возвращён. */
+const CLOSED_ORDER_STATUSES = ["cancelled", "rejected", "refunded"];
+
+export type UnappliedPaymentKind = "payment_on_closed" | "payment_mismatch";
+
+export type UnappliedPayment = {
+  amount: number;
+  currency: string;
+  provider: string;
+  /** Номер платежа у шлюза. */
+  ref: string;
+  /** Статус заказа или причина расхождения — для продавца. */
+  status?: string;
+};
+
+/**
+ * Деньги от шлюза, которые заказ не принял: оплата по закрытому заказу или
+ * сумма/валюта не совпали. В заказе ничего не меняем, но платёж оставляет
+ * событие в журнале (сумма, валюта, шлюз, номер платежа) — продавец и бухгалтер
+ * его видят. Повтор того же колбэка — `false`, второй записи и второго
+ * уведомления нет. Сбой базы — serverFailure: шлюз повторит колбэк.
+ */
+export async function recordUnappliedPayment(
+  ctx: TenantContext,
+  orderId: number,
+  kind: UnappliedPaymentKind,
+  p: UnappliedPayment,
+): Promise<boolean> {
+  const { claimOrderEvent } = await import("@/core/orders/events");
+  const payload = {
+    amount: p.amount,
+    currency: p.currency,
+    provider: p.provider,
+    invId: p.ref,
+    status: p.status,
+  };
+  const key = `${p.provider.toLowerCase()}:${p.ref || "noref"}:${p.amount.toFixed(2)}`;
+  if (kind === "payment_on_closed" && p.ref) {
+    // Повтор колбэка уже принятой оплаты, заказ потом вернули: платёж записан, тревоги нет.
+    const { data: accepted, error: acceptedError } = await ctx.db
+      .from("zernio_logs")
+      .select("id")
+      .eq("event_type", "order.payment")
+      .eq("payload->>order_id", String(orderId))
+      .eq("payload->>invId", p.ref)
+      .limit(1);
+    if (acceptedError)
+      throw serverFailure(
+        `recordUnappliedPayment: журнал заказа #${orderId}: ${acceptedError.message}`,
+      );
+    if ((accepted ?? []).length > 0) return false;
+  }
+  if (await claimOrderEvent(ctx, orderId, kind, key, payload, "system")) return true;
+  // Метки нет — повтор или сбой записи; сбой должен вернуться шлюзу как 5xx.
+  const { data: seen, error: seenError } = await ctx.db
+    .from("zernio_logs")
+    .select("id")
+    .eq("event_id", `order:${orderId}:${kind}:${key}`)
+    .maybeSingle();
+  if (seen && !seenError) return false;
+  throw serverFailure(`recordUnappliedPayment: не записан платёж по заказу #${orderId}`);
+}
+
 /**
  * Онлайн-оплата подтверждена шлюзом: отметить, что деньги получены.
  * Цифровой заказ дальше выдаёт канал, физический принимается в работу.
@@ -66,7 +129,15 @@ export async function markPaidOnline(
   provider: string,
   /** Номер платежа у шлюза (InvId Robokassa, charge id Telegram) — в выгрузку «Оплаты». */
   ref?: string,
-): Promise<{ ok: boolean; kind: "digital" | "physical" | null; alreadyDone: boolean }> {
+): Promise<{
+  ok: boolean;
+  kind: "digital" | "physical" | null;
+  alreadyDone: boolean;
+  /** Заказ закрыт (отменён, отклонён, возвращён): деньги пришли, решает продавец. */
+  closed?: boolean;
+  /** Статус заказа на момент колбэка. */
+  status?: string;
+}> {
   const { data: order, error: readError } = await ctx.db
     .from("orders")
     .select("status, fulfillment_kind, admin_note, paid_amount, total, currency")
@@ -78,7 +149,13 @@ export async function markPaidOnline(
   if (!order) return { ok: false, kind: null, alreadyDone: false };
   const kind = order.fulfillment_kind === "physical" ? "physical" : "digital";
   if (!["awaiting_payment", "awaiting_confirmation"].includes(order.status))
-    return { ok: true, kind, alreadyDone: true };
+    return {
+      ok: true,
+      kind,
+      alreadyDone: true,
+      closed: CLOSED_ORDER_STATUSES.includes(order.status),
+      status: order.status,
+    };
   const note =
     `${order.admin_note ? `${order.admin_note}; ` : ""}Оплачено через ${provider}: ${amount}`.slice(
       0,

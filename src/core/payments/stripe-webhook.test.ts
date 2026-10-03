@@ -4,7 +4,13 @@ import { stripeSignature } from "./stripe";
 // Вебхук /api/stripe/<bot>: подпись и сумму сверяет маршрут, поэтому тест
 // идёт через его обработчик, а арендатор, заказ и отметка оплаты подменены.
 const BOT = "b41a34cb-7944-441b-8f71-503184fc0f1f";
-const markPaidOnline = vi.fn(async () => ({ ok: true, kind: "digital", alreadyDone: false }));
+const markPaidOnline = vi.fn(async (): Promise<Record<string, unknown>> => ({
+  ok: true,
+  kind: "digital",
+  alreadyDone: false,
+}));
+let firstDelivery = true;
+const recordUnappliedPayment = vi.fn(async () => firstDelivery);
 const afterPaidOnline = vi.fn(async () => {});
 const notifyAdminsHtml = vi.fn(async () => 1);
 let servedBy = "v2";
@@ -18,6 +24,7 @@ vi.mock("@/core/payments/payment", () => ({
   stripeFor: async () =>
     ready ? { ready: true, secretKey: "sk", webhookSecret: "whsec" } : { ready: false },
   markPaidOnline,
+  recordUnappliedPayment,
 }));
 vi.mock("@/core/orders/orders", () => ({
   getOrder: async (_ctx: unknown, id: number) =>
@@ -88,10 +95,54 @@ describe("вебхук Stripe", () => {
     expect(markPaidOnline).not.toHaveBeenCalled();
   });
 
+  beforeEach(() => {
+    firstDelivery = true;
+    recordUnappliedPayment.mockClear();
+    markPaidOnline.mockReset();
+    markPaidOnline.mockResolvedValue({ ok: true, kind: "digital", alreadyDone: false });
+    notifyAdminsHtml.mockClear();
+    afterPaidOnline.mockClear();
+  });
+
   it("сумма не сошлась — продавцу предупреждение, заказ не подтверждён", async () => {
     const res = await call(event({ amount_total: 100 }));
     expect(res.status).toBe(200);
     expect(markPaidOnline).not.toHaveBeenCalled();
+    expect(notifyAdminsHtml).toHaveBeenCalledOnce();
+    // Платёж остаётся в журнале заказа: то, что списал Stripe (1 ₸ = 100 минимальных единиц).
+    expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), 42, "payment_mismatch", {
+      amount: 1,
+      currency: "KZT",
+      provider: "Stripe",
+      ref: "pi_1",
+    });
+  });
+
+  it("оплата по закрытому заказу — событие в журнал и одно уведомление, повтор колбэка тихий", async () => {
+    markPaidOnline.mockResolvedValue({
+      ok: true,
+      kind: "digital",
+      alreadyDone: true,
+      closed: true,
+      status: "rejected",
+    });
+    await call(event());
+    expect(afterPaidOnline).not.toHaveBeenCalled();
+    expect(recordUnappliedPayment).toHaveBeenCalledWith(
+      expect.anything(),
+      42,
+      "payment_on_closed",
+      {
+        amount: 12000,
+        currency: "KZT",
+        provider: "Stripe",
+        ref: "pi_1",
+        status: "rejected",
+      },
+    );
+    expect(notifyAdminsHtml).toHaveBeenCalledOnce();
+    firstDelivery = false;
+    await call(event());
     expect(notifyAdminsHtml).toHaveBeenCalledOnce();
   });
 

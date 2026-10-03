@@ -1585,14 +1585,17 @@ async function handleStarsPaid(
     pay.telegram_payment_charge_id || undefined,
   );
   if (r.ok && !r.alreadyDone) await onOrderPaid(ctx, api, orderId);
-  else if (["cancelled", "rejected", "refunded"].includes(order.status)) {
+  else if (r.closed) {
     // Звёзды списаны, а заказ закрыли между pre_checkout и оплатой — как у
     // Robokassa: продавцу срочно, решает он (выдать или вернуть звёзды).
-    await notifyAdminsHtml(
-      ctx,
-      `⚠️ Оплата ${pay.total_amount} ⭐ пришла по закрытому заказу #${displayNo(order)}${pay.telegram_payment_charge_id ? ` (платёж ${escapeHtml(pay.telegram_payment_charge_id)})` : ""}. Свяжитесь с покупателем: выдать заказ или вернуть звёзды.`,
-      { orderId, kind: "delivery_failure" },
-    ).catch((e) => console.error(`[stars:${ctx.tenant.id}] уведомление`, e));
+    const { reportUnappliedPayment } = await import("@/app/payments/unapplied-payment.server");
+    await reportUnappliedPayment(ctx, order, "payment_on_closed", {
+      amount: due,
+      currency: order.currency,
+      provider: "Telegram Stars",
+      ref: pay.telegram_payment_charge_id ?? "",
+      status: r.status,
+    }).catch((e) => console.error(`[stars:${ctx.tenant.id}] платёж по закрытому заказу`, e));
   }
 }
 

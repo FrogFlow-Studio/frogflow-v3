@@ -4,13 +4,13 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 
 vi.mock("@/core/settings/settings", () => ({ getSettings: async () => ({}) }));
 
-const { markPaidOnline } = await import("./payment");
+const { markPaidOnline, recordUnappliedPayment } = await import("./payment");
 
 let db: FakeDb;
 const ctx = () => ({ tenant: { id: "shop-1", modules: {} }, db }) as unknown as TenantContext;
 
 beforeEach(() => {
-  db = fakeDb();
+  db = fakeDb({ unique: { zernio_logs: [["event_id"]] } });
   db.tables.orders = [
     {
       id: 7,
@@ -87,5 +87,66 @@ describe("сбой базы в колбэке оплаты", () => {
     );
     expect(db.tables.orders![0]!.status).toBe("awaiting_payment");
     expect(db.tables.zernio_logs).toHaveLength(0);
+  });
+});
+
+describe("оплата по закрытому заказу и несовпавшая сумма", () => {
+  const details = { amount: 3000, currency: "KZT", provider: "Stripe", ref: "pi_9" };
+  const eventsOf = (kind: string) => db.tables.zernio_logs!.filter((e) => e.event_type === kind);
+
+  it("отклонённый заказ: markPaidOnline не трогает его и говорит «закрыт»", async () => {
+    db.tables.orders![0]!.status = "rejected";
+    expect(await markPaidOnline(ctx(), 7, 3000, "Stripe", "pi_9")).toMatchObject({
+      ok: true,
+      alreadyDone: true,
+      closed: true,
+      status: "rejected",
+    });
+    expect(db.tables.orders![0]!.status).toBe("rejected");
+    expect(eventsOf("order.payment")).toHaveLength(0);
+  });
+
+  it("оплаченный заказ — не «закрыт»: это обычный повтор колбэка", async () => {
+    await markPaidOnline(ctx(), 7, 3000, "Stripe", "pi_9");
+    expect(await markPaidOnline(ctx(), 7, 3000, "Stripe", "pi_9")).toMatchObject({
+      alreadyDone: true,
+      closed: false,
+    });
+  });
+
+  it("payment_on_closed: событие с суммой, валютой, шлюзом и номером платежа — один раз", async () => {
+    expect(await recordUnappliedPayment(ctx(), 7, "payment_on_closed", details)).toBe(true);
+    expect(await recordUnappliedPayment(ctx(), 7, "payment_on_closed", details)).toBe(false);
+    const events = eventsOf("order.payment_on_closed");
+    expect(events).toHaveLength(1);
+    expect(events[0]!.payload).toMatchObject({
+      order_id: 7,
+      amount: 3000,
+      currency: "KZT",
+      provider: "Stripe",
+      invId: "pi_9",
+    });
+  });
+
+  it("другой платёж по тому же заказу — отдельное событие", async () => {
+    await recordUnappliedPayment(ctx(), 7, "payment_on_closed", details);
+    expect(
+      await recordUnappliedPayment(ctx(), 7, "payment_on_closed", { ...details, ref: "pi_10" }),
+    ).toBe(true);
+    expect(eventsOf("order.payment_on_closed")).toHaveLength(2);
+  });
+
+  it("payment_mismatch пишется так же", async () => {
+    expect(
+      await recordUnappliedPayment(ctx(), 7, "payment_mismatch", { ...details, amount: 100 }),
+    ).toBe(true);
+    expect(eventsOf("order.payment_mismatch")).toHaveLength(1);
+  });
+
+  it("повтор колбэка уже принятой оплаты, заказ потом вернули — тревоги нет", async () => {
+    await markPaidOnline(ctx(), 7, 3000, "Stripe", "pi_9");
+    db.tables.orders![0]!.status = "refunded";
+    expect(await recordUnappliedPayment(ctx(), 7, "payment_on_closed", details)).toBe(false);
+    expect(eventsOf("order.payment_on_closed")).toHaveLength(0);
   });
 });

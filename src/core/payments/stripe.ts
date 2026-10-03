@@ -41,6 +41,14 @@ const THREE_DECIMAL = new Set("bhd jod kwd omr tnd".split(" "));
  * Сумма в минимальных единицах валюты, как её ждёт и присылает Stripe. У
  * трёхзнаковых валют Stripe требует последнюю цифру 0 — округляем до сотых.
  */
+/** Обратно: сумма из минимальных единиц, какой её прислал Stripe. */
+export function fromMinor(minor: number, currency: string): number {
+  const c = currency.toLowerCase();
+  if (ZERO_DECIMAL.has(c)) return minor;
+  if (THREE_DECIMAL.has(c)) return minor / 1000;
+  return minor / 100;
+}
+
 export function toMinor(amount: number, currency: string): number {
   const c = currency.toLowerCase();
   if (ZERO_DECIMAL.has(c)) return Math.round(amount);
