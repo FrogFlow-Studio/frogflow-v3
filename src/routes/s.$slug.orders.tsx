@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { miniAppOrdersFn } from "@/app/storefront/storefront.functions";
+import { miniAppOrdersFn, miniAppRewardsFn } from "@/app/storefront/storefront.functions";
 import { useTelegramWebApp } from "@/app/storefront/cart";
-import { webMyOrdersFn } from "@/app/storefront/tg-login.functions";
+import { webMyOrdersFn, webMyRewardsFn } from "@/app/storefront/tg-login.functions";
 import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
+import { MyRewardsBox } from "@/app/storefront/my-rewards";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
 import { Empty, ErrorBox } from "@/app/ui";
@@ -100,6 +101,15 @@ function OrdersPage() {
       </h1>
       {webIn && <TgLoginBox login={login} />}
       <ErrorBox error={error} />
+      {showOrders && (
+        <MyRewardsBox
+          load={() =>
+            wa
+              ? miniAppRewardsFn({ data: { slug, initData: wa.initData } })
+              : webMyRewardsFn({ data: { slug } })
+          }
+        />
+      )}
       {showOrders && data && data.orders.length === 0 && <Empty>{t("orders.empty")}</Empty>}
       {showOrders && data && data.orders.length > 0 && (
         <ul className="divide-y divide-line rounded-md border border-line">

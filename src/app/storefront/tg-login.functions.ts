@@ -136,6 +136,22 @@ export const webMyOrdersFn = createServerFn({ method: "POST" })
     return buyerOrders(ctx, tgId, data.libraryOffset ?? 0);
   });
 
+/** Баллы и приглашения для вошедшего на сайте через Telegram; не вошёл — null. */
+export const webMyRewardsFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ slug }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await loginCtx(data.slug);
+    if (!ctx) return null;
+    const { buyerTelegramId } = await import("./tg-login.server");
+    const tgId = await buyerTelegramId(ctx);
+    if (tgId === null) return null;
+    const { takeWeb } = await import("@/core/storefront/checkout-guard");
+    if (!(await takeWeb(ctx, "myOrders", String(tgId))))
+      throw shownError((await shopT(ctx))("error.tooManyRequests"));
+    const { myRewards } = await import("@/core/storefront/my-rewards");
+    return myRewards(ctx, tgId);
+  });
+
 const orderRef = { slug, id: z.number().int().positive(), t: z.string().max(64) };
 
 /**

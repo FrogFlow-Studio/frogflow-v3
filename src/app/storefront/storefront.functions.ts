@@ -219,6 +219,24 @@ export const miniAppOrdersFn = createServerFn({ method: "POST" })
     return buyerOrders(ctx, v.user.id, data.libraryOffset ?? 0);
   });
 
+/** «Мои баллы и приглашения» в Mini App: баланс, уровень, личная ссылка и итоги приглашений. */
+export const miniAppRewardsFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ slug, initData: z.string().min(1).max(8000) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await shopCtx(data.slug, "mini_app");
+    const t = await shopT(ctx);
+    if (!ctx.tenant.telegramTokenEnc) throw shownError(t("error.noBot"));
+    const { validateInitData } = await import("@/core/storefront/init-data");
+    const v = validateInitData(data.initData, ctx.secrets.telegramToken());
+    if (!v.ok)
+      throw shownError(t(v.reason === "expired" ? "error.miniAppExpired" : "error.miniAppAuth"));
+    const { takeMiniApp } = await import("@/core/storefront/rate-limit");
+    if (!(await takeMiniApp(ctx, v.user.id, "orders")))
+      throw shownError(t("error.tooManyRequests"));
+    const { myRewards } = await import("@/core/storefront/my-rewards");
+    return myRewards(ctx, v.user.id);
+  });
+
 export const legalFn = createServerFn({ method: "GET" })
   .validator((d: unknown) =>
     z.object({ slug, doc: z.enum(["offer", "privacy", "requisites", "about"]) }).parse(d),
