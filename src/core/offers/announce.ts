@@ -3,7 +3,7 @@ import { UserError } from "@/core/i18n/user-error";
 import { serverFailure } from "@/lib/server-failure";
 import { createBroadcast } from "@/core/broadcasts/broadcasts";
 import { isLocale, type Locale } from "@/core/i18n/locale";
-import { listOffers, saveOffers, type LimitedOffer } from "./offers";
+import { listOffers, updateOffers, type LimitedOffer } from "./offers";
 import { announceText, type SaleInfo } from "./texts";
 
 export const offerAnnouncedKey = (id: string) => `offer_announced:${id}`;
@@ -107,10 +107,8 @@ export async function announceOffer(
         ? new UserError("err.admin.offerAnnounceNone", "Некому писать: в боте нет покупателей.")
         : serverFailure(`Акция, рассылка: ${r.message}`);
   }
-  const current = (await listOffers(ctx)).map(({ sold: _s, left: _l, ...o }) => o as LimitedOffer);
-  await saveOffers(
-    ctx,
-    current.map((o) =>
+  await updateOffers(ctx, (all) =>
+    all.map((o) =>
       o.id === id ? { ...o, broadcast_id: r.broadcast.id, announced_at: now.toISOString() } : o,
     ),
   );

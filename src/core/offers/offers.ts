@@ -1,5 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSettingStrict, setSetting } from "@/core/settings/settings";
+import { getSettingStrict, updateSettingStamped } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
 
 /**
@@ -189,9 +189,22 @@ export async function listOffers(ctx: TenantContext): Promise<OfferState[]> {
   });
 }
 
-export async function saveOffers(ctx: TenantContext, offers: LimitedOffer[]): Promise<void> {
-  await setSetting(ctx, OFFERS_KEY, JSON.stringify(offers.slice(0, OFFERS_MAX)));
+/**
+ * Изменить список акций: читаем свежий список, правим, пишем с условием на метку
+ * записи (весь список в адрес запроса не кладём). Параллельная правка — вторая
+ * вкладка, рассылка — не затирает чужое: проигравший перечитывает и применяет
+ * правку заново. `change` должна быть чистой; null — ничего не писать.
+ */
+export async function updateOffers(
+  ctx: TenantContext,
+  change: (offers: LimitedOffer[]) => LimitedOffer[] | null,
+): Promise<void> {
+  const r = await updateSettingStamped(ctx, OFFERS_KEY, (raw) => {
+    const next = change(parseOffers(raw));
+    return next ? JSON.stringify(next.slice(0, OFFERS_MAX)) : null;
+  });
   resetOffersCache(ctx.tenant.id);
+  if (r === "failed") throw serverFailure("Акции: не удалось записать список");
 }
 
 /** Подпись для карточки: «🔥 −20% до 30.09 23:59 · осталось 5». */

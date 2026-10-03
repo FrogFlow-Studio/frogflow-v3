@@ -2,13 +2,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
 import { serverFailure } from "@/lib/server-failure";
 import { zonedLocalToUtc } from "@/core/export/csv";
-import {
-  OFFERS_MAX,
-  listOffers,
-  percentForNewPrice,
-  saveOffers,
-  type LimitedOffer,
-} from "./offers";
+import { OFFERS_MAX, percentForNewPrice, updateOffers, type LimitedOffer } from "./offers";
 
 /** Что продавец ввёл в форме «Акции»: время — стенные часы магазина («2026-10-12T23:59»). */
 export type OfferForm = {
@@ -26,9 +20,6 @@ export type OfferForm = {
 };
 
 const MONTH_MS = 30 * 86_400_000;
-
-const strip = ({ sold: _s, left: _l, ...o }: Awaited<ReturnType<typeof listOffers>>[number]) =>
-  o as LimitedOffer;
 
 /** Создание или правка акции: все проверки здесь, форма и серверная функция только передают. */
 export async function saveOfferForm(
@@ -87,25 +78,34 @@ export async function saveOfferForm(
   };
 
   // Закончившиеся старше месяца — вон из списка, чтобы он не рос бесконечно.
-  const current = (await listOffers(ctx))
-    .map(strip)
-    .filter((o) => o.id !== form.id && Date.parse(o.ends_at) > now.getTime() - MONTH_MS);
-  if (current.length >= OFFERS_MAX)
-    throw new UserError(
-      "err.admin.offersFull",
-      "Слишком много акций: удалите прошедшие, прежде чем добавлять новые.",
+  await updateOffers(ctx, (all) => {
+    const old = all.find((o) => o.id === offer.id);
+    // Отметка «звали» принадлежит акции, а не форме: правка её не стирает.
+    const saved: LimitedOffer = {
+      ...offer,
+      ...(old?.broadcast_id ? { broadcast_id: old.broadcast_id } : {}),
+      ...(old?.announced_at ? { announced_at: old.announced_at } : {}),
+    };
+    const current = all.filter(
+      (o) => o.id !== offer.id && Date.parse(o.ends_at) > now.getTime() - MONTH_MS,
     );
-  await saveOffers(ctx, [offer, ...current]);
+    if (current.length >= OFFERS_MAX)
+      throw new UserError(
+        "err.admin.offersFull",
+        "Слишком много акций: удалите прошедшие, прежде чем добавлять новые.",
+      );
+    return [saved, ...current];
+  });
   return offer;
 }
 
 /** Досрочно закончить: идущая — до этой минуты, ещё не начавшаяся — убирается. */
 export async function endOfferNow(ctx: TenantContext, id: string, now = new Date()) {
-  const all = (await listOffers(ctx)).map(strip);
-  const next = all.flatMap((o) => {
-    if (o.id !== id) return [o];
-    if (Date.parse(o.starts_at) > now.getTime()) return [];
-    return Date.parse(o.ends_at) > now.getTime() ? [{ ...o, ends_at: now.toISOString() }] : [o];
-  });
-  await saveOffers(ctx, next);
+  await updateOffers(ctx, (all) =>
+    all.flatMap((o) => {
+      if (o.id !== id) return [o];
+      if (Date.parse(o.starts_at) > now.getTime()) return [];
+      return Date.parse(o.ends_at) > now.getTime() ? [{ ...o, ends_at: now.toISOString() }] : [o];
+    }),
+  );
 }

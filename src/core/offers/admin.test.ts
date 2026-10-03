@@ -79,6 +79,34 @@ describe("админка акций", () => {
     expect(stored(db)[0]).toMatchObject({ id: a.id, percent: 30 });
   });
 
+  it("правка после «Позвать покупателей» не стирает отметку рассылки", async () => {
+    const { ctx, db } = setup();
+    const a = await saveOfferForm(ctx, form(), NOW);
+    const all = stored(db);
+    all[0].broadcast_id = "b-1";
+    all[0].announced_at = "2026-10-05T10:00:00.000Z";
+    db.tables.app_settings!.find((r) => r.key === OFFERS_KEY)!.value = JSON.stringify(all);
+    await saveOfferForm(ctx, form({ id: a.id, endsAt: "2026-10-14T23:59" }), NOW);
+    expect(stored(db)[0]).toMatchObject({
+      id: a.id,
+      broadcast_id: "b-1",
+      announced_at: "2026-10-05T10:00:00.000Z",
+    });
+  });
+
+  it("две правки одновременно: обе акции на месте, ни одна не затёрта", async () => {
+    const { ctx, db } = setup();
+    await Promise.all([
+      saveOfferForm(ctx, form({ title: "А" }), NOW),
+      saveOfferForm(ctx, form({ title: "Б" }), NOW),
+    ]);
+    expect(
+      stored(db)
+        .map((o: { title: string }) => o.title)
+        .sort(),
+    ).toEqual(["А", "Б"]);
+  });
+
   it("конец раньше начала — отказ", async () => {
     const { ctx } = setup();
     await expect(

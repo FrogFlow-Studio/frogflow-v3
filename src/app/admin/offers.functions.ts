@@ -66,11 +66,7 @@ export const deleteOfferFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: z.string().min(1).max(40) }).parse(d))
   .handler(async ({ data }) => {
     const ctx = await moduleAdmin("manager");
-    const { listOffers, saveOffers } = await import("@/core/offers/offers");
-    const current = (await listOffers(ctx)).map(({ sold: _s, left: _l, ...o }) => o);
-    await saveOffers(
-      ctx,
-      current.filter((o) => o.id !== data.id),
-    );
+    const { updateOffers } = await import("@/core/offers/offers");
+    await updateOffers(ctx, (all) => all.filter((o) => o.id !== data.id));
     return { ok: true };
   });
