@@ -435,6 +435,7 @@ export async function ratingStats(ctx: TenantContext, lowShown = 10): Promise<Ra
         .select(SELECT)
         .like("event_id", `${TICKET_PREFIX}%`)
         .eq("status", "closed")
+        .not("payload->>rating", "is", null)
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
         .range(from, to),

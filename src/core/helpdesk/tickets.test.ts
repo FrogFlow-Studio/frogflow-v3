@@ -226,6 +226,38 @@ describe("обращения: одновременные записи не за�
     const t = (await getTicket(ctx, ticket.id))!;
     expect(t).toMatchObject({ rating: 5, assignee: "manager1" });
   });
+
+  it("О2: оценки — из базы приходят только оценённые обращения", async () => {
+    const { ctx, db } = ctxWith();
+    const row = (i: number, rating: number | null) => ({
+      id: `r${i}`,
+      bot_id: BOT,
+      event_id: `ticket:r${i}`,
+      event_type: "ticket",
+      status: "closed",
+      payload: { number: i, telegram_id: i, ...(rating ? { rating } : {}) },
+      created_at: "2026-09-01T00:00:00Z",
+    });
+    db.tables.zernio_logs = [row(1, 5), row(2, null), row(3, 2), row(4, null)];
+    const seen: number[] = [];
+    const realFrom = db.from.bind(db);
+    (ctx as unknown as { db: unknown }).db = {
+      ...db,
+      from: (t: string) => {
+        const q = realFrom(t) as unknown as { then: (r: (v: { data: unknown[] }) => void) => void };
+        const orig = q.then.bind(q);
+        q.then = (res: (v: { data: unknown[] }) => void) =>
+          orig((v) => {
+            seen.push(v.data?.length ?? 0);
+            res(v);
+          });
+        return q;
+      },
+    };
+    const stats = await ratingStats(ctx);
+    expect(stats).toMatchObject({ count: 2, average: 3.5, lowCount: 1 });
+    expect(seen[0]).toBe(2);
+  });
 });
 
 describe("обращения: список без обрезок (О1)", () => {

@@ -1,6 +1,6 @@
 import { pageAll } from "@/core/db/page";
+import { chunksOf } from "@/lib/in-chunks";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { serverFailure } from "@/lib/server-failure";
 import { type Ticket, TICKET_PREFIX, rowToTicketForJobs } from "./tickets";
 
 /**
@@ -36,22 +36,36 @@ export function customerWaitingSince(t: Pick<Ticket, "history" | "createdAt">): 
 
 export type OverdueTicket = { ticket: Ticket; waitingSince: string; claimKey: string };
 
-async function managerRepliedSince(
+/**
+ * Когда продавец в последний раз писал каждому из покупателей позже `since`.
+ * Один запрос на кусок покупателей (не на обращение); читаем постранично и
+ * только ответы позже самого раннего ожидания.
+ */
+async function lastManagerReplies(
   ctx: TenantContext,
-  telegramId: number,
+  telegramIds: readonly number[],
   since: string,
-): Promise<boolean> {
-  // Нужен лишь факт «был ответ» — одна строка, не выборка.
-  const { data, error } = await ctx.db
-    .from("manager_chat_messages")
-    .select("id")
-    .eq("telegram_id", telegramId)
-    .eq("sender", "manager")
-    .gt("created_at", since)
-    .order("id")
-    .limit(1);
-  if (error) throw serverFailure(`Просроченные обращения: ответ продавца: ${error.message}`);
-  return (data?.length ?? 0) > 0;
+): Promise<Map<number, number>> {
+  const last = new Map<number, number>();
+  for (const chunk of chunksOf([...new Set(telegramIds)])) {
+    const rows = await pageAll<{ telegram_id: number; created_at: string }>(
+      (from, to) =>
+        ctx.db
+          .from("manager_chat_messages")
+          .select("telegram_id, created_at")
+          .in("telegram_id", chunk)
+          .eq("sender", "manager")
+          .gt("created_at", since)
+          .order("id")
+          .range(from, to),
+      "Просроченные обращения: ответ продавца",
+    );
+    for (const r of rows) {
+      const at = Date.parse(r.created_at);
+      if (at > (last.get(r.telegram_id) ?? 0)) last.set(r.telegram_id, at);
+    }
+  }
+  return last;
 }
 
 /** Из списка — те, что просрочены на `hours` часов. Для крона и подсветки в списке. */
@@ -63,15 +77,27 @@ export async function overdueAmong(
 ): Promise<OverdueTicket[]> {
   if (!hours) return [];
   const due = now.getTime() - hours * 3_600_000;
-  const out: OverdueTicket[] = [];
+  const waiting: { ticket: Ticket; since: string }[] = [];
   for (const ticket of tickets) {
     if (ticket.status !== "open") continue;
     const since = customerWaitingSince(ticket);
     if (!since || Date.parse(since) > due) continue;
-    if (await managerRepliedSince(ctx, ticket.telegramId, since)) continue;
-    out.push({ ticket, waitingSince: since, claimKey: `${ticket.id}:${since}` });
+    waiting.push({ ticket, since });
   }
-  return out;
+  if (!waiting.length) return [];
+  const earliest = waiting.reduce((m, w) => (w.since < m ? w.since : m), waiting[0]!.since);
+  const replies = await lastManagerReplies(
+    ctx,
+    waiting.map((w) => w.ticket.telegramId),
+    earliest,
+  );
+  return waiting
+    .filter((w) => (replies.get(w.ticket.telegramId) ?? 0) <= Date.parse(w.since))
+    .map(({ ticket, since }) => ({
+      ticket,
+      waitingSince: since,
+      claimKey: `${ticket.id}:${since}`,
+    }));
 }
 
 /** Все «Открытые» обращения магазина постранично; свежие не старше OVERDUE_MAX_AGE_MS. */

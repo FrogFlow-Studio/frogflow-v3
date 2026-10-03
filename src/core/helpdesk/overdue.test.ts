@@ -110,4 +110,38 @@ describe("просроченные обращения", () => {
     expect(ids).toEqual([a.id]);
     expect(ids).not.toContain(b.id);
   });
+
+  it("О2: 150 открытых обращений — не по запросу на обращение к чату продавца", async () => {
+    const { db, ctx } = setup();
+    const list = [];
+    for (let i = 1; i <= 150; i++) list.push(await ticketAgo(ctx, db, i, 9));
+    managerSays(db, 7, ago(1)); // продавец ответил только покупателю 7
+    let chatReads = 0;
+    const realFrom = db.from.bind(db);
+    (ctx as unknown as { db: unknown }).db = {
+      ...db,
+      from: (t: string) => {
+        if (t === "manager_chat_messages") chatReads++;
+        return realFrom(t);
+      },
+    };
+    const { listTickets } = await import("./tickets");
+    const ids = (await overdueAmong(ctx, await listTickets(ctx, "open"), 8, NOW)).map(
+      (o) => o.ticket.telegramId,
+    );
+    expect(ids).toHaveLength(149);
+    expect(ids).not.toContain(7);
+    expect(chatReads).toBeLessThanOrEqual(2);
+    expect(list).toHaveLength(150);
+  });
+
+  it("О2: ответ продавца до последнего слова покупателя не считается; после — считается", async () => {
+    const { db, ctx } = setup();
+    const a = await ticketAgo(ctx, db, 1, 9);
+    const b = await ticketAgo(ctx, db, 2, 9);
+    managerSays(db, 1, ago(10)); // раньше вопроса — не ответ
+    managerSays(db, 2, ago(8)); // позже вопроса — ответ
+    const ids = (await overdueAmong(ctx, [a, b], 4, NOW)).map((o) => o.ticket.id);
+    expect(ids).toEqual([a.id]);
+  });
 });
