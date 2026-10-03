@@ -6,7 +6,12 @@
  */
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
-import { getSetting, getSettings, trySetSetting } from "@/core/settings/settings";
+import {
+  getSetting,
+  getSettings,
+  trySetSetting,
+  updateSettingAtomic,
+} from "@/core/settings/settings";
 import { createCategory } from "./admin";
 import { parseCatalogCsv, planImport } from "./import";
 import { patchOf, previewImport, type ImportPreview, type ProductPatch } from "./import.server";
@@ -329,14 +334,25 @@ export async function syncFromCsv(
 export async function loadSheet(
   ctx: TenantContext,
 ): Promise<{ config: SheetConfig | null; status: SheetStatus | null }> {
+  const { config, status } = await loadSheetRaw(ctx);
+  return { config, status };
+}
+
+/** То же, плюс сырая строка статуса: по ней ночной прогон пишет итог условной записью. */
+async function loadSheetRaw(ctx: TenantContext): Promise<{
+  config: SheetConfig | null;
+  status: SheetStatus | null;
+  statusRaw: string | null;
+}> {
   const s = await getSettings(ctx, [SHEET_CONFIG_KEY, SHEET_STATUS_KEY]);
+  const statusRaw = s[SHEET_STATUS_KEY] || null;
   let status: SheetStatus | null = null;
   try {
-    status = s[SHEET_STATUS_KEY] ? (JSON.parse(s[SHEET_STATUS_KEY]) as SheetStatus) : null;
+    status = statusRaw ? (JSON.parse(statusRaw) as SheetStatus) : null;
   } catch {
     status = null;
   }
-  return { config: parseSheetConfig(s[SHEET_CONFIG_KEY]), status };
+  return { config: parseSheetConfig(s[SHEET_CONFIG_KEY]), status, statusRaw };
 }
 
 export type SheetPreview =
@@ -362,17 +378,22 @@ export async function runSheetSync(
   mode: "interactive" | "nightly",
   fetchImpl?: FetchLike,
 ): Promise<{ run: SheetRun; notify: string | null } | null> {
-  const { config, status: prev } = await loadSheet(ctx);
+  const { config, status: prev, statusRaw } = await loadSheetRaw(ctx);
   if (!config) return null;
   const dl = await downloadSheet(config.url, fetchImpl);
   const run: SheetRun = dl.ok ? await syncFromCsv(ctx, dl.csv, config, mode) : dl;
-  await trySetSetting(
-    ctx,
-    SHEET_STATUS_KEY,
-    JSON.stringify({ ...run, at: new Date().toISOString() } satisfies SheetStatus),
-  );
+  const status = JSON.stringify({ ...run, at: new Date().toISOString() } satisfies SheetStatus);
+  // Итог — условной записью по прочитанному статусу: из двух кронов, прошедших
+  // таблицу одновременно, продавцу пишет тот, чья запись прошла. Сама синхронизация
+  // идемпотентна (тот же CSV — тот же каталог), дублировалось бы только сообщение.
+  let written: "written" | "skipped" | "failed" = "written";
+  if (mode === "nightly")
+    written = await updateSettingAtomic(ctx, SHEET_STATUS_KEY, (raw) =>
+      (raw || null) === statusRaw ? status : null,
+    );
+  else await trySetSetting(ctx, SHEET_STATUS_KEY, status);
   let notify: string | null = null;
-  if (mode === "nightly") {
+  if (mode === "nightly" && written !== "skipped") {
     if (!run.ok) {
       const same = prev && !prev.ok && prev.reason === run.reason;
       if (!same) notify = failureText(run.reason);

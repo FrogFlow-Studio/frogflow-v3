@@ -97,6 +97,19 @@ describe("уведомление продавцу о заказе убирает
     expect(pack()).toEqual({ refs: [], deleteAfter: null });
   });
 
+  it("два крона одновременно — каждое сообщение удаляется один раз", async () => {
+    const { ctx, api, calls, order7 } = setup();
+    await notifyAdminNewOrder(ctx, api, order7(), null);
+    await scheduleOrderNotifyDismiss(ctx, api, 7, T0);
+    calls.length = 0;
+    const [a, b] = await Promise.all([
+      flushDueOrderNotify(ctx, api, T0 + 5 * 60_000),
+      flushDueOrderNotify(ctx, api, T0 + 5 * 60_000),
+    ]);
+    expect(a + b).toBe(1);
+    expect(calls.filter(([m]) => m === "deleteMessage")).toHaveLength(2);
+  });
+
   it("повторное решение не отодвигает срок удаления", async () => {
     const { ctx, api, pack, order7 } = setup();
     await notifyAdminNewOrder(ctx, api, order7(), null);

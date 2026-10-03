@@ -303,6 +303,20 @@ describe("ночной прогон", () => {
     expect((await runSheetSync(ctx, "nightly", closed()))!.notify).toBeNull();
   });
 
+  it("два ночных крона одновременно — продавцу одно сообщение о беде", async () => {
+    const { db, ctx } = await connected();
+    const closed = () => fakeFetch(redirect("https://accounts.google.com/ServiceLogin"));
+    const [a, b] = await Promise.all([
+      runSheetSync(ctx, "nightly", closed()),
+      runSheetSync(ctx, "nightly", closed()),
+    ]);
+    expect([a!.notify, b!.notify].filter(Boolean)).toHaveLength(1);
+    expect(JSON.parse(setting(db, SHEET_STATUS_KEY)!)).toMatchObject({
+      ok: false,
+      reason: "closed",
+    });
+  });
+
   it("не скачалась или пустая — каталог не тронут, продавцу сообщение", async () => {
     const { db, ctx } = await connected();
     const before = JSON.stringify(db.tables.products);

@@ -98,12 +98,20 @@ export async function finalizeDueDeletions(
   for (const t of tenants) {
     if (t.archived || !deletionDue(t.settings.deletion, now)) continue;
     try {
-      const { error } = await serviceDb()
+      // Архивирует тот, чья условная запись прошла (archived_at был пуст): второй
+      // крон, пришедший в то же время, магазин уже не трогает — ни файлы, ни
+      // сообщение оператору второй раз.
+      const { data: archived, error } = await serviceDb()
         .from("bots")
         .update({ archived_at: new Date(now).toISOString(), status: "suspended" })
         .eq("id", t.id)
-        .is("archived_at", null);
+        .is("archived_at", null)
+        .select("id");
       if (error) throw new Error(error.message);
+      if (!archived?.length) {
+        results[t.id] = { skipped: "уже архивирован" };
+        continue;
+      }
       let removed = 0;
       for (const bucket of BUCKETS) {
         const keys = await listTenantKeys(bucket, t.id);

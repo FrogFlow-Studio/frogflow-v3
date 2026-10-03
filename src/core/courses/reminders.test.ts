@@ -163,6 +163,39 @@ describe("напоминания курса", () => {
   });
 });
 
+describe("напоминания курса: два крона одновременно", () => {
+  it("до старта, несданное задание и конец доступа — по одному разу на два прогона", async () => {
+    const steps = [
+      { at: "2026-10-12T08:00:00Z", kind: "pre" },
+      { at: "2026-10-18T08:00:00Z", kind: "homework" },
+    ];
+    for (const { at, kind } of steps) {
+      const { ctx } = school();
+      const sent: string[] = [];
+      const send = async (x: { kind: string }) => (sent.push(x.kind), true);
+      await Promise.all([
+        courseReminders(ctx, send, null, new Date(at)),
+        courseReminders(ctx, send, null, new Date(at)),
+      ]);
+      expect(
+        sent.filter((k) => k === kind),
+        kind,
+      ).toHaveLength(1);
+    }
+    const { ctx } = school();
+    const kicks: number[] = [];
+    const access = {
+      createInvite: async () => null,
+      kick: async (_c: string, u: number) => (kicks.push(u), true),
+    };
+    await Promise.all([
+      courseReminders(ctx, async () => true, access, new Date("2026-11-15T08:00:00Z")),
+      courseReminders(ctx, async () => true, access, new Date("2026-11-15T08:00:00Z")),
+    ]);
+    expect(kicks).toEqual([555]);
+  });
+});
+
 describe("сегмент рассылки «ученики курса»", () => {
   it("все, не сдавшие ДЗ, отстающие, прошедшие; поток и чужой курс отсекаются", async () => {
     const { courseSegmentMembers } = await import("./segment.server");

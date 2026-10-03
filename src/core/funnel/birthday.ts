@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { serverFailure } from "@/lib/server-failure";
 import type { Json } from "@/core/db-types";
 import { customerFromRow, isBlocked, setState, type Customer } from "@/core/customers/customers";
 import { getSetting, setSetting } from "@/core/settings/settings";
@@ -84,6 +85,30 @@ export function fillBirthdayText(text: string, name: string | null, promo: strin
     .trim();
 }
 
+/**
+ * Занять поздравление этого года. Условие — на маленькие поля: прежний
+ * `birthday_sent` и шаг диалога `mode` (весь state в адрес запроса не кладём,
+ * больше ~8 КБ даёт 431). false — соседний запуск успел раньше или state
+ * изменился: в этот раз не поздравляем, следующий прогон часа посмотрит снова.
+ */
+async function claimBirthday(ctx: TenantContext, c: Customer, year: number): Promise<boolean> {
+  const prev = c.state.birthday_sent;
+  const base = ctx.db
+    .from("bot_users")
+    .update({ state: { ...c.state, birthday_sent: year } as unknown as Json })
+    .eq("user_key", c.userKey);
+  const byYear =
+    prev == null
+      ? base.is("state->>birthday_sent", null)
+      : base.eq("state->>birthday_sent", String(prev));
+  const mode = typeof c.state.mode === "string" && c.state.mode ? c.state.mode : null;
+  const { data, error } = await (
+    mode == null ? byYear.is("state->>mode", null) : byYear.eq("state->>mode", mode)
+  ).select("user_key");
+  if (error) throw serverFailure(`поздравления: отметка года ${c.userKey}: ${error.message}`);
+  return Boolean(data?.length);
+}
+
 export type BirthdaySender = (c: Customer, text: string) => Promise<boolean>;
 
 export async function runBirthdays(
@@ -114,8 +139,9 @@ export async function runBirthdays(
           const c = customerFromRow(row);
           if (Number(c.state.birthday_sent) === year) continue;
           if (await isBlocked(ctx, c.telegramId)) continue;
-          // Сначала отметка года: повторный запуск крона в тот же час не поздравит дважды.
-          await setState(ctx, c, { ...c.state, birthday_sent: year as unknown as Json });
+          // Сначала отметка года, условной записью: из двух кронов, дошедших до
+          // покупателя в одно время, поздравляет тот, чья запись прошла.
+          if (!(await claimBirthday(ctx, c, year))) continue;
           const ok = await send(c, fillBirthdayText(cfg.text, c.firstName, cfg.promo)).catch(
             () => false,
           );

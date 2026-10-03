@@ -1,7 +1,7 @@
 import type { Tenant } from "@/core/tenant/types";
 import { tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
-import { customerFromRow, updateStateSection } from "@/core/customers/customers";
-import { getSetting, getSettings, setSetting } from "@/core/settings/settings";
+import { claimStateSection, customerFromRow, updateStateSection } from "@/core/customers/customers";
+import { getSetting, getSettings, updateSettingAtomic } from "@/core/settings/settings";
 import {
   buildQualityDigest,
   DIGEST_HOUR,
@@ -96,15 +96,22 @@ export async function sendPricelistFollowUps(
     const text = followUpText(memory, products);
     // Сначала отметка и «свой голос», потом отправка: второй крон не повторит,
     // а проверка «в чате менеджер» узнает своё сообщение (relayed).
-    const marked = await updateStateSection(ctx, customer, "consultant", (cur) => ({
-      ...cur,
-      followup_for: memory.last_reply_at,
-      ...(text
-        ? {
-            relayed: [...((cur.relayed as string[] | undefined) ?? []), text].slice(-10),
-          }
-        : {}),
-    }));
+    // Отметка — условная по свежему состоянию: если соседний крон уже поставил
+    // followup_for на эту реплику, claimStateSection вернёт null, и мы уступаем.
+    const marked = await claimStateSection(ctx, customer, "consultant", (cur) =>
+      (cur.followup_for ?? cur.v2_followup_for) === memory.last_reply_at
+        ? null
+        : {
+            ...cur,
+            followup_for: memory.last_reply_at,
+            ...(text
+              ? {
+                  relayed: [...((cur.relayed as string[] | undefined) ?? []), text].slice(-10),
+                }
+              : {}),
+          },
+    );
+    if (!marked) continue;
     // Писать нечего (товара нет в прайсе) — только отметка: диалог больше не смотрим.
     if (!text) continue;
     const r = await transport.send(
@@ -154,7 +161,11 @@ export async function sendQualityDigest(
   const { day, from, to, hour } = previousLocalDay(now, ctx.timezone);
   if (hour < DIGEST_HOUR) return { sent: false, reason: "early" };
   if (s[DIGEST_SENT_KEY] === day) return { sent: false, reason: "already" };
-  await setSetting(ctx, DIGEST_SENT_KEY, day);
+  // Условная запись по прочитанной отметке: из двух кронов сводку шлёт тот, чья прошла.
+  const claim = await updateSettingAtomic(ctx, DIGEST_SENT_KEY, (raw) =>
+    raw === day ? null : day,
+  );
+  if (claim !== "written") return { sent: false, reason: "already" };
   const { data, error: readErr } = await ctx.db
     .from("consultant_message_runs")
     .select("conversation_id, incoming_text, reply_text, reply_kind, status, model, token_usage")

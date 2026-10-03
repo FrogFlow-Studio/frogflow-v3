@@ -123,4 +123,16 @@ describe("резервный крон Comment-to-DM", () => {
     await runCommentDmFallback(ctx, t.a, NOW);
     expect(t.privateReply).not.toHaveBeenCalled();
   });
+
+  it("два крона одновременно — одна DM по комментарию и одна строка-резерв", async () => {
+    const { ctx, db } = shop();
+    const t = api({ comments: [comment("c1", "u1", 1)], pages: [[]] });
+    const [a, b] = await Promise.all([
+      runCommentDmFallback(ctx, t.a, NOW),
+      runCommentDmFallback(ctx, t.a, NOW),
+    ]);
+    expect(t.privateReply).toHaveBeenCalledTimes(1);
+    expect(a.sent + b.sent).toBe(1);
+    expect(db.tables.comment_dm_fallback_sends).toHaveLength(1);
+  });
 });

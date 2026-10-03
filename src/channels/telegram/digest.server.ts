@@ -6,7 +6,8 @@ import {
   digestDue,
   digestSentOn,
   markDigested,
-  markDigestSent,
+  claimDigestSent,
+  releaseDigest,
   queuedDigestItems,
   renderDigest,
   type DigestStats,
@@ -44,22 +45,31 @@ export async function sendDueDigests(
       if (!prefs.digest.enabled) continue;
       const today = todayInTz(ctx.timezone, now);
       if (!digestDue(prefs, now, ctx.timezone, await digestSentOn(ctx), today)) continue;
-      const items = await queuedDigestItems(ctx);
-      const stats = await digestStats(ctx);
-      const yesterday = new Date(now.getTime() - 86_400_000).toLocaleDateString("ru-RU", {
-        timeZone: ctx.timezone,
-        day: "2-digit",
-        month: "2-digit",
-      });
-      const sent = await notifyAdminsHtml(ctx, renderDigest(yesterday, stats, items), {
-        kind: "digest",
-      });
-      await markDigestSent(ctx, today);
-      if (sent > 0)
-        await markDigested(
-          ctx,
-          items.map((i) => i.id),
-        );
+      // Отметка дня — до отправки, условной записью: второй крон уступает.
+      const claim = await claimDigestSent(ctx, today);
+      if (!claim.won) continue;
+      let sent: number;
+      try {
+        const items = await queuedDigestItems(ctx);
+        const stats = await digestStats(ctx);
+        const yesterday = new Date(now.getTime() - 86_400_000).toLocaleDateString("ru-RU", {
+          timeZone: ctx.timezone,
+          day: "2-digit",
+          month: "2-digit",
+        });
+        sent = await notifyAdminsHtml(ctx, renderDigest(yesterday, stats, items), {
+          kind: "digest",
+        });
+        if (sent > 0)
+          await markDigested(
+            ctx,
+            items.map((i) => i.id),
+          );
+      } catch (e) {
+        // Не дошло — вернуть отметку: следующий тик повторит, а не потеряет день.
+        await releaseDigest(ctx, today, claim.prev);
+        throw e;
+      }
       out[t.id] = sent > 0 ? "sent" : "skipped";
     } catch (e) {
       out[t.id] = e instanceof Error ? e.message : String(e);

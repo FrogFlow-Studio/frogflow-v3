@@ -73,6 +73,17 @@ describe("напоминание о диалоге без ответа", () => {
     expect((await run(ctx)).got).toHaveLength(0);
   });
 
+  it("два крона одновременно — одно напоминание", async () => {
+    const { ctx, dialog } = shop();
+    dialog(1, true, [
+      ["manager", 60],
+      ["customer", 40, "а когда?"],
+    ]);
+    const [a, b] = await Promise.all([run(ctx), run(ctx)]);
+    expect(a.got.length + b.got.length).toBe(1);
+    expect(a.r.reminded + b.r.reminded).toBe(1);
+  });
+
   it("ответ продавца открывает новый отрезок: новое ожидание — новое напоминание", async () => {
     const { ctx, db, dialog } = shop();
     dialog(1, true, [["customer", 90]]);

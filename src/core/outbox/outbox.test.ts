@@ -113,4 +113,21 @@ describe("очередь исходящих: код отказа", () => {
     await processOutbox(s.ctx, failing, now);
     expect(seen).toEqual([seen[0], seen[0]]);
   });
+
+  it("два крона одновременно — одна отправка, одна строка «processed»", async () => {
+    const s = setup();
+    await enqueueOutbox(s.ctx, msg("двойной"), null, now);
+    let calls = 0;
+    const send: OutboxSender = async () => {
+      calls++;
+      return { ok: true };
+    };
+    const [a, b] = await Promise.all([
+      processOutbox(s.ctx, send, now),
+      processOutbox(s.ctx, send, now),
+    ]);
+    expect(calls).toBe(1);
+    expect(a.sent + b.sent).toBe(1);
+    expect(s.payload("двойной")).toMatchObject({ status: "processed" });
+  });
 });

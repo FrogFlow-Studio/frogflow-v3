@@ -106,6 +106,17 @@ describe("напоминание замолчавшему покупателю",
     expect(send).toHaveBeenCalledTimes(1);
   });
 
+  it("два крона одновременно — одно напоминание", async () => {
+    const ctx = ctxOf();
+    const { t, send } = transport();
+    const [a, b] = await Promise.all([
+      sendPricelistFollowUps(ctx, now, t),
+      sendPricelistFollowUps(ctx, now, t),
+    ]);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(a.sent + b.sent).toBe(1);
+  });
+
   it("выключено у продавца или ночью — не пишем", async () => {
     const { t, send } = transport();
     expect(await sendPricelistFollowUps(ctxOf("off"), now, t)).toMatchObject({ skipped: "off" });
@@ -150,6 +161,22 @@ describe("сводка качества за сутки", () => {
     expect(sent[0]).toContain("Консультант за 25.09");
     expect(sent[0]).toContain("рекламные слова");
     expect(await sendQualityDigest(ctx, morning, notify)).toMatchObject({ reason: "already" });
+    expect(sent).toHaveLength(1);
+  });
+
+  it("два крона одновременно — одна сводка", async () => {
+    const ctx = withRuns("on");
+    const sent: string[] = [];
+    const notify = async (_c: unknown, html: string) => {
+      await new Promise((r) => setTimeout(r, 5));
+      sent.push(html);
+      return 1;
+    };
+    const { sendQualityDigest } = await import("./consultant-jobs.server");
+    await Promise.all([
+      sendQualityDigest(ctx, morning, notify),
+      sendQualityDigest(ctx, morning, notify),
+    ]);
     expect(sent).toHaveLength(1);
   });
 

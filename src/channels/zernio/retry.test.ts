@@ -94,6 +94,16 @@ describe("добор зависших событий Zernio", () => {
     expect(s.seen).toEqual(["bg-dead"]);
   });
 
+  it("два крона одновременно — событие обрабатывается один раз", async () => {
+    const s = setup([{ event_id: "e", status: "received", created_at: ago(5 * MIN) }]);
+    await Promise.all([
+      retryStuckEvents(s.ctx, NOW, s.dispatch),
+      retryStuckEvents(s.ctx, NOW, s.dispatch),
+    ]);
+    expect(s.seen).toEqual(["e"]);
+    expect(s.row("e")).toMatchObject({ status: "processed", error_message: "добор: ок" });
+  });
+
   it("забранная строка помечена временем захвата", async () => {
     const s = setup([{ event_id: "e", status: "received", created_at: ago(5 * MIN) }]);
     let during: unknown;

@@ -97,6 +97,17 @@ describe("напоминание об оплате в боте, Instagram и Wha
     expect(send).toHaveBeenCalledTimes(1);
   });
 
+  it("два крона одновременно — одно сообщение и одна отметка в журнале", async () => {
+    const { db, ctx, send } = setup([{}]);
+    const r = await Promise.all([
+      remindChatOrders(ctx, send, NOW),
+      remindChatOrders(ctx, send, NOW),
+    ]);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(r.reduce((n, x) => n + ("sent" in x ? x.sent : 0), 0)).toBe(1);
+    expect(db.tables.zernio_logs).toHaveLength(1);
+  });
+
   it("физический заказ с задатком — к оплате задаток", async () => {
     const { ctx, sent, send } = setup([{ fulfillment_kind: "physical", total: 4000 }]);
     await remindChatOrders(ctx, send, NOW);

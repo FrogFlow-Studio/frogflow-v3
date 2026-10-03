@@ -664,6 +664,37 @@ async function alreadyDone(botId: string, marker: string): Promise<boolean> {
 }
 
 /**
+ * Занять действие обхода ДО его выполнения: проверка `alreadyDone` читает метку,
+ * а пишется она после отправки, и два обхода, пришедшие одновременно (окно
+ * переключения v2 → v3), прошли бы проверку оба. Занимает вставка строки с
+ * уникальным event_id в zernio_logs: проигравший (23505) действие пропускает.
+ * Не удалось записать — тоже пропуск: лучше без письма и счёта, чем с двумя.
+ */
+async function claimSweep(botId: string, marker: string): Promise<boolean> {
+  const { error } = await serviceDb()
+    .from("zernio_logs")
+    .insert({
+      bot_id: botId,
+      event_id: `sweep:${botId}:${marker}`,
+      event_type: "sweep.claim",
+      status: "processed",
+      payload: { marker },
+    });
+  if (error && error.code !== "23505")
+    console.error(`[operator] sweep claim failed for ${botId}: ${error.message}`);
+  return !error;
+}
+
+/** Действие не состоялось — снять занятость, чтобы следующий проход повторил. */
+async function releaseSweep(botId: string, marker: string): Promise<void> {
+  const { error } = await serviceDb()
+    .from("zernio_logs")
+    .delete()
+    .eq("event_id", `sweep:${botId}:${marker}`);
+  if (error) console.error(`[operator] sweep release failed for ${botId}: ${error.message}`);
+}
+
+/**
  * Ежедневный обход подписок клиентов на v2: предупредить заранее, применить
  * политику после отсрочки. Идемпотентность — метка `sweep_marker` в
  * bot_events (вид действия + период + день): warn уходит раз в день, пока не
@@ -709,12 +740,17 @@ export async function sweepSubscriptions(
       results.push({ ...base, action: "skipped", detail: "уже сделано" });
       continue;
     }
+    if (!(await claimSweep(t.id, marker))) {
+      results.push({ ...base, action: "skipped", detail: "уже сделано" });
+      continue;
+    }
     if (shouldSuspend) {
       const { error } = await serviceDb()
         .from("bots")
         .update({ status: "suspended" })
         .eq("id", t.id);
       if (error) {
+        await releaseSweep(t.id, marker);
         results.push({
           ...base,
           action: "failed",
@@ -740,7 +776,7 @@ export async function sweepSubscriptions(
     // Счёт на следующий период — один раз на срок, до напоминания: владелец
     // получает сумму и реквизиты Kaspi и отвечает чеком.
     const invoiceMarker = `invoice:${sub.expiresAt}`;
-    if (!(await alreadyDone(t.id, invoiceMarker))) {
+    if (!(await alreadyDone(t.id, invoiceMarker)) && (await claimSweep(t.id, invoiceMarker))) {
       try {
         const inv = await invoicer(t);
         if (inv)
@@ -750,7 +786,10 @@ export async function sweepSubscriptions(
             { action: "auto_invoice", amount: inv.amount, sweep_marker: invoiceMarker },
             "cron",
           );
+        // Выставлять нечего (клиент не на плане) — не занимаем период.
+        else await releaseSweep(t.id, invoiceMarker);
       } catch (e) {
+        await releaseSweep(t.id, invoiceMarker);
         console.error(
           `[operator] auto invoice for ${t.id} failed: ${e instanceof Error ? e.message : e}`,
         );
@@ -758,6 +797,7 @@ export async function sweepSubscriptions(
     }
     const n = await notify(t.id, warnText(sub.daysLeft, policy.on_overdue === "suspend"));
     if (!n.ok) {
+      await releaseSweep(t.id, marker);
       results.push({ ...base, action: "failed", detail: n.detail });
       continue;
     }

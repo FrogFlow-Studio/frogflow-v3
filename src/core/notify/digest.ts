@@ -1,6 +1,6 @@
 import type { Json } from "@/core/db-types";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSetting, setSetting } from "@/core/settings/settings";
+import { getSetting, setSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { minutesInTz, type NotifyKind, type NotifyPrefs } from "./prefs";
 
 /**
@@ -103,4 +103,31 @@ export async function digestSentOn(ctx: TenantContext): Promise<string | null> {
 
 export async function markDigestSent(ctx: TenantContext, today: string): Promise<void> {
   await setSetting(ctx, SENT_KEY, today);
+}
+
+/**
+ * Занять сегодняшний дайджест ДО отправки условной записью (сравнение с
+ * прочитанной отметкой): из двух кронов, дошедших до магазина в одно время,
+ * шлёт тот, чья запись прошла. `prev` — отметка до нас, чтобы вернуть её,
+ * если отправка сорвалась (`releaseDigest`) и следующий тик повторил.
+ */
+export async function claimDigestSent(
+  ctx: TenantContext,
+  today: string,
+): Promise<{ won: boolean; prev: string | null }> {
+  let prev: string | null = null;
+  const r = await updateSettingAtomic(ctx, SENT_KEY, (raw) => {
+    prev = raw;
+    return raw === today ? null : today;
+  });
+  return { won: r === "written", prev };
+}
+
+/** Отправка сорвалась — вернуть прежнюю отметку, только если она всё ещё наша. */
+export async function releaseDigest(
+  ctx: TenantContext,
+  today: string,
+  prev: string | null,
+): Promise<void> {
+  await updateSettingAtomic(ctx, SENT_KEY, (raw) => (raw === today ? (prev ?? "") : null));
 }

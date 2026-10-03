@@ -11,7 +11,8 @@ let db: FakeDb;
 let tenants: Tenant[] = [];
 vi.mock("@/core/db/client.server", () => ({ serviceDb: () => db }));
 vi.mock("@/core/tenant/resolve.server", () => ({
-  tenantDirectory: async () => tenants,
+  // Копии: у каждого прогона свой снимок справочника, как у двух кронов на проде.
+  tenantDirectory: async () => tenants.map((t) => ({ ...t })),
   invalidateTenantDirectory: () => {},
 }));
 
@@ -50,7 +51,8 @@ function setup(expires: string | null, settings: Record<string, unknown> = {}, s
 }
 
 beforeEach(() => {
-  db = fakeDb();
+  db = fakeDb({ unique: { zernio_logs: [["event_id"]] } });
+  db.tables.zernio_logs = [];
   sent = [];
 });
 
@@ -164,5 +166,74 @@ describe("обход подписок", () => {
       [OLD]: "active",
     });
     expect(db.tables.bot_events.map((e) => e.bot_id)).toEqual([V2]);
+  });
+});
+
+/** Отправка и выставление счёта идут по сети: окно между проверкой и отметкой широкое. */
+const network = () => new Promise<void>((r) => setTimeout(r, 15));
+/** Прогрев ленивых импортов обхода, чтобы два прогона шли действительно рядом. */
+const warm = async () => {
+  const keep = bot().subscription_expires_at;
+  bot().subscription_expires_at = day(30);
+  await sweep();
+  bot().subscription_expires_at = keep;
+};
+const slowNotify = async (_id: string, text: string) => {
+  await network();
+  sent.push(text);
+  return { ok: true, detail: "fake" };
+};
+
+describe("обход подписок: два крона одновременно", () => {
+  it("предупреждение — одно сообщение и одна отметка", async () => {
+    setup(day(2));
+    await warm();
+    const r = await Promise.all([
+      sweepSubscriptions(NOW, slowNotify, BOT, invoicer),
+      sweepSubscriptions(NOW, slowNotify, BOT, invoicer),
+    ]);
+    expect(sent).toHaveLength(1);
+    expect(r.flat().filter((x) => x.action === "warned")).toHaveLength(1);
+    expect(markers().filter((m) => m?.startsWith("warn:"))).toHaveLength(1);
+  });
+
+  it("приостановка: действие уже занято соседним кроном — не приостанавливаем и не пишем второй раз", async () => {
+    setup(day(-5), { on_overdue: "suspend" });
+    // Соседний обход успел занять приостановку (его запись в журнале уже стоит).
+    db.tables.zernio_logs!.push({
+      id: "claim",
+      bot_id: BOT,
+      event_id: `sweep:${BOT}:suspend:${day(-5)}`,
+      event_type: "sweep.claim",
+      status: "processed",
+    });
+    const [r] = await sweepSubscriptions(NOW, slowNotify, BOT, invoicer);
+    expect(r).toMatchObject({ action: "skipped", detail: "уже сделано" });
+    expect(bot().status).toBe("active");
+    expect(sent).toEqual([]);
+    expect(markers()).toEqual([]);
+  });
+
+  it("счёт за период — выставляется один раз", async () => {
+    setup(day(2));
+    let invoices = 0;
+    const invoicing = async () => {
+      invoices++;
+      await network();
+      return { amount: 19_900, delivered: true };
+    };
+    await Promise.all([
+      sweepSubscriptions(NOW, slowNotify, BOT, invoicing),
+      sweepSubscriptions(NOW, slowNotify, BOT, invoicing),
+    ]);
+    expect(invoices).toBe(1);
+    expect(markers().filter((m) => m?.startsWith("invoice:"))).toHaveLength(1);
+  });
+
+  it("недоставленное предупреждение не гасит день: следующий проход повторит", async () => {
+    setup(day(2));
+    const failing = async () => ({ ok: false, detail: "нет получателей" });
+    expect((await sweepSubscriptions(NOW, failing, BOT, invoicer))[0]!.action).toBe("failed");
+    expect((await sweep())[0]!.action).toBe("warned");
   });
 });

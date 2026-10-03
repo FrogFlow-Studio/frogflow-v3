@@ -43,6 +43,34 @@ export async function runVipCron(
   const t2 = addWarnOffset(now, s.warnDays2, s.testMode).toISOString();
   const nowIso = now.toISOString();
 
+  /**
+   * Отметка предупреждения ДО отправки, условной записью: из двух кронов,
+   * дошедших до подписки в одно время, пишет и шлёт тот, чья запись прошла
+   * (условие — на маленькое поле admin_note, подписка всё ещё active).
+   */
+  const claimWarn = async (id: string, from: string | null, to: string): Promise<boolean> => {
+    const q = ctx.db.from("vip_subscriptions").update({ admin_note: to }).eq("id", id);
+    const { data, error } = await (
+      from == null ? q.is("admin_note", null) : q.eq("admin_note", from)
+    )
+      .eq("status", "active")
+      .select("id");
+    if (error) {
+      r.errors.push(`warn-claim ${id}: ${error.message}`);
+      return false;
+    }
+    return Boolean(data?.length);
+  };
+  /** Отправка не дошла — вернуть отметку, чтобы следующий тик повторил. */
+  const releaseWarn = async (id: string, from: string | null, to: string) => {
+    const { error } = await ctx.db
+      .from("vip_subscriptions")
+      .update({ admin_note: from })
+      .eq("id", id)
+      .eq("admin_note", to);
+    if (error) r.errors.push(`warn-release ${id}: ${error.message}`);
+  };
+
   const renew = botUsername
     ? `\n\nПродлить: https://t.me/${botUsername.replace(/^@/, "")}?start=renew`
     : "\n\nНажмите /start renew в этом боте, чтобы выбрать тариф.";
@@ -65,16 +93,16 @@ export async function runVipCron(
   // Сбой чтения — не «некому напоминать»: ошибка в итог, этап пропущен.
   if (stage1Error) r.errors.push(`warn1 read: ${stage1Error.message}`);
   for (const sub of pickLatestPerUser(stage1 ?? [])) {
+    if (!(await claimWarn(sub.id, null, WARN_STAGE_1))) continue;
     try {
-      if (await warn(sub.telegram_id, sub.expires_at, 1)) {
-        await ctx.db
-          .from("vip_subscriptions")
-          .update({ admin_note: WARN_STAGE_1 })
-          .eq("id", sub.id);
-        r.warned++;
-      } else r.errors.push(`warn1 ${sub.telegram_id}: send failed`);
+      if (await warn(sub.telegram_id, sub.expires_at, 1)) r.warned++;
+      else {
+        r.errors.push(`warn1 ${sub.telegram_id}: send failed`);
+        await releaseWarn(sub.id, null, WARN_STAGE_1);
+      }
     } catch (e) {
       r.errors.push(`warn1 ${sub.telegram_id}: ${(e as Error).message}`);
+      await releaseWarn(sub.id, null, WARN_STAGE_1);
     }
   }
 
@@ -87,16 +115,16 @@ export async function runVipCron(
     .eq("admin_note", WARN_STAGE_1);
   if (stage2Error) r.errors.push(`warn2 read: ${stage2Error.message}`);
   for (const sub of pickLatestPerUser(stage2 ?? [])) {
+    if (!(await claimWarn(sub.id, WARN_STAGE_1, WARN_STAGE_2))) continue;
     try {
-      if (await warn(sub.telegram_id, sub.expires_at, 2)) {
-        await ctx.db
-          .from("vip_subscriptions")
-          .update({ admin_note: WARN_STAGE_2 })
-          .eq("id", sub.id);
-        r.warned2++;
-      } else r.errors.push(`warn2 ${sub.telegram_id}: send failed`);
+      if (await warn(sub.telegram_id, sub.expires_at, 2)) r.warned2++;
+      else {
+        r.errors.push(`warn2 ${sub.telegram_id}: send failed`);
+        await releaseWarn(sub.id, WARN_STAGE_1, WARN_STAGE_2);
+      }
     } catch (e) {
       r.errors.push(`warn2 ${sub.telegram_id}: ${(e as Error).message}`);
+      await releaseWarn(sub.id, WARN_STAGE_1, WARN_STAGE_2);
     }
   }
 
@@ -108,14 +136,20 @@ export async function runVipCron(
   if (expireError) r.errors.push(`expire read: ${expireError.message}`);
   for (const sub of toExpire ?? []) {
     try {
-      const close = async () => {
+      // true — подписку закрыл этот прогон; false — соседний кронов прогон успел
+      // раньше (status уже не active), и «подписка истекла» он уже отправил.
+      const close = async (): Promise<boolean> => {
         if (sub.group_invite_link) await group.revokeInvite(s.groupId, sub.group_invite_link);
-        const { error } = await ctx.db
+        const { data, error } = await ctx.db
           .from("vip_subscriptions")
           .update({ status: "expired", group_invite_link: null })
-          .eq("id", sub.id);
+          .eq("id", sub.id)
+          .eq("status", "active")
+          .select("id");
         if (error) throw new Error(`expire-write: ${error.message}`);
+        if (!data?.length) return false;
         r.expired++;
+        return true;
       };
       const { count: otherActive, error: otherError } = await ctx.db
         .from("vip_subscriptions")
@@ -141,7 +175,7 @@ export async function runVipCron(
         r.errors.push(`kick ${sub.telegram_id}: ${ban.description || "ban failed"}`);
         continue;
       }
-      await close();
+      if (!(await close())) continue;
       await group.send(
         sub.telegram_id,
         "❌ <b>Ваша VIP подписка истекла!</b>\n\nВы были исключены из VIP группы. Чтобы вернуться, оформите новую подписку в боте.",

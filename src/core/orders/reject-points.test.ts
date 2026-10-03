@@ -96,6 +96,23 @@ describe("возврат баллов при отмене заказа (rejectOr
     expect(db.tables.bot_users?.[0]?.loyalty_points).toBe(100);
   });
 
+  it("два крона одновременно: заказ отменён один раз, баллы вернулись один раз", async () => {
+    const { db, ctx, customer } = setup();
+    const r = await placeOrder(ctx, customer, "KZ", { usePoints: true });
+    if (!r.ok) throw new Error("не оформился");
+    Object.assign(db.tables.orders![0]!, {
+      platform: "web",
+      payment_proof_path: null,
+      created_at: "2026-09-20T00:00:00Z",
+    });
+    db.tables.order_items = [];
+    const now = new Date("2026-09-27T00:00:00Z");
+    const [a, b] = await Promise.all([expireWebOrders(ctx, now), expireWebOrders(ctx, now)]);
+    expect(a.cancelled + b.cancelled).toBe(1);
+    expect(db.tables.orders?.[0]?.status).toBe("cancelled");
+    expect(db.tables.bot_users?.[0]?.loyalty_points).toBe(100);
+  });
+
   it("оплаченный заказ отмена по сроку не трогает, баллы остаются списанными", async () => {
     const { db, ctx, customer } = setup();
     const r = await placeOrder(ctx, customer, "KZ", { usePoints: true });

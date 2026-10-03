@@ -111,6 +111,15 @@ describe("товары-подписки", () => {
     expect(again.r).toEqual({ sent: 0, failed: 0 });
   });
 
+  it("два крона одновременно — одно напоминание и одна отметка", async () => {
+    const { ctx, db } = shop();
+    await saveSubscriptionDays(ctx, "p1", 30);
+    order(db, { tg: 11, productId: "p1", daysAgo: 30.5 });
+    const [a, b] = await Promise.all([run(ctx), run(ctx)]);
+    expect(a.sent.length + b.sent.length).toBe(1);
+    expect(db.tables.zernio_logs).toHaveLength(1);
+  });
+
   it("рано, поздно, неоплачен, уже продлён или отказался — не напоминаем", async () => {
     const { ctx, db } = shop();
     await saveSubscriptionDays(ctx, "p1", 30);

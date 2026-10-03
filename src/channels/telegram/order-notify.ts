@@ -12,6 +12,7 @@ import {
   type AdminNotifyTgRef,
 } from "@/core/notify/order-pack";
 import type { TelegramApi } from "./api";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Жизнь уведомления продавцу о заказе в Telegram (как в v1): сообщения
@@ -85,20 +86,26 @@ export async function flushDueOrderNotify(
     .from("app_settings")
     .select("key, value, updated_at")
     .like("key", `${ORDER_NOTIFY_KEY_PREFIX}%`);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`пачки уведомлений о заказах: ${error.message}`);
   let dismissed = 0;
   for (const row of data ?? []) {
     const pack = parseAdminNotifyPack(row.value);
-    if (isAdminNotifyStale(pack, row.updated_at, now)) {
-      await ctx.db.from("app_settings").delete().eq("key", row.key);
-      dismissed += 1;
-      continue;
-    }
-    if (!isAdminNotifyDue(pack, now)) continue;
-    // Сообщение старше 48 часов Telegram удалить не даст — это не повод держать пачку.
-    for (const r of pack.refs)
-      await api.call("deleteMessage", { chat_id: r.chat_id, message_id: r.message_id });
-    await ctx.db.from("app_settings").delete().eq("key", row.key);
+    const stale = isAdminNotifyStale(pack, row.updated_at, now);
+    if (!stale && !isAdminNotifyDue(pack, now)) continue;
+    // Пачку занимает удаление строки ДО удаления сообщений: из двух кронов,
+    // дошедших до неё в одно время, сообщения убирает тот, чьё удаление
+    // нашло строку. Сообщение старше 48 часов Telegram удалить не даст — это
+    // не повод держать пачку.
+    const { data: taken, error: takeError } = await ctx.db
+      .from("app_settings")
+      .delete()
+      .eq("key", row.key)
+      .select("key");
+    if (takeError) throw serverFailure(`пачка уведомлений о заказе: ${takeError.message}`);
+    if (!taken?.length) continue;
+    if (!stale)
+      for (const r of pack.refs)
+        await api.call("deleteMessage", { chat_id: r.chat_id, message_id: r.message_id });
     dismissed += 1;
   }
   return dismissed;

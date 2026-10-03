@@ -318,6 +318,22 @@ export async function updateStateSection(
   key: "consultant" | "direct",
   patch: (current: Record<string, unknown>) => Record<string, unknown>,
 ): Promise<Customer> {
+  return (await claimStateSection(ctx, customer, key, patch))!;
+}
+
+/**
+ * То же, но `patch` может вернуть null — «уже сделано другим»: тогда ничего не
+ * пишем и возвращаем null. Условие вычисляется на свежем состоянии каждой
+ * попытки, поэтому из двух кронов, дошедших до покупателя в одно время, дело
+ * (например, напоминание) достаётся одному: второй, переприменив запись на
+ * свежем состоянии, видит метку первого и уступает.
+ */
+export async function claimStateSection(
+  ctx: TenantContext,
+  customer: Customer,
+  key: "consultant" | "direct",
+  patch: (current: Record<string, unknown>) => Record<string, unknown> | null,
+): Promise<Customer | null> {
   for (let attempt = 0; attempt < 3; attempt++) {
     const { data, error } = await ctx.db
       .from("bot_users")
@@ -332,7 +348,9 @@ export async function updateStateSection(
     const current =
       raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
     const rev = typeof current.rev === "number" ? current.rev : null;
-    const next: DialogState = { ...state, [key]: { ...patch(current), rev: (rev ?? 0) + 1 } };
+    const changed = patch(current);
+    if (changed === null) return null;
+    const next: DialogState = { ...state, [key]: { ...changed, rev: (rev ?? 0) + 1 } };
     const base = ctx.db
       .from("bot_users")
       .update({ state: next as Json })
