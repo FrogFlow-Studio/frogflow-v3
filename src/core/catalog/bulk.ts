@@ -20,18 +20,24 @@ import { pageAll } from "@/core/db/page";
 export const BULK_MAX = 500;
 export const BULK_PERCENT_MIN = -90;
 export const BULK_PERCENT_MAX = 500;
+export const BULK_STOCK_MAX = 1_000_000;
 
 export type BulkAction =
   | { kind: "active"; active: boolean }
   | { kind: "category"; categoryId: string | null; mode: "add" | "set" }
-  | { kind: "price"; percent: number };
+  | { kind: "price"; percent: number }
+  /** Остаток (модуль «Склад»): задать число или прибавить к текущему. */
+  | { kind: "stock"; mode: "set" | "add"; amount: number };
 
 /** Причина, по которой товар пропущен (переводится в админке). */
-export type SkipReason = "notFound" | "same" | "tooLow" | "changed" | "failed";
+export type SkipReason =
+  "notFound" | "same" | "tooLow" | "changed" | "failed" | "digital" | "untracked" | "stockChanged";
 
 export type BulkResult = {
   changed: string[];
   skipped: Array<{ id: string; name: string; reason: SkipReason }>;
+  /** Отчёт по остаткам: было → стало (только для действия «остаток»). */
+  stock: Array<{ id: string; name: string; from: number | null; to: number }>;
 };
 
 type Row = {
@@ -39,6 +45,7 @@ type Row = {
   name: string;
   price: number;
   is_active: boolean;
+  fulfillment_kind?: string | null;
   stock_quantity: number | null;
   category_ids: Json;
   country_prices: Json;
@@ -76,7 +83,9 @@ async function readProducts(ctx: TenantContext, ids: string[]): Promise<Map<stri
     (chunk) =>
       ctx.db
         .from("products")
-        .select("id, name, price, is_active, stock_quantity, category_ids, country_prices")
+        .select(
+          "id, name, price, is_active, fulfillment_kind, stock_quantity, category_ids, country_prices",
+        )
         .in("id", chunk)
         .order("id"),
     "Массовые действия",
@@ -118,7 +127,7 @@ export async function bulkUpdateProducts(
   action: BulkAction,
 ): Promise<BulkResult & { before: Map<string, Row> }> {
   const ids = [...new Set(rawIds)];
-  const result: BulkResult = { changed: [], skipped: [] };
+  const result: BulkResult = { changed: [], skipped: [], stock: [] };
   const empty = { ...result, before: new Map<string, Row>() };
   if (ids.length === 0) return empty;
   if (ids.length > BULK_MAX)
@@ -133,6 +142,20 @@ export async function bulkUpdateProducts(
       min: BULK_PERCENT_MIN,
       max: BULK_PERCENT_MAX,
     });
+  if (action.kind === "stock") {
+    if (!ctx.tenant.modules.stock)
+      throw new UserError(
+        "err.catalog.bulkNoStock",
+        "Остатки доступны в модуле «Склад» — подключите его в «Модулях».",
+      );
+    const min = action.mode === "add" ? 1 : 0;
+    if (!Number.isInteger(action.amount) || action.amount < min || action.amount > BULK_STOCK_MAX)
+      throw new UserError(
+        "err.catalog.bulkStockAmount",
+        "Остаток — целое число от {min} до {max}.",
+        { min, max: BULK_STOCK_MAX },
+      );
+  }
   if (
     action.kind === "category" &&
     action.categoryId &&
@@ -153,7 +176,7 @@ export async function bulkUpdateProducts(
       continue;
     }
     try {
-      const reason = await applyOne(ctx, p, action, variants?.get(id) ?? []);
+      const reason = await applyOne(ctx, p, action, variants?.get(id) ?? [], result);
       if (reason) skip(id, p.name, reason);
       else result.changed.push(id);
     } catch {
@@ -169,7 +192,9 @@ async function applyOne(
   p: Row,
   action: BulkAction,
   variants: Array<{ id: string; price: number }>,
+  result: BulkResult,
 ): Promise<SkipReason | null> {
+  if (action.kind === "stock") return applyStock(ctx, p, action, result);
   if (action.kind === "active") {
     if (p.is_active === action.active) return "same";
     const { error } = await ctx.db
@@ -220,6 +245,41 @@ async function applyOne(
       .eq("id", v.id)
       .eq("price", v.price);
     if (error) return "failed";
+  }
+  return null;
+}
+
+/**
+ * Остаток: запись с условием «остаток тот же, что мы читали» — пока шёл выбор,
+ * заказ мог его списать; тогда товар пропускается, а не перезаписывается.
+ * «Прибавить» к неведомому остатку (null) смысла не имеет — пропуск. Пополнение
+ * выше порога снимает отметку «заканчивается» (resetLowStock).
+ */
+async function applyStock(
+  ctx: TenantContext,
+  p: Row,
+  action: Extract<BulkAction, { kind: "stock" }>,
+  result: BulkResult,
+): Promise<SkipReason | null> {
+  if (p.fulfillment_kind === "digital") return "digital";
+  if (action.mode === "add" && p.stock_quantity === null) return "untracked";
+  const next = action.mode === "add" ? (p.stock_quantity ?? 0) + action.amount : action.amount;
+  if (next === p.stock_quantity) return "same";
+  const q = ctx.db.from("products").update({ stock_quantity: next }).eq("id", p.id);
+  const { data, error } = await (
+    p.stock_quantity === null
+      ? q.is("stock_quantity", null)
+      : q.eq("stock_quantity", p.stock_quantity)
+  ).select("id");
+  if (error) return "failed";
+  if (!data || data.length === 0) return "stockChanged";
+  result.stock.push({ id: p.id, name: p.name, from: p.stock_quantity, to: next });
+  if (p.stock_quantity === null || next > p.stock_quantity) {
+    // Остаток уже записан: сбой снятия отметки не отменяет пополнение (следующая проверка её снимет).
+    const { resetLowStock } = await import("./low-stock");
+    await resetLowStock(ctx, p.id).catch((e) =>
+      console.error(`[bulk] отметка «заканчивается» не снята: ${String(e)}`),
+    );
   }
   return null;
 }

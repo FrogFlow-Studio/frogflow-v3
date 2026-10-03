@@ -21,9 +21,20 @@ export const ru = {
   "products.bulk.reason.tooLow": "цена стала бы меньше 1",
   "products.bulk.reason.changed": "цену успели изменить, товар не тронут",
   "products.bulk.reason.failed": "не удалось записать",
+  "products.bulk.reason.digital": "цифровой товар: остаток не ведётся",
+  "products.bulk.reason.untracked": "остаток не ведётся, прибавлять не к чему — задайте число",
+  "products.bulk.reason.stockChanged":
+    "остаток успели изменить (заказ или правка), товар не тронут",
+  "products.bulk.stockAmount": "Остаток, шт.",
+  "products.bulk.stockSet": "Задать остаток",
+  "products.bulk.stockAdd": "Прибавить к остатку",
+  "products.bulk.stockReport": "Остаток: {name} — {from} → {to}",
+  "products.bulk.stockNone": "не вёлся",
   "err.catalog.bulkTooMany": "Выберите не больше {max} товаров за раз.",
   "err.catalog.bulkPercent": "Изменение цены — от {min}% до {max}%.",
   "err.catalog.bulkNoCategory": "Категория не найдена.",
+  "err.catalog.bulkNoStock": "Остатки доступны в модуле «Склад» — подключите его в «Модулях».",
+  "err.catalog.bulkStockAmount": "Остаток — целое число от {min} до {max}.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -46,9 +57,20 @@ export const kk: SectionDict<typeof ru> = {
   "products.bulk.reason.tooLow": "баға 1-ден аз болар еді",
   "products.bulk.reason.changed": "бағаны басқа біреу өзгертті, тауарға тиген жоқпыз",
   "products.bulk.reason.failed": "жазу мүмкін болмады",
+  "products.bulk.reason.digital": "цифрлық тауар: қалдық жүргізілмейді",
+  "products.bulk.reason.untracked": "қалдық жүргізілмейді, қосатын ештеңе жоқ — санды орнатыңыз",
+  "products.bulk.reason.stockChanged":
+    "қалдықты басқа біреу өзгертті (тапсырыс немесе өңдеу), тауарға тиген жоқпыз",
+  "products.bulk.stockAmount": "Қалдық, дана",
+  "products.bulk.stockSet": "Қалдықты орнату",
+  "products.bulk.stockAdd": "Қалдыққа қосу",
+  "products.bulk.stockReport": "Қалдық: {name} — {from} → {to}",
+  "products.bulk.stockNone": "жүргізілмеген",
   "err.catalog.bulkTooMany": "Бір реттен {max} тауардан артық таңдамаңыз.",
   "err.catalog.bulkPercent": "Бағаны өзгерту — {min}%-дан {max}%-ға дейін.",
   "err.catalog.bulkNoCategory": "Санат табылмады.",
+  "err.catalog.bulkNoStock": "Қалдықтар «Қойма» модулінде қолжетімді — оны «Модульдерде» қосыңыз.",
+  "err.catalog.bulkStockAmount": "Қалдық — {min}-ден {max}-ға дейінгі бүтін сан.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -71,9 +93,21 @@ export const en: SectionDict<typeof ru> = {
   "products.bulk.reason.tooLow": "the price would drop below 1",
   "products.bulk.reason.changed": "the price was changed meanwhile, product left as is",
   "products.bulk.reason.failed": "could not be saved",
+  "products.bulk.reason.digital": "digital product: stock is not tracked",
+  "products.bulk.reason.untracked": "stock is not tracked, nothing to add to — set a number",
+  "products.bulk.reason.stockChanged":
+    "the stock was changed meanwhile (order or edit), product left as is",
+  "products.bulk.stockAmount": "Stock, pcs",
+  "products.bulk.stockSet": "Set stock",
+  "products.bulk.stockAdd": "Add to stock",
+  "products.bulk.stockReport": "Stock: {name} — {from} → {to}",
+  "products.bulk.stockNone": "not tracked",
   "err.catalog.bulkTooMany": "Select no more than {max} products at a time.",
   "err.catalog.bulkPercent": "The price change must be between {min}% and {max}%.",
   "err.catalog.bulkNoCategory": "Category not found.",
+  "err.catalog.bulkNoStock":
+    "Stock is available in the «Warehouse» module — enable it in «Modules».",
+  "err.catalog.bulkStockAmount": "Stock must be a whole number from {min} to {max}.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -96,7 +130,18 @@ export const uz: SectionDict<typeof ru> = {
   "products.bulk.reason.tooLow": "narx 1 dan past boʻlib qolardi",
   "products.bulk.reason.changed": "narx oʻzgartirib qoʻyilgan, mahsulotga tegilmadi",
   "products.bulk.reason.failed": "saqlab boʻlmadi",
+  "products.bulk.reason.digital": "raqamli mahsulot: qoldiq yuritilmaydi",
+  "products.bulk.reason.untracked": "qoldiq yuritilmaydi, qoʻshiladigan narsa yoʻq — son belgilang",
+  "products.bulk.reason.stockChanged":
+    "qoldiq oʻzgartirib qoʻyilgan (buyurtma yoki tahrir), mahsulotga tegilmadi",
+  "products.bulk.stockAmount": "Qoldiq, dona",
+  "products.bulk.stockSet": "Qoldiqni belgilash",
+  "products.bulk.stockAdd": "Qoldiqqa qoʻshish",
+  "products.bulk.stockReport": "Qoldiq: {name} — {from} → {to}",
+  "products.bulk.stockNone": "yuritilmagan",
   "err.catalog.bulkTooMany": "Bir vaqtda {max} tadan ortiq mahsulot tanlamang.",
   "err.catalog.bulkPercent": "Narx oʻzgarishi {min}% dan {max}% gacha boʻlishi kerak.",
   "err.catalog.bulkNoCategory": "Kategoriya topilmadi.",
+  "err.catalog.bulkNoStock": "Qoldiqlar «Ombor» modulida mavjud — uni «Modullar»da yoqing.",
+  "err.catalog.bulkStockAmount": "Qoldiq {min} dan {max} gacha butun son boʻlishi kerak.",
 };

@@ -187,6 +187,19 @@ function ProductsPage() {
                   skipped: bulkResult.skipped.length,
                 })}
               </p>
+              {bulkResult.stock.length > 0 && (
+                <ul className="mt-1 max-h-32 overflow-auto text-xs text-muted">
+                  {bulkResult.stock.map((x) => (
+                    <li key={x.id}>
+                      {t("products.bulk.stockReport", {
+                        name: x.name,
+                        from: x.from ?? t("products.bulk.stockNone"),
+                        to: x.to,
+                      })}
+                    </li>
+                  ))}
+                </ul>
+              )}
               {bulkResult.skipped.length > 0 && (
                 <ul className="mt-1 max-h-32 overflow-auto text-xs text-muted">
                   {bulkResult.skipped.map((x) => (
@@ -218,6 +231,7 @@ function ProductsPage() {
               t={t}
               n={picked.size}
               categories={categories}
+              stockOn={Boolean(shop.modules.stock)}
               busy={bulk.busy}
               onClear={() => setPicked(new Set())}
               onRun={(a) => void bulk.run(a).catch(() => {})}
@@ -355,6 +369,7 @@ function BulkBar({
   t,
   n,
   categories,
+  stockOn,
   busy,
   onClear,
   onRun,
@@ -362,6 +377,7 @@ function BulkBar({
   t: AdminT;
   n: number;
   categories: Array<{ id: string; name: string }>;
+  stockOn: boolean;
   busy: boolean;
   onClear: () => void;
   onRun: (a: BulkAction) => void;
@@ -370,6 +386,9 @@ function BulkBar({
   const [percent, setPercent] = useState("");
   const pct = Number(percent.replace(",", "."));
   const pctOk = percent.trim() !== "" && Number.isFinite(pct) && pct !== 0;
+  const [stock, setStock] = useState("");
+  const qty = Number(stock.replace(",", "."));
+  const qtyOk = stock.trim() !== "" && Number.isInteger(qty) && qty >= 0;
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-line p-3 text-sm">
       <b>{t("products.bulk.selected", { n })}</b>
@@ -444,6 +463,34 @@ function BulkBar({
       >
         {t("products.bulk.priceApply")}
       </button>
+      {stockOn && (
+        <>
+          <input
+            className="input w-28"
+            inputMode="numeric"
+            placeholder={t("products.bulk.stockAmount")}
+            aria-label={t("products.bulk.stockAmount")}
+            value={stock}
+            onChange={(e) => setStock(e.target.value)}
+          />
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={busy || !qtyOk}
+            onClick={() => onRun({ kind: "stock", mode: "set", amount: qty })}
+          >
+            {t("products.bulk.stockSet")}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={busy || !qtyOk || qty < 1}
+            onClick={() => onRun({ kind: "stock", mode: "add", amount: qty })}
+          >
+            {t("products.bulk.stockAdd")}
+          </button>
+        </>
+      )}
     </div>
   );
 }

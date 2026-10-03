@@ -825,6 +825,11 @@ export const bulkProductsFn = createServerFn({ method: "POST" })
             mode: z.enum(["add", "set"]),
           }),
           z.object({ kind: z.literal("price"), percent: z.number().min(-90).max(500) }),
+          z.object({
+            kind: z.literal("stock"),
+            mode: z.enum(["set", "add"]),
+            amount: z.number().int().min(0).max(1_000_000),
+          }),
         ]),
       })
       .parse(d),
@@ -848,7 +853,22 @@ export const bulkProductsFn = createServerFn({ method: "POST" })
           // Уведомление — на лучшее усилие: товар уже показан.
         }
       }
-    return { changed: r.changed.length, skipped: r.skipped };
+    // Пополнение товара без остатка тоже будит лист ожидания — как правка остатка в карточке.
+    if (data.action.kind === "stock" && ctx.tenant.modules.waitlist)
+      for (const x of r.stock) {
+        const was = r.before.get(x.id);
+        if (!was) continue;
+        try {
+          await maybeNotifyWaitlist(ctx, x.id, {
+            is_active: was.is_active,
+            stock_quantity: x.from,
+            name: was.name,
+          });
+        } catch {
+          // Уведомление — на лучшее усилие: остаток уже записан.
+        }
+      }
+    return { changed: r.changed.length, skipped: r.skipped, stock: r.stock };
   });
 
 /** Копия товара (core/catalog/copy): скрытая, без продаж и отзывов; суффикс названия — на языке продавца. */

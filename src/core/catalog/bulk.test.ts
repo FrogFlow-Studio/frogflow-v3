@@ -235,3 +235,111 @@ describe("массовые действия над товарами", () => {
     ).rejects.toMatchObject({ key: "err.catalog.bulkPercent" });
   });
 });
+
+describe("массовые действия: остаток", () => {
+  const withStock = (n: number, patch: (i: number) => Record<string, unknown> = () => ({})) => {
+    const t = setup(n, patch);
+    t.db.tables.app_settings = [];
+    t.ctx = {
+      tenant: { id: T, modules: { stock: true }, settings: { served_by: "v2" } },
+      db: t.db,
+    } as unknown as TenantContext;
+    return t;
+  };
+  const stockOf = (db: FakeDb) => db.tables.products!.map((p) => p.stock_quantity);
+
+  it("«задать»: число записано, отчёт «было → стало», чужие поля на месте", async () => {
+    const { ctx, db } = withStock(3, (i) => ({ stock_quantity: i === 2 ? null : i }));
+    const r = await bulkUpdateProducts(ctx, [pid(1), pid(2), pid(3)], {
+      kind: "stock",
+      mode: "set",
+      amount: 7,
+    });
+    expect(r.changed).toEqual([pid(1), pid(2), pid(3)]);
+    expect(r.stock.map((x) => [x.from, x.to])).toEqual([
+      [0, 7],
+      [1, 7],
+      [null, 7],
+    ]);
+    expect(stockOf(db)).toEqual([7, 7, 7]);
+    expect(db.tables.products![0]).toMatchObject({ price: 1000, description: "описание 1" });
+  });
+
+  it("«прибавить»: к текущему; без ведомого остатка — пропуск; то же число — «уже так»", async () => {
+    const { ctx, db } = withStock(2, (i) => ({ stock_quantity: i === 0 ? 4 : null }));
+    const r = await bulkUpdateProducts(ctx, [pid(1), pid(2)], {
+      kind: "stock",
+      mode: "add",
+      amount: 6,
+    });
+    expect(r.changed).toEqual([pid(1)]);
+    expect(r.skipped.map((x) => x.reason)).toEqual(["untracked"]);
+    expect(stockOf(db)).toEqual([10, null]);
+    const same = await bulkUpdateProducts(ctx, [pid(1)], {
+      kind: "stock",
+      mode: "set",
+      amount: 10,
+    });
+    expect(same.skipped.map((x) => x.reason)).toEqual(["same"]);
+  });
+
+  it("цифровой товар пропускается, остаток не появляется", async () => {
+    const { ctx, db } = withStock(1, () => ({ fulfillment_kind: "digital" }));
+    const r = await bulkUpdateProducts(ctx, [pid(1)], { kind: "stock", mode: "set", amount: 5 });
+    expect(r.skipped.map((x) => x.reason)).toEqual(["digital"]);
+    expect(stockOf(db)).toEqual([null]);
+  });
+
+  it("гонка с заказом: остаток списали после чтения — товар не затёрт", async () => {
+    const { ctx, db } = withStock(1, () => ({ stock_quantity: 5 }));
+    // Заказ списывает единицу в момент между чтением и записью.
+    const from = db.from.bind(db);
+    db.from = (table: string) => {
+      const q = from(table);
+      if (table === "products") {
+        const upd = q.update.bind(q);
+        q.update = (patch: Record<string, unknown>) => {
+          db.tables.products![0]!.stock_quantity = 4;
+          return upd(patch);
+        };
+      }
+      return q;
+    };
+    const r = await bulkUpdateProducts(ctx, [pid(1)], { kind: "stock", mode: "add", amount: 10 });
+    expect(r.changed).toEqual([]);
+    expect(r.skipped.map((x) => x.reason)).toEqual(["stockChanged"]);
+    expect(stockOf(db)).toEqual([4]);
+  });
+
+  it("пополнение выше порога снимает отметку «заканчивается», ниже порога — нет", async () => {
+    const { ctx, db } = withStock(2, () => ({ stock_quantity: 1 }));
+    db.tables.app_settings = [
+      { bot_id: T, key: "low_stock_default", value: "3" },
+      { bot_id: T, key: `low_stock_sent:${pid(1)}`, value: "1" },
+      { bot_id: T, key: `low_stock_sent:${pid(2)}`, value: "1" },
+    ];
+    await bulkUpdateProducts(ctx, [pid(1)], { kind: "stock", mode: "set", amount: 20 });
+    await bulkUpdateProducts(ctx, [pid(2)], { kind: "stock", mode: "add", amount: 1 });
+    expect(db.tables.app_settings!.map((r) => r.key)).toEqual([
+      "low_stock_default",
+      `low_stock_sent:${pid(2)}`,
+    ]);
+  });
+
+  it("без модуля «Склад» и с дробным или отрицательным числом — отказ до записи", async () => {
+    const { ctx, db } = setup(1);
+    await expect(
+      bulkUpdateProducts(ctx, [pid(1)], { kind: "stock", mode: "set", amount: 5 }),
+    ).rejects.toMatchObject({ key: "err.catalog.bulkNoStock" });
+    const on = withStock(1, () => ({ stock_quantity: 3 }));
+    for (const amount of [-1, 2.5, 1_000_001])
+      await expect(
+        bulkUpdateProducts(on.ctx, [pid(1)], { kind: "stock", mode: "set", amount }),
+      ).rejects.toMatchObject({ key: "err.catalog.bulkStockAmount" });
+    await expect(
+      bulkUpdateProducts(on.ctx, [pid(1)], { kind: "stock", mode: "add", amount: 0 }),
+    ).rejects.toMatchObject({ key: "err.catalog.bulkStockAmount" });
+    expect(stockOf(on.db)).toEqual([3]);
+    expect(stockOf(db)).toEqual([null]);
+  });
+});
