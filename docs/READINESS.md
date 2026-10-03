@@ -5,14 +5,14 @@
 устарела, пункт описи назван неверно или указанного теста нет.
 
 **Готовность для первых клиентов: 100 %** — покрыто тестами v2
-768 из 768 нужных сейчас пунктов.
+902 из 902 нужных сейчас пунктов.
 
 **Путь заказа: 100 %** — 341 из 341
 (каталог, цена, оформление, оплата и чек, выдача; файлы — `ORDER_PATH` в скрипте).
 
 | всего | покрыто | из них живыми тестами | дыра | позже | не нужно в v2 |
 | ----- | ------- | --------------------- | ---- | ----- | ------------- |
-| 1125 | 768 | 49 | 0 | 0 | 357 |
+| 1131 | 902 | 49 | 0 | 0 | 229 |
 
 «Позже» — поведение нужно, но не магазинам, которые переезжают первыми
 (модуль ещё не перенесён). «Не нужно в v2» — поведение убрано или заменено;
@@ -22,9 +22,9 @@
 
 | файл v1 | всего | покрыто | дыра | позже | не нужно | готовность |
 | ------- | ----- | ------- | ---- | ----- | -------- | ---------- |
-| поломки v1 (fix) | 51 | 23 | 0 | 0 | 28 | 100 % |
+| поломки v1 (fix) | 57 | 40 | 0 | 0 | 17 | 100 % |
 | `src/lib/comment-dm-fallback.test.ts` | 29 | 29 | 0 | 0 | 0 | 100 % |
-| `src/lib/consultant/bovi-features.test.ts` | 7 | 0 | 0 | 0 | 7 | — |
+| `src/lib/consultant/bovi-features.test.ts` | 7 | 4 | 0 | 0 | 3 | 100 % |
 | `src/lib/cron-auth.test.ts` | 7 | 5 | 0 | 0 | 2 | 100 % |
 | `src/lib/csv.test.ts` | 14 | 14 | 0 | 0 | 0 | 100 % |
 | `src/lib/error-message.test.ts` | 9 | 9 | 0 | 0 | 0 | 100 % |
@@ -50,24 +50,24 @@
 | `tests/cart-reminder.test.ts` | 5 | 5 | 0 | 0 | 0 | 100 % |
 | `tests/category-tree.test.ts` | 3 | 3 | 0 | 0 | 0 | 100 % |
 | `tests/confectioner-admin.test.ts` | 16 | 16 | 0 | 0 | 0 | 100 % |
-| `tests/consultant-1c-price.test.ts` | 8 | 0 | 0 | 0 | 8 | — |
+| `tests/consultant-1c-price.test.ts` | 8 | 8 | 0 | 0 | 0 | 100 % |
 | `tests/consultant-ask-manager.test.ts` | 4 | 1 | 0 | 0 | 3 | 100 % |
-| `tests/consultant-broad-answer.test.ts` | 10 | 0 | 0 | 0 | 10 | — |
+| `tests/consultant-broad-answer.test.ts` | 10 | 10 | 0 | 0 | 0 | 100 % |
 | `tests/consultant-cache-cost.test.ts` | 16 | 3 | 0 | 0 | 13 | 100 % |
-| `tests/consultant-catalog-match.test.ts` | 16 | 0 | 0 | 0 | 16 | — |
+| `tests/consultant-catalog-match.test.ts` | 16 | 16 | 0 | 0 | 0 | 100 % |
 | `tests/consultant-dialogues.test.ts` | 27 | 0 | 0 | 0 | 27 | — |
-| `tests/consultant-discontinued.test.ts` | 13 | 0 | 0 | 0 | 13 | — |
+| `tests/consultant-discontinued.test.ts` | 13 | 13 | 0 | 0 | 0 | 100 % |
 | `tests/consultant-doc-text.test.ts` | 7 | 0 | 0 | 0 | 7 | — |
-| `tests/consultant-finkaz-rate.test.ts` | 8 | 0 | 0 | 0 | 8 | — |
-| `tests/consultant-knowledge-search.test.ts` | 4 | 1 | 0 | 0 | 3 | 100 % |
+| `tests/consultant-finkaz-rate.test.ts` | 8 | 8 | 0 | 0 | 0 | 100 % |
+| `tests/consultant-knowledge-search.test.ts` | 4 | 4 | 0 | 0 | 0 | 100 % |
 | `tests/consultant-manager-guard.test.ts` | 8 | 8 | 0 | 0 | 0 | 100 % |
 | `tests/consultant-notify-recipients.test.ts` | 6 | 6 | 0 | 0 | 0 | 100 % |
-| `tests/consultant-run-insert.test.ts` | 3 | 0 | 0 | 0 | 3 | — |
+| `tests/consultant-run-insert.test.ts` | 3 | 3 | 0 | 0 | 0 | 100 % |
 | `tests/consultant-settings-write.test.ts` | 4 | 4 | 0 | 0 | 0 | 100 % |
-| `tests/consultant-style-budget.test.ts` | 16 | 0 | 0 | 0 | 16 | — |
-| `tests/consultant-usage-stats.test.ts` | 4 | 1 | 0 | 0 | 3 | 100 % |
-| `tests/consultant-vtb-rate.test.ts` | 12 | 0 | 0 | 0 | 12 | — |
-| `tests/consultant.test.ts` | 73 | 15 | 0 | 0 | 58 | 100 % |
+| `tests/consultant-style-budget.test.ts` | 16 | 16 | 0 | 0 | 0 | 100 % |
+| `tests/consultant-usage-stats.test.ts` | 4 | 4 | 0 | 0 | 0 | 100 % |
+| `tests/consultant-vtb-rate.test.ts` | 12 | 12 | 0 | 0 | 0 | 100 % |
+| `tests/consultant.test.ts` | 73 | 36 | 0 | 0 | 37 | 100 % |
 | `tests/currency.test.ts` | 4 | 4 | 0 | 0 | 0 | 100 % |
 | `tests/datetime.test.ts` | 5 | 5 | 0 | 0 | 0 | 100 % |
 | `tests/delivery-message.test.ts` | 4 | 3 | 0 | 0 | 1 | 100 % |
