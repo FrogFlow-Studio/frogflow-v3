@@ -57,7 +57,17 @@ export type CronRun = {
   error: string | null;
   /** С кого (или с какого этапа) начать следующий запуск: бюджет времени вышел (lib/cron-budget). */
   resume?: string | null;
+  /** Сколько клиентов отложено до следующего запуска (бюджет вышел). */
+  skipped?: number;
+  /** Сколько запусков подряд упёрлись в бюджет, включая этот; 0 — уложились. */
+  budgetStreak?: number;
 };
+
+/** Серия упоров в бюджет: растёт, пока запуск оставляет `resume`, иначе обнуляется. */
+export function nextBudgetStreak(prev: CronRun | null, run: Pick<CronRun, "resume">): number {
+  if (!run.resume) return 0;
+  return (prev?.budgetStreak ?? 0) + 1;
+}
 
 const key = (job: string) => `cron:${job}`;
 
@@ -74,11 +84,17 @@ export async function recordCronRun(job: string, run: CronRun): Promise<void> {
   const db = serviceDb();
   const { data, error: readErr2 } = await db
     .from("operator_settings")
-    .select("key")
+    .select("key, value")
     .eq("key", key(job))
     .maybeSingle();
   if (readErr2) throw serverFailure(`[cron] статус не прочитан: ${readErr2.message}`);
-  const value = JSON.stringify(run);
+  let prev: CronRun | null = null;
+  try {
+    prev = data?.value ? (JSON.parse(data.value) as CronRun) : null;
+  } catch {
+    /* битая запись — как отсутствие */
+  }
+  const value = JSON.stringify({ ...run, budgetStreak: nextBudgetStreak(prev, run) });
   const r = data
     ? await db.from("operator_settings").update({ value }).eq("key", key(job))
     : await db.from("operator_settings").insert({ key: key(job), value });

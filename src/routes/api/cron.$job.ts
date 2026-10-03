@@ -40,6 +40,7 @@ export const Route = createFileRoute("/api/cron/$job")({
             summary: summarizeResults(results),
             error,
             resume,
+            skipped: skipped.size,
           }).catch(() => undefined);
         };
         // Сбой у одного клиента — в итог крона и в учёт ошибок, остальные идут дальше.

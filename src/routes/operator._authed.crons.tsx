@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { cronStatusFn } from "@/app/operator/operator.functions";
+import { BUDGET_STREAK_WARN } from "@/app/operator/cron-status.shared";
 import { Badge, PageTitle } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed/crons")({
@@ -18,6 +19,15 @@ function CronsPage() {
         title="Кроны"
         subtitle="Расписание из vercel.json; статус пишется самим кроном после каждого запуска"
       />
+      {jobs
+        .filter((j) => (j.last?.budgetStreak ?? 0) >= BUDGET_STREAK_WARN)
+        .map((j) => (
+          <div key={j.job} className="card mb-3 border-danger text-sm text-danger">
+            {j.job}: {j.last?.budgetStreak} запуска подряд упёрлись в бюджет времени, клиентов не
+            хватает одного запуска. Следующие запуски продолжают с отложенных; если так остаётся,
+            расписание крона надо учащать.
+          </div>
+        ))}
       <div className="card overflow-x-auto">
         <table className="table">
           <thead>
@@ -56,6 +66,12 @@ function CronsPage() {
                 </td>
                 <td className="text-right tabular-nums">{j.last?.tenants ?? "—"}</td>
                 <td className="max-w-md">
+                  {j.last?.resume && (
+                    <div className="text-xs text-muted">
+                      Бюджет вышел: отложено клиентов {j.last.skipped ?? "?"}, следующий запуск
+                      продолжит с {j.last.resume}
+                    </div>
+                  )}
                   {j.last?.error && <div className="text-xs text-danger">{j.last.error}</div>}
                   {j.last?.summary && (
                     <pre className="max-h-24 overflow-auto text-xs whitespace-pre-wrap text-muted">
