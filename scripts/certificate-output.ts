@@ -1,13 +1,13 @@
 /**
  * Сертификат в собранном сервере: после сборки отрисовать PDF с кириллицей из
- * `.output` (или `.vercel/output`) и убедиться, что шрифт и fontkit попали в
+ * `.output` (или `.vercel/output`, или папка из аргумента) и убедиться, что шрифт и fontkit попали в
  * бандл. Без шрифта pdf-lib падает на первой кириллической букве, и ученик
  * получает 500 вместо сертификата — тесты на исходниках этого не видят.
  *
- *   node scripts/certificate-output.ts
+ *   node scripts/certificate-output.ts [папка сборки]
  */
 import { readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { inflateSync } from "node:zlib";
 
@@ -87,17 +87,18 @@ const SAMPLE = {
 };
 
 async function main(): Promise<number> {
-  const chunk = findCertificateChunk();
+  // Аргумент — где искать сборку (verify передаёт временную папку Vercel-сборки).
+  const chunk = findCertificateChunk(process.argv[2] ? [process.argv[2]] : OUTPUT_ROOTS);
   if (!chunk) {
     console.error(
       "certificate-output: в сборке нет модуля сертификата (искал в " +
-        OUTPUT_ROOTS.join(", ") +
+        (process.argv[2] ? [process.argv[2]] : OUTPUT_ROOTS).join(", ") +
         ")",
     );
     return 1;
   }
   console.log(`certificate-output: ${chunk}`);
-  const mod = (await import(pathToFileURL(join(process.cwd(), chunk)).href)) as {
+  const mod = (await import(pathToFileURL(resolve(process.cwd(), chunk)).href)) as {
     certificatePdf?: (c: typeof SAMPLE, o: Record<string, string>) => Promise<Uint8Array>;
   };
   if (typeof mod.certificatePdf !== "function") {

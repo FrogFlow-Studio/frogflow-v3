@@ -17,6 +17,7 @@ describe("npm run verify", () => {
       "build",
       "build-output",
       "certificate-output",
+      "vercel-output",
     ]);
     expect(steps(false).map((s) => s.name)).toEqual(["lint", "typecheck", "test"]);
   });
@@ -39,5 +40,22 @@ describe("npm run verify", () => {
   it("сводка зелёного прогона", () => {
     const text = summary([{ name: "lint", ok: true, seconds: 1 }], "abc", []);
     expect(text).toContain("Всё зелёное.");
+  });
+});
+
+describe("сборка Vercel в verify", () => {
+  it("обычный шаг сертификата смотрит .output, Vercel-сборка — отдельным шагом после него", () => {
+    const list = steps(true);
+    const names = list.map((s) => s.name);
+    expect(names.indexOf("vercel-output")).toBeGreaterThan(names.indexOf("certificate-output"));
+    expect(list.find((s) => s.name === "certificate-output")!.cmd.at(-1)).toBe(".output/server");
+  });
+
+  it("собирает пресетом vercel и проверяет обе проверки по временной папке", async () => {
+    const { VERCEL_BUILD, checks } = await import("../scripts/vercel-output.ts");
+    expect(VERCEL_BUILD).toContain("NITRO_PRESET=vercel");
+    const cs = checks("/tmp/x/output/functions");
+    expect(cs.map((c) => c.name)).toEqual(["check-vercel-output", "certificate-output"]);
+    for (const c of cs) expect(c.cmd.at(-1)).toBe("/tmp/x/output/functions");
   });
 });

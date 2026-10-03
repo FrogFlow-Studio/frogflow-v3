@@ -42,7 +42,12 @@ export function steps(withBuild: boolean): Step[] {
   if (withBuild) {
     list.push({ name: "build", cmd: ["npx", "vite", "build"] });
     list.push({ name: "build-output", cmd: ["node", "scripts/check-vercel-output.mjs"] });
-    list.push({ name: "certificate-output", cmd: ["node", "scripts/certificate-output.ts"] });
+    list.push({
+      name: "certificate-output",
+      cmd: ["node", "scripts/certificate-output.ts", ".output/server"],
+    });
+    // Прод собирается пресетом vercel: собрать его отдельно и проверить функцию.
+    list.push({ name: "vercel-output", cmd: ["node", "scripts/vercel-output.ts"] });
   }
   return list;
 }

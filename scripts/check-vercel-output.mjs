@@ -5,7 +5,9 @@
 import { lstat, readdir, readlink } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
-const root = ".vercel/output/functions";
+// Папка functions сборки: по умолчанию .vercel/output/functions, или первый аргумент
+// (verify собирает Vercel-вариант во временную папку).
+const root = process.argv[2] ?? ".vercel/output/functions";
 
 async function walk(dir, func, bad) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
