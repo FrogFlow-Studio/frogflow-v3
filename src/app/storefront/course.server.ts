@@ -51,6 +51,8 @@ export type CourseView = {
     title: string;
     open: boolean;
     opensAt: string;
+    /** Урок ждёт ДЗ предыдущего, а не даты (режим «по заданиям»). */
+    gated: boolean;
     done: boolean;
     /** У закрытого урока — пусто: текст, ссылка и файлы не уходят в браузер. */
     text: string;
@@ -107,6 +109,7 @@ export async function courseView(
       title: a.lesson.title,
       open: a.open,
       opensAt: a.opensAt,
+      gated: Boolean(a.gated) && !a.open,
       done: a.open && done.has(a.lesson.id),
       text: a.open ? a.lesson.text : "",
       link: a.open ? a.lesson.link : null,

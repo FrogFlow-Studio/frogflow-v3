@@ -4,6 +4,8 @@ import { updateSettingAtomic } from "@/core/settings/settings";
 import { cohortForPurchase, courseTimeline, type Timeline } from "./cohort";
 import { courseKey, parseCourse, type Course } from "./course";
 import { readSetting } from "./db.server";
+import type { TaskGate } from "./access";
+import { loadHwStatuses } from "./gate.server";
 
 /**
  * Прохождение курса одной покупкой (позицией заказа): когда начато и какие
@@ -87,6 +89,8 @@ export type CoursePurchase = {
   course: Course;
   /** null — курс ещё не начат (ссылку не выдавали). */
   run: CourseRun | null;
+  /** Сдачи ДЗ по урокам; читаются только в режиме «по заданиям» (А24). */
+  hw?: TaskGate["hw"];
 };
 
 /**
@@ -125,13 +129,14 @@ export async function coursePurchase(
     name: item.name_snapshot,
     course,
     run: parseRun(await readSetting(ctx, runKey(item.id))),
+    ...(course.schedule.mode === "tasks" ? { hw: await loadHwStatuses(ctx, item.id) } : {}),
   };
 }
 
 /** Календарь этой покупки в поясе магазина (поток, тариф, открытые уроки). */
 export function purchaseTimeline(
   ctx: TenantContext,
-  p: Pick<CoursePurchase, "course" | "run" | "boughtAt" | "variantId">,
+  p: Pick<CoursePurchase, "course" | "run" | "boughtAt" | "variantId" | "hw">,
   now = new Date(),
 ): Timeline {
   return courseTimeline(p, ctx.timezone, now);

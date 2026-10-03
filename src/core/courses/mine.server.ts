@@ -5,6 +5,7 @@ import { storefrontBase } from "@/core/tenant/custom-domain";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { readSettings } from "./db.server";
 import { nextOpening } from "./access";
+import { loadHwStatusesFor } from "./gate.server";
 import { courseTimeline } from "./cohort";
 import { courseKey, parseCourse } from "./course";
 import { hwKey, parseHomework, type HomeworkStatus } from "./homework";
@@ -80,11 +81,15 @@ export async function customerCourses(
     withCourse.map((i) => runKey(i.id)),
   );
 
+  const taskHw = await loadHwStatusesFor(
+    ctx,
+    withCourse.filter((i) => i.course.schedule.mode === "tasks").map((i) => i.id),
+  );
   const base = ctx.tenant.settings.slug ? storefrontBase(ctx.tenant, ctx.appUrl) : null;
   const secret = base ? env().SECRETS_KEY : "";
   const views = withCourse.map((i) => {
     const run = parseRun(runs.get(runKey(i.id)));
-    const tl = courseTimeline({ ...i, run }, ctx.timezone, now);
+    const tl = courseTimeline({ ...i, run, hw: taskHw.get(i.id) }, ctx.timezone, now);
     const access = tl.access;
     const open = access.filter((a) => a.open);
     return {

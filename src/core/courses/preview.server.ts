@@ -23,6 +23,8 @@ export type OpenLesson = {
 export type CoursePreview = {
   lessons: Array<{ no: number; title: string; homework: boolean; open: OpenLesson | null }>;
   everyDays: number | null;
+  /** Режим «по заданиям»: следующий урок — после принятого (accepted) или сданного ДЗ. */
+  afterTask: "accepted" | "submitted" | null;
   cohort: { title: string; start: string } | null;
   enrollOpen: boolean;
   channel: boolean;
@@ -82,6 +84,7 @@ export async function coursePreview(
   return {
     lessons,
     everyDays: course.schedule.mode === "drip" ? course.schedule.everyDays : null,
+    afterTask: course.schedule.mode === "tasks" ? course.schedule.unlock : null,
     cohort: next
       ? { title: next.title, start: cohortStart(next, ctx.timezone).toISOString() }
       : null,

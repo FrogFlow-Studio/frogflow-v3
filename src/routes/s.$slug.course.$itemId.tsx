@@ -155,7 +155,9 @@ function CoursePage() {
               </h2>
               {!l.open && (
                 <span className="shrink-0 text-xs text-muted">
-                  {t("course.locked", { date: date(l.opensAt) })}
+                  {l.gated
+                    ? t("course.lockedTask", { n: l.no - 1 })
+                    : t("course.locked", { date: date(l.opensAt) })}
                 </span>
               )}
             </div>

@@ -40,6 +40,7 @@ import * as errorsCore from "./admin/errors-core";
 import * as errorsVip from "./admin/errors-vip";
 import * as errorsAdmin from "./admin/errors-admin";
 import * as catalog from "./admin/catalog";
+import * as schoolTasks from "./admin/school-tasks";
 
 const baseRu = {
   // навигация и оболочка
@@ -419,6 +420,7 @@ const ru = {
   ...errorsVip.ru,
   ...errorsAdmin.ru,
   ...catalog.ru,
+  ...schoolTasks.ru,
 } as const;
 
 export type AdminKey = keyof typeof ru;
@@ -1465,6 +1467,7 @@ const kk: Dict = {
   ...errorsVip.kk,
   ...errorsAdmin.kk,
   ...catalog.kk,
+  ...schoolTasks.kk,
 };
 
 const en: Dict = {
@@ -1502,6 +1505,7 @@ const en: Dict = {
   ...errorsVip.en,
   ...errorsAdmin.en,
   ...catalog.en,
+  ...schoolTasks.en,
 };
 
 const uz: Dict = {
@@ -1539,6 +1543,7 @@ const uz: Dict = {
   ...errorsVip.uz,
   ...errorsAdmin.uz,
   ...catalog.uz,
+  ...schoolTasks.uz,
 };
 
 export const ADMIN_DICTS: Record<Locale, Dict> = { ru, kk, en, uz };

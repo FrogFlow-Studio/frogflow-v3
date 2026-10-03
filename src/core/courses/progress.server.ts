@@ -99,8 +99,20 @@ export async function courseStudents(
   const students = bought.map((i): CourseStudent => {
     const o = orderById.get(i.order_id)!;
     const run = parseRun(runs.get(runKey(i.id)));
+    const parsedHw = new Map(
+      course.lessons.flatMap((l) => {
+        const h = l.homework ? parseHomework(hwRaw.get(hwKey(i.id, l.id))) : null;
+        return h ? ([[l.id, h.status]] as const) : [];
+      }),
+    );
     const tl = courseTimeline(
-      { course, run, boughtAt: o.created_at, variantId: i.product_variant_id ?? null },
+      {
+        course,
+        run,
+        boughtAt: o.created_at,
+        variantId: i.product_variant_id ?? null,
+        hw: parsedHw,
+      },
       ctx.timezone,
       now,
     );

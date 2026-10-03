@@ -43,7 +43,7 @@ export async function announceNewLessons(
     if (order.status !== "delivered") continue;
     // Календарь покупки: поток (старт для всех один), тариф, конец доступа.
     const open = courseTimeline(
-      { course, run, boughtAt: order.created_at, variantId: r.variantId },
+      { course, run, boughtAt: order.created_at, variantId: r.variantId, hw: r.hw },
       ctx.timezone,
       now,
     ).access.filter((a) => a.open);

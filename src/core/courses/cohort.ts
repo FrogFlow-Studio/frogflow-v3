@@ -1,4 +1,4 @@
-import { lessonsAccess, type LessonAccess } from "./access";
+import { lessonsAccess, type LessonAccess, type TaskGate } from "./access";
 import type { Course } from "./course";
 
 export {
@@ -111,7 +111,12 @@ export function tariffFor(course: Course, variantId: string | null | undefined):
 
 export type TimelineInput = {
   course: Course;
-  run: { startedAt: string; cohortId?: string; until?: string } | null;
+  run: { startedAt: string; cohortId?: string; until?: string; done?: readonly string[] } | null;
+  /**
+   * Статусы сдач ДЗ по id урока: нужны режиму «по заданиям» (А24). Не переданы —
+   * в этом режиме открыт только первый урок.
+   */
+  hw?: TaskGate["hw"];
   /** Когда куплено (создан заказ): по нему выбирается поток. */
   boughtAt: string;
   variantId: string | null;
@@ -153,7 +158,12 @@ export function courseTimeline(x: TimelineInput, tz: string, now = new Date()): 
       ? null
       : new Date(Number.isFinite(extended) ? Math.max(byTariff, extended) : byTariff).toISOString();
   const expired = expiresAt != null && Date.parse(expiresAt) <= now.getTime();
-  const access = lessonsAccess(x.course, start, now.getTime()).map((a) =>
+  const gate: TaskGate = {
+    hw: x.hw ?? new Map(),
+    done: x.run?.done ?? [],
+    byDone: !tariff.homework,
+  };
+  const access = lessonsAccess(x.course, start, now.getTime(), gate).map((a) =>
     expired ? { ...a, open: false } : a,
   );
   return {

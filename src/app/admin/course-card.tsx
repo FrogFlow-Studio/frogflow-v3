@@ -98,18 +98,42 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
         <select
           id="course-schedule"
           className="input w-auto"
-          value={drip == null ? "all" : "drip"}
+          value={course.schedule.mode}
           onChange={(e) =>
             change({
               ...course,
               schedule:
-                e.target.value === "drip" ? { mode: "drip", everyDays: 1 } : { mode: "all" },
+                e.target.value === "drip"
+                  ? { mode: "drip", everyDays: 1 }
+                  : e.target.value === "tasks"
+                    ? { mode: "tasks", unlock: "accepted" }
+                    : { mode: "all" },
             })
           }
         >
           <option value="all">{t("product.courseScheduleAll")}</option>
           <option value="drip">{t("product.courseScheduleDrip")}</option>
+          <option value="tasks">{t("school.scheduleTasks")}</option>
         </select>
+        {course.schedule.mode === "tasks" && (
+          <select
+            id="course-unlock"
+            className="input w-auto"
+            value={course.schedule.unlock}
+            onChange={(e) =>
+              change({
+                ...course,
+                schedule: {
+                  mode: "tasks",
+                  unlock: e.target.value === "submitted" ? "submitted" : "accepted",
+                },
+              })
+            }
+          >
+            <option value="accepted">{t("school.unlockAccepted")}</option>
+            <option value="submitted">{t("school.unlockSubmitted")}</option>
+          </select>
+        )}
         {drip != null && (
           <label className="flex items-center gap-2">
             {t("product.courseEveryDays")}
@@ -137,6 +161,9 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
         )}
       </div>
 
+      {course.schedule.mode === "tasks" && (
+        <p className="mb-3 text-xs text-muted">{t("school.scheduleTasksHint")}</p>
+      )}
       <label className="mb-3 block text-sm">
         <span className="text-xs text-muted">{t("product.courseHomeworkDays")}</span>
         <input
@@ -288,9 +315,11 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
                   </label>
                 )}
                 <span className="text-muted">
-                  {day === 0
-                    ? t("product.lessonOpensNow")
-                    : t("product.lessonOpensDay", { day: day + 1 })}
+                  {course.schedule.mode === "tasks" && i > 0
+                    ? t("school.lessonOpensAfterTask", { n: i })
+                    : day === 0
+                      ? t("product.lessonOpensNow")
+                      : t("product.lessonOpensDay", { day: day + 1 })}
                 </span>
               </div>
             </li>

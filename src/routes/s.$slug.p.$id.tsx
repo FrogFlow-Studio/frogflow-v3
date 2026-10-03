@@ -282,7 +282,13 @@ function ProductPage() {
           <p className="mb-3 text-xs text-muted">
             {course.everyDays
               ? t("product.course.drip", { n: course.everyDays })
-              : t("product.course.all")}
+              : course.afterTask
+                ? t(
+                    course.afterTask === "submitted"
+                      ? "product.course.afterSubmit"
+                      : "product.course.afterAccept",
+                  )
+                : t("product.course.all")}
           </p>
           <ol className="space-y-1 text-sm">
             {course.lessons.map((l) => (

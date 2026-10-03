@@ -57,7 +57,13 @@ export async function courseReminders(
   const timelines = new Map<string, ReturnType<typeof courseTimeline>>();
   for (const r of runs) {
     const tl = courseTimeline(
-      { course: r.course, run: r.run, boughtAt: r.order.created_at, variantId: r.variantId },
+      {
+        course: r.course,
+        run: r.run,
+        boughtAt: r.order.created_at,
+        variantId: r.variantId,
+        hw: r.hw,
+      },
       ctx.timezone,
       now,
     );

@@ -1,6 +1,8 @@
 import { pageAll } from "@/core/db/page";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { courseKey, parseCourse, type Course } from "./course";
+import type { TaskGate } from "./access";
+import { loadHwStatusesFor } from "./gate.server";
 import { readSettings, selectIn } from "./db.server";
 import { parseRun, RUN_KEY_PREFIX, type CourseRun } from "./run.server";
 
@@ -17,6 +19,8 @@ export type ActiveRun = {
   run: CourseRun;
   course: Course;
   variantId: string | null;
+  /** Сдачи ДЗ по урокам — только у курсов в режиме «по заданиям». */
+  hw?: TaskGate["hw"];
   order: {
     id: number;
     status: string;
@@ -72,6 +76,14 @@ export async function loadRuns(ctx: TenantContext): Promise<ActiveRun[]> {
   const orderById = new Map(orders.map((o) => [o.id, o]));
   const courses = new Map<string, Course>();
   for (const id of productIds) courses.set(id, parseCourse(courseRaw.get(courseKey(id))));
+  const taskItems = runs.filter((r) => {
+    const pid = itemById.get(r.itemId)?.product_id;
+    return pid ? courses.get(pid)?.schedule.mode === "tasks" : false;
+  });
+  const hwByItem = await loadHwStatusesFor(
+    ctx,
+    taskItems.map((r) => r.itemId),
+  );
   return runs.flatMap((r) => {
     const item = itemById.get(r.itemId);
     const order = item ? orderById.get(item.order_id) : undefined;
@@ -85,6 +97,7 @@ export async function loadRuns(ctx: TenantContext): Promise<ActiveRun[]> {
             run: r.run,
             course,
             variantId: item.product_variant_id,
+            ...(hwByItem.has(r.itemId) ? { hw: hwByItem.get(r.itemId) } : {}),
             order,
           },
         ]

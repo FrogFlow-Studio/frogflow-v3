@@ -1,4 +1,4 @@
-import { lessonOpensAfterDays, type Course, type Lesson } from "./course";
+import { lessonOpensAfterDays, type Course, type HwUnlock, type Lesson } from "./course";
 
 /**
  * Какие уроки открыты покупателю. Отсчёт — от начала прохождения (выдачи
@@ -14,18 +14,67 @@ export type LessonAccess = {
   open: boolean;
   /** Когда откроется (ISO); у открытого — когда открылся. */
   opensAt: string;
+  /** Урок ждёт не даты, а ДЗ предыдущего (режим «по заданиям»). */
+  gated?: boolean;
 };
 
-export function lessonsAccess(course: Course, startedAt: string, now = Date.now()): LessonAccess[] {
+/**
+ * Прогресс для режима «по заданиям»: статусы сдач по id урока и пройденные
+ * уроки. Нет прогресса — открыт только первый урок (закрыто по умолчанию).
+ */
+export type TaskGate = {
+  hw: ReadonlyMap<string, "submitted" | "accepted" | "revise">;
+  done: readonly string[];
+  /** Тариф без проверки ДЗ: сдавать некому, урок засчитывается по отметке «пройден». */
+  byDone: boolean;
+};
+
+/**
+ * Пройден ли урок для открытия следующего. Без ДЗ не задерживает; без проверки
+ * по тарифу — по отметке «пройден»; иначе принято (или сдано, по настройке).
+ * Принятая работа остаётся принятой, а любая сдача — сдачей: возврат на
+ * доработку уже открытый урок не закрывает.
+ */
+export function lessonCleared(lesson: Lesson, unlock: HwUnlock, gate: TaskGate): boolean {
+  if (!lesson.homework) return true;
+  if (gate.byDone) return gate.done.includes(lesson.id);
+  const status = gate.hw.get(lesson.id);
+  if (!status) return false;
+  return unlock === "submitted" ? true : status === "accepted";
+}
+
+export function lessonsAccess(
+  course: Course,
+  startedAt: string,
+  now = Date.now(),
+  gate?: TaskGate,
+): LessonAccess[] {
   const start = Date.parse(startedAt);
   const base = Number.isFinite(start) ? start : now;
+  const { schedule } = course;
+  if (schedule.mode === "tasks") {
+    let prevOpen = true;
+    return course.lessons.map((lesson, i) => {
+      const prev = i > 0 ? course.lessons[i - 1]! : null;
+      const open =
+        base <= now &&
+        prevOpen &&
+        (!prev || (gate != null && lessonCleared(prev, schedule.unlock, gate)));
+      prevOpen = open;
+      return { lesson, no: i + 1, open, opensAt: new Date(base).toISOString(), gated: i > 0 };
+    });
+  }
   return course.lessons.map((lesson, i) => {
-    const at = base + lessonOpensAfterDays(course.schedule, i) * DAY_MS;
+    const at = base + lessonOpensAfterDays(schedule, i) * DAY_MS;
     return { lesson, no: i + 1, open: at <= now, opensAt: new Date(at).toISOString() };
   });
 }
 
-/** Ближайшее открытие урока после `now`; null — все уже открыты. */
+/**
+ * Ближайшее открытие урока после `now`; null — все уже открыты. Урок,
+ * который ждёт ДЗ, даты не имеет — ближайшим по дате не считается.
+ */
 export function nextOpening(access: readonly LessonAccess[]): LessonAccess | null {
-  return access.find((a) => !a.open) ?? null;
+  const next = access.find((a) => !a.open);
+  return next && !next.gated ? next : null;
 }

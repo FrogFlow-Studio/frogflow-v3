@@ -36,8 +36,18 @@ export type Lesson = {
   /** Открытый урок: текст, ссылка и файлы видны до покупки (core/courses/preview). */
   preview?: boolean;
 };
-/** all — все уроки сразу после оплаты; drip — по одному раз в everyDays дней. */
-export type CourseSchedule = { mode: "all" } | { mode: "drip"; everyDays: number };
+/**
+ * Когда следующий урок открывается после ДЗ предыдущего (режим «по заданиям»):
+ * accepted — когда преподаватель принял работу, submitted — когда ученик сдал.
+ */
+export type HwUnlock = "accepted" | "submitted";
+/**
+ * all — все уроки сразу после оплаты; drip — по одному раз в everyDays дней;
+ * tasks — первый урок со стартом, следующий — после ДЗ предыдущего
+ * (core/courses/access).
+ */
+export type CourseSchedule =
+  { mode: "all" } | { mode: "drip"; everyDays: number } | { mode: "tasks"; unlock: HwUnlock };
 export const HOMEWORK_DAYS_MAX = 60;
 export const COHORTS_MAX = 20;
 export const COHORT_TITLE_MAX = 100;
@@ -87,7 +97,13 @@ export function isHttpsLink(v: string): boolean {
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
 function parseSchedule(v: unknown): CourseSchedule {
-  const o = (v && typeof v === "object" ? v : {}) as { mode?: unknown; everyDays?: unknown };
+  const o = (v && typeof v === "object" ? v : {}) as {
+    mode?: unknown;
+    everyDays?: unknown;
+    unlock?: unknown;
+  };
+  if (o.mode === "tasks")
+    return { mode: "tasks", unlock: o.unlock === "submitted" ? "submitted" : "accepted" };
   const days = Math.round(Number(o.everyDays));
   if (o.mode === "drip" && days >= DRIP_DAYS_MIN && days <= DRIP_DAYS_MAX)
     return { mode: "drip", everyDays: days };
@@ -213,6 +229,8 @@ export type CourseProblem =
  */
 export function courseProblem(tenantId: string, c: Course): CourseProblem | null {
   if (c.lessons.length > LESSONS_MAX) return { kind: "tooMany" };
+  if (c.schedule.mode === "tasks" && !["accepted", "submitted"].includes(c.schedule.unlock))
+    return { kind: "badSchedule" };
   if (
     c.schedule.mode === "drip" &&
     !(
@@ -260,7 +278,10 @@ export function courseProblem(tenantId: string, c: Course): CourseProblem | null
   return null;
 }
 
-/** Через сколько дней после оплаты открывается урок с индексом `index` (с нуля). */
+/**
+ * Через сколько дней после оплаты открывается урок с индексом `index` (с нуля).
+ * В режиме «по заданиям» дни не считаются: урок ждёт ДЗ предыдущего.
+ */
 export function lessonOpensAfterDays(schedule: CourseSchedule, index: number): number {
   return schedule.mode === "drip" ? index * schedule.everyDays : 0;
 }

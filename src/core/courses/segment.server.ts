@@ -30,7 +30,13 @@ export async function courseSegmentMembers(
   const withTl = runs.map((r) => ({
     r,
     tl: courseTimeline(
-      { course: r.course, run: r.run, boughtAt: r.order.created_at, variantId: r.variantId },
+      {
+        course: r.course,
+        run: r.run,
+        boughtAt: r.order.created_at,
+        variantId: r.variantId,
+        hw: r.hw,
+      },
       ctx.timezone,
       now,
     ),

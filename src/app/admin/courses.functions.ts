@@ -48,6 +48,7 @@ const lesson = z.object({
 const course = z.object({
   schedule: z.discriminatedUnion("mode", [
     z.object({ mode: z.literal("all") }),
+    z.object({ mode: z.literal("tasks"), unlock: z.enum(["accepted", "submitted"]) }),
     z.object({
       mode: z.literal("drip"),
       everyDays: z.number().int().min(DRIP_DAYS_MIN).max(DRIP_DAYS_MAX),
