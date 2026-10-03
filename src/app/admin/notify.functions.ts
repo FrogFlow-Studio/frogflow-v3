@@ -64,21 +64,17 @@ export const saveLowStockFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Не чаще раза в 20 с на магазин: проверка шлёт настоящие сообщения. */
-const lastCheck = new Map<string, number>();
-
 /** «Проверить уведомления»: тестовое сообщение каждому получателю по каждому каналу, итог по каждому. */
 export const checkNotifyFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ locale: z.enum(["ru", "kk", "en", "uz"]) }).parse(d))
   .handler(async ({ data }) => {
     const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("owner");
-    const now = Date.now();
-    if (now - (lastCheck.get(ctx.tenant.id) ?? 0) < 20_000)
+    // Не чаще раза в 20 с на магазин (общая запись в базе): проверка шлёт настоящие сообщения.
+    if (!(await (await import("@/core/notify/check")).claimNotifyCheck(ctx)))
       throw new UserError(
         "err.notify.checkTooOften",
         "Проверка только что запускалась — подождите несколько секунд.",
       );
-    lastCheck.set(ctx.tenant.id, now);
     const [{ runNotifyCheck, checkText }, { loadNotifyPrefs }, { adminRecipients }] =
       await Promise.all([
         import("@/core/notify/check"),
@@ -96,13 +92,19 @@ export const checkNotifyFn = createServerFn({ method: "POST" })
       sendTelegram: (chatId) => api!.call("sendMessage", { chat_id: chatId, text }),
       mailConfigured: isMailConfigured(),
       // Письмо могло дойти и при сбое — повторов нет; предел ожидания меньше бюджета функции.
-      sendMail: (to) =>
-        Promise.race([
-          smtpMailer({ to, subject: "FrogFlow", text, html: text }),
-          new Promise<{ ok: boolean; error: string }>((r) =>
-            setTimeout(() => r({ ok: false, error: "timeout" }), 25_000),
-          ),
-        ]),
+      sendMail: async (to) => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          return await Promise.race([
+            smtpMailer({ to, subject: "FrogFlow", text, html: text }),
+            new Promise<{ ok: boolean; error: string }>((r) => {
+              timer = setTimeout(() => r({ ok: false, error: "timeout" }), 25_000);
+            }),
+          ]);
+        } finally {
+          clearTimeout(timer);
+        }
+      },
       pushConfigured: Boolean(vapidFromEnv()),
       sendPush: () =>
         pushAdmins(ctx, {

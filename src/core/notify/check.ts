@@ -1,3 +1,6 @@
+import type { TenantContext } from "@/core/tenant/resolve.server";
+import { updateSettingAtomic } from "@/core/settings/settings";
+import { serverFailure } from "@/lib/server-failure";
 import type { Locale } from "@/core/i18n/locale";
 import { telegramFailureCode, type TelegramFailureCode } from "./deliver";
 import type { NotifyPrefs } from "./prefs";
@@ -113,4 +116,21 @@ export async function runNotifyCheck(prefs: NotifyPrefs, deps: CheckDeps): Promi
     });
   }
   return lines;
+}
+
+export const CHECK_MIN_GAP_MS = 20_000;
+const CHECK_KEY = "notify_check_at";
+
+/**
+ * Занять «Проверить уведомления» условной записью в базе: проверка шлёт настоящие
+ * сообщения, поэтому предел «не чаще раза в 20 с на магазин» общий для всех
+ * экземпляров сервера, а не живёт в памяти одного. true — проверку можно запускать.
+ */
+export async function claimNotifyCheck(ctx: TenantContext, now = Date.now()): Promise<boolean> {
+  const r = await updateSettingAtomic(ctx, CHECK_KEY, (raw) => {
+    const last = Number(raw ?? 0);
+    return now - last < CHECK_MIN_GAP_MS && now >= last ? null : String(now);
+  });
+  if (r === "failed") throw serverFailure("Проверка уведомлений: не удалось занять запуск");
+  return r === "written";
 }

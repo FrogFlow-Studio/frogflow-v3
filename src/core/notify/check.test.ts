@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { runNotifyCheck, type CheckDeps } from "./check";
+import { fakeDb } from "../../../tests/fake-db";
+import type { TenantContext } from "@/core/tenant/resolve.server";
+import { claimNotifyCheck, runNotifyCheck, type CheckDeps } from "./check";
 import { defaultNotifyPrefs } from "./prefs";
 
 const deps = (over: Partial<CheckDeps> = {}): CheckDeps => ({
@@ -96,5 +98,21 @@ describe("проверка уведомлений продавца", () => {
       deps({ pushConfigured: true, sendPush: async () => 2 }),
     );
     expect(two.find((l) => l.channel === "push")).toMatchObject({ ok: true, target: "2" });
+  });
+});
+
+describe("claimNotifyCheck — предел общий для экземпляров", () => {
+  const mk = () =>
+    ({
+      tenant: { id: "11111111-1111-1111-1111-111111111111" },
+      db: fakeDb({ unique: { app_settings: [["bot_id", "key"]] } }),
+    }) as unknown as TenantContext;
+  it("из пяти одновременных запусков проходит один, через 20 с — снова можно", async () => {
+    const ctx = mk();
+    const now = 1_000_000;
+    const res = await Promise.all(Array.from({ length: 5 }, () => claimNotifyCheck(ctx, now)));
+    expect(res.filter(Boolean)).toHaveLength(1);
+    expect(await claimNotifyCheck(ctx, now + 19_000)).toBe(false);
+    expect(await claimNotifyCheck(ctx, now + 20_000)).toBe(true);
   });
 });

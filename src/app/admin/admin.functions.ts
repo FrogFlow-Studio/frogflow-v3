@@ -582,7 +582,7 @@ export const disconnectCatalogSheetFn = createServerFn({ method: "POST" }).handl
     .from("app_settings")
     .delete()
     .in("key", [SHEET_CONFIG_KEY, SHEET_STATUS_KEY]);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`Таблица каталога: не отключилась: ${error.message}`);
   return { ok: true };
 });
 
