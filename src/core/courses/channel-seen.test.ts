@@ -127,4 +127,54 @@ describe("в канале без доступа", () => {
     expect(calls).toEqual([999]);
     expect(await channelStrangers(ctx, NOW)).toEqual([]);
   });
+
+  it("чат потока: свой ученик и ученик другого потока, возврат — посторонние; исключение там же", async () => {
+    const { ctx, db } = school();
+    const chat = (db.tables.app_settings as Array<Record<string, string>>).find(
+      (r) => r.key === courseKey(P),
+    )!;
+    chat.value = JSON.stringify({
+      ...course,
+      channel: undefined,
+      cohorts: [
+        {
+          id: "c1000000-0000-4000-8000-000000000001",
+          title: "Октябрь",
+          start: "2026-10-05T10:00",
+          enrollUntil: "2026-10-04",
+          chat: "-1007770001",
+        },
+        {
+          id: "c2000000-0000-4000-8000-000000000002",
+          title: "Ноябрь",
+          start: "2026-11-05T10:00",
+          enrollUntil: "2026-11-04",
+          chat: "-1008880001",
+        },
+      ],
+    });
+    (db.tables.order_items as Array<Record<string, unknown>>).push({
+      id: "item-3",
+      order_id: 9,
+      product_id: P,
+      product_variant_id: V,
+      name_snapshot: "К",
+    });
+    (db.tables.orders as Array<Record<string, unknown>>).push({
+      id: 9,
+      status: "delivered",
+      platform: "telegram",
+      telegram_id: 666,
+      created_at: "2026-11-01T00:00:00Z",
+    });
+    for (const id of [555, 666, 777, 999])
+      await recordChannelSighting(ctx, { id: -1007770001 }, id, "member", {}, NOW);
+    expect((await channelStrangers(ctx, NOW)).map((s) => s.userId)).toEqual([666, 777, 999]);
+    const kick = { createInvite: async () => null, kick: async () => true };
+    expect(await kickChannelStranger(ctx, "-1007770001", 999, kick, NOW)).toEqual({ kicked: true });
+    expect(await kickChannelStranger(ctx, "-1007770001", 555, kick, NOW)).toEqual({
+      kicked: false,
+    });
+    expect((await channelStrangers(ctx, NOW)).map((s) => s.userId)).toEqual([666, 777]);
+  });
 });

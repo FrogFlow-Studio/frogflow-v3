@@ -35,13 +35,20 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
   const [course, setCourse] = useState<Course | null>(null);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  // «В канале без доступа» — один обход на карточку, не по разу на каждый чат.
+  const [strangers, setStrangers] = useState<Awaited<ReturnType<typeof channelStrangersFn>> | null>(
+    null,
+  );
+  const loadStrangers = () => channelStrangersFn().then(setStrangers, () => setStrangers(null));
   useEffect(() => {
     void courseFn({ data: { productId } }).then(setCourse);
+    void loadStrangers();
   }, [productId]);
   const save = useAction(async () => {
     if (!course) return;
     await saveCourseFn({ data: { productId, course } });
     setSaved(true);
+    await loadStrangers();
   });
   const upload = useAction(async (index: number, files: FileList | null) => {
     for (const file of Array.from(files ?? [])) {
@@ -301,7 +308,23 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
       </div>
       <ErrorBox error={save.error} />
       <Students productId={productId} t={t} />
-      {course.channel && <Strangers channel={course.channel} t={t} />}
+      {[
+        ...(course.channel ? [{ chat: course.channel, label: t("product.strangersChannel") }] : []),
+        ...(course.cohorts ?? []).flatMap((c) =>
+          c.chat ? [{ chat: c.chat, label: t("product.strangersChat", { cohort: c.title }) }] : [],
+        ),
+      ]
+        .filter((x, i, all) => all.findIndex((y) => y.chat === x.chat) === i)
+        .map((x) => (
+          <Strangers
+            key={x.chat}
+            channel={x.chat}
+            label={x.label}
+            list={strangers}
+            reload={loadStrangers}
+            t={t}
+          />
+        ))}
     </Card>
   );
 }
@@ -637,23 +660,30 @@ function Students({ productId, t }: { productId: string; t: AdminT }) {
  * «В канале без доступа»: бот видел их вступившими, а действующей покупки
  * нет. Telegram не отдаёт полный список участников — только тех, кого увидел бот.
  */
-function Strangers({ channel, t }: { channel: string; t: AdminT }) {
-  const [list, setList] = useState<Awaited<ReturnType<typeof channelStrangersFn>> | null>(null);
-  const load = () => channelStrangersFn().then(setList, () => setList(null));
-  useEffect(() => {
-    void load();
-  }, [channel]);
+function Strangers({
+  channel,
+  label,
+  list,
+  reload,
+  t,
+}: {
+  channel: string;
+  label: string;
+  list: Awaited<ReturnType<typeof channelStrangersFn>> | null;
+  reload: () => Promise<unknown>;
+  t: AdminT;
+}) {
   const kick = useAction(async (userId: number) => {
     if (!window.confirm(t("product.strangerKickConfirm"))) return;
     const r = await kickChannelStrangerFn({ data: { channel, userId } });
     if (!r.kicked) throw new Error(t("product.strangerKickFailed"));
-    await load();
+    await reload();
   });
   const mine = (list ?? []).filter((x) => x.channel === channel);
   return (
     <div className="mt-5 border-t border-line pt-4">
       <h3 className="mb-1 text-sm font-medium">
-        {t("product.strangers")} · {mine.length}
+        {t("product.strangers")} · {label} ({channel}) · {mine.length}
       </h3>
       <p className="mb-2 text-xs text-muted">{t("product.strangersHint")}</p>
       {mine.length > 0 && (

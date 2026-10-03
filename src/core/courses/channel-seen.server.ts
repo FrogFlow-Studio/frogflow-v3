@@ -6,11 +6,12 @@ import { serverFailure } from "@/lib/server-failure";
 import { courseTimeline } from "./cohort";
 import { COURSE_KEY_PREFIX, courseKey, parseCourse } from "./course";
 import { readSettings, selectIn } from "./db.server";
-import { inviteKey, type ChannelAccess } from "./channel.server";
+import { CHANNEL_SLOT, CHAT_SLOT, type ChannelAccess } from "./channel.server";
 import { parseRun, runKey } from "./run.server";
 
 /**
- * Сверка «в канале, но без доступа» (ниша «Онлайн-школа»). Telegram не отдаёт
+ * Сверка «в канале, но без доступа» (ниша «Онлайн-школа») — для канала курса
+ * и для групповых чатов потоков. Telegram не отдаёт
  * ботам список участников, поэтому знаем только тех, чьё вступление бот видел
  * (событие chat_member): по строке `course_seen_<канал>_<id>` на человека.
  * Вышел, исключён или стал администратором — строка удаляется. Тот, кого
@@ -26,8 +27,14 @@ const COURSE_KEY_RE = new RegExp(
   `^${COURSE_KEY_PREFIX}([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$`,
 );
 
-/** Настроенные каналы курсов магазина: канал → товары-курсы. */
-async function courseChannels(ctx: TenantContext): Promise<Map<string, string[]>> {
+/**
+ * Что охраняет чат: канал курса (cohortId = null) или групповой чат потока
+ * (тогда положено быть только ученикам этого потока).
+ */
+type Guard = { productId: string; cohortId: string | null };
+
+/** Настроенные чаты курсов магазина — каналы и чаты потоков: чат → что охраняет. */
+async function courseChannels(ctx: TenantContext): Promise<Map<string, Guard[]>> {
   const keys = await pageAll<{ key: string }>(
     (from, to) =>
       ctx.db
@@ -38,12 +45,16 @@ async function courseChannels(ctx: TenantContext): Promise<Map<string, string[]>
         .range(from, to),
     "курсы магазина",
   );
-  const out = new Map<string, string[]>();
+  const out = new Map<string, Guard[]>();
+  const add = (chat: string | null | undefined, g: Guard) => {
+    if (chat) out.set(chat, [...(out.get(chat) ?? []), g]);
+  };
   for (const k of keys) {
     const id = COURSE_KEY_RE.exec(k.key)?.[1];
     if (!id) continue;
-    const chat = parseCourse(await getSetting(ctx, k.key)).channel;
-    if (chat) out.set(chat, [...(out.get(chat) ?? []), id]);
+    const course = parseCourse(await getSetting(ctx, k.key));
+    add(course.channel, { productId: id, cohortId: null });
+    for (const c of course.cohorts ?? []) add(c.chat, { productId: id, cohortId: c.id });
   }
   return out;
 }
@@ -96,14 +107,18 @@ export type ChannelStranger = {
   joinedAt: string;
 };
 
-/** Кому в канале курса положено быть: купил, заказ выдан, доступ не снят и не кончился. */
+/**
+ * Кому в канале или чате потока положено быть: купил, заказ выдан, доступ не
+ * снят и не кончился (для чата потока — и покупка в этом потоке).
+ */
 async function authorizedMembers(
   ctx: TenantContext,
-  productIds: readonly string[],
+  guards: readonly Guard[],
   now: Date,
 ): Promise<Set<number>> {
   const ok = new Set<number>();
-  for (const productId of productIds) {
+  for (const { productId, cohortId } of guards) {
+    const slot = cohortId ? CHAT_SLOT : CHANNEL_SLOT;
     const course = parseCourse(await getSetting(ctx, courseKey(productId)));
     const items = await pageAll<{
       id: string;
@@ -143,13 +158,13 @@ async function authorizedMembers(
     );
     const invs = await readSettings(
       ctx,
-      bought.map((i) => inviteKey(i.id)),
+      bought.map((i) => slot.key(i.id)),
     );
     for (const i of bought) {
       const o = orderById.get(i.order_id)!;
       let inv: { member?: number; revoked?: string } = {};
       try {
-        inv = JSON.parse(invs.get(inviteKey(i.id)) ?? "{}") as typeof inv;
+        inv = JSON.parse(invs.get(slot.key(i.id)) ?? "{}") as typeof inv;
       } catch {
         /* битая запись — как нет */
       }
@@ -165,6 +180,7 @@ async function authorizedMembers(
         now,
       );
       if (tl.expired || !tl.tariff.channel) continue;
+      if (cohortId && tl.cohort?.id !== cohortId) continue;
       if (inv.member) ok.add(inv.member);
       if (o.platform === "telegram" && Number(o.telegram_id) > 0) ok.add(Number(o.telegram_id));
     }
@@ -178,7 +194,7 @@ export async function channelStrangers(
   now = new Date(),
 ): Promise<ChannelStranger[]> {
   const out: ChannelStranger[] = [];
-  for (const [channel, productIds] of await courseChannels(ctx)) {
+  for (const [channel, guards] of await courseChannels(ctx)) {
     const prefix = seenPrefix(channel);
     const seen = await pageAll<{ key: string; value: string | null }>(
       (from, to) =>
@@ -191,7 +207,7 @@ export async function channelStrangers(
       "вступившие в канал",
     );
     if (!seen.length) continue;
-    const allowed = await authorizedMembers(ctx, productIds, now);
+    const allowed = await authorizedMembers(ctx, guards, now);
     for (const row of seen) {
       const userId = Number(row.key.slice(prefix.length));
       if (!Number.isSafeInteger(userId) || userId <= 0 || allowed.has(userId)) continue;

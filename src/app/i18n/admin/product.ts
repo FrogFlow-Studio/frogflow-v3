@@ -94,11 +94,13 @@ export const ru = {
     "Исключить ученика из закрытого канала курса? Новую ссылку по этой покупке он не получит.",
   "product.studentRevoked": "канал закрыт",
   "product.strangers": "В канале без доступа",
+  "product.strangersChannel": "Канал курса",
+  "product.strangersChat": "Чат потока «{cohort}»",
   "product.strangersHint":
-    "Список тех, кого бот видел вступившими в канал, у кого нет действующей покупки (не куплено, возврат, срок вышел). Telegram не отдаёт ботам полный список участников, поэтому вступивших до подключения бота здесь нет. Администраторов канала список не показывает.",
+    "Список тех, кого бот видел вступившими в канал или в чат потока, у кого нет действующей покупки (не куплено, возврат, срок вышел). Telegram не отдаёт ботам полный список участников, поэтому вступивших до подключения бота здесь нет. Администраторов список не показывает.",
   "product.strangerNoName": "Без имени",
   "product.strangerKick": "Исключить",
-  "product.strangerKickConfirm": "Исключить человека из закрытого канала курса?",
+  "product.strangerKickConfirm": "Исключить человека из закрытого канала или чата потока?",
   "product.strangerKickFailed":
     "Не удалось исключить: проверьте, что бот — администратор канала с правом блокировать участников, или что покупка не появилась.",
   "product.courseStudents": "Ученики",
@@ -246,11 +248,13 @@ export const kk: SectionDict<typeof ru> = {
     "Оқушыны курстың жабық арнасынан шығару керек пе? Осы сатып алу бойынша жаңа сілтеме алмайды.",
   "product.studentRevoked": "арна жабық",
   "product.strangers": "Арнада, бірақ қолжетімділіксіз",
+  "product.strangersChannel": "Курс арнасы",
+  "product.strangersChat": "«{cohort}» ағыны чаты",
   "product.strangersHint":
-    "Бот арнаға кірді деп көрген, бірақ жарамды сатып алуы жоқ адамдар (сатып алмаған, қайтарылған, мерзімі өткен). Telegram боттарға қатысушылардың толық тізімін бермейді, сондықтан бот қосылғанға дейін кіргендер мұнда жоқ. Арна әкімшілері тізімде көрсетілмейді.",
+    "Бот арнаға немесе ағын чатына кірді деп көрген, бірақ жарамды сатып алуы жоқ адамдар (сатып алмаған, қайтарылған, мерзімі өткен). Telegram боттарға қатысушылардың толық тізімін бермейді, сондықтан бот қосылғанға дейін кіргендер мұнда жоқ. Арна әкімшілері тізімде көрсетілмейді.",
   "product.strangerNoName": "Атаусыз",
   "product.strangerKick": "Шығару",
-  "product.strangerKickConfirm": "Адамды курстың жабық арнасынан шығару керек пе?",
+  "product.strangerKickConfirm": "Адамды жабық арнадан немесе ағын чатынан шығару керек пе?",
   "product.strangerKickFailed":
     "Шығару мүмкін болмады: бот арнада қатысушыларды бұғаттау құқығымен әкімші екенін немесе сатып алу пайда болмағанын тексеріңіз.",
   "product.courseStudents": "Оқушылар",
@@ -400,11 +404,13 @@ export const en: SectionDict<typeof ru> = {
     "Remove the student from the private course channel? They won’t get a new link for this purchase.",
   "product.studentRevoked": "channel closed",
   "product.strangers": "In the channel without access",
+  "product.strangersChannel": "Course channel",
+  "product.strangersChat": "Cohort chat “{cohort}”",
   "product.strangersHint":
-    "People the bot saw join the channel who have no valid purchase (never bought, refunded, access expired). Telegram doesn’t give bots the full member list, so anyone who joined before the bot was connected is not shown. Channel admins are not listed.",
+    "People the bot saw join the channel or a cohort chat who have no valid purchase (never bought, refunded, access expired). Telegram doesn’t give bots the full member list, so anyone who joined before the bot was connected is not shown. Channel admins are not listed.",
   "product.strangerNoName": "No name",
   "product.strangerKick": "Remove",
-  "product.strangerKickConfirm": "Remove this person from the private course channel?",
+  "product.strangerKickConfirm": "Remove this person from the private channel or cohort chat?",
   "product.strangerKickFailed":
     "Couldn’t remove: check that the bot is a channel admin allowed to ban members, or that a purchase hasn’t just appeared.",
   "product.courseStudents": "Students",
@@ -551,11 +557,13 @@ export const uz: SectionDict<typeof ru> = {
     "O‘quvchini kursning yopiq kanalidan chiqarasizmi? Bu xarid bo‘yicha yangi havola olmaydi.",
   "product.studentRevoked": "kanal yopilgan",
   "product.strangers": "Kanalda, lekin ruxsatsiz",
+  "product.strangersChannel": "Kurs kanali",
+  "product.strangersChat": "«{cohort}» oqimi chati",
   "product.strangersHint":
-    "Bot kanalga qo‘shilganini ko‘rgan, ammo amaldagi xaridi yo‘q odamlar (sotib olmagan, pul qaytarilgan, muddati tugagan). Telegram botlarga a’zolarning to‘liq ro‘yxatini bermaydi, shuning uchun bot ulanishidan oldin qo‘shilganlar bu yerda ko‘rinmaydi. Kanal administratorlari ro‘yxatda ko‘rsatilmaydi.",
+    "Bot kanalga yoki oqim chatiga qo‘shilganini ko‘rgan, ammo amaldagi xaridi yo‘q odamlar (sotib olmagan, pul qaytarilgan, muddati tugagan). Telegram botlarga a’zolarning to‘liq ro‘yxatini bermaydi, shuning uchun bot ulanishidan oldin qo‘shilganlar bu yerda ko‘rinmaydi. Kanal administratorlari ro‘yxatda ko‘rsatilmaydi.",
   "product.strangerNoName": "Ismsiz",
   "product.strangerKick": "Chiqarish",
-  "product.strangerKickConfirm": "Odamni kursning yopiq kanalidan chiqarasizmi?",
+  "product.strangerKickConfirm": "Odamni yopiq kanal yoki oqim chatidan chiqarasizmi?",
   "product.strangerKickFailed":
     "Chiqarib bo‘lmadi: bot kanalda a’zolarni bloklash huquqiga ega administrator ekanini yoki xarid hozirgina paydo bo‘lmaganini tekshiring.",
   "product.courseStudents": "Oʻquvchilar",
