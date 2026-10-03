@@ -120,3 +120,24 @@ describe("message.failed: WhatsApp не доставил после ответа
     expect(failedReason(null)).toBe("WhatsApp не доставил сообщение");
   });
 });
+
+describe("message.failed: заказ покупателя не теряется среди многих", () => {
+  it("нужный заказ — двадцать пятый за окно: продавцу всё равно пишем", async () => {
+    const { ctx, db } = setup();
+    const now = Date.now();
+    db.tables.orders = Array.from({ length: 25 }, (_, i) => ({
+      id: 100 + i,
+      bot_id: BOT,
+      telegram_id: -501,
+      status: "delivered",
+      display_no: 2000 + i,
+      order_no: i,
+      created_at: new Date(now - (i + 1) * 60_000).toISOString(),
+    }));
+    // нужная позиция — только в самом старом (двадцать пятом) заказе
+    db.tables.order_items = [{ id: 1, bot_id: BOT, order_id: 124, name_snapshot: "Курс «Пазлы»" }];
+    await handleMessageFailed(ctx, failed("📁 Курс «Пазлы»\nhttps://files.test/a.pdf"));
+    expect(admin).toHaveLength(1);
+    expect(admin[0]!.text).toContain("Заказ #2024");
+  });
+});

@@ -1,3 +1,4 @@
+import { pageAll } from "@/core/db/page";
 import { env } from "@/config/env";
 import { signupOriginLabel, type SignupOrigin } from "@/core/signup/origin";
 import {
@@ -873,14 +874,23 @@ function planRequest(key: string): {
 
 /** Единая очередь «Заказать подключение» со всех клиентов, самая старая внизу. */
 export async function listModuleRequests(): Promise<ModuleRequestView[]> {
-  const { data, error } = await serviceDb()
-    .from("module_requests")
-    .select("id, bot_id, module_key, requested_at")
-    .eq("status", "pending")
-    .order("requested_at", { ascending: false })
-    .limit(200);
-  if (error) throw new Error(error.message);
-  if (!data?.length) return [];
+  const data = await pageAll<{
+    id: string;
+    bot_id: string;
+    module_key: string;
+    requested_at: string;
+  }>(
+    (from, to) =>
+      serviceDb()
+        .from("module_requests")
+        .select("id, bot_id, module_key, requested_at")
+        .eq("status", "pending")
+        .order("requested_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to),
+    "Заявки на подключение",
+  );
+  if (!data.length) return [];
   const tenants = await tenantDirectory(true);
   const byId = new Map(tenants.map((t) => [t.id, t]));
   return data

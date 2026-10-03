@@ -2,6 +2,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { customerFromRow, type Customer } from "@/core/customers/customers";
 import { escapeHtml } from "@/channels/telegram/copy";
 import { classifyZernioFailure, type ZernioFailure } from "./errors";
+import { pageAll } from "@/core/db/page";
 import { serverFailure } from "@/lib/server-failure";
 
 /**
@@ -59,28 +60,35 @@ async function customerOfConversation(
 /** Заказ покупателя с позицией «name» за последние дни — чьи материалы и не дошли. */
 async function deliveredOrderWith(ctx: TenantContext, telegramId: number, name: string) {
   const since = new Date(Date.now() - ORDER_LOOKBACK_DAYS * 86_400_000).toISOString();
-  const { data: orders, error: ordersErr } = await ctx.db
-    .from("orders")
-    .select("id, display_no, order_no")
-    .eq("telegram_id", telegramId)
-    .eq("status", "delivered")
-    .gte("created_at", since)
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(20);
-  if (ordersErr)
-    throw serverFailure(`[zernio] заказы покупателя не прочитаны: ${ordersErr.message}`);
-  if (!orders?.length) return null;
-  const { data: items, error: itemsErr } = await ctx.db
-    .from("order_items")
-    .select("order_id, name_snapshot")
-    .in(
-      "order_id",
-      orders.map((o) => o.id),
-    )
-    .eq("name_snapshot", name);
-  if (itemsErr) throw serverFailure(`[zernio] позиции заказов не прочитаны: ${itemsErr.message}`);
-  const ids = new Set((items ?? []).map((i) => i.order_id));
+  const orders = await pageAll<{ id: number; display_no: number | null; order_no: number | null }>(
+    (from, to) =>
+      ctx.db
+        .from("orders")
+        .select("id, display_no, order_no")
+        .eq("telegram_id", telegramId)
+        .eq("status", "delivered")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to),
+    "[zernio] заказы покупателя не прочитаны",
+    200,
+  );
+  if (!orders.length) return null;
+  const matched: Array<{ order_id: number }> = [];
+  for (let i = 0; i < orders.length; i += 200) {
+    const { data: items, error: itemsErr } = await ctx.db
+      .from("order_items")
+      .select("order_id, name_snapshot")
+      .in(
+        "order_id",
+        orders.slice(i, i + 200).map((o) => o.id),
+      )
+      .eq("name_snapshot", name);
+    if (itemsErr) throw serverFailure(`[zernio] позиции заказов не прочитаны: ${itemsErr.message}`);
+    matched.push(...((items ?? []) as Array<{ order_id: number }>));
+  }
+  const ids = new Set(matched.map((i) => i.order_id));
   return orders.find((o) => ids.has(o.id)) ?? null;
 }
 
