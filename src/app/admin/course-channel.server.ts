@@ -50,7 +50,7 @@ export async function revokeStudentChannel(
 ): Promise<{ kicked: boolean }> {
   const { data: item, error } = await ctx.db
     .from("order_items")
-    .select("id, order_id, product_id")
+    .select("id, order_id, product_id, product_variant_id")
     .eq("id", orderItemId)
     .maybeSingle();
   if (error) {
@@ -60,28 +60,42 @@ export async function revokeStudentChannel(
   if (!item?.product_id) return { kicked: false };
   const { getSetting } = await import("@/core/settings/settings");
   const { courseKey, parseCourse } = await import("@/core/courses/course");
-  const chat = parseCourse(await getSetting(ctx, courseKey(item.product_id))).channel;
-  if (!chat) return { kicked: false };
+  const course = parseCourse(await getSetting(ctx, courseKey(item.product_id)));
+  const { parseRun, runKey } = await import("@/core/courses/run.server");
+  const run = parseRun(await getSetting(ctx, runKey(item.id)));
   const { data: order } = await ctx.db
     .from("orders")
-    .select("platform, telegram_id")
+    .select("platform, telegram_id, created_at")
     .eq("id", item.order_id)
     .maybeSingle();
+  const { CHANNEL_SLOT, CHAT_SLOT, purchaseChat, revokeItemChannel } =
+    await import("@/core/courses/channel.server");
+  const chat = order
+    ? purchaseChat(ctx, {
+        course,
+        run,
+        boughtAt: order.created_at,
+        variantId: item.product_variant_id,
+      })
+    : null;
+  if (!course.channel && !chat) return { kicked: false };
   let token: string;
   try {
     token = ctx.secrets.telegramToken();
   } catch {
     return { kicked: false };
   }
-  const { revokeItemChannel } = await import("@/core/courses/channel.server");
   const { telegramChannelInviter } = await import("@/channels/telegram/courses");
-  const kicked = await revokeItemChannel(
-    ctx,
-    item.id,
-    chat,
-    order ?? { platform: null, telegram_id: null },
-    telegramChannelInviter(telegramApi(token, env().TELEGRAM_API_BASE)),
-  );
+  const access = telegramChannelInviter(telegramApi(token, env().TELEGRAM_API_BASE));
+  const who = order ?? { platform: null, telegram_id: null };
+  let kicked = false;
+  // Исключение из канала и из чата потока — одной кнопкой «Исключить».
+  for (const [target, slot] of [
+    [course.channel, CHANNEL_SLOT],
+    [chat, CHAT_SLOT],
+  ] as const)
+    if (target && (await revokeItemChannel(ctx, item.id, target, who, access, new Date(), slot)))
+      kicked = true;
   return { kicked };
 }
 

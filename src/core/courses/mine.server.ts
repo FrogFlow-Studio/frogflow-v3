@@ -38,6 +38,8 @@ export type MyCourse = {
   /** Проверка ДЗ входит в тариф. */
   canSubmit: boolean;
   channel: boolean;
+  /** У потока ученика есть групповой чат. */
+  chat: boolean;
   cohort: { title: string; start: string } | null;
   beforeStart: boolean;
   expiresAt: string | null;
@@ -99,6 +101,7 @@ export async function customerCourses(
         homework: [] as MyCourseHomework[],
         canSubmit: tl.tariff.homework,
         channel: Boolean(i.course.channel) && tl.tariff.channel && !tl.expired,
+        chat: Boolean(tl.cohort?.chat) && tl.tariff.channel && !tl.expired,
         cohort: tl.cohort ? { title: tl.cohort.title, start: tl.start } : null,
         beforeStart: tl.beforeStart,
         expiresAt: tl.expiresAt,

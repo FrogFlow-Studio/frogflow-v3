@@ -282,6 +282,7 @@ const ru = {
   "course.linkHint":
     "Ссылки на файлы действуют сутки — откройте страницу заново, чтобы получить новые.",
   "course.channel.join": "🔐 Вступить в закрытый канал курса",
+  "course.chat.join": "💬 Вступить в чат потока",
   "course.channel.hint": "Ссылка личная: на одного человека, действует сутки.",
   "course.channel.already": "Вы уже в канале курса — найдите его в списке чатов Telegram.",
   "course.channel.busy": "Ссылка уже готовится — попробуйте через минуту.",
@@ -600,6 +601,7 @@ const kk: Dict = {
   "course.linkHint":
     "Файл сілтемелері бір тәулік жұмыс істейді — жаңаларын алу үшін бетті қайта ашыңыз.",
   "course.channel.join": "🔐 Курстың жабық арнасына кіру",
+  "course.chat.join": "💬 Ағын чатына кіру",
   "course.channel.hint": "Сілтеме жеке: бір адамға, бір тәулік жарамды.",
   "course.channel.already": "Сіз курс арнасындасыз — оны Telegram чаттар тізімінен табыңыз.",
   "course.channel.busy": "Сілтеме дайындалып жатыр — бір минуттан соң қайталаңыз.",
@@ -911,6 +913,7 @@ const en: Dict = {
   "course.done": "✓ Completed",
   "course.linkHint": "File links work for one day — reopen the page to get new ones.",
   "course.channel.join": "🔐 Join the private course channel",
+  "course.chat.join": "💬 Join the cohort chat",
   "course.channel.hint": "The link is personal: for one person, valid for 24 hours.",
   "course.channel.already":
     "You are already in the course channel — find it in your Telegram chats.",
@@ -1226,6 +1229,7 @@ const uz: Dict = {
   "course.linkHint":
     "Fayl havolalari bir kun ishlaydi — yangilarini olish uchun sahifani qayta oching.",
   "course.channel.join": "🔐 Kursning yopiq kanaliga qo‘shilish",
+  "course.chat.join": "💬 Oqim chatiga qo‘shilish",
   "course.channel.hint": "Havola shaxsiy: bir kishi uchun, bir kun amal qiladi.",
   "course.channel.already":
     "Siz allaqachon kurs kanalidasiz — uni Telegram chatlari ro‘yxatidan toping.",

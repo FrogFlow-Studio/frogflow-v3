@@ -116,40 +116,46 @@ export const submitHomeworkFn = createServerFn({ method: "POST" })
     return { status: r.homework.status };
   });
 
-/** Личная ссылка в закрытый канал курса (core/courses/channel.server). */
+/** Личная ссылка в закрытый канал курса или чат потока (core/courses/channel.server). */
+async function inviteLink(d: z.infer<typeof input>, chat: boolean) {
+  const { ctx, p } = await purchase(d);
+  const { shownError } = await import("@/lib/shown-error");
+  const { storefrontT } = await import("@/app/i18n/storefront");
+  const t = storefrontT(ctx.tenant.settings.default_locale ?? "ru");
+  let token: string;
+  try {
+    token = ctx.secrets.telegramToken();
+  } catch {
+    throw shownError(t("course.channel.failed"));
+  }
+  const { env } = await import("@/config/env");
+  const { telegramApi } = await import("@/channels/telegram/api");
+  const { telegramChannelInviter } = await import("@/channels/telegram/courses");
+  const { courseChannelInvite, courseChatInvite } = await import("@/core/courses/channel.server");
+  const access = telegramChannelInviter(telegramApi(token, env().TELEGRAM_API_BASE));
+  const r = chat
+    ? await courseChatInvite(ctx, p, access)
+    : await courseChannelInvite(ctx, p, access);
+  if (r.ok) return { link: r.link };
+  throw shownError(
+    t(
+      r.reason === "busy"
+        ? "course.channel.busy"
+        : r.reason === "alreadyMember"
+          ? "course.channel.already"
+          : "course.channel.failed",
+    ),
+  );
+}
+
 export const courseChannelInviteFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => input.parse(d))
-  .handler(async ({ data }) => {
-    const { ctx, p } = await purchase(data);
-    const { shownError } = await import("@/lib/shown-error");
-    const { storefrontT } = await import("@/app/i18n/storefront");
-    const t = storefrontT(ctx.tenant.settings.default_locale ?? "ru");
-    let token: string;
-    try {
-      token = ctx.secrets.telegramToken();
-    } catch {
-      throw shownError(t("course.channel.failed"));
-    }
-    const { env } = await import("@/config/env");
-    const { telegramApi } = await import("@/channels/telegram/api");
-    const { telegramChannelInviter } = await import("@/channels/telegram/courses");
-    const { courseChannelInvite } = await import("@/core/courses/channel.server");
-    const r = await courseChannelInvite(
-      ctx,
-      p,
-      telegramChannelInviter(telegramApi(token, env().TELEGRAM_API_BASE)),
-    );
-    if (r.ok) return { link: r.link };
-    throw shownError(
-      t(
-        r.reason === "busy"
-          ? "course.channel.busy"
-          : r.reason === "alreadyMember"
-            ? "course.channel.already"
-            : "course.channel.failed",
-      ),
-    );
-  });
+  .handler(({ data }) => inviteLink(data, false));
+
+/** Личная ссылка в групповой чат потока ученика. */
+export const courseChatInviteFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => input.parse(d))
+  .handler(({ data }) => inviteLink(data, true));
 
 async function homeworkError(
   ctx: import("@/core/tenant/resolve.server").TenantContext,

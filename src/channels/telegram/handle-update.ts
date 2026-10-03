@@ -2419,7 +2419,8 @@ async function handleCallback(
     const { showLessonList, showLesson } = await import("./courses");
     return data.startsWith("lsl:") ? showLessonList(b, data) : showLesson(b, data);
   }
-  if (data.startsWith("cinv:") && ctx.tenant.modules.courses) return sendChannelInvite(b, data);
+  if ((data.startsWith("cinv:") || data.startsWith("cchat:")) && ctx.tenant.modules.courses)
+    return sendChannelInvite(b, data);
   if (data.startsWith("reorder:")) {
     const order = await getOrder(ctx, Number(data.slice(8)));
     if (!order || order.telegram_id !== customer.telegramId) return;

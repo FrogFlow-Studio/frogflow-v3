@@ -112,6 +112,7 @@ export async function saveCourse(
             title: c.title.trim(),
             start: c.start,
             enrollUntil: c.enrollUntil || null,
+            ...(c.chat?.trim() ? { chat: c.chat.trim() } : {}),
           })),
         }
       : {}),

@@ -2,7 +2,7 @@ import { env } from "@/config/env";
 import { updateSettingAtomic } from "@/core/settings/settings";
 import { storefrontBase } from "@/core/tenant/custom-domain";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { revokeItemChannel, type ChannelAccess } from "./channel.server";
+import { CHAT_SLOT, revokeItemChannel, type ChannelAccess } from "./channel.server";
 import { courseTimeline } from "./cohort";
 import { readSettings } from "./db.server";
 import { hwKey, parseHomework } from "./homework";
@@ -157,12 +157,15 @@ export async function courseReminders(
     }
 
     // Конец доступа по тарифу: закрытый канал — только пока доступ открыт.
-    if (tl.expired && r.course.channel && access && !r.run.accessEnded) {
+    const chat = tl.cohort?.chat ?? null;
+    if (tl.expired && (r.course.channel || chat) && access && !r.run.accessEnded) {
       const ok = await mark(r.itemId, (cur) =>
         cur.accessEnded ? null : { ...cur, accessEnded: now.toISOString() },
       );
       if (ok) {
-        await revokeItemChannel(ctx, r.itemId, r.course.channel, r.order, access, now);
+        if (r.course.channel)
+          await revokeItemChannel(ctx, r.itemId, r.course.channel, r.order, access, now);
+        if (chat) await revokeItemChannel(ctx, r.itemId, chat, r.order, access, now, CHAT_SLOT);
         out.accessEnded++;
       }
     }

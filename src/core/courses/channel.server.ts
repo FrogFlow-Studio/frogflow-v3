@@ -4,7 +4,7 @@ import { getSetting, trySetSetting, updateSettingAtomic } from "@/core/settings/
 import { courseTimeline } from "./cohort";
 import { courseKey, parseCourse } from "./course";
 import { selectIn } from "./db.server";
-import type { CoursePurchase } from "./run.server";
+import { parseRun, runKey, type CoursePurchase } from "./run.server";
 
 /**
  * Доступ в закрытый канал курса (ниша «Онлайн-школа»): ученик получает
@@ -24,8 +24,20 @@ export const INVITE_KEY_PREFIX = "course_inv_";
 export const inviteKey = (orderItemId: string) => `${INVITE_KEY_PREFIX}${orderItemId}`;
 /** Ссылка → позиция заказа: по ней событие вступления находит покупку. */
 export const INVITE_LINK_PREFIX = "course_invlink_";
-const linkKey = (link: string) =>
-  `${INVITE_LINK_PREFIX}${createHash("sha256").update(link).digest("hex").slice(0, 24)}`;
+const linkKey = (link: string, prefix = INVITE_LINK_PREFIX) =>
+  `${prefix}${createHash("sha256").update(link).digest("hex").slice(0, 24)}`;
+
+/**
+ * Куда пускаем: закрытый канал курса или групповой чат потока. Устроены
+ * одинаково (личная ссылка на покупку, «вступил», «снято»), записи — свои.
+ */
+export type Slot = { key: (orderItemId: string) => string; linkPrefix: string };
+export const CHANNEL_SLOT: Slot = { key: inviteKey, linkPrefix: INVITE_LINK_PREFIX };
+export const CHAT_KEY_PREFIX = "course_invg_";
+export const CHAT_SLOT: Slot = {
+  key: (id) => `${CHAT_KEY_PREFIX}${id}`,
+  linkPrefix: "course_invglink_",
+};
 
 /** Сколько живёт приглашение. */
 export const INVITE_TTL_S = 24 * 3600;
@@ -84,12 +96,41 @@ export async function courseChannelInvite(
   access: ChannelAccess,
   now = new Date(),
 ): Promise<InviteResult> {
-  const chat = p.course.channel;
+  return invite(ctx, p, access, now, CHANNEL_SLOT, p.course.channel);
+}
+
+/** Чат потока этой покупки (поток ученика → его группа); нет потока или чата — null. */
+export function purchaseChat(
+  ctx: TenantContext,
+  p: Pick<CoursePurchase, "course" | "run" | "boughtAt" | "variantId">,
+  now = new Date(),
+): string | null {
+  return courseTimeline(p, ctx.timezone, now).cohort?.chat ?? null;
+}
+
+/** Личная ссылка в групповой чат потока ученика — по тем же правилам, что в канал. */
+export async function courseChatInvite(
+  ctx: TenantContext,
+  p: CoursePurchase,
+  access: ChannelAccess,
+  now = new Date(),
+): Promise<InviteResult> {
+  return invite(ctx, p, access, now, CHAT_SLOT, purchaseChat(ctx, p, now));
+}
+
+async function invite(
+  ctx: TenantContext,
+  p: CoursePurchase,
+  access: ChannelAccess,
+  now: Date,
+  slot: Slot,
+  chat: string | null | undefined,
+): Promise<InviteResult> {
   if (!chat) return { ok: false, reason: "noChannel" };
   // Канал не входит в тариф или доступ закончился — приглашения нет.
   const tl = courseTimeline(p, ctx.timezone, now);
   if (!tl.tariff.channel || tl.expired) return { ok: false, reason: "noChannel" };
-  const key = inviteKey(p.orderItemId);
+  const key = slot.key(p.orderItemId);
   const t = now.getTime();
 
   // Уже вступил и всё ещё в канале — вторая ссылка ему не нужна (а другу не положена).
@@ -132,7 +173,7 @@ export async function courseChannelInvite(
 
   const exp = Math.floor(t / 1000) + INVITE_TTL_S;
   const link = await access.createInvite(chat, `#${p.orderId} ${p.name}`.slice(0, 32), exp);
-  if (link) await trySetSetting(ctx, linkKey(link), p.orderItemId);
+  if (link) await trySetSetting(ctx, linkKey(link, slot.linkPrefix), p.orderItemId);
   // Итог — поверх своей брони (условие — сама бронь, короткая строка). Сбой
   // Telegram снимает бронь: следующая попытка выпустит ссылку заново.
   const claimed = JSON.parse(claim) as InviteRecord;
@@ -157,14 +198,17 @@ export async function recordChannelJoin(
   link: string,
   userId: number,
 ): Promise<boolean> {
-  const itemId = await getSetting(ctx, linkKey(link));
-  if (!itemId) return false;
-  await updateSettingAtomic(ctx, inviteKey(itemId), (raw) => {
-    const cur = parseInvite(raw);
-    if (cur.member === userId) return null;
-    return JSON.stringify({ ...cur, member: userId });
-  });
-  return true;
+  for (const slot of [CHANNEL_SLOT, CHAT_SLOT]) {
+    const itemId = await getSetting(ctx, linkKey(link, slot.linkPrefix));
+    if (!itemId) continue;
+    await updateSettingAtomic(ctx, slot.key(itemId), (raw) => {
+      const cur = parseInvite(raw);
+      if (cur.member === userId) return null;
+      return JSON.stringify({ ...cur, member: userId });
+    });
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -199,26 +243,41 @@ async function revokeCourseChannelsDetailed(
   if (!ctx.tenant.modules.courses) return report;
   const { data: order, error } = await ctx.db
     .from("orders")
-    .select("id, platform, telegram_id")
+    .select("id, platform, telegram_id, created_at")
     .eq("id", orderId)
     .maybeSingle();
   if (error || !order) return report;
-  const items = await selectIn<{ id: string; product_id: string | null }>(
-    "позиции заказа",
-    [orderId],
-    (chunk) =>
-      ctx.db
-        .from("order_items")
-        .select("id, product_id")
-        .in("order_id", chunk as number[]),
+  const items = await selectIn<{
+    id: string;
+    product_id: string | null;
+    product_variant_id: string | null;
+  }>("позиции заказа", [orderId], (chunk) =>
+    ctx.db
+      .from("order_items")
+      .select("id, product_id, product_variant_id")
+      .in("order_id", chunk as number[]),
   );
   for (const it of items) {
     if (!it.product_id) continue;
-    const chat = parseCourse(await getSetting(ctx, courseKey(it.product_id))).channel;
-    if (!chat) continue;
-    const r = await revokeItemChannelDetailed(ctx, it.id, chat, order, access, now);
-    if (r === "kicked") report.kicked++;
-    else if (r === "failed") report.failed++;
+    const course = parseCourse(await getSetting(ctx, courseKey(it.product_id)));
+    const run = parseRun(await getSetting(ctx, runKey(it.id)));
+    const targets: Array<[string | null | undefined, Slot]> = [
+      [course.channel, CHANNEL_SLOT],
+      [
+        purchaseChat(
+          ctx,
+          { course, run, boughtAt: order.created_at, variantId: it.product_variant_id },
+          now,
+        ),
+        CHAT_SLOT,
+      ],
+    ];
+    for (const [chat, slot] of targets) {
+      if (!chat) continue;
+      const r = await revokeItemChannelDetailed(ctx, it.id, chat, order, access, now, slot);
+      if (r === "kicked") report.kicked++;
+      else if (r === "failed") report.failed++;
+    }
   }
   return report;
 }
@@ -264,8 +323,11 @@ export async function revokeItemChannel(
   order: { platform: string | null; telegram_id: number | null },
   access: ChannelAccess,
   now = new Date(),
+  slot: Slot = CHANNEL_SLOT,
 ): Promise<boolean> {
-  return (await revokeItemChannelDetailed(ctx, orderItemId, chat, order, access, now)) === "kicked";
+  return (
+    (await revokeItemChannelDetailed(ctx, orderItemId, chat, order, access, now, slot)) === "kicked"
+  );
 }
 
 async function revokeItemChannelDetailed(
@@ -275,9 +337,10 @@ async function revokeItemChannelDetailed(
   order: { platform: string | null; telegram_id: number | null },
   access: ChannelAccess,
   now: Date,
+  slot: Slot = CHANNEL_SLOT,
 ): Promise<"kicked" | "none" | "failed"> {
   let rec: InviteRecord = {};
-  const mark = await updateSettingAtomic(ctx, inviteKey(orderItemId), (raw) => {
+  const mark = await updateSettingAtomic(ctx, slot.key(orderItemId), (raw) => {
     rec = parseInvite(raw);
     if (rec.revoked) return null;
     const { pending: _pending, ...rest } = rec;

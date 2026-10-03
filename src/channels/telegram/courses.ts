@@ -58,6 +58,10 @@ type Copy = {
   inviteBusy: string;
   inviteAlready: string;
   inviteFailed: string;
+  chatBtn: string;
+  chatReady: string;
+  chatAlready: string;
+  chatFailed: string;
 };
 
 const COPY: Record<Locale, Copy> = {
@@ -100,6 +104,10 @@ const COPY: Record<Locale, Copy> = {
     inviteBusy: "Ссылка уже готовится — нажмите ещё раз через минуту.",
     inviteAlready: "Вы уже в канале курса — найдите его в списке чатов Telegram.",
     inviteFailed: "Не получилось создать ссылку в канал. Напишите преподавателю.",
+    chatBtn: "💬 Вступить в чат потока",
+    chatReady: "💬 Ваша личная ссылка в чат вашего потока — на одного человека, действует сутки:",
+    chatAlready: "Вы уже в чате потока — найдите его в списке чатов Telegram.",
+    chatFailed: "Не получилось создать ссылку в чат потока. Напишите преподавателю.",
   },
   kk: {
     empty: "Сізде әзірге курс жоқ.",
@@ -140,6 +148,10 @@ const COPY: Record<Locale, Copy> = {
     inviteBusy: "Сілтеме дайындалып жатыр — бір минуттан соң қайта басыңыз.",
     inviteAlready: "Сіз курс арнасындасыз — оны Telegram чаттар тізімінен табыңыз.",
     inviteFailed: "Арнаға сілтеме жасау мүмкін болмады. Оқытушыға жазыңыз.",
+    chatBtn: "💬 Ағын чатына кіру",
+    chatReady: "💬 Ағыныңыздың чатына жеке сілтемеңіз — бір адамға, бір тәулік жарамды:",
+    chatAlready: "Сіз ағын чатындасыз — оны Telegram чаттар тізімінен табыңыз.",
+    chatFailed: "Ағын чатына сілтеме жасау мүмкін болмады. Оқытушыға жазыңыз.",
   },
   en: {
     empty: "You don't have any courses yet.",
@@ -181,6 +193,10 @@ const COPY: Record<Locale, Copy> = {
     inviteBusy: "The link is being prepared — tap again in a minute.",
     inviteAlready: "You are already in the course channel — find it in your Telegram chats.",
     inviteFailed: "Couldn't create a link to the channel. Please message the teacher.",
+    chatBtn: "💬 Join the cohort chat",
+    chatReady: "💬 Your personal link to your cohort’s chat — for one person, valid for 24 hours:",
+    chatAlready: "You are already in the cohort chat — find it in your Telegram chats.",
+    chatFailed: "Couldn’t create a link to the cohort chat. Please message the teacher.",
   },
   uz: {
     empty: "Sizda hozircha kurslar yo‘q.",
@@ -221,6 +237,10 @@ const COPY: Record<Locale, Copy> = {
     inviteBusy: "Havola tayyorlanmoqda — bir daqiqadan so‘ng yana bosing.",
     inviteAlready: "Siz allaqachon kurs kanalidasiz — uni Telegram chatlari ro‘yxatidan toping.",
     inviteFailed: "Kanalga havola yaratib bo‘lmadi. O‘qituvchiga yozing.",
+    chatBtn: "💬 Oqim chatiga qo‘shilish",
+    chatReady: "💬 Oqimingiz chatiga shaxsiy havolangiz — bir kishi uchun, bir kun amal qiladi:",
+    chatAlready: "Siz allaqachon oqim chatidasiz — uni Telegram chatlari ro‘yxatidan toping.",
+    chatFailed: "Oqim chatiga havola yaratib bo‘lmadi. O‘qituvchiga yozing.",
   },
 };
 
@@ -269,6 +289,7 @@ export async function showMyCourses(b: CourseBot): Promise<void> {
         { text: c.submitBtn(h.lessonNo), callback_data: `hw:${k.orderItemId}:${h.lessonNo}` },
       ]);
     if (k.channel) rows.push([{ text: c.channelBtn, callback_data: `cinv:${k.orderItemId}` }]);
+    if (k.chat) rows.push([{ text: c.chatBtn, callback_data: `cchat:${k.orderItemId}` }]);
     await send(b, lines.join("\n"), rows.length ? { reply_markup: { inline_keyboard: rows } } : {});
   }
 }
@@ -463,25 +484,29 @@ export function telegramChannelInviter(api: TelegramApi): ChannelInviter {
 }
 
 export async function sendChannelInvite(b: CourseBot, data: string): Promise<void> {
+  const chat = data.startsWith("cchat:");
   const c = COPY[b.locale];
-  const p = await ownPurchase(b, data.slice("cinv:".length));
+  const p = await ownPurchase(b, data.slice((chat ? "cchat:" : "cinv:").length));
   if (!p) return;
-  const { courseChannelInvite } = await import("@/core/courses/channel.server");
-  const r = await courseChannelInvite(b.ctx, p, telegramChannelInviter(b.api));
+  const { courseChannelInvite, courseChatInvite } = await import("@/core/courses/channel.server");
+  const access = telegramChannelInviter(b.api);
+  const r = chat
+    ? await courseChatInvite(b.ctx, p, access)
+    : await courseChannelInvite(b.ctx, p, access);
   if (r.ok)
-    return send(b, c.inviteReady, {
+    return send(b, chat ? c.chatReady : c.inviteReady, {
       reply_markup: { inline_keyboard: [[{ text: c.inviteJoin, url: r.link }]] },
     });
   if (r.reason === "busy") return send(b, c.inviteBusy);
-  if (r.reason === "alreadyMember") return send(b, c.inviteAlready);
-  await send(b, c.inviteFailed);
+  if (r.reason === "alreadyMember") return send(b, chat ? c.chatAlready : c.inviteAlready);
+  await send(b, chat ? c.chatFailed : c.inviteFailed);
   if (r.reason === "failed") {
     // Чаще всего бот не администратор канала — продавцу есть что исправить.
     const { notifyAdminsHtml } = await import("./notify");
     await notifyAdminsHtml(
       b.ctx,
-      `⚠️ Ученик курса «${escapeHtml(p.name)}» не получил ссылку в канал курса. ` +
-        "Проверьте, что бот магазина — администратор канала с правом приглашать участников.",
+      `⚠️ Ученик курса «${escapeHtml(p.name)}» не получил ссылку в ${chat ? "чат потока" : "канал курса"}. ` +
+        "Проверьте, что бот магазина — администратор с правом приглашать участников.",
       { kind: "system" },
     ).catch(() => 0);
   }

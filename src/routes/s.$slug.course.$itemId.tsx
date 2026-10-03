@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
   courseChannelInviteFn,
+  courseChatInviteFn,
   courseViewFn,
   markLessonFn,
   submitHomeworkFn,
@@ -49,6 +50,10 @@ function CoursePage() {
   const opened = view.lessons.filter((l) => l.open).length;
   const invite = useAction(async () => {
     const r = await courseChannelInviteFn({ data: { slug, itemId, k } });
+    window.location.href = r.link;
+  });
+  const chatInvite = useAction(async () => {
+    const r = await courseChatInviteFn({ data: { slug, itemId, k } });
     window.location.href = r.link;
   });
   const autoJoin = useRef(false);
@@ -118,6 +123,20 @@ function CoursePage() {
           </button>
           <p className="text-xs text-muted">{t("course.channel.hint")}</p>
           <ErrorBox error={invite.error} />
+        </div>
+      )}
+      {view.chat && (
+        <div className="space-y-1">
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={chatInvite.busy}
+            onClick={() => void chatInvite.run().catch(() => {})}
+          >
+            {t("course.chat.join")}
+          </button>
+          <p className="text-xs text-muted">{t("course.channel.hint")}</p>
+          <ErrorBox error={chatInvite.error} />
         </div>
       )}
       <ErrorBox error={mark.error} />

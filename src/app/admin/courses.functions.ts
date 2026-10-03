@@ -62,6 +62,7 @@ const course = z.object({
         title: z.string().max(COHORT_TITLE_MAX),
         start: z.string().regex(LOCAL_START_RE),
         enrollUntil: z.string().regex(LOCAL_DAY_RE).nullable(),
+        chat: z.string().max(40).nullable().optional(),
       }),
     )
     .max(COHORTS_MAX)

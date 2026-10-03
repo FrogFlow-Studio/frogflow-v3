@@ -351,6 +351,18 @@ function CohortsField({
               onChange={(e) => edit(i, { enrollUntil: e.target.value || null })}
             />
           </label>
+          <label className="w-full text-xs">
+            {t("product.cohortChat")}
+            <input
+              id={`cohort-chat-${c.id}`}
+              className="input mt-1 block w-full"
+              placeholder="-1001234567890"
+              maxLength={40}
+              title={t("product.cohortChatHint")}
+              value={c.chat ?? ""}
+              onChange={(e) => edit(i, { chat: e.target.value.trim() || null })}
+            />
+          </label>
           <button
             type="button"
             className="btn-ghost"
@@ -381,6 +393,9 @@ function CohortsField({
         </button>
       )}
       <p className="text-xs text-muted">{t("product.courseCohortsHint")}</p>
+      {cohorts.some((c) => c.chat) && (
+        <p className="text-xs text-muted">{t("product.cohortChatHint")}</p>
+      )}
     </div>
   );
 }

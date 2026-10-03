@@ -26,6 +26,11 @@ export type Cohort = {
   start: string;
   /** Последний день набора (включительно) в поясе магазина; null — до старта. */
   enrollUntil: string | null;
+  /**
+   * Групповой чат потока в Telegram (id -100… или @имя): отдельная группа
+   * на поток, личные ссылки и исключение — как у канала курса.
+   */
+  chat?: string | null;
 };
 
 export type Tariff = {

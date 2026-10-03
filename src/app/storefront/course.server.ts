@@ -62,6 +62,8 @@ export type CourseView = {
   nextAt: string | null;
   /** У курса есть закрытый канал: ученик берёт личную ссылку кнопкой. */
   channel: boolean;
+  /** У потока ученика есть групповой чат: своя личная ссылка. */
+  chat: boolean;
   /** Поток: название и старт (ISO); null — курс без потоков. */
   cohort: { title: string; start: string } | null;
   beforeStart: boolean;
@@ -124,6 +126,7 @@ export async function courseView(
     lessons,
     doneCount: lessons.filter((l) => l.done).length,
     channel: Boolean(p.course.channel) && tl.tariff.channel && !tl.expired,
+    chat: Boolean(tl.cohort?.chat) && tl.tariff.channel && !tl.expired,
     nextAt: tl.expired ? null : (nextOpening(access)?.opensAt ?? null),
     cohort: tl.cohort ? { title: tl.cohort.title, start: tl.start } : null,
     beforeStart: tl.beforeStart,

@@ -167,6 +167,7 @@ function parseCohorts(v: unknown): Cohort[] {
       title: str(x.title, COHORT_TITLE_MAX),
       start,
       enrollUntil: LOCAL_DAY_RE.test(until) ? until : null,
+      ...(COURSE_CHANNEL_RE.test(str(x.chat, 40).trim()) ? { chat: str(x.chat, 40).trim() } : {}),
     });
     if (out.length >= COHORTS_MAX) break;
   }
@@ -229,7 +230,8 @@ export function courseProblem(tenantId: string, c: Course): CourseProblem | null
       !Number.isFinite(Date.parse(`${k.start}:00Z`)) ||
       (k.enrollUntil != null &&
         (!LOCAL_DAY_RE.test(k.enrollUntil) || !Number.isFinite(Date.parse(k.enrollUntil)))) ||
-      k.title.length > COHORT_TITLE_MAX;
+      k.title.length > COHORT_TITLE_MAX ||
+      Boolean(k.chat?.trim() && !COURSE_CHANNEL_RE.test(k.chat.trim()));
     if (bad) return { kind: "badCohort", cohort: i + 1 };
     cohortIds.add(k.id);
   }

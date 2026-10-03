@@ -115,6 +115,9 @@ export const ru = {
   "product.cohortTitle": "Название, например «Октябрь»",
   "product.cohortStart": "Старт",
   "product.cohortEnrollUntil": "Набор до (включительно, пусто — до старта)",
+  "product.cohortChat": "Чат потока (необязательно)",
+  "product.cohortChatHint":
+    "Группа Telegram для этого потока: бот магазина — администратор с правом приглашать, id -100… или @имя. Ученик потока получает личную ссылку на одного человека; при возврате денег и конце срока его исключают и из канала, и из чата.",
   "product.cohortAdd": "+ поток",
   "product.cohortDelete": "Удалить поток",
   "product.courseTariffs": "Тарифы",
@@ -264,6 +267,9 @@ export const kk: SectionDict<typeof ru> = {
   "product.cohortTitle": "Атауы, мысалы «Қазан»",
   "product.cohortStart": "Басталуы",
   "product.cohortEnrollUntil": "Қабылдау (қоса алғанда, бос — басталғанға дейін)",
+  "product.cohortChat": "Ағын чаты (міндетті емес)",
+  "product.cohortChatHint":
+    "Осы ағынға арналған Telegram тобы: дүкен боты — шақыру құқығы бар әкімші, id -100… немесе @аты. Ағын оқушысы бір адамға арналған жеке сілтеме алады; ақша қайтарылғанда және мерзім біткенде ол арнадан да, чаттан да шығарылады.",
   "product.cohortAdd": "+ ағын",
   "product.cohortDelete": "Ағынды жою",
   "product.courseTariffs": "Тарифтер",
@@ -415,6 +421,9 @@ export const en: SectionDict<typeof ru> = {
   "product.cohortTitle": "Name, e.g. “October”",
   "product.cohortStart": "Start",
   "product.cohortEnrollUntil": "Enrolment until (inclusive, empty — until start)",
+  "product.cohortChat": "Cohort chat (optional)",
+  "product.cohortChatHint":
+    "A Telegram group for this cohort: the shop bot is an admin allowed to invite, id -100… or @name. Cohort students get a personal single-use link; on a refund or when access ends they are removed from both the channel and the chat.",
   "product.cohortAdd": "+ cohort",
   "product.cohortDelete": "Delete cohort",
   "product.courseTariffs": "Plans",
@@ -563,6 +572,9 @@ export const uz: SectionDict<typeof ru> = {
   "product.cohortTitle": "Nomi, masalan «Oktyabr»",
   "product.cohortStart": "Boshlanishi",
   "product.cohortEnrollUntil": "Qabul (shu kun ham, bo‘sh — boshlangunga qadar)",
+  "product.cohortChat": "Oqim chati (ixtiyoriy)",
+  "product.cohortChatHint":
+    "Shu oqim uchun Telegram guruhi: do‘kon boti taklif qilish huquqiga ega administrator, id -100… yoki @nomi. Oqim o‘quvchisi bir kishilik shaxsiy havola oladi; pul qaytarilganda va muddat tugaganda u kanaldan ham, chatdan ham chiqariladi.",
   "product.cohortAdd": "+ oqim",
   "product.cohortDelete": "Oqimni o‘chirish",
   "product.courseTariffs": "Tariflar",
