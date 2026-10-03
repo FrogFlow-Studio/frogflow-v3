@@ -346,6 +346,17 @@ describe("консультант: ИИ-баланс клиента", () => {
   });
 });
 
+describe("консультант: сводка менеджеру на языке продавца", () => {
+  it("сбой учёта ИИ-баланса — сводка на языке админки", async () => {
+    const ctx = ctxOf();
+    const tables = (ctx.db as unknown as { tables: Record<string, unknown[]> }).tables;
+    tables.app_settings!.push({ bot_id: BOT, key: "admin_locale", value: "en" });
+    tables.app_settings!.push({ bot_id: BOT, key: "ai_balance", value: "испорчено" });
+    const r = await runConsultant(ctx, customer(), "Сколько стоит?", { platform: "instagram" });
+    expect(r?.handoff?.summary).toMatch(/AI balance accounting failed\. The customer wrote/);
+  });
+});
+
 describe("консультант: каталог знает предзаказ и акции", () => {
   const catalogOf = async (ctx: TenantContext) => {
     await runConsultant(ctx, customer(), "Есть ли X?", { platform: "instagram" });

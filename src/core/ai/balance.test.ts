@@ -147,6 +147,17 @@ describe("ИИ-баланс клиента", () => {
     expect(warnings()[1]).toContain("закончился");
   });
 
+  it("предупреждение продавцу — на языке его админки", async () => {
+    const { ctx, warnings, setBalance, db } = setup();
+    db.tables.app_settings!.push({ bot_id: BOT, key: "admin_locale", value: "kk" });
+    setBalance(1.05);
+    const a = await aiReserve(ctx, "consultant", 0.03);
+    await aiSettle(ctx, ok(a), 0.1);
+    expect(warnings()[0]).toContain("ЖИ-баланс таусылуға жақын");
+    expect(await aiReserve(ctx, "consultant", 5)).toBe("short");
+    expect(warnings()[1]).toContain("ЖИ-баланс таусылды");
+  });
+
   it("пополнение снимает предупреждения; снять больше остатка нельзя; журнал", async () => {
     const { ctx, balance, setBalance } = setup();
     setBalance(0.5);

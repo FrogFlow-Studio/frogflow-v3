@@ -4,6 +4,7 @@ import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { updateStateSection } from "@/core/customers/customers";
+import { handoffSummary, sellerLocaleSafe } from "@/core/ai/seller-text";
 import { offerForProductRow } from "@/core/offers/offers";
 import { activePreorder, preordersFor } from "@/core/preorder/preorder";
 import { buyerLocale, handoffReply, unavailableReply } from "./messages";
@@ -525,7 +526,7 @@ export async function runConsultant(
       handoff: {
         kind: "handoff",
         reason: "unknown_question",
-        summary: `ИИ-консультант: исчерпан лимит диалогов плана. Клиент написал: «${incoming.slice(0, 200)}»`,
+        summary: handoffSummary(await sellerLocaleSafe(ctx), "limit", incoming),
       },
       usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
     };
@@ -552,7 +553,7 @@ export async function runConsultant(
       handoff: {
         kind: "handoff",
         reason: "unknown_question",
-        summary: `Сбой чтения каталога. Клиент написал: «${incoming.slice(0, 200)}»`,
+        summary: handoffSummary(await sellerLocaleSafe(ctx), "catalog", incoming),
       },
       usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
     };
@@ -607,7 +608,7 @@ export async function runConsultant(
       handoff: {
         kind: "handoff",
         reason: "unknown_question",
-        summary: `Сбой учёта расхода консультанта. Клиент написал: «${incoming.slice(0, 200)}»`,
+        summary: handoffSummary(await sellerLocaleSafe(ctx), "accounting", incoming),
       },
       usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
     };
@@ -630,7 +631,7 @@ export async function runConsultant(
       handoff: {
         kind: "handoff",
         reason: "unknown_question",
-        summary: `Сбой учёта ИИ-баланса. Клиент написал: «${incoming.slice(0, 200)}»`,
+        summary: handoffSummary(await sellerLocaleSafe(ctx), "balance", incoming),
       },
       usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
     };
@@ -992,7 +993,7 @@ export async function runConsultant(
       handoff: {
         kind: "handoff",
         reason: "unknown_question",
-        summary: `Сбой консультанта. Клиент написал: «${incoming.slice(0, 200)}»`,
+        summary: handoffSummary(await sellerLocaleSafe(ctx), "failure", incoming),
       },
       usage: { inputTokens: 0, outputTokens: 0, usd: 0 },
     };

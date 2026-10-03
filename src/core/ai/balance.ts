@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { aiMarkupPercent } from "./markup";
 import { updateSettingAtomic } from "@/core/settings/settings";
+import { balanceWarning, sellerLocaleSafe } from "./seller-text";
 import { serverFailure } from "@/lib/server-failure";
 import {
   AI_START_USD,
@@ -301,10 +302,7 @@ export async function aiJournal(ctx: TenantContext, limit = 100): Promise<AiJour
 /* ── предупреждения продавцу ───────────────────────────────────────── */
 
 async function warnSeller(ctx: TenantContext, kind: "low" | "empty", usd: number) {
-  const text =
-    kind === "empty"
-      ? "🔴 <b>ИИ-баланс закончился.</b>\n\nИИ-консультант передаёт диалоги менеджеру, чеки проверяете вы. Пополните баланс в админке: «ИИ-баланс»."
-      : `🟡 <b>ИИ-баланс почти закончился:</b> осталось $${Math.max(0, usd).toFixed(2)}.\n\nПополните баланс в админке: «ИИ-баланс», чтобы ИИ не остановился.`;
+  const text = balanceWarning(await sellerLocaleSafe(ctx), kind, usd);
   try {
     const { adminRecipients } = await import("@/core/notify/recipients");
     const { enqueueOutbox } = await import("@/core/outbox/outbox");
