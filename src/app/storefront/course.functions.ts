@@ -107,6 +107,10 @@ export const submitQuizFn = createServerFn({ method: "POST" })
         ),
       );
     }
+    if (r.grade.passed) {
+      const { announceLessonNow } = await import("@/channels/telegram/lesson-opened");
+      await announceLessonNow(ctx, p.orderItemId);
+    }
     return {
       ...r.grade,
       attempts: r.result.attempts,

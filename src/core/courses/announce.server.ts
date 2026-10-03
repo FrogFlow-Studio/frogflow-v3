@@ -26,15 +26,36 @@ export type LessonAnnouncement = {
   url: string;
 };
 
+export type AnnounceSend = (a: LessonAnnouncement) => Promise<boolean>;
+
+/**
+ * Сразу после принятого ДЗ или пройденного теста (режим «по заданиям»):
+ * то же сообщение, что у крона, но по одной покупке, не дожидаясь часа.
+ * Отметка `notified` — та же условная запись: кто выиграл гонку (приём,
+ * крон, повтор события), тот и пишет; остальные молчат. Режим «по
+ * расписанию» не затрагивается: там уроки открывает время, и пишет крон.
+ */
+export async function announceOpenedLesson(
+  ctx: TenantContext,
+  orderItemId: string,
+  send: AnnounceSend,
+  now = new Date(),
+) {
+  return announceNewLessons(ctx, send, now, orderItemId);
+}
+
 export async function announceNewLessons(
   ctx: TenantContext,
-  send: (a: LessonAnnouncement) => Promise<boolean>,
+  send: AnnounceSend,
   now = new Date(),
+  onlyItemId?: string,
 ): Promise<{ sent: number; failed: number; silent: number } | { skipped: string }> {
   if (!ctx.tenant.modules.courses) return { skipped: "module off" };
   if (!ctx.tenant.settings.slug) return { skipped: "no storefront" };
   const out = { sent: 0, failed: 0, silent: 0 };
-  const runs = await loadRuns(ctx);
+  const runs = (await loadRuns(ctx, onlyItemId)).filter(
+    (r) => !onlyItemId || r.course.schedule.mode === "tasks",
+  );
   if (runs.length === 0) return out;
   const base = storefrontBase(ctx.tenant, ctx.appUrl);
 

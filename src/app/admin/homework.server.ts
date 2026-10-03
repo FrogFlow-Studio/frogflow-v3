@@ -123,6 +123,11 @@ export async function reviewAndNotify(
       notified = await notifyCustomer(ctx, order, text, { email: true }).catch(() => false);
     }
   }
+  // Принятая работа открыла следующий урок (режим «по заданиям»): одно сообщение.
+  if (hw.status === "accepted") {
+    const { announceLessonNow } = await import("@/channels/telegram/lesson-opened");
+    await announceLessonNow(ctx, hw.orderItemId);
+  }
   return { status: hw.status, notified };
 }
 

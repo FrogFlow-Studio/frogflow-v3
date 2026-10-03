@@ -11,7 +11,7 @@ vi.mock("@/core/db/client.server", () => ({
 const { reviewHomework, submitHomework } = await import("./homework.server");
 const { coursePurchase, markLesson, purchaseTimeline } = await import("./run.server");
 const { loadRuns } = await import("./runs.server");
-const { announceNewLessons } = await import("./announce.server");
+const { announceNewLessons, announceOpenedLesson } = await import("./announce.server");
 const { submitQuiz } = await import("./lesson-quiz.server");
 
 /** Расписание «по заданиям» (А24): следующий урок открывается после ДЗ предыдущего. */
@@ -217,6 +217,66 @@ describe("урок после ДЗ: крон «новый урок»", () => {
       expect(await announceNewLessons(ctx, send, NOW)).toMatchObject({ sent: 0 });
       expect(sent).toEqual([2]);
       expect((await loadRuns(ctx))[0]!.hw?.get(id(1))).toBe("accepted");
+    } finally {
+      setEnvForTests(undefined);
+    }
+  });
+});
+
+describe("урок после ДЗ: сразу, без часа ожидания", () => {
+  const setup = async (mode: "tasks" | "drip") => {
+    const c = course("accepted");
+    const { ctx, db } = shop(
+      mode === "tasks" ? c : { ...c, schedule: { mode: "drip", days: [0, 1, 2] } as never },
+    );
+    db.tables.app_settings!.push({
+      bot_id: T,
+      key: `course_run_${ITEM}`,
+      value: JSON.stringify({ startedAt: "2026-09-30T10:00:00Z", done: [], notified: 1 }),
+    });
+    (ctx as { appUrl?: string }).appUrl = "https://www.frogflow.tech";
+    (ctx.tenant as { settings: Record<string, unknown> }).settings = { slug: "school" };
+    return ctx;
+  };
+
+  it("два приёма подряд (повтор события) — одно сообщение, крон после них молчит", async () => {
+    const ctx = await setup("tasks");
+    const sent: number[] = [];
+    const send = async (a: { lessonNo: number }) => {
+      sent.push(a.lessonNo);
+      return true;
+    };
+    const { setEnvForTests } = await import("@/config/env");
+    setEnvForTests({});
+    try {
+      const first = await submit(ctx, id(1));
+      await review(ctx, id(1), first.ok ? first.homework.rev : -1, "accepted");
+      const [a, b] = await Promise.all([
+        announceOpenedLesson(ctx, ITEM, send, NOW),
+        announceOpenedLesson(ctx, ITEM, send, NOW),
+      ]);
+      expect(sent).toEqual([2]);
+      expect([a, b].filter((x) => "sent" in x && x.sent === 1)).toHaveLength(1);
+      expect(await announceNewLessons(ctx, send, NOW)).toMatchObject({ sent: 0 });
+      expect(sent).toEqual([2]);
+    } finally {
+      setEnvForTests(undefined);
+    }
+  });
+
+  it("курс «по расписанию» этим путём не объявляется — его ведёт крон", async () => {
+    const ctx = await setup("drip");
+    const sent: number[] = [];
+    const { setEnvForTests } = await import("@/config/env");
+    setEnvForTests({});
+    try {
+      await announceOpenedLesson(
+        ctx,
+        ITEM,
+        async (a) => (sent.push(a.lessonNo), true),
+        new Date("2026-10-03T10:00:00Z"),
+      );
+      expect(sent).toEqual([]);
     } finally {
       setEnvForTests(undefined);
     }

@@ -31,17 +31,17 @@ export type ActiveRun = {
   };
 };
 
-export async function loadRuns(ctx: TenantContext): Promise<ActiveRun[]> {
-  const rows = await pageAll<{ key: string; value: string | null }>(
-    (from, to) =>
-      ctx.db
-        .from("app_settings")
-        .select("key, value")
-        .like("key", `${RUN_KEY_PREFIX}%`)
-        .order("key")
-        .range(from, to),
-    "прохождения курсов",
-  );
+export async function loadRuns(ctx: TenantContext, onlyItemId?: string): Promise<ActiveRun[]> {
+  const rows = await pageAll<{ key: string; value: string | null }>((from, to) => {
+    const q = ctx.db.from("app_settings").select("key, value");
+    return (
+      onlyItemId
+        ? q.eq("key", `${RUN_KEY_PREFIX}${onlyItemId}`)
+        : q.like("key", `${RUN_KEY_PREFIX}%`)
+    )
+      .order("key")
+      .range(from, to);
+  }, "прохождения курсов");
   const runs = rows.flatMap((r) => {
     const run = r.key.startsWith(RUN_KEY_PREFIX) ? parseRun(r.value) : null;
     return run ? [{ itemId: r.key.slice(RUN_KEY_PREFIX.length), run }] : [];

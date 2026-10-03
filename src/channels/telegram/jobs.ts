@@ -375,15 +375,8 @@ export async function runCourseLessons(tenant: Tenant) {
   const { announceNewLessons } = await import("@/core/courses/announce.server");
   const tg = api(ctx);
   const m = COPY[ctx.tenant.settings.default_locale ?? "ru"] ?? COPY.ru;
-  const lessons = await announceNewLessons(ctx, async (a) => {
-    const r = await tg.call("sendMessage", {
-      chat_id: a.telegramId,
-      text: escapeHtml(m.courseNewLesson(a.lessonNo, a.title)),
-      parse_mode: "HTML",
-      reply_markup: { inline_keyboard: [[{ text: m.courseOpenBtn, url: a.url }]] },
-    });
-    return r.ok;
-  });
+  const { lessonAnnouncer } = await import("./lesson-opened");
+  const lessons = await announceNewLessons(ctx, lessonAnnouncer(ctx));
   // Напоминания до старта, о несданном задании и конец доступа к каналу.
   const { courseReminders } = await import("@/core/courses/reminders.server");
   const { telegramChannelInviter } = await import("./courses");

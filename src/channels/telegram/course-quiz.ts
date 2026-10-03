@@ -237,6 +237,10 @@ export async function answerQuiz(b: CourseBot, data: string, messageId?: number)
       : c.failed(r.grade.score, r.grade.total, found.quiz.pass),
   );
   if (r.certificate) await say(b, c.cert);
+  if (r.grade.passed) {
+    const { announceLessonNow } = await import("./lesson-opened");
+    await announceLessonNow(b.ctx, found.p.orderItemId);
+  }
 }
 
 export const quizButton = (b: CourseBot, itemId: string, no: number): InlineButton => ({
