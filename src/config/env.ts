@@ -173,6 +173,21 @@ export function env(): Env {
   return cached;
 }
 
+/**
+ * Имена переменных, у которых есть непустое значение (сами значения наружу не
+ * отдаём): для отчёта /api/health о том, что настроено. Не бросает, в отличие
+ * от env(): отчёт нужен именно тогда, когда чего-то не хватает.
+ */
+export function envPresence(): Set<string> {
+  const source: Record<string, unknown> =
+    (cached as Record<string, unknown> | undefined) ?? process.env;
+  return new Set(
+    Object.entries(source)
+      .filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== "")
+      .map(([k]) => k),
+  );
+}
+
 /** Только для тестов: подменить окружение. */
 export function setEnvForTests(values: Partial<Env> | undefined): void {
   cached = values ? (schema.parse({ ...testDefaults, ...values }) as Env) : undefined;
