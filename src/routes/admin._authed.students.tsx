@@ -3,6 +3,7 @@ import { useState } from "react";
 import { schoolStudentsFn } from "@/app/admin/courses.functions";
 import { Badge, Card, Empty, PageTitle } from "@/app/ui";
 import { adminT } from "@/app/i18n/admin";
+import { canEdit } from "@/core/auth/roles";
 
 /**
  * «Ученики» онлайн-школы: все ученики всех курсов — поток, тариф,
@@ -61,6 +62,14 @@ function StudentsPage() {
               />
               {t("product.studentBehindOnly")}
             </label>
+            {canEdit(shop.role) && (
+              <a
+                className="btn-secondary text-xs"
+                href={`/api/admin/export/students${course ? `?productId=${course}` : ""}`}
+              >
+                {t("common.downloadCsv")}
+              </a>
+            )}
           </div>
           <div className="space-y-4">
             {shown.map((c) => {
