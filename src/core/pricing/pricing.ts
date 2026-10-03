@@ -24,6 +24,8 @@ export type PricedProduct = {
   price: number | string;
   currency?: string | null;
   country_prices?: Json | null;
+  /** Категории товара — для акций на категорию (core/offers); нет — только акции на сам товар. */
+  category_ids?: Json | null;
 };
 
 type Methods = { currencies: Map<string, string>; defaultCode: string | null };
@@ -158,9 +160,12 @@ export async function resolvePrice(
 ): Promise<Money> {
   const money = await resolveListPrice(ctx, product, countryCode, variant);
   if (!ctx.tenant.modules.limited_offers || !product.id) return money;
-  const { applyOffer, offerForProduct } = await import("@/core/offers/offers");
-  const offer = await offerForProduct(ctx, product.id);
-  return offer ? { ...money, amount: applyOffer(money.amount, offer.percent) } : money;
+  const { applyOfferTo, offerForProduct, productCategoryIds } =
+    await import("@/core/offers/offers");
+  const offer = await offerForProduct(ctx, product.id, productCategoryIds(product));
+  return offer
+    ? { ...money, amount: applyOfferTo(money.amount, offer, Number(product.price) || 0) }
+    : money;
 }
 
 /** Цена без акций — по стране и курсу. */

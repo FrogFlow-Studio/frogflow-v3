@@ -1296,8 +1296,8 @@ async function sendProductCard(s: Shop, p: Product, force: boolean) {
   if (rating) text += `\n${plain(rating)}`;
   if (outOfStock) text += `\n${plain(s.m.outOfStockLabel)}`;
   else if (s.ctx.tenant.modules.limited_offers) {
-    const { offerForProduct, offerLabel } = await import("@/core/offers/offers");
-    const offer = await offerForProduct(s.ctx, p.id);
+    const { offerForProductRow, offerLabel } = await import("@/core/offers/offers");
+    const offer = await offerForProductRow(s.ctx, p);
     if (offer) text += `\n${offerLabel(offer, s.ctx.timezone, s.locale)}`;
   }
   buttons.push(BTN.cart(s.m));

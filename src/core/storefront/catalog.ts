@@ -14,7 +14,7 @@ import {
 } from "@/core/catalog/catalog";
 import { imagePath } from "@/core/catalog/image-url";
 import { resolveListPrice, resolvePrice } from "@/core/pricing/pricing";
-import { offerForProduct } from "@/core/offers/offers";
+import { offerForProductRow } from "@/core/offers/offers";
 import { productSellable } from "@/core/catalog/materials";
 import { getSettings } from "@/core/settings/settings";
 import { eachPage, pageAll } from "@/core/db/page";
@@ -160,7 +160,7 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
   const base = await resolvePrice(ctx, p, null);
   const min = priced.length ? priced.reduce((a, b) => (b.m.amount < a.m.amount ? b : a)) : null;
   // Цена выше уже со скидкой акции (resolvePrice); прежняя — без неё.
-  const offer = await offerForProduct(ctx, p.id);
+  const offer = await offerForProductRow(ctx, p);
   const oldOf = async (v: (typeof variants)[number] | null) =>
     offer ? (await resolveListPrice(ctx, p, null, v)).amount : null;
   const oldVariants = new Map(

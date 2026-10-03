@@ -12,7 +12,15 @@ import { serverFailure } from "@/lib/server-failure";
  */
 export type LimitedOffer = {
   id: string;
+  /** Товар акции; у акции на категорию — пустая строка (см. `category_id`). */
   product_id: string;
+  /** Акция на всю категорию: действует на товары, у которых она в `category_ids`. Лимит штук тут не ставится. */
+  category_id?: string;
+  /**
+   * Новая цена вместо процента (в валюте товара, только для акции на товар).
+   * `percent` при этом хранит эквивалентную скидку для бейджа и сортировки.
+   */
+  new_price?: number;
   percent: number;
   starts_at: string;
   ends_at: string;
@@ -34,6 +42,7 @@ export function parseOffers(raw: string | null | undefined): LimitedOffer[] {
         Boolean(o) &&
         typeof o === "object" &&
         typeof (o as LimitedOffer).product_id === "string" &&
+        ((o as LimitedOffer).product_id !== "" || Boolean((o as LimitedOffer).category_id)) &&
         Number((o as LimitedOffer).percent) > 0 &&
         Number((o as LimitedOffer).percent) < 100 &&
         !Number.isNaN(Date.parse((o as LimitedOffer).ends_at)),
@@ -51,10 +60,12 @@ export function activeOfferFor(
   productId: string,
   sold: ReadonlyMap<string, number>,
   now = new Date(),
+  categoryIds: readonly string[] = [],
 ): OfferState | null {
   let best: OfferState | null = null;
   for (const o of offers) {
-    if (o.product_id !== productId) continue;
+    const hits = o.category_id ? categoryIds.includes(o.category_id) : o.product_id === productId;
+    if (!hits) continue;
     const t = now.getTime();
     if (t < Date.parse(o.starts_at) || t >= Date.parse(o.ends_at)) continue;
     const s = sold.get(o.id) ?? 0;
@@ -69,6 +80,29 @@ export function applyOffer(amount: number, percent: number): number {
   return Math.max(0, Math.round((amount * (100 - percent)) / 100));
 }
 
+/**
+ * Цена по акции. Процентная — как `applyOffer`; «новая цена» — доля новой цены
+ * от основной цены товара, применённая к цене покупателя: она же верна для
+ * варианта и для другой валюты по курсу.
+ */
+export function applyOfferTo(
+  amount: number,
+  offer: Pick<LimitedOffer, "percent" | "new_price">,
+  productPrice: number,
+): number {
+  if (offer.new_price != null && productPrice > 0) {
+    const ratio = Math.min(1, Math.max(0, offer.new_price / productPrice));
+    return Math.max(0, Math.round(amount * ratio));
+  }
+  return applyOffer(amount, offer.percent);
+}
+
+/** Процент скидки, эквивалентный новой цене (1–99), для бейджа. */
+export function percentForNewPrice(newPrice: number, productPrice: number): number {
+  if (!(productPrice > 0) || !(newPrice >= 0) || newPrice >= productPrice) return 0;
+  return Math.min(99, Math.max(1, Math.round((1 - newPrice / productPrice) * 100)));
+}
+
 const cache = new Map<string, { ts: number; offers: LimitedOffer[]; sold: Map<string, number> }>();
 const TTL_MS = 60_000;
 
@@ -81,7 +115,7 @@ async function soldCounts(ctx: TenantContext, offers: readonly LimitedOffer[]) {
   const sold = new Map<string, number>();
   const now = Date.now();
   for (const o of offers) {
-    if (o.limit == null || now >= Date.parse(o.ends_at)) continue;
+    if (o.limit == null || o.category_id || now >= Date.parse(o.ends_at)) continue;
     const { data, error } = await ctx.db
       .from("order_items")
       .select("quantity, orders!inner(status, created_at)")
@@ -111,10 +145,25 @@ export async function loadOfferState(ctx: TenantContext) {
 export async function offerForProduct(
   ctx: TenantContext,
   productId: string | undefined | null,
+  categoryIds: readonly string[] = [],
 ): Promise<OfferState | null> {
   if (!productId || !ctx.tenant.modules.limited_offers) return null;
   const { offers, sold } = await loadOfferState(ctx);
-  return offers.length ? activeOfferFor(offers, productId, sold) : null;
+  return offers.length ? activeOfferFor(offers, productId, sold, new Date(), categoryIds) : null;
+}
+
+/** Акция товара по его строке из каталога: учитывает и акции на его категории. */
+export async function offerForProductRow(
+  ctx: TenantContext,
+  p: { id: string; category_ids?: unknown },
+): Promise<OfferState | null> {
+  return offerForProduct(ctx, p.id, productCategoryIds(p));
+}
+
+export function productCategoryIds(p: { category_ids?: unknown }): string[] {
+  return Array.isArray(p.category_ids)
+    ? p.category_ids.filter((c): c is string => typeof c === "string")
+    : [];
 }
 
 export async function listOffers(ctx: TenantContext): Promise<OfferState[]> {

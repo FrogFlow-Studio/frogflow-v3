@@ -134,8 +134,8 @@ export async function productCard(
   if (rating) caption += `\n${rating}`;
   if (outOfStock) caption += `\n${m.outOfStockLabel}`;
   else if (t.modules.limited_offers) {
-    const { offerForProduct, offerLabel } = await import("@/core/offers/offers");
-    const offer = await offerForProduct(ctx, p.id);
+    const { offerForProductRow, offerLabel } = await import("@/core/offers/offers");
+    const offer = await offerForProductRow(ctx, p);
     if (offer) caption += `\n<b>${offerLabel(offer, ctx.timezone, locale)}</b>`;
   }
   // Курс (модуль courses): уроков, старт потока; набор закрыт — без кнопок покупки.
