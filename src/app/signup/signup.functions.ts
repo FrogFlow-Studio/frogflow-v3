@@ -1,10 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { SIGNUP_CLOSED, SIGNUP_USERNAME_RULE } from "./refusals";
 import { VERTICAL_KEYS } from "@/core/verticals/registry";
 
 const input = z.object({
   name: z.string().min(2).max(120),
-  username: z.string().regex(/^[a-z0-9][a-z0-9_.-]{2,39}$/, "латиница, цифры, точка, дефис"),
+  username: z.string().regex(/^[a-z0-9][a-z0-9_.-]{2,39}$/, SIGNUP_USERNAME_RULE),
   password: z.string().min(8).max(200),
   vertical: z.enum(VERTICAL_KEYS as [string, ...string[]]),
   contact: z.string().max(200).optional(),
@@ -32,8 +33,7 @@ export const signupFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => input.parse(d))
   .handler(async ({ data }) => {
     const { env } = await import("@/config/env");
-    if (env().SIGNUP_ENABLED !== "1")
-      throw new Error("Регистрация закрыта — обратитесь к оператору.");
+    if (env().SIGNUP_ENABLED !== "1") throw new Error(SIGNUP_CLOSED);
     const { createClient } = await import("@/app/operator/operator.server");
     const { appSession } = await import("@/app/auth/session.server");
     const { clientIp, loginDelay } = await import("@/app/auth/login-guard.server");

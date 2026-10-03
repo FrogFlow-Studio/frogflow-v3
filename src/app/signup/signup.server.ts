@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { REFRESH } from "./challenge";
+import { SIGNUP_UNAVAILABLE } from "./refusals";
 import { serviceDb } from "@/core/db/client.server";
 import { SIGNUP_CHALLENGE_PREFIX, pruneSignupChallenges } from "@/core/retention/retention";
 
@@ -41,9 +43,8 @@ export async function signupRefusal(hash: string, nonce?: string): Promise<strin
     base(),
     nonce ? base().eq("payload->>challenge", nonce) : Promise.resolve({ error: null, count: 0 }),
   ]);
-  if (byIp.error || total.error || reused.error)
-    return "Регистрация временно недоступна. Попробуйте позже.";
-  if ((reused.count ?? 0) > 0) return "Проверка устарела — обновите страницу и попробуйте ещё раз.";
+  if (byIp.error || total.error || reused.error) return SIGNUP_UNAVAILABLE;
+  if ((reused.count ?? 0) > 0) return REFRESH;
   return signupVerdict({ ip: byIp.count ?? 0, total: total.count ?? 0 });
 }
 
@@ -62,8 +63,8 @@ export async function claimChallenge(nonce: string, now = Date.now()): Promise<s
     key: `${CHALLENGE_PREFIX}${nonce}`,
     value: new Date(now + 24 * 3600_000).toISOString(),
   });
-  if (error?.code === "23505") return "Проверка устарела — обновите страницу и попробуйте ещё раз.";
-  if (error) return "Регистрация временно недоступна. Попробуйте позже.";
+  if (error?.code === "23505") return REFRESH;
+  if (error) return SIGNUP_UNAVAILABLE;
   await pruneSignupChallenges(now).catch(() => undefined);
   return null;
 }

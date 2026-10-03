@@ -37,6 +37,7 @@ import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
 import { addressConflict, telegramBotTaken, vipBotTaken } from "@/core/tenant/directory";
 import { UserError } from "@/core/i18n/user-error";
 import { adminLoginTaken } from "@/core/auth/roles";
+import { addressTakenText, idTakenText, loginTakenText } from "@/app/signup/refusals";
 import type { Pulse } from "./pulse";
 import type { Locale } from "@/core/i18n/locale";
 import { sellerLocaleSafe } from "@/core/ai/seller-text";
@@ -769,13 +770,13 @@ export async function createClient(input: {
     .maybeSingle();
   if (dupErr)
     throw serverFailure(`[operator] идентификатор клиента не проверен: ${dupErr.message}`);
-  if (dup) throw new Error(`Идентификатор «${input.ownerId}» уже занят.`);
+  if (dup) throw new Error(idTakenText(input.ownerId));
   const dir = await tenantDirectory(true);
   if (input.admin && adminLoginTaken(dir, input.admin.username))
-    throw new Error(`Логин «${input.admin.username}» уже используется.`);
+    throw new Error(loginTakenText(input.admin.username));
   // slug нового клиента = его идентификатор: занятый адрес не отдаём.
   const slugTaken = addressConflict(dir, null, { slug: input.ownerId });
-  if (slugTaken) throw new Error(`Адрес «${slugTaken.what}» уже занят — выберите другой логин.`);
+  if (slugTaken) throw new Error(addressTakenText(slugTaken.what));
   const modules = Object.fromEntries(
     MODULE_KEYS.map((k) => [k, moduleDef(k).price === null && moduleDef(k).status === "available"]),
   );

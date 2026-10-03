@@ -18,6 +18,7 @@ import {
   FinalCta,
   Footer,
   Header,
+  langSearch,
   NicheLinks,
   Pricing,
   SectionTitle,
@@ -96,7 +97,11 @@ function Landing() {
   useEffect(() => rememberWebSource(PLATFORM_SOURCE_SLUG, window.location.search), []);
 
   const signupCta = signup ? (
-    <Link to="/signup" className="btn-primary px-5 py-3 text-base">
+    <Link
+      to="/signup"
+      search={{ ...langSearch(locale) }}
+      className="btn-primary px-5 py-3 text-base"
+    >
       {t("hero.ctaSignup", { days: TRIAL_DAYS })}
     </Link>
   ) : (

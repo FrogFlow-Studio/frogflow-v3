@@ -12,7 +12,7 @@ export { CHALLENGE_MIN_FILL_MS, POW_BITS };
  */
 export const CHALLENGE_MAX_AGE_MS = 2 * 3600_000;
 
-const REFRESH = "Проверка устарела — обновите страницу и попробуйте ещё раз.";
+export const REFRESH = "Проверка устарела — обновите страницу и попробуйте ещё раз.";
 export const CHALLENGE_TOO_FAST = "Слишком быстро — проверьте поля и отправьте ещё раз.";
 
 /**
