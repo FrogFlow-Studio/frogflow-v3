@@ -8,7 +8,11 @@ vi.mock("@/core/db/client.server", () => ({ serviceDb: () => db }));
 vi.mock("@/core/tenant/resolve.server", () => ({
   tenantContext: (t: Tenant) => ({ db, tenant: t, timezone: "Asia/Almaty" }),
 }));
-vi.mock("./operator.server", () => ({ notifyOwner: async () => ({ delivered: [] }) }));
+let owner: () => Promise<{
+  delivered: string[];
+  failed: { id: string; reason: string }[];
+}> = async () => ({ delivered: [], failed: [] });
+vi.mock("./operator.server", () => ({ notifyOwner: () => owner() }));
 
 const { remindTrials, TRIAL_REMINDED_KEY } = await import("./trial-remind.server");
 
@@ -120,5 +124,32 @@ describe("напоминания о пробном периоде", () => {
     expect(await remindTrials([tenant()], new Date("2026-10-05T20:00:00Z"), notify)).toEqual({
       [BOT]: "sent",
     });
+  });
+
+  it("О4: отправка оборвалась или не ответил Telegram — метка остаётся, второго сообщения нет", async () => {
+    const t = tenant();
+    owner = async () => {
+      throw new Error("fetch failed");
+    };
+    expect(await remindTrials([t], NOW)).toEqual({ [BOT]: "unknown" });
+    expect(marks()).toBe("d3");
+    owner = async () => ({
+      delivered: [],
+      failed: [{ id: "1", reason: "Telegram не ответил, попробуйте позже" }],
+    });
+    expect(await remindTrials([t], NOW)).toEqual({});
+    expect(marks()).toBe("d3");
+  });
+
+  it("О4: Telegram точно отказал (бот заблокирован) — метка снята, завтра повторим", async () => {
+    const t = tenant();
+    owner = async () => ({
+      delivered: [],
+      failed: [{ id: "1", reason: "заблокировал бота (Forbidden: bot was blocked by the user)" }],
+    });
+    expect(await remindTrials([t], NOW)).toEqual({ [BOT]: "failed" });
+    expect(marks()).toBe("");
+    owner = async () => ({ delivered: ["1"], failed: [] });
+    expect(await remindTrials([t], NOW)).toEqual({ [BOT]: "sent" });
   });
 });

@@ -12,6 +12,8 @@ export type Budget = { limit: number; windowMs: number };
 export const MINI_APP_BUDGETS = {
   checkout: { limit: 6, windowMs: 60_000 },
   orders: { limit: 20, windowMs: 60_000 },
+  /** Дописка в обращение: своя корзина, чтобы переписка не съедала лимит оформления. */
+  ticket: { limit: 10, windowMs: 60_000 },
 } as const satisfies Record<string, Budget>;
 
 /**

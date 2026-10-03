@@ -10,18 +10,23 @@ import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { adminLocale } from "@/app/admin/locale.server";
 import { todayInTz } from "@/core/fulfillment/pure";
 import { afterTrial, dueStage, trialState, type TrialStage } from "@/core/plans/trial";
+import { mayHaveArrived } from "@/core/notify/deliver";
 import { notifyOwner } from "./operator.server";
 
 /** Отметки отправленных напоминаний («d3,last») — app_settings клиента. */
 export const TRIAL_REMINDED_KEY = "trial_reminded";
 
-export type TrialNotify = (botId: string, text: string) => Promise<boolean>;
+/** true — дошло; false — точно не дошло; "unknown" — могло дойти (обрыв, тайм-аут). */
+export type TrialNotify = (botId: string, text: string) => Promise<boolean | "unknown">;
 
 const defaultNotify: TrialNotify = async (botId, text) => {
   try {
-    return (await notifyOwner(botId, text)).delivered.length > 0;
+    const r = await notifyOwner(botId, text);
+    if (r.delivered.length > 0) return true;
+    return r.failed.some((f) => mayHaveArrived(f.reason)) ? "unknown" : false;
   } catch {
-    return false;
+    // Бросило посреди отправки: неизвестно, ушло ли — не повторяем.
+    return "unknown";
   }
 };
 
@@ -59,12 +64,14 @@ async function unmarkStage(ctx: ReturnType<typeof tenantContext>, stage: TrialSt
   });
 }
 
-export type TrialRemindResult = Record<string, "sent" | "skipped" | "failed">;
+export type TrialRemindResult = Record<string, "sent" | "skipped" | "failed" | "unknown">;
 
 /**
  * Крон подписок, раз в сутки: продавцу в пробном периоде — одно сообщение за
  * 3 дня до конца и одно в последний день. Только клиенты на v2 (правило 6).
- * Недоставленное снимает метку, и следующий прогон попробует снова.
+ * Точно не дошедшее снимает метку, и следующий прогон попробует снова; если
+ * отправка могла дойти (обрыв, тайм-аут), метка остаётся — второе сообщение
+ * хуже пропущенного.
  */
 export async function remindTrials(
   tenants: readonly Tenant[],
@@ -111,7 +118,9 @@ export async function remindTrials(
         daysLeft: state.daysLeft,
         policy: readPolicy(t.settings),
       });
-      if (await notify(t.id, text)) out[t.id] = "sent";
+      const r = await notify(t.id, text);
+      if (r === true) out[t.id] = "sent";
+      else if (r === "unknown") out[t.id] = "unknown";
       else {
         await unmarkStage(ctx, stage);
         out[t.id] = "failed";

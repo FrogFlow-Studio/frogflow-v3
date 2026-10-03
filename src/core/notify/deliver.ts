@@ -50,6 +50,14 @@ const REASONS: Array<[RegExp, string]> = [
   [/retries exhausted|fetch failed|network|timeout/i, "Telegram не ответил, попробуйте позже"],
 ];
 
+/**
+ * Отказ без ответа (обрыв, тайм-аут, исчерпанные повторы): сообщение могло
+ * дойти. Повторять такую отправку нельзя — покупатель получит его дважды.
+ */
+export function mayHaveArrived(reason: string): boolean {
+  return /retries exhausted|fetch failed|network|timeout|не ответил/i.test(reason);
+}
+
 /** Отказ Telegram — понятными словами, исходный текст в скобках для поддержки. */
 export function humanTelegramReason(description: string | null | undefined): string {
   const raw = (description ?? "").trim();

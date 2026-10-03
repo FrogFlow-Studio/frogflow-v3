@@ -533,6 +533,31 @@ describe("Mini App «Поддержка»: мои обращения", () => {
     expect(notified[0]).not.toContain("Дополнение");
   });
 
+  it("О4: дописки в обращение не съедают лимит оформления заказа", async () => {
+    withTickets();
+    for (let i = 0; i < MINI_APP_BUDGETS.checkout.limit; i++)
+      await miniAppTicketAppendFn({
+        data: { slug: "shop", initData: initData(TG), text: `Дополнение ${i}` },
+      });
+    const checkout = await miniAppCheckoutFn({
+      data: {
+        slug: "shop",
+        initData: initData(TG),
+        items: [{ product_id: "aaaaaaaa-0000-4000-8000-000000000000", quantity: 1 }],
+      },
+    }).catch((e: Error) => e.message);
+    expect(String(checkout)).not.toContain("Слишком много запросов");
+  });
+
+  it("О4: у дописки свой лимит — после него отказ", async () => {
+    const db = withTickets();
+    db.tables.zernio_logs!.push(ticketRow("t9", 4242, "open", 9));
+    const call = () =>
+      miniAppTicketAppendFn({ data: { slug: "shop", initData: initData(4242), text: "Ещё" } });
+    for (let i = 0; i < MINI_APP_BUDGETS.ticket.limit; i++) await call();
+    await expect(call()).rejects.toThrow("Слишком много запросов");
+  });
+
   it("открытого обращения нет — дописать некуда, новое не создаётся", async () => {
     const db = withTickets();
     db.tables.zernio_logs = [ticketRow("t1", TG, "closed", 1)];

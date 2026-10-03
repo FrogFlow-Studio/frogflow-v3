@@ -266,7 +266,7 @@ export const miniAppRewardsFn = createServerFn({ method: "POST" })
   });
 
 /** Подпись initData и счётчик запросов — общий вход «Поддержки» Mini App. */
-async function supportCtx(slugValue: string, initData: string, kind: "orders" | "checkout") {
+async function supportCtx(slugValue: string, initData: string, kind: "orders" | "ticket") {
   const ctx = await shopCtx(slugValue, "mini_app");
   const t = await shopT(ctx);
   // Модуль «Поддержка» не оплачен — для Mini App такого раздела нет.
@@ -305,7 +305,7 @@ export const miniAppTicketAppendFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const support = await supportCtx(data.slug, data.initData, "checkout");
+    const support = await supportCtx(data.slug, data.initData, "ticket");
     if (!support) throw notFound();
     const { ctx, t, user } = support;
     const { isBlocked } = await import("@/core/customers/customers");
