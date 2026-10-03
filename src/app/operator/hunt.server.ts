@@ -11,6 +11,7 @@ import {
 } from "@/core/leads/hunt";
 import { LEAD_SCORE_MODEL } from "@/core/leads/score";
 import { serverFailure } from "@/lib/server-failure";
+import { PREVIEW_AI_OFF, previewReadonly } from "@/lib/preview";
 import { insertLead, listLeads } from "./leads.server";
 
 /**
@@ -51,6 +52,8 @@ export async function huntLeads(
   actor: string,
   startedAt = Date.now(),
 ): Promise<HuntResult> {
+  // Каждый вызов модели — деньги платформы; в предпросмотре кнопка отвечает понятной причиной.
+  if (previewReadonly()) throw new Error(PREVIEW_AI_OFF);
   const apiKey = env().ANTHROPIC_API_KEY?.trim();
   if (!apiKey) throw serverFailure("ИИ-ключ платформы не задан — автопоиск лидов недоступен");
   const niche = p.niche.trim().slice(0, 80);

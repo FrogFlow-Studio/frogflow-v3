@@ -161,3 +161,71 @@ describe("заметки и журнал", () => {
     expect((await srv.listLeadEvents("l1")).map((e) => e.id)).toEqual(["e3", "e1"]);
   });
 });
+
+describe("importLeads (CSV)", () => {
+  const csv = (rows: string[]) => ["Название;Город;Телефон;Instagram", ...rows].join("\n");
+
+  it("добавляет новые, отсекает дубли воронки и дубли внутри файла, ошибки строк — с номерами", async () => {
+    await srv.addLead(input({ phone: "77051112233" }), "a");
+    const r = await srv.importLeads(
+      csv([
+        "Кофейня Север;Алматы;+7 705 111 22 33;", // телефон уже в воронке
+        "Пекарня;Астана;;@bakery",
+        "Пекарня №2;Астана;;@bakery", // тот же Instagram внутри файла
+        ";Алматы;77001112233;", // нет названия
+        "Цветы;Шымкент;;", // нет контакта
+      ]),
+      "admin_a",
+    );
+    expect(r).toMatchObject({ ok: true, added: 1, duplicates: 2 });
+    if (!r.ok) return;
+    expect(r.errors.map((e) => e.line)).toEqual([5, 6]);
+    expect(db.tables.sales_leads!).toHaveLength(2);
+    expect(db.tables.sales_leads![1]).toMatchObject({
+      business_name: "Пекарня",
+      source: "import",
+      stage: "new",
+      created_by: "admin_a",
+    });
+    expect(db.tables.sales_lead_events!.at(-1)).toMatchObject({ kind: "created" });
+  });
+
+  it("повторная загрузка того же файла — всё дубли, ничего нового", async () => {
+    const file = csv(["Пекарня;Астана;;@bakery"]);
+    expect(await srv.importLeads(file, "a")).toMatchObject({ added: 1, duplicates: 0 });
+    expect(await srv.importLeads(file, "a")).toMatchObject({ added: 0, duplicates: 1 });
+    expect(db.tables.sales_leads!).toHaveLength(1);
+  });
+
+  it("плохой файл — отказ без записи", async () => {
+    expect(await srv.importLeads("phone\n1", "a")).toMatchObject({ ok: false });
+    expect(db.tables.sales_leads!).toHaveLength(0);
+  });
+
+  it("сбой записи останавливает импорт: добавленное остаётся, остальные строки — в ошибках", async () => {
+    const real = db.from.bind(db);
+    let inserts = 0;
+    db.from = ((t: string) => {
+      const q = real(t);
+      if (t !== "sales_leads") return q;
+      return new Proxy(q, {
+        get: (qt, qp, qr) =>
+          qp === "insert"
+            ? (...a: unknown[]) =>
+                ++inserts === 2
+                  ? {
+                      select: () => ({
+                        single: async () => ({ data: null, error: { message: "boom" } }),
+                      }),
+                    }
+                  : (qt as never as Record<string, (...x: unknown[]) => unknown>)[qp]!(...a)
+            : Reflect.get(qt, qp, qr),
+      });
+    }) as typeof db.from;
+    const r = await srv.importLeads(csv(["А;;;@a1", "Б;;;@b1", "В;;;@c1"]), "a");
+    db.from = real;
+    expect(r).toMatchObject({ ok: true, added: 1, duplicates: 0 });
+    if (r.ok) expect(r.errors.map((e) => e.line)).toEqual([3, 4]);
+    expect(db.tables.sales_leads!).toHaveLength(1);
+  });
+});

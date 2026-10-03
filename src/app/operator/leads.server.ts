@@ -26,6 +26,8 @@ import {
   type LeadThresholds,
 } from "@/core/leads/score";
 import { serverFailure } from "@/lib/server-failure";
+import { PREVIEW_AI_OFF, previewReadonly } from "@/lib/preview";
+import { parseLeadsCsv, type CsvRowError } from "@/core/leads/csv";
 
 /**
  * Воронка лидов оператора (core/leads): таблицы `sales_leads` и
@@ -106,6 +108,72 @@ export async function addLead(input: LeadInput, actor: string): Promise<AddLeadR
   );
   if (existing) return { ok: false, duplicate: existing.name };
   return { ok: true, id: await insertLead(input, actor, "manual", "Добавлен вручную") };
+}
+
+export type ImportLeadsResult =
+  | { ok: false; error: string }
+  | {
+      ok: true;
+      added: number;
+      duplicates: number;
+      /** Строки файла, которые не стали лидами, и почему; не обработанные из-за сбоя — тоже тут. */
+      errors: CsvRowError[];
+    };
+
+const IMPORT_BUDGET_MS = 90_000;
+
+/**
+ * Импорт лидов из CSV (источник `import`): дубли отсекаются так же, как у
+ * автопоиска, — против воронки и между строками файла. Ничего никому не
+ * отправляется. Сбой записи останавливает импорт: уже добавленное остаётся,
+ * остальные строки возвращаются как необработанные, чтобы их загрузили снова.
+ */
+export async function importLeads(
+  csv: string,
+  actor: string,
+  startedAt = Date.now(),
+): Promise<ImportLeadsResult> {
+  const parsed = parseLeadsCsv(csv);
+  if (!parsed.ok) return parsed;
+  const known: Array<
+    Pick<LeadInput, "websiteUrl" | "instagramHandle" | "phone" | "email"> & { name: string }
+  > = (await listLeads()).map((l) => ({
+    name: l.business_name,
+    websiteUrl: l.website_url,
+    instagramHandle: l.instagram_handle,
+    phone: l.phone,
+    email: l.email,
+  }));
+  const errors = [...parsed.errors];
+  let added = 0;
+  let duplicates = 0;
+  for (let i = 0; i < parsed.leads.length; i++) {
+    const { line, input } = parsed.leads[i]!;
+    if (Date.now() - startedAt > IMPORT_BUDGET_MS) {
+      for (const rest of parsed.leads.slice(i))
+        errors.push({ line: rest.line, message: "не успели обработать — загрузите строку снова" });
+      break;
+    }
+    if (duplicateOf(known, input)) {
+      duplicates++;
+      continue;
+    }
+    try {
+      await insertLead(input, actor, "import", "Импорт из CSV");
+    } catch (e) {
+      console.error(`[leads:import] строка ${line}: ${e instanceof Error ? e.message : String(e)}`);
+      for (const rest of parsed.leads.slice(i))
+        errors.push({
+          line: rest.line,
+          message: "не обработана из-за сбоя записи — загрузите снова",
+        });
+      break;
+    }
+    known.push({ ...input, name: input.businessName });
+    added++;
+  }
+  errors.sort((a, b) => a.line - b.line);
+  return { ok: true, added, duplicates, errors };
 }
 
 export type SetStageResult = { ok: true } | { ok: false; reason: "not_found" | "changed" };
@@ -203,6 +271,8 @@ export async function getLeadThresholds(): Promise<LeadThresholds> {
 const SCORE_TIMEOUT_MS = 30_000;
 
 function requireLeadsAi(): string {
+  // Каждый вызов модели — деньги платформы; в предпросмотре кнопка отвечает понятной причиной.
+  if (previewReadonly()) throw new Error(PREVIEW_AI_OFF);
   const apiKey = env().ANTHROPIC_API_KEY?.trim();
   if (!apiKey) throw serverFailure("ИИ-ключ платформы не задан — ИИ для лидов недоступен");
   return apiKey;

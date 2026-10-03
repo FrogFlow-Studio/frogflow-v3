@@ -24,14 +24,8 @@ const CLIENT_MARKERS: { what: string; marker: RegExp }[] = [
   { what: "почта (SMTP)", marker: /createTransport\(|net\.connect\(|tls\.connect\(/ },
 ];
 
-/**
- * Осознанные исключения: клиент не смотрит `previewReadonly()`. Лиды оператора —
- * отдельный пункт Б24 (там же «понятная ошибка» для кнопок «Оценить»/поиска).
- */
-const EXCEPTIONS: Record<string, string> = {
-  "src/app/operator/leads.server.ts": "лиды оператора — Б24",
-  "src/app/operator/hunt.server.ts": "поиск лидов оператора — Б24",
-};
+/** Осознанные исключения: клиент не смотрит `previewReadonly()`. Сейчас таких нет. */
+const EXCEPTIONS: Record<string, string> = {};
 
 describe("предпросмотр: каждый внешний клиент смотрит previewReadonly()", () => {
   const files = sources().map((f) => ({ f, text: readFileSync(f, "utf8") }));

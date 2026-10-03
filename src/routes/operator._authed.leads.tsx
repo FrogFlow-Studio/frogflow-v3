@@ -5,6 +5,7 @@ import {
   draftLeadFn,
   leadEventsFn,
   huntLeadsFn,
+  importLeadsFn,
   leadPipelineFn,
   leadsFn,
   markLeadContactedFn,
@@ -124,6 +125,12 @@ function LeadsPage() {
         {shown.map((l) => (
           <LeadCard key={l.id} lead={l} aiAvailable={aiAvailable} onChanged={(m) => setNotice(m)} />
         ))}
+        <ImportCard
+          onDone={async (msg) => {
+            setNotice(msg);
+            await router.invalidate();
+          }}
+        />
         {aiAvailable && (
           <HuntCard
             onDone={async (msg) => {
@@ -179,6 +186,60 @@ function LeadsPage() {
         </Card>
       </div>
     </>
+  );
+}
+
+function ImportCard({ onDone }: { onDone: (msg: string) => Promise<void> }) {
+  const [result, setResult] = useState<string[] | null>(null);
+  const imp = useAction(async (f: FormData) => {
+    setResult(null);
+    const file = f.get("file");
+    if (!(file instanceof File) || file.size === 0) throw new Error("Выберите CSV-файл");
+    const r = await importLeadsFn({ data: { csv: await file.text() } });
+    if (!r.ok) {
+      setResult([r.error]);
+      return;
+    }
+    setResult([
+      `Добавлено ${r.added}, дублей ${r.duplicates}, ошибок строк ${r.errors.length}`,
+      ...r.errors.slice(0, 30).map((e) => `Строка ${e.line}: ${e.message}`),
+      ...(r.errors.length > 30 ? [`…и ещё ${r.errors.length - 30}`] : []),
+    ]);
+    if (r.added > 0) await onDone(`Импорт: добавлено лидов — ${r.added}`);
+  });
+  return (
+    <Card title="Импорт из CSV">
+      <form
+        className="grid gap-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void imp.run(new FormData(e.currentTarget)).catch(() => {});
+        }}
+      >
+        <Field label="Файл CSV (UTF-8, до 200 строк)">
+          <input className="input" type="file" name="file" accept=".csv,text/csv,text/plain" />
+        </Field>
+        <div>
+          <button className="btn-secondary" disabled={imp.busy}>
+            {imp.busy ? "Загружаю…" : "Загрузить лидов"}
+          </button>
+        </div>
+      </form>
+      <p className="mt-2 text-xs text-muted">
+        Первая строка — заголовки: название (обязательно), ниша, город, телефон, instagram, почта,
+        сайт. Разделитель — запятая или точка с запятой. Нужен хотя бы один контакт. Дубли по
+        Instagram, телефону, почте и сайту пропускаются. Лиды попадают в «Новый», сообщения никому
+        не отправляются.
+      </p>
+      {result && (
+        <ul className="mt-2 text-sm">
+          {result.map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ul>
+      )}
+      <ErrorBox error={imp.error} />
+    </Card>
   );
 }
 

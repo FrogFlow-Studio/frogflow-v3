@@ -135,3 +135,28 @@ test("лиды: черновик, ссылка WhatsApp с текстом и «�
   await expect(card.getByText("Написали: whatsapp")).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("лиды: импорт из CSV — новые добавлены, повтор файла даёт только дубли", async ({
+  page,
+}, info) => {
+  const errors = await watch(page);
+  const name = `E2E Импорт ${info.project.name} ${Date.now()}`;
+  const phone = `7${String(Date.now()).slice(-10)}`;
+  const csv = `Название;Город;Телефон\n${name};Алматы;${phone}\nБез контакта;Астана;\n`;
+  await operatorLogin(page);
+  await page.goto("/operator/leads");
+  const card = page.locator("section", { hasText: "Импорт из CSV" });
+  const upload = async () => {
+    await card
+      .locator('input[type="file"]')
+      .setInputFiles({ name: "leads.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+    await card.getByRole("button", { name: "Загрузить лидов", exact: true }).click();
+  };
+  await upload();
+  await expect(card.getByText("Добавлено 1, дублей 0, ошибок строк 1")).toBeVisible();
+  await expect(card.getByText("Строка 3: нет рабочего контакта", { exact: false })).toBeVisible();
+  await expect(page.locator("section", { hasText: name }).first()).toBeVisible();
+  await upload();
+  await expect(card.getByText("Добавлено 0, дублей 1, ошибок строк 1")).toBeVisible();
+  expect(errors).toEqual([]);
+});

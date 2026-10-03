@@ -1186,6 +1186,14 @@ export const scoreLeadFn = createServerFn({ method: "POST" })
     return (await leadsImpl()).scoreLead(data.id, await actor());
   });
 
+/** Импорт лидов из CSV: ничего не отправляется, дубли отсекаются (leads.server importLeads). */
+export const importLeadsFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ csv: z.string().max(400_000) }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await leadsImpl()).importLeads(data.csv, await actor());
+  });
+
 export const huntLeadsFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z.object({ niche: z.string().max(200), city: z.string().max(200) }).parse(d),
