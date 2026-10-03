@@ -138,6 +138,7 @@ function ProductEditor() {
     waiting,
     lowStock,
     preorder,
+    preorderPast,
     categories,
     countries,
     defaultFulfillment,
@@ -524,6 +525,7 @@ function ProductEditor() {
                   {t("product.preorder")}
                 </label>
                 <p className="text-xs text-muted">{t("product.preorderHint")}</p>
+                {preorderPast && <p className="text-xs text-danger">{t("product.preorderPast")}</p>}
                 <Field label={t("product.preorderFrom")} hint={t("product.preorderFromHint")}>
                   <input
                     className="input sm:w-48"

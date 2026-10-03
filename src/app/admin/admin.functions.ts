@@ -724,9 +724,13 @@ export const productFn = createServerFn({ method: "GET" })
       : { shop: 0, own: null };
     const preorder =
       data.id && ctx.tenant.modules.stock
-        ? await (await import("@/core/preorder/preorder")).getPreorder(ctx, data.id)
+        ? await (await import("@/core/preorder/preorder")).getPreorderRaw(ctx, data.id)
         : null;
+    const preorderPast = preorder
+      ? (await import("@/core/preorder/preorder")).preorderDatePast(preorder, ctx.timezone)
+      : false;
     return {
+      preorderPast,
       product,
       waiting,
       lowStock: low,

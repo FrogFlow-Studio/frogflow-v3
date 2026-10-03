@@ -8,6 +8,9 @@ import { placeOrder } from "@/core/orders/orders";
 import {
   activePreorder,
   getPreorder,
+  getPreorderRaw,
+  preorderDatePast,
+  todayInZone,
   parsePreorder,
   preorderKey,
   preordersFor,
@@ -101,7 +104,7 @@ function setup(
 
 describe("предзаказ: значения и правила", () => {
   it("дата, «без даты» и пусто разбираются; мусор — предзаказа нет", () => {
-    expect(parsePreorder("2026-11-15")).toEqual({ from: "2026-11-15" });
+    expect(parsePreorder("2099-11-15")).toEqual({ from: "2099-11-15" });
     expect(parsePreorder("-")).toEqual({ from: null });
     expect(parsePreorder("")).toBeNull();
     expect(parsePreorder(null)).toBeNull();
@@ -125,8 +128,8 @@ describe("предзаказ: значения и правила", () => {
     const { db, ctx } = setup([product("a", 0)], []);
     await savePreorder(ctx, "a", { on: false });
     expect(db.tables.app_settings).toHaveLength(0);
-    await savePreorder(ctx, "a", { on: true, from: "2026-11-01" });
-    expect(await getPreorder(ctx, "a")).toEqual({ from: "2026-11-01" });
+    await savePreorder(ctx, "a", { on: true, from: "2099-11-01" });
+    expect(await getPreorder(ctx, "a")).toEqual({ from: "2099-11-01" });
     await savePreorder(ctx, "a", { on: true, from: null });
     expect(await getPreorder(ctx, "a")).toEqual({ from: null });
     await savePreorder(ctx, "a", { on: false });
@@ -135,9 +138,43 @@ describe("предзаказ: значения и правила", () => {
 
   it("список читается кусками: длиннее 200 товаров не ломает адрес запроса", async () => {
     const ids = Array.from({ length: 450 }, (_, i) => `p${i}`);
-    const { db, ctx } = setup([], [], { p449: "2026-12-01" });
+    const { db, ctx } = setup([], [], { p449: "2099-12-01" });
     db.maxIn = 200;
-    expect((await preordersFor(ctx, ids)).get("p449")).toEqual({ from: "2026-12-01" });
+    expect((await preordersFor(ctx, ids)).get("p449")).toEqual({ from: "2099-12-01" });
+  });
+});
+
+describe("предзаказ: прошедшая дата отправки", () => {
+  const NOW = new Date("2026-10-10T10:00:00Z");
+
+  it("покупатель видит «срок уточним», продавец — свою дату; сегодня и позже — как есть", async () => {
+    const { ctx } = setup([], [], { old: "2026-10-01", today: "2026-10-10", next: "2026-10-11" });
+    expect(await getPreorder(ctx, "old", NOW)).toEqual({ from: null });
+    expect(await getPreorder(ctx, "today", NOW)).toEqual({ from: "2026-10-10" });
+    expect(await getPreorder(ctx, "next", NOW)).toEqual({ from: "2026-10-11" });
+    expect(await getPreorderRaw(ctx, "old")).toEqual({ from: "2026-10-01" });
+    const all = await preordersFor(ctx, ["old", "today", "next"], NOW);
+    expect(all.get("old")).toEqual({ from: null });
+    expect(all.get("today")).toEqual({ from: "2026-10-10" });
+  });
+
+  it("«сегодня» считается в поясе магазина", () => {
+    const late = new Date("2026-10-10T20:00:00Z");
+    expect(todayInZone("Asia/Almaty", late)).toBe("2026-10-11");
+    expect(preorderDatePast({ from: "2026-10-10" }, "Asia/Almaty", late)).toBe(true);
+    expect(preorderDatePast({ from: "2026-10-10" }, "UTC", late)).toBe(false);
+    expect(preorderDatePast({ from: null }, "UTC", late)).toBe(false);
+  });
+
+  it("заказ с прошедшей датой: в событии срок не назван", async () => {
+    const { db, ctx, customer } = setup([product("a", 0)], [{ product: "a", qty: 1 }], {
+      a: "2020-01-01",
+    });
+    expect((await placeOrder(ctx, customer, "KZ")).ok).toBe(true);
+    const ev = db.tables.zernio_logs!.find((e) => e.event_type === "order.preorder")!;
+    expect((ev.payload as { lines: unknown }).lines).toEqual([
+      { product_id: "a", quantity: 1, from: null },
+    ]);
   });
 });
 
@@ -145,20 +182,20 @@ describe("предзаказ: корзина и оформление", () => {
   it("в корзину сверх остатка — только при включённом предзаказе", async () => {
     const off = setup([product("a", 0)], []);
     expect(await addToCart(off.ctx, off.customer, "a")).toBe("out_of_stock");
-    const on = setup([product("a", 0)], [], { a: "2026-11-15" });
+    const on = setup([product("a", 0)], [], { a: "2099-11-15" });
     expect(await addToCart(on.ctx, on.customer, "a")).toBe("ok");
   });
 
   it("нет остатка: заказ создан, остаток не ушёл в минус, событие хранит позиции и срок", async () => {
     const { db, ctx, customer, stock } = setup([product("a", 0)], [{ product: "a", qty: 2 }], {
-      a: "2026-11-15",
+      a: "2099-11-15",
     });
     const r = await placeOrder(ctx, customer, "KZ");
     expect(r.ok).toBe(true);
     expect(stock("a")).toBe(0);
     const ev = db.tables.zernio_logs!.find((e) => e.event_type === "order.preorder")!;
     expect((ev.payload as { lines: unknown }).lines).toEqual([
-      { product_id: "a", quantity: 2, from: "2026-11-15" },
+      { product_id: "a", quantity: 2, from: "2099-11-15" },
     ]);
   });
 
@@ -175,7 +212,7 @@ describe("предзаказ: корзина и оформление", () => {
         { product: "a", qty: 3 },
         { product: "b", qty: 2 },
       ],
-      { a: "-", b: "2026-11-15" },
+      { a: "-", b: "2099-11-15" },
     );
     expect((await placeOrder(ctx, customer, "KZ")).ok).toBe(true);
     expect(stock("a")).toBe(1);
@@ -193,7 +230,7 @@ describe("предзаказ: корзина и оформление", () => {
         { product: "a", qty: 1 },
         { product: "b", qty: 2 },
       ],
-      { a: "2026-11-15" },
+      { a: "2099-11-15" },
     );
     const real = ctx.db as unknown as { from: (table: string) => Record<string, unknown> };
     const from = real.from;
@@ -222,7 +259,7 @@ describe("предзаказ: корзина и оформление", () => {
         { product: "a", qty: 2 },
         { product: "b", qty: 2 },
       ],
-      { a: "2026-11-15" },
+      { a: "2099-11-15" },
     );
     const r = await placeOrder(ctx, customer, "KZ");
     if (!r.ok) throw new Error("заказ не создан");

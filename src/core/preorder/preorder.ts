@@ -36,15 +36,53 @@ function short(stock: number | null | undefined, qty: number): boolean {
   return stock != null && stock < qty;
 }
 
-export async function getPreorder(ctx: TenantContext, productId: string): Promise<Preorder | null> {
+/** Сегодняшняя дата `YYYY-MM-DD` в поясе магазина. */
+export function todayInZone(tz: string | undefined, now = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz || "Asia/Almaty",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+/** Названная дата отправки уже прошла (по поясу магазина). */
+export function preorderDatePast(p: Preorder, tz: string | undefined, now = new Date()): boolean {
+  return p.from !== null && p.from < todayInZone(tz, now);
+}
+
+/**
+ * Предзаказ для покупателя: прошедшая дата — ложное обещание, поэтому
+ * показываем как предзаказ без даты («срок отправки уточним»).
+ */
+function forBuyer(ctx: TenantContext, p: Preorder, now: Date): Preorder {
+  return preorderDatePast(p, ctx.timezone, now) ? { from: null } : p;
+}
+
+/** Предзаказ как записал продавец (дата может быть прошедшей) — для админки. */
+export async function getPreorderRaw(
+  ctx: TenantContext,
+  productId: string,
+): Promise<Preorder | null> {
   if (!ctx.tenant.modules.stock) return null;
   return parsePreorder(await getSettingStrict(ctx, preorderKey(productId)));
+}
+
+/** Предзаказ для покупателя (см. `forBuyer`). */
+export async function getPreorder(
+  ctx: TenantContext,
+  productId: string,
+  now = new Date(),
+): Promise<Preorder | null> {
+  const raw = await getPreorderRaw(ctx, productId);
+  return raw && forBuyer(ctx, raw, now);
 }
 
 /** Предзаказы по списку товаров одним запросом (кусками): id → предзаказ. */
 export async function preordersFor(
   ctx: TenantContext,
   productIds: readonly string[],
+  now = new Date(),
 ): Promise<Map<string, Preorder>> {
   const out = new Map<string, Preorder>();
   if (!ctx.tenant.modules.stock || productIds.length === 0) return out;
@@ -55,7 +93,7 @@ export async function preordersFor(
   );
   for (const r of rows) {
     const p = parsePreorder(r.value);
-    if (p) out.set(r.key.slice(PREORDER_PREFIX.length), p);
+    if (p) out.set(r.key.slice(PREORDER_PREFIX.length), forBuyer(ctx, p, now));
   }
   return out;
 }

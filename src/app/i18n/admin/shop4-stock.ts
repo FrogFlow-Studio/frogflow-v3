@@ -14,6 +14,8 @@ export const ru = {
     "Пока остатка не хватает, товар можно заказать: остаток в минус не уходит. Если остатка не хватает на весь заказ, вся позиция идёт предзаказом, а оставшиеся штуки достаются другим покупателям. При возврате заказа на склад ничего не добавляется. Покупатель видит «предзаказ» и срок отправки.",
   "product.preorderFrom": "Отправка с (дата)",
   "product.preorderFromHint": "Покупатель увидит эту дату. Пусто — «срок уточним».",
+  "product.preorderPast":
+    "Дата отправки уже прошла: покупатели видят «срок отправки уточним». Укажите новую дату.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -29,6 +31,8 @@ export const kk: SectionDict<typeof ru> = {
     "Қалдық жетпегенде тауарға тапсырыс беруге болады: қалдық минусқа кетпейді. Қалдық бүкіл тапсырысқа жетпесе, бүкіл позиция алдын ала тапсырыспен рәсімделеді, қалған даналар басқа сатып алушыларға қалады. Тапсырыс қайтарылғанда қоймаға ештеңе қосылмайды. Сатып алушы «алдын ала тапсырысты» және жіберу мерзімін көреді.",
   "product.preorderFrom": "Жіберу күні",
   "product.preorderFromHint": "Сатып алушы осы күнді көреді. Бос болса — «мерзімін нақтылаймыз».",
+  "product.preorderPast":
+    "Жіберу күні өтіп кетті: сатып алушылар «жіберу мерзімін нақтылаймыз» деп көреді. Жаңа күнді көрсетіңіз.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -44,6 +48,8 @@ export const en: SectionDict<typeof ru> = {
     "While stock is short the product can still be ordered: stock never goes negative. If stock does not cover the whole order, the entire line goes as a pre-order and the remaining units stay available to other buyers. Nothing is added back to stock when such an order is returned. The buyer sees «pre-order» and the shipping date.",
   "product.preorderFrom": "Ships from (date)",
   "product.preorderFromHint": "The buyer sees this date. Empty — «we will confirm the date».",
+  "product.preorderPast":
+    "The shipping date has passed: buyers see «we will confirm the shipping date». Set a new date.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -60,4 +66,6 @@ export const uz: SectionDict<typeof ru> = {
     "Qoldiq yetmaganda mahsulotga buyurtma berish mumkin: qoldiq minusga tushmaydi. Qoldiq butun buyurtmaga yetmasa, butun pozitsiya oldindan buyurtma bo‘ladi, qolgan donalar boshqa xaridorlarga qoladi. Buyurtma qaytarilganda omborga hech narsa qo‘shilmaydi. Xaridor «oldindan buyurtma» va jo‘natish muddatini ko‘radi.",
   "product.preorderFrom": "Jo‘natish sanasi",
   "product.preorderFromHint": "Xaridor shu sanani ko‘radi. Bo‘sh bo‘lsa — «muddatini aniqlaymiz».",
+  "product.preorderPast":
+    "Jo‘natish sanasi o‘tib ketdi: xaridorlar «jo‘natish muddatini aniqlaymiz» deb ko‘radi. Yangi sanani kiriting.",
 };
