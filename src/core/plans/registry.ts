@@ -26,7 +26,13 @@ export const PLAN_TIERS = ["basic", "pro", "business"] as const;
 export type PlanTier = (typeof PLAN_TIERS)[number];
 
 /** Ниши с тарифами. `consultant` (BOVI) сюда не входит — он по договору. */
-export const PLAN_NICHES = ["confectionery", "flowers", "digital", "consultant_universal"] as const;
+export const PLAN_NICHES = [
+  "confectionery",
+  "flowers",
+  "digital",
+  "courses",
+  "consultant_universal",
+] as const;
 export type PlanNiche = (typeof PLAN_NICHES)[number];
 
 export type PlanKey = `${PlanNiche}.${PlanTier}`;
@@ -169,6 +175,38 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "helpdesk",
     ],
   },
+  // Онлайн-школа: вопросы преподавателю — с Basic. Сами «Курсы» с закрытым
+  // каналом курса (core/courses/channel.server) — продукт школы: в любом
+  // уровне, если их не отложили (planModules, COURSES_SALE = "off"). `vip` —
+  // отдельный VIP-бот с платной группой, школе он не нужен и не входит.
+  // Цены те же, что у всех ниш (решение Якова 2026-09-26), пока он не назовёт
+  // свои для школ.
+  courses: {
+    basic: ["manager_chat"],
+    pro: [
+      "robokassa",
+      "receipt_ocr",
+      "coupons",
+      "gift_certificates",
+      "cart_reminder",
+      "review_request",
+      "multi_language",
+      "crm_pipeline",
+    ],
+    business: [
+      "telegram_mini_app",
+      "web_storefront",
+      "smart_search",
+      "loyalty",
+      "referral",
+      "instagram",
+      "dm_shop",
+      "whatsapp",
+      "wa_shop",
+      "helpdesk",
+      "admin_roles",
+    ],
+  },
   consultant_universal: {
     basic: ["instagram", "manager_chat"],
     // Pro и Business консультанта отличаются глубиной ИИ и лимитом диалогов.
@@ -212,10 +250,12 @@ export const ADDON_MONTHLY_PRICE: Record<AddonKey, number> = { whatsapp: 5000, i
 /** Модули магазина в каналах — консультанту (без кассы) не включаются. */
 export const SHOP_CHANNEL_MODULES: readonly ModuleKey[] = ["wa_shop", "dm_shop"];
 
+/**
+ * Тарифная ниша магазина по его вертикали. Школы, уже подключённые по плану
+ * `digital.*`, остаются на нём: план в базе сам не меняется, новая ниша
+ * действует при новом выборе плана и пробном периоде.
+ */
 export function nicheForVertical(v: VerticalKey): PlanNiche | null {
-  // Онлайн-школа продаёт цифровое: тарифы магазинов цифровых товаров, «Курсы»
-  // входят в них по COURSES_FROM_TIER. Свои тарифы ниши — решение Якова.
-  if (v === "courses") return "digital";
   return (PLAN_NICHES as readonly string[]).includes(v) ? (v as PlanNiche) : null;
 }
 

@@ -87,7 +87,8 @@ describe("реестр планов", () => {
     expect(nicheForVertical("consultant")).toBeNull();
     expect(nicheForVertical("consultant_universal")).toBe("consultant_universal");
     expect(nicheForVertical("confectionery")).toBe("confectionery");
-    expect(nicheForVertical("courses")).toBe("digital");
+    // У школы свои планы (раньше шла по тарифам цифровых товаров).
+    expect(nicheForVertical("courses")).toBe("courses");
   });
 });
 
@@ -437,9 +438,10 @@ describe("модуль «Курсы» в тарифах", () => {
       expect(planModules("consultant_universal", t, "plan").has("courses")).toBe(false);
   });
 
-  it("«отдельно» — ни в одном плане, но подключённый оператором сохраняется", () => {
+  it("«отдельно» — ни в одном плане, но подключённый оператором сохраняется; у школы курсы всегда", () => {
     for (const n of PLAN_NICHES)
-      for (const t of PLAN_TIERS) expect(planModules(n, t, "separate").has("courses")).toBe(false);
+      for (const t of PLAN_TIERS)
+        expect(planModules(n, t, "separate").has("courses"), `${n}.${t}`).toBe(n === "courses");
   });
 
   it("«отложить» — выключен у всех, даже подключённый вручную", () => {
@@ -462,6 +464,36 @@ describe("модуль «Курсы» в тарифах", () => {
     expect(effectiveModules(parsePlan("consultant_universal.business"), undefined)!.courses).toBe(
       false,
     );
+  });
+});
+
+describe("тарифы ниши «Онлайн-школа»", () => {
+  it("курсы с закрытым каналом и чат с преподавателем — с Basic; VIP-бот школе не входит", () => {
+    const m = effectiveModules(parsePlan("courses.basic"), undefined)!;
+    expect(m.courses).toBe(true);
+    expect(m.vip).toBe(false);
+    expect(m.manager_chat).toBe(true);
+    expect(m.robokassa).toBe(false);
+    expect(m.referral).toBe(false);
+  });
+
+  it("Pro добавляет оплату и чеки, Business — рост и каналы; курсы остаются во всех", () => {
+    const pro = effectiveModules(parsePlan("courses.pro"), undefined)!;
+    expect(pro.robokassa && pro.receipt_ocr && pro.courses).toBe(true);
+    expect(pro.referral).toBe(false);
+    const biz = effectiveModules(parsePlan("courses.business"), undefined)!;
+    expect(biz.referral && biz.loyalty && biz.web_storefront && biz.courses).toBe(true);
+  });
+
+  it("«отложить» выключает курсы и у школы", () => {
+    expect(effectiveModules(parsePlan("courses.pro"), undefined, "off")!.courses).toBe(false);
+  });
+
+  it("старый план школы digital.* продолжает разбираться и открывать курсы", () => {
+    expect(parsePlan("digital.pro")).toMatchObject({ kind: "tier", niche: "digital" });
+    expect(
+      effectiveModules(parsePlan("digital.basic"), undefined, "plan", "courses")!.courses,
+    ).toBe(true);
   });
 });
 

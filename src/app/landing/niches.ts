@@ -18,16 +18,16 @@ export type NichePage = SignupPage;
 export const NICHE_PRICING: Record<NichePage, PricingNiche> = {
   cakes: "cake",
   materials: "dig",
-  // Курсы продают магазины цифровых товаров: это их тарифы, «Курсы» — строка в них.
-  courses: "dig",
+  // Своя тарифная ниша школы (core/plans: PLAN_NICHES `courses`): курсы входят в любой уровень.
+  courses: "school",
 };
 
 /** Что выбрано в «Что продаёте» при регистрации со страницы ниши. */
 export const NICHE_VERTICAL: Record<NichePage, VerticalKey> = {
   cakes: "confectionery",
   materials: "digital",
-  // Своя ниша «Онлайн-школа»: тексты бота под школу; тарифы — цифровых
-  // товаров (core/plans nicheForVertical).
+  // Своя ниша «Онлайн-школа»: тексты бота под школу и свои тарифы
+  // (core/plans nicheForVertical → `courses`).
   courses: "courses",
 };
 

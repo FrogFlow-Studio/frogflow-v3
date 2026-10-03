@@ -50,7 +50,7 @@ export function planModules(
     PLAN_TIERS.indexOf(tier) >= PLAN_TIERS.indexOf(COURSES_FROM_TIER)
   )
     out.add("courses");
-  if (sale !== "off" && vertical === "courses") out.add("courses");
+  if (sale !== "off" && (vertical === "courses" || niche === "courses")) out.add("courses");
   if (MULTI_BOT_FROM_TIER && PLAN_TIERS.indexOf(tier) >= PLAN_TIERS.indexOf(MULTI_BOT_FROM_TIER))
     out.add("multi_bot");
   return out;

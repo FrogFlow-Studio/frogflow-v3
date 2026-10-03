@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LANDING_KEYS, landingT } from "@/app/i18n/landing";
 import {
-  COURSES_FROM_TIER,
   COURSES_SALE,
   MONTHLY_PRICE,
   CONNECTION_PRICE,
@@ -66,11 +65,11 @@ describe("страницы ниш", () => {
   it("страница курсов следует реестру: есть, только пока курсы входят в план, и с того же тарифа", () => {
     const inPlan = COURSES_SALE === "plan";
     expect(nichePageOpen("courses")).toBe(inPlan);
-    expect(coursesFromTier()).toBe(inPlan ? COURSES_FROM_TIER : null);
+    // У школы свои планы (`courses.*`): курсы входят в любой уровень, с Basic.
+    expect(NICHE_PRICING.courses).toBe("school");
+    expect(coursesFromTier()).toBe(inPlan ? "basic" : null);
     if (inPlan)
-      expect(planFeatureKeys(NICHE_PRICING.courses, COURSES_FROM_TIER)).toContain(
-        "pricing.courses",
-      );
+      expect(planFeatureKeys(NICHE_PRICING.courses, "basic")).toContain("pricing.courses");
     expect(openNichePages()).toEqual(
       inPlan ? ["cakes", "materials", "courses"] : ["cakes", "materials"],
     );
@@ -83,8 +82,8 @@ describe("страницы ниш", () => {
     expect(trialCoversNiche("courses")).toBe(
       from !== null && PLAN_TIERS.indexOf(from) <= PLAN_TIERS.indexOf(TRIAL_TIER),
     );
-    // Сейчас курсы с Pro, пробный период — Basic: на странице курсов его нет.
-    if (COURSES_FROM_TIER !== TRIAL_TIER) expect(trialCoversNiche("courses")).toBe(false);
+    // Курсы школы входят с Basic, как и пробный период: на странице курсов он обещан.
+    if (coursesFromTier() === "basic") expect(trialCoversNiche("courses")).toBe(true);
     for (const l of ["ru", "kk", "en", "uz"] as const)
       expect(landingT(l)("niche.courses.description")).not.toMatch(/\{days\}|7/);
   });

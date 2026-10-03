@@ -50,14 +50,22 @@ describe("тарифы на главной: «Курсы» входят в Pro+"
     for (const p of ["basic", "pro", "business"] as const)
       expect(planFeatureKeys("ai", p)).not.toContain("pricing.courses");
     // Всем ключам есть перевод (проверка словаря выше).
-    for (const n of ["dig", "cake", "flow", "ai"] as const)
+    for (const n of ["dig", "cake", "flow", "ai", "school"] as const)
       for (const p of ["basic", "pro", "business"] as const)
         for (const k of planFeatureKeys(n, p)) expect(LANDING_KEYS).toContain(k);
   });
 });
 
+describe("тарифы школы", () => {
+  it("«Курсы» — строка Basic школы, у старших она приходит через «Всё из …»", () => {
+    expect(planFeatureKeys("school", "basic")).toContain("pricing.courses");
+    expect(planFeatureKeys("school", "pro")).not.toContain("pricing.courses");
+    expect(planFeatureKeys("school", "business")).not.toContain("pricing.courses");
+  });
+});
+
 describe("тарифы на главной следуют реестру планов", () => {
-  const niches = ["dig", "cake", "flow", "ai"] as const;
+  const niches = ["dig", "cake", "flow", "ai", "school"] as const;
   const tiers = ["basic", "pro", "business"] as const;
 
   it("строка модуля — ровно в одном тарифе ниши, самом младшем с этим модулем, и только когда он готов", () => {
