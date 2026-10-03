@@ -15,7 +15,7 @@ export const Route = createFileRoute("/admin/_authed/homework")({
 });
 
 function HomeworkPage() {
-  const { items: all, curators, cohorts } = Route.useLoaderData();
+  const { items: all, curators, cohorts, load } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const router = useRouter();
@@ -36,7 +36,9 @@ function HomeworkPage() {
   return (
     <>
       <PageTitle title={t("homework.title")} subtitle={t("homework.subtitle")} />
-      {canEdit && <CuratorsCard curators={curators} cohorts={cohorts} t={t} />}
+      {canEdit && (
+        <CuratorsCard curators={curators} cohorts={cohorts} load={load} date={date} t={t} />
+      )}
       <div className="mb-4 flex flex-wrap gap-2">
         {curators.items.length > 0 && (
           <button
@@ -246,10 +248,14 @@ type CuratorRow = {
 function CuratorsCard({
   curators,
   cohorts,
+  load,
+  date,
   t,
 }: {
   curators: CuratorsData["curators"];
   cohorts: CuratorsData["cohorts"];
+  load: CuratorsData["load"];
+  date: (iso: string) => string;
   t: AdminT;
 }) {
   const router = useRouter();
@@ -291,6 +297,32 @@ function CuratorsCard({
         {t("homework.curators")} · {rows.length}
       </summary>
       <p className="mt-2 text-xs text-muted">{t("homework.curatorsHint")}</p>
+      {load.length > 0 && (
+        <div className="mt-3 rounded-md border border-line p-2 text-xs">
+          <p className="mb-1 font-medium">{t("homework.load.title")}</p>
+          <ul className="divide-y divide-line">
+            {load.map((l) => (
+              <li key={l.id ?? "none"} className="flex flex-wrap gap-x-3 gap-y-0.5 py-1">
+                <span className="font-medium">{l.name || t("homework.load.none")}</span>
+                <span>{t("homework.load.waiting", { n: l.waiting })}</span>
+                <span className="text-muted">
+                  {t("homework.load.reviewed", { n: l.reviewed7d })}
+                </span>
+                {l.oldest && (
+                  <span className="text-muted">
+                    {t("homework.load.oldest", {
+                      student: l.oldest.student,
+                      course: l.oldest.course,
+                      no: l.oldest.lessonNo,
+                      date: date(l.oldest.at),
+                    })}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <label className="mt-3 flex flex-wrap items-center gap-2 text-xs">
         {t("homework.curatorsMode")}
         <select
