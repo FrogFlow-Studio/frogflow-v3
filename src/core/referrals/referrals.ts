@@ -48,7 +48,7 @@ async function issuePersonalPromo(
 }
 
 /**
- * /start ref_<id>: идемпотентно — UNIQUE(bot_id, referred_telegram_id) не даст
+ * /start ref_<id>: только для покупателя без заказов; идемпотентно — UNIQUE(bot_id, referred_telegram_id) не даст
  * второй записи. Возвращает подарок приглашённому или null.
  */
 export async function registerReferral(
@@ -67,6 +67,14 @@ export async function registerReferral(
     .maybeSingle();
   if (referrerError) throw serverFailure(`[referral] реферер: ${referrerError.message}`);
   if (!referrer) return null;
+  // Приглашённый — новый покупатель: у давнего заказы уже есть, ему «друг» не нужен.
+  // Иначе двое постоянных покупателей обменялись бы ссылками и забрали обе награды.
+  const { count: ordersBefore, error: ordersError } = await ctx.db
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("telegram_id", referredId);
+  if (ordersError) throw serverFailure(`[referral] заказы приглашённого: ${ordersError.message}`);
+  if ((ordersBefore ?? 0) > 0) return null;
   const { error } = await ctx.db.from("referrals").insert({
     bot_id: ctx.tenant.id,
     referrer_telegram_id: referrerId,
