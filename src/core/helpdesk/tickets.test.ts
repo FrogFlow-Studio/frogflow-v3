@@ -227,3 +227,40 @@ describe("обращения: одновременные записи не за�
     expect(t).toMatchObject({ rating: 5, assignee: "manager1" });
   });
 });
+
+describe("обращения: список без обрезок (О1)", () => {
+  it("250 обращений — все видны, самые старые тоже; порядок стабилен при одинаковом времени", async () => {
+    const { ctx, db } = ctxWith();
+    db.tables.zernio_logs = Array.from({ length: 250 }, (_, i) => ({
+      id: `id-${String(i).padStart(3, "0")}`,
+      bot_id: BOT,
+      event_id: `ticket:t${i}`,
+      event_type: "ticket",
+      status: "open",
+      payload: { number: i + 1, telegram_id: i + 1 },
+      // у всех одно и то же время — порядок обязан заканчиваться уникальным ключом
+      created_at: "2026-09-01T00:00:00Z",
+    }));
+    const all = await listTickets(ctx, "open");
+    expect(all).toHaveLength(250);
+    expect(new Set(all.map((t) => t.id)).size).toBe(250);
+    expect(all.at(-1)!.id).toBe("id-000");
+  });
+
+  it("ошибка чтения — serverFailure, а не Error с текстом базы", async () => {
+    const { ctx } = ctxWith();
+    const failing: unknown = new Proxy(
+      {},
+      {
+        get: (_t, prop) =>
+          prop === "then"
+            ? (res: (v: unknown) => void) =>
+                res({ data: null, error: { message: "relation zernio_logs_pkey" } })
+            : () => failing,
+      },
+    );
+    (ctx as unknown as { db: unknown }).db = { from: () => failing };
+    const err = await listTickets(ctx, "open").catch((e) => e);
+    expect(err).toMatchObject({ name: "ServerFailure" });
+  });
+});

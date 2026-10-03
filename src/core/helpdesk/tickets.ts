@@ -253,19 +253,20 @@ export async function nextTicketNumber(ctx: TenantContext): Promise<number> {
 export async function listTickets(
   ctx: TenantContext,
   status?: TicketStatus | null,
-  limit = 200,
 ): Promise<Ticket[]> {
-  let q = ctx.db
-    .from("zernio_logs")
-    .select(SELECT)
-    .like("event_id", `${TICKET_PREFIX}%`)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (status === "waiting") q = q.in("status", ["waiting", "pending"]);
-  else if (status) q = q.eq("status", status);
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  return (data ?? []).map(rowToTicket);
+  const rows = await pageAll((from, to) => {
+    let q = ctx.db
+      .from("zernio_logs")
+      .select(SELECT)
+      .like("event_id", `${TICKET_PREFIX}%`)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, to);
+    if (status === "waiting") q = q.in("status", ["waiting", "pending"]);
+    else if (status) q = q.eq("status", status);
+    return q;
+  }, "Поддержка: список обращений");
+  return rows.map(rowToTicket);
 }
 
 export async function getTicket(ctx: TenantContext, id: string): Promise<Ticket | null> {

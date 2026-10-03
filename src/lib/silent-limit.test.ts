@@ -90,7 +90,6 @@ const ALLOWED: Record<string, string[]> = {
     `${BATCH} (очередь исходящих)`,
     `${SHOWN} (страница «Не доставлено»)`,
   ],
-  "src/core/helpdesk/tickets.ts": [`${SHOWN} (обращения в админке, есть фильтр)`],
   "src/core/broadcasts/broadcasts.ts": [
     "активных рассылок на канале единицы: ACTIVE_SCAN с запасом",
     "активных рассылок на канале единицы: ACTIVE_SCAN с запасом",
