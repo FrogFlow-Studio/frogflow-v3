@@ -15,10 +15,16 @@ export type PulseClient = {
   lastOrderAt: string | null | undefined;
 };
 
+async function readChunked<T>(chunks: string[][], read: (chunk: string[]) => Promise<T[]>) {
+  const out: T[] = [];
+  for (const chunk of chunks) out.push(...(await read(chunk)));
+  return out;
+}
+
 /** Действия продавца с заказами с `since`: куски по 200 клиентов, каждый постранично. */
-async function readSellerActions(botIds: string[], since: string) {
+async function readSellerActions(chunks: string[][], since: string) {
   const out: { id: string; bot_id: string | null; created_at: string }[] = [];
-  for (const chunk of chunksOf(botIds))
+  for (const chunk of chunks)
     out.push(
       ...(await pageAll<{ id: string; bot_id: string | null; created_at: string }>(
         (from, to) =>
@@ -52,31 +58,39 @@ export async function loadPulse(
   const ids = new Set(clients.map((c) => c.id));
   const ordersSince = new Date(now.getTime() - 2 * PULSE_DAYS * DAY_MS).toISOString();
   const loginsSince = new Date(now.getTime() - LOGIN_DAYS * DAY_MS).toISOString();
+  // Только клиенты v2 и кусками по 200: список клиентов в адрес запроса целиком не помещается.
+  const chunks = chunksOf([...ids]);
   const actionsSince = new Date(now.getTime() - PULSE_DAYS * DAY_MS).toISOString();
   const [orders, logins, actions] = await Promise.all([
-    pageAll<{ id: number; bot_id: string | null; created_at: string }>(
-      (from, to) =>
-        serviceDb()
-          .from("orders")
-          .select("id, bot_id, created_at")
-          .gte("created_at", ordersSince)
-          .order("id", { ascending: true })
-          .range(from, to),
-      "Заказы для пульса не прочитаны",
+    readChunked(chunks, (chunk) =>
+      pageAll<{ id: number; bot_id: string | null; created_at: string }>(
+        (from, to) =>
+          serviceDb()
+            .from("orders")
+            .select("id, bot_id, created_at")
+            .in("bot_id", chunk)
+            .gte("created_at", ordersSince)
+            .order("id", { ascending: true })
+            .range(from, to),
+        "Заказы для пульса не прочитаны",
+      ),
     ),
-    pageAll<{ id: string; bot_id: string; at: string }>(
-      (from, to) =>
-        serviceDb()
-          .from("admin_login_attempts")
-          .select("id, bot_id, at")
-          .eq("ok", true)
-          .gte("at", loginsSince)
-          .order("id", { ascending: true })
-          .range(from, to),
-      "Входы продавцов для пульса не прочитаны",
+    readChunked(chunks, (chunk) =>
+      pageAll<{ id: string; bot_id: string; at: string }>(
+        (from, to) =>
+          serviceDb()
+            .from("admin_login_attempts")
+            .select("id, bot_id, at")
+            .in("bot_id", chunk)
+            .eq("ok", true)
+            .gte("at", loginsSince)
+            .order("id", { ascending: true })
+            .range(from, to),
+        "Входы продавцов для пульса не прочитаны",
+      ),
     ),
     // Действия продавца с заказами (подтвердил в Telegram и т.п.) — журнал заказа, actor admin*.
-    readSellerActions([...ids], actionsSince),
+    readSellerActions(chunks, actionsSince),
   ]);
   const ordersBy = new Map<string, string[]>();
   for (const o of orders) {

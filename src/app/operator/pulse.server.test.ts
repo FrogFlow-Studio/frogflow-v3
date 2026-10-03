@@ -81,6 +81,39 @@ describe("loadPulse", () => {
       await expect(loadPulse([client(A)], now)).rejects.toThrow(/не прочитан/);
     });
 
+  it("читает заказы и входы только своих клиентов кусками по 200, не всю платформу", async () => {
+    db = fakeDb({ maxIn: 200 });
+    db.tables.orders = [];
+    db.tables.admin_login_attempts = [];
+    db.tables.zernio_logs = [];
+    const ids = Array.from(
+      { length: 450 },
+      (_, i) => `c${String(i).padStart(7, "0")}-0000-0000-0000-000000000000`,
+    );
+    db.tables.orders.push(
+      { id: 1, bot_id: ids[449], created_at: ago(2) }, // клиент из последнего куска
+      { id: 2, bot_id: "v1-client", created_at: ago(2) }, // клиент v1: читать не должны
+    );
+    db.tables.admin_login_attempts.push({ id: "1", bot_id: ids[0], at: ago(1), ok: true });
+    const seen: Record<string, number> = { orders: 0, admin_login_attempts: 0, zernio_logs: 0 };
+    const orig = db.from.bind(db);
+    db.from = ((t: string) => {
+      const q = orig(t) as unknown as Record<string, (...a: unknown[]) => unknown>;
+      const origIn = q.in!.bind(q);
+      q.in = (col: unknown, vs: unknown) => {
+        if (col === "bot_id" && t in seen) seen[t]! += 1;
+        return origIn(col, vs);
+      };
+      return q;
+    }) as unknown as typeof db.from;
+    const m = await loadPulse(ids.map(client), now);
+    expect(m.get(ids[449]!)).toMatchObject({ recent: 1 });
+    expect(m.get(ids[0]!)).toMatchObject({ daysSinceLogin: 1 });
+    expect(seen.orders).toBe(3); // 450 клиентов = 3 куска
+    expect(seen.admin_login_attempts).toBe(3);
+    expect(seen.zernio_logs).toBe(3);
+  });
+
   it("без клиентов в базу не ходит", async () => {
     expect((await loadPulse([], now)).size).toBe(0);
   });
