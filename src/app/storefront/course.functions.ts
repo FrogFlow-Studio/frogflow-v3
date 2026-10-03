@@ -75,6 +75,46 @@ export const uploadHomeworkFileFn = createServerFn({ method: "POST" })
     return r.file;
   });
 
+/** Тест к уроку: ответы по вопросам и число попыток, которое ученик видел (core/courses/lesson-quiz.server). */
+export const submitQuizFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    input
+      .extend({
+        lessonId: z.string().uuid(),
+        answers: z
+          .array(z.array(z.number().int().min(0).max(5)).max(6))
+          .min(1)
+          .max(10),
+        attempt: z.number().int().min(0).max(100_000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { ctx, p } = await purchase(data);
+    const { submitQuiz } = await import("@/core/courses/lesson-quiz.server");
+    const r = await submitQuiz(ctx, p, data.lessonId, data.answers, data.attempt);
+    if (!r.ok) {
+      const { shownError } = await import("@/lib/shown-error");
+      const { storefrontT } = await import("@/app/i18n/storefront");
+      const t = storefrontT(ctx.tenant.settings.default_locale ?? "ru");
+      throw shownError(
+        t(
+          r.reason === "stale"
+            ? "course.quiz.err.stale"
+            : r.reason === "closed" || r.reason === "noQuiz"
+              ? "course.quiz.err.closed"
+              : "course.quiz.err.failed",
+        ),
+      );
+    }
+    return {
+      ...r.grade,
+      attempts: r.result.attempts,
+      best: r.result.best,
+      certificate: r.certificate,
+    };
+  });
+
 export const submitHomeworkFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     input

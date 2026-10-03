@@ -14,6 +14,7 @@ import {
   type CourseProblem,
 } from "./course";
 import { readSetting } from "./db.server";
+import type { LessonQuiz } from "./lesson-quiz";
 
 /**
  * Уроки курса в админке продавца: прочитать и сохранить. Курс привязан к
@@ -23,6 +24,15 @@ import { readSetting } from "./db.server";
 export async function getCourse(ctx: TenantContext, productId: string): Promise<Course> {
   return parseCourse(await readSetting(ctx, courseKey(productId)));
 }
+
+const cleanQuiz = (q: LessonQuiz): LessonQuiz => ({
+  pass: q.pass,
+  questions: q.questions.map((x) => ({
+    text: x.text.trim(),
+    options: x.options.map((o) => o.trim()),
+    correct: [...new Set(x.correct)].sort((a, b) => a - b),
+  })),
+});
 
 /** Отказ продавцу; номер урока — с единицы, как он видит список. */
 function problemError(p: CourseProblem): UserError {
@@ -51,6 +61,12 @@ function problemError(p: CourseProblem): UserError {
         "err.course.emptyLesson",
         "Урок {lesson} пустой: добавьте текст, файл или ссылку.",
         { lesson: p.lesson },
+      );
+    case "badQuiz":
+      return new UserError(
+        "err.course.badQuiz",
+        "Тест в уроке {lesson}, вопрос {question}: нужен текст, 2–6 вариантов и хотя бы один верный; порог — 1–100 %.",
+        { lesson: p.lesson, question: p.question },
       );
     case "badSchedule":
       return new UserError("err.course.badSchedule", "Уроки можно открывать раз в 1–60 дней.");
@@ -106,6 +122,7 @@ export async function saveCourse(
       link: l.link?.trim() || null,
       ...(l.homework?.trim() ? { homework: l.homework.trim() } : {}),
       ...(l.preview ? { preview: true } : {}),
+      ...(l.quiz ? { quiz: cleanQuiz(l.quiz) } : {}),
     })),
     ...(course.channel?.trim() ? { channel: course.channel.trim() } : {}),
     ...(course.cohorts?.length

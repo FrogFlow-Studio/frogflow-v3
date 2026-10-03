@@ -11,6 +11,7 @@ import type { ChannelInviter } from "@/core/courses/channel.server";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { TelegramApi } from "./api";
 import { escapeHtml } from "./copy";
+import { quizButton } from "./course-quiz";
 import type { InlineButton, TelegramMessage } from "./types";
 
 /**
@@ -598,6 +599,7 @@ export async function showLesson(b: CourseBot, data: string): Promise<void> {
   if (l.link) rows.push([{ text: "▶️ " + l.title.slice(0, 40), url: l.link }]);
   if (l.homework && tl.tariff.homework)
     rows.push([{ text: c.submitBtn(a.no), callback_data: `hw:${p.orderItemId}:${a.no}` }]);
+  if (l.quiz) rows.push([quizButton(b, p.orderItemId, a.no)]);
   await send(
     b,
     parts.join("\n\n").slice(0, 4096),

@@ -26,6 +26,7 @@ import {
   COHORTS_MAX,
   HOMEWORK_DAYS_MAX,
 } from "@/core/courses/course";
+import { LessonQuizEditor } from "@/app/admin/lesson-quiz-editor";
 import { DEFAULT_TARIFF, type Cohort, type Tariff } from "@/core/courses/cohort";
 
 /**
@@ -275,6 +276,12 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
                 />
                 <span>{t("school.lessonPreview")}</span>
               </label>
+              <LessonQuizEditor
+                lessonId={l.id}
+                quiz={l.quiz}
+                onChange={(quiz) => edit(i, (x) => ({ ...x, quiz }))}
+                t={t}
+              />
               <textarea
                 id={`lesson-homework-${l.id}`}
                 className="input mb-2 min-h-16"

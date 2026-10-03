@@ -1,7 +1,9 @@
 import { videoEmbed } from "@/core/courses/video";
 import { nextOpening } from "@/core/courses/access";
 import { issueCertificate } from "@/core/courses/certificate.server";
+import { readSettings } from "@/core/courses/db.server";
 import { isCourseToken } from "@/core/courses/link";
+import { parseQuizResult, publicQuiz, quizKey, type PublicQuiz } from "@/core/courses/lesson-quiz";
 import {
   coursePurchase,
   markLesson,
@@ -43,6 +45,15 @@ export type LessonHomeworkView = {
   canSubmit: boolean;
 };
 
+export type LessonQuizView = PublicQuiz & {
+  /** Сколько попыток уже сделано: по нему сервер принимает следующую (без дублей). */
+  attempts: number;
+  passed: boolean;
+  /** Лучший результат, процентов. */
+  best: number;
+  last: { score: number; total: number } | null;
+};
+
 export type CourseView = {
   name: string;
   lessons: Array<{
@@ -60,6 +71,8 @@ export type CourseView = {
     /** Адрес встроенного плеера для ссылки на видео (core/courses/video); иначе null. */
     embed: string | null;
     files: Array<{ name: string; url: string }>;
+    /** Тест к уроку (без верных ответов); null — у урока его нет. */
+    quiz: LessonQuizView | null;
     /** Домашнее задание открытого урока; null — у урока его нет. */
     homework: LessonHomeworkView | null;
   }>;
@@ -92,8 +105,22 @@ export async function courseView(
   const done = new Set(run.done);
   const hasHomework = p.course.lessons.some((l) => l.homework);
   const submitted = hasHomework ? await purchaseHomework(ctx, p.orderItemId) : new Map();
+  const quizKeys = p.course.lessons.flatMap((l) => (l.quiz ? [quizKey(p.orderItemId, l.id)] : []));
+  const quizRaw = quizKeys.length ? await readSettings(ctx, quizKeys) : new Map<string, string>();
   const lessons: CourseView["lessons"] = [];
   for (const a of access) {
+    let quiz: LessonQuizView | null = null;
+    if (a.open && a.lesson.quiz) {
+      const r = parseQuizResult(quizRaw.get(quizKey(p.orderItemId, a.lesson.id)));
+      const last = r.log.at(-1);
+      quiz = {
+        ...publicQuiz(a.lesson.quiz),
+        attempts: r.attempts,
+        passed: r.passed,
+        best: r.best,
+        last: last ? { score: last.score, total: last.total } : null,
+      };
+    }
     const files: Array<{ name: string; url: string }> = [];
     if (a.open)
       for (const f of a.lesson.files) {
@@ -115,6 +142,7 @@ export async function courseView(
       link: a.open ? a.lesson.link : null,
       embed: a.open && a.lesson.link ? videoEmbed(a.lesson.link) : null,
       files,
+      quiz,
       homework:
         a.open && a.lesson.homework
           ? await homeworkView(
@@ -150,6 +178,11 @@ export async function setLessonDone(
   done: boolean,
   now = new Date(),
 ): Promise<{ done: string[]; certificate: string | null }> {
+  // Урок с тестом отмечает только пройденный тест: вручную не пропустить и не снять.
+  if (p.course.lessons.find((l) => l.id === lessonId)?.quiz) {
+    const run = p.run ?? (await startRun(ctx, p, now));
+    return { done: run.done, certificate: null };
+  }
   const run = await markLesson(ctx, p, lessonId, done, now);
   // Последний урок отмечен — курс без проверяемых заданий окончен.
   const cert = done ? await issueCertificate(ctx, { ...p, run }, now).catch(() => null) : null;

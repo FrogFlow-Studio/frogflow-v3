@@ -36,6 +36,7 @@ import * as deletion from "./admin/deletion";
 import * as plan from "./admin/plan";
 import * as sheet from "./admin/sheet";
 import * as similar from "./admin/similar";
+import * as schoolQuiz from "./admin/school-quiz";
 import * as errorsCore from "./admin/errors-core";
 import * as errorsVip from "./admin/errors-vip";
 import * as errorsAdmin from "./admin/errors-admin";
@@ -416,6 +417,7 @@ const ru = {
   ...plan.ru,
   ...sheet.ru,
   ...similar.ru,
+  ...schoolQuiz.ru,
   ...errorsCore.ru,
   ...errorsVip.ru,
   ...errorsAdmin.ru,
@@ -1463,6 +1465,7 @@ const kk: Dict = {
   ...plan.kk,
   ...sheet.kk,
   ...similar.kk,
+  ...schoolQuiz.kk,
   ...errorsCore.kk,
   ...errorsVip.kk,
   ...errorsAdmin.kk,
@@ -1501,6 +1504,7 @@ const en: Dict = {
   ...plan.en,
   ...sheet.en,
   ...similar.en,
+  ...schoolQuiz.en,
   ...errorsCore.en,
   ...errorsVip.en,
   ...errorsAdmin.en,
@@ -1539,6 +1543,7 @@ const uz: Dict = {
   ...plan.uz,
   ...sheet.uz,
   ...similar.uz,
+  ...schoolQuiz.uz,
   ...errorsCore.uz,
   ...errorsVip.uz,
   ...errorsAdmin.uz,

@@ -6,6 +6,7 @@ import {
   courseViewFn,
   markLessonFn,
   submitHomeworkFn,
+  submitQuizFn,
   uploadHomeworkFileFn,
 } from "@/app/storefront/course.functions";
 import type { CourseView } from "@/app/storefront/course.server";
@@ -210,14 +211,30 @@ function CoursePage() {
                     date={date}
                   />
                 )}
-                <button
-                  type="button"
-                  className={done.has(l.id) ? "btn-secondary text-xs" : "btn-primary text-xs"}
-                  disabled={mark.busy}
-                  onClick={() => void mark.run(l.id, !done.has(l.id)).catch(() => {})}
-                >
-                  {done.has(l.id) ? t("course.done") : t("course.markDone")}
-                </button>
+                {l.quiz && (
+                  <QuizBlock
+                    quiz={l.quiz}
+                    lessonId={l.id}
+                    ids={{ slug, itemId, k }}
+                    t={t}
+                    onPassed={(cert) => {
+                      setDone((d) => new Set([...d, l.id]));
+                      if (cert) setCertificate(cert);
+                    }}
+                  />
+                )}
+                {l.quiz ? (
+                  done.has(l.id) && <p className="text-xs text-ok">✓ {t("course.done")}</p>
+                ) : (
+                  <button
+                    type="button"
+                    className={done.has(l.id) ? "btn-secondary text-xs" : "btn-primary text-xs"}
+                    disabled={mark.busy}
+                    onClick={() => void mark.run(l.id, !done.has(l.id)).catch(() => {})}
+                  >
+                    {done.has(l.id) ? t("course.done") : t("course.markDone")}
+                  </button>
+                )}
               </div>
             )}
           </li>
@@ -231,6 +248,108 @@ function CoursePage() {
 }
 
 type T = ReturnType<typeof useStorefrontLocale>["t"];
+type Quiz = NonNullable<CourseView["lessons"][number]["quiz"]>;
+
+/**
+ * Тест к уроку: верные ответы в браузер не приходят, оценивает сервер. Вместе с
+ * ответами уходит число попыток, которое ученик видел, — двойная отправка не
+ * даст вторую попытку.
+ */
+function QuizBlock({
+  quiz,
+  lessonId,
+  ids,
+  t,
+  onPassed,
+}: {
+  quiz: Quiz;
+  lessonId: string;
+  ids: { slug: string; itemId: string; k: string };
+  t: T;
+  onPassed: (certificate: string | null) => void;
+}) {
+  const [picked, setPicked] = useState<number[][]>(() => quiz.questions.map(() => []));
+  const [attempts, setAttempts] = useState(quiz.attempts);
+  const [passed, setPassed] = useState(quiz.passed);
+  const [last, setLast] = useState(quiz.last);
+  const [best, setBest] = useState(quiz.best);
+  const send = useAction(async () => {
+    const r = await submitQuizFn({
+      data: { ...ids, lessonId, answers: picked, attempt: attempts },
+    });
+    setAttempts(r.attempts);
+    setBest(r.best);
+    setLast({ score: r.score, total: r.total });
+    if (r.passed) {
+      setPassed(true);
+      onPassed(r.certificate);
+    }
+    setPicked(quiz.questions.map(() => []));
+  });
+  const toggle = (qi: number, oi: number, multi: boolean) =>
+    setPicked((cur) =>
+      cur.map((sel, i) =>
+        i !== qi
+          ? sel
+          : multi
+            ? sel.includes(oi)
+              ? sel.filter((n) => n !== oi)
+              : [...sel, oi]
+            : [oi],
+      ),
+    );
+  const ready = picked.every((sel) => sel.length > 0);
+  return (
+    <section className="mt-3 space-y-3 rounded-md bg-surface-2 p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="font-medium">🧪 {t("course.quiz.title")}</h3>
+        <span className={`text-xs ${passed ? "text-ok" : "text-muted"}`}>
+          {passed ? t("course.quiz.passed") : t("course.quiz.need", { pass: quiz.pass })}
+        </span>
+      </div>
+      {last && (
+        <p className="text-xs text-muted">
+          {t("course.quiz.last", { score: last.score, total: last.total, best })} ·{" "}
+          {t("course.quiz.attempts", { n: attempts })}
+        </p>
+      )}
+      {!passed && (
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send.run().catch(() => {});
+          }}
+        >
+          {quiz.questions.map((q, qi) => (
+            <fieldset key={qi} className="space-y-1">
+              <legend className="font-medium">
+                {qi + 1}. {q.text}
+              </legend>
+              {q.multi && <p className="text-xs text-muted">{t("course.quiz.multi")}</p>}
+              {q.options.map((o, oi) => (
+                <label key={oi} className="flex items-start gap-2">
+                  <input
+                    type={q.multi ? "checkbox" : "radio"}
+                    name={`quiz-${lessonId}-${qi}`}
+                    className="mt-1"
+                    checked={picked[qi]!.includes(oi)}
+                    onChange={() => toggle(qi, oi, q.multi)}
+                  />
+                  <span>{o}</span>
+                </label>
+              ))}
+            </fieldset>
+          ))}
+          <ErrorBox error={send.error} />
+          <button type="submit" className="btn-primary text-xs" disabled={send.busy || !ready}>
+            {attempts > 0 ? t("course.quiz.retry") : t("course.quiz.submit")}
+          </button>
+        </form>
+      )}
+    </section>
+  );
+}
 type Hw = NonNullable<CourseView["lessons"][number]["homework"]>;
 
 /** Файл ответа — до 3 МБ: фото с телефона сжимаем в браузере до 2000 пикселей. */

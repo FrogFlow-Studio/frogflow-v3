@@ -9,6 +9,7 @@
  * Модуль без базы и без node-зависимостей: его читает и редактор в браузере.
  */
 import { isTenantStorageKey } from "@/core/storage/keys";
+import { parseQuiz, quizProblem, type LessonQuiz } from "./lesson-quiz";
 
 export const COURSE_KEY_PREFIX = "course_";
 export const LESSONS_MAX = 100;
@@ -35,6 +36,8 @@ export type Lesson = {
   homework?: string | null;
   /** Открытый урок: текст, ссылка и файлы видны до покупки (core/courses/preview). */
   preview?: boolean;
+  /** Тест к уроку (core/courses/lesson-quiz); верные ответы только здесь. */
+  quiz?: LessonQuiz;
 };
 /**
  * Когда следующий урок открывается после ДЗ предыдущего (режим «по заданиям»):
@@ -148,6 +151,7 @@ export function parseCourse(raw: string | null | undefined): Course {
     }
     const link = str(x.link, LESSON_LINK_MAX);
     const homework = str(x.homework, HOMEWORK_TASK_MAX);
+    const quiz = parseQuiz(x.quiz);
     lessons.push({
       id,
       title,
@@ -156,6 +160,7 @@ export function parseCourse(raw: string | null | undefined): Course {
       link: link && isHttpsLink(link) ? link : null,
       ...(homework ? { homework } : {}),
       ...(x.preview === true ? { preview: true } : {}),
+      ...(quiz ? { quiz } : {}),
     });
     if (lessons.length >= LESSONS_MAX) break;
   }
@@ -214,6 +219,7 @@ export type CourseProblem =
   | { kind: "noTitle"; lesson: number }
   | { kind: "duplicateId"; lesson: number }
   | { kind: "badLink"; lesson: number }
+  | { kind: "badQuiz"; lesson: number; question: number }
   | { kind: "tooManyFiles"; lesson: number }
   | { kind: "foreignFile"; lesson: number }
   | { kind: "empty"; lesson: number }
@@ -273,7 +279,12 @@ export function courseProblem(tenantId: string, c: Course): CourseProblem | null
     if (l.files.length > LESSON_FILES_MAX) return { kind: "tooManyFiles", lesson };
     if (l.files.some((f) => !isTenantStorageKey(tenantId, f.path)))
       return { kind: "foreignFile", lesson };
-    if (!l.text.trim() && !l.link && l.files.length === 0) return { kind: "empty", lesson };
+    if (l.quiz) {
+      const question = quizProblem(l.quiz);
+      if (question) return { kind: "badQuiz", lesson, question };
+    }
+    if (!l.text.trim() && !l.link && l.files.length === 0 && !l.quiz)
+      return { kind: "empty", lesson };
   }
   return null;
 }

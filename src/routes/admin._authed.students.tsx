@@ -124,6 +124,12 @@ function StudentsPage() {
                                 waiting: s.homework.submitted,
                                 revise: s.homework.revise,
                               })}`}
+                            {s.quiz.lessons > 0 &&
+                              ` · 🧪 ${t("school.studentQuiz", {
+                                passed: s.quiz.passed,
+                                lessons: s.quiz.lessons,
+                                attempts: s.quiz.attempts,
+                              })}`}
                           </span>
                         </li>
                       ))}

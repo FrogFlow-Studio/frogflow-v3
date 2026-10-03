@@ -45,7 +45,21 @@ const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0]);
 const course: Course = {
   schedule: { mode: "drip", everyDays: 7 },
   lessons: [
-    { id: id(1), title: "Кисти", text: "Урок", files: [], link: null, homework: "Нарисуйте круг" },
+    {
+      id: id(1),
+      title: "Кисти",
+      text: "Урок",
+      files: [],
+      link: null,
+      homework: "Нарисуйте круг",
+      quiz: {
+        pass: 100,
+        questions: [
+          { text: "Чем красят?", options: ["Кистью", "Ложкой"], correct: [0] },
+          { text: "Что нужно?", options: ["Краски", "Мыло", "Вода"], correct: [0, 2] },
+        ],
+      },
+    },
     {
       id: id(2),
       title: "Цвет",
@@ -388,5 +402,68 @@ describe("открытый урок до покупки", () => {
     expect(buttons(lesson).map((x) => x.url)).toEqual(["https://youtu.be/free"]);
     await handleTelegramUpdate(ctx, api, press(`opl:${P}:1`, 2));
     expect(messages(calls).at(-1)!.text).toBe("Этот урок ещё не открыт.");
+  });
+});
+
+describe("тест к уроку в боте", () => {
+  const quizRec = (db: FakeDb) =>
+    (db.tables.app_settings as Array<{ key: string; value: string }>).find((r) =>
+      r.key.startsWith("quiz_"),
+    );
+
+  it("вопрос за вопросом: один верный, несколько верных, итог и отметка урока", async () => {
+    const { ctx, db, api, calls } = school();
+    await handleTelegramUpdate(ctx, api, press(`lsn:${ITEM}:1`));
+    expect(buttons(messages(calls).at(-1)).map((x) => x.callback_data)).toContain(`qz:${ITEM}:1`);
+    await handleTelegramUpdate(ctx, api, press(`qz:${ITEM}:1`, 2));
+    const q1 = messages(calls).at(-1)!;
+    expect(String(q1.text)).toContain("Вопрос 1 из 2");
+    // Верные ответы в кнопках не светятся: только текст вариантов.
+    expect(JSON.stringify(q1)).not.toContain("correct");
+    await handleTelegramUpdate(ctx, api, press("qa:0:0", 3));
+    const q2 = messages(calls).at(-1)!;
+    expect(String(q2.text)).toContain("Вопрос 2 из 2");
+    expect(buttons(q2).map((x) => x.callback_data)).toEqual(["qa:1:0", "qa:1:1", "qa:1:2", "qd:1"]);
+    // Нажатие на вопрос, который уже пройден, ничего не меняет.
+    await handleTelegramUpdate(ctx, api, press("qa:0:1", 4));
+    expect((state(db).qz as { q: number }).q).toBe(1);
+    await handleTelegramUpdate(ctx, api, press("qa:1:0", 5));
+    await handleTelegramUpdate(ctx, api, press("qa:1:2", 6));
+    expect(calls.filter(([m]) => m === "editMessageReplyMarkup")).toHaveLength(2);
+    await handleTelegramUpdate(ctx, api, press("qd:1", 7));
+    expect(String(messages(calls).at(-1)!.text)).toContain("Тест пройден: 2 из 2");
+    expect(state(db).qz).toBeUndefined();
+    expect(JSON.parse(quizRec(db)!.value)).toMatchObject({ attempts: 1, passed: true, best: 100 });
+    const run = (db.tables.app_settings as Array<{ key: string; value: string }>).find(
+      (r) => r.key === `course_run_${ITEM}`,
+    );
+    expect(JSON.parse(run!.value).done).toEqual([id(1)]);
+    // Повторно пройти пройденный тест нельзя.
+    await handleTelegramUpdate(ctx, api, press(`qz:${ITEM}:1`, 8));
+    expect(messages(calls).at(-1)!.text).toBe("Этот тест вы уже прошли.");
+  });
+
+  it("двойной тап по последнему ответу — одна попытка; провал не засчитывает урок", async () => {
+    const { ctx, db, api, calls } = school();
+    await handleTelegramUpdate(ctx, api, press(`qz:${ITEM}:1`));
+    await handleTelegramUpdate(ctx, api, press("qa:0:1", 2));
+    await handleTelegramUpdate(ctx, api, press("qa:1:1", 3));
+    await Promise.all([
+      handleTelegramUpdate(ctx, api, press("qd:1", 4)),
+      handleTelegramUpdate(ctx, api, press("qd:1", 5)),
+    ]);
+    expect(JSON.parse(quizRec(db)!.value)).toMatchObject({ attempts: 1, passed: false });
+    const results = messages(calls).filter((m) => String(m.text).startsWith("Результат"));
+    expect(results).toHaveLength(1);
+    expect(String(results[0]!.text)).toContain("Нужно верных ответов: 100%");
+  });
+
+  it("закрытый урок: тест не стартует", async () => {
+    const { ctx, db, api, calls } = school();
+    await handleTelegramUpdate(ctx, api, press(`qz:${ITEM}:2`));
+    expect(messages(calls).at(-1)!.text).toBe(
+      "Тест сейчас недоступен: урок закрыт или у него нет теста.",
+    );
+    expect(state(db).qz).toBeUndefined();
   });
 });

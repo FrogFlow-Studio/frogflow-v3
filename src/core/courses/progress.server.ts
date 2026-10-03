@@ -6,6 +6,7 @@ import { courseKey, parseCourse } from "./course";
 import { readSetting, readSettings, selectIn } from "./db.server";
 import { inviteKey } from "./channel.server";
 import { hwKey, parseHomework } from "./homework";
+import { parseQuizResult, quizKey } from "./lesson-quiz";
 import { parseRun, runKey } from "./run.server";
 
 /**
@@ -27,6 +28,8 @@ export type CourseStudent = {
   /** Название варианта-тарифа; null — без вариантов. */
   tariff: string | null;
   homework: { submitted: number; accepted: number; revise: number };
+  /** Тесты к урокам: сколько в курсе, сколько пройдено, всего попыток. */
+  quiz: { lessons: number; passed: number; attempts: number };
   /** Открыто на 2 урока больше, чем пройдено, или есть работы на доработке. */
   behind: boolean;
   expired: boolean;
@@ -79,8 +82,11 @@ export async function courseStudents(
   const hwKeys = bought.flatMap((i) =>
     course.lessons.filter((l) => l.homework).map((l) => hwKey(i.id, l.id)),
   );
-  const [hwRaw, invRaw, variants] = await Promise.all([
+  const quizLessons = course.lessons.filter((l) => l.quiz);
+  const quizKeys = bought.flatMap((i) => quizLessons.map((l) => quizKey(i.id, l.id)));
+  const [hwRaw, quizRaw, invRaw, variants] = await Promise.all([
     readSettings(ctx, hwKeys),
+    readSettings(ctx, quizKeys),
     readSettings(
       ctx,
       bought.map((i) => inviteKey(i.id)),
@@ -119,6 +125,9 @@ export async function courseStudents(
     const open = run ? tl.access.filter((a) => a.open).length : 0;
     // Отметки удалённых уроков не считаем.
     const done = run ? run.done.filter((id) => ids.has(id)).length : 0;
+    const quizResults = new Map(
+      quizLessons.map((l) => [l.id, parseQuizResult(quizRaw.get(quizKey(i.id, l.id)))] as const),
+    );
     const hw = { submitted: 0, accepted: 0, revise: 0 };
     for (const l of course.lessons) {
       const h = l.homework ? parseHomework(hwRaw.get(hwKey(i.id, l.id))) : null;
@@ -142,6 +151,11 @@ export async function courseStudents(
       cohortId: tl.cohort?.id ?? null,
       tariff: i.product_variant_id ? (variantName.get(i.product_variant_id) ?? null) : null,
       homework: hw,
+      quiz: {
+        lessons: quizLessons.length,
+        passed: [...quizResults.values()].filter((r) => r.passed).length,
+        attempts: [...quizResults.values()].reduce((n, r) => n + r.attempts, 0),
+      },
       behind: !tl.expired && (open - done >= 2 || hw.revise > 0),
       expired: tl.expired,
       accessLimited: tl.tariff.accessDays != null,

@@ -2428,6 +2428,12 @@ async function handleCallback(
     const { showLessonList, showLesson } = await import("./courses");
     return data.startsWith("lsl:") ? showLessonList(b, data) : showLesson(b, data);
   }
+  if (/^q[zad]:/.test(data) && ctx.tenant.modules.courses) {
+    const { startQuiz, answerQuiz } = await import("./course-quiz");
+    return data.startsWith("qz:")
+      ? startQuiz(b, data)
+      : answerQuiz(b, data, cq.message?.message_id);
+  }
   if (data.startsWith("opl:") && ctx.tenant.modules.courses) {
     const { showOpenLesson } = await import("./courses");
     return showOpenLesson(b, data);

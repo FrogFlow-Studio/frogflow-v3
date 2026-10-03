@@ -126,6 +126,8 @@ export type DialogState = {
   hw_item?: string;
   hw_lesson?: string;
   hw_group?: string;
+  /** Онлайн-школа: тест к уроку в боте, вопрос за вопросом (channels/telegram/course-quiz). */
+  qz?: { [key: string]: Json | undefined };
   [key: string]: Json | undefined;
 };
 

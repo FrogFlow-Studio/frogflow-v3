@@ -16,6 +16,12 @@ import {
   LOCAL_DAY_RE,
   LOCAL_START_RE,
 } from "@/core/courses/course";
+import {
+  QUIZ_OPTION_MAX,
+  QUIZ_OPTIONS_MAX,
+  QUIZ_QUESTIONS_MAX,
+  QUIZ_TEXT_MAX,
+} from "@/core/courses/lesson-quiz";
 
 /**
  * Уроки курса (модуль courses) в карточке цифрового товара. Смотреть может
@@ -43,6 +49,21 @@ const lesson = z.object({
   link: z.string().max(LESSON_LINK_MAX).nullable().default(null),
   homework: z.string().max(HOMEWORK_TASK_MAX).nullable().optional(),
   preview: z.boolean().optional(),
+  quiz: z
+    .object({
+      pass: z.number().int().min(1).max(100),
+      questions: z
+        .array(
+          z.object({
+            text: z.string().max(QUIZ_TEXT_MAX),
+            options: z.array(z.string().max(QUIZ_OPTION_MAX)).max(QUIZ_OPTIONS_MAX),
+            correct: z.array(z.number().int().min(0).max(QUIZ_OPTIONS_MAX)).max(QUIZ_OPTIONS_MAX),
+          }),
+        )
+        .min(1)
+        .max(QUIZ_QUESTIONS_MAX),
+    })
+    .optional(),
 });
 
 const course = z.object({
