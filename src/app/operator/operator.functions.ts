@@ -372,10 +372,32 @@ export const archiveClientFn = createServerFn({ method: "POST" })
   });
 
 export const notifyOwnerFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) => z.object({ botId, text: z.string().min(1).max(4000) }).parse(d))
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId,
+        text: z.string().min(1).max(4000),
+        template: z.enum(["payment", "checkin", "feature"]).nullable().optional(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     await guard();
-    return (await impl()).notifyOwner(data.botId, data.text);
+    return (await impl()).notifyOwner(data.botId, data.text, data.template ?? null);
+  });
+
+export const ownerMessageDraftFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await impl()).ownerMessageDraft(data.botId);
+  });
+
+export const ownerMessagesFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await impl()).listOwnerMessages(data.botId);
   });
 
 /* ── заявки на модули ─────────────────────────────────────────────── */

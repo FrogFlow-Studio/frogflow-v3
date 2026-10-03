@@ -29,6 +29,7 @@ const ALLOWED: Record<string, string[]> = {
     `${SHOWN} (события клиента)`,
     `${SHOWN} (события платформы)`,
     `${SHOWN} (рассылки оператора)`,
+    `${SHOWN} (журнал сообщений владельцу: последние 30)`,
   ],
   "src/channels/zernio/dispatch.server.ts": [
     `${BATCH} (зависшие «повтор» → заново)`,
