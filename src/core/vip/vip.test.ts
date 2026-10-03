@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { activateSubscription, type VipGroup } from "./vip";
+import { activateSubscription, listSubscriptions, type VipGroup } from "./vip";
 
 const BOT = "00000000-0000-0000-0000-000000000001";
 const TG = 777;
@@ -81,5 +81,23 @@ describe("activateSubscription — подтверждение VIP-заявки",
     expect(r).toMatchObject({ ok: true, deliveryFailed: true });
     expect(sub()).toMatchObject({ status: "active", group_invite_link: "https://t.me/+invite" });
     expect(group.revokeInvite).not.toHaveBeenCalled();
+  });
+});
+
+describe("listSubscriptions — без обрезки на 300", () => {
+  it("350 подписок: самая старая заявка с чеком на месте", async () => {
+    const { ctx, db } = setup();
+    db.tables.vip_subscriptions = Array.from({ length: 350 }, (_, i) => ({
+      id: `sub-${String(i).padStart(4, "0")}`,
+      bot_id: BOT,
+      telegram_id: 1000 + i,
+      status: i === 0 ? "pending_payment" : "active",
+      created_at: new Date(2026, 0, 1, 0, 0, i).toISOString(),
+      vip_tariffs: null,
+    }));
+    const all = await listSubscriptions(ctx);
+    expect(all).toHaveLength(350);
+    expect(all.at(-1)).toMatchObject({ id: "sub-0000", status: "pending_payment" });
+    expect(await listSubscriptions(ctx, { status: "pending_payment" })).toHaveLength(1);
   });
 });

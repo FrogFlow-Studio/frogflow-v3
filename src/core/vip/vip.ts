@@ -2,6 +2,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database } from "@/core/db-types";
 import { getSettings } from "@/core/settings/settings";
 import { serviceDb } from "@/core/db/client.server";
+import { pageAll } from "@/core/db/page";
 import { isLocale, type Locale } from "@/core/i18n/locale";
 import { UserError } from "@/core/i18n/user-error";
 import { serverFailure } from "@/lib/server-failure";
@@ -319,25 +320,30 @@ export async function getSubscription(
   return (data as SubscriptionWithTariff | null) ?? null;
 }
 
+/** Все подписки постранично: список продавца не обрезается на N последних. */
 export async function listSubscriptions(
   ctx: TenantContext,
-  filter: { status?: string; q?: string; limit?: number } = {},
+  filter: { status?: string; q?: string } = {},
 ): Promise<SubscriptionWithTariff[]> {
-  let q = ctx.db
-    .from("vip_subscriptions")
-    .select(WITH_TARIFF)
-    .order("created_at", { ascending: false })
-    .limit(filter.limit ?? 300);
-  if (filter.status) q = q.eq("status", filter.status);
-  if (filter.q?.trim()) {
-    const t = filter.q.trim().replace(/[%,()]/g, "");
-    q = /^\d+$/.test(t)
-      ? q.eq("telegram_id", Number(t))
-      : q.or(`username.ilike.%${t}%,first_name.ilike.%${t}%,last_name.ilike.%${t}%`);
-  }
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  return (data ?? []) as SubscriptionWithTariff[];
+  const t = filter.q?.trim().replace(/[%,()]/g, "");
+  return pageAll<SubscriptionWithTariff>((from, to) => {
+    let q = ctx.db
+      .from("vip_subscriptions")
+      .select(WITH_TARIFF)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, to);
+    if (filter.status) q = q.eq("status", filter.status);
+    if (t) {
+      q = /^\d+$/.test(t)
+        ? q.eq("telegram_id", Number(t))
+        : q.or(`username.ilike.%${t}%,first_name.ilike.%${t}%,last_name.ilike.%${t}%`);
+    }
+    return q as unknown as PromiseLike<{
+      data: SubscriptionWithTariff[] | null;
+      error: { message: string } | null;
+    }>;
+  }, "VIP: список подписок");
 }
 
 /* ── подписки: заявка и чек ─────────────────────────────────────────── */

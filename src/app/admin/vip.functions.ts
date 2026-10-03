@@ -30,7 +30,7 @@ export const vipStateFn = createServerFn({ method: "GET" }).handler(async () => 
   const [settings, tariffs, subscriptions, autoCheckReady] = await Promise.all([
     core.vipSettings(ctx),
     core.listTariffs(ctx),
-    core.listSubscriptions(ctx, { limit: 300 }),
+    core.listSubscriptions(ctx),
     receiptOcrAutoEnabled(ctx),
   ]);
   const v = ctx.tenant.settings.vip;
