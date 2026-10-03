@@ -220,3 +220,71 @@ describe("сегмент рассылки «ученики курса»", () => 
     expect(parseSegment({ kind: "course", productId: P, who: "всем" })).toBeNull();
   });
 });
+
+describe("просьба оценить курс (А28)", () => {
+  const CODE = "ABCDEFGH2345";
+  /** Школа с выданным сертификатом; `at` — когда он выдан. */
+  function graduate(at: string, modules: Record<string, boolean> = { review_request: true }) {
+    const s = school();
+    (s.ctx.tenant as unknown as { modules: Record<string, boolean> }).modules = {
+      courses: true,
+      ...modules,
+    };
+    (s.db.tables.app_settings as Array<Record<string, string>>).push(
+      { bot_id: T, key: "course_certi_item-1", value: CODE },
+      {
+        bot_id: T,
+        key: `course_cert_${CODE}`,
+        value: JSON.stringify({
+          code: CODE,
+          no: 1,
+          orderItemId: "item-1",
+          student: "М",
+          course: "Аквагрим",
+          issuedAt: at,
+        }),
+      },
+    );
+    return s;
+  }
+  const NOW = new Date("2026-10-20T08:00:00Z");
+
+  it("окончил курс — одна просьба с товаром курса, повтор молчит", async () => {
+    const { ctx, db } = graduate("2026-10-19T10:00:00Z");
+    const sent: Array<Record<string, unknown>> = [];
+    const send = async (x: { kind: string }) => (sent.push(x), true);
+    await courseReminders(ctx, send, null, NOW);
+    await courseReminders(ctx, send, null, new Date(NOW.getTime() + 3_600_000));
+    expect(sent.filter((x) => x.kind === "review")).toEqual([
+      { kind: "review", telegramId: 555, course: "Аквагрим", productId: P },
+    ]);
+    const run = (db.tables.app_settings as Array<Record<string, string>>).find((r) =>
+      r.key?.startsWith("course_run_"),
+    );
+    expect(JSON.parse(run!.value!).reviewAsked).toBe(NOW.toISOString());
+  });
+
+  it("два крона одновременно — одно сообщение", async () => {
+    const { ctx } = graduate("2026-10-19T10:00:00Z");
+    const sent: string[] = [];
+    const send = async (x: { kind: string }) => (sent.push(x.kind), true);
+    await Promise.all([
+      courseReminders(ctx, send, null, NOW),
+      courseReminders(ctx, send, null, NOW),
+    ]);
+    expect(sent.filter((k) => k === "review")).toHaveLength(1);
+  });
+
+  it("сертификата нет, выдан давно или модуль отзывов выключен — тишина", async () => {
+    const kinds = async ({ ctx }: { ctx: TenantContext }) => {
+      const sent: string[] = [];
+      await courseReminders(ctx, async (x) => (sent.push(x.kind), true), null, NOW);
+      return sent;
+    };
+    expect(await kinds(school())).not.toContain("review");
+    expect(await kinds(graduate("2026-10-01T10:00:00Z"))).not.toContain("review");
+    expect(await kinds(graduate("2026-10-19T10:00:00Z", { review_request: false }))).not.toContain(
+      "review",
+    );
+  });
+});

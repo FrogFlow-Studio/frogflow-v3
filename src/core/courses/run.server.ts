@@ -31,6 +31,8 @@ export type CourseRun = {
   accessEnded?: string;
   /** Доступ продлён вручную до этого момента (ISO): не раньше срока тарифа. */
   until?: string;
+  /** Когда ученика попросили оценить курс (А28): один раз на покупку. */
+  reviewAsked?: string;
 };
 
 export function parseRun(raw: string | null | undefined): CourseRun | null {
@@ -48,6 +50,7 @@ export function parseRun(raw: string | null | undefined): CourseRun | null {
       hwReminded?: unknown;
       accessEnded?: unknown;
       until?: unknown;
+      reviewAsked?: unknown;
     };
     const n = x.notified;
     const pre = Array.isArray(x.pre)
@@ -69,6 +72,7 @@ export function parseRun(raw: string | null | undefined): CourseRun | null {
       ...(typeof x.until === "string" && Number.isFinite(Date.parse(x.until))
         ? { until: x.until }
         : {}),
+      ...(typeof x.reviewAsked === "string" ? { reviewAsked: x.reviewAsked } : {}),
     };
   } catch {
     return null;

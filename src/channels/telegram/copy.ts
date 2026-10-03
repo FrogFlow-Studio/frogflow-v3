@@ -242,6 +242,8 @@ export type Msg = {
   coursePreStart: (course: string, days: number, date: string) => string;
   /** Срок сдачи задания прошёл, работы нет. */
   courseHomeworkDue: (course: string, no: number, title: string) => string;
+  /** Курс пройден: просьба оценить (оценка 1–5 звёздами, затем текст). */
+  courseReviewAsk: (course: string) => string;
   broadcastPick: string;
   openCatalogBtn: string;
   /** Кнопка под рассылкой и ответы на отписку/возврат. */
@@ -322,6 +324,8 @@ const ru: Msg = {
   courseOpenBtn: "Открыть курс",
   coursePreStart: (course, days, date) =>
     `⏳ Курс «${course}» начнётся ${days === 1 ? "завтра" : `через ${days} дн.`} — ${date}. Первый урок придёт сюда.`,
+  courseReviewAsk: (course) =>
+    `🎓 Поздравляем с окончанием курса «${course}»! Оцените его — это займёт минуту:`,
   courseHomeworkDue: (course, no, title) =>
     `📝 Напоминаем: задание урока ${no} «${title}» курса «${course}» ещё не сдано. Пришлите ответ — преподаватель ждёт.`,
   broadcastPick: "👇 Выберите материал:",
@@ -646,6 +650,8 @@ const kk: Msg = {
   courseOpenBtn: "Курсты ашу",
   coursePreStart: (course, days, date) =>
     `⏳ «${course}» курсы ${days === 1 ? "ертең" : `${days} күннен кейін`} басталады — ${date}. Бірінші сабақ осында келеді.`,
+  courseReviewAsk: (course) =>
+    `🎓 «${course}» курсын аяқтағаныңызбен құттықтаймыз! Оны бағалаңыз — бір минут қана:`,
   courseHomeworkDue: (course, no, title) =>
     `📝 Еске саламыз: «${course}» курсының ${no}-сабағы «${title}» тапсырмасы әлі тапсырылмаған. Жауабыңызды жіберіңіз — оқытушы күтуде.`,
   broadcastPick: "👇 Материалды таңдаңыз:",
@@ -828,6 +834,8 @@ const en: Msg = {
   courseOpenBtn: "Open the course",
   coursePreStart: (course, days, date) =>
     `⏳ The course “${course}” starts ${days === 1 ? "tomorrow" : `in ${days} days`} — ${date}. The first lesson will arrive here.`,
+  courseReviewAsk: (course) =>
+    `🎓 Congratulations on finishing “${course}”! Please rate it — it takes a minute:`,
   courseHomeworkDue: (course, no, title) =>
     `📝 Reminder: the homework for lesson ${no} “${title}” of “${course}” hasn't been submitted yet. Send your answer — the teacher is waiting.`,
   broadcastPick: "👇 Pick an item:",
@@ -1018,6 +1026,8 @@ const uz: Msg = {
   courseOpenBtn: "Kursni ochish",
   coursePreStart: (course, days, date) =>
     `⏳ «${course}» kursi ${days === 1 ? "ertaga" : `${days} kundan keyin`} boshlanadi — ${date}. Birinchi dars shu yerga keladi.`,
+  courseReviewAsk: (course) =>
+    `🎓 «${course}» kursini tugatganingiz bilan tabriklaymiz! Uni baholang — bir daqiqa kifoya:`,
   courseHomeworkDue: (course, no, title) =>
     `📝 Eslatma: «${course}» kursining ${no}-darsi «${title}» vazifasi hali topshirilmagan. Javobingizni yuboring — o‘qituvchi kutmoqda.`,
   broadcastPick: "👇 Materialni tanlang:",

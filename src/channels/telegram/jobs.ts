@@ -397,6 +397,23 @@ export async function runCourseLessons(tenant: Tenant) {
   const reminders = await courseReminders(
     ctx,
     async (x) => {
+      if (x.kind === "review") {
+        // Звёзды — те же кнопки, что у «Оценить заказ»: дальше работает обычный путь отзывов.
+        const r = await tg.call("sendMessage", {
+          chat_id: x.telegramId,
+          text: escapeHtml(m.courseReviewAsk(x.course)),
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [1, 2, 3, 4, 5].map((n) => ({
+                text: "⭐".repeat(n),
+                callback_data: `stars:${x.productId}:${n}`,
+              })),
+            ],
+          },
+        });
+        return r.ok;
+      }
       const text =
         x.kind === "pre"
           ? m.coursePreStart(x.course, x.days, day.format(new Date(x.start)))

@@ -5,6 +5,8 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { CHAT_SLOT, revokeItemChannel, type ChannelAccess } from "./channel.server";
 import { courseTimeline } from "./cohort";
 import { readSettings } from "./db.server";
+import { CERT_ITEM_PREFIX, CERT_KEY_PREFIX } from "./certificate.server";
+import { parseCertificate } from "./certificate";
 import { hwKey, parseHomework } from "./homework";
 import { courseToken, courseUrl } from "./link";
 import { parseRun, runKey, type CourseRun } from "./run.server";
@@ -16,7 +18,9 @@ import { loadRuns } from "./runs.server";
  * - до старта потока — за 3 дня и за день (купившим раньше этих отметок);
  * - несданное задание — когда прошёл срок сдачи (Course.homeworkDays) после
  *   открытия урока, один раз на урок, только в тарифе с проверкой;
- * - конец доступа по тарифу — исключение из закрытого канала курса.
+ * - конец доступа по тарифу — исключение из закрытого канала курса;
+ * - окончание курса (выдан сертификат) — просьба оценить курс, один раз;
+ *   ответ идёт в обычные отзывы товара, на модерацию (А28).
  *
  * «Один раз» — условная запись отметки в запись прохождения до отправки.
  * Пишем только покупателям из Telegram: у Instagram и WhatsApp вне окна
@@ -31,9 +35,12 @@ export type CourseReminder =
       lessonNo: number;
       title: string;
       url: string;
-    };
+    }
+  | { kind: "review"; telegramId: number; course: string; productId: string };
 
 export const PRE_START_DAYS = [3, 1] as const;
+/** Выпускников старше этого срока не беспокоим: просьба нужна «по горячим следам». */
+export const REVIEW_ASK_DAYS = 7;
 const DAY = 86_400_000;
 
 type Stats = { sent: number; failed: number; silent: number; accessEnded: number };
@@ -182,6 +189,41 @@ export async function courseReminders(
         if (chat) await revokeItemChannel(ctx, r.itemId, chat, r.order, access, now, CHAT_SLOT);
         out.accessEnded++;
       }
+    }
+  }
+
+  // Окончание курса: сертификат выдан недавно — один раз просим оценку.
+  if (ctx.tenant.modules.review_request) {
+    const askable = runs.filter((r) => !r.run.reviewAsked && telegramOf(r));
+    const codes = askable.length
+      ? await readSettings(
+          ctx,
+          askable.map((r) => `${CERT_ITEM_PREFIX}${r.itemId}`),
+        )
+      : new Map<string, string>();
+    const certs = codes.size
+      ? await readSettings(
+          ctx,
+          [...codes.values()].map((c) => `${CERT_KEY_PREFIX}${c}`),
+        )
+      : new Map<string, string>();
+    for (const r of askable) {
+      const code = codes.get(`${CERT_ITEM_PREFIX}${r.itemId}`);
+      const cert = code ? parseCertificate(certs.get(`${CERT_KEY_PREFIX}${code}`)) : null;
+      if (!cert) continue;
+      const age = now.getTime() - Date.parse(cert.issuedAt);
+      if (age > REVIEW_ASK_DAYS * DAY) continue;
+      // Отметка до отправки: выиграл один прогон — одно сообщение.
+      const won = await mark(r.itemId, (cur) =>
+        cur.reviewAsked ? null : { ...cur, reviewAsked: now.toISOString() },
+      );
+      if (!won) continue;
+      await deliver(r, {
+        kind: "review",
+        telegramId: telegramOf(r)!,
+        course: r.name,
+        productId: r.productId,
+      });
     }
   }
   return out;
