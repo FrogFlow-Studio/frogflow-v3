@@ -72,6 +72,17 @@ describe("«Позвать покупателей»", () => {
     expect(o).toMatchObject({ broadcast_id: b.id, announced_at: NOW.toISOString() });
   });
 
+  it("в рассылку кладутся тексты на всех четырёх языках", async () => {
+    const { db, ctx } = shop();
+    await announceOffer(ctx, "o1", NOW);
+    const texts = (db.tables.broadcasts![0]!.audience_filter as { texts: Record<string, string> })
+      .texts;
+    expect(Object.keys(texts).sort()).toEqual(["en", "kk", "ru", "uz"]);
+    expect(texts.kk).toContain("Акция");
+    expect(texts.kk).toContain("дейін");
+    expect(texts.en).toContain("Sale");
+  });
+
   it("второй клик не шлёт вторую рассылку", async () => {
     const { db, ctx } = shop();
     const results = await Promise.allSettled([

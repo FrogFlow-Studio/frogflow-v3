@@ -1,5 +1,6 @@
 import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { isLocale, type Locale } from "@/core/i18n/locale";
 import type { Database } from "@/core/db-types";
 import { pageAll } from "@/core/db/page";
 import { adminRecipients } from "@/core/notify/recipients";
@@ -28,6 +29,11 @@ export type AudienceFilter = {
   send_at?: string;
   /** Половина аудитории A/B-теста (core/broadcasts/ab) и какой это вариант. */
   ab?: { group: string; half: 0 | 1; variant: "A" | "B" };
+  /**
+   * Тексты по языкам покупателя (ru/kk/en/uz); `message_text` — запасной, на языке
+   * магазина. Отправитель берёт текст по `bot_users.state.locale` получателя.
+   */
+  texts?: Partial<Record<Locale, string>>;
 };
 export type BroadcastChannel = "telegram" | "whatsapp";
 
@@ -381,6 +387,16 @@ export type BroadcastSender = (
   content: BroadcastContent,
   broadcast: BroadcastRow,
 ) => Promise<void>;
+
+/** Текст рассылки для покупателя: на его языке, если продавец дал такой, иначе общий. */
+export function textForLocale(
+  b: Pick<BroadcastRow, "message_text" | "audience_filter">,
+  locale: string | null | undefined,
+): string {
+  const texts = (b.audience_filter as AudienceFilter | null)?.texts;
+  const own = isLocale(locale) ? texts?.[locale] : undefined;
+  return own?.trim() ? own : (b.message_text ?? "");
+}
 
 export function contentOf(b: BroadcastRow): BroadcastContent {
   return normalizeContent({

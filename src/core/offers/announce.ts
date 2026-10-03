@@ -2,7 +2,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
 import { serverFailure } from "@/lib/server-failure";
 import { createBroadcast } from "@/core/broadcasts/broadcasts";
-import { isLocale, type Locale } from "@/core/i18n/locale";
+import { isLocale, SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 import { listOffers, updateOffers, type LimitedOffer } from "./offers";
 import { announceText, type SaleInfo } from "./texts";
 
@@ -91,6 +91,10 @@ export async function announceOffer(
   const info = await saleInfoOf(ctx, offer);
   const r = await createBroadcast(ctx, {
     text: announceText(info, locale),
+    // Каждый покупатель получает объявление на своём языке; общий текст — запасной.
+    filter: {
+      texts: Object.fromEntries(SUPPORTED_LOCALES.map((l) => [l, announceText(info, l)])),
+    },
     photoKeys: [],
     productIds: offer.category_id ? [] : [offer.product_id],
     showCatalog: Boolean(offer.category_id),

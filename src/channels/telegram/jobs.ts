@@ -11,6 +11,8 @@ import { imageUrl } from "@/core/catalog/catalog";
 import { notifyAdminsHtml } from "./notify";
 import {
   processBroadcastBatch,
+  textForLocale,
+  type AudienceFilter,
   type BatchResult,
   type BroadcastSender,
 } from "@/core/broadcasts/broadcasts";
@@ -21,7 +23,7 @@ import { sendFulfillmentReminders } from "@/core/reminders/fulfillment";
 import { telegramApi, type TelegramApi } from "./api";
 import { COPY, escapeHtml } from "./copy";
 import { inChunks } from "@/lib/in-chunks";
-import type { Locale } from "@/core/i18n/locale";
+import { isLocale, type Locale } from "@/core/i18n/locale";
 import { waitedText } from "@/core/helpdesk/seller-texts";
 
 function api(ctx: TenantContext): TelegramApi {
@@ -34,8 +36,8 @@ async function broadcastKeyboard(
   ctx: TenantContext,
   content: BroadcastContent,
   mark: string,
+  locale: Locale = ctx.tenant.settings.default_locale ?? "ru",
 ): Promise<{ inline_keyboard: InlineButton[][] }> {
-  const locale = ctx.tenant.settings.default_locale ?? "ru";
   const rows: InlineButton[][] = [];
   if (content.productIds.length > 0) {
     const data = await inChunks(
@@ -65,11 +67,26 @@ async function broadcastKeyboard(
 export function telegramBroadcastSender(ctx: TenantContext, tg: TelegramApi): BroadcastSender {
   const cache = new Map<string, Awaited<ReturnType<typeof broadcastKeyboard>>>();
   // Метка рассылки в кнопках — для счёта кликов (core/broadcasts/clicks).
-  const keyboardFor = async (c: BroadcastContent, broadcastId: string) => {
+  const keyboardFor = async (c: BroadcastContent, broadcastId: string, locale?: Locale) => {
     const mark = clickMark(broadcastId);
-    const key = `${mark}|${c.productIds.join(",")}|${c.showCatalog}`;
-    if (!cache.has(key)) cache.set(key, await broadcastKeyboard(ctx, c, mark));
+    const key = `${mark}|${c.productIds.join(",")}|${c.showCatalog}|${locale ?? ""}`;
+    if (!cache.has(key)) cache.set(key, await broadcastKeyboard(ctx, c, mark, locale));
     return cache.get(key);
+  };
+  // Язык получателя — только для рассылок с текстами по языкам (акции): обычным лишний запрос не нужен.
+  const localeOf = async (telegramId: number): Promise<Locale | undefined> => {
+    const { data, error } = await ctx.db
+      .from("bot_users")
+      .select("state")
+      .eq("telegram_id", telegramId)
+      .maybeSingle();
+    if (error) {
+      // Не прочитали язык — шлём на языке магазина, лучше, чем потерять сообщение.
+      console.warn(`[telegram] язык получателя рассылки: ${error.message}`);
+      return undefined;
+    }
+    const l = (data?.state as { locale?: unknown } | null)?.locale;
+    return isLocale(l) ? l : undefined;
   };
   const fail = (r: { ok: boolean; description?: string }, method: string) => {
     if (!r.ok) throw new Error(r.description || `${method} failed`);
@@ -77,9 +94,11 @@ export function telegramBroadcastSender(ctx: TenantContext, tg: TelegramApi): Br
 
   return async (recipient, content, broadcast) => {
     const chatId = recipient.telegramId;
-    const reply_markup = await keyboardFor(content, broadcast.id);
+    const localized = Boolean((broadcast.audience_filter as AudienceFilter | null)?.texts);
+    const locale = localized ? await localeOf(chatId) : undefined;
+    const reply_markup = await keyboardFor(content, broadcast.id, locale);
     const photos = content.photoKeys.map((k) => imageUrl(ctx, k));
-    const text = content.text;
+    const text = localized ? textForLocale(broadcast, locale) : content.text;
     const asCaption = text.length > 0 && text.length <= 1024;
 
     if (photos.length === 0) {
@@ -132,7 +151,7 @@ export function telegramBroadcastSender(ctx: TenantContext, tg: TelegramApi): Br
       "sendMediaGroup",
     );
     // У альбома кнопок нет: они — отдельным сообщением следом.
-    const m = COPY[ctx.tenant.settings.default_locale ?? "ru"];
+    const m = COPY[locale ?? ctx.tenant.settings.default_locale ?? "ru"];
     const onlyUnsub = content.productIds.length === 0 && !content.showCatalog;
     fail(
       await tg.call("sendMessage", {
