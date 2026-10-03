@@ -1,9 +1,11 @@
 import type { AdminT } from "@/app/i18n/admin";
 import {
+  QUIZ_ATTEMPTS_MAX,
   QUIZ_OPTION_MAX,
   QUIZ_OPTIONS_MAX,
   QUIZ_OPTIONS_MIN,
   QUIZ_PASS_DEFAULT,
+  QUIZ_PAUSE_MAX,
   QUIZ_QUESTIONS_MAX,
   QUIZ_TEXT_MAX,
   type LessonQuiz,
@@ -15,6 +17,18 @@ import {
  * или несколько), порог прохождения. Ученик верных ответов не видит.
  */
 const blankQuestion = (): QuizQuestion => ({ text: "", options: ["", ""], correct: [0] });
+
+/** Пустое поле — настройка снимается; число зажимается в пределы. */
+function withLimit(
+  quiz: LessonQuiz,
+  key: "maxAttempts" | "pauseMin",
+  raw: string,
+  max: number,
+): LessonQuiz {
+  const { [key]: _old, ...rest } = quiz;
+  const n = Math.round(Number(raw));
+  return raw.trim() === "" || !(n >= 1) ? rest : { ...rest, [key]: Math.min(max, n) };
+}
 
 export function LessonQuizEditor({
   lessonId,
@@ -61,6 +75,34 @@ export function LessonQuizEditor({
             }
           />
           %
+        </label>
+        <label className="flex items-center gap-1 text-xs text-muted">
+          {t("school.quizMaxAttempts")}
+          <input
+            id={`lesson-quiz-max-${lessonId}`}
+            type="number"
+            className="input w-20"
+            min={1}
+            max={QUIZ_ATTEMPTS_MAX}
+            placeholder="∞"
+            value={quiz.maxAttempts ?? ""}
+            onChange={(e) =>
+              onChange(withLimit(quiz, "maxAttempts", e.target.value, QUIZ_ATTEMPTS_MAX))
+            }
+          />
+        </label>
+        <label className="flex items-center gap-1 text-xs text-muted">
+          {t("school.quizPause")}
+          <input
+            id={`lesson-quiz-pause-${lessonId}`}
+            type="number"
+            className="input w-20"
+            min={1}
+            max={QUIZ_PAUSE_MAX}
+            placeholder="0"
+            value={quiz.pauseMin ?? ""}
+            onChange={(e) => onChange(withLimit(quiz, "pauseMin", e.target.value, QUIZ_PAUSE_MAX))}
+          />
         </label>
         <button
           type="button"

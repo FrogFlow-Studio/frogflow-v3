@@ -8,6 +8,8 @@ import {
   parseQuiz,
   parseQuizResult,
   publicQuiz,
+  attemptsLeft,
+  quizGate,
   quizKey,
   quizProblem,
   withAttempt,
@@ -18,7 +20,7 @@ vi.mock("@/config/env", () => ({
   env: () => ({ SECRETS_KEY: "test-secret", APP_URL: "https://www.frogflow.tech" }),
 }));
 
-const { submitQuiz, quizResult } = await import("./lesson-quiz.server");
+const { submitQuiz, quizResult, resetQuizAttempts } = await import("./lesson-quiz.server");
 const { coursePurchase, parseRun, runKey } = await import("./run.server");
 const { courseView, setLessonDone } = await import("@/app/storefront/course.server");
 
@@ -160,7 +162,7 @@ describe("разбор и проверка теста", () => {
     for (let i = 0; i < 20; i++) r = withAttempt(r, gradeQuiz(quiz, BAD), "2026-10-03T00:00:00Z");
     expect(r.log).toHaveLength(10);
     expect(parseQuizResult(JSON.stringify(r))).toEqual(r);
-    expect(parseQuizResult("{")).toEqual({ attempts: 0, passed: false, best: 0, log: [] });
+    expect(parseQuizResult("{")).toEqual({ attempts: 0, from: 0, passed: false, best: 0, log: [] });
   });
 });
 
@@ -266,5 +268,74 @@ describe("тест на странице курса", () => {
     expect((await setLessonDone(ctx, await purchase(ctx), id(1), false, NOW)).done).toEqual([
       id(1),
     ]);
+  });
+});
+
+describe("попытки теста: лимит и пауза (А31)", () => {
+  const limited = (q: Partial<LessonQuiz>): Course => ({
+    ...course,
+    lessons: [{ ...course.lessons[0]!, quiz: { ...quiz, ...q } }, course.lessons[1]!],
+  });
+  const later = (min: number) => new Date(NOW.getTime() + min * 60_000);
+
+  it("настройки читаются в пределах, мусор и ноль снимают ограничение", () => {
+    expect(parseQuiz({ ...quiz, maxAttempts: 3, pauseMin: 30 })).toMatchObject({
+      maxAttempts: 3,
+      pauseMin: 30,
+    });
+    const none = parseQuiz({ ...quiz, maxAttempts: 0, pauseMin: 5000 })!;
+    expect(none.maxAttempts).toBeUndefined();
+    expect(none.pauseMin).toBeUndefined();
+    expect(quizProblem({ ...quiz, maxAttempts: 21 })).toBe(1);
+    expect(quizProblem({ ...quiz, maxAttempts: 3, pauseMin: 10 })).toBeNull();
+  });
+
+  it("лимит: после N провалов сдача закрыта текстовым отказом, «пройден» лимитом не закрыт", () => {
+    const q = { ...quiz, maxAttempts: 2 };
+    let r = parseQuizResult(null);
+    expect(quizGate(q, r, NOW)).toEqual({ ok: true });
+    r = withAttempt(r, gradeQuiz(q, BAD), NOW.toISOString());
+    expect(attemptsLeft(q, r)).toBe(1);
+    r = withAttempt(r, gradeQuiz(q, BAD), NOW.toISOString());
+    expect(quizGate(q, r, NOW)).toEqual({ ok: false, reason: "limit" });
+    expect(quizGate({ ...quiz }, r, NOW)).toEqual({ ok: true });
+    expect(quizGate(q, { ...r, passed: true }, NOW)).toEqual({ ok: true });
+  });
+
+  it("пауза: до конца — сколько минут ждать, после — можно", async () => {
+    const { ctx } = shop(limited({ pauseMin: 30 }));
+    const first = await submitQuiz(ctx, await purchase(ctx), id(1), BAD, 0, NOW);
+    expect(first.ok).toBe(true);
+    const wait = await submitQuiz(ctx, await purchase(ctx), id(1), BAD, 1, later(10));
+    expect(wait).toEqual({ ok: false, reason: "pause", waitMin: 20 });
+    expect((await quizResult(ctx, ITEM, id(1))).attempts).toBe(1);
+    const again = await submitQuiz(ctx, await purchase(ctx), id(1), BAD, 1, later(31));
+    expect(again.ok).toBe(true);
+  });
+
+  it("сервер отказывает после лимита; сброс продавцом даёт попытки заново, один раз", async () => {
+    const { ctx } = shop(limited({ maxAttempts: 1 }));
+    expect((await submitQuiz(ctx, await purchase(ctx), id(1), BAD, 0, NOW)).ok).toBe(true);
+    expect(await submitQuiz(ctx, await purchase(ctx), id(1), BAD, 1, NOW)).toEqual({
+      ok: false,
+      reason: "limit",
+    });
+    const [a, b] = await Promise.all([resetQuizAttempts(ctx, ITEM), resetQuizAttempts(ctx, ITEM)]);
+    expect([a, b].map((x) => (x.ok ? x.reset : -1)).sort()).toEqual([0, 1]);
+    const res = await quizResult(ctx, ITEM, id(1));
+    expect(res).toMatchObject({ attempts: 1, from: 1 });
+    expect((await submitQuiz(ctx, await purchase(ctx), id(1), BAD, 1, NOW)).ok).toBe(true);
+    expect(await submitQuiz(ctx, await purchase(ctx), id(1), BAD, 2, NOW)).toEqual({
+      ok: false,
+      reason: "limit",
+    });
+  });
+
+  it("сброс чужой покупки (нет выданного заказа) — notFound, ничего не пишет", async () => {
+    const { ctx } = shop(limited({ maxAttempts: 1 }));
+    expect(await resetQuizAttempts(ctx, "dddddddd-bbbb-cccc-dddd-eeeeeeeeeeee")).toEqual({
+      ok: false,
+      reason: "notFound",
+    });
   });
 });

@@ -17,8 +17,10 @@ import {
   LOCAL_START_RE,
 } from "@/core/courses/course";
 import {
+  QUIZ_ATTEMPTS_MAX,
   QUIZ_OPTION_MAX,
   QUIZ_OPTIONS_MAX,
+  QUIZ_PAUSE_MAX,
   QUIZ_QUESTIONS_MAX,
   QUIZ_TEXT_MAX,
 } from "@/core/courses/lesson-quiz";
@@ -52,6 +54,8 @@ const lesson = z.object({
   quiz: z
     .object({
       pass: z.number().int().min(1).max(100),
+      maxAttempts: z.number().int().min(1).max(QUIZ_ATTEMPTS_MAX).optional(),
+      pauseMin: z.number().int().min(1).max(QUIZ_PAUSE_MAX).optional(),
       questions: z
         .array(
           z.object({
@@ -183,6 +187,15 @@ export const revokeStudentChannelFn = createServerFn({ method: "POST" })
     const ctx = await moduleAdmin("manager");
     const { revokeStudentChannel } = await import("./course-channel.server");
     return revokeStudentChannel(ctx, data.orderItemId);
+  });
+
+/** «Сбросить попытки» теста ученику: лимит считается заново (менеджер и выше). */
+export const resetQuizAttemptsFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ orderItemId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { resetQuizAttempts } = await import("@/core/courses/lesson-quiz.server");
+    return resetQuizAttempts(ctx, data.orderItemId);
   });
 
 /** Продлить ученику доступ вручную до конца дня, с причиной (менеджер и выше). */

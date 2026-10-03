@@ -270,6 +270,7 @@ function QuizBlock({
 }) {
   const [picked, setPicked] = useState<number[][]>(() => quiz.questions.map(() => []));
   const [attempts, setAttempts] = useState(quiz.attempts);
+  const [from, setFrom] = useState(quiz.from);
   const [passed, setPassed] = useState(quiz.passed);
   const [last, setLast] = useState(quiz.last);
   const [best, setBest] = useState(quiz.best);
@@ -278,6 +279,7 @@ function QuizBlock({
       data: { ...ids, lessonId, answers: picked, attempt: attempts },
     });
     setAttempts(r.attempts);
+    setFrom(r.from);
     setBest(r.best);
     setLast({ score: r.score, total: r.total });
     if (r.passed) {
@@ -299,6 +301,7 @@ function QuizBlock({
       ),
     );
   const ready = picked.every((sel) => sel.length > 0);
+  const left = quiz.maxAttempts ? Math.max(0, quiz.maxAttempts - (attempts - from)) : null;
   return (
     <section className="mt-3 space-y-3 rounded-md bg-surface-2 p-3">
       <div className="flex items-baseline justify-between gap-2">
@@ -313,7 +316,15 @@ function QuizBlock({
           {t("course.quiz.attempts", { n: attempts })}
         </p>
       )}
-      {!passed && (
+      {!passed && left !== null && (
+        <p className={`text-xs ${left === 0 ? "text-warn" : "text-muted"}`}>
+          {left === 0 ? t("course.quiz.err.limit") : t("course.quiz.left", { n: left })}
+        </p>
+      )}
+      {!passed && quiz.pauseMin && (
+        <p className="text-xs text-muted">{t("course.quiz.pause", { min: quiz.pauseMin })}</p>
+      )}
+      {!passed && left !== 0 && (
         <form
           className="space-y-3"
           onSubmit={(e) => {

@@ -1,6 +1,6 @@
 import type { Json } from "@/core/db-types";
 import { setState } from "@/core/customers/customers";
-import { answersFit, publicQuiz, type PublicQuiz } from "@/core/courses/lesson-quiz";
+import { answersFit, publicQuiz, quizGate, type PublicQuiz } from "@/core/courses/lesson-quiz";
 import type { Locale } from "@/core/i18n/locale";
 import { escapeHtml } from "./copy";
 import type { CourseBot } from "./courses";
@@ -21,6 +21,8 @@ type Copy = {
   passed: (score: number, total: number) => string;
   failed: (score: number, total: number, pass: number) => string;
   already: string;
+  limit: string;
+  pause: (min: number) => string;
   unavailable: string;
   cert: string;
 };
@@ -35,6 +37,8 @@ const COPY: Record<Locale, Copy> = {
     failed: (s, t, p) =>
       `Результат: ${s} из ${t}. Нужно верных ответов: ${p}%. Попробуйте ещё раз — кнопка «Пройти тест» в уроке.`,
     already: "Этот тест вы уже прошли.",
+    limit: "Попытки теста закончились. Если нужна ещё одна — напишите продавцу.",
+    pause: (m) => `Следующая попытка будет доступна через ${m} мин.`,
     unavailable: "Тест сейчас недоступен: урок закрыт или у него нет теста.",
     cert: "🎓 Курс пройден — сертификат ждёт вас на странице курса.",
   },
@@ -47,6 +51,8 @@ const COPY: Record<Locale, Copy> = {
     failed: (s, t, p) =>
       `Нәтиже: ${t}-нің ${s}-і. Дұрыс жауап керек: ${p}%. Қайталап көріңіз — сабақтағы «Тестті тапсыру» түймесі.`,
     already: "Бұл тестті сіз тапсырып қойдыңыз.",
+    limit: "Тест әрекеттері бітті. Тағы бір әрекет керек болса, сатушыға жазыңыз.",
+    pause: (m) => `Келесі әрекет ${m} мин өткен соң қолжетімді болады.`,
     unavailable: "Тест қазір қолжетімсіз: сабақ жабық немесе тесті жоқ.",
     cert: "🎓 Курс аяқталды — сертификат курс бетінде күтіп тұр.",
   },
@@ -59,6 +65,8 @@ const COPY: Record<Locale, Copy> = {
     failed: (s, t, p) =>
       `Result: ${s} of ${t}. Correct answers needed: ${p}%. Try again — the “Take the quiz” button in the lesson.`,
     already: "You have already passed this quiz.",
+    limit: "No quiz attempts left. If you need another one, write to the seller.",
+    pause: (m) => `The next attempt will be available in ${m} min.`,
     unavailable: "The quiz is not available now: the lesson is closed or has no quiz.",
     cert: "🎓 Course completed — your certificate is waiting on the course page.",
   },
@@ -71,6 +79,8 @@ const COPY: Record<Locale, Copy> = {
     failed: (s, t, p) =>
       `Natija: ${t} tadan ${s} tasi. To‘g‘ri javoblar kerak: ${p}%. Qayta urinib ko‘ring — darsdagi «Testni topshirish» tugmasi.`,
     already: "Bu testni allaqachon topshirgansiz.",
+    limit: "Test urinishlari tugadi. Yana bittasi kerak bo‘lsa, sotuvchiga yozing.",
+    pause: (m) => `Keyingi urinish ${m} daqiqadan keyin mavjud bo‘ladi.`,
     unavailable: "Test hozir mavjud emas: dars yopiq yoki testi yo‘q.",
     cert: "🎓 Kurs tugadi — sertifikat kurs sahifasida sizni kutmoqda.",
   },
@@ -170,6 +180,9 @@ export async function startQuiz(b: CourseBot, data: string): Promise<void> {
   const { quizResult } = await import("@/core/courses/lesson-quiz.server");
   const result = await quizResult(b.ctx, itemId, found.a.lesson.id);
   if (result.passed) return say(b, c.already);
+  // Лимит и пауза видны до первого вопроса; окончательно их проверяет ядро при сдаче.
+  const gate = quizGate(found.quiz, result, new Date());
+  if (!gate.ok) return say(b, gate.reason === "limit" ? c.limit : c.pause(gate.waitMin));
   await saveState(b, {
     item: itemId,
     lesson: found.a.lesson.id,
@@ -229,7 +242,13 @@ export async function answerQuiz(b: CourseBot, data: string, messageId?: number)
   const { submitQuiz } = await import("@/core/courses/lesson-quiz.server");
   const r = await submitQuiz(b.ctx, found.p, st.lesson, ans, st.att);
   // stale — этот же набор ответов уже принят параллельным нажатием: молчим.
-  if (!r.ok) return r.reason === "stale" ? undefined : say(b, c.unavailable);
+  if (!r.ok) {
+    if (r.reason === "stale") return;
+    return say(
+      b,
+      r.reason === "limit" ? c.limit : r.reason === "pause" ? c.pause(r.waitMin) : c.unavailable,
+    );
+  }
   await say(
     b,
     r.grade.passed

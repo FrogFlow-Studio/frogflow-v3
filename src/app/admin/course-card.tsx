@@ -5,6 +5,7 @@ import {
   kickChannelStrangerFn,
   extendStudentAccessFn,
   moveStudentCohortFn,
+  resetQuizAttemptsFn,
   courseFn,
   courseVariantsFn,
   createNextCohortFn,
@@ -672,6 +673,12 @@ function Students({
     if (!r.ok) throw new Error(t("product.studentMoveFailed"));
     await load();
   });
+  const resetQuiz = useAction(async (orderItemId: string) => {
+    const r = await resetQuizAttemptsFn({ data: { orderItemId } });
+    if (!r.ok || r.reset === 0) throw new Error(t("school.quizResetFailed"));
+    window.alert(t("school.quizResetDone"));
+    await load();
+  });
   if (!data) return null;
   const cohorts = [...new Set(data.students.flatMap((s) => (s.cohort ? [s.cohort] : [])))];
   const shown = data.students.filter(
@@ -730,6 +737,16 @@ function Students({
                 </span>
               )}
               {s.accessLimited && <ExtendAccess orderItemId={s.orderItemId} t={t} onDone={load} />}
+              {s.quiz.attempts > 0 && (
+                <button
+                  type="button"
+                  className="btn-ghost text-xs"
+                  disabled={resetQuiz.busy}
+                  onClick={() => void resetQuiz.run(s.orderItemId).catch(() => {})}
+                >
+                  {t("school.quizResetAttempts")}
+                </button>
+              )}
               <span className="shrink-0 text-xs text-muted tabular-nums">
                 {s.startedAt
                   ? t("product.courseProgress", { done: s.done, total: data.total, open: s.open })

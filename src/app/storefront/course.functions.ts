@@ -103,7 +103,12 @@ export const submitQuizFn = createServerFn({ method: "POST" })
             ? "course.quiz.err.stale"
             : r.reason === "closed" || r.reason === "noQuiz"
               ? "course.quiz.err.closed"
-              : "course.quiz.err.failed",
+              : r.reason === "limit"
+                ? "course.quiz.err.limit"
+                : r.reason === "pause"
+                  ? "course.quiz.err.pause"
+                  : "course.quiz.err.failed",
+          r.reason === "pause" ? { min: r.waitMin } : undefined,
         ),
       );
     }
@@ -114,6 +119,7 @@ export const submitQuizFn = createServerFn({ method: "POST" })
     return {
       ...r.grade,
       attempts: r.result.attempts,
+      from: r.result.from,
       best: r.result.best,
       certificate: r.certificate,
     };

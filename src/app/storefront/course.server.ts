@@ -48,6 +48,8 @@ export type LessonHomeworkView = {
 export type LessonQuizView = PublicQuiz & {
   /** Сколько попыток уже сделано: по нему сервер принимает следующую (без дублей). */
   attempts: number;
+  /** Попыток было до последнего сброса продавцом: лимит считается после них. */
+  from: number;
   passed: boolean;
   /** Лучший результат, процентов. */
   best: number;
@@ -116,6 +118,7 @@ export async function courseView(
       quiz = {
         ...publicQuiz(a.lesson.quiz),
         attempts: r.attempts,
+        from: r.from,
         passed: r.passed,
         best: r.best,
         last: last ? { score: last.score, total: last.total } : null,

@@ -16,6 +16,11 @@ export const ru = {
   "school.quizRemoveQuestion": "Удалить вопрос",
   "school.quizRemoveOption": "Удалить вариант",
   "school.studentQuiz": "тесты {passed}/{lessons} · попыток {attempts}",
+  "school.quizMaxAttempts": "Попыток (пусто — без лимита):",
+  "school.quizPause": "Пауза между попытками, мин:",
+  "school.quizResetAttempts": "Сбросить попытки теста",
+  "school.quizResetDone": "Попытки сброшены: ученик может сдавать тест заново.",
+  "school.quizResetFailed": "Попыток для сброса нет или сброс не удался — обновите страницу.",
   "err.course.badQuiz":
     "Тест в уроке {lesson}, вопрос {question}: нужен текст, 2–6 вариантов и хотя бы один верный; порог — 1–100 %.",
 } as const;
@@ -35,6 +40,12 @@ export const kk: SectionDict<typeof ru> = {
   "school.quizRemoveQuestion": "Сұрақты жою",
   "school.quizRemoveOption": "Нұсқаны жою",
   "school.studentQuiz": "тесттер {passed}/{lessons} · әрекет {attempts}",
+  "school.quizMaxAttempts": "Әрекет (бос — шексіз):",
+  "school.quizPause": "Әрекеттер арасындағы үзіліс, мин:",
+  "school.quizResetAttempts": "Тест әрекеттерін қалпына келтіру",
+  "school.quizResetDone": "Әрекеттер қалпына келтірілді: оқушы тестті қайта тапсыра алады.",
+  "school.quizResetFailed":
+    "Қалпына келтіретін әрекет жоқ немесе сәтсіз аяқталды — бетті жаңартыңыз.",
   "err.course.badQuiz":
     "{lesson}-сабақтағы тест, {question}-сұрақ: мәтін, 2–6 нұсқа және кемінде бір дұрыс жауап керек; шек — 1-ден 100 %-ға дейін.",
 };
@@ -54,6 +65,11 @@ export const en: SectionDict<typeof ru> = {
   "school.quizRemoveQuestion": "Delete the question",
   "school.quizRemoveOption": "Delete the option",
   "school.studentQuiz": "quizzes {passed}/{lessons} · attempts {attempts}",
+  "school.quizMaxAttempts": "Attempts (empty — no limit):",
+  "school.quizPause": "Pause between attempts, min:",
+  "school.quizResetAttempts": "Reset quiz attempts",
+  "school.quizResetDone": "Attempts reset: the student can take the quiz again.",
+  "school.quizResetFailed": "Nothing to reset or the reset failed — refresh the page.",
   "err.course.badQuiz":
     "Quiz in lesson {lesson}, question {question}: it needs text, 2–6 options and at least one correct; the pass mark is 1 to 100 %.",
 };
@@ -73,6 +89,11 @@ export const uz: SectionDict<typeof ru> = {
   "school.quizRemoveQuestion": "Savolni o‘chirish",
   "school.quizRemoveOption": "Variantni o‘chirish",
   "school.studentQuiz": "testlar {passed}/{lessons} · urinishlar {attempts}",
+  "school.quizMaxAttempts": "Urinishlar (bo‘sh — cheklovsiz):",
+  "school.quizPause": "Urinishlar orasidagi tanaffus, daqiqa:",
+  "school.quizResetAttempts": "Test urinishlarini tiklash",
+  "school.quizResetDone": "Urinishlar tiklandi: o‘quvchi testni qayta topshirishi mumkin.",
+  "school.quizResetFailed": "Tiklash uchun urinish yo‘q yoki tiklab bo‘lmadi — sahifani yangilang.",
   "err.course.badQuiz":
     "{lesson}-darsdagi test, {question}-savol: matn, 2–6 variant va kamida bitta to‘g‘ri javob kerak; o‘tish bali — 1 dan 100 % gacha.",
 };
