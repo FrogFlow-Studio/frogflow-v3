@@ -8,6 +8,7 @@ import { formatMoney } from "@/core/money/money";
 import { verticalDef } from "@/core/verticals/registry";
 import { storefrontBase } from "@/core/tenant/custom-domain";
 import { localeFlags, localeNames, SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
+import { getPreorder } from "@/core/preorder/preorder";
 import { COPY, escapeHtml } from "./copy";
 import type { InlineButton, InlineKeyboard } from "./types";
 
@@ -97,7 +98,10 @@ export async function productCard(
   const imgs = sortedImages(p);
   const variants = sortedVariants(p);
   const desc = p.description ? `\n\n${escapeHtml(p.description)}` : `\n\n<i>${m.descPending}</i>`;
-  const outOfStock = t.modules.stock && p.stock_quantity != null && p.stock_quantity <= 0;
+  const stockedOut = t.modules.stock && p.stock_quantity != null && p.stock_quantity <= 0;
+  // Нет в наличии, но продавец берёт предзаказ (core/preorder): кнопки покупки остаются.
+  const preorder = stockedOut ? await getPreorder(ctx, p.id) : null;
+  const outOfStock = stockedOut && !preorder;
   let caption: string;
   let keyboard: InlineKeyboard;
   if (variants.length > 0) {
@@ -134,7 +138,8 @@ export async function productCard(
     ? formatRatingSummary(p.rating_avg, p.rating_count ?? 0)
     : null;
   if (rating) caption += `\n${rating}`;
-  if (outOfStock) caption += `\n${m.outOfStockLabel}`;
+  if (preorder) caption += `\n${m.preorderLabel(preorder.from)}`;
+  else if (outOfStock) caption += `\n${m.outOfStockLabel}`;
   else if (t.modules.limited_offers) {
     const { offerForProductRow, offerLabel } = await import("@/core/offers/offers");
     const offer = await offerForProductRow(ctx, p);

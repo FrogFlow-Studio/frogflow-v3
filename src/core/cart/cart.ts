@@ -102,7 +102,11 @@ export async function addToCart(
   // Копия того же файла смысла не имеет.
   if (kind === "digital" && existing) return "digital_limit";
 
-  if (ctx.tenant.modules.stock && product.stock_quantity !== null) {
+  // Предзаказ (core/preorder): сверх остатка берём, пока продавец его не выключил.
+  const preorder = ctx.tenant.modules.stock
+    ? await (await import("@/core/preorder/preorder")).getPreorder(ctx, productId)
+    : null;
+  if (ctx.tenant.modules.stock && product.stock_quantity !== null && !preorder) {
     const { data: rows, error: rowsError } = await ctx.db
       .from("cart_items")
       .select("quantity")

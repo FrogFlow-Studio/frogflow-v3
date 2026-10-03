@@ -141,6 +141,9 @@ export type Msg = {
   depositLine: (due: string, total: string) => string;
   afterProofPhysical: string;
   leadTimeLabel: (days: number) => string;
+  /** Товара нет, но продавец берёт предзаказ (core/preorder); from — дата отправки (ГГГГ-ММ-ДД) или null. */
+  preorderLabel: (from: string | null) => string;
+  preorderCartNote: (from: string | null) => string;
   choosePayMethod: string;
   /** Оплата — акцепт оферты; ссылки на опубликованные документы. */
   payConsent: (offer: string | null, privacy: string | null) => string;
@@ -498,6 +501,9 @@ const ru: Msg = {
   afterProofPhysical:
     "После оплаты пришлите сюда фото или PDF чека — продавец подтвердит заказ и возьмёт в работу.",
   leadTimeLabel: (days) => `⏳ Срок изготовления: ${days} дн.`,
+  preorderLabel: (from) =>
+    `🕒 Предзаказ: товара пока нет в наличии${from ? `, отправка с ${from}` : ", срок отправки уточним"}`,
+  preorderCartNote: (from) => `   🕒 предзаказ${from ? `, отправка с ${from}` : ""}\n`,
   choosePayMethod: "Выберите способ оплаты:",
   payConsent: (offer, privacy) =>
     `Оплачивая заказ, вы принимаете ${[offer && `<a href="${offer}">условия оферты</a>`, privacy && `<a href="${privacy}">согласие на обработку персональных данных</a>`].filter(Boolean).join(" и ")}.`,
@@ -598,6 +604,10 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  preorderLabel: (from) =>
+    `🕒 Алдын ала тапсырыс: тауар әзірге қоймада жоқ${from ? `, ${from} күнінен бастап жіберіледі` : ", жіберу мерзімін нақтылаймыз"}`,
+  preorderCartNote: (from) =>
+    `   🕒 алдын ала тапсырыс${from ? `, ${from} бастап жіберіледі` : ""}\n`,
   orderStatusNotice: (status, no) =>
     `${({ in_production: "🧑‍🍳 Тапсырыс дайындалуда", ready: "🎉 Тапсырыс беруге дайын", delivered: "✅ Тапсырыс берілді. Рақмет!", accepted: "Тапсырыс қабылданды" } as Record<string, string>)[status] ?? status} — #${no}`,
   orderDelivered: (no) => `🎉 #${no} тапсырыс берілді. Сатып алғаныңызға рахмет!`,
@@ -799,6 +809,9 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  preorderLabel: (from) =>
+    `🕒 Pre-order: not in stock yet${from ? `, ships from ${from}` : ", we will confirm the shipping date"}`,
+  preorderCartNote: (from) => `   🕒 pre-order${from ? `, ships from ${from}` : ""}\n`,
   orderStatusNotice: (status, no) =>
     `${({ in_production: "🧑‍🍳 Your order is being prepared", ready: "🎉 Your order is ready for pickup", delivered: "✅ Order delivered. Thank you!", accepted: "Order accepted" } as Record<string, string>)[status] ?? status} — #${no}`,
   orderDelivered: (no) => `🎉 Order #${no} has been delivered. Thank you for your purchase!`,
@@ -1026,6 +1039,9 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  preorderLabel: (from) =>
+    `🕒 Oldindan buyurtma: mahsulot hozircha omborda yo‘q${from ? `, ${from} dan boshlab jo‘natiladi` : ", jo‘natish muddatini aniqlaymiz"}`,
+  preorderCartNote: (from) => `   🕒 oldindan buyurtma${from ? `, ${from} dan jo‘natiladi` : ""}\n`,
   orderStatusNotice: (status, no) =>
     `${({ in_production: "🧑‍🍳 Buyurtma tayyorlanmoqda", ready: "🎉 Buyurtma topshirishga tayyor", delivered: "✅ Buyurtma topshirildi. Rahmat!", accepted: "Buyurtma qabul qilindi" } as Record<string, string>)[status] ?? status} — #${no}`,
   orderDelivered: (no) => `🎉 #${no}-buyurtma topshirildi. Xaridingiz uchun rahmat!`,

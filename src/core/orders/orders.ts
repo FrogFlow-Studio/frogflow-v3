@@ -277,6 +277,7 @@ export async function placeOrder(
   if (!(await claimOrderPlacement(ctx, customer))) return { ok: false, reason: "busy" };
   const redemptions: Redemptions = {};
   const reserved: Array<{ productId: string; qty: number }> = [];
+  const preorderLines: import("@/core/preorder/preorder").PreorderLine[] = [];
   const fail = async (
     reason: Exclude<Extract<PlaceOrderResult, { ok: false }>["reason"], "below_min">,
   ) => {
@@ -324,13 +325,26 @@ export async function placeOrder(
     // Складской учёт — до создания заказа: не хватило, откатываем уже
     // списанное и убираем раскупленную строку из корзины.
     if (ctx.tenant.modules.stock) {
+      const { preordersFor } = await import("@/core/preorder/preorder");
+      const flags = await preordersFor(
+        ctx,
+        items.map((it) => it.products!.id),
+      );
       for (const it of items) {
-        const ok = await decrementStock(ctx, it.products!.id, Number(it.quantity));
+        const qty = Number(it.quantity);
+        const ok = await decrementStock(ctx, it.products!.id, qty);
         if (!ok) {
+          // Не хватило остатка: у товара включён предзаказ — позиция идёт
+          // предзаказом, остаток не трогаем (он не уходит в минус).
+          const pre = flags.get(it.products!.id);
+          if (pre) {
+            preorderLines.push({ product_id: it.products!.id, quantity: qty, from: pre.from });
+            continue;
+          }
           await ctx.db.from("cart_items").delete().eq("id", it.id);
           return await fail("out_of_stock");
         }
-        reserved.push({ productId: it.products!.id, qty: Number(it.quantity) });
+        reserved.push({ productId: it.products!.id, qty });
       }
     }
     const f = priced.kind === "physical" ? (opts.fulfillment ?? null) : null;
@@ -441,6 +455,20 @@ export async function placeOrder(
     if (itemsError) {
       await ctx.db.from("orders").delete().eq("id", order.id);
       return await fail("order_failed");
+    }
+    // Какие позиции взяты предзаказом, помнит только это событие: по нему склад при
+    // возврате не пополняют. Не записалось — заказа не будет, иначе возврат положил бы
+    // на склад штуки, которые не списывались (claimOrderEvent: false = запись не легла).
+    if (preorderLines.length) {
+      const { claimOrderEvent } = await import("./events");
+      const saved = await claimOrderEvent(ctx, order.id, "preorder", "lines", {
+        lines: preorderLines,
+      });
+      if (!saved) {
+        await ctx.db.from("order_items").delete().eq("order_id", order.id);
+        await ctx.db.from("orders").delete().eq("id", order.id);
+        return await fail("order_failed");
+      }
     }
     // Заказ уже создан: сбой очистки корзины не должен откатывать его.
     await clearCart(ctx, customer).catch((e) =>

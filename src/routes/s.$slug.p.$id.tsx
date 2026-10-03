@@ -242,10 +242,24 @@ function ProductPage() {
           <div className="mt-5 flex items-center gap-3">
             {course && !course.enrollOpen ? (
               <span className="badge">{t("product.course.closed")}</span>
-            ) : p.inStock ? (
-              <button className="btn-primary px-5 py-2.5 text-base" onClick={add}>
-                {t("product.addToCart")}
-              </button>
+            ) : p.inStock || p.preorder ? (
+              <>
+                <button className="btn-primary px-5 py-2.5 text-base" onClick={add}>
+                  {t("product.addToCart")}
+                </button>
+                {p.preorder && (
+                  <span className="badge">
+                    {p.preorder.from
+                      ? t("product.preorder", {
+                          date: new Date(`${p.preorder.from}T12:00:00`).toLocaleDateString(
+                            intlLocale(locale),
+                            { day: "numeric", month: "long", year: "numeric" },
+                          ),
+                        })
+                      : t("product.preorderNoDate")}
+                  </span>
+                )}
+              </>
             ) : (
               <>
                 <span className="badge">{t("product.outOfStock")}</span>

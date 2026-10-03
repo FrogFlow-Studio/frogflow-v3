@@ -1,3 +1,4 @@
+import { getPreorder } from "@/core/preorder/preorder";
 import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { sortCatalog, type CatalogSort } from "./sort";
@@ -58,6 +59,11 @@ export type StoreProduct = {
   categoryIds: string[];
   kind: "digital" | "physical";
   inStock: boolean;
+  /**
+   * Нет в наличии, но продавец берёт предзаказ (core/preorder): покупать можно,
+   * from — дата отправки (ГГГГ-ММ-ДД) или null, если срок не назван.
+   */
+  preorder: { from: string | null } | null;
   leadTimeDays: number | null;
   rating: { avg: number; count: number } | null;
   languages: string[];
@@ -195,6 +201,7 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
     categoryIds: Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [],
     kind: p.fulfillment_kind === "physical" ? "physical" : "digital",
     inStock: isInStock(ctx, p),
+    preorder: isInStock(ctx, p) ? null : await getPreorder(ctx, p.id),
     leadTimeDays: shownLeadDays(p),
     rating: p.rating_count ? { avg: Number(p.rating_avg ?? 0), count: p.rating_count } : null,
     languages: productLanguages(ctx, p),

@@ -54,7 +54,9 @@ export type OrderEventKind =
   | "courier"
   | "subscription_renewal"
   /** Покупатель принял оферту и/или согласие на обработку данных при оформлении. */
-  | "consent";
+  | "consent"
+  /** Позиции взяты предзаказом (core/preorder): остаток не списан, срок отправки. */
+  | "preorder";
 
 export type OrderEvent = {
   id: string;
@@ -316,6 +318,18 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
         text: "Не удалось исключить покупателя из закрытого канала курса — удалите его из канала вручную",
         tone: "danger",
       };
+    case "preorder": {
+      const lines = Array.isArray(p.lines)
+        ? (p.lines as Array<{ quantity?: unknown; from?: unknown }>)
+        : [];
+      const dates = [
+        ...new Set(lines.map((l) => (typeof l.from === "string" ? l.from : ""))),
+      ].filter(Boolean);
+      return {
+        text: `Предзаказ: ${lines.length} поз., остаток не списан${dates.length ? `, отправка с ${dates.join(", ")}` : ", срок отправки не назван"}`,
+        tone: "warn",
+      };
+    }
     case "reminded":
       return p.channel === "email"
         ? { text: `Напоминание об оплате — письмом на ${str(p.to)}`, tone: "neutral" }

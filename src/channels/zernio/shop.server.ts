@@ -1248,8 +1248,12 @@ async function sendProductCard(s: Shop, p: Product, force: boolean) {
   const country = s.customer.state.country_code ?? null;
   const variants = sortedVariants(p);
   const imgs = sortedImages(p);
-  const outOfStock =
+  const stockedOut =
     s.ctx.tenant.modules.stock && p.stock_quantity != null && p.stock_quantity <= 0;
+  // Нет в наличии, но продавец берёт предзаказ (core/preorder): кнопки покупки остаются.
+  const { getPreorder } = await import("@/core/preorder/preorder");
+  const preorder = stockedOut ? await getPreorder(s.ctx, p.id) : null;
+  const outOfStock = stockedOut && !preorder;
   const desc = p.description ? `\n\n${p.description.slice(0, 600)}` : "";
   let text = `${p.name}${desc}`;
   const buttons: DmButton[] = [];
@@ -1295,7 +1299,8 @@ async function sendProductCard(s: Shop, p: Product, force: boolean) {
     ? formatRatingSummary(p.rating_avg, p.rating_count ?? 0)
     : null;
   if (rating) text += `\n${plain(rating)}`;
-  if (outOfStock) text += `\n${plain(s.m.outOfStockLabel)}`;
+  if (preorder) text += `\n${plain(s.m.preorderLabel(preorder.from))}`;
+  else if (outOfStock) text += `\n${plain(s.m.outOfStockLabel)}`;
   else if (s.ctx.tenant.modules.limited_offers) {
     const { offerForProductRow, offerLabel } = await import("@/core/offers/offers");
     const offer = await offerForProductRow(s.ctx, p);
@@ -1354,8 +1359,20 @@ async function showCart(s: Shop, force: boolean, prefix?: string) {
     giftCode: st.gift_certificate_code,
   });
   let text = `${prefix ? `${prefix}\n\n` : ""}${plain(s.m.cartHeader)}`;
+  const { preordersFor, activePreorder } = await import("@/core/preorder/preorder");
+  const preorders = await preordersFor(
+    s.ctx,
+    priced.lines.map((l) => l.item.products!.id),
+  );
   priced.lines.forEach((line, i) => {
     text += `${i + 1}. ${line.name} × ${line.item.quantity} — ${formatMoney(line.line, priced.currency)}\n`;
+    const pre = activePreorder(
+      s.ctx,
+      line.item.products!,
+      preorders.get(line.item.products!.id),
+      Number(line.item.quantity),
+    );
+    if (pre) text += plain(s.m.preorderCartNote(pre.from));
   });
   if (sum.promo) text += plain(s.m.discountLine(formatMoney(sum.promo.discount, sum.currency)));
   if (sum.points.balance > 0) text += plain(s.m.pointsBalanceLine(sum.points.balance));

@@ -28,7 +28,8 @@ function FavoritesPage() {
   const [done, setDone] = useState("");
   // Товар с вариантами в корзину «без варианта» не ложится, а закончившийся не купить: в бот идут остальные.
   const sendable =
-    items?.filter((p) => fav.has(p.id) && p.inStock && p.variants.length === 0) ?? [];
+    items?.filter((p) => fav.has(p.id) && (p.inStock || p.preorder) && p.variants.length === 0) ??
+    [];
   const skipped = (items?.filter((p) => fav.has(p.id)).length ?? 0) - sendable.length;
   const toTelegram = useAction(async () => {
     const lines = sendable.map((p) => ({
@@ -132,7 +133,11 @@ function FavoritesPage() {
                   label={(price) => (p.priceFrom ? t("catalog.priceFrom", { price }) : price)}
                 />
               </span>
-              {!p.inStock && <span className="text-xs text-muted">{t("catalog.outOfStock")}</span>}
+              {!p.inStock && (
+                <span className="text-xs text-muted">
+                  {p.preorder ? t("catalog.preorder") : t("catalog.outOfStock")}
+                </span>
+              )}
             </div>
           </article>
         ))}

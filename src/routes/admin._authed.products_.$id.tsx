@@ -137,6 +137,7 @@ function ProductEditor() {
     product: p,
     waiting,
     lowStock,
+    preorder,
     categories,
     countries,
     defaultFulfillment,
@@ -184,6 +185,7 @@ function ProductEditor() {
     const stock = num("stockQuantity");
     const lead = num("leadTimeDays");
     const lowAt = num("lowStockAt");
+    const preorderFrom = String(f.get("preorderFrom") ?? "");
     const { id } = await saveProductFn({
       data: {
         id: p?.id ?? null,
@@ -201,6 +203,8 @@ function ProductEditor() {
           stockQuantity: stock,
           leadTimeDays: lead,
           lowStockAt: lowAt,
+          preorderOn: f.get("preorderOn") === "on",
+          preorderFrom: /^\d{4}-\d{2}-\d{2}$/.test(preorderFrom) ? preorderFrom : null,
           images: images.map((i) => i.key),
           materials,
           variants: variants.filter((v) => v.name.trim()),
@@ -513,6 +517,23 @@ function ProductEditor() {
                 {t("product.onSale")}
               </label>
             </div>
+            {shop.modules.stock && kind === "physical" && (
+              <div className="mt-3 space-y-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="preorderOn" defaultChecked={Boolean(preorder)} />{" "}
+                  {t("product.preorder")}
+                </label>
+                <p className="text-xs text-muted">{t("product.preorderHint")}</p>
+                <Field label={t("product.preorderFrom")} hint={t("product.preorderFromHint")}>
+                  <input
+                    className="input sm:w-48"
+                    name="preorderFrom"
+                    type="date"
+                    defaultValue={preorder?.from ?? ""}
+                  />
+                </Field>
+              </div>
+            )}
           </Card>
         </div>
 

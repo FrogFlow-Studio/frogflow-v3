@@ -991,8 +991,20 @@ async function showCart(b: Bot) {
   const mod = b.ctx.tenant.modules;
   let text = b.m.cartHeader;
   const buttons: InlineButton[][] = [];
+  const { preordersFor, activePreorder } = await import("@/core/preorder/preorder");
+  const preorders = await preordersFor(
+    b.ctx,
+    priced.lines.map((l) => l.item.products!.id),
+  );
   for (const line of priced.lines) {
     text += `• ${escapeHtml(line.name)} × ${line.item.quantity} — ${formatMoney(line.line, priced.currency)}\n`;
+    const pre = activePreorder(
+      b.ctx,
+      line.item.products!,
+      preorders.get(line.item.products!.id),
+      Number(line.item.quantity),
+    );
+    if (pre) text += b.m.preorderCartNote(pre.from);
     buttons.push([{ text: b.m.removeItem(line.name), callback_data: `rem:${line.item.id}` }]);
   }
   if (sum.promo) text += b.m.discountLine(formatMoney(sum.promo.discount, sum.currency));

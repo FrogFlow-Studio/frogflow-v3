@@ -163,10 +163,21 @@ export async function restoreOrderStock(ctx: TenantContext, orderId: number): Pr
     .select("product_id, quantity")
     .eq("order_id", orderId);
   if (dataError) throw serverFailure(`Выдача: ${dataError.message}`);
+  // Позиции предзаказа остаток не списывали — и не возвращают (core/preorder).
+  const { preorderLinesOfOrder } = await import("@/core/preorder/preorder");
+  const pre = new Map<string, number>();
+  for (const l of await preorderLinesOfOrder(ctx, orderId))
+    pre.set(l.product_id, (pre.get(l.product_id) ?? 0) + l.quantity);
   let n = 0;
   for (const it of data ?? []) {
     if (!it.product_id) continue;
-    await restoreStock(ctx, it.product_id, Number(it.quantity) || 0);
+    let qty = Number(it.quantity) || 0;
+    const skip = Math.min(qty, pre.get(it.product_id) ?? 0);
+    if (skip > 0) {
+      qty -= skip;
+      pre.set(it.product_id, (pre.get(it.product_id) ?? 0) - skip);
+    }
+    if (qty > 0) await restoreStock(ctx, it.product_id, qty);
     n++;
   }
   return n;

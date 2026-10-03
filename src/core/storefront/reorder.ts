@@ -52,6 +52,9 @@ export async function planReorder(
       : Promise.resolve([]),
   ]);
   const byId = new Map(products.map((p) => [p.id, p]));
+  // Предзаказ (core/preorder): сверх остатка берём всю позицию, остаток не трогаем.
+  const { preordersFor } = await import("@/core/preorder/preorder");
+  const preorders = await preordersFor(ctx, ids);
   // Остаток общий на товар, а позиций с ним в заказе может быть несколько (варианты).
   const left = new Map<string, number>();
   for (const r of stockRows)
@@ -86,7 +89,7 @@ export async function planReorder(
     const want = p.kind === "digital" ? 1 : Math.max(1, Number(item.quantity) || 1);
     let qty = Math.min(want, REORDER_MAX_QTY);
     const stock = left.get(p.id);
-    if (stock !== undefined) {
+    if (stock !== undefined && !(preorders.has(p.id) && stock < qty)) {
       if (stock <= 0) {
         skipped.push({ name, reason: "out_of_stock" });
         continue;

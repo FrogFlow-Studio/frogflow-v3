@@ -105,6 +105,26 @@ describe("повтор заказа на витрине", () => {
     ]);
   });
 
+  it("включённый предзаказ: нулевой и недостаточный остаток не мешают, остаток не делится", async () => {
+    const { db, ctx, order } = setup(
+      [product(1, { stock_quantity: 0 }), product(2, { stock_quantity: 3 })],
+      [
+        { product_id: P(1), quantity: 2, name_snapshot: "Нет" },
+        { product_id: P(2), quantity: 5, name_snapshot: "Мало" },
+      ],
+    );
+    db.tables.app_settings = [
+      { bot_id: BOT, key: `preorder:${P(1)}`, value: "2026-11-15" },
+      { bot_id: BOT, key: `preorder:${P(2)}`, value: "-" },
+    ];
+    const plan = await planReorder(ctx, order(7));
+    expect(plan.lines.map((l) => [l.productId, l.qty])).toEqual([
+      [P(1), 2],
+      [P(2), 5],
+    ]);
+    expect(plan.skipped).toEqual([]);
+  });
+
   it("исчезнувший вариант и «товар обзавёлся вариантами» не подменяются ценой «от»", async () => {
     const { ctx, order } = setup(
       [

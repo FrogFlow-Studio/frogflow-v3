@@ -473,7 +473,7 @@ function CatalogPage() {
                 </span>
                 {!p.inStock && (
                   <span className="absolute right-2 bottom-2 rounded-md bg-fg/80 px-2 py-0.5 text-[11px] font-medium text-bg">
-                    {t("catalog.outOfStock")}
+                    {p.preorder ? t("catalog.preorder") : t("catalog.outOfStock")}
                   </span>
                 )}
               </Link>
@@ -512,7 +512,7 @@ function CatalogPage() {
                       />
                     )}
                   </span>
-                  {!p.inStock ? null : p.variants.length > 0 ? (
+                  {!p.inStock && !p.preorder ? null : p.variants.length > 0 ? (
                     <Link
                       to="/s/$slug/p/$id"
                       params={{ slug, id: p.id }}

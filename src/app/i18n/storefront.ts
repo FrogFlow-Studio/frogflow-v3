@@ -69,6 +69,10 @@ const ru = {
   "catalog.inStock": "В наличии",
   "catalog.product": "Товар",
   "catalog.outOfStock": "нет в наличии",
+  "catalog.preorder": "предзаказ",
+  "product.preorder": "Предзаказ: товара пока нет в наличии, отправка с {date}",
+  "product.preorderNoDate":
+    "Предзаказ: товара пока нет в наличии, срок отправки уточним после заказа",
   "catalog.priceFrom": "от {price}",
   "offer.until": "Акция до {date}",
   "offer.left": "осталось {n} шт.",
@@ -455,6 +459,11 @@ const kk: Dict = {
   "catalog.inStock": "Қолда бар",
   "catalog.product": "Тауар",
   "catalog.outOfStock": "қоймада жоқ",
+  "catalog.preorder": "алдын ала тапсырыс",
+  "product.preorder":
+    "Алдын ала тапсырыс: тауар әзірге қоймада жоқ, {date} күнінен бастап жіберіледі",
+  "product.preorderNoDate":
+    "Алдын ала тапсырыс: тауар әзірге қоймада жоқ, жіберу мерзімін тапсырыстан кейін нақтылаймыз",
   "catalog.priceFrom": "{price} бастап",
   "offer.until": "Акция {date} дейін",
   "offer.left": "{n} дана қалды",
@@ -832,6 +841,10 @@ const en: Dict = {
   "catalog.inStock": "In stock",
   "catalog.product": "Product",
   "catalog.outOfStock": "out of stock",
+  "catalog.preorder": "pre-order",
+  "product.preorder": "Pre-order: not in stock yet, ships from {date}",
+  "product.preorderNoDate":
+    "Pre-order: not in stock yet, we will confirm the shipping date after you order",
   "catalog.priceFrom": "from {price}",
   "offer.until": "Offer until {date}",
   "offer.left": "{n} left",
@@ -1209,6 +1222,11 @@ const uz: Dict = {
   "catalog.inStock": "Mavjud",
   "catalog.product": "Mahsulot",
   "catalog.outOfStock": "mavjud emas",
+  "catalog.preorder": "oldindan buyurtma",
+  "product.preorder":
+    "Oldindan buyurtma: mahsulot hozircha omborda yo‘q, {date} dan boshlab jo‘natiladi",
+  "product.preorderNoDate":
+    "Oldindan buyurtma: mahsulot hozircha omborda yo‘q, jo‘natish muddatini buyurtmadan keyin aniqlaymiz",
   "catalog.priceFrom": "{price} dan",
   "offer.until": "Aksiya {date} gacha",
   "offer.left": "{n} dona qoldi",

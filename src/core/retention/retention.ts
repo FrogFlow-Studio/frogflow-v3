@@ -119,6 +119,8 @@ export async function pruneZernioLogs(now = Date.now(), scope?: Scope): Promise<
       // Возврат по заказу (core/orders/refund) — учёт денег: без него
       // частичный возврат через полгода снова попал бы в выручку.
       .neq("event_type", "order.refund")
+      // Позиции предзаказа (core/preorder): по ним решается, возвращать ли товар на склад.
+      .neq("event_type", "order.preorder")
       .lt("created_at", cutoff(RETENTION.zernioLogsStaleDays, now));
     if (scope) q2 = q2.in("bot_id", [...scope]);
     const { data: stale, error: e2 } = await q2
