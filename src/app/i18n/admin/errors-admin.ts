@@ -11,6 +11,7 @@ export const ru = {
     "Напишите, что исправить: без комментария ученик не поймёт, что не так.",
   "err.homework.stale": "Ученик прислал новую версию, пока вы смотрели прежнюю. Обновите страницу.",
   "err.homework.notWaiting": "Эта работа уже проверена.",
+  "err.curators.duplicate": "У двух кураторов один и тот же Telegram: уберите повтор.",
   "err.pricelist.off": "Консультант по прайсу у магазина не включён — его включает оператор.",
   "err.pricelist.empty":
     "В файле не нашлось ни одной позиции. Нужна выгрузка 1С в CSV: название, раздел, размер, цена.",
@@ -174,6 +175,7 @@ export const kk: SectionDict<typeof ru> = {
   "err.homework.stale":
     "Сіз бұрынғы нұсқаны қарап отырғанда оқушы жаңа нұсқа жіберді. Бетті жаңартыңыз.",
   "err.homework.notWaiting": "Бұл жұмыс тексеріліп қойған.",
+  "err.curators.duplicate": "Екі куратордың Telegram-ы бірдей: қайталанғанын алып тастаңыз.",
   "err.pricelist.off": "Прайс бойынша кеңесші дүкенде қосылмаған — оны оператор қосады.",
   "err.pricelist.empty":
     "Файлда бірде-бір позиция табылмады. 1С-тен CSV түсірілімі керек: атауы, бөлімі, өлшемі, бағасы.",
@@ -332,6 +334,7 @@ export const en: SectionDict<typeof ru> = {
   "err.homework.stale":
     "The student sent a new version while you were viewing the previous one. Refresh the page.",
   "err.homework.notWaiting": "This work has already been reviewed.",
+  "err.curators.duplicate": "Two curators have the same Telegram: remove the duplicate.",
   "err.pricelist.off":
     "The price-list consultant is not enabled for this shop — the operator turns it on.",
   "err.pricelist.empty":
@@ -491,6 +494,7 @@ export const uz: SectionDict<typeof ru> = {
   "err.homework.stale":
     "Siz avvalgi versiyani ko‘rayotganingizda o‘quvchi yangi versiya yubordi. Sahifani yangilang.",
   "err.homework.notWaiting": "Bu ish allaqachon tekshirilgan.",
+  "err.curators.duplicate": "Ikki kuratorda bir xil Telegram: takrorini olib tashlang.",
   "err.pricelist.off": "Narxnoma bo‘yicha maslahatchi do‘konda yoqilmagan — uni operator yoqadi.",
   "err.pricelist.empty":
     "Faylda birorta ham pozitsiya topilmadi. 1C dan CSV eksport kerak: nomi, bo‘lim, o‘lcham, narx.",

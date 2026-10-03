@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { homeworkQueueFn, reviewHomeworkFn } from "@/app/admin/homework.functions";
+import { homeworkQueueFn, reviewHomeworkFn, saveCuratorsFn } from "@/app/admin/homework.functions";
 import type { HomeworkRow } from "@/app/admin/homework.server";
 import { Badge, Card, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
@@ -15,12 +15,15 @@ export const Route = createFileRoute("/admin/_authed/homework")({
 });
 
 function HomeworkPage() {
-  const { items } = Route.useLoaderData();
+  const { items: all, curators, cohorts } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const router = useRouter();
   const [tab, setTab] = useState<"waiting" | "all">("waiting");
   const canEdit = shop.role === "owner" || shop.role === "manager";
+  const [mine, setMine] = useState(false);
+  // «Мои» — работы, закреплённые за куратором с логином текущего пользователя.
+  const items = mine ? all.filter((h) => h.curator?.username === shop.username) : all;
   const shown = tab === "waiting" ? items.filter((h) => h.status === "submitted") : items;
   const date = (iso: string) =>
     new Date(iso).toLocaleString(intlLocale(shop.locale), {
@@ -33,7 +36,17 @@ function HomeworkPage() {
   return (
     <>
       <PageTitle title={t("homework.title")} subtitle={t("homework.subtitle")} />
-      <div className="mb-4 flex gap-2">
+      {canEdit && <CuratorsCard curators={curators} cohorts={cohorts} t={t} />}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {curators.items.length > 0 && (
+          <button
+            type="button"
+            className={mine ? "btn-primary text-sm" : "btn-secondary text-sm"}
+            onClick={() => setMine(!mine)}
+          >
+            {t("homework.mine")}
+          </button>
+        )}
         {(["waiting", "all"] as const).map((k) => (
           <button
             key={k}
@@ -108,6 +121,7 @@ function HomeworkCard({
     >
       <p className="text-sm text-muted">
         {t("homework.lesson", { no: h.lessonNo, title: h.lessonTitle })}
+        {h.curator && ` · ${t("homework.curatorOf", { name: h.curator.name })}`}
       </p>
       {last && <Attempt a={last} t={t} date={date} />}
       {earlier.length > 0 && (
@@ -216,5 +230,167 @@ function Attempt({
         </div>
       )}
     </div>
+  );
+}
+
+type CuratorsData = Awaited<ReturnType<typeof homeworkQueueFn>>;
+type CuratorRow = {
+  id?: string;
+  name: string;
+  telegram: string;
+  username: string;
+  cohorts: string[];
+};
+
+/** Кураторы школы: список, режим назначения; сохраняется отдельной кнопкой. */
+function CuratorsCard({
+  curators,
+  cohorts,
+  t,
+}: {
+  curators: CuratorsData["curators"];
+  cohorts: CuratorsData["cohorts"];
+  t: AdminT;
+}) {
+  const router = useRouter();
+  const [mode, setMode] = useState(curators.mode);
+  const [rows, setRows] = useState<CuratorRow[]>(
+    curators.items.map((c) => ({
+      id: c.id,
+      name: c.name,
+      telegram: String(c.telegram_id),
+      username: c.username ?? "",
+      cohorts: c.cohorts ?? [],
+    })),
+  );
+  const [saved, setSaved] = useState(false);
+  const set = (i: number, patch: Partial<CuratorRow>) => {
+    setSaved(false);
+    setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  };
+  const save = useAction(async () => {
+    await saveCuratorsFn({
+      data: {
+        mode,
+        items: rows.map((r) => ({
+          ...(r.id ? { id: r.id } : {}),
+          name: r.name,
+          telegramId: Number(r.telegram),
+          username: r.username,
+          cohorts: r.cohorts,
+        })),
+      },
+    });
+    setSaved(true);
+    await router.invalidate();
+  });
+  const valid = rows.every((r) => r.name.trim() && /^\d{1,15}$/.test(r.telegram.trim()));
+  return (
+    <details className="mb-4 rounded-md border border-line p-3 text-sm" open={rows.length > 0}>
+      <summary className="cursor-pointer font-medium">
+        {t("homework.curators")} · {rows.length}
+      </summary>
+      <p className="mt-2 text-xs text-muted">{t("homework.curatorsHint")}</p>
+      <label className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        {t("homework.curatorsMode")}
+        <select
+          className="input w-auto text-xs"
+          value={mode}
+          onChange={(e) => {
+            setSaved(false);
+            setMode(e.target.value as "rotate" | "cohort");
+          }}
+        >
+          <option value="rotate">{t("homework.curatorsRotate")}</option>
+          <option value="cohort">{t("homework.curatorsCohort")}</option>
+        </select>
+      </label>
+      <div className="mt-3 space-y-3">
+        {rows.map((r, i) => (
+          <div key={r.id ?? i} className="space-y-2 rounded-md border border-line p-2">
+            <div className="grid gap-2 sm:grid-cols-3">
+              <input
+                className="input"
+                aria-label={t("homework.curatorName")}
+                placeholder={t("homework.curatorName")}
+                maxLength={60}
+                value={r.name}
+                onChange={(e) => set(i, { name: e.target.value })}
+              />
+              <input
+                className="input"
+                inputMode="numeric"
+                aria-label={t("homework.curatorTelegram")}
+                placeholder={t("homework.curatorTelegram")}
+                value={r.telegram}
+                onChange={(e) => set(i, { telegram: e.target.value.trim() })}
+              />
+              <input
+                className="input"
+                aria-label={t("homework.curatorLogin")}
+                placeholder={t("homework.curatorLogin")}
+                maxLength={40}
+                value={r.username}
+                onChange={(e) => set(i, { username: e.target.value.trim() })}
+              />
+            </div>
+            {mode === "cohort" && cohorts.length > 0 && (
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                <span className="text-muted">{t("homework.curatorCohorts")}:</span>
+                {cohorts.map((k) => (
+                  <label key={k.id} className="flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={r.cohorts.includes(k.id)}
+                      onChange={(e) =>
+                        set(i, {
+                          cohorts: e.target.checked
+                            ? [...r.cohorts, k.id]
+                            : r.cohorts.filter((x) => x !== k.id),
+                        })
+                      }
+                    />
+                    {k.course} · {k.title}
+                  </label>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              className="btn-ghost text-xs"
+              onClick={() => {
+                setSaved(false);
+                setRows(rows.filter((_, j) => j !== i));
+              }}
+            >
+              {t("homework.curatorRemove")}
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {rows.length < 20 && (
+          <button
+            type="button"
+            className="btn-secondary text-sm"
+            onClick={() =>
+              setRows([...rows, { name: "", telegram: "", username: "", cohorts: [] }])
+            }
+          >
+            {t("homework.curatorAdd")}
+          </button>
+        )}
+        <button
+          type="button"
+          className="btn-primary text-sm"
+          disabled={save.busy || !valid}
+          onClick={() => void save.run().catch(() => {})}
+        >
+          {t("homework.curatorsSave")}
+        </button>
+      </div>
+      {saved && <p className="mt-2 text-xs text-ok">{t("homework.curatorsSaved")}</p>}
+      <ErrorBox error={save.error} />
+    </details>
   );
 }

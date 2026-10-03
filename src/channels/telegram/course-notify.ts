@@ -12,6 +12,9 @@ export async function notifyHomework(ctx: TenantContext, hw: Homework): Promise<
   const { notifyAdminsHtml } = await import("./notify");
   const { saveHwRef, hwRefMark } = await import("@/core/courses/review-ref");
   const ref = await saveHwRef(ctx, { orderItemId: hw.orderItemId, lessonId: hw.lessonId });
+  // Школа с кураторами: работа уходит одному назначенному куратору, а не всем.
+  const { ensureCurator } = await import("@/core/courses/curators.server");
+  const curator = await ensureCurator(ctx, hw.orderItemId).catch(() => null);
   const last = hw.attempts.at(-1);
   const again = hw.attempts.length > 1;
   const lines = [
@@ -26,13 +29,23 @@ export async function notifyHomework(ctx: TenantContext, hw: Homework): Promise<
     `Все работы: ${ctx.appUrl.replace(/\/+$/, "")}/admin/homework`,
     hwRefMark(ref),
   ].filter((l) => l !== "");
-  return notifyAdminsHtml(ctx, lines.join("\n"), {
+  const opts = {
     kind: "homework",
     replyMarkup: {
       inline_keyboard: [[{ text: "✅ Принять", callback_data: `hwa:${ref}:${hw.rev}` }]],
     },
     photos: await photoUrls(ctx, hw),
+  };
+  if (!curator) return notifyAdminsHtml(ctx, lines.join("\n"), opts);
+  const sent = await notifyAdminsHtml(ctx, lines.join("\n"), {
+    ...opts,
+    recipients: [String(curator.telegram_id)],
   });
+  if (sent > 0) return sent;
+  // Куратор не начинал диалог с ботом (или заблокировал его): работу не теряем,
+  // она уходит продавцам, с пометкой почему.
+  const warn = `⚠️ Куратору ${escapeHtml(curator.name)} не доставлено (он не начал диалог с ботом) — работа пришла вам`;
+  return notifyAdminsHtml(ctx, [warn, ...lines].join("\n"), opts);
 }
 
 /** Голосовое и видео последней сдачи — ссылки на сутки: фото Telegram покажет само, их — нет. */

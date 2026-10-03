@@ -24,20 +24,27 @@ export async function notifyAdminsHtml(
     replyMarkup?: { inline_keyboard: Array<Array<Record<string, string>>> };
     /** Картинки перед текстом (публичные или подписанные ссылки), лучшее усилие, до 10. */
     photos?: string[];
+    /**
+     * Адресат вместо всех продавцов (куратор школы): только Telegram, без
+     * почты и push; матрица уведомлений продавца к нему не применяется.
+     */
+    recipients?: string[];
   } = {},
 ): Promise<number> {
   const api = adminTelegramApi(ctx);
   // Без бота Telegram — только push в админку, если он настроен (core/push).
-  if (!api) return pushOnly(ctx, html, opts);
+  if (!api) return opts.recipients ? 0 : pushOnly(ctx, html, opts);
   // Матрица «событие → канал», тихие часы, почта (core/notify/prefs). Дайджест
   // сам себя не откладывает и не фильтрует.
   const isDigest = opts.kind === "digest";
   const { decideDelivery, loadNotifyPrefs, notifyKindOf } = await import("@/core/notify/prefs");
   const prefs = await loadNotifyPrefs(ctx);
   const kind = notifyKindOf(opts.kind);
-  const d = isDigest
-    ? { telegram: true, email: prefs.kinds.system.email && Boolean(prefs.email), defer: false }
-    : decideDelivery(prefs, kind, new Date(), ctx.timezone);
+  const d = opts.recipients
+    ? { telegram: true, email: false, defer: false }
+    : isDigest
+      ? { telegram: true, email: prefs.kinds.system.email && Boolean(prefs.email), defer: false }
+      : decideDelivery(prefs, kind, new Date(), ctx.timezone);
   if (d.defer) {
     const { deferToDigest } = await import("@/core/notify/digest");
     await deferToDigest(ctx, kind, html.replace(/<[^>]+>/g, ""));
@@ -56,13 +63,13 @@ export async function notifyAdminsHtml(
     }
   }
   // Push в админку как приложение (core/push) — тем же мгновенным каналом, что Telegram.
-  if (d.telegram) await sendAdminPush(ctx, html, opts);
+  if (d.telegram && !opts.recipients) await sendAdminPush(ctx, html, opts);
   if (!d.telegram) return d.email ? 1 : 0;
   const { sendOrEnqueue } = await import("@/core/outbox/outbox");
   const { telegramOutboxSender } = await import("./outbox");
   let sent = 0;
   const photos = (opts.photos ?? []).slice(0, 10);
-  for (const chatId of await adminRecipients(ctx)) {
+  for (const chatId of opts.recipients ?? (await adminRecipients(ctx))) {
     if (photos.length === 1)
       await api.call("sendPhoto", { chat_id: chatId, photo: photos[0] }).catch(() => null);
     else if (photos.length > 1)

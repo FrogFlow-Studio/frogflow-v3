@@ -2,6 +2,9 @@ import { env } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
 import { isTenantStorageKey } from "@/core/storage/keys";
+import { curatorsOf } from "@/core/courses/curators.server";
+import { parseCurators, CURATORS_MAX, CURATOR_COHORTS_MAX } from "@/core/courses/curators";
+import type { CuratorSetting } from "@/core/tenant/types";
 import { listHomework, reviewHomework } from "@/core/courses/homework.server";
 import type { Homework } from "@/core/courses/homework";
 import { courseToken, courseUrl } from "@/core/courses/link";
@@ -12,6 +15,8 @@ import { storefrontBase } from "@/core/tenant/custom-domain";
  * проверка с отзывом и сообщение ученику в его канале.
  */
 export type HomeworkRow = Omit<Homework, "attempts"> & {
+  /** Назначенный куратор; null — кураторов нет или работа ещё не назначена. */
+  curator: { id: string; name: string; username: string | null } | null;
   attempts: Array<{
     at: string;
     text: string;
@@ -23,6 +28,7 @@ export type HomeworkRow = Omit<Homework, "attempts"> & {
 export async function homeworkQueue(ctx: TenantContext, limit = 200): Promise<HomeworkRow[]> {
   const { signedFileUrl } = await import("@/core/orders/orders");
   const list = (await listHomework(ctx)).slice(0, limit);
+  const assigned = await curatorsOf(ctx, [...new Set(list.map((h) => h.orderItemId))]);
   const out: HomeworkRow[] = [];
   for (const hw of list) {
     const attempts: HomeworkRow["attempts"] = [];
@@ -51,7 +57,12 @@ export async function homeworkQueue(ctx: TenantContext, limit = 200): Promise<Ho
       }
       attempts.push({ at: a.at, text: a.text, files });
     }
-    out.push({ ...hw, attempts });
+    const c = assigned.get(hw.orderItemId);
+    out.push({
+      ...hw,
+      attempts,
+      curator: c ? { id: c.id, name: c.name, username: c.username ?? null } : null,
+    });
   }
   return out;
 }
@@ -113,6 +124,55 @@ export async function reviewAndNotify(
     }
   }
   return { status: hw.status, notified };
+}
+
+/** Потоки всех курсов магазина — чтобы закрепить за куратором (режим «по потокам»). */
+export async function cohortChoices(
+  ctx: TenantContext,
+): Promise<Array<{ id: string; title: string; course: string }>> {
+  const { courseProducts } = await import("./students.server");
+  const { getSetting } = await import("@/core/settings/settings");
+  const { courseKey, parseCourse } = await import("@/core/courses/course");
+  const out: Array<{ id: string; title: string; course: string }> = [];
+  for (const p of await courseProducts(ctx)) {
+    const c = parseCourse(await getSetting(ctx, courseKey(p.id)));
+    for (const k of c.cohorts ?? []) out.push({ id: k.id, title: k.title, course: p.name });
+  }
+  return out;
+}
+
+export type CuratorsInput = {
+  mode: "rotate" | "cohort";
+  items: Array<{
+    id?: string;
+    name: string;
+    telegramId: number;
+    username?: string;
+    cohorts?: string[];
+  }>;
+};
+
+/**
+ * Сохранить кураторов в bots.settings (patchTenantSettings: остальные ключи
+ * клиента не затираются). Id уже известных кураторов сохраняются — за ними
+ * закреплены ученики; новым выдаётся свой.
+ */
+export async function saveCurators(ctx: TenantContext, input: CuratorsInput): Promise<void> {
+  const known = new Set(parseCurators(ctx.tenant.settings.curators).items.map((c) => c.id));
+  const items: CuratorSetting[] = input.items.slice(0, CURATORS_MAX).map((c) => ({
+    id: c.id && known.has(c.id) ? c.id : crypto.randomUUID(),
+    name: c.name.trim(),
+    telegram_id: c.telegramId,
+    ...(c.username?.trim() ? { username: c.username.trim().toLowerCase() } : {}),
+    ...(c.cohorts?.length ? { cohorts: c.cohorts.slice(0, CURATOR_COHORTS_MAX) } : {}),
+  }));
+  if (new Set(items.map((c) => c.telegram_id)).size !== items.length)
+    throw new UserError(
+      "err.curators.duplicate",
+      "У двух кураторов один и тот же Telegram: уберите повтор.",
+    );
+  const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
+  await patchTenantSettings(ctx.tenant.id, { curators: { mode: input.mode, items } });
 }
 
 /** Выдать сертификат, если курс окончен; ссылка на PDF — только когда он выдан именно сейчас. */

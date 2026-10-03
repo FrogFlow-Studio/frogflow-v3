@@ -58,6 +58,12 @@ export type TenantSettings = {
     password_hash?: string;
     users?: AdminUser[];
   };
+  /**
+   * Кураторы онлайн-школы (core/courses/curators): несколько проверяющих
+   * домашние задания. `rotate` — ученики по кругу, `cohort` — куратор ведёт
+   * свои потоки (остальные — по кругу).
+   */
+  curators?: { mode?: "rotate" | "cohort"; items?: CuratorSetting[] };
   /** Переключатель миграции: пока v1 обслуживает клиента, v2 отвечает 409 на его вебхуки. */
   served_by?: "v1" | "v2";
   /**
@@ -145,6 +151,18 @@ export type BillingSettings = {
   plan_version?: number;
   /** Пробный период: до какой даты и был ли он уже. */
   trial_until?: string;
+};
+
+export type CuratorSetting = {
+  /** Стабильный id: к нему привязаны уже назначенные ученики. */
+  id: string;
+  name: string;
+  /** Telegram, куда уходят работы на проверку. */
+  telegram_id: number;
+  /** Логин в админке: по нему работает фильтр «Мои». */
+  username?: string;
+  /** Потоки (id из core/courses/cohort), которые ведёт куратор. */
+  cohorts?: string[];
 };
 
 export type AdminUser = {

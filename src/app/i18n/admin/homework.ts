@@ -23,6 +23,23 @@ export const ru = {
   "homework.status.revise": "На доработке",
   "homework.notified": "Ученику отправлено сообщение.",
   "homework.notNotified": "Сообщение ученику не ушло — он увидит отзыв на странице курса.",
+  "homework.curators": "Кураторы",
+  "homework.curatorsHint":
+    "Несколько проверяющих: работа ученика уходит одному куратору в Telegram и закрепляется за учеником. Куратор жмёт «Принять» или отвечает свайпом на сообщение прямо в Telegram, а чтобы видеть свой список в панели, укажите его логин в админке (роль «менеджер»). Тем, кто не назначен, работа не приходит; владелец видит все работы здесь. Без кураторов работы получает продавец, как раньше. Куратор должен сначала нажать /start в боте магазина — иначе Telegram не даст боту написать ему, и работа придёт продавцу с пометкой.",
+  "homework.curatorsMode": "Как назначать",
+  "homework.curatorsRotate": "Ученики по кругу",
+  "homework.curatorsCohort": "По потокам (остальные — по кругу)",
+  "homework.curatorName": "Имя",
+  "homework.curatorTelegram": "Telegram id",
+  "homework.curatorLogin": "Логин в админке",
+  "homework.curatorCohorts": "Потоки",
+  "homework.curatorAdd": "Добавить куратора",
+  "homework.curatorRemove": "Убрать",
+  "homework.curatorsSave": "Сохранить кураторов",
+  "homework.curatorsSaved":
+    "Кураторы сохранены. Уже закреплённые ученики остаются за своими кураторами; у убранного куратора работы получат нового при следующей сдаче.",
+  "homework.curatorOf": "Куратор: {name}",
+  "homework.mine": "Мои",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -47,6 +64,23 @@ export const kk: SectionDict<typeof ru> = {
   "homework.status.revise": "Пысықталуда",
   "homework.notified": "Оқушыға хабарлама жіберілді.",
   "homework.notNotified": "Оқушыға хабарлама кетпеді — ол пікірді курс бетінде көреді.",
+  "homework.curators": "Кураторлар",
+  "homework.curatorsHint":
+    "Бірнеше тексеруші: оқушының жұмысы Telegram-да бір кураторға барады және оқушыға бекітіледі. Куратор «Қабылдау» батырмасын басады немесе хабарламаға тікелей Telegram-да жауап жазады; панельде өз тізімін көру үшін оның әкімшілік логинін көрсетіңіз («менеджер» рөлі). Тағайындалмағандарға жұмыс келмейді; иесі барлық жұмысты осында көреді. Кураторсыз жұмысты бұрынғыдай сатушы алады. Куратор алдымен дүкен ботында /start басуы керек — әйтпесе Telegram боттың оған жазуына рұқсат бермейді, жұмыс белгімен сатушыға келеді.",
+  "homework.curatorsMode": "Қалай тағайындау",
+  "homework.curatorsRotate": "Оқушылар кезекпен",
+  "homework.curatorsCohort": "Ағын бойынша (қалғандары — кезекпен)",
+  "homework.curatorName": "Аты",
+  "homework.curatorTelegram": "Telegram id",
+  "homework.curatorLogin": "Әкімшілік логині",
+  "homework.curatorCohorts": "Ағындар",
+  "homework.curatorAdd": "Куратор қосу",
+  "homework.curatorRemove": "Алып тастау",
+  "homework.curatorsSave": "Кураторларды сақтау",
+  "homework.curatorsSaved":
+    "Кураторлар сақталды. Бекітілген оқушылар өз кураторында қалады; алынып тасталған куратордың оқушысы келесі тапсырғанда жаңа куратор алады.",
+  "homework.curatorOf": "Куратор: {name}",
+  "homework.mine": "Менікі",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -72,6 +106,23 @@ export const en: SectionDict<typeof ru> = {
   "homework.notified": "The student has been notified.",
   "homework.notNotified":
     "The message to the student did not go through — they will see your feedback on the course page.",
+  "homework.curators": "Curators",
+  "homework.curatorsHint":
+    "Several reviewers: a student’s work goes to one curator in Telegram and stays with that student. The curator taps “Accept” or replies by swipe right in Telegram; to see their own list in the panel, enter their admin login (manager role). Curators who aren’t assigned don’t get the work; the owner sees all work here. With no curators the seller gets the work, as before. The curator must first press /start in the shop’s bot — otherwise Telegram won’t let the bot message them and the work goes to the seller with a note.",
+  "homework.curatorsMode": "How to assign",
+  "homework.curatorsRotate": "Students in turn",
+  "homework.curatorsCohort": "By cohort (the rest in turn)",
+  "homework.curatorName": "Name",
+  "homework.curatorTelegram": "Telegram id",
+  "homework.curatorLogin": "Admin login",
+  "homework.curatorCohorts": "Cohorts",
+  "homework.curatorAdd": "Add a curator",
+  "homework.curatorRemove": "Remove",
+  "homework.curatorsSave": "Save curators",
+  "homework.curatorsSaved":
+    "Curators saved. Students already assigned stay with their curators; a removed curator’s students get a new one on their next submission.",
+  "homework.curatorOf": "Curator: {name}",
+  "homework.mine": "Mine",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -96,4 +147,21 @@ export const uz: SectionDict<typeof ru> = {
   "homework.status.revise": "Qayta ishlanmoqda",
   "homework.notified": "O‘quvchiga xabar yuborildi.",
   "homework.notNotified": "O‘quvchiga xabar yetmadi — u fikringizni kurs sahifasida ko‘radi.",
+  "homework.curators": "Kuratorlar",
+  "homework.curatorsHint":
+    "Bir nechta tekshiruvchi: o‘quvchining ishi Telegram’da bitta kuratorga boradi va o‘quvchiga biriktiriladi. Kurator «Qabul qilish» tugmasini bosadi yoki xabarga Telegram’ning o‘zida javob yozadi; panelda o‘z ro‘yxatini ko‘rishi uchun uning admin loginini kiriting («menejer» roli). Tayinlanmaganlarga ish kelmaydi; egasi barcha ishni shu yerda ko‘radi. Kuratorsiz ishni avvalgidek sotuvchi oladi. Kurator avval do‘kon botida /start bosishi kerak — aks holda Telegram botga unga yozishga ruxsat bermaydi va ish izoh bilan sotuvchiga keladi.",
+  "homework.curatorsMode": "Qanday tayinlash",
+  "homework.curatorsRotate": "O‘quvchilar navbat bilan",
+  "homework.curatorsCohort": "Oqim bo‘yicha (qolganlari — navbat bilan)",
+  "homework.curatorName": "Ismi",
+  "homework.curatorTelegram": "Telegram id",
+  "homework.curatorLogin": "Admin logini",
+  "homework.curatorCohorts": "Oqimlar",
+  "homework.curatorAdd": "Kurator qo‘shish",
+  "homework.curatorRemove": "Olib tashlash",
+  "homework.curatorsSave": "Kuratorlarni saqlash",
+  "homework.curatorsSaved":
+    "Kuratorlar saqlandi. Biriktirilgan o‘quvchilar o‘z kuratorida qoladi; olib tashlangan kuratorning o‘quvchilari keyingi topshirishda yangisini oladi.",
+  "homework.curatorOf": "Kurator: {name}",
+  "homework.mine": "Meniki",
 };
