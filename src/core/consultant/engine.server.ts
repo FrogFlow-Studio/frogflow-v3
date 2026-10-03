@@ -7,7 +7,15 @@ import { updateStateSection } from "@/core/customers/customers";
 import { handoffSummary, sellerLocaleSafe } from "@/core/ai/seller-text";
 import { offerForProductRow } from "@/core/offers/offers";
 import { activePreorder, preordersFor } from "@/core/preorder/preorder";
-import { buyerLocale, handoffReply, unavailableReply } from "./messages";
+import {
+  buyerLocale,
+  clarifyReply,
+  dialogHandoffReply,
+  handoffReply,
+  leadDoneReply,
+  priceUnsureReply,
+  unavailableReply,
+} from "./messages";
 import { getSettings, trySetSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { resolvePrice } from "@/core/pricing/pricing";
 import { PRODUCT_SELECT, sortedVariants, type Product } from "@/core/catalog/catalog";
@@ -937,7 +945,7 @@ export async function runConsultant(
           500,
         ),
       );
-      reply = "Точную стоимость уточню у менеджера — он напишет вам в ближайшее время.";
+      reply = priceUnsureReply(bLocale);
       handoff = handoff ?? {
         kind: "handoff",
         reason: "unknown_question",
@@ -945,11 +953,8 @@ export async function runConsultant(
       };
     }
     if (!reply && handoff)
-      reply =
-        handoff.kind === "lead"
-          ? "Спасибо, всё записал и передал менеджеру — он свяжется с вами для подтверждения."
-          : "Передаю диалог менеджеру — он ответит в ближайшее время.";
-    if (!reply) reply = "Уточните, пожалуйста, что именно вас интересует — подскажу.";
+      reply = handoff.kind === "lead" ? leadDoneReply(bLocale) : dialogHandoffReply(bLocale);
+    if (!reply) reply = clarifyReply(bLocale);
 
     return await finish({
       reply,

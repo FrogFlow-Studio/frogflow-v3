@@ -446,6 +446,59 @@ describe("консультант: ответы-передачи на языке 
   });
 });
 
+describe("консультант: запасные ответы на языке покупателя", () => {
+  const LOCALES = ["ru", "kk", "en", "uz"] as const;
+  const CYR = /[а-яёәғқңөұүһі]/i;
+  const run = (
+    locale: (typeof LOCALES)[number],
+    reply: ReturnType<typeof text>[] | typeof content,
+  ) => {
+    content = reply;
+    return runConsultant(ctxOf({ default_locale: "ru" }), customer({ locale }), "Сколько стоит?", {
+      platform: "instagram",
+    });
+  };
+  const replies = async (make: (l: (typeof LOCALES)[number]) => typeof content) => {
+    const out: Record<string, string> = {};
+    for (const l of LOCALES) out[l] = (await run(l, make(l)))!.reply;
+    return out;
+  };
+
+  it("цена не из каталога: ответ заменён и написан на языке покупателя", async () => {
+    const r = await replies(() => [text("Стоит 99999 тенге")]);
+    expect(r.ru).toMatch(/Точную стоимость/);
+    expect(r.kk).toMatch(/менеджерден/);
+    expect(r.en).toMatch(/exact price/);
+    expect(r.uz).toMatch(/menejerdan/);
+    expect(new Set(Object.values(r)).size).toBe(4);
+  });
+
+  it("заявка без текста от модели: подтверждение на языке покупателя", async () => {
+    const r = await replies(() => [
+      tool("record_order_lead", { lead_type: "order", details: "x" }),
+    ]);
+    expect(r.kk).toMatch(/менеджерге/);
+    expect(r.en).toMatch(/manager/);
+    expect(r.uz).toMatch(/menejerga/);
+    expect(r.en).not.toMatch(CYR);
+    expect(new Set(Object.values(r)).size).toBe(4);
+  });
+
+  it("передача менеджеру без текста и пустой ответ — тоже на языке покупателя", async () => {
+    const h = await replies(() => [
+      tool("handoff_to_manager", { reason: "human_requested", summary: "x" }),
+    ]);
+    expect(h.en).toMatch(/handing/);
+    expect(h.kk).toMatch(/Диалогты/);
+    expect(h.uz).toMatch(/Suhbatni/);
+    const e = await replies(() => [text("  ")]);
+    expect(e.en).toMatch(/what exactly/);
+    expect(e.en).not.toMatch(CYR);
+    expect(e.kk).toMatch(/қызықтыр/);
+    expect(e.uz).toMatch(/Iltimos/);
+  });
+});
+
 describe("консультант: счётчик ИИ-диалогов месяца", () => {
   it("два покупателя начинают диалог одновременно — в счётчике оба", async () => {
     const ctx = ctxOf();
