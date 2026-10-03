@@ -2,6 +2,7 @@ import { serviceDb } from "@/core/db/client.server";
 import { AI_TOPUP_MAX_USD, AI_TOPUP_MIN_USD } from "@/core/ai/pure";
 import { serverFailure } from "@/lib/server-failure";
 import { shownError } from "@/lib/shown-error";
+import { pageAll } from "@/core/db/page";
 
 /**
  * Пополнение ИИ-баланса продавцом — обычный счёт владельцу
@@ -186,16 +187,19 @@ export async function uncreditedAiTopups(
   const marks = await aiTopupMarks(botId, paidInvoiceIds);
   if (!marks.size) return [];
   const { AI_LEDGER_PREFIX } = await import("@/core/ai/balance");
-  const { data, error } = await serviceDb()
-    .from("app_settings")
-    .select("value")
-    .eq("bot_id", botId)
-    .like("key", `${AI_LEDGER_PREFIX}%`)
-    .order("key", { ascending: false })
-    .limit(500);
-  if (error) throw serverFailure(`Не удалось прочитать журнал ИИ-баланса: ${error.message}`);
+  const data = await pageAll(
+    (from, to) =>
+      serviceDb()
+        .from("app_settings")
+        .select("value")
+        .eq("bot_id", botId)
+        .like("key", `${AI_LEDGER_PREFIX}%`)
+        .order("key", { ascending: false })
+        .range(from, to),
+    "Не удалось прочитать журнал ИИ-баланса",
+  );
   const credited = new Set<string>();
-  for (const r of data ?? []) {
+  for (const r of data) {
     try {
       const inv = (JSON.parse(r.value ?? "") as { invoiceId?: unknown }).invoiceId;
       if (typeof inv === "string") credited.add(inv);

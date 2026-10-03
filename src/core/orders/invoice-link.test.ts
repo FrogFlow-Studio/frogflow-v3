@@ -83,3 +83,20 @@ describe("счёт ссылкой: срок оплаты и возврат ос�
     expect(db.tables.products![0]!.stock_quantity).toBe(4);
   });
 });
+
+describe("список счетов ссылкой: ничего не теряется (Б28)", () => {
+  it("больше 1000 записей — приходят все, потолок ответа базы не режет", async () => {
+    const db = fakeDb({ maxRows: 1000 });
+    db.tables.app_settings = Array.from({ length: 1500 }, (_, i) => ({
+      bot_id: BOT,
+      key: `invoice_link:${i + 1}`,
+      value: "x",
+      updated_at: "2026-09-27T10:00:00Z",
+    }));
+    const ctx = { tenant: { id: BOT, settings: {} }, db } as unknown as TenantContext;
+    const { invoiceLinkOrderIds } = await import("./invoice-link");
+    const ids = await invoiceLinkOrderIds(ctx, new Date("2026-09-26T00:00:00Z"));
+    expect(ids).toHaveLength(1500);
+    expect(new Set(ids).size).toBe(1500);
+  });
+});

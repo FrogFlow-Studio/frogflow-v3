@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Json } from "@/core/db-types";
+import { pageAll } from "@/core/db/page";
 
 /**
  * Журнал ответов консультанта — строка на входящее сообщение в
@@ -148,16 +149,21 @@ export async function loadConsultantUsage(
   now = Date.now(),
 ): Promise<ConsultantUsageStats> {
   const since = new Date(now - days * 86_400_000).toISOString();
-  const { data, error } = await ctx.db
-    .from("consultant_message_runs")
-    .select("received_at, token_usage")
-    .gte("received_at", since)
-    .order("received_at", { ascending: false })
-    .limit(5000);
-  if (error)
-    console.warn(`[consultant:${ctx.tenant.id}] журнал ответов не прочитан: ${error.message}`);
-  return summarizeConsultantRuns(
-    (data ?? []) as { received_at: string; token_usage: unknown }[],
-    ctx.timezone,
-  );
+  let data: { received_at: string; token_usage: unknown }[] = [];
+  try {
+    data = await pageAll(
+      (from, to) =>
+        ctx.db
+          .from("consultant_message_runs")
+          .select("received_at, token_usage")
+          .gte("received_at", since)
+          .order("received_at", { ascending: false })
+          .order("id")
+          .range(from, to),
+      "журнал ответов не прочитан",
+    );
+  } catch (e) {
+    console.warn(`[consultant:${ctx.tenant.id}]`, e instanceof Error ? e.message : e);
+  }
+  return summarizeConsultantRuns(data, ctx.timezone);
 }

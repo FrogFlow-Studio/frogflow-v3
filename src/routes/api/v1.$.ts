@@ -1,5 +1,6 @@
 import { serverFailure } from "@/lib/server-failure";
 import { createFileRoute } from "@tanstack/react-router";
+import { pageAll } from "@/core/db/page";
 
 /**
  * Публичный API магазина (core/api/public-api, модуль public_api):
@@ -67,13 +68,17 @@ async function handle(request: Request, path: string): Promise<Response> {
       return order ? json({ order: api.apiOrder(order) }) : fail(404, "not_found");
     }
     if (parts[0] === "products" && parts.length === 1 && method === "GET") {
-      const { data, error } = await ctx.db
-        .from("products")
-        .select(PRODUCT_COLUMNS)
-        .order("sort_order")
-        .limit(2000);
-      if (error) throw new Error(error.message);
-      return json({ products: (data ?? []).map((p) => api.apiProduct(p)) });
+      const data = await pageAll(
+        (from, to) =>
+          ctx.db
+            .from("products")
+            .select(PRODUCT_COLUMNS)
+            .order("sort_order")
+            .order("id")
+            .range(from, to),
+        "Публичный API: товары",
+      );
+      return json({ products: data.map((p) => api.apiProduct(p)) });
     }
     if (parts[0] === "products" && parts.length === 2 && method === "PATCH")
       return await patchProduct(ctx, parts[1]!, request);

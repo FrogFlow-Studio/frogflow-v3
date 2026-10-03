@@ -1,3 +1,5 @@
+import { serverFailure } from "@/lib/server-failure";
+
 /**
  * PostgREST молча обрезает любой select на 1000 строках. Всё, что читает
  * «всех покупателей» или «все заказы», идёт постранично через этот помощник.
@@ -13,7 +15,7 @@ export async function pageAll<T>(
   const out: T[] = [];
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await query(from, from + pageSize - 1);
-    if (error) throw new Error(`${what}: ${error.message}`);
+    if (error) throw serverFailure(`${what}: ${error.message}`);
     const rows = data ?? [];
     out.push(...rows);
     if (rows.length < pageSize) break;
@@ -37,7 +39,7 @@ export async function eachPage<T>(
 ): Promise<void> {
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await query(from, from + pageSize - 1);
-    if (error) throw new Error(`${what}: ${error.message}`);
+    if (error) throw serverFailure(`${what}: ${error.message}`);
     const rows = data ?? [];
     if (rows.length && (await each(rows)) === false) return;
     if (rows.length < pageSize) return;

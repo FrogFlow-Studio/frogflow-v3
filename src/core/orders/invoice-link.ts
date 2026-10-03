@@ -1,5 +1,6 @@
 import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { pageAll } from "@/core/db/page";
 
 /**
  * Счёт ссылкой из диалога Instagram/WhatsApp (app/admin/invoice.server):
@@ -33,15 +34,19 @@ export async function isInvoiceLink(ctx: TenantContext, orderId: number): Promis
 
 /** Заказы-счета ссылкой, выставленные после `since`, — для отмены по сроку. */
 export async function invoiceLinkOrderIds(ctx: TenantContext, since: Date): Promise<number[]> {
-  const { data, error: dataError } = await ctx.db
-    .from("app_settings")
-    .select("key")
-    .eq("bot_id", ctx.tenant.id)
-    .like("key", `${INVOICE_LINK_PREFIX}%`)
-    .gt("updated_at", since.toISOString())
-    .limit(1000);
-  if (dataError) throw serverFailure(`Заказы: счёт ссылкой: ${dataError.message}`);
-  return (data ?? [])
+  const data = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("app_settings")
+        .select("key")
+        .eq("bot_id", ctx.tenant.id)
+        .like("key", `${INVOICE_LINK_PREFIX}%`)
+        .gt("updated_at", since.toISOString())
+        .order("key")
+        .range(from, to),
+    "Заказы: счёт ссылкой",
+  );
+  return data
     .map((r) => Number(r.key.slice(INVOICE_LINK_PREFIX.length)))
     .filter((n) => Number.isInteger(n) && n > 0);
 }

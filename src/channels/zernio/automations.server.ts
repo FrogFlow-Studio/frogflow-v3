@@ -53,6 +53,7 @@ import {
 } from "./api.server";
 import type { ZernioInboxMessage } from "./inbox-types";
 import { serverFailure } from "@/lib/server-failure";
+import { pageAll } from "@/core/db/page";
 
 export type CommentAutomation = {
   id?: string;
@@ -935,17 +936,20 @@ export async function deliverPendingTwoStepDm(
   // Private-reply можно отправить в течение 7 дней после комментария — столько
   // и ждём ответа покупателя.
   const cutoff = new Date(now().getTime() - PENDING_TWO_STEP_DAYS * 86_400_000).toISOString();
-  const { data: logs, error: logsErr } = await ctx.db
-    .from("zernio_logs")
-    .select("id, status, error_message, payload")
-    .eq("event_type", "two_step_dm_pending")
-    .in("status", ["pending", "processing"])
-    .gte("created_at", cutoff)
-    .order("created_at", { ascending: false })
-    .limit(50);
-  if (logsErr)
-    throw serverFailure(`[zernio] очередь вторых сообщений не прочитана: ${logsErr.message}`);
-  const own = ((logs ?? []) as PendingRow[]).filter((l) => {
+  const logs = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("zernio_logs")
+        .select("id, status, error_message, payload")
+        .eq("event_type", "two_step_dm_pending")
+        .in("status", ["pending", "processing"])
+        .gte("created_at", cutoff)
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    "[zernio] очередь вторых сообщений не прочитана",
+  );
+  const own = (logs as PendingRow[]).filter((l) => {
     const pl = l.payload as { username?: string } | null;
     return (
       typeof pl?.username === "string" && pl.username.toLowerCase() === p.username.toLowerCase()
@@ -1075,17 +1079,20 @@ export async function twoStepJustDelivered(
   if (!username) return false;
   const since = Date.now() - JUST_DELIVERED_MS;
   const typedAt = messageSentAt ? Date.parse(messageSentAt) : NaN;
-  const { data, error: readErr2 } = await ctx.db
-    .from("zernio_logs")
-    .select("status, error_message, payload")
-    .like("event_id", "two-step-dm:%")
-    .in("status", ["processing", "processed"])
-    .gte("created_at", new Date(Date.now() - PENDING_TWO_STEP_DAYS * 86_400_000).toISOString())
-    .order("created_at", { ascending: false })
-    .limit(50);
-  if (readErr2)
-    throw serverFailure(`[zernio] отправки вторых сообщений не прочитаны: ${readErr2.message}`);
-  return (data ?? []).some((l) => {
+  const data = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("zernio_logs")
+        .select("status, error_message, payload")
+        .like("event_id", "two-step-dm:%")
+        .in("status", ["processing", "processed"])
+        .gte("created_at", new Date(Date.now() - PENDING_TWO_STEP_DAYS * 86_400_000).toISOString())
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    "[zernio] отправки вторых сообщений не прочитаны",
+  );
+  return data.some((l) => {
     const pl = l.payload as { username?: string; sent_at?: string } | null;
     if (typeof pl?.username !== "string" || pl.username.toLowerCase() !== username.toLowerCase())
       return false;
