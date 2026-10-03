@@ -32,6 +32,12 @@ vi.mock("@/core/db/client.server", () => ({
   }),
 }));
 
+// Поиск по коду в базе в памяти не работает (нет .or): ни один код не найден.
+vi.mock("@/core/catalog/catalog", async (orig) => ({
+  ...(await orig<typeof import("@/core/catalog/catalog")>()),
+  searchProducts: async () => [],
+}));
+
 // ИИ-консультант: «Связаться с продавцом» ставит его на паузу, если включён.
 const consultant = vi.hoisted(() => ({ enabled: false, paused: 0 }));
 vi.mock("@/core/consultant/engine.server", () => ({
@@ -166,8 +172,11 @@ function category(id: string, parent: string | null, sort: number) {
 }
 
 describe("ответ покупателю", () => {
+  // «отмена» — в живом разговоре с ботом (строгий режим молчит вне его).
+  const talking = { locale: "ru", mode: "awaiting_contact" };
+
   it("отклонённый Zernio ответ не помечается отправленным", async () => {
-    const { send, sent, direct } = setup({ sendOk: false });
+    const { send, sent, direct } = setup({ sendOk: false, state: talking });
     await send({ text: "отмена" });
     expect(sent).toHaveLength(1);
     // Иначе защита от повтора подавила бы тот же ответ, так и не дошедший.
@@ -176,7 +185,7 @@ describe("ответ покупателю", () => {
   });
 
   it("метка повтора пишется только после успешной отправки", async () => {
-    const { send, direct } = setup();
+    const { send, direct } = setup({ state: talking });
     await send({ text: "отмена" });
     expect(direct().last_reply).toEqual(expect.any(String));
     expect(direct().last_reply_at).toEqual(expect.any(String));
@@ -185,7 +194,13 @@ describe("ответ покупателю", () => {
 
 describe("шаг «списать баллы?» в Direct/WhatsApp", () => {
   const asking = {
-    state: { locale: "ru", mode: "awaiting_points_choice", country_code: "KZ" },
+    state: {
+      locale: "ru",
+      mode: "awaiting_points_choice",
+      country_code: "KZ",
+      // Бот только что спросил: нераспознанный ответ получает подсказку.
+      direct: { last_reply_at: new Date().toISOString() },
+    },
     modules: { loyalty: true },
     loyaltyPoints: 50,
   };
@@ -691,5 +706,58 @@ describe("бот просыпается только по делу (Educational 
     const cart = db.tables.cart_items!.map((c) => c.product_id).sort();
     expect(cart).toEqual(["p1", "p3"]);
     expect(sent.at(-1)!.text).toContain(COPY.ru.cartHeader.replace(/<[^>]+>/g, ""));
+  });
+});
+
+describe("строгий режим «Только по заказам» (Educational Bot, 03.10)", () => {
+  const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+  const state = (mode: string, minutesAgo: number, extra: Record<string, unknown> = {}) => ({
+    locale: "ru",
+    mode,
+    country_code: "RU",
+    direct: { last_reply_at: ago(minutesAgo), ...extra },
+  });
+
+  it("шаг почты: «Страна Россия» через час после вопроса — тишина, шаг ждёт почту", async () => {
+    const { send, sent, db } = setup({ platform: "instagram", state: state("awaiting_email", 60) });
+    expect((await send({ text: "Страна Россия" })).outcome).toBe("question");
+    expect(sent).toEqual([]);
+    expect((db.tables.bot_users![0]!.state as { mode?: string }).mode).toBe("awaiting_email");
+  });
+
+  it("сразу после вопроса — одна подсказка, вторая реплика — тишина", async () => {
+    const { send, sent } = setup({ platform: "instagram", state: state("awaiting_email", 1) });
+    await send({ text: "Страна Россия" });
+    expect(sent).toHaveLength(1);
+    await send({ text: "2" });
+    expect(sent).toHaveLength(1);
+  });
+
+  it("номер, которого нет в каталоге, вне разговора с ботом — тишина", async () => {
+    const { send, sent } = setup({ platform: "instagram", state: { locale: "ru" } });
+    expect((await send({ text: "2" })).outcome).toBe("question");
+    expect(sent).toEqual([]);
+  });
+
+  it("«оплата», «страна», «отмена» в обычной переписке бота не будят; «старт» — будит", async () => {
+    const { send, sent, db } = setup({
+      platform: "instagram",
+      state: { locale: "ru", country_code: "KZ" },
+    });
+    db.tables.payment_methods = [];
+    for (const text of ["оплата", "страна", "отмена"])
+      expect((await send({ text })).outcome).toBe("question");
+    expect(sent).toEqual([]);
+    expect((await send({ text: "старт" })).outcome).toBe("handled");
+    expect(sent.length).toBeGreaterThan(0);
+  });
+
+  it("ждём чек: «спасибо» через час — без напоминания про чек", async () => {
+    const { send, sent } = setup({
+      platform: "instagram",
+      state: state("awaiting_payment", 60, {}),
+    });
+    expect((await send({ text: "спасибо" })).outcome).toBe("question");
+    expect(sent).toEqual([]);
   });
 });

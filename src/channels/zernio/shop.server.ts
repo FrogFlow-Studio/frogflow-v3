@@ -147,6 +147,8 @@ type DirectMemory = {
   contact_requested_at?: string;
   /** Страну спросили первым делом: что показать после ответа (каталог или товар). */
   after_country?: string;
+  /** Последний ответ бота — подсказка на нераспознанный ответ шага (строгий режим). */
+  hinted?: boolean;
 };
 
 type Shop = {
@@ -160,7 +162,79 @@ type Shop = {
   m: Msg;
   /** Настройки автоответчика канала: слова-вызовы и что из магазина включено. */
   bot: DirectBotSettings;
+  /** Ответ этого сообщения — подсказка на нераспознанный ответ шага. */
+  hint?: boolean;
 };
+
+/**
+ * Строгий режим «Только по заказам» (Educational Bot, 03.10: «бот реагирует
+ * на обычные сообщения, люди путаются»). Бот отвечает, только когда к нему
+ * обращаются: кнопка, «старт»/«каталог»/слово-вызов, код материала (#245 или
+ * номер, который есть в каталоге), чек к ждущему оплаты заказу — и в живом
+ * разговоре с ним (последний ответ бота не старше получаса). Нераспознанный
+ * ответ на вопрос бота — одна подсказка сразу после вопроса, дальше тишина:
+ * переписка с продавцом бота не будит и не путает покупателя.
+ */
+const ACTIVE_DIALOG_MS = 30 * 60_000;
+const HINT_WINDOW_MS = 10 * 60_000;
+
+function strict(s: Shop): boolean {
+  return s.bot.scope === "purchases";
+}
+
+function sinceBotReply(s: Shop): number {
+  const at = Date.parse(memory(s.customer).last_reply_at ?? "");
+  return Number.isFinite(at) ? Date.now() - at : Infinity;
+}
+
+/** Бот в разговоре: в строгом режиме — только пока ответ бота свежий. */
+function inDialog(s: Shop): boolean {
+  return !strict(s) || sinceBotReply(s) < ACTIVE_DIALOG_MS;
+}
+
+/** Подсказка на нераспознанный ответ: одна и только сразу после вопроса бота. */
+function mayHint(s: Shop): boolean {
+  if (!strict(s)) return true;
+  return !memory(s.customer).hinted && sinceBotReply(s) < HINT_WINDOW_MS;
+}
+
+/** Похож ли текст на ответ текущего шага. Свободный ввод (адрес, заметка) — всегда. */
+async function stepAnswerFits(s: Shop, mode: string, text: string): Promise<boolean> {
+  switch (mode) {
+    case "awaiting_locale":
+      return matchLocalePick(text) !== null;
+    case "awaiting_country": {
+      const methods = await listActivePaymentMethods(s.ctx);
+      return (
+        matchCountry(
+          text,
+          methods.map((x) => ({ code: x.country_code, name: x.country_name })),
+        ) !== null
+      );
+    }
+    case "awaiting_contact":
+      return normalizePhone(text) !== null;
+    case "awaiting_variant_choice": {
+      const list = memory(s.customer).list;
+      return matchOrdinal(text, list?.kind === "variants" ? list.ids.length : 0) !== null;
+    }
+    case "awaiting_delivery_lang":
+      return matchDeliveryLangChoice(text, await cartLanguageChoices(s.ctx, s.customer)) !== null;
+    case "awaiting_points_choice":
+      return matchLoyaltyPointsChoice(text) !== null;
+    case "awaiting_fulfillment_type":
+      return matchFulfillmentType(text) !== null;
+    case "awaiting_fulfillment_date":
+      return parseDateInput(text) !== null;
+    case "awaiting_delivery_zone":
+      return matchZone(text, await activeDeliveryZones(s.ctx)) !== null;
+    case "awaiting_email":
+    case "awaiting_order_email":
+      return extractEmail(text) !== null;
+    default:
+      return true;
+  }
+}
 
 /** Фото для Instagram/WhatsApp: первое, которое канал примет (JPEG/PNG в пределах лимита). */
 async function photoFor(
@@ -241,7 +315,11 @@ async function reply(
     console.error(`[zernio-shop] reply failed for ${s.customer.userKey}: ${r.error}`);
     return false;
   }
-  await remember(s, { last_reply: mark, last_reply_at: new Date().toISOString() });
+  await remember(s, {
+    last_reply: mark,
+    last_reply_at: new Date().toISOString(),
+    hinted: s.hint === true ? true : undefined,
+  });
   if (s.ctx.tenant.modules.manager_chat) {
     const { recordMessage } = await import("@/core/chat/chat");
     await recordMessage(s.ctx, {
@@ -366,6 +444,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   }
 
   if (isCancel(text)) {
+    if ((!mode || mode === "idle") && !inDialog(s)) return "question";
     await setMode(s, { mode: "idle" });
     await reply(s, `${plain(s.m.useMenu)}\n\n${hint(s)}`, {
       force: true,
@@ -378,6 +457,9 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const command = isTriggerWord(text, s.bot.triggers) ? "catalog" : matchDirectCommand(text);
   if (command) {
     if (!featureAllows(s, command)) return "question";
+    // Строгий режим: «оплата», «страна», «язык» — частые слова в переписке с
+    // продавцом; без живого разговора с ботом они его не будят.
+    if (!["catalog", "cart", "orders"].includes(command) && !inDialog(s)) return "question";
     if (mode && mode !== "idle" && mode !== "awaiting_proof") await setMode(s, { mode: "idle" });
     switch (command) {
       case "catalog":
@@ -398,6 +480,21 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         await askCountry(s, false);
         return "handled";
     }
+  }
+
+  // Строгий режим: на вопрос бота — только похожий ответ; иначе одна подсказка
+  // сразу после вопроса, а дальше реплика остаётся продавцу.
+  const paymentStep =
+    mode === "awaiting_proof" || mode === "choose_pay" || mode === "awaiting_payment";
+  if (
+    strict(s) &&
+    mode &&
+    mode !== "idle" &&
+    !paymentStep &&
+    !(await stepAnswerFits(s, mode, text))
+  ) {
+    if (!mayHint(s)) return "question";
+    s.hint = true;
   }
 
   // Шаги сценария — текстом.
@@ -578,8 +675,12 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       if (isPaymentComplaint(text)) return "question";
       const rm = parseRemoveCommand(text);
       if (!rm && extractProductNumber(text) === null && !matchDirectCommand(text)) {
-        // Вопрос по ходу оплаты — человеку, но напомним про чек.
-        await reply(s, s.m.sendReceiptPrompt);
+        // Вопрос по ходу оплаты — человеку, но напомним про чек (строгий
+        // режим — один раз и только сразу после реквизитов).
+        if (mayHint(s)) {
+          s.hint = strict(s);
+          await reply(s, s.m.sendReceiptPrompt);
+        }
         return "question";
       }
       break;
@@ -589,7 +690,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   }
 
   const remove = parseRemoveCommand(text);
-  if (remove) {
+  if (remove && inDialog(s)) {
     await removeFromCart(s, remove);
     return "handled";
   }
@@ -598,13 +699,11 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   switch (kind.kind) {
     case "product_number": {
       if (!s.bot.features.search) return "question";
-      await pickByNumber(s, kind.number);
-      return "handled";
+      return (await pickByNumber(s, kind.number)) ? "handled" : "question";
     }
     case "product_numbers": {
       if (!s.bot.features.search) return "question";
-      await pickSeveral(s, kind.numbers);
-      return "handled";
+      return (await pickSeveral(s, kind.numbers)) ? "handled" : "question";
     }
     case "affirmative": {
       // «Только по заказам»: «да» в переписке с продавцом бота не будит.
@@ -1013,16 +1112,17 @@ function stepList(body: string, buttonLabel: string, section: string, titles: st
 }
 
 /** Номер: из показанного списка, иначе — номер товара из названия/ключевых слов, иначе поиск. */
-async function pickByNumber(s: Shop, number: string) {
+/** true — бот ответил; false — номер ни к чему не подошёл, а строгий режим промолчал. */
+async function pickByNumber(s: Shop, number: string): Promise<boolean> {
   const mem = memory(s.customer);
   const list = mem.list;
   const listFresh = list && Date.now() - Date.parse(list.at) < LIST_TTL_MS;
   const n = Number(number);
   if (listFresh && list.kind !== "variants" && n >= 1 && n <= list.ids.length) {
     const id = list.ids[n - 1]!;
-    if (list.kind === "categories") return showCatalog(s, id, 0, true);
+    if (list.kind === "categories") return showCatalog(s, id, 0, true).then(() => true);
     const p = await getProduct(s.ctx, id);
-    if (p) return sendProductCard(s, p, true);
+    if (p) return sendProductCard(s, p, true).then(() => true);
   }
   // Номер из поста: «018. Набор …» — ищем по началу названия и по ключевым словам.
   const padded = Array.from(new Set([number, number.padStart(2, "0"), number.padStart(3, "0")]));
@@ -1039,12 +1139,15 @@ async function pickByNumber(s: Shop, number: string) {
   }
   const p = candidates[0];
   if (p) {
-    if (await askCountryFirst(s, `product:${p.id}`)) return;
-    return sendProductCard(s, p, true);
+    if (!(await askCountryFirst(s, `product:${p.id}`))) await sendProductCard(s, p, true);
+    return true;
   }
+  // Номер, которого нет в каталоге, в строгом режиме — обычная реплика («2» продавцу).
+  if (!inDialog(s)) return false;
   await reply(s, `${plain(s.m.productNotFound)}\n\n${hint(s)}`, {
     buttons: [BTN.catalog(s.m), BTN.cart(s.m)],
   });
+  return true;
 }
 
 /**
@@ -1052,14 +1155,15 @@ async function pickByNumber(s: Shop, number: string) {
  * разделов — открываем первый; на список товаров или коды — кладём в
  * корзину всё, что без выбора варианта, и показываем корзину.
  */
-async function pickSeveral(s: Shop, numbers: string[]) {
+async function pickSeveral(s: Shop, numbers: string[]): Promise<boolean> {
   const list = memory(s.customer).list;
   const listFresh = list && Date.now() - Date.parse(list.at) < LIST_TTL_MS;
   if (listFresh && list.kind === "categories") {
     const idx = numbers.map(Number).find((n) => n >= 1 && n <= list.ids.length);
     if (idx) {
       await reply(s, ONE_SECTION_HINT[s.locale], { force: true });
-      return showCatalog(s, list.ids[idx - 1]!, 0, true);
+      await showCatalog(s, list.ids[idx - 1]!, 0, true);
+      return true;
     }
   }
   const found: Product[] = [];
@@ -1075,10 +1179,11 @@ async function pickSeveral(s: Shop, numbers: string[]) {
     else if (!p) missing.push(number);
   }
   if (found.length === 0) {
+    if (!inDialog(s)) return false;
     await reply(s, `${plain(s.m.productNotFound)}\n\n${hint(s)}`, {
       buttons: [BTN.catalog(s.m), BTN.cart(s.m)],
     });
-    return;
+    return true;
   }
   const withVariants = found.filter((p) => sortedVariants(p).length > 0);
   let added = 0;
@@ -1099,9 +1204,10 @@ async function pickSeveral(s: Shop, numbers: string[]) {
       force: true,
       buttons: [BTN.cart(s.m), BTN.catalog(s.m)],
     });
-    return;
+    return true;
   }
   await showCart(s, true, [plain(s.m.added), ...notes].join("\n"));
+  return true;
 }
 
 /** Товар по коду из названия или ключевых слов: «018. Набор …». */

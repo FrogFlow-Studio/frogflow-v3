@@ -358,9 +358,9 @@ async function forwardedToSeller(
 ) {
   // «Только по заказам»: вне сценария покупки бот молчит, чтобы диалог
   // остался непрочитанным для продавца в приложении (решение из v1).
-  const mode = customer.state.mode;
-  const inFlow = Boolean(mode) && mode !== "idle";
-  if (bot.scope === "purchases" && !inFlow && !bot.script) return;
+  // Посреди покупки тоже: «передал продавцу» на реплику, адресованную
+  // продавцу, путал покупателей (Educational Bot, 03.10).
+  if (bot.scope === "purchases" && !bot.script) return;
   const direct = customer.state.direct;
   const mem = direct && typeof direct === "object" && !Array.isArray(direct) ? direct : {};
   const at = Date.parse(String(mem.forwarded_at ?? ""));
