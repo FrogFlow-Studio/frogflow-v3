@@ -55,8 +55,19 @@ export const ru = {
   // реферальная программа
   "discounts.referral.title": "Реферальная программа",
   "discounts.referral.intro":
-    "Покупатель делится ссылкой из раздела «ℹ️ Информация» в боте{link}. Приглашённый сразу получает одноразовый промокод на первую покупку, пригласивший — такой же после первой выданной покупки друга. Промокоды WELCOME-… и REF-… появляются в списке слева.",
+    "Покупатель делится ссылкой из пункта «🎁 Пригласить друга» в меню бота (или командой /invite){link}. Приглашённый сразу получает одноразовый промокод на первую покупку, пригласивший — такой же после первой выданной покупки друга. Промокоды WELCOME-… и REF-… появляются в списке слева.",
   "discounts.referral.percent": "Скидка по промокоду, %",
+  "discounts.referral.report.title": "Отчёт «Рефералы»",
+  "discounts.referral.report.who": "Пригласил",
+  "discounts.referral.report.came": "Пришло",
+  "discounts.referral.report.bought": "Купили",
+  "discounts.referral.report.codes": "Выданные коды",
+  "discounts.referral.report.totals":
+    "За 30 дней: пришло {came}, купили {bought}. Всего: пришло {tc}, купили {tb}.",
+  "discounts.referral.report.used": "использован",
+  "discounts.referral.report.empty": "Пока никто не пришёл по ссылкам.",
+  "discounts.referral.report.csv": "Скачать CSV",
+
   "discounts.tiers.title": "Уровни лояльности",
   "discounts.tiers.intro":
     "Покупатель получает баллы по проценту своего уровня. Уровень считается по сумме его выданных заказов в валюте магазина; процент берётся по сумме до текущего заказа. Выше первого порога — свой процент, ниже — общий «% начисления» из настроек. Уже начисленные баллы не меняются. Уровень и «до следующего» покупатель видит в корзине бота.",
@@ -130,8 +141,19 @@ export const kk: SectionDict<typeof ru> = {
   "discounts.gift.sale.saved": "Сақталды",
   "discounts.referral.title": "Рефералдық бағдарлама",
   "discounts.referral.intro":
-    "Сатып алушы боттағы «ℹ️ Ақпарат» бөліміндегі сілтемемен бөліседі{link}. Шақырылған адам бірінші сатып алуына бірреттік промокодты бірден алады, шақырған адам дәл сондай промокодты досының бірінші тапсырысы берілгеннен кейін алады. WELCOME-… және REF-… промокодтары сол жақтағы тізімде көрінеді.",
+    "Сатып алушы боттың мәзіріндегі «🎁 Досты шақыру» тармағындағы (немесе /invite командасындағы) сілтемемен бөліседі{link}. Шақырылған адам бірінші сатып алуына бірреттік промокодты бірден алады, шақырған адам дәл сондай промокодты досының бірінші тапсырысы берілгеннен кейін алады. WELCOME-… және REF-… промокодтары сол жақтағы тізімде көрінеді.",
   "discounts.referral.percent": "Промокод бойынша жеңілдік, %",
+  "discounts.referral.report.title": "«Рефералдар» есебі",
+  "discounts.referral.report.who": "Шақырған",
+  "discounts.referral.report.came": "Келді",
+  "discounts.referral.report.bought": "Сатып алды",
+  "discounts.referral.report.codes": "Берілген кодтар",
+  "discounts.referral.report.totals":
+    "30 күнде: келді {came}, сатып алды {bought}. Барлығы: келді {tc}, сатып алды {tb}.",
+  "discounts.referral.report.used": "қолданылған",
+  "discounts.referral.report.empty": "Әзірге сілтемемен ешкім келген жоқ.",
+  "discounts.referral.report.csv": "CSV жүктеу",
+
   "discounts.tiers.title": "Адалдық деңгейлері",
   "discounts.tiers.intro":
     "Сатып алушы өз деңгейінің пайызымен ұпай алады. Деңгей берілген тапсырыстардың дүкен валютасындағы сомасы бойынша есептеледі; пайыз ағымдағы тапсырыстан бұрынғы сома бойынша алынады. Бірінші шектен жоғары — өз пайызы, төмен — баптаулардағы жалпы «% есептеу». Есептелген ұпай өзгермейді. Деңгей мен «келесіге дейін» көрсеткішін сатып алушы бот себетінде көреді.",
@@ -205,8 +227,19 @@ export const en: SectionDict<typeof ru> = {
   "discounts.gift.sale.saved": "Saved",
   "discounts.referral.title": "Referral program",
   "discounts.referral.intro":
-    "Customers share a link from the “ℹ️ Info” section of the bot{link}. The invited friend immediately gets a one-time promo code for their first purchase; the referrer gets the same code once the friend's first order is delivered. WELCOME-… and REF-… promo codes appear in the list on the left.",
+    "Customers share a link from the “🎁 Invite a friend” item in the bot menu (or the /invite command){link}. The invited friend immediately gets a one-time promo code for their first purchase; the referrer gets the same code once the friend's first order is delivered. WELCOME-… and REF-… promo codes appear in the list on the left.",
   "discounts.referral.percent": "Promo code discount, %",
+  "discounts.referral.report.title": "Referrals report",
+  "discounts.referral.report.who": "Invited by",
+  "discounts.referral.report.came": "Came",
+  "discounts.referral.report.bought": "Bought",
+  "discounts.referral.report.codes": "Issued codes",
+  "discounts.referral.report.totals":
+    "Last 30 days: {came} came, {bought} bought. Total: {tc} came, {tb} bought.",
+  "discounts.referral.report.used": "used",
+  "discounts.referral.report.empty": "Nobody has come through the links yet.",
+  "discounts.referral.report.csv": "Download CSV",
+
   "discounts.tiers.title": "Loyalty levels",
   "discounts.tiers.intro":
     "The buyer earns points at the percent of their level. The level is based on the total of their delivered orders in the shop currency; the percent is taken from the total before the current order. At or above the first threshold the level percent applies, below it — the general “earn percent” from settings. Points already earned do not change. The buyer sees the level and “to next” in the bot cart.",
@@ -280,8 +313,19 @@ export const uz: SectionDict<typeof ru> = {
   "discounts.gift.sale.saved": "Saqlandi",
   "discounts.referral.title": "Referal dasturi",
   "discounts.referral.intro":
-    "Xaridor botdagi «ℹ️ Ma’lumot» bo‘limidagi havolani ulashadi{link}. Taklif qilingan do‘st birinchi xaridi uchun bir martalik promokodni darhol oladi, taklif qilgan esa do‘stining birinchi buyurtmasi berilgandan keyin xuddi shunday promokod oladi. WELCOME-… va REF-… promokodlari chap tomondagi ro‘yxatda ko‘rinadi.",
+    "Xaridor bot menyusidagi «🎁 Do‘stni taklif qilish» bandidagi (yoki /invite buyrug‘idagi) havolani ulashadi{link}. Taklif qilingan do‘st birinchi xaridi uchun bir martalik promokodni darhol oladi, taklif qilgan esa do‘stining birinchi buyurtmasi berilgandan keyin xuddi shunday promokod oladi. WELCOME-… va REF-… promokodlari chap tomondagi ro‘yxatda ko‘rinadi.",
   "discounts.referral.percent": "Promokod bo‘yicha chegirma, %",
+  "discounts.referral.report.title": "«Referallar» hisoboti",
+  "discounts.referral.report.who": "Taklif qilgan",
+  "discounts.referral.report.came": "Keldi",
+  "discounts.referral.report.bought": "Xarid qildi",
+  "discounts.referral.report.codes": "Berilgan kodlar",
+  "discounts.referral.report.totals":
+    "30 kunda: {came} ta keldi, {bought} ta xarid qildi. Jami: {tc} ta keldi, {tb} ta xarid qildi.",
+  "discounts.referral.report.used": "ishlatilgan",
+  "discounts.referral.report.empty": "Hozircha havolalar orqali hech kim kelmagan.",
+  "discounts.referral.report.csv": "CSV yuklab olish",
+
   "discounts.tiers.title": "Sodiqlik darajalari",
   "discounts.tiers.intro":
     "Xaridor o‘z darajasi foizida ball oladi. Daraja topshirilgan buyurtmalarning do‘kon valyutasidagi summasi bo‘yicha hisoblanadi; foiz joriy buyurtmadan oldingi summa bo‘yicha olinadi. Birinchi chegaradan yuqorida — o‘z foizi, pastda — sozlamalardagi umumiy «ball foizi». Allaqachon hisoblangan ballar o‘zgarmaydi. Daraja va «keyingisigacha» ni xaridor bot savatida ko‘radi.",

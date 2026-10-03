@@ -39,10 +39,13 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
             ctx =
               params.kind === "products"
                 ? await requireAdmin()
-                : params.kind === "students"
-                  ? // Ученики школы — модуль «Онлайн-школа», как их список; имена покупателей — не ниже менеджера.
-                    await requireAdminModule("courses", CONTACTS_MIN_ROLE)
-                  : await requireAdminModule("excel_export", CONTACTS_MIN_ROLE);
+                : params.kind === "referrals"
+                  ? // Отчёт «Рефералы» — модуль referral; имена покупателей — не ниже менеджера.
+                    await requireAdminModule("referral", CONTACTS_MIN_ROLE)
+                  : params.kind === "students"
+                    ? // Ученики школы — модуль «Онлайн-школа», как их список; имена покупателей — не ниже менеджера.
+                      await requireAdminModule("courses", CONTACTS_MIN_ROLE)
+                    : await requireAdminModule("excel_export", CONTACTS_MIN_ROLE);
         } catch (e) {
           const { isUserError } = await import("@/core/i18n/user-error");
           // Вошёл, но роли или модуля не хватает — 403; нет сессии — 401.
@@ -94,6 +97,10 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
           const { studentsCsv } = await import("@/app/admin/students-export.server");
           result = await studentsCsv(ctx, id && /^[0-9a-f-]{36}$/i.test(id) ? id : null);
           name = "students.csv";
+        } else if (params.kind === "referrals") {
+          const { referralReportCsv } = await import("@/core/referrals/report");
+          result = await referralReportCsv(ctx);
+          name = "referrals.csv";
         } else if (params.kind === "customers") {
           result = await customersCsv(ctx);
           name = "customers.csv";

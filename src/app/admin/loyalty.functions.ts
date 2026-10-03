@@ -43,6 +43,15 @@ export const adjustPointsFn = createServerFn({ method: "POST" })
     );
   });
 
+/** Отчёт «Рефералы» в «Скидках»: имена покупателей — роль не ниже менеджера, как у выгрузки покупателей. */
+export const referralReportFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { CONTACTS_MIN_ROLE } = await import("@/core/export/export");
+  const ctx = await (
+    await import("@/app/auth/guards.server")
+  ).requireAdminModule("referral", CONTACTS_MIN_ROLE);
+  return (await import("@/core/referrals/report")).referralReport(ctx);
+});
+
 /** Уровни лояльности для карточки в «Скидках» (модуль loyalty, чтение — любой админ магазина). */
 export const loyaltyTiersFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await (await import("@/app/auth/guards.server")).requireAdminModule("loyalty");

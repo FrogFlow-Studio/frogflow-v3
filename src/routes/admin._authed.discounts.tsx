@@ -18,6 +18,7 @@ import {
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
+import { referralReportFn } from "@/app/admin/loyalty.functions";
 
 export const Route = createFileRoute("/admin/_authed/discounts")({
   loader: async () => {
@@ -55,6 +56,8 @@ function DiscountsPage() {
         )}
         {shop.modules.gift_certificates && <GiftSaleCard sale={giftSale} />}
         {shop.modules.referral && <ReferralCard percent={referralPercent} bot={shop.telegram} />}
+        {shop.modules.referral && <ReferralReportCard />}
+
         {shop.modules.loyalty && tiers && <TiersCard tiers={tiers} />}
         {shop.modules.limited_offers && <OffersCard />}
       </div>
@@ -407,6 +410,68 @@ function ReferralCard({ percent, bot }: { percent: string; bot: string | null })
         </button>
       </form>
       <ErrorBox error={save.error} />
+    </Card>
+  );
+}
+
+/** Отчёт «Рефералы»: кто привёл друзей, сколько купили, какие коды выданы; CSV. */
+function ReferralReportCard() {
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
+  const t = adminT(shop.locale);
+  const [report, setReport] = useState<Awaited<ReturnType<typeof referralReportFn>> | null>(null);
+  useEffect(() => {
+    // Отчёт видит менеджер и владелец; остальным карточка просто не открывается.
+    referralReportFn()
+      .then(setReport)
+      .catch(() => setReport(null));
+  }, []);
+  if (!report) return null;
+  return (
+    <Card title={t("discounts.referral.report.title")} className="lg:col-span-2">
+      <p className="mb-3 text-sm text-muted">
+        {t("discounts.referral.report.totals", {
+          came: report.last30.came,
+          bought: report.last30.bought,
+          tc: report.total.came,
+          tb: report.total.bought,
+        })}{" "}
+        <a className="underline" href="/api/admin/export/referrals">
+          {t("discounts.referral.report.csv")}
+        </a>
+      </p>
+      {report.rows.length === 0 ? (
+        <Empty>{t("discounts.referral.report.empty")}</Empty>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-muted">
+                <th className="py-1 pr-3">{t("discounts.referral.report.who")}</th>
+                <th className="py-1 pr-3">{t("discounts.referral.report.came")}</th>
+                <th className="py-1 pr-3">{t("discounts.referral.report.bought")}</th>
+                <th className="py-1">{t("discounts.referral.report.codes")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.rows.map((r) => (
+                <tr key={r.referrerId} className="border-t border-line align-top">
+                  <td className="py-1 pr-3">{r.name}</td>
+                  <td className="py-1 pr-3">{r.came}</td>
+                  <td className="py-1 pr-3">{r.bought}</td>
+                  <td className="py-1">
+                    {r.codes.map((c) => (
+                      <div key={c.code}>
+                        <code>{c.code}</code>
+                        {c.used ? ` — ${t("discounts.referral.report.used")}` : ""}
+                      </div>
+                    ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </Card>
   );
 }
