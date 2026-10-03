@@ -100,19 +100,33 @@ export function inQuietHours(prefs: NotifyPrefs, now: Date, tz: string): boolean
 
 export type Decision = { telegram: boolean; email: boolean; defer: boolean };
 
-/** Куда сейчас уходит уведомление вида `kind`: в каналы сразу или в дайджест. */
+/** Срочные виды, у которых выключен Telegram: «только почта» для них сохранить нельзя. */
+export function urgentWithoutTelegram(kinds: Record<string, NotifyChannels>): NotifyKind[] {
+  return URGENT_KINDS.filter((k) => kinds[k] && !kinds[k]!.telegram);
+}
+
+/**
+ * Куда сейчас уходит уведомление вида `kind`: в каналы сразу или в дайджест.
+ * `mailReady` — настроена ли почта платформы (SMTP). Без неё почта не канал:
+ * срочное всегда идёт и в Telegram, а несрочное, выбранное «только почтой»,
+ * тоже падает в Telegram — иначе продавец его не получит.
+ */
 export function decideDelivery(
   prefs: NotifyPrefs,
   kind: NotifyKind,
   now: Date,
   tz: string,
+  mailReady = true,
 ): Decision {
   const ch = prefs.kinds[kind] ?? { telegram: true, email: false };
-  const email = ch.email && Boolean(prefs.email);
-  if (!ch.telegram && !email) return { telegram: false, email: false, defer: false };
-  const quiet = inQuietHours(prefs, now, tz) && !URGENT_KINDS.includes(kind);
-  if (quiet) return { telegram: false, email: false, defer: true };
-  return { telegram: ch.telegram, email, defer: false };
+  const wantsEmail = ch.email && Boolean(prefs.email);
+  const email = wantsEmail && mailReady;
+  const urgent = URGENT_KINDS.includes(kind);
+  const telegram = ch.telegram || urgent || (wantsEmail && !email);
+  if (!telegram && !email) return { telegram: false, email: false, defer: false };
+  if (inQuietHours(prefs, now, tz) && !urgent)
+    return { telegram: false, email: false, defer: true };
+  return { telegram, email, defer: false };
 }
 
 /** Сопоставление старых свободных «kind» из вызовов с матрицей. */

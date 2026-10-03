@@ -34,6 +34,8 @@ export const ru = {
   "err.admin.passwordRequired": "Для нового пользователя нужен пароль.",
   "err.admin.passwordShort": "Пароль — не короче 8 символов.",
   "err.admin.teamLimit": "Не больше 20 пользователей у магазина.",
+  "err.notify.urgentTelegram":
+    "Срочные события (заказ, сбой выдачи, жалоба) нельзя отключить в Telegram: они всегда приходят туда, почта — дополнительно.",
   // товары, заказы, настройки
   "err.admin.digitalNeedsFile":
     "Цифровому товару нужен хотя бы один файл — иначе покупатель заплатит и ничего не получит.",
@@ -219,6 +221,8 @@ export const kk: SectionDict<typeof ru> = {
   "err.admin.passwordRequired": "Жаңа пайдаланушыға құпиясөз қажет.",
   "err.admin.passwordShort": "Құпиясөз кемінде 8 таңбадан тұруы керек.",
   "err.admin.teamLimit": "Бір дүкенде 20-дан артық пайдаланушы болмайды.",
+  "err.notify.urgentTelegram":
+    "Шұғыл оқиғаларды (тапсырыс, беру іркілісі, шағым) Telegram-да өшіруге болмайды: олар әрқашан сонда келеді, пошта — қосымша.",
   "err.admin.digitalNeedsFile":
     "Цифрлық тауарға кемінде бір файл қажет — әйтпесе сатып алушы төлейді де, ештеңе алмайды.",
   "err.admin.orderNotFound": "Тапсырыс табылмады",
@@ -401,6 +405,8 @@ export const en: SectionDict<typeof ru> = {
   "err.admin.passwordRequired": "A new user needs a password.",
   "err.admin.passwordShort": "The password must be at least 8 characters.",
   "err.admin.teamLimit": "A shop can have no more than 20 users.",
+  "err.notify.urgentTelegram":
+    "Urgent events (order, delivery failure, complaint) can't be turned off in Telegram: they always arrive there, email is in addition.",
   "err.admin.digitalNeedsFile":
     "A digital product needs at least one file — otherwise the buyer pays and gets nothing.",
   "err.admin.orderNotFound": "Order not found",
@@ -584,6 +590,8 @@ export const uz: SectionDict<typeof ru> = {
   "err.admin.passwordRequired": "Yangi foydalanuvchi uchun parol kerak.",
   "err.admin.passwordShort": "Parol kamida 8 ta belgidan iborat boʻlishi kerak.",
   "err.admin.teamLimit": "Bitta doʻkonda 20 tadan ortiq foydalanuvchi boʻlmaydi.",
+  "err.notify.urgentTelegram":
+    "Shoshilinch hodisalarni (buyurtma, topshirish xatosi, shikoyat) Telegram'da o'chirib bo'lmaydi: ular doim shu yerga keladi, pochta — qo'shimcha.",
   "err.admin.digitalNeedsFile":
     "Raqamli mahsulotga kamida bitta fayl kerak — aks holda xaridor pul toʻlaydi-yu, hech narsa olmaydi.",
   "err.admin.orderNotFound": "Buyurtma topilmadi",

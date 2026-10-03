@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { UserError } from "@/core/i18n/user-error";
 
 /** Уведомления продавцу: матрица «событие → канал», тихие часы, дайджест (core/notify/prefs). */
 const admin = async () => (await import("@/app/auth/guards.server")).requireAdmin();
@@ -28,8 +29,14 @@ export const saveNotifyPrefsFn = createServerFn({ method: "POST" })
     const ctx = await (
       await import("@/app/auth/guards.server")
     ).requireAdminModule("notify_in_bot", "owner");
-    const { NOTIFY_KINDS, defaultNotifyPrefs, saveNotifyPrefs } =
+    const { NOTIFY_KINDS, defaultNotifyPrefs, saveNotifyPrefs, urgentWithoutTelegram } =
       await import("@/core/notify/prefs");
+    // Срочное (заказ, сбой выдачи, жалоба) всегда идёт в Telegram: «только почта» его теряла бы.
+    if (urgentWithoutTelegram(data.kinds).length)
+      throw new UserError(
+        "err.notify.urgentTelegram",
+        "Срочные события (заказ, сбой выдачи, жалоба) нельзя отключить в Telegram: они всегда приходят туда, почта — дополнительно.",
+      );
     const prefs = defaultNotifyPrefs();
     for (const k of NOTIFY_KINDS) if (data.kinds[k]) prefs.kinds[k] = data.kinds[k]!;
     prefs.email = data.email.trim();

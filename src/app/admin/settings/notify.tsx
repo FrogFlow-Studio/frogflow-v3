@@ -6,7 +6,7 @@ import {
   saveLowStockFn,
   saveNotifyPrefsFn,
 } from "@/app/admin/notify.functions";
-import { NOTIFY_KINDS, type NotifyPrefs } from "@/core/notify/prefs";
+import { NOTIFY_KINDS, URGENT_KINDS, type NotifyPrefs } from "@/core/notify/prefs";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
 
@@ -33,7 +33,12 @@ export function NotifyCard() {
     if (!p) return;
     await saveNotifyPrefsFn({
       data: {
-        kinds: p.kinds,
+        kinds: Object.fromEntries(
+          NOTIFY_KINDS.map((k) => [
+            k,
+            { ...p.kinds[k], telegram: p.kinds[k].telegram || URGENT_KINDS.includes(k) },
+          ]),
+        ),
         email: p.email,
         quiet: quietOn ? (p.quiet ?? { from: "22:00", to: "08:00" }) : null,
         digest: p.digest,
@@ -61,36 +66,46 @@ export function NotifyCard() {
             <tr>
               <th>{t("settings.notify.col.event")}</th>
               <th className="text-center">Telegram</th>
-              <th className="text-center">{t("settings.notify.col.email")}</th>
+              <th className="text-center">
+                {t("settings.notify.col.email")}
+                {!data.mail && (
+                  <span className="block text-xs font-normal text-muted">
+                    {t("settings.notify.col.emailOff")}
+                  </span>
+                )}
+              </th>
             </tr>
           </thead>
           <tbody>
-            {NOTIFY_KINDS.map((k) => (
-              <tr key={k}>
-                <td>
-                  {t(`settings.notify.kind.${k}`)}
-                  {["new_order", "delivery_failure", "complaint"].includes(k) && (
-                    <span className="ml-2 text-xs text-muted">{t("settings.notify.urgent")}</span>
-                  )}
-                </td>
-                <td className="text-center">
-                  <input
-                    type="checkbox"
-                    checked={p.kinds[k].telegram}
-                    disabled={!owner}
-                    onChange={(e) => setKind(k, "telegram", e.target.checked)}
-                  />
-                </td>
-                <td className="text-center">
-                  <input
-                    type="checkbox"
-                    checked={p.kinds[k].email}
-                    disabled={!owner || !data.mail}
-                    onChange={(e) => setKind(k, "email", e.target.checked)}
-                  />
-                </td>
-              </tr>
-            ))}
+            {NOTIFY_KINDS.map((k) => {
+              const urgent = URGENT_KINDS.includes(k);
+              return (
+                <tr key={k}>
+                  <td>
+                    {t(`settings.notify.kind.${k}`)}
+                    {urgent && (
+                      <span className="ml-2 text-xs text-muted">{t("settings.notify.urgent")}</span>
+                    )}
+                  </td>
+                  <td className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={p.kinds[k].telegram || urgent}
+                      disabled={!owner || urgent}
+                      onChange={(e) => setKind(k, "telegram", e.target.checked)}
+                    />
+                  </td>
+                  <td className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={p.kinds[k].email}
+                      disabled={!owner || !data.mail}
+                      onChange={(e) => setKind(k, "email", e.target.checked)}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         <div className="grid gap-3 sm:grid-cols-2">

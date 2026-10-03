@@ -40,31 +40,37 @@ export async function notifyAdminsHtml(
   const { decideDelivery, loadNotifyPrefs, notifyKindOf } = await import("@/core/notify/prefs");
   const prefs = await loadNotifyPrefs(ctx);
   const kind = notifyKindOf(opts.kind);
+  const { isMailConfigured, smtpMailer } = await import("@/core/mail/mail.server");
   const d = opts.recipients
     ? { telegram: true, email: false, defer: false }
     : isDigest
-      ? { telegram: true, email: prefs.kinds.system.email && Boolean(prefs.email), defer: false }
-      : decideDelivery(prefs, kind, new Date(), ctx.timezone);
+      ? {
+          telegram: true,
+          email: prefs.kinds.system.email && Boolean(prefs.email) && isMailConfigured(),
+          defer: false,
+        }
+      : decideDelivery(prefs, kind, new Date(), ctx.timezone, isMailConfigured());
   if (d.defer) {
     const { deferToDigest } = await import("@/core/notify/digest");
     await deferToDigest(ctx, kind, html.replace(/<[^>]+>/g, ""));
     return 0;
   }
+  let emailSent = false;
   if (d.email) {
-    const { smtpMailer, isMailConfigured } = await import("@/core/mail/mail.server");
-    if (isMailConfigured()) {
-      const text = html.replace(/<[^>]+>/g, "");
-      await smtpMailer({
-        to: prefs.email,
-        subject: text.split("\n")[0]!.slice(0, 120) || "FrogFlow",
-        text,
-        html: html.replace(/\n/g, "<br>"),
-      }).catch(() => ({ ok: false }));
-    }
+    const text = html.replace(/<[^>]+>/g, "");
+    const r = await smtpMailer({
+      to: prefs.email,
+      subject: text.split("\n")[0]!.slice(0, 120) || "FrogFlow",
+      text,
+      html: html.replace(/\n/g, "<br>"),
+    }).catch((e) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }));
+    emailSent = r.ok;
+    // Письмо могло дойти (тайм-аут, обрыв) — другим каналом не дублируем, только пишем в журнал.
+    if (!r.ok) console.error(`[notify:${ctx.tenant.id}] письмо продавцу не ушло: ${r.error ?? ""}`);
   }
   // Push в админку как приложение (core/push) — тем же мгновенным каналом, что Telegram.
   if (d.telegram && !opts.recipients) await sendAdminPush(ctx, html, opts);
-  if (!d.telegram) return d.email ? 1 : 0;
+  if (!d.telegram) return emailSent ? 1 : 0;
   const { sendOrEnqueue } = await import("@/core/outbox/outbox");
   const { telegramOutboxSender } = await import("./outbox");
   let sent = 0;
