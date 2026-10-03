@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoryButtonLabel, menuActionFor, normalizePhone } from "./copy";
+import { COPY, categoryButtonLabel, menuActionFor, normalizePhone } from "./copy";
 
 describe("telegram copy helpers", () => {
   it("кнопка меню на любом языке → каноническое действие", () => {
@@ -40,5 +40,26 @@ describe("минимальная сумма заказа: текст для по
     expect(minOrderText(COPY.en, { min: 800, shortfall: 300, currency: "RUB" })).toBe(
       "⚠️ The minimum order is 800 ₽. Add 300 ₽ more to your cart.",
     );
+  });
+});
+
+describe("предзаказ в боте: дата словами, не сырым ISO", () => {
+  it("подпись товара и строка корзины на каждом языке не содержат 2026-10-15", () => {
+    for (const l of ["ru", "kk", "en", "uz"] as const) {
+      const label = COPY[l].preorderLabel("2026-10-15");
+      const note = COPY[l].preorderCartNote("2026-10-15");
+      for (const t of [label, note]) {
+        expect(t).not.toMatch(/2026-10-15/);
+        expect(t).toMatch(/15/);
+        expect(t).toMatch(/2026/);
+      }
+    }
+    expect(COPY.ru.preorderLabel("2026-10-15")).toMatch(/октября/);
+    expect(COPY.en.preorderLabel("2026-10-15")).toMatch(/October/);
+  });
+
+  it("без даты — прежний текст «срок уточним»", () => {
+    expect(COPY.ru.preorderLabel(null)).toMatch(/срок отправки уточним/);
+    expect(COPY.en.preorderCartNote(null)).toBe("   🕒 pre-order\n");
   });
 });
