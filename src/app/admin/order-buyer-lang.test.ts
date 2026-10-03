@@ -85,4 +85,22 @@ describe("язык сообщений покупателю из админки",
       "❌ Order #7 was declined by the seller. If this is a mistake, please message them.",
     );
   });
+
+  it("смена статуса физического заказа — на языке покупателя", async () => {
+    const { ctx, db } = shop("uz");
+    orders[1] = { ...base, status: "accepted" };
+    db.tables.orders = [{ id: 1, status: "accepted" }];
+    notified.length = 0;
+    await runOrderAction(ctx, 1, "next");
+    expect(notified).toEqual(["🧑‍🍳 Buyurtma tayyorlanmoqda — #7"]);
+  });
+
+  it("kk-покупатель: «готовится» — по-казахски", async () => {
+    const { ctx, db } = shop("kk");
+    orders[1] = { ...base, status: "accepted" };
+    db.tables.orders = [{ id: 1, status: "accepted" }];
+    notified.length = 0;
+    await runOrderAction(ctx, 1, "next");
+    expect(notified).toEqual(["🧑‍🍳 Тапсырыс дайындалуда — #7"]);
+  });
 });

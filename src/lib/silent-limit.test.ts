@@ -39,8 +39,8 @@ const ALLOWED: Record<string, string[]> = {
   "src/channels/zernio/posts.server.ts": [`${SHOWN} (последние публикации)`],
   "src/core/catalog/picker.ts": [`${SHOWN} (подбор товара: поиск, limit + число исключённых)`],
   "src/core/catalog/catalog.ts": [
-    "варианты по поиску: их id уходят в адрес `or(id.in.(…))`, больше 200 — 431",
-    `${SHOWN} (результаты поиска, limit от вызывающего)`,
+    `${SHOWN} (результаты поиска по названию, limit от вызывающего)`,
+    `${SHOWN} (результаты поиска по вариантам, по куску id; limit от вызывающего)`,
   ],
   "src/core/upsell/upsell.ts": ["подборка: берём самые популярные, остальные не нужны"],
   "src/core/ai/balance.ts": [`${SHOWN} (журнал ИИ-баланса)`],
@@ -58,7 +58,6 @@ const ALLOWED: Record<string, string[]> = {
   ],
   "src/core/orders/balance.ts": ["счёт попыток: достаточно RK_ATTEMPTS, дальше всё равно отказ"],
   "src/core/orders/orders.ts": [`${SHOWN} (последние заказы покупателя)`],
-  "src/core/orders/events.ts": [`${SHOWN} (история одного заказа — десятки записей)`],
   "src/core/pipeline/board.ts": [
     `${SHOWN} (открытые заказы на доске)`,
     `${SHOWN} (закрытые за окно на доске)`,

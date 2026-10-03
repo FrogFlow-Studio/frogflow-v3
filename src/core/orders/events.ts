@@ -1,4 +1,4 @@
-import { serverFailure } from "@/lib/server-failure";
+import { pageAll } from "@/core/db/page";
 /**
  * Таймлайн заказа — доказательство того, что произошло: создан, чек,
  * выдача каждой позиции, что не выдалось и почему. Своей таблицы у
@@ -120,16 +120,27 @@ export async function claimOrderEvent(
 }
 
 export async function listOrderEvents(ctx: TenantContext, orderId: number): Promise<OrderEvent[]> {
-  const { data, error: dataError } = await ctx.db
-    .from("zernio_logs")
-    .select("id, created_at, event_type, payload")
-    .eq("status", ORDER_EVENT_STATUS)
-    .like("event_type", "order.%")
-    .eq("payload->>order_id", String(orderId))
-    .order("created_at", { ascending: true })
-    .limit(200);
-  if (dataError) throw serverFailure(`Заказы: события: ${dataError.message}`);
-  return (data ?? []).map((r) => {
+  // Постранично, а сортировка кончается id: длинная история не обрезается, а
+  // события одной секунды не меняются местами между страницами.
+  const data = await pageAll<{
+    id: string;
+    created_at: string;
+    event_type: string;
+    payload: Json | null;
+  }>(
+    (from, to) =>
+      ctx.db
+        .from("zernio_logs")
+        .select("id, created_at, event_type, payload")
+        .eq("status", ORDER_EVENT_STATUS)
+        .like("event_type", "order.%")
+        .eq("payload->>order_id", String(orderId))
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    "Заказы: события",
+  );
+  return data.map((r) => {
     const p =
       r.payload && typeof r.payload === "object" && !Array.isArray(r.payload)
         ? (r.payload as Record<string, Json | undefined>)

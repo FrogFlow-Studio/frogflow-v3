@@ -199,6 +199,8 @@ export type Msg = {
   orderDelivered: (no: number) => string;
   orderRejected: (no: number) => string;
   orderAccepted: (no: number) => string;
+  /** Смена статуса физического заказа продавцом: готовится, готов, выдан, принят. */
+  orderStatusNotice: (status: string, no: number) => string;
   orderRefunded: (no: number, full: boolean, sum: string) => string;
   searchPrompt: string;
   searchNothing: (q: string) => string;
@@ -538,6 +540,8 @@ const ru: Msg = {
   orderDelivered: (no) => `🎉 Заказ #${no} выдан. Спасибо за покупку!`,
   orderRejected: (no) => `❌ Заказ #${no} отклонён продавцом. Если это ошибка — напишите ему.`,
   orderAccepted: (no) => `✅ Заказ #${no} принят в работу.`,
+  orderStatusNotice: (status, no) =>
+    `${({ in_production: "🧑‍🍳 Заказ готовится", ready: "🎉 Заказ готов к выдаче", delivered: "✅ Заказ выдан. Спасибо!", accepted: "Заказ принят" } as Record<string, string>)[status] ?? status} — #${no}`,
   orderRefunded: (no, full, sum) =>
     `↩️ По заказу #${no} оформлен ${full ? "возврат" : "частичный возврат"}: ${sum}.`,
   searchPrompt: "🔍 Введите слово для поиска по каталогу:",
@@ -585,6 +589,8 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  orderStatusNotice: (status, no) =>
+    `${({ in_production: "🧑‍🍳 Тапсырыс дайындалуда", ready: "🎉 Тапсырыс беруге дайын", delivered: "✅ Тапсырыс берілді. Рақмет!", accepted: "Тапсырыс қабылданды" } as Record<string, string>)[status] ?? status} — #${no}`,
   orderDelivered: (no) => `🎉 #${no} тапсырыс берілді. Сатып алғаныңызға рахмет!`,
   orderRejected: (no) =>
     `❌ #${no} тапсырысты сатушы қабылдамады. Егер бұл қате болса — сатушыға жазыңыз.`,
@@ -780,6 +786,8 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  orderStatusNotice: (status, no) =>
+    `${({ in_production: "🧑‍🍳 Your order is being prepared", ready: "🎉 Your order is ready for pickup", delivered: "✅ Order delivered. Thank you!", accepted: "Order accepted" } as Record<string, string>)[status] ?? status} — #${no}`,
   orderDelivered: (no) => `🎉 Order #${no} has been delivered. Thank you for your purchase!`,
   orderRejected: (no) =>
     `❌ Order #${no} was declined by the seller. If this is a mistake, please message them.`,
@@ -1001,6 +1009,8 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  orderStatusNotice: (status, no) =>
+    `${({ in_production: "🧑‍🍳 Buyurtma tayyorlanmoqda", ready: "🎉 Buyurtma topshirishga tayyor", delivered: "✅ Buyurtma topshirildi. Rahmat!", accepted: "Buyurtma qabul qilindi" } as Record<string, string>)[status] ?? status} — #${no}`,
   orderDelivered: (no) => `🎉 #${no}-buyurtma topshirildi. Xaridingiz uchun rahmat!`,
   orderRejected: (no) =>
     `❌ #${no}-buyurtma sotuvchi tomonidan rad etildi. Agar bu xato bo'lsa, sotuvchiga yozing.`,

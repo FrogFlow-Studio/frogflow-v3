@@ -492,13 +492,7 @@ export async function runOrderAction(
         const { recordOrderEvent } = await import("@/core/orders/events");
         await recordOrderEvent(ctx, id, "status", { to }, actor);
       }
-      const labels: Record<string, string> = {
-        in_production: "🧑‍🍳 Заказ готовится",
-        ready: "🎉 Заказ готов к выдаче",
-        delivered: "✅ Заказ выдан. Спасибо!",
-        accepted: "Заказ принят",
-      };
-      if (ok && action === "next") await notifyCustomer(ctx, order, `${labels[to] ?? to} — #${no}`);
+      if (ok && action === "next") await notifyCustomer(ctx, order, m.orderStatusNotice(to, no));
       if (ok && to === "delivered") {
         const { rewardReferrerIfFirstDelivery } = await import("@/core/referrals/referrals");
         // Статус уже сменён: сбой награды не должен выглядеть как сбой смены.
