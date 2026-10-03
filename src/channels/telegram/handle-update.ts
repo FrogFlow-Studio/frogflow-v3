@@ -730,12 +730,12 @@ async function menuAction(b: Bot, action: ReturnType<typeof menuActionFor>) {
       const base = `${storefrontBase(b.ctx.tenant, b.ctx.appUrl)}/legal`;
       const buttons: InlineButton[][] = [
         [
-          { text: "📄 Оферта", url: `${base}/offer` },
-          { text: "🔒 Конфиденциальность", url: `${base}/privacy` },
+          { text: b.m.infoOfferBtn, url: `${base}/offer` },
+          { text: b.m.infoPrivacyBtn, url: `${base}/privacy` },
         ],
         [
-          { text: "🏢 Реквизиты", url: `${base}/requisites` },
-          { text: "ℹ️ О продавце", url: `${base}/about` },
+          { text: b.m.infoRequisitesBtn, url: `${base}/requisites` },
+          { text: b.m.infoAboutBtn, url: `${base}/about` },
         ],
       ];
       const botName = b.ctx.tenant.settings.telegram?.username;

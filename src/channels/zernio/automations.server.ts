@@ -8,6 +8,7 @@
  * `core/instagram/comment-rules.ts`.
  */
 import type { Json } from "@/core/db-types";
+import { COPY } from "@/channels/telegram/copy";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { servedByV2 } from "@/core/tenant/directory";
 import { getSetting, setSetting } from "@/core/settings/settings";
@@ -707,7 +708,9 @@ export async function listPostComments(
 
 function defaultButtons(ctx: TenantContext): AutomationButton[] {
   const u = ctx.tenant.settings.telegram?.username;
-  return u ? [{ type: "url", title: "Открыть в Telegram ✈️", url: `https://t.me/${u}` }] : [];
+  // Язык комментатора неизвестен, поэтому — язык магазина.
+  const title = COPY[ctx.tenant.settings.default_locale ?? "ru"].openTelegramBtn;
+  return u ? [{ type: "url", title, url: `https://t.me/${u}` }] : [];
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

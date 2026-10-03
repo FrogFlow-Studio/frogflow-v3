@@ -260,6 +260,12 @@ export type Msg = {
   reviewNotAllowed: string;
   noReviewableProducts: string;
   inviteFriendBtn: string;
+  infoOfferBtn: string;
+  infoPrivacyBtn: string;
+  infoRequisitesBtn: string;
+  infoAboutBtn: string;
+  /** Кнопка под личным ответом на комментарий (Comment-to-DM): Instagram режет подпись до 20 знаков. */
+  openTelegramBtn: string;
   referralWelcome: (percent: number, code: string) => string;
   referralReward: (percent: number, code: string) => string;
   /** Экран «Пригласить друга»: ссылка, счётчики и коды за друзей. */
@@ -345,6 +351,11 @@ const ru: Msg = {
   reviewNotAllowed: "⚠️ Оценить можно только то, что вы реально купили и получили.",
   noReviewableProducts: "В этом заказе нет товаров, которые можно оценить.",
   inviteFriendBtn: "🎁 Пригласить друга",
+  infoOfferBtn: "📄 Оферта",
+  infoPrivacyBtn: "🔒 Конфиденциальность",
+  infoRequisitesBtn: "🏢 Реквизиты",
+  infoAboutBtn: "ℹ️ О продавце",
+  openTelegramBtn: "Открыть Telegram ✈️",
   referralWelcome: (p, c) =>
     `🎁 Вам подарок за переход по приглашению — промокод на скидку ${p}% на первую покупку: <code>${c}</code>`,
   referralReward: (p, c) =>
@@ -726,6 +737,11 @@ const kk: Msg = {
   reviewNotAllowed: "⚠️ Тек нақты сатып алып, алған тауарды ғана бағалауға болады.",
   noReviewableProducts: "Бұл тапсырыста бағалауға болатын тауар жоқ.",
   inviteFriendBtn: "🎁 Досты шақыру",
+  infoOfferBtn: "📄 Оферта",
+  infoPrivacyBtn: "🔒 Құпиялылық",
+  infoRequisitesBtn: "🏢 Деректемелер",
+  infoAboutBtn: "ℹ️ Сатушы туралы",
+  openTelegramBtn: "Telegram-да ашу ✈️",
   referralWelcome: (p, c) =>
     `🎁 Шақыру сілтемесі бойынша өткеніңіз үшін сыйлық — алғашқы сатып алуға ${p}% жеңілдік промокоды: <code>${c}</code>`,
   referralReward: (p, c) =>
@@ -946,6 +962,11 @@ const en: Msg = {
   reviewNotAllowed: "⚠️ You can only rate something you actually bought and received.",
   noReviewableProducts: "This order has no products you can rate.",
   inviteFriendBtn: "🎁 Invite a friend",
+  infoOfferBtn: "📄 Offer",
+  infoPrivacyBtn: "🔒 Privacy",
+  infoRequisitesBtn: "🏢 Business details",
+  infoAboutBtn: "ℹ️ About the seller",
+  openTelegramBtn: "Open in Telegram ✈️",
   referralWelcome: (p, c) =>
     `🎁 A gift for joining via an invitation — a ${p}% discount code for your first purchase: <code>${c}</code>`,
   referralReward: (p, c) =>
@@ -1173,6 +1194,11 @@ const uz: Msg = {
   reviewNotAllowed: "⚠️ Faqat haqiqatan sotib olib, qo‘lga kiritgan mahsulotni baholash mumkin.",
   noReviewableProducts: "Bu buyurtmada baholash mumkin bo‘lgan mahsulot yo‘q.",
   inviteFriendBtn: "🎁 Do‘stni taklif qilish",
+  infoOfferBtn: "📄 Oferta",
+  infoPrivacyBtn: "🔒 Maxfiylik",
+  infoRequisitesBtn: "🏢 Rekvizitlar",
+  infoAboutBtn: "ℹ️ Sotuvchi haqida",
+  openTelegramBtn: "Telegramga o‘tish ✈️",
   referralWelcome: (p, c) =>
     `🎁 Taklif havolasi orqali o‘tganingiz uchun sovg‘a — birinchi xaridga ${p}% chegirma promokodi: <code>${c}</code>`,
   referralReward: (p, c) =>

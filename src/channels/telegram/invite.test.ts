@@ -180,3 +180,27 @@ describe("экран «Пригласить друга»", () => {
     }
   });
 });
+
+describe("«Информация» на языке покупателя", () => {
+  it("ссылки на документы подписаны на kk, en, uz, а не по-русски", async () => {
+    for (const l of ["kk", "en", "uz"] as const) {
+      const { ctx, api, calls } = setup({ legal_docs: true }, l);
+      await handleTelegramUpdate(ctx, api, say(COPY[l].information));
+      const kb = calls.filter(([m]) => m === "sendMessage").pop()![1].reply_markup as {
+        inline_keyboard: Array<Array<{ text: string }>>;
+      };
+      const labels = kb.inline_keyboard.flat().map((b) => b.text);
+      expect(labels).toEqual(
+        expect.arrayContaining([
+          COPY[l].infoOfferBtn,
+          COPY[l].infoPrivacyBtn,
+          COPY[l].infoRequisitesBtn,
+          COPY[l].infoAboutBtn,
+        ]),
+      );
+      // «Оферта» по-казахски пишется так же; остальные подписи у kk отличаются.
+      expect(labels).not.toContain("🔒 Конфиденциальность");
+      if (l !== "kk") expect(labels).not.toContain("📄 Оферта");
+    }
+  });
+});
