@@ -46,7 +46,6 @@ export function unboundedIn(source: string): string[] {
   return out;
 }
 
-const NEXT = "следующая партия: папка трека А/В, правится там";
 const FIXED = "список ключей — фиксированный набор из кода";
 const PAGE = "список из одной страницы чтения (не больше её лимита)";
 const FEW = "список из позиций одного заказа или одного покупателя — единицы";
@@ -70,7 +69,6 @@ const ALLOWED: Record<string, string[]> = {
   ],
   "src/core/broadcasts/clicks.ts": [`${PAGE} (рассылки на экране, ≤ 50)`],
   "src/core/broadcasts/segments.ts": [FIXED],
-  "src/core/chat/chat.ts": [`${NEXT} (чат с менеджером; страница ≤ 200)`],
   "src/core/customers/card.ts": [FEW, FEW, FEW],
   "src/core/delivery/watermark.server.ts": Array<string>(5).fill(
     "keys — кусок CHECK_CHUNK (100), нарезка у вызывающего",
@@ -94,9 +92,6 @@ const ALLOWED: Record<string, string[]> = {
     "покупатели одной пачки SCAN = 200",
     "заказы одного покупателя — единицы",
   ],
-  "src/core/storefront/catalog.ts": [NEXT],
-  "src/core/storefront/web-expire.ts": [NEXT],
-  "src/core/storefront/web-link.ts": [NEXT],
   "src/core/upsell/upsell.ts": ["товары корзины и правил: корзина + 20"],
   "src/core/vip/auto-check.ts": [FEW],
   "src/core/vip/vip.ts": [FEW, FEW],

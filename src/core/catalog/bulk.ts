@@ -1,4 +1,5 @@
 import { serverFailure } from "@/lib/server-failure";
+import { chunksOf, inChunks } from "@/lib/in-chunks";
 import { UserError } from "@/core/i18n/user-error";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Json } from "@/core/db-types";
@@ -19,7 +20,6 @@ import { pageAll } from "@/core/db/page";
 export const BULK_MAX = 500;
 export const BULK_PERCENT_MIN = -90;
 export const BULK_PERCENT_MAX = 500;
-const IN_CHUNK = 200;
 
 export type BulkAction =
   | { kind: "active"; active: boolean }
@@ -42,12 +42,6 @@ type Row = {
   stock_quantity: number | null;
   category_ids: Json;
   country_prices: Json;
-};
-
-const chunks = <T>(list: readonly T[], size: number): T[][] => {
-  const out: T[][] = [];
-  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
-  return out;
 };
 
 /** Цена после ±%: до целого, как цены на витрине (core/pricing). */
@@ -77,22 +71,22 @@ export function scaleCountryPrices(table: Json, percent: number): Json {
 }
 
 async function readProducts(ctx: TenantContext, ids: string[]): Promise<Map<string, Row>> {
-  const rows = new Map<string, Row>();
-  for (const chunk of chunks(ids, IN_CHUNK)) {
-    const { data, error } = await ctx.db
-      .from("products")
-      .select("id, name, price, is_active, stock_quantity, category_ids, country_prices")
-      .in("id", chunk)
-      .order("id");
-    if (error) throw serverFailure(`Массовые действия: ${error.message}`);
-    for (const r of data ?? []) rows.set(r.id, { ...r, price: Number(r.price) });
-  }
-  return rows;
+  const data = await inChunks(
+    ids,
+    (chunk) =>
+      ctx.db
+        .from("products")
+        .select("id, name, price, is_active, stock_quantity, category_ids, country_prices")
+        .in("id", chunk)
+        .order("id"),
+    "Массовые действия",
+  );
+  return new Map(data.map((r): [string, Row] => [r.id, { ...r, price: Number(r.price) }]));
 }
 
 async function readVariants(ctx: TenantContext, ids: string[]) {
   const byProduct = new Map<string, Array<{ id: string; price: number }>>();
-  for (const chunk of chunks(ids, IN_CHUNK)) {
+  for (const chunk of chunksOf(ids)) {
     const rows = await pageAll(
       (from, to) =>
         ctx.db

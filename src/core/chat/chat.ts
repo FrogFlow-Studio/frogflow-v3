@@ -1,4 +1,5 @@
 import { serverFailure } from "@/lib/server-failure";
+import { inChunks } from "@/lib/in-chunks";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
 
@@ -173,18 +174,19 @@ export async function listConversations(ctx: TenantContext, limit = 200): Promis
     .limit(limit);
   if (error) throw new Error(error.message);
   if (!states?.length) return [];
-  const { data: users, error: usersError } = await ctx.db
-    .from("bot_users")
-    // Из состояния — только срок паузы: история консультанта в state тяжёлая, а список опрашивается.
-    .select(
-      "telegram_id, username, first_name, last_name, platform, user_key, bot_paused_until:state->consultant->>paused_until",
-    )
-    .in(
-      "telegram_id",
-      states.map((s) => s.telegram_id),
-    );
-  if (usersError) throw serverFailure(`Чат: ${usersError.message}`);
-  const byId = new Map((users ?? []).map((u) => [Number(u.telegram_id), u]));
+  const users = await inChunks(
+    states.map((s) => s.telegram_id),
+    (chunk) =>
+      ctx.db
+        .from("bot_users")
+        // Из состояния — только срок паузы: история консультанта в state тяжёлая, а список опрашивается.
+        .select(
+          "telegram_id, username, first_name, last_name, platform, user_key, bot_paused_until:state->consultant->>paused_until",
+        )
+        .in("telegram_id", chunk),
+    "Чат",
+  );
+  const byId = new Map(users.map((u) => [Number(u.telegram_id), u]));
   const now = Date.now();
   return states.map((s) => {
     const u = byId.get(Number(s.telegram_id));

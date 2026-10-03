@@ -1,3 +1,4 @@
+import { inChunks } from "@/lib/in-chunks";
 import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Json } from "@/core/db-types";
@@ -187,14 +188,16 @@ export async function linkedWebOrders(
 ): Promise<OrderWithItems[]> {
   const ids = linkedWebOrderIds(customer.state);
   if (!ids.length) return [];
-  const { data, error } = await ctx.db
-    .from("orders")
-    .select("*, order_items(*)")
-    .in("id", ids)
-    .eq("platform", "web")
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(error.message);
-  return (data ?? []) as OrderWithItems[];
+  const rows = await inChunks(
+    ids,
+    (chunk) =>
+      ctx.db.from("orders").select("*, order_items(*)").in("id", chunk).eq("platform", "web"),
+    "Витрина: заказы покупателя",
+  );
+  // Куски читаются отдельно: общий порядок — свежие первыми, при равенстве — по номеру.
+  return (rows as OrderWithItems[]).sort(
+    (a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id,
+  );
 }
 
 /** Заказы бота и привязанные с сайта вместе, без повторов, новые первыми. */

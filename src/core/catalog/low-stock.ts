@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { chunksOf, inChunks } from "@/lib/in-chunks";
 import { servedByV2 } from "@/core/tenant/directory";
 import { isLocale, type Locale } from "@/core/i18n/locale";
 import { getSettingsStrict, setSetting } from "@/core/settings/settings";
@@ -34,30 +35,19 @@ export type LowStockItem = { id: string; name: string; stock: number; threshold:
 
 type Stocked = { id: string; name: string; stock_quantity: number | null };
 
-const chunks = <T>(list: readonly T[], size: number): T[][] => {
-  const out: T[][] = [];
-  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
-  return out;
-};
-
 async function readProducts(ctx: TenantContext, ids: string[]): Promise<Stocked[]> {
-  const out: Stocked[] = [];
-  for (const chunk of chunks(ids, 200)) {
-    const { data, error } = await ctx.db
-      .from("products")
-      .select("id, name, stock_quantity")
-      .in("id", chunk)
-      .order("id");
-    if (error) throw serverFailure(`Остаток товара: ${error.message}`);
-    out.push(...(data ?? []));
-  }
-  return out;
+  return inChunks(
+    ids,
+    (chunk) =>
+      ctx.db.from("products").select("id, name, stock_quantity").in("id", chunk).order("id"),
+    "Остаток товара",
+  );
 }
 
 /** Настройки порогов и отметки по товарам: одним чтением на пачку. */
 async function readSettings(ctx: TenantContext, ids: string[]) {
   const values: Record<string, string> = {};
-  for (const chunk of chunks(ids, CHUNK)) {
+  for (const chunk of chunksOf(ids, CHUNK)) {
     const keys = [
       LOW_STOCK_DEFAULT_KEY,
       ...chunk.flatMap((id) => [lowStockProductKey(id), lowStockSentKey(id)]),

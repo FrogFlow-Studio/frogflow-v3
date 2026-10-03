@@ -390,14 +390,18 @@ export async function storeUpsell(
   const { upsellFor, UPSELL_MAX } = await import("@/core/upsell/upsell");
   const ids = (await upsellFor(ctx, cartIds, UPSELL_MAX * 3)).map((o) => o.id);
   if (ids.length === 0) return [];
-  const [{ data, error }, cats] = await Promise.all([
-    ctx.db.from("products").select(PRODUCT_SELECT).in("id", ids).eq("is_active", true),
+  const [data, cats] = await Promise.all([
+    inChunks(
+      ids,
+      (chunk) =>
+        ctx.db.from("products").select(PRODUCT_SELECT).in("id", chunk).eq("is_active", true),
+      "Витрина: допродажа",
+    ),
     listAllCategories(ctx),
   ]);
-  if (error) throw new Error(error.message);
   const known = new Set(cats.map((c) => c.id));
   const visible = visibleCategoryIds(cats);
-  const byId = new Map(((data ?? []) as Product[]).map((p) => [p.id, p]));
+  const byId = new Map((data as Product[]).map((p) => [p.id, p]));
   const shown = ids
     .map((id) => byId.get(id))
     .filter((p): p is Product => {
