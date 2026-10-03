@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { productCategoryIds } from "@/core/catalog/category-ids";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { visibleCategoryIds } from "@/core/storefront/categories";
 import { pageAll } from "@/core/db/page";
@@ -83,10 +84,7 @@ export type CatalogItem = {
 };
 
 function categoriesOf(p: CatalogItem): string[] {
-  const list = Array.isArray(p.category_ids)
-    ? (p.category_ids as unknown[]).filter((c): c is string => typeof c === "string")
-    : [];
-  return p.category_id ? [p.category_id, ...list] : list;
+  return productCategoryIds(p);
 }
 
 /** До трёх товаров из видимых категорий купленного, которых покупатель ещё не брал. */

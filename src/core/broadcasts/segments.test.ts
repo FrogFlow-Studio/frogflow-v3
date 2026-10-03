@@ -85,7 +85,8 @@ function setup() {
   ];
   db.tables.products = [
     { id: P1, category_id: null, category_ids: [CAT] },
-    { id: P2, category_id: null, category_ids: [] },
+    // Перенесён в другую категорию: устаревший category_id сегмент не считает.
+    { id: P2, category_id: CAT, category_ids: ["99999999-9999-4999-8999-999999999999"] },
   ];
   db.tables.cart_items = [
     { id: 1, telegram_id: 105 },

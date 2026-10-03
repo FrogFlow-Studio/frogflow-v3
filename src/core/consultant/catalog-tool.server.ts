@@ -1,4 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import { productCategoryIds } from "@/core/catalog/category-ids";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { allActiveProducts } from "@/core/catalog/active";
 import { pageAll } from "@/core/db/page";
@@ -77,9 +78,8 @@ export async function loadCatalog(ctx: TenantContext, now = Date.now()): Promise
   const trackStock = Boolean(ctx.tenant.modules.stock);
   const items = await Promise.all(
     rows.map(async (r): Promise<CatalogItem> => {
-      const ids = Array.isArray(r.category_ids) ? (r.category_ids as unknown[]).map(String) : [];
-      const cat = [...ids, r.category_id]
-        .map((id) => (id ? catName.get(id) : undefined))
+      const cat = productCategoryIds(r)
+        .map((id) => catName.get(id))
         .find(Boolean);
       const priced = r as unknown as Parameters<typeof resolvePrice>[1];
       const base = await resolvePrice(ctx, priced, null);

@@ -31,7 +31,7 @@ const json = (body: unknown, status = 200) =>
 const fail = (status: number, error: string) => json({ error }, status);
 
 const PRODUCT_COLUMNS =
-  "id, name, price, currency, is_active, stock_quantity, fulfillment_kind, category_id, sort_order, description";
+  "id, name, price, currency, is_active, stock_quantity, fulfillment_kind, category_id, category_ids, sort_order, description";
 
 async function handle(request: Request, path: string): Promise<Response> {
   const api = await import("@/core/api/public-api");

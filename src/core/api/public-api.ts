@@ -1,4 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { productCategoryIds } from "@/core/catalog/category-ids";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { OrderWithItems } from "@/core/orders/orders";
 import { getSetting, setSetting } from "@/core/settings/settings";
@@ -125,6 +126,7 @@ export type ApiProductRow = {
   stock_quantity: number | null;
   fulfillment_kind: string;
   category_id: string | null;
+  category_ids?: unknown;
   sort_order: number;
   description: string;
 };
@@ -138,7 +140,8 @@ export function apiProduct(p: ApiProductRow) {
     active: p.is_active,
     stock: p.stock_quantity,
     kind: p.fulfillment_kind,
-    category_id: p.category_id,
+    category_id: productCategoryIds(p)[0] ?? null,
+    category_ids: productCategoryIds(p),
     sort_order: p.sort_order,
     description: p.description,
   };

@@ -1,4 +1,5 @@
 import type { Json } from "@/core/db-types";
+import { productCategoryIds } from "@/core/catalog/category-ids";
 import { allSellerNotes } from "@/core/customers/seller-notes";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
@@ -170,11 +171,7 @@ export async function segmentMembers(
       "товары категории",
     );
     productIds = products
-      .filter(
-        (p) =>
-          p.category_id === seg.categoryId ||
-          (Array.isArray(p.category_ids) && (p.category_ids as unknown[]).includes(seg.categoryId)),
-      )
+      .filter((p) => productCategoryIds(p).includes(seg.categoryId))
       .map((p) => p.id);
   }
   const orderIds = new Set<number>();
