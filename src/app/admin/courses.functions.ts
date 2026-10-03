@@ -133,6 +133,17 @@ export const revokeStudentChannelFn = createServerFn({ method: "POST" })
     return revokeStudentChannel(ctx, data.orderItemId);
   });
 
+/** Перевести ученика в другой поток (менеджер и выше). */
+export const moveStudentCohortFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ orderItemId: z.string().uuid(), cohortId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { moveStudent } = await import("./course-channel.server");
+    return moveStudent(ctx, data.orderItemId, data.cohortId);
+  });
+
 /** Видимые боту участники закрытых каналов без действующей покупки (только чтение). */
 export const channelStrangersFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await moduleAdmin("manager");

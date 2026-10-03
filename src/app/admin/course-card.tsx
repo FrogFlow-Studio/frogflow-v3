@@ -3,6 +3,7 @@ import {
   channelStrangersFn,
   checkCourseChannelFn,
   kickChannelStrangerFn,
+  moveStudentCohortFn,
   courseFn,
   courseVariantsFn,
   courseStudentsFn,
@@ -307,7 +308,7 @@ export function CourseCard({ productId, t }: { productId: string; t: AdminT }) {
         {saved && <span className="text-xs text-ok">✓</span>}
       </div>
       <ErrorBox error={save.error} />
-      <Students productId={productId} t={t} />
+      <Students productId={productId} cohortList={course.cohorts ?? []} t={t} />
       {[
         ...(course.channel ? [{ chat: course.channel, label: t("product.strangersChannel") }] : []),
         ...(course.cohorts ?? []).flatMap((c) =>
@@ -559,7 +560,15 @@ function ChannelField({
 type StudentsData = Awaited<ReturnType<typeof courseStudentsFn>>;
 
 /** Прогресс учеников: кто купил, открывал ли курс, сколько уроков пройдено. */
-function Students({ productId, t }: { productId: string; t: AdminT }) {
+function Students({
+  productId,
+  cohortList,
+  t,
+}: {
+  productId: string;
+  cohortList: Cohort[];
+  t: AdminT;
+}) {
   const [data, setData] = useState<StudentsData | null>(null);
   const [cohort, setCohort] = useState<string>("");
   const [onlyBehind, setOnlyBehind] = useState(false);
@@ -571,6 +580,13 @@ function Students({ productId, t }: { productId: string; t: AdminT }) {
   const revoke = useAction(async (orderItemId: string) => {
     if (!window.confirm(t("product.studentRevokeConfirm"))) return;
     await revokeStudentChannelFn({ data: { orderItemId } });
+    await load();
+  });
+  const move = useAction(async (orderItemId: string, cohortId: string) => {
+    const to = cohortList.find((c) => c.id === cohortId);
+    if (!to || !window.confirm(t("product.studentMoveConfirm", { cohort: to.title }))) return;
+    const r = await moveStudentCohortFn({ data: { orderItemId, cohortId } });
+    if (!r.ok) throw new Error(t("product.studentMoveFailed"));
     await load();
   });
   if (!data) return null;
@@ -634,6 +650,27 @@ function Students({ productId, t }: { productId: string; t: AdminT }) {
                     revise: s.homework.revise,
                   })}`}
               </span>
+              {cohortList.length > 1 && (
+                <select
+                  className="input w-auto text-xs"
+                  aria-label={t("product.studentMove")}
+                  disabled={move.busy}
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value)
+                      void move.run(s.orderItemId, e.target.value).catch(() => {});
+                  }}
+                >
+                  <option value="">{t("product.studentMove")}</option>
+                  {cohortList
+                    .filter((c) => c.id !== s.cohortId)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title}
+                      </option>
+                    ))}
+                </select>
+              )}
               {s.inChannel && (
                 <button
                   type="button"
@@ -651,7 +688,7 @@ function Students({ productId, t }: { productId: string; t: AdminT }) {
           ))}
         </ul>
       )}
-      <ErrorBox error={revoke.error} />
+      <ErrorBox error={revoke.error ?? move.error} />
     </div>
   );
 }

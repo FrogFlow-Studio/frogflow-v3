@@ -39,6 +39,8 @@ export type OrderEventKind =
   /** Возврат курса: покупателя исключили из закрытого канала / Telegram не исключил. */
   | "channel_revoked"
   | "channel_revoke_failed"
+  /** Ученика курса перевели в другой поток. */
+  | "cohort_moved"
   | "approval_sent"
   | "approval_ok"
   | "approval_changes"
@@ -269,6 +271,11 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       return {
         text: `Покупатель исключён из закрытого канала курса (${num(p.kicked)})${who}`,
         tone: "ok",
+      };
+    case "cohort_moved":
+      return {
+        text: `Ученик переведён в другой поток: «${str(p.from) || "—"}» → «${str(p.to)}»${who}${num(p.failed) > 0 ? " — не удалось исключить его из чата прежнего потока, удалите вручную" : ""}${p.stuck ? " — ссылка в чат нового потока не подготовлена, обратитесь к администратору платформы" : ""}`,
+        tone: num(p.failed) > 0 || p.stuck ? "danger" : "ok",
       };
     case "channel_revoke_failed":
       return {

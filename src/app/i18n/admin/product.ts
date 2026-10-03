@@ -93,6 +93,11 @@ export const ru = {
   "product.studentRevokeConfirm":
     "Исключить ученика из закрытого канала курса? Новую ссылку по этой покупке он не получит.",
   "product.studentRevoked": "канал закрыт",
+  "product.studentMove": "Перевести в поток…",
+  "product.studentMoveConfirm":
+    "Перевести ученика в поток «{cohort}»? Расписание и срок доступа пойдут от нового потока, из чата прежнего потока ученик будет исключён. Пройденные уроки и задания сохранятся.",
+  "product.studentMoveFailed":
+    "Не удалось перевести: ученика уже перевели, поток удалён или курс не начат.",
   "product.strangers": "В канале без доступа",
   "product.strangersChannel": "Канал курса",
   "product.strangersChat": "Чат потока «{cohort}»",
@@ -247,6 +252,11 @@ export const kk: SectionDict<typeof ru> = {
   "product.studentRevokeConfirm":
     "Оқушыны курстың жабық арнасынан шығару керек пе? Осы сатып алу бойынша жаңа сілтеме алмайды.",
   "product.studentRevoked": "арна жабық",
+  "product.studentMove": "Ағынға ауыстыру…",
+  "product.studentMoveConfirm":
+    "Оқушыны «{cohort}» ағынына ауыстыру керек пе? Кесте мен қолжетімділік мерзімі жаңа ағыннан есептеледі, оқушы бұрынғы ағын чатынан шығарылады. Өтілген сабақтар мен тапсырмалар сақталады.",
+  "product.studentMoveFailed":
+    "Ауыстыру мүмкін болмады: оқушы ауыстырылып қойған, ағын жойылған немесе курс басталмаған.",
   "product.strangers": "Арнада, бірақ қолжетімділіксіз",
   "product.strangersChannel": "Курс арнасы",
   "product.strangersChat": "«{cohort}» ағыны чаты",
@@ -403,6 +413,11 @@ export const en: SectionDict<typeof ru> = {
   "product.studentRevokeConfirm":
     "Remove the student from the private course channel? They won’t get a new link for this purchase.",
   "product.studentRevoked": "channel closed",
+  "product.studentMove": "Move to cohort…",
+  "product.studentMoveConfirm":
+    "Move the student to cohort “{cohort}”? The schedule and access term will follow the new cohort, and the student will be removed from the previous cohort’s chat. Completed lessons and homework are kept.",
+  "product.studentMoveFailed":
+    "Could not move: the student was already moved, the cohort was deleted, or the course has not started.",
   "product.strangers": "In the channel without access",
   "product.strangersChannel": "Course channel",
   "product.strangersChat": "Cohort chat “{cohort}”",
@@ -556,6 +571,11 @@ export const uz: SectionDict<typeof ru> = {
   "product.studentRevokeConfirm":
     "O‘quvchini kursning yopiq kanalidan chiqarasizmi? Bu xarid bo‘yicha yangi havola olmaydi.",
   "product.studentRevoked": "kanal yopilgan",
+  "product.studentMove": "Oqimga o‘tkazish…",
+  "product.studentMoveConfirm":
+    "O‘quvchini «{cohort}» oqimiga o‘tkazasizmi? Jadval va kirish muddati yangi oqimdan hisoblanadi, o‘quvchi oldingi oqim chatidan chiqariladi. O‘tilgan darslar va topshiriqlar saqlanadi.",
+  "product.studentMoveFailed":
+    "O‘tkazib bo‘lmadi: o‘quvchi allaqachon o‘tkazilgan, oqim o‘chirilgan yoki kurs boshlanmagan.",
   "product.strangers": "Kanalda, lekin ruxsatsiz",
   "product.strangersChannel": "Kurs kanali",
   "product.strangersChat": "«{cohort}» oqimi chati",

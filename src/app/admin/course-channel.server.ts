@@ -126,3 +126,18 @@ export async function kickStranger(
     telegramChannelInviter(telegramApi(token, env().TELEGRAM_API_BASE)),
   );
 }
+
+/** Перевод ученика в другой поток: исключение из старого чата — через бота магазина. */
+export async function moveStudent(ctx: TenantContext, orderItemId: string, cohortId: string) {
+  let access = null;
+  try {
+    const { telegramChannelInviter } = await import("@/channels/telegram/courses");
+    access = telegramChannelInviter(
+      telegramApi(ctx.secrets.telegramToken(), env().TELEGRAM_API_BASE),
+    );
+  } catch {
+    /* бота нет — поток сменится, из чата удалить придётся вручную (событие в заказе скажет) */
+  }
+  const { moveStudentCohort } = await import("@/core/courses/move.server");
+  return moveStudentCohort(ctx, orderItemId, cohortId, access);
+}

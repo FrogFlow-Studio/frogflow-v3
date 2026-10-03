@@ -68,7 +68,7 @@ type InviteRecord = {
   revoked?: string;
 };
 
-function parseInvite(raw: string | null): InviteRecord {
+export function parseInvite(raw: string | null): InviteRecord {
   if (!raw) return {};
   try {
     const o = JSON.parse(raw) as Record<string, unknown>;
@@ -330,7 +330,7 @@ export async function revokeItemChannel(
   );
 }
 
-async function revokeItemChannelDetailed(
+export async function revokeItemChannelDetailed(
   ctx: TenantContext,
   orderItemId: string,
   chat: string,

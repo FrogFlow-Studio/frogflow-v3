@@ -24,6 +24,7 @@ export type CourseStudent = {
   open: number;
   done: number;
   cohort: string | null;
+  cohortId: string | null;
   /** Название варианта-тарифа; null — без вариантов. */
   tariff: string | null;
   homework: { submitted: number; accepted: number; revise: number };
@@ -123,6 +124,7 @@ export async function courseStudents(
       open,
       done,
       cohort: tl.cohort?.title || null,
+      cohortId: tl.cohort?.id ?? null,
       tariff: i.product_variant_id ? (variantName.get(i.product_variant_id) ?? null) : null,
       homework: hw,
       behind: !tl.expired && (open - done >= 2 || hw.revise > 0),
