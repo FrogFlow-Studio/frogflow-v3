@@ -10,6 +10,7 @@ import { MODULE_KEYS } from "@/core/modules/registry";
 import { requireTenant, tenantContext, tenantDirectory } from "@/core/tenant/resolve.server";
 import { foreignZernioAccounts } from "@/core/tenant/zernio-accounts";
 import { decryptSecret, isEncryptedSecret } from "@/core/secrets/vault";
+import { launchCourses } from "@/app/admin/school-launch.server";
 import { evaluatePreflight, type Preflight } from "@/core/tenant/preflight";
 import { withVipChecks, type VipPreflightInput } from "@/core/tenant/preflight-vip";
 import type { Tenant } from "@/core/tenant/types";
@@ -195,6 +196,13 @@ export async function preflight(botId: string): Promise<Preflight> {
     pricelistInput(t),
     t.modules.loyalty ? loyaltyInput(botId) : Promise.resolve(undefined),
   ]);
+  const school = t.modules.courses
+    ? await launchCourses(tenantContext(t)).then((cs) => ({
+        courses: cs.length,
+        withoutLessons: cs.filter((c) => c.lessons === 0).length,
+        withoutChannel: cs.filter((c) => !c.channel).length,
+      }))
+    : undefined;
   const zernioAccountIds = t.settings.zernio?.account_ids ?? [];
   const policy = readPolicy(t.settings);
   const vip = t.modules.vip ? await vipInput(t, mainBotId, chats) : null;
@@ -235,6 +243,7 @@ export async function preflight(botId: string): Promise<Preflight> {
     },
     pricelist,
     ...(loyalty ? { loyalty } : {}),
+    ...(school ? { school } : {}),
   });
   return withVipChecks(base, vip);
 }

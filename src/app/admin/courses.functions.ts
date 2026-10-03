@@ -145,3 +145,11 @@ export const schoolOverviewFn = createServerFn({ method: "GET" }).handler(async 
   const { schoolOverview } = await import("./students.server");
   return schoolOverview(ctx);
 });
+
+/** Чеклист запуска онлайн-школы для главной админки (только чтение). */
+export const schoolLaunchFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await moduleAdmin();
+  const { schoolLaunchInput } = await import("./school-launch.server");
+  const { launchSteps } = await import("@/core/courses/launch");
+  return launchSteps(await schoolLaunchInput(ctx));
+});

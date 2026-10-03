@@ -2,13 +2,14 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { applyNicheTemplateFn, dashboardFn, hideSetupFn } from "@/app/admin/admin.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
-import { schoolOverviewFn } from "@/app/admin/courses.functions";
+import { schoolLaunchFn, schoolOverviewFn } from "@/app/admin/courses.functions";
 import { verticalTitleKey } from "@/app/i18n/admin/catalog";
 import { Badge, Card, Empty, ErrorBox, PageTitle, Stat, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 import { OrderStatus } from "./admin._authed.orders";
 import { nextSetupStep } from "@/app/admin/setup";
+import { launchDone, type LaunchStepKey } from "@/core/courses/launch";
 import { MovedWelcome } from "@/app/admin/moved-welcome";
 import { useLiveOrders } from "@/app/admin/live-orders";
 
@@ -58,6 +59,7 @@ function Dashboard() {
           testOrder={d.setup.testOrder}
         />
       )}
+      {shop.vertical === "courses" && shop.modules.courses && <LaunchCard t={t} />}
       {shop.vertical === "courses" && shop.modules.courses && <SchoolCard t={t} loc={loc} />}
       {!d.setup.hidden && doneCount < steps.length && (
         <Card
@@ -304,6 +306,47 @@ function Step({
         {!done && <div className="text-muted">{children}</div>}
       </div>
     </li>
+  );
+}
+
+/** Онлайн-школа: чеклист запуска (core/courses/launch), пока не пройдены все шаги. */
+function LaunchCard({ t }: { t: AdminT }) {
+  const [steps, setSteps] = useState<Awaited<ReturnType<typeof schoolLaunchFn>> | null>(null);
+  useEffect(() => {
+    void schoolLaunchFn().then(setSteps, () => setSteps(null));
+  }, []);
+  if (!steps || launchDone(steps)) return null;
+  const done = steps.filter((s) => s.done).length;
+  const linkTo: Partial<Record<LaunchStepKey, "/admin/products">> = {
+    course: "/admin/products",
+    lessons: "/admin/products",
+    channel: "/admin/products",
+  };
+  return (
+    <Card
+      title={`${t("launch.title")} · ${t("launch.progress", { done, total: steps.length })}`}
+      className="mb-4"
+    >
+      <ol className="space-y-2 text-sm">
+        {steps.map((s) => (
+          <li key={s.key} className="flex items-start gap-2">
+            <span className={s.done ? "text-ok" : "text-muted"}>{s.done ? "✓" : "○"}</span>
+            <div>
+              {!s.done && linkTo[s.key] ? (
+                <Link to={linkTo[s.key]!} className="font-medium hover:underline">
+                  {t(`launch.${s.key}`)}
+                </Link>
+              ) : (
+                <span className={s.done ? "text-muted line-through" : "font-medium"}>
+                  {t(`launch.${s.key}`)}
+                </span>
+              )}
+              {!s.done && <div className="text-muted">{t(`launch.${s.key}Hint`)}</div>}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </Card>
   );
 }
 

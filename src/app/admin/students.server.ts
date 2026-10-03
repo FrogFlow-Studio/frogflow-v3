@@ -21,7 +21,10 @@ export type SchoolCourse = {
   students: CourseStudent[];
 };
 
-export async function schoolStudents(ctx: TenantContext): Promise<SchoolCourse[]> {
+/** Товары-курсы магазина: у товара есть запись `course_<id>` с уроками. */
+export async function courseProducts(
+  ctx: TenantContext,
+): Promise<Array<{ id: string; name: string }>> {
   const keys = await pageAll<{ key: string }>(
     (from, to) =>
       ctx.db
@@ -37,14 +40,17 @@ export async function schoolStudents(ctx: TenantContext): Promise<SchoolCourse[]
     return m ? [m[1]!] : [];
   });
   if (ids.length === 0) return [];
-  const products = await selectIn<{ id: string; name: string }>("курсы", ids, (chunk) =>
+  return selectIn<{ id: string; name: string }>("курсы", ids, (chunk) =>
     ctx.db
       .from("products")
       .select("id, name")
       .in("id", chunk as string[]),
   );
+}
+
+export async function schoolStudents(ctx: TenantContext): Promise<SchoolCourse[]> {
   const out: SchoolCourse[] = [];
-  for (const p of products) {
+  for (const p of await courseProducts(ctx)) {
     const r = await courseStudents(ctx, p.id);
     if (r.total > 0) out.push({ productId: p.id, name: p.name, ...r });
   }

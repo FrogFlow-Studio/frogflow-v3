@@ -261,3 +261,35 @@ describe("releasesTelegramOnSwitch", () => {
     expect(releasesTelegramOnSwitch("v1", "v2")).toBe(false);
   });
 });
+
+describe("онлайн-школа в проверке переезда", () => {
+  const check = (school?: { courses: number; withoutLessons: number; withoutChannel: number }) =>
+    evaluatePreflight({
+      ...base,
+      modulesOn: [...base.modulesOn],
+      ...(school ? { school } : {}),
+    }).checks.find((c) => c.key === "school");
+
+  it("не передано — пункта нет; всё на месте — тоже", () => {
+    expect(check()).toBeUndefined();
+    expect(check({ courses: 2, withoutLessons: 0, withoutChannel: 0 })).toBeUndefined();
+  });
+
+  it("нет курсов — подсказка, не блок", () => {
+    expect(check({ courses: 0, withoutLessons: 0, withoutChannel: 0 })).toMatchObject({
+      level: "info",
+      title: "В школе нет курсов",
+    });
+  });
+
+  it("курс без уроков — предупреждение с числами; без канала — подсказка", () => {
+    expect(check({ courses: 3, withoutLessons: 1, withoutChannel: 3 })).toMatchObject({
+      level: "warn",
+      detail: expect.stringContaining("1 из 3"),
+    });
+    expect(check({ courses: 2, withoutLessons: 0, withoutChannel: 2 })).toMatchObject({
+      level: "info",
+      title: "У курсов нет закрытого канала",
+    });
+  });
+});

@@ -64,6 +64,11 @@ export type PreflightInput = {
    * меняется (в v1 балл списывался в валюте заказа, в v2 — в валюте магазина).
    */
   loyalty?: { holders: number; foreignOrders30d: number; shopCurrency: string };
+  /**
+   * Онлайн-школа (модуль courses): сколько курсов, у скольких нет ни одного
+   * урока и у скольких не подключён закрытый канал.
+   */
+  school?: { courses: number; withoutLessons: number; withoutChannel: number };
 };
 
 export function evaluatePreflight(i: PreflightInput): Preflight {
@@ -274,6 +279,29 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
       level: "warn",
       title: "Цена балла изменится у покупателей в другой валюте",
       detail: `Баллы есть у ${loyalty.holders} покупателей, за 30 дней ${loyalty.foreignOrders30d} заказов не в ${loyalty.shopCurrency}. В v1 балл списывался 1 к 1 в валюте заказа, в v2 — 1 балл = 1 ${loyalty.shopCurrency} по курсу; балансы не пересчитываются. Предупредите продавца до переезда.`,
+    });
+  const school = i.school;
+  if (school && school.courses === 0)
+    checks.push({
+      key: "school",
+      level: "info",
+      title: "В школе нет курсов",
+      detail:
+        "Модуль «Курсы» включён, а курса ещё нет. Продавец создаёт его в «Товары» → «Новый курс».",
+    });
+  else if (school?.withoutLessons)
+    checks.push({
+      key: "school",
+      level: "warn",
+      title: "Курсы без уроков",
+      detail: `Курсов без единого урока: ${school.withoutLessons} из ${school.courses}. Покупатель оплатит такой курс и ничего не получит; добавьте уроки или скройте товар.`,
+    });
+  else if (school?.withoutChannel)
+    checks.push({
+      key: "school",
+      level: "info",
+      title: "У курсов нет закрытого канала",
+      detail: `Курсов без канала: ${school.withoutChannel} из ${school.courses}. Ученики получат уроки только в боте; канал подключается в карточке курса (бот магазина — администратор с правом приглашать).`,
     });
   if (i.appUrl)
     checks.push({
