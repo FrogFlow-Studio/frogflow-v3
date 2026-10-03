@@ -96,6 +96,9 @@ export type Msg = {
   pointsEarned: (n: number) => string;
   /** Direct/WhatsApp: шаг «списать баллы?» при оформлении. */
   pointsAsk: (n: number) => string;
+  /** Ответ на слово «баллы» в Instagram/WhatsApp: баланс и потолок списания. */
+  pointsInfo: (n: number, currency: string, maxPercent: number) => string;
+  pointsNone: (earnPercent: number) => string;
   pointsYesBtn: string;
   pointsNoBtn: string;
   giftCertificateBtn: string;
@@ -421,6 +424,10 @@ const ru: Msg = {
   promoCodeRemoved: "Промокод убран.",
   discountLine: (a) => `🎟 Скидка по промокоду: −${a}\n`,
   pointsAsk: (n) => `🏆 У вас ${n} баллов. Списать их в счёт этого заказа?`,
+  pointsInfo: (n, cur, max) =>
+    `🏆 Ваши баллы: ${n} (1 балл = 1 ${cur}). В следующем заказе можно списать до ${max}% его суммы — при оформлении бот спросит.`,
+  pointsNone: (percent) =>
+    `🏆 Баллов пока нет. Они начисляются за выданные заказы: ${percent}% от суммы.`,
   loyaltyTierLine: (name, percent, toNext) =>
     `🏅 Ваш уровень: ${name} (${percent}% баллами)${toNext ? `. ${toNext}` : ""}\n`,
   loyaltyTierNext: (amount, name) => `До уровня «${name}» осталось ${amount}`,
@@ -730,6 +737,10 @@ const kk: Msg = {
   minOrderBelow: (min, short) =>
     `⚠️ Тапсырыстың ең аз сомасы — ${min}. Тағы ${short} сомасына тауар қосыңыз.`,
   pointsAsk: (n) => `🏆 Сізде ${n} балл бар. Осы тапсырысқа жұмсаймыз ба?`,
+  pointsInfo: (n, cur, max) =>
+    `🏆 Сіздің ұпайларыңыз: ${n} (1 ұпай = 1 ${cur}). Келесі тапсырыста оның сомасының ${max}%-ына дейін жұмсауға болады — рәсімдеу кезінде бот сұрайды.`,
+  pointsNone: (percent) =>
+    `🏆 Әзірге ұпай жоқ. Ол берілген тапсырыстар үшін есептеледі: соманың ${percent}%-ы.`,
   loyaltyTierLine: (name, percent, toNext) =>
     `🏅 Сіздің деңгейіңіз: ${name} (${percent}% ұпаймен)${toNext ? `. ${toNext}` : ""}\n`,
   loyaltyTierNext: (amount, name) => `«${name}» деңгейіне дейін ${amount} қалды`,
@@ -924,6 +935,10 @@ const en: Msg = {
   promoCodeRemoved: "Promo code removed.",
   discountLine: (a) => `🎟 Promo discount: −${a}\n`,
   pointsAsk: (n) => `🏆 You have ${n} points. Use them for this order?`,
+  pointsInfo: (n, cur, max) =>
+    `🏆 Your points: ${n} (1 point = 1 ${cur}). On your next order you can spend up to ${max}% of its total — the bot will ask at checkout.`,
+  pointsNone: (percent) =>
+    `🏆 You have no points yet. They are earned on delivered orders: ${percent}% of the total.`,
   loyaltyTierLine: (name, percent, toNext) =>
     `🏅 Your level: ${name} (${percent}% in points)${toNext ? `. ${toNext}` : ""}\n`,
   loyaltyTierNext: (amount, name) => `${amount} left to the “${name}” level`,
@@ -1115,6 +1130,10 @@ const uz: Msg = {
   giftRestIssued: (code, sum) =>
     `🎁 Sertifikat buyurtma summasidan ko‘p — qolgan ${sum} yangi kod bilan saqlandi:\n<code>${code}</code>\nUni keyingi buyurtmada kiriting.`,
   pointsAsk: (n) => `🏆 Sizda ${n} ball bor. Ushbu buyurtma uchun sarflaymizmi?`,
+  pointsInfo: (n, cur, max) =>
+    `🏆 Sizning ballaringiz: ${n} (1 ball = 1 ${cur}). Keyingi buyurtmada uning summasining ${max}% igacha sarflash mumkin — rasmiylashtirishda bot so‘raydi.`,
+  pointsNone: (percent) =>
+    `🏆 Hozircha ball yo‘q. Ular topshirilgan buyurtmalar uchun hisoblanadi: summaning ${percent}%.`,
   loyaltyTierLine: (name, percent, toNext) =>
     `🏅 Sizning darajangiz: ${name} (${percent}% ball bilan)${toNext ? `. ${toNext}` : ""}\n`,
   loyaltyTierNext: (amount, name) => `«${name}» darajasigacha ${amount} qoldi`,

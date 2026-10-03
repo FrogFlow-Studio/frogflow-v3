@@ -62,6 +62,14 @@ import { askDeliveryLangBeforeOrder, cartLanguageChoices } from "@/core/cart/lan
 import { belowMinimum } from "@/core/cart/min-order";
 import { localeFlags as flags, SUPPORTED_LOCALES } from "@/core/i18n/locale";
 import { COPY, escapeHtml, minOrderText, normalizePhone, type Msg } from "@/channels/telegram/copy";
+import { getSettingStrict } from "@/core/settings/settings";
+import {
+  LOYALTY_MAX_REDEEM_KEY,
+  loyaltyBalance,
+  loyaltyEarnPercent,
+  parseMaxRedeemPercent,
+  shopCurrency,
+} from "@/core/discounts/discounts";
 import {
   adminTelegramApi,
   notifyAdminsHtml,
@@ -461,7 +469,8 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     if (!featureAllows(s, command)) return "question";
     // Строгий режим: «оплата», «страна», «язык» — частые слова в переписке с
     // продавцом; без живого разговора с ботом они его не будят.
-    if (!["catalog", "cart", "orders"].includes(command) && !inDialog(s)) return "question";
+    if (!["catalog", "cart", "orders", "points"].includes(command) && !inDialog(s))
+      return "question";
     if (mode && mode !== "idle" && mode !== "awaiting_proof") await setMode(s, { mode: "idle" });
     switch (command) {
       case "catalog":
@@ -474,6 +483,9 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         return "handled";
       case "orders":
         await showOrders(s);
+        return "handled";
+      case "points":
+        await showPoints(s);
         return "handled";
       case "language":
         await askLocale(s);
@@ -782,6 +794,9 @@ function featureAllows(s: Shop, command: DirectCommand | string): boolean {
     case "FT":
     case "NOTE":
       return f.checkout;
+    case "points":
+      // Модуль лояльности выключен — слово не наше: реплика уходит продавцу.
+      return s.ctx.tenant.modules.loyalty;
     default:
       return true;
   }
@@ -2121,6 +2136,21 @@ async function showOrders(s: Shop) {
       payload: `REORDER:${repeatable.id}`,
     });
   await reply(s, text, { force: true, buttons });
+}
+
+/** «Баллы»: баланс и сколько можно списать в следующем заказе; продавцу ничего не уходит. */
+async function showPoints(s: Shop) {
+  const [balance, maxRaw, currency, percent] = await Promise.all([
+    loyaltyBalance(s.ctx, s.customer.telegramId),
+    getSettingStrict(s.ctx, LOYALTY_MAX_REDEEM_KEY),
+    shopCurrency(s.ctx),
+    loyaltyEarnPercent(s.ctx),
+  ]);
+  const text =
+    balance > 0
+      ? s.m.pointsInfo(balance, currency, parseMaxRedeemPercent(maxRaw))
+      : s.m.pointsNone(percent);
+  await reply(s, plain(text), { force: true, buttons: [BTN.catalog(s.m), BTN.cart(s.m)] });
 }
 
 export const __test = { fingerprint, env };
