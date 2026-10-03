@@ -1986,6 +1986,7 @@ async function receiveProof(
       expectedAmount: Number(res.order.total),
       currency: res.order.currency,
       orderId,
+      recipientCountry: res.order.country_code,
     });
     s.customer = checked.customer;
     const v = checked.result;

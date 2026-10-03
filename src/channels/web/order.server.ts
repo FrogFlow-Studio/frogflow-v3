@@ -138,6 +138,7 @@ export async function receiveWebProof(
       expectedAmount: Number(res.order.total),
       currency: res.order.currency,
       orderId,
+      recipientCountry: res.order.country_code,
     });
     if (!v.ok && isRetryReason(v.reason)) {
       await ctx.db

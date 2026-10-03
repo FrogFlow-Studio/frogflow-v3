@@ -398,7 +398,79 @@ export function isStaleReceipt(
   return dates.every((d) => today - d > maxAgeDays);
 }
 
+/** Реквизиты продавца, найденные в тексте способа оплаты: хвосты номеров и имя. */
+export type RecipientHints = { tails: string[]; names: string[] };
+
+const NAME_STOPWORDS = new Set(["ип", "тоо", "ао", "ооо", "kaspi", "gold", "карта", "карты"]);
+const letterTokens = (s: string): string[] =>
+  (
+    s
+      .toLowerCase()
+      .replace(/ё/g, "е")
+      .match(/[a-zа-яәіңғүұқөһ]{3,}/g) ?? []
+  ).filter((w) => !NAME_STOPWORDS.has(w));
+
+/**
+ * Реквизиты продавца из свободного текста «как оплатить»: телефон (10–12
+ * цифр) и карта (13–19 цифр) дают последние 4 цифры; имя — слова после
+ * «Получатель:/ФИО:/Имя:». Чек Kaspi показывает имя и маскированный номер, поэтому
+ * полный номер для сверки не нужен.
+ */
+export function recipientHintsFromInstructions(instructions: string): RecipientHints {
+  const tails = new Set<string>();
+  for (const m of instructions.matchAll(/\+?\d[\d\s().-]{8,24}\d/g)) {
+    const digits = m[0].replace(/\D/g, "");
+    if (digits.length >= 10 && digits.length <= 19) tails.add(digits.slice(-4));
+  }
+  const names = new Set<string>();
+  for (const m of instructions.matchAll(
+    /(?:получател[ьяю]?|фио|на\s+имя|имя|recipient|name|алушы)\s*[:-]\s*([^\n,;]{3,60})/gi,
+  ))
+    for (const w of letterTokens(m[1] ?? "")) names.add(w);
+  return { tails: [...tails], names: [...names] };
+}
+
+export type RecipientCheck = "match" | "mismatch" | "unknown";
+
+/**
+ * Получатель в чеке против реквизитов продавца. «unknown» — сверять нечем:
+ * в чеке нет блока получателя или нет данных того же вида (в реквизитах
+ * только карта, а в чеке одно имя); такой чек проверяется по сумме, как раньше.
+ * «mismatch» — в чеке есть сопоставимые данные получателя, и ни одно не
+ * совпало: чек смотрит продавец.
+ */
+export function checkReceiptRecipient(text: string, hints: RecipientHints): RecipientCheck {
+  if (hints.tails.length === 0 && hints.names.length === 0) return "unknown";
+  const label = /(?:получател[ьяю]?|кому|recipient|алушы)\s*[:-]?\s*/i.exec(text);
+  if (!label) return "unknown";
+  const region = text.slice(label.index + label[0].length, label.index + label[0].length + 120);
+  const nameSeg = region.split(/[\n\d*+]/, 1)[0] ?? "";
+  const receiptNames = new Set(letterTokens(nameSeg));
+  // Хвосты номеров в чеке: телефон или карта, целиком или с маской («*1234»,
+  // «+7 705 ***-**-12-34»). Даты и суммы без маски и короче 10 цифр не берём.
+  const receiptTails = new Set<string>();
+  const noDates = region
+    .replace(/\d{1,2}[./]\d{1,2}[./]\d{2,4}|\d{4}-\d{2}-\d{2}/g, " ")
+    .replace(/\d{1,2}:\d{2}(?::\d{2})?/g, " ");
+  for (const m of noDates.matchAll(/[+*•×]?\d?[\d\s().*•×-]{3,24}\d/g)) {
+    const digits = m[0].replace(/\D/g, "");
+    if (digits.length >= 4 && (/[*•×]/.test(m[0]) || digits.length >= 10))
+      receiptTails.add(digits.slice(-4));
+  }
+  let compared = 0;
+  if (hints.names.length > 0 && receiptNames.size > 0) {
+    compared++;
+    if (hints.names.some((n) => receiptNames.has(n))) return "match";
+  }
+  if (hints.tails.length > 0 && receiptTails.size > 0) {
+    compared++;
+    if (hints.tails.some((t) => receiptTails.has(t))) return "match";
+  }
+  return compared > 0 ? "mismatch" : "unknown";
+}
+
 export type ReceiptReason =
+  | "recipient_mismatch"
   | "not_receipt"
   | "payment_failed"
   | "amount_mismatch"

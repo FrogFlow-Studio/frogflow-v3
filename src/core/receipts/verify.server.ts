@@ -13,6 +13,8 @@ import { getSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { convertForReceipt } from "@/core/pricing/pricing";
 import {
   analyzeReceiptText,
+  checkReceiptRecipient,
+  recipientHintsFromInstructions,
   SAME_CURRENCY_UNDERPAY,
   detectReceiptCurrencies,
   isPdf,
@@ -242,6 +244,8 @@ export async function verifyReceipt(
     countUsage?: boolean;
     /** Время проверки: задано — устаревший чек (`receipt_stale`) идёт продавцу; аудит не задаёт. */
     now?: Date;
+    /** Страна способа оплаты заказа: задана — получатель в чеке сверяется с реквизитами продавца. */
+    recipientCountry?: string | null;
   },
 ): Promise<VerifyResult> {
   let text: string;
@@ -267,6 +271,33 @@ export async function verifyReceipt(
   );
   const extractedText = text.slice(0, 2000);
   if (!analysis.ok) return { ...analysis, extractedText };
+  if (p.recipientCountry) {
+    // Получатель в чеке против реквизитов способа оплаты, которым платил покупатель.
+    const { data: method, error: methodError } = await ctx.db
+      .from("payment_methods")
+      .select("instructions")
+      .eq("country_code", p.recipientCountry)
+      .eq("is_active", true)
+      .order("sort_order")
+      .order("id")
+      .limit(1)
+      .maybeSingle();
+    if (methodError)
+      return {
+        ok: false,
+        reason: "ocr_unavailable",
+        detail: "Не удалось прочитать реквизиты способа оплаты — чек посмотрит продавец.",
+        extractedText,
+      };
+    const hints = recipientHintsFromInstructions(method?.instructions ?? "");
+    if (checkReceiptRecipient(text, hints) === "mismatch")
+      return {
+        ok: false,
+        reason: "recipient_mismatch",
+        detail: "Получатель в чеке не совпадает с реквизитами способа оплаты — проверьте вручную.",
+        extractedText,
+      };
+  }
   const { data: reuse } = await ctx.db
     .from("orders")
     .select("id, display_no, order_no")

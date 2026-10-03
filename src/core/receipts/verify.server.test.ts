@@ -408,3 +408,36 @@ describe("verifyCustomerReceipt — лимит проверок на покуп�
     expect(await verifyReceipt(setup().ctx, base)).toMatchObject({ ok: true });
   });
 });
+
+describe("verifyReceipt — получатель в чеке", () => {
+  const withMethod = (instructions: string) => {
+    const s = setup();
+    s.db.tables.payment_methods = [
+      { id: "m1", bot_id: BOT, country_code: "KZ", is_active: true, sort_order: 0, instructions },
+    ];
+    return s;
+  };
+  const opts = { ...base, recipientCountry: "KZ" };
+  it("получатель совпал — чек принят", async () => {
+    const { ctx } = withMethod("Получатель: Иванов Иван, Kaspi +7 705 123-45-67");
+    mockVision("Оплата успешно\nПолучатель: Иван И.\nСумма: 1000 KZT");
+    expect(await verifyReceipt(ctx, opts)).toMatchObject({ ok: true, matchedAmount: 1000 });
+  });
+  it("получатель другой — recipient_mismatch, чек уходит продавцу", async () => {
+    const { ctx } = withMethod("Получатель: Иванов Иван, Kaspi +7 705 123-45-67");
+    mockVision("Оплата успешно\nПолучатель: Пётр С.\nСумма: 1000 KZT");
+    const r = await verifyReceipt(ctx, opts);
+    expect(r).toMatchObject({ ok: false, reason: "recipient_mismatch" });
+    expect(isRetryReason("recipient_mismatch")).toBe(false);
+  });
+  it("без страны способа оплаты получатель не сверяется", async () => {
+    const { ctx } = withMethod("Получатель: Иванов Иван");
+    mockVision("Оплата успешно\nПолучатель: Пётр С.\nСумма: 1000 KZT");
+    expect(await verifyReceipt(ctx, base)).toMatchObject({ ok: true });
+  });
+  it("в реквизитах нечего сверять — чек принят по сумме, как раньше", async () => {
+    const { ctx } = withMethod("Переводом на счёт");
+    mockVision("Оплата успешно\nПолучатель: Пётр С.\nСумма: 1000 KZT");
+    expect(await verifyReceipt(ctx, opts)).toMatchObject({ ok: true });
+  });
+});

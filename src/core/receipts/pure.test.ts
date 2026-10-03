@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  checkReceiptRecipient,
+  recipientHintsFromInstructions,
   amountsForCurrency,
   analyzeReceiptText,
   detectReceiptCurrencies,
@@ -300,5 +302,46 @@ describe("старый чек — receipt_stale", () => {
       ok: true,
       matchedAmount: 1900,
     });
+  });
+});
+
+describe("получатель в чеке против реквизитов продавца", () => {
+  const hints = recipientHintsFromInstructions(
+    "Kaspi Gold 4400 4301 2345 6789\nПолучатель: Иванов Иван\nТелефон +7 705 123-45-67",
+  );
+  it("из текста берёт хвосты карты и телефона и слова имени", () => {
+    expect(hints.tails.sort()).toEqual(["4567", "6789"]);
+    expect(hints.names.sort()).toEqual(["иван", "иванов"]);
+  });
+  it("совпало имя — match", () => {
+    expect(checkReceiptRecipient("Получатель: Иван И.\nСумма 1000 ₸", hints)).toBe("match");
+  });
+  it("совпал маскированный номер — match", () => {
+    expect(checkReceiptRecipient("Получатель\n+7 705 ***-**-45-67\nСумма 1000 ₸", hints)).toBe(
+      "match",
+    );
+  });
+  it("другое имя и другой номер — mismatch", () => {
+    expect(checkReceiptRecipient("Получатель: Пётр С.\n*0000\nСумма 1000 ₸", hints)).toBe(
+      "mismatch",
+    );
+  });
+  it("в чеке нет блока получателя — unknown, проверка по сумме", () => {
+    expect(checkReceiptRecipient("Оплата успешно. Сумма 1000 ₸", hints)).toBe("unknown");
+  });
+  it("в реквизитах только карта, в чеке одно имя — сверять нечем: unknown", () => {
+    const cardOnly = recipientHintsFromInstructions("Карта 4400 4301 2345 6789");
+    expect(checkReceiptRecipient("Получатель: Пётр С.", cardOnly)).toBe("unknown");
+  });
+  it("дата рядом с получателем не считается номером", () => {
+    const cardOnly = recipientHintsFromInstructions("Карта 4400 4301 2345 6789");
+    expect(checkReceiptRecipient("Получатель: Пётр С.\n05.10.2026 12:30", cardOnly)).toBe(
+      "unknown",
+    );
+  });
+  it("в реквизитах нет ни номера, ни имени — unknown", () => {
+    expect(
+      checkReceiptRecipient("Получатель: Пётр С.", recipientHintsFromInstructions("Переводом")),
+    ).toBe("unknown");
   });
 });
