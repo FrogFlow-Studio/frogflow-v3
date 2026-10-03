@@ -3,6 +3,7 @@ import { ProductSearch, type PickerProduct } from "@/app/admin/product-picker";
 import { useEffect, useState } from "react";
 import { saveUpsellFn, upsellForProductFn } from "@/app/admin/upsell.functions";
 import {
+  copyProductFn,
   deleteProductFn,
   productFn,
   productPreviewFn,
@@ -201,6 +202,11 @@ function ProductEditor() {
     if (isNew) await navigate({ to: "/admin/products/$id", params: { id } });
     else await navigate({ to: "/admin/products" });
   });
+  const copy = useAction(async () => {
+    if (!p) return;
+    const { id } = await copyProductFn({ data: { id: p.id, suffix: t("product.copySuffix") } });
+    await navigate({ to: "/admin/products/$id", params: { id } });
+  });
   const del = useAction(async () => {
     if (!p || !confirm(t("product.deleteConfirm"))) return;
     await deleteProductFn({ data: { id: p.id } });
@@ -255,6 +261,16 @@ function ProductEditor() {
             {!isNew && (
               <button
                 type="button"
+                className="btn-secondary"
+                disabled={copy.busy}
+                onClick={() => void copy.run().catch(() => {})}
+              >
+                {t("product.copy")}
+              </button>
+            )}
+            {!isNew && (
+              <button
+                type="button"
                 className="btn-ghost text-danger"
                 disabled={del.busy}
                 onClick={() => void del.run().catch(() => {})}
@@ -268,7 +284,7 @@ function ProductEditor() {
           </>
         }
       />
-      <ErrorBox error={save.error ?? del.error ?? uploadError} />
+      <ErrorBox error={save.error ?? del.error ?? copy.error ?? uploadError} />
       <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_340px]">
         <div className="space-y-4">
           {school && isNew && (

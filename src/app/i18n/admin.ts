@@ -41,6 +41,7 @@ import * as similar from "./admin/similar";
 import * as schoolQuiz from "./admin/school-quiz";
 import * as errorsCore from "./admin/errors-core";
 import * as errorsVip from "./admin/errors-vip";
+import * as shop4 from "./admin/shop4";
 import * as errorsAdmin from "./admin/errors-admin";
 import * as schoolCohort from "./admin/school-cohort";
 import * as catalog from "./admin/catalog";
@@ -425,6 +426,7 @@ const ru = {
   ...schoolQuiz.ru,
   ...errorsCore.ru,
   ...errorsVip.ru,
+  ...shop4.ru,
   ...errorsAdmin.ru,
   ...schoolCohort.ru,
   ...catalog.ru,
@@ -1476,6 +1478,7 @@ const kk: Dict = {
   ...schoolQuiz.kk,
   ...errorsCore.kk,
   ...errorsVip.kk,
+  ...shop4.kk,
   ...errorsAdmin.kk,
   ...schoolCohort.kk,
   ...catalog.kk,
@@ -1518,6 +1521,7 @@ const en: Dict = {
   ...schoolQuiz.en,
   ...errorsCore.en,
   ...errorsVip.en,
+  ...shop4.en,
   ...errorsAdmin.en,
   ...schoolCohort.en,
   ...catalog.en,
@@ -1560,6 +1564,7 @@ const uz: Dict = {
   ...schoolQuiz.uz,
   ...errorsCore.uz,
   ...errorsVip.uz,
+  ...shop4.uz,
   ...errorsAdmin.uz,
   ...schoolCohort.uz,
   ...catalog.uz,

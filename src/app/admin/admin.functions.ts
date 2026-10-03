@@ -801,6 +801,17 @@ export const setProductActiveFn = createServerFn({ method: "POST" })
     return { ok: true, waitlist };
   });
 
+/** Копия товара (core/catalog/copy): скрытая, без продаж и отзывов; суффикс названия — на языке продавца. */
+export const copyProductFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ id: uuid, suffix: z.string().max(30).default("") }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { copyProduct } = await import("@/core/catalog/copy");
+    return { id: await copyProduct(ctx, data.id, data.suffix) };
+  });
+
 /* ── заказы ──────────────────────────────────────────────────────── */
 
 export const ordersFn = createServerFn({ method: "GET" })
