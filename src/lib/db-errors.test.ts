@@ -36,7 +36,7 @@ const ALLOWED: Record<string, { n: number; why: string }> = {
   },
   "src/core/broadcasts/broadcasts.ts": {
     n: 1,
-    why: "захват получателя: сбой = «не захвачен», сообщение не уходит; застарелый захват закрывается как failed",
+    why: "итог отправки (settle): сбой = строка остаётся захваченной, через CLAIM_STALE_MS закрывается как failed без повтора и в счётчики не попадает",
   },
   "src/core/consultant/engine.server.ts": {
     n: 1,
