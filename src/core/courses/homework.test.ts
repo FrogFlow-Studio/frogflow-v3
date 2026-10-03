@@ -150,6 +150,38 @@ describe("сдача домашнего задания", () => {
     });
     expect(sniffHomeworkMime(new TextEncoder().encode("%PDF-1.7"))).toBe("application/pdf");
   });
+
+  it("голосовое, видео и аудио узнаются по первым байтам", () => {
+    const m = (...b: number[]) => sniffHomeworkMime(new Uint8Array([...b, 0, 0, 0, 0, 0, 0, 0, 0]));
+    expect(m(0x4f, 0x67, 0x67, 0x53)).toBe("audio/ogg");
+    expect(m(0x1a, 0x45, 0xdf, 0xa3)).toBe("video/webm");
+    expect(m(0x49, 0x44, 0x33, 3)).toBe("audio/mpeg");
+    expect(m(0xff, 0xfb, 0x90)).toBe("audio/mpeg");
+    expect(m(0, 0, 0, 0x20, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20)).toBe("audio/mp4");
+    expect(m(0, 0, 0, 0x20, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d)).toBe("video/mp4");
+    expect(m(0xff, 0xd8, 0xff)).toBe("image/jpeg");
+  });
+
+  it("предел: видео крупнее 3 МБ — только когда его поднял бот; картинка — никогда", async () => {
+    const { ctx } = ctxWith();
+    const big = (head: number[]) => {
+      const b = new Uint8Array(4 * 1024 * 1024);
+      b.set(head);
+      return b;
+    };
+    const mp4 = big([0, 0, 0, 0x20, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d]);
+    expect(await uploadHomeworkFile(ctx, ITEM, mp4, "v.mp4")).toEqual({
+      ok: false,
+      reason: "tooLarge",
+    });
+    expect(await uploadHomeworkFile(ctx, ITEM, mp4, "v.mp4", 20 * 1024 * 1024)).toMatchObject({
+      ok: true,
+      file: { mime: "video/mp4" },
+    });
+    expect(
+      await uploadHomeworkFile(ctx, ITEM, big([0xff, 0xd8, 0xff]), "p.jpg", 20 * 1024 * 1024),
+    ).toEqual({ ok: false, reason: "tooLarge" });
+  });
 });
 
 describe("проверка преподавателем", () => {

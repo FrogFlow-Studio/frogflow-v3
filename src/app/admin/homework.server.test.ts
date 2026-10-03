@@ -65,6 +65,25 @@ describe("домашние задания в админке", () => {
     ]);
   });
 
+  it("очередь: голосовое и видео помечены — страница покажет плеер, а не ссылку «скачать»", async () => {
+    const ctx = ctxWith();
+    const p = (await coursePurchase(ctx, ITEM))!;
+    await submitHomework(ctx, p, L1, {
+      text: "",
+      files: [
+        { path: `${T}/hw/${ITEM}/v.ogg`, name: "voice.ogg", mime: "audio/ogg" },
+        { path: `${T}/hw/${ITEM}/k.mp4`, name: "video_note.mp4", mime: "video/mp4" },
+        { path: `${T}/hw/${ITEM}/d.pdf`, name: "работа.pdf", mime: "application/pdf" },
+      ],
+    });
+    const [row] = await homeworkQueue(ctx);
+    expect(row!.attempts[0]!.files.map((f) => [f.name, f.media ?? null, f.image])).toEqual([
+      ["voice.ogg", "audio", false],
+      ["video_note.mp4", "video", false],
+      ["работа.pdf", null, false],
+    ]);
+  });
+
   it("принять — ученику сообщение с отзывом и ссылкой на курс", async () => {
     const ctx = ctxWith();
     const p = (await coursePurchase(ctx, ITEM))!;

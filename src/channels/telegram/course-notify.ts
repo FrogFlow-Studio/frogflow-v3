@@ -20,6 +20,7 @@ export async function notifyHomework(ctx: TenantContext, hw: Homework): Promise<
     `👤 ${escapeHtml(hw.student)}`,
     last?.text ? `💬 ${escapeHtml(last.text.slice(0, 1500))}` : "",
     last?.files.length ? `📎 файлов: ${last.files.length}` : "",
+    ...(await mediaLinks(ctx, hw)),
     "",
     "↩️ Ответьте на это сообщение свайпом — комментарий уйдёт ученику, затем выберите «Принять» или «На доработку».",
     `Все работы: ${ctx.appUrl.replace(/\/+$/, "")}/admin/homework`,
@@ -32,6 +33,23 @@ export async function notifyHomework(ctx: TenantContext, hw: Homework): Promise<
     },
     photos: await photoUrls(ctx, hw),
   });
+}
+
+/** Голосовое и видео последней сдачи — ссылки на сутки: фото Telegram покажет само, их — нет. */
+async function mediaLinks(ctx: TenantContext, hw: Homework): Promise<string[]> {
+  const { isTenantStorageKey } = await import("@/core/storage/keys");
+  const { signedFileUrl } = await import("@/core/orders/orders");
+  const { isMediaMime } = await import("@/core/courses/homework");
+  const out: string[] = [];
+  for (const f of hw.attempts.at(-1)?.files ?? []) {
+    if (!isMediaMime(f.mime) || !isTenantStorageKey(ctx.tenant.id, f.path)) continue;
+    const url = await signedFileUrl(f.path, 24 * 3600).catch(() => null);
+    if (url)
+      out.push(
+        `${f.mime.startsWith("video/") ? "🎥" : "🎧"} <a href="${escapeHtml(url)}">${escapeHtml(f.name ?? f.path.split("/").pop() ?? "")}</a>`,
+      );
+  }
+  return out;
 }
 
 /** Картинки последней сдачи — подписанные ссылки на сутки (HEIC Telegram не покажет). */

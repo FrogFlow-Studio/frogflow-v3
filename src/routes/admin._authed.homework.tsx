@@ -183,7 +183,17 @@ function Attempt({
       {a.files.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {a.files.map((f) =>
-            f.image ? (
+            f.media === "audio" ? (
+              <audio key={f.url} src={f.url} controls preload="none" className="h-10 max-w-full" />
+            ) : f.media === "video" ? (
+              <video
+                key={f.url}
+                src={f.url}
+                controls
+                preload="metadata"
+                className="max-h-64 max-w-full rounded-md border border-line"
+              />
+            ) : f.image ? (
               <a key={f.url} href={f.url} target="_blank" rel="noreferrer">
                 <img
                   src={f.url}

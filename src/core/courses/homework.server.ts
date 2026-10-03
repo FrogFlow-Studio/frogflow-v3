@@ -10,6 +10,7 @@ import {
   HW_MIME_EXT,
   hwFolder,
   hwKey,
+  isMediaMime,
   mergesInto,
   parseHomework,
   reviewProblem,
@@ -51,13 +52,24 @@ export function sniffHomeworkMime(b: Uint8Array): string | null {
   )
     return "image/webp";
   if (b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46) return "application/pdf";
-  // ISO BMFF: «ftyp» с 4-го байта — mp4, mov, heic.
+  // ISO BMFF: «ftyp» с 4-го байта — mp4, mov, m4a, heic.
   if (b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70) {
     const brand = String.fromCharCode(b[8] ?? 0, b[9] ?? 0, b[10] ?? 0, b[11] ?? 0);
     if (/^(heic|heix|mif1|msf1)$/.test(brand)) return "image/heic";
     if (brand === "qt  ") return "video/quicktime";
+    if (brand === "M4A ") return "audio/mp4";
     return "video/mp4";
   }
+  // Голосовое Telegram — Ogg (Opus): «OggS».
+  if (b[0] === 0x4f && b[1] === 0x67 && b[2] === 0x67 && b[3] === 0x53) return "audio/ogg";
+  // WebM: заголовок EBML.
+  if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return "video/webm";
+  // MP3: тег ID3 или кадр MPEG (синхрослово 0xFFEx / 0xFFFx).
+  if (
+    (b[0] === 0x49 && b[1] === 0x44 && b[2] === 0x33) ||
+    (b[0] === 0xff && (b[1] ?? 0) >= 0xe0 && ((b[1] ?? 0) & 0x06) !== 0)
+  )
+    return "audio/mpeg";
   return null;
 }
 
@@ -71,11 +83,16 @@ export async function uploadHomeworkFile(
   orderItemId: string,
   bytes: Uint8Array,
   name: string | null,
+  /** Предел для аудио и видео; бот поднимает его до HW_MEDIA_MAX_BYTES. */
+  mediaMaxBytes = HW_FILE_MAX_BYTES,
 ): Promise<UploadResult> {
   if (bytes.length === 0) return { ok: false, reason: "empty" };
-  if (bytes.length > HW_FILE_MAX_BYTES) return { ok: false, reason: "tooLarge" };
+  if (bytes.length > Math.max(HW_FILE_MAX_BYTES, mediaMaxBytes))
+    return { ok: false, reason: "tooLarge" };
   const mime = sniffHomeworkMime(bytes);
   if (!mime) return { ok: false, reason: "badType" };
+  if (bytes.length > (isMediaMime(mime) ? mediaMaxBytes : HW_FILE_MAX_BYTES))
+    return { ok: false, reason: "tooLarge" };
   const path = `${hwFolder(ctx.tenant.id, orderItemId)}${randomBytes(12).toString("hex")}.${HW_MIME_EXT[mime]}`;
   const { error } = await serviceDb()
     .storage.from("product-files")

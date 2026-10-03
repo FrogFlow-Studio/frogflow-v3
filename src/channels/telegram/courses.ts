@@ -1,7 +1,12 @@
 import type { Locale } from "@/core/i18n/locale";
 import type { Customer } from "@/core/customers/customers";
 import { setState } from "@/core/customers/customers";
-import { HW_FILE_MAX_BYTES, type HomeworkFile, type HomeworkStatus } from "@/core/courses/homework";
+import {
+  HW_FILE_MAX_BYTES,
+  HW_MEDIA_MAX_BYTES,
+  type HomeworkFile,
+  type HomeworkStatus,
+} from "@/core/courses/homework";
 import type { ChannelInviter } from "@/core/courses/channel.server";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { TelegramApi } from "./api";
@@ -76,10 +81,11 @@ const COPY: Record<Locale, Copy> = {
     channelBtn: "🔐 Вступить в канал курса",
     prompt: (no, title, task) =>
       `📝 <b>Урок ${no}. ${title}</b>\n\n${task}\n\n` +
-      "Пришлите ответ одним сообщением: текст, фото (можно альбом до 5 фото) или PDF.",
+      "Пришлите ответ одним сообщением: текст, фото (можно альбом до 5 фото), PDF, голосовое, видео или «кружок».",
     sent: "✅ Ответ отправлен преподавателю. Когда работа будет проверена, я напишу.",
-    tooLarge: "Файл больше 3 МБ. Пришлите фото (Telegram сожмёт его) или откройте страницу курса.",
-    badFile: "Этот ответ не подходит: пришлите текст, фото или PDF.",
+    tooLarge:
+      "Файл слишком большой: фото и PDF — до 3 МБ, голосовое и видео — до 20 МБ. Пришлите фото (Telegram сожмёт его) или запись покороче.",
+    badFile: "Этот ответ не подходит: пришлите текст, фото, PDF, голосовое или видео.",
     tooManyFiles: "В одном ответе — не больше 5 файлов.",
     accepted: "Это задание уже принято.",
     closed: "Этот урок ещё не открыт.",
@@ -115,10 +121,11 @@ const COPY: Record<Locale, Copy> = {
     channelBtn: "🔐 Курс арнасына кіру",
     prompt: (no, title, task) =>
       `📝 <b>${no}-сабақ. ${title}</b>\n\n${task}\n\n` +
-      "Жауапты бір хабарламамен жіберіңіз: мәтін, фото (5 фотоға дейінгі альбом) немесе PDF.",
+      "Жауапты бір хабарламамен жіберіңіз: мәтін, фото (5 фотоға дейінгі альбом), PDF, дауыстық хабарлама, бейне немесе «дөңгелек».",
     sent: "✅ Жауап оқытушыға жіберілді. Жұмыс тексерілгенде хабарлаймын.",
-    tooLarge: "Файл 3 МБ-тан үлкен. Фото жіберіңіз (Telegram оны сығады) немесе курс бетін ашыңыз.",
-    badFile: "Бұл жауап жарамайды: мәтін, фото немесе PDF жіберіңіз.",
+    tooLarge:
+      "Файл тым үлкен: фото мен PDF — 3 МБ-қа дейін, дауыстық хабарлама мен бейне — 20 МБ-қа дейін. Фото жіберіңіз (Telegram оны сығады) немесе қысқарақ жазба жіберіңіз.",
+    badFile: "Бұл жауап жарамайды: мәтін, фото, PDF, дауыстық хабарлама немесе бейне жіберіңіз.",
     tooManyFiles: "Бір жауапта 5 файлдан аспауы керек.",
     accepted: "Бұл тапсырма қабылданып қойған.",
     closed: "Бұл сабақ әлі ашылмаған.",
@@ -154,11 +161,11 @@ const COPY: Record<Locale, Copy> = {
     channelBtn: "🔐 Join the course channel",
     prompt: (no, title, task) =>
       `📝 <b>Lesson ${no}. ${title}</b>\n\n${task}\n\n` +
-      "Send your answer in one message: text, photos (an album of up to 5) or a PDF.",
+      "Send your answer in one message: text, photos (an album of up to 5), a PDF, a voice message, a video or a video note.",
     sent: "✅ Your answer has been sent to the teacher. I'll message you once it's reviewed.",
     tooLarge:
-      "The file is over 3 MB. Send it as a photo (Telegram compresses it) or open the course page.",
-    badFile: "This answer can't be accepted: send text, photos or a PDF.",
+      "The file is too large: photos and PDFs up to 3 MB, voice messages and videos up to 20 MB. Send a photo (Telegram compresses it) or a shorter recording.",
+    badFile: "This answer can't be accepted: send text, photos, a PDF, a voice message or a video.",
     tooManyFiles: "No more than 5 files per answer.",
     accepted: "This homework has already been accepted.",
     closed: "This lesson isn't open yet.",
@@ -195,11 +202,11 @@ const COPY: Record<Locale, Copy> = {
     channelBtn: "🔐 Kurs kanaliga qo‘shilish",
     prompt: (no, title, task) =>
       `📝 <b>${no}-dars. ${title}</b>\n\n${task}\n\n` +
-      "Javobni bitta xabarda yuboring: matn, rasm (5 tagacha rasmli albom) yoki PDF.",
+      "Javobni bitta xabarda yuboring: matn, rasm (5 tagacha rasmli albom), PDF, ovozli xabar, video yoki «dumaloq video».",
     sent: "✅ Javob o‘qituvchiga yuborildi. Ish tekshirilgach, xabar beraman.",
     tooLarge:
-      "Fayl 3 MB dan katta. Rasm sifatida yuboring (Telegram uni siqadi) yoki kurs sahifasini oching.",
-    badFile: "Bu javob mos emas: matn, rasm yoki PDF yuboring.",
+      "Fayl juda katta: rasm va PDF — 3 MB gacha, ovozli xabar va video — 20 MB gacha. Rasm sifatida yuboring (Telegram uni siqadi) yoki qisqaroq yozuv yuboring.",
+    badFile: "Bu javob mos emas: matn, rasm, PDF, ovozli xabar yoki video yuboring.",
     tooManyFiles: "Bitta javobda 5 tadan ko‘p fayl bo‘lmasin.",
     accepted: "Bu vazifa allaqachon qabul qilingan.",
     closed: "Bu dars hali ochilmagan.",
@@ -311,10 +318,28 @@ export function isHomeworkMessage(customer: Customer, msg: TelegramMessage): boo
 type Downloaded = { bytes: Uint8Array; name: string };
 export type HomeworkDownloader = (fileId: string) => Promise<Uint8Array | null>;
 
-/** Файл из сообщения: самое крупное фото не больше предела или документ. */
-function pickFile(msg: TelegramMessage): { fileId: string; name: string } | "tooLarge" | null {
+/**
+ * Файл из сообщения: голосовое, «кружок», видео или аудио (до 20 МБ —
+ * предел скачивания Bot API), самое крупное фото или документ (до 3 МБ,
+ * видео и аудио в документе — как медиа).
+ */
+export function pickFile(
+  msg: TelegramMessage,
+): { fileId: string; name: string } | "tooLarge" | null {
+  const media =
+    (msg.voice && { f: msg.voice, name: "voice.ogg" }) ||
+    (msg.video_note && { f: msg.video_note, name: "video_note.mp4" }) ||
+    (msg.video && { f: msg.video, name: msg.video.file_name ?? "video.mp4" }) ||
+    (msg.audio && { f: msg.audio, name: msg.audio.file_name ?? "audio" });
+  if (media) {
+    if ((media.f.file_size ?? 0) > HW_MEDIA_MAX_BYTES) return "tooLarge";
+    return { fileId: media.f.file_id, name: media.name };
+  }
   if (msg.document) {
-    if ((msg.document.file_size ?? 0) > HW_FILE_MAX_BYTES) return "tooLarge";
+    const mt = msg.document.mime_type ?? "";
+    const isMedia = mt.startsWith("video/") || mt.startsWith("audio/");
+    if ((msg.document.file_size ?? 0) > (isMedia ? HW_MEDIA_MAX_BYTES : HW_FILE_MAX_BYTES))
+      return "tooLarge";
     return { fileId: msg.document.file_id, name: msg.document.file_name ?? "file" };
   }
   if (msg.photo?.length) {
@@ -348,7 +373,13 @@ export async function receiveHomework(
       .catch(() => null);
     if (!got) return send(b, c.failed);
     const { uploadHomeworkFile } = await import("@/core/courses/homework.server");
-    const up = await uploadHomeworkFile(b.ctx, p.orderItemId, got.bytes, got.name);
+    const up = await uploadHomeworkFile(
+      b.ctx,
+      p.orderItemId,
+      got.bytes,
+      got.name,
+      HW_MEDIA_MAX_BYTES,
+    );
     if (!up.ok)
       return send(
         b,

@@ -18,6 +18,11 @@ export const HW_FILES_MAX = 5;
 export const HW_ATTEMPTS_MAX = 10;
 /** Файл ответа — до 3 МБ: тело запроса функции на Vercel ~4,5 МБ, файл идёт в base64. */
 export const HW_FILE_MAX_BYTES = 3 * 1024 * 1024;
+/**
+ * Голосовое, «кружок», видео и аудио, присланные боту: до 20 МБ — предел
+ * Bot API на скачивание файла (getFile). Через страницу курса лимит прежний.
+ */
+export const HW_MEDIA_MAX_BYTES = 20 * 1024 * 1024;
 
 export type HomeworkStatus = "submitted" | "accepted" | "revise";
 export type HomeworkFile = { path: string; name: string | null; mime: string };
@@ -245,7 +250,11 @@ export function withReview(current: Homework, r: ReviewInput, now: Date): Homewo
   };
 }
 
-/** Расширение файла ответа по типу: картинка, PDF или видео. */
+/** Аудио или видео: проигрывается в «Домашних заданиях» прямо на странице. */
+export const isMediaMime = (mime: string): boolean =>
+  mime.startsWith("audio/") || mime.startsWith("video/");
+
+/** Расширение файла ответа по типу: картинка, PDF, видео или аудио. */
 export const HW_MIME_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -254,4 +263,8 @@ export const HW_MIME_EXT: Record<string, string> = {
   "application/pdf": "pdf",
   "video/mp4": "mp4",
   "video/quicktime": "mov",
+  "video/webm": "webm",
+  "audio/ogg": "ogg",
+  "audio/mpeg": "mp3",
+  "audio/mp4": "m4a",
 };

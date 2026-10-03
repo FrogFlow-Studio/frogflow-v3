@@ -217,6 +217,84 @@ describe("сдача задания в чат", () => {
     expect(state(db).mode).toBe("idle");
   });
 
+  const serving = (bytes: Uint8Array) =>
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(bytes as BlobPart)),
+    );
+  const OGG = new Uint8Array([0x4f, 0x67, 0x67, 0x53, 0, 2, 0, 0, 0, 0, 0, 0]);
+  const mp4 = (size: number) => {
+    const b = new Uint8Array(size);
+    b.set([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d]);
+    return b;
+  };
+  const voice = (n: number, file_size: number) =>
+    ({
+      update_id: n,
+      message: { message_id: n, date: 0, chat, from, voice: { file_id: `v${n}`, file_size } },
+    }) as never;
+  const note = (n: number, file_size: number) =>
+    ({
+      update_id: n,
+      message: {
+        message_id: n,
+        date: 0,
+        chat,
+        from,
+        video_note: { file_id: `n${n}`, file_size },
+      },
+    }) as never;
+
+  it("голосовое сообщение — сдача с аудиофайлом, преподавателю уведомление", async () => {
+    notified.length = 0;
+    const { ctx, db, api, calls } = school();
+    serving(OGG);
+    try {
+      await handleTelegramUpdate(ctx, api, press(`hw:${ITEM}:1`));
+      await handleTelegramUpdate(ctx, api, voice(2, 40_000));
+    } finally {
+      serving(JPEG);
+    }
+    const hw = homework(db, id(1));
+    expect(hw).toMatchObject({ status: "submitted" });
+    expect(hw!.attempts[0]!.files[0]).toMatchObject({ mime: "audio/ogg", name: "voice.ogg" });
+    expect(hw!.attempts[0]!.files[0]!.path).toMatch(/\.ogg$/);
+    expect(messages(calls).at(-1)!.text).toContain("Ответ отправлен преподавателю");
+    expect(notified).toEqual(["урок 1"]);
+  });
+
+  it("«кружок» крупнее 3 МБ принимается как видео, но не больше 20 МБ", async () => {
+    const { ctx, db, api, calls } = school();
+    serving(mp4(4 * 1024 * 1024));
+    try {
+      await handleTelegramUpdate(ctx, api, press(`hw:${ITEM}:1`));
+      await handleTelegramUpdate(ctx, api, note(2, 4 * 1024 * 1024));
+      expect(homework(db, id(1))!.attempts[0]!.files[0]).toMatchObject({ mime: "video/mp4" });
+      // Слишком большое — отказ по размеру из сообщения, файл даже не скачивается.
+      const other = school();
+      await handleTelegramUpdate(other.ctx, other.api, press(`hw:${ITEM}:1`));
+      await handleTelegramUpdate(other.ctx, other.api, voice(3, 21 * 1024 * 1024));
+      expect(homework(other.db, id(1))).toBeNull();
+      expect(messages(other.calls).at(-1)!.text).toContain("20 МБ");
+    } finally {
+      serving(JPEG);
+    }
+    expect(calls.length).toBeGreaterThan(0);
+  });
+
+  it("поддельный тип: текстовый файл под видом голосового — «не подходит»", async () => {
+    const { ctx, db, api, calls } = school();
+    serving(new TextEncoder().encode("просто текст, не звук"));
+    try {
+      await handleTelegramUpdate(ctx, api, press(`hw:${ITEM}:1`));
+      await handleTelegramUpdate(ctx, api, voice(2, 100));
+    } finally {
+      serving(JPEG);
+    }
+    expect(homework(db, id(1))).toBeNull();
+    expect(messages(calls).at(-1)!.text).toContain("не подходит");
+  });
+
   it("альбом из трёх фото — одна сдача с тремя файлами и одно уведомление", async () => {
     notified.length = 0;
     const { ctx, db, api, calls } = school();

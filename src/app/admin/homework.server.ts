@@ -15,7 +15,7 @@ export type HomeworkRow = Omit<Homework, "attempts"> & {
   attempts: Array<{
     at: string;
     text: string;
-    files: Array<{ name: string; url: string; image: boolean }>;
+    files: Array<{ name: string; url: string; image: boolean; media?: "audio" | "video" }>;
   }>;
 };
 
@@ -30,12 +30,23 @@ export async function homeworkQueue(ctx: TenantContext, limit = 200): Promise<Ho
       const files: HomeworkRow["attempts"][number]["files"] = [];
       for (const f of a.files) {
         if (!isTenantStorageKey(ctx.tenant.id, f.path)) continue;
-        const url = await signedFileUrl(f.path, 24 * 3600, f.name ?? undefined);
+        // Для аудио и видео ссылка без имени: с именем она «скачать», а не «играть».
+        const media = f.mime.startsWith("audio/")
+          ? "audio"
+          : f.mime.startsWith("video/")
+            ? "video"
+            : null;
+        const url = await signedFileUrl(
+          f.path,
+          24 * 3600,
+          media ? undefined : (f.name ?? undefined),
+        );
         if (url)
           files.push({
             name: f.name ?? f.path.split("/").pop() ?? "",
             url,
             image: f.mime.startsWith("image/") && f.mime !== "image/heic",
+            ...(media ? { media } : {}),
           });
       }
       attempts.push({ at: a.at, text: a.text, files });

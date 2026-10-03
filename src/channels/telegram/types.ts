@@ -16,6 +16,11 @@ export type TelegramMessage = {
   contact?: { phone_number: string };
   document?: { file_id: string; file_name?: string; mime_type?: string; file_size?: number };
   photo?: Array<{ file_id: string; file_size?: number }>;
+  /** Голосовое сообщение (Ogg/Opus), «кружок» (mp4), видео и аудиофайл — ответ на задание. */
+  voice?: { file_id: string; file_size?: number };
+  video_note?: { file_id: string; file_size?: number };
+  video?: { file_id: string; file_name?: string; file_size?: number };
+  audio?: { file_id: string; file_name?: string; file_size?: number };
   /** Часть альбома: у всех сообщений одного альбома одинаковый. */
   media_group_id?: string;
   /** Ответ свайпом: на какое сообщение (нужен текст уведомления с меткой покупателя). */
