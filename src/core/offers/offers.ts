@@ -1,5 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSetting, setSetting } from "@/core/settings/settings";
+import { getSettingStrict, setSetting } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
 
 /**
@@ -135,7 +135,7 @@ async function soldCounts(ctx: TenantContext, offers: readonly LimitedOffer[]) {
 export async function loadOfferState(ctx: TenantContext) {
   const hit = cache.get(ctx.tenant.id);
   if (hit && Date.now() - hit.ts < TTL_MS) return hit;
-  const offers = parseOffers(await getSetting(ctx, OFFERS_KEY));
+  const offers = parseOffers(await getSettingStrict(ctx, OFFERS_KEY));
   const entry = { ts: Date.now(), offers, sold: await soldCounts(ctx, offers) };
   cache.set(ctx.tenant.id, entry);
   return entry;

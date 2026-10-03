@@ -112,3 +112,24 @@ describe("расчёт цены", () => {
     expect(percentForNewPrice(0, 1000)).toBe(99);
   });
 });
+
+describe("сбой чтения акций", () => {
+  it("не превращается в «акций нет»: цена не отдаётся по обычной, а ошибка не кешируется", async () => {
+    const ctx = setup([{ ...base, id: "s1", product_id: "p1", percent: 20 }]);
+    const real = ctx.db.from.bind(ctx.db);
+    let broken = true;
+    (ctx.db as unknown as { from: unknown }).from = (t: string) =>
+      broken && t === "app_settings"
+        ? {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({ data: null, error: { message: "boom" } }),
+              }),
+            }),
+          }
+        : real(t as never);
+    await expect(resolvePrice(ctx, cake, null)).rejects.toThrow();
+    broken = false;
+    expect((await resolvePrice(ctx, cake, null)).amount).toBe(8000);
+  });
+});

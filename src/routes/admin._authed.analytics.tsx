@@ -4,7 +4,7 @@ import { z } from "zod";
 import { analyticsFn } from "@/app/admin/admin.functions";
 import { explainSalesFn } from "@/app/admin/analytics.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
-import { Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
+import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { canEdit } from "@/core/auth/roles";
 import { BarList, ChartCard, DataTable, LineChart } from "@/app/ui/charts";
 import { compactNumber, shortDay } from "@/core/analytics/pure";
@@ -317,6 +317,7 @@ function AnalyticsPage() {
         <SourceLinksCard bot={a.links.bot} store={a.links.store} />
         {canEdit(shop.role) && <ExplainCard days={days} />}
         <SpeedCard rows={a.speed} />
+        {a.sales.length > 0 && <SalesCard sales={a.sales} tz={a.timezone} moneyAll={moneyAll} />}
         <CohortsCard cohorts={a.cohorts} />
         <CustomersCard c={a.customers} currencyFallback={a.currency} />
         <ChartCard
@@ -628,6 +629,55 @@ function duration(min: number | null, t: AdminT): string {
   return [t("analytics.speed.fmt.d", { n: d }), h ? t("analytics.speed.fmt.h", { n: h }) : ""]
     .filter(Boolean)
     .join(" ");
+}
+
+/** Итоги акций: продажи товаров акции за её срок и за такой же срок до неё (core/analytics/sales). */
+function SalesCard({
+  sales,
+  tz,
+  moneyAll,
+}: {
+  sales: Awaited<ReturnType<typeof analyticsFn>>["sales"];
+  tz: string;
+  moneyAll: (revenue: Record<string, number>) => string;
+}) {
+  const { shop } = Route.useRouteContext();
+  const t = adminT(shop.locale);
+  const loc = intlLocale(shop.locale);
+  const date = (iso: string) =>
+    new Date(iso).toLocaleDateString(loc, {
+      day: "numeric",
+      month: "short",
+      timeZone: tz,
+    });
+  const verdict = { up: "ok", flat: undefined, down: "warn", none: undefined } as const;
+  return (
+    <Card title={t("analytics.sales.title")} className="lg:col-span-2">
+      <div className="overflow-x-auto">
+        <DataTable
+          head={[
+            t("analytics.sales.col.offer"),
+            t("analytics.sales.col.period"),
+            t("analytics.sales.col.orders"),
+            t("analytics.sales.col.units"),
+            t("analytics.sales.col.revenue"),
+            t("analytics.sales.col.verdict"),
+          ]}
+          rows={sales.map((r) => [
+            `${r.name} (−${r.percent}%)`,
+            `${date(r.startsAt)} — ${date(r.endsAt)}${r.running ? ` · ${t("analytics.sales.running")}` : ""}`,
+            `${r.before.orders} → ${r.during.orders}`,
+            `${r.before.units} → ${r.during.units}`,
+            `${moneyAll(r.before.revenue) || "0"} → ${moneyAll(r.during.revenue) || "0"}`,
+            <Badge key="v" tone={verdict[r.verdict]}>
+              {t(`analytics.sales.verdict.${r.verdict}`)}
+            </Badge>,
+          ])}
+        />
+      </div>
+      <p className="mt-2 text-xs text-muted">{t("analytics.sales.hint")}</p>
+    </Card>
+  );
 }
 
 /** Скорость заказа: оплата и выдача по каналам, доля выданных без продавца (core/analytics/speed). */
