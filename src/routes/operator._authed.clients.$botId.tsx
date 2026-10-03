@@ -86,11 +86,13 @@ function ClientPage() {
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat
           label="Заказов за 30 дней"
-          value={c.stats?.orders_30d ?? "—"}
+          value={c.statsUnread ? "не прочитано" : (c.stats?.orders_30d ?? "—")}
           hint={
-            c.stats?.last_order_at
-              ? `последний ${new Date(c.stats.last_order_at).toLocaleDateString("ru")}`
-              : undefined
+            c.statsUnread
+              ? "сбой чтения статистики — обновите страницу"
+              : c.stats?.last_order_at
+                ? `последний ${new Date(c.stats.last_order_at).toLocaleDateString("ru")}`
+                : undefined
           }
         />
         <Stat label="Заказов всего" value={c.stats?.orders_total ?? "—"} />

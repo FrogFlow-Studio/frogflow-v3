@@ -73,14 +73,19 @@ export type Payment = {
 };
 
 export async function listPayments(botId: string): Promise<Payment[]> {
-  const { data, error } = await serviceDb()
-    .from("subscription_payments")
-    .select("id, period_start, period_end, amount, currency, paid_at, note")
-    .eq("bot_id", botId)
-    .order("period_end", { ascending: false })
-    .limit(100);
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((p) => ({ ...p, amount: Number(p.amount) }));
+  // Все платежи постранично, порядок заканчивается уникальным ключом: без обрезки на 100.
+  const rows = await pageAll(
+    (from, to) =>
+      serviceDb()
+        .from("subscription_payments")
+        .select("id, period_start, period_end, amount, currency, paid_at, note")
+        .eq("bot_id", botId)
+        .order("period_end", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to),
+    "[billing] платежи не прочитаны",
+  );
+  return rows.map((p) => ({ ...p, amount: Number(p.amount) }));
 }
 
 export type NewPayment = {
@@ -142,7 +147,7 @@ export async function deletePayment(
     .delete()
     .eq("id", paymentId)
     .eq("bot_id", botId);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`[billing] платёж не удалён: ${error.message}`);
   await logEvent(botId, "payment", { action: "deleted", payment_id: paymentId }, actor);
 }
 

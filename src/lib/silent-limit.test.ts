@@ -22,7 +22,6 @@ const ALLOWED: Record<string, string[]> = {
   "src/app/operator/ai-topup.server.ts": [`${SHOWN} (открытые счета пополнения ИИ — их единицы)`],
   "src/app/operator/plans.server.ts": [`${SHOWN} (открытые счета клиента)`],
   "src/app/operator/billing.server.ts": [
-    `${SHOWN} (платежи клиента)`,
     "проверка существования: нужен лишь факт, что открытый счёт есть",
   ],
   "src/app/operator/operator.server.ts": [

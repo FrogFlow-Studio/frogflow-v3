@@ -32,6 +32,7 @@ function ClientsPage() {
     );
   const v2Clients = clients.filter((c) => c.servedBy === "v2");
   const pulseMissing = v2Clients.length > 0 && v2Clients.every((c) => !c.pulse);
+  const statsUnread = clients.some((c) => c.statsUnread);
   const orders30 = clients.reduce((s, c) => s + (c.stats?.orders_30d ?? 0), 0);
   const customers = clients.reduce((s, c) => s + (c.stats?.customers_total ?? 0), 0);
   return (
@@ -51,8 +52,11 @@ function ClientsPage() {
           value={clients.length}
           hint={`${clients.filter((c) => c.status === "active").length} активных`}
         />
-        <Stat label="Заказов за 30 дней" value={orders30} />
-        <Stat label="Покупателей" value={customers.toLocaleString("ru")} />
+        <Stat label="Заказов за 30 дней" value={statsUnread ? "не прочитано" : orders30} />
+        <Stat
+          label="Покупателей"
+          value={statsUnread ? "не прочитано" : customers.toLocaleString("ru")}
+        />
         <Stat
           label="На v2"
           value={clients.filter((c) => c.servedBy === "v2").length}

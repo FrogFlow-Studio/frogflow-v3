@@ -80,7 +80,7 @@ export type ClientStats = {
 
 export async function clientStats(): Promise<Map<string, ClientStats>> {
   const { data, error } = await serviceDb().rpc("operator_bot_stats");
-  if (error) throw new Error(`operator_bot_stats: ${error.message}`);
+  if (error) throw serverFailure(`[operator] статистика клиентов не прочитана: ${error.message}`);
   const map = new Map<string, ClientStats>();
   for (const r of data ?? []) {
     map.set(r.bot_id, {
@@ -144,6 +144,8 @@ export type ClientView = {
   /** Откуда пришёл продавец, зарегистрировавшийся сам; null — не знаем. */
   signupOrigin: string | null;
   stats: ClientStats | null;
+  /** Статистика не прочиталась (сбой базы): показывать «не прочитано», а не нули и не «нет заказов». */
+  statsUnread: boolean;
   /** Пульс (заказы 14/14, последний вход) — только у клиентов v2, у остальных null. */
   pulse: Pulse | null;
 };
@@ -162,6 +164,7 @@ function toView(
   health: ClientView["health"] = null,
   zernioEvents: Map<string, string> = new Map(),
   pulse: Pulse | null = null,
+  statsUnread = false,
 ): ClientView {
   return {
     id: t.id,
@@ -211,6 +214,7 @@ function toView(
     createdAt: extra.created_at,
     signupOrigin: signupOriginLabel(t.settings.signup),
     stats,
+    statsUnread,
     health,
     pulse,
   };
@@ -226,12 +230,22 @@ async function extras(ids?: string[]) {
   return new Map((data ?? []).map((r) => [r.id, r]));
 }
 
+/** Статистика клиентов; сбой — пустая карта и отметка, чтобы панель написала «не прочитано». */
+async function readStats(): Promise<{ stats: Map<string, ClientStats>; unread: boolean }> {
+  try {
+    return { stats: await clientStats(), unread: false };
+  } catch (e) {
+    console.warn("[operator] статистика клиентов не прочитана:", e);
+    return { stats: new Map<string, ClientStats>(), unread: true };
+  }
+}
+
 export async function listClients(): Promise<ClientView[]> {
   const { latestHealth } = await import("./health.server");
   const { loadPulse } = await import("./pulse.server");
-  const [tenants, stats, ex, health] = await Promise.all([
+  const [tenants, { stats, unread }, ex, health] = await Promise.all([
     tenantDirectory(true),
-    clientStats().catch(() => new Map<string, ClientStats>()),
+    readStats(),
     extras(),
     latestHealth().catch(() => new Map()),
   ]);
@@ -266,6 +280,7 @@ export async function listClients(): Promise<ClientView[]> {
         health.get(t.id) ?? null,
         undefined,
         pulses.get(t.id) ?? null,
+        unread,
       );
     })
     .sort(
@@ -279,9 +294,9 @@ export async function listClients(): Promise<ClientView[]> {
 export async function getClient(botId: string): Promise<ClientView> {
   const { latestHealth } = await import("./health.server");
   const health = await latestHealth([botId]).catch(() => new Map());
-  const [t, stats, ex, zernioEvents] = await Promise.all([
+  const [t, { stats, unread }, ex, zernioEvents] = await Promise.all([
     requireTenant({ by: "id", value: botId }),
-    clientStats().catch(() => new Map<string, ClientStats>()),
+    readStats(),
     extras([botId]),
     zernioLastEvents(botId).catch(() => new Map<string, string>()),
   ]);
@@ -299,6 +314,8 @@ export async function getClient(botId: string): Promise<ClientView> {
     stats.get(botId) ?? null,
     health.get(botId) ?? null,
     zernioEvents,
+    null,
+    unread,
   );
 }
 
