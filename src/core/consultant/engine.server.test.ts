@@ -345,3 +345,16 @@ describe("консультант: ИИ-баланс клиента", () => {
     expect(bal.usd).toBeCloseTo(5 - r!.usage.usd, 6);
   });
 });
+
+describe("консультант: счётчик ИИ-диалогов месяца", () => {
+  it("два покупателя начинают диалог одновременно — в счётчике оба", async () => {
+    const ctx = ctxOf();
+    const other = { ...customer(), userKey: "ig:2" } as Customer;
+    await Promise.all([
+      runConsultant(ctx, customer(), "Сколько стоит?", { platform: "instagram" }),
+      runConsultant(ctx, other, "Есть доставка?", { platform: "instagram" }),
+    ]);
+    const raw = await getSetting(ctx, "consultant_dialogs_month");
+    expect(JSON.parse(raw!).count).toBe(2);
+  });
+});

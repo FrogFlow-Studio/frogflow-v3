@@ -680,11 +680,13 @@ export async function runConsultant(
     await aiSettle(ctx, aiHold, usd);
     await recordUsage(ctx, usd, u.input_tokens + u.cacheWrite + u.cacheRead, u.output_tokens);
     await updateSettingAtomic(ctx, KEYS.daily, (raw) => settleRaw(raw, date, reserveUsd, usd));
+    // Условная запись: два диалога одновременно прибавляют по единице, а не затирают друг друга.
     if (newDialog)
-      await trySetSetting(
-        ctx,
-        KEYS.dialogs,
-        JSON.stringify({ month: dialogs.month, count: dialogs.count + 1 }),
+      await updateSettingAtomic(ctx, KEYS.dialogs, (raw) =>
+        JSON.stringify({
+          month: dialogs.month,
+          count: parseMonthly(raw, dialogs.month).count + 1,
+        }),
       );
     if (out.clearError) await trySetSetting(ctx, KEYS.lastError, "");
 
