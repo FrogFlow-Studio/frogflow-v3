@@ -17,6 +17,7 @@ import {
   SETUP_FEES,
   planFeatureKeys,
 } from "./config";
+import { ARTICLE_SLUGS } from "./articles";
 import {
   NICHE_PAGES,
   NICHE_PRICING,
@@ -93,7 +94,8 @@ describe("страницы ниш", () => {
     expect(locs).toContain("https://www.frogflow.tech/");
     expect(locs).toContain("https://www.frogflow.tech/?lang=kk");
     expect(locs).toContain("https://www.frogflow.tech/for/cakes?lang=uz");
-    expect(locs).toHaveLength(4 + openNichePages().length * 4);
+    expect(locs).toContain("https://www.frogflow.tech/blog/online-school-bot?lang=uz");
+    expect(locs).toHaveLength(4 + openNichePages().length * 4 + ARTICLE_SLUGS.length * 4);
     expect(new Set(locs).size).toBe(locs.length);
   });
 });

@@ -7,6 +7,7 @@ import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 import { SIGNUP_PAGES, type SignupPage } from "@/core/signup/origin";
 import type { VerticalKey } from "@/core/verticals/registry";
 import { PLAN_TIERS, TRIAL_TIER } from "@/core/plans/registry";
+import { articleSitemapLocs } from "./articles";
 import { SITE_URL, landingUrl, moduleFromTier, type PlanKey, type PricingNiche } from "./config";
 
 /** Те же ключи, что пишутся в bots.settings.signup.page (core/signup/origin). */
@@ -74,5 +75,6 @@ export function landingSitemapLocs(): string[] {
   return [
     ...SUPPORTED_LOCALES.map(landingUrl),
     ...openNichePages().flatMap((p) => SUPPORTED_LOCALES.map((l) => nichePageUrl(p, l))),
+    ...articleSitemapLocs(),
   ];
 }

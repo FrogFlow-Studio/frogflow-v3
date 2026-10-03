@@ -21,6 +21,7 @@ import {
   type PlanKey,
   type PricingNiche,
 } from "./config";
+import { ARTICLES, ARTICLE_SLUGS, type ArticleSlug } from "./articles";
 import { NICHE_VERTICAL, openNichePages, type NichePage } from "./niches";
 
 /** Параметры ссылки на регистрацию: со страницы ниши — её ниша и откуда пришли. */
@@ -42,16 +43,28 @@ export function SectionTitle({ children }: { children: ReactNode }) {
 }
 
 /** Шапка; на странице ниши переключатель языка остаётся на ней же. */
-export function Header({ t, locale, niche }: { t: LandingT; locale: Locale; niche?: NichePage }) {
+export function Header({
+  t,
+  locale,
+  niche,
+  article,
+}: {
+  t: LandingT;
+  locale: Locale;
+  niche?: NichePage;
+  article?: ArticleSlug;
+}) {
+  // На статье якорей главной нет: ссылки ведут на главную.
+  const anchorBase = article ? "/" : "";
   const links = (
     <>
-      <a href="#how" className="text-muted hover:text-fg">
+      <a href={`${anchorBase}#how`} className="text-muted hover:text-fg">
         {t("nav.how")}
       </a>
-      <a href="#pricing" className="text-muted hover:text-fg">
+      <a href={`${anchorBase}#pricing`} className="text-muted hover:text-fg">
         {t("nav.pricing")}
       </a>
-      <a href="#faq" className="text-muted hover:text-fg">
+      <a href={`${anchorBase}#faq`} className="text-muted hover:text-fg">
         {t("nav.faq")}
       </a>
     </>
@@ -72,7 +85,19 @@ export function Header({ t, locale, niche }: { t: LandingT; locale: Locale; nich
             className="flex overflow-hidden rounded-md border border-line text-xs"
           >
             {SUPPORTED_LOCALES.map((l) =>
-              niche ? (
+              article ? (
+                <Link
+                  key={l}
+                  to="/blog/$slug"
+                  params={{ slug: article }}
+                  search={langSearch(l)}
+                  hrefLang={l}
+                  aria-current={l === locale ? "true" : undefined}
+                  className={langClass(l)}
+                >
+                  {LANG_LABELS[l]}
+                </Link>
+              ) : niche ? (
                 <Link
                   key={l}
                   to="/for/$niche"
@@ -370,17 +395,31 @@ export function NicheLinks({
   );
 }
 
-export function Footer({ t, locale }: { t: LandingT; locale: Locale }) {
+export function Footer({ t, locale, article }: { t: LandingT; locale: Locale; article?: boolean }) {
+  const anchorBase = article ? "/" : "";
   return (
     <footer className="mt-16 border-t border-line">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted">
         <span>© FrogFlow · {t("footer.tagline")}</span>
         <NicheLinks t={t} locale={locale} className="flex flex-wrap gap-x-5 gap-y-2" />
+        <nav aria-label={t("articles.linksLabel")} className="flex flex-wrap gap-x-5 gap-y-2">
+          {ARTICLE_SLUGS.map((slug) => (
+            <Link
+              key={slug}
+              to="/blog/$slug"
+              params={{ slug }}
+              search={langSearch(locale)}
+              className="hover:text-fg"
+            >
+              {ARTICLES[slug][locale].link}
+            </Link>
+          ))}
+        </nav>
         <span className="flex gap-5">
-          <a href="#pricing" className="hover:text-fg">
+          <a href={`${anchorBase}#pricing`} className="hover:text-fg">
             {t("nav.pricing")}
           </a>
-          <a href="#faq" className="hover:text-fg">
+          <a href={`${anchorBase}#faq`} className="hover:text-fg">
             {t("nav.faq")}
           </a>
           <Link to="/admin/login" className="hover:text-fg">

@@ -50,3 +50,24 @@ export function landingJsonLd(o: {
     ],
   };
 }
+
+/** Разметка статьи: заголовок, язык, дата и издатель (та же Organization, что на главной). */
+export function articleJsonLd(o: {
+  url: string;
+  headline: string;
+  description: string;
+  locale: string;
+  published: string;
+}): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: o.headline,
+    description: o.description,
+    url: o.url,
+    mainEntityOfPage: o.url,
+    inLanguage: o.locale,
+    datePublished: o.published,
+    publisher: { "@type": "Organization", "@id": `${SITE_URL}/#organization`, name: "FrogFlow" },
+  };
+}

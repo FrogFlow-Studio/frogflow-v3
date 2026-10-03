@@ -70,6 +70,29 @@ test("карта сайта платформы: в индексе есть ка�
   const xml = await pages.text();
   expect(xml).toContain("https://www.frogflow.tech/for/cakes</loc>");
   expect(xml).toContain("https://www.frogflow.tech/?lang=kk</loc>");
+  expect(xml).toContain("https://www.frogflow.tech/blog/telegram-sales-bot</loc>");
+  expect(xml).toContain("https://www.frogflow.tech/blog/online-school-bot?lang=uz</loc>");
+});
+
+test("статья: заголовок, canonical, смена языка, ссылка из подвала, 404 на чужой адрес", async ({
+  page,
+}) => {
+  const errors = await watch(page);
+  await page.goto("/");
+  await page.getByRole("link", { name: "Бот для продаж в Telegram", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/blog\/telegram-sales-bot$/);
+  await expect(page).toHaveTitle(/Бот для продаж в Telegram/);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    "https://www.frogflow.tech/blog/telegram-sales-bot",
+  );
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Бот для продаж");
+  await page.getByRole("link", { name: "EN", exact: true }).click();
+  await expect(page).toHaveURL(/\/blog\/telegram-sales-bot\?lang=en$/);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Telegram sales bot");
+  const missing = await page.goto("/blog/unknown");
+  expect(missing?.status()).toBe(404);
+  expect(errors).toEqual([]);
 });
 
 test("регистрация со страницы ниши: ниша выбрана, метки видны оператору", async ({

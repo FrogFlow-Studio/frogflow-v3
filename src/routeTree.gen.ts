@@ -22,6 +22,7 @@ import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminTgLoginRouteImport } from './routes/admin.tg-login'
 import { Route as ApiClientErrorRouteImport } from './routes/api/client-error'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as ForNicheRouteImport } from './routes/for.$niche'
 import { Route as OperatorAuthedRouteImport } from './routes/operator._authed'
 import { Route as OperatorLoginRouteImport } from './routes/operator.login'
@@ -161,6 +162,11 @@ const ApiClientErrorRoute = ApiClientErrorRouteImport.update({
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/blog/$slug',
+  path: '/blog/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForNicheRoute = ForNicheRouteImport.update({
@@ -559,6 +565,7 @@ export interface FileRoutesByFullPath {
   '/admin/tg-login': typeof AdminTgLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/for/$niche': typeof ForNicheRoute
   '/operator/login': typeof OperatorLoginRoute
   '/partner/$code': typeof PartnerCodeRoute
@@ -648,6 +655,7 @@ export interface FileRoutesByTo {
   '/admin/tg-login': typeof AdminTgLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/for/$niche': typeof ForNicheRoute
   '/operator/login': typeof OperatorLoginRoute
   '/partner/$code': typeof PartnerCodeRoute
@@ -736,6 +744,7 @@ export interface FileRoutesById {
   '/admin/tg-login': typeof AdminTgLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/for/$niche': typeof ForNicheRoute
   '/operator/_authed': typeof OperatorAuthedRouteWithChildren
   '/operator/login': typeof OperatorLoginRoute
@@ -828,6 +837,7 @@ export interface FileRouteTypes {
     | '/admin/tg-login'
     | '/api/client-error'
     | '/api/health'
+    | '/blog/$slug'
     | '/for/$niche'
     | '/operator/login'
     | '/partner/$code'
@@ -917,6 +927,7 @@ export interface FileRouteTypes {
     | '/admin/tg-login'
     | '/api/client-error'
     | '/api/health'
+    | '/blog/$slug'
     | '/for/$niche'
     | '/operator/login'
     | '/partner/$code'
@@ -1004,6 +1015,7 @@ export interface FileRouteTypes {
     | '/admin/tg-login'
     | '/api/client-error'
     | '/api/health'
+    | '/blog/$slug'
     | '/for/$niche'
     | '/operator/_authed'
     | '/operator/login'
@@ -1093,6 +1105,7 @@ export interface RootRouteChildren {
   StatusRoute: typeof StatusRoute
   ApiClientErrorRoute: typeof ApiClientErrorRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  BlogSlugRoute: typeof BlogSlugRoute
   ForNicheRoute: typeof ForNicheRoute
   PartnerCodeRoute: typeof PartnerCodeRoute
   SSlugRoute: typeof SSlugRouteWithChildren
@@ -1207,6 +1220,13 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/blog/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/for/$niche': {
@@ -1935,6 +1955,7 @@ const rootRouteChildren: RootRouteChildren = {
   StatusRoute: StatusRoute,
   ApiClientErrorRoute: ApiClientErrorRoute,
   ApiHealthRoute: ApiHealthRoute,
+  BlogSlugRoute: BlogSlugRoute,
   ForNicheRoute: ForNicheRoute,
   PartnerCodeRoute: PartnerCodeRoute,
   SSlugRoute: SSlugRouteWithChildren,
