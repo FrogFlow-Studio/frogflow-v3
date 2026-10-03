@@ -17,6 +17,7 @@ describe("npm run verify", () => {
       "build",
       "build-output",
       "certificate-output",
+      "smoke",
       "vercel-output",
     ]);
     expect(steps(false).map((s) => s.name)).toEqual(["lint", "typecheck", "test"]);
@@ -47,7 +48,8 @@ describe("сборка Vercel в verify", () => {
   it("обычный шаг сертификата смотрит .output, Vercel-сборка — отдельным шагом после него", () => {
     const list = steps(true);
     const names = list.map((s) => s.name);
-    expect(names.indexOf("vercel-output")).toBeGreaterThan(names.indexOf("certificate-output"));
+    expect(names.indexOf("smoke")).toBeGreaterThan(names.indexOf("certificate-output"));
+    expect(names.indexOf("vercel-output")).toBeGreaterThan(names.indexOf("smoke"));
     expect(list.find((s) => s.name === "certificate-output")!.cmd.at(-1)).toBe(".output/server");
   });
 

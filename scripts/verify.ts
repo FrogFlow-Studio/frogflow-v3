@@ -46,6 +46,8 @@ export function steps(withBuild: boolean): Step[] {
       name: "certificate-output",
       cmd: ["node", "scripts/certificate-output.ts", ".output/server"],
     });
+    // Дымовой прогон собранного сервера на подставной базе (scripts/smoke.ts).
+    list.push({ name: "smoke", cmd: ["npm", "run", "smoke"] });
     // Прод собирается пресетом vercel: собрать его отдельно и проверить функцию.
     list.push({ name: "vercel-output", cmd: ["node", "scripts/vercel-output.ts"] });
   }
