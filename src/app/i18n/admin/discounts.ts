@@ -57,6 +57,16 @@ export const ru = {
   "discounts.referral.intro":
     "Покупатель делится ссылкой из раздела «ℹ️ Информация» в боте{link}. Приглашённый сразу получает одноразовый промокод на первую покупку, пригласивший — такой же после первой выданной покупки друга. Промокоды WELCOME-… и REF-… появляются в списке слева.",
   "discounts.referral.percent": "Скидка по промокоду, %",
+  "discounts.tiers.title": "Уровни лояльности",
+  "discounts.tiers.intro":
+    "Покупатель получает баллы по проценту своего уровня. Уровень считается по сумме его выданных заказов в валюте магазина; процент берётся по сумме до текущего заказа. Выше первого порога — свой процент, ниже — общий «% начисления» из настроек. Уже начисленные баллы не меняются. Уровень и «до следующего» покупатель видит в корзине бота.",
+  "discounts.tiers.name": "Название",
+  "discounts.tiers.from": "От суммы",
+  "discounts.tiers.percent": "Начислять, %",
+  "discounts.tiers.add": "Добавить уровень",
+  "discounts.tiers.remove": "Убрать",
+  "discounts.tiers.save": "Сохранить уровни",
+  "discounts.tiers.empty": "Уровни не заданы — начисление идёт по общему проценту.",
   "discounts.offers.title": "Ограниченные предложения",
   "discounts.offers.intro":
     "Скидка на товар до даты и, если нужно, на ограниченное число штук. Цена со скидкой сразу видна в боте, Direct и на витрине, в карточке — таймер и остаток.",
@@ -122,6 +132,16 @@ export const kk: SectionDict<typeof ru> = {
   "discounts.referral.intro":
     "Сатып алушы боттағы «ℹ️ Ақпарат» бөліміндегі сілтемемен бөліседі{link}. Шақырылған адам бірінші сатып алуына бірреттік промокодты бірден алады, шақырған адам дәл сондай промокодты досының бірінші тапсырысы берілгеннен кейін алады. WELCOME-… және REF-… промокодтары сол жақтағы тізімде көрінеді.",
   "discounts.referral.percent": "Промокод бойынша жеңілдік, %",
+  "discounts.tiers.title": "Адалдық деңгейлері",
+  "discounts.tiers.intro":
+    "Сатып алушы өз деңгейінің пайызымен ұпай алады. Деңгей берілген тапсырыстардың дүкен валютасындағы сомасы бойынша есептеледі; пайыз ағымдағы тапсырыстан бұрынғы сома бойынша алынады. Бірінші шектен жоғары — өз пайызы, төмен — баптаулардағы жалпы «% есептеу». Есептелген ұпай өзгермейді. Деңгей мен «келесіге дейін» көрсеткішін сатып алушы бот себетінде көреді.",
+  "discounts.tiers.name": "Атауы",
+  "discounts.tiers.from": "Соманы бастап",
+  "discounts.tiers.percent": "Есептеу, %",
+  "discounts.tiers.add": "Деңгей қосу",
+  "discounts.tiers.remove": "Алып тастау",
+  "discounts.tiers.save": "Деңгейлерді сақтау",
+  "discounts.tiers.empty": "Деңгейлер берілмеген — есептеу жалпы пайызбен жүреді.",
   "discounts.offers.title": "Шектеулі ұсыныстар",
   "discounts.offers.intro":
     "Тауарға белгілі күнге дейін және қажет болса шектеулі санға жеңілдік. Жеңілдікпен баға ботта, Direct-те және витринада бірден көрінеді, карточкада — таймер мен қалдық.",
@@ -187,6 +207,16 @@ export const en: SectionDict<typeof ru> = {
   "discounts.referral.intro":
     "Customers share a link from the “ℹ️ Info” section of the bot{link}. The invited friend immediately gets a one-time promo code for their first purchase; the referrer gets the same code once the friend's first order is delivered. WELCOME-… and REF-… promo codes appear in the list on the left.",
   "discounts.referral.percent": "Promo code discount, %",
+  "discounts.tiers.title": "Loyalty levels",
+  "discounts.tiers.intro":
+    "The buyer earns points at the percent of their level. The level is based on the total of their delivered orders in the shop currency; the percent is taken from the total before the current order. At or above the first threshold the level percent applies, below it — the general “earn percent” from settings. Points already earned do not change. The buyer sees the level and “to next” in the bot cart.",
+  "discounts.tiers.name": "Name",
+  "discounts.tiers.from": "From amount",
+  "discounts.tiers.percent": "Earn, %",
+  "discounts.tiers.add": "Add level",
+  "discounts.tiers.remove": "Remove",
+  "discounts.tiers.save": "Save levels",
+  "discounts.tiers.empty": "No levels set — points are earned at the general percent.",
   "discounts.offers.title": "Limited offers",
   "discounts.offers.intro":
     "A discount on a product until a date and, if needed, for a limited number of units. The discounted price shows in the bot, Direct and the storefront right away; the card shows a timer and units left.",
@@ -252,6 +282,16 @@ export const uz: SectionDict<typeof ru> = {
   "discounts.referral.intro":
     "Xaridor botdagi «ℹ️ Ma’lumot» bo‘limidagi havolani ulashadi{link}. Taklif qilingan do‘st birinchi xaridi uchun bir martalik promokodni darhol oladi, taklif qilgan esa do‘stining birinchi buyurtmasi berilgandan keyin xuddi shunday promokod oladi. WELCOME-… va REF-… promokodlari chap tomondagi ro‘yxatda ko‘rinadi.",
   "discounts.referral.percent": "Promokod bo‘yicha chegirma, %",
+  "discounts.tiers.title": "Sodiqlik darajalari",
+  "discounts.tiers.intro":
+    "Xaridor o‘z darajasi foizida ball oladi. Daraja topshirilgan buyurtmalarning do‘kon valyutasidagi summasi bo‘yicha hisoblanadi; foiz joriy buyurtmadan oldingi summa bo‘yicha olinadi. Birinchi chegaradan yuqorida — o‘z foizi, pastda — sozlamalardagi umumiy «ball foizi». Allaqachon hisoblangan ballar o‘zgarmaydi. Daraja va «keyingisigacha» ni xaridor bot savatida ko‘radi.",
+  "discounts.tiers.name": "Nomi",
+  "discounts.tiers.from": "Summadan",
+  "discounts.tiers.percent": "Hisoblash, %",
+  "discounts.tiers.add": "Daraja qo‘shish",
+  "discounts.tiers.remove": "Olib tashlash",
+  "discounts.tiers.save": "Darajalarni saqlash",
+  "discounts.tiers.empty": "Darajalar belgilanmagan — ballar umumiy foizda hisoblanadi.",
   "discounts.offers.title": "Cheklangan takliflar",
   "discounts.offers.intro":
     "Mahsulotga ma’lum sanagacha va kerak bo‘lsa cheklangan miqdorga chegirma. Chegirmali narx botda, Direct va vitrinada darhol ko‘rinadi, kartochkada — taymer va qoldiq.",

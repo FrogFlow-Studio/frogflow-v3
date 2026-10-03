@@ -87,6 +87,9 @@ export type Msg = {
   usePointsBtn: string;
   removePointsBtn: string;
   pointsBalanceLine: (n: number) => string;
+  /** Уровень лояльности: имя, % начисления и (необязательно) «до следующего». */
+  loyaltyTierLine: (name: string, percent: number, toNext: string | null) => string;
+  loyaltyTierNext: (amount: string, name: string) => string;
   pointsDiscountLine: (amount: string) => string;
   /** Заказ не в валюте магазина: сколько баллов уходит за скидку (1 балл = 1 ₸). */
   pointsFxLine: (points: number, amount: string) => string;
@@ -418,6 +421,9 @@ const ru: Msg = {
   promoCodeRemoved: "Промокод убран.",
   discountLine: (a) => `🎟 Скидка по промокоду: −${a}\n`,
   pointsAsk: (n) => `🏆 У вас ${n} баллов. Списать их в счёт этого заказа?`,
+  loyaltyTierLine: (name, percent, toNext) =>
+    `🏅 Ваш уровень: ${name} (${percent}% баллами)${toNext ? `. ${toNext}` : ""}\n`,
+  loyaltyTierNext: (amount, name) => `До уровня «${name}» осталось ${amount}`,
   pointsYesBtn: "Да, списать",
   pointsNoBtn: "Нет, копить",
   usePointsBtn: "🏆 Списать баллы",
@@ -724,6 +730,9 @@ const kk: Msg = {
   minOrderBelow: (min, short) =>
     `⚠️ Тапсырыстың ең аз сомасы — ${min}. Тағы ${short} сомасына тауар қосыңыз.`,
   pointsAsk: (n) => `🏆 Сізде ${n} балл бар. Осы тапсырысқа жұмсаймыз ба?`,
+  loyaltyTierLine: (name, percent, toNext) =>
+    `🏅 Сіздің деңгейіңіз: ${name} (${percent}% ұпаймен)${toNext ? `. ${toNext}` : ""}\n`,
+  loyaltyTierNext: (amount, name) => `«${name}» деңгейіне дейін ${amount} қалды`,
   pointsYesBtn: "Иә, жұмсау",
   pointsNoBtn: "Жоқ, жинау",
   pointsFxLine: (n, a) => `   жұмсалатын балл: ${n} = ${a}\n`,
@@ -915,6 +924,9 @@ const en: Msg = {
   promoCodeRemoved: "Promo code removed.",
   discountLine: (a) => `🎟 Promo discount: −${a}\n`,
   pointsAsk: (n) => `🏆 You have ${n} points. Use them for this order?`,
+  loyaltyTierLine: (name, percent, toNext) =>
+    `🏅 Your level: ${name} (${percent}% in points)${toNext ? `. ${toNext}` : ""}\n`,
+  loyaltyTierNext: (amount, name) => `${amount} left to the “${name}” level`,
   pointsYesBtn: "Yes, use",
   pointsNoBtn: "No, keep",
   usePointsBtn: "🏆 Use points",
@@ -1103,6 +1115,9 @@ const uz: Msg = {
   giftRestIssued: (code, sum) =>
     `🎁 Sertifikat buyurtma summasidan ko‘p — qolgan ${sum} yangi kod bilan saqlandi:\n<code>${code}</code>\nUni keyingi buyurtmada kiriting.`,
   pointsAsk: (n) => `🏆 Sizda ${n} ball bor. Ushbu buyurtma uchun sarflaymizmi?`,
+  loyaltyTierLine: (name, percent, toNext) =>
+    `🏅 Sizning darajangiz: ${name} (${percent}% ball bilan)${toNext ? `. ${toNext}` : ""}\n`,
+  loyaltyTierNext: (amount, name) => `«${name}» darajasigacha ${amount} qoldi`,
   pointsYesBtn: "Ha, sarflash",
   pointsNoBtn: "Yo'q, jamlash",
   pointsFxLine: (n, a) => `   sarflanadigan ball: ${n} = ${a}\n`,

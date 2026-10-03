@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { UserError } from "@/core/i18n/user-error";
+import { LOYALTY_TIERS_KEY, loyaltyTiers, validateTiers } from "@/core/loyalty/tiers";
 import { ADJUST_REASON_MAX, ADJUST_REASON_MIN, MAX_POINTS_ADJUST } from "@/core/loyalty/adjust";
 
 /**
@@ -40,4 +41,31 @@ export const adjustPointsFn = createServerFn({ method: "POST" })
       "err.loyalty.busy",
       "Баланс менялся одновременно с вашей правкой. Обновите страницу и повторите.",
     );
+  });
+
+/** Уровни лояльности для карточки в «Скидках» (модуль loyalty, чтение — любой админ магазина). */
+export const loyaltyTiersFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await (await import("@/app/auth/guards.server")).requireAdminModule("loyalty");
+  return loyaltyTiers(ctx);
+});
+
+/** Сохранить уровни (владелец, как и остальные настройки лояльности): до 4, суммы «от» разные. */
+export const saveLoyaltyTiersFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        tiers: z.array(
+          z.object({ name: z.string().max(80), from: z.number(), percent: z.number() }),
+        ),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await (
+      await import("@/app/auth/guards.server")
+    ).requireAdminModule("loyalty", "owner");
+    const tiers = validateTiers(data.tiers);
+    const { setSetting } = await import("@/core/settings/settings");
+    await setSetting(ctx, LOYALTY_TIERS_KEY, tiers.length ? JSON.stringify(tiers) : "");
+    return { tiers };
   });

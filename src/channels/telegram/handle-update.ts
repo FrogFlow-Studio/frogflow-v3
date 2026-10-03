@@ -113,7 +113,8 @@ import {
 import { telegramLanguageAsker, telegramMaterialSender } from "./deliver";
 import { botCommandFor, type BotCommand } from "./commands";
 import { legacyLangItem, parseLegacyLang, parseSearchMore, searchPage } from "./legacy";
-import { findValidGift, findValidPromoCode } from "@/core/discounts/discounts";
+import { findValidGift, findValidPromoCode, shopCurrency } from "@/core/discounts/discounts";
+import { customerTierStatus } from "@/core/loyalty/tiers";
 import { normalizeCode } from "@/core/discounts/pure";
 import { claimHandoff, HANDOFF_PREFIX } from "@/core/storefront/handoff";
 import { parseWaitlistPayload, shouldJoinWaitlist } from "@/core/waitlist/link";
@@ -954,6 +955,25 @@ async function smartSearchFallback(b: Bot, query: string): Promise<Product[]> {
 
 // ── корзина и оформление ──────────────────────────────────────────────
 
+/** Уровень лояльности и «до следующего»; сбой чтения — без строки, а не без корзины. */
+async function tierLine(b: Bot): Promise<string> {
+  try {
+    const cur = await shopCurrency(b.ctx);
+    const status = await customerTierStatus(b.ctx, b.customer.telegramId, cur);
+    if (!status?.tier) return "";
+    const toNext = status.next
+      ? b.m.loyaltyTierNext(
+          formatMoney(status.next.remaining, cur),
+          escapeHtml(status.next.tier.name),
+        )
+      : null;
+    return b.m.loyaltyTierLine(escapeHtml(status.tier.name), status.tier.percent, toNext);
+  } catch (e) {
+    console.error(`[telegram] уровень лояльности: ${String(e)}`);
+    return "";
+  }
+}
+
 async function showCart(b: Bot) {
   const items = await listCart(b.ctx, b.customer);
   if (items.length === 0) {
@@ -982,6 +1002,7 @@ async function showCart(b: Bot) {
     if (sum.points.fx)
       text += b.m.pointsFxLine(sum.points.spent, formatMoney(sum.points.discount, sum.currency));
   }
+  if (mod.loyalty) text += await tierLine(b);
   if (sum.gift)
     text += b.m.giftCertificateDiscountLine(formatMoney(sum.gift.discount, sum.currency));
   if (sum.discountFx) text += `${b.m.discountFx}\n`;

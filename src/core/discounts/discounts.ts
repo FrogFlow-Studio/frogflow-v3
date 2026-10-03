@@ -2,6 +2,7 @@ import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { getSettingStrict } from "@/core/settings/settings";
+import { tierEarnPercent } from "@/core/loyalty/tiers";
 import { convertForReceipt, convertForTenant } from "@/core/pricing/pricing";
 import { buyerUsedPromo, promoOnceIds, type PromoBuyer } from "./promo-once";
 import {
@@ -420,7 +421,10 @@ export async function awardPointsForOrder(
       ? total
       : await convertForReceipt(total, currency, shop);
   if (base == null) return 0;
-  const points = computePointsEarned(base, await loyaltyEarnPercent(ctx));
+  // Процент — по уровню покупателя до этого заказа; уровней нет — общий.
+  const percent =
+    (await tierEarnPercent(ctx, telegramId, orderId, shop)) ?? (await loyaltyEarnPercent(ctx));
+  const points = computePointsEarned(base, percent);
   if (points <= 0) return 0;
   const { data: claimed, error } = await ctx.db
     .from("orders")

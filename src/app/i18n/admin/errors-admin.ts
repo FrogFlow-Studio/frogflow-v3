@@ -63,6 +63,10 @@ export const ru = {
   "err.customer.notFound": "Покупатель не найден.",
   "err.loyalty.negative": "Нельзя списать больше баллов, чем есть: на балансе {points}.",
   "err.loyalty.busy": "Баланс менялся одновременно с вашей правкой. Обновите страницу и повторите.",
+  "err.loyalty.tiers": "Уровней может быть не больше {max}.",
+  "err.loyalty.tierInvalid":
+    "У каждого уровня нужны название (до 40 знаков), сумма от 0 и процент от 1 до 100.",
+  "err.loyalty.tierDup": "Суммы «от» у уровней не должны повторяться.",
   "err.invoice.empty": "Добавьте хотя бы одну позицию.",
   "err.invoice.unavailable": "Товар скрыт, удалён или вариант выбран неверно.",
   "err.invoice.mixed": "Цифровые и физические товары — разными счетами.",
@@ -228,6 +232,10 @@ export const kk: SectionDict<typeof ru> = {
   "err.loyalty.negative": "Бар ұпайдан артық шегеруге болмайды: балансте {points}.",
   "err.loyalty.busy":
     "Баланс сіздің өзгертуіңізбен бір мезгілде өзгерді. Бетті жаңартып, қайталаңыз.",
+  "err.loyalty.tiers": "Деңгей саны {max}-тен аспауы керек.",
+  "err.loyalty.tierInvalid":
+    "Әр деңгейге атау (40 таңбаға дейін), 0-ден бастап сома және 1-ден 100-ге дейін пайыз қажет.",
+  "err.loyalty.tierDup": "Деңгейлердің «бастап» сомалары қайталанбауы керек.",
   "err.invoice.empty": "Кемінде бір позиция қосыңыз.",
   "err.invoice.unavailable": "Тауар жасырылған, жойылған немесе нұсқа қате таңдалған.",
   "err.invoice.mixed": "Цифрлық және физикалық тауарлар — бөлек шоттармен.",
@@ -390,6 +398,10 @@ export const en: SectionDict<typeof ru> = {
   "err.loyalty.negative": "You cannot subtract more points than the balance: {points} available.",
   "err.loyalty.busy":
     "The balance changed at the same time as your edit. Refresh the page and try again.",
+  "err.loyalty.tiers": "There can be at most {max} levels.",
+  "err.loyalty.tierInvalid":
+    "Each level needs a name (up to 40 characters), an amount from 0 and a percent from 1 to 100.",
+  "err.loyalty.tierDup": "The “from” amounts of the levels must not repeat.",
   "err.invoice.empty": "Add at least one item.",
   "err.invoice.unavailable": "The product is hidden, deleted or the variant is wrong.",
   "err.invoice.mixed": "Digital and physical products go in separate invoices.",
@@ -553,6 +565,10 @@ export const uz: SectionDict<typeof ru> = {
   "err.loyalty.negative": "Balansdagidan koʻp ball ayirib boʻlmaydi: balansda {points}.",
   "err.loyalty.busy":
     "Balans siz oʻzgartirgan paytda oʻzgardi. Sahifani yangilab, qayta urinib koʻring.",
+  "err.loyalty.tiers": "Darajalar soni {max} tadan oshmasligi kerak.",
+  "err.loyalty.tierInvalid":
+    "Har bir daraja uchun nom (40 belgigacha), 0 dan boshlab summa va 1 dan 100 gacha foiz kerak.",
+  "err.loyalty.tierDup": "Darajalarning «dan» summalari takrorlanmasligi kerak.",
   "err.invoice.empty": "Kamida bitta pozitsiya qoʻshing.",
   "err.invoice.unavailable": "Mahsulot yashirilgan, oʻchirilgan yoki variant notoʻgʻri tanlangan.",
   "err.invoice.mixed": "Raqamli va jismoniy mahsulotlar — alohida hisoblar bilan.",
