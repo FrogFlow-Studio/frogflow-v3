@@ -18,6 +18,7 @@ test("витрина: фильтр цены оставляет подходящ�
   await expect(page).toHaveURL(/min=1000/);
   await expect(page.getByText(F.PRODUCT_NAME).first()).toBeVisible();
   await expect(page.getByText(F.UPSELL_NAME)).toHaveCount(0);
+  await expect(page.getByText(F.VARIANT_PRODUCT_NAME)).toHaveCount(0);
 
   await page.getByRole("link", { name: "Сбросить фильтры", exact: true }).click();
   await expect(page.getByText(F.UPSELL_NAME).first()).toBeVisible();
@@ -26,5 +27,7 @@ test("витрина: фильтр цены оставляет подходящ�
   await page.goto(`/s/${F.SHOP_SLUG}?max=1000`);
   await expect(page.getByText(F.UPSELL_NAME).first()).toBeVisible();
   await expect(page.getByText(F.PRODUCT_NAME)).toHaveCount(0);
+  // Набор стоит 3000 ₸, но вариант «Мини» — 400 ₸: в «до 1000» он есть.
+  await expect(page.getByText(F.VARIANT_PRODUCT_NAME).first()).toBeVisible();
   expect(errors).toEqual([]);
 });

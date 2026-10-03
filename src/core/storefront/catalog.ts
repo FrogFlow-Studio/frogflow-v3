@@ -205,16 +205,8 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
  * Активные товары в порядке выбранной сортировки; в конце — id, чтобы
  * равные товары не менялись местами и страницы не перекрывались.
  */
-function catalogQuery(
-  ctx: TenantContext,
-  sort: CatalogSort,
-  search: string | null,
-  price: { min: number | null; max: number | null } = { min: null, max: null },
-) {
+function catalogQuery(ctx: TenantContext, sort: CatalogSort, search: string | null) {
   let q = ctx.db.from("products").select(PRODUCT_SELECT).eq("is_active", true);
-  // Цена от–до — в запросе: страницы считаются уже по отфильтрованному каталогу.
-  if (price.min !== null) q = q.gte("price", price.min);
-  if (price.max !== null) q = q.lte("price", price.max);
   if (sort === "popular")
     q = q
       .order("rating_count", { ascending: false, nullsFirst: false })
@@ -224,6 +216,18 @@ function catalogQuery(
   else q = q.order("sort_order").order("name");
   q = q.order("id");
   return search ? q.or(search) : q;
+}
+
+/**
+ * Цена для фильтра «от–до»: наименьшая цена варианта (витрина показывает
+ * «от …»), без вариантов — базовая; в валюте товара, до акций и курса. В
+ * запрос цена не уходит: у товара с вариантами колонка products.price не
+ * говорит, сколько он стоит «от», поэтому проверка точная, после чтения
+ * страницы, а листание идёт по отфильтрованным товарам без потерь.
+ */
+export function filterPrice(p: Pick<Product, "price" | "product_variants">): number {
+  const vs = (p.product_variants ?? []).map((v) => Number(v.price)).filter(Number.isFinite);
+  return vs.length ? Math.min(...vs) : Number(p.price) || 0;
 }
 
 export { STORE_PAGE };
@@ -280,13 +284,18 @@ export async function storeCatalogPage(
   const price = priceRange(opts.minPrice, opts.maxPrice);
   const listed: Array<{ p: Product; langs: string[] }> = [];
   await eachPage<Product>(
-    (a, b) => catalogQuery(ctx, sort, search, price).range(a, b),
+    (a, b) => catalogQuery(ctx, sort, search).range(a, b),
     "store catalog",
     (rows) => {
       for (const p of rows) {
         const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
         if (wanted && !ids.some((id) => wanted.has(id))) continue;
         if (opts.inStock && !isInStock(ctx, p)) continue;
+        if (price.min !== null || price.max !== null) {
+          const fp = filterPrice(p);
+          if ((price.min !== null && fp < price.min) || (price.max !== null && fp > price.max))
+            continue;
+        }
         if (!listedOnStorefront(p, known, visible)) continue;
         listed.push({ p, langs: productLanguages(ctx, p) });
         if (!multiLang && listed.length >= need) return false;

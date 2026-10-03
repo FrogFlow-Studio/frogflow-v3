@@ -33,6 +33,6 @@ export function seedDb(): StubDb {
   seedSchool(db, now);
   seedLeads(db, now);
   seedShop4Waitlist(db, now);
-  seedShop4Filters(db);
+  seedShop4Filters(db, now);
   return db;
 }

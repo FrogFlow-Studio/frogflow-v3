@@ -5,8 +5,8 @@ import { storeCatalogPage, STORE_PAGE } from "./catalog";
 import { parsePriceBound, priceRange } from "./filters";
 
 /**
- * Фильтры главной витрины: «в наличии» и цена от–до. Цена режется в запросе
- * к базе (страницы считаются по отфильтрованному каталогу), «в наличии» —
+ * Фильтры главной витрины: «в наличии» и цена от–до. Цена проверяется после чтения страницы
+ * (страницы считаются по отфильтрованному каталогу), «в наличии» —
  * только при включённом модуле «Склад» и только у товаров с нулевым остатком.
  */
 const BOT = "00000000-0000-0000-0000-000000000001";
@@ -77,6 +77,28 @@ describe("фильтр цены витрины", () => {
     expect(await all(ctx, { minPrice: 2_800 })).toHaveLength(3);
     expect(await all(ctx, { maxPrice: 300 })).toHaveLength(3);
     expect(await all(ctx, {})).toHaveLength(30);
+  });
+});
+
+describe("фильтр цены и варианты", () => {
+  it("товар с вариантом дешевле базовой попадает в «до», дорогие варианты — не в «до»", async () => {
+    const ctx = shop(30);
+    const rows = (ctx.db as unknown as { tables: Record<string, Array<Record<string, unknown>>> })
+      .tables.products!;
+    // Товар 20 (2000 ₸) с вариантом за 150; товар 2 (200 ₸) с единственным вариантом за 5000.
+    rows[19]!.product_variants = [
+      { id: "v1", name: "Мини", price: 150, sort_order: 1 },
+      { id: "v2", name: "Макси", price: 2000, sort_order: 2 },
+    ];
+    rows[1]!.product_variants = [{ id: "v3", name: "Люкс", price: 5000, sort_order: 1 }];
+    const upTo300 = await all(ctx, { maxPrice: 300 });
+    expect(upTo300).toContain("Товар 0020");
+    expect(upTo300).not.toContain("Товар 0002");
+    expect(upTo300).toHaveLength(3);
+    // «от 1000»: Товар 20 теперь «от 150» и выпадает, Товар 2 «от 5000» входит.
+    const from1000 = await all(ctx, { minPrice: 1000 });
+    expect(from1000).toContain("Товар 0002");
+    expect(from1000).not.toContain("Товар 0020");
   });
 });
 
