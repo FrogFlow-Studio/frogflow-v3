@@ -57,4 +57,36 @@ describe("сообщение о диалоге без ответа", () => {
     db.tables.app_settings = [{ key: "chat_unanswered_minutes", value: "0" }];
     expect(await runUnansweredChats(tenant)).toEqual({ skipped: "off" });
   });
+
+  it("пишет продавцу на языке его админки", async () => {
+    notifyAdminsHtml.mockClear();
+    const at = new Date(Date.now() - 45 * 60_000).toISOString();
+    db.tables.app_settings = [
+      { key: "chat_unanswered_minutes", value: "30" },
+      { key: "admin_locale", value: "en" },
+    ];
+    db.tables.manager_chat_state = [
+      { bot_id: "b", telegram_id: -6, active: true, last_message_at: at, unread_count: 1 },
+    ];
+    db.tables.manager_chat_messages = [
+      {
+        id: "m2",
+        bot_id: "b",
+        telegram_id: -6,
+        direction: "in",
+        sender: "customer",
+        text: "hi",
+        created_at: at,
+      },
+    ];
+    db.tables.zernio_logs = [];
+    db.tables.bot_users = [
+      { user_key: "tg:6", platform: "telegram", telegram_id: -6, first_name: "Ann", state: {} },
+    ];
+    await runUnansweredChats({ id: "b", modules: { manager_chat: true }, settings: {} } as never);
+    const [, html] = notifyAdminsHtml.mock.calls[0] as unknown as [unknown, string];
+    expect(html).toContain("Customer has been waiting for a reply for 45 min");
+    expect(html).toContain("No one assigned");
+    expect(html).not.toContain("Покупатель");
+  });
 });

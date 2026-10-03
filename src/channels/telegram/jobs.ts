@@ -21,6 +21,8 @@ import { sendFulfillmentReminders } from "@/core/reminders/fulfillment";
 import { telegramApi, type TelegramApi } from "./api";
 import { COPY, escapeHtml } from "./copy";
 import { inChunks } from "@/lib/in-chunks";
+import type { Locale } from "@/core/i18n/locale";
+import { waitedText } from "@/core/helpdesk/seller-texts";
 
 function api(ctx: TenantContext): TelegramApi {
   return telegramApi(ctx.secrets.telegramToken(), env().TELEGRAM_API_BASE);
@@ -454,13 +456,9 @@ export async function runCourseLessons(tenant: Tenant) {
   return { lessons, reminders };
 }
 
-/** «12 мин», «2 ч 5 мин» — сколько покупатель ждёт. */
-export function waitedLabel(since: string, now = Date.now()): string {
-  const min = Math.max(1, Math.round((now - Date.parse(since)) / 60_000));
-  if (min < 60) return `${min} мин`;
-  const h = Math.floor(min / 60);
-  const rest = min % 60;
-  return rest ? `${h} ч ${rest} мин` : `${h} ч`;
+/** «12 мин», «2 ч 5 мин» — сколько покупатель ждёт (язык продавца, по умолчанию русский). */
+export function waitedLabel(since: string, now = Date.now(), locale: Locale = "ru"): string {
+  return waitedText(locale, since, now);
 }
 
 /**
@@ -483,21 +481,22 @@ export async function runUnansweredChats(tenant: Tenant) {
     instagram: "Instagram",
     whatsapp: "WhatsApp",
   };
+  const { sellerLocale } = await import("@/core/catalog/low-stock");
+  const { unansweredChatText } = await import("@/core/helpdesk/seller-texts");
+  const locale = await sellerLocale(ctx);
   return remindUnanswered(ctx, minutes, async (d) => {
     const c = await getCustomerByTelegramId(ctx, d.telegramId);
     const name =
       [c?.firstName, c?.lastName].filter(Boolean).join(" ") ||
       (c?.username ? `@${c.username}` : `id ${d.telegramId}`);
     const preview = d.lastText.length > 200 ? `${d.lastText.slice(0, 200)}…` : d.lastText;
-    const lines = [
-      `⏳ <b>Покупатель ждёт ответа ${waitedLabel(d.waitingSince)}</b>`,
-      `${channel[c?.platform ?? "telegram"] ?? "Telegram"} · 👤 ${escapeHtml(name)}`,
-      d.assignee ? `Ответственный: ${escapeHtml(d.assignee)}` : "Ответственный не назначен",
-      `💬 ${escapeHtml(preview)}`,
-      "",
-      `Ответьте в разделе «Чат»: ${ctx.appUrl}/admin/chat?c=${d.telegramId}`,
-    ];
-    await notifyAdminsHtml(ctx, lines.join("\n"), { kind: "question" });
+    const html = unansweredChatText(locale, waitedLabel(d.waitingSince, Date.now(), locale), {
+      who: `${channel[c?.platform ?? "telegram"] ?? "Telegram"} · 👤 ${escapeHtml(name)}`,
+      assignee: d.assignee ? escapeHtml(d.assignee) : null,
+      preview: escapeHtml(preview),
+      link: `${ctx.appUrl}/admin/chat?c=${d.telegramId}`,
+    });
+    await notifyAdminsHtml(ctx, html, { kind: "question" });
   });
 }
 
@@ -513,20 +512,24 @@ export async function runOverdueTickets(tenant: Tenant) {
   const { OVERDUE_KEY, parseOverdueHours, remindOverdue } = await import("@/core/helpdesk/overdue");
   const hours = parseOverdueHours(await getSetting(ctx, OVERDUE_KEY));
   if (!hours) return { skipped: "off" };
+  const { sellerLocale } = await import("@/core/catalog/low-stock");
+  const { overdueTicketText } = await import("@/core/helpdesk/seller-texts");
+  const locale = await sellerLocale(ctx);
   return remindOverdue(ctx, hours, async ({ ticket, waitingSince }) => {
     const name = ticket.customerName ?? `id ${ticket.telegramId}`;
     const preview =
       ticket.subject.length > 200 ? `${ticket.subject.slice(0, 200)}…` : ticket.subject;
-    const lines = [
-      `⏳ <b>Обращение #${ticket.number} без ответа ${waitedLabel(waitingSince)}</b>`,
-      `👤 ${escapeHtml(name)}`,
-      ticket.assignee
-        ? `Ответственный: ${escapeHtml(ticket.assignee)}`
-        : "Ответственный не назначен",
-      `💬 ${escapeHtml(preview)}`,
-      "",
-      `Ответьте в разделе «Чат»: ${ctx.appUrl}/admin/chat?c=${ticket.telegramId}`,
-    ];
-    await notifyAdminsHtml(ctx, lines.join("\n"), { kind: "question" });
+    const html = overdueTicketText(
+      locale,
+      ticket.number,
+      waitedLabel(waitingSince, Date.now(), locale),
+      {
+        who: `👤 ${escapeHtml(name)}`,
+        assignee: ticket.assignee ? escapeHtml(ticket.assignee) : null,
+        preview: escapeHtml(preview),
+        link: `${ctx.appUrl}/admin/chat?c=${ticket.telegramId}`,
+      },
+    );
+    await notifyAdminsHtml(ctx, html, { kind: "question" });
   });
 }

@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { inboundIntercepted, inboundLogText, lastInboundAt, tappedButtonText } from "./chat";
+import {
+  inboundIntercepted,
+  inboundLogText,
+  lastInboundAt,
+  listConversations,
+  tappedButtonText,
+} from "./chat";
 
 const BOT = "11111111-1111-1111-1111-111111111111";
 
@@ -78,5 +84,43 @@ describe("окно 24 часа: последнее входящее", () => {
     ];
     expect(await lastInboundAt(s.ctx, 7)).toBe("2026-09-26T12:00:00Z");
     expect(await lastInboundAt(s.ctx, 9)).toBeNull();
+  });
+});
+
+describe("список диалогов", () => {
+  it("отдаёт все диалоги, а не первые 200 или 1000, свежие сверху", async () => {
+    const db = fakeDb({ maxRows: 1000 });
+    const total = 1250;
+    db.tables.manager_chat_state = Array.from({ length: total }, (_, i) => ({
+      bot_id: BOT,
+      telegram_id: i + 1,
+      active: true,
+      last_message_at: new Date(Date.UTC(2026, 0, 1) + i * 60_000).toISOString(),
+      last_message_preview: `m${i + 1}`,
+      last_message_direction: "in",
+      unread_count: 1,
+    }));
+    db.tables.bot_users = [{ bot_id: BOT, telegram_id: 1, user_key: "k1", first_name: "Первый" }];
+    const ctx = { tenant: { id: BOT }, db } as unknown as TenantContext;
+    const list = await listConversations(ctx);
+    expect(list).toHaveLength(total);
+    expect(list[0]!.telegram_id).toBe(total);
+    expect(list.at(-1)).toMatchObject({ telegram_id: 1, first_name: "Первый" });
+    expect(new Set(list.map((c) => c.telegram_id)).size).toBe(total);
+  });
+
+  it("при равном времени порядок стабилен по telegram_id", async () => {
+    const db = fakeDb({});
+    const at = "2026-01-01T00:00:00.000Z";
+    db.tables.manager_chat_state = [3, 1, 2].map((id) => ({
+      bot_id: BOT,
+      telegram_id: id,
+      active: true,
+      last_message_at: at,
+      unread_count: 0,
+    }));
+    db.tables.bot_users = [];
+    const ctx = { tenant: { id: BOT }, db } as unknown as TenantContext;
+    expect((await listConversations(ctx)).map((c) => c.telegram_id)).toEqual([1, 2, 3]);
   });
 });

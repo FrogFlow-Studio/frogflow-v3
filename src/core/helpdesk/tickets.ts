@@ -47,6 +47,8 @@ export type Ticket = {
   ratedAt: string | null;
   /** Когда покупателю отправили просьбу об оценке (окно ответа цифрой в Direct/WhatsApp). */
   ratingAskedAt: string | null;
+  /** Версия записи: каждая запись обращения её повышает, условная запись сверяет (payload.rev; нет — 0). */
+  rev: number;
 };
 
 type Payload = {
@@ -60,6 +62,7 @@ type Payload = {
   rating?: number | null;
   rated_at?: string | null;
   rating_asked_at?: string | null;
+  rev?: number;
 };
 
 function rowToTicket(r: { id: string; status: string; payload: Json; created_at: string }): Ticket {
@@ -78,6 +81,7 @@ function rowToTicket(r: { id: string; status: string; payload: Json; created_at:
     rating: validRating(p.rating) ? Number(p.rating) : null,
     ratedAt: p.rated_at ?? null,
     ratingAskedAt: p.rating_asked_at ?? null,
+    rev: Number.isInteger(p.rev) ? Number(p.rev) : 0,
   };
 }
 
@@ -102,7 +106,51 @@ function toPayload(t: Ticket): Json {
     rating: t.rating,
     rated_at: t.ratedAt,
     rating_asked_at: t.ratingAskedAt,
+    // 0 не пишем: у старых строк поля нет, и условная запись для них — `rev is null`.
+    ...(t.rev > 0 ? { rev: t.rev } : {}),
   } as unknown as Json;
+}
+
+const WRITE_TRIES = 4;
+
+/**
+ * Читает обращение, строит новое состояние и пишет его условно: версия
+ * `payload.rev` и статус те же, что при чтении (короткие поля — весь payload
+ * в адрес запроса не кладём). Если за это время продавец сменил статус, а
+ * покупатель дописал сообщение, запись не пройдёт — читаем заново и строим
+ * поверх свежего, до WRITE_TRIES раз. `build` вернул null — писать нечего.
+ * Вернёт записанное обращение или null (нет обращения / нечего писать).
+ */
+async function writeTicket(
+  ctx: TenantContext,
+  id: string,
+  build: (t: Ticket) => { next: Ticket; dbStatus?: string } | null,
+): Promise<Ticket | null> {
+  for (let attempt = 0; attempt < WRITE_TRIES; attempt++) {
+    const { data: row, error: readError } = await ctx.db
+      .from("zernio_logs")
+      .select(SELECT)
+      .eq("id", id)
+      .like("event_id", `${TICKET_PREFIX}%`)
+      .maybeSingle();
+    if (readError) throw serverFailure(`Поддержка: ${readError.message}`);
+    if (!row) return null;
+    const t = rowToTicket(row);
+    const built = build(t);
+    if (!built) return null;
+    const next: Ticket = { ...built.next, rev: t.rev + 1 };
+    const base = ctx.db
+      .from("zernio_logs")
+      .update({ status: built.dbStatus ?? row.status, payload: toPayload(next) })
+      .eq("id", id)
+      .eq("status", row.status);
+    const guarded =
+      t.rev === 0 ? base.is("payload->>rev", null) : base.eq("payload->>rev", String(t.rev));
+    const { data, error } = await guarded.select("id");
+    if (error) throw serverFailure(`Поддержка: ${error.message}`);
+    if (data?.length) return next;
+  }
+  throw serverFailure("Поддержка: обращение менялось одновременно, запись не прошла");
 }
 
 export async function openTicketFor(
@@ -129,20 +177,20 @@ export async function createTicket(
   const existing = await openTicketFor(ctx, input.telegramId);
   const now = new Date().toISOString();
   if (existing) {
-    const next = {
-      ...existing,
-      status: "open" as const,
-      history: [
-        ...existing.history,
-        { at: now, actor: "customer", action: "message", note: input.subject.slice(0, 300) },
-      ],
-    };
-    const { error } = await ctx.db
-      .from("zernio_logs")
-      .update({ status: "open", payload: toPayload(next) })
-      .eq("id", existing.id);
+    // Дописываем поверх свежего состояния: продавец мог сменить статус или заметку.
+    const next = await writeTicket(ctx, existing.id, (t) => ({
+      next: {
+        ...t,
+        status: "open",
+        history: [
+          ...t.history,
+          { at: now, actor: "customer", action: "message", note: input.subject.slice(0, 300) },
+        ],
+      },
+      dbStatus: "open",
+    }));
     // Не записали — не говорим покупателю, что обращение дополнено.
-    if (error) throw serverFailure(`Поддержка: ${error.message}`);
+    if (!next) throw serverFailure("Поддержка: обращение пропало во время записи");
     return { ticket: next, created: false };
   }
   const number = await nextTicketNumber(ctx);
@@ -160,6 +208,7 @@ export async function createTicket(
     rating: null,
     ratedAt: null,
     ratingAskedAt: null,
+    rev: 0,
   };
   const { data, error } = await ctx.db
     .from("zernio_logs")
@@ -237,28 +286,26 @@ export async function updateTicket(
   patch: { status?: TicketStatus; assignee?: string | null; note?: string },
   actor: string,
 ): Promise<Ticket | null> {
-  const t = await getTicket(ctx, id);
-  if (!t) return null;
   const at = new Date().toISOString();
-  const history = [...t.history];
-  if (patch.status && patch.status !== t.status)
-    history.push({ at, actor, action: `status:${patch.status}` });
-  if (patch.assignee !== undefined && patch.assignee !== t.assignee)
-    history.push({ at, actor, action: `assignee:${patch.assignee ?? "-"}` });
-  if (patch.note?.trim())
-    history.push({ at, actor, action: "note", note: patch.note.trim().slice(0, 1000) });
-  const next: Ticket = {
-    ...t,
-    status: patch.status ?? t.status,
-    assignee: patch.assignee !== undefined ? patch.assignee : t.assignee,
-    history,
-  };
-  const { error } = await ctx.db
-    .from("zernio_logs")
-    .update({ status: next.status, payload: toPayload(next) })
-    .eq("id", id);
-  if (error) throw new Error(error.message);
-  return next;
+  return writeTicket(ctx, id, (t) => {
+    const history = [...t.history];
+    if (patch.status && patch.status !== t.status)
+      history.push({ at, actor, action: `status:${patch.status}` });
+    if (patch.assignee !== undefined && patch.assignee !== t.assignee)
+      history.push({ at, actor, action: `assignee:${patch.assignee ?? "-"}` });
+    if (patch.note?.trim())
+      history.push({ at, actor, action: "note", note: patch.note.trim().slice(0, 1000) });
+    const status = patch.status ?? t.status;
+    return {
+      next: {
+        ...t,
+        status,
+        assignee: patch.assignee !== undefined ? patch.assignee : t.assignee,
+        history,
+      },
+      dbStatus: patch.status ? status : undefined,
+    };
+  });
 }
 
 export async function countOpenTickets(ctx: TenantContext): Promise<number> {
@@ -285,25 +332,16 @@ export function validRating(n: unknown): n is number {
 
 /** Покупателю ушла просьба об оценке — запоминаем момент (для ответа цифрой в Direct/WhatsApp). */
 export async function markRatingAsked(ctx: TenantContext, ticketId: string): Promise<void> {
-  const t = await getTicket(ctx, ticketId);
-  if (!t || t.rating !== null) return;
-  const next: Ticket = { ...t, ratingAskedAt: new Date().toISOString() };
-  const { error } = await ctx.db
-    .from("zernio_logs")
-    .update({ payload: toPayload(next) })
-    .eq("id", ticketId);
-  if (error) throw serverFailure(`Поддержка: ${error.message}`);
+  await writeTicket(ctx, ticketId, (t) =>
+    t.rating !== null ? null : { next: { ...t, ratingAskedAt: new Date().toISOString() } },
+  );
 }
 
 /** Покупатель написал что-то другое — просьба об оценке больше не ждёт цифры. */
 export async function clearRatingAsked(ctx: TenantContext, ticketId: string): Promise<void> {
-  const t = await getTicket(ctx, ticketId);
-  if (!t || t.ratingAskedAt === null) return;
-  const { error } = await ctx.db
-    .from("zernio_logs")
-    .update({ payload: toPayload({ ...t, ratingAskedAt: null }) })
-    .eq("id", ticketId);
-  if (error) throw serverFailure(`Поддержка: ${error.message}`);
+  await writeTicket(ctx, ticketId, (t) =>
+    t.ratingAskedAt === null ? null : { next: { ...t, ratingAskedAt: null } },
+  );
 }
 
 export type RateResult = "rated" | "already" | "invalid";
@@ -333,20 +371,19 @@ export async function rateTicket(
     throw serverFailure(`Поддержка: оценка не записана: ${markError.message}`);
   }
   const now = new Date().toISOString();
-  const next: Ticket = {
-    ...t,
-    rating: score,
-    ratedAt: now,
-    history: [...t.history, { at: now, actor: "customer", action: `rating:${score}` }],
-  };
-  const { error } = await ctx.db
-    .from("zernio_logs")
-    .update({ payload: toPayload(next) })
-    .eq("id", ticketId);
-  if (error) {
+  try {
+    await writeTicket(ctx, ticketId, (cur) => ({
+      next: {
+        ...cur,
+        rating: score,
+        ratedAt: now,
+        history: [...cur.history, { at: now, actor: "customer", action: `rating:${score}` }],
+      },
+    }));
+  } catch (e) {
     // Оценка не легла в обращение — снимаем отметку, чтобы покупатель мог повторить.
     await ctx.db.from("app_settings").delete().eq("bot_id", ctx.tenant.id).eq("key", key);
-    throw serverFailure(`Поддержка: оценка не записана: ${error.message}`);
+    throw e;
   }
   return "rated";
 }

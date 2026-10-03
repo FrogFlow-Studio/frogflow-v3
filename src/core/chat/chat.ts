@@ -124,7 +124,7 @@ export async function connect(ctx: TenantContext, telegramId: number): Promise<v
     : await ctx.db
         .from("manager_chat_state")
         .insert({ bot_id: ctx.tenant.id, telegram_id: telegramId, ...patch });
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`Чат: ${error.message}`);
 }
 
 export async function disconnect(ctx: TenantContext, telegramId: number): Promise<void> {
@@ -132,7 +132,7 @@ export async function disconnect(ctx: TenantContext, telegramId: number): Promis
     .from("manager_chat_state")
     .update({ active: false })
     .eq("telegram_id", telegramId);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`Чат: ${error.message}`);
 }
 
 export async function markRead(ctx: TenantContext, telegramId: number): Promise<void> {
@@ -164,16 +164,21 @@ function activePause(until: unknown, now: number): string | null {
   return typeof until === "string" && Date.parse(until) > now ? until : null;
 }
 
-export async function listConversations(ctx: TenantContext, limit = 200): Promise<Conversation[]> {
-  const { data: states, error } = await ctx.db
-    .from("manager_chat_state")
-    .select(
-      "telegram_id, active, last_message_at, last_message_preview, last_message_direction, unread_count",
-    )
-    .order("last_message_at", { ascending: false })
-    .limit(limit);
-  if (error) throw new Error(error.message);
-  if (!states?.length) return [];
+/** Все диалоги, свежие сверху: страницы по 1000, порядок заканчивается telegram_id. */
+export async function listConversations(ctx: TenantContext): Promise<Conversation[]> {
+  const states = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("manager_chat_state")
+        .select(
+          "telegram_id, active, last_message_at, last_message_preview, last_message_direction, unread_count",
+        )
+        .order("last_message_at", { ascending: false })
+        .order("telegram_id")
+        .range(from, to),
+    "Чат: диалоги",
+  );
+  if (!states.length) return [];
   const users = await inChunks(
     states.map((s) => s.telegram_id),
     (chunk) =>
@@ -221,8 +226,9 @@ export async function listMessages(
     .select("id, direction, sender, text, created_at")
     .eq("telegram_id", telegramId)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(limit);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`Чат: ${error.message}`);
   return ((data ?? []) as ChatMessage[]).reverse();
 }
 
@@ -241,7 +247,7 @@ export async function lastInboundAt(
     .eq("direction", "in")
     .order("created_at", { ascending: false })
     .limit(1);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`Чат: ${error.message}`);
   return data?.[0]?.created_at ?? null;
 }
 

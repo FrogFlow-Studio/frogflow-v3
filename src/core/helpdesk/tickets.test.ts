@@ -4,6 +4,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { openTicketNumbers } from "@/core/inbox/inbox";
 import {
   createTicket,
+  getTicket,
   listTickets,
   markRatingAsked,
   openTicketFor,
@@ -182,5 +183,47 @@ describe("обращения: оценка после закрытия", () => {
     const st = await ratingStats(ctx);
     expect(st).toMatchObject({ count: 3, average: 2.7, lowCount: 2 });
     expect(st.low.map((t) => t.rating).sort()).toEqual([1, 2]);
+  });
+});
+
+describe("обращения: одновременные записи не затирают друг друга", () => {
+  it("отметка просьбы об оценке и заметка продавца ложатся обе", async () => {
+    const { ctx } = ctxWith();
+    const { ticket } = await createTicket(ctx, ask(1));
+    await updateTicket(ctx, ticket.id, { status: "closed" }, "admin:owner");
+    await Promise.all([
+      markRatingAsked(ctx, ticket.id),
+      updateTicket(ctx, ticket.id, { note: "позвонили" }, "admin:owner"),
+    ]);
+    const t = (await getTicket(ctx, ticket.id))!;
+    expect(t.ratingAskedAt).not.toBeNull();
+    expect(t.history.map((h) => h.action)).toContain("note");
+  });
+
+  it("смена статуса продавцом и дописанное покупателем сообщение ложатся обе", async () => {
+    const { ctx } = ctxWith();
+    const { ticket } = await createTicket(ctx, ask(1));
+    await Promise.all([
+      updateTicket(ctx, ticket.id, { status: "waiting" }, "admin:owner"),
+      createTicket(ctx, ask(1, "Алло?")),
+    ]);
+    const t = (await getTicket(ctx, ticket.id))!;
+    const actions = t.history.map((h) => h.action);
+    expect(actions).toContain("status:waiting");
+    expect(actions).toContain("message");
+    expect(t.rev).toBeGreaterThanOrEqual(2);
+  });
+
+  it("оценка и закрытие/заметка не теряют друг друга", async () => {
+    const { ctx } = ctxWith();
+    const { ticket } = await createTicket(ctx, ask(1));
+    await updateTicket(ctx, ticket.id, { status: "closed" }, "admin:owner");
+    const [r] = await Promise.all([
+      rateTicket(ctx, ticket.id, 1, 5),
+      updateTicket(ctx, ticket.id, { assignee: "manager1" }, "admin:owner"),
+    ]);
+    expect(r).toBe("rated");
+    const t = (await getTicket(ctx, ticket.id))!;
+    expect(t).toMatchObject({ rating: 5, assignee: "manager1" });
   });
 });
