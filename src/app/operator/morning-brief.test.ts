@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { localDayHour, morningRows, morningText, pulseUnread } from "./morning-brief";
+import {
+  localDayHour,
+  morningRows,
+  morningText,
+  pulseUnread,
+  suspendedCount,
+} from "./morning-brief";
 import { computePulse } from "./pulse";
 
 const now = new Date("2026-10-20T12:00:00Z");
@@ -64,6 +70,57 @@ describe("утренняя сводка", () => {
     expect(t).toContain('href="https://f.tech/operator/clients/x"');
     expect(t).toContain("A&lt;b&gt;&amp;");
     expect(morningText([], "https://f.tech")).toBeNull();
+  });
+  it("приостановленный за неуплату в строки не попадает, а считается одной итоговой строкой", () => {
+    const overdue = { state: "grace_over", daysLeft: -90, policy: "suspend" } as never;
+    const clients = [
+      {
+        id: "s",
+        name: "Давно стоит",
+        status: "suspended" as const,
+        pulse: null,
+        subscription: overdue,
+        health: null,
+      },
+      {
+        id: "t",
+        name: "Ещё живой",
+        status: "active" as const,
+        pulse: null,
+        subscription: overdue,
+        health: null,
+      },
+    ];
+    const rows = morningRows(clients);
+    expect(rows.map((r) => r.id)).toEqual(["t"]);
+    expect(suspendedCount(clients)).toBe(1);
+    const text = morningText(rows, "https://f.tech", false, 1)!;
+    expect(text).toContain("приостановлено: 1");
+    expect(text).not.toContain("Давно стоит");
+    // Одни приостановленные — звонить некому, сводку не шлём.
+    expect(morningText([], "https://f.tech", false, 3)).toBeNull();
+  });
+  it("больше 25 живых строк: приостановленные не вытесняют их из списка", () => {
+    const overdue = { state: "grace_over", daysLeft: -90, policy: "suspend" } as never;
+    const live = Array.from({ length: 25 }, (_, i) => ({
+      id: `l${i}`,
+      name: `Живой ${i}`,
+      status: "active" as const,
+      pulse: null,
+      subscription: { state: "expiring", daysLeft: 3, policy: "grace" } as never,
+      health: null,
+    }));
+    const dead = Array.from({ length: 10 }, (_, i) => ({
+      id: `d${i}`,
+      name: `Стоит ${i}`,
+      status: "suspended" as const,
+      pulse: null,
+      subscription: overdue,
+      health: null,
+    }));
+    const text = morningText(morningRows([...dead, ...live]), "https://f.tech", false, 10)!;
+    expect(text).toContain("Живой 24");
+    expect(text).not.toContain("…и ещё");
   });
   it("день и час по поясу платформы", () => {
     expect(localDayHour(new Date("2026-10-20T20:30:00Z"), "Asia/Almaty")).toEqual({

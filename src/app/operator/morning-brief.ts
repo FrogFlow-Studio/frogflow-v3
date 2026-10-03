@@ -13,10 +13,14 @@ const MAX_LINES = 25;
 type Row = { id: string; name: string; reasons: string[]; risk: number };
 
 export function morningRows(
-  clients: readonly Pick<ClientView, "id" | "name" | "pulse" | "subscription" | "health">[],
+  clients: readonly (Pick<ClientView, "id" | "name" | "pulse" | "subscription" | "health"> & {
+    status?: ClientView["status"];
+  })[],
 ): Row[] {
   const rows: Row[] = [];
   for (const c of clients) {
+    // Приостановленный уже обработан: его просрочка не должна вытеснять живых (см. suspendedCount).
+    if (c.status === "suspended") continue;
     const reasons: string[] = [];
     let risk = 0;
     const p = c.pulse;
@@ -55,8 +59,18 @@ export function pulseUnread(clients: readonly Pick<ClientView, "pulse">[]): bool
   return clients.length > 0 && clients.every((c) => !c.pulse);
 }
 
+/** Сколько клиентов приостановлено: в строки сводки они не входят, идут одной итоговой строкой. */
+export function suspendedCount(clients: readonly { status?: ClientView["status"] }[]): number {
+  return clients.filter((c) => c.status === "suspended").length;
+}
+
 /** null — звонить некому, сообщение не шлём. */
-export function morningText(rows: Row[], base: string, pulseMissing = false): string | null {
+export function morningText(
+  rows: Row[],
+  base: string,
+  pulseMissing = false,
+  suspended = 0,
+): string | null {
   if (rows.length === 0 && !pulseMissing) return null;
   const lines = rows
     .slice(0, MAX_LINES)
@@ -67,6 +81,7 @@ export function morningText(rows: Row[], base: string, pulseMissing = false): st
           .join("; ")}`,
     );
   if (rows.length > MAX_LINES) lines.push(`…и ещё ${rows.length - MAX_LINES}`);
+  if (suspended > 0) lines.push(`⏸ приостановлено: ${suspended}`);
   if (pulseMissing) lines.push(PULSE_UNREAD_LINE);
   return `☀️ <b>Кому позвонить сегодня</b> (${rows.length})\n\n${lines.join("\n")}`;
 }

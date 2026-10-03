@@ -3,7 +3,14 @@ import { serviceDb } from "@/core/db/client.server";
 import type { Tenant } from "@/core/tenant/types";
 import { serverFailure } from "@/lib/server-failure";
 import { alertChannelStatus, sendOperatorAlert } from "./health-alerts.server";
-import { localDayHour, MORNING_HOUR, morningRows, morningText, pulseUnread } from "./morning-brief";
+import {
+  localDayHour,
+  MORNING_HOUR,
+  morningRows,
+  morningText,
+  pulseUnread,
+  suspendedCount,
+} from "./morning-brief";
 
 /** Дата последней сводки (YYYY-MM-DD по поясу платформы) — отметка «один раз в день». */
 export const MORNING_KEY = "operator_morning_brief";
@@ -60,7 +67,12 @@ export async function runMorningBrief(
     tenants.filter((t) => t.settings.served_by === "v2" && !t.archived).map((t) => t.id),
   );
   const v2 = (await listClients()).filter((c) => ids.has(c.id));
-  const text = morningText(morningRows(v2), APP_URL.replace(/\/$/, ""), pulseUnread(v2));
+  const text = morningText(
+    morningRows(v2),
+    APP_URL.replace(/\/$/, ""),
+    pulseUnread(v2),
+    suspendedCount(v2),
+  );
 
   const { status, prev } = await claim(day);
   if (status === "already") return "already";
