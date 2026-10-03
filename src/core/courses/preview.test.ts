@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { fakeDb } from "../../../tests/fake-db";
 import { courseKey, parseCourse, type Course } from "./course";
-import { coursePreview, previewLesson } from "./preview.server";
+import { coursePreview, openLessonFile, previewLesson } from "./preview.server";
 
 /** Открытый урок (А22): содержимое до покупки только у урока с галочкой. */
 const T = "11111111-2222-3333-4444-555555555555";
@@ -51,36 +51,64 @@ function shop() {
 }
 
 describe("открытый урок на витрине", () => {
-  it("открытый — с текстом, ссылкой и файлами; закрытый — только название", async () => {
-    const signed: string[] = [];
-    const view = await coursePreview(shop(), P, new Date("2026-10-01T00:00:00Z"), async (path) => {
-      signed.push(path);
-      return `https://files.test/${path}`;
-    });
+  it("открытый — с текстом, ссылкой и адресом файла на нашем маршруте; закрытый — только название", async () => {
+    const view = await coursePreview(
+      shop(),
+      P,
+      new Date("2026-10-01T00:00:00Z"),
+      (no, idx) => `/api/course-file/school/${P}/${no}/${idx}`,
+    );
     const [open, closed] = view!.lessons;
     expect(open!.open).toEqual({
       text: "ОТКРЫТЫЙ ТЕКСТ",
       link: "https://youtu.be/abc",
-      files: [{ name: "Чек-лист", url: `https://files.test/${T}/course/free.pdf` }],
+      files: [{ name: "Чек-лист", url: `/api/course-file/school/${P}/1/0` }],
     });
     expect(closed).toMatchObject({ title: "Платный", open: null });
     const json = JSON.stringify(view);
-    for (const secret of ["ЗАКРЫТЫЙ", "closed", "СЕКРЕТНОЕ ЗАДАНИЕ", "paid.pdf"])
+    for (const secret of ["ЗАКРЫТЫЙ", "closed", "СЕКРЕТНОЕ ЗАДАНИЕ", "paid.pdf", "files.test"])
       expect(json).not.toContain(secret);
   });
 
-  it("файл закрытого урока и чужой префикс не подписываются", async () => {
-    const signed: string[] = [];
-    await coursePreview(shop(), P, new Date("2026-10-01T00:00:00Z"), async (path) => {
-      signed.push(path);
-      return "https://files.test/x";
-    });
-    expect(signed).toEqual([`${T}/course/free.pdf`]);
+  it("карточка курса ничего не подписывает; файл с чужим префиксом в ней не виден", async () => {
+    const view = await coursePreview(
+      shop(),
+      P,
+      new Date("2026-10-01T00:00:00Z"),
+      (no, idx) => `/f/${no}/${idx}`,
+    );
+    expect(view!.lessons[2]!.open).toMatchObject({ files: [] });
   });
 
-  it("без подписанта файлов нет, текст остаётся", async () => {
+  it("без адреса файлов нет, текст остаётся", async () => {
     const view = await coursePreview(shop(), P);
     expect(view!.lessons[0]!.open).toMatchObject({ text: "ОТКРЫТЫЙ ТЕКСТ", files: [] });
+  });
+
+  it("переход по ссылке: файл открытого урока подписывается в момент клика", async () => {
+    const signed: Array<[string, string | null]> = [];
+    const sign = async (path: string, name: string | null) => {
+      signed.push([path, name]);
+      return `https://files.test/${path}`;
+    };
+    expect(await openLessonFile(shop(), P, 1, 0, sign)).toBe(
+      `https://files.test/${T}/course/free.pdf`,
+    );
+    expect(signed).toEqual([[`${T}/course/free.pdf`, "Чек-лист"]]);
+  });
+
+  it("закрытый урок, чужой путь, нет такого файла или урока — не подписываем", async () => {
+    const sign = async () => {
+      throw new Error("не должно подписывать");
+    };
+    expect(await openLessonFile(shop(), P, 2, 0, sign)).toBeNull(); // урок закрыт
+    expect(await openLessonFile(shop(), P, 3, 0, sign)).toBeNull(); // путь чужого магазина
+    expect(await openLessonFile(shop(), P, 1, 5, sign)).toBeNull(); // нет файла
+    expect(await openLessonFile(shop(), P, 9, 0, sign)).toBeNull(); // нет урока
+    expect(await openLessonFile(shop(), P, 0, 0, sign)).toBeNull();
+    const off = shop();
+    (off.tenant as { modules: Record<string, boolean> }).modules = { courses: false };
+    expect(await openLessonFile(off, P, 1, 0, async () => "x")).toBeNull();
   });
 
   it("бот: урок по номеру — открытый отдаётся, закрытый и несуществующий — null", async () => {

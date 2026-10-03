@@ -83,11 +83,14 @@ export const storeProductFn = createServerFn({ method: "GET" })
     const preview = (await loadPreview(ctx, product.id)).map((k) => imageUrl(ctx, k));
     // Курс (модуль courses): программа, поток, тарифы — как лендинг курса.
     const { coursePreview } = await import("@/core/courses/preview.server");
-    const { signedFileUrl } = await import("@/core/orders/orders");
     const course =
       product.kind === "digital"
-        ? await coursePreview(ctx, product.id, new Date(), (path, name) =>
-            signedFileUrl(path, 3600, name ?? undefined),
+        ? await coursePreview(
+            ctx,
+            product.id,
+            new Date(),
+            // Файлы открытых уроков подписываются в момент перехода (core/courses/preview.server).
+            (no, idx) => `/api/course-file/${data.slug}/${product.id}/${no}/${idx}`,
           )
         : null;
     // «Сообщить о поступлении»: ссылка в бота, только у товара без остатка (core/waitlist/link).

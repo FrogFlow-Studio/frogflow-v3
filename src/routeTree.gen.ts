@@ -103,6 +103,7 @@ import { Route as SSlugOrderIdRouteImport } from './routes/s.$slug.order.$id'
 import { Route as SSlugPIdRouteImport } from './routes/s.$slug.p.$id'
 import { Route as SSlugIconSizeRouteImport } from './routes/s.$slug_.icon.$size'
 import { Route as SSlugCertCodePdfRouteImport } from './routes/s.$slug_.cert.$code.pdf'
+import { Route as ApiCourseFileSlugProductIdNoIdxRouteImport } from './routes/api/course-file.$slug.$productId.$no.$idx'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -575,6 +576,12 @@ const SSlugCertCodePdfRoute = SSlugCertCodePdfRouteImport.update({
   path: '/s/$slug/cert/$code/pdf',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCourseFileSlugProductIdNoIdxRoute =
+  ApiCourseFileSlugProductIdNoIdxRouteImport.update({
+    id: '/api/course-file/$slug/$productId/$no/$idx',
+    path: '/api/course-file/$slug/$productId/$no/$idx',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -669,6 +676,7 @@ export interface FileRoutesByFullPath {
   '/s/$slug/p/$id': typeof SSlugPIdRoute
   '/s/$slug/icon/$size': typeof SSlugIconSizeRoute
   '/s/$slug/cert/$code/pdf': typeof SSlugCertCodePdfRoute
+  '/api/course-file/$slug/$productId/$no/$idx': typeof ApiCourseFileSlugProductIdNoIdxRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -760,6 +768,7 @@ export interface FileRoutesByTo {
   '/s/$slug/p/$id': typeof SSlugPIdRoute
   '/s/$slug/icon/$size': typeof SSlugIconSizeRoute
   '/s/$slug/cert/$code/pdf': typeof SSlugCertCodePdfRoute
+  '/api/course-file/$slug/$productId/$no/$idx': typeof ApiCourseFileSlugProductIdNoIdxRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -857,6 +866,7 @@ export interface FileRoutesById {
   '/s/$slug/p/$id': typeof SSlugPIdRoute
   '/s/$slug_/icon/$size': typeof SSlugIconSizeRoute
   '/s/$slug_/cert/$code/pdf': typeof SSlugCertCodePdfRoute
+  '/api/course-file/$slug/$productId/$no/$idx': typeof ApiCourseFileSlugProductIdNoIdxRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -953,6 +963,7 @@ export interface FileRouteTypes {
     | '/s/$slug/p/$id'
     | '/s/$slug/icon/$size'
     | '/s/$slug/cert/$code/pdf'
+    | '/api/course-file/$slug/$productId/$no/$idx'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1044,6 +1055,7 @@ export interface FileRouteTypes {
     | '/s/$slug/p/$id'
     | '/s/$slug/icon/$size'
     | '/s/$slug/cert/$code/pdf'
+    | '/api/course-file/$slug/$productId/$no/$idx'
   id:
     | '__root__'
     | '/'
@@ -1140,6 +1152,7 @@ export interface FileRouteTypes {
     | '/s/$slug/p/$id'
     | '/s/$slug_/icon/$size'
     | '/s/$slug_/cert/$code/pdf'
+    | '/api/course-file/$slug/$productId/$no/$idx'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1176,6 +1189,7 @@ export interface RootRouteChildren {
   ApiRobokassaBotIdActionRoute: typeof ApiRobokassaBotIdActionRoute
   SSlugIconSizeRoute: typeof SSlugIconSizeRoute
   SSlugCertCodePdfRoute: typeof SSlugCertCodePdfRoute
+  ApiCourseFileSlugProductIdNoIdxRoute: typeof ApiCourseFileSlugProductIdNoIdxRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1838,6 +1852,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugCertCodePdfRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/course-file/$slug/$productId/$no/$idx': {
+      id: '/api/course-file/$slug/$productId/$no/$idx'
+      path: '/api/course-file/$slug/$productId/$no/$idx'
+      fullPath: '/api/course-file/$slug/$productId/$no/$idx'
+      preLoaderRoute: typeof ApiCourseFileSlugProductIdNoIdxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -2061,6 +2082,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiRobokassaBotIdActionRoute: ApiRobokassaBotIdActionRoute,
   SSlugIconSizeRoute: SSlugIconSizeRoute,
   SSlugCertCodePdfRoute: SSlugCertCodePdfRoute,
+  ApiCourseFileSlugProductIdNoIdxRoute: ApiCourseFileSlugProductIdNoIdxRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

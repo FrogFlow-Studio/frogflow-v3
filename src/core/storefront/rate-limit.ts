@@ -148,3 +148,14 @@ export const COURSE_BUDGET: Budget = { limit: 30, windowMs: 60_000 };
 export function takeCourse(ctx: TenantContext, itemId: string): Promise<boolean> {
   return takeShared(ctx, "course", itemId, COURSE_BUDGET);
 }
+
+/**
+ * Файлы открытых уроков на странице курса: каждый переход подписывает файл.
+ * Счёт — на товар (магазин + курс): открытый урок виден всем, поэтому лимит
+ * общий для всех, кто его качает; обычный показ страницы подписей не делает.
+ */
+export const COURSE_FILE_BUDGET: Budget = { limit: 60, windowMs: 60_000 };
+
+export function takeCourseFile(ctx: TenantContext, productId: string): Promise<boolean> {
+  return takeShared(ctx, "course_file", productId, COURSE_FILE_BUDGET);
+}
