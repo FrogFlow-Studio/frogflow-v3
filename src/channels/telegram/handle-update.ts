@@ -764,6 +764,8 @@ async function menuAction(b: Bot, action: ReturnType<typeof menuActionFor>) {
       });
       return;
     }
+    case "myTickets":
+      return b.ctx.tenant.modules.helpdesk ? showMyTickets(b) : sendMain(b);
     case "contact": {
       if (b.ctx.tenant.modules.helpdesk) {
         b.customer = await setState(b.ctx, b.customer, {
@@ -778,6 +780,31 @@ async function menuAction(b: Bot, action: ReturnType<typeof menuActionFor>) {
       return;
     }
   }
+}
+
+/** «Мои обращения»: свои номера и статусы; в открытое можно дописать. */
+async function showMyTickets(b: Bot) {
+  const { myTickets } = await import("@/core/helpdesk/mine");
+  const { myTicketsText, DATE_LOCALE } = await import("./copy");
+  const list = await myTickets(b.ctx, b.customer.telegramId);
+  const text = myTicketsText(b.m, list, {
+    html: true,
+    date: (iso) =>
+      new Date(iso).toLocaleDateString(DATE_LOCALE[b.locale] ?? "ru-RU", {
+        day: "numeric",
+        month: "short",
+        timeZone: b.ctx.timezone,
+      }),
+  });
+  await send(b, text, {
+    ...(list.canAppend
+      ? {
+          reply_markup: {
+            inline_keyboard: [[{ text: b.m.myTicketsAppendBtn, callback_data: "tkadd" }]],
+          },
+        }
+      : {}),
+  });
 }
 
 // ── каталог ───────────────────────────────────────────────────────────
@@ -2375,6 +2402,10 @@ async function handleCallback(
       media: keys.map((k) => ({ type: "photo", media: imageUrl(ctx, k) })),
     });
     return;
+  }
+  if (data === "tkadd" && ctx.tenant.modules.helpdesk) {
+    b.customer = await setState(ctx, customer, { ...customer.state, mode: "awaiting_ticket" });
+    return void (await send(b, b.m.ticketPrompt));
   }
   if (data.startsWith("tkr:") && ctx.tenant.modules.helpdesk) {
     const [, ticketId = "", scoreRaw = ""] = data.split(":");

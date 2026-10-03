@@ -207,3 +207,94 @@ describe("главное меню онлайн-школы", () => {
     expect(menu.keyboard.flat().some((b) => b.text === "🎓 Мои курсы")).toBe(true);
   });
 });
+
+describe("«Мои обращения» в боте", () => {
+  const press = (bot: ReturnType<typeof botFor>, text: string) =>
+    handleTelegramUpdate(bot.ctx, bot.api, {
+      update_id: 5,
+      message: {
+        message_id: 5,
+        chat: { id: TG, type: "private" },
+        from: { id: TG, first_name: "Аня" },
+        text,
+      },
+    });
+  const tap = (bot: ReturnType<typeof botFor>, data: string) =>
+    handleTelegramUpdate(bot.ctx, bot.api, {
+      update_id: 6,
+      callback_query: {
+        id: "cb1",
+        from: { id: TG, first_name: "Аня" },
+        data,
+        message: { message_id: 9, chat: { id: TG, type: "private" } },
+      },
+    } as never);
+  const ticket = (id: string, tg: number, status: string, number: number, subject: string) => ({
+    id,
+    bot_id: "bot-1",
+    event_id: `ticket:${id}`,
+    event_type: "ticket",
+    status,
+    created_at: `2026-10-0${number}T10:00:00Z`,
+    payload: {
+      number,
+      telegram_id: tg,
+      customer_name: "Аня",
+      platform: "telegram",
+      subject,
+      history: [{ at: `2026-10-0${number}T10:00:00Z`, actor: "customer", action: "opened" }],
+    },
+  });
+
+  it("кнопка есть только с модулем «Поддержка»", async () => {
+    const { mainMenu } = await import("./screens");
+    const on = mainMenu(
+      { vertical: "digital", settings: {}, modules: { helpdesk: true } } as never,
+      "ru",
+      "https://a.test",
+    );
+    const off = mainMenu(
+      { vertical: "digital", settings: {}, modules: {} } as never,
+      "ru",
+      "https://a.test",
+    );
+    expect(on.keyboard.flat().map((b) => b.text)).toContain("🆘 Мои обращения");
+    expect(off.keyboard.flat().map((b) => b.text)).not.toContain("🆘 Мои обращения");
+  });
+
+  it("показывает свои обращения без чужих, «Дописать» → следующий текст попадает в открытое", async () => {
+    const bot = botFor({ helpdesk: true, manager_chat: true });
+    const db = bot.ctx.db as unknown as FakeDb;
+    db.tables.zernio_logs = [
+      ticket("a", TG, "open", 1, "Где мой заказ?"),
+      ticket("b", 777, "open", 2, "ЧУЖОЙ ВОПРОС"),
+    ];
+    await press(bot, "🆘 Мои обращения");
+    const shown = bot.calls.filter(([m]) => m === "sendMessage").at(-1)![1];
+    expect(String(shown.text)).toContain("#1 · Открыто");
+    expect(String(shown.text)).toContain("Где мой заказ?");
+    expect(String(shown.text)).not.toContain("ЧУЖОЙ");
+    const kb = (shown.reply_markup as { inline_keyboard: { callback_data: string }[][] })
+      .inline_keyboard;
+    expect(kb[0]![0]!.callback_data).toBe("tkadd");
+
+    await tap(bot, "tkadd");
+    await press(bot, "Добавлю: заказ №5");
+    const payload = db.tables.zernio_logs!.find((r) => r.id === "a")!.payload as {
+      history: { action: string; note?: string }[];
+    };
+    expect(payload.history.map((h) => h.action)).toEqual(["opened", "message"]);
+    expect(payload.history[1]!.note).toBe("Добавлю: заказ №5");
+    expect(
+      db.tables.zernio_logs!.filter((r) => String(r.event_id).startsWith("ticket:")),
+    ).toHaveLength(2);
+  });
+
+  it("обращений нет — подсказка и никакой кнопки «Дописать»", async () => {
+    const bot = botFor({ helpdesk: true, manager_chat: true });
+    await press(bot, "🆘 Мои обращения");
+    const shown = bot.calls.filter(([m]) => m === "sendMessage").at(-1)![1];
+    expect(String(shown.text)).toContain("У вас пока нет обращений");
+    expect(shown.reply_markup).toBeUndefined();
+  });
+});

@@ -115,6 +115,32 @@ export async function handleZernioMessage(
     }
   }
 
+  // «Мои обращения» словом: номер, статус и тема своих обращений (и при диалоге с менеджером).
+  if (ctx.tenant.modules.helpdesk && !m.postbackPayload) {
+    const { isMyTicketsWord, myTickets } = await import("@/core/helpdesk/mine");
+    const mode = customer.state.mode;
+    if (isMyTicketsWord(text) && (!mode || mode === "idle")) {
+      const { myTicketsText, DATE_LOCALE } = await import("@/channels/telegram/copy");
+      const locale = customer.state.locale ?? ctx.tenant.settings.default_locale ?? "ru";
+      const list = await myTickets(ctx, customer.telegramId);
+      await transport.send(
+        m.conversationId,
+        m.accountId,
+        myTicketsText(COPY[locale] ?? COPY.ru, list, {
+          html: false,
+          date: (iso) =>
+            new Date(iso).toLocaleDateString(DATE_LOCALE[locale] ?? "ru-RU", {
+              day: "numeric",
+              month: "short",
+              timeZone: ctx.timezone,
+            }),
+        }),
+        { platform: m.platform },
+      );
+      return processed("мои обращения");
+    }
+  }
+
   let intercepted = false;
   if (ctx.tenant.modules.manager_chat) {
     const { inboundIntercepted } = await import("@/core/chat/chat");

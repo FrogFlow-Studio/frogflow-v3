@@ -265,6 +265,79 @@ export const miniAppRewardsFn = createServerFn({ method: "POST" })
     return myRewards(ctx, v.user.id);
   });
 
+/** Подпись initData и счётчик запросов — общий вход «Поддержки» Mini App. */
+async function supportCtx(slugValue: string, initData: string, kind: "orders" | "checkout") {
+  const ctx = await shopCtx(slugValue, "mini_app");
+  const t = await shopT(ctx);
+  // Модуль «Поддержка» не оплачен — для Mini App такого раздела нет.
+  if (!ctx.tenant.modules.helpdesk) return null;
+  if (!ctx.tenant.telegramTokenEnc) throw shownError(t("error.noBot"));
+  const { validateInitData } = await import("@/core/storefront/init-data");
+  const v = validateInitData(initData, ctx.secrets.telegramToken());
+  if (!v.ok)
+    throw shownError(t(v.reason === "expired" ? "error.miniAppExpired" : "error.miniAppAuth"));
+  const { takeMiniApp } = await import("@/core/storefront/rate-limit");
+  if (!(await takeMiniApp(ctx, v.user.id, kind))) throw shownError(t("error.tooManyRequests"));
+  return { ctx, t, user: v.user };
+}
+
+/** «Поддержка» в Mini App: свои обращения (только по подписанному initData; на сайте без Telegram раздела нет). */
+export const miniAppTicketsFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ slug, initData: z.string().min(1).max(8000) }).parse(d))
+  .handler(async ({ data }) => {
+    const support = await supportCtx(data.slug, data.initData, "orders");
+    // Без модуля «Поддержка» блока в Mini App нет: пустой ответ, не ошибка на странице заказов.
+    if (!support) return { tickets: [], more: 0, canAppend: false };
+    const { ctx, user } = support;
+    const { myTickets } = await import("@/core/helpdesk/mine");
+    return myTickets(ctx, user.id);
+  });
+
+/** Дописать в своё открытое обращение из Mini App; продавцу уходит так же, как из бота. */
+export const miniAppTicketAppendFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        slug,
+        initData: z.string().min(1).max(8000),
+        text: z.string().trim().min(1).max(1000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const support = await supportCtx(data.slug, data.initData, "checkout");
+    if (!support) throw notFound();
+    const { ctx, t, user } = support;
+    const { isBlocked } = await import("@/core/customers/customers");
+    if (await isBlocked(ctx, user.id)) throw shownError(t("error.orderUnavailable"));
+    const { openTicketFor, createTicket } = await import("@/core/helpdesk/tickets");
+    if (!(await openTicketFor(ctx, user.id))) throw shownError(t("tickets.noOpen"));
+    const who = user.first_name || (user.username ? `@${user.username}` : null);
+    const { ticket } = await createTicket(ctx, {
+      telegramId: user.id,
+      customerName: who,
+      platform: "telegram",
+      subject: data.text,
+    });
+    if (ctx.tenant.modules.manager_chat) {
+      const { recordMessage } = await import("@/core/chat/chat");
+      await recordMessage(ctx, {
+        telegramId: user.id,
+        direction: "in",
+        sender: "customer",
+        text: data.text,
+      });
+    }
+    const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
+    const { escapeHtml } = await import("@/channels/telegram/copy");
+    await notifyAdminsHtml(
+      ctx,
+      `📨 <b>Дополнение к обращению #${ticket.number}</b>\n👤 ${escapeHtml(who ?? String(user.id))}\n\n${escapeHtml(data.text.slice(0, 1000))}\n\nОтветить — раздел «Чат», статус — «Обращения» в панели.`,
+      { kind: "question" },
+    ).catch(() => 0);
+    return { ok: true, number: ticket.number };
+  });
+
 export const legalFn = createServerFn({ method: "GET" })
   .validator((d: unknown) =>
     z.object({ slug, doc: z.enum(["offer", "privacy", "requisites", "about"]) }).parse(d),

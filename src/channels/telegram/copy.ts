@@ -48,6 +48,14 @@ export type Msg = {
   ticketRateDm: string;
   ticketRateThanks: (score: number) => string;
   ticketRateAlready: string;
+  /** «Мои обращения» покупателя. */
+  myTicketsBtn: string;
+  myTicketsTitle: string;
+  myTicketsEmpty: string;
+  ticketStatus: (s: "open" | "waiting" | "closed") => string;
+  myTicketsMore: (n: number) => string;
+  myTicketsAppendBtn: string;
+  myTicketsAppendHint: string;
   quizResult: string;
   quizNothing: string;
   quizNotReady: string;
@@ -401,6 +409,13 @@ const ru: Msg = {
   ticketRateDm: "Оцените нашу помощь — ответьте цифрой от 1 до 5 (5 — отлично).",
   ticketRateThanks: (n) => `Спасибо за оценку: ${"⭐".repeat(n)}! Нам это важно.`,
   ticketRateAlready: "Оценка уже принята, спасибо!",
+  myTicketsBtn: "🆘 Мои обращения",
+  myTicketsTitle: "Ваши обращения",
+  myTicketsEmpty: "У вас пока нет обращений. Чтобы задать вопрос, нажмите кнопку связи в меню.",
+  ticketStatus: (s) => ({ open: "Открыто", waiting: "Ждём вас", closed: "Решено" })[s],
+  myTicketsMore: (n) => `…и ещё ${n} старых`,
+  myTicketsAppendBtn: "✍️ Дописать в обращение",
+  myTicketsAppendHint: "Чтобы дописать в открытое обращение, просто напишите сообщение сюда.",
   quizResult: "Вот что вам подойдёт:",
   quizNothing: "Точного совпадения не нашлось — загляните в каталог.",
   quizNotReady: "Подбор ещё не настроен — загляните в каталог.",
@@ -667,6 +682,13 @@ const kk: Msg = {
   ticketRateDm: "Көмегімізді бағалаңыз — 1-ден 5-ке дейінгі санмен жауап беріңіз (5 — тамаша).",
   ticketRateThanks: (n) => `Бағаңызға рахмет: ${"⭐".repeat(n)}! Бұл біз үшін маңызды.`,
   ticketRateAlready: "Баға қабылданған, рахмет!",
+  myTicketsBtn: "🆘 Өтініштерім",
+  myTicketsTitle: "Сіздің өтініштеріңіз",
+  myTicketsEmpty: "Әзірге өтініштер жоқ. Сұрақ қою үшін мәзірдегі байланыс батырмасын басыңыз.",
+  ticketStatus: (s) => ({ open: "Ашық", waiting: "Сізді күтудеміз", closed: "Шешілді" })[s],
+  myTicketsMore: (n) => `…тағы ${n} ескі`,
+  myTicketsAppendBtn: "✍️ Өтінішке қосу",
+  myTicketsAppendHint: "Ашық өтінішке қосу үшін осында хабарлама жазыңыз.",
   quizResult: "Сізге мыналар сәйкес келеді:",
   quizNothing: "Дәл сәйкестік табылмады — каталогқа қараңыз.",
   quizNotReady: "Таңдау әлі бапталмаған — каталогқа қараңыз.",
@@ -880,6 +902,14 @@ const en: Msg = {
   ticketRateDm: "Please rate our help — reply with a number from 1 to 5 (5 is great).",
   ticketRateThanks: (n) => `Thanks for your rating: ${"⭐".repeat(n)}! It matters to us.`,
   ticketRateAlready: "Your rating is already recorded, thank you!",
+  myTicketsBtn: "🆘 My requests",
+  myTicketsTitle: "Your requests",
+  myTicketsEmpty:
+    "You have no requests yet. To ask a question, use the contact button in the menu.",
+  ticketStatus: (s) => ({ open: "Open", waiting: "Waiting for you", closed: "Resolved" })[s],
+  myTicketsMore: (n) => `…and ${n} older`,
+  myTicketsAppendBtn: "✍️ Add to request",
+  myTicketsAppendHint: "To add to an open request, just write a message here.",
   quizResult: "Here is what suits you:",
   quizNothing: "No exact match — have a look at the catalog.",
   quizNotReady: "The picker is not set up yet — have a look at the catalog.",
@@ -1100,6 +1130,13 @@ const uz: Msg = {
   ticketRateDm: "Yordamimizni baholang — 1 dan 5 gacha raqam bilan javob bering (5 — a’lo).",
   ticketRateThanks: (n) => `Bahoyingiz uchun rahmat: ${"⭐".repeat(n)}! Bu biz uchun muhim.`,
   ticketRateAlready: "Baho qabul qilingan, rahmat!",
+  myTicketsBtn: "🆘 Murojaatlarim",
+  myTicketsTitle: "Murojaatlaringiz",
+  myTicketsEmpty: "Hozircha murojaatlar yoʻq. Savol berish uchun menyudagi aloqa tugmasini bosing.",
+  ticketStatus: (s) => ({ open: "Ochiq", waiting: "Sizni kutmoqdamiz", closed: "Hal qilindi" })[s],
+  myTicketsMore: (n) => `…yana ${n} ta eski`,
+  myTicketsAppendBtn: "✍️ Murojaatga qoʻshish",
+  myTicketsAppendHint: "Ochiq murojaatga qoʻshish uchun shu yerga xabar yozing.",
   quizResult: "Sizga mos keladiganlari:",
   quizNothing: "Aniq moslik topilmadi — katalogga qarang.",
   quizNotReady: "Tanlash hali sozlanmagan — katalogga qarang.",
@@ -1253,6 +1290,7 @@ export type MenuAction =
   | "information"
   | "invite"
   | "contact"
+  | "myTickets"
   | "quiz";
 
 /** Текст кнопки меню на любом языке → каноническое действие. */
@@ -1272,9 +1310,51 @@ export function menuActionFor(
     if (t === m.information) return "information";
     if (t === m.inviteFriendBtn) return "invite";
     if (t === m.quizBtn) return "quiz";
+    if (t === m.myTicketsBtn) return "myTickets";
   }
   if (contactLabels.includes(t)) return "contact";
   return undefined;
+}
+
+/** Языковые теги для дат в сообщениях покупателю. */
+export const DATE_LOCALE: Record<string, string> = {
+  ru: "ru-RU",
+  kk: "kk-KZ",
+  en: "en-GB",
+  uz: "uz-UZ",
+};
+
+/**
+ * «Мои обращения» текстом для бота (html — HTML Telegram) и Direct/WhatsApp
+ * (обычный текст): номер, статус, дата последнего движения и тема.
+ */
+export function myTicketsText(
+  m: Msg,
+  list: {
+    tickets: {
+      number: number;
+      status: "open" | "waiting" | "closed";
+      subject: string;
+      updatedAt: string;
+    }[];
+    more: number;
+    canAppend: boolean;
+  },
+  opts: { html: boolean; date: (iso: string) => string },
+): string {
+  const esc = opts.html ? escapeHtml : (x: string) => x;
+  if (!list.tickets.length) return m.myTicketsEmpty;
+  const head = opts.html ? `<b>${m.myTicketsTitle}</b>` : m.myTicketsTitle;
+  const lines = list.tickets.map(
+    (t) =>
+      `#${t.number} · ${m.ticketStatus(t.status)} · ${opts.date(t.updatedAt)}\n${esc(t.subject)}`,
+  );
+  return [
+    `🆘 ${head}`,
+    ...lines,
+    ...(list.more ? [m.myTicketsMore(list.more)] : []),
+    ...(list.canAppend && !opts.html ? [m.myTicketsAppendHint] : []),
+  ].join("\n\n");
 }
 
 export function escapeHtml(s: string): string {

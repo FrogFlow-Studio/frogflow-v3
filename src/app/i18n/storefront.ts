@@ -393,6 +393,15 @@ const ru = {
   "course.cert.notFound": "Сертификат с таким кодом не найден.",
   "course.cert.ready": "🎓 Курс «{course}» пройден! Ваш сертификат: {url}",
   "course.cert.yours": "Ваш сертификат",
+  "tickets.title": "Мои обращения",
+  "tickets.status.open": "Открыто",
+  "tickets.status.waiting": "Ждём вас",
+  "tickets.status.closed": "Решено",
+  "tickets.more": "…и ещё {n} старых",
+  "tickets.appendPlaceholder": "Допишите сюда, что нужно уточнить",
+  "tickets.append": "Дописать в обращение",
+  "tickets.sent": "Отправлено — ответим в чате с магазином.",
+  "tickets.noOpen": "Открытого обращения нет — дописать некуда.",
 } as const;
 
 export type StorefrontKey = keyof typeof ru;
@@ -781,6 +790,15 @@ const kk: Dict = {
   "course.cert.notFound": "Мұндай кодты сертификат табылмады.",
   "course.cert.ready": "🎓 «{course}» курсы аяқталды! Сертификатыңыз: {url}",
   "course.cert.yours": "Сіздің сертификатыңыз",
+  "tickets.title": "Өтініштерім",
+  "tickets.status.open": "Ашық",
+  "tickets.status.waiting": "Сізді күтудеміз",
+  "tickets.status.closed": "Шешілді",
+  "tickets.more": "…тағы {n} ескі",
+  "tickets.appendPlaceholder": "Нені нақтылау керек екенін осында жазыңыз",
+  "tickets.append": "Өтінішке қосу",
+  "tickets.sent": "Жіберілді — дүкенмен чатта жауап береміз.",
+  "tickets.noOpen": "Ашық өтініш жоқ — қосатын жер жоқ.",
 };
 
 const en: Dict = {
@@ -1162,6 +1180,15 @@ const en: Dict = {
   "course.cert.notFound": "No certificate with this code was found.",
   "course.cert.ready": "🎓 You’ve completed “{course}”! Your certificate: {url}",
   "course.cert.yours": "Your certificate",
+  "tickets.title": "My requests",
+  "tickets.status.open": "Open",
+  "tickets.status.waiting": "Waiting for you",
+  "tickets.status.closed": "Resolved",
+  "tickets.more": "…and {n} older",
+  "tickets.appendPlaceholder": "Write here what you would like to add",
+  "tickets.append": "Add to request",
+  "tickets.sent": "Sent — we will reply in your chat with the shop.",
+  "tickets.noOpen": "There is no open request to add to.",
 };
 
 const uz: Dict = {
@@ -1550,6 +1577,15 @@ const uz: Dict = {
   "course.cert.notFound": "Bunday kodli sertifikat topilmadi.",
   "course.cert.ready": "🎓 «{course}» kursi tugadi! Sertifikatingiz: {url}",
   "course.cert.yours": "Sizning sertifikatingiz",
+  "tickets.title": "Murojaatlarim",
+  "tickets.status.open": "Ochiq",
+  "tickets.status.waiting": "Sizni kutmoqdamiz",
+  "tickets.status.closed": "Hal qilindi",
+  "tickets.more": "…yana {n} ta eski",
+  "tickets.appendPlaceholder": "Aniqlashtirmoqchi boʻlganingizni shu yerga yozing",
+  "tickets.append": "Murojaatga qoʻshish",
+  "tickets.sent": "Yuborildi — doʻkon bilan chatda javob beramiz.",
+  "tickets.noOpen": "Ochiq murojaat yoʻq — qoʻshadigan joy yoʻq.",
 };
 
 const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };

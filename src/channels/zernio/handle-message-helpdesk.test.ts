@@ -181,4 +181,45 @@ describe("обращения из WhatsApp и Instagram", () => {
     const again = await handleZernioMessage(ctx(ON), payload("4"), transport());
     expect(again.note).not.toContain("оценка обращения");
   });
+
+  it("«мои обращения» — номер, статус и тема своих обращений, чужих нет, нового обращения не создаёт", async () => {
+    await handleZernioMessage(ctx(ON), payload("Когда привезёте букет?"), transport());
+    // Чужое обращение другого покупателя.
+    db.tables.zernio_logs!.push({
+      id: "foreign",
+      bot_id: "b",
+      event_id: "ticket:foreign",
+      event_type: "ticket",
+      status: "open",
+      created_at: "2026-10-03T10:00:00Z",
+      payload: {
+        number: 9,
+        telegram_id: 12345,
+        platform: "whatsapp",
+        subject: "ЧУЖОЙ ВОПРОС",
+        history: [],
+      },
+    });
+    sent.length = 0;
+    const r = await handleZernioMessage(ctx(ON), payload("Мои обращения"), transport());
+    expect(r).toEqual({ status: "processed", note: "мои обращения" });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toContain("#1 · Открыто");
+    expect(sent[0]).toContain("Когда привезёте букет?");
+    expect(sent[0]).toContain("напишите сообщение сюда");
+    expect(sent[0]).not.toContain("ЧУЖОЙ");
+    expect(
+      db.tables.zernio_logs!.filter((x) => String(x.event_id).startsWith("ticket:")),
+    ).toHaveLength(2);
+  });
+
+  it("у покупателя нет обращений — подсказка, а не пустой ответ; на шаге сценария слово не срабатывает", async () => {
+    const r = await handleZernioMessage(ctx(ON), payload("мои обращения"), transport());
+    expect(r.note).toBe("мои обращения");
+    expect(sent[0]).toContain("У вас пока нет обращений");
+    sent.length = 0;
+    customer = { ...customer, state: { ...customer.state, mode: "choose_pay" } };
+    const inStep = await handleZernioMessage(ctx(ON), payload("мои обращения"), transport());
+    expect(inStep.note).not.toBe("мои обращения");
+  });
 });

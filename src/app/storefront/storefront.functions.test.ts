@@ -58,8 +58,21 @@ vi.mock("@/core/delivery/watermark.server", async (orig) => {
   };
 });
 
-const { storeProductFn, miniAppOrdersFn, miniAppCheckoutFn } =
-  await import("./storefront.functions");
+const notified: string[] = [];
+vi.mock("@/channels/telegram/notify", () => ({
+  notifyAdminsHtml: vi.fn(async (_c: unknown, html: string) => {
+    notified.push(html);
+    return 1;
+  }),
+}));
+
+const {
+  storeProductFn,
+  miniAppOrdersFn,
+  miniAppCheckoutFn,
+  miniAppTicketsFn,
+  miniAppTicketAppendFn,
+} = await import("./storefront.functions");
 const { MINI_APP_BUDGETS } = await import("@/core/storefront/rate-limit");
 const { LIBRARY_FILES } = await import("./storefront.functions");
 
@@ -429,5 +442,92 @@ describe("Mini App: заблокированный покупатель", () => 
     expect(err).not.toMatch(/блок/i);
     expect(db.tables.bot_users).toEqual([]);
     expect(db.tables.cart_items).toEqual([]);
+  });
+});
+
+describe("Mini App «Поддержка»: мои обращения", () => {
+  const TG = 555;
+  const ticketRow = (id: string, telegramId: number, status: string, number: number) => ({
+    id,
+    bot_id: BOT,
+    event_id: `ticket:${id}`,
+    event_type: "ticket",
+    status,
+    created_at: `2026-10-0${number}T10:00:00Z`,
+    payload: {
+      number,
+      telegram_id: telegramId,
+      customer_name: "A",
+      platform: "telegram",
+      subject: `Вопрос ${number}`,
+      assignee: "secret-manager",
+      history: [{ at: `2026-10-0${number}T10:00:00Z`, actor: "customer", action: "opened" }],
+    },
+  });
+  function withTickets(helpdesk = true) {
+    const db = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
+    db.tables.bot_users = [{ user_key: `tg_${TG}`, telegram_id: TG, state: {} }];
+    db.tables.zernio_logs = [
+      ticketRow("t1", TG, "closed", 1),
+      ticketRow("t2", TG, "open", 2),
+      ticketRow("t3", 999, "open", 3), // чужое
+    ];
+    tenantWith(db);
+    (ctx.tenant.modules as Record<string, boolean>).helpdesk = helpdesk;
+    notified.length = 0;
+    return db;
+  }
+
+  it("покупатель видит свои обращения и не видит чужие; внутренних заметок и ответственного нет", async () => {
+    withTickets();
+    const r = await miniAppTicketsFn({ data: { slug: "shop", initData: initData(TG) } });
+    expect(r.tickets.map((t) => t.number)).toEqual([2, 1]);
+    expect(r.canAppend).toBe(true);
+    expect(JSON.stringify(r)).not.toContain("secret-manager");
+    const other = await miniAppTicketsFn({ data: { slug: "shop", initData: initData(999) } });
+    expect(other.tickets.map((t) => t.number)).toEqual([3]);
+  });
+
+  it("без подписи Mini App ничего не отдаётся", async () => {
+    withTickets();
+    await expect(
+      miniAppTicketsFn({ data: { slug: "shop", initData: "user=%7B%22id%22%3A555%7D&hash=bad" } }),
+    ).rejects.toBeTruthy();
+  });
+
+  it("без модуля «Поддержка» — пустой ответ, а дописать нельзя", async () => {
+    withTickets(false);
+    expect(await miniAppTicketsFn({ data: { slug: "shop", initData: initData(TG) } })).toEqual({
+      tickets: [],
+      more: 0,
+      canAppend: false,
+    });
+    await expect(
+      miniAppTicketAppendFn({ data: { slug: "shop", initData: initData(TG), text: "Ещё вопрос" } }),
+    ).rejects.toBeTruthy();
+  });
+
+  it("дописать: в своё открытое обращение, продавцу уходит уведомление; чужое не затрагивается", async () => {
+    const db = withTickets();
+    const r = await miniAppTicketAppendFn({
+      data: { slug: "shop", initData: initData(TG), text: "Добавлю: заказ №5" },
+    });
+    expect(r).toEqual({ ok: true, number: 2 });
+    const rows = db.tables.zernio_logs!;
+    const mine = rows.find((x) => x.id === "t2")!.payload as { history: { action: string }[] };
+    expect(mine.history.map((h) => h.action)).toEqual(["opened", "message"]);
+    const foreign = rows.find((x) => x.id === "t3")!.payload as { history: unknown[] };
+    expect(foreign.history).toHaveLength(1);
+    expect(rows.filter((x) => String(x.event_id).startsWith("ticket:"))).toHaveLength(3);
+    expect(notified[0]).toContain("Дополнение к обращению #2");
+  });
+
+  it("открытого обращения нет — дописать некуда, новое не создаётся", async () => {
+    const db = withTickets();
+    db.tables.zernio_logs = [ticketRow("t1", TG, "closed", 1)];
+    await expect(
+      miniAppTicketAppendFn({ data: { slug: "shop", initData: initData(TG), text: "Ещё" } }),
+    ).rejects.toBeTruthy();
+    expect(db.tables.zernio_logs).toHaveLength(1);
   });
 });

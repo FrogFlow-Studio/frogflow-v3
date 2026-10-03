@@ -4,11 +4,14 @@ import {
   miniAppOrdersFn,
   miniAppReorderFn,
   miniAppRewardsFn,
+  miniAppTicketAppendFn,
+  miniAppTicketsFn,
 } from "@/app/storefront/storefront.functions";
 import { useTelegramWebApp } from "@/app/storefront/cart";
 import { webMyOrdersFn, webMyReorderFn, webMyRewardsFn } from "@/app/storefront/tg-login.functions";
 import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
 import { MyRewardsBox } from "@/app/storefront/my-rewards";
+import { MyTicketsBox } from "@/app/storefront/my-tickets";
 import { ReorderButton } from "@/app/storefront/reorder";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { formatMoney } from "@/core/money/money";
@@ -113,6 +116,13 @@ function OrdersPage() {
               ? miniAppRewardsFn({ data: { slug, initData: wa.initData } })
               : webMyRewardsFn({ data: { slug } })
           }
+        />
+      )}
+      {/* «Поддержка» — только внутри Telegram: обращения открываются по подписанному initData. */}
+      {showOrders && wa && (
+        <MyTicketsBox
+          load={() => miniAppTicketsFn({ data: { slug, initData: wa.initData } })}
+          append={(text) => miniAppTicketAppendFn({ data: { slug, initData: wa.initData, text } })}
         />
       )}
       {showOrders && data && data.orders.length === 0 && <Empty>{t("orders.empty")}</Empty>}
