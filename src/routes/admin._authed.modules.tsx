@@ -1,7 +1,9 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { myPlanFn, payPlanFn, requestModuleFn, requestPlanFn } from "@/app/admin/admin.functions";
+import { subscriptionLine } from "@/app/admin/subscription-banner";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
+import type { Locale } from "@/core/i18n/locale";
 import { moduleDescKey, moduleGroupKey, moduleTitleKey } from "@/app/i18n/admin/catalog";
 import { Badge, Card, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { MODULE_KEYS, moduleDef, type ModuleKey } from "@/core/modules/registry";
@@ -69,7 +71,17 @@ function tierOf(niche: PlanNiche, key: ModuleKey): PlanTier | null {
   return PLAN_TIERS.find((t) => planModules(niche, t).has(key)) ?? null;
 }
 
-function PlanPanel({ p, t, locale }: { p: MyPlan; t: AdminT; locale: string }) {
+function PlanPanel({
+  p,
+  t,
+  locale,
+  shopLocale,
+}: {
+  p: MyPlan;
+  t: AdminT;
+  locale: string;
+  shopLocale: Locale;
+}) {
   const router = useRouter();
   const [sent, setSent] = useState<Set<string>>(new Set(p.pending));
   const req = useAction(async (key: PlanRequestKey) => {
@@ -111,6 +123,11 @@ function PlanPanel({ p, t, locale }: { p: MyPlan; t: AdminT; locale: string }) {
               {t("plan.trial", {
                 date: new Date(p.trialUntil).toLocaleDateString(locale),
               })}
+            </div>
+          )}
+          {p.subscription && (
+            <div className={p.subscription.state === "ok" ? "text-muted" : "font-medium"}>
+              {subscriptionLine(t, shopLocale, p.subscription, true)}
             </div>
           )}
           {p.addons.map((a) => (
@@ -209,7 +226,7 @@ function ModulesPage() {
   return (
     <>
       <PageTitle title={t("modules.title")} subtitle={onPlan ? undefined : t("modules.subtitle")} />
-      <PlanPanel p={p} t={t} locale={locale} />
+      <PlanPanel p={p} t={t} locale={locale} shopLocale={shop.locale} />
       <div className="grid gap-4 md:grid-cols-2">
         {[...groups.entries()].map(([group, keys]) => (
           <div key={group} className="card">

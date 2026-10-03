@@ -17,6 +17,16 @@ export const ru = {
   "trial.remind.d3": "Ваш пробный период заканчивается {date}, осталось дней: {n}.",
   "trial.remind.last": "Сегодня последний день пробного периода ({date}).",
   "trial.remind.where": "Выбрать тариф и оплатить можно в админке, раздел «Модули».",
+  "sub.paid": "Оплачено до {date}",
+  "sub.left": "Подписка заканчивается {date}, осталось {n} дн.",
+  "sub.lastDay": "Сегодня последний оплаченный день ({date}).",
+  "sub.overdue.suspend":
+    "Подписка просрочена на {n} дн. Если не оплатить, бот будет приостановлен {stop}.",
+  "sub.overdue.warn":
+    "Подписка просрочена на {n} дн. Бот продолжает работать, платформа напоминает об оплате.",
+  "sub.stopSoon": "Подписка просрочена на {n} дн. Бот будет приостановлен в ближайшее время.",
+  "sub.suspended":
+    "Бот приостановлен: подписка просрочена на {n} дн. После оплаты он включится сам.",
   "plan.usage": "ИИ в этом месяце",
   "plan.dialogs": "Диалоги консультанта",
   "plan.receipts": "Проверки чеков",
@@ -57,6 +67,15 @@ export const kk: SectionDict<typeof ru> = {
   "trial.remind.last": "Бүгін сынақ кезеңінің соңғы күні ({date}).",
   "trial.remind.where":
     "Тарифті таңдап, төлеуді әкімшілік панелінің «Модульдер» бөлімінде жасауға болады.",
+  "sub.paid": "{date} дейін төленген",
+  "sub.left": "Жазылым {date} аяқталады, қалған күн: {n}.",
+  "sub.lastDay": "Бүгін төленген кезеңнің соңғы күні ({date}).",
+  "sub.overdue.suspend": "Жазылым {n} күнге кешіктірілді. Төленбесе, бот {stop} тоқтатылады.",
+  "sub.overdue.warn":
+    "Жазылым {n} күнге кешіктірілді. Бот жұмысын жалғастырады, платформа төлем туралы еске салады.",
+  "sub.stopSoon": "Жазылым {n} күнге кешіктірілді. Бот жақын арада тоқтатылады.",
+  "sub.suspended":
+    "Бот тоқтатылды: жазылым {n} күнге кешіктірілді. Төлемнен кейін ол өзі қосылады.",
   "plan.usage": "Осы айдағы ЖИ",
   "plan.dialogs": "Кеңесші диалогтары",
   "plan.receipts": "Чек тексерулері",
@@ -96,6 +115,16 @@ export const en: SectionDict<typeof ru> = {
   "trial.remind.d3": "Your trial ends on {date}, days left: {n}.",
   "trial.remind.last": "Today is the last day of your trial ({date}).",
   "trial.remind.where": "You can choose a plan and pay in the admin panel, the “Modules” section.",
+  "sub.paid": "Paid until {date}",
+  "sub.left": "Your subscription ends on {date}, {n} days left.",
+  "sub.lastDay": "Today is the last paid day ({date}).",
+  "sub.overdue.suspend":
+    "Your subscription is {n} days overdue. Unless you pay, the bot will be paused on {stop}.",
+  "sub.overdue.warn":
+    "Your subscription is {n} days overdue. The bot keeps working and the platform will remind you to pay.",
+  "sub.stopSoon": "Your subscription is {n} days overdue. The bot will be paused shortly.",
+  "sub.suspended":
+    "The bot is paused: the subscription is {n} days overdue. It turns back on by itself after payment.",
   "plan.usage": "AI this month",
   "plan.dialogs": "Consultant dialogs",
   "plan.receipts": "Receipt checks",
@@ -135,6 +164,14 @@ export const uz: SectionDict<typeof ru> = {
   "trial.remind.d3": "Sinov davringiz {date} da tugaydi, qolgan kunlar: {n}.",
   "trial.remind.last": "Bugun sinov davrining oxirgi kuni ({date}).",
   "trial.remind.where": "Tarifni tanlash va to‘lash admin panelining «Modullar» bo‘limida mumkin.",
+  "sub.paid": "{date} gacha to‘langan",
+  "sub.left": "Obuna {date} da tugaydi, qolgan kunlar: {n}.",
+  "sub.lastDay": "Bugun to‘langan davrning oxirgi kuni ({date}).",
+  "sub.overdue.suspend": "Obuna {n} kunga kechikdi. To‘lanmasa, bot {stop} da to‘xtatiladi.",
+  "sub.overdue.warn":
+    "Obuna {n} kunga kechikdi. Bot ishlashda davom etadi, platforma to‘lovni eslatadi.",
+  "sub.stopSoon": "Obuna {n} kunga kechikdi. Bot yaqin orada to‘xtatiladi.",
+  "sub.suspended": "Bot to‘xtatildi: obuna {n} kunga kechikdi. To‘lovdan keyin u o‘zi yoqiladi.",
   "plan.usage": "Shu oydagi SI",
   "plan.dialogs": "Maslahatchi dialoglari",
   "plan.receipts": "Chek tekshiruvlari",

@@ -215,12 +215,39 @@ async function trialBanner(ctx: import("@/core/tenant/resolve.server").TenantCon
   }
 }
 
+/** Срок подписки продавцу: до какого дня оплачено и что будет. Сбой чтения не должен выкидывать из админки — без плашки. */
+async function subscriptionView(ctx: import("@/core/tenant/resolve.server").TenantContext) {
+  try {
+    const { subscriptionExpiresAt } = await import("@/app/operator/billing.server");
+    const { readPolicy } = await import("@/core/billing/subscription");
+    const { sellerSubscription } = await import("@/core/billing/seller-status");
+    return sellerSubscription(
+      await subscriptionExpiresAt(ctx.tenant.id),
+      readPolicy(ctx.tenant.settings),
+      ctx.tenant.status === "suspended",
+    );
+  } catch (e) {
+    console.warn(`[admin] срок подписки ${ctx.tenant.id}:`, e);
+    return null;
+  }
+}
+
+async function subscriptionAlert(
+  ctx: import("@/core/tenant/resolve.server").TenantContext,
+  trial: unknown,
+) {
+  if (trial) return null;
+  const sub = await subscriptionView(ctx);
+  return sub && sub.state !== "ok" ? sub : null;
+}
+
 export const adminShopFn = createServerFn({ method: "GET" }).handler(async () => {
   const { appSession } = await import("@/app/auth/session.server");
   const s = await appSession();
   if (!s.data.admin?.botId) return null;
   try {
     const { ctx, accountant } = await finance();
+    const trial = accountant ? null : await trialBanner(ctx);
     const { VERTICALS } = await import("@/core/verticals/registry");
     const { getSettings } = await import("@/core/settings/settings");
     const { isLocale } = await import("@/core/i18n/locale");
@@ -252,7 +279,9 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       pricelist: (await import("@/core/consultant/pricelist/mode")).pricelistMode(ctx.tenant),
       status: ctx.tenant.status,
       /** Пробный период на виду: до какого дня, сколько осталось и что будет после (плашка в шапке). */
-      trial: accountant ? null : await trialBanner(ctx),
+      trial,
+      /** Подписка кончается или просрочена (вне пробного периода) — плашка «Оплатить». */
+      subscription: accountant ? null : await subscriptionAlert(ctx, trial),
       /** Владелец попросил удалить магазин: когда удалится (ISO) — баннер «Восстановить». */
       deletionAt: ctx.tenant.settings.deletion
         ? (await import("@/core/tenant/deletion"))
@@ -1539,6 +1568,8 @@ export const myPlanFn = createServerFn({ method: "GET" }).handler(async () => {
     hasTiers: Boolean(nicheForVertical(ctx.tenant.vertical)),
     period: billing.period ?? "month",
     trialUntil: billing.trial_until ?? null,
+    /** Срок оплаченной подписки: до какого дня и что будет (null — срок не заведён). */
+    subscription: (await trialBanner(ctx)) ? null : await subscriptionView(ctx),
     addons: billing.addons ?? [],
     availableAddons: ADDON_KEYS,
     prices: { monthly: MONTHLY_PRICE, connection: CONNECTION_PRICE },
