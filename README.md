@@ -13,6 +13,7 @@ v3 — продолжение v2: код и история перенесены 
 - `docs/ARCHITECTURE.md` — как устроено и почему.
 - `docs/ROADMAP.md` — что перенесено, что дальше, по фазам.
 - `docs/MIGRATION.md` — как перевести клиента с v1 и откатить.
+- `docs/BACKUP.md` — восстановление базы из бэкапа и проверка копии.
 - `docs/inherited-knowledge.md` — опись проверок и поломок v1: ТЗ на перенос.
 - `docs/db-schema.md`, `docs/v1-runtime-inventory.md`,
   `docs/v1-admin-inventory.md` — описи v1, от которых считаем.
