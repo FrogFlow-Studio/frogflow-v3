@@ -42,6 +42,7 @@ const TWICE: Record<string, Evidence> = {
   pricelist: { test: ["src/channels/zernio/consultant-jobs.test.ts"] },
   digest: { test: ["src/channels/telegram/digest-twice.test.ts"] },
   weekly: { test: ["src/core/analytics/weekly.test.ts"] },
+  morning: { test: ["src/app/operator/morning-brief.server.test.ts"] },
   // subscriptions
   catalogSheet: { test: ["src/core/catalog/sheet.test.ts"] },
   sheetNotify: { test: ["src/core/catalog/sheet.test.ts"] },

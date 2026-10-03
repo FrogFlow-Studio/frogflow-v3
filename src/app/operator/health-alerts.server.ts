@@ -111,7 +111,8 @@ export async function clearAlertChannel(): Promise<void> {
 export type SendResult =
   | { ok: true }
   | { ok: false; reason: "not_configured" }
-  | { ok: false; reason: "failed"; error: string };
+  /** maybeSent — запрос мог дойти (обрыв, тайм-аут): повторять нельзя. Без него — Telegram явно отказал. */
+  | { ok: false; reason: "failed"; error: string; maybeSent?: true };
 
 /** Сообщение оператору. Канал не настроен — ничего не делаем и не шумим. */
 export async function sendOperatorAlert(html: string): Promise<SendResult> {
@@ -128,7 +129,12 @@ export async function sendOperatorAlert(html: string): Promise<SendResult> {
     });
     return r.ok ? { ok: true } : { ok: false, reason: "failed", error: r.description ?? "" };
   } catch (e) {
-    return { ok: false, reason: "failed", error: e instanceof Error ? e.message : String(e) };
+    return {
+      ok: false,
+      reason: "failed",
+      error: e instanceof Error ? e.message : String(e),
+      maybeSent: true,
+    };
   }
 }
 

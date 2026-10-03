@@ -215,7 +215,7 @@ export const Route = createFileRoute("/api/cron/$job")({
               break;
             }
             case "health": {
-              // Восемь этапов; каждый обходит клиентов сам. На бюджете останавливаемся
+              // Девять этапов; каждый обходит клиентов сам. На бюджете останавливаемся
               // между этапами, следующий запуск начинает с первого пропущенного, чтобы
               // дайджест и недельный отчёт в хвосте не голодали (resume — имя этапа).
               const { tenantContext } = await import("@/core/tenant/resolve.server");
@@ -290,6 +290,14 @@ export const Route = createFileRoute("/api/cron/$job")({
                     const { sendDueWeeklyReports } =
                       await import("@/channels/telegram/weekly.server");
                     results.weekly = await sendDueWeeklyReports(tenants);
+                  },
+                },
+                {
+                  // Утренняя сводка оператору «кому позвонить» — раз в день после 8:00.
+                  id: "morning",
+                  run: async () => {
+                    const { runMorningBrief } = await import("@/app/operator/morning-brief.server");
+                    results.morning = await runMorningBrief(tenants);
                   },
                 },
               ];
