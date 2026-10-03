@@ -1,5 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSettings } from "@/core/settings/settings";
+import { getSettingsStrict } from "@/core/settings/settings";
 import { convertForTenant } from "@/core/pricing/pricing";
 
 /**
@@ -33,7 +33,7 @@ export function parseStarsPayload(payload: string | null | undefined): number | 
 
 export async function starsRate(ctx: TenantContext): Promise<number | null> {
   if (!ctx.tenant.modules.telegram_stars) return null;
-  const s = await getSettings(ctx, ["stars_rate"]);
+  const s = await getSettingsStrict(ctx, ["stars_rate"]);
   return parseStarsRate(s.stars_rate);
 }
 
@@ -45,7 +45,7 @@ export async function starsForOrder(
 ): Promise<number | null> {
   const rate = await starsRate(ctx);
   if (!rate) return null;
-  const s = await getSettings(ctx, ["shop_currency"]);
+  const s = await getSettingsStrict(ctx, ["shop_currency"]);
   const shopCurrency = (s.shop_currency ?? "KZT").toUpperCase();
   const amount =
     currency.toUpperCase() === shopCurrency

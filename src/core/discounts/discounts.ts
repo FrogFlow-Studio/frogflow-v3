@@ -1,7 +1,7 @@
 import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
-import { getSetting } from "@/core/settings/settings";
+import { getSettingStrict } from "@/core/settings/settings";
 import { convertForReceipt, convertForTenant } from "@/core/pricing/pricing";
 import { buyerUsedPromo, promoOnceIds, type PromoBuyer } from "./promo-once";
 import {
@@ -75,7 +75,7 @@ export async function findValidPromoCode(
  * (1 балл = 1 единица валюты магазина). Сертификат — в своей currency.
  */
 export async function shopCurrency(ctx: TenantContext): Promise<string> {
-  return ((await getSetting(ctx, "shop_currency")) || "KZT").toUpperCase();
+  return ((await getSettingStrict(ctx, "shop_currency")) || "KZT").toUpperCase();
 }
 
 /** Сумма скидки в валюте заказа по тем же курсам, что у цен; null — курса нет. */
@@ -295,7 +295,7 @@ export async function returnOrderCodes(
 /* ── баллы ────────────────────────────────────────────────────────── */
 
 export async function loyaltyEarnPercent(ctx: TenantContext): Promise<number> {
-  const n = Number(await getSetting(ctx, "loyalty_earn_percent"));
+  const n = Number(await getSettingStrict(ctx, "loyalty_earn_percent"));
   return Number.isFinite(n) && n > 0 && n <= 100 ? n : 5;
 }
 
@@ -309,7 +309,7 @@ export function parseMaxRedeemPercent(raw: string | null | undefined): number {
 }
 
 export async function loyaltyMaxRedeemPercent(ctx: TenantContext): Promise<number> {
-  return parseMaxRedeemPercent(await getSetting(ctx, LOYALTY_MAX_REDEEM_KEY));
+  return parseMaxRedeemPercent(await getSettingStrict(ctx, LOYALTY_MAX_REDEEM_KEY));
 }
 
 export async function loyaltyBalance(ctx: TenantContext, telegramId: number): Promise<number> {

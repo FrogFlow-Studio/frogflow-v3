@@ -10,7 +10,8 @@ import {
   receiptChecksKey,
   withReceiptCheck,
 } from "./attempts";
-import { getSetting, updateSettingAtomic } from "@/core/settings/settings";
+import { reportError } from "@/lib/errors";
+import { getSettingStrict, updateSettingAtomic } from "@/core/settings/settings";
 import { convertForReceipt } from "@/core/pricing/pricing";
 import {
   analyzeReceiptText,
@@ -41,9 +42,16 @@ export function visionConfigured(): boolean {
 
 export async function receiptOcrAutoEnabled(ctx: TenantContext): Promise<boolean> {
   if (!ctx.tenant.modules.receipt_ocr || !visionConfigured()) return false;
-  if ((await getSetting(ctx, OCR_AUTO_KEY)) === "false") return false;
-  // Лимит проверок плана на месяц: исчерпан — чек уходит продавцу на ручную проверку.
-  return !(await receiptLimitReached(ctx));
+  // Чек уже принят, покупателя не бросаем: настройку или счётчик не прочитали —
+  // авто-проверки нет, чек уходит продавцу на ручную (безопасная сторона); сбой — в Sentry.
+  try {
+    if ((await getSettingStrict(ctx, OCR_AUTO_KEY)) === "false") return false;
+    // Лимит проверок плана на месяц: исчерпан — чек уходит продавцу на ручную проверку.
+    return !(await receiptLimitReached(ctx));
+  } catch (e) {
+    await reportError(e, { where: "receipt.ocr-gate", botId: ctx.tenant.id });
+    return false;
+  }
 }
 
 export async function receiptLimitReached(ctx: TenantContext): Promise<boolean> {
@@ -51,7 +59,7 @@ export async function receiptLimitReached(ctx: TenantContext): Promise<boolean> 
   const { overLimit } = await import("@/core/plans/plans");
   const limits = tenantLimits(ctx.tenant);
   if (!limits || limits.receiptChecks === null) return false;
-  const u = parseUsage(await getSetting(ctx, OCR_USAGE_KEY));
+  const u = parseUsage(await getSettingStrict(ctx, OCR_USAGE_KEY));
   return overLimit(u.monthCount, limits.receiptChecks);
 }
 

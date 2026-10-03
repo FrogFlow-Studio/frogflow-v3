@@ -67,6 +67,7 @@ export async function emailOrderMaterials(
     }
   }
   if (!files.length) return { sent: false, reason: "нет файлов" };
+  // Мягкое чтение: пусто безопасно — в письме будет имя клиента из каталога арендаторов.
   const shopName = (await getSetting(ctx, "shop_name")) || ctx.tenant.name;
   const no = order.display_no ?? order.order_no;
   const r = await mailer({

@@ -1,13 +1,32 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
 import { reportError } from "@/lib/errors";
+import { serverFailure } from "@/lib/server-failure";
 
-/** app_settings — KV клиента, PK (bot_id, key). Те же ключи, что в v1. */
+/**
+ * app_settings — KV клиента, PK (bot_id, key). Те же ключи, что в v1.
+ *
+ * Мягкое чтение: при сбое базы отдаёт «пусто» (null), как будто настройки
+ * нет. Годится там, где пусто безопасно — тексты, подсказки, необязательные
+ * возможности. Деньги, чеки и лимиты читают getSettingStrict/getSettingsStrict.
+ */
 export async function getSetting(ctx: TenantContext, key: string): Promise<string | null> {
   const { data } = await ctx.db.from("app_settings").select("value").eq("key", key).maybeSingle();
   return data?.value ?? null;
 }
 
+/** Строгое чтение: «не удалось прочитать» — сбой, а не «настройки нет». */
+export async function getSettingStrict(ctx: TenantContext, key: string): Promise<string | null> {
+  const { data, error } = await ctx.db
+    .from("app_settings")
+    .select("value")
+    .eq("key", key)
+    .maybeSingle();
+  if (error) throw serverFailure(`Настройка ${key}: ${error.message}`);
+  return data?.value ?? null;
+}
+
+/** Мягкое чтение нескольких ключей (см. getSetting). */
 export async function getSettings(
   ctx: TenantContext,
   keys: readonly string[],
@@ -16,6 +35,21 @@ export async function getSettings(
     .from("app_settings")
     .select("key, value")
     .in("key", [...keys]);
+  const out: Record<string, string> = {};
+  for (const row of data ?? []) if (row.value != null) out[row.key] = row.value;
+  return out;
+}
+
+/** Строгое чтение нескольких ключей: сбой базы не превращается в пустой набор. */
+export async function getSettingsStrict(
+  ctx: TenantContext,
+  keys: readonly string[],
+): Promise<Record<string, string>> {
+  const { data, error } = await ctx.db
+    .from("app_settings")
+    .select("key, value")
+    .in("key", [...keys]);
+  if (error) throw serverFailure(`Настройки ${keys.join(", ")}: ${error.message}`);
   const out: Record<string, string> = {};
   for (const row of data ?? []) if (row.value != null) out[row.key] = row.value;
   return out;

@@ -1,5 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSettings } from "@/core/settings/settings";
+import { getSettingsStrict } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
 import { receiptFor, type Receipt } from "./receipt";
 import {
@@ -15,7 +15,10 @@ import {
  * на 20 оплатился бы 20 ₸ (или 20 ₽).
  */
 export async function robokassaFor(ctx: TenantContext, currency?: string | null) {
-  const cfg = robokassaConfig(await getSettings(ctx, ROBOKASSA_KEYS), ctx.tenant.modules.robokassa);
+  const cfg = robokassaConfig(
+    await getSettingsStrict(ctx, ROBOKASSA_KEYS),
+    ctx.tenant.modules.robokassa,
+  );
   if (cfg.ready && currency != null && !robokassaAccepts(currency, cfg.region))
     return { ready: false as const };
   return cfg;
@@ -39,13 +42,16 @@ export function robokassaReceipt(
 /** Оплата криптой (модуль crypto, core/payments/nowpayments). */
 export async function nowpaymentsFor(ctx: TenantContext) {
   const { NOWPAYMENTS_KEYS, nowpaymentsConfig } = await import("./nowpayments");
-  return nowpaymentsConfig(await getSettings(ctx, NOWPAYMENTS_KEYS), ctx.tenant.modules.crypto);
+  return nowpaymentsConfig(
+    await getSettingsStrict(ctx, NOWPAYMENTS_KEYS),
+    ctx.tenant.modules.crypto,
+  );
 }
 
 /** Оплата иностранной картой (модуль stripe, core/payments/stripe). */
 export async function stripeFor(ctx: TenantContext) {
   const { STRIPE_KEYS, stripeConfig } = await import("./stripe");
-  return stripeConfig(await getSettings(ctx, STRIPE_KEYS), ctx.tenant.modules.stripe);
+  return stripeConfig(await getSettingsStrict(ctx, STRIPE_KEYS), ctx.tenant.modules.stripe);
 }
 
 /**

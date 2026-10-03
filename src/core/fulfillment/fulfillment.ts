@@ -1,7 +1,7 @@
 import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
-import { getSettings } from "@/core/settings/settings";
+import { getSettingsStrict } from "@/core/settings/settings";
 import { currencyForCountry, defaultCountryCode, convertForTenant } from "@/core/pricing/pricing";
 import type { Money } from "@/core/money/money";
 import { amountDue, type PaymentMode } from "./pure";
@@ -14,7 +14,7 @@ export type FulfillmentSettings = {
 };
 
 export async function fulfillmentSettings(ctx: TenantContext): Promise<FulfillmentSettings> {
-  const s = await getSettings(ctx, [
+  const s = await getSettingsStrict(ctx, [
     "fulfillment_pickup_enabled",
     "fulfillment_delivery_enabled",
     "payment_mode",

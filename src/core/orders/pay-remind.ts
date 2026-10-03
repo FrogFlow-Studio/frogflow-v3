@@ -107,6 +107,7 @@ export async function remindChatOrders(
   send: (r: PayReminder) => Promise<boolean>,
   now = new Date(),
 ): Promise<{ sent: number; failed: number; skipped: number } | { off: true }> {
+  // Мягкое чтение: пусто безопасно — сработает срок напоминания по умолчанию, денег это не двигает.
   const hours = parsePayRemindHours(await getSetting(ctx, PAY_REMIND_KEY));
   if (hours === null) return { off: true };
   const out = { sent: 0, failed: 0, skipped: 0 };
