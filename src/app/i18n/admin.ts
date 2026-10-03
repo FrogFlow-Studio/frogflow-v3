@@ -15,6 +15,7 @@ import * as aiBalance from "./admin/ai-balance";
 import * as product from "./admin/product";
 import * as discounts from "./admin/discounts";
 import * as consultant from "./admin/consultant";
+import * as schoolFunnel from "./admin/school-funnel";
 import * as pricelist from "./admin/pricelist";
 import * as homework from "./admin/homework";
 import * as school4 from "./admin/school4";
@@ -397,6 +398,7 @@ const ru = {
   ...product.ru,
   ...discounts.ru,
   ...consultant.ru,
+  ...schoolFunnel.ru,
   ...pricelist.ru,
   ...homework.ru,
   ...school4.ru,
@@ -1446,6 +1448,7 @@ const kk: Dict = {
   ...product.kk,
   ...discounts.kk,
   ...consultant.kk,
+  ...schoolFunnel.kk,
   ...pricelist.kk,
   ...homework.kk,
   ...school4.kk,
@@ -1486,6 +1489,7 @@ const en: Dict = {
   ...product.en,
   ...discounts.en,
   ...consultant.en,
+  ...schoolFunnel.en,
   ...pricelist.en,
   ...homework.en,
   ...school4.en,
@@ -1526,6 +1530,7 @@ const uz: Dict = {
   ...product.uz,
   ...discounts.uz,
   ...consultant.uz,
+  ...schoolFunnel.uz,
   ...pricelist.uz,
   ...homework.uz,
   ...school4.uz,

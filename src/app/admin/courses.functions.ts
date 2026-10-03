@@ -138,6 +138,35 @@ export const courseStudentsFn = createServerFn({ method: "GET" })
     return courseStudents(ctx, data.productId);
   });
 
+/** Воронка курса по потоку: только чтение, видит вся команда (core/courses/funnel). */
+export const courseFunnelFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z.object({ productId: z.string().uuid(), cohortId: z.string().uuid().nullable() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin();
+    const { courseFunnel } = await import("@/core/courses/funnel.server");
+    return courseFunnel(ctx, data.productId, data.cohortId);
+  });
+
+/** Ученики шага воронки — список по клику на цифру. */
+export const funnelStudentsFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        productId: z.string().uuid(),
+        cohortId: z.string().uuid().nullable(),
+        kind: z.enum(["opened", "homework", "done", "finished"]),
+        lessonNo: z.number().int().min(0).max(100),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin();
+    const { funnelStudents } = await import("@/core/courses/funnel.server");
+    return funnelStudents(ctx, data.productId, data.cohortId, data.kind, data.lessonNo);
+  });
+
 /** Закрытый канал курса: бот магазина видит его и может приглашать учеников. */
 export const checkCourseChannelFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ channel: z.string().max(40) }).parse(d))

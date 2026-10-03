@@ -1,3 +1,4 @@
+import { CourseFunnel } from "@/app/admin/course-funnel";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { schoolStudentsFn } from "@/app/admin/courses.functions";
@@ -135,6 +136,7 @@ function StudentsPage() {
                       ))}
                     </ul>
                   )}
+                  <CourseFunnel productId={c.productId} t={t} />
                 </Card>
               );
             })}
