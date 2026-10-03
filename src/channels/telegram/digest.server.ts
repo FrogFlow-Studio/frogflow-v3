@@ -60,11 +60,15 @@ export async function sendDueDigests(
         sent = await notifyAdminsHtml(ctx, renderDigest(yesterday, stats, items), {
           kind: "digest",
         });
-        if (sent > 0)
-          await markDigested(
-            ctx,
-            items.map((i) => i.id),
-          );
+        // Сообщение ушло: отметка не должна его откатывать (иначе завтра те же пункты
+        // придут второй раз). Один повтор, дальше — в журнал.
+        if (sent > 0) {
+          const ids = items.map((i) => i.id);
+          if ((await markDigested(ctx, ids)) > 0 && (await markDigested(ctx, ids)) > 0)
+            console.error(
+              `[digest:${ctx.tenant.id}] пункты ушли, но не отмечены — придут повторно`,
+            );
+        }
       } catch (e) {
         // Не дошло — вернуть отметку: следующий тик повторит, а не потеряет день.
         await releaseDigest(ctx, today, claim.prev);

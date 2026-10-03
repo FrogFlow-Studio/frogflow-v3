@@ -1,5 +1,6 @@
 import type { Json } from "@/core/db-types";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { pageAll } from "@/core/db/page";
 import { getSetting, setSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { minutesInTz, type NotifyKind, type NotifyPrefs } from "./prefs";
 
@@ -29,15 +30,25 @@ export async function deferToDigest(
 
 export type DigestItem = { id: string; kind: string; text: string; at: string };
 
-export async function queuedDigestItems(ctx: TenantContext, limit = 100): Promise<DigestItem[]> {
-  const { data } = await ctx.db
-    .from("zernio_logs")
-    .select("id, event_type, payload, created_at")
-    .like("event_id", `${DIGEST_PREFIX}%`)
-    .eq("status", "queued")
-    .order("created_at", { ascending: true })
-    .limit(limit);
-  return (data ?? []).map((r) => ({
+/**
+ * Все отложенные пункты, постранично и в стабильном порядке (время, затем id):
+ * ничего не теряется на «первых 100». Ошибка чтения — исключение, а не «пусто»:
+ * иначе дайджест ушёл бы без пунктов, а день был бы занят.
+ */
+export async function queuedDigestItems(ctx: TenantContext): Promise<DigestItem[]> {
+  const rows = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("zernio_logs")
+        .select("id, event_type, payload, created_at")
+        .like("event_id", `${DIGEST_PREFIX}%`)
+        .eq("status", "queued")
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    "Дайджест: чтение отложенного",
+  );
+  return rows.map((r) => ({
     id: r.id,
     kind: r.event_type.replace(/^digest\./, ""),
     text: String((r.payload as { text?: string } | null)?.text ?? ""),
@@ -45,9 +56,22 @@ export async function queuedDigestItems(ctx: TenantContext, limit = 100): Promis
   }));
 }
 
-export async function markDigested(ctx: TenantContext, ids: string[]): Promise<void> {
-  if (!ids.length) return;
-  await ctx.db.from("zernio_logs").update({ status: "processed" }).in("id", ids);
+/**
+ * Пометить пункты отправленными (пачками по 200, только ещё стоящие в очереди).
+ * Возвращает, сколько пачек не записалось: сообщение уже ушло, поэтому ошибка не
+ * бросается — вызывающий повторит и, если не вышло, запишет в журнал.
+ */
+export async function markDigested(ctx: TenantContext, ids: string[]): Promise<number> {
+  let failed = 0;
+  for (let i = 0; i < ids.length; i += 200) {
+    const { error } = await ctx.db
+      .from("zernio_logs")
+      .update({ status: "processed" })
+      .in("id", ids.slice(i, i + 200))
+      .eq("status", "queued");
+    if (error) failed += 1;
+  }
+  return failed;
 }
 
 export type DigestStats = {

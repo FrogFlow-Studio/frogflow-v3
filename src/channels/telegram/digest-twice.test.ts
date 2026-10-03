@@ -69,4 +69,46 @@ describe("дайджест: два прогона одновременно", () 
     const second = await sendDueDigests([tenant], NOW);
     expect(second.bot).toBe("sent");
   });
+  it("не прочитали отложенное — день не занят, следующий прогон шлёт со всеми пунктами", async () => {
+    const db = setup();
+    db.tables.zernio_logs = [
+      {
+        id: "z1",
+        bot_id: "bot",
+        event_id: "digest:1",
+        event_type: "digest.question",
+        status: "queued",
+        payload: { text: "ночной вопрос" },
+        created_at: "2026-10-09T22:00:00Z",
+      },
+    ];
+    const realFrom = db.from.bind(db);
+    let failRead = true;
+    (state.ctx as { db: unknown }).db = {
+      ...db,
+      from: (t: string) => {
+        if (t === "zernio_logs" && failRead) {
+          failRead = false;
+          const q: Record<string, unknown> = new Proxy(
+            {},
+            {
+              get: (_t, k) =>
+                k === "then"
+                  ? (ok: (v: unknown) => unknown) => ok({ data: null, error: { message: "down" } })
+                  : () => q,
+            },
+          );
+          return q;
+        }
+        return realFrom(t);
+      },
+    };
+    const first = await sendDueDigests([tenant], NOW);
+    expect(first.bot).not.toBe("sent");
+    expect(state.notify).toBe(0);
+    const second = await sendDueDigests([tenant], NOW);
+    expect(second.bot).toBe("sent");
+    expect(state.notify).toBe(1);
+    expect(db.tables.zernio_logs![0]!.status).toBe("processed");
+  });
 });
