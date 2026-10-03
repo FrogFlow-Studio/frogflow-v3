@@ -2140,12 +2140,12 @@ async function showPoints(s: Shop) {
     shopCurrency(s.ctx),
     loyaltyEarnPercent(s.ctx),
   ]);
+  // Уровень лояльности (если задан и покупатель его достиг) и «до следующего».
+  const tier = await customerTierStatus(s.ctx, s.customer.telegramId, currency);
   let text =
     balance > 0
       ? s.m.pointsInfo(balance, currency, parseMaxRedeemPercent(maxRaw))
-      : s.m.pointsNone(percent);
-  // Уровень лояльности (если задан и покупатель его достиг) и «до следующего».
-  const tier = await customerTierStatus(s.ctx, s.customer.telegramId, currency);
+      : s.m.pointsNone(tier?.tier?.percent ?? percent);
   if (tier?.tier)
     text +=
       "\n" +

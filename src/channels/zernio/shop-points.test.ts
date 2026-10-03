@@ -114,6 +114,21 @@ describe("Direct: слово «баллы»", () => {
     expect(sh.sent.at(-1)).toContain("38000");
   });
 
+  it("баллов нет, но уровень есть — копятся по проценту уровня, а не общему", async () => {
+    const sh = shopFor({ loyalty: true, points: 0 });
+    sh.db.tables.app_settings!.push({
+      bot_id: "bot-1",
+      key: "loyalty_tiers",
+      value: JSON.stringify([{ name: "Серебро", from: 1000, percent: 9 }]),
+    });
+    sh.db.tables.orders = [
+      { id: 1, telegram_id: -1, status: "delivered", total: 5000, currency: "KZT" },
+    ];
+    await sh.say("баллы");
+    expect(sh.sent.at(-1)).toContain("9%");
+    expect(sh.sent.at(-1)).not.toContain("7%");
+  });
+
   it("баллов нет — объясняет, как они копятся", async () => {
     const { say, sent } = shopFor({ loyalty: true, points: 0 });
     await say("мои баллы");
