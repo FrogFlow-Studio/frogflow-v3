@@ -150,6 +150,11 @@ export const ru = {
   "audit.action.addSupplierFn": "добавил поставщика",
   "audit.action.updateSupplierFn": "изменил поставщика",
   "audit.action.removeSupplierFn": "удалил поставщика",
+  "audit.action.createRequestFn": "создал заявку поставщику",
+  "audit.action.updateRequestFn": "изменил заявку поставщику",
+  "audit.action.deleteRequestFn": "удалил заявку поставщику",
+  "audit.action.orderRequestFn": "отметил заявку поставщику заказанной",
+  "audit.action.receiveRequestFn": "создал приход по заявке поставщику",
   "audit.action.setProductSupplierFn": "назначил товару поставщика",
 } as const;
 
@@ -302,6 +307,11 @@ export const kk: SectionDict<typeof ru> = {
   "audit.action.addSupplierFn": "жеткізуші қосты",
   "audit.action.updateSupplierFn": "жеткізушіні өзгертті",
   "audit.action.removeSupplierFn": "жеткізушіні жойды",
+  "audit.action.createRequestFn": "жеткізушіге өтінім жасады",
+  "audit.action.updateRequestFn": "жеткізушіге өтінімді өзгертті",
+  "audit.action.deleteRequestFn": "жеткізушіге өтінімді жойды",
+  "audit.action.orderRequestFn": "жеткізушіге өтінімді тапсырылды деп белгіледі",
+  "audit.action.receiveRequestFn": "жеткізушіге өтінім бойынша кіріс жасады",
   "audit.action.setProductSupplierFn": "тауарға жеткізуші тағайындады",
 };
 
@@ -454,6 +464,11 @@ export const en: SectionDict<typeof ru> = {
   "audit.action.addSupplierFn": "added a supplier",
   "audit.action.updateSupplierFn": "changed a supplier",
   "audit.action.removeSupplierFn": "deleted a supplier",
+  "audit.action.createRequestFn": "created a supplier order",
+  "audit.action.updateRequestFn": "edited a supplier order",
+  "audit.action.deleteRequestFn": "deleted a supplier order",
+  "audit.action.orderRequestFn": "marked a supplier order as ordered",
+  "audit.action.receiveRequestFn": "created a receipt for a supplier order",
   "audit.action.setProductSupplierFn": "set a product's supplier",
 };
 
@@ -606,5 +621,10 @@ export const uz: SectionDict<typeof ru> = {
   "audit.action.addSupplierFn": "yetkazib beruvchi qoʻshdi",
   "audit.action.updateSupplierFn": "yetkazib beruvchini oʻzgartirdi",
   "audit.action.removeSupplierFn": "yetkazib beruvchini oʻchirdi",
+  "audit.action.createRequestFn": "yetkazib beruvchiga buyurtma yaratdi",
+  "audit.action.updateRequestFn": "yetkazib beruvchiga buyurtmani oʻzgartirdi",
+  "audit.action.deleteRequestFn": "yetkazib beruvchiga buyurtmani oʻchirdi",
+  "audit.action.orderRequestFn": "yetkazib beruvchiga buyurtmani buyurtma qilingan deb belgiladi",
+  "audit.action.receiveRequestFn": "yetkazib beruvchiga buyurtma boʻyicha kirim yaratdi",
   "audit.action.setProductSupplierFn": "tovarga yetkazib beruvchi tayinladi",
 };
