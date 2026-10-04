@@ -115,6 +115,10 @@ function baseDb(o: RoomOptions, key: string, platform: string, telegramId: numbe
     unique: { zernio_logs: [["event_id"]] },
     rpc: { manager_chat_touch: () => {} },
   });
+  // Блокировка оформления: свободно (настоящая — условная запись в базе).
+  const rpc = db.rpc;
+  db.rpc = async (name, args) =>
+    name === "claim_order_placement" ? { data: true, error: null } : rpc(name, args);
   db.tables.bot_users = [
     {
       id: "u1",
@@ -410,6 +414,23 @@ function telegramRoom(o: RoomOptions): Room {
   };
 }
 
+/**
+ * База в памяти не умеет вложенный выбор «корзина → товар»: после каждой реплики
+ * кладём в строки корзины сам товар, как это сделал бы запрос с join.
+ */
+function withCartJoin(r: Room): Room {
+  const say = r.say.bind(r);
+  r.say = async (i) => {
+    await say(i);
+    for (const c of r.db.tables.cart_items ?? []) {
+      if (c.products) continue;
+      c.products = r.db.tables.products?.find((p) => p.id === c.product_id) ?? null;
+      c.product_variants = null;
+    }
+  };
+  return r;
+}
+
 export function room(o: RoomOptions): Room {
-  return o.channel === "telegram" ? telegramRoom(o) : directRoom(o);
+  return withCartJoin(o.channel === "telegram" ? telegramRoom(o) : directRoom(o));
 }

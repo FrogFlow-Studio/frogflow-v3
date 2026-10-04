@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setEnvForTests } from "@/config/env";
 import { COPY } from "@/channels/telegram/copy";
-import { notices, outbound, room } from "./harness";
+import { commissionableAmount } from "@/core/commission/commission";
+import type { Locale } from "@/core/i18n/locale";
+import { notices, outbound, room, type Channel, type Product } from "./harness";
 import { SCENARIOS, type Says } from "./scenarios";
 
 /** Золотые диалоги (Б14): прогон сценариев из scenarios.ts на настоящем коде каналов. */
@@ -96,4 +98,85 @@ describe("золотые диалоги", () => {
           expect(notices.count - before, where).toBe(e.sellerNotices);
       }
     });
+});
+
+/** Д5: одна и та же корзина в трёх каналах — один и тот же заказ и сумма; комиссия за ботовые заказы нулевая. */
+describe("Д5: заказ из одной корзины в трёх каналах", () => {
+  const PARITY: Product[] = [
+    { id: "a0000000-0000-4000-8000-000000000001", name: "018. Прописи", price: 1000 },
+    { id: "a0000000-0000-4000-8000-000000000002", name: "019. Пазлы", price: 1500 },
+  ];
+  const CHANNELS: Channel[] = ["telegram", "instagram", "whatsapp"];
+
+  /** Корзина из двух товаров → оформление; возвращает то, что записано в базу. */
+  async function checkout(channel: Channel, locale: Locale) {
+    const r = room({ channel, locale, products: PARITY });
+    await r.say({ text: "каталог" });
+    if (channel === "telegram") {
+      for (const p of PARITY) await r.say({ button: `add:${p.id}::u` });
+      await r.say({ button: "checkout" });
+      await r.say({ text: "+77770637152" });
+    } else {
+      await r.say({ text: "1, 2" });
+      await r.say({ button: "CHECKOUT" });
+    }
+    const order = r.db.tables.orders![0]!;
+    const items = (r.db.tables.order_items ?? [])
+      .map((i) => ({
+        product_id: i.product_id,
+        name: i.name_snapshot,
+        quantity: i.quantity,
+        price: i.price_snapshot,
+      }))
+      .sort((a, b) => String(a.product_id).localeCompare(String(b.product_id)));
+    return { r, order, items, text: r.replies().join("\n") };
+  }
+  const shape = (o: Record<string, unknown>) => ({
+    total: o.total,
+    currency: o.currency,
+    status: o.status,
+    fulfillment_kind: o.fulfillment_kind,
+    discount_amount: o.discount_amount,
+    points_used: o.points_used,
+    delivery_fee: o.delivery_fee,
+    country_code: o.country_code,
+  });
+
+  for (const locale of ["ru", "kk", "uz"] as const)
+    it(`${locale}: Telegram, Instagram и WhatsApp дают один заказ: состав, сумма, статус`, async () => {
+      const got = await Promise.all(CHANNELS.map((c) => checkout(c, locale)));
+      for (const g of got) {
+        expect(g.r.db.tables.orders, "заказ один").toHaveLength(1);
+        expect(g.order.total).toBe(2500);
+        expect(g.order.status).toBe("awaiting_payment");
+        expect(g.text, "покупателю назван заказ и сумма").toContain("2500");
+      }
+      expect(got[0]!.items).toEqual([
+        { product_id: PARITY[0]!.id, name: "018. Прописи", quantity: 1, price: 1000 },
+        { product_id: PARITY[1]!.id, name: "019. Пазлы", quantity: 1, price: 1500 },
+      ]);
+      for (const g of got.slice(1)) {
+        expect(shape(g.order)).toEqual(shape(got[0]!.order));
+        expect(g.items).toEqual(got[0]!.items);
+      }
+      expect(got.map((g) => g.order.platform)).toEqual(["telegram", "instagram", "whatsapp"]);
+    });
+
+  it("комиссия платформы с оплаченного заказа бота — 0; тот же заказ с витрины сайта — считается", async () => {
+    for (const channel of CHANNELS) {
+      const { order } = await checkout(channel, "ru");
+      const paid = {
+        platform: String(order.platform),
+        status: "delivered",
+        total: order.total as number,
+        currency: String(order.currency),
+        day: "2026-10-04",
+      };
+      expect(commissionableAmount(paid), `${channel}: заказ бота`).toBe(0);
+      expect(
+        commissionableAmount({ ...paid, platform: "web" }),
+        `${channel}: тот же с витрины`,
+      ).toBe(2500);
+    }
+  });
 });
