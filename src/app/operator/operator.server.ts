@@ -333,12 +333,15 @@ const PROFILE_KEY = "@profile";
  * профиль из последнего события: его записывают клиенту v1 перед переездом.
  */
 export async function zernioLastEvents(botId: string, limit = 300): Promise<Map<string, string>> {
+  // Только события вебхука Zernio (`event_type` — имя события, как в HANDLED_EVENTS): отметки
+  // автосообщений, учёта диалогов, обращений и склада пишутся в ту же таблицу, тоже свежие, и
+  // иначе выдали бы «последнее событие: 10 минут назад» при сломанном вебхуке.
+  const { HANDLED_EVENTS } = await import("@/channels/zernio/dispatch.server");
   const { data, error: readErr7 } = await serviceDb()
     .from("zernio_logs")
     .select("payload, created_at")
     .eq("bot_id", botId)
-    .neq("status", "event")
-    .neq("event_type", "telegram.update")
+    .in("event_type", [...HANDLED_EVENTS])
     .order("created_at", { ascending: false })
     .limit(limit);
   if (readErr7) throw serverFailure(`[operator] журнал вебхуков не прочитан: ${readErr7.message}`);
