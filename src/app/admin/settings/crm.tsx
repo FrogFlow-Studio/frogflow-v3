@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { needsManualRetry } from "@/core/crm/retry-policy";
 import { Card, ErrorBox, Field, useAction } from "@/app/ui";
 import {
   crmFn,
@@ -141,12 +142,6 @@ export function CrmCard() {
 }
 
 type LogEntries = NonNullable<Awaited<ReturnType<typeof crmLogFn>>["entries"]>;
-
-/** Сами не повторяются, ждут ручного повтора: таймаут, обрыв и 5xx (4xx и «не ушло» очередь повторяет сама). */
-const needsManualRetry = (e: { outcome: string; status: number | null }) =>
-  e.outcome === "timeout" ||
-  e.outcome === "network" ||
-  (e.outcome === "http" && (e.status ?? 0) >= 500);
 
 /** Журнал доставки: последние отправки вебхука без тела и секрета. */
 function DeliveryLog({

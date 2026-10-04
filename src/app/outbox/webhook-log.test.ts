@@ -4,7 +4,9 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 
 vi.mock("@/lib/errors", () => ({ reportError: vi.fn(async () => {}) }));
 
-type Reply = { ok: true; status: number } | { ok: false; error: string; timedOut?: boolean };
+type Reply =
+  | { ok: true; status: number }
+  | { ok: false; error: string; timedOut?: boolean; notSent?: boolean };
 let reply: Reply = { ok: true, status: 200 };
 vi.mock("@/core/crm/webhook", async (orig) => ({
   ...(await orig<typeof import("@/core/crm/webhook")>()),
@@ -53,6 +55,12 @@ describe("postWebhook пишет журнал доставки", () => {
     expect(log.every((e) => e.orderId === 42 && e.eventId === "ev-1")).toBe(true);
     expect(JSON.stringify(log)).not.toContain("SEC");
     expect(JSON.stringify(log)).not.toContain("crm.example.kz");
+  });
+
+  it("адрес недоступен (ENOTFOUND): в журнале «не ушло», очередь повторит сама — не «обрыв»", async () => {
+    reply = { ok: false, error: "getaddrinfo ENOTFOUND", notSent: true };
+    expect(await postWebhook(ctx, URL, body)).toMatchObject({ ok: false, permanent: false });
+    expect((await loadCrmLog(ctx))[0]!.outcome).toBe("notSent");
   });
 
   it("запрещённый адрес не уходит в сеть, но виден в журнале", async () => {

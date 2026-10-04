@@ -11,8 +11,8 @@ import { getSettingStrict, updateSettingStamped } from "@/core/settings/settings
 export const CRM_LOG_KEY = "crm_webhook_log";
 export const CRM_LOG_MAX = 100;
 
-/** ok — ответ 2xx/302; http — другой код (в `status`); timeout — ответа не дождались; network — обрыв до ответа; blocked — адрес запрещён. */
-export type CrmOutcome = "ok" | "http" | "timeout" | "network" | "blocked";
+/** ok — ответ 2xx/302; http — другой код (в `status`); timeout — ответа не дождались; network — обрыв после того, как запрос мог уйти; notSent — соединения не было, запрос заведомо не ушёл (очередь повторит сама); blocked — адрес запрещён. */
+export type CrmOutcome = "ok" | "http" | "timeout" | "network" | "notSent" | "blocked";
 
 export type CrmLogEntry = {
   at: string;
@@ -59,7 +59,7 @@ export function logEntryFor(
   body: string,
   r:
     | { ok: true; status: number }
-    | { ok: false; error: string; timedOut?: boolean; status?: number },
+    | { ok: false; error: string; timedOut?: boolean; status?: number; notSent?: boolean },
   meta: { outboxId?: string } = {},
   now = new Date(),
 ): CrmLogEntry {
@@ -92,5 +92,6 @@ export function logEntryFor(
   }
   if (r.status) return { ...base, outcome: "http", status: r.status };
   if (r.timedOut) return { ...base, outcome: "timeout", status: null };
+  if (r.notSent) return { ...base, outcome: "notSent", status: null };
   return { ...base, outcome: "network", status: null };
 }

@@ -4,6 +4,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 
 vi.mock("@/lib/errors", () => ({ reportError: vi.fn(async () => {}) }));
 
+const { needsManualRetry } = await import("./retry-policy");
 const { CRM_LOG_MAX, loadCrmLog, logEntryFor, recordCrmDelivery } = await import("./log");
 
 const ctxWith = () =>
@@ -39,6 +40,18 @@ describe("журнал доставки вебхуков", () => {
     expect(logEntryFor(body(1), { ok: false, error: "x", timedOut: true }).outcome).toBe("timeout");
     const n = logEntryFor(body(1), { ok: false, error: "ECONNRESET" });
     expect([n.outcome, n.status]).toEqual(["network", null]);
+  });
+
+  it("«соединения не было» (ENOTFOUND) — отдельный исход: очередь повторит сама, кнопки «Повторить» нет", () => {
+    const e = logEntryFor(body(1), { ok: false, error: "getaddrinfo ENOTFOUND", notSent: true });
+    expect([e.outcome, e.status]).toEqual(["notSent", null]);
+    expect(needsManualRetry(e)).toBe(false);
+    expect(needsManualRetry(logEntryFor(body(1), { ok: false, error: "ECONNRESET" }))).toBe(true);
+    expect(needsManualRetry(logEntryFor(body(1), { ok: false, error: "x", timedOut: true }))).toBe(
+      true,
+    );
+    expect(needsManualRetry(logEntryFor(body(1), { ok: true, status: 503 }))).toBe(true);
+    expect(needsManualRetry(logEntryFor(body(1), { ok: true, status: 404 }))).toBe(false);
   });
 
   it("кольцо: держит последние 100, свежие сверху", async () => {
