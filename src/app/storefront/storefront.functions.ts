@@ -163,6 +163,11 @@ export const createHandoffFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ slug, items }).parse(d))
   .handler(async ({ data }) => {
     const ctx = await shopCtx(data.slug, "web_handoff");
+    // Каждая ссылка — строка в базе: без счёта анонимный вызов засорил бы таблицу.
+    const { clientIp } = await import("@/app/auth/login-guard.server");
+    const { takeWeb } = await import("@/core/storefront/checkout-guard");
+    if (!(await takeWeb(ctx, "handoff", clientIp() ?? "unknown")))
+      throw shownError((await shopT(ctx))("error.tooManyRequests"));
     const { createHandoff, parseHandoffItems } = await import("@/core/storefront/handoff");
     const r = await createHandoff(ctx, parseHandoffItems(data.items));
     if (!r) throw shownError((await shopT(ctx))("error.noBot"));

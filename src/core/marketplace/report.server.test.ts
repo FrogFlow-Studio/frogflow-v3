@@ -12,7 +12,7 @@ vi.mock("@/core/tenant/resolve.server", () => ({
   tenantContext: () => ({ db }),
 }));
 
-const { submitReport, listOpenReports, closeReport, getOpenReport } =
+const { submitReport, describeTarget, listOpenReports, closeReport, getOpenReport } =
   await import("./report.server");
 const { shownShopIds } = await import("./shops.server");
 
@@ -245,5 +245,21 @@ describe("скрытый магазин с площадки не показыв�
     expect([...shownShopIds(before)].sort()).toEqual(["a", "b"]);
     const after = [tenant("a", { hidden: true, hidden_reason: "жалоба" }), tenant("b")];
     expect([...shownShopIds(after)]).toEqual(["b"]);
+  });
+});
+
+describe("форма жалобы (reportFormFn)", () => {
+  it("магазин на площадке — название, неизвестный или не на площадке — null без подсказки", async () => {
+    expect(await describeTarget("a", null, { shop })).toEqual({ shop: "Магазин a", product: null });
+    expect(await describeTarget("нет", null, { shop })).toBeNull();
+    expect(await describeTarget("a", null, { shop: async () => null })).toBeNull();
+  });
+
+  it("товар этого магазина — название, чужой товар — null", async () => {
+    expect(await describeTarget("a", PRODUCT, { shop })).toEqual({
+      shop: "Магазин a",
+      product: "Торт",
+    });
+    expect(await describeTarget("a", "c1111111-7944-441b-8f71-503184fc0f1f", { shop })).toBeNull();
   });
 });
