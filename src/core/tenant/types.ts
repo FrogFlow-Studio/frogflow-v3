@@ -159,6 +159,11 @@ export type TenantSettings = {
   /** Тариф (core/plans): ключ плана, надбавки, льготы, лимиты. */
   billing?: BillingSettings;
   /**
+   * Комиссия платформы (core/commission): дата начала у клиента, `YYYY-MM-DD`
+   * по поясу магазина; нет — `COMMISSION_DEFAULT_START`. Ставит оператор.
+   */
+  commission?: { start?: string };
+  /**
    * Продажа подарочных сертификатов на витрине сайта (core/discounts/gift-sale):
    * включает продавец, номиналы — до шести, валюта — одна на все номиналы.
    */

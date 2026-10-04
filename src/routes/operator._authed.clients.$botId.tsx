@@ -13,6 +13,7 @@ import { ShopGroupCard } from "@/app/operator/client/shop-group";
 import { CommunityModCard } from "@/app/operator/client/community";
 import { MarketplaceModCard } from "@/app/operator/client/marketplace";
 import { InvitesCard } from "@/app/operator/client/invites";
+import { CommissionStartCard } from "@/app/operator/client/commission";
 import { WizardCard } from "@/app/operator/client/wizard";
 import { BillingCard } from "@/app/operator/client/billing";
 import { NotesCard } from "@/app/operator/client/notes";
@@ -170,6 +171,7 @@ function ClientPage() {
             <PlanCard c={c} onDone={refresh} />
             <BillingCard c={c} />
             <InvitesCard c={c} />
+            <CommissionStartCard c={c} start={c.commissionStart} />
             <AiBalanceCard c={c} ai={ai} onDone={refresh} />
             <ConsultantLimitsCard c={c} budget={consultant} onDone={refresh} />
             <SmartSearchLimitCard c={c} budget={smartSearch} onDone={refresh} />

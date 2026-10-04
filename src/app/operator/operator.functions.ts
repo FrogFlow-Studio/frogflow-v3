@@ -777,6 +777,42 @@ export const syncV2WebhookFn = createServerFn({ method: "POST" }).handler(async 
   return (await import("@/channels/zernio/connect.server")).syncV2Webhook();
 });
 
+/* ── комиссия платформы (core/commission) ─────────────────────────── */
+
+const commissionImpl = () => import("./commission.server");
+
+/** Общий выключатель комиссии: по умолчанию выключен. */
+export const commissionSwitchFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await commissionImpl()).commissionSwitchView();
+});
+
+export const setCommissionSwitchFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ enabled: z.boolean() }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await commissionImpl()).switchCommission(data.enabled);
+  });
+
+/** Дата начала комиссии клиента (`ГГГГ-ММ-ДД`); null — общая дата. */
+export const setCommissionStartFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId,
+        start: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .refine((v) => !Number.isNaN(Date.parse(v)), "Нет такой даты")
+          .nullable(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await commissionImpl()).setCommissionStart(data.botId, data.start, await actor());
+  });
+
 /** Мастер подключения канала у клиента: на каком шаге застрял и из-за чего (только чтение). */
 export const wizardViewFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ botId }).parse(d))

@@ -22,6 +22,7 @@ import {
 } from "@/app/operator/operator.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { shownError } from "@/lib/shown-error";
+import { CommissionSwitchCard } from "@/app/operator/client/commission";
 
 export const Route = createFileRoute("/operator/_authed/settings")({
   loader: async () => {
@@ -66,6 +67,7 @@ function SettingsPage() {
     <>
       <PageTitle title="Настройки платформы" />
       <div className="grid gap-4 lg:grid-cols-2">
+        <CommissionSwitchCard />
         <RequisitesCard
           requisites={cred.requisites}
           recipient={cred.recipient}

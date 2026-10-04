@@ -63,6 +63,26 @@ export const MONTHLY_PRICE: Record<PlanTier, number> = {
   pro: 19_900,
   business: 39_900,
 };
+/**
+ * Комиссия платформы с продаж (решение Якова 04.10.2026): процент по тарифу с
+ * оплаченных заказов, оформленных на витрине сайта и маркете (`orders.platform
+ * = 'web'`); заказы из ботов Telegram (и Mini App: он кладёт корзину в бота,
+ * заказ оформляет бот), Instagram и WhatsApp и заказы, заведённые вручную,
+ * комиссии не несут. Первые `COMMISSION_FREE_MONTHLY` ₸ продаж в месяц без
+ * комиссии. Начисление включает только общий выключатель платформы
+ * (core/commission), по умолчанию он выключен.
+ */
+export const COMMISSION_RATE_PERCENT: Record<PlanTier, number> = {
+  basic: 10,
+  pro: 5,
+  business: 1,
+};
+export const COMMISSION_FREE_MONTHLY = 50_000;
+/** Валюта комиссии и порога: считаются только заказы в ней. */
+export const COMMISSION_CURRENCY = "KZT";
+/** Начало комиссии у клиента без своей даты (`settings.commission.start`): текущим клиентам — с 1 января. */
+export const COMMISSION_DEFAULT_START = "2027-01-01";
+
 /** Годовая оплата: два месяца в подарок. */
 export const ANNUAL_BILLED_MONTHS = 10;
 export const TRIAL_DAYS = 7;

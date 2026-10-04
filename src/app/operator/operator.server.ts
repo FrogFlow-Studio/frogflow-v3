@@ -114,6 +114,8 @@ export type ClientView = {
   hosts: string[];
   telegram: { connected: boolean; username: string | null; webhookOk: boolean };
   zernioAccounts: string[];
+  /** Своя дата начала комиссии (`settings.commission.start`); null — общая. */
+  commissionStart: string | null;
   zernio: {
     profileId: string | null;
     accounts: Array<{
@@ -195,6 +197,7 @@ function toView(
       webhookOk: Boolean(t.settings.telegram?.webhook_ok),
     },
     zernioAccounts: t.settings.zernio?.account_ids ?? [],
+    commissionStart: t.settings.commission?.start ?? null,
     zernio: {
       profileId: t.settings.zernio?.profile_id ?? null,
       accounts: (t.settings.zernio?.accounts ?? []).map((a) => ({

@@ -197,6 +197,14 @@ export function settingsFromJson(json: unknown): TenantSettings {
     warn_days_before: typeof s.warn_days_before === "number" ? s.warn_days_before : undefined,
     grace_days: typeof s.grace_days === "number" ? s.grace_days : undefined,
     billing: billingFromJson(s.billing),
+    commission: (() => {
+      const start = obj(s.commission).start;
+      return typeof start === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(start) &&
+        !Number.isNaN(Date.parse(start))
+        ? { start }
+        : undefined;
+    })(),
     consultant_limits:
       cl && typeof cl === "object" && !Array.isArray(cl)
         ? {
