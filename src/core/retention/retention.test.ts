@@ -687,3 +687,66 @@ describe("объём жалобы площадки (Л2)", () => {
     expect(cleaned.value.slug.length).toBe(80);
   });
 });
+
+describe("упавшее чтение перед удалением (Т3)", () => {
+  /** Чтения (select) падают, удаления и записи идут в настоящий fakeDb: видно, что удалено. */
+  function readsFail(real: FakeDb): FakeDb {
+    const failing = (): unknown => {
+      const result = { data: null, error: { message: "connection reset" }, count: null };
+      return new Proxy(
+        {},
+        {
+          get: (_t, key) =>
+            key === "then"
+              ? (ok: (v: unknown) => unknown) => Promise.resolve(result).then(ok)
+              : () => failing(),
+        },
+      );
+    };
+    return new Proxy(real, {
+      get: (target, key) => {
+        if (key !== "from") return (target as unknown as Record<string | symbol, unknown>)[key];
+        return (table: string) =>
+          new Proxy(target.from(table) as unknown as Record<string | symbol, unknown>, {
+            get: (q, k) => (k === "select" ? () => failing() : q[k]),
+          });
+      },
+    });
+  }
+
+  const old = daysAgo(4000);
+  const jobs: Array<[string, () => Promise<unknown>]> = [
+    ["pruneZernioLogs", () => pruneZernioLogs(NOW)],
+    ["pruneMarketEvents", () => pruneMarketEvents(NOW)],
+    ["pruneClosedMarketReports", () => pruneClosedMarketReports(NOW)],
+    ["pruneSignupChallenges", () => pruneSignupChallenges(NOW)],
+    ["pruneReceiptChecks", () => pruneReceiptChecks(NOW)],
+    ["pruneRateLimits", () => pruneRateLimits(NOW)],
+    ["pruneClosedLeads", () => pruneClosedLeads(NOW)],
+    ["pruneBroadcastRecipients", () => pruneBroadcastRecipients(NOW)],
+    ["pruneCheckoutChallenges", () => pruneCheckoutChallenges(NOW)],
+  ];
+
+  for (const [name, run] of jobs)
+    it(`${name}: чтение упало — ошибка, ни одна строка не удалена`, async () => {
+      const real = fakeDb();
+      real.tables.zernio_logs = [
+        { id: "z1", event_type: "webhook", status: "processed", created_at: old },
+        { id: "z2", event_type: "market.report", status: "closed", created_at: old },
+      ];
+      real.tables.market_events = [{ id: "m1", kind: "visit", created_at: old }];
+      real.tables.operator_settings = [{ key: "signup_challenge:x", value: old, updated_at: old }];
+      real.tables.app_settings = [
+        { bot_id: "b", key: "rate_limit:x", value: old, updated_at: old },
+        { bot_id: "b", key: "receipt_check:x", value: old, updated_at: old },
+        { bot_id: "b", key: "checkout_challenge:x", value: old, updated_at: old },
+      ];
+      real.tables.broadcasts = [{ id: "bc1", bot_id: "b", created_at: old }];
+      real.tables.broadcast_recipients = [{ id: "r1", broadcast_id: "bc1" }];
+      real.tables.manager_chat_messages = [{ id: "c1", created_at: old }];
+      const before = JSON.stringify(real.tables);
+      db = readsFail(real);
+      await expect(run()).rejects.toThrow();
+      expect(JSON.stringify(real.tables)).toBe(before);
+    });
+});
