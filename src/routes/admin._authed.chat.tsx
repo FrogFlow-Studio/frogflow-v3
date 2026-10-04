@@ -8,6 +8,7 @@ import {
   chatConnectFn,
   chatConversationsFn,
   chatCustomerPanelFn,
+  chatSearchFn,
   saveCustomerNoteFn,
   chatInboxPageFn,
   chatInboxPollFn,
@@ -29,6 +30,7 @@ import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { uploadFile } from "@/app/admin/upload-client";
 import type { ChatMessage, Conversation } from "@/core/chat/chat";
 import { mergeMessages } from "@/core/chat/merge-messages";
+import { SEARCH_MIN } from "@/core/chat/search";
 import { UNANSWERED_OPTIONS } from "@/core/chat/unanswered";
 import { isIndefinite } from "@/core/consultant/pause";
 import {
@@ -335,6 +337,46 @@ function ChatPage() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [lastMessageId, selectedId]);
 
+  // Поиск по тексту переписки: находки вместо списка диалогов; переход к находке подгружает историю до неё.
+  const [textQuery, setTextQuery] = useState("");
+  const [hits, setHits] = useState<{
+    q: string;
+    items: Awaited<ReturnType<typeof chatSearchFn>>["hits"];
+    hasMore: boolean;
+  } | null>(null);
+  const [jump, setJump] = useState<{ telegramId: number; id: string } | null>(null);
+  const jumped = useRef<string | null>(null);
+  useEffect(() => {
+    const q = textQuery.trim();
+    if (q.length < SEARCH_MIN) {
+      setHits(null);
+      return;
+    }
+    let alive = true;
+    const timer = setTimeout(() => {
+      chatSearchFn({ data: { q } }).then(
+        (r) => alive && setHits({ q, items: r.hits, hasMore: r.hasMore }),
+        (e) => alive && setLoadError(e),
+      );
+    }, 400);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [textQuery]);
+  const moreHits = useAction(async () => {
+    const last = hits?.items[hits.items.length - 1];
+    if (!hits || !last) return;
+    const r = await chatSearchFn({
+      data: { q: hits.q, before: { created_at: last.createdAt, id: last.id } },
+    });
+    setHits((cur) =>
+      cur && cur.q === hits.q
+        ? { ...cur, items: [...cur.items, ...r.hits], hasMore: r.hasMore }
+        : cur,
+    );
+  });
+
   const loadEarlier = useAction(async () => {
     const first = messages[0];
     if (selectedId === null || !first) return;
@@ -353,6 +395,23 @@ function ChatPage() {
       if (el) el.scrollTop += el.scrollHeight - height;
     });
   });
+  // Находка открыта: подгружаем историю страницами, пока сообщение не появится, и прокручиваем к нему.
+  useEffect(() => {
+    if (!jump) return;
+    if (selectedId !== jump.telegramId) {
+      setJump(null);
+      return;
+    }
+    if (thread.telegramId !== jump.telegramId) return;
+    if (thread.messages.some((m) => m.id === jump.id)) {
+      if (jumped.current === jump.id) return;
+      jumped.current = jump.id;
+      requestAnimationFrame(() =>
+        document.getElementById(`msg-${jump.id}`)?.scrollIntoView({ block: "center" }),
+      );
+    } else if (thread.hasMore && !loadEarlier.busy && !loadEarlier.error)
+      void loadEarlier.run().catch(() => {});
+  }, [jump, selectedId, thread, loadEarlier]);
 
   const setMeta = useAction(
     async (patch: { status?: "open" | "closed"; assignee?: string | null }) => {
@@ -428,7 +487,52 @@ function ChatPage() {
       />
       <div className="card grid h-[calc(100vh-14rem)] min-h-[28rem] grid-cols-1 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <div className="overflow-y-auto border-b border-line md:border-r md:border-b-0">
-          {visible.length === 0 ? (
+          <div className="sticky top-0 z-10 border-b border-line bg-surface p-2">
+            <input
+              type="search"
+              className="input h-8 w-full py-0 text-sm"
+              value={textQuery}
+              placeholder={t("chat.searchText")}
+              aria-label={t("chat.searchText")}
+              onChange={(e) => setTextQuery(e.target.value)}
+            />
+          </div>
+          {hits !== null ? (
+            <>
+              {hits.items.length === 0 && <Empty>{t("chat.searchNone")}</Empty>}
+              {hits.items.map((h) => (
+                <button
+                  key={h.id}
+                  type="button"
+                  onClick={() => {
+                    jumped.current = null;
+                    setSelectedId(h.telegramId);
+                    setJump({ telegramId: h.telegramId, id: h.id });
+                  }}
+                  className={`block w-full border-b border-line px-4 py-3 text-left hover:bg-surface-2/60 ${jump?.id === h.id ? "bg-surface-2" : ""}`}
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm font-medium">{h.name}</span>
+                    {CHANNEL[h.platform] && <Badge>{CHANNEL[h.platform]}</Badge>}
+                  </span>
+                  <span className="mt-1 block text-xs text-muted">{h.snippet}</span>
+                  <span className="mt-0.5 block text-[11px] text-muted">
+                    {new Date(h.createdAt).toLocaleString(loc)}
+                  </span>
+                </button>
+              ))}
+              {hits.hasMore && (
+                <button
+                  type="button"
+                  className="block w-full px-4 py-3 text-center text-xs text-muted hover:bg-surface-2/60"
+                  disabled={moreHits.busy}
+                  onClick={() => void moreHits.run().catch(() => {})}
+                >
+                  {t("chat.moreDialogs")}
+                </button>
+              )}
+            </>
+          ) : visible.length === 0 ? (
             <Empty>{counts.total === 0 ? t("chat.empty") : t("chat.emptyFiltered")}</Empty>
           ) : (
             visible.map((c) => (
@@ -465,7 +569,7 @@ function ChatPage() {
               </button>
             ))
           )}
-          {hasMore && (
+          {hits === null && hasMore && (
             <button
               type="button"
               className="block w-full px-4 py-3 text-center text-xs text-muted hover:bg-surface-2/60"
@@ -597,7 +701,8 @@ function ChatPage() {
                   {messages.map((m) => (
                     <div
                       key={m.id}
-                      className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${BUBBLE[m.sender] ?? BUBBLE.bot}`}
+                      id={`msg-${m.id}`}
+                      className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${BUBBLE[m.sender] ?? BUBBLE.bot} ${jump?.id === m.id ? "ring-2 ring-accent" : ""}`}
                     >
                       {m.sender === "bot" && (
                         <p className="mb-1 text-[10px] tracking-wide text-muted uppercase">

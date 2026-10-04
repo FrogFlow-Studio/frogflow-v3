@@ -75,6 +75,9 @@ const ALLOWED: Record<string, string[]> = {
   "src/core/search/smart.server.ts": [
     "потолок кандидатов для модели: больше не помещается в запрос",
   ],
+  "src/core/chat/search.ts": [
+    "постраничный поиск: страница по курсору (created_at, id), «Показать ещё»",
+  ],
   "src/core/chat/chat.ts": [
     "постраничный обход списка диалогов: страница по курсору (last_message_at, telegram_id)",
     "постраничный обход переписки: страница по курсору (created_at, id), «Показать раньше»",

@@ -98,3 +98,28 @@ test("чат: заметка и теги правятся в панели диа
   await expect(page.locator('input[list="customer-tags"]')).toHaveValue("vip, опт");
   expect(errors).toEqual([]);
 });
+
+test("чат: поиск по тексту находит сообщение и открывает диалог с историей до него", async ({
+  page,
+}) => {
+  const errors = await watch(page);
+  await login(page);
+  await page.goto("/admin/chat");
+  await page.getByPlaceholder("Поиск по тексту переписки").fill("Самое первое");
+  // Находка — в начале длинной переписки (230 сообщений, первая страница — 200).
+  await page.getByRole("button", { name: /Самое первое сообщение/ }).click();
+  const bubble = page.locator('[id^="msg-"]', { hasText: F.CHAT_LONG_FIRST });
+  await expect(bubble).toHaveCount(1);
+  await expect(bubble).toBeInViewport();
+  await expect(bubble).toHaveClass(/ring-2/);
+  expect(errors).toEqual([]);
+});
+
+test("чат: поиск по тексту — ничего не найдено", async ({ page }) => {
+  const errors = await watch(page);
+  await login(page);
+  await page.goto("/admin/chat");
+  await page.getByPlaceholder("Поиск по тексту переписки").fill("такого текста нет нигде");
+  await expect(page.getByText("Ничего не найдено", { exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});

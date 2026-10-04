@@ -2524,6 +2524,23 @@ export const chatInboxPageFn = createServerFn({ method: "GET" })
     return { conversations: page.items, hasMore: page.hasMore, totals };
   });
 
+/** Поиск по тексту переписки: находки страницами, свежие сверху. Ничего не отмечает прочитанным. */
+export const chatSearchFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        q: z.string().trim().min(1).max(100),
+        // Граница идёт в or() PostgREST — только строгие форматы.
+        before: z.object({ created_at: isoTime, id: z.string().uuid() }).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await chatModule();
+    const { searchMessages } = await import("@/core/chat/search");
+    return searchMessages(ctx, data.q, { before: data.before });
+  });
+
 /** Боковая панель диалога: заказы, сумма покупок, баллы и обращения покупателя. Контактов нет. */
 export const chatCustomerPanelFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ telegramId: tgId }).parse(d))
