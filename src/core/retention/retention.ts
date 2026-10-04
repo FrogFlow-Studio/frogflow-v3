@@ -121,6 +121,10 @@ export async function pruneZernioLogs(now = Date.now(), scope?: Scope): Promise<
       .neq("event_type", "order.refund")
       // Позиции предзаказа (core/preorder): по ним решается, возвращать ли товар на склад.
       .neq("event_type", "order.preorder")
+      // Учёт диалога (core/inbox: статус «решён», ответственный) живёт в строке с
+      // created_at дня первого назначения: update его не меняет, и чистка по возрасту
+      // молча открывала бы решённые диалоги и снимала ответственного.
+      .neq("event_type", "inbox")
       .lt("created_at", cutoff(RETENTION.zernioLogsStaleDays, now));
     if (scope) q2 = q2.in("bot_id", [...scope]);
     const { data: stale, error: e2 } = await q2

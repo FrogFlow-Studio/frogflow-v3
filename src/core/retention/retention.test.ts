@@ -153,6 +153,36 @@ describe("ретеншн zernio_logs", () => {
     ]);
   });
 
+  it("Д3: учёт диалога (статус, ответственный) не удаляется по возрасту строки", async () => {
+    db.tables.zernio_logs = [
+      {
+        id: "inbox-open",
+        bot_id: "b",
+        event_id: "inbox:b:1",
+        event_type: "inbox",
+        status: "open",
+        created_at: daysAgo(210),
+      },
+      {
+        id: "inbox-closed",
+        bot_id: "b",
+        event_id: "inbox:b:2",
+        event_type: "inbox",
+        status: "closed",
+        created_at: daysAgo(400),
+      },
+      {
+        id: "old-fail",
+        bot_id: "b",
+        event_type: "message.received",
+        status: "failed",
+        created_at: daysAgo(181),
+      },
+    ];
+    expect(await pruneZernioLogs(NOW)).toEqual({ deleted: 1, done: true });
+    expect(db.tables.zernio_logs.map((r) => r.id)).toEqual(["inbox-open", "inbox-closed"]);
+  });
+
   it("пустой круг клиентов v2 — ничего не трогает", async () => {
     db.tables.zernio_logs = [
       { id: "old-ok", bot_id: "b", status: "processed", created_at: daysAgo(31) },

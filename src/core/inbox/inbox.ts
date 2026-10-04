@@ -108,9 +108,9 @@ export async function getInboxMeta(ctx: TenantContext, telegramId: number): Prom
 }
 
 /**
- * Статус и/или ответственный диалога. Строка живёт в zernio_logs и
- * подчищается ретеншеном через 180 дней от создания — тогда диалог просто
- * снова «открыт и ничей».
+ * Статус и/или ответственный диалога. Строка живёт в zernio_logs; ретеншн её
+ * не трогает (`event_type = inbox` исключён в `pruneZernioLogs`, как ticket):
+ * учёт диалога живёт, пока жив покупатель.
  */
 export async function setInboxMeta(
   ctx: TenantContext,
