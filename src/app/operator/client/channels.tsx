@@ -56,35 +56,37 @@ export function ZernioCard({ c, onDone }: { c: C; onDone: () => Promise<void> })
         <dd>{when(c.zernio.lastEventAt)}</dd>
       </dl>
       {c.zernio.accounts.length > 0 && (
-        <table className="table mt-3">
-          <thead>
-            <tr>
-              <th>Канал</th>
-              <th>Аккаунт</th>
-              <th>Состояние</th>
-              <th>Событие</th>
-            </tr>
-          </thead>
-          <tbody>
-            {c.zernio.accounts.map((a) => (
-              <tr key={a.id}>
-                <td>{a.platform === "whatsapp" ? "WhatsApp" : "Instagram"}</td>
-                <td>
-                  {a.username ? `@${a.username}` : (a.name ?? "")}{" "}
-                  <span className="font-mono text-xs text-muted">{a.id}</span>
-                </td>
-                <td>
-                  {a.expired ? (
-                    <Badge tone="danger">отключён</Badge>
-                  ) : (
-                    <Badge tone="ok">подключён</Badge>
-                  )}
-                </td>
-                <td className="text-muted">{when(a.lastEventAt)}</td>
+        <div className="overflow-x-auto">
+          <table className="table mt-3">
+            <thead>
+              <tr>
+                <th>Канал</th>
+                <th>Аккаунт</th>
+                <th>Состояние</th>
+                <th>Событие</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {c.zernio.accounts.map((a) => (
+                <tr key={a.id}>
+                  <td>{a.platform === "whatsapp" ? "WhatsApp" : "Instagram"}</td>
+                  <td>
+                    {a.username ? `@${a.username}` : (a.name ?? "")}{" "}
+                    <span className="font-mono text-xs text-muted">{a.id}</span>
+                  </td>
+                  <td>
+                    {a.expired ? (
+                      <Badge tone="danger">отключён</Badge>
+                    ) : (
+                      <Badge tone="ok">подключён</Badge>
+                    )}
+                  </td>
+                  <td className="text-muted">{when(a.lastEventAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
       {result && result.conflicts.length > 0 && (
         <p className="mt-2 text-xs text-danger">

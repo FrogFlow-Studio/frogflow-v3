@@ -177,98 +177,100 @@ export function BillingCard({ c }: { c: C }) {
             </div>
           </form>
           {data.invoices.length > 0 && (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Счёт</th>
-                  <th>Статус</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.invoices.map((i) => {
-                  const st = INVOICE_STATUS[i.status] ?? {
-                    label: i.status,
-                    tone: "neutral" as const,
-                  };
-                  return (
-                    <tr key={i.id}>
-                      <td>
-                        <span className="font-medium">
-                          {i.amount} {i.currency}
-                        </span>
-                        {i.note && <span className="block text-xs text-muted">{i.note}</span>}
-                        <span className="block text-xs text-muted">
-                          {new Date(i.created_at).toLocaleDateString("ru")}
-                        </span>
-                      </td>
-                      <td>
-                        <Badge tone={st.tone}>{st.label}</Badge>
-                        {i.reject_reason && (
-                          <span className="block text-xs text-muted">{i.reject_reason}</span>
-                        )}
-                      </td>
-                      <td className="text-right whitespace-nowrap">
-                        {i.has_proof && (
-                          <button
-                            type="button"
-                            className="btn-ghost text-xs"
-                            onClick={() => void proof.run(i.id).catch(() => {})}
-                          >
-                            Чек
-                          </button>
-                        )}
-                        {(i.status === "sent" || i.status === "proof_uploaded") && (
-                          <>
+            <div className="overflow-x-auto">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Счёт</th>
+                    <th>Статус</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.invoices.map((i) => {
+                    const st = INVOICE_STATUS[i.status] ?? {
+                      label: i.status,
+                      tone: "neutral" as const,
+                    };
+                    return (
+                      <tr key={i.id}>
+                        <td>
+                          <span className="font-medium">
+                            {i.amount} {i.currency}
+                          </span>
+                          {i.note && <span className="block text-xs text-muted">{i.note}</span>}
+                          <span className="block text-xs text-muted">
+                            {new Date(i.created_at).toLocaleDateString("ru")}
+                          </span>
+                        </td>
+                        <td>
+                          <Badge tone={st.tone}>{st.label}</Badge>
+                          {i.reject_reason && (
+                            <span className="block text-xs text-muted">{i.reject_reason}</span>
+                          )}
+                        </td>
+                        <td className="text-right whitespace-nowrap">
+                          {i.has_proof && (
+                            <button
+                              type="button"
+                              className="btn-ghost text-xs"
+                              onClick={() => void proof.run(i.id).catch(() => {})}
+                            >
+                              Чек
+                            </button>
+                          )}
+                          {(i.status === "sent" || i.status === "proof_uploaded") && (
+                            <>
+                              <button
+                                type="button"
+                                className="btn-primary text-xs"
+                                disabled={act.busy}
+                                onClick={() => confirm(i.id)}
+                              >
+                                Оплачен
+                              </button>{" "}
+                              <button
+                                type="button"
+                                className="btn-ghost text-xs"
+                                disabled={act.busy}
+                                onClick={() => reject(i.id)}
+                              >
+                                Отклонить
+                              </button>
+                            </>
+                          )}
+                          {data.uncreditedTopups.includes(i.id) && (
                             <button
                               type="button"
                               className="btn-primary text-xs"
+                              title="Оплата получена, а запись о зачислении на ИИ-баланс не найдена"
                               disabled={act.busy}
-                              onClick={() => confirm(i.id)}
+                              onClick={() =>
+                                void act.run({ id: i.id, action: "recredit" }).catch(() => {})
+                              }
                             >
-                              Оплачен
-                            </button>{" "}
+                              Зачислить повторно
+                            </button>
+                          )}
+                          {i.status === "sent" && (
                             <button
                               type="button"
                               className="btn-ghost text-xs"
                               disabled={act.busy}
-                              onClick={() => reject(i.id)}
+                              onClick={() =>
+                                void act.run({ id: i.id, action: "cancel" }).catch(() => {})
+                              }
                             >
-                              Отклонить
+                              Отменить
                             </button>
-                          </>
-                        )}
-                        {data.uncreditedTopups.includes(i.id) && (
-                          <button
-                            type="button"
-                            className="btn-primary text-xs"
-                            title="Оплата получена, а запись о зачислении на ИИ-баланс не найдена"
-                            disabled={act.busy}
-                            onClick={() =>
-                              void act.run({ id: i.id, action: "recredit" }).catch(() => {})
-                            }
-                          >
-                            Зачислить повторно
-                          </button>
-                        )}
-                        {i.status === "sent" && (
-                          <button
-                            type="button"
-                            className="btn-ghost text-xs"
-                            disabled={act.busy}
-                            onClick={() =>
-                              void act.run({ id: i.id, action: "cancel" }).catch(() => {})
-                            }
-                          >
-                            Отменить
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
           <form
             className="grid gap-2 sm:grid-cols-3"

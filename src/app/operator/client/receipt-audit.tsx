@@ -133,34 +133,38 @@ export function ReceiptAuditCard({ c }: { c: C }) {
                 />
                 Только расхождения
               </label>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Заказ</th>
-                    <th>В базе</th>
-                    <th>OCR</th>
-                    <th>Итог</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {shown.map((r) => (
-                    <tr key={r.orderId}>
-                      <td className="whitespace-nowrap">
-                        {auditOrderCaption(r.displayNo, r.adminNo)}
-                        <div className="text-xs text-muted">
-                          {r.expectedAmount} {r.currency ?? ""}
-                        </div>
-                      </td>
-                      <td>{ACTUAL_HANDLING_LABEL[r.comparison.actual]}</td>
-                      <td>{OCR_WOULD_LABEL[r.comparison.ocrWould]}</td>
-                      <td>
-                        <Badge tone={AUDIT_TONE[r.comparison.severity]}>{r.comparison.title}</Badge>
-                        <div className="text-xs text-muted">{r.comparison.detail}</div>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Заказ</th>
+                      <th>В базе</th>
+                      <th>OCR</th>
+                      <th>Итог</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {shown.map((r) => (
+                      <tr key={r.orderId}>
+                        <td className="whitespace-nowrap">
+                          {auditOrderCaption(r.displayNo, r.adminNo)}
+                          <div className="text-xs text-muted">
+                            {r.expectedAmount} {r.currency ?? ""}
+                          </div>
+                        </td>
+                        <td>{ACTUAL_HANDLING_LABEL[r.comparison.actual]}</td>
+                        <td>{OCR_WOULD_LABEL[r.comparison.ocrWould]}</td>
+                        <td>
+                          <Badge tone={AUDIT_TONE[r.comparison.severity]}>
+                            {r.comparison.title}
+                          </Badge>
+                          <div className="text-xs text-muted">{r.comparison.detail}</div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
         </div>

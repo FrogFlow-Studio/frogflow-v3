@@ -258,6 +258,8 @@ export async function retryStuckEvents(
     if (closed?.length) res.abandoned++;
   }
 
+  // Только события вебхука Zernio, принятые и не обработанные: `event_type` из HANDLED_EVENTS,
+  // статус «received» (его пишет intake; остальные строки таблицы — не вебхук).
   const { data, error } = await ctx.db
     .from("zernio_logs")
     .select("event_id, event_type, payload, created_at")

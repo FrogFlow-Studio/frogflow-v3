@@ -106,7 +106,7 @@ function ClientPage() {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
         <TelegramCard c={c} webhook={webhook} migration={migration} onDone={refresh} />
         <AdminAccessCard c={c} onDone={refresh} />
         <div className="space-y-4">

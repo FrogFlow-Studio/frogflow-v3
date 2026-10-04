@@ -31,6 +31,8 @@ async function readSellerActions(chunks: string[][], since: string) {
             .from("zernio_logs")
             .select("id, bot_id, created_at")
             .in("bot_id", chunk)
+            // Журнал заказа (core/orders/events): `order.<вид>`, статус «event». Отметки автосообщений,
+            // учёта диалогов и вебхуков Zernio в пульс не входят.
             .eq("status", ORDER_EVENT_STATUS)
             .like("event_type", "order.%")
             .like("payload->>actor", "admin%")

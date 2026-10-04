@@ -66,25 +66,27 @@ export function AiBalanceCard({ c, ai, onDone }: { c: C; ai: AI; onDone: () => P
       {ai.journal.length === 0 ? (
         <p className="text-sm text-muted">Журнал пуст.</p>
       ) : (
-        <table className="table">
-          <tbody>
-            {ai.journal.map((r, i) => (
-              <tr key={i}>
-                <td className="whitespace-nowrap text-muted">
-                  {r.type === "ledger" ? new Date(r.at).toLocaleString("ru") : r.date}
-                </td>
-                <td>
-                  {r.type === "ledger"
-                    ? `${KIND[r.kind] ?? r.kind}${r.note ? ` · ${r.note}` : ""}${r.actor ? ` · ${r.actor}` : ""}`
-                    : `${r.label}: ${r.calls}`}
-                </td>
-                <td className="whitespace-nowrap text-right">
-                  {r.type === "ledger" ? money(r.usd) : money(-r.usd)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="table">
+            <tbody>
+              {ai.journal.map((r, i) => (
+                <tr key={i}>
+                  <td className="whitespace-nowrap text-muted">
+                    {r.type === "ledger" ? new Date(r.at).toLocaleString("ru") : r.date}
+                  </td>
+                  <td>
+                    {r.type === "ledger"
+                      ? `${KIND[r.kind] ?? r.kind}${r.note ? ` · ${r.note}` : ""}${r.actor ? ` · ${r.actor}` : ""}`
+                      : `${r.label}: ${r.calls}`}
+                  </td>
+                  <td className="whitespace-nowrap text-right">
+                    {r.type === "ledger" ? money(r.usd) : money(-r.usd)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </Card>
   );

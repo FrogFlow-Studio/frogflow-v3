@@ -320,3 +320,32 @@ Zernio) обходят только клиентов v2. Токенов бото
 
 Каждый перенос идёт по описи `docs/inherited-knowledge.md`: сначала
 проверки из неё, потом код.
+
+## 9. Кто пишет в `zernio_logs`
+
+Таблица `zernio_logs` — не только журнал вебхука Zernio, а общий журнал событий магазина: в ней
+лежат учёт диалогов, обращения, очередь исходящих, склад и отметки кронов. Читатель обязан
+называть в запросе `event_type` (или префикс `event_id`) того, что ему нужно, иначе чужие строки
+попадут в его выборку.
+
+| `event_type`                                                                  | Кто пишет                                              | `status`                                        | Кто чистит                                    |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------- | --------------------------------------------- |
+| имя события Zernio (`message.received`, `comment.received`, …)                | `channels/zernio/intake.server.ts`                     | `received` → `processed` / `ignored` / `failed` | ретеншн: отработанные 30 дней, прочие 180     |
+| `telegram.update`                                                             | `channels/telegram/dedupe.ts` (защита от повтора)      | `processed`                                     | ретеншн                                       |
+| `inbox` (`event_id = inbox:<бот>:<покупатель>`)                               | `core/inbox`                                           | `open` / `closed`                               | не чистится                                   |
+| `ticket`, `ticket.overdue`                                                    | `core/helpdesk`                                        | `open` / `waiting` / `closed`; `processed`      | `ticket` не чистится                          |
+| `order.<вид>` (`placed`, `payment`, `refund`, `preorder`, `balance_proof`, …) | `core/orders/events`, `core/payments`, `core/preorder` | `event`                                         | `order.refund` и `order.preorder` не чистятся |
+| `outbox.<вид>`                                                                | `core/outbox`                                          | `queued` / `sent` / `dead`                      | ретеншн                                       |
+| `automsg` (отметки автосообщений)                                             | `core/automsg/stats`                                   | `sent` / `failed` / `skipped`                   | ретеншн                                       |
+| `engage` (подбор и «С этим берут»)                                            | `core/automsg/engage`                                  | `done`                                          | ретеншн                                       |
+| `chat.unanswered`, `chat.unanswered.escalated`                                | `core/chat/unanswered`                                 | `processed`                                     | ретеншн                                       |
+| `stock.<причина>`                                                             | `core/catalog/stock-history`                           | `event`                                         | ретеншн                                       |
+| `digest.<вид>`                                                                | `core/notify/digest`                                   | `queued`                                        | ретеншн                                       |
+| `sweep.claim`                                                                 | `app/operator/billing.server`                          | `processed`                                     | ретеншн                                       |
+| `post.created`, `two_step_dm_pending`, `two_step_dm_sent`                     | `channels/zernio/posts`, `automations`                 | по месту                                        | ретеншн                                       |
+| `vip.auto_confirmed`                                                          | `core/vip/auto-check`                                  | `event`                                         | ретеншн                                       |
+
+Читатели и их фильтр по `event_type`: оператор («последнее событие Zernio») — `HANDLED_EVENTS`;
+пульс клиентов — `order.%` со статусом `event`; добор вебхука (`dispatch.server`) — `HANDLED_EVENTS`
+со статусом `received`; ретеншн — исключает `ticket`, `order.refund`, `order.preorder`, `inbox`.
+Новый писатель добавляет сюда строку; новый читатель называет `event_type` в запросе.
