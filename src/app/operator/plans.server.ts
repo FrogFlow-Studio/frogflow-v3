@@ -438,7 +438,7 @@ export async function createPlanInvoice(
         actor,
         {
           beforeIssue: async (invoiceId) => {
-            if (c.months.length && !(await claimCommissionMonths(botId, c.months, invoiceId)))
+            if (c.lines.length && !(await claimCommissionMonths(botId, c, invoiceId)))
               throw new CommissionClaimLost();
           },
         },

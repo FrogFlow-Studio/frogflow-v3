@@ -9,7 +9,7 @@ export const ru = {
   "commission.bots":
     "Заказы из ботов Telegram (в том числе из Mini App), Instagram и WhatsApp, а также заведённые вручную комиссией не облагаются.",
   "commission.invoice":
-    "Комиссия за прошлый месяц добавляется отдельной строкой в следующий счёт за подписку, в целых тенге. Заказ относится к месяцу, в котором его оформили. Заказ, оплаченный уже после выставления счёта за его месяц, пока в этот счёт не попадает.",
+    "Комиссия за прошлый месяц добавляется отдельной строкой в следующий счёт за подписку, в целых тенге. Заказ относится к месяцу, в котором его оформили. Заказ, оплаченный уже после выставления счёта за его месяц, доплачивается отдельной строкой «Доплата» в следующем счёте, один раз.",
   "commission.off":
     "Комиссия пока не начисляется. Ниже ваши продажи с витрины и маркета: с них она считалась бы.",
   "commission.noRate": "На ваших условиях комиссия не начисляется.",
@@ -34,7 +34,7 @@ export const kk: SectionDict<typeof ru> = {
   "commission.bots":
     "Telegram (Mini App қоса), Instagram және WhatsApp боттарынан түскен, сондай-ақ қолмен енгізілген тапсырыстарға комиссия салынбайды.",
   "commission.invoice":
-    "Өткен айдың комиссиясы келесі жазылым шотына жеке жол болып, тұтас теңгемен қосылады. Тапсырыс ол рәсімделген айға жатады. Өз айының шоты шығарылғаннан кейін төленген тапсырыс әзірге бұл шотқа кірмейді.",
+    "Өткен айдың комиссиясы келесі жазылым шотына жеке жол болып, тұтас теңгемен қосылады. Тапсырыс ол рәсімделген айға жатады. Өз айының шоты шығарылғаннан кейін төленген тапсырыс келесі шотта «Қосымша төлем» деген жеке жолмен, бір рет қосылады.",
   "commission.off":
     "Комиссия әзірге есептелмейді. Төменде витринаңыз бен маркеттен түскен сатылымдар: комиссия солардан есептелер еді.",
   "commission.noRate": "Сіздің шарттарыңызда комиссия есептелмейді.",
@@ -59,7 +59,7 @@ export const en: SectionDict<typeof ru> = {
   "commission.bots":
     "Orders from Telegram (including the Mini App), Instagram and WhatsApp bots, and orders entered by hand, are not charged.",
   "commission.invoice":
-    "Last month's commission is added as a separate line, in whole tenge, to your next subscription invoice. An order belongs to the month it was placed. An order paid after the invoice for its month was issued is not included in that invoice yet.",
+    "Last month's commission is added as a separate line, in whole tenge, to your next subscription invoice. An order belongs to the month it was placed. An order paid after the invoice for its month was issued is added once, as a separate “Top-up” line, to the next invoice.",
   "commission.off":
     "Commission is not being charged yet. Below are your storefront and marketplace sales it would be calculated from.",
   "commission.noRate": "No commission is charged on your terms.",
@@ -84,7 +84,7 @@ export const uz: SectionDict<typeof ru> = {
   "commission.bots":
     "Telegram (Mini App bilan), Instagram va WhatsApp botlaridan kelgan hamda qoʻlda kiritilgan buyurtmalarga komissiya olinmaydi.",
   "commission.invoice":
-    "Oʻtgan oy komissiyasi keyingi obuna hisobiga alohida qator boʻlib, butun tengeda qoʻshiladi. Buyurtma rasmiylashtirilgan oyga tegishli. Oʻz oyining hisobi chiqarilgandan keyin toʻlangan buyurtma hozircha bu hisobga kirmaydi.",
+    "Oʻtgan oy komissiyasi keyingi obuna hisobiga alohida qator boʻlib, butun tengeda qoʻshiladi. Buyurtma rasmiylashtirilgan oyga tegishli. Oʻz oyining hisobi chiqarilgandan keyin toʻlangan buyurtma keyingi hisobga “Qoʻshimcha toʻlov” deb nomlangan alohida qator boʻlib, bir marta qoʻshiladi.",
   "commission.off":
     "Komissiya hozircha hisoblanmaydi. Quyida vitrina va marketdagi savdolaringiz: komissiya shulardan hisoblanardi.",
   "commission.noRate": "Sizning shartlaringizda komissiya hisoblanmaydi.",

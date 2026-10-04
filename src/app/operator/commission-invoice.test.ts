@@ -276,6 +276,130 @@ describe("комиссия в счёте за подписку", () => {
   });
 });
 
+const topupLines = (note: unknown) =>
+  String(note ?? "")
+    .split("; ")
+    .filter((l) => l.startsWith("Доплата комиссии"));
+
+describe("поздняя оплата заказа после счёта за месяц (К1)", () => {
+  /** Заказ февраля, оформленный до счёта, но оплаченный после него. */
+  const lateOrder = (total = 100_000) => web(total, "2027-02-20T10:00:00Z", { status: "new" });
+  const pay = (id: number) => {
+    const o = db.tables.orders!.find((x) => x.id === id)!;
+    o.status = "paid";
+  };
+
+  it("счёт месяца записывает выставленную сумму", async () => {
+    const a = await create();
+    expect(settingsOf().commission.amounts).toEqual({ "2027-02": 10_000 });
+    expect(a.invoice.amount).toBe(19_900);
+  });
+
+  it("неоплаченный заказ счёт не меняет; после оплаты — доплата в следующем счёте на разницу", async () => {
+    const late = lateOrder();
+    await create();
+    expect(topupLines((await create()).invoice.note)).toEqual([]);
+    pay(late);
+    const b = await create();
+    // 250 000 − 50 000 = 200 000 × 10 % = 20 000; выставлено 10 000, доплата 10 000.
+    expect(b.invoice.amount).toBe(9_900 + 10_000);
+    expect(topupLines(b.invoice.note)).toHaveLength(1);
+    expect(topupLines(b.invoice.note)[0]).toContain(": 10000 ₸");
+    expect(settingsOf().commission.amounts).toEqual({ "2027-02": 20_000 });
+    expect(settingsOf().commission.topup).toEqual({
+      "2027-02": { invoice: b.invoice.id, prev: 10_000 },
+    });
+  });
+
+  it("уже учтённый заказ второй раз не считается: следующий счёт без доплаты", async () => {
+    const late = lateOrder();
+    await create();
+    pay(late);
+    await create();
+    const c = await create();
+    expect(topupLines(c.invoice.note)).toEqual([]);
+    expect(c.invoice.amount).toBe(9_900);
+  });
+
+  it("гонка: два счёта разом после поздней оплаты — доплата ровно в одном", async () => {
+    const late = lateOrder();
+    await create();
+    pay(late);
+    const [a, b] = await Promise.all([create(), create()]);
+    const withLine = [a, b].filter((r) => topupLines(r.invoice.note).length);
+    expect(withLine).toHaveLength(1);
+    const live = invoices().filter((i) => i.status !== "cancelled");
+    expect(live.filter((i) => topupLines(i.note).length)).toHaveLength(1);
+    expect(settingsOf().commission.amounts["2027-02"]).toBe(20_000);
+    expect(settingsOf().commission.topup["2027-02"].invoice).toBe(withLine[0]!.invoice.id);
+  });
+
+  it("счёт с доплатой отменён — сумма месяца вернулась, следующий счёт доплатит снова", async () => {
+    const late = lateOrder();
+    await create();
+    pay(late);
+    const b = await create();
+    await billing.cancelInvoice(b.invoice.id, "operator");
+    expect(settingsOf().commission.amounts).toEqual({ "2027-02": 10_000 });
+    expect(settingsOf().commission.topup).toBeUndefined();
+    const c = await create();
+    expect(topupLines(c.invoice.note)).toHaveLength(1);
+    expect(settingsOf().commission.amounts).toEqual({ "2027-02": 20_000 });
+  });
+
+  it("отметку доплаты отменённого счёта не удалось снять — доплата всё равно возвращается", async () => {
+    const late = lateOrder();
+    await create();
+    pay(late);
+    const b = await create();
+    // Отмена без снятия отметок: статус меняем прямо в базе.
+    invoices().find((i) => i.id === b.invoice.id)!.status = "cancelled";
+    const c = await create();
+    expect(topupLines(c.invoice.note)).toHaveLength(1);
+    expect(settingsOf().commission.amounts).toEqual({ "2027-02": 20_000 });
+    expect(settingsOf().commission.topup["2027-02"]).toEqual({
+      invoice: c.invoice.id,
+      prev: 10_000,
+    });
+  });
+
+  it("месяц, выставленный до К1 (без суммы), не доплачивается и не пересчитывается", async () => {
+    const late = lateOrder();
+    db.tables.bots![0]!.settings = {
+      ...V2,
+      rev: 2,
+      commission: { billed: { "2027-02": "inv-old" } },
+    };
+    db.tables.subscription_invoices!.push({
+      id: "inv-old",
+      bot_id: BOT,
+      amount: 10_000,
+      currency: "KZT",
+      status: "paid",
+      note: null,
+    });
+    pay(late);
+    const r = await create();
+    expect(topupLines(r.invoice.note)).toEqual([]);
+    expect(r.invoice.amount).toBe(9_900);
+  });
+
+  it("возврат после счёта комиссию не кредитует и доплаты не даёт", async () => {
+    await create();
+    db.tables.zernio_logs!.push({
+      id: 1,
+      bot_id: BOT,
+      event_type: "order.refunded",
+      status: "event",
+      created_at: "2027-03-02T10:00:00Z",
+      payload: { order_id: 1, amount: 50_000 },
+    });
+    const r = await create();
+    expect(topupLines(r.invoice.note)).toEqual([]);
+    expect(settingsOf().commission.amounts).toEqual({ "2027-02": 10_000 });
+  });
+});
+
 describe("месяцы к счёту", () => {
   it("от даты начала до прошлого месяца, не глубже года; текущий месяц не входит", async () => {
     const { billableMonths } = await import("@/core/commission/invoice.server");

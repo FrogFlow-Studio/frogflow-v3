@@ -217,8 +217,31 @@ export function settingsFromJson(json: unknown): TenantSettings {
       const billed: Record<string, string> = {};
       for (const [m, id] of Object.entries(obj(c.billed)))
         if (/^\d{4}-\d{2}$/.test(m) && typeof id === "string" && id) billed[m] = id;
-      return start || Object.keys(billed).length
-        ? { start, ...(Object.keys(billed).length ? { billed } : {}) }
+      const amounts: Record<string, number> = {};
+      for (const [m, v] of Object.entries(obj(c.amounts)))
+        if (/^\d{4}-\d{2}$/.test(m) && typeof v === "number" && Number.isFinite(v) && v >= 0)
+          amounts[m] = v;
+      const topup: Record<string, { invoice: string; prev: number }> = {};
+      for (const [m, v] of Object.entries(obj(c.topup))) {
+        const t = obj(v);
+        if (
+          /^\d{4}-\d{2}$/.test(m) &&
+          typeof t.invoice === "string" &&
+          t.invoice &&
+          typeof t.prev === "number" &&
+          Number.isFinite(t.prev) &&
+          t.prev >= 0
+        )
+          topup[m] = { invoice: t.invoice, prev: t.prev };
+      }
+      const has = (o: object) => Object.keys(o).length > 0;
+      return start || has(billed) || has(amounts) || has(topup)
+        ? {
+            start,
+            ...(has(billed) ? { billed } : {}),
+            ...(has(amounts) ? { amounts } : {}),
+            ...(has(topup) ? { topup } : {}),
+          }
         : undefined;
     })(),
     consultant_limits:

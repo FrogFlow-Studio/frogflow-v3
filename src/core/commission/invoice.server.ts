@@ -23,10 +23,17 @@ import { commissionEnabled, commissionForMonth } from "./commission.server";
  * записью `settings.commission.billed[месяц] = номер счёта` по `settings.rev`;
  * проигравший гонку (двойной клик, крон и кнопка владельца разом) счёт не
  * выставляет с этой строкой. Закрепление живёт, пока счёт не отменён и не
- * отклонён: у такого счёта владелец ничего не платит, месяц снова свободен —
- * отдельного «снятия отметки» нет, мёртвая отметка просто не считается.
- * Оплаченная комиссия позже оплаченного заказа в уже выставленный счёт не
- * попадает (счёт — раз в месяц, месяц закрывается его выставлением).
+ * отклонён: у такого счёта владелец ничего не платит, месяц снова свободен
+ * (отметку снимает `releaseCommissionInvoice`, а мёртвая отметка и так не считается).
+ *
+ * Поздняя оплата (К1): вместе с отметкой месяца записывается выставленная
+ * сумма `amounts[месяц]`. Заказ месяца, оплаченный после выставления счёта,
+ * поднимает комиссию месяца выше этой суммы; разница уходит строкой «Доплата»
+ * в следующий счёт. Доплату закрепляет та же условная запись по `settings.rev`:
+ * она сверяет `amounts[месяц]` с суммой, от которой считали, — проигравший
+ * гонку пересчитывает и видит разницу 0, заказ в двух счетах не окажется.
+ * Месяцы, выставленные до К1, суммы не имеют и не доплачиваются; уменьшение
+ * (возврат после счёта) не кредитуется — только доплата вверх.
  */
 
 /** Сколько месяцев назад комиссия ещё догоняется, если начало давнее. */
@@ -75,8 +82,10 @@ async function liveInvoices(ids: string[]): Promise<Set<string>> {
 export type CommissionBilling = {
   /** Строки счёта (целые тенге), по порядку месяцев. */
   lines: InvoiceLine[];
-  /** Месяцы этих строк. */
+  /** Месяцы первых строк (полный месяц), по порядку. */
   months: string[];
+  /** Доплаты — последние строки `lines`, по порядку; `prev` — сумма месяца в прежних счетах. Нет доплат — поля нет. */
+  topups?: Array<{ month: string; prev: number }>;
 };
 
 const fmt = (n: number) => Math.round(n).toLocaleString("ru").replace(/\s/g, " ");
@@ -99,14 +108,35 @@ export async function commissionBilling(
   const months = billableMonths(tenant.settings.commission?.start, now, ctx.timezone);
   if (!months.length) return none;
   const billed = tenant.settings.commission?.billed ?? {};
-  const marks = Object.values(billed);
+  const amounts = tenant.settings.commission?.amounts ?? {};
+  const topup = tenant.settings.commission?.topup ?? {};
+  const marks = [...Object.values(billed), ...Object.values(topup).map((t) => t.invoice)];
   const live = marks.length ? await liveInvoices([...new Set(marks)]) : new Set<string>();
   const out: CommissionBilling = { lines: [], months: [] };
+  const topups: Array<{ month: string; prev: number; line: InvoiceLine }> = [];
   for (const month of months) {
     const mark = billed[month];
-    if (mark && live.has(mark)) continue;
+    const last = topup[month];
+    const base = last && !live.has(last.invoice) ? last.prev : amounts[month];
+    // Месяц уже выставлен без суммы (до К1) — пересчитывать нечего.
+    if (mark && live.has(mark) && base === undefined) continue;
     const c = await commissionForMonth(ctx, month, true);
     const amount = Math.round(c.commission);
+    if (mark && live.has(mark)) {
+      // Месяц уже выставлен: смотрим, не выросла ли комиссия из-за поздно оплаченных заказов.
+      if (c.accrues && base !== undefined && amount > base) {
+        const [y, m] = month.split("-");
+        topups.push({
+          month,
+          prev: base,
+          line: {
+            title: `Доплата комиссии за ${m}.${y} (заказы, оплаченные после выставления счёта за месяц, всего ${fmt(amount)} ₸, уже выставлено ${fmt(base)} ₸)`,
+            amount: amount - base,
+          },
+        });
+      }
+      continue;
+    }
     if (!c.accrues || amount <= 0) continue;
     const [y, m] = month.split("-");
     out.lines.push({
@@ -114,6 +144,10 @@ export async function commissionBilling(
       amount,
     });
     out.months.push(month);
+  }
+  if (topups.length) {
+    out.lines.push(...topups.map((t) => t.line));
+    out.topups = topups.map(({ month, prev }) => ({ month, prev }));
   }
   return out;
 }
@@ -126,15 +160,18 @@ export class CommissionClaimLost extends Error {
 }
 
 /**
- * Закрепить месяцы за счётом: условная запись по `settings.rev`. Месяц занят,
- * если за ним стоит действующий счёт другого номера → false, ничего не пишем.
+ * Закрепить за счётом месяцы и доплаты из `c`: условная запись по `settings.rev`.
+ * Месяц занят, если за ним стоит действующий счёт другого номера, а доплата
+ * устарела, если сумма месяца в настройках уже не `prev` (другой счёт
+ * доплатил раньше) → false, ничего не пишем.
  */
 export async function claimCommissionMonths(
   botId: string,
-  months: string[],
+  c: CommissionBilling,
   invoiceId: string,
 ): Promise<boolean> {
   const db = serviceDb();
+  const topups = c.topups ?? [];
   for (let attempt = 0; attempt < 3; attempt++) {
     const { data, error } = await db.from("bots").select("settings").eq("id", botId).maybeSingle();
     if (error)
@@ -143,21 +180,40 @@ export async function claimCommissionMonths(
     const raw = asObject(data.settings);
     const commission = asObject(raw.commission);
     const billed = { ...(asObject(commission.billed) as Record<string, unknown>) };
+    const amounts = { ...asObject(commission.amounts) };
+    const topup = { ...asObject(commission.topup) };
     const other = [
       ...new Set(
-        months
+        c.months
           .map((m) => billed[m])
           .filter((id): id is string => typeof id === "string" && id !== invoiceId),
       ),
     ];
     if (other.length && (await liveInvoices(other)).size) return false;
-    for (const m of months) billed[m] = invoiceId;
+    c.months.forEach((m, i) => {
+      billed[m] = invoiceId;
+      amounts[m] = c.lines[i]!.amount;
+      delete topup[m];
+    });
+    const first = c.months.length;
+    for (const [i, t] of topups.entries()) {
+      const now = amounts[t.month];
+      const last = asObject(topup[t.month]);
+      const effective =
+        typeof last.invoice === "string" &&
+        typeof last.prev === "number" &&
+        (await liveInvoices([last.invoice])).size === 0
+          ? last.prev
+          : now;
+      if (effective !== t.prev) return false;
+      amounts[t.month] = t.prev + c.lines[first + i]!.amount;
+      topup[t.month] = { invoice: invoiceId, prev: t.prev };
+    }
     const rev = settingsRev(raw);
-    const nextSettings = {
-      ...raw,
-      commission: { ...commission, billed },
-      rev: nextSettingsRev(raw),
-    };
+    const nextCommission: Record<string, unknown> = { ...commission, billed, amounts };
+    if (Object.keys(topup).length) nextCommission.topup = topup;
+    else delete nextCommission.topup;
+    const nextSettings = { ...raw, commission: nextCommission, rev: nextSettingsRev(raw) };
     const revPath = "settings->>rev" as "id";
     let q = db
       .from("bots")
@@ -191,13 +247,31 @@ export async function releaseCommissionInvoice(botId: string, invoiceId: string)
     const raw = asObject(data.settings);
     const commission = asObject(raw.commission);
     const billed = { ...asObject(commission.billed) };
+    const amounts = { ...asObject(commission.amounts) };
+    const topup = { ...asObject(commission.topup) };
     const mine = Object.keys(billed).filter((m) => billed[m] === invoiceId);
-    if (!mine.length) return false;
-    for (const m of mine) delete billed[m];
+    const mineTopup = Object.keys(topup).filter((m) => asObject(topup[m]).invoice === invoiceId);
+    if (!mine.length && !mineTopup.length) return false;
+    for (const m of mine) {
+      delete billed[m];
+      delete amounts[m];
+      delete topup[m];
+    }
+    // Отменённая доплата возвращает месяцу прежнюю сумму: следующий счёт доплатит снова.
+    for (const m of mineTopup) {
+      const prev = asObject(topup[m]).prev;
+      if (typeof prev === "number") amounts[m] = prev;
+      delete topup[m];
+    }
     const rev = settingsRev(raw);
     const nextCommission: Record<string, unknown> = { ...commission };
-    if (Object.keys(billed).length) nextCommission.billed = billed;
-    else delete nextCommission.billed;
+    for (const [key, v] of [
+      ["billed", billed],
+      ["amounts", amounts],
+      ["topup", topup],
+    ] as const)
+      if (Object.keys(v).length) nextCommission[key] = v;
+      else delete nextCommission[key];
     const nextSettings: Record<string, unknown> = { ...raw, rev: nextSettingsRev(raw) };
     if (Object.keys(nextCommission).length) nextSettings.commission = nextCommission;
     else delete nextSettings.commission;

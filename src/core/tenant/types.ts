@@ -165,8 +165,16 @@ export type TenantSettings = {
    * по поясу магазина; нет — `COMMISSION_DEFAULT_START`. Ставит оператор.
    * `billed` — месяцы `ГГГГ-ММ`, за которые комиссия уже вошла в счёт за подписку
    * (значение — номер счёта); отметку ставит выставление счёта, не оператор.
+   * `amounts` — сколько комиссии за месяц уже выставлено, ₸ (целые); по нему поздно
+   * оплаченные заказы доплачиваются следующим счётом. `topup` — последняя доплата
+   * за месяц: номер счёта и сумма до неё (`prev`), чтобы отмена счёта вернула её.
    */
-  commission?: { start?: string; billed?: Record<string, string> };
+  commission?: {
+    start?: string;
+    billed?: Record<string, string>;
+    amounts?: Record<string, number>;
+    topup?: Record<string, { invoice: string; prev: number }>;
+  };
   /**
    * Продажа подарочных сертификатов на витрине сайта (core/discounts/gift-sale):
    * включает продавец, номиналы — до шести, валюта — одна на все номиналы.
