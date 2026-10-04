@@ -1,10 +1,13 @@
-import { canEdit } from "@/core/auth/roles";
-import { createFileRoute } from "@tanstack/react-router";
+import { CONTACTS_MIN_ROLE, canEdit, roleAllows } from "@/core/auth/roles";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { formatMoney } from "@/core/money/money";
+import { OrderStatus } from "./admin._authed.orders";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import {
   chatConnectFn,
   chatConversationsFn,
+  chatCustomerPanelFn,
   chatInboxPageFn,
   chatInboxPollFn,
   chatInvoiceFn,
@@ -472,252 +475,391 @@ function ChatPage() {
             </button>
           )}
         </div>
-        <div className="flex min-h-0 flex-col">
+        <div className="flex min-h-0 flex-col lg:flex-row">
           {selected === null ? (
             <p className="m-auto text-sm text-muted">{t("chat.pickDialog")}</p>
           ) : (
             <>
-              <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
-                <span className="text-sm font-medium">
-                  {label(selected)}{" "}
-                  <span className="text-xs text-muted">
-                    {channelOf(selected) ??
-                      (selected.username ? `@${selected.username}` : `id ${selected.telegram_id}`)}
-                  </span>
-                  {selected.bot_paused_until && (
-                    <span className="block text-xs text-muted">
-                      {isIndefinite(selected.bot_paused_until)
-                        ? t("chat.botPausedForever")
-                        : t("chat.botPausedUntil", {
-                            time: new Date(selected.bot_paused_until).toLocaleString(loc, {
-                              day: "numeric",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }),
-                          })}
+              <CustomerPanelView
+                key={selected.telegram_id}
+                t={t}
+                loc={loc}
+                telegramId={selected.telegram_id}
+                canOpenCard={roleAllows(shop.role, CONTACTS_MIN_ROLE)}
+              />
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
+                  <span className="text-sm font-medium">
+                    {label(selected)}{" "}
+                    <span className="text-xs text-muted">
+                      {channelOf(selected) ??
+                        (selected.username
+                          ? `@${selected.username}`
+                          : `id ${selected.telegram_id}`)}
                     </span>
-                  )}
-                  {window24 && <WindowBadge t={t} w={window24} />}
-                </span>
-                {canWrite && (
-                  <span className="flex flex-wrap items-center justify-end gap-2">
-                    <select
-                      className="input h-8 w-auto py-0 text-xs"
-                      aria-label={t("chat.assignee")}
-                      value={selected.assignee ?? ""}
-                      disabled={setMeta.busy}
-                      onChange={(e) =>
-                        void setMeta.run({ assignee: e.target.value || null }).catch(() => {})
-                      }
-                    >
-                      <option value="">
-                        {t("chat.assignee")}: {t("chat.nobody")}
-                      </option>
-                      {initial.assignees.map((a) => (
-                        <option key={a.username} value={a.username}>
-                          {a.name ?? a.username}
-                          {a.owner ? ` (${t("chat.owner")})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      className="btn-secondary text-xs"
-                      disabled={setMeta.busy}
-                      onClick={() =>
-                        void setMeta
-                          .run({ status: selected.status === "open" ? "closed" : "open" })
-                          .catch(() => {})
-                      }
-                    >
-                      {selected.status === "open" ? t("chat.resolve") : t("chat.reopen")}
-                    </button>
                     {selected.bot_paused_until && (
-                      <button
-                        type="button"
-                        className="btn-secondary text-xs"
-                        disabled={resumeBot.busy}
-                        onClick={() => void resumeBot.run().catch(() => {})}
-                      >
-                        {t("chat.resumeBot")}
-                      </button>
+                      <span className="block text-xs text-muted">
+                        {isIndefinite(selected.bot_paused_until)
+                          ? t("chat.botPausedForever")
+                          : t("chat.botPausedUntil", {
+                              time: new Date(selected.bot_paused_until).toLocaleString(loc, {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }),
+                            })}
+                      </span>
                     )}
-                    {invoiceModeOf(invoiceModes, selected) !== "none" && (
-                      <button
-                        type="button"
-                        className="btn-secondary text-xs"
-                        onClick={() => setInvoicing((v) => !v)}
-                      >
-                        {t("chat.invoice")}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className={selected.active ? "btn-secondary text-xs" : "btn-primary text-xs"}
-                      disabled={toggle.busy}
-                      onClick={() => void toggle.run().catch(() => {})}
-                    >
-                      {selected.active ? t("chat.returnToBot") : t("chat.join")}
-                    </button>
+                    {window24 && <WindowBadge t={t} w={window24} />}
                   </span>
-                )}
-              </div>
-              <div
-                ref={threadRef}
-                className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4"
-              >
-                {thread.telegramId === selected.telegram_id && thread.hasMore && (
-                  <button
-                    type="button"
-                    className="self-center rounded border border-line px-3 py-1 text-xs text-muted hover:bg-line/40"
-                    disabled={loadEarlier.busy}
-                    onClick={() => void loadEarlier.run().catch(() => {})}
-                  >
-                    {t("chat.showEarlier")}
-                  </button>
-                )}
-                {messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${BUBBLE[m.sender] ?? BUBBLE.bot}`}
-                  >
-                    {m.sender === "bot" && (
-                      <p className="mb-1 text-[10px] tracking-wide text-muted uppercase">
-                        {t("chat.botAuto")}
-                      </p>
-                    )}
-                    <p className="whitespace-pre-wrap">{stripHtml(m.text)}</p>
-                    <p className="mt-1 text-[10px] text-muted">
-                      {new Date(m.created_at).toLocaleString(loc)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              {canWrite &&
-                channelOf(selected) &&
-                invoiceModeOf(invoiceModes, selected) === "none" && (
-                  <p className="border-b border-line px-4 py-2 text-xs text-muted">
-                    {invoiceModes?.storefront
-                      ? t("chat.invoiceUnavailable")
-                      : t("chat.invoiceNoStorefront")}
-                  </p>
-                )}
-              {canWrite && invoicing && invoiceModeOf(invoiceModes, selected) !== "none" && (
-                <InvoicePanel
-                  key={selected.telegram_id}
-                  t={t}
-                  link={invoiceModeOf(invoiceModes, selected) === "link"}
-                  telegramId={selected.telegram_id}
-                  onClose={() => setInvoicing(false)}
-                  onSent={async () => {
-                    const m = await chatMessagesFn({ data: { telegramId: selected.telegram_id } });
-                    setThread((p) => threadOf(p, selected.telegram_id, m));
-                    await refreshList();
-                  }}
-                />
-              )}
-              {canWrite && (
-                <QuickReplies
-                  t={t}
-                  replies={quickReplies}
-                  editing={editingQuick}
-                  onEdit={setEditingQuick}
-                  onSaved={setQuickReplies}
-                  onPick={async (r) => {
-                    // Подстановки ({name}, {order}, {ticket}) собирает сервер: заказ и обращение — из базы.
-                    // Не получилось — вставляем как есть: продавец увидит {name} и поправит.
-                    const text = await quickReplyFillFn({
-                      data: { telegramId: selected.telegram_id, text: r.text },
-                    }).then(
-                      (x) => x.text,
-                      () => r.text,
-                    );
-                    setReply((cur) => (cur.trim() ? `${cur}\n` : "") + text);
-                  }}
-                />
-              )}
-              {canWrite && notice && (
-                <p className="border-t border-line px-3 pt-2 text-xs text-warn">
-                  {notice.key === "whatsappTemplate"
-                    ? t("chat.windowTemplate", { name: notice.template })
-                    : notice.key === "whatsappNoTemplate"
-                      ? t("chat.windowClosedWhatsapp")
-                      : t("chat.windowClosedInstagram")}
-                </p>
-              )}
-              {canWrite && (
-                <form
-                  className="flex gap-2 border-t border-line p-3"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void send.run().catch(() => {});
-                  }}
-                >
-                  <textarea
-                    className="input min-h-10 flex-1"
-                    rows={2}
-                    placeholder={
-                      selected.active ? t("chat.placeholderActive") : t("chat.placeholderInactive")
-                    }
-                    value={reply}
-                    onChange={(e) => setReply(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && (e.ctrlKey || e.metaKey))
-                        void send.run().catch(() => {});
-                    }}
-                  />
-                  <div className="flex flex-col items-end gap-1 self-end">
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      className="hidden"
-                      accept={ATTACH_ACCEPT}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        e.target.value = "";
-                        if (f) void attach.run(f).catch(() => {});
-                      }}
-                    />
-                    {attachment ? (
-                      <span className="flex max-w-48 items-center gap-1 text-xs text-muted">
-                        <span className="truncate" title={attachment.name}>
-                          {attachment.kind === "photo" ? "🖼" : "📎"} {attachment.name}
-                        </span>
+                  {canWrite && (
+                    <span className="flex flex-wrap items-center justify-end gap-2">
+                      <select
+                        className="input h-8 w-auto py-0 text-xs"
+                        aria-label={t("chat.assignee")}
+                        value={selected.assignee ?? ""}
+                        disabled={setMeta.busy}
+                        onChange={(e) =>
+                          void setMeta.run({ assignee: e.target.value || null }).catch(() => {})
+                        }
+                      >
+                        <option value="">
+                          {t("chat.assignee")}: {t("chat.nobody")}
+                        </option>
+                        {initial.assignees.map((a) => (
+                          <option key={a.username} value={a.username}>
+                            {a.name ?? a.username}
+                            {a.owner ? ` (${t("chat.owner")})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn-secondary text-xs"
+                        disabled={setMeta.busy}
+                        onClick={() =>
+                          void setMeta
+                            .run({ status: selected.status === "open" ? "closed" : "open" })
+                            .catch(() => {})
+                        }
+                      >
+                        {selected.status === "open" ? t("chat.resolve") : t("chat.reopen")}
+                      </button>
+                      {selected.bot_paused_until && (
                         <button
                           type="button"
-                          className="text-accent hover:underline"
-                          aria-label={t("chat.attachRemove")}
-                          onClick={() => setAttachment(null)}
+                          className="btn-secondary text-xs"
+                          disabled={resumeBot.busy}
+                          onClick={() => void resumeBot.run().catch(() => {})}
                         >
-                          ✕
+                          {t("chat.resumeBot")}
                         </button>
-                      </span>
-                    ) : (
+                      )}
+                      {invoiceModeOf(invoiceModes, selected) !== "none" && (
+                        <button
+                          type="button"
+                          className="btn-secondary text-xs"
+                          onClick={() => setInvoicing((v) => !v)}
+                        >
+                          {t("chat.invoice")}
+                        </button>
+                      )}
                       <button
                         type="button"
-                        className="btn-secondary text-xs"
-                        title={t("chat.attachHint")}
-                        disabled={attach.busy}
-                        onClick={() => fileRef.current?.click()}
+                        className={
+                          selected.active ? "btn-secondary text-xs" : "btn-primary text-xs"
+                        }
+                        disabled={toggle.busy}
+                        onClick={() => void toggle.run().catch(() => {})}
                       >
-                        {attach.busy ? t("chat.attaching") : t("chat.attach")}
+                        {selected.active ? t("chat.returnToBot") : t("chat.join")}
                       </button>
-                    )}
+                    </span>
+                  )}
+                </div>
+                <div
+                  ref={threadRef}
+                  className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4"
+                >
+                  {thread.telegramId === selected.telegram_id && thread.hasMore && (
                     <button
-                      className="btn-primary"
-                      disabled={(!reply.trim() && !attachment) || send.busy || attach.busy}
+                      type="button"
+                      className="self-center rounded border border-line px-3 py-1 text-xs text-muted hover:bg-line/40"
+                      disabled={loadEarlier.busy}
+                      onClick={() => void loadEarlier.run().catch(() => {})}
                     >
-                      {t("chat.send")}
+                      {t("chat.showEarlier")}
                     </button>
-                  </div>
-                </form>
-              )}
+                  )}
+                  {messages.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${BUBBLE[m.sender] ?? BUBBLE.bot}`}
+                    >
+                      {m.sender === "bot" && (
+                        <p className="mb-1 text-[10px] tracking-wide text-muted uppercase">
+                          {t("chat.botAuto")}
+                        </p>
+                      )}
+                      <p className="whitespace-pre-wrap">{stripHtml(m.text)}</p>
+                      <p className="mt-1 text-[10px] text-muted">
+                        {new Date(m.created_at).toLocaleString(loc)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {canWrite &&
+                  channelOf(selected) &&
+                  invoiceModeOf(invoiceModes, selected) === "none" && (
+                    <p className="border-b border-line px-4 py-2 text-xs text-muted">
+                      {invoiceModes?.storefront
+                        ? t("chat.invoiceUnavailable")
+                        : t("chat.invoiceNoStorefront")}
+                    </p>
+                  )}
+                {canWrite && invoicing && invoiceModeOf(invoiceModes, selected) !== "none" && (
+                  <InvoicePanel
+                    key={selected.telegram_id}
+                    t={t}
+                    link={invoiceModeOf(invoiceModes, selected) === "link"}
+                    telegramId={selected.telegram_id}
+                    onClose={() => setInvoicing(false)}
+                    onSent={async () => {
+                      const m = await chatMessagesFn({
+                        data: { telegramId: selected.telegram_id },
+                      });
+                      setThread((p) => threadOf(p, selected.telegram_id, m));
+                      await refreshList();
+                    }}
+                  />
+                )}
+                {canWrite && (
+                  <QuickReplies
+                    t={t}
+                    replies={quickReplies}
+                    editing={editingQuick}
+                    onEdit={setEditingQuick}
+                    onSaved={setQuickReplies}
+                    onPick={async (r) => {
+                      // Подстановки ({name}, {order}, {ticket}) собирает сервер: заказ и обращение — из базы.
+                      // Не получилось — вставляем как есть: продавец увидит {name} и поправит.
+                      const text = await quickReplyFillFn({
+                        data: { telegramId: selected.telegram_id, text: r.text },
+                      }).then(
+                        (x) => x.text,
+                        () => r.text,
+                      );
+                      setReply((cur) => (cur.trim() ? `${cur}\n` : "") + text);
+                    }}
+                  />
+                )}
+                {canWrite && notice && (
+                  <p className="border-t border-line px-3 pt-2 text-xs text-warn">
+                    {notice.key === "whatsappTemplate"
+                      ? t("chat.windowTemplate", { name: notice.template })
+                      : notice.key === "whatsappNoTemplate"
+                        ? t("chat.windowClosedWhatsapp")
+                        : t("chat.windowClosedInstagram")}
+                  </p>
+                )}
+                {canWrite && (
+                  <form
+                    className="flex gap-2 border-t border-line p-3"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void send.run().catch(() => {});
+                    }}
+                  >
+                    <textarea
+                      className="input min-h-10 flex-1"
+                      rows={2}
+                      placeholder={
+                        selected.active
+                          ? t("chat.placeholderActive")
+                          : t("chat.placeholderInactive")
+                      }
+                      value={reply}
+                      onChange={(e) => setReply(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey))
+                          void send.run().catch(() => {});
+                      }}
+                    />
+                    <div className="flex flex-col items-end gap-1 self-end">
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        className="hidden"
+                        accept={ATTACH_ACCEPT}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = "";
+                          if (f) void attach.run(f).catch(() => {});
+                        }}
+                      />
+                      {attachment ? (
+                        <span className="flex max-w-48 items-center gap-1 text-xs text-muted">
+                          <span className="truncate" title={attachment.name}>
+                            {attachment.kind === "photo" ? "🖼" : "📎"} {attachment.name}
+                          </span>
+                          <button
+                            type="button"
+                            className="text-accent hover:underline"
+                            aria-label={t("chat.attachRemove")}
+                            onClick={() => setAttachment(null)}
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn-secondary text-xs"
+                          title={t("chat.attachHint")}
+                          disabled={attach.busy}
+                          onClick={() => fileRef.current?.click()}
+                        >
+                          {attach.busy ? t("chat.attaching") : t("chat.attach")}
+                        </button>
+                      )}
+                      <button
+                        className="btn-primary"
+                        disabled={(!reply.trim() && !attachment) || send.busy || attach.busy}
+                      >
+                        {t("chat.send")}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             </>
           )}
         </div>
       </div>
     </>
+  );
+}
+
+type PanelData = Awaited<ReturnType<typeof chatCustomerPanelFn>>;
+
+/**
+ * Боковая панель диалога: что продавцу нужно знать о покупателе, пока он отвечает.
+ * Без контактов; ссылка на карточку (в ней телефон и почта) — только ролям с доступом к контактам.
+ * На узком экране панель — полоса над перепиской.
+ */
+function CustomerPanelView({
+  t,
+  loc,
+  telegramId,
+  canOpenCard,
+}: {
+  t: AdminT;
+  loc: string;
+  telegramId: number;
+  canOpenCard: boolean;
+}) {
+  const [data, setData] = useState<PanelData | undefined>(undefined);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      chatCustomerPanelFn({ data: { telegramId } }).then(
+        (r) => {
+          if (alive) {
+            setData(r);
+            setFailed(false);
+          }
+        },
+        () => alive && setFailed(true),
+      );
+    void load();
+    const timer = setInterval(() => void load(), 30_000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [telegramId]);
+  const spent = data
+    ? Object.entries(data.stats.totals)
+        .map(([cur, sum]) => formatMoney(sum, cur))
+        .join(" + ")
+    : "";
+  return (
+    <aside
+      aria-label={t("chat.panelTitle")}
+      className="max-h-40 shrink-0 overflow-y-auto border-b border-line p-3 text-sm lg:max-h-none lg:w-64 lg:border-b-0 lg:border-l lg:order-last"
+    >
+      <p className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">
+        {t("chat.panelTitle")}
+      </p>
+      {failed && !data ? (
+        <p className="text-xs text-muted">{t("chat.panelNone")}</p>
+      ) : data === undefined ? null : data === null ? (
+        <p className="text-xs text-muted">{t("chat.panelNone")}</p>
+      ) : (
+        <div className="space-y-3">
+          <dl className="space-y-1">
+            <div className="flex justify-between gap-2">
+              <dt className="text-muted">{t("chat.panelPoints")}</dt>
+              <dd className="tabular-nums">{data.points}</dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-muted">{t("chat.panelSpent")}</dt>
+              <dd className="text-right tabular-nums">{spent || "—"}</dd>
+            </div>
+          </dl>
+          <div>
+            <p className="mb-1 text-xs text-muted">{t("chat.panelOrders")}</p>
+            {data.orders.length === 0 ? (
+              <p className="text-xs text-muted">{t("chat.panelNoOrders")}</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {data.orders.map((o) => (
+                  <li key={o.id}>
+                    <Link
+                      to="/admin/orders/$id"
+                      params={{ id: String(o.id) }}
+                      className="flex flex-wrap items-center justify-between gap-x-2 hover:text-accent"
+                    >
+                      <span>#{o.no}</span>
+                      <span className="tabular-nums">{formatMoney(o.total, o.currency)}</span>
+                      <span className="w-full text-xs text-muted">
+                        <OrderStatus status={o.status} /> ·{" "}
+                        {new Date(o.createdAt).toLocaleDateString(loc)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {data.tickets.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs text-muted">{t("chat.panelTickets")}</p>
+              <ul className="space-y-1">
+                {data.tickets.map((x) => (
+                  <li key={x.number}>
+                    <Link to="/admin/tickets" className="block truncate hover:text-accent">
+                      #{x.number} {x.subject}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {canOpenCard && (
+            <Link
+              to="/admin/customers/$key"
+              params={{ key: data.userKey }}
+              className="btn-secondary block text-center text-xs"
+            >
+              {t("chat.panelCard")}
+            </Link>
+          )}
+        </div>
+      )}
+    </aside>
   );
 }
 

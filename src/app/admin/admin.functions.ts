@@ -2508,6 +2508,15 @@ export const chatInboxPageFn = createServerFn({ method: "GET" })
     return { conversations: page.items, hasMore: page.hasMore, totals };
   });
 
+/** Боковая панель диалога: заказы, сумма покупок, баллы и обращения покупателя. Контактов нет. */
+export const chatCustomerPanelFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ telegramId: tgId }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await chatModule();
+    const { customerPanel } = await import("@/core/customers/panel");
+    return customerPanel(ctx, data.telegramId);
+  });
+
 /**
  * Опрос: только диалоги, менявшиеся с `since` (включительно), счётчики и открытый
  * в окне диалог (`selected`: его пауза бота и «вы в чате» меняются без новых реплик).

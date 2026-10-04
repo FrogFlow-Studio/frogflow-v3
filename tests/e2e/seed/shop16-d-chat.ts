@@ -7,6 +7,7 @@ import type { StubDb } from "../pg-stub.ts";
 import { add, shop } from "./util.ts";
 
 export function seedShop16DChat(db: StubDb, now: string) {
+  seedPanelBuyer(db, now);
   const base = Date.parse(now) - 4 * 24 * 3_600_000;
   const ns = Array.from({ length: F.CHAT_MANY_COUNT }, (_, i) => i + 1);
   add(
@@ -36,4 +37,51 @@ export function seedShop16DChat(db: StubDb, now: string) {
       }),
     ),
   );
+}
+
+/** Покупатель с баллами и двумя заказами: в панели видны оба, в сумме покупок — только оплаченный. */
+function seedPanelBuyer(db: StubDb, now: string) {
+  const last = new Date(Date.parse(now) - 3_600_000).toISOString();
+  add(db, "bot_users", [
+    shop({
+      id: "e2e00000-0000-4000-8000-00000000f001",
+      user_key: "telegram:e2e-panel",
+      telegram_id: F.CHAT_PANEL_ID,
+      platform: "telegram",
+      first_name: F.CHAT_PANEL_NAME,
+      loyalty_points: F.CHAT_PANEL_POINTS,
+    }),
+  ]);
+  add(db, "manager_chat_state", [
+    shop({
+      telegram_id: F.CHAT_PANEL_ID,
+      active: false,
+      last_message_at: last,
+      last_message_preview: "Где мой заказ?",
+      last_message_direction: "in",
+      unread_count: 0,
+    }),
+  ]);
+  const order = (id: number, no: number, status: string) =>
+    shop({
+      id,
+      order_no: no,
+      display_no: no,
+      status,
+      platform: "telegram",
+      telegram_id: F.CHAT_PANEL_ID,
+      user_key: "telegram:e2e-panel",
+      display_name: F.CHAT_PANEL_NAME,
+      username: null,
+      total: F.CHAT_PANEL_TOTAL,
+      paid_amount: 0,
+      currency: "KZT",
+      fulfillment_kind: "physical",
+      created_at: now,
+      updated_at: now,
+    });
+  add(db, "orders", [
+    order(970001, F.CHAT_PANEL_ORDER_NO, "delivered"),
+    order(970002, F.CHAT_PANEL_CANCELLED_NO, "cancelled"),
+  ]);
 }

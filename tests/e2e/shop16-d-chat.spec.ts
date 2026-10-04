@@ -45,3 +45,19 @@ test("чат: список постранично — «Показать ещё�
   await expect(dialog(2)).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("чат: боковая панель покупателя — баллы, заказы, сумма покупок, карточка", async ({
+  page,
+}) => {
+  const errors = await watch(page);
+  await openChat(page, F.CHAT_PANEL_NAME);
+  const panel = page.getByRole("complementary", { name: "Покупатель", exact: true });
+  await expect(panel.getByText(String(F.CHAT_PANEL_POINTS), { exact: true })).toBeVisible();
+  await expect(panel.getByText(`#${F.CHAT_PANEL_ORDER_NO}`, { exact: true })).toBeVisible();
+  await expect(panel.getByText(`#${F.CHAT_PANEL_CANCELLED_NO}`, { exact: true })).toBeVisible();
+  // Сумма покупок — один оплаченный заказ: отменённый в неё не входит.
+  await expect(panel.getByText(/12\s?500/)).toHaveCount(3);
+  await panel.getByRole("link", { name: "Карточка покупателя", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/customers\//);
+  expect(errors).toEqual([]);
+});

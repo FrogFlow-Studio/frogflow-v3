@@ -18,6 +18,13 @@ export const STAFF_ROLES = ["manager", "viewer", "accountant"] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
+/**
+ * Кто видит и выгружает контакты покупателей (телефон, почта: полный архив,
+ * покупатели, заказы с именем и телефоном, карточка покупателя из диалога):
+ * владелец или менеджер, а не «только просмотр». Каталог контактов не содержит.
+ */
+export const CONTACTS_MIN_ROLE = "manager" as const;
+
 const RANK: Record<AdminRole, number> = { accountant: 0, viewer: 0, manager: 1, owner: 2 };
 
 export function isAdminRole(v: unknown): v is AdminRole {
