@@ -1125,6 +1125,41 @@ export const setClientPartnerFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Сообщество авторов (core/community): оператор скрывает или блокирует автора. */
+export const communityModFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    const { requireTenant } = await import("@/core/tenant/resolve.server");
+    const t = await requireTenant({ by: "id", value: data.botId });
+    return (await import("@/core/community/settings.server")).communityView({ tenant: t });
+  });
+
+export const setCommunityModFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId,
+        status: z.enum(["hidden", "blocked"]).nullable(),
+        reason: z.string().max(300),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    await (
+      await import("@/core/community/settings.server")
+    ).setCommunityMod(data.botId, data.status, data.reason);
+    const { logEvent } = await import("./operator.server");
+    await logEvent(
+      data.botId,
+      "meta",
+      { action: "community", status: data.status, reason: data.reason },
+      await actor(),
+    );
+    return { ok: true };
+  });
+
 /** Воронка лидов отдела продаж FrogFlow (core/leads): список, добавление, стадия, заметки, журнал. */
 const leadsImpl = () => import("./leads.server");
 const pipelineImpl = () => import("./leads-pipeline.server");

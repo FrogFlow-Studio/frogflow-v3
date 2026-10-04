@@ -129,6 +129,20 @@ export type TenantSettings = {
    * включает продавец, номиналы — до шести, валюта — одна на все номиналы.
    */
   gift_sale?: { enabled?: boolean; amounts?: number[]; currency?: string };
+  /**
+   * Профиль автора в сообществе (core/community/profile). По умолчанию выключен:
+   * автор сам включает «Показывать меня в сообществе».
+   */
+  community?: {
+    enabled?: boolean;
+    name?: string;
+    niche?: string;
+    city?: string;
+    about?: string;
+    links?: string[];
+  };
+  /** Решение оператора по сообществу: скрыт из списка авторов или заблокирован. */
+  community_mod?: { status?: "hidden" | "blocked"; reason?: string; at?: string };
   /** Выдача цифровых товаров (core/delivery). */
   delivery?: {
     /** Водяной знак с покупателем и номером заказа на каждом выдаваемом PDF. */

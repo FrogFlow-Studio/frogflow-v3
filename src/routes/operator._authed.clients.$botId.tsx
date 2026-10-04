@@ -8,6 +8,7 @@ import { ModulesCard, AdminAccessCard, AddressingCard } from "@/app/operator/cli
 import { ZernioCard, MetaCard } from "@/app/operator/client/channels";
 import { ConsultantLimitsCard, SmartSearchLimitCard } from "@/app/operator/client/limits";
 import { ShopGroupCard } from "@/app/operator/client/shop-group";
+import { CommunityModCard } from "@/app/operator/client/community";
 import { BillingCard } from "@/app/operator/client/billing";
 import { HealthCard, MessageCard } from "@/app/operator/client/health";
 import { ReceiptAuditCard } from "@/app/operator/client/receipt-audit";
@@ -121,6 +122,7 @@ function ClientPage() {
           <ConsultantLimitsCard c={c} budget={consultant} onDone={refresh} />
           <SmartSearchLimitCard c={c} budget={smartSearch} onDone={refresh} />
           <ShopGroupCard c={c} />
+          <CommunityModCard c={c} />
           <MessageCard c={c} />
           <BillingCard c={c} />
           <HealthCard c={c} />
