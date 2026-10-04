@@ -1,3 +1,10 @@
+import {
+  nonTextKind,
+  NON_TEXT_WINDOW_MS,
+  PHOTO_FORWARDED,
+  SELLER_PHOTO,
+  TEXT_ONLY,
+} from "./nontext";
 import { sellerWroteWithin } from "./manager-guard";
 import { env } from "@/config/env";
 import { recordEngage } from "@/core/automsg/engage";
@@ -7,6 +14,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   setContactPhone,
   noteChatPhone,
+  claimStateSection,
   setEmail,
   setState,
   type Customer,
@@ -109,7 +117,7 @@ import { isAttachmentRejected } from "./errors";
 import { isMailConfigured } from "@/core/mail/mail.server";
 import type { NativeOrder, ParsedZernioMessage } from "./message";
 import { describeNativeCart, matchNativeItems } from "@/core/whatsapp/native-cart";
-import type { ZernioPlatform } from "./platform";
+import { PLATFORM_LABEL, type ZernioPlatform } from "./platform";
 import {
   classifyIncoming,
   emailStep,
@@ -181,6 +189,8 @@ type DirectMemory = {
   contact_requested_at?: string;
   /** Страну спросили первым делом: что показать после ответа (каталог или товар). */
   after_country?: string;
+  /** Когда в последний раз отвечали на голосовое/стикер/фото вне оплаты (Б6). */
+  nontext_at?: string;
   /** Последний ответ бота — подсказка на нераспознанный ответ шага (строгий режим). */
   hinted?: boolean;
 };
@@ -529,7 +539,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       await reply(s, s.m.sendReceiptPrompt);
       return "handled";
     }
-    return text ? route(s, { ...msg, attachments: [] }) : "question";
+    return text ? route(s, { ...msg, attachments: [] }) : handleNonText(s, msg);
   }
 
   if (!text) return "question";
@@ -965,6 +975,58 @@ async function handleNativeCart(s: Shop, order: NativeOrder): Promise<ShopOutcom
   if (card) await reply(s, card, { force: true });
   await startCheckout(s);
   return "handled";
+}
+
+/**
+ * Голосовое, стикер, видео и фото вне оплаты (Б6). Консультант ИИ сам
+ * разбирает такие сообщения — ему не мешаем. Голосовое/стикер/видео: в
+ * разговоре с ботом один ответ «понимаю только текст» за 10 минут; в
+ * обычной переписке с продавцом бот молчит (строгий режим). Фото, не
+ * чек: продавцу в Telegram, покупателю — одно «передал».
+ */
+async function handleNonText(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
+  const kind = nonTextKind(msg.attachments);
+  if (!kind) return "question";
+  const consultant = await import("@/core/consultant/engine.server");
+  if (await consultant.consultantEnabled(s.ctx)) return "question";
+  if (kind === "photo") {
+    const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
+    const { sellerLocale } = await import("@/core/catalog/low-stock");
+    const locale = await sellerLocale(s.ctx).catch(
+      () => s.ctx.tenant.settings.default_locale ?? "ru",
+    );
+    const who = s.customer.username
+      ? `@${s.customer.username}`
+      : s.customer.firstName || s.customer.userKey;
+    const urls = msg.attachments.map((a) => a.url).filter((u): u is string => Boolean(u));
+    await notifyAdminsHtml(
+      s.ctx,
+      SELLER_PHOTO[locale](escapeHtml(who), PLATFORM_LABEL[s.platform]),
+      { kind: "question", photos: urls.slice(0, 10) },
+    ).catch(() => 0);
+    if (inDialog(s) && (await claimNonTextReply(s)))
+      await reply(s, PHOTO_FORWARDED[s.locale], { force: true });
+    return "handled";
+  }
+  if (!inDialog(s)) return "question";
+  if (await claimNonTextReply(s))
+    await reply(s, TEXT_ONLY[s.locale], {
+      force: true,
+      buttons: [BTN.catalog(s.m), BTN.cart(s.m)],
+    });
+  return "handled";
+}
+
+/** Метка «ответили на не-текст» — условная запись до отправки: из двух вебхуков отвечает один. */
+async function claimNonTextReply(s: Shop): Promise<boolean> {
+  const claimed = await claimStateSection(s.ctx, s.customer, "direct", (cur) => {
+    const at = Date.parse(String(cur.nontext_at ?? ""));
+    if (Number.isFinite(at) && Date.now() - at < NON_TEXT_WINDOW_MS) return null;
+    return { ...cur, nontext_at: new Date().toISOString() };
+  });
+  if (!claimed) return false;
+  s.customer = claimed;
+  return true;
 }
 
 /** Продавец вёл диалог руками за последние 30 минут. Не прочитали переписку — считаем, что нет. */

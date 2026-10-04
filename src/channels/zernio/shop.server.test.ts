@@ -230,13 +230,14 @@ describe("шаг «списать баллы?» в Direct/WhatsApp", () => {
 });
 
 describe("чек вне платёжного шага", () => {
-  it("картинка без открытого заказа за чек не принимается", async () => {
+  it("картинка без открытого заказа за чек не принимается: уходит продавцу (Б6)", async () => {
     const { send, sent, download, db } = setup({ platform: "instagram" });
     const r = await send({
       attachments: [{ type: "image", url: "https://cdn.test/receipt.jpg", index: 0 }],
     });
-    expect(r.outcome).toBe("question");
+    expect(r.outcome).toBe("handled");
     expect(download).not.toHaveBeenCalled();
+    // Покупателю бот молчит (строгий режим, разговора с ботом нет), заказа и чека нет.
     expect(sent).toHaveLength(0);
     expect(db.tables.orders).toHaveLength(0);
   });
