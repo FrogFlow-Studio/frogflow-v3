@@ -121,11 +121,8 @@ export async function inboxTotals(ctx: TenantContext, me: string): Promise<Inbox
     if (error) throw serverFailure(`Входящие: ${what}: ${error.message}`);
     return n ?? 0;
   };
-  const logs = () =>
-    ctx.db
-      .from("zernio_logs")
-      .select("id", { count: "exact", head: true })
-      .like("event_id", prefix);
+  // Каждый запрос к zernio_logs идёт прямо от ctx.db.from("zernio_logs"): сканер колонок
+  // (tests/db-columns.test.ts) не умеет следить за вспомогательной функцией.
   const [total, unread, closed, assignedOpen, mine] = await Promise.all([
     count(
       "диалоги",
@@ -138,9 +135,32 @@ export async function inboxTotals(ctx: TenantContext, me: string): Promise<Inbox
         .select("telegram_id", { count: "exact", head: true })
         .gt("unread_count", 0),
     ),
-    count("решённые", logs().eq("status", "closed")),
-    count("с ответственным", logs().eq("status", "open").not("payload->>assignee", "is", null)),
-    count("мои", logs().eq("status", "open").eq("payload->>assignee", me)),
+    count(
+      "решённые",
+      ctx.db
+        .from("zernio_logs")
+        .select("id", { count: "exact", head: true })
+        .like("event_id", prefix)
+        .eq("status", "closed"),
+    ),
+    count(
+      "с ответственным",
+      ctx.db
+        .from("zernio_logs")
+        .select("id", { count: "exact", head: true })
+        .like("event_id", prefix)
+        .eq("status", "open")
+        .not("payload->>assignee", "is", null),
+    ),
+    count(
+      "мои",
+      ctx.db
+        .from("zernio_logs")
+        .select("id", { count: "exact", head: true })
+        .like("event_id", prefix)
+        .eq("status", "open")
+        .eq("payload->>assignee", me),
+    ),
   ]);
   const open = Math.max(0, total - closed);
   return { total, open, mine, unassigned: Math.max(0, open - assignedOpen), unread };
