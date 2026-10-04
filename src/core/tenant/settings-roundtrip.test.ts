@@ -256,3 +256,45 @@ describe("каждый верхний ключ TenantSettings переживае
     expect(out.marketplace).toMatchObject({ listed: true, approved: true, category: "Торты" });
   });
 });
+
+describe("команда магазина переживает чтение целиком", () => {
+  it("имя, дата, роль и приглашения: что записал updateAdminSettings, то и читается", () => {
+    const out = settingsFromJson({
+      admin: {
+        username: "owner",
+        password_hash: "scrypt$a$b",
+        users: [
+          {
+            username: "Kate",
+            password_hash: "scrypt$c$d",
+            role: "manager",
+            name: "Катя",
+            created_at: AT,
+          },
+          { username: "bob", password_hash: "scrypt$e$f", role: "что-то новое" },
+          { username: "", password_hash: "scrypt$g$h", role: "manager" },
+        ],
+        invites: [
+          { id: "i1", hash: "abc", role: "viewer", created_at: AT, expires_at: AT, by: "owner" },
+        ],
+      },
+    });
+    expect(out.admin?.users).toEqual([
+      {
+        username: "kate",
+        password_hash: "scrypt$c$d",
+        role: "manager",
+        name: "Катя",
+        created_at: AT,
+      },
+      {
+        username: "bob",
+        password_hash: "scrypt$e$f",
+        role: "viewer",
+        name: undefined,
+        created_at: undefined,
+      },
+    ]);
+    expect(out.admin?.invites).toHaveLength(1);
+  });
+});

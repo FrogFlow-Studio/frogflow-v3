@@ -78,35 +78,47 @@ export async function patchTenantSettings(
   patch: Record<string, unknown>,
 ): Promise<void> {
   const db = serviceDb();
-  const { data, error: readError } = await db
-    .from("bots")
-    .select("settings")
-    .eq("id", botId)
-    .maybeSingle();
-  // Запись поверх непрочитанного снимка стёрла бы остальные ключи клиента.
-  if (readError) throw serverFailure(`bots.settings: не прочитаны (${readError.message})`);
-  if (!data) throw serverFailure(`bots.settings: магазин ${botId} не найден`);
-  const raw = asObject(data.settings);
-  const next: Record<string, unknown> = { ...raw };
-  for (const [k, v] of Object.entries(patch)) {
-    const prev = next[k];
-    next[k] =
-      v &&
-      typeof v === "object" &&
-      !Array.isArray(v) &&
-      prev &&
-      typeof prev === "object" &&
-      !Array.isArray(prev)
-        ? { ...(prev as object), ...(v as object) }
-        : v;
+  // Запись условна по settings.rev: если другой писатель успел раньше (приглашённый
+  // принял ссылку, второй продавец отметил ленту), перечитываем и накладываем заново.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data, error: readError } = await db
+      .from("bots")
+      .select("settings")
+      .eq("id", botId)
+      .maybeSingle();
+    // Запись поверх непрочитанного снимка стёрла бы остальные ключи клиента.
+    if (readError) throw serverFailure(`bots.settings: не прочитаны (${readError.message})`);
+    if (!data) throw serverFailure(`bots.settings: магазин ${botId} не найден`);
+    const raw = asObject(data.settings);
+    const next: Record<string, unknown> = { ...raw };
+    for (const [k, v] of Object.entries(patch)) {
+      const prev = next[k];
+      next[k] =
+        v &&
+        typeof v === "object" &&
+        !Array.isArray(v) &&
+        prev &&
+        typeof prev === "object" &&
+        !Array.isArray(prev)
+          ? { ...(prev as object), ...(v as object) }
+          : v;
+    }
+    const rev = settingsRev(raw);
+    next.rev = nextSettingsRev(raw);
+    const revPath = "settings->>rev" as "id";
+    let q = db
+      .from("bots")
+      .update({ settings: next as never })
+      .eq("id", botId);
+    q = rev === null ? q.is(revPath, null as never) : q.eq(revPath, String(rev));
+    const { data: rows, error } = await q.select("id");
+    if (error) throw serverFailure(`bots.settings: ${error.message}`);
+    if (rows?.length) {
+      invalidateTenantDirectory();
+      return;
+    }
   }
-  next.rev = nextSettingsRev(raw);
-  const { error } = await db
-    .from("bots")
-    .update({ settings: next as never })
-    .eq("id", botId);
-  if (error) throw serverFailure(`bots.settings: ${error.message}`);
-  invalidateTenantDirectory();
+  throw serverFailure("bots.settings: настройки менялись слишком часто, запись не прошла");
 }
 
 /**

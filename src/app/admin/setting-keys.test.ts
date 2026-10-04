@@ -39,4 +39,12 @@ describe("настройки магазина: что продавец може�
     }
     expect(s.robokassa_pass1).toBe("p1");
   });
+
+  it("выбор блоков недельной сводки: продавец пишет и видит (ключ дошёл до страницы и обратно)", () => {
+    expect(save.safeParse({ weekly_report_sections: "speed,top" }).success).toBe(true);
+    expect(SETTING_KEYS as readonly string[]).toContain("weekly_report_sections");
+    expect(settingsForRole({ weekly_report_sections: "none" }, "viewer")).toEqual({
+      weekly_report_sections: "none",
+    });
+  });
 });
