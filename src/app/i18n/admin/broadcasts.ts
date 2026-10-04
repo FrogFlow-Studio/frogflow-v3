@@ -211,7 +211,7 @@ export const ru = {
   "broadcasts.cart.hours": "Через сколько часов",
   "broadcasts.cap.title": "Не больше автосообщений в сутки",
   "broadcasts.cap.intro":
-    "Напоминание о корзине, «Похожие материалы», возврат клиентов и автоворонка вместе пишут одному покупателю не чаще, чем указано здесь, за 24 часа. Сообщения об оплате и заказе не считаются. «0» — без ограничения.",
+    "Напоминание о корзине, «Похожие материалы», возврат клиентов, автоворонка, просьба об оценке, напоминание об акции, дослать рассылку и поздравление с днём рождения вместе пишут одному покупателю не чаще, чем указано здесь, за 24 часа. Сообщения об оплате и заказе не считаются. «0» — без ограничения.",
   "broadcasts.cap.perDay": "Сообщений в сутки",
   // итоги автосообщений за 30 дней (Р1)
   "autostats.title": "За 30 дней",
@@ -445,7 +445,7 @@ export const kk: SectionDict<typeof ru> = {
   "broadcasts.cart.hours": "Неше сағаттан кейін",
   "broadcasts.cap.title": "Тәулігіне автохабарламалар шегі",
   "broadcasts.cap.intro":
-    "Себет туралы еске салу, «Ұқсас материалдар», клиенттерді қайтару және автоворонка бір сатып алушыға 24 сағатта осы саннан артық жазбайды. Төлем мен тапсырыс хабарламалары есептелмейді. «0» — шектеусіз.",
+    "Себет туралы еске салу, «Ұқсас материалдар», клиенттерді қайтару, автоворонка, бағалау сұрауы, акция туралы еске салу, жіберілімді қайта жіберу және туған күнмен құттықтау бір сатып алушыға 24 сағатта осы саннан артық жазбайды. Төлем мен тапсырыс хабарламалары есептелмейді. «0» — шектеусіз.",
   "broadcasts.cap.perDay": "Тәулігіне хабарлама",
   "autostats.title": "30 күн ішінде",
   "autostats.returned": "Өткізілді: өздері қайтты (ашық тапсырыс немесе жаңа себет) — {n}",
@@ -679,7 +679,7 @@ export const en: SectionDict<typeof ru> = {
   "broadcasts.cart.hours": "After how many hours",
   "broadcasts.cap.title": "Automated messages per day",
   "broadcasts.cap.intro":
-    "Cart reminders, similar materials, win-back and the funnel together message one customer no more often than this per 24 hours. Payment and order messages do not count. “0” means no limit.",
+    "Cart reminders, similar materials, win-back, the funnel, rating requests, sale reminders, broadcast follow-ups and birthday greetings together message one customer no more often than this per 24 hours. Payment and order messages do not count. “0” means no limit.",
   "broadcasts.cap.perDay": "Messages per day",
   "autostats.title": "Last 30 days",
   "autostats.returned": "Skipped: already came back (open order or fresh cart) — {n}",
@@ -914,7 +914,7 @@ export const uz: SectionDict<typeof ru> = {
   "broadcasts.cart.hours": "Necha soatdan keyin",
   "broadcasts.cap.title": "Kuniga avtoxabarlar chegarasi",
   "broadcasts.cap.intro":
-    "Savat eslatmasi, «O‘xshash materiallar», mijozlarni qaytarish va avtovoronka birgalikda bitta xaridorga 24 soatda shu sondan ko‘p yozmaydi. To‘lov va buyurtma xabarlari hisoblanmaydi. «0» — cheklovsiz.",
+    "Savat eslatmasi, «O‘xshash materiallar», mijozlarni qaytarish, avtovoronka, baho so‘rovi, aksiya eslatmasi, xabarni qayta yuborish va tug‘ilgan kun tabrigi birgalikda bitta xaridorga 24 soatda shu sondan ko‘p yozmaydi. To‘lov va buyurtma xabarlari hisoblanmaydi. «0» — cheklovsiz.",
   "broadcasts.cap.perDay": "Kuniga xabarlar",
   "autostats.title": "Oxirgi 30 kun",
   "autostats.returned":

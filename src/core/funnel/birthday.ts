@@ -5,13 +5,17 @@ import { customerFromRow, isBlocked, setState, type Customer } from "@/core/cust
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { daytime } from "@/core/winback/winback";
 import { eachPage } from "@/core/db/page";
+import { claimMarketing, loadMarketingCap } from "@/core/marketing/cap";
 
 /**
  * Поздравление с днём рождения (модуль funnel): покупателю в его день —
  * текст продавца и, если задан, промокод. День рождения — в
  * `bot_users.state.birthday` как «MM-DD» (год не нужен): его вносит продавец
  * в карточке покупателя или сам покупатель по ссылке бота `?start=bday`.
- * Поздравление один раз в год: `state.birthday_sent` — год отправки.
+ * Поздравление один раз в год: `state.birthday_sent` — год отправки. Оно
+ * считается маркетинговым сообщением (core/marketing/cap): в день, когда
+ * потолок уже занят другим автосообщением, поздравление ждёт следующего
+ * часового прогона, пока день рождения не кончится по поясу магазина.
  * Крон — раз в час днём по поясу магазина, как автоворонка.
  */
 export type BirthdayConfig = { enabled: boolean; text: string; promo: string };
@@ -122,6 +126,7 @@ export async function runBirthdays(
   if (!cfg.enabled || !cfg.text) return { ...r, skipped: "disabled" };
   if (!daytime(now, ctx.timezone)) return { ...r, skipped: "night" };
   const { days, year } = birthdayToday(ctx.timezone, now);
+  const cap = await loadMarketingCap(ctx);
   for (const day of days)
     await eachPage(
       (from, to) =>
@@ -139,9 +144,13 @@ export async function runBirthdays(
           const c = customerFromRow(row);
           if (Number(c.state.birthday_sent) === year) continue;
           if (await isBlocked(ctx, c.telegramId)) continue;
-          // Сначала отметка года, условной записью: из двух кронов, дошедших до
+          // Место под маркетинговое сообщение за сутки: занято — отметку года не ставим,
+          // поздравим в следующий прогон, когда оно освободится.
+          const marked = await claimMarketing(ctx, c.userKey, row.state, cap, now);
+          if (!marked) continue;
+          // Затем отметка года, условной записью: из двух кронов, дошедших до
           // покупателя в одно время, поздравляет тот, чья запись прошла.
-          if (!(await claimBirthday(ctx, c, year))) continue;
+          if (!(await claimBirthday(ctx, { ...c, state: marked }, year))) continue;
           const ok = await send(c, fillBirthdayText(cfg.text, c.firstName, cfg.promo)).catch(
             () => false,
           );
