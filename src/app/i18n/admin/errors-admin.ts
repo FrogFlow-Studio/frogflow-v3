@@ -212,6 +212,8 @@ export const ru = {
   "err.stock.supplierName": "Укажите название поставщика.",
   "err.stock.suppliersMax": "Поставщиков не больше {max}.",
   "err.stock.productNotFound": "Товар не найден.",
+  "err.stock.writeoffReason": "Выберите причину списания.",
+  "err.stock.writeoffTooMuch": "Нельзя списать {qty} шт.: на складе {stock}.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -420,6 +422,8 @@ export const kk: SectionDict<typeof ru> = {
   "err.stock.supplierName": "Жеткізушінің атауын көрсетіңіз.",
   "err.stock.suppliersMax": "Жеткізушілер {max}-тен көп болмауы керек.",
   "err.stock.productNotFound": "Тауар табылмады.",
+  "err.stock.writeoffReason": "Есептен шығару себебін таңдаңыз.",
+  "err.stock.writeoffTooMuch": "{qty} данаға есептен шығаруға болмайды: қоймада {stock}.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -631,6 +635,8 @@ export const en: SectionDict<typeof ru> = {
   "err.stock.supplierName": "Enter the supplier's name.",
   "err.stock.suppliersMax": "No more than {max} suppliers.",
   "err.stock.productNotFound": "Product not found.",
+  "err.stock.writeoffReason": "Choose a write-off reason.",
+  "err.stock.writeoffTooMuch": "Can't write off {qty}: only {stock} in stock.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -846,4 +852,7 @@ export const uz: SectionDict<typeof ru> = {
   "err.stock.supplierName": "Yetkazib beruvchining nomini kiriting.",
   "err.stock.suppliersMax": "Yetkazib beruvchilar {max} tadan oshmasligi kerak.",
   "err.stock.productNotFound": "Tovar topilmadi.",
+  "err.stock.writeoffReason": "Hisobdan chiqarish sababini tanlang.",
+  "err.stock.writeoffTooMuch":
+    "{qty} donani hisobdan chiqarib boʻlmaydi: omborda {stock} dona bor.",
 };

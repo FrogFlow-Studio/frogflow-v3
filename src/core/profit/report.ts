@@ -6,6 +6,7 @@ import { netOfRefunds } from "@/core/orders/refund";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { itemUnitCost, listCosts, type ProductCost } from "./cost";
 import { loadSnapshots, type OrderCostSnapshot } from "./snapshot";
+import { writeoffTotals, type WriteoffTotals } from "@/core/stock/writeoff";
 
 /**
  * Валовая прибыль за период («Аналитика», модуль `profit`). Те же заказы и та
@@ -54,6 +55,8 @@ export type ProfitReport = {
   /** Позиции, посчитанные по текущей себестоимости (нет снимка продажи). */
   fromCurrent: { items: number };
   products: ProfitProduct[];
+  /** Списания склада за период по себестоимости на момент списания; null — модуль склада выключен. */
+  writeoffs: WriteoffTotals | null;
   otherCurrencies: Array<{ currency: string; revenue: number; orders: number }>;
 };
 
@@ -117,6 +120,7 @@ export function buildProfit(inp: ProfitInput): ProfitReport {
     unknown: { items: 0, revenue: 0 },
     fromCurrent: { items: 0 },
     products: [],
+    writeoffs: null,
     otherCurrencies: [],
   };
   const other = new Map<string, { revenue: number; orders: number }>();
@@ -315,7 +319,7 @@ export async function profitReport(
     for (const v of rows) variantNames.set(v.id, v.name.trim());
   }
   const snapshots = await loadSnapshots(ctx, ids);
-  return buildProfit({
+  const report = buildProfit({
     days,
     currency,
     now,
@@ -327,4 +331,13 @@ export async function profitReport(
     variantNames,
     refunds,
   });
+  // Списания склада: отдельной строкой, в прибыль заказов не входят.
+  if (ctx.tenant.modules.warehouse)
+    report.writeoffs = await writeoffTotals(
+      ctx,
+      since,
+      currency,
+      (iso) => dayKey(iso, tz) >= firstDay,
+    );
+  return report;
 }

@@ -156,6 +156,10 @@ export const ru = {
   "audit.action.orderRequestFn": "отметил заявку поставщику заказанной",
   "audit.action.receiveRequestFn": "создал приход по заявке поставщику",
   "audit.action.setProductSupplierFn": "назначил товару поставщика",
+  "audit.action.saveReceiptFn": "сохранил приход товара",
+  "audit.action.deleteReceiptFn": "удалил черновик прихода",
+  "audit.action.postReceiptFn": "провёл приход товара",
+  "audit.action.writeOffFn": "списал товар со склада",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -313,6 +317,10 @@ export const kk: SectionDict<typeof ru> = {
   "audit.action.orderRequestFn": "жеткізушіге өтінімді тапсырылды деп белгіледі",
   "audit.action.receiveRequestFn": "жеткізушіге өтінім бойынша кіріс жасады",
   "audit.action.setProductSupplierFn": "тауарға жеткізуші тағайындады",
+  "audit.action.saveReceiptFn": "тауар кірісін сақтады",
+  "audit.action.deleteReceiptFn": "кіріс жобасын жойды",
+  "audit.action.postReceiptFn": "тауар кірісін жүргізді",
+  "audit.action.writeOffFn": "қоймадан тауарды есептен шығарды",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -470,6 +478,10 @@ export const en: SectionDict<typeof ru> = {
   "audit.action.orderRequestFn": "marked a supplier order as ordered",
   "audit.action.receiveRequestFn": "created a receipt for a supplier order",
   "audit.action.setProductSupplierFn": "set a product's supplier",
+  "audit.action.saveReceiptFn": "saved a goods receipt",
+  "audit.action.deleteReceiptFn": "deleted a receipt draft",
+  "audit.action.postReceiptFn": "posted a goods receipt",
+  "audit.action.writeOffFn": "wrote off goods from stock",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -627,4 +639,8 @@ export const uz: SectionDict<typeof ru> = {
   "audit.action.orderRequestFn": "yetkazib beruvchiga buyurtmani buyurtma qilingan deb belgiladi",
   "audit.action.receiveRequestFn": "yetkazib beruvchiga buyurtma boʻyicha kirim yaratdi",
   "audit.action.setProductSupplierFn": "tovarga yetkazib beruvchi tayinladi",
+  "audit.action.saveReceiptFn": "tovar kirimini saqladi",
+  "audit.action.deleteReceiptFn": "kirim qoralamasini oʻchirdi",
+  "audit.action.postReceiptFn": "tovar kirimini oʻtkazdi",
+  "audit.action.writeOffFn": "tovarni ombordan hisobdan chiqardi",
 };

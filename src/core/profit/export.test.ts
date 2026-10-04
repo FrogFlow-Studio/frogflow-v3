@@ -13,6 +13,7 @@ const rep: ProfitReport = {
   margin: 0.4,
   unknown: { items: 1, revenue: 3000 },
   fromCurrent: { items: 0 },
+  writeoffs: null,
   products: [
     {
       key: "a",

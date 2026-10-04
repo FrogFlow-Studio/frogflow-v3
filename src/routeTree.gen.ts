@@ -95,9 +95,11 @@ import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.
 import { Route as AdminAuthedOrdersNewRouteImport } from './routes/admin._authed.orders.new'
 import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authed.products_.$id'
 import { Route as AdminAuthedWarehouseIndexRouteImport } from './routes/admin._authed.warehouse.index'
+import { Route as AdminAuthedWarehouseReceiptsRouteImport } from './routes/admin._authed.warehouse.receipts'
 import { Route as AdminAuthedWarehouseRequestsRouteImport } from './routes/admin._authed.warehouse.requests'
 import { Route as AdminAuthedWarehouseStaleRouteImport } from './routes/admin._authed.warehouse.stale'
 import { Route as AdminAuthedWarehouseSuppliersRouteImport } from './routes/admin._authed.warehouse.suppliers'
+import { Route as AdminAuthedWarehouseWriteoffsRouteImport } from './routes/admin._authed.warehouse.writeoffs'
 import { Route as ApiAdminExportKindRouteImport } from './routes/api/admin/export.$kind'
 import { Route as ApiImgBotIdSplatRouteImport } from './routes/api/img.$botId.$'
 import { Route as ApiRobokassaBotIdActionRouteImport } from './routes/api/robokassa.$botId.$action'
@@ -544,6 +546,12 @@ const AdminAuthedWarehouseIndexRoute =
     path: '/warehouse/',
     getParentRoute: () => AdminAuthedRoute,
   } as any)
+const AdminAuthedWarehouseReceiptsRoute =
+  AdminAuthedWarehouseReceiptsRouteImport.update({
+    id: '/warehouse/receipts',
+    path: '/warehouse/receipts',
+    getParentRoute: () => AdminAuthedRoute,
+  } as any)
 const AdminAuthedWarehouseRequestsRoute =
   AdminAuthedWarehouseRequestsRouteImport.update({
     id: '/warehouse/requests',
@@ -560,6 +568,12 @@ const AdminAuthedWarehouseSuppliersRoute =
   AdminAuthedWarehouseSuppliersRouteImport.update({
     id: '/warehouse/suppliers',
     path: '/warehouse/suppliers',
+    getParentRoute: () => AdminAuthedRoute,
+  } as any)
+const AdminAuthedWarehouseWriteoffsRoute =
+  AdminAuthedWarehouseWriteoffsRouteImport.update({
+    id: '/warehouse/writeoffs',
+    path: '/warehouse/writeoffs',
     getParentRoute: () => AdminAuthedRoute,
   } as any)
 const ApiAdminExportKindRoute = ApiAdminExportKindRouteImport.update({
@@ -725,9 +739,11 @@ export interface FileRoutesByFullPath {
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/warehouse/receipts': typeof AdminAuthedWarehouseReceiptsRoute
   '/admin/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
   '/admin/warehouse/stale': typeof AdminAuthedWarehouseStaleRoute
   '/admin/warehouse/suppliers': typeof AdminAuthedWarehouseSuppliersRoute
+  '/admin/warehouse/writeoffs': typeof AdminAuthedWarehouseWriteoffsRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
@@ -826,9 +842,11 @@ export interface FileRoutesByTo {
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/warehouse/receipts': typeof AdminAuthedWarehouseReceiptsRoute
   '/admin/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
   '/admin/warehouse/stale': typeof AdminAuthedWarehouseStaleRoute
   '/admin/warehouse/suppliers': typeof AdminAuthedWarehouseSuppliersRoute
+  '/admin/warehouse/writeoffs': typeof AdminAuthedWarehouseWriteoffsRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
@@ -933,9 +951,11 @@ export interface FileRoutesById {
   '/admin/_authed/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/_authed/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/_authed/products_/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/_authed/warehouse/receipts': typeof AdminAuthedWarehouseReceiptsRoute
   '/admin/_authed/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
   '/admin/_authed/warehouse/stale': typeof AdminAuthedWarehouseStaleRoute
   '/admin/_authed/warehouse/suppliers': typeof AdminAuthedWarehouseSuppliersRoute
+  '/admin/_authed/warehouse/writeoffs': typeof AdminAuthedWarehouseWriteoffsRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
@@ -1039,9 +1059,11 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/admin/orders/new'
     | '/admin/products/$id'
+    | '/admin/warehouse/receipts'
     | '/admin/warehouse/requests'
     | '/admin/warehouse/stale'
     | '/admin/warehouse/suppliers'
+    | '/admin/warehouse/writeoffs'
     | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
@@ -1140,9 +1162,11 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/admin/orders/new'
     | '/admin/products/$id'
+    | '/admin/warehouse/receipts'
     | '/admin/warehouse/requests'
     | '/admin/warehouse/stale'
     | '/admin/warehouse/suppliers'
+    | '/admin/warehouse/writeoffs'
     | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
@@ -1246,9 +1270,11 @@ export interface FileRouteTypes {
     | '/admin/_authed/orders/$id'
     | '/admin/_authed/orders/new'
     | '/admin/_authed/products_/$id'
+    | '/admin/_authed/warehouse/receipts'
     | '/admin/_authed/warehouse/requests'
     | '/admin/_authed/warehouse/stale'
     | '/admin/_authed/warehouse/suppliers'
+    | '/admin/_authed/warehouse/writeoffs'
     | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
@@ -1908,6 +1934,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedWarehouseIndexRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/_authed/warehouse/receipts': {
+      id: '/admin/_authed/warehouse/receipts'
+      path: '/warehouse/receipts'
+      fullPath: '/admin/warehouse/receipts'
+      preLoaderRoute: typeof AdminAuthedWarehouseReceiptsRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/admin/_authed/warehouse/requests': {
       id: '/admin/_authed/warehouse/requests'
       path: '/warehouse/requests'
@@ -1927,6 +1960,13 @@ declare module '@tanstack/react-router' {
       path: '/warehouse/suppliers'
       fullPath: '/admin/warehouse/suppliers'
       preLoaderRoute: typeof AdminAuthedWarehouseSuppliersRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/warehouse/writeoffs': {
+      id: '/admin/_authed/warehouse/writeoffs'
+      path: '/warehouse/writeoffs'
+      fullPath: '/admin/warehouse/writeoffs'
+      preLoaderRoute: typeof AdminAuthedWarehouseWriteoffsRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/api/admin/export/$kind': {
@@ -2082,9 +2122,11 @@ interface AdminAuthedRouteChildren {
   AdminAuthedIndexRoute: typeof AdminAuthedIndexRoute
   AdminAuthedCustomersKeyRoute: typeof AdminAuthedCustomersKeyRoute
   AdminAuthedProductsIdRoute: typeof AdminAuthedProductsIdRoute
+  AdminAuthedWarehouseReceiptsRoute: typeof AdminAuthedWarehouseReceiptsRoute
   AdminAuthedWarehouseRequestsRoute: typeof AdminAuthedWarehouseRequestsRoute
   AdminAuthedWarehouseStaleRoute: typeof AdminAuthedWarehouseStaleRoute
   AdminAuthedWarehouseSuppliersRoute: typeof AdminAuthedWarehouseSuppliersRoute
+  AdminAuthedWarehouseWriteoffsRoute: typeof AdminAuthedWarehouseWriteoffsRoute
   AdminAuthedWarehouseIndexRoute: typeof AdminAuthedWarehouseIndexRoute
 }
 
@@ -2120,9 +2162,11 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedIndexRoute: AdminAuthedIndexRoute,
   AdminAuthedCustomersKeyRoute: AdminAuthedCustomersKeyRoute,
   AdminAuthedProductsIdRoute: AdminAuthedProductsIdRoute,
+  AdminAuthedWarehouseReceiptsRoute: AdminAuthedWarehouseReceiptsRoute,
   AdminAuthedWarehouseRequestsRoute: AdminAuthedWarehouseRequestsRoute,
   AdminAuthedWarehouseStaleRoute: AdminAuthedWarehouseStaleRoute,
   AdminAuthedWarehouseSuppliersRoute: AdminAuthedWarehouseSuppliersRoute,
+  AdminAuthedWarehouseWriteoffsRoute: AdminAuthedWarehouseWriteoffsRoute,
   AdminAuthedWarehouseIndexRoute: AdminAuthedWarehouseIndexRoute,
 }
 

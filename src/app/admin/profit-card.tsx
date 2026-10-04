@@ -117,6 +117,20 @@ export function ProfitCard({ days, loc, t }: { days: 7 | 30 | 90; loc: string; t
           )}
         </>
       )}
+      {rep.writeoffs && rep.writeoffs.count > 0 && (
+        <div className="mt-4 border-t border-line pt-3">
+          <Stat
+            label={t("profit.writeoffs", { n: rep.writeoffs.qty })}
+            value={money(rep.writeoffs.loss)}
+          />
+          {rep.writeoffs.unknownQty > 0 && (
+            <p className="mt-1 text-xs text-warn">
+              {t("profit.writeoffsUnknown", { n: rep.writeoffs.unknownQty })}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-muted">{t("profit.writeoffsHint")}</p>
+        </div>
+      )}
     </Card>
   );
 }
