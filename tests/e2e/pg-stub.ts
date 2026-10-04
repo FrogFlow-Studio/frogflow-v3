@@ -852,6 +852,23 @@ function anthropic(db: StubDb, body: Buffer, res: ServerResponse) {
       : ((last?.content ?? []) as { type: string; text?: string }[])
           .map((b) => b.text ?? "")
           .join(" ");
+  // Умный поиск витрины (core/search/smart-pure buildPrompt): «подходящими» считаем товары с
+  // меткой e2e-smart в ключевых словах — ответ JSON {"ids": [...]}, как просит промпт.
+  const catalog = /Список товаров \(JSON\):\n(\[[\s\S]*?\])\n\n/.exec(text)?.[1];
+  if (catalog) {
+    const list = JSON.parse(catalog) as { id: string; keywords?: string }[];
+    const ids = list.filter((c) => (c.keywords ?? "").includes("e2e-smart")).map((c) => c.id);
+    return send(res, 200, {
+      id: `msg_e2e_${db.anthropic.length}`,
+      type: "message",
+      role: "assistant",
+      model: req.model,
+      content: [{ type: "text", text: JSON.stringify({ ids }) }],
+      stop_reason: "end_turn",
+      stop_sequence: null,
+      usage: { input_tokens: 900, output_tokens: 30 },
+    });
+  }
   const handoff = text.toLowerCase().includes(CONS_HANDOFF_WORD);
   return send(res, 200, {
     id: `msg_e2e_${db.anthropic.length}`,

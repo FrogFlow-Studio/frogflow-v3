@@ -9,6 +9,7 @@ import { useCart } from "@/app/storefront/cart";
 import { FavoriteButton } from "@/app/storefront/favorites";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { OfferNote, OfferPrice } from "@/app/storefront/offer";
+import { SmartSearchResults } from "@/app/storefront/smart-search";
 import { formatRatingSummary } from "@/core/reviews/pure";
 import { localeFlags } from "@/core/i18n/locale";
 import { categoryChips } from "@/core/storefront/categories";
@@ -457,20 +458,25 @@ function CatalogPage() {
       )}
 
       {products.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-line px-4 py-16 text-center">
-          <div className="text-3xl">🛍</div>
-          <p className="mt-3 font-medium">
-            {s.q || filtered ? t("catalog.nothingFound") : t("catalog.filling")}
-          </p>
-          <p className="mt-1 text-sm text-muted">
-            {s.q || filtered ? t("catalog.tryAnother") : t("catalog.comeLater")}
-          </p>
-          {s.q && (
-            <Link to="/s/$slug" params={{ slug }} className="btn-secondary mt-4">
-              {t("catalog.allProducts")}
-            </Link>
+        <>
+          <div className="rounded-lg border border-dashed border-line px-4 py-16 text-center">
+            <div className="text-3xl">🛍</div>
+            <p className="mt-3 font-medium">
+              {s.q || filtered ? t("catalog.nothingFound") : t("catalog.filling")}
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              {s.q || filtered ? t("catalog.tryAnother") : t("catalog.comeLater")}
+            </p>
+            {s.q && (
+              <Link to="/s/$slug" params={{ slug }} className="btn-secondary mt-4">
+                {t("catalog.allProducts")}
+              </Link>
+            )}
+          </div>
+          {s.q && !filtered && !s.category && !s.lang && firstPage === 1 && (
+            <SmartSearchResults slug={slug} q={s.q} />
           )}
-        </div>
+        </>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {products.map((p) => (

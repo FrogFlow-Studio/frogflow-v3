@@ -30,3 +30,4 @@ export * from "./fixtures/shop16-quiz.ts";
 export * from "./fixtures/shop16-o-reply.ts";
 export * from "./fixtures/shop16-o-filters.ts";
 export * from "./fixtures/shop16-o-engage.ts";
+export * from "./fixtures/shop16-o-smart.ts";

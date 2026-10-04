@@ -52,6 +52,32 @@ export async function smartSearchEnabled(ctx: TenantContext): Promise<boolean> {
 }
 
 /**
+ * Предохранители бота, общие для всех каналов (бот, Instagram/WhatsApp, сайт):
+ * дневной предел расходов в долларах и дневной счётчик запросов. Личный кулдаун
+ * у каждого канала свой (consumeQuota, consumeWebQuota); эти два числа — на весь
+ * магазин, поэтому сайт не может потратить больше, чем бот.
+ */
+async function consumeShopQuota(ctx: TenantContext): Promise<boolean> {
+  const s = await getSettings(ctx, [KEYS.dailyCount, KEYS.dailySpend, KEYS.lastError]);
+  const usdLimit = smartSearchUsdLimit(ctx.tenant.settings.smart_search_limits);
+  if (spendExhausted(s[KEYS.dailySpend], todayUtc(), usdLimit)) {
+    // Продавец видит причину рядом с переключателем; пишем раз в день.
+    const today = todayUtc();
+    if (!s[KEYS.lastError]?.startsWith(today))
+      await trySetSetting(
+        ctx,
+        KEYS.lastError,
+        `${new Date().toISOString()} — дневной предел расходов ($${usdLimit}) исчерпан, до полуночи UTC умный поиск выключен`,
+      );
+    return false;
+  }
+  const count = parseDailyCount(s[KEYS.dailyCount]);
+  if (count >= DAILY_LIMIT) return false;
+  await trySetSetting(ctx, KEYS.dailyCount, formatDailyCount(count + 1));
+  return true;
+}
+
+/**
  * Все предохранители разом: кулдаун покупателя (метка в bot_users.state),
  * дневной счётчик и дневной расход бота. Если хоть один не пройден — вызова
  * модели не будет.
@@ -70,24 +96,33 @@ export async function consumeQuota(ctx: TenantContext, customer: Customer): Prom
     console.error(`[smart-search] кулдаун ${customer.userKey}: ${mark.error.message}`);
     return false;
   }
+  return consumeShopQuota(ctx);
+}
 
-  const s = await getSettings(ctx, [KEYS.dailyCount, KEYS.dailySpend, KEYS.lastError]);
-  const usdLimit = smartSearchUsdLimit(ctx.tenant.settings.smart_search_limits);
-  if (spendExhausted(s[KEYS.dailySpend], todayUtc(), usdLimit)) {
-    // Продавец видит причину рядом с переключателем; пишем раз в день.
-    const today = todayUtc();
-    if (!s[KEYS.lastError]?.startsWith(today))
-      await trySetSetting(
-        ctx,
-        KEYS.lastError,
-        `${new Date().toISOString()} — дневной предел расходов ($${usdLimit}) исчерпан, до полуночи UTC умный поиск выключен`,
-      );
+/** Сколько умных поисков с одного адреса за десять минут: сессию в браузере можно сменить, адрес сложнее. */
+export const WEB_IP_BUDGET = { limit: 6, windowMs: 600_000 } as const;
+
+/**
+ * Предохранители для покупателя сайта: у него нет строки bot_users, поэтому
+ * кулдаун (те же 45 с) считается по сессии браузера, а сверху — потолок на адрес.
+ * Дальше те же общие дневной счётчик и расход бота. Кулдаун записывается ДО вызова
+ * модели и после сбоя не возвращается: платный вызов не повторяется вслепую.
+ */
+export async function consumeWebQuota(
+  ctx: TenantContext,
+  session: string,
+  ip: string | null,
+): Promise<boolean> {
+  const { takeShared } = await import("@/core/storefront/rate-limit");
+  if (
+    !(await takeShared(ctx, "smart_web", session, {
+      limit: 1,
+      windowMs: COOLDOWN_SECONDS * 1000,
+    }))
+  )
     return false;
-  }
-  const count = parseDailyCount(s[KEYS.dailyCount]);
-  if (count >= DAILY_LIMIT) return false;
-  await trySetSetting(ctx, KEYS.dailyCount, formatDailyCount(count + 1));
-  return true;
+  if (ip && !(await takeShared(ctx, "smart_web_ip", ip, WEB_IP_BUDGET))) return false;
+  return consumeShopQuota(ctx);
 }
 
 async function recordSpend(

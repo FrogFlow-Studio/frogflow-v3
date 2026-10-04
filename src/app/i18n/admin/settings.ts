@@ -369,7 +369,7 @@ export const ru = {
   // умный поиск
   "settings.ss.title": "Умный поиск по каталогу",
   "settings.ss.intro":
-    "Когда обычный поиск в боте ничего не нашёл, запрос вроде «что-то на день рождения пятилетке» подбирается по смыслу через языковую модель. Каждый вызов стоит денег и учитывается ниже; лимит — 200 вызовов в день на бота и не чаще раза в 45 секунд у одного покупателя.",
+    "Когда обычный поиск в боте и на сайте-витрине ничего не нашёл, запрос вроде «что-то на день рождения пятилетке» подбирается по смыслу через языковую модель. Каждый вызов стоит денег и учитывается ниже; лимит — 200 вызовов в день на бота и не чаще раза в 45 секунд у одного покупателя.",
   "settings.ss.noKey":
     "На платформе не задан ключ Anthropic — поиск не заработает, пока оператор его не добавит.",
   "settings.ss.enable": "Включить умный поиск",
@@ -794,7 +794,7 @@ export const kk: SectionDict<typeof ru> = {
   "settings.rk.pass2Test": "Тест құпиясөзі #2",
   "settings.ss.title": "Каталог бойынша ақылды іздеу",
   "settings.ss.intro":
-    "Боттағы қарапайым іздеу ештеңе таппағанда, «бес жасар балаға туған күнге бірдеңе» сияқты сұрау тілдік модель арқылы мағынасы бойынша іріктеледі. Әр шақыру ақша тұрады және төменде есепке алынады; шектеу — ботқа күніне 200 шақыру және бір сатып алушыдан 45 секундта бір реттен жиі емес.",
+    "Боттағы және витринадағы қарапайым іздеу ештеңе таппағанда, «бес жасар балаға туған күнге бірдеңе» сияқты сұрау тілдік модель арқылы мағынасы бойынша іріктеледі. Әр шақыру ақша тұрады және төменде есепке алынады; шектеу — ботқа күніне 200 шақыру және бір сатып алушыдан 45 секундта бір реттен жиі емес.",
   "settings.ss.noKey":
     "Платформада Anthropic кілті берілмеген — оператор оны қосқанша іздеу жұмыс істемейді.",
   "settings.ss.enable": "Ақылды іздеуді қосу",
@@ -1214,7 +1214,7 @@ export const en: SectionDict<typeof ru> = {
   "settings.rk.pass2Test": "Test password #2",
   "settings.ss.title": "Smart catalog search",
   "settings.ss.intro":
-    "When the bot's regular search finds nothing, a query like “something for a five-year-old's birthday” is matched by meaning with a language model. Each call costs money and is counted below; the limit is 200 calls per bot per day and no more than once per 45 seconds per customer.",
+    "When the regular search in the bot or on the storefront finds nothing, a query like “something for a five-year-old's birthday” is matched by meaning with a language model. Each call costs money and is counted below; the limit is 200 calls per bot per day and no more than once per 45 seconds per customer.",
   "settings.ss.noKey":
     "No Anthropic key is set on the platform — search won't work until the operator adds it.",
   "settings.ss.enable": "Enable smart search",
@@ -1640,7 +1640,7 @@ export const uz: SectionDict<typeof ru> = {
   "settings.rk.pass2Test": "Test paroli #2",
   "settings.ss.title": "Katalog bo‘yicha aqlli qidiruv",
   "settings.ss.intro":
-    "Botdagi oddiy qidiruv hech narsa topmaganda, «besh yoshli bolaga tug‘ilgan kunga biror narsa» kabi so‘rov til modeli orqali ma’nosi bo‘yicha tanlanadi. Har bir chaqiruv pul turadi va quyida hisobga olinadi; cheklov — botga kuniga 200 chaqiruv va bir xaridordan 45 soniyada bir martadan ko‘p emas.",
+    "Bot va vitrinadagi oddiy qidiruv hech narsa topmaganda, «besh yoshli bolaga tug‘ilgan kunga biror narsa» kabi so‘rov til modeli orqali ma’nosi bo‘yicha tanlanadi. Har bir chaqiruv pul turadi va quyida hisobga olinadi; cheklov — botga kuniga 200 chaqiruv va bir xaridordan 45 soniyada bir martadan ko‘p emas.",
   "settings.ss.noKey":
     "Platformada Anthropic kaliti berilmagan — operator qo‘shmaguncha qidiruv ishlamaydi.",
   "settings.ss.enable": "Aqlli qidiruvni yoqish",
