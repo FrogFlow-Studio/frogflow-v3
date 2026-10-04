@@ -133,30 +133,32 @@ function ClientPage() {
         {events.length === 0 ? (
           <p className="text-sm text-muted">Событий пока нет.</p>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Когда</th>
-                <th>Кто</th>
-                <th>Что</th>
-                <th>Детали</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.map((e) => (
-                <tr key={e.id}>
-                  <td className="whitespace-nowrap text-muted">
-                    {new Date(e.at).toLocaleString("ru")}
-                  </td>
-                  <td>{e.actor}</td>
-                  <td>{shopEventView(e)?.title ?? e.kind}</td>
-                  <td className="max-w-md truncate font-mono text-xs text-muted">
-                    {shopEventView(e)?.details ?? JSON.stringify(e.payload)}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Когда</th>
+                  <th>Кто</th>
+                  <th>Что</th>
+                  <th>Детали</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {events.map((e) => (
+                  <tr key={e.id}>
+                    <td className="whitespace-nowrap text-muted">
+                      {new Date(e.at).toLocaleString("ru")}
+                    </td>
+                    <td>{e.actor}</td>
+                    <td>{shopEventView(e)?.title ?? e.kind}</td>
+                    <td className="max-w-md truncate font-mono text-xs text-muted">
+                      {shopEventView(e)?.details ?? JSON.stringify(e.payload)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
     </>
