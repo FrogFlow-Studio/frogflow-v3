@@ -527,6 +527,21 @@ describe("эфиры потока в боте (Ш2)", () => {
     expect(JSON.stringify(m)).not.toContain("zoom.us");
   });
 
+  it("эфиров нет (убрали, доступ закончился) — свой текст, а не «урок ещё не открыт»", async () => {
+    at("2026-10-10T13:50:00Z");
+    const { ctx, db, api, calls } = withLives();
+    const row = (db.tables.app_settings as Array<{ key: string; value: string }>).find(
+      (r) => r.key === courseKey(P),
+    )!;
+    const c = JSON.parse(row.value);
+    c.cohorts[0].lives = [];
+    row.value = JSON.stringify(c);
+    await handleTelegramUpdate(ctx, api, press(`lv:${ITEM}`));
+    const text = String(messages(calls).at(-1)!.text);
+    expect(text).toContain("Эфиров по этому курсу сейчас нет");
+    expect(text).not.toContain("урок ещё не открыт");
+  });
+
   it("чужая покупка по подделанной кнопке — бот молчит", async () => {
     at("2026-10-10T13:50:00Z");
     const { ctx, db, api, calls } = withLives();

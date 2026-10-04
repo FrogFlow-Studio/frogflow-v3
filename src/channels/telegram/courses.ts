@@ -68,6 +68,7 @@ type Copy = {
   liveLine: (time: string, title: string, status: "upcoming" | "open" | "past") => string;
   liveJoin: string;
   liveNoLink: string;
+  livesEmpty: string;
   liveWatch: string;
 };
 
@@ -126,6 +127,8 @@ const COPY: Record<Locale, Copy> = {
           : ""),
     liveJoin: "🎥 Войти на эфир",
     liveNoLink: "Ссылку на эфир пришлёт школа.",
+    livesEmpty:
+      "Эфиров по этому курсу сейчас нет: доступ закончился или школа их убрала. Если это ошибка, напишите в школу.",
     liveWatch: "▶️ Смотреть запись",
   },
   kk: {
@@ -182,6 +185,8 @@ const COPY: Record<Locale, Copy> = {
           : ""),
     liveJoin: "🎥 Эфирге кіру",
     liveNoLink: "Эфирге сілтемені мектеп жібереді.",
+    livesEmpty:
+      "Бұл курс бойынша қазір эфирлер жоқ: қолжетімділік аяқталды немесе мектеп оларды алып тастады. Қате болса, мектепке жазыңыз.",
     liveWatch: "▶️ Жазбаны көру",
   },
   en: {
@@ -239,6 +244,8 @@ const COPY: Record<Locale, Copy> = {
           : ""),
     liveJoin: "🎥 Join the live session",
     liveNoLink: "The school will send the link.",
+    livesEmpty:
+      "There are no live sessions for this course right now: your access has ended or the school removed them. If this is a mistake, message the school.",
     liveWatch: "▶️ Watch the recording",
   },
   uz: {
@@ -295,6 +302,8 @@ const COPY: Record<Locale, Copy> = {
           : ""),
     liveJoin: "🎥 Efirga kirish",
     liveNoLink: "Havolani maktab yuboradi.",
+    livesEmpty:
+      "Bu kurs bo'yicha hozir efirlar yo'q: kirish muddati tugagan yoki maktab ularni olib tashlagan. Xato bo'lsa, maktabga yozing.",
     liveWatch: "▶️ Yozuvni ko‘rish",
   },
 };
@@ -635,7 +644,7 @@ export async function showLives(b: CourseBot, data: string, now = new Date()): P
   const { purchaseTimeline } = await import("@/core/courses/run.server");
   const { liveSchedule } = await import("@/core/courses/live-view");
   const lives = liveSchedule(purchaseTimeline(b.ctx, p, now), b.ctx.timezone, now);
-  if (lives.length === 0) return send(b, c.closed);
+  if (lives.length === 0) return send(b, c.livesEmpty);
   // Местное время эфира показываем как задано продавцом, без пересчёта.
   const fmt = new Intl.DateTimeFormat(b.locale, {
     day: "numeric",

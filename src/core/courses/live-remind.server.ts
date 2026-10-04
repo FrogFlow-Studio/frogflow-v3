@@ -7,6 +7,9 @@ import { daytime } from "@/core/winback/winback";
 import { courseTimeline, localToInstant } from "./cohort";
 import { courseToken, courseUrl } from "./link";
 import { liveMark, liveRecordingDue, liveReminderDue, type LiveRemindKind } from "./live-remind";
+import { COURSE_KEY_PREFIX, parseCourse } from "./course";
+import { readSettings } from "./db.server";
+import { pageAll } from "@/core/db/page";
 import { parseRun, runKey } from "./run.server";
 import { loadRuns } from "./runs.server";
 
@@ -33,6 +36,39 @@ export type LiveReminder = {
 
 type Stats = { sent: number; failed: number; silent: number };
 
+/** `course_<uuid товара>`: ровно столько знаков; `_` в LIKE — любой знак, потому и проверка регулярным. */
+const COURSE_KEY_LIKE = `${COURSE_KEY_PREFIX}${"_".repeat(8)}-____-____-____-${"_".repeat(12)}`;
+const COURSE_KEY_RE = /^course_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Есть ли в записях курсов магазина хоть один эфир потока. Берутся только
+ * ключи самих курсов (не записи на каждого ученика: прохождения, сертификаты,
+ * приглашения), значения — пакетами по 200 с выходом на первом курсе с эфиром.
+ * Сбой чтения — ошибка, а не «эфиров нет».
+ */
+export async function shopHasLives(ctx: TenantContext): Promise<boolean> {
+  const keys = (
+    await pageAll<{ key: string }>(
+      (from, to) =>
+        ctx.db
+          .from("app_settings")
+          .select("key")
+          .like("key", COURSE_KEY_LIKE)
+          .order("key")
+          .range(from, to),
+      "курсы магазина",
+    )
+  )
+    .map((k) => k.key)
+    .filter((k) => COURSE_KEY_RE.test(k));
+  for (let i = 0; i < keys.length; i += 200) {
+    const values = await readSettings(ctx, keys.slice(i, i + 200));
+    for (const raw of values.values())
+      if ((parseCourse(raw).cohorts ?? []).some((c) => (c.lives?.length ?? 0) > 0)) return true;
+  }
+  return false;
+}
+
 export async function liveReminders(
   ctx: TenantContext,
   send: (r: LiveReminder) => Promise<boolean>,
@@ -40,6 +76,8 @@ export async function liveReminders(
 ): Promise<Stats | { skipped: string }> {
   if (!ctx.tenant.modules.courses) return { skipped: "module off" };
   const out: Stats = { sent: 0, failed: 0, silent: 0 };
+  // Крон идёт каждые 10 минут: нет эфиров ни в одном курсе — прохождения не читаем.
+  if (!(await shopHasLives(ctx))) return out;
   const runs = (await loadRuns(ctx)).filter((r) => r.order.status === "delivered");
   const base = ctx.tenant.settings.slug ? storefrontBase(ctx.tenant, ctx.appUrl) : null;
   const day = daytime(now, ctx.timezone);
