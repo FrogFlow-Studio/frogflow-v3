@@ -15,6 +15,7 @@ import {
   restoreStock,
   zoneFee,
 } from "@/core/fulfillment/fulfillment";
+import { recordStockChanges, type StockChange } from "@/core/catalog/stock-history";
 import {
   addDaysToIso,
   fulfillmentTotalBelowPaid,
@@ -364,10 +365,11 @@ export async function createManualOrder(
     });
 
   const reserved: Array<{ productId: string; qty: number }> = [];
+  const stockChanges: StockChange[] = [];
   try {
     if (ctx.tenant.modules.stock) {
       for (const l of lines) {
-        if (!(await decrementStock(ctx, l.productId, l.quantity)))
+        if (!(await decrementStock(ctx, l.productId, l.quantity, stockChanges)))
           throw new UserError("err.orders.outOfStock", "Недостаточно «{name}» на складе", {
             name: l.name,
           });
@@ -419,6 +421,11 @@ export async function createManualOrder(
       throw serverFailure(itemsError.message);
     }
     await recordOrderEvent(ctx, order.id, "placed", { platform: "manual", total, currency }, actor);
+    await recordStockChanges(ctx, stockChanges, {
+      reason: "manual_order",
+      orderId: order.id,
+      actor,
+    });
     if (paid > 0)
       await recordOrderEvent(ctx, order.id, "payment", { amount: paid, currency }, actor);
     return { id: order.id, orderNo: Number(order.display_no ?? order.order_no) };

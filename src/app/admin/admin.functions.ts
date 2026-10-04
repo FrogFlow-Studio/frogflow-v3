@@ -515,7 +515,7 @@ export const importCatalogFn = createServerFn({ method: "POST" })
     const ctx = await adminWrite();
     const m = await import("@/core/catalog/import.server");
     if (!data.apply) return { preview: await m.previewImport(ctx, data.csv), result: null };
-    return { preview: null, result: await m.applyImport(ctx, data.csv) };
+    return { preview: null, result: await m.applyImport(ctx, data.csv, await actor()) };
   });
 
 /** Каталог из Google Таблицы: ссылка, настройки и итог последнего обновления. */
@@ -745,6 +745,17 @@ export const productFn = createServerFn({ method: "GET" })
     };
   });
 
+/** История остатка товара за 30 дней, страницами (блок в карточке товара). */
+export const stockHistoryFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z.object({ productId: uuid, page: z.number().int().min(0).max(1000).default(0) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    const { listStockHistory } = await import("@/core/catalog/stock-history");
+    return listStockHistory(ctx, data.productId, { page: data.page });
+  });
+
 const productInput = z.object({
   name: z.string().min(1).max(200),
   description: z.string().max(4000).default(""),
@@ -869,6 +880,15 @@ export const saveProductFn = createServerFn({ method: "POST" })
           : { on: false },
       );
     }
+    // История остатка: правка в карточке (у нового товара «было» — не учитывался).
+    {
+      const { recordStockChange } = await import("@/core/catalog/stock-history");
+      await recordStockChange(
+        ctx,
+        { productId: id, from: before ? before.stock_quantity : null, to: fields.stockQuantity },
+        { reason: "edit", actor: await actor() },
+      );
+    }
     const waitlist = await maybeNotifyWaitlist(ctx, id, before);
     return { id, waitlist };
   });
@@ -941,7 +961,7 @@ export const bulkProductsFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await adminWrite();
     const { bulkUpdateProducts } = await import("@/core/catalog/bulk");
-    const r = await bulkUpdateProducts(ctx, data.ids, data.action);
+    const r = await bulkUpdateProducts(ctx, data.ids, data.action, await actor());
     // Товары, вернувшиеся в продажу, будят лист ожидания — как одиночное «показать».
     if (data.action.kind === "active" && data.action.active && ctx.tenant.modules.waitlist)
       for (const id of r.changed) {

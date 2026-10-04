@@ -157,6 +157,14 @@ async function patchProduct(
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return fail(404, "not_found");
+  if ("stock_quantity" in patch) {
+    const { recordStockChange } = await import("@/core/catalog/stock-history");
+    await recordStockChange(
+      ctx,
+      { productId: id, from: before.stock_quantity, to: data.stock_quantity },
+      { reason: "api", actor: "api" },
+    );
+  }
   // Товар вернулся в продажу — лист ожидания получает сообщение, как из админки.
   if (ctx.tenant.modules.waitlist) {
     const { backInStock } = await import("@/core/waitlist/waitlist");

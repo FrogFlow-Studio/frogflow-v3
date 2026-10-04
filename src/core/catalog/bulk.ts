@@ -4,6 +4,7 @@ import { UserError } from "@/core/i18n/user-error";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Json } from "@/core/db-types";
 import { pageAll } from "@/core/db/page";
+import { recordStockChanges } from "./stock-history";
 
 /**
  * Массовые действия над выбранными товарами списка админки. Запись — по
@@ -125,6 +126,7 @@ export async function bulkUpdateProducts(
   ctx: TenantContext,
   rawIds: readonly string[],
   action: BulkAction,
+  actor = "system",
 ): Promise<BulkResult & { before: Map<string, Row> }> {
   const ids = [...new Set(rawIds)];
   const result: BulkResult = { changed: [], skipped: [], stock: [] };
@@ -183,6 +185,12 @@ export async function bulkUpdateProducts(
       skip(id, p.name, "failed");
     }
   }
+  // История остатка — после записей: каждый товар «было → стало» одной пачкой.
+  await recordStockChanges(
+    ctx,
+    result.stock.map((x) => ({ productId: x.id, from: x.from, to: x.to })),
+    { reason: "bulk", actor },
+  );
   return { ...result, before: rows };
 }
 

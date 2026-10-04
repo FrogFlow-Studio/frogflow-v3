@@ -7,7 +7,9 @@
 import type { Database } from "@/core/db-types";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
+import { serverFailure } from "@/lib/server-failure";
 import { createCategory } from "./admin";
+import { recordStockChange } from "./stock-history";
 import { parseCatalogCsv, planImport, type ImportField, type ProductDraft } from "./import";
 
 export type ImportPreview = {
@@ -109,7 +111,11 @@ export type ImportResult = {
   errors: string[];
 };
 
-export async function applyImport(ctx: TenantContext, csv: string): Promise<ImportResult> {
+export async function applyImport(
+  ctx: TenantContext,
+  csv: string,
+  actor = "system",
+): Promise<ImportResult> {
   const parsed = parseCatalogCsv(csv);
   const { products, categories } = await catalogIndex(ctx);
   const plan = planImport(parsed.drafts, products);
@@ -141,23 +147,33 @@ export async function applyImport(ctx: TenantContext, csv: string): Promise<Impo
   for (const d of plan.create) {
     try {
       const categoryId = await categoryFor(d.category);
-      const { error } = await ctx.db.from("products").insert({
-        bot_id: ctx.tenant.id,
-        name: d.name,
-        description: d.description ?? "",
-        keywords: d.keywords ?? "",
-        price: d.price ?? 0,
-        currency: d.currency ?? currency,
-        country_prices: {},
-        category_ids: categoryId ? [categoryId] : [],
-        is_active: d.active ?? true,
-        sort_order: d.sortOrder ?? 0,
-        fulfillment_kind: d.kind ?? "digital",
-        stock_quantity: d.stock ?? null,
-        file_url: d.fileUrl,
-        file_url_kz: d.fileUrlKz,
-      });
-      if (error) throw new Error(error.message);
+      const { data: created, error } = await ctx.db
+        .from("products")
+        .insert({
+          bot_id: ctx.tenant.id,
+          name: d.name,
+          description: d.description ?? "",
+          keywords: d.keywords ?? "",
+          price: d.price ?? 0,
+          currency: d.currency ?? currency,
+          country_prices: {},
+          category_ids: categoryId ? [categoryId] : [],
+          is_active: d.active ?? true,
+          sort_order: d.sortOrder ?? 0,
+          fulfillment_kind: d.kind ?? "digital",
+          stock_quantity: d.stock ?? null,
+          file_url: d.fileUrl,
+          file_url_kz: d.fileUrlKz,
+        })
+        .select("id")
+        .single();
+      if (error || !created) throw new Error(error?.message ?? "insert failed");
+      if (d.stock != null)
+        await recordStockChange(
+          ctx,
+          { productId: created.id, from: null, to: d.stock },
+          { reason: "import", actor },
+        );
       result.created++;
     } catch (e) {
       result.errors.push(
@@ -170,8 +186,25 @@ export async function applyImport(ctx: TenantContext, csv: string): Promise<Impo
       const categoryId = await categoryFor(d.category);
       const patch = patchOf(d, by, categoryId);
       if (Object.keys(patch).length === 0) continue;
+      // Остаток «до» — для истории; не прочитался, не пишем вслепую.
+      let stockBefore: number | null | undefined;
+      if (patch.stock_quantity !== undefined) {
+        const { data: cur, error: curError } = await ctx.db
+          .from("products")
+          .select("stock_quantity")
+          .eq("id", id)
+          .maybeSingle();
+        if (curError) throw serverFailure(`Импорт: ${curError.message}`);
+        stockBefore = cur ? cur.stock_quantity : undefined;
+      }
       const { error } = await ctx.db.from("products").update(patch).eq("id", id);
       if (error) throw new Error(error.message);
+      if (stockBefore !== undefined && patch.stock_quantity !== undefined)
+        await recordStockChange(
+          ctx,
+          { productId: id, from: stockBefore, to: patch.stock_quantity },
+          { reason: "import", actor },
+        );
       result.updated++;
     } catch (e) {
       result.errors.push(

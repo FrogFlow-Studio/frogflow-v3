@@ -5,6 +5,7 @@ import { getSettingsStrict } from "@/core/settings/settings";
 import { currencyForCountry, defaultCountryCode, convertForTenant } from "@/core/pricing/pricing";
 import type { Money } from "@/core/money/money";
 import { amountDue, type PaymentMode } from "./pure";
+import { recordStockChange, type StockChange, type StockMeta } from "@/core/catalog/stock-history";
 
 export type FulfillmentSettings = {
   pickup: boolean;
@@ -90,11 +91,16 @@ export async function zoneFee(
     : { amount: converted, currency };
 }
 
-/** Списание остатка CAS'ом; null — остаток не отслеживается. */
+/**
+ * Списание остатка CAS'ом; null — остаток не отслеживается. `sink` собирает
+ * фактические изменения: событие истории остатка пишет вызывающий, когда
+ * заказ уже создан (до тех пор откат не оставляет в истории пар «−1, +1»).
+ */
 export async function decrementStock(
   ctx: TenantContext,
   productId: string,
   qty: number,
+  sink?: StockChange[],
 ): Promise<boolean> {
   for (let attempt = 0; attempt < 5; attempt++) {
     const { data: p, error: pError } = await ctx.db
@@ -113,15 +119,20 @@ export async function decrementStock(
       .select("id")
       .maybeSingle();
     if (dataError) throw serverFailure(`Выдача: ${dataError.message}`);
-    if (data) return true;
+    if (data) {
+      sink?.push({ productId, from: p.stock_quantity, to: p.stock_quantity - qty });
+      return true;
+    }
   }
   return false;
 }
 
+/** `log` — причина для истории остатка; без неё (откат оформления) событие не пишется. */
 export async function restoreStock(
   ctx: TenantContext,
   productId: string,
   qty: number,
+  log?: StockMeta,
 ): Promise<void> {
   for (let attempt = 0; attempt < 5; attempt++) {
     const { data: p, error: pError } = await ctx.db
@@ -140,6 +151,12 @@ export async function restoreStock(
       .maybeSingle();
     if (dataError) throw serverFailure(`Выдача: ${dataError.message}`);
     if (data) {
+      if (log)
+        await recordStockChange(
+          ctx,
+          { productId, from: p.stock_quantity, to: p.stock_quantity + qty },
+          log,
+        );
       // Возврат выше порога снимает отметку «заканчивается»; сбой сюда не относится.
       await (
         await import("@/core/catalog/low-stock")
@@ -156,7 +173,12 @@ export async function restoreStock(
  * «Склад»). Для отклонённых и просроченных заказов с сайта: оформить их может
  * кто угодно, и без возврата пачка брошенных заказов обнулила бы остатки.
  */
-export async function restoreOrderStock(ctx: TenantContext, orderId: number): Promise<number> {
+export async function restoreOrderStock(
+  ctx: TenantContext,
+  orderId: number,
+  reason: "cancel" | "refund" = "cancel",
+  actor = "system",
+): Promise<number> {
   if (!ctx.tenant.modules.stock) return 0;
   const { data, error: dataError } = await ctx.db
     .from("order_items")
@@ -177,7 +199,7 @@ export async function restoreOrderStock(ctx: TenantContext, orderId: number): Pr
       qty -= skip;
       pre.set(it.product_id, (pre.get(it.product_id) ?? 0) - skip);
     }
-    if (qty > 0) await restoreStock(ctx, it.product_id, qty);
+    if (qty > 0) await restoreStock(ctx, it.product_id, qty, { reason, orderId, actor });
     n++;
   }
   return n;

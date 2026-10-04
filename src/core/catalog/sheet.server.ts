@@ -14,6 +14,7 @@ import {
 } from "@/core/settings/settings";
 import { createCategory } from "./admin";
 import { parseCatalogCsv, planImport } from "./import";
+import { recordStockChange } from "./stock-history";
 import { patchOf, previewImport, type ImportPreview, type ProductPatch } from "./import.server";
 import {
   classifyDownload,
@@ -249,6 +250,16 @@ export async function syncFromCsv(
           .update(write as ProductPatch)
           .eq("id", id);
         if (error) throw new Error(error.message);
+        if ("stock_quantity" in write)
+          await recordStockChange(
+            ctx,
+            {
+              productId: id,
+              from: (cur.stock_quantity as number | null | undefined) ?? null,
+              to: write.stock_quantity as number | null,
+            },
+            { reason: "sheet", actor: interactive ? "admin" : "system" },
+          );
         out.updated++;
         if (restore && write.is_active === true) out.restored++;
       }
@@ -288,6 +299,12 @@ export async function syncFromCsv(
       };
       const { data, error } = await ctx.db.from("products").insert(row).select("id").single();
       if (error || !data) throw new Error(error?.message ?? "insert failed");
+      if (d.stock != null)
+        await recordStockChange(
+          ctx,
+          { productId: data.id, from: null, to: d.stock },
+          { reason: "sheet", actor: interactive ? "admin" : "system" },
+        );
       const h: Record<string, string> = {};
       const cols = Object.keys(patchOf(d, "id", target === undefined ? undefined : categoryIds[0]));
       for (const col of cols) h[col] = valueHash((row as Record<string, unknown>)[col]);

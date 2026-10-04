@@ -39,6 +39,7 @@ import {
   restoreOrderStock,
   restoreStock,
 } from "@/core/fulfillment/fulfillment";
+import { recordStockChanges, type StockChange } from "@/core/catalog/stock-history";
 import {
   awardPointsForOrder,
   findValidGift,
@@ -281,6 +282,8 @@ export async function placeOrder(
   const holdToken = crypto.randomUUID();
   let offerHeld = false;
   const reserved: Array<{ productId: string; qty: number }> = [];
+  // Что фактически списано — в историю остатка, когда заказ создан (не раньше).
+  const stockChanges: StockChange[] = [];
   const preorderLines: import("@/core/preorder/preorder").PreorderLine[] = [];
   const fail = async (
     reason: Exclude<Extract<PlaceOrderResult, { ok: false }>["reason"], "below_min">,
@@ -341,7 +344,7 @@ export async function placeOrder(
       );
       for (const it of items) {
         const qty = Number(it.quantity);
-        const ok = await decrementStock(ctx, it.products!.id, qty);
+        const ok = await decrementStock(ctx, it.products!.id, qty, stockChanges);
         if (!ok) {
           // Не хватило остатка: у товара включён предзаказ — позиция идёт
           // предзаказом, остаток не трогаем (он не уходит в минус).
@@ -518,6 +521,11 @@ export async function placeOrder(
       platform: finalOrder.platform,
       total: Number(finalOrder.total),
       currency: finalOrder.currency,
+    });
+    await recordStockChanges(ctx, stockChanges, {
+      reason: "order",
+      orderId: finalOrder.id,
+      actor: "customer",
     });
     // Сертификат больше заказа — остаток новым кодом в той же валюте. Сбой
     // выдачи заказ не срывает: сертификат погашен, остаток выдаст продавец.
@@ -971,7 +979,7 @@ export async function rejectOrder(
   // при оформлении, а сам такой заказ не истекает. Оплаченный решает возврат.
   // Статус уже сменён: сбой возврата на склад не должен терять событие и баллы ниже.
   const restock = () =>
-    restoreOrderStock(ctx, orderId).catch((e) =>
+    restoreOrderStock(ctx, orderId, "cancel", actor).catch((e) =>
       console.error(`[orders] возврат на склад заказа #${orderId}: ${String(e)}`),
     );
   if (data?.platform === "web" || unpaidData || (data && opts.restoreStock)) await restock();

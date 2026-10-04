@@ -196,7 +196,7 @@ export async function refundOrder(
   if (input.restock && !refunds.some((e) => Number(e.payload.restocked) > 0)) {
     const { restoreOrderStock } = await import("@/core/fulfillment/fulfillment");
     // Возврат оформлен: сбой склада не рвёт запись события; restocked=0 — повторить можно.
-    restocked = await restoreOrderStock(ctx, orderId).catch((e) => {
+    restocked = await restoreOrderStock(ctx, orderId, "refund", actor).catch((e) => {
       console.error(`[refund] возврат на склад заказа #${orderId}: ${String(e)}`);
       return 0;
     });
