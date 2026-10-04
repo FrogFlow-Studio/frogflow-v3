@@ -10,6 +10,7 @@ import {
   type TenantRow,
 } from "./directory";
 import type { ChannelGuardEntry, Tenant, TenantLookup } from "./types";
+import type { WizardEntry } from "./wizard-entry";
 import { serverFailure } from "@/lib/server-failure";
 
 /**
@@ -209,6 +210,49 @@ export async function swapZernioGuard(
     }
   }
   return false;
+}
+
+/**
+ * Запись мастера подключения одного канала (settings.zernio.wizard): прочитать,
+ * решить `update`, записать условно по `settings.rev`. `update` получает
+ * текущую запись и возвращает новую; undefined — ничего не менять. Гонка
+ * (продавец, крон, входящее сообщение в один миг) → перечитываем и решаем
+ * заново, чужие ключи settings не затираем. Возвращает записанную запись.
+ */
+export async function updateZernioWizard(
+  botId: string,
+  platform: "instagram" | "whatsapp",
+  update: (current: WizardEntry | undefined) => WizardEntry | undefined,
+): Promise<WizardEntry | undefined> {
+  const db = serviceDb();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data, error } = await db.from("bots").select("settings").eq("id", botId).maybeSingle();
+    if (error)
+      throw serverFailure(`bots.settings: мастер каналов не прочитал настройки (${error.message})`);
+    if (!data) throw serverFailure(`bots.settings: магазин ${botId} не найден`);
+    const raw = asObject(data.settings);
+    const zernio = asObject(raw.zernio);
+    const wizard = { ...asObject(zernio.wizard) };
+    const current = (wizard[platform] as WizardEntry | undefined) ?? undefined;
+    const next = update(current);
+    if (!next) return current;
+    wizard[platform] = next;
+    const rev = settingsRev(raw);
+    const nextSettings = { ...raw, zernio: { ...zernio, wizard }, rev: nextSettingsRev(raw) };
+    const revPath = "settings->>rev" as "id";
+    let q = db
+      .from("bots")
+      .update({ settings: nextSettings as never })
+      .eq("id", botId);
+    q = rev === null ? q.is(revPath, null as never) : q.eq(revPath, String(rev));
+    const { data: rows, error: writeError } = await q.select("id");
+    if (writeError) throw serverFailure(`bots.settings: ${writeError.message}`);
+    if (rows?.length) {
+      invalidateTenantDirectory();
+      return next;
+    }
+  }
+  throw serverFailure(`bots.settings: мастер каналов не записал состояние ${botId} (гонка версий)`);
 }
 
 export async function resolveTenant(lookup: TenantLookup): Promise<Tenant | null> {

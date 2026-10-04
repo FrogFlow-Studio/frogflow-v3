@@ -5,6 +5,7 @@ import { VERTICALS, type VerticalKey } from "@/core/verticals/registry";
 import type { Database } from "@/core/db-types";
 import type { BillingSettings, BotStatus, Tenant, TenantLookup, TenantSettings } from "./types";
 import { isLocale } from "@/core/i18n/locale";
+import { parseWizardMap } from "./wizard-entry";
 import { effectiveModules } from "@/core/plans/plans";
 import { COURSES_SALE, parsePlan } from "@/core/plans/registry";
 import { validPauseHours } from "@/core/consultant/pause";
@@ -111,6 +112,7 @@ export function settingsFromJson(json: unknown): TenantSettings {
         : undefined,
       synced_at: str(zr.synced_at),
       ice_breakers_v: str(zr.ice_breakers_v),
+      wizard: parseWizardMap(zr.wizard),
     },
     admin: {
       username: str(adm.username),

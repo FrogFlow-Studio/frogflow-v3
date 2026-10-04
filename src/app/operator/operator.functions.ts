@@ -777,6 +777,18 @@ export const syncV2WebhookFn = createServerFn({ method: "POST" }).handler(async 
   return (await import("@/channels/zernio/connect.server")).syncV2Webhook();
 });
 
+/** Мастер подключения канала у клиента: на каком шаге застрял и из-за чего (только чтение). */
+export const wizardViewFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    const { requireTenant } = await import("@/core/tenant/resolve.server");
+    const { wizardOperatorRows } = await import("@/channels/zernio/wizard.server");
+    return {
+      rows: wizardOperatorRows({ tenant: await requireTenant({ by: "id", value: data.botId }) }),
+    };
+  });
+
 /** Приглашения авторов (core/invites): кто кого пригласил и можно ли зачесть месяц. */
 export const inviteViewFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ botId }).parse(d))

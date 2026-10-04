@@ -2003,6 +2003,43 @@ export const syncZernioAccountsFn = createServerFn({ method: "POST" }).handler(a
   return r;
 });
 
+const wizardPlatform = z.object({ platform: z.enum(["instagram", "whatsapp"]) });
+
+/** Мастер подключения канала: что записано (без обращений к Zernio). */
+export const wizardStateFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await admin();
+  const { wizardSnapshot } = await import("@/channels/zernio/wizard.server");
+  return { entries: wizardSnapshot(ctx) };
+});
+
+/** Шаг «войдите»: ссылка входа Zernio или причина, почему её нет (только владелец). */
+export const wizardStartFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => wizardPlatform.parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await adminOwner();
+    if (!ctx.tenant.modules[data.platform])
+      throw new UserError(
+        "err.admin.channelOff",
+        "Этот канал не подключён к вашему тарифу — оставьте заявку в «Модулях».",
+      );
+    const { startWizard } = await import("@/channels/zernio/wizard.server");
+    return startWizard(ctx, data.platform);
+  });
+
+/** «Проверить»: аккаунт, вебхук и тестовое сообщение; ставит мастер на нужный шаг. */
+export const wizardCheckFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => wizardPlatform.parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await adminOwner();
+    if (!ctx.tenant.modules[data.platform])
+      throw new UserError(
+        "err.admin.channelOff",
+        "Этот канал не подключён к вашему тарифу — оставьте заявку в «Модулях».",
+      );
+    const { checkWizard } = await import("@/channels/zernio/wizard.server");
+    return checkWizard(ctx, data.platform);
+  });
+
 /**
  * Отключить Instagram или WhatsApp от магазина (только владелец): бот
  * перестаёт отвечать и слать в этот аккаунт, можно подключить другой.

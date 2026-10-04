@@ -3,6 +3,7 @@ import type { VerticalKey } from "@/core/verticals/registry";
 import type { Locale } from "@/core/i18n/locale";
 import type { ConsultantLimitsSetting } from "@/core/consultant/budget";
 import type { SmartSearchLimitsSetting } from "@/core/search/smart-pure";
+import type { WizardMap } from "./wizard-entry";
 import type { Collection } from "@/core/storefront/collections";
 
 export type BotStatus = "active" | "paused" | "suspended";
@@ -43,6 +44,8 @@ export type TenantSettings = {
     guard?: Partial<Record<"instagram" | "whatsapp", ChannelGuardEntry>>;
     /** Отпечаток поставленных быстрых вопросов Instagram; "" — мы ничего не ставили. */
     ice_breakers_v?: string;
+    /** Мастер подключения канала (channels/zernio/wizard): где продавец застрял. */
+    wizard?: WizardMap;
   };
   /**
    * Модуль «Несколько ботов»: магазины с одинаковым `group` — один продавец,

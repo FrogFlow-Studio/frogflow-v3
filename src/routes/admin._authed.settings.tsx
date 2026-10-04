@@ -14,6 +14,7 @@ import { DELIVERY_NOTE_MAX } from "@/core/delivery/note";
 import { adminT } from "@/app/i18n/admin";
 import { parseWebCheckout } from "@/core/storefront/web-checkout-settings";
 import { ChannelsCard, DirectBotCard, TelegramCard } from "@/app/admin/settings/channels";
+import { ChannelWizardCards } from "@/app/admin/settings/channel-wizard";
 import { CrmCard } from "@/app/admin/settings/crm";
 import { ApiKeyCard } from "@/app/admin/settings/api-key";
 import { PushCard } from "@/app/admin/settings/push";
@@ -136,6 +137,9 @@ function SettingsPage() {
       <PageTitle title={t("settings.title")} />
       <div className="grid gap-4 lg:grid-cols-2">
         <TelegramCard telegram={telegram} />
+        {(shop.modules.instagram || shop.modules.whatsapp) && (
+          <ChannelWizardCards instagram={shop.modules.instagram} whatsapp={shop.modules.whatsapp} />
+        )}
         {(shop.modules.instagram || shop.modules.whatsapp) && (
           <ChannelsCard
             zernio={zernio}

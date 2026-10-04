@@ -13,6 +13,7 @@ import { ShopGroupCard } from "@/app/operator/client/shop-group";
 import { CommunityModCard } from "@/app/operator/client/community";
 import { MarketplaceModCard } from "@/app/operator/client/marketplace";
 import { InvitesCard } from "@/app/operator/client/invites";
+import { WizardCard } from "@/app/operator/client/wizard";
 import { BillingCard } from "@/app/operator/client/billing";
 import { NotesCard } from "@/app/operator/client/notes";
 import { HealthCard, MessageCard } from "@/app/operator/client/health";
@@ -158,6 +159,7 @@ function ClientPage() {
           <TelegramCard c={c} webhook={webhook} onDone={refresh} />
           <AddressingCard c={c} onDone={refresh} />
           <ZernioCard c={c} onDone={refresh} />
+          <WizardCard c={c} />
           <HealthCard c={c} />
         </div>
       )}
