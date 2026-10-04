@@ -4,6 +4,7 @@ import { allSellerNotes } from "@/core/customers/seller-notes";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
 import { isLocale } from "@/core/i18n/locale";
+import { UserError } from "@/core/i18n/user-error";
 import { serverFailure } from "@/lib/server-failure";
 
 /**
@@ -147,13 +148,20 @@ export async function segmentMembers(
     // Только завершённая Telegram-рассылка этого клиента: чужой или ещё идущий id — пустой круг.
     const { data: src, error } = await ctx.db
       .from("broadcasts")
-      .select("id, channel, status")
+      .select("id, channel, status, audience_filter")
       .eq("id", seg.id)
       .maybeSingle();
     if (error) throw serverFailure(`Рассылки: исходная рассылка: ${error.message}`);
     if (!src || src.channel !== "telegram" || src.status !== "completed") return new Set();
+    // «Дослать» — второе касание: досылку саму не досылаем (третье и четвёртое касание не обещаны).
+    const srcFilter = src.audience_filter as { segment?: unknown } | null;
+    if (parseSegment(srcFilter?.segment)?.kind === "broadcast")
+      throw new UserError(
+        "err.broadcast.followupOfFollowup",
+        "Это уже досылка — досылать её ещё раз нельзя. Выберите исходную рассылку.",
+      );
     const { recipientsWithoutOrder } = await import("./revenue");
-    return recipientsWithoutOrder(ctx, seg.id);
+    return recipientsWithoutOrder(ctx, seg.id, now);
   }
 
   if (seg.kind === "course") {

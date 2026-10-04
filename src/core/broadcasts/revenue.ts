@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { UserError } from "@/core/i18n/user-error";
 import { pageAll } from "@/core/db/page";
 import { IN_CHUNK, chunksOf } from "@/lib/in-chunks";
 import { BUYER_STATUSES } from "./broadcasts";
@@ -168,8 +169,15 @@ export function withoutOrders(
 export async function recipientsWithoutOrder(
   ctx: TenantContext,
   broadcastId: string,
+  now = Date.now(),
 ): Promise<Set<number>> {
   const sent = await readSent(ctx, broadcastId);
   if (sent.length === 0) return new Set();
+  // Окно ещё идёт: заказавшие пока не определены, «не купившие» вышли бы неверными.
+  if (attribute(sent, [], now).windowOpen)
+    throw new UserError(
+      "err.broadcast.followupWindowOpen",
+      "Три дня после отправки ещё не прошли — заказавшие пока не определены. Досылать можно позже.",
+    );
   return withoutOrders(sent, await readOrders(ctx, sent));
 }

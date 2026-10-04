@@ -188,6 +188,10 @@ export const ru = {
   "err.course.badLesson": "Урок {lesson} повреждён — удалите его и добавьте заново.",
   "err.broadcast.badSegment": "Сегмент заполнен не полностью.",
   "err.broadcast.badSchedule": "Время отправки — от минуты до 60 дней вперёд.",
+  "err.broadcast.followupOfFollowup":
+    "Это уже досылка — досылать её ещё раз нельзя. Выберите исходную рассылку.",
+  "err.broadcast.followupWindowOpen":
+    "Три дня после отправки ещё не прошли — заказавшие пока не определены. Досылать можно позже.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -372,6 +376,10 @@ export const kk: SectionDict<typeof ru> = {
   "err.course.badLesson": "{lesson}-сабақ бүлінген — оны өшіріп, қайта қосыңыз.",
   "err.broadcast.badSegment": "Сегмент толық толтырылмаған.",
   "err.broadcast.badSchedule": "Жіберу уақыты — бір минуттан 60 күнге дейін алда.",
+  "err.broadcast.followupOfFollowup":
+    "Бұл — қайта жіберу, оны тағы қайта жіберуге болмайды. Бастапқы таратуды таңдаңыз.",
+  "err.broadcast.followupWindowOpen":
+    "Жіберілгеннен кейін үш күн әлі өтпеді — тапсырыс бергендер әлі анықталмады. Кейінірек қайта жіберуге болады.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -558,6 +566,10 @@ export const en: SectionDict<typeof ru> = {
   "err.course.badLesson": "Lesson {lesson} is damaged — delete it and add it again.",
   "err.broadcast.badSegment": "The segment is not filled in completely.",
   "err.broadcast.badSchedule": "Send time must be from one minute to 60 days ahead.",
+  "err.broadcast.followupOfFollowup":
+    "This is already a follow-up — it cannot be followed up again. Pick the original broadcast.",
+  "err.broadcast.followupWindowOpen":
+    "Three days after sending have not passed yet — buyers are not determined. You can send the follow-up later.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -747,4 +759,8 @@ export const uz: SectionDict<typeof ru> = {
   "err.course.badLesson": "{lesson}-dars buzilgan — uni oʻchirib, qaytadan qoʻshing.",
   "err.broadcast.badSegment": "Segment to'liq to'ldirilmagan.",
   "err.broadcast.badSchedule": "Yuborish vaqti — bir daqiqadan 60 kungacha oldinda.",
+  "err.broadcast.followupOfFollowup":
+    "Bu allaqachon qayta yuborish — uni yana qayta yuborib boʻlmaydi. Dastlabki xabarni tanlang.",
+  "err.broadcast.followupWindowOpen":
+    "Yuborilgandan keyin uch kun hali oʻtmadi — buyurtma berganlar hali aniqlanmadi. Keyinroq qayta yuborishingiz mumkin.",
 };

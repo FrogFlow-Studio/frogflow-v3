@@ -9,6 +9,7 @@ const BOT = "00000000-0000-0000-0000-000000000001";
 const SRC = "11111111-1111-4111-8111-111111111111";
 const SENT = new Date(Date.now() - 5 * 24 * 3600_000).toISOString();
 const at = (hours: number) => new Date(Date.parse(SENT) + hours * 3600_000).toISOString();
+const OTHER = "33333333-3333-4333-8333-333333333333";
 const SEGMENT = { kind: "broadcast", id: SRC, who: "no_order" } as const;
 
 /**
@@ -122,6 +123,36 @@ describe("«Дослать не купившим»", () => {
         segment: { ...SEGMENT, id: "22222222-2222-4222-8222-222222222222" },
       }),
     ).toEqual([]);
+  });
+
+  it("досылку саму досылать нельзя: сервер отказывает, никто не получает третье касание", async () => {
+    const { ctx, db } = setup({
+      src: { audience_filter: { segment: { kind: "broadcast", id: OTHER, who: "no_order" } } },
+    });
+    const before = (db.tables.broadcast_recipients ?? []).length;
+    await expect(resolveAudience(ctx, "all", { segment: SEGMENT })).rejects.toMatchObject({
+      key: "err.broadcast.followupOfFollowup",
+    });
+    await expect(
+      createBroadcast(ctx, {
+        text: "Ещё раз",
+        photoKeys: [],
+        productIds: [],
+        showCatalog: false,
+        audience: "all",
+        filter: { segment: SEGMENT },
+      }),
+    ).rejects.toMatchObject({ key: "err.broadcast.followupOfFollowup" });
+    expect((db.tables.broadcast_recipients ?? []).length).toBe(before);
+  });
+
+  it("пока окно 72 часа не закрыто, «дослать» через час после отправки отказывает", async () => {
+    const { ctx, db } = setup();
+    const hourAgo = new Date(Date.now() - 3600_000).toISOString();
+    for (const r of db.tables.broadcast_recipients ?? []) r.sent_at = hourAgo;
+    await expect(resolveAudience(ctx, "all", { segment: SEGMENT })).rejects.toMatchObject({
+      key: "err.broadcast.followupWindowOpen",
+    });
   });
 
   it("рассылка создаётся с этим сегментом и теми же получателями", async () => {

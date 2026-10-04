@@ -1311,7 +1311,8 @@ function History({
                   {b.channel === "telegram" &&
                     b.status === "completed" &&
                     b.sent_count > 0 &&
-                    !filter.ab && (
+                    !filter.ab &&
+                    filter.segment?.kind !== "broadcast" && (
                       <button
                         className="btn-ghost text-xs"
                         disabled={b.revenue.windowOpen}
