@@ -79,6 +79,7 @@ import { Route as OperatorAuthedIndexRouteImport } from './routes/operator._auth
 import { Route as OperatorAuthedBroadcastRouteImport } from './routes/operator._authed.broadcast'
 import { Route as OperatorAuthedCommunityRouteImport } from './routes/operator._authed.community'
 import { Route as OperatorAuthedCronsRouteImport } from './routes/operator._authed.crons'
+import { Route as OperatorAuthedHealthRouteImport } from './routes/operator._authed.health'
 import { Route as OperatorAuthedLeadsRouteImport } from './routes/operator._authed.leads'
 import { Route as OperatorAuthedLogRouteImport } from './routes/operator._authed.log'
 import { Route as OperatorAuthedMigrationRouteImport } from './routes/operator._authed.migration'
@@ -473,6 +474,11 @@ const OperatorAuthedCronsRoute = OperatorAuthedCronsRouteImport.update({
   path: '/crons',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
+const OperatorAuthedHealthRoute = OperatorAuthedHealthRouteImport.update({
+  id: '/health',
+  path: '/health',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
 const OperatorAuthedLeadsRoute = OperatorAuthedLeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
@@ -778,6 +784,7 @@ export interface FileRoutesByFullPath {
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/community': typeof OperatorAuthedCommunityRoute
   '/operator/crons': typeof OperatorAuthedCronsRoute
+  '/operator/health': typeof OperatorAuthedHealthRoute
   '/operator/leads': typeof OperatorAuthedLeadsRoute
   '/operator/log': typeof OperatorAuthedLogRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
@@ -892,6 +899,7 @@ export interface FileRoutesByTo {
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/community': typeof OperatorAuthedCommunityRoute
   '/operator/crons': typeof OperatorAuthedCronsRoute
+  '/operator/health': typeof OperatorAuthedHealthRoute
   '/operator/leads': typeof OperatorAuthedLeadsRoute
   '/operator/log': typeof OperatorAuthedLogRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
@@ -1008,6 +1016,7 @@ export interface FileRoutesById {
   '/operator/_authed/broadcast': typeof OperatorAuthedBroadcastRoute
   '/operator/_authed/community': typeof OperatorAuthedCommunityRoute
   '/operator/_authed/crons': typeof OperatorAuthedCronsRoute
+  '/operator/_authed/health': typeof OperatorAuthedHealthRoute
   '/operator/_authed/leads': typeof OperatorAuthedLeadsRoute
   '/operator/_authed/log': typeof OperatorAuthedLogRoute
   '/operator/_authed/migration': typeof OperatorAuthedMigrationRoute
@@ -1125,6 +1134,7 @@ export interface FileRouteTypes {
     | '/operator/broadcast'
     | '/operator/community'
     | '/operator/crons'
+    | '/operator/health'
     | '/operator/leads'
     | '/operator/log'
     | '/operator/migration'
@@ -1239,6 +1249,7 @@ export interface FileRouteTypes {
     | '/operator/broadcast'
     | '/operator/community'
     | '/operator/crons'
+    | '/operator/health'
     | '/operator/leads'
     | '/operator/log'
     | '/operator/migration'
@@ -1354,6 +1365,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/broadcast'
     | '/operator/_authed/community'
     | '/operator/_authed/crons'
+    | '/operator/_authed/health'
     | '/operator/_authed/leads'
     | '/operator/_authed/log'
     | '/operator/_authed/migration'
@@ -1933,6 +1945,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedCronsRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/operator/_authed/health': {
+      id: '/operator/_authed/health'
+      path: '/health'
+      fullPath: '/operator/health'
+      preLoaderRoute: typeof OperatorAuthedHealthRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
     '/operator/_authed/leads': {
       id: '/operator/_authed/leads'
       path: '/leads'
@@ -2380,6 +2399,7 @@ interface OperatorAuthedRouteChildren {
   OperatorAuthedBroadcastRoute: typeof OperatorAuthedBroadcastRoute
   OperatorAuthedCommunityRoute: typeof OperatorAuthedCommunityRoute
   OperatorAuthedCronsRoute: typeof OperatorAuthedCronsRoute
+  OperatorAuthedHealthRoute: typeof OperatorAuthedHealthRoute
   OperatorAuthedLeadsRoute: typeof OperatorAuthedLeadsRoute
   OperatorAuthedLogRoute: typeof OperatorAuthedLogRoute
   OperatorAuthedMigrationRoute: typeof OperatorAuthedMigrationRoute
@@ -2398,6 +2418,7 @@ const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedBroadcastRoute: OperatorAuthedBroadcastRoute,
   OperatorAuthedCommunityRoute: OperatorAuthedCommunityRoute,
   OperatorAuthedCronsRoute: OperatorAuthedCronsRoute,
+  OperatorAuthedHealthRoute: OperatorAuthedHealthRoute,
   OperatorAuthedLeadsRoute: OperatorAuthedLeadsRoute,
   OperatorAuthedLogRoute: OperatorAuthedLogRoute,
   OperatorAuthedMigrationRoute: OperatorAuthedMigrationRoute,

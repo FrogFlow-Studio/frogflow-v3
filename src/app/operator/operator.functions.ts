@@ -225,6 +225,12 @@ export const cronStatusFn = createServerFn({ method: "GET" }).handler(async () =
   return listCronStatus();
 });
 
+export const platformHealthFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  const { platformHealth } = await import("./platform-health.server");
+  return platformHealth();
+});
+
 export const setServedByFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ botId, servedBy: z.enum(["v1", "v2"]) }).parse(d))
   .handler(async ({ data }) => {
