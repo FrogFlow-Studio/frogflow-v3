@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { orderChatId } from "./order-chat";
 import { courseTimeline } from "./cohort";
 import { readSettings } from "./db.server";
 import { hwKey, parseHomework } from "./homework";
@@ -7,7 +8,7 @@ import { loadRuns } from "./runs.server";
 /**
  * Сегмент рассылки «ученики курса» (core/broadcasts/segments): все
  * ученики, отстающие, не сдавшие открытое задание, прошедшие курс — по
- * желанию в одном потоке. Только выданные заказы из Telegram: рассылка
+ * желанию в одном потоке. Только выданные заказы покупателей с настоящим чатом Telegram: рассылка
  * идёт ботом.
  */
 export type CourseAudience = "all" | "behind" | "homework" | "completed";
@@ -22,10 +23,7 @@ export async function courseSegmentMembers(
   if (!ctx.tenant.modules.courses) return new Set();
   const runs = (await loadRuns(ctx)).filter(
     (r) =>
-      r.productId === productId &&
-      r.order.status === "delivered" &&
-      r.order.platform === "telegram" &&
-      Number(r.order.telegram_id) > 0,
+      r.productId === productId && r.order.status === "delivered" && orderChatId(r.order) !== null,
   );
   const withTl = runs.map((r) => ({
     r,

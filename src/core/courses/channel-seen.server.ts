@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { orderChatId } from "./order-chat";
 import { pageAll } from "@/core/db/page";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serverFailure } from "@/lib/server-failure";
@@ -181,7 +182,7 @@ async function authorizedMembers(
       if (tl.expired || !tl.tariff.channel) continue;
       if (cohortId && tl.cohort?.id !== cohortId) continue;
       if (inv.member) ok.add(inv.member);
-      if (o.platform === "telegram" && Number(o.telegram_id) > 0) ok.add(Number(o.telegram_id));
+      if (orderChatId(o)) ok.add(orderChatId(o)!);
     }
   }
   return ok;

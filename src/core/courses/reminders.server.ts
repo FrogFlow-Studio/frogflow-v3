@@ -1,4 +1,5 @@
 import { env } from "@/config/env";
+import { orderChatId } from "./order-chat";
 import { updateSettingAtomic } from "@/core/settings/settings";
 import { storefrontBase } from "@/core/tenant/custom-domain";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -94,10 +95,7 @@ export async function courseReminders(
       )
     : new Map<string, string>();
 
-  const telegramOf = (r: (typeof runs)[number]) =>
-    r.order.platform === "telegram" && Number(r.order.telegram_id) > 0
-      ? Number(r.order.telegram_id)
-      : null;
+  const telegramOf = (r: (typeof runs)[number]) => orderChatId(r.order);
   /** Отметка до отправки; false — уже отмечено (другим прогоном) или сбой. */
   const mark = async (itemId: string, change: (run: CourseRun) => CourseRun | null) =>
     (await updateSettingAtomic(ctx, runKey(itemId), (raw) => {

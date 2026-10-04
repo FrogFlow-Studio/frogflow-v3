@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { orderChatId } from "./order-chat";
 import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { trySetSetting, updateSettingAtomic } from "@/core/settings/settings";
@@ -355,11 +356,7 @@ export async function revokeItemChannelDetailed(
   // не было, продавцу надо убрать человека самому.
   if (mark === "failed") return "failed";
   if (mark !== "written") return "none";
-  const who =
-    rec.member ??
-    (order.platform === "telegram" && Number(order.telegram_id) > 0
-      ? Number(order.telegram_id)
-      : null);
+  const who = rec.member ?? orderChatId(order);
   if (rec.link && access.revokeInvite) await access.revokeInvite(chat, rec.link).catch(() => {});
   if (!who) return "none";
   if (!access.kick) return "failed";

@@ -32,12 +32,20 @@ const course = (lives: ReturnType<typeof live>[], accessDays: number | null = nu
 
 // Москва, UTC+3: 19:00 по Москве = 16:00 UTC.
 function school(c: Course, platform = "telegram") {
+  // Instagram/WhatsApp-покупатель — синтетический отрицательный id, не чат Telegram.
+  const chatId = platform === "telegram" ? 555 : -555;
   const db = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
   db.tables.order_items = [
     { id: "item-1", order_id: 7, product_id: P, product_variant_id: V, name_snapshot: "Аквагрим" },
   ];
   db.tables.orders = [
-    { id: 7, status: "delivered", platform, telegram_id: 555, created_at: "2026-10-01T00:00:00Z" },
+    {
+      id: 7,
+      status: "delivered",
+      platform,
+      telegram_id: chatId,
+      created_at: "2026-10-01T00:00:00Z",
+    },
   ];
   db.tables.app_settings = [
     { bot_id: T, key: courseKey(P), value: JSON.stringify(c) },

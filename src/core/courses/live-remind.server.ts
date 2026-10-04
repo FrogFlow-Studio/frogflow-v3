@@ -1,4 +1,5 @@
 import { env } from "@/config/env";
+import { orderChatId } from "./order-chat";
 import { updateSettingAtomic } from "@/core/settings/settings";
 import { storefrontBase } from "@/core/tenant/custom-domain";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -97,10 +98,7 @@ export async function liveReminders(
             return JSON.stringify({ ...cur, liveReminded: [...new Set(next)] });
           })) === "written";
         if (!won) continue;
-        const tg =
-          r.order.platform === "telegram" && Number(r.order.telegram_id) > 0
-            ? Number(r.order.telegram_id)
-            : null;
+        const tg = orderChatId(r.order);
         if (!tg) {
           out.silent++;
           continue;

@@ -140,6 +140,7 @@ describe("перевод в другой поток", () => {
   it("ученик в чат не вступал — это не сбой; без бота при ссылке — сбой, но участник и ссылка помнятся честно", async () => {
     const a = setup();
     (a.db.tables.orders as Array<Record<string, unknown>>)[0]!.platform = "instagram";
+    (a.db.tables.orders as Array<Record<string, unknown>>)[0]!.telegram_id = -555;
     const slot = row(a.db, CHAT_SLOT.key("item-1"))!;
     slot.value = JSON.stringify({});
     const kick = { createInvite: async () => null, kick: async () => true };
