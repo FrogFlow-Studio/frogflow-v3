@@ -283,6 +283,26 @@ export const setZernioAccountsFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Отключить аккаунт Instagram/WhatsApp клиента (то же, что кнопка в его админке). */
+export const disconnectZernioAccountFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ botId, accountId: z.string().trim().min(1).max(100) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const { disconnectAccount } = await import("@/channels/zernio/connect.server");
+    const { requireTenant } = await import("@/core/tenant/resolve.server");
+    const tenant = await requireTenant({ by: "id", value: data.botId });
+    const r = await disconnectAccount(tenant, data.accountId);
+    await (
+      await impl()
+    ).logEvent(data.botId, "meta", {
+      zernio_account_disconnected: data.accountId,
+      zernio_in_zernio: r.inZernio,
+    });
+    return r;
+  });
+
 /** Профиль Zernio клиента и сверка его аккаунтов — то же, что кнопка в админке продавца. */
 export const syncZernioFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ botId }).parse(d))

@@ -167,6 +167,10 @@ export const ru = {
   "settings.ch.connectInstagram": "Подключить Instagram",
   "settings.ch.connectWhatsapp": "Подключить WhatsApp",
   "settings.ch.refresh": "Обновить список",
+  "settings.ch.disconnect": "Отключить",
+  "settings.ch.disconnectConfirm":
+    "Отключить {name}? Бот перестанет отвечать и писать в этом аккаунте, он будет отключён и в Zernio. Переписка, заказы и покупатели останутся. Чтобы вернуть аккаунт, подключите его заново.",
+  "settings.ch.disconnected": "Аккаунт отключён.",
   "settings.ch.updatedAt": "Обновлено {date}",
   // физические товары
   "settings.ful.title": "Физические товары: получение и оплата",
@@ -515,6 +519,10 @@ export const kk: SectionDict<typeof ru> = {
   "settings.ch.connectInstagram": "Instagram қосу",
   "settings.ch.connectWhatsapp": "WhatsApp қосу",
   "settings.ch.refresh": "Тізімді жаңарту",
+  "settings.ch.disconnect": "Ажырату",
+  "settings.ch.disconnectConfirm":
+    "{name} аккаунтын ажыратасыз ба? Бот бұл аккаунтта жауап беруді және жазуды тоқтатады, ол Zernio-да да ажыратылады. Хат алмасу, тапсырыстар және сатып алушылар сақталады. Аккаунтты қайтару үшін оны қайта қосыңыз.",
+  "settings.ch.disconnected": "Аккаунт ажыратылды.",
   "settings.ch.updatedAt": "Жаңартылды: {date}",
   "settings.ful.title": "Физикалық тауарлар: алу және төлем",
   "settings.ful.pickup": "Өзі алып кету",
@@ -856,6 +864,10 @@ export const en: SectionDict<typeof ru> = {
   "settings.ch.connectInstagram": "Connect Instagram",
   "settings.ch.connectWhatsapp": "Connect WhatsApp",
   "settings.ch.refresh": "Refresh list",
+  "settings.ch.disconnect": "Disconnect",
+  "settings.ch.disconnectConfirm":
+    "Disconnect {name}? The bot will stop replying and sending in this account, and it will be disconnected in Zernio too. Conversations, orders and customers stay. To bring the account back, connect it again.",
+  "settings.ch.disconnected": "Account disconnected.",
   "settings.ch.updatedAt": "Updated {date}",
   "settings.ful.title": "Physical goods: fulfilment and payment",
   "settings.ful.pickup": "Pickup",
@@ -1199,6 +1211,10 @@ export const uz: SectionDict<typeof ru> = {
   "settings.ch.connectInstagram": "Instagramni ulash",
   "settings.ch.connectWhatsapp": "WhatsAppni ulash",
   "settings.ch.refresh": "Ro‘yxatni yangilash",
+  "settings.ch.disconnect": "Uzish",
+  "settings.ch.disconnectConfirm":
+    "{name} akkauntini uzasizmi? Bot bu akkauntda javob berishni va yozishni to‘xtatadi, u Zernio’da ham uziladi. Yozishmalar, buyurtmalar va xaridorlar saqlanadi. Akkauntni qaytarish uchun uni qayta ulang.",
+  "settings.ch.disconnected": "Akkaunt uzildi.",
   "settings.ch.updatedAt": "Yangilandi: {date}",
   "settings.ful.title": "Jismoniy mahsulotlar: olish va to‘lov",
   "settings.ful.pickup": "Olib ketish",

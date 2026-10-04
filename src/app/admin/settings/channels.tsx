@@ -2,6 +2,7 @@ import { useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   connectTelegramAdminFn,
+  disconnectZernioAccountFn,
   syncZernioAccountsFn,
   zernioConnectLinkFn,
   zernioStateFn,
@@ -136,6 +137,13 @@ export function ChannelsCard({
     );
     await router.invalidate();
   });
+  const owner = shop.role === "owner";
+  const disconnect = useAction(async (id: string, name: string) => {
+    if (!window.confirm(t("settings.ch.disconnectConfirm", { name }))) return;
+    await disconnectZernioAccountFn({ data: { accountId: id } });
+    setNote(t("settings.ch.disconnected"));
+    await router.invalidate();
+  });
   // Возврат из авторизации Zernio: подтянуть аккаунты и убрать метку из адреса.
   useEffect(() => {
     if (!window.location.search.includes("zernio=connected")) return;
@@ -176,15 +184,43 @@ export function ChannelsCard({
                   {a.username ? `@${a.username}` : (a.name ?? a.id)}
                 </span>
               </span>
-              <Badge tone={a.expired ? "warn" : "ok"}>
-                {a.expired ? t("settings.ch.expired") : t("settings.ch.working")}
-              </Badge>
+              <span className="flex items-center gap-2">
+                <Badge tone={a.expired ? "warn" : "ok"}>
+                  {a.expired ? t("settings.ch.expired") : t("settings.ch.working")}
+                </Badge>
+                {owner && (
+                  <button
+                    type="button"
+                    className="btn-secondary text-xs"
+                    disabled={disconnect.busy}
+                    onClick={() =>
+                      void disconnect
+                        .run(a.id, a.username ? `@${a.username}` : (a.name ?? a.id))
+                        .catch(() => {})
+                    }
+                  >
+                    {t("settings.ch.disconnect")}
+                  </button>
+                )}
+              </span>
             </li>
           ))}
           {zernio.manualIds.map((id) => (
             <li key={id} className="flex items-center justify-between gap-2 px-3 py-2">
               <span className="text-muted">{t("settings.ch.account", { id })}</span>
-              <Badge>{t("settings.ch.byOperator")}</Badge>
+              <span className="flex items-center gap-2">
+                <Badge>{t("settings.ch.byOperator")}</Badge>
+                {owner && (
+                  <button
+                    type="button"
+                    className="btn-secondary text-xs"
+                    disabled={disconnect.busy}
+                    onClick={() => void disconnect.run(id, id).catch(() => {})}
+                  >
+                    {t("settings.ch.disconnect")}
+                  </button>
+                )}
+              </span>
             </li>
           ))}
         </ul>
@@ -227,7 +263,7 @@ export function ChannelsCard({
           })}
         </p>
       )}
-      <ErrorBox error={connect.error ?? sync.error} />
+      <ErrorBox error={connect.error ?? sync.error ?? disconnect.error} />
     </Card>
   );
 }

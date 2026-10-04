@@ -277,6 +277,15 @@ export async function listAccounts(profileId?: string): Promise<ZernioAccount[]>
   return r.accounts ?? [];
 }
 
+/**
+ * Отключить аккаунт в Zernio (DELETE /accounts/{id}). Подключить его снова
+ * можно только заново через авторизацию, id при этом будет другой. Повторный
+ * вызов для уже отключённого даёт 404; сам запрос не повторяем.
+ */
+export async function deleteAccount(accountId: string): Promise<void> {
+  await request(`/accounts/${encodeURIComponent(accountId)}`, { method: "DELETE" });
+}
+
 export async function readWebhookSettings(): Promise<ZernioWebhookRecord[]> {
   const r = await request<{ webhooks?: ZernioWebhookRecord[] }>("/webhooks/settings");
   return r.webhooks ?? [];

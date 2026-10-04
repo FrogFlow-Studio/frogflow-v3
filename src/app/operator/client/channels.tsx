@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   adoptZernioProfileFn,
   clientZernioInboxFn,
+  disconnectZernioAccountFn,
   unmatchedZernioFn,
   setZernioAccountsFn,
   syncZernioFn,
@@ -24,6 +25,16 @@ export function ZernioCard({ c, onDone }: { c: C; onDone: () => Promise<void> })
   });
   const adopt = useAction(async (profileId: string) => {
     setResult(await adoptZernioProfileFn({ data: { botId: c.id, profileId } }));
+    await onDone();
+  });
+  const off = useAction(async (id: string, name: string) => {
+    if (
+      !window.confirm(
+        `Отключить ${name}? Аккаунт отключится и в Zernio, бот перестанет в нём отвечать. Переписка, заказы и покупатели останутся. Вернуть аккаунт можно только новым подключением.`,
+      )
+    )
+      return;
+    await disconnectZernioAccountFn({ data: { botId: c.id, accountId: id } });
     await onDone();
   });
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString("ru") : "—");
@@ -65,6 +76,7 @@ export function ZernioCard({ c, onDone }: { c: C; onDone: () => Promise<void> })
               <th>Аккаунт</th>
               <th>Состояние</th>
               <th>Событие</th>
+              <th />
             </tr>
           </thead>
           <tbody>
@@ -83,6 +95,19 @@ export function ZernioCard({ c, onDone }: { c: C; onDone: () => Promise<void> })
                   )}
                 </td>
                 <td className="text-muted">{when(a.lastEventAt)}</td>
+                <td>
+                  <button
+                    className="btn-secondary text-xs"
+                    disabled={off.busy}
+                    onClick={() =>
+                      void off
+                        .run(a.id, a.username ? `@${a.username}` : (a.name ?? a.id))
+                        .catch(() => {})
+                    }
+                  >
+                    Отключить
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -96,7 +121,7 @@ export function ZernioCard({ c, onDone }: { c: C; onDone: () => Promise<void> })
             .join(", ")}
         </p>
       )}
-      <ErrorBox error={sync.error} />
+      <ErrorBox error={sync.error ?? off.error} />
       {c.zernio.seenProfileId && c.zernio.seenProfileId !== c.zernio.profileId && (
         <form
           className="mt-4 space-y-3 border-t border-line pt-4"

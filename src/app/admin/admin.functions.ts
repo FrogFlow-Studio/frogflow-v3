@@ -1470,6 +1470,19 @@ export const syncZernioAccountsFn = createServerFn({ method: "POST" }).handler(a
   return r;
 });
 
+/**
+ * Отключить Instagram или WhatsApp от магазина (только владелец): бот
+ * перестаёт отвечать и слать в этот аккаунт, можно подключить другой.
+ * Переписка, заказы и покупатели остаются.
+ */
+export const disconnectZernioAccountFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ accountId: z.string().trim().min(1).max(100) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await adminOwner();
+    const { disconnectAccount } = await import("@/channels/zernio/connect.server");
+    return disconnectAccount(ctx.tenant, data.accountId);
+  });
+
 /** Продавец подключает бота сам: токен → getMe → шифрование → вебхук на эту платформу. */
 export const connectTelegramAdminFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>

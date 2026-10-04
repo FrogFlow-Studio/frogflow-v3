@@ -39,6 +39,7 @@ export const ru = {
   "err.admin.orderNotFound": "Заказ не найден",
   "err.admin.unknownTimezone": "Неизвестный часовой пояс",
   "err.admin.channelOff": "Этот канал не подключён к вашему тарифу — оставьте заявку в «Модулях».",
+  "err.admin.accountUnknown": "Этого аккаунта нет в списке подключённых — обновите страницу.",
   "err.admin.noAnthropicKey": "На платформе не задан ключ Anthropic.",
   // скидки
   "err.admin.percentMax": "Процент не больше 100.",
@@ -199,6 +200,7 @@ export const kk: SectionDict<typeof ru> = {
   "err.admin.unknownTimezone": "Белгісіз уақыт белдеуі",
   "err.admin.channelOff":
     "Бұл арна тарифіңізге қосылмаған — «Модульдер» бөлімінде өтінім қалдырыңыз.",
+  "err.admin.accountUnknown": "Бұл аккаунт қосылғандар тізімінде жоқ — бетті жаңартыңыз.",
   "err.admin.noAnthropicKey": "Платформада Anthropic кілті орнатылмаған.",
   "err.admin.percentMax": "Пайыз 100-ден аспауы керек.",
   "err.admin.codeTaken": "Мұндай код бұрыннан бар.",
@@ -355,6 +357,7 @@ export const en: SectionDict<typeof ru> = {
   "err.admin.unknownTimezone": "Unknown time zone",
   "err.admin.channelOff":
     "This channel is not included in your plan — send a request in “Modules”.",
+  "err.admin.accountUnknown": "This account is not in the connected list — refresh the page.",
   "err.admin.noAnthropicKey": "No Anthropic key is set on the platform.",
   "err.admin.percentMax": "The percentage cannot exceed 100.",
   "err.admin.codeTaken": "This code already exists.",
@@ -511,6 +514,7 @@ export const uz: SectionDict<typeof ru> = {
   "err.admin.unknownTimezone": "Nomaʼlum vaqt mintaqasi",
   "err.admin.channelOff":
     "Bu kanal tarifingizga ulanmagan — «Modullar» boʻlimida soʻrov qoldiring.",
+  "err.admin.accountUnknown": "Bu akkaunt ulanganlar ro‘yxatida yo‘q — sahifani yangilang.",
   "err.admin.noAnthropicKey": "Platformada Anthropic kaliti koʻrsatilmagan.",
   "err.admin.percentMax": "Foiz 100 dan oshmasligi kerak.",
   "err.admin.codeTaken": "Bunday kod allaqachon mavjud.",
