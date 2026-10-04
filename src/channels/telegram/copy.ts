@@ -140,6 +140,10 @@ export type Msg = {
   birthdaySaved: string;
   fulfillmentDateInvalid: string;
   fulfillmentDateTooEarly: (minDate: string) => string;
+  /** Выбранный день нерабочий: покупателю — ближайшая рабочая дата. */
+  fulfillmentDateClosed: (nextDate: string) => string;
+  /** Строка под вопросом о дате: когда выдачи нет (дни недели и даты). */
+  fulfillmentClosedNote: (list: string) => string;
   deliveryZonePrompt: string;
   addressPrompt: string;
   fulfillmentNotePrompt: string;
@@ -518,6 +522,8 @@ const ru: Msg = {
     `📅 На какую дату? Напишите в формате ДД.ММ.ГГГГ. Ближайшая возможная: ${d}.`,
   fulfillmentDateInvalid: "Не разобрал дату. Формат: ДД.ММ.ГГГГ, например 05.03.2026.",
   fulfillmentDateTooEarly: (d) => `Так быстро не успеем. Ближайшая дата: ${d}.`,
+  fulfillmentDateClosed: (d) => `В этот день выдачи нет. Ближайшая дата: ${d}.`,
+  fulfillmentClosedNote: (list) => `Выдачи нет: ${list}.`,
   fulfillmentSlotPrompt: "🕒 В какое время удобно?",
   approvalAskChanges: "✏️ Напишите одним сообщением, что поправить.",
   approvalChangesSent: "Передал продавцу — он свяжется с вами 🙌",
@@ -649,6 +655,8 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  fulfillmentDateClosed: (d) => `Бұл күні беру жоқ. Ең жақын күн: ${d}.`,
+  fulfillmentClosedNote: (list) => `Беру жоқ: ${list}.`,
   lowStockLabel: (n) => `⚠️ Қалды ${n} дана`,
   preorderLabel: (from) =>
     `🕒 Алдын ала тапсырыс: тауар әзірге қоймада жоқ${from ? `, ${preorderDate(from, "kk")} күнінен бастап жіберіледі` : ", жіберу мерзімін нақтылаймыз"}`,
@@ -875,6 +883,8 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  fulfillmentDateClosed: (d) => `There is no handover on that day. The nearest date: ${d}.`,
+  fulfillmentClosedNote: (list) => `No handover: ${list}.`,
   lowStockLabel: (n) => `⚠️ Only ${n} left`,
   preorderLabel: (from) =>
     `🕒 Pre-order: not in stock yet${from ? `, ships from ${preorderDate(from, "en")}` : ", we will confirm the shipping date"}`,
@@ -1128,6 +1138,8 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  fulfillmentDateClosed: (d) => `Bu kuni topshirish yo‘q. Eng yaqin sana: ${d}.`,
+  fulfillmentClosedNote: (list) => `Topshirish yo‘q: ${list}.`,
   lowStockLabel: (n) => `⚠️ ${n} dona qoldi`,
   preorderLabel: (from) =>
     `🕒 Oldindan buyurtma: mahsulot hozircha omborda yo‘q${from ? `, ${preorderDate(from, "uz")} dan boshlab jo‘natiladi` : ", jo‘natish muddatini aniqlaymiz"}`,

@@ -1537,7 +1537,27 @@ export const saveSettingsFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await adminOwner();
     const { setSetting } = await import("@/core/settings/settings");
-    for (const [k, v] of Object.entries(data)) await setSetting(ctx, k, v);
+    // Нерабочие дни выдачи пишутся в каноничном виде: прошедшие отрезки уходят,
+    // переполнение — отказ (мусор отсеивает разбор).
+    const { parseClosedWeekdays, prepareClosedDates, MAX_CLOSED_ENTRIES } =
+      await import("@/core/fulfillment/closed-days");
+    const out: Record<string, string> = { ...data };
+    if (data.fulfillment_closed_weekdays !== undefined)
+      out.fulfillment_closed_weekdays = parseClosedWeekdays(data.fulfillment_closed_weekdays).join(
+        ",",
+      );
+    if (data.fulfillment_closed_dates !== undefined) {
+      const { todayInTz } = await import("@/core/fulfillment/pure");
+      const r = prepareClosedDates(data.fulfillment_closed_dates, todayInTz(ctx.timezone));
+      if (!r.ok) {
+        const { adminTFor } = await import("./locale.server");
+        throw shownError(
+          (await adminTFor(ctx))("settings.ful.closedTooMany", { max: MAX_CLOSED_ENTRIES }),
+        );
+      }
+      out.fulfillment_closed_dates = r.value;
+    }
+    for (const [k, v] of Object.entries(out)) await setSetting(ctx, k, v);
     return { ok: true };
   });
 

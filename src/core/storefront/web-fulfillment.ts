@@ -5,10 +5,12 @@ import type { Money } from "@/core/money/money";
 import {
   activeDeliveryZones,
   fulfillmentSettings,
-  maxLeadTimeDaysInCart,
+  checkFulfillmentDate,
+  earliestFulfillmentDate,
   zoneFee,
 } from "@/core/fulfillment/fulfillment";
-import { addDaysToIso, todayInTz } from "@/core/fulfillment/pure";
+import { closedRules, type ClosedRange } from "@/core/fulfillment/closed-days";
+import { todayInTz } from "@/core/fulfillment/pure";
 import { fulfillmentSlots, withSlot } from "@/core/fulfillment/slots";
 
 /**
@@ -35,6 +37,9 @@ export type WebFulfillmentOptions = {
   today: string;
   /** Слоты получения; пусто — только дата. */
   slots: string[];
+  /** Нерабочие дни недели (1 — пн … 7 — вс) и отрезки дат: форма подсказывает, сервер отклоняет. */
+  closedWeekdays: number[];
+  closedRanges: ClosedRange[];
 };
 
 export async function webFulfillmentOptions(
@@ -43,6 +48,7 @@ export async function webFulfillmentOptions(
 ): Promise<WebFulfillmentOptions> {
   const fs = await fulfillmentSettings(ctx);
   const zones = fs.delivery ? await activeDeliveryZones(ctx) : [];
+  const rules = await closedRules(ctx);
   return {
     pickup: fs.pickup,
     delivery: fs.delivery,
@@ -55,13 +61,16 @@ export async function webFulfillmentOptions(
     ),
     today: todayInTz(ctx.timezone),
     slots: await fulfillmentSlots(ctx),
+    closedWeekdays: rules.weekdays,
+    closedRanges: rules.ranges,
   };
 }
 
 export type WebFulfillmentCheck =
   | { ok: true; input: FulfillmentInput }
   | { ok: false; reason: "missing" | "type" | "date" | "slot" | "zone" | "address" }
-  | { ok: false; reason: "date_early"; minDate: string };
+  | { ok: false; reason: "date_early"; minDate: string }
+  | { ok: false; reason: "date_closed"; nextDate: string };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -82,8 +91,16 @@ export async function resolveWebFulfillment(
   const fs = await fulfillmentSettings(ctx);
   if (req.type === "pickup" ? !fs.pickup : !fs.delivery) return { ok: false, reason: "type" };
   if (!validIsoDate(req.date)) return { ok: false, reason: "date" };
-  const minDate = addDaysToIso(todayInTz(ctx.timezone), await maxLeadTimeDaysInCart(ctx, customer));
-  if (req.date < minDate) return { ok: false, reason: "date_early", minDate };
+  const rules = await closedRules(ctx);
+  const date = checkFulfillmentDate(
+    req.date,
+    await earliestFulfillmentDate(ctx, customer, rules),
+    rules,
+  );
+  if (!date.ok)
+    return date.reason === "early"
+      ? { ok: false, reason: "date_early", minDate: date.minDate }
+      : { ok: false, reason: "date_closed", nextDate: date.nextDate };
   const note = req.note?.trim().slice(0, 500) || null;
   // Слот — только из списка магазина; есть слоты — без слота нельзя.
   const slots = await fulfillmentSlots(ctx);

@@ -9,6 +9,7 @@ import { useStorefrontLocale } from "@/app/storefront/locale";
 import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
 import { formatMoney } from "@/core/money/money";
 import { Empty, ErrorBox, Field, useAction } from "@/app/ui";
+import { describeClosed, isClosedDay } from "@/core/fulfillment/closed-days";
 
 export const Route = createFileRoute("/s/$slug/checkout")({
   loader: ({ params }) => webCheckoutInfoFn({ data: { slug: params.slug } }),
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/s/$slug/checkout")({
 function CheckoutPage() {
   const { slug } = Route.useParams();
   const info = Route.useLoaderData();
-  const { t } = useStorefrontLocale();
+  const { t, locale } = useStorefrontLocale();
   const cart = useCart();
   // Вошёл через Telegram — заказ попадёт к тому же покупателю, что и в боте.
   const login = useTgLogin(slug);
@@ -184,8 +185,36 @@ function CheckoutPage() {
               </div>
             )}
             <Field label={t("checkout.fulfillment.date")} hint={t("checkout.fulfillment.dateHint")}>
-              <input className="input" name="date" type="date" required min={ff.today} />
+              <input
+                className="input"
+                name="date"
+                type="date"
+                required
+                min={ff.today}
+                onChange={(e) => {
+                  // Нерабочий день: браузер не умеет гасить отдельные даты, поэтому — своим сообщением.
+                  e.currentTarget.setCustomValidity(
+                    e.currentTarget.value &&
+                      isClosedDay(e.currentTarget.value, {
+                        weekdays: ff.closedWeekdays,
+                        ranges: ff.closedRanges,
+                      })
+                      ? t("checkout.fulfillment.closedPick")
+                      : "",
+                  );
+                }}
+              />
             </Field>
+            {(ff.closedWeekdays.length > 0 || ff.closedRanges.length > 0) && (
+              <p className="text-xs text-muted">
+                {t("checkout.fulfillment.closedNote", {
+                  list: describeClosed(
+                    { weekdays: ff.closedWeekdays, ranges: ff.closedRanges },
+                    locale,
+                  ),
+                })}
+              </p>
+            )}
             {ff.slots.length > 0 && (
               <Field label={t("checkout.fulfillment.slot")}>
                 <select className="input" name="slot" required defaultValue="">

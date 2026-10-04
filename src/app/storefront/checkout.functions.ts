@@ -204,6 +204,10 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
           const { isoToDisplay } = await import("@/core/fulfillment/pure");
           throw shownError(t("checkout.error.dateEarly", { date: isoToDisplay(r.minDate) }));
         }
+        case "date_closed": {
+          const { isoToDisplay } = await import("@/core/fulfillment/pure");
+          throw shownError(t("checkout.error.dateClosed", { date: isoToDisplay(r.nextDate) }));
+        }
         case "zone":
           throw shownError(t("checkout.error.zone"));
         case "address":

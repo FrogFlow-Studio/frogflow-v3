@@ -4,6 +4,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { resolveWebFulfillment, webFulfillmentOptions } from "./web-fulfillment";
 import { addDaysToIso, todayInTz } from "@/core/fulfillment/pure";
+import { isoWeekday } from "@/core/fulfillment/closed-days";
 
 const TZ = "Asia/Almaty";
 const customer = { userKey: "web_x", telegramId: -5, platform: "web", state: {} } as Customer;
@@ -159,3 +160,51 @@ describe("получение физического заказа с сайта",
     });
   });
 });
+
+describe("нерабочие дни на сайте", () => {
+  const closed = { fulfillment_closed_weekdays: "6,7", fulfillment_closed_dates: "2099-12-31" };
+
+  it("форма получает нерабочие дни недели и отрезки", async () => {
+    const o = await webFulfillmentOptions(setup({ settings: closed }), "KZ");
+    expect(o.closedWeekdays).toEqual([6, 7]);
+    expect(o.closedRanges).toEqual([{ from: "2099-12-31", to: "2099-12-31" }]);
+    const empty = await webFulfillmentOptions(setup(), "KZ");
+    expect(empty.closedWeekdays).toEqual([]);
+    expect(empty.closedRanges).toEqual([]);
+  });
+
+  it("введённая вручную дата выходного и праздника отклонена с ближайшей рабочей", async () => {
+    const holiday = addDaysToIso(today, 12);
+    const ctx = setup({
+      settings: { fulfillment_closed_weekdays: "6,7", fulfillment_closed_dates: holiday },
+    });
+    const sat = nextWeekday(6);
+    expect(await resolveWebFulfillment(ctx, customer, { type: "pickup", date: sat }, "KZ")).toEqual(
+      { ok: false, reason: "date_closed", nextDate: addDaysToIso(sat, 2) },
+    );
+    const r = await resolveWebFulfillment(ctx, customer, { type: "pickup", date: holiday }, "KZ");
+    expect(r).toMatchObject({ ok: false, reason: "date_closed" });
+    const next = (r as { nextDate: string }).nextDate;
+    expect(next > holiday).toBe(true);
+    expect(
+      (await resolveWebFulfillment(ctx, customer, { type: "pickup", date: next }, "KZ")).ok,
+    ).toBe(true);
+  });
+
+  it("срок изготовления идёт по рабочим дням", async () => {
+    const ctx = setup({ settings: { fulfillment_closed_weekdays: "6,7" }, leadDays: 1 });
+    const r = await resolveWebFulfillment(ctx, customer, { type: "pickup", date: today }, "KZ");
+    expect(r).toMatchObject({ ok: false, reason: "date_early" });
+    const min = (r as { minDate: string }).minDate;
+    expect([6, 7]).not.toContain(isoWeekday(min));
+    const ok = await resolveWebFulfillment(ctx, customer, { type: "pickup", date: min }, "KZ");
+    expect(ok.ok).toBe(true);
+  });
+});
+
+/** Ближайший день недели ISO (6 — суббота) не раньше чем через 10 дней: дальше срока изготовления. */
+function nextWeekday(weekday: number): string {
+  let d = addDaysToIso(today, 10);
+  while (isoWeekday(d) !== weekday) d = addDaysToIso(d, 1);
+  return d;
+}

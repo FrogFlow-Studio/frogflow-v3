@@ -10,6 +10,12 @@ import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
 import { parseSlots } from "@/core/fulfillment/slots";
+import {
+  parseClosedDates,
+  parseClosedWeekdays,
+  serializeClosedDates,
+  unparsedClosedDates,
+} from "@/core/fulfillment/closed-days";
 
 export function FulfillmentCard({ settings }: { settings: Record<string, string> }) {
   const router = useRouter();
@@ -18,6 +24,11 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
   const [saved, setSaved] = useState(false);
   const save = useAction(async (f: FormData) => {
     setSaved(false);
+    const closed = [1, 2, 3, 4, 5, 6, 7].filter((d) => f.get(`closed${d}`) === "on");
+    if (closed.length === 7) throw new Error(t("settings.ful.closedAll"));
+    const datesRaw = String(f.get("closed_dates") ?? "");
+    const bad = unparsedClosedDates(datesRaw);
+    if (bad.length) throw new Error(`${t("settings.ful.closedDates")}: ${bad.join("; ")}`);
     await saveSettingsFn({
       data: {
         fulfillment_pickup_enabled: f.get("pickup") === "on" ? "true" : "false",
@@ -26,6 +37,8 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
         deposit_percent: String(f.get("deposit_percent") || "30"),
         // Слоты — по строке, чистит parseSlots (core/fulfillment/slots).
         fulfillment_slots: parseSlots(String(f.get("slots") ?? "")).join("\n"),
+        fulfillment_closed_weekdays: closed.join(","),
+        fulfillment_closed_dates: serializeClosedDates(parseClosedDates(datesRaw)),
       },
     });
     setSaved(true);
@@ -90,6 +103,31 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
             rows={3}
             placeholder={"10:00–12:00\n12:00–14:00"}
             defaultValue={settings.fulfillment_slots ?? ""}
+          />
+        </Field>
+        <Field label={t("settings.ful.closedWeekdays")}>
+          <div className="flex flex-wrap gap-3 text-sm">
+            {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+              <label key={d} className="flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  name={`closed${d}`}
+                  defaultChecked={parseClosedWeekdays(
+                    settings.fulfillment_closed_weekdays,
+                  ).includes(d)}
+                />{" "}
+                {t(`settings.ful.wd${d}` as Parameters<typeof t>[0])}
+              </label>
+            ))}
+          </div>
+        </Field>
+        <Field label={t("settings.ful.closedDates")} hint={t("settings.ful.closedDatesHint")}>
+          <textarea
+            className="input"
+            name="closed_dates"
+            rows={3}
+            placeholder={"31.12.2026\n30.12.2026–03.01.2027"}
+            defaultValue={settings.fulfillment_closed_dates ?? ""}
           />
         </Field>
         <div className="flex items-center gap-3">

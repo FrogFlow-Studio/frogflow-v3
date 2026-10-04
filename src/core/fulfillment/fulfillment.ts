@@ -4,7 +4,14 @@ import type { Customer } from "@/core/customers/customers";
 import { getSettingsStrict } from "@/core/settings/settings";
 import { currencyForCountry, defaultCountryCode, convertForTenant } from "@/core/pricing/pricing";
 import type { Money } from "@/core/money/money";
-import { amountDue, type PaymentMode } from "./pure";
+import { amountDue, todayInTz, type PaymentMode } from "./pure";
+import {
+  closedRules,
+  earliestOpenDate,
+  isClosedDay,
+  nextOpenDay,
+  type ClosedRules,
+} from "./closed-days";
 import { recordStockChange, type StockChange, type StockMeta } from "@/core/catalog/stock-history";
 
 export type FulfillmentSettings = {
@@ -55,6 +62,33 @@ export async function maxLeadTimeDaysInCart(
     if (typeof d === "number" && d > max) max = d;
   }
   return max;
+}
+
+/** Самая ранняя дата выдачи: срок изготовления корзины и нерабочие дни магазина (одно правило для бота, Direct/WhatsApp и сайта). */
+export async function earliestFulfillmentDate(
+  ctx: TenantContext,
+  customer: Customer,
+  rules?: ClosedRules,
+): Promise<string> {
+  const days = await maxLeadTimeDaysInCart(ctx, customer);
+  return earliestOpenDate(todayInTz(ctx.timezone), days, rules ?? (await closedRules(ctx)));
+}
+
+export type FulfillmentDateCheck =
+  | { ok: true }
+  | { ok: false; reason: "early"; minDate: string }
+  | { ok: false; reason: "closed"; nextDate: string };
+
+/** Проверка выбранной даты: не раньше `minDate` и не в нерабочий день; `nextDate` — ближайшая рабочая после неё. */
+export function checkFulfillmentDate(
+  iso: string,
+  minDate: string,
+  rules: ClosedRules,
+): FulfillmentDateCheck {
+  if (iso < minDate) return { ok: false, reason: "early", minDate };
+  if (isClosedDay(iso, rules))
+    return { ok: false, reason: "closed", nextDate: nextOpenDay(iso, rules) };
+  return { ok: true };
 }
 
 export type DeliveryZone = { id: string; name: string; price: number };

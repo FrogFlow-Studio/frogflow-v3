@@ -124,16 +124,12 @@ import { buildPaymentUrl } from "@/core/payments/robokassa";
 import {
   activeDeliveryZones,
   fulfillmentSettings,
-  maxLeadTimeDaysInCart,
+  checkFulfillmentDate,
+  earliestFulfillmentDate,
   zoneFee,
 } from "@/core/fulfillment/fulfillment";
-import {
-  addDaysToIso,
-  isoToDisplay,
-  matchFulfillmentType,
-  parseDateInput,
-  todayInTz,
-} from "@/core/fulfillment/pure";
+import { closedRules, describeClosed, hasClosedDays } from "@/core/fulfillment/closed-days";
+import { isoToDisplay, matchFulfillmentType, parseDateInput } from "@/core/fulfillment/pure";
 import { serverFailure } from "@/lib/server-failure";
 
 const PAGE = 5;
@@ -372,12 +368,19 @@ async function handleMessage(
     }
     if (mode === "awaiting_fulfillment_date") {
       const iso = parseDateInput(text);
+      const rules = await closedRules(ctx);
       const minIso =
         customer.state.checkout_min_fulfillment_date ??
-        addDaysToIso(todayInTz(ctx.timezone), await maxLeadTimeDaysInCart(ctx, customer));
+        (await earliestFulfillmentDate(ctx, customer, rules));
       if (!iso) return void (await send(b, b.m.fulfillmentDateInvalid));
-      if (iso < minIso)
-        return void (await send(b, b.m.fulfillmentDateTooEarly(isoToDisplay(minIso))));
+      const check = checkFulfillmentDate(iso, minIso, rules);
+      if (!check.ok)
+        return void (await send(
+          b,
+          check.reason === "early"
+            ? b.m.fulfillmentDateTooEarly(isoToDisplay(check.minDate))
+            : b.m.fulfillmentDateClosed(isoToDisplay(check.nextDate)),
+        ));
       b.customer = await setState(ctx, customer, {
         ...customer.state,
         checkout_fulfillment_at: iso,
@@ -1185,14 +1188,20 @@ async function proceedToFulfillmentOrPlace(b: Bot, countryCode: string) {
 }
 
 async function askFulfillmentDate(b: Bot) {
-  const minDays = await maxLeadTimeDaysInCart(b.ctx, b.customer);
-  const minIso = addDaysToIso(todayInTz(b.ctx.timezone), minDays);
+  const rules = await closedRules(b.ctx);
+  const minIso = await earliestFulfillmentDate(b.ctx, b.customer, rules);
   b.customer = await setState(b.ctx, b.customer, {
     ...b.customer.state,
     mode: "awaiting_fulfillment_date",
     checkout_min_fulfillment_date: minIso,
   });
-  await send(b, b.m.fulfillmentDatePrompt(isoToDisplay(minIso)));
+  await send(
+    b,
+    b.m.fulfillmentDatePrompt(isoToDisplay(minIso)) +
+      (hasClosedDays(rules)
+        ? `\n${b.m.fulfillmentClosedNote(describeClosed(rules, b.locale))}`
+        : ""),
+  );
 }
 
 /** Ответ покупателя на фото готового заказа: в таймлайн и продавцу (core/orders/approval). */

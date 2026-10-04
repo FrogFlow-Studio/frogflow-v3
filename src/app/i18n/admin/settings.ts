@@ -239,6 +239,20 @@ export const ru = {
   "settings.ful.slots": "Слоты времени получения",
   "settings.ful.slotsHint":
     "По строке: «10:00–12:00». Покупатель выберет время после даты. Пусто — только дата.",
+  "settings.ful.closedWeekdays": "Нерабочие дни недели",
+  "settings.ful.wd1": "Пн",
+  "settings.ful.wd2": "Вт",
+  "settings.ful.wd3": "Ср",
+  "settings.ful.wd4": "Чт",
+  "settings.ful.wd5": "Пт",
+  "settings.ful.wd6": "Сб",
+  "settings.ful.wd7": "Вс",
+  "settings.ful.closedDates": "Нерабочие даты",
+  "settings.ful.closedDatesHint":
+    "По строке: «31.12.2026» или отрезок «30.12.2026–03.01.2027». В эти дни покупатель не выберет получение, а срок изготовления считается только по рабочим дням. Пусто — выдача каждый день.",
+  "settings.ful.closedAll": "Нельзя отметить все семь дней нерабочими.",
+  "settings.ful.closedTooMany":
+    "Нерабочих дат не больше {max}: удалите прошедшие или объедините в отрезки.",
   // зоны доставки
   "settings.zones.title": "Зоны доставки",
   "settings.zones.add": "+ Зона",
@@ -646,6 +660,20 @@ export const kk: SectionDict<typeof ru> = {
   "settings.ful.slots": "Алу уақытының слоттары",
   "settings.ful.slotsHint":
     "Әр жолға біреу: «10:00–12:00». Сатып алушы күннен кейін уақытты таңдайды. Бос — тек күн.",
+  "settings.ful.closedWeekdays": "Демалыс күндері",
+  "settings.ful.wd1": "Дс",
+  "settings.ful.wd2": "Сс",
+  "settings.ful.wd3": "Ср",
+  "settings.ful.wd4": "Бс",
+  "settings.ful.wd5": "Жм",
+  "settings.ful.wd6": "Сб",
+  "settings.ful.wd7": "Жс",
+  "settings.ful.closedDates": "Демалыс даталары",
+  "settings.ful.closedDatesHint":
+    "Әр жолға біреу: «31.12.2026» немесе аралық «30.12.2026–03.01.2027». Бұл күндері сатып алушы алуды таңдай алмайды, дайындау мерзімі тек жұмыс күндерімен есептеледі. Бос — күн сайын беріледі.",
+  "settings.ful.closedAll": "Жеті күннің бәрін демалыс етуге болмайды.",
+  "settings.ful.closedTooMany":
+    "Демалыс даталары {max}-тен көп болмауы керек: өткендерін жойыңыз немесе аралыққа біріктіріңіз.",
   "settings.zones.title": "Жеткізу аймақтары",
   "settings.zones.add": "+ Аймақ",
   "settings.zones.intro":
@@ -1047,6 +1075,20 @@ export const en: SectionDict<typeof ru> = {
   "settings.ful.slots": "Time slots",
   "settings.ful.slotsHint":
     "One per line: “10:00–12:00”. The customer picks a time after the date. Empty — date only.",
+  "settings.ful.closedWeekdays": "Closed weekdays",
+  "settings.ful.wd1": "Mon",
+  "settings.ful.wd2": "Tue",
+  "settings.ful.wd3": "Wed",
+  "settings.ful.wd4": "Thu",
+  "settings.ful.wd5": "Fri",
+  "settings.ful.wd6": "Sat",
+  "settings.ful.wd7": "Sun",
+  "settings.ful.closedDates": "Closed dates",
+  "settings.ful.closedDatesHint":
+    "One per line: “31.12.2026” or a range “30.12.2026–03.01.2027”. The customer cannot pick these days, and production time counts working days only. Empty — handover every day.",
+  "settings.ful.closedAll": "You cannot mark all seven days as closed.",
+  "settings.ful.closedTooMany":
+    "No more than {max} closed dates: delete past ones or merge them into ranges.",
   "settings.zones.title": "Delivery zones",
   "settings.zones.add": "+ Zone",
   "settings.zones.intro":
@@ -1453,6 +1495,20 @@ export const uz: SectionDict<typeof ru> = {
   "settings.ful.slots": "Olish vaqti slotlari",
   "settings.ful.slotsHint":
     "Har qatorga bittadan: «10:00–12:00». Xaridor sanadan keyin vaqtni tanlaydi. Boʻsh — faqat sana.",
+  "settings.ful.closedWeekdays": "Dam olish kunlari",
+  "settings.ful.wd1": "Du",
+  "settings.ful.wd2": "Se",
+  "settings.ful.wd3": "Chor",
+  "settings.ful.wd4": "Pay",
+  "settings.ful.wd5": "Ju",
+  "settings.ful.wd6": "Sha",
+  "settings.ful.wd7": "Yak",
+  "settings.ful.closedDates": "Dam olish sanalari",
+  "settings.ful.closedDatesHint":
+    "Har qatorga bittadan: «31.12.2026» yoki oraliq «30.12.2026–03.01.2027». Bu kunlari xaridor olishni tanlay olmaydi, tayyorlash muddati faqat ish kunlari bilan hisoblanadi. Boʻsh — har kuni topshiriladi.",
+  "settings.ful.closedAll": "Yetti kunning hammasini dam olish kuni qilib bo‘lmaydi.",
+  "settings.ful.closedTooMany":
+    "Dam olish sanalari {max} tadan oshmasligi kerak: o‘tganlarini o‘chiring yoki oraliqqa birlashtiring.",
   "settings.zones.title": "Yetkazib berish hududlari",
   "settings.zones.add": "+ Hudud",
   "settings.zones.intro":

@@ -50,10 +50,12 @@ import {
   activeDeliveryZones,
   amountDueNow,
   fulfillmentSettings,
-  maxLeadTimeDaysInCart,
+  checkFulfillmentDate,
+  earliestFulfillmentDate,
   zoneFee,
 } from "@/core/fulfillment/fulfillment";
-import { addDaysToIso, isoToDisplay, parseDateInput, todayInTz } from "@/core/fulfillment/pure";
+import { closedRules, describeClosed, hasClosedDays } from "@/core/fulfillment/closed-days";
+import { isoToDisplay, parseDateInput } from "@/core/fulfillment/pure";
 import { robokassaFor, robokassaReceipt } from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
 import { formatRatingSummary } from "@/core/reviews/pure";
@@ -618,14 +620,19 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     }
     case "awaiting_fulfillment_date": {
       const iso = parseDateInput(text);
+      const rules = await closedRules(s.ctx);
       const minIso =
         s.customer.state.checkout_min_fulfillment_date ??
-        addDaysToIso(todayInTz(s.ctx.timezone), await maxLeadTimeDaysInCart(s.ctx, s.customer));
+        (await earliestFulfillmentDate(s.ctx, s.customer, rules));
       if (!iso) return reply(s, s.m.fulfillmentDateInvalid).then(() => "handled" as const);
-      if (iso < minIso)
-        return reply(s, s.m.fulfillmentDateTooEarly(isoToDisplay(minIso))).then(
-          () => "handled" as const,
-        );
+      const check = checkFulfillmentDate(iso, minIso, rules);
+      if (!check.ok)
+        return reply(
+          s,
+          check.reason === "early"
+            ? s.m.fulfillmentDateTooEarly(isoToDisplay(check.minDate))
+            : s.m.fulfillmentDateClosed(isoToDisplay(check.nextDate)),
+        ).then(() => "handled" as const);
       await setMode(s, { checkout_fulfillment_at: iso });
       await afterDate(s);
       return "handled";
@@ -1533,10 +1540,13 @@ async function proceedToFulfillmentOrPlace(s: Shop, countryCode: string) {
 }
 
 async function askFulfillmentDate(s: Shop) {
-  const minDays = await maxLeadTimeDaysInCart(s.ctx, s.customer);
-  const minIso = addDaysToIso(todayInTz(s.ctx.timezone), minDays);
+  const rules = await closedRules(s.ctx);
+  const minIso = await earliestFulfillmentDate(s.ctx, s.customer, rules);
   await setMode(s, { mode: "awaiting_fulfillment_date", checkout_min_fulfillment_date: minIso });
-  await reply(s, s.m.fulfillmentDatePrompt(isoToDisplay(minIso)), { force: true });
+  const note = hasClosedDays(rules)
+    ? `\n${s.m.fulfillmentClosedNote(describeClosed(rules, s.locale))}`
+    : "";
+  await reply(s, s.m.fulfillmentDatePrompt(isoToDisplay(minIso)) + note, { force: true });
 }
 
 async function afterDate(s: Shop) {
