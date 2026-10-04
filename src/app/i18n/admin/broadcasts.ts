@@ -221,6 +221,15 @@ export const ru = {
   "autostats.revenue": "Выручка оплаченных: {money}",
   "autostats.hint":
     "Заказы получателей за 7 дней после сообщения — совпадение по времени, а не доказанная причина. Заказ засчитывается одному, последнему сообщению.",
+  // предпросмотр автосообщений (Р5)
+  "autopreview.view": "Посмотреть",
+  "autopreview.sendSelf": "Отправить себе",
+  "autopreview.header": "Так выглядит автосообщение (это пример, покупателю ничего не ушло):",
+  "autopreview.buyer": "Образец: покупатель {name}, язык магазина.",
+  "autopreview.sample": "Образец: выдуманный покупатель — покупателей в магазине пока нет.",
+  "autopreview.sent": "Отправлено вам в Telegram: {n}.",
+  "autopreview.nowhere":
+    "Отправить некуда: бот магазина в Telegram не подключён или не указан получатель уведомлений.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -435,6 +444,15 @@ export const kk: SectionDict<typeof ru> = {
   "autostats.revenue": "Төленгендердің түсімі: {money}",
   "autostats.hint":
     "Алушылардың хабарламадан кейінгі 7 күндегі тапсырыстары — уақыт бойынша сәйкестік, дәлелденген себеп емес. Тапсырыс біреуге — соңғы хабарламаға жазылады.",
+  "autopreview.view": "Қарау",
+  "autopreview.sendSelf": "Өзіме жіберу",
+  "autopreview.header":
+    "Автохабарлама осылай көрінеді (бұл мысал, сатып алушыға ештеңе жіберілмеді):",
+  "autopreview.buyer": "Үлгі: сатып алушы {name}, дүкен тілі.",
+  "autopreview.sample": "Үлгі: ойдан шығарылған сатып алушы — дүкенде әзірге сатып алушылар жоқ.",
+  "autopreview.sent": "Telegram-ға жіберілді: {n}.",
+  "autopreview.nowhere":
+    "Жіберетін жер жоқ: дүкеннің Telegram-боты қосылмаған немесе хабарлама алушы көрсетілмеген.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -648,6 +666,15 @@ export const en: SectionDict<typeof ru> = {
   "autostats.revenue": "Revenue of paid orders: {money}",
   "autostats.hint":
     "Recipients' orders within 7 days after the message — a match in time, not a proven cause. An order is counted once, for the latest message.",
+  "autopreview.view": "Preview",
+  "autopreview.sendSelf": "Send to myself",
+  "autopreview.header":
+    "This is how the auto-message looks (a sample — nothing was sent to customers):",
+  "autopreview.buyer": "Sample: customer {name}, shop language.",
+  "autopreview.sample": "Sample: an invented customer — the shop has no customers yet.",
+  "autopreview.sent": "Sent to you in Telegram: {n}.",
+  "autopreview.nowhere":
+    "Nowhere to send: the shop's Telegram bot is not connected or no notification recipient is set.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -863,4 +890,13 @@ export const uz: SectionDict<typeof ru> = {
   "autostats.revenue": "To'langanlar tushumi: {money}",
   "autostats.hint":
     "Qabul qiluvchilarning xabardan keyingi 7 kun ichidagi buyurtmalari — vaqt bo'yicha moslik, isbotlangan sabab emas. Buyurtma bitta — oxirgi xabarga yoziladi.",
+  "autopreview.view": "Koʻrish",
+  "autopreview.sendSelf": "Oʻzimga yuborish",
+  "autopreview.header":
+    "Avtoxabar shunday koʻrinadi (bu namuna, xaridorga hech narsa yuborilmadi):",
+  "autopreview.buyer": "Namuna: xaridor {name}, doʻkon tili.",
+  "autopreview.sample": "Namuna: toʻqima xaridor — doʻkonda hali xaridorlar yoʻq.",
+  "autopreview.sent": "Telegramga yuborildi: {n}.",
+  "autopreview.nowhere":
+    "Yuboradigan joy yoʻq: doʻkonning Telegram boti ulanmagan yoki xabar oluvchi koʻrsatilmagan.",
 };

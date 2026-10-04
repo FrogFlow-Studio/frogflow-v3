@@ -17,6 +17,9 @@ const SHOWN = "последние N на экране: список не обя�
 const BATCH = "пачка за запуск: остальное в следующий; обработанные из выборки уходят";
 
 const ALLOWED: Record<string, string[]> = {
+  "src/app/admin/automsg-preview.server.ts": [
+    "образец для предпросмотра: первые три товара каталога, а не весь список",
+  ],
   "src/app/admin/audit.server.ts": [`${SHOWN} (журнал действий команды)`],
   "src/app/admin/admin.functions.ts": [`${SHOWN} (подбор товара в счёт: поиск, INVOICE_PAGE)`],
   "src/app/operator/ai-topup.server.ts": [`${SHOWN} (открытые счета пополнения ИИ — их единицы)`],

@@ -25,3 +25,22 @@ test("рассылки: итоги автосообщений на карточ�
   await expect(winback.getByTestId("auto-stats")).toContainText("Отправлено: 1, не дошло: 0");
   expect(errors).toEqual([]);
 });
+
+/** «Посмотреть» на карточке корзины и возврата показывает текст с подстановками. */
+test("рассылки: предпросмотр автосообщений показывает текст с подстановками", async ({ page }) => {
+  const errors = await watch(page);
+  await page.goto("/admin/login");
+  await page.locator('input[name="username"]').fill(F.AUTO16_SELLER_LOGIN);
+  await page.locator('input[name="password"]').fill(F.AUTO16_SELLER_PASSWORD);
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+
+  await page.goto("/admin/broadcasts");
+  const winback = page.locator("section.card", { hasText: "Возвратные продажи" });
+  await winback.getByRole("button", { name: "Посмотреть", exact: true }).click();
+  const text = winback.getByTestId("auto-preview-text").first();
+  await expect(text).toBeVisible();
+  await expect(text).not.toContainText("{name}");
+  await expect(winback.getByTestId("auto-preview")).toContainText("Образец");
+  expect(errors).toEqual([]);
+});

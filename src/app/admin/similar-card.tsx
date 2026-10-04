@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { saveSimilarFn, similarFn } from "@/app/admin/winback.functions";
 import type { AdminT } from "@/app/i18n/admin";
 import { AutoStatsBlock } from "@/app/admin/auto-stats";
+import { AutoPreview } from "@/app/admin/auto-preview";
 import type { AutoStats } from "@/core/automsg/stats";
 import { Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
 
@@ -65,6 +66,7 @@ export function SimilarCard({ t, stats }: { t: AdminT; stats?: AutoStats }) {
         </div>
         <ErrorBox error={save.error} />
       </form>
+      <AutoPreview t={t} kind="similar" draft={c} />
       <AutoStatsBlock t={t} stats={stats} />
     </Card>
   );

@@ -21,7 +21,7 @@ import { clickMark } from "@/core/broadcasts/clicks";
 import { sendCartReminders } from "@/core/reminders/cart";
 import { sendFulfillmentReminders } from "@/core/reminders/fulfillment";
 import { telegramApi, type TelegramApi } from "./api";
-import { COPY, escapeHtml } from "./copy";
+import { COPY, cartReminderBody, escapeHtml } from "./copy";
 import { inChunks } from "@/lib/in-chunks";
 import { isLocale, type Locale } from "@/core/i18n/locale";
 import { waitedText } from "@/core/helpdesk/seller-texts";
@@ -194,8 +194,9 @@ export async function runCartReminders(tenant: Tenant) {
   const { sendToZernioTarget, zernioTargetOf } = await import("@/channels/zernio/outbound.server");
   return sendCartReminders(ctx, async (r) => {
     const m = COPY[r.locale];
-    const text = m.cartReminderItems(
-      r.lines.map((l) => (l.quantity > 1 ? `${l.name} ×${l.quantity}` : l.name)).join(", "),
+    const text = cartReminderBody(
+      r.locale,
+      r.lines,
       r.more,
       r.total ? formatMoney(r.total.amount, r.total.currency) : null,
     );

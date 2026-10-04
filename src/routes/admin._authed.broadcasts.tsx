@@ -1,6 +1,7 @@
 import { saveWinbackFn, winbackFn } from "@/app/admin/winback.functions";
 import { SimilarCard } from "@/app/admin/similar-card";
 import { AutoStatsBlock } from "@/app/admin/auto-stats";
+import { AutoPreview } from "@/app/admin/auto-preview";
 import type { AutoStats } from "@/core/automsg/stats";
 import { birthdayFn, funnelFn, saveBirthdayFn, saveFunnelFn } from "@/app/admin/funnel.functions";
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
@@ -1531,6 +1532,7 @@ function CartReminderCard({ hours, stats }: { hours: string; stats?: AutoStats }
         </button>
       </form>
       <ErrorBox error={save.error} />
+      <AutoPreview t={t} kind="cart" />
       <AutoStatsBlock t={t} stats={stats} />
     </Card>
   );
@@ -1623,6 +1625,7 @@ function WinbackCard({ stats }: { stats?: AutoStats }) {
         </div>
         <ErrorBox error={save.error} />
       </form>
+      <AutoPreview t={t} kind="winback" draft={c} />
       <AutoStatsBlock t={t} stats={stats} />
     </Card>
   );

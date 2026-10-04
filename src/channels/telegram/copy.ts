@@ -1570,6 +1570,20 @@ export function myTicketsText(
   ].join("\n\n");
 }
 
+/** Текст напоминания о корзине — один для рассылки покупателю и для предпросмотра продавцу. */
+export function cartReminderBody(
+  locale: Locale,
+  lines: readonly { name: string; quantity: number }[],
+  more: number,
+  total: string | null,
+): string {
+  return COPY[locale].cartReminderItems(
+    lines.map((l) => (l.quantity > 1 ? `${l.name} ×${l.quantity}` : l.name)).join(", "),
+    more,
+    total,
+  );
+}
+
 export function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

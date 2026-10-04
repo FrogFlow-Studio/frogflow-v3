@@ -21,6 +21,9 @@ export const MANUAL_AUDIT_ACTIONS = ["tgLoginRequest"] as const;
 const NOT_AUDITED = new Set([
   // проверка уведомлений: без изменений, только тестовые сообщения
   "checkNotifyFn",
+  // предпросмотр автосообщений: без изменений, «отправить себе» — тестовое сообщение продавцу
+  "previewAutoMessageFn",
+  "sendAutoPreviewFn",
   // заказы
   "orderActionFn",
   "orderNoteFn",
