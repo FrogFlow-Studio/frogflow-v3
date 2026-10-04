@@ -36,6 +36,7 @@ import {
   escapeHtml,
   menuActionFor,
   minOrderText,
+  freeDeliveryText,
   normalizePhone,
   type Msg,
 } from "./copy";
@@ -76,6 +77,7 @@ import {
   removeCartItem,
 } from "@/core/cart/cart";
 import { belowMinimum } from "@/core/cart/min-order";
+import { freeDeliveryView } from "@/core/fulfillment/free-delivery-cart";
 import {
   attachPaymentProof,
   markProofVerified,
@@ -1069,6 +1071,8 @@ async function showCart(b: Bot) {
   text += b.m.total(formatMoney(sum.total, sum.currency));
   const below = await belowMinimum(b.ctx, priced);
   if (below) text += `${minOrderText(b.m, below)}\n`;
+  const freeStatus = await (await freeDeliveryView(b.ctx, b.customer))?.forZone(null);
+  if (freeStatus) text += freeDeliveryText(b.m, freeStatus);
   buttons.push([
     { text: b.m.checkoutBtn, callback_data: "checkout" },
     { text: b.m.clearBtn, callback_data: "clear" },
@@ -1280,12 +1284,14 @@ async function askZoneOrAddress(b: Bot) {
     ...b.customer.state,
     mode: "awaiting_delivery_zone",
   });
+  const view = await freeDeliveryView(b.ctx, b.customer);
   const buttons = await Promise.all(
     zones.map(async (z) => {
       const fee = await zoneFee(b.ctx, z.price, b.customer.state.country_code);
+      const free = (await view?.forZone(z.id))?.free ?? false;
       return [
         {
-          text: `${z.name} (+${formatMoney(fee.amount, fee.currency)})`,
+          text: `${z.name} (${free ? b.m.freeWord : `+${formatMoney(fee.amount, fee.currency)}`})`,
           callback_data: `zone:${z.id}`,
         },
       ];

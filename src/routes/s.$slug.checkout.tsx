@@ -46,6 +46,17 @@ function CheckoutPage() {
   const [ftype, setFtype] = useState<"pickup" | "delivery">(
     ff && !ff.pickup && ff.delivery ? "delivery" : "pickup",
   );
+  const [zoneId, setZoneId] = useState("");
+  // Бесплатная доставка: товары корзины против порога зоны (промокод сервер учтёт при оформлении).
+  const reached = (z: { freeFrom: { amount: number; currency: string } | null }) =>
+    Boolean(z.freeFrom && z.freeFrom.currency === cart.currency && cart.total >= z.freeFrom.amount);
+  const hintZone = ff?.zones.find((z) => z.id === zoneId) ?? null;
+  const hintFrom = (hintZone ? [hintZone] : (ff?.zones ?? []))
+    .map((z) => z.freeFrom)
+    .filter(
+      (f): f is { amount: number; currency: string } => f !== null && f.currency === cart.currency,
+    )
+    .sort((a, b) => a.amount - b.amount)[0];
   const [fdate, setFdate] = useState("");
   const { run, busy, error } = useAction(async (f: FormData) => {
     if (!info.enabled) return;
@@ -233,15 +244,37 @@ function CheckoutPage() {
             )}
             {ftype === "delivery" && ff.zones.length > 0 && (
               <Field label={t("checkout.fulfillment.zone")}>
-                <select className="input" name="zone" required defaultValue="">
+                <select
+                  className="input"
+                  name="zone"
+                  required
+                  value={zoneId}
+                  onChange={(e) => setZoneId(e.target.value)}
+                >
                   <option value="" disabled />
                   {ff.zones.map((z) => (
                     <option key={z.id} value={z.id}>
-                      {z.name} (+{formatMoney(z.fee.amount, z.fee.currency)})
+                      {z.name} (
+                      {reached(z)
+                        ? t("checkout.freeDelivery.word")
+                        : `+${formatMoney(z.fee.amount, z.fee.currency)}`}
+                      )
                     </option>
                   ))}
                 </select>
               </Field>
+            )}
+            {ftype === "delivery" && hintFrom && cart.total > 0 && (
+              <p className="text-sm text-muted" role="status" data-testid="free-delivery-hint">
+                {cart.total >= hintFrom.amount
+                  ? t("checkout.freeDelivery.reached", {
+                      from: formatMoney(hintFrom.amount, hintFrom.currency),
+                    })
+                  : t("checkout.freeDelivery.left", {
+                      left: formatMoney(Math.ceil(hintFrom.amount - cart.total), hintFrom.currency),
+                      from: formatMoney(hintFrom.amount, hintFrom.currency),
+                    })}
+              </p>
             )}
             {ftype === "delivery" && (
               <Field label={t("checkout.fulfillment.address")}>

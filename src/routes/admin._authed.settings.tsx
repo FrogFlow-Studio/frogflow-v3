@@ -20,6 +20,7 @@ import { PushCard } from "@/app/admin/settings/push";
 import { IceBreakersCard } from "@/app/admin/settings/ice-breakers";
 import { FulfillmentCard, ZonesCard } from "@/app/admin/settings/delivery";
 import { MinOrderCard } from "@/app/admin/settings/min-order";
+import { FreeDeliveryCard } from "@/app/admin/settings/free-delivery";
 import { LowStockCard, NotifyCard } from "@/app/admin/settings/notify";
 import {
   PaymentMethods,
@@ -321,6 +322,7 @@ function SettingsPage() {
         <FulfillmentCard settings={settings} />
         <MinOrderCard />
         <ZonesCard zones={zones} />
+        <FreeDeliveryCard />
         <WatermarkCard enabled={pdfWatermark} />
         {shop.modules.robokassa && <RobokassaCard settings={settings} />}
         {shop.modules.crypto && shop.role === "owner" && <CryptoCard settings={settings} />}

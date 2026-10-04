@@ -63,8 +63,16 @@ import { formatRatingSummary } from "@/core/reviews/pure";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
 import { askDeliveryLangBeforeOrder, cartLanguageChoices } from "@/core/cart/languages";
 import { belowMinimum } from "@/core/cart/min-order";
+import { freeDeliveryView } from "@/core/fulfillment/free-delivery-cart";
 import { localeFlags as flags, SUPPORTED_LOCALES } from "@/core/i18n/locale";
-import { COPY, escapeHtml, minOrderText, normalizePhone, type Msg } from "@/channels/telegram/copy";
+import {
+  COPY,
+  escapeHtml,
+  freeDeliveryText,
+  minOrderText,
+  normalizePhone,
+  type Msg,
+} from "@/channels/telegram/copy";
 import { notifyReferralReward } from "@/channels/telegram/referral-notify";
 import { customerTierStatus } from "@/core/loyalty/tiers";
 import { getSettingStrict } from "@/core/settings/settings";
@@ -1408,6 +1416,8 @@ async function showCart(s: Shop, force: boolean, prefix?: string) {
   text += plain(s.m.total(formatMoney(sum.total, sum.currency)));
   const below = await belowMinimum(s.ctx, priced);
   if (below) text += plain(`${minOrderText(s.m, below)}\n`);
+  const freeStatus = await (await freeDeliveryView(s.ctx, s.customer))?.forZone(null);
+  if (freeStatus) text += plain(freeDeliveryText(s.m, freeStatus));
   if (s.locale === "ru") text += "\n\nУбрать позицию: «убрать 1».";
   await reply(s, text, { force, buttons: [BTN.checkout(s.m), BTN.catalog(s.m), BTN.clear(s.m)] });
   if (s.ctx.tenant.modules.upsell) {
@@ -1591,10 +1601,12 @@ async function askZoneOrAddress(s: Shop) {
     return;
   }
   await setMode(s, { mode: "awaiting_delivery_zone" });
+  const view = await freeDeliveryView(s.ctx, s.customer);
   const lines = await Promise.all(
     zones.map(async (z, i) => {
       const fee = await zoneFee(s.ctx, z.price, s.customer.state.country_code);
-      return `${i + 1}. ${z.name} (+${formatMoney(fee.amount, fee.currency)})`;
+      const free = (await view?.forZone(z.id))?.free ?? false;
+      return `${i + 1}. ${z.name} (${free ? s.m.freeWord : `+${formatMoney(fee.amount, fee.currency)}`})`;
     }),
   );
   await reply(s, `${plain(s.m.deliveryZonePrompt)}\n\n${lines.join("\n")}`, { force: true });

@@ -9,6 +9,8 @@ import {
   earliestFulfillmentDate,
   zoneFee,
 } from "@/core/fulfillment/fulfillment";
+import { loadFreeDeliveryRules, thresholdFor } from "@/core/fulfillment/free-delivery";
+import { shopCurrency, toOrderCurrency } from "@/core/discounts/discounts";
 import { closedRules, type ClosedRange } from "@/core/fulfillment/closed-days";
 import { todayInTz } from "@/core/fulfillment/pure";
 import { busyOverview, dateAvailability, freeSlotsOnDate } from "@/core/fulfillment/capacity";
@@ -33,7 +35,8 @@ export type WebFulfillmentRequest = {
 export type WebFulfillmentOptions = {
   pickup: boolean;
   delivery: boolean;
-  zones: Array<{ id: string; name: string; fee: Money }>;
+  /** freeFrom — порог бесплатной доставки в валюте платы за зону; null — для зоны порога нет. */
+  zones: Array<{ id: string; name: string; fee: Money; freeFrom: Money | null }>;
   /** Сегодня в поясе магазина: раньше дату не выбрать (срок изготовления — при оформлении). */
   today: string;
   /** Слоты получения; пусто — только дата. */
@@ -54,6 +57,8 @@ export async function webFulfillmentOptions(
   const fs = await fulfillmentSettings(ctx);
   const zones = fs.delivery ? await activeDeliveryZones(ctx) : [];
   const rules = await closedRules(ctx);
+  const freeRules = zones.length > 0 ? await loadFreeDeliveryRules(ctx) : null;
+  const shopCur = freeRules ? await shopCurrency(ctx) : "";
   const slots = await fulfillmentSlots(ctx);
   const today = todayInTz(ctx.timezone);
   const { fullDays, fullSlots } = await busyOverview(ctx, today);
@@ -61,11 +66,17 @@ export async function webFulfillmentOptions(
     pickup: fs.pickup,
     delivery: fs.delivery,
     zones: await Promise.all(
-      zones.map(async (z) => ({
-        id: z.id,
-        name: z.name,
-        fee: await zoneFee(ctx, z.price, countryCode),
-      })),
+      zones.map(async (z) => {
+        const fee = await zoneFee(ctx, z.price, countryCode);
+        const base = freeRules ? thresholdFor(freeRules, z.id) : 0;
+        const amount = base > 0 ? await toOrderCurrency(base, shopCur, fee.currency) : null;
+        return {
+          id: z.id,
+          name: z.name,
+          fee,
+          freeFrom: amount === null ? null : { amount, currency: fee.currency },
+        };
+      }),
     ),
     today,
     slots,

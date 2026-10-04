@@ -65,8 +65,28 @@ describe("получение физического заказа с сайта",
         id: "11111111-1111-4111-8111-111111111111",
         name: "Центр",
         fee: { amount: 1000, currency: "KZT" },
+        freeFrom: null,
       },
     ]);
+  });
+
+  it("порог бесплатной доставки: у зоны свой, иначе общий, в валюте платы за зону", async () => {
+    const general = await webFulfillmentOptions(
+      setup({ zones: true, settings: { delivery_free_from: "3000" } }),
+      "KZ",
+    );
+    expect(general.zones[0]!.freeFrom).toEqual({ amount: 3000, currency: "KZT" });
+    const own = await webFulfillmentOptions(
+      setup({
+        zones: true,
+        settings: {
+          delivery_free_from: "3000",
+          delivery_free_zones: JSON.stringify({ "11111111-1111-4111-8111-111111111111": 1500 }),
+        },
+      }),
+      "KZ",
+    );
+    expect(own.zones[0]!.freeFrom).toEqual({ amount: 1500, currency: "KZT" });
   });
 
   it("самовывоз на допустимую дату — как в боте, без адреса", async () => {

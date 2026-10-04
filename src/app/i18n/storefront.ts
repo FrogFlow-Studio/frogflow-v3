@@ -186,6 +186,10 @@ const ru = {
   "checkout.fulfillment.dateHint":
     "Если товару нужно время на изготовление, раньше срока дату не принять.",
   "checkout.fulfillment.zone": "Район доставки",
+  "checkout.freeDelivery.left":
+    "До бесплатной доставки осталось {left} (бесплатно от {from}; считаем по сумме товаров после скидок).",
+  "checkout.freeDelivery.reached": "Доставка бесплатная: товары после скидок на сумму от {from}.",
+  "checkout.freeDelivery.word": "бесплатно",
   "checkout.fulfillment.address": "Адрес",
   "checkout.fulfillment.note": "Комментарий к заказу",
   "checkout.promo": "Промокод",
@@ -607,6 +611,11 @@ const kk: Dict = {
   "checkout.fulfillment.dateHint":
     "Тауарды дайындауға уақыт керек болса, мерзімнен ерте күн қабылданбайды.",
   "checkout.fulfillment.zone": "Жеткізу ауданы",
+  "checkout.freeDelivery.left":
+    "Тегін жеткізуге {left} қалды ({from}-дан бастап тегін; жеңілдіктерден кейінгі тауар сомасы бойынша есептейміз).",
+  "checkout.freeDelivery.reached":
+    "Жеткізу тегін: жеңілдіктерден кейінгі тауар сомасы {from}-дан жоғары.",
+  "checkout.freeDelivery.word": "тегін",
   "checkout.fulfillment.address": "Мекенжай",
   "checkout.fulfillment.note": "Тапсырысқа түсініктеме",
   "checkout.promo": "Промокод",
@@ -1018,6 +1027,11 @@ const en: Dict = {
   "checkout.fulfillment.dateHint":
     "If the item takes time to make, an earlier date will not be accepted.",
   "checkout.fulfillment.zone": "Delivery area",
+  "checkout.freeDelivery.left":
+    "{left} left until free delivery (free from {from}; counted on the goods total after discounts).",
+  "checkout.freeDelivery.reached":
+    "Delivery is free: goods after discounts come to {from} or more.",
+  "checkout.freeDelivery.word": "free",
   "checkout.fulfillment.address": "Address",
   "checkout.fulfillment.note": "Order comment",
   "checkout.promo": "Promo code",
@@ -1431,6 +1445,11 @@ const uz: Dict = {
   "checkout.fulfillment.dateHint":
     "Mahsulotni tayyorlashga vaqt kerak bo‘lsa, muddatdan oldingi sana qabul qilinmaydi.",
   "checkout.fulfillment.zone": "Yetkazib berish hududi",
+  "checkout.freeDelivery.left":
+    "Bepul yetkazishgacha {left} qoldi ({from} dan bepul; chegirmalardan keyingi tovarlar summasi bo‘yicha hisoblaymiz).",
+  "checkout.freeDelivery.reached":
+    "Yetkazish bepul: chegirmalardan keyingi tovarlar summasi {from} dan yuqori.",
+  "checkout.freeDelivery.word": "bepul",
   "checkout.fulfillment.address": "Manzil",
   "checkout.fulfillment.note": "Buyurtmaga izoh",
   "checkout.promo": "Promokod",

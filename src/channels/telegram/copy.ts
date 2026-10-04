@@ -152,6 +152,10 @@ export type Msg = {
   /** Строка под вопросом о дате: когда выдачи нет (дни недели и даты). */
   fulfillmentClosedNote: (list: string) => string;
   deliveryZonePrompt: string;
+  /** Бесплатная доставка от суммы (core/fulfillment/free-delivery): сколько добрать / уже бесплатно / слово у зоны. */
+  freeDeliveryLeft: (left: string, from: string) => string;
+  freeDeliveryReached: (from: string) => string;
+  freeWord: string;
   addressPrompt: string;
   fulfillmentNotePrompt: string;
   fulfillmentNoteSkipBtn: string;
@@ -553,6 +557,11 @@ const ru: Msg = {
   birthdayInvalid: "Не разобрал дату. Напишите день и месяц, например 15.03.",
   birthdaySaved: "Запомнил 🎉 Поздравим в ваш день!",
   deliveryZonePrompt: "Выберите район доставки:",
+  freeDeliveryLeft: (left, from) =>
+    `🚚 До бесплатной доставки осталось ${left} (бесплатно от ${from}; считаем по сумме товаров после скидок и баллов).\n`,
+  freeDeliveryReached: (from) =>
+    `🚚 Доставка бесплатная: товары после скидок на сумму от ${from}.\n`,
+  freeWord: "бесплатно",
   addressPrompt: "📍 Укажите адрес доставки одним сообщением.",
   fulfillmentNotePrompt:
     "✏️ Пожелания к заказу (надпись, аллергия, время)? Напишите или нажмите «Без комментария».",
@@ -680,6 +689,11 @@ const kk: Msg = {
     "Тапсырысты рәсімдеп жатқанда бұл күнге орындар таусылды. Тапсырыс жасалмады — басқа күнді таңдаңыз.",
   orderSlotTaken: "Бұл уақытты жаңа ғана алып қойды. Тапсырыс жасалмады — басқа уақытты таңдаңыз.",
   fulfillmentClosedNote: (list) => `Беру жоқ: ${list}.`,
+  freeDeliveryLeft: (left, from) =>
+    `🚚 Тегін жеткізуге ${left} қалды (${from}-дан бастап тегін; жеңілдіктер мен ұпайлардан кейінгі тауар сомасы бойынша есептейміз).\n`,
+  freeDeliveryReached: (from) =>
+    `🚚 Жеткізу тегін: жеңілдіктерден кейінгі тауар сомасы ${from}-дан жоғары.\n`,
+  freeWord: "тегін",
   lowStockLabel: (n) => `⚠️ Қалды ${n} дана`,
   preorderLabel: (from) =>
     `🕒 Алдын ала тапсырыс: тауар әзірге қоймада жоқ${from ? `, ${preorderDate(from, "kk")} күнінен бастап жіберіледі` : ", жіберу мерзімін нақтылаймыз"}`,
@@ -916,6 +930,11 @@ const en: Msg = {
     "The spots for this date ran out while you were checking out. The order was not created — please pick another date.",
   orderSlotTaken: "This time was just taken. The order was not created — please pick another time.",
   fulfillmentClosedNote: (list) => `No handover: ${list}.`,
+  freeDeliveryLeft: (left, from) =>
+    `🚚 ${left} left until free delivery (free from ${from}; counted on the goods total after discounts and points).\n`,
+  freeDeliveryReached: (from) =>
+    `🚚 Delivery is free: goods after discounts come to ${from} or more.\n`,
+  freeWord: "free",
   lowStockLabel: (n) => `⚠️ Only ${n} left`,
   preorderLabel: (from) =>
     `🕒 Pre-order: not in stock yet${from ? `, ships from ${preorderDate(from, "en")}` : ", we will confirm the shipping date"}`,
@@ -1179,6 +1198,11 @@ const uz: Msg = {
     "Buyurtma rasmiylashtirilayotganda bu sanadagi joylar tugadi. Buyurtma yaratilmadi — boshqa sanani tanlang.",
   orderSlotTaken: "Bu vaqt hozirgina band qilindi. Buyurtma yaratilmadi — boshqa vaqtni tanlang.",
   fulfillmentClosedNote: (list) => `Topshirish yo‘q: ${list}.`,
+  freeDeliveryLeft: (left, from) =>
+    `🚚 Bepul yetkazishgacha ${left} qoldi (${from} dan bepul; chegirma va ballardan keyingi tovarlar summasi bo‘yicha hisoblaymiz).\n`,
+  freeDeliveryReached: (from) =>
+    `🚚 Yetkazish bepul: chegirmalardan keyingi tovarlar summasi ${from} dan yuqori.\n`,
+  freeWord: "bepul",
   lowStockLabel: (n) => `⚠️ ${n} dona qoldi`,
   preorderLabel: (from) =>
     `🕒 Oldindan buyurtma: mahsulot hozircha omborda yo‘q${from ? `, ${preorderDate(from, "uz")} dan boshlab jo‘natiladi` : ", jo‘natish muddatini aniqlaymiz"}`,
@@ -1395,6 +1419,17 @@ const uz: Msg = {
 export const COPY: Record<Locale, Msg> = { ru, kk, en, uz };
 
 /** «Минимальная сумма заказа — …, добавьте ещё на …» — одним текстом для бота и Instagram/WhatsApp. */
+/** Подсказка про бесплатную доставку для корзины: сколько добрать или «уже бесплатно». */
+export function freeDeliveryText(
+  m: Pick<Msg, "freeDeliveryLeft" | "freeDeliveryReached">,
+  st: { threshold: number; remaining: number; free: boolean; currency: string },
+): string {
+  const from = formatMoney(st.threshold, st.currency);
+  return st.free
+    ? m.freeDeliveryReached(from)
+    : m.freeDeliveryLeft(formatMoney(st.remaining, st.currency), from);
+}
+
 export function minOrderText(
   m: Pick<Msg, "minOrderBelow">,
   below: { min: number; shortfall: number; currency: string },

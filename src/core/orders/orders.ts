@@ -366,7 +366,20 @@ export async function placeOrder(
       }
     }
     const f = priced.kind === "physical" ? (opts.fulfillment ?? null) : null;
-    const deliveryFee = f?.type === "delivery" && f.zone ? f.zone.fee : 0;
+    let deliveryFee = f?.type === "delivery" && f.zone ? f.zone.fee : 0;
+    // Бесплатная доставка от суммы: товары после скидок ≥ порога зоны (или общего) — доставка 0.
+    if (deliveryFee > 0 && f?.zone) {
+      const free = await import("@/core/fulfillment/free-delivery");
+      const rules = await free.loadFreeDeliveryRules(ctx);
+      if (free.thresholdFor(rules, f.zone.id) > 0) {
+        const sum = await cartSummary(ctx, customer, priced, opts);
+        const st = await free.freeDeliveryStatus(ctx, rules, f.zone.id, {
+          amount: free.goodsAfterDiscounts(sum),
+          currency: priced.currency,
+        });
+        if (st?.free) deliveryFee = 0;
+      }
+    }
     // Слот получения — начало во времени fulfillment_at (core/fulfillment/slots).
     const { fulfillmentAtValue, fulfillmentSlots } = await import("@/core/fulfillment/slots");
     const fulfillmentAt = f?.at ? fulfillmentAtValue(f.at, await fulfillmentSlots(ctx)) : null;
