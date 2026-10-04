@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { blockedAmong } from "@/core/customers/customers";
+import { autoMessageStats } from "@/core/automsg/stats";
 import { runWinback } from "./winback";
 
 const BOT = "00000000-0000-0000-0000-000000000001";
@@ -186,6 +187,9 @@ describe("возврат клиентов: окно ответа Instagram и Wh
     expect(r).toMatchObject({ sent: 0, failed: 0 });
     expect(row.state).toEqual({});
     expect(db.tables.zernio_logs!.map((l) => l.status)).toEqual(["skipped"]);
+    // В итогах это «окно закрыто», а не «вернулся сам».
+    const stats = await autoMessageStats(ctx, NOW.getTime());
+    expect(stats.winback).toMatchObject({ windowClosed: 1, returned: 0, sent: 0, failed: 0 });
     // Повторный прогон не плодит пропуски того же шага.
     await runWinback(ctx, send, new Date(NOW.getTime() + 3_600_000));
     expect(db.tables.zernio_logs).toHaveLength(1);

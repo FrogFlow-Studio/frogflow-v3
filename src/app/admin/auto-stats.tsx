@@ -22,6 +22,9 @@ export function AutoStatsBlock({ t, stats }: { t: AdminT; stats: AutoStats | und
       {stats.returned > 0 && (
         <p className="tabular-nums">{t("autostats.returned", { n: stats.returned })}</p>
       )}
+      {stats.windowClosed > 0 && (
+        <p className="tabular-nums">{t("autostats.windowClosed", { n: stats.windowClosed })}</p>
+      )}
       <p className="mt-1 text-muted">{t("autostats.hint")}</p>
     </div>
   );

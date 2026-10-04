@@ -216,6 +216,8 @@ export const ru = {
   // итоги автосообщений за 30 дней (Р1)
   "autostats.title": "За 30 дней",
   "autostats.returned": "Пропущено: уже вернулись сами (открытый заказ или свежая корзина) — {n}",
+  "autostats.windowClosed":
+    "Пропущено: окно ответа 24 часа закрыто (Instagram, WhatsApp) — {n}; напишем, когда покупатель ответит",
   "autostats.waitlistTitle": "Лист ожидания",
   "autostats.sent": "Отправлено: {sent}, не дошло: {failed}",
   "autostats.buyers": "Заказали после сообщения: {buyers}, оплаченных заказов: {paid}",
@@ -447,6 +449,8 @@ export const kk: SectionDict<typeof ru> = {
   "broadcasts.cap.perDay": "Тәулігіне хабарлама",
   "autostats.title": "30 күн ішінде",
   "autostats.returned": "Өткізілді: өздері қайтты (ашық тапсырыс немесе жаңа себет) — {n}",
+  "autostats.windowClosed":
+    "Өткізілді: 24 сағаттық жауап терезесі жабық (Instagram, WhatsApp) — {n}; сатып алушы жауап бергенде жазамыз",
   "autostats.waitlistTitle": "Күту тізімі",
   "autostats.sent": "Жіберілді: {sent}, жетпеді: {failed}",
   "autostats.buyers": "Хабарламадан кейін тапсырыс бергендер: {buyers}, төленген тапсырыс: {paid}",
@@ -679,6 +683,8 @@ export const en: SectionDict<typeof ru> = {
   "broadcasts.cap.perDay": "Messages per day",
   "autostats.title": "Last 30 days",
   "autostats.returned": "Skipped: already came back (open order or fresh cart) — {n}",
+  "autostats.windowClosed":
+    "Skipped: the 24-hour reply window is closed (Instagram, WhatsApp) — {n}; we will write when the buyer replies",
   "autostats.waitlistTitle": "Waitlist",
   "autostats.sent": "Sent: {sent}, not delivered: {failed}",
   "autostats.buyers": "Ordered after the message: {buyers}, paid orders: {paid}",
@@ -913,6 +919,8 @@ export const uz: SectionDict<typeof ru> = {
   "autostats.title": "Oxirgi 30 kun",
   "autostats.returned":
     "Oʻtkazib yuborildi: oʻzlari qaytdi (ochiq buyurtma yoki yangi savat) — {n}",
+  "autostats.windowClosed":
+    "Oʻtkazib yuborildi: 24 soatlik javob oynasi yopiq (Instagram, WhatsApp) — {n}; xaridor javob berganda yozamiz",
   "autostats.waitlistTitle": "Kutish roʻyxati",
   "autostats.sent": "Yuborildi: {sent}, yetib bormadi: {failed}",
   "autostats.buyers": "Xabardan keyin buyurtma bergan: {buyers}, to'langan buyurtmalar: {paid}",

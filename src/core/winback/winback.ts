@@ -271,7 +271,14 @@ export async function runWinback(
           continue;
         }
         if (!open) {
-          await recordAutoSkip(ctx, "winback", c.telegramId, `${order.id}:${step}:window`, now);
+          await recordAutoSkip(
+            ctx,
+            "winback",
+            c.telegramId,
+            `${order.id}:${step}:window`,
+            now,
+            "window",
+          );
           continue;
         }
       }

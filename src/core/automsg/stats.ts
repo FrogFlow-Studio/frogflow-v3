@@ -27,6 +27,8 @@ export type AutoEvent = {
   ok: boolean;
   /** Не отправляли: покупатель уже вернулся. Не отправка и не сбой. */
   skipped?: boolean;
+  /** Почему не отправляли: «window» — закрыто окно ответа Instagram/WhatsApp (core/chat/reply-window). */
+  skipReason?: "window";
 };
 
 export type AutoStats = {
@@ -43,6 +45,8 @@ export type AutoStats = {
   revenue: Record<string, number>;
   /** Не писали, потому что покупатель уже вернулся (открытый заказ или свежая корзина). */
   returned: number;
+  /** Не писали: окно ответа 24 часа закрыто (Instagram/WhatsApp), напишем, когда покупатель ответит. */
+  windowClosed: number;
 };
 
 export type AutoStatsByKind = Record<AutoKind, AutoStats>;
@@ -55,6 +59,7 @@ export const emptyAutoStats = (): AutoStats => ({
   paid: 0,
   revenue: {},
   returned: 0,
+  windowClosed: 0,
 });
 
 export const emptyAutoStatsByKind = (): AutoStatsByKind => ({
@@ -80,7 +85,8 @@ export function attributeAuto(
     const s = out[e.kind];
     if (!s) continue;
     if (e.skipped) {
-      s.returned++;
+      if (e.skipReason === "window") s.windowClosed++;
+      else s.returned++;
       continue;
     }
     if (!e.ok) {
@@ -160,8 +166,13 @@ export async function recordAutoSkip(
   telegramId: number,
   key: string,
   now = new Date(),
+  reason?: "window",
 ): Promise<void> {
-  const payload = { kind, telegram_id: telegramId } as unknown as Json;
+  const payload = {
+    kind,
+    telegram_id: telegramId,
+    ...(reason ? { reason } : {}),
+  } as unknown as Json;
   try {
     const { error } = await ctx.db.from("zernio_logs").insert({
       bot_id: ctx.tenant.id,
@@ -198,7 +209,7 @@ export async function autoMessageStats(
   );
   const events: AutoEvent[] = [];
   for (const r of rows) {
-    const p = (r.payload ?? {}) as { kind?: string; telegram_id?: number };
+    const p = (r.payload ?? {}) as { kind?: string; telegram_id?: number; reason?: string };
     const kind = AUTO_KINDS.find((k) => k === p.kind);
     if (!kind || !p.telegram_id) continue;
     events.push({
@@ -207,6 +218,7 @@ export async function autoMessageStats(
       at: r.created_at,
       ok: r.status === "sent",
       skipped: r.status === "skipped",
+      skipReason: p.reason === "window" ? "window" : undefined,
     });
   }
   const orders: OrderLite[] = [];

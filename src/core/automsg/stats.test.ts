@@ -118,3 +118,16 @@ describe("отметки отправки и чтение итогов", () => {
     expect(s.cart.sent).toBe(1200);
   });
 });
+
+describe("итоги автосообщений: пропуски", () => {
+  it("закрытое окно ответа считается отдельно от «вернулся сам»", () => {
+    const r = attributeAuto(
+      [
+        { ...ev("winback", 1, T0, false), skipped: true, skipReason: "window" },
+        { ...ev("winback", 2, T0, false), skipped: true },
+      ],
+      [],
+    );
+    expect(r.winback).toMatchObject({ windowClosed: 1, returned: 1, sent: 0, failed: 0 });
+  });
+});
