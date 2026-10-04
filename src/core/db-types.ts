@@ -1325,6 +1325,33 @@ export type Database = {
           },
         ];
       };
+      market_events: {
+        Row: {
+          id: string;
+          kind: string;
+          key: string;
+          bucket: string;
+          dedupe: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          kind: string;
+          key?: string;
+          bucket: string;
+          dedupe: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          kind?: string;
+          key?: string;
+          bucket?: string;
+          dedupe?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       community_threads: {
         Row: {
           id: string;

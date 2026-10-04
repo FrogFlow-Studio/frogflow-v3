@@ -90,6 +90,7 @@ const ALLOWED: Record<string, string[]> = {
   "src/core/settings/settings.ts": [FIXED, FIXED],
   "src/core/upsell/upsell.ts": ["товары корзины и правил: корзина + 20"],
   "src/core/community/joint.server.ts": ["по одному промокоду на участника акции — не больше трёх"],
+  "src/core/marketplace/analytics.server.ts": ["виды событий — четыре значения"],
   "src/core/vip/auto-check.ts": [FEW],
   "src/core/vip/vip.ts": [FEW, FEW],
 };

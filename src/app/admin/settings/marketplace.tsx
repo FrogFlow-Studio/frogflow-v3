@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Card, ErrorBox, Field, useAction } from "@/app/ui";
-import { marketplaceFn, saveMarketplaceListingFn } from "@/app/admin/marketplace.functions";
+import {
+  marketClicksFn,
+  marketplaceFn,
+  saveMarketplaceListingFn,
+} from "@/app/admin/marketplace.functions";
 import { adminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
 
@@ -14,6 +18,7 @@ export function MarketplaceCard() {
   const { shop } = settingsRoute.useRouteContext();
   const t = adminT(shop.locale);
   const [view, setView] = useState<View | null>(null);
+  const [clicks, setClicks] = useState<{ days: number; clicks: number } | null | undefined>();
   const [saved, setSaved] = useState(false);
   const owner = shop.role === "owner";
   const [listed, setListed] = useState(false);
@@ -27,6 +32,7 @@ export function MarketplaceCard() {
   };
   useEffect(() => {
     void marketplaceFn().then(fill);
+    void marketClicksFn().then(setClicks);
   }, []);
   const save = useAction(async () => {
     fill(await saveMarketplaceListingFn({ data: { listed, category, city } }));
@@ -89,6 +95,16 @@ export function MarketplaceCard() {
           <p className="text-sm text-muted">
             {t("settings.market.reason", { reason: view.hiddenReason })}
           </p>
+        )}
+        {clicks !== undefined && (
+          <div className="text-sm">
+            <p>
+              {clicks
+                ? t("settings.market.clicks", { days: clicks.days, count: clicks.clicks })
+                : t("settings.market.clicksSoon")}
+            </p>
+            {clicks && <p className="text-xs text-muted">{t("settings.market.clicksHint")}</p>}
+          </div>
         )}
         {!owner && <p className="text-xs text-muted">{t("settings.market.ownerOnly")}</p>}
         {saved && <span className="text-sm text-ok">{t("settings.saved")}</span>}

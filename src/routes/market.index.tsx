@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { z } from "zod";
+import { trackMarketFn } from "@/app/market/track.functions";
 import { marketFn } from "@/app/market/market.functions";
 import { marketHeadLinks } from "@/app/market/seo";
 import { marketT } from "@/app/market/i18n";
@@ -36,6 +38,18 @@ function MarketPage() {
   const locale: Locale = search.lang ?? "ru";
   const t = marketT(locale);
   const lang = search.lang;
+  // Счётчик площадки (В20): без cookie и личных данных; сбой счёта покупателю не виден.
+  const first = (search.offset ?? 0) === 0;
+  useEffect(() => {
+    if (!data.ready || !first) return;
+    const q = (search.q ?? "").trim();
+    void trackMarketFn({ data: { kind: "visit" } }).catch(() => {});
+    if (q) void trackMarketFn({ data: { kind: "search", key: q } }).catch(() => {});
+    if (q && data.shops.length === 0)
+      void trackMarketFn({ data: { kind: "empty", key: q } }).catch(() => {});
+    // Считаем при открытии страницы и при новом запросе, а не при каждом перерисовывании.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.ready, first, search.q]);
   return (
     <main className="mx-auto max-w-4xl px-4 py-10">
       <div className="flex items-center justify-between gap-3">
@@ -140,6 +154,9 @@ function MarketPage() {
                     to="/s/$slug"
                     params={{ slug: s.slug }}
                     className="mt-3 inline-block text-sm font-medium underline"
+                    onClick={() =>
+                      void trackMarketFn({ data: { kind: "click", key: s.id } }).catch(() => {})
+                    }
                   >
                     {t("shop.open")}
                   </Link>

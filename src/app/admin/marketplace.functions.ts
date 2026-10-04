@@ -17,3 +17,9 @@ export const saveMarketplaceListingFn = createServerFn({ method: "POST" })
     const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("owner");
     return (await import("@/core/marketplace/settings.server")).saveMarketplaceListing(ctx, data);
   });
+
+/** «Ваши переходы с площадки» за 30 дней; null — счётчика ещё нет. */
+export const marketClicksFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await (await import("@/app/auth/guards.server")).requireAdmin();
+  return (await import("@/core/marketplace/analytics.server")).shopMarketClicks(ctx.tenant.id);
+});

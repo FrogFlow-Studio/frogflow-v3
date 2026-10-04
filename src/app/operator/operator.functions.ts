@@ -1648,3 +1648,9 @@ export const newsStateFn = createServerFn({ method: "POST" })
     await guard();
     return { changed: await (await newsImpl()).setNewsState(data.id, data.action) };
   });
+
+/** Аналитика площадки за 30 дней (В20); null — таблицы ещё нет. */
+export const marketOverviewFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await import("@/core/marketplace/analytics.server")).marketOverview();
+});

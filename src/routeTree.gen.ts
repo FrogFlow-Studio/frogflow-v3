@@ -95,6 +95,7 @@ import { Route as OperatorAuthedCronsRouteImport } from './routes/operator._auth
 import { Route as OperatorAuthedHealthRouteImport } from './routes/operator._authed.health'
 import { Route as OperatorAuthedLeadsRouteImport } from './routes/operator._authed.leads'
 import { Route as OperatorAuthedLogRouteImport } from './routes/operator._authed.log'
+import { Route as OperatorAuthedMarketStatsRouteImport } from './routes/operator._authed.market-stats'
 import { Route as OperatorAuthedMigrationRouteImport } from './routes/operator._authed.migration'
 import { Route as OperatorAuthedNewsRouteImport } from './routes/operator._authed.news'
 import { Route as OperatorAuthedPartnersRouteImport } from './routes/operator._authed.partners'
@@ -575,6 +576,12 @@ const OperatorAuthedLogRoute = OperatorAuthedLogRouteImport.update({
   path: '/log',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
+const OperatorAuthedMarketStatsRoute =
+  OperatorAuthedMarketStatsRouteImport.update({
+    id: '/market-stats',
+    path: '/market-stats',
+    getParentRoute: () => OperatorAuthedRoute,
+  } as any)
 const OperatorAuthedMigrationRoute = OperatorAuthedMigrationRouteImport.update({
   id: '/migration',
   path: '/migration',
@@ -921,6 +928,7 @@ export interface FileRoutesByFullPath {
   '/operator/health': typeof OperatorAuthedHealthRoute
   '/operator/leads': typeof OperatorAuthedLeadsRoute
   '/operator/log': typeof OperatorAuthedLogRoute
+  '/operator/market-stats': typeof OperatorAuthedMarketStatsRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
   '/operator/news': typeof OperatorAuthedNewsRoute
   '/operator/partners': typeof OperatorAuthedPartnersRoute
@@ -1055,6 +1063,7 @@ export interface FileRoutesByTo {
   '/operator/health': typeof OperatorAuthedHealthRoute
   '/operator/leads': typeof OperatorAuthedLeadsRoute
   '/operator/log': typeof OperatorAuthedLogRoute
+  '/operator/market-stats': typeof OperatorAuthedMarketStatsRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
   '/operator/news': typeof OperatorAuthedNewsRoute
   '/operator/partners': typeof OperatorAuthedPartnersRoute
@@ -1192,6 +1201,7 @@ export interface FileRoutesById {
   '/operator/_authed/health': typeof OperatorAuthedHealthRoute
   '/operator/_authed/leads': typeof OperatorAuthedLeadsRoute
   '/operator/_authed/log': typeof OperatorAuthedLogRoute
+  '/operator/_authed/market-stats': typeof OperatorAuthedMarketStatsRoute
   '/operator/_authed/migration': typeof OperatorAuthedMigrationRoute
   '/operator/_authed/news': typeof OperatorAuthedNewsRoute
   '/operator/_authed/partners': typeof OperatorAuthedPartnersRoute
@@ -1330,6 +1340,7 @@ export interface FileRouteTypes {
     | '/operator/health'
     | '/operator/leads'
     | '/operator/log'
+    | '/operator/market-stats'
     | '/operator/migration'
     | '/operator/news'
     | '/operator/partners'
@@ -1464,6 +1475,7 @@ export interface FileRouteTypes {
     | '/operator/health'
     | '/operator/leads'
     | '/operator/log'
+    | '/operator/market-stats'
     | '/operator/migration'
     | '/operator/news'
     | '/operator/partners'
@@ -1600,6 +1612,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/health'
     | '/operator/_authed/leads'
     | '/operator/_authed/log'
+    | '/operator/_authed/market-stats'
     | '/operator/_authed/migration'
     | '/operator/_authed/news'
     | '/operator/_authed/partners'
@@ -2300,6 +2313,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedLogRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/operator/_authed/market-stats': {
+      id: '/operator/_authed/market-stats'
+      path: '/market-stats'
+      fullPath: '/operator/market-stats'
+      preLoaderRoute: typeof OperatorAuthedMarketStatsRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
     '/operator/_authed/migration': {
       id: '/operator/_authed/migration'
       path: '/migration'
@@ -2817,6 +2837,7 @@ interface OperatorAuthedRouteChildren {
   OperatorAuthedHealthRoute: typeof OperatorAuthedHealthRoute
   OperatorAuthedLeadsRoute: typeof OperatorAuthedLeadsRoute
   OperatorAuthedLogRoute: typeof OperatorAuthedLogRoute
+  OperatorAuthedMarketStatsRoute: typeof OperatorAuthedMarketStatsRoute
   OperatorAuthedMigrationRoute: typeof OperatorAuthedMigrationRoute
   OperatorAuthedNewsRoute: typeof OperatorAuthedNewsRoute
   OperatorAuthedPartnersRoute: typeof OperatorAuthedPartnersRoute
@@ -2838,6 +2859,7 @@ const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedHealthRoute: OperatorAuthedHealthRoute,
   OperatorAuthedLeadsRoute: OperatorAuthedLeadsRoute,
   OperatorAuthedLogRoute: OperatorAuthedLogRoute,
+  OperatorAuthedMarketStatsRoute: OperatorAuthedMarketStatsRoute,
   OperatorAuthedMigrationRoute: OperatorAuthedMigrationRoute,
   OperatorAuthedNewsRoute: OperatorAuthedNewsRoute,
   OperatorAuthedPartnersRoute: OperatorAuthedPartnersRoute,
