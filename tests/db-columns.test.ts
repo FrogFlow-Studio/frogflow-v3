@@ -165,6 +165,22 @@ describe("миграции партии 19 совпадают с db-types.ts", (
   });
 });
 
+describe("таблица площадки (миграция 19-7) описана в схеме", () => {
+  it("каталог магазинов с ключевыми колонками", () => {
+    expect([...schemaColumns().get("marketplace_shops")!]).toEqual(
+      expect.arrayContaining([
+        "bot_id",
+        "slug",
+        "name",
+        "category",
+        "city",
+        "rating",
+        "updated_at",
+      ]),
+    );
+  });
+});
+
 describe("таблицы совместных акций (миграция 19-4) описаны в схеме", () => {
   it("joint_promos и joint_promo_members с ключевыми колонками", () => {
     const s = schemaColumns();

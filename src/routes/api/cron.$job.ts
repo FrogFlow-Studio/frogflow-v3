@@ -159,6 +159,12 @@ export const Route = createFileRoute("/api/cron/$job")({
                   chatPayReminders: await (
                     await import("@/app/orders/pay-remind.server")
                   ).runChatPayReminders(t),
+                  // Каталог площадки: согласный и одобренный магазин попадает в /market, остальные убираются.
+                  marketplace: await (
+                    await import("@/core/marketplace/shops.server")
+                  ).refreshMarketplaceShop(
+                    (await import("@/core/tenant/resolve.server")).tenantContext(t),
+                  ),
                 }),
               }[params.job];
               // Клиенты — параллельно (по CRON_CONCURRENCY): пакет рассылки одного не

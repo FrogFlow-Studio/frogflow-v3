@@ -165,6 +165,53 @@ export type Database = {
           },
         ];
       };
+      marketplace_shops: {
+        Row: {
+          bot_id: string;
+          slug: string;
+          name: string;
+          category: string;
+          city: string;
+          rating: number | null;
+          rating_count: number;
+          orders_month: number;
+          since: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          bot_id: string;
+          slug: string;
+          name: string;
+          category?: string;
+          city?: string;
+          rating?: number | null;
+          rating_count?: number;
+          orders_month?: number;
+          since?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          bot_id?: string;
+          slug?: string;
+          name?: string;
+          category?: string;
+          city?: string;
+          rating?: number | null;
+          rating_count?: number;
+          orders_month?: number;
+          since?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_shops_bot_id_fkey";
+            columns: ["bot_id"];
+            isOneToOne: true;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       platform_threads: {
         Row: {
           id: string;

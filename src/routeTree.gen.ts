@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as MarketRouteImport } from './routes/market'
 import { Route as OperatorRouteImport } from './routes/operator'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SignupRouteImport } from './routes/signup'
@@ -24,6 +25,7 @@ import { Route as ApiClientErrorRouteImport } from './routes/api/client-error'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as ForNicheRouteImport } from './routes/for.$niche'
+import { Route as MarketIndexRouteImport } from './routes/market.index'
 import { Route as MarketOpenRouteImport } from './routes/market.open'
 import { Route as OperatorAuthedRouteImport } from './routes/operator._authed'
 import { Route as OperatorLoginRouteImport } from './routes/operator.login'
@@ -148,6 +150,11 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MarketRoute = MarketRouteImport.update({
+  id: '/market',
+  path: '/market',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OperatorRoute = OperatorRouteImport.update({
   id: '/operator',
   path: '/operator',
@@ -212,10 +219,15 @@ const ForNicheRoute = ForNicheRouteImport.update({
   path: '/for/$niche',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MarketIndexRoute = MarketIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => MarketRoute,
+} as any)
 const MarketOpenRoute = MarketOpenRouteImport.update({
-  id: '/market/open',
-  path: '/market/open',
-  getParentRoute: () => rootRouteImport,
+  id: '/open',
+  path: '/open',
+  getParentRoute: () => MarketRoute,
 } as any)
 const OperatorAuthedRoute = OperatorAuthedRouteImport.update({
   id: '/_authed',
@@ -793,6 +805,7 @@ const ApiCourseFileSlugProductIdNoIdxRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/market': typeof MarketRouteWithChildren
   '/operator': typeof OperatorRouteWithChildren
   '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
@@ -809,6 +822,7 @@ export interface FileRoutesByFullPath {
   '/operator/login': typeof OperatorLoginRoute
   '/partner/$code': typeof PartnerCodeRoute
   '/s/$slug': typeof SSlugRouteWithChildren
+  '/market/': typeof MarketIndexRoute
   '/admin/ai-balance': typeof AdminAuthedAiBalanceRoute
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
   '/admin/billing': typeof AdminAuthedBillingRoute
@@ -936,6 +950,7 @@ export interface FileRoutesByTo {
   '/market/open': typeof MarketOpenRoute
   '/operator/login': typeof OperatorLoginRoute
   '/partner/$code': typeof PartnerCodeRoute
+  '/market': typeof MarketIndexRoute
   '/admin/ai-balance': typeof AdminAuthedAiBalanceRoute
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
   '/admin/billing': typeof AdminAuthedBillingRoute
@@ -1047,6 +1062,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/market': typeof MarketRouteWithChildren
   '/operator': typeof OperatorRouteWithChildren
   '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
@@ -1065,6 +1081,7 @@ export interface FileRoutesById {
   '/operator/login': typeof OperatorLoginRoute
   '/partner/$code': typeof PartnerCodeRoute
   '/s/$slug': typeof SSlugRouteWithChildren
+  '/market/': typeof MarketIndexRoute
   '/admin/_authed/ai-balance': typeof AdminAuthedAiBalanceRoute
   '/admin/_authed/analytics': typeof AdminAuthedAnalyticsRoute
   '/admin/_authed/billing': typeof AdminAuthedBillingRoute
@@ -1179,6 +1196,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/market'
     | '/operator'
     | '/robots.txt'
     | '/signup'
@@ -1195,6 +1213,7 @@ export interface FileRouteTypes {
     | '/operator/login'
     | '/partner/$code'
     | '/s/$slug'
+    | '/market/'
     | '/admin/ai-balance'
     | '/admin/analytics'
     | '/admin/billing'
@@ -1322,6 +1341,7 @@ export interface FileRouteTypes {
     | '/market/open'
     | '/operator/login'
     | '/partner/$code'
+    | '/market'
     | '/admin/ai-balance'
     | '/admin/analytics'
     | '/admin/billing'
@@ -1432,6 +1452,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/market'
     | '/operator'
     | '/robots.txt'
     | '/signup'
@@ -1450,6 +1471,7 @@ export interface FileRouteTypes {
     | '/operator/login'
     | '/partner/$code'
     | '/s/$slug'
+    | '/market/'
     | '/admin/_authed/ai-balance'
     | '/admin/_authed/analytics'
     | '/admin/_authed/billing'
@@ -1563,6 +1585,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  MarketRoute: typeof MarketRouteWithChildren
   OperatorRoute: typeof OperatorRouteWithChildren
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SignupRoute: typeof SignupRoute
@@ -1573,7 +1596,6 @@ export interface RootRouteChildren {
   ApiHealthRoute: typeof ApiHealthRoute
   BlogSlugRoute: typeof BlogSlugRoute
   ForNicheRoute: typeof ForNicheRoute
-  MarketOpenRoute: typeof MarketOpenRoute
   PartnerCodeRoute: typeof PartnerCodeRoute
   SSlugRoute: typeof SSlugRouteWithChildren
   ApiAdminIconRoute: typeof ApiAdminIconRoute
@@ -1615,6 +1637,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/market': {
+      id: '/market'
+      path: '/market'
+      fullPath: '/market'
+      preLoaderRoute: typeof MarketRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/operator': {
@@ -1708,12 +1737,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForNicheRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/market/': {
+      id: '/market/'
+      path: '/'
+      fullPath: '/market/'
+      preLoaderRoute: typeof MarketIndexRouteImport
+      parentRoute: typeof MarketRoute
+    }
     '/market/open': {
       id: '/market/open'
-      path: '/market/open'
+      path: '/open'
       fullPath: '/market/open'
       preLoaderRoute: typeof MarketOpenRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof MarketRoute
     }
     '/operator/_authed': {
       id: '/operator/_authed'
@@ -2637,6 +2673,19 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface MarketRouteChildren {
+  MarketOpenRoute: typeof MarketOpenRoute
+  MarketIndexRoute: typeof MarketIndexRoute
+}
+
+const MarketRouteChildren: MarketRouteChildren = {
+  MarketOpenRoute: MarketOpenRoute,
+  MarketIndexRoute: MarketIndexRoute,
+}
+
+const MarketRouteWithChildren =
+  MarketRoute._addFileChildren(MarketRouteChildren)
+
 interface OperatorAuthedRouteChildren {
   OperatorAuthedBroadcastRoute: typeof OperatorAuthedBroadcastRoute
   OperatorAuthedBulkRoute: typeof OperatorAuthedBulkRoute
@@ -2749,6 +2798,7 @@ const ApiTelegramBotIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  MarketRoute: MarketRouteWithChildren,
   OperatorRoute: OperatorRouteWithChildren,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SignupRoute: SignupRoute,
@@ -2759,7 +2809,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthRoute: ApiHealthRoute,
   BlogSlugRoute: BlogSlugRoute,
   ForNicheRoute: ForNicheRoute,
-  MarketOpenRoute: MarketOpenRoute,
   PartnerCodeRoute: PartnerCodeRoute,
   SSlugRoute: SSlugRouteWithChildren,
   ApiAdminIconRoute: ApiAdminIconRoute,

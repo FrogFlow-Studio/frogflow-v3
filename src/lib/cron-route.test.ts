@@ -92,6 +92,9 @@ vi.mock("@/channels/telegram/jobs", () => ({
 }));
 vi.mock("@/core/storefront/web-expire", () => ({ expireWebOrders: hit("webOrders") }));
 vi.mock("@/core/storefront/web-remind", () => ({ remindWebOrders: hit("webReminders") }));
+vi.mock("@/core/marketplace/shops.server", () => ({
+  refreshMarketplaceShop: hit("marketplace"),
+}));
 vi.mock("@/app/orders/pay-remind.server", () => ({
   runChatPayReminders: hit("chatPayReminders"),
 }));
@@ -161,6 +164,7 @@ const JOBS: Record<string, string[]> = {
     "webOrders",
     "webReminders",
     "chatPayReminders",
+    "marketplace",
   ],
   vip: ["vip"],
   giveaways: ["giveaways"],

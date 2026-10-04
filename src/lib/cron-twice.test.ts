@@ -32,6 +32,7 @@ const TWICE: Record<string, Evidence> = {
   webOrders: { test: ["src/core/orders/reject-points.test.ts"] },
   webReminders: { test: ["src/core/storefront/web-remind.test.ts"] },
   chatPayReminders: { test: ["src/core/orders/pay-remind.test.ts"] },
+  marketplace: { test: ["src/core/marketplace/shops.server.test.ts"] },
   saleEnding: { test: ["src/core/offers/announce.test.ts"] },
   // course-lives
   courseLives: { test: ["src/core/courses/live-remind.test.ts"] },
