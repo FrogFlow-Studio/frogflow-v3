@@ -176,6 +176,11 @@ export const ru = {
   "broadcasts.schedule.button": "Запланировать",
   "broadcasts.schedule.at": "по расписанию: {at}",
   "broadcasts.history.clicks": "нажатий {n}",
+  "broadcasts.revenue.label": "Принесла:",
+  "broadcasts.revenue.orders": "заказов {n}, оплачено {paid}",
+  "broadcasts.revenue.hint":
+    "Заказы получателей за 3 дня после отправки им — совпадение по времени, а не доказанная причина.",
+  "broadcasts.revenue.windowOpen": "Три дня ещё не прошли — цифры могут вырасти.",
   // напоминание о корзине
   "broadcasts.cart.title": "Напоминание о брошенной корзине",
   "broadcasts.cart.intro":
@@ -357,6 +362,11 @@ export const kk: SectionDict<typeof ru> = {
   "broadcasts.schedule.button": "Жоспарлау",
   "broadcasts.schedule.at": "кесте бойынша: {at}",
   "broadcasts.history.clicks": "басулар {n}",
+  "broadcasts.revenue.label": "Әкелгені:",
+  "broadcasts.revenue.orders": "тапсырыс {n}, төленген {paid}",
+  "broadcasts.revenue.hint":
+    "Алушылардың жіберілгеннен кейінгі 3 күндегі тапсырыстары — уақыт бойынша сәйкестік, дәлелденген себеп емес.",
+  "broadcasts.revenue.windowOpen": "Үш күн әлі өтпеді — сандар өсуі мүмкін.",
   "broadcasts.cart.title": "Тасталған себет туралы еске салу",
   "broadcasts.cart.intro":
     "Тауарды себетке салып, тапсырысты рәсімдемеген сатып алушыға бот бұл туралы бір рет еске салады. Себетке жаңа тауар қосылса, келесі еске салуға рұқсат беріледі. «0» — өшіру.",
@@ -536,6 +546,11 @@ export const en: SectionDict<typeof ru> = {
   "broadcasts.schedule.button": "Schedule",
   "broadcasts.schedule.at": "scheduled: {at}",
   "broadcasts.history.clicks": "clicks {n}",
+  "broadcasts.revenue.label": "Brought in:",
+  "broadcasts.revenue.orders": "{n} orders, {paid} paid",
+  "broadcasts.revenue.hint":
+    "Recipients' orders within 3 days after it was sent to them — a match in time, not a proven cause.",
+  "broadcasts.revenue.windowOpen": "Three days have not passed yet — the numbers may grow.",
   "broadcasts.cart.title": "Abandoned cart reminder",
   "broadcasts.cart.intro":
     "A customer who added items to the cart but did not check out gets one reminder from the bot. A new item in the cart allows the next reminder. “0” — off.",
@@ -717,6 +732,11 @@ export const uz: SectionDict<typeof ru> = {
   "broadcasts.schedule.button": "Rejalashtirish",
   "broadcasts.schedule.at": "jadval bo'yicha: {at}",
   "broadcasts.history.clicks": "bosishlar {n}",
+  "broadcasts.revenue.label": "Olib keldi:",
+  "broadcasts.revenue.orders": "buyurtmalar {n}, to'langan {paid}",
+  "broadcasts.revenue.hint":
+    "Qabul qiluvchilarning yuborilgandan keyingi 3 kun ichidagi buyurtmalari — vaqt bo'yicha moslik, isbotlangan sabab emas.",
+  "broadcasts.revenue.windowOpen": "Uch kun hali o'tmadi — raqamlar oshishi mumkin.",
   "broadcasts.cart.title": "Tashlab ketilgan savat haqida eslatma",
   "broadcasts.cart.intro":
     "Mahsulotni savatga solib, buyurtmani rasmiylashtirmagan xaridorga bot bu haqda bir marta eslatadi. Savatga yangi mahsulot qo‘shilsa, keyingi eslatmaga ruxsat beriladi. «0» — o‘chirish.",

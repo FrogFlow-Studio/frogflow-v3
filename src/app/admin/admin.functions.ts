@@ -1961,8 +1961,17 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
     ctx,
     broadcasts.filter((b) => b.channel !== "whatsapp").map((b) => b.id),
   );
+  const { revenueFor, EMPTY_REVENUE } = await import("@/core/broadcasts/revenue");
+  const revenue = await revenueFor(
+    ctx,
+    broadcasts.filter((b) => b.sent_count > 0).map((b) => b.id),
+  );
   return {
-    broadcasts: broadcasts.map((b) => ({ ...b, clicks: clicks[b.id] ?? 0 })),
+    broadcasts: broadcasts.map((b) => ({
+      ...b,
+      clicks: clicks[b.id] ?? 0,
+      revenue: revenue[b.id] ?? EMPTY_REVENUE,
+    })),
     categories,
     countries,
     cartReminderHours: settings.cart_reminder_hours ?? "",

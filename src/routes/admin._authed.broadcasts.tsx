@@ -19,6 +19,7 @@ import { uploadFile } from "@/app/admin/upload-client";
 import { ProductPicker, ProductSearch, type PickerProduct } from "@/app/admin/product-picker";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, Switch, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
+import { formatMoney } from "@/core/money/money";
 import {
   MAX_PHOTOS,
   MAX_PRODUCT_BUTTONS,
@@ -1268,6 +1269,22 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
                     </span>
                   )}
                 </div>
+                {b.sent_count > 0 && (
+                  <p className="mt-1 text-xs text-muted tabular-nums">
+                    <span className="font-medium text-fg">{t("broadcasts.revenue.label")}</span>{" "}
+                    {t("broadcasts.revenue.orders", { n: b.revenue.orders, paid: b.revenue.paid })}
+                    {Object.entries(b.revenue.revenue).map(([cur, sum]) => (
+                      <span key={cur} className="text-ok">
+                        {" · "}
+                        {formatMoney(sum, cur)}
+                      </span>
+                    ))}
+                    <span className="block">
+                      {t("broadcasts.revenue.hint")}
+                      {b.revenue.windowOpen && ` ${t("broadcasts.revenue.windowOpen")}`}
+                    </span>
+                  </p>
+                )}
               </li>
             );
           })}
