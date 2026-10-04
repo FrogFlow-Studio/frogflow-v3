@@ -172,6 +172,7 @@ export const ru = {
   "audit.action.stocktakeStartFn": "начал инвентаризацию",
   "audit.action.stocktakeConfirmFn": "подтвердил инвентаризацию",
   "audit.action.stocktakeCancelFn": "отменил инвентаризацию",
+  "audit.action.saveMarketplaceListingFn": "изменил показ магазина на площадке",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -345,6 +346,7 @@ export const kk: SectionDict<typeof ru> = {
   "audit.action.stocktakeStartFn": "түгендеуді бастады",
   "audit.action.stocktakeConfirmFn": "түгендеуді растады",
   "audit.action.stocktakeCancelFn": "түгендеуді тоқтатты",
+  "audit.action.saveMarketplaceListingFn": "дүкеннің алаңда көрсетілуін өзгертті",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -518,6 +520,7 @@ export const en: SectionDict<typeof ru> = {
   "audit.action.stocktakeStartFn": "started a stocktake",
   "audit.action.stocktakeConfirmFn": "confirmed a stocktake",
   "audit.action.stocktakeCancelFn": "cancelled a stocktake",
+  "audit.action.saveMarketplaceListingFn": "changed the shop’s marketplace listing",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -691,4 +694,5 @@ export const uz: SectionDict<typeof ru> = {
   "audit.action.stocktakeStartFn": "inventarizatsiyani boshladi",
   "audit.action.stocktakeConfirmFn": "inventarizatsiyani tasdiqladi",
   "audit.action.stocktakeCancelFn": "inventarizatsiyani bekor qildi",
+  "audit.action.saveMarketplaceListingFn": "do‘konning maydonchada ko‘rsatilishini o‘zgartirdi",
 };

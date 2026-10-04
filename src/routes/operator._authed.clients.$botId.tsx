@@ -11,6 +11,7 @@ import { ZernioCard, MetaCard } from "@/app/operator/client/channels";
 import { ConsultantLimitsCard, SmartSearchLimitCard } from "@/app/operator/client/limits";
 import { ShopGroupCard } from "@/app/operator/client/shop-group";
 import { CommunityModCard } from "@/app/operator/client/community";
+import { MarketplaceModCard } from "@/app/operator/client/marketplace";
 import { InvitesCard } from "@/app/operator/client/invites";
 import { BillingCard } from "@/app/operator/client/billing";
 import { NotesCard } from "@/app/operator/client/notes";
@@ -146,6 +147,7 @@ function ClientPage() {
             <MessageCard c={c} />
             <ShopGroupCard c={c} />
             <CommunityModCard c={c} />
+            <MarketplaceModCard c={c} />
           </div>
         </>
       )}

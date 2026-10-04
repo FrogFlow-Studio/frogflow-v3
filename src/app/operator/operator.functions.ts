@@ -1204,6 +1204,26 @@ export const communityModFn = createServerFn({ method: "GET" })
     return (await import("@/core/community/settings.server")).communityView({ tenant: t });
   });
 
+/** Площадка FrogFlow (core/marketplace): оператор скрывает магазин с площадки. */
+export const marketplaceModFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    const { requireTenant } = await import("@/core/tenant/resolve.server");
+    const t = await requireTenant({ by: "id", value: data.botId });
+    return (await import("@/core/marketplace/settings.server")).marketplaceView({ tenant: t });
+  });
+
+export const setMarketplaceHiddenFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ botId, hidden: z.boolean(), reason: z.string().max(300) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    await (await impl()).setMarketplaceHidden(data.botId, data.hidden, data.reason, await actor());
+    return { ok: true };
+  });
+
 export const setCommunityModFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

@@ -19,6 +19,7 @@ import { ApiKeyCard } from "@/app/admin/settings/api-key";
 import { PushCard } from "@/app/admin/settings/push";
 import { IceBreakersCard } from "@/app/admin/settings/ice-breakers";
 import { FulfillmentCard, ZonesCard } from "@/app/admin/settings/delivery";
+import { MarketplaceCard } from "@/app/admin/settings/marketplace";
 import { MinOrderCard } from "@/app/admin/settings/min-order";
 import { GiftWrapCard } from "@/app/admin/settings/gift-wrap";
 import { CommunityCard } from "@/app/admin/settings/community";
@@ -327,6 +328,7 @@ function SettingsPage() {
         <MinOrderCard />
         {shop.modules.bundles && <GiftWrapCard />}
         <CommunityCard />
+        <MarketplaceCard />
         <ZonesCard zones={zones} />
         <FreeDeliveryCard />
         <WatermarkCard enabled={pdfWatermark} />

@@ -1235,6 +1235,23 @@ export async function consultantBudget(botId: string) {
   };
 }
 
+/** Оператор скрывает магазин с площадки FrogFlow или возвращает (core/marketplace). */
+export async function setMarketplaceHidden(
+  botId: string,
+  hidden: boolean,
+  reason: string,
+  actor = "operator",
+) {
+  const { setMarketplaceHidden: set } = await import("@/core/marketplace/settings.server");
+  await set(botId, hidden, reason);
+  await logEvent(
+    botId,
+    "meta",
+    { marketplace_hidden: hidden, reason: reason.slice(0, 300) },
+    actor,
+  );
+}
+
 /** Поиск консультанта по каталогу инструментом (core/consultant/catalog-tool.server). */
 export async function setConsultantSearch(botId: string, on: boolean, actor = "operator") {
   await patchTenantSettings(botId, { consultant_search: on });
