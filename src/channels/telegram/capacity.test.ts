@@ -63,7 +63,7 @@ function setup(settings: Record<string, string>, taken: string[]) {
     } as never);
   const texts = () => calls.filter((c) => c.method === "sendMessage").map((c) => String(c.p.text));
   const state = () => db.tables.bot_users![0]!.state as Record<string, unknown>;
-  return { say, texts, calls, state };
+  return { say, texts, calls, state, db };
 }
 
 describe("бот: лимит заказов", () => {
@@ -108,5 +108,25 @@ describe("бот: лимит заказов", () => {
     expect(state().checkout_fulfillment_at).toBe("2026-10-13");
     await say("12:00–14:00");
     expect(state().checkout_fulfillment_at).toBe("2026-10-13T12:00");
+  });
+});
+
+describe("бот: минимум даты считается при ответе", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // Суббота 10:00 по Алматы; вопрос о дате был в пятницу вечером (минимум — суббота).
+    vi.setSystemTime(new Date("2026-10-10T05:00:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("срок изготовления 1 день: ответ «суббота» на следующий день после вопроса отклонён, минимум — воскресенье", async () => {
+    const { say, texts, state, db } = setup({}, []);
+    (db.tables.cart_items![0]!.products as Record<string, unknown>).lead_time_days = 1;
+    Object.assign(state(), { checkout_min_fulfillment_date: "2026-10-10" });
+    await say("10.10.2026");
+    expect(texts().at(-1)).toBe(COPY.ru.fulfillmentDateTooEarly("11.10.2026"));
+    expect(state().checkout_fulfillment_at).toBeUndefined();
+    await say("11.10.2026");
+    expect(state().checkout_fulfillment_at).toBe("2026-10-11");
   });
 });

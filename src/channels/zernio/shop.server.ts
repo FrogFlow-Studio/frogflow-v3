@@ -630,9 +630,8 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     case "awaiting_fulfillment_date": {
       const iso = parseDateInput(text);
       const rules = await closedRules(s.ctx);
-      const minIso =
-        s.customer.state.checkout_min_fulfillment_date ??
-        (await earliestFulfillmentDate(s.ctx, s.customer, rules));
+      // Минимум — на сегодня, а не на момент вопроса (сохранённая дата — только для текста).
+      const minIso = await earliestFulfillmentDate(s.ctx, s.customer, rules);
       if (!iso) return reply(s, s.m.fulfillmentDateInvalid).then(() => "handled" as const);
       const check = checkFulfillmentDate(iso, minIso, rules);
       if (!check.ok)

@@ -372,9 +372,9 @@ async function handleMessage(
     if (mode === "awaiting_fulfillment_date") {
       const iso = parseDateInput(text);
       const rules = await closedRules(ctx);
-      const minIso =
-        customer.state.checkout_min_fulfillment_date ??
-        (await earliestFulfillmentDate(ctx, customer, rules));
+      // Минимум — на сегодня, а не на момент вопроса: за ночь срок изготовления, нерабочие дни
+      // и лимит могли измениться; сохранённая дата нужна только для текста подсказки.
+      const minIso = await earliestFulfillmentDate(ctx, customer, rules);
       if (!iso) return void (await send(b, b.m.fulfillmentDateInvalid));
       const check = checkFulfillmentDate(iso, minIso, rules);
       if (!check.ok)

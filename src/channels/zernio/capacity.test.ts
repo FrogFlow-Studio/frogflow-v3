@@ -108,3 +108,24 @@ describe("Direct/WhatsApp: лимит заказов", () => {
     expect(sent.at(-1)).toBe(COPY.ru.fulfillmentDateFull("14.10.2026"));
   });
 });
+
+describe("Direct/WhatsApp: минимум даты считается при ответе", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // Суббота 10:00 по Алматы; вопрос о дате был в пятницу вечером (минимум — суббота).
+    vi.setSystemTime(new Date("2026-10-10T05:00:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("срок изготовления 1 день: ответ «суббота» на следующий день после вопроса отклонён, минимум — воскресенье", async () => {
+    const { say, sent, db } = shop({}, []);
+    (db.tables.cart_items![0]!.products as Record<string, unknown>).lead_time_days = 1;
+    const st = () => db.tables.bot_users![0]!.state as Record<string, unknown>;
+    Object.assign(st(), { checkout_min_fulfillment_date: "2026-10-10" });
+    await say("10.10.2026");
+    expect(sent.at(-1)).toBe(COPY.ru.fulfillmentDateTooEarly("11.10.2026"));
+    expect(st().checkout_fulfillment_at).toBeUndefined();
+    await say("11.10.2026");
+    expect(st().checkout_fulfillment_at).toBe("2026-10-11");
+  });
+});
