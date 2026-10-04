@@ -88,18 +88,31 @@ describe("обход подписок", () => {
   });
 
   it("новый оплаченный период после предупреждения — предупреждает заново", async () => {
-    setup(day(2));
+    setup(day(-1));
     expect((await sweep())[0]!.action).toBe("warned");
     // Тот же период и тот же день — молчит.
     expect((await sweep())[0]!.action).toBe("skipped");
-    // Оплатили месяц — срок сдвинулся; ближе к новому концу тот же день
-    // (часы сдвинуты, как бывает при продлении) снова даёт предупреждение.
-    const next = new Date(new Date(day(2)).getTime() + 30 * 86_400_000);
+    // Оплатили месяц — срок сдвинулся; когда и он просрочен (часы сдвинуты,
+    // как бывает при продлении), снова даёт предупреждение.
+    const next = new Date(new Date(day(-1)).getTime() + 30 * 86_400_000);
     bot().subscription_expires_at = next.toISOString();
-    const later = new Date(next.getTime() - 2 * 86_400_000);
+    const later = new Date(next.getTime() + 86_400_000);
     expect((await sweep(later))[0]!.action).toBe("warned");
     expect(sent).toHaveLength(2);
     expect(new Set(markers()).size).toBe(2);
+  });
+
+  it("до конца срока обход молчит: напоминает воронка продлений, счёт при этом выставляется", async () => {
+    setup(day(2));
+    let invoiced = 0;
+    const [r] = await sweepSubscriptions(NOW, notify, BOT, async () => {
+      invoiced++;
+      return { amount: 9900, delivered: true };
+    });
+    expect(r).toMatchObject({ state: "expiring", action: "skipped" });
+    expect(r!.detail).toContain("воронка продлений");
+    expect(sent).toEqual([]);
+    expect(invoiced).toBe(1);
   });
 
   it("уже приостановленного бота повторно не трогает", async () => {
@@ -187,7 +200,7 @@ const slowNotify = async (_id: string, text: string) => {
 
 describe("обход подписок: два крона одновременно", () => {
   it("предупреждение — одно сообщение и одна отметка", async () => {
-    setup(day(2));
+    setup(day(-1));
     await warm();
     const r = await Promise.all([
       sweepSubscriptions(NOW, slowNotify, BOT, invoicer),
@@ -232,7 +245,7 @@ describe("обход подписок: два крона одновременн�
   });
 
   it("недоставленное предупреждение не гасит день: следующий проход повторит", async () => {
-    setup(day(2));
+    setup(day(-1));
     const failing = async () => ({ ok: false, detail: "нет получателей" });
     expect((await sweepSubscriptions(NOW, failing, BOT, invoicer))[0]!.action).toBe("failed");
     expect((await sweep())[0]!.action).toBe("warned");

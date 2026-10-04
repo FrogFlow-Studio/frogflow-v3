@@ -89,6 +89,7 @@ import { Route as OperatorAuthedLogRouteImport } from './routes/operator._authed
 import { Route as OperatorAuthedMigrationRouteImport } from './routes/operator._authed.migration'
 import { Route as OperatorAuthedNewsRouteImport } from './routes/operator._authed.news'
 import { Route as OperatorAuthedPartnersRouteImport } from './routes/operator._authed.partners'
+import { Route as OperatorAuthedRenewalsRouteImport } from './routes/operator._authed.renewals'
 import { Route as OperatorAuthedRequestsRouteImport } from './routes/operator._authed.requests'
 import { Route as OperatorAuthedRevenueRouteImport } from './routes/operator._authed.revenue'
 import { Route as OperatorAuthedSettingsRouteImport } from './routes/operator._authed.settings'
@@ -531,6 +532,11 @@ const OperatorAuthedPartnersRoute = OperatorAuthedPartnersRouteImport.update({
   path: '/partners',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
+const OperatorAuthedRenewalsRoute = OperatorAuthedRenewalsRouteImport.update({
+  id: '/renewals',
+  path: '/renewals',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
 const OperatorAuthedRequestsRoute = OperatorAuthedRequestsRouteImport.update({
   id: '/requests',
   path: '/requests',
@@ -831,6 +837,7 @@ export interface FileRoutesByFullPath {
   '/operator/migration': typeof OperatorAuthedMigrationRoute
   '/operator/news': typeof OperatorAuthedNewsRoute
   '/operator/partners': typeof OperatorAuthedPartnersRoute
+  '/operator/renewals': typeof OperatorAuthedRenewalsRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
   '/operator/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
@@ -952,6 +959,7 @@ export interface FileRoutesByTo {
   '/operator/migration': typeof OperatorAuthedMigrationRoute
   '/operator/news': typeof OperatorAuthedNewsRoute
   '/operator/partners': typeof OperatorAuthedPartnersRoute
+  '/operator/renewals': typeof OperatorAuthedRenewalsRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
   '/operator/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
@@ -1075,6 +1083,7 @@ export interface FileRoutesById {
   '/operator/_authed/migration': typeof OperatorAuthedMigrationRoute
   '/operator/_authed/news': typeof OperatorAuthedNewsRoute
   '/operator/_authed/partners': typeof OperatorAuthedPartnersRoute
+  '/operator/_authed/renewals': typeof OperatorAuthedRenewalsRoute
   '/operator/_authed/requests': typeof OperatorAuthedRequestsRoute
   '/operator/_authed/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/_authed/settings': typeof OperatorAuthedSettingsRoute
@@ -1199,6 +1208,7 @@ export interface FileRouteTypes {
     | '/operator/migration'
     | '/operator/news'
     | '/operator/partners'
+    | '/operator/renewals'
     | '/operator/requests'
     | '/operator/revenue'
     | '/operator/settings'
@@ -1320,6 +1330,7 @@ export interface FileRouteTypes {
     | '/operator/migration'
     | '/operator/news'
     | '/operator/partners'
+    | '/operator/renewals'
     | '/operator/requests'
     | '/operator/revenue'
     | '/operator/settings'
@@ -1442,6 +1453,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/migration'
     | '/operator/_authed/news'
     | '/operator/_authed/partners'
+    | '/operator/_authed/renewals'
     | '/operator/_authed/requests'
     | '/operator/_authed/revenue'
     | '/operator/_authed/settings'
@@ -2088,6 +2100,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedPartnersRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/operator/_authed/renewals': {
+      id: '/operator/_authed/renewals'
+      path: '/renewals'
+      fullPath: '/operator/renewals'
+      preLoaderRoute: typeof OperatorAuthedRenewalsRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
     '/operator/_authed/requests': {
       id: '/operator/_authed/requests'
       path: '/requests'
@@ -2527,6 +2546,7 @@ interface OperatorAuthedRouteChildren {
   OperatorAuthedMigrationRoute: typeof OperatorAuthedMigrationRoute
   OperatorAuthedNewsRoute: typeof OperatorAuthedNewsRoute
   OperatorAuthedPartnersRoute: typeof OperatorAuthedPartnersRoute
+  OperatorAuthedRenewalsRoute: typeof OperatorAuthedRenewalsRoute
   OperatorAuthedRequestsRoute: typeof OperatorAuthedRequestsRoute
   OperatorAuthedRevenueRoute: typeof OperatorAuthedRevenueRoute
   OperatorAuthedSettingsRoute: typeof OperatorAuthedSettingsRoute
@@ -2547,6 +2567,7 @@ const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedMigrationRoute: OperatorAuthedMigrationRoute,
   OperatorAuthedNewsRoute: OperatorAuthedNewsRoute,
   OperatorAuthedPartnersRoute: OperatorAuthedPartnersRoute,
+  OperatorAuthedRenewalsRoute: OperatorAuthedRenewalsRoute,
   OperatorAuthedRequestsRoute: OperatorAuthedRequestsRoute,
   OperatorAuthedRevenueRoute: OperatorAuthedRevenueRoute,
   OperatorAuthedSettingsRoute: OperatorAuthedSettingsRoute,

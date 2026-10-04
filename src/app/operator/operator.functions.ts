@@ -272,6 +272,14 @@ export const todayTasksFn = createServerFn({ method: "GET" }).handler(async () =
   return (await notesImpl()).todayTasks();
 });
 
+export const renewalsOverviewFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ days: z.number().int().min(1).max(60) }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    const { renewalsOverview } = await import("./renewals.server");
+    return renewalsOverview(data.days);
+  });
+
 export const runBulkFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

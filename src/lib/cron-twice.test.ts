@@ -52,6 +52,7 @@ const TWICE: Record<string, Evidence> = {
   // subscriptions
   catalogSheet: { test: ["src/core/catalog/sheet.test.ts"] },
   sheetNotify: { test: ["src/core/catalog/sheet.test.ts"] },
+  renewals: { test: ["src/app/operator/renewals.server.test.ts"] },
   // Не задачи арендатора из JOBS, но в тех же кронах (SELF_SCOPED и обходы платформы).
   sweepSubscriptions: { test: ["src/app/operator/subscription-sweep.test.ts"] },
   leads: { test: ["src/app/operator/leads-pipeline.server.test.ts"] },

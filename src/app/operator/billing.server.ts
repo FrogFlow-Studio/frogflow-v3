@@ -816,16 +816,17 @@ export async function sweepSubscriptions(
         );
       }
     }
-    // Пробный период: общее «заканчивается подписка» не шлём — продавцу уже идут
-    // свои два напоминания (trial-remind.server.ts), счёт выше выставлен как обычно.
-    if (
-      sub.state === "expiring" &&
-      trialState(t.settings.billing, expires.get(t.id) ?? null, dayKey)
-    ) {
+    // До конца срока обход молчит: пробному периоду напоминает trial-remind.server.ts,
+    // платящему — воронка продлений (renewals.server.ts: 7, 3, 1 день и день окончания,
+    // с ценой и способом оплаты). Счёт выше выставлен как обычно. Просрочку ведёт
+    // этот обход: ниже предупреждение раз в день.
+    if (sub.state === "expiring") {
       results.push({
         ...base,
         action: "skipped",
-        detail: "пробный период: напоминает отдельный обход",
+        detail: trialState(t.settings.billing, expires.get(t.id) ?? null, dayKey)
+          ? "пробный период: напоминает отдельный обход"
+          : "срок не вышел: напоминает воронка продлений",
       });
       continue;
     }

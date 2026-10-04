@@ -41,7 +41,10 @@ export const OPERATOR_MENU: OperatorMenuGroup[] = [
   {
     id: "money",
     title: "Деньги",
-    items: [{ to: "/operator/revenue", label: "Выручка" }],
+    items: [
+      { to: "/operator/revenue", label: "Выручка" },
+      { to: "/operator/renewals", label: "Продления" },
+    ],
   },
   {
     id: "channels",

@@ -364,6 +364,13 @@ export const Route = createFileRoute("/api/cron/$job")({
               } catch (e) {
                 results.trials = await tenantFailure("trial", e);
               }
+              // Платящим: напоминание за 7, 3 и 1 день и в день окончания (воронка продлений).
+              try {
+                const { runRenewals } = await import("@/app/operator/renewals.server");
+                results.renewals = await runRenewals(tenants);
+              } catch (e) {
+                results.renewals = await tenantFailure("renewals", e);
+              }
               // Раз в сутки — каталоги из Google Таблиц (отдельный крон не заводим:
               // функция на Vercel одна). Не скачалась или закрыта — каталог не
               // трогаем, продавцу одно сообщение.
