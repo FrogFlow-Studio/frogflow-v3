@@ -160,6 +160,9 @@ export const ru = {
   "audit.action.deleteReceiptFn": "удалил черновик прихода",
   "audit.action.postReceiptFn": "провёл приход товара",
   "audit.action.writeOffFn": "списал товар со склада",
+  "audit.action.stocktakeStartFn": "начал инвентаризацию",
+  "audit.action.stocktakeConfirmFn": "подтвердил инвентаризацию",
+  "audit.action.stocktakeCancelFn": "отменил инвентаризацию",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -321,6 +324,9 @@ export const kk: SectionDict<typeof ru> = {
   "audit.action.deleteReceiptFn": "кіріс жобасын жойды",
   "audit.action.postReceiptFn": "тауар кірісін жүргізді",
   "audit.action.writeOffFn": "қоймадан тауарды есептен шығарды",
+  "audit.action.stocktakeStartFn": "түгендеуді бастады",
+  "audit.action.stocktakeConfirmFn": "түгендеуді растады",
+  "audit.action.stocktakeCancelFn": "түгендеуді тоқтатты",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -482,6 +488,9 @@ export const en: SectionDict<typeof ru> = {
   "audit.action.deleteReceiptFn": "deleted a receipt draft",
   "audit.action.postReceiptFn": "posted a goods receipt",
   "audit.action.writeOffFn": "wrote off goods from stock",
+  "audit.action.stocktakeStartFn": "started a stocktake",
+  "audit.action.stocktakeConfirmFn": "confirmed a stocktake",
+  "audit.action.stocktakeCancelFn": "cancelled a stocktake",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -643,4 +652,7 @@ export const uz: SectionDict<typeof ru> = {
   "audit.action.deleteReceiptFn": "kirim qoralamasini oʻchirdi",
   "audit.action.postReceiptFn": "tovar kirimini oʻtkazdi",
   "audit.action.writeOffFn": "tovarni ombordan hisobdan chiqardi",
+  "audit.action.stocktakeStartFn": "inventarizatsiyani boshladi",
+  "audit.action.stocktakeConfirmFn": "inventarizatsiyani tasdiqladi",
+  "audit.action.stocktakeCancelFn": "inventarizatsiyani bekor qildi",
 };

@@ -227,3 +227,79 @@ export const writeOffFn = createServerFn({ method: "POST" })
     const { writeOff } = await import("@/core/stock/writeoff");
     return writeOff(ctx, data, await g.adminActor());
   });
+
+// ── Инвентаризация (core/stock/stocktake) ──
+
+export const stocktakeFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z
+      .object({ page: z.number().int().min(0).max(10_000), q: z.string().max(100).default("") })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await (await guards()).requireAdminModule("warehouse");
+    const { loadStocktake, listCountItems, discrepancies } = await import("@/core/stock/stocktake");
+    const doc = await loadStocktake(ctx);
+    const open = doc && doc.status !== "posted";
+    const { items, total } = open
+      ? await listCountItems(ctx, doc, { page: data.page, q: data.q })
+      : { items: [], total: 0 };
+    return {
+      session: doc
+        ? {
+            id: doc.id,
+            status: doc.status,
+            startedAt: doc.startedAt,
+            postedAt: doc.postedAt,
+            entered: Object.keys(doc.lines).length,
+          }
+        : null,
+      items,
+      total,
+      diffs: doc ? await discrepancies(ctx, doc) : [],
+    };
+  });
+
+export const stocktakeStartFn = createServerFn({ method: "POST" }).handler(async () => {
+  const g = await guards();
+  const ctx = await g.requireAdminModule("warehouse", "manager");
+  const { startStocktake } = await import("@/core/stock/stocktake");
+  const doc = await startStocktake(ctx, await g.adminActor());
+  return { id: doc.id };
+});
+
+export const stocktakeCountFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        id: uuid,
+        productId: uuid,
+        counted: z.number().int().min(0).max(1_000_000).nullable(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await (await guards()).requireAdminModule("warehouse", "manager");
+    const { setCount } = await import("@/core/stock/stocktake");
+    await setCount(ctx, data.id, data.productId, data.counted);
+    return { ok: true };
+  });
+
+export const stocktakeConfirmFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: uuid }).parse(d))
+  .handler(async ({ data }) => {
+    const g = await guards();
+    const ctx = await g.requireAdminModule("warehouse", "manager");
+    const { confirmStocktake } = await import("@/core/stock/stocktake");
+    const doc = await confirmStocktake(ctx, data.id, await g.adminActor());
+    return { changed: Object.values(doc.lines).filter((l) => l.state === "done").length };
+  });
+
+export const stocktakeCancelFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: uuid }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await (await guards()).requireAdminModule("warehouse", "manager");
+    const { cancelStocktake } = await import("@/core/stock/stocktake");
+    await cancelStocktake(ctx, data.id);
+    return { ok: true };
+  });

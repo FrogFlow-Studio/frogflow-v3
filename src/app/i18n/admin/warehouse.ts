@@ -97,6 +97,36 @@ export const ru = {
   "writeoff.unitCost": "по {cost} за шт.",
   "writeoff.noCost": "себестоимости не было",
   "writeoff.change": "Сменить",
+  "warehouse.hub.stocktake": "Инвентаризация",
+  "warehouse.hub.stocktakeHint":
+    "Пересчёт склада: вы вводите фактический остаток, подтверждение записывает разницу.",
+  "stocktake.title": "Инвентаризация",
+  "stocktake.subtitle":
+    "Введите фактический остаток по товарам. Подтверждение прибавляет к остатку разницу «насчитали минус числилось», а не подменяет остаток числом: заказы, пришедшие во время подсчёта, не теряются.",
+  "stocktake.start": "Начать инвентаризацию",
+  "stocktake.none": "Инвентаризация не начата.",
+  "stocktake.lastDone": "Последняя инвентаризация подтверждена {when}.",
+  "stocktake.search": "Поиск по названию",
+  "stocktake.col.product": "Товар",
+  "stocktake.col.stock": "Числится",
+  "stocktake.col.counted": "Фактически",
+  "stocktake.entered": "Введено: {n}",
+  "stocktake.diffs": "Расхождения",
+  "stocktake.diffsNone": "Расхождений нет.",
+  "stocktake.diffRow": "{name}: числилось {expected}, насчитано {counted}",
+  "stocktake.diffNow": "сейчас на складе {n}",
+  "stocktake.confirm": "Подтвердить",
+  "stocktake.confirmAsk":
+    "Подтвердить инвентаризацию? Остатки изменятся на разницу у товаров: {n}. Отменить подтверждение нельзя.",
+  "stocktake.cancel": "Отменить инвентаризацию",
+  "stocktake.cancelAsk": "Отменить инвентаризацию? Введённые числа пропадут, остатки не изменятся.",
+  "stocktake.done": "Инвентаризация подтверждена, изменён остаток у товаров: {n}.",
+  "stocktake.more": "Показать ещё",
+  "stocktake.skipped": "пропущен: остаток не ведётся",
+  "stocktake.clamped": "остаток обнулён: заказы продали больше, чем недосчитали",
+  "stocktake.partial":
+    "Подтверждение оборвалось. Нажмите «Подтвердить» ещё раз: уже выполненное повторно не применяется.",
+  "stocktake.nothing": "Ничего не изменилось.",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -198,6 +228,37 @@ export const kk: SectionDict<typeof ru> = {
   "writeoff.unitCost": "дана үшін {cost}",
   "writeoff.noCost": "өзіндік құны болмаған",
   "writeoff.change": "Ауыстыру",
+  "warehouse.hub.stocktake": "Түгендеу",
+  "warehouse.hub.stocktakeHint":
+    "Қойманы қайта санау: нақты қалдықты енгізесіз, растау айырмашылықты жазады.",
+  "stocktake.title": "Түгендеу",
+  "stocktake.subtitle":
+    "Тауарлар бойынша нақты қалдықты енгізіңіз. Растау қалдыққа «санағаны минус есептегені» айырмашылығын қосады, қалдықты санмен алмастырмайды: санау кезінде келген тапсырыстар жоғалмайды.",
+  "stocktake.start": "Түгендеуді бастау",
+  "stocktake.none": "Түгендеу басталмаған.",
+  "stocktake.lastDone": "Соңғы түгендеу {when} расталды.",
+  "stocktake.search": "Атауы бойынша іздеу",
+  "stocktake.col.product": "Тауар",
+  "stocktake.col.stock": "Есепте",
+  "stocktake.col.counted": "Нақты",
+  "stocktake.entered": "Енгізілді: {n}",
+  "stocktake.diffs": "Айырмашылықтар",
+  "stocktake.diffsNone": "Айырмашылық жоқ.",
+  "stocktake.diffRow": "{name}: есепте {expected}, санады {counted}",
+  "stocktake.diffNow": "қазір қоймада {n}",
+  "stocktake.confirm": "Растау",
+  "stocktake.confirmAsk":
+    "Түгендеуді растау керек пе? Тауарлар қалдығы айырмаға өзгереді: {n}. Растауды болдырмауға болмайды.",
+  "stocktake.cancel": "Түгендеуді тоқтату",
+  "stocktake.cancelAsk":
+    "Түгендеуді тоқтату керек пе? Енгізілген сандар жоғалады, қалдықтар өзгермейді.",
+  "stocktake.done": "Түгендеу расталды, қалдығы өзгерген тауарлар: {n}.",
+  "stocktake.more": "Тағы көрсету",
+  "stocktake.skipped": "өткізілді: қалдық есепке алынбайды",
+  "stocktake.clamped": "қалдық нөлге теңелді: тапсырыстар кем санағаннан көп сатты",
+  "stocktake.partial":
+    "Растау үзілді. «Растау» батырмасын қайта басыңыз: орындалғаны қайта қолданылмайды.",
+  "stocktake.nothing": "Ештеңе өзгерген жоқ.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -298,6 +359,37 @@ export const en: SectionDict<typeof ru> = {
   "writeoff.unitCost": "{cost} per pc",
   "writeoff.noCost": "no cost price at the time",
   "writeoff.change": "Change",
+  "warehouse.hub.stocktake": "Stocktake",
+  "warehouse.hub.stocktakeHint":
+    "Recount the warehouse: you enter the actual stock, confirming writes the difference.",
+  "stocktake.title": "Stocktake",
+  "stocktake.subtitle":
+    "Enter the actual stock for each product. Confirming adds the difference “counted minus expected” to stock instead of overwriting it with a number: orders that came in during the count are not lost.",
+  "stocktake.start": "Start a stocktake",
+  "stocktake.none": "No stocktake in progress.",
+  "stocktake.lastDone": "The last stocktake was confirmed {when}.",
+  "stocktake.search": "Search by name",
+  "stocktake.col.product": "Product",
+  "stocktake.col.stock": "On record",
+  "stocktake.col.counted": "Actual",
+  "stocktake.entered": "Entered: {n}",
+  "stocktake.diffs": "Discrepancies",
+  "stocktake.diffsNone": "No discrepancies.",
+  "stocktake.diffRow": "{name}: on record {expected}, counted {counted}",
+  "stocktake.diffNow": "in stock now: {n}",
+  "stocktake.confirm": "Confirm",
+  "stocktake.confirmAsk":
+    "Confirm the stocktake? Stock will change by the difference for {n} products. Confirming can't be undone.",
+  "stocktake.cancel": "Cancel the stocktake",
+  "stocktake.cancelAsk":
+    "Cancel the stocktake? The numbers you entered will be lost, stock stays as it is.",
+  "stocktake.done": "Stocktake confirmed, stock changed for {n} products.",
+  "stocktake.more": "Show more",
+  "stocktake.skipped": "skipped: stock isn't tracked",
+  "stocktake.clamped": "stock set to 0: orders sold more than was missing",
+  "stocktake.partial":
+    "Confirming was interrupted. Press “Confirm” again: lines already applied are not applied twice.",
+  "stocktake.nothing": "Nothing changed.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -400,4 +492,35 @@ export const uz: SectionDict<typeof ru> = {
   "writeoff.unitCost": "dona uchun {cost}",
   "writeoff.noCost": "paytida tannarx yoʻq edi",
   "writeoff.change": "Almashtirish",
+  "warehouse.hub.stocktake": "Inventarizatsiya",
+  "warehouse.hub.stocktakeHint":
+    "Omborni qayta sanash: haqiqiy qoldiqni kiritasiz, tasdiqlash farqni yozadi.",
+  "stocktake.title": "Inventarizatsiya",
+  "stocktake.subtitle":
+    "Tovarlar boʻyicha haqiqiy qoldiqni kiriting. Tasdiqlash qoldiqqa «sanalgan minus hisobdagi» farqni qoʻshadi, qoldiqni raqam bilan almashtirmaydi: sanash paytida kelgan buyurtmalar yoʻqolmaydi.",
+  "stocktake.start": "Inventarizatsiyani boshlash",
+  "stocktake.none": "Inventarizatsiya boshlanmagan.",
+  "stocktake.lastDone": "Oxirgi inventarizatsiya {when} tasdiqlandi.",
+  "stocktake.search": "Nomi boʻyicha qidirish",
+  "stocktake.col.product": "Tovar",
+  "stocktake.col.stock": "Hisobda",
+  "stocktake.col.counted": "Haqiqatda",
+  "stocktake.entered": "Kiritildi: {n}",
+  "stocktake.diffs": "Farqlar",
+  "stocktake.diffsNone": "Farqlar yoʻq.",
+  "stocktake.diffRow": "{name}: hisobda {expected}, sanaldi {counted}",
+  "stocktake.diffNow": "hozir omborda {n}",
+  "stocktake.confirm": "Tasdiqlash",
+  "stocktake.confirmAsk":
+    "Inventarizatsiyani tasdiqlaysizmi? Tovarlar qoldigi farqqa oʻzgaradi: {n}. Tasdiqlashni bekor qilib boʻlmaydi.",
+  "stocktake.cancel": "Inventarizatsiyani bekor qilish",
+  "stocktake.cancelAsk":
+    "Inventarizatsiyani bekor qilasizmi? Kiritilgan sonlar yoʻqoladi, qoldiqlar oʻzgarmaydi.",
+  "stocktake.done": "Inventarizatsiya tasdiqlandi, qoldigi oʻzgargan tovarlar: {n}.",
+  "stocktake.more": "Yana koʻrsatish",
+  "stocktake.skipped": "oʻtkazib yuborildi: qoldiq hisobga olinmaydi",
+  "stocktake.clamped": "qoldiq nolga tenglashtirildi: buyurtmalar yetishmaganidan koʻp sotdi",
+  "stocktake.partial":
+    "Tasdiqlash uzildi. «Tasdiqlash»ni yana bosing: bajarilganlar qayta qoʻllanmaydi.",
+  "stocktake.nothing": "Hech narsa oʻzgarmadi.",
 };

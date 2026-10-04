@@ -19,6 +19,8 @@ export const ADMIN_AUDIT_KIND = "meta" as const;
 export const MANUAL_AUDIT_ACTIONS = ["tgLoginRequest"] as const;
 
 const NOT_AUDITED = new Set([
+  // инвентаризация: ввод чисел в черновик — по числу на каждый товар; в журнал идут начало, подтверждение и отмена
+  "stocktakeCountFn",
   // проверка уведомлений: без изменений, только тестовые сообщения
   "checkNotifyFn",
   // предпросмотр автосообщений: без изменений, «отправить себе» — тестовое сообщение продавцу

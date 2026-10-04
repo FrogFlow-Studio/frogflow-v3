@@ -214,6 +214,12 @@ export const ru = {
   "err.stock.productNotFound": "Товар не найден.",
   "err.stock.writeoffReason": "Выберите причину списания.",
   "err.stock.writeoffTooMuch": "Нельзя списать {qty} шт.: на складе {stock}.",
+  "err.stock.badCount": "Фактический остаток — целое число от 0 до {max}.",
+  "err.stock.stocktakeClosed": "Инвентаризация уже подтверждена или отменена — начните новую.",
+  "err.stock.stocktakeTooBig": "В инвентаризации не больше {max} товаров.",
+  "err.stock.stocktakeTaken": "Инвентаризацию подтверждает другой сотрудник — обновите страницу.",
+  "err.stock.stocktakePosted":
+    "Инвентаризация уже подтверждена или подтверждается — повторно остаток не меняется.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -424,6 +430,12 @@ export const kk: SectionDict<typeof ru> = {
   "err.stock.productNotFound": "Тауар табылмады.",
   "err.stock.writeoffReason": "Есептен шығару себебін таңдаңыз.",
   "err.stock.writeoffTooMuch": "{qty} данаға есептен шығаруға болмайды: қоймада {stock}.",
+  "err.stock.badCount": "Нақты қалдық — 0-ден {max}-ке дейінгі бүтін сан.",
+  "err.stock.stocktakeClosed": "Түгендеу расталған немесе тоқтатылған — жаңасын бастаңыз.",
+  "err.stock.stocktakeTooBig": "Түгендеуде {max} тауардан көп болмауы керек.",
+  "err.stock.stocktakeTaken": "Түгендеуді басқа қызметкер растап жатыр — бетті жаңартыңыз.",
+  "err.stock.stocktakePosted":
+    "Түгендеу расталған немесе расталып жатыр — қалдық қайта өзгермейді.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -637,6 +649,13 @@ export const en: SectionDict<typeof ru> = {
   "err.stock.productNotFound": "Product not found.",
   "err.stock.writeoffReason": "Choose a write-off reason.",
   "err.stock.writeoffTooMuch": "Can't write off {qty}: only {stock} in stock.",
+  "err.stock.badCount": "Actual stock must be a whole number from 0 to {max}.",
+  "err.stock.stocktakeClosed": "The stocktake is already confirmed or cancelled — start a new one.",
+  "err.stock.stocktakeTooBig": "A stocktake holds at most {max} products.",
+  "err.stock.stocktakeTaken":
+    "Another team member is confirming this stocktake — refresh the page.",
+  "err.stock.stocktakePosted":
+    "The stocktake is already confirmed or being confirmed — stock is not changed again.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -855,4 +874,11 @@ export const uz: SectionDict<typeof ru> = {
   "err.stock.writeoffReason": "Hisobdan chiqarish sababini tanlang.",
   "err.stock.writeoffTooMuch":
     "{qty} donani hisobdan chiqarib boʻlmaydi: omborda {stock} dona bor.",
+  "err.stock.badCount": "Haqiqiy qoldiq — 0 dan {max} gacha butun son.",
+  "err.stock.stocktakeClosed":
+    "Inventarizatsiya tasdiqlangan yoki bekor qilingan — yangisini boshlang.",
+  "err.stock.stocktakeTooBig": "Inventarizatsiyada {max} tadan ortiq tovar boʻlmasligi kerak.",
+  "err.stock.stocktakeTaken": "Inventarizatsiyani boshqa xodim tasdiqlamoqda — sahifani yangilang.",
+  "err.stock.stocktakePosted":
+    "Inventarizatsiya allaqachon tasdiqlangan yoki tasdiqlanmoqda — qoldiq qayta oʻzgarmaydi.",
 };
