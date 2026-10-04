@@ -203,8 +203,17 @@ class Query implements PromiseLike<Result> {
     return this;
   }
   /** contains по jsonb-объекту: все ключи образца совпадают (плоский @>). */
-  contains(col: string, v: Record<string, unknown>) {
+  contains(col: string, v: Record<string, unknown> | string) {
     this.col(col);
+    // jsonb-массив (category_ids): образец — JSON-строка, как её шлёт код домена.
+    if (typeof v === "string") {
+      const want = JSON.parse(v) as unknown[];
+      this.filters.push((r) => {
+        const have = typeof r[col] === "string" ? JSON.parse(r[col] as string) : r[col];
+        return Array.isArray(have) && want.every((x) => have.includes(x));
+      });
+      return this;
+    }
     this.filters.push((r) => {
       const obj = r[col] as Record<string, unknown> | null;
       return Boolean(obj) && Object.entries(v).every(([k, x]) => jsonContains(obj![k], x));

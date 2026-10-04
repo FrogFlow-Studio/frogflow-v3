@@ -323,6 +323,51 @@ describe("чек из Instagram: просроченная ссылка CDN", () 
   });
 });
 
+describe("раздел с подразделами и своими товарами (Копилка русоведа, 04.10)", () => {
+  const own = (id: string, name: string, cats: string[]) => ({
+    id,
+    bot_id: BOT,
+    name,
+    price: 2000,
+    currency: "KZT",
+    category_ids: cats,
+    is_active: true,
+    sort_order: 1,
+    product_variants: [],
+    file_path: `${BOT}/${id}.pdf`,
+  });
+  const arrange = (platform: "instagram" | "whatsapp") => {
+    const r = setup({ platform, state: { locale: "ru", country_code: "KZ" } });
+    r.db.tables.categories = [category("a", null, 1), category("a1", "a", 1)];
+    r.db.tables.products = [own("p1", "Папка 5 класс", ["a"])];
+    return r;
+  };
+
+  it("товары раздела — последний пункт списка, а не пропадают", async () => {
+    const { send, sent } = arrange("instagram");
+    await send({ postbackPayload: "CAT:a:0" });
+    expect(sent.at(-1)!.text).toContain("1. Раздел a1");
+    expect(sent.at(-1)!.text).toContain("2. Товары этого раздела");
+    await send({ text: "2" });
+    expect(sent.at(-1)!.text).toContain("Папка 5 класс");
+  });
+
+  it("WhatsApp: строка «товары раздела» ведёт в список товаров", async () => {
+    const { send, sent } = arrange("whatsapp");
+    await send({ postbackPayload: "CAT:a:0" });
+    expect(rows(sent).map((r) => r.id)).toContain("PCAT:a:0");
+    await send({ postbackPayload: "PCAT:a:0" });
+    expect(rows(sent).map((r) => r.id)).toContain("PROD:p1");
+  });
+
+  it("раздел без своих товаров — как раньше, без лишнего пункта", async () => {
+    const { send, sent, db } = arrange("instagram");
+    db.tables.products = [];
+    await send({ postbackPayload: "CAT:a:0" });
+    expect(sent.at(-1)!.text).not.toContain("Товары этого раздела");
+  });
+});
+
 describe("каталог WhatsApp: постбэк CAT:<раздел>:<смещение>", () => {
   it("пустой раздел в постбэке — это корень: показываются разделы верхнего уровня", async () => {
     const { db, send, sent } = setup();
