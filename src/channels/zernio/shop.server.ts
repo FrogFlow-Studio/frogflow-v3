@@ -443,8 +443,13 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     mode = "idle";
   }
 
-  if (isCancel(text)) {
-    if ((!mode || mode === "idle") && !inDialog(s)) return "question";
+  // «/start» — и слово отмены, и вызов магазина. Вне сценария и вне разговора с
+  // ботом это вызов: иначе в строгом режиме (он по умолчанию) первое «/start»
+  // покупателя молча уходило продавцу обращением (Копилка русоведа, 04.10).
+  const idleNow = !mode || mode === "idle";
+  const startCall = idleNow && !inDialog(s) && text.trim().toLowerCase() === "/start";
+  if (isCancel(text) && !startCall) {
+    if (idleNow && !inDialog(s)) return "question";
     await setMode(s, { mode: "idle" });
     await reply(s, `${plain(s.m.useMenu)}\n\n${hint(s)}`, {
       force: true,

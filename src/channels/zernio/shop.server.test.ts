@@ -752,6 +752,16 @@ describe("строгий режим «Только по заказам» (Educat
     expect(sent.length).toBeGreaterThan(0);
   });
 
+  it("«/start» вне разговора открывает магазин, а не молча уходит продавцу", async () => {
+    const { send, sent, db } = setup({
+      platform: "instagram",
+      state: { locale: "ru", country_code: "KZ" },
+    });
+    db.tables.payment_methods = [];
+    expect((await send({ text: "/start" })).outcome).toBe("handled");
+    expect(sent.length).toBeGreaterThan(0);
+  });
+
   it("ждём чек: «спасибо» через час — без напоминания про чек", async () => {
     const { send, sent } = setup({
       platform: "instagram",
