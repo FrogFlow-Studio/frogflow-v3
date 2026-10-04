@@ -1463,14 +1463,22 @@ export const saveCustomerNoteFn = createServerFn({ method: "POST" })
         key: z.string().min(1).max(200),
         tags: z.array(z.string().max(100)).max(50),
         note: z.string().max(4000),
+        // Версия заметки из последнего чтения (null — заметки не было); идёт в условие записи.
+        version: z.string().datetime({ offset: true }).nullable(),
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
     const ctx = await adminWrite();
     const { setSellerNote } = await import("@/core/customers/card");
-    const r = await setSellerNote(ctx, data.key, { tags: data.tags, note: data.note });
+    const r = await setSellerNote(
+      ctx,
+      data.key,
+      { tags: data.tags, note: data.note },
+      data.version,
+    );
     if (!r) throw new UserError("err.customer.notFound", "Покупатель не найден.");
+    // saved: false — заметку успели изменить; в ответе актуальная, форма показывает её и просит проверить.
     return r;
   });
 

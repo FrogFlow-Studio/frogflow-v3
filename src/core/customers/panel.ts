@@ -4,6 +4,7 @@ import { pageAll } from "@/core/db/page";
 import { OPEN_TICKET_DB_STATUSES, TICKET_PREFIX } from "@/core/helpdesk/tickets";
 import { displayNo } from "@/core/orders/pure";
 import { orderStats, type OrderStats } from "./card";
+import { readSellerNoteVersioned, type SellerNote } from "./seller-notes";
 
 /** Заказов в боковой панели диалога; полная история — в карточке покупателя. */
 export const PANEL_ORDERS = 5;
@@ -12,6 +13,9 @@ export type CustomerPanel = {
   /** Ключ для ссылки на карточку покупателя. */
   userKey: string;
   points: number;
+  /** Теги и заметка продавца — те же, что в карточке; правятся здесь же (версия — условие записи). */
+  seller: SellerNote;
+  sellerVersion: string | null;
   /** Покупки (оплаченные и выполненные заказы) по валютам. */
   stats: OrderStats;
   orders: Array<{
@@ -47,7 +51,7 @@ export async function customerPanel(
   if (error) throw serverFailure(`Покупатели: ${error.message}`);
   if (!user) return null;
 
-  const [recent, all, tickets] = await Promise.all([
+  const [recent, all, tickets, seller] = await Promise.all([
     ctx.db
       .from("orders")
       .select("id, order_no, display_no, status, total, currency, created_at")
@@ -83,12 +87,15 @@ export async function customerPanel(
           "Обращения покупателя",
         )
       : Promise.resolve([]),
+    readSellerNoteVersioned(ctx, user.user_key),
   ]);
   if (recent.error) throw serverFailure(`Заказы покупателя: ${recent.error.message}`);
 
   return {
     userKey: user.user_key,
     points: Number(user.loyalty_points) || 0,
+    seller: seller.note,
+    sellerVersion: seller.version,
     stats: orderStats(all),
     orders: (recent.data ?? []).map((o) => ({
       id: o.id,

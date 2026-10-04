@@ -1,8 +1,15 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
 import { HANDOFF_PREFIX } from "@/core/storefront/handoff";
 import { linkedWebOrderIds } from "@/core/storefront/web-link";
-import { allSellerNotes, readSellerNote, writeSellerNote, type SellerNote } from "./seller-notes";
+import {
+  allSellerNotes,
+  readSellerNoteVersioned,
+  writeSellerNoteIf,
+  type NoteResult,
+  type SellerNote,
+} from "./seller-notes";
 import { linkedProfiles, type LinkedProfile } from "./identity";
 
 export { cleanTags, type SellerNote } from "./seller-notes";
@@ -82,6 +89,8 @@ export type CustomerCard = {
   /** Откуда пришёл: первая ссылка /start (реферал, товар, корзина с витрины). */
   firstSource: string | null;
   seller: SellerNote;
+  /** Версия заметки: форма возвращает её при сохранении, чтобы не затереть чужую правку. */
+  sellerVersion: string | null;
   /** Этот же человек в других каналах: по телефону, почте или связи продавца. */
   linked: LinkedProfile[];
   stats: OrderStats;
@@ -160,7 +169,7 @@ export async function customerCard(
           .limit(RECENT_MESSAGES)
           .then((r) => r.data ?? [])
       : Promise.resolve([]),
-    readSellerNote(ctx, userKey),
+    readSellerNoteVersioned(ctx, userKey),
     linkedIds.length
       ? ctx.db
           .from("orders")
@@ -195,7 +204,8 @@ export async function customerCard(
     optOut: u.opt_out === true,
     blocked,
     firstSource: sourceLabel(state.first_source),
-    seller,
+    seller: seller.note,
+    sellerVersion: seller.version,
     linked,
     stats: orderStats(orders),
     orders: orders.slice(0, RECENT_ORDERS).map((o) => ({
@@ -231,20 +241,24 @@ export async function customerCard(
   };
 }
 
-/** Теги и заметка продавца; null — такого покупателя нет. */
+/**
+ * Теги и заметка продавца с условием на версию (core/customers/seller-notes):
+ * общая для карточки и диалога. null — такого покупателя нет.
+ */
 export async function setSellerNote(
   ctx: TenantContext,
   userKey: string,
   note: SellerNote,
-): Promise<SellerNote | null> {
+  version: string | null,
+): Promise<NoteResult | null> {
   const { data, error } = await ctx.db
     .from("bot_users")
     .select("user_key")
     .eq("user_key", userKey)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`Покупатели: ${error.message}`);
   if (!data) return null;
-  return writeSellerNote(ctx, userKey, note);
+  return writeSellerNoteIf(ctx, userKey, note, version);
 }
 
 /** Все теги магазина — подсказки в карточке и выбор сегмента в рассылке. */

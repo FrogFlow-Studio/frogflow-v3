@@ -8,6 +8,7 @@ import {
   chatConnectFn,
   chatConversationsFn,
   chatCustomerPanelFn,
+  saveCustomerNoteFn,
   chatInboxPageFn,
   chatInboxPollFn,
   chatInvoiceFn,
@@ -486,6 +487,7 @@ function ChatPage() {
                 loc={loc}
                 telegramId={selected.telegram_id}
                 canOpenCard={roleAllows(shop.role, CONTACTS_MIN_ROLE)}
+                canWrite={canWrite}
               />
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                 <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
@@ -753,11 +755,13 @@ function CustomerPanelView({
   loc,
   telegramId,
   canOpenCard,
+  canWrite,
 }: {
   t: AdminT;
   loc: string;
   telegramId: number;
   canOpenCard: boolean;
+  canWrite: boolean;
 }) {
   const [data, setData] = useState<PanelData | undefined>(undefined);
   const [failed, setFailed] = useState(false);
@@ -780,6 +784,38 @@ function CustomerPanelView({
       clearInterval(timer);
     };
   }, [telegramId]);
+  // Теги и заметка: правка на месте, запись по версии (та же функция, что в карточке покупателя).
+  const [tags, setTags] = useState("");
+  const [note, setNote] = useState("");
+  const [version, setVersion] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [noteConflict, setNoteConflict] = useState(false);
+  const [noteSaved, setNoteSaved] = useState(false);
+  // Опрос панели не затирает то, что продавец печатает: чужая правка подтянется, пока он не начал.
+  useEffect(() => {
+    if (!data || dirty) return;
+    // Ответ опроса, ушедший до нашей записи, старее того, что уже на экране: не откатываем.
+    if (version && (!data.sellerVersion || Date.parse(data.sellerVersion) < Date.parse(version)))
+      return;
+    setTags(data.seller.tags.join(", "));
+    setNote(data.seller.note);
+    setVersion(data.sellerVersion);
+  }, [data, dirty, version]);
+  const saveNote = useAction(async () => {
+    if (!data) return;
+    setNoteSaved(false);
+    setNoteConflict(false);
+    const r = await saveCustomerNoteFn({
+      data: { key: data.userKey, tags: tags.split(",").map((x) => x.trim()), note, version },
+    });
+    setVersion(r.version);
+    setTags(r.note.tags.join(", "));
+    setNote(r.note.note);
+    setData((d) => (d ? { ...d, seller: r.note, sellerVersion: r.version } : d));
+    setDirty(false);
+    if (r.saved) setNoteSaved(true);
+    else setNoteConflict(true);
+  });
   const spent = data
     ? Object.entries(data.stats.totals)
         .map(([cur, sum]) => formatMoney(sum, cur))
@@ -848,6 +884,49 @@ function CustomerPanelView({
               </ul>
             </div>
           )}
+          <div>
+            <p className="mb-1 text-xs text-muted">{t("customer.sellerTitle")}</p>
+            <ErrorBox error={saveNote.error} />
+            {noteConflict && <p className="mb-1 text-xs text-warn">{t("customer.noteConflict")}</p>}
+            <input
+              className="input mb-1 w-full text-xs"
+              aria-label={t("customer.tags")}
+              placeholder={t("customer.tags")}
+              value={tags}
+              disabled={!canWrite}
+              onChange={(e) => {
+                setTags(e.target.value);
+                setDirty(true);
+                setNoteSaved(false);
+              }}
+            />
+            <textarea
+              className="input min-h-16 w-full text-xs"
+              aria-label={t("customer.note")}
+              placeholder={t("customer.note")}
+              value={note}
+              maxLength={2000}
+              disabled={!canWrite}
+              onChange={(e) => {
+                setNote(e.target.value);
+                setDirty(true);
+                setNoteSaved(false);
+              }}
+            />
+            {canWrite && (
+              <div className="mt-1 flex items-center justify-end gap-2">
+                {noteSaved && <span className="text-xs text-muted">{t("customer.saved")}</span>}
+                <button
+                  type="button"
+                  className="btn-secondary text-xs"
+                  disabled={saveNote.busy || !dirty}
+                  onClick={() => void saveNote.run().catch(() => {})}
+                >
+                  {t("customer.save")}
+                </button>
+              </div>
+            )}
+          </div>
           {canOpenCard && (
             <Link
               to="/admin/customers/$key"

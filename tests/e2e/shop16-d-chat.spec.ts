@@ -74,3 +74,27 @@ test("чат: ссылка из напоминания открывает диа
   await expect(page.getByRole("button", { name: "Показать ещё", exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("чат: заметка и теги правятся в панели диалога и видны в карточке покупателя", async ({
+  page,
+}) => {
+  const errors = await watch(page);
+  // Проекты desktop и phone идут параллельно по одной базе: у каждого свой покупатель, иначе они спорят за одну заметку.
+  const n = test.info().project.name === "phone" ? 6 : 5;
+  await login(page);
+  await page.goto(`/admin/chat?c=${F.chatManyId(n)}`);
+  const panel = page.getByRole("complementary", { name: "Покупатель", exact: true });
+  await panel.getByRole("textbox", { name: "Теги", exact: true }).fill("vip, опт");
+  await panel
+    .getByRole("textbox", { name: "Заметка для команды", exact: true })
+    .fill("Звонить после 18");
+  await panel.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await expect(panel.getByText("Сохранено", { exact: true })).toBeVisible();
+  await panel.getByRole("link", { name: "Карточка покупателя", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/customers\//);
+  await expect(page.getByRole("textbox", { name: "Заметка для команды", exact: true })).toHaveValue(
+    "Звонить после 18",
+  );
+  await expect(page.locator('input[list="customer-tags"]')).toHaveValue("vip, опт");
+  expect(errors).toEqual([]);
+});

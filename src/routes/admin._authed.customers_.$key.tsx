@@ -30,12 +30,28 @@ function CustomerCardPage() {
   const [tags, setTags] = useState(c.seller.tags.join(", "));
   const [note, setNote] = useState(c.seller.note);
   const [saved, setSaved] = useState(false);
+  // Версия заметки из последнего чтения: условие записи, чтобы не затереть правку из диалога.
+  const [noteVersion, setNoteVersion] = useState(c.sellerVersion);
+  const [noteConflict, setNoteConflict] = useState(false);
   const save = useAction(async () => {
     setSaved(false);
-    await saveCustomerNoteFn({
-      data: { key: c.userKey, tags: tags.split(",").map((x) => x.trim()), note },
+    setNoteConflict(false);
+    const r = await saveCustomerNoteFn({
+      data: {
+        key: c.userKey,
+        tags: tags.split(",").map((x) => x.trim()),
+        note,
+        version: noteVersion,
+      },
     });
-    setSaved(true);
+    setNoteVersion(r.version);
+    if (r.saved) setSaved(true);
+    else {
+      // Заметку успели изменить: показываем актуальную, продавец проверяет и сохраняет ещё раз.
+      setTags(r.note.tags.join(", "));
+      setNote(r.note.note);
+      setNoteConflict(true);
+    }
     await router.invalidate();
   });
   const [sign, setSign] = useState<1 | -1>(1);
@@ -111,6 +127,7 @@ function CustomerCardPage() {
         </Card>
         <Card title={t("customer.sellerTitle")}>
           <ErrorBox error={save.error} />
+          {noteConflict && <p className="mb-2 text-xs text-warn">{t("customer.noteConflict")}</p>}
           <Field label={t("customer.tags")} hint={t("customer.tagsHint")}>
             <input
               className="input"

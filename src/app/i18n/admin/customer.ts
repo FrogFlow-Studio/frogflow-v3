@@ -32,6 +32,8 @@ export const ru = {
   "customer.note": "Заметка для команды",
   "customer.save": "Сохранить",
   "customer.saved": "Сохранено",
+  "customer.noteConflict":
+    "Заметку только что изменил другой сотрудник — ниже актуальная версия. Проверьте и сохраните ещё раз.",
   "customer.adjust.title": "Правка баллов",
   "customer.adjust.add": "Начислить",
   "customer.adjust.sub": "Списать",
@@ -88,6 +90,8 @@ export const kk: SectionDict<typeof ru> = {
   "customer.note": "Команда үшін ескертпе",
   "customer.save": "Сақтау",
   "customer.saved": "Сақталды",
+  "customer.noteConflict":
+    "Ескертпені жаңа ғана басқа қызметкер өзгертті — төменде өзекті нұсқа. Тексеріп, қайта сақтаңыз.",
   "customer.adjust.title": "Ұпайды түзету",
   "customer.adjust.add": "Қосу",
   "customer.adjust.sub": "Шегеру",
@@ -144,6 +148,8 @@ export const en: SectionDict<typeof ru> = {
   "customer.note": "Note for the team",
   "customer.save": "Save",
   "customer.saved": "Saved",
+  "customer.noteConflict":
+    "The note was just changed by another team member — the current version is shown below. Check it and save again.",
   "customer.adjust.title": "Adjust points",
   "customer.adjust.add": "Add",
   "customer.adjust.sub": "Subtract",
@@ -200,6 +206,8 @@ export const uz: SectionDict<typeof ru> = {
   "customer.note": "Jamoa uchun eslatma",
   "customer.save": "Saqlash",
   "customer.saved": "Saqlandi",
+  "customer.noteConflict":
+    "Eslatmani hozirgina boshqa xodim oʻzgartirdi — quyida joriy variant. Tekshirib, qayta saqlang.",
   "customer.adjust.title": "Ballarni tuzatish",
   "customer.adjust.add": "Qoʻshish",
   "customer.adjust.sub": "Ayirish",

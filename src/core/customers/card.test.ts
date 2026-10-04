@@ -3,9 +3,14 @@ import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { upsertCustomer } from "./customers";
 import { cleanTags, customerCard, knownTags, orderStats, setSellerNote, sourceLabel } from "./card";
-import { NOTE_PREFIX, readSellerNote } from "./seller-notes";
+import { NOTE_PREFIX, readSellerNote, readSellerNoteVersioned } from "./seller-notes";
 
 let db: FakeDb;
+/** Сохранение заметки с актуальной версией — как форма, только что прочитавшая её. */
+async function put(key: string, note: { tags: string[]; note: string }) {
+  const { version } = await readSellerNoteVersioned(ctx(), key);
+  return setSellerNote(ctx(), key, note, version);
+}
 const ctx = (modules: Record<string, boolean> = {}) =>
   ({ tenant: { id: "b", modules, settings: {} }, db }) as unknown as TenantContext;
 
@@ -86,18 +91,18 @@ describe("карточка покупателя: теги и заметка", ()
 
   it("заметка — своя строка app_settings, bot_users не трогается", async () => {
     const before = structuredClone(db.tables.bot_users);
-    const r = await setSellerNote(ctx(), "tg_5", {
+    const r = await put("tg_5", {
       tags: ["vip", "VIP"],
       note: " звонить после 18 ",
     });
-    expect(r).toEqual({ tags: ["vip"], note: "звонить после 18" });
+    expect(r).toMatchObject({ saved: true, note: { tags: ["vip"], note: "звонить после 18" } });
     expect(db.tables.bot_users).toEqual(before);
     expect(db.tables.app_settings!.map((x) => x.key)).toEqual([`${NOTE_PREFIX}tg_5`]);
     expect(await readSellerNote(ctx(), "tg_5")).toEqual({
       tags: ["vip"],
       note: "звонить после 18",
     });
-    expect(await setSellerNote(ctx(), "tg_404", { tags: ["x"], note: "" })).toBeNull();
+    expect(await setSellerNote(ctx(), "tg_404", { tags: ["x"], note: "" }, null)).toBeNull();
   });
 
   it("канал, переписавший metadata между чтением и записью, заметку не теряет", async () => {
@@ -139,7 +144,7 @@ describe("карточка покупателя: теги и заметка", ()
       metadata: { ig: { name: "новое" } },
     });
     await new Promise((r) => setTimeout(r, 0));
-    await setSellerNote(ctx(), "ig_77", { tags: ["опт"], note: "просит счёт" });
+    await put("ig_77", { tags: ["опт"], note: "просит счёт" });
     release();
     await incoming;
     expect(channelWrote).toBe(true);
@@ -147,11 +152,11 @@ describe("карточка покупателя: теги и заметка", ()
   });
 
   it("пустая заметка без тегов строку удаляет; теги магазина — из всех заметок", async () => {
-    await setSellerNote(ctx(), "tg_5", { tags: ["VIP", "опт"], note: "" });
+    await put("tg_5", { tags: ["VIP", "опт"], note: "" });
     db.tables.bot_users!.push({ user_key: "tg_6", telegram_id: 6, platform: "telegram" });
-    await setSellerNote(ctx(), "tg_6", { tags: ["vip", "учитель"], note: "" });
+    await put("tg_6", { tags: ["vip", "учитель"], note: "" });
     expect(await knownTags(ctx())).toEqual(["VIP", "опт", "учитель"]);
-    await setSellerNote(ctx(), "tg_6", { tags: [], note: "  " });
+    await put("tg_6", { tags: [], note: "  " });
     expect(db.tables.app_settings!.map((x) => x.key)).toEqual([`${NOTE_PREFIX}tg_5`]);
   });
 
