@@ -77,7 +77,21 @@ export const ORDER_EVENT_STATUS = "event";
 /** События, после которых заказ считается проданным: оплата и начало выдачи. */
 const SNAPSHOT_KINDS: ReadonlySet<OrderEventKind> = new Set(["payment", "delivery_started"]);
 
-/** Запись события; сбой журнала не должен ломать сам заказ — только в консоль. */
+/** События с деньгами: потерянную запись повторяем и о постоянном сбое сообщаем в журнал ошибок. */
+const MONEY_KINDS: ReadonlySet<OrderEventKind> = new Set([
+  "payment",
+  "payment_on_closed",
+  "payment_mismatch",
+  "refund",
+]);
+
+/**
+ * Запись события; сбой журнала не должен ломать сам заказ. Событие с деньгами
+ * («оплата», «возврат») при сбое пишется ещё раз с тем же `event_id` (дубль
+ * после «потерянного ответа» не плодится: повтор отбивается уникальностью), и
+ * если не вышло и со второго раза — это ошибка в журнале ошибок, а не строка
+ * в консоли: оплата в заказе есть, а в истории и выгрузке «Оплаты» её нет.
+ */
 export async function recordOrderEvent(
   ctx: TenantContext,
   orderId: number,
@@ -86,14 +100,30 @@ export async function recordOrderEvent(
   actor = "bot",
 ): Promise<void> {
   const stamp = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const { error } = await ctx.db.from("zernio_logs").insert({
+  const row = {
     bot_id: ctx.tenant.id,
     event_id: `order:${orderId}:${kind}:${stamp}`,
     event_type: `order.${kind}`,
     status: ORDER_EVENT_STATUS,
     payload: { order_id: orderId, actor, ...payload } as Json,
-  });
-  if (error) console.warn(`[orders] событие ${kind} для #${orderId} не записано: ${error.message}`);
+  };
+  let { error } = await ctx.db.from("zernio_logs").insert(row);
+  if (error && MONEY_KINDS.has(kind)) {
+    ({ error } = await ctx.db.from("zernio_logs").insert(row));
+    // Первая запись могла дойти, потеряв ответ: повтор упёрся в уникальный event_id.
+    if (error && /duplicate|unique/i.test(error.message)) error = null;
+  }
+  if (error) {
+    console.warn(`[orders] событие ${kind} для #${orderId} не записано: ${error.message}`);
+    if (MONEY_KINDS.has(kind)) {
+      const { reportError } = await import("@/lib/errors");
+      const { serverFailure } = await import("@/lib/server-failure");
+      await reportError(
+        serverFailure(`Событие ${kind} по заказу #${orderId} не записано: ${error.message}`),
+        { where: "orders.recordOrderEvent", botId: ctx.tenant.id },
+      ).catch(() => {});
+    }
+  }
   // Модуль profit: по заказу впервые прошли деньги или выдача — фиксируем себестоимость позиций.
   if (ctx.tenant.modules.profit && SNAPSHOT_KINDS.has(kind)) {
     const { snapshotOrderCost } = await import("@/core/profit/snapshot");

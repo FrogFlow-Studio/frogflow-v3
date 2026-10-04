@@ -971,6 +971,27 @@ export async function markProofVerified(
     .select("id");
   if (error) throw serverFailure(`markProofVerified: заказ #${orderId}: ${error.message}`);
   const ok = Boolean(data?.length);
+  // Чек настоящий, но заказ успели отменить или отклонить: деньги пришли по
+  // закрытому заказу. В оплату не пишем, но событие с суммой и номером чека
+  // (хешем файла) остаётся в истории: продавец видит, что покупатель заплатил.
+  if (!ok && receipt && before) {
+    const { data: now, error: nowError } = await ctx.db
+      .from("orders")
+      .select("status")
+      .eq("id", orderId)
+      .maybeSingle();
+    if (nowError) throw serverFailure(`markProofVerified: заказ #${orderId}: ${nowError.message}`);
+    if (now && ["cancelled", "rejected", "refunded"].includes(now.status)) {
+      const { recordUnappliedPayment } = await import("@/core/payments/payment");
+      await recordUnappliedPayment(ctx, orderId, "payment_on_closed", {
+        amount: receipt.amount,
+        currency: receipt.currency ?? before.currency,
+        provider: "receipt",
+        ref: hash,
+        status: now.status,
+      });
+    }
+  }
   if (ok && receipt && before) {
     // Платёж в журнал: из него собирается выгрузка «Оплаты». Переплата — отдельным полем.
     const over = foreign
