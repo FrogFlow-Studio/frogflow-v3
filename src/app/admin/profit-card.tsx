@@ -70,6 +70,12 @@ export function ProfitCard({ days, loc, t }: { days: 7 | 30 | 90; loc: string; t
             </p>
           )}
           <p className="mt-2 text-xs text-muted">{t("profit.hint")}</p>
+          <a
+            className="btn-secondary mt-3 inline-block text-sm"
+            href={`/api/admin/export/profit?days=${days}`}
+          >
+            {t("profit.export")}
+          </a>
           {rep.products.length > 0 && (
             <div className="mt-4 overflow-x-auto">
               <h3 className="mb-2 text-sm font-medium">{t("profit.products")}</h3>

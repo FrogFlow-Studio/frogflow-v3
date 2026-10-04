@@ -18,12 +18,23 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
             params.kind === "orders" ||
             params.kind === "payments" ||
             params.kind === "analytics" ||
-            params.kind === "analytics-products";
+            params.kind === "analytics-products" ||
+            params.kind === "profit";
           const fin = finance ? await requireAdminFinance() : null;
           // «Оплаты» — без контактов покупателей: любая роль раздела финансов.
           const noModule = params.kind === "analytics" || params.kind === "analytics-products";
           // Аналитика — как её страница: любая роль раздела финансов, без модуля и без контактов.
-          if (fin && noModule) {
+          if (fin && params.kind === "profit") {
+            // Прибыль — как «Аналитика» (любая роль раздела финансов, без контактов), но нужен модуль profit.
+            if (!fin.ctx.tenant.modules.profit)
+              throw new (await import("@/core/i18n/user-error")).UserError(
+                "err.auth.moduleOff",
+                "Модуль «{module}» не подключён к вашему тарифу.",
+                { module: "profit" },
+              );
+            ctx = fin.ctx;
+            noContacts = true;
+          } else if (fin && noModule) {
             ctx = fin.ctx;
             noContacts = true;
           } else if (fin && (fin.accountant || params.kind === "payments")) {
@@ -92,6 +103,16 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
           );
           const today = new Date().toISOString().slice(0, 10);
           name = `${params.kind}-${days}d-${today}.csv`;
+        } else if (params.kind === "profit") {
+          const d = Number(url.searchParams.get("days"));
+          const days = d === 7 || d === 90 ? d : 30;
+          const [{ profitReport }, { profitCsv }] = await Promise.all([
+            import("@/core/profit/report"),
+            import("@/core/profit/export"),
+          ]);
+          result = profitCsv(await profitReport(ctx, days));
+          const today = new Date().toISOString().slice(0, 10);
+          name = `profit-${days}d-${today}.csv`;
         } else if (params.kind === "students") {
           const id = url.searchParams.get("productId");
           const { studentsCsv } = await import("@/app/admin/students-export.server");

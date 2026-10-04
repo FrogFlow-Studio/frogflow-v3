@@ -9,6 +9,7 @@ import { UserError } from "@/core/i18n/user-error";
  */
 let role: AdminRole | null = "owner";
 let moduleOn = true;
+let profitOn = true;
 const CTX = { tenant: { id: "shop-1" } };
 
 // Как настоящие гварды: бухгалтеру закрыто всё, кроме requireAdminFinance.
@@ -26,7 +27,7 @@ vi.mock("@/app/auth/guards.server", () => ({
   requireAdminFinance: async () => {
     if (!role) throw new Error("Unauthorized");
     return {
-      ctx: { tenant: { ...CTX.tenant, modules: { excel_export: moduleOn } } },
+      ctx: { tenant: { ...CTX.tenant, modules: { excel_export: moduleOn, profit: profitOn } } },
       accountant: role === "accountant",
     };
   },
@@ -55,6 +56,20 @@ vi.mock("@/core/analytics/export.server", () => ({
     return { csv: "an", count: 1 };
   },
 }));
+let profitArgs: unknown[] = [];
+vi.mock("@/core/profit/report", () => ({
+  profitReport: async (...a: unknown[]) => {
+    profitArgs = a;
+    return {
+      products: [],
+      otherCurrencies: [],
+      revenue: 0,
+      unknown: { items: 0, revenue: 0 },
+      margin: null,
+      currency: "KZT",
+    };
+  },
+}));
 vi.mock("@/core/export/payments", () => ({
   paymentsCsv: async () => ({ csv: "pay", count: 1 }),
 }));
@@ -68,6 +83,7 @@ const get = (kind: string) =>
 
 beforeEach(() => {
   role = "owner";
+  profitOn = true;
   moduleOn = true;
   ordersArgs = [];
 });
@@ -187,5 +203,30 @@ describe("аналитика: как её страница, любая роль 
   it("без сессии — 401", async () => {
     role = null;
     expect((await get("analytics")).status).toBe(401);
+  });
+});
+
+describe("прибыль по товарам: как аналитика, но нужен модуль profit", () => {
+  it("любая роль раздела финансов получает CSV, период доходит до отчёта", async () => {
+    moduleOn = false; // модуль выгрузки заказов не нужен
+    for (const r of ["accountant", "viewer", "manager", "owner"] as const) {
+      role = r;
+      const res = await GET({
+        request: new Request("http://x/api/admin/export/profit?days=90"),
+        params: { kind: "profit" },
+      });
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-disposition")).toContain("profit-90d");
+      expect(res.headers.get("content-type")).toContain("text/csv");
+      expect(profitArgs[1]).toBe(90);
+    }
+  });
+
+  it("без модуля profit — 403, без сессии — 401", async () => {
+    profitOn = false;
+    expect((await get("profit")).status).toBe(403);
+    profitOn = true;
+    role = null;
+    expect((await get("profit")).status).toBe(401);
   });
 });

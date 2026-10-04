@@ -36,7 +36,7 @@ export const ru = {
   "profit.fromCurrent":
     "{n} поз. посчитаны по текущей себестоимости: на момент продажи она не была записана.",
   "profit.hint":
-    "Валовая прибыль = выручка − себестоимость проданного, только по позициям с заданной себестоимостью. Не учтены доставка, комиссии платёжных систем и реклама. Возврат на склад уменьшает себестоимость заказа, возврат без склада — нет.",
+    "Валовая прибыль = выручка − себестоимость проданного, только по позициям с заданной себестоимостью. Выручка — как в аналитике, вместе с оплаченной покупателем доставкой; расходы на доставку, комиссии платёжных систем и реклама не вычтены. Возврат на склад уменьшает себестоимость заказа, возврат без склада — нет.",
   "profit.other": "В других валютах прибыль не считается (себестоимость хранится в {cur}): {list}",
   "profit.products": "Прибыль по товарам",
   "profit.col.product": "Товар",
@@ -47,6 +47,7 @@ export const ru = {
   "profit.col.margin": "Маржа",
   "profit.noCost": "нет себестоимости",
   "profit.partNoCost": "{n} шт. без себестоимости",
+  "profit.export": "Скачать CSV «Прибыль по товарам»",
   "profit.showAll": "Показать все ({n})",
 } as const;
 
@@ -87,7 +88,7 @@ export const kk: SectionDict<typeof ru> = {
   "profit.fromCurrent":
     "{n} позиция ағымдағы өзіндік құн бойынша есептелді: сату сәтінде ол жазылмаған еді.",
   "profit.hint":
-    "Жалпы пайда = түсім − сатылғанның өзіндік құны, тек өзіндік құны көрсетілген позициялар бойынша. Жеткізу, төлем жүйелерінің комиссиясы және жарнама ескерілмейді. Қоймаға қайтарылған қайтару тапсырыстың өзіндік құнын азайтады, қоймаға қайтармайтыны — жоқ.",
+    "Жалпы пайда = түсім − сатылғанның өзіндік құны, тек өзіндік құны көрсетілген позициялар бойынша. Түсім — аналитикадағыдай, сатып алушы төлеген жеткізумен бірге; жеткізу шығыстары, төлем жүйелерінің комиссиясы және жарнама алынбаған. Қоймаға қайтарылған қайтару тапсырыстың өзіндік құнын азайтады, қоймаға қайтармайтыны — жоқ.",
   "profit.other":
     "Басқа валюталарда пайда есептелмейді (өзіндік құн {cur} валютасында сақталады): {list}",
   "profit.products": "Тауарлар бойынша пайда",
@@ -99,6 +100,7 @@ export const kk: SectionDict<typeof ru> = {
   "profit.col.margin": "Маржа",
   "profit.noCost": "өзіндік құн жоқ",
   "profit.partNoCost": "{n} дана өзіндік құнсыз",
+  "profit.export": "«Тауарлар бойынша пайда» CSV жүктеу",
   "profit.showAll": "Барлығын көрсету ({n})",
 };
 
@@ -136,7 +138,7 @@ export const en: SectionDict<typeof ru> = {
   "profit.setCosts": "Set product costs",
   "profit.fromCurrent": "{n} items use the current cost: it was not recorded when they were sold.",
   "profit.hint":
-    "Gross profit = revenue − cost of goods sold, only for items with a cost set. Delivery, payment fees and advertising are not included. A refund with return to stock lowers the order's cost; a refund without it does not.",
+    "Gross profit = revenue − cost of goods sold, only for items with a cost set. Revenue is as in Analytics, including delivery paid by the buyer; delivery costs, payment fees and advertising are not deducted. A refund with return to stock lowers the order's cost; a refund without it does not.",
   "profit.other": "Profit is not calculated in other currencies (costs are kept in {cur}): {list}",
   "profit.products": "Profit by product",
   "profit.col.product": "Product",
@@ -147,6 +149,7 @@ export const en: SectionDict<typeof ru> = {
   "profit.col.margin": "Margin",
   "profit.noCost": "no cost",
   "profit.partNoCost": "{n} pcs without cost",
+  "profit.export": "Download CSV “Profit by product”",
   "profit.showAll": "Show all ({n})",
 };
 
@@ -187,7 +190,7 @@ export const uz: SectionDict<typeof ru> = {
   "profit.fromCurrent":
     "{n} ta pozitsiya joriy tannarx boʻyicha hisoblandi: sotuv paytida u yozilmagan edi.",
   "profit.hint":
-    "Yalpi foyda = tushum − sotilganning tannarxi, faqat tannarxi belgilangan pozitsiyalar boʻyicha. Yetkazib berish, toʻlov tizimlari komissiyasi va reklama hisobga olinmaydi. Omborga qaytarilgan qaytarish buyurtma tannarxini kamaytiradi, omborga qaytarilmagani — yoʻq.",
+    "Yalpi foyda = tushum − sotilganning tannarxi, faqat tannarxi belgilangan pozitsiyalar boʻyicha. Tushum — Tahlildagidek, xaridor toʻlagan yetkazib berish bilan birga; yetkazib berish xarajatlari, toʻlov tizimlari komissiyasi va reklama ayirilmagan. Omborga qaytarilgan qaytarish buyurtma tannarxini kamaytiradi, omborga qaytarilmagani — yoʻq.",
   "profit.other":
     "Boshqa valyutalarda foyda hisoblanmaydi (tannarx {cur} valyutasida saqlanadi): {list}",
   "profit.products": "Mahsulotlar boʻyicha foyda",
@@ -199,5 +202,6 @@ export const uz: SectionDict<typeof ru> = {
   "profit.col.margin": "Marja",
   "profit.noCost": "tannarx yoʻq",
   "profit.partNoCost": "{n} dona tannarxsiz",
+  "profit.export": "«Mahsulotlar boʻyicha foyda» CSV yuklab olish",
   "profit.showAll": "Hammasini koʻrsatish ({n})",
 };
