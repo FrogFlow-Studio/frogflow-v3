@@ -1228,7 +1228,7 @@ export const communityReportsFn = createServerFn({ method: "GET" })
 
 export const resolveCommunityReportFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
-    z.object({ id: z.string().uuid(), action: z.enum(["hide", "dismiss"]) }).parse(d),
+    z.object({ id: z.string().uuid(), action: z.enum(["hide", "dismiss", "restore"]) }).parse(d),
   )
   .handler(async ({ data }) => {
     await guard();

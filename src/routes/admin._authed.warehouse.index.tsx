@@ -1,4 +1,5 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { AskCommunityAdvice } from "@/app/admin/community-ask";
 import { adminT } from "@/app/i18n/admin";
 import { Card, PageTitle } from "@/app/ui";
 
@@ -15,6 +16,7 @@ function WarehouseHub() {
   return (
     <>
       <PageTitle title={t("warehouse.title")} subtitle={t("warehouse.subtitle")} />
+      <AskCommunityAdvice page="warehouse" t={t} />
       <div className="grid gap-3 sm:grid-cols-2">
         <Link to="/admin/warehouse/suppliers" className="block hover:opacity-90">
           <Card title={t("warehouse.hub.suppliers")}>

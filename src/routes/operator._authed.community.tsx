@@ -24,7 +24,7 @@ function CommunityReportsPage() {
     void load.run(0).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const resolve = useAction(async (id: string, action: "hide" | "dismiss") => {
+  const resolve = useAction(async (id: string, action: "hide" | "dismiss" | "restore") => {
     await resolveCommunityReportFn({ data: { id, action } });
     await load.run(0);
   });
@@ -44,7 +44,11 @@ function CommunityReportsPage() {
             <p className="mt-2 text-xs text-muted">
               Автор: {r.author} · пожаловался: {r.reporter}
               {r.reason ? ` · причина: ${r.reason}` : ""}
-              {r.hidden ? " · уже скрыто" : ""}
+              {r.hidden
+                ? r.hiddenBy === "reports"
+                  ? " · скрыто по жалобам"
+                  : " · уже скрыто"
+                : ""}
             </p>
             <div className="mt-2 flex gap-2">
               {!r.hidden && (
@@ -54,6 +58,15 @@ function CommunityReportsPage() {
                   onClick={() => void resolve.run(r.id, "hide").catch(() => {})}
                 >
                   Скрыть запись
+                </button>
+              )}
+              {r.hidden && (
+                <button
+                  className="btn-secondary"
+                  disabled={resolve.busy}
+                  onClick={() => void resolve.run(r.id, "restore").catch(() => {})}
+                >
+                  Вернуть запись
                 </button>
               )}
               <button

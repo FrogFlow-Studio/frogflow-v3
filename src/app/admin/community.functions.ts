@@ -113,3 +113,31 @@ export const reportCommunityFn = createServerFn({ method: "POST" })
       (await import("@/core/community/threads.server")).reportContent(ctx, data),
     );
   });
+
+/* ── «Спросить совет» со страницы админки (С4) ─────────────────────── */
+export const communityAdviceReadyFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await guardRead();
+  return { ready: await (await import("@/core/community/threads.server")).communityReady(ctx) };
+});
+
+export const askCommunityAdviceFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        page: z.enum(["warehouse", "discounts"]),
+        question: z.string().min(1).max(4000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await guardWrite();
+    const t = await (await import("@/app/admin/locale.server")).adminTFor(ctx);
+    const orSoon = await soonable();
+    return orSoon(async () =>
+      (await import("@/core/community/threads.server")).askAdvice(ctx, {
+        page: data.page,
+        pageTitle: t(`community.ask.page.${data.page}`),
+        question: data.question,
+      }),
+    );
+  });

@@ -62,6 +62,19 @@ export const ru = {
   "err.community.spamDay": "Сегодня вы создали достаточно тем. Продолжите завтра.",
   "err.community.ownReport": "На свою запись пожаловаться нельзя.",
   "settings.community.open": "Открыть сообщество →",
+  "community.ask.button": "Спросить совет у авторов",
+  "community.ask.hint":
+    "Вопрос уйдёт в раздел «Вопросы» сообщества, его увидят другие авторы. Данные магазина (суммы, покупатели, заказы) не отправляются: пишите только то, что готовы показать. Телефоны, почту и суммы система не пропустит.",
+  "community.ask.send": "Отправить в сообщество",
+  "community.ask.done": "Вопрос опубликован.",
+  "community.ask.open": "Открыть сообщество",
+  "community.ask.page.warehouse": "Склад",
+  "community.ask.page.discounts": "Акции и скидки",
+  "err.community.advicePage": "Спросить совет с этой страницы нельзя.",
+  "err.community.advicePrivate":
+    "Уберите из вопроса телефоны, почту, имена в мессенджерах и суммы: сообщество видят другие авторы.",
+  "community.autoHidden":
+    "Запись скрыта: на неё пожаловались несколько авторов. Оператор проверит.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -125,6 +138,18 @@ export const kk: SectionDict<typeof ru> = {
   "err.community.spamDay": "Бүгін жеткілікті тақырып ашылды. Ертең жалғастырыңыз.",
   "err.community.ownReport": "Өз жазбаңызға шағымдануға болмайды.",
   "settings.community.open": "Қауымдастықты ашу →",
+  "community.ask.button": "Авторлардан кеңес сұрау",
+  "community.ask.hint":
+    "Сұрақ қауымдастықтың «Сұрақтар» бөліміне түседі, оны басқа авторлар көреді. Дүкен деректері (сомалар, сатып алушылар, тапсырыстар) жіберілмейді: көрсетуге дайын нәрсені ғана жазыңыз. Телефондар, пошта және сомаларды жүйе өткізбейді.",
+  "community.ask.send": "Қауымдастыққа жіберу",
+  "community.ask.done": "Сұрақ жарияланды.",
+  "community.ask.open": "Қауымдастықты ашу",
+  "community.ask.page.warehouse": "Қойма",
+  "community.ask.page.discounts": "Акциялар мен жеңілдіктер",
+  "err.community.advicePage": "Бұл беттен кеңес сұрауға болмайды.",
+  "err.community.advicePrivate":
+    "Сұрақтан телефондарды, поштаны, мессенджердегі аттарды және сомаларды алып тастаңыз: қауымдастықты басқа авторлар көреді.",
+  "community.autoHidden": "Жазба жасырылды: оған бірнеше автор шағымданды. Оператор тексереді.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -188,6 +213,19 @@ export const en: SectionDict<typeof ru> = {
   "err.community.spamDay": "You have created enough topics today. Continue tomorrow.",
   "err.community.ownReport": "You cannot report your own post.",
   "settings.community.open": "Open the community →",
+  "community.ask.button": "Ask authors for advice",
+  "community.ask.hint":
+    "The question goes to the community “Questions” section and other authors will see it. Shop data (amounts, buyers, orders) is not sent: write only what you are happy to show. Phones, email and amounts are not allowed.",
+  "community.ask.send": "Send to the community",
+  "community.ask.done": "Question published.",
+  "community.ask.open": "Open the community",
+  "community.ask.page.warehouse": "Warehouse",
+  "community.ask.page.discounts": "Promotions and discounts",
+  "err.community.advicePage": "You cannot ask for advice from this page.",
+  "err.community.advicePrivate":
+    "Remove phones, email, messenger names and amounts from the question: other authors can see the community.",
+  "community.autoHidden":
+    "The post is hidden: several authors reported it. The operator will review it.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -251,4 +289,17 @@ export const uz: SectionDict<typeof ru> = {
   "err.community.spamDay": "Bugun yetarlicha mavzu ochdingiz. Ertaga davom eting.",
   "err.community.ownReport": "Oʻz yozuvingizga shikoyat qilib boʻlmaydi.",
   "settings.community.open": "Hamjamiyatni ochish →",
+  "community.ask.button": "Mualliflardan maslahat soʻrash",
+  "community.ask.hint":
+    "Savol hamjamiyatning «Savollar» boʻlimiga tushadi, uni boshqa mualliflar koʻradi. Doʻkon maʼlumotlari (summalar, xaridorlar, buyurtmalar) yuborilmaydi: faqat koʻrsatishga tayyor narsani yozing. Telefon, pochta va summalarni tizim oʻtkazmaydi.",
+  "community.ask.send": "Hamjamiyatga yuborish",
+  "community.ask.done": "Savol joylandi.",
+  "community.ask.open": "Hamjamiyatni ochish",
+  "community.ask.page.warehouse": "Ombor",
+  "community.ask.page.discounts": "Aksiyalar va chegirmalar",
+  "err.community.advicePage": "Bu sahifadan maslahat soʻrab boʻlmaydi.",
+  "err.community.advicePrivate":
+    "Savoldan telefon, pochta, messenjerdagi ismlar va summalarni olib tashlang: hamjamiyatni boshqa mualliflar koʻradi.",
+  "community.autoHidden":
+    "Yozuv yashirildi: unga bir nechta muallif shikoyat qildi. Operator tekshiradi.",
 };

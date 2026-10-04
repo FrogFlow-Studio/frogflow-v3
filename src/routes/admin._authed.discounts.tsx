@@ -22,6 +22,7 @@ import {
   saveSettingsFn,
   settingsFn,
 } from "@/app/admin/admin.functions";
+import { AskCommunityAdvice } from "@/app/admin/community-ask";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
@@ -61,6 +62,7 @@ function DiscountsPage() {
   return (
     <>
       <PageTitle title={t("discounts.title")} subtitle={t("discounts.subtitle")} />
+      <AskCommunityAdvice page="discounts" t={t} />
       <div className="grid gap-4 lg:grid-cols-2">
         {shop.modules.coupons && <PromoCard promos={promos} />}
         {shop.modules.gift_certificates && (

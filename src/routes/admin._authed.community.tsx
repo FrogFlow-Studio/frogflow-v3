@@ -303,7 +303,14 @@ function ThreadView({
   });
   const report = useAction(async (postId: string | null) => {
     const r = await reportCommunityFn({ data: { threadId: id, postId } });
-    if (!r.soon) setNote(r.already ? t("community.reportAlready") : t("community.reported"));
+    if (!r.soon)
+      setNote(
+        r.already
+          ? t("community.reportAlready")
+          : r.hidden
+            ? t("community.autoHidden")
+            : t("community.reported"),
+      );
   });
   return (
     <div>

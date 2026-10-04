@@ -262,6 +262,114 @@ describe("сообщество: жалобы и модерация", () => {
   });
 });
 
+describe("сообщество: автоскрытие по жалобам и возврат (С4)", () => {
+  it("3 жалобы от разных авторов скрывают тему, 2 — нет; оператор возвращает", async () => {
+    tenants.push(author("d", "Даша"), author("e", "Егор"));
+    const { id } = await srv.createThread(ctx("a"), {
+      section: "questions",
+      title: "Тема",
+      body: "x",
+    });
+    expect((await srv.reportContent(ctx("b"), { threadId: id })).hidden).toBe(false);
+    expect((await srv.reportContent(ctx("d"), { threadId: id })).hidden).toBe(false);
+    expect(db.tables.community_threads![0]!.hidden).toBe(false);
+    expect((await srv.reportContent(ctx("e"), { threadId: id })).hidden).toBe(true);
+    expect(db.tables.community_threads![0]).toMatchObject({ hidden: true, hidden_by: "reports" });
+    expect((await srv.listThreads(ctx("b"), { section: "questions" })).threads).toEqual([]);
+    const [rep] = (await mod.listOpenReports()).reports;
+    expect(rep).toMatchObject({ hidden: true, hiddenBy: "reports" });
+    await mod.resolveReport(rep!.id, "restore");
+    expect(db.tables.community_threads![0]).toMatchObject({ hidden: false, hidden_by: null });
+    expect((await mod.listOpenReports()).total).toBe(0);
+    expect((await srv.listThreads(ctx("b"), { section: "questions" })).threads).toHaveLength(1);
+    // Жалобы закрыты: одна новая не скрывает тему снова.
+    db.tables.community_reports = [];
+    expect((await srv.reportContent(ctx("b"), { threadId: id })).hidden).toBe(false);
+  });
+
+  it("повторная жалоба того же автора не приближает автоскрытие; ответ скрывается отдельно", async () => {
+    tenants.push(author("d", "Даша"), author("e", "Егор"));
+    const { id } = await srv.createThread(ctx("a"), {
+      section: "questions",
+      title: "Тема",
+      body: "x",
+    });
+    const post = await srv.createPost(ctx("a"), id, "ответ");
+    await srv.reportContent(ctx("b"), { threadId: id, postId: post.id });
+    await srv.reportContent(ctx("b"), { threadId: id, postId: post.id });
+    await srv.reportContent(ctx("d"), { threadId: id, postId: post.id });
+    expect(db.tables.community_posts![0]!.hidden).toBe(false);
+    await srv.reportContent(ctx("e"), { threadId: id, postId: post.id });
+    expect(db.tables.community_posts![0]).toMatchObject({ hidden: true, hidden_by: "reports" });
+    expect(db.tables.community_threads![0]).toMatchObject({ hidden: false, posts_count: 0 });
+    const [rep] = (await mod.listOpenReports()).reports;
+    await mod.resolveReport(rep!.id, "restore");
+    expect(db.tables.community_posts![0]!.hidden).toBe(false);
+    expect(db.tables.community_threads![0]!.posts_count).toBe(1);
+  });
+
+  it("три жалобы одновременно скрывают запись один раз", async () => {
+    tenants.push(author("d", "Даша"), author("e", "Егор"));
+    const { id } = await srv.createThread(ctx("a"), {
+      section: "questions",
+      title: "Тема",
+      body: "x",
+    });
+    await Promise.all(["b", "d", "e"].map((x) => srv.reportContent(ctx(x), { threadId: id })));
+    expect(db.tables.community_threads![0]).toMatchObject({ hidden: true, hidden_by: "reports" });
+  });
+});
+
+describe("сообщество: «Спросить совет» (С4)", () => {
+  it("в тему попадает только название раздела и текст автора; данных магазина нет", async () => {
+    const { id } = await srv.askAdvice(ctx("a"), {
+      page: "warehouse",
+      pageTitle: "Склад",
+      question: "Как вы ведёте остатки, когда товар продаётся и в боте, и на сайте?",
+    });
+    const row = db.tables.community_threads!.find((r) => r.id === id)!;
+    expect(row).toMatchObject({
+      section: "questions",
+      bot_id: "a",
+      title: "Склад: вопрос",
+      body: "Как вы ведёте остатки, когда товар продаётся и в боте, и на сайте?",
+    });
+    // Ни имя магазина, ни его id, ни настройки в тексте темы не появляются.
+    const text = JSON.stringify([row.title, row.body]);
+    expect(text).not.toContain("Магазин Аня");
+    expect(text).not.toContain('"a"');
+  });
+
+  it("телефон, почта, @имя, ссылки мессенджеров и суммы отклоняются, тема не создаётся", async () => {
+    for (const q of [
+      "Звоните +7 701 123 45 67",
+      "пишите on@mail.kz",
+      "мой @anna_shop берёт 15 000 ₸",
+      "у меня заказ на 20000 тг",
+      "t.me/annashop",
+      "оплатили $50",
+    ])
+      await expect(
+        srv.askAdvice(ctx("a"), { page: "discounts", pageTitle: "Акции", question: q }),
+      ).rejects.toThrow("Уберите из вопроса");
+    expect(db.tables.community_threads).toHaveLength(0);
+  });
+
+  it("чужая страница и несогласный автор отклоняются", async () => {
+    await expect(
+      srv.askAdvice(ctx("a"), { page: "orders", pageTitle: "Заказы", question: "вопрос" }),
+    ).rejects.toThrow("с этой страницы нельзя");
+    await expect(
+      srv.askAdvice(ctx("c"), { page: "warehouse", pageTitle: "Склад", question: "вопрос" }),
+    ).rejects.toThrow("Сначала включите");
+  });
+
+  it("кнопка готова только согласному автору и при наличии таблиц", async () => {
+    expect(await srv.communityReady(ctx("a"))).toBe(true);
+    expect(await srv.communityReady(ctx("c"))).toBe(false);
+  });
+});
+
 describe("сообщество: таблиц ещё нет", () => {
   it("отвечает «скоро», а не падает", async () => {
     const { orSoon } = await import("./not-ready");

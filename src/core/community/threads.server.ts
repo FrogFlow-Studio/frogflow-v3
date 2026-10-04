@@ -9,6 +9,10 @@ import {
   cleanPost,
   cleanReason,
   cleanThread,
+  AUTO_HIDE_REPORTS,
+  ADVICE_PAGES,
+  adviceProblems,
+  isAdvicePage,
   isOfferTopic,
   searchTerm,
   spamVerdict,
@@ -329,7 +333,7 @@ export async function recount(threadId: string, bump = true): Promise<void> {
 export async function reportContent(
   ctx: TenantContext,
   input: { threadId: string; postId?: string | null; reason?: unknown },
-): Promise<{ already: boolean }> {
+): Promise<{ already: boolean; hidden: boolean }> {
   requireMember(ctx);
   const postId = input.postId ?? null;
   let owner: string | null = null;
@@ -364,7 +368,75 @@ export async function reportContent(
       status: "open",
       created_at: new Date().toISOString(),
     });
-  if (error?.code === "23505") return { already: true };
+  if (error?.code === "23505") return { already: true, hidden: false };
   check("жалоба не сохранена", error);
-  return { already: false };
+  return { already: false, hidden: await autoHideByReports(input.threadId, postId) };
 }
+
+/**
+ * Автоскрытие (С4): жалоб от разных авторов (одна жалоба на запись от автора держат уникальные
+ * индексы) стало AUTO_HIDE_REPORTS — запись скрывается до решения оператора. Скрытие условное
+ * (`hidden = false`), поэтому два одновременных вызова скрывают её один раз; оператор может вернуть.
+ */
+async function autoHideByReports(threadId: string, postId: string | null): Promise<boolean> {
+  let q = serviceDb()
+    .from("community_reports")
+    .select("id", { count: "exact", head: true })
+    .eq("thread_id", threadId)
+    .eq("status", "open");
+  q = postId ? q.eq("post_id", postId) : q.is("post_id", null);
+  const { count, error } = await q;
+  check("жалобы не посчитаны", error);
+  if ((count ?? 0) < AUTO_HIDE_REPORTS) return false;
+  const patch = {
+    hidden: true,
+    hidden_by: "reports" as const,
+    hidden_at: new Date().toISOString(),
+  };
+  const { error: ue } = postId
+    ? await serviceDb().from("community_posts").update(patch).eq("id", postId).eq("hidden", false)
+    : await serviceDb()
+        .from("community_threads")
+        .update(patch)
+        .eq("id", threadId)
+        .eq("hidden", false);
+  check("запись не скрыта", ue);
+  if (postId) await recount(threadId, false);
+  return true;
+}
+
+/** Таблицы сообщества есть: нужен кнопке «Спросить совет», чтобы без них не показываться. */
+export async function communityReady(ctx: Pick<TenantContext, "tenant">): Promise<boolean> {
+  if (!takesPartInCommunity(ctx.tenant)) return false;
+  const { error } = await serviceDb()
+    .from("community_threads")
+    .select("id", { count: "exact", head: true });
+  if (error && isMissingTable(error)) return false;
+  check("таблица тем не прочитана", error);
+  return true;
+}
+
+/**
+ * «Спросить совет» со страницы админки (С4): тема в разделе «Вопросы» с названием раздела и
+ * вопросом автора. Ничего из магазина (суммы, покупатели, заказы) в тему не подставляется:
+ * в тексте только то, что автор написал сам, и он проходит проверку на контакты и суммы.
+ * Название раздела приходит от вызывающего (на языке автора), код страницы сверяется со списком.
+ */
+export async function askAdvice(
+  ctx: TenantContext,
+  input: { page: unknown; pageTitle: string; question: unknown },
+): Promise<{ id: string }> {
+  requireMember(ctx);
+  if (!isAdvicePage(input.page))
+    throw new UserError("err.community.advicePage", "Спросить совет с этой страницы нельзя.");
+  const question = typeof input.question === "string" ? input.question : "";
+  if (adviceProblems(question).length > 0)
+    throw new UserError(
+      "err.community.advicePrivate",
+      "Уберите из вопроса телефоны, почту, имена в мессенджерах и суммы: сообщество видят другие авторы.",
+    );
+  const title = `${input.pageTitle.replace(/\s+/g, " ").trim().slice(0, 60)}: вопрос`;
+  return createThread(ctx, { section: "questions", title, body: question });
+}
+
+export { ADVICE_PAGES };

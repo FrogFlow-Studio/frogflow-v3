@@ -95,3 +95,38 @@ export function searchTerm(raw: unknown): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/** Столько жалоб от разных авторов на одну запись скрывают её до решения оператора (С4). */
+export const AUTO_HIDE_REPORTS = 3;
+
+/** Разделы админки, с которых можно «Спросить совет». Название в теме — только это. */
+export const ADVICE_PAGES = ["warehouse", "discounts"] as const;
+export type AdvicePage = (typeof ADVICE_PAGES)[number];
+export const isAdvicePage = (v: unknown): v is AdvicePage =>
+  typeof v === "string" && (ADVICE_PAGES as readonly string[]).includes(v);
+
+export type AdviceProblem = "contact" | "money";
+
+/**
+ * Вопрос в сообщество пишет сам автор, а у магазина есть то, что наружу уходить не должно:
+ * контакты покупателей и суммы. Простая защита: в вопросе не пропускаем почту, телефон, длинные
+ * номера, ссылки на мессенджеры и @имена, а также суммы с валютой. Это страховка от случайного
+ * копирования, а не гарантия: данные магазина сами в тему не подставляются никогда.
+ */
+export function adviceProblems(text: string): AdviceProblem[] {
+  const out = new Set<AdviceProblem>();
+  if (/[^\s@]+@[^\s@]+\.[^\s@]+/.test(text)) out.add("contact");
+  if (/(?:^|[\s(])@[a-z0-9_]{3,}/i.test(text)) out.add("contact");
+  if (/(?:t\.me|wa\.me|instagram\.com|ig\.me)\//i.test(text)) out.add("contact");
+  // Телефон: 10 и больше цифр с пробелами, скобками и дефисами между ними.
+  if (/(?:\+?\d[\s\-().]*){10,}/.test(text)) out.add("contact");
+  // Суммы: число рядом с валютой (15 000 ₸, 20000 тг, $50, 300 руб).
+  if (
+    /\d[\d\s.,]*\s*(?:₸|тг(?![а-яё])|тенге|kzt|₽|руб|rub|\$|usd|€|eur|сум(?![а-яё])|сом(?![а-яё]))/i.test(
+      text,
+    ) ||
+    /(?:₸|\$|€|₽)\s*\d/.test(text)
+  )
+    out.add("money");
+  return [...out];
+}

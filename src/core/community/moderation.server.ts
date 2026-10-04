@@ -25,6 +25,8 @@ export type ReportItem = {
   createdAt: string;
   /** Уже скрыто (оператором или по жалобам): остаётся только закрыть жалобу. */
   hidden: boolean;
+  /** Кто скрыл: оператор или автоскрытие по жалобам. */
+  hiddenBy: "operator" | "reports" | null;
 };
 
 const REPORT_PAGE = 20;
@@ -48,13 +50,16 @@ export async function listOpenReports(
   const postIds = rows.map((r) => r.post_id).filter((x): x is string => !!x);
   const threads = new Map<
     string,
-    { bot_id: string; title: string; body: string; hidden: boolean }
+    { bot_id: string; title: string; body: string; hidden: boolean; hidden_by: string | null }
   >();
-  const posts = new Map<string, { bot_id: string; body: string; hidden: boolean }>();
+  const posts = new Map<
+    string,
+    { bot_id: string; body: string; hidden: boolean; hidden_by: string | null }
+  >();
   for (let i = 0; i < threadIds.length; i += 200) {
     const { data: t, error: te } = await serviceDb()
       .from("community_threads")
-      .select("id, bot_id, title, body, hidden")
+      .select("id, bot_id, title, body, hidden, hidden_by")
       .in("id", threadIds.slice(i, i + 200));
     check("темы жалоб не прочитаны", te);
     for (const x of t ?? []) threads.set(x.id, x);
@@ -62,7 +67,7 @@ export async function listOpenReports(
   for (let i = 0; i < postIds.length; i += 200) {
     const { data: p, error: pe } = await serviceDb()
       .from("community_posts")
-      .select("id, bot_id, body, hidden")
+      .select("id, bot_id, body, hidden, hidden_by")
       .in("id", postIds.slice(i, i + 200));
     check("ответы жалоб не прочитаны", pe);
     for (const x of p ?? []) posts.set(x.id, x);
@@ -83,6 +88,7 @@ export async function listOpenReports(
       reason: r.reason,
       createdAt: r.created_at,
       hidden: Boolean(p ? p.hidden : t?.hidden),
+      hiddenBy: ((p ?? t)?.hidden_by as ReportItem["hiddenBy"]) ?? null,
     };
   });
   const total = count ?? from + rows.length;
@@ -92,8 +98,13 @@ export async function listOpenReports(
 /**
  * Решение по жалобе. `hide` скрывает запись (тему или ответ) и закрывает все открытые жалобы на
  * неё; `dismiss` закрывает только эту жалобу. Скрытие условно (`hidden = false`), повтор безвреден.
+ * `restore` возвращает запись, скрытую автоскрытием (С4) или раньше, и закрывает все жалобы на неё:
+ * иначе они снова скрыли бы её при следующей жалобе.
  */
-export async function resolveReport(reportId: string, action: "hide" | "dismiss"): Promise<void> {
+export async function resolveReport(
+  reportId: string,
+  action: "hide" | "dismiss" | "restore",
+): Promise<void> {
   const { data: r, error } = await serviceDb()
     .from("community_reports")
     .select("id, thread_id, post_id, status")
@@ -102,6 +113,31 @@ export async function resolveReport(reportId: string, action: "hide" | "dismiss"
   check("жалоба не прочитана", error);
   if (!r) return;
   const now = new Date().toISOString();
+  if (action === "restore") {
+    const back = { hidden: false, hidden_by: null, hidden_at: null };
+    const { error: e0 } = r.post_id
+      ? await serviceDb()
+          .from("community_posts")
+          .update(back)
+          .eq("id", r.post_id)
+          .eq("hidden", true)
+      : await serviceDb()
+          .from("community_threads")
+          .update(back)
+          .eq("id", r.thread_id)
+          .eq("hidden", true);
+    check("запись не возвращена", e0);
+    if (r.post_id) await recount(r.thread_id, false);
+    let qr = serviceDb()
+      .from("community_reports")
+      .update({ status: "done" })
+      .eq("thread_id", r.thread_id)
+      .eq("status", "open");
+    qr = r.post_id ? qr.eq("post_id", r.post_id) : qr.is("post_id", null);
+    const { error: e00 } = await qr;
+    check("жалобы не закрыты", e00);
+    return;
+  }
   if (action === "hide") {
     if (r.post_id) {
       const { error: e1 } = await serviceDb()
