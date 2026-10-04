@@ -18,7 +18,7 @@ let shop: FakeDb;
 const as = (d: FakeDb) => d as unknown as Db;
 
 const tenant = (id: string, settings: TenantSettings, name = id): Tenant =>
-  ({ id, name, vertical: "confectionery", settings }) as unknown as Tenant;
+  ({ id, name, vertical: "confectionery", modules: {}, settings }) as unknown as Tenant;
 const ctxFor = (t: Tenant, d: FakeDb = shop) =>
   ({ tenant: t, db: as(d) }) as unknown as TenantContext;
 const OPEN: TenantSettings = {
@@ -26,6 +26,30 @@ const OPEN: TenantSettings = {
   slug: "cakes",
   marketplace: { listed: true, approved: true },
 };
+
+/** Товар в формате витрины: оценки берутся у видимых товаров, каталог читается как у покупателя. */
+const pid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+const prod = (n: number, extra: Record<string, unknown> = {}) => ({
+  id: pid(n),
+  bot_id: "b1",
+  name: `Торт ${n}`,
+  description: "",
+  price: 1000 * n,
+  currency: "KZT",
+  country_prices: {},
+  is_active: true,
+  sort_order: n,
+  fulfillment_kind: "physical",
+  stock_quantity: null,
+  category_ids: [],
+  rating_count: 0,
+  rating_avg: null,
+  created_at: new Date(Date.UTC(2026, 0, 1) + n * 3_600_000).toISOString(),
+  product_images: [],
+  product_variants: [],
+  product_material_files: [],
+  ...extra,
+});
 
 beforeEach(() => {
   svc = fakeDb({ unique: { marketplace_shops: [["bot_id"], ["slug"]] } });
@@ -59,17 +83,17 @@ describe("оценка магазина", () => {
 describe("крон: сбор строки каталога", () => {
   it("согласный и одобренный магазин попадает в каталог с оценкой и нишей", async () => {
     shop.tables.products = [
-      { id: "p1", bot_id: "b1", is_active: true, rating_avg: 5, rating_count: 2 },
-      { id: "p2", bot_id: "b1", is_active: true, rating_avg: 4, rating_count: 2 },
-      { id: "p3", bot_id: "b1", is_active: false, rating_avg: 1, rating_count: 9 },
+      prod(1, { rating_avg: 5, rating_count: 2 }),
+      prod(2, { rating_avg: 4, rating_count: 2 }),
+      prod(3, { is_active: false, rating_avg: 1, rating_count: 9 }),
     ];
     // в products.rating_* входят и скрытые отзывы; в оценку магазина — только одобренные
     shop.tables.product_reviews = [
-      { id: "r1", bot_id: "b1", product_id: "p1", rating: 5 },
-      { id: "r2", bot_id: "b1", product_id: "p1", rating: 5 },
-      { id: "r3", bot_id: "b1", product_id: "p2", rating: 4 },
-      { id: "r4", bot_id: "b1", product_id: "p2", rating: 1 },
-      { id: "r5", bot_id: "b1", product_id: "p2", rating: 1 },
+      { id: "r1", bot_id: "b1", product_id: pid(1), rating: 5 },
+      { id: "r2", bot_id: "b1", product_id: pid(1), rating: 5 },
+      { id: "r3", bot_id: "b1", product_id: pid(2), rating: 4 },
+      { id: "r4", bot_id: "b1", product_id: pid(2), rating: 1 },
+      { id: "r5", bot_id: "b1", product_id: pid(2), rating: 1 },
     ];
     const approved = JSON.stringify({ status: "approved", photos: [] });
     shop.tables.app_settings = [

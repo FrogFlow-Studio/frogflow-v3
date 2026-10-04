@@ -53,4 +53,20 @@ export function seedShop19VMarket(db: StubDb, now: string) {
     row(S.hidden, "Торты", "Алматы"),
     row(S.old, "Торты", "Алматы"),
   ]);
+  const item = (s: { id: string }, i: { id: string; name: string }, price: number) => ({
+    bot_id: s.id,
+    product_id: i.id,
+    name: i.name,
+    search_text: i.name.toLowerCase(),
+    price,
+    currency: "KZT",
+    image: null,
+    updated_at: now,
+  });
+  const I = F.MARKET19_ITEMS;
+  add(db, "marketplace_items", [
+    item(S.cake, I.honey, 9500),
+    item(S.rose, I.rose, 12000),
+    item(S.hidden, I.hiddenHoney, 8000),
+  ]);
 }

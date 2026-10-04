@@ -6,6 +6,7 @@ import type { Tenant } from "@/core/tenant/types";
 import { marketplaceCategory, marketplaceCity, shownOnMarketplace } from "./consent";
 import { MarketplaceNotReady, isMissingTable } from "./not-ready";
 import { MARKET_PAGE, cleanLabel, shopRating, tally, type MarketShop } from "./shops";
+import { removeMarketplaceItems, syncMarketplaceItems, type ItemsResult } from "./items.server";
 
 /**
  * Каталог магазинов площадки (В7). Данные общие для всех покупателей, поэтому
@@ -22,6 +23,8 @@ function check(what: string, error: DbErr): void {
 
 export type RefreshResult = {
   action: "listed" | "removed" | "not-ready";
+  /** Что стало с товарами магазина в поиске площадки (В8); нет таблицы поиска — «not-ready». */
+  items?: ItemsResult;
 };
 
 /**
@@ -39,7 +42,7 @@ export async function refreshMarketplaceShop(
     if (!shownOnMarketplace(t) || !slug) {
       const { error } = await svc.from("marketplace_shops").delete().eq("bot_id", t.id);
       check("магазин не убран из каталога", error);
-      return { action: "removed" };
+      return { action: "removed", items: await removeMarketplaceItems(t.id, svc) };
     }
     // Оценка — только по одобренным отзывам, как её видит покупатель на витрине:
     // колонки products.rating_* считают и скрытые отзывы. Читаем только товары с оценками.
@@ -77,7 +80,7 @@ export async function refreshMarketplaceShop(
       { onConflict: "bot_id" },
     );
     check("магазин не записан в каталог", error);
-    return { action: "listed" };
+    return { action: "listed", items: await syncMarketplaceItems(ctx, svc) };
   } catch (e) {
     if (e instanceof MarketplaceNotReady) return { action: "not-ready" };
     throw e;

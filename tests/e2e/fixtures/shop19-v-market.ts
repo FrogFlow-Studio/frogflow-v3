@@ -21,3 +21,10 @@ export const MARKET19_SHOPS = {
     slug: "e2e-m19-old",
   },
 } as const;
+
+/** Товары снимка площадки (shop19-v-search.spec.ts): «медовик» есть у показанного и у скрытого магазина. */
+export const MARKET19_ITEMS = {
+  honey: { id: "e2e19080-0000-4000-8000-000000000001", name: "Медовик Е2Е" },
+  rose: { id: "e2e19080-0000-4000-8000-000000000002", name: "Букет роз Е2Е" },
+  hiddenHoney: { id: "e2e19080-0000-4000-8000-000000000003", name: "Медовик скрытого Е2Е" },
+} as const;

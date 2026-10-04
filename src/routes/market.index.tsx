@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { marketFn } from "@/app/market/market.functions";
+import { marketHeadLinks } from "@/app/market/seo";
 import { marketT } from "@/app/market/i18n";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
@@ -22,6 +23,8 @@ export const Route = createFileRoute("/market/")({
     const t = marketT(match.search.lang ?? "ru");
     return {
       meta: [{ title: t("meta.title") }, { name: "description", content: t("meta.description") }],
+      // Фильтры и постраничный показ — та же страница: canonical без них, только язык (В10).
+      links: marketHeadLinks("/market", match.search.lang ?? "ru"),
     };
   },
   component: MarketPage,
@@ -52,7 +55,13 @@ function MarketPage() {
           ))}
         </nav>
       </div>
-      <h1 className="mt-6 text-2xl font-semibold">{t("title")}</h1>
+      <nav className="mt-4 flex gap-4 text-sm">
+        <span className="font-medium">{t("tab.shops")}</span>
+        <Link to="/market/search" search={lang ? { lang } : {}} className="underline">
+          {t("tab.items")}
+        </Link>
+      </nav>
+      <h1 className="mt-4 text-2xl font-semibold">{t("title")}</h1>
       {!data.ready ? (
         <p className="mt-4 text-sm text-muted">{t("soon")}</p>
       ) : (

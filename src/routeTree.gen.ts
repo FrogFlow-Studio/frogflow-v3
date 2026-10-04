@@ -28,6 +28,7 @@ import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as ForNicheRouteImport } from './routes/for.$niche'
 import { Route as MarketIndexRouteImport } from './routes/market.index'
 import { Route as MarketOpenRouteImport } from './routes/market.open'
+import { Route as MarketSearchRouteImport } from './routes/market.search'
 import { Route as OperatorAuthedRouteImport } from './routes/operator._authed'
 import { Route as OperatorLoginRouteImport } from './routes/operator.login'
 import { Route as PartnerCodeRouteImport } from './routes/partner.$code'
@@ -233,6 +234,11 @@ const MarketIndexRoute = MarketIndexRouteImport.update({
 const MarketOpenRoute = MarketOpenRouteImport.update({
   id: '/open',
   path: '/open',
+  getParentRoute: () => MarketRoute,
+} as any)
+const MarketSearchRoute = MarketSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
   getParentRoute: () => MarketRoute,
 } as any)
 const OperatorAuthedRoute = OperatorAuthedRouteImport.update({
@@ -826,6 +832,7 @@ export interface FileRoutesByFullPath {
   '/blog/$slug': typeof BlogSlugRoute
   '/for/$niche': typeof ForNicheRoute
   '/market/open': typeof MarketOpenRoute
+  '/market/search': typeof MarketSearchRoute
   '/operator/login': typeof OperatorLoginRoute
   '/partner/$code': typeof PartnerCodeRoute
   '/s/$slug': typeof SSlugRouteWithChildren
@@ -956,6 +963,7 @@ export interface FileRoutesByTo {
   '/blog/$slug': typeof BlogSlugRoute
   '/for/$niche': typeof ForNicheRoute
   '/market/open': typeof MarketOpenRoute
+  '/market/search': typeof MarketSearchRoute
   '/operator/login': typeof OperatorLoginRoute
   '/partner/$code': typeof PartnerCodeRoute
   '/market': typeof MarketIndexRoute
@@ -1086,6 +1094,7 @@ export interface FileRoutesById {
   '/blog/$slug': typeof BlogSlugRoute
   '/for/$niche': typeof ForNicheRoute
   '/market/open': typeof MarketOpenRoute
+  '/market/search': typeof MarketSearchRoute
   '/operator/_authed': typeof OperatorAuthedRouteWithChildren
   '/operator/login': typeof OperatorLoginRoute
   '/partner/$code': typeof PartnerCodeRoute
@@ -1220,6 +1229,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/for/$niche'
     | '/market/open'
+    | '/market/search'
     | '/operator/login'
     | '/partner/$code'
     | '/s/$slug'
@@ -1350,6 +1360,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/for/$niche'
     | '/market/open'
+    | '/market/search'
     | '/operator/login'
     | '/partner/$code'
     | '/market'
@@ -1479,6 +1490,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/for/$niche'
     | '/market/open'
+    | '/market/search'
     | '/operator/_authed'
     | '/operator/login'
     | '/partner/$code'
@@ -1768,6 +1780,13 @@ declare module '@tanstack/react-router' {
       path: '/open'
       fullPath: '/market/open'
       preLoaderRoute: typeof MarketOpenRouteImport
+      parentRoute: typeof MarketRoute
+    }
+    '/market/search': {
+      id: '/market/search'
+      path: '/search'
+      fullPath: '/market/search'
+      preLoaderRoute: typeof MarketSearchRouteImport
       parentRoute: typeof MarketRoute
     }
     '/operator/_authed': {
@@ -2696,11 +2715,13 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface MarketRouteChildren {
   MarketOpenRoute: typeof MarketOpenRoute
+  MarketSearchRoute: typeof MarketSearchRoute
   MarketIndexRoute: typeof MarketIndexRoute
 }
 
 const MarketRouteChildren: MarketRouteChildren = {
   MarketOpenRoute: MarketOpenRoute,
+  MarketSearchRoute: MarketSearchRoute,
   MarketIndexRoute: MarketIndexRoute,
 }
 
