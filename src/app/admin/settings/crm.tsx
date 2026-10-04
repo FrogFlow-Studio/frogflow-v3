@@ -142,6 +142,12 @@ export function CrmCard() {
 
 type LogEntries = NonNullable<Awaited<ReturnType<typeof crmLogFn>>["entries"]>;
 
+/** Сами не повторяются, ждут ручного повтора: таймаут, обрыв и 5xx (4xx и «не ушло» очередь повторяет сама). */
+const needsManualRetry = (e: { outcome: string; status: number | null }) =>
+  e.outcome === "timeout" ||
+  e.outcome === "network" ||
+  (e.outcome === "http" && (e.status ?? 0) >= 500);
+
 /** Журнал доставки: последние отправки вебхука без тела и секрета. */
 function DeliveryLog({
   entries,
@@ -192,7 +198,7 @@ function DeliveryLog({
                   <td className="pr-3">{e.orderId ? `#${e.orderId}` : "—"}</td>
                   <td className={e.outcome === "ok" ? "pr-3" : "pr-3 text-red-600"}>{result(e)}</td>
                   <td>
-                    {e.outboxId && e.outcome !== "ok" && !delivered.has(e.outboxId) && (
+                    {e.outboxId && !delivered.has(e.outboxId) && needsManualRetry(e) && (
                       <button
                         type="button"
                         className="btn-secondary"

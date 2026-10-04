@@ -278,7 +278,7 @@ export const ru = {
   // Robokassa
   "settings.crm.title": "CRM и Google Таблицы",
   "settings.crm.intro":
-    "События заказов уходят POST-запросом JSON на ваш адрес: входящий вебхук amoCRM или Битрикс24, веб-приложение Google Apps Script, Make, Zapier. Не дошло — повторим сами, неудачи видны в «Не доставлено».",
+    "События заказов уходят POST-запросом JSON на ваш адрес: входящий вебхук amoCRM или Битрикс24, веб-приложение Google Apps Script, Make, Zapier. Если сервер не ответил за 10 секунд или ответил ошибкой 5xx, событие само не повторяется: оно могло дойти. Смотрите «Журнал доставки» ниже и повторяйте кнопкой — событие уйдёт с тем же event_id, и CRM сможет отбросить дубль.",
   "settings.crm.url": "Адрес вебхука",
   "settings.crm.urlHint": "Только https. Пусто — интеграция выключена.",
   "settings.crm.secret": "Секрет для подписи",
@@ -307,7 +307,7 @@ export const ru = {
   "settings.api.rotateConfirm": "Прежний ключ перестанет работать сразу. Выпустить новый?",
   "settings.api.revokeConfirm": "Отозвать ключ? Интеграции с ним перестанут работать.",
   "settings.api.webhooks":
-    "События заказов (создан, оплачен, выдан, возврат, курьер) приходят вебхуком — модуль «Интеграция с CRM и Таблицами».",
+    "События заказов приходят вебхуком — модуль «Интеграция с CRM и Таблицами»; полный список событий — в его карточке.",
   "settings.crm.event.placed": "заказ создан",
   "settings.crm.event.proof": "пришёл чек",
   "settings.crm.event.delivered": "заказ выдан",
@@ -696,7 +696,7 @@ export const kk: SectionDict<typeof ru> = {
   "settings.legal.about": "Сатушы туралы",
   "settings.crm.title": "CRM және Google Кестелер",
   "settings.crm.intro":
-    "Тапсырыс оқиғалары сіздің мекенжайыңызға JSON POST-сұраумен жіберіледі: amoCRM немесе Битрикс24 кіріс вебхугы, Google Apps Script веб-қосымшасы, Make, Zapier. Жетпесе — өзіміз қайталаймыз, сәтсіздіктер «Жеткізілмеді» бөлімінде.",
+    "Тапсырыс оқиғалары сіздің мекенжайыңызға JSON POST-сұраумен жіберіледі: amoCRM немесе Битрикс24 кіріс вебхугы, Google Apps Script веб-қосымшасы, Make, Zapier. Сервер 10 секундта жауап бермесе немесе 5xx қатесімен жауап берсе, оқиға өздігінен қайталанбайды: ол жетіп қалған болуы мүмкін. Төмендегі «Жеткізу журналын» қараңыз да, батырмамен қайталаңыз — оқиға сол event_id-мен кетеді, CRM телнұсқаны қабылдамай тастай алады.",
   "settings.crm.url": "Вебхук мекенжайы",
   "settings.crm.urlHint": "Тек https. Бос — интеграция өшірулі.",
   "settings.crm.secret": "Қолтаңба құпиясы",
@@ -727,7 +727,7 @@ export const kk: SectionDict<typeof ru> = {
   "settings.api.revokeConfirm":
     "Кілтті кері қайтару керек пе? Онымен интеграциялар жұмысын тоқтатады.",
   "settings.api.webhooks":
-    "Тапсырыс оқиғалары (жасалды, төленді, берілді, қайтару, курьер) вебхукпен келеді — «CRM және Кестелермен интеграция» модулі.",
+    "Тапсырыс оқиғалары вебхукпен келеді — «CRM және Кестелермен интеграция» модулі; оқиғалардың толық тізімі — оның карточкасында.",
   "settings.crm.event.placed": "тапсырыс жасалды",
   "settings.crm.event.proof": "чек келді",
   "settings.crm.event.delivered": "тапсырыс берілді",
@@ -1111,7 +1111,7 @@ export const en: SectionDict<typeof ru> = {
   "settings.legal.about": "About the seller",
   "settings.crm.title": "CRM and Google Sheets",
   "settings.crm.intro":
-    "Order events are sent as a JSON POST to your address: an amoCRM or Bitrix24 incoming webhook, a Google Apps Script web app, Make, Zapier. If it fails we retry, and failures appear under Undelivered.",
+    "Order events are sent as a JSON POST to your address: an amoCRM or Bitrix24 incoming webhook, a Google Apps Script web app, Make, Zapier. If your server does not reply within 10 seconds or answers with a 5xx error, the event is not retried automatically: it may have arrived. See the Delivery log below and retry with the button — the event goes out with the same event_id, so your CRM can drop the duplicate.",
   "settings.crm.url": "Webhook URL",
   "settings.crm.urlHint": "https only. Empty — integration off.",
   "settings.crm.secret": "Signing secret",
@@ -1141,7 +1141,7 @@ export const en: SectionDict<typeof ru> = {
   "settings.api.rotateConfirm": "The old key will stop working immediately. Issue a new one?",
   "settings.api.revokeConfirm": "Revoke the key? Integrations using it will stop working.",
   "settings.api.webhooks":
-    "Order events (placed, paid, delivered, refund, courier) arrive by webhook — the “CRM and Sheets integration” module.",
+    "Order events arrive by webhook — the “CRM and Sheets integration” module; the full list of events is in its card.",
   "settings.crm.event.placed": "order placed",
   "settings.crm.event.proof": "receipt received",
   "settings.crm.event.delivered": "order delivered",
@@ -1531,7 +1531,7 @@ export const uz: SectionDict<typeof ru> = {
   "settings.legal.about": "Sotuvchi haqida",
   "settings.crm.title": "CRM va Google Jadvallar",
   "settings.crm.intro":
-    "Buyurtma hodisalari manzilingizga JSON POST-so‘rov bilan yuboriladi: amoCRM yoki Bitrix24 kiruvchi vebxuki, Google Apps Script veb-ilovasi, Make, Zapier. Yetmasa — o‘zimiz qaytaramiz, muvaffaqiyatsizliklar «Yetkazilmagan» bo‘limida.",
+    "Buyurtma hodisalari manzilingizga JSON POST-so‘rov bilan yuboriladi: amoCRM yoki Bitrix24 kiruvchi vebxuki, Google Apps Script veb-ilovasi, Make, Zapier. Server 10 soniyada javob bermasa yoki 5xx xatosi bilan javob bersa, hodisa o‘zi qayta yuborilmaydi: u yetib borgan bo‘lishi mumkin. Quyidagi «Yetkazish jurnali»ni ko‘ring va tugma bilan qayta yuboring — hodisa o‘sha event_id bilan ketadi, CRM dublikatni tashlab yuborishi mumkin.",
   "settings.crm.url": "Vebxuk manzili",
   "settings.crm.urlHint": "Faqat https. Bo‘sh — integratsiya o‘chirilgan.",
   "settings.crm.secret": "Imzo siri",
@@ -1561,7 +1561,7 @@ export const uz: SectionDict<typeof ru> = {
   "settings.api.rotateConfirm": "Eski kalit darhol ishlamay qoladi. Yangisini chiqarasizmi?",
   "settings.api.revokeConfirm": "Kalitni bekor qilasizmi? U bilan integratsiyalar ishlamay qoladi.",
   "settings.api.webhooks":
-    "Buyurtma hodisalari (yaratildi, toʻlandi, berildi, qaytarish, kuryer) vebhuk orqali keladi — «CRM va Jadvallar bilan integratsiya» moduli.",
+    "Buyurtma hodisalari vebhuk orqali keladi — «CRM va Jadvallar bilan integratsiya» moduli; hodisalarning to‘liq ro‘yxati — uning kartochkasida.",
   "settings.crm.event.placed": "buyurtma yaratildi",
   "settings.crm.event.proof": "chek keldi",
   "settings.crm.event.delivered": "buyurtma yetkazildi",

@@ -388,7 +388,7 @@ export const MODULES = {
     group: "Аналитика",
     price: 12000,
     status: "available",
-    note: "core/crm/webhook: POST JSON на https-адрес продавца с подписью HMAC, доставка через outbox; таймаут и 5xx сами не повторяются (повтор вручную из журнала доставки с тем же event_id); настройка, журнал и кнопка «Проверить вебхук» (ping) — карточка в настройках.",
+    note: "core/crm/webhook: POST JSON на https-адрес продавца с подписью HMAC, доставка через outbox, журнал доставки; таймаут и 5xx сами не повторяются (повтор вручную из журнала доставки с тем же event_id); настройка, журнал и кнопка «Проверить вебхук» (ping) — карточка в настройках.",
   },
   public_api: {
     title: "API для разработчиков",
@@ -396,7 +396,7 @@ export const MODULES = {
     group: "Аналитика",
     price: 15000,
     status: "available",
-    note: "REST /api/v1 по ключу магазина (Bearer ffk_<bot_id>_<секрет>, в базе только SHA-256): GET orders, GET orders/<id>, GET products, PATCH products/<id> (stock, price, active). Ключ создаёт владелец в «Настройках» (core/api/public-api). События заказов наружу — модуль crm_integration.",
+    note: "REST /api/v1 по ключу магазина (Bearer ffk_<bot_id>_<секрет>, в базе только SHA-256): GET orders, GET orders/<id>, GET products, GET customers (только чтение, постранично), PATCH products/<id> (stock, price, active). Ключ создаёт владелец в «Настройках» (core/api/public-api). События заказов наружу — модуль crm_integration.",
   },
   multi_bot: {
     title: "Управление несколькими ботами",

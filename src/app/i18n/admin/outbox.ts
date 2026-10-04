@@ -4,7 +4,7 @@ import type { SectionDict } from "../section";
 export const ru = {
   "outbox.title": "Не доставлено",
   "outbox.subtitle":
-    "Сообщения покупателям и вам, которые не ушли с первого раза. Повторяем сами пять раз с растущей паузой; что не дошло и после — здесь.",
+    "Сообщения покупателям и вам, которые не ушли с первого раза. Повторяем сами пять раз с растущей паузой; что не дошло и после — здесь. События для CRM после таймаута или ответа 5xx сами не повторяются (они могли дойти): повторяйте их из «Журнала доставки» в настройках.",
   "outbox.empty": "Всё доставлено.",
   "outbox.col.when": "Когда",
   "outbox.col.to": "Кому",
@@ -31,7 +31,7 @@ export const ru = {
 export const kk: SectionDict<typeof ru> = {
   "outbox.title": "Жеткізілмеді",
   "outbox.subtitle":
-    "Бірінші реттен кетпеген сатып алушыларға және сізге арналған хабарламалар. Өсетін үзіліспен бес рет өзіміз қайталаймыз; одан кейін де жетпегені — осында.",
+    "Бірінші реттен кетпеген сатып алушыларға және сізге арналған хабарламалар. Өсетін үзіліспен бес рет өзіміз қайталаймыз; одан кейін де жетпегені — осында. CRM оқиғалары тайм-аут немесе 5xx жауабынан кейін өздігінен қайталанбайды (олар жетіп қалған болуы мүмкін): оларды баптаулардағы «Жеткізу журналынан» қайталаңыз.",
   "outbox.empty": "Бәрі жеткізілді.",
   "outbox.col.when": "Қашан",
   "outbox.col.to": "Кімге",
@@ -58,7 +58,7 @@ export const kk: SectionDict<typeof ru> = {
 export const en: SectionDict<typeof ru> = {
   "outbox.title": "Undelivered",
   "outbox.subtitle":
-    "Messages to customers and to you that did not go out on the first try. We retry five times with growing pauses; whatever still fails ends up here.",
+    "Messages to customers and to you that did not go out on the first try. We retry five times with growing pauses; whatever still fails ends up here. CRM events are not retried automatically after a timeout or a 5xx reply (they may have arrived): retry them from the Delivery log in settings.",
   "outbox.empty": "Everything delivered.",
   "outbox.col.when": "When",
   "outbox.col.to": "To",
@@ -85,7 +85,7 @@ export const en: SectionDict<typeof ru> = {
 export const uz: SectionDict<typeof ru> = {
   "outbox.title": "Yetkazilmagan",
   "outbox.subtitle":
-    "Xaridorlarga va sizga birinchi urinishda ketmagan xabarlar. O‘sib boruvchi tanaffus bilan besh marta o‘zimiz qaytaramiz; shundan keyin ham yetmagani — shu yerda.",
+    "Xaridorlarga va sizga birinchi urinishda ketmagan xabarlar. O‘sib boruvchi tanaffus bilan besh marta o‘zimiz qaytaramiz; shundan keyin ham yetmagani — shu yerda. CRM hodisalari taym-aut yoki 5xx javobidan keyin o‘zi qayta yuborilmaydi (ular yetib borgan bo‘lishi mumkin): ularni sozlamalardagi «Yetkazish jurnali»dan qayta yuboring.",
   "outbox.empty": "Hammasi yetkazildi.",
   "outbox.col.when": "Qachon",
   "outbox.col.to": "Kimga",
