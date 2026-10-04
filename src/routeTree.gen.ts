@@ -24,6 +24,7 @@ import { Route as ApiClientErrorRouteImport } from './routes/api/client-error'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as ForNicheRouteImport } from './routes/for.$niche'
+import { Route as MarketOpenRouteImport } from './routes/market.open'
 import { Route as OperatorAuthedRouteImport } from './routes/operator._authed'
 import { Route as OperatorLoginRouteImport } from './routes/operator.login'
 import { Route as PartnerCodeRouteImport } from './routes/partner.$code'
@@ -206,6 +207,11 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
 const ForNicheRoute = ForNicheRouteImport.update({
   id: '/for/$niche',
   path: '/for/$niche',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketOpenRoute = MarketOpenRouteImport.update({
+  id: '/market/open',
+  path: '/market/open',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OperatorAuthedRoute = OperatorAuthedRouteImport.update({
@@ -781,6 +787,7 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/for/$niche': typeof ForNicheRoute
+  '/market/open': typeof MarketOpenRoute
   '/operator/login': typeof OperatorLoginRoute
   '/partner/$code': typeof PartnerCodeRoute
   '/s/$slug': typeof SSlugRouteWithChildren
@@ -905,6 +912,7 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/for/$niche': typeof ForNicheRoute
+  '/market/open': typeof MarketOpenRoute
   '/operator/login': typeof OperatorLoginRoute
   '/partner/$code': typeof PartnerCodeRoute
   '/admin/ai-balance': typeof AdminAuthedAiBalanceRoute
@@ -1028,6 +1036,7 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/for/$niche': typeof ForNicheRoute
+  '/market/open': typeof MarketOpenRoute
   '/operator/_authed': typeof OperatorAuthedRouteWithChildren
   '/operator/login': typeof OperatorLoginRoute
   '/partner/$code': typeof PartnerCodeRoute
@@ -1155,6 +1164,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/blog/$slug'
     | '/for/$niche'
+    | '/market/open'
     | '/operator/login'
     | '/partner/$code'
     | '/s/$slug'
@@ -1279,6 +1289,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/blog/$slug'
     | '/for/$niche'
+    | '/market/open'
     | '/operator/login'
     | '/partner/$code'
     | '/admin/ai-balance'
@@ -1401,6 +1412,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/blog/$slug'
     | '/for/$niche'
+    | '/market/open'
     | '/operator/_authed'
     | '/operator/login'
     | '/partner/$code'
@@ -1525,6 +1537,7 @@ export interface RootRouteChildren {
   ApiHealthRoute: typeof ApiHealthRoute
   BlogSlugRoute: typeof BlogSlugRoute
   ForNicheRoute: typeof ForNicheRoute
+  MarketOpenRoute: typeof MarketOpenRoute
   PartnerCodeRoute: typeof PartnerCodeRoute
   SSlugRoute: typeof SSlugRouteWithChildren
   ApiAdminIconRoute: typeof ApiAdminIconRoute
@@ -1655,6 +1668,13 @@ declare module '@tanstack/react-router' {
       path: '/for/$niche'
       fullPath: '/for/$niche'
       preLoaderRoute: typeof ForNicheRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/market/open': {
+      id: '/market/open'
+      path: '/market/open'
+      fullPath: '/market/open'
+      preLoaderRoute: typeof MarketOpenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/operator/_authed': {
@@ -2678,6 +2698,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthRoute: ApiHealthRoute,
   BlogSlugRoute: BlogSlugRoute,
   ForNicheRoute: ForNicheRoute,
+  MarketOpenRoute: MarketOpenRoute,
   PartnerCodeRoute: PartnerCodeRoute,
   SSlugRoute: SSlugRouteWithChildren,
   ApiAdminIconRoute: ApiAdminIconRoute,

@@ -19,7 +19,7 @@ export const CHALLENGE_TOO_FAST = "Слишком быстро — провер�
  * Назначение задачи входит в подпись: задачу регистрации не подсунуть в
  * оформление заказа на витрине и наоборот.
  */
-export type ChallengePurpose = "signup" | "checkout";
+export type ChallengePurpose = "signup" | "checkout" | "market";
 
 function mac(secret: string, body: string, purpose: ChallengePurpose): string {
   return createHmac("sha256", secret)

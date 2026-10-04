@@ -1382,6 +1382,14 @@ export const saveLeadNoteFn = createServerFn({ method: "POST" })
     return { saved: await (await leadsImpl()).saveLeadNote(data) };
   });
 
+/** «Создать магазин» из заявки с площадки (В19): клиент по нише и тарифу заявки, шаблон ниши, лид — «Клиент». */
+export const openShopFromLeadFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: leadId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await import("./open-shop.server")).openShopFromLead(data.id, await actor());
+  });
+
 export const leadEventsFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ id: leadId }).parse(d))
   .handler(async ({ data }) => {

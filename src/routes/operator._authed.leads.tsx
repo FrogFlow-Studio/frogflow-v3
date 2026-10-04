@@ -9,6 +9,7 @@ import {
   leadPipelineFn,
   leadsFn,
   markLeadContactedFn,
+  openShopFromLeadFn,
   saveLeadDraftFn,
   saveLeadPipelineFn,
   saveLeadNoteFn,
@@ -16,6 +17,7 @@ import {
   setLeadStageFn,
 } from "@/app/operator/operator.functions";
 import type { LeadEventRow, LeadRow } from "@/app/operator/leads.server";
+import type { OpenedShop } from "@/app/operator/open-shop.server";
 import { OUTREACH_LABEL, outreachLinks, type OutreachChannel } from "@/core/leads/draft";
 import {
   LEAD_STAGES,
@@ -419,6 +421,7 @@ function LeadCard({
           </div>
         )}
         {lead.signals && <p>{lead.signals}</p>}
+        {lead.source === "market_open" && <OpenShopBlock lead={lead} onChanged={onChanged} />}
         {lead.stage === "lost" && lead.lost_reason && (
           <p className="text-muted">Причина: {lead.lost_reason}</p>
         )}
@@ -611,6 +614,76 @@ function LeadCard({
  * «Потерян» после молчания. Выключен: у v1 свой крон по той же таблице,
  * включать только после того, как v1 перестал вести лидов.
  */
+/**
+ * Заявка с площадки «Открыть свой магазин»: одна кнопка создаёт магазин по шаблону ниши.
+ * Пароль владельца показывается один раз — вместе с готовым сообщением заявителю.
+ */
+function OpenShopBlock({ lead, onChanged }: { lead: LeadRow; onChanged: (msg: string) => void }) {
+  const router = useRouter();
+  const [shop, setShop] = useState<OpenedShop | null>(null);
+  const open = useAction(async () => {
+    if (!confirm(`Создать магазин «${lead.business_name}» по шаблону ниши?`)) return;
+    const r = await openShopFromLeadFn({ data: { id: lead.id } });
+    if (r.ok) {
+      setShop(r.shop);
+      onChanged(`${lead.business_name}: магазин создан`);
+    } else if (r.reason === "failed") throw new Error(r.message);
+    else
+      onChanged(
+        r.reason === "changed"
+          ? "Магазин из этой заявки уже создан или стадию изменили в другом месте — список обновлён"
+          : "Заявка не найдена или это не заявка с площадки",
+      );
+    await router.invalidate();
+  });
+  // После создания лид становится «Клиентом», но результат с паролем остаётся на экране.
+  if (!shop && lead.stage === "converted") return null;
+  if (shop)
+    return (
+      <div className="space-y-2 rounded border border-line p-3">
+        <p className="font-medium">
+          Магазин создан. Пароль больше не покажем — отправьте сообщение сейчас.
+        </p>
+        {shop.warnings.map((w) => (
+          <p key={w} className="text-danger">
+            {w}
+          </p>
+        ))}
+        <textarea
+          className="input"
+          rows={9}
+          readOnly
+          aria-label="Сообщение заявителю"
+          value={shop.welcome}
+        />
+        <button
+          type="button"
+          className="btn"
+          onClick={() => void navigator.clipboard.writeText(shop.welcome).catch(() => {})}
+        >
+          Скопировать сообщение
+        </button>
+      </div>
+    );
+  return (
+    <div className="space-y-2">
+      <ErrorBox error={open.error} />
+      <button
+        type="button"
+        className="btn"
+        disabled={open.busy}
+        onClick={() => void open.run().catch(() => {})}
+      >
+        Создать магазин
+      </button>
+      <p className="text-xs text-muted">
+        Клиент, тариф и ниша — из заявки; категории и скрытые примеры товаров ниши. Деньги не
+        списываются: подключение и оплата — счётом.
+      </p>
+    </div>
+  );
+}
+
 function PipelineCard() {
   const [cfg, setCfg] = useState<{
     enabled: boolean;
