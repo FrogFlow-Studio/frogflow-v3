@@ -120,7 +120,9 @@ describe("таблица личных сообщений сообщества (�
  */
 describe("миграции партии 19 совпадают с db-types.ts", () => {
   const dir = "migrations";
-  const files = readdirSync(dir).filter((f) => /^19-.*\.sql$/.test(f) && !f.endsWith(".down.sql"));
+  const files = readdirSync(dir).filter(
+    (f) => /^(19|20)-.*\.sql$/.test(f) && !f.endsWith(".down.sql"),
+  );
 
   it("миграции нашлись и у каждой есть откат", () => {
     expect(files.length).toBeGreaterThan(0);
@@ -198,5 +200,53 @@ describe("таблицы совместных акций (миграция 19-4)
         "notified_at",
       ]),
     );
+  });
+});
+
+/**
+ * Индексы партии 20 (migrations/20-*.sql): каждый строится на таблице и колонках,
+ * которые есть в схеме (db-types.ts), иначе миграция упадёт на живой базе.
+ */
+describe("индексы партии 20 строятся на колонках схемы", () => {
+  const dir = "migrations";
+  const files = readdirSync(dir).filter((f) => /^20-.*\.sql$/.test(f) && !f.endsWith(".down.sql"));
+
+  it("миграции нашлись и у каждой есть откат", () => {
+    expect(files.length).toBeGreaterThan(0);
+    for (const f of files) expect(readdirSync(dir)).toContain(f.replace(/\.sql$/, ".down.sql"));
+  });
+
+  it("таблица и колонки каждого CREATE INDEX есть в схеме", () => {
+    const schema = schemaColumns();
+    let seen = 0;
+    for (const f of files) {
+      const sql = readFileSync(join(dir, f), "utf8")
+        .split("\n")
+        .filter((l) => !l.trim().startsWith("--"))
+        .join("\n");
+      // Индексы в DO-блоке (format(...)) тоже: таблица и колонка идут сразу после ON … USING gin (…).
+      for (const m of sql.matchAll(
+        /CREATE (?:UNIQUE )?INDEX IF NOT EXISTS \w+\s+ON (?:public\.)?(\w+)\s*(?:USING \w+\s*)?\(([^)]*)\)/gi,
+      )) {
+        seen++;
+        const cols = schema.get(m[1]!);
+        expect(cols, `${f}: таблицы ${m[1]} нет в схеме`).toBeDefined();
+        for (const part of m[2]!.split(",")) {
+          const col = part.trim().split(/\s+/)[0]!.replace(/^%I\./, "");
+          expect(cols!.has(col), `${f}: ${m[1]}.${col}`).toBe(true);
+        }
+      }
+    }
+    expect(seen).toBeGreaterThanOrEqual(6);
+  });
+
+  it("новые индексы только добавляют: ни DROP, ни DELETE, ни ALTER, ни CREATE TABLE", () => {
+    for (const f of files) {
+      const sql = readFileSync(join(dir, f), "utf8")
+        .split("\n")
+        .filter((l) => !l.trim().startsWith("--"))
+        .join("\n");
+      expect(sql, f).not.toMatch(/\b(DROP|DELETE|ALTER|UPDATE|TRUNCATE|CREATE TABLE)\b/i);
+    }
   });
 });
