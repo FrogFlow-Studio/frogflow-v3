@@ -80,7 +80,7 @@ export type ReviewsOverview = {
  * Список отзывов для продавца: страница с фильтрами и сводка по всем отзывам.
  * Решение продавца и отметка об ответе лежат в review_meta (app_settings), не
  * в колонках, поэтому таблица читается целиком страницами по 200, а на экран
- * отдаётся одна страница из подошедших. Сортировка: свежие сверху, затем id.
+ * отдаётся одна страница из подошедших. Обход — по неизменному id, «свежие сверху, затем id» — в памяти.
  */
 export async function listReviewsForAdmin(
   ctx: TenantContext,
@@ -94,7 +94,8 @@ export async function listReviewsForAdmin(
       ctx.db
         .from("product_reviews")
         .select("id, product_id, rating, comment, updated_at")
-        .order("updated_at", { ascending: false })
+        // Обход по id: он не меняется. Сортировка по updated_at (его трогает триггер на любую
+        // оценку) переносила бы строку между страницами прямо во время чтения.
         .order("id")
         .range(a, b),
     "Отзывы",
@@ -113,6 +114,10 @@ export async function listReviewsForAdmin(
       }
     },
     SCAN_PAGE,
+  );
+  // «Свежие сверху, затем id» — уже в памяти, после обхода.
+  all.sort((x, y) =>
+    x.updated_at === y.updated_at ? (x.id < y.id ? -1 : 1) : x.updated_at < y.updated_at ? 1 : -1,
   );
   const stats = {
     ...reviewStats(all),

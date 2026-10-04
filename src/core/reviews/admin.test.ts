@@ -133,6 +133,44 @@ describe("отзывы в админке", () => {
     expect((await listReviewsForAdmin(c, { page: 999 })).page).toBe(pages);
   });
 
+  it("отзыв, обновлённый посреди обхода, не пропадает и не повторяется", async () => {
+    const c = ctx();
+    const db = c.db as unknown as ReturnType<typeof fakeDb>;
+    db.tables.product_reviews = Array.from({ length: 250 }, (_, i) => ({
+      id: `rv${String(i).padStart(3, "0")}`,
+      product_id: "p1",
+      telegram_id: 11,
+      rating: 5,
+      comment: "ok",
+      created_at: "2026-09-20T10:00:00Z",
+      updated_at: "2026-09-20T10:00:00Z",
+    }));
+    // Покупатель меняет оценку, пока продавец ещё читает: триггер двигает updated_at.
+    const from = db.from.bind(db);
+    let reads = 0;
+    const queries: Record<string, number> = {};
+    (db as { from: unknown }).from = (table: string) => {
+      queries[table] = (queries[table] ?? 0) + 1;
+      if (table === "product_reviews" && ++reads === 2)
+        db.tables.product_reviews![220]!.updated_at = "2026-10-01T10:00:00Z";
+      return from(table as never);
+    };
+    const seen: string[] = [];
+    const first = await listReviewsForAdmin(c, { page: 1 });
+    // Обновлённый отзыв — первым («свежие сверху»), счёт верный.
+    expect(first.items[0]!.id).toBe("rv220");
+    expect(first.total).toBe(250);
+    expect(first.stats.count).toBe(250);
+    // 250 отзывов — две порции по 200: обход + строки страницы; метки — по порции и страница.
+    expect(queries.product_reviews).toBe(3);
+    expect(queries.app_settings).toBeLessThanOrEqual(3);
+    reads = 100;
+    for (let page = 1; page <= first.pages; page++)
+      seen.push(...(await listReviewsForAdmin(c, { page })).items.map((r) => r.id));
+    expect(seen).toHaveLength(250);
+    expect(new Set(seen).size).toBe(250);
+  });
+
   it("сбой чтения отзывов — serverFailure, а не «отзывов нет»", async () => {
     const c = ctx();
     const db = c.db as unknown as { from: (t: string) => unknown };
@@ -142,9 +180,7 @@ describe("отзывы в админке", () => {
         ? {
             select: () => ({
               order: () => ({
-                order: () => ({
-                  range: async () => ({ data: null, error: { message: "boom" } }),
-                }),
+                range: async () => ({ data: null, error: { message: "boom" } }),
               }),
             }),
           }
