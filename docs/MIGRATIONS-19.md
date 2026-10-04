@@ -12,14 +12,15 @@
 | 19-4  | `19-4-joint-promos`      | `joint_promos`, `joint_promo_members`                            | «Совместные акции» магазинов-авторов: приглашение, согласие, промокоды у каждого свои; платформа деньги не собирает и не делит | `.down.sql` удаляет 2 таблицы — договорённости пропадут, промокоды магазинов (`promo_codes`) остаются |
 | 19-5  | `19-5-platform-news`     | `platform_news`, `platform_news_reads`, `platform_news_votes`    | Раздел «Что нового»: новости платформы, значок непрочитанных, опросы                                                           | `.down.sql` удаляет 3 таблицы — новости, отметки и голоса пропадут                                    |
 | 19-7  | `19-7-marketplace-shops` | `marketplace_shops`                                              | Каталог площадки `/market`: снимок согласных и одобренных магазинов, который раз в час собирает крон                           | `.down.sql` удаляет таблицу; данных, которых нельзя восстановить, нет — крон соберёт её заново        |
+| 19-8  | `19-8-marketplace-items` | `marketplace_items`                                              | Поиск товаров по площадке `/market/search`: снимок товаров, которые можно купить сейчас, раз в час собирает крон               | `.down.sql` удаляет таблицу; крон соберёт её заново                                                   |
 | 19-13 | `19-13-chat-reason`      | `manager_chat_reasons`                                           | Строка «Почему бот так ответил» в «Чате»: короткая причина (до 120 знаков, без текста покупателя), одна на сообщение бота      | `.down.sql` удаляет таблицу — причины пропадут, сами сообщения остаются                               |
 
-Миграции площадки В8 и В17 и остальных путей добавляются сюда строкой в таблице, когда файл попадает в master.
+Миграции площадки В17 и остальных путей добавляются сюда строкой в таблице, когда файл попадает в master.
 
 ## Права и RLS
 
 - `19-13`: RLS по `current_bot_id()`, у `tenant_bot` `SELECT` и `INSERT` своих строк, `bot_id` принудительно ставит триггер `force_bot_id`.
-- `19-7`: RLS по `current_bot_id()`, у `tenant_bot` только `SELECT` своей строки; запись и публичные страницы площадки — под `service_role`.
+- `19-7`, `19-8`: RLS по `current_bot_id()`, у `tenant_bot` только `SELECT` своих строк; запись и публичные страницы площадки — под `service_role`.
 - `19-1`, `19-5`: включена RLS, политики через `current_bot_id()`; роль `tenant_bot` получает только нужные права (в поддержке — чтение/вставка и обновление нескольких полей; `platform_thread_notes` — внутренние заметки оператора, у `tenant_bot` прав нет; в новостях — чтение опубликованных и вставка своих прочтений и голосов).
 - `19-2`, `19-3`, `19-4`: RLS включена **без политик** — доступ только у `service_role`. Данные общие для авторов, поэтому код ходит через `serviceDb()` и до любой операции проверяет согласие автора (`takesPartInCommunity`, `dmVerdict`).
 
@@ -30,6 +31,7 @@
 | `platform_*` (поддержка)          | `src/core/support/support.ts`, `src/app/operator/support.server.ts` | `isMissingTable` → «Чат с поддержкой скоро заработает»                                                    |
 | `community_threads/posts/reports` | `src/core/community/threads.server.ts`, `moderation.server.ts`      | `CommunityNotReady` → `orSoon` отдаёт `{ soon: true }`; кнопка «Спросить совет» скрыта (`communityReady`) |
 | `community_dm`                    | `src/core/community/dm.server.ts`                                   | `CommunityNotReady` → «скоро»                                                                             |
+| `marketplace_items`               | `src/core/marketplace/items.server.ts`, тот же крон `marketplace`   | поиск на `/market/search` пишет «скоро» (`MarketplaceNotReady`)                                           |
 | `platform_news*`                  | `src/core/news/news.ts`, `src/app/operator/news.server.ts`          | `loadNews` отдаёт «скоро», счётчик непрочитанных — 0                                                      |
 
 Определение «таблицы нет»: код PostgREST `PGRST205`, Postgres `42P01` или текст «could not find the table / relation does not exist». Любая другая ошибка чтения — сбой (`serverFailure`), а не «скоро».
