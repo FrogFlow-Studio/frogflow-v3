@@ -501,6 +501,34 @@ async function handleMessage(
     }
     return showCart(b);
   }
+  if (customer.state.mode === "awaiting_gift_recipient" && text && !action) {
+    const { normalizeGift, GIFT_NAME_MAX } = await import("@/core/orders/gift");
+    const g = normalizeGift({ recipient: text });
+    b.customer = await setState(ctx, customer, {
+      ...customer.state,
+      mode: "awaiting_gift_message",
+      gift_on: true,
+      gift_recipient: g.recipient,
+    });
+    if (g.truncated) await send(b, b.m.giftTruncatedNote(GIFT_NAME_MAX));
+    return void (await send(b, b.m.giftMessagePrompt, {
+      reply_markup: {
+        inline_keyboard: [[{ text: b.m.giftSkipBtn, callback_data: "gift:skip" }]],
+      },
+    }));
+  }
+  if (customer.state.mode === "awaiting_gift_message" && text && !action) {
+    const { normalizeGift, GIFT_MESSAGE_MAX } = await import("@/core/orders/gift");
+    const g = normalizeGift({ message: text });
+    b.customer = await setState(ctx, customer, {
+      ...customer.state,
+      mode: "idle",
+      gift_on: true,
+      gift_message: g.message,
+    });
+    if (g.truncated) await send(b, b.m.giftTruncatedNote(GIFT_MESSAGE_MAX));
+    return showCart(b);
+  }
   if (customer.state.mode === "awaiting_gift_certificate_code" && text && !action) {
     const idle = { ...customer.state, mode: "idle" as const };
     const found = await findValidGift(ctx, text);
@@ -1077,6 +1105,11 @@ async function showCart(b: Bot) {
   if (sum.gift)
     text += b.m.giftCertificateDiscountLine(formatMoney(sum.gift.discount, sum.currency));
   if (sum.discountFx) text += `${b.m.discountFx}\n`;
+  if (mod.bundles && st.gift_on)
+    text += b.m.giftCartLine(
+      escapeHtml(st.gift_recipient ?? ""),
+      escapeHtml(st.gift_message ?? ""),
+    );
   text += b.m.total(formatMoney(sum.total, sum.currency));
   const below = await belowMinimum(b.ctx, priced);
   if (below) text += `${minOrderText(b.m, below)}\n`;
@@ -1105,6 +1138,13 @@ async function showCart(b: Bot) {
       sum.gift
         ? { text: b.m.removeGiftCertificateBtn, callback_data: "giftcert:clear" }
         : { text: b.m.giftCertificateBtn, callback_data: "giftcert:enter" },
+    ]);
+  }
+  if (mod.bundles) {
+    buttons.push([
+      st.gift_on
+        ? { text: b.m.removeGiftBtn, callback_data: "gift:clear" }
+        : { text: b.m.giftBtn, callback_data: "gift:enter" },
     ]);
   }
   if (mod.upsell) {
@@ -1384,6 +1424,7 @@ async function finishCheckout(b: Bot, countryCode: string) {
     promoCode: st.promo_code,
     usePoints: st.use_points,
     giftCode: st.gift_certificate_code,
+    gift: st.gift_on ? { recipient: st.gift_recipient, message: st.gift_message } : null,
     deliveryLang: isDeliveryLangChoice(st.delivery_lang) ? st.delivery_lang : null,
     fulfillment: st.checkout_fulfillment_type
       ? {
@@ -1458,6 +1499,10 @@ async function finishCheckout(b: Bot, countryCode: string) {
     promo_code: _promo,
     use_points: _up,
     gift_certificate_code: _gift,
+    gift_on: _go,
+    gift_recipient: _gre,
+    gift_message: _gme,
+    gift_asked: _gas,
     checkout_fulfillment_type: _ft,
     checkout_fulfillment_at: _fa,
     checkout_min_fulfillment_date: _fm,
@@ -2523,6 +2568,23 @@ async function handleCallback(
     const { promo_code: _pc, ...rest } = customer.state;
     b.customer = await setState(ctx, customer, rest);
     await send(b, b.m.promoCodeRemoved);
+    return showCart(b);
+  }
+  if (data === "gift:enter" && ctx.tenant.modules.bundles) {
+    b.customer = await setState(ctx, customer, {
+      ...customer.state,
+      mode: "awaiting_gift_recipient",
+    });
+    return void (await send(b, b.m.giftRecipientPrompt));
+  }
+  if (data === "gift:skip") {
+    if (customer.state.mode !== "awaiting_gift_message") return;
+    b.customer = await setState(ctx, customer, { ...customer.state, mode: "idle" });
+    return showCart(b);
+  }
+  if (data === "gift:clear") {
+    const { gift_on: _g, gift_recipient: _gr, gift_message: _gm, ...rest } = customer.state;
+    b.customer = await setState(ctx, customer, rest);
     return showCart(b);
   }
   if (data === "giftcert:enter") {

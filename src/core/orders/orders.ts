@@ -150,6 +150,8 @@ export type PlaceOrderResult =
       amountDue: number;
       /** Сертификат больше заказа — код на остаток (покупателю в подтверждении). */
       giftRest: import("@/core/discounts/gift-rest").GiftRest | null;
+      /** Заказ отмечен подарком (модуль bundles): что записано; текст мог быть обрезан (`truncated`). */
+      gift: import("./gift").OrderGift | null;
     }
   | {
       ok: false;
@@ -197,6 +199,8 @@ export type PlaceOrderOptions = {
   deliveryLang?: DeliveryLangChoice | null;
   /** Счёт, выставленный продавцом сам: минимальная сумма заказа его не касается. */
   skipMinOrder?: boolean;
+  /** «Это подарок» (модуль bundles): получатель и открытка; пишется событием заказа `gift`. */
+  gift?: { recipient?: string | null; message?: string | null } | null;
 };
 
 /** Скидки корзины для показа — без списания. */
@@ -558,6 +562,13 @@ export async function placeOrder(
       total: Number(finalOrder.total),
       currency: finalOrder.currency,
     });
+    // Подарок — до остального: уведомление продавцу читает его при отправке.
+    let orderGift: import("./gift").OrderGift | null = null;
+    if (opts.gift && ctx.tenant.modules.bundles) {
+      const { normalizeGift, recordOrderGift } = await import("./gift");
+      orderGift = normalizeGift(opts.gift);
+      if (!(await recordOrderGift(ctx, finalOrder.id, orderGift))) orderGift = null;
+    }
     await recordStockChanges(ctx, stockChanges, {
       reason: "order",
       orderId: finalOrder.id,
@@ -600,6 +611,7 @@ export async function placeOrder(
       zeroTotal: total <= 0,
       amountDue: total <= 0 ? 0 : await amountDueNow(ctx, { total, fulfillment_kind: priced.kind }),
       giftRest,
+      gift: orderGift,
     };
   } catch (e) {
     const log = stockLoggedFor === null ? undefined : cancelLog(stockLoggedFor);

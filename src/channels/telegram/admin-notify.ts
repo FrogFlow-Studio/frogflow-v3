@@ -55,6 +55,23 @@ export async function notifyAdminNewOrder(
   const no = displayNo(order);
   const items = order.order_items ?? [];
   const paidOnline = Boolean(opts.paidOnline);
+  // «Это подарок»: отдельной строкой. Не прочиталось — уведомление всё равно уходит, но с пометкой.
+  const { loadOrderGift } = await import("@/core/orders/gift");
+  const gift = ctx.tenant.modules.bundles
+    ? await loadOrderGift(ctx, order.id).catch((e) => {
+        console.error(
+          `[tg:${ctx.tenant.id}] подарок заказа #${order.id} не прочитан: ${String(e)}`,
+        );
+        return "unreadable" as const;
+      })
+    : null;
+  const giftText =
+    gift === "unreadable"
+      ? "🎁 Подарок: не удалось прочитать отметку — откройте заказ в админке\n"
+      : gift
+        ? `🎁 <b>Подарок${gift.recipient ? ` для ${escapeHtml(gift.recipient)}` : ""}</b>\n` +
+          (gift.message ? `💌 «${escapeHtml(gift.message)}»\n` : "")
+        : "";
   const summary =
     (opts.autoDelivered
       ? `✅ <b>Заказ #${no}: чек распознан, файлы выданы автоматически</b>\n\n`
@@ -68,6 +85,7 @@ export async function notifyAdminNewOrder(
         ? `📲 Канал: ${escapeHtml(order.platform)}\n`
         : "") +
     fulfillmentLine(order, await fulfillmentSlots(ctx)) +
+    giftText +
     (opts.proofUrl ? `🧾 Чек: ${escapeHtml(opts.proofUrl)}\n` : "") +
     `👤 ${escapeHtml(order.display_name ?? "")}${order.username ? ` (@${escapeHtml(order.username)})` : ""}\n` +
     `📞 ${escapeHtml(order.contact ?? "—")}\n` +

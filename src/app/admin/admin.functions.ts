@@ -1173,6 +1173,10 @@ export const orderFn = createServerFn({ method: "GET" })
     // Курьер — последнее событие courier таймлайна (core/fulfillment/courier).
     const { courierState } = await import("@/core/fulfillment/courier");
     const courier = courierState(events);
+    // «Это подарок»: получатель и открытка — из события заказа; бухгалтеру без текста.
+    const { giftFromPayload } = await import("@/core/orders/gift");
+    const giftEvent = events.find((e) => e.kind === "gift");
+    const gift = giftEvent ? giftFromPayload(giftEvent.payload) : null;
     const refundable = (REFUNDABLE_STATUSES as readonly string[]).includes(order.status)
       ? Math.max(0, Math.round((receivedAmount(order) - refunded) * 100) / 100)
       : 0;
@@ -1193,6 +1197,7 @@ export const orderFn = createServerFn({ method: "GET" })
         approval,
         approvalPhotoUrl,
         courier,
+        gift,
       };
     // Бухгалтеру: без контактов; журнал — только события и время, без текста.
     const { redactOrder, redactEventPayload } = await import("@/core/orders/redact");
@@ -1212,6 +1217,7 @@ export const orderFn = createServerFn({ method: "GET" })
       approval,
       approvalPhotoUrl,
       courier: courier ? { ...courier, phone: null } : null,
+      gift: gift ? { recipient: "", message: "", truncated: false } : null,
     };
   });
 

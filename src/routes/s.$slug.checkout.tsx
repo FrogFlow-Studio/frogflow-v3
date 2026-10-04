@@ -51,6 +51,7 @@ function CheckoutPage() {
   // Бесплатная доставка: товары корзины против порога зоны (промокод сервер учтёт при оформлении).
   // Пока введён промокод, «бесплатно» не обещаем: сумму после скидки знает только сервер.
   const [promoTyped, setPromoTyped] = useState(false);
+  const [giftOn, setGiftOn] = useState(false);
   const reached = (z: { freeFrom: { amount: number; currency: string } | null }) =>
     Boolean(
       z.freeFrom &&
@@ -99,6 +100,13 @@ function CheckoutPage() {
           : null,
         promo: String(f.get("promo") ?? "") || undefined,
         gift: String(f.get("gift") ?? "") || undefined,
+        giftMark:
+          info.giftMark && f.get("giftOn") === "on"
+            ? {
+                recipient: String(f.get("giftRecipient") ?? ""),
+                message: String(f.get("giftMessage") ?? ""),
+              }
+            : null,
         consent: f.get("consent") === "on",
         website: String(f.get("website") ?? ""),
         source: readWebSource(slug),
@@ -322,6 +330,34 @@ function CheckoutPage() {
           <Field label={t("checkout.gift")}>
             <input className="input" name="gift" maxLength={40} autoComplete="off" />
           </Field>
+        )}
+        {info.giftMark && (
+          <fieldset className="space-y-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="giftOn"
+                checked={giftOn}
+                onChange={(e) => setGiftOn(e.target.checked)}
+              />
+              {t("checkout.giftOn")}
+            </label>
+            {giftOn && (
+              <>
+                <Field label={t("checkout.giftRecipient")}>
+                  <input
+                    className="input"
+                    name="giftRecipient"
+                    maxLength={100}
+                    autoComplete="off"
+                  />
+                </Field>
+                <Field label={t("checkout.giftMessage")}>
+                  <textarea className="input" name="giftMessage" maxLength={300} rows={3} />
+                </Field>
+              </>
+            )}
+          </fieldset>
         )}
         {(info.consent.offer || info.consent.privacy) && (
           <label className="flex items-start gap-2 text-sm">

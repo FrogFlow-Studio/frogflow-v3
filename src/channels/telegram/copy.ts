@@ -123,6 +123,19 @@ export type Msg = {
   giftCertificateInvalid: string;
   giftRestIssued: (code: string, sum: string) => string;
   giftCertificateRemoved: string;
+  /** «Это подарок» (модуль bundles): кнопка корзины, шаги получателя и открытки, строка корзины. */
+  giftBtn: string;
+  removeGiftBtn: string;
+  giftRecipientPrompt: string;
+  giftMessagePrompt: string;
+  giftSkipBtn: string;
+  /** Instagram/WhatsApp: «это подарок?» перед оформлением. */
+  giftAsk: string;
+  giftYesBtn: string;
+  giftNoBtn: string;
+  giftCartLine: (recipient: string, message: string) => string;
+  /** Имя или открытка длиннее предела: сохранено первое. */
+  giftTruncatedNote: (max: number) => string;
   giftCertificateDiscountLine: (amount: string) => string;
   orderPaidByDiscounts: (no: number) => string;
   fulfillmentTypePrompt: string;
@@ -543,6 +556,16 @@ const ru: Msg = {
   giftRestIssued: (code, sum) =>
     `🎁 Сертификат больше суммы заказа — остаток ${sum} сохранён новым кодом:\n<code>${code}</code>\nВведите его при следующем заказе.`,
   giftCertificateRemoved: "Сертификат убран.",
+  giftBtn: "🎁 Это подарок",
+  removeGiftBtn: "❌ Убрать подарок",
+  giftRecipientPrompt: "🎁 Кому подарок? Напишите имя получателя.",
+  giftMessagePrompt: "💌 Напишите текст открытки (до 300 символов) или нажмите «Пропустить».",
+  giftSkipBtn: "Пропустить",
+  giftAsk: "🎁 Это подарок? Запишу получателя и текст открытки для продавца.",
+  giftYesBtn: "Да, подарок",
+  giftNoBtn: "Нет",
+  giftCartLine: (r, m) => `🎁 Подарок${r ? ` для ${r}` : ""}${m ? `\n💌 «${m}»` : ""}\n`,
+  giftTruncatedNote: (n) => `Текст длиннее ${n} символов — сохранил первые ${n}.`,
   giftCertificateDiscountLine: (a) => `🎫 Сертификат: −${a}\n`,
   orderPaidByDiscounts: (no) => `🎉 Заказ #${no} полностью оплачен скидкой — файлы уже в пути.`,
   fulfillmentTypePrompt: "Как вы хотите получить заказ?",
@@ -700,6 +723,16 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  giftBtn: "🎁 Бұл сыйлық",
+  removeGiftBtn: "❌ Сыйлықты алып тастау",
+  giftRecipientPrompt: "🎁 Сыйлық кімге? Алушының атын жазыңыз.",
+  giftMessagePrompt: "💌 Открытка мәтінін жазыңыз (300 таңбаға дейін) немесе «Өткізу» басыңыз.",
+  giftSkipBtn: "Өткізу",
+  giftAsk: "🎁 Бұл сыйлық па? Алушыны және открытка мәтінін сатушыға жазып қоямын.",
+  giftYesBtn: "Иә, сыйлық",
+  giftNoBtn: "Жоқ",
+  giftCartLine: (r, m) => `🎁 Сыйлық${r ? ` — ${r}` : ""}${m ? `\n💌 «${m}»` : ""}\n`,
+  giftTruncatedNote: (n) => `Мәтін ${n} таңбадан ұзын — алғашқы ${n} таңба сақталды.`,
   fulfillmentDateClosed: (d) => `Бұл күні беру жоқ. Ең жақын күн: ${d}.`,
   fulfillmentDateFull: (d) =>
     d
@@ -1210,6 +1243,16 @@ const en: Msg = {
   giftRestIssued: (code, sum) =>
     `🎁 The certificate exceeds the order total — the remaining ${sum} is saved as a new code:\n<code>${code}</code>\nEnter it with your next order.`,
   giftCertificateRemoved: "Certificate removed.",
+  giftBtn: "🎁 This is a gift",
+  removeGiftBtn: "❌ Remove gift mark",
+  giftRecipientPrompt: "🎁 Who is the gift for? Write the recipient's name.",
+  giftMessagePrompt: "💌 Write the card message (up to 300 characters) or tap “Skip”.",
+  giftSkipBtn: "Skip",
+  giftAsk: "🎁 Is this a gift? I will pass the recipient and card message to the seller.",
+  giftYesBtn: "Yes, a gift",
+  giftNoBtn: "No",
+  giftCartLine: (r, m) => `🎁 Gift${r ? ` for ${r}` : ""}${m ? `\n💌 “${m}”` : ""}\n`,
+  giftTruncatedNote: (n) => `The text is longer than ${n} characters — kept the first ${n}.`,
   giftCertificateDiscountLine: (a) => `🎫 Certificate: −${a}\n`,
   orderPaidByDiscounts: (no) =>
     `🎉 Order #${no} is fully covered by your discounts — files are on the way.`,
@@ -1230,6 +1273,17 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  giftBtn: "🎁 Bu sovg‘a",
+  removeGiftBtn: "❌ Sovg‘a belgisini olib tashlash",
+  giftRecipientPrompt: "🎁 Sovg‘a kimga? Oluvchining ismini yozing.",
+  giftMessagePrompt:
+    "💌 Otkritka matnini yozing (300 belgigacha) yoki «O‘tkazib yuborish»ni bosing.",
+  giftSkipBtn: "O‘tkazib yuborish",
+  giftAsk: "🎁 Bu sovg‘ami? Oluvchi va otkritka matnini sotuvchiga yozib qo‘yaman.",
+  giftYesBtn: "Ha, sovg‘a",
+  giftNoBtn: "Yo‘q",
+  giftCartLine: (r, m) => `🎁 Sovg‘a${r ? ` — ${r}` : ""}${m ? `\n💌 «${m}»` : ""}\n`,
+  giftTruncatedNote: (n) => `Matn ${n} belgidan uzun — dastlabki ${n} belgi saqlandi.`,
   fulfillmentDateClosed: (d) => `Bu kuni topshirish yo‘q. Eng yaqin sana: ${d}.`,
   fulfillmentDateFull: (d) =>
     d

@@ -45,6 +45,7 @@ function OrderPage() {
     approval,
     approvalPhotoUrl,
     courier,
+    gift,
   } = Route.useLoaderData();
   const [copied, setCopied] = useState(false);
   const { shop } = Route.useRouteContext();
@@ -171,6 +172,24 @@ function OrderPage() {
         <ErrorBox error={act.error} />
 
         <div className="space-y-4">
+          {gift && (
+            <Card title={t("order.gift")}>
+              <dl className="grid grid-cols-[120px_1fr] gap-y-1 text-sm">
+                {gift.recipient && (
+                  <>
+                    <dt className="text-muted">{t("order.giftRecipient")}</dt>
+                    <dd>{gift.recipient}</dd>
+                  </>
+                )}
+                {gift.message && (
+                  <>
+                    <dt className="text-muted">{t("order.giftMessage")}</dt>
+                    <dd className="whitespace-pre-wrap">{gift.message}</dd>
+                  </>
+                )}
+              </dl>
+            </Card>
+          )}
           <Card title={t("order.customer")}>
             <dl className="grid grid-cols-[120px_1fr] gap-y-1 text-sm">
               <dt className="text-muted">{t("order.name")}</dt>

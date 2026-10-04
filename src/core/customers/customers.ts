@@ -58,6 +58,11 @@ export type DialogMode =
   /** Instagram/WhatsApp: квиз-подбор, ждём номер варианта (core/quiz). Теги — quiz_tags, вопрос — quiz_q. */
   | "awaiting_quiz"
   | "awaiting_gift_certificate_code"
+  /** «Это подарок» (модуль bundles): имя получателя, затем текст открытки (core/orders/gift). */
+  /** Instagram/WhatsApp: «это подарок?» — да/нет перед оформлением. */
+  | "awaiting_gift_choice"
+  | "awaiting_gift_recipient"
+  | "awaiting_gift_message"
   | "awaiting_fulfillment_type"
   | "awaiting_fulfillment_date"
   | "awaiting_fulfillment_slot"
@@ -96,6 +101,12 @@ export type DialogState = {
   promo_code?: string;
   use_points?: boolean;
   gift_certificate_code?: string;
+  /** Заказ отмечен подарком: получатель и открытка, уходят в placeOrder и снимаются после него. */
+  gift_on?: boolean;
+  gift_recipient?: string;
+  gift_message?: string;
+  /** Instagram/WhatsApp: про подарок уже спросили в этом оформлении. */
+  gift_asked?: boolean;
   placing_order?: boolean;
   checkout_fulfillment_type?: "pickup" | "delivery";
   checkout_fulfillment_at?: string;

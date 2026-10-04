@@ -68,6 +68,8 @@ export const webCheckoutInfoFn = createServerFn({ method: "GET" })
         promo: Boolean(ctx.tenant.modules.coupons),
         gift: Boolean(ctx.tenant.modules.gift_certificates),
       },
+      /** «Это подарок» (модуль bundles): получатель и открытка. */
+      giftMark: Boolean(ctx.tenant.modules.bundles),
       /** Минимальная сумма заказа в валюте магазина; страница сверяет её с корзиной в той же валюте. */
       minOrder: await minOrderInfo(ctx),
       challenge: issueChallenge(await secret(), Date.now(), "checkout"),
@@ -112,6 +114,11 @@ const checkoutInput = z.object({
     .optional(),
   promo: z.string().trim().max(40).optional(),
   gift: z.string().trim().max(40).optional(),
+  /** «Это подарок»: пределы строже сервер проверяет сам (core/orders/gift), здесь — защита от мусора. */
+  giftMark: z
+    .object({ recipient: z.string().max(1000), message: z.string().max(5000) })
+    .nullable()
+    .optional(),
   /** Согласие с офертой и обработкой данных (галочка оформления). */
   consent: z.boolean().optional(),
   /** Приманка для ботов: поле скрыто, человек его не заполняет. */
@@ -150,6 +157,14 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
     const consent = await legalConsentNeeded(ctx);
     if ((consent.offer || consent.privacy) && data.consent !== true)
       throw shownError(t("checkout.error.consent"));
+    // Подарок: слишком длинное не режем молча — сайт держит лимит в поле, длиннее приходит только в обход него.
+    let giftMark: { recipient: string; message: string } | null = null;
+    if (ctx.tenant.modules.bundles && data.giftMark) {
+      const { normalizeGift } = await import("@/core/orders/gift");
+      const g = normalizeGift(data.giftMark);
+      if (g.truncated) throw shownError(t("checkout.error.giftTooLong"));
+      giftMark = { recipient: g.recipient, message: g.message };
+    }
     const { clientIp } = await import("@/app/auth/login-guard.server");
     const { claimCheckoutChallenge, takeWeb } = await import("@/core/storefront/checkout-guard");
     const ip = clientIp() ?? "unknown";
@@ -188,6 +203,7 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
       contact: { name: data.name, phone },
       promoCode,
       giftCode,
+      gift: giftMark,
     });
     if (!r.ok) {
       switch (r.reason) {

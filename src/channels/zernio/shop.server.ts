@@ -47,6 +47,7 @@ import {
   type OrderWithItems,
   reorderIntoCart,
 } from "@/core/orders/orders";
+import { GIFT_MESSAGE_MAX, GIFT_NAME_MAX, normalizeGift } from "@/core/orders/gift";
 import {
   activeDeliveryZones,
   amountDueNow,
@@ -250,6 +251,8 @@ async function stepAnswerFits(s: Shop, mode: string, text: string): Promise<bool
     case "awaiting_delivery_lang":
       return matchDeliveryLangChoice(text, await cartLanguageChoices(s.ctx, s.customer)) !== null;
     case "awaiting_points_choice":
+      return matchLoyaltyPointsChoice(text) !== null;
+    case "awaiting_gift_choice":
       return matchLoyaltyPointsChoice(text) !== null;
     case "awaiting_fulfillment_type":
       return matchFulfillmentType(text) !== null;
@@ -717,6 +720,29 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       await finishCheckout(s, cc);
       return "handled";
     }
+    case "awaiting_gift_choice": {
+      const choice = matchLoyaltyPointsChoice(text);
+      const cc = s.customer.state.country_code;
+      if (!choice || !cc) return askGift(s).then(() => "handled" as const);
+      return afterGiftChoice(s, cc, choice === "yes").then(() => "handled" as const);
+    }
+    case "awaiting_gift_recipient": {
+      const g = normalizeGift({ recipient: text });
+      await setMode(s, {
+        mode: "awaiting_gift_message",
+        gift_on: true,
+        gift_recipient: g.recipient,
+      });
+      if (g.truncated) await reply(s, s.m.giftTruncatedNote(GIFT_NAME_MAX), { force: true });
+      await askGiftMessage(s);
+      return "handled";
+    }
+    case "awaiting_gift_message": {
+      const g = normalizeGift({ message: text });
+      if (g.truncated) await reply(s, s.m.giftTruncatedNote(GIFT_MESSAGE_MAX), { force: true });
+      await finishAfterGift(s, g.message);
+      return "handled";
+    }
     case "awaiting_fulfillment_type": {
       const type = matchFulfillmentType(text);
       if (!type) return reply(s, s.m.fulfillmentTypePrompt).then(() => "handled" as const);
@@ -918,6 +944,7 @@ function featureAllows(s: Shop, command: DirectCommand | string): boolean {
     case "PAY":
     case "FT":
     case "NOTE":
+    case "GIFT":
       return f.checkout;
     case "quiz":
     case "QUIZ":
@@ -1082,6 +1109,18 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
       const cc = s.customer.state.country_code;
       if (!cc) await askCountry(s, true);
       else await finishCheckout(s, cc);
+      return "handled";
+    }
+    case "GIFT": {
+      const cc = s.customer.state.country_code;
+      const mode = s.customer.state.mode;
+      if (a === "skip") {
+        if (mode !== "awaiting_gift_message") return "handled";
+        await finishAfterGift(s, null);
+        return "handled";
+      }
+      if (mode !== "awaiting_gift_choice" || !cc) return "handled";
+      await afterGiftChoice(s, cc, a === "yes");
       return "handled";
     }
     case "LOYALTY": {
@@ -1970,14 +2009,60 @@ async function askPoints(s: Shop) {
   });
 }
 
+/**
+ * Шаг «это подарок?» (модуль bundles): в Direct нет кнопки корзины, поэтому
+ * спрашиваем один раз за оформление. «Да» — имя получателя и текст открытки.
+ */
+async function askGiftFirst(s: Shop, countryCode: string): Promise<boolean> {
+  if (!s.ctx.tenant.modules.bundles || s.customer.state.gift_asked) return false;
+  await setMode(s, { mode: "awaiting_gift_choice", country_code: countryCode, gift_asked: true });
+  await askGift(s);
+  return true;
+}
+
+async function askGift(s: Shop) {
+  await reply(s, plain(s.m.giftAsk), {
+    force: true,
+    buttons: [
+      { type: "postback", title: plain(s.m.giftYesBtn), payload: "GIFT:yes" },
+      { type: "postback", title: plain(s.m.giftNoBtn), payload: "GIFT:no" },
+    ],
+  });
+}
+
+async function afterGiftChoice(s: Shop, countryCode: string, yes: boolean) {
+  if (!yes) {
+    await setMode(s, { mode: "idle" });
+    return finishCheckout(s, countryCode);
+  }
+  await setMode(s, { mode: "awaiting_gift_recipient", gift_on: true });
+  await reply(s, plain(s.m.giftRecipientPrompt), { force: true });
+}
+
+async function askGiftMessage(s: Shop) {
+  await reply(s, plain(s.m.giftMessagePrompt), {
+    force: true,
+    buttons: [{ type: "postback", title: plain(s.m.giftSkipBtn), payload: "GIFT:skip" }],
+  });
+}
+
+async function finishAfterGift(s: Shop, message: string | null) {
+  await setMode(s, { gift_message: message ?? undefined, mode: "idle" });
+  const cc = s.customer.state.country_code;
+  if (!cc) return askCountry(s, true);
+  return finishCheckout(s, cc);
+}
+
 async function finishCheckout(s: Shop, countryCode: string) {
   if (await askEmailFirst(s, countryCode)) return;
   if (await askPointsFirst(s, countryCode)) return;
+  if (await askGiftFirst(s, countryCode)) return;
   const st = s.customer.state;
   const result = await placeOrder(s.ctx, s.customer, countryCode, {
     promoCode: st.promo_code,
     usePoints: st.use_points,
     giftCode: st.gift_certificate_code,
+    gift: st.gift_on ? { recipient: st.gift_recipient, message: st.gift_message } : null,
     deliveryLang: isDeliveryLangChoice(st.delivery_lang) ? st.delivery_lang : null,
     fulfillment: st.checkout_fulfillment_type
       ? {
@@ -2046,6 +2131,10 @@ async function finishCheckout(s: Shop, countryCode: string) {
     promo_code: _promo,
     use_points: _up,
     gift_certificate_code: _gift,
+    gift_on: _go,
+    gift_recipient: _gre,
+    gift_message: _gme,
+    gift_asked: _gas,
     checkout_fulfillment_type: _ft,
     checkout_fulfillment_at: _fa,
     checkout_min_fulfillment_date: _fm,

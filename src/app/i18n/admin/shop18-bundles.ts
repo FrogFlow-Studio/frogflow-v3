@@ -2,6 +2,9 @@ import type { SectionDict } from "../section";
 
 /** Наборы товаров (Н1): карточка набора в товаре и ошибки состава. */
 export const ru = {
+  "order.gift": "Подарок",
+  "order.giftRecipient": "Получатель",
+  "order.giftMessage": "Открытка",
   "bundle.card": "Набор товаров",
   "bundle.hint":
     "Набор — товар со своей ценой, который состоит из других товаров, например «шампунь + бальзам». Цену набора задайте в этой карточке выше. Только физические товары; набор не входит в набор.",
@@ -37,6 +40,9 @@ export const ru = {
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
+  "order.gift": "Сыйлық",
+  "order.giftRecipient": "Алушы",
+  "order.giftMessage": "Открытка",
   "bundle.card": "Тауар жиынтығы",
   "bundle.hint":
     "Жиынтық — өз бағасы бар, басқа тауарлардан тұратын тауар, мысалы «шампунь + бальзам». Жиынтық бағасын жоғарыдағы осы карточкада көрсетіңіз. Тек физикалық тауарлар; жиынтық жиынтыққа кірмейді.",
@@ -73,6 +79,9 @@ export const kk: SectionDict<typeof ru> = {
 };
 
 export const en: SectionDict<typeof ru> = {
+  "order.gift": "Gift",
+  "order.giftRecipient": "Recipient",
+  "order.giftMessage": "Card message",
   "bundle.card": "Product bundle",
   "bundle.hint":
     "A bundle is a product with its own price that consists of other products, e.g. “shampoo + conditioner”. Set the bundle price in this card above. Physical products only; a bundle cannot contain a bundle.",
@@ -110,6 +119,9 @@ export const en: SectionDict<typeof ru> = {
 };
 
 export const uz: SectionDict<typeof ru> = {
+  "order.gift": "Sovgʻa",
+  "order.giftRecipient": "Oluvchi",
+  "order.giftMessage": "Otkritka",
   "bundle.card": "Mahsulotlar toʻplami",
   "bundle.hint":
     "Toʻplam — oʻz narxiga ega, boshqa mahsulotlardan iborat mahsulot, masalan “shampun + balzam”. Toʻplam narxini yuqoridagi shu kartada belgilang. Faqat jismoniy mahsulotlar; toʻplam toʻplamga kirmaydi.",

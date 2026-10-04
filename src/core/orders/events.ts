@@ -58,7 +58,9 @@ export type OrderEventKind =
   /** Позиции взяты предзаказом (core/preorder): остаток не списан, срок отправки. */
   | "preorder"
   /** Продавец перенёс срок предзаказа: событие — «сообщаем покупателю» (один раз на перенос). */
-  | "preorder_moved";
+  | "preorder_moved"
+  /** Заказ — подарок: получатель и текст открытки (core/orders/gift), один раз на заказ. */
+  | "gift";
 
 export type OrderEvent = {
   id: string;
@@ -327,6 +329,11 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       return {
         text: "Не удалось исключить покупателя из закрытого канала курса — удалите его из канала вручную",
         tone: "danger",
+      };
+    case "gift":
+      return {
+        text: `🎁 Подарок${p.recipient ? ` для ${str(p.recipient)}` : ""}${p.message ? `: «${str(p.message)}»` : ""}${p.truncated === true ? " (текст обрезан до лимита)" : ""}`,
+        tone: "neutral",
       };
     case "preorder_moved":
       return {

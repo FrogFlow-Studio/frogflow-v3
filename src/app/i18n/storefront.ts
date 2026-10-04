@@ -218,6 +218,10 @@ const ru = {
   "checkout.error.promoUsed":
     "Этот промокод действует один раз на покупателя, и вы его уже использовали.",
   "checkout.error.gift": "Сертификат не подошёл: проверьте код или оформите без него.",
+  "checkout.giftOn": "Это подарок",
+  "checkout.giftRecipient": "Имя получателя",
+  "checkout.giftMessage": "Текст открытки (до 300 символов)",
+  "checkout.error.giftTooLong": "Имя или текст открытки слишком длинные: сократите их.",
   "checkout.error.discountFx":
     "Скидку сейчас не пересчитать в валюту заказа: курс валют недоступен. Попробуйте чуть позже или оформите без скидки.",
   "checkout.error.mixedCurrency":
@@ -664,6 +668,10 @@ const kk: Dict = {
   "checkout.error.promoUsed":
     "Бұл промокод бір сатып алушыға бір рет қана жарамды, сіз оны қолдандыңыз.",
   "checkout.error.gift": "Сертификат жарамады: кодты тексеріңіз немесе онсыз рәсімдеңіз.",
+  "checkout.giftOn": "Бұл сыйлық",
+  "checkout.giftRecipient": "Алушының аты",
+  "checkout.giftMessage": "Открытка мәтіні (300 таңбаға дейін)",
+  "checkout.error.giftTooLong": "Аты немесе открытка мәтіні тым ұзын: қысқартыңыз.",
   "checkout.error.discountFx":
     "Жеңілдікті қазір тапсырыс валютасына аудару мүмкін емес: валюта бағамы қолжетімсіз. Сәл кейінірек көріңіз немесе жеңілдіксіз рәсімдеңіз.",
   "checkout.error.mixedCurrency":
@@ -1099,6 +1107,11 @@ const en: Dict = {
   "checkout.error.promo": "The promo code didn't work: check it or order without it.",
   "checkout.error.promoUsed": "This promo code is once per customer, and you have already used it.",
   "checkout.error.gift": "The certificate didn't work: check the code or order without it.",
+  "checkout.giftOn": "This is a gift",
+  "checkout.giftRecipient": "Recipient name",
+  "checkout.giftMessage": "Card message (up to 300 characters)",
+  "checkout.error.giftTooLong":
+    "The recipient name or card message is too long: please shorten it.",
   "checkout.error.discountFx":
     "The discount can't be converted to the order currency right now: exchange rates are unavailable. Try again a bit later or order without the discount.",
   "checkout.error.mixedCurrency":
@@ -1538,6 +1551,10 @@ const uz: Dict = {
   "checkout.error.promoUsed":
     "Bu promokod har bir xaridor uchun bir marta amal qiladi, siz uni allaqachon ishlatgansiz.",
   "checkout.error.gift": "Sertifikat mos kelmadi: kodni tekshiring yoki usiz rasmiylashtiring.",
+  "checkout.giftOn": "Bu sovg'a",
+  "checkout.giftRecipient": "Oluvchining ismi",
+  "checkout.giftMessage": "Otkritka matni (300 belgigacha)",
+  "checkout.error.giftTooLong": "Ism yoki otkritka matni juda uzun: qisqartiring.",
   "checkout.error.discountFx":
     "Chegirmani hozir buyurtma valyutasiga o‘tkazib bo‘lmaydi: valyuta kursi mavjud emas. Birozdan keyin urinib ko‘ring yoki chegirmasiz rasmiylashtiring.",
   "checkout.error.mixedCurrency":

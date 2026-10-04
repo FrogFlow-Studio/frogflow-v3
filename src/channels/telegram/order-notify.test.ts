@@ -155,3 +155,33 @@ describe("уведомление продавцу о заказе убирает
     expect(keys).toContain("v2_order_notify:8");
   });
 });
+
+describe("уведомление о заказе-подарке", () => {
+  const giftRow = {
+    bot_id: BOT,
+    event_id: "order:7:gift:once",
+    event_type: "order.gift",
+    status: "event",
+    payload: { order_id: 7, recipient: "Анна <b>", message: "С днём рождения!", truncated: false },
+  };
+  const texts = (calls: Array<[string, Record<string, unknown>]>) =>
+    calls.filter(([m]) => m === "sendMessage").map(([, p]) => String(p.text));
+
+  it("отдельной строкой «🎁 Подарок для …» и текстом открытки, имя экранировано", async () => {
+    const { ctx, db, api, calls, order7 } = setup();
+    (ctx.tenant.modules as Record<string, boolean>).bundles = true;
+    db.tables.zernio_logs = [giftRow];
+    await notifyAdminNewOrder(ctx, api, order7(), null);
+    const text = texts(calls)[0]!;
+    expect(text).toContain("🎁 <b>Подарок для Анна &lt;b&gt;</b>");
+    expect(text).toContain("💌 «С днём рождения!»");
+  });
+
+  it("без подарка строки нет", async () => {
+    const { ctx, db, api, calls, order7 } = setup();
+    (ctx.tenant.modules as Record<string, boolean>).bundles = true;
+    db.tables.zernio_logs = [];
+    await notifyAdminNewOrder(ctx, api, order7(), null);
+    expect(texts(calls)[0]).not.toContain("🎁");
+  });
+});
