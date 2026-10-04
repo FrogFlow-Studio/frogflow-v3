@@ -535,8 +535,13 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     mode = "idle";
   }
 
-  if (isCancel(text)) {
-    if ((!mode || mode === "idle") && !inDialog(s)) return "question";
+  // «/start» — и слово отмены, и вызов магазина. Вне сценария и вне разговора с
+  // ботом это вызов: иначе в строгом режиме (он по умолчанию) первое «/start»
+  // покупателя молча уходило продавцу обращением (Копилка русоведа, 04.10).
+  const idleNow = !mode || mode === "idle";
+  const startCall = idleNow && !inDialog(s) && text.trim().toLowerCase() === "/start";
+  if (isCancel(text) && !startCall) {
+    if (idleNow && !inDialog(s)) return "question";
     await setMode(s, { mode: "idle" });
     await reply(s, `${plain(s.m.useMenu)}\n\n${hint(s)}`, {
       force: true,
@@ -900,6 +905,7 @@ function featureAllows(s: Shop, command: DirectCommand | string): boolean {
     case "catalog":
     case "CATALOG":
     case "CAT":
+    case "PCAT":
     case "PROD":
       return f.catalog;
     case "cart":
@@ -1012,6 +1018,11 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
       // Смещение из постбэка: нет, не число или меньше нуля — начало списка.
       await showCatalog(s, a || null, Math.max(0, Math.floor(Number(b ?? 0)) || 0), true);
       return "handled";
+    case "PCAT": {
+      const offsetNow = Math.max(0, Math.floor(Number(b ?? 0)) || 0);
+      await showCatalog(s, a || null, offsetNow, true, true);
+      return "handled";
+    }
     case "PROD": {
       const p = a ? await getProduct(s.ctx, a) : null;
       if (p) await sendProductCard(s, p, true);
@@ -1091,8 +1102,39 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
 
 // ── каталог ───────────────────────────────────────────────────────────
 
-async function showCatalog(s: Shop, categoryId: string | null, offset: number, force: boolean) {
-  const cats = await listChildCategories(s.ctx, categoryId);
+/** Пункт списка разделов: «товары самого раздела», когда у раздела есть и подразделы, и свои товары. */
+const OWN_PRODUCTS_PREFIX = "~p:";
+const OWN_PRODUCTS_LABEL: Record<Locale, string> = {
+  ru: "Товары этого раздела",
+  kk: "Осы бөлімнің тауарлары",
+  en: "Products in this section",
+  uz: "Shu bo‘lim mahsulotlari",
+};
+
+/** Открыть пункт списка разделов: подраздел или товары самого раздела. */
+function openEntry(s: Shop, id: string) {
+  return id.startsWith(OWN_PRODUCTS_PREFIX)
+    ? showCatalog(s, id.slice(OWN_PRODUCTS_PREFIX.length), 0, true, true)
+    : showCatalog(s, id, 0, true);
+}
+
+async function showCatalog(
+  s: Shop,
+  categoryId: string | null,
+  offset: number,
+  force: boolean,
+  ownProductsOnly = false,
+) {
+  const children = ownProductsOnly ? [] : await listChildCategories(s.ctx, categoryId);
+  // Раздел с подразделами и своими товарами: товары не теряем, а даём последним пунктом.
+  const own =
+    categoryId && children.length > 0 ? await listProductsInCategory(s.ctx, categoryId) : [];
+  const cats = children.map((c) => ({ id: c.id, name: c.name }));
+  if (categoryId && own.length > 0)
+    cats.push({
+      id: `${OWN_PRODUCTS_PREFIX}${categoryId}`,
+      name: OWN_PRODUCTS_LABEL[s.locale] ?? OWN_PRODUCTS_LABEL.ru,
+    });
   if (cats.length > 0) {
     const PAGE = pageSize(s);
     const page = cats.slice(offset, offset + PAGE);
@@ -1131,7 +1173,12 @@ async function showCatalog(s: Shop, categoryId: string | null, offset: number, f
           sections: [
             {
               title: plain(s.m.catalogHeader),
-              rows: page.map((c) => ({ id: `CAT:${c.id}:0`, title: c.name })),
+              rows: page.map((c) => ({
+                id: c.id.startsWith(OWN_PRODUCTS_PREFIX)
+                  ? `PCAT:${c.id.slice(OWN_PRODUCTS_PREFIX.length)}:0`
+                  : `CAT:${c.id}:0`,
+                title: c.name,
+              })),
             },
             { title: "…", rows: buttons.map((b) => ({ id: b.payload!, title: b.title })) },
           ],
@@ -1151,7 +1198,7 @@ async function showCatalog(s: Shop, categoryId: string | null, offset: number, f
     await reply(s, s.m.emptyHere, { force, buttons: [BTN.catalog(s.m), BTN.cart(s.m)] });
     return;
   }
-  await showProductList(s, products, offset, categoryId, force);
+  await showProductList(s, products, offset, categoryId, force, ownProductsOnly);
 }
 
 async function showProductList(
@@ -1160,7 +1207,10 @@ async function showProductList(
   offset: number,
   categoryId: string | null,
   force: boolean,
+  own = false,
 ) {
+  // Товары раздела с подразделами: «ещё» остаётся в списке товаров, «назад» — в сам раздел.
+  const pageHead = own ? "PCAT" : "CAT";
   const country = s.customer.state.country_code ?? null;
   const PAGE = pageSize(s);
   const page = products.slice(offset, offset + PAGE);
@@ -1188,7 +1238,7 @@ async function showProductList(
     buttons.push({
       type: "postback",
       title: plain(s.m.showMore),
-      payload: `CAT:${categoryId ?? ""}:${offset + PAGE}`,
+      payload: `${pageHead}:${categoryId ?? ""}:${offset + PAGE}`,
     });
   buttons.push(BTN.cart(s.m));
   buttons.push(
@@ -1196,7 +1246,7 @@ async function showProductList(
       ? {
           type: "postback",
           title: plain(s.m.backToCategories),
-          payload: await backPayload(s, categoryId),
+          payload: own ? `CAT:${categoryId}:0` : await backPayload(s, categoryId),
         }
       : BTN.orders(s.m),
   );
@@ -1267,7 +1317,7 @@ async function pickByNumber(s: Shop, number: string): Promise<boolean> {
   const n = Number(number);
   if (listFresh && list.kind !== "variants" && n >= 1 && n <= list.ids.length) {
     const id = list.ids[n - 1]!;
-    if (list.kind === "categories") return showCatalog(s, id, 0, true).then(() => true);
+    if (list.kind === "categories") return openEntry(s, id).then(() => true);
     const p = await getProduct(s.ctx, id);
     if (p) return sendProductCard(s, p, true).then(() => true);
   }
@@ -1309,7 +1359,7 @@ async function pickSeveral(s: Shop, numbers: string[]): Promise<boolean> {
     const idx = numbers.map(Number).find((n) => n >= 1 && n <= list.ids.length);
     if (idx) {
       await reply(s, ONE_SECTION_HINT[s.locale], { force: true });
-      await showCatalog(s, list.ids[idx - 1]!, 0, true);
+      await openEntry(s, list.ids[idx - 1]!);
       return true;
     }
   }
