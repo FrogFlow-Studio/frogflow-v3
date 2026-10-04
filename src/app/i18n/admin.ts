@@ -23,6 +23,7 @@ import * as school4 from "./admin/school4";
 import * as analytics from "./admin/analytics";
 import * as chat from "./admin/chat";
 import * as outbox from "./admin/outbox";
+import * as crmLog from "./admin/crm-log";
 import * as audit from "./admin/audit";
 import * as posts from "./admin/posts";
 import * as quiz from "./admin/quiz";
@@ -419,6 +420,7 @@ const ru = {
   ...analytics.ru,
   ...chat.ru,
   ...outbox.ru,
+  ...crmLog.ru,
   ...audit.ru,
   ...posts.ru,
   ...quiz.ru,
@@ -1498,6 +1500,7 @@ const kk: Dict = {
   ...analytics.kk,
   ...chat.kk,
   ...outbox.kk,
+  ...crmLog.kk,
   ...audit.kk,
   ...posts.kk,
   ...quiz.kk,
@@ -1544,6 +1547,7 @@ const en: Dict = {
   ...analytics.en,
   ...chat.en,
   ...outbox.en,
+  ...crmLog.en,
   ...audit.en,
   ...posts.en,
   ...quiz.en,
@@ -1590,6 +1594,7 @@ const uz: Dict = {
   ...analytics.uz,
   ...chat.uz,
   ...outbox.uz,
+  ...crmLog.uz,
   ...audit.uz,
   ...posts.uz,
   ...quiz.uz,

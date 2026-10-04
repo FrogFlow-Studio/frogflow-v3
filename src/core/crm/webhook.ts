@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import type { Json } from "@/core/db-types";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSetting, setSetting } from "@/core/settings/settings";
@@ -191,7 +191,7 @@ export async function postPinned(
   headers: Record<string, string>,
   body: string,
   timeoutMs: number,
-): Promise<{ ok: true; status: number } | { ok: false; error: string }> {
+): Promise<{ ok: true; status: number } | { ok: false; error: string; timedOut?: boolean }> {
   const { request } = await import("node:https");
   const u = new URL(url);
   return new Promise((done) => {
@@ -209,7 +209,15 @@ export async function postPinned(
         res.on("error", (e) => done({ ok: false, error: e.message }));
       },
     );
-    req.on("error", (e) => done({ ok: false, error: e.message }));
+    req.on("error", (e) =>
+      done({
+        ok: false,
+        error: e.message,
+        ...(e.name === "TimeoutError" || (e as { code?: string }).code === "ABORT_ERR"
+          ? { timedOut: true }
+          : {}),
+      }),
+    );
     req.end(body);
   });
 }
@@ -245,6 +253,8 @@ export async function crmPayload(
     event: `order.${event}`,
     at: new Date().toISOString(),
     shop_id: ctx.tenant.id,
+    /** Один на событие; повтор из журнала несёт тот же — CRM отбросит дубль. */
+    event_id: randomUUID(),
     order: {
       id: o.id,
       number: o.display_no ?? o.order_no,

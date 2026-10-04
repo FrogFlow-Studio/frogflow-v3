@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, ErrorBox, Field, useAction } from "@/app/ui";
-import { crmFn, saveCrmFn, testCrmFn } from "@/app/admin/crm.functions";
-import { adminT } from "@/app/i18n/admin";
+import { crmFn, crmLogFn, saveCrmFn, testCrmFn } from "@/app/admin/crm.functions";
+import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
 
 /** Интеграция с CRM и Таблицами: события заказа POST-запросом на адрес продавца. */
@@ -13,12 +13,19 @@ export function CrmCard() {
   const [secret, setSecret] = useState("");
   const [events, setEvents] = useState<string[]>([]);
   const [note, setNote] = useState<string | null>(null);
+  const [log, setLog] = useState<Awaited<ReturnType<typeof crmLogFn>>["entries"] | null>(null);
+  const loadLog = () =>
+    void crmLogFn().then(
+      (r) => setLog(r.entries),
+      () => setLog(null),
+    );
   useEffect(() => {
     void crmFn().then((r) => {
       setD(r);
       setUrl(r.url);
       setEvents(r.events);
     });
+    loadLog();
   }, []);
   const owner = shop.role === "owner";
   const save = useAction(async () => {
@@ -28,6 +35,7 @@ export function CrmCard() {
   });
   const test = useAction(async () => {
     const r = await testCrmFn();
+    loadLog();
     setNote(r.ok ? t("settings.crm.testOk") : t("settings.crm.testFail", { error: r.error }));
   });
   if (!d) return null;
@@ -101,6 +109,61 @@ export function CrmCard() {
         )}
         <ErrorBox error={save.error ?? test.error} />
       </form>
+      {log && <DeliveryLog entries={log} t={t} locale={shop.locale} />}
     </Card>
+  );
+}
+
+type LogEntries = NonNullable<Awaited<ReturnType<typeof crmLogFn>>["entries"]>;
+
+/** Журнал доставки: последние отправки вебхука без тела и секрета. */
+function DeliveryLog({
+  entries,
+  t,
+  locale,
+}: {
+  entries: LogEntries;
+  t: AdminT;
+  locale: Parameters<typeof intlLocale>[0];
+}) {
+  const result = (e: LogEntries[number]) =>
+    t(`crmlog.${e.outcome}` as never, { status: e.status ?? "" });
+  const eventName = (ev: string) =>
+    ev === "ping"
+      ? t("crmlog.event.ping")
+      : t(`settings.crm.event.${ev.replace("order.", "")}` as never);
+  return (
+    <div className="mt-6 space-y-2" data-testid="crm-log">
+      <h3 className="font-medium">{t("crmlog.title")}</h3>
+      <p className="text-sm text-muted">{t("crmlog.hint")}</p>
+      {entries.length === 0 ? (
+        <p className="text-sm text-muted">{t("crmlog.empty")}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-muted">
+                <th className="pr-3">{t("crmlog.col.when")}</th>
+                <th className="pr-3">{t("crmlog.col.event")}</th>
+                <th className="pr-3">{t("crmlog.col.order")}</th>
+                <th>{t("crmlog.col.result")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((e, i) => (
+                <tr key={`${e.at}-${i}`}>
+                  <td className="pr-3 whitespace-nowrap">
+                    {new Date(e.at).toLocaleString(intlLocale(locale))}
+                  </td>
+                  <td className="pr-3">{eventName(e.event)}</td>
+                  <td className="pr-3">{e.orderId ? `#${e.orderId}` : "—"}</td>
+                  <td className={e.outcome === "ok" ? "" : "text-red-600"}>{result(e)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }

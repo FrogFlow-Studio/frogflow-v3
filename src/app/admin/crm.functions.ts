@@ -68,3 +68,10 @@ export const testCrmFn = createServerFn({ method: "POST" }).handler(async () => 
   });
   return postWebhook(ctx, cfg.url, body);
 });
+
+/** Журнал доставки: последние отправки вебхука (без тела и секрета), от новых к старым. */
+export const crmLogFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await moduleAdmin();
+  const { loadCrmLog } = await import("@/core/crm/log");
+  return { entries: await loadCrmLog(ctx) };
+});

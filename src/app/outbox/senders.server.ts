@@ -37,15 +37,21 @@ export async function runOutbox(tenant: Tenant): Promise<ProcessResult | { skipp
   return processOutbox(tenantContext(tenant), outboxSender());
 }
 
-/** POST на вебхук продавца с подписью; адрес перепроверяется перед каждой отправкой. */
+/** POST на вебхук продавца с подписью; адрес перепроверяется перед каждой отправкой. Итог пишется в журнал доставки. */
 export async function postWebhook(
   ctx: import("@/core/tenant/resolve.server").TenantContext,
   url: string,
   body: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { loadCrm, postPinned, safeWebhookUrl, signBody } = await import("@/core/crm/webhook");
-  if (!safeWebhookUrl(url))
+  const { logEntryFor, recordCrmDelivery } = await import("@/core/crm/log");
+  if (!safeWebhookUrl(url)) {
+    await recordCrmDelivery(ctx, {
+      ...logEntryFor(body, { ok: false, error: "blocked" }),
+      outcome: "blocked",
+    });
     return { ok: false, error: "адрес вебхука запрещён (не https или внутренний)" };
+  }
   const cfg = await loadCrm(ctx);
   let event = "order";
   try {
@@ -65,6 +71,7 @@ export async function postWebhook(
     body,
     10_000,
   );
+  await recordCrmDelivery(ctx, logEntryFor(body, r));
   if (!r.ok) return r;
   // Google Apps Script отвечает 302 на успешный POST — это успех.
   if ((r.status >= 200 && r.status < 300) || r.status === 302) return { ok: true };
