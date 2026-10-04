@@ -1,3 +1,4 @@
+import { parseDesign, type StoreDesign } from "@/core/storefront/design";
 import { getPreorder } from "@/core/preorder/preorder";
 import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -112,6 +113,8 @@ export type StoreInfo = {
   /** Раскладка верхнего ряда категорий (mini_app_catalog, как в v1). */
   catalogLayout: CatalogLayout;
   legal: Record<string, boolean>;
+  /** Тема, обложка и блоки главной (core/storefront/design). */
+  design: StoreDesign;
 };
 
 export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
@@ -162,6 +165,7 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
       .filter((c) => visible.has(c.id))
       .map((c) => ({ id: c.id, name: c.name, parent_id: c.parent_id })),
     catalogLayout: parseCatalogLayout(s.mini_app_catalog),
+    design: parseDesign(ctx.tenant.settings.storefront_design),
     // Ссылки на юр. страницы — только при модуле legal_docs (core/storefront/access).
     legal: {
       offer: legalOn && Boolean(s.legal_offer),

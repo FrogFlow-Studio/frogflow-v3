@@ -10,6 +10,7 @@ import { effectiveModules } from "@/core/plans/plans";
 import { COURSES_SALE, parsePlan } from "@/core/plans/registry";
 import { validPauseHours } from "@/core/consultant/pause";
 import { parseCurators } from "@/core/courses/curators";
+import { parseDesign } from "@/core/storefront/design";
 import { parseCollections } from "@/core/storefront/collections";
 import { parseHwReplies } from "@/core/courses/hw-replies";
 import { parseGuard } from "./zernio-accounts";
@@ -246,6 +247,9 @@ export function settingsFromJson(json: unknown): TenantSettings {
       ? parseHwReplies(s.homework_replies)
       : undefined,
     marketplace: parseMarketplace(obj(s.marketplace)),
+    storefront_design: Object.keys(obj(s.storefront_design)).length
+      ? parseDesign(s.storefront_design)
+      : undefined,
     community: parseCommunity(obj(s.community)),
     community_mod: parseCommunityMod(obj(s.community_mod)),
     // Свои тексты бота и рабочие часы (страница «Тексты бота»): без разбора здесь они не доходят до бота.

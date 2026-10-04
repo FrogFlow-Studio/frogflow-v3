@@ -506,6 +506,10 @@ const ru = {
   "catalog.filters": "Фильтры",
   "catalog.filters.close": "Закрыть",
   "product.writeShop": "Написать магазину",
+  "showcase.new": "Новинки",
+  "showcase.hits": "Хиты",
+  "showcase.sets": "Наборы",
+  "showcase.reviews": "Отзывы покупателей",
 } as const;
 
 export type StorefrontKey = keyof typeof ru;
@@ -1010,6 +1014,10 @@ const kk: Dict = {
   "catalog.filters": "Сүзгілер",
   "catalog.filters.close": "Жабу",
   "product.writeShop": "Дүкенге жазу",
+  "showcase.new": "Жаңалықтар",
+  "showcase.hits": "Хиттер",
+  "showcase.sets": "Жиынтықтар",
+  "showcase.reviews": "Сатып алушылар пікірлері",
 };
 
 const en: Dict = {
@@ -1508,6 +1516,10 @@ const en: Dict = {
   "catalog.filters": "Filters",
   "catalog.filters.close": "Close",
   "product.writeShop": "Message the shop",
+  "showcase.new": "New arrivals",
+  "showcase.hits": "Best sellers",
+  "showcase.sets": "Sets",
+  "showcase.reviews": "Customer reviews",
 };
 
 const uz: Dict = {
@@ -2011,6 +2023,10 @@ const uz: Dict = {
   "catalog.filters": "Filtrlar",
   "catalog.filters.close": "Yopish",
   "product.writeShop": "Do‘konga yozish",
+  "showcase.new": "Yangiliklar",
+  "showcase.hits": "Xitlar",
+  "showcase.sets": "To‘plamlar",
+  "showcase.reviews": "Xaridorlar fikrlari",
 };
 
 const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };

@@ -4,6 +4,8 @@ import { cardBadge } from "@/core/catalog/lead-time";
 import { useState, type MouseEvent, type ReactNode } from "react";
 import { z } from "zod";
 import { storeCatalogPageFn } from "@/app/storefront/catalog.functions";
+import { storeShowcaseFn } from "@/app/storefront/showcase.functions";
+import { ShowcaseBlocks } from "@/app/storefront/showcase";
 import type { StoreProduct } from "@/core/storefront/catalog";
 import { STORE_PAGE } from "@/core/storefront/paging";
 import { useCart } from "@/app/storefront/cart";
@@ -71,8 +73,8 @@ export const catalogDeps = (search: CatalogSearch) => ({
   max: search.max,
 });
 
-export const loadCatalog = (slug: string, deps: ReturnType<typeof catalogDeps>) =>
-  storeCatalogPageFn({
+export const loadCatalog = async (slug: string, deps: ReturnType<typeof catalogDeps>) => {
+  const page = await storeCatalogPageFn({
     data: {
       slug,
       q: deps.q,
@@ -87,6 +89,20 @@ export const loadCatalog = (slug: string, deps: ReturnType<typeof catalogDeps>) 
       offset: ((deps.page ?? 1) - 1) * STORE_PAGE,
     },
   });
+  // Блоки главной (core/storefront/design) — только на «чистой» первой странице каталога.
+  const plain =
+    !deps.q &&
+    !deps.category &&
+    !deps.lang &&
+    !deps.page &&
+    !deps.stock &&
+    !deps.sale &&
+    !deps.sets &&
+    deps.min === undefined &&
+    deps.max === undefined;
+  const sections = plain ? await storeShowcaseFn({ data: { slug } }) : [];
+  return { ...page, sections };
+};
 
 type ShopHead = {
   slug: string;
@@ -179,7 +195,7 @@ export function CatalogView({
   slug,
   s,
 }: {
-  first: Awaited<ReturnType<typeof storeCatalogPageFn>>;
+  first: Awaited<ReturnType<typeof loadCatalog>>;
   slug: string;
   s: CatalogSearch;
 }) {
@@ -275,8 +291,27 @@ export function CatalogView({
   const sort = parseCatalogSort(s.sort);
   const digitalOnly = products.length > 0 && products.every((p) => p.kind === "digital");
 
+  const home = !current && !s.q && !filtered && firstPage === 1;
   return (
     <>
+      {home && shop.design.cover && shop.share.cover && (
+        <div className="relative mb-6 overflow-hidden rounded-xl" data-testid="shop-cover">
+          <img
+            src={shop.share.cover}
+            srcSet={imageSrcSet(shop.share.cover)}
+            sizes="(min-width: 1152px) 1152px, 100vw"
+            alt=""
+            className="aspect-[3/1] w-full object-cover"
+          />
+          <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 to-transparent p-4">
+            <div className="text-white">
+              <div className="text-xl font-semibold">{shop.name}</div>
+              {shop.tagline && <div className="text-sm opacity-90">{shop.tagline}</div>}
+            </div>
+          </div>
+        </div>
+      )}
+      {home && <ShowcaseBlocks slug={slug} sections={first.sections} />}
       {current && (
         <div className="mb-3">
           <Breadcrumbs slug={slug} shop={shop} categoryIds={[current.id]} t={t} />

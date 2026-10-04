@@ -70,6 +70,7 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     wide: true,
     keys: ["legal_offer", "legal_privacy", "legal_requisites", "legal_about"],
   }),
+  E({ id: "design", theme: "shop", title: "settings.design.title" }),
   E({ id: "marketplace", theme: "shop", title: "settings.market.title" }),
   E({ id: "community", theme: "shop", title: "settings.community.title" }),
   E({ id: "watermark", theme: "shop", title: "settings.watermark.title" }),

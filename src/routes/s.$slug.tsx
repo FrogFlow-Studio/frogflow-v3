@@ -11,6 +11,7 @@ import { StorefrontLocaleProvider, useStorefrontLocale } from "@/app/storefront/
 import { storefrontT } from "@/app/i18n/storefront";
 import { ThemeToggle } from "@/app/ui";
 import { activeTab, miniAppTabs, type MiniAppTab } from "@/core/storefront/tabs";
+import { themeClass } from "@/core/storefront/design";
 import { showMobileCartBar } from "@/core/storefront/mobile";
 import { formatMoney } from "@/core/money/money";
 
@@ -81,7 +82,7 @@ function StoreFrame() {
   const wa = useTelegramWebApp();
   return (
     <div
-      className="flex min-h-screen flex-col"
+      className={`flex min-h-screen flex-col ${themeClass(shop.design.theme)}`}
       style={shop.accent ? ({ "--accent": shop.accent } as React.CSSProperties) : undefined}
     >
       <header className="sticky top-0 z-20 border-b border-line bg-surface/90 backdrop-blur">

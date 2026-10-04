@@ -1,0 +1,24 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { STORE_BLOCKS, STORE_THEMES } from "@/core/storefront/design";
+
+/** Оформление витрины (core/storefront/design): читают все сотрудники, меняет владелец. */
+export const storeDesignFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await (await import("@/app/auth/guards.server")).requireAdmin();
+  return (await import("@/core/storefront/design.server")).designView(ctx);
+});
+
+export const saveStoreDesignFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        theme: z.enum(STORE_THEMES),
+        cover: z.boolean(),
+        blocks: z.array(z.enum(STORE_BLOCKS)).max(STORE_BLOCKS.length),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("owner");
+    return (await import("@/core/storefront/design.server")).saveDesign(ctx, data);
+  });

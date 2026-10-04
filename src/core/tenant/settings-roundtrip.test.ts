@@ -22,6 +22,8 @@ const SAVED = {
   },
   // площадка (core/marketplace)
   marketplace: { listed: true, approved: true, category: "Торты", city: "Алматы" },
+  // оформление витрины (core/storefront/design)
+  storefront_design: { theme: "warm", cover: true, blocks: ["hits", "new"] },
   // сообщество авторов (core/community)
   community: {
     enabled: true,
