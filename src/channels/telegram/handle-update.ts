@@ -1110,7 +1110,15 @@ async function showCart(b: Bot) {
       escapeHtml(st.gift_recipient ?? ""),
       escapeHtml(st.gift_message ?? ""),
     );
-  text += b.m.total(formatMoney(sum.total, sum.currency));
+  const { giftWrapForCart } = await import("@/core/orders/gift-wrap");
+  const wrapFee =
+    mod.bundles && st.gift_on
+      ? await giftWrapForCart(b.ctx, { kind: priced.kind, currency: sum.currency })
+      : 0;
+  if (wrapFee > 0 && st.gift_wrap) text += b.m.giftWrapLine(formatMoney(wrapFee, sum.currency));
+  text += b.m.total(
+    formatMoney(sum.total + (wrapFee > 0 && st.gift_wrap ? wrapFee : 0), sum.currency),
+  );
   const below = await belowMinimum(b.ctx, priced);
   if (below) text += `${minOrderText(b.m, below)}\n`;
   const freeStatus = await (await freeDeliveryView(b.ctx, b.customer))?.forZone(null);
@@ -1145,6 +1153,13 @@ async function showCart(b: Bot) {
       st.gift_on
         ? { text: b.m.removeGiftBtn, callback_data: "gift:clear" }
         : { text: b.m.giftBtn, callback_data: "gift:enter" },
+    ]);
+  }
+  if (wrapFee > 0) {
+    buttons.push([
+      st.gift_wrap
+        ? { text: b.m.removeGiftWrapBtn, callback_data: "gift:unwrap" }
+        : { text: b.m.giftWrapBtn(formatMoney(wrapFee, sum.currency)), callback_data: "gift:wrap" },
     ]);
   }
   if (mod.upsell) {
@@ -1425,6 +1440,7 @@ async function finishCheckout(b: Bot, countryCode: string) {
     usePoints: st.use_points,
     giftCode: st.gift_certificate_code,
     gift: st.gift_on ? { recipient: st.gift_recipient, message: st.gift_message } : null,
+    giftWrap: Boolean(st.gift_on && st.gift_wrap),
     deliveryLang: isDeliveryLangChoice(st.delivery_lang) ? st.delivery_lang : null,
     fulfillment: st.checkout_fulfillment_type
       ? {
@@ -1469,6 +1485,11 @@ async function finishCheckout(b: Bot, countryCode: string) {
         b.customer = await setState(b.ctx, b.customer, rest);
         return void (await send(b, b.m.giftCertificateInvalid));
       }
+      case "gift_wrap_unavailable": {
+        const { gift_wrap: _gw, ...rest } = st;
+        b.customer = await setState(b.ctx, b.customer, rest);
+        return void (await send(b, b.m.giftWrapUnavailable));
+      }
       case "out_of_stock":
         return void (await send(b, b.m.outOfStockAtCheckout));
       case "day_full":
@@ -1502,6 +1523,7 @@ async function finishCheckout(b: Bot, countryCode: string) {
     gift_on: _go,
     gift_recipient: _gre,
     gift_message: _gme,
+    gift_wrap: _gwr,
     gift_asked: _gas,
     checkout_fulfillment_type: _ft,
     checkout_fulfillment_at: _fa,
@@ -2582,8 +2604,23 @@ async function handleCallback(
     b.customer = await setState(ctx, customer, { ...customer.state, mode: "idle" });
     return showCart(b);
   }
+  if ((data === "gift:wrap" || data === "gift:unwrap") && ctx.tenant.modules.bundles) {
+    const { gift_wrap: _gw, ...rest } = customer.state;
+    b.customer = await setState(
+      ctx,
+      customer,
+      data === "gift:wrap" ? { ...rest, gift_wrap: true } : rest,
+    );
+    return showCart(b);
+  }
   if (data === "gift:clear") {
-    const { gift_on: _g, gift_recipient: _gr, gift_message: _gm, ...rest } = customer.state;
+    const {
+      gift_on: _g,
+      gift_recipient: _gr,
+      gift_message: _gm,
+      gift_wrap: _gw,
+      ...rest
+    } = customer.state;
     b.customer = await setState(ctx, customer, rest);
     return showCart(b);
   }

@@ -38,11 +38,14 @@ export async function recordOrderGift(
   ctx: TenantContext,
   orderId: number,
   gift: OrderGift,
+  /** Сумма подарочной упаковки в заказе (0 — не взята): видна в журнале. */
+  wrap = 0,
 ): Promise<boolean> {
   return claimOrderEvent(ctx, orderId, "gift", "once", {
     recipient: gift.recipient,
     message: gift.message,
     truncated: gift.truncated,
+    ...(wrap > 0 ? { wrap } : {}),
   });
 }
 

@@ -136,6 +136,14 @@ export type Msg = {
   giftCartLine: (recipient: string, message: string) => string;
   /** Имя или открытка длиннее предела: сохранено первое. */
   giftTruncatedNote: (max: number) => string;
+  /** Подарочная упаковка (модуль bundles): кнопки корзины, строка суммы, вопрос в Direct. */
+  giftWrapBtn: (price: string) => string;
+  removeGiftWrapBtn: string;
+  giftWrapLine: (price: string) => string;
+  giftWrapAsk: (price: string) => string;
+  giftWrapYesBtn: string;
+  giftWrapNoBtn: string;
+  giftWrapUnavailable: string;
   giftCertificateDiscountLine: (amount: string) => string;
   orderPaidByDiscounts: (no: number) => string;
   fulfillmentTypePrompt: string;
@@ -566,6 +574,14 @@ const ru: Msg = {
   giftNoBtn: "Нет",
   giftCartLine: (r, m) => `🎁 Подарок${r ? ` для ${r}` : ""}${m ? `\n💌 «${m}»` : ""}\n`,
   giftTruncatedNote: (n) => `Текст длиннее ${n} символов — сохранил первые ${n}.`,
+  giftWrapBtn: (p) => `📦 Подарочная упаковка +${p}`,
+  removeGiftWrapBtn: "❌ Без упаковки",
+  giftWrapLine: (p) => `📦 Подарочная упаковка: +${p}\n`,
+  giftWrapAsk: (p) => `📦 Добавить подарочную упаковку за ${p}?`,
+  giftWrapYesBtn: "С упаковкой",
+  giftWrapNoBtn: "Без упаковки",
+  giftWrapUnavailable:
+    "Подарочная упаковка сейчас недоступна — я её убрал. Оформите заказ ещё раз.",
   giftCertificateDiscountLine: (a) => `🎫 Сертификат: −${a}\n`,
   orderPaidByDiscounts: (no) => `🎉 Заказ #${no} полностью оплачен скидкой — файлы уже в пути.`,
   fulfillmentTypePrompt: "Как вы хотите получить заказ?",
@@ -733,6 +749,14 @@ const kk: Msg = {
   giftNoBtn: "Жоқ",
   giftCartLine: (r, m) => `🎁 Сыйлық${r ? ` — ${r}` : ""}${m ? `\n💌 «${m}»` : ""}\n`,
   giftTruncatedNote: (n) => `Мәтін ${n} таңбадан ұзын — алғашқы ${n} таңба сақталды.`,
+  giftWrapBtn: (p) => `📦 Сыйлық қаптамасы +${p}`,
+  removeGiftWrapBtn: "❌ Қаптамасыз",
+  giftWrapLine: (p) => `📦 Сыйлық қаптамасы: +${p}\n`,
+  giftWrapAsk: (p) => `📦 Сыйлық қаптамасын ${p} бағасына қосайық ба?`,
+  giftWrapYesBtn: "Қаптамамен",
+  giftWrapNoBtn: "Қаптамасыз",
+  giftWrapUnavailable:
+    "Сыйлық қаптамасы қазір қолжетімсіз — алып тастадым. Тапсырысты қайта рәсімдеңіз.",
   fulfillmentDateClosed: (d) => `Бұл күні беру жоқ. Ең жақын күн: ${d}.`,
   fulfillmentDateFull: (d) =>
     d
@@ -1253,6 +1277,14 @@ const en: Msg = {
   giftNoBtn: "No",
   giftCartLine: (r, m) => `🎁 Gift${r ? ` for ${r}` : ""}${m ? `\n💌 “${m}”` : ""}\n`,
   giftTruncatedNote: (n) => `The text is longer than ${n} characters — kept the first ${n}.`,
+  giftWrapBtn: (p) => `📦 Gift wrapping +${p}`,
+  removeGiftWrapBtn: "❌ No wrapping",
+  giftWrapLine: (p) => `📦 Gift wrapping: +${p}\n`,
+  giftWrapAsk: (p) => `📦 Add gift wrapping for ${p}?`,
+  giftWrapYesBtn: "With wrapping",
+  giftWrapNoBtn: "No wrapping",
+  giftWrapUnavailable:
+    "Gift wrapping is unavailable right now — I removed it. Please place the order again.",
   giftCertificateDiscountLine: (a) => `🎫 Certificate: −${a}\n`,
   orderPaidByDiscounts: (no) =>
     `🎉 Order #${no} is fully covered by your discounts — files are on the way.`,
@@ -1284,6 +1316,14 @@ const uz: Msg = {
   giftNoBtn: "Yo‘q",
   giftCartLine: (r, m) => `🎁 Sovg‘a${r ? ` — ${r}` : ""}${m ? `\n💌 «${m}»` : ""}\n`,
   giftTruncatedNote: (n) => `Matn ${n} belgidan uzun — dastlabki ${n} belgi saqlandi.`,
+  giftWrapBtn: (p) => `📦 Sovg‘a qadog‘i +${p}`,
+  removeGiftWrapBtn: "❌ Qadoqsiz",
+  giftWrapLine: (p) => `📦 Sovg‘a qadog‘i: +${p}\n`,
+  giftWrapAsk: (p) => `📦 Sovg‘a qadog‘ini ${p} narxida qo‘shamizmi?`,
+  giftWrapYesBtn: "Qadoq bilan",
+  giftWrapNoBtn: "Qadoqsiz",
+  giftWrapUnavailable:
+    "Sovg‘a qadog‘i hozir mavjud emas — uni olib tashladim. Buyurtmani qayta rasmiylashtiring.",
   fulfillmentDateClosed: (d) => `Bu kuni topshirish yo‘q. Eng yaqin sana: ${d}.`,
   fulfillmentDateFull: (d) =>
     d

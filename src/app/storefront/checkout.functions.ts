@@ -70,11 +70,22 @@ export const webCheckoutInfoFn = createServerFn({ method: "GET" })
       },
       /** «Это подарок» (модуль bundles): получатель и открытка. */
       giftMark: Boolean(ctx.tenant.modules.bundles),
+      /** Подарочная упаковка: цена в валюте магазина; null — не предлагается (core/orders/gift-wrap). */
+      giftWrap: await giftWrapInfo(ctx),
       /** Минимальная сумма заказа в валюте магазина; страница сверяет её с корзиной в той же валюте. */
       minOrder: await minOrderInfo(ctx),
       challenge: issueChallenge(await secret(), Date.now(), "checkout"),
     };
   });
+
+async function giftWrapInfo(ctx: TenantContext) {
+  if (!ctx.tenant.modules.bundles) return null;
+  const { giftWrapFee } = await import("@/core/orders/gift-wrap");
+  const { shopCurrency } = await import("@/core/discounts/discounts");
+  const currency = await shopCurrency(ctx);
+  const amount = await giftWrapFee(ctx, currency);
+  return amount && amount > 0 ? { amount, currency } : null;
+}
 
 async function minOrderInfo(ctx: TenantContext) {
   const { loadMinOrder } = await import("@/core/cart/min-order");
@@ -116,7 +127,11 @@ const checkoutInput = z.object({
   gift: z.string().trim().max(40).optional(),
   /** «Это подарок»: пределы строже сервер проверяет сам (core/orders/gift), здесь — защита от мусора. */
   giftMark: z
-    .object({ recipient: z.string().max(1000), message: z.string().max(5000) })
+    .object({
+      recipient: z.string().max(1000),
+      message: z.string().max(5000),
+      wrap: z.boolean().optional(),
+    })
     .nullable()
     .optional(),
   /** Согласие с офертой и обработкой данных (галочка оформления). */
@@ -159,6 +174,7 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
       throw shownError(t("checkout.error.consent"));
     // Подарок: слишком длинное не режем молча — сайт держит лимит в поле, длиннее приходит только в обход него.
     let giftMark: { recipient: string; message: string } | null = null;
+    const giftWrap = Boolean(data.giftMark?.wrap);
     if (ctx.tenant.modules.bundles && data.giftMark) {
       const { normalizeGift } = await import("@/core/orders/gift");
       const g = normalizeGift(data.giftMark);
@@ -204,6 +220,7 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
       promoCode,
       giftCode,
       gift: giftMark,
+      giftWrap: giftMark ? giftWrap : false,
     });
     if (!r.ok) {
       switch (r.reason) {
@@ -244,6 +261,8 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
         case "nothing_imported":
         case "empty_cart":
           throw shownError(t("error.nothingImported"));
+        case "gift_wrap_unavailable":
+          throw shownError(t("checkout.error.giftWrap"));
         case "out_of_stock":
           throw shownError(t("checkout.error.outOfStock"));
         case "promo_invalid":

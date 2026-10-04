@@ -105,6 +105,7 @@ function CheckoutPage() {
             ? {
                 recipient: String(f.get("giftRecipient") ?? ""),
                 message: String(f.get("giftMessage") ?? ""),
+                wrap: info.giftWrap ? f.get("giftWrap") === "on" : false,
               }
             : null,
         consent: f.get("consent") === "on",
@@ -355,6 +356,14 @@ function CheckoutPage() {
                 <Field label={t("checkout.giftMessage")}>
                   <textarea className="input" name="giftMessage" maxLength={300} rows={3} />
                 </Field>
+                {info.giftWrap && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="giftWrap" />
+                    {t("checkout.giftWrap", {
+                      price: formatMoney(info.giftWrap.amount, info.giftWrap.currency),
+                    })}
+                  </label>
+                )}
               </>
             )}
           </fieldset>

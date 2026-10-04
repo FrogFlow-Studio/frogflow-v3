@@ -48,6 +48,7 @@ import {
   reorderIntoCart,
 } from "@/core/orders/orders";
 import { GIFT_MESSAGE_MAX, GIFT_NAME_MAX, normalizeGift } from "@/core/orders/gift";
+import { giftWrapForCart } from "@/core/orders/gift-wrap";
 import {
   activeDeliveryZones,
   amountDueNow,
@@ -253,6 +254,7 @@ async function stepAnswerFits(s: Shop, mode: string, text: string): Promise<bool
     case "awaiting_points_choice":
       return matchLoyaltyPointsChoice(text) !== null;
     case "awaiting_gift_choice":
+    case "awaiting_gift_wrap":
       return matchLoyaltyPointsChoice(text) !== null;
     case "awaiting_fulfillment_type":
       return matchFulfillmentType(text) !== null;
@@ -726,6 +728,14 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       if (!choice || !cc) return askGift(s).then(() => "handled" as const);
       return afterGiftChoice(s, cc, choice === "yes").then(() => "handled" as const);
     }
+    case "awaiting_gift_wrap": {
+      const choice = matchLoyaltyPointsChoice(text);
+      const cc = s.customer.state.country_code;
+      if (!choice || !cc) return askGiftWrap(s).then(() => "handled" as const);
+      await setMode(s, { mode: "idle", gift_wrap: choice === "yes" });
+      await finishCheckout(s, cc);
+      return "handled";
+    }
     case "awaiting_gift_recipient": {
       const g = normalizeGift({ recipient: text });
       await setMode(s, {
@@ -945,6 +955,7 @@ function featureAllows(s: Shop, command: DirectCommand | string): boolean {
     case "FT":
     case "NOTE":
     case "GIFT":
+    case "GIFTWRAP":
       return f.checkout;
     case "quiz":
     case "QUIZ":
@@ -1109,6 +1120,13 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
       const cc = s.customer.state.country_code;
       if (!cc) await askCountry(s, true);
       else await finishCheckout(s, cc);
+      return "handled";
+    }
+    case "GIFTWRAP": {
+      const cc = s.customer.state.country_code;
+      if (s.customer.state.mode !== "awaiting_gift_wrap" || !cc) return "handled";
+      await setMode(s, { mode: "idle", gift_wrap: a === "yes" });
+      await finishCheckout(s, cc);
       return "handled";
     }
     case "GIFT": {
@@ -2050,7 +2068,32 @@ async function finishAfterGift(s: Shop, message: string | null) {
   await setMode(s, { gift_message: message ?? undefined, mode: "idle" });
   const cc = s.customer.state.country_code;
   if (!cc) return askCountry(s, true);
+  // Подарочная упаковка — если продавец её включил и заказ физический.
+  if (await giftWrapPrice(s, cc)) return askGiftWrap(s);
   return finishCheckout(s, cc);
+}
+
+/** Цена упаковки для корзины (в её валюте) или null — предлагать нечего. */
+async function giftWrapPrice(s: Shop, countryCode: string) {
+  const items = await listCart(s.ctx, s.customer);
+  if (items.length === 0) return null;
+  const priced = await priceCart(s.ctx, items, countryCode);
+  const fee = await giftWrapForCart(s.ctx, priced);
+  return fee > 0 ? { fee, currency: priced.currency } : null;
+}
+
+async function askGiftWrap(s: Shop) {
+  const cc = s.customer.state.country_code ?? "";
+  const price = await giftWrapPrice(s, cc);
+  if (!price) return finishCheckout(s, cc);
+  await setMode(s, { mode: "awaiting_gift_wrap" });
+  await reply(s, plain(s.m.giftWrapAsk(formatMoney(price.fee, price.currency))), {
+    force: true,
+    buttons: [
+      { type: "postback", title: plain(s.m.giftWrapYesBtn), payload: "GIFTWRAP:yes" },
+      { type: "postback", title: plain(s.m.giftWrapNoBtn), payload: "GIFTWRAP:no" },
+    ],
+  });
 }
 
 async function finishCheckout(s: Shop, countryCode: string) {
@@ -2063,6 +2106,7 @@ async function finishCheckout(s: Shop, countryCode: string) {
     usePoints: st.use_points,
     giftCode: st.gift_certificate_code,
     gift: st.gift_on ? { recipient: st.gift_recipient, message: st.gift_message } : null,
+    giftWrap: Boolean(st.gift_on && st.gift_wrap),
     deliveryLang: isDeliveryLangChoice(st.delivery_lang) ? st.delivery_lang : null,
     fulfillment: st.checkout_fulfillment_type
       ? {
@@ -2107,6 +2151,11 @@ async function finishCheckout(s: Shop, countryCode: string) {
         s.customer = await setState(s.ctx, s.customer, rest);
         return void (await reply(s, s.m.giftCertificateInvalid));
       }
+      case "gift_wrap_unavailable": {
+        const { gift_wrap: _gw, ...rest } = st;
+        s.customer = await setState(s.ctx, s.customer, rest);
+        return void (await reply(s, s.m.giftWrapUnavailable));
+      }
       case "out_of_stock":
         return void (await reply(s, s.m.outOfStockAtCheckout));
       case "day_full":
@@ -2134,6 +2183,7 @@ async function finishCheckout(s: Shop, countryCode: string) {
     gift_on: _go,
     gift_recipient: _gre,
     gift_message: _gme,
+    gift_wrap: _gwr,
     gift_asked: _gas,
     checkout_fulfillment_type: _ft,
     checkout_fulfillment_at: _fa,

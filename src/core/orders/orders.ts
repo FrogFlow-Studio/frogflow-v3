@@ -169,6 +169,8 @@ export type PlaceOrderResult =
         /** В корзине товары в разных валютах: сумму не сложить. */
         | "mixed_currency"
         | "out_of_stock"
+        /** Упаковку выбрали, а её уже нет или цену не перевести: заказ не создан, упаковку надо снять. */
+        | "gift_wrap_unavailable"
         /** Лимит заказов на день или слот (core/fulfillment/capacity): место только что заняли. */
         | "day_full"
         | "slot_taken";
@@ -201,6 +203,8 @@ export type PlaceOrderOptions = {
   skipMinOrder?: boolean;
   /** «Это подарок» (модуль bundles): получатель и открытка; пишется событием заказа `gift`. */
   gift?: { recipient?: string | null; message?: string | null } | null;
+  /** Подарочная упаковка к подарку (core/orders/gift-wrap); без `gift` игнорируется. */
+  giftWrap?: boolean;
 };
 
 /** Скидки корзины для показа — без списания. */
@@ -428,6 +432,16 @@ export async function placeOrder(
       total -= giftDiscount;
     }
     total = Math.max(0, total);
+    // Подарочная упаковка — после скидок: промокод её не скидывает (как и доставку по правилу
+    // продавца), сумма — та же функция, что в подсказках каналов.
+    let wrapFee = 0;
+    if (opts.giftWrap && opts.gift && m.bundles && priced.kind === "physical") {
+      const { giftWrapFee } = await import("./gift-wrap");
+      const fee = await giftWrapFee(ctx, priced.currency);
+      if (!fee || fee <= 0) return await fail("gift_wrap_unavailable");
+      wrapFee = fee;
+      total += wrapFee;
+    }
 
     const display =
       [customer.firstName, customer.lastName].filter(Boolean).join(" ").trim() ||
@@ -527,6 +541,24 @@ export async function placeOrder(
       await dropUnplacedOrder(ctx, order.id);
       return await fail("order_failed");
     }
+    // Подарочная упаковка — отдельная позиция без товара: её сумма уже в итоге заказа.
+    if (wrapFee > 0) {
+      const { giftWrapName } = await import("./gift-wrap");
+      const { error: wrapError } = await ctx.db.from("order_items").insert({
+        bot_id: ctx.tenant.id,
+        order_id: order.id,
+        product_id: null,
+        product_variant_id: null,
+        name_snapshot: giftWrapName(customer.state.locale),
+        price_snapshot: wrapFee,
+        quantity: 1,
+      });
+      if (wrapError) {
+        await ctx.db.from("order_items").delete().eq("order_id", order.id);
+        await dropUnplacedOrder(ctx, order.id);
+        return await fail("order_failed");
+      }
+    }
     // Какие позиции взяты предзаказом, помнит только это событие: по нему склад при
     // возврате не пополняют. Не записалось — заказа не будет, иначе возврат положил бы
     // на склад штуки, которые не списывались (claimOrderEvent: false = запись не легла).
@@ -567,7 +599,7 @@ export async function placeOrder(
     if (opts.gift && ctx.tenant.modules.bundles) {
       const { normalizeGift, recordOrderGift } = await import("./gift");
       orderGift = normalizeGift(opts.gift);
-      if (!(await recordOrderGift(ctx, finalOrder.id, orderGift))) orderGift = null;
+      if (!(await recordOrderGift(ctx, finalOrder.id, orderGift, wrapFee))) orderGift = null;
     }
     await recordStockChanges(ctx, stockChanges, {
       reason: "order",

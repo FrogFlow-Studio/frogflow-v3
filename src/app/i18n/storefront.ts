@@ -222,6 +222,8 @@ const ru = {
   "checkout.giftRecipient": "Имя получателя",
   "checkout.giftMessage": "Текст открытки (до 300 символов)",
   "checkout.error.giftTooLong": "Имя или текст открытки слишком длинные: сократите их.",
+  "checkout.giftWrap": "Подарочная упаковка (+{price})",
+  "checkout.error.giftWrap": "Подарочная упаковка недоступна: оформите заказ без неё.",
   "checkout.error.discountFx":
     "Скидку сейчас не пересчитать в валюту заказа: курс валют недоступен. Попробуйте чуть позже или оформите без скидки.",
   "checkout.error.mixedCurrency":
@@ -672,6 +674,8 @@ const kk: Dict = {
   "checkout.giftRecipient": "Алушының аты",
   "checkout.giftMessage": "Открытка мәтіні (300 таңбаға дейін)",
   "checkout.error.giftTooLong": "Аты немесе открытка мәтіні тым ұзын: қысқартыңыз.",
+  "checkout.giftWrap": "Сыйлық қаптамасы (+{price})",
+  "checkout.error.giftWrap": "Сыйлық қаптамасы қолжетімсіз: тапсырысты онсыз рәсімдеңіз.",
   "checkout.error.discountFx":
     "Жеңілдікті қазір тапсырыс валютасына аудару мүмкін емес: валюта бағамы қолжетімсіз. Сәл кейінірек көріңіз немесе жеңілдіксіз рәсімдеңіз.",
   "checkout.error.mixedCurrency":
@@ -1112,6 +1116,8 @@ const en: Dict = {
   "checkout.giftMessage": "Card message (up to 300 characters)",
   "checkout.error.giftTooLong":
     "The recipient name or card message is too long: please shorten it.",
+  "checkout.giftWrap": "Gift wrapping (+{price})",
+  "checkout.error.giftWrap": "Gift wrapping is unavailable: please order without it.",
   "checkout.error.discountFx":
     "The discount can't be converted to the order currency right now: exchange rates are unavailable. Try again a bit later or order without the discount.",
   "checkout.error.mixedCurrency":
@@ -1555,6 +1561,8 @@ const uz: Dict = {
   "checkout.giftRecipient": "Oluvchining ismi",
   "checkout.giftMessage": "Otkritka matni (300 belgigacha)",
   "checkout.error.giftTooLong": "Ism yoki otkritka matni juda uzun: qisqartiring.",
+  "checkout.giftWrap": "Sovg'a qadog'i (+{price})",
+  "checkout.error.giftWrap": "Sovg'a qadog'i mavjud emas: usiz rasmiylashtiring.",
   "checkout.error.discountFx":
     "Chegirmani hozir buyurtma valyutasiga o‘tkazib bo‘lmaydi: valyuta kursi mavjud emas. Birozdan keyin urinib ko‘ring yoki chegirmasiz rasmiylashtiring.",
   "checkout.error.mixedCurrency":

@@ -20,6 +20,7 @@ import { PushCard } from "@/app/admin/settings/push";
 import { IceBreakersCard } from "@/app/admin/settings/ice-breakers";
 import { FulfillmentCard, ZonesCard } from "@/app/admin/settings/delivery";
 import { MinOrderCard } from "@/app/admin/settings/min-order";
+import { GiftWrapCard } from "@/app/admin/settings/gift-wrap";
 import { FreeDeliveryCard } from "@/app/admin/settings/free-delivery";
 import { LowStockCard, NotifyCard } from "@/app/admin/settings/notify";
 import {
@@ -321,6 +322,7 @@ function SettingsPage() {
         <PaymentMethods methods={methods} />
         <FulfillmentCard settings={settings} />
         <MinOrderCard />
+        {shop.modules.bundles && <GiftWrapCard />}
         <ZonesCard zones={zones} />
         <FreeDeliveryCard />
         <WatermarkCard enabled={pdfWatermark} />

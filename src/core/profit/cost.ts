@@ -1,4 +1,5 @@
 import { pageAll } from "@/core/db/page";
+import { isGiftWrapRow } from "@/core/orders/gift-wrap";
 import { shopCurrency } from "@/core/discounts/discounts";
 import { UserError } from "@/core/i18n/user-error";
 import { getSettingStrict, updateSettingStamped } from "@/core/settings/settings";
@@ -86,6 +87,8 @@ export function itemUnitCost(
   c: ProductCost | null,
   item: { variantId: string | null; variantName: string | null; nameSnapshot: string | null },
 ): number | null {
+  // Подарочная упаковка — позиция без товара: себестоимость учтена в цене, у неё нет «не задана».
+  if (isGiftWrapRow(item.nameSnapshot)) return 0;
   if (!c) return null;
   const hasVariants = Object.keys(c.variants).length > 0;
   if (item.variantName !== null) return unitCost(c, item.variantName);

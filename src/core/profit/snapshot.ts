@@ -114,7 +114,9 @@ export async function snapshotOrderCost(ctx: TenantContext, orderId: number): Pr
     };
     // Ни у одной позиции себестоимость не задана — продавец ею не пользуется: строку не плодим,
     // прибыль возьмёт текущую себестоимость с пометкой «по текущей».
-    if (snap.items.every((i) => i.c === null)) return false;
+    // Упаковка (позиция без товара, затраты 0) не считается «заданной» себестоимостью.
+    if (snap.items.filter((i) => !(i.p === null && i.c === 0)).every((i) => i.c === null))
+      return false;
     const r = await updateSettingStamped(ctx, key, (raw) => (raw ? null : JSON.stringify(snap)));
     return r === "written";
   } catch (e) {

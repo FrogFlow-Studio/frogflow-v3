@@ -2,6 +2,12 @@ import type { SectionDict } from "../section";
 
 /** Наборы товаров (Н1): карточка набора в товаре и ошибки состава. */
 export const ru = {
+  "settings.giftWrap.title": "Подарочная упаковка",
+  "settings.giftWrap.intro":
+    "Когда покупатель отмечает заказ подарком, он может добавить подарочную упаковку. Её цена идёт отдельной строкой в сумме заказа, в чеке и в журнале; промокод её не скидывает. Только для физических заказов.",
+  "settings.giftWrap.on": "Предлагать подарочную упаковку",
+  "settings.giftWrap.price": "Цена упаковки, {cur}",
+  "err.giftWrap.noPrice": "Чтобы включить упаковку, укажите цену больше нуля.",
   "order.gift": "Подарок",
   "order.giftRecipient": "Получатель",
   "order.giftMessage": "Открытка",
@@ -40,6 +46,12 @@ export const ru = {
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
+  "settings.giftWrap.title": "Сыйлық қаптамасы",
+  "settings.giftWrap.intro":
+    "Сатып алушы тапсырысты сыйлық деп белгілегенде, сыйлық қаптамасын қоса алады. Оның бағасы тапсырыс сомасында, чекте және журналда жеке жолмен көрсетіледі; промокод оған жеңілдік бермейді. Тек физикалық тапсырыстарға.",
+  "settings.giftWrap.on": "Сыйлық қаптамасын ұсыну",
+  "settings.giftWrap.price": "Қаптама бағасы, {cur}",
+  "err.giftWrap.noPrice": "Қаптаманы қосу үшін нөлден жоғары баға көрсетіңіз.",
   "order.gift": "Сыйлық",
   "order.giftRecipient": "Алушы",
   "order.giftMessage": "Открытка",
@@ -79,6 +91,12 @@ export const kk: SectionDict<typeof ru> = {
 };
 
 export const en: SectionDict<typeof ru> = {
+  "settings.giftWrap.title": "Gift wrapping",
+  "settings.giftWrap.intro":
+    "When a buyer marks an order as a gift, they can add gift wrapping. Its price is a separate line in the order total, the receipt and the order log; promo codes do not discount it. Physical orders only.",
+  "settings.giftWrap.on": "Offer gift wrapping",
+  "settings.giftWrap.price": "Wrapping price, {cur}",
+  "err.giftWrap.noPrice": "To turn wrapping on, set a price above zero.",
   "order.gift": "Gift",
   "order.giftRecipient": "Recipient",
   "order.giftMessage": "Card message",
@@ -119,6 +137,12 @@ export const en: SectionDict<typeof ru> = {
 };
 
 export const uz: SectionDict<typeof ru> = {
+  "settings.giftWrap.title": "Sovgʻa qadogʻi",
+  "settings.giftWrap.intro":
+    "Xaridor buyurtmani sovgʻa deb belgilasa, sovgʻa qadogʻini qoʻshishi mumkin. Uning narxi buyurtma summasida, chekda va jurnalda alohida qator boʻladi; promokod unga chegirma bermaydi. Faqat jismoniy buyurtmalar uchun.",
+  "settings.giftWrap.on": "Sovgʻa qadogʻini taklif qilish",
+  "settings.giftWrap.price": "Qadoq narxi, {cur}",
+  "err.giftWrap.noPrice": "Qadoqni yoqish uchun noldan katta narx kiriting.",
   "order.gift": "Sovgʻa",
   "order.giftRecipient": "Oluvchi",
   "order.giftMessage": "Otkritka",

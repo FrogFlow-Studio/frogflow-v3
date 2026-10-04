@@ -332,7 +332,7 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       };
     case "gift":
       return {
-        text: `🎁 Подарок${p.recipient ? ` для ${str(p.recipient)}` : ""}${p.message ? `: «${str(p.message)}»` : ""}${p.truncated === true ? " (текст обрезан до лимита)" : ""}`,
+        text: `🎁 Подарок${p.recipient ? ` для ${str(p.recipient)}` : ""}${p.message ? `: «${str(p.message)}»` : ""}${num(p.wrap) > 0 ? `, подарочная упаковка +${num(p.wrap)}` : ""}${p.truncated === true ? " (текст обрезан до лимита)" : ""}`,
         tone: "neutral",
       };
     case "preorder_moved":

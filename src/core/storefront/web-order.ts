@@ -214,6 +214,8 @@ export async function placeWebOrder(
     giftCode?: string | null;
     /** «Это подарок» (модуль bundles): получатель и открытка. */
     gift?: { recipient: string; message: string } | null;
+    /** Подарочная упаковка к подарку (core/orders/gift-wrap). */
+    giftWrap?: boolean;
   } = {},
 ): Promise<WebPlaceResult> {
   if (items.some((it) => Number(it.quantity) > WEB_MAX_QTY))
@@ -275,7 +277,7 @@ async function placeFromCart(
   const discounts = {
     ...(opts.promoCode?.trim() ? { promoCode: opts.promoCode.trim() } : {}),
     ...(opts.giftCode?.trim() ? { giftCode: opts.giftCode.trim() } : {}),
-    ...(opts.gift ? { gift: opts.gift } : {}),
+    ...(opts.gift ? { gift: opts.gift, giftWrap: Boolean(opts.giftWrap) } : {}),
   };
   let r: PlaceOrderResult;
   if (!cart.some((it) => it.products?.fulfillment_kind === "physical")) {

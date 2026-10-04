@@ -63,6 +63,8 @@ export type DialogMode =
   | "awaiting_gift_choice"
   | "awaiting_gift_recipient"
   | "awaiting_gift_message"
+  /** Instagram/WhatsApp: «добавить подарочную упаковку?» — да/нет. */
+  | "awaiting_gift_wrap"
   | "awaiting_fulfillment_type"
   | "awaiting_fulfillment_date"
   | "awaiting_fulfillment_slot"
@@ -105,6 +107,8 @@ export type DialogState = {
   gift_on?: boolean;
   gift_recipient?: string;
   gift_message?: string;
+  /** К подарку выбрана подарочная упаковка (core/orders/gift-wrap). */
+  gift_wrap?: boolean;
   /** Instagram/WhatsApp: про подарок уже спросили в этом оформлении. */
   gift_asked?: boolean;
   placing_order?: boolean;
