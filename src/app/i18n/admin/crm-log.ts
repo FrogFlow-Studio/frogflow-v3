@@ -16,6 +16,13 @@ export const ru = {
   "crmlog.network": "обрыв: до сервера не достучались",
   "crmlog.blocked": "адрес запрещён",
   "crmlog.event.ping": "проверка",
+  "crmlog.retry": "Повторить",
+  "crmlog.retryHint":
+    "Событие уйдёт ещё раз с тем же event_id — ваша CRM может отбросить дубль. Таймаут и ответ 5xx сами не повторяются: событие могло дойти.",
+  "crmlog.retried": "Событие поставлено на повтор: уйдёт в ближайшую минуту.",
+  "err.admin.crmPingWait": "Проверять вебхук можно не чаще раза в 10 секунд.",
+  "err.admin.crmRetryGone":
+    "Это событие уже нельзя повторить: оно доставлено или его нет в очереди.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -33,6 +40,13 @@ export const kk: SectionDict<typeof ru> = {
   "crmlog.network": "үзіліс: серверге жете алмадық",
   "crmlog.blocked": "мекенжайға тыйым салынған",
   "crmlog.event.ping": "тексеру",
+  "crmlog.retry": "Қайталау",
+  "crmlog.retryHint":
+    "Оқиға сол event_id-мен тағы бір рет кетеді — CRM-іңіз телнұсқаны қабылдамай тастай алады. Тайм-аут және 5xx жауабы өздігінен қайталанбайды: оқиға жетіп қалған болуы мүмкін.",
+  "crmlog.retried": "Оқиға қайталауға қойылды: жақын минутта кетеді.",
+  "err.admin.crmPingWait": "Вебхукті 10 секундта бір реттен жиі тексеруге болмайды.",
+  "err.admin.crmRetryGone":
+    "Бұл оқиғаны енді қайталауға болмайды: ол жеткізілген немесе кезекте жоқ.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -50,6 +64,13 @@ export const en: SectionDict<typeof ru> = {
   "crmlog.network": "connection lost: could not reach the server",
   "crmlog.blocked": "address not allowed",
   "crmlog.event.ping": "check",
+  "crmlog.retry": "Retry",
+  "crmlog.retryHint":
+    "The event is sent again with the same event_id, so your CRM can drop the duplicate. A timeout or a 5xx reply is not retried automatically: the event may have arrived.",
+  "crmlog.retried": "The event is queued for a retry: it goes out within a minute.",
+  "err.admin.crmPingWait": "The webhook can be checked once every 10 seconds at most.",
+  "err.admin.crmRetryGone":
+    "This event can no longer be retried: it was delivered or is not in the queue.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -67,4 +88,11 @@ export const uz: SectionDict<typeof ru> = {
   "crmlog.network": "uzilish: serverga yetib bo'lmadi",
   "crmlog.blocked": "manzilga ruxsat yo'q",
   "crmlog.event.ping": "tekshiruv",
+  "crmlog.retry": "Qayta yuborish",
+  "crmlog.retryHint":
+    "Hodisa o‘sha event_id bilan yana yuboriladi — CRM dublikatni tashlab yuborishi mumkin. Taym-aut va 5xx javobi o‘zi qayta yuborilmaydi: hodisa yetib borgan bo‘lishi mumkin.",
+  "crmlog.retried": "Hodisa qayta yuborishga qo‘yildi: bir daqiqa ichida ketadi.",
+  "err.admin.crmPingWait": "Vebhukni 10 soniyada bir martadan ko‘p tekshirib bo‘lmaydi.",
+  "err.admin.crmRetryGone":
+    "Bu hodisani endi qayta yuborib bo‘lmaydi: u yetkazilgan yoki navbatda yo‘q.",
 };

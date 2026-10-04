@@ -18,5 +18,15 @@ test("интеграции: журнал доставки вебхуков по�
   await expect(log.getByText("таймаут: сервер не ответил за 10 секунд")).toBeVisible();
   await expect(log.getByText("#9101")).toHaveCount(2);
   await expect(log).not.toContainText("e2e-secret");
+  // Упавшее событие повторяется вручную кнопкой из журнала; принятое и без outbox — без кнопки.
+  await expect(log.getByRole("button", { name: "Повторить", exact: true })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Проверить вебхук", exact: true })).toBeEnabled();
+  // Стенд общий для обоих окон: строку очереди ставим на повтор один раз.
+  if (test.info().project.name === "desktop") {
+    await log.getByRole("button", { name: "Повторить", exact: true }).click();
+    await expect(
+      page.getByText("Событие поставлено на повтор: уйдёт в ближайшую минуту."),
+    ).toBeVisible();
+  }
   expect(errors).toEqual([]);
 });

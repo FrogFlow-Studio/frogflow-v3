@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { Card, ErrorBox, Field, useAction } from "@/app/ui";
-import { crmFn, crmLogFn, saveCrmFn, testCrmFn } from "@/app/admin/crm.functions";
+import {
+  crmFn,
+  crmLogFn,
+  retryCrmDeliveryFn,
+  saveCrmFn,
+  testCrmFn,
+} from "@/app/admin/crm.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
 
@@ -36,7 +42,16 @@ export function CrmCard() {
   const test = useAction(async () => {
     const r = await testCrmFn();
     loadLog();
-    setNote(r.ok ? t("settings.crm.testOk") : t("settings.crm.testFail", { error: r.error }));
+    setNote(
+      r.ok
+        ? t("settings.crm.testOk", { status: r.status })
+        : t("settings.crm.testFail", { error: r.error }),
+    );
+  });
+  const retry = useAction(async (outboxId: string) => {
+    await retryCrmDeliveryFn({ data: { outboxId } });
+    loadLog();
+    setNote(t("crmlog.retried"));
   });
   if (!d) return null;
   return (
@@ -107,9 +122,20 @@ export function CrmCard() {
             {note && <span className="text-sm text-muted">{note}</span>}
           </div>
         )}
-        <ErrorBox error={save.error ?? test.error} />
+        <ErrorBox error={save.error ?? test.error ?? retry.error} />
       </form>
-      {log && <DeliveryLog entries={log} t={t} locale={shop.locale} />}
+      {log && (
+        <DeliveryLog
+          entries={log}
+          t={t}
+          locale={shop.locale}
+          canRetry={owner && !retry.busy}
+          onRetry={(id) => {
+            setNote(null);
+            void retry.run(id).catch(() => {});
+          }}
+        />
+      )}
     </Card>
   );
 }
@@ -121,11 +147,17 @@ function DeliveryLog({
   entries,
   t,
   locale,
+  canRetry,
+  onRetry,
 }: {
   entries: LogEntries;
   t: AdminT;
   locale: Parameters<typeof intlLocale>[0];
+  canRetry: boolean;
+  onRetry: (outboxId: string) => void;
 }) {
+  // Событие, которое потом всё-таки приняли, повторять не нужно.
+  const delivered = new Set(entries.filter((e) => e.outcome === "ok").map((e) => e.outboxId));
   const result = (e: LogEntries[number]) =>
     t(`crmlog.${e.outcome}` as never, { status: e.status ?? "" });
   const eventName = (ev: string) =>
@@ -146,7 +178,8 @@ function DeliveryLog({
                 <th className="pr-3">{t("crmlog.col.when")}</th>
                 <th className="pr-3">{t("crmlog.col.event")}</th>
                 <th className="pr-3">{t("crmlog.col.order")}</th>
-                <th>{t("crmlog.col.result")}</th>
+                <th className="pr-3">{t("crmlog.col.result")}</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -157,7 +190,20 @@ function DeliveryLog({
                   </td>
                   <td className="pr-3">{eventName(e.event)}</td>
                   <td className="pr-3">{e.orderId ? `#${e.orderId}` : "—"}</td>
-                  <td className={e.outcome === "ok" ? "" : "text-red-600"}>{result(e)}</td>
+                  <td className={e.outcome === "ok" ? "pr-3" : "pr-3 text-red-600"}>{result(e)}</td>
+                  <td>
+                    {e.outboxId && e.outcome !== "ok" && !delivered.has(e.outboxId) && (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={!canRetry}
+                        title={t("crmlog.retryHint")}
+                        onClick={() => onRetry(e.outboxId!)}
+                      >
+                        {t("crmlog.retry")}
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -181,6 +181,18 @@ export function pinnedLookup(
   };
 }
 
+/** Ошибки, после которых запрос заведомо не ушёл: соединения не было. */
+const NOT_SENT_CODES = new Set([
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+]);
+
+/** timedOut — ответа не дождались; notSent — запрос заведомо не ушёл (повтор безопасен). */
+export type PinnedFailure = { ok: false; error: string; timedOut?: boolean; notSent?: boolean };
+
 /**
  * POST по https с закреплённым адресом (pinnedLookup). Редиректы не
  * выполняются: ответ 3xx возвращается как есть. Сертификат проверяется по
@@ -191,7 +203,7 @@ export async function postPinned(
   headers: Record<string, string>,
   body: string,
   timeoutMs: number,
-): Promise<{ ok: true; status: number } | { ok: false; error: string; timedOut?: boolean }> {
+): Promise<{ ok: true; status: number } | PinnedFailure> {
   const { request } = await import("node:https");
   const u = new URL(url);
   return new Promise((done) => {
@@ -216,6 +228,7 @@ export async function postPinned(
         ...(e.name === "TimeoutError" || (e as { code?: string }).code === "ABORT_ERR"
           ? { timedOut: true }
           : {}),
+        ...(NOT_SENT_CODES.has((e as { code?: string }).code ?? "") ? { notSent: true } : {}),
       }),
     );
     req.end(body);

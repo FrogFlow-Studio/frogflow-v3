@@ -18,7 +18,7 @@ const body = (id: number, eventId = "e-" + id) =>
 describe("журнал доставки вебхуков", () => {
   it("запись: событие, заказ, код и event_id; тела и секрета нет", async () => {
     const ctx = ctxWith();
-    const e = logEntryFor(body(7), { ok: true, status: 200 }, new Date("2026-10-04T10:00:00Z"));
+    const e = logEntryFor(body(7), { ok: true, status: 200 }, {}, new Date("2026-10-04T10:00:00Z"));
     expect(await recordCrmDelivery(ctx, e)).toBe(true);
     const [row] = await loadCrmLog(ctx);
     expect(row).toEqual({

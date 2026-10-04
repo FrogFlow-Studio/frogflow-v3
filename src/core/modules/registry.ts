@@ -388,7 +388,7 @@ export const MODULES = {
     group: "Аналитика",
     price: 12000,
     status: "available",
-    note: "core/crm/webhook: POST JSON на https-адрес продавца с подписью HMAC, доставка через outbox с повторами; настройка и тестовое событие — карточка в настройках.",
+    note: "core/crm/webhook: POST JSON на https-адрес продавца с подписью HMAC, доставка через outbox; таймаут и 5xx сами не повторяются (повтор вручную из журнала доставки с тем же event_id); настройка, журнал и кнопка «Проверить вебхук» (ping) — карточка в настройках.",
   },
   public_api: {
     title: "API для разработчиков",

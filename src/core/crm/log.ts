@@ -23,6 +23,8 @@ export type CrmLogEntry = {
   eventId: string | null;
   outcome: CrmOutcome;
   status: number | null;
+  /** Строка очереди «Не доставлено» (zernio_logs.id): по ней событие повторяют вручную. */
+  outboxId?: string;
 };
 
 function parseLog(raw: string | null): CrmLogEntry[] {
@@ -58,6 +60,7 @@ export function logEntryFor(
   r:
     | { ok: true; status: number }
     | { ok: false; error: string; timedOut?: boolean; status?: number },
+  meta: { outboxId?: string } = {},
   now = new Date(),
 ): CrmLogEntry {
   let event = "order";
@@ -76,7 +79,13 @@ export function logEntryFor(
   } catch {
     /* тело — как есть */
   }
-  const base = { at: now.toISOString(), event, orderId, eventId };
+  const base = {
+    at: now.toISOString(),
+    event,
+    orderId,
+    eventId,
+    ...(meta.outboxId ? { outboxId: meta.outboxId } : {}),
+  };
   if (r.ok) {
     const good = (r.status >= 200 && r.status < 300) || r.status === 302;
     return { ...base, outcome: good ? "ok" : "http", status: r.status };

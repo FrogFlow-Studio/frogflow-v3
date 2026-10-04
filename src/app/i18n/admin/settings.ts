@@ -303,8 +303,8 @@ export const ru = {
   "settings.crm.event.payment": "оплата получена",
   "settings.crm.event.refund": "возврат",
   "settings.crm.event.courier": "передан курьеру",
-  "settings.crm.test": "Отправить тестовое событие",
-  "settings.crm.testOk": "Адрес принял тестовое событие.",
+  "settings.crm.test": "Проверить вебхук",
+  "settings.crm.testOk": "Адрес принял проверочное событие ping (ответ {status}).",
   "settings.crm.testFail": "Адрес не принял: {error}",
   "settings.stars.title": "Telegram Stars",
   "settings.stars.intro":
@@ -709,8 +709,8 @@ export const kk: SectionDict<typeof ru> = {
   "settings.crm.event.payment": "төлем алынды",
   "settings.crm.event.refund": "қайтару",
   "settings.crm.event.courier": "курьерге берілді",
-  "settings.crm.test": "Сынақ оқиғасын жіберу",
-  "settings.crm.testOk": "Мекенжай сынақ оқиғасын қабылдады.",
+  "settings.crm.test": "Вебхукті тексеру",
+  "settings.crm.testOk": "Мекенжай ping тексеру оқиғасын қабылдады (жауап {status}).",
   "settings.crm.testFail": "Мекенжай қабылдамады: {error}",
   "settings.stars.title": "Telegram Stars",
   "settings.stars.intro":
@@ -1109,8 +1109,8 @@ export const en: SectionDict<typeof ru> = {
   "settings.crm.event.payment": "payment received",
   "settings.crm.event.refund": "refund",
   "settings.crm.event.courier": "handed to courier",
-  "settings.crm.test": "Send a test event",
-  "settings.crm.testOk": "The address accepted the test event.",
+  "settings.crm.test": "Check webhook",
+  "settings.crm.testOk": "The address accepted the ping check event (reply {status}).",
   "settings.crm.testFail": "The address rejected it: {error}",
   "settings.stars.title": "Telegram Stars",
   "settings.stars.intro":
@@ -1515,8 +1515,8 @@ export const uz: SectionDict<typeof ru> = {
   "settings.crm.event.payment": "toʻlov olindi",
   "settings.crm.event.refund": "qaytarish",
   "settings.crm.event.courier": "kuryerga topshirildi",
-  "settings.crm.test": "Sinov hodisasini yuborish",
-  "settings.crm.testOk": "Manzil sinov hodisasini qabul qildi.",
+  "settings.crm.test": "Vebhukni tekshirish",
+  "settings.crm.testOk": "Manzil ping tekshiruv hodisasini qabul qildi (javob {status}).",
   "settings.crm.testFail": "Manzil qabul qilmadi: {error}",
   "settings.stars.title": "Telegram Stars",
   "settings.stars.intro":

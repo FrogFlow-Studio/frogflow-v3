@@ -49,6 +49,29 @@ export function seedShop14Integrations(db: StubDb, now: string) {
     outcome,
     status,
   });
+  add(db, "zernio_logs", [
+    int14({
+      id: F.INT14_DEAD_ROW_ID,
+      event_id: "outbox:e2e-int14-dead",
+      event_type: "outbox.crm_webhook",
+      status: "dead",
+      error_message: "HTTP 500",
+      payload: {
+        target: { channel: "webhook", url: F.INT14_HOOK_URL },
+        text: JSON.stringify({
+          event: "order.payment",
+          event_id: "e2e-ev-9101",
+          order: { id: 9101 },
+        }),
+        order_id: null,
+        audience: "admin",
+        attempts: 1,
+        next_at: null,
+        last_error: "HTTP 500",
+      },
+      created_at: now,
+    }),
+  ]);
   add(db, "app_settings", [
     int14({ key: "shop_name", value: F.INT14_SHOP_NAME, updated_at: now }),
     int14({
@@ -64,7 +87,7 @@ export function seedShop14Integrations(db: StubDb, now: string) {
       key: "crm_webhook_log",
       value: JSON.stringify([
         entry(30, "order.placed", 9101, "ok", 200),
-        entry(20, "order.payment", 9101, "http", 500),
+        { ...entry(20, "order.payment", 9101, "http", 500), outboxId: F.INT14_DEAD_ROW_ID },
         entry(10, "order.placed", 9102, "timeout", null),
       ]),
       updated_at: now,

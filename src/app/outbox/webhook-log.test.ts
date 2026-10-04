@@ -32,9 +32,13 @@ beforeEach(async () => {
 
 describe("postWebhook пишет журнал доставки", () => {
   it("принято, 500, таймаут, обрыв — каждая отправка оставляет запись", async () => {
-    expect(await postWebhook(ctx, URL, body)).toEqual({ ok: true });
+    expect(await postWebhook(ctx, URL, body)).toEqual({ ok: true, status: 200 });
     reply = { ok: true, status: 500 };
-    expect(await postWebhook(ctx, URL, body)).toEqual({ ok: false, error: "HTTP 500" });
+    expect(await postWebhook(ctx, URL, body)).toMatchObject({
+      ok: false,
+      error: "HTTP 500",
+      status: 500,
+    });
     reply = { ok: false, error: "aborted", timedOut: true };
     await postWebhook(ctx, URL, body);
     reply = { ok: false, error: "ECONNRESET" };

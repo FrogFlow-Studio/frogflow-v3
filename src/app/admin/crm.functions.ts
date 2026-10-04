@@ -53,21 +53,29 @@ export const saveCrmFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Тестовое событие — сразу, без очереди: продавец видит ответ своей CRM. */
 export const testCrmFn = createServerFn({ method: "POST" }).handler(async () => {
   const ctx = await moduleAdmin("owner");
-  const { loadCrm } = await import("@/core/crm/webhook");
-  const cfg = await loadCrm(ctx);
-  if (!cfg) throw new UserError("err.admin.crmSaveFirst", "Сначала сохраните адрес вебхука.");
-  const { postWebhook } = await import("@/app/outbox/senders.server");
-  const body = JSON.stringify({
-    event: "test",
-    at: new Date().toISOString(),
-    shop_id: ctx.tenant.id,
-    order: { id: 0, number: 0, status: "test", total: 0, currency: "KZT", items: [] },
-  });
-  return postWebhook(ctx, cfg.url, body);
+  const { sendCrmPing } = await import("./crm.server");
+  const r = await sendCrmPing(ctx);
+  return r.ok
+    ? { ok: true as const, status: r.status }
+    : { ok: false as const, error: r.error, status: r.status ?? null };
 });
+
+/** Повтор упавшего настоящего события из журнала: то же тело, тот же `event_id`. */
+export const retryCrmDeliveryFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ outboxId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("owner");
+    const { retryCrmEvent } = await import("@/core/crm/retry");
+    const r = await retryCrmEvent(ctx, data.outboxId);
+    if (r === "not_found")
+      throw new UserError(
+        "err.admin.crmRetryGone",
+        "Это событие уже нельзя повторить: оно доставлено или его нет в очереди.",
+      );
+    return { ok: true };
+  });
 
 /** Журнал доставки: последние отправки вебхука (без тела и секрета), от новых к старым. */
 export const crmLogFn = createServerFn({ method: "GET" }).handler(async () => {

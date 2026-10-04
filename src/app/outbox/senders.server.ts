@@ -25,7 +25,9 @@ export function outboxSender(): OutboxSender {
       case "zernio":
         return zernio(ctx, msg);
       case "webhook":
-        return postWebhook(ctx, msg.target.url, msg.text ?? "{}");
+        return postWebhook(ctx, msg.target.url, msg.text ?? "{}", {
+          outboxId: (msg as { id?: string }).id,
+        });
       default:
         return { ok: false, error: "неизвестный канал" };
     }
@@ -37,20 +39,36 @@ export async function runOutbox(tenant: Tenant): Promise<ProcessResult | { skipp
   return processOutbox(tenantContext(tenant), outboxSender());
 }
 
-/** POST на вебхук продавца с подписью; адрес перепроверяется перед каждой отправкой. Итог пишется в журнал доставки. */
+/** Итог отправки вебхука: код ответа виден продавцу; permanent — повторять самим нельзя. */
+export type WebhookResult =
+  { ok: true; status: number } | { ok: false; error: string; status?: number; permanent?: boolean };
+
+/**
+ * POST на вебхук продавца с подписью; адрес перепроверяется перед каждой
+ * отправкой. Итог пишется в журнал доставки. Отправка, которая могла дойти
+ * (таймаут, обрыв после соединения, 5xx), автоматически не повторяется
+ * (`permanent`): дубль решает продавец кнопкой из журнала, а событие уходит
+ * с тем же `event_id`, и CRM может отбросить повтор. Повторяются только
+ * заведомо не ушедшие (соединения не было) и ответы 4xx.
+ */
 export async function postWebhook(
   ctx: import("@/core/tenant/resolve.server").TenantContext,
   url: string,
   body: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+  meta: { outboxId?: string } = {},
+): Promise<WebhookResult> {
   const { loadCrm, postPinned, safeWebhookUrl, signBody } = await import("@/core/crm/webhook");
   const { logEntryFor, recordCrmDelivery } = await import("@/core/crm/log");
   if (!safeWebhookUrl(url)) {
     await recordCrmDelivery(ctx, {
-      ...logEntryFor(body, { ok: false, error: "blocked" }),
+      ...logEntryFor(body, { ok: false, error: "blocked" }, meta),
       outcome: "blocked",
     });
-    return { ok: false, error: "адрес вебхука запрещён (не https или внутренний)" };
+    return {
+      ok: false,
+      error: "адрес вебхука запрещён (не https или внутренний)",
+      permanent: true,
+    };
   }
   const cfg = await loadCrm(ctx);
   let event = "order";
@@ -71,9 +89,10 @@ export async function postWebhook(
     body,
     10_000,
   );
-  await recordCrmDelivery(ctx, logEntryFor(body, r));
-  if (!r.ok) return r;
+  await recordCrmDelivery(ctx, logEntryFor(body, r, meta));
+  if (!r.ok) return { ...r, permanent: !r.notSent };
   // Google Apps Script отвечает 302 на успешный POST — это успех.
-  if ((r.status >= 200 && r.status < 300) || r.status === 302) return { ok: true };
-  return { ok: false, error: `HTTP ${r.status}` };
+  if ((r.status >= 200 && r.status < 300) || r.status === 302)
+    return { ok: true, status: r.status };
+  return { ok: false, error: `HTTP ${r.status}`, status: r.status, permanent: r.status >= 500 };
 }
