@@ -336,11 +336,14 @@ function Step({
 
 /** Онлайн-школа: чеклист запуска (core/courses/launch), пока не пройдены все шаги. */
 function LaunchCard({ t }: { t: AdminT }) {
-  const [steps, setSteps] = useState<Awaited<ReturnType<typeof schoolLaunchFn>> | null>(null);
+  const [launch, setLaunch] = useState<Awaited<ReturnType<typeof schoolLaunchFn>> | null>(null);
   useEffect(() => {
-    void schoolLaunchFn().then(setSteps, () => setSteps(null));
+    void schoolLaunchFn().then(setLaunch, () => setLaunch(null));
   }, []);
-  if (!steps || launchDone(steps)) return null;
+  if (!launch) return null;
+  const { steps, hints } = launch;
+  // Подсказка про эфиры без ссылки живёт и после прохождения шагов.
+  if (launchDone(steps) && hints.length === 0) return null;
   const done = steps.filter((s) => s.done).length;
   const linkTo: Partial<Record<LaunchStepKey, "/admin/products">> = {
     course: "/admin/products",
@@ -371,6 +374,14 @@ function LaunchCard({ t }: { t: AdminT }) {
           </li>
         ))}
       </ol>
+      {hints.map((h) => (
+        <div
+          key={h.key}
+          className="mt-3 rounded-md border border-warn/40 bg-warn/15 px-3 py-2 text-sm"
+        >
+          {t("launch.liveNoLinkHint", { n: h.n })}
+        </div>
+      ))}
     </Card>
   );
 }

@@ -209,6 +209,7 @@ export async function preflight(botId: string): Promise<Preflight> {
         courses: cs.length,
         withoutLessons: cs.filter((c) => c.lessons === 0).length,
         withoutChannel: cs.filter((c) => !c.channel).length,
+        liveNoLink: cs.reduce((n, c) => n + (c.liveNoLink ?? 0), 0),
       }))
     : undefined;
   const minOrder = await minOrderInput(tenantContext(t));

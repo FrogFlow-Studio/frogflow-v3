@@ -1,5 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import type { LaunchCourse, LaunchInput } from "@/core/courses/launch";
+import { liveNoLinkCount, type LaunchCourse, type LaunchInput } from "@/core/courses/launch";
 import { courseProducts, schoolStudents } from "./students.server";
 
 /** Курсы магазина для чеклиста запуска и проверки переезда: уроки и канал. */
@@ -8,7 +8,12 @@ export async function launchCourses(ctx: TenantContext): Promise<LaunchCourse[]>
   const out: LaunchCourse[] = [];
   for (const p of await courseProducts(ctx)) {
     const c = await getCourse(ctx, p.id);
-    out.push({ name: p.name, lessons: c.lessons.length, channel: Boolean(c.channel) });
+    out.push({
+      name: p.name,
+      lessons: c.lessons.length,
+      channel: Boolean(c.channel),
+      liveNoLink: liveNoLinkCount(c.cohorts ?? [], ctx.timezone, new Date()),
+    });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }

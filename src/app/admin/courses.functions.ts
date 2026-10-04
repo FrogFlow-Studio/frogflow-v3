@@ -314,6 +314,7 @@ export const schoolOverviewFn = createServerFn({ method: "GET" }).handler(async 
 export const schoolLaunchFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await moduleAdmin();
   const { schoolLaunchInput } = await import("./school-launch.server");
-  const { launchSteps } = await import("@/core/courses/launch");
-  return launchSteps(await schoolLaunchInput(ctx));
+  const { launchSteps, launchHints } = await import("@/core/courses/launch");
+  const input = await schoolLaunchInput(ctx);
+  return { steps: launchSteps(input), hints: launchHints(input) };
 });

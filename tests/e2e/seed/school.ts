@@ -87,6 +87,28 @@ export function seedSchool(db: StubDb, now: string) {
         title: "Октябрь",
         start: local(new Date(t - day)),
         enrollUntil: new Date(t + 7 * day).toISOString().slice(0, 10),
+        // Два эфира впереди (ссылка первого ученику пока закрыта, у второго её нет) и один прошедший с записью.
+        lives: [
+          {
+            id: F.SCHOOL_LIVE_PAST,
+            title: F.SCHOOL_LIVE_PAST_TITLE,
+            at: local(new Date(t - 5 * 3_600_000)),
+            link: null,
+            recording: F.SCHOOL_LIVE_RECORDING_URL,
+          },
+          {
+            id: F.SCHOOL_LIVE_WITH_LINK,
+            title: F.SCHOOL_LIVE_TITLES[0],
+            at: local(new Date(t + 2 * day)),
+            link: F.SCHOOL_LIVE_URL,
+          },
+          {
+            id: F.SCHOOL_LIVE_NO_LINK,
+            title: F.SCHOOL_LIVE_TITLES[1],
+            at: local(new Date(t + 9 * day)),
+            link: null,
+          },
+        ],
       },
     ],
   };

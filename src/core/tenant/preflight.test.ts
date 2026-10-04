@@ -282,6 +282,24 @@ describe("онлайн-школа в проверке переезда", () => {
     });
   });
 
+  it("эфиры без ссылки — отдельная подсказка с числом и кроном напоминаний", () => {
+    const school0 = { courses: 2, withoutLessons: 0, withoutChannel: 0 };
+    const live = (liveNoLink?: number) =>
+      evaluatePreflight({
+        ...base,
+        modulesOn: [...base.modulesOn],
+        school: { ...school0, liveNoLink },
+      }).checks.find((c) => c.key === "school_live");
+    expect(live()).toBeUndefined();
+    expect(live(0)).toBeUndefined();
+    expect(live(3)).toMatchObject({
+      level: "info",
+      title: "Эфиры потоков без ссылки",
+      detail: expect.stringContaining("Эфиров без ссылки: 3"),
+    });
+    expect(live(3)?.detail).toContain("course-lives");
+  });
+
   it("курс без уроков — предупреждение с числами; без канала — подсказка", () => {
     expect(check({ courses: 3, withoutLessons: 1, withoutChannel: 3 })).toMatchObject({
       level: "warn",

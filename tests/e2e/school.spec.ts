@@ -45,6 +45,37 @@ test("страница курса: урок открыт, задание сда�
   await expect(page.getByText("Отправлено. Преподаватель проверит и ответит.")).toBeVisible();
 });
 
+test("эфир потока: ученик видит расписание, ссылка закрыта до начала, запись прошедшего открыта", async ({
+  page,
+}, info) => {
+  const item = F.SCHOOL_ITEM_IDS[info.project.name === "desktop" ? 0 : 1]!;
+  await page.goto(`/s/${F.SCHOOL_SLUG}/course/${item}?k=${token(item)}`);
+  await expect(page.getByRole("heading", { name: "Эфиры потока", exact: true })).toBeVisible();
+  await expect(page.getByText(F.SCHOOL_LIVE_TITLES[0]!).first()).toBeVisible();
+  await expect(page.getByText(F.SCHOOL_LIVE_TITLES[1]!).first()).toBeVisible();
+  await expect(page.getByText("Ссылка появится за 15 минут до начала").first()).toBeVisible();
+  // До начала кнопки входа нет, а сама ссылка не попадает на страницу совсем.
+  await expect(page.getByRole("link", { name: "Войти на эфир", exact: true })).toHaveCount(0);
+  expect(await page.content()).not.toContain(F.SCHOOL_LIVE_URL);
+  // Прошедший эфир: запись открыта.
+  await expect(page.getByText(F.SCHOOL_LIVE_PAST_TITLE).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Смотреть запись", exact: true })).toHaveAttribute(
+    "href",
+    F.SCHOOL_LIVE_RECORDING_URL,
+  );
+});
+
+test("чеклист запуска: подсказка про эфир без ссылки", async ({ browser }) => {
+  const teacher = await browser.newPage();
+  await teacher.goto("/admin/login");
+  await teacher.locator('input[name="username"]').fill(F.SCHOOL_SELLER_LOGIN);
+  await teacher.locator('input[name="password"]').fill(F.SCHOOL_SELLER_PASSWORD);
+  await teacher.getByRole("button", { name: "Войти", exact: true }).click();
+  await expect(teacher).toHaveURL(/\/admin$/);
+  await expect(teacher.getByText(/Эфиров без ссылки: 1\./)).toBeVisible();
+  await teacher.close();
+});
+
 test("сквозной путь школы: открытый урок, тест, задание, приём, воронка", async ({
   page,
   browser,

@@ -305,6 +305,8 @@ const baseRu = {
   "launch.purchase": "Сделана тестовая покупка",
   "launch.purchaseHint":
     "Купите курс сами: в боте «🎓 Мои курсы» появятся уроки, «Сдать задание» и вступление в канал.",
+  "launch.liveNoLinkHint":
+    "Эфиров без ссылки: {n}. Ученики видят их в расписании, но войти не смогут: добавьте ссылку Zoom, Google Meet или Telegram в карточке курса, блок «Эфиры потока» (ссылка открывается ученику за 15 минут до начала).",
   "products.title": "Товары",
   "products.count": "{n} позиций",
   "products.importExport": "Импорт / экспорт",
@@ -695,6 +697,8 @@ const baseKk: Dict = {
   "launch.purchase": "Сынақ сатып алу жасалған",
   "launch.purchaseHint":
     "Курсты өзіңіз сатып алыңыз: ботта «🎓 Менің курстарым» ішінде сабақтар, «Тапсырма тапсыру» және арнаға қосылу пайда болады.",
+  "launch.liveNoLinkHint":
+    "Сілтемесіз эфирлер: {n}. Оқушылар оларды кестеден көреді, бірақ кіре алмайды: курс карточкасындағы «Ағын эфирлері» блогына Zoom, Google Meet немесе Telegram сілтемесін қосыңыз (сілтеме оқушыға басталуына 15 минут қалғанда ашылады).",
   "products.title": "Тауарлар",
   "products.count": "{n} позиция",
   "products.importExport": "Импорт / экспорт",
@@ -1032,6 +1036,8 @@ const baseEn: Dict = {
   "launch.purchase": "Test purchase made",
   "launch.purchaseHint":
     "Buy the course yourself: the bot’s “🎓 My courses” will show the lessons, “Submit homework” and joining the channel.",
+  "launch.liveNoLinkHint":
+    "Live sessions without a link: {n}. Students see them in the schedule but cannot join: add a Zoom, Google Meet or Telegram link in the course card, in the live sessions block (the link opens for students 15 minutes before the start).",
   "products.title": "Products",
   "products.count": "{n} items",
   "products.importExport": "Import / export",
@@ -1375,6 +1381,8 @@ const baseUz: Dict = {
   "launch.purchase": "Sinov xaridi qilingan",
   "launch.purchaseHint":
     "Kursni o‘zingiz sotib oling: botda «🎓 Mening kurslarim» ichida darslar, «Topshiriqni topshirish» va kanalga qo‘shilish paydo bo‘ladi.",
+  "launch.liveNoLinkHint":
+    "Havolasiz efirlar: {n}. O'quvchilar ularni jadvalda ko'radi, lekin kira olmaydi: kurs kartasidagi efirlar blokiga Zoom, Google Meet yoki Telegram havolasini qo'shing (havola o'quvchiga boshlanishiga 15 daqiqa qolganda ochiladi).",
   "products.title": "Mahsulotlar",
   "products.count": "{n} ta pozitsiya",
   "products.importExport": "Import / eksport",

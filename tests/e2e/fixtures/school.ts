@@ -12,6 +12,15 @@ export const SCHOOL_ITEM_IDS = [
 export const SCHOOL_LESSON_1 = "e2e00000-0000-4000-8000-0000000005a1";
 export const SCHOOL_LESSON_2 = "e2e00000-0000-4000-8000-0000000005a2";
 export const SCHOOL_COHORT_ID = "e2e00000-0000-4000-8000-0000000005b1";
+/** Эфиры потока: первый со ссылкой, второй без — подсказка в чеклисте запуска. */
+export const SCHOOL_LIVE_WITH_LINK = "e2e00000-0000-4000-8000-0000000005f1";
+export const SCHOOL_LIVE_NO_LINK = "e2e00000-0000-4000-8000-0000000005f2";
+export const SCHOOL_LIVE_TITLES = ["Вводный эфир", "Разбор работ"];
+/** Прошедший эфир с записью: запись видна ученику с начала эфира. */
+export const SCHOOL_LIVE_PAST = "e2e00000-0000-4000-8000-0000000005f3";
+export const SCHOOL_LIVE_PAST_TITLE = "Прошлый эфир";
+export const SCHOOL_LIVE_RECORDING_URL = "https://example.com/e2e-recording";
+export const SCHOOL_LIVE_URL = "https://example.com/e2e-live-room";
 
 /** Продавец школы: проверяет домашние задания и смотрит воронку (school.spec.ts, сквозной путь). */
 export const SCHOOL_SELLER_LOGIN = "e2e_school_teacher";

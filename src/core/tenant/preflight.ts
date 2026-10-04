@@ -68,7 +68,13 @@ export type PreflightInput = {
    * Онлайн-школа (модуль courses): сколько курсов, у скольких нет ни одного
    * урока и у скольких не подключён закрытый канал.
    */
-  school?: { courses: number; withoutLessons: number; withoutChannel: number };
+  school?: {
+    courses: number;
+    withoutLessons: number;
+    withoutChannel: number;
+    /** Эфиры потоков без ссылки, которые ещё не закончились; нет поля — 0. */
+    liveNoLink?: number;
+  };
   /** Минимальная сумма заказа магазина (core/cart/min-order); не задана — поле не передаётся. */
   minOrder?: { amount: number; currency: string };
 };
@@ -304,6 +310,13 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
       level: "info",
       title: "У курсов нет закрытого канала",
       detail: `Курсов без канала: ${school.withoutChannel} из ${school.courses}. Ученики получат уроки только в боте; канал подключается в карточке курса (бот магазина — администратор с правом приглашать).`,
+    });
+  if (school?.liveNoLink)
+    checks.push({
+      key: "school_live",
+      level: "info",
+      title: "Эфиры потоков без ссылки",
+      detail: `Эфиров без ссылки: ${school.liveNoLink}. Ученики видят их в расписании, а ссылка открывается им за 15 минут до начала и пока эфир идёт; напоминания за сутки и за час шлёт крон course-lives покупателям из Telegram. Добавьте ссылку в карточке курса, блок «Эфиры потока».`,
     });
   if (i.minOrder)
     checks.push({
