@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const reported = vi.hoisted(() => vi.fn(async (..._a: unknown[]) => {}));
+vi.mock("@/lib/errors", () => ({ reportError: reported }));
+import { ServerFailure } from "@/lib/server-failure";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { recordOrderEvent } from "@/core/orders/events";
@@ -160,6 +164,33 @@ describe("себестоимость в момент продажи", () => {
     };
     await expect(recordOrderEvent(ctx, 7, "payment", {}, "system")).resolves.toBeUndefined();
     expect(snapRow(db)).toBeUndefined();
+  });
+
+  it("сбой чтения базы уходит в Sentry как ServerFailure с понятным текстом, а не как «Error»", async () => {
+    for (const [table, text] of [
+      ["app_settings", "Снимок себестоимости"],
+      ["product_variants", "Варианты для себестоимости"],
+    ] as const) {
+      reported.mockClear();
+      const { ctx, db } = shop();
+      await saveCost(ctx, P, { price: 4000 });
+      const from = db.from.bind(db);
+      const bad = { data: null, error: { message: "boom" } };
+      const chain: Record<string, unknown> = {};
+      for (const m of ["select", "eq", "in", "like", "order", "range"]) chain[m] = () => chain;
+      chain.maybeSingle = async () => bad;
+      chain.then = (ok: (v: unknown) => unknown) => ok(bad);
+      let armed = false;
+      db.from = (t: string) => {
+        if (t === table && armed) return chain as never;
+        return from(t);
+      };
+      armed = true;
+      expect(await snapshotOrderCost(ctx, 7)).toBe(false);
+      const err = reported.mock.calls[0]![0] as Error;
+      expect(err).toBeInstanceOf(ServerFailure);
+      expect(err.message).toContain(text);
+    }
   });
 
   it("больше 200 заказов читаются кусками", async () => {

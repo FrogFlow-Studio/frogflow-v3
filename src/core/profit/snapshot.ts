@@ -1,5 +1,6 @@
 import { pageAll } from "@/core/db/page";
 import { reportError } from "@/lib/errors";
+import { serverFailure } from "@/lib/server-failure";
 import { getSettingsStrict, updateSettingStamped } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { COST_PREFIX, itemUnitCost, parseCost } from "./cost";
@@ -52,7 +53,7 @@ export async function snapshotOrderCost(ctx: TenantContext, orderId: number): Pr
   try {
     const key = `${ORDER_COST_PREFIX}${orderId}`;
     const exists = await ctx.db.from("app_settings").select("key").eq("key", key).maybeSingle();
-    if (exists.error) throw new Error(exists.error.message);
+    if (exists.error) throw serverFailure(`Снимок себестоимости: ${exists.error.message}`);
     if (exists.data) return false;
 
     const items = await pageAll<{
@@ -89,7 +90,7 @@ export async function snapshotOrderCost(ctx: TenantContext, orderId: number): Pr
         .from("product_variants")
         .select("id, name")
         .in("id", variantIds.slice(i, i + 200));
-      if (error) throw new Error(error.message);
+      if (error) throw serverFailure(`Варианты для себестоимости: ${error.message}`);
       for (const v of data ?? []) names.set(v.id, v.name);
     }
     const { shopCurrency } = await import("@/core/discounts/discounts");
