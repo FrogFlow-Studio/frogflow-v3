@@ -129,9 +129,11 @@ function LoginPage() {
 function TelegramLogin({ t }: { t: ReturnType<typeof adminT> }) {
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
+  const [limited, setLimited] = useState(false);
   const [username, setUsername] = useState("");
   const { run, busy, error } = useAction(async () => {
-    await adminTgLoginRequest({ data: { username } });
+    const r = await adminTgLoginRequest({ data: { username } });
+    setLimited("limited" in r);
     setSent(true);
   });
   if (!open)
@@ -161,7 +163,8 @@ function TelegramLogin({ t }: { t: ReturnType<typeof adminT> }) {
           }}
         />
       </Field>
-      {sent && <p className="text-sm text-ok">{t("login.tg.sent")}</p>}
+      {sent && !limited && <p className="text-sm text-ok">{t("login.tg.sent")}</p>}
+      {sent && limited && <p className="text-sm text-warn">{t("login.tg.limited")}</p>}
       <ErrorBox error={error} />
       <button className="btn-primary w-full" disabled={busy || !username.trim()}>
         {t("login.tg.send")}

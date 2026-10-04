@@ -120,6 +120,8 @@ const baseRu = {
   "login.tg.button": "Войти через Telegram",
   "login.tg.hint": "Введите логин магазина — бот магазина пришлёт владельцу ссылку для входа.",
   "login.tg.send": "Прислать ссылку",
+  "login.tg.limited":
+    "Ссылку уже отправляли: проверьте бота магазина. Новую можно запросить позже, в течение часа.",
   "login.tg.sent":
     "Если логин верный и Telegram владельца привязан к магазину, ссылка уже в боте. Она действует 10 минут.",
   "login.tg.title": "Вход в панель магазина",
@@ -515,6 +517,8 @@ const baseKk: Dict = {
   "login.tg.button": "Telegram арқылы кіру",
   "login.tg.hint": "Дүкен логинін енгізіңіз — дүкен боты иесіне кіру сілтемесін жібереді.",
   "login.tg.send": "Сілтеме жіберу",
+  "login.tg.limited":
+    "Сілтеме жіберілген: дүкен ботын тексеріңіз. Жаңасын кейінірек, бір сағат ішінде сұрауға болады.",
   "login.tg.sent":
     "Логин дұрыс болса және иесінің Telegram-ы дүкенге байланған болса, сілтеме ботта. Ол 10 минут жарамды.",
   "login.tg.title": "Дүкен панеліне кіру",
@@ -855,6 +859,8 @@ const baseEn: Dict = {
   "login.tg.button": "Sign in with Telegram",
   "login.tg.hint": "Enter the shop login — the shop bot will send the owner a sign-in link.",
   "login.tg.send": "Send the link",
+  "login.tg.limited":
+    "The link was already sent: check the shop’s bot. You can ask for a new one a bit later, within the hour.",
   "login.tg.sent":
     "If the login is right and the owner’s Telegram is linked to the shop, the link is in the bot. It is valid for 10 minutes.",
   "login.tg.title": "Shop panel sign-in",
@@ -1196,6 +1202,8 @@ const baseUz: Dict = {
   "login.tg.button": "Telegram orqali kirish",
   "login.tg.hint": "Doʻkon loginini kiriting — doʻkon boti egasiga kirish havolasini yuboradi.",
   "login.tg.send": "Havola yuborish",
+  "login.tg.limited":
+    "Havola allaqachon yuborilgan: doʻkon botini tekshiring. Yangisini birozdan keyin, bir soat ichida soʻrash mumkin.",
   "login.tg.sent":
     "Login toʻgʻri boʻlsa va egasining Telegrami doʻkonga bogʻlangan boʻlsa, havola botda. U 10 daqiqa amal qiladi.",
   "login.tg.title": "Doʻkon paneliga kirish",

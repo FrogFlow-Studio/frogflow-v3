@@ -59,3 +59,40 @@ export async function consumeLoginToken(
     return null;
   }
 }
+
+/** Сколько ссылок входа магазин присылает за час: чужие запросы не должны засыпать владельца. */
+export const TG_LOGIN_MAX_PER_HOUR = 5;
+const TG_REQ_PREFIX = "admin_tg_req:";
+const HOUR_MS = 3_600_000;
+
+/**
+ * Занять одну из TG_LOGIN_MAX_PER_HOUR ссылок часа для магазина (счёт на
+ * магазин, а не на адрес, и отдельно от неудачных попыток пароля). Сначала
+ * запись метки, потом счёт: два запроса разом не пройдут сверх предела.
+ * false — предел исчерпан, ссылку слать не надо. Ошибка базы — исключение:
+ * неизвестный счёт не должен пропускать поток запросов.
+ */
+export async function claimLoginRequest(ctx: TenantContext, now = Date.now()): Promise<boolean> {
+  const key = `${TG_REQ_PREFIX}${String(now).padStart(15, "0")}:${randomBytes(6).toString("hex")}`;
+  const { error } = await ctx.db
+    .from("app_settings")
+    .insert({ bot_id: ctx.tenant.id, key, value: "1" });
+  if (error) throw serverFailure(`вход через Telegram: ${error.message}`);
+  const { data, error: readError } = await ctx.db
+    .from("app_settings")
+    .select("key")
+    .eq("bot_id", ctx.tenant.id)
+    .like("key", `${TG_REQ_PREFIX}%`)
+    .order("key", { ascending: true });
+  if (readError) throw serverFailure(`вход через Telegram: ${readError.message}`);
+  const stamp = (k: string) => Number(k.slice(TG_REQ_PREFIX.length, TG_REQ_PREFIX.length + 15));
+  const keys = (data ?? []).map((r) => r.key as string);
+  const stale = keys.filter((k) => stamp(k) <= now - HOUR_MS);
+  // Метки старше часа убираем; сбой уборки счёт не портит.
+  if (stale.length > 0) await ctx.db.from("app_settings").delete().in("key", stale);
+  const live = keys.filter((k) => stamp(k) > now - HOUR_MS);
+  // Живых меток вместе со своей больше предела — отказ. При гонке отказать могут обоим: лучше меньше ссылок, чем больше.
+  if (live.length <= TG_LOGIN_MAX_PER_HOUR) return true;
+  await ctx.db.from("app_settings").delete().eq("key", key);
+  return false;
+}
