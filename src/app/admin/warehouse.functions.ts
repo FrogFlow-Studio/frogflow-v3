@@ -303,3 +303,65 @@ export const stocktakeCancelFn = createServerFn({ method: "POST" })
     await cancelStocktake(ctx, data.id);
     return { ok: true };
   });
+
+// ── Журнал склада (core/stock/journal): видит и бухгалтер, меняет здесь нечего ──
+
+const journalFinance = async () => {
+  const { ctx } = await (await guards()).requireAdminFinance();
+  if (!ctx.tenant.modules.warehouse) {
+    const { UserError } = await import("@/core/i18n/user-error");
+    throw new UserError("err.auth.moduleOff", "Модуль «{module}» не подключён к вашему тарифу.", {
+      module: "warehouse",
+    });
+  }
+  return ctx;
+};
+
+const journalFilter = z.object({
+  productId: uuid.nullable().default(null),
+  supplierId: uuid.nullable().default(null),
+  reason: z.string().max(40).nullable().default(null),
+  from: z.string().max(10).nullable().default(null),
+  to: z.string().max(10).nullable().default(null),
+});
+
+export const journalFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z.object({ page: z.number().int().min(0).max(100_000), filter: journalFilter }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await journalFinance();
+    const { listJournal, parseJournalFilter } = await import("@/core/stock/journal");
+    const { loadSuppliers } = await import("@/core/stock/suppliers");
+    const filter = parseJournalFilter({ ...data.filter });
+    const { entries, total } = await listJournal(ctx, filter, { page: data.page });
+    const suppliers = (await loadSuppliers(ctx)).items.map((s) => ({ id: s.id, name: s.name }));
+    return {
+      entries,
+      total,
+      suppliers,
+      productName: await filterProductName(ctx, filter.productId),
+    };
+  });
+
+async function filterProductName(
+  ctx: Awaited<ReturnType<typeof journalFinance>>,
+  id: string | null | undefined,
+): Promise<string | null> {
+  if (!id) return null;
+  const { data, error } = await ctx.db.from("products").select("name").eq("id", id).maybeSingle();
+  if (error) {
+    const { serverFailure } = await import("@/lib/server-failure");
+    throw serverFailure(`Товар не прочитался: ${error.message}`);
+  }
+  return data?.name ?? null;
+}
+
+/** Поиск товара для фильтра журнала — доступен и бухгалтеру (названия он видит в «Себестоимости»). */
+export const journalProductsFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ q: z.string().max(100).default("") }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await journalFinance();
+    const { searchProducts } = await import("@/core/catalog/picker");
+    return searchProducts(ctx, { q: data.q });
+  });

@@ -127,6 +127,11 @@ export async function pruneZernioLogs(now = Date.now(), scope?: Scope): Promise<
       .neq("event_type", "inbox")
       // Участники розыгрыша (core/giveaways): по ним выбирают победителей и считают итоги.
       .neq("event_type", "giveaway.entry")
+      // Приход, списание и инвентаризация склада (core/stock): учёт, а не журнал.
+      // Остальные движения остатка (заказ, отмена, правка) хранятся как прежде.
+      .neq("event_type", "stock.receipt")
+      .neq("event_type", "stock.writeoff")
+      .neq("event_type", "stock.stocktake")
       // Отметки «сообщили победителю»: по ним сообщение не уходит второй раз (К5).
       .neq("event_type", "giveaway.notice")
       .lt("created_at", cutoff(RETENTION.zernioLogsStaleDays, now));

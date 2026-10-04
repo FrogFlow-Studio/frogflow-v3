@@ -36,6 +36,11 @@ function WarehouseHub() {
             <p className="text-sm text-muted">{t("warehouse.hub.stocktakeHint")}</p>
           </Card>
         </Link>
+        <Link to="/admin/warehouse/journal" className="block hover:opacity-90">
+          <Card title={t("warehouse.hub.journal")}>
+            <p className="text-sm text-muted">{t("warehouse.hub.journalHint")}</p>
+          </Card>
+        </Link>
         <Link to="/admin/warehouse/requests" className="block hover:opacity-90">
           <Card title={t("warehouse.hub.requests")}>
             <p className="text-sm text-muted">{t("warehouse.hub.requestsHint")}</p>

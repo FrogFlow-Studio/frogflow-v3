@@ -95,6 +95,7 @@ import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.
 import { Route as AdminAuthedOrdersNewRouteImport } from './routes/admin._authed.orders.new'
 import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authed.products_.$id'
 import { Route as AdminAuthedWarehouseIndexRouteImport } from './routes/admin._authed.warehouse.index'
+import { Route as AdminAuthedWarehouseJournalRouteImport } from './routes/admin._authed.warehouse.journal'
 import { Route as AdminAuthedWarehouseReceiptsRouteImport } from './routes/admin._authed.warehouse.receipts'
 import { Route as AdminAuthedWarehouseRequestsRouteImport } from './routes/admin._authed.warehouse.requests'
 import { Route as AdminAuthedWarehouseStaleRouteImport } from './routes/admin._authed.warehouse.stale'
@@ -547,6 +548,12 @@ const AdminAuthedWarehouseIndexRoute =
     path: '/warehouse/',
     getParentRoute: () => AdminAuthedRoute,
   } as any)
+const AdminAuthedWarehouseJournalRoute =
+  AdminAuthedWarehouseJournalRouteImport.update({
+    id: '/warehouse/journal',
+    path: '/warehouse/journal',
+    getParentRoute: () => AdminAuthedRoute,
+  } as any)
 const AdminAuthedWarehouseReceiptsRoute =
   AdminAuthedWarehouseReceiptsRouteImport.update({
     id: '/warehouse/receipts',
@@ -746,6 +753,7 @@ export interface FileRoutesByFullPath {
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/warehouse/journal': typeof AdminAuthedWarehouseJournalRoute
   '/admin/warehouse/receipts': typeof AdminAuthedWarehouseReceiptsRoute
   '/admin/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
   '/admin/warehouse/stale': typeof AdminAuthedWarehouseStaleRoute
@@ -850,6 +858,7 @@ export interface FileRoutesByTo {
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/warehouse/journal': typeof AdminAuthedWarehouseJournalRoute
   '/admin/warehouse/receipts': typeof AdminAuthedWarehouseReceiptsRoute
   '/admin/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
   '/admin/warehouse/stale': typeof AdminAuthedWarehouseStaleRoute
@@ -960,6 +969,7 @@ export interface FileRoutesById {
   '/admin/_authed/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/_authed/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/_authed/products_/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/_authed/warehouse/journal': typeof AdminAuthedWarehouseJournalRoute
   '/admin/_authed/warehouse/receipts': typeof AdminAuthedWarehouseReceiptsRoute
   '/admin/_authed/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
   '/admin/_authed/warehouse/stale': typeof AdminAuthedWarehouseStaleRoute
@@ -1069,6 +1079,7 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/admin/orders/new'
     | '/admin/products/$id'
+    | '/admin/warehouse/journal'
     | '/admin/warehouse/receipts'
     | '/admin/warehouse/requests'
     | '/admin/warehouse/stale'
@@ -1173,6 +1184,7 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/admin/orders/new'
     | '/admin/products/$id'
+    | '/admin/warehouse/journal'
     | '/admin/warehouse/receipts'
     | '/admin/warehouse/requests'
     | '/admin/warehouse/stale'
@@ -1282,6 +1294,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/orders/$id'
     | '/admin/_authed/orders/new'
     | '/admin/_authed/products_/$id'
+    | '/admin/_authed/warehouse/journal'
     | '/admin/_authed/warehouse/receipts'
     | '/admin/_authed/warehouse/requests'
     | '/admin/_authed/warehouse/stale'
@@ -1947,6 +1960,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedWarehouseIndexRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/_authed/warehouse/journal': {
+      id: '/admin/_authed/warehouse/journal'
+      path: '/warehouse/journal'
+      fullPath: '/admin/warehouse/journal'
+      preLoaderRoute: typeof AdminAuthedWarehouseJournalRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/admin/_authed/warehouse/receipts': {
       id: '/admin/_authed/warehouse/receipts'
       path: '/warehouse/receipts'
@@ -2142,6 +2162,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedIndexRoute: typeof AdminAuthedIndexRoute
   AdminAuthedCustomersKeyRoute: typeof AdminAuthedCustomersKeyRoute
   AdminAuthedProductsIdRoute: typeof AdminAuthedProductsIdRoute
+  AdminAuthedWarehouseJournalRoute: typeof AdminAuthedWarehouseJournalRoute
   AdminAuthedWarehouseReceiptsRoute: typeof AdminAuthedWarehouseReceiptsRoute
   AdminAuthedWarehouseRequestsRoute: typeof AdminAuthedWarehouseRequestsRoute
   AdminAuthedWarehouseStaleRoute: typeof AdminAuthedWarehouseStaleRoute
@@ -2183,6 +2204,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedIndexRoute: AdminAuthedIndexRoute,
   AdminAuthedCustomersKeyRoute: AdminAuthedCustomersKeyRoute,
   AdminAuthedProductsIdRoute: AdminAuthedProductsIdRoute,
+  AdminAuthedWarehouseJournalRoute: AdminAuthedWarehouseJournalRoute,
   AdminAuthedWarehouseReceiptsRoute: AdminAuthedWarehouseReceiptsRoute,
   AdminAuthedWarehouseRequestsRoute: AdminAuthedWarehouseRequestsRoute,
   AdminAuthedWarehouseStaleRoute: AdminAuthedWarehouseStaleRoute,

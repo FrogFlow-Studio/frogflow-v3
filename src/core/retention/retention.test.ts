@@ -184,6 +184,26 @@ describe("ретеншн zernio_logs", () => {
     expect(db.tables.zernio_logs.map((r) => r.id)).toEqual(["entry", "notice"]);
   });
 
+  it("склад: приход, списание и инвентаризация не удаляются, остальные движения — удаляются", async () => {
+    const row = (id: string, type: string) => ({
+      id,
+      bot_id: "b",
+      event_id: `stock:${id}`,
+      event_type: type,
+      status: "event",
+      created_at: daysAgo(400),
+    });
+    db.tables.zernio_logs = [
+      row("receipt", "stock.receipt"),
+      row("writeoff", "stock.writeoff"),
+      row("stocktake", "stock.stocktake"),
+      row("order", "stock.order"),
+      row("edit", "stock.edit"),
+    ];
+    expect(await pruneZernioLogs(NOW)).toEqual({ deleted: 2, done: true });
+    expect(db.tables.zernio_logs.map((r) => r.id)).toEqual(["receipt", "writeoff", "stocktake"]);
+  });
+
   it("Д3: учёт диалога (статус, ответственный) не удаляется по возрасту строки", async () => {
     db.tables.zernio_logs = [
       {

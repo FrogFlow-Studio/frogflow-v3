@@ -19,12 +19,23 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
             params.kind === "payments" ||
             params.kind === "analytics" ||
             params.kind === "analytics-products" ||
-            params.kind === "profit";
+            params.kind === "profit" ||
+            params.kind === "stock-journal";
           const fin = finance ? await requireAdminFinance() : null;
           // «Оплаты» — без контактов покупателей: любая роль раздела финансов.
           const noModule = params.kind === "analytics" || params.kind === "analytics-products";
           // Аналитика — как её страница: любая роль раздела финансов, без модуля и без контактов.
-          if (fin && params.kind === "profit") {
+          if (fin && params.kind === "stock-journal") {
+            // Журнал склада — как «Прибыль»: любая роль раздела финансов, без контактов, нужен модуль warehouse.
+            if (!fin.ctx.tenant.modules.warehouse)
+              throw new (await import("@/core/i18n/user-error")).UserError(
+                "err.auth.moduleOff",
+                "Модуль «{module}» не подключён к вашему тарифу.",
+                { module: "warehouse" },
+              );
+            ctx = fin.ctx;
+            noContacts = true;
+          } else if (fin && params.kind === "profit") {
             // Прибыль — как «Аналитика» (любая роль раздела финансов, без контактов), но нужен модуль profit.
             if (!fin.ctx.tenant.modules.profit)
               throw new (await import("@/core/i18n/user-error")).UserError(
@@ -113,6 +124,21 @@ export const Route = createFileRoute("/api/admin/export/$kind")({
           result = profitCsv(await profitReport(ctx, days));
           const today = new Date().toISOString().slice(0, 10);
           name = `profit-${days}d-${today}.csv`;
+        } else if (params.kind === "stock-journal") {
+          const { journalCsv, parseJournalFilter } = await import("@/core/stock/journal");
+          const q = url.searchParams;
+          result = await journalCsv(
+            ctx,
+            parseJournalFilter({
+              productId: q.get("productId"),
+              supplierId: q.get("supplierId"),
+              reason: q.get("reason"),
+              from: q.get("from"),
+              to: q.get("to"),
+            }),
+          );
+          const today = new Date().toISOString().slice(0, 10);
+          name = `stock-journal-${today}.csv`;
         } else if (params.kind === "students") {
           const id = url.searchParams.get("productId");
           const { studentsCsv } = await import("@/app/admin/students-export.server");

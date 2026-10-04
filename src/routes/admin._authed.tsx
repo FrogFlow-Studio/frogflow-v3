@@ -68,6 +68,10 @@ function Layout() {
           {shop.modules.dashboard && <NavLink to="/admin/analytics">{t("nav.analytics")}</NavLink>}
           {shop.modules.profit && <NavLink to="/admin/cost">{t("cost.nav")}</NavLink>}
           <NavLink to="/admin/billing">{t("billing.nav")}</NavLink>
+          {/* Бухгалтеру склад закрыт, кроме журнала (только чтение); остальным журнал открывается из «Склада». */}
+          {shop.role === "accountant" && shop.modules.warehouse && (
+            <NavLink to="/admin/warehouse/journal">{t("journal.nav")}</NavLink>
+          )}
           {/* Бухгалтеру — только обзор, заказы и аналитика (сервер закрывает остальное сам). */}
           {shop.role !== "accountant" && (
             <>

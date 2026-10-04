@@ -24,6 +24,8 @@ const OPEN_TO_ACCOUNTANT = new Set([
   "cost.functions.ts:productCostFn",
   "cost.functions.ts:saveCostFn",
   "cost.functions.ts:profitFn",
+  "warehouse.functions.ts:journalFn",
+  "warehouse.functions.ts:journalProductsFn",
 ]);
 /** Без сессии продавца по смыслу: вход и выход. */
 const PUBLIC = new Set([
