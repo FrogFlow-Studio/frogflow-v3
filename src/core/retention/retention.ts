@@ -83,7 +83,7 @@ async function deleteIds(table: string, ids: string[]): Promise<void> {
       .from(table as "bot_events")
       .delete()
       .in("id", ids.slice(i, i + DELETE_CHUNK));
-    if (error) throw new Error(`${table}: ${error.message}`);
+    if (error) throw serverFailure(`${table}: ${error.message}`);
   }
 }
 
@@ -97,7 +97,7 @@ async function pruneByAt(
   let q = serviceDb().from(table).select("id").lt("at", cutoff(days, now));
   if (scope) q = q.in("bot_id", [...scope]);
   const { data, error } = await q.order("at", { ascending: true }).limit(BATCH);
-  if (error) throw new Error(`${table}: ${error.message}`);
+  if (error) throw serverFailure(`${table}: ${error.message}`);
   const ids = (data ?? []).map((r) => r.id);
   await deleteIds(table, ids);
   return { deleted: ids.length, done: ids.length < BATCH };
@@ -113,7 +113,7 @@ export async function pruneZernioLogs(now = Date.now(), scope?: Scope): Promise<
     .lt("created_at", cutoff(RETENTION.zernioLogsDays, now));
   if (scope) q1 = q1.in("bot_id", [...scope]);
   const { data: settled, error } = await q1.order("created_at", { ascending: true }).limit(BATCH);
-  if (error) throw new Error(`zernio_logs: ${error.message}`);
+  if (error) throw serverFailure(`zernio_logs: ${error.message}`);
   const ids = (settled ?? []).map((r) => r.id);
   if (ids.length < BATCH) {
     let q2 = db
@@ -150,7 +150,7 @@ export async function pruneZernioLogs(now = Date.now(), scope?: Scope): Promise<
     const { data: stale, error: e2 } = await q2
       .order("created_at", { ascending: true })
       .limit(BATCH - ids.length);
-    if (e2) throw new Error(`zernio_logs: ${e2.message}`);
+    if (e2) throw serverFailure(`zernio_logs: ${e2.message}`);
     ids.push(...(stale ?? []).map((r) => r.id));
   }
   await deleteIds("zernio_logs", ids);
@@ -168,7 +168,7 @@ export async function pruneManagerChatMessages(
     .lt("created_at", cutoff(RETENTION.managerChatDays, now));
   if (scope) q = q.in("bot_id", [...scope]);
   const { data, error } = await q.order("created_at", { ascending: true }).limit(BATCH);
-  if (error) throw new Error(`manager_chat_messages: ${error.message}`);
+  if (error) throw serverFailure(`manager_chat_messages: ${error.message}`);
   const ids = (data ?? []).map((r) => r.id);
   await deleteIds("manager_chat_messages", ids);
   return { deleted: ids.length, done: ids.length < BATCH };
@@ -251,7 +251,7 @@ export async function pruneSignupChallenges(now = Date.now()): Promise<PruneResu
     .like("key", `${SIGNUP_CHALLENGE_PREFIX}%`)
     .lt("value", new Date(now).toISOString())
     .limit(BATCH);
-  if (error) throw new Error(`operator_settings: ${error.message}`);
+  if (error) throw serverFailure(`operator_settings: ${error.message}`);
   const rows = data ?? [];
   const keys = rows
     .filter((r) => r.key.startsWith(SIGNUP_CHALLENGE_PREFIX))
@@ -265,7 +265,7 @@ export async function pruneSignupChallenges(now = Date.now()): Promise<PruneResu
       .from("operator_settings")
       .delete()
       .in("key", keys.slice(i, i + DELETE_CHUNK));
-    if (e2) throw new Error(`operator_settings: ${e2.message}`);
+    if (e2) throw serverFailure(`operator_settings: ${e2.message}`);
   }
   // Полная порция, из которой ничего не удалено (все строки отсеяны сверкой),
   // — тоже конец: следующий круг вернул бы те же строки, и уборка крутилась бы
@@ -292,7 +292,7 @@ export async function pruneReceiptChecks(now = Date.now(), scope?: Scope): Promi
     .lt("updated_at", cutoff(RETENTION.receiptChecksDays, now));
   if (scope) q = q.in("bot_id", [...scope]);
   const { data, error } = await q.order("updated_at", { ascending: true }).limit(BATCH);
-  if (error) throw new Error(`app_settings: ${error.message}`);
+  if (error) throw serverFailure(`app_settings: ${error.message}`);
   const rows = data ?? [];
   const lastDay = cutoff(RETENTION.receiptChecksDays, now).slice(0, 10);
   const byBot = new Map<string, string[]>();
@@ -310,7 +310,7 @@ export async function pruneReceiptChecks(now = Date.now(), scope?: Scope): Promi
         .delete()
         .eq("bot_id", botId)
         .in("key", keys.slice(i, i + DELETE_CHUNK));
-      if (e2) throw new Error(`app_settings: ${e2.message}`);
+      if (e2) throw serverFailure(`app_settings: ${e2.message}`);
       deleted += Math.min(DELETE_CHUNK, keys.length - i);
     }
   // Полная порция свежих счётчиков — дальше не продвинемся, остаток в следующий раз.
@@ -334,7 +334,7 @@ export async function pruneRateLimits(now = Date.now(), scope?: Scope): Promise<
     .lt("updated_at", edge);
   if (scope) q = q.in("bot_id", [...scope]);
   const { data, error } = await q.order("updated_at", { ascending: true }).limit(BATCH);
-  if (error) throw new Error(`app_settings: ${error.message}`);
+  if (error) throw serverFailure(`app_settings: ${error.message}`);
   const rows = data ?? [];
   const edgeMs = Date.parse(edge);
   const byBot = new Map<string, string[]>();
@@ -352,7 +352,7 @@ export async function pruneRateLimits(now = Date.now(), scope?: Scope): Promise<
         .delete()
         .eq("bot_id", botId)
         .in("key", keys.slice(i, i + DELETE_CHUNK));
-      if (e2) throw new Error(`app_settings: ${e2.message}`);
+      if (e2) throw serverFailure(`app_settings: ${e2.message}`);
       deleted += Math.min(DELETE_CHUNK, keys.length - i);
     }
   return { deleted, done: rows.length < BATCH || deleted === 0 };
@@ -376,7 +376,7 @@ export async function pruneClosedLeads(now = Date.now(), scope?: Scope): Promise
     .lt("updated_at", edge);
   if (scope) q = q.in("bot_id", [...scope]);
   const { data, error } = await q.order("updated_at", { ascending: true }).limit(BATCH);
-  if (error) throw new Error(`app_settings: ${error.message}`);
+  if (error) throw serverFailure(`app_settings: ${error.message}`);
   const rows = data ?? [];
   const byBot = new Map<string, string[]>();
   for (const r of rows) {
@@ -393,7 +393,7 @@ export async function pruneClosedLeads(now = Date.now(), scope?: Scope): Promise
         .delete()
         .eq("bot_id", botId)
         .in("key", keys.slice(i, i + DELETE_CHUNK));
-      if (e2) throw new Error(`app_settings: ${e2.message}`);
+      if (e2) throw serverFailure(`app_settings: ${e2.message}`);
       deleted += Math.min(DELETE_CHUNK, keys.length - i);
     }
   return { deleted, done: rows.length < BATCH || deleted === 0 };
@@ -411,7 +411,7 @@ export async function pruneBroadcastRecipients(
     .lt("created_at", cutoff(RETENTION.broadcastRecipientsDays, now));
   if (scope) q = q.in("bot_id", [...scope]);
   const { data: old, error } = await q.limit(BATCH);
-  if (error) throw new Error(`broadcasts: ${error.message}`);
+  if (error) throw serverFailure(`broadcasts: ${error.message}`);
   if (!old?.length) return { deleted: 0, done: true };
   // Рассылки идут в адрес запроса кусками: 2000 uuid разом — это 431.
   const ids: string[] = [];
@@ -422,7 +422,7 @@ export async function pruneBroadcastRecipients(
       .select("id")
       .in("broadcast_id", oldIds.slice(i, i + IN_CHUNK))
       .limit(BATCH - ids.length);
-    if (e2) throw new Error(`broadcast_recipients: ${e2.message}`);
+    if (e2) throw serverFailure(`broadcast_recipients: ${e2.message}`);
     ids.push(...(data ?? []).map((r) => r.id));
   }
   await deleteIds("broadcast_recipients", ids);
@@ -447,7 +447,7 @@ export async function pruneCheckoutChallenges(
     .lt("updated_at", cutoff(RETENTION.checkoutChallengesDays, now));
   if (scope) q = q.in("bot_id", [...scope]);
   const { data, error } = await q.order("updated_at", { ascending: true }).limit(BATCH);
-  if (error) throw new Error(`app_settings: ${error.message}`);
+  if (error) throw serverFailure(`app_settings: ${error.message}`);
   const rows = data ?? [];
   const byBot = new Map<string, string[]>();
   for (const r of rows) {
@@ -462,7 +462,7 @@ export async function pruneCheckoutChallenges(
         .delete()
         .eq("bot_id", botId)
         .in("key", keys.slice(i, i + DELETE_CHUNK));
-      if (e2) throw new Error(`app_settings: ${e2.message}`);
+      if (e2) throw serverFailure(`app_settings: ${e2.message}`);
       deleted += Math.min(DELETE_CHUNK, keys.length - i);
     }
   return { deleted, done: rows.length < BATCH || deleted === 0 };

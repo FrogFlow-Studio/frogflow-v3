@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
+import { ServerFailure } from "@/lib/server-failure";
 
 let db: FakeDb;
 vi.mock("@/core/db/client.server", () => ({ serviceDb: () => db }));
@@ -746,7 +747,7 @@ describe("упавшее чтение перед удалением (Т3)", () =
       real.tables.manager_chat_messages = [{ id: "c1", created_at: old }];
       const before = JSON.stringify(real.tables);
       db = readsFail(real);
-      await expect(run()).rejects.toThrow();
+      await expect(run()).rejects.toBeInstanceOf(ServerFailure);
       expect(JSON.stringify(real.tables)).toBe(before);
     });
 });
