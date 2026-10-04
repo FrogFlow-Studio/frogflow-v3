@@ -7,7 +7,7 @@ import { DiagnoseCard } from "@/app/operator/client/diagnose";
 import { MigrationCard, TelegramCard } from "@/app/operator/client/telegram";
 import { PlanCard } from "@/app/operator/client/plan";
 import { ModulesCard, AdminAccessCard, AddressingCard } from "@/app/operator/client/access";
-import { ZernioCard, MetaCard } from "@/app/operator/client/channels";
+import { ZernioCard, MetaCard, ZernioInboxCard } from "@/app/operator/client/channels";
 import { ConsultantLimitsCard, SmartSearchLimitCard } from "@/app/operator/client/limits";
 import { ShopGroupCard } from "@/app/operator/client/shop-group";
 import { CommunityModCard } from "@/app/operator/client/community";
@@ -161,6 +161,7 @@ function ClientPage() {
           <AddressingCard c={c} onDone={refresh} />
           <ZernioCard c={c} onDone={refresh} />
           <WizardCard c={c} />
+          <ZernioInboxCard botId={c.id} />
           <HealthCard c={c} />
         </div>
       )}

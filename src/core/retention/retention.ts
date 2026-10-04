@@ -103,6 +103,27 @@ async function pruneByAt(
   return { deleted: ids.length, done: ids.length < BATCH };
 }
 
+/**
+ * События, не доставшиеся ни одному клиенту v2 (bot_id пуст, тип v2_unmatched):
+ * нужны оператору на неделю — разобрать, чей аккаунт не привязан.
+ */
+export async function pruneZernioUnmatched(now = Date.now()): Promise<PruneResult> {
+  const db = serviceDb();
+  const { data, error } = await db
+    .from("zernio_logs")
+    .select("id")
+    .is("bot_id", null)
+    .eq("event_type", "v2_unmatched")
+    .lt("created_at", cutoff(7, now))
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(BATCH);
+  if (error) throw serverFailure(`zernio_logs: ${error.message}`);
+  const ids = (data ?? []).map((r) => r.id);
+  await deleteIds("zernio_logs", ids);
+  return { deleted: ids.length, done: ids.length < BATCH };
+}
+
 export async function pruneZernioLogs(now = Date.now(), scope?: Scope): Promise<PruneResult> {
   if (scope && scope.length === 0) return none;
   const db = serviceDb();
@@ -488,6 +509,8 @@ export async function runRetention(
   const parts: Scope[] = all.length > IN_CHUNK ? chunksOf(all, IN_CHUNK) : [all];
   const jobs: Record<string, (n: number, s: Scope) => Promise<PruneResult>> = {
     zernio_logs: (n, s) => pruneZernioLogs(n, s),
+    // Без клиента (bot_id пуст) — только строки v2_unmatched, своё событие v2.
+    zernio_unmatched: (n) => pruneZernioUnmatched(n),
     market_reports_closed: (n, s) => pruneClosedMarketReports(n, s),
     // Платформенная таблица без bot_id: границы клиентов к ней не относятся.
     market_events: (n) => pruneMarketEvents(n),
@@ -508,7 +531,12 @@ export async function runRetention(
       (await import("@/core/delivery/watermark.server")).pruneStampedCopies(s ?? [], n),
   };
   // Без границ клиентов — один проход на всех, а не по куску.
-  const platformWide = new Set(["operator_login_attempts", "signup_challenges", "market_events"]);
+  const platformWide = new Set([
+    "operator_login_attempts",
+    "signup_challenges",
+    "market_events",
+    "zernio_unmatched",
+  ]);
   const out: Record<string, PruneResult | { error: string }> = {};
   const startedAt = Date.now();
   for (const [name, job] of Object.entries(jobs)) {

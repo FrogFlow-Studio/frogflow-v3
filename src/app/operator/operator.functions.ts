@@ -126,6 +126,20 @@ export const getClientFn = createServerFn({ method: "GET" })
     return { client, events, webhook, migration, consultant, smartSearch, ai };
   });
 
+/** Последние входящие Instagram/WhatsApp клиента с итогом обработки. */
+export const clientZernioInboxFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await import("./zernio-inbox.server")).clientZernioInbox(data.botId);
+  });
+
+/** События, дошедшие до v2 без клиента (аккаунт не привязан или клиент на v1). */
+export const unmatchedZernioFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await import("./zernio-inbox.server")).unmatchedZernioEvents();
+});
+
 export const updateClientMetaFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

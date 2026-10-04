@@ -20,6 +20,10 @@ const ALLOWED: Record<string, string[]> = {
   "src/app/admin/automsg-preview.server.ts": [
     "образец для предпросмотра: первые три товара каталога, а не весь список",
   ],
+  "src/app/operator/zernio-inbox.server.ts": [
+    "последние события клиента для оператора: ограничены параметром limit, это обзор",
+    "последние события без клиента для оператора: ограничены параметром limit, это обзор",
+  ],
   "src/app/admin/audit.server.ts": [`${SHOWN} (журнал действий команды)`],
   "src/app/admin/admin.functions.ts": [`${SHOWN} (подбор товара в счёт: поиск, INVOICE_PAGE)`],
   "src/app/operator/ai-topup.server.ts": [`${SHOWN} (открытые счета пополнения ИИ — их единицы)`],
@@ -50,7 +54,7 @@ const ALLOWED: Record<string, string[]> = {
   "src/core/consultant/engine.server.ts": [
     "потолок каталога в подсказке модели: больше не помещается в запрос",
   ],
-  "src/core/retention/retention.ts": Array<string>(13).fill(
+  "src/core/retention/retention.ts": Array<string>(14).fill(
     "уборка пачками BATCH по порядку времени: остальное в следующий запуск",
   ),
   "src/core/orders/admin.ts": [
