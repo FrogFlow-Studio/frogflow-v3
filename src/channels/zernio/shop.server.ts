@@ -1400,9 +1400,12 @@ async function sendProductCard(s: Shop, p: Product, force: boolean) {
     });
   const leadDays = shownLeadDays(p);
   if (leadDays) text += `\n${plain(s.m.leadTimeLabel(leadDays))}`;
-  const rating = s.ctx.tenant.modules.review_request
-    ? formatRatingSummary(p.rating_avg, p.rating_count ?? 0)
-    : null;
+  // Рейтинг — только одобренные отзывы, как на витрине (колонки products.rating_* считают все).
+  const approved =
+    s.ctx.tenant.modules.review_request && p.rating_count
+      ? await (await import("@/core/reviews/photos.server")).approvedRating(s.ctx, p.id)
+      : null;
+  const rating = approved ? formatRatingSummary(approved.avg, approved.count) : null;
   if (rating) text += `\n${plain(rating)}`;
   if (preorder) text += `\n${plain(s.m.preorderLabel(preorder.from))}`;
   else if (outOfStock) text += `\n${plain(s.m.outOfStockLabel)}`;

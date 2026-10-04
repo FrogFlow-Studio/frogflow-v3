@@ -73,6 +73,21 @@ function botFor(
       ]),
     },
   ];
+  // Семь одобренных отзывов на P1: 4.6 (7). Восьмой скрыт продавцом и в рейтинг не идёт.
+  const stars = [5, 5, 5, 5, 4, 4, 4, 1];
+  db.tables.product_reviews = stars.map((rating, i) => ({
+    id: `r-${i}`,
+    product_id: P1,
+    telegram_id: 100 + i,
+    rating,
+  }));
+  db.tables.app_settings.push(
+    ...stars.map((_, i) => ({
+      bot_id: "bot-1",
+      key: `review_meta:r-${i}`,
+      value: JSON.stringify({ status: i === 7 ? "hidden" : "approved", photos: [] }),
+    })),
+  );
   db.tables.products = [
     product(P1, {
       product_images: [
@@ -81,8 +96,9 @@ function botFor(
       ],
       fulfillment_kind: "physical",
       lead_time_days: 3,
-      rating_avg: 4.6,
-      rating_count: 7,
+      // Колонки считают все отзывы, включая скрытый: бот обязан показать 4.6 (7), как витрина.
+      rating_avg: 4.1,
+      rating_count: 8,
     }),
     product(P2, {
       description: null,

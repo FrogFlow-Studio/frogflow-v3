@@ -113,15 +113,20 @@ export async function upsellFor(
         return Array.isArray(c) ? (c as string[]) : [];
       }),
     );
-    const same = rows
-      .filter(
-        (r) =>
-          ok(r) &&
-          !picked.some((p) => p.id === r.id) &&
-          Array.isArray(r.category_ids) &&
-          (r.category_ids as string[]).some((c) => cats.has(c)),
-      )
-      .sort((a, b) => (b.rating_count ?? 0) - (a.rating_count ?? 0));
+    const candidates = rows.filter(
+      (r) =>
+        ok(r) &&
+        !picked.some((p) => p.id === r.id) &&
+        Array.isArray(r.category_ids) &&
+        (r.category_ids as string[]).some((c) => cats.has(c)),
+    );
+    // Популярность — по одобренным отзывам, как на витрине: скрытый спам место не поднимает.
+    const rated = candidates.filter((r) => r.rating_count).map((r) => r.id);
+    const approved = rated.length
+      ? await (await import("@/core/reviews/photos.server")).approvedRatings(ctx, rated)
+      : new Map<string, { avg: number; count: number }>();
+    const popularity = (r: Row) => approved.get(r.id)?.count ?? 0;
+    const same = candidates.sort((a, b) => popularity(b) - popularity(a));
     picked.push(...same);
   }
   return picked.slice(0, limit).map((r) => ({

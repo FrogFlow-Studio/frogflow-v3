@@ -67,7 +67,7 @@ function shopFor(product: Record<string, unknown>, modules: Record<string, boole
       } as unknown as ParsedZernioMessage,
       transport,
     );
-  return { open, sent };
+  return { open, sent, db };
 }
 
 const payloads = (b: Array<{ payload?: string }>) => b.map((x) => x.payload ?? "");
@@ -103,5 +103,31 @@ describe("Direct: карточка товара без остатка", () => {
     const inStock = shopFor({ stock_quantity: 5 }, { stock: true });
     await inStock.open();
     expect(payloads(inStock.sent.at(-1)!.buttons)).toContain(`BUY:${P}`);
+  });
+});
+
+describe("Direct: рейтинг на карточке товара", () => {
+  it("считает только одобренные отзывы: скрытый «1 ⭐» в рейтинг не идёт", async () => {
+    // Колонки products.rating_* считают все отзывы подряд: 4 оценки, среднее 3.5.
+    const out = shopFor(
+      { stock_quantity: 5, rating_avg: 3.5, rating_count: 4 },
+      { review_request: true },
+    );
+    const stars = [5, 5, 3, 1];
+    out.db.tables.product_reviews = stars.map((rating, i) => ({
+      id: `r-${i}`,
+      product_id: P,
+      telegram_id: 10 + i,
+      rating,
+    }));
+    out.db.tables.app_settings = stars.map((_, i) => ({
+      bot_id: "bot-1",
+      key: `review_meta:r-${i}`,
+      value: JSON.stringify({ status: i === 3 ? "hidden" : "approved", photos: [] }),
+    }));
+    await out.open();
+    const text = out.sent.at(-1)!.text;
+    expect(text).toContain("4.3 (3)");
+    expect(text).not.toContain("3.5");
   });
 });

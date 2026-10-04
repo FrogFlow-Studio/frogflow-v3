@@ -3,6 +3,7 @@ import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   fromRules,
+  upsellFor,
   parseRules,
   pruneUpsellRules,
   setUpsellFor,
@@ -135,5 +136,37 @@ describe("апсейл — правила, которые не работают"
     }) as unknown as typeof db.from;
     await setUpsellFor(ctx, A, [B, D]);
     expect(saved(db)).toEqual({ [A]: [B, D], [D]: [B] });
+  });
+});
+
+describe("апсейл — запасной подбор по одобренным отзывам", () => {
+  it("товар со скрытыми отзывами не обгоняет товар с одобренными, хотя колонка rating_count больше", async () => {
+    const { ctx, db } = setup({});
+    const E = "a0000000-0000-4000-8000-00000000000e";
+    db.tables.products = [
+      { id: A, name: "Торт", is_active: true, category_ids: ["c"], rating_count: 0 },
+      // Спам: пять скрытых оценок, колонка считает их все.
+      { id: B, name: "Спам", is_active: true, category_ids: ["c"], rating_count: 5 },
+      { id: D, name: "Свеча", is_active: true, category_ids: ["c"], rating_count: 2 },
+      { id: E, name: "Без отзывов", is_active: true, category_ids: ["c"], rating_count: 0 },
+    ];
+    const reviews = [
+      ...[0, 1, 2, 3, 4].map((i) => ({ id: `s${i}`, product_id: B, rating: 1, status: "hidden" })),
+      ...[0, 1].map((i) => ({ id: `g${i}`, product_id: D, rating: 5, status: "approved" })),
+    ];
+    db.tables.product_reviews = reviews.map(({ id, product_id, rating }) => ({
+      id,
+      product_id,
+      rating,
+      telegram_id: 1,
+    }));
+    for (const r of reviews)
+      db.tables.app_settings!.push({
+        bot_id: "bot",
+        key: `review_meta:${r.id}`,
+        value: JSON.stringify({ status: r.status, photos: [] }),
+      });
+    const out = await upsellFor(ctx, [A], 3);
+    expect(out[0]!.id).toBe(D);
   });
 });

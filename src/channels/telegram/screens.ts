@@ -137,9 +137,12 @@ export async function productCard(
   }
   const leadDays = shownLeadDays(p);
   if (leadDays) caption += `\n${m.leadTimeLabel(leadDays)}`;
-  const rating = t.modules.review_request
-    ? formatRatingSummary(p.rating_avg, p.rating_count ?? 0)
-    : null;
+  // Рейтинг — только одобренные отзывы, как на витрине (колонки products.rating_* считают все).
+  const approved =
+    t.modules.review_request && p.rating_count
+      ? await (await import("@/core/reviews/photos.server")).approvedRating(ctx, p.id)
+      : null;
+  const rating = approved ? formatRatingSummary(approved.avg, approved.count) : null;
   if (rating) caption += `\n${rating}`;
   if (preorder) caption += `\n${m.preorderLabel(preorder.from)}`;
   else if (outOfStock) caption += `\n${m.outOfStockLabel}`;
