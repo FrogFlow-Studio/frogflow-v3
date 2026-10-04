@@ -106,7 +106,17 @@ export const storeProductFn = createServerFn({ method: "GET" })
           product,
           Boolean(ctx.tenant.modules.waitlist),
         );
-    return { product, related, preview, course, waitlistUrl };
+    // «Пожаловаться на товар» только у магазина, который показывается на площадке:
+    // жалобу принимает только площадка (core/marketplace/report.server).
+    const { shownOnMarketplace } = await import("@/core/marketplace/consent");
+    return {
+      product,
+      related,
+      preview,
+      course,
+      waitlistUrl,
+      onMarket: shownOnMarketplace(ctx.tenant),
+    };
   });
 
 const items = z

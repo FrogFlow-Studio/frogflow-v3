@@ -21,13 +21,12 @@ describe("правила площадки: тексты", () => {
     }
   });
 
-  it("не обещает того, чего нет: ни кнопки жалобы, ни комиссии, ни оплаты на площадке", () => {
+  it("не обещает того, чего нет: ни комиссии, ни оплаты на площадке", () => {
     for (const l of SUPPORTED_LOCALES) {
       const all = RULES_KEYS.map((k) => rulesT(l)(k))
         .join(" ")
         .toLowerCase();
       expect(all).not.toMatch(/комисси|commission|komissiya|комиссия/);
-      expect(all).not.toMatch(/пожаловат|report button/);
     }
   });
 });

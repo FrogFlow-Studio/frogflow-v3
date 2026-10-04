@@ -28,7 +28,7 @@ const ru = {
     "Заказ оформляется и оплачивается на витрине самого магазина, по его правилам и его оферте. Площадка не принимает заказы и не проводит платежи. Эти правила не заменяют оферту магазина.",
   "s6.title": "Если что-то не так",
   "s6.text":
-    "По товару или заказу напишите магазину: на витрине есть «Написать магазину». Если магазин нарушает правила, напишите в поддержку FrogFlow, контакты на главной странице.",
+    "По товару или заказу напишите магазину: на витрине есть «Написать магазину». Если магазин или товар нарушает правила, нажмите «Пожаловаться» в карточке магазина в каталоге или «Пожаловаться на товар» на странице товара: жалобу видит оператор FrogFlow, магазин её не видит. На один магазин или товар с одного адреса и устройства принимается одна жалоба в сутки. Можно также написать в поддержку FrogFlow, контакты на главной странице.",
   "link.market": "К каталогу магазинов",
   "link.home": "На главную",
 } as const;
@@ -58,7 +58,7 @@ const kk: Record<Key, string> = {
     "Тапсырыс дүкеннің өз витринасында, оның ережелері мен офертасы бойынша рәсімделеді және төленеді. Алаң тапсырыс қабылдамайды және төлем жүргізбейді. Бұл ережелер дүкен офертасын алмастырмайды.",
   "s6.title": "Бірдеңе дұрыс болмаса",
   "s6.text":
-    "Тауар немесе тапсырыс бойынша дүкенге жазыңыз: витринада «Дүкенге жазу» бар. Дүкен ережелерді бұзса, FrogFlow қолдауына жазыңыз, байланыстар басты бетте.",
+    "Тауар немесе тапсырыс бойынша дүкенге жазыңыз: витринада «Дүкенге жазу» бар. Дүкен немесе тауар ережелерді бұзса, каталогтағы дүкен карточкасында «Шағымдану» немесе тауар бетінде «Тауар туралы шағымдану» батырмасын басыңыз: шағымды FrogFlow операторы көреді, дүкен көрмейді. Бір дүкенге немесе тауарға бір мекенжайдан және құрылғыдан тәулігіне бір шағым қабылданады. FrogFlow қолдауына да жазуға болады, байланыстар басты бетте.",
   "link.market": "Дүкендер каталогына",
   "link.home": "Басты бетке",
 };
@@ -86,7 +86,7 @@ const en: Record<Key, string> = {
     "An order is placed and paid on the shop’s own storefront, under its rules and its offer. The marketplace does not take orders or process payments. These rules do not replace the shop’s offer.",
   "s6.title": "If something is wrong",
   "s6.text":
-    "For a product or an order, write to the shop: the storefront has “Message the shop”. If a shop breaks the rules, write to FrogFlow support; the contacts are on the home page.",
+    "For a product or an order, write to the shop: the storefront has “Message the shop”. If a shop or a product breaks the rules, press “Report” on the shop card in the catalogue or “Report this product” on the product page: the FrogFlow operator sees the report, the shop does not. One report per shop or product from one address and device is accepted per day. You can also write to FrogFlow support; the contacts are on the home page.",
   "link.market": "Back to the shop catalogue",
   "link.home": "Home",
 };
@@ -114,7 +114,7 @@ const uz: Record<Key, string> = {
     "Buyurtma do‘konning o‘z vitrinasida, uning qoidalari va ofertasi bo‘yicha rasmiylashtiriladi va to‘lanadi. Maydon buyurtma qabul qilmaydi va to‘lovlarni o‘tkazmaydi. Bu qoidalar do‘kon ofertasini almashtirmaydi.",
   "s6.title": "Biror narsa noto‘g‘ri bo‘lsa",
   "s6.text":
-    "Mahsulot yoki buyurtma bo‘yicha do‘konga yozing: vitrinada «Do‘konga yozish» bor. Do‘kon qoidalarni buzsa, FrogFlow yordamiga yozing, aloqa ma’lumotlari bosh sahifada.",
+    "Mahsulot yoki buyurtma bo‘yicha do‘konga yozing: vitrinada «Do‘konga yozish» bor. Do‘kon yoki mahsulot qoidalarni buzsa, katalogdagi do‘kon kartochkasida «Shikoyat qilish» yoki mahsulot sahifasida «Mahsulot ustidan shikoyat qilish» tugmasini bosing: shikoyatni FrogFlow operatori ko‘radi, do‘kon ko‘rmaydi. Bitta do‘kon yoki mahsulotga bitta manzil va qurilmadan sutkada bitta shikoyat qabul qilinadi. FrogFlow yordamiga ham yozish mumkin, aloqa ma’lumotlari bosh sahifada.",
   "link.market": "Do‘konlar katalogiga",
   "link.home": "Bosh sahifaga",
 };

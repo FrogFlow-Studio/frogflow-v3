@@ -85,7 +85,7 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
 });
 
 function ProductPage() {
-  const { product: p, related, preview, course, waitlistUrl } = Route.useLoaderData();
+  const { product: p, related, preview, course, waitlistUrl, onMarket } = Route.useLoaderData();
   const { slug } = Route.useParams();
   const shop = useLoaderData({ from: "/s/$slug" });
   useRememberViewed(slug, p.id);
@@ -455,6 +455,17 @@ function ProductPage() {
             ))}
           </div>
         </section>
+      )}
+      {onMarket && (
+        <p className="mt-6 text-xs">
+          <Link
+            to="/market/report"
+            search={{ shop: slug, product: p.id, lang: locale }}
+            className="text-muted underline"
+          >
+            {t("product.report")}
+          </Link>
+        </p>
       )}
       <ProductReviews slug={slug} productId={p.id} />
       {related.length > 0 && (

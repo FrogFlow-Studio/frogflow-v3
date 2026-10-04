@@ -8,7 +8,7 @@ import type { ReportInput } from "./report";
 let db: FakeDb;
 vi.mock("@/core/db/client.server", () => ({ serviceDb: () => db }));
 vi.mock("@/core/tenant/resolve.server", () => ({
-  resolveTenant: async () => null,
+  resolveTenant: async (l: { value: string }) => SHOPS[l.value] ?? null,
   tenantContext: () => ({ db }),
 }));
 
@@ -200,6 +200,42 @@ describe("жалобы оператору", () => {
   it("не удалось прочитать жалобы — ошибка, а не «жалоб нет»", async () => {
     db = withBrokenReads(db, ["zernio_logs"]);
     await expect(listOpenReports()).rejects.toThrow(/не прочитаны/);
+  });
+});
+
+describe("жалоба на товар: только у магазина, который видно на площадке (Ш1)", () => {
+  // Без подмены `shop`: проверяется настоящий путь — справочник арендаторов и состояние площадки.
+  const real = { now: () => NOW };
+  it("товар видимого магазина — принимается", async () => {
+    expect(await submitReport(input({ productId: PRODUCT }), IP1, null, real)).toEqual({
+      status: "sent",
+    });
+    expect(reports()[0]!.payload).toMatchObject({ product_id: PRODUCT, product: "Торт" });
+  });
+
+  it("скрытый оператором, ждущий одобрения и магазин прежней платформы — отказ без записи", async () => {
+    SHOPS.a = tenant("a", { hidden: true });
+    SHOPS.b = tenant("b", { approved: false });
+    SHOPS.c = {
+      ...tenant("c"),
+      settings: settingsFromJson({ slug: "c", marketplace: { listed: true, approved: true } }),
+    } as Tenant;
+    db.tables.products!.push({
+      id: "d2222222-7944-441b-8f71-503184fc0f1f",
+      bot_id: "c",
+      name: "Х",
+    });
+    for (const [slug, productId] of [
+      ["a", PRODUCT],
+      ["b", "c1111111-7944-441b-8f71-503184fc0f1f"],
+      ["c", "d2222222-7944-441b-8f71-503184fc0f1f"],
+    ] as const) {
+      expect(await submitReport(input({ slug, productId }), IP1, null, real)).toEqual({
+        status: "refused",
+        reason: "unknown",
+      });
+    }
+    expect(reports()).toHaveLength(0);
   });
 });
 
