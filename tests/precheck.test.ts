@@ -55,7 +55,15 @@ describe("npm run precheck", () => {
   });
 
   it("всегда гонит src/lib и tests/db-columns.test.ts, даже когда изменений нет", () => {
-    expect(ALWAYS_TESTS).toEqual(["src/lib", "tests/db-columns.test.ts", "tests/dialogs"]);
+    expect(ALWAYS_TESTS).toEqual([
+      "src/lib",
+      "tests/db-columns.test.ts",
+      "tests/dialogs",
+      "src/app/admin/audit-labels.test.ts",
+      "src/app/admin/accountant-access.test.ts",
+      "src/lib/cron-route.test.ts",
+      "src/app/i18n",
+    ]);
     const list = steps(plan([]));
     expect(list.map((s) => s.name)).toEqual(["typecheck", "tests (src/lib, db-columns)"]);
     expect(list[1]!.cmd).toEqual(expect.arrayContaining(ALWAYS_TESTS));

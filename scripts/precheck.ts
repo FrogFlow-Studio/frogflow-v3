@@ -6,7 +6,7 @@
  *
  * Шаги: prettier --write и eslint по изменённым файлам, tsc --noEmit, vitest по
  * тестам, которых коснулись изменения (`vitest related`), плюс всегда `src/lib` и
- * `tests/db-columns.test.ts`. В конце одна строка: «готово к PR» или что упало.
+ * `tests/db-columns.test.ts`, `tests/dialogs` и сканирующие тесты (подписи аудита, роли, кроны, переводы). В конце одна строка: «готово к PR» или что упало.
  * tests/integration и e2e сюда не входят никогда. Полный `verify` и сборку гонит
  * Контрольный в конце партии.
  */
@@ -29,7 +29,17 @@ export interface Plan {
 }
 
 /** Что всегда прогоняется целиком: замки от возврата PR (CLAUDE.md, «Перед PR»). */
-export const ALWAYS_TESTS = ["src/lib", "tests/db-columns.test.ts", "tests/dialogs"];
+export const ALWAYS_TESTS = [
+  "src/lib",
+  "tests/db-columns.test.ts",
+  "tests/dialogs",
+  // Сканирующие тесты: новая функция админки без подписи аудита или роли, новый крон вне JOBS,
+  // новая строка без перевода. Без них master краснел в 18-й (около 2,5 с к прогону).
+  "src/app/admin/audit-labels.test.ts",
+  "src/app/admin/accountant-access.test.ts",
+  "src/lib/cron-route.test.ts",
+  "src/app/i18n",
+];
 
 const FORMATTED = /\.(ts|tsx|js|mjs|cjs|json|md|css|yml|yaml)$/;
 const CODE = /\.(ts|tsx|js|mjs|cjs)$/;
