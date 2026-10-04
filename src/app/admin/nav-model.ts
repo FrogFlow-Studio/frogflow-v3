@@ -30,6 +30,8 @@ export type NavShop = {
   ticketsOpen: number;
   /** Непрочитанные новости платформы — бейдж «Что нового». */
   newsUnread?: number;
+  /** Непрочитанные ответы поддержки — бейдж «Поддержка». */
+  supportUnread?: number;
   homeworkWaiting: number;
   undelivered: number;
 };
@@ -180,7 +182,14 @@ export function buildAdminNav(shop: NavShop): AdminNav {
       { to: "/admin/bot-preview", label: "nav.botPreview" },
       { to: "/admin/community", label: "nav.community" },
       owner && { to: "/admin/log", label: "audit.nav" },
-      { to: "/admin/support", label: "support.nav" },
+      {
+        to: "/admin/support",
+        label: "support.nav",
+        badge:
+          (shop.supportUnread ?? 0) > 0
+            ? { value: shop.supportUnread!, tone: "accent" }
+            : undefined,
+      },
       { to: "/admin/help", label: "help.nav" },
       {
         to: "/admin/news",

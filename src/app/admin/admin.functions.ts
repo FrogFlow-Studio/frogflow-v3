@@ -338,6 +338,16 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
             );
             return 0;
           }),
+      /** Непрочитанные ответы поддержки — бейдж «Поддержка» (сбой — без бейджа, в журнал). */
+      supportUnread: accountant
+        ? 0
+        : await (await import("@/core/support/support")).supportUnread(ctx).catch((e) => {
+            console.error(
+              `[admin:${ctx.tenant.id}] бейдж поддержки`,
+              e instanceof Error ? e.message : e,
+            );
+            return 0;
+          }),
       /** Сколько исходящих не доставлено после всех повторов — бейдж в навигации. */
       undelivered: accountant
         ? 0

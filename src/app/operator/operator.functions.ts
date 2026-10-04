@@ -1473,7 +1473,15 @@ export const supportReplyFn = createServerFn({ method: "POST" })
       body: data.body,
       operator: await actor(),
     });
-    return { message: r.message };
+    // Продавцу в Telegram — один раз на сообщение; не дошло — оператор увидит причину.
+    const { notifySeller } = await import("@/app/admin/support-notify.server");
+    const notice = await notifySeller(data.botId, r.message.id, r.message.body).catch(
+      (e: unknown) => {
+        console.error("[support] оповещение продавца", e);
+        return "failed" as const;
+      },
+    );
+    return { message: r.message, notice };
   });
 
 /* ── новости платформы ────────────────────────────────────────────── */

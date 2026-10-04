@@ -19,6 +19,14 @@ export const Route = createFileRoute("/operator/_authed/support")({
   component: SupportInbox,
 });
 
+/** Что сказать оператору, если продавцу в Telegram уведомление не ушло. */
+const NOTICE_TEXT: Record<string, string | undefined> = {
+  no_telegram:
+    "Ответ сохранён, но в Telegram не ушёл: у магазина нет бота или Telegram-id для уведомлений. Продавец увидит его в админке.",
+  failed: "Ответ сохранён, но Telegram уведомление не принял. Продавец увидит его в админке.",
+  skipped: "Ответ сохранён. Магазин не на v2 или в архиве, уведомление не отправлялось.",
+};
+
 const STATUS: Record<ThreadStatus, { label: string; tone: "accent" | "warn" | "ok" }> = {
   new: { label: "новое", tone: "accent" },
   in_progress: { label: "в работе", tone: "accent" },
@@ -38,9 +46,11 @@ function SupportInbox() {
     }, 30_000);
     return () => clearInterval(id);
   }, [router]);
+  const [notice, setNotice] = useState<string | null>(null);
   const reply = useAction(async () => {
     if (!bot) return;
-    await supportReplyFn({ data: { botId: bot, body: text } });
+    const r = await supportReplyFn({ data: { botId: bot, body: text } });
+    setNotice(NOTICE_TEXT[r.notice] ?? null);
     setText("");
     await router.invalidate();
   });
@@ -144,6 +154,7 @@ function SupportInbox() {
               </div>
               <div className="border-t border-line p-4">
                 <ErrorBox error={reply.error} />
+                {notice && <p className="mb-2 text-sm text-muted">{notice}</p>}
                 <textarea
                   className="input w-full"
                   rows={3}

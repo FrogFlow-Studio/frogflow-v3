@@ -22,6 +22,11 @@ export const sendSupportMessageFn = createServerFn({ method: "POST" })
     const { sendSellerMessage } = await import("@/core/support/support");
     const who = (await g.adminActor()).replace(/^admin:/, "");
     const r = await sendSellerMessage(ctx, { body: data.body, authorName: who });
+    // Оператору — в Telegram, один раз на сообщение. Сбой оповещения не отменяет отправку.
+    const { notifyOperator } = await import("./support-notify.server");
+    await notifyOperator(ctx.tenant.id, ctx.tenant.name, r.message.id, r.message.body).catch(
+      (e: unknown) => console.error("[support] оповещение оператора", e),
+    );
     return { message: r.message };
   });
 
