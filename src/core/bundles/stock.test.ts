@@ -148,8 +148,9 @@ describe("заказ набора списывает составляющие", 
     const { db, ctx, customer } = setup({ p1: 10, p2: 5 }, 2);
     const r = await placeOrder(ctx, customer, "KZ", {});
     if (!r.ok) throw new Error("не оформился");
-    // Продавец поменял состав после заказа: возврат идёт по тому, что списано.
+    // Продавец поменял состав, потом совсем снял «Это набор»: возврат идёт по списанному.
     db.tables.app_settings![0]!.value = JSON.stringify({ items: [{ p: P3, q: 9 }] });
+    db.tables.app_settings = [];
     expect(await rejectOrder(ctx, r.order.id, "admin")).toBe(true);
     expect(stockOf(db, P1)).toBe(10);
     expect(stockOf(db, P2)).toBe(5);

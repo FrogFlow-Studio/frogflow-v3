@@ -4,7 +4,6 @@ import { pageAll } from "@/core/db/page";
 import { decrementStock, restoreStock } from "@/core/fulfillment/fulfillment";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { inChunks } from "@/lib/in-chunks";
-import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Остаток набора и списание составляющих (модуль `bundles`, Н2).
@@ -124,19 +123,20 @@ export async function recordBundleChanges(
 type StockEvent = { event_type: string; payload: Record<string, unknown> | null };
 
 /**
- * Вернуть на склад составляющие наборов заказа. Берёт то, что записано в
- * событиях `stock.bundle`; наборы, которые уже возвращали (есть событие
- * возврата с их `bundle_id`), второй раз не возвращает. Считает по одному
- * на каждый набор, а не на каждую составляющую.
+ * Вернуть на склад составляющие наборов заказа. Какие позиции были наборами,
+ * решают события `stock.bundle` этого заказа, а не текущая настройка: продавец
+ * мог снять «Это набор» или поменять состав уже после заказа. Возвращается то,
+ * что записано в событиях; набор, который уже возвращали (есть событие возврата
+ * с его `bundle_id`), второй раз не возвращается. Результат: `bundleIds` —
+ * наборы заказа (их строки обычным путём не возвращаются), `n` — сколько
+ * наборов вернули сейчас.
  */
 export async function restoreOrderBundles(
   ctx: TenantContext,
   orderId: number,
-  bundleIds: readonly string[],
   reason: "cancel" | "refund",
   actor: string,
-): Promise<number> {
-  if (bundleIds.length === 0) return 0;
+): Promise<{ bundleIds: Set<string>; n: number }> {
   const events = await pageAll<StockEvent>(
     (from, to) =>
       ctx.db
@@ -151,11 +151,15 @@ export async function restoreOrderBundles(
         error: { message: string } | null;
       }>,
     "События остатка заказа",
-  ).catch((e) => {
-    throw serverFailure(String(e instanceof Error ? e.message : e));
-  });
+  );
+  const bundleIds = new Set(
+    events
+      .filter((e) => e.event_type === "stock.bundle")
+      .map((e) => String(e.payload?.bundle_id ?? ""))
+      .filter(Boolean),
+  );
   let n = 0;
-  for (const id of new Set(bundleIds)) {
+  for (const id of bundleIds) {
     const mine = events.filter((e) => e.payload?.bundle_id === id);
     if (mine.some((e) => e.event_type !== "stock.bundle")) continue;
     const taken = new Map<string, number>();
@@ -175,5 +179,5 @@ export async function restoreOrderBundles(
       });
     if (taken.size) n++;
   }
-  return n;
+  return { bundleIds, n };
 }

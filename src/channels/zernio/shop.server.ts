@@ -253,9 +253,11 @@ async function stepAnswerFits(s: Shop, mode: string, text: string): Promise<bool
       return matchDeliveryLangChoice(text, await cartLanguageChoices(s.ctx, s.customer)) !== null;
     case "awaiting_points_choice":
       return matchLoyaltyPointsChoice(text) !== null;
+    // Подарок и упаковка: непонятный ответ шаг разбирает сам (переспрос один раз, потом
+    // «нет»), поэтому в строгом режиме реплика не уходит продавцу.
     case "awaiting_gift_choice":
     case "awaiting_gift_wrap":
-      return matchLoyaltyPointsChoice(text) !== null;
+      return true;
     case "awaiting_fulfillment_type":
       return matchFulfillmentType(text) !== null;
     case "awaiting_fulfillment_date":
@@ -725,14 +727,23 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     case "awaiting_gift_choice": {
       const choice = matchLoyaltyPointsChoice(text);
       const cc = s.customer.state.country_code;
-      if (!choice || !cc) return askGift(s).then(() => "handled" as const);
+      if (!cc) return askGift(s).then(() => "handled" as const);
+      // Непонятный ответ: переспросить один раз, потом считать «нет» и оформлять дальше.
+      if (!choice && !s.customer.state.gift_reask) {
+        await setMode(s, { gift_reask: true });
+        return askGift(s).then(() => "handled" as const);
+      }
       return afterGiftChoice(s, cc, choice === "yes").then(() => "handled" as const);
     }
     case "awaiting_gift_wrap": {
       const choice = matchLoyaltyPointsChoice(text);
       const cc = s.customer.state.country_code;
-      if (!choice || !cc) return askGiftWrap(s).then(() => "handled" as const);
-      await setMode(s, { mode: "idle", gift_wrap: choice === "yes" });
+      if (!cc) return askGiftWrap(s).then(() => "handled" as const);
+      if (!choice && !s.customer.state.gift_reask) {
+        await setMode(s, { gift_reask: true });
+        return askGiftWrap(s).then(() => "handled" as const);
+      }
+      await setMode(s, { mode: "idle", gift_wrap: choice === "yes", gift_reask: undefined });
       await finishCheckout(s, cc);
       return "handled";
     }
@@ -2046,9 +2057,18 @@ async function askGiftFirst(s: Shop, countryCode: string): Promise<boolean> {
   // Вопрос задаётся каждому покупателю — только если продавец его включил.
   const { giftAskOn } = await import("@/core/orders/gift");
   if (!(await giftAskOn(s.ctx))) return false;
+  // Подарок — для физического заказа: цифровой товар упаковывать и вручать нечему.
+  if (!(await physicalCart(s, countryCode))) return false;
   await setMode(s, { mode: "awaiting_gift_choice", country_code: countryCode, gift_asked: true });
   await askGift(s);
   return true;
+}
+
+/** Корзина физическая: подарок и упаковка предлагаются только таким заказам. */
+async function physicalCart(s: Shop, countryCode: string): Promise<boolean> {
+  const items = await listCart(s.ctx, s.customer);
+  if (items.length === 0) return false;
+  return (await priceCart(s.ctx, items, countryCode)).kind === "physical";
 }
 
 async function askGift(s: Shop) {
@@ -2063,10 +2083,10 @@ async function askGift(s: Shop) {
 
 async function afterGiftChoice(s: Shop, countryCode: string, yes: boolean) {
   if (!yes) {
-    await setMode(s, { mode: "idle" });
+    await setMode(s, { mode: "idle", gift_reask: undefined });
     return finishCheckout(s, countryCode);
   }
-  await setMode(s, { mode: "awaiting_gift_recipient", gift_on: true });
+  await setMode(s, { mode: "awaiting_gift_recipient", gift_on: true, gift_reask: undefined });
   await reply(s, plain(s.m.giftRecipientPrompt), { force: true });
 }
 
@@ -2198,6 +2218,7 @@ async function finishCheckout(s: Shop, countryCode: string) {
     gift_message: _gme,
     gift_wrap: _gwr,
     gift_asked: _gas,
+    gift_reask: _grk,
     checkout_fulfillment_type: _ft,
     checkout_fulfillment_at: _fa,
     checkout_min_fulfillment_date: _fm,

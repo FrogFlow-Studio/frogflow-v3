@@ -66,7 +66,7 @@ function shop(modules: Record<string, boolean> = { bundles: true }, ask = true) 
       platform: "instagram",
       telegramId: -1,
       loyaltyPoints: 0,
-      contactPhone: null,
+      contactPhone: "+77001234567",
       state: db.tables.bot_users![0]!.state,
     }) as unknown as Customer;
   const msg = (text: string, postbackPayload: string | null = null) =>
@@ -136,23 +136,67 @@ describe("Direct: «это подарок?» перед оформлением",
   });
 });
 
-describe("Direct: вопрос «это подарок?» только при включённой настройке", () => {
-  const fresh = (s: ReturnType<typeof shop>) => {
+describe("Direct: вопрос «это подарок?» — настройка, физический заказ, один переспрос", () => {
+  const fresh = (s: ReturnType<typeof shop>, kind: "physical" | "digital" = "physical") => {
     s.db.tables.bot_users![0]!.state = { locale: "ru", country_code: "KZ" };
+    (s.db.tables.cart_items![0]!.products as { fulfillment_kind: string }).fulfillment_kind = kind;
   };
-  it("настройка включена — перед оформлением спрашиваем", async () => {
+  /** Физический заказ идёт через выдачу, дату и пожелания; дата — ближайшая из подсказки бота. */
+  const toGiftStep = async (
+    s: ReturnType<typeof shop>,
+    kind: "physical" | "digital" = "physical",
+  ) => {
+    await s.msg("", "CHECKOUT");
+    if (kind === "digital") return;
+    await s.msg("", "FT:pickup");
+    await s.msg(/(\d{2}\.\d{2}\.\d{4})\.?$/.exec(s.sent.at(-1)!)![1]!);
+    await s.msg("", "NOTE:skip");
+  };
+  it("настройка включена, заказ физический — перед оформлением спрашиваем", async () => {
     const s = shop({ bundles: true }, true);
     fresh(s);
-    await s.msg("", "CHECKOUT");
+    await toGiftStep(s);
     expect(s.state()).toMatchObject({ mode: "awaiting_gift_choice", gift_asked: true });
     expect(s.db.tables.orders ?? []).toHaveLength(0);
   });
   it("настройка не включена — заказ оформляется без вопроса", async () => {
     const s = shop({ bundles: true }, false);
     fresh(s);
-    await s.msg("", "CHECKOUT");
+    await toGiftStep(s);
     expect(s.state().mode).not.toBe("awaiting_gift_choice");
     expect(s.db.tables.orders).toHaveLength(1);
     expect(s.giftRows()).toHaveLength(0);
+  });
+  it("цифровой заказ — шага нет, даже при включённой настройке", async () => {
+    const s = shop({ bundles: true }, true);
+    fresh(s, "digital");
+    await toGiftStep(s, "digital");
+    expect(s.state().mode).not.toBe("awaiting_gift_choice");
+    expect(s.db.tables.orders).toHaveLength(1);
+    expect(s.giftRows()).toHaveLength(0);
+  });
+  it("два непонятных ответа подряд — считаем «нет», заказ оформлен", async () => {
+    const s = shop({ bundles: true }, true);
+    fresh(s);
+    await toGiftStep(s);
+    const asked = s.sent.length;
+    await s.msg("хм, а что это?");
+    // Первый непонятный ответ: переспросили, заказа ещё нет.
+    expect(s.sent.length).toBe(asked + 1);
+    expect(s.state()).toMatchObject({ mode: "awaiting_gift_choice", gift_reask: true });
+    expect(s.db.tables.orders ?? []).toHaveLength(0);
+    await s.msg("не знаю");
+    expect(s.db.tables.orders).toHaveLength(1);
+    expect(s.giftRows()).toHaveLength(0);
+    expect(s.state().gift_reask).toBeUndefined();
+  });
+  it("непонятный ответ, потом «да» — подарок продолжается", async () => {
+    const s = shop({ bundles: true }, true);
+    fresh(s);
+    await toGiftStep(s);
+    await s.msg("может быть");
+    await s.msg("да");
+    expect(s.state()).toMatchObject({ mode: "awaiting_gift_recipient", gift_on: true });
+    expect(s.state().gift_reask).toBeUndefined();
   });
 });

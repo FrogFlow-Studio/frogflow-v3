@@ -1111,6 +1111,7 @@ async function showCart(b: Bot) {
       escapeHtml(st.gift_message ?? ""),
     );
   const { giftWrapForCart } = await import("@/core/orders/gift-wrap");
+  const { giftAskOn } = await import("@/core/orders/gift");
   const wrapFee =
     mod.bundles && st.gift_on
       ? await giftWrapForCart(b.ctx, { kind: priced.kind, currency: sum.currency })
@@ -1148,7 +1149,8 @@ async function showCart(b: Bot) {
         : { text: b.m.giftCertificateBtn, callback_data: "giftcert:enter" },
     ]);
   }
-  if (mod.bundles) {
+  // Кнопка подарка — только если продавец включил «Предлагать оформить заказ подарком».
+  if (mod.bundles && (await giftAskOn(b.ctx))) {
     buttons.push([
       st.gift_on
         ? { text: b.m.removeGiftBtn, callback_data: "gift:clear" }
@@ -1525,6 +1527,7 @@ async function finishCheckout(b: Bot, countryCode: string) {
     gift_message: _gme,
     gift_wrap: _gwr,
     gift_asked: _gas,
+    gift_reask: _grk,
     checkout_fulfillment_type: _ft,
     checkout_fulfillment_at: _fa,
     checkout_min_fulfillment_date: _fm,

@@ -69,7 +69,9 @@ export const webCheckoutInfoFn = createServerFn({ method: "GET" })
         gift: Boolean(ctx.tenant.modules.gift_certificates),
       },
       /** «Это подарок» (модуль bundles): получатель и открытка. */
-      giftMark: Boolean(ctx.tenant.modules.bundles),
+      giftMark:
+        Boolean(ctx.tenant.modules.bundles) &&
+        (await (await import("@/core/orders/gift")).giftAskOn(ctx)),
       /** Подарочная упаковка: цена в валюте магазина; null — не предлагается (core/orders/gift-wrap). */
       giftWrap: await giftWrapInfo(ctx),
       /** Минимальная сумма заказа в валюте магазина; страница сверяет её с корзиной в той же валюте. */

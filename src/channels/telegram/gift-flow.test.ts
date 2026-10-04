@@ -9,8 +9,10 @@ import type { TelegramApi } from "./api";
 const TG = 42;
 const from = { id: TG, is_bot: false, first_name: "A" };
 
-function bot(modules: Record<string, boolean> = { bundles: true }) {
+function bot(modules: Record<string, boolean> = { bundles: true }, ask = true) {
   const db: FakeDb = fakeDb();
+  // «Предлагать оформить заказ подарком» (core/orders/gift): без него кнопки подарка нет.
+  db.tables.app_settings = ask ? [{ bot_id: "bot-1", key: "gift_ask", value: "1" }] : [];
   db.tables.bot_users = [
     {
       id: "u-1",
@@ -92,6 +94,12 @@ function bot(modules: Record<string, boolean> = { bundles: true }) {
 }
 
 describe("«Это подарок» в корзине Telegram", () => {
+  it("переключатель выключен — кнопки подарка в корзине нет", async () => {
+    const b = bot({ bundles: true }, false);
+    await b.press("gift:clear");
+    expect(b.lastButtons()).not.toContain("gift:enter");
+  });
+
   it("кнопка → имя → открытка: корзина показывает подарок, state хранит данные", async () => {
     const b = bot();
     await b.press("gift:clear"); // показывает корзину
