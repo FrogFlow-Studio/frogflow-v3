@@ -74,6 +74,30 @@ function AccountPage() {
                     ))}
                   </ul>
                 )}
+                {s.favorites.length > 0 && (
+                  <div className="mt-3">
+                    <h3 className="text-sm font-medium">{t("acc.favorites")}</h3>
+                    <ul className="mt-1 grid gap-1 text-sm">
+                      {s.favorites.map((f) => (
+                        <li key={f.id}>
+                          <Link
+                            to="/s/$slug/p/$id"
+                            params={{ slug: s.slug, id: f.id }}
+                            className="underline"
+                          >
+                            {f.name}
+                          </Link>{" "}
+                          · {new Intl.NumberFormat(locale).format(f.price)} {f.currency}
+                        </li>
+                      ))}
+                    </ul>
+                    {s.moreFavorites > 0 && (
+                      <p className="mt-1 text-xs text-muted">
+                        {t("acc.moreFavorites", { n: s.moreFavorites })}
+                      </p>
+                    )}
+                  </div>
+                )}
                 <Link
                   to="/s/$slug"
                   params={{ slug: s.slug }}
@@ -84,6 +108,22 @@ function AccountPage() {
               </li>
             ))}
           </ul>
+          {data.addresses.length > 0 && (
+            <section className="card mt-6 p-4">
+              <h2 className="font-medium">{t("acc.addresses")}</h2>
+              <p className="mt-1 text-xs text-muted">{t("acc.addressesHint")}</p>
+              <ul className="mt-2 grid gap-1 text-sm">
+                {data.addresses.map((a) => (
+                  <li key={a}>{a}</li>
+                ))}
+              </ul>
+              {data.moreAddresses > 0 && (
+                <p className="mt-1 text-xs text-muted">
+                  {t("acc.moreAddresses", { n: data.moreAddresses })}
+                </p>
+              )}
+            </section>
+          )}
           {data.moreShops > 0 && (
             <p className="mt-4 text-sm text-muted">{t("acc.more", { n: data.moreShops })}</p>
           )}

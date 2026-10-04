@@ -47,6 +47,12 @@ const ru = {
   "acc.logout": "Выйти",
   "acc.hint": "Баллы и адреса остаются в магазине, где вы их получили.",
   "acc.meta": "Мои заказы — FrogFlow",
+  "acc.favorites": "Избранное",
+  "acc.moreFavorites": "И ещё в избранном: {n}.",
+  "acc.addresses": "Адреса из ваших заказов",
+  "acc.addressesHint":
+    "Это адреса, которые вы указывали в заказах. Менять их можно только при оформлении нового заказа в магазине.",
+  "acc.moreAddresses": "И ещё адресов: {n}.",
   rules: "Правила площадки",
 } as const;
 
@@ -97,6 +103,12 @@ const kk: Record<Key, string> = {
   "acc.logout": "Шығу",
   "acc.hint": "Баллдар мен мекенжайлар оларды алған дүкенде қалады.",
   "acc.meta": "Тапсырыстарым — FrogFlow",
+  "acc.favorites": "Таңдаулылар",
+  "acc.moreFavorites": "Таңдаулыда тағы: {n}.",
+  "acc.addresses": "Тапсырыстарыңыздағы мекенжайлар",
+  "acc.addressesHint":
+    "Бұл тапсырыстарда көрсеткен мекенжайларыңыз. Оларды тек дүкенде жаңа тапсырыс беру кезінде өзгертуге болады.",
+  "acc.moreAddresses": "Тағы мекенжайлар: {n}.",
   rules: "Алаң ережелері",
 };
 
@@ -145,6 +157,12 @@ const en: Record<Key, string> = {
   "acc.logout": "Sign out",
   "acc.hint": "Points and addresses stay in the shop where you got them.",
   "acc.meta": "My orders — FrogFlow",
+  "acc.favorites": "Favourites",
+  "acc.moreFavorites": "And {n} more in favourites.",
+  "acc.addresses": "Addresses from your orders",
+  "acc.addressesHint":
+    "These are the addresses you gave in your orders. You can change them only when placing a new order in a shop.",
+  "acc.moreAddresses": "And {n} more addresses.",
   rules: "Marketplace rules",
 };
 
@@ -193,6 +211,12 @@ const uz: Record<Key, string> = {
   "acc.logout": "Chiqish",
   "acc.hint": "Ballar va manzillar ularni olgan do‘konda qoladi.",
   "acc.meta": "Buyurtmalarim — FrogFlow",
+  "acc.favorites": "Tanlanganlar",
+  "acc.moreFavorites": "Tanlanganlarda yana: {n}.",
+  "acc.addresses": "Buyurtmalaringizdagi manzillar",
+  "acc.addressesHint":
+    "Bular buyurtmalarda ko‘rsatgan manzillaringiz. Ularni faqat do‘konda yangi buyurtma berishda o‘zgartirish mumkin.",
+  "acc.moreAddresses": "Yana manzillar: {n}.",
   rules: "Maydon qoidalari",
 };
 
