@@ -72,7 +72,7 @@ export async function notifyAdminsHtml(
   if (d.telegram && !opts.recipients) await sendAdminPush(ctx, html, opts);
   if (!d.telegram) return emailSent ? 1 : 0;
   const { sendOrEnqueue } = await import("@/core/outbox/outbox");
-  const { telegramOutboxSender } = await import("./outbox");
+  const { telegramOutboxSender, telegramOutboxResult } = await import("./outbox");
   let sent = 0;
   const photos = (opts.photos ?? []).slice(0, 10);
   for (const chatId of opts.recipients ?? (await adminRecipients(ctx))) {
@@ -104,9 +104,7 @@ export async function notifyAdminsHtml(
               parse_mode: "HTML",
               reply_markup: markup,
             });
-            return r.ok
-              ? { ok: true }
-              : { ok: false, error: r.description ?? "sendMessage failed" };
+            return telegramOutboxResult(r);
           }
         : telegramOutboxSender,
     );
