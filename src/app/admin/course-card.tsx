@@ -469,10 +469,21 @@ function LiveRow({
   const [title, setTitle] = useState(live.title);
   const [at, setAt] = useState(live.at);
   const [link, setLink] = useState(live.link ?? "");
+  const [recording, setRecording] = useState(live.recording ?? "");
   const save = useAction(async () =>
     onSaved(
       await saveLiveFn({
-        data: { productId, cohortId, live: { id: live.id, title, at, link: link.trim() || null } },
+        data: {
+          productId,
+          cohortId,
+          live: {
+            id: live.id,
+            title,
+            at,
+            link: link.trim() || null,
+            recording: recording.trim() || null,
+          },
+        },
       }),
     ),
   );
@@ -480,7 +491,11 @@ function LiveRow({
     if (!window.confirm(t("live.deleteConfirm", { title: live.title }))) return;
     onSaved(await deleteLiveFn({ data: { productId, cohortId, liveId: live.id } }));
   });
-  const changed = title !== live.title || at !== live.at || link !== (live.link ?? "");
+  const changed =
+    title !== live.title ||
+    at !== live.at ||
+    link !== (live.link ?? "") ||
+    recording !== (live.recording ?? "");
   return (
     <div className="flex flex-wrap items-end gap-2">
       <input
@@ -508,6 +523,17 @@ function LiveRow({
         value={link}
         onChange={(e) => setLink(e.target.value)}
       />
+      {!fresh && (
+        <input
+          id={`live-recording-${live.id}`}
+          className="input w-full"
+          placeholder={t("live.recordingPlaceholder")}
+          aria-label={t("live.recording")}
+          maxLength={LIVE_LINK_MAX}
+          value={recording}
+          onChange={(e) => setRecording(e.target.value)}
+        />
+      )}
       <button
         type="button"
         id={`live-save-${live.id}`}

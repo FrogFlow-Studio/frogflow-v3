@@ -203,4 +203,30 @@ describe("эфиры на странице курса (Ш2)", () => {
     expect(late.lives).toEqual([]);
     expect(JSON.stringify(late)).not.toContain("zoom.us/j/777");
   });
+
+  it("запись эфира: после начала доступна ученику, до начала и без доступа — нет", async () => {
+    const ctx = shop(3);
+    const db = (ctx as unknown as { db: ReturnType<typeof fakeDb> }).db;
+    (db.tables.order_items as Array<Record<string, unknown>>)[0]!.product_variant_id = id(50);
+    const row = (db.tables.app_settings as Array<{ key: string; value: string }>).find(
+      (r) => r.key === courseKey(P),
+    )!;
+    const c = JSON.parse(row.value);
+    c.cohorts[0].lives[0].recording = "https://youtu.be/dQw4w9WgXcQ";
+    c.cohorts[0].start = "2026-10-08T10:00";
+    c.cohorts[0].lives[0].at = "2026-10-08T19:00"; // старт потока 8 октября, доступ 3 дня
+    row.value = JSON.stringify(c);
+    const before = await open(ctx, "2026-10-08T10:00:00Z");
+    expect(before.lives[0]!.recording).toBeNull();
+    const ok = await open(ctx, "2026-10-09T10:00:00Z"); // 3 часа после эфира
+    expect(ok.expired).toBe(false);
+    expect(ok.lives[0]).toMatchObject({
+      status: "past",
+      recording: "https://youtu.be/dQw4w9WgXcQ",
+    });
+    expect(ok.lives[0]!.recordingEmbed).toContain("youtube");
+    const late = await open(ctx, "2026-10-13T10:00:00Z"); // доступ закончился
+    expect(late.expired).toBe(true);
+    expect(JSON.stringify(late)).not.toContain("youtu.be");
+  });
 });

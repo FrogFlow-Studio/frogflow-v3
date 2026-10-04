@@ -5,12 +5,13 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { daytime } from "@/core/winback/winback";
 import { courseTimeline, localToInstant } from "./cohort";
 import { courseToken, courseUrl } from "./link";
-import { liveMark, liveReminderDue, type LiveRemindKind } from "./live-remind";
+import { liveMark, liveRecordingDue, liveReminderDue, type LiveRemindKind } from "./live-remind";
 import { parseRun, runKey } from "./run.server";
 import { loadRuns } from "./runs.server";
 
 /**
- * Напоминания ученикам об эфирах потока (Ш3): за сутки и за час, только
+ * Напоминания ученикам об эфирах потока (Ш3): за сутки и за час, а после
+ * эфира — «запись готова» (Ш4); только
  * тем, чей доступ действует. Крон каждые 10 минут. «Один раз»: метка пишется
  * в запись прохождения условной записью до отправки, отправляет только
  * выигравший прогон; отправка, которая могла дойти, не повторяется. Пишем
@@ -55,55 +56,70 @@ export async function liveReminders(
     );
     if (tl.expired || !tl.cohort?.lives?.length) continue;
     for (const l of tl.cohort.lives) {
-      const marks = { day: liveMark(l.id, l.at, "day"), hour: liveMark(l.id, l.at, "hour") };
-      const due = liveReminderDue(
-        localToInstant(l.at, ctx.timezone).getTime(),
+      const startMs = localToInstant(l.at, ctx.timezone).getTime();
+      const have = new Set(r.run.liveReminded ?? []);
+      const marks = {
+        day: liveMark(l.id, l.at, "day"),
+        hour: liveMark(l.id, l.at, "hour"),
+        rec: liveMark(l.id, l.at, "rec"),
+      };
+      const due = liveReminderDue(startMs, now.getTime(), day, have, marks);
+      const recDue = liveRecordingDue(
+        Boolean(l.recording),
+        Date.parse(r.order.created_at),
+        startMs,
         now.getTime(),
         day,
-        new Set(r.run.liveReminded ?? []),
-        marks,
+        have,
+        marks.rec,
       );
-      if (!due) continue;
-      // Отметка до отправки; чужой прогон успел раньше — молчим.
-      const won =
-        (await updateSettingAtomic(ctx, runKey(r.itemId), (raw) => {
-          const cur = parseRun(raw);
-          if (!cur) return null;
-          const have = new Set(cur.liveReminded ?? []);
-          if (have.has(due.mark.at(-1)!)) return null;
-          // Метки эфиров, которых в потоке уже нет, отбрасываем: запись не растёт.
-          const alive = new Set(
-            (tl.cohort?.lives ?? []).flatMap((x) => [
-              liveMark(x.id, x.at, "day"),
-              liveMark(x.id, x.at, "hour"),
-            ]),
-          );
-          const next = [...[...have].filter((m) => alive.has(m)), ...due.mark];
-          return JSON.stringify({ ...cur, liveReminded: [...new Set(next)] });
-        })) === "written";
-      if (!won) continue;
-      const tg =
-        r.order.platform === "telegram" && Number(r.order.telegram_id) > 0
-          ? Number(r.order.telegram_id)
-          : null;
-      if (!tg) {
-        out.silent++;
-        continue;
+      const todo: Array<{ kind: LiveRemindKind; mark: string[]; link: string | null }> = [];
+      if (due)
+        todo.push({ kind: due.kind, mark: due.mark, link: due.kind === "hour" ? l.link : null });
+      if (recDue) todo.push({ kind: "rec", mark: [marks.rec], link: l.recording ?? null });
+      for (const d of todo) {
+        // Отметка до отправки; чужой прогон успел раньше — молчим.
+        const won =
+          (await updateSettingAtomic(ctx, runKey(r.itemId), (raw) => {
+            const cur = parseRun(raw);
+            if (!cur) return null;
+            const taken = new Set(cur.liveReminded ?? []);
+            if (taken.has(d.mark.at(-1)!)) return null;
+            // Метки эфиров, которых в потоке уже нет, отбрасываем: запись не растёт.
+            const alive = new Set(
+              (tl.cohort?.lives ?? []).flatMap((x) => [
+                liveMark(x.id, x.at, "day"),
+                liveMark(x.id, x.at, "hour"),
+                liveMark(x.id, x.at, "rec"),
+              ]),
+            );
+            const next = [...[...taken].filter((m) => alive.has(m)), ...d.mark];
+            return JSON.stringify({ ...cur, liveReminded: [...new Set(next)] });
+          })) === "written";
+        if (!won) continue;
+        const tg =
+          r.order.platform === "telegram" && Number(r.order.telegram_id) > 0
+            ? Number(r.order.telegram_id)
+            : null;
+        if (!tg) {
+          out.silent++;
+          continue;
+        }
+        const url = base
+          ? courseUrl(base, r.itemId, courseToken(env().SECRETS_KEY, ctx.tenant.id, r.itemId))
+          : "";
+        const ok = await send({
+          kind: d.kind,
+          telegramId: tg,
+          course: r.name,
+          title: l.title,
+          at: l.at,
+          link: d.link,
+          url,
+        }).catch(() => false);
+        if (ok) out.sent++;
+        else out.failed++;
       }
-      const url = base
-        ? courseUrl(base, r.itemId, courseToken(env().SECRETS_KEY, ctx.tenant.id, r.itemId))
-        : "";
-      const ok = await send({
-        kind: due.kind,
-        telegramId: tg,
-        course: r.name,
-        title: l.title,
-        at: l.at,
-        link: due.kind === "hour" ? l.link : null,
-        url,
-      }).catch(() => false);
-      if (ok) out.sent++;
-      else out.failed++;
     }
   }
   return out;

@@ -534,4 +534,22 @@ describe("эфиры потока в боте (Ш2)", () => {
     await handleTelegramUpdate(ctx, api, press(`lv:${ITEM}`));
     expect(messages(calls)).toEqual([]);
   });
+
+  it("запись эфира: после начала — кнопка «Смотреть запись»; до начала — нет", async () => {
+    const { ctx, db, api, calls } = withLives();
+    const row = (db.tables.app_settings as Array<{ key: string; value: string }>).find(
+      (r) => r.key === courseKey(P),
+    )!;
+    const c = JSON.parse(row.value);
+    c.cohorts[0].lives[0].recording = "https://rutube.ru/video/rec";
+    row.value = JSON.stringify(c);
+    at("2026-10-10T10:00:00Z");
+    await handleTelegramUpdate(ctx, api, press(`lv:${ITEM}`));
+    expect(JSON.stringify(messages(calls).at(-1))).not.toContain("rutube");
+    at("2026-10-10T19:00:00Z");
+    await handleTelegramUpdate(ctx, api, press(`lv:${ITEM}`, 2));
+    const b = buttons(messages(calls).at(-1));
+    expect(b.map((x) => x.url)).toEqual(["https://rutube.ru/video/rec"]);
+    expect(b[0]!.text).toContain("Смотреть запись");
+  });
 });

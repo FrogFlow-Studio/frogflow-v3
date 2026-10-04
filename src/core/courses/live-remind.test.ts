@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { fakeDb } from "../../../tests/fake-db";
 import { courseKey, type Course } from "./course";
-import { liveMark, liveReminderDue } from "./live-remind";
+import { liveMark, liveRecordingDue, liveReminderDue } from "./live-remind";
 import type { LiveReminder } from "./live-remind.server";
 
 vi.mock("@/config/env", () => ({ env: () => ({ SECRETS_KEY: "s", APP_URL: "https://a.test" }) }));
@@ -194,5 +194,92 @@ describe("напоминания об эфире", () => {
     const { ctx } = school(course([live("2026-10-20T19:00")]));
     (ctx.tenant as { modules: Record<string, boolean> }).modules = {};
     expect(await liveReminders(ctx, async () => true)).toEqual({ skipped: "module off" });
+  });
+});
+
+describe("«запись эфира готова» (Ш4)", () => {
+  const REC = "https://rutube.ru/video/" + "a".repeat(32) + "/";
+  const withRec = (at: string, recording: string | undefined = REC) => ({
+    ...live(at),
+    ...(recording ? { recording } : {}),
+  });
+
+  it("правило: нужна запись, эфир начался, день, ещё не отмечено", () => {
+    const m = liveMark(LIVE, "2026-10-20T19:00", "rec");
+    const start = Date.parse("2026-10-20T16:00:00Z");
+    const have = new Set<string>();
+    const bought = start - 86_400_000;
+    expect(liveRecordingDue(true, bought, start, start + 1, true, have, m)).toBe(true);
+    expect(liveRecordingDue(false, bought, start, start + 1, true, have, m)).toBe(false);
+    expect(liveRecordingDue(true, bought, start, start - 1, true, have, m)).toBe(false);
+    expect(liveRecordingDue(true, bought, start, start + 1, false, have, m)).toBe(false);
+    expect(liveRecordingDue(true, bought, start, start + 1, true, new Set([m]), m)).toBe(false);
+    // купил уже после начала эфира — не уведомляем
+    expect(liveRecordingDue(true, start + 1, start, start + 2, true, have, m)).toBe(false);
+  });
+
+  it("запись появилась — одно уведомление со ссылкой на запись; повтор и правка ссылки молчат", async () => {
+    const { ctx, db } = school(course([withRec("2026-10-20T19:00")] as never));
+    const { sent, send } = collector();
+    await liveReminders(ctx, send, new Date("2026-10-20T20:00:00Z")); // 23:00 МСК — ночь
+    expect(sent).toEqual([]);
+    await liveReminders(ctx, send, new Date("2026-10-21T08:00:00Z")); // 11:00 МСК
+    await liveReminders(ctx, send, new Date("2026-10-21T09:00:00Z"));
+    expect(sent.map((s) => [s.kind, s.link])).toEqual([["rec", REC]]);
+    // продавец поправил ссылку — второго уведомления нет
+    const row = (db.tables.app_settings as Array<{ key: string; value: string }>).find(
+      (r) => r.key === courseKey(P),
+    )!;
+    row.value = JSON.stringify(course([withRec("2026-10-20T19:00", REC + "?v=2")] as never));
+    await liveReminders(ctx, send, new Date("2026-10-21T10:00:00Z"));
+    expect(sent).toHaveLength(1);
+  });
+
+  it("купил курс после эфира — «запись готова» не приходит, а запись ему видна на странице", async () => {
+    const { ctx, db } = school(course([withRec("2026-10-02T19:00")] as never)); // эфир 2 октября
+    (db.tables.orders as Array<Record<string, unknown>>)[0]!.created_at = "2026-10-05T00:00:00Z";
+    const { sent, send } = collector();
+    await liveReminders(ctx, send, new Date("2026-10-06T08:00:00Z"));
+    expect(sent).toEqual([]);
+    const { liveSchedule } = await import("./live-view");
+    const { courseTimeline } = await import("./cohort");
+    const c = course([withRec("2026-10-02T19:00")] as never);
+    const tl = courseTimeline(
+      {
+        course: c,
+        run: { startedAt: "2026-10-05T00:00:00Z", done: [], cohortId: C1 },
+        boughtAt: "2026-10-05T00:00:00Z",
+        variantId: V,
+      },
+      "Europe/Moscow",
+      new Date("2026-10-06T08:00:00Z"),
+    );
+    expect(liveSchedule(tl, "Europe/Moscow", new Date("2026-10-06T08:00:00Z"))[0]!.recording).toBe(
+      REC,
+    );
+  });
+
+  it("без записи — ничего; после закончившегося доступа — ничего", async () => {
+    const none = school(course([withRec("2026-10-20T19:00", "")] as never));
+    const a = collector();
+    await liveReminders(none.ctx, a.send, new Date("2026-10-21T08:00:00Z"));
+    expect(a.sent).toEqual([]);
+
+    const ended = school(course([withRec("2026-11-20T19:00")] as never, 30));
+    const b = collector();
+    await liveReminders(ended.ctx, b.send, new Date("2026-11-21T08:00:00Z"));
+    expect(b.sent).toEqual([]);
+  });
+
+  it("два крона одновременно: одно уведомление о записи", async () => {
+    const { ctx } = school(course([withRec("2026-10-20T19:00")] as never));
+    const { sent, send } = collector();
+    const slow = async (x: LiveReminder) => {
+      await new Promise((r) => setTimeout(r, 15));
+      return send(x);
+    };
+    const now = new Date("2026-10-21T08:00:00Z");
+    await Promise.all([liveReminders(ctx, slow, now), liveReminders(ctx, slow, now)]);
+    expect(sent.map((s) => s.kind)).toEqual(["rec"]);
   });
 });

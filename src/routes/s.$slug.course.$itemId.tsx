@@ -540,6 +540,23 @@ function LiveBlock({
           <li key={l.id} className={l.status === "past" ? "opacity-60" : ""}>
             <span className="tabular-nums">{liveTime(l.at, locale)}</span> · {l.title}
             {l.status === "past" && <span className="text-muted"> · {t("course.live.past")}</span>}
+            {l.recording && (
+              <div className="mt-1 space-y-2">
+                {l.recordingEmbed && (
+                  <iframe
+                    src={l.recordingEmbed}
+                    title={l.title}
+                    className="aspect-video w-full rounded-md border-0"
+                    loading="lazy"
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                  />
+                )}
+                <a className="btn-primary" href={l.recording} target="_blank" rel="noreferrer">
+                  {t("course.live.watch")}
+                </a>
+              </div>
+            )}
             {l.status === "upcoming" && (
               <p className="text-xs text-muted">{t("course.live.soon")}</p>
             )}

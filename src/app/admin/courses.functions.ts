@@ -239,6 +239,7 @@ export const saveLiveFn = createServerFn({ method: "POST" })
           title: z.string().max(LIVE_TITLE_MAX),
           at: z.string().regex(LOCAL_START_RE),
           link: z.string().max(LIVE_LINK_MAX).nullable(),
+          recording: z.string().max(LIVE_LINK_MAX).nullable().optional(),
         }),
       })
       .parse(d),

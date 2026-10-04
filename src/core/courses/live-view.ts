@@ -1,5 +1,6 @@
 import { localToInstant, type Timeline } from "./cohort";
 import { sortLives, type Live } from "./live";
+import { videoEmbed } from "./video";
 
 /** Ссылка открывается за столько до начала. */
 export const LIVE_LINK_LEAD_MS = 15 * 60_000;
@@ -18,6 +19,10 @@ export type LiveView = {
   status: LiveStatus;
   /** Только у идущего или скоро начинающегося (за 15 минут) — иначе null. */
   link: string | null;
+  /** Запись эфира (Ш4): только когда эфир начался; иначе null. */
+  recording: string | null;
+  /** Адрес встроенного плеера для видео-ссылки на запись (core/courses/video); иначе null. */
+  recordingEmbed: string | null;
 };
 
 /**
@@ -39,6 +44,8 @@ export function liveSchedule(
         : now.getTime() < start + LIVE_RUNNING_MS
           ? "open"
           : "past";
+    // Запись, добавленная заранее, до начала не видна: показываем с начала эфира.
+    const recording = now.getTime() >= start ? l.recording : null;
     return {
       id: l.id,
       title: l.title,
@@ -46,6 +53,8 @@ export function liveSchedule(
       startsAt: new Date(start).toISOString(),
       status,
       link: status === "open" ? l.link : null,
+      recording: recording ?? null,
+      recordingEmbed: recording ? videoEmbed(recording) : null,
     };
   });
 }

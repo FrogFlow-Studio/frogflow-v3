@@ -46,6 +46,17 @@ describe("эфиры: разбор и правка списка", () => {
   });
 });
 
+describe("запись эфира (Ш4)", () => {
+  it("ссылка на запись разбирается: не https — без неё, https — сохраняется", () => {
+    const out = parseLives([
+      live(1, { recording: "https://youtu.be/dQw4w9WgXcQ" } as Partial<Live>),
+      live(2, { recording: "http://x.test/v" } as Partial<Live>),
+    ]);
+    expect(out[0]!.recording).toBe("https://youtu.be/dQw4w9WgXcQ");
+    expect(out[1]!.recording).toBeUndefined();
+  });
+});
+
 describe("эфиры: запись курса", () => {
   const raw = {
     schedule: { mode: "all" },
@@ -121,6 +132,25 @@ describe("эфиры: запись курса", () => {
       key: "err.live.tooMany",
     });
     expect(lives(db, C1)).toHaveLength(LIVES_MAX);
+  });
+
+  it("запись эфира сохраняется, не https — отказ; правка эфира запись не теряет", async () => {
+    const { ctx, db } = shop();
+    await saveLive(ctx, P, C1, live(1));
+    await expect(
+      saveLive(ctx, P, C1, live(1, { recording: "http://rec.test/1" })),
+    ).rejects.toMatchObject({ key: "err.live.badRecording" });
+    await saveLive(
+      ctx,
+      P,
+      C1,
+      live(1, { recording: " https://rutube.ru/video/" + "a".repeat(32) + "/ " }),
+    );
+    expect(lives(db, C1)[0]!.recording).toBe("https://rutube.ru/video/" + "a".repeat(32) + "/");
+    // «Сохранить курс» из формы эфиры (и записи) не стирает
+    const form = parseCourse(stored(db));
+    await saveCourse(ctx, P, { ...form, cohorts: form.cohorts!.map((c) => ({ ...c, lives: [] })) });
+    expect(lives(db, C1)[0]!.recording).toContain("rutube.ru");
   });
 
   it("двойной клик «Добавить эфир»: один эфир", async () => {

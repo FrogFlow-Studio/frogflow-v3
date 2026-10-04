@@ -26,6 +26,8 @@ export type Live = {
   at: string;
   /** Ссылка на эфир, только https; null — ещё не известна. */
   link: string | null;
+  /** Ссылка на запись после эфира, только https; нет — записи ещё нет (Ш4). */
+  recording?: string | null;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -47,8 +49,15 @@ export function parseLives(v: unknown): Live[] {
     const title = str(o.title, LIVE_TITLE_MAX);
     const at = str(o.at, 16);
     const link = str(o.link, LIVE_LINK_MAX);
+    const recording = str(o.recording, LIVE_LINK_MAX);
     if (!UUID.test(id) || !title || !isLocalStart(at) || out.some((l) => l.id === id)) continue;
-    out.push({ id, title, at, link: link && isHttpsLink(link) ? link : null });
+    out.push({
+      id,
+      title,
+      at,
+      link: link && isHttpsLink(link) ? link : null,
+      ...(recording && isHttpsLink(recording) ? { recording } : {}),
+    });
     if (out.length >= LIVES_MAX) break;
   }
   return sortLives(out);
@@ -59,13 +68,15 @@ export function sortLives<T extends { at: string; id: string }>(lives: readonly 
   return [...lives].sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
 }
 
-export type LiveProblem = "noTitle" | "badTime" | "badLink" | "tooMany" | "noCohort";
+export type LiveProblem =
+  "noTitle" | "badTime" | "badLink" | "badRecording" | "tooMany" | "noCohort";
 
 /** Проверка эфира перед записью (поля уже обрезаны по краям). */
 export function liveProblem(l: Live): LiveProblem | null {
   if (!l.title || l.title.length > LIVE_TITLE_MAX) return "noTitle";
   if (!isLocalStart(l.at)) return "badTime";
   if (l.link && !isHttpsLink(l.link)) return "badLink";
+  if (l.recording && !isHttpsLink(l.recording)) return "badRecording";
   return null;
 }
 

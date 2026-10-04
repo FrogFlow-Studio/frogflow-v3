@@ -36,4 +36,19 @@ describe("текст напоминания об эфире", () => {
     const m = liveReminderMessage({ ...base, kind: "hour", link: null, url: "" }, "en");
     expect(m.rows).toEqual([]);
   });
+  it("«запись готова»: на языке ученика, кнопка ведёт на запись", () => {
+    for (const [loc, word] of [
+      ["ru", "Запись эфира готова"],
+      ["kk", "Эфир жазбасы дайын"],
+      ["en", "recording is ready"],
+      ["uz", "Efir yozuvi tayyor"],
+    ] as const) {
+      const m = liveReminderMessage({ ...base, kind: "rec", link: "https://rec.test/1" }, loc);
+      expect(m.text, loc).toContain(word);
+      expect(
+        m.rows.flat().map((b) => b.url),
+        loc,
+      ).toEqual(["https://rec.test/1", base.url]);
+    }
+  });
 });

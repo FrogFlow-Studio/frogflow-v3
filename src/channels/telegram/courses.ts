@@ -68,6 +68,7 @@ type Copy = {
   liveLine: (time: string, title: string, status: "upcoming" | "open" | "past") => string;
   liveJoin: string;
   liveNoLink: string;
+  liveWatch: string;
 };
 
 const COPY: Record<Locale, Copy> = {
@@ -125,6 +126,7 @@ const COPY: Record<Locale, Copy> = {
           : ""),
     liveJoin: "🎥 Войти на эфир",
     liveNoLink: "Ссылку на эфир пришлёт школа.",
+    liveWatch: "▶️ Смотреть запись",
   },
   kk: {
     empty: "Сізде әзірге курс жоқ.",
@@ -180,6 +182,7 @@ const COPY: Record<Locale, Copy> = {
           : ""),
     liveJoin: "🎥 Эфирге кіру",
     liveNoLink: "Эфирге сілтемені мектеп жібереді.",
+    liveWatch: "▶️ Жазбаны көру",
   },
   en: {
     empty: "You don't have any courses yet.",
@@ -236,6 +239,7 @@ const COPY: Record<Locale, Copy> = {
           : ""),
     liveJoin: "🎥 Join the live session",
     liveNoLink: "The school will send the link.",
+    liveWatch: "▶️ Watch the recording",
   },
   uz: {
     empty: "Sizda hozircha kurslar yo‘q.",
@@ -291,6 +295,7 @@ const COPY: Record<Locale, Copy> = {
           : ""),
     liveJoin: "🎥 Efirga kirish",
     liveNoLink: "Havolani maktab yuboradi.",
+    liveWatch: "▶️ Yozuvni ko‘rish",
   },
 };
 
@@ -641,9 +646,12 @@ export async function showLives(b: CourseBot, data: string, now = new Date()): P
   });
   const shown = lives.slice(-20);
   const rows: InlineButton[][] = [];
-  for (const l of shown)
+  for (const l of shown) {
     if (l.status === "open" && l.link)
       rows.push([{ text: `${c.liveJoin}: ${l.title}`.slice(0, 60), url: l.link }]);
+    if (l.recording)
+      rows.push([{ text: `${c.liveWatch}: ${l.title}`.slice(0, 60), url: l.recording }]);
+  }
   const lines = shown.map((l) =>
     c.liveLine(fmt.format(new Date(`${l.at}:00Z`)), escapeHtml(l.title), l.status),
   );

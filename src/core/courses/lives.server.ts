@@ -31,6 +31,7 @@ export async function saveLive(
     title: input.title.trim(),
     at: input.at,
     link: input.link?.trim() || null,
+    ...(input.recording?.trim() ? { recording: input.recording.trim() } : {}),
   };
   const bad = liveProblem(live);
   if (bad) throw liveRefusal(bad);
@@ -92,6 +93,11 @@ function liveRefusal(p: LiveProblem): UserError {
       return new UserError("err.live.badTime", "Укажите дату и время эфира.");
     case "badLink":
       return new UserError("err.live.badLink", "Ссылка на эфир должна начинаться с https://.");
+    case "badRecording":
+      return new UserError(
+        "err.live.badRecording",
+        "Ссылка на запись должна начинаться с https://.",
+      );
     case "tooMany":
       return new UserError("err.live.tooMany", "У потока не больше {max} эфиров.", {
         max: LIVES_MAX,

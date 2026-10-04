@@ -287,6 +287,9 @@ export type Msg = {
   courseLiveDay: (course: string, title: string, when: string) => string;
   courseLiveHour: (course: string, title: string, when: string) => string;
   courseLiveJoinBtn: string;
+  /** «Запись эфира готова» (Ш4). */
+  courseLiveRec: (course: string, title: string, when: string) => string;
+  courseLiveWatchBtn: string;
   broadcastPick: string;
   openCatalogBtn: string;
   /** Кнопка под рассылкой и ответы на отписку/возврат. */
@@ -381,6 +384,9 @@ const ru: Msg = {
   courseLiveHour: (course, title, when) =>
     `🎥 Через час эфир по курсу «${course}»: «${title}» — ${when}.`,
   courseLiveJoinBtn: "Войти на эфир",
+  courseLiveRec: (course, title, when) =>
+    `▶️ Запись эфира готова: «${title}» (${when}), курс «${course}».`,
+  courseLiveWatchBtn: "Смотреть запись",
   courseReviewAsk: (course) =>
     `🎓 Поздравляем с окончанием курса «${course}»! Оцените его — это займёт минуту:`,
   courseHomeworkDue: (course, no, title) =>
@@ -773,6 +779,9 @@ const kk: Msg = {
   courseLiveHour: (course, title, when) =>
     `🎥 «${course}» курсы бойынша эфирге бір сағат қалды: «${title}» — ${when}.`,
   courseLiveJoinBtn: "Эфирге кіру",
+  courseLiveRec: (course, title, when) =>
+    `▶️ Эфир жазбасы дайын: «${title}» (${when}), «${course}» курсы.`,
+  courseLiveWatchBtn: "Жазбаны көру",
   courseReviewAsk: (course) =>
     `🎓 «${course}» курсын аяқтағаныңызбен құттықтаймыз! Оны бағалаңыз — бір минут қана:`,
   courseHomeworkDue: (course, no, title) =>
@@ -1004,6 +1013,9 @@ const en: Msg = {
   courseLiveHour: (course, title, when) =>
     `🎥 A live session for “${course}” starts in an hour: “${title}” — ${when}.`,
   courseLiveJoinBtn: "Join the live session",
+  courseLiveRec: (course, title, when) =>
+    `▶️ The recording is ready: “${title}” (${when}), course “${course}”.`,
+  courseLiveWatchBtn: "Watch the recording",
   courseReviewAsk: (course) =>
     `🎓 Congratulations on finishing “${course}”! Please rate it — it takes a minute:`,
   courseHomeworkDue: (course, no, title) =>
@@ -1242,6 +1254,9 @@ const uz: Msg = {
   courseLiveHour: (course, title, when) =>
     `🎥 «${course}» kursi bo‘yicha efirga bir soat qoldi: «${title}» — ${when}.`,
   courseLiveJoinBtn: "Efirga kirish",
+  courseLiveRec: (course, title, when) =>
+    `▶️ Efir yozuvi tayyor: «${title}» (${when}), «${course}» kursi.`,
+  courseLiveWatchBtn: "Yozuvni ko‘rish",
   courseReviewAsk: (course) =>
     `🎓 «${course}» kursini tugatganingiz bilan tabriklaymiz! Uni baholang — bir daqiqa kifoya:`,
   courseHomeworkDue: (course, no, title) =>
