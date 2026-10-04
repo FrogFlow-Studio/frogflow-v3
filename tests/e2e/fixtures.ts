@@ -16,3 +16,4 @@ export * from "./fixtures/shop4-waitlist.ts";
 export * from "./fixtures/shop4-chat.ts";
 export * from "./fixtures/shop4-filters.ts";
 export * from "./fixtures/shop4-sale.ts";
+export * from "./fixtures/shop12-crumbs.ts";

@@ -79,3 +79,76 @@ test("витрина: вторая страница каталога откры�
   expect(html).toContain("К началу каталога");
   expect(html).not.toContain(F.PRODUCT_NAME);
 });
+
+/** Все блоки JSON-LD страницы: хлебные крошки идут рядом с разметкой товара. */
+const ldBlocks = (html: string): Array<Record<string, unknown>> =>
+  [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map((m) =>
+    JSON.parse(m[1]!),
+  );
+
+test("витрина: хлебные крошки на странице товара — ссылки, разметка BreadcrumbList с теми же адресами", async ({
+  page,
+  request,
+}) => {
+  const errors = await watch(page);
+  const html = await (await request.get(`/s/${F.SHOP_SLUG}/p/${F.CRUMB_PRODUCT_ID}`)).text();
+  const crumbs = ldBlocks(html).find((b) => b["@type"] === "BreadcrumbList") as {
+    itemListElement: Array<{ position: number; name: string; item: string }>;
+  };
+  expect(crumbs.itemListElement.map((x) => [x.position, x.name])).toEqual([
+    [1, F.SHOP_NAME],
+    [2, F.CRUMB_PARENT_NAME],
+    [3, F.CRUMB_CHILD_NAME],
+    [4, F.CRUMB_PRODUCT_NAME],
+  ]);
+  expect(crumbs.itemListElement[2]!.item).toMatch(
+    new RegExp(`/s/${F.SHOP_SLUG}\\?category=${F.CRUMB_CHILD_ID}$`),
+  );
+  expect(crumbs.itemListElement[3]!.item).toMatch(
+    new RegExp(`/s/${F.SHOP_SLUG}/p/${F.CRUMB_PRODUCT_ID}$`),
+  );
+  // Те же адреса — в карте сайта (домен в разметке — canonical магазина, в карте — адрес запроса).
+  const sitemap = await (await request.get(`/s/${F.SHOP_SLUG}/sitemap.xml`)).text();
+  for (const i of [2, 3]) {
+    const u = new URL(crumbs.itemListElement[i]!.item);
+    expect(sitemap).toContain(`${u.pathname}${u.search}</loc>`);
+  }
+  // Ссылки видны в ответе сервера без JS.
+  expect(html).toContain(`aria-label="Путь по каталогу"`);
+  expect(html).toContain(F.CRUMB_PARENT_NAME);
+
+  await page.goto(`/s/${F.SHOP_SLUG}/p/${F.CRUMB_PRODUCT_ID}`);
+  const nav = page.getByRole("navigation", { name: "Путь по каталогу" });
+  await expect(nav.getByRole("link", { name: "Каталог", exact: true })).toBeVisible();
+  await expect(nav.getByRole("link", { name: F.CRUMB_PARENT_NAME, exact: true })).toBeVisible();
+  await expect(nav.getByRole("link", { name: F.CRUMB_CHILD_NAME, exact: true })).toBeVisible();
+  await expect(nav.getByText(F.CRUMB_PRODUCT_NAME, { exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await nav.getByRole("link", { name: F.CRUMB_CHILD_NAME, exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`category=${F.CRUMB_CHILD_ID}`));
+  await expect(page.getByRole("heading", { name: F.CRUMB_CHILD_NAME, exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("витрина: на странице категории — путь до неё и BreadcrumbList; товар без категории — «Каталог › Товар»", async ({
+  request,
+}) => {
+  const html = await (await request.get(`/s/${F.SHOP_SLUG}?category=${F.CRUMB_CHILD_ID}`)).text();
+  const crumbs = ldBlocks(html).find((b) => b["@type"] === "BreadcrumbList") as {
+    itemListElement: Array<{ name: string }>;
+  };
+  expect(crumbs.itemListElement.map((x) => x.name)).toEqual([
+    F.SHOP_NAME,
+    F.CRUMB_PARENT_NAME,
+    F.CRUMB_CHILD_NAME,
+  ]);
+  expect(html).toContain(`aria-label="Путь по каталогу"`);
+
+  const plain = await (await request.get(`/s/${F.SHOP_SLUG}/p/${F.PRODUCT_ID}`)).text();
+  const plainCrumbs = ldBlocks(plain).find((b) => b["@type"] === "BreadcrumbList") as {
+    itemListElement: Array<{ name: string }>;
+  };
+  expect(plainCrumbs.itemListElement.map((x) => x.name)).toEqual([F.SHOP_NAME, F.PRODUCT_NAME]);
+});

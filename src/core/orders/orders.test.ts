@@ -225,6 +225,67 @@ describe("placeOrder: состав и получение", () => {
   });
 });
 
+describe("placeOrder: история остатка", () => {
+  it("оформление пишет «−N» с номером заказа", async () => {
+    const { db, ctx, customer } = setup({
+      modules: { stock: true },
+      products: [product("cake", { stock_quantity: 2 })],
+      cart: [{ product: "cake" }],
+    });
+    const r = await placeOrder(ctx, customer, "KZ");
+    expect(r.ok).toBe(true);
+    const ev = (db.tables.zernio_logs ?? []).filter((e) =>
+      String(e.event_type).startsWith("stock."),
+    );
+    expect(ev).toHaveLength(1);
+    expect(ev[0]).toMatchObject({
+      event_type: "stock.order",
+      payload: { product_id: "cake", from: 2, to: 1, actor: "customer" },
+    });
+  });
+
+  it("сбой после создания заказа возвращает остаток И пишет «+N» — история сходится с остатком", async () => {
+    const base = setup({
+      modules: { stock: true },
+      products: [product("cake", { stock_quantity: 2 })],
+      cart: [{ product: "cake" }],
+    });
+    const { db, ctx, customer, stock } = base;
+    // После события склада чтение настроек (сумма к оплате) падает.
+    const broken = withBrokenReads(db, ["app_settings"]);
+    let logWrites = 0;
+    const inner = ctx.db as unknown as FakeDb;
+    (ctx as unknown as { db: unknown }).db = {
+      rpc: inner.rpc,
+      from: (t: string) => {
+        if (t === "zernio_logs") logWrites++;
+        return logWrites >= 2 && t === "app_settings" ? broken.from(t) : inner.from(t);
+      },
+    };
+    await expect(placeOrder(ctx, customer, "KZ")).rejects.toThrow();
+    expect(stock("cake")).toBe(2);
+    const ev = (db.tables.zernio_logs ?? [])
+      .filter((e) => String(e.event_type).startsWith("stock."))
+      .map((e) => ({ type: e.event_type, ...(e.payload as object) }));
+    expect(ev).toMatchObject([
+      { type: "stock.order", from: 2, to: 1 },
+      { type: "stock.cancel", from: 1, to: 2, actor: "system" },
+    ]);
+  });
+
+  it("не хватило остатка: заказа и событий нет", async () => {
+    const { db, ctx, customer } = setup({
+      modules: { stock: true },
+      products: [product("sold", { stock_quantity: 0 })],
+      cart: [{ product: "sold" }],
+    });
+    expect((await placeOrder(ctx, customer, "KZ")).ok).toBe(false);
+    expect(
+      (db.tables.zernio_logs ?? []).filter((e) => String(e.event_type).startsWith("stock.")),
+    ).toHaveLength(0);
+  });
+});
+
 describe("placeOrder: складской учёт", () => {
   it("успешное оформление списывает остаток", async () => {
     const { ctx, customer, stock } = setup({

@@ -155,7 +155,7 @@ async function patchProduct(
     .eq("id", id)
     .select(PRODUCT_COLUMNS)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`API: ${error.message}`);
   if (!data) return fail(404, "not_found");
   if ("stock_quantity" in patch) {
     const { recordStockChange } = await import("@/core/catalog/stock-history");

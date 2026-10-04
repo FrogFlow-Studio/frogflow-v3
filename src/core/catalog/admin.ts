@@ -227,7 +227,7 @@ export async function createProduct(ctx: TenantContext, input: ProductInput): Pr
     .insert(toRow(ctx, input))
     .select("id")
     .single();
-  if (error || !data) throw new Error(error?.message ?? "insert failed");
+  if (error || !data) throw serverFailure(`Каталог: ${error?.message ?? "товар не создан"}`);
   return data.id;
 }
 
@@ -238,7 +238,7 @@ export async function updateProduct(
 ): Promise<void> {
   const { bot_id: _b, ...patch } = toRow(ctx, input);
   const { error } = await ctx.db.from("products").update(patch).eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`Каталог: ${error.message}`);
 }
 
 export async function deleteProduct(ctx: TenantContext, id: string): Promise<void> {

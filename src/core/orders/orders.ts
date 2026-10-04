@@ -284,6 +284,9 @@ export async function placeOrder(
   const reserved: Array<{ productId: string; qty: number }> = [];
   // Что фактически списано — в историю остатка, когда заказ создан (не раньше).
   const stockChanges: StockChange[] = [];
+  // Заказ, под который событие истории остатка уже записано: откат ниже должен
+  // тоже оставить след («−N» без «+N» в истории — расхождение с реальным остатком).
+  let stockLoggedFor: number | null = null;
   const preorderLines: import("@/core/preorder/preorder").PreorderLine[] = [];
   const fail = async (
     reason: Exclude<Extract<PlaceOrderResult, { ok: false }>["reason"], "below_min">,
@@ -527,6 +530,7 @@ export async function placeOrder(
       orderId: finalOrder.id,
       actor: "customer",
     });
+    stockLoggedFor = finalOrder.id;
     // Сертификат больше заказа — остаток новым кодом в той же валюте. Сбой
     // выдачи заказ не срывает: сертификат погашен, остаток выдаст продавец.
     let giftRest: import("@/core/discounts/gift-rest").GiftRest | null = null;
@@ -565,7 +569,8 @@ export async function placeOrder(
       giftRest,
     };
   } catch (e) {
-    for (const r of reserved) await restoreStock(ctx, r.productId, r.qty).catch(() => {});
+    const log = stockLoggedFor === null ? undefined : cancelLog(stockLoggedFor);
+    for (const r of reserved) await restoreStock(ctx, r.productId, r.qty, log).catch(() => {});
     await rollbackRedemptions(ctx, customer, redemptions).catch(() => {});
     await releaseOrderPlacement(ctx, customer).catch(() => {});
     throw e;
@@ -574,6 +579,9 @@ export async function placeOrder(
     if (offerHeld) await releaseOfferHolds(ctx, holdToken);
   }
 }
+
+/** Причина для истории остатка, когда сбой после создания заказа возвращает списанное. */
+const cancelLog = (orderId: number) => ({ reason: "cancel" as const, orderId, actor: "system" });
 
 function orderItemSnapshot(
   ctx: TenantContext,
