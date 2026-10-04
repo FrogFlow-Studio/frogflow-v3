@@ -22,7 +22,7 @@ import { adminRecipients } from "@/core/notify/recipients";
 import { PRODUCT_SELECT } from "@/core/catalog/catalog";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import type { TelegramApi } from "./api";
+import { sendPhotoOrText, type TelegramApi } from "./api";
 import {
   languageChoice,
   mainMenu as screenMainMenu,
@@ -1066,14 +1066,17 @@ async function sendProductCard(b: Bot, p: Product) {
   if (!photo) {
     await send(b, caption, { reply_markup: keyboard });
   } else {
-    const res = await b.api.call("sendPhoto", {
-      chat_id: b.chatId,
-      photo,
-      caption: caption.slice(0, 1024),
-      parse_mode: "HTML",
-      reply_markup: keyboard,
-    });
-    if (!res.ok) await send(b, caption, { reply_markup: keyboard });
+    await sendPhotoOrText(
+      b.api,
+      {
+        chat_id: b.chatId,
+        photo,
+        caption: caption.slice(0, 1024),
+        parse_mode: "HTML",
+        reply_markup: keyboard,
+      },
+      () => send(b, caption, { reply_markup: keyboard }),
+    );
   }
 }
 
@@ -1803,13 +1806,16 @@ async function sendManualInstructions(
     `${b.m.manualTitleNew(p.no)}\n\n${b.m.amountToPay(formatMoney(p.due, p.currency))}${await consentLine(b)}\n${p.depositLine}\n` +
     `${escapeHtml(p.instructions || b.m.defaultInstructions)}\n\n${p.physical ? b.m.afterProofPhysical : b.m.afterProofManual}`;
   if (p.qr && text.length <= 1024) {
-    const r = await b.api.call("sendPhoto", {
-      chat_id: b.chatId,
-      photo: imageUrl(b.ctx, p.qr),
-      caption: text,
-      parse_mode: "HTML",
-    });
-    if (r.ok) return;
+    // Обрыв или 5xx: подпись могла дойти вместе с фото — текст и QR вторым экземпляром не шлём.
+    await sendPhotoOrText(
+      b.api,
+      { chat_id: b.chatId, photo: imageUrl(b.ctx, p.qr), caption: text, parse_mode: "HTML" },
+      async () => {
+        await send(b, text);
+        await b.api.call("sendPhoto", { chat_id: b.chatId, photo: imageUrl(b.ctx, p.qr!) });
+      },
+    );
+    return;
   }
   await send(b, text);
   if (p.qr) await b.api.call("sendPhoto", { chat_id: b.chatId, photo: imageUrl(b.ctx, p.qr) });

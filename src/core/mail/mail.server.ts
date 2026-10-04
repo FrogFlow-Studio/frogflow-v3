@@ -25,6 +25,9 @@ export type Mailer = (mail: {
   html: string;
 }) => Promise<{ ok: boolean; error?: string }>;
 
+/** Предел ожидания SMTP-сервера на каждом шаге (соединение, приветствие, ответ). */
+export const SMTP_TIMEOUT_MS = 15_000;
+
 export const smtpMailer: Mailer = async (mail) => {
   const e = env();
   if (!isMailConfigured()) return { ok: false, error: "SMTP не настроен" };
@@ -35,6 +38,10 @@ export const smtpMailer: Mailer = async (mail) => {
       port,
       secure: port === 465,
       auth: { user: e.SMTP_USER, pass: e.SMTP_PASSWORD },
+      // Без своих сроков nodemailer ждёт соединение 2 минуты, а ответ сервера — 10: больше бюджета функции.
+      connectionTimeout: SMTP_TIMEOUT_MS,
+      greetingTimeout: SMTP_TIMEOUT_MS,
+      socketTimeout: SMTP_TIMEOUT_MS,
     });
     if (previewReadonly()) return { ok: false, error: PREVIEW_SEND_OFF };
     await beforeExternalEffect();

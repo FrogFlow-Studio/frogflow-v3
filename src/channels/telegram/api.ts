@@ -163,3 +163,20 @@ export async function telegramUpload(
     });
   });
 }
+
+/**
+ * Фото с подписью, а если Telegram его точно не принял (4xx: формат, размер, ссылка) — то же
+ * сообщение текстом. Обрыв, тайм-аут и 5xx — «неизвестно, дошло ли»: второй экземпляр хуже
+ * тишины, поэтому запасной способ не запускается (CLAUDE.md, «Внешние вызовы»).
+ * Возвращает true, если запасной текст не понадобился.
+ */
+export async function sendPhotoOrText(
+  api: TelegramApi,
+  photo: Record<string, unknown>,
+  sendText: () => Promise<unknown>,
+): Promise<boolean> {
+  const r = await api.call("sendPhoto", photo);
+  if (r.ok || !rejectedForSure(r)) return true;
+  await sendText();
+  return false;
+}

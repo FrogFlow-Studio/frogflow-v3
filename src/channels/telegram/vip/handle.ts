@@ -24,7 +24,7 @@ import {
   type MemberUser,
   type TariffRow,
 } from "@/core/vip/vip";
-import { telegramApi, type TelegramApi } from "../api";
+import { sendPhotoOrText, telegramApi, type TelegramApi } from "../api";
 import { escapeHtml } from "../copy";
 import type { TelegramUpdate, TelegramUser } from "../types";
 import { vipCopy, type VipCopyKey } from "./copy";
@@ -177,13 +177,13 @@ async function sendPaymentInstructions(v: Vip, text: string, qrPath: string) {
   if (qrPath) {
     const photo = imageUrl(v.ctx, qrPath);
     if (text.length <= 1024) {
-      const r = await v.api.call("sendPhoto", {
-        chat_id: v.chatId,
-        photo,
-        caption: text,
-        parse_mode: "HTML",
-      });
-      if (r.ok) return;
+      // Обрыв или 5xx: подпись могла дойти — текст вторым экземпляром не шлём.
+      await sendPhotoOrText(
+        v.api,
+        { chat_id: v.chatId, photo, caption: text, parse_mode: "HTML" },
+        () => say(v, text),
+      );
+      return;
     } else {
       await v.api.call("sendPhoto", { chat_id: v.chatId, photo });
     }
