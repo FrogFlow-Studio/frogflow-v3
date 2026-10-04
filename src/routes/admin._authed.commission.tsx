@@ -79,6 +79,9 @@ function CommissionPage() {
         <p data-testid="commission-bots">{t("commission.bots")}</p>
         {!d.enabled && <p data-testid="commission-off">{t("commission.off")}</p>}
         {d.enabled && rate !== null && (
+          <p data-testid="commission-invoice">{t("commission.invoice")}</p>
+        )}
+        {d.enabled && rate !== null && (
           <p className="text-muted">
             {t("commission.start", {
               date: new Date(`${d.start}T12:00:00Z`).toLocaleDateString(loc, { timeZone: "UTC" }),

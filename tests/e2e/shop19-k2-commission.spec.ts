@@ -15,10 +15,12 @@ test("комиссия: страница объясняет правило и ч
     page.getByRole("heading", { name: "Комиссия платформы", exact: true }),
   ).toBeVisible();
   await expect(page.getByTestId("commission-bots")).toContainText(
-    "Заказы из ботов Telegram, Instagram и WhatsApp не облагаются.",
+    "Заказы из ботов Telegram (в том числе из Mini App), Instagram и WhatsApp, а также заведённые вручную комиссией не облагаются.",
   );
   // Общий выключатель по умолчанию выключен: комиссия не начисляется.
   await expect(page.getByTestId("commission-off")).toContainText("Комиссия пока не начисляется.");
+  // Пока выключатель выключен, строки про счёт за подписку нет: ничего не начисляется.
+  await expect(page.getByTestId("commission-invoice")).toHaveCount(0);
   await expect(page.getByText("Этот месяц", { exact: false }).first()).toBeVisible();
   expect(errors).toEqual([]);
 });

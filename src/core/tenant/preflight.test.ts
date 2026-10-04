@@ -331,3 +331,45 @@ describe("минимальная сумма заказа в проверке п�
     expect(c!.detail).toContain("счёт ссылкой");
   });
 });
+
+describe("комиссия платформы в проверке переезда", () => {
+  const run = (commission: object) =>
+    evaluatePreflight({ ...base, modulesOn: [...base.modulesOn], commission } as never);
+  const found = (commission: object) => run(commission).checks.find((c) => c.key === "commission");
+
+  it("не передано — пункта нет", () => {
+    expect(
+      evaluatePreflight({ ...base, modulesOn: [...base.modulesOn] }).checks.find(
+        (c) => c.key === "commission",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("выключатель выключен: ставка, порог и дата названы, сказано, что пока ничего не начисляется", () => {
+    const c = found({ enabled: false, rate: 5, start: "2027-01-01", free: 50_000 })!;
+    expect(c).toMatchObject({ level: "info", title: "Комиссия платформы пока выключена" });
+    expect(c.detail).toContain("5 %");
+    expect(c.detail).toContain("50 000 ₸");
+    expect(c.detail).toContain("2027-01-01");
+    expect(c.detail).toContain("ничего не начисляется");
+  });
+
+  it("включён: названа ставка с даты, комиссия идёт строкой в счёт; боты комиссии не несут", () => {
+    const c = found({ enabled: true, rate: 10, start: "2027-02-01", free: 50_000 })!;
+    expect(c.title).toBe("Комиссия платформы 10 % с 2027-02-01");
+    expect(c.detail).toContain("в счёте за подписку");
+    expect(c.detail).toContain("Mini App");
+    expect(c.detail).toContain("Instagram и WhatsApp комиссии не несут");
+  });
+
+  it("тариф не назначен или договорной: комиссии не будет — и при включённом выключателе", () => {
+    for (const enabled of [true, false])
+      expect(found({ enabled, rate: null, start: "2027-01-01", free: 50_000 })).toMatchObject({
+        title: "Комиссия платформы не начисляется",
+      });
+  });
+
+  it("пункт справочный: переезд не блокирует", () => {
+    expect(run({ enabled: true, rate: 5, start: "2027-01-01", free: 50_000 }).ready).toBe(true);
+  });
+});

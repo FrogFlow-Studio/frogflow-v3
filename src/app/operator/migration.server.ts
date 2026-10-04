@@ -213,6 +213,7 @@ export async function preflight(botId: string): Promise<Preflight> {
       }))
     : undefined;
   const minOrder = await minOrderInput(tenantContext(t));
+  const commission = await commissionInput(t);
   const zernioAccountIds = t.settings.zernio?.account_ids ?? [];
   const policy = readPolicy(t.settings);
   const vip = t.modules.vip ? await vipInput(t, mainBotId, chats) : null;
@@ -255,8 +256,23 @@ export async function preflight(botId: string): Promise<Preflight> {
     ...(loyalty ? { loyalty } : {}),
     ...(school ? { school } : {}),
     ...(minOrder ? { minOrder } : {}),
+    commission,
   });
   return withVipChecks(base, vip);
+}
+
+/** Комиссия платформы клиента для проверки переезда: общий выключатель, ставка тарифа, дата начала. */
+async function commissionInput(t: Tenant) {
+  const { commissionEnabled } = await import("@/core/commission/commission.server");
+  const { commissionRate } = await import("@/core/commission/commission");
+  const { COMMISSION_DEFAULT_START, COMMISSION_FREE_MONTHLY } =
+    await import("@/core/plans/registry");
+  return {
+    enabled: await commissionEnabled(),
+    rate: commissionRate(t.plan),
+    start: t.settings.commission?.start ?? COMMISSION_DEFAULT_START,
+    free: COMMISSION_FREE_MONTHLY,
+  };
 }
 
 /** Минимальная сумма заказа магазина для проверки переезда; не задана — undefined. */

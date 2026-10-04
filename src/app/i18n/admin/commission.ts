@@ -5,8 +5,11 @@ export const ru = {
   "commission.nav": "Комиссия",
   "commission.title": "Комиссия платформы",
   "commission.rule":
-    "С оплаченных заказов вашей витрины и маркета платформа берёт {rate} % на тарифе {tier}. Первые {free} продаж в месяц комиссией не облагаются: процент считается только с продаж сверх этой суммы. Возвраты уменьшают продажи.",
-  "commission.bots": "Заказы из ботов Telegram, Instagram и WhatsApp не облагаются.",
+    "С оплаченных заказов вашей витрины и маркета платформа берёт {rate} % на тарифе {tier}. Первые {free} продаж в месяц комиссией не облагаются: процент считается только с продаж сверх этой суммы. Считаются заказы в тенге; возвраты уменьшают продажи.",
+  "commission.bots":
+    "Заказы из ботов Telegram (в том числе из Mini App), Instagram и WhatsApp, а также заведённые вручную комиссией не облагаются.",
+  "commission.invoice":
+    "Комиссия за прошлый месяц добавляется отдельной строкой в следующий счёт за подписку, в целых тенге. Заказ относится к месяцу, в котором его оформили. Заказ, оплаченный уже после выставления счёта за его месяц, пока в этот счёт не попадает.",
   "commission.off":
     "Комиссия пока не начисляется. Ниже ваши продажи с витрины и маркета: с них она считалась бы.",
   "commission.noRate": "На ваших условиях комиссия не начисляется.",
@@ -27,9 +30,11 @@ export const kk: SectionDict<typeof ru> = {
   "commission.nav": "Комиссия",
   "commission.title": "Платформа комиссиясы",
   "commission.rule":
-    "Витринаңыз бен маркеттің төленген тапсырыстарынан платформа {tier} тарифінде {rate} % алады. Айына алғашқы {free} сатылым комиссиядан босатылған: пайыз осы соммадан асатын сатылымнан ғана есептеледі. Қайтарулар сатылымды азайтады.",
+    "Витринаңыз бен маркеттің төленген тапсырыстарынан платформа {tier} тарифінде {rate} % алады. Айына алғашқы {free} сатылым комиссиядан босатылған: пайыз осы соммадан асатын сатылымнан ғана есептеледі. Тек теңгедегі тапсырыстар есептеледі; қайтарулар сатылымды азайтады.",
   "commission.bots":
-    "Telegram, Instagram және WhatsApp боттарынан түскен тапсырыстарға комиссия салынбайды.",
+    "Telegram (Mini App қоса), Instagram және WhatsApp боттарынан түскен, сондай-ақ қолмен енгізілген тапсырыстарға комиссия салынбайды.",
+  "commission.invoice":
+    "Өткен айдың комиссиясы келесі жазылым шотына жеке жол болып, тұтас теңгемен қосылады. Тапсырыс ол рәсімделген айға жатады. Өз айының шоты шығарылғаннан кейін төленген тапсырыс әзірге бұл шотқа кірмейді.",
   "commission.off":
     "Комиссия әзірге есептелмейді. Төменде витринаңыз бен маркеттен түскен сатылымдар: комиссия солардан есептелер еді.",
   "commission.noRate": "Сіздің шарттарыңызда комиссия есептелмейді.",
@@ -50,8 +55,11 @@ export const en: SectionDict<typeof ru> = {
   "commission.nav": "Commission",
   "commission.title": "Platform commission",
   "commission.rule":
-    "The platform takes {rate} % of paid orders from your storefront and marketplace on the {tier} plan. The first {free} of sales each month carry no commission: the percentage applies only to sales above that amount. Refunds reduce sales.",
-  "commission.bots": "Orders from Telegram, Instagram and WhatsApp bots are not charged.",
+    "The platform takes {rate} % of paid orders from your storefront and marketplace on the {tier} plan. The first {free} of sales each month carry no commission: the percentage applies only to sales above that amount. Orders in tenge are counted; refunds reduce sales.",
+  "commission.bots":
+    "Orders from Telegram (including the Mini App), Instagram and WhatsApp bots, and orders entered by hand, are not charged.",
+  "commission.invoice":
+    "Last month's commission is added as a separate line, in whole tenge, to your next subscription invoice. An order belongs to the month it was placed. An order paid after the invoice for its month was issued is not included in that invoice yet.",
   "commission.off":
     "Commission is not being charged yet. Below are your storefront and marketplace sales it would be calculated from.",
   "commission.noRate": "No commission is charged on your terms.",
@@ -72,9 +80,11 @@ export const uz: SectionDict<typeof ru> = {
   "commission.nav": "Komissiya",
   "commission.title": "Platforma komissiyasi",
   "commission.rule":
-    "Vitrina va marketdagi toʻlangan buyurtmalardan platforma {tier} tarifida {rate} % oladi. Oyiga dastlabki {free} savdo komissiyadan ozod: foiz faqat shu summadan oshgan savdodan hisoblanadi. Qaytarishlar savdoni kamaytiradi.",
+    "Vitrina va marketdagi toʻlangan buyurtmalardan platforma {tier} tarifida {rate} % oladi. Oyiga dastlabki {free} savdo komissiyadan ozod: foiz faqat shu summadan oshgan savdodan hisoblanadi. Faqat tengedagi buyurtmalar hisoblanadi; qaytarishlar savdoni kamaytiradi.",
   "commission.bots":
-    "Telegram, Instagram va WhatsApp botlaridan kelgan buyurtmalarga komissiya olinmaydi.",
+    "Telegram (Mini App bilan), Instagram va WhatsApp botlaridan kelgan hamda qoʻlda kiritilgan buyurtmalarga komissiya olinmaydi.",
+  "commission.invoice":
+    "Oʻtgan oy komissiyasi keyingi obuna hisobiga alohida qator boʻlib, butun tengeda qoʻshiladi. Buyurtma rasmiylashtirilgan oyga tegishli. Oʻz oyining hisobi chiqarilgandan keyin toʻlangan buyurtma hozircha bu hisobga kirmaydi.",
   "commission.off":
     "Komissiya hozircha hisoblanmaydi. Quyida vitrina va marketdagi savdolaringiz: komissiya shulardan hisoblanardi.",
   "commission.noRate": "Sizning shartlaringizda komissiya hisoblanmaydi.",

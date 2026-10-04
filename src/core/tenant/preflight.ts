@@ -77,6 +77,11 @@ export type PreflightInput = {
   };
   /** Минимальная сумма заказа магазина (core/cart/min-order); не задана — поле не передаётся. */
   minOrder?: { amount: number; currency: string };
+  /**
+   * Комиссия платформы (core/commission): общий выключатель, ставка тарифа клиента
+   * (null — тариф не назначен или договорной), дата начала `ГГГГ-ММ-ДД` и порог в месяц.
+   */
+  commission?: { enabled: boolean; rate: number | null; start: string; free: number };
 };
 
 export function evaluatePreflight(i: PreflightInput): Preflight {
@@ -325,6 +330,32 @@ export function evaluatePreflight(i: PreflightInput): Preflight {
       title: "Задана минимальная сумма заказа",
       detail: `Минимум ${i.minOrder.amount} ${i.minOrder.currency}: бот, сайт и Instagram/WhatsApp в v2 не дадут оформить заказ меньше и подскажут, сколько добрать. v1 этой настройки не знает, поэтому проверьте, что она нужна продавцу и что цены товаров её не нарушают; счёт ссылкой, выставленный продавцом, минимум не проверяет.`,
     });
+  const commission = i.commission;
+  const free = commission ? commission.free.toLocaleString("ru").replace(/\s/g, " ") : "";
+  if (commission)
+    checks.push(
+      commission.rate === null
+        ? {
+            key: "commission",
+            level: "info",
+            title: "Комиссия платформы не начисляется",
+            detail:
+              "У клиента не назначен тариф или условия договорные: комиссии с витрины и маркета не будет, пока не назначен тариф.",
+          }
+        : commission.enabled
+          ? {
+              key: "commission",
+              level: "info",
+              title: `Комиссия платформы ${commission.rate} % с ${commission.start}`,
+              detail: `С оплаченных заказов витрины и маркета в тенге сверх ${free} ₸ в месяц, отдельной строкой в счёте за подписку. Заказы из бота (в том числе Mini App), Instagram и WhatsApp комиссии не несут. Предупредите продавца до переезда: страница «Комиссия» в его админке покажет, сколько набежало.`,
+            }
+          : {
+              key: "commission",
+              level: "info",
+              title: "Комиссия платформы пока выключена",
+              detail: `Ставка тарифа клиента ${commission.rate} % с оплаченных заказов витрины и маркета в тенге сверх ${free} ₸ в месяц, начало ${commission.start}. Общий выключатель выключен, поэтому сейчас ничего не начисляется и в счёт не попадает; включает оператор по слову Якова, продавца о ставке лучше предупредить заранее.`,
+            },
+    );
   if (i.appUrl)
     checks.push({
       key: "v1",
