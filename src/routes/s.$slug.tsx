@@ -7,6 +7,7 @@ import { storeShareFn } from "@/app/storefront/share.functions";
 import { shopLinks, shopMeta } from "@/core/storefront/share";
 import { CartProvider, useCart, useTelegramWebApp } from "@/app/storefront/cart";
 import { FavoritesProvider, useFavorites } from "@/app/storefront/favorites";
+import { InstallPrompt } from "@/app/storefront/install";
 import { StorefrontLocaleProvider, useStorefrontLocale } from "@/app/storefront/locale";
 import { storefrontT } from "@/app/i18n/storefront";
 import { ThemeToggle } from "@/app/ui";
@@ -138,6 +139,7 @@ function StoreFrame() {
       <main
         className={`mx-auto w-full max-w-6xl flex-1 px-4 py-6${wa ? " pb-24" : " max-sm:pb-20"}`}
       >
+        <InstallPrompt slug={shop.slug} enabled={shop.share.installable && !wa} />
         <Outlet />
       </main>
       <footer className="border-t border-line">

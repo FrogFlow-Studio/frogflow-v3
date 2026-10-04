@@ -88,7 +88,7 @@ function ProductPage() {
   const { product: p, related, preview, course, waitlistUrl } = Route.useLoaderData();
   const { slug } = Route.useParams();
   const shop = useLoaderData({ from: "/s/$slug" });
-  useRememberViewed(slug, preview ? "" : p.id);
+  useRememberViewed(slug, p.id);
   const { locale, t } = useStorefrontLocale();
   const cart = useCart();
   const [img, setImg] = useState(0);

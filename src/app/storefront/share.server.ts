@@ -110,3 +110,42 @@ export async function iconResponse(slug: string, rawSize: string): Promise<Respo
     headers: { "content-type": "image/png", "cache-control": "public, max-age=86400" },
   });
 }
+
+/** /s/<slug>/sw.js — service worker витрины: только страница «нет сети» (core/storefront/pwa). */
+export async function swResponse(slug: string): Promise<Response> {
+  const t = await openShop(slug, "catalog");
+  if (!t) return notFound();
+  const { swSource } = await import("@/core/storefront/pwa");
+  return new Response(swSource(t.settings.slug!), {
+    headers: {
+      "content-type": "text/javascript; charset=utf-8",
+      // Скрипт проверяется браузером при каждом открытии: новая версия подхватывается сразу.
+      "cache-control": "no-cache",
+      "service-worker-allowed": `/s/${t.settings.slug}`,
+    },
+  });
+}
+
+/** /s/<slug>/offline — страница «нет сети»: название магазина и «Повторить», без цен и товаров. */
+export async function offlineResponse(slug: string): Promise<Response> {
+  const t = await openShop(slug, "catalog");
+  if (!t) return notFound();
+  const { tenantContext } = await import("@/core/tenant/resolve.server");
+  const { storefrontT } = await import("@/app/i18n/storefront");
+  const { offlineHtml } = await import("@/core/storefront/pwa");
+  const s = await getSettings(tenantContext(t), ["shop_name", "storefront_accent"]);
+  const lang = t.settings.default_locale ?? "ru";
+  const tr = storefrontT(lang);
+  return new Response(
+    offlineHtml({
+      lang,
+      name: s.shop_name?.trim() || t.name,
+      title: tr("pwa.offlineTitle"),
+      text: tr("pwa.offlineText"),
+      retry: tr("pwa.retry"),
+      accent: s.storefront_accent ?? null,
+    }),
+    // Service worker забирает страницу при установке: свежесть обеспечивает no-cache, не max-age.
+    { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" } },
+  );
+}

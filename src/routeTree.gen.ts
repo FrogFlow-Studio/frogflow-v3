@@ -104,7 +104,9 @@ import { Route as SSlugGiftRouteImport } from './routes/s.$slug.gift'
 import { Route as SSlugOrdersRouteImport } from './routes/s.$slug.orders'
 import { Route as SSlugQuizRouteImport } from './routes/s.$slug.quiz'
 import { Route as SSlugManifestDotwebmanifestRouteImport } from './routes/s.$slug_.manifest[.]webmanifest'
+import { Route as SSlugOfflineRouteImport } from './routes/s.$slug_.offline'
 import { Route as SSlugSitemapDotxmlRouteImport } from './routes/s.$slug_.sitemap[.]xml'
+import { Route as SSlugSwDotjsRouteImport } from './routes/s.$slug_.sw[.]js'
 import { Route as AdminAuthedCustomersKeyRouteImport } from './routes/admin._authed.customers_.$key'
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
 import { Route as AdminAuthedOrdersNewRouteImport } from './routes/admin._authed.orders.new'
@@ -610,9 +612,19 @@ const SSlugManifestDotwebmanifestRoute =
     path: '/s/$slug/manifest.webmanifest',
     getParentRoute: () => rootRouteImport,
   } as any)
+const SSlugOfflineRoute = SSlugOfflineRouteImport.update({
+  id: '/s/$slug_/offline',
+  path: '/s/$slug/offline',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SSlugSitemapDotxmlRoute = SSlugSitemapDotxmlRouteImport.update({
   id: '/s/$slug_/sitemap.xml',
   path: '/s/$slug/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SSlugSwDotjsRoute = SSlugSwDotjsRouteImport.update({
+  id: '/s/$slug_/sw.js',
+  path: '/s/$slug/sw.js',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAuthedCustomersKeyRoute = AdminAuthedCustomersKeyRouteImport.update({
@@ -863,7 +875,9 @@ export interface FileRoutesByFullPath {
   '/s/$slug/orders': typeof SSlugOrdersRoute
   '/s/$slug/quiz': typeof SSlugQuizRoute
   '/s/$slug/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
+  '/s/$slug/offline': typeof SSlugOfflineRoute
   '/s/$slug/sitemap.xml': typeof SSlugSitemapDotxmlRoute
+  '/s/$slug/sw.js': typeof SSlugSwDotjsRoute
   '/admin/': typeof AdminAuthedIndexRoute
   '/operator/': typeof OperatorAuthedIndexRoute
   '/s/$slug/': typeof SSlugIndexRoute
@@ -987,7 +1001,9 @@ export interface FileRoutesByTo {
   '/s/$slug/orders': typeof SSlugOrdersRoute
   '/s/$slug/quiz': typeof SSlugQuizRoute
   '/s/$slug/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
+  '/s/$slug/offline': typeof SSlugOfflineRoute
   '/s/$slug/sitemap.xml': typeof SSlugSitemapDotxmlRoute
+  '/s/$slug/sw.js': typeof SSlugSwDotjsRoute
   '/s/$slug': typeof SSlugIndexRoute
   '/admin/customers/$key': typeof AdminAuthedCustomersKeyRoute
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
@@ -1113,7 +1129,9 @@ export interface FileRoutesById {
   '/s/$slug/orders': typeof SSlugOrdersRoute
   '/s/$slug/quiz': typeof SSlugQuizRoute
   '/s/$slug_/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
+  '/s/$slug_/offline': typeof SSlugOfflineRoute
   '/s/$slug_/sitemap.xml': typeof SSlugSitemapDotxmlRoute
+  '/s/$slug_/sw.js': typeof SSlugSwDotjsRoute
   '/admin/_authed/': typeof AdminAuthedIndexRoute
   '/operator/_authed/': typeof OperatorAuthedIndexRoute
   '/s/$slug/': typeof SSlugIndexRoute
@@ -1240,7 +1258,9 @@ export interface FileRouteTypes {
     | '/s/$slug/orders'
     | '/s/$slug/quiz'
     | '/s/$slug/manifest.webmanifest'
+    | '/s/$slug/offline'
     | '/s/$slug/sitemap.xml'
+    | '/s/$slug/sw.js'
     | '/admin/'
     | '/operator/'
     | '/s/$slug/'
@@ -1364,7 +1384,9 @@ export interface FileRouteTypes {
     | '/s/$slug/orders'
     | '/s/$slug/quiz'
     | '/s/$slug/manifest.webmanifest'
+    | '/s/$slug/offline'
     | '/s/$slug/sitemap.xml'
+    | '/s/$slug/sw.js'
     | '/s/$slug'
     | '/admin/customers/$key'
     | '/admin/orders/$id'
@@ -1489,7 +1511,9 @@ export interface FileRouteTypes {
     | '/s/$slug/orders'
     | '/s/$slug/quiz'
     | '/s/$slug_/manifest.webmanifest'
+    | '/s/$slug_/offline'
     | '/s/$slug_/sitemap.xml'
+    | '/s/$slug_/sw.js'
     | '/admin/_authed/'
     | '/operator/_authed/'
     | '/s/$slug/'
@@ -1554,7 +1578,9 @@ export interface RootRouteChildren {
   ApiV1SplatRoute: typeof ApiV1SplatRoute
   ApiZernioWebhookRoute: typeof ApiZernioWebhookRoute
   SSlugManifestDotwebmanifestRoute: typeof SSlugManifestDotwebmanifestRoute
+  SSlugOfflineRoute: typeof SSlugOfflineRoute
   SSlugSitemapDotxmlRoute: typeof SSlugSitemapDotxmlRoute
+  SSlugSwDotjsRoute: typeof SSlugSwDotjsRoute
   ApiAdminExportKindRoute: typeof ApiAdminExportKindRoute
   ApiImgBotIdSplatRoute: typeof ApiImgBotIdSplatRoute
   ApiRobokassaBotIdActionRoute: typeof ApiRobokassaBotIdActionRoute
@@ -2230,11 +2256,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugManifestDotwebmanifestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/s/$slug_/offline': {
+      id: '/s/$slug_/offline'
+      path: '/s/$slug/offline'
+      fullPath: '/s/$slug/offline'
+      preLoaderRoute: typeof SSlugOfflineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/s/$slug_/sitemap.xml': {
       id: '/s/$slug_/sitemap.xml'
       path: '/s/$slug/sitemap.xml'
       fullPath: '/s/$slug/sitemap.xml'
       preLoaderRoute: typeof SSlugSitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/s/$slug_/sw.js': {
+      id: '/s/$slug_/sw.js'
+      path: '/s/$slug/sw.js'
+      fullPath: '/s/$slug/sw.js'
+      preLoaderRoute: typeof SSlugSwDotjsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/_authed/customers_/$key': {
@@ -2715,7 +2755,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1SplatRoute: ApiV1SplatRoute,
   ApiZernioWebhookRoute: ApiZernioWebhookRoute,
   SSlugManifestDotwebmanifestRoute: SSlugManifestDotwebmanifestRoute,
+  SSlugOfflineRoute: SSlugOfflineRoute,
   SSlugSitemapDotxmlRoute: SSlugSitemapDotxmlRoute,
+  SSlugSwDotjsRoute: SSlugSwDotjsRoute,
   ApiAdminExportKindRoute: ApiAdminExportKindRoute,
   ApiImgBotIdSplatRoute: ApiImgBotIdSplatRoute,
   ApiRobokassaBotIdActionRoute: ApiRobokassaBotIdActionRoute,
