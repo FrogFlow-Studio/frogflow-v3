@@ -60,6 +60,7 @@ const NOT_AUDITED = new Set([
   "vipProofUrlFn",
   "zernioConnectLinkFn",
   "hideSetupFn",
+  "skipSetupStepFn",
   "hideMovedWelcomeFn",
   "savePushFn",
   "removePushFn",

@@ -7,6 +7,7 @@ import { MODULE_KEYS } from "@/core/modules/registry";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
 import { STAFF_ROLES } from "@/core/auth/roles";
+import { SETUP_STEPS, toggleSkippedStep } from "./setup";
 import { SEARCH_MIN } from "@/core/chat/search";
 import { CATALOG_LAYOUTS, CATALOG_ORDER_MAX } from "@/core/storefront/categories";
 import {
@@ -412,6 +413,10 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
       "legal_requisites",
       "admin_chat_id",
       "setup_hidden",
+      "setup_skipped",
+      "shop_tagline",
+      "fulfillment_pickup_enabled",
+      "fulfillment_delivery_enabled",
       "moved_welcome_hidden",
       "starter_ids",
     ]),
@@ -425,7 +430,13 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
       .limit(1)
       .maybeSingle(),
   ]);
-  const { showMovedWelcome, testOrderLink } = await import("./setup");
+  const {
+    showMovedWelcome,
+    testOrderLink,
+    PRODUCTS_TARGET,
+    relevantSetupSteps,
+    parseSkippedSteps,
+  } = await import("./setup");
   // Переехавшему с v1 продавцу — карточка «что где теперь» (один раз).
   const since = ctx.tenant.settings.served_by_since;
   const movedCandidate =
@@ -473,7 +484,20 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
     // Чек-лист первых шагов на «Обзоре» для только что открытого магазина.
     setup: {
       telegram: Boolean(ctx.tenant.telegramTokenEnc),
-      products: (products ?? 0) > 0,
+      // Магазин считается наполненным с пяти товаров; «хоть один» — в `productsAny`.
+      products: (products ?? 0) >= PRODUCTS_TARGET,
+      // Способ получения «сделан», когда продавец сохранил выбор: по умолчанию включены оба.
+      delivery:
+        settings.fulfillment_pickup_enabled !== undefined ||
+        settings.fulfillment_delivery_enabled !== undefined,
+      // Строка-приветствие магазина, которую видит покупатель в боте и на витрине.
+      botTexts: Boolean(settings.shop_tagline?.trim()),
+      productsCount: products ?? 0,
+      relevant: relevantSetupSteps({
+        modules: ctx.tenant.modules,
+        vertical: ctx.tenant.vertical,
+      }),
+      skipped: parseSkippedSteps(settings.setup_skipped),
       payment: methods.length > 0 || ctx.tenant.modules.robokassa,
       legal: Boolean(settings.legal_requisites),
       notifications: Boolean(settings.admin_chat_id || ctx.tenant.ownerTelegramId),
@@ -521,6 +545,17 @@ export const hideSetupFn = createServerFn({ method: "POST" }).handler(async () =
   await (await import("@/core/settings/settings")).setSetting(ctx, "setup_hidden", "1");
   return { ok: true };
 });
+
+/** Скрыть шаг запуска магазина или вернуть его в список («Запуск» на главной). */
+export const skipSetupStepFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ step: z.enum(SETUP_STEPS), skip: z.boolean() }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await adminWrite();
+    const { getSettingsStrict, setSetting } = await import("@/core/settings/settings");
+    const cur = (await getSettingsStrict(ctx, ["setup_skipped"])).setup_skipped;
+    await setSetting(ctx, "setup_skipped", toggleSkippedStep(cur, data.step, data.skip));
+    return { ok: true };
+  });
 
 /** Продавец, переехавший с v1, закрыл карточку «что где теперь». */
 export const hideMovedWelcomeFn = createServerFn({ method: "POST" }).handler(async () => {

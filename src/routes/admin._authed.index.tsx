@@ -4,16 +4,17 @@ import {
   applyNicheTemplateFn,
   dashboardFn,
   hideSetupFn,
+  skipSetupStepFn,
   removeStarterFn,
 } from "@/app/admin/admin.functions";
-import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
+import { adminT, intlLocale, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { schoolLaunchFn, schoolOverviewFn } from "@/app/admin/courses.functions";
 import { verticalTitleKey } from "@/app/i18n/admin/catalog";
 import { Badge, Card, Empty, ErrorBox, PageTitle, Stat, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 import { OrderStatus } from "./admin._authed.orders";
-import { nextSetupStep } from "@/app/admin/setup";
+import { nextSetupStep, setupProgress, type SetupStep } from "@/app/admin/setup";
 import { TIER_TITLES } from "@/core/plans/registry";
 import type { LimitNotice } from "@/core/plans/tenant";
 import { launchDone, type LaunchStepKey } from "@/core/courses/launch";
@@ -32,16 +33,12 @@ function Dashboard() {
   const t = adminT(shop.locale);
   const loc = intlLocale(shop.locale);
   const router = useRouter();
-  const steps = [
-    d.setup.telegram,
-    d.setup.products,
-    d.setup.payment,
-    d.setup.notifications,
-    d.setup.legal,
-    d.setup.firstOrder,
-  ];
-  const doneCount = steps.filter(Boolean).length;
-  const next = nextSetupStep(d.setup);
+  const progress = setupProgress(d.setup, d.setup.relevant, d.setup.skipped);
+  const next = nextSetupStep(d.setup, d.setup.relevant, d.setup.skipped);
+  const skip = useAction(async (step: SetupStep, hide: boolean) => {
+    await skipSetupStepFn({ data: { step, skip: hide } });
+    await router.invalidate();
+  });
   const hide = useAction(async () => {
     await hideSetupFn();
     await router.invalidate();
@@ -89,9 +86,9 @@ function Dashboard() {
       )}
       {shop.vertical === "courses" && shop.modules.courses && <LaunchCard t={t} />}
       {shop.vertical === "courses" && shop.modules.courses && <SchoolCard t={t} loc={loc} />}
-      {!d.setup.hidden && doneCount < steps.length && (
+      {!d.setup.hidden && progress.percent < 100 && (
         <Card
-          title={`${t("overview.steps")} · ${t("overview.stepsOf", { done: doneCount, total: steps.length })}`}
+          title={`${t("launch.title")} · ${t("launch.percent", { n: progress.percent })}`}
           className="mb-6"
           actions={
             <button
@@ -106,76 +103,66 @@ function Dashboard() {
           <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-line">
             <div
               className="h-full bg-accent transition-all"
-              style={{ width: `${Math.round((doneCount / steps.length) * 100)}%` }}
+              style={{ width: `${progress.percent}%` }}
             />
           </div>
           <p className="mb-3 text-sm text-muted">{t("overview.stepsIntro")}</p>
           <ol className="space-y-2 text-sm">
-            <Step
-              current={next === "telegram" ? t("overview.next") : null}
-              done={d.setup.telegram}
-              to="/admin/settings"
-              title={t("overview.step.telegram")}
-            >
-              {t("overview.step.telegramHint")}
-            </Step>
-            <Step
-              current={next === "products" ? t("overview.next") : null}
-              done={d.setup.products}
-              to="/admin/products"
-              title={t("overview.step.products")}
-            >
-              {t("overview.step.productsHint")}
-            </Step>
-            <Step
-              current={next === "payment" ? t("overview.next") : null}
-              done={d.setup.payment}
-              to="/admin/settings"
-              title={t("overview.step.payment")}
-            >
-              {t("overview.step.paymentHint")}
-            </Step>
-            <Step
-              current={next === "notifications" ? t("overview.next") : null}
-              done={d.setup.notifications}
-              to="/admin/settings"
-              title={t("overview.step.notifications")}
-            >
-              {t("overview.step.notificationsHint")}
-            </Step>
-            <Step
-              current={next === "legal" ? t("overview.next") : null}
-              done={d.setup.legal}
-              to="/admin/settings"
-              title={t("overview.step.legal")}
-            >
-              {t("overview.step.legalHint")}
-            </Step>
-            <Step
-              current={next === "firstOrder" ? t("overview.next") : null}
-              done={d.setup.firstOrder}
-              to="/admin/orders"
-              title={t("overview.step.firstOrder")}
-            >
-              {"url" in d.setup.testOrder ? (
-                <>
-                  <a
-                    href={d.setup.testOrder.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn-secondary my-1 inline-block text-sm"
-                  >
-                    {t("overview.testOrder.open")}
-                  </a>
-                  <span className="block">{t("overview.testOrder.how")}</span>
-                </>
-              ) : d.setup.testOrder.missing === "telegram" ? (
-                t("overview.testOrder.needTelegram")
-              ) : (
-                t("overview.testOrder.needProducts")
-              )}
-            </Step>
+            {progress.rows
+              .filter((r) => !r.skipped)
+              .map((r) => (
+                <Step
+                  key={r.step}
+                  current={next === r.step ? t("overview.next") : null}
+                  done={r.done}
+                  to={STEP_LINKS[r.step]}
+                  title={stepTitle(r.step, t)}
+                  onSkip={() => void skip.run(r.step, true).catch(() => {})}
+                  skipLabel={t("launch.skip")}
+                >
+                  {r.step === "firstOrder" ? (
+                    "url" in d.setup.testOrder ? (
+                      <>
+                        <a
+                          href={d.setup.testOrder.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn-secondary my-1 inline-block text-sm"
+                        >
+                          {t("overview.testOrder.open")}
+                        </a>
+                        <span className="block">{t("overview.testOrder.how")}</span>
+                      </>
+                    ) : d.setup.testOrder.missing === "telegram" ? (
+                      t("overview.testOrder.needTelegram")
+                    ) : (
+                      t("overview.testOrder.needProducts")
+                    )
+                  ) : r.step === "products" ? (
+                    t("launch.productsHint", { n: d.setup.productsCount })
+                  ) : (
+                    t(STEP_HINTS[r.step])
+                  )}
+                </Step>
+              ))}
           </ol>
+          {progress.rows.some((r) => r.skipped) && (
+            <div className="mt-3 text-xs text-muted">
+              {t("launch.skipped")}:{" "}
+              {progress.rows
+                .filter((r) => r.skipped)
+                .map((r) => (
+                  <button
+                    key={r.step}
+                    className="mr-2 underline"
+                    onClick={() => void skip.run(r.step, false).catch(() => {})}
+                  >
+                    {stepTitle(r.step, t)} · {t("launch.restore")}
+                  </button>
+                ))}
+            </div>
+          )}
+          <ErrorBox error={skip.error} />
           {d.setup.template && (
             <div className="mt-4 rounded-md border border-line p-3">
               <p className="text-sm font-medium">{t("overview.template.title")}</p>
@@ -310,12 +297,51 @@ function Dashboard() {
   );
 }
 
+const STEP_LINKS: Record<SetupStep, "/admin/settings" | "/admin/products" | "/admin/orders"> = {
+  telegram: "/admin/settings",
+  products: "/admin/products",
+  payment: "/admin/settings",
+  delivery: "/admin/settings",
+  notifications: "/admin/settings",
+  legal: "/admin/settings",
+  botTexts: "/admin/settings",
+  firstOrder: "/admin/orders",
+};
+
+const STEP_TITLES = {
+  telegram: "overview.step.telegram",
+  products: "launch.products",
+  payment: "overview.step.payment",
+  delivery: "launch.delivery",
+  notifications: "overview.step.notifications",
+  legal: "overview.step.legal",
+  botTexts: "launch.botTexts",
+  firstOrder: "overview.step.firstOrder",
+} as const satisfies Record<SetupStep, AdminKey>;
+
+const STEP_HINTS = {
+  telegram: "overview.step.telegramHint",
+  products: "launch.productsHint",
+  payment: "overview.step.paymentHint",
+  delivery: "launch.deliveryHint",
+  notifications: "overview.step.notificationsHint",
+  legal: "overview.step.legalHint",
+  botTexts: "launch.botTextsHint",
+  firstOrder: "overview.step.firstOrderHint",
+} as const satisfies Record<SetupStep, AdminKey>;
+
+function stepTitle(step: SetupStep, t: AdminT): string {
+  return t(STEP_TITLES[step]);
+}
+
 function Step({
   current,
   done,
   to,
   title,
   children,
+  onSkip,
+  skipLabel,
 }: {
   /** Подпись «Следующий шаг» у самого раннего несделанного, иначе null. */
   current: string | null;
@@ -323,6 +349,8 @@ function Step({
   to: "/admin/settings" | "/admin/products" | "/admin/orders";
   title: string;
   children: ReactNode;
+  onSkip?: () => void;
+  skipLabel?: string;
 }) {
   return (
     <li className="flex gap-3">
@@ -340,6 +368,11 @@ function Step({
           </Link>
         )}
         {current && <span className="badge ml-2 text-[11px]">{current}</span>}
+        {!done && onSkip && (
+          <button className="btn-ghost ml-2 text-[11px]" onClick={onSkip}>
+            {skipLabel}
+          </button>
+        )}
         {!done && <div className="text-muted">{children}</div>}
       </div>
     </li>

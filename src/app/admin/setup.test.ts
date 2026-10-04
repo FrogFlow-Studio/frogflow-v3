@@ -1,12 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { MOVED_MAP, movedRows, nextSetupStep, showMovedWelcome, testOrderLink } from "./setup";
+import {
+  MOVED_MAP,
+  movedRows,
+  nextSetupStep,
+  parseSkippedSteps,
+  relevantSetupSteps,
+  setupProgress,
+  showMovedWelcome,
+  SETUP_STEPS,
+  testOrderLink,
+  toggleSkippedStep,
+} from "./setup";
 
 const none = {
   telegram: false,
   products: false,
   payment: false,
+  delivery: false,
   notifications: false,
   legal: false,
+  botTexts: false,
   firstOrder: false,
 };
 
@@ -72,5 +85,49 @@ describe("карточка продавцу, переехавшему с v1", ()
     });
     expect(all).toHaveLength(MOVED_MAP.length);
     expect(movedRows({ gift_certificates: true }).map((r) => r.from)).toContain("promo");
+  });
+});
+
+describe("запуск магазина: процент и список шагов", () => {
+  const all = relevantSetupSteps({ modules: { shop: true }, vertical: "flowers" });
+
+  it("процент считается по фактически сделанным шагам", () => {
+    expect(setupProgress(none, all, []).percent).toBe(0);
+    const half = { ...none, telegram: true, products: true, payment: true, delivery: true };
+    expect(setupProgress(half, all, [])).toMatchObject({ doneCount: 4, total: 8, percent: 50 });
+    const full = Object.fromEntries(SETUP_STEPS.map((s) => [s, true])) as typeof none;
+    expect(setupProgress(full, all, []).percent).toBe(100);
+  });
+
+  it("выключенный модуль и школа: строки «Доставка» нет, в проценте её нет", () => {
+    expect(relevantSetupSteps({ modules: {}, vertical: "flowers" })).not.toContain("delivery");
+    expect(relevantSetupSteps({ modules: { shop: true }, vertical: "courses" })).not.toContain(
+      "delivery",
+    );
+    expect(all).toContain("delivery");
+    const school = relevantSetupSteps({ modules: { shop: true }, vertical: "courses" });
+    expect(setupProgress(none, school, []).total).toBe(7);
+  });
+
+  it("скрытый шаг не входит в процент, а сделанный скрытым не считается", () => {
+    const p = setupProgress({ ...none, telegram: true }, all, ["legal", "telegram"]);
+    expect(p.total).toBe(7);
+    expect(p.rows.find((r) => r.step === "legal")?.skipped).toBe(true);
+    expect(p.rows.find((r) => r.step === "telegram")?.skipped).toBe(false);
+    expect(p.percent).toBe(Math.round((1 / 7) * 100));
+    // Всё скрыто — готово.
+    expect(setupProgress(none, all, [...SETUP_STEPS]).percent).toBe(100);
+  });
+
+  it("следующий шаг пропускает скрытые", () => {
+    expect(nextSetupStep(none, all, ["telegram"])).toBe("products");
+  });
+
+  it("список скрытых: мусор отбрасывается, порядок стабильный, повтор не плодит дубли", () => {
+    expect(parseSkippedSteps("legal,xxx, telegram")).toEqual(["telegram", "legal"]);
+    expect(parseSkippedSteps(null)).toEqual([]);
+    expect(toggleSkippedStep("legal", "telegram", true)).toBe("telegram,legal");
+    expect(toggleSkippedStep("telegram,legal", "telegram", true)).toBe("telegram,legal");
+    expect(toggleSkippedStep("telegram,legal", "legal", false)).toBe("telegram");
   });
 });

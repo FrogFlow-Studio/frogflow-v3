@@ -6,15 +6,79 @@ export const SETUP_STEPS = [
   "telegram",
   "products",
   "payment",
+  "delivery",
   "notifications",
   "legal",
+  "botTexts",
   "firstOrder",
 ] as const;
 export type SetupStep = (typeof SETUP_STEPS)[number];
 
-/** Самый ранний несделанный шаг — его мастер подсвечивает; всё сделано — null. */
-export function nextSetupStep(done: Record<SetupStep, boolean>): SetupStep | null {
-  return SETUP_STEPS.find((s) => !done[s]) ?? null;
+/** Сколько товаров нужно для «магазин наполнен» (шаг «Товары»). */
+export const PRODUCTS_TARGET = 5;
+
+/**
+ * Какие шаги вообще относятся к магазину. Доставка нужна только физическому
+ * магазину с включённой витриной заказов: у онлайн-школы и без модуля «shop»
+ * строки «Доставка» в списке нет совсем.
+ */
+export function relevantSetupSteps(shop: {
+  modules: Partial<Record<string, boolean>>;
+  vertical: string;
+}): SetupStep[] {
+  return SETUP_STEPS.filter(
+    (s) => s !== "delivery" || (shop.modules.shop && shop.vertical !== "courses"),
+  );
+}
+
+/** «Скрытые» шаги из настройки `setup_skipped` (список через запятую): мусор отбрасывается. */
+export function parseSkippedSteps(raw: string | null | undefined): SetupStep[] {
+  const set = new Set((raw ?? "").split(",").map((x) => x.trim()));
+  return SETUP_STEPS.filter((s) => set.has(s));
+}
+
+/** Новая строка `setup_skipped` после «скрыть»/«вернуть» одного шага. */
+export function toggleSkippedStep(
+  raw: string | null | undefined,
+  step: SetupStep,
+  skip: boolean,
+): string {
+  const cur = new Set(parseSkippedSteps(raw));
+  if (skip) cur.add(step);
+  else cur.delete(step);
+  return SETUP_STEPS.filter((s) => cur.has(s)).join(",");
+}
+
+export type SetupRow = { step: SetupStep; done: boolean; skipped: boolean };
+
+/**
+ * Прогресс запуска: считается по фактическим настройкам. Скрытый шаг в
+ * знаменатель не входит; сделанный скрытый всё равно считается сделанным.
+ * Нечего считать (всё скрыто) — 100%.
+ */
+export function setupProgress(
+  done: Record<SetupStep, boolean>,
+  relevant: readonly SetupStep[],
+  skipped: readonly SetupStep[],
+): { rows: SetupRow[]; doneCount: number; total: number; percent: number } {
+  const rows = relevant.map((step) => ({
+    step,
+    done: done[step],
+    skipped: skipped.includes(step) && !done[step],
+  }));
+  const counted = rows.filter((r) => !r.skipped);
+  const doneCount = counted.filter((r) => r.done).length;
+  const percent = counted.length === 0 ? 100 : Math.round((doneCount / counted.length) * 100);
+  return { rows, doneCount, total: counted.length, percent };
+}
+
+/** Самый ранний несделанный и не скрытый шаг — его мастер подсвечивает; иначе null. */
+export function nextSetupStep(
+  done: Record<SetupStep, boolean>,
+  relevant: readonly SetupStep[] = SETUP_STEPS,
+  skipped: readonly SetupStep[] = [],
+): SetupStep | null {
+  return relevant.find((s) => !done[s] && !skipped.includes(s)) ?? null;
 }
 
 /**
