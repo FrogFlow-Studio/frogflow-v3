@@ -66,9 +66,9 @@ describe("уведомление продавцу о заказе убирает
     expect(pack()).toEqual({
       refs: [
         { chat_id: "111", message_id: 500, buttons: true },
-        { chat_id: "111", message_id: 501 },
+        { chat_id: "111", message_id: 501, buttons: true },
         { chat_id: "222", message_id: 502, buttons: true },
-        { chat_id: "222", message_id: 503 },
+        { chat_id: "222", message_id: 503, buttons: true },
       ],
       deleteAfter: null,
       createdAt: expect.any(String),
