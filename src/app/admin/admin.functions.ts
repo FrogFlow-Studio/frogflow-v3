@@ -868,6 +868,10 @@ export const saveProductFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ id: uuid.nullable(), product: productInput }).parse(d))
   .handler(async ({ data }) => {
     const ctx = await adminWrite();
+    // Один бюджет на запрос: перенос предзаказа и лист ожидания идут друг за
+    // другом, вместе они не должны выйти за предел функции (120 с).
+    const { requestBudget } = await import("@/core/notify/budget");
+    const budget = requestBudget();
     const m = await import("@/core/catalog/admin");
     const {
       images,
@@ -908,12 +912,16 @@ export const saveProductFn = createServerFn({ method: "POST" })
       const preorderAfter = preorderOnNow ? await getPreorderRaw(ctx, id) : null;
       if (isMove(preorderBefore, preorderAfter)) {
         const { notifyPreorderMovedChannels } = await import("@/app/preorder/notify.server");
-        await notifyPreorderMovedChannels(ctx, {
-          productId: id,
-          name: fields.name,
-          from: preorderBefore!.from,
-          to: preorderAfter!.from,
-        }).catch((e) => console.error(`[admin:${ctx.tenant.id}] перенос предзаказа ${id}`, e));
+        await notifyPreorderMovedChannels(
+          ctx,
+          {
+            productId: id,
+            name: fields.name,
+            from: preorderBefore!.from,
+            to: preorderAfter!.from,
+          },
+          { budgetMs: budget.left() },
+        ).catch((e) => console.error(`[admin:${ctx.tenant.id}] перенос предзаказа ${id}`, e));
       }
     }
     // История остатка: правка в карточке (у нового товара «было» — не учитывался).
@@ -925,7 +933,7 @@ export const saveProductFn = createServerFn({ method: "POST" })
         { reason: "edit", actor: await actor() },
       );
     }
-    const waitlist = await maybeNotifyWaitlist(ctx, id, before);
+    const waitlist = await maybeNotifyWaitlist(ctx, id, before, budget.left());
     return { id, waitlist };
   });
 
@@ -944,6 +952,7 @@ async function maybeNotifyWaitlist(
   ctx: TenantContext,
   id: string,
   before: Awaited<ReturnType<typeof stockState>> | null,
+  budgetMs?: number,
 ) {
   if (!ctx.tenant.modules.waitlist || !before) return null;
   const after = await stockState(ctx, id);
@@ -957,7 +966,7 @@ async function maybeNotifyWaitlist(
     if (!last || last.left <= 0) return null;
   }
   const { notifyBackInStock } = await import("@/app/waitlist/notify.server");
-  return notifyBackInStock(ctx, { id, name: after.name });
+  return notifyBackInStock(ctx, { id, name: after.name }, { budgetMs });
 }
 
 export const deleteProductFn = createServerFn({ method: "POST" })
@@ -1003,6 +1012,10 @@ export const bulkProductsFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const ctx = await adminWrite();
+    // Рассылки по товарам списка делят один бюджет запроса, он считается с начала
+    // обработчика: само массовое действие тоже занимает время.
+    const { requestBudget } = await import("@/core/notify/budget");
+    const budget = requestBudget();
     const { bulkUpdateProducts } = await import("@/core/catalog/bulk");
     const r = await bulkUpdateProducts(ctx, data.ids, data.action, await actor());
     // Товары, вернувшиеся в продажу, будят лист ожидания — как одиночное «показать».
@@ -1011,11 +1024,16 @@ export const bulkProductsFn = createServerFn({ method: "POST" })
         const was = r.before.get(id);
         if (!was) continue;
         try {
-          await maybeNotifyWaitlist(ctx, id, {
-            is_active: false,
-            stock_quantity: was.stock_quantity,
-            name: was.name,
-          });
+          await maybeNotifyWaitlist(
+            ctx,
+            id,
+            {
+              is_active: false,
+              stock_quantity: was.stock_quantity,
+              name: was.name,
+            },
+            budget.left(),
+          );
         } catch {
           // Уведомление — на лучшее усилие: товар уже показан.
         }
@@ -1026,11 +1044,16 @@ export const bulkProductsFn = createServerFn({ method: "POST" })
         const was = r.before.get(x.id);
         if (!was) continue;
         try {
-          await maybeNotifyWaitlist(ctx, x.id, {
-            is_active: was.is_active,
-            stock_quantity: x.from,
-            name: was.name,
-          });
+          await maybeNotifyWaitlist(
+            ctx,
+            x.id,
+            {
+              is_active: was.is_active,
+              stock_quantity: x.from,
+              name: was.name,
+            },
+            budget.left(),
+          );
         } catch {
           // Уведомление — на лучшее усилие: остаток уже записан.
         }

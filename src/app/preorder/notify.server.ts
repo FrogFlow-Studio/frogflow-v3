@@ -10,28 +10,37 @@ import { adminTFor } from "@/app/admin/locale.server";
  * Zernio, пока открыто окно 24 часа), продавцу — список тех, кому не
  * написали. Ошибки наружу не идут: сохранение карточки уже состоялось.
  */
-export async function notifyPreorderMovedChannels(ctx: TenantContext, move: PreorderMove) {
+export async function notifyPreorderMovedChannels(
+  ctx: TenantContext,
+  move: PreorderMove,
+  opts: { budgetMs?: number } = {},
+) {
   const api = adminTelegramApi(ctx);
   const { sendToZernioTarget, zernioTargetForOrder } =
     await import("@/channels/zernio/outbound.server");
-  const result = await notifyPreorderMoved(ctx, move, async (order, locale) => {
-    const text = COPY[locale].preorderMoved(escapeHtml(move.name), move.to);
-    if (order.platform === "instagram" || order.platform === "whatsapp") {
-      const target = await zernioTargetForOrder(ctx, {
-        user_key: order.userKey,
-        telegram_id: order.telegramId,
-        platform: order.platform,
+  const result = await notifyPreorderMoved(
+    ctx,
+    move,
+    async (order, locale) => {
+      const text = COPY[locale].preorderMoved(escapeHtml(move.name), move.to);
+      if (order.platform === "instagram" || order.platform === "whatsapp") {
+        const target = await zernioTargetForOrder(ctx, {
+          user_key: order.userKey,
+          telegram_id: order.telegramId,
+          platform: order.platform,
+        });
+        return target ? sendToZernioTarget(target, text) : false;
+      }
+      if (!api) return false;
+      const r = await api.call("sendMessage", {
+        chat_id: order.telegramId,
+        text,
+        parse_mode: "HTML",
       });
-      return target ? sendToZernioTarget(target, text) : false;
-    }
-    if (!api) return false;
-    const r = await api.call("sendMessage", {
-      chat_id: order.telegramId,
-      text,
-      parse_mode: "HTML",
-    });
-    return r.ok;
-  });
+      return r.ok;
+    },
+    { budgetMs: opts.budgetMs },
+  );
   if (result.missed.length || result.left) {
     const t = await adminTFor(ctx);
     const date = move.to
