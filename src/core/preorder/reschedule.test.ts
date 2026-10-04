@@ -62,6 +62,20 @@ function setup() {
   return { db, ctx };
 }
 
+/**
+ * `zernio_logs.id` — случайный UUID, по нему порядок не хронологический: время
+ * событий растёт, а id идут в обратную сторону.
+ */
+function scrambleIds(db: ReturnType<typeof setup>["db"]) {
+  let n = 0;
+  for (const e of db.tables.zernio_logs!) {
+    if (e.event_type !== "order.preorder_moved") continue;
+    n++;
+    e.created_at = new Date(NOW + n * 1000).toISOString();
+    e.id = `ffff-${String(1000 - n).padStart(4, "0")}`;
+  }
+}
+
 describe("перенос срока предзаказа", () => {
   it("перенос — когда предзаказ был и остался, а дата другая", () => {
     expect(isMove({ from: "2026-10-20" }, { from: "2026-11-05" })).toBe(true);
@@ -124,5 +138,42 @@ describe("перенос срока предзаказа", () => {
       },
     );
     expect(r.notified).toBe(1);
+  });
+
+  it("туда и обратно: 10.10 → 15.10 → 10.10 → 15.10 — каждый перенос доходит", async () => {
+    const { ctx, db } = setup();
+    const send = vi.fn(async () => true);
+    const ab = { ...MOVE, from: "2026-10-10", to: "2026-10-15" };
+    const ba = { ...MOVE, from: "2026-10-15", to: "2026-10-10" };
+    const run = async (m: typeof MOVE) => {
+      const r = await notifyPreorderMoved(ctx, m, send, { now: () => NOW });
+      scrambleIds(db);
+      return r;
+    };
+    expect((await run(ab)).notified).toBe(1);
+    expect((await run(ba)).notified).toBe(1);
+    expect((await run(ab)).notified).toBe(1);
+    expect((await run(ba)).notified).toBe(1);
+    expect(send).toHaveBeenCalledTimes(4);
+  });
+
+  it("третий перенос: два одновременных сохранения дают одно сообщение", async () => {
+    const { ctx, db } = setup();
+    const send = vi.fn(async () => true);
+    const ab = { ...MOVE, from: "2026-10-10", to: "2026-10-15" };
+    const ba = { ...MOVE, from: "2026-10-15", to: "2026-10-10" };
+    const run = async (m: typeof MOVE) => {
+      const r = await notifyPreorderMoved(ctx, m, send, { now: () => NOW });
+      scrambleIds(db);
+      return r;
+    };
+    await run(ab);
+    await run(ba);
+    send.mockClear();
+    const [a, b] = await Promise.all([run(ab), run(ab)]);
+    expect(a.notified + b.notified).toBe(1);
+    expect(send).toHaveBeenCalledTimes(1);
+    // и повтор сразу после — молчит
+    expect((await run(ab)).notified).toBe(0);
   });
 });

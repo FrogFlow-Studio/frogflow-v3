@@ -104,7 +104,42 @@ export type MoveResult = {
 
 export const MOVE_BUDGET_MS = 90_000;
 
-const key = (m: PreorderMove) => `${m.productId}:${m.from ?? "-"}>${m.to ?? "-"}`;
+const baseKey = (m: PreorderMove) => `${m.productId}:${m.from ?? "-"}>${m.to ?? "-"}`;
+
+/**
+ * Ключ события переноса для этого заказа. Повтор той же пары «было → стало»
+ * сразу после её собственного события (двойное сохранение, две вкладки) —
+ * тот же ключ, и условная вставка отбивает дубль. Если между ними был другой
+ * перенос (10.10 → 15.10 → 10.10 → 15.10), это новый перенос: ключ с номером
+ * повтора пары, иначе третий перенос замолчал бы.
+ */
+async function moveKey(ctx: TenantContext, orderId: number, move: PreorderMove): Promise<string> {
+  const base = baseKey(move);
+  const prefix = `order:${orderId}:preorder_moved:`;
+  const events = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("zernio_logs")
+        .select("id, event_id, payload, created_at")
+        .eq("event_type", "order.preorder_moved")
+        .eq("payload->>order_id", String(orderId))
+        .order("created_at")
+        .order("id")
+        .range(from, to),
+    "Перенос предзаказа: прежние переносы",
+  );
+  const mine = events.filter((e) => {
+    const p = (e.payload ?? {}) as { product_id?: unknown; from?: unknown; to?: unknown };
+    return p.product_id === move.productId;
+  });
+  const samePair = mine.filter((e) => {
+    const p = e.payload as { from?: unknown; to?: unknown };
+    return (p.from ?? null) === move.from && (p.to ?? null) === move.to;
+  });
+  const last = mine.at(-1);
+  if (last?.event_id && samePair.includes(last)) return last.event_id.slice(prefix.length);
+  return samePair.length === 0 ? base : `${base}#${samePair.length}`;
+}
 
 export async function notifyPreorderMoved(
   ctx: TenantContext,
@@ -137,11 +172,20 @@ export async function notifyPreorderMoved(
       }
     }
     // Запись «сообщаем» — до отправки; не выиграли — сообщение уже ушло (или уйдёт) от другого.
+    let eventKey: string;
+    try {
+      eventKey = await moveKey(ctx, o.id, move);
+    } catch (e) {
+      // История не прочиталась — заказ не трогаем: перенос можно сохранить повторно.
+      console.error(`[preorder-move:${ctx.tenant.id}] #${o.id}`, e);
+      r.left++;
+      continue;
+    }
     const won = await claimOrderEvent(
       ctx,
       o.id,
       "preorder_moved",
-      key(move),
+      eventKey,
       { product_id: move.productId, name: move.name, from: move.from, to: move.to } as Record<
         string,
         Json
