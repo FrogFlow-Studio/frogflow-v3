@@ -3,6 +3,7 @@ import { pageAll } from "@/core/db/page";
 import { updateSettingAtomic } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serverFailure } from "@/lib/server-failure";
+import { fromJson, toJson } from "@/core/json";
 
 /**
  * Мини-helpdesk (модуль helpdesk, требует manager_chat): обращение
@@ -66,7 +67,7 @@ type Payload = {
 };
 
 function rowToTicket(r: { id: string; status: string; payload: Json; created_at: string }): Ticket {
-  const p = (r.payload ?? {}) as unknown as Partial<Payload>;
+  const p = fromJson<Partial<Payload>>(r.payload ?? {});
   return {
     id: r.id,
     number: Number(p.number ?? 0),
@@ -95,7 +96,7 @@ export function rowToTicketForJobs(
 }
 
 function toPayload(t: Ticket): Json {
-  return {
+  return toJson({
     number: t.number,
     telegram_id: t.telegramId,
     customer_name: t.customerName,
@@ -108,7 +109,7 @@ function toPayload(t: Ticket): Json {
     rating_asked_at: t.ratingAskedAt,
     // 0 не пишем: у старых строк поля нет, и условная запись для них — `rev is null`.
     ...(t.rev > 0 ? { rev: t.rev } : {}),
-  } as unknown as Json;
+  });
 }
 
 const WRITE_TRIES = 4;

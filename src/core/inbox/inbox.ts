@@ -5,6 +5,7 @@ import type { Conversation } from "@/core/chat/chat";
 import { OPEN_TICKET_DB_STATUSES, TICKET_PREFIX } from "@/core/helpdesk/tickets";
 import { pageAll } from "@/core/db/page";
 import { inChunks } from "@/lib/in-chunks";
+import { fromJson, toJson } from "@/core/json";
 
 /**
  * Единый входящий: переписки Telegram, Instagram и WhatsApp в одном окне
@@ -45,7 +46,7 @@ type Payload = {
 };
 
 export function rowToMeta(r: { status: string; payload: Json }): InboxMeta {
-  const p = (r.payload ?? {}) as unknown as Payload;
+  const p = fromJson<Payload>(r.payload ?? {});
   return {
     telegramId: Number(p.telegram_id ?? 0),
     status: r.status === "closed" ? "closed" : "open",
@@ -126,12 +127,12 @@ export async function setInboxMeta(
     updatedAt: new Date().toISOString(),
     updatedBy: actor,
   };
-  const payload = {
+  const payload = toJson({
     telegram_id: telegramId,
     assignee: next.assignee,
     updated_at: next.updatedAt,
     updated_by: next.updatedBy,
-  } as unknown as Json;
+  });
   const eventId = inboxEventId(ctx.tenant.id, telegramId);
   const { data: existing, error: existingError } = await ctx.db
     .from("zernio_logs")
@@ -168,12 +169,12 @@ export async function claimInbox(
   assignee: string,
   actor: string,
 ): Promise<boolean> {
-  const payload = {
+  const payload = toJson({
     telegram_id: telegramId,
     assignee,
     updated_at: new Date().toISOString(),
     updated_by: actor,
-  } as unknown as Json;
+  });
   const eventId = inboxEventId(ctx.tenant.id, telegramId);
   const { error } = await ctx.db.from("zernio_logs").insert({
     bot_id: ctx.tenant.id,

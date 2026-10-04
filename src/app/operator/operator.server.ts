@@ -51,6 +51,7 @@ import { NO_RECIPIENTS_REASON, type DeliveryReport } from "@/core/notify/deliver
 import { serverFailure } from "@/lib/server-failure";
 import { scrubForLog } from "@/lib/log-mask";
 import { storyTagsNote, type StoryTagsImport } from "./story-tags-import.server";
+import { toJson } from "@/core/json";
 
 type BotUpdate = Database["public"]["Tables"]["bots"]["Update"];
 type EventKind =
@@ -1191,7 +1192,7 @@ export async function broadcastToOwners(
       actor,
       message_text: trimmed,
       target: botIds.length === tenants.filter((t) => !t.archived).length ? "all" : "selected",
-      results: results as unknown as Json,
+      results: toJson(results),
     })
     .select("id")
     .single();

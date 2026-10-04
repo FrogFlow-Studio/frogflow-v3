@@ -1,10 +1,10 @@
 import { pageAll } from "@/core/db/page";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import type { Json } from "@/core/db-types";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { daytime } from "@/core/winback/winback";
 import type { Customer } from "@/core/customers/customers";
 import type { OrderWithItems } from "@/core/orders/orders";
+import { toJson } from "@/core/json";
 
 /**
  * Товары-подписки (модуль `subscriptions`): товар, который покупают раз в
@@ -96,7 +96,7 @@ export function withSubscriptionOff(
   const next = off
     ? Array.from(new Set([...cur, productId])).slice(-50)
     : cur.filter((x) => x !== productId);
-  return { ...state, sub_off: next as unknown as Json };
+  return { ...state, sub_off: toJson(next) };
 }
 
 export type Renewal = {

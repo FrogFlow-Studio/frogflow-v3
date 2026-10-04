@@ -6,7 +6,6 @@
  * допустимы только free/basic/pro/enterprise), флаги — в `bots.modules`.
  */
 import { serviceDb } from "@/core/db/client.server";
-import type { Json } from "@/core/db-types";
 import { MODULE_KEYS, moduleDef, type ModuleKey } from "@/core/modules/registry";
 import {
   effectiveModules,
@@ -54,6 +53,7 @@ import type { BillingSettings, Tenant } from "@/core/tenant/types";
 import { INVITE_DISCOUNT_PERCENT, connectionDiscount } from "@/core/invites/invites";
 import { logEvent } from "./operator.server";
 import { serverFailure } from "@/lib/server-failure";
+import { toJson } from "@/core/json";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -95,7 +95,7 @@ async function writeModules(botId: string, modules: Record<ModuleKey, boolean>):
   if (missing.length) throw new Error(`Не хватает зависимостей модулей: ${missing.join(", ")}`);
   const { error } = await serviceDb()
     .from("bots")
-    .update({ modules: modules as unknown as Json })
+    .update({ modules: toJson(modules) })
     .eq("id", botId);
   if (error) throw new Error(error.message);
 }

@@ -55,6 +55,7 @@ import {
 import type { ZernioInboxMessage } from "./inbox-types";
 import { serverFailure } from "@/lib/server-failure";
 import { pageAll } from "@/core/db/page";
+import { toJson } from "@/core/json";
 
 export type CommentAutomation = {
   id?: string;
@@ -781,7 +782,7 @@ async function sendSecondStep(
       accountId: p.accountId,
       automationId: p.automationId,
       secondText: p.secondText,
-      buttons: buttons as unknown as Json,
+      buttons: toJson(buttons),
       createdAt: new Date().toISOString(),
     },
   });

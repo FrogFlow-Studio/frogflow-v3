@@ -1,11 +1,11 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serverFailure } from "@/lib/server-failure";
-import type { Json } from "@/core/db-types";
 import { customerFromRow, isBlocked, setState, type Customer } from "@/core/customers/customers";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { daytime } from "@/core/winback/winback";
 import { eachPage } from "@/core/db/page";
 import { claimMarketing, loadMarketingCap } from "@/core/marketing/cap";
+import { toJson } from "@/core/json";
 
 /**
  * Поздравление с днём рождения (модуль funnel): покупателю в его день —
@@ -99,7 +99,7 @@ async function claimBirthday(ctx: TenantContext, c: Customer, year: number): Pro
   const prev = c.state.birthday_sent;
   const base = ctx.db
     .from("bot_users")
-    .update({ state: { ...c.state, birthday_sent: year } as unknown as Json })
+    .update({ state: toJson({ ...c.state, birthday_sent: year }) })
     .eq("user_key", c.userKey);
   const byYear =
     prev == null

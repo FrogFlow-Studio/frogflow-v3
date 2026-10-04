@@ -5,7 +5,7 @@ import { rewardReferrerIfFirstDelivery, type ReferralGrant } from "@/core/referr
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { protectMaterials } from "@/core/delivery/watermark.server";
 import { recordOrderEvent } from "./events";
-import type { Database, Json } from "@/core/db-types";
+import type { Database } from "@/core/db-types";
 import { serviceDb } from "@/core/db/client.server";
 import { isSafeStorageKey, isTenantStorageKey } from "@/core/storage/keys";
 import type { Customer } from "@/core/customers/customers";
@@ -69,6 +69,7 @@ export {
   materialDownloadName,
 } from "./pure";
 import { serverFailure } from "@/lib/server-failure";
+import { toJson } from "@/core/json";
 export { parseDeliveredLanguages } from "@/core/catalog/materials";
 
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
@@ -724,9 +725,9 @@ function orderItemSnapshot(
     file_name_kz_snapshot: p.file_name_kz ?? null,
     file_url_snapshot: p.file_url ?? null,
     file_url_kz_snapshot: p.file_url_kz ?? null,
-    material_files_snapshot: (byLang.ru ?? []) as unknown as Json,
-    material_files_kz_snapshot: (byLang.kk ?? []) as unknown as Json,
-    material_files_by_lang: byLang as unknown as Json,
+    material_files_snapshot: toJson(byLang.ru ?? []),
+    material_files_kz_snapshot: toJson(byLang.kk ?? []),
+    material_files_by_lang: toJson(byLang),
   };
 }
 

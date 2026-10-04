@@ -8,6 +8,7 @@ import {
 import { isDeliveryLangChoice, type DeliveryLangChoice } from "@/core/catalog/materials";
 import type { Json } from "@/core/db-types";
 import { REORDER_WORDS } from "@/core/orders/reorder-words";
+import { toJson } from "@/core/json";
 
 /**
  * Разбор реплик покупателя в Instagram Direct и WhatsApp — без побочных
@@ -857,10 +858,10 @@ export function whatsappList(params: {
     budget -= rows.length;
     sections.push({ title: clipRowTitle(section.title), rows });
   }
-  return {
+  return toJson({
     type: "list",
     ...(params.header ? { header: { type: "text", text: params.header.slice(0, 60) } } : {}),
     body: { text: params.body.slice(0, 1024) },
     action: { button: params.buttonLabel.slice(0, 20), sections },
-  } as unknown as Json;
+  });
 }

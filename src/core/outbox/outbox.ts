@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto";
 import type { Json } from "@/core/db-types";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { outboxNextAt, outboxPermanentFailure } from "./pure";
+import { fromJson, toJson } from "@/core/json";
 
 export type OutboxTarget =
   /** Адресат — заказ целиком (повтор выдачи): канал берётся из заказа. */
@@ -128,7 +129,7 @@ export async function enqueueOutbox(
     event_id: eventId,
     event_type: TYPE(msg.kind),
     status: dead ? "dead" : "queued",
-    payload: payload as unknown as Json,
+    payload: toJson(payload),
     error_message: firstError,
   });
   if (error) console.warn(`[outbox] не поставлено в очередь (${msg.kind}): ${error.message}`);
@@ -193,7 +194,7 @@ function rowOf(r: {
   payload: Json;
   created_at: string;
 }): OutboxRow {
-  const p = (r.payload ?? {}) as unknown as Partial<Payload>;
+  const p = fromJson<Partial<Payload>>(r.payload ?? {});
   return {
     id: r.id,
     eventId: r.event_id ?? "",
@@ -276,7 +277,7 @@ export async function processOutbox(
       .update({
         status,
         error_message: error,
-        payload: {
+        payload: toJson({
           target: row.target,
           text: row.text,
           order_id: row.orderId,
@@ -284,7 +285,7 @@ export async function processOutbox(
           attempts,
           next_at: status === "queued" ? nextAt!.toISOString() : null,
           last_error: error,
-        } as unknown as Json,
+        }),
       })
       .eq("id", row.id);
     // Итог не записался: строка остаётся в «sending», крон её не берёт, продавец видит её
@@ -351,7 +352,7 @@ export async function retryOutbox(ctx: TenantContext, id: string, now = new Date
     .from("zernio_logs")
     .update({
       status: "queued",
-      payload: {
+      payload: toJson({
         target: row.target,
         text: row.text,
         order_id: row.orderId,
@@ -359,7 +360,7 @@ export async function retryOutbox(ctx: TenantContext, id: string, now = new Date
         attempts: 0,
         next_at: now.toISOString(),
         last_error: row.lastError,
-      } as unknown as Json,
+      }),
     })
     .eq("id", id);
   return !error;

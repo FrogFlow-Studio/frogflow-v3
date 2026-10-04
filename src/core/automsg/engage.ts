@@ -1,8 +1,8 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import type { Json } from "@/core/db-types";
 import { pageAll } from "@/core/db/page";
 import { getSettingsStrict, updateSettingStamped } from "@/core/settings/settings";
 import { AUTO_PERIOD_MS } from "./stats";
+import { toJson } from "@/core/json";
 
 /**
  * Итоги подбора и допродажи за 30 дней: сколько покупателей прошли квиз и сколько раз
@@ -45,7 +45,7 @@ export async function recordEngage(
   telegramId: number,
   now = new Date(),
 ): Promise<void> {
-  const payload = { kind, telegram_id: telegramId } as unknown as Json;
+  const payload = toJson({ kind, telegram_id: telegramId });
   // Случайный хвост: два нажатия в одну миллисекунду (или два анонима) — две строки, не одна.
   const tail = Math.random().toString(36).slice(2, 8);
   try {

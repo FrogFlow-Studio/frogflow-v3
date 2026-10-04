@@ -5,6 +5,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Json } from "@/core/db-types";
 import { pageAll } from "@/core/db/page";
 import { recordStockChanges } from "./stock-history";
+import { toJson } from "@/core/json";
 
 /**
  * Массовые действия над выбранными товарами списка админки. Запись — по
@@ -226,7 +227,7 @@ async function applyOne(
     if (next.length === have.length && next.every((c, i) => c === have[i])) return "same";
     const { error } = await ctx.db
       .from("products")
-      .update({ category_ids: next as unknown as Json })
+      .update({ category_ids: toJson(next) })
       .eq("id", p.id);
     return error ? "failed" : null;
   }

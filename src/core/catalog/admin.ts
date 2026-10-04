@@ -9,6 +9,7 @@ import { isAdminInputStorageKey, isTenantStorageKey } from "@/core/storage/keys"
 import { PRODUCT_SELECT, type Product } from "./catalog";
 import { materialCount } from "./materials";
 import { pickerTerm } from "./picker";
+import { toJson } from "@/core/json";
 
 type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
 type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
@@ -233,7 +234,7 @@ function toRow(ctx: TenantContext, i: ProductInput): ProductInsert {
     price: i.price,
     currency: i.currency.toUpperCase(),
     country_prices: i.countryPrices as Json,
-    category_ids: i.categoryIds as unknown as Json,
+    category_ids: toJson(i.categoryIds),
     is_active: i.isActive,
     sort_order: i.sortOrder,
     fulfillment_kind: i.fulfillmentKind,

@@ -1,8 +1,8 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import type { Json } from "@/core/db-types";
 import { pageAll } from "@/core/db/page";
 import { IN_CHUNK, chunksOf } from "@/lib/in-chunks";
 import { NOT_COUNTED, PAID, type OrderLite } from "@/core/broadcasts/revenue";
+import { toJson } from "@/core/json";
 
 /**
  * Итоги автосообщений («Брошенная корзина», «Возврат клиентов», «Похожие
@@ -138,7 +138,7 @@ export async function recordAutoMessage(
   ok: boolean,
   now = new Date(),
 ): Promise<void> {
-  const payload = { kind, telegram_id: telegramId } as unknown as Json;
+  const payload = toJson({ kind, telegram_id: telegramId });
   try {
     const { error } = await ctx.db.from("zernio_logs").insert({
       bot_id: ctx.tenant.id,
@@ -168,11 +168,11 @@ export async function recordAutoSkip(
   now = new Date(),
   reason?: "window",
 ): Promise<void> {
-  const payload = {
+  const payload = toJson({
     kind,
     telegram_id: telegramId,
     ...(reason ? { reason } : {}),
-  } as unknown as Json;
+  });
   try {
     const { error } = await ctx.db.from("zernio_logs").insert({
       bot_id: ctx.tenant.id,
