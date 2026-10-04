@@ -8,6 +8,7 @@ import {
   type SubscriptionState,
 } from "@/core/billing/subscription";
 import { serviceDb } from "@/core/db/client.server";
+import { debtByClient } from "./client-health";
 import type { Database, Json } from "@/core/db-types";
 import { MODULE_KEYS, MODULES, moduleDef, type ModuleKey } from "@/core/modules/registry";
 import { VERTICALS, type VerticalKey } from "@/core/verticals/registry";
@@ -153,6 +154,9 @@ export type ClientView = {
   statsUnread: boolean;
   /** Пульс (заказы 14/14, последний вход) — только у клиентов v2, у остальных null. */
   pulse: Pulse | null;
+  /** Выставленные, но не оплаченные счета за подписку; null — не читали или не прочиталось (см. debtUnread). */
+  debt: { amount: number; count: number } | null;
+  debtUnread: boolean;
 };
 
 function toView(
@@ -170,6 +174,8 @@ function toView(
   zernioEvents: Map<string, string> = new Map(),
   pulse: Pulse | null = null,
   statsUnread = false,
+  debt: ClientView["debt"] = null,
+  debtUnread = false,
 ): ClientView {
   return {
     id: t.id,
@@ -222,6 +228,8 @@ function toView(
     statsUnread,
     health,
     pulse,
+    debt,
+    debtUnread,
   };
 }
 
@@ -245,14 +253,35 @@ async function readStats(): Promise<{ stats: Map<string, ClientStats>; unread: b
   }
 }
 
+/** Неоплаченные счета за подписку по клиентам; сбой — null, чтобы панель написала «не прочитано», а не «долга нет». */
+async function readDebt(): Promise<Map<string, { amount: number; count: number }> | null> {
+  try {
+    const rows = await pageAll<{ id: string; bot_id: string; amount: number | string }>(
+      (from, to) =>
+        serviceDb()
+          .from("subscription_invoices")
+          .select("id, bot_id, amount")
+          .in("status", ["sent", "proof_uploaded"])
+          .order("id", { ascending: true })
+          .range(from, to),
+      "Неоплаченные счета не прочитаны",
+    );
+    return debtByClient(rows);
+  } catch (e) {
+    console.warn("[operator] долги клиентов не прочитаны:", e);
+    return null;
+  }
+}
+
 export async function listClients(): Promise<ClientView[]> {
   const { latestHealth } = await import("./health.server");
   const { loadPulse } = await import("./pulse.server");
-  const [tenants, { stats, unread }, ex, health] = await Promise.all([
+  const [tenants, { stats, unread }, ex, health, debts] = await Promise.all([
     tenantDirectory(true),
     readStats(),
     extras(),
     latestHealth().catch(() => new Map()),
+    readDebt(),
   ]);
   // Пульс считаем только клиентам v2; упавшее чтение — «нет данных», а не «затих».
   const pulses = await loadPulse(
@@ -285,6 +314,8 @@ export async function listClients(): Promise<ClientView[]> {
         undefined,
         pulses.get(t.id) ?? null,
         unread,
+        debts?.get(t.id) ?? null,
+        debts === null,
       );
     })
     .sort(

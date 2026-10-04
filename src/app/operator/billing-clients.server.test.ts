@@ -152,3 +152,45 @@ describe("статистика клиентов в панели оператор
     warn.mockRestore();
   });
 });
+
+describe("долг клиента в списке оператора", () => {
+  it("неоплаченные счета суммируются, оплаченные и отменённые — нет", async () => {
+    db.tables.subscription_invoices = [
+      { id: "i1", bot_id: "bot-1", amount: "9900", status: "sent" },
+      { id: "i2", bot_id: "bot-1", amount: "19900", status: "proof_uploaded" },
+      { id: "i3", bot_id: "bot-1", amount: "5000", status: "paid" },
+      { id: "i4", bot_id: "bot-1", amount: "7000", status: "cancelled" },
+    ];
+    const [c] = await listClients();
+    expect(c!.debtUnread).toBe(false);
+    expect(c!.debt).toEqual({ amount: 29800, count: 2 });
+  });
+
+  it("долгов нет — null без отметки сбоя", async () => {
+    const [c] = await listClients();
+    expect(c!.debt).toBeNull();
+    expect(c!.debtUnread).toBe(false);
+  });
+
+  it("сбой чтения счетов — «не прочитано», а не «долга нет»", async () => {
+    const orig = db.from.bind(db);
+    db.from = (t: string) => {
+      if (t !== "subscription_invoices") return orig(t);
+      const q: Record<string, unknown> = new Proxy(
+        {},
+        {
+          get: (_t, k) =>
+            k === "then"
+              ? (ok: (v: unknown) => unknown) => ok({ data: null, error: { message: "down" } })
+              : () => q,
+        },
+      );
+      return q as never;
+    };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const [c] = await listClients();
+    expect(c!.debtUnread).toBe(true);
+    expect(c!.debt).toBeNull();
+    warn.mockRestore();
+  });
+});

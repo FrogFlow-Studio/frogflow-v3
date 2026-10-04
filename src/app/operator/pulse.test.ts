@@ -12,6 +12,11 @@ const base = {
 };
 
 describe("computePulse", () => {
+  it("заказы за 7 дней считаются отдельно от 14", () => {
+    const p = computePulse({ ...base, ordersAt: [ago(1), ago(6), ago(8), ago(13), ago(20)] });
+    expect(p.last7).toBe(2);
+    expect(p.recent).toBe(4);
+  });
   it("считает 14 против предыдущих 14 дней и процент", () => {
     const p = computePulse({
       ...base,

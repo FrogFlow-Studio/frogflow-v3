@@ -22,6 +22,8 @@ export const PULSE_ORDER_STATUSES = [
 const DAY_MS = 86_400_000;
 
 export type Pulse = {
+  /** Заказов за последние 7 дней (те же оплаченные статусы). */
+  last7: number;
   /** Заказов за последние 14 дней. */
   recent: number;
   /** Заказов за 14 дней до этого. */
@@ -67,10 +69,13 @@ export function computePulse(i: PulseInput): Pulse {
   const nowMs = i.now.getTime();
   const recentFrom = nowMs - PULSE_DAYS * DAY_MS;
   const prevFrom = nowMs - 2 * PULSE_DAYS * DAY_MS;
+  const last7From = nowMs - 7 * DAY_MS;
+  let last7 = 0;
   let recent = 0;
   let previous = 0;
   for (const at of i.ordersAt) {
     const t = Date.parse(at);
+    if (t >= last7From) last7 += 1;
     if (t >= recentFrom) recent += 1;
     else if (t >= prevFrom) previous += 1;
   }
@@ -91,6 +96,7 @@ export function computePulse(i: PulseInput): Pulse {
     (ordersDropped ? 50 + Math.min(50, Math.round(100 - (recent / previous) * 100) / 2) : 0) +
     (noLogin ? 30 + Math.min(20, (daysSinceLogin ?? 90) / 2) : 0);
   return {
+    last7,
     recent,
     previous,
     changePct,

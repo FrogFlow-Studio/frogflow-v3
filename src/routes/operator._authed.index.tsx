@@ -2,6 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { listClientsFn } from "@/app/operator/operator.functions";
 import type { Pulse } from "@/app/operator/pulse";
+import {
+  channelStates,
+  isPaymentSoon,
+  isProblem,
+  lastError,
+  planLabel,
+} from "@/app/operator/client-health";
 import { Badge, Empty, PageTitle, Stat } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed/")({
@@ -16,12 +23,16 @@ function ClientsPage() {
   const [status, setStatus] = useState("");
   const [quietOnly, setQuietOnly] = useState(false);
   const [byRisk, setByRisk] = useState(true);
+  const [problemOnly, setProblemOnly] = useState(false);
+  const [soonOnly, setSoonOnly] = useState(false);
   const shown = clients.filter(
     (c) =>
       (!q || c.name.toLowerCase().includes(q.toLowerCase()) || c.slug?.includes(q.toLowerCase())) &&
       (!served || (served === "v2" ? c.servedBy === "v2" : c.servedBy !== "v2")) &&
       (!status || c.status === status) &&
-      (!quietOnly || c.pulse?.quiet),
+      (!quietOnly || c.pulse?.quiet) &&
+      (!problemOnly || isProblem(c)) &&
+      (!soonOnly || isPaymentSoon(c)),
   );
   // Сервер отдаёт список по риску; без галочки — прежний порядок: по заказам за 30 дней.
   if (!byRisk)
@@ -95,6 +106,22 @@ function ClientsPage() {
           {pulseMissing && <span className="text-warn"> · пульс не прочитан</span>}
         </label>
         <label className="flex items-center gap-1 self-center text-sm">
+          <input
+            type="checkbox"
+            checked={problemOnly}
+            onChange={(e) => setProblemOnly(e.target.checked)}
+          />
+          Проблемные ({clients.filter(isProblem).length})
+        </label>
+        <label className="flex items-center gap-1 self-center text-sm">
+          <input
+            type="checkbox"
+            checked={soonOnly}
+            onChange={(e) => setSoonOnly(e.target.checked)}
+          />
+          Оплата скоро ({clients.filter(isPaymentSoon).length})
+        </label>
+        <label className="flex items-center gap-1 self-center text-sm">
           <input type="checkbox" checked={byRisk} onChange={(e) => setByRisk(e.target.checked)} />
           По риску
         </label>
@@ -108,64 +135,73 @@ function ClientsPage() {
             <thead>
               <tr>
                 <th>Клиент</th>
-                <th>Ниша</th>
                 <th>Статус</th>
-                <th>Подписка</th>
-                <th>Здоровье</th>
+                <th>Тариф и срок</th>
                 <th>Каналы</th>
+                <th className="text-right">Заказов / 7 дн</th>
+                <th className="text-right">Долг</th>
+                <th>Последняя ошибка</th>
                 <th>Пульс</th>
-                <th className="text-right">Заказов / 30 дн</th>
-                <th className="text-right">Товаров</th>
-                <th className="text-right">Покупателей</th>
-                <th>Модулей</th>
               </tr>
             </thead>
             <tbody>
-              {shown.map((c) => (
-                <tr key={c.id} className="hover:bg-surface-2/60">
-                  <td>
-                    <Link
-                      to="/operator/clients/$botId"
-                      params={{ botId: c.id }}
-                      className="font-medium hover:underline"
-                    >
-                      {c.name}
-                    </Link>
-                    <div className="text-xs text-muted">
-                      {c.slug ? `/s/${c.slug}` : (c.appUrl?.replace(/^https?:\/\//, "") ?? "—")}
-                    </div>
-                  </td>
-                  <td className="text-muted">{c.verticalTitle}</td>
-                  <td>
-                    <StatusBadge status={c.status} />
-                  </td>
-                  <td>
-                    <SubscriptionBadge s={c.subscription} expiresAt={c.subscriptionExpiresAt} />
-                  </td>
-                  <td>
-                    <HealthBadge h={c.health} />
-                  </td>
-                  <td className="space-x-1">
-                    {c.telegram.connected ? (
-                      <Badge tone={c.servedBy === "v2" ? "ok" : "neutral"}>
-                        Telegram {c.servedBy === "v2" ? "· v2" : "· v1"}
-                      </Badge>
-                    ) : (
-                      <Badge>без Telegram</Badge>
-                    )}
-                    {c.zernioAccounts.length > 0 && <Badge tone="accent">IG/WA</Badge>}
-                  </td>
-                  <td>
-                    <PulseCell p={c.pulse} v2={c.servedBy === "v2"} />
-                  </td>
-                  <td className="text-right tabular-nums">{c.stats?.orders_30d ?? "—"}</td>
-                  <td className="text-right tabular-nums">{c.stats?.products_total ?? "—"}</td>
-                  <td className="text-right tabular-nums">
-                    {c.stats?.customers_total?.toLocaleString("ru") ?? "—"}
-                  </td>
-                  <td className="text-muted">{c.modulesOn}</td>
-                </tr>
-              ))}
+              {shown.map((c) => {
+                const err = lastError(c);
+                return (
+                  <tr key={c.id} className="hover:bg-surface-2/60">
+                    <td>
+                      <Link
+                        to="/operator/clients/$botId"
+                        params={{ botId: c.id }}
+                        className="font-medium hover:underline"
+                      >
+                        {c.name}
+                      </Link>
+                      <div className="text-xs text-muted">
+                        {c.verticalTitle} ·{" "}
+                        {c.slug ? `/s/${c.slug}` : (c.appUrl?.replace(/^https?:\/\//, "") ?? "—")}
+                      </div>
+                    </td>
+                    <td>
+                      <StatusBadge status={c.status} />
+                    </td>
+                    <td>
+                      <div className="mb-1 text-xs text-muted">{planLabel(c.plan)}</div>
+                      <SubscriptionBadge s={c.subscription} expiresAt={c.subscriptionExpiresAt} />
+                    </td>
+                    <td className="space-x-1">
+                      {channelStates(c).map((ch) => (
+                        <span key={ch.key} title={ch.hint || undefined}>
+                          <Badge tone={ch.tone}>{ch.label}</Badge>
+                        </span>
+                      ))}
+                    </td>
+                    <td className="text-right tabular-nums">{c.pulse ? c.pulse.last7 : "—"}</td>
+                    <td className="text-right tabular-nums">
+                      {c.debtUnread ? (
+                        <span className="text-warn">не прочитано</span>
+                      ) : c.debt ? (
+                        <span className="text-danger">
+                          {c.debt.amount.toLocaleString("ru")} ₸
+                          <span className="block text-xs text-muted">счетов: {c.debt.count}</span>
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="text-xs">
+                      {err ? (
+                        <span className="text-danger">{err}</span>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
+                    <td>
+                      <PulseCell p={c.pulse} v2={c.servedBy === "v2"} />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
