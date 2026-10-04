@@ -67,8 +67,11 @@ describe("квиз на витрине", () => {
     const r = await storeQuizResultFn({ data: { slug: "shop", answers: QUIZ_ANSWERS } });
     expect(r.map((p) => p.id)).toEqual(QUIZ_EXPECTED);
     // Прохождение — одна отметка для «Рассылок»; покупатель сайта без id.
-    const marks = (db.tables.zernio_logs ?? []).filter((x) => x.event_type === "engage");
-    expect(marks.map((x) => x.payload)).toEqual([{ kind: "quiz_done", telegram_id: null }]);
+    const counters = (db.tables.app_settings ?? []).filter((x) =>
+      String(x.key).startsWith("engage_web:quiz_done:"),
+    );
+    expect(counters).toMatchObject([{ value: "1" }]);
+    expect(db.tables.zernio_logs).toEqual([]);
   });
 
   it("неполный набор ответов и несуществующий вариант — отказ, а не пустой подбор", async () => {

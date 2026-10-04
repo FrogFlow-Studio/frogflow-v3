@@ -224,7 +224,7 @@ export const ru = {
   "engage.quiz": "Подбор прошли: {n} (разных покупателей в боте: {buyers})",
   "engage.upsell": "Добавили из «С этим берут»: {n} (разных покупателей в боте: {buyers})",
   "engage.hint":
-    "Считаются действия за 30 дней: прошли квиз до конца и нажали кнопку допродажи. Покупатели сайта без входа в «разных» не считаются. Это не заказы и не выручка.",
+    "Считаются действия за 30 дней: прошли квиз до конца и нажали кнопку допродажи. Покупатели сайта без входа в «разных» не считаются. Это не заказы и не выручка. Покупатели сайта считаются по дням (30 дней и сегодня), не больше 200 действий в час на магазин.",
   "autostats.hint":
     "Заказы получателей за 7 дней после сообщения — совпадение по времени, а не доказанная причина. Заказ засчитывается одному, последнему сообщению.",
   // предпросмотр автосообщений (Р5)
@@ -456,7 +456,7 @@ export const kk: SectionDict<typeof ru> = {
   "engage.upsell":
     "«Бұмен бірге алады» арқылы қосқандар: {n} (боттағы әртүрлі сатып алушылар: {buyers})",
   "engage.hint":
-    "30 күндегі әрекеттер саналады: викторинаны соңына дейін өту және қосымша сату батырмасын басу. Кіруісіз сайт сатып алушылары «әртүрлілерге» кірмейді. Бұл тапсырыс немесе түсім емес.",
+    "30 күндегі әрекеттер саналады: викторинаны соңына дейін өту және қосымша сату батырмасын басу. Кіруісіз сайт сатып алушылары «әртүрлілерге» кірмейді. Бұл тапсырыс немесе түсім емес. Сайт сатып алушылары күнімен саналады (30 күн және бүгін), дүкенге сағатына 200 әрекеттен артық емес.",
   "autostats.hint":
     "Алушылардың хабарламадан кейінгі 7 күндегі тапсырыстары — уақыт бойынша сәйкестік, дәлелденген себеп емес. Тапсырыс біреуге — соңғы хабарламаға жазылады.",
   "autopreview.view": "Қарау",
@@ -687,7 +687,7 @@ export const en: SectionDict<typeof ru> = {
   "engage.quiz": "Finished the picker: {n} (different bot buyers: {buyers})",
   "engage.upsell": "Added from “Goes well with”: {n} (different bot buyers: {buyers})",
   "engage.hint":
-    "Actions over 30 days: finishing the quiz and tapping the add-on button. Website visitors who are not signed in are not counted as “different”. These are not orders or revenue.",
+    "Actions over 30 days: finishing the quiz and tapping the add-on button. Website visitors who are not signed in are not counted as “different”. These are not orders or revenue. Website visitors are counted by day (30 days plus today), at most 200 actions per hour per shop.",
   "autostats.hint":
     "Recipients' orders within 7 days after the message — a match in time, not a proven cause. An order is counted once, for the latest message.",
   "autopreview.view": "Preview",
@@ -921,7 +921,7 @@ export const uz: SectionDict<typeof ru> = {
   "engage.quiz": "Tanlovni tugatganlar: {n} (botdagi turli xaridorlar: {buyers})",
   "engage.upsell": "«Birga olinadi» orqali qo'shganlar: {n} (botdagi turli xaridorlar: {buyers})",
   "engage.hint":
-    "30 kunlik harakatlar hisoblanadi: viktorinani oxirigacha o'tish va qo'shimcha sotuv tugmasini bosish. Kirmagan sayt xaridorlari «turli»ga kirmaydi. Bu buyurtma yoki tushum emas.",
+    "30 kunlik harakatlar hisoblanadi: viktorinani oxirigacha o'tish va qo'shimcha sotuv tugmasini bosish. Kirmagan sayt xaridorlari «turli»ga kirmaydi. Bu buyurtma yoki tushum emas. Sayt xaridorlari kun boʻyicha hisoblanadi (30 kun va bugun), doʻkon uchun soatiga 200 tadan ortiq harakat emas.",
   "autostats.hint":
     "Qabul qiluvchilarning xabardan keyingi 7 kun ichidagi buyurtmalari — vaqt bo'yicha moslik, isbotlangan sabab emas. Buyurtma bitta — oxirgi xabarga yoziladi.",
   "autopreview.view": "Koʻrish",

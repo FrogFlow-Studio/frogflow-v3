@@ -33,20 +33,27 @@ const base = {
   modules: { shop: true, web_storefront: true, upsell: true },
   settings: { served_by: "v2", slug: "shop" },
 } as unknown as Tenant;
-const marks = () => (db.tables.zernio_logs ?? []).filter((x) => x.event_type === "engage");
+// Покупатель сайта — счётчик дня в app_settings; журнал zernio_logs не растёт.
+const counters = () =>
+  (db.tables.app_settings ?? []).filter((x) => String(x.key).startsWith("engage_web:"));
+const marks = () => counters().flatMap((x) => Array(Number(x.value)).fill(x.key));
 
 describe("отметка допродажи на витрине", () => {
   it("витрина v2 с модулем — одна отметка без id покупателя", async () => {
     db.tables.zernio_logs = [];
+    db.tables.app_settings = [];
     tenant = base;
     expect(await storeUpsellAddedFn({ data: { slug: "shop", productId: ID } })).toEqual({
       counted: true,
     });
-    expect(marks().map((x) => x.payload)).toEqual([{ kind: "upsell_add", telegram_id: null }]);
+    expect(counters()).toMatchObject([{ value: "1" }]);
+    expect(String(counters()[0]!.key)).toMatch(/^engage_web:upsell_add:\d{4}-\d\d-\d\d$/);
+    expect(db.tables.zernio_logs).toEqual([]);
   });
 
   it("модуль «С этим берут» выключен — не считается", async () => {
     db.tables.zernio_logs = [];
+    db.tables.app_settings = [];
     tenant = { ...base, modules: { shop: true, web_storefront: true } } as unknown as Tenant;
     expect(await storeUpsellAddedFn({ data: { slug: "shop", productId: ID } })).toEqual({
       counted: false,
@@ -60,6 +67,7 @@ describe("отметка допродажи на витрине", () => {
     ["нет витрины", { ...base, modules: { shop: true, upsell: true } }],
   ])("%s — «не найден», ничего не пишется", async (_n, t) => {
     db.tables.zernio_logs = [];
+    db.tables.app_settings = [];
     tenant = t as unknown as Tenant;
     await expect(
       storeUpsellAddedFn({ data: { slug: "shop", productId: ID } }),
@@ -74,8 +82,9 @@ describe("отметка допродажи на витрине", () => {
     ).rejects.toBeTruthy();
   });
 
-  it("за потолок в час отметки не пишутся: анонимный поток не раздувает журнал", async () => {
+  it("за потолок в час отметки не считаются: анонимный поток не раздувает ни журнал, ни счётчик", async () => {
     db.tables.zernio_logs = [];
+    db.tables.app_settings = [];
     tenant = { ...base, id: "bbbbbbbb-0000-4000-8000-0000000000ab" } as unknown as Tenant;
     const { ENGAGE_WEB_BUDGET } = await import("@/core/automsg/engage");
     let counted = 0;
@@ -85,5 +94,7 @@ describe("отметка допродажи на витрине", () => {
     expect(counted).toBeLessThanOrEqual(ENGAGE_WEB_BUDGET.limit);
     expect(counted).toBeGreaterThan(ENGAGE_WEB_BUDGET.limit - 5);
     expect(marks()).toHaveLength(counted);
+    expect(counters()).toHaveLength(1);
+    expect(db.tables.zernio_logs).toEqual([]);
   });
 });
