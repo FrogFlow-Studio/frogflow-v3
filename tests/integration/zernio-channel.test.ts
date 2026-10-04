@@ -97,7 +97,7 @@ describe.skipIf(!liveReady)("канал Instagram/WhatsApp на демо-кли�
     const r = await handleZernioMessage(ctx, event("evt-2", "Мне нужен букет к пятнице"), fake);
     expect(r.status).toBe("processed");
     expect(r.note).toMatch(/менеджер/);
-    const texts = (await listMessages(ctx, TG)).map((m) => m.text);
+    const texts = (await listMessages(ctx, TG)).messages.map((m) => m.text);
     expect(texts).toContain("Мне нужен букет к пятнице");
   });
 

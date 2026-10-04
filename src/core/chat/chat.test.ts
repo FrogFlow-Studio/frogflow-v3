@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
+import { mergeMessages } from "./merge-messages";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   inboundIntercepted,
   inboundLogText,
   lastInboundAt,
   listConversations,
+  listMessages,
   tappedButtonText,
 } from "./chat";
 
@@ -124,3 +126,72 @@ describe("список диалогов", () => {
     expect((await listConversations(ctx)).map((c) => c.telegram_id)).toEqual([1, 2, 3]);
   });
 });
+
+describe("страницы переписки", () => {
+  const msg = (n: number, tg = 7) => ({
+    id: `m-${String(n).padStart(5, "0")}`,
+    bot_id: BOT,
+    telegram_id: tg,
+    direction: "in",
+    sender: "customer",
+    text: `текст ${n}`,
+    // По 4 сообщения на одну секунду: граница страницы часто падает внутрь одинакового created_at.
+    created_at: new Date(Date.UTC(2026, 0, 1) + Math.floor(n / 4) * 1000).toISOString(),
+  });
+
+  it("1200 сообщений: страницы без пропусков и повторов, чужой диалог не виден", async () => {
+    const s = setup(true, false);
+    s.db.tables.manager_chat_messages = [
+      ...Array.from({ length: 1200 }, (_, i) => msg(i)),
+      msg(5000, 8),
+    ];
+    const seen: string[] = [];
+    let page = await listMessages(s.ctx, 7, { limit: 200 });
+    expect(page.messages).toHaveLength(200);
+    expect(page.messages[199]!.id).toBe("m-01199");
+    let pages = 0;
+    for (;;) {
+      pages++;
+      seen.unshift(...page.messages.map((m) => m.id));
+      if (!page.hasMore) break;
+      const first = page.messages[0]!;
+      page = await listMessages(s.ctx, 7, {
+        limit: 200,
+        before: { created_at: first.created_at, id: first.id },
+      });
+    }
+    expect(pages).toBe(6);
+    expect(seen).toHaveLength(1200);
+    expect(new Set(seen).size).toBe(1200);
+    expect(seen).toEqual(Array.from({ length: 1200 }, (_, i) => `m-${String(i).padStart(5, "0")}`));
+  });
+
+  it("ровно одна страница — «раньше» нет; пустой диалог — пусто", async () => {
+    const s = setup(true, false);
+    s.db.tables.manager_chat_messages = Array.from({ length: 200 }, (_, i) => msg(i));
+    expect((await listMessages(s.ctx, 7, { limit: 200 })).hasMore).toBe(false);
+    expect(await listMessages(s.ctx, 99)).toEqual({ messages: [], hasMore: false });
+  });
+
+  it("склейка опроса с подгруженной историей: по id, в порядке времени", () => {
+    const m = (n: number) => ({ ...msg(n), id: `m-${n}` });
+    const merged = mergeMessages([m(1), m(2), m(3)].map(strip), [m(3), m(4)].map(strip));
+    expect(merged.map((x) => x.id)).toEqual(["m-1", "m-2", "m-3", "m-4"]);
+  });
+});
+
+function strip(m: {
+  id: string;
+  direction: string;
+  sender: string;
+  text: string;
+  created_at: string;
+}) {
+  return {
+    id: m.id,
+    direction: m.direction,
+    sender: m.sender,
+    text: m.text,
+    created_at: m.created_at,
+  } as never;
+}

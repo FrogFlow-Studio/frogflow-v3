@@ -243,15 +243,58 @@ class Query implements PromiseLike<Result> {
     this.filters.push((r) => re.test(String(pick(r, col) ?? "")));
     return this;
   }
-  /** or("a.ilike.%x%,b.ilike.%x%") — только ilike-термы; запятых в шаблонах нет. */
+  /**
+   * or("a.ilike.%x%,b.ilike.%x%") и keyset-вид "c.lt.X,and(c.eq.X,id.lt.Y)":
+   * термы ilike/eq/lt/gt/lte/gte и вложенный and(...); запятых внутри значений нет.
+   */
   or(expr: string) {
-    const terms = expr.split(",").map((t) => {
-      const m = /^([^.]+)\.ilike\.(.*)$/.exec(t);
-      if (!m) throw new Error(`fakeDb: or() понимает только ilike, а не «${t}»`);
-      this.col(m[1]!);
-      return { col: m[1]!, re: likeRegex(m[2]!, "i") };
-    });
-    this.filters.push((r) => terms.some((t) => t.re.test(String(r[t.col] ?? ""))));
+    const split = (e: string): string[] => {
+      const out: string[] = [];
+      let depth = 0;
+      let cur = "";
+      for (const ch of e) {
+        if (ch === "(") depth++;
+        if (ch === ")") depth--;
+        if (ch === "," && depth === 0) {
+          out.push(cur);
+          cur = "";
+        } else cur += ch;
+      }
+      out.push(cur);
+      return out;
+    };
+    const term = (t: string): ((r: Row) => boolean) => {
+      const and = /^and\((.*)\)$/.exec(t);
+      if (and) {
+        const parts = split(and[1]!).map(term);
+        return (r) => parts.every((f) => f(r));
+      }
+      const m = /^([^.]+)\.(ilike|eq|lt|gt|lte|gte)\.(.*)$/.exec(t);
+      if (!m) throw new Error(`fakeDb: or() не понимает «${t}»`);
+      const [, col, op, val] = m as unknown as [string, string, string, string];
+      this.col(col);
+      if (op === "ilike") {
+        const re = likeRegex(val, "i");
+        return (r) => re.test(String(r[col] ?? ""));
+      }
+      return (r) => {
+        const have = pick(r, col);
+        if (have == null) return false;
+        const h = have as string | number;
+        const v = typeof h === "number" ? Number(val) : val;
+        return op === "eq"
+          ? h === v
+          : op === "lt"
+            ? h < v
+            : op === "gt"
+              ? h > v
+              : op === "lte"
+                ? h <= v
+                : h >= v;
+      };
+    };
+    const terms = split(expr).map(term);
+    this.filters.push((r) => terms.some((f) => f(r)));
     return this;
   }
   is(col: string, v: null) {

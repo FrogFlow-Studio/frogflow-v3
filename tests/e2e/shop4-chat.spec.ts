@@ -32,3 +32,15 @@ test("чат: Telegram — окна и подсказки нет", async ({ page
   await expect(page.getByText("одобренным шаблоном")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("чат: длинная переписка — «Показать раньше» подгружает начало", async ({ page }) => {
+  const errors = await watch(page);
+  await openChat(page, F.CHAT_LONG_NAME);
+  await expect(page.getByText(`Сообщение ${F.CHAT_LONG_COUNT - 1}`, { exact: true })).toBeVisible();
+  await expect(page.getByText(F.CHAT_LONG_FIRST, { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Показать раньше", exact: true }).click();
+  await expect(page.getByText(F.CHAT_LONG_FIRST, { exact: true })).toHaveCount(1);
+  // Вся история загружена — кнопки больше нет.
+  await expect(page.getByRole("button", { name: "Показать раньше", exact: true })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

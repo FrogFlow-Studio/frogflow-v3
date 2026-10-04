@@ -63,7 +63,7 @@ describe.skipIf(!liveReady)("чат с менеджером на демо-кли
       sender: "manager",
       text: "Отвечу",
     });
-    const msgs = await listMessages(ctx, CHAT_TG_ID);
+    const { messages: msgs } = await listMessages(ctx, CHAT_TG_ID);
     expect(msgs.map((m) => m.sender)).toEqual(["customer", "customer", "manager"]);
     await markRead(ctx, CHAT_TG_ID);
     const c = (await listConversations(ctx)).find((x) => x.telegram_id === CHAT_TG_ID);
@@ -78,8 +78,8 @@ describe.skipIf(!liveReady)("чат с менеджером на демо-кли
       ...ctx.tenant,
       modules: { ...ctx.tenant.modules, manager_chat: false },
     });
-    const before = (await listMessages(ctx, CHAT_TG_ID)).length;
+    const before = (await listMessages(ctx, CHAT_TG_ID)).messages.length;
     expect(await inboundIntercepted(off, CHAT_TG_ID, "тихо")).toBe(false);
-    expect((await listMessages(ctx, CHAT_TG_ID)).length).toBe(before);
+    expect((await listMessages(ctx, CHAT_TG_ID)).messages.length).toBe(before);
   });
 });

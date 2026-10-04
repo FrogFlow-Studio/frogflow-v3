@@ -2540,24 +2540,45 @@ export const chatMessagesFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const ctx = await chatModule();
     const { listMessages, markRead, lastInboundAt } = await import("@/core/chat/chat");
-    const [messages, inboundAt] = await Promise.all([
+    const [page, inboundAt] = await Promise.all([
       listMessages(ctx, data.telegramId),
       lastInboundAt(ctx, data.telegramId),
     ]);
     await markRead(ctx, data.telegramId);
     // Окно 24 часа Instagram/WhatsApp считается от последнего входящего, отдельным
-    // запросом: в последних 500 репликах его может не оказаться.
+    // запросом: в последней странице переписки его может не оказаться.
     // serverNow — остаток окна браузер считает по часам сервера, не по своим.
     // Шаблон WhatsApp для ответа вне окна: поле ответа заранее говорит, уйдёт ли сообщение.
     const { getSetting } = await import("@/core/settings/settings");
     const { parseNotifyTemplate } = await import("@/channels/zernio/outbox.server");
     const template = parseNotifyTemplate(await getSetting(ctx, "whatsapp_bot_notify_template"));
     return {
-      messages,
+      messages: page.messages,
+      hasMore: page.hasMore,
       lastInboundAt: inboundAt,
       serverNow: new Date().toISOString(),
       waTemplate: template?.name ?? null,
     };
+  });
+
+/** «Показать раньше»: страница переписки до указанного сообщения; прочитанным не отмечает. */
+export const chatEarlierFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        telegramId: tgId,
+        // Граница идёт в or() PostgREST — только строгие форматы.
+        before: z.object({
+          created_at: z.string().datetime({ offset: true }),
+          id: z.string().uuid(),
+        }),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await chatModule();
+    const { listMessages } = await import("@/core/chat/chat");
+    return listMessages(ctx, data.telegramId, { before: data.before });
   });
 
 /**

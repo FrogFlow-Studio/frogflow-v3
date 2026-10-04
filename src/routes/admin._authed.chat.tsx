@@ -7,6 +7,7 @@ import {
   chatConversationsFn,
   chatInvoiceFn,
   chatInvoiceModesFn,
+  chatEarlierFn,
   chatMessagesFn,
   chatReplyFn,
   chatResumeBotFn,
@@ -21,6 +22,7 @@ import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { uploadFile } from "@/app/admin/upload-client";
 import type { ChatMessage, Conversation } from "@/core/chat/chat";
+import { mergeMessages } from "@/core/chat/merge-messages";
 import { UNANSWERED_OPTIONS } from "@/core/chat/unanswered";
 import { isIndefinite } from "@/core/consultant/pause";
 import {
@@ -61,22 +63,39 @@ const CHANNEL: Record<string, string> = { instagram: "Instagram", whatsapp: "Wha
 /** Окно 24 часа Instagram/WhatsApp: сколько осталось или что закрыто. */
 /** Переписка с ответа сервера; смещение часов фиксируется в момент ответа. */
 function threadOf(
+  prev: Thread,
   telegramId: number,
   r: {
     messages: ChatMessage[];
+    hasMore: boolean;
     lastInboundAt: string | null;
     serverNow: string;
     waTemplate: string | null;
   },
-) {
+): Thread {
+  // Тот же диалог: уже подгруженную раньше переписку опрос не стирает.
+  const same = prev.telegramId === telegramId;
   return {
     telegramId,
-    messages: r.messages,
+    messages: same ? mergeMessages(prev.messages, r.messages) : r.messages,
+    hasMore: same ? prev.hasMore : r.hasMore,
     lastInboundAt: r.lastInboundAt,
     waTemplate: r.waTemplate,
     clockOffset: serverClockOffset(r.serverNow, Date.now()),
   };
 }
+
+type Thread = {
+  telegramId: number | null;
+  messages: ChatMessage[];
+  /** Есть ли переписка раньше первого показанного сообщения. */
+  hasMore: boolean;
+  lastInboundAt: string | null;
+  /** Имя шаблона WhatsApp для ответа вне окна; null — не задан. */
+  waTemplate: string | null;
+  /** Разница часов сервера и браузера на момент ответа сервера. */
+  clockOffset: number;
+};
 
 function WindowBadge({ t, w }: { t: AdminT; w: ReplyWindow }) {
   if (w.state === "closed")
@@ -149,15 +168,14 @@ function ChatPage() {
   };
   const [selectedId, setSelectedId] = useState<number | null>(Route.useSearch().c ?? null);
   // Переписка и последнее входящее (окно 24 часа) — для диалога telegramId.
-  const [thread, setThread] = useState<{
-    telegramId: number | null;
-    messages: ChatMessage[];
-    lastInboundAt: string | null;
-    /** Имя шаблона WhatsApp для ответа вне окна; null — не задан. */
-    waTemplate: string | null;
-    /** Разница часов сервера и браузера на момент ответа сервера. */
-    clockOffset: number;
-  }>({ telegramId: null, messages: [], lastInboundAt: null, waTemplate: null, clockOffset: 0 });
+  const [thread, setThread] = useState<Thread>({
+    telegramId: null,
+    messages: [],
+    hasMore: false,
+    lastInboundAt: null,
+    waTemplate: null,
+    clockOffset: 0,
+  });
   const messages = thread.messages;
   const [reply, setReply] = useState("");
   // Id черновика — ключ идемпотентности отправки в Instagram/WhatsApp (новый на каждый диалог).
@@ -185,7 +203,7 @@ function ChatPage() {
         if (alive) setConversations(r.conversations);
         if (selectedId !== null) {
           const m = await chatMessagesFn({ data: { telegramId: selectedId } });
-          if (alive) setThread(threadOf(selectedId, m));
+          if (alive) setThread((p) => threadOf(p, selectedId, m));
         }
         if (alive) setLoadError(null);
       } catch (e) {
@@ -200,10 +218,31 @@ function ChatPage() {
     };
   }, [selectedId]);
 
+  // К низу — при новом последнем сообщении и смене диалога, но не когда сверху подгрузили историю.
+  const lastMessageId = messages[messages.length - 1]?.id;
   useEffect(() => {
     const el = threadRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages.length, selectedId]);
+  }, [lastMessageId, selectedId]);
+
+  const loadEarlier = useAction(async () => {
+    const first = messages[0];
+    if (selectedId === null || !first) return;
+    const page = await chatEarlierFn({
+      data: { telegramId: selectedId, before: { created_at: first.created_at, id: first.id } },
+    });
+    const el = threadRef.current;
+    const height = el?.scrollHeight ?? 0;
+    setThread((p) =>
+      p.telegramId === selectedId
+        ? { ...p, messages: mergeMessages(p.messages, page.messages), hasMore: page.hasMore }
+        : p,
+    );
+    // Показанное сообщение остаётся на месте: прокрутка сдвигается на высоту подгруженного.
+    requestAnimationFrame(() => {
+      if (el) el.scrollTop += el.scrollHeight - height;
+    });
+  });
 
   const setMeta = useAction(
     async (patch: { status?: "open" | "closed"; assignee?: string | null }) => {
@@ -249,7 +288,10 @@ function ChatPage() {
     draftId.current = crypto.randomUUID();
     setReply("");
     setAttachment(null);
-    setThread(threadOf(selectedId, await chatMessagesFn({ data: { telegramId: selectedId } })));
+    {
+      const m = await chatMessagesFn({ data: { telegramId: selectedId } });
+      setThread((p) => threadOf(p, selectedId, m));
+    }
   });
 
   return (
@@ -404,6 +446,16 @@ function ChatPage() {
                 ref={threadRef}
                 className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4"
               >
+                {thread.telegramId === selected.telegram_id && thread.hasMore && (
+                  <button
+                    type="button"
+                    className="self-center rounded border border-line px-3 py-1 text-xs text-muted hover:bg-line/40"
+                    disabled={loadEarlier.busy}
+                    onClick={() => void loadEarlier.run().catch(() => {})}
+                  >
+                    {t("chat.showEarlier")}
+                  </button>
+                )}
                 {messages.map((m) => (
                   <div
                     key={m.id}
@@ -438,12 +490,8 @@ function ChatPage() {
                   telegramId={selected.telegram_id}
                   onClose={() => setInvoicing(false)}
                   onSent={async () => {
-                    setThread(
-                      threadOf(
-                        selected.telegram_id,
-                        await chatMessagesFn({ data: { telegramId: selected.telegram_id } }),
-                      ),
-                    );
+                    const m = await chatMessagesFn({ data: { telegramId: selected.telegram_id } });
+                    setThread((p) => threadOf(p, selected.telegram_id, m));
                     setConversations((await chatConversationsFn()).conversations);
                   }}
                 />

@@ -15,6 +15,7 @@ export function seedShop4Chat(db: StubDb, now: string) {
   const dialogs = [
     { id: F.CHAT_WA_ID, platform: "whatsapp", name: F.CHAT_WA_NAME, key: "whatsapp:e2e-chat" },
     { id: F.CHAT_TG_ID, platform: "telegram", name: F.CHAT_TG_NAME, key: "telegram:e2e-chat" },
+    { id: F.CHAT_LONG_ID, platform: "telegram", name: F.CHAT_LONG_NAME, key: "telegram:e2e-long" },
   ];
   add(
     db,
@@ -43,17 +44,39 @@ export function seedShop4Chat(db: StubDb, now: string) {
       }),
     ),
   );
+  seedShop4ChatLong(db, now);
   add(
     db,
     "manager_chat_messages",
-    dialogs.map((d) =>
+    dialogs
+      .filter((d) => d.id !== F.CHAT_LONG_ID)
+      .map((d) =>
+        shop({
+          id: `e2e00000-0000-4000-8000-00000000d${Math.abs(d.id) % 1000}`,
+          telegram_id: d.id,
+          direction: "in",
+          sender: "customer",
+          text: "Здравствуйте, есть в наличии?",
+          created_at: old,
+        }),
+      ),
+  );
+}
+
+/** Постоянный покупатель: 230 сообщений в минуту друг от друга, самое раннее — с меткой. */
+function seedShop4ChatLong(db: StubDb, now: string) {
+  const start = Date.parse(now) - 3 * 24 * 3_600_000;
+  add(
+    db,
+    "manager_chat_messages",
+    Array.from({ length: F.CHAT_LONG_COUNT }, (_, i) =>
       shop({
-        id: `e2e00000-0000-4000-8000-00000000d${Math.abs(d.id) % 1000}`,
-        telegram_id: d.id,
+        id: `e2e00000-0000-4000-8000-${String(900000000000 + i)}`,
+        telegram_id: F.CHAT_LONG_ID,
         direction: "in",
         sender: "customer",
-        text: "Здравствуйте, есть в наличии?",
-        created_at: old,
+        text: i === 0 ? F.CHAT_LONG_FIRST : `Сообщение ${i}`,
+        created_at: new Date(start + i * 60_000).toISOString(),
       }),
     ),
   );

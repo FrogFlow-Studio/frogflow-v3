@@ -216,20 +216,36 @@ export type ChatMessage = {
   created_at: string;
 };
 
+/** Сколько сообщений окно диалога грузит за раз. */
+export const MESSAGES_PAGE = 200;
+
+/** Граница страницы переписки: сообщения строго раньше (created_at, id). */
+export type MessageCursor = { created_at: string; id: string };
+
+/**
+ * Страница переписки: последние `limit` сообщений или, с `before`, `limit`
+ * сообщений раньше указанного. Порядок заканчивается id — одинаковый created_at
+ * не теряет и не дублирует строки. `hasMore` — есть ли ещё раньше.
+ */
 export async function listMessages(
   ctx: TenantContext,
   telegramId: number,
-  limit = 500,
-): Promise<ChatMessage[]> {
-  const { data, error } = await ctx.db
+  opts: { before?: MessageCursor | null; limit?: number } = {},
+): Promise<{ messages: ChatMessage[]; hasMore: boolean }> {
+  const limit = opts.limit ?? MESSAGES_PAGE;
+  let q = ctx.db
     .from("manager_chat_messages")
     .select("id, direction, sender, text, created_at")
-    .eq("telegram_id", telegramId)
+    .eq("telegram_id", telegramId);
+  const b = opts.before;
+  if (b) q = q.or(`created_at.lt.${b.created_at},and(created_at.eq.${b.created_at},id.lt.${b.id})`);
+  const { data, error } = await q
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
-    .limit(limit);
+    .limit(limit + 1);
   if (error) throw serverFailure(`Чат: ${error.message}`);
-  return ((data ?? []) as ChatMessage[]).reverse();
+  const rows = (data ?? []) as ChatMessage[];
+  return { messages: rows.slice(0, limit).reverse(), hasMore: rows.length > limit };
 }
 
 /**
