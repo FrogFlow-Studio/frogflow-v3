@@ -144,6 +144,8 @@ function CatalogPage() {
   const [q, setQ] = useState(s.q ?? "");
   const cart = useCart();
   const [added, setAdded] = useState<string | null>(null);
+  // На телефоне фильтры — выезжающая снизу панель; на компьютере — строка над каталогом.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   // Догруженные «Показать ещё» страницы — для текущих поиска, категории и
   // сортировки; сменились они — начинаем с первой страницы из загрузчика.
   const pageKey = JSON.stringify([
@@ -377,10 +379,31 @@ function CatalogPage() {
         </div>
       )}
 
+      <button
+        type="button"
+        className="btn-secondary mb-4 md:hidden"
+        aria-expanded={filtersOpen}
+        onClick={() => setFiltersOpen(true)}
+      >
+        ⚙️ {t("catalog.filters")}
+        {filtered ? " •" : ""}
+      </button>
+      {filtersOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          aria-hidden
+          onClick={() => setFiltersOpen(false)}
+        />
+      )}
       <form
-        className="-mt-3 mb-6 flex flex-wrap items-center gap-2 text-sm"
+        className={`${
+          filtersOpen
+            ? "fixed inset-x-0 bottom-0 z-40 flex flex-col gap-3 rounded-t-2xl border-t border-line bg-surface p-4 pb-8 shadow-xl"
+            : "hidden"
+        } text-sm md:static md:z-auto md:-mt-3 md:mb-6 md:flex md:flex-row md:flex-wrap md:items-center md:gap-2 md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none`}
         onSubmit={(e) => {
           e.preventDefault();
+          setFiltersOpen(false);
           const f = new FormData(e.currentTarget);
           const num = (name: string) => {
             const v = String(f.get(name) ?? "")
@@ -440,6 +463,13 @@ function CatalogPage() {
           />
         </label>
         <button className="btn-secondary shrink-0 px-3 py-1">{t("catalog.filter.apply")}</button>
+        <button
+          type="button"
+          className="btn-secondary shrink-0 px-3 py-1 md:hidden"
+          onClick={() => setFiltersOpen(false)}
+        >
+          {t("catalog.filters.close")}
+        </button>
         {filtered && (
           <Link
             to="/s/$slug"

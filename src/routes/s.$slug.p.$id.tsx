@@ -92,6 +92,9 @@ function ProductPage() {
   const [img, setImg] = useState(0);
   const [variant, setVariant] = useState<string | null>(p.variants[0]?.id ?? null);
   const [msg, setMsg] = useState<string | null>(null);
+  // «Написать магазину»: ссылка продавца (WhatsApp/Instagram/Telegram), иначе бот в Telegram.
+  const writeUrl =
+    shop.contactLink ?? (shop.botUsername ? `https://t.me/${shop.botUsername}` : null);
   const chosen = p.variants.find((v) => v.id === variant) ?? null;
   const price = chosen ? chosen.price : p.price;
   const currency = chosen ? chosen.currency : p.currency;
@@ -128,11 +131,27 @@ function ProductPage() {
       <Breadcrumbs slug={slug} shop={shop} categoryIds={p.categoryIds} leaf={p.name} t={t} />
       <div className="mt-3 grid gap-6 md:grid-cols-2">
         <div>
+          {p.images.length > 1 && (
+            // Телефон: фото листаются пальцем (scroll-snap), без JS-кода жестов.
+            <div
+              className="flex snap-x snap-mandatory overflow-x-auto rounded-lg md:hidden"
+              data-testid="photo-swipe"
+            >
+              {p.images.map((src) => (
+                <img
+                  key={src}
+                  src={src}
+                  alt={p.name}
+                  className="aspect-square w-full shrink-0 snap-center object-cover"
+                />
+              ))}
+            </div>
+          )}
           {p.images[img] ? (
             <img
               src={p.images[img]}
               alt={p.name}
-              className="aspect-square w-full rounded-lg object-cover"
+              className={`aspect-square w-full rounded-lg object-cover${p.images.length > 1 ? " max-md:hidden" : ""}`}
             />
           ) : (
             <div className="flex aspect-square items-center justify-center rounded-lg bg-surface-2 text-5xl">
@@ -140,7 +159,7 @@ function ProductPage() {
             </div>
           )}
           {p.images.length > 1 && (
-            <div className="mt-2 flex gap-2 overflow-x-auto">
+            <div className="mt-2 flex gap-2 overflow-x-auto max-md:hidden">
               {p.images.map((src, i) => (
                 <button
                   key={src}
@@ -322,6 +341,16 @@ function ProductPage() {
             />
             {msg && <span className="text-sm text-muted">{msg}</span>}
           </div>
+          {writeUrl && (
+            <a
+              href={writeUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-secondary mt-3 inline-flex px-4 py-2"
+            >
+              {t("product.writeShop")}
+            </a>
+          )}
           <ul className="mt-5 space-y-1.5 text-sm text-muted">
             {course ? (
               <li>{t("product.course.instant")}</li>

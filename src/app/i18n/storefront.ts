@@ -475,6 +475,9 @@ const ru = {
   "bundle.saving": "Выгода {saving} (по отдельности {separate})",
   "bundle.partsCount": "{n} поз. в наборе",
   "bundle.unavailable": "Набор временно недоступен",
+  "catalog.filters": "Фильтры",
+  "catalog.filters.close": "Закрыть",
+  "product.writeShop": "Написать магазину",
 } as const;
 
 export type StorefrontKey = keyof typeof ru;
@@ -947,6 +950,9 @@ const kk: Dict = {
   "bundle.saving": "Үнемдеу {saving} (бөлек {separate})",
   "bundle.partsCount": "Жинақта {n} позиция",
   "bundle.unavailable": "Жинақ уақытша қолжетімсіз",
+  "catalog.filters": "Сүзгілер",
+  "catalog.filters.close": "Жабу",
+  "product.writeShop": "Дүкенге жазу",
 };
 
 const en: Dict = {
@@ -1412,6 +1418,9 @@ const en: Dict = {
   "bundle.saving": "You save {saving} (separately {separate})",
   "bundle.partsCount": "{n} items in the set",
   "bundle.unavailable": "This set is temporarily unavailable",
+  "catalog.filters": "Filters",
+  "catalog.filters.close": "Close",
+  "product.writeShop": "Message the shop",
 };
 
 const uz: Dict = {
@@ -1884,6 +1893,9 @@ const uz: Dict = {
   "bundle.saving": "Tejash {saving} (alohida {separate})",
   "bundle.partsCount": "To'plamda {n} ta pozitsiya",
   "bundle.unavailable": "To'plam vaqtincha mavjud emas",
+  "catalog.filters": "Filtrlar",
+  "catalog.filters.close": "Yopish",
+  "product.writeShop": "Do‘konga yozish",
 };
 
 const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };
