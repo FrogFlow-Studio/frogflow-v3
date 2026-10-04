@@ -782,27 +782,49 @@ export async function listDeliveredOrders(
   );
 }
 
+export type ReorderReport = {
+  /** Сколько единиц товара положили в корзину. */
+  added: number;
+  /** Позиции, которых нет или стало меньше: «хотели — получили». Цены не копируются: корзина считает по текущим. */
+  short: Array<{ name: string; wanted: number; got: number }>;
+};
+
 /**
  * «Повторить заказ»: те же товары снова в корзину — по одному вызову на
- * единицу количества (addToCart считает остаток и лимиты). Снятых с продажи
- * товаров не будет; возвращает число добавленных единиц.
+ * единицу количества (addToCart считает остаток и лимиты), цена и наличие
+ * берутся текущие, не из старого заказа. Что не нашлось или стало меньше —
+ * в `short`, чтобы покупателю назвать это, а не молчать.
  */
+export async function reorderReport(
+  ctx: TenantContext,
+  customer: Customer,
+  order: OrderWithItems,
+): Promise<ReorderReport> {
+  const { addToCart } = await import("@/core/cart/cart");
+  const { mergeOrderItems } = await import("@/core/offers/offers");
+  const report: ReorderReport = { added: 0, short: [] };
+  // Строки «по акции» и «по полной» одного товара — вместе: потолок 20 штук на товар, не на строку.
+  for (const item of mergeOrderItems(order.order_items)) {
+    if (!item.product_id) continue;
+    const wanted = Math.min(Number(item.quantity) || 1, 20);
+    let got = 0;
+    for (let i = 0; i < wanted; i++)
+      if ((await addToCart(ctx, customer, item.product_id, item.product_variant_id)) === "ok")
+        got++;
+    report.added += got;
+    if (got < wanted)
+      report.short.push({ name: item.name_snapshot.replace(/\u2063/g, ""), wanted, got });
+  }
+  return report;
+}
+
+/** То же без подробностей: сколько единиц добавлено. */
 export async function reorderIntoCart(
   ctx: TenantContext,
   customer: Customer,
   order: OrderWithItems,
 ): Promise<number> {
-  const { addToCart } = await import("@/core/cart/cart");
-  const { mergeOrderItems } = await import("@/core/offers/offers");
-  let added = 0;
-  // Строки «по акции» и «по полной» одного товара — вместе: потолок 20 штук на товар, не на строку.
-  for (const item of mergeOrderItems(order.order_items)) {
-    if (!item.product_id) continue;
-    for (let i = 0; i < Math.min(Number(item.quantity) || 1, 20); i++)
-      if ((await addToCart(ctx, customer, item.product_id, item.product_variant_id)) === "ok")
-        added++;
-  }
-  return added;
+  return (await reorderReport(ctx, customer, order)).added;
 }
 
 /** Открытый заказ, ждущий чек, не старше суток — запасной путь, если состояние потерялось. */

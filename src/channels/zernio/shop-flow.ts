@@ -7,6 +7,7 @@ import {
 } from "@/core/i18n/locale";
 import { isDeliveryLangChoice, type DeliveryLangChoice } from "@/core/catalog/materials";
 import type { Json } from "@/core/db-types";
+import { REORDER_WORDS } from "@/core/orders/reorder-words";
 
 /**
  * Разбор реплик покупателя в Instagram Direct и WhatsApp — без побочных
@@ -480,9 +481,18 @@ export function isCancel(text: string): boolean {
 }
 
 export type DirectCommand =
-  "catalog" | "cart" | "checkout" | "orders" | "points" | "language" | "country" | "quiz";
+  | "catalog"
+  | "cart"
+  | "checkout"
+  | "orders"
+  | "points"
+  | "language"
+  | "country"
+  | "quiz"
+  | "reorder";
 
 const COMMANDS: Array<[DirectCommand, string[]]> = [
+  ["reorder", [...REORDER_WORDS]],
   [
     "quiz",
     [

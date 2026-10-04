@@ -1,3 +1,5 @@
+import { isReorderWord } from "@/core/orders/reorder-words";
+import { lastPaidOrder, shortLabels } from "@/core/orders/reorder";
 import { orderBuyerLocale } from "@/core/orders/buyer-locale";
 import {
   REFERRAL_PREFIX,
@@ -92,7 +94,7 @@ import {
   placeOrder,
   recentAwaitingPaymentOrder,
   rejectOrder,
-  reorderIntoCart,
+  reorderReport,
   reopenForResend,
   completeLanguageDelivery,
 } from "@/core/orders/orders";
@@ -560,11 +562,35 @@ async function handleMessage(
     return menuAction(b, action);
   }
   if (customer.state.mode === "search" && text) return showSearch(b, text);
+  // «Как в прошлый раз» словом: последний оплаченный заказ в корзину (Б11).
+  if (text && isReorderWord(text) && (await reorderLast(b))) return;
   if (text && (await consultantReply(b, text))) return;
   if (text && isFreeTextQuery(text)) return freeTextSearch(b, text);
   // Консультант по прайсу видит фото покупателя (не чек — чеки разобраны выше).
   if (msg.photo?.length && !text && (await pricelistPhoto(b, msg))) return;
   await sendMain(b, b.m.useMenu);
+}
+
+/** Повторить заказ: те же товары в корзину по текущим ценам и остаткам; чего нет — названо. */
+async function reorderFrom(b: Bot, order: import("@/core/orders/orders").OrderWithItems) {
+  const report = await reorderReport(b.ctx, b.customer, order);
+  const missing = report.short.length ? b.m.reorderShort(shortLabels(report.short)) : "";
+  if (!report.added)
+    return void (await send(b, [b.m.reorderNothing, missing].filter(Boolean).join("\n")));
+  await send(b, [b.m.reorderDone(report.added), missing].filter(Boolean).join("\n"));
+  return showCart(b);
+}
+
+/** false — оплаченного заказа нет и разговор не ведётся с ботом: слово уходит дальше (консультанту, поиску). */
+async function reorderLast(b: Bot): Promise<boolean> {
+  const order = await lastPaidOrder(b.ctx, b.customer);
+  if (!order) {
+    // Одиночное «повторить» без заказов — подсказка только на явную фразу про заказ.
+    await send(b, b.m.reorderNoPaid);
+    return true;
+  }
+  await reorderFrom(b, order);
+  return true;
 }
 
 /** Фото покупателя с подписью или без — консультанту по прайсу картинкой. */
@@ -2775,10 +2801,7 @@ async function handleCallback(
   if (data.startsWith("reorder:")) {
     const order = await getOrder(ctx, Number(data.slice(8)));
     if (!order || order.telegram_id !== customer.telegramId) return;
-    const added = await reorderIntoCart(ctx, customer, order);
-    if (!added) return void (await send(b, b.m.reorderNothing));
-    await send(b, b.m.reorderDone(added));
-    return showCart(b);
+    return reorderFrom(b, order);
   }
   if (data.startsWith("resend:")) {
     const order = await getOrder(ctx, Number(data.slice(7)));

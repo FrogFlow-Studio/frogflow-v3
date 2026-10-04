@@ -277,6 +277,10 @@ export type Msg = {
   reorderBtn: string;
   reorderDone: (n: number) => string;
   reorderNothing: string;
+  /** Что из прошлого заказа не нашлось или стало меньше: «Название» или «Название (2 из 3)». */
+  reorderShort: (items: string[]) => string;
+  /** «Повторить» без оплаченного заказа в прошлом. */
+  reorderNoPaid: string;
   status: Record<string, string>;
   instructionDefault: string;
   infoText: string;
@@ -708,6 +712,8 @@ const ru: Msg = {
   reorderBtn: "🔁 Повторить заказ",
   reorderDone: (n) => `🔁 Добавил в корзину ${n} поз. из прошлого заказа`,
   reorderNothing: "Из этого заказа ничего уже нет в продаже.",
+  reorderShort: (items) => `Нет в наличии или стало меньше: ${items.join("; ")}.`,
+  reorderNoPaid: "Прошлых оплаченных заказов пока нет — откройте каталог.",
   status: {
     awaiting_payment: "ожидает оплаты",
     awaiting_confirmation: "чек на проверке",
@@ -866,6 +872,8 @@ const kk: Msg = {
   reorderBtn: "🔁 Тапсырысты қайталау",
   reorderDone: (n) => `🔁 Өткен тапсырыстан ${n} позиция себетке қосылды`,
   reorderNothing: "Бұл тапсырыстан ештеңе енді сатылымда жоқ.",
+  reorderShort: (items) => `Жоқ немесе азайды: ${items.join("; ")}.`,
+  reorderNoPaid: "Бұрын төленген тапсырыс әлі жоқ — каталогты ашыңыз.",
   notReceiptLike: (no) =>
     `⚠️ Бұл төлем чегіне ұқсамайды.\n\n#${no} тапсырысының сомасы көрсетілген аударым/чек скриншотын жіберіңіз.`,
   receiptPaymentFailed: (no) =>
@@ -1128,6 +1136,8 @@ const en: Msg = {
   reorderBtn: "🔁 Reorder",
   reorderDone: (n) => `🔁 Added ${n} item(s) from your previous order to the cart`,
   reorderNothing: "Nothing from this order is on sale anymore.",
+  reorderShort: (items) => `Not available or fewer than before: ${items.join("; ")}.`,
+  reorderNoPaid: "You have no paid orders yet — open the catalog.",
   notReceiptLike: (no) =>
     `⚠️ This doesn’t look like a payment receipt.\n\nPlease send a screenshot of the transfer/receipt showing the amount for order #${no}.`,
   receiptPaymentFailed: (no) =>
@@ -1433,6 +1443,8 @@ const uz: Msg = {
   reorderBtn: "🔁 Buyurtmani takrorlash",
   reorderDone: (n) => `🔁 Oldingi buyurtmadan ${n} pozitsiya savatga qo‘shildi`,
   reorderNothing: "Bu buyurtmadan hech narsa endi sotuvda yo‘q.",
+  reorderShort: (items) => `Mavjud emas yoki kamaydi: ${items.join("; ")}.`,
+  reorderNoPaid: "Hozircha to‘langan buyurtmangiz yo‘q — katalogni oching.",
   notReceiptLike: (no) =>
     `⚠️ Bu to‘lov chekiga o‘xshamayapti.\n\n#${no} buyurtma summasi ko‘rsatilgan o‘tkazma/chek skrinshotini yuboring.`,
   receiptPaymentFailed: (no) =>

@@ -1,3 +1,4 @@
+import { lastPaidOrder, shortLabels } from "@/core/orders/reorder";
 import {
   nonTextKind,
   NON_TEXT_WINDOW_MS,
@@ -55,7 +56,7 @@ import {
   placeOrder,
   recentAwaitingPaymentOrder,
   type OrderWithItems,
-  reorderIntoCart,
+  reorderReport,
 } from "@/core/orders/orders";
 import { GIFT_MESSAGE_MAX, GIFT_NAME_MAX, normalizeGift } from "@/core/orders/gift";
 import { giftWrapForCart } from "@/core/orders/gift-wrap";
@@ -582,7 +583,10 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     if (!featureAllows(s, command)) return "question";
     // Строгий режим: «оплата», «страна», «язык» — частые слова в переписке с
     // продавцом; без живого разговора с ботом они его не будят.
-    if (!["catalog", "cart", "orders", "points", "quiz"].includes(command) && !inDialog(s))
+    if (
+      !["catalog", "cart", "orders", "points", "quiz", "reorder"].includes(command) &&
+      !inDialog(s)
+    )
       return "question";
     if (mode && mode !== "idle" && mode !== "awaiting_proof") await setMode(s, { mode: "idle" });
     switch (command) {
@@ -606,6 +610,8 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       case "quiz":
         await startQuiz(s);
         return "handled";
+      case "reorder":
+        return reorderLast(s);
       case "country":
         await askCountry(s, false);
         return "handled";
@@ -1029,6 +1035,36 @@ async function claimNonTextReply(s: Shop): Promise<boolean> {
   return true;
 }
 
+/** «Как в прошлый раз»: последний оплаченный заказ в корзину по текущим ценам и остаткам (Б11). */
+async function reorderLast(s: Shop): Promise<ShopOutcome> {
+  const order = await lastPaidOrder(s.ctx, s.customer);
+  if (!order) {
+    // Слово «повторить» в переписке с продавцом, где бот не говорил, — не наше.
+    if (!inDialog(s)) return "question";
+    await reply(s, s.m.reorderNoPaid, { force: true, buttons: [BTN.catalog(s.m)] });
+    return "handled";
+  }
+  await reorderFrom(s, order);
+  return "handled";
+}
+
+async function reorderFrom(s: Shop, order: OrderWithItems) {
+  const report = await reorderReport(s.ctx, s.customer, order);
+  const missing = report.short.length ? plain(s.m.reorderShort(shortLabels(report.short))) : "";
+  if (!report.added) {
+    await reply(s, [plain(s.m.reorderNothing), missing].filter(Boolean).join("\n"), {
+      force: true,
+      buttons: [BTN.catalog(s.m)],
+    });
+    return;
+  }
+  await showCart(
+    s,
+    true,
+    [plain(s.m.reorderDone(report.added)), missing].filter(Boolean).join("\n"),
+  );
+}
+
 /** Продавец вёл диалог руками за последние 30 минут. Не прочитали переписку — считаем, что нет. */
 async function sellerWroteRecently(s: Shop): Promise<boolean> {
   try {
@@ -1055,6 +1091,8 @@ function featureAllows(s: Shop, command: DirectCommand | string): boolean {
     case "CART":
     case "BUY":
     case "CLEAR":
+    case "reorder":
+    case "REORDER":
       return f.cart;
     case "checkout":
     case "CHECKOUT":
@@ -1202,14 +1240,11 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
       return "handled";
     }
     case "REORDER": {
-      const order = a ? await getOrder(s.ctx, Number(a)) : null;
+      // Без номера — последний оплаченный заказ («повторить» кнопкой); с номером — свой заказ из «Моих заказов».
+      if (!a) return reorderLast(s);
+      const order = await getOrder(s.ctx, Number(a));
       if (!order || order.telegram_id !== s.customer.telegramId) return "handled";
-      const added = await reorderIntoCart(s.ctx, s.customer, order);
-      if (!added) {
-        await reply(s, plain(s.m.reorderNothing), { force: true, buttons: [BTN.catalog(s.m)] });
-        return "handled";
-      }
-      await showCart(s, true, plain(s.m.reorderDone(added)));
+      await reorderFrom(s, order);
       return "handled";
     }
     case "FT":
