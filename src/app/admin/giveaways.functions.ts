@@ -72,6 +72,15 @@ export const closeGiveawayFn = createServerFn({ method: "POST" })
     return closeGiveaway(ctx, data.id);
   });
 
+/** Итоги розыгрыша: участники, новые покупатели, подписка, заказы за 14 дней. Только чтение. */
+export const giveawayResultsFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ id: z.string().max(16) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin();
+    const { giveawayResults } = await import("@/core/giveaways/results");
+    return giveawayResults(ctx, data.id);
+  });
+
 /** Подписку на канал проверяет бот магазина; без Telegram проверять нечем — розыгрыш с подпиской не выбирается. */
 async function memberCheck(ctx: Awaited<ReturnType<typeof moduleAdmin>>) {
   const { adminTelegramApi } = await import("@/channels/telegram/notify");

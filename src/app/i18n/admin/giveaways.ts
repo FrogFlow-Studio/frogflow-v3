@@ -22,6 +22,18 @@ export const ru = {
   "err.giveaway.badSubChannel": "Канал для подписки — публичный, в виде @имя_канала.",
   "giveaways.f.excludeBlocked": "Не выбирать заблокированных вами покупателей",
   "giveaways.f.excludeStaff": "Не выбирать сотрудников магазина",
+  "giveaways.results.show": "Итоги",
+  "giveaways.results.participants": "Участников: {n}",
+  "giveaways.results.eligible": "Допущено к выбору: {n}",
+  "giveaways.results.newBuyers": "Новых покупателей бота среди участников: {n}",
+  "giveaways.results.subscribed": "Участвовали с подпиской на канал: {n}",
+  "giveaways.results.orders":
+    "Участники купили: покупателей {buyers}, заказов {orders} за {days} дней после конца приёма",
+  "giveaways.results.revenue": "Выручка: {sum}",
+  "giveaways.results.noRevenue": "Выручки пока нет",
+  "giveaways.results.windowOpen": "Окно в 14 дней ещё идёт, до {date}: цифры вырастут.",
+  "giveaways.results.note":
+    "В выручку входят только выданные и оплаченные в работе заказы; неоплаченные и отменённые не считаются.",
   "giveaways.f.prizePromo": "Промокод приза, % скидки",
   "giveaways.f.prizePromoHint":
     "0 — промокода нет: победителю напишем, что продавец свяжется сам. Иначе победитель получит одноразовый промокод, выписанный на него.",
@@ -98,6 +110,18 @@ export const kk: SectionDict<typeof ru> = {
   "err.giveaway.badSubChannel": "Жазылу арнасы — ашық, @арна_атауы түрінде.",
   "giveaways.f.excludeBlocked": "Сіз бұғаттаған сатып алушыларды таңдамау",
   "giveaways.f.excludeStaff": "Дүкен қызметкерлерін таңдамау",
+  "giveaways.results.show": "Қорытынды",
+  "giveaways.results.participants": "Қатысушылар: {n}",
+  "giveaways.results.eligible": "Таңдауға жіберілгені: {n}",
+  "giveaways.results.newBuyers": "Қатысушылардағы боттың жаңа сатып алушылары: {n}",
+  "giveaways.results.subscribed": "Арнаға жазылып қатысқандар: {n}",
+  "giveaways.results.orders":
+    "Қатысушылар сатып алды: сатып алушы {buyers}, тапсырыс {orders}, қабылдау біткеннен кейінгі {days} күнде",
+  "giveaways.results.revenue": "Түсім: {sum}",
+  "giveaways.results.noRevenue": "Түсім әзірге жоқ",
+  "giveaways.results.windowOpen": "14 күндік терезе әлі жалғасуда, {date} дейін: сандар өседі.",
+  "giveaways.results.note":
+    "Түсімге тек берілген және жұмыстағы төленген тапсырыстар кіреді; төленбеген және бас тартылғандар есептелмейді.",
   "giveaways.f.prizePromo": "Жүлде промокоды, % жеңілдік",
   "giveaways.f.prizePromoHint":
     "0 — промокод жоқ: жеңімпазға сатушы өзі хабарласатынын жазамыз. Әйтпесе жеңімпаз өзіне арналған бір реттік промокод алады.",
@@ -177,6 +201,19 @@ export const en: SectionDict<typeof ru> = {
   "err.giveaway.badSubChannel": "The subscription channel must be public, like @channel_name.",
   "giveaways.f.excludeBlocked": "Do not pick buyers you have blocked",
   "giveaways.f.excludeStaff": "Do not pick shop staff",
+  "giveaways.results.show": "Results",
+  "giveaways.results.participants": "Participants: {n}",
+  "giveaways.results.eligible": "Eligible for the draw: {n}",
+  "giveaways.results.newBuyers": "New bot buyers among participants: {n}",
+  "giveaways.results.subscribed": "Entered with a channel subscription: {n}",
+  "giveaways.results.orders":
+    "Participants bought: {buyers} buyers, {orders} orders in {days} days after entries closed",
+  "giveaways.results.revenue": "Revenue: {sum}",
+  "giveaways.results.noRevenue": "No revenue yet",
+  "giveaways.results.windowOpen":
+    "The 14-day window is still open until {date}: the numbers will grow.",
+  "giveaways.results.note":
+    "Only delivered and paid in-progress orders count; unpaid and cancelled ones do not.",
   "giveaways.f.prizePromo": "Prize promo code, % off",
   "giveaways.f.prizePromoHint":
     "0 — no promo code: the winner is told the seller will get in touch. Otherwise the winner gets a one-use promo code issued for them.",
@@ -256,6 +293,18 @@ export const uz: SectionDict<typeof ru> = {
   "err.giveaway.badSubChannel": "Obuna kanali ochiq bo'lishi kerak, @kanal_nomi ko'rinishida.",
   "giveaways.f.excludeBlocked": "Siz bloklagan xaridorlarni tanlamaslik",
   "giveaways.f.excludeStaff": "Do'kon xodimlarini tanlamaslik",
+  "giveaways.results.show": "Natijalar",
+  "giveaways.results.participants": "Qatnashchilar: {n}",
+  "giveaways.results.eligible": "Tanlovga ruxsat etilgan: {n}",
+  "giveaways.results.newBuyers": "Qatnashchilar orasida botning yangi xaridorlari: {n}",
+  "giveaways.results.subscribed": "Kanalga obuna bilan qatnashganlar: {n}",
+  "giveaways.results.orders":
+    "Qatnashchilar xarid qildi: {buyers} xaridor, {orders} buyurtma, qabul tugagandan keyingi {days} kunda",
+  "giveaways.results.revenue": "Tushum: {sum}",
+  "giveaways.results.noRevenue": "Hozircha tushum yo'q",
+  "giveaways.results.windowOpen": "14 kunlik oyna hali ochiq, {date} gacha: raqamlar o'sadi.",
+  "giveaways.results.note":
+    "Faqat topshirilgan va to'langan ishdagi buyurtmalar hisoblanadi; to'lanmagan va bekor qilinganlar hisoblanmaydi.",
   "giveaways.f.prizePromo": "Sovrin promokodi, % chegirma",
   "giveaways.f.prizePromoHint":
     "0 — promokod yo'q: g'olibga sotuvchi o'zi bog'lanishini yozamiz. Aks holda g'olib o'ziga chiqarilgan bir martalik promokod oladi.",

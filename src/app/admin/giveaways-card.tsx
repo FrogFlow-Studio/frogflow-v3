@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { closeGiveawayFn, giveawaysFn, saveGiveawayFn } from "@/app/admin/giveaways.functions";
+import { GiveawayResults } from "@/app/admin/giveaway-results";
 import { instagramPostsFn } from "@/app/admin/instagram.functions";
 import type { AdminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, useAction } from "@/app/ui";
@@ -342,6 +343,7 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
                 <code className="select-all break-all">{`https://t.me/${botUsername}?start=gw_${g.id}`}</code>
               </div>
             )}
+            {g.status === "drawn" && <GiveawayResults id={g.id} t={t} locale={locale} />}
             {g.status === "open" && (
               <div className="mt-2 flex gap-2">
                 <button
