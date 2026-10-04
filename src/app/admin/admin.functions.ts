@@ -307,7 +307,14 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       slug: ctx.tenant.settings.slug ?? null,
       chatUnread:
         ctx.tenant.modules.manager_chat && !accountant
-          ? await (await import("@/core/chat/chat")).totalUnread(ctx).catch(() => 0)
+          ? await (await import("@/core/chat/chat")).totalUnread(ctx).catch((e) => {
+              // Не «0 непрочитанных», а «не известно»: бейдж не рисуется, сбой — в журнале.
+              console.error(
+                `[admin:${ctx.tenant.id}] бейдж чата`,
+                e instanceof Error ? e.message : e,
+              );
+              return null;
+            })
           : 0,
       /** Открытые обращения helpdesk — бейдж «Обращения» в навигации. */
       ticketsOpen:

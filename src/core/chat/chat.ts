@@ -342,9 +342,19 @@ export async function lastInboundAt(
   return data?.[0]?.created_at ?? null;
 }
 
+/**
+ * Сумма непрочитанных для бейджа в шапке (на каждой странице админки): читаются только
+ * диалоги с непрочитанным, а не все диалоги магазина.
+ */
 export async function totalUnread(ctx: TenantContext): Promise<number> {
   const rows = await pageAll(
-    (from, to) => ctx.db.from("manager_chat_state").select("unread_count").range(from, to),
+    (from, to) =>
+      ctx.db
+        .from("manager_chat_state")
+        .select("unread_count")
+        .gt("unread_count", 0)
+        .order("telegram_id")
+        .range(from, to),
     "непрочитанные диалоги",
   );
   return rows.reduce((s, r) => s + (r.unread_count ?? 0), 0);

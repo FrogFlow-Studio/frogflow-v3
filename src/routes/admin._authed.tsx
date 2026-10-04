@@ -102,7 +102,7 @@ function Layout() {
                 <NavLink to="/admin/chat">
                   <span className="flex items-center justify-between gap-2">
                     {t("nav.chat")}
-                    {shop.chatUnread > 0 && <Badge tone="accent">{shop.chatUnread}</Badge>}
+                    {(shop.chatUnread ?? 0) > 0 && <Badge tone="accent">{shop.chatUnread}</Badge>}
                   </span>
                 </NavLink>
               )}
