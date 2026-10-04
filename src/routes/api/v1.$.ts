@@ -69,7 +69,10 @@ async function handle(request: Request, path: string): Promise<Response> {
       if (parts.length !== 2 || !Number.isInteger(id) || id <= 0) return fail(404, "not_found");
       const { getOrder } = await import("@/core/orders/orders");
       const order = await getOrder(ctx, id);
-      return order ? json({ order: api.apiOrder(order) }) : fail(404, "not_found");
+      // Роль арендатора и так видит только свой магазин; сверка — второй замок.
+      return order && order.bot_id === ctx.tenant.id
+        ? json({ order: api.apiOrder(order) })
+        : fail(404, "not_found");
     }
     if (parts[0] === "products" && parts.length === 1 && method === "GET") {
       const data = await pageAll(
@@ -77,6 +80,7 @@ async function handle(request: Request, path: string): Promise<Response> {
           ctx.db
             .from("products")
             .select(PRODUCT_COLUMNS)
+            .eq("bot_id", ctx.tenant.id)
             .order("sort_order")
             .order("id")
             .range(from, to),
@@ -105,7 +109,7 @@ async function listOrders(
   const api = await import("@/core/api/public-api");
   const q = api.orderListQuery(url);
   if (!q) return fail(400, "bad_query");
-  let query = ctx.db.from("orders").select("*, order_items(*)");
+  let query = ctx.db.from("orders").select("*, order_items(*)").eq("bot_id", ctx.tenant.id);
   if (q.status) query = query.eq("status", q.status);
   if (q.since) query = query.gte("updated_at", q.since);
   if (q.before) query = query.lt("id", q.before);
@@ -181,6 +185,7 @@ async function patchProduct(
   const { data: before, error: beforeError } = await ctx.db
     .from("products")
     .select("is_active, stock_quantity, name")
+    .eq("bot_id", ctx.tenant.id)
     .eq("id", id)
     .maybeSingle();
   if (beforeError) throw serverFailure(`API: ${beforeError.message}`);
@@ -188,6 +193,7 @@ async function patchProduct(
   const { data, error } = await ctx.db
     .from("products")
     .update(patch)
+    .eq("bot_id", ctx.tenant.id)
     .eq("id", id)
     .select(PRODUCT_COLUMNS)
     .maybeSingle();
