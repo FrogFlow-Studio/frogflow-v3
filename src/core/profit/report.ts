@@ -4,7 +4,7 @@ import { shopCurrency } from "@/core/discounts/discounts";
 import { ORDER_EVENT_STATUS } from "@/core/orders/events";
 import { netOfRefunds } from "@/core/orders/refund";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { listCosts, unitCost, type ProductCost } from "./cost";
+import { itemUnitCost, listCosts, type ProductCost } from "./cost";
 import { loadSnapshots, type OrderCostSnapshot } from "./snapshot";
 
 /**
@@ -93,14 +93,15 @@ export type ProfitInput = {
 function currentUnit(
   c: ProductCost | undefined,
   currency: string,
-  variantId: string | null,
+  it: ProfitItem,
   names: Map<string, string>,
 ): number | null {
   if (!c || c.currency !== currency) return null;
-  if (!variantId) return unitCost(c, null);
-  const name = names.get(variantId);
-  if (name === undefined) return Object.keys(c.variants).length ? null : c.price;
-  return unitCost(c, name);
+  return itemUnitCost(c, {
+    variantId: it.product_variant_id,
+    variantName: it.product_variant_id ? (names.get(it.product_variant_id) ?? null) : null,
+    nameSnapshot: it.name_snapshot,
+  });
 }
 
 export function buildProfit(inp: ProfitInput): ProfitReport {
@@ -176,7 +177,7 @@ export function buildProfit(inp: ProfitInput): ProfitReport {
         unit = currentUnit(
           it.product_id ? inp.costs.get(it.product_id) : undefined,
           inp.currency,
-          it.product_variant_id,
+          it,
           inp.variantNames,
         );
         if (unit !== null) rep.fromCurrent.items += 1;

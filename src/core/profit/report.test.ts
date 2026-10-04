@@ -243,6 +243,30 @@ describe("прибыль в аналитике", () => {
     expect(p.cost).toBe(1000);
   });
 
+  it("id варианта обнулён: отчёт без снимка берёт вариант по названию позиции, не найденный — «не задана»", async () => {
+    const { ctx, db } = shop();
+    db.tables.product_variants!.push({
+      id: "v2",
+      bot_id: BOT,
+      product_id: P1,
+      name: "2 кг",
+      price: 9000,
+      sort_order: 1,
+    });
+    await saveCost(ctx, P1, { price: 3000, variants: { "1 кг": 2000, "2 кг": 7000 } });
+    await saveCost(ctx, P2, { price: 1000 });
+    db.tables.product_variants = [];
+    const a = db.tables.order_items!.find((i) => i.id === "a")!;
+    Object.assign(a, { product_variant_id: null, name_snapshot: "Торт (2 кг)" });
+    const p = await profitReport(ctx, 30);
+    expect(p.unknown.items).toBe(0);
+    expect(p.cost).toBe(2 * 7000 + 1000);
+    Object.assign(a, { name_snapshot: "Торт (3 кг)" });
+    const q = await profitReport(ctx, 30);
+    expect(q.unknown.items).toBe(1);
+    expect(q.cost).toBe(1000);
+  });
+
   it("скидка и доставка: выручка заказа раскладывается по позициям, сумма сходится", async () => {
     const { ctx, db } = shop();
     db.tables.orders![0]!.total = 9000; // скидка 1000 на заказ

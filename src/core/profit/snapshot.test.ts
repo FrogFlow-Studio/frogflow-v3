@@ -82,6 +82,18 @@ describe("себестоимость в момент продажи", () => {
     });
   });
 
+  it("id варианта обнулён пересохранением товара — вариант по названию позиции, не найден — «не задана», а не цена товара", async () => {
+    const { ctx, db } = shop();
+    await saveCost(ctx, P, { price: 4000, variants: { "1 кг": 4000, "2 кг": 7000 } });
+    const [a, b] = db.tables.order_items!;
+    Object.assign(a!, { product_variant_id: null, name_snapshot: "Торт (2 кг)" });
+    Object.assign(b!, { product_variant_id: null, name_snapshot: "Торт (3 кг)" });
+    await snapshotOrderCost(ctx, 7);
+    const items = (await loadSnapshots(ctx, [7])).get(7)!.items;
+    expect(items[0]).toEqual({ p: P, q: 2, c: 7000 });
+    expect(items[1]).toEqual({ p: P, q: 1, c: null });
+  });
+
   it("цену закупки изменили после продажи — снимок прошлого заказа прежний", async () => {
     const { ctx } = shop();
     await saveCost(ctx, P, { price: 4000 });

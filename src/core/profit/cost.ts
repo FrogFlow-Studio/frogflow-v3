@@ -76,6 +76,28 @@ export function unitCost(c: ProductCost | null, variantName: string | null): num
   return c.price;
 }
 
+/**
+ * Себестоимость штуки позиции заказа. Вариант определяется по id (его название
+ * передаёт вызывающий), а если id обнулён пересохранением товара — по названию
+ * позиции «Товар (Вариант)». Вариантная позиция, чей вариант не найден, —
+ * null («не задана»), а не цена товара.
+ */
+export function itemUnitCost(
+  c: ProductCost | null,
+  item: { variantId: string | null; variantName: string | null; nameSnapshot: string | null },
+): number | null {
+  if (!c) return null;
+  const hasVariants = Object.keys(c.variants).length > 0;
+  if (item.variantName !== null) return unitCost(c, item.variantName);
+  const name = item.nameSnapshot ?? "";
+  for (const key of Object.keys(c.variants)) {
+    if (name.endsWith(` (${key})`)) return c.variants[key]!;
+  }
+  const looksVariant = item.variantId !== null || /\([^()]+\)\s*$/.test(name);
+  if (hasVariants && looksVariant) return null;
+  return c.price;
+}
+
 export async function loadCost(ctx: TenantContext, productId: string): Promise<ProductCost | null> {
   return parseCost(await getSettingStrict(ctx, `${COST_PREFIX}${productId}`));
 }

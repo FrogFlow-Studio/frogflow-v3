@@ -2,7 +2,7 @@ import { pageAll } from "@/core/db/page";
 import { reportError } from "@/lib/errors";
 import { getSettingsStrict, updateSettingStamped } from "@/core/settings/settings";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { COST_PREFIX, parseCost, unitCost } from "./cost";
+import { COST_PREFIX, itemUnitCost, parseCost } from "./cost";
 
 /**
  * Себестоимость в момент продажи (модуль `profit`): когда по заказу впервые
@@ -58,12 +58,13 @@ export async function snapshotOrderCost(ctx: TenantContext, orderId: number): Pr
     const items = await pageAll<{
       product_id: string | null;
       product_variant_id: string | null;
+      name_snapshot: string | null;
       quantity: number;
     }>(
       (from, to) =>
         ctx.db
           .from("order_items")
-          .select("product_id, product_variant_id, quantity")
+          .select("product_id, product_variant_id, name_snapshot, quantity")
           .eq("order_id", orderId)
           .order("id")
           .range(from, to),
@@ -102,10 +103,11 @@ export async function snapshotOrderCost(ctx: TenantContext, orderId: number): Pr
         return {
           p: i.product_id,
           q: Number(i.quantity),
-          c: unitCost(
-            usable,
-            i.product_variant_id ? (names.get(i.product_variant_id) ?? null) : null,
-          ),
+          c: itemUnitCost(usable, {
+            variantId: i.product_variant_id,
+            variantName: i.product_variant_id ? (names.get(i.product_variant_id) ?? null) : null,
+            nameSnapshot: i.name_snapshot,
+          }),
         };
       }),
     };
