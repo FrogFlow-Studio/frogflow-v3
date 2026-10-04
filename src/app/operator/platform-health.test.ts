@@ -22,9 +22,9 @@ describe("светофор крона", () => {
     );
     expect(cronLight({ everyMin: 15, lastAt: "2026-10-04T09:10:00Z", ok: true }, now)).toBe("red");
   });
-  it("ошибка последнего запуска — красный, не запускался — жёлтый", () => {
+  it("ошибка последнего запуска — красный, не запускался — «нет данных»", () => {
     expect(cronLight({ everyMin: 60, lastAt: "2026-10-04T09:59:00Z", ok: false }, now)).toBe("red");
-    expect(cronLight({ everyMin: 60, lastAt: null, ok: null }, now)).toBe("yellow");
+    expect(cronLight({ everyMin: 60, lastAt: null, ok: null }, now)).toBe("unknown");
   });
   it("у не-зелёного есть подсказка «что делать», у зелёного нет", () => {
     const j = { job: "vip", title: "VIP", everyMin: 10 };
@@ -44,17 +44,26 @@ describe("очереди и отказы", () => {
     expect(undeliveredLight(0)).toBe("green");
     expect(undeliveredLight(1)).toBe("yellow");
     expect(undeliveredLight(20)).toBe("red");
-    expect(failuresLight(0)).toBe("green");
-    expect(failuresLight(3)).toBe("yellow");
-    expect(failuresLight(50)).toBe("red");
-    expect(telegramLight(0, 10)).toBe("green");
-    expect(telegramLight(1, 10)).toBe("yellow");
-    expect(telegramLight(3, 10)).toBe("red");
+    expect(failuresLight(0, 40)).toBe("green");
+    expect(failuresLight(3, 40)).toBe("yellow");
+    expect(failuresLight(50, 80)).toBe("red");
+    expect(telegramLight(0, 10, 10)).toBe("green");
+    expect(telegramLight(1, 10, 10)).toBe("yellow");
+    expect(telegramLight(3, 10, 10)).toBe("red");
   });
   it("общий итог — худший из светофоров", () => {
     expect(worstLight(["green", "yellow", "green"])).toBe("yellow");
     expect(worstLight(["yellow", "red"])).toBe("red");
-    expect(worstLight([])).toBe("green");
+    expect(worstLight([])).toBe("unknown");
+    expect(worstLight(["green", "unknown"])).toBe("unknown");
+    expect(worstLight(["unknown", "yellow"])).toBe("yellow");
+  });
+  it("пустые данные — «нет данных», а не зелёный", () => {
+    expect(failuresLight(0, 0)).toBe("unknown");
+    expect(telegramLight(0, 0, 0)).toBe("unknown");
+    expect(telegramLight(0, 10, 0)).toBe("unknown");
+    expect(telegramLight(0, 10, 9)).toBe("unknown");
+    expect(cronRow({ job: "vip", title: "VIP", everyMin: 10 }, null, now).light).toBe("unknown");
   });
 });
 

@@ -59,6 +59,8 @@ export function channelStates(c: HealthClient): ChannelState[] {
       tone: "danger",
       hint: c.health.error ?? "сбой последней проверки",
     });
+  } else if (!c.health) {
+    out.push({ key: "telegram", label: "Telegram", tone: "neutral", hint: "нет данных проверки" });
   } else {
     out.push({ key: "telegram", label: "Telegram", tone: "ok", hint: "" });
   }

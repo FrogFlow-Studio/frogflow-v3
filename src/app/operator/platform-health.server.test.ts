@@ -69,6 +69,46 @@ describe("платформа: здоровье", () => {
       { id: `${t.id}-new`, bot_id: t.id, ok: i % 5 !== 0, at: "2026-10-04T09:00:00Z" },
     ]);
     const h = await platformHealth(NOW);
-    expect(h.queues.find((q) => q.id === "telegram")?.detail).toBe("50 из 250");
+    expect(h.queues.find((q) => q.id === "telegram")?.detail).toBe("50 из 250; проверялись: 250");
+  });
+
+  it("пустая база: ни событий, ни снимков — «нет данных», общий итог не зелёный", async () => {
+    tenants = [bot(1), bot(2)];
+    const h = await platformHealth(NOW);
+    const q = (id: string) => h.queues.find((r) => r.id === id);
+    expect(q("zernio-failed")?.light).toBe("unknown");
+    expect(q("telegram")?.light).toBe("unknown");
+    expect(q("telegram")?.todo).toContain("Нет данных");
+    expect(h.overall).not.toBe("green");
+  });
+
+  it("часть ботов не проверялась — не «зелёный», проверенные с жалобой — красный/жёлтый", async () => {
+    tenants = [bot(1), bot(2)];
+    db.tables.bot_health_snapshots = [
+      { id: "s1", bot_id: tenants[0]!.id, ok: true, at: "2026-10-04T09:00:00Z" },
+    ];
+    expect((await platformHealth(NOW)).queues.find((r) => r.id === "telegram")?.light).toBe(
+      "unknown",
+    );
+    db.tables.bot_health_snapshots.push({
+      id: "s2",
+      bot_id: tenants[1]!.id,
+      ok: false,
+      at: "2026-10-04T09:00:00Z",
+    });
+    expect((await platformHealth(NOW)).queues.find((r) => r.id === "telegram")?.light).toBe("red");
+  });
+
+  it("события приходили и сбоев нет — зелёный по-настоящему", async () => {
+    db.tables.zernio_logs = [
+      {
+        id: "e1",
+        event_type: "message.received",
+        status: "processed",
+        created_at: "2026-10-04T09:30:00Z",
+      },
+    ];
+    const h = await platformHealth(NOW);
+    expect(h.queues.find((r) => r.id === "zernio-failed")?.light).toBe("green");
   });
 });

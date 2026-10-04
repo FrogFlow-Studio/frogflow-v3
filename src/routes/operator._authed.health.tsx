@@ -8,8 +8,9 @@ export const Route = createFileRoute("/operator/_authed/health")({
   component: HealthPage,
 });
 
-const LIGHT: Record<Light, { tone: "ok" | "warn" | "danger"; label: string }> = {
+const LIGHT: Record<Light, { tone: "ok" | "warn" | "danger" | "neutral"; label: string }> = {
   green: { tone: "ok", label: "зелёный" },
+  unknown: { tone: "neutral", label: "нет данных" },
   yellow: { tone: "warn", label: "жёлтый" },
   red: { tone: "danger", label: "красный" },
 };

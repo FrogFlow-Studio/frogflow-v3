@@ -2,7 +2,8 @@
  * «Здоровье платформы» оператора: чистая часть — светофор по крону, очереди и
  * отказам, и подсказка «что делать». Чтение базы — в platform-health.server.ts.
  */
-export type Light = "green" | "yellow" | "red";
+/** `unknown` — «нет данных»: измерить нечего или не измерили; это не «зелёный». */
+export type Light = "green" | "yellow" | "red" | "unknown";
 
 export type CronLightInput = {
   everyMin: number;
@@ -12,18 +13,19 @@ export type CronLightInput = {
   ok: boolean | null;
 };
 
-const RANK: Record<Light, number> = { green: 0, yellow: 1, red: 2 };
+const RANK: Record<Light, number> = { green: 0, unknown: 1, yellow: 2, red: 3 };
 
 export function worstLight(lights: Light[]): Light {
+  if (lights.length === 0) return "unknown";
   return lights.reduce<Light>((w, l) => (RANK[l] > RANK[w] ? l : w), "green");
 }
 
 /**
  * Крон: ошибка последнего запуска или тишина дольше трёх интервалов — красный;
- * тишина дольше своего интервала (или ни одного запуска) — жёлтый.
+ * тишина дольше своего интервала — жёлтый; ни одного запуска — «нет данных».
  */
 export function cronLight(i: CronLightInput, now = new Date()): Light {
-  if (!i.lastAt) return "yellow";
+  if (!i.lastAt) return "unknown";
   if (i.ok === false) return "red";
   const age = now.getTime() - Date.parse(i.lastAt);
   if (!Number.isFinite(age)) return "yellow";
@@ -43,16 +45,23 @@ export function undeliveredLight(dead: number): Light {
   return dead >= QUEUE_YELLOW ? "yellow" : "green";
 }
 
-/** Сбои обработки вебхуков / отказы каналов за сутки. */
-export function failuresLight(failed: number): Light {
+/**
+ * Сбои обработки вебхуков / отказы каналов за сутки. `received` — сколько событий пришло
+ * за те же сутки: ни одного — «нет данных» (тишина не доказывает, что всё работает).
+ */
+export function failuresLight(failed: number, received: number): Light {
+  if (failed === 0 && received === 0) return "unknown";
   if (failed >= FAILED_RED) return "red";
   return failed >= FAILED_YELLOW ? "yellow" : "green";
 }
 
-/** Боты, у которых Telegram жалуется на вебхук: доля от всех на v2. */
-export function telegramLight(failing: number, total: number): Light {
-  if (failing === 0) return "green";
-  return total > 0 && failing / total >= 0.3 ? "red" : "yellow";
+/**
+ * Боты, у которых Telegram жалуется на вебхук: доля от всех на v2. `checked` — у скольких
+ * есть хоть один снимок проверки; без снимка бот не «в порядке», а «не проверялся».
+ */
+export function telegramLight(failing: number, total: number, checked: number): Light {
+  if (failing > 0) return total > 0 && failing / total >= 0.3 ? "red" : "yellow";
+  return total > 0 && checked >= total ? "green" : "unknown";
 }
 
 export type HealthRow = {
@@ -76,6 +85,8 @@ export const TODO = {
     "Есть сообщения, которые не дошли после всех повторов: причина — в строке ошибки у клиента («Не доставлено»); чаще всего покупатель заблокировал бота или токен канала протух.",
   failed:
     "Вебхуки Zernio падали при обработке: откройте «Настройки и вебхук Zernio» → «Проверить»; если ошибка одна и та же — перепривяжите вебхук.",
+  unknown:
+    "Нет данных: измерять пока нечего или проверка ещё не проходила. Это не «всё хорошо»: запустите проверку (у клиента → «Здоровье» → «Проверить») или дождитесь первых событий.",
   telegram:
     "У этих ботов Telegram жалуется на вебхук: откройте клиента → «Здоровье», нажмите «Проверить»; ключ или адрес вебхука надо перепривязать.",
 } as const;

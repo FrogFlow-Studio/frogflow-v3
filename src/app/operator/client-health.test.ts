@@ -34,6 +34,12 @@ describe("channelStates", () => {
       { key: "telegram", label: "Telegram", tone: "ok", hint: "" },
     ]);
   });
+  it("проверок не было вовсе — серый «нет данных», не зелёный", () => {
+    expect(channelStates(c({ health: null }))[0]).toMatchObject({
+      tone: "neutral",
+      hint: "нет данных проверки",
+    });
+  });
   it("вебхук не привязан или сбой проверки — красный с причиной", () => {
     const a = channelStates(c({ telegram: { connected: true, webhookOk: false } }))[0]!;
     expect(a.tone).toBe("danger");
