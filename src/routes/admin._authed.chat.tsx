@@ -152,6 +152,8 @@ function ChatPage() {
   const loc = intlLocale(shop.locale);
   const [conversations, setConversations] = useState<InboxItem[]>(initial.conversations);
   const [hasMore, setHasMore] = useState(initial.hasMore);
+  // Курсор «читать дальше», когда сервер упёрся в потолок порций при редком фильтре.
+  const [nextCursor, setNextCursor] = useState(initial.next);
   const [totals, setTotals] = useState(initial.totals);
   // Открытый диалог держим отдельно: под фильтром или поиском его может не быть в списке.
   const [openedItem, setOpenedItem] = useState<InboxItem | null>(null);
@@ -252,6 +254,7 @@ function ChatPage() {
     if (replace) {
       setConversations(r.conversations);
       setHasMore(r.hasMore);
+      setNextCursor(r.next);
     } else mergeChanged(r.conversations, f);
   };
   const refreshList = async () => loadFirstPage(live.current.filter, false);
@@ -276,14 +279,12 @@ function ChatPage() {
   fns.current = { mergeChanged, applyUnread, noteTotals, refreshList, changeFilter };
   const loadMore = useAction(async () => {
     const last = conversations[conversations.length - 1];
-    if (!last) return;
+    const before =
+      nextCursor ??
+      (last ? { last_message_at: last.last_message_at, telegram_id: last.telegram_id } : null);
+    if (!before) return;
     const f = live.current.filter;
-    const r = await chatInboxPageFn({
-      data: {
-        filter: f,
-        before: { last_message_at: last.last_message_at, telegram_id: last.telegram_id },
-      },
-    });
+    const r = await chatInboxPageFn({ data: { filter: f, before } });
     if (live.current.filter !== f) return;
     noteTotals(r.totals);
     setConversations((cur) => {
@@ -291,6 +292,7 @@ function ChatPage() {
       return [...cur, ...r.conversations.filter((c) => !have.has(c.telegram_id))];
     });
     setHasMore(r.hasMore);
+    setNextCursor(r.next);
   });
   // Поиск на сервере: запрос уходит после паузы в наборе.
   useEffect(() => {

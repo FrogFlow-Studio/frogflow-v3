@@ -2505,6 +2505,7 @@ export const chatConversationsFn = createServerFn({ method: "GET" })
     return {
       conversations: page.items,
       hasMore: page.hasMore,
+      next: page.next,
       totals,
       asOf,
       me,
@@ -2529,7 +2530,7 @@ export const chatInboxPageFn = createServerFn({ method: "GET" })
       listInboxPage(ctx, { filter: data.filter, me, before: data.before }),
       inboxTotals(ctx, me),
     ]);
-    return { conversations: page.items, hasMore: page.hasMore, totals };
+    return { conversations: page.items, hasMore: page.hasMore, next: page.next, totals };
   });
 
 /** Поиск по тексту переписки: находки страницами, свежие сверху. Ничего не отмечает прочитанным. */

@@ -23,8 +23,17 @@ import {
 export const INBOX_PAGE = 50;
 /** За раз читаем строк состояния при поиске подходящих под фильтр. */
 const SCAN = 200;
+/**
+ * Порций за один запрос: редкий фильтр («Мои» у менеджера с тремя диалогами) не читает
+ * все диалоги магазина, а возвращает найденное и курсор «читать дальше».
+ */
+export const MAX_SCANS = 5;
 
-export type InboxPage = { items: InboxItem[]; hasMore: boolean };
+/**
+ * `next` — откуда продолжать, когда запрос упёрся в потолок порций и страница неполная
+ * (находок может быть мало или нет совсем); иначе null и курсор — последний диалог страницы.
+ */
+export type InboxPage = { items: InboxItem[]; hasMore: boolean; next: ConversationCursor | null };
 
 async function itemsOf(
   ctx: TenantContext,
@@ -50,7 +59,8 @@ async function withTickets(ctx: TenantContext, items: InboxItem[]): Promise<Inbo
 /**
  * Страница списка диалогов: свежие сверху, порядок заканчивается telegram_id.
  * Статус и ответственный лежат в другой таблице, канал и имя — в третьей, поэтому
- * строки состояния читаются кусками, пока не наберётся страница подходящих;
+ * строки состояния читаются кусками, пока не наберётся страница подходящих или не выйдет
+ * потолок порций (`MAX_SCANS`, тогда `hasMore` и курсор `next`);
  * «непрочитанные» отбираются уже в запросе. Конец списка — `hasMore: false`.
  */
 export async function listInboxPage(
@@ -60,7 +70,8 @@ export async function listInboxPage(
   const limit = q.limit ?? INBOX_PAGE;
   const found: InboxItem[] = [];
   let cursor = q.before ?? null;
-  for (;;) {
+  let capped = false;
+  for (let scans = 1; ; scans++) {
     const states = await listConversationStates(ctx, {
       before: cursor,
       limit: SCAN,
@@ -73,9 +84,17 @@ export async function listInboxPage(
     const last = states[states.length - 1]!;
     cursor = { last_message_at: last.last_message_at, telegram_id: Number(last.telegram_id) };
     if (found.length > limit || states.length < SCAN) break;
+    if (scans >= MAX_SCANS) {
+      capped = true;
+      break;
+    }
   }
-  const hasMore = found.length > limit;
-  return { items: await withTickets(ctx, found.slice(0, limit)), hasMore };
+  const hasMore = found.length > limit || capped;
+  return {
+    items: await withTickets(ctx, found.slice(0, limit)),
+    hasMore,
+    next: capped && found.length <= limit ? cursor : null,
+  };
 }
 
 /**

@@ -3,7 +3,14 @@ import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { inboxEventId, type InboxFilter } from "./inbox";
 import { listUnreadIds } from "@/core/chat/chat";
-import { INBOX_PAGE, inboxTotals, listInboxChanged, listInboxPage } from "./page";
+import {
+  INBOX_PAGE,
+  MAX_SCANS,
+  inboxTotals,
+  listInboxChanged,
+  listInboxPage,
+  type InboxPage,
+} from "./page";
 
 const BOT = "11111111-1111-1111-1111-111111111111";
 const ALL: InboxFilter = { status: "all", who: "all", channel: "all" };
@@ -52,6 +59,25 @@ function setup(total = 3000) {
   return { ctx, db };
 }
 
+/** Страницы подряд, как «Показать ещё»: курсор — `next` или последний диалог страницы. */
+async function allPages(
+  ctx: TenantContext,
+  q: Omit<Parameters<typeof listInboxPage>[1], "before">,
+): Promise<{ ids: number[]; pages: InboxPage[] }> {
+  const pages: InboxPage[] = [];
+  let before: Parameters<typeof listInboxPage>[1]["before"] = null;
+  for (;;) {
+    const page = await listInboxPage(ctx, { ...q, before });
+    pages.push(page);
+    if (!page.hasMore) break;
+    const last = page.items[page.items.length - 1];
+    before =
+      page.next ??
+      (last ? { last_message_at: last.last_message_at, telegram_id: last.telegram_id } : null);
+  }
+  return { ids: pages.flatMap((p) => p.items.map((i) => i.telegram_id)), pages };
+}
+
 describe("страницы списка диалогов", () => {
   it("3000 диалогов: страницы без пропусков и повторов, свежие сверху", async () => {
     const { ctx } = setup();
@@ -77,9 +103,9 @@ describe("страницы списка диалогов", () => {
   it("поиск находит диалог из 2-й тысячи по имени и по @username", async () => {
     const { ctx } = setup();
     for (const search of ["редк", "@RARE_buyer"]) {
-      const page = await listInboxPage(ctx, { filter: { ...ALL, search }, me: "" });
-      expect(page.items.map((i) => i.telegram_id)).toEqual([1501]);
-      expect(page.hasMore).toBe(false);
+      const { ids, pages } = await allPages(ctx, { filter: { ...ALL, search }, me: "" });
+      expect(ids).toEqual([1501]);
+      expect(pages.at(-1)!.hasMore).toBe(false);
     }
   });
 
@@ -89,21 +115,61 @@ describe("страницы списка диалогов", () => {
       (await listInboxPage(ctx, { filter: { ...ALL, ...f }, me, limit })).items.map(
         (i) => i.telegram_id,
       );
-    expect(await ids({ status: "closed" })).toEqual([9, 2]);
-    expect(await ids({ who: "mine" })).toEqual([9, 6]);
-    expect(await ids({ who: "mine", status: "open" })).toEqual([6]);
+    // Редкие фильтры ищут за несколько запросов: «Показать ещё» до конца.
+    const idsAll = async (f: Partial<InboxFilter>, me = "boris", limit = 1000) =>
+      (await allPages(ctx, { filter: { ...ALL, ...f }, me, limit })).ids;
+    expect(await idsAll({ status: "closed" })).toEqual([9, 2]);
+    expect(await idsAll({ who: "mine" })).toEqual([9, 6]);
+    expect(await idsAll({ who: "mine", status: "open" })).toEqual([6]);
     // Открытых без ответственного: 3000 − 2 решённых − 2 с ответственным (3 и 6; №9 решён).
-    expect(await ids({ status: "open", who: "none" }, "boris", 5000)).toHaveLength(2996);
+    expect(await idsAll({ status: "open", who: "none" }, "boris", 5000)).toHaveLength(2996);
     expect(await ids({ unread: true }, "boris", 5)).toEqual([2991, 2981, 2971, 2961, 2951]);
     // Instagram: telegram_id = 1, 4, 7, … (i % 3 == 0 → id % 3 == 1).
     expect(await ids({ channel: "instagram" }, "boris", 3)).toEqual([2998, 2995, 2992]);
     // Селективный фильтр ищет глубоко: единственный «мой» открытый — из конца списка.
-    const deep = await listInboxPage(ctx, {
+    const deep = await allPages(ctx, {
       filter: { ...ALL, status: "open", who: "mine" },
       me: "boris",
     });
-    expect(deep.items.map((i) => i.telegram_id)).toEqual([6]);
-    expect(deep.hasMore).toBe(false);
+    expect(deep.ids).toEqual([6]);
+    expect(deep.pages.at(-1)!.hasMore).toBe(false);
+  });
+
+  it("Д2: редкий фильтр не читает все диалоги за один запрос, курсор продолжает с места", async () => {
+    const { ctx, db } = setup(20000);
+    const reads: string[] = [];
+    const counting = new Proxy(db, {
+      get: (t, prop, r) =>
+        prop === "from"
+          ? (name: string) => {
+              reads.push(name);
+              return t.from(name);
+            }
+          : Reflect.get(t, prop, r),
+    });
+    const cctx = { ...ctx, db: counting } as unknown as TenantContext;
+    const first = await listInboxPage(cctx, {
+      filter: { ...ALL, status: "open", who: "mine" },
+      me: "boris",
+    });
+    // Потолок: порций MAX_SCANS, на каждую состояние, покупатели и учёт (в два куска) — не 100 порций.
+    expect(reads.length).toBeLessThanOrEqual(MAX_SCANS * 4);
+    expect(first.items).toEqual([]);
+    expect(first.hasMore).toBe(true);
+    expect(first.next).not.toBeNull();
+    // Следующий запрос идёт с курсора, а не с начала.
+    const second = await listInboxPage(cctx, {
+      filter: { ...ALL, status: "open", who: "mine" },
+      me: "boris",
+      before: first.next,
+    });
+    expect(second.next!.telegram_id).toBeLessThan(first.next!.telegram_id);
+    // Дочитав до конца, находим единственный «мой» диалог (№6), ничего не потеряв.
+    const all = await allPages(cctx, {
+      filter: { ...ALL, status: "open", who: "mine" },
+      me: "boris",
+    });
+    expect(all.ids).toEqual([6]);
   });
 
   it("счётчики — по count: открытые, мои, без ответственного, непрочитанные", async () => {
