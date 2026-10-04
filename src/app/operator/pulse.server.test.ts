@@ -13,7 +13,7 @@ const now = new Date("2026-10-20T12:00:00Z");
 const ago = (d: number) => new Date(now.getTime() - d * 86_400_000).toISOString();
 const A = "a0000000-0000-0000-0000-000000000001";
 const B = "b0000000-0000-0000-0000-000000000002";
-const client = (id: string) => ({ id, status: "active", createdAt: ago(300), lastOrderAt: ago(1) });
+const client = (id: string) => ({ id, status: "active", createdAt: ago(300) });
 
 beforeEach(() => {
   db = fakeDb();
@@ -100,6 +100,55 @@ describe("loadPulse", () => {
     const m = await loadPulse([client(A), client(B)], now);
     expect(m.get(A)).toMatchObject({ noLogin: false, quiet: false });
     expect(m.get(B)).toMatchObject({ noLogin: true, quiet: true });
+  });
+
+  it("«без заказов N дн» считает оплаченные: брошенный вчера не сбрасывает давность", async () => {
+    orders.push(
+      { id: 1, bot_id: A, created_at: ago(1), status: "awaiting_payment" },
+      { id: 2, bot_id: A, created_at: ago(1), status: "cancelled" },
+      { id: 3, bot_id: A, created_at: ago(40), status: "paid" },
+    );
+    const m = await loadPulse([client(A)], now);
+    expect(m.get(A)).toMatchObject({ daysSinceOrder: 40, orderKnown: true });
+  });
+
+  it("последний оплаченный заказ из окна 28 дней — без отдельного запроса на клиента", async () => {
+    orders.push(
+      { id: 1, bot_id: A, created_at: ago(1), status: "expired" },
+      { id: 2, bot_id: A, created_at: ago(5), status: "delivered" },
+      { id: 3, bot_id: A, created_at: ago(9), status: "paid" },
+    );
+    const reads: string[] = [];
+    const orig = db.from.bind(db);
+    db.from = ((t: string) => {
+      reads.push(t);
+      return orig(t);
+    }) as typeof db.from;
+    const m = await loadPulse([client(A)], now);
+    expect(m.get(A)).toMatchObject({ daysSinceOrder: 5 });
+    expect(reads.filter((t) => t === "orders")).toHaveLength(1);
+  });
+
+  it("оплаченных нет совсем — давности нет, но заказы известны: «не было», а не «не прочитали»", async () => {
+    orders.push({ id: 1, bot_id: A, created_at: ago(2), status: "awaiting_payment" });
+    const m = await loadPulse([client(A)], now);
+    expect(m.get(A)).toMatchObject({ daysSinceOrder: null, orderKnown: true });
+  });
+
+  it("не прочитался запрос последнего оплаченного — исключение, а не «давно без заказов»", async () => {
+    orders.push({ id: 1, bot_id: A, created_at: ago(40), status: "paid" });
+    const orig = db.from.bind(db);
+    let calls = 0;
+    db.from = ((t: string) => {
+      const q = orig(t) as unknown as Record<string, unknown>;
+      if (t !== "orders" || ++calls < 2) return q;
+      const bad: Record<string, unknown> = {};
+      for (const m of ["select", "eq", "in", "order", "limit"]) bad[m] = () => bad;
+      bad.then = (ok: (v: unknown) => unknown) =>
+        Promise.resolve({ data: null, error: { message: "база недоступна" } }).then(ok);
+      return bad;
+    }) as unknown as typeof db.from;
+    await expect(loadPulse([client(A)], now)).rejects.toThrow(/не прочитан/);
   });
 
   for (const table of ["orders", "admin_login_attempts", "zernio_logs"])

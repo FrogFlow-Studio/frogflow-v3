@@ -262,7 +262,6 @@ export async function listClients(): Promise<ClientView[]> {
         id: t.id,
         status: t.status,
         createdAt: ex.get(t.id)?.created_at ?? null,
-        lastOrderAt: stats.has(t.id) ? (stats.get(t.id)?.last_order_at ?? null) : undefined,
       })),
   ).catch((e) => {
     console.warn("[operator] пульс клиентов не прочитан:", e);

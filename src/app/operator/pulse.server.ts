@@ -2,6 +2,7 @@ import { serviceDb } from "@/core/db/client.server";
 import { pageAll } from "@/core/db/page";
 import { ORDER_EVENT_STATUS } from "@/core/orders/events";
 import { chunksOf } from "@/lib/in-chunks";
+import { serverFailure } from "@/lib/server-failure";
 import { PULSE_DAYS, PULSE_ORDER_STATUSES, computePulse, type Pulse } from "./pulse";
 
 const DAY_MS = 86_400_000;
@@ -11,8 +12,6 @@ export type PulseClient = {
   id: string;
   status: string;
   createdAt: string | null;
-  /** undefined — статистика клиента не прочиталась. */
-  lastOrderAt: string | null | undefined;
 };
 
 async function readChunked<T>(chunks: string[][], read: (chunk: string[]) => Promise<T[]>) {
@@ -42,6 +41,25 @@ async function readSellerActions(chunks: string[][], since: string) {
       )),
     );
   return out;
+}
+
+/**
+ * Последний оплаченный заказ клиента старше окна 28 дней: одна строка по смыслу
+ * («самый свежий»), а не обрезка. Сортировка кончается уникальным `id`. Сбой
+ * чтения — исключение: «не прочитали» не равно «давно без заказов».
+ */
+async function readLastPaidOrder(botId: string): Promise<string | null> {
+  const { data, error } = await serviceDb()
+    .from("orders")
+    .select("created_at")
+    .eq("bot_id", botId)
+    .in("status", [...PULSE_ORDER_STATUSES])
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(1);
+  if (error)
+    throw serverFailure(`Последний оплаченный заказ для пульса не прочитан: ${error.message}`);
+  return data?.[0]?.created_at ?? null;
 }
 
 /**
@@ -113,6 +131,17 @@ export async function loadPulse(
     if (!prev || Date.parse(a.created_at) > Date.parse(prev))
       lastAction.set(a.bot_id, a.created_at);
   }
+  // «Без заказов N дн» — по оплаченным: брошенный вчера клиента не оживляет. Из 28 дней —
+  // уже прочитанное; у кого там пусто, ищем последний оплаченный отдельно, по несколько разом.
+  const lastPaid = new Map<string, string | null>();
+  for (const [id, list] of ordersBy)
+    lastPaid.set(
+      id,
+      list.reduce((a, b) => (Date.parse(b) > Date.parse(a) ? b : a)),
+    );
+  const missing = clients.filter((c) => !lastPaid.has(c.id));
+  for (const group of chunksOf(missing, 10))
+    await Promise.all(group.map(async (c) => lastPaid.set(c.id, await readLastPaidOrder(c.id))));
   for (const c of clients) {
     out.set(
       c.id,
@@ -120,7 +149,7 @@ export async function loadPulse(
         ordersAt: ordersBy.get(c.id) ?? [],
         lastLoginAt: lastLogin.get(c.id) ?? null,
         lastSellerActionAt: lastAction.get(c.id) ?? null,
-        lastOrderAt: c.lastOrderAt,
+        lastOrderAt: lastPaid.get(c.id) ?? null,
         createdAt: c.createdAt,
         status: c.status,
         now,
