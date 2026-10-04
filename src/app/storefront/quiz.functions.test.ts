@@ -45,6 +45,7 @@ const base = {
 } as unknown as Tenant;
 
 function seed() {
+  db.tables.zernio_logs = [];
   db.tables.app_settings = [{ bot_id: QUIZ_TENANT, key: "quiz", value: QUIZ_JSON }];
   db.tables.products = quizProducts();
 }
@@ -65,6 +66,9 @@ describe("квиз на витрине", () => {
     tenant = base;
     const r = await storeQuizResultFn({ data: { slug: "shop", answers: QUIZ_ANSWERS } });
     expect(r.map((p) => p.id)).toEqual(QUIZ_EXPECTED);
+    // Прохождение — одна отметка для «Рассылок»; покупатель сайта без id.
+    const marks = (db.tables.zernio_logs ?? []).filter((x) => x.event_type === "engage");
+    expect(marks.map((x) => x.payload)).toEqual([{ kind: "quiz_done", telegram_id: null }]);
   });
 
   it("неполный набор ответов и несуществующий вариант — отказ, а не пустой подбор", async () => {
@@ -74,6 +78,7 @@ describe("квиз на витрине", () => {
     await expect(
       storeQuizResultFn({ data: { slug: "shop", answers: [0, 5] } }),
     ).rejects.toBeTruthy();
+    expect(db.tables.zernio_logs).toEqual([]);
   });
 
   it.each([

@@ -902,6 +902,9 @@ async function quizFinish(b: Bot): Promise<void> {
     ? (b.customer.state.quiz_tags as string[])
     : [];
   const found = await quizResult(b.ctx, tags);
+  // Итог подбора для карточки на «Рассылках»: прошли до конца, что бы ни нашлось.
+  const { recordEngage } = await import("@/core/automsg/engage");
+  await recordEngage(b.ctx, "quiz_done", b.customer.telegramId);
   if (!found.length) {
     await send(b, b.m.quizNothing, {
       reply_markup: { inline_keyboard: [[{ text: b.m.catalog, callback_data: "cat:root" }]] },
@@ -1111,7 +1114,8 @@ async function showCart(b: Bot) {
         buttons.push([
           {
             text: `➕ ${o.name} — ${formatMoney(money.amount, money.currency)}`.slice(0, 64),
-            callback_data: `add:${o.id}`,
+            // Третья часть «u» — кнопка из «С этим берут»: добавление идёт в итоги допродажи.
+            callback_data: `add:${o.id}::u`,
           },
         ]);
       }
@@ -2236,8 +2240,12 @@ async function handleCallback(
     return p ? sendProductCard(b, p) : void (await send(b, b.m.productNotFound));
   }
   if (data.startsWith("add:")) {
-    const [, productId = "", variantId] = data.split(":");
+    const [, productId = "", variantId, from] = data.split(":");
     const r = await addToCart(ctx, customer, productId, variantId || null);
+    if (r === "ok" && from === "u") {
+      const { recordEngage } = await import("@/core/automsg/engage");
+      await recordEngage(ctx, "upsell_add", customer.telegramId);
+    }
     const text = {
       ok: b.m.added,
       unavailable: b.m.unavailable,

@@ -1,4 +1,5 @@
 import { saveWinbackFn, winbackFn } from "@/app/admin/winback.functions";
+import { EngageBlock } from "@/app/admin/engage-block";
 import { SimilarCard } from "@/app/admin/similar-card";
 import { AutoStatsBlock } from "@/app/admin/auto-stats";
 import { AutoPreview } from "@/app/admin/auto-preview";
@@ -251,6 +252,16 @@ function BroadcastsPage() {
             </Card>
           )}
           {shop.modules.winback && <SimilarCard t={t} stats={data.autoStats?.similar} />}
+          {(shop.modules.quiz || shop.modules.upsell) && (
+            <Card title={t("engage.title")}>
+              <EngageBlock
+                t={t}
+                stats={data.engage ?? undefined}
+                quiz={Boolean(shop.modules.quiz)}
+                upsell={Boolean(shop.modules.upsell)}
+              />
+            </Card>
+          )}
           {shop.modules.funnel && <FunnelCard />}
           {shop.modules.funnel && <BirthdayCard />}
           <History

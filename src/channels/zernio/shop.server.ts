@@ -1,4 +1,5 @@
 import { env } from "@/config/env";
+import { recordEngage } from "@/core/automsg/engage";
 import { shownLeadDays } from "@/core/catalog/lead-time";
 import { orderChannel } from "@/core/orders/pure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -979,7 +980,7 @@ async function continueAfterCountry(s: Shop) {
 }
 
 async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
-  const [head, a, b] = payload.split(":");
+  const [head, a, b, c] = payload.split(":");
   if (head && !featureAllows(s, head)) return "question";
   switch (head) {
     case "CATALOG":
@@ -996,7 +997,8 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
       return "handled";
     }
     case "BUY":
-      if (a) await addAndShowCart(s, a, b ?? null);
+      // Четвёртая часть «u» — кнопка из «С этим берут»: добавление идёт в итоги допродажи.
+      if (a) await addAndShowCart(s, a, b || null, c === "u");
       return "handled";
     case "CART":
       await showCart(s, true);
@@ -1435,8 +1437,14 @@ async function sendProductCard(s: Shop, p: Product, force: boolean) {
 
 // ── корзина ───────────────────────────────────────────────────────────
 
-async function addAndShowCart(s: Shop, productId: string, variantId: string | null) {
+async function addAndShowCart(
+  s: Shop,
+  productId: string,
+  variantId: string | null,
+  fromUpsell = false,
+) {
   const r = await addToCart(s.ctx, s.customer, productId, variantId);
+  if (r === "ok" && fromUpsell) await recordEngage(s.ctx, "upsell_add", s.customer.telegramId);
   const msg: Record<typeof r, string> = {
     ok: s.m.added,
     unavailable: s.m.unavailable,
@@ -1514,7 +1522,7 @@ async function showCart(s: Shop, force: boolean, prefix?: string) {
         buttons: offers.map((o) => ({
           type: "postback" as const,
           title: `➕ ${o.name}`.slice(0, 20),
-          payload: `BUY:${o.id}`,
+          payload: `BUY:${o.id}::u`,
         })),
       });
     }
@@ -1618,6 +1626,7 @@ async function askQuizQuestion(s: Shop, quiz: Quiz, q: number): Promise<void> {
 async function finishQuiz(s: Shop, tags: string[]): Promise<void> {
   await setMode(s, { mode: "idle", quiz_tags: undefined, quiz_q: undefined });
   const found = await quizResult(s.ctx, tags);
+  await recordEngage(s.ctx, "quiz_done", s.customer.telegramId);
   const products = (await Promise.all(found.map((p) => getProduct(s.ctx, p.id)))).filter(
     (p): p is Product => p !== null,
   );

@@ -30,6 +30,7 @@ import { seedShop16Reviews } from "./seed/shop16-reviews.ts";
 import { seedShop16Quiz } from "./seed/shop16-quiz.ts";
 import { seedShop16OReply } from "./seed/shop16-o-reply.ts";
 import { seedShop16OFilters } from "./seed/shop16-o-filters.ts";
+import { seedShop16OEngage } from "./seed/shop16-o-engage.ts";
 import { seedShop16RAutostats } from "./seed/shop16-r-autostats.ts";
 import { seedShop16DChat } from "./seed/shop16-d-chat.ts";
 
@@ -62,6 +63,7 @@ export function seedDb(): StubDb {
   seedShop16Quiz(db, now);
   seedShop16OReply(db, now);
   seedShop16OFilters(db, now);
+  seedShop16OEngage(db, now);
   seedShop16RAutostats(db, now);
   seedShop16DChat(db, now);
   return db;

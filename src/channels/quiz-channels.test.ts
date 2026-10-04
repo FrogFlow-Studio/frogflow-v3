@@ -60,6 +60,13 @@ function world(opts: { quiz?: boolean } = {}) {
   return { db, ctx };
 }
 
+/** Отметки итогов подбора и допродажи в журнале. */
+function engageRows(w: { db: FakeDb }) {
+  return (w.db.tables.zernio_logs ?? [])
+    .filter((r) => r.event_type === "engage")
+    .map((r) => r.payload);
+}
+
 function direct(w: ReturnType<typeof world>, platform: "instagram" | "whatsapp" = "instagram") {
   const sent: Array<{ text: string; interactive?: unknown }> = [];
   const transport = {
@@ -93,9 +100,32 @@ function direct(w: ReturnType<typeof world>, platform: "instagram" | "whatsapp" 
       transport,
     );
   };
+  const press = async (payload: string) => {
+    const c = {
+      userKey: "ig_1",
+      platform,
+      telegramId: -1,
+      loyaltyPoints: 0,
+      state: row().state,
+    } as unknown as Customer;
+    await handleShopMessage(
+      w.ctx,
+      c,
+      {
+        conversationId: "conv-1",
+        accountId: "acc-1",
+        platform,
+        text: "",
+        postbackPayload: payload,
+        nativeOrder: null,
+        attachments: [],
+      } as unknown as ParsedZernioMessage,
+      transport,
+    );
+  };
   const state = () =>
     row().state as Record<string, unknown> & { direct?: { list?: { ids: string[] } } };
-  return { say, sent, state };
+  return { say, press, sent, state };
 }
 
 describe("квиз в Instagram и WhatsApp", () => {
@@ -120,6 +150,33 @@ describe("квиз в Instagram и WhatsApp", () => {
     expect(d.state().mode).toBe("idle");
     expect(d.state().direct?.list?.ids).toEqual(QUIZ_EXPECTED);
     expect(d.sent.map((m) => m.text).join("\n")).toContain("Вот что вам подойдёт");
+    // Итог подбора ушёл в отметки для «Рассылок»: ровно одна строка на прохождение.
+    expect(engageRows(w)).toEqual([{ kind: "quiz_done", telegram_id: -1 }]);
+  });
+
+  it("недопройденный квиз отметки не оставляет", async () => {
+    const w = world();
+    const d = direct(w);
+    await d.say("подбор");
+    await d.say("1");
+    expect(engageRows(w)).toEqual([]);
+  });
+
+  it("кнопка допродажи «BUY:<id>::u» считается, обычная «BUY:<id>» — нет", async () => {
+    const w = world();
+    // Физический товар: у цифрового без файла в корзину не положить.
+    const id = quizProducts()[1]!.id as string;
+    for (const p of w.db.tables.products!) if (p.id === id) p.fulfillment_kind = "physical";
+    w.db.tables.product_variants = [];
+    w.db.tables.cart_items = [];
+    const d = direct(w);
+    await d.say("подбор");
+    await d.press(`BUY:${id}`);
+    expect(w.db.tables.cart_items).toHaveLength(1);
+    expect(engageRows(w)).toEqual([]);
+    await d.press(`BUY:${id}::u`);
+    expect(w.db.tables.cart_items?.[0]?.quantity).toBe(2);
+    expect(engageRows(w)).toEqual([{ kind: "upsell_add", telegram_id: -1 }]);
   });
 
   it("WhatsApp: вопрос — списком, строки обрезаны под 24 символа", async () => {
@@ -183,11 +240,41 @@ describe("квиз в Telegram и в Direct дают одно и то же", () 
       .flat()
       .map((b) => b.callback_data.replace("prod:", ""));
     expect(tgIds).toEqual(QUIZ_EXPECTED);
+    expect(engageRows(w)).toEqual([{ kind: "quiz_done", telegram_id: 42 }]);
 
     // Direct: те же ответы цифрами 1-based.
     const d = direct(world());
     await d.say("подбор");
     for (const i of QUIZ_ANSWERS) await d.say(String(i + 1));
     expect(d.state().direct?.list?.ids).toEqual(tgIds);
+  });
+});
+
+describe("допродажа в Telegram", () => {
+  it("кнопка «add:<id>::u» считается, обычная «add:<id>» — нет; отказ корзины не считается", async () => {
+    const w = world();
+    const id = quizProducts()[1]!.id as string;
+    for (const p of w.db.tables.products!) if (p.id === id) p.fulfillment_kind = "physical";
+    w.db.tables.product_variants = [];
+    w.db.tables.cart_items = [];
+    const api = {
+      call: vi.fn(async () => ({ ok: true, result: {} })),
+    } as unknown as TelegramApi;
+    const from = { id: 42, is_bot: false, first_name: "Аня" };
+    const chat = { id: 42, type: "private" };
+    let n = 0;
+    const press = (data: string) =>
+      handleTelegramUpdate(w.ctx, api, {
+        update_id: ++n,
+        callback_query: { id: `cq${n}`, from, data, message: { message_id: 9, date: 0, chat } },
+      } as never);
+    await press(`add:${id}`);
+    expect(w.db.tables.cart_items).toHaveLength(1);
+    expect(engageRows(w)).toEqual([]);
+    await press(`add:${id}::u`);
+    expect(engageRows(w)).toEqual([{ kind: "upsell_add", telegram_id: 42 }]);
+    // Товар, которого нет: корзина отказала — отметки нет.
+    await press("add:a0000000-0000-4000-8000-0000000000ff::u");
+    expect(engageRows(w)).toHaveLength(1);
   });
 });

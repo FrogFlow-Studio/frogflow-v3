@@ -220,6 +220,11 @@ export const ru = {
   "autostats.sent": "Отправлено: {sent}, не дошло: {failed}",
   "autostats.buyers": "Заказали после сообщения: {buyers}, оплаченных заказов: {paid}",
   "autostats.revenue": "Выручка оплаченных: {money}",
+  "engage.title": "Подбор и «С этим берут»",
+  "engage.quiz": "Подбор прошли: {n} (разных покупателей в боте: {buyers})",
+  "engage.upsell": "Добавили из «С этим берут»: {n} (разных покупателей в боте: {buyers})",
+  "engage.hint":
+    "Считаются действия за 30 дней: прошли квиз до конца и нажали кнопку допродажи. Покупатели сайта без входа в «разных» не считаются. Это не заказы и не выручка.",
   "autostats.hint":
     "Заказы получателей за 7 дней после сообщения — совпадение по времени, а не доказанная причина. Заказ засчитывается одному, последнему сообщению.",
   // предпросмотр автосообщений (Р5)
@@ -444,6 +449,12 @@ export const kk: SectionDict<typeof ru> = {
   "autostats.sent": "Жіберілді: {sent}, жетпеді: {failed}",
   "autostats.buyers": "Хабарламадан кейін тапсырыс бергендер: {buyers}, төленген тапсырыс: {paid}",
   "autostats.revenue": "Төленгендердің түсімі: {money}",
+  "engage.title": "Іріктеу және «Бұмен бірге алады»",
+  "engage.quiz": "Іріктеуден өткендер: {n} (боттағы әртүрлі сатып алушылар: {buyers})",
+  "engage.upsell":
+    "«Бұмен бірге алады» арқылы қосқандар: {n} (боттағы әртүрлі сатып алушылар: {buyers})",
+  "engage.hint":
+    "30 күндегі әрекеттер саналады: викторинаны соңына дейін өту және қосымша сату батырмасын басу. Кіруісіз сайт сатып алушылары «әртүрлілерге» кірмейді. Бұл тапсырыс немесе түсім емес.",
   "autostats.hint":
     "Алушылардың хабарламадан кейінгі 7 күндегі тапсырыстары — уақыт бойынша сәйкестік, дәлелденген себеп емес. Тапсырыс біреуге — соңғы хабарламаға жазылады.",
   "autopreview.view": "Қарау",
@@ -667,6 +678,11 @@ export const en: SectionDict<typeof ru> = {
   "autostats.sent": "Sent: {sent}, not delivered: {failed}",
   "autostats.buyers": "Ordered after the message: {buyers}, paid orders: {paid}",
   "autostats.revenue": "Revenue of paid orders: {money}",
+  "engage.title": "Picker and “Goes well with”",
+  "engage.quiz": "Finished the picker: {n} (different bot buyers: {buyers})",
+  "engage.upsell": "Added from “Goes well with”: {n} (different bot buyers: {buyers})",
+  "engage.hint":
+    "Actions over 30 days: finishing the quiz and tapping the add-on button. Website visitors who are not signed in are not counted as “different”. These are not orders or revenue.",
   "autostats.hint":
     "Recipients' orders within 7 days after the message — a match in time, not a proven cause. An order is counted once, for the latest message.",
   "autopreview.view": "Preview",
@@ -893,6 +909,11 @@ export const uz: SectionDict<typeof ru> = {
   "autostats.sent": "Yuborildi: {sent}, yetib bormadi: {failed}",
   "autostats.buyers": "Xabardan keyin buyurtma bergan: {buyers}, to'langan buyurtmalar: {paid}",
   "autostats.revenue": "To'langanlar tushumi: {money}",
+  "engage.title": "Tanlov va «Birga olinadi»",
+  "engage.quiz": "Tanlovni tugatganlar: {n} (botdagi turli xaridorlar: {buyers})",
+  "engage.upsell": "«Birga olinadi» orqali qo'shganlar: {n} (botdagi turli xaridorlar: {buyers})",
+  "engage.hint":
+    "30 kunlik harakatlar hisoblanadi: viktorinani oxirigacha o'tish va qo'shimcha sotuv tugmasini bosish. Kirmagan sayt xaridorlari «turli»ga kirmaydi. Bu buyurtma yoki tushum emas.",
   "autostats.hint":
     "Qabul qiluvchilarning xabardan keyingi 7 kun ichidagi buyurtmalari — vaqt bo'yicha moslik, isbotlangan sabab emas. Buyurtma bitta — oxirgi xabarga yoziladi.",
   "autopreview.view": "Koʻrish",

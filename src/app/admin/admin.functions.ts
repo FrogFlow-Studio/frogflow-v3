@@ -2114,10 +2114,14 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
     ctx.tenant.modules.cart_reminder || ctx.tenant.modules.winback || ctx.tenant.modules.waitlist
       ? await autoMessageStats(ctx)
       : null;
+  const { engageStats } = await import("@/core/automsg/engage");
+  const engage =
+    ctx.tenant.modules.quiz || ctx.tenant.modules.upsell ? await engageStats(ctx) : null;
   return {
     broadcasts: await withBroadcastStats(ctx, broadcasts.rows),
     broadcastsTotal: broadcasts.total,
     autoStats,
+    engage,
     categories,
     countries,
     cartReminderHours: settings.cart_reminder_hours ?? "",

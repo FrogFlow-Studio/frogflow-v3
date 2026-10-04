@@ -63,6 +63,8 @@ export const storeQuizResultFn = createServerFn({ method: "GET" })
     }
     const { storeProductsByIds } = await import("@/core/storefront/catalog");
     const found = await quizResult(ctx, tags);
+    const { recordWebEngage } = await import("@/core/automsg/engage");
+    await recordWebEngage(ctx, "quiz_done");
     return storeProductsByIds(
       ctx,
       found.map((p) => p.id),

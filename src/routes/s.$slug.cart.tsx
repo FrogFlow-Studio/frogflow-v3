@@ -4,6 +4,7 @@ import {
   createHandoffFn,
   miniAppCheckoutFn,
   storeUpsellFn,
+  storeUpsellAddedFn,
 } from "@/app/storefront/storefront.functions";
 import { webCheckoutInfoFn } from "@/app/storefront/checkout.functions";
 import { useCart, useTelegramWebApp } from "@/app/storefront/cart";
@@ -209,6 +210,9 @@ function UpsellBlock({ slug, offers }: { slug: string; offers: Offer[] }) {
                     kind: p.kind,
                   });
                   setMixed(r === "mixed");
+                  // Отметка для итогов допродажи; сбой счётчика покупателю не показываем.
+                  if (r !== "mixed")
+                    void storeUpsellAddedFn({ data: { slug, productId: p.id } }).catch(() => {});
                 }}
               >
                 {t("catalog.addToCart")}

@@ -135,6 +135,19 @@ export const storeUpsellFn = createServerFn({ method: "POST" })
     return storeUpsell(ctx, [...new Set(data.ids)]);
   });
 
+/**
+ * Покупатель сайта добавил товар кнопкой из «С этим берут»: отметка для итогов допродажи.
+ * Корзина живёт в браузере, поэтому функция только считает; отвечает, учтено ли.
+ */
+export const storeUpsellAddedFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ slug, productId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await shopCtx(data.slug, "catalog");
+    if (!ctx.tenant.modules.upsell) return { counted: false };
+    const { recordWebEngage } = await import("@/core/automsg/engage");
+    return { counted: await recordWebEngage(ctx, "upsell_add") };
+  });
+
 /** Корзина с сайта → ссылка в Telegram-бота, где продолжится оформление. */
 export const createHandoffFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ slug, items }).parse(d))
