@@ -26,3 +26,4 @@ export * from "./fixtures/shop15-reschedule.ts";
 export * from "./fixtures/shop16-reviews.ts";
 export * from "./fixtures/shop16-r-autostats.ts";
 export * from "./fixtures/shop16-d-chat.ts";
+export * from "./fixtures/shop16-quiz.ts";

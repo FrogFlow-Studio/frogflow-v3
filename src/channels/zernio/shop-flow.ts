@@ -437,9 +437,27 @@ export function isCancel(text: string): boolean {
 }
 
 export type DirectCommand =
-  "catalog" | "cart" | "checkout" | "orders" | "points" | "language" | "country";
+  "catalog" | "cart" | "checkout" | "orders" | "points" | "language" | "country" | "quiz";
 
 const COMMANDS: Array<[DirectCommand, string[]]> = [
+  [
+    "quiz",
+    [
+      "подбор",
+      "подобрать",
+      "подбор товара",
+      "подобрать товар",
+      "квиз",
+      "іріктеу",
+      "тауар таңдау",
+      "quiz",
+      "find a product",
+      "pick for me",
+      "kviz",
+      "tanlash",
+      "mahsulot tanlash",
+    ],
+  ],
   [
     "catalog",
     [

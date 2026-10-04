@@ -32,6 +32,16 @@ describe("доступ к витрине по модулям", () => {
     expect(storefrontAllows(m, "mini_app")).toBe(false);
   });
 
+  it("квиз открыт там же, где каталог, и только с модулем quiz", () => {
+    expect(storefrontAllows({ shop: true, web_storefront: true, quiz: true }, "quiz")).toBe(true);
+    expect(storefrontAllows({ shop: true, telegram_mini_app: true, quiz: true }, "quiz")).toBe(
+      true,
+    );
+    expect(storefrontAllows({ shop: true, web_storefront: true }, "quiz")).toBe(false);
+    expect(storefrontAllows({ shop: true, quiz: true }, "quiz")).toBe(false);
+    expect(storefrontAllows({ web_storefront: true, quiz: true }, "quiz")).toBe(false);
+  });
+
   it("Mini App: каталог и оформление в Telegram, но не корзина с сайта", () => {
     const m = { shop: true, telegram_mini_app: true };
     expect(storefrontAllows(m, "catalog")).toBe(true);

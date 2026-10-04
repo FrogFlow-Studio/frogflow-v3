@@ -9,6 +9,7 @@ import type { Tenant } from "@/core/tenant/types";
  * только у веб-витрины, «Мои заказы» и оформление из Mini App — только у Mini
  * App, юридические страницы — модуль legal_docs (базовый, включён всем).
  * «info» — шапка магазина: нужна и каталогу, и юр. страницам (ссылки из бота).
+ * «quiz» — страница подбора товара (модуль quiz) там же, где каталог.
  * «course» — страница купленного курса (модуль courses): ссылка приходит при
  * выдаче в любой канал, поэтому платная витрина для неё не нужна.
  * «order» — страница заказа по подписанной ссылке: её получает покупатель из
@@ -16,7 +17,15 @@ import type { Tenant } from "@/core/tenant/types";
  * для неё открыта без витрины и юр. страниц — иначе выдача вела бы на 404.
  */
 export type StorefrontPart =
-  "info" | "catalog" | "web_handoff" | "web_checkout" | "mini_app" | "legal" | "course" | "order";
+  | "info"
+  | "catalog"
+  | "quiz"
+  | "web_handoff"
+  | "web_checkout"
+  | "mini_app"
+  | "legal"
+  | "course"
+  | "order";
 
 export function storefrontAllows(
   modules: Partial<Record<ModuleKey, boolean>>,
@@ -37,6 +46,9 @@ export function storefrontAllows(
       return Boolean(modules.courses);
     case "catalog":
       return Boolean(modules.web_storefront || modules.telegram_mini_app);
+    case "quiz":
+      // Квиз-подбор (модуль quiz) живёт на витрине: открыт там, где открыт каталог.
+      return storefrontAllows(modules, "catalog") && Boolean(modules.quiz);
     case "web_handoff":
     case "web_checkout":
       return Boolean(modules.web_storefront);

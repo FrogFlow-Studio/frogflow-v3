@@ -55,6 +55,8 @@ export type DialogMode =
   | "awaiting_review_comment"
   /** Instagram/WhatsApp: ждём цифру 1–5 на просьбу об оценке (core/reviews/ask). */
   | "awaiting_rating"
+  /** Instagram/WhatsApp: квиз-подбор, ждём номер варианта (core/quiz). Теги — quiz_tags, вопрос — quiz_q. */
+  | "awaiting_quiz"
   | "awaiting_gift_certificate_code"
   | "awaiting_fulfillment_type"
   | "awaiting_fulfillment_date"

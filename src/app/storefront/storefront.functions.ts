@@ -44,6 +44,10 @@ export const storeInfoFn = createServerFn({ method: "GET" })
         giftSaleOpen(ctx) &&
         storefrontOpen(ctx.tenant, "web_checkout") &&
         (await webCheckoutSettings(ctx)).enabled,
+      /** Ссылка «Подобрать товар» на главной: модуль quiz включён и вопросы настроены. */
+      quiz:
+        storefrontOpen(ctx.tenant, "quiz") &&
+        (await (await import("@/core/quiz/quiz")).loadQuiz(ctx)).questions.length > 0,
       paused: ctx.tenant.status !== "active",
       /** Язык витрины — язык магазина; покупатель может сменить его через `?lang=`. */
       locale: (ctx.tenant.settings.default_locale ?? "ru") as Locale,

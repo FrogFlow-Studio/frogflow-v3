@@ -229,6 +229,11 @@ function CatalogPage() {
                 ? t("catalog.digitalIntro")
                 : t("catalog.intro")}
           </p>
+          {shop.quiz && !current && (
+            <Link to="/s/$slug/quiz" params={{ slug }} className="btn-secondary mt-3 inline-flex">
+              {t("quiz.link")}
+            </Link>
+          )}
         </div>
         <form
           className="flex gap-2"

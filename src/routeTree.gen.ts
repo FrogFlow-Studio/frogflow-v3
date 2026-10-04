@@ -86,6 +86,7 @@ import { Route as SSlugCheckoutRouteImport } from './routes/s.$slug.checkout'
 import { Route as SSlugFavoritesRouteImport } from './routes/s.$slug.favorites'
 import { Route as SSlugGiftRouteImport } from './routes/s.$slug.gift'
 import { Route as SSlugOrdersRouteImport } from './routes/s.$slug.orders'
+import { Route as SSlugQuizRouteImport } from './routes/s.$slug.quiz'
 import { Route as SSlugManifestDotwebmanifestRouteImport } from './routes/s.$slug_.manifest[.]webmanifest'
 import { Route as SSlugSitemapDotxmlRouteImport } from './routes/s.$slug_.sitemap[.]xml'
 import { Route as AdminAuthedCustomersKeyRouteImport } from './routes/admin._authed.customers_.$key'
@@ -490,6 +491,11 @@ const SSlugOrdersRoute = SSlugOrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => SSlugRoute,
 } as any)
+const SSlugQuizRoute = SSlugQuizRouteImport.update({
+  id: '/quiz',
+  path: '/quiz',
+  getParentRoute: () => SSlugRoute,
+} as any)
 const SSlugManifestDotwebmanifestRoute =
   SSlugManifestDotwebmanifestRouteImport.update({
     id: '/s/$slug_/manifest.webmanifest',
@@ -668,6 +674,7 @@ export interface FileRoutesByFullPath {
   '/s/$slug/favorites': typeof SSlugFavoritesRoute
   '/s/$slug/gift': typeof SSlugGiftRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
+  '/s/$slug/quiz': typeof SSlugQuizRoute
   '/s/$slug/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
   '/s/$slug/sitemap.xml': typeof SSlugSitemapDotxmlRoute
   '/admin/': typeof AdminAuthedIndexRoute
@@ -764,6 +771,7 @@ export interface FileRoutesByTo {
   '/s/$slug/favorites': typeof SSlugFavoritesRoute
   '/s/$slug/gift': typeof SSlugGiftRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
+  '/s/$slug/quiz': typeof SSlugQuizRoute
   '/s/$slug/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
   '/s/$slug/sitemap.xml': typeof SSlugSitemapDotxmlRoute
   '/s/$slug': typeof SSlugIndexRoute
@@ -862,6 +870,7 @@ export interface FileRoutesById {
   '/s/$slug/favorites': typeof SSlugFavoritesRoute
   '/s/$slug/gift': typeof SSlugGiftRoute
   '/s/$slug/orders': typeof SSlugOrdersRoute
+  '/s/$slug/quiz': typeof SSlugQuizRoute
   '/s/$slug_/manifest.webmanifest': typeof SSlugManifestDotwebmanifestRoute
   '/s/$slug_/sitemap.xml': typeof SSlugSitemapDotxmlRoute
   '/admin/_authed/': typeof AdminAuthedIndexRoute
@@ -961,6 +970,7 @@ export interface FileRouteTypes {
     | '/s/$slug/favorites'
     | '/s/$slug/gift'
     | '/s/$slug/orders'
+    | '/s/$slug/quiz'
     | '/s/$slug/manifest.webmanifest'
     | '/s/$slug/sitemap.xml'
     | '/admin/'
@@ -1057,6 +1067,7 @@ export interface FileRouteTypes {
     | '/s/$slug/favorites'
     | '/s/$slug/gift'
     | '/s/$slug/orders'
+    | '/s/$slug/quiz'
     | '/s/$slug/manifest.webmanifest'
     | '/s/$slug/sitemap.xml'
     | '/s/$slug'
@@ -1154,6 +1165,7 @@ export interface FileRouteTypes {
     | '/s/$slug/favorites'
     | '/s/$slug/gift'
     | '/s/$slug/orders'
+    | '/s/$slug/quiz'
     | '/s/$slug_/manifest.webmanifest'
     | '/s/$slug_/sitemap.xml'
     | '/admin/_authed/'
@@ -1757,6 +1769,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugOrdersRouteImport
       parentRoute: typeof SSlugRoute
     }
+    '/s/$slug/quiz': {
+      id: '/s/$slug/quiz'
+      path: '/quiz'
+      fullPath: '/s/$slug/quiz'
+      preLoaderRoute: typeof SSlugQuizRouteImport
+      parentRoute: typeof SSlugRoute
+    }
     '/s/$slug_/manifest.webmanifest': {
       id: '/s/$slug_/manifest.webmanifest'
       path: '/s/$slug/manifest.webmanifest'
@@ -2055,6 +2074,7 @@ interface SSlugRouteChildren {
   SSlugFavoritesRoute: typeof SSlugFavoritesRoute
   SSlugGiftRoute: typeof SSlugGiftRoute
   SSlugOrdersRoute: typeof SSlugOrdersRoute
+  SSlugQuizRoute: typeof SSlugQuizRoute
   SSlugIndexRoute: typeof SSlugIndexRoute
   SSlugCertCodeRoute: typeof SSlugCertCodeRoute
   SSlugCourseItemIdRoute: typeof SSlugCourseItemIdRoute
@@ -2069,6 +2089,7 @@ const SSlugRouteChildren: SSlugRouteChildren = {
   SSlugFavoritesRoute: SSlugFavoritesRoute,
   SSlugGiftRoute: SSlugGiftRoute,
   SSlugOrdersRoute: SSlugOrdersRoute,
+  SSlugQuizRoute: SSlugQuizRoute,
   SSlugIndexRoute: SSlugIndexRoute,
   SSlugCertCodeRoute: SSlugCertCodeRoute,
   SSlugCourseItemIdRoute: SSlugCourseItemIdRoute,

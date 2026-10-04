@@ -2217,21 +2217,14 @@ async function handleCallback(
   }
   if (data.startsWith("quiz:") && ctx.tenant.modules.quiz) {
     const [, qRaw, oRaw] = data.split(":");
-    const q = Number(qRaw);
-    const { loadQuiz } = await import("@/core/quiz/quiz");
-    const option = (await loadQuiz(ctx)).questions[q]?.options[Number(oRaw)];
-    if (!option) return quizAsk(b, 0, true);
-    const prev =
-      q === 0
-        ? []
-        : Array.isArray(customer.state.quiz_tags)
-          ? (customer.state.quiz_tags as string[])
-          : [];
-    b.customer = await setState(ctx, customer, {
-      ...customer.state,
-      quiz_tags: [...prev, ...option.tags],
-    });
-    return quizAsk(b, q + 1);
+    const { loadQuiz, quizAnswer } = await import("@/core/quiz/quiz");
+    const prev = Array.isArray(customer.state.quiz_tags)
+      ? (customer.state.quiz_tags as string[])
+      : [];
+    const step = quizAnswer(await loadQuiz(ctx), prev, Number(qRaw), Number(oRaw));
+    if (!step) return quizAsk(b, 0, true);
+    b.customer = await setState(ctx, customer, { ...customer.state, quiz_tags: step.tags });
+    return quizAsk(b, step.next);
   }
   if (data.startsWith("wait:") && ctx.tenant.modules.waitlist) {
     const { joinWaitlist } = await import("@/core/waitlist/waitlist");

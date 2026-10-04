@@ -10,6 +10,15 @@ import type { Locale } from "@/core/i18n/locale";
 import { intlLocale } from "./admin";
 
 const ru = {
+  "quiz.link": "🧩 Подобрать товар",
+  "quiz.title": "Подбор товара",
+  "quiz.step": "Вопрос {n} из {m}",
+  "quiz.back": "Назад",
+  "quiz.result": "Вот что вам подойдёт",
+  "quiz.nothing": "Точного совпадения не нашлось — загляните в каталог.",
+  "quiz.again": "Пройти заново",
+  "quiz.notReady": "Подбор ещё не настроен — загляните в каталог.",
+
   // оболочка
   "meta.shop": "Магазин",
   "meta.category": "{category}: товары магазина «{shop}»",
@@ -438,6 +447,15 @@ type Dict = Record<StorefrontKey, string>;
 export const STOREFRONT_KEYS = Object.keys(ru) as StorefrontKey[];
 
 const kk: Dict = {
+  "quiz.link": "🧩 Тауар таңдау",
+  "quiz.title": "Тауар таңдау",
+  "quiz.step": "{m} сұрақтың {n}-і",
+  "quiz.back": "Артқа",
+  "quiz.result": "Сізге мыналар сәйкес келеді",
+  "quiz.nothing": "Дәл сәйкестік табылмады — каталогқа қараңыз.",
+  "quiz.again": "Қайта өту",
+  "quiz.notReady": "Таңдау әлі бапталмаған — каталогқа қараңыз.",
+
   "meta.shop": "Дүкен",
   "meta.category": "{category}: «{shop}» дүкенінің тауарлары",
   "layout.openTelegram": "✈️ Telegram-да ашу",
@@ -858,6 +876,15 @@ const kk: Dict = {
 };
 
 const en: Dict = {
+  "quiz.link": "🧩 Find a product",
+  "quiz.title": "Find a product",
+  "quiz.step": "Question {n} of {m}",
+  "quiz.back": "Back",
+  "quiz.result": "Here is what suits you",
+  "quiz.nothing": "No exact match — have a look at the catalog.",
+  "quiz.again": "Start over",
+  "quiz.notReady": "The picker is not set up yet — have a look at the catalog.",
+
   "meta.shop": "Shop",
   "meta.category": "{category}: products from {shop}",
   "layout.openTelegram": "✈️ Open in Telegram",
@@ -1276,6 +1303,15 @@ const en: Dict = {
 };
 
 const uz: Dict = {
+  "quiz.link": "🧩 Mahsulot tanlash",
+  "quiz.title": "Mahsulot tanlash",
+  "quiz.step": "{m} savoldan {n}-si",
+  "quiz.back": "Orqaga",
+  "quiz.result": "Sizga mos keladiganlari",
+  "quiz.nothing": "Aniq moslik topilmadi — katalogga qarang.",
+  "quiz.again": "Qaytadan boshlash",
+  "quiz.notReady": "Tanlash hali sozlanmagan — katalogga qarang.",
+
   "meta.shop": "Do‘kon",
   "meta.category": "{category}: «{shop}» do‘koni mahsulotlari",
   "layout.openTelegram": "✈️ Telegram-da ochish",

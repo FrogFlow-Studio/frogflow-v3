@@ -61,6 +61,7 @@ import { robokassaFor, robokassaReceipt } from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
 import { formatRatingSummary } from "@/core/reviews/pure";
 import { parseRatingReply } from "@/core/reviews/ask";
+import { loadQuiz, quizAnswer, quizResult, type Quiz } from "@/core/quiz/quiz";
 import { hasDeliveredPurchase, saveRating } from "@/core/reviews/reviews";
 import { REPLY_WINDOW_MS } from "@/core/chat/reply-window";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
@@ -130,6 +131,7 @@ import {
   ONE_SECTION_HINT,
   PRODUCT_LIST_HINT,
   matchOrdinal,
+  clipRowTitle,
   matchZone,
   parseRemoveCommand,
   pickCartLineToRemove,
@@ -257,6 +259,11 @@ async function stepAnswerFits(s: Shop, mode: string, text: string): Promise<bool
     case "awaiting_email":
     case "awaiting_order_email":
       return extractEmail(text) !== null;
+    case "awaiting_quiz": {
+      const quiz = await loadQuiz(s.ctx);
+      const q = Number(s.customer.state.quiz_q) || 0;
+      return matchOrdinal(text, quiz.questions[q]?.options.length ?? 0) !== null;
+    }
     default:
       return true;
   }
@@ -372,6 +379,11 @@ const BTN = {
   }),
   clear: (m: Msg): DmButton => ({ type: "postback", title: plain(m.clearBtn), payload: "CLEAR" }),
   orders: (m: Msg): DmButton => ({ type: "postback", title: plain(m.myOrders), payload: "ORDERS" }),
+  quiz: (m: Msg): DmButton => ({
+    type: "postback",
+    title: plain(m.quizBtn).slice(0, 20),
+    payload: "QUIZ",
+  }),
 };
 
 function hint(s: Shop): string {
@@ -516,7 +528,7 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     if (!featureAllows(s, command)) return "question";
     // Строгий режим: «оплата», «страна», «язык» — частые слова в переписке с
     // продавцом; без живого разговора с ботом они его не будят.
-    if (!["catalog", "cart", "orders", "points"].includes(command) && !inDialog(s))
+    if (!["catalog", "cart", "orders", "points", "quiz"].includes(command) && !inDialog(s))
       return "question";
     if (mode && mode !== "idle" && mode !== "awaiting_proof") await setMode(s, { mode: "idle" });
     switch (command) {
@@ -536,6 +548,9 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
         return "handled";
       case "language":
         await askLocale(s);
+        return "handled";
+      case "quiz":
+        await startQuiz(s);
         return "handled";
       case "country":
         await askCountry(s, false);
@@ -586,6 +601,26 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
       s.m = COPY[picked];
       await reply(s, s.m.languageSaved, { force: true });
       await showCatalog(s, null, 0, true);
+      return "handled";
+    }
+    case "awaiting_quiz": {
+      const quiz = await loadQuiz(s.ctx);
+      const q = Number(s.customer.state.quiz_q) || 0;
+      const pick = matchOrdinal(text, quiz.questions[q]?.options.length ?? 0);
+      const tags = Array.isArray(s.customer.state.quiz_tags)
+        ? (s.customer.state.quiz_tags as string[])
+        : [];
+      const step = pick === null ? null : quizAnswer(quiz, tags, q, pick);
+      // Не номер варианта: повторяем вопрос; вопроса уже нет (продавец поправил квиз) — сначала.
+      if (!step) {
+        await (quiz.questions[q] ? askQuizQuestion(s, quiz, q) : startQuiz(s));
+        return "handled";
+      }
+      if (step.done) await finishQuiz(s, step.tags);
+      else {
+        await setMode(s, { quiz_tags: step.tags, quiz_q: step.next });
+        await askQuizQuestion(s, quiz, step.next);
+      }
       return "handled";
     }
     case "awaiting_country": {
@@ -855,6 +890,9 @@ function featureAllows(s: Shop, command: DirectCommand | string): boolean {
     case "FT":
     case "NOTE":
       return f.checkout;
+    case "quiz":
+    case "QUIZ":
+      return s.ctx.tenant.modules.quiz && f.catalog;
     case "points":
       // Модуль лояльности выключен — слово не наше: реплика уходит продавцу.
       return s.ctx.tenant.modules.loyalty;
@@ -970,6 +1008,9 @@ async function handlePostback(s: Shop, payload: string): Promise<ShopOutcome> {
     case "CHECKOUT":
       await startCheckout(s);
       return "handled";
+    case "QUIZ":
+      await startQuiz(s);
+      return "handled";
     case "ORDERS":
       await showOrders(s);
       return "handled";
@@ -1048,6 +1089,9 @@ async function showCatalog(s: Shop, categoryId: string | null, offset: number, f
         payload: `CAT:${categoryId ?? ""}:${offset + PAGE}`,
       });
     buttons.push(BTN.cart(s.m));
+    // Корень каталога: подбор товара, если продавец настроил квиз (кнопок не больше трёх).
+    if (!categoryId && s.ctx.tenant.modules.quiz && (await loadQuiz(s.ctx)).questions.length)
+      buttons.push(BTN.quiz(s.m));
     if (categoryId)
       buttons.push({
         type: "postback",
@@ -1532,6 +1576,57 @@ async function askCountry(s: Shop, forCheckout: boolean) {
     return;
   }
   await reply(s, `${plain(s.m.chooseCountry)}\n\n${lines.join("\n")}`, { force: true });
+}
+
+/**
+ * Квиз-подбор (core/quiz): вопросы по одному, ответ — номер варианта (в WhatsApp
+ * ещё строка списка). Подсчёт ответов и результат — в core/quiz, здесь только
+ * показ: те же ответы дают тот же результат, что в Telegram и на сайте.
+ */
+async function startQuiz(s: Shop): Promise<void> {
+  const quiz = await loadQuiz(s.ctx);
+  if (!s.ctx.tenant.modules.quiz || !quiz.questions.length) {
+    await reply(s, plain(s.m.quizNotReady), { force: true, buttons: [BTN.catalog(s.m)] });
+    return;
+  }
+  await setMode(s, { mode: "awaiting_quiz", quiz_tags: [], quiz_q: 0 });
+  if (quiz.intro) await reply(s, escapeHtml(quiz.intro), { force: true });
+  await askQuizQuestion(s, quiz, 0);
+}
+
+async function askQuizQuestion(s: Shop, quiz: Quiz, q: number): Promise<void> {
+  const question = quiz.questions[q]!;
+  const head = `${q + 1}/${quiz.questions.length}. ${question.text}`;
+  if (s.platform === "whatsapp") {
+    await reply(s, head, {
+      force: true,
+      interactive: stepList(
+        head,
+        plain(s.m.quizPick),
+        clipRowTitle(head),
+        question.options.map((o) => clipRowTitle(o.label)),
+      ),
+    });
+    return;
+  }
+  const lines = question.options.map((o, i) => `${i + 1}. ${o.label}`);
+  await reply(s, `${head}\n\n${lines.join("\n")}\n\n${plain(s.m.quizDirectHint)}`, {
+    force: true,
+  });
+}
+
+async function finishQuiz(s: Shop, tags: string[]): Promise<void> {
+  await setMode(s, { mode: "idle", quiz_tags: undefined, quiz_q: undefined });
+  const found = await quizResult(s.ctx, tags);
+  const products = (await Promise.all(found.map((p) => getProduct(s.ctx, p.id)))).filter(
+    (p): p is Product => p !== null,
+  );
+  if (!products.length) {
+    await reply(s, plain(s.m.quizNothing), { force: true, buttons: [BTN.catalog(s.m)] });
+    return;
+  }
+  await reply(s, plain(s.m.quizResult), { force: true });
+  await showProductList(s, products, 0, null, true);
 }
 
 async function startCheckout(s: Shop) {

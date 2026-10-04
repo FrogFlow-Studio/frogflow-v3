@@ -16,11 +16,12 @@ export const QUIZ_KEY = "quiz";
 export const QUIZ_MAX_QUESTIONS = 5;
 export const QUIZ_MAX_OPTIONS = 6;
 
-export function splitTags(raw: string | string[] | undefined): string[] {
+/** `max` — потолок тегов одного варианта при вводе продавцом; при подсчёте ответов потолка нет. */
+export function splitTags(raw: string | string[] | undefined, max = 10): string[] {
   const list = Array.isArray(raw) ? raw : String(raw ?? "").split(/[,;\n]+/);
   return Array.from(
     new Set(list.map((t) => t.trim().toLowerCase()).filter((t) => t.length >= 2)),
-  ).slice(0, 10);
+  ).slice(0, max);
 }
 
 export function parseQuiz(raw: string | null | undefined): Quiz {
@@ -51,6 +52,36 @@ export function parseQuiz(raw: string | null | undefined): Quiz {
   }
 }
 
+/**
+ * Ответ на вопрос q вариантом i. Теги копятся от вопроса к вопросу; ответ на
+ * первый вопрос начинает подбор заново. null — такого вопроса или варианта нет
+ * (устаревшая кнопка, неверный номер). Единственное место, где ответы
+ * превращаются в теги: Telegram, Instagram/WhatsApp и сайт только зовут его.
+ */
+export function quizAnswer(
+  quiz: Quiz,
+  tags: readonly string[],
+  q: number,
+  i: number,
+): { tags: string[]; next: number; done: boolean } | null {
+  const option = quiz.questions[q]?.options[i];
+  if (!option || !Number.isInteger(q) || !Number.isInteger(i)) return null;
+  const prev = q === 0 ? [] : [...tags];
+  return { tags: [...prev, ...option.tags], next: q + 1, done: q + 1 >= quiz.questions.length };
+}
+
+/** Теги по полному набору ответов (сайт): номера вариантов по порядку вопросов; неполный или неверный набор — null. */
+export function tagsForAnswers(quiz: Quiz, answers: readonly number[]): string[] | null {
+  if (!quiz.questions.length || answers.length !== quiz.questions.length) return null;
+  let tags: string[] = [];
+  for (const [q, i] of answers.entries()) {
+    const step = quizAnswer(quiz, tags, q, i);
+    if (!step) return null;
+    tags = step.tags;
+  }
+  return tags;
+}
+
 export type QuizProduct = {
   id: string;
   name: string;
@@ -64,7 +95,9 @@ export function scoreProducts<T extends QuizProduct>(
   tags: readonly string[],
   limit = 3,
 ): T[] {
-  const wanted = splitTags([...tags]);
+  // Все теги ответов: потолок в 10 тегов относится к вводу продавца, а не к подсчёту, иначе
+  // варианты поздних вопросов молча не учитывались бы.
+  const wanted = splitTags([...tags], Infinity);
   if (!wanted.length) return [];
   return products
     .map((p) => {
