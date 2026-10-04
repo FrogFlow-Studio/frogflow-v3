@@ -148,7 +148,7 @@ RLS: `tenant_sees_own_invoices` (SELECT), `tenant_uploads_invoice_proof` (UPDATE
 
 #### `product_variants` (M53) — простой список вариантов «имя + цена»
 `id UUID PK`, `bot_id UUID NN→bots`, `product_id UUID NN→products ON DELETE CASCADE`, `name TEXT NN`, `price NUMERIC(10,2) NN CHECK >=0`, `sort_order INT NN D:0`.
-Индекс `idx_product_variants_product(product_id, sort_order)`. Заменяется целиком при сохранении товара (как `product_images`).
+Индекс `idx_product_variants_product(product_id, sort_order)`. Обновляется по названию при сохранении товара: id сохраняются (на них ссылаются `cart_items` и `order_items`, ON DELETE SET NULL), новые добавляются, убранные удаляются.
 
 #### `product_material_files` (M01) — материалы товара по языкам
 `id UUID PK`, `bot_id UUID NN→bots`, `product_id UUID NN→products ON DELETE CASCADE`, `language TEXT NN D:'ru'`, `file_path TEXT NN`, `file_name TEXT`, `sort_order INT NN D:0`.

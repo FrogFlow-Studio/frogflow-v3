@@ -144,7 +144,7 @@ export async function listCart(ctx: TenantContext, customer: Customer): Promise<
     )
     .eq("telegram_id", customer.telegramId)
     .order("created_at");
-  if (error) throw new Error(`cart: ${error.message}`);
+  if (error) throw serverFailure(`Корзина: ${error.message}`);
   const items = (data ?? []) as unknown as CartItem[];
   // Вариант удалили (или стёрла старая версия сохранения): строка без варианта
   // у товара с вариантами продалась бы по служебной цене «от». Как при

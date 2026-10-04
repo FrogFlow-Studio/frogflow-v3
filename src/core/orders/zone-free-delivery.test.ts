@@ -70,3 +70,20 @@ describe("смена зоны доставки в админке и порог �
     expect(row()).toMatchObject({ fulfillment_type: "delivery", delivery_fee: 0, total: 12000 });
   });
 });
+
+describe("сбой записи при правке получения", () => {
+  it("ошибка базы уходит как сбой (ServerFailure), а не текстом PostgREST человеку", async () => {
+    const { ctx } = setup({ total: 12000, delivery_fee: 0 });
+    const db = ctx.db as unknown as { from: (t: string) => Record<string, unknown> };
+    const from = db.from.bind(db);
+    db.from = (table: string) => {
+      const q = from(table);
+      if (table !== "orders") return q;
+      q.update = () => ({ eq: async () => ({ error: { message: "violates orders_check" } }) });
+      return q;
+    };
+    await expect(updateOrderFulfillment(ctx, edit("z-left"))).rejects.toMatchObject({
+      name: "ServerFailure",
+    });
+  });
+});

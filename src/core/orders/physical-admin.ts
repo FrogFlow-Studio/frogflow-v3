@@ -403,7 +403,7 @@ export async function createManualOrder(
       })
       .select("id, order_no, display_no")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(`Заказ: ${error.message}`);
     if (!order) throw new UserError("err.orders.createFailed", "Не удалось создать заказ");
     const { error: itemsError } = await ctx.db.from("order_items").insert(
       lines.map((l) => ({
@@ -548,7 +548,7 @@ export async function updateOrderFulfillment(
       ...typePatch,
     })
     .eq("id", input.id);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`Заказ #${input.id}: ${error.message}`);
   await recordOrderEvent(
     ctx,
     input.id,
