@@ -54,6 +54,7 @@ const SAVED = {
     dm_off: true,
     dm_blocked: ["b41a34cb-7944-441b-8f71-503184fc0f1f"],
   },
+  community_recommend: ["b41a34cb-7944-441b-8f71-503184fc0f1f"],
   community_mod: { status: "hidden", reason: "спам", at: "2026-10-04T10:00:00.000Z" },
   // оператор
   slug: "shop",
@@ -223,6 +224,7 @@ const ALL = {
     dm_blocked: [UUID],
   },
   community_mod: { status: "hidden", reason: "жалоба", at: AT },
+  community_recommend: [UUID],
   storefront_about: { description: "x" },
   storefront_design: { theme: "warm", cover: true, blocks: ["hits", "new"] },
   marketplace: { listed: true, hidden: false, approved: true, category: "Торты", city: "Алматы" },
@@ -250,6 +252,7 @@ describe("каждый верхний ключ TenantSettings переживае
       dm_blocked: [UUID],
     });
     expect(out.community_mod).toEqual({ status: "hidden", reason: "жалоба", at: AT });
+    expect(out.community_recommend).toEqual([UUID]);
     expect(out.marketplace).toMatchObject({ listed: true, approved: true, category: "Торты" });
   });
 });

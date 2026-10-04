@@ -17,6 +17,8 @@ export type CommunityView = {
   profile: CommunityProfile;
   state: CommunityState;
   mod: CommunityMod | null;
+  /** Адрес публичной страницы автора (/author/<slug>); есть, пока автор показывается в сообществе. */
+  slug: string | null;
 };
 
 export function communityView(ctx: Pick<TenantContext, "tenant">): CommunityView {
@@ -25,6 +27,7 @@ export function communityView(ctx: Pick<TenantContext, "tenant">): CommunityView
     profile: communityProfile(t.settings),
     state: communityState(t),
     mod: communityMod(t.settings),
+    slug: communityState(t) === "visible" ? (t.settings.slug ?? null) : null,
   };
 }
 

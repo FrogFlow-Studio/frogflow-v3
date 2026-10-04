@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { communityProfileFn, saveCommunityProfileFn } from "@/app/admin/community.functions";
 import { adminT } from "@/app/i18n/admin";
+import { CommunityRecommend } from "./community-recommend";
 import { settingsRoute } from "./route";
 
 type View = Awaited<ReturnType<typeof communityProfileFn>>;
@@ -143,6 +144,9 @@ export function CommunityCard() {
         )}
         <ErrorBox error={save.error} />
       </form>
+      {view && (view.state === "visible" || view.state === "hidden") && (
+        <CommunityRecommend slug={view.slug} />
+      )}
     </Card>
   );
 }

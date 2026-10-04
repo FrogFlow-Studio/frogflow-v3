@@ -279,6 +279,9 @@ export function settingsFromJson(json: unknown): TenantSettings {
       : undefined,
     community: parseCommunity(obj(s.community)),
     community_mod: parseCommunityMod(obj(s.community_mod)),
+    community_recommend: Array.isArray(s.community_recommend)
+      ? s.community_recommend.filter((x): x is string => typeof x === "string")
+      : undefined,
     // Свои тексты бота и рабочие часы (страница «Тексты бота»): без разбора здесь они не доходят до бота.
     bot_texts: parseBotTexts(s.bot_texts),
     work_hours: cleanWorkHours(s.work_hours) ?? undefined,

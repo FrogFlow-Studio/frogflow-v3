@@ -44,13 +44,14 @@ function requireMember(ctx: Pick<TenantContext, "tenant">): void {
 }
 
 /** Кто виден в сообществе: bot_id → подпись. Тексты остальных (выключил, заблокирован) не показываем. */
-type Author = { name: string | null };
+type Author = { name: string | null; slug: string | null };
 async function authors(): Promise<Map<string, Author>> {
   const out = new Map<string, Author>();
   for (const t of await tenantDirectory()) {
     const s = communityState(t);
-    if (s === "visible") out.set(t.id, { name: communityProfile(t.settings).name });
-    else if (s === "hidden") out.set(t.id, { name: null });
+    if (s === "visible")
+      out.set(t.id, { name: communityProfile(t.settings).name, slug: t.settings.slug ?? null });
+    else if (s === "hidden") out.set(t.id, { name: null, slug: null });
   }
   return out;
 }
@@ -62,6 +63,8 @@ export type ThreadItem = {
   title: string;
   excerpt: string;
   author: string | null;
+  /** Адрес публичной страницы автора (/author/<slug>); null — нет или не показывается. */
+  authorSlug: string | null;
   mine: boolean;
   posts: number;
   lastPostAt: string;
@@ -125,6 +128,7 @@ export async function listThreads(
         title: r.title,
         excerpt: excerpt(r.body),
         author: a.name,
+        authorSlug: a.slug,
         mine: r.bot_id === ctx.tenant.id,
         posts: r.posts_count,
         lastPostAt: r.last_post_at,
@@ -144,6 +148,8 @@ export type PostItem = {
   id: string;
   body: string;
   author: string | null;
+  /** Адрес публичной страницы автора (/author/<slug>); null — нет или не показывается. */
+  authorSlug: string | null;
   mine: boolean;
   createdAt: string;
 };
@@ -186,6 +192,7 @@ export async function getThread(ctx: TenantContext, id: string, offset = 0): Pro
       id: r.id,
       body: r.body,
       author: pa.name,
+      authorSlug: pa.slug,
       mine: r.bot_id === ctx.tenant.id,
       createdAt: r.created_at,
     });
@@ -198,6 +205,7 @@ export async function getThread(ctx: TenantContext, id: string, offset = 0): Pro
       title: t.title,
       body: t.body,
       author: a.name,
+      authorSlug: a.slug,
       mine: t.bot_id === ctx.tenant.id,
       posts: t.posts_count,
       lastPostAt: t.last_post_at,

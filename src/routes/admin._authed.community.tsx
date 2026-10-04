@@ -343,7 +343,11 @@ function ThreadView({
           <div className="whitespace-pre-wrap text-sm">{view.thread.body}</div>
           <div className="mt-2 flex items-center gap-3 text-xs text-muted">
             <span>
-              {view.thread.mine ? t("community.you") : (view.thread.author ?? t("community.anon"))}{" "}
+              {view.thread.mine ? (
+                t("community.you")
+              ) : (
+                <AuthorName name={view.thread.author} slug={view.thread.authorSlug} t={t} />
+              )}{" "}
               · {new Date(view.thread.createdAt).toLocaleString(loc)}
             </span>
             {canWrite && !view.thread.mine && (
@@ -361,8 +365,12 @@ function ThreadView({
             <div className="whitespace-pre-wrap text-sm">{p.body}</div>
             <div className="mt-1 flex items-center gap-3 text-xs text-muted">
               <span>
-                {p.mine ? t("community.you") : (p.author ?? t("community.anon"))} ·{" "}
-                {new Date(p.createdAt).toLocaleString(loc)}
+                {p.mine ? (
+                  t("community.you")
+                ) : (
+                  <AuthorName name={p.author} slug={p.authorSlug} t={t} />
+                )}{" "}
+                · {new Date(p.createdAt).toLocaleString(loc)}
               </span>
               {canWrite && !p.mine && (
                 <button className="underline" onClick={() => void report.run(p.id).catch(() => {})}>
@@ -403,5 +411,25 @@ function ThreadView({
         </form>
       )}
     </div>
+  );
+}
+
+/** Имя автора; у показываемого автора — ссылка на его публичную страницу (С6). */
+function AuthorName({
+  name,
+  slug,
+  t,
+}: {
+  name: string | null;
+  slug: string | null;
+  t: (k: "community.anon") => string;
+}) {
+  if (!name) return <>{t("community.anon")}</>;
+  return slug ? (
+    <a href={`/author/${slug}`} target="_blank" rel="noreferrer" className="underline">
+      {name}
+    </a>
+  ) : (
+    <>{name}</>
   );
 }

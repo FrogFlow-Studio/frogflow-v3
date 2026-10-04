@@ -11,6 +11,7 @@ import { STORE_PAGE } from "@/core/storefront/paging";
 import { useCart } from "@/app/storefront/cart";
 import { FavoriteButton } from "@/app/storefront/favorites";
 import { RecentlyViewed } from "@/app/storefront/recent";
+import { RecommendedShops } from "@/app/storefront/recommended-shops";
 import { PartnerPromos } from "@/app/storefront/partner-promo";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { OfferNote, OfferPrice } from "@/app/storefront/offer";
@@ -313,6 +314,7 @@ export function CatalogView({
         </div>
       )}
       <PartnerPromos slug={slug} />
+      {home && <RecommendedShops slug={slug} />}
       {home && <ShowcaseBlocks slug={slug} sections={first.sections} />}
       {current && (
         <div className="mb-3">

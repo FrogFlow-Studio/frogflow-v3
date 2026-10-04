@@ -141,3 +141,16 @@ export const askCommunityAdviceFn = createServerFn({ method: "POST" })
       }),
     );
   });
+
+/* ── страница автора и взаимные рекомендации (С6) ─────────────────────── */
+export const recommendViewFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await (await import("@/app/auth/guards.server")).requireAdmin();
+  return (await import("@/core/community/recommend.server")).recommendView(ctx);
+});
+
+export const saveRecommendFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ ids: z.array(z.string().uuid()).max(20) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await (await import("@/app/auth/guards.server")).requireAdminRole("owner");
+    return (await import("@/core/community/recommend.server")).saveRecommend(ctx, data.ids);
+  });
