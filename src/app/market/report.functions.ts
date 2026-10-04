@@ -69,9 +69,9 @@ export const submitReportFn = createServerFn({ method: "POST" })
     const { claimChallenge, ipHash } = await import("@/app/signup/signup.server");
     if (await claimChallenge(challengeNonce(data.challenge)!))
       return { ok: false, error: "refresh" };
-    const { createHash } = await import("node:crypto");
+    const { sha256Hex } = await import("@/lib/hash");
     const device = /^[0-9a-f]{32}$/.test(data.device)
-      ? createHash("sha256").update(`ff-market-report\0${data.device}`).digest("hex").slice(0, 32)
+      ? sha256Hex(`ff-market-report\0${data.device}`, 32)
       : null;
     const { submitReport } = await import("@/core/marketplace/report.server");
     const r = await submitReport(form.value, ipHash(clientIp()), device);

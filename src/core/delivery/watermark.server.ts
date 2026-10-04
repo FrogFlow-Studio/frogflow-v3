@@ -1,5 +1,4 @@
 import { withoutCourseMarker } from "@/core/courses/marker";
-import { createHash } from "node:crypto";
 import { degrees, PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import type { MaterialSnapshot } from "@/core/catalog/materials";
 import { serviceDb } from "@/core/db/client.server";
@@ -16,6 +15,7 @@ import {
   type WatermarkBuyer,
 } from "./watermark";
 import { serverFailure } from "@/lib/server-failure";
+import { sha256Hex } from "@/lib/hash";
 
 const BUCKET = "product-files";
 /** Больше — отдаём без знака: функция не должна держать в памяти огромный файл. */
@@ -28,7 +28,7 @@ export function watermarkEnabled(ctx: TenantContext): boolean {
 
 /** Ключ копии со знаком: одна на заказ и исходный файл, под префиксом клиента. */
 export function stampedKey(tenantId: string, orderId: number, path: string): string {
-  const h = createHash("sha256").update(path).digest("hex").slice(0, 16);
+  const h = sha256Hex(path, 16);
   return `${tenantId}/wm/${orderId}-${h}.pdf`;
 }
 

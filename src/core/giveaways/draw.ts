@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
 import { blockedAmong } from "@/core/customers/customers";
@@ -15,6 +15,7 @@ import {
   type GiveawayResult,
   type GiveawayWinner,
 } from "./giveaway";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Честный выбор победителей. Участники — события `giveaway.entry`; из них
@@ -28,7 +29,7 @@ import {
 export const REROLL_REASON_MIN = 3;
 export const REROLL_REASON_MAX = 200;
 
-const sha = (s: string) => createHash("sha256").update(s).digest("hex");
+const sha = (s: string) => sha256Hex(s);
 
 /** Хеш допущенного списка: ключи по алфавиту, по одному в строке. */
 export function listHash(userKeys: readonly string[]): string {

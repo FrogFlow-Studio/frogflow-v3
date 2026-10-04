@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { env } from "@/config/env";
 import { UserError } from "@/core/i18n/user-error";
 import { adminLoginTaken, normalizeLogin, STAFF_LOGIN_RE, type StaffRole } from "@/core/auth/roles";
@@ -13,8 +13,9 @@ import {
 import type { AdminInvite, Tenant } from "@/core/tenant/types";
 import { hashPassword } from "@/app/auth/password";
 import { recordShopAction } from "./audit.server";
+import { sha256Hex } from "@/lib/hash";
 
-const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
+const sha256 = (s: string) => sha256Hex(s);
 const rawInvites = (admin: Record<string, unknown>): AdminInvite[] =>
   Array.isArray(admin.invites) ? (admin.invites as AdminInvite[]) : [];
 

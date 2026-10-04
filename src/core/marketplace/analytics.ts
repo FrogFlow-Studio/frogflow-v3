@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Аналитика площадки FrogFlow (В20), чистая часть. Без личных данных: ни cookie, ни адреса, ни
@@ -24,7 +24,7 @@ export const hourBucket = (now: number): string =>
   new Date(Math.floor(now / HOUR) * HOUR).toISOString();
 
 export function dedupeKey(secret: string, bucket: string, ip: string, ua: string): string {
-  return createHash("sha256").update(`${secret}|${bucket}|${ip}|${ua}`).digest("hex").slice(0, 32);
+  return sha256Hex(`${secret}|${bucket}|${ip}|${ua}`, 32);
 }
 
 /** Поисковая фраза без лишнего: нижний регистр, пробелы схлопнуты; пусто — не считаем. */

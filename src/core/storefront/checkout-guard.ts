@@ -1,6 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { createHash } from "node:crypto";
 import { takeShared, type Budget } from "./rate-limit";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Защита анонимного оформления на витрине, как у регистрации (#71, #121):
@@ -61,7 +61,7 @@ export const WEB_BUDGETS = {
 } as const satisfies Record<string, Budget>;
 
 export function webSubject(who: string): string {
-  return createHash("sha256").update(`ff-web-limit\0${who}`).digest("hex").slice(0, 24);
+  return sha256Hex(`ff-web-limit\0${who}`, 24);
 }
 
 export function takeWeb(

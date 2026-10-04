@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { PREVIEW_AI_OFF, previewReadonly } from "@/lib/preview";
 import { env } from "@/config/env";
 import { proofHashes } from "@/core/orders/proof-hash";
@@ -29,6 +28,7 @@ import {
   type ReceiptAnalysis,
 } from "./pure";
 import { serverFailure } from "@/lib/server-failure";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Автопроверка чека — не то же, что модуль receipt_ocr. Модуль значит «тариф
@@ -370,7 +370,7 @@ export async function verifyReceipt(
 /** Ключ отметки номера квитанции в app_settings: хэш цифр номера, сам номер не храним. */
 export function receiptNoKey(operationId: string): string {
   const digits = operationKey(operationId);
-  return `${RECEIPT_NO_PREFIX}${createHash("sha256").update(digits).digest("hex")}`;
+  return `${RECEIPT_NO_PREFIX}${sha256Hex(digits)}`;
 }
 
 /**

@@ -1,8 +1,8 @@
-import { createHash } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { trySetSetting } from "@/core/settings/settings";
 import { HW_FEEDBACK_MAX } from "./homework";
 import { readSetting } from "./db.server";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Проверка ДЗ из Telegram: в уведомлении преподавателю — короткая метка
@@ -21,7 +21,7 @@ export const HW_DRAFT_TTL_MS = 24 * 3600_000;
 const REF_RE = /\[#hw:([0-9a-f]{12})\]/;
 
 export const hwRef = (orderItemId: string, lessonId: string) =>
-  createHash("sha256").update(`${orderItemId}:${lessonId}`).digest("hex").slice(0, 12);
+  sha256Hex(`${orderItemId}:${lessonId}`, 12);
 
 export const hwRefMark = (ref: string) => `[#hw:${ref}]`;
 

@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { createHash } from "node:crypto";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Контекст обрабатываемого события Zernio — ради заголовка `Idempotency-Key`
@@ -34,7 +34,5 @@ export function currentZernioEventId(): string | null {
 export function idempotencyKeyFor(body: unknown, scope?: string): string | undefined {
   const key = scope ?? store.getStore()?.eventId;
   if (!key) return undefined;
-  return createHash("sha256")
-    .update(`${key}:${JSON.stringify(body)}`)
-    .digest("hex");
+  return sha256Hex(`${key}:${JSON.stringify(body)}`);
 }

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { previewWebhookResponse } from "@/lib/preview";
 import { env } from "@/config/env";
-import { timingSafeSecretEqual } from "@/channels/telegram/secret";
+import { timingSafeSecretEqual } from "@/lib/safe-equal";
 import { runInBackground } from "@/lib/background";
 
 /**

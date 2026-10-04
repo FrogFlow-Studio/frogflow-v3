@@ -1,8 +1,8 @@
-import { createHash } from "node:crypto";
 import { REFRESH } from "./challenge";
 import { SIGNUP_UNAVAILABLE } from "./refusals";
 import { serviceDb } from "@/core/db/client.server";
 import { SIGNUP_CHALLENGE_PREFIX, pruneSignupChallenges } from "@/core/retention/retention";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Лимит самостоятельной регистрации. Схему не трогаем: регистрации и так
@@ -14,10 +14,7 @@ export const SIGNUP_LIMITS = { perIpPerDay: 2, totalPerDay: 20 } as const;
 
 /** Адрес в журнал — не как есть, а 16 байт sha256. */
 export function ipHash(ip: string | null): string {
-  return createHash("sha256")
-    .update(`ff-signup\0${ip ?? "unknown"}`)
-    .digest("hex")
-    .slice(0, 32);
+  return sha256Hex(`ff-signup\0${ip ?? "unknown"}`, 32);
 }
 
 export function signupVerdict(counts: { ip: number; total: number }): string | null {

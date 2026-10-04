@@ -1,7 +1,8 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { chunksOf } from "@/lib/in-chunks";
 import { serverFailure } from "@/lib/server-failure";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Вход владельца в админку через Telegram: вместо пароля бот магазина
@@ -16,7 +17,7 @@ import { serverFailure } from "@/lib/server-failure";
 export const TG_LOGIN_PREFIX = "admin_tg_login:";
 export const TG_LOGIN_TTL_MS = 10 * 60_000;
 
-export const tokenHash = (token: string) => createHash("sha256").update(token).digest("hex");
+export const tokenHash = (token: string) => sha256Hex(token);
 
 export function newLoginToken(): string {
   return randomBytes(24).toString("hex");

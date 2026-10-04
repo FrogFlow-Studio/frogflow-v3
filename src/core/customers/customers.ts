@@ -1,9 +1,9 @@
-import { createHash } from "node:crypto";
 import { inChunks } from "@/lib/in-chunks";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database, Json } from "@/core/db-types";
 import type { Locale } from "@/core/i18n/locale";
 import { serverFailure } from "@/lib/server-failure";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Покупатель — строка bot_users, PK (bot_id, user_key).
@@ -34,7 +34,7 @@ export function userKey(platform: Platform, externalId: string | number): string
  * создался бы. Префикс канала в ключе разводит один номер в двух каналах.
  */
 export function syntheticTelegramId(key: string): number {
-  return -parseInt(createHash("sha256").update(key).digest("hex").slice(0, 13), 16);
+  return -parseInt(sha256Hex(key, 13), 16);
 }
 
 /**

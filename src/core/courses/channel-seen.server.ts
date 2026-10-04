@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { orderChatId } from "./order-chat";
 import { pageAll } from "@/core/db/page";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -8,6 +7,7 @@ import { COURSE_KEY_PREFIX, courseKey, parseCourse } from "./course";
 import { readSetting, readSettings, selectIn } from "./db.server";
 import { CHANNEL_SLOT, CHAT_SLOT, type ChannelAccess } from "./channel.server";
 import { parseRun, runKey } from "./run.server";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Сверка «в канале, но без доступа» (ниша «Онлайн-школа») — для канала курса
@@ -18,8 +18,7 @@ import { parseRun, runKey } from "./run.server";
  * бот не видел (вступил до подключения бота), в списке не появится.
  */
 export const SEEN_KEY_PREFIX = "course_seen_";
-const chanTag = (channel: string) =>
-  createHash("sha256").update(channel.trim().toLowerCase()).digest("hex").slice(0, 16);
+const chanTag = (channel: string) => sha256Hex(channel.trim().toLowerCase(), 16);
 const seenPrefix = (channel: string) => `${SEEN_KEY_PREFIX}${chanTag(channel)}_`;
 const seenKey = (channel: string, userId: number) => `${seenPrefix(channel)}${userId}`;
 

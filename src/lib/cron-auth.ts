@@ -1,13 +1,11 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { timingSafeSecretEqual } from "@/lib/safe-equal";
 
 /** Vercel Cron присылает Authorization: Bearer $CRON_SECRET. */
 export function isCronAuthorized(request: Request, secret: string): boolean {
   const auth = request.headers.get("authorization") ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
   if (!token) return false;
-  const a = createHash("sha256").update(token).digest();
-  const b = createHash("sha256").update(secret).digest();
-  return timingSafeEqual(a, b);
+  return timingSafeSecretEqual(token, secret);
 }
 
 /** Разобрать Basic-заголовок — проверка самих данных остаётся вызывающему. */

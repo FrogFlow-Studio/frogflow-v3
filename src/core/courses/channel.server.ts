@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { orderChatId } from "./order-chat";
 import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -7,6 +6,7 @@ import { courseTimeline } from "./cohort";
 import { courseKey, parseCourse } from "./course";
 import { readSetting, selectIn } from "./db.server";
 import { parseRun, runKey, type CoursePurchase } from "./run.server";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Доступ в закрытый канал курса (ниша «Онлайн-школа»): ученик получает
@@ -26,8 +26,7 @@ export const INVITE_KEY_PREFIX = "course_inv_";
 export const inviteKey = (orderItemId: string) => `${INVITE_KEY_PREFIX}${orderItemId}`;
 /** Ссылка → позиция заказа: по ней событие вступления находит покупку. */
 export const INVITE_LINK_PREFIX = "course_invlink_";
-const linkKey = (link: string, prefix = INVITE_LINK_PREFIX) =>
-  `${prefix}${createHash("sha256").update(link).digest("hex").slice(0, 24)}`;
+const linkKey = (link: string, prefix = INVITE_LINK_PREFIX) => `${prefix}${sha256Hex(link, 24)}`;
 
 /**
  * Куда пускаем: закрытый канал курса или групповой чат потока. Устроены

@@ -1,4 +1,5 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Шифрование секретов клиентов в базе: AES-256-GCM, ключ платформы из
@@ -55,5 +56,5 @@ export function decryptSecret(stored: string, key: string): string {
 /** Отпечаток для журналов и диагностики — сам секрет никуда не попадает. */
 export function secretFingerprint(secret: string | null | undefined): string {
   if (!secret) return "—";
-  return createHash("sha256").update(secret).digest("hex").slice(0, 8);
+  return sha256Hex(secret, 8);
 }

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serviceDb } from "@/core/db/client.server";
 import { isTenantStorageKey } from "@/core/storage/keys";
@@ -15,6 +14,7 @@ import {
 import { zernioRequest } from "./api.server";
 import { instagramAccounts } from "./automations.server";
 import { serverFailure } from "@/lib/server-failure";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Публикация постов, Reels и сторис в Instagram клиента через Zernio.
@@ -61,18 +61,16 @@ async function signedMediaUrl(key: string, type: MediaType, ttlSec: number) {
 
 /** Отпечаток публикации: тот же клиент, аккаунты, текст, файлы и время. */
 export function publishIdempotencyKey(tenantId: string, input: PublishInput): string {
-  const h = createHash("sha256")
-    .update(
-      JSON.stringify([
-        tenantId,
-        input.kind,
-        [...input.accountIds].sort(),
-        input.text,
-        input.media,
-        input.scheduledFor ?? null,
-      ]),
-    )
-    .digest("hex");
+  const h = sha256Hex(
+    JSON.stringify([
+      tenantId,
+      input.kind,
+      [...input.accountIds].sort(),
+      input.text,
+      input.media,
+      input.scheduledFor ?? null,
+    ]),
+  );
   return `post-${h.slice(0, 40)}`;
 }
 

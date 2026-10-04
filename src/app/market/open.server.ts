@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { serviceDb, type Db } from "@/core/db/client.server";
 import { pageAll } from "@/core/db/page";
 import { serverFailure } from "@/lib/server-failure";
@@ -9,6 +8,7 @@ import {
   type OpenRequest,
 } from "@/core/marketplace/open-request";
 import { VERTICALS } from "@/core/verticals/registry";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Приём заявки «Открыть свой магазин» (В19): заявка становится лидом оператора
@@ -29,9 +29,7 @@ type Deps = {
 };
 
 const claimKey = (kind: string, value: string, now: Date) =>
-  `${CLAIM_PREFIX}${kind}:${createHash("sha256").update(`${kind}\0${value}`).digest("hex").slice(0, 32)}:${now
-    .toISOString()
-    .slice(0, 10)}`;
+  `${CLAIM_PREFIX}${kind}:${sha256Hex(`${kind}\0${value}`, 32)}:${now.toISOString().slice(0, 10)}`;
 
 export async function submitOpenRequest(
   req: OpenRequest,

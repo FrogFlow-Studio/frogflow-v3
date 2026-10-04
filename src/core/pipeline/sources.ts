@@ -1,8 +1,8 @@
-import { createHash } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { updateSettingAtomic } from "@/core/settings/settings";
 import { isClosedStage, leadKey, parseLead, type Lead } from "./stages";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Заявки, которые появляются в воронке сами. Сейчас источник один —
@@ -14,7 +14,7 @@ import { isClosedStage, leadKey, parseLead, type Lead } from "./stages";
  * после закрытой заявки новая передача открывает её заново как «Новую».
  */
 export function handoffLeadId(userKey: string): string {
-  return `ai-${createHash("sha256").update(userKey).digest("hex").slice(0, 32)}`;
+  return `ai-${sha256Hex(userKey, 32)}`;
 }
 
 export type HandoffInfo = {

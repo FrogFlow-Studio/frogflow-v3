@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
 import { sniffProofMime } from "./proof-file";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Отпечаток чека для проверки «этот же чек уже был по другому заказу».
@@ -16,7 +16,7 @@ import { sniffProofMime } from "./proof-file";
  * по-прежнему узнаются. Пишем в заказ `stored` — отпечаток содержимого.
  */
 export function proofHashes(bytes: Uint8Array): { stored: string; all: string[] } {
-  const sha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
+  const sha = (b: Uint8Array) => sha256Hex(b);
   const raw = sha(bytes);
   const content = sha(proofContent(bytes));
   return { stored: content, all: content === raw ? [raw] : [content, raw] };

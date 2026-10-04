@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Json } from "@/core/db-types";
 import {
@@ -44,6 +44,7 @@ import { robokassaFor, robokassaReceipt, stripeFor } from "@/core/payments/payme
 import { buildPaymentUrl } from "@/core/payments/robokassa";
 import { amountDueNow } from "@/core/fulfillment/fulfillment";
 import { serverFailure } from "@/lib/server-failure";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Заказ с витрины сайта без мессенджера. Покупатель — обычная строка
@@ -68,7 +69,7 @@ export function normalizeEmail(raw: string): string | null {
 
 /** Отпечаток почты: адрес не светится в user_key и синтетическом telegram_id. */
 export function webCustomerId(email: string): string {
-  return createHash("sha256").update(`web:${email}`).digest("hex").slice(0, 32);
+  return sha256Hex(`web:${email}`, 32);
 }
 
 /**

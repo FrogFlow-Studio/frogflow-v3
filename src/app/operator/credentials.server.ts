@@ -1,7 +1,7 @@
 import { env } from "@/config/env";
 import { serviceDb } from "@/core/db/client.server";
 import { hashPassword, verifyPassword } from "@/app/auth/password";
-import { timingSafeSecretEqual } from "@/channels/telegram/secret";
+import { timingSafeSecretEqual } from "@/lib/safe-equal";
 import { serverFailure } from "@/lib/server-failure";
 
 /**

@@ -1,8 +1,9 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { productCategoryIds } from "@/core/catalog/category-ids";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { OrderWithItems } from "@/core/orders/orders";
 import { getSetting, setSetting, updateSettingAtomic } from "@/core/settings/settings";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Публичный API магазина (модуль `public_api`): продавец или его
@@ -22,7 +23,7 @@ export type ApiKeyScope = "read" | "write";
 export type ApiKeyMeta = { hash: string; last4: string; createdAt: string; scope: ApiKeyScope };
 
 function sha256(s: string): string {
-  return createHash("sha256").update(s).digest("hex");
+  return sha256Hex(s);
 }
 
 export function parseApiKeyMeta(raw: string | null | undefined): ApiKeyMeta | null {

@@ -1,9 +1,9 @@
 import { previewReadonly } from "@/lib/preview";
-import { createHash } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { env } from "@/config/env";
 import { setSetting } from "@/core/settings/settings";
 import { sendWebPush, validPushEndpoint, type PushSubscription, type Vapid } from "./webpush";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Push-уведомления продавцу в админку как приложение (PWA): подписки
@@ -26,8 +26,7 @@ export function vapidFromEnv(): Vapid | null {
   };
 }
 
-const keyOf = (endpoint: string) =>
-  `${PUSH_PREFIX}${createHash("sha256").update(endpoint).digest("hex").slice(0, 24)}`;
+const keyOf = (endpoint: string) => `${PUSH_PREFIX}${sha256Hex(endpoint, 24)}`;
 
 export function parseStored(raw: string | null | undefined): Stored | null {
   try {

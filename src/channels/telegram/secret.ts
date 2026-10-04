@@ -1,4 +1,5 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac } from "node:crypto";
+import { timingSafeSecretEqual } from "@/lib/safe-equal";
 
 /**
  * Секрет вебхука Telegram для конкретного бота.
@@ -15,12 +16,6 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
  */
 export function telegramWebhookSecret(botId: string, platformSecret: string): string {
   return createHmac("sha256", platformSecret).update(`telegram:${botId}`).digest("hex");
-}
-
-export function timingSafeSecretEqual(a: string, b: string): boolean {
-  const ha = createHash("sha256").update(a).digest();
-  const hb = createHash("sha256").update(b).digest();
-  return timingSafeEqual(ha, hb);
 }
 
 export function verifyTelegramWebhookHeader(

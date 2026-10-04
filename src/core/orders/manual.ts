@@ -1,4 +1,5 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Заказ, который продавец заводит сам: звонок, комментарий в Instagram,
@@ -21,10 +22,7 @@ export function manualCustomerTelegramId(
   contact: string | null | undefined,
   entropy?: string,
 ): number {
-  const hex = createHash("sha256")
-    .update(`manual:${manualCustomerKey(contact, entropy)}`)
-    .digest("hex")
-    .slice(0, 13);
+  const hex = sha256Hex(`manual:${manualCustomerKey(contact, entropy)}`, 13);
   return -parseInt(hex, 16);
 }
 

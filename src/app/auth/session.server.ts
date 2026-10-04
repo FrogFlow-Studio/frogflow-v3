@@ -1,8 +1,8 @@
-import { createHash } from "node:crypto";
 import { useSession } from "@tanstack/react-start/server";
 import { env } from "@/config/env";
 import type { AdminRole } from "@/core/auth/roles";
 import { SESSION_MAX_AGE_S } from "./session-id";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Одна cookie на всю платформу. Оператор и продавец — разные роли в ней:
@@ -43,10 +43,7 @@ export type AppSession = {
  * лежит не хеш пароля, а 16 байт sha256 от него.
  */
 export function credentialStamp(...parts: Array<string | undefined>): string {
-  return createHash("sha256")
-    .update(`ff-session-stamp\0${parts.map((p) => p ?? "").join("\0")}`)
-    .digest("hex")
-    .slice(0, 32);
+  return sha256Hex(`ff-session-stamp\0${parts.map((p) => p ?? "").join("\0")}`, 32);
 }
 
 export function sessionConfig() {

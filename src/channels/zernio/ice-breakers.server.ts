@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type { Tenant } from "@/core/tenant/types";
 import { patchTenantSettings, requireTenant, tenantContext } from "@/core/tenant/resolve.server";
 import { servedByV2 } from "@/core/tenant/directory";
@@ -12,6 +11,7 @@ import {
   zernioConfigured,
   type IceBreaker,
 } from "./api.server";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Быстрые вопросы Instagram (core/instagram/ice-breakers) в аккаунтах
@@ -77,10 +77,7 @@ async function stillServedByV2(botId: string): Promise<boolean> {
 
 export function iceBreakersVersion(accounts: string[], items: IceBreaker[]): string {
   if (!accounts.length || !items.length) return "";
-  return createHash("sha256")
-    .update(JSON.stringify([accounts, items]))
-    .digest("hex")
-    .slice(0, 16);
+  return sha256Hex(JSON.stringify([accounts, items]), 16);
 }
 
 /** Привести подсказки в Instagram к настройке продавца. Сбой — отпечаток не пишем, крон повторит. */

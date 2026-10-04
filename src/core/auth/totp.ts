@@ -1,4 +1,5 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Одноразовые коды для двухшагового входа (RFC 6238, как в Google
@@ -131,9 +132,7 @@ export function newBackupCodes(n = BACKUP_CODES): string[] {
  * неудачных попыток: перебор бесполезен, медленный scrypt не нужен.
  */
 export function hashBackupCode(code: string): string {
-  return createHash("sha256")
-    .update(`frogflow-backup:${normalizeBackupCode(code)}`)
-    .digest("hex");
+  return sha256Hex(`frogflow-backup:${normalizeBackupCode(code)}`);
 }
 
 /** Оставшиеся хэши после использования кода или null, если кода нет среди них. */

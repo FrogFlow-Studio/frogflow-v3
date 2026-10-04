@@ -1,5 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { WebAppUser } from "./init-data";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Вход покупателя на витрину через Telegram. Кнопку рисует виджет Telegram
@@ -77,7 +78,7 @@ export function signLoginWidget(fields: Record<string, string>, botToken: string
  * входы, выданные раньше, перестают действовать. Сам токен в cookie не попадает.
  */
 export function botTokenStamp(botToken: string): string {
-  return createHash("sha256").update(`ff-tg-login-token\0${botToken}`).digest("hex").slice(0, 32);
+  return sha256Hex(`ff-tg-login-token\0${botToken}`, 32);
 }
 
 /** Своя cookie у каждого магазина: вход в одном магазине не открывает другой. */

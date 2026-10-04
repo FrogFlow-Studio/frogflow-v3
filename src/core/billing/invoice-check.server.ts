@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { serviceDb } from "@/core/db/client.server";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { readReceiptText } from "@/core/receipts/verify.server";
@@ -11,6 +10,7 @@ import {
 } from "./invoice-check";
 import type { OpenInvoice } from "./invoices";
 import { pageAll } from "@/core/db/page";
+import { sha256Hex } from "@/lib/hash";
 
 /**
  * Чек за подписку: распознать (PDF Kaspi — бесплатно из текста, фото —
@@ -177,7 +177,7 @@ export async function verifyInvoiceProof(
   file: { bytes: Uint8Array; mime: string },
   pre: { text?: string; manual?: string } = {},
 ): Promise<InvoiceProofCheck> {
-  const hash = createHash("sha256").update(file.bytes).digest("hex");
+  const hash = sha256Hex(file.bytes);
   const fail = (detail: string, operationId: string | null = null): InvoiceProofCheck => ({
     ok: false,
     hash,
