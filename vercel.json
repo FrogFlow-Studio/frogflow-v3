@@ -47,6 +47,10 @@
       "schedule": "7,22,37,52 * * * *"
     },
     {
+      "path": "/api/cron/giveaways",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/leads",
       "schedule": "0 6 * * *"
     }

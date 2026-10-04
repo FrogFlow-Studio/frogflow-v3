@@ -37,6 +37,8 @@ const TWICE: Record<string, Evidence> = {
   courseLives: { test: ["src/core/courses/live-remind.test.ts"] },
   // vip
   vip: { test: ["src/core/vip/cron-twice.test.ts"] },
+  // giveaways
+  giveaways: { test: ["src/channels/giveaway-cron.test.ts", "src/core/giveaways/notify.test.ts"] },
   // comment-dm-fallback
   commentDm: { test: ["src/channels/zernio/comment-dm-fallback.test.ts"] },
   // health

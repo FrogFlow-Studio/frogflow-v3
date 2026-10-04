@@ -178,6 +178,19 @@ export const Route = createFileRoute("/api/cron/$job")({
               resume = resumeOf(ordered, skipped);
               break;
             }
+            case "giveaways": {
+              // Розыгрыши: закрыть приём по сроку, выбрать победителей, написать им, отчитаться продавцу.
+              const { runGiveawaysFor } = await import("@/channels/giveaway-cron.server");
+              await eachWithin(ordered, budget, skipped, async (t) => {
+                try {
+                  results[t.id] = await runGiveawaysFor(t);
+                } catch (e) {
+                  results[t.id] = await tenantFailure(t.id, e);
+                }
+              });
+              resume = resumeOf(ordered, skipped);
+              break;
+            }
             case "vip": {
               // Напоминания об истечении и исключение из VIP-групп.
               const { runVipCron } = await import("@/core/vip/cron");

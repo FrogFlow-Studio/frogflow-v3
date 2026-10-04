@@ -97,6 +97,7 @@ vi.mock("@/app/orders/pay-remind.server", () => ({
 }));
 vi.mock("@/channels/zernio/jobs", () => ({ runWhatsAppBroadcastBatch: hit("waBroadcast") }));
 vi.mock("@/app/outbox/senders.server", () => ({ runOutbox: hit("outbox") }));
+vi.mock("@/channels/giveaway-cron.server", () => ({ runGiveawaysFor: hit("giveaways") }));
 vi.mock("@/core/vip/cron", () => ({ runVipCron: hit("vip") }));
 vi.mock("@/channels/telegram/vip/group", () => ({ vipGroupApi: () => ({}) }));
 vi.mock("@/channels/telegram/vip/handle", () => ({ vipTelegramApi: () => ({}) }));
@@ -158,6 +159,7 @@ const JOBS: Record<string, string[]> = {
     "chatPayReminders",
   ],
   vip: ["vip"],
+  giveaways: ["giveaways"],
   "course-lives": ["courseLives"],
   "comment-dm-fallback": ["commentDm"],
   health: ["zernioSync", "zernioRetry", "pricelist", "digest", "weekly", "morning"],

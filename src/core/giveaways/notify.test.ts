@@ -124,7 +124,7 @@ describe("сообщение победителям", () => {
     expect(db.tables.promo_codes).toHaveLength(1);
   });
 
-  it("гонка двух кронов: одно сообщение и один промокод", async () => {
+  it("два крона одновременно: одно сообщение и один промокод", async () => {
     const { ctx, db } = setup();
     const g = await drawn(ctx, db, 1, { prizePromoPercent: 15 });
     const { d, sent } = deps();
