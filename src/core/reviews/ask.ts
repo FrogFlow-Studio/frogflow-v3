@@ -110,6 +110,29 @@ async function dismissOrder(ctx: TenantContext, orderId: number, now: Date): Pro
   }
 }
 
+/** Старше этого срока после края опоздания отметка заказа уже ничего не защищает и удаляется. */
+export const REVIEW_ASK_MARK_KEEP_DAYS = 30;
+
+/**
+ * Отметки `review_ask:<id>` копились бы навсегда. Заказ старше N + 3 дней в окно
+ * просьбы уже не попадёт, так что отметка старше N + 3 + 30 дней лишняя. Время
+ * лежит в значении отметки («ask:<ISO>», «skip:<ISO>»). Сбой чистки проход не роняет.
+ */
+async function pruneOldMarks(ctx: TenantContext, now: Date, days: number): Promise<void> {
+  const cutoff = new Date(
+    now.getTime() - (days + REVIEW_ASK_LATE_DAYS + REVIEW_ASK_MARK_KEEP_DAYS) * DAY,
+  ).toISOString();
+  for (const kind of ["ask", "skip"]) {
+    const { error } = await ctx.db
+      .from("app_settings")
+      .delete()
+      .like("key", `${REVIEW_ASK_KEY_PREFIX}%`)
+      .like("value", `${kind}:%`)
+      .lt("value", `${kind}:${cutoff}`);
+    if (error) console.error(`[review-ask:${ctx.tenant.id}] чистка отметок: ${error.message}`);
+  }
+}
+
 export async function runReviewAsk(
   ctx: TenantContext,
   send: ReviewAskSender,
@@ -121,6 +144,8 @@ export async function runReviewAsk(
   const days = reviewAskDays(ctx.tenant.settings.review_ask_days);
   const dueEdge = new Date(now.getTime() - days * DAY).toISOString();
   const lateEdge = new Date(now.getTime() - (days + REVIEW_ASK_LATE_DAYS) * DAY).toISOString();
+
+  await pruneOldMarks(ctx, now, days);
 
   // Выданные заказы окна [опоздание, срок], постранично; уникальный хвост сортировки — id.
   const due: DueOrder[] = [];

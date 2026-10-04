@@ -246,6 +246,30 @@ describe("просьба об оценке: кому и когда", () => {
   });
 });
 
+describe("просьба об оценке: старые отметки", () => {
+  it("отметки старше N + 3 + 30 дней удаляются, свежие и чужие ключи остаются", async () => {
+    const { db, ctx } = setup();
+    const mark = (id: number, value: string) => ({
+      bot_id: "bot",
+      key: reviewAskKey(id),
+      value,
+      updated_at: value,
+    });
+    db.tables.app_settings = [
+      mark(1, `ask:${ago(60)}`),
+      mark(2, `skip:${ago(60)}`),
+      mark(3, `ask:${ago(20)}`),
+      mark(4, `skip:${ago(5)}`),
+      { bot_id: "bot", key: "quiz", value: `ask:${ago(90)}`, updated_at: ago(90) },
+    ];
+    await runReviewAsk(ctx, collect().send, NOW);
+    const keys = db.tables.app_settings!.map((r) => r.key);
+    for (const id of [1, 2]) expect(keys).not.toContain(reviewAskKey(id));
+    for (const id of [3, 4]) expect(keys).toContain(reviewAskKey(id));
+    expect(keys).toContain("quiz");
+  });
+});
+
 describe("просьба об оценке: Instagram и WhatsApp — только в окне 24 часа", () => {
   const inbound = (hoursAgo: number) => ({
     telegram_id: -4,

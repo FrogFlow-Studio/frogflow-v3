@@ -1,5 +1,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { getSetting, setSetting } from "@/core/settings/settings";
+import { getSetting, getSettingsStrict } from "@/core/settings/settings";
+import { inChunks } from "@/lib/in-chunks";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Апсейл и кросс-сейл (модуль upsell): в корзине — «С этим берут» до трёх
@@ -83,6 +85,9 @@ export async function upsellFor(
       .order("id")
       .limit(POPULAR_SCAN),
   ]);
+  // Сбой чтения — не «предлагать нечего»: наружу serverFailure.
+  if (explicit.error) throw serverFailure(`Апсейл: товары правил: ${explicit.error.message}`);
+  if (popular.error) throw serverFailure(`Апсейл: популярные: ${popular.error.message}`);
   const rows = [
     ...new Map(
       [...(explicit.data ?? []), ...(popular.data ?? [])].map((r) => [r.id, r as Row]),
@@ -136,9 +141,148 @@ export async function setUpsellFor(
   productId: string,
   ids: string[],
 ): Promise<void> {
-  const rules = parseRules(await getSetting(ctx, UPSELL_KEY));
   const clean = Array.from(new Set(ids.filter((x) => x !== productId))).slice(0, 10);
-  if (clean.length) rules[productId] = clean;
-  else delete rules[productId];
-  await setSetting(ctx, UPSELL_KEY, JSON.stringify(rules));
+  const ok = await writeRules(ctx, (rules) => {
+    if (clean.length) rules[productId] = clean;
+    else delete rules[productId];
+    return rules;
+  });
+  if (!ok)
+    throw serverFailure("Апсейл: правила не сохранены (правила только что изменил кто-то другой)");
+}
+
+/**
+ * Запись правил: читаем строку вместе с updated_at и пишем только если он не
+ * сменился (условие на короткое поле: весь JSON правил в адрес запроса не
+ * кладём, у большого каталога он длиннее предела и дал бы 431). Проиграли
+ * гонку — читаем заново; `mutate` вернул null — ничего не пишем.
+ */
+async function writeRules(
+  ctx: TenantContext,
+  mutate: (rules: UpsellRules) => UpsellRules | null,
+): Promise<boolean> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data, error } = await ctx.db
+      .from("app_settings")
+      .select("value, updated_at")
+      .eq("key", UPSELL_KEY)
+      .maybeSingle();
+    if (error) throw serverFailure(`Апсейл: правила: ${error.message}`);
+    const next = mutate(parseRules(data?.value));
+    if (!next) return true;
+    const value = JSON.stringify(next);
+    const updated_at = new Date().toISOString();
+    if (!data) {
+      const ins = await ctx.db
+        .from("app_settings")
+        .insert({ bot_id: ctx.tenant.id, key: UPSELL_KEY, value, updated_at });
+      if (!ins.error) return true;
+      if (ins.error.code !== "23505") throw serverFailure(`Апсейл: правила: ${ins.error.message}`);
+      continue;
+    }
+    const q = ctx.db.from("app_settings").update({ value, updated_at }).eq("key", UPSELL_KEY);
+    const { data: written, error: writeError } = await (
+      data.updated_at == null ? q.is("updated_at", null) : q.eq("updated_at", data.updated_at)
+    ).select("key");
+    if (writeError) throw serverFailure(`Апсейл: правила: ${writeError.message}`);
+    if (written?.length) return true;
+  }
+  return false;
+}
+
+/** Состояние товара из правила: в продаже, скрыт (is_active = false) или удалён. */
+export type UpsellState = "ok" | "hidden" | "deleted";
+export type UpsellTarget = { id: string; name: string | null; state: UpsellState };
+export type UpsellProblem = {
+  productId: string;
+  productName: string | null;
+  /** Товар, к которому привязано правило: удалён — правило не сработает никогда. */
+  trigger: UpsellState;
+  /** Предлагаемые товары, которые покупатель не увидит (скрыты или удалены). */
+  dead: UpsellTarget[];
+};
+
+async function productStates(
+  ctx: TenantContext,
+  ids: readonly string[],
+): Promise<Map<string, { name: string | null; state: UpsellState }>> {
+  const rows = await inChunks(
+    ids,
+    (chunk) => ctx.db.from("products").select("id, name, is_active").in("id", chunk),
+    "Апсейл: товары",
+  );
+  const out = new Map<string, { name: string | null; state: UpsellState }>(
+    ids.map((id) => [id, { name: null, state: "deleted" }]),
+  );
+  for (const r of rows) out.set(r.id, { name: r.name, state: r.is_active ? "ok" : "hidden" });
+  return out;
+}
+
+/**
+ * Правила, которые больше не работают: предлагаемый товар скрыт или удалён
+ * (cart-апсейл берёт только товары в продаже), либо удалён сам товар, к
+ * которому правило привязано. Правило без таких мест в список не попадает.
+ */
+export async function upsellHealth(
+  ctx: TenantContext,
+): Promise<{ rules: number; problems: UpsellProblem[] }> {
+  const rules = parseRules((await getSettingsStrict(ctx, [UPSELL_KEY]))[UPSELL_KEY]);
+  const ids = [...new Set(Object.entries(rules).flatMap(([k, v]) => [k, ...v]))];
+  const states = await productStates(ctx, ids);
+  const problems: UpsellProblem[] = [];
+  for (const [productId, targets] of Object.entries(rules)) {
+    const self = states.get(productId)!;
+    const dead = targets.map((id) => ({ id, ...states.get(id)! })).filter((t) => t.state !== "ok");
+    if (self.state === "deleted" || dead.length)
+      problems.push({ productId, productName: self.name, trigger: self.state, dead });
+  }
+  problems.sort(
+    (a, b) =>
+      (a.productName ?? "").localeCompare(b.productName ?? "") ||
+      (a.productId < b.productId ? -1 : 1),
+  );
+  return { rules: Object.keys(rules).length, problems };
+}
+
+/** Выбранные для товара предложения вместе с состоянием каждого (для редактора товара). */
+export async function upsellTargets(
+  ctx: TenantContext,
+  productId: string,
+): Promise<UpsellTarget[]> {
+  const selected = await getUpsellFor(ctx, productId);
+  const states = await productStates(ctx, selected);
+  return selected.map((id) => ({ id, ...states.get(id)! }));
+}
+
+/**
+ * «Убрать правила на удалённые товары»: из предложений уходят удалённые товары,
+ * правила удалённых товаров — целиком. Скрытые не трогаем: скрытый товар могут
+ * вернуть, и правило снова заработает. Возвращает, сколько записей убрано.
+ */
+export async function pruneUpsellRules(ctx: TenantContext): Promise<number> {
+  const { problems } = await upsellHealth(ctx);
+  const gone = new Set(
+    problems.flatMap((p) => p.dead.filter((d) => d.state === "deleted").map((d) => d.id)),
+  );
+  const orphans = new Set(problems.filter((p) => p.trigger === "deleted").map((p) => p.productId));
+  if (!gone.size && !orphans.size) return 0;
+  let removed = 0;
+  const ok = await writeRules(ctx, (rules) => {
+    removed = 0;
+    for (const key of Object.keys(rules)) {
+      if (orphans.has(key)) {
+        removed += 1;
+        delete rules[key];
+        continue;
+      }
+      const keep = rules[key]!.filter((id) => !gone.has(id));
+      removed += rules[key]!.length - keep.length;
+      if (keep.length) rules[key] = keep;
+      else delete rules[key];
+    }
+    return removed ? rules : null;
+  });
+  if (!ok)
+    throw serverFailure("Апсейл: правила не очищены (правила только что изменил кто-то другой)");
+  return removed;
 }

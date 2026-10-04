@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ProductSearch, type PickerProduct } from "@/app/admin/product-picker";
+import { ProductSearch } from "@/app/admin/product-picker";
 import { useEffect, useState } from "react";
 import { saveUpsellFn, upsellForProductFn } from "@/app/admin/upsell.functions";
 import {
@@ -813,13 +813,15 @@ function StockHistoryCard({
 /** «С этим предлагать»: до 10 товаров, которые бот покажет в корзине рядом с этим. */
 function UpsellCard({ productId, t }: { productId: string; t: AdminT }) {
   const [loaded, setLoaded] = useState(false);
-  const [picked, setPicked] = useState<PickerProduct[]>([]);
+  // state: в продаже, скрыт или удалён — скрытый и удалённый покупателю не предлагаются.
+  const [picked, setPicked] = useState<
+    Array<{ id: string; name: string | null; state: "ok" | "hidden" | "deleted" }>
+  >([]);
   const [saved, setSaved] = useState(false);
   useEffect(() => {
     void upsellForProductFn({ data: { productId } }).then((r) => {
-      const byId = new Map(r.products.map((x) => [x.id, x]));
-      // Порядок — как сохранён; удалённый товар показываем id, чтобы его можно было убрать.
-      setPicked(r.selected.map((id) => byId.get(id) ?? { id, name: id, price: 0, currency: "" }));
+      // Порядок — как сохранён; удалённый товар остаётся в списке с пометкой, чтобы его можно было убрать.
+      setPicked(r.targets);
       setLoaded(true);
     });
   }, [productId]);
@@ -834,7 +836,12 @@ function UpsellCard({ productId, t }: { productId: string; t: AdminT }) {
       <ul className="mb-2 space-y-1 text-sm">
         {picked.map((x) => (
           <li key={x.id} className="flex items-center justify-between gap-2">
-            <span className="truncate">{x.name}</span>
+            <span className="min-w-0 truncate">
+              {x.name ?? t("product.upsell.deletedName")}
+              {x.state !== "ok" && (
+                <span className="ml-2 text-xs text-warn">{t(`product.upsell.${x.state}`)}</span>
+              )}
+            </span>
             <button
               type="button"
               className="btn-ghost text-xs"
@@ -851,7 +858,11 @@ function UpsellCard({ productId, t }: { productId: string; t: AdminT }) {
             t={t}
             exclude={[productId, ...picked.map((x) => x.id)]}
             onPick={(x) =>
-              setPicked((p) => (p.some((y) => y.id === x.id) || p.length >= 10 ? p : [...p, x]))
+              setPicked((p) =>
+                p.some((y) => y.id === x.id) || p.length >= 10
+                  ? p
+                  : [...p, { id: x.id, name: x.name, state: "ok" }],
+              )
             }
           />
         </div>

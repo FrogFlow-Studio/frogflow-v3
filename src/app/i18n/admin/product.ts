@@ -69,6 +69,15 @@ export const ru = {
   "product.upsellHint":
     "Бот покажет эти товары в корзине, когда там лежит этот. Пусто — популярные из той же категории.",
   "product.upsellAdd": "+ добавить товар",
+  "product.upsell.hidden": "скрыт — не предлагается",
+  "product.upsell.deleted": "удалён — не предлагается",
+  "product.upsell.deletedName": "Удалённый товар",
+  "upsell.health.title": "Правила «С этим предлагать», которые не работают: {n}",
+  "upsell.health.orphan": "Правило удалённого товара",
+  "upsell.health.hint":
+    "Скрытый товар возвращается в предложения, когда его снова покажут. Удалённые можно убрать одним нажатием.",
+  "upsell.health.prune": "Убрать удалённые",
+  "upsell.health.pruned": "Убрано записей: {n}",
   "product.needFile": "нужен файл",
   "product.isCourse": "Это курс — уроки вместо файлов",
   "product.isCourseHint":
@@ -266,6 +275,15 @@ export const kk: SectionDict<typeof ru> = {
   "product.upsellHint":
     "Себетте осы тауар болса, бот бұл тауарларды көрсетеді. Бос — сол санаттағы танымалдары.",
   "product.upsellAdd": "+ тауар қосу",
+  "product.upsell.hidden": "жасырылған — ұсынылмайды",
+  "product.upsell.deleted": "жойылған — ұсынылмайды",
+  "product.upsell.deletedName": "Жойылған тауар",
+  "upsell.health.title": "Жұмыс істемейтін «Мұнымен бірге ұсыну» ережелері: {n}",
+  "upsell.health.orphan": "Жойылған тауардың ережесі",
+  "upsell.health.hint":
+    "Жасырылған тауар қайта көрсетілгенде ұсыныстарға оралады. Жойылғандарды бір басумен алып тастауға болады.",
+  "upsell.health.prune": "Жойылғандарды алып тастау",
+  "upsell.health.pruned": "Жазбалар алынды: {n}",
   "product.needFile": "файл қажет",
   "product.isCourse": "Бұл курс — файлдардың орнына сабақтар",
   "product.isCourseHint":
@@ -463,6 +481,15 @@ export const en: SectionDict<typeof ru> = {
   "product.upsellHint":
     "The bot shows these products in the cart when this one is there. Empty — popular items from the same category.",
   "product.upsellAdd": "+ add product",
+  "product.upsell.hidden": "hidden — not offered",
+  "product.upsell.deleted": "deleted — not offered",
+  "product.upsell.deletedName": "Deleted product",
+  "upsell.health.title": "“Suggest with this” rules that do not work: {n}",
+  "upsell.health.orphan": "Rule of a deleted product",
+  "upsell.health.hint":
+    "A hidden product comes back into the suggestions when it is shown again. Deleted ones can be removed in one click.",
+  "upsell.health.prune": "Remove deleted",
+  "upsell.health.pruned": "Entries removed: {n}",
   "product.needFile": "file needed",
   "product.isCourse": "This is a course — lessons instead of files",
   "product.isCourseHint":
@@ -658,6 +685,15 @@ export const uz: SectionDict<typeof ru> = {
   "product.upsellHint":
     "Savatda shu mahsulot bo‘lsa, bot bu mahsulotlarni ko‘rsatadi. Bo‘sh — shu toifadagi ommabop mahsulotlar.",
   "product.upsellAdd": "+ mahsulot qo‘shish",
+  "product.upsell.hidden": "yashirilgan — taklif qilinmaydi",
+  "product.upsell.deleted": "oʻchirilgan — taklif qilinmaydi",
+  "product.upsell.deletedName": "Oʻchirilgan mahsulot",
+  "upsell.health.title": "Ishlamayotgan «Bu bilan taklif qilish» qoidalari: {n}",
+  "upsell.health.orphan": "Oʻchirilgan mahsulot qoidasi",
+  "upsell.health.hint":
+    "Yashirilgan mahsulot qayta koʻrsatilganda takliflarga qaytadi. Oʻchirilganlarni bir bosishda olib tashlash mumkin.",
+  "upsell.health.prune": "Oʻchirilganlarni olib tashlash",
+  "upsell.health.pruned": "Olib tashlangan yozuvlar: {n}",
   "product.needFile": "fayl kerak",
   "product.isCourse": "Bu kurs — fayllar o‘rniga darslar",
   "product.isCourseHint":
