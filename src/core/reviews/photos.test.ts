@@ -216,6 +216,7 @@ describe("удаление", () => {
       ...(await reviewMeta(ctx, R2)).photos,
     ].map((p) => `product-images/${BOT}/${p}`);
     db.tables.app_settings!.push({ bot_id: BOT, key: "shop_name", value: "Магазин" });
+    db.tables.app_settings!.push({ bot_id: BOT, key: `cost:${P}`, value: '{"p":100}' });
     await deleteProduct(ctx, P);
     expect(removed).toEqual(expect.arrayContaining(photos));
     expect(stored.size).toBe(0);

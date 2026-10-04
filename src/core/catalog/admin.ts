@@ -254,6 +254,15 @@ export async function deleteProduct(ctx: TenantContext, id: string): Promise<voi
   if (error) throw new Error(error.message);
   // Отзывы товара ушли вместе с ним — их фото и решения продавца следом.
   await dropReviewExtras(ctx, reviewIds);
+  // Себестоимость товара лежит отдельной записью — без товара она никому не нужна.
+  // Снимки в заказах не трогаем: это история. Сбой чистки не ломает удаление.
+  const { error: costError } = await ctx.db
+    .from("app_settings")
+    .delete()
+    .eq("bot_id", ctx.tenant.id)
+    .eq("key", `cost:${id}`);
+  if (costError)
+    console.error(`[catalog] себестоимость товара ${id} не удалена`, costError.message);
   // Файлы в общих бакетах — только под своим префиксом.
   const own = (k: string | null | undefined): k is string =>
     Boolean(k && isTenantStorageKey(ctx.tenant.id, k));
