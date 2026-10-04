@@ -1,4 +1,3 @@
-import { DeleteShopCard } from "@/app/admin/deletion-ui";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -23,21 +22,18 @@ import {
   SettingsSection,
   type SettingsFilter,
 } from "@/app/admin/settings/section";
+import { lazyCard } from "@/app/admin/settings/lazy-card";
+import type { Locale } from "@/core/i18n/locale";
 import { DELIVERY_NOTE_MAX } from "@/core/delivery/note";
 import { adminT, type AdminKey } from "@/app/i18n/admin";
 import { parseWebCheckout } from "@/core/storefront/web-checkout-settings";
 import { ChannelsCard, DirectBotCard, TelegramCard } from "@/app/admin/settings/channels";
-import { ChannelWizardCards } from "@/app/admin/settings/channel-wizard";
-import { CrmCard } from "@/app/admin/settings/crm";
-import { ApiKeyCard } from "@/app/admin/settings/api-key";
 import { PushCard } from "@/app/admin/settings/push";
-import { IceBreakersCard } from "@/app/admin/settings/ice-breakers";
 import { FulfillmentCard, ZonesCard } from "@/app/admin/settings/delivery";
 import { AboutCard } from "@/app/admin/settings/about";
 import { DesignCard } from "@/app/admin/settings/design";
 import { MarketplaceCard } from "@/app/admin/settings/marketplace";
 import { MinOrderCard } from "@/app/admin/settings/min-order";
-import { GiftWrapCard } from "@/app/admin/settings/gift-wrap";
 import { CommunityCard } from "@/app/admin/settings/community";
 import { FreeDeliveryCard } from "@/app/admin/settings/free-delivery";
 import { LowStockCard, NotifyCard } from "@/app/admin/settings/notify";
@@ -56,9 +52,29 @@ import {
   WatermarkCard,
   WeeklyReportCard,
 } from "@/app/admin/settings/shop";
-import { TeamCard } from "@/app/admin/settings/team";
-import { TakeoutCard } from "@/app/admin/settings/takeout";
-import { InviteCard } from "@/app/admin/settings/invite";
+
+// Карточки за модулем или ролью: код приходит, только когда карточку показывают.
+const DeleteShopCard = lazyCard<{ locale: Locale; shopName: string }>(
+  () => import("@/app/admin/deletion-ui"),
+  "DeleteShopCard",
+);
+const ChannelWizardCards = lazyCard<{ instagram: boolean; whatsapp: boolean }>(
+  () => import("@/app/admin/settings/channel-wizard"),
+  "ChannelWizardCards",
+);
+const IceBreakersCard = lazyCard<object>(
+  () => import("@/app/admin/settings/ice-breakers"),
+  "IceBreakersCard",
+);
+const CrmCard = lazyCard<object>(() => import("@/app/admin/settings/crm"), "CrmCard");
+const ApiKeyCard = lazyCard<object>(() => import("@/app/admin/settings/api-key"), "ApiKeyCard");
+const GiftWrapCard = lazyCard<object>(
+  () => import("@/app/admin/settings/gift-wrap"),
+  "GiftWrapCard",
+);
+const TeamCard = lazyCard<object>(() => import("@/app/admin/settings/team"), "TeamCard");
+const TakeoutCard = lazyCard<object>(() => import("@/app/admin/settings/takeout"), "TakeoutCard");
+const InviteCard = lazyCard<object>(() => import("@/app/admin/settings/invite"), "InviteCard");
 
 export const Route = createFileRoute("/admin/_authed/settings")({
   loader: async () => {
