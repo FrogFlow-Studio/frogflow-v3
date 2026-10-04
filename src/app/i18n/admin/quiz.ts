@@ -10,7 +10,7 @@ export const ru = {
   "quiz.optionLabel": "Вариант",
   "quiz.optionTags": "Теги через запятую",
   "quiz.tagsHint":
-    "Тег — начало слова в названии, ключевых словах или описании товара: «пропис» найдёт «прописи». Тег до 3 букв ищется как целое слово («кот» не найдёт «скотч» и «котёнок»). Чем больше тегов совпало, тем выше товар в подборе.",
+    "Тег — начало слова в названии, ключевых словах или описании товара: «пропис» найдёт «прописи», «кот» найдёт «кота» и «котёнок», но не «скотч». Чем больше тегов совпало, тем выше товар в подборе.",
   "quiz.addOption": "+ вариант",
   "quiz.addQuestion": "+ Вопрос",
   "quiz.removeQuestion": "Удалить вопрос",
@@ -28,7 +28,7 @@ export const kk: SectionDict<typeof ru> = {
   "quiz.optionLabel": "Нұсқа",
   "quiz.optionTags": "Тегтер үтір арқылы",
   "quiz.tagsHint":
-    "Тег — тауардың атауындағы, кілт сөздеріндегі немесе сипаттамасындағы сөздің басы: «пропис» «прописи» деп табады. 3 әріпке дейінгі тег тұтас сөз ретінде ізделеді («кот» «скотч» пен «котёнок» табылмайды). Көп тег сәйкес келсе, тауар жоғарырақ болады.",
+    "Тег — тауардың атауындағы, кілт сөздеріндегі немесе сипаттамасындағы сөздің басы: «пропис» «прописи» деп, «кот» «кота» мен «котёнок» деп табады, бірақ «скотч» деп таппайды. Көп тег сәйкес келсе, тауар жоғарырақ болады.",
   "quiz.addOption": "+ нұсқа",
   "quiz.addQuestion": "+ Сұрақ",
   "quiz.removeQuestion": "Сұрақты жою",
@@ -46,7 +46,7 @@ export const en: SectionDict<typeof ru> = {
   "quiz.optionLabel": "Option",
   "quiz.optionTags": "Tags, comma-separated",
   "quiz.tagsHint":
-    "A tag matches the beginning of a word in the product name, keywords or description: “пропис” finds “прописи”. A tag of up to 3 letters matches a whole word (“кот” does not find “скотч” or “котёнок”). The more tags match, the higher the product ranks.",
+    "A tag matches the beginning of a word in the product name, keywords or description: “пропис” finds “прописи”, “кот” finds “кота” and “котёнок” but not “скотч”. The more tags match, the higher the product ranks.",
   "quiz.addOption": "+ option",
   "quiz.addQuestion": "+ Question",
   "quiz.removeQuestion": "Remove question",
@@ -64,7 +64,7 @@ export const uz: SectionDict<typeof ru> = {
   "quiz.optionLabel": "Variant",
   "quiz.optionTags": "Teglar vergul orqali",
   "quiz.tagsHint":
-    "Teg mahsulot nomi, kalit so‘zlari yoki tavsifidagi so‘zning boshi bilan mos keladi: «пропис» «прописи»ni topadi. 3 harfgacha bo‘lgan teg butun so‘z sifatida qidiriladi («кот» «скотч» va «котёнок»ni topmaydi). Ko‘proq teg mos kelsa, mahsulot yuqoriroq bo‘ladi.",
+    "Teg mahsulot nomi, kalit so‘zlari yoki tavsifidagi so‘zning boshi bilan mos keladi: «пропис» «прописи»ni, «кот» «кота» va «котёнок»ni topadi, lekin «скотч»ni topmaydi. Ko‘proq teg mos kelsa, mahsulot yuqoriroq bo‘ladi.",
   "quiz.addOption": "+ variant",
   "quiz.addQuestion": "+ Savol",
   "quiz.removeQuestion": "Savolni o‘chirish",
