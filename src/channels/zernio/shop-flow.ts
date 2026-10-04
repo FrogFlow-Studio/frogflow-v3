@@ -21,6 +21,24 @@ const normalizeNumber = (raw: string) => {
   return normalized === "" ? "0" : normalized;
 };
 
+/**
+ * Номер телефона, а не коды товаров: «87770637152», «8 (777) 063-71-52»,
+ * «+7 777 063 71 52», «+998 90 123 45 67». Код товара — до 5 цифр, поэтому
+ * одна цифровая строка в 10–15 знаков кодом быть не может; с пробелами номер
+ * узнаём по «+» или по форме «7/8 + 10 цифр» (так не спутать с «130 134 136 138»).
+ * Список через запятую или «и» — это коды. Возвращает цифры (без «+»).
+ */
+export function extractPhoneDigits(text: string): string | null {
+  const raw = text.trim();
+  if (!/^\+?[\d\s().-]{9,24}$/.test(raw)) return null;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 10 || digits.length > 15) return null;
+  if (/\d{6,}/.test(raw) || raw.startsWith("+")) return digits;
+  const kz = digits.length === 11 && /^[78]/.test(digits);
+  const short = digits.length === 10 && digits.startsWith("7");
+  return kz || short ? digits : null;
+}
+
 /** «018», «18», «№18», «18.» — номер товара из поста; null — обычный текст. */
 export function extractProductNumber(text: string): string | null {
   const cleaned = text.trim().replace(/^[№#]\s*/, "");
@@ -36,6 +54,8 @@ export function extractProductNumber(text: string): string | null {
  */
 export function extractNumberList(text: string): string[] | null {
   const raw = text.trim();
+  // Больше пяти цифр подряд — не номер товара (телефон, счёт), резать на куски нельзя.
+  if (/\d{6,}/.test(raw) || extractPhoneDigits(raw)) return null;
   if (!/^[№#]?\s*\d{1,5}(?:\s*[.)]?\s*(?:[,;+и]|and)?\s*[№#]?\s*\d{1,5})+\s*[.)]?$/iu.test(raw))
     return null;
   const numbers = Array.from(new Set((raw.match(/\d{1,5}/g) ?? []).map(normalizeNumber)));
@@ -629,6 +649,7 @@ export function isPaymentComplaint(text: string): boolean {
 }
 
 export type IncomingKind =
+  | { kind: "phone"; digits: string }
   | { kind: "product_number"; number: string }
   | { kind: "product_numbers"; numbers: string[] }
   | { kind: "affirmative" }
@@ -637,6 +658,8 @@ export type IncomingKind =
 
 /** Свободная реплика вне сценария: номер — в каталог, остальное — вопрос, а не молчаливый поиск. */
 export function classifyIncoming(text: string): IncomingKind {
+  const phone = extractPhoneDigits(text);
+  if (phone) return { kind: "phone", digits: phone };
   const number = extractProductNumber(text);
   if (number !== null) return { kind: "product_number", number };
   const numbers = extractNumberList(text);

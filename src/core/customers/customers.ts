@@ -96,6 +96,8 @@ export type DialogState = {
   locale?: Locale;
   country_code?: string;
   country_name?: string;
+  /** Номер, который покупатель прислал в переписке вне шага «жду телефон» (Б2); контакт для продавца. */
+  phone?: string;
   pending_order_id?: number;
   /** Заказ, фото которого покупатель согласует (core/orders/approval). */
   approval_order_id?: number;
@@ -393,6 +395,46 @@ export async function claimStateSection(
     if (werr)
       throw serverFailure(`Не удалось сохранить состояние ${customer.userKey}: ${werr.message}`);
     if (written?.length) return { ...customer, state: next };
+  }
+  throw serverFailure(`Состояние ${customer.userKey} меняется параллельно, запись не удалась`);
+}
+
+/**
+ * Записать номер, присланный в переписке, точечно: условие на маленькие поля
+ * (`state.mode`, `state.phone`), чтобы не затереть то, что параллельно пишут
+ * бот и v1. `fresh: false` — этот номер уже записан (повтор вебхука): отвечать
+ * второй раз не нужно.
+ */
+export async function noteChatPhone(
+  ctx: TenantContext,
+  customer: Customer,
+  phone: string,
+): Promise<{ customer: Customer; fresh: boolean }> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data, error } = await ctx.db
+      .from("bot_users")
+      .select("state")
+      .eq("user_key", customer.userKey)
+      .maybeSingle();
+    if (error)
+      throw serverFailure(`Не удалось прочитать состояние ${customer.userKey}: ${error.message}`);
+    if (!data) throw serverFailure(`Покупатель ${customer.userKey} не найден`);
+    const state = (data.state ?? {}) as DialogState;
+    if (state.phone === phone) return { customer: { ...customer, state }, fresh: false };
+    const next: DialogState = { ...state, phone };
+    const base = ctx.db
+      .from("bot_users")
+      .update({ state: next as Json })
+      .eq("user_key", customer.userKey);
+    const byPhone =
+      state.phone == null ? base.is("state->>phone", null) : base.eq("state->>phone", state.phone);
+    const mode = typeof state.mode === "string" && state.mode ? state.mode : null;
+    const { data: written, error: werr } = await (
+      mode == null ? byPhone.is("state->>mode", null) : byPhone.eq("state->>mode", mode)
+    ).select("user_key");
+    if (werr)
+      throw serverFailure(`Не удалось сохранить состояние ${customer.userKey}: ${werr.message}`);
+    if (written?.length) return { customer: { ...customer, state: next }, fresh: true };
   }
   throw serverFailure(`Состояние ${customer.userKey} меняется параллельно, запись не удалась`);
 }

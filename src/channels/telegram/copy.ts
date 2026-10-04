@@ -216,6 +216,8 @@ export type Msg = {
   shareContactBtn: string;
   phoneInvalid: string;
   contactSaved: string;
+  /** Номер, присланный вне шага «жду телефон»: записали как контакт, кодов товаров в нём нет. */
+  phoneNoted: string;
   checkoutBusy: string;
   orderCreateFailed: string;
   manualTitleNew: (no: number) => string;
@@ -663,6 +665,7 @@ const ru: Msg = {
   shareContactBtn: "📱 Поделиться номером",
   phoneInvalid: "Не похоже на номер телефона. Введите в формате +7 700 000 00 00.",
   contactSaved: "✅ Номер сохранён.",
+  phoneNoted: "Записал ваш номер 👍",
   checkoutBusy:
     "⏳ Оформление уже выполняется. Подождите несколько секунд и проверьте сообщения бота.",
   orderCreateFailed:
@@ -739,6 +742,7 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  phoneNoted: "Нөміріңізді жазып алдым 👍",
   giftBtn: "🎁 Бұл сыйлық",
   removeGiftBtn: "❌ Сыйлықты алып тастау",
   giftRecipientPrompt: "🎁 Сыйлық кімге? Алушының атын жазыңыз.",
@@ -1009,6 +1013,7 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  phoneNoted: "Got your number 👍",
   fulfillmentDateClosed: (d) => `There is no handover on that day. The nearest date: ${d}.`,
   fulfillmentDateFull: (d) =>
     d
@@ -1305,6 +1310,7 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  phoneNoted: "Raqamingizni yozib oldim 👍",
   giftBtn: "🎁 Bu sovg‘a",
   removeGiftBtn: "❌ Sovg‘a belgisini olib tashlash",
   giftRecipientPrompt: "🎁 Sovg‘a kimga? Oluvchining ismini yozing.",

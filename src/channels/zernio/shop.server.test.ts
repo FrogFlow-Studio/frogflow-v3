@@ -816,3 +816,82 @@ describe("строгий режим «Только по заказам» (Educat
     expect(sent).toEqual([]);
   });
 });
+
+describe("номер телефона в переписке — не коды товаров (Б2, скрин Якова 04.10)", () => {
+  const phones: Array<[string, string]> = [
+    ["87770637152", "+87770637152"],
+    ["8 (777) 063-71-52", "+87770637152"],
+    ["+7 777 063 71 52", "+77770637152"],
+    ["+998 90 123 45 67", "+998901234567"],
+  ];
+  const stateOf = (db: ReturnType<typeof setup>["db"]) =>
+    db.tables.bot_users![0]!.state as Record<string, unknown>;
+
+  it.each(phones)("«%s»: записан контакт, кодов нет, корзина пуста", async (text, saved) => {
+    const { send, sent, db } = setup();
+    const r = await send({ text });
+    expect(r.outcome).toBe("handled");
+    expect(sent.map((x) => x.text)).toEqual([COPY.ru.phoneNoted]);
+    expect(stateOf(db).phone).toBe(saved);
+    expect(db.tables.cart_items).toEqual([]);
+    expect(sent.some((x) => x.text.includes("Не нашёл"))).toBe(false);
+  });
+
+  it("повтор того же номера (двойная доставка вебхука) — ответ один", async () => {
+    const { send, sent } = setup();
+    await send({ text: "87770637152" });
+    await send({ text: "87770637152" });
+    expect(sent).toHaveLength(1);
+  });
+
+  it("два одновременных сообщения с номером — «Записал» один раз", async () => {
+    const { send, sent, db } = setup();
+    await Promise.all([send({ text: "87770637152" }), send({ text: "87770637152" })]);
+    expect(sent).toHaveLength(1);
+    expect(stateOf(db).phone).toBe("+87770637152");
+  });
+
+  it("продавец писал руками 10 минут назад — бот молчит, номер всё равно записан", async () => {
+    const { send, sent, db, transport } = setup();
+    vi.mocked(transport.tail).mockResolvedValue([
+      {
+        direction: "outgoing",
+        message: "Здравствуйте! Напишите номер",
+        sentVia: null,
+        createdAt: new Date(Date.now() - 10 * 60_000).toISOString(),
+      },
+    ] as never);
+    const r = await send({ text: "87770637152" });
+    expect(r.outcome).toBe("handled");
+    expect(sent).toEqual([]);
+    expect(stateOf(db).phone).toBe("+87770637152");
+  });
+
+  it("ответы самого бота (через API) и реплика продавца старше 30 минут молчать не заставляют", async () => {
+    const { send, sent, transport } = setup();
+    vi.mocked(transport.tail).mockResolvedValue([
+      {
+        direction: "outgoing",
+        message: "Каталог",
+        sentVia: "api",
+        createdAt: new Date(Date.now() - 60_000).toISOString(),
+      },
+      {
+        direction: "outgoing",
+        message: "Добрый день",
+        sentVia: null,
+        createdAt: new Date(Date.now() - 45 * 60_000).toISOString(),
+      },
+    ] as never);
+    await send({ text: "87770637152" });
+    expect(sent.map((x) => x.text)).toEqual([COPY.ru.phoneNoted]);
+  });
+
+  it("на шаге «жду телефон» номер принимается как телефон оформления", async () => {
+    const { send, sent, db } = setup({ state: { locale: "ru", mode: "awaiting_contact" } });
+    db.tables.bot_users![0]!.contact_phone = null;
+    await send({ text: "+7 777 063 71 52" });
+    expect(sent.some((x) => x.text.includes(COPY.ru.contactSaved))).toBe(true);
+    expect(db.tables.bot_users![0]!.contact_phone).toBe("+77770637152");
+  });
+});

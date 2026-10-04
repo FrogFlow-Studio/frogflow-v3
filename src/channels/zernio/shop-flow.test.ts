@@ -520,3 +520,33 @@ describe("matchLoyaltyPointsChoice", () => {
     expect(matchLoyaltyPointsChoice("данные карты где?")).toBeNull();
   });
 });
+
+describe("телефон не коды товаров (Б2)", () => {
+  it.each([
+    "87770637152",
+    "8 (777) 063-71-52",
+    "+7 777 063 71 52",
+    "+998 90 123 45 67",
+    "8 777 063 71 52",
+  ])("«%s» — телефон", (t) => {
+    expect(classifyIncoming(t).kind).toBe("phone");
+    expect(extractNumberList(t)).toBeNull();
+  });
+
+  it.each(["002 015", "2 4 7", "130 134 136 138", "1, 2, 3, 4, 5, 6, 7, 8, 9, 10", "#130 #134"])(
+    "«%s» — коды товаров, не телефон",
+    (t) => {
+      expect(classifyIncoming(t).kind).toBe("product_numbers");
+    },
+  );
+
+  it("длинная цифровая строка не режется на пятизначные «коды»", () => {
+    expect(extractNumberList("1234567890 2")).toBeNull();
+    expect(classifyIncoming("1234567890123")).toEqual({ kind: "phone", digits: "1234567890123" });
+  });
+
+  it("одиночный номер и вопрос остаются как были", () => {
+    expect(classifyIncoming("018")).toEqual({ kind: "product_number", number: "18" });
+    expect(classifyIncoming("сколько стоит?").kind).toBe("question");
+  });
+});

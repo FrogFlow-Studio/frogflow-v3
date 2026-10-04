@@ -73,3 +73,36 @@ export function findManagerMessage(
   }
   return null;
 }
+
+/** Откуда Zernio отправил сообщение, если это не человек: бот, рассылка, сценарий. */
+const NOT_A_PERSON = new Set([
+  "api",
+  "broadcast",
+  "sequence",
+  "workflow",
+  "comment_automation",
+  "bulk-api",
+]);
+
+/**
+ * Продавец писал в диалог руками за последние `windowMs`: исходящее, отправленное
+ * не нашим API (`sentVia`) и не нашими словами. Для коротких «реплик вслух»
+ * вроде «Записал ваш номер»: вмешиваться в живую переписку не нужно.
+ */
+export function sellerWroteWithin(
+  messages: ZernioInboxMessage[],
+  windowMs: number,
+  ourReplies: string[] = [],
+  now: number = Date.now(),
+): boolean {
+  const ourVoice = new Set(ourReplies.map(foldReply).filter(Boolean));
+  for (const m of messages.slice(-TAIL)) {
+    if (m.direction !== "outgoing") continue;
+    if (m.sentVia && NOT_A_PERSON.has(m.sentVia)) continue;
+    const text = (m.message ?? "").trim();
+    if (text && ourVoice.has(foldReply(text))) continue;
+    const at = Date.parse(m.createdAt ?? "");
+    if (Number.isFinite(at) && at > now - windowMs) return true;
+  }
+  return false;
+}

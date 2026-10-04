@@ -1,3 +1,4 @@
+import { sellerWroteWithin } from "./manager-guard";
 import { env } from "@/config/env";
 import { recordEngage } from "@/core/automsg/engage";
 import { shownLeadDays } from "@/core/catalog/lead-time";
@@ -5,6 +6,7 @@ import { orderChannel } from "@/core/orders/pure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
   setContactPhone,
+  noteChatPhone,
   setEmail,
   setState,
   type Customer,
@@ -207,6 +209,8 @@ type Shop = {
  * переписка с продавцом бота не будит и не путает покупателя.
  */
 const ACTIVE_DIALOG_MS = 30 * 60_000;
+/** Сколько после реплики продавца руками бот не вмешивается короткими «записал». */
+const SELLER_ACTIVE_MS = 30 * 60_000;
 const HINT_WINDOW_MS = 10 * 60_000;
 
 function strict(s: Shop): boolean {
@@ -882,6 +886,16 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
 
   const kind = classifyIncoming(text);
   switch (kind.kind) {
+    case "phone": {
+      // Номер — не коды товаров. Записали как контакт; ответ один раз и не поверх живой переписки продавца.
+      const phone = normalizePhone(kind.digits);
+      if (!phone) return "question";
+      const saved = await noteChatPhone(s.ctx, s.customer, phone);
+      s.customer = saved.customer;
+      if (saved.fresh && !(await sellerWroteRecently(s)))
+        await reply(s, s.m.phoneNoted, { force: true });
+      return "handled";
+    }
     case "product_number": {
       if (!s.bot.features.search) return "question";
       return (await pickByNumber(s, kind.number)) ? "handled" : "question";
@@ -943,6 +957,18 @@ async function handleNativeCart(s: Shop, order: NativeOrder): Promise<ShopOutcom
   }
   await startCheckout(s);
   return "handled";
+}
+
+/** Продавец вёл диалог руками за последние 30 минут. Не прочитали переписку — считаем, что нет. */
+async function sellerWroteRecently(s: Shop): Promise<boolean> {
+  try {
+    const tail = await s.transport.tail(s.accountId, s.conversationId);
+    const ours = memory(s.customer).last_reply;
+    return sellerWroteWithin(tail, SELLER_ACTIVE_MS, ours ? [ours] : []);
+  } catch (e) {
+    console.warn(`[zernio-shop] переписка не прочитана ${s.customer.userKey}: ${String(e)}`);
+    return false;
+  }
 }
 
 /** Выключенная продавцом часть магазина: команда и кнопка не отвечают, реплика уходит как вопрос. */
