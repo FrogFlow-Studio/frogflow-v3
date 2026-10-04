@@ -6,6 +6,7 @@ import { useTelegramWebApp } from "@/app/storefront/cart";
 import { FavoriteButton, useFavorites } from "@/app/storefront/favorites";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { OfferPrice } from "@/app/storefront/offer";
+import { formatRatingSummary } from "@/core/reviews/pure";
 import type { StoreProduct } from "@/core/storefront/catalog";
 import { Empty, ErrorBox, useAction } from "@/app/ui";
 
@@ -124,6 +125,11 @@ function FavoritesPage() {
               >
                 {p.name}
               </Link>
+              {p.rating && (
+                <span className="text-xs text-muted">
+                  {formatRatingSummary(p.rating.avg, p.rating.count)}
+                </span>
+              )}
               <span className="text-sm font-semibold">
                 <OfferPrice
                   price={p.price}

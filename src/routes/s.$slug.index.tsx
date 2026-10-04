@@ -9,6 +9,7 @@ import { useCart } from "@/app/storefront/cart";
 import { FavoriteButton } from "@/app/storefront/favorites";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { OfferNote, OfferPrice } from "@/app/storefront/offer";
+import { formatRatingSummary } from "@/core/reviews/pure";
 import { localeFlags } from "@/core/i18n/locale";
 import { categoryChips } from "@/core/storefront/categories";
 import { CATALOG_SORTS, parseCatalogSort } from "@/core/storefront/sort";
@@ -518,7 +519,7 @@ function CatalogPage() {
                 </Link>
                 {p.rating && (
                   <div className="mt-1 text-xs text-muted">
-                    ★ {p.rating.avg.toFixed(1)} · {p.rating.count}
+                    {formatRatingSummary(p.rating.avg, p.rating.count)}
                   </div>
                 )}
                 <div className="mt-auto flex items-center justify-between gap-2 pt-3">

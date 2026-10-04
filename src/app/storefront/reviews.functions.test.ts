@@ -18,12 +18,12 @@ vi.mock("@tanstack/react-start", () => ({
   },
 }));
 let tenant: Tenant;
-const approved = vi.fn(async () => [{ id: "r1" }]);
+const approved = vi.fn(async () => ({ items: [{ id: "r1" }], hasMore: false }));
 vi.mock("@/core/tenant/resolve.server", () => ({
   resolveTenant: async () => tenant,
   tenantContext: () => ({ tenant }),
 }));
-vi.mock("@/core/reviews/photos.server", () => ({ approvedReviews: approved }));
+vi.mock("@/core/reviews/photos.server", () => ({ approvedReviewsPage: approved }));
 
 const { storeReviewsFn } = await import("./reviews.functions");
 const ID = "22222222-2222-2222-2222-222222222222";
@@ -37,7 +37,27 @@ const base = {
 describe("отзывы на витрине", () => {
   it("витрина v2 — одобренные отзывы", async () => {
     tenant = base;
-    expect(await storeReviewsFn({ data: { slug: "shop", id: ID } })).toEqual([{ id: "r1" }]);
+    expect(await storeReviewsFn({ data: { slug: "shop", id: ID } })).toEqual({
+      items: [{ id: "r1" }],
+      hasMore: false,
+    });
+  });
+
+  it("фильтры и смещение доходят до чтения; чужие значения не принимаются", async () => {
+    tenant = base;
+    approved.mockClear();
+    await storeReviewsFn({
+      data: { slug: "shop", id: ID, rating: 2, withPhoto: true, offset: 10 },
+    });
+    expect(approved).toHaveBeenCalledWith(expect.anything(), ID, {
+      rating: 2,
+      withPhoto: true,
+      offset: 10,
+    });
+    for (const bad of [{ rating: 6 }, { rating: 0 }, { offset: -1 }, { offset: 1e9 }])
+      await expect(
+        (async () => storeReviewsFn({ data: { slug: "shop", id: ID, ...bad } }))(),
+      ).rejects.toBeTruthy();
   });
 
   it.each([

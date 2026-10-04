@@ -43,6 +43,8 @@ const {
   addReviewPhoto,
   approveLegacyReviews,
   approvedReviews,
+  approvedReviewsPage,
+  approvedRatings,
   dropReviewExtras,
   setReviewStatus,
   markReviewReplied,
@@ -56,6 +58,7 @@ const BOT = "11111111-1111-1111-1111-111111111111";
 const P = "22222222-2222-2222-2222-222222222222";
 const R1 = "33333333-3333-3333-3333-333333333333";
 const R2 = "44444444-4444-4444-4444-444444444444";
+const Q = "66666666-6666-4666-8666-666666666666";
 
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]);
@@ -236,6 +239,86 @@ describe("публичный ответ продавца", () => {
     const m = await reviewMeta(ctx, R1);
     expect(["Первый", "Второй"]).toContain(m.reply);
     expect(m.status).toBe("approved");
+  });
+});
+
+describe("отзывы витрины: страницы, фильтры, оценка", () => {
+  const rid = (n: number) => `55555555-5555-4555-8555-${String(n).padStart(12, "0")}`;
+  /** 25 отзывов: свежее — меньший номер; оценка 1 + n % 5; одобрены все, кроме каждого 7-го (скрыт), фото у каждого 4-го. */
+  function seed25() {
+    db.tables.product_reviews = [];
+    db.tables.app_settings = [];
+    for (let n = 1; n <= 25; n++) {
+      const id = rid(n);
+      db.tables.product_reviews!.push({
+        id,
+        product_id: P,
+        telegram_id: 1,
+        rating: 1 + (n % 5),
+        comment: `Отзыв ${n}`,
+        created_at: new Date(Date.UTC(2026, 8, 30, 12, 0) - n * 60_000).toISOString(),
+      });
+      const photos =
+        n % 4 === 0 ? [`reviews/${id}/${"a".repeat(8)}-aaaa-4aaa-8aaa-${"b".repeat(12)}.jpg`] : [];
+      db.tables.app_settings!.push({
+        bot_id: BOT,
+        key: reviewMetaKey(id),
+        value: JSON.stringify({ status: n % 7 === 0 ? "hidden" : "approved", photos }),
+      });
+    }
+  }
+  const nums = (items: Array<{ id: string }>) => items.map((r) => Number(r.id.slice(-12)));
+
+  it("страницы по 10 без повторов и пропусков; скрытые не считаются; последняя без «ещё»", async () => {
+    seed25();
+    const p1 = await approvedReviewsPage(ctx, P);
+    const p2 = await approvedReviewsPage(ctx, P, { offset: 10 });
+    const p3 = await approvedReviewsPage(ctx, P, { offset: 20 });
+    const all = [...nums(p1.items), ...nums(p2.items), ...nums(p3.items)];
+    const approved = Array.from({ length: 25 }, (_, i) => i + 1).filter((n) => n % 7 !== 0);
+    expect(all).toEqual(approved);
+    expect([p1.hasMore, p2.hasMore, p3.hasMore]).toEqual([true, true, false]);
+    expect(p3.items).toHaveLength(approved.length - 20);
+  });
+
+  it("фильтры «с фото» и по оценке работают вместе и считаются среди одобренных", async () => {
+    seed25();
+    const photo = await approvedReviewsPage(ctx, P, { withPhoto: true });
+    expect(nums(photo.items)).toEqual([4, 8, 12, 16, 20, 24]); // 28 нет; 7-й скрыт, но он без фото
+    expect(photo.items.every((r) => r.photos.length === 1)).toBe(true);
+    const five = await approvedReviewsPage(ctx, P, { rating: 5 });
+    expect(five.items.every((r) => r.rating === 5)).toBe(true);
+    expect(nums(five.items)).toEqual([4, 9, 19, 24]); // 14 скрыт (кратно 7)
+    const both = await approvedReviewsPage(ctx, P, { rating: 5, withPhoto: true });
+    expect(nums(both.items)).toEqual([4, 24]);
+    expect(await approvedReviewsPage(ctx, P, { rating: 5, offset: 100 })).toEqual({
+      items: [],
+      hasMore: false,
+    });
+  });
+
+  it("оценка: пакетно по товарам и поштучно — одно число; скрытые и без решения не в счёт", async () => {
+    seed25();
+    db.tables.products!.push({ id: Q, name: "Пазл 2" });
+    db.tables.product_reviews!.push({
+      id: rid(900),
+      product_id: Q,
+      telegram_id: 1,
+      rating: 1,
+      comment: null,
+      created_at: "2026-09-01T00:00:00Z",
+    });
+    const ratings = await approvedRatings(ctx, [P, Q]);
+    const approved = Array.from({ length: 25 }, (_, i) => i + 1).filter((n) => n % 7 !== 0);
+    const sum = approved.reduce((a, n) => a + 1 + (n % 5), 0);
+    expect(ratings.get(P)).toEqual({
+      avg: Math.round((sum / approved.length) * 10) / 10,
+      count: approved.length,
+    });
+    // У Q единственный отзыв без решения продавца — оценки нет.
+    expect(ratings.has(Q)).toBe(false);
+    expect(await approvedRating(ctx, P)).toEqual(ratings.get(P));
+    expect(await approvedRating(ctx, Q)).toBeNull();
   });
 });
 

@@ -170,7 +170,29 @@ function isInStock(ctx: TenantContext, p: Pick<Product, "stock_quantity">): bool
   return !(ctx.tenant.modules.stock && p.stock_quantity != null && p.stock_quantity <= 0);
 }
 
-async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProduct> {
+/**
+ * Карточки товаров. Оценка — только по одобренным отзывам, одним чтением на всю
+ * страницу (core/reviews approvedRatings): та же цифра, что на странице товара и
+ * в разметке для поиска. Колонки products.rating_* считают все отзывы подряд,
+ * в том числе скрытые и ждущие решения, поэтому показывать их нельзя; товарам без
+ * единой оценки в этих колонках отзывы не читаем.
+ */
+async function toStoreProducts(
+  ctx: TenantContext,
+  ps: readonly Product[],
+): Promise<StoreProduct[]> {
+  const rated = ps.filter((p) => p.rating_count).map((p) => p.id);
+  const ratings = rated.length
+    ? await (await import("@/core/reviews/photos.server")).approvedRatings(ctx, rated)
+    : new Map<string, { avg: number; count: number }>();
+  return Promise.all(ps.map((p) => toStoreProduct(ctx, p, ratings.get(p.id) ?? null)));
+}
+
+async function toStoreProduct(
+  ctx: TenantContext,
+  p: Product,
+  rating: { avg: number; count: number } | null,
+): Promise<StoreProduct> {
   const variants = sortedVariants(p);
   const priced = variants.length
     ? await Promise.all(variants.map(async (v) => ({ v, m: await resolvePrice(ctx, p, null, v) })))
@@ -206,7 +228,7 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
     preorder: isInStock(ctx, p) ? null : await getPreorder(ctx, p.id),
     lowLeft: null,
     leadTimeDays: shownLeadDays(p),
-    rating: p.rating_count ? { avg: Number(p.rating_avg ?? 0), count: p.rating_count } : null,
+    rating,
     languages: productLanguages(ctx, p),
     offer:
       offer && oldPrice != null
@@ -339,7 +361,10 @@ export async function storeCatalogPage(
   const shown = lang ? listed.filter((x) => x.langs.includes(lang)) : listed;
   const page = shown.slice(offset, offset + limit);
   return {
-    items: await Promise.all(page.map((x) => toStoreProduct(ctx, x.p))),
+    items: await toStoreProducts(
+      ctx,
+      page.map((x) => x.p),
+    ),
     hasMore: shown.length > offset + limit,
     languages,
   };
@@ -380,7 +405,7 @@ export async function storeCatalog(
     rows.filter((p) => p.fulfillment_kind === "physical" || productSellable(p)),
     sort,
   ).slice(0, 200);
-  return Promise.all(sellable.map((p) => toStoreProduct(ctx, p)));
+  return toStoreProducts(ctx, sellable);
 }
 
 /**
@@ -408,7 +433,7 @@ export async function storeProductsByIds(
   const shown = ids
     .map((id) => byId.get(id))
     .filter((p): p is Product => Boolean(p) && listedOnStorefront(p!, known, visible));
-  return Promise.all(shown.map((p) => toStoreProduct(ctx, p)));
+  return toStoreProducts(ctx, shown);
 }
 
 /**
@@ -449,7 +474,7 @@ export async function storeUpsell(
       );
     })
     .slice(0, UPSELL_MAX);
-  return Promise.all(shown.map((p) => toStoreProduct(ctx, p)));
+  return toStoreProducts(ctx, shown);
 }
 
 export async function storeProduct(ctx: TenantContext, id: string): Promise<StoreProduct | null> {
@@ -464,5 +489,6 @@ export async function storeProduct(ctx: TenantContext, id: string): Promise<Stor
   const files = productFiles(data as Product, Boolean(ctx.tenant.modules.multi_language));
   const { buyerLowStock } = await import("@/core/catalog/low-stock");
   const lowLeft = await buyerLowStock(ctx, data as Product);
-  return { ...(await toStoreProduct(ctx, data as Product)), files, lowLeft };
+  const [card] = await toStoreProducts(ctx, [data as Product]);
+  return { ...card!, files, lowLeft };
 }

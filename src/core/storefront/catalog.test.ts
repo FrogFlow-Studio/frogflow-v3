@@ -10,12 +10,37 @@ type Row = Record<string, unknown>;
  * витрина: eq, contains по jsonb-массиву и or из ilike-шаблонов. ilike с
  * `%…%` — подстрока без учёта регистра, как в Postgres.
  */
-function productsDb(rows: Row[], categories: Row[] = []) {
+function productsDb(
+  rows: Row[],
+  categories: Row[] = [],
+  extra: { reviews?: Row[]; settings?: Row[] } = {},
+) {
   const calls: { or: string[] } = { or: [] };
   const db = {
     from(table: string) {
       if (table === "app_settings") {
-        const q = { select: () => q, in: async () => ({ data: [], error: null }) };
+        const q = {
+          select: () => q,
+          in: async (_c: string, keys: string[]) => ({
+            data: (extra.settings ?? []).filter((r) => keys.includes(String(r.key))),
+            error: null,
+          }),
+        };
+        return q;
+      }
+      if (table === "product_reviews") {
+        // Отзывы товаров: in("product_id", …) и постраничное чтение range.
+        let hit = extra.reviews ?? [];
+        const q = {
+          select: () => q,
+          order: () => q,
+          in(col: string, list: unknown[]) {
+            hit = hit.filter((r) => list.includes(r[col]));
+            return q;
+          },
+          range: (a: number, b: number) =>
+            Promise.resolve({ data: hit.slice(a, b + 1), error: null }),
+        };
         return q;
       }
       if (table === "categories") {
@@ -127,8 +152,13 @@ function product(id: string, over: Row = {}): Row {
   };
 }
 
-function ctxWith(rows: Row[], modules: Record<string, boolean> = {}, categories: Row[] = []) {
-  const { db, calls } = productsDb(rows, categories);
+function ctxWith(
+  rows: Row[],
+  modules: Record<string, boolean> = {},
+  categories: Row[] = [],
+  extra: { reviews?: Row[]; settings?: Row[] } = {},
+) {
+  const { db, calls } = productsDb(rows, categories, extra);
   const ctx = {
     tenant: { id: "bot-1", modules, settings: {} },
     db,
@@ -311,5 +341,47 @@ describe("storeCatalog: срок изготовления", () => {
     const list = await storeCatalog(ctx);
     expect(list.find((p) => p.id === "cake")!.leadTimeDays).toBe(3);
     expect(list.find((p) => p.id === "pdf")!.leadTimeDays).toBeNull();
+  });
+});
+
+describe("storeCatalog: оценка на карточке — только по одобренным отзывам", () => {
+  const review = (id: string, productId: string, rating: number) => ({
+    id,
+    product_id: productId,
+    rating,
+  });
+  const meta = (id: string, status: string) => ({
+    key: `review_meta:${id}`,
+    value: JSON.stringify({ status, photos: [] }),
+  });
+
+  it("скрытый и ждущий решения отзывы в оценку карточки не попадают; цифра как в разметке", async () => {
+    // В колонках товара считаются все три отзыва (4,0 при трёх), покупатель видит один.
+    const { ctx } = ctxWith(
+      [
+        product("cake", { rating_count: 3, rating_avg: 2.3 }),
+        product("none", { rating_count: 1, rating_avg: 1 }),
+        product("fresh", { rating_count: 0 }),
+      ],
+      {},
+      [],
+      {
+        reviews: [
+          review("r1", "cake", 5),
+          review("r2", "cake", 1),
+          review("r3", "cake", 1),
+          review("r4", "none", 1),
+        ],
+        settings: [meta("r1", "approved"), meta("r2", "hidden"), meta("r3", "pending")],
+      },
+    );
+    const list = await storeCatalog(ctx);
+    const card = (id: string) => list.find((p) => p.id === id)!.rating;
+    expect(card("cake")).toEqual({ avg: 5, count: 1 });
+    // Единственный отзыв без решения продавца — оценки на карточке нет.
+    expect(card("none")).toBeNull();
+    expect(card("fresh")).toBeNull();
+    const { approvedRating } = await import("@/core/reviews/photos.server");
+    expect(card("cake")).toEqual(await approvedRating(ctx, "cake"));
   });
 });

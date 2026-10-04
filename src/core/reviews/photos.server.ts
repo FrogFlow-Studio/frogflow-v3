@@ -243,15 +243,28 @@ export async function productReviewIds(ctx: TenantContext, productId: string): P
   return ids;
 }
 
+/** Сколько отзывов витрина показывает за раз («Показать ещё» — следующие). */
+export const STORE_REVIEWS_PAGE = 10;
+
+export type StoreReviewFilter = {
+  /** Только эта оценка (1–5). */
+  rating?: number;
+  /** Только с фото покупателя. */
+  withPhoto?: boolean;
+  offset?: number;
+  limit?: number;
+};
+
 /**
- * Одобренные продавцом отзывы товара для витрины, свежие сверху. Читаем
- * страницами по порядку, пока не наберём `limit` одобренных.
+ * Одобренные продавцом отзывы товара для витрины, свежие сверху (затем id),
+ * постранично и с фильтрами «с фото» и «по оценке». Читаем страницами по порядку,
+ * пока не наберём `offset + limit + 1` подходящих: лишний показывает, есть ли ещё.
  */
-export async function approvedReviews(
+export async function approvedReviewsPage(
   ctx: TenantContext,
   productId: string,
-  limit = 20,
-): Promise<PublicReview[]> {
+  filter: StoreReviewFilter = {},
+): Promise<{ items: PublicReview[]; hasMore: boolean }> {
   type Row = {
     id: string;
     rating: number;
@@ -259,6 +272,9 @@ export async function approvedReviews(
     created_at: string;
     telegram_id: number;
   };
+  const offset = Math.max(0, filter.offset ?? 0);
+  const limit = Math.min(Math.max(1, filter.limit ?? STORE_REVIEWS_PAGE), 50);
+  const want = offset + limit + 1;
   const picked: Array<Row & { meta: ReviewMeta }> = [];
   await eachPage<Row>(
     (a, b) =>
@@ -277,23 +293,28 @@ export async function approvedReviews(
       );
       for (const r of rows) {
         const meta = metas.get(r.id)!;
-        if (meta.status === "approved") picked.push({ ...r, meta });
-        if (picked.length >= limit) return false;
+        if (meta.status !== "approved") continue;
+        if (filter.rating && Number(r.rating) !== filter.rating) continue;
+        if (filter.withPhoto && !meta.photos.some((p) => isReviewPhotoPath(r.id, p))) continue;
+        picked.push({ ...r, meta });
+        if (picked.length >= want) return false;
       }
       return true;
     },
     200,
   );
-  if (picked.length === 0) return [];
+  const hasMore = picked.length > offset + limit;
+  const shown = picked.slice(offset, offset + limit);
+  if (shown.length === 0) return { items: [], hasMore: false };
   const { data: users, error: usersError } = await ctx.db
     .from("bot_users")
     .select("telegram_id, first_name, last_name")
-    .in("telegram_id", [...new Set(picked.map((r) => Number(r.telegram_id)))]);
+    .in("telegram_id", [...new Set(shown.map((r) => Number(r.telegram_id)))]);
   if (usersError) throw serverFailure(`Фото отзывов: ${usersError.message}`);
   const names = new Map(
     (users ?? []).map((u) => [Number(u.telegram_id), publicBuyerName(u.first_name, u.last_name)]),
   );
-  return picked.map((r) => ({
+  const items = shown.map((r) => ({
     id: r.id,
     rating: Number(r.rating),
     comment: r.comment?.trim() ? r.comment.trim() : null,
@@ -304,40 +325,68 @@ export async function approvedReviews(
       .map((p) => imagePath(ctx.tenant.id, p)),
     reply: r.meta.reply ?? null,
   }));
+  return { items, hasMore };
+}
+
+/** Первые `limit` одобренных отзывов товара (без фильтров). */
+export async function approvedReviews(
+  ctx: TenantContext,
+  productId: string,
+  limit = 20,
+): Promise<PublicReview[]> {
+  return (await approvedReviewsPage(ctx, productId, { limit })).items;
 }
 
 /**
- * Средняя оценка и число отзывов товара — только одобренные продавцом, как
- * их видит покупатель на витрине (для разметки товара в поиске).
+ * Средняя оценка и число отзывов товаров — только одобренные продавцом, как их
+ * видит покупатель на витрине. Одно число на карточке каталога, избранном,
+ * странице товара и в разметке для поиска: все берут его отсюда. Товар без
+ * одобренных отзывов в ответе отсутствует.
  */
+export async function approvedRatings(
+  ctx: TenantContext,
+  productIds: readonly string[],
+): Promise<Map<string, { avg: number; count: number }>> {
+  const sums = new Map<string, { sum: number; count: number }>();
+  const ids = [...new Set(productIds)];
+  for (let i = 0; i < ids.length; i += 200) {
+    await eachPage<{ id: string; product_id: string; rating: number }>(
+      (a, b) =>
+        ctx.db
+          .from("product_reviews")
+          .select("id, product_id, rating")
+          .in("product_id", ids.slice(i, i + 200))
+          .order("id")
+          .range(a, b),
+      "product_reviews",
+      async (rows) => {
+        const metas = await reviewMetas(
+          ctx,
+          rows.map((r) => r.id),
+        );
+        for (const r of rows) {
+          const rating = Number(r.rating);
+          if (metas.get(r.id)?.status !== "approved" || !(rating >= 1 && rating <= 5)) continue;
+          const t = sums.get(r.product_id) ?? { sum: 0, count: 0 };
+          t.sum += rating;
+          t.count++;
+          sums.set(r.product_id, t);
+        }
+      },
+      200,
+    );
+  }
+  return new Map(
+    [...sums].map(([id, t]) => [
+      id,
+      { avg: Math.round((t.sum / t.count) * 10) / 10, count: t.count },
+    ]),
+  );
+}
+
 export async function approvedRating(
   ctx: TenantContext,
   productId: string,
 ): Promise<{ avg: number; count: number } | null> {
-  let sum = 0;
-  let count = 0;
-  await eachPage<{ id: string; rating: number }>(
-    (a, b) =>
-      ctx.db
-        .from("product_reviews")
-        .select("id, rating")
-        .eq("product_id", productId)
-        .order("id")
-        .range(a, b),
-    "product_reviews",
-    async (rows) => {
-      const metas = await reviewMetas(
-        ctx,
-        rows.map((r) => r.id),
-      );
-      for (const r of rows) {
-        const rating = Number(r.rating);
-        if (metas.get(r.id)?.status !== "approved" || !(rating >= 1 && rating <= 5)) continue;
-        sum += rating;
-        count++;
-      }
-    },
-    200,
-  );
-  return count ? { avg: Math.round((sum / count) * 10) / 10, count } : null;
+  return (await approvedRatings(ctx, [productId])).get(productId) ?? null;
 }

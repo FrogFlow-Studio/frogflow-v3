@@ -5,20 +5,57 @@ import type { PublicReview } from "@/core/reviews/photos";
 
 const stars = (n: number) => "★".repeat(n) + "☆".repeat(Math.max(0, 5 - n));
 
-/** Блок «Отзывы» на странице товара: одобренные продавцом, с фото покупателей. */
+/** Блок «Отзывы» на странице товара: одобренные продавцом, с фото покупателей, фильтры и «Показать ещё». */
 export function ProductReviews({ slug, productId }: { slug: string; productId: string }) {
   const { locale, t } = useStorefrontLocale();
   const [rows, setRows] = useState<PublicReview[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [withPhoto, setWithPhoto] = useState(false);
+  // Были ли у товара отзывы вообще: без них блока нет, с ними он остаётся и при пустом фильтре.
+  const [any, setAny] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const query = (offset: number) =>
+    storeReviewsFn({
+      data: {
+        slug,
+        id: productId,
+        rating: rating || undefined,
+        withPhoto: withPhoto || undefined,
+        offset: offset || undefined,
+      },
+    });
   useEffect(() => {
     let live = true;
-    storeReviewsFn({ data: { slug, id: productId } })
-      .then((r) => live && setRows(r))
+    query(0)
+      .then((r) => {
+        if (!live) return;
+        setRows(r.items);
+        setHasMore(r.hasMore);
+        if (r.items.length > 0) setAny(true);
+      })
       .catch(() => live && setRows([]));
     return () => {
       live = false;
     };
-  }, [slug, productId]);
-  if (rows.length === 0) return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, productId, rating, withPhoto]);
+  const more = async () => {
+    setBusy(true);
+    try {
+      const r = await query(rows.length);
+      setRows((p) => {
+        const seen = new Set(p.map((x) => x.id));
+        return [...p, ...r.items.filter((x) => !seen.has(x.id))];
+      });
+      setHasMore(r.hasMore);
+    } catch {
+      /* кнопка остаётся: можно нажать снова */
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!any && rows.length === 0) return null;
   const date = (iso: string) =>
     new Date(iso).toLocaleDateString(locale === "kk" ? "kk-KZ" : locale, { dateStyle: "medium" });
   return (
@@ -26,6 +63,30 @@ export function ProductReviews({ slug, productId }: { slug: string; productId: s
       <h2 id="reviews-title" className="mb-3 text-sm font-semibold text-muted">
         {t("product.reviewsTitle")}
       </h2>
+      <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
+        <select
+          className="input w-auto"
+          aria-label={t("product.reviewsRating")}
+          value={rating}
+          onChange={(e) => setRating(Number(e.target.value))}
+        >
+          <option value={0}>{t("product.reviewsAllRatings")}</option>
+          {[5, 4, 3, 2, 1].map((n) => (
+            <option key={n} value={n}>
+              {"★".repeat(n)}
+            </option>
+          ))}
+        </select>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={withPhoto}
+            onChange={(e) => setWithPhoto(e.target.checked)}
+          />
+          {t("product.reviewsWithPhoto")}
+        </label>
+      </div>
+      {rows.length === 0 && <p className="text-sm text-muted">{t("product.reviewsNone")}</p>}
       <ul className="space-y-3">
         {rows.map((r) => (
           <li key={r.id} className="card p-4">
@@ -63,6 +124,16 @@ export function ProductReviews({ slug, productId }: { slug: string; productId: s
           </li>
         ))}
       </ul>
+      {hasMore && (
+        <button
+          type="button"
+          className="btn-secondary mt-3"
+          disabled={busy}
+          onClick={() => void more()}
+        >
+          {t("product.reviewsMore")}
+        </button>
+      )}
     </section>
   );
 }
