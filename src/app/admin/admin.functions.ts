@@ -1224,6 +1224,29 @@ export const orderFn = createServerFn({ method: "GET" })
     const { giftFromPayload } = await import("@/core/orders/gift");
     const giftEvent = events.find((e) => e.kind === "gift");
     const gift = giftEvent ? giftFromPayload(giftEvent.payload) : null;
+    // Первое фото каждого товара заказа — миниатюра в составе. Только украшение: сбой чтения не роняет карточку.
+    const itemPhotos: Record<string, string> = {};
+    {
+      const pids = [
+        ...new Set(
+          (order.order_items ?? []).map((i) => i.product_id).filter((x): x is string => !!x),
+        ),
+      ];
+      for (let i = 0; i < pids.length; i += 200) {
+        const { data: imgs, error: imgError } = await ctx.db
+          .from("product_images")
+          .select("product_id, image_path, sort_order, id")
+          .in("product_id", pids.slice(i, i + 200))
+          .order("sort_order")
+          .order("id");
+        if (imgError) {
+          console.error(`[admin:${ctx.tenant.id}] фото товаров заказа`, imgError.message);
+          break;
+        }
+        for (const r of imgs ?? [])
+          if (!itemPhotos[r.product_id]) itemPhotos[r.product_id] = imageUrl(ctx, r.image_path);
+      }
+    }
     const refundable = (REFUNDABLE_STATUSES as readonly string[]).includes(order.status)
       ? Math.max(0, Math.round((receivedAmount(order) - refunded) * 100) / 100)
       : 0;
@@ -1245,6 +1268,7 @@ export const orderFn = createServerFn({ method: "GET" })
         approvalPhotoUrl,
         courier,
         gift,
+        itemPhotos,
       };
     // Бухгалтеру: без контактов; журнал — только события и время, без текста.
     const { redactOrder, redactEventPayload } = await import("@/core/orders/redact");
@@ -1265,6 +1289,7 @@ export const orderFn = createServerFn({ method: "GET" })
       approvalPhotoUrl,
       courier: courier ? { ...courier, phone: null } : null,
       gift: gift ? { recipient: "", message: "", truncated: false } : null,
+      itemPhotos,
     };
   });
 
