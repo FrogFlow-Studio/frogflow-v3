@@ -57,6 +57,7 @@ import { Route as AdminAuthedStudentsRouteImport } from './routes/admin._authed.
 import { Route as AdminAuthedTicketsRouteImport } from './routes/admin._authed.tickets'
 import { Route as AdminAuthedUndeliveredRouteImport } from './routes/admin._authed.undelivered'
 import { Route as AdminAuthedVipRouteImport } from './routes/admin._authed.vip'
+import { Route as AdminPackingIdRouteImport } from './routes/admin.packing.$id'
 import { Route as AdminPrintIdRouteImport } from './routes/admin.print.$id'
 import { Route as ApiAdminIconRouteImport } from './routes/api/admin/icon'
 import { Route as ApiAdminManifestRouteImport } from './routes/api/admin/manifest'
@@ -349,6 +350,11 @@ const AdminAuthedVipRoute = AdminAuthedVipRouteImport.update({
   id: '/vip',
   path: '/vip',
   getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminPackingIdRoute = AdminPackingIdRouteImport.update({
+  id: '/packing/$id',
+  path: '/packing/$id',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminPrintIdRoute = AdminPrintIdRouteImport.update({
   id: '/print/$id',
@@ -674,6 +680,7 @@ export interface FileRoutesByFullPath {
   '/admin/tickets': typeof AdminAuthedTicketsRoute
   '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/vip': typeof AdminAuthedVipRoute
+  '/admin/packing/$id': typeof AdminPackingIdRoute
   '/admin/print/$id': typeof AdminPrintIdRoute
   '/api/admin/icon': typeof ApiAdminIconRoute
   '/api/admin/manifest': typeof ApiAdminManifestRoute
@@ -775,6 +782,7 @@ export interface FileRoutesByTo {
   '/admin/tickets': typeof AdminAuthedTicketsRoute
   '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/vip': typeof AdminAuthedVipRoute
+  '/admin/packing/$id': typeof AdminPackingIdRoute
   '/admin/print/$id': typeof AdminPrintIdRoute
   '/api/admin/icon': typeof ApiAdminIconRoute
   '/api/admin/manifest': typeof ApiAdminManifestRoute
@@ -878,6 +886,7 @@ export interface FileRoutesById {
   '/admin/_authed/tickets': typeof AdminAuthedTicketsRoute
   '/admin/_authed/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/_authed/vip': typeof AdminAuthedVipRoute
+  '/admin/packing/$id': typeof AdminPackingIdRoute
   '/admin/print/$id': typeof AdminPrintIdRoute
   '/api/admin/icon': typeof ApiAdminIconRoute
   '/api/admin/manifest': typeof ApiAdminManifestRoute
@@ -982,6 +991,7 @@ export interface FileRouteTypes {
     | '/admin/tickets'
     | '/admin/undelivered'
     | '/admin/vip'
+    | '/admin/packing/$id'
     | '/admin/print/$id'
     | '/api/admin/icon'
     | '/api/admin/manifest'
@@ -1083,6 +1093,7 @@ export interface FileRouteTypes {
     | '/admin/tickets'
     | '/admin/undelivered'
     | '/admin/vip'
+    | '/admin/packing/$id'
     | '/admin/print/$id'
     | '/api/admin/icon'
     | '/api/admin/manifest'
@@ -1185,6 +1196,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/tickets'
     | '/admin/_authed/undelivered'
     | '/admin/_authed/vip'
+    | '/admin/packing/$id'
     | '/admin/print/$id'
     | '/api/admin/icon'
     | '/api/admin/manifest'
@@ -1616,6 +1628,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/vip'
       preLoaderRoute: typeof AdminAuthedVipRouteImport
       parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/packing/$id': {
+      id: '/admin/packing/$id'
+      path: '/packing/$id'
+      fullPath: '/admin/packing/$id'
+      preLoaderRoute: typeof AdminPackingIdRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/print/$id': {
       id: '/admin/print/$id'
@@ -2093,6 +2112,7 @@ interface AdminRouteChildren {
   AdminAuthedRoute: typeof AdminAuthedRouteWithChildren
   AdminLoginRoute: typeof AdminLoginRoute
   AdminTgLoginRoute: typeof AdminTgLoginRoute
+  AdminPackingIdRoute: typeof AdminPackingIdRoute
   AdminPrintIdRoute: typeof AdminPrintIdRoute
 }
 
@@ -2100,6 +2120,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAuthedRoute: AdminAuthedRouteWithChildren,
   AdminLoginRoute: AdminLoginRoute,
   AdminTgLoginRoute: AdminTgLoginRoute,
+  AdminPackingIdRoute: AdminPackingIdRoute,
   AdminPrintIdRoute: AdminPrintIdRoute,
 }
 

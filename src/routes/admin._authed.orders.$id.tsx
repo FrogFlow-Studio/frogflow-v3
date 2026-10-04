@@ -140,6 +140,16 @@ function OrderPage() {
               {t("order.remind")}
             </button>
           )}
+          {gift && shop.role !== "accountant" && (
+            <a
+              href={`/admin/packing/${o.id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-ghost"
+            >
+              {t("packing.print")}
+            </a>
+          )}
           {o.fulfillment_kind === "physical" && (
             <a href={`/admin/print/${o.id}`} target="_blank" rel="noreferrer" className="btn-ghost">
               {t("print.button")}

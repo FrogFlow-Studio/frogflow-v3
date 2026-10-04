@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { UserError } from "@/core/i18n/user-error";
 
 /** Наборы товаров (модуль bundles): состав набора в карточке товара. */
 const moduleAdmin = async (min?: "manager") =>
@@ -48,4 +49,18 @@ export const saveProductBundleFn = createServerFn({ method: "POST" })
     const { saveBundle, bundleView } = await import("@/core/bundles/bundle");
     const saved = await saveBundle(ctx, data.id, data.items);
     return { view: saved ? await bundleView(ctx, data.id, saved) : null };
+  });
+
+/**
+ * Упаковочный лист заказа: состав, получатель, открытка, отметка об упаковке —
+ * без цен и контактов. Бухгалтеру закрыт (moduleAdmin отказывает ему, как и везде).
+ */
+export const packingSlipFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ id: z.number().int() }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin();
+    const { buildPackingSlip } = await import("@/core/orders/packing-slip");
+    const slip = await buildPackingSlip(ctx, data.id);
+    if (!slip) throw new UserError("err.admin.orderNotFound", "Заказ не найден");
+    return { slip };
   });
