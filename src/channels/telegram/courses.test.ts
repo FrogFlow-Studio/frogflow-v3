@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import { setEnvForTests } from "@/config/env";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -465,5 +465,73 @@ describe("тест к уроку в боте", () => {
       "Тест сейчас недоступен: урок закрыт или у него нет теста.",
     );
     expect(state(db).qz).toBeUndefined();
+  });
+});
+
+describe("эфиры потока в боте (Ш2)", () => {
+  const C1 = "c1000000-0000-4000-8000-000000000001";
+  const live = {
+    id: "e0000000-0000-4000-8000-000000000001",
+    title: "Разбор домашек",
+    at: "2026-10-10T19:00", // 14:00 UTC
+    link: "https://zoom.us/j/777",
+  };
+  function withLives() {
+    const s = school();
+    const row = (s.db.tables.app_settings as Array<{ key: string; value: string }>).find(
+      (r) => r.key === courseKey(P),
+    )!;
+    row.value = JSON.stringify({
+      ...course,
+      cohorts: [
+        { id: C1, title: "Октябрь", start: "2026-10-05T10:00", enrollUntil: null, lives: [live] },
+      ],
+    });
+    return s;
+  }
+  afterEach(() => vi.useRealTimers());
+  const at = (iso: string) => vi.useFakeTimers({ toFake: ["Date"], now: new Date(iso) });
+
+  it("у курса с эфирами в «Мои курсы» есть кнопка «Эфиры»; без эфиров — нет", async () => {
+    at("2026-10-08T10:00:00Z");
+    const a = withLives();
+    await handleTelegramUpdate(a.ctx, a.api, text("🎓 Мои курсы"));
+    expect(buttons(messages(a.calls).at(-1)).map((x) => x.callback_data)).toContain(`lv:${ITEM}`);
+    const b = school();
+    await handleTelegramUpdate(b.ctx, b.api, text("🎓 Мои курсы", 2));
+    expect(buttons(messages(b.calls).at(-1)).map((x) => x.callback_data)).not.toContain(
+      `lv:${ITEM}`,
+    );
+  });
+
+  it("до окна — время и «ссылка появится», самой ссылки в сообщении нет", async () => {
+    at("2026-10-10T10:00:00Z");
+    const { ctx, api, calls } = withLives();
+    await handleTelegramUpdate(ctx, api, press(`lv:${ITEM}`));
+    const m = messages(calls).at(-1)!;
+    expect(String(m.text)).toContain("Разбор домашек");
+    expect(String(m.text)).toContain("19:00");
+    expect(String(m.text)).toContain("ссылка появится за 15 минут до начала");
+    expect(JSON.stringify(m)).not.toContain("zoom.us");
+  });
+
+  it("за 15 минут до начала — кнопка со ссылкой; после — «прошёл» без ссылки", async () => {
+    const { ctx, api, calls } = withLives();
+    at("2026-10-10T13:46:00Z");
+    await handleTelegramUpdate(ctx, api, press(`lv:${ITEM}`));
+    expect(buttons(messages(calls).at(-1)).map((x) => x.url)).toContain("https://zoom.us/j/777");
+    at("2026-10-10T18:00:00Z");
+    await handleTelegramUpdate(ctx, api, press(`lv:${ITEM}`, 2));
+    const m = messages(calls).at(-1)!;
+    expect(String(m.text)).toContain("прошёл");
+    expect(JSON.stringify(m)).not.toContain("zoom.us");
+  });
+
+  it("чужая покупка по подделанной кнопке — бот молчит", async () => {
+    at("2026-10-10T13:50:00Z");
+    const { ctx, db, api, calls } = withLives();
+    (db.tables.orders![0] as Record<string, unknown>).telegram_id = 777;
+    await handleTelegramUpdate(ctx, api, press(`lv:${ITEM}`));
+    expect(messages(calls)).toEqual([]);
   });
 });

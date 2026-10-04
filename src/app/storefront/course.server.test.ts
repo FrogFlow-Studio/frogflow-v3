@@ -139,3 +139,68 @@ describe("плеер урока", () => {
     ]);
   });
 });
+
+describe("эфиры на странице курса (Ш2)", () => {
+  const C1 = "c1000000-0000-4000-8000-000000000001";
+  const live = {
+    id: "e0000000-0000-4000-8000-000000000001",
+    title: "Разбор",
+    at: "2026-10-10T19:00",
+    link: "https://zoom.us/j/777",
+  };
+  function shop(accessDays?: number) {
+    const { ctx, db } = ctxWith();
+    (ctx as unknown as { timezone: string }).timezone = "Asia/Almaty";
+    const tariffs = accessDays
+      ? { tariffs: { [id(50)]: { homework: true, channel: true, accessDays } } }
+      : {};
+    db.tables.app_settings = [
+      {
+        key: courseKey(P),
+        value: JSON.stringify({
+          ...course,
+          cohorts: [
+            {
+              id: C1,
+              title: "Октябрь",
+              start: "2026-10-05T10:00",
+              enrollUntil: null,
+              lives: [live],
+            },
+          ],
+          ...tariffs,
+        }),
+      },
+    ];
+    return ctx;
+  }
+  const open = async (ctx: TenantContext, now: string) => {
+    const p = (await openCourse(ctx, S, ITEM, courseToken(S, T, ITEM)))!;
+    return courseView(ctx, p, async (path) => `https://files/${path}`, new Date(now));
+  };
+
+  it("до окна ссылка не уходит в браузер, в окне — уходит, потом снова нет", async () => {
+    const ctx = shop();
+    const early = await open(ctx, "2026-10-10T10:00:00Z");
+    expect(early.lives).toHaveLength(1);
+    expect(early.lives[0]).toMatchObject({ status: "upcoming", link: null });
+    expect(JSON.stringify(early)).not.toContain("zoom.us/j/777");
+    const soon = await open(ctx, "2026-10-10T13:50:00Z");
+    expect(soon.lives[0]).toMatchObject({ status: "open", link: "https://zoom.us/j/777" });
+    const after = await open(ctx, "2026-10-10T20:00:00Z");
+    expect(after.lives[0]).toMatchObject({ status: "past", link: null });
+  });
+
+  it("ученик с закончившимся доступом эфиров не видит, с действующим — видит", async () => {
+    const ctx = shop(3); // тариф варианта: доступ 3 дня от старта потока (5 октября)
+    const db = (ctx as unknown as { db: ReturnType<typeof fakeDb> }).db;
+    (db.tables.order_items as Array<Record<string, unknown>>)[0]!.product_variant_id = id(50);
+    const live10 = await open(ctx, "2026-10-07T13:50:00Z"); // доступ ещё открыт
+    expect(live10.expired).toBe(false);
+    expect(live10.lives).toHaveLength(1);
+    const late = await open(ctx, "2026-10-10T13:50:00Z"); // доступ закончился
+    expect(late.expired).toBe(true);
+    expect(late.lives).toEqual([]);
+    expect(JSON.stringify(late)).not.toContain("zoom.us/j/777");
+  });
+});

@@ -1,4 +1,5 @@
 import { videoEmbed } from "@/core/courses/video";
+import { liveSchedule, type LiveView } from "@/core/courses/live-view";
 import { nextOpening } from "@/core/courses/access";
 import { issueCertificate } from "@/core/courses/certificate.server";
 import { readSettings } from "@/core/courses/db.server";
@@ -92,6 +93,8 @@ export type CourseView = {
   expired: boolean;
   /** Код сертификата, когда курс пройден (core/courses/certificate); иначе null. */
   certificate: string | null;
+  /** Эфиры потока (core/courses/live-view): ссылка только у начинающихся и идущих. */
+  lives: LiveView[];
 };
 
 export async function courseView(
@@ -171,6 +174,7 @@ export async function courseView(
     expiresAt: tl.expiresAt,
     expired: tl.expired,
     certificate: cert?.certificate.code ?? null,
+    lives: liveSchedule(tl, ctx.timezone, now),
   };
 }
 

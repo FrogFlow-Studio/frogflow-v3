@@ -13,6 +13,8 @@ import type { CourseView } from "@/app/storefront/course.server";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { COURSE_PAGE_CSP } from "@/core/courses/video";
 import { intlLocale } from "@/app/i18n/admin";
+import type { Locale } from "@/core/i18n/locale";
+import type { StorefrontT } from "@/app/i18n/storefront";
 import { ErrorBox, useAction } from "@/app/ui";
 
 /**
@@ -94,6 +96,7 @@ function CoursePage() {
           </p>
         )}
       </header>
+      {view.lives.length > 0 && <LiveBlock lives={view.lives} t={t} locale={locale} />}
       {certificate && (
         <div className="space-y-1 rounded-md border border-line p-4">
           <p className="font-medium">🎓 {t("course.cert.yours")}</p>
@@ -497,6 +500,62 @@ function HomeworkBlock({
           <ErrorBox error={send.error} />
         </form>
       )}
+    </section>
+  );
+}
+
+/** Местное время эфира «YYYY-MM-DDTHH:MM» как есть, без пересчёта в пояс зрителя. */
+function liveTime(at: string, locale: Locale): string {
+  return new Date(`${at}:00Z`).toLocaleString(intlLocale(locale), {
+    timeZone: "UTC",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** Ближайший эфир и расписание потока; ссылка есть только у начинающегося и идущего. */
+function LiveBlock({
+  lives,
+  t,
+  locale,
+}: {
+  lives: CourseView["lives"];
+  t: StorefrontT;
+  locale: Locale;
+}) {
+  const next = lives.find((l) => l.status !== "past");
+  return (
+    <section className="space-y-2 rounded-md border border-line p-4" id="lives">
+      <h2 className="font-medium">{t("course.live.title")}</h2>
+      {next && (
+        <p className="text-sm">
+          <span className="text-muted">{t("course.live.next")}:</span> {next.title} ·{" "}
+          {liveTime(next.at, locale)}
+        </p>
+      )}
+      <ul className="space-y-2 text-sm">
+        {lives.map((l) => (
+          <li key={l.id} className={l.status === "past" ? "opacity-60" : ""}>
+            <span className="tabular-nums">{liveTime(l.at, locale)}</span> · {l.title}
+            {l.status === "past" && <span className="text-muted"> · {t("course.live.past")}</span>}
+            {l.status === "upcoming" && (
+              <p className="text-xs text-muted">{t("course.live.soon")}</p>
+            )}
+            {l.status === "open" &&
+              (l.link ? (
+                <p>
+                  <a className="btn-primary" href={l.link} target="_blank" rel="noreferrer">
+                    {t("course.live.join")}
+                  </a>
+                </p>
+              ) : (
+                <p className="text-xs text-muted">{t("course.live.noLink")}</p>
+              ))}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

@@ -2565,6 +2565,10 @@ async function handleCallback(
     const { showOpenLesson } = await import("./courses");
     return showOpenLesson(b, data);
   }
+  if (data.startsWith("lv:") && ctx.tenant.modules.courses) {
+    const { showLives } = await import("./courses");
+    return showLives(b, data);
+  }
   if ((data.startsWith("cinv:") || data.startsWith("cchat:")) && ctx.tenant.modules.courses)
     return sendChannelInvite(b, data);
   if (data.startsWith("reorder:")) {

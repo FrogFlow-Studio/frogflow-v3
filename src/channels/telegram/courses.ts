@@ -63,6 +63,11 @@ type Copy = {
   chatReady: string;
   chatAlready: string;
   chatFailed: string;
+  livesBtn: string;
+  livesHeader: string;
+  liveLine: (time: string, title: string, status: "upcoming" | "open" | "past") => string;
+  liveJoin: string;
+  liveNoLink: string;
 };
 
 const COPY: Record<Locale, Copy> = {
@@ -109,6 +114,17 @@ const COPY: Record<Locale, Copy> = {
     chatReady: "💬 Ваша личная ссылка в чат вашего потока — на одного человека, действует сутки:",
     chatAlready: "Вы уже в чате потока — найдите его в списке чатов Telegram.",
     chatFailed: "Не получилось создать ссылку в чат потока. Напишите преподавателю.",
+    livesBtn: "📅 Эфиры",
+    livesHeader: "📅 <b>Эфиры потока</b>",
+    liveLine: (time, title, status) =>
+      `${status === "past" ? "▫️" : "🎥"} ${time} · ${title}` +
+      (status === "past"
+        ? " — прошёл"
+        : status === "upcoming"
+          ? " — ссылка появится за 15 минут до начала"
+          : ""),
+    liveJoin: "🎥 Войти на эфир",
+    liveNoLink: "Ссылку на эфир пришлёт школа.",
   },
   kk: {
     empty: "Сізде әзірге курс жоқ.",
@@ -153,6 +169,17 @@ const COPY: Record<Locale, Copy> = {
     chatReady: "💬 Ағыныңыздың чатына жеке сілтемеңіз — бір адамға, бір тәулік жарамды:",
     chatAlready: "Сіз ағын чатындасыз — оны Telegram чаттар тізімінен табыңыз.",
     chatFailed: "Ағын чатына сілтеме жасау мүмкін болмады. Оқытушыға жазыңыз.",
+    livesBtn: "📅 Эфирлер",
+    livesHeader: "📅 <b>Ағын эфирлері</b>",
+    liveLine: (time, title, status) =>
+      `${status === "past" ? "▫️" : "🎥"} ${time} · ${title}` +
+      (status === "past"
+        ? " — өтті"
+        : status === "upcoming"
+          ? " — сілтеме басталуына 15 минут қалғанда пайда болады"
+          : ""),
+    liveJoin: "🎥 Эфирге кіру",
+    liveNoLink: "Эфирге сілтемені мектеп жібереді.",
   },
   en: {
     empty: "You don't have any courses yet.",
@@ -198,6 +225,17 @@ const COPY: Record<Locale, Copy> = {
     chatReady: "💬 Your personal link to your cohort’s chat — for one person, valid for 24 hours:",
     chatAlready: "You are already in the cohort chat — find it in your Telegram chats.",
     chatFailed: "Couldn’t create a link to the cohort chat. Please message the teacher.",
+    livesBtn: "📅 Live sessions",
+    livesHeader: "📅 <b>Cohort live sessions</b>",
+    liveLine: (time, title, status) =>
+      `${status === "past" ? "▫️" : "🎥"} ${time} · ${title}` +
+      (status === "past"
+        ? " — finished"
+        : status === "upcoming"
+          ? " — the link appears 15 minutes before the start"
+          : ""),
+    liveJoin: "🎥 Join the live session",
+    liveNoLink: "The school will send the link.",
   },
   uz: {
     empty: "Sizda hozircha kurslar yo‘q.",
@@ -242,6 +280,17 @@ const COPY: Record<Locale, Copy> = {
     chatReady: "💬 Oqimingiz chatiga shaxsiy havolangiz — bir kishi uchun, bir kun amal qiladi:",
     chatAlready: "Siz allaqachon oqim chatidasiz — uni Telegram chatlari ro‘yxatidan toping.",
     chatFailed: "Oqim chatiga havola yaratib bo‘lmadi. O‘qituvchiga yozing.",
+    livesBtn: "📅 Efirlar",
+    livesHeader: "📅 <b>Oqim efirlari</b>",
+    liveLine: (time, title, status) =>
+      `${status === "past" ? "▫️" : "🎥"} ${time} · ${title}` +
+      (status === "past"
+        ? " — o‘tdi"
+        : status === "upcoming"
+          ? " — havola boshlanishidan 15 daqiqa oldin paydo bo‘ladi"
+          : ""),
+    liveJoin: "🎥 Efirga kirish",
+    liveNoLink: "Havolani maktab yuboradi.",
   },
 };
 
@@ -291,6 +340,7 @@ export async function showMyCourses(b: CourseBot): Promise<void> {
       ]);
     if (k.channel) rows.push([{ text: c.channelBtn, callback_data: `cinv:${k.orderItemId}` }]);
     if (k.chat) rows.push([{ text: c.chatBtn, callback_data: `cchat:${k.orderItemId}` }]);
+    if (k.lives) rows.push([{ text: c.livesBtn, callback_data: `lv:${k.orderItemId}` }]);
     await send(b, lines.join("\n"), rows.length ? { reply_markup: { inline_keyboard: rows } } : {});
   }
 }
@@ -567,6 +617,42 @@ export async function showLessonList(b: CourseBot, data: string): Promise<void> 
       ]),
     },
   });
+}
+
+/**
+ * Кнопка «Эфиры»: расписание потока. Ссылка на эфир — кнопкой и только у
+ * начинающегося (за 15 минут) или идущего эфира; у остальных её нет в тексте.
+ */
+export async function showLives(b: CourseBot, data: string, now = new Date()): Promise<void> {
+  const c = COPY[b.locale];
+  const p = await ownPurchase(b, data.slice("lv:".length));
+  if (!p) return;
+  const { purchaseTimeline } = await import("@/core/courses/run.server");
+  const { liveSchedule } = await import("@/core/courses/live-view");
+  const lives = liveSchedule(purchaseTimeline(b.ctx, p, now), b.ctx.timezone, now);
+  if (lives.length === 0) return send(b, c.closed);
+  // Местное время эфира показываем как задано продавцом, без пересчёта.
+  const fmt = new Intl.DateTimeFormat(b.locale, {
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
+  const shown = lives.slice(-20);
+  const rows: InlineButton[][] = [];
+  for (const l of shown)
+    if (l.status === "open" && l.link)
+      rows.push([{ text: `${c.liveJoin}: ${l.title}`.slice(0, 60), url: l.link }]);
+  const lines = shown.map((l) =>
+    c.liveLine(fmt.format(new Date(`${l.at}:00Z`)), escapeHtml(l.title), l.status),
+  );
+  if (shown.some((l) => l.status === "open" && !l.link)) lines.push(c.liveNoLink);
+  await send(
+    b,
+    `${c.livesHeader}\n\n${lines.join("\n")}`.slice(0, 4096),
+    rows.length ? { reply_markup: { inline_keyboard: rows } } : {},
+  );
 }
 
 /** Урок в чате: текст, ссылка на видео, материалы, задание со сдачей. */

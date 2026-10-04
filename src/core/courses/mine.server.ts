@@ -7,6 +7,7 @@ import { readSettings } from "./db.server";
 import { nextOpening } from "./access";
 import { loadHwStatusesFor, loadQuizPassedFor } from "./gate.server";
 import { courseTimeline } from "./cohort";
+import { liveSchedule } from "./live-view";
 import { courseKey, parseCourse } from "./course";
 import { hwKey, parseHomework, type HomeworkStatus } from "./homework";
 import { courseToken, courseUrl } from "./link";
@@ -41,6 +42,8 @@ export type MyCourse = {
   channel: boolean;
   /** У потока ученика есть групповой чат. */
   chat: boolean;
+  /** Есть эфиры потока (кнопка «Эфиры»): у закончившегося доступа — нет. */
+  lives: boolean;
   cohort: { title: string; start: string } | null;
   beforeStart: boolean;
   expiresAt: string | null;
@@ -115,6 +118,7 @@ export async function customerCourses(
         canSubmit: tl.tariff.homework,
         channel: Boolean(i.course.channel) && tl.tariff.channel && !tl.expired,
         chat: Boolean(tl.cohort?.chat) && tl.tariff.channel && !tl.expired,
+        lives: liveSchedule(tl, ctx.timezone, now).length > 0,
         cohort: tl.cohort ? { title: tl.cohort.title, start: tl.start } : null,
         beforeStart: tl.beforeStart,
         expiresAt: tl.expiresAt,
