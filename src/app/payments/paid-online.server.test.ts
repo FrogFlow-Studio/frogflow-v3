@@ -49,11 +49,13 @@ describe("после оплаты картой", () => {
     },
   );
 
-  it("выдача не прошла — продавцу о сбое, повтор в очереди", async () => {
+  it("выдача не прошла — продавцу о сбое выдачи с этим заказом, уведомление о новом заказе всё равно уходит", async () => {
     order = { id: 3, platform: "instagram", fulfillment_kind: "digital" };
     runOrderAction.mockResolvedValue({ ok: false, message: "нет диалога" });
     await afterPaidOnline(ctx, 3);
     expect(notifyFail).toHaveBeenCalledTimes(1);
+    expect(notifyFail).toHaveBeenCalledWith(ctx, order, { sent: 0, failed: 1 });
+    expect(notifyNew).toHaveBeenCalledTimes(1);
   });
 
   it("физический заказ — не выдаём, только сообщаем продавцу", async () => {

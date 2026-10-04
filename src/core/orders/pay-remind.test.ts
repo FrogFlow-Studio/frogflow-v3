@@ -180,6 +180,11 @@ describe("напоминание об оплате в боте, Instagram и Wha
       }
       return origFrom(t);
     }) as typeof db.from;
+    expect(await remindChatOrders(ctx, send, NOW)).toMatchObject({ sent: 0 });
+    expect(send).not.toHaveBeenCalled();
+    // Метка по заказу стоит (повторный прогон про него молчит), статус оплаты не затронут.
+    expect(db.tables.zernio_logs!.map((l) => l.event_id)).toEqual(["order:100:reminded:chat"]);
+    expect(db.tables.orders![0]!.status).toBe("awaiting_confirmation");
     await remindChatOrders(ctx, send, NOW);
     expect(send).not.toHaveBeenCalled();
   });
