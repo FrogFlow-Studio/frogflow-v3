@@ -1,6 +1,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { isLocale, type Locale } from "@/core/i18n/locale";
 import { serverFailure } from "@/lib/server-failure";
+import { UserError } from "@/core/i18n/user-error";
 import { formatMoney } from "@/core/money/money";
 import { parseWinback, loadWinback, winbackText } from "@/core/winback/winback";
 import { loadSimilar, parseSimilar, similarText } from "@/core/similar/similar";
@@ -107,19 +108,41 @@ export async function buildPreview(
   };
 }
 
+/** Не чаще раза в 30 секунд на магазин: серия из нескольких шагов — это уже несколько сообщений. */
+export const PREVIEW_SEND_GAP_MS = 30_000;
+const PREVIEW_SEND_KEY = "automsg_preview_at";
+
 /**
- * «Отправить себе»: тот же текст — продавцам магазина в Telegram через бота
- * магазина, напрямую (без матрицы уведомлений и тихих часов, не в счёт
- * потолка). Возвращает, скольким ушло; без бота — 0.
+ * «Отправить себе»: тот же текст в Telegram через бота магазина, напрямую (без матрицы
+ * уведомлений и тихих часов, не в счёт потолка). Нажал владелец с привязанным Telegram — пример
+ * уходит ему одному; иначе (менеджер: у сотрудников своего Telegram нет) — в чат уведомлений
+ * магазина, и ответ говорит это прямо (`target: "chat"`). Метка последней отправки пишется
+ * условно: повторное нажатие чаще раза в 30 секунд ничего не шлёт. Без бота — 0.
  */
 export async function sendPreviewToSeller(
   ctx: TenantContext,
   preview: Preview,
   header: string,
-): Promise<number> {
+  opts: { isOwner?: boolean; now?: Date } = {},
+): Promise<{ sent: number; target: "you" | "chat" }> {
+  const own =
+    opts.isOwner && ctx.tenant.ownerTelegramId ? String(ctx.tenant.ownerTelegramId) : null;
+  const target = own ? "you" : "chat";
   const api = adminTelegramApi(ctx);
-  if (!api) return 0;
-  const ids = await adminRecipients(ctx);
+  if (!api) return { sent: 0, target };
+  const ids = own ? [own] : await adminRecipients(ctx);
+  if (!ids.length) return { sent: 0, target };
+  const now = (opts.now ?? new Date()).getTime();
+  const { updateSettingAtomic } = await import("@/core/settings/settings");
+  const stamp = await updateSettingAtomic(ctx, PREVIEW_SEND_KEY, (raw) =>
+    raw && now - Number(raw) < PREVIEW_SEND_GAP_MS ? null : String(now),
+  );
+  if (stamp === "skipped")
+    throw new UserError(
+      "err.admin.autoPreviewWait",
+      "Пример можно отправлять не чаще раза в 30 секунд.",
+    );
+  if (stamp === "failed") throw serverFailure("Отправка примера: метка не записалась");
   let sent = 0;
   for (const id of ids) {
     for (const text of preview.texts) {
@@ -133,5 +156,5 @@ export async function sendPreviewToSeller(
       if (r.ok) sent++;
     }
   }
-  return sent;
+  return { sent, target };
 }

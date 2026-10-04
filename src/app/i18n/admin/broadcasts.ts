@@ -236,6 +236,8 @@ export const ru = {
   "autopreview.sent": "Отправлено вам в Telegram: {n}.",
   "autopreview.nowhere":
     "Отправить некуда: бот магазина в Telegram не подключён или не указан получатель уведомлений.",
+  "autopreview.sentChat": "Отправлено в чат уведомлений магазина: {n}. Это не ваш личный Telegram.",
+  "err.admin.autoPreviewWait": "Пример можно отправлять не чаще раза в 30 секунд.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -466,6 +468,9 @@ export const kk: SectionDict<typeof ru> = {
   "autopreview.sent": "Telegram-ға жіберілді: {n}.",
   "autopreview.nowhere":
     "Жіберетін жер жоқ: дүкеннің Telegram-боты қосылмаған немесе хабарлама алушы көрсетілмеген.",
+  "autopreview.sentChat":
+    "Дүкеннің хабарландыру чатына жіберілді: {n}. Бұл сіздің жеке Telegram-ыңыз емес.",
+  "err.admin.autoPreviewWait": "Үлгіні 30 секундта бір реттен жиі жіберуге болмайды.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -694,6 +699,9 @@ export const en: SectionDict<typeof ru> = {
   "autopreview.sent": "Sent to you in Telegram: {n}.",
   "autopreview.nowhere":
     "Nowhere to send: the shop's Telegram bot is not connected or no notification recipient is set.",
+  "autopreview.sentChat":
+    "Sent to the shop's notification chat: {n}. This is not your personal Telegram.",
+  "err.admin.autoPreviewWait": "A sample can be sent once every 30 seconds at most.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -925,4 +933,7 @@ export const uz: SectionDict<typeof ru> = {
   "autopreview.sent": "Telegramga yuborildi: {n}.",
   "autopreview.nowhere":
     "Yuboradigan joy yoʻq: doʻkonning Telegram boti ulanmagan yoki xabar oluvchi koʻrsatilmagan.",
+  "autopreview.sentChat":
+    "Doʻkonning bildirishnoma chatiga yuborildi: {n}. Bu sizning shaxsiy Telegramingiz emas.",
+  "err.admin.autoPreviewWait": "Namunani 30 soniyada bir martadan koʻp yuborib boʻlmaydi.",
 };

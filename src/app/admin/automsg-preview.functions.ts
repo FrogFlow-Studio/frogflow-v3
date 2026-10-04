@@ -30,6 +30,9 @@ export const sendAutoPreviewFn = createServerFn({ method: "POST" })
     const { adminTFor } = await import("./locale.server");
     const t = await adminTFor(ctx);
     const preview = await buildPreview(ctx, data.kind, data.draft);
-    const sent = await sendPreviewToSeller(ctx, preview, t("autopreview.header"));
-    return { sent };
+    // Владелец — тот, чей логин записан в настройках магазина: только у него есть свой Telegram.
+    const { adminIdentity } = await import("@/app/auth/guards.server");
+    const me = await adminIdentity();
+    const isOwner = !!me && me.username === ctx.tenant.settings.admin?.username;
+    return sendPreviewToSeller(ctx, preview, t("autopreview.header"), { isOwner });
   });

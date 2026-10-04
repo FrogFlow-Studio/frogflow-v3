@@ -81,9 +81,49 @@ describe("предпросмотр автосообщений", () => {
     const before = JSON.stringify(db.tables.bot_users);
     calls.length = 0;
     const p = await buildPreview(ctx, "similar");
-    expect(await sendPreviewToSeller(ctx, p, "Пример")).toBe(1);
+    expect(await sendPreviewToSeller(ctx, p, "Пример")).toEqual({ sent: 1, target: "chat" });
     expect(calls).toHaveLength(1);
     expect(calls[0]!.body.chat_id).toBe("555");
     expect(JSON.stringify(db.tables.bot_users)).toBe(before);
+  });
+
+  it("Д7: владелец с Telegram получает пример один, группа и коллеги — нет", async () => {
+    const { ctx } = setup();
+    (ctx.tenant as { ownerTelegramId: number | null }).ownerTelegramId = 777;
+    const p = await buildPreview(ctx, "similar");
+    calls.length = 0;
+    expect(await sendPreviewToSeller(ctx, p, "Пример", { isOwner: true })).toEqual({
+      sent: 1,
+      target: "you",
+    });
+    expect(calls.map((c) => c.body.chat_id)).toEqual(["777"]);
+  });
+
+  it("Д7: менеджер — в чат уведомлений, и ответ называет его честно", async () => {
+    const { ctx } = setup();
+    (ctx.tenant as { ownerTelegramId: number | null }).ownerTelegramId = 777;
+    const p = await buildPreview(ctx, "similar");
+    calls.length = 0;
+    const r = await sendPreviewToSeller(ctx, p, "Пример", { isOwner: false });
+    expect(r.target).toBe("chat");
+    // Владелец входит в получателей уведомлений: «вам» про такой ответ было бы неправдой.
+    expect(calls.map((c) => c.body.chat_id).sort()).toEqual(["555", "777"]);
+  });
+
+  it("Д7: три нажатия подряд — сообщения уходят один раз, остальные отклонены; через 30 с можно снова", async () => {
+    const { ctx } = setup();
+    const p = await buildPreview(ctx, "similar");
+    calls.length = 0;
+    const t0 = new Date("2026-10-04T12:00:00Z");
+    expect((await sendPreviewToSeller(ctx, p, "П", { now: t0 })).sent).toBe(1);
+    for (const sec of [1, 2])
+      await expect(
+        sendPreviewToSeller(ctx, p, "П", { now: new Date(t0.getTime() + sec * 1000) }),
+      ).rejects.toMatchObject({ key: "err.admin.autoPreviewWait" });
+    expect(calls).toHaveLength(1);
+    expect(
+      (await sendPreviewToSeller(ctx, p, "П", { now: new Date(t0.getTime() + 31_000) })).sent,
+    ).toBe(1);
+    expect(calls).toHaveLength(2);
   });
 });

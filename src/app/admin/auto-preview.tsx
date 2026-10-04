@@ -25,7 +25,11 @@ export function AutoPreview({
   });
   const send = useAction(async () => {
     const r = await sendAutoPreviewFn({ data: { kind, draft } });
-    setNote(r.sent > 0 ? t("autopreview.sent", { n: r.sent }) : t("autopreview.nowhere"));
+    setNote(
+      r.sent > 0
+        ? t(r.target === "you" ? "autopreview.sent" : "autopreview.sentChat", { n: r.sent })
+        : t("autopreview.nowhere"),
+    );
   });
   return (
     <div className="mt-3 space-y-2" data-testid="auto-preview">
