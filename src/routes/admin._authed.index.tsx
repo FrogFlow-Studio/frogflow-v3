@@ -58,7 +58,7 @@ function Dashboard() {
         subtitle={`${t(verticalTitleKey(shop.vertical))}${shop.telegram ? ` · @${shop.telegram}` : ""}`}
       />
       {shop.role !== "accountant" && <TodayCard tasks={d.today} t={t} modules={shop.modules} />}
-      {d.setup.starter > 0 && (
+      {shop.role !== "accountant" && d.setup.starter > 0 && (
         <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-line p-3 text-sm">
           <span className="min-w-0 flex-1">{t("overview.starter.banner")}</span>
           <Link to="/admin/products" className="btn-secondary text-sm">
@@ -75,7 +75,7 @@ function Dashboard() {
         </div>
       )}
       {d.limits.length > 0 && <LimitsCard limits={d.limits} t={t} loc={loc} />}
-      {d.setup.moved && (
+      {shop.role !== "accountant" && d.setup.moved && (
         <MovedWelcome
           t={t}
           modules={shop.modules}
@@ -86,7 +86,7 @@ function Dashboard() {
       )}
       {shop.vertical === "courses" && shop.modules.courses && <LaunchCard t={t} />}
       {shop.vertical === "courses" && shop.modules.courses && <SchoolCard t={t} loc={loc} />}
-      {!d.setup.hidden && progress.percent < 100 && (
+      {shop.role !== "accountant" && !d.setup.hidden && progress.percent < 100 && (
         <Card
           title={`${t("launch.title")} · ${t("launch.percent", { n: progress.percent })}`}
           className="mb-6"

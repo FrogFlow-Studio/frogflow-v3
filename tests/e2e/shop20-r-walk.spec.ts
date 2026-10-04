@@ -51,7 +51,9 @@ test("владелец: новые страницы без горизонтал�
   await page.goto("/admin/orders");
   await page.getByRole("link", { name: "К сборке сегодня", exact: true }).click();
   await expect(page).toHaveURL(/assembly=today/);
-  await expect(page.getByText("Обход Анна", { exact: false }).first()).toBeVisible();
+  await expect(
+    page.getByText("Обход Анна", { exact: false }).locator("visible=true").first(),
+  ).toBeVisible();
   expect(await noHorizontalScroll(page)).toBe(false);
 
   expect(errors).toEqual([]);
@@ -81,7 +83,11 @@ test("бухгалтер: только заказы, уведомления, о�
   expect(await noHorizontalScroll(page)).toBe(false);
 
   await page.goto("/admin/orders");
-  await expect(page.getByText("Обход Анна", { exact: false }).first()).toBeVisible();
+  await expect(
+    page.getByText("Торт обхода 1", { exact: false }).locator("visible=true").first(),
+  ).toBeVisible();
+  // Имён покупателей бухгалтеру не показывают.
+  await expect(page.getByText("Обход Анна", { exact: false })).toHaveCount(0);
   expect(await noHorizontalScroll(page)).toBe(false);
 
   expect(errors).toEqual([]);
