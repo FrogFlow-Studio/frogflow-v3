@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { watermarkEnabled } from "@/core/delivery/watermark.server";
 import type { TenantContext } from "./resolve.server";
 import { settingsFromJson } from "./directory";
+import type { TenantSettings } from "./types";
 
 /**
  * Всё, что панели сохраняют в `bots.settings` через patchTenantSettings,
@@ -130,5 +131,99 @@ describe("settingsFromJson не теряет сохранённые ключи",
 
   it("каждый ключ TenantSettings, записанный в settings, читается обратно", () => {
     for (const key of Object.keys(SAVED)) expect(s, key).toHaveProperty(key);
+  });
+});
+
+/**
+ * Образец на КАЖДЫЙ верхний ключ TenantSettings. `satisfies Record<keyof …>`:
+ * добавили ключ в тип — typecheck требует строку здесь, а тест ниже требует,
+ * чтобы settingsFromJson его не потерял (ключ без разбора молча исчезал бы
+ * при чтении, как было с guard, community и community_mod).
+ */
+const UUID = "b41a34cb-7944-441b-8f71-503184fc0f1f";
+const AT = "2026-10-04T10:00:00.000Z";
+const ALL = {
+  slug: "shop",
+  hosts: ["shop.kz"],
+  default_locale: "kk",
+  review_ask_days: 5,
+  timezone: "Asia/Almaty",
+  telegram: { username: "shop_bot", webhook_ok: true, commands_v: "v3" },
+  zernio: {
+    profile_id: "p1",
+    account_ids: ["a1"],
+    accounts: [{ id: "a1", platform: "instagram", username: "shop", name: "Shop", expired: false }],
+    synced_at: AT,
+    ice_breakers_v: "ib1",
+    guard: { instagram: { since: AT, reason: "failures", fails: 4, last_fail_at: AT } },
+    wizard: { whatsapp: { step: "test", at: AT, started_at: AT } },
+  },
+  multi_bot: { group: "g1" },
+  vip: { token_enc: "enc:v1:x", username: "vip_bot", webhook_ok: true },
+  admin: {
+    username: "owner",
+    password_hash: "scrypt$a$b",
+    users: [{ username: "kate", password_hash: "scrypt$c$d", role: "manager" }],
+  },
+  curators: { mode: "cohort", items: [{ id: UUID, name: "Анна", telegram_id: 111 }] },
+  homework_replies: [{ title: "Молодец", text: "Отличная работа, {name}!" }],
+  served_by: "v2",
+  served_by_since: AT,
+  deletion: { requested_at: AT, by: "owner", prev_status: "active" },
+  notify_read: { "admin:kate": AT },
+  partner: "agency-1",
+  invite: { by: UUID, at: AT },
+  signup: { source: "site:google/spring", page: "cakes" },
+  consultant_limits: { daily_usd: 2, daily_calls: null, daily_tests: 5 },
+  consultant_pause_hours: 3,
+  consultant_search: true,
+  consultant_pricelist: { enabled: true, hours: { open: 9, close: 18 }, rate_source: "vtb" },
+  bot_texts: { welcome: { telegram: { ru: "Привет!" } } },
+  work_hours: { open: 9, close: 18 },
+  smart_search_limits: { daily_usd: 1 },
+  on_overdue: "suspend",
+  warn_days_before: 3,
+  grace_days: 2,
+  billing: { plan: "flowers.pro", period: "year" },
+  commission: { start: "2027-01-01" },
+  gift_sale: { enabled: true, amounts: [5000], currency: "KZT" },
+  community: {
+    enabled: true,
+    name: "Лавка",
+    niche: "Торты",
+    city: "Алматы",
+    about: "Печём",
+    links: ["https://shop.kz"],
+    dm_off: true,
+    dm_blocked: [UUID],
+  },
+  community_mod: { status: "hidden", reason: "жалоба", at: AT },
+  storefront_design: { theme: "warm", cover: true, blocks: ["hits", "new"] },
+  marketplace: { listed: true, hidden: false, approved: true, category: "Торты", city: "Алматы" },
+  collections: [{ id: "a1b2c3d4", name: "Весна", product_ids: [UUID], created_at: AT }],
+  delivery: { pdf_watermark: true },
+} satisfies Record<keyof TenantSettings, unknown>;
+
+describe("каждый верхний ключ TenantSettings переживает чтение", () => {
+  const out = settingsFromJson(ALL);
+  for (const key of Object.keys(ALL))
+    it(`${key}: после settingsFromJson не потерян`, () => {
+      expect(out[key as keyof TenantSettings], key).not.toBeUndefined();
+    });
+
+  it("вложенные подключи, которые раньше терялись, на месте", () => {
+    expect(out.zernio?.guard?.instagram).toMatchObject({ reason: "failures", fails: 4 });
+    expect(out.zernio?.wizard?.whatsapp).toMatchObject({ step: "test" });
+    expect(out.zernio?.ice_breakers_v).toBe("ib1");
+    expect(out.telegram?.commands_v).toBe("v3");
+    expect(out.community).toMatchObject({
+      enabled: true,
+      name: "Лавка",
+      links: ["https://shop.kz"],
+      dm_off: true,
+      dm_blocked: [UUID],
+    });
+    expect(out.community_mod).toEqual({ status: "hidden", reason: "жалоба", at: AT });
+    expect(out.marketplace).toMatchObject({ listed: true, approved: true, category: "Торты" });
   });
 });
