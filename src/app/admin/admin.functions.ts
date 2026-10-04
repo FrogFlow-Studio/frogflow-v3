@@ -439,9 +439,23 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
     const usageValues = await getSettings(ctx, Object.values(USAGE_KEYS));
     limits = limitNotices(ctx.tenant.plan, planUsage(ctx.tenant, usageValues));
   }
+  // «Что сделать сегодня»: задачи и выручка за сутки/неделю — только продавцу, не бухгалтеру.
+  let today: import("@/core/overview/today").TodayTask[] = [];
+  let rev1 = rev30;
+  let rev7 = rev30;
+  if (!accountant) {
+    [today, rev1, rev7] = await Promise.all([
+      (await import("@/core/overview/today")).todayTasks(ctx),
+      revenue(ctx, 1),
+      revenue(ctx, 7),
+    ]);
+  }
   return {
     counts,
     rev30,
+    rev1,
+    rev7,
+    today,
     limits,
     recent: accountant ? redactOrders(recent) : recent,
     products: products ?? 0,

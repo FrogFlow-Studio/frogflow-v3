@@ -32,7 +32,6 @@ function Dashboard() {
   const t = adminT(shop.locale);
   const loc = intlLocale(shop.locale);
   const router = useRouter();
-  const attention = (d.counts.awaiting_confirmation ?? 0) + (d.counts.ready ?? 0);
   const steps = [
     d.setup.telegram,
     d.setup.products,
@@ -61,6 +60,7 @@ function Dashboard() {
         title={t("overview.title")}
         subtitle={`${t(verticalTitleKey(shop.vertical))}${shop.telegram ? ` · @${shop.telegram}` : ""}`}
       />
+      {shop.role !== "accountant" && <TodayCard tasks={d.today} t={t} modules={shop.modules} />}
       {d.setup.starter > 0 && (
         <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-line p-3 text-sm">
           <span className="min-w-0 flex-1">{t("overview.starter.banner")}</span>
@@ -204,11 +204,16 @@ function Dashboard() {
         </Card>
       )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat
-          label={t("overview.attention")}
-          value={attention}
-          hint={t("overview.attentionHint")}
-        />
+        {shop.role !== "accountant" && (
+          <>
+            <Stat label={t("today.rev1")} value={formatMoney(d.rev1.total, d.rev1.currency)} />
+            <Stat
+              label={t("today.rev7")}
+              value={formatMoney(d.rev7.total, d.rev7.currency)}
+              hint={t("overview.paidOrders", { n: d.rev7.orders })}
+            />
+          </>
+        )}
         <Stat
           label={t("overview.revenue30")}
           value={formatMoney(d.rev30.total, d.rev30.currency)}
@@ -472,6 +477,98 @@ function LimitsCard({ limits, t, loc }: { limits: LimitNotice[]; t: AdminT; loc:
           <p className="text-muted">{t("limits.top")}</p>
         )}
       </div>
+    </Card>
+  );
+}
+
+type Today = (typeof Route)["types"]["loaderData"]["today"];
+
+function TodayCard({
+  tasks,
+  t,
+  modules,
+}: {
+  tasks: Today;
+  t: AdminT;
+  modules: Record<string, boolean | undefined>;
+}) {
+  const router = useRouter();
+  const row = (task: Today[number]) => {
+    const label = t(`today.${task.key}`);
+    const count =
+      task.count === null ? (
+        <span className="text-sm text-danger">{t("today.unknown")}</span>
+      ) : (
+        <Badge tone="accent">{task.count}</Badge>
+      );
+    const cls = "flex items-center justify-between gap-3 py-2 text-sm hover:underline";
+    switch (task.key) {
+      case "receipts":
+        return (
+          <Link to="/admin/orders" search={{ status: "awaiting_confirmation" }} className={cls}>
+            {label}
+            {count}
+          </Link>
+        );
+      case "newOrders":
+        return (
+          <Link to="/admin/orders" search={{ status: "accepted" }} className={cls}>
+            {label}
+            {count}
+          </Link>
+        );
+      case "ready":
+        return (
+          <Link to="/admin/orders" search={{ status: "ready" }} className={cls}>
+            {label}
+            {count}
+          </Link>
+        );
+      case "dialogs":
+        return (
+          <Link to="/admin/chat" className={cls}>
+            {label}
+            {count}
+          </Link>
+        );
+      case "tickets":
+        return (
+          <Link to="/admin/tickets" className={cls}>
+            {label}
+            {count}
+          </Link>
+        );
+      case "lowStock":
+        return (
+          <Link
+            to={modules.warehouse ? "/admin/warehouse/requests" : "/admin/products"}
+            className={cls}
+          >
+            {label}
+            {count}
+          </Link>
+        );
+    }
+  };
+  return (
+    <Card
+      title={t("today.title")}
+      className="mb-6"
+      actions={
+        <button className="btn-ghost text-xs" onClick={() => void router.invalidate()}>
+          {t("today.retry")}
+        </button>
+      }
+    >
+      {tasks.length === 0 ? (
+        <p className="text-sm text-muted">{t("today.empty")}</p>
+      ) : (
+        <ul className="divide-y divide-line">
+          {tasks.map((task) => (
+            <li key={task.key}>{row(task)}</li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }
