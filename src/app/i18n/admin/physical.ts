@@ -48,6 +48,9 @@ export const ru = {
   "manual.addItem": "+ Позиция",
   "manual.remove": "Убрать",
   "manual.minDate": "Не раньше {date} — срок изготовления",
+  "manual.dateClosedWarn":
+    "В этот день выдачи нет по настройкам магазина. Заказ всё равно будет создан.",
+  "manual.dateFullWarn": "На эту дату заказы уже набраны по лимиту. Заказ всё равно будет создан.",
   "manual.paid": "Уже внесено",
   "manual.paidHint": "Больше нуля — заказ сразу в работе; ноль — ждёт оплату.",
   "manual.total": "Итого: {sum}",
@@ -103,6 +106,8 @@ export const kk: SectionDict<typeof ru> = {
   "manual.addItem": "+ Позиция",
   "manual.remove": "Алып тастау",
   "manual.minDate": "{date} күнінен ерте емес — дайындау мерзімі",
+  "manual.dateClosedWarn": "Дүкен баптауы бойынша бұл күні беру жоқ. Тапсырыс бәрібір жасалады.",
+  "manual.dateFullWarn": "Бұл күнге тапсырыстар шектен толған. Тапсырыс бәрібір жасалады.",
   "manual.paid": "Енгізілген",
   "manual.paidHint": "Нөлден көп болса — тапсырыс бірден жұмысқа; нөл — төлем күтеді.",
   "manual.total": "Барлығы: {sum}",
@@ -159,6 +164,10 @@ export const en: SectionDict<typeof ru> = {
   "manual.addItem": "+ Item",
   "manual.remove": "Remove",
   "manual.minDate": "Not before {date} — production time",
+  "manual.dateClosedWarn":
+    "There is no handover on this day per the shop settings. The order will still be created.",
+  "manual.dateFullWarn":
+    "Orders for this date are already at the limit. The order will still be created.",
   "manual.paid": "Already paid",
   "manual.paidHint": "Above zero — the order goes straight to work; zero — it waits for payment.",
   "manual.total": "Total: {sum}",
@@ -215,6 +224,9 @@ export const uz: SectionDict<typeof ru> = {
   "manual.addItem": "+ Pozitsiya",
   "manual.remove": "Olib tashlash",
   "manual.minDate": "{date} dan oldin emas — tayyorlash muddati",
+  "manual.dateClosedWarn":
+    "Do‘kon sozlamalariga ko‘ra bu kuni topshirish yo‘q. Buyurtma baribir yaratiladi.",
+  "manual.dateFullWarn": "Bu sanaga buyurtmalar chegaraga yetgan. Buyurtma baribir yaratiladi.",
   "manual.paid": "Allaqachon kiritilgan",
   "manual.paidHint": "Noldan koʻp — buyurtma darhol ishga; nol — toʻlovni kutadi.",
   "manual.total": "Jami: {sum}",

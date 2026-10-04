@@ -112,3 +112,48 @@ describe("sendFulfillmentReminders — напоминание о дате пол
     expect(sent).toEqual([]);
   });
 });
+
+describe("напоминание: слоты и загрузка дня", () => {
+  const settings = (db: FakeDb, pairs: Record<string, string>) => {
+    db.tables.app_settings = Object.entries(pairs).map(([key, value]) => ({
+      bot_id: BOT,
+      key,
+      value,
+    }));
+  };
+
+  it("время заказа называется слотом магазина, а не «с 10:00»", async () => {
+    const { ctx, sent, notify } = setup([{ id: 1, status: "accepted", inHours: 10 }]);
+    const db = ctx.db as unknown as FakeDb;
+    const at = new Date("2026-09-21T10:00:00Z"); // через 22 часа от NOW
+    db.tables.orders![0]!.fulfillment_at = at.toISOString();
+    settings(db, { fulfillment_slots: "10:00–12:00\n12:00–14:00" });
+    await sendFulfillmentReminders(ctx, notify, NOW);
+    expect(sent[0]!.dateLabel).toMatch(/, 10:00–12:00$/);
+  });
+
+  it("при лимитах продавцу идёт загрузка дня и слота; без лимитов её нет", async () => {
+    const withLimits = setup([
+      { id: 1, status: "accepted", inHours: 10 },
+      { id: 2, status: "accepted", inHours: 10 },
+    ]);
+    const db = withLimits.ctx.db as unknown as FakeDb;
+    const at = new Date("2026-09-21T10:00:00Z"); // через 22 часа от NOW
+    for (const o of db.tables.orders!) o.fulfillment_at = at.toISOString();
+    settings(db, {
+      fulfillment_slots: "10:00–12:00",
+      fulfillment_day_limit: "5",
+      fulfillment_slot_limit: "3",
+    });
+    await sendFulfillmentReminders(withLimits.ctx, withLimits.notify, NOW);
+    expect(withLimits.sent[0]!.load).toEqual({
+      total: 2,
+      dayLimit: 5,
+      slotCount: 2,
+      slotLimit: 3,
+    });
+    const plain = setup([{ id: 1, status: "accepted", inHours: 10 }]);
+    await sendFulfillmentReminders(plain.ctx, plain.notify, NOW);
+    expect(plain.sent[0]!.load).toBeNull();
+  });
+});

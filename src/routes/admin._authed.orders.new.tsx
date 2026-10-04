@@ -5,6 +5,7 @@ import { adminT } from "@/app/i18n/admin";
 import { ErrorBox, Field, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { addDaysToIso } from "@/core/fulfillment/pure";
+import { isClosedDay } from "@/core/fulfillment/closed-days";
 
 export const Route = createFileRoute("/admin/_authed/orders/new")({
   loader: () => manualOrderFormFn(),
@@ -15,7 +16,7 @@ type Line = { productId: string; variantId: string; quantity: number };
 
 /** Заказ по телефону или из переписки мимо бота — только физические товары. */
 function ManualOrderPage() {
-  const { products, zones, today } = Route.useLoaderData();
+  const { products, zones, today, closedWeekdays, closedRanges, fullDays } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const router = useRouter();
@@ -25,6 +26,7 @@ function ManualOrderPage() {
   const [type, setType] = useState<"pickup" | "delivery">("pickup");
   const [zoneId, setZoneId] = useState("");
   const [paid, setPaid] = useState("");
+  const [pickedDate, setPickedDate] = useState("");
   const byId = new Map(products.map((p) => [p.id, p]));
 
   const unitOf = (l: Line) => {
@@ -194,8 +196,20 @@ function ManualOrderPage() {
               label={t("physical.date")}
               hint={leadDays > 0 ? t("manual.minDate", { date: minDate }) : undefined}
             >
-              <input className="input" type="date" name="at" min={minDate} />
+              <input
+                className="input"
+                type="date"
+                name="at"
+                min={minDate}
+                onChange={(e) => setPickedDate(e.target.value)}
+              />
             </Field>
+            {pickedDate &&
+              (isClosedDay(pickedDate, { weekdays: closedWeekdays, ranges: closedRanges }) ? (
+                <p className="text-xs text-warn">{t("manual.dateClosedWarn")}</p>
+              ) : fullDays.includes(pickedDate) ? (
+                <p className="text-xs text-warn">{t("manual.dateFullWarn")}</p>
+              ) : null)}
             {type === "delivery" && (
               <>
                 {zones.length > 0 && (

@@ -74,3 +74,28 @@ test("витрина: в нерабочий день выдачи нет — ф�
   expect(orders.find((o) => o.id === id)!.fulfillment_at).toBe(`${monday}T00:00:00Z`);
   expect(errors).toEqual([]);
 });
+
+test("админка: ручной заказ на нерабочий или занятый день — предупреждение, настройки хранят лимит", async ({
+  page,
+}) => {
+  const errors = await watch(page);
+  await page.goto("/admin/login");
+  await page.locator('input[name="username"]').fill(F.DELIVERY_SELLER_LOGIN);
+  await page.locator('input[name="password"]').fill(F.DELIVERY_SELLER_PASSWORD);
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+
+  await page.goto("/admin/orders/new");
+  const at = page.locator('input[name="at"]');
+  await at.fill(nextDow(0));
+  await expect(page.getByText("В этот день выдачи нет по настройкам магазина.")).toBeVisible();
+  await at.fill(F.deliveryFullDay());
+  await expect(page.getByText("На эту дату заказы уже набраны по лимиту.")).toBeVisible();
+  await at.fill(nextDow(1));
+  await expect(page.getByText("заказы уже набраны по лимиту")).toHaveCount(0);
+
+  await page.goto("/admin/settings");
+  await expect(page.locator('input[name="day_limit"]')).toHaveValue(String(F.DELIVERY_DAY_LIMIT));
+  await expect(page.locator('input[name="closed7"]')).toBeChecked();
+  expect(errors).toEqual([]);
+});

@@ -3,7 +3,8 @@ import type { Locale } from "@/core/i18n/locale";
 import { isLocale } from "@/core/i18n/locale";
 import { stateFromJson } from "@/core/customers/customers";
 import { isoToDisplay } from "@/core/fulfillment/pure";
-import { slotOf } from "@/core/fulfillment/slots";
+import { fulfillmentSlots, slotOf } from "@/core/fulfillment/slots";
+import { fulfillmentLimits, loadOfDay, type DayLoad } from "@/core/fulfillment/capacity";
 import { isFulfillmentReminderEligible } from "./pure";
 
 export const OPEN_PHYSICAL_STATUSES = [
@@ -23,6 +24,13 @@ export type FulfillmentReminder = {
   dateLabel: string;
   type: "pickup" | "delivery";
   address: string | null;
+  /** Загрузка дня и слота заказа при заданных лимитах: продавцу — сколько уже набрано. */
+  load: {
+    total: number;
+    dayLimit: number | null;
+    slotCount: number | null;
+    slotLimit: number | null;
+  } | null;
 };
 
 /**
@@ -52,6 +60,10 @@ export async function sendFulfillmentReminders(
   if (error) throw new Error(`fulfillment-reminder: ${error.message}`);
   if (!orders?.length) return { checked: 0, sent: 0 };
 
+  const slots = await fulfillmentSlots(ctx);
+  // Нет лимитов или не прочитались — напоминание уходит без строки о загрузке.
+  const limits = await fulfillmentLimits(ctx).catch(() => ({ day: null, slot: null }));
+  const loads = new Map<string, DayLoad>();
   let sent = 0;
   for (const o of orders) {
     const at = new Date(o.fulfillment_at!);
@@ -74,6 +86,24 @@ export async function sendFulfillmentReminders(
     const locale: Locale = isLocale(st.locale)
       ? st.locale
       : (ctx.tenant.settings.default_locale ?? "ru");
+    // Загрузка нужна только при лимитах; сбой чтения не мешает самому напоминанию.
+    const day = o.fulfillment_at!.slice(0, 10);
+    let load: FulfillmentReminder["load"] = null;
+    if (limits.day !== null || limits.slot !== null) {
+      try {
+        if (!loads.has(day)) loads.set(day, await loadOfDay(ctx, day));
+        const l = loads.get(day)!;
+        const time = /T(\d{2}:\d{2})/.exec(o.fulfillment_at!)?.[1];
+        load = {
+          total: l.total,
+          dayLimit: limits.day,
+          slotCount: time && time !== "00:00" ? (l.slots[time] ?? 0) : null,
+          slotLimit: limits.slot,
+        };
+      } catch (e) {
+        console.error(`[fulfillment-reminder:${ctx.tenant.id}] загрузка дня ${day}`, e);
+      }
+    }
     try {
       await notify({
         orderId: o.id,
@@ -81,11 +111,12 @@ export async function sendFulfillmentReminders(
         telegramId: Number(o.telegram_id),
         platform: o.platform ?? "telegram",
         locale,
-        dateLabel: [isoToDisplay(o.fulfillment_at!.slice(0, 10)), slotOf(o.fulfillment_at, [])]
+        dateLabel: [isoToDisplay(o.fulfillment_at!.slice(0, 10)), slotOf(o.fulfillment_at, slots)]
           .filter(Boolean)
           .join(", "),
         type: o.fulfillment_type === "delivery" ? "delivery" : "pickup",
         address: o.fulfillment_address ?? null,
+        load,
       });
       sent++;
     } catch (e) {

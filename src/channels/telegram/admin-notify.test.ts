@@ -28,4 +28,14 @@ describe("уведомление продавцу: как получить фи�
     ).toBe("🏪 Самовывоз: —\n");
     expect(fulfillmentLine(order({ fulfillment_kind: "digital" }))).toBe("");
   });
+
+  it("слот магазина назван целиком, если слоты переданы", () => {
+    const o = order({
+      fulfillment_kind: "physical",
+      fulfillment_type: "pickup",
+      fulfillment_at: "2026-10-02T10:00:00Z",
+    });
+    expect(fulfillmentLine(o, ["10:00–12:00"])).toBe("🏪 Самовывоз: 02.10.2026, 10:00–12:00\n");
+    expect(fulfillmentLine(o)).toBe("🏪 Самовывоз: 02.10.2026, с 10:00\n");
+  });
 });

@@ -257,6 +257,8 @@ export const ru = {
   "settings.ful.slotLimit": "Заказов на слот",
   "settings.ful.limitHint":
     "Пусто — без лимита. Считаются заказы с датой выдачи, кроме отклонённых, отменённых и возвращённых. Занятые дата или слот покупателю не предлагаются; если последнее место заняли одновременно, второй заказ не создаётся. Заказы, которые продавец вносит сам, лимитом не ограничены; лимит на слот работает, когда слоты заданы.",
+  "settings.ful.slotLimitNoSlots":
+    "Лимит на слот задан, а слотов нет — он не действует. Добавьте слоты времени выше.",
   // зоны доставки
   "settings.zones.title": "Зоны доставки",
   "settings.zones.add": "+ Зона",
@@ -682,6 +684,8 @@ export const kk: SectionDict<typeof ru> = {
   "settings.ful.slotLimit": "Слотқа тапсырыс саны",
   "settings.ful.limitHint":
     "Бос — шектеусіз. Беру күні бар тапсырыстар саналады, қабылданбаған, бас тартылған және қайтарылғандары есепке алынбайды. Толған күн немесе слот сатып алушыға ұсынылмайды; соңғы орынды бір мезгілде алса, екінші тапсырыс жасалмайды. Сатушы өзі енгізген тапсырыстарға шек қойылмайды; слот шегі слоттар берілгенде ғана жұмыс істейді.",
+  "settings.ful.slotLimitNoSlots":
+    "Слот шегі берілген, бірақ слоттар жоқ — ол жұмыс істемейді. Жоғарыда уақыт слоттарын қосыңыз.",
   "settings.zones.title": "Жеткізу аймақтары",
   "settings.zones.add": "+ Аймақ",
   "settings.zones.intro":
@@ -1101,6 +1105,8 @@ export const en: SectionDict<typeof ru> = {
   "settings.ful.slotLimit": "Orders per slot",
   "settings.ful.limitHint":
     "Empty — no limit. Orders with a handover date count, except rejected, cancelled and refunded ones. A full date or slot is not offered to the customer; if the last spot is taken at the same moment, the second order is not created. Orders the seller enters by hand are not limited; the slot limit works when slots are set.",
+  "settings.ful.slotLimitNoSlots":
+    "A slot limit is set but there are no slots — it has no effect. Add time slots above.",
   "settings.zones.title": "Delivery zones",
   "settings.zones.add": "+ Zone",
   "settings.zones.intro":
@@ -1525,6 +1531,8 @@ export const uz: SectionDict<typeof ru> = {
   "settings.ful.slotLimit": "Slotga buyurtmalar soni",
   "settings.ful.limitHint":
     "Boʻsh — cheklovsiz. Topshirish sanasi bor buyurtmalar hisoblanadi, rad etilgan, bekor qilingan va qaytarilganlari hisobga olinmaydi. Band sana yoki slot xaridorga taklif qilinmaydi; oxirgi joyni bir vaqtda olishsa, ikkinchi buyurtma yaratilmaydi. Sotuvchi qoʻlda kiritgan buyurtmalar cheklanmaydi; slot chegarasi slotlar berilganda ishlaydi.",
+  "settings.ful.slotLimitNoSlots":
+    "Slot chegarasi berilgan, lekin slotlar yoʻq — u ishlamaydi. Yuqorida vaqt slotlarini qoʻshing.",
   "settings.zones.title": "Yetkazib berish hududlari",
   "settings.zones.add": "+ Hudud",
   "settings.zones.intro":

@@ -236,3 +236,24 @@ export async function loadSummary(
   });
   return { limits, days };
 }
+
+/** Занятые даты и слоты в ближайшие три месяца — для формы сайта и ручного заказа; без лимитов пусто. */
+export async function busyOverview(
+  ctx: TenantContext,
+  todayIso: string,
+): Promise<{ fullDays: string[]; fullSlots: Record<string, string[]> }> {
+  const limits = await fulfillmentLimits(ctx);
+  const fullDays: string[] = [];
+  const fullSlots: Record<string, string[]> = {};
+  if (!hasLimits(limits)) return { fullDays, fullSlots };
+  const slots = await fulfillmentSlots(ctx);
+  const loads = await loadByDay(ctx, todayIso, addDaysToIso(todayIso, LOAD_WINDOW_DAYS));
+  for (const [day, load] of loads) {
+    if (dayUnavailable(load, slots, limits)) fullDays.push(day);
+    else {
+      const free = freeSlots(slots, load, limits);
+      if (free.length < slots.length) fullSlots[day] = slots.filter((x) => !free.includes(x));
+    }
+  }
+  return { fullDays: fullDays.sort(), fullSlots };
+}

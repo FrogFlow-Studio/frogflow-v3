@@ -5,14 +5,14 @@ import { adminRecipients } from "@/core/notify/recipients";
 import { displayNo, type OrderWithItems } from "@/core/orders/orders";
 import { escapeHtml } from "./copy";
 import { isoToDisplay } from "@/core/fulfillment/pure";
-import { slotOf } from "@/core/fulfillment/slots";
+import { fulfillmentSlots, slotOf } from "@/core/fulfillment/slots";
 import { collectTgMessageIds, type AdminNotifyTgRef } from "@/core/notify/order-pack";
 import { rememberOrderNotify } from "./order-notify";
 
 /** Как и когда получить физический заказ — продавцу в уведомлении. */
-export function fulfillmentLine(order: OrderWithItems): string {
+export function fulfillmentLine(order: OrderWithItems, slots: readonly string[] = []): string {
   if (order.fulfillment_kind !== "physical" || !order.fulfillment_type) return "";
-  const slot = slotOf(order.fulfillment_at, []);
+  const slot = slotOf(order.fulfillment_at, slots);
   const date = order.fulfillment_at
     ? `${isoToDisplay(String(order.fulfillment_at).slice(0, 10))}${slot ? `, ${slot}` : ""}`
     : "—";
@@ -67,7 +67,7 @@ export async function notifyAdminNewOrder(
       : orderChannel(order.platform) !== "telegram"
         ? `📲 Канал: ${escapeHtml(order.platform)}\n`
         : "") +
-    fulfillmentLine(order) +
+    fulfillmentLine(order, await fulfillmentSlots(ctx)) +
     (opts.proofUrl ? `🧾 Чек: ${escapeHtml(opts.proofUrl)}\n` : "") +
     `👤 ${escapeHtml(order.display_name ?? "")}${order.username ? ` (@${escapeHtml(order.username)})` : ""}\n` +
     `📞 ${escapeHtml(order.contact ?? "—")}\n` +

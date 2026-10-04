@@ -10,17 +10,8 @@ import {
   zoneFee,
 } from "@/core/fulfillment/fulfillment";
 import { closedRules, type ClosedRange } from "@/core/fulfillment/closed-days";
-import { addDaysToIso, todayInTz } from "@/core/fulfillment/pure";
-import {
-  LOAD_WINDOW_DAYS,
-  dateAvailability,
-  dayUnavailable,
-  freeSlots,
-  freeSlotsOnDate,
-  fulfillmentLimits,
-  hasLimits,
-  loadByDay,
-} from "@/core/fulfillment/capacity";
+import { todayInTz } from "@/core/fulfillment/pure";
+import { busyOverview, dateAvailability, freeSlotsOnDate } from "@/core/fulfillment/capacity";
 import { fulfillmentSlots, withSlot } from "@/core/fulfillment/slots";
 
 /**
@@ -65,20 +56,7 @@ export async function webFulfillmentOptions(
   const rules = await closedRules(ctx);
   const slots = await fulfillmentSlots(ctx);
   const today = todayInTz(ctx.timezone);
-  const limits = await fulfillmentLimits(ctx);
-  const fullDays: string[] = [];
-  const fullSlots: Record<string, string[]> = {};
-  if (hasLimits(limits)) {
-    const loads = await loadByDay(ctx, today, addDaysToIso(today, LOAD_WINDOW_DAYS));
-    for (const [day, load] of loads) {
-      if (dayUnavailable(load, slots, limits)) fullDays.push(day);
-      else {
-        const free = freeSlots(slots, load, limits);
-        if (free.length < slots.length) fullSlots[day] = slots.filter((x) => !free.includes(x));
-      }
-    }
-    fullDays.sort();
-  }
+  const { fullDays, fullSlots } = await busyOverview(ctx, today);
   return {
     pickup: fs.pickup,
     delivery: fs.delivery,

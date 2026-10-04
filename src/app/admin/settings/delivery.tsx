@@ -156,6 +156,9 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
             />
           </Field>
         </div>
+        {settings.fulfillment_slot_limit && !settings.fulfillment_slots?.trim() && (
+          <p className="text-xs text-warn">{t("settings.ful.slotLimitNoSlots")}</p>
+        )}
         <div className="flex items-center gap-3">
           <button className="btn-secondary" disabled={save.busy}>
             {t("common.save")}

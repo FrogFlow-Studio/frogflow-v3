@@ -18,3 +18,5 @@ export function deliveryFullDay(): string {
   while (d.getUTCDay() === 0) d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10);
 }
+export const DELIVERY_SELLER_LOGIN = "e2e_pekarnya";
+export const DELIVERY_SELLER_PASSWORD = "e2e-pekarnya-pass-123";

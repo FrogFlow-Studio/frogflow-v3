@@ -5,7 +5,7 @@
  */
 import * as F from "../fixtures.ts";
 import type { StubDb } from "../pg-stub.ts";
-import { add, encrypt, nulls } from "./util.ts";
+import { add, encrypt, hash, nulls } from "./util.ts";
 
 const own = <T extends object>(r: T) => ({ bot_id: F.DELIVERY_SHOP_ID, ...r });
 
@@ -21,6 +21,10 @@ export function seedShop14Delivery(db: StubDb, now: string) {
         served_by: "v2",
         default_locale: "ru",
         slug: F.DELIVERY_SHOP_SLUG,
+        admin: {
+          username: F.DELIVERY_SELLER_LOGIN,
+          password_hash: hash(F.DELIVERY_SELLER_PASSWORD),
+        },
         telegram: { username: "e2e_pekarnya_bot", webhook_ok: true },
       },
       paused_message: null,

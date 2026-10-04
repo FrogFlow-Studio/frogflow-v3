@@ -1215,10 +1215,18 @@ export const manualOrderFormFn = createServerFn({ method: "GET" }).handler(async
       return { id: z.id, name: z.name, price: fee.amount, currency: fee.currency };
     }),
   );
+  // Нерабочие и занятые даты — предупреждение продавцу: ручной заказ ими не ограничен.
+  const today = minFulfillmentDate(ctx, 0);
+  const { closedRules } = await import("@/core/fulfillment/closed-days");
+  const { busyOverview } = await import("@/core/fulfillment/capacity");
+  const rules = await closedRules(ctx);
   return {
     products: await manualOrderProducts(ctx),
     zones,
-    today: minFulfillmentDate(ctx, 0),
+    today,
+    closedWeekdays: rules.weekdays,
+    closedRanges: rules.ranges,
+    fullDays: (await busyOverview(ctx, today)).fullDays,
   };
 });
 

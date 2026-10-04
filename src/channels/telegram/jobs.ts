@@ -214,7 +214,13 @@ export async function runFulfillmentReminders(tenant: Tenant) {
       });
     const typeLabel = r.type === "delivery" ? "Доставка" : "Самовывоз";
     const address = r.address ? `\n📍 ${escapeHtml(r.address)}` : "";
-    const text = `⏰ Завтра (${r.dateLabel}) — заказ #${r.displayNo}. ${typeLabel}.${address}`;
+    const load = r.load
+      ? `\n📊 Заказов на день: ${r.load.total}${r.load.dayLimit !== null ? ` из ${r.load.dayLimit}` : ""}` +
+        (r.load.slotCount !== null
+          ? `; на это время: ${r.load.slotCount}${r.load.slotLimit !== null ? ` из ${r.load.slotLimit}` : ""}`
+          : "")
+      : "";
+    const text = `⏰ Завтра (${r.dateLabel}) — заказ #${r.displayNo}. ${typeLabel}.${address}${load}`;
     await notifyAdminsHtml(ctx, text, { kind: "fulfillment", orderId: r.orderId });
   });
 }
