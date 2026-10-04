@@ -24,6 +24,7 @@ import { canEdit } from "@/core/auth/roles";
 import type { ProductCost } from "@/core/profit/cost";
 import { assistDescriptionFn } from "@/app/admin/assistant.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
+import { LoadError } from "@/app/ui/states";
 import { imagePath } from "@/core/catalog/image-url";
 import { editableMaterials, MATERIAL_LANGUAGES } from "@/core/catalog/materials";
 import { isCourseProduct } from "@/core/courses/marker";
@@ -862,7 +863,9 @@ function StockHistoryCard({
   return (
     <Card title={t("product.card.stockHistory")}>
       <p className="mb-2 text-xs text-muted">{t("product.stockHistory.hint")}</p>
-      {failed && <p className="text-sm text-danger">{t("product.stockHistory.failed")}</p>}
+      {failed && (
+        <LoadError message={t("product.stockHistory.failed")} onRetry={() => void load()} />
+      )}
       {loaded && !failed && entries.length === 0 && (
         <p className="text-sm text-muted">{t("product.stockHistory.empty")}</p>
       )}

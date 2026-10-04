@@ -4,6 +4,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { customersFn, setBlockedFn } from "@/app/admin/admin.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
+import { EmptyState } from "@/app/ui/states";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/admin/_authed/customers")({
@@ -59,7 +60,15 @@ function CustomersPage() {
       </form>
       <ErrorBox error={block.error} />
       {rows.length === 0 ? (
-        <Empty>{t("customers.empty")}</Empty>
+        q ? (
+          <Empty>{t("customers.empty")}</Empty>
+        ) : (
+          <EmptyState
+            title={t("customers.emptyTitle")}
+            hint={t("customers.emptyHint")}
+            action={{ label: t("states.addProducts"), to: "/admin/products" }}
+          />
+        )
       ) : (
         <div className="card overflow-x-auto">
           <table className="table">

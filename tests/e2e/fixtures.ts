@@ -39,5 +39,6 @@ export * from "./fixtures/shop18-s-stale.ts";
 export * from "./fixtures/shop18-n8-stats.ts";
 export * from "./fixtures/shop18-s-requests.ts";
 export * from "./fixtures/shop19-a-orders.ts";
+export * from "./fixtures/shop19-a-empty.ts";
 export * from "./fixtures/shop19-v-collections.ts";
 export * from "./fixtures/shop19-a-notify.ts";

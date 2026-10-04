@@ -14,6 +14,7 @@ import { useLiveOrders } from "@/app/admin/live-orders";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Empty, PageTitle } from "@/app/ui";
 import { usePullToRefresh } from "@/app/ui/pull-to-refresh";
+import { EmptyState } from "@/app/ui/states";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 import { slotOf } from "@/core/fulfillment/slots";
@@ -293,7 +294,15 @@ function OrdersPage() {
         </form>
       </div>
       {orders.length === 0 ? (
-        <Empty>{t("orders.empty")}</Empty>
+        status || q || pickup || unpaid ? (
+          <Empty>{t("orders.empty")}</Empty>
+        ) : (
+          <EmptyState
+            title={t("orders.emptyTitle")}
+            hint={t("orders.emptyHint")}
+            action={{ label: t("nav.botPreview"), to: "/admin/bot-preview" }}
+          />
+        )
       ) : (
         <>
           <ul className="space-y-2 md:hidden">

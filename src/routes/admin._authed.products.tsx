@@ -16,6 +16,7 @@ import {
 } from "@/app/admin/admin.functions";
 import { pruneUpsellFn, upsellHealthFn } from "@/app/admin/upsell.functions";
 import { adminT, type AdminKey, type AdminT } from "@/app/i18n/admin";
+import { EmptyState } from "@/app/ui/states";
 import { Badge, Card, Empty, ErrorBox, PageTitle, Switch, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { imagePath } from "@/core/catalog/image-url";
@@ -241,16 +242,19 @@ function ProductsPage() {
         </div>
       )}
       {products.length === 0 ? (
-        <Empty>
-          {t(school ? "products.emptyCourses" : "products.empty")}{" "}
-          <Link
-            to="/admin/products/$id"
-            params={{ id: "new" }}
-            className="text-accent hover:underline"
-          >
-            {t(school ? "products.addFirstCourse" : "products.addFirst")}
-          </Link>
-        </Empty>
+        s.q || s.category || s.inactive ? (
+          <Empty>{t(school ? "products.emptyCourses" : "products.empty")}</Empty>
+        ) : (
+          <EmptyState
+            title={t(school ? "products.emptyCourses" : "products.empty")}
+            hint={t("products.emptyHint")}
+            action={{
+              label: t(school ? "products.addFirstCourse" : "products.addFirst"),
+              to: "/admin/products/$id",
+              params: { id: "new" },
+            }}
+          />
+        )
       ) : (
         <div className="card overflow-x-auto">
           {editable && picked.size > 0 && (

@@ -67,6 +67,7 @@ import * as shop19Collections from "./admin/shop19-collections";
 import * as shop19Bell from "./admin/shop19-bell";
 import * as shop19Orders from "./admin/shop19-orders";
 import * as shop19Order from "./admin/shop19-order";
+import * as shop19States from "./admin/shop19-states";
 import * as shop18Forecast from "./admin/shop18-forecast";
 import * as help from "./admin/help";
 import * as news from "./admin/news";
@@ -476,6 +477,7 @@ const ru = {
   ...shop19Bell.ru,
   ...shop19Orders.ru,
   ...shop19Order.ru,
+  ...shop19States.ru,
   ...shop18Forecast.ru,
   ...help.ru,
   ...news.ru,
@@ -1615,6 +1617,7 @@ const kk: Dict = {
   ...shop19Bell.kk,
   ...shop19Orders.kk,
   ...shop19Order.kk,
+  ...shop19States.kk,
   ...shop18Forecast.kk,
   ...help.kk,
   ...news.kk,
@@ -1685,6 +1688,7 @@ const en: Dict = {
   ...shop19Bell.en,
   ...shop19Orders.en,
   ...shop19Order.en,
+  ...shop19States.en,
   ...shop18Forecast.en,
   ...help.en,
   ...news.en,
@@ -1755,6 +1759,7 @@ const uz: Dict = {
   ...shop19Bell.uz,
   ...shop19Orders.uz,
   ...shop19Order.uz,
+  ...shop19States.uz,
   ...shop18Forecast.uz,
   ...help.uz,
   ...news.uz,

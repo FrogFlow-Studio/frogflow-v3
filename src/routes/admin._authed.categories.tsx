@@ -14,7 +14,8 @@ import {
   CATALOG_ORDER_MAX,
   type CatalogLayout,
 } from "@/core/storefront/categories";
-import { Card, Empty, ErrorBox, PageTitle, Switch, useAction } from "@/app/ui";
+import { EmptyState } from "@/app/ui/states";
+import { Card, ErrorBox, PageTitle, Switch, useAction } from "@/app/ui";
 
 export const Route = createFileRoute("/admin/_authed/categories")({
   loader: async () => {
@@ -105,7 +106,11 @@ function CategoriesPage() {
       <ErrorBox error={del.error ?? vis.error ?? reorder.error} />
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         {rows.length === 0 ? (
-          <Empty>{t("categories.empty")}</Empty>
+          <EmptyState
+            title={t("categories.emptyTitle")}
+            hint={t("categories.emptyHint")}
+            action={{ label: t("categories.create"), onClick: () => setEditing("new") }}
+          />
         ) : (
           <div className="card">
             <table className="table">
