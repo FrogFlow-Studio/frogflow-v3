@@ -62,6 +62,26 @@ describe("сводка на языке продавца", () => {
     }
     expect(renderDigest("25.09", stats, [], "en")).toContain("Orders: 3");
   });
+  it("товары, которых хватит меньше недели: строка на каждом языке, без раздела — нет строки", () => {
+    const soon = {
+      ...stats,
+      runningOut: [
+        { name: "Мука <b>", days: 3 },
+        { name: "Соль", days: 0 },
+      ],
+    };
+    const ru = renderDigest("25.09", soon, []);
+    expect(ru).toContain("Хватит меньше чем на неделю");
+    expect(ru).toContain("• Мука &lt;b&gt; — на 3 дн.");
+    expect(ru).toContain("• Соль — закончился");
+    for (const l of ["kk", "en", "uz"] as const) {
+      const text = renderDigest("25.09", soon, [], l);
+      expect(text, l).not.toMatch(/Хватит|закончился/);
+      expect(text).toContain("Соль");
+    }
+    expect(renderDigest("25.09", stats, [])).not.toContain("Хватит меньше");
+    expect(renderDigest("25.09", { ...stats, runningOut: [] }, [])).not.toContain("Хватит меньше");
+  });
   it("без языка — по-русски, как раньше", () => {
     expect(renderDigest("25.09", stats, [])).toContain("Сводка за 25.09");
   });

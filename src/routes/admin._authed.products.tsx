@@ -258,6 +258,7 @@ function ProductsPage() {
                 <th>{t("products.col.name")}</th>
                 <th>{t("products.col.categories")}</th>
                 <th className="text-right">{t("products.col.price")}</th>
+                {shop.modules.stock && <th className="text-right">{t("products.col.daysLeft")}</th>}
                 <th>{t("products.col.files")}</th>
                 <th>{t("products.col.onSale")}</th>
               </tr>
@@ -320,6 +321,16 @@ function ProductsPage() {
                       .join(", ") || "—"}
                   </td>
                   <td className="text-right tabular-nums">{formatMoney(p.price, p.currency)}</td>
+                  {shop.modules.stock && (
+                    <td
+                      className={`text-right tabular-nums ${
+                        p.days_left !== null && p.days_left < 7 ? "font-medium text-danger" : ""
+                      }`}
+                      title={t("products.daysLeftHint")}
+                    >
+                      {p.days_left === null ? "—" : t("products.daysLeft", { n: p.days_left })}
+                    </td>
+                  )}
                   <td>
                     {p.fulfillment_kind === "digital" ? (
                       p.files ? (

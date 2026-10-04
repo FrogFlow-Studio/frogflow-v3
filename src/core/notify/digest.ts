@@ -76,11 +76,16 @@ export async function markDigested(ctx: TenantContext, ids: string[]): Promise<n
   return failed;
 }
 
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 export type DigestStats = {
   ordersYesterday: number;
   revenueYesterday: { total: number; currency: string };
   awaitingConfirmation: number;
   undelivered: number;
+  /** Товары, которых хватит меньше недели (core/stock/forecast); нет модуля «Склад» — пусто. */
+  runningOut?: ReadonlyArray<{ name: string; days: number }>;
 };
 
 const DIGEST_TEXT = {
@@ -91,6 +96,8 @@ const DIGEST_TEXT = {
     awaiting: (n: number) => `Ждут подтверждения: ${n}`,
     undelivered: (n: number, section: string) =>
       `Не доставлено сообщений: ${n} — см. «${section}» в панели`,
+    soon: "Хватит меньше чем на неделю:",
+    soonItem: (n: string, d: number) => `• ${n} — ${d === 0 ? "закончился" : `на ${d} дн.`}`,
     night: (n: number) => `<b>За ночь (${n}):</b>`,
     more: (n: number) => `… и ещё ${n}`,
   },
@@ -101,6 +108,8 @@ const DIGEST_TEXT = {
     awaiting: (n: number) => `Растауды күтуде: ${n}`,
     undelivered: (n: number, section: string) =>
       `Жеткізілмеген хабарлама: ${n} — панельдегі «${section}» бөлімін қараңыз`,
+    soon: "Бір аптадан аз уақытқа жетеді:",
+    soonItem: (n: string, d: number) => `• ${n} — ${d === 0 ? "таусылды" : `${d} күнге`}`,
     night: (n: number) => `<b>Түнде (${n}):</b>`,
     more: (n: number) => `… және тағы ${n}`,
   },
@@ -111,6 +120,8 @@ const DIGEST_TEXT = {
     awaiting: (n: number) => `Awaiting confirmation: ${n}`,
     undelivered: (n: number, section: string) =>
       `Undelivered messages: ${n} — see "${section}" in the panel`,
+    soon: "Less than a week of stock left:",
+    soonItem: (n: string, d: number) => `• ${n} — ${d === 0 ? "out of stock" : `${d} d left`}`,
     night: (n: number) => `<b>Overnight (${n}):</b>`,
     more: (n: number) => `… and ${n} more`,
   },
@@ -121,6 +132,8 @@ const DIGEST_TEXT = {
     awaiting: (n: number) => `Tasdiqlashni kutmoqda: ${n}`,
     undelivered: (n: number, section: string) =>
       `Yetkazilmagan xabarlar: ${n} — paneldagi «${section}» boʻlimiga qarang`,
+    soon: "Bir haftadan kam yetadi:",
+    soonItem: (n: string, d: number) => `• ${n} — ${d === 0 ? "tugagan" : `${d} kunga`}`,
     night: (n: number) => `<b>Kechasi (${n}):</b>`,
     more: (n: number) => `… va yana ${n} ta`,
   },
@@ -145,6 +158,12 @@ export function renderDigest(
   ];
   if (stats.undelivered)
     lines.push(t.undelivered(stats.undelivered, adminT(locale)("outbox.title")));
+  if (stats.runningOut?.length) {
+    lines.push("", `<b>${t.soon}</b>`);
+    for (const r of stats.runningOut.slice(0, 10))
+      lines.push(t.soonItem(escapeHtml(r.name.slice(0, 80)), r.days));
+    if (stats.runningOut.length > 10) lines.push(t.more(stats.runningOut.length - 10));
+  }
   if (items.length) {
     lines.push("", t.night(items.length));
     for (const it of items.slice(0, 20)) lines.push(`• ${it.text.split("\n")[0]!.slice(0, 200)}`);

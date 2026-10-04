@@ -704,7 +704,16 @@ export const productsFn = createServerFn({ method: "GET" })
       m.listProductsForAdmin(ctx, data),
       m.listAllCategories(ctx),
     ]);
-    return { products: page.rows, total: page.total, hasMore: page.hasMore, categories };
+    // «Хватит на N дней» (модуль «Склад»): только у товаров с остатком; нет продаж — null («—»).
+    const { forecastFor } = await import("@/core/stock/forecast");
+    const days = await forecastFor(
+      ctx,
+      page.rows
+        .filter((p) => p.stock_quantity !== null)
+        .map((p) => ({ id: p.id, name: p.name, stock: p.stock_quantity })),
+    );
+    const products = page.rows.map((p) => ({ ...p, days_left: days[p.id] ?? null }));
+    return { products, total: page.total, hasMore: page.hasMore, categories };
   });
 
 /**

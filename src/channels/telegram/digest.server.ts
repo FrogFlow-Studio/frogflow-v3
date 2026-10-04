@@ -19,16 +19,23 @@ import { notifyAdminsHtml } from "./notify";
 async function digestStats(ctx: TenantContext): Promise<DigestStats> {
   const { orderCounts, revenue } = await import("@/core/orders/admin");
   const { countUndelivered } = await import("@/core/outbox/outbox");
-  const [counts, rev, undelivered] = await Promise.all([
+  const { runningOutNow } = await import("@/core/stock/forecast");
+  const [counts, rev, undelivered, soon] = await Promise.all([
     orderCounts(ctx),
     revenue(ctx, 1),
     countUndelivered(ctx).catch(() => 0),
+    // Прогноз склада не должен ронять всю сводку: нет данных — строки просто нет.
+    runningOutNow(ctx).catch((e) => {
+      console.error(`[digest:${ctx.tenant.id}] прогноз склада не прочитан: ${String(e)}`);
+      return [];
+    }),
   ]);
   return {
     ordersYesterday: rev.orders,
     revenueYesterday: { total: rev.total, currency: rev.currency },
     awaitingConfirmation: counts.awaiting_confirmation ?? 0,
     undelivered,
+    runningOut: soon.map((r) => ({ name: r.name, days: r.days })),
   };
 }
 
