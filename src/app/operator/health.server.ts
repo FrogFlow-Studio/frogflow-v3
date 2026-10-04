@@ -146,7 +146,7 @@ export async function latestHealth(ids?: string[]): Promise<Map<string, LatestHe
           .eq("bot_id", id)
           .order("at", { ascending: false })
           .limit(1);
-        if (error) throw new Error(`bot_health_snapshots: ${error.message}`);
+        if (error) throw serverFailure(`bot_health_snapshots: ${error.message}`);
         const r = data?.[0];
         if (r) out.set(id, { ok: r.ok, at: r.at, error: r.error, pending: r.pending_updates });
       }),

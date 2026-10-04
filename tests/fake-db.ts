@@ -193,8 +193,14 @@ class Query implements PromiseLike<Result> {
     return this;
   }
   /** not(col, "in", "(a,b)"), not(col, "is", null) и not(col, "gt", n) — как ими пользуется код. */
-  not(col: string, op: "in" | "is" | "gt", v: string | number | null) {
+  not(col: string, op: "in" | "is" | "gt" | "like", v: string | number | null) {
     this.col(col);
+    if (op === "like") {
+      // NOT LIKE: у NULL результат неизвестен — строка не проходит, как в Postgres.
+      const re = likeRegex(String(v), "");
+      this.filters.push((r) => pick(r, col) != null && !re.test(String(pick(r, col))));
+      return this;
+    }
     if (op === "gt") {
       // NOT (col > n): у NULL сравнение неизвестно — строка не проходит, как в Postgres.
       this.filters.push((r) => {

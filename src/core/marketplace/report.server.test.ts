@@ -181,6 +181,28 @@ describe("жалобы оператору", () => {
     expect(seen).not.toContain("claim");
   });
 
+  it("1 000+ жалоб при потолке ответа 1000: все страницы, без потерь и повторов", async () => {
+    db = fakeDb({ maxRows: 1000, unique: { zernio_logs: [["event_id"]] } });
+    // Одинаковое created_at у всех: порядок страниц держит только уникальный id.
+    db.tables.zernio_logs = Array.from({ length: 1230 }, (_, i) => ({
+      id: `id${String(i).padStart(4, "0")}`,
+      bot_id: "a",
+      event_type: "market.report",
+      status: "open",
+      created_at: "2026-10-04T10:00:00Z",
+      payload: { slug: "a", shop: "Магазин a", reason: "fraud", text: `т${i}` },
+    }));
+    const seen: string[] = [];
+    let offset: number | null = 0;
+    while (offset != null) {
+      const p = await listOpenReports(offset);
+      seen.push(...p.reports.map((r) => r.id));
+      offset = p.next;
+    }
+    expect(seen).toHaveLength(1230);
+    expect(new Set(seen).size).toBe(1230);
+  });
+
   it("закрытие условное: двойной щелчок закрывает один раз, решение остаётся в строке", async () => {
     await submitReport(input(), IP1, null, deps());
     const id = reports()[0]!.id as string;

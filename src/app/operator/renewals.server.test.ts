@@ -5,10 +5,33 @@ import type { Tenant } from "@/core/tenant/types";
 
 /** Воронка продлений: каждое напоминание один раз, оплатил — серия стоит, v1 не трогаем. */
 let db: FakeDb;
+/** Роль арендатора видит только свои строки (RLS): фейк сужает чтения и записи app_settings по bot_id. */
+const asTenantDb = (botId: string) =>
+  new Proxy(
+    {},
+    {
+      get: (_t, key) => {
+        if (key !== "from") return (db as unknown as Record<string | symbol, unknown>)[key];
+        return (table: string) => {
+          const q = db.from(table) as unknown as Record<string | symbol, unknown>;
+          if (table !== "app_settings") return q;
+          return new Proxy(q, {
+            get: (target, k) =>
+              k === "select" || k === "update" || k === "delete"
+                ? (...a: unknown[]) =>
+                    (target[k] as (...x: unknown[]) => { eq: (c: string, v: string) => unknown })(
+                      ...a,
+                    ).eq("bot_id", botId)
+                : target[k],
+          });
+        };
+      },
+    },
+  ) as unknown as FakeDb;
 vi.mock("@/core/db/client.server", () => ({ serviceDb: () => db }));
 vi.mock("@/config/env", () => ({ env: () => ({ APP_TIMEZONE: "Asia/Almaty" }) }));
 vi.mock("@/core/tenant/resolve.server", () => ({
-  tenantContext: (t: Tenant) => ({ db, tenant: t, timezone: "Asia/Almaty" }),
+  tenantContext: (t: Tenant) => ({ db: asTenantDb(t.id), tenant: t, timezone: "Asia/Almaty" }),
   tenantDirectory: async () => [],
 }));
 vi.mock("./operator.server", () => ({ notifyOwner: async () => ({ delivered: [], failed: [] }) }));
@@ -173,6 +196,23 @@ describe("воронка продлений", () => {
     const r = await runRenewals([tenant()], at(1), deps());
     expect(r[BOT]).toMatchObject({ telegram: "sent", email: "none" });
     expect(mails).toEqual([]);
+  });
+
+  it("450 клиентов: сроки читаются кусками по 200 и никто не потерян", async () => {
+    db = fakeDb({ maxIn: 200, maxRows: 1000, unique: { app_settings: [["bot_id", "key"]] } });
+    db.tables.app_settings = [];
+    const ids = Array.from(
+      { length: 450 },
+      (_, i) => `00000000-0000-0000-0000-${String(i).padStart(12, "0")}`,
+    );
+    db.tables.bots = ids.map((id) => ({ id, subscription_expires_at: `${EXPIRES}T00:00:00Z` }));
+    const out = await runRenewals(
+      ids.map((id) => tenant({ id })),
+      at(1),
+      deps(),
+    );
+    expect(Object.keys(out)).toHaveLength(450);
+    expect(texts).toHaveLength(450);
   });
 
   it("сроки не прочитались — это сбой крона, а не «некого напоминать»", async () => {
