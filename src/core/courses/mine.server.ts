@@ -8,7 +8,7 @@ import { nextOpening } from "./access";
 import { loadHwStatusesFor, loadQuizPassedFor } from "./gate.server";
 import { courseTimeline } from "./cohort";
 import { liveSchedule } from "./live-view";
-import { courseKey, parseCourse } from "./course";
+import { courseKey, hasCourseContent, parseCourse } from "./course";
 import { hwKey, parseHomework, type HomeworkStatus } from "./homework";
 import { courseToken, courseUrl } from "./link";
 import { parseRun, runKey } from "./run.server";
@@ -76,7 +76,7 @@ export async function customerCourses(
   const courseRaw = await readSettings(ctx, [...new Set(items.map((i) => courseKey(i.productId)))]);
   const withCourse = items.flatMap((i) => {
     const course = parseCourse(courseRaw.get(courseKey(i.productId)));
-    return course.lessons.length ? [{ ...i, course }] : [];
+    return hasCourseContent(course) ? [{ ...i, course }] : [];
   });
   if (withCourse.length === 0) return [];
   const runs = await readSettings(

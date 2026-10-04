@@ -2,7 +2,7 @@ import { env } from "@/config/env";
 import type { MaterialSnapshot } from "@/core/catalog/materials";
 import { storefrontBase } from "@/core/tenant/custom-domain";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { courseKey, parseCourse } from "./course";
+import { courseKey, hasCourseContent, parseCourse } from "./course";
 import { courseToken, courseUrl } from "./link";
 import { readSetting } from "./db.server";
 
@@ -24,7 +24,7 @@ export async function courseMaterials(
 ): Promise<MaterialSnapshot[]> {
   if (!ctx.tenant.modules.courses || !item.product_id || !ctx.tenant.settings.slug) return [];
   const course = parseCourse(await readSetting(ctx, courseKey(item.product_id)));
-  if (course.lessons.length === 0) return [];
+  if (!hasCourseContent(course)) return [];
   const token = courseToken(env().SECRETS_KEY, ctx.tenant.id, item.id);
   const url = courseUrl(storefrontBase(ctx.tenant, ctx.appUrl), item.id, token);
   // Канал — через страницу курса (`join=1`): приглашение личное и одно на

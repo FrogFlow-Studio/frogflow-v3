@@ -1,6 +1,6 @@
 import { pageAll } from "@/core/db/page";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { courseKey, parseCourse, type Course } from "./course";
+import { courseKey, hasCourseContent, parseCourse, type Course } from "./course";
 import type { TaskGate } from "./access";
 import { loadHwStatusesFor, loadQuizPassedFor } from "./gate.server";
 import { readSettings, selectIn } from "./db.server";
@@ -93,7 +93,7 @@ export async function loadRuns(ctx: TenantContext, onlyItemId?: string): Promise
     const item = itemById.get(r.itemId);
     const order = item ? orderById.get(item.order_id) : undefined;
     const course = item?.product_id ? courses.get(item.product_id) : undefined;
-    return item && order && course?.lessons.length
+    return item && order && course && hasCourseContent(course)
       ? [
           {
             itemId: r.itemId,

@@ -8,6 +8,7 @@ import {
   courseFilePaths,
   courseKey,
   courseProblem,
+  hasCourseContent,
   LESSON_FILES_MAX,
   LESSONS_MAX,
   parseCourse,
@@ -144,20 +145,22 @@ export async function saveCourse(
   };
   // Эфиры пишутся своими функциями (core/courses/lives.server), форма их не
   // присылает: берём записанные из той же версии записи, что и заменяем.
+  let written: Course = clean;
   const r = await updateSettingStamped(ctx, courseKey(productId), (raw) => {
     const stored = new Map((parseCourse(raw).cohorts ?? []).map((c) => [c.id, c.lives]));
     const cohorts = clean.cohorts?.map((c) => {
       const lives = stored.get(c.id);
       return lives?.length ? { ...c, lives } : c;
     });
-    return JSON.stringify(cohorts ? { ...clean, cohorts } : clean);
+    written = cohorts ? { ...clean, cohorts } : clean;
+    return JSON.stringify(written);
   });
   if (r !== "written")
     throw new UserError(
       "err.settings.saveFailed",
       "Настройка не сохранилась. Попробуйте ещё раз; если повторится — напишите в поддержку.",
     );
-  await syncCourseMarker(ctx, productId, product.file_url, clean.lessons.length > 0);
+  await syncCourseMarker(ctx, productId, product.file_url, hasCourseContent(written));
 }
 
 /**
@@ -233,20 +236,20 @@ async function ownVariantTariffs(
  * файлов, без уроков — снова только с файлами (выдать было бы нечего).
  * Чужую ссылку v1 в file_url не трогаем: условие записи — пусто или метка.
  */
-async function syncCourseMarker(
+export async function syncCourseMarker(
   ctx: TenantContext,
   productId: string,
   fileUrl: string | null,
-  hasLessons: boolean,
+  hasContent: boolean,
 ) {
-  if (hasLessons && !fileUrl) {
+  if (hasContent && !fileUrl) {
     const { error } = await ctx.db
       .from("products")
       .update({ file_url: COURSE_MARKER_URL })
       .eq("id", productId)
       .is("file_url", null);
     if (error) throw serverFailure(`Курс сохранён, но товар не отмечен курсом: ${error.message}`);
-  } else if (!hasLessons && fileUrl === COURSE_MARKER_URL) {
+  } else if (!hasContent && fileUrl === COURSE_MARKER_URL) {
     const { error } = await ctx.db
       .from("products")
       .update({ file_url: null })

@@ -1,7 +1,7 @@
 import { isTenantStorageKey } from "@/core/storage/keys";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { cohortStart, enrollingCohort, enrollOpen, type Tariff } from "./cohort";
-import { courseKey, parseCourse, type Lesson } from "./course";
+import { courseKey, hasCourseContent, parseCourse, type Lesson } from "./course";
 import { readSetting } from "./db.server";
 
 /** Ссылка на файл открытого урока; null — не удалось подписать, файл пропускается. */
@@ -106,7 +106,7 @@ export async function coursePreview(
 ): Promise<CoursePreview | null> {
   if (!ctx.tenant.modules.courses) return null;
   const course = parseCourse(await readSetting(ctx, courseKey(productId)));
-  if (course.lessons.length === 0) return null;
+  if (!hasCourseContent(course)) return null;
   const next = enrollingCohort(course, now, ctx.timezone);
   const lessons: CoursePreview["lessons"] = [];
   for (const [i, l] of course.lessons.entries())

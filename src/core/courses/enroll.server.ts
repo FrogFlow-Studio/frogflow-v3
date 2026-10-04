@@ -1,6 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { enrollOpen } from "./cohort";
-import { courseKey, parseCourse } from "./course";
+import { courseKey, hasCourseContent, parseCourse } from "./course";
 import { readSetting } from "./db.server";
 
 /**
@@ -15,5 +15,5 @@ export async function courseEnrollOpen(
 ): Promise<boolean> {
   if (!ctx.tenant.modules.courses) return true;
   const course = parseCourse(await readSetting(ctx, courseKey(productId)));
-  return course.lessons.length === 0 || enrollOpen(course, now, ctx.timezone);
+  return !hasCourseContent(course) || enrollOpen(course, now, ctx.timezone);
 }

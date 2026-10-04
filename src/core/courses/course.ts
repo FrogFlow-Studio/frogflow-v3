@@ -176,6 +176,14 @@ function parseSchedule(v: unknown): CourseSchedule {
 }
 
 /**
+ * Курс — это то, что можно продать и выдать: уроки или эфиры в потоках.
+ * Марафон вебинаров идёт без уроков, но ученик всё равно купил курс.
+ */
+export function hasCourseContent(c: Course): boolean {
+  return c.lessons.length > 0 || (c.cohorts ?? []).some((x) => (x.lives?.length ?? 0) > 0);
+}
+
+/**
  * Курс из значения app_settings. Битая запись — пустой курс, битый урок или
  * файл пропускается: читаем то, что писал сам v2, но не падаем на ручной правке.
  */

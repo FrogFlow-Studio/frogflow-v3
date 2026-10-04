@@ -2,7 +2,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serverFailure } from "@/lib/server-failure";
 import { updateSettingAtomic } from "@/core/settings/settings";
 import { cohortForPurchase, courseTimeline, type Timeline } from "./cohort";
-import { courseKey, parseCourse, type Course } from "./course";
+import { courseKey, hasCourseContent, parseCourse, type Course } from "./course";
 import { readSetting } from "./db.server";
 import type { TaskGate } from "./access";
 import { loadHwStatuses, loadQuizPassed } from "./gate.server";
@@ -131,7 +131,7 @@ export async function coursePurchase(
   if (orderError) throw serverFailure(`Заказ курса не прочитан: ${orderError.message}`);
   if (order?.status !== "delivered") return null;
   const course = parseCourse(await readSetting(ctx, courseKey(item.product_id)));
-  if (course.lessons.length === 0) return null;
+  if (!hasCourseContent(course)) return null;
   return {
     orderItemId: item.id,
     orderId: item.order_id,
@@ -229,7 +229,7 @@ export async function startRunAtDelivery(
 ): Promise<void> {
   if (!item.product_id) return;
   const course = parseCourse(await readSetting(ctx, courseKey(item.product_id)));
-  if (course.lessons.length === 0) return;
+  if (!hasCourseContent(course)) return;
   const { data: order, error } = await ctx.db
     .from("orders")
     .select("created_at")

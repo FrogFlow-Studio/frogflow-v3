@@ -2,7 +2,8 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
 import { updateSettingStamped } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
-import { courseKey } from "./course";
+import { courseKey, hasCourseContent, parseCourse } from "./course";
+import { syncCourseMarker } from "./course.server";
 import {
   LIVE_TITLE_MAX,
   LIVES_MAX,
@@ -55,6 +56,7 @@ async function editLives(
 ): Promise<Live[]> {
   let refused: LiveProblem | null = null;
   let result: Live[] = [];
+  let written = "";
   const r = await updateSettingStamped(ctx, courseKey(productId), (raw) => {
     refused = null;
     let obj: Record<string, unknown>;
@@ -76,10 +78,26 @@ async function editLives(
     }
     result = next;
     const cohorts = own.map((c, j) => (j === i ? { ...c, lives: next } : c));
-    return JSON.stringify({ ...obj, cohorts });
+    written = JSON.stringify({ ...obj, cohorts });
+    return written;
   });
   if (refused) throw liveRefusal(refused);
   if (r !== "written") throw serverFailure("Эфиры потока не записаны");
+  // Курс из одних эфиров (без уроков) тоже курс: первый эфир отмечает товар,
+  // последний убранный — снимает метку.
+  const { data: product, error } = await ctx.db
+    .from("products")
+    .select("file_url")
+    .eq("id", productId)
+    .maybeSingle();
+  if (error) throw serverFailure(`Эфир записан, но товар не прочитан: ${error.message}`);
+  if (product)
+    await syncCourseMarker(
+      ctx,
+      productId,
+      product.file_url,
+      hasCourseContent(parseCourse(written)),
+    );
   return result;
 }
 

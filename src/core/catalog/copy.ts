@@ -164,6 +164,8 @@ async function copyCourse(
 ): Promise<void> {
   const { getCourse, saveCourse } = await import("@/core/courses/course.server");
   const course = await getCourse(ctx, from);
+  // Копия переносит уроки, тарифы и сдачу ДЗ; потоки и эфиры привязаны к датам
+  // оригинала и не копируются, поэтому курс из одних эфиров копировать нечего.
   if (!course.lessons.length) return;
   const lessons = [];
   for (const l of course.lessons)

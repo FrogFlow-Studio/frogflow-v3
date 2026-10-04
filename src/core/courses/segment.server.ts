@@ -64,7 +64,7 @@ export async function courseSegmentMembers(
       .map((a) => parseHomework(hw.get(hwKey(r.itemId, a.lesson.id)))?.status ?? null);
     const pick =
       who === "all" ||
-      (who === "completed" && done >= r.course.lessons.length) ||
+      (who === "completed" && r.course.lessons.length > 0 && done >= r.course.lessons.length) ||
       (who === "homework" &&
         tl.tariff.homework &&
         statuses.some((s) => s === null || s === "revise")) ||
