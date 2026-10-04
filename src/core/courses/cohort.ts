@@ -1,5 +1,6 @@
 import { lessonsAccess, type LessonAccess, type TaskGate } from "./access";
 import { COHORT_TITLE_MAX, COHORTS_MAX, LOCAL_DAY_RE, type Course } from "./course";
+import type { Live } from "./live";
 
 export {
   ACCESS_DAYS_MAX,
@@ -31,6 +32,8 @@ export type Cohort = {
    * на поток, личные ссылки и исключение — как у канала курса.
    */
   chat?: string | null;
+  /** Эфиры потока по расписанию (core/courses/live); пишутся отдельно от формы курса. */
+  lives?: Live[];
 };
 
 export type Tariff = {

@@ -1,6 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
-import { setSetting, updateSettingStamped } from "@/core/settings/settings";
+import { updateSettingStamped } from "@/core/settings/settings";
 import { COHORTS_MAX, nextCohortAfter, type Cohort, type NextCohort } from "./cohort";
 import { serverFailure } from "@/lib/server-failure";
 import { COURSE_MARKER_URL } from "./marker";
@@ -142,7 +142,21 @@ export async function saveCourse(
       ? { tariffs: await ownVariantTariffs(ctx, productId, course.tariffs) }
       : {}),
   };
-  await setSetting(ctx, courseKey(productId), JSON.stringify(clean));
+  // Эфиры пишутся своими функциями (core/courses/lives.server), форма их не
+  // присылает: берём записанные из той же версии записи, что и заменяем.
+  const r = await updateSettingStamped(ctx, courseKey(productId), (raw) => {
+    const stored = new Map((parseCourse(raw).cohorts ?? []).map((c) => [c.id, c.lives]));
+    const cohorts = clean.cohorts?.map((c) => {
+      const lives = stored.get(c.id);
+      return lives?.length ? { ...c, lives } : c;
+    });
+    return JSON.stringify(cohorts ? { ...clean, cohorts } : clean);
+  });
+  if (r !== "written")
+    throw new UserError(
+      "err.settings.saveFailed",
+      "Настройка не сохранилась. Попробуйте ещё раз; если повторится — напишите в поддержку.",
+    );
   await syncCourseMarker(ctx, productId, product.file_url, clean.lessons.length > 0);
 }
 

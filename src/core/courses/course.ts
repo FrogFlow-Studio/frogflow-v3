@@ -10,6 +10,7 @@
  */
 import { isTenantStorageKey } from "@/core/storage/keys";
 import { parseQuiz, quizProblem, type LessonQuiz } from "./lesson-quiz";
+import { parseLives } from "./live";
 
 export const COURSE_KEY_PREFIX = "course_";
 export const LESSONS_MAX = 100;
@@ -247,12 +248,14 @@ function parseCohorts(v: unknown): Cohort[] {
     const start = str(x.start, 16);
     const until = str(x.enrollUntil, 10);
     if (!UUID.test(id) || !LOCAL_START_RE.test(start) || out.some((o) => o.id === id)) continue;
+    const lives = parseLives(x.lives);
     out.push({
       id,
       title: str(x.title, COHORT_TITLE_MAX),
       start,
       enrollUntil: LOCAL_DAY_RE.test(until) ? until : null,
       ...(COURSE_CHANNEL_RE.test(str(x.chat, 40).trim()) ? { chat: str(x.chat, 40).trim() } : {}),
+      ...(lives.length ? { lives } : {}),
     });
     if (out.length >= COHORTS_MAX) break;
   }

@@ -24,6 +24,7 @@ import {
   QUIZ_QUESTIONS_MAX,
   QUIZ_TEXT_MAX,
 } from "@/core/courses/lesson-quiz";
+import { LIVE_LINK_MAX, LIVE_TITLE_MAX } from "@/core/courses/live";
 
 /**
  * Уроки курса (модуль courses) в карточке цифрового товара. Смотреть может
@@ -224,6 +225,45 @@ export const createNextCohortFn = createServerFn({ method: "POST" })
     const ctx = await moduleAdmin("manager");
     const { createNextCohort } = await import("@/core/courses/course.server");
     return createNextCohort(ctx, data.productId, data.startDay);
+  });
+
+/** Эфир потока: добавить или поправить (Ш1, менеджер и выше). Id задаёт форма. */
+export const saveLiveFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        productId: z.string().uuid(),
+        cohortId: z.string().uuid(),
+        live: z.object({
+          id: z.string().uuid(),
+          title: z.string().max(LIVE_TITLE_MAX),
+          at: z.string().regex(LOCAL_START_RE),
+          link: z.string().max(LIVE_LINK_MAX).nullable(),
+        }),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { saveLive } = await import("@/core/courses/lives.server");
+    return saveLive(ctx, data.productId, data.cohortId, data.live);
+  });
+
+/** Удалить эфир потока (менеджер и выше). */
+export const deleteLiveFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        productId: z.string().uuid(),
+        cohortId: z.string().uuid(),
+        liveId: z.string().uuid(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { deleteLive } = await import("@/core/courses/lives.server");
+    return deleteLive(ctx, data.productId, data.cohortId, data.liveId);
   });
 
 /** Перевести ученика в другой поток (менеджер и выше). */
