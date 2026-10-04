@@ -12,6 +12,9 @@ vi.mock("@/core/tenant/resolve.server", async (orig) => ({
   tenantDirectory: async () => [
     { id: "b1", name: "Лавка" },
     { id: "b2", name: "Пекарня" },
+    // Для быстрых ответов (Ч4): тариф и язык магазина.
+    { id: "q1", name: "Дүкен", plan: "flowers.business", settings: { default_locale: "kk" } },
+    { id: "q2", name: "Булочная", plan: "flowers.basic", settings: {} },
   ],
 }));
 
@@ -175,5 +178,23 @@ describe("скорость ответа", () => {
     expect(await typicalResponseHours(NOW)).toBe(2);
     db = withBrokenReads(db, ["platform_threads"]);
     expect(await typicalResponseHours(NOW)).toBeNull();
+  });
+});
+
+describe("данные клиента для быстрых ответов (Ч4)", () => {
+  it("имя, тариф словами и язык магазина приходят вместе с перепиской", async () => {
+    await sendSellerMessage(seller("q1"), { body: "вопрос", authorName: "m" });
+    await sendSellerMessage(seller("q2"), { body: "вопрос", authorName: "m" });
+    expect((await supportConversation("q1"))!.shop).toEqual({
+      name: "Дүкен",
+      planTitle: "Business",
+      locale: "kk",
+    });
+    // Язык магазина не задан — null, подстановка возьмёт русский.
+    expect((await supportConversation("q2"))!.shop).toMatchObject({
+      name: "Булочная",
+      planTitle: "Basic",
+      locale: null,
+    });
   });
 });

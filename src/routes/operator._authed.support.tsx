@@ -11,6 +11,7 @@ import {
 } from "@/app/operator/operator.functions";
 import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { minutesLabel } from "@/core/support/response";
+import { QUICK_REPLIES, quickReplyText } from "@/core/support/quick-replies";
 import {
   STATUS_LABEL_RU,
   SUPPORT_BODY_MAX,
@@ -242,6 +243,25 @@ function SupportInbox() {
               <div className="border-t border-line p-4">
                 <ErrorBox error={reply.error} />
                 {notice && <p className="mb-2 text-sm text-muted">{notice}</p>}
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-muted">Быстрые ответы:</span>
+                  {QUICK_REPLIES.map((q) => (
+                    <button
+                      key={q.id}
+                      type="button"
+                      className="btn-secondary text-xs"
+                      onClick={() => {
+                        const insert = quickReplyText(q, conversation.shop.locale, {
+                          shop: conversation.shop.name,
+                          plan: conversation.shop.planTitle,
+                        });
+                        setText((cur) => (cur.trim() ? `${cur.trimEnd()}\n\n${insert}` : insert));
+                      }}
+                    >
+                      {q.title}
+                    </button>
+                  ))}
+                </div>
                 <textarea
                   className="input w-full"
                   rows={3}

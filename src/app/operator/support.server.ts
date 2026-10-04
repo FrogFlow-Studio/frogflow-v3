@@ -25,6 +25,8 @@ import {
   typicalHours,
   type ResponseSample,
 } from "@/core/support/response";
+import type { Locale } from "@/core/i18n/locale";
+import { planTitle } from "@/core/plans/registry";
 import { tenantDirectory } from "@/core/tenant/resolve.server";
 import { logEvent } from "./operator.server";
 import { serverFailure } from "@/lib/server-failure";
@@ -184,6 +186,8 @@ export async function supportInbox(
 
 export type OperatorThreadView = {
   client: string;
+  /** Данные клиента для быстрых ответов (Ч4): имя, тариф словами, язык магазина. */
+  shop: { name: string; planTitle: string; locale: Locale | null };
   status: ThreadStatus | null;
   labels: string[];
   /** Заметка оператора: лежит в таблице, к которой у продавца нет доступа вовсе. */
@@ -230,9 +234,14 @@ export async function supportConversation(botId: string): Promise<OperatorThread
     .is("read_at", null);
   if (error) throw serverFailure(`[operator] отметка «прочитано» не записана: ${error.message}`);
   const urls = await signScreenshots(rows);
-  const names = new Map((await tenantDirectory()).map((t) => [t.id, t.name]));
+  const tenant = (await tenantDirectory()).find((t) => t.id === botId);
   return {
-    client: names.get(botId) ?? "—",
+    client: tenant?.name ?? "—",
+    shop: {
+      name: tenant?.name ?? "—",
+      planTitle: planTitle(tenant?.plan),
+      locale: tenant?.settings?.default_locale ?? null,
+    },
     status: thread ? (thread.status as ThreadStatus) : null,
     labels: thread?.labels ?? [],
     note: thread ? await readNote(thread.id) : { text: "", updatedAt: null, updatedBy: null },
