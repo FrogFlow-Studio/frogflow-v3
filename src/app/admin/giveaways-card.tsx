@@ -3,7 +3,13 @@ import { closeGiveawayFn, giveawaysFn, saveGiveawayFn } from "@/app/admin/giveaw
 import { instagramPostsFn } from "@/app/admin/instagram.functions";
 import type { AdminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, useAction } from "@/app/ui";
-import { GIVEAWAY_CHANNELS, GIVEAWAY_MAX_WINNERS } from "@/core/giveaways/giveaway";
+import {
+  GIVEAWAY_CHANNELS,
+  GIVEAWAY_CONSOLATION_MAX_PERCENT,
+  GIVEAWAY_MAX_WINNERS,
+  GIVEAWAY_PROMO_MAX_DAYS,
+  GIVEAWAY_PROMO_MAX_PERCENT,
+} from "@/core/giveaways/giveaway";
 
 /** Раздел «Розыгрыши» в «Рассылках» (модуль giveaways): список и форма условий. */
 type Loaded = Awaited<ReturnType<typeof giveawaysFn>>;
@@ -25,6 +31,9 @@ type Form = {
   igReply: string;
   excludeBlocked: boolean;
   excludeStaff: boolean;
+  prizePromoPercent: number;
+  promoDays: number;
+  consolationPercent: number;
 };
 
 /** ISO → значение поля datetime-local (в часовом поясе браузера продавца). */
@@ -49,6 +58,9 @@ const blank = (): Form => ({
   igReply: "",
   excludeBlocked: true,
   excludeStaff: true,
+  prizePromoPercent: 0,
+  promoDays: 30,
+  consolationPercent: 0,
 });
 
 export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
@@ -266,6 +278,36 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
             />
             {t("giveaways.f.excludeStaff")}
           </label>
+          <Field label={t("giveaways.f.prizePromo")} hint={t("giveaways.f.prizePromoHint")}>
+            <input
+              className="input"
+              type="number"
+              min={0}
+              max={GIVEAWAY_PROMO_MAX_PERCENT}
+              value={form.prizePromoPercent}
+              onChange={(e) => set({ prizePromoPercent: Number(e.target.value) })}
+            />
+          </Field>
+          <Field label={t("giveaways.f.consolation")} hint={t("giveaways.f.consolationHint")}>
+            <input
+              className="input"
+              type="number"
+              min={0}
+              max={GIVEAWAY_CONSOLATION_MAX_PERCENT}
+              value={form.consolationPercent}
+              onChange={(e) => set({ consolationPercent: Number(e.target.value) })}
+            />
+          </Field>
+          <Field label={t("giveaways.f.promoDays")}>
+            <input
+              className="input"
+              type="number"
+              min={1}
+              max={GIVEAWAY_PROMO_MAX_DAYS}
+              value={form.promoDays}
+              onChange={(e) => set({ promoDays: Number(e.target.value) })}
+            />
+          </Field>
           <div className="flex items-center gap-3">
             <button className="btn-primary" disabled={save.busy}>
               {t("common.save")}

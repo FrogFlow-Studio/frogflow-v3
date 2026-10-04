@@ -164,6 +164,14 @@ describe("ретеншн zernio_logs", () => {
         created_at: daysAgo(400),
       },
       {
+        id: "notice",
+        bot_id: "b",
+        event_id: "giveaway:abcdefgh:notice:prize:tg:1",
+        event_type: "giveaway.notice",
+        status: "sent",
+        created_at: daysAgo(400),
+      },
+      {
         id: "old-order-event",
         bot_id: "b",
         event_id: "order:7:placed:x",
@@ -173,7 +181,7 @@ describe("ретеншн zernio_logs", () => {
       },
     ];
     expect(await pruneZernioLogs(NOW)).toEqual({ deleted: 1, done: true });
-    expect(db.tables.zernio_logs.map((r) => r.id)).toEqual(["entry"]);
+    expect(db.tables.zernio_logs.map((r) => r.id)).toEqual(["entry", "notice"]);
   });
 
   it("Д3: учёт диалога (статус, ответственный) не удаляется по возрасту строки", async () => {

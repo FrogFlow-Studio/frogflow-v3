@@ -21,6 +21,11 @@ export const GIVEAWAY_INDEX_KEY = "giveaway:index";
 export const GIVEAWAY_MAX = 200;
 export const GIVEAWAY_MAX_WINNERS = 50;
 export const GIVEAWAY_MAX_DAYS = 365;
+/** Промокод приза и «утешительный»: скидка в процентах, срок действия в днях. */
+export const GIVEAWAY_PROMO_MAX_PERCENT = 100;
+export const GIVEAWAY_CONSOLATION_MAX_PERCENT = 50;
+export const GIVEAWAY_PROMO_DEFAULT_DAYS = 30;
+export const GIVEAWAY_PROMO_MAX_DAYS = 365;
 
 export const GIVEAWAY_CHANNELS = ["telegram", "instagram", "both"] as const;
 export type GiveawayChannel = (typeof GIVEAWAY_CHANNELS)[number];
@@ -86,6 +91,12 @@ export type Giveaway = {
   excludeBlocked: boolean;
   /** Не выбирать победителем сотрудников магазина. */
   excludeStaff: boolean;
+  /** Приз — одноразовый промокод на столько процентов; 0 — промокода нет, «продавец свяжется». */
+  prizePromoPercent: number;
+  /** Сколько дней действует промокод приза и утешительный. */
+  promoDays: number;
+  /** Утешительный промокод остальным участникам (в пределах потолка маркетинга); 0 — не шлём. */
+  consolationPercent: number;
   status: GiveawayStatus;
   /** Есть только у выбранного (status = drawn). */
   result?: GiveawayResult;
@@ -110,6 +121,10 @@ export type GiveawayInput = {
   igReply?: string;
   excludeBlocked: boolean;
   excludeStaff: boolean;
+  /** Промокоды приза (К5): не указаны — промокода нет, срок 30 дней. */
+  prizePromoPercent?: number;
+  promoDays?: number;
+  consolationPercent?: number;
 };
 
 /** Публичный канал Telegram: по @имени есть ссылка для кнопки «Подписаться». */
@@ -135,6 +150,11 @@ export function isGiveawayId(id: unknown): id is string {
 }
 
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+
+function intIn(v: unknown, min: number, max: number, fallback: number): number {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= min && n <= max ? n : fallback;
+}
 
 export function parseGiveaway(raw: string | null | undefined): Giveaway | null {
   if (!raw) return null;
@@ -165,6 +185,9 @@ export function parseGiveaway(raw: string | null | undefined): Giveaway | null {
       igReply: str(p.igReply, 1000),
       excludeBlocked: p.excludeBlocked !== false,
       excludeStaff: p.excludeStaff !== false,
+      prizePromoPercent: intIn(p.prizePromoPercent, 0, GIVEAWAY_PROMO_MAX_PERCENT, 0),
+      promoDays: intIn(p.promoDays, 1, GIVEAWAY_PROMO_MAX_DAYS, GIVEAWAY_PROMO_DEFAULT_DAYS),
+      consolationPercent: intIn(p.consolationPercent, 0, GIVEAWAY_CONSOLATION_MAX_PERCENT, 0),
       status: GIVEAWAY_STATUSES.includes(p.status as GiveawayStatus)
         ? (p.status as GiveawayStatus)
         : "open",
@@ -216,6 +239,35 @@ export function validateGiveawayInput(input: GiveawayInput, now: Date): Required
     );
   if ((input.igReply ?? "").trim().length > 1000)
     throw new UserError("err.giveaway.igReplyLong", "Ответ в Direct — не длиннее 1000 символов.");
+  const prizePromoPercent = input.prizePromoPercent ?? 0;
+  if (
+    !Number.isInteger(prizePromoPercent) ||
+    prizePromoPercent < 0 ||
+    prizePromoPercent > GIVEAWAY_PROMO_MAX_PERCENT
+  )
+    throw new UserError(
+      "err.giveaway.badPrizePercent",
+      "Скидка по промокоду приза — целое от 0 до {max} процентов.",
+      { max: GIVEAWAY_PROMO_MAX_PERCENT },
+    );
+  const consolationPercent = input.consolationPercent ?? 0;
+  if (
+    !Number.isInteger(consolationPercent) ||
+    consolationPercent < 0 ||
+    consolationPercent > GIVEAWAY_CONSOLATION_MAX_PERCENT
+  )
+    throw new UserError(
+      "err.giveaway.badConsolation",
+      "Скидка утешительного промокода — целое от 0 до {max} процентов.",
+      { max: GIVEAWAY_CONSOLATION_MAX_PERCENT },
+    );
+  const promoDays = input.promoDays ?? GIVEAWAY_PROMO_DEFAULT_DAYS;
+  if (!Number.isInteger(promoDays) || promoDays < 1 || promoDays > GIVEAWAY_PROMO_MAX_DAYS)
+    throw new UserError(
+      "err.giveaway.badPromoDays",
+      "Срок промокода — целое число дней от 1 до {max}.",
+      { max: GIVEAWAY_PROMO_MAX_DAYS },
+    );
   const ends = Date.parse(input.endsAt);
   if (Number.isNaN(ends))
     throw new UserError("err.giveaway.badDate", "Укажите срок приёма участников.");
@@ -242,6 +294,9 @@ export function validateGiveawayInput(input: GiveawayInput, now: Date): Required
     igReply: ig ? (input.igReply ?? "").trim() : "",
     excludeBlocked: input.excludeBlocked,
     excludeStaff: input.excludeStaff,
+    prizePromoPercent,
+    promoDays,
+    consolationPercent,
   };
 }
 

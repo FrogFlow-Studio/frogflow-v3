@@ -22,6 +22,16 @@ export const ru = {
   "err.giveaway.badSubChannel": "Канал для подписки — публичный, в виде @имя_канала.",
   "giveaways.f.excludeBlocked": "Не выбирать заблокированных вами покупателей",
   "giveaways.f.excludeStaff": "Не выбирать сотрудников магазина",
+  "giveaways.f.prizePromo": "Промокод приза, % скидки",
+  "giveaways.f.prizePromoHint":
+    "0 — промокода нет: победителю напишем, что продавец свяжется сам. Иначе победитель получит одноразовый промокод, выписанный на него.",
+  "giveaways.f.consolation": "Утешительный промокод остальным, % скидки",
+  "giveaways.f.consolationHint":
+    "0 — не отправлять. Уходит участникам в Telegram и в Instagram (если окно ответа открыто) в пределах дневного потолка маркетинга, один раз.",
+  "giveaways.f.promoDays": "Срок промокодов, дней",
+  "err.giveaway.badPrizePercent": "Скидка по промокоду приза — целое от 0 до {max} процентов.",
+  "err.giveaway.badConsolation": "Скидка утешительного промокода — целое от 0 до {max} процентов.",
+  "err.giveaway.badPromoDays": "Срок промокода — целое число дней от 1 до {max}.",
   "giveaways.channel.telegram": "Telegram",
   "giveaways.channel.instagram": "Instagram",
   "giveaways.channel.both": "Telegram и Instagram",
@@ -88,6 +98,18 @@ export const kk: SectionDict<typeof ru> = {
   "err.giveaway.badSubChannel": "Жазылу арнасы — ашық, @арна_атауы түрінде.",
   "giveaways.f.excludeBlocked": "Сіз бұғаттаған сатып алушыларды таңдамау",
   "giveaways.f.excludeStaff": "Дүкен қызметкерлерін таңдамау",
+  "giveaways.f.prizePromo": "Жүлде промокоды, % жеңілдік",
+  "giveaways.f.prizePromoHint":
+    "0 — промокод жоқ: жеңімпазға сатушы өзі хабарласатынын жазамыз. Әйтпесе жеңімпаз өзіне арналған бір реттік промокод алады.",
+  "giveaways.f.consolation": "Қалғандарға жұбату промокоды, % жеңілдік",
+  "giveaways.f.consolationHint":
+    "0 — жібермеу. Қатысушыларға Telegram-да және Instagram-да (жауап терезесі ашық болса) маркетингтің тәуліктік шегі ішінде бір рет жіберіледі.",
+  "giveaways.f.promoDays": "Промокод мерзімі, күн",
+  "err.giveaway.badPrizePercent":
+    "Жүлде промокодының жеңілдігі — 0-ден {max}-ге дейінгі бүтін пайыз.",
+  "err.giveaway.badConsolation":
+    "Жұбату промокодының жеңілдігі — 0-ден {max}-ге дейінгі бүтін пайыз.",
+  "err.giveaway.badPromoDays": "Промокод мерзімі — 1-ден {max}-ге дейінгі бүтін күн саны.",
   "giveaways.channel.telegram": "Telegram",
   "giveaways.channel.instagram": "Instagram",
   "giveaways.channel.both": "Telegram және Instagram",
@@ -155,6 +177,18 @@ export const en: SectionDict<typeof ru> = {
   "err.giveaway.badSubChannel": "The subscription channel must be public, like @channel_name.",
   "giveaways.f.excludeBlocked": "Do not pick buyers you have blocked",
   "giveaways.f.excludeStaff": "Do not pick shop staff",
+  "giveaways.f.prizePromo": "Prize promo code, % off",
+  "giveaways.f.prizePromoHint":
+    "0 — no promo code: the winner is told the seller will get in touch. Otherwise the winner gets a one-use promo code issued for them.",
+  "giveaways.f.consolation": "Consolation promo for the rest, % off",
+  "giveaways.f.consolationHint":
+    "0 — do not send. Goes once to participants in Telegram and in Instagram (if the reply window is open), within the daily marketing cap.",
+  "giveaways.f.promoDays": "Promo code validity, days",
+  "err.giveaway.badPrizePercent":
+    "The prize promo discount is a whole number from 0 to {max} percent.",
+  "err.giveaway.badConsolation":
+    "The consolation promo discount is a whole number from 0 to {max} percent.",
+  "err.giveaway.badPromoDays": "Promo code validity is a whole number of days from 1 to {max}.",
   "giveaways.channel.telegram": "Telegram",
   "giveaways.channel.instagram": "Instagram",
   "giveaways.channel.both": "Telegram and Instagram",
@@ -222,6 +256,16 @@ export const uz: SectionDict<typeof ru> = {
   "err.giveaway.badSubChannel": "Obuna kanali ochiq bo'lishi kerak, @kanal_nomi ko'rinishida.",
   "giveaways.f.excludeBlocked": "Siz bloklagan xaridorlarni tanlamaslik",
   "giveaways.f.excludeStaff": "Do'kon xodimlarini tanlamaslik",
+  "giveaways.f.prizePromo": "Sovrin promokodi, % chegirma",
+  "giveaways.f.prizePromoHint":
+    "0 — promokod yo'q: g'olibga sotuvchi o'zi bog'lanishini yozamiz. Aks holda g'olib o'ziga chiqarilgan bir martalik promokod oladi.",
+  "giveaways.f.consolation": "Qolganlarga tasalli promokodi, % chegirma",
+  "giveaways.f.consolationHint":
+    "0 — yubormaslik. Qatnashchilarga Telegram'da va Instagram'da (javob oynasi ochiq bo'lsa) kunlik marketing chegarasi doirasida bir marta yuboriladi.",
+  "giveaways.f.promoDays": "Promokod muddati, kun",
+  "err.giveaway.badPrizePercent": "Sovrin promokodi chegirmasi — 0 dan {max} gacha butun foiz.",
+  "err.giveaway.badConsolation": "Tasalli promokodi chegirmasi — 0 dan {max} gacha butun foiz.",
+  "err.giveaway.badPromoDays": "Promokod muddati — 1 dan {max} gacha butun kun soni.",
   "giveaways.channel.telegram": "Telegram",
   "giveaways.channel.instagram": "Instagram",
   "giveaways.channel.both": "Telegram va Instagram",

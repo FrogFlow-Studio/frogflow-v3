@@ -35,6 +35,9 @@ const inputSchema = z.object({
   igReply: z.string().max(2000).default(""),
   excludeBlocked: z.boolean(),
   excludeStaff: z.boolean(),
+  prizePromoPercent: z.number().default(0),
+  promoDays: z.number().default(30),
+  consolationPercent: z.number().default(0),
 });
 
 /** Без `id` — новый розыгрыш; с `id` и `rev` — правка открытого. */
