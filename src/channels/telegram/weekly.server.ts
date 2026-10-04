@@ -1,5 +1,6 @@
 import { tenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
+import { servedByV2 } from "@/core/tenant/directory";
 import {
   sendWeeklyReport,
   WeeklySendError,
@@ -18,6 +19,8 @@ export async function sendDueWeeklyReports(
 ): Promise<Record<string, WeeklyOutcome | string>> {
   const out: Record<string, string> = {};
   for (const t of tenants) {
+    // Клиент прежней платформы сводку от v2 не получает (крон и так даёт только v2, это второй замок).
+    if (!servedByV2(t)) continue;
     if (!t.telegramTokenEnc) continue;
     const ctx = tenantContext(t);
     try {

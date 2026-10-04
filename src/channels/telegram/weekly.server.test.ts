@@ -12,7 +12,18 @@ vi.mock("@/lib/errors", () => ({ reportError }));
 vi.mock("@/core/tenant/resolve.server", () => ({
   tenantContext: (t: Tenant) => realCtx ?? { tenant: t },
 }));
-vi.mock("./notify", () => ({ notifyAdminsHtml: async () => 1 }));
+const notified: string[] = [];
+vi.mock("./notify", () => ({
+  // Как настоящая: расшифровка токена бота магазина (в тестах секрет подменяется контекстом).
+  adminTelegramApi: (ctx: { secrets?: { telegramToken: () => string } }) => {
+    ctx.secrets?.telegramToken();
+    return {};
+  },
+  notifyAdminsHtml: async (_ctx: unknown, html: string) => {
+    notified.push(html);
+    return 1;
+  },
+}));
 vi.mock("@/core/analytics/weekly.server", async (orig) => {
   const real = await orig<typeof import("@/core/analytics/weekly.server")>();
   return {
@@ -27,12 +38,17 @@ vi.mock("@/core/analytics/weekly.server", async (orig) => {
 
 const { sendDueWeeklyReports } = await import("./weekly.server");
 const { WeeklySendError } = await import("@/core/analytics/weekly.server");
-const shop = { id: "b1", telegramTokenEnc: "enc" } as unknown as Tenant;
+const shop = {
+  id: "b1",
+  telegramTokenEnc: "enc",
+  settings: { served_by: "v2" },
+} as unknown as Tenant;
 
 beforeEach(() => {
   reportError.mockClear();
   failure = null;
   realCtx = null;
+  notified.length = 0;
 });
 
 describe("крон недельного отчёта", () => {
@@ -92,5 +108,48 @@ describe("крон недельного отчёта", () => {
     expect(warn).toHaveBeenCalledTimes(1);
     expect(reads).not.toContain("orders");
     warn.mockRestore();
+  });
+
+  it("клиент v1 и клиент без served_by сводку не получают и базу не читают", async () => {
+    const db = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
+    db.tables.app_settings = [];
+    const reads: string[] = [];
+    const from = db.from.bind(db);
+    db.from = (table: string) => {
+      reads.push(table);
+      return from(table);
+    };
+    realCtx = { tenant: shop, db, timezone: "Asia/Almaty" };
+    const v1 = { ...shop, id: "b2", settings: { served_by: "v1" } } as unknown as Tenant;
+    const none = { ...shop, id: "b3", settings: {} } as unknown as Tenant;
+    const r = await sendDueWeeklyReports([v1, none], new Date("2026-09-28T04:30:00Z"));
+    expect(r).toEqual({});
+    expect(reads).toEqual([]);
+    expect(notified).toEqual([]);
+  });
+
+  it("два крона одновременно на настоящей отправке: один отчёт, и только выбранные блоки", async () => {
+    const db = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
+    db.tables.app_settings = [{ bot_id: "b1", key: "weekly_report_sections", value: "top" }];
+    db.tables.orders = [];
+    db.tables.order_items = [];
+    db.tables.bot_users = [];
+    db.tables.cart_items = [];
+    realCtx = {
+      tenant: shop,
+      db,
+      timezone: "Asia/Almaty",
+      secrets: { telegramToken: () => "123:abc" },
+    };
+    const monday = new Date("2026-09-28T04:30:00Z");
+    const [a, b] = await Promise.all([
+      sendDueWeeklyReports([shop], monday),
+      sendDueWeeklyReports([shop], monday),
+    ]);
+    expect(notified).toHaveLength(1);
+    // Выручка и заказы идут всегда, воронка не выбрана — её нет.
+    expect(notified[0]).toContain("Выручка");
+    expect(notified[0]).not.toContain("Воронка");
+    expect([a.b1, b.b1].filter((x) => x === "sent")).toHaveLength(1);
   });
 });
