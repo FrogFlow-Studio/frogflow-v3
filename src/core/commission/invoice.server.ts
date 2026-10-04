@@ -173,3 +173,56 @@ export async function claimCommissionMonths(
   }
   throw serverFailure(`bots.settings: комиссия не закрепила месяцы ${botId} (гонка версий)`);
 }
+
+/**
+ * Снять отметки счёта: счёт отменён или отклонён, владелец по нему ничего не
+ * платит, месяцы снова свободны. Условная запись по `settings.rev`, чужие ключи
+ * settings (и отметки других счетов) не трогаем. Нет отметок этого счёта —
+ * ничего не пишем. Если снять не удалось, месяц всё равно освободится сам:
+ * отметка отменённого/отклонённого счёта не считается (`liveInvoices`).
+ */
+export async function releaseCommissionInvoice(botId: string, invoiceId: string): Promise<boolean> {
+  const db = serviceDb();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data, error } = await db.from("bots").select("settings").eq("id", botId).maybeSingle();
+    if (error)
+      throw serverFailure(`bots.settings: комиссия не прочитала настройки (${error.message})`);
+    if (!data) return false;
+    const raw = asObject(data.settings);
+    const commission = asObject(raw.commission);
+    const billed = { ...asObject(commission.billed) };
+    const mine = Object.keys(billed).filter((m) => billed[m] === invoiceId);
+    if (!mine.length) return false;
+    for (const m of mine) delete billed[m];
+    const rev = settingsRev(raw);
+    const nextCommission: Record<string, unknown> = { ...commission };
+    if (Object.keys(billed).length) nextCommission.billed = billed;
+    else delete nextCommission.billed;
+    const nextSettings: Record<string, unknown> = { ...raw, rev: nextSettingsRev(raw) };
+    if (Object.keys(nextCommission).length) nextSettings.commission = nextCommission;
+    else delete nextSettings.commission;
+    const revPath = "settings->>rev" as "id";
+    let q = db
+      .from("bots")
+      .update({ settings: nextSettings as never })
+      .eq("id", botId);
+    q = rev === null ? q.is(revPath, null as never) : q.eq(revPath, String(rev));
+    const { data: rows, error: writeError } = await q.select("id");
+    if (writeError) throw serverFailure(`bots.settings: ${writeError.message}`);
+    if (rows?.length) {
+      invalidateTenantDirectory();
+      return true;
+    }
+  }
+  throw serverFailure(`bots.settings: комиссия не сняла отметки счёта ${invoiceId} (гонка версий)`);
+}
+
+/** Снять отметки при отмене или отклонении счёта: сбой не мешает самой отмене, его видно в журнале ошибок. */
+export async function releaseCommissionSafely(botId: string, invoiceId: string): Promise<void> {
+  try {
+    await releaseCommissionInvoice(botId, invoiceId);
+  } catch (e) {
+    const { reportError } = await import("@/lib/errors");
+    await reportError(e, { where: "commission.release", botId });
+  }
+}

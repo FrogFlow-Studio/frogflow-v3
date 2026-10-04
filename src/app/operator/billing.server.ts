@@ -309,6 +309,9 @@ export async function createInvoice(
       { action: "invoice_cancelled", invoice_id: invoice.id, reason: "issue_failed" },
       actor,
     );
+    await (
+      await import("@/core/commission/invoice.server")
+    ).releaseCommissionSafely(botId, invoice.id);
     throw e instanceof Error ? e : new Error(String(e));
   }
   await logEvent(
@@ -580,6 +583,7 @@ export async function rejectInvoice(id: string, reason: string, actor: string): 
     { action: "invoice_rejected", invoice_id: id, reason: reason.trim() || null },
     actor,
   );
+  await (await import("@/core/commission/invoice.server")).releaseCommissionSafely(inv.bot_id, id);
 }
 
 /** Отменить можно только счёт, по которому ещё не прислали чек — иначе это «отклонить». */
@@ -599,6 +603,7 @@ export async function cancelInvoice(id: string, actor: string): Promise<void> {
   if (error) throw new Error(error.message);
   if (!done) throw new Error("Счёт уже обработан — обновите список");
   await logEvent(inv.bot_id, "payment", { action: "invoice_cancelled", invoice_id: id }, actor);
+  await (await import("@/core/commission/invoice.server")).releaseCommissionSafely(inv.bot_id, id);
 }
 
 /* ── обход подписок ─────────────────────────────────────────────────── */

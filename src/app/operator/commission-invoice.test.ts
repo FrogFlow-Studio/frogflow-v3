@@ -14,6 +14,17 @@ const BOT = "00000000-0000-0000-0000-0000000000c3";
 
 vi.mock("@/core/db/client.server", () => ({ serviceDb: () => db, tenantDb: () => db }));
 vi.mock("@/lib/errors", () => ({ reportError: async () => {} }));
+let failIssue = false;
+vi.mock("@/core/billing/pay/provider", async (orig) => {
+  const real = await orig<typeof import("@/core/billing/pay/provider")>();
+  return {
+    ...real,
+    issueWithFallback: async (...a: Parameters<typeof real.issueWithFallback>) => {
+      if (failIssue) throw new Error("провайдер не выставил счёт");
+      return real.issueWithFallback(...a);
+    },
+  };
+});
 vi.mock("./operator.server", () => ({
   logEvent: async () => {},
   notifyOwner: async () => ({ delivered: ["owner"], failed: [] }),
@@ -73,6 +84,7 @@ const commissionLines = (note: unknown) =>
 const create = () => plans.createPlanInvoice(BOT, { period: "month", addonPrices: {} }, "operator");
 
 beforeEach(async () => {
+  failIssue = false;
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2027-03-05T10:00:00Z"));
   db = fakeDb();
@@ -155,12 +167,56 @@ describe("комиссия в счёте за подписку", () => {
   it("счёт отменён или отклонён — месяц свободен и входит в следующий счёт", async () => {
     const a = await create();
     await billing.cancelInvoice(a.invoice.id, "operator");
+    // Отметка снята явно, остальные ключи settings на месте.
+    expect(settingsOf().commission).toBeUndefined();
+    expect(settingsOf().served_by).toBe("v2");
     const b = await create();
     expect(commissionLines(b.invoice.note)).toHaveLength(1);
     await billing.rejectInvoice(b.invoice.id, "не тот чек", "operator");
+    expect(settingsOf().commission).toBeUndefined();
     const c = await create();
     expect(commissionLines(c.invoice.note)).toHaveLength(1);
     expect(settingsOf().commission.billed["2027-02"]).toBe(c.invoice.id);
+  });
+
+  it("снятие отметки не трогает отметки других счетов, дату начала и чужие ключи", async () => {
+    db.tables.bots![0]!.settings = {
+      ...V2,
+      rev: 1,
+      theme: "dark",
+      commission: { start: "2027-01-01", billed: { "2027-01": "other-invoice" } },
+    };
+    const a = await create();
+    expect(settingsOf().commission.billed).toEqual({
+      "2027-01": "other-invoice",
+      "2027-02": a.invoice.id,
+    });
+    await billing.cancelInvoice(a.invoice.id, "operator");
+    expect(settingsOf().commission).toEqual({
+      start: "2027-01-01",
+      billed: { "2027-01": "other-invoice" },
+    });
+    expect(settingsOf().theme).toBe("dark");
+  });
+
+  it("сбой выставления счёта у провайдера: месяц освобождён и счёт отменён", async () => {
+    failIssue = true;
+    await expect(create()).rejects.toThrow(/провайдер/);
+    expect(invoices().map((i) => i.status)).toEqual(["cancelled"]);
+    expect(settingsOf().commission).toBeUndefined();
+    failIssue = false;
+    const b = await create();
+    expect(commissionLines(b.invoice.note)).toHaveLength(1);
+  });
+
+  it("отметку отменённого счёта не удалось снять — месяц всё равно свободен (отметка мёртвая не считается)", async () => {
+    const a = await create();
+    // Как будто снятие не прошло: отметка осталась, а счёт отменён в базе.
+    invoices().find((i) => i.id === a.invoice.id)!.status = "cancelled";
+    expect(settingsOf().commission.billed["2027-02"]).toBe(a.invoice.id);
+    const b = await create();
+    expect(commissionLines(b.invoice.note)).toHaveLength(1);
+    expect(settingsOf().commission.billed["2027-02"]).toBe(b.invoice.id);
   });
 
   it("оплаченный счёт месяц не освобождает", async () => {
