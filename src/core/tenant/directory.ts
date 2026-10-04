@@ -246,6 +246,8 @@ export function settingsFromJson(json: unknown): TenantSettings {
       ? parseHwReplies(s.homework_replies)
       : undefined,
     marketplace: parseMarketplace(obj(s.marketplace)),
+    community: parseCommunity(obj(s.community)),
+    community_mod: parseCommunityMod(obj(s.community_mod)),
     // Свои тексты бота и рабочие часы (страница «Тексты бота»): без разбора здесь они не доходят до бота.
     bot_texts: parseBotTexts(s.bot_texts),
     work_hours: cleanWorkHours(s.work_hours) ?? undefined,
@@ -262,6 +264,33 @@ export function settingsFromJson(json: unknown): TenantSettings {
             currency: str(obj(s.gift_sale).currency),
           }
         : undefined,
+  };
+}
+
+/** Профиль автора в сообществе: известные ключи; тексты чистит core/community при чтении. */
+function parseCommunity(c: Record<string, unknown>): TenantSettings["community"] {
+  const strs = (v: unknown) =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : undefined;
+  const out = {
+    enabled: c.enabled === true ? true : undefined,
+    name: typeof c.name === "string" ? c.name : undefined,
+    niche: typeof c.niche === "string" ? c.niche : undefined,
+    city: typeof c.city === "string" ? c.city : undefined,
+    about: typeof c.about === "string" ? c.about : undefined,
+    links: strs(c.links),
+    dm_off: c.dm_off === true ? true : undefined,
+    dm_blocked: strs(c.dm_blocked),
+  };
+  return Object.values(out).some((v) => v !== undefined) ? out : undefined;
+}
+
+/** Решение оператора по сообществу: только «скрыт» или «заблокирован». */
+function parseCommunityMod(m: Record<string, unknown>): TenantSettings["community_mod"] {
+  if (m.status !== "hidden" && m.status !== "blocked") return undefined;
+  return {
+    status: m.status,
+    reason: typeof m.reason === "string" ? m.reason : undefined,
+    at: typeof m.at === "string" ? m.at : undefined,
   };
 }
 

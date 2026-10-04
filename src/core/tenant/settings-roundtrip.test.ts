@@ -22,6 +22,18 @@ const SAVED = {
   },
   // площадка (core/marketplace)
   marketplace: { listed: true, approved: true, category: "Торты", city: "Алматы" },
+  // сообщество авторов (core/community)
+  community: {
+    enabled: true,
+    name: "Анна",
+    niche: "Торты",
+    city: "Алматы",
+    about: "Печём на заказ",
+    links: ["https://example.com"],
+    dm_off: true,
+    dm_blocked: ["b41a34cb-7944-441b-8f71-503184fc0f1f"],
+  },
+  community_mod: { status: "hidden", reason: "спам", at: "2026-10-04T10:00:00.000Z" },
   // оператор
   slug: "shop",
   hosts: ["shop.kz"],
