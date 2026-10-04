@@ -3,7 +3,14 @@ import { useState } from "react";
 import { saveSettingsFn, setPdfWatermarkFn } from "@/app/admin/admin.functions";
 import { Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
 import { SCHOOL_OFFER_RU, SCHOOL_PRIVACY_RU } from "@/app/admin/legal-templates";
-import { adminT } from "@/app/i18n/admin";
+import { adminT, type AdminKey } from "@/app/i18n/admin";
+import {
+  parseWeeklySections,
+  serializeWeeklySections,
+  WEEKLY_SECTIONS,
+  WEEKLY_SECTIONS_KEY,
+  type WeeklySection,
+} from "@/core/analytics/weekly";
 import {
   PAY_REMIND_HOURS,
   PAY_REMIND_KEY,
@@ -185,6 +192,11 @@ export function WeeklyReportCard({ settings }: { settings: Record<string, string
     await saveSettingsFn({ data: { weekly_report_enabled: v ? "true" : "false" } });
     await router.invalidate();
   });
+  const sections = parseWeeklySections(settings[WEEKLY_SECTIONS_KEY]);
+  const pick = useAction(async (next: WeeklySection[]) => {
+    await saveSettingsFn({ data: { [WEEKLY_SECTIONS_KEY]: serializeWeeklySections(next) } });
+    await router.invalidate();
+  });
   return (
     <Card title={t("settings.weekly.title")}>
       <p className="mb-3 text-sm text-muted">{t("settings.weekly.intro")}</p>
@@ -200,6 +212,24 @@ export function WeeklyReportCard({ settings }: { settings: Record<string, string
         </span>
       </div>
       <ErrorBox error={toggle.error} />
+      <fieldset className="mt-4" disabled={pick.busy || shop.role !== "owner"}>
+        <legend className="mb-2 text-sm text-muted">{t("weekly.sections.intro")}</legend>
+        {WEEKLY_SECTIONS.map((x) => (
+          <label key={x} className="flex items-center gap-2 py-1 text-sm">
+            <input
+              type="checkbox"
+              checked={sections.includes(x)}
+              onChange={(e) =>
+                void pick
+                  .run(e.target.checked ? [...sections, x] : sections.filter((y) => y !== x))
+                  .catch(() => {})
+              }
+            />
+            {t(`weekly.section.${x}` as AdminKey)}
+          </label>
+        ))}
+      </fieldset>
+      <ErrorBox error={pick.error} />
     </Card>
   );
 }

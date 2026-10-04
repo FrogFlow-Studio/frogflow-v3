@@ -26,6 +26,7 @@ export const SETTING_KEYS = [
   "smart_search_last_error",
   "receipt_ocr_auto",
   "weekly_report_enabled",
+  "weekly_report_sections",
   "receipt_ocr_usage",
   "consultant_enabled",
   "consultant_profile",

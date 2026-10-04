@@ -1779,6 +1779,13 @@ export const saveSettingsFn = createServerFn({ method: "POST" })
       }
       out.fulfillment_closed_dates = r.value;
     }
+    if (data.weekly_report_sections !== undefined) {
+      const { parseWeeklySections, serializeWeeklySections } =
+        await import("@/core/analytics/weekly");
+      out.weekly_report_sections = serializeWeeklySections(
+        parseWeeklySections(data.weekly_report_sections),
+      );
+    }
     for (const key of ["fulfillment_day_limit", "fulfillment_slot_limit"] as const)
       if (data[key] !== undefined) out[key] = String(parseLimit(data[key]) ?? "");
     for (const [k, v] of Object.entries(out)) await setSetting(ctx, k, v);

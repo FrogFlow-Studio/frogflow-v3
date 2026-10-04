@@ -14,6 +14,23 @@ export const WEEKLY_ENABLED_KEY = "weekly_report_enabled";
 export const WEEKLY_SENT_KEY = "weekly_report_sent_week";
 export const WEEKLY_HOUR = 9;
 
+/** Необязательные блоки недельного отчёта; выручка и заказы идут всегда. */
+export const WEEKLY_SECTIONS = ["speed", "buyers", "funnel", "top"] as const;
+export type WeeklySection = (typeof WEEKLY_SECTIONS)[number];
+/** Настройка в app_settings: блоки через запятую, "none" — только выручка и заказы; нет значения — все блоки. */
+export const WEEKLY_SECTIONS_KEY = "weekly_report_sections";
+
+export function parseWeeklySections(raw: string | null | undefined): WeeklySection[] {
+  if (raw == null || raw.trim() === "") return [...WEEKLY_SECTIONS];
+  const want = new Set(raw.split(",").map((x) => x.trim()));
+  return WEEKLY_SECTIONS.filter((x) => want.has(x));
+}
+
+export function serializeWeeklySections(sections: readonly string[]): string {
+  const on = WEEKLY_SECTIONS.filter((x) => sections.includes(x));
+  return on.length === WEEKLY_SECTIONS.length ? "" : on.length ? on.join(",") : "none";
+}
+
 export const weeklyEnabled = (raw: string | null | undefined) => raw !== "false";
 
 const DAY = 86_400_000;
@@ -302,8 +319,14 @@ function delta(cur: number, prev: number, w: Words): string {
 }
 
 /** Текст отчёта (HTML для Telegram) на языке продавца; по умолчанию русский. */
-export function renderWeekly(label: string, s: WeeklyStats, lang: Locale = "ru"): string {
+export function renderWeekly(
+  label: string,
+  s: WeeklyStats,
+  lang: Locale = "ru",
+  sections: readonly WeeklySection[] = WEEKLY_SECTIONS,
+): string {
   const w = WORDS[lang];
+  const has = (x: WeeklySection) => sections.includes(x);
   const all = s.funnel[0] ?? { arrived: 0, cart: 0, ordered: 0, paid: 0 };
   const lines = [
     w.title(label),
@@ -312,7 +335,7 @@ export function renderWeekly(label: string, s: WeeklyStats, lang: Locale = "ru")
     `${w.orders}: ${s.orders}${delta(s.orders, s.prevOrders, w)}`,
   ];
   const sp = s.speed;
-  if (sp && sp.payMedian !== null && sp.payP90 !== null)
+  if (has("speed") && sp && sp.payMedian !== null && sp.payP90 !== null)
     lines.push(
       w.speed(
         weeklyDuration(sp.payMedian, lang),
@@ -320,24 +343,25 @@ export function renderWeekly(label: string, s: WeeklyStats, lang: Locale = "ru")
         sp.deliverMedian === null ? null : weeklyDuration(sp.deliverMedian, lang),
       ),
     );
-  if (sp && sp.autoShare !== null) lines.push(w.auto(sp.autoShare));
-  if (s.buyers) lines.push(w.returning(s.buyers.returning, s.buyers.fresh));
+  if (has("speed") && sp && sp.autoShare !== null) lines.push(w.auto(sp.autoShare));
+  if (has("buyers") && s.buyers) lines.push(w.returning(s.buyers.returning, s.buyers.fresh));
   const change = weeklyChange(s);
   lines.push(
     change
       ? w.changed(w.metrics[change.metric], change.pct > 0 ? "▲" : "▼", Math.abs(change.pct))
       : w.calm,
-    "",
-    `<b>${w.funnel}</b>`,
   );
-  FUNNEL_STAGES.forEach((st, i) => {
-    const rate = i ? stageRate(all[FUNNEL_STAGES[i - 1]!], all[st]) : null;
-    lines.push(`${w.stages[st]}: ${all[st]}${rate === null ? "" : ` (${rate} %)`}`);
-  });
-  const best = s.funnel.slice(1).sort((a, b) => b.paid - a.paid || b.ordered - a.ordered)[0];
-  if (best && best.paid > 0)
-    lines.push("", w.bestChannel(w.channels[best.channel] ?? esc(best.channel), best.paid));
-  if (s.top.length) {
+  if (has("funnel")) {
+    lines.push("", `<b>${w.funnel}</b>`);
+    FUNNEL_STAGES.forEach((st, i) => {
+      const rate = i ? stageRate(all[FUNNEL_STAGES[i - 1]!], all[st]) : null;
+      lines.push(`${w.stages[st]}: ${all[st]}${rate === null ? "" : ` (${rate} %)`}`);
+    });
+    const best = s.funnel.slice(1).sort((a, b) => b.paid - a.paid || b.ordered - a.ordered)[0];
+    if (best && best.paid > 0)
+      lines.push("", w.bestChannel(w.channels[best.channel] ?? esc(best.channel), best.paid));
+  }
+  if (has("top") && s.top.length) {
     lines.push("", `<b>${w.top}</b>`);
     s.top.slice(0, 3).forEach((p, i) => lines.push(`${i + 1}. ${esc(p.name)} — ${w.qty(p.qty)}`));
   }

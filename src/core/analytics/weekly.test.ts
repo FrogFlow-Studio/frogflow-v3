@@ -5,8 +5,11 @@ import {
   isoWeekKey,
   renderWeekly,
   weeklyChange,
+  parseWeeklySections,
+  serializeWeeklySections,
   weeklyDuration,
   weekWindow,
+  WEEKLY_SECTIONS_KEY,
   WEEKLY_SENT_KEY,
   type WeeklyStats,
 } from "./weekly";
@@ -188,6 +191,52 @@ function shop(settings: Record<string, string> = {}) {
     db.tables.app_settings!.find((s) => s.key === WEEKLY_SENT_KEY)?.value;
   return { db, ctx, sent: () => sent(db) };
 }
+
+describe("недельный отчёт: выбор блоков (А15)", () => {
+  const FULL: WeeklyStats = {
+    ...BASE,
+    top: [{ name: "Азбука", qty: 3 }],
+    funnel: [
+      { channel: "all", arrived: 40, cart: 20, ordered: 15, paid: 12 },
+      { channel: "telegram", arrived: 30, cart: 12, ordered: 9, paid: 7 },
+    ],
+  };
+  it("настройка: нет значения — все блоки; список; none; мусор отбрасывается", () => {
+    expect(parseWeeklySections(null)).toEqual(["speed", "buyers", "funnel", "top"]);
+    expect(parseWeeklySections("")).toEqual(["speed", "buyers", "funnel", "top"]);
+    expect(parseWeeklySections("top, speed ,xxx")).toEqual(["speed", "top"]);
+    expect(parseWeeklySections("none")).toEqual([]);
+    expect(serializeWeeklySections(["speed", "buyers", "funnel", "top"])).toBe("");
+    expect(serializeWeeklySections(["top", "speed"])).toBe("speed,top");
+    expect(serializeWeeklySections([])).toBe("none");
+  });
+  it("без блока его строк нет, выручка и заказы остаются; без аргумента — всё как раньше", () => {
+    const all = renderWeekly("21.09–27.09", FULL);
+    expect(all).toContain("Воронка");
+    expect(all).toContain("Азбука");
+    expect(all).toContain("Скорость:");
+    expect(all).toContain("Вернувшихся покупателей");
+    const min = renderWeekly("21.09–27.09", FULL, "ru", []);
+    for (const gone of ["Воронка", "Азбука", "Скорость:", "Вернувшихся", "Лучший канал"])
+      expect(min).not.toContain(gone);
+    expect(min).toContain("Выручка: 150000 ₸");
+    expect(min).toContain("Оплаченных заказов: 12");
+    const onlyTop = renderWeekly("21.09–27.09", FULL, "ru", ["top"]);
+    expect(onlyTop).toContain("Азбука");
+    expect(onlyTop).not.toContain("Воронка");
+  });
+  it("в отправке выбор продавца применяется, отметка недели ставится как обычно", async () => {
+    const { db, ctx, sent } = shop();
+    db.tables.app_settings!.push({ bot_id: "t1", key: WEEKLY_SECTIONS_KEY, value: "none" });
+    const send = vi.fn(async (_html: string) => 1);
+    expect(await sendWeeklyReport(ctx, send, MONDAY_0930)).toBe("sent");
+    const html = send.mock.calls[0]![0];
+    expect(html).toContain("Выручка: 5000 ₸");
+    expect(html).not.toContain("Азбука");
+    expect(html).not.toContain("Воронка");
+    expect(sent()).toBe("2026-W39");
+  });
+});
 
 describe("отправка отчёта", () => {
   it("отправляет итоги прошлой недели один раз, второй прогон крона — ничего", async () => {

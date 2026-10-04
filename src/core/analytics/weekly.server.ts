@@ -23,7 +23,9 @@ import {
   weeklyEnabled,
   weekWindow,
   WEEKLY_ENABLED_KEY,
+  WEEKLY_SECTIONS_KEY,
   WEEKLY_SENT_KEY,
+  parseWeeklySections,
   type WeekWindow,
   type WeeklyStats,
 } from "./weekly";
@@ -179,11 +181,12 @@ export async function sendWeeklyReport(
   }
   const stats = await weeklyStats(ctx, w, now);
   const lang = await sellerLocale(ctx);
+  const sections = parseWeeklySections(await getSetting(ctx, WEEKLY_SECTIONS_KEY));
   const claim = await claimWeek();
   if (claim === "skipped") return "already";
   if (claim === "failed") return "failed";
   try {
-    await send(renderWeekly(w.label, stats, lang));
+    await send(renderWeekly(w.label, stats, lang, sections));
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     // Бот заблокирован или попыток за неделю больше лимита — повторы по

@@ -49,6 +49,11 @@ export const ru = {
   "reports.c.profit": "Прибыль",
   "reports.c.stock": "Остаток",
   "reports.c.threshold": "Порог",
+  "weekly.sections.intro": "Что присылать в недельном отчёте кроме выручки и заказов:",
+  "weekly.section.speed": "Скорость оплаты и выдачи",
+  "weekly.section.buyers": "Новые и вернувшиеся покупатели",
+  "weekly.section.funnel": "Воронка и лучший канал",
+  "weekly.section.top": "Топ товаров",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -99,6 +104,11 @@ export const kk: SectionDict<typeof ru> = {
   "reports.c.profit": "Пайда",
   "reports.c.stock": "Қалдық",
   "reports.c.threshold": "Шек",
+  "weekly.sections.intro": "Түсім мен тапсырыстан басқа апталық есепке не жіберу керек:",
+  "weekly.section.speed": "Төлем мен беру жылдамдығы",
+  "weekly.section.buyers": "Жаңа және қайта оралған сатып алушылар",
+  "weekly.section.funnel": "Воронка және үздік арна",
+  "weekly.section.top": "Үздік тауарлар",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -149,6 +159,11 @@ export const en: SectionDict<typeof ru> = {
   "reports.c.profit": "Profit",
   "reports.c.stock": "Stock",
   "reports.c.threshold": "Threshold",
+  "weekly.sections.intro": "What to include in the weekly report besides revenue and orders:",
+  "weekly.section.speed": "Payment and delivery speed",
+  "weekly.section.buyers": "New and returning customers",
+  "weekly.section.funnel": "Funnel and best channel",
+  "weekly.section.top": "Top products",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -199,4 +214,10 @@ export const uz: SectionDict<typeof ru> = {
   "reports.c.profit": "Foyda",
   "reports.c.stock": "Qoldiq",
   "reports.c.threshold": "Chegara",
+  "weekly.sections.intro":
+    "Tushum va buyurtmalardan tashqari haftalik hisobotga nima kiritish kerak:",
+  "weekly.section.speed": "To‘lov va topshirish tezligi",
+  "weekly.section.buyers": "Yangi va qaytgan xaridorlar",
+  "weekly.section.funnel": "Voronka va eng yaxshi kanal",
+  "weekly.section.top": "Top mahsulotlar",
 };
