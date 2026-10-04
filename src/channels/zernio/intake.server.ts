@@ -3,6 +3,7 @@ import type { Tenant } from "@/core/tenant/types";
 import type { ZernioWebhookMessagePayload } from "./message";
 import type { DispatchOutcome } from "./dispatch.server";
 import { runNotingEffects } from "@/lib/external-effects";
+import { scrubForLog } from "@/lib/log-mask";
 import type { InboundVerdict } from "@/core/customers/inbound-rate";
 
 export type IntakeDeps = {
@@ -79,7 +80,8 @@ export async function intakeZernioEvent(
     event_id: eventId,
     event_type: payload.event ?? "unknown",
     status: handled ? "received" : "ignored",
-    payload: payload as never,
+    // Тело вебхука — чужой текст: подпись ссылки заказа, вставленная покупателем, в журнал не идёт.
+    payload: scrubForLog(payload, { keys: false }) as never,
     error_message: handled ? null : "v2: событие не обрабатывается",
   });
   if (error) {

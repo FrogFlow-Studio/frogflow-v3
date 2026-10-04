@@ -1,4 +1,5 @@
 import type { Json } from "@/core/db-types";
+import { scrubSecretsIn } from "@/lib/log-mask";
 
 /**
  * Журнал действий в админке продавца: кто из команды магазина, что и когда
@@ -117,7 +118,8 @@ export function auditDetails(data: unknown): Record<string, Json> {
 
 function brief(key: string, v: unknown): Json {
   if (SECRET_FIELD.test(key)) return "•••";
-  if (typeof v === "string") return v.length > MAX_TEXT ? `(текст, ${v.length} симв.)` : v;
+  if (typeof v === "string")
+    return v.length > MAX_TEXT ? `(текст, ${v.length} симв.)` : scrubSecretsIn(v);
   if (typeof v === "number" || typeof v === "boolean") return v;
   if (Array.isArray(v)) return `[${v.length}]`;
   return "{…}";

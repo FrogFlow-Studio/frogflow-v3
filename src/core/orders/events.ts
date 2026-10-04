@@ -9,6 +9,7 @@ import { pageAll } from "@/core/db/page";
  * — `order_id` и детали.
  */
 import type { Json } from "@/core/db-types";
+import { scrubForLog } from "@/lib/log-mask";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 
 export type OrderEventKind =
@@ -105,7 +106,7 @@ export async function recordOrderEvent(
     event_id: `order:${orderId}:${kind}:${stamp}`,
     event_type: `order.${kind}`,
     status: ORDER_EVENT_STATUS,
-    payload: { order_id: orderId, actor, ...payload } as Json,
+    payload: scrubForLog({ order_id: orderId, actor, ...payload }) as Json,
   };
   let { error } = await ctx.db.from("zernio_logs").insert(row);
   if (error && MONEY_KINDS.has(kind)) {
@@ -158,7 +159,7 @@ export async function claimOrderEvent(
     event_id: `order:${orderId}:${kind}:${key}`,
     event_type: `order.${kind}`,
     status: ORDER_EVENT_STATUS,
-    payload: { order_id: orderId, actor, ...payload } as Json,
+    payload: scrubForLog({ order_id: orderId, actor, ...payload }) as Json,
   });
   if (error && error.code !== "23505")
     console.warn(`[orders] событие ${kind} для #${orderId} не записано: ${error.message}`);

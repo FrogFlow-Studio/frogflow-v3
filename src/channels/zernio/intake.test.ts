@@ -88,6 +88,20 @@ describe("приём вебхука Zernio", () => {
     expect(s.row("e1")).toMatchObject({ status: "processed", error_message: "ок" });
   });
 
+  it("ссылка заказа, которую покупатель вставил в переписку, в журнал полностью не попадает", async () => {
+    const s = setup();
+    const link = `https://shop.test/s/x/order/9?t=${"a1".repeat(16)}`;
+    const p = {
+      ...event("e-link", { accountId: "acc-old" }),
+      message: { text: `вот мой заказ ${link}` },
+    } as unknown as ZernioWebhookMessagePayload;
+    expect((await intakeZernioEvent(p, s.deps)).status).toBe(200);
+    const stored = JSON.stringify(s.row("e-link")!.payload);
+    expect(stored).not.toContain("a1".repeat(16));
+    expect(stored).toContain("/order/9?t=***");
+    expect(stored).toContain("вот мой заказ");
+  });
+
   it("повторная доставка того же события — 200 без второй обработки", async () => {
     const s = setup();
     await intakeZernioEvent(event("e1", { accountId: "acc-old" }), s.deps);

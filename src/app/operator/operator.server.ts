@@ -49,6 +49,7 @@ import { hashPassword } from "@/app/auth/password";
 import { telegramWebhookUrl } from "@/channels/telegram/secret";
 import { NO_RECIPIENTS_REASON, type DeliveryReport } from "@/core/notify/deliver";
 import { serverFailure } from "@/lib/server-failure";
+import { scrubForLog } from "@/lib/log-mask";
 import { storyTagsNote, type StoryTagsImport } from "./story-tags-import.server";
 
 type BotUpdate = Database["public"]["Tables"]["bots"]["Update"];
@@ -72,7 +73,7 @@ export async function logEvent(
 ): Promise<void> {
   const { error } = await serviceDb()
     .from("bot_events")
-    .insert({ bot_id: botId, actor, kind, payload: payload as Json });
+    .insert({ bot_id: botId, actor, kind, payload: scrubForLog(payload) as Json });
   if (error) console.warn("[operator] bot_events:", error.message);
 }
 
