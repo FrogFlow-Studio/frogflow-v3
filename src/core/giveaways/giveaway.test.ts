@@ -91,6 +91,37 @@ describe("проверка формы розыгрыша", () => {
     expect(validateGiveawayInput(input(), NOW).subscribeChannel).toBe("");
   });
 
+  it("Instagram: нужны аккаунт и пост; для Telegram эти поля сбрасываются", () => {
+    let key = "";
+    try {
+      validateGiveawayInput(input({ channel: "instagram" }), NOW);
+    } catch (e) {
+      key = (e as { key: string }).key;
+    }
+    expect(key).toBe("err.giveaway.igPostRequired");
+    const ig = validateGiveawayInput(
+      input({
+        channel: "both",
+        igAccountId: "a1",
+        igPostId: "p1",
+        igKeyword: " Приз ",
+        igReply: " Да ",
+      }),
+      NOW,
+    );
+    expect(ig).toMatchObject({
+      igAccountId: "a1",
+      igPostId: "p1",
+      igKeyword: "Приз",
+      igReply: "Да",
+    });
+    const tg = validateGiveawayInput(
+      input({ igAccountId: "a1", igPostId: "p1", igKeyword: "x" }),
+      NOW,
+    );
+    expect(tg).toMatchObject({ igAccountId: "", igPostId: "", igKeyword: "", igReply: "" });
+  });
+
   it("срок ровно через год допустим, на минуту позже — нет", () => {
     expect(() =>
       validateGiveawayInput(input({ endsAt: "2027-10-04T10:00:00.000Z" }), NOW),

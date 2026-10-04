@@ -33,6 +33,8 @@ export type Participant = {
   userKey: string;
   telegramId: number | null;
   channel: "telegram" | "instagram";
+  /** Что ещё помнить об участнике (ник, комментарий): кладётся в payload события. */
+  extra?: Record<string, Json>;
 };
 
 export async function hasEntered(
@@ -67,6 +69,7 @@ export async function recordEntry(
       telegram_id: who.telegramId,
       channel: who.channel,
       at: now.toISOString(),
+      ...who.extra,
     } as Json,
   });
   if (!error) return true;

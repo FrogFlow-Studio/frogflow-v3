@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { UserError } from "@/core/i18n/user-error";
 import { GIVEAWAY_CHANNELS } from "@/core/giveaways/giveaway";
 
 /** Розыгрыши (модуль giveaways): список, создание, правка и закрытие приёма. */
@@ -9,9 +10,13 @@ const moduleAdmin = async (min?: "manager") =>
 export const giveawaysFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await moduleAdmin();
   const { listGiveaways } = await import("@/core/giveaways/giveaway");
+  const { instagramAccounts } = ctx.tenant.modules.instagram
+    ? await import("@/channels/zernio/automations.server")
+    : { instagramAccounts: () => [] };
   return {
     giveaways: await listGiveaways(ctx),
     botUsername: ctx.tenant.settings.telegram?.username ?? null,
+    igAccounts: instagramAccounts(ctx).map((a) => ({ id: a.id, name: a.name })),
   };
 });
 
@@ -23,6 +28,11 @@ const inputSchema = z.object({
   endsAt: z.string().max(40),
   winners: z.number(),
   subscribeChannel: z.string().max(60),
+  igAccountId: z.string().max(100).default(""),
+  igPostId: z.string().max(100).default(""),
+  igPostLabel: z.string().max(200).default(""),
+  igKeyword: z.string().max(100).default(""),
+  igReply: z.string().max(2000).default(""),
   excludeBlocked: z.boolean(),
   excludeStaff: z.boolean(),
 });
@@ -38,6 +48,15 @@ export const saveGiveawayFn = createServerFn({ method: "POST" })
     const ctx = await moduleAdmin("manager");
     const { createGiveaway, updateGiveaway } = await import("@/core/giveaways/giveaway");
     const { id, rev, ...input } = data;
+    if (input.channel !== "telegram") {
+      // Instagram — модуль «instagram» и аккаунт этого магазина (не чужой id из запроса).
+      const { ownsZernioAccount } = await import("@/channels/zernio/automations.server");
+      if (!ctx.tenant.modules.instagram || !ownsZernioAccount(ctx, input.igAccountId))
+        throw new UserError(
+          "err.giveaway.igAccount",
+          "Аккаунт Instagram не подключён к вашему магазину.",
+        );
+    }
     if (id === undefined) return createGiveaway(ctx, input);
     return updateGiveaway(ctx, id, rev ?? 0, input);
   });

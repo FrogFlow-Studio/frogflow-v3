@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { closeGiveawayFn, giveawaysFn, saveGiveawayFn } from "@/app/admin/giveaways.functions";
+import { instagramPostsFn } from "@/app/admin/instagram.functions";
 import type { AdminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, Field, useAction } from "@/app/ui";
 import { GIVEAWAY_CHANNELS, GIVEAWAY_MAX_WINNERS } from "@/core/giveaways/giveaway";
@@ -17,6 +18,11 @@ type Form = {
   endsAt: string;
   winners: number;
   subscribeChannel: string;
+  igAccountId: string;
+  igPostId: string;
+  igPostLabel: string;
+  igKeyword: string;
+  igReply: string;
   excludeBlocked: boolean;
   excludeStaff: boolean;
 };
@@ -36,6 +42,11 @@ const blank = (): Form => ({
   endsAt: toLocalInput(new Date(Date.now() + 7 * 86_400_000).toISOString()),
   winners: 1,
   subscribeChannel: "",
+  igAccountId: "",
+  igPostId: "",
+  igPostLabel: "",
+  igKeyword: "",
+  igReply: "",
   excludeBlocked: true,
   excludeStaff: true,
 });
@@ -55,7 +66,11 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
     if (!form) return;
     const date = new Date(form.endsAt);
     await saveGiveawayFn({
-      data: { ...form, endsAt: Number.isNaN(date.getTime()) ? "" : date.toISOString() },
+      data: {
+        ...form,
+        igAccountId: form.channel === "telegram" ? "" : igAccount,
+        endsAt: Number.isNaN(date.getTime()) ? "" : date.toISOString(),
+      },
     });
     setSaved(true);
     setForm(null);
@@ -66,6 +81,18 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
     setLoaded(await giveawaysFn());
   });
   const set = (patch: Partial<Form>) => form && setForm({ ...form, ...patch });
+  const igAccounts = loaded?.igAccounts ?? [];
+  const [posts, setPosts] = useState<Array<{ platformPostId: string; caption: string }>>([]);
+  const wantsIg = form !== null && form.channel !== "telegram";
+  const igAccount = form?.igAccountId || igAccounts[0]?.id || "";
+  const postsError = useAction(async (accountId: string) => {
+    const r = await instagramPostsFn({ data: { accountId } });
+    setPosts(r.posts.map((p) => ({ platformPostId: p.platformPostId, caption: p.caption })));
+  });
+  useEffect(() => {
+    if (wantsIg && igAccount) void postsError.run(igAccount).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsIg, igAccount]);
   return (
     <Card
       title={t("giveaways.title")}
@@ -117,13 +144,75 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
               value={form.channel}
               onChange={(e) => set({ channel: e.target.value as Form["channel"] })}
             >
-              {GIVEAWAY_CHANNELS.map((c) => (
+              {GIVEAWAY_CHANNELS.filter(
+                (c) => c === "telegram" || igAccounts.length > 0 || form.channel === c,
+              ).map((c) => (
                 <option key={c} value={c}>
                   {t(`giveaways.channel.${c}`)}
                 </option>
               ))}
             </select>
           </Field>
+          {wantsIg && (
+            <div className="space-y-3 rounded-md border border-line p-2">
+              <Field label={t("giveaways.f.igAccount")}>
+                <select
+                  className="input"
+                  value={igAccount}
+                  onChange={(e) =>
+                    set({ igAccountId: e.target.value, igPostId: "", igPostLabel: "" })
+                  }
+                >
+                  {igAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label={t("giveaways.f.igPost")}>
+                <select
+                  className="input"
+                  value={form.igPostId}
+                  onChange={(e) => {
+                    const p = posts.find((x) => x.platformPostId === e.target.value);
+                    set({
+                      igAccountId: igAccount,
+                      igPostId: e.target.value,
+                      igPostLabel: p?.caption ?? "",
+                    });
+                  }}
+                >
+                  <option value="">{t("giveaways.f.igPostPick")}</option>
+                  {form.igPostId && !posts.some((p) => p.platformPostId === form.igPostId) && (
+                    <option value={form.igPostId}>{form.igPostLabel || form.igPostId}</option>
+                  )}
+                  {posts.map((p) => (
+                    <option key={p.platformPostId} value={p.platformPostId}>
+                      {p.caption.slice(0, 60) || p.platformPostId}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <ErrorBox error={postsError.error} />
+              <Field label={t("giveaways.f.igKeyword")} hint={t("giveaways.f.igHint")}>
+                <input
+                  className="input"
+                  maxLength={40}
+                  value={form.igKeyword}
+                  onChange={(e) => set({ igKeyword: e.target.value })}
+                />
+              </Field>
+              <Field label={t("giveaways.f.igReply")}>
+                <textarea
+                  className="input min-h-16"
+                  maxLength={1000}
+                  value={form.igReply}
+                  onChange={(e) => set({ igReply: e.target.value })}
+                />
+              </Field>
+            </div>
+          )}
           <Field label={t("giveaways.f.conditions")}>
             <textarea
               className="input min-h-20"

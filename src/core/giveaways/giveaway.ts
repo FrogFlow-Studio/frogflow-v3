@@ -42,6 +42,14 @@ export type Giveaway = {
   winners: number;
   /** Публичный канал для условия «подписка» (`@name`), пусто — условия нет. Бот должен быть в канале администратором. */
   subscribeChannel: string;
+  /** Instagram: аккаунт Zernio, пост (platformPostId), подпись поста для списка, слово в комментарии и текст ответа в Direct. */
+  igAccountId: string;
+  igPostId: string;
+  igPostLabel: string;
+  /** Пусто — участвует любой комментарий под постом. */
+  igKeyword: string;
+  /** Пусто — стандартный ответ на языке магазина. */
+  igReply: string;
   /** Не выбирать победителем заблокированных продавцом. */
   excludeBlocked: boolean;
   /** Не выбирать победителем сотрудников магазина. */
@@ -60,6 +68,12 @@ export type GiveawayInput = {
   endsAt: string;
   winners: number;
   subscribeChannel: string;
+  /** Поля Instagram нужны только при канале «instagram» и «оба»; нет — пусто. */
+  igAccountId?: string;
+  igPostId?: string;
+  igPostLabel?: string;
+  igKeyword?: string;
+  igReply?: string;
   excludeBlocked: boolean;
   excludeStaff: boolean;
 };
@@ -86,6 +100,8 @@ export function isGiveawayId(id: unknown): id is string {
   return typeof id === "string" && /^[a-z0-9]{8}$/.test(id);
 }
 
+const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+
 export function parseGiveaway(raw: string | null | undefined): Giveaway | null {
   if (!raw) return null;
   try {
@@ -108,6 +124,11 @@ export function parseGiveaway(raw: string | null | undefined): Giveaway | null {
         typeof p.subscribeChannel === "string" && GIVEAWAY_CHANNEL_RE.test(p.subscribeChannel)
           ? p.subscribeChannel
           : "",
+      igAccountId: str(p.igAccountId, 100),
+      igPostId: str(p.igPostId, 100),
+      igPostLabel: str(p.igPostLabel, 120),
+      igKeyword: str(p.igKeyword, 40),
+      igReply: str(p.igReply, 1000),
       excludeBlocked: p.excludeBlocked !== false,
       excludeStaff: p.excludeStaff !== false,
       status: GIVEAWAY_STATUSES.includes(p.status as GiveawayStatus)
@@ -128,7 +149,7 @@ export type GiveawayField = "title" | "prize" | "channel" | "conditions" | "ends
  * Проверка формы. Бросает UserError на языке продавца; тексты — в
  * словаре админки (giveaways.ts), здесь русский шаблон тот же.
  */
-export function validateGiveawayInput(input: GiveawayInput, now: Date): GiveawayInput {
+export function validateGiveawayInput(input: GiveawayInput, now: Date): Required<GiveawayInput> {
   const title = input.title.trim();
   const prize = input.prize.trim();
   const conditions = input.conditions.trim();
@@ -148,6 +169,18 @@ export function validateGiveawayInput(input: GiveawayInput, now: Date): Giveaway
     );
   if (!GIVEAWAY_CHANNELS.includes(input.channel))
     throw new UserError("err.giveaway.badChannel", "Выберите, где проходит розыгрыш.");
+  const ig = input.channel !== "telegram";
+  const igAccountId = ig ? (input.igAccountId ?? "").trim() : "";
+  const igPostId = ig ? (input.igPostId ?? "").trim() : "";
+  if (ig && (!igAccountId || !igPostId))
+    throw new UserError("err.giveaway.igPostRequired", "Для Instagram выберите аккаунт и пост.");
+  if ((input.igKeyword ?? "").trim().length > 40)
+    throw new UserError(
+      "err.giveaway.igKeywordLong",
+      "Слово в комментарии — не длиннее 40 символов.",
+    );
+  if ((input.igReply ?? "").trim().length > 1000)
+    throw new UserError("err.giveaway.igReplyLong", "Ответ в Direct — не длиннее 1000 символов.");
   const ends = Date.parse(input.endsAt);
   if (Number.isNaN(ends))
     throw new UserError("err.giveaway.badDate", "Укажите срок приёма участников.");
@@ -167,6 +200,11 @@ export function validateGiveawayInput(input: GiveawayInput, now: Date): Giveaway
     endsAt: new Date(ends).toISOString(),
     winners: input.winners,
     subscribeChannel,
+    igAccountId,
+    igPostId,
+    igPostLabel: ig ? (input.igPostLabel ?? "").trim().slice(0, 120) : "",
+    igKeyword: ig ? (input.igKeyword ?? "").trim() : "",
+    igReply: ig ? (input.igReply ?? "").trim() : "",
     excludeBlocked: input.excludeBlocked,
     excludeStaff: input.excludeStaff,
   };

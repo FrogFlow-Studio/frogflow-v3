@@ -65,6 +65,17 @@ export async function dispatchZernioEvent(
           accountUsername: c.account?.username,
         }).catch((e: unknown) => console.error("[comment-reply] правило не отработало", e));
       }
+      // Розыгрыш: комментарий под постом со словом — участие и ответ в Direct (модуль giveaways).
+      if (ctx.tenant.modules.giveaways) {
+        const { handleGiveawayComment } = await import("./giveaway-comments.server");
+        await handleGiveawayComment(
+          ctx,
+          payload as import("./giveaway-comments.server").GiveawayCommentPayload,
+        ).catch(async (e: unknown) => {
+          const { reportError } = await import("@/lib/errors");
+          await reportError(e, { where: "zernio.giveaway-comment", botId: ctx.tenant.id });
+        });
+      }
       return { status: "processed", note: r.note };
     }
     if (payload.event === "whatsapp.template.status_updated") {

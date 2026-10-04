@@ -120,7 +120,11 @@ describe("участие в розыгрыше из Telegram", () => {
 
   it("розыгрыш только для Instagram и несуществующий в Telegram не найдены", async () => {
     const { ctx } = setup();
-    const ig = await createGiveaway(ctx, form({ channel: "instagram" }), NOW);
+    const ig = await createGiveaway(
+      ctx,
+      form({ channel: "instagram", igAccountId: "a1", igPostId: "p1" }),
+      NOW,
+    );
     expect((await enterFromTelegram(ctx, ig.id, WHO, member(true), NOW)).status).toBe("notFound");
     expect((await enterFromTelegram(ctx, "abcdefgh", WHO, member(true), NOW)).status).toBe(
       "notFound",
