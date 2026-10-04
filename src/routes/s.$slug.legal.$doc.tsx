@@ -1,3 +1,4 @@
+import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { legalFn } from "@/app/storefront/storefront.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
@@ -11,6 +12,7 @@ const TITLES: Record<string, StorefrontKey> = {
 };
 
 export const Route = createFileRoute("/s/$slug/legal/$doc")({
+  headers: publicHeaders,
   loader: ({ params }) =>
     legalFn({
       data: { slug: params.slug, doc: params.doc as "offer" | "privacy" | "requisites" | "about" },

@@ -5,11 +5,14 @@ import {
   Scripts,
   useRouterState,
 } from "@tanstack/react-router";
+import { privateHeaders } from "@/app/cache-policy";
 import { isLocale } from "@/core/i18n/locale";
 import type { ReactNode } from "react";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
+  // Без явной политики страница не кешируется (app/cache-policy); общие страницы её переопределяют.
+  headers: privateHeaders,
   head: () => ({
     meta: [
       { charSet: "utf-8" },

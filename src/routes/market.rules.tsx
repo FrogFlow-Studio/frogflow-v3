@@ -1,3 +1,4 @@
+import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { marketHeadLinks } from "@/app/market/seo";
@@ -6,6 +7,7 @@ import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
 /** Правила площадки (В12): что она делает на самом деле — согласие, одобрение, скрытие. */
 export const Route = createFileRoute("/market/rules")({
+  headers: publicHeaders,
   validateSearch: z.object({ lang: z.enum(SUPPORTED_LOCALES).optional().catch(undefined) }),
   head: ({ match }) => {
     const t = rulesT(match.search.lang ?? "ru");

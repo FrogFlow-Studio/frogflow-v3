@@ -1,3 +1,4 @@
+import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { z } from "zod";
@@ -31,6 +32,7 @@ import { rememberWebSource } from "@/app/storefront/source";
 import { PLATFORM_SOURCE_SLUG } from "@/core/signup/origin";
 
 export const Route = createFileRoute("/")({
+  headers: publicHeaders,
   validateSearch: z.object({ lang: z.string().optional() }),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   loader: async ({ deps }) => {

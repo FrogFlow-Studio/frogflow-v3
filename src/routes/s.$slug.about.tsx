@@ -1,3 +1,4 @@
+import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link, useLoaderData } from "@tanstack/react-router";
 import { storeAboutPageFn } from "@/app/storefront/about.functions";
 import { useStorefrontLocale } from "@/app/storefront/locale";
@@ -6,6 +7,7 @@ import { canonicalLink, jsonLdScript } from "@/core/storefront/seo";
 import { shareText } from "@/core/storefront/share";
 
 export const Route = createFileRoute("/s/$slug/about")({
+  headers: publicHeaders,
   loader: ({ params }) => storeAboutPageFn({ data: { slug: params.slug } }),
   head: ({ loaderData, matches, params }) => {
     const shop = matches.find((m) => (m.routeId as string) === "/s/$slug")?.loaderData as

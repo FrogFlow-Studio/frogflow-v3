@@ -1,3 +1,4 @@
+import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { z } from "zod";
@@ -9,6 +10,7 @@ import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
 /** Площадка FrogFlow: каталог магазинов, согласившихся показываться (В7). Без входа. */
 export const Route = createFileRoute("/market/")({
+  headers: publicHeaders,
   validateSearch: z.object({
     lang: z.enum(SUPPORTED_LOCALES).optional().catch(undefined),
     category: z.string().max(60).optional().catch(undefined),

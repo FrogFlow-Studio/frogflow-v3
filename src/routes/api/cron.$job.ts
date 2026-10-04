@@ -1,3 +1,4 @@
+import { withNoStore } from "@/app/cache-policy";
 import { createFileRoute } from "@tanstack/react-router";
 import { previewWebhookResponse } from "@/lib/preview";
 import { env } from "@/config/env";
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/api/cron/$job")({
     handlers: {
       GET: async ({ request, params }) => {
         if (!isCronAuthorized(request, env().CRON_SECRET))
-          return new Response("unauthorized", { status: 401 });
+          return withNoStore(new Response("unauthorized", { status: 401 }));
         const preview = previewWebhookResponse();
         if (preview) return preview;
         const { tenantDirectory } = await import("@/core/tenant/resolve.server");
@@ -58,7 +59,7 @@ export const Route = createFileRoute("/api/cron/$job")({
           return new Response("error", { status: 500 });
         }
         await finish(true, null);
-        return Response.json({ job: params.job, tenants: tenants.length, results });
+        return withNoStore(Response.json({ job: params.job, tenants: tenants.length, results }));
 
         async function runJob(): Promise<Response | null> {
           switch (params.job) {

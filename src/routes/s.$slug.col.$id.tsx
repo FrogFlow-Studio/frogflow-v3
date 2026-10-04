@@ -1,3 +1,4 @@
+import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { storeCollectionFn } from "@/app/storefront/catalog.functions";
 import { FavoriteButton } from "@/app/storefront/favorites";
@@ -7,6 +8,7 @@ import { Empty } from "@/app/ui";
 import { canonicalLink, shopCanonical } from "@/core/storefront/seo";
 
 export const Route = createFileRoute("/s/$slug/col/$id")({
+  headers: publicHeaders,
   loader: ({ params }) => storeCollectionFn({ data: { slug: params.slug, id: params.id } }),
   head: ({ loaderData, matches, params }) => {
     const shop = matches.find((m) => (m.routeId as string) === "/s/$slug")?.loaderData as

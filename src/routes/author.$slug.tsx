@@ -1,3 +1,4 @@
+import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { authorPageFn } from "@/app/community-author/author.functions";
@@ -7,6 +8,7 @@ import { formatMoney } from "@/core/money/money";
 
 /** Публичная страница автора (С6): профиль, «Что продаю», оценка, взаимные рекомендации. Без входа. */
 export const Route = createFileRoute("/author/$slug")({
+  headers: publicHeaders,
   validateSearch: z.object({ lang: z.enum(SUPPORTED_LOCALES).optional().catch(undefined) }),
   loader: ({ params }) => authorPageFn({ data: { slug: params.slug } }),
   head: ({ loaderData, match }) => {

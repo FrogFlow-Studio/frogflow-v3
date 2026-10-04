@@ -1,3 +1,4 @@
+import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { rememberWebSource } from "@/app/storefront/source";
@@ -36,6 +37,7 @@ import { TIER_TITLES } from "@/core/plans/registry";
  * описание для поиска и рекламы, тарифы ниши из реестра планов.
  */
 export const Route = createFileRoute("/for/$niche")({
+  headers: publicHeaders,
   validateSearch: z.object({ lang: z.string().optional() }),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   loader: async ({ params, deps }) => {

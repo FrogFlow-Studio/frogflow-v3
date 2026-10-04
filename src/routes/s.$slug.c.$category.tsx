@@ -1,3 +1,4 @@
+import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { z } from "zod";
 import {
@@ -10,6 +11,7 @@ import {
 
 /** Страница категории: основной адрес категории витрины, фильтры — в строке адреса. */
 export const Route = createFileRoute("/s/$slug/c/$category")({
+  headers: publicHeaders,
   validateSearch: catalogSearch.omit({ category: true }),
   loaderDeps: ({ search }) => catalogDeps(search),
   loader: ({ params, deps }) => {

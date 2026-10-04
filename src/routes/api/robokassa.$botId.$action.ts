@@ -1,3 +1,4 @@
+import { withNoStore } from "@/app/cache-policy";
 import { createFileRoute } from "@tanstack/react-router";
 import { previewWebhookResponse } from "@/lib/preview";
 
@@ -9,8 +10,10 @@ import { previewWebhookResponse } from "@/lib/preview";
 export const Route = createFileRoute("/api/robokassa/$botId/$action")({
   server: {
     handlers: {
-      GET: ({ request, params }) => handle(request, params.botId, params.action),
-      POST: ({ request, params }) => handle(request, params.botId, params.action),
+      GET: async ({ request, params }) =>
+        withNoStore(await handle(request, params.botId, params.action)),
+      POST: async ({ request, params }) =>
+        withNoStore(await handle(request, params.botId, params.action)),
     },
   },
 });

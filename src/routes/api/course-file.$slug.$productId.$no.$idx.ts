@@ -1,3 +1,4 @@
+import { withNoStore } from "@/app/cache-policy";
 import { createFileRoute } from "@tanstack/react-router";
 
 /**
@@ -9,7 +10,9 @@ export const Route = createFileRoute("/api/course-file/$slug/$productId/$no/$idx
     handlers: {
       GET: async ({ params }) => {
         const { courseFileResponse } = await import("@/app/storefront/course-file.server");
-        return courseFileResponse(params.slug, params.productId, params.no, params.idx);
+        return withNoStore(
+          await courseFileResponse(params.slug, params.productId, params.no, params.idx),
+        );
       },
     },
   },

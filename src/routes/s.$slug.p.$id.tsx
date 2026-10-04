@@ -1,3 +1,4 @@
+import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link, useLoaderData } from "@tanstack/react-router";
 import { useState } from "react";
 import { storeProductFn } from "@/app/storefront/storefront.functions";
@@ -24,6 +25,7 @@ import {
 } from "@/core/storefront/seo";
 
 export const Route = createFileRoute("/s/$slug/p/$id")({
+  headers: publicHeaders,
   loader: async ({ params }) => {
     const [page, seo] = await Promise.all([
       storeProductFn({ data: { slug: params.slug, id: params.id } }),

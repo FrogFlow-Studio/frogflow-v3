@@ -1,3 +1,4 @@
+import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { z } from "zod";
@@ -29,6 +30,7 @@ const SIGNUP_NICHE: Partial<Record<ArticleSlug, NichePage>> = { "online-school-b
  * /sitemap-pages.xml.
  */
 export const Route = createFileRoute("/blog/$slug")({
+  headers: publicHeaders,
   validateSearch: z.object({ lang: z.string().optional() }),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   loader: async ({ params, deps }) => {

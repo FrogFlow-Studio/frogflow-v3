@@ -1,3 +1,4 @@
+import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
   CatalogView,
@@ -8,6 +9,7 @@ import {
 } from "@/app/storefront/catalog-view";
 
 export const Route = createFileRoute("/s/$slug/")({
+  headers: publicHeaders,
   validateSearch: catalogSearch,
   // Старый адрес `?category=` — на страницу категории `/c/<id>` (основной адрес, он же в карте сайта).
   beforeLoad: ({ params, search }) => {

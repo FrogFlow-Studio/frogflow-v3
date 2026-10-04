@@ -1,3 +1,4 @@
+import { withNoStore } from "@/app/cache-policy";
 import { createFileRoute } from "@tanstack/react-router";
 import { env, envPresence } from "@/config/env";
 import { envReport } from "@/lib/env-report";
@@ -22,16 +23,18 @@ export const Route = createFileRoute("/api/health")({
         } catch (err) {
           dbError = err instanceof Error ? err.message : String(err);
         }
-        return Response.json({
-          ok: !dbError && report.ok,
-          version: 3,
-          commit: e?.VERCEL_GIT_COMMIT_SHA ?? null,
-          branch: e?.VERCEL_GIT_COMMIT_REF ?? null,
-          env: e?.VERCEL_ENV ?? "local",
-          envReport: report,
-          tenantsOnV2: tenants,
-          ...(dbError ? { dbError } : {}),
-        });
+        return withNoStore(
+          Response.json({
+            ok: !dbError && report.ok,
+            version: 3,
+            commit: e?.VERCEL_GIT_COMMIT_SHA ?? null,
+            branch: e?.VERCEL_GIT_COMMIT_REF ?? null,
+            env: e?.VERCEL_ENV ?? "local",
+            envReport: report,
+            tenantsOnV2: tenants,
+            ...(dbError ? { dbError } : {}),
+          }),
+        );
       },
     },
   },

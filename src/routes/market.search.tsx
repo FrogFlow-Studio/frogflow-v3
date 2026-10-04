@@ -1,3 +1,4 @@
+import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { marketT } from "@/app/market/i18n";
@@ -6,6 +7,7 @@ import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
 /** Поиск товаров по всем магазинам площадки (В8). Без входа. */
 export const Route = createFileRoute("/market/search")({
+  headers: publicHeaders,
   validateSearch: z.object({
     lang: z.enum(SUPPORTED_LOCALES).optional().catch(undefined),
     q: z.string().max(80).optional().catch(undefined),
