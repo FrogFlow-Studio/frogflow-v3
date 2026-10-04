@@ -4,6 +4,7 @@ import { pageAll } from "@/core/db/page";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database } from "@/core/db-types";
 import { imagePath } from "./image-url";
+import { fuzzyIds } from "./fuzzy";
 
 type ProductRow = Database["public"]["Tables"]["products"]["Row"];
 
@@ -186,6 +187,48 @@ export async function searchProducts(
         (a.id < b.id ? -1 : 1),
     )
     .slice(0, limit);
+}
+
+/**
+ * Поиск, который прощает опечатку в одну букву. Сначала обычный поиск; нашёл —
+ * его результат. Пусто — сверяем слова запроса с названием и ключевыми словами
+ * всех активных товаров (постранично) и читаем найденные.
+ */
+export async function searchProductsTolerant(
+  ctx: TenantContext,
+  query: string,
+  limit = 50,
+): Promise<Product[]> {
+  const exact = await searchProducts(ctx, query, limit);
+  if (exact.length > 0) return exact;
+  const all = await pageAll<{ id: string; name: string; keywords: string | null }>(
+    (from, to) =>
+      ctx.db
+        .from("products")
+        .select("id, name, keywords")
+        .eq("is_active", true)
+        .order("id")
+        .range(from, to),
+    "Поиск с опечатками",
+  );
+  const ids = fuzzyIds(
+    query,
+    all.map((p) => ({ id: p.id, text: `${p.name} ${p.keywords ?? ""}` })),
+  ).slice(0, limit);
+  if (ids.length === 0) return [];
+  const rows = await inChunks(
+    ids,
+    (chunk) =>
+      ctx.db
+        .from("products")
+        .select(PRODUCT_SELECT)
+        .eq("is_active", true)
+        .in("id", chunk)
+        .order("id"),
+    "Поиск",
+  );
+  const byId = new Map((rows as Product[]).map((p) => [p.id, p]));
+  return ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
 }
 
 export function sortedImages(p: Pick<Product, "product_images">): ProductImage[] {

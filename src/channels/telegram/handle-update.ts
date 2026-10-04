@@ -64,7 +64,7 @@ import {
   imageUrl,
   listChildCategories,
   listProductsInCategory,
-  searchProducts,
+  searchProductsTolerant,
   type Product,
 } from "@/core/catalog/catalog";
 import { resolvePrice } from "@/core/pricing/pricing";
@@ -561,6 +561,7 @@ async function handleMessage(
   }
   if (customer.state.mode === "search" && text) return showSearch(b, text);
   if (text && (await consultantReply(b, text))) return;
+  if (text && isFreeTextQuery(text)) return freeTextSearch(b, text);
   // Консультант по прайсу видит фото покупателя (не чек — чеки разобраны выше).
   if (msg.photo?.length && !text && (await pricelistPhoto(b, msg))) return;
   await sendMain(b, b.m.useMenu);
@@ -993,7 +994,7 @@ async function sendProductCard(b: Bot, p: Product) {
  * (64 байта), формат общий с v1 — её кнопки в старых чатах тоже работают.
  */
 async function showSearch(b: Bot, query: string, offset = 0) {
-  const found = await searchProducts(b.ctx, query);
+  const found = await searchProductsTolerant(b.ctx, query);
   if (b.customer.state.last_search !== query)
     b.customer = await setState(b.ctx, b.customer, { ...b.customer.state, last_search: query });
   if (found.length > 0) {
@@ -1020,6 +1021,40 @@ async function showSearch(b: Bot, query: string, offset = 0) {
   }
   await send(b, b.m.smartSearchResults(escapeHtml(query), smart.length));
   for (const p of smart.slice(0, PAGE)) await sendProductCard(b, p);
+}
+
+/** Сколько результатов свободного поиска показываем кнопками. */
+export const FREE_SEARCH_MAX = 8;
+
+/** Свободный текст — запрос поиска: не команда, не пустой, не длиннее поиска каталога. */
+export function isFreeTextQuery(text: string): boolean {
+  const t = text.trim();
+  return t.length >= 2 && t.length <= 80 && !t.startsWith("/");
+}
+
+/**
+ * Любой текст вне шага — поиск по названию, ключевым словам и описанию (с
+ * опечаткой в одну букву): до FREE_SEARCH_MAX товаров кнопками, иначе «не нашёл»
+ * с кнопкой «Каталог». Запрос запоминается для «Показать ещё» (searchmore).
+ */
+async function freeTextSearch(b: Bot, text: string) {
+  const query = text.trim();
+  const found = await searchProductsTolerant(b.ctx, query, FREE_SEARCH_MAX + 1);
+  if (found.length === 0) {
+    await send(b, b.m.searchNothing(escapeHtml(query)), {
+      reply_markup: { inline_keyboard: [[{ text: b.m.catalog, callback_data: "cat:root" }]] },
+    });
+    return;
+  }
+  if (b.customer.state.last_search !== query)
+    b.customer = await setState(b.ctx, b.customer, { ...b.customer.state, last_search: query });
+  const shown = found.slice(0, FREE_SEARCH_MAX);
+  const rows = shown.map((p) => [{ text: p.name.slice(0, 60), callback_data: `prod:${p.id}` }]);
+  if (found.length > FREE_SEARCH_MAX)
+    rows.push([{ text: b.m.showMore, callback_data: `searchmore:${FREE_SEARCH_MAX}` }]);
+  await send(b, b.m.searchResults(escapeHtml(query), shown.length), {
+    reply_markup: { inline_keyboard: rows },
+  });
 }
 
 /** Умный поиск (LLM) — только когда обычный ничего не нашёл и продавец его включил. */
