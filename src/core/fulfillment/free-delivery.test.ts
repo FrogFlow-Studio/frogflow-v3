@@ -209,3 +209,18 @@ describe("корзина бота и Instagram/WhatsApp: что видит по�
     expect(await freeDeliveryView(empty.ctx, empty.customer)).toBeNull();
   });
 });
+
+describe("freeDeliveryHint: подсказка формы на сайте", () => {
+  it("порог 10 000, корзина 10 500: без промокода «бесплатно», с промокодом — не обещаем", async () => {
+    const { freeDeliveryHint } = await import("./free-delivery-hint");
+    expect(freeDeliveryHint(10_500, 10_000, false)).toBe("reached");
+    expect(freeDeliveryHint(10_500, 10_000, true)).toBe("promo");
+  });
+
+  it("ниже порога промокод ничего не меняет: «осталось»", async () => {
+    const { freeDeliveryHint } = await import("./free-delivery-hint");
+    expect(freeDeliveryHint(9_999, 10_000, false)).toBe("left");
+    expect(freeDeliveryHint(9_999, 10_000, true)).toBe("left");
+    expect(freeDeliveryHint(10_000, 10_000, false)).toBe("reached");
+  });
+});

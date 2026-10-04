@@ -9,6 +9,7 @@ import { useStorefrontLocale } from "@/app/storefront/locale";
 import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
 import { formatMoney } from "@/core/money/money";
 import { Empty, ErrorBox, Field, useAction } from "@/app/ui";
+import { freeDeliveryHint } from "@/core/fulfillment/free-delivery-hint";
 import { describeClosed, isClosedDay } from "@/core/fulfillment/closed-days";
 
 export const Route = createFileRoute("/s/$slug/checkout")({
@@ -48,8 +49,14 @@ function CheckoutPage() {
   );
   const [zoneId, setZoneId] = useState("");
   // Бесплатная доставка: товары корзины против порога зоны (промокод сервер учтёт при оформлении).
+  // Пока введён промокод, «бесплатно» не обещаем: сумму после скидки знает только сервер.
+  const [promoTyped, setPromoTyped] = useState(false);
   const reached = (z: { freeFrom: { amount: number; currency: string } | null }) =>
-    Boolean(z.freeFrom && z.freeFrom.currency === cart.currency && cart.total >= z.freeFrom.amount);
+    Boolean(
+      z.freeFrom &&
+      z.freeFrom.currency === cart.currency &&
+      freeDeliveryHint(cart.total, z.freeFrom.amount, promoTyped) === "reached",
+    );
   const hintZone = ff?.zones.find((z) => z.id === zoneId) ?? null;
   const hintFrom = (hintZone ? [hintZone] : (ff?.zones ?? []))
     .map((z) => z.freeFrom)
@@ -266,14 +273,21 @@ function CheckoutPage() {
             )}
             {ftype === "delivery" && hintFrom && cart.total > 0 && (
               <p className="text-sm text-muted" role="status" data-testid="free-delivery-hint">
-                {cart.total >= hintFrom.amount
+                {freeDeliveryHint(cart.total, hintFrom.amount, promoTyped) === "reached"
                   ? t("checkout.freeDelivery.reached", {
                       from: formatMoney(hintFrom.amount, hintFrom.currency),
                     })
-                  : t("checkout.freeDelivery.left", {
-                      left: formatMoney(Math.ceil(hintFrom.amount - cart.total), hintFrom.currency),
-                      from: formatMoney(hintFrom.amount, hintFrom.currency),
-                    })}
+                  : freeDeliveryHint(cart.total, hintFrom.amount, promoTyped) === "promo"
+                    ? t("checkout.freeDelivery.promo", {
+                        from: formatMoney(hintFrom.amount, hintFrom.currency),
+                      })
+                    : t("checkout.freeDelivery.left", {
+                        left: formatMoney(
+                          Math.ceil(hintFrom.amount - cart.total),
+                          hintFrom.currency,
+                        ),
+                        from: formatMoney(hintFrom.amount, hintFrom.currency),
+                      })}
               </p>
             )}
             {ftype === "delivery" && (
@@ -295,7 +309,13 @@ function CheckoutPage() {
         )}
         {info.codes.promo && (
           <Field label={t("checkout.promo")}>
-            <input className="input" name="promo" maxLength={40} autoComplete="off" />
+            <input
+              className="input"
+              name="promo"
+              maxLength={40}
+              autoComplete="off"
+              onChange={(e) => setPromoTyped(e.target.value.trim() !== "")}
+            />
           </Field>
         )}
         {info.codes.gift && (

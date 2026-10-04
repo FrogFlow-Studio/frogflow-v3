@@ -189,6 +189,8 @@ const ru = {
   "checkout.freeDelivery.left":
     "До бесплатной доставки осталось {left} (бесплатно от {from}; считаем по сумме товаров после скидок).",
   "checkout.freeDelivery.reached": "Доставка бесплатная: товары после скидок на сумму от {from}.",
+  "checkout.freeDelivery.promo":
+    "С промокодом сумма товаров станет меньше: доставка будет бесплатной, только если после скидки останется от {from}. Итог покажем при оформлении.",
   "checkout.freeDelivery.word": "бесплатно",
   "checkout.fulfillment.address": "Адрес",
   "checkout.fulfillment.note": "Комментарий к заказу",
@@ -615,6 +617,8 @@ const kk: Dict = {
     "Тегін жеткізуге {left} қалды ({from}-дан бастап тегін; жеңілдіктерден кейінгі тауар сомасы бойынша есептейміз).",
   "checkout.freeDelivery.reached":
     "Жеткізу тегін: жеңілдіктерден кейінгі тауар сомасы {from}-дан жоғары.",
+  "checkout.freeDelivery.promo":
+    "Промокодпен тауар сомасы азаяды: жеңілдіктен кейін {from}-дан кем болмаса ғана жеткізу тегін болады. Қорытындыны тапсырыс беру кезінде көрсетеміз.",
   "checkout.freeDelivery.word": "тегін",
   "checkout.fulfillment.address": "Мекенжай",
   "checkout.fulfillment.note": "Тапсырысқа түсініктеме",
@@ -1031,6 +1035,8 @@ const en: Dict = {
     "{left} left until free delivery (free from {from}; counted on the goods total after discounts).",
   "checkout.freeDelivery.reached":
     "Delivery is free: goods after discounts come to {from} or more.",
+  "checkout.freeDelivery.promo":
+    "A promo code lowers the goods total: delivery is free only if {from} or more is left after the discount. We show the final amount at checkout.",
   "checkout.freeDelivery.word": "free",
   "checkout.fulfillment.address": "Address",
   "checkout.fulfillment.note": "Order comment",
@@ -1449,6 +1455,8 @@ const uz: Dict = {
     "Bepul yetkazishgacha {left} qoldi ({from} dan bepul; chegirmalardan keyingi tovarlar summasi bo‘yicha hisoblaymiz).",
   "checkout.freeDelivery.reached":
     "Yetkazish bepul: chegirmalardan keyingi tovarlar summasi {from} dan yuqori.",
+  "checkout.freeDelivery.promo":
+    "Promokod bilan tovarlar summasi kamayadi: chegirmadan keyin {from} va undan ko‘p qolsagina yetkazish bepul bo‘ladi. Yakuniy summani buyurtma paytida ko‘rsatamiz.",
   "checkout.freeDelivery.word": "bepul",
   "checkout.fulfillment.address": "Manzil",
   "checkout.fulfillment.note": "Buyurtmaga izoh",

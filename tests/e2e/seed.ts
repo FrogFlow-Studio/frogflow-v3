@@ -24,6 +24,7 @@ import { seedShop14Cost } from "./seed/shop14-cost.ts";
 import { seedShop14Delivery } from "./seed/shop14-delivery.ts";
 import { seedShop14Integrations } from "./seed/shop14-integrations.ts";
 import { seedShop14FreeDelivery } from "./seed/shop14-free-delivery.ts";
+import { seedShop15FreePromo } from "./seed/shop15-free-promo.ts";
 
 export function seedDb(): StubDb {
   const db = stubDb();
@@ -48,5 +49,6 @@ export function seedDb(): StubDb {
   seedShop14Delivery(db, now);
   seedShop14Integrations(db, now);
   seedShop14FreeDelivery(db, now);
+  seedShop15FreePromo(db, now);
   return db;
 }
