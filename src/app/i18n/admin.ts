@@ -33,6 +33,7 @@ import * as quiz from "./admin/quiz";
 import * as reviews from "./admin/reviews";
 import * as botPreview from "./admin/bot-preview";
 import * as botTexts from "./admin/bot-texts";
+import * as chatReason from "./admin/chat-reason";
 import * as tickets from "./admin/tickets";
 import * as customer from "./admin/customer";
 import * as pipeline from "./admin/pipeline";
@@ -474,6 +475,7 @@ const ru = {
   ...reviews.ru,
   ...botPreview.ru,
   ...botTexts.ru,
+  ...chatReason.ru,
   ...tickets.ru,
   ...customer.ru,
   ...pipeline.ru,
@@ -1622,6 +1624,7 @@ const kk: Dict = {
   ...reviews.kk,
   ...botPreview.kk,
   ...botTexts.kk,
+  ...chatReason.kk,
   ...tickets.kk,
   ...customer.kk,
   ...pipeline.kk,
@@ -1701,6 +1704,7 @@ const en: Dict = {
   ...reviews.en,
   ...botPreview.en,
   ...botTexts.en,
+  ...chatReason.en,
   ...tickets.en,
   ...customer.en,
   ...pipeline.en,
@@ -1780,6 +1784,7 @@ const uz: Dict = {
   ...reviews.uz,
   ...botPreview.uz,
   ...botTexts.uz,
+  ...chatReason.uz,
   ...tickets.uz,
   ...customer.uz,
   ...pipeline.uz,

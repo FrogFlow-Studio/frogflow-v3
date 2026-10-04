@@ -1,7 +1,8 @@
 import { serverFailure } from "@/lib/server-failure";
-import { inChunks } from "@/lib/in-chunks";
+import { chunksOf, inChunks } from "@/lib/in-chunks";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
+import { cleanReason } from "./reason";
 
 /**
  * Чат с менеджером: продавец из панели «подключается» к диалогу и отвечает
@@ -14,9 +15,31 @@ export type ChatDirection = "in" | "out";
 
 const PREVIEW_LEN = 200;
 
+/**
+ * Таблицы причин (миграция 19-13) может не быть в базе: тогда причины не пишем
+ * и не читаем, а сообщения идут как раньше. Не пробуем ближайшие 10 минут.
+ */
+let reasonsOffUntil = 0;
+const reasonsMissing = (e: { code?: string; message?: string } | null) =>
+  Boolean(e) &&
+  (e!.code === "PGRST205" ||
+    e!.code === "42P01" ||
+    /could not find the table|relation .* does not exist/i.test(e!.message ?? ""));
+const reasonsOn = () => Date.now() >= reasonsOffUntil;
+const markReasonsMissing = () => {
+  reasonsOffUntil = Date.now() + 10 * 60_000;
+};
+
 export async function recordMessage(
   ctx: TenantContext,
-  p: { telegramId: number; direction: ChatDirection; sender: ChatSender; text: string },
+  p: {
+    telegramId: number;
+    direction: ChatDirection;
+    sender: ChatSender;
+    text: string;
+    /** «Почему бот так ответил» (core/chat/reason): только для ответов бота. */
+    reason?: string | null;
+  },
 ): Promise<void> {
   const text = p.text.trim() || "[без текста]";
   const { error: rpcError } = await ctx.db.rpc("manager_chat_touch", {
@@ -31,14 +54,28 @@ export async function recordMessage(
   // MIGRATION-26; проверено на базе) — считаем непрочитанные здесь, CAS по
   // старому значению, чтобы параллельные реплики не терялись.
   if (p.sender === "customer") await bumpUnread(ctx, p.telegramId);
-  const { error } = await ctx.db.from("manager_chat_messages").insert({
+  const row = {
     bot_id: ctx.tenant.id,
     telegram_id: p.telegramId,
     direction: p.direction,
     sender: p.sender,
     text,
-  });
-  if (error) console.error(`[chat:${ctx.tenant.id}] insert`, error.message);
+  };
+  const reason = p.sender === "bot" ? cleanReason(p.reason) : null;
+  const { data: saved, error } = await ctx.db
+    .from("manager_chat_messages")
+    .insert(row)
+    .select("id")
+    .maybeSingle();
+  if (error) return void console.error(`[chat:${ctx.tenant.id}] insert`, error.message);
+  if (!reason || !saved || !reasonsOn()) return;
+  const { error: reasonError } = await ctx.db
+    .from("manager_chat_reasons")
+    .insert({ bot_id: ctx.tenant.id, message_id: String(saved.id), reason });
+  if (reasonError) {
+    if (reasonsMissing(reasonError)) markReasonsMissing();
+    else console.error(`[chat:${ctx.tenant.id}] reason`, reasonError.message);
+  }
 }
 
 async function bumpUnread(ctx: TenantContext, telegramId: number): Promise<void> {
@@ -289,6 +326,8 @@ export type ChatMessage = {
   sender: ChatSender;
   text: string;
   created_at: string;
+  /** Почему бот так ответил (только ответы бота; нет — пока не записывали или нет колонки). */
+  reason?: string | null;
 };
 
 /** Сколько сообщений окно диалога грузит за раз. */
@@ -308,19 +347,48 @@ export async function listMessages(
   opts: { before?: MessageCursor | null; limit?: number } = {},
 ): Promise<{ messages: ChatMessage[]; hasMore: boolean }> {
   const limit = opts.limit ?? MESSAGES_PAGE;
+  const b = opts.before;
   let q = ctx.db
     .from("manager_chat_messages")
     .select("id, direction, sender, text, created_at")
     .eq("telegram_id", telegramId);
-  const b = opts.before;
   if (b) q = q.or(`created_at.lt.${b.created_at},and(created_at.eq.${b.created_at},id.lt.${b.id})`);
   const { data, error } = await q
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(limit + 1);
   if (error) throw serverFailure(`Чат: ${error.message}`);
-  const rows = (data ?? []) as ChatMessage[];
-  return { messages: rows.slice(0, limit).reverse(), hasMore: rows.length > limit };
+  const rows = (data ?? []) as unknown as ChatMessage[];
+  const messages = rows.slice(0, limit).reverse();
+  await attachReasons(ctx, messages);
+  return { messages, hasMore: rows.length > limit };
+}
+
+/**
+ * Причины ответов бота («Почему бот так ответил») для показанных сообщений.
+ * Подсказка необязательная: нет таблицы (миграция 19-13 не применена) или чтение
+ * упало — страница открывается без причин, ошибка в журнал.
+ */
+async function attachReasons(ctx: TenantContext, messages: ChatMessage[]): Promise<void> {
+  if (!reasonsOn()) return;
+  const ids = messages.filter((m) => m.sender === "bot").map((m) => String(m.id));
+  const byId = new Map<string, string>();
+  for (const chunk of chunksOf(ids)) {
+    const { data, error } = await ctx.db
+      .from("manager_chat_reasons")
+      .select("message_id, reason")
+      .in("message_id", chunk);
+    if (error) {
+      if (reasonsMissing(error)) markReasonsMissing();
+      else console.error(`[chat:${ctx.tenant.id}] reasons`, error.message);
+      return;
+    }
+    for (const r of data ?? []) byId.set(r.message_id, r.reason);
+  }
+  for (const m of messages) {
+    const reason = byId.get(String(m.id));
+    if (reason) m.reason = reason;
+  }
 }
 
 /**

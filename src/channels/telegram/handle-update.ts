@@ -33,6 +33,7 @@ import {
   welcomeHtml,
 } from "./screens";
 import { cleanWorkHours, outsideWorkHours } from "@/core/bot-texts/registry";
+import { makeReason } from "@/core/chat/reason";
 import {
   isHomeworkMessage,
   receiveHomework,
@@ -682,6 +683,7 @@ async function consultantReply(
       direction: "out",
       sender: "bot",
       text: r.reply,
+      reason: makeReason({ source: "consultant", handoff: r.handoff ? true : undefined }),
     });
   }
   if (r.handoff) {

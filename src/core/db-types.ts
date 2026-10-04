@@ -127,6 +127,37 @@ export type Database = {
           },
         ];
       };
+      // Заведена миграцией 19-13 (репозиторий; в базу применяет Яков): причина
+      // ответа бота, одна строка на сообщение manager_chat_messages.
+      manager_chat_reasons: {
+        Row: {
+          bot_id: string;
+          message_id: string;
+          reason: string;
+          created_at: string;
+        };
+        Insert: {
+          bot_id?: string;
+          message_id: string;
+          reason: string;
+          created_at?: string;
+        };
+        Update: {
+          bot_id?: string;
+          message_id?: string;
+          reason?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "manager_chat_reasons_bot_id_fkey";
+            columns: ["bot_id"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       // Заведена MIGRATION-25-module-requests.sql — тем же поводом, что и
       // admin_login_attempts выше: миграция уже применена к живой базе, но
       // scripts/sync-db-types.mjs не заводит новые таблицы, только колонки.

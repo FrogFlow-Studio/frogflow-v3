@@ -12,6 +12,7 @@ import {
   type ZernioWebhookMessagePayload,
 } from "./message";
 import { PLATFORM_LABEL } from "./platform";
+import { makeReason } from "@/core/chat/reason";
 
 /**
  * Входящее из Instagram Direct или WhatsApp. Адаптер разбирает событие,
@@ -374,6 +375,7 @@ export async function handleZernioMessage(
       direction: "out",
       sender: "bot",
       text: r.reply,
+      reason: makeReason({ source: "consultant", handoff: r.handoff ? true : undefined }),
     });
   }
 
@@ -431,6 +433,7 @@ async function directOptOut(
       direction: "out",
       sender: "bot",
       text,
+      reason: makeReason({ cmd: cmd === "unsubscribe" ? "unsubscribe" : "resubscribe" }),
     });
   }
 }
@@ -484,6 +487,7 @@ async function forwardedToSeller(
       direction: "out",
       sender: "bot",
       text,
+      reason: makeReason({ source: "forward", rule: "to_seller" }),
     });
   }
 }

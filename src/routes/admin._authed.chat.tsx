@@ -25,11 +25,12 @@ import {
   quickRepliesSaveFn,
   quickReplyFillFn,
 } from "@/app/admin/admin.functions";
-import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
+import { adminT, intlLocale, isAdminKey, type AdminT } from "@/app/i18n/admin";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { uploadFile } from "@/app/admin/upload-client";
 import type { ChatMessage, Conversation } from "@/core/chat/chat";
 import { mergeMessages } from "@/core/chat/merge-messages";
+import { reasonPairs } from "@/core/chat/reason";
 import { SEARCH_MIN } from "@/core/chat/search";
 import { UNANSWERED_OPTIONS } from "@/core/chat/unanswered";
 import { isIndefinite } from "@/core/consultant/pause";
@@ -53,6 +54,28 @@ export const Route = createFileRoute("/admin/_authed/chat")({
   loader: () => chatConversationsFn(),
   component: ChatPage,
 });
+
+/** «Почему бот так ответил»: раскрывающаяся строка под ответом бота; без записанной причины её нет. */
+function WhyBot({ reason, t }: { reason: string | null | undefined; t: AdminT }) {
+  const pairs = reasonPairs(reason);
+  if (pairs.length === 0) return null;
+  return (
+    <details className="mt-1 text-xs text-muted">
+      <summary className="cursor-pointer select-none">{t("chatReason.title")}</summary>
+      <ul className="mt-1 space-y-0.5">
+        {pairs.map((p) => {
+          const label: string = `chatReason.${p.key}`;
+          return (
+            <li key={p.key}>
+              {t(isAdminKey(label) ? label : "chatReason.other")}:{" "}
+              <span className="font-mono">{p.value === "1" ? "✓" : p.value}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </details>
+  );
+}
 
 const POLL_MS = 5000;
 /** Фото уходит картинкой, всё прочее — документом (правила — core/storage/upload). */
@@ -730,6 +753,7 @@ function ChatPage() {
                         </p>
                       )}
                       <p className="whitespace-pre-wrap">{stripHtml(m.text)}</p>
+                      {m.sender === "bot" && <WhyBot reason={m.reason} t={t} />}
                       <p className="mt-1 text-[10px] text-muted">
                         {new Date(m.created_at).toLocaleString(loc)}
                       </p>

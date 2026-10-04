@@ -1,3 +1,4 @@
+import { explainIncoming } from "./reason";
 import { lastPaidOrder, shortLabels } from "@/core/orders/reorder";
 import {
   nonTextKind,
@@ -211,6 +212,8 @@ type Shop = {
   bot: DirectBotSettings;
   /** Ответ этого сообщения — подсказка на нераспознанный ответ шага. */
   hint?: boolean;
+  /** Почему бот ответил (channels/zernio/reason): уходит в журнал диалога вместе с ответом. */
+  why?: string | null;
 };
 
 /**
@@ -386,6 +389,7 @@ async function reply(
       direction: "out",
       sender: "bot",
       text,
+      reason: s.why,
     });
   }
   return true;
@@ -490,6 +494,13 @@ async function handleRatingAnswer(s: Shop, text: string): Promise<boolean> {
 async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const text = msg.text;
   let mode = s.customer.state.mode;
+  s.why = explainIncoming({
+    mode,
+    text,
+    postback: msg.postbackPayload,
+    trigger: Boolean(text) && isTriggerWord(text, s.bot.triggers),
+    attachments: msg.attachments.length,
+  });
 
   // Корзина из каталога Meta — штатная корзина WhatsApp мимо бота.
   if (msg.nativeOrder) return handleNativeCart(s, msg.nativeOrder);
