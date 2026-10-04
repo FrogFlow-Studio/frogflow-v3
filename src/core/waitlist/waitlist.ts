@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { recordAutoMessage } from "@/core/automsg/stats";
 import { customerFromRow, setState, type Customer } from "@/core/customers/customers";
 
 /**
@@ -94,6 +95,7 @@ export async function notifyWaitlist(
     } catch {
       ok = false;
     }
+    await recordAutoMessage(ctx, "waitlist", c.telegramId, ok);
     if (!ok) {
       r.failed++;
       continue;

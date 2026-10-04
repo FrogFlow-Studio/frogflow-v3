@@ -2077,9 +2077,16 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
       "Категории для рассылки",
     ),
   ]);
+  // Итоги автосообщений нужны только карточкам включённых модулей.
+  const { autoMessageStats } = await import("@/core/automsg/stats");
+  const autoStats =
+    ctx.tenant.modules.cart_reminder || ctx.tenant.modules.winback
+      ? await autoMessageStats(ctx)
+      : null;
   return {
     broadcasts: await withBroadcastStats(ctx, broadcasts.rows),
     broadcastsTotal: broadcasts.total,
+    autoStats,
     categories,
     countries,
     cartReminderHours: settings.cart_reminder_hours ?? "",

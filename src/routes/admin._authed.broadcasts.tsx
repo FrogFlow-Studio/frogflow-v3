@@ -1,5 +1,7 @@
 import { saveWinbackFn, winbackFn } from "@/app/admin/winback.functions";
 import { SimilarCard } from "@/app/admin/similar-card";
+import { AutoStatsBlock } from "@/app/admin/auto-stats";
+import type { AutoStats } from "@/core/automsg/stats";
 import { birthdayFn, funnelFn, saveBirthdayFn, saveFunnelFn } from "@/app/admin/funnel.functions";
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
 import { courseFn } from "@/app/admin/courses.functions";
@@ -239,10 +241,10 @@ function BroadcastsPage() {
             <MarketingCapCard cap={data.marketingCap} />
           )}
           {shop.modules.cart_reminder && channel === "telegram" && (
-            <CartReminderCard hours={data.cartReminderHours} />
+            <CartReminderCard hours={data.cartReminderHours} stats={data.autoStats?.cart} />
           )}
-          {shop.modules.winback && <WinbackCard />}
-          {shop.modules.winback && <SimilarCard t={t} />}
+          {shop.modules.winback && <WinbackCard stats={data.autoStats?.winback} />}
+          {shop.modules.winback && <SimilarCard t={t} stats={data.autoStats?.similar} />}
           {shop.modules.funnel && <FunnelCard />}
           {shop.modules.funnel && <BirthdayCard />}
           <History
@@ -1489,7 +1491,7 @@ function MarketingCapCard({ cap }: { cap: string }) {
   );
 }
 
-function CartReminderCard({ hours }: { hours: string }) {
+function CartReminderCard({ hours, stats }: { hours: string; stats?: AutoStats }) {
   const t = useT();
   const router = useRouter();
   const [value, setValue] = useState(hours);
@@ -1524,12 +1526,13 @@ function CartReminderCard({ hours }: { hours: string }) {
         </button>
       </form>
       <ErrorBox error={save.error} />
+      <AutoStatsBlock t={t} stats={stats} />
     </Card>
   );
 }
 
 /** Возвратные продажи: серия из двух сообщений тем, кто давно не заказывал. */
-function WinbackCard() {
+function WinbackCard({ stats }: { stats?: AutoStats }) {
   const t = useT();
   const [c, setC] = useState<Awaited<ReturnType<typeof winbackFn>> | null>(null);
   const [saved, setSaved] = useState(false);
@@ -1615,6 +1618,7 @@ function WinbackCard() {
         </div>
         <ErrorBox error={save.error} />
       </form>
+      <AutoStatsBlock t={t} stats={stats} />
     </Card>
   );
 }

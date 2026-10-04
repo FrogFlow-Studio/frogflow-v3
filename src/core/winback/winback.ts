@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { recordAutoMessage } from "@/core/automsg/stats";
 import type { Json } from "@/core/db-types";
 import { customerFromRow, setState, type Customer } from "@/core/customers/customers";
 import { getSetting, setSetting } from "@/core/settings/settings";
@@ -177,6 +178,7 @@ export async function runWinback(
       const ok = await send(c, winbackText(cfg, step, c.firstName)).catch(() => false);
       if (ok) r.sent++;
       else r.failed++;
+      await recordAutoMessage(ctx, "winback", c.telegramId, ok, now);
       // Шаг отмечаем и при неудаче: не долбить одного и того же каждый час.
       await setState(ctx, c, {
         ...marked,

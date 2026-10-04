@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { saveSimilarFn, similarFn } from "@/app/admin/winback.functions";
 import type { AdminT } from "@/app/i18n/admin";
+import { AutoStatsBlock } from "@/app/admin/auto-stats";
+import type { AutoStats } from "@/core/automsg/stats";
 import { Card, ErrorBox, Field, Switch, useAction } from "@/app/ui";
 
 /** «Похожие материалы»: через N дней после покупки — товары из тех же категорий. */
-export function SimilarCard({ t }: { t: AdminT }) {
+export function SimilarCard({ t, stats }: { t: AdminT; stats?: AutoStats }) {
   const [c, setC] = useState<Awaited<ReturnType<typeof similarFn>> | null>(null);
   const [saved, setSaved] = useState(false);
   useEffect(() => {
@@ -63,6 +65,7 @@ export function SimilarCard({ t }: { t: AdminT }) {
         </div>
         <ErrorBox error={save.error} />
       </form>
+      <AutoStatsBlock t={t} stats={stats} />
     </Card>
   );
 }

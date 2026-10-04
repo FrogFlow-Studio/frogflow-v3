@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { recordAutoMessage } from "@/core/automsg/stats";
 import type { Locale } from "@/core/i18n/locale";
 import { isLocale } from "@/core/i18n/locale";
 import { getSetting } from "@/core/settings/settings";
@@ -101,11 +102,14 @@ export async function sendCartReminders(
     const locale: Locale = isLocale(state.locale)
       ? state.locale
       : (ctx.tenant.settings.default_locale ?? "ru");
+    let ok = false;
     try {
-      if (await send({ telegramId, locale, items: n })) sent++;
+      ok = await send({ telegramId, locale, items: n });
     } catch (e) {
       console.error(`[cart-reminder:${ctx.tenant.id}] ${telegramId}`, e);
     }
+    if (ok) sent++;
+    await recordAutoMessage(ctx, "cart", telegramId, ok, now);
   }
   return { checked: last.size, sent, hours };
 }

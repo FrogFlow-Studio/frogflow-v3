@@ -14,8 +14,8 @@ import { BUYER_STATUSES } from "./broadcasts";
 export const ATTRIBUTION_MS = 72 * 3600_000;
 
 /** Статусы, по которым заказ не считается ни заказом, ни выручкой. */
-const NOT_COUNTED = new Set(["cancelled", "refunded"]);
-const PAID = new Set<string>(BUYER_STATUSES);
+export const NOT_COUNTED = new Set(["cancelled", "refunded"]);
+export const PAID = new Set<string>(BUYER_STATUSES);
 
 export type BroadcastRevenue = {
   /** Заказов получателей в окне (без отменённых и возвращённых). */

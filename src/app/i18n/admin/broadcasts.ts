@@ -213,6 +213,13 @@ export const ru = {
   "broadcasts.cap.intro":
     "Напоминание о корзине, «Похожие материалы», возврат клиентов и автоворонка вместе пишут одному покупателю не чаще, чем указано здесь, за 24 часа. Сообщения об оплате и заказе не считаются. «0» — без ограничения.",
   "broadcasts.cap.perDay": "Сообщений в сутки",
+  // итоги автосообщений за 30 дней (Р1)
+  "autostats.title": "За 30 дней",
+  "autostats.sent": "Отправлено: {sent}, не дошло: {failed}",
+  "autostats.buyers": "Заказали после сообщения: {buyers}, оплаченных заказов: {paid}",
+  "autostats.revenue": "Выручка оплаченных: {money}",
+  "autostats.hint":
+    "Заказы получателей за 7 дней после сообщения — совпадение по времени, а не доказанная причина. Заказ засчитывается одному, последнему сообщению.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -420,6 +427,12 @@ export const kk: SectionDict<typeof ru> = {
   "broadcasts.cap.intro":
     "Себет туралы еске салу, «Ұқсас материалдар», клиенттерді қайтару және автоворонка бір сатып алушыға 24 сағатта осы саннан артық жазбайды. Төлем мен тапсырыс хабарламалары есептелмейді. «0» — шектеусіз.",
   "broadcasts.cap.perDay": "Тәулігіне хабарлама",
+  "autostats.title": "30 күн ішінде",
+  "autostats.sent": "Жіберілді: {sent}, жетпеді: {failed}",
+  "autostats.buyers": "Хабарламадан кейін тапсырыс бергендер: {buyers}, төленген тапсырыс: {paid}",
+  "autostats.revenue": "Төленгендердің түсімі: {money}",
+  "autostats.hint":
+    "Алушылардың хабарламадан кейінгі 7 күндегі тапсырыстары — уақыт бойынша сәйкестік, дәлелденген себеп емес. Тапсырыс біреуге — соңғы хабарламаға жазылады.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -626,6 +639,12 @@ export const en: SectionDict<typeof ru> = {
   "broadcasts.cap.intro":
     "Cart reminders, similar materials, win-back and the funnel together message one customer no more often than this per 24 hours. Payment and order messages do not count. “0” means no limit.",
   "broadcasts.cap.perDay": "Messages per day",
+  "autostats.title": "Last 30 days",
+  "autostats.sent": "Sent: {sent}, not delivered: {failed}",
+  "autostats.buyers": "Ordered after the message: {buyers}, paid orders: {paid}",
+  "autostats.revenue": "Revenue of paid orders: {money}",
+  "autostats.hint":
+    "Recipients' orders within 7 days after the message — a match in time, not a proven cause. An order is counted once, for the latest message.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -834,4 +853,10 @@ export const uz: SectionDict<typeof ru> = {
   "broadcasts.cap.intro":
     "Savat eslatmasi, «O‘xshash materiallar», mijozlarni qaytarish va avtovoronka birgalikda bitta xaridorga 24 soatda shu sondan ko‘p yozmaydi. To‘lov va buyurtma xabarlari hisoblanmaydi. «0» — cheklovsiz.",
   "broadcasts.cap.perDay": "Kuniga xabarlar",
+  "autostats.title": "Oxirgi 30 kun",
+  "autostats.sent": "Yuborildi: {sent}, yetib bormadi: {failed}",
+  "autostats.buyers": "Xabardan keyin buyurtma bergan: {buyers}, to'langan buyurtmalar: {paid}",
+  "autostats.revenue": "To'langanlar tushumi: {money}",
+  "autostats.hint":
+    "Qabul qiluvchilarning xabardan keyingi 7 kun ichidagi buyurtmalari — vaqt bo'yicha moslik, isbotlangan sabab emas. Buyurtma bitta — oxirgi xabarga yoziladi.",
 };

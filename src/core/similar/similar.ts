@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { recordAutoMessage } from "@/core/automsg/stats";
 import { productCategoryIds } from "@/core/catalog/category-ids";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { visibleCategoryIds } from "@/core/storefront/categories";
@@ -285,6 +286,7 @@ export async function runSimilar(
     ).catch(() => false);
     if (ok) r.sent++;
     else r.failed++;
+    await recordAutoMessage(ctx, "similar", telegramId, ok, now);
   }
   if (postponed.length) await addDeferred(ctx, postponed);
   return r;
