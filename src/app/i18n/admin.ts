@@ -81,6 +81,7 @@ import * as support from "./admin/support";
 import * as takeout from "./admin/takeout";
 import * as invites from "./admin/invites";
 import * as wizard from "./admin/wizard";
+import * as commission from "./admin/commission";
 
 const baseRu = {
   // навигация и оболочка
@@ -496,6 +497,7 @@ const ru = {
   ...takeout.ru,
   ...invites.ru,
   ...wizard.ru,
+  ...commission.ru,
   ...shop4Stock.ru,
   ...shop18Bundles.ru,
   ...community.ru,
@@ -1643,6 +1645,7 @@ const kk: Dict = {
   ...takeout.kk,
   ...invites.kk,
   ...wizard.kk,
+  ...commission.kk,
   ...shop4Stock.kk,
   ...shop18Bundles.kk,
   ...community.kk,
@@ -1721,6 +1724,7 @@ const en: Dict = {
   ...takeout.en,
   ...invites.en,
   ...wizard.en,
+  ...commission.en,
   ...shop4Stock.en,
   ...shop18Bundles.en,
   ...community.en,
@@ -1799,6 +1803,7 @@ const uz: Dict = {
   ...takeout.uz,
   ...invites.uz,
   ...wizard.uz,
+  ...commission.uz,
   ...shop4Stock.uz,
   ...shop18Bundles.uz,
   ...community.uz,

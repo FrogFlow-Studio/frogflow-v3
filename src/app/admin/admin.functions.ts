@@ -1901,6 +1901,18 @@ export const billingHistoryFn = createServerFn({ method: "GET" })
         };
   });
 
+/**
+ * Страница «Комиссия»: продажи витрины и маркета за этот и прошлый месяц,
+ * порог, сумма комиссии и подсказка о тарифе. Только владелец. Месяцы — по
+ * поясу магазина; пока общий выключатель платформы выключен, суммы комиссии
+ * нули, а подсказки нет.
+ */
+export const commissionPageFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await adminOwner();
+  const { commissionPage } = await import("./commission.server");
+  return commissionPage(ctx);
+});
+
 export const requestPlanFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

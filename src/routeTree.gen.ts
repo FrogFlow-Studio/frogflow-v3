@@ -39,6 +39,7 @@ import { Route as AdminAuthedBroadcastsRouteImport } from './routes/admin._authe
 import { Route as AdminAuthedCategoriesRouteImport } from './routes/admin._authed.categories'
 import { Route as AdminAuthedChatRouteImport } from './routes/admin._authed.chat'
 import { Route as AdminAuthedCollectionsRouteImport } from './routes/admin._authed.collections'
+import { Route as AdminAuthedCommissionRouteImport } from './routes/admin._authed.commission'
 import { Route as AdminAuthedCommunityRouteImport } from './routes/admin._authed.community'
 import { Route as AdminAuthedConsultantRouteImport } from './routes/admin._authed.consultant'
 import { Route as AdminAuthedCostRouteImport } from './routes/admin._authed.cost'
@@ -283,6 +284,11 @@ const AdminAuthedChatRoute = AdminAuthedChatRouteImport.update({
 const AdminAuthedCollectionsRoute = AdminAuthedCollectionsRouteImport.update({
   id: '/collections',
   path: '/collections',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedCommissionRoute = AdminAuthedCommissionRouteImport.update({
+  id: '/commission',
+  path: '/commission',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedCommunityRoute = AdminAuthedCommunityRouteImport.update({
@@ -812,6 +818,7 @@ export interface FileRoutesByFullPath {
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/chat': typeof AdminAuthedChatRoute
   '/admin/collections': typeof AdminAuthedCollectionsRoute
+  '/admin/commission': typeof AdminAuthedCommissionRoute
   '/admin/community': typeof AdminAuthedCommunityRoute
   '/admin/consultant': typeof AdminAuthedConsultantRoute
   '/admin/cost': typeof AdminAuthedCostRoute
@@ -938,6 +945,7 @@ export interface FileRoutesByTo {
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/chat': typeof AdminAuthedChatRoute
   '/admin/collections': typeof AdminAuthedCollectionsRoute
+  '/admin/commission': typeof AdminAuthedCommissionRoute
   '/admin/community': typeof AdminAuthedCommunityRoute
   '/admin/consultant': typeof AdminAuthedConsultantRoute
   '/admin/cost': typeof AdminAuthedCostRoute
@@ -1066,6 +1074,7 @@ export interface FileRoutesById {
   '/admin/_authed/categories': typeof AdminAuthedCategoriesRoute
   '/admin/_authed/chat': typeof AdminAuthedChatRoute
   '/admin/_authed/collections': typeof AdminAuthedCollectionsRoute
+  '/admin/_authed/commission': typeof AdminAuthedCommissionRoute
   '/admin/_authed/community': typeof AdminAuthedCommunityRoute
   '/admin/_authed/consultant': typeof AdminAuthedConsultantRoute
   '/admin/_authed/cost': typeof AdminAuthedCostRoute
@@ -1195,6 +1204,7 @@ export interface FileRouteTypes {
     | '/admin/categories'
     | '/admin/chat'
     | '/admin/collections'
+    | '/admin/commission'
     | '/admin/community'
     | '/admin/consultant'
     | '/admin/cost'
@@ -1321,6 +1331,7 @@ export interface FileRouteTypes {
     | '/admin/categories'
     | '/admin/chat'
     | '/admin/collections'
+    | '/admin/commission'
     | '/admin/community'
     | '/admin/consultant'
     | '/admin/cost'
@@ -1448,6 +1459,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/categories'
     | '/admin/_authed/chat'
     | '/admin/_authed/collections'
+    | '/admin/_authed/commission'
     | '/admin/_authed/community'
     | '/admin/_authed/consultant'
     | '/admin/_authed/cost'
@@ -1799,6 +1811,13 @@ declare module '@tanstack/react-router' {
       path: '/collections'
       fullPath: '/admin/collections'
       preLoaderRoute: typeof AdminAuthedCollectionsRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/commission': {
+      id: '/admin/_authed/commission'
+      path: '/commission'
+      fullPath: '/admin/commission'
+      preLoaderRoute: typeof AdminAuthedCommissionRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/community': {
@@ -2506,6 +2525,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedCategoriesRoute: typeof AdminAuthedCategoriesRoute
   AdminAuthedChatRoute: typeof AdminAuthedChatRoute
   AdminAuthedCollectionsRoute: typeof AdminAuthedCollectionsRoute
+  AdminAuthedCommissionRoute: typeof AdminAuthedCommissionRoute
   AdminAuthedCommunityRoute: typeof AdminAuthedCommunityRoute
   AdminAuthedConsultantRoute: typeof AdminAuthedConsultantRoute
   AdminAuthedCostRoute: typeof AdminAuthedCostRoute
@@ -2555,6 +2575,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedCategoriesRoute: AdminAuthedCategoriesRoute,
   AdminAuthedChatRoute: AdminAuthedChatRoute,
   AdminAuthedCollectionsRoute: AdminAuthedCollectionsRoute,
+  AdminAuthedCommissionRoute: AdminAuthedCommissionRoute,
   AdminAuthedCommunityRoute: AdminAuthedCommunityRoute,
   AdminAuthedConsultantRoute: AdminAuthedConsultantRoute,
   AdminAuthedCostRoute: AdminAuthedCostRoute,
