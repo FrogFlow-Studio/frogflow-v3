@@ -4,6 +4,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { customersFn, setBlockedFn } from "@/app/admin/admin.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
+import { CustomerSegments } from "@/app/admin/customer-segments";
 import { EmptyState } from "@/app/ui/states";
 import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 
@@ -22,6 +23,7 @@ function CustomersPage() {
   const navigate = useNavigate();
   const router = useRouter();
   const [query, setQuery] = useState(q ?? "");
+  const [segmentShown, setSegmentShown] = useState(false);
   const block = useAction(async (r: (typeof rows)[number], blocked: boolean) => {
     await setBlockedFn({
       data: { telegramId: r.telegram_id, blocked, username: r.username, firstName: r.first_name },
@@ -43,8 +45,17 @@ function CustomersPage() {
           )
         }
       />
+      {shop.role !== "accountant" && (
+        <CustomerSegments
+          t={t}
+          locale={shop.locale}
+          canWrite={canEdit(shop.role)}
+          onActive={setSegmentShown}
+        />
+      )}
       <form
         className="mb-4 flex gap-2"
+        hidden={segmentShown}
         onSubmit={(e) => {
           e.preventDefault();
           void navigate({ to: "/admin/customers", search: { q: query || undefined } });
@@ -59,7 +70,7 @@ function CustomersPage() {
         <button className="btn-secondary">{t("common.search")}</button>
       </form>
       <ErrorBox error={block.error} />
-      {rows.length === 0 ? (
+      {segmentShown ? null : rows.length === 0 ? (
         q ? (
           <Empty>{t("customers.empty")}</Empty>
         ) : (

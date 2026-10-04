@@ -125,6 +125,54 @@ function CustomerCardPage() {
           {row("customer.spent", spent || "—")}
           {row("customer.firstLast", `${date(c.stats.firstAt)} — ${date(c.stats.lastAt)}`)}
         </Card>
+        {c.referrals && (
+          <Card title={t("customer.referrals")}>
+            {c.referrals.invitedBy && (
+              <p className="mb-2 text-sm">
+                {t("customer.referrals.invitedBy", {
+                  name: c.referrals.invitedBy.name || String(c.referrals.invitedBy.telegramId),
+                })}
+              </p>
+            )}
+            {c.referrals.invited.length === 0 ? (
+              <p className="text-sm text-muted">{t("customer.referrals.none")}</p>
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {c.referrals.invited.map((r) => (
+                  <li key={`${r.telegramId}-${r.createdAt}`} className="flex justify-between gap-3">
+                    <span>{r.name || r.telegramId}</span>
+                    <span className="text-muted">
+                      {r.rewarded
+                        ? t("customer.referrals.rewarded")
+                        : t("customer.referrals.pending")}
+                      {" · "}
+                      {date(r.createdAt)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        )}
+        {c.reviews && (
+          <Card title={t("customer.reviews")}>
+            {c.reviews.length === 0 ? (
+              <p className="text-sm text-muted">{t("customer.reviews.none")}</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {c.reviews.map((r) => (
+                  <li key={r.id}>
+                    <span className="font-medium">{"★".repeat(r.rating)}</span>{" "}
+                    <span className="text-muted">
+                      {r.productName} · {date(r.createdAt)}
+                    </span>
+                    {r.comment && <p>{r.comment}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        )}
         <Card title={t("customer.sellerTitle")}>
           <ErrorBox error={save.error} />
           {noteConflict && <p className="mb-2 text-xs text-warn">{t("customer.noteConflict")}</p>}

@@ -11,6 +11,12 @@ import {
   type SellerNote,
 } from "./seller-notes";
 import { linkedProfiles, type LinkedProfile } from "./identity";
+import {
+  customerReferrals,
+  customerReviews,
+  type CardReferrals,
+  type CardReview,
+} from "./card-extra";
 
 export { cleanTags, type SellerNote } from "./seller-notes";
 
@@ -103,6 +109,10 @@ export type CustomerCard = {
     createdAt: string;
   }>;
   leads: Array<{ id: string; stage: string; name: string; createdAt: string }>;
+  /** Рефералы покупателя; нет — модуль «Рефералы» выключен. */
+  referrals: CardReferrals | null;
+  /** Отзывы покупателя; нет — модуль «Запрос отзывов» выключен. */
+  reviews: CardReview[] | null;
   messages: Array<{ direction: string; sender: string; text: string; createdAt: string }>;
 };
 
@@ -182,6 +192,10 @@ export async function customerCard(
           })
       : Promise.resolve([]),
   ]);
+  const [referrals, reviews] = await Promise.all([
+    m.referral ? customerReferrals(ctx, telegramId) : Promise.resolve(null),
+    m.review_request ? customerReviews(ctx, buyerIds) : Promise.resolve(null),
+  ]);
   const own = new Set(ownOrders.map((o) => o.id));
   const orders = [...ownOrders, ...linkedOrders.filter((o) => !own.has(o.id))].sort(
     (a, b) => b.id - a.id,
@@ -230,6 +244,8 @@ export async function customerCard(
     leads: leads
       .filter((l) => l.user_key === userKey)
       .map((l) => ({ id: l.id, stage: l.stage, name: l.name, createdAt: l.created_at })),
+    referrals,
+    reviews,
     messages: messages
       .map((x) => ({
         direction: x.direction,
