@@ -65,6 +65,7 @@ import * as shop19Launch from "./admin/shop19-launch";
 import * as shop19Orders from "./admin/shop19-orders";
 import * as shop19Order from "./admin/shop19-order";
 import * as shop18Forecast from "./admin/shop18-forecast";
+import * as help from "./admin/help";
 import * as news from "./admin/news";
 import * as support from "./admin/support";
 import * as takeout from "./admin/takeout";
@@ -470,6 +471,7 @@ const ru = {
   ...shop19Orders.ru,
   ...shop19Order.ru,
   ...shop18Forecast.ru,
+  ...help.ru,
   ...news.ru,
   ...support.ru,
   ...takeout.ru,
@@ -1604,6 +1606,7 @@ const kk: Dict = {
   ...shop19Orders.kk,
   ...shop19Order.kk,
   ...shop18Forecast.kk,
+  ...help.kk,
   ...news.kk,
   ...support.kk,
   ...takeout.kk,
@@ -1669,6 +1672,7 @@ const en: Dict = {
   ...shop19Orders.en,
   ...shop19Order.en,
   ...shop18Forecast.en,
+  ...help.en,
   ...news.en,
   ...support.en,
   ...takeout.en,
@@ -1734,6 +1738,7 @@ const uz: Dict = {
   ...shop19Orders.uz,
   ...shop19Order.uz,
   ...shop18Forecast.uz,
+  ...help.uz,
   ...news.uz,
   ...support.uz,
   ...takeout.uz,

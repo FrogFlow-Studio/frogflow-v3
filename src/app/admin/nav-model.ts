@@ -180,6 +180,8 @@ export function buildAdminNav(shop: NavShop): AdminNav {
       { to: "/admin/bot-preview", label: "nav.botPreview" },
       { to: "/admin/community", label: "nav.community" },
       owner && { to: "/admin/log", label: "audit.nav" },
+      { to: "/admin/support", label: "support.nav" },
+      { to: "/admin/help", label: "help.nav" },
       {
         to: "/admin/news",
         label: "news.nav",

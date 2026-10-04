@@ -1,9 +1,10 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { sendSupportMessageFn, supportFn, supportReadFn } from "@/app/admin/support.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { canEdit } from "@/core/auth/roles";
+import { suggestHelp } from "@/core/help/articles";
 import { SUPPORT_BODY_MAX, type ThreadStatus } from "@/core/support/support";
 
 export const Route = createFileRoute("/admin/_authed/support")({
@@ -27,6 +28,7 @@ function SupportPage() {
   const [text, setText] = useState("");
   const end = useRef<HTMLDivElement>(null);
   const writable = canEdit(shop.role);
+  const suggestions = suggestHelp(text, shop.locale);
   const unread = view.available ? view.unread : 0;
 
   // Открыли чат — ответы прочитаны; новые ответы подтягиваем раз в полминуты.
@@ -125,6 +127,24 @@ function SupportPage() {
                 aria-label={t("support.placeholder")}
                 onChange={(e) => setText(e.target.value)}
               />
+              {suggestions.length > 0 && (
+                <p className="mt-2 text-sm">
+                  {t("help.maybe")}{" "}
+                  {suggestions.map((x, i) => (
+                    <span key={x.slug}>
+                      {i > 0 && ", "}
+                      <Link
+                        to="/admin/help"
+                        search={{ a: x.slug }}
+                        target="_blank"
+                        className="text-accent underline"
+                      >
+                        {x.title}
+                      </Link>
+                    </span>
+                  ))}
+                </p>
+              )}
               <div className="mt-2 text-right">
                 <button
                   type="button"
