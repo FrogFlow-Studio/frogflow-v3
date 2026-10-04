@@ -1,8 +1,15 @@
-import type { Database } from "@/core/db-types";
+import type { Database, Json } from "@/core/db-types";
 import type { Db } from "@/core/db/client.server";
 import { UserError } from "@/core/i18n/user-error";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serverFailure } from "@/lib/server-failure";
+import {
+  cleanContext,
+  isOwnScreenshotKey,
+  readContext,
+  signScreenshots,
+  type MessageContext,
+} from "./attachments";
 
 /**
  * Чат продавца с платформой (поддержка в админке). Таблицы `platform_threads`
@@ -48,6 +55,11 @@ export type SupportMessage = {
   createdAt: string;
   /** Прочитала ли другая сторона. */
   read: boolean;
+  /** Подписанная ссылка на скриншот (на 10 минут); null — вложения нет или ссылку не выдали. */
+  screenshotUrl: string | null;
+  hasScreenshot: boolean;
+  /** Откуда написали: страница админки и номер открытого заказа. */
+  context: MessageContext | null;
 };
 
 export type SupportView =
@@ -70,7 +82,10 @@ export function isMissingTable(error: { code?: string; message?: string } | null
 export const supportSoon = () =>
   new UserError("err.support.soon", "Чат с поддержкой скоро заработает: раздел ещё не включён.");
 
-export function toSupportMessage(r: MessageRow): SupportMessage {
+export function toSupportMessage(
+  r: MessageRow,
+  urls?: ReadonlyMap<string, string>,
+): SupportMessage {
   return {
     id: r.id,
     author: r.author === "operator" ? "operator" : "seller",
@@ -78,6 +93,9 @@ export function toSupportMessage(r: MessageRow): SupportMessage {
     body: r.body,
     createdAt: r.created_at,
     read: r.read_at != null,
+    screenshotUrl: urls?.get(r.id) ?? null,
+    hasScreenshot: Boolean(r.attachment_key),
+    context: readContext((r.context ?? null) as Json | null),
   };
 }
 
@@ -96,8 +114,9 @@ export function cleanLabels(raw: readonly string[]): string[] {
   return out;
 }
 
-export function cleanBody(raw: string): string {
+export function cleanBody(raw: string, allowEmpty = false): string {
   const body = raw.replace(/\r\n/g, "\n").trim();
+  if (!body && allowEmpty) return "";
   if (!body)
     throw new UserError("err.support.empty", "Напишите сообщение: пустое отправить нельзя.");
   if (body.length > SUPPORT_BODY_MAX)
@@ -241,21 +260,34 @@ export async function loadSupport(ctx: TenantContext): Promise<SupportView> {
   const rows = await readMessages(ctx.db, ctx.tenant.id);
   if (rows === null) return { available: false };
   const thread = await latestThread(ctx.db, ctx.tenant.id);
+  const urls = await signScreenshots(rows);
   return {
     available: true,
     status: thread ? (thread.status as ThreadStatus) : null,
     unread: thread?.seller_unread ?? 0,
-    messages: rows.map(toSupportMessage),
+    messages: rows.map((r) => toSupportMessage(r, urls)),
   };
 }
 
 /** Сообщение продавца: обращение открывается само, оператор видит новое непрочитанное. */
 export async function sendSellerMessage(
   ctx: TenantContext,
-  input: { body: string; authorName: string },
+  input: {
+    body: string;
+    authorName: string;
+    /** Скриншот, уже загруженный в Storage (ключ под префиксом магазина). */
+    attachmentKey?: string | null;
+    context?: { page?: unknown; orderNo?: unknown } | null;
+  },
 ): Promise<{ message: SupportMessage; thread: ThreadRow }> {
-  const body = cleanBody(input.body);
   const botId = ctx.tenant.id;
+  const attachmentKey = input.attachmentKey ?? null;
+  if (attachmentKey && !isOwnScreenshotKey(botId, attachmentKey))
+    throw new UserError(
+      "err.support.attachBad",
+      "Этот файл прикрепить нельзя: нужна картинка JPEG или PNG до 5 МБ.",
+    );
+  const body = cleanBody(input.body, attachmentKey !== null);
   const thread = await ensureOpenThread(ctx.db, botId);
   const { data, error } = await ctx.db
     .from("platform_messages")
@@ -265,6 +297,8 @@ export async function sendSellerMessage(
       author: "seller",
       author_name: input.authorName.slice(0, 80) || null,
       body,
+      attachment_key: attachmentKey,
+      context: cleanContext(input.context),
       created_at: new Date().toISOString(),
       read_at: null,
       notified_at: null,

@@ -605,6 +605,16 @@ function storage(
     res.writeHead(200, { "content-type": f.type });
     return res.end(method === "HEAD" ? undefined : f.body);
   }
+  // Загрузка по подписанной ссылке: подпись (POST) и сам файл (PUT) на одном адресе.
+  if (method === "POST" && (m = /^object\/upload\/sign\/(.+)$/.exec(p)))
+    return send(res, 200, { url: `/object/upload/sign/${m[1]}?token=e2e` });
+  if (method === "PUT" && (m = /^object\/upload\/sign\/(.+)$/.exec(p))) {
+    db.storage.set(m[1]!, {
+      body,
+      type: String(req.headers["content-type"] ?? "application/octet-stream"),
+    });
+    return send(res, 200, { Key: m[1] });
+  }
   if ((method === "POST" || method === "PUT") && (m = /^object\/(.+)$/.exec(p))) {
     db.storage.set(m[1]!, {
       body,
@@ -904,7 +914,17 @@ export function startPgStub(port: number, db: StubDb) {
       const body = await readBody(req);
       try {
         if (url.pathname.startsWith("/rest/v1/")) return rest(db, req, url, body, res);
-        if (url.pathname.startsWith("/storage/v1/")) return storage(db, req, url, body, res, base);
+        if (url.pathname.startsWith("/storage/v1/")) {
+          // Браузер кладёт файл по подписанной ссылке прямо в Storage (другой источник).
+          res.setHeader("access-control-allow-origin", "*");
+          res.setHeader("access-control-allow-methods", "GET, PUT, POST, OPTIONS");
+          res.setHeader("access-control-allow-headers", "*");
+          if (req.method === "OPTIONS") {
+            res.writeHead(204);
+            return res.end();
+          }
+          return storage(db, req, url, body, res, base);
+        }
         if (/^\/(bot|file\/bot)/.test(url.pathname)) return await telegram(db, req, url, body, res);
         if (url.pathname.startsWith("/zernio/")) return zernio(db, req, url, body, res);
         if (url.pathname === "/__e2e/telegram") return send(res, 200, db.telegram);

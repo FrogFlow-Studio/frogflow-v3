@@ -1,11 +1,13 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
 import {
   sendSupportMessageFn,
   supportFn,
   supportReadFn,
   supportTypicalFn,
 } from "@/app/admin/support.functions";
+import { uploadFile } from "@/app/admin/upload-client";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { canEdit } from "@/core/auth/roles";
@@ -13,6 +15,8 @@ import { suggestHelp } from "@/core/help/articles";
 import { SUPPORT_BODY_MAX, type ThreadStatus } from "@/core/support/support";
 
 export const Route = createFileRoute("/admin/_authed/support")({
+  // `from` — страница админки, с которой нажали «Поддержка» (кнопка в углу каждой страницы).
+  validateSearch: z.object({ from: z.string().max(300).optional() }),
   loader: async () => ({ view: await supportFn(), typical: await supportTypicalFn() }),
   component: SupportPage,
 });
@@ -30,7 +34,9 @@ function SupportPage() {
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const router = useRouter();
+  const { from } = Route.useSearch();
   const [text, setText] = useState("");
+  const [shot, setShot] = useState<{ key: string; name: string } | null>(null);
   const end = useRef<HTMLDivElement>(null);
   const writable = canEdit(shop.role);
   const suggestions = suggestHelp(text, shop.locale);
@@ -51,9 +57,18 @@ function SupportPage() {
     end.current?.scrollIntoView?.({ block: "end" });
   }, [count]);
 
+  const attach = useAction(async (file: File) => {
+    const key = await uploadFile("chatPhoto", file, t, (status) =>
+      t("support.attachFailed", { status }),
+    );
+    setShot({ key, name: file.name });
+  });
   const send = useAction(async () => {
-    await sendSupportMessageFn({ data: { body: text } });
+    await sendSupportMessageFn({
+      data: { body: text, attachmentKey: shot?.key ?? null, ...(from ? { page: from } : {}) },
+    });
     setText("");
+    setShot(null);
     await router.invalidate();
   });
 
@@ -110,12 +125,24 @@ function SupportPage() {
                     m.author === "seller" ? "bg-accent/10" : "bg-surface-2 border border-line"
                   }`}
                 >
+                  {m.screenshotUrl && (
+                    <a href={m.screenshotUrl} target="_blank" rel="noreferrer">
+                      <img
+                        src={m.screenshotUrl}
+                        alt={t("support.shotAlt")}
+                        className="mb-1 max-h-60 rounded"
+                      />
+                    </a>
+                  )}
                   {m.body}
                 </div>
                 <span className="mt-0.5 text-xs text-muted">
                   {m.author === "seller" ? (m.authorName ?? t("support.you")) : t("support.team")}
                   {" · "}
                   {fmt(m.createdAt)}
+                  {m.context?.page && ` · ${t("support.ctxPage", { page: m.context.page })}`}
+                  {m.context?.orderNo != null &&
+                    ` · ${t("support.ctxOrder", { no: m.context.orderNo })}`}
                 </span>
               </div>
             ))
@@ -125,7 +152,7 @@ function SupportPage() {
         <div className="border-t border-line p-4">
           {writable ? (
             <>
-              <ErrorBox error={send.error} />
+              <ErrorBox error={send.error ?? attach.error} />
               <textarea
                 className="input w-full"
                 rows={3}
@@ -153,15 +180,51 @@ function SupportPage() {
                   ))}
                 </p>
               )}
-              <div className="mt-2 text-right">
-                <button
-                  type="button"
-                  className="btn-primary"
-                  disabled={send.busy || !text.trim()}
-                  onClick={() => void send.run().catch(() => {})}
-                >
-                  {t("support.send")}
-                </button>
+              {from && (
+                <p className="mt-1 text-xs text-muted">{t("support.fromPage", { page: from })}</p>
+              )}
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <div className="min-w-0 text-xs text-muted">
+                  {shot ? (
+                    <span className="flex items-center gap-2">
+                      <span className="truncate">{shot.name}</span>
+                      <button
+                        type="button"
+                        className="btn-ghost text-xs"
+                        onClick={() => setShot(null)}
+                      >
+                        {t("support.attachRemove")}
+                      </button>
+                    </span>
+                  ) : (
+                    <label className="btn-ghost cursor-pointer text-xs">
+                      {t("support.attach")}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png"
+                        className="sr-only"
+                        aria-label={t("support.attach")}
+                        disabled={attach.busy}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = "";
+                          if (f) void attach.run(f).catch(() => {});
+                        }}
+                      />
+                    </label>
+                  )}
+                  <span className="ml-2">{t("support.attachHint")}</span>
+                </div>
+                <div className="text-right">
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={send.busy || attach.busy || (!text.trim() && !shot)}
+                    onClick={() => void send.run().catch(() => {})}
+                  >
+                    {t("support.send")}
+                  </button>
+                </div>
               </div>
             </>
           ) : (

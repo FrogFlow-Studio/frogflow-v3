@@ -1,4 +1,5 @@
 import { serviceDb } from "@/core/db/client.server";
+import { signScreenshots } from "@/core/support/attachments";
 import { UserError } from "@/core/i18n/user-error";
 import {
   MESSAGE_COLS,
@@ -228,13 +229,14 @@ export async function supportConversation(botId: string): Promise<OperatorThread
     .eq("author", "seller")
     .is("read_at", null);
   if (error) throw serverFailure(`[operator] отметка «прочитано» не записана: ${error.message}`);
+  const urls = await signScreenshots(rows);
   const names = new Map((await tenantDirectory()).map((t) => [t.id, t.name]));
   return {
     client: names.get(botId) ?? "—",
     status: thread ? (thread.status as ThreadStatus) : null,
     labels: thread?.labels ?? [],
     note: thread ? await readNote(thread.id) : { text: "", updatedAt: null, updatedBy: null },
-    messages: rows.map(toSupportMessage),
+    messages: rows.map((r) => toSupportMessage(r, urls)),
   };
 }
 

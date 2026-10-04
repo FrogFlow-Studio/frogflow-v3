@@ -15,6 +15,7 @@ import { DeletionBanner } from "@/app/admin/deletion-ui";
 import { SubscriptionBanner } from "@/app/admin/subscription-banner";
 import { TrialBanner } from "@/app/admin/trial-banner";
 import { CommandPalette } from "@/app/admin/command-palette";
+import { SupportFab } from "@/app/admin/support-fab";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
 export const Route = createFileRoute("/admin/_authed")({
@@ -136,6 +137,7 @@ function Layout() {
           hash: i.hash,
         }))}
       />
+      <SupportFab t={t} enabled={shop.role !== "accountant"} />
       <AdminBottomBar nav={nav} t={t} />
     </Shell>
   );

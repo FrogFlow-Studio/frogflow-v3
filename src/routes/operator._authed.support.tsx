@@ -214,12 +214,26 @@ function SupportInbox() {
                             : "bg-surface-2 border border-line"
                         }`}
                       >
+                        {m.screenshotUrl && (
+                          <a href={m.screenshotUrl} target="_blank" rel="noreferrer">
+                            <img
+                              src={m.screenshotUrl}
+                              alt="Скриншот"
+                              className="mb-1 max-h-60 rounded"
+                            />
+                          </a>
+                        )}
+                        {m.hasScreenshot && !m.screenshotUrl && (
+                          <span className="text-muted">[скриншот: ссылка не выдана]</span>
+                        )}
                         {m.body}
                       </div>
                       <span className="mt-0.5 text-xs text-muted">
                         {m.authorName ?? (m.author === "operator" ? "оператор" : "продавец")} ·{" "}
                         {fmt(m.createdAt)}
                         {m.author === "operator" && m.read ? " · прочитано" : ""}
+                        {m.context?.page ? ` · страница ${m.context.page}` : ""}
+                        {m.context?.orderNo != null ? ` · заказ №${m.context.orderNo}` : ""}
                       </span>
                     </div>
                   ))
