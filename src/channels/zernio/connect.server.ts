@@ -7,10 +7,15 @@ import {
   tenantDirectory,
 } from "@/core/tenant/resolve.server";
 import { foreignZernioAccounts, zernioProfileOwner } from "@/core/tenant/zernio-accounts";
+import { servedByV2 } from "@/core/tenant/directory";
+import { UserError } from "@/core/i18n/user-error";
+import { serverFailure } from "@/lib/server-failure";
+import { ZernioApiError } from "./errors";
 import {
   accountProfileId,
   connectUrl,
   createProfile,
+  deleteAccount,
   listAccounts,
   listProfiles,
   readWebhookSettings,
@@ -220,4 +225,55 @@ export async function syncV2Webhook(): Promise<V2WebhookState> {
   const r = await writeV2Webhook(p.plan);
   if (!r.ok) return { ...p.state, ok: false, action: "error", error: r.error };
   return { ...p.state, ok: true };
+}
+
+export type DisconnectResult = {
+  /** Аккаунт отключён и в Zernio; false — только отвязан у нас (id записан оператором вручную). */
+  inZernio: boolean;
+};
+
+/**
+ * Отключить аккаунт Instagram/WhatsApp от магазина. Аккаунт из снимка
+ * профиля клиента отключается и в Zernio: иначе сверка вернула бы его
+ * обратно, а вебхук продолжал бы присылать события. Id, записанный
+ * оператором вручную и не лежащий в профиле клиента, только отвязывается у
+ * нас: он может быть чужим профилем, в Zernio его не трогаем. Сбой Zernio
+ * (кроме 404 «уже отключён») — ошибка, у нас ничего не меняется. История
+ * диалогов, заказы и покупатели остаются.
+ */
+export async function disconnectAccount(
+  tenant: Tenant,
+  accountId: string,
+): Promise<DisconnectResult> {
+  if (!servedByV2(tenant)) throw serverFailure("Магазин обслуживает прежняя платформа");
+  const z = tenant.settings.zernio;
+  const id = accountId.trim();
+  const inSnapshot = (z?.accounts ?? []).some((a) => a.id === id);
+  const known = inSnapshot || (z?.account_ids ?? []).includes(id);
+  if (!known)
+    throw new UserError(
+      "err.admin.accountUnknown",
+      "Этого аккаунта нет в списке подключённых — обновите страницу.",
+    );
+  if (inSnapshot) {
+    if (!zernioConfigured()) throw serverFailure("Zernio не подключён на платформе");
+    try {
+      await deleteAccount(id);
+    } catch (e) {
+      // 404 — уже отключён (повтор, или отключили в Zernio сами): у нас остаётся убрать запись.
+      if (!(e instanceof ZernioApiError && e.failure.status === 404))
+        throw serverFailure(
+          `Zernio не отключил аккаунт: ${e instanceof Error ? e.message : String(e)}`,
+        );
+    }
+  }
+  // Список перечитываем: пока шёл вызов Zernio, сверка могла дописать другие аккаунты.
+  const fresh = (await tenantDirectory(true)).find((t) => t.id === tenant.id)?.settings.zernio;
+  await patchTenantSettings(tenant.id, {
+    zernio: {
+      account_ids: (fresh?.account_ids ?? []).filter((x) => x !== id),
+      accounts: (fresh?.accounts ?? []).filter((a) => a.id !== id),
+    },
+  });
+  return { inZernio: inSnapshot };
 }

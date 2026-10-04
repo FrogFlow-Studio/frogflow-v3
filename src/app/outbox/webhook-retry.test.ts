@@ -24,7 +24,8 @@ const { loadCrmLog } = await import("@/core/crm/log");
 
 const URL = "https://crm.example.kz/hook";
 const event = JSON.stringify({ event: "order.placed", event_id: "EV-1", order: { id: 5 } });
-const T = new Date("2026-10-04T10:00:00Z");
+// Ручной повтор ставит строку на «сейчас» по настоящим часам, поэтому и опорное время — настоящее.
+const T = new Date();
 let ctx: TenantContext;
 const rows = () => (ctx.db as unknown as ReturnType<typeof fakeDb>).tables.zernio_logs!;
 const run = (min: number) =>
