@@ -1365,3 +1365,46 @@ export const supportReplyFn = createServerFn({ method: "POST" })
     });
     return { message: r.message };
   });
+
+/* ── новости платформы ────────────────────────────────────────────── */
+
+const newsImpl = () => import("./news.server");
+const newsText = z.object({
+  ru: z.string().max(10_000),
+  kk: z.string().max(10_000).optional(),
+  en: z.string().max(10_000).optional(),
+  uz: z.string().max(10_000).optional(),
+});
+
+/** Все новости, включая черновики и архив; null — раздел выключен (нет таблиц). */
+export const newsListFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await newsImpl()).listNews();
+});
+
+export const saveNewsFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        id: z.string().uuid().nullable(),
+        title: newsText,
+        body: newsText,
+        plans: z.array(z.enum(["basic", "pro", "business", "custom"])).max(4),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await newsImpl()).saveNews(data.id, data, await actor());
+  });
+
+export const newsStateFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({ id: z.string().uuid(), action: z.enum(["publish", "archive", "unarchive"]) })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return { changed: await (await newsImpl()).setNewsState(data.id, data.action) };
+  });

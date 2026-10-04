@@ -29,6 +29,7 @@ export const OPERATOR_MENU: OperatorMenuGroup[] = [
       { to: "/operator/clients/new", label: "Подключить клиента" },
       { to: "/operator/requests", label: "Заявки на модули", badge: "requests" },
       { to: "/operator/support", label: "Поддержка" },
+      { to: "/operator/news", label: "Новости платформы" },
       { to: "/operator/leads", label: "Лиды" },
       { to: "/operator/partners", label: "Партнёры" },
       { to: "/operator/broadcast", label: "Сообщение владельцам" },

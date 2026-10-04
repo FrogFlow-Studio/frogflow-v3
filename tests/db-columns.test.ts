@@ -126,7 +126,13 @@ describe("миграции партии 19 совпадают с db-types.ts", (
       for (const m of sql.matchAll(
         /CREATE TABLE IF NOT EXISTS (?:public\.)?(\w+) \(\n([\s\S]*?)\n\);/gi,
       )) {
-        const cols = [...m[2]!.matchAll(/^ {2}([a-z_]+)\s+[a-z]/gim)].map((c) => c[1]!).sort();
+        const cols = [
+          ...m[2]!.matchAll(
+            /^ {2}(?!(?:primary|unique|check|foreign|constraint)\b)([a-z_]+)\s+[a-z]/gim,
+          ),
+        ]
+          .map((c) => c[1]!)
+          .sort();
         const typed = [...(schema.get(m[1]!) ?? [])].sort();
         expect(typed, `${f}: ${m[1]}`).toEqual(cols);
       }

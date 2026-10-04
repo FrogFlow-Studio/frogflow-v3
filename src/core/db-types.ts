@@ -307,6 +307,114 @@ export type Database = {
           },
         ];
       };
+      platform_news: {
+        Row: {
+          id: string;
+          title: Json;
+          body: Json;
+          plans: string[];
+          action: Json | null;
+          poll: Json | null;
+          published_at: string | null;
+          archived: boolean;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          title: Json;
+          body: Json;
+          plans?: string[];
+          action?: Json | null;
+          poll?: Json | null;
+          published_at?: string | null;
+          archived?: boolean;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          title?: Json;
+          body?: Json;
+          plans?: string[];
+          action?: Json | null;
+          poll?: Json | null;
+          published_at?: string | null;
+          archived?: boolean;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      platform_news_reads: {
+        Row: {
+          bot_id: string;
+          news_id: string;
+          read_at: string;
+        };
+        Insert: {
+          bot_id?: string;
+          news_id: string;
+          read_at?: string;
+        };
+        Update: {
+          bot_id?: string;
+          news_id?: string;
+          read_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "platform_news_reads_bot_id_fkey";
+            columns: ["bot_id"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "platform_news_reads_news_id_fkey";
+            columns: ["news_id"];
+            isOneToOne: false;
+            referencedRelation: "platform_news";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      platform_news_votes: {
+        Row: {
+          bot_id: string;
+          news_id: string;
+          option_ix: number;
+          voted_at: string;
+        };
+        Insert: {
+          bot_id?: string;
+          news_id: string;
+          option_ix: number;
+          voted_at?: string;
+        };
+        Update: {
+          bot_id?: string;
+          news_id?: string;
+          option_ix?: number;
+          voted_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "platform_news_votes_bot_id_fkey";
+            columns: ["bot_id"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "platform_news_votes_news_id_fkey";
+            columns: ["news_id"];
+            isOneToOne: false;
+            referencedRelation: "platform_news";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       subscription_payments: {
         Row: {
           id: string;

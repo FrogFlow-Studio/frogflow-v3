@@ -46,6 +46,7 @@ import { Route as AdminAuthedIgImportRouteImport } from './routes/admin._authed.
 import { Route as AdminAuthedInstagramRouteImport } from './routes/admin._authed.instagram'
 import { Route as AdminAuthedLogRouteImport } from './routes/admin._authed.log'
 import { Route as AdminAuthedModulesRouteImport } from './routes/admin._authed.modules'
+import { Route as AdminAuthedNewsRouteImport } from './routes/admin._authed.news'
 import { Route as AdminAuthedOrdersRouteImport } from './routes/admin._authed.orders'
 import { Route as AdminAuthedPipelineRouteImport } from './routes/admin._authed.pipeline'
 import { Route as AdminAuthedPostsRouteImport } from './routes/admin._authed.posts'
@@ -81,6 +82,7 @@ import { Route as OperatorAuthedCronsRouteImport } from './routes/operator._auth
 import { Route as OperatorAuthedLeadsRouteImport } from './routes/operator._authed.leads'
 import { Route as OperatorAuthedLogRouteImport } from './routes/operator._authed.log'
 import { Route as OperatorAuthedMigrationRouteImport } from './routes/operator._authed.migration'
+import { Route as OperatorAuthedNewsRouteImport } from './routes/operator._authed.news'
 import { Route as OperatorAuthedPartnersRouteImport } from './routes/operator._authed.partners'
 import { Route as OperatorAuthedRequestsRouteImport } from './routes/operator._authed.requests'
 import { Route as OperatorAuthedRevenueRouteImport } from './routes/operator._authed.revenue'
@@ -306,6 +308,11 @@ const AdminAuthedModulesRoute = AdminAuthedModulesRouteImport.update({
   path: '/modules',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
+const AdminAuthedNewsRoute = AdminAuthedNewsRouteImport.update({
+  id: '/news',
+  path: '/news',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
 const AdminAuthedOrdersRoute = AdminAuthedOrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
@@ -479,6 +486,11 @@ const OperatorAuthedLogRoute = OperatorAuthedLogRouteImport.update({
 const OperatorAuthedMigrationRoute = OperatorAuthedMigrationRouteImport.update({
   id: '/migration',
   path: '/migration',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
+const OperatorAuthedNewsRoute = OperatorAuthedNewsRouteImport.update({
+  id: '/news',
+  path: '/news',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
 const OperatorAuthedPartnersRoute = OperatorAuthedPartnersRouteImport.update({
@@ -734,6 +746,7 @@ export interface FileRoutesByFullPath {
   '/admin/instagram': typeof AdminAuthedInstagramRoute
   '/admin/log': typeof AdminAuthedLogRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
+  '/admin/news': typeof AdminAuthedNewsRoute
   '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/pipeline': typeof AdminAuthedPipelineRoute
   '/admin/posts': typeof AdminAuthedPostsRoute
@@ -768,6 +781,7 @@ export interface FileRoutesByFullPath {
   '/operator/leads': typeof OperatorAuthedLeadsRoute
   '/operator/log': typeof OperatorAuthedLogRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
+  '/operator/news': typeof OperatorAuthedNewsRoute
   '/operator/partners': typeof OperatorAuthedPartnersRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
   '/operator/revenue': typeof OperatorAuthedRevenueRoute
@@ -846,6 +860,7 @@ export interface FileRoutesByTo {
   '/admin/instagram': typeof AdminAuthedInstagramRoute
   '/admin/log': typeof AdminAuthedLogRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
+  '/admin/news': typeof AdminAuthedNewsRoute
   '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/pipeline': typeof AdminAuthedPipelineRoute
   '/admin/posts': typeof AdminAuthedPostsRoute
@@ -880,6 +895,7 @@ export interface FileRoutesByTo {
   '/operator/leads': typeof OperatorAuthedLeadsRoute
   '/operator/log': typeof OperatorAuthedLogRoute
   '/operator/migration': typeof OperatorAuthedMigrationRoute
+  '/operator/news': typeof OperatorAuthedNewsRoute
   '/operator/partners': typeof OperatorAuthedPartnersRoute
   '/operator/requests': typeof OperatorAuthedRequestsRoute
   '/operator/revenue': typeof OperatorAuthedRevenueRoute
@@ -960,6 +976,7 @@ export interface FileRoutesById {
   '/admin/_authed/instagram': typeof AdminAuthedInstagramRoute
   '/admin/_authed/log': typeof AdminAuthedLogRoute
   '/admin/_authed/modules': typeof AdminAuthedModulesRoute
+  '/admin/_authed/news': typeof AdminAuthedNewsRoute
   '/admin/_authed/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/_authed/pipeline': typeof AdminAuthedPipelineRoute
   '/admin/_authed/posts': typeof AdminAuthedPostsRoute
@@ -994,6 +1011,7 @@ export interface FileRoutesById {
   '/operator/_authed/leads': typeof OperatorAuthedLeadsRoute
   '/operator/_authed/log': typeof OperatorAuthedLogRoute
   '/operator/_authed/migration': typeof OperatorAuthedMigrationRoute
+  '/operator/_authed/news': typeof OperatorAuthedNewsRoute
   '/operator/_authed/partners': typeof OperatorAuthedPartnersRoute
   '/operator/_authed/requests': typeof OperatorAuthedRequestsRoute
   '/operator/_authed/revenue': typeof OperatorAuthedRevenueRoute
@@ -1075,6 +1093,7 @@ export interface FileRouteTypes {
     | '/admin/instagram'
     | '/admin/log'
     | '/admin/modules'
+    | '/admin/news'
     | '/admin/orders'
     | '/admin/pipeline'
     | '/admin/posts'
@@ -1109,6 +1128,7 @@ export interface FileRouteTypes {
     | '/operator/leads'
     | '/operator/log'
     | '/operator/migration'
+    | '/operator/news'
     | '/operator/partners'
     | '/operator/requests'
     | '/operator/revenue'
@@ -1187,6 +1207,7 @@ export interface FileRouteTypes {
     | '/admin/instagram'
     | '/admin/log'
     | '/admin/modules'
+    | '/admin/news'
     | '/admin/orders'
     | '/admin/pipeline'
     | '/admin/posts'
@@ -1221,6 +1242,7 @@ export interface FileRouteTypes {
     | '/operator/leads'
     | '/operator/log'
     | '/operator/migration'
+    | '/operator/news'
     | '/operator/partners'
     | '/operator/requests'
     | '/operator/revenue'
@@ -1300,6 +1322,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/instagram'
     | '/admin/_authed/log'
     | '/admin/_authed/modules'
+    | '/admin/_authed/news'
     | '/admin/_authed/orders'
     | '/admin/_authed/pipeline'
     | '/admin/_authed/posts'
@@ -1334,6 +1357,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/leads'
     | '/operator/_authed/log'
     | '/operator/_authed/migration'
+    | '/operator/_authed/news'
     | '/operator/_authed/partners'
     | '/operator/_authed/requests'
     | '/operator/_authed/revenue'
@@ -1678,6 +1702,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedModulesRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/_authed/news': {
+      id: '/admin/_authed/news'
+      path: '/news'
+      fullPath: '/admin/news'
+      preLoaderRoute: typeof AdminAuthedNewsRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/admin/_authed/orders': {
       id: '/admin/_authed/orders'
       path: '/orders'
@@ -1921,6 +1952,13 @@ declare module '@tanstack/react-router' {
       path: '/migration'
       fullPath: '/operator/migration'
       preLoaderRoute: typeof OperatorAuthedMigrationRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
+    '/operator/_authed/news': {
+      id: '/operator/_authed/news'
+      path: '/news'
+      fullPath: '/operator/news'
+      preLoaderRoute: typeof OperatorAuthedNewsRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
     '/operator/_authed/partners': {
@@ -2244,6 +2282,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedInstagramRoute: typeof AdminAuthedInstagramRoute
   AdminAuthedLogRoute: typeof AdminAuthedLogRoute
   AdminAuthedModulesRoute: typeof AdminAuthedModulesRoute
+  AdminAuthedNewsRoute: typeof AdminAuthedNewsRoute
   AdminAuthedOrdersRoute: typeof AdminAuthedOrdersRouteWithChildren
   AdminAuthedPipelineRoute: typeof AdminAuthedPipelineRoute
   AdminAuthedPostsRoute: typeof AdminAuthedPostsRoute
@@ -2288,6 +2327,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedInstagramRoute: AdminAuthedInstagramRoute,
   AdminAuthedLogRoute: AdminAuthedLogRoute,
   AdminAuthedModulesRoute: AdminAuthedModulesRoute,
+  AdminAuthedNewsRoute: AdminAuthedNewsRoute,
   AdminAuthedOrdersRoute: AdminAuthedOrdersRouteWithChildren,
   AdminAuthedPipelineRoute: AdminAuthedPipelineRoute,
   AdminAuthedPostsRoute: AdminAuthedPostsRoute,
@@ -2343,6 +2383,7 @@ interface OperatorAuthedRouteChildren {
   OperatorAuthedLeadsRoute: typeof OperatorAuthedLeadsRoute
   OperatorAuthedLogRoute: typeof OperatorAuthedLogRoute
   OperatorAuthedMigrationRoute: typeof OperatorAuthedMigrationRoute
+  OperatorAuthedNewsRoute: typeof OperatorAuthedNewsRoute
   OperatorAuthedPartnersRoute: typeof OperatorAuthedPartnersRoute
   OperatorAuthedRequestsRoute: typeof OperatorAuthedRequestsRoute
   OperatorAuthedRevenueRoute: typeof OperatorAuthedRevenueRoute
@@ -2360,6 +2401,7 @@ const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedLeadsRoute: OperatorAuthedLeadsRoute,
   OperatorAuthedLogRoute: OperatorAuthedLogRoute,
   OperatorAuthedMigrationRoute: OperatorAuthedMigrationRoute,
+  OperatorAuthedNewsRoute: OperatorAuthedNewsRoute,
   OperatorAuthedPartnersRoute: OperatorAuthedPartnersRoute,
   OperatorAuthedRequestsRoute: OperatorAuthedRequestsRoute,
   OperatorAuthedRevenueRoute: OperatorAuthedRevenueRoute,

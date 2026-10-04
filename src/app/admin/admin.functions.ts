@@ -327,6 +327,16 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
         ctx.tenant.modules.helpdesk && !accountant
           ? await (await import("@/core/helpdesk/tickets")).countOpenTickets(ctx).catch(() => 0)
           : 0,
+      /** Непрочитанные новости платформы — бейдж «Что нового» (сбой — без бейджа, не 0 «прочитано»). */
+      newsUnread: accountant
+        ? 0
+        : await (await import("@/core/news/news")).newsUnread(ctx).catch((e) => {
+            console.error(
+              `[admin:${ctx.tenant.id}] бейдж новостей`,
+              e instanceof Error ? e.message : e,
+            );
+            return 0;
+          }),
       /** Сколько исходящих не доставлено после всех повторов — бейдж в навигации. */
       undelivered: accountant
         ? 0

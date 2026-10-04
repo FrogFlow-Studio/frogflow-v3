@@ -19,6 +19,8 @@ export const ADMIN_AUDIT_KIND = "meta" as const;
 export const MANUAL_AUDIT_ACTIONS = ["tgLoginRequest"] as const;
 
 const NOT_AUDITED = new Set([
+  // «Что нового»: отметка «прочитано» без смысла для журнала
+  "newsReadFn",
   // чат с поддержкой: сама переписка — журнал; «прочитано» — отметка без смысла для журнала
   "sendSupportMessageFn",
   "supportReadFn",
