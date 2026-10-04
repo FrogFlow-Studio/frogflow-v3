@@ -1,7 +1,9 @@
 /** Карточка клиента у оператора: Instagram/WhatsApp (Zernio) и данные клиента. */
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   adoptZernioProfileFn,
+  clientZernioInboxFn,
+  unmatchedZernioFn,
   setZernioAccountsFn,
   syncZernioFn,
   updateClientMetaFn,
@@ -223,6 +225,115 @@ export function MetaCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
         </button>
         <ErrorBox error={save.error} />
       </form>
+    </Card>
+  );
+}
+
+type InboxRow = Awaited<ReturnType<typeof clientZernioInboxFn>>[number];
+
+const STATUS_TONE: Record<string, "ok" | "warn" | "danger" | "neutral"> = {
+  processed: "ok",
+  ignored: "neutral",
+  received: "warn",
+  retrying: "warn",
+  failed: "danger",
+};
+
+/**
+ * Входящие строками, а не таблицей: на телефоне широкая таблица распирала
+ * колонку и наезжала на соседние карточки.
+ */
+export function InboxTable({ rows, withAccount }: { rows: InboxRow[]; withAccount?: boolean }) {
+  if (rows.length === 0) return <p className="text-sm text-muted">Событий нет.</p>;
+  return (
+    <ul className="divide-y divide-line text-sm">
+      {rows.map((r, i) => (
+        <li key={`${r.at}-${i}`} className="min-w-0 py-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-muted">{new Date(r.at).toLocaleString("ru")}</span>
+            <span>{r.sender ?? "—"}</span>
+            <Badge tone={STATUS_TONE[r.status] ?? "neutral"}>{r.status}</Badge>
+            {r.note && <span className="break-words text-muted">{r.note}</span>}
+          </div>
+          {withAccount && r.account && (
+            <div className="break-all font-mono text-xs text-muted">{r.account}</div>
+          )}
+          {r.text && <div className="break-words">{r.text}</div>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function useRows(load: () => Promise<InboxRow[]>, key: string) {
+  const [rows, setRows] = useState<InboxRow[] | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [nonce, setNonce] = useState(0);
+  useEffect(() => {
+    let off = false;
+    setError(null);
+    load()
+      .then((r) => !off && setRows(r))
+      .catch((e) => !off && setError(e));
+    return () => {
+      off = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, nonce]);
+  return { rows, error, refresh: () => setNonce((n) => n + 1) };
+}
+
+/**
+ * Входящие Instagram/WhatsApp клиента с итогом: «бот молчит» — видно почему
+ * (автоответчик выключен, менеджер ведёт диалог, строгий режим…).
+ */
+export function ZernioInboxCard({ botId }: { botId: string }) {
+  const { rows, error, refresh } = useRows(() => clientZernioInboxFn({ data: { botId } }), botId);
+  return (
+    <Card
+      title="Входящие Instagram/WhatsApp"
+      actions={
+        <button className="btn-secondary text-xs" onClick={refresh}>
+          Обновить
+        </button>
+      }
+    >
+      <p className="mb-2 text-xs text-muted">
+        Последние 20 событий и чем кончилась обработка. Нет вашего сообщения — событие не дошло до
+        этого клиента: смотрите «Без клиента» в настройках платформы.
+      </p>
+      {rows ? (
+        <InboxTable rows={rows} />
+      ) : (
+        !error && <p className="text-sm text-muted">Загрузка…</p>
+      )}
+      <ErrorBox error={error} />
+    </Card>
+  );
+}
+
+/** События, дошедшие до v2 без клиента: аккаунт не привязан или клиент ещё на v1. */
+export function UnmatchedZernioCard() {
+  const { rows, error, refresh } = useRows(() => unmatchedZernioFn(), "all");
+  return (
+    <Card
+      title="Instagram/WhatsApp без клиента"
+      actions={
+        <button className="btn-secondary text-xs" onClick={refresh}>
+          Обновить
+        </button>
+      }
+    >
+      <p className="mb-2 text-xs text-muted">
+        Сообщения, которые дошли до v2, но ни одному клиенту v2 не достались: аккаунт не привязан
+        (карточка клиента → Zernio → «Сверить аккаунты») или клиент ещё на v1. Хранятся неделю.
+      </p>
+      {rows ? (
+        <InboxTable rows={rows} withAccount />
+      ) : (
+        !error && <p className="text-sm text-muted">Загрузка…</p>
+      )}
+      <ErrorBox error={error} />
     </Card>
   );
 }

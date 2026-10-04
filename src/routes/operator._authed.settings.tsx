@@ -21,6 +21,7 @@ import {
   setAiMarkupFn,
 } from "@/app/operator/operator.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
+import { UnmatchedZernioCard } from "@/app/operator/client/channels";
 import { shownError } from "@/lib/shown-error";
 
 export const Route = createFileRoute("/operator/_authed/settings")({
@@ -75,6 +76,7 @@ function SettingsPage() {
         <ErrorTrackingCard />
         <AlertsCard status={cred.alerts} />
         <ZernioWebhookCard />
+        <UnmatchedZernioCard />
         <TwoFactorCard status={cred.twoFactor} />
         <Card title="Учётка оператора">
           <p className="mb-3 text-sm text-muted">

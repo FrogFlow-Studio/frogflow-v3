@@ -93,6 +93,26 @@ async function pruneByAt(
   return { deleted: ids.length, done: ids.length < BATCH };
 }
 
+/**
+ * События, не доставшиеся ни одному клиенту v2 (bot_id пуст, тип v2_unmatched):
+ * нужны оператору на неделю — разобрать, чей аккаунт не привязан.
+ */
+export async function pruneZernioUnmatched(now = Date.now()): Promise<PruneResult> {
+  const db = serviceDb();
+  const { data, error } = await db
+    .from("zernio_logs")
+    .select("id")
+    .is("bot_id", null)
+    .eq("event_type", "v2_unmatched")
+    .lt("created_at", cutoff(7, now))
+    .order("created_at", { ascending: true })
+    .limit(BATCH);
+  if (error) throw new Error(`zernio_logs: ${error.message}`);
+  const ids = (data ?? []).map((r) => r.id);
+  await deleteIds("zernio_logs", ids);
+  return { deleted: ids.length, done: ids.length < BATCH };
+}
+
 export async function pruneZernioLogs(now = Date.now(), scope?: Scope): Promise<PruneResult> {
   if (scope && scope.length === 0) return none;
   const db = serviceDb();
@@ -407,6 +427,8 @@ export async function runRetention(
   const s = scope;
   const jobs: Record<string, (n: number) => Promise<PruneResult>> = {
     zernio_logs: (n) => pruneZernioLogs(n, s),
+    // Без клиента (bot_id пуст) — только строки v2_unmatched, своё событие v2.
+    zernio_unmatched: pruneZernioUnmatched,
     manager_chat_messages: (n) => pruneManagerChatMessages(n, s),
     admin_login_attempts: (n) => pruneAdminLoginAttempts(n, s),
     operator_login_attempts: pruneOperatorLoginAttempts,

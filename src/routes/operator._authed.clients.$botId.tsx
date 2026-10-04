@@ -5,7 +5,7 @@ import { Card, ErrorBox, PageTitle, Stat, useAction } from "@/app/ui";
 import { TelegramCard } from "@/app/operator/client/telegram";
 import { PlanCard } from "@/app/operator/client/plan";
 import { ModulesCard, AdminAccessCard, AddressingCard } from "@/app/operator/client/access";
-import { ZernioCard, MetaCard } from "@/app/operator/client/channels";
+import { ZernioCard, MetaCard, ZernioInboxCard } from "@/app/operator/client/channels";
 import { ConsultantLimitsCard, SmartSearchLimitCard } from "@/app/operator/client/limits";
 import { ShopGroupCard } from "@/app/operator/client/shop-group";
 import { BillingCard } from "@/app/operator/client/billing";
@@ -114,6 +114,7 @@ function ClientPage() {
         <div className="space-y-4">
           <AddressingCard c={c} onDone={refresh} />
           <ZernioCard c={c} onDone={refresh} />
+          <ZernioInboxCard botId={c.id} />
           <MetaCard c={c} onDone={refresh} />
           <AiBalanceCard c={c} ai={ai} onDone={refresh} />
           <ConsultantLimitsCard c={c} budget={consultant} onDone={refresh} />
