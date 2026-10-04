@@ -136,7 +136,7 @@ describe("миграции партии 19 совпадают с db-types.ts", (
       )) {
         const cols = [
           ...m[2]!.matchAll(
-            /^ {2}(?!(?:primary|unique|check|foreign|constraint)\b)([a-z_]+)\s+[a-z]/gim,
+            /^ {2}(?!(?:primary|unique|check|foreign|constraint)\b)([a-z][a-z0-9_]*)\s+[a-z]/gim,
           ),
         ]
           .map((c) => c[1]!)
