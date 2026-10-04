@@ -264,6 +264,8 @@ async function handleMessage(
   if (msg.reply_to_message && msg.text?.trim() && (await relayManagerReply(ctx, api, msg))) return;
   // Продавец ответил свайпом на «Написать покупателю» под уведомлением о заказе.
   if (msg.reply_to_message && msg.text?.trim() && (await relayOrderReply(ctx, api, msg))) return;
+  // Продавец ответил номером на «Отправлен + трек».
+  if (msg.reply_to_message && msg.text?.trim() && (await trackReply(ctx, api, msg))) return;
 
   // Чек по счёту оператора от владельца бота — до гварда паузы: счёт и
   // выставляется как раз тогда, когда бот приостановлен за просрочку.
@@ -2298,7 +2300,7 @@ async function handleCallback(
   // Кнопки продавца в его чате/группе — до всех покупательских гвардов.
   if (data.startsWith("confirm:") || data.startsWith("reject:"))
     return adminDecision(ctx, api, from.id, chatId, data);
-  if (data.startsWith("ost:") || data.startsWith("owr:"))
+  if (data.startsWith("ost:") || data.startsWith("owr:") || data.startsWith("otr:"))
     return adminOrderButton(ctx, api, from.id, chatId, data);
   // Проверка домашнего задания из уведомления преподавателю (онлайн-школа).
   if ((data.startsWith("hwa:") || data.startsWith("hwv:")) && ctx.tenant.modules.courses) {
@@ -3022,7 +3024,15 @@ async function adminOrderButton(
     return;
   }
 
-  const { isOrderStep, ORDER_STEPS, orderStepKeyboard } = await import("./order-notify-keys");
+  if (kind === "otr") {
+    if (order.fulfillment_kind !== "physical" || !["ready", "delivered"].includes(order.status))
+      return void (await say(st.trackNeedReady(no, order.status)));
+    const { orderTrackRefLine } = await import("./order-notify-keys");
+    await say(`${st.trackPrompt(no)}\n${orderTrackRefLine(orderId)}`);
+    return;
+  }
+
+  const { isOrderStep, ORDER_STEPS } = await import("./order-notify-keys");
   if (!stepRaw || !isOrderStep(stepRaw) || order.fulfillment_kind !== "physical")
     return void (await say(st.stepStale(no, order.status)));
   const { from, to } = ORDER_STEPS[stepRaw];
@@ -3041,6 +3051,20 @@ async function adminOrderButton(
   else if (orderChannel(order.platform) === "telegram")
     await api.call("sendMessage", { chat_id: order.telegram_id, text: notice });
   await say(st.stepDone(no, stepRaw));
+  await afterOrderStep(ctx, api, order, to, sLocale);
+}
+
+/** После шага: кнопки следующего шага, а у выданного — снять уведомление и наградить пригласившего. */
+async function afterOrderStep(
+  ctx: TenantContext,
+  api: TelegramApi,
+  order: NonNullable<Awaited<ReturnType<typeof getOrder>>>,
+  to: string,
+  sLocale: Locale,
+) {
+  const orderId = order.id;
+  const no = displayNo(order);
+  const { orderStepKeyboard } = await import("./order-notify-keys");
   const { refreshOrderNotifyButtons, scheduleOrderNotifyDismiss } = await import("./order-notify");
   const keyboard = orderStepKeyboard({ id: orderId, status: to }, sLocale);
   if (keyboard.length) await refreshOrderNotifyButtons(ctx, api, orderId, keyboard);
@@ -3101,6 +3125,90 @@ async function relayOrderReply(
   }
   const res = await api.call("sendMessage", { chat_id: order.telegram_id, text });
   await say(res.ok ? st.writeSent(no) : st.writeNotSent);
+  return true;
+}
+
+/**
+ * Ответ продавца свайпом на «Отправлен + трек»: номер (или ссылка) → заказ
+ * «отправлен» и один раз сообщение покупателю с номером и ссылкой по формату.
+ * Заказ собран — шаг делает условная запись, как у кнопки; «один раз» держит
+ * запись события по номеру: тот же номер второй раз не уходит, исправленный — уходит.
+ * false — это не такой ответ.
+ */
+async function trackReply(
+  ctx: TenantContext,
+  api: TelegramApi,
+  msg: TelegramMessage,
+): Promise<boolean> {
+  const { orderTrackRefOf } = await import("./order-notify-keys");
+  const orderId = orderTrackRefOf(msg.reply_to_message?.text);
+  if (!orderId || !msg.from) return false;
+  const { shopAdminIds } = await import("@/core/notify/recipients");
+  if (!(await shopAdminIds(ctx)).includes(String(msg.from.id))) return false;
+  const { SELLER_DECISION } = await import("./seller-decision-texts");
+  const { sellerLocale } = await import("@/core/catalog/low-stock");
+  const sLocale = await sellerLocale(ctx);
+  const st = SELLER_DECISION[sLocale];
+  const say = (text: string) => api.call("sendMessage", { chat_id: msg.chat.id, text });
+  const order = await getOrder(ctx, orderId);
+  if (!order) {
+    await say(st.notFound(orderId));
+    return true;
+  }
+  const no = displayNo(order);
+  const { trackingFromText, trackingKey, trackingMessage, trackingPayload } =
+    await import("@/core/orders/tracking");
+  const track = trackingFromText(msg.text);
+  if (!track) {
+    await say(st.trackBad);
+    return true;
+  }
+  if (
+    order.fulfillment_kind !== "physical" ||
+    (order.status !== "ready" && order.status !== "delivered")
+  ) {
+    await say(st.trackNeedReady(no, order.status));
+    return true;
+  }
+  const { recordOrderEvent, claimOrderEvent } = await import("@/core/orders/events");
+  if (order.status === "ready") {
+    const { setPhysicalStatus } = await import("@/core/orders/admin");
+    if (await setPhysicalStatus(ctx, orderId, "ready", "delivered")) {
+      await recordOrderEvent(ctx, orderId, "status", { to: "delivered", step: "shipped" }, "admin");
+      await afterOrderStep(ctx, api, order, "delivered", sLocale);
+    }
+  }
+  const label = track.number ?? track.url ?? "";
+  // «Один раз»: запись события до отправки; второй такой же ответ ничего не шлёт.
+  if (
+    !(await claimOrderEvent(
+      ctx,
+      orderId,
+      "tracking",
+      trackingKey(track),
+      trackingPayload(track),
+      "admin",
+    ))
+  ) {
+    await say(st.trackAlready(no, label));
+    return true;
+  }
+  const text = trackingMessage(await orderBuyerLocale(ctx, order), no, track);
+  const { sendToZernioTargetResult, zernioTargetForOrder } =
+    await import("@/channels/zernio/outbound.server");
+  const target = await zernioTargetForOrder(ctx, order);
+  if (target) {
+    const { relayToBuyer } = await import("./relay-send");
+    const out = await relayToBuyer(
+      () => sendToZernioTargetResult(target, escapeHtml(text)),
+      target.platform,
+      st,
+    );
+    await say(out.ok ? st.trackSent(no, label) : out.say);
+  } else if (orderChannel(order.platform) === "telegram") {
+    const res = await api.call("sendMessage", { chat_id: order.telegram_id, text });
+    await say(res.ok ? st.trackSent(no, label) : st.writeNotSent);
+  } else await say(st.trackNoChat(no));
   return true;
 }
 

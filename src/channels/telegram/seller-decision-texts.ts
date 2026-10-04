@@ -33,6 +33,13 @@ export type SellerDecisionTexts = {
   writeUnknown: string;
   writeNotSent: string;
   writeSent: (no: string | number) => string;
+  /** «Отправлен + трек»: просьба ответить номером и итоги ответа. */
+  trackPrompt: (no: string | number) => string;
+  trackBad: string;
+  trackNeedReady: (no: string | number, status: string) => string;
+  trackSent: (no: string | number, label: string) => string;
+  trackAlready: (no: string | number, label: string) => string;
+  trackNoChat: (no: string | number) => string;
 };
 
 export type StepName = "work" | "ready" | "shipped" | "done";
@@ -71,6 +78,17 @@ export const SELLER_DECISION: Record<Locale, SellerDecisionTexts> = {
     writeNotSent:
       "Не удалось отправить покупателю — попробуйте позже или напишите по контакту из заказа.",
     writeSent: (no) => `✅ Сообщение по заказу #${no} отправлено покупателю.`,
+    trackPrompt: (no) =>
+      `📮 Заказ #${no}: ответьте на это сообщение свайпом трек-номером (или ссылкой https://…) — заказ станет «отправлен», покупатель получит номер.`,
+    trackBad:
+      "Не похоже на трек-номер: нужны 6–30 знаков (буквы, цифры, дефис) или ссылка https://… Ответьте на сообщение ещё раз.",
+    trackNeedReady: (no, st) =>
+      `Заказ #${no} сейчас в статусе «${st}»: трек можно указать, когда заказ собран. Нажмите «Собран» и повторите.`,
+    trackSent: (no, label) => `✅ Заказ #${no} отправлен, покупателю ушло: ${label}.`,
+    trackAlready: (no, label) =>
+      `Заказ #${no}: ${label} уже отправлен покупателю — второго сообщения нет.`,
+    trackNoChat: (no) =>
+      `Заказ #${no} отмечен «отправлен», но у покупателя нет чата с ботом — передайте ему трек сами.`,
   },
   kk: {
     onlyAdmin: "⛔ Бұл батырма тек осы дүкеннің сатушысына қолжетімді.",
@@ -106,6 +124,17 @@ export const SELLER_DECISION: Record<Locale, SellerDecisionTexts> = {
     writeNotSent:
       "Сатып алушыға жіберу сәтсіз болды — кейінірек көріңіз немесе тапсырыстағы байланыс арқылы жазыңыз.",
     writeSent: (no) => `✅ №${no} тапсырыс бойынша хабарлама сатып алушыға жіберілді.`,
+    trackPrompt: (no) =>
+      `📮 №${no} тапсырыс: осы хабарламаға свайппен трек-нөмірмен (немесе https://… сілтемесімен) жауап беріңіз — тапсырыс «жөнелтілді» болады, сатып алушы нөмірді алады.`,
+    trackBad:
+      "Трек-нөмірге ұқсамайды: 6–30 таңба (әріп, сан, сызықша) немесе https://… сілтемесі керек. Хабарламаға қайта жауап беріңіз.",
+    trackNeedReady: (no, st) =>
+      `№${no} тапсырыс қазір «${st}» күйінде: тректі тапсырыс жиналғанда көрсетуге болады. «Жиналды» түймесін басып, қайталаңыз.`,
+    trackSent: (no, label) => `✅ №${no} тапсырыс жөнелтілді, сатып алушыға жіберілді: ${label}.`,
+    trackAlready: (no, label) =>
+      `№${no} тапсырыс: ${label} сатып алушыға бұрын жіберілген — екінші хабарлама жоқ.`,
+    trackNoChat: (no) =>
+      `№${no} тапсырыс «жөнелтілді» деп белгіленді, бірақ сатып алушының боттағы чаты жоқ — тректі өзіңіз беріңіз.`,
   },
   en: {
     onlyAdmin: "⛔ This button is available only to the seller of this shop.",
@@ -140,6 +169,17 @@ export const SELLER_DECISION: Record<Locale, SellerDecisionTexts> = {
       "Unknown whether the message got through (connection dropped): check the chat in the app. I won't resend, to avoid a duplicate.",
     writeNotSent: "Couldn't send to the buyer — try later or use the contact in the order.",
     writeSent: (no) => `✅ Your message about order #${no} was sent to the buyer.`,
+    trackPrompt: (no) =>
+      `📮 Order #${no}: reply to this message (swipe) with the tracking number (or an https://… link) — the order becomes “shipped” and the buyer gets the number.`,
+    trackBad:
+      "That doesn't look like a tracking number: 6–30 characters (letters, digits, hyphen) or an https://… link. Reply to the message again.",
+    trackNeedReady: (no, st) =>
+      `Order #${no} is “${st}” now: tracking can be added once the order is packed. Press “Packed” and try again.`,
+    trackSent: (no, label) => `✅ Order #${no} shipped, the buyer was sent: ${label}.`,
+    trackAlready: (no, label) =>
+      `Order #${no}: ${label} was already sent to the buyer — no second message.`,
+    trackNoChat: (no) =>
+      `Order #${no} is marked shipped, but the buyer has no chat with the bot — send them the tracking yourself.`,
   },
   uz: {
     onlyAdmin: "⛔ Bu tugma faqat ushbu doʻkon sotuvchisi uchun.",
@@ -176,5 +216,16 @@ export const SELLER_DECISION: Record<Locale, SellerDecisionTexts> = {
     writeNotSent:
       "Xaridorga yuborib boʻlmadi — keyinroq urining yoki buyurtmadagi aloqadan foydalaning.",
     writeSent: (no) => `✅ #${no} buyurtma boʻyicha xabar xaridorga yuborildi.`,
+    trackPrompt: (no) =>
+      `📮 #${no} buyurtma: shu xabarga svayp bilan trek-raqam (yoki https://… havola) bilan javob bering — buyurtma «joʻnatildi» boʻladi, xaridor raqamni oladi.`,
+    trackBad:
+      "Trek-raqamga oʻxshamaydi: 6–30 belgi (harf, raqam, defis) yoki https://… havola kerak. Xabarga yana javob bering.",
+    trackNeedReady: (no, st) =>
+      `#${no} buyurtma hozir «${st}» holatida: trekni buyurtma yigʻilgach kiritish mumkin. «Yigʻildi» tugmasini bosib, qayta urining.`,
+    trackSent: (no, label) => `✅ #${no} buyurtma joʻnatildi, xaridorga yuborildi: ${label}.`,
+    trackAlready: (no, label) =>
+      `#${no} buyurtma: ${label} xaridorga allaqachon yuborilgan — ikkinchi xabar yoʻq.`,
+    trackNoChat: (no) =>
+      `#${no} buyurtma «joʻnatildi» deb belgilandi, lekin xaridorning botda chati yoʻq — trekni oʻzingiz bering.`,
   },
 };

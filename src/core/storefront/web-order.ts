@@ -422,6 +422,8 @@ export type WebOrderView = {
   balancePending: boolean;
   /** Заказ у курьера (модуль courier): служба и ссылка на отслеживание. */
   courier: { provider: string; trackUrl: string | null } | null;
+  /** Посылка отправлена с трек-номером (Б12): номер и ссылка отслеживания, если формат известен. */
+  tracking: { number: string | null; url: string | null } | null;
   /** Покупка подарочного сертификата: номинал, а код — только после выдачи. */
   gift: { amount: number; currency: string; code: string | null } | null;
   /** Остаток сертификата, применённого к заказу, — новым кодом (core/discounts/gift-rest). */
@@ -563,6 +565,7 @@ export async function webOrderView(
     balancePending,
     gift: await webOrderGift(ctx, order),
     courier: await webOrderCourier(ctx, order),
+    tracking: await webOrderTracking(ctx, order),
     giftRest: order.gift_certificate_code
       ? await (
           await import("@/core/discounts/gift-rest")
@@ -611,6 +614,19 @@ async function webOrderCourier(
   ]);
   const c = courierState(await listOrderEvents(ctx, order.id));
   return c ? { provider: c.provider, trackUrl: c.trackUrl } : null;
+}
+
+async function webOrderTracking(
+  ctx: TenantContext,
+  order: OrderWithItems,
+): Promise<WebOrderView["tracking"]> {
+  if (order.fulfillment_kind !== "physical" || order.status !== "delivered") return null;
+  const [{ listOrderEvents }, { latestTracking }] = await Promise.all([
+    import("@/core/orders/events"),
+    import("@/core/orders/tracking"),
+  ]);
+  const t = latestTracking(await listOrderEvents(ctx, order.id));
+  return t ? { number: t.number, url: t.url } : null;
 }
 
 async function webOrderGift(

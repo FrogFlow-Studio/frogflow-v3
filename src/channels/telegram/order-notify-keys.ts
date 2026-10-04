@@ -22,12 +22,13 @@ export function isOrderStep(v: string): v is OrderStep {
   return Object.prototype.hasOwnProperty.call(ORDER_STEPS, v);
 }
 
-const LABELS: Record<Locale, Record<OrderStep | "write", string>> = {
+const LABELS: Record<Locale, Record<OrderStep | "write" | "track", string>> = {
   ru: {
     work: "🧑‍🍳 В работу",
     ready: "📦 Собран",
     shipped: "🚚 Отправлен",
     done: "✅ Выдан",
+    track: "📮 Отправлен + трек",
     write: "✉️ Написать покупателю",
   },
   kk: {
@@ -35,6 +36,7 @@ const LABELS: Record<Locale, Record<OrderStep | "write", string>> = {
     ready: "📦 Жиналды",
     shipped: "🚚 Жөнелтілді",
     done: "✅ Берілді",
+    track: "📮 Жөнелтілді + трек",
     write: "✉️ Сатып алушыға жазу",
   },
   en: {
@@ -42,6 +44,7 @@ const LABELS: Record<Locale, Record<OrderStep | "write", string>> = {
     ready: "📦 Packed",
     shipped: "🚚 Shipped",
     done: "✅ Handed over",
+    track: "📮 Shipped + tracking",
     write: "✉️ Message the buyer",
   },
   uz: {
@@ -49,6 +52,7 @@ const LABELS: Record<Locale, Record<OrderStep | "write", string>> = {
     ready: "📦 Yigʻildi",
     shipped: "🚚 Joʻnatildi",
     done: "✅ Topshirildi",
+    track: "📮 Joʻnatildi + trek",
     write: "✉️ Xaridorga yozish",
   },
 };
@@ -72,6 +76,8 @@ export function orderStepKeyboard(order: { id: number; status: string }, locale:
   if (!steps.length) return [];
   return [
     steps.map((s) => ({ text: L[s], callback_data: `ost:${order.id}:${s}` })),
+    // «Отправлен + трек» — только когда заказ собран: следующий шаг — отправка.
+    ...(order.status === "ready" ? [[{ text: L.track, callback_data: `otr:${order.id}` }]] : []),
     [writeBuyerButton(order.id, locale)],
   ];
 }
@@ -83,5 +89,15 @@ export function orderWriteRefLine(orderId: number): string {
 
 export function orderWriteRefOf(text: string | null | undefined): number | null {
   const m = /\[#o:(\d{1,12})\]/.exec(text ?? "");
+  return m ? Number(m[1]) : null;
+}
+
+/** Метка «ответьте номером» — по ней ответ свайпом находит заказ. */
+export function orderTrackRefLine(orderId: number): string {
+  return `[#t:${orderId}]`;
+}
+
+export function orderTrackRefOf(text: string | null | undefined): number | null {
+  const m = /\[#t:(\d{1,12})\]/.exec(text ?? "");
   return m ? Number(m[1]) : null;
 }

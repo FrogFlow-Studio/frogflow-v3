@@ -3,7 +3,12 @@ import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { userKey } from "@/core/customers/customers";
 import type { TelegramApi } from "./api";
-import { orderStepKeyboard, orderWriteRefLine, orderWriteRefOf } from "./order-notify-keys";
+import {
+  orderStepKeyboard,
+  orderTrackRefLine,
+  orderWriteRefLine,
+  orderWriteRefOf,
+} from "./order-notify-keys";
 
 /**
  * Б4: кнопки статуса физического заказа и «Написать покупателю» под
@@ -33,7 +38,9 @@ vi.mock("@/channels/zernio/outbound.server", async (orig) => ({
 const { handleTelegramUpdate } = await import("./handle-update");
 
 function setup(order: Record<string, unknown> = {}) {
-  const db: FakeDb = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
+  const db: FakeDb = fakeDb({
+    unique: { app_settings: [["bot_id", "key"]], zernio_logs: [["event_id"]] },
+  });
   db.tables.app_settings = [];
   db.tables.zernio_logs = [];
   db.tables.bot_users = [
@@ -211,10 +218,84 @@ describe("клавиатура по статусу", () => {
         .map((b) => b.callback_data);
     expect(flat("accepted", "ru")).toEqual(["ost:7:work", "owr:7"]);
     expect(flat("in_production", "kk")).toEqual(["ost:7:ready", "owr:7"]);
-    expect(flat("ready", "en")).toEqual(["ost:7:shipped", "ost:7:done", "owr:7"]);
+    expect(flat("ready", "en")).toEqual(["ost:7:shipped", "ost:7:done", "otr:7", "owr:7"]);
     expect(flat("delivered", "uz")).toEqual([]);
     for (const l of ["ru", "kk", "en", "uz"] as const)
       for (const b of orderStepKeyboard({ id: 7, status: "ready" }, l).flat())
         expect(b.text.length).toBeGreaterThan(3);
+  });
+});
+
+describe("Б12: «Отправлен + трек»", () => {
+  it("кнопка просит номер ответом; ответ — заказ отправлен, покупателю номер и ссылка СДЭК один раз", async () => {
+    const { press, reply, order, events, texts, db } = setup();
+    await press("otr:7");
+    const prompt = texts().at(-1)!;
+    expect(prompt).toContain(orderTrackRefLine(7));
+    await reply("1234567890", prompt);
+    expect(order().status).toBe("delivered");
+    const buyer = texts().filter((t) => t.startsWith(`${BUYER}:`));
+    expect(buyer).toHaveLength(1);
+    expect(buyer[0]).toContain("Трек-номер: 1234567890 (СДЭК)");
+    expect(buyer[0]).toContain("https://www.cdek.ru/ru/tracking?order_id=1234567890");
+    expect(
+      events().filter((e) => (e.payload as { step?: string }).step === "shipped"),
+    ).toHaveLength(1);
+    expect(
+      (db.tables.zernio_logs ?? []).filter((r) => r.event_type === "order.tracking"),
+    ).toHaveLength(1);
+  });
+
+  it("двойной ответ тем же номером — покупателю одно сообщение, статус один раз", async () => {
+    const { reply, texts, events } = setup();
+    const ref = orderTrackRefLine(7);
+    await Promise.all([reply("RR123456789KZ", ref), reply("RR123456789KZ", ref)]);
+    await reply("rr 123456789 kz", ref);
+    expect(texts().filter((t) => t.startsWith(`${BUYER}:`))).toHaveLength(1);
+    expect(
+      events().filter((e) => (e.payload as { step?: string }).step === "shipped"),
+    ).toHaveLength(1);
+    expect(texts().some((t) => t.includes("второго сообщения нет"))).toBe(true);
+  });
+
+  it("исправленный номер уходит покупателю новым сообщением, статус не двоится", async () => {
+    const { reply, texts, events } = setup();
+    await reply("1234567890", orderTrackRefLine(7));
+    await reply("1234567891", orderTrackRefLine(7));
+    expect(texts().filter((t) => t.startsWith(`${BUYER}:`))).toHaveLength(2);
+    expect(
+      events().filter((e) => (e.payload as { step?: string }).step === "shipped"),
+    ).toHaveLength(1);
+  });
+
+  it("неизвестный формат — номер текстом без ссылки; Казпочта — ссылка на сайт", async () => {
+    const a = setup();
+    await a.reply("AB-77-XYZ-99", orderTrackRefLine(7));
+    const t = a.texts().find((x) => x.startsWith(`${BUYER}:`))!;
+    expect(t).toContain("Трек-номер: AB-77-XYZ-99");
+    expect(t).not.toContain("http");
+    const b = setup();
+    await b.reply("RR123456789KZ", orderTrackRefLine(7));
+    expect(b.texts().find((x) => x.startsWith(`${BUYER}:`))).toContain("(Казпочта)");
+  });
+
+  it("не номер — подсказка, статус не меняется; заказ ещё не собран — просьба нажать «Собран»", async () => {
+    const a = setup();
+    await a.reply("привет, отправил", orderTrackRefLine(7));
+    expect(a.order().status).toBe("ready");
+    expect(a.texts().at(-1)).toContain("Не похоже на трек-номер");
+    const b = setup({ status: "in_production" });
+    await b.reply("1234567890", orderTrackRefLine(7));
+    expect(b.order().status).toBe("in_production");
+    expect(b.texts().at(-1)).toContain("«Собран»");
+  });
+
+  it("не продавец: ничего не меняется; заказ из Instagram — номер в его канал", async () => {
+    const a = setup();
+    await a.reply("1234567890", orderTrackRefLine(7), 999);
+    expect(a.order().status).toBe("ready");
+    const b = setup({ platform: "instagram", telegram_id: -5 });
+    await b.reply("1234567890", orderTrackRefLine(7));
+    expect(zernioSent.join("\n")).toContain("Трек-номер: 1234567890");
   });
 });

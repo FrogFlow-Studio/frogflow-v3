@@ -311,6 +311,7 @@ const ru = {
   "order.payAbroadFailed":
     "Не удалось открыть оплату иностранной картой — попробуйте позже или выберите другой способ.",
   "order.courier": "Заказ у курьера: {provider}",
+  "order.tracking": "Заказ отправлен, трек-номер: {number}",
   "order.courierTrack": "Отследить доставку",
   "order.courier.yandex": "Яндекс Доставка",
   "order.courier.indrive": "inDrive",
@@ -830,6 +831,7 @@ const kk: Dict = {
   "order.payAbroadFailed":
     "Шетелдік картамен төлеуді ашу мүмкін болмады — кейінірек көріңіз немесе басқа тәсілді таңдаңыз.",
   "order.courier": "Тапсырыс курьерде: {provider}",
+  "order.tracking": "Тапсырыс жөнелтілді, трек-нөмір: {number}",
   "order.courierTrack": "Жеткізуді бақылау",
   "order.courier.yandex": "Яндекс Жеткізу",
   "order.courier.indrive": "inDrive",
@@ -1339,6 +1341,7 @@ const en: Dict = {
   "order.payAbroadFailed":
     "Could not open foreign card payment — try again later or choose another method.",
   "order.courier": "With the courier: {provider}",
+  "order.tracking": "Order shipped, tracking number: {number}",
   "order.courierTrack": "Track delivery",
   "order.courier.yandex": "Yandex Delivery",
   "order.courier.indrive": "inDrive",
@@ -1850,6 +1853,7 @@ const uz: Dict = {
   "order.payAbroadFailed":
     "Xorijiy karta bilan toʻlovni ochib boʻlmadi — keyinroq urinib koʻring yoki boshqa usulni tanlang.",
   "order.courier": "Buyurtma kuryerda: {provider}",
+  "order.tracking": "Buyurtma joʻnatildi, trek-raqam: {number}",
   "order.courierTrack": "Yetkazishni kuzatish",
   "order.courier.yandex": "Yandex Yetkazish",
   "order.courier.indrive": "inDrive",

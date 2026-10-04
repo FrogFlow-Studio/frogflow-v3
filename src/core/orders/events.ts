@@ -52,6 +52,8 @@ export type OrderEventKind =
   | "approval_ok"
   | "approval_changes"
   | "courier"
+  /** Продавец отправил посылку и указал трек-номер (core/orders/tracking). */
+  | "tracking"
   | "subscription_renewal"
   /** Покупатель принял оферту и/или согласие на обработку данных при оформлении. */
   | "consent"
@@ -283,6 +285,11 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
     case "consent":
       return {
         text: `Покупатель принял ${[p.offer ? "оферту" : "", p.privacy ? "согласие на обработку персональных данных" : ""].filter(Boolean).join(" и ")}`,
+        tone: "neutral",
+      };
+    case "tracking":
+      return {
+        text: `Отправлено, трек: ${str(p.number) || str(p.url)}${who}`,
         tone: "neutral",
       };
     case "courier": {

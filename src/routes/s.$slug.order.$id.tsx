@@ -215,6 +215,19 @@ function OrderPage() {
           )}
         </p>
       )}
+      {view.tracking && (
+        <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">
+          📦 {t("order.tracking", { number: view.tracking.number ?? "—" })}
+          {view.tracking.url && (
+            <>
+              {" · "}
+              <a className="underline" href={view.tracking.url} target="_blank" rel="noreferrer">
+                {t("order.courierTrack")}
+              </a>
+            </>
+          )}
+        </p>
+      )}
       {note && <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">{t(note)}</p>}
       {awaiting && view.payment && (
         <PayBox
