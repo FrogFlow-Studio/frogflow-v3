@@ -3,6 +3,7 @@ import type { VerticalKey } from "@/core/verticals/registry";
 import type { Locale } from "@/core/i18n/locale";
 import type { ConsultantLimitsSetting } from "@/core/consultant/budget";
 import type { SmartSearchLimitsSetting } from "@/core/search/smart-pure";
+import type { Collection } from "@/core/storefront/collections";
 
 export type BotStatus = "active" | "paused" | "suspended";
 
@@ -179,6 +180,8 @@ export type TenantSettings = {
     category?: string;
     city?: string;
   };
+  /** Подборки товаров витрины (core/storefront/collections). */
+  collections?: Collection[];
   /** Выдача цифровых товаров (core/delivery). */
   delivery?: {
     /** Водяной знак с покупателем и номером заказа на каждом выдаваемом PDF. */

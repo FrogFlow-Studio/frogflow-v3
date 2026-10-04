@@ -36,6 +36,7 @@ import { Route as AdminAuthedBotPreviewRouteImport } from './routes/admin._authe
 import { Route as AdminAuthedBroadcastsRouteImport } from './routes/admin._authed.broadcasts'
 import { Route as AdminAuthedCategoriesRouteImport } from './routes/admin._authed.categories'
 import { Route as AdminAuthedChatRouteImport } from './routes/admin._authed.chat'
+import { Route as AdminAuthedCollectionsRouteImport } from './routes/admin._authed.collections'
 import { Route as AdminAuthedCommunityRouteImport } from './routes/admin._authed.community'
 import { Route as AdminAuthedConsultantRouteImport } from './routes/admin._authed.consultant'
 import { Route as AdminAuthedCostRouteImport } from './routes/admin._authed.cost'
@@ -121,6 +122,7 @@ import { Route as OperatorAuthedClientsBotIdRouteImport } from './routes/operato
 import { Route as OperatorAuthedClientsNewRouteImport } from './routes/operator._authed.clients.new'
 import { Route as SSlugCCategoryRouteImport } from './routes/s.$slug.c.$category'
 import { Route as SSlugCertCodeRouteImport } from './routes/s.$slug.cert.$code'
+import { Route as SSlugColIdRouteImport } from './routes/s.$slug.col.$id'
 import { Route as SSlugCourseItemIdRouteImport } from './routes/s.$slug.course.$itemId'
 import { Route as SSlugGiveawayIdRouteImport } from './routes/s.$slug.giveaway.$id'
 import { Route as SSlugLegalDocRouteImport } from './routes/s.$slug.legal.$doc'
@@ -261,6 +263,11 @@ const AdminAuthedCategoriesRoute = AdminAuthedCategoriesRouteImport.update({
 const AdminAuthedChatRoute = AdminAuthedChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedCollectionsRoute = AdminAuthedCollectionsRouteImport.update({
+  id: '/collections',
+  path: '/collections',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedCommunityRoute = AdminAuthedCommunityRouteImport.update({
@@ -700,6 +707,11 @@ const SSlugCertCodeRoute = SSlugCertCodeRouteImport.update({
   path: '/cert/$code',
   getParentRoute: () => SSlugRoute,
 } as any)
+const SSlugColIdRoute = SSlugColIdRouteImport.update({
+  id: '/col/$id',
+  path: '/col/$id',
+  getParentRoute: () => SSlugRoute,
+} as any)
 const SSlugCourseItemIdRoute = SSlugCourseItemIdRouteImport.update({
   id: '/course/$itemId',
   path: '/course/$itemId',
@@ -767,6 +779,7 @@ export interface FileRoutesByFullPath {
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/chat': typeof AdminAuthedChatRoute
+  '/admin/collections': typeof AdminAuthedCollectionsRoute
   '/admin/community': typeof AdminAuthedCommunityRoute
   '/admin/consultant': typeof AdminAuthedConsultantRoute
   '/admin/cost': typeof AdminAuthedCostRoute
@@ -852,6 +865,7 @@ export interface FileRoutesByFullPath {
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/c/$category': typeof SSlugCCategoryRoute
   '/s/$slug/cert/$code': typeof SSlugCertCodeRoute
+  '/s/$slug/col/$id': typeof SSlugColIdRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/giveaway/$id': typeof SSlugGiveawayIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
@@ -886,6 +900,7 @@ export interface FileRoutesByTo {
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/chat': typeof AdminAuthedChatRoute
+  '/admin/collections': typeof AdminAuthedCollectionsRoute
   '/admin/community': typeof AdminAuthedCommunityRoute
   '/admin/consultant': typeof AdminAuthedConsultantRoute
   '/admin/cost': typeof AdminAuthedCostRoute
@@ -969,6 +984,7 @@ export interface FileRoutesByTo {
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/c/$category': typeof SSlugCCategoryRoute
   '/s/$slug/cert/$code': typeof SSlugCertCodeRoute
+  '/s/$slug/col/$id': typeof SSlugColIdRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/giveaway/$id': typeof SSlugGiveawayIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
@@ -1007,6 +1023,7 @@ export interface FileRoutesById {
   '/admin/_authed/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/_authed/categories': typeof AdminAuthedCategoriesRoute
   '/admin/_authed/chat': typeof AdminAuthedChatRoute
+  '/admin/_authed/collections': typeof AdminAuthedCollectionsRoute
   '/admin/_authed/community': typeof AdminAuthedCommunityRoute
   '/admin/_authed/consultant': typeof AdminAuthedConsultantRoute
   '/admin/_authed/cost': typeof AdminAuthedCostRoute
@@ -1092,6 +1109,7 @@ export interface FileRoutesById {
   '/operator/_authed/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/c/$category': typeof SSlugCCategoryRoute
   '/s/$slug/cert/$code': typeof SSlugCertCodeRoute
+  '/s/$slug/col/$id': typeof SSlugColIdRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/giveaway/$id': typeof SSlugGiveawayIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
@@ -1129,6 +1147,7 @@ export interface FileRouteTypes {
     | '/admin/broadcasts'
     | '/admin/categories'
     | '/admin/chat'
+    | '/admin/collections'
     | '/admin/community'
     | '/admin/consultant'
     | '/admin/cost'
@@ -1214,6 +1233,7 @@ export interface FileRouteTypes {
     | '/operator/clients/new'
     | '/s/$slug/c/$category'
     | '/s/$slug/cert/$code'
+    | '/s/$slug/col/$id'
     | '/s/$slug/course/$itemId'
     | '/s/$slug/giveaway/$id'
     | '/s/$slug/legal/$doc'
@@ -1248,6 +1268,7 @@ export interface FileRouteTypes {
     | '/admin/broadcasts'
     | '/admin/categories'
     | '/admin/chat'
+    | '/admin/collections'
     | '/admin/community'
     | '/admin/consultant'
     | '/admin/cost'
@@ -1331,6 +1352,7 @@ export interface FileRouteTypes {
     | '/operator/clients/new'
     | '/s/$slug/c/$category'
     | '/s/$slug/cert/$code'
+    | '/s/$slug/col/$id'
     | '/s/$slug/course/$itemId'
     | '/s/$slug/giveaway/$id'
     | '/s/$slug/legal/$doc'
@@ -1368,6 +1390,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/broadcasts'
     | '/admin/_authed/categories'
     | '/admin/_authed/chat'
+    | '/admin/_authed/collections'
     | '/admin/_authed/community'
     | '/admin/_authed/consultant'
     | '/admin/_authed/cost'
@@ -1453,6 +1476,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/clients/new'
     | '/s/$slug/c/$category'
     | '/s/$slug/cert/$code'
+    | '/s/$slug/col/$id'
     | '/s/$slug/course/$itemId'
     | '/s/$slug/giveaway/$id'
     | '/s/$slug/legal/$doc'
@@ -1691,6 +1715,13 @@ declare module '@tanstack/react-router' {
       path: '/chat'
       fullPath: '/admin/chat'
       preLoaderRoute: typeof AdminAuthedChatRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/collections': {
+      id: '/admin/_authed/collections'
+      path: '/collections'
+      fullPath: '/admin/collections'
+      preLoaderRoute: typeof AdminAuthedCollectionsRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/community': {
@@ -2288,6 +2319,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugCertCodeRouteImport
       parentRoute: typeof SSlugRoute
     }
+    '/s/$slug/col/$id': {
+      id: '/s/$slug/col/$id'
+      path: '/col/$id'
+      fullPath: '/s/$slug/col/$id'
+      preLoaderRoute: typeof SSlugColIdRouteImport
+      parentRoute: typeof SSlugRoute
+    }
     '/s/$slug/course/$itemId': {
       id: '/s/$slug/course/$itemId'
       path: '/course/$itemId'
@@ -2368,6 +2406,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedBroadcastsRoute: typeof AdminAuthedBroadcastsRoute
   AdminAuthedCategoriesRoute: typeof AdminAuthedCategoriesRoute
   AdminAuthedChatRoute: typeof AdminAuthedChatRoute
+  AdminAuthedCollectionsRoute: typeof AdminAuthedCollectionsRoute
   AdminAuthedCommunityRoute: typeof AdminAuthedCommunityRoute
   AdminAuthedConsultantRoute: typeof AdminAuthedConsultantRoute
   AdminAuthedCostRoute: typeof AdminAuthedCostRoute
@@ -2415,6 +2454,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedBroadcastsRoute: AdminAuthedBroadcastsRoute,
   AdminAuthedCategoriesRoute: AdminAuthedCategoriesRoute,
   AdminAuthedChatRoute: AdminAuthedChatRoute,
+  AdminAuthedCollectionsRoute: AdminAuthedCollectionsRoute,
   AdminAuthedCommunityRoute: AdminAuthedCommunityRoute,
   AdminAuthedConsultantRoute: AdminAuthedConsultantRoute,
   AdminAuthedCostRoute: AdminAuthedCostRoute,
@@ -2544,6 +2584,7 @@ interface SSlugRouteChildren {
   SSlugIndexRoute: typeof SSlugIndexRoute
   SSlugCCategoryRoute: typeof SSlugCCategoryRoute
   SSlugCertCodeRoute: typeof SSlugCertCodeRoute
+  SSlugColIdRoute: typeof SSlugColIdRoute
   SSlugCourseItemIdRoute: typeof SSlugCourseItemIdRoute
   SSlugGiveawayIdRoute: typeof SSlugGiveawayIdRoute
   SSlugLegalDocRoute: typeof SSlugLegalDocRoute
@@ -2561,6 +2602,7 @@ const SSlugRouteChildren: SSlugRouteChildren = {
   SSlugIndexRoute: SSlugIndexRoute,
   SSlugCCategoryRoute: SSlugCCategoryRoute,
   SSlugCertCodeRoute: SSlugCertCodeRoute,
+  SSlugColIdRoute: SSlugColIdRoute,
   SSlugCourseItemIdRoute: SSlugCourseItemIdRoute,
   SSlugGiveawayIdRoute: SSlugGiveawayIdRoute,
   SSlugLegalDocRoute: SSlugLegalDocRoute,

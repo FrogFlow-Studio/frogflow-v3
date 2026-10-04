@@ -42,6 +42,7 @@ import { seedShop18Stale } from "./seed/shop18-s-stale.ts";
 import { seedShop18N8Stats } from "./seed/shop18-n8-stats.ts";
 import { seedShop18Requests } from "./seed/shop18-s-requests.ts";
 import { seedShop19AOrders } from "./seed/shop19-a-orders.ts";
+import { seedShop19VCollections } from "./seed/shop19-v-collections.ts";
 import { seedShop19ANotify } from "./seed/shop19-a-notify.ts";
 
 export function seedDb(): StubDb {
@@ -85,6 +86,7 @@ export function seedDb(): StubDb {
   seedShop18N8Stats(db, now);
   seedShop18Requests(db, now);
   seedShop19AOrders(db, now);
+  seedShop19VCollections(db, now);
   seedShop19ANotify(db, now);
   return db;
 }

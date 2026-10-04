@@ -76,3 +76,24 @@ export const storeFavoritesFn = createServerFn({ method: "GET" })
     const { storeProductsByIds } = await import("@/core/storefront/catalog");
     return storeProductsByIds(tenantContext(t), data.ids);
   });
+
+/** Страница подборки товаров (core/storefront/collections): только то, что сейчас в продаже. */
+export const storeCollectionFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        slug: z.string().regex(SHOP_SLUG_RE),
+        id: z.string().regex(/^[a-z0-9]{6,12}$/),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { resolveTenant, tenantContext } = await import("@/core/tenant/resolve.server");
+    const { storefrontOpen } = await import("@/core/storefront/access");
+    const t = await resolveTenant({ by: "slug", value: data.slug });
+    if (!t || !storefrontOpen(t, "catalog")) throw notFound();
+    const { storeCollection } = await import("@/core/storefront/collection-page");
+    const page = await storeCollection(tenantContext(t), data.id);
+    if (!page) throw notFound();
+    return page;
+  });

@@ -138,6 +138,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     items: compact<NavItem>([
       products,
       { to: "/admin/categories", label: "nav.categories" },
+      m.web_storefront && { to: "/admin/collections", label: "collections.nav" },
       m.warehouse && { to: "/admin/warehouse", label: "warehouse.nav" },
       Boolean(shop.pricelist) && { to: "/admin/pricelist", label: "pricelist.nav" },
     ]),
