@@ -133,3 +133,28 @@ describe("страж каналов: тексты", () => {
     expect(operatorHint(e, "Asia/Almaty")).toBe("не отвечает с 14:05 (токен слетел)");
   });
 });
+
+describe("чтение арендатора: запись стража доходит до настроек", () => {
+  it("settingsFromJson не теряет zernio.guard (иначе оператор не увидит упавший канал)", async () => {
+    const { settingsFromJson } = await import("@/core/tenant/directory");
+    const s = settingsFromJson({
+      zernio: {
+        profile_id: "p",
+        guard: {
+          instagram: { since: iso(T0), reason: "token" },
+          whatsapp: { since: iso(T0), reason: "failures", fails: 3, last_fail_at: iso(T0) },
+          telegram: { since: iso(T0), reason: "token" },
+        },
+      },
+    });
+    expect(s.zernio?.guard).toEqual({
+      instagram: { since: iso(T0), reason: "token" },
+      whatsapp: { since: iso(T0), reason: "failures", fails: 3, last_fail_at: iso(T0) },
+    });
+    expect(isDown(s.zernio?.guard?.whatsapp)).toBe(true);
+    expect(
+      settingsFromJson({ zernio: { guard: { instagram: { reason: "x" } } } }).zernio?.guard,
+    ).toBeUndefined();
+    expect(settingsFromJson({ zernio: {} }).zernio?.guard).toBeUndefined();
+  });
+});

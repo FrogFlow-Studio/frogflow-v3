@@ -12,6 +12,7 @@ import { validPauseHours } from "@/core/consultant/pause";
 import { parseCurators } from "@/core/courses/curators";
 import { parseCollections } from "@/core/storefront/collections";
 import { parseHwReplies } from "@/core/courses/hw-replies";
+import { parseGuard } from "./zernio-accounts";
 import { cleanWorkHours, parseBotTexts } from "@/core/bot-texts/registry";
 
 type BotRow = Database["public"]["Tables"]["bots"]["Row"];
@@ -113,6 +114,8 @@ export function settingsFromJson(json: unknown): TenantSettings {
         : undefined,
       synced_at: str(zr.synced_at),
       ice_breakers_v: str(zr.ice_breakers_v),
+      // Страж каналов: без разбора здесь таблица оператора не видела бы упавшие каналы.
+      guard: parseGuard(zr.guard),
       wizard: parseWizardMap(zr.wizard),
     },
     admin: {

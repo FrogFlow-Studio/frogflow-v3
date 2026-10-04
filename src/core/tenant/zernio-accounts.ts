@@ -1,4 +1,4 @@
-import type { Tenant, ZernioAccountSnapshot } from "./types";
+import type { Tenant, TenantSettings, ZernioAccountSnapshot } from "./types";
 
 /**
  * Кому принадлежит аккаунт Zernio — чистые правила без базы. Ключ и вебхук
@@ -72,4 +72,26 @@ export function diffZernioSnapshots(
   }
   for (const a of prev) if (!after.has(a.id)) diff.removed.push(a);
   return diff;
+}
+
+/** Разбор bots.settings.zernio.guard при чтении арендатора: только известные каналы и причины. */
+export function parseGuard(
+  raw: unknown,
+): NonNullable<NonNullable<TenantSettings["zernio"]>["guard"]> | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const out: NonNullable<NonNullable<TenantSettings["zernio"]>["guard"]> = {};
+  for (const p of ["instagram", "whatsapp"] as const) {
+    const e = (raw as Record<string, unknown>)[p] as Record<string, unknown> | undefined;
+    if (!e || typeof e !== "object") continue;
+    const reason = e.reason;
+    if (reason !== "token" && reason !== "webhook" && reason !== "failures") continue;
+    if (typeof e.since !== "string" || Number.isNaN(Date.parse(e.since))) continue;
+    out[p] = {
+      since: e.since,
+      reason,
+      ...(typeof e.fails === "number" && Number.isFinite(e.fails) ? { fails: e.fails } : {}),
+      ...(typeof e.last_fail_at === "string" ? { last_fail_at: e.last_fail_at } : {}),
+    };
+  }
+  return Object.keys(out).length ? out : undefined;
 }
