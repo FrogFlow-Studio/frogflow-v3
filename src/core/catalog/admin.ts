@@ -1,3 +1,4 @@
+import { pageAll } from "@/core/db/page";
 import { chunksOf } from "@/lib/in-chunks";
 import { serverFailure } from "@/lib/server-failure";
 import { UserError } from "@/core/i18n/user-error";
@@ -118,6 +119,37 @@ export type ProductListOpts = {
   offset?: number;
 };
 
+type Filterable<Q> = {
+  ilike(column: "name", pattern: string): Q;
+  contains(column: "category_ids", value: string): Q;
+  eq(column: "is_active", value: boolean): Q;
+};
+
+/** Фильтр списка товаров (поиск, категория, «только скрытые») — один для страницы и для «выбрать все по фильтру». */
+function productFilter(opts: ProductListOpts) {
+  return <Q extends Filterable<Q>>(q: Q): Q => {
+    let r = q;
+    const term = pickerTerm(opts.q ?? "");
+    if (term) r = r.ilike("name", `%${term}%`);
+    if (opts.categoryId) r = r.contains("category_ids", JSON.stringify([opts.categoryId]));
+    if (opts.onlyInactive) r = r.eq("is_active", false);
+    return r;
+  };
+}
+
+/** Все id товаров по фильтру списка, постранично и без обрезки (порядок — по id). */
+export async function listProductIdsForAdmin(
+  ctx: TenantContext,
+  opts: Omit<ProductListOpts, "offset"> = {},
+): Promise<string[]> {
+  const filtered = productFilter(opts);
+  const rows = await pageAll(
+    (from, to) => filtered(ctx.db.from("products").select("id")).order("id").range(from, to),
+    "Товары по фильтру",
+  );
+  return rows.map((r) => r.id);
+}
+
 /**
  * Страница списка товаров. Порядок — sort_order, название и в конце id:
  * без уникального ключа в хвосте товары с одинаковыми позицией и
@@ -128,19 +160,7 @@ export async function listProductsForAdmin(
   opts: ProductListOpts = {},
 ): Promise<{ rows: ProductListRow[]; total: number; hasMore: boolean }> {
   const offset = Math.max(0, Math.floor(opts.offset ?? 0));
-  type Filterable<Q> = {
-    ilike(column: "name", pattern: string): Q;
-    contains(column: "category_ids", value: string): Q;
-    eq(column: "is_active", value: boolean): Q;
-  };
-  const filtered = <Q extends Filterable<Q>>(q: Q): Q => {
-    let r = q;
-    const term = pickerTerm(opts.q ?? "");
-    if (term) r = r.ilike("name", `%${term}%`);
-    if (opts.categoryId) r = r.contains("category_ids", JSON.stringify([opts.categoryId]));
-    if (opts.onlyInactive) r = r.eq("is_active", false);
-    return r;
-  };
+  const filtered = productFilter(opts);
   const [page, count] = await Promise.all([
     filtered(
       ctx.db

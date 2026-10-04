@@ -35,6 +35,13 @@ export const ru = {
   "err.catalog.bulkNoCategory": "Категория не найдена.",
   "err.catalog.bulkNoStock": "Остатки доступны в модуле «Склад» — подключите его в «Модулях».",
   "err.catalog.bulkStockAmount": "Остаток — целое число от {min} до {max}.",
+  "products.bulk.selectedOf": "Выбрано: {n} из {total}",
+  "products.bulk.pickFilter": "Выбрать все {n} по фильтру",
+  "products.bulk.offer": "Создать акцию",
+  "products.bulk.offerMax": "Акция — не больше {max} товаров за раз",
+  "products.bulk.partial":
+    "Остановились на ошибке: обработано {done} из {total}, остальные не тронуты.",
+  "products.bulk.moreSkipped": "…и ещё {n}",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -71,6 +78,12 @@ export const kk: SectionDict<typeof ru> = {
   "err.catalog.bulkNoCategory": "Санат табылмады.",
   "err.catalog.bulkNoStock": "Қалдықтар «Қойма» модулінде қолжетімді — оны «Модульдерде» қосыңыз.",
   "err.catalog.bulkStockAmount": "Қалдық — {min}-ден {max}-ға дейінгі бүтін сан.",
+  "products.bulk.selectedOf": "Таңдалды: {n} / {total}",
+  "products.bulk.pickFilter": "Сүзгі бойынша барлық {n} тауарды таңдау",
+  "products.bulk.offer": "Акция жасау",
+  "products.bulk.offerMax": "Акция — бір мезгілде {max} тауардан көп емес",
+  "products.bulk.partial": "Қатеге тоқтадық: {total} ішінен {done} өңделді, қалғаны өзгертілмеді.",
+  "products.bulk.moreSkipped": "…және тағы {n}",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -108,6 +121,12 @@ export const en: SectionDict<typeof ru> = {
   "err.catalog.bulkNoStock":
     "Stock is available in the «Warehouse» module — enable it in «Modules».",
   "err.catalog.bulkStockAmount": "Stock must be a whole number from {min} to {max}.",
+  "products.bulk.selectedOf": "Selected: {n} of {total}",
+  "products.bulk.pickFilter": "Select all {n} matching the filter",
+  "products.bulk.offer": "Create a promotion",
+  "products.bulk.offerMax": "A promotion takes at most {max} products at a time",
+  "products.bulk.partial": "Stopped on an error: {done} of {total} processed, the rest untouched.",
+  "products.bulk.moreSkipped": "…and {n} more",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -144,4 +163,11 @@ export const uz: SectionDict<typeof ru> = {
   "err.catalog.bulkNoCategory": "Kategoriya topilmadi.",
   "err.catalog.bulkNoStock": "Qoldiqlar «Ombor» modulida mavjud — uni «Modullar»da yoqing.",
   "err.catalog.bulkStockAmount": "Qoldiq {min} dan {max} gacha butun son boʻlishi kerak.",
+  "products.bulk.selectedOf": "Tanlandi: {n} / {total}",
+  "products.bulk.pickFilter": "Filtr boʻyicha barcha {n} tasini tanlash",
+  "products.bulk.offer": "Aksiya yaratish",
+  "products.bulk.offerMax": "Aksiya bir vaqtda {max} tadan koʻp boʻlmagan mahsulotga",
+  "products.bulk.partial":
+    "Xatoda toʻxtadik: {total} dan {done} tasi qayta ishlandi, qolganlariga tegilmadi.",
+  "products.bulk.moreSkipped": "…va yana {n}",
 };

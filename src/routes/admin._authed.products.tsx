@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import {
   bulkProductsFn,
+  productIdsFn,
   catalogSheetFn,
   disconnectCatalogSheetFn,
   importCatalogFn,
@@ -14,12 +15,14 @@ import {
   reorderFn,
 } from "@/app/admin/admin.functions";
 import { pruneUpsellFn, upsellHealthFn } from "@/app/admin/upsell.functions";
-import { adminT, type AdminT } from "@/app/i18n/admin";
+import { adminT, type AdminKey, type AdminT } from "@/app/i18n/admin";
 import { Badge, Card, Empty, ErrorBox, PageTitle, Switch, useAction } from "@/app/ui";
 import { formatMoney } from "@/core/money/money";
 import { imagePath } from "@/core/catalog/image-url";
 import { nextPageOffset } from "@/core/catalog/picker";
 import type { BulkAction } from "@/core/catalog/bulk";
+import { runBulkInBatches, type BulkRun } from "@/core/catalog/bulk-batches";
+import { STALE_OFFER_MAX } from "@/core/stock/stale-const";
 
 export const Route = createFileRoute("/admin/_authed/products")({
   validateSearch: z.object({
@@ -77,15 +80,26 @@ function ProductsPage() {
   // Выбор для массовых действий: по id, переживает «Показать ещё».
   const editable = canEdit(shop.role);
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [bulkResult, setBulkResult] = useState<Awaited<ReturnType<typeof bulkProductsFn>> | null>(
-    null,
-  );
+  const [bulkResult, setBulkResult] = useState<(BulkRun & { total: number }) | null>(null);
   const bulk = useAction(async (action: BulkAction) => {
     if (!confirm(t("products.bulk.confirm", { n: picked.size }))) return;
-    const r = await bulkProductsFn({ data: { ids: [...picked], action } });
-    setBulkResult(r);
+    const ids = [...picked];
+    // По 500 за вызов: «все по фильтру» может быть больше лимита одного вызова.
+    const r = await runBulkInBatches(ids, (batch) =>
+      bulkProductsFn({ data: { ids: batch, action } }),
+    );
+    // Первая же пачка упала — ничего не тронуто: показываем саму ошибку.
+    if (r.error && r.processed === 0) throw r.error;
+    setBulkResult({ ...r, total: ids.length });
     setPicked(new Set());
     await router.invalidate();
+  });
+  // «Выбрать все N по фильтру»: id всех товаров под текущим фильтром, не только дочитанных страниц.
+  const pickAll = useAction(async () => {
+    const r = await productIdsFn({
+      data: { q: s.q, categoryId: s.category ?? null, onlyInactive: s.inactive },
+    });
+    setPicked(new Set(r.ids));
   });
   const togglePick = (id: string, on: boolean) =>
     setPicked((p) => {
@@ -189,6 +203,14 @@ function ProductsPage() {
                   skipped: bulkResult.skipped.length,
                 })}
               </p>
+              {bulkResult.error != null && (
+                <p className="text-danger">
+                  {t("products.bulk.partial", {
+                    done: bulkResult.processed,
+                    total: bulkResult.total,
+                  })}
+                </p>
+              )}
               {bulkResult.stock.length > 0 && (
                 <ul className="mt-1 max-h-32 overflow-auto text-xs text-muted">
                   {bulkResult.stock.map((x) => (
@@ -204,11 +226,14 @@ function ProductsPage() {
               )}
               {bulkResult.skipped.length > 0 && (
                 <ul className="mt-1 max-h-32 overflow-auto text-xs text-muted">
-                  {bulkResult.skipped.map((x) => (
+                  {bulkResult.skipped.slice(0, 50).map((x) => (
                     <li key={x.id}>
-                      {x.name || x.id}: {t(`products.bulk.reason.${x.reason}` as const)}
+                      {x.name || x.id}: {t(`products.bulk.reason.${x.reason}` as AdminKey)}
                     </li>
                   ))}
+                  {bulkResult.skipped.length > 50 && (
+                    <li>{t("products.bulk.moreSkipped", { n: bulkResult.skipped.length - 50 })}</li>
+                  )}
                 </ul>
               )}
             </>
@@ -232,6 +257,15 @@ function ProductsPage() {
             <BulkBar
               t={t}
               n={picked.size}
+              total={first.total}
+              picking={pickAll.busy}
+              onPickAll={() => void pickAll.run().catch(() => {})}
+              onOffer={() =>
+                void navigate({
+                  to: "/admin/discounts",
+                  search: { offerProducts: [...picked].slice(0, STALE_OFFER_MAX).join(",") },
+                })
+              }
               categories={categories}
               stockOn={Boolean(shop.modules.stock)}
               busy={bulk.busy}
@@ -381,6 +415,10 @@ function ProductsPage() {
 function BulkBar({
   t,
   n,
+  total,
+  picking,
+  onPickAll,
+  onOffer,
   categories,
   stockOn,
   busy,
@@ -389,6 +427,10 @@ function BulkBar({
 }: {
   t: AdminT;
   n: number;
+  total: number;
+  picking: boolean;
+  onPickAll: () => void;
+  onOffer: () => void;
   categories: Array<{ id: string; name: string }>;
   stockOn: boolean;
   busy: boolean;
@@ -404,10 +446,31 @@ function BulkBar({
   const qtyOk = stock.trim() !== "" && Number.isInteger(qty) && qty >= 0;
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-line p-3 text-sm">
-      <b>{t("products.bulk.selected", { n })}</b>
+      <b>{t("products.bulk.selectedOf", { n, total })}</b>
       <button type="button" className="btn-ghost" onClick={onClear}>
         {t("products.bulk.clear")}
       </button>
+      {n < total && (
+        <button type="button" className="btn-secondary" disabled={picking} onClick={onPickAll}>
+          {t("products.bulk.pickFilter", { n: total })}
+        </button>
+      )}
+      <button
+        type="button"
+        className="btn-secondary"
+        disabled={busy || n > STALE_OFFER_MAX}
+        title={
+          n > STALE_OFFER_MAX ? t("products.bulk.offerMax", { max: STALE_OFFER_MAX }) : undefined
+        }
+        onClick={onOffer}
+      >
+        {t("products.bulk.offer")}
+      </button>
+      {n > STALE_OFFER_MAX && (
+        <span className="text-xs text-muted">
+          {t("products.bulk.offerMax", { max: STALE_OFFER_MAX })}
+        </span>
+      )}
       <button
         type="button"
         className="btn-secondary"

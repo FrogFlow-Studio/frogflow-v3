@@ -1,7 +1,7 @@
 /** Заказы на телефоне (shop19-a-orders.spec.ts): магазин «Заказы А19», три заказа. */
 import * as F from "../fixtures.ts";
 import type { StubDb } from "../pg-stub.ts";
-import { add, encrypt, hash } from "./util.ts";
+import { add, encrypt, hash, nulls } from "./util.ts";
 
 const own = <T extends object>(r: T) => ({ bot_id: F.ORD19_SHOP_ID, ...r });
 
@@ -65,4 +65,35 @@ export function seedShop19AOrders(db: StubDb, now: string) {
       }),
     ]);
   });
+  add(
+    db,
+    "products",
+    Array.from({ length: F.ORD19_BULK_COUNT }, (_, i) =>
+      own({
+        id: `e2e19030-0000-4000-8000-${String(100000 + i).padStart(12, "0")}`,
+        name: `Партия ${String(i + 1).padStart(3, "0")}`,
+        description: "Для массовых действий.",
+        price: 1000,
+        currency: "KZT",
+        country_prices: {},
+        is_active: true,
+        category_ids: [],
+        fulfillment_kind: "physical",
+        stock_quantity: null,
+        lead_time_days: null,
+        ...nulls([
+          "file_path",
+          "file_name",
+          "file_url",
+          "file_path_kz",
+          "file_name_kz",
+          "file_url_kz",
+          "rating_avg",
+        ]),
+        rating_count: 0,
+        sort_order: i,
+        created_at: now,
+      }),
+    ),
+  );
 }

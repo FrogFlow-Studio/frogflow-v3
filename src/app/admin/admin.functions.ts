@@ -1069,6 +1069,23 @@ export const setProductActiveFn = createServerFn({ method: "POST" })
     return { ok: true, waitlist };
   });
 
+/** «Выбрать все по фильтру»: id всех товаров списка под текущим фильтром (постранично, без обрезки). */
+export const productIdsFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        q: z.string().optional(),
+        categoryId: uuid.nullable().optional(),
+        onlyInactive: z.boolean().optional(),
+      })
+      .parse(d ?? {}),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await admin();
+    const { listProductIdsForAdmin } = await import("@/core/catalog/admin");
+    return { ids: await listProductIdsForAdmin(ctx, data) };
+  });
+
 /** Массовые действия над выбранными товарами списка (core/catalog/bulk). */
 export const bulkProductsFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
