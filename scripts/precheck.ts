@@ -64,6 +64,7 @@ export function steps(p: Plan): Step[] {
   if (p.format.length)
     list.push({ name: "prettier", cmd: ["npx", "prettier", "--write", ...p.format] });
   if (p.lint.length) list.push({ name: "eslint", cmd: ["npx", "eslint", ...p.lint] });
+  list.push({ name: "e2e-скан", cmd: ["node", "scripts/e2e-scan.ts"] });
   list.push({ name: "typecheck", cmd: ["npx", "tsc", "--noEmit"] });
   const exclude = ["--exclude", "tests/integration/**", "--exclude", "tests/e2e/**"];
   if (p.related.length)

@@ -65,14 +65,19 @@ describe("npm run precheck", () => {
       "src/app/i18n",
     ]);
     const list = steps(plan([]));
-    expect(list.map((s) => s.name)).toEqual(["typecheck", "tests (src/lib, db-columns)"]);
-    expect(list[1]!.cmd).toEqual(expect.arrayContaining(ALWAYS_TESTS));
+    expect(list.map((s) => s.name)).toEqual([
+      "e2e-скан",
+      "typecheck",
+      "tests (src/lib, db-columns)",
+    ]);
+    expect(list[2]!.cmd).toEqual(expect.arrayContaining(ALWAYS_TESTS));
   });
 
-  it("порядок: prettier → eslint → типы → тесты по изменённым → src/lib", () => {
+  it("порядок: prettier → eslint → e2e-скан → типы → тесты по изменённым → src/lib", () => {
     expect(steps(plan(["src/a.ts"])).map((s) => s.name)).toEqual([
       "prettier",
       "eslint",
+      "e2e-скан",
       "typecheck",
       "tests (изменённые)",
       "tests (src/lib, db-columns)",

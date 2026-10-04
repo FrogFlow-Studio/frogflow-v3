@@ -1,0 +1,23 @@
+{
+  "tests/e2e/gift.spec.ts": 5,
+  "tests/e2e/instagram-purchase.spec.ts": 1,
+  "tests/e2e/landing.spec.ts": 4,
+  "tests/e2e/money.spec.ts": 2,
+  "tests/e2e/panels.spec.ts": 2,
+  "tests/e2e/shop14-cost.spec.ts": 1,
+  "tests/e2e/shop14-delivery.spec.ts": 3,
+  "tests/e2e/shop14-free-delivery.spec.ts": 1,
+  "tests/e2e/shop15-free-promo.spec.ts": 1,
+  "tests/e2e/shop19-a-segments.spec.ts": 1,
+  "tests/e2e/shop19-ch-attach.spec.ts": 1,
+  "tests/e2e/shop19-ch-help.spec.ts": 2,
+  "tests/e2e/shop19-ch-quick-replies.spec.ts": 2,
+  "tests/e2e/shop19-ch-support.spec.ts": 2,
+  "tests/e2e/shop19-ch9-status.spec.ts": 4,
+  "tests/e2e/shop19-o-client-tabs.spec.ts": 2,
+  "tests/e2e/shop19-o-diagnose.spec.ts": 1,
+  "tests/e2e/shop19-o-menu.spec.ts": 3,
+  "tests/e2e/storefront.spec.ts": 3,
+  "tests/e2e/web-checkout.spec.ts": 15,
+  "tests/e2e/whatsapp-purchase.spec.ts": 1
+}
