@@ -143,6 +143,20 @@ export type TenantSettings = {
   };
   /** Решение оператора по сообществу: скрыт из списка авторов или заблокирован. */
   community_mod?: { status?: "hidden" | "blocked"; reason?: string; at?: string };
+  /**
+   * Площадка FrogFlow (core/marketplace): магазин участвует только по согласию.
+   * `listed` — выключатель продавца, `hidden` — решение оператора (сильнее согласия),
+   * `approved` — одобрение оператора для нового магазина (В12). `category` и `city`
+   * — подписи в каталоге; нет категории — берётся ниша магазина.
+   */
+  marketplace?: {
+    listed?: boolean;
+    hidden?: boolean;
+    hidden_reason?: string;
+    approved?: boolean;
+    category?: string;
+    city?: string;
+  };
   /** Выдача цифровых товаров (core/delivery). */
   delivery?: {
     /** Водяной знак с покупателем и номером заказа на каждом выдаваемом PDF. */

@@ -212,6 +212,7 @@ export function settingsFromJson(json: unknown): TenantSettings {
     homework_replies: Array.isArray(s.homework_replies)
       ? parseHwReplies(s.homework_replies)
       : undefined,
+    marketplace: parseMarketplace(obj(s.marketplace)),
     gift_sale:
       s.gift_sale && typeof s.gift_sale === "object" && !Array.isArray(s.gift_sale)
         ? {
@@ -225,6 +226,21 @@ export function settingsFromJson(json: unknown): TenantSettings {
           }
         : undefined,
   };
+}
+
+/** Настройки площадки: только известные ключи и типы; пустое — не храним. */
+function parseMarketplace(m: Record<string, unknown>): TenantSettings["marketplace"] {
+  const str = (v: unknown, max: number) =>
+    typeof v === "string" && v.trim() ? v.replace(/\s+/g, " ").trim().slice(0, max) : undefined;
+  const out = {
+    listed: m.listed === true ? true : undefined,
+    hidden: m.hidden === true ? true : undefined,
+    hidden_reason: str(m.hidden_reason, 300),
+    approved: m.approved === true ? true : undefined,
+    category: str(m.category, 60),
+    city: str(m.city, 60),
+  };
+  return Object.values(out).some((v) => v !== undefined) ? out : undefined;
 }
 
 function billingFromJson(json: unknown): BillingSettings | undefined {

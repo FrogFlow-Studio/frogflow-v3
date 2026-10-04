@@ -20,6 +20,8 @@ const SAVED = {
     password_hash: "scrypt$a$b",
     users: [{ username: "kate", password_hash: "scrypt$c$d", role: "accountant" }],
   },
+  // площадка (core/marketplace)
+  marketplace: { listed: true, approved: true, category: "Торты", city: "Алматы" },
   // оператор
   slug: "shop",
   hosts: ["shop.kz"],
