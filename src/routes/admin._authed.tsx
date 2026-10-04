@@ -120,7 +120,22 @@ function Layout() {
       <div className="pb-16 md:pb-0">
         <Outlet />
       </div>
-      <CommandPalette locale={shop.locale} />
+      <button
+        type="button"
+        aria-label={t("palette.open")}
+        className="btn-ghost fixed right-14 top-1.5 z-30 md:hidden"
+        onClick={() => window.dispatchEvent(new Event("admin:search"))}
+      >
+        🔍
+      </button>
+      <CommandPalette
+        locale={shop.locale}
+        sections={[nav.overview, ...nav.groups.flatMap((g) => g.items)].map((i) => ({
+          label: t(i.label),
+          to: i.to,
+          hash: i.hash,
+        }))}
+      />
       <AdminBottomBar nav={nav} t={t} />
     </Shell>
   );

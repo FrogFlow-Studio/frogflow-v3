@@ -71,6 +71,7 @@ import * as shop19Settings from "./admin/shop19-settings";
 import * as shop19Orders from "./admin/shop19-orders";
 import * as shop19Order from "./admin/shop19-order";
 import * as shop19States from "./admin/shop19-states";
+import * as shop19Search from "./admin/shop19-search";
 import * as shop18Forecast from "./admin/shop18-forecast";
 import * as help from "./admin/help";
 import * as news from "./admin/news";
@@ -154,7 +155,7 @@ const baseRu = {
   "login.noShop": "Ещё нет магазина?",
   "login.signup": "Зарегистрировать за пять минут",
   "login.forgot": "Забыли пароль — напишите в поддержку FrogFlow, мы выдадим новый.",
-  "palette.placeholder": "Заказ, товар или покупатель…",
+  "palette.placeholder": "Заказ, покупатель, товар или раздел…",
   "palette.empty": "Ничего не нашлось",
   "palette.product": "товар",
   "palette.hint": "↑↓ — выбрать, Enter — открыть, Esc — закрыть · ⌘K / Ctrl+K",
@@ -484,6 +485,7 @@ const ru = {
   ...shop19Orders.ru,
   ...shop19Order.ru,
   ...shop19States.ru,
+  ...shop19Search.ru,
   ...shop18Forecast.ru,
   ...help.ru,
   ...news.ru,
@@ -592,7 +594,7 @@ const baseKk: Dict = {
   "login.noShop": "Дүкеніңіз әлі жоқ па?",
   "login.signup": "Бес минутта тіркелу",
   "login.forgot": "Құпиясөзді ұмыттыңыз ба — FrogFlow қолдау қызметіне жазыңыз, жаңасын береміз.",
-  "palette.placeholder": "Тапсырыс, тауар немесе сатып алушы…",
+  "palette.placeholder": "Тапсырыс, сатып алушы, тауар немесе бөлім…",
   "palette.empty": "Ештеңе табылмады",
   "palette.product": "тауар",
   "palette.hint": "↑↓ — таңдау, Enter — ашу, Esc — жабу · ⌘K / Ctrl+K",
@@ -946,7 +948,7 @@ const baseEn: Dict = {
   "login.noShop": "No shop yet?",
   "login.signup": "Register in five minutes",
   "login.forgot": "Forgot your password? Write to FrogFlow support and we will issue a new one.",
-  "palette.placeholder": "Order, product or customer…",
+  "palette.placeholder": "Order, buyer, product or section…",
   "palette.empty": "Nothing found",
   "palette.product": "product",
   "palette.hint": "↑↓ — select, Enter — open, Esc — close · ⌘K / Ctrl+K",
@@ -1301,7 +1303,7 @@ const baseUz: Dict = {
   "login.signup": "Besh daqiqada ro‘yxatdan o‘tish",
   "login.forgot":
     "Parolni unutdingizmi — FrogFlow qo‘llab-quvvatlashiga yozing, yangisini beramiz.",
-  "palette.placeholder": "Buyurtma, tovar yoki xaridor…",
+  "palette.placeholder": "Buyurtma, xaridor, mahsulot yoki boʻlim…",
   "palette.empty": "Hech narsa topilmadi",
   "palette.product": "tovar",
   "palette.hint": "↑↓ — tanlash, Enter — ochish, Esc — yopish · ⌘K / Ctrl+K",
@@ -1628,6 +1630,7 @@ const kk: Dict = {
   ...shop19Orders.kk,
   ...shop19Order.kk,
   ...shop19States.kk,
+  ...shop19Search.kk,
   ...shop18Forecast.kk,
   ...help.kk,
   ...news.kk,
@@ -1703,6 +1706,7 @@ const en: Dict = {
   ...shop19Orders.en,
   ...shop19Order.en,
   ...shop19States.en,
+  ...shop19Search.en,
   ...shop18Forecast.en,
   ...help.en,
   ...news.en,
@@ -1778,6 +1782,7 @@ const uz: Dict = {
   ...shop19Orders.uz,
   ...shop19Order.uz,
   ...shop19States.uz,
+  ...shop19Search.uz,
   ...shop18Forecast.uz,
   ...help.uz,
   ...news.uz,

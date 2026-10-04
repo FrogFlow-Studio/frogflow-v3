@@ -18,7 +18,7 @@ test("карточка заказа: действия наверху, истор
   await expect(page.getByRole("button", { name: "Отклонить", exact: true })).toBeVisible();
 
   const phone = info.project.name === "phone";
-  const events = page.getByText("Событий пока нет.", { exact: true });
+  const events = page.getByRole("heading", { name: "История", exact: true });
   if (phone) {
     await expect(events).toBeHidden();
     await page.getByRole("tab", { name: "История", exact: true }).click();

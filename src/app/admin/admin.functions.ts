@@ -1569,41 +1569,13 @@ export const updateFulfillmentFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Поиск по админке (⌘K): заказы, товары и покупатели по одной строке. */
+/** Поиск по админке (⌘K): заказы, товары и покупатели по одной строке (core/search/admin-search). */
 export const adminSearchFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ q: z.string().trim().min(1).max(100) }).parse(d))
   .handler(async ({ data }) => {
     const { ctx, accountant } = await finance();
-    const orders = await import("@/core/orders/admin");
-    const { accountantSearch, redactOrders } = await import("@/core/orders/redact");
-    const { listProductsForAdmin } = await import("@/core/catalog/admin");
-    const { displayNo } = await import("@/core/orders/pure");
-    const q = accountant ? accountantSearch(data.q) : data.q;
-    const [os, ps, cs] = await Promise.all([
-      q ? orders.listOrdersForAdmin(ctx, { q, limit: 5 }) : Promise.resolve([]),
-      listProductsForAdmin(ctx, { q: data.q }),
-      // Бухгалтеру контакты покупателей не показываем — как в «Заказах».
-      accountant ? Promise.resolve([]) : orders.listCustomers(ctx, data.q, 5),
-    ]);
-    return {
-      orders: (accountant ? redactOrders(os) : os).map((o) => ({
-        id: o.id,
-        no: displayNo(o),
-        name: o.display_name,
-        status: o.status,
-        total: Number(o.total),
-        currency: o.currency,
-      })),
-      products: ps.rows.slice(0, 5).map((p) => ({ id: p.id, name: p.name })),
-      customers: cs.map((c) => ({
-        key: c.user_key,
-        name:
-          [c.first_name, c.last_name].filter(Boolean).join(" ") ||
-          (c.username ? `@${c.username}` : c.user_key),
-        platform: c.platform,
-        phone: c.contact_phone,
-      })),
-    };
+    const { adminSearch } = await import("@/core/search/admin-search");
+    return adminSearch(ctx, data.q, accountant);
   });
 
 /* ── покупатели ──────────────────────────────────────────────────── */

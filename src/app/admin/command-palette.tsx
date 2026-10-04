@@ -4,6 +4,7 @@ import { adminSearchFn } from "@/app/admin/admin.functions";
 import { adminT } from "@/app/i18n/admin";
 import type { Locale } from "@/core/i18n/locale";
 import { formatMoney } from "@/core/money/money";
+import { searchSections } from "@/core/search/search-sections";
 
 type Results = Awaited<ReturnType<typeof adminSearchFn>>;
 type Item = { label: string; hint: string; go: () => void };
@@ -12,13 +13,21 @@ type Item = { label: string; hint: string; go: () => void };
  * Поиск по админке: ⌘K / Ctrl+K — заказ по номеру или имени, товар,
  * покупатель; стрелки и Enter, Esc — закрыть. Запрос — с паузой 200 мс.
  */
-export function CommandPalette({ locale }: { locale: Locale }) {
+export function CommandPalette({
+  locale,
+  sections,
+}: {
+  locale: Locale;
+  /** Разделы, доступные этой роли (из меню): поиск по названию раздела. */
+  sections: Array<{ label: string; to: string; hash?: string }>;
+}) {
   const t = adminT(locale);
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [res, setRes] = useState<Results | null>(null);
   const [sel, setSel] = useState(0);
+  const [failed, setFailed] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -29,23 +38,33 @@ export function CommandPalette({ locale }: { locale: Locale }) {
       }
       if (e.key === "Escape") setOpen(false);
     };
+    // Кнопка «Поиск» на телефоне (admin._authed) открывает палитру этим событием.
+    const onOpen = () => setOpen(true);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("admin:search", onOpen);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("admin:search", onOpen);
+    };
   }, []);
   useEffect(() => {
     if (open) setTimeout(() => input.current?.focus(), 0);
     else {
       setQ("");
       setRes(null);
+      setFailed(false);
     }
   }, [open]);
   useEffect(() => {
-    if (!q.trim()) return setRes(null);
+    if (!q.trim()) {
+      setFailed(false);
+      return setRes(null);
+    }
     let live = true;
     const timer = setTimeout(() => {
       adminSearchFn({ data: { q } })
-        .then((r) => live && (setRes(r), setSel(0)))
-        .catch(() => live && setRes(null));
+        .then((r) => live && (setRes(r), setFailed(false), setSel(0)))
+        .catch(() => live && (setRes(null), setFailed(true)));
     }, 200);
     return () => {
       live = false;
@@ -54,8 +73,22 @@ export function CommandPalette({ locale }: { locale: Locale }) {
   }, [q]);
 
   const close = () => setOpen(false);
+  const sectionItems: Item[] = searchSections(sections, q).map((x) => ({
+    label: x.label,
+    hint: t("palette.section"),
+    go: () => void navigate({ to: x.to as never, hash: x.hash }),
+  }));
+  const more = (
+    label: string,
+    to: "/admin/orders" | "/admin/customers" | "/admin/products",
+  ): Item => ({
+    label: `${label} «${q.trim()}»`,
+    hint: "→",
+    go: () => void navigate({ to, search: { q: q.trim() } as never }),
+  });
   const items: Item[] = res
     ? [
+        ...sectionItems,
         ...res.orders.map((o) => ({
           label: `#${o.no} · ${o.name}`,
           hint: formatMoney(o.total, o.currency),
@@ -71,12 +104,17 @@ export function CommandPalette({ locale }: { locale: Locale }) {
           hint: [c.platform, c.phone].filter(Boolean).join(" · "),
           go: () => void navigate({ to: "/admin/customers/$key", params: { key: c.key } }),
         })),
+        ...(res.ordersMore ? [more(t("palette.allOrders"), "/admin/orders")] : []),
+        ...(res.productsMore ? [more(t("palette.allProducts"), "/admin/products")] : []),
+        ...(res.customersMore ? [more(t("palette.allCustomers"), "/admin/customers")] : []),
       ]
-    : [];
+    : sectionItems;
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-24"
+      role="dialog"
+      aria-label={t("palette.title")}
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 px-3 pt-16 md:pt-24"
       onClick={close}
     >
       <div
@@ -103,6 +141,7 @@ export function CommandPalette({ locale }: { locale: Locale }) {
           }}
         />
         <ul className="max-h-80 overflow-y-auto">
+          {failed && <li className="px-4 py-3 text-sm text-danger">{t("palette.failed")}</li>}
           {q.trim() && res && items.length === 0 && (
             <li className="px-4 py-3 text-sm text-muted">{t("palette.empty")}</li>
           )}

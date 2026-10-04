@@ -89,7 +89,8 @@ export async function listOrdersForAdmin(
     const s = f.q.trim().replace(/[%_,()]/g, " ");
     const asNo = Number(s);
     q =
-      Number.isInteger(asNo) && asNo > 0
+      // До 6 цифр — номер заказа; длиннее — телефон покупателя (номер заказа так не бывает).
+      Number.isInteger(asNo) && asNo > 0 && s.length <= 6
         ? q.or(`display_no.eq.${asNo},order_no.eq.${asNo},id.eq.${asNo}`)
         : q.or(
             `display_name.ilike.%${s}%,username.ilike.%${s}%,contact.ilike.%${s}%,customer_email.ilike.%${s}%`,
