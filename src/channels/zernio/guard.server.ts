@@ -5,8 +5,8 @@ import type { Tenant } from "@/core/tenant/types";
 import { notifyAdminsHtml } from "@/channels/telegram/notify";
 import { noticeLocale } from "@/core/helpdesk/seller-texts";
 import {
-  detectProblems,
   downText,
+  planGuard,
   planTransitions,
   reconnectLabel,
   registerFailure,
@@ -127,7 +127,7 @@ export async function runChannelGuardFor(
     try {
       const ctx = tenantContext(t);
       const current = await readZernioGuard(t.id);
-      for (const tr of planTransitions(current, detectProblems(accounts, webhookOk), Date.now())) {
+      for (const tr of planGuard(current, accounts, webhookOk, Date.now())) {
         if (!(await commit(ctx, tr))) continue;
         if (tr.kind === "down") r.down++;
         if (tr.kind === "up") r.up++;

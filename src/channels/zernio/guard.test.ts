@@ -6,6 +6,7 @@ import {
   downText,
   isDown,
   operatorHint,
+  planGuard,
   planTransitions,
   registerFailure,
   upText,
@@ -156,5 +157,48 @@ describe("чтение арендатора: запись стража дохо�
       settingsFromJson({ zernio: { guard: { instagram: { reason: "x" } } } }).zernio?.guard,
     ).toBeUndefined();
     expect(settingsFromJson({ zernio: {} }).zernio?.guard).toBeUndefined();
+  });
+});
+
+describe("страж каналов: «неизвестно» не становится «ожил» (Л4)", () => {
+  const ig = [{ id: "a", platform: "instagram" }];
+  const down = (reason: "webhook" | "token") => ({
+    instagram: { since: iso(T0 - 3_600_000), reason },
+  });
+
+  it("вебхук не проверен (null): запись «вебхук отключён» остаётся, сообщения «снова работает» нет", () => {
+    expect(planGuard(down("webhook"), ig, null, T0)).toEqual([]);
+    // Проверили и он в порядке — тогда «ожил».
+    expect(planGuard(down("webhook"), ig, true, T0).map((t) => t.kind)).toEqual(["up"]);
+    // Проверили и он всё ещё отключён — записи не меняются.
+    expect(planGuard(down("webhook"), ig, false, T0)).toEqual([]);
+  });
+
+  it("токен: аккаунт больше не просрочен — «ожил» и при непроверенном вебхуке", () => {
+    expect(planGuard(down("token"), ig, null, T0).map((t) => t.kind)).toEqual(["up"]);
+  });
+
+  it("канал отключён продавцом (аккаунтов нет): запись снимается молча, «снова работает» не шлётся", () => {
+    const t = planGuard(down("token"), [], true, T0);
+    expect(t).toHaveLength(1);
+    expect(t[0]).toMatchObject({ platform: "instagram", kind: "quiet", to: null });
+    expect(planGuard(down("webhook"), [], null, T0).map((x) => x.kind)).toEqual(["quiet"]);
+  });
+
+  it("серия сбоев отключённого канала тоже снимается молча", () => {
+    const failing = {
+      instagram: {
+        since: iso(T0 - 3_600_000),
+        reason: "failures" as const,
+        fails: 3,
+        last_fail_at: iso(T0 - FAIL_WINDOW_MS - 1),
+      },
+    };
+    expect(planGuard(failing, [], true, T0).map((x) => x.kind)).toEqual(["quiet"]);
+  });
+
+  it("всё в порядке и записей нет — переходов нет", () => {
+    expect(planGuard({}, ig, true, T0)).toEqual([]);
+    expect(planGuard({}, [], null, T0)).toEqual([]);
   });
 });

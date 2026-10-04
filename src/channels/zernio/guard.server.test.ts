@@ -99,6 +99,32 @@ describe("крон стража", () => {
     expect(guardOf(BOT)).toMatchObject({ instagram: { reason: "webhook" } });
   });
 
+  it("вебхук не проверен (null): лежавший канал не объявляется «снова работает», запись остаётся (Л4)", async () => {
+    await runChannelGuardFor([tenant(BOT, "v2", false)], false);
+    sent.length = 0;
+    await runChannelGuardFor([tenant(BOT, "v2", false)], null);
+    expect(sent).toHaveLength(0);
+    expect(guardOf(BOT)).toMatchObject({ instagram: { reason: "webhook" } });
+    // Дальше проверили — вебхук в порядке: «ожил» один раз.
+    await runChannelGuardFor([tenant(BOT, "v2", false)], true);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.html).toContain("снова работает");
+  });
+
+  it("продавец отключил канал: запись убрана без сообщения «снова работает» (Л4)", async () => {
+    await runChannelGuardFor([tenant(BOT, "v2", true)], true);
+    sent.length = 0;
+    const disconnected = tenant(BOT, "v2", false);
+    // Как в справочнике арендаторов: аккаунтов нет, запись стража (guard) в настройках осталась.
+    const z = (disconnected.settings as { zernio?: Record<string, unknown> }).zernio!;
+    z.accounts = [];
+    z.guard = guardOf(BOT);
+    const r = await runChannelGuardFor([disconnected], true);
+    expect(sent).toHaveLength(0);
+    expect(guardOf(BOT)).toEqual({});
+    expect(r).toMatchObject({ down: 0, up: 0 });
+  });
+
   it("клиент v1 пропущен: ни записи, ни сообщения", async () => {
     const r = await runChannelGuardFor([tenant(V1, "v1", true)], false);
     expect(r.tenants).toBe(0);

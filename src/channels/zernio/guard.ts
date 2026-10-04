@@ -95,6 +95,33 @@ export function planTransitions(
   return out;
 }
 
+/**
+ * Переходы по снимку аккаунтов магазина и вебхуку — с двумя поправками на «неизвестно»:
+ * • вебхук не проверен (`null`) — запись о нём не снимаем и «снова работает» не пишем: «не
+ *   проверили» не значит «починили»;
+ * • канала в снимке больше нет (продавец отключил Instagram/WhatsApp) — запись убираем молча:
+ *   сообщать, что отключённый канал «снова работает», нечего.
+ */
+export function planGuard(
+  current: GuardMap,
+  accounts: readonly ZernioAccountSnapshot[],
+  webhookOk: boolean | null,
+  now: number,
+): Transition[] {
+  const out: Transition[] = [];
+  for (const t of planTransitions(current, detectProblems(accounts, webhookOk), now)) {
+    if (t.kind === "up") {
+      if (!accounts.some((a) => a.platform === t.platform)) {
+        out.push({ ...t, kind: "quiet" });
+        continue;
+      }
+      if (webhookOk === null && t.from?.reason === "webhook") continue;
+    }
+    out.push(t);
+  }
+  return out;
+}
+
 /** Ещё один сбой отправки: следующая запись и стал ли канал лежащим именно сейчас; null — менять нечего. */
 export function registerFailure(
   cur: GuardEntry | null,
