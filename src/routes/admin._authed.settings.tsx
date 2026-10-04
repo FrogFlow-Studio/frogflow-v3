@@ -40,6 +40,7 @@ import {
   WeeklyReportCard,
 } from "@/app/admin/settings/shop";
 import { TeamCard } from "@/app/admin/settings/team";
+import { TakeoutCard } from "@/app/admin/settings/takeout";
 
 export const Route = createFileRoute("/admin/_authed/settings")({
   loader: async () => {
@@ -345,6 +346,7 @@ function SettingsPage() {
         {shop.modules.crm_integration && <CrmCard />}
         {shop.modules.public_api && shop.role === "owner" && <ApiKeyCard />}
         {shop.modules.admin_roles && <TeamCard />}
+        {shop.role === "owner" && <TakeoutCard />}
         {shop.role === "owner" && !shop.deletionAt && (
           <DeleteShopCard locale={shop.locale} shopName={shop.name} />
         )}

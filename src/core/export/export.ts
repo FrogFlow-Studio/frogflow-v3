@@ -2,7 +2,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
 import { ORDER_STATUS_RU as STATUS_RU } from "@/core/orders/pure";
 import { shopDateTime, toCsv, zonedDayToUtc } from "./csv";
-import { zipFiles } from "./zip";
+import { zipFiles, type ZipEntry } from "./zip";
 
 export type ExportRange = {
   from?: string | null;
@@ -317,6 +317,8 @@ export async function orderItemsCsv(ctx: TenantContext): Promise<{ csv: string; 
 export async function allDataZip(
   ctx: TenantContext,
   now = new Date(),
+  /** Дополнительные файлы архива (настройки, описание) — «Забрать мои данные». */
+  extra: ZipEntry[] = [],
 ): Promise<{ zip: Buffer; counts: Record<string, number> }> {
   const [orders, items, customers, products] = await Promise.all([
     ordersCsv(ctx),
@@ -332,7 +334,7 @@ export async function allDataZip(
   };
   return {
     zip: zipFiles(
-      Object.entries(files).map(([name, f]) => ({ name, data: f.csv })),
+      [...Object.entries(files).map(([name, f]) => ({ name, data: f.csv })), ...extra],
       now,
     ),
     counts: Object.fromEntries(Object.entries(files).map(([name, f]) => [name, f.count])),

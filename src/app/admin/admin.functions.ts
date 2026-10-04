@@ -1739,6 +1739,20 @@ export const requestModuleFn = createServerFn({ method: "POST" })
     return { ok: true, already: Boolean(error) };
   });
 
+/**
+ * «Забрать мои данные»: ссылка на архив магазина на 24 часа. Только владелец:
+ * в архиве контакты покупателей. Сам архив собирает /api/takeout/<магазин>.
+ */
+export const takeoutLinkFn = createServerFn({ method: "POST" }).handler(async () => {
+  const ctx = await adminOwner();
+  const [{ env }, { takeoutLink }] = await Promise.all([
+    import("@/config/env"),
+    import("@/core/export/takeout"),
+  ]);
+  const { path, expiresAt } = takeoutLink(env().SESSION_SECRET, ctx.tenant.id);
+  return { url: `${ctx.appUrl.replace(/\/$/, "")}${path}`, expiresAt };
+});
+
 /* ── тариф магазина (core/plans) ─────────────────────────────────── */
 
 export const myPlanFn = createServerFn({ method: "GET" }).handler(async () => {
