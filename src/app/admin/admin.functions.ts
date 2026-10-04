@@ -2872,9 +2872,7 @@ export const chatReplyFn = createServerFn({ method: "POST" })
     const { adminIdentity, adminActor } = await import("@/app/auth/guards.server");
     const inbox = await import("@/core/inbox/inbox");
     const me = await adminIdentity();
-    const meta = await inbox.getInboxMeta(ctx, data.telegramId);
-    if (me && !meta.assignee)
-      await inbox.setInboxMeta(ctx, data.telegramId, { assignee: me.username }, await adminActor());
+    if (me) await inbox.claimOnReply(ctx, data.telegramId, me.username, await adminActor());
     return { ok: true };
   });
 

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { fakeDb } from "../../../tests/fake-db";
+import type { TenantContext } from "@/core/tenant/resolve.server";
+import { ServerFailure } from "@/lib/server-failure";
 import type { Conversation } from "@/core/chat/chat";
 import {
   channelOf,
+  claimInbox,
+  claimOnReply,
   cleanQuickReplies,
   fillQuickReply,
   matchesInbox,
@@ -177,5 +182,62 @@ describe("быстрые ответы", () => {
     expect(fillQuickReply("Заказ {order}, {order}", { first_name: null, orderNo: 5 })).toBe(
       "Заказ №5, №5",
     );
+  });
+});
+
+describe("Д1: два менеджера отвечают в ничьём диалоге", () => {
+  const BOT = "11111111-1111-1111-1111-111111111111";
+  const mk = () => {
+    const db = fakeDb({ unique: { zernio_logs: [["event_id"]] } });
+    db.tables.zernio_logs = [];
+    return { db, ctx: { tenant: { id: BOT }, db } as unknown as TenantContext };
+  };
+
+  it("одновременные первые ответы: один ответственный, оба без ошибки", async () => {
+    const { db, ctx } = mk();
+    const [a, b] = await Promise.all([
+      claimOnReply(ctx, 5, "anna", "anna"),
+      claimOnReply(ctx, 5, "boris", "boris"),
+    ]);
+    expect([a, b]).toEqual([undefined, undefined]);
+    const rows = db.tables.zernio_logs!;
+    expect(rows).toHaveLength(1);
+    expect(["anna", "boris"]).toContain((rows[0]!.payload as { assignee: string }).assignee);
+  });
+
+  it("claimInbox: проигравший получает false и не затирает ответственного", async () => {
+    const { db, ctx } = mk();
+    expect(await claimInbox(ctx, 5, "anna", "anna")).toBe(true);
+    expect(await claimInbox(ctx, 5, "boris", "boris")).toBe(false);
+    expect((db.tables.zernio_logs![0]!.payload as { assignee: string }).assignee).toBe("anna");
+  });
+
+  it("строка есть, но ничья (решён без ответственного): забирает первый, статус не меняется", async () => {
+    const { db, ctx } = mk();
+    db.tables.zernio_logs = [
+      {
+        bot_id: BOT,
+        event_id: inboxEventId(BOT, 5),
+        event_type: "inbox",
+        status: "closed",
+        payload: { telegram_id: 5, assignee: null },
+      },
+    ];
+    const [a, b] = await Promise.all([
+      claimInbox(ctx, 5, "anna", "anna"),
+      claimInbox(ctx, 5, "boris", "boris"),
+    ]);
+    expect([a, b].filter(Boolean)).toHaveLength(1);
+    expect(db.tables.zernio_logs![0]!.status).toBe("closed");
+  });
+
+  it("сбой базы при закреплении не роняет ответ, но claimInbox его не прячет", async () => {
+    const { ctx } = mk();
+    const broken = {
+      tenant: ctx.tenant,
+      db: { from: () => ({ insert: async () => ({ error: { code: "XX000", message: "boom" } }) }) },
+    } as unknown as TenantContext;
+    await expect(claimOnReply(broken, 5, "anna", "anna")).resolves.toBeUndefined();
+    await expect(claimInbox(broken, 5, "anna", "anna")).rejects.toBeInstanceOf(ServerFailure);
   });
 });

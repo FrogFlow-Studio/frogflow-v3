@@ -156,6 +156,61 @@ export async function setInboxMeta(
   return next;
 }
 
+/**
+ * Ничей диалог достаётся тому, кто ответил первым. Без чтения перед записью:
+ * учёт создаёт вставка (event_id уникален), существующий — update «где
+ * ответственного нет». Проигравший гонку (23505 или ноль строк) получает
+ * `false`, а не ошибку: чужой ответственный не затирается.
+ */
+export async function claimInbox(
+  ctx: TenantContext,
+  telegramId: number,
+  assignee: string,
+  actor: string,
+): Promise<boolean> {
+  const payload = {
+    telegram_id: telegramId,
+    assignee,
+    updated_at: new Date().toISOString(),
+    updated_by: actor,
+  } as unknown as Json;
+  const eventId = inboxEventId(ctx.tenant.id, telegramId);
+  const { error } = await ctx.db.from("zernio_logs").insert({
+    bot_id: ctx.tenant.id,
+    event_id: eventId,
+    event_type: INBOX_EVENT_TYPE,
+    status: "open",
+    payload,
+  });
+  if (!error) return true;
+  if (error.code !== "23505") throw serverFailure(`Входящие: ${error.message}`);
+  const { data, error: updateError } = await ctx.db
+    .from("zernio_logs")
+    .update({ payload })
+    .eq("event_id", eventId)
+    .is("payload->>assignee", null)
+    .select("id");
+  if (updateError) throw serverFailure(`Входящие: ${updateError.message}`);
+  return (data?.length ?? 0) > 0;
+}
+
+/**
+ * Менеджер уже ответил покупателю: закрепить диалог за ним, если он ничей.
+ * Сбой учёта не должен ронять ответ — сообщение ушло, повтор дал бы дубль.
+ */
+export async function claimOnReply(
+  ctx: TenantContext,
+  telegramId: number,
+  assignee: string,
+  actor: string,
+): Promise<void> {
+  try {
+    await claimInbox(ctx, telegramId, assignee, actor);
+  } catch (e) {
+    console.error(`[inbox:${ctx.tenant.id}] claim`, e instanceof Error ? e.message : e);
+  }
+}
+
 /** Покупатель написал снова — решённый диалог открывается. Один запрос по уникальному ключу. */
 export async function reopenOnInbound(ctx: TenantContext, telegramId: number): Promise<void> {
   const { error } = await ctx.db
