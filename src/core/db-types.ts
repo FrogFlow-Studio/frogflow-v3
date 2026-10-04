@@ -1108,6 +1108,104 @@ export type Database = {
           },
         ];
       };
+      joint_promo_members: {
+        Row: {
+          id: string;
+          promo_id: string;
+          bot_id: string;
+          status: string;
+          code: string | null;
+          discount_percent: number | null;
+          conditions: string | null;
+          promo_code_id: string | null;
+          notified_at: string | null;
+          responded_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          promo_id: string;
+          bot_id: string;
+          status?: string;
+          code?: string | null;
+          discount_percent?: number | null;
+          conditions?: string | null;
+          promo_code_id?: string | null;
+          notified_at?: string | null;
+          responded_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          promo_id?: string;
+          bot_id?: string;
+          status?: string;
+          code?: string | null;
+          discount_percent?: number | null;
+          conditions?: string | null;
+          promo_code_id?: string | null;
+          notified_at?: string | null;
+          responded_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "joint_promo_members_promo_id_fkey";
+            columns: ["promo_id"];
+            isOneToOne: false;
+            referencedRelation: "joint_promos";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "joint_promo_members_bot_id_fkey";
+            columns: ["bot_id"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      joint_promos: {
+        Row: {
+          id: string;
+          created_by: string;
+          title: string;
+          ends_at: string;
+          status: string;
+          activated_at: string | null;
+          cancelled_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          created_by: string;
+          title: string;
+          ends_at: string;
+          status?: string;
+          activated_at?: string | null;
+          cancelled_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          created_by?: string;
+          title?: string;
+          ends_at?: string;
+          status?: string;
+          activated_at?: string | null;
+          cancelled_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "joint_promos_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       community_threads: {
         Row: {
           id: string;

@@ -89,6 +89,7 @@ const ALLOWED: Record<string, string[]> = {
   "src/core/reviews/reviews.ts": [`${PAGE} (≤ 20 отзывов)`],
   "src/core/settings/settings.ts": [FIXED, FIXED],
   "src/core/upsell/upsell.ts": ["товары корзины и правил: корзина + 20"],
+  "src/core/community/joint.server.ts": ["по одному промокоду на участника акции — не больше трёх"],
   "src/core/vip/auto-check.ts": [FEW],
   "src/core/vip/vip.ts": [FEW, FEW],
 };

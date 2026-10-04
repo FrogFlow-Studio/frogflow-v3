@@ -164,3 +164,23 @@ describe("миграции партии 19 совпадают с db-types.ts", (
     }
   });
 });
+
+describe("таблицы совместных акций (миграция 19-4) описаны в схеме", () => {
+  it("joint_promos и joint_promo_members с ключевыми колонками", () => {
+    const s = schemaColumns();
+    expect([...s.get("joint_promos")!]).toEqual(
+      expect.arrayContaining(["created_by", "title", "ends_at", "status"]),
+    );
+    expect([...s.get("joint_promo_members")!]).toEqual(
+      expect.arrayContaining([
+        "promo_id",
+        "bot_id",
+        "status",
+        "code",
+        "discount_percent",
+        "promo_code_id",
+        "notified_at",
+      ]),
+    );
+  });
+});

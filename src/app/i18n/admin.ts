@@ -43,6 +43,7 @@ import * as community from "./admin/community";
 import * as shop19VDesign from "./admin/shop19-v-design";
 import * as shop19VMarket from "./admin/shop19-v-market";
 import * as communityDm from "./admin/community-dm";
+import * as communityPromos from "./admin/community-promos";
 import * as physical from "./admin/physical";
 import * as refund from "./admin/refund";
 import * as igImport from "./admin/ig-import";
@@ -501,6 +502,7 @@ const ru = {
   ...shop19VDesign.ru,
   ...shop19VMarket.ru,
   ...communityDm.ru,
+  ...communityPromos.ru,
   ...physical.ru,
   ...refund.ru,
   ...igImport.ru,
@@ -1647,6 +1649,7 @@ const kk: Dict = {
   ...shop19VDesign.kk,
   ...shop19VMarket.kk,
   ...communityDm.kk,
+  ...communityPromos.kk,
   ...physical.kk,
   ...refund.kk,
   ...igImport.kk,
@@ -1724,6 +1727,7 @@ const en: Dict = {
   ...shop19VDesign.en,
   ...shop19VMarket.en,
   ...communityDm.en,
+  ...communityPromos.en,
   ...physical.en,
   ...refund.en,
   ...igImport.en,
@@ -1801,6 +1805,7 @@ const uz: Dict = {
   ...shop19VDesign.uz,
   ...shop19VMarket.uz,
   ...communityDm.uz,
+  ...communityPromos.uz,
   ...physical.uz,
   ...refund.uz,
   ...igImport.uz,

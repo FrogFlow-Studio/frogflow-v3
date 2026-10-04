@@ -10,6 +10,8 @@ import {
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { CommunityDm } from "@/app/admin/community-dm";
 import { communityUnreadFn } from "@/app/admin/community-dm.functions";
+import { CommunityPromos } from "@/app/admin/community-promos";
+import { jointReadyFn } from "@/app/admin/community-promos.functions";
 import { Card, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { canEdit } from "@/core/auth/roles";
 
@@ -38,12 +40,19 @@ function CommunityPage() {
   const [state, setState] = useState<"loading" | "soon" | "ready">("loading");
   const [openId, setOpenId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
-  const [view, setView] = useState<"topics" | "dm">("topics");
+  const [view, setView] = useState<"topics" | "dm" | "promos">("topics");
   // Личные сообщения: вкладки нет, пока таблицы в базе нет (миграция 19-3).
   const [dm, setDm] = useState<{ ready: boolean; unread: number }>({ ready: false, unread: 0 });
   useEffect(() => {
     void communityUnreadFn()
       .then((r) => setDm(r.soon ? { ready: false, unread: 0 } : { ready: true, unread: r.unread }))
+      .catch(() => {});
+  }, []);
+  // Совместные акции: вкладки нет, пока таблиц нет (миграция 19-4) или не включён модуль промокодов.
+  const [promos, setPromos] = useState(false);
+  useEffect(() => {
+    void jointReadyFn()
+      .then((r) => setPromos(r.ready))
       .catch(() => {});
   }, []);
 
@@ -74,7 +83,7 @@ function CommunityPage() {
     <>
       <PageTitle title={t("community.title")} />
       <p className="mb-3 text-sm text-muted">{t("community.rules")}</p>
-      {dm.ready && (
+      {(dm.ready || promos) && (
         <div className="mb-3 flex gap-2">
           <button
             className={view === "topics" ? "btn-primary" : "btn-secondary"}
@@ -82,16 +91,27 @@ function CommunityPage() {
           >
             {t("community.title")}
           </button>
-          <button
-            className={view === "dm" ? "btn-primary" : "btn-secondary"}
-            onClick={() => setView("dm")}
-          >
-            {t("community.dm.tab")}
-            {dm.unread > 0 ? ` (${dm.unread})` : ""}
-          </button>
+          {dm.ready && (
+            <button
+              className={view === "dm" ? "btn-primary" : "btn-secondary"}
+              onClick={() => setView("dm")}
+            >
+              {t("community.dm.tab")}
+              {dm.unread > 0 ? ` (${dm.unread})` : ""}
+            </button>
+          )}
+          {promos && (
+            <button
+              className={view === "promos" ? "btn-primary" : "btn-secondary"}
+              onClick={() => setView("promos")}
+            >
+              {t("community.joint.tab")}
+            </button>
+          )}
         </div>
       )}
       {dm.ready && view === "dm" && <CommunityDm canWrite={canWrite} loc={loc} t={t} />}
+      {promos && view === "promos" && <CommunityPromos canWrite={canWrite} loc={loc} t={t} />}
       {view === "topics" && state === "soon" && <Empty>{t("community.soon")}</Empty>}
       {view === "topics" && state !== "soon" && openId ? (
         <ThreadView
