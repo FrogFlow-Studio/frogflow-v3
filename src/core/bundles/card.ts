@@ -1,4 +1,5 @@
 import { bundleView, loadBundle } from "@/core/bundles/bundle";
+import { bundleStock } from "@/core/bundles/stock";
 import type { Locale } from "@/core/i18n/locale";
 import { formatMoney } from "@/core/money/money";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -15,6 +16,8 @@ export type BundleCardInfo = {
   saving: { amount: string; separate: string } | null;
   /** Все составляющие в продаже; иначе кнопок покупки нет. */
   available: boolean;
+  /** Наборов из остатка составляющих; 0 — нет в наличии, null — предела нет или склад выключен. */
+  capacity: number | null;
 };
 
 export const BUNDLE_CARD: Record<
@@ -71,6 +74,7 @@ export async function bundleCardInfo(
     parts,
     saving,
     available: view.available,
+    capacity: ctx.tenant.modules.stock ? await bundleStock(ctx, items) : null,
   };
 }
 

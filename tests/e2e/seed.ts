@@ -19,6 +19,7 @@ import { seedShop4Waitlist } from "./seed/shop4-waitlist.ts";
 import { seedShop4Filters } from "./seed/shop4-filters.ts";
 import { seedShop4Chat } from "./seed/shop4-chat.ts";
 import { seedShop4Sale } from "./seed/shop4-sale.ts";
+import { seedShop18NBundle } from "./seed/shop18-n-bundle.ts";
 import { seedShop12Crumbs } from "./seed/shop12-crumbs.ts";
 import { seedShop14Cost } from "./seed/shop14-cost.ts";
 import { seedShop14Delivery } from "./seed/shop14-delivery.ts";
@@ -71,6 +72,7 @@ export function seedDb(): StubDb {
   seedShop16OSmart(db, now);
   seedShop16RAutostats(db, now);
   seedShop16DChat(db, now);
+  seedShop18NBundle(db, now);
   seedShop18Stale(db, now);
   return db;
 }

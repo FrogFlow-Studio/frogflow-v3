@@ -469,6 +469,12 @@ const ru = {
   "tickets.noOpen": "Открытого обращения нет — дописать некуда.",
   "product.lowLeft": "Осталось {n} шт.",
   "catalog.breadcrumbs": "Путь по каталогу",
+  "catalog.filter.bundles": "Наборы",
+  "catalog.bundle": "Набор",
+  "bundle.contains": "В наборе",
+  "bundle.saving": "Выгода {saving} (по отдельности {separate})",
+  "bundle.partsCount": "{n} поз. в наборе",
+  "bundle.unavailable": "Набор временно недоступен",
 } as const;
 
 export type StorefrontKey = keyof typeof ru;
@@ -935,6 +941,12 @@ const kk: Dict = {
   "tickets.noOpen": "Ашық өтініш жоқ — қосатын жер жоқ.",
   "product.lowLeft": "Қалды {n} дана",
   "catalog.breadcrumbs": "Каталог бойынша жол",
+  "catalog.filter.bundles": "Жинақтар",
+  "catalog.bundle": "Жинақ",
+  "bundle.contains": "Жинақта",
+  "bundle.saving": "Үнемдеу {saving} (бөлек {separate})",
+  "bundle.partsCount": "Жинақта {n} позиция",
+  "bundle.unavailable": "Жинақ уақытша қолжетімсіз",
 };
 
 const en: Dict = {
@@ -1394,6 +1406,12 @@ const en: Dict = {
   "tickets.noOpen": "There is no open request to add to.",
   "product.lowLeft": "Only {n} left",
   "catalog.breadcrumbs": "You are here in the catalog",
+  "catalog.filter.bundles": "Sets",
+  "catalog.bundle": "Set",
+  "bundle.contains": "In the set",
+  "bundle.saving": "You save {saving} (separately {separate})",
+  "bundle.partsCount": "{n} items in the set",
+  "bundle.unavailable": "This set is temporarily unavailable",
 };
 
 const uz: Dict = {
@@ -1860,6 +1878,12 @@ const uz: Dict = {
   "tickets.noOpen": "Ochiq murojaat yoʻq — qoʻshadigan joy yoʻq.",
   "product.lowLeft": "{n} dona qoldi",
   "catalog.breadcrumbs": "Katalogdagi yo‘l",
+  "catalog.filter.bundles": "To'plamlar",
+  "catalog.bundle": "To'plam",
+  "bundle.contains": "To'plamda",
+  "bundle.saving": "Tejash {saving} (alohida {separate})",
+  "bundle.partsCount": "To'plamda {n} ta pozitsiya",
+  "bundle.unavailable": "To'plam vaqtincha mavjud emas",
 };
 
 const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };

@@ -18,6 +18,8 @@ export type SeoProduct = {
   images: string[];
   variants: Array<{ price: number; currency: string }>;
   inStock: boolean;
+  /** Набор товаров: состав; цена выше — цена самого набора. */
+  bundle?: { parts: Array<{ name: string; variantName: string | null; qty: number }> } | null;
 };
 
 export type SeoRating = { avg: number; count: number } | null;
@@ -86,6 +88,17 @@ export function productJsonLd(
     url,
     brand: { "@type": "Brand", name: shop.name },
     offers,
+    ...(p.bundle?.parts.length
+      ? {
+          additionalProperty: {
+            "@type": "PropertyValue",
+            name: "bundle",
+            value: p.bundle.parts
+              .map((x) => `${x.name}${x.variantName ? ` (${x.variantName})` : ""} × ${x.qty}`)
+              .join(", "),
+          },
+        }
+      : {}),
     ...(rating && rating.count > 0
       ? {
           aggregateRating: {

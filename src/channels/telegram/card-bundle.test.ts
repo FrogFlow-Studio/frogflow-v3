@@ -43,8 +43,11 @@ describe("карточка набора в Telegram", () => {
   });
 
   it("набор без остатка: нет «Сообщить о поступлении» и предзаказа", async () => {
-    const { ctx } = bundleShop({ modules: { bundles: true, stock: true, waitlist: true } });
-    const card = await productCard(ctx, setProduct(0), "ru", null);
+    const { ctx } = bundleShop({
+      modules: { bundles: true, stock: true, waitlist: true },
+      stock: { balm: 0 },
+    });
+    const card = await productCard(ctx, setProduct(null), "ru", null);
     expect(callbacks(card.keyboard).some((c) => c.startsWith("wait:"))).toBe(false);
     expect(callbacks(card.keyboard).some((c) => c.startsWith("add:"))).toBe(false);
     expect(card.caption).toContain("Нет в наличии");

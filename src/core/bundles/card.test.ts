@@ -20,6 +20,21 @@ describe("карточка набора: данные", () => {
     expect(info?.available).toBe(true);
   });
 
+  it("остаток набора — по составляющим: 0 при пустом бальзаме, без учёта склада null", async () => {
+    const out = bundleShop({
+      modules: { bundles: true, stock: true },
+      stock: { shampoo: 9, balm: 0 },
+    });
+    expect((await bundleCardInfo(out.ctx, SET))?.capacity).toBe(0);
+    const some = bundleShop({
+      modules: { bundles: true, stock: true },
+      stock: { shampoo: 5, balm: 9 },
+    });
+    expect((await bundleCardInfo(some.ctx, SET))?.capacity).toBe(2); // шампуня 5 / 2
+    const noModule = bundleShop({ stock: { balm: 0 } });
+    expect((await bundleCardInfo(noModule.ctx, SET))?.capacity).toBeNull();
+  });
+
   it("обычный товар и выключенный модуль — не набор", async () => {
     const { ctx } = bundleShop();
     expect(await bundleCardInfo(ctx, SHAMPOO)).toBeNull();
@@ -51,7 +66,10 @@ describe("карточка набора: тексты", () => {
   });
 
   it("без выгоды строки выгоды нет", () => {
-    const text = bundleCardLines({ parts: ["A × 1"], saving: null, available: true }, "ru");
+    const text = bundleCardLines(
+      { parts: ["A × 1"], saving: null, available: true, capacity: null },
+      "ru",
+    );
     expect(text).toEqual(["В наборе:", "• A × 1"]);
   });
 });

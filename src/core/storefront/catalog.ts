@@ -30,6 +30,7 @@ import type { Locale } from "@/core/i18n/locale";
 import { languageChips } from "./lang-filter";
 import { priceRange } from "./filters";
 import { listedOnStorefront } from "./sitemap";
+import { bundleIds, storeBundlesFor, type StoreBundle } from "./bundles";
 import { STORE_PAGE } from "./paging";
 import {
   categorySubtree,
@@ -81,6 +82,8 @@ export type StoreProduct = {
     left: number | null;
     tz: string;
   } | null;
+  /** Набор (модуль bundles): состав и выгода; null — обычный товар. Предзаказа у набора нет. */
+  bundle: StoreBundle | null;
   /** Файлы материала — только на странице товара (storeProduct), в каталоге не нужны. */
   files?: ProductFile[];
 };
@@ -101,6 +104,8 @@ export type StoreInfo = {
   stockFilter: boolean;
   /** Идёт хотя бы одна акция: на главной есть фильтр «Со скидкой». */
   saleFilter: boolean;
+  /** Фильтр «Наборы»: модуль bundles включён и хотя бы один набор заведён. */
+  bundleFilter: boolean;
   /** Короткий текст «О продавце» для шапки витрины. */
   tagline: string | null;
   categories: Array<{ id: string; name: string; parent_id: string | null }>;
@@ -110,9 +115,10 @@ export type StoreInfo = {
 };
 
 export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
-  const [cats, saleFilter, s] = await Promise.all([
+  const [cats, saleFilter, bundlesOn, s] = await Promise.all([
     listAllCategories(ctx),
     hasActiveOffers(ctx),
+    bundleIds(ctx).then((ids) => ids.size > 0),
     getSettings(ctx, [
       "shop_name",
       "admin_contact_link",
@@ -142,6 +148,7 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
     langFilter: Boolean(ctx.tenant.modules.multi_language),
     stockFilter: Boolean(ctx.tenant.modules.stock),
     saleFilter,
+    bundleFilter: bundlesOn,
     tagline: s.shop_tagline?.trim()
       ? s.shop_tagline.trim().slice(0, 160)
       : s.legal_about
@@ -185,13 +192,20 @@ async function toStoreProducts(
   const ratings = rated.length
     ? await (await import("@/core/reviews/photos.server")).approvedRatings(ctx, rated)
     : new Map<string, { avg: number; count: number }>();
-  return Promise.all(ps.map((p) => toStoreProduct(ctx, p, ratings.get(p.id) ?? null)));
+  const bundles = await storeBundlesFor(
+    ctx,
+    ps.map((p) => p.id),
+  );
+  return Promise.all(
+    ps.map((p) => toStoreProduct(ctx, p, ratings.get(p.id) ?? null, bundles.get(p.id) ?? null)),
+  );
 }
 
 async function toStoreProduct(
   ctx: TenantContext,
   p: Product,
   rating: { avg: number; count: number } | null,
+  bundle: StoreBundle | null,
 ): Promise<StoreProduct> {
   const variants = sortedVariants(p);
   const priced = variants.length
@@ -224,8 +238,10 @@ async function toStoreProduct(
     })),
     categoryIds: Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [],
     kind: p.fulfillment_kind === "physical" ? "physical" : "digital",
-    inStock: isInStock(ctx, p),
-    preorder: isInStock(ctx, p) ? null : await getPreorder(ctx, p.id),
+    // Набор с недоступной составляющей купить нельзя; предзаказ для наборов не предлагаем.
+    inStock: bundle ? bundle.available && bundle.capacity !== 0 : isInStock(ctx, p),
+    preorder: bundle || isInStock(ctx, p) ? null : await getPreorder(ctx, p.id),
+    bundle,
     lowLeft: null,
     leadTimeDays: shownLeadDays(p),
     rating,
@@ -304,6 +320,8 @@ export async function storeCatalogPage(
     inStock?: boolean;
     /** Только товары с действующей акцией (фильтр «Со скидкой»). */
     sale?: boolean;
+    /** Только наборы товаров (фильтр «Наборы», модуль bundles). */
+    bundles?: boolean;
     /** Цена от и до включительно, в валюте магазина; null — граница не задана. */
     minPrice?: number | null;
     maxPrice?: number | null;
@@ -329,6 +347,14 @@ export async function storeCatalogPage(
   // Акции читаются один раз на запрос: по ним же считается цена на карточках.
   const sales = opts.sale && ctx.tenant.modules.limited_offers ? await loadOfferState(ctx) : null;
   const saleNow = new Date();
+  const sets = opts.bundles ? await bundleIds(ctx) : null;
+  // «В наличии»: набор с недоступной составляющей купить нельзя, как и товар без остатка.
+  const brokenSets = new Set<string>();
+  if (opts.inStock && ctx.tenant.modules.bundles) {
+    const all = [...(await bundleIds(ctx))];
+    for (const [setId, b] of await storeBundlesFor(ctx, all))
+      if (!b.available || b.capacity === 0) brokenSets.add(setId);
+  }
   await eachPage<Product>(
     (a, b) => catalogQuery(ctx, sort).range(a, b),
     "store catalog",
@@ -337,7 +363,8 @@ export async function storeCatalogPage(
         if (search && !search.has(p.id)) continue;
         const ids = Array.isArray(p.category_ids) ? (p.category_ids as string[]) : [];
         if (wanted && !ids.some((id) => wanted.has(id))) continue;
-        if (opts.inStock && !isInStock(ctx, p)) continue;
+        if (opts.inStock && (!isInStock(ctx, p) || brokenSets.has(p.id))) continue;
+        if (sets && !sets.has(p.id)) continue;
         if (
           opts.sale &&
           !(sales && activeOfferFor(sales.offers, p.id, sales.sold, saleNow, productCategoryIds(p)))

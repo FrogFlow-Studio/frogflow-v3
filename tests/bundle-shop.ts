@@ -8,7 +8,13 @@ export const BALM = "b0000000-0000-4000-8000-000000000003";
 export const BALM_V = "c0000000-0000-4000-8000-000000000001";
 
 /** Магазин с набором «Набор уход» = 2 шампуня + бальзам 250 мл (3000 ₸ при 5500 ₸ порознь). */
-export function bundleShop(opts: { modules?: Record<string, boolean>; balmActive?: boolean } = {}) {
+export function bundleShop(
+  opts: {
+    modules?: Record<string, boolean>;
+    balmActive?: boolean;
+    stock?: { shampoo?: number | null; balm?: number | null };
+  } = {},
+) {
   const db = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
   const prod = (id: string, name: string, price: number, extra = {}) => ({
     id,
@@ -24,8 +30,11 @@ export function bundleShop(opts: { modules?: Record<string, boolean>; balmActive
   });
   db.tables.products = [
     prod(SET, "Набор уход", 3000),
-    prod(SHAMPOO, "Шампунь", 2000),
-    prod(BALM, "Бальзам", 1500, { is_active: opts.balmActive ?? true }),
+    prod(SHAMPOO, "Шампунь", 2000, { stock_quantity: opts.stock?.shampoo ?? null }),
+    prod(BALM, "Бальзам", 1500, {
+      is_active: opts.balmActive ?? true,
+      stock_quantity: opts.stock?.balm ?? null,
+    }),
   ];
   db.tables.product_variants = [
     { id: BALM_V, bot_id: BOT, product_id: BALM, name: "250 мл", price: 1500, sort_order: 0 },

@@ -11,6 +11,7 @@ import { useStorefrontLocale } from "@/app/storefront/locale";
 import { OfferNote, OfferPrice } from "@/app/storefront/offer";
 import { SmartSearchResults } from "@/app/storefront/smart-search";
 import { formatRatingSummary } from "@/core/reviews/pure";
+import { formatMoney } from "@/core/money/money";
 import { localeFlags } from "@/core/i18n/locale";
 import { categoryChips } from "@/core/storefront/categories";
 import { CATALOG_SORTS, parseCatalogSort } from "@/core/storefront/sort";
@@ -41,6 +42,8 @@ export const Route = createFileRoute("/s/$slug/")({
     stock: z.literal(1).optional().catch(undefined),
     // «Со скидкой»: только товары с идущей акцией.
     sale: z.literal(1).optional().catch(undefined),
+    // «Наборы»: только наборы товаров (модуль bundles).
+    sets: z.literal(1).optional().catch(undefined),
     min: z.number().min(0).max(1_000_000_000).optional().catch(undefined),
     max: z.number().min(0).max(1_000_000_000).optional().catch(undefined),
   }),
@@ -53,6 +56,7 @@ export const Route = createFileRoute("/s/$slug/")({
     page: search.page,
     stock: search.stock,
     sale: search.sale,
+    sets: search.sets,
     min: search.min,
     max: search.max,
   }),
@@ -66,6 +70,7 @@ export const Route = createFileRoute("/s/$slug/")({
         lang: deps.lang,
         stock: deps.stock === 1 ? true : undefined,
         sale: deps.sale === 1 ? true : undefined,
+        bundles: deps.sets === 1 ? true : undefined,
         min: deps.min,
         max: deps.max,
         offset: ((deps.page ?? 1) - 1) * STORE_PAGE,
@@ -150,6 +155,7 @@ function CatalogPage() {
     s.page,
     s.stock,
     s.sale,
+    s.sets,
     s.min,
     s.max,
   ]);
@@ -177,6 +183,7 @@ function CatalogPage() {
           lang: s.lang,
           stock: s.stock === 1 ? true : undefined,
           sale: s.sale === 1 ? true : undefined,
+          bundles: s.sets === 1 ? true : undefined,
           min: s.min,
           max: s.max,
           offset: (firstPage - 1) * STORE_PAGE + catalog.length,
@@ -210,7 +217,8 @@ function CatalogPage() {
   const langs = shop.langFilter ? first.languages : [];
   const lang = s.lang && langs.includes(s.lang as never) ? s.lang : null;
   const products = catalog;
-  const filtered = s.stock === 1 || s.sale === 1 || s.min !== undefined || s.max !== undefined;
+  const filtered =
+    s.stock === 1 || s.sale === 1 || s.sets === 1 || s.min !== undefined || s.max !== undefined;
   const sort = parseCatalogSort(s.sort);
   const digitalOnly = products.length > 0 && products.every((p) => p.kind === "digital");
 
@@ -269,6 +277,7 @@ function CatalogPage() {
               sort: s.sort,
               stock: s.stock,
               sale: s.sale,
+              sets: s.sets,
               min: s.min,
               max: s.max,
             }}
@@ -288,6 +297,7 @@ function CatalogPage() {
                 sort: s.sort,
                 stock: s.stock,
                 sale: s.sale,
+                sets: s.sets,
                 min: s.min,
                 max: s.max,
               }}
@@ -311,6 +321,7 @@ function CatalogPage() {
               sort: s.sort,
               stock: s.stock,
               sale: s.sale,
+              sets: s.sets,
               min: s.min,
               max: s.max,
             }}
@@ -330,6 +341,7 @@ function CatalogPage() {
                 sort: s.sort,
                 stock: s.stock,
                 sale: s.sale,
+                sets: s.sets,
                 min: s.min,
                 max: s.max,
               }}
@@ -383,6 +395,7 @@ function CatalogPage() {
               ...s,
               stock: f.get("stock") === "on" ? 1 : undefined,
               sale: f.get("sale") === "on" ? 1 : undefined,
+              sets: f.get("sets") === "on" ? 1 : undefined,
               min: num("min"),
               max: num("max"),
               page: undefined,
@@ -400,6 +413,12 @@ function CatalogPage() {
           <label className="flex items-center gap-1.5">
             <input type="checkbox" name="sale" defaultChecked={s.sale === 1} />
             {t("catalog.filter.sale")}
+          </label>
+        )}
+        {(shop.bundleFilter || s.sets === 1) && (
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" name="sets" defaultChecked={s.sets === 1} />
+            {t("catalog.filter.bundles")}
           </label>
         )}
         <label className="flex items-center gap-1.5">
@@ -429,6 +448,7 @@ function CatalogPage() {
               ...s,
               stock: undefined,
               sale: undefined,
+              sets: undefined,
               min: undefined,
               max: undefined,
               page: undefined,
@@ -503,6 +523,11 @@ function CatalogPage() {
                     return b.key === "catalog.madeToOrder" ? t(b.key, { n: b.n }) : t(b.key);
                   })()}
                 </span>
+                {p.bundle && (
+                  <span className="absolute bottom-2 left-2 rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium text-white">
+                    {t("catalog.bundle")}
+                  </span>
+                )}
                 {!p.inStock && (
                   <span className="absolute right-2 bottom-2 rounded-md bg-fg/80 px-2 py-0.5 text-[11px] font-medium text-bg">
                     {p.preorder ? t("catalog.preorder") : t("catalog.outOfStock")}
@@ -523,6 +548,18 @@ function CatalogPage() {
                 >
                   {p.name}
                 </Link>
+                {p.bundle && (
+                  <div className="mt-1 text-xs text-muted">
+                    {p.bundle.available
+                      ? p.bundle.saving !== null
+                        ? t("bundle.saving", {
+                            saving: formatMoney(p.bundle.saving, p.currency),
+                            separate: formatMoney(p.bundle.separateTotal ?? 0, p.currency),
+                          })
+                        : t("bundle.partsCount", { n: p.bundle.parts.length })
+                      : t("bundle.unavailable")}
+                  </div>
+                )}
                 {p.rating && (
                   <div className="mt-1 text-xs text-muted">
                     {formatRatingSummary(p.rating.avg, p.rating.count)}

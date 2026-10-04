@@ -14,15 +14,18 @@ function open(
   opts: {
     modules?: Record<string, boolean>;
     balmActive?: boolean;
-    stock?: number;
+    balmStock?: number;
     locale?: string;
   } = {},
 ) {
-  const { ctx: base, db } = bundleShop({ modules: opts.modules, balmActive: opts.balmActive });
+  const { ctx: base, db } = bundleShop({
+    modules: opts.modules,
+    balmActive: opts.balmActive,
+    stock: { balm: opts.balmStock ?? null },
+  });
   Object.assign(
     db.tables.products!.find((p) => p.id === SET)!,
     {
-      stock_quantity: opts.stock ?? 5,
       description: null,
       lead_time_days: null,
       product_images: [],
@@ -84,7 +87,10 @@ describe("карточка набора в Instagram/WhatsApp Direct", () => {
   });
 
   it("набор без остатка: нет кнопки «Сообщить о поступлении»", async () => {
-    const card = await open({ modules: { bundles: true, stock: true, waitlist: true }, stock: 0 });
+    const card = await open({
+      modules: { bundles: true, stock: true, waitlist: true },
+      balmStock: 0,
+    });
     expect(payloads(card.buttons).some((p) => p.startsWith("WAIT:"))).toBe(false);
     expect(payloads(card.buttons).some((p) => p.startsWith("BUY:"))).toBe(false);
     expect(card.text).toContain("Нет в наличии");

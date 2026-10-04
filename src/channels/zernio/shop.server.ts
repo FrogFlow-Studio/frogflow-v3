@@ -1482,13 +1482,15 @@ async function sendProductCard(s: Shop, p: Product, force: boolean) {
   const country = s.customer.state.country_code ?? null;
   const variants = sortedVariants(p);
   const imgs = sortedImages(p);
-  const stockedOut =
-    s.ctx.tenant.modules.stock && p.stock_quantity != null && p.stock_quantity <= 0;
   // Нет в наличии, но продавец берёт предзаказ (core/preorder): кнопки покупки остаются.
   const { getPreorder } = await import("@/core/preorder/preorder");
   // Набор (модуль bundles): предзаказ и лист ожидания для него не предлагаем.
   const { bundleCardInfo, bundleCardLines } = await import("@/core/bundles/card");
   const bundle = await bundleCardInfo(s.ctx, p.id);
+  // Остаток набора — по составляющим (core/bundles/stock), у остальных — свой.
+  const stockedOut = bundle
+    ? bundle.capacity === 0
+    : s.ctx.tenant.modules.stock && p.stock_quantity != null && p.stock_quantity <= 0;
   const preorder = stockedOut && !bundle ? await getPreorder(s.ctx, p.id) : null;
   const outOfStock = stockedOut && !preorder;
   // Кнопок покупки нет: товара нет в наличии или в наборе недоступна составляющая.

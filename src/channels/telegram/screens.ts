@@ -102,10 +102,13 @@ export async function productCard(
   const imgs = sortedImages(p);
   const variants = sortedVariants(p);
   const desc = p.description ? `\n\n${escapeHtml(p.description)}` : `\n\n<i>${m.descPending}</i>`;
-  const stockedOut = t.modules.stock && p.stock_quantity != null && p.stock_quantity <= 0;
   // Нет в наличии, но продавец берёт предзаказ (core/preorder): кнопки покупки остаются.
   // Набор (модуль bundles): предзаказ и лист ожидания для него не предлагаем.
   const bundle = await bundleCardInfo(ctx, p.id);
+  // Остаток набора — по составляющим (core/bundles/stock), у остальных — свой.
+  const stockedOut = bundle
+    ? bundle.capacity === 0
+    : t.modules.stock && p.stock_quantity != null && p.stock_quantity <= 0;
   const preorder = stockedOut && !bundle ? await getPreorder(ctx, p.id) : null;
   const outOfStock = stockedOut && !preorder;
   const waitRows = bundle ? [] : waitlistRow(t, locale, p.id);

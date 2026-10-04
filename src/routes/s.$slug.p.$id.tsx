@@ -220,6 +220,27 @@ function ProductPage() {
               </div>
             </div>
           )}
+          {p.bundle && (
+            <div className="mt-4 space-y-1 text-sm" data-testid="bundle-parts">
+              <div className="label">{t("bundle.contains")}</div>
+              <ul className="space-y-0.5">
+                {p.bundle.parts.map((part, i) => (
+                  <li key={i}>
+                    {part.name}
+                    {part.variantName ? ` (${part.variantName})` : ""} × {part.qty}
+                  </li>
+                ))}
+              </ul>
+              {p.bundle.saving !== null && (
+                <div className="font-medium text-accent">
+                  {t("bundle.saving", {
+                    saving: formatMoney(p.bundle.saving, p.currency),
+                    separate: formatMoney(p.bundle.separateTotal ?? 0, p.currency),
+                  })}
+                </div>
+              )}
+            </div>
+          )}
           {course && tariff && (
             <div className="mt-4 space-y-1 text-sm">
               {course.cohort && (
@@ -276,8 +297,12 @@ function ProductPage() {
               </>
             ) : (
               <>
-                <span className="badge">{t("product.outOfStock")}</span>
-                {waitlistUrl && (
+                <span className="badge">
+                  {p.bundle && !p.bundle.available
+                    ? t("bundle.unavailable")
+                    : t("product.outOfStock")}
+                </span>
+                {waitlistUrl && !p.bundle && (
                   <a
                     href={waitlistUrl}
                     target="_blank"
