@@ -375,7 +375,7 @@ export async function updateStateSection(
 export async function claimStateSection(
   ctx: TenantContext,
   customer: Customer,
-  key: "consultant" | "direct" | "winback" | "web_fav" | "web_login",
+  key: "consultant" | "direct" | "winback" | "funnel" | "web_fav" | "web_login",
   patch: (current: Record<string, unknown>) => Record<string, unknown> | null,
 ): Promise<Customer | null> {
   for (let attempt = 0; attempt < 3; attempt++) {

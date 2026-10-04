@@ -113,7 +113,7 @@ function setupDirect(inboundHoursAgo: number | null) {
     tenant: { id: "b", modules: { cart_reminder: true }, settings: {} },
     db,
   } as unknown as TenantContext;
-  return { ctx, row: db.tables.bot_users[0]! };
+  return { ctx, db, row: db.tables.bot_users[0]! };
 }
 
 describe("напоминание о корзине: заблокированный покупатель", () => {
@@ -258,6 +258,24 @@ describe("напоминание о корзине: Instagram и WhatsApp", () =
   it("гонка двух кронов — одно сообщение", async () => {
     const { ctx } = setupDirect(3);
     const send = vi.fn(async () => true);
+    const [a, b] = await Promise.all([
+      sendCartReminders(ctx, send, NOW),
+      sendCartReminders(ctx, send, NOW),
+    ]);
+    expect(a.sent + b.sent).toBe(1);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("гонка двух кронов без потолка («0») — одно сообщение: корзина занята отметкой до отправки", async () => {
+    const { ctx, db } = setupDirect(3);
+    db.tables.app_settings = [
+      ...(db.tables.app_settings ?? []),
+      { key: "marketing_daily_cap", value: "0" },
+    ];
+    const send = vi.fn(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+      return true;
+    });
     const [a, b] = await Promise.all([
       sendCartReminders(ctx, send, NOW),
       sendCartReminders(ctx, send, NOW),

@@ -286,18 +286,22 @@ export async function runWinback(
       // занято — шаг не отмечаем, напишем в следующий прогон.
       const marked = await claimMarketing(ctx, c.userKey, row.state, cap, now);
       if (!marked) continue;
+      // Шаг серии отмечаем ДО отправки, условной записью по rev раздела winback
+      // (и state.mode): из двух кронов, дошедших до покупателя в одно время,
+      // пишет первый, второй видит отметку и уступает. Без этого при потолке
+      // «0» (нет claimMarketing) оба успевали отправить. Шаг остаётся и при
+      // неудачной отправке: не долбить одного и того же каждый час; параллельные
+      // записи бота и v1 в других полях state не затираем.
+      const claimed = await claimStateSection(ctx, c, "winback", (cur) =>
+        cur.order_id === order.id && Number(cur.step ?? 0) >= step
+          ? null
+          : { order_id: order.id, step, at: now.toISOString() },
+      );
+      if (!claimed) continue;
       const ok = await send(c, winbackText(cfg, step, c.firstName)).catch(() => false);
       if (ok) r.sent++;
       else r.failed++;
       await recordAutoMessage(ctx, "winback", c.telegramId, ok, now);
-      // Шаг отмечаем и при неудаче: не долбить одного и того же каждый час.
-      // Пишем только раздел winback на свежем state с условием на его rev и
-      // state.mode: параллельные записи бота и v1 не затираем.
-      await claimStateSection(ctx, c, "winback", () => ({
-        order_id: order.id,
-        step,
-        at: now.toISOString(),
-      }));
     }
   }
   return r;

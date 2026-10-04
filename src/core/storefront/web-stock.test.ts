@@ -75,6 +75,18 @@ describe("склад и заказы с сайта", () => {
     expect(stock(db)).toBe(5);
   });
 
+  it("два крона одновременно: заказ отменён один раз, остаток вернулся один раз", async () => {
+    const { db, ctx } = setup([
+      { id: 1, platform: "web", status: "awaiting_payment", created_at: old },
+      { id: 2, platform: "web", status: "awaiting_payment", created_at: old },
+    ]);
+    const [a, b] = await Promise.all([expireWebOrders(ctx, NOW), expireWebOrders(ctx, NOW)]);
+    expect(a.cancelled + b.cancelled).toBe(2);
+    expect(db.tables.orders!.map((o) => o.status)).toEqual(["cancelled", "cancelled"]);
+    // Два заказа по 3 штуки: остаток 2 + 3 + 3, а не вдвое больше.
+    expect(stock(db)).toBe(8);
+  });
+
   it("больше потолка штук одной позиции — отказ до корзины и склада", async () => {
     const { db, ctx } = setup([]);
     db.tables.cart_items = [];

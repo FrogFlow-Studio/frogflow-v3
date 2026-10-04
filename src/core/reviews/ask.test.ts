@@ -130,6 +130,18 @@ describe("просьба об оценке: кому и когда", () => {
     expect(a.sent.length + b.sent.length).toBe(1);
   });
 
+  it("два крона одновременно без потолка («0») — тоже одно сообщение: заказ занят отметкой до отправки", async () => {
+    const { ctx, db } = setup();
+    db.tables.app_settings!.push({ key: "marketing_daily_cap", value: "0" });
+    const send = async (...a: Parameters<ReturnType<typeof collect>["send"]>) => {
+      await new Promise((r) => setTimeout(r, 5));
+      return x.send(...a);
+    };
+    const x = collect();
+    await Promise.all([runReviewAsk(ctx, send, NOW), runReviewAsk(ctx, send, NOW)]);
+    expect(x.sent.map((m) => m.to.telegramId)).toEqual([1]);
+  });
+
   it("отписавшийся и заблокированный — тишина, заказы закрыты", async () => {
     const { ctx, db } = setup();
     const a = collect();

@@ -168,6 +168,33 @@ describe("возврат клиентов: кто уже вернулся", () =
   });
 });
 
+describe("возврат клиентов: два крона одновременно", () => {
+  // Асинхронная отправка: второй крон успевает дойти до покупателя, пока первый шлёт.
+  const slowSend = () =>
+    vi.fn(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+      return true;
+    });
+
+  it("потолок по умолчанию (одно в сутки) — одно сообщение", async () => {
+    const { db, ctx } = setup(1);
+    const send = slowSend();
+    await Promise.all([runWinback(ctx, send, NOW), runWinback(ctx, send, NOW)]);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect((db.tables.bot_users![0]!.state as { winback: { step: number } }).winback.step).toBe(1);
+  });
+
+  it("без потолка («0») — всё равно одно сообщение: шаг серии занят до отправки", async () => {
+    const { db, ctx } = setup(1);
+    db.tables.app_settings!.push({ key: "marketing_daily_cap", value: "0" });
+    const send = slowSend();
+    const [a, b] = await Promise.all([runWinback(ctx, send, NOW), runWinback(ctx, send, NOW)]);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(a.sent + b.sent).toBe(1);
+    expect((db.tables.bot_users![0]!.state as { winback: { step: number } }).winback.step).toBe(1);
+  });
+});
+
 describe("возврат клиентов: окно ответа Instagram и WhatsApp", () => {
   function direct(lastInboundDaysAgo: number | null) {
     const { db, ctx } = setup(1);

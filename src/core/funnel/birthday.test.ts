@@ -81,4 +81,49 @@ describe("день рождения покупателя", () => {
     expect(got).toEqual(["tg_1: С днём рождения, Анна!"]);
     expect(await runBirthdays(ctx, send, noon)).toEqual({ sent: 0, failed: 0 });
   });
+
+  it("два крона одновременно — одно поздравление, отметка года одна", async () => {
+    const db = fakeDb({ unique: { app_settings: [["bot_id", "key"]] } });
+    db.tables.app_settings = [
+      {
+        bot_id: BOT,
+        key: "birthday_greeting",
+        value: JSON.stringify({ enabled: true, text: "С днём рождения, {name}!", promo: "" }),
+      },
+    ];
+    db.tables.bot_users = [
+      {
+        bot_id: BOT,
+        user_key: "tg_1",
+        telegram_id: 1,
+        platform: "telegram",
+        first_name: "Анна",
+        opt_out: false,
+        state: { birthday: "03-15" },
+      },
+    ];
+    db.tables.blocked_users = [];
+    const ctx = {
+      db,
+      tenant: { id: BOT, modules: { funnel: true } },
+      timezone: "Asia/Almaty",
+    } as unknown as TenantContext;
+    const got: string[] = [];
+    const send = async (c: { userKey: string }) => {
+      await new Promise((r) => setTimeout(r, 5));
+      got.push(c.userKey);
+      return true;
+    };
+    const noon = new Date("2026-03-15T06:00:00Z");
+    const [a, b] = await Promise.all([
+      runBirthdays(ctx, send, noon),
+      runBirthdays(ctx, send, noon),
+    ]);
+    expect(got).toEqual(["tg_1"]);
+    expect(a.sent + b.sent).toBe(1);
+    expect(db.tables.bot_users![0]!.state).toMatchObject({
+      birthday: "03-15",
+      birthday_sent: 2026,
+    });
+  });
 });

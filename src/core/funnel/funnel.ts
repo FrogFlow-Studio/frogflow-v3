@@ -1,6 +1,10 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import type { Json } from "@/core/db-types";
-import { customerFromRow, isBlocked, setState, type Customer } from "@/core/customers/customers";
+import {
+  claimStateSection,
+  customerFromRow,
+  isBlocked,
+  type Customer,
+} from "@/core/customers/customers";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { claimMarketing, loadMarketingCap } from "@/core/marketing/cap";
 import { daytime } from "@/core/winback/winback";
@@ -137,10 +141,8 @@ export async function runFunnel(
         if (mem?.stopped) continue;
         r.checked++;
         if (ordered.has(c.telegramId)) {
-          await setState(ctx, c, {
-            ...c.state,
-            funnel: { ...(mem ?? {}), stopped: true } as Json,
-          });
+          // Раздел funnel — условной записью по его rev: остальной state (диалог бота, v1) не затираем.
+          await claimStateSection(ctx, c, "funnel", (cur) => ({ ...cur, stopped: true }));
           continue;
         }
         const due = funnelDue(cfg, row.created_at, mem?.step ?? 0, now);
@@ -149,15 +151,22 @@ export async function runFunnel(
         // Потолок маркетинговых сообщений за сутки (core/marketing/cap).
         const marked = await claimMarketing(ctx, c.userKey, row.state, cap, now);
         if (!marked) continue;
+        // Шаг воронки отмечаем ДО отправки, условной записью по rev раздела
+        // funnel: из двух кронов, дошедших до покупателя в одно время, пишет
+        // первый, второй видит отметку и уступает (при потолке «0» claimMarketing
+        // замка не даёт). Шаг остаётся и при неудачной отправке, как и раньше;
+        // остальной state не затираем.
+        const claimed = await claimStateSection(ctx, c, "funnel", (cur) =>
+          cur.stopped === true || Number(cur.step ?? 0) > due
+            ? null
+            : { step: due + 1, at: now.toISOString() },
+        );
+        if (!claimed) continue;
         const ok = await send(c, fillFunnelText(step.text, c.firstName), step.catalogButton).catch(
           () => false,
         );
         if (ok) r.sent++;
         else r.failed++;
-        await setState(ctx, c, {
-          ...marked,
-          funnel: { step: due + 1, at: now.toISOString() } as unknown as Json,
-        });
       }
       return r.sent + r.failed < FUNNEL_BATCH;
     },

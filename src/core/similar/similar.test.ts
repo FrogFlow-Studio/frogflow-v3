@@ -237,6 +237,25 @@ describe("похожие материалы: крон", () => {
     expect(sent).toEqual([]);
   });
 
+  for (const [name, cap] of [
+    ["потолок по умолчанию", null],
+    ["без потолка («0»)", "0"],
+  ] as const)
+    it(`два крона одновременно, ${name}: одно сообщение, курсор сдвинут один раз`, async () => {
+      const { db, ctx } = setup();
+      if (cap) db.tables.app_settings!.push({ key: "marketing_daily_cap", value: cap });
+      const { sent, send } = collect();
+      const slow: SimilarSender = async (...a) => {
+        await new Promise((r) => setTimeout(r, 5));
+        return send(...a);
+      };
+      const [x, y] = await Promise.all([runSimilar(ctx, slow, NOW), runSimilar(ctx, slow, NOW)]);
+      expect(sent.map((m) => m.to)).toEqual([1]);
+      expect(x.sent + y.sent).toBe(1);
+      expect([x.skipped, y.skipped].filter((v) => v === "busy").length).toBeLessThanOrEqual(1);
+      expect(db.tables.app_settings!.filter((r) => r.key === SIMILAR_CURSOR_KEY)).toHaveLength(1);
+    });
+
   it("курсор уже был и его сдвинули между чтением и захватом — тихо уступаем", async () => {
     const { db, ctx } = setup();
     db.tables.app_settings!.push({ key: SIMILAR_CURSOR_KEY, value: "5" });
