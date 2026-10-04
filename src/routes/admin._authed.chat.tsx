@@ -5,6 +5,8 @@ import { z } from "zod";
 import {
   chatConnectFn,
   chatConversationsFn,
+  chatInboxPageFn,
+  chatInboxPollFn,
   chatInvoiceFn,
   chatInvoiceModesFn,
   chatEarlierFn,
@@ -33,8 +35,7 @@ import {
   type ReplyWindow,
 } from "@/core/chat/reply-window";
 import {
-  filterInbox,
-  inboxCounts,
+  matchesInbox,
   type InboxFilter,
   type InboxItem,
   type QuickReply,
@@ -144,6 +145,10 @@ function ChatPage() {
   const t = adminT(shop.locale);
   const loc = intlLocale(shop.locale);
   const [conversations, setConversations] = useState<InboxItem[]>(initial.conversations);
+  const [hasMore, setHasMore] = useState(initial.hasMore);
+  const [totals, setTotals] = useState(initial.totals);
+  // Открытый диалог держим отдельно: под фильтром или поиском его может не быть в списке.
+  const [openedItem, setOpenedItem] = useState<InboxItem | null>(null);
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>(initial.quickReplies);
   const [editingQuick, setEditingQuick] = useState(false);
   const [invoicing, setInvoicing] = useState(false);
@@ -157,10 +162,14 @@ function ChatPage() {
       .catch(() => {});
   }, []);
   const [filter, setFilter] = useState<InboxFilter>({ status: "open", who: "all", channel: "all" });
+  const [searchText, setSearchText] = useState("");
   const canWrite = canEdit(shop.role);
   const me = initial.me;
-  const visible = filterInbox(conversations, filter, me);
-  const counts = inboxCounts(conversations, me);
+  // Опрос и действия видят актуальные фильтр и границу «что изменилось», а не замкнутые значения.
+  const live = useRef({ filter, since: "", sig: "" });
+  live.current.filter = filter;
+  const visible = conversations;
+  const counts = totals;
   const assigneeName = (u: string | null) => {
     if (!u) return t("chat.nobody");
     const a = initial.assignees.find((x) => x.username === u);
@@ -185,7 +194,9 @@ function ChatPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
   const threadRef = useRef<HTMLDivElement>(null);
-  const selected = conversations.find((c) => c.telegram_id === selectedId) ?? null;
+  const selected =
+    conversations.find((c) => c.telegram_id === selectedId) ??
+    (openedItem && openedItem.telegram_id === selectedId ? openedItem : null);
   // Окно ответа Instagram/WhatsApp — только когда переписка этого диалога уже загружена.
   const window24 =
     selected && thread.telegramId === selected.telegram_id
@@ -194,13 +205,108 @@ function ChatPage() {
 
   const notice = selected ? windowNotice(selected.platform, window24, thread.waTemplate) : null;
 
-  // Опрос: список — всегда, переписка — для открытого диалога.
+  /** Слияние свежих диалогов в список: подходящие под фильтр заменяются или добавляются, прочие уходят. */
+  const mergeChanged = (items: InboxItem[], f: InboxFilter) =>
+    setConversations((cur) => {
+      const byId = new Map(cur.map((c) => [c.telegram_id, c]));
+      for (const i of items) {
+        if (matchesInbox(i, f, me)) byId.set(i.telegram_id, i);
+        else byId.delete(i.telegram_id);
+      }
+      return [...byId.values()].sort(
+        (a, b) =>
+          (a.last_message_at < b.last_message_at
+            ? 1
+            : a.last_message_at > b.last_message_at
+              ? -1
+              : 0) || b.telegram_id - a.telegram_id,
+      );
+    });
+  const noteSince = (items: InboxItem[]) => {
+    for (const i of items)
+      if (i.last_message_at > live.current.since) live.current.since = i.last_message_at;
+  };
+  const noteTotals = (tt: typeof totals) => {
+    live.current.sig = JSON.stringify(tt);
+    setTotals(tt);
+  };
+  /** Первая страница под фильтр: целиком заменяет список (смена фильтра, поиск) или вливается в него. */
+  const loadFirstPage = async (f: InboxFilter, replace: boolean) => {
+    const r = await chatInboxPageFn({ data: { filter: f } });
+    if (live.current.filter !== f) return;
+    noteTotals(r.totals);
+    if (replace) {
+      setConversations(r.conversations);
+      setHasMore(r.hasMore);
+    } else mergeChanged(r.conversations, f);
+  };
+  const refreshList = async () => loadFirstPage(live.current.filter, false);
+  // Эффекты опроса и поиска вызывают актуальные обработчики через ref, а не замкнутые на старый рендер.
+  const fns = useRef({
+    mergeChanged,
+    noteTotals,
+    refreshList,
+    changeFilter: (_f: InboxFilter) => {},
+  });
+  useEffect(() => {
+    live.current.sig = JSON.stringify(initial.totals);
+    live.current.since = initial.asOf;
+  }, [initial.totals, initial.asOf]);
+  const changeFilter = (f: InboxFilter) => {
+    live.current.filter = f;
+    setFilter(f);
+    void loadFirstPage(f, true).catch(setLoadError);
+  };
+  fns.current = { mergeChanged, noteTotals, refreshList, changeFilter };
+  const loadMore = useAction(async () => {
+    const last = conversations[conversations.length - 1];
+    if (!last) return;
+    const f = live.current.filter;
+    const r = await chatInboxPageFn({
+      data: {
+        filter: f,
+        before: { last_message_at: last.last_message_at, telegram_id: last.telegram_id },
+      },
+    });
+    if (live.current.filter !== f) return;
+    noteTotals(r.totals);
+    setConversations((cur) => {
+      const have = new Set(cur.map((c) => c.telegram_id));
+      return [...cur, ...r.conversations.filter((c) => !have.has(c.telegram_id))];
+    });
+    setHasMore(r.hasMore);
+  });
+  // Поиск на сервере: запрос уходит после паузы в наборе.
+  useEffect(() => {
+    if ((live.current.filter.search ?? "") === searchText.trim()) return;
+    const timer = setTimeout(
+      () => fns.current.changeFilter({ ...live.current.filter, search: searchText.trim() }),
+      350,
+    );
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  // Опрос: список — только изменившееся с прошлого раза, переписка — для открытого диалога.
   useEffect(() => {
     let alive = true;
     const tick = async () => {
       try {
-        const r = await chatConversationsFn();
-        if (alive) setConversations(r.conversations);
+        const r = await chatInboxPollFn({
+          data: {
+            since: live.current.since,
+            ...(selectedId !== null ? { selectedId } : {}),
+          },
+        });
+        if (alive) {
+          const f = live.current.filter;
+          const sig = JSON.stringify(r.totals);
+          noteSince(r.changed);
+          if (r.changed.length) fns.current.mergeChanged(r.changed, f);
+          // Счётчики сдвинулись без новых реплик (кто-то решил, назначил, прочитал) — перечитываем начало списка.
+          else if (sig !== live.current.sig) await fns.current.refreshList();
+          fns.current.noteTotals(r.totals);
+          if (r.selected) setOpenedItem(r.selected);
+        }
         if (selectedId !== null) {
           const m = await chatMessagesFn({ data: { telegramId: selectedId } });
           if (alive) setThread((p) => threadOf(p, selectedId, m));
@@ -256,12 +362,12 @@ function ChatPage() {
   const toggle = useAction(async () => {
     if (!selected) return;
     await chatConnectFn({ data: { telegramId: selected.telegram_id, active: !selected.active } });
-    setConversations((await chatConversationsFn()).conversations);
+    await refreshList();
   });
   const resumeBot = useAction(async () => {
     if (!selected) return;
     await chatResumeBotFn({ data: { telegramId: selected.telegram_id } });
-    setConversations((await chatConversationsFn()).conversations);
+    await refreshList();
   });
   useEffect(() => {
     setAttachment(null);
@@ -308,13 +414,18 @@ function ChatPage() {
         }
       />
       <UnansweredAlert t={t} initial={initial.unansweredMinutes} canWrite={canWrite} />
-      <InboxFilters t={t} filter={filter} counts={counts} onChange={setFilter} />
+      <InboxFilters
+        t={t}
+        filter={filter}
+        counts={counts}
+        search={searchText}
+        onSearch={setSearchText}
+        onChange={changeFilter}
+      />
       <div className="card grid h-[calc(100vh-14rem)] min-h-[28rem] grid-cols-1 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <div className="overflow-y-auto border-b border-line md:border-r md:border-b-0">
-          {conversations.length === 0 ? (
-            <Empty>{t("chat.empty")}</Empty>
-          ) : visible.length === 0 ? (
-            <Empty>{t("chat.emptyFiltered")}</Empty>
+          {visible.length === 0 ? (
+            <Empty>{counts.total === 0 ? t("chat.empty") : t("chat.emptyFiltered")}</Empty>
           ) : (
             visible.map((c) => (
               <button
@@ -349,6 +460,16 @@ function ChatPage() {
                 </p>
               </button>
             ))
+          )}
+          {hasMore && (
+            <button
+              type="button"
+              className="block w-full px-4 py-3 text-center text-xs text-muted hover:bg-surface-2/60"
+              disabled={loadMore.busy}
+              onClick={() => void loadMore.run().catch(() => {})}
+            >
+              {t("chat.moreDialogs")}
+            </button>
           )}
         </div>
         <div className="flex min-h-0 flex-col">
@@ -492,7 +613,7 @@ function ChatPage() {
                   onSent={async () => {
                     const m = await chatMessagesFn({ data: { telegramId: selected.telegram_id } });
                     setThread((p) => threadOf(p, selected.telegram_id, m));
-                    setConversations((await chatConversationsFn()).conversations);
+                    await refreshList();
                   }}
                 />
               )}
@@ -611,11 +732,15 @@ function InboxFilters({
   t,
   filter,
   counts,
+  search,
+  onSearch,
   onChange,
 }: {
   t: AdminT;
   filter: InboxFilter;
-  counts: { open: number; mine: number; unassigned: number };
+  counts: { open: number; mine: number; unassigned: number; unread: number };
+  search: string;
+  onSearch: (q: string) => void;
   onChange: (f: InboxFilter) => void;
 }) {
   const tab = (active: boolean) =>
@@ -644,6 +769,22 @@ function InboxFilters({
           </button>
         ))}
       </div>
+      <button
+        type="button"
+        aria-pressed={Boolean(filter.unread)}
+        className={tab(Boolean(filter.unread))}
+        onClick={() => onChange({ ...filter, unread: !filter.unread })}
+      >
+        {`${t("chat.fUnread")} · ${counts.unread}`}
+      </button>
+      <input
+        type="search"
+        className="input h-8 w-48 py-0 text-sm"
+        value={search}
+        placeholder={t("chat.search")}
+        aria-label={t("chat.search")}
+        onChange={(e) => onSearch(e.target.value)}
+      />
       <select
         className="input h-8 w-auto py-0 text-sm"
         value={filter.who}

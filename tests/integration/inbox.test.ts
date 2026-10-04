@@ -1,9 +1,10 @@
+import { allConversations } from "./all-conversations";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { liveReady, DEMO_BOT, TEST_TG_ID } from "./live";
 import { serviceDb } from "@/core/db/client.server";
 import { requireTenant, tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
 import { upsertCustomer, userKey } from "@/core/customers/customers";
-import { inboundIntercepted, listConversations } from "@/core/chat/chat";
+import { inboundIntercepted } from "@/core/chat/chat";
 import { createTicket, getTicket, TICKET_SEQ_KEY } from "@/core/helpdesk/tickets";
 import {
   getInboxMeta,
@@ -91,7 +92,7 @@ describe.skipIf(!liveReady)("единый входящий на демо-кли�
     await setInboxMeta(ctx, INBOX_TG_ID, { assignee: "probe" }, "admin:probe");
     const m = await setInboxMeta(ctx, INBOX_TG_ID, { status: "closed" }, "admin:probe");
     expect(m).toMatchObject({ status: "closed", assignee: "probe", updatedBy: "admin:probe" });
-    const convs = await listConversations(ctx);
+    const convs = await allConversations(ctx);
     const items = mergeInbox(convs, await inboxMetaFor(ctx, [INBOX_TG_ID]));
     expect(items.find((i) => i.telegram_id === INBOX_TG_ID)).toMatchObject({
       status: "closed",

@@ -4,8 +4,7 @@ import {
   channelOf,
   cleanQuickReplies,
   fillQuickReply,
-  filterInbox,
-  inboxCounts,
+  matchesInbox,
   inboxEventId,
   mergeInbox,
   parseQuickReplies,
@@ -103,10 +102,10 @@ describe("единый входящий", () => {
     ]),
   );
   const ids = (f: Partial<InboxFilter>, me = "boris") =>
-    filterInbox(items, { ...ALL, ...f }, me).map((i) => i.telegram_id);
+    items.filter((i) => matchesInbox(i, { ...ALL, ...f }, me)).map((i) => i.telegram_id);
 
   it("фильтры: статус, «мои», «без ответственного», канал", () => {
-    expect(ids({ status: "open" })).toEqual([2, 1, 4]);
+    expect(ids({ status: "open" })).toEqual([1, 2, 4]);
     expect(ids({ status: "closed" })).toEqual([3]);
     expect(ids({ who: "mine" })).toEqual([3, 4]);
     expect(ids({ who: "mine", status: "open" })).toEqual([4]);
@@ -115,14 +114,19 @@ describe("единый входящий", () => {
     expect(ids({ channel: "telegram" })).toEqual([2, 4]);
   });
 
-  it("открытые с непрочитанными — наверх; решённый с непрочитанными не всплывает", () => {
-    expect(ids({})).toEqual([2, 1, 3, 4]);
-  });
-
-  it("счётчики считают только открытые", () => {
-    expect(inboxCounts(items, "boris")).toEqual({ open: 3, mine: 1, unassigned: 1 });
-    expect(inboxCounts(items, "anna")).toEqual({ open: 3, mine: 1, unassigned: 1 });
-    expect(inboxCounts([], "anna")).toEqual({ open: 0, mine: 0, unassigned: 0 });
+  it("непрочитанные и поиск по имени и @username без учёта регистра", () => {
+    expect(ids({ unread: true })).toEqual([2, 3]);
+    const named = [
+      { ...items[0]!, first_name: "Анна", last_name: "Иванова", username: "anna_i" },
+      { ...items[1]!, first_name: "Борис", username: null },
+    ];
+    const hit = (search: string) =>
+      named.filter((i) => matchesInbox(i, { ...ALL, search }, "")).map((i) => i.telegram_id);
+    expect(hit("анна ив")).toEqual([1]);
+    expect(hit("@ANNA_I")).toEqual([1]);
+    expect(hit("  бор ")).toEqual([2]);
+    expect(hit("")).toEqual([1, 2]);
+    expect(hit("нет такого")).toEqual([]);
   });
 });
 

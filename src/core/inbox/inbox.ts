@@ -4,6 +4,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Conversation } from "@/core/chat/chat";
 import { OPEN_TICKET_DB_STATUSES, TICKET_PREFIX } from "@/core/helpdesk/tickets";
 import { pageAll } from "@/core/db/page";
+import { inChunks } from "@/lib/in-chunks";
 
 /**
  * Единый входящий: переписки Telegram, Instagram и WhatsApp в одном окне
@@ -61,15 +62,14 @@ export async function inboxMetaFor(
 ): Promise<Map<number, InboxMeta>> {
   const out = new Map<number, InboxMeta>();
   if (!telegramIds.length) return out;
-  const { data, error } = await ctx.db
-    .from("zernio_logs")
-    .select("status, payload")
-    .in(
-      "event_id",
-      telegramIds.map((id) => inboxEventId(ctx.tenant.id, id)),
-    );
-  if (error) throw new Error(error.message);
-  for (const row of data ?? []) {
+  // event_id длинный (id бота + id покупателя): кусками по 100, иначе адрес запроса раздувается.
+  const rows = await inChunks(
+    telegramIds.map((id) => inboxEventId(ctx.tenant.id, id)),
+    (chunk) => ctx.db.from("zernio_logs").select("status, payload").in("event_id", chunk),
+    "Входящие",
+    100,
+  );
+  for (const row of rows) {
     const m = rowToMeta(row);
     if (m.telegramId) out.set(m.telegramId, m);
   }
@@ -193,6 +193,10 @@ export type InboxFilter = {
   /** mine — мои, none — без ответственного, all — все. */
   who: "mine" | "none" | "all";
   channel: InboxChannel | "all";
+  /** Только диалоги с непрочитанными. */
+  unread?: boolean;
+  /** Часть имени или @username покупателя. */
+  search?: string;
 };
 
 export type InboxItem = Conversation & {
@@ -221,31 +225,24 @@ export function mergeInbox(
   });
 }
 
-/**
- * Фильтр списка. Открытые с непрочитанными — наверх, дальше по свежести
- * (порядок свежести уже задан listConversations).
- */
-export function filterInbox(items: readonly InboxItem[], f: InboxFilter, me: string): InboxItem[] {
-  const kept = items.filter(
-    (i) =>
-      (f.status === "all" || i.status === f.status) &&
-      (f.who === "all" || (f.who === "mine" ? i.assignee === me : i.assignee === null)) &&
-      (f.channel === "all" || channelOf(i.platform) === f.channel),
-  );
-  const urgent = (i: InboxItem) => (i.status === "open" && i.unread_count > 0 ? 0 : 1);
-  return kept
-    .map((i, n) => ({ i, n }))
-    .sort((a, b) => urgent(a.i) - urgent(b.i) || a.n - b.n)
-    .map((x) => x.i);
+/** Подходит ли диалог под фильтр списка (то же правило на сервере и при слиянии опроса). */
+export function matchesInbox(i: InboxItem, f: InboxFilter, me: string): boolean {
+  if (f.status !== "all" && i.status !== f.status) return false;
+  if (f.who !== "all" && (f.who === "mine" ? i.assignee !== me : i.assignee !== null)) return false;
+  if (f.channel !== "all" && channelOf(i.platform) !== f.channel) return false;
+  if (f.unread && i.unread_count <= 0) return false;
+  const q = normalizeSearch(f.search);
+  if (q) {
+    const name = [i.first_name, i.last_name].filter(Boolean).join(" ");
+    const hay = `${name} ${i.username ?? ""}`.toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  return true;
 }
 
-export function inboxCounts(items: readonly InboxItem[], me: string) {
-  const open = items.filter((i) => i.status === "open");
-  return {
-    open: open.length,
-    mine: open.filter((i) => i.assignee === me).length,
-    unassigned: open.filter((i) => i.assignee === null).length,
-  };
+/** Запрос поиска: без пробелов по краям и без «@» в начале — имя и @username ищутся одной строкой. */
+export function normalizeSearch(s: string | undefined): string {
+  return (s ?? "").trim().replace(/^@/, "").toLowerCase();
 }
 
 /* ── быстрые ответы: app_settings.inbox_quick_replies (JSON) ─────── */

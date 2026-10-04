@@ -70,7 +70,8 @@ const ALLOWED: Record<string, string[]> = {
     "потолок кандидатов для модели: больше не помещается в запрос",
   ],
   "src/core/chat/chat.ts": [
-    `${SHOWN} (последние сообщения диалога, ≤ 500; окно ответа считает lastInboundAt отдельно)`,
+    "постраничный обход списка диалогов: страница по курсору (last_message_at, telegram_id)",
+    "постраничный обход переписки: страница по курсору (created_at, id), «Показать раньше»",
   ],
   "src/core/waitlist/waitlist.ts": ["постраничный обход: страница PAGE, курсор по user_key"],
   "src/core/billing/invoice-check.server.ts": [

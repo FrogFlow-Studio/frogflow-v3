@@ -2441,35 +2441,91 @@ function inboxAssignees(
   return [...owner, ...managers];
 }
 
-/** Единый входящий: диалоги всех каналов с учётом «решено» и ответственного. */
-export const chatConversationsFn = createServerFn({ method: "GET" }).handler(async () => {
-  const ctx = await chatModule();
-  const { listConversations, totalUnread } = await import("@/core/chat/chat");
-  const inbox = await import("@/core/inbox/inbox");
-  const { getSetting } = await import("@/core/settings/settings");
-  const { adminIdentity } = await import("@/app/auth/guards.server");
-  const { UNANSWERED_KEY, parseUnansweredMinutes } = await import("@/core/chat/unanswered");
-  const [list, unread, rawReplies, me, rawUnanswered] = await Promise.all([
-    listConversations(ctx),
-    totalUnread(ctx),
-    getSetting(ctx, inbox.QUICK_REPLIES_KEY),
-    adminIdentity(),
-    getSetting(ctx, UNANSWERED_KEY),
-  ]);
-  const ids = list.map((c) => c.telegram_id);
-  const [meta, tickets] = await Promise.all([
-    inbox.inboxMetaFor(ctx, ids),
-    ctx.tenant.modules.helpdesk ? inbox.openTicketNumbers(ctx, ids) : new Map<number, number[]>(),
-  ]);
-  return {
-    conversations: inbox.mergeInbox(list, meta, tickets),
-    unread,
-    me: me?.username ?? "",
-    assignees: inboxAssignees(ctx),
-    quickReplies: inbox.parseQuickReplies(rawReplies),
-    unansweredMinutes: parseUnansweredMinutes(rawUnanswered),
-  };
+const inboxFilterSchema = z.object({
+  status: z.enum(["open", "closed", "all"]),
+  who: z.enum(["mine", "none", "all"]),
+  channel: z.enum(["telegram", "instagram", "whatsapp", "all"]),
+  unread: z.boolean().optional(),
+  search: z.string().max(100).optional(),
 });
+const DEFAULT_INBOX_FILTER = { status: "open", who: "all", channel: "all" } as const;
+// Граница идёт в or() PostgREST — только строгие форматы.
+const isoTime = z.string().datetime({ offset: true });
+const conversationCursor = z.object({
+  last_message_at: isoTime,
+  telegram_id: tgId,
+});
+
+/**
+ * Единый входящий: первая страница диалогов (по умолчанию открытые) со счётчиками
+ * и всем, что страница знает о магазине: команда, быстрые ответы, срок «без ответа».
+ */
+export const chatConversationsFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ filter: inboxFilterSchema.optional() }).parse(d ?? {}))
+  .handler(async ({ data }) => {
+    const ctx = await chatModule();
+    const inbox = await import("@/core/inbox/inbox");
+    const { listInboxPage, inboxTotals } = await import("@/core/inbox/page");
+    const { getSetting } = await import("@/core/settings/settings");
+    const { adminIdentity } = await import("@/app/auth/guards.server");
+    const { UNANSWERED_KEY, parseUnansweredMinutes } = await import("@/core/chat/unanswered");
+    const me = (await adminIdentity())?.username ?? "";
+    const filter = data.filter ?? DEFAULT_INBOX_FILTER;
+    // Граница опроса берётся до чтения, с запасом на расхождение часов приложения и базы.
+    const asOf = new Date(Date.now() - 60_000).toISOString();
+    const [page, totals, rawReplies, rawUnanswered] = await Promise.all([
+      listInboxPage(ctx, { filter, me }),
+      inboxTotals(ctx, me),
+      getSetting(ctx, inbox.QUICK_REPLIES_KEY),
+      getSetting(ctx, UNANSWERED_KEY),
+    ]);
+    return {
+      conversations: page.items,
+      hasMore: page.hasMore,
+      totals,
+      asOf,
+      me,
+      assignees: inboxAssignees(ctx),
+      quickReplies: inbox.parseQuickReplies(rawReplies),
+      unansweredMinutes: parseUnansweredMinutes(rawUnanswered),
+    };
+  });
+
+/** Следующая (или первая под новый фильтр/поиск) страница списка диалогов и счётчики. */
+export const chatInboxPageFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z.object({ filter: inboxFilterSchema, before: conversationCursor.optional() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await chatModule();
+    const { listInboxPage, inboxTotals } = await import("@/core/inbox/page");
+    const { adminIdentity } = await import("@/app/auth/guards.server");
+    const me = (await adminIdentity())?.username ?? "";
+    const [page, totals] = await Promise.all([
+      listInboxPage(ctx, { filter: data.filter, me, before: data.before }),
+      inboxTotals(ctx, me),
+    ]);
+    return { conversations: page.items, hasMore: page.hasMore, totals };
+  });
+
+/**
+ * Опрос: только диалоги, менявшиеся с `since` (включительно), счётчики и открытый
+ * в окне диалог (`selected`: его пауза бота и «вы в чате» меняются без новых реплик).
+ */
+export const chatInboxPollFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ since: isoTime, selectedId: tgId.optional() }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await chatModule();
+    const { listInboxChanged, inboxTotals, getInboxItem } = await import("@/core/inbox/page");
+    const { adminIdentity } = await import("@/app/auth/guards.server");
+    const me = (await adminIdentity())?.username ?? "";
+    const [changed, totals, selected] = await Promise.all([
+      listInboxChanged(ctx, data.since),
+      inboxTotals(ctx, me),
+      data.selectedId === undefined ? null : getInboxItem(ctx, data.selectedId),
+    ]);
+    return { changed, totals, selected };
+  });
 
 /**
  * Быстрый ответ с подстановками ({name}, {order}, {ticket}) для выбранного

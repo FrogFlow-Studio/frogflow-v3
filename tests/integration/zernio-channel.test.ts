@@ -1,9 +1,10 @@
+import { allConversations } from "./all-conversations";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { liveReady, DEMO_BOT } from "./live";
 import { serviceDb } from "@/core/db/client.server";
 import { requireTenant, tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
 import { getCustomer, syntheticTelegramId, userKey } from "@/core/customers/customers";
-import { connect, listConversations, listMessages } from "@/core/chat/chat";
+import { connect, listMessages } from "@/core/chat/chat";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { handleZernioMessage } from "@/channels/zernio/handle-message";
 import type { ZernioTransport } from "@/channels/zernio/api.server";
@@ -86,7 +87,7 @@ describe.skipIf(!liveReady)("канал Instagram/WhatsApp на демо-кли�
     expect(c?.username).toBe("probe_direct");
     // Без консультанта бот молчит, но реплика видна продавцу в «Чате».
     expect(sent).toEqual([]);
-    const conv = (await listConversations(ctx)).find((x) => x.telegram_id === TG);
+    const conv = (await allConversations(ctx)).find((x) => x.telegram_id === TG);
     expect(conv?.platform).toBe("instagram");
     expect(conv?.user_key).toBe(KEY);
     expect(conv?.last_message_preview).toBe("Здравствуйте, есть доставка?");

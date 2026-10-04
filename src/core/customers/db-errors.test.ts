@@ -4,7 +4,12 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getCustomer, isBlocked } from "./customers";
 import { isOptedOut } from "./opt-out";
 import { openTicketFor } from "@/core/helpdesk/tickets";
-import { markRead, isManagerConnected, listConversations, listMessages } from "@/core/chat/chat";
+import {
+  markRead,
+  isManagerConnected,
+  listConversationStates,
+  listMessages,
+} from "@/core/chat/chat";
 import { setPhysicalStatus } from "@/core/orders/admin";
 
 const BOT = "00000000-0000-0000-0000-000000000001";
@@ -49,9 +54,9 @@ describe("покупатели, чат, поддержка, заказы: сбо
       isManagerConnected(ctxOf(breakTable(db, "manager_chat_state")), 1),
     ).rejects.toThrow(/Чат/);
     await expect(markRead(ctxOf(breakTable(db, "manager_chat_state")), 1)).rejects.toThrow(/Чат/);
-    await expect(listConversations(ctxOf(breakTable(db, "manager_chat_state")))).rejects.toThrow(
-      /Чат/,
-    );
+    await expect(
+      listConversationStates(ctxOf(breakTable(db, "manager_chat_state")), { limit: 10 }),
+    ).rejects.toThrow(/Чат/);
     await expect(listMessages(ctxOf(breakTable(db, "manager_chat_messages")), 1)).rejects.toThrow(
       /Чат/,
     );

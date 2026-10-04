@@ -1,3 +1,4 @@
+import { allConversations } from "./all-conversations";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { liveReady, DEMO_BOT, TEST_TG_ID } from "./live";
 import { serviceDb } from "@/core/db/client.server";
@@ -8,7 +9,6 @@ import {
   disconnect,
   inboundIntercepted,
   isManagerConnected,
-  listConversations,
   listMessages,
   markRead,
   recordMessage,
@@ -44,7 +44,7 @@ describe.skipIf(!liveReady)("чат с менеджером на демо-кли
 
   it("без подключённого менеджера бот не перехватывается, но реплика попадает в лог", async () => {
     expect(await inboundIntercepted(ctx, CHAT_TG_ID, "Здравствуйте, есть вопрос")).toBe(false);
-    const convs = await listConversations(ctx);
+    const convs = await allConversations(ctx);
     const c = convs.find((x) => x.telegram_id === CHAT_TG_ID);
     expect(c).toBeTruthy();
     expect(c?.unread_count).toBe(1);
@@ -66,7 +66,7 @@ describe.skipIf(!liveReady)("чат с менеджером на демо-кли
     const { messages: msgs } = await listMessages(ctx, CHAT_TG_ID);
     expect(msgs.map((m) => m.sender)).toEqual(["customer", "customer", "manager"]);
     await markRead(ctx, CHAT_TG_ID);
-    const c = (await listConversations(ctx)).find((x) => x.telegram_id === CHAT_TG_ID);
+    const c = (await allConversations(ctx)).find((x) => x.telegram_id === CHAT_TG_ID);
     expect(c?.unread_count).toBe(0);
     expect(c?.last_message_direction).toBe("out");
     await disconnect(ctx, CHAT_TG_ID);

@@ -164,20 +164,68 @@ function activePause(until: unknown, now: number): string | null {
   return typeof until === "string" && Date.parse(until) > now ? until : null;
 }
 
-/** Все диалоги, свежие сверху: страницы по 1000, порядок заканчивается telegram_id. */
-export async function listConversations(ctx: TenantContext): Promise<Conversation[]> {
-  const states = await pageAll(
+export type StateRow = {
+  telegram_id: number;
+  active: boolean;
+  last_message_at: string;
+  last_message_preview: string | null;
+  last_message_direction: string | null;
+  unread_count: number;
+};
+
+export const STATE_COLUMNS =
+  "telegram_id, active, last_message_at, last_message_preview, last_message_direction, unread_count";
+
+/** Граница страницы списка: диалоги строго старше (last_message_at, telegram_id). */
+export type ConversationCursor = { last_message_at: string; telegram_id: number };
+
+/**
+ * Страница строк состояния диалогов, свежие сверху; порядок заканчивается
+ * telegram_id (по убыванию), поэтому одинаковое время не теряет и не дублирует строки.
+ * `unreadOnly` — только с непрочитанными.
+ */
+export async function listConversationStates(
+  ctx: TenantContext,
+  opts: { before?: ConversationCursor | null; limit: number; unreadOnly?: boolean },
+): Promise<StateRow[]> {
+  let q = ctx.db.from("manager_chat_state").select(STATE_COLUMNS);
+  if (opts.unreadOnly) q = q.gt("unread_count", 0);
+  const b = opts.before;
+  if (b)
+    q = q.or(
+      `last_message_at.lt.${b.last_message_at},and(last_message_at.eq.${b.last_message_at},telegram_id.lt.${b.telegram_id})`,
+    );
+  const { data, error } = await q
+    .order("last_message_at", { ascending: false })
+    .order("telegram_id", { ascending: false })
+    .limit(opts.limit);
+  if (error) throw serverFailure(`Чат: диалоги: ${error.message}`);
+  return (data ?? []) as StateRow[];
+}
+
+/** Диалоги, где что-то менялось начиная с `since` (включительно) — для опроса, постранично. */
+export async function listConversationStatesSince(
+  ctx: TenantContext,
+  since: string,
+): Promise<StateRow[]> {
+  return (await pageAll(
     (from, to) =>
       ctx.db
         .from("manager_chat_state")
-        .select(
-          "telegram_id, active, last_message_at, last_message_preview, last_message_direction, unread_count",
-        )
+        .select(STATE_COLUMNS)
+        .gte("last_message_at", since)
         .order("last_message_at", { ascending: false })
-        .order("telegram_id")
+        .order("telegram_id", { ascending: false })
         .range(from, to),
-    "Чат: диалоги",
-  );
+    "Чат: изменившиеся диалоги",
+  )) as StateRow[];
+}
+
+/** К строкам состояния — имя, канал и пауза консультанта покупателя (куски по 200). */
+export async function conversationsOf(
+  ctx: TenantContext,
+  states: readonly StateRow[],
+): Promise<Conversation[]> {
   if (!states.length) return [];
   const users = await inChunks(
     states.map((s) => s.telegram_id),
