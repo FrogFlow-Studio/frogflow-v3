@@ -268,6 +268,24 @@ export const Route = createFileRoute("/api/cron/$job")({
                   },
                 },
                 {
+                  // Страж каналов: слетевший токен, отключённый вебхук Zernio — продавцу в Telegram
+                  // один раз на событие и «снова работает» при восстановлении (по свежему снимку).
+                  id: "channelGuard",
+                  run: async () => {
+                    const { tenantDirectory } = await import("@/core/tenant/resolve.server");
+                    const fresh = (await tenantDirectory(true)).filter(
+                      (t) => t.settings.served_by === "v2",
+                    );
+                    const inUse = fresh.some((t) => t.settings.zernio?.accounts?.length);
+                    const { v2WebhookStatus } = await import("@/channels/zernio/connect.server");
+                    const hook = inUse ? await v2WebhookStatus().catch(() => null) : null;
+                    // Не удалось проверить — не повод будить продавца.
+                    const webhookOk = !hook || hook.action === "error" ? null : hook.ok;
+                    const { runChannelGuardFor } = await import("@/channels/zernio/guard.server");
+                    results.channelGuard = await runChannelGuardFor(fresh, webhookOk);
+                  },
+                },
+                {
                   // Зависшие события вебхука (received старше трёх минут) — тем же обработчиком.
                   id: "zernioRetry",
                   run: async () => {

@@ -9,7 +9,7 @@ import {
   TENANT_COLUMNS,
   type TenantRow,
 } from "./directory";
-import type { Tenant, TenantLookup } from "./types";
+import type { ChannelGuardEntry, Tenant, TenantLookup } from "./types";
 import { serverFailure } from "@/lib/server-failure";
 
 /**
@@ -141,6 +141,65 @@ export async function patchZernioIfSyncedAt(
       .update({ settings: next as never })
       .eq("id", botId);
     q = prevSyncedAt === null ? q.is(syncedPath, null as never) : q.eq(syncedPath, prevSyncedAt);
+    q = rev === null ? q.is(revPath, null as never) : q.eq(revPath, String(rev));
+    const { data: rows, error: writeError } = await q.select("id");
+    if (writeError) throw serverFailure(`bots.settings: ${writeError.message}`);
+    if (rows?.length) {
+      invalidateTenantDirectory();
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Что страж каналов записал в bots.settings.zernio.guard (свежее чтение, не кеш). */
+export async function readZernioGuard(
+  botId: string,
+): Promise<Partial<Record<"instagram" | "whatsapp", ChannelGuardEntry>>> {
+  const { data, error } = await serviceDb()
+    .from("bots")
+    .select("settings")
+    .eq("id", botId)
+    .maybeSingle();
+  if (error)
+    throw serverFailure(`bots.settings: страж каналов не прочитал настройки (${error.message})`);
+  const guard = asObject(asObject(asObject(data?.settings).zernio).guard);
+  return guard as Partial<Record<"instagram" | "whatsapp", ChannelGuardEntry>>;
+}
+
+/**
+ * Поменять запись стража одного канала, только если она всё ещё `expected`
+ * (null — записи нет). Выигрывает один из конкурентов: два крона или крон и
+ * событие вебхука, прочитавшие одно и то же, — запишет и отправит сообщение
+ * только первый, второй получит false. Запись условна по `settings.rev`, а не
+ * по всему jsonb; если ключ settings поменял кто-то другой, перечитываем.
+ */
+export async function swapZernioGuard(
+  botId: string,
+  platform: "instagram" | "whatsapp",
+  expected: ChannelGuardEntry | null,
+  next: ChannelGuardEntry | null,
+): Promise<boolean> {
+  const db = serviceDb();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data, error } = await db.from("bots").select("settings").eq("id", botId).maybeSingle();
+    if (error)
+      throw serverFailure(`bots.settings: страж каналов не прочитал настройки (${error.message})`);
+    if (!data) throw serverFailure(`bots.settings: магазин ${botId} не найден`);
+    const raw = asObject(data.settings);
+    const zernio = asObject(raw.zernio);
+    const guard = { ...asObject(zernio.guard) };
+    const current = (guard[platform] as ChannelGuardEntry | undefined) ?? null;
+    if (JSON.stringify(current) !== JSON.stringify(expected)) return false;
+    if (next) guard[platform] = next;
+    else delete guard[platform];
+    const rev = settingsRev(raw);
+    const nextSettings = { ...raw, zernio: { ...zernio, guard }, rev: nextSettingsRev(raw) };
+    const revPath = "settings->>rev" as "id";
+    let q = db
+      .from("bots")
+      .update({ settings: nextSettings as never })
+      .eq("id", botId);
     q = rev === null ? q.is(revPath, null as never) : q.eq(revPath, String(rev));
     const { data: rows, error: writeError } = await q.select("id");
     if (writeError) throw serverFailure(`bots.settings: ${writeError.message}`);

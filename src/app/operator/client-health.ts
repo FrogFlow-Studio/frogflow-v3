@@ -22,7 +22,11 @@ export type HealthClient = {
   servedBy: "v1" | "v2" | null;
   plan: string | null;
   telegram: { connected: boolean; webhookOk: boolean };
-  zernio: { accounts: Array<{ platform: string; expired: boolean }> };
+  zernio: {
+    accounts: Array<{ platform: string; expired: boolean }>;
+    /** Страж каналов (channels/zernio/guard): канал лежит с … по причине …; нет — всё в порядке. */
+    down?: Array<{ platform: string; hint: string }>;
+  };
   health: { ok: boolean; error: string | null } | null;
   subscription: { state: string; daysLeft: number | null };
 };
@@ -63,13 +67,14 @@ export function channelStates(c: HealthClient): ChannelState[] {
     ["whatsapp", "whatsapp", "WhatsApp"],
   ] as const) {
     const accs = c.zernio.accounts.filter((a) => a.platform === platform);
-    if (accs.length === 0) continue;
+    const down = c.zernio.down?.find((d) => d.platform === platform);
+    if (accs.length === 0 && !down) continue;
     const expired = accs.some((a) => a.expired);
     out.push({
       key,
       label,
-      tone: expired ? "danger" : "ok",
-      hint: expired ? "авторизация аккаунта истекла" : "",
+      tone: expired || down ? "danger" : "ok",
+      hint: down?.hint ?? (expired ? "авторизация аккаунта истекла" : ""),
     });
   }
   return out;

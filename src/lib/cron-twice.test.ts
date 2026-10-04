@@ -43,6 +43,7 @@ const TWICE: Record<string, Evidence> = {
   commentDm: { test: ["src/channels/zernio/comment-dm-fallback.test.ts"] },
   // health
   zernioSync: { idempotent: "сверка аккаунтов Zernio пишет снимок состояния, сообщений не шлёт" },
+  channelGuard: { test: ["src/channels/zernio/guard.server.test.ts"] },
   zernioRetry: { test: ["src/channels/zernio/retry.test.ts"] },
   pricelist: { test: ["src/channels/zernio/consultant-jobs.test.ts"] },
   digest: { test: ["src/channels/telegram/digest-twice.test.ts"] },

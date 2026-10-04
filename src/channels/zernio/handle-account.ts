@@ -1,19 +1,15 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { patchTenantSettings } from "@/core/tenant/resolve.server";
-import { getSetting, trySetSetting } from "@/core/settings/settings";
-import { escapeHtml } from "@/channels/telegram/copy";
-import { notifyAdminsHtml } from "@/channels/telegram/notify";
+import { markChannelDown } from "./guard.server";
 
 /**
  * `account.disconnected`: токен Instagram/WhatsApp истёк или отозван. Без
  * этого бот молча перестаёт отвечать, и продавец узнаёт от расстроенного
- * покупателя. Уведомляем продавца в Telegram (не чаще раза в 6 часов по
- * одному аккаунту) и помечаем аккаунт в снимке настроек — карточка в
- * админке покажет «нужно переподключить».
+ * покупателя. Аккаунт помечается в снимке настроек (карточка в админке
+ * покажет «нужно переподключить»), а продавцу в Telegram уходит одно
+ * сообщение на отключение: его шлёт страж каналов (guard.server), и событие,
+ * и сверка аккаунтов по крону сходятся в одну условную запись.
  */
-const KEY = "zernio_disconnect_notified";
-const COOLDOWN_MS = 6 * 60 * 60 * 1000;
-
 export type AccountDisconnectedPayload = {
   account?: {
     accountId?: string;
@@ -32,7 +28,6 @@ export async function handleAccountDisconnected(
   const account = payload.account ?? {};
   const accountId = String(account.accountId || account.id || account._id || "");
   const label = account.username ? `@${account.username}` : account.name || accountId || "аккаунт";
-  const channel = account.platform === "whatsapp" ? "WhatsApp" : "Instagram";
 
   const snapshot = ctx.tenant.settings.zernio?.accounts ?? [];
   if (accountId && snapshot.some((a) => a.id === accountId && !a.expired)) {
@@ -41,26 +36,13 @@ export async function handleAccountDisconnected(
     });
   }
 
-  let last: { accountId?: string; at?: string } = {};
-  try {
-    last = JSON.parse((await getSetting(ctx, KEY)) || "{}") as typeof last;
-  } catch {
-    /* битое значение — уведомляем как обычно */
-  }
-  const cooled =
-    last.accountId === accountId && last.at && Date.now() - Date.parse(last.at) < COOLDOWN_MS;
-  if (cooled) return { notified: false, note: "уже уведомляли недавно" };
-
-  await trySetSetting(ctx, KEY, JSON.stringify({ accountId, at: new Date().toISOString() }));
-  const sent = await notifyAdminsHtml(
+  const { notified } = await markChannelDown(
     ctx,
-    `🔌 <b>${channel}-аккаунт отключился</b>\n\n` +
-      `${escapeHtml(label)} отвязался — бот перестал видеть сообщения и отвечать.\n\n` +
-      "Откройте «Оплата и настройки» → «Instagram и WhatsApp» и подключите аккаунт заново.",
-    { kind: "account" },
+    account.platform === "whatsapp" ? "whatsapp" : "instagram",
+    "token",
   );
   return {
-    notified: sent > 0,
-    note: sent > 0 ? `продавец уведомлён (${label})` : "некому уведомить",
+    notified,
+    note: notified ? `продавец уведомлён (${label})` : "уже уведомляли об этом отключении",
   };
 }

@@ -41,6 +41,28 @@ describe("channelStates", () => {
     const b = channelStates(c({ health: { ok: false, error: "Wrong response: 502" } }))[0]!;
     expect(b).toMatchObject({ tone: "danger", hint: "Wrong response: 502" });
   });
+  it("страж признал канал лежащим — красный с часом и причиной, даже если токен ещё жив", () => {
+    const ig = channelStates(
+      c({
+        zernio: {
+          accounts: [{ platform: "instagram", expired: false }],
+          down: [{ platform: "instagram", hint: "не отвечает с 14:05 (вебхук отключён)" }],
+        },
+      }),
+    )[1]!;
+    expect(ig).toMatchObject({
+      key: "instagram",
+      tone: "danger",
+      hint: "не отвечает с 14:05 (вебхук отключён)",
+    });
+    expect(
+      isProblem(
+        c({
+          zernio: { accounts: [], down: [{ platform: "whatsapp", hint: "не отвечает с 09:00" }] },
+        }),
+      ),
+    ).toBe(true);
+  });
   it("клиент v1 и клиент без токена — серые, не зелёные и не красные", () => {
     expect(channelStates(c({ servedBy: "v1" }))[0]).toMatchObject({
       tone: "neutral",

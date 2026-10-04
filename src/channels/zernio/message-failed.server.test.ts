@@ -17,6 +17,14 @@ vi.mock("@/channels/telegram/notify", () => ({
   },
 }));
 
+const failures: string[] = [];
+vi.mock("./guard.server", () => ({
+  recordSendFailure: async (_ctx: unknown, platform: string) => {
+    failures.push(platform);
+    return { notified: false };
+  },
+}));
+
 const BOT = "00000000-0000-0000-0000-0000000000ff";
 
 function setup(modules: Record<string, boolean> = { manager_chat: true }) {
@@ -57,6 +65,23 @@ const failed = (text: string, code: number | string = 131026) => ({
 beforeEach(() => {
   chat.length = 0;
   admin.length = 0;
+  failures.length = 0;
+});
+
+describe("message.failed: страж каналов считает только сбои канала, не покупателя", () => {
+  it("номер покупателя недоступен (131026) и окно 24 часа (131047) в серию не идут", async () => {
+    const { ctx } = setup();
+    await handleMessageFailed(ctx, failed("привет", 131026));
+    await handleMessageFailed(ctx, failed("привет", 131047));
+    expect(failures).toEqual([]);
+  });
+
+  it("прочий отказ (не зависит от покупателя) — запись для стража по WhatsApp, даже без диалога", async () => {
+    const { ctx } = setup();
+    await handleMessageFailed(ctx, failed("привет", 131000));
+    await handleMessageFailed(ctx, { ...failed("привет", 131000), message: {}, conversation: {} });
+    expect(failures).toEqual(["whatsapp", "whatsapp"]);
+  });
 });
 
 describe("message.failed: WhatsApp не доставил после ответа 200", () => {

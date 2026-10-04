@@ -38,6 +38,8 @@ export type TenantSettings = {
     /** Снимок подключённых аккаунтов для панелей (обновляется синхронизацией). */
     accounts?: ZernioAccountSnapshot[];
     synced_at?: string;
+    /** Страж каналов (channels/zernio/guard): что сейчас не работает по каждому каналу. */
+    guard?: Partial<Record<"instagram" | "whatsapp", ChannelGuardEntry>>;
     /** Отпечаток поставленных быстрых вопросов Instagram; "" — мы ничего не ставили. */
     ice_breakers_v?: string;
   };
@@ -221,6 +223,18 @@ export type AdminUser = {
   role: "manager" | "viewer" | "accountant";
   name?: string;
   created_at?: string;
+};
+
+/**
+ * Запись стража канала: канал не работает с `since`. Причина: слетел токен,
+ * отключён вебхук Zernio или серия сбоев отправки (`fails` из `last_fail_at`;
+ * пока сбоев меньше порога, запись «на подозрении» и ничего не значит).
+ */
+export type ChannelGuardEntry = {
+  since: string;
+  reason: "token" | "webhook" | "failures";
+  fails?: number;
+  last_fail_at?: string;
 };
 
 export type ZernioAccountSnapshot = {

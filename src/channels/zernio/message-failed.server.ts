@@ -96,6 +96,17 @@ export async function handleMessageFailed(
   ctx: TenantContext,
   payload: MessageFailedPayload,
 ): Promise<{ note: string }> {
+  // Серия отказов, не зависящих от покупателя (не окно 24 часа, не чужой номер,
+  // не лимит), — признак того, что канал лежит: страж скажет об этом продавцу.
+  const kind = classifyZernioFailure(failureOfEvent(payload.error));
+  if (kind === "temporary" || kind === "permanent") {
+    try {
+      const { recordSendFailure } = await import("./guard.server");
+      await recordSendFailure(ctx, "whatsapp");
+    } catch (e) {
+      console.error(`[zernio:${ctx.tenant.id}] страж каналов не записал сбой отправки:`, e);
+    }
+  }
   const conversationId = payload.message?.conversationId || payload.conversation?.id;
   if (!conversationId) return { note: "нет conversationId" };
   const customer = await customerOfConversation(ctx, conversationId);

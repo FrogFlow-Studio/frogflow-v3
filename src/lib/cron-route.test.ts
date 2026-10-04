@@ -106,6 +106,9 @@ vi.mock("@/app/operator/health.server", () => ({ recordHealthSnapshots: async ()
 vi.mock("@/channels/zernio/health.server", () => ({
   syncZernioAccountsFor: hitList("zernioSync"),
 }));
+vi.mock("@/channels/zernio/guard.server", () => ({
+  runChannelGuardFor: hitList("channelGuard"),
+}));
 vi.mock("@/channels/zernio/dispatch.server", () => ({
   retryStuckEventsFor: hitList("zernioRetry"),
 }));
@@ -162,7 +165,7 @@ const JOBS: Record<string, string[]> = {
   giveaways: ["giveaways"],
   "course-lives": ["courseLives"],
   "comment-dm-fallback": ["commentDm"],
-  health: ["zernioSync", "zernioRetry", "pricelist", "digest", "weekly", "morning"],
+  health: ["zernioSync", "channelGuard", "zernioRetry", "pricelist", "digest", "weekly", "morning"],
   subscriptions: ["catalogSheet", "sheetNotify"],
 };
 

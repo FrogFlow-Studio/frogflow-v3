@@ -9,6 +9,7 @@ import {
 } from "@/core/billing/subscription";
 import { serviceDb } from "@/core/db/client.server";
 import { debtByClient } from "./client-health";
+import { isDown, operatorHint } from "@/channels/zernio/guard";
 import type { Database, Json } from "@/core/db-types";
 import { MODULE_KEYS, MODULES, moduleDef, type ModuleKey } from "@/core/modules/registry";
 import { VERTICALS, type VerticalKey } from "@/core/verticals/registry";
@@ -125,6 +126,8 @@ export type ClientView = {
       lastEventAt: string | null;
     }>;
     syncedAt: string | null;
+    /** Каналы, которые страж признал лежащими: час начала и причина (для таблицы здоровья). */
+    down: Array<{ platform: string; hint: string }>;
     lastEventAt: string | null;
     /** Профиль Zernio из последнего события в журнале (у клиента v1 — профиль деплоя v1). */
     seenProfileId: string | null;
@@ -203,6 +206,12 @@ function toView(
         lastEventAt: zernioEvents.get(a.id) ?? null,
       })),
       syncedAt: t.settings.zernio?.synced_at ?? null,
+      down: Object.entries(t.settings.zernio?.guard ?? {})
+        .filter(([, e]) => isDown(e))
+        .map(([platform, e]) => ({
+          platform,
+          hint: operatorHint(e!, t.settings.timezone ?? env().APP_TIMEZONE),
+        })),
       lastEventAt: zernioEvents.get("*") ?? null,
       seenProfileId: zernioEvents.get(PROFILE_KEY) ?? null,
     },
