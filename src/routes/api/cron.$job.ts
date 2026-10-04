@@ -244,10 +244,23 @@ export const Route = createFileRoute("/api/cron/$job")({
               // Резервная DM по комментариям Instagram, если родное правило Zernio замолчало.
               const { runCommentDmFallback } = await import("@/channels/zernio/automations.server");
               const { tenantContext } = await import("@/core/tenant/resolve.server");
+              // 429 Zernio — лимит на весь ключ: остальным клиентам тоже не писать до следующего запуска.
+              let zernioLimitedSec: number | null = null;
               await eachWithin(ordered, budget, skipped, async (t) => {
                 if (!t.modules.instagram || !t.settings.zernio?.profile_id) return;
+                if (zernioLimitedSec !== null) {
+                  results[t.id] = { skipped: "zernio rate limit", retryAfterSec: zernioLimitedSec };
+                  return;
+                }
                 try {
-                  results[t.id] = await runCommentDmFallback(tenantContext(t));
+                  const r = await runCommentDmFallback(
+                    tenantContext(t),
+                    undefined,
+                    undefined,
+                    budget.spent,
+                  );
+                  if (r.rateLimitedSec !== undefined) zernioLimitedSec = r.rateLimitedSec;
+                  results[t.id] = r;
                 } catch (e) {
                   results[t.id] = await tenantFailure(t.id, e);
                 }

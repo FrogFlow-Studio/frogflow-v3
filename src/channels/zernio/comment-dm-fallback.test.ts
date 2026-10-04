@@ -7,6 +7,7 @@ import {
   type AutomationLog,
   type InstagramComment,
 } from "./automations.server";
+import { ZernioApiError } from "./errors";
 
 // Резервный крон Comment-to-DM (v1 0a8bba4): не слать повторно тем, кому уже писали.
 const NOW = new Date("2026-09-24T12:00:00Z");
@@ -34,7 +35,7 @@ function shop() {
 function api(o: {
   comments: InstagramComment[];
   pages: AutomationLog[][];
-  reply?: { ok: boolean; error?: string };
+  reply?: { ok: boolean; error?: string; rateLimitedSec?: number };
 }) {
   const privateReply = vi.fn(async () => o.reply ?? { ok: true });
   const inbox = vi.fn(async () => ({ ok: true }));
@@ -134,5 +135,65 @@ describe("резервный крон Comment-to-DM", () => {
     expect(t.privateReply).toHaveBeenCalledTimes(1);
     expect(a.sent + b.sent).toBe(1);
     expect(db.tables.comment_dm_fallback_sends).toHaveLength(1);
+  });
+
+  it("429 на отправке: бронь снята, дальше не стучимся, следующий запуск шлёт", async () => {
+    const { ctx, db } = shop();
+    const t = api({
+      comments: [comment("c1", "u1", 1)],
+      pages: [[]],
+      reply: { ok: false, error: "Zernio API 429", rateLimitedSec: 24 },
+    });
+    const r = await runCommentDmFallback(ctx, t.a, NOW);
+    expect(r.rateLimitedSec).toBe(24);
+    expect(r.failed).toBe(0);
+    expect(t.inbox).not.toHaveBeenCalled();
+    expect(db.tables.comment_dm_fallback_sends).toHaveLength(0);
+    // Лимит прошёл — тот же комментарий уходит.
+    const ok = api({ comments: [comment("c1", "u1", 1)], pages: [[]] });
+    const r2 = await runCommentDmFallback(ctx, ok.a, new Date(NOW.getTime() + 60_000));
+    expect(ok.privateReply).toHaveBeenCalledOnce();
+    expect(r2.sent).toBe(1);
+    expect(r2.rateLimitedSec).toBeUndefined();
+  });
+
+  it("429 при чтении правил — не исключение, а отложенный запуск", async () => {
+    const { ctx } = shop();
+    const t = api({ comments: [], pages: [[]] });
+    t.a.list = async () => {
+      throw new ZernioApiError("Zernio API 429: Rate limit exceeded", {
+        status: 429,
+        retryAfterSec: 24,
+      });
+    };
+    const r = await runCommentDmFallback(ctx, t.a, NOW);
+    expect(r).toMatchObject({ rateLimitedSec: 24, automationsChecked: 0 });
+  });
+
+  it("бюджет времени кончился — правила ждут следующего запуска и идут по кругу", async () => {
+    const { ctx } = shop();
+    const mk = (id: string, post: string) => ({
+      id,
+      name: id,
+      accountId: "acc",
+      platformPostId: post,
+      keywords: ["хочу"],
+      dmMessage: "Держите",
+      isActive: true,
+    });
+    const t = api({ comments: [comment("c1", "u1", 1)], pages: [[]] });
+    t.a.list = async () => [mk("a1", "p1"), mk("a2", "p2")] as never;
+    // Бюджет вышел сразу: ничего не сделано, начало очереди запомнено.
+    const first = await runCommentDmFallback(ctx, t.a, NOW, () => true);
+    expect(first).toMatchObject({ automationsChecked: 0, deferred: 2 });
+    expect(t.privateReply).not.toHaveBeenCalled();
+    // Бюджет вышел после первого правила: второе — в следующий раз, и оно идёт первым.
+    let calls = 0;
+    const second = await runCommentDmFallback(ctx, t.a, NOW, () => calls++ >= 1);
+    expect(second.automationsChecked).toBe(1);
+    expect(second.deferred).toBe(1);
+    const third = await runCommentDmFallback(ctx, t.a, NOW);
+    expect(third.automationsChecked).toBe(2);
+    expect(third.deferred).toBeUndefined();
   });
 });

@@ -53,6 +53,7 @@ import {
   type DmButton,
 } from "./api.server";
 import type { ZernioInboxMessage } from "./inbox-types";
+import { ZernioApiError, classifyZernioFailure } from "./errors";
 import { serverFailure } from "@/lib/server-failure";
 import { pageAll } from "@/core/db/page";
 import { toJson } from "@/core/json";
@@ -134,14 +135,19 @@ export type AutomationApi = {
     id: string,
     opts: { limit?: number; skip?: number; status?: "sent" | "failed" | "skipped" },
   ) => Promise<AutomationLog[]>;
-  comments: (postId: string, accountId: string) => Promise<InstagramComment[]>;
+  /** `shouldStop` — бюджет времени кончился: чтение прерывается исключением CommentsStopped, обрезанного списка не отдаём. */
+  comments: (
+    postId: string,
+    accountId: string,
+    shouldStop?: () => boolean,
+  ) => Promise<InstagramComment[]>;
   privateReply: (
     postId: string,
     commentId: string,
     accountId: string,
     message: string,
     buttons: AutomationButton[],
-  ) => Promise<{ ok: boolean; error?: string }>;
+  ) => Promise<{ ok: boolean; error?: string; rateLimitedSec?: number }>;
   publicReply: (
     postId: string,
     commentId: string,
@@ -154,6 +160,14 @@ export type AutomationApi = {
 };
 
 const COMMENTS_MAX_PAGES = 20;
+
+/** Чтение комментариев прервано по бюджету времени: неполный список использовать нельзя (дубль DM тем, кто уже получил). */
+export class CommentsStopped extends Error {
+  constructor() {
+    super("чтение комментариев прервано: бюджет времени крона");
+    this.name = "CommentsStopped";
+  }
+}
 
 export const liveAutomationApi: AutomationApi = {
   list: async (profileId) => {
@@ -197,10 +211,11 @@ export const liveAutomationApi: AutomationApi = {
   },
   // GET /inbox/comments/{postId}: accountId — строго query; явный limit не
   // передаём (Instagram отвечал Platform error: 100); ходим по cursor.
-  comments: async (postId, accountId) => {
+  comments: async (postId, accountId, shouldStop) => {
     const all: InstagramComment[] = [];
     let cursor: string | undefined;
     for (let page = 0; page < COMMENTS_MAX_PAGES; page++) {
+      if (page > 0 && shouldStop?.()) throw new CommentsStopped();
       const query: Record<string, string> = { accountId };
       if (cursor) query.cursor = cursor;
       const r = await zernioRequest<{
@@ -225,9 +240,11 @@ export const liveAutomationApi: AutomationApi = {
       );
       return { ok: true };
     } catch (e) {
+      const limited = rateLimitOf(e);
       return {
         ok: false,
         error: explainInstagramPrivateReplyError(e instanceof Error ? e.message : String(e)),
+        ...(limited !== null ? { rateLimitedSec: limited } : {}),
       };
     }
   },
@@ -1209,7 +1226,14 @@ export type FallbackResult = {
   commentsChecked: number;
   sent: number;
   failed: number;
+  /** Zernio ответил 429: остальные правила не трогали, пробуем снова через столько секунд. */
+  rateLimitedSec?: number;
+  /** Бюджет времени кончился: правил, отложенных на следующий запуск. */
+  deferred?: number;
 };
+
+/** Откуда начать обход правил: id правила, до которого не дошли в прошлый раз (app_settings, маленькое поле). */
+const FALLBACK_CURSOR_KEY = "comment_dm_fallback_cursor";
 
 /**
  * Резерв в существующий диалог покупателя — обычной отправкой, один раз.
@@ -1247,24 +1271,54 @@ export async function runCommentDmFallback(
   ctx: TenantContext,
   api: AutomationApi = liveAutomationApi,
   now = new Date(),
+  /** Бюджет времени крона: правила, до которых не дошли, ждут следующего запуска (по кругу). */
+  spent: () => boolean = () => false,
 ): Promise<FallbackResult> {
   const result: FallbackResult = { automationsChecked: 0, commentsChecked: 0, sent: 0, failed: 0 };
   if (!ctx.tenant.modules.instagram) return result;
-  const perPost = (await listAutomations(ctx, api))
+  let all: CommentAutomation[];
+  try {
+    all = await listAutomations(ctx, api);
+  } catch (e) {
+    const limited = rateLimitOf(e);
+    if (limited === null) throw e;
+    return { ...result, rateLimitedSec: limited };
+  }
+  const active = all
     .filter((a) => a.isActive !== false && a.trigger !== "story_reply" && a.platformPostId)
-    .slice(0, MAX_AUTOMATIONS_PER_RUN);
-  result.automationsChecked = perPost.length;
+    .filter((a) => automationId(a))
+    .sort((a, b) => (automationId(a) < automationId(b) ? -1 : 1));
+  // Обход по кругу с места, где остановились: правила за пределом одного запуска не теряются.
+  const cursor = await getSetting(ctx, FALLBACK_CURSOR_KEY);
+  const start = cursor ? active.findIndex((a) => automationId(a) >= cursor) : 0;
+  const perPost = start > 0 ? [...active.slice(start), ...active.slice(0, start)] : active;
   let sendsThisRun = 0;
+  const saveCursor = async (next: string) => {
+    if ((cursor ?? "") === next) return;
+    try {
+      await setSetting(ctx, FALLBACK_CURSOR_KEY, next);
+    } catch (e) {
+      console.error(
+        `[comment-dm-fallback] курсор не сохранён: ${e instanceof Error ? e.message : e}`,
+      );
+    }
+  };
 
-  for (const automation of perPost) {
+  for (const [i, automation] of perPost.entries()) {
     const autoId = automationId(automation);
     const postId = automation.platformPostId!;
-    if (!autoId) continue;
+    if (i >= MAX_AUTOMATIONS_PER_RUN || spent()) {
+      result.deferred = perPost.length - i;
+      await saveCursor(autoId);
+      return result;
+    }
+    result.automationsChecked++;
+    const nextId = automationId(perPost[(i + 1) % perPost.length]!);
     try {
       // Ошибка чтения логов — исключение и пропуск правила: без логов любой
       // комментарий выглядит пропущенным, а это повтор всем, кто уже получил.
       const [comments, { logs, coverage }] = await Promise.all([
-        api.comments(postId, automation.accountId),
+        api.comments(postId, automation.accountId, spent),
         readAutomationLogs(api, autoId, now),
       ]);
       const handledByZernio = commentIdsHandledByZernio(logs);
@@ -1422,6 +1476,19 @@ export async function runCommentDmFallback(
           // Первое — только текст (как в догоняющей рассылке): кнопки — вторым сообщением.
           [],
         );
+        if (reply.rateLimitedSec !== undefined) {
+          // 429: Zernio сообщение не принял. Бронь снимаем, чтобы комментарий попал в следующий запуск,
+          // и дальше не стучимся: лимит общий на ключ.
+          const { error: freeErr } = await ctx.db
+            .from("comment_dm_fallback_sends")
+            .delete()
+            .eq("automation_id", autoId)
+            .eq("comment_id", commentId)
+            .eq("status", "pending");
+          if (freeErr) console.error(`[zernio] бронь после 429 не снята: ${freeErr.message}`);
+          await saveCursor(autoId);
+          return { ...result, rateLimitedSec: reply.rateLimitedSec, deferred: perPost.length - i };
+        }
         if (reply.ok) {
           result.sent++;
           const username = comment.from?.username;
@@ -1509,12 +1576,33 @@ export async function runCommentDmFallback(
         if (finishError) throw new Error(`comment_dm_fallback_sends: ${finishError.message}`);
       }
     } catch (e) {
+      const limited = rateLimitOf(e);
+      if (limited !== null) {
+        // Лимит Zernio на весь ключ: остальные запросы только углубят его. Это же правило — первым в следующий раз.
+        await saveCursor(autoId);
+        return { ...result, rateLimitedSec: limited, deferred: perPost.length - i };
+      }
+      if (e instanceof CommentsStopped) {
+        // Список комментариев большой и не уложился: правило пропускаем, остальным даём очередь.
+        await saveCursor(nextId);
+        result.deferred = perPost.length - i;
+        return result;
+      }
       console.error(
         `[comment-dm-fallback] ${ctx.tenant.id} правило ${autoId}: ${e instanceof Error ? e.message : e}`,
       );
     }
   }
+  await saveCursor("");
   return result;
+}
+
+/** Секунды ожидания, если это 429 / лимит Zernio (Retry-After, иначе 60); иначе null. */
+function rateLimitOf(e: unknown): number | null {
+  if (!(e instanceof ZernioApiError)) return null;
+  // Только лимит на весь ключ (429): лимит одного получателя (131056) остальным не мешает.
+  if (e.failure.status !== 429 || classifyZernioFailure(e.failure) !== "rate_limited") return null;
+  return e.failure.retryAfterSec ?? 60;
 }
 
 export async function listFallbackSends(ctx: TenantContext, limit = 50) {
