@@ -33,7 +33,14 @@ import {
 import { LessonListAdd } from "@/app/admin/lesson-list-add";
 import { LessonQuizEditor } from "@/app/admin/lesson-quiz-editor";
 import { DEFAULT_TARIFF, type Cohort, type Tariff } from "@/core/courses/cohort";
-import { LIVE_LINK_MAX, LIVE_TITLE_MAX, LIVES_MAX, type Live } from "@/core/courses/live";
+import {
+  LIVE_DURATION_MAX,
+  LIVE_DURATION_MIN,
+  LIVE_LINK_MAX,
+  LIVE_TITLE_MAX,
+  LIVES_MAX,
+  type Live,
+} from "@/core/courses/live";
 
 /**
  * Уроки курса в карточке цифрового товара (модуль courses): порядок,
@@ -470,6 +477,7 @@ function LiveRow({
   const [at, setAt] = useState(live.at);
   const [link, setLink] = useState(live.link ?? "");
   const [recording, setRecording] = useState(live.recording ?? "");
+  const [duration, setDuration] = useState(live.durationMin ? String(live.durationMin) : "");
   const save = useAction(async () =>
     onSaved(
       await saveLiveFn({
@@ -482,6 +490,7 @@ function LiveRow({
             at,
             link: link.trim() || null,
             recording: recording.trim() || null,
+            ...(duration.trim() ? { durationMin: Number(duration) } : {}),
           },
         },
       }),
@@ -495,7 +504,8 @@ function LiveRow({
     title !== live.title ||
     at !== live.at ||
     link !== (live.link ?? "") ||
-    recording !== (live.recording ?? "");
+    recording !== (live.recording ?? "") ||
+    duration !== (live.durationMin ? String(live.durationMin) : "");
   return (
     <div className="flex flex-wrap items-end gap-2">
       <input
@@ -522,6 +532,19 @@ function LiveRow({
         maxLength={LIVE_LINK_MAX}
         value={link}
         onChange={(e) => setLink(e.target.value)}
+      />
+      <input
+        id={`live-duration-${live.id}`}
+        type="number"
+        inputMode="numeric"
+        min={LIVE_DURATION_MIN}
+        max={LIVE_DURATION_MAX}
+        step={5}
+        className="input w-28"
+        placeholder={t("live.durationPlaceholder")}
+        aria-label={t("live.duration")}
+        value={duration}
+        onChange={(e) => setDuration(e.target.value)}
       />
       {!fresh && (
         <input

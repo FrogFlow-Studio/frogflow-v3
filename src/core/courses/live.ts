@@ -28,7 +28,24 @@ export type Live = {
   link: string | null;
   /** Ссылка на запись после эфира, только https; нет — записи ещё нет (Ш4). */
   recording?: string | null;
+  /** Длительность в минутах; нет — `LIVE_DEFAULT_MIN`. По ней идёт окно ссылки и «идёт». */
+  durationMin?: number;
 };
+
+export const LIVE_DEFAULT_MIN = 180;
+export const LIVE_DURATION_MIN = 15;
+export const LIVE_DURATION_MAX = 720;
+
+/** Длительность эфира, мс: своя или по умолчанию (3 часа). */
+export function liveDurationMs(l: Pick<Live, "durationMin">): number {
+  return (l.durationMin ?? LIVE_DEFAULT_MIN) * 60_000;
+}
+
+function isDuration(n: unknown): n is number {
+  return (
+    typeof n === "number" && Number.isInteger(n) && n >= LIVE_DURATION_MIN && n <= LIVE_DURATION_MAX
+  );
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -57,6 +74,7 @@ export function parseLives(v: unknown): Live[] {
       at,
       link: link && isHttpsLink(link) ? link : null,
       ...(recording && isHttpsLink(recording) ? { recording } : {}),
+      ...(isDuration(o.durationMin) ? { durationMin: o.durationMin } : {}),
     });
     if (out.length >= LIVES_MAX) break;
   }
@@ -69,7 +87,7 @@ export function sortLives<T extends { at: string; id: string }>(lives: readonly 
 }
 
 export type LiveProblem =
-  "noTitle" | "badTime" | "badLink" | "badRecording" | "tooMany" | "noCohort";
+  "noTitle" | "badTime" | "badLink" | "badRecording" | "badDuration" | "tooMany" | "noCohort";
 
 /** Проверка эфира перед записью (поля уже обрезаны по краям). */
 export function liveProblem(l: Live): LiveProblem | null {
@@ -77,6 +95,7 @@ export function liveProblem(l: Live): LiveProblem | null {
   if (!isLocalStart(l.at)) return "badTime";
   if (l.link && !isHttpsLink(l.link)) return "badLink";
   if (l.recording && !isHttpsLink(l.recording)) return "badRecording";
+  if (l.durationMin !== undefined && !isDuration(l.durationMin)) return "badDuration";
   return null;
 }
 

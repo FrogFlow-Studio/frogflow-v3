@@ -1,11 +1,9 @@
 import { localToInstant, type Timeline } from "./cohort";
-import { sortLives, type Live } from "./live";
+import { liveDurationMs, sortLives, type Live } from "./live";
 import { videoEmbed } from "./video";
 
 /** Ссылка открывается за столько до начала. */
 export const LIVE_LINK_LEAD_MS = 15 * 60_000;
-/** Сколько после начала эфир считается идущим: длительность не хранится, берём запас. */
-export const LIVE_RUNNING_MS = 3 * 3_600_000;
 
 export type LiveStatus = "upcoming" | "open" | "past";
 
@@ -41,7 +39,7 @@ export function liveSchedule(
     const status: LiveStatus =
       now.getTime() < start - LIVE_LINK_LEAD_MS
         ? "upcoming"
-        : now.getTime() < start + LIVE_RUNNING_MS
+        : now.getTime() < start + liveDurationMs(l)
           ? "open"
           : "past";
     // Запись, добавленная заранее, до начала не видна: показываем с начала эфира.

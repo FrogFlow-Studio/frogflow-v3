@@ -5,6 +5,8 @@ import { serverFailure } from "@/lib/server-failure";
 import { courseKey, hasCourseContent, parseCourse } from "./course";
 import { syncCourseMarker } from "./course.server";
 import {
+  LIVE_DURATION_MAX,
+  LIVE_DURATION_MIN,
   LIVE_TITLE_MAX,
   LIVES_MAX,
   liveProblem,
@@ -33,6 +35,7 @@ export async function saveLive(
     at: input.at,
     link: input.link?.trim() || null,
     ...(input.recording?.trim() ? { recording: input.recording.trim() } : {}),
+    ...(input.durationMin !== undefined ? { durationMin: input.durationMin } : {}),
   };
   const bad = liveProblem(live);
   if (bad) throw liveRefusal(bad);
@@ -115,6 +118,15 @@ function liveRefusal(p: LiveProblem): UserError {
       return new UserError(
         "err.live.badRecording",
         "Ссылка на запись должна начинаться с https://.",
+      );
+    case "badDuration":
+      return new UserError(
+        "err.live.badDuration",
+        "Длительность эфира — от {min} до {max} минут.",
+        {
+          min: LIVE_DURATION_MIN,
+          max: LIVE_DURATION_MAX,
+        },
       );
     case "tooMany":
       return new UserError("err.live.tooMany", "У потока не больше {max} эфиров.", {

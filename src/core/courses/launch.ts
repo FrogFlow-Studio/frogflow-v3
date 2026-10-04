@@ -1,6 +1,6 @@
 import { localToInstant } from "./cohort";
 import type { Live } from "./live";
-import { LIVE_RUNNING_MS } from "./live-view";
+import { liveDurationMs } from "./live";
 
 /**
  * Чеклист запуска онлайн-школы — порядок настройки из docs/COURSES-NICHE.md
@@ -52,7 +52,7 @@ export function launchHints(i: LaunchInput): LaunchHint[] {
   return n > 0 ? [{ key: "liveNoLink", n }] : [];
 }
 
-/** Эфиры без ссылки, которые ещё не закончились (core/courses/live-view: идёт 3 часа от начала). */
+/** Эфиры без ссылки, которые ещё не закончились (core/courses/live-view: идёт заданную длительность, по умолчанию 3 часа). */
 export function liveNoLinkCount(
   cohorts: ReadonlyArray<{ lives?: Live[] }>,
   tz: string,
@@ -61,6 +61,6 @@ export function liveNoLinkCount(
   let n = 0;
   for (const k of cohorts)
     for (const l of k.lives ?? [])
-      if (!l.link && localToInstant(l.at, tz).getTime() + LIVE_RUNNING_MS > now.getTime()) n++;
+      if (!l.link && localToInstant(l.at, tz).getTime() + liveDurationMs(l) > now.getTime()) n++;
   return n;
 }
