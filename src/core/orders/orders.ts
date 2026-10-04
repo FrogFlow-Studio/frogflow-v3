@@ -40,6 +40,7 @@ import {
   restoreStock,
 } from "@/core/fulfillment/fulfillment";
 import { recordStockChanges, type StockChange } from "@/core/catalog/stock-history";
+import { bundleOf, decrementBundle, newStockTake, recordBundleChanges } from "@/core/bundles/stock";
 import {
   awardPointsForOrder,
   findValidGift,
@@ -292,7 +293,8 @@ export async function placeOrder(
   const redemptions: Redemptions = {};
   const holdToken = crypto.randomUUID();
   let offerHeld = false;
-  const reserved: Array<{ productId: string; qty: number }> = [];
+  const take = newStockTake();
+  const reserved = take.reserved;
   // Что фактически списано — в историю остатка, когда заказ создан (не раньше).
   const stockChanges: StockChange[] = [];
   // Заказ, под который событие истории остатка уже записано: откат ниже должен
@@ -358,6 +360,15 @@ export async function placeOrder(
       );
       for (const it of items) {
         const qty = Number(it.quantity);
+        // Набор: списываются составляющие, у самого набора остатка нет.
+        const parts = await bundleOf(ctx, it.products!.id);
+        if (parts) {
+          if (!(await decrementBundle(ctx, it.products!.id, parts, qty, take))) {
+            await ctx.db.from("cart_items").delete().eq("id", it.id);
+            return await fail("out_of_stock");
+          }
+          continue;
+        }
         const ok = await decrementStock(ctx, it.products!.id, qty, stockChanges);
         if (!ok) {
           // Не хватило остатка: у товара включён предзаказ — позиция идёт
@@ -606,6 +617,7 @@ export async function placeOrder(
       orderId: finalOrder.id,
       actor: "customer",
     });
+    await recordBundleChanges(ctx, take, { orderId: finalOrder.id, actor: "customer" });
     stockLoggedFor = finalOrder.id;
     // Сертификат больше заказа — остаток новым кодом в той же валюте. Сбой
     // выдачи заказ не срывает: сертификат погашен, остаток выдаст продавец.

@@ -241,6 +241,8 @@ export type BundleView = {
   saving: number | null;
   bundlePrice: number;
   currency: string;
+  /** Сколько наборов собирается из остатка составляющих (Н2); null — предела нет. */
+  stock: number | null;
 };
 
 /** Выгода набора по готовым ценам штук: чистая арифметика, цены уже с акциями. */
@@ -316,6 +318,9 @@ export async function bundleView(
     saving: sums?.saving ?? null,
     bundlePrice: own.amount,
     currency: own.currency,
+    stock: ctx.tenant.modules.stock
+      ? await (await import("@/core/bundles/stock")).bundleStock(ctx, items)
+      : null,
   };
 }
 

@@ -225,8 +225,19 @@ export async function restoreOrderStock(
   for (const l of await preorderLinesOfOrder(ctx, orderId))
     pre.set(l.product_id, (pre.get(l.product_id) ?? 0) + l.quantity);
   let n = 0;
+  // Наборы: вернуть составляющие по событиям списания, а не сам набор.
+  const bundleIds: string[] = [];
+  if (ctx.tenant.modules.bundles) {
+    const { loadBundle } = await import("@/core/bundles/bundle");
+    for (const id of new Set((data ?? []).map((it) => it.product_id).filter(Boolean) as string[]))
+      if (await loadBundle(ctx, id)) bundleIds.push(id);
+  }
+  if (bundleIds.length) {
+    const { restoreOrderBundles } = await import("@/core/bundles/stock");
+    n += await restoreOrderBundles(ctx, orderId, bundleIds, reason, actor);
+  }
   for (const it of data ?? []) {
-    if (!it.product_id) continue;
+    if (!it.product_id || bundleIds.includes(it.product_id)) continue;
     let qty = Number(it.quantity) || 0;
     const skip = Math.min(qty, pre.get(it.product_id) ?? 0);
     if (skip > 0) {

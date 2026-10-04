@@ -31,6 +31,7 @@ export const ru = {
   "bundle.unavailable":
     "Набор недоступен покупателям, пока в составе есть скрытый или удалённый товар. Исправьте состав.",
   "bundle.saving": "По отдельности {sum}, выгода покупателя {saving}.",
+  "bundle.stock": "В наличии наборов: {n} (по остатку составляющих).",
   "bundle.noSaving": "По отдельности {sum} — набор не дешевле, выгоды у покупателя нет.",
   "bundle.noCompare": "Выгоду не посчитать: у части товаров нет цены в валюте набора.",
   "err.bundle.tooMany": "В наборе не больше {n} позиций.",
@@ -75,6 +76,7 @@ export const kk: SectionDict<typeof ru> = {
   "bundle.unavailable":
     "Құрамда жасырылған немесе жойылған тауар болса, жиынтық сатып алушыларға қолжетімсіз. Құрамды түзетіңіз.",
   "bundle.saving": "Жеке-жеке {sum}, сатып алушының үнемі {saving}.",
+  "bundle.stock": "Бар жинақтар: {n} (құрамдас бөліктердің қалдығы бойынша).",
   "bundle.noSaving": "Жеке-жеке {sum} — жиынтық арзан емес, сатып алушыға үнем жоқ.",
   "bundle.noCompare":
     "Үнемді есептеу мүмкін емес: кейбір тауарлардың жиынтық валютасында бағасы жоқ.",
@@ -120,6 +122,7 @@ export const en: SectionDict<typeof ru> = {
   "bundle.unavailable":
     "The bundle is unavailable to buyers while it contains a hidden or deleted product. Fix the contents.",
   "bundle.saving": "Separately {sum}, the buyer saves {saving}.",
+  "bundle.stock": "Bundles in stock: {n} (by the stock of its parts).",
   "bundle.noSaving": "Separately {sum} — the bundle is not cheaper, the buyer saves nothing.",
   "bundle.noCompare":
     "Savings cannot be calculated: some products have no price in the bundle currency.",
@@ -166,6 +169,7 @@ export const uz: SectionDict<typeof ru> = {
   "bundle.unavailable":
     "Tarkibda yashirilgan yoki oʻchirilgan mahsulot boʻlsa, toʻplam xaridorlarga mavjud emas. Tarkibni tuzating.",
   "bundle.saving": "Alohida {sum}, xaridorning tejami {saving}.",
+  "bundle.stock": "Mavjud to‘plamlar: {n} (tarkibiy qismlar qoldig‘i bo‘yicha).",
   "bundle.noSaving": "Alohida {sum} — toʻplam arzon emas, xaridorga tejam yoʻq.",
   "bundle.noCompare":
     "Tejamni hisoblab boʻlmaydi: baʼzi mahsulotlarning toʻplam valyutasida narxi yoʻq.",

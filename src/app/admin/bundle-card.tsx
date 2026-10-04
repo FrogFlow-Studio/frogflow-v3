@@ -230,6 +230,9 @@ export function BundleCard({ productId, t }: { productId: string; t: AdminT }) {
               })}
             </p>
           )}
+          {view && view.stock !== null && (
+            <p className="mt-2 text-sm">{t("bundle.stock", { n: String(view.stock) })}</p>
+          )}
           {view && view.available && view.saving === null && (
             <p className="mt-2 text-xs text-muted">{t("bundle.noCompare")}</p>
           )}

@@ -16,6 +16,7 @@ import {
   zoneFee,
 } from "@/core/fulfillment/fulfillment";
 import { recordStockChanges, type StockChange } from "@/core/catalog/stock-history";
+import { bundleOf, decrementBundle, newStockTake, recordBundleChanges } from "@/core/bundles/stock";
 import {
   addDaysToIso,
   fulfillmentTotalBelowPaid,
@@ -364,11 +365,20 @@ export async function createManualOrder(
       total,
     });
 
-  const reserved: Array<{ productId: string; qty: number }> = [];
+  const take = newStockTake();
+  const reserved = take.reserved;
   const stockChanges: StockChange[] = [];
   try {
     if (ctx.tenant.modules.stock) {
       for (const l of lines) {
+        const parts = await bundleOf(ctx, l.productId);
+        if (parts) {
+          if (!(await decrementBundle(ctx, l.productId, parts, l.quantity, take)))
+            throw new UserError("err.orders.outOfStock", "Недостаточно «{name}» на складе", {
+              name: l.name,
+            });
+          continue;
+        }
         if (!(await decrementStock(ctx, l.productId, l.quantity, stockChanges)))
           throw new UserError("err.orders.outOfStock", "Недостаточно «{name}» на складе", {
             name: l.name,
@@ -426,6 +436,7 @@ export async function createManualOrder(
       orderId: order.id,
       actor,
     });
+    await recordBundleChanges(ctx, take, { orderId: order.id, actor });
     if (paid > 0)
       await recordOrderEvent(ctx, order.id, "payment", { amount: paid, currency }, actor);
     return { id: order.id, orderNo: Number(order.display_no ?? order.order_no) };
