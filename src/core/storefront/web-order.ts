@@ -504,6 +504,29 @@ async function webOrderPreorder(
   }
 }
 
+/**
+ * Страница заказа открывается по ссылке, а ссылку покупатель пересылает и сохраняет где
+ * попало, поэтому полных контактов в ней нет: почта показана по краям («a***@m***.ru»),
+ * адрес доставки — только до первой запятой. Телефона в виде заказа нет совсем.
+ */
+export function maskEmail(raw: string | null): string | null {
+  if (!raw) return null;
+  const [local = "", domain = ""] = raw.trim().split("@");
+  if (!local || !domain) return null;
+  const dot = domain.lastIndexOf(".");
+  const host = dot > 0 ? domain.slice(0, dot) : domain;
+  const zone = dot > 0 ? domain.slice(dot) : "";
+  return `${local.slice(0, 1)}***@${host.slice(0, 1)}***${zone}`;
+}
+
+export function maskAddress(raw: string | null): string | null {
+  const a = raw?.trim();
+  if (!a) return null;
+  const head = (a.split(",")[0] ?? "").trim();
+  const first = head.replace(/\d.*$/, "").trim().slice(0, 40);
+  return first ? `${first}, …` : "…";
+}
+
 export async function webOrderView(
   ctx: TenantContext,
   orderId: number,
@@ -537,7 +560,7 @@ export async function webOrderView(
                 ? order.fulfillment_type
                 : null,
             date: order.fulfillment_at ? String(order.fulfillment_at).slice(0, 10) : null,
-            address: order.fulfillment_address,
+            address: maskAddress(order.fulfillment_address),
             zone: order.delivery_zone_name,
             fee: Number(order.delivery_fee) || 0,
           }
@@ -559,7 +582,7 @@ export async function webOrderView(
           }
         : null,
     materials: await webOrderMaterials(ctx, order),
-    email: order.customer_email,
+    email: maskEmail(order.customer_email),
     proof: Boolean(order.payment_proof_path),
     balance,
     balancePending,

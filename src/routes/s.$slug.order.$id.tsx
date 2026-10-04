@@ -18,11 +18,20 @@ import { orderSteps } from "@/core/storefront/order-steps";
 import { ErrorBox, useAction } from "@/app/ui";
 import type { StorefrontKey } from "@/app/i18n/storefront";
 import { rememberOrderToken, savedOrderToken } from "@/app/storefront/order-token";
+import { ORDER_PAGE_HEADERS } from "@/app/storefront/order-page-headers";
 
 export const Route = createFileRoute("/s/$slug/order/$id")({
   validateSearch: (s: Record<string, unknown>): { t: string } => ({
     t: typeof s.t === "string" ? s.t.slice(0, 64) : "",
   }),
+  // Ссылка на заказ — ключ к странице: не в поиск, не в Referer наружу (оплата, отслеживание), не в кэш.
+  head: () => ({
+    meta: [
+      { name: "robots", content: "noindex,nofollow" },
+      { name: "referrer", content: "no-referrer" },
+    ],
+  }),
+  headers: () => ORDER_PAGE_HEADERS,
   component: OrderPage,
 });
 

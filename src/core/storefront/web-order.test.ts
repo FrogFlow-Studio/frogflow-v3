@@ -42,6 +42,8 @@ const {
   webOrderView,
   orderDiscount,
   orderPageUrl,
+  maskEmail,
+  maskAddress,
 } = await import("./web-order");
 const { claimCheckoutChallenge } = await import("./checkout-guard");
 const { storefrontAllows } = await import("./access");
@@ -463,6 +465,68 @@ describe("заказ с сайта: страница заказа", () => {
     });
     expect(v!.payment!.qr).toMatch(/^https:\/\/shop\.test\/api\/img\/.+/);
     expect(v!.discount).toBe(0);
+  });
+
+  it("в виде заказа нет телефона, полной почты и полного адреса доставки", async () => {
+    const { ctx } = withOrder({
+      fulfillment_kind: "physical",
+      fulfillment_type: "delivery",
+      fulfillment_address: "Алматы, ул. Абая 10, кв. 5, домофон 1234",
+      customer_phone: "+77001234567",
+      customer_name: "Анна Иванова",
+      customer_email: "anna.ivanova@mail.ru",
+    });
+    const v = await webOrderView(ctx, 9);
+    const text = JSON.stringify(v);
+    for (const secret of [
+      "+77001234567",
+      "7001234567",
+      "Иванова",
+      "anna.ivanova",
+      "mail.ru",
+      "Абая",
+      "кв. 5",
+      "1234",
+    ])
+      expect(text, secret).not.toContain(secret);
+    expect(v!.email).toBe("a***@m***.ru");
+    expect(v!.fulfillment!.address).toBe("Алматы, …");
+    expect(v).not.toHaveProperty("phone");
+    // Ничего из «покупателя» заказа не просочилось в ключи вида.
+    expect(Object.keys(v!).join(",")).not.toMatch(/phone|name_|customer|contact/i);
+  });
+
+  it("маски: почта и адрес без цифр дома, пустое остаётся пустым", () => {
+    expect(maskEmail("a@b.kz")).toBe("a***@b***.kz");
+    expect(maskEmail("не почта")).toBeNull();
+    expect(maskEmail(null)).toBeNull();
+    expect(maskAddress("ул. Абая 10, кв 5")).toBe("ул. Абая, …");
+    expect(maskAddress("Абая 10")).toBe("Абая, …");
+    expect(maskAddress("10")).toBe("…");
+    expect(maskAddress("  ")).toBeNull();
+    expect(maskAddress(null)).toBeNull();
+  });
+
+  it("«оплачено» только по записанной оплате: загруженный чек оплатой не считается", async () => {
+    const { ctx } = withOrder({ payment_proof_path: "proofs/1.jpg", paid_amount: 0 });
+    const v = await webOrderView(ctx, 9);
+    expect(v).toMatchObject({ status: "awaiting_payment", proof: true });
+    const { orderSteps } = await import("./order-steps");
+    expect(orderSteps(v!.status, false).find((x) => x.key === "paid")!.state).not.toBe("done");
+    // Оплата записана — статус «оплачен» ставит оплата: шаг «оплата подтверждена» текущий, после выдачи — пройден.
+    const paid = withOrder({ status: "paid", paid_amount: 2500 });
+    const pv = await webOrderView(paid.ctx, 9);
+    expect(orderSteps(pv!.status, false).find((x) => x.key === "paid")!.state).toBe("current");
+    expect(orderSteps("delivered", false).find((x) => x.key === "paid")!.state).toBe("done");
+  });
+
+  it("ссылка заказа привязана к магазину и номеру: чужому магазину и другому заказу не подходит", () => {
+    const t = orderAccessToken(SECRET, BOT, 9);
+    expect(verifyOrderAccess(SECRET, BOT, 9, t)).toBe(true);
+    expect(verifyOrderAccess(SECRET, "00000000-0000-0000-0000-0000000000bb", 9, t)).toBe(false);
+    expect(verifyOrderAccess(SECRET, BOT, 10, t)).toBe(false);
+    expect(verifyOrderAccess(SECRET, BOT, 9, "")).toBe(false);
+    expect(verifyOrderAccess(SECRET, BOT, 9, `${t}0`)).toBe(false);
   });
 
   it("скидка промокодом, баллами и сертификатом видна вместе; к оплате — уже после неё", async () => {
