@@ -68,6 +68,9 @@ export type OrderEvent = {
 
 export const ORDER_EVENT_STATUS = "event";
 
+/** События, после которых заказ считается проданным: оплата и начало выдачи. */
+const SNAPSHOT_KINDS: ReadonlySet<OrderEventKind> = new Set(["payment", "delivery_started"]);
+
 /** Запись события; сбой журнала не должен ломать сам заказ — только в консоль. */
 export async function recordOrderEvent(
   ctx: TenantContext,
@@ -85,6 +88,11 @@ export async function recordOrderEvent(
     payload: { order_id: orderId, actor, ...payload } as Json,
   });
   if (error) console.warn(`[orders] событие ${kind} для #${orderId} не записано: ${error.message}`);
+  // Модуль profit: по заказу впервые прошли деньги или выдача — фиксируем себестоимость позиций.
+  if (ctx.tenant.modules.profit && SNAPSHOT_KINDS.has(kind)) {
+    const { snapshotOrderCost } = await import("@/core/profit/snapshot");
+    await snapshotOrderCost(ctx, orderId);
+  }
   // Модуль crm_integration: событие — во внешнюю CRM или таблицу продавца.
   if (ctx.tenant.modules.crm_integration) {
     const { queueCrmEvent } = await import("@/core/crm/webhook");
