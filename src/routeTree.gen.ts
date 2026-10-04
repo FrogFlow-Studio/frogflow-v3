@@ -63,6 +63,7 @@ import { Route as AdminAuthedPostsRouteImport } from './routes/admin._authed.pos
 import { Route as AdminAuthedPricelistRouteImport } from './routes/admin._authed.pricelist'
 import { Route as AdminAuthedProductsRouteImport } from './routes/admin._authed.products'
 import { Route as AdminAuthedQuizRouteImport } from './routes/admin._authed.quiz'
+import { Route as AdminAuthedReportsRouteImport } from './routes/admin._authed.reports'
 import { Route as AdminAuthedReviewsRouteImport } from './routes/admin._authed.reviews'
 import { Route as AdminAuthedSettingsRouteImport } from './routes/admin._authed.settings'
 import { Route as AdminAuthedStudentsRouteImport } from './routes/admin._authed.students'
@@ -125,6 +126,7 @@ import { Route as AdminAuthedWarehouseStocktakeRouteImport } from './routes/admi
 import { Route as AdminAuthedWarehouseSuppliersRouteImport } from './routes/admin._authed.warehouse.suppliers'
 import { Route as AdminAuthedWarehouseWriteoffsRouteImport } from './routes/admin._authed.warehouse.writeoffs'
 import { Route as ApiAdminExportKindRouteImport } from './routes/api/admin/export.$kind'
+import { Route as ApiAdminReportsKindRouteImport } from './routes/api/admin/reports.$kind'
 import { Route as ApiImgBotIdSplatRouteImport } from './routes/api/img.$botId.$'
 import { Route as ApiRobokassaBotIdActionRouteImport } from './routes/api/robokassa.$botId.$action'
 import { Route as ApiTelegramBotIdVipRouteImport } from './routes/api/telegram.$botId.vip'
@@ -409,6 +411,11 @@ const AdminAuthedProductsRoute = AdminAuthedProductsRouteImport.update({
 const AdminAuthedQuizRoute = AdminAuthedQuizRouteImport.update({
   id: '/quiz',
   path: '/quiz',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedReportsRoute = AdminAuthedReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedReviewsRoute = AdminAuthedReviewsRouteImport.update({
@@ -730,6 +737,11 @@ const ApiAdminExportKindRoute = ApiAdminExportKindRouteImport.update({
   path: '/api/admin/export/$kind',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminReportsKindRoute = ApiAdminReportsKindRouteImport.update({
+  id: '/api/admin/reports/$kind',
+  path: '/api/admin/reports/$kind',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiImgBotIdSplatRoute = ApiImgBotIdSplatRouteImport.update({
   id: '/api/img/$botId/$',
   path: '/api/img/$botId/$',
@@ -866,6 +878,7 @@ export interface FileRoutesByFullPath {
   '/admin/pricelist': typeof AdminAuthedPricelistRoute
   '/admin/products': typeof AdminAuthedProductsRoute
   '/admin/quiz': typeof AdminAuthedQuizRoute
+  '/admin/reports': typeof AdminAuthedReportsRoute
   '/admin/reviews': typeof AdminAuthedReviewsRoute
   '/admin/settings': typeof AdminAuthedSettingsRoute
   '/admin/students': typeof AdminAuthedStudentsRoute
@@ -928,6 +941,7 @@ export interface FileRoutesByFullPath {
   '/admin/warehouse/suppliers': typeof AdminAuthedWarehouseSuppliersRoute
   '/admin/warehouse/writeoffs': typeof AdminAuthedWarehouseWriteoffsRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
+  '/api/admin/reports/$kind': typeof ApiAdminReportsKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
@@ -996,6 +1010,7 @@ export interface FileRoutesByTo {
   '/admin/pricelist': typeof AdminAuthedPricelistRoute
   '/admin/products': typeof AdminAuthedProductsRoute
   '/admin/quiz': typeof AdminAuthedQuizRoute
+  '/admin/reports': typeof AdminAuthedReportsRoute
   '/admin/reviews': typeof AdminAuthedReviewsRoute
   '/admin/settings': typeof AdminAuthedSettingsRoute
   '/admin/students': typeof AdminAuthedStudentsRoute
@@ -1056,6 +1071,7 @@ export interface FileRoutesByTo {
   '/admin/warehouse/suppliers': typeof AdminAuthedWarehouseSuppliersRoute
   '/admin/warehouse/writeoffs': typeof AdminAuthedWarehouseWriteoffsRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
+  '/api/admin/reports/$kind': typeof ApiAdminReportsKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
@@ -1129,6 +1145,7 @@ export interface FileRoutesById {
   '/admin/_authed/pricelist': typeof AdminAuthedPricelistRoute
   '/admin/_authed/products': typeof AdminAuthedProductsRoute
   '/admin/_authed/quiz': typeof AdminAuthedQuizRoute
+  '/admin/_authed/reports': typeof AdminAuthedReportsRoute
   '/admin/_authed/reviews': typeof AdminAuthedReviewsRoute
   '/admin/_authed/settings': typeof AdminAuthedSettingsRoute
   '/admin/_authed/students': typeof AdminAuthedStudentsRoute
@@ -1191,6 +1208,7 @@ export interface FileRoutesById {
   '/admin/_authed/warehouse/suppliers': typeof AdminAuthedWarehouseSuppliersRoute
   '/admin/_authed/warehouse/writeoffs': typeof AdminAuthedWarehouseWriteoffsRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
+  '/api/admin/reports/$kind': typeof ApiAdminReportsKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
@@ -1263,6 +1281,7 @@ export interface FileRouteTypes {
     | '/admin/pricelist'
     | '/admin/products'
     | '/admin/quiz'
+    | '/admin/reports'
     | '/admin/reviews'
     | '/admin/settings'
     | '/admin/students'
@@ -1325,6 +1344,7 @@ export interface FileRouteTypes {
     | '/admin/warehouse/suppliers'
     | '/admin/warehouse/writeoffs'
     | '/api/admin/export/$kind'
+    | '/api/admin/reports/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
     | '/api/telegram/$botId/vip'
@@ -1393,6 +1413,7 @@ export interface FileRouteTypes {
     | '/admin/pricelist'
     | '/admin/products'
     | '/admin/quiz'
+    | '/admin/reports'
     | '/admin/reviews'
     | '/admin/settings'
     | '/admin/students'
@@ -1453,6 +1474,7 @@ export interface FileRouteTypes {
     | '/admin/warehouse/suppliers'
     | '/admin/warehouse/writeoffs'
     | '/api/admin/export/$kind'
+    | '/api/admin/reports/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
     | '/api/telegram/$botId/vip'
@@ -1525,6 +1547,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/pricelist'
     | '/admin/_authed/products'
     | '/admin/_authed/quiz'
+    | '/admin/_authed/reports'
     | '/admin/_authed/reviews'
     | '/admin/_authed/settings'
     | '/admin/_authed/students'
@@ -1587,6 +1610,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/warehouse/suppliers'
     | '/admin/_authed/warehouse/writeoffs'
     | '/api/admin/export/$kind'
+    | '/api/admin/reports/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
     | '/api/telegram/$botId/vip'
@@ -1640,6 +1664,7 @@ export interface RootRouteChildren {
   SSlugSitemapDotxmlRoute: typeof SSlugSitemapDotxmlRoute
   SSlugSwDotjsRoute: typeof SSlugSwDotjsRoute
   ApiAdminExportKindRoute: typeof ApiAdminExportKindRoute
+  ApiAdminReportsKindRoute: typeof ApiAdminReportsKindRoute
   ApiImgBotIdSplatRoute: typeof ApiImgBotIdSplatRoute
   ApiRobokassaBotIdActionRoute: typeof ApiRobokassaBotIdActionRoute
   SSlugIconSizeRoute: typeof SSlugIconSizeRoute
@@ -2025,6 +2050,13 @@ declare module '@tanstack/react-router' {
       path: '/quiz'
       fullPath: '/admin/quiz'
       preLoaderRoute: typeof AdminAuthedQuizRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/reports': {
+      id: '/admin/_authed/reports'
+      path: '/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminAuthedReportsRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/reviews': {
@@ -2461,6 +2493,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminExportKindRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/reports/$kind': {
+      id: '/api/admin/reports/$kind'
+      path: '/api/admin/reports/$kind'
+      fullPath: '/api/admin/reports/$kind'
+      preLoaderRoute: typeof ApiAdminReportsKindRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/img/$botId/$': {
       id: '/api/img/$botId/$'
       path: '/api/img/$botId/$'
@@ -2619,6 +2658,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedPricelistRoute: typeof AdminAuthedPricelistRoute
   AdminAuthedProductsRoute: typeof AdminAuthedProductsRoute
   AdminAuthedQuizRoute: typeof AdminAuthedQuizRoute
+  AdminAuthedReportsRoute: typeof AdminAuthedReportsRoute
   AdminAuthedReviewsRoute: typeof AdminAuthedReviewsRoute
   AdminAuthedSettingsRoute: typeof AdminAuthedSettingsRoute
   AdminAuthedStudentsRoute: typeof AdminAuthedStudentsRoute
@@ -2669,6 +2709,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedPricelistRoute: AdminAuthedPricelistRoute,
   AdminAuthedProductsRoute: AdminAuthedProductsRoute,
   AdminAuthedQuizRoute: AdminAuthedQuizRoute,
+  AdminAuthedReportsRoute: AdminAuthedReportsRoute,
   AdminAuthedReviewsRoute: AdminAuthedReviewsRoute,
   AdminAuthedSettingsRoute: AdminAuthedSettingsRoute,
   AdminAuthedStudentsRoute: AdminAuthedStudentsRoute,
@@ -2871,6 +2912,7 @@ const rootRouteChildren: RootRouteChildren = {
   SSlugSitemapDotxmlRoute: SSlugSitemapDotxmlRoute,
   SSlugSwDotjsRoute: SSlugSwDotjsRoute,
   ApiAdminExportKindRoute: ApiAdminExportKindRoute,
+  ApiAdminReportsKindRoute: ApiAdminReportsKindRoute,
   ApiImgBotIdSplatRoute: ApiImgBotIdSplatRoute,
   ApiRobokassaBotIdActionRoute: ApiRobokassaBotIdActionRoute,
   SSlugIconSizeRoute: SSlugIconSizeRoute,

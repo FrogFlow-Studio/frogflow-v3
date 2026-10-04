@@ -53,6 +53,7 @@ describe("меню админки", () => {
       "/admin/orders",
       "/admin/notifications",
       "/admin/analytics",
+      "/admin/reports",
       "/admin/cost",
       "/admin/billing",
     ]);

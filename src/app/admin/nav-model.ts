@@ -70,6 +70,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
         label: "nav.groupAnalytics",
         items: compact<NavItem>([
           m.dashboard && { to: "/admin/analytics", label: "nav.analytics" },
+          m.dashboard && { to: "/admin/reports", label: "reports.nav" },
           m.profit && { to: "/admin/cost", label: "cost.nav" },
           m.warehouse && { to: "/admin/warehouse/journal", label: "journal.nav" },
         ]),
@@ -170,6 +171,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     label: "nav.groupAnalytics",
     items: compact<NavItem>([
       m.dashboard && { to: "/admin/analytics", label: "nav.analytics" },
+      m.dashboard && { to: "/admin/reports", label: "reports.nav" },
       m.profit && { to: "/admin/cost", label: "cost.nav" },
     ]),
   };
