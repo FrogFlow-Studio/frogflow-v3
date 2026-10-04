@@ -86,6 +86,11 @@ FrogFlow v3 — продолжение v2, переписывания платф
   `tests/e2e/seed.ts` и `fixtures.ts` оставлять строки импорта и вызова обеих
   сторон и следить, чтобы тесты не задвоились (Playwright падает на одинаковых
   именах).
+- **`npm run precheck` перед каждым PR.** Одна команда: prettier и eslint по изменённым
+  относительно `origin/master` файлам, типы, тесты по изменённым, `src/lib` и
+  `tests/db-columns.test.ts`, всё без ключей Supabase; в конце «готово к PR» или что упало.
+  Дважды PR возвращали из-за prettier, один раз master покраснел из-за
+  `tests/db-columns.test.ts` (#240). Полный `verify`, сборку и e2e гонит Контрольный.
 - **Проверки без ключей живой базы.** У новых веток в окружении есть ключи
   Supabase, поэтому `check` запускать так:
   `env -u SUPABASE_URL -u SUPABASE_SERVICE_ROLE_KEY -u SUPABASE_JWT_SECRET npm run check`.
