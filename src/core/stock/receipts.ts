@@ -11,6 +11,7 @@ import { serverFailure } from "@/lib/server-failure";
 import { recordStockChange } from "@/core/catalog/stock-history";
 import { COST_MAX, loadCost, saveCost, unitCost } from "@/core/profit/cost";
 import { shopCurrency } from "@/core/discounts/discounts";
+import { closeRequestByReceipt } from "./requests";
 
 /**
  * Приход товара. Документ — строка `app_settings` `stock:receipt:<id>` (схема
@@ -448,5 +449,11 @@ export async function postReceipt(
     finished = { ...d, status: "posted", claim: null, postedAt: now.toISOString() };
     return finished;
   });
+  // Заявка поставщику, по которой создан приход, закрывается. Остаток уже прибавлен,
+  // поэтому сбой здесь не откатывает приход, а только попадает в журнал.
+  if (doc.requestId)
+    await closeRequestByReceipt(ctx, doc.requestId, id, now).catch((e) =>
+      console.error(`[stock] заявка не закрыта приходом: ${String(e)}`),
+    );
   return finished ?? doc;
 }

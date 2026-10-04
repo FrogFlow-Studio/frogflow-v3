@@ -88,7 +88,7 @@ export async function soldByProduct(
 }
 
 /** Активные физические товары с остатком, постранично. */
-async function stockedProducts(ctx: TenantContext): Promise<ForecastStock[]> {
+export async function stockedProducts(ctx: TenantContext): Promise<ForecastStock[]> {
   const rows = await pageAll<{ id: string; name: string; stock_quantity: number | null }>(
     (from, to) =>
       ctx.db

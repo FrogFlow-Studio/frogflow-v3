@@ -3,6 +3,7 @@ import { chunksOf, inChunks } from "@/lib/in-chunks";
 import { servedByV2 } from "@/core/tenant/directory";
 import { isLocale, type Locale } from "@/core/i18n/locale";
 import { getSettingsStrict, setSetting } from "@/core/settings/settings";
+import { pageAll } from "@/core/db/page";
 import { serverFailure } from "@/lib/server-failure";
 
 /**
@@ -108,6 +109,39 @@ async function takeMark(ctx: TenantContext, id: string): Promise<boolean> {
 async function dropMark(ctx: TenantContext, id: string): Promise<void> {
   const { error } = await ctx.db.from("app_settings").delete().eq("key", lowStockSentKey(id));
   if (error) throw serverFailure(`Остаток товара: отметка не снята: ${error.message}`);
+}
+
+/**
+ * Все товары, у которых остаток сейчас на пороге или ниже (для заявки
+ * поставщику): независимо от того, уходило ли сообщение. Порог 0 — не
+ * предупреждать, такой товар не в списке. Постранично, по id.
+ */
+export async function listLowStock(ctx: TenantContext): Promise<LowStockItem[]> {
+  if (!active(ctx)) return [];
+  const rows = await pageAll<Stocked>(
+    (from, to) =>
+      ctx.db
+        .from("products")
+        .select("id, name, stock_quantity")
+        .eq("is_active", true)
+        .eq("fulfillment_kind", "physical")
+        .not("stock_quantity", "is", null)
+        .order("id")
+        .range(from, to),
+    "Остаток товаров",
+  );
+  const cfg = await readSettings(
+    ctx,
+    rows.map((p) => p.id),
+  );
+  const out: LowStockItem[] = [];
+  for (const p of rows) {
+    if (p.stock_quantity === null) continue;
+    const threshold = cfg.own(p.id) ?? cfg.shop;
+    if (threshold > 0 && p.stock_quantity <= threshold)
+      out.push({ id: p.id, name: p.name, stock: p.stock_quantity, threshold });
+  }
+  return out;
 }
 
 /**

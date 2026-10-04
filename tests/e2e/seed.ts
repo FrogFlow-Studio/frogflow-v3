@@ -37,6 +37,7 @@ import { seedShop16OSmart } from "./seed/shop16-o-smart.ts";
 import { seedShop16RAutostats } from "./seed/shop16-r-autostats.ts";
 import { seedShop16DChat } from "./seed/shop16-d-chat.ts";
 import { seedShop18Stale } from "./seed/shop18-s-stale.ts";
+import { seedShop18Requests } from "./seed/shop18-s-requests.ts";
 
 export function seedDb(): StubDb {
   const db = stubDb();
@@ -74,5 +75,6 @@ export function seedDb(): StubDb {
   seedShop16DChat(db, now);
   seedShop18NBundle(db, now);
   seedShop18Stale(db, now);
+  seedShop18Requests(db, now);
   return db;
 }

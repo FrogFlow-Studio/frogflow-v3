@@ -95,6 +95,7 @@ import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.
 import { Route as AdminAuthedOrdersNewRouteImport } from './routes/admin._authed.orders.new'
 import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authed.products_.$id'
 import { Route as AdminAuthedWarehouseIndexRouteImport } from './routes/admin._authed.warehouse.index'
+import { Route as AdminAuthedWarehouseRequestsRouteImport } from './routes/admin._authed.warehouse.requests'
 import { Route as AdminAuthedWarehouseStaleRouteImport } from './routes/admin._authed.warehouse.stale'
 import { Route as AdminAuthedWarehouseSuppliersRouteImport } from './routes/admin._authed.warehouse.suppliers'
 import { Route as ApiAdminExportKindRouteImport } from './routes/api/admin/export.$kind'
@@ -543,6 +544,12 @@ const AdminAuthedWarehouseIndexRoute =
     path: '/warehouse/',
     getParentRoute: () => AdminAuthedRoute,
   } as any)
+const AdminAuthedWarehouseRequestsRoute =
+  AdminAuthedWarehouseRequestsRouteImport.update({
+    id: '/warehouse/requests',
+    path: '/warehouse/requests',
+    getParentRoute: () => AdminAuthedRoute,
+  } as any)
 const AdminAuthedWarehouseStaleRoute =
   AdminAuthedWarehouseStaleRouteImport.update({
     id: '/warehouse/stale',
@@ -718,6 +725,7 @@ export interface FileRoutesByFullPath {
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
   '/admin/warehouse/stale': typeof AdminAuthedWarehouseStaleRoute
   '/admin/warehouse/suppliers': typeof AdminAuthedWarehouseSuppliersRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
@@ -818,6 +826,7 @@ export interface FileRoutesByTo {
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
   '/admin/warehouse/stale': typeof AdminAuthedWarehouseStaleRoute
   '/admin/warehouse/suppliers': typeof AdminAuthedWarehouseSuppliersRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
@@ -924,6 +933,7 @@ export interface FileRoutesById {
   '/admin/_authed/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/_authed/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/_authed/products_/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/_authed/warehouse/requests': typeof AdminAuthedWarehouseRequestsRoute
   '/admin/_authed/warehouse/stale': typeof AdminAuthedWarehouseStaleRoute
   '/admin/_authed/warehouse/suppliers': typeof AdminAuthedWarehouseSuppliersRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
@@ -1029,6 +1039,7 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/admin/orders/new'
     | '/admin/products/$id'
+    | '/admin/warehouse/requests'
     | '/admin/warehouse/stale'
     | '/admin/warehouse/suppliers'
     | '/api/admin/export/$kind'
@@ -1129,6 +1140,7 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/admin/orders/new'
     | '/admin/products/$id'
+    | '/admin/warehouse/requests'
     | '/admin/warehouse/stale'
     | '/admin/warehouse/suppliers'
     | '/api/admin/export/$kind'
@@ -1234,6 +1246,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/orders/$id'
     | '/admin/_authed/orders/new'
     | '/admin/_authed/products_/$id'
+    | '/admin/_authed/warehouse/requests'
     | '/admin/_authed/warehouse/stale'
     | '/admin/_authed/warehouse/suppliers'
     | '/api/admin/export/$kind'
@@ -1895,6 +1908,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedWarehouseIndexRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/_authed/warehouse/requests': {
+      id: '/admin/_authed/warehouse/requests'
+      path: '/warehouse/requests'
+      fullPath: '/admin/warehouse/requests'
+      preLoaderRoute: typeof AdminAuthedWarehouseRequestsRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/admin/_authed/warehouse/stale': {
       id: '/admin/_authed/warehouse/stale'
       path: '/warehouse/stale'
@@ -2062,6 +2082,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedIndexRoute: typeof AdminAuthedIndexRoute
   AdminAuthedCustomersKeyRoute: typeof AdminAuthedCustomersKeyRoute
   AdminAuthedProductsIdRoute: typeof AdminAuthedProductsIdRoute
+  AdminAuthedWarehouseRequestsRoute: typeof AdminAuthedWarehouseRequestsRoute
   AdminAuthedWarehouseStaleRoute: typeof AdminAuthedWarehouseStaleRoute
   AdminAuthedWarehouseSuppliersRoute: typeof AdminAuthedWarehouseSuppliersRoute
   AdminAuthedWarehouseIndexRoute: typeof AdminAuthedWarehouseIndexRoute
@@ -2099,6 +2120,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedIndexRoute: AdminAuthedIndexRoute,
   AdminAuthedCustomersKeyRoute: AdminAuthedCustomersKeyRoute,
   AdminAuthedProductsIdRoute: AdminAuthedProductsIdRoute,
+  AdminAuthedWarehouseRequestsRoute: AdminAuthedWarehouseRequestsRoute,
   AdminAuthedWarehouseStaleRoute: AdminAuthedWarehouseStaleRoute,
   AdminAuthedWarehouseSuppliersRoute: AdminAuthedWarehouseSuppliersRoute,
   AdminAuthedWarehouseIndexRoute: AdminAuthedWarehouseIndexRoute,

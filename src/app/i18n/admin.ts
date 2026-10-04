@@ -56,6 +56,7 @@ import * as schoolLive from "./admin/school-live";
 import * as catalog from "./admin/catalog";
 import * as schoolTasks from "./admin/school-tasks";
 import * as cost from "./admin/cost";
+import * as shop18Requests from "./admin/shop18-requests";
 import * as shop18Stale from "./admin/shop18-stale";
 import * as shop18Forecast from "./admin/shop18-forecast";
 
@@ -441,6 +442,7 @@ const ru = {
   ...customer.ru,
   ...pipeline.ru,
   ...warehouse.ru,
+  ...shop18Requests.ru,
   ...shop18Stale.ru,
   ...shop18Forecast.ru,
   ...shop4Stock.ru,
@@ -1529,6 +1531,7 @@ const kk: Dict = {
   ...customer.kk,
   ...pipeline.kk,
   ...warehouse.kk,
+  ...shop18Requests.kk,
   ...shop18Stale.kk,
   ...shop18Forecast.kk,
   ...shop4Stock.kk,
@@ -1584,6 +1587,7 @@ const en: Dict = {
   ...customer.en,
   ...pipeline.en,
   ...warehouse.en,
+  ...shop18Requests.en,
   ...shop18Stale.en,
   ...shop18Forecast.en,
   ...shop4Stock.en,
@@ -1639,6 +1643,7 @@ const uz: Dict = {
   ...customer.uz,
   ...pipeline.uz,
   ...warehouse.uz,
+  ...shop18Requests.uz,
   ...shop18Stale.uz,
   ...shop18Forecast.uz,
   ...shop4Stock.uz,
