@@ -16,7 +16,10 @@ export const API_KEY_SETTING = "public_api_key";
 const PREFIX = "ffk_";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export type ApiKeyMeta = { hash: string; last4: string; createdAt: string };
+/** read — только чтение (заказы, товары, покупатели); write — ещё и правка товаров (PATCH). */
+export type ApiKeyScope = "read" | "write";
+
+export type ApiKeyMeta = { hash: string; last4: string; createdAt: string; scope: ApiKeyScope };
 
 function sha256(s: string): string {
   return createHash("sha256").update(s).digest("hex");
@@ -26,7 +29,13 @@ export function parseApiKeyMeta(raw: string | null | undefined): ApiKeyMeta | nu
   try {
     const v = JSON.parse(raw ?? "null") as Partial<ApiKeyMeta> | null;
     return v && typeof v.hash === "string" && /^[0-9a-f]{64}$/.test(v.hash)
-      ? { hash: v.hash, last4: String(v.last4 ?? ""), createdAt: String(v.createdAt ?? "") }
+      ? {
+          hash: v.hash,
+          last4: String(v.last4 ?? ""),
+          createdAt: String(v.createdAt ?? ""),
+          // Ключи, выпущенные до появления прав, могли править товары — остаются «write».
+          scope: v.scope === "read" ? "read" : "write",
+        }
       : null;
   } catch {
     return null;
@@ -63,12 +72,14 @@ export async function loadApiKeyMeta(ctx: TenantContext): Promise<ApiKeyMeta | n
 export async function createApiKey(
   ctx: TenantContext,
   now = new Date(),
+  scope: ApiKeyScope = "write",
 ): Promise<{ token: string; meta: ApiKeyMeta }> {
   const secret = randomBytes(32).toString("base64url");
   const meta: ApiKeyMeta = {
     hash: sha256(secret),
     last4: secret.slice(-4),
     createdAt: now.toISOString(),
+    scope,
   };
   await setSetting(ctx, API_KEY_SETTING, JSON.stringify(meta));
   // Новый ключ — новая история: «последнее использование» прежнего ключа не его.

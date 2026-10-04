@@ -257,3 +257,36 @@ describe("/api/v1", () => {
     expect(await loadApiKeyUse(ctx())).toBeNull();
   });
 });
+
+describe("/api/v1: права ключа", () => {
+  const id = "0b3a6f1e-9a55-4c1a-8e0f-2d1f5c6b7a88";
+  const patch = (t: string) =>
+    call(`products/${id}`, t, { method: "PATCH", body: JSON.stringify({ stock: 3 }) });
+
+  it("ключ «только чтение» читает, но товары не правит: 403 и остаток не тронут", async () => {
+    const read = (await createApiKey(ctx(), new Date(), "read")).token;
+    expect((await call("orders", read)).status).toBe(200);
+    expect((await call("products", read)).status).toBe(200);
+    const before = db.tables.products![0]!.stock_quantity;
+    const r = await patch(read);
+    expect(r.status).toBe(403);
+    expect(await r.json()).toEqual({ error: "read_only_key" });
+    expect(db.tables.products![0]!.stock_quantity).toBe(before);
+  });
+
+  it("ключ «чтение и правка» (и выпущенный до появления прав) правит товары", async () => {
+    expect((await patch(token)).status).toBe(200);
+    expect(db.tables.products![0]).toMatchObject({ stock_quantity: 3 });
+    // Запись старого формата — без поля scope — осталась «write».
+    const row = db.tables.app_settings!.find((r) => r.key === "public_api_key")!;
+    const meta = JSON.parse(String(row.value)) as Record<string, unknown>;
+    delete meta.scope;
+    row.value = JSON.stringify(meta);
+    expect((await patch(token)).status).toBe(200);
+  });
+
+  it("новый ключ другого права заменяет прежний: старый — 401", async () => {
+    await createApiKey(ctx(), new Date(), "read");
+    expect((await patch(token)).status).toBe(401);
+  });
+});

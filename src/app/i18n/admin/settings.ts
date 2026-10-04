@@ -437,6 +437,11 @@ export const ru = {
   "settings.team.newPassword": "Новый пароль (пусто — не менять)",
   "settings.team.password": "Пароль",
   "settings.team.passwordHint": "не короче 8 символов",
+  "settings.api.scope": "Права ключа",
+  "settings.api.scopeWrite": "Чтение и правка товаров (остатки, цены)",
+  "settings.api.scopeRead": "Только чтение",
+  "settings.api.scopeReadOn": "Права: только чтение.",
+  "settings.api.scopeWriteOn": "Права: чтение и правка товаров.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -871,6 +876,11 @@ export const kk: SectionDict<typeof ru> = {
   "settings.team.newPassword": "Жаңа құпиясөз (бос — өзгертпеу)",
   "settings.team.password": "Құпиясөз",
   "settings.team.passwordHint": "кемінде 8 таңба",
+  "settings.api.scope": "Кілт құқықтары",
+  "settings.api.scopeWrite": "Тауарларды оқу және өзгерту (қалдық, баға)",
+  "settings.api.scopeRead": "Тек оқу",
+  "settings.api.scopeReadOn": "Құқықтары: тек оқу.",
+  "settings.api.scopeWriteOn": "Құқықтары: оқу және тауарларды өзгерту.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -1302,6 +1312,11 @@ export const en: SectionDict<typeof ru> = {
   "settings.team.newPassword": "New password (leave empty to keep)",
   "settings.team.password": "Password",
   "settings.team.passwordHint": "at least 8 characters",
+  "settings.api.scope": "Key permissions",
+  "settings.api.scopeWrite": "Read and edit products (stock, prices)",
+  "settings.api.scopeRead": "Read only",
+  "settings.api.scopeReadOn": "Permissions: read only.",
+  "settings.api.scopeWriteOn": "Permissions: read and edit products.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -1739,4 +1754,9 @@ export const uz: SectionDict<typeof ru> = {
   "settings.team.newPassword": "Yangi parol (bo‘sh — o‘zgartirmaslik)",
   "settings.team.password": "Parol",
   "settings.team.passwordHint": "kamida 8 belgi",
+  "settings.api.scope": "Kalit huquqlari",
+  "settings.api.scopeWrite": "Tovarlarni oʻqish va tahrirlash (qoldiq, narx)",
+  "settings.api.scopeRead": "Faqat oʻqish",
+  "settings.api.scopeReadOn": "Huquqlar: faqat oʻqish.",
+  "settings.api.scopeWriteOn": "Huquqlar: oʻqish va tovarlarni tahrirlash.",
 };

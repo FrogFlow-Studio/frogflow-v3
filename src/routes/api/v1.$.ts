@@ -10,6 +10,7 @@ import { pageAll } from "@/core/db/page";
  *   GET   /api/v1/products
  *   GET   /api/v1/customers?updated_since=&limit=&after=
  *   PATCH /api/v1/products/<id>   {"stock": 5 | null, "price": 1000, "active": true}
+ *                                 (только ключ с правом «write»; «read» — 403)
  *
  * Ключ — `Authorization: Bearer ffk_<bot_id>_<секрет>`, магазин берётся из
  * ключа. Клиент прежней платформы (servedByV2) и выключенный модуль — 404,
@@ -51,8 +52,8 @@ async function handle(request: Request, path: string): Promise<Response> {
   )
     return fail(404, "not_found");
   const ctx = tenantContext(tenant);
-  if (!api.secretMatches(key.secret, await api.loadApiKeyMeta(ctx)))
-    return fail(401, "unauthorized");
+  const meta = await api.loadApiKeyMeta(ctx);
+  if (!api.secretMatches(key.secret, meta)) return fail(401, "unauthorized");
   const { takeShared } = await import("@/core/storefront/rate-limit");
   if (!(await takeShared(ctx, "api", "key", { limit: 120, windowMs: 60_000 })))
     return fail(429, "rate_limited");
@@ -85,8 +86,11 @@ async function handle(request: Request, path: string): Promise<Response> {
     }
     if (parts[0] === "customers" && parts.length === 1 && method === "GET")
       return await listCustomers(ctx, new URL(request.url));
-    if (parts[0] === "products" && parts.length === 2 && method === "PATCH")
+    if (parts[0] === "products" && parts.length === 2 && method === "PATCH") {
+      // Ключ «только чтение» ничего не меняет.
+      if (meta?.scope !== "write") return fail(403, "read_only_key");
       return await patchProduct(ctx, parts[1]!, request);
+    }
     return fail(404, "not_found");
   } catch (e) {
     console.error(`[api:${ctx.tenant.id}] ${method} /${path}`, e);

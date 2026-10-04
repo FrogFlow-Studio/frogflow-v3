@@ -11,15 +11,22 @@ export function ApiKeyCard() {
   const [status, setStatus] = useState<Awaited<ReturnType<typeof apiKeyStatusFn>> | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
+  const [scope, setScope] = useState<"read" | "write">("write");
   useEffect(() => {
     setOrigin(window.location.origin);
     void apiKeyStatusFn().then(setStatus);
   }, []);
   const create = useAction(async () => {
     if (status?.exists && !window.confirm(t("settings.api.rotateConfirm"))) return;
-    const r = await createApiKeyFn();
+    const r = await createApiKeyFn({ data: { scope } });
     setToken(r.token);
-    setStatus({ exists: true, last4: r.last4, createdAt: r.createdAt, lastUse: null });
+    setStatus({
+      exists: true,
+      last4: r.last4,
+      createdAt: r.createdAt,
+      scope: r.scope,
+      lastUse: null,
+    });
   });
   const revoke = useAction(async () => {
     if (!window.confirm(t("settings.api.revokeConfirm"))) return;
@@ -39,6 +46,8 @@ export function ApiKeyCard() {
                 date: status.createdAt ? status.createdAt.slice(0, 10) : "",
               })
             : t("settings.api.none")}
+          {status.exists &&
+            ` ${t(status.scope === "read" ? "settings.api.scopeReadOn" : "settings.api.scopeWriteOn")}`}
         </p>
         {status.exists && (
           <p className="text-muted" data-testid="api-last-use">
@@ -61,6 +70,17 @@ export function ApiKeyCard() {
           {`curl -H "Authorization: Bearer ${token ?? "ffk_…"}" \\\n  ${origin}/api/v1/orders?limit=10\n\nGET   /api/v1/orders?status=&updated_since=&limit=&before_id=\nGET   /api/v1/orders/<id>\nGET   /api/v1/products\nGET   /api/v1/customers?updated_since=&limit=&after=\nPATCH /api/v1/products/<id>  {"stock": 5, "price": 1000, "active": true}`}
         </pre>
         <p className="text-xs text-muted">{t("settings.api.webhooks")}</p>
+        <label className="block text-xs text-muted">
+          {t("settings.api.scope")}
+          <select
+            className="input mt-1 block"
+            value={scope}
+            onChange={(e) => setScope(e.target.value === "read" ? "read" : "write")}
+          >
+            <option value="write">{t("settings.api.scopeWrite")}</option>
+            <option value="read">{t("settings.api.scopeRead")}</option>
+          </select>
+        </label>
         <div className="flex flex-wrap gap-2">
           <button className="btn-primary" disabled={create.busy} onClick={() => void create.run()}>
             {status.exists ? t("settings.api.rotate") : t("settings.api.create")}
