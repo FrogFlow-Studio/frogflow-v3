@@ -27,6 +27,7 @@ export function waitedText(locale: Locale, since: string, now = Date.now()): str
 
 type Words = {
   chatTitle: (waited: string) => string;
+  escalatedTitle: (waited: string) => string;
   ticketTitle: (n: number, waited: string) => string;
   assignee: string;
   noAssignee: string;
@@ -36,6 +37,7 @@ type Words = {
 const WORDS: Record<Locale, Words> = {
   ru: {
     chatTitle: (w) => `Покупатель ждёт ответа ${w}`,
+    escalatedTitle: (w) => `Диалог так и остался без ответа: покупатель ждёт ${w}`,
     ticketTitle: (n, w) => `Обращение #${n} без ответа ${w}`,
     assignee: "Ответственный",
     noAssignee: "Ответственный не назначен",
@@ -43,6 +45,7 @@ const WORDS: Record<Locale, Words> = {
   },
   kk: {
     chatTitle: (w) => `Сатып алушы жауапты ${w} күтуде`,
+    escalatedTitle: (w) => `Диалог жауапсыз қалды: сатып алушы ${w} күтуде`,
     ticketTitle: (n, w) => `№${n} өтініш ${w} жауапсыз`,
     assignee: "Жауапты",
     noAssignee: "Жауапты тағайындалмаған",
@@ -50,6 +53,7 @@ const WORDS: Record<Locale, Words> = {
   },
   en: {
     chatTitle: (w) => `Customer has been waiting for a reply for ${w}`,
+    escalatedTitle: (w) => `Still no reply in this chat: the customer has been waiting for ${w}`,
     ticketTitle: (n, w) => `Request #${n} unanswered for ${w}`,
     assignee: "Assigned to",
     noAssignee: "No one assigned",
@@ -57,6 +61,7 @@ const WORDS: Record<Locale, Words> = {
   },
   uz: {
     chatTitle: (w) => `Xaridor javobni ${w} kutmoqda`,
+    escalatedTitle: (w) => `Suhbat javobsiz qoldi: xaridor ${w} kutmoqda`,
     ticketTitle: (n, w) => `#${n} murojaat ${w} javobsiz`,
     assignee: "Mas'ul",
     noAssignee: "Mas'ul tayinlanmagan",
@@ -86,6 +91,12 @@ function body(w: Words, c: WaitingCard, head: string): string {
 export function unansweredChatText(locale: Locale, waited: string, c: WaitingCard): string {
   const w = WORDS[locale];
   return body(w, c, w.chatTitle(waited));
+}
+
+/** Второй шаг напоминания — владельцу: после первого напоминания диалог так и остался без ответа. */
+export function unansweredEscalationText(locale: Locale, waited: string, c: WaitingCard): string {
+  const w = WORDS[locale];
+  return body(w, c, w.escalatedTitle(waited));
 }
 
 export function overdueTicketText(

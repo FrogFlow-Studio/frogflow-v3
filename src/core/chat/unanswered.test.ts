@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
+  parseEscalate,
   parseUnansweredMinutes,
   remindUnanswered,
+  UNANSWERED_ESCALATION_EVENT_TYPE,
   UNANSWERED_EVENT_TYPE,
   type UnansweredDialog,
 } from "./unanswered";
@@ -213,5 +215,120 @@ describe("напоминание о диалоге без ответа", () => {
     expect(parseUnansweredMinutes("30")).toBe(30);
     expect(parseUnansweredMinutes("7")).toBe(0);
     expect(parseUnansweredMinutes(null)).toBe(0);
+  });
+});
+
+describe("второй шаг: владельцу, если ответственный молчит", () => {
+  /** Проход крона с обоими шагами; в `second` — кому ушёл второй шаг. */
+  async function pass(ctx: TenantContext, minutes = 30, now = NOW) {
+    const first: UnansweredDialog[] = [];
+    const second: UnansweredDialog[] = [];
+    const r = await remindUnanswered(
+      ctx,
+      minutes,
+      async (d) => void first.push(d),
+      now,
+      async (d) => void second.push(d),
+    );
+    return { r, first, second };
+  }
+  /** Первое напоминание «ушло» `min` минут назад. */
+  const backdate = (db: FakeDb, min: number) => {
+    for (const r of db.tables.zernio_logs!)
+      if (r.event_type === UNANSWERED_EVENT_TYPE) r.created_at = ago(min);
+  };
+
+  it("первое напоминание — сразу, второе — только через столько же минут и один раз", async () => {
+    const { ctx, db, dialog } = shop();
+    dialog(1, true, [["customer", 50, "где заказ?"]]);
+    const a = await pass(ctx);
+    expect(a.first).toHaveLength(1);
+    expect(a.second).toHaveLength(0); // только что напомнили
+    backdate(db, 10);
+    expect((await pass(ctx)).second).toHaveLength(0); // прошло 10 из 30
+    backdate(db, 31);
+    const b = await pass(ctx);
+    expect(b.first).toHaveLength(0);
+    expect(b.second).toMatchObject([
+      { telegramId: 1, waitingSince: ago(50), lastText: "где заказ?" },
+    ]);
+    expect(
+      db.tables.zernio_logs!.filter((r) => r.event_type === UNANSWERED_ESCALATION_EVENT_TYPE),
+    ).toHaveLength(1);
+    expect((await pass(ctx)).second).toHaveLength(0); // третьего не будет
+  });
+
+  it("два крона одновременно — одно второе сообщение", async () => {
+    const { ctx, db, dialog } = shop();
+    dialog(1, true, [["customer", 90]]);
+    await pass(ctx);
+    backdate(db, 40);
+    const [a, b] = await Promise.all([pass(ctx), pass(ctx)]);
+    expect(a.second.length + b.second.length).toBe(1);
+    expect(a.r.escalated + b.r.escalated).toBe(1);
+  });
+
+  it("продавец ответил между шагами — второго шага нет; новое ожидание идёт заново", async () => {
+    const { ctx, db, dialog } = shop();
+    dialog(1, true, [["customer", 90]]);
+    await pass(ctx);
+    backdate(db, 40);
+    db.tables.manager_chat_messages!.push({
+      id: "reply",
+      bot_id: "bot-1",
+      telegram_id: 1,
+      direction: "out",
+      sender: "manager",
+      text: "уже смотрю",
+      created_at: ago(20),
+    });
+    expect((await pass(ctx)).second).toHaveLength(0);
+    // Покупатель написал снова после ответа: свой отрезок, своё первое напоминание.
+    db.tables.manager_chat_messages!.push({
+      id: "again",
+      bot_id: "bot-1",
+      telegram_id: 1,
+      direction: "in",
+      sender: "customer",
+      text: "ау?",
+      created_at: ago(15),
+    });
+    db.tables.manager_chat_state![0]!.last_message_at = ago(15);
+    const next = await pass(ctx, 10);
+    expect(next.first.map((d) => d.waitingSince)).toEqual([ago(15)]);
+    expect(next.second).toHaveLength(0);
+  });
+
+  it("диалог закрыт после первого напоминания — владельца не беспокоим", async () => {
+    const { ctx, db, dialog } = shop();
+    dialog(1, true, [["customer", 90]]);
+    await pass(ctx);
+    backdate(db, 40);
+    db.tables.zernio_logs!.push({
+      bot_id: "bot-1",
+      event_id: "inbox:bot-1:1",
+      event_type: "inbox",
+      status: "closed",
+      payload: { telegram_id: 1 },
+      created_at: ago(1),
+    });
+    expect((await pass(ctx)).second).toHaveLength(0);
+  });
+
+  it("без второго уведомителя второй шаг не выполняется и не отмечается", async () => {
+    const { ctx, db, dialog } = shop();
+    dialog(1, true, [["customer", 90]]);
+    await run(ctx);
+    backdate(db, 40);
+    expect((await run(ctx)).r).toMatchObject({ reminded: 0, escalated: 0 });
+    expect(
+      db.tables.zernio_logs!.filter((r) => r.event_type === UNANSWERED_ESCALATION_EVENT_TYPE),
+    ).toHaveLength(0);
+  });
+
+  it("настройка второго шага: включено только значением «1»", () => {
+    expect(parseEscalate("1")).toBe(true);
+    expect(parseEscalate("0")).toBe(false);
+    expect(parseEscalate(null)).toBe(false);
   });
 });

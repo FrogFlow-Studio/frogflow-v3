@@ -581,10 +581,16 @@ export function waitedLabel(since: string, now = Date.now(), locale: Locale = "r
 export async function runUnansweredChats(tenant: Tenant) {
   if (!tenant.modules.manager_chat) return { skipped: "module off" };
   const ctx = tenantContext(tenant);
-  const { getSetting } = await import("@/core/settings/settings");
-  const { UNANSWERED_KEY, parseUnansweredMinutes, remindUnanswered } =
-    await import("@/core/chat/unanswered");
-  const minutes = parseUnansweredMinutes(await getSetting(ctx, UNANSWERED_KEY));
+  const { getSettings } = await import("@/core/settings/settings");
+  const {
+    UNANSWERED_KEY,
+    UNANSWERED_ESCALATE_KEY,
+    parseEscalate,
+    parseUnansweredMinutes,
+    remindUnanswered,
+  } = await import("@/core/chat/unanswered");
+  const settings = await getSettings(ctx, [UNANSWERED_KEY, UNANSWERED_ESCALATE_KEY]);
+  const minutes = parseUnansweredMinutes(settings[UNANSWERED_KEY]);
   if (!minutes) return { skipped: "off" };
   const { getCustomerByTelegramId } = await import("@/core/customers/customers");
   const channel: Record<string, string> = {
@@ -593,22 +599,55 @@ export async function runUnansweredChats(tenant: Tenant) {
     whatsapp: "WhatsApp",
   };
   const { sellerLocale } = await import("@/core/catalog/low-stock");
-  const { unansweredChatText } = await import("@/core/helpdesk/seller-texts");
+  const { unansweredChatText, unansweredEscalationText } =
+    await import("@/core/helpdesk/seller-texts");
   const locale = await sellerLocale(ctx);
-  return remindUnanswered(ctx, minutes, async (d) => {
+  const card = async (d: {
+    telegramId: number;
+    waitingSince: string;
+    lastText: string;
+    assignee: string | null;
+  }) => {
     const c = await getCustomerByTelegramId(ctx, d.telegramId);
     const name =
       [c?.firstName, c?.lastName].filter(Boolean).join(" ") ||
       (c?.username ? `@${c.username}` : `id ${d.telegramId}`);
     const preview = d.lastText.length > 200 ? `${d.lastText.slice(0, 200)}…` : d.lastText;
-    const html = unansweredChatText(locale, waitedLabel(d.waitingSince, Date.now(), locale), {
-      who: `${channel[c?.platform ?? "telegram"] ?? "Telegram"} · 👤 ${escapeHtml(name)}`,
-      assignee: d.assignee ? escapeHtml(d.assignee) : null,
-      preview: escapeHtml(preview),
-      link: `${ctx.appUrl}/admin/chat?c=${d.telegramId}`,
-    });
-    await notifyAdminsHtml(ctx, html, { kind: "question" });
-  });
+    return {
+      waited: waitedLabel(d.waitingSince, Date.now(), locale),
+      card: {
+        who: `${channel[c?.platform ?? "telegram"] ?? "Telegram"} · 👤 ${escapeHtml(name)}`,
+        assignee: d.assignee ? escapeHtml(d.assignee) : null,
+        preview: escapeHtml(preview),
+        // Прямо в диалог: страница «Чат» открывает его по ?c= и подгружает историю.
+        link: `${ctx.appUrl}/admin/chat?c=${d.telegramId}`,
+      },
+    };
+  };
+  // Второй шаг — только владельцу и только если включён; без владельца писать некому.
+  const owner = ctx.tenant.ownerTelegramId;
+  const escalate =
+    parseEscalate(settings[UNANSWERED_ESCALATE_KEY]) && owner
+      ? async (d: Parameters<typeof card>[0]) => {
+          const x = await card(d);
+          await notifyAdminsHtml(ctx, unansweredEscalationText(locale, x.waited, x.card), {
+            kind: "question",
+            recipients: [String(owner)],
+          });
+        }
+      : undefined;
+  return remindUnanswered(
+    ctx,
+    minutes,
+    async (d) => {
+      const x = await card(d);
+      await notifyAdminsHtml(ctx, unansweredChatText(locale, x.waited, x.card), {
+        kind: "question",
+      });
+    },
+    new Date(),
+    escalate,
+  );
 }
 
 /**

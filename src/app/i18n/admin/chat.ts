@@ -102,6 +102,8 @@ export const ru = {
   "chat.unansweredHours": "через {n} ч",
   "chat.unansweredHint":
     "Одно сообщение в Telegram на каждое ожидание, если вы подключены к диалогу, назначен ответственный или открыто обращение.",
+  "chat.unansweredEscalate":
+    "Если никто не ответил, написать владельцу магазина ещё раз через столько же минут",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -205,6 +207,8 @@ export const kk: SectionDict<typeof ru> = {
   "chat.unansweredHours": "{n} сағаттан кейін",
   "chat.unansweredHint":
     "Сіз диалогқа қосылсаңыз, жауапты тағайындалса немесе өтініш ашық болса, әр күтуге Telegram-ға бір хабар.",
+  "chat.unansweredEscalate":
+    "Ешкім жауап бермесе, дүкен иесіне сонша минуттан кейін тағы бір хабар жазу",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -310,6 +314,8 @@ export const en: SectionDict<typeof ru> = {
   "chat.unansweredHours": "after {n} h",
   "chat.unansweredHint":
     "One Telegram message per wait, when you are connected to the chat, it has an assignee or an open ticket.",
+  "chat.unansweredEscalate":
+    "If nobody replies, message the shop owner once more after the same wait",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -415,4 +421,6 @@ export const uz: SectionDict<typeof ru> = {
   "chat.unansweredHours": "{n} soatdan keyin",
   "chat.unansweredHint":
     "Suhbatga ulangan bo'lsangiz, mas'ul tayinlangan yoki murojaat ochiq bo'lsa, har bir kutish uchun Telegramga bitta xabar.",
+  "chat.unansweredEscalate":
+    "Hech kim javob bermasa, xuddi shuncha vaqtdan keyin do'kon egasiga yana xabar yozish",
 };

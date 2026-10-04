@@ -476,7 +476,12 @@ function ChatPage() {
           resumeBot.error
         }
       />
-      <UnansweredAlert t={t} initial={initial.unansweredMinutes} canWrite={canWrite} />
+      <UnansweredAlert
+        t={t}
+        initial={initial.unansweredMinutes}
+        initialEscalate={initial.unansweredEscalate}
+        canWrite={canWrite}
+      />
       <InboxFilters
         t={t}
         filter={filter}
@@ -1330,16 +1335,20 @@ function InvoicePanel({
 function UnansweredAlert({
   t,
   initial,
+  initialEscalate,
   canWrite,
 }: {
   t: AdminT;
   initial: number;
+  initialEscalate: boolean;
   canWrite: boolean;
 }) {
   const [minutes, setMinutes] = useState(initial);
-  const save = useAction(async (m: number) => {
-    const r = await chatUnansweredSaveFn({ data: { minutes: m } });
+  const [escalate, setEscalate] = useState(initialEscalate);
+  const save = useAction(async (m: number, e: boolean) => {
+    const r = await chatUnansweredSaveFn({ data: { minutes: m, escalate: e } });
     setMinutes(r.minutes);
+    setEscalate(e);
   });
   const option = (m: number) =>
     m === 0
@@ -1357,7 +1366,7 @@ function UnansweredAlert({
         className="input w-auto"
         value={minutes}
         disabled={!canWrite || save.busy}
-        onChange={(e) => void save.run(Number(e.target.value)).catch(() => {})}
+        onChange={(e) => void save.run(Number(e.target.value), escalate).catch(() => {})}
       >
         {UNANSWERED_OPTIONS.map((m) => (
           <option key={m} value={m}>
@@ -1366,6 +1375,17 @@ function UnansweredAlert({
         ))}
       </select>
       <span className="text-xs text-muted">{t("chat.unansweredHint")}</span>
+      {minutes > 0 && (
+        <label className="flex basis-full items-center gap-2 text-muted">
+          <input
+            type="checkbox"
+            checked={escalate}
+            disabled={!canWrite || save.busy}
+            onChange={(e) => void save.run(minutes, e.target.checked).catch(() => {})}
+          />
+          {t("chat.unansweredEscalate")}
+        </label>
+      )}
       <ErrorBox error={save.error} />
     </div>
   );

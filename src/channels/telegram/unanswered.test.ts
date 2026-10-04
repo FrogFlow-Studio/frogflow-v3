@@ -89,4 +89,76 @@ describe("сообщение о диалоге без ответа", () => {
     expect(html).toContain("No one assigned");
     expect(html).not.toContain("Покупатель");
   });
+
+  it("второй шаг — только владельцу, одним сообщением, и только если включён", async () => {
+    const at = new Date(Date.now() - 120 * 60_000).toISOString();
+    const setup = (escalate: string) => {
+      notifyAdminsHtml.mockClear();
+      db.tables.app_settings = [
+        { key: "chat_unanswered_minutes", value: "30" },
+        { key: "chat_unanswered_escalate", value: escalate },
+      ];
+      db.tables.manager_chat_state = [
+        { bot_id: "b", telegram_id: -7, active: true, last_message_at: at, unread_count: 1 },
+      ];
+      db.tables.manager_chat_messages = [
+        {
+          id: "m7",
+          bot_id: "b",
+          telegram_id: -7,
+          direction: "in",
+          sender: "customer",
+          text: "где заказ?",
+          created_at: at,
+        },
+      ];
+      db.tables.zernio_logs = [];
+      db.tables.bot_users = [
+        { user_key: "tg:7", platform: "telegram", telegram_id: -7, first_name: "Ира", state: {} },
+      ];
+    };
+    const tenant = {
+      id: "b",
+      ownerTelegramId: 555,
+      modules: { manager_chat: true },
+      settings: {},
+    } as never;
+    const backdateFirst = () => {
+      for (const r of db.tables.zernio_logs!)
+        if (r.event_type === "chat.unanswered")
+          r.created_at = new Date(Date.now() - 60 * 60_000).toISOString();
+    };
+
+    // Выключено: после первого напоминания тишина.
+    setup("0");
+    await runUnansweredChats(tenant);
+    backdateFirst();
+    await runUnansweredChats(tenant);
+    expect(notifyAdminsHtml).toHaveBeenCalledOnce();
+
+    // Включено: первое — всем, второе — владельцу по его id и на «Диалог так и остался…».
+    setup("1");
+    await runUnansweredChats(tenant);
+    backdateFirst();
+    await runUnansweredChats(tenant);
+    await runUnansweredChats(tenant);
+    expect(notifyAdminsHtml).toHaveBeenCalledTimes(2);
+    const [, html, opts] = notifyAdminsHtml.mock.calls[1] as unknown as [unknown, string, unknown];
+    expect(html).toContain("Диалог так и остался без ответа");
+    expect(html).toContain("https://app.test/admin/chat?c=-7");
+    expect(opts).toEqual({ kind: "question", recipients: ["555"] });
+
+    // Нет владельца — второго шага нет.
+    setup("1");
+    const orphan = {
+      id: "b",
+      ownerTelegramId: null,
+      modules: { manager_chat: true },
+      settings: {},
+    } as never;
+    await runUnansweredChats(orphan);
+    backdateFirst();
+    await runUnansweredChats(orphan);
+    expect(notifyAdminsHtml).toHaveBeenCalledOnce();
+  });
 });

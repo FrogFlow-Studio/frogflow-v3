@@ -22,6 +22,13 @@ export const UNANSWERED_MAX_AGE_MS = 3 * 86_400_000;
 /** Напоминаний за один проход крона; остальные — следующим проходом. */
 export const UNANSWERED_BATCH = 100;
 export const UNANSWERED_EVENT_TYPE = "chat.unanswered";
+/** Второй шаг — владельцу магазина: «если ответственный молчит, диалог не висит». Включается отдельно. */
+export const UNANSWERED_ESCALATE_KEY = "chat_unanswered_escalate";
+export const UNANSWERED_ESCALATION_EVENT_TYPE = "chat.unanswered.escalated";
+
+export function parseEscalate(raw: string | null | undefined): boolean {
+  return raw === "1";
+}
 
 export function parseUnansweredMinutes(raw: string | null | undefined): number {
   const n = Number(raw);
@@ -149,7 +156,7 @@ async function customerSince(
 async function recentClaims(
   ctx: TenantContext,
   since: string,
-): Promise<Map<number, { keys: Set<string>; lastAt: string }>> {
+): Promise<Map<number, { keys: Set<string>; lastAt: string; at: Map<string, string> }>> {
   const rows = await pageAll(
     (from, to) =>
       ctx.db
@@ -161,13 +168,18 @@ async function recentClaims(
         .range(from, to),
     "напоминание о диалогах: отметки",
   );
-  const out = new Map<number, { keys: Set<string>; lastAt: string }>();
+  const out = new Map<number, { keys: Set<string>; lastAt: string; at: Map<string, string> }>();
   for (const r of rows) {
     const p = (r.payload ?? {}) as { telegram_id?: number; key?: string };
     const id = Number(p.telegram_id ?? 0);
     if (!id || !p.key) continue;
-    const cur = out.get(id) ?? { keys: new Set<string>(), lastAt: "" };
+    const cur = out.get(id) ?? {
+      keys: new Set<string>(),
+      lastAt: "",
+      at: new Map<string, string>(),
+    };
     cur.keys.add(p.key);
+    cur.at.set(p.key, r.created_at);
     if (r.created_at > cur.lastAt) cur.lastAt = r.created_at;
     out.set(id, cur);
   }
@@ -250,15 +262,101 @@ export async function claimUnanswered(
   return !error;
 }
 
+/** Отметки второго шага за трое суток: «диалог|ключ отрезка». */
+async function recentEscalations(ctx: TenantContext, since: string): Promise<Set<string>> {
+  const rows = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("zernio_logs")
+        .select("id, payload")
+        .eq("event_type", UNANSWERED_ESCALATION_EVENT_TYPE)
+        .gte("created_at", since)
+        .order("id")
+        .range(from, to),
+    "напоминание о диалогах: отметки второго шага",
+  );
+  const out = new Set<string>();
+  for (const r of rows) {
+    const p = (r.payload ?? {}) as { telegram_id?: number; key?: string };
+    if (p.telegram_id && p.key) out.add(`${p.telegram_id}|${p.key}`);
+  }
+  return out;
+}
+
+/**
+ * Кому пора во второй шаг: первое напоминание отправлено больше `minutes`
+ * назад, а продавец так и не ответил (ключ отрезка тот же — новый ответ
+ * продавца ключ меняет), покупатель всё ещё ждёт и диалог не закрыт.
+ */
+export async function findEscalations(
+  ctx: TenantContext,
+  minutes: number,
+  now = new Date(),
+): Promise<Array<UnansweredDialog & { claimKey: string }>> {
+  if (!minutes) return [];
+  const oldestIso = new Date(now.getTime() - UNANSWERED_MAX_AGE_MS).toISOString();
+  const claims = await recentClaims(ctx, oldestIso);
+  if (!claims.size) return [];
+  const human = await humanDialogs(ctx);
+  const escalated = await recentEscalations(ctx, oldestIso);
+  const out: Array<UnansweredDialog & { claimKey: string }> = [];
+  for (const [telegramId, claimed] of [...claims].sort((a, b) => a[0] - b[0])) {
+    if (out.length >= UNANSWERED_BATCH) break;
+    if (!human.has(telegramId)) continue;
+    // Самый свежий отрезок — без запросов отсекаем тех, кому ещё рано.
+    const newest = [...claimed.at.values()].sort().at(-1) ?? "";
+    if (now.getTime() - Date.parse(newest) < minutes * 60_000) continue;
+    const manager = await lastManagerReply(ctx, telegramId);
+    const claimKey = manager ? `after:${manager.id}` : "after:none";
+    const remindedAt = claimed.at.get(claimKey);
+    if (!remindedAt || escalated.has(`${telegramId}|${claimKey}`)) continue;
+    if (now.getTime() - Date.parse(remindedAt) < minutes * 60_000) continue;
+    const after = manager && manager.at > oldestIso ? manager.at : oldestIso;
+    const waiting = await customerSince(ctx, telegramId, after);
+    if (!waiting) continue;
+    out.push({
+      telegramId,
+      waitingSince: waiting.first,
+      lastText: waiting.lastText,
+      assignee: human.get(telegramId) ?? null,
+      claimKey,
+    });
+  }
+  return out;
+}
+
+/** Отметка второго шага — до отправки, как у первого: true — её поставил этот вызов. */
+export async function claimEscalation(
+  ctx: TenantContext,
+  telegramId: number,
+  claimKey: string,
+): Promise<boolean> {
+  const { error } = await ctx.db.from("zernio_logs").insert({
+    bot_id: ctx.tenant.id,
+    event_id: `unanswered-escalated:${ctx.tenant.id}:${telegramId}:${claimKey}`,
+    event_type: UNANSWERED_ESCALATION_EVENT_TYPE,
+    status: "processed",
+    payload: { telegram_id: telegramId, key: claimKey },
+  });
+  if (error && error.code !== "23505")
+    console.warn(`[chat] второй шаг по диалогу ${telegramId} не отмечен: ${error.message}`);
+  return !error;
+}
+
 export type UnansweredNotifier = (d: UnansweredDialog) => Promise<unknown>;
 
-/** Один проход: найти ждущие диалоги, отметить и напомнить по каждому один раз. */
+/**
+ * Один проход: найти ждущие диалоги, отметить и напомнить по каждому один раз.
+ * `escalate` (если задан) — второй шаг владельцу: через столько же минут после
+ * напоминания, если продавец так и не ответил; тоже один раз на отрезок.
+ */
 export async function remindUnanswered(
   ctx: TenantContext,
   minutes: number,
   notify: UnansweredNotifier,
   now = new Date(),
-): Promise<{ waiting: number; reminded: number }> {
+  escalate?: UnansweredNotifier,
+): Promise<{ waiting: number; reminded: number; escalated: number }> {
   const list = await findUnanswered(ctx, minutes, now);
   let reminded = 0;
   for (const d of list) {
@@ -266,5 +364,13 @@ export async function remindUnanswered(
     await notify(d);
     reminded++;
   }
-  return { waiting: list.length, reminded };
+  let escalated = 0;
+  if (escalate) {
+    for (const d of await findEscalations(ctx, minutes, now)) {
+      if (!(await claimEscalation(ctx, d.telegramId, d.claimKey))) continue;
+      await escalate(d);
+      escalated++;
+    }
+  }
+  return { waiting: list.length, reminded, escalated };
 }

@@ -2484,16 +2484,18 @@ export const chatConversationsFn = createServerFn({ method: "GET" })
     const { listInboxPage, inboxTotals } = await import("@/core/inbox/page");
     const { getSetting } = await import("@/core/settings/settings");
     const { adminIdentity } = await import("@/app/auth/guards.server");
-    const { UNANSWERED_KEY, parseUnansweredMinutes } = await import("@/core/chat/unanswered");
+    const { UNANSWERED_KEY, UNANSWERED_ESCALATE_KEY, parseUnansweredMinutes, parseEscalate } =
+      await import("@/core/chat/unanswered");
     const me = (await adminIdentity())?.username ?? "";
     const filter = data.filter ?? DEFAULT_INBOX_FILTER;
     // Граница опроса берётся до чтения, с запасом на расхождение часов приложения и базы.
     const asOf = new Date(Date.now() - 60_000).toISOString();
-    const [page, totals, rawReplies, rawUnanswered] = await Promise.all([
+    const [page, totals, rawReplies, rawUnanswered, rawEscalate] = await Promise.all([
       listInboxPage(ctx, { filter, me }),
       inboxTotals(ctx, me),
       getSetting(ctx, inbox.QUICK_REPLIES_KEY),
       getSetting(ctx, UNANSWERED_KEY),
+      getSetting(ctx, UNANSWERED_ESCALATE_KEY),
     ]);
     return {
       conversations: page.items,
@@ -2504,6 +2506,7 @@ export const chatConversationsFn = createServerFn({ method: "GET" })
       assignees: inboxAssignees(ctx),
       quickReplies: inbox.parseQuickReplies(rawReplies),
       unansweredMinutes: parseUnansweredMinutes(rawUnanswered),
+      unansweredEscalate: parseEscalate(rawEscalate),
     };
   });
 
@@ -2591,16 +2594,26 @@ export const quickReplyFillFn = createServerFn({ method: "POST" })
     };
   });
 
-/** Через сколько минут без ответа напомнить продавцу; 0 — не напоминать. */
+/**
+ * Через сколько минут без ответа напомнить продавцу; 0 — не напоминать.
+ * `escalate` — второй шаг владельцу; без поля настройка второго шага не меняется.
+ */
 export const chatUnansweredSaveFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) => z.object({ minutes: z.number().int().min(0).max(1440) }).parse(d))
+  .validator((d: unknown) =>
+    z
+      .object({ minutes: z.number().int().min(0).max(1440), escalate: z.boolean().optional() })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const ctx = await chatModule("manager");
-    const { UNANSWERED_KEY, parseUnansweredMinutes } = await import("@/core/chat/unanswered");
+    const { UNANSWERED_KEY, UNANSWERED_ESCALATE_KEY, parseUnansweredMinutes } =
+      await import("@/core/chat/unanswered");
     const minutes = parseUnansweredMinutes(String(data.minutes));
     const { setSetting } = await import("@/core/settings/settings");
     await setSetting(ctx, UNANSWERED_KEY, String(minutes));
-    return { minutes };
+    if (data.escalate !== undefined)
+      await setSetting(ctx, UNANSWERED_ESCALATE_KEY, data.escalate ? "1" : "0");
+    return { minutes, escalate: data.escalate };
   });
 
 export const inboxSetFn = createServerFn({ method: "POST" })
