@@ -35,7 +35,11 @@ export const storeCatalogPageFn = createServerFn({ method: "GET" })
     // Клиент прежней платформы, архив или витрина без модуля — «не найден».
     if (!t || !storefrontOpen(t, "catalog")) throw notFound();
     const { storeCatalogPage } = await import("@/core/storefront/catalog");
-    return storeCatalogPage(tenantContext(t), {
+    const { catalogCache } = await import("@/app/storefront/catalog-cache.server");
+    const key = `${t.id}|${JSON.stringify(data)}`;
+    const hit = catalogCache.get(key);
+    if (hit) return hit;
+    const page = await storeCatalogPage(tenantContext(t), {
       q: data.q,
       categoryId: data.category ?? null,
       sort: data.sort,
@@ -47,6 +51,8 @@ export const storeCatalogPageFn = createServerFn({ method: "GET" })
       maxPrice: data.max,
       offset: data.offset,
     });
+    catalogCache.set(key, page);
+    return page;
   });
 
 /**

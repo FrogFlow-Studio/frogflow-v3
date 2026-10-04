@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import * as F from "./fixtures.ts";
-import { watch } from "./helpers.ts";
+import { openFilters, watch } from "./helpers.ts";
 
 /**
  * Фильтры главной витрины: цена от–до уходит в запрос и сохраняется в адресе,
@@ -11,6 +11,7 @@ test("витрина: фильтр цены оставляет подходящ�
   await page.goto(`/s/${F.SHOP_SLUG}`);
   await expect(page.getByText(F.PRODUCT_NAME).first()).toBeVisible();
   await expect(page.getByText(F.UPSELL_NAME).first()).toBeVisible();
+  await openFilters(page);
   await expect(page.getByLabel("В наличии")).toBeVisible();
 
   await page.getByLabel("Цена от").fill("1000");

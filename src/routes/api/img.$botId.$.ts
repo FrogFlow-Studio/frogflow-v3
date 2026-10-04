@@ -9,9 +9,10 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/api/img/$botId/$")({
   server: {
     handlers: {
-      GET: async ({ params }) => {
+      GET: async ({ params, request }) => {
         const botId = params.botId;
-        const { decodeImageKey } = await import("@/core/catalog/image-url");
+        const { decodeImageKey, parseImageWidth } = await import("@/core/catalog/image-url");
+        const width = parseImageWidth(new URL(request.url).searchParams.get("w"));
         const rel = decodeImageKey(params._splat ?? "");
         if (!/^[0-9a-f-]{36}$/i.test(botId) || !rel)
           return new Response("not found", { status: 404 });
@@ -25,7 +26,16 @@ export const Route = createFileRoute("/api/img/$botId/$")({
         // Новый ключ с префиксом арендатора; если такого нет — старый ключ без
         // префикса, но только когда строка product_images подтверждает, что
         // он принадлежит этому арендатору.
-        const first = await storage.download(`${botId}/${rel}`);
+        // Уменьшенная копия — средствами Storage; не вышло (тариф без преобразований,
+        // не картинка) — молча отдаём оригинал, витрина не должна терять фото.
+        let first = width
+          ? await storage.download(`${botId}/${rel}`, { transform: { width, quality: 75 } })
+          : null;
+        if (first?.error) {
+          console.warn(`[img] ${botId}/${rel}?w=${width}: ${first.error.message}`);
+          first = null;
+        }
+        first ??= await storage.download(`${botId}/${rel}`);
         let file = first.data;
         if (first.error) console.warn(`[img] ${botId}/${rel}: ${first.error.message}`);
         if (!file) {
@@ -49,7 +59,7 @@ export const Route = createFileRoute("/api/img/$botId/$")({
           headers: {
             "content-type": type ?? "application/octet-stream",
             ...(type ? {} : { "content-disposition": "attachment" }),
-            "cache-control": "public, max-age=3600",
+            "cache-control": "public, max-age=86400, stale-while-revalidate=604800",
             "x-content-type-options": "nosniff",
           },
         });

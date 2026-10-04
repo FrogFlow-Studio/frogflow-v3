@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useLoaderData, useNavigate } from "@tanstack/react-router";
+import { imageSrcSet } from "@/core/catalog/image-url";
 import { cardBadge } from "@/core/catalog/lead-time";
 import { useState } from "react";
 import { z } from "zod";
@@ -379,15 +380,35 @@ function CatalogPage() {
         </div>
       )}
 
-      <button
-        type="button"
-        className="btn-secondary mb-4 md:hidden"
-        aria-expanded={filtersOpen}
-        onClick={() => setFiltersOpen(true)}
-      >
-        ⚙️ {t("catalog.filters")}
-        {filtered ? " •" : ""}
-      </button>
+      <div className="mb-4 flex items-center gap-3 md:hidden">
+        <button
+          type="button"
+          className="btn-secondary"
+          aria-expanded={filtersOpen}
+          onClick={() => setFiltersOpen(true)}
+        >
+          ⚙️ {t("catalog.filters")}
+          {filtered ? " •" : ""}
+        </button>
+        {filtered && (
+          <Link
+            to="/s/$slug"
+            params={{ slug }}
+            search={{
+              ...s,
+              stock: undefined,
+              sale: undefined,
+              sets: undefined,
+              min: undefined,
+              max: undefined,
+              page: undefined,
+            }}
+            className="text-sm text-accent hover:underline"
+          >
+            {t("catalog.filter.reset")}
+          </Link>
+        )}
+      </div>
       {filtersOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/40 md:hidden"
@@ -529,7 +550,7 @@ function CatalogPage() {
         </>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {products.map((p) => (
+          {products.map((p, i) => (
             <article
               key={p.id}
               className="card group relative flex flex-col overflow-hidden transition-shadow hover:shadow-md"
@@ -538,9 +559,15 @@ function CatalogPage() {
                 {p.images[0] ? (
                   <img
                     src={p.images[0]}
+                    srcSet={imageSrcSet(p.images[0])}
+                    sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
                     alt={p.name}
+                    width={640}
+                    height={640}
                     className="aspect-square w-full object-cover transition-transform group-hover:scale-[1.02]"
-                    loading="lazy"
+                    // Первый ряд грузится сразу (это первая отрисовка), остальное — по мере прокрутки.
+                    loading={i < 4 ? "eager" : "lazy"}
+                    decoding="async"
                   />
                 ) : (
                   <div className="flex aspect-square items-center justify-center bg-surface-2 text-4xl">

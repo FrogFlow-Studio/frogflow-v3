@@ -41,3 +41,19 @@ export function decodeImageKey(encoded: string): string | null {
 export function imagePath(botId: string, key: string): string {
   return `/api/img/${botId}/${encodeImageKey(botId, key)}`;
 }
+
+/** Ширины, которые отдаёт /api/img?w=…: всё прочее приводится к ближайшей из списка. */
+export const IMAGE_WIDTHS = [320, 640, 960, 1280] as const;
+
+/** Ширина из `?w=`: целое число из списка или `null` (тогда отдаётся оригинал). */
+export function parseImageWidth(raw: string | null): number | null {
+  if (!raw || !/^\d{2,4}$/.test(raw)) return null;
+  const n = Number(raw);
+  return (IMAGE_WIDTHS as readonly number[]).includes(n) ? n : null;
+}
+
+/** `srcset` для витринной картинки; чужие адреса (не /api/img/) остаются без него. */
+export function imageSrcSet(src: string): string | undefined {
+  if (!src.startsWith("/api/img/") || src.includes("?")) return undefined;
+  return IMAGE_WIDTHS.map((w) => `${src}?w=${w} ${w}w`).join(", ");
+}

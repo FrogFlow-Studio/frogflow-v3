@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import * as F from "./fixtures.ts";
-import { watch } from "./helpers.ts";
+import { openFilters, watch } from "./helpers.ts";
 
 /**
  * Акция со сроком на витрине: у товара новая цена, рядом зачёркнутая прежняя и
@@ -24,6 +24,7 @@ test("витрина: цена по акции зачёркнута, фильт�
   await expect(card).toContainText(/1[\s\u00a0]?500/);
   await expect(page.getByText(F.PRODUCT_NAME).first()).toBeVisible();
 
+  await openFilters(page);
   await page.getByLabel("Со скидкой").check();
   await page.getByRole("button", { name: "Применить", exact: true }).click();
   await expect(page).toHaveURL(/sale=1/);

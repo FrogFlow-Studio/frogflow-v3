@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import * as F from "./fixtures.ts";
-import { watch } from "./helpers.ts";
+import { openFilters, watch } from "./helpers.ts";
 
 /**
  * Набор на витрине: карточка с бейджем «Набор» и выгодой, страница с составом,
@@ -32,6 +32,7 @@ test("витрина: набор — состав, выгода, фильтр «
   await expect(card.getByText("Набор", { exact: true })).toBeVisible();
   await expect(card).toContainText(/Выгода\s+2[\s\u00a0]?500/);
 
+  await openFilters(page);
   await page.getByLabel("Наборы", { exact: true }).check();
   await page.getByRole("button", { name: "Применить", exact: true }).click();
   await expect(page).toHaveURL(/sets=1/);
