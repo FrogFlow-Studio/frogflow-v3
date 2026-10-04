@@ -9,6 +9,7 @@ import {
   loadByDay,
   loadSummary,
   nextFreeDay,
+  orderOverLimit,
   parseLimit,
 } from "./capacity";
 import { parseClosedRules } from "./closed-days";
@@ -143,5 +144,69 @@ describe("загрузка выдачи", () => {
         },
       ],
     });
+  });
+});
+
+describe("брошенный неоплаченный заказ не держит место", () => {
+  const NOW = new Date("2026-10-10T12:00:00Z");
+  const stale = "2026-10-08T12:00:00Z";
+  const fresh = "2026-10-10T08:00:00Z";
+  const AT = "2026-10-12T10:00:00Z";
+
+  function withOrders(rows: Array<Record<string, unknown>>) {
+    const { db, ctx } = setup({});
+    db.tables.orders = rows.map((r, i) => ({
+      id: i + 1,
+      bot_id: "b",
+      fulfillment_kind: "physical",
+      fulfillment_at: AT,
+      payment_proof_path: null,
+      ...r,
+    }));
+    return ctx;
+  }
+
+  it("в загрузке дня: без чека старше суток — не считается, свежий и с чеком — считаются", async () => {
+    const ctx = withOrders([
+      { status: "awaiting_payment", created_at: stale },
+      { status: "awaiting_payment", created_at: stale, payment_proof_path: "p/1.jpg" },
+      { status: "awaiting_payment", created_at: fresh },
+      { status: "accepted", created_at: stale },
+    ]);
+    const m = await loadByDay(ctx, "2026-10-12", "2026-10-12", NOW);
+    expect(m.get("2026-10-12")!.total).toBe(3);
+  });
+
+  it("ручной заказ продавца и заказ с частичной оплатой старше суток держат место без срока", async () => {
+    const ctx = withOrders([
+      { status: "awaiting_payment", created_at: stale, platform: "manual" },
+      { status: "awaiting_payment", created_at: stale, paid_amount: 500 },
+      { status: "awaiting_payment", created_at: stale, platform: "instagram", paid_amount: 0 },
+    ]);
+    const m = await loadByDay(ctx, "2026-10-12", "2026-10-12", NOW);
+    expect(m.get("2026-10-12")!.total).toBe(2);
+    expect(
+      await orderOverLimit(ctx, { id: 2, fulfillment_at: AT }, { day: 1, slot: null }, NOW),
+    ).toBe("day");
+  });
+
+  it("лимит 2: два брошенных заказа из бота не отнимают субботу у живого покупателя", async () => {
+    const ctx = withOrders([
+      { status: "awaiting_payment", created_at: stale },
+      { status: "awaiting_payment", created_at: stale },
+      { status: "awaiting_payment", created_at: fresh },
+    ]);
+    const limits = { day: 2, slot: null };
+    expect(await orderOverLimit(ctx, { id: 3, fulfillment_at: AT }, limits, NOW)).toBeNull();
+  });
+
+  it("лимит 1: свежий заказ с чеком занимает место, следующий — сверх лимита", async () => {
+    const ctx = withOrders([
+      { status: "awaiting_payment", created_at: stale, payment_proof_path: "p/1.jpg" },
+      { status: "awaiting_payment", created_at: fresh },
+    ]);
+    expect(
+      await orderOverLimit(ctx, { id: 2, fulfillment_at: AT }, { day: 1, slot: null }, NOW),
+    ).toBe("day");
   });
 });

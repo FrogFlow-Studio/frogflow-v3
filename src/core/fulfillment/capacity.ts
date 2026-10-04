@@ -1,7 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { getSettingsStrict } from "@/core/settings/settings";
 import { pageAll } from "@/core/db/page";
-import { serverFailure } from "@/lib/server-failure";
 import { addDaysToIso, OPEN_PHYSICAL_STATUSES } from "./pure";
 import { fulfillmentSlots } from "./slots";
 import { isClosedDay, type ClosedRules } from "./closed-days";
@@ -11,7 +10,10 @@ import { isClosedDay, type ClosedRules } from "./closed-days";
  * (`fulfillment_day_limit`, `fulfillment_slot_limit`), схема не менялась;
  * пусто — без лимита, как раньше. Считаются физические заказы с датой выдачи,
  * кроме отклонённых, отменённых и возвращённых (в том числе просроченных
- * заказов с сайта — их отклоняет web-expire).
+ * заказов с сайта — их отклоняет web-expire). Неоплаченный заказ покупателя без чека из
+ * любого канала держит место только сутки (UNPAID_HOLD_MS): брошенный заказ
+ * из бота не занимает день навсегда. Если покупатель всё же пришлёт чек позже,
+ * заказ снова считается, и продавец сам решает, что делать с перебором.
  *
  * Гонку двух покупателей на последнее место решает порядок номеров: заказ
  * создаётся, затем считается, какой он по счёту на этот день и слот; если
@@ -26,6 +28,30 @@ export const LOAD_WINDOW_DAYS = 90;
 
 /** Статусы, которые занимают место: живые физические и уже выданные. */
 export const COUNTED_STATUSES: readonly string[] = [...OPEN_PHYSICAL_STATUSES, "delivered"];
+
+/** Сколько неоплаченный заказ без чека занимает место в лимите (как срок заказа с сайта). */
+export const UNPAID_HOLD_MS = 24 * 3600_000;
+
+type HoldRow = {
+  status?: string | null;
+  payment_proof_path?: string | null;
+  created_at?: string | null;
+  platform?: string | null;
+  paid_amount?: number | string | null;
+};
+
+/**
+ * Занимает ли заказ место: живой, а неоплаченный заказ покупателя без чека — только
+ * в пределах срока. Ручной заказ продавца («оплата при выдаче») и заказ с частичной
+ * оплатой не брошены — держат место без срока.
+ */
+export function holdsPlace(r: HoldRow, now: Date): boolean {
+  if (r.status !== "awaiting_payment" || r.payment_proof_path || !r.created_at) return true;
+  if (r.platform === "manual" || Number(r.paid_amount) > 0) return true;
+  return now.getTime() - new Date(r.created_at).getTime() < UNPAID_HOLD_MS;
+}
+
+const HOLD_COLUMNS = "status, payment_proof_path, created_at, platform, paid_amount";
 
 export type FulfillmentLimits = { day: number | null; slot: number | null };
 
@@ -56,12 +82,13 @@ export async function loadByDay(
   ctx: TenantContext,
   fromIso: string,
   toIso: string,
+  now = new Date(),
 ): Promise<Map<string, DayLoad>> {
-  const rows = await pageAll<{ id: number; fulfillment_at: string | null }>(
+  const rows = await pageAll<{ id: number; fulfillment_at: string | null } & HoldRow>(
     (from, to) =>
       ctx.db
         .from("orders")
-        .select("id, fulfillment_at")
+        .select(`id, fulfillment_at, ${HOLD_COLUMNS}`)
         .eq("fulfillment_kind", "physical")
         .in("status", [...COUNTED_STATUSES])
         .gte("fulfillment_at", dayStart(fromIso))
@@ -72,7 +99,7 @@ export async function loadByDay(
   );
   const out = new Map<string, DayLoad>();
   for (const r of rows) {
-    if (!r.fulfillment_at) continue;
+    if (!r.fulfillment_at || !holdsPlace(r, now)) continue;
     const day = r.fulfillment_at.slice(0, 10);
     const load = out.get(day) ?? { total: 0, slots: {} };
     load.total++;
@@ -146,22 +173,26 @@ export async function orderOverLimit(
   ctx: TenantContext,
   order: { id: number; fulfillment_at: string | null },
   limits: FulfillmentLimits,
+  now = new Date(),
 ): Promise<"day" | "slot" | null> {
   if (!order.fulfillment_at || !hasLimits(limits)) return null;
   const day = order.fulfillment_at.slice(0, 10);
   const count = async (exact: string | null): Promise<number> => {
-    let q = ctx.db
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .eq("fulfillment_kind", "physical")
-      .in("status", [...COUNTED_STATUSES])
-      .lte("id", order.id);
-    q = exact
-      ? q.eq("fulfillment_at", exact)
-      : q.gte("fulfillment_at", dayStart(day)).lt("fulfillment_at", dayStart(addDaysToIso(day, 1)));
-    const { count: n, error } = await q;
-    if (error) throw serverFailure(`Загрузка выдачи: ${error.message}`);
-    return n ?? 0;
+    const rows = await pageAll<HoldRow>((from, to) => {
+      let q = ctx.db
+        .from("orders")
+        .select(`id, ${HOLD_COLUMNS}`)
+        .eq("fulfillment_kind", "physical")
+        .in("status", [...COUNTED_STATUSES])
+        .lte("id", order.id);
+      q = exact
+        ? q.eq("fulfillment_at", exact)
+        : q
+            .gte("fulfillment_at", dayStart(day))
+            .lt("fulfillment_at", dayStart(addDaysToIso(day, 1)));
+      return q.order("id").range(from, to);
+    }, "Загрузка выдачи");
+    return rows.filter((r) => holdsPlace(r, now)).length;
   };
   if (limits.day !== null && (await count(null)) > limits.day) return "day";
   const time = /T(\d{2}:\d{2})/.exec(order.fulfillment_at)?.[1];
