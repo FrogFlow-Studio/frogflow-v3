@@ -141,6 +141,7 @@ function ProductEditor() {
   const {
     product: p,
     waiting,
+    waitlistRun,
     lowStock,
     preorder,
     preorderPast,
@@ -479,11 +480,26 @@ function ProductEditor() {
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <Field
                 label={t("product.stock")}
-                hint={
-                  waiting > 0
-                    ? `${t("product.stockHint")} ${t("product.waiting", { n: waiting })}`
-                    : t("product.stockHint")
-                }
+                hint={[
+                  t("product.stockHint"),
+                  waiting == null
+                    ? t("product.waitingUnknown")
+                    : waiting > 0
+                      ? t("product.waiting", { n: waiting })
+                      : "",
+                  waitlistRun
+                    ? t("product.waitlistLast", {
+                        when: new Date(waitlistRun.at).toLocaleString(intlLocale(shop.locale)),
+                        notified: waitlistRun.notified,
+                        failed: waitlistRun.failed,
+                      })
+                    : "",
+                  waitlistRun && waitlistRun.left > 0
+                    ? t("product.waitlistLeft", { n: waitlistRun.left })
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
               >
                 <input
                   className="input"

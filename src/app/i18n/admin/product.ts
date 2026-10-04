@@ -186,6 +186,13 @@ export const ru = {
   "product.stockHistory.reason.sheet": "Таблица Google",
   "product.stockHistory.reason.api": "Внешний API",
   "product.stockHistory.by": "сделал: {who}",
+  // лист ожидания: итог последней рассылки (Р3)
+  "product.waitingUnknown":
+    "Сколько ждут поступления, сейчас узнать не удалось — обновите страницу.",
+  "product.waitlistLast":
+    "Последняя рассылка ({when}): получили {notified}, не дошло {failed} (в том числе Instagram и WhatsApp вне 24-часового окна ответа).",
+  "product.waitlistLeft":
+    "Не успели написать {n} — им уйдёт при следующем сохранении карточки, пока товар в наличии.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -373,6 +380,11 @@ export const kk: SectionDict<typeof ru> = {
   "product.stockHistory.reason.sheet": "Google кестесі",
   "product.stockHistory.reason.api": "Сыртқы API",
   "product.stockHistory.by": "орындаған: {who}",
+  "product.waitingUnknown": "Түсуін күтетіндер санын қазір біле алмадық — бетті жаңартыңыз.",
+  "product.waitlistLast":
+    "Соңғы тарату ({when}): алды {notified}, жетпеді {failed} (оның ішінде 24 сағаттық жауап терезесінен тыс Instagram және WhatsApp).",
+  "product.waitlistLeft":
+    "{n} адамға жазуға үлгермедік — тауар бар кезде карточканы келесі сақтағанда жіберіледі.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -560,6 +572,11 @@ export const en: SectionDict<typeof ru> = {
   "product.stockHistory.reason.sheet": "Google Sheet",
   "product.stockHistory.reason.api": "External API",
   "product.stockHistory.by": "by {who}",
+  "product.waitingUnknown": "Could not read how many are waiting right now — refresh the page.",
+  "product.waitlistLast":
+    "Last send ({when}): received {notified}, not delivered {failed} (including Instagram and WhatsApp outside the 24-hour reply window).",
+  "product.waitlistLeft":
+    "{n} were not reached in time — they will be messaged the next time the card is saved, while the item is in stock.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -746,4 +763,9 @@ export const uz: SectionDict<typeof ru> = {
   "product.stockHistory.reason.sheet": "Google jadvali",
   "product.stockHistory.reason.api": "Tashqi API",
   "product.stockHistory.by": "bajargan: {who}",
+  "product.waitingUnknown": "Kutayotganlar sonini hozir bilib bo‘lmadi — sahifani yangilang.",
+  "product.waitlistLast":
+    "Oxirgi yuborish ({when}): oldi {notified}, yetib bormadi {failed} (shu jumladan 24 soatlik javob oynasidan tashqaridagi Instagram va WhatsApp).",
+  "product.waitlistLeft":
+    "{n} kishiga yozishga ulgurmadik — mahsulot mavjud bo‘lganda kartochka keyingi saqlanganda yuboriladi.",
 };

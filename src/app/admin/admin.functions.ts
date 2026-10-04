@@ -729,10 +729,16 @@ export const productFn = createServerFn({ method: "GET" })
       m.listAllCategories(ctx),
       listPaymentMethods(ctx),
     ]);
+    // null — не удалось прочитать: «0 ждут» там было бы неправдой.
+    const waitlistModule = await import("@/core/waitlist/waitlist");
     const waiting =
       data.id && ctx.tenant.modules.waitlist
-        ? await (await import("@/core/waitlist/waitlist")).countWaiting(ctx, data.id)
+        ? await waitlistModule.countWaiting(ctx, data.id).catch(() => null)
         : 0;
+    const waitlistRun =
+      data.id && ctx.tenant.modules.waitlist
+        ? await waitlistModule.lastWaitlistRun(ctx, data.id).catch(() => null)
+        : null;
     const low = ctx.tenant.modules.stock
       ? await (await import("@/core/catalog/low-stock")).loadThresholds(ctx, data.id)
       : { shop: 0, own: null };
@@ -747,6 +753,7 @@ export const productFn = createServerFn({ method: "GET" })
       preorderPast,
       product,
       waiting,
+      waitlistRun,
       lowStock: low,
       preorder,
       categories,
@@ -924,8 +931,15 @@ async function maybeNotifyWaitlist(
 ) {
   if (!ctx.tenant.modules.waitlist || !before) return null;
   const after = await stockState(ctx, id);
-  const { backInStock } = await import("@/core/waitlist/waitlist");
-  if (!after || !backInStock(before, after)) return null;
+  const { backInStock, inStock, lastWaitlistRun } = await import("@/core/waitlist/waitlist");
+  if (!after) return null;
+  if (!backInStock(before, after)) {
+    // Прошлая рассылка не успела всех (вышел бюджет времени): товар в продаже —
+    // досылаем оставшимся при следующем сохранении карточки.
+    if (!inStock(after)) return null;
+    const last = await lastWaitlistRun(ctx, id).catch(() => null);
+    if (!last || last.left <= 0) return null;
+  }
   const { notifyBackInStock } = await import("@/app/waitlist/notify.server");
   return notifyBackInStock(ctx, { id, name: after.name });
 }
@@ -2080,7 +2094,7 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
   // Итоги автосообщений нужны только карточкам включённых модулей.
   const { autoMessageStats } = await import("@/core/automsg/stats");
   const autoStats =
-    ctx.tenant.modules.cart_reminder || ctx.tenant.modules.winback
+    ctx.tenant.modules.cart_reminder || ctx.tenant.modules.winback || ctx.tenant.modules.waitlist
       ? await autoMessageStats(ctx)
       : null;
   return {

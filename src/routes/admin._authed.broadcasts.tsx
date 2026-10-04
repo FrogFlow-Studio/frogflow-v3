@@ -244,6 +244,11 @@ function BroadcastsPage() {
             <CartReminderCard hours={data.cartReminderHours} stats={data.autoStats?.cart} />
           )}
           {shop.modules.winback && <WinbackCard stats={data.autoStats?.winback} />}
+          {shop.modules.waitlist && (
+            <Card title={t("autostats.waitlistTitle")}>
+              <AutoStatsBlock t={t} stats={data.autoStats?.waitlist} />
+            </Card>
+          )}
           {shop.modules.winback && <SimilarCard t={t} stats={data.autoStats?.similar} />}
           {shop.modules.funnel && <FunnelCard />}
           {shop.modules.funnel && <BirthdayCard />}

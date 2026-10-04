@@ -58,10 +58,6 @@ const ALLOWED: Record<string, { n: number; why: string }> = {
     n: 2,
     why: "мягкое чтение getSetting/getSettings: только для текстов и необязательного; деньги читают Strict",
   },
-  "src/core/waitlist/waitlist.ts": {
-    n: 1,
-    why: "счётчик «сколько ждут» для показа; не влияет на деньги и выдачу",
-  },
 };
 
 function sourceFiles(): string[] {

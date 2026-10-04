@@ -137,7 +137,7 @@ describe("большой магазин: ничего не теряется за
     for (let i = 0; i < 1500; i++)
       db.tables.bot_users!.push(user(i + 1, ago(30), { waitlist: ["prod-1"] }));
     const r = await notifyWaitlist(ctx, "prod-1", async () => true);
-    expect(r).toEqual({ notified: 1500, failed: 0 });
+    expect(r).toEqual({ notified: 1500, failed: 0, left: 0 });
     expect(
       db.tables.bot_users!.filter((u) =>
         ((u.state as { waitlist?: string[] }).waitlist ?? []).includes("prod-1"),
