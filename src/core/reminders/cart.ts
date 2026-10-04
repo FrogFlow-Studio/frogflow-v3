@@ -89,6 +89,7 @@ export async function sendCartReminders(
         .from("cart_items")
         .select("telegram_id, created_at")
         .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
         .range(from, to),
     "корзины для напоминания",
   );
@@ -153,13 +154,18 @@ export async function sendCartReminders(
       .from("bot_users")
       .update({ cart_reminder_sent_at: now.toISOString() })
       .eq("telegram_id", telegramId);
-    const { data: claimed } = await (
+    const { data: claimed, error: claimError } = await (
       user.cart_reminder_sent_at
         ? cas.eq("cart_reminder_sent_at", user.cart_reminder_sent_at)
         : cas.is("cart_reminder_sent_at", null)
     )
       .select("telegram_id")
       .maybeSingle();
+    if (claimError) {
+      // Сбой записи — не «проиграли гонку»: оставляем след и пробуем в следующий прогон.
+      console.error(`[cart-reminder:${ctx.tenant.id}] ${telegramId}: ${claimError.message}`);
+      continue;
+    }
     if (!claimed) continue;
     if (!(await claimMarketing(ctx, user.user_key, user.state, cap, now))) {
       // Место за сутки ушло другому сообщению (или state успел измениться):

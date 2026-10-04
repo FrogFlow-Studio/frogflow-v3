@@ -128,6 +128,52 @@ describe("напоминание о корзине: заблокированны
   });
 });
 
+describe("напоминание о корзине: чтение корзин и захват", () => {
+  it("страницы корзин упорядочены уникальным хвостом (id), иначе на границе теряются строки", async () => {
+    const { ctx, db } = setup();
+    const orders: string[] = [];
+    const realFrom = db.from;
+    db.from = (table) => {
+      const q = realFrom(table);
+      if (table === "cart_items") {
+        const order = q.order.bind(q);
+        q.order = (col, o) => (orders.push(col), order(col, o));
+      }
+      return q;
+    };
+    await sendCartReminders(ctx, async () => true, NOW);
+    // Первый запрос — страницы корзин; следующие (состав корзины) здесь не важны.
+    expect(orders.slice(0, 2)).toEqual(["created_at", "id"]);
+  });
+
+  it("сбой базы на захвате — след в журнале, не молчаливая «проигранная гонка»", async () => {
+    const { ctx, db, row } = setup();
+    const realFrom = db.from;
+    const failing = (): unknown =>
+      new Proxy(
+        {},
+        {
+          get: (_, k) =>
+            k === "then"
+              ? (ok: (v: unknown) => unknown) => ok({ data: null, error: { message: "boom" } })
+              : failing,
+        },
+      );
+    db.from = (table) => {
+      const q = realFrom(table);
+      if (table === "bot_users") q.update = failing as typeof q.update;
+      return q;
+    };
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const send = vi.fn(async () => true);
+    expect((await sendCartReminders(ctx, send, NOW)).sent).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+    expect(row.cart_reminder_sent_at).toBeNull();
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("[cart-reminder:b] 42: boom"));
+    log.mockRestore();
+  });
+});
+
 describe("напоминание о корзине: что в тексте", () => {
   it("называет до трёх позиций, «ещё N» и сумму по текущим ценам", async () => {
     const { ctx } = setup();
