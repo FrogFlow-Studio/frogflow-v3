@@ -17,7 +17,12 @@ test("приглашение менеджера по ссылке", async ({ pag
   await expect(page).toHaveURL(/\/admin$/);
 
   await page.goto("/admin/settings");
-  await page.getByRole("button", { name: "Пригласить по ссылке", exact: true }).click();
+  // Карточки команды подгружаются лениво (С3): клик до гидрации пропадает, поэтому повторяем,
+  // пока форма не откроется (кнопка только открывает форму, повтор безопасен).
+  await expect(async () => {
+    await page.getByRole("button", { name: "Пригласить по ссылке", exact: true }).click();
+    await expect(page.locator('input[name="name"]').first()).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 25_000 });
   await page.locator('input[name="name"]').first().fill("Анна");
   await page.getByRole("button", { name: "Создать ссылку", exact: true }).click();
   const link = await page.locator("input[readonly]").inputValue();

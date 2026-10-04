@@ -14,9 +14,13 @@ test("быстрый поиск: разделы и заказы", async ({ page 
   const phone = info.project.name === "phone";
   const dialog = page.getByRole("dialog", { name: "Быстрый поиск", exact: true });
   const open = async () => {
-    if (phone) await page.getByRole("button", { name: "Поиск", exact: true }).click();
-    else await page.keyboard.press("Control+k");
-    await expect(dialog).toBeVisible();
+    // Окно открывается только после гидрации страницы: до неё нажатие пропадает, поэтому повторяем.
+    await expect(async () => {
+      if (await dialog.isVisible()) return;
+      if (phone) await page.getByRole("button", { name: "Поиск", exact: true }).click();
+      else await page.keyboard.press("Control+k");
+      await expect(dialog).toBeVisible({ timeout: 3000 });
+    }).toPass({ timeout: 25_000 });
   };
   const box = () => dialog.getByPlaceholder(/^Заказ, покупатель, товар или раздел/);
 
