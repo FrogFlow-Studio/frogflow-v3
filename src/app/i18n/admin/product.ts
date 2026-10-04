@@ -212,6 +212,16 @@ export const ru = {
   "product.stockHistory.reason.writeoff": "Списание",
   "product.stockHistory.reason.stocktake": "Инвентаризация",
   "product.stockHistory.reason.bundle": "Набор в заказе №{no}",
+  "product.tabs": "Разделы карточки",
+  "product.tab.main": "Основное",
+  "product.tab.price": "Цена и остаток",
+  "product.tab.photos": "Фото",
+  "product.tab.variants": "Варианты",
+  "product.tab.bundle": "Набор",
+  "product.tab.promo": "Продвижение",
+  "product.card.variants": "Варианты",
+  "product.card.stock": "Остаток и продажа",
+  "product.unsaved": "Есть несохранённые изменения. Уйти без сохранения?",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -422,6 +432,16 @@ export const kk: SectionDict<typeof ru> = {
   "product.stockHistory.reason.writeoff": "Есептен шығару",
   "product.stockHistory.reason.stocktake": "Түгендеу",
   "product.stockHistory.reason.bundle": "№{no} тапсырыстағы жиынтық",
+  "product.tabs": "Карточка бөлімдері",
+  "product.tab.main": "Негізгі",
+  "product.tab.price": "Баға және қалдық",
+  "product.tab.photos": "Фото",
+  "product.tab.variants": "Нұсқалар",
+  "product.tab.bundle": "Жиынтық",
+  "product.tab.promo": "Жылжыту",
+  "product.card.variants": "Нұсқалар",
+  "product.card.stock": "Қалдық және сату",
+  "product.unsaved": "Сақталмаған өзгерістер бар. Сақтамай шығу керек пе?",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -632,6 +652,16 @@ export const en: SectionDict<typeof ru> = {
   "product.stockHistory.reason.writeoff": "Write-off",
   "product.stockHistory.reason.stocktake": "Stocktake",
   "product.stockHistory.reason.bundle": "Bundle in order #{no}",
+  "product.tabs": "Card sections",
+  "product.tab.main": "Basics",
+  "product.tab.price": "Price and stock",
+  "product.tab.photos": "Photos",
+  "product.tab.variants": "Variants",
+  "product.tab.bundle": "Bundle",
+  "product.tab.promo": "Promotion",
+  "product.card.variants": "Variants",
+  "product.card.stock": "Stock and sale",
+  "product.unsaved": "You have unsaved changes. Leave without saving?",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -841,4 +871,14 @@ export const uz: SectionDict<typeof ru> = {
   "product.stockHistory.reason.writeoff": "Hisobdan chiqarish",
   "product.stockHistory.reason.stocktake": "Inventarizatsiya",
   "product.stockHistory.reason.bundle": "№{no} buyurtmadagi toʻplam",
+  "product.tabs": "Karta bo‘limlari",
+  "product.tab.main": "Asosiy",
+  "product.tab.price": "Narx va qoldiq",
+  "product.tab.photos": "Foto",
+  "product.tab.variants": "Variantlar",
+  "product.tab.bundle": "To‘plam",
+  "product.tab.promo": "Ilgari surish",
+  "product.card.variants": "Variantlar",
+  "product.card.stock": "Qoldiq va sotuv",
+  "product.unsaved": "Saqlanmagan o‘zgarishlar bor. Saqlamasdan chiqasizmi?",
 };

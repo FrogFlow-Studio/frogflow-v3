@@ -1,6 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { ProductSearch } from "@/app/admin/product-picker";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BundleCard } from "@/app/admin/bundle-card";
 import { saveUpsellFn, upsellForProductFn } from "@/app/admin/upsell.functions";
 import {
@@ -139,6 +139,8 @@ function CategoryPicker({
   );
 }
 
+type ProductTab = "main" | "price" | "photos" | "variants" | "bundle" | "promo";
+
 function ProductEditor() {
   const {
     product: p,
@@ -221,6 +223,7 @@ function ProductEditor() {
         },
       },
     });
+    saved.current = true;
     if (isNew) await navigate({ to: "/admin/products/$id", params: { id } });
     else await navigate({ to: "/admin/products" });
   });
@@ -259,8 +262,47 @@ function ProductEditor() {
   };
   const imgSrc = (key: string) => imagePath(shop.botId, key);
 
+  // Вкладки: все панели остаются в форме (скрытые не выпадают из FormData), поэтому поля не теряются.
+  const tabs: ProductTab[] = [
+    "main",
+    "price",
+    "photos",
+    "variants",
+    ...(shop.modules.bundles && p?.id && kind === "physical" ? (["bundle"] as const) : []),
+    ...(shop.modules.upsell && p?.id ? (["promo"] as const) : []),
+  ];
+  const [tab, setTab] = useState<ProductTab>("main");
+  const cur = tabs.includes(tab) ? tab : "main";
+  // Несохранённые изменения: предупреждение при уходе со страницы и из карточки.
+  const [dirty, setDirty] = useState(false);
+  const saved = useRef(false);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    setDirty(true);
+  }, [images, materials, variants, kind, isCourse]);
+  // После первого сохранения нового товара страница та же, но уже с id: счёт несохранённого начинается заново.
+  const productId = p?.id;
+  useEffect(() => {
+    saved.current = false;
+    setDirty(false);
+  }, [productId]);
+  useBlocker({
+    shouldBlockFn: () => (dirty && !saved.current ? !confirm(t("product.unsaved")) : false),
+    enableBeforeUnload: () => dirty && !saved.current,
+  });
+
   return (
     <form
+      onChange={() => setDirty(true)}
+      onInvalidCapture={(e) => {
+        // Обязательное поле на скрытой вкладке: открыть её, чтобы продавец увидел, что не заполнено.
+        const k = (e.target as HTMLElement).closest("[data-tab]")?.getAttribute("data-tab");
+        if (k && k !== cur) setTab(k as ProductTab);
+      }}
       onSubmit={(e) => {
         e.preventDefault();
         void save.run(new FormData(e.currentTarget)).catch(() => {});
@@ -307,421 +349,460 @@ function ProductEditor() {
         }
       />
       <ErrorBox error={save.error ?? del.error ?? copy.error ?? uploadError} />
-      <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_340px]">
+      <div className="mt-3 max-w-4xl">
+        <div
+          role="tablist"
+          aria-label={t("product.tabs")}
+          className="mb-4 flex gap-2 overflow-x-auto pb-1 [&>button]:shrink-0 [&>button]:whitespace-nowrap"
+        >
+          {tabs.map((k) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={cur === k}
+              className={`badge cursor-pointer ${cur === k ? "border-accent bg-accent/10 text-accent" : ""}`}
+              onClick={() => setTab(k)}
+            >
+              {t(`product.tab.${k}`)}
+            </button>
+          ))}
+        </div>
         <div className="space-y-4">
-          {school && isNew && (
-            <p className="rounded-md border border-accent/40 bg-accent/5 p-3 text-sm">
-              {t("product.courseSaveFirst")}
-            </p>
-          )}
-          <Card title={t("product.card.description")}>
-            <div className="space-y-3">
-              <Field label={t("product.name")}>
-                <input
-                  className="input"
-                  name="name"
-                  defaultValue={p?.name ?? ""}
-                  required
-                  maxLength={200}
-                />
-              </Field>
-              <Field label={t("product.description")} hint={t("product.descriptionHint")}>
-                <textarea
-                  className="input"
-                  name="description"
-                  rows={5}
-                  defaultValue={p?.description ?? ""}
-                />
-              </Field>
-              <DescriptionAssist t={t} kind={kind} currency={p?.currency ?? shop.currency} />
-              <Field label={t("product.keywords")} hint={t("product.keywordsHint")}>
-                <input className="input" name="keywords" defaultValue={p?.keywords ?? ""} />
-              </Field>
-              <Field label={t("product.categories")}>
-                <CategoryPicker
-                  categories={categories}
-                  selected={Array.isArray(p?.category_ids) ? (p.category_ids as string[]) : []}
-                  t={t}
-                />
-              </Field>
-            </div>
-          </Card>
-          {school && shop.modules.courses && p?.id && kind === "digital" && (
-            <CourseCard productId={p.id} t={t} />
-          )}
-
-          <Card title={t("product.card.price")}>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Field label={t("product.basePrice")}>
-                <input
-                  className="input"
-                  name="price"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  defaultValue={p ? Number(p.price) : ""}
-                  required
-                />
-              </Field>
-              <Field label={t("product.currency")}>
-                <input
-                  className="input"
-                  name="currency"
-                  defaultValue={p?.currency ?? shop.currency}
-                  maxLength={3}
-                />
-              </Field>
-              <Field label={t("product.sortOrder")}>
-                <input
-                  className="input"
-                  name="sortOrder"
-                  type="number"
-                  defaultValue={p?.sort_order ?? 0}
-                />
-              </Field>
-            </div>
-            {shop.modules.multi_currency && countries.length === 0 && (
-              <p className="mt-4 text-sm text-muted">
-                {t("product.countryPricesEmpty")}{" "}
-                <Link to="/admin/settings" className="underline">
-                  {t("product.countryPricesSetup")}
-                </Link>
+          <div data-tab="main" className={cur === "main" ? "space-y-4" : "hidden"}>
+            {school && isNew && (
+              <p className="rounded-md border border-accent/40 bg-accent/5 p-3 text-sm">
+                {t("product.courseSaveFirst")}
               </p>
             )}
-            {shop.modules.multi_currency && countries.length > 0 && (
-              <div className="mt-4">
-                <div className="label">{t("product.countryPrices")}</div>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {countries.map((c) => (
-                    <Field key={c.code} label={`${c.name}, ${c.currency}`}>
+            <Card title={t("product.card.description")}>
+              <div className="space-y-3">
+                <Field label={t("product.name")}>
+                  <input
+                    className="input"
+                    name="name"
+                    defaultValue={p?.name ?? ""}
+                    required
+                    maxLength={200}
+                  />
+                </Field>
+                <Field label={t("product.description")} hint={t("product.descriptionHint")}>
+                  <textarea
+                    className="input"
+                    name="description"
+                    rows={5}
+                    defaultValue={p?.description ?? ""}
+                  />
+                </Field>
+                <DescriptionAssist t={t} kind={kind} currency={p?.currency ?? shop.currency} />
+                <Field label={t("product.keywords")} hint={t("product.keywordsHint")}>
+                  <input className="input" name="keywords" defaultValue={p?.keywords ?? ""} />
+                </Field>
+                <Field label={t("product.categories")}>
+                  <CategoryPicker
+                    categories={categories}
+                    selected={Array.isArray(p?.category_ids) ? (p.category_ids as string[]) : []}
+                    t={t}
+                  />
+                </Field>
+              </div>
+            </Card>
+            {school && shop.modules.courses && p?.id && kind === "digital" && (
+              <CourseCard productId={p.id} t={t} />
+            )}
+
+            <Card title={t("product.card.kind")}>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="kind"
+                    checked={kind === "digital"}
+                    onChange={() => setKind("digital")}
+                  />{" "}
+                  {t("product.kindDigital")}
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="kind"
+                    checked={kind === "physical"}
+                    onChange={() => setKind("physical")}
+                  />{" "}
+                  {t("product.kindPhysical")}
+                </label>
+              </div>
+            </Card>
+
+            {shop.modules.courses && kind === "digital" && (
+              <label className="card flex items-start gap-2 p-4 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={isCourse}
+                  onChange={(e) => setIsCourse(e.target.checked)}
+                />
+                <span>
+                  {t("product.isCourse")}
+                  <span className="block text-xs text-muted">{t("product.isCourseHint")}</span>
+                </span>
+              </label>
+            )}
+            {kind === "digital" && (
+              <Card
+                title={t("product.card.files")}
+                actions={
+                  materials.length === 0 && isCourse && shop.modules.courses ? (
+                    <Badge>{t("product.filesOptional")}</Badge>
+                  ) : materials.length === 0 ? (
+                    <Badge tone="danger">{t("product.needFile")}</Badge>
+                  ) : (
+                    <Badge tone="ok">{materials.length}</Badge>
+                  )
+                }
+              >
+                <ul className="space-y-2 text-sm">
+                  {materials.map((m, i) => (
+                    <li key={m.filePath} className="flex items-center gap-2">
+                      <select
+                        className="input w-24"
+                        value={m.language}
+                        onChange={(e) =>
+                          setMaterials((x) =>
+                            x.map((y, j) =>
+                              j === i ? { ...y, language: e.target.value as Locale } : y,
+                            ),
+                          )
+                        }
+                      >
+                        {MATERIAL_LANGUAGES.map((l) => (
+                          <option key={l} value={l}>
+                            {l.toUpperCase()}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="min-w-0 flex-1 truncate">
+                        {m.fileName ?? m.filePath.split("/").pop()}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={() => setMaterials((x) => x.filter((_, j) => j !== i))}
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {MATERIAL_LANGUAGES.filter(
+                    (l) => l === "ru" || l === "kk" || shop.modules.multi_language,
+                  ).map((l) => (
+                    <label key={l} className="btn-secondary cursor-pointer text-xs">
+                      + {localeNames[l]}
+                      <input
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => void onUpload("file", e.target.files, l)}
+                      />
+                    </label>
+                  ))}
+                </div>
+                {uploading && <UploadProgress p={uploading} t={t} />}
+                <p className="mt-2 text-xs text-muted">{t("product.filesHint")}</p>
+              </Card>
+            )}
+            {p?.id && kind === "digital" && (
+              <PreviewCard productId={p.id} t={t} botId={shop.botId} />
+            )}
+            {!school && shop.modules.courses && p?.id && kind === "digital" && (
+              <CourseCard productId={p.id} t={t} />
+            )}
+          </div>
+          <div data-tab="price" className={cur === "price" ? "space-y-4" : "hidden"}>
+            <Card title={t("product.card.price")}>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label={t("product.basePrice")}>
+                  <input
+                    className="input"
+                    name="price"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    defaultValue={p ? Number(p.price) : ""}
+                    required
+                  />
+                </Field>
+                <Field label={t("product.currency")}>
+                  <input
+                    className="input"
+                    name="currency"
+                    defaultValue={p?.currency ?? shop.currency}
+                    maxLength={3}
+                  />
+                </Field>
+                <Field label={t("product.sortOrder")}>
+                  <input
+                    className="input"
+                    name="sortOrder"
+                    type="number"
+                    defaultValue={p?.sort_order ?? 0}
+                  />
+                </Field>
+              </div>
+              {shop.modules.multi_currency && countries.length === 0 && (
+                <p className="mt-4 text-sm text-muted">
+                  {t("product.countryPricesEmpty")}{" "}
+                  <Link to="/admin/settings" className="underline">
+                    {t("product.countryPricesSetup")}
+                  </Link>
+                </p>
+              )}
+              {shop.modules.multi_currency && countries.length > 0 && (
+                <div className="mt-4">
+                  <div className="label">{t("product.countryPrices")}</div>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {countries.map((c) => (
+                      <Field key={c.code} label={`${c.name}, ${c.currency}`}>
+                        <input
+                          className="input"
+                          name={`cp_${c.code}`}
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          defaultValue={
+                            (p?.country_prices as Record<string, number> | null)?.[c.code] ?? ""
+                          }
+                        />
+                      </Field>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Card>
+
+            <Card title={t("product.card.stock")}>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <Field
+                  label={t("product.stock")}
+                  hint={[
+                    t("product.stockHint"),
+                    waiting == null
+                      ? t("product.waitingUnknown")
+                      : waiting > 0
+                        ? t("product.waiting", { n: waiting })
+                        : "",
+                    waitlistRun
+                      ? t("product.waitlistLast", {
+                          when: new Date(waitlistRun.at).toLocaleString(intlLocale(shop.locale)),
+                          notified: waitlistRun.notified,
+                          failed: waitlistRun.failed,
+                        })
+                      : "",
+                    waitlistRun && waitlistRun.left > 0
+                      ? t("product.waitlistLeft", { n: waitlistRun.left })
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <input
+                    className="input"
+                    name="stockQuantity"
+                    type="number"
+                    min={0}
+                    defaultValue={p?.stock_quantity ?? ""}
+                  />
+                </Field>
+                {shop.modules.stock && (
+                  <Field
+                    label={t("product.lowStock")}
+                    hint={t("product.lowStockHint", { n: lowStock.shop })}
+                  >
+                    <input
+                      className="input"
+                      name="lowStockAt"
+                      type="number"
+                      min={0}
+                      defaultValue={lowStock.own ?? ""}
+                    />
+                  </Field>
+                )}
+                {kind === "physical" && (
+                  <Field label={t("product.leadTime")}>
+                    <input
+                      className="input"
+                      name="leadTimeDays"
+                      type="number"
+                      min={0}
+                      defaultValue={p?.lead_time_days ?? ""}
+                    />
+                  </Field>
+                )}
+                <label className="flex items-center gap-2 self-end pb-2 text-sm">
+                  <input type="checkbox" name="isActive" defaultChecked={p?.is_active ?? true} />{" "}
+                  {t("product.onSale")}
+                </label>
+              </div>
+              {shop.modules.stock && kind === "physical" && (
+                <div className="mt-3 space-y-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="preorderOn" defaultChecked={Boolean(preorder)} />{" "}
+                    {t("product.preorder")}
+                  </label>
+                  <p className="text-xs text-muted">{t("product.preorderHint")}</p>
+                  {preorderPast && (
+                    <p className="text-xs text-danger">{t("product.preorderPast")}</p>
+                  )}
+                  <Field label={t("product.preorderFrom")} hint={t("product.preorderFromHint")}>
+                    <input
+                      className="input sm:w-48"
+                      name="preorderFrom"
+                      type="date"
+                      defaultValue={preorder?.from ?? ""}
+                    />
+                  </Field>
+                </div>
+              )}
+            </Card>
+            {shop.modules.profit && p?.id && (
+              <CostCard
+                productId={p.id}
+                variantNames={[...new Set((p.product_variants ?? []).map((v) => v.name.trim()))]}
+                canWrite={canEdit(shop.role) || shop.role === "accountant"}
+                t={t}
+              />
+            )}
+            {shop.modules.subscriptions && p?.id && <SubscriptionCard productId={p.id} t={t} />}
+            {shop.modules.warehouse && kind === "physical" && p?.id && (
+              <SupplierCard productId={p.id} canWrite={canEdit(shop.role)} t={t} />
+            )}
+            {shop.modules.stock && p?.id && (
+              <StockHistoryCard productId={p.id} locale={shop.locale} t={t} />
+            )}
+          </div>
+          <div data-tab="photos" className={cur === "photos" ? "space-y-4" : "hidden"}>
+            <Card title={t("product.card.photos")}>
+              <div className="grid grid-cols-3 gap-2">
+                {images.map((img, i) => (
+                  <div key={img.key} className="group relative">
+                    <img
+                      src={imgSrc(img.key)}
+                      alt=""
+                      className="aspect-square w-full rounded object-cover"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 flex justify-between bg-black/50 px-1 text-xs text-white opacity-0 group-hover:opacity-100">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          i > 0 &&
+                          setImages((x) => [
+                            ...x.slice(0, i - 1),
+                            x[i]!,
+                            x[i - 1]!,
+                            ...x.slice(i + 1),
+                          ])
+                        }
+                      >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setImages((x) => x.filter((_, j) => j !== i))}
+                      >
+                        ✕
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          i < images.length - 1 &&
+                          setImages((x) => [...x.slice(0, i), x[i + 1]!, x[i]!, ...x.slice(i + 2)])
+                        }
+                      >
+                        →
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <label className="btn-secondary mt-3 w-full cursor-pointer">
+                {uploading
+                  ? t("product.uploading", { name: uploading.name })
+                  : t("product.addPhoto")}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => void onUpload("image", e.target.files)}
+                />
+              </label>
+              {uploading && <UploadProgress p={uploading} t={t} />}
+              <p className="mt-1 text-xs text-muted">{t("product.firstIsCover")}</p>
+            </Card>
+          </div>
+          <div data-tab="variants" className={cur === "variants" ? "space-y-4" : "hidden"}>
+            <Card title={t(school ? "product.variantsCourse" : "product.card.variants")}>
+              <div>
+                <p className="mb-2 text-sm text-muted">
+                  {t(school ? "product.variantsCourse" : "product.variants")}
+                </p>
+                <div className="space-y-2">
+                  {variants.map((v, i) => (
+                    <div key={i} className="flex gap-2">
                       <input
                         className="input"
-                        name={`cp_${c.code}`}
+                        placeholder={t("product.variantName")}
+                        value={v.name}
+                        onChange={(e) =>
+                          setVariants((x) =>
+                            x.map((y, j) => (j === i ? { ...y, name: e.target.value } : y)),
+                          )
+                        }
+                      />
+                      <input
+                        className="input w-36"
                         type="number"
                         min={0}
                         step="0.01"
-                        defaultValue={
-                          (p?.country_prices as Record<string, number> | null)?.[c.code] ?? ""
+                        value={v.price}
+                        onChange={(e) =>
+                          setVariants((x) =>
+                            x.map((y, j) =>
+                              j === i ? { ...y, price: Number(e.target.value) } : y,
+                            ),
+                          )
                         }
                       />
-                    </Field>
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={() => setVariants((x) => x.filter((_, j) => j !== i))}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   ))}
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setVariants((x) => [...x, { name: "", price: 0 }])}
+                  >
+                    {t("product.addVariant")}
+                  </button>
                 </div>
               </div>
-            )}
-            <div className="mt-4">
-              <div className="label">
-                {t(school ? "product.variantsCourse" : "product.variants")}
-              </div>
-              <div className="space-y-2">
-                {variants.map((v, i) => (
-                  <div key={i} className="flex gap-2">
-                    <input
-                      className="input"
-                      placeholder={t("product.variantName")}
-                      value={v.name}
-                      onChange={(e) =>
-                        setVariants((x) =>
-                          x.map((y, j) => (j === i ? { ...y, name: e.target.value } : y)),
-                        )
-                      }
-                    />
-                    <input
-                      className="input w-36"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={v.price}
-                      onChange={(e) =>
-                        setVariants((x) =>
-                          x.map((y, j) => (j === i ? { ...y, price: Number(e.target.value) } : y)),
-                        )
-                      }
-                    />
-                    <button
-                      type="button"
-                      className="btn-ghost"
-                      onClick={() => setVariants((x) => x.filter((_, j) => j !== i))}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setVariants((x) => [...x, { name: "", price: 0 }])}
-                >
-                  {t("product.addVariant")}
-                </button>
-              </div>
-            </div>
-          </Card>
-
-          <Card title={t("product.card.kind")}>
-            <div className="flex flex-wrap gap-4">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="kind"
-                  checked={kind === "digital"}
-                  onChange={() => setKind("digital")}
-                />{" "}
-                {t("product.kindDigital")}
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="kind"
-                  checked={kind === "physical"}
-                  onChange={() => setKind("physical")}
-                />{" "}
-                {t("product.kindPhysical")}
-              </label>
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
-              <Field
-                label={t("product.stock")}
-                hint={[
-                  t("product.stockHint"),
-                  waiting == null
-                    ? t("product.waitingUnknown")
-                    : waiting > 0
-                      ? t("product.waiting", { n: waiting })
-                      : "",
-                  waitlistRun
-                    ? t("product.waitlistLast", {
-                        when: new Date(waitlistRun.at).toLocaleString(intlLocale(shop.locale)),
-                        notified: waitlistRun.notified,
-                        failed: waitlistRun.failed,
-                      })
-                    : "",
-                  waitlistRun && waitlistRun.left > 0
-                    ? t("product.waitlistLeft", { n: waitlistRun.left })
-                    : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                <input
-                  className="input"
-                  name="stockQuantity"
-                  type="number"
-                  min={0}
-                  defaultValue={p?.stock_quantity ?? ""}
-                />
-              </Field>
-              {shop.modules.stock && (
-                <Field
-                  label={t("product.lowStock")}
-                  hint={t("product.lowStockHint", { n: lowStock.shop })}
-                >
-                  <input
-                    className="input"
-                    name="lowStockAt"
-                    type="number"
-                    min={0}
-                    defaultValue={lowStock.own ?? ""}
-                  />
-                </Field>
-              )}
-              {kind === "physical" && (
-                <Field label={t("product.leadTime")}>
-                  <input
-                    className="input"
-                    name="leadTimeDays"
-                    type="number"
-                    min={0}
-                    defaultValue={p?.lead_time_days ?? ""}
-                  />
-                </Field>
-              )}
-              <label className="flex items-center gap-2 self-end pb-2 text-sm">
-                <input type="checkbox" name="isActive" defaultChecked={p?.is_active ?? true} />{" "}
-                {t("product.onSale")}
-              </label>
-            </div>
-            {shop.modules.stock && kind === "physical" && (
-              <div className="mt-3 space-y-2">
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" name="preorderOn" defaultChecked={Boolean(preorder)} />{" "}
-                  {t("product.preorder")}
-                </label>
-                <p className="text-xs text-muted">{t("product.preorderHint")}</p>
-                {preorderPast && <p className="text-xs text-danger">{t("product.preorderPast")}</p>}
-                <Field label={t("product.preorderFrom")} hint={t("product.preorderFromHint")}>
-                  <input
-                    className="input sm:w-48"
-                    name="preorderFrom"
-                    type="date"
-                    defaultValue={preorder?.from ?? ""}
-                  />
-                </Field>
-              </div>
-            )}
-          </Card>
-        </div>
-
-        <div className="space-y-4">
-          <Card title={t("product.card.photos")}>
-            <div className="grid grid-cols-3 gap-2">
-              {images.map((img, i) => (
-                <div key={img.key} className="group relative">
-                  <img
-                    src={imgSrc(img.key)}
-                    alt=""
-                    className="aspect-square w-full rounded object-cover"
-                  />
-                  <div className="absolute inset-x-0 bottom-0 flex justify-between bg-black/50 px-1 text-xs text-white opacity-0 group-hover:opacity-100">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        i > 0 &&
-                        setImages((x) => [
-                          ...x.slice(0, i - 1),
-                          x[i]!,
-                          x[i - 1]!,
-                          ...x.slice(i + 1),
-                        ])
-                      }
-                    >
-                      ←
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setImages((x) => x.filter((_, j) => j !== i))}
-                    >
-                      ✕
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        i < images.length - 1 &&
-                        setImages((x) => [...x.slice(0, i), x[i + 1]!, x[i]!, ...x.slice(i + 2)])
-                      }
-                    >
-                      →
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <label className="btn-secondary mt-3 w-full cursor-pointer">
-              {uploading ? t("product.uploading", { name: uploading.name }) : t("product.addPhoto")}
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(e) => void onUpload("image", e.target.files)}
-              />
-            </label>
-            {uploading && <UploadProgress p={uploading} t={t} />}
-            <p className="mt-1 text-xs text-muted">{t("product.firstIsCover")}</p>
-          </Card>
-
-          {shop.modules.courses && kind === "digital" && (
-            <label className="card flex items-start gap-2 p-4 text-sm">
-              <input
-                type="checkbox"
-                className="mt-1"
-                checked={isCourse}
-                onChange={(e) => setIsCourse(e.target.checked)}
-              />
-              <span>
-                {t("product.isCourse")}
-                <span className="block text-xs text-muted">{t("product.isCourseHint")}</span>
-              </span>
-            </label>
-          )}
-          {kind === "digital" && (
-            <Card
-              title={t("product.card.files")}
-              actions={
-                materials.length === 0 && isCourse && shop.modules.courses ? (
-                  <Badge>{t("product.filesOptional")}</Badge>
-                ) : materials.length === 0 ? (
-                  <Badge tone="danger">{t("product.needFile")}</Badge>
-                ) : (
-                  <Badge tone="ok">{materials.length}</Badge>
-                )
-              }
-            >
-              <ul className="space-y-2 text-sm">
-                {materials.map((m, i) => (
-                  <li key={m.filePath} className="flex items-center gap-2">
-                    <select
-                      className="input w-24"
-                      value={m.language}
-                      onChange={(e) =>
-                        setMaterials((x) =>
-                          x.map((y, j) =>
-                            j === i ? { ...y, language: e.target.value as Locale } : y,
-                          ),
-                        )
-                      }
-                    >
-                      {MATERIAL_LANGUAGES.map((l) => (
-                        <option key={l} value={l}>
-                          {l.toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="min-w-0 flex-1 truncate">
-                      {m.fileName ?? m.filePath.split("/").pop()}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn-ghost"
-                      onClick={() => setMaterials((x) => x.filter((_, j) => j !== i))}
-                    >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {MATERIAL_LANGUAGES.filter(
-                  (l) => l === "ru" || l === "kk" || shop.modules.multi_language,
-                ).map((l) => (
-                  <label key={l} className="btn-secondary cursor-pointer text-xs">
-                    + {localeNames[l]}
-                    <input
-                      type="file"
-                      multiple
-                      className="hidden"
-                      onChange={(e) => void onUpload("file", e.target.files, l)}
-                    />
-                  </label>
-                ))}
-              </div>
-              {uploading && <UploadProgress p={uploading} t={t} />}
-              <p className="mt-2 text-xs text-muted">{t("product.filesHint")}</p>
             </Card>
-          )}
-          {p?.id && kind === "digital" && <PreviewCard productId={p.id} t={t} botId={shop.botId} />}
-          {shop.modules.profit && p?.id && (
-            <CostCard
-              productId={p.id}
-              variantNames={[...new Set((p.product_variants ?? []).map((v) => v.name.trim()))]}
-              canWrite={canEdit(shop.role) || shop.role === "accountant"}
-              t={t}
-            />
-          )}
-          {shop.modules.subscriptions && p?.id && <SubscriptionCard productId={p.id} t={t} />}
-          {!school && shop.modules.courses && p?.id && kind === "digital" && (
-            <CourseCard productId={p.id} t={t} />
-          )}
-          {shop.modules.bundles && p?.id && kind === "physical" && (
-            <BundleCard productId={p.id} t={t} />
-          )}
-          {shop.modules.upsell && p?.id && <UpsellCard productId={p.id} t={t} />}
-          {shop.modules.warehouse && kind === "physical" && p?.id && (
-            <SupplierCard productId={p.id} canWrite={canEdit(shop.role)} t={t} />
-          )}
-          {shop.modules.stock && p?.id && (
-            <StockHistoryCard productId={p.id} locale={shop.locale} t={t} />
-          )}
+          </div>
+          <div data-tab="bundle" className={cur === "bundle" ? "space-y-4" : "hidden"}>
+            {shop.modules.bundles && p?.id && kind === "physical" && (
+              <BundleCard productId={p.id} t={t} />
+            )}
+          </div>
+          <div data-tab="promo" className={cur === "promo" ? "space-y-4" : "hidden"}>
+            {shop.modules.upsell && p?.id && <UpsellCard productId={p.id} t={t} />}
+          </div>
         </div>
       </div>
     </form>
