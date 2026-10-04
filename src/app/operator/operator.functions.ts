@@ -1349,6 +1349,29 @@ export const resolveCommunityReportFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Жалобы на магазины площадки (core/marketplace/report): список, «скрыть с площадки» или «отклонить». */
+export const marketReportsFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z.object({ offset: z.number().int().min(0).max(100_000).optional() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await import("./market-reports.server")).marketReportsView(data.offset);
+  });
+
+export const resolveMarketReportFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ id: z.string().uuid(), action: z.enum(["hide", "dismiss"]) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await import("./market-reports.server")).resolveMarketReport(
+      data.id,
+      data.action,
+      await actor(),
+    );
+  });
+
 /** Воронка лидов отдела продаж FrogFlow (core/leads): список, добавление, стадия, заметки, журнал. */
 const leadsImpl = () => import("./leads.server");
 const pipelineImpl = () => import("./leads-pipeline.server");

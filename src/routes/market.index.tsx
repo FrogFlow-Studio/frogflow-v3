@@ -160,6 +160,14 @@ function MarketPage() {
                   >
                     {t("shop.open")}
                   </Link>
+                  <Link
+                    to="/market/report"
+                    search={{ shop: s.slug, ...(lang ? { lang } : {}) }}
+                    rel="nofollow"
+                    className="ml-4 mt-3 inline-block text-xs text-muted underline"
+                  >
+                    {t("shop.report")}
+                  </Link>
                 </li>
               ))}
             </ul>

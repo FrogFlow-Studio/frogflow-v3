@@ -184,6 +184,34 @@ describe("ретеншн zernio_logs", () => {
     expect(db.tables.zernio_logs.map((r) => r.id)).toEqual(["entry", "notice"]);
   });
 
+  it("жалобы площадки не удаляются, отметки жалоб — удаляются как обычные события", async () => {
+    db.tables.zernio_logs = [
+      {
+        id: "report",
+        bot_id: "b",
+        event_type: "market.report",
+        status: "open",
+        created_at: daysAgo(400),
+      },
+      {
+        id: "report-closed",
+        bot_id: "b",
+        event_type: "market.report",
+        status: "closed",
+        created_at: daysAgo(400),
+      },
+      {
+        id: "claim",
+        bot_id: "b",
+        event_type: "market.report.claim",
+        status: "processed",
+        created_at: daysAgo(31),
+      },
+    ];
+    expect(await pruneZernioLogs(NOW)).toEqual({ deleted: 1, done: true });
+    expect(db.tables.zernio_logs.map((r) => r.id)).toEqual(["report", "report-closed"]);
+  });
+
   it("склад: приход, списание и инвентаризация не удаляются, остальные движения — удаляются", async () => {
     const row = (id: string, type: string) => ({
       id,

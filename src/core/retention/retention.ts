@@ -134,6 +134,8 @@ export async function pruneZernioLogs(now = Date.now(), scope?: Scope): Promise<
       .neq("event_type", "stock.stocktake")
       // Отметки «сообщили победителю»: по ним сообщение не уходит второй раз (К5).
       .neq("event_type", "giveaway.notice")
+      // Жалобы с площадки (core/marketplace/report): оператор решает по ним и после полугода.
+      .neq("event_type", "market.report")
       .lt("created_at", cutoff(RETENTION.zernioLogsStaleDays, now));
     if (scope) q2 = q2.in("bot_id", [...scope]);
     const { data: stale, error: e2 } = await q2
