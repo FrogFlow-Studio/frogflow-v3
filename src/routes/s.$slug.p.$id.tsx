@@ -256,6 +256,11 @@ function ProductPage() {
                 <button className="btn-primary px-5 py-2.5 text-base" onClick={add}>
                   {t("product.addToCart")}
                 </button>
+                {!p.preorder && p.lowLeft !== null && (
+                  <span className="badge" role="status">
+                    {t("product.lowLeft", { n: p.lowLeft })}
+                  </span>
+                )}
                 {p.preorder && (
                   <span className="badge">
                     {p.preorder.from

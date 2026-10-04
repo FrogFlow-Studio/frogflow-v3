@@ -49,18 +49,26 @@ export const saveNotifyPrefsFn = createServerFn({ method: "POST" })
 /** Порог «заканчивается на складе» для магазина (core/catalog/low-stock); модуль «Склад», настраивает владелец. */
 export const lowStockFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await (await import("@/app/auth/guards.server")).requireAdminModule("stock");
-  const { loadThresholds } = await import("@/core/catalog/low-stock");
-  return { threshold: (await loadThresholds(ctx, null)).shop };
+  const { loadThresholds, loadShowToBuyer } = await import("@/core/catalog/low-stock");
+  return {
+    threshold: (await loadThresholds(ctx, null)).shop,
+    showToBuyer: await loadShowToBuyer(ctx),
+  };
 });
 
 export const saveLowStockFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) => z.object({ threshold: z.number().int().min(0).max(100_000) }).parse(d))
+  .validator((d: unknown) =>
+    z
+      .object({ threshold: z.number().int().min(0).max(100_000), showToBuyer: z.boolean() })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const ctx = await (
       await import("@/app/auth/guards.server")
     ).requireAdminModule("stock", "owner");
-    const { saveShopThreshold } = await import("@/core/catalog/low-stock");
+    const { saveShopThreshold, saveShowToBuyer } = await import("@/core/catalog/low-stock");
     await saveShopThreshold(ctx, data.threshold);
+    await saveShowToBuyer(ctx, data.showToBuyer);
     return { ok: true };
   });
 

@@ -236,13 +236,17 @@ export function LowStockCard() {
   const { shop } = settingsRoute.useRouteContext();
   const t = adminT(shop.locale);
   const [value, setValue] = useState<string | null>(null);
+  const [showBuyer, setShowBuyer] = useState(false);
   const [saved, setSaved] = useState(false);
   useEffect(() => {
-    void lowStockFn().then((r) => setValue(String(r.threshold)));
+    void lowStockFn().then((r) => {
+      setValue(String(r.threshold));
+      setShowBuyer(r.showToBuyer);
+    });
   }, []);
   const owner = shop.role === "owner";
   const save = useAction(async () => {
-    await saveLowStockFn({ data: { threshold: Number(value) || 0 } });
+    await saveLowStockFn({ data: { threshold: Number(value) || 0, showToBuyer: showBuyer } });
     setSaved(true);
   });
   return (
@@ -267,6 +271,19 @@ export function LowStockCard() {
             onChange={(e) => setValue(e.target.value)}
           />
         </Field>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={showBuyer}
+            disabled={!owner || value === null}
+            onChange={(e) => setShowBuyer(e.target.checked)}
+          />
+          <span>
+            {t("settings.lowStock.showBuyer")}
+            <span className="block text-xs text-muted">{t("settings.lowStock.showBuyerHint")}</span>
+          </span>
+        </label>
         {owner && (
           <div className="flex items-center gap-3">
             <button className="btn-primary" disabled={save.busy || value === null}>

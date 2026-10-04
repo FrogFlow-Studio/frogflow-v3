@@ -413,6 +413,7 @@ const ru = {
   "tickets.append": "Дописать в обращение",
   "tickets.sent": "Отправлено — ответим в чате с магазином.",
   "tickets.noOpen": "Открытого обращения нет — дописать некуда.",
+  "product.lowLeft": "Осталось {n} шт.",
   "catalog.breadcrumbs": "Путь по каталогу",
 } as const;
 
@@ -823,6 +824,7 @@ const kk: Dict = {
   "tickets.append": "Өтінішке қосу",
   "tickets.sent": "Жіберілді — дүкенмен чатта жауап береміз.",
   "tickets.noOpen": "Ашық өтініш жоқ — қосатын жер жоқ.",
+  "product.lowLeft": "Қалды {n} дана",
   "catalog.breadcrumbs": "Каталог бойынша жол",
 };
 
@@ -1225,6 +1227,7 @@ const en: Dict = {
   "tickets.append": "Add to request",
   "tickets.sent": "Sent — we will reply in your chat with the shop.",
   "tickets.noOpen": "There is no open request to add to.",
+  "product.lowLeft": "Only {n} left",
   "catalog.breadcrumbs": "You are here in the catalog",
 };
 
@@ -1635,6 +1638,7 @@ const uz: Dict = {
   "tickets.append": "Murojaatga qoʻshish",
   "tickets.sent": "Yuborildi — doʻkon bilan chatda javob beramiz.",
   "tickets.noOpen": "Ochiq murojaat yoʻq — qoʻshadigan joy yoʻq.",
+  "product.lowLeft": "{n} dona qoldi",
   "catalog.breadcrumbs": "Katalogdagi yo‘l",
 };
 

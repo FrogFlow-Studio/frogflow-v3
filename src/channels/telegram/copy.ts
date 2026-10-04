@@ -149,6 +149,8 @@ export type Msg = {
   depositLine: (due: string, total: string) => string;
   afterProofPhysical: string;
   leadTimeLabel: (days: number) => string;
+  /** «Осталось мало»: точный остаток, только если продавец разрешил показывать (core/catalog/low-stock). */
+  lowStockLabel: (n: number) => string;
   /** Товара нет, но продавец берёт предзаказ (core/preorder); from — дата отправки (ГГГГ-ММ-ДД) или null. */
   preorderLabel: (from: string | null) => string;
   preorderCartNote: (from: string | null) => string;
@@ -542,6 +544,7 @@ const ru: Msg = {
   afterProofPhysical:
     "После оплаты пришлите сюда фото или PDF чека — продавец подтвердит заказ и возьмёт в работу.",
   leadTimeLabel: (days) => `⏳ Срок изготовления: ${days} дн.`,
+  lowStockLabel: (n) => `⚠️ Осталось ${n} шт.`,
   preorderLabel: (from) =>
     `🕒 Предзаказ: товара пока нет в наличии${from ? `, отправка с ${preorderDate(from, "ru")}` : ", срок отправки уточним"}`,
   preorderCartNote: (from) =>
@@ -646,6 +649,7 @@ const ru: Msg = {
 
 const kk: Msg = {
   ...ru,
+  lowStockLabel: (n) => `⚠️ Қалды ${n} дана`,
   preorderLabel: (from) =>
     `🕒 Алдын ала тапсырыс: тауар әзірге қоймада жоқ${from ? `, ${preorderDate(from, "kk")} күнінен бастап жіберіледі` : ", жіберу мерзімін нақтылаймыз"}`,
   preorderCartNote: (from) =>
@@ -871,6 +875,7 @@ const kk: Msg = {
 
 const en: Msg = {
   ...ru,
+  lowStockLabel: (n) => `⚠️ Only ${n} left`,
   preorderLabel: (from) =>
     `🕒 Pre-order: not in stock yet${from ? `, ships from ${preorderDate(from, "en")}` : ", we will confirm the shipping date"}`,
   preorderCartNote: (from) =>
@@ -1123,6 +1128,7 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  lowStockLabel: (n) => `⚠️ ${n} dona qoldi`,
   preorderLabel: (from) =>
     `🕒 Oldindan buyurtma: mahsulot hozircha omborda yo‘q${from ? `, ${preorderDate(from, "uz")} dan boshlab jo‘natiladi` : ", jo‘natish muddatini aniqlaymiz"}`,
   preorderCartNote: (from) =>

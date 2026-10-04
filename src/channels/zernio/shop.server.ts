@@ -1306,6 +1306,10 @@ async function sendProductCard(s: Shop, p: Product, force: boolean) {
     const offer = await offerForProductRow(s.ctx, p);
     if (offer) text += `\n${offerLabel(offer, s.ctx.timezone, s.locale)}`;
   }
+  // «Осталось N шт.» — только с согласия продавца и без предзаказа (core/catalog/low-stock).
+  const { buyerLowStock } = await import("@/core/catalog/low-stock");
+  const left = await buyerLowStock(s.ctx, p);
+  if (left !== null) text += `\n${plain(s.m.lowStockLabel(left))}`;
   buttons.push(BTN.cart(s.m));
   if (buttons.length < 3) buttons.push(BTN.catalog(s.m));
 

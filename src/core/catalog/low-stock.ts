@@ -175,3 +175,70 @@ export async function saveProductThreshold(
   } else await setSetting(ctx, key, String(Math.min(Math.max(0, value), LOW_STOCK_MAX)));
   await resetLowStock(ctx, productId);
 }
+
+/**
+ * «Осталось мало» покупателю. Выключено по умолчанию: точный остаток —
+ * коммерческая тайна продавца, и показываем его только с его согласия
+ * (`low_stock_show_buyer = 1`). Порог — тот же, что для предупреждения
+ * продавцу (у товара свой, иначе магазинный); порог 0 — не показываем.
+ */
+export const LOW_STOCK_SHOW_KEY = "low_stock_show_buyer";
+
+/** Правило показа. Нет остатка вовсе («распродано») — не «осталось мало»; предзаказ и товар без учёта остатка не показываем. */
+export function lowStockLeft(a: {
+  stock: number | null;
+  threshold: number;
+  show: boolean;
+  physical: boolean;
+  preorder: boolean;
+}): number | null {
+  if (!a.show || !a.physical || a.preorder || a.stock === null) return null;
+  if (a.threshold <= 0 || a.stock <= 0) return null;
+  return a.stock <= a.threshold ? a.stock : null;
+}
+
+/**
+ * Сколько штук показать покупателю у этого товара; null — ничего. Надпись
+ * вспомогательная: сбой чтения настроек не ломает карточку, а только убирает
+ * надпись (пишется в консоль). Остаток берётся из строки товара, уже
+ * прочитанной вызывающим, — лишнего чтения нет, пока показ выключен.
+ */
+export async function buyerLowStock(
+  ctx: TenantContext,
+  p: { id: string; stock_quantity: number | null; fulfillment_kind: string },
+): Promise<number | null> {
+  if (!active(ctx)) return null;
+  if (p.fulfillment_kind !== "physical" || p.stock_quantity === null || p.stock_quantity <= 0)
+    return null;
+  try {
+    const v = await getSettingsStrict(ctx, [
+      LOW_STOCK_SHOW_KEY,
+      lowStockProductKey(p.id),
+      LOW_STOCK_DEFAULT_KEY,
+    ]);
+    if (v[LOW_STOCK_SHOW_KEY] !== "1") return null;
+    const threshold =
+      parseThreshold(v[lowStockProductKey(p.id)]) ?? parseThreshold(v[LOW_STOCK_DEFAULT_KEY]) ?? 0;
+    if (p.stock_quantity > threshold) return null;
+    const { preordersFor } = await import("@/core/preorder/preorder");
+    const preorder = (await preordersFor(ctx, [p.id])).has(p.id);
+    return lowStockLeft({
+      stock: p.stock_quantity,
+      threshold,
+      show: true,
+      physical: true,
+      preorder,
+    });
+  } catch (e) {
+    console.error(`[low-stock:${ctx.tenant.id}] «осталось» не показано: ${String(e)}`);
+    return null;
+  }
+}
+
+export async function loadShowToBuyer(ctx: TenantContext): Promise<boolean> {
+  return (await getSettingsStrict(ctx, [LOW_STOCK_SHOW_KEY]))[LOW_STOCK_SHOW_KEY] === "1";
+}
+
+export async function saveShowToBuyer(ctx: TenantContext, on: boolean): Promise<void> {
+  await setSetting(ctx, LOW_STOCK_SHOW_KEY, on ? "1" : "0");
+}

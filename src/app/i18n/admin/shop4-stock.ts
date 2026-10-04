@@ -16,6 +16,9 @@ export const ru = {
   "product.preorderFromHint": "Покупатель увидит эту дату. Пусто — «срок уточним».",
   "product.preorderPast":
     "Дата отправки уже прошла: покупатели видят «срок отправки уточним». Укажите новую дату.",
+  "settings.lowStock.showBuyer": "Показывать покупателям «Осталось N шт.»",
+  "settings.lowStock.showBuyerHint":
+    "Когда остаток товара не больше порога выше, покупатель увидит точное число на витрине и в чате. Если порог 0 — ничего не показывается. У товара с предзаказом и без учёта остатка надпись не появляется.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -33,6 +36,9 @@ export const kk: SectionDict<typeof ru> = {
   "product.preorderFromHint": "Сатып алушы осы күнді көреді. Бос болса — «мерзімін нақтылаймыз».",
   "product.preorderPast":
     "Жіберу күні өтіп кетті: сатып алушылар «жіберу мерзімін нақтылаймыз» деп көреді. Жаңа күнді көрсетіңіз.",
+  "settings.lowStock.showBuyer": "Сатып алушыларға «Қалды N дана» көрсету",
+  "settings.lowStock.showBuyerHint":
+    "Тауар қалдығы жоғарыдағы шектен аспаса, сатып алушы нақты санды витринада және чатта көреді. Шек 0 болса — ештеңе көрсетілмейді. Алдын ала тапсырысы бар және қалдығы есептелмейтін тауарда жазу шықпайды.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -50,6 +56,9 @@ export const en: SectionDict<typeof ru> = {
   "product.preorderFromHint": "The buyer sees this date. Empty — «we will confirm the date».",
   "product.preorderPast":
     "The shipping date has passed: buyers see «we will confirm the shipping date». Set a new date.",
+  "settings.lowStock.showBuyer": "Show buyers “Only N left”",
+  "settings.lowStock.showBuyerHint":
+    "When a product’s stock is at or below the threshold above, the buyer sees the exact number in the store and in chat. With a threshold of 0 nothing is shown. Products with pre-order or without stock tracking never show it.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -68,4 +77,7 @@ export const uz: SectionDict<typeof ru> = {
   "product.preorderFromHint": "Xaridor shu sanani ko‘radi. Bo‘sh bo‘lsa — «muddatini aniqlaymiz».",
   "product.preorderPast":
     "Jo‘natish sanasi o‘tib ketdi: xaridorlar «jo‘natish muddatini aniqlaymiz» deb ko‘radi. Yangi sanani kiriting.",
+  "settings.lowStock.showBuyer": "Xaridorlarga «N dona qoldi» ni ko‘rsatish",
+  "settings.lowStock.showBuyerHint":
+    "Mahsulot qoldig‘i yuqoridagi chegaradan oshmasa, xaridor aniq sonni vitrinada va chatda ko‘radi. Chegara 0 bo‘lsa — hech narsa ko‘rsatilmaydi. Oldindan buyurtmali va qoldig‘i hisobga olinmaydigan mahsulotda yozuv chiqmaydi.",
 };

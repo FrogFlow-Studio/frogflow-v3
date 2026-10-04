@@ -148,6 +148,10 @@ export async function productCard(
     const offer = await offerForProductRow(ctx, p);
     if (offer) caption += `\n<b>${offerLabel(offer, ctx.timezone, locale)}</b>`;
   }
+  // «Осталось N шт.» — только с согласия продавца и без предзаказа (core/catalog/low-stock).
+  const { buyerLowStock } = await import("@/core/catalog/low-stock");
+  const left = await buyerLowStock(ctx, p);
+  if (left !== null) caption += `\n${m.lowStockLabel(left)}`;
   // Курс (модуль courses): уроков, старт потока; набор закрыт — без кнопок покупки.
   if (t.modules.courses && p.fulfillment_kind !== "physical") {
     const { coursePreview } = await import("@/core/courses/preview.server");

@@ -64,6 +64,8 @@ export type StoreProduct = {
    * from — дата отправки (ГГГГ-ММ-ДД) или null, если срок не назван.
    */
   preorder: { from: string | null } | null;
+  /** «Осталось N шт.»: только на странице товара и только с согласия продавца (core/catalog/low-stock). */
+  lowLeft: number | null;
   leadTimeDays: number | null;
   rating: { avg: number; count: number } | null;
   languages: string[];
@@ -202,6 +204,7 @@ async function toStoreProduct(ctx: TenantContext, p: Product): Promise<StoreProd
     kind: p.fulfillment_kind === "physical" ? "physical" : "digital",
     inStock: isInStock(ctx, p),
     preorder: isInStock(ctx, p) ? null : await getPreorder(ctx, p.id),
+    lowLeft: null,
     leadTimeDays: shownLeadDays(p),
     rating: p.rating_count ? { avg: Number(p.rating_avg ?? 0), count: p.rating_count } : null,
     languages: productLanguages(ctx, p),
@@ -459,5 +462,7 @@ export async function storeProduct(ctx: TenantContext, id: string): Promise<Stor
   if (dataError) throw serverFailure(`Витрина: ${dataError.message}`);
   if (!data) return null;
   const files = productFiles(data as Product, Boolean(ctx.tenant.modules.multi_language));
-  return { ...(await toStoreProduct(ctx, data as Product)), files };
+  const { buyerLowStock } = await import("@/core/catalog/low-stock");
+  const lowLeft = await buyerLowStock(ctx, data as Product);
+  return { ...(await toStoreProduct(ctx, data as Product)), files, lowLeft };
 }
