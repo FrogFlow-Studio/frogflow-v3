@@ -8,7 +8,9 @@ import {
   admitZernioInbound,
   eventTooOld,
   intakeZernioEvent,
+  unmatchedLogRow,
   type IntakeDeps,
+  type UnmatchedZernioEvent,
 } from "./intake.server";
 import {
   claimZernioEvent,
@@ -292,5 +294,77 @@ describe("повтор старого события Zernio", () => {
     expect(eventTooOld({ timestamp: "2026-09-28T11:59:00Z" }, now)).toBe(false);
     expect(eventTooOld({}, now)).toBe(false);
     expect(eventTooOld({ timestamp: "мусор" }, now)).toBe(false);
+  });
+});
+
+describe("событие без клиента v2 (Копилка русоведа, 04.10)", () => {
+  const withText = (id: string, account: Record<string, string>) =>
+    ({
+      id,
+      event: "message.received",
+      account: { platform: "instagram", username: "kopilka", ...account },
+      message: { text: "/start", sender: { username: "buyer" }, attachments: [] },
+    }) as unknown as ZernioWebhookMessagePayload;
+
+  it("неизвестный аккаунт и клиент на v1 — 202, но след для оператора остаётся", async () => {
+    const s = setup();
+    const seen: UnmatchedZernioEvent[] = [];
+    s.deps.unmatched = async (e) => {
+      seen.push(e);
+    };
+    expect((await intakeZernioEvent(withText("u1", { accountId: "acc-x" }), s.deps)).status).toBe(
+      202,
+    );
+    expect((await intakeZernioEvent(withText("u2", { accountId: "acc-v1" }), s.deps)).status).toBe(
+      202,
+    );
+    expect(seen.map((e) => [e.eventId, e.tenantName])).toEqual([
+      ["u1", null],
+      ["u2", "v1shop"],
+    ]);
+    // Ни обработки, ни строки журнала с id события — журнал v1 не задет.
+    expect(s.dispatched).toEqual([]);
+    expect(s.row("u1")).toBeUndefined();
+  });
+
+  it("строка журнала: свой event_id, без клиента, без полного payload, с причиной", () => {
+    const e: UnmatchedZernioEvent = {
+      eventId: "u1",
+      event: "message.received",
+      accountId: "acc-x",
+      profileId: null,
+      tenantName: null,
+      payload: withText("u1", { accountId: "acc-x" }),
+    };
+    const row = unmatchedLogRow(e);
+    expect(row).toMatchObject({
+      bot_id: null,
+      event_id: "v2-unmatched:u1",
+      event_type: "v2_unmatched",
+      status: "ignored",
+      error_message: "аккаунт не привязан ни к одному клиенту v2",
+    });
+    expect(row.payload).toEqual({
+      event: "message.received",
+      accountId: "acc-x",
+      profileId: null,
+      platform: "instagram",
+      account: "kopilka",
+      sender: "buyer",
+      text: "/start",
+    });
+    expect(unmatchedLogRow({ ...e, tenantName: "Копилка" }).error_message).toBe(
+      "клиент «Копилка» не на v2 (served_by)",
+    );
+  });
+
+  it("сбой записи следа не ломает приём", async () => {
+    const s = setup();
+    s.deps.unmatched = async () => {
+      throw new Error("db down");
+    };
+    expect((await intakeZernioEvent(withText("u3", { accountId: "acc-x" }), s.deps)).status).toBe(
+      202,
+    );
   });
 });

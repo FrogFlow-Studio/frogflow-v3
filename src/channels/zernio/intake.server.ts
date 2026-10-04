@@ -29,7 +29,52 @@ export type IntakeDeps = {
   notifyFlood: (ctx: TenantContext, payload: ZernioWebhookMessagePayload) => Promise<void>;
   /** Магазин найден по профилю: записать новые id аккаунтов и вернуть свежего арендатора. */
   resync: (tenant: Tenant) => Promise<Tenant>;
+  /**
+   * Событие дошло до v2, но ни одному клиенту v2 не досталось: аккаунт не
+   * привязан или клиент ещё на v1. Раньше такое терялось без следа, и «бот
+   * молчит» нечем было объяснить (Копилка русоведа, 04.10).
+   */
+  unmatched?: (e: UnmatchedZernioEvent) => Promise<void>;
 };
+
+export type UnmatchedZernioEvent = {
+  eventId: string;
+  event: string;
+  accountId: string | null;
+  profileId: string | null;
+  /** Клиент нашёлся, но не на v2. */
+  tenantName: string | null;
+  payload: ZernioWebhookMessagePayload;
+};
+
+/** Строка журнала для события без клиента v2: своё event_id, без полного payload. */
+export function unmatchedLogRow(e: UnmatchedZernioEvent) {
+  const a = e.payload.account as Record<string, unknown> | undefined;
+  const m = e.payload.message as Record<string, unknown> | undefined;
+  const sender = (m?.sender ?? {}) as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === "string" ? v : null);
+  return {
+    bot_id: null,
+    // Свой префикс: строка не столкнётся с журналом v1 по тому же событию.
+    event_id: `v2-unmatched:${e.eventId}`,
+    event_type: UNMATCHED_EVENT_TYPE,
+    status: "ignored",
+    payload: {
+      event: e.event,
+      accountId: e.accountId,
+      profileId: e.profileId,
+      platform: str(a?.platform) ?? str(m?.platform),
+      account: str(a?.username) ?? str(a?.name),
+      sender: str(sender.username) ?? str(sender.name),
+      text: (str(m?.text) ?? "").slice(0, 80),
+    },
+    error_message: e.tenantName
+      ? `клиент «${e.tenantName}» не на v2 (served_by)`
+      : "аккаунт не привязан ни к одному клиенту v2",
+  };
+}
+
+export const UNMATCHED_EVENT_TYPE = "v2_unmatched";
 
 export type IntakeResult = { status: number; body: string };
 
@@ -70,7 +115,19 @@ export async function intakeZernioEvent(
   if (eventTooOld(payload)) return { status: 202, body: "accepted" };
 
   const found = await deps.resolve(accountId, profileId);
-  if (!found || found.tenant.settings.served_by !== "v2") return { status: 202, body: "accepted" };
+  if (!found || found.tenant.settings.served_by !== "v2") {
+    await deps
+      .unmatched?.({
+        eventId,
+        event: payload.event ?? "unknown",
+        accountId,
+        profileId,
+        tenantName: found?.tenant.name ?? null,
+        payload,
+      })
+      .catch((e) => console.warn(`[zernio] unmatched log: ${String(e)}`));
+    return { status: 202, body: "accepted" };
+  }
   const ctx = deps.tenantContext(found.tenant);
 
   const { isHandledEvent } = await import("./dispatch.server");
@@ -196,6 +253,14 @@ export async function liveIntakeDeps(): Promise<IntakeDeps> {
         floodNoticeHtml(PLATFORM_LABEL[m.platform], copy.escapeHtml(who)),
         { kind: "system" },
       );
+    },
+    unmatched: async (e) => {
+      const { serviceDb } = await import("@/core/db/client.server");
+      const { error } = await serviceDb()
+        .from("zernio_logs")
+        .insert(unmatchedLogRow(e) as never);
+      // Повторная доставка того же события — уже записано.
+      if (error && !/duplicate|unique/i.test(error.message)) throw new Error(error.message);
     },
     resync: async (tenant) => {
       const { resyncAfterReconnect } = await import("./connect.server");
