@@ -123,6 +123,9 @@ export const ru = {
     "Серия из двух сообщений тем, кто давно не покупал: через N дней после последнего заказа и повтор, с промокодом. Сегменты базы — в рассылках.",
   "module.funnel.title": "Автоворонка",
   "module.funnel.desc": "Серия сообщений после подписки: прогрев, полезный контент, предложение.",
+  "module.giveaways.title": "Розыгрыши",
+  "module.giveaways.desc":
+    "Конкурс с призом в Telegram и Instagram: условия, срок и число победителей.",
   "module.loyalty.title": "Программа лояльности",
   "module.loyalty.desc":
     "Баллы за покупки: процент от суммы после выдачи, списание в корзине при следующем заказе.",
@@ -318,6 +321,9 @@ export const kk: SectionDict<typeof ru> = {
   "module.funnel.title": "Автоворонка",
   "module.funnel.desc":
     "Жазылғаннан кейінгі хабарламалар сериясы: қызықтыру, пайдалы контент, ұсыныс.",
+  "module.giveaways.title": "Ұтыс ойындары",
+  "module.giveaways.desc":
+    "Telegram мен Instagram-дағы сыйлықты байқау: шарттар, мерзім және жеңімпаздар саны.",
   "module.loyalty.title": "Адалдық бағдарламасы",
   "module.loyalty.desc":
     "Сатып алу үшін ұпайлар: тапсырыс берілгеннен кейін сомадан пайыз, келесі тапсырыста себетте жұмсалады.",
@@ -476,6 +482,9 @@ export const en: SectionDict<typeof ru> = {
     "A two-message series for customers who haven’t bought in a while: N days after their last order and a follow-up, with a promo code. Customer segments are in Broadcasts.",
   "module.funnel.title": "Auto funnel",
   "module.funnel.desc": "A message series after subscribing: warm-up, useful content, an offer.",
+  "module.giveaways.title": "Giveaways",
+  "module.giveaways.desc":
+    "A prize giveaway in Telegram and Instagram: terms, deadline and number of winners.",
   "module.loyalty.title": "Loyalty program",
   "module.loyalty.desc":
     "Points for purchases: a percentage of the amount after delivery, redeemable in the cart on the next order.",
@@ -634,6 +643,9 @@ export const uz: SectionDict<typeof ru> = {
     "Uzoq vaqt xarid qilmaganlarga ikki xabardan iborat seriya: oxirgi buyurtmadan N kun oʻtgach va takroriy, promokod bilan. Baza segmentlari — xabar yuborishda.",
   "module.funnel.title": "Avtovoronka",
   "module.funnel.desc": "Obunadan keyingi xabarlar seriyasi: qiziqtirish, foydali kontent, taklif.",
+  "module.giveaways.title": "Sovrin o'yinlari",
+  "module.giveaways.desc":
+    "Telegram va Instagram'dagi sovrinli o'yin: shartlar, muddat va g'oliblar soni.",
   "module.loyalty.title": "Sodiqlik dasturi",
   "module.loyalty.desc":
     "Xaridlar uchun ballar: buyurtma berilgandan keyin summadan foiz, keyingi buyurtmada savatda sarflanadi.",

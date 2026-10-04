@@ -313,6 +313,14 @@ export const MODULES = {
     status: "available",
     note: "core/funnel: до 10 шагов по часам от первого контакта (bot_users.created_at), прогресс — state.funnel; крон fulfillment-reminder раз в час, днём; остановка после первого заказа. Настройка — «Рассылки».",
   },
+  giveaways: {
+    title: "Розыгрыши",
+    desc: "Конкурс с призом в Telegram и Instagram: условия, срок и число победителей.",
+    group: "Удержание",
+    price: null,
+    status: "available",
+    note: "core/giveaways: розыгрыш — app_settings giveaway:<id>, список — giveaway:index; раздел «Розыгрыши» в «Рассылках». Входит в Pro и Business (core/plans/registry), отдельной цены нет — тариф за Яковом.",
+  },
   loyalty: {
     title: "Программа лояльности",
     desc: "Баллы за покупки: процент от суммы после выдачи, списание в корзине при следующем заказе.",

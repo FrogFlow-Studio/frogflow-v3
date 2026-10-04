@@ -17,6 +17,7 @@ import * as product from "./admin/product";
 import * as discounts from "./admin/discounts";
 import * as consultant from "./admin/consultant";
 import * as schoolFunnel from "./admin/school-funnel";
+import * as giveaways from "./admin/giveaways";
 import * as pricelist from "./admin/pricelist";
 import * as homework from "./admin/homework";
 import * as school4 from "./admin/school4";
@@ -417,6 +418,7 @@ const ru = {
   ...discounts.ru,
   ...consultant.ru,
   ...schoolFunnel.ru,
+  ...giveaways.ru,
   ...pricelist.ru,
   ...homework.ru,
   ...school4.ru,
@@ -1500,6 +1502,7 @@ const kk: Dict = {
   ...discounts.kk,
   ...consultant.kk,
   ...schoolFunnel.kk,
+  ...giveaways.kk,
   ...pricelist.kk,
   ...homework.kk,
   ...school4.kk,
@@ -1550,6 +1553,7 @@ const en: Dict = {
   ...discounts.en,
   ...consultant.en,
   ...schoolFunnel.en,
+  ...giveaways.en,
   ...pricelist.en,
   ...homework.en,
   ...school4.en,
@@ -1600,6 +1604,7 @@ const uz: Dict = {
   ...discounts.uz,
   ...consultant.uz,
   ...schoolFunnel.uz,
+  ...giveaways.uz,
   ...pricelist.uz,
   ...homework.uz,
   ...school4.uz,

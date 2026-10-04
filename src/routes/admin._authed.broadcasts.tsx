@@ -3,6 +3,7 @@ import { EngageBlock } from "@/app/admin/engage-block";
 import { SimilarCard } from "@/app/admin/similar-card";
 import { AutoStatsBlock } from "@/app/admin/auto-stats";
 import { AutoPreview } from "@/app/admin/auto-preview";
+import { GiveawaysCard } from "@/app/admin/giveaways-card";
 import type { AutoStats } from "@/core/automsg/stats";
 import { birthdayFn, funnelFn, saveBirthdayFn, saveFunnelFn } from "@/app/admin/funnel.functions";
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
@@ -264,6 +265,7 @@ function BroadcastsPage() {
           )}
           {shop.modules.funnel && <FunnelCard />}
           {shop.modules.funnel && <BirthdayCard />}
+          {shop.modules.giveaways && <GiveawaysCard t={t} locale={intlLocale(shop.locale)} />}
           <History
             broadcasts={data.broadcasts}
             total={data.broadcastsTotal}

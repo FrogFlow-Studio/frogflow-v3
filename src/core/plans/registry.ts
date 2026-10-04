@@ -108,6 +108,7 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "manager_chat",
       "telegram_mini_app",
       "crm_pipeline",
+      "giveaways",
     ],
     business: [
       "whatsapp",
@@ -138,6 +139,7 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "cart_reminder",
       "review_request",
       "crm_pipeline",
+      "giveaways",
     ],
     business: [
       "instagram",
@@ -162,6 +164,7 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "vip",
       "multi_language",
       "crm_pipeline",
+      "giveaways",
     ],
     business: [
       "telegram_mini_app",
@@ -196,6 +199,7 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "review_request",
       "multi_language",
       "crm_pipeline",
+      "giveaways",
     ],
     business: [
       "telegram_mini_app",
