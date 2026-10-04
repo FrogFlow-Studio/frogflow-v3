@@ -1312,3 +1312,33 @@ export const markLeadContactedFn = createServerFn({ method: "POST" })
     await guard();
     return (await leadsImpl()).markLeadContacted(data, await actor());
   });
+
+/* ── поддержка: чат клиентов с платформой ─────────────────────────── */
+
+const supportImpl = () => import("./support.server");
+
+/** Входящие: незакрытые обращения всех клиентов; null — раздел выключен (нет таблиц). */
+export const supportInboxFn = createServerFn({ method: "GET" }).handler(async () => {
+  await guard();
+  return (await supportImpl()).supportInbox();
+});
+
+export const supportConversationFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await supportImpl()).supportConversation(data.botId);
+  });
+
+export const supportReplyFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId, body: z.string().max(10_000) }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    const r = await (
+      await supportImpl()
+    ).operatorReply(data.botId, {
+      body: data.body,
+      operator: await actor(),
+    });
+    return { message: r.message };
+  });

@@ -165,6 +165,148 @@ export type Database = {
           },
         ];
       };
+      platform_threads: {
+        Row: {
+          id: string;
+          bot_id: string;
+          status: string;
+          labels: string[];
+          created_at: string;
+          last_message_at: string;
+          last_seller_message_at: string | null;
+          last_operator_message_at: string | null;
+          first_response_at: string | null;
+          due_at: string | null;
+          seller_unread: number;
+          operator_unread: number;
+          rev: number;
+        };
+        Insert: {
+          id?: string;
+          bot_id?: string;
+          status?: string;
+          labels?: string[];
+          created_at?: string;
+          last_message_at?: string;
+          last_seller_message_at?: string | null;
+          last_operator_message_at?: string | null;
+          first_response_at?: string | null;
+          due_at?: string | null;
+          seller_unread?: number;
+          operator_unread?: number;
+          rev?: number;
+        };
+        Update: {
+          id?: string;
+          bot_id?: string;
+          status?: string;
+          labels?: string[];
+          created_at?: string;
+          last_message_at?: string;
+          last_seller_message_at?: string | null;
+          last_operator_message_at?: string | null;
+          first_response_at?: string | null;
+          due_at?: string | null;
+          seller_unread?: number;
+          operator_unread?: number;
+          rev?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "platform_threads_bot_id_fkey";
+            columns: ["bot_id"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      platform_messages: {
+        Row: {
+          id: string;
+          bot_id: string;
+          thread_id: string;
+          author: string;
+          author_name: string | null;
+          body: string;
+          attachment_key: string | null;
+          context: Json | null;
+          created_at: string;
+          read_at: string | null;
+          notified_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          bot_id?: string;
+          thread_id: string;
+          author: string;
+          author_name?: string | null;
+          body?: string;
+          attachment_key?: string | null;
+          context?: Json | null;
+          created_at?: string;
+          read_at?: string | null;
+          notified_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          bot_id?: string;
+          thread_id?: string;
+          author?: string;
+          author_name?: string | null;
+          body?: string;
+          attachment_key?: string | null;
+          context?: Json | null;
+          created_at?: string;
+          read_at?: string | null;
+          notified_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "platform_messages_bot_id_fkey";
+            columns: ["bot_id"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "platform_messages_thread_id_fkey";
+            columns: ["thread_id"];
+            isOneToOne: false;
+            referencedRelation: "platform_threads";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      platform_thread_notes: {
+        Row: {
+          thread_id: string;
+          note: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          thread_id: string;
+          note?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          thread_id?: string;
+          note?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "platform_thread_notes_thread_id_fkey";
+            columns: ["thread_id"];
+            isOneToOne: false;
+            referencedRelation: "platform_threads";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       subscription_payments: {
         Row: {
           id: string;

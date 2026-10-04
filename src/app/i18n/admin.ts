@@ -60,6 +60,7 @@ import * as cost from "./admin/cost";
 import * as shop18Requests from "./admin/shop18-requests";
 import * as shop18Stale from "./admin/shop18-stale";
 import * as shop18Forecast from "./admin/shop18-forecast";
+import * as support from "./admin/support";
 import * as takeout from "./admin/takeout";
 
 const baseRu = {
@@ -459,6 +460,7 @@ const ru = {
   ...shop18Requests.ru,
   ...shop18Stale.ru,
   ...shop18Forecast.ru,
+  ...support.ru,
   ...takeout.ru,
   ...shop4Stock.ru,
   ...shop18Bundles.ru,
@@ -1586,6 +1588,7 @@ const kk: Dict = {
   ...shop18Requests.kk,
   ...shop18Stale.kk,
   ...shop18Forecast.kk,
+  ...support.kk,
   ...takeout.kk,
   ...shop4Stock.kk,
   ...shop18Bundles.kk,
@@ -1644,6 +1647,7 @@ const en: Dict = {
   ...shop18Requests.en,
   ...shop18Stale.en,
   ...shop18Forecast.en,
+  ...support.en,
   ...takeout.en,
   ...shop4Stock.en,
   ...shop18Bundles.en,
@@ -1702,6 +1706,7 @@ const uz: Dict = {
   ...shop18Requests.uz,
   ...shop18Stale.uz,
   ...shop18Forecast.uz,
+  ...support.uz,
   ...takeout.uz,
   ...shop4Stock.uz,
   ...shop18Bundles.uz,

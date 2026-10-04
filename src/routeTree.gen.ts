@@ -54,6 +54,7 @@ import { Route as AdminAuthedQuizRouteImport } from './routes/admin._authed.quiz
 import { Route as AdminAuthedReviewsRouteImport } from './routes/admin._authed.reviews'
 import { Route as AdminAuthedSettingsRouteImport } from './routes/admin._authed.settings'
 import { Route as AdminAuthedStudentsRouteImport } from './routes/admin._authed.students'
+import { Route as AdminAuthedSupportRouteImport } from './routes/admin._authed.support'
 import { Route as AdminAuthedTicketsRouteImport } from './routes/admin._authed.tickets'
 import { Route as AdminAuthedUndeliveredRouteImport } from './routes/admin._authed.undelivered'
 import { Route as AdminAuthedVipRouteImport } from './routes/admin._authed.vip'
@@ -82,6 +83,7 @@ import { Route as OperatorAuthedPartnersRouteImport } from './routes/operator._a
 import { Route as OperatorAuthedRequestsRouteImport } from './routes/operator._authed.requests'
 import { Route as OperatorAuthedRevenueRouteImport } from './routes/operator._authed.revenue'
 import { Route as OperatorAuthedSettingsRouteImport } from './routes/operator._authed.settings'
+import { Route as OperatorAuthedSupportRouteImport } from './routes/operator._authed.support'
 import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
 import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
 import { Route as SSlugCheckoutRouteImport } from './routes/s.$slug.checkout'
@@ -342,6 +344,11 @@ const AdminAuthedStudentsRoute = AdminAuthedStudentsRouteImport.update({
   path: '/students',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
+const AdminAuthedSupportRoute = AdminAuthedSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
 const AdminAuthedTicketsRoute = AdminAuthedTicketsRouteImport.update({
   id: '/tickets',
   path: '/tickets',
@@ -480,6 +487,11 @@ const OperatorAuthedRevenueRoute = OperatorAuthedRevenueRouteImport.update({
 const OperatorAuthedSettingsRoute = OperatorAuthedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
+const OperatorAuthedSupportRoute = OperatorAuthedSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
 const SSlugIndexRoute = SSlugIndexRouteImport.update({
@@ -718,6 +730,7 @@ export interface FileRoutesByFullPath {
   '/admin/reviews': typeof AdminAuthedReviewsRoute
   '/admin/settings': typeof AdminAuthedSettingsRoute
   '/admin/students': typeof AdminAuthedStudentsRoute
+  '/admin/support': typeof AdminAuthedSupportRoute
   '/admin/tickets': typeof AdminAuthedTicketsRoute
   '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/vip': typeof AdminAuthedVipRoute
@@ -745,6 +758,7 @@ export interface FileRoutesByFullPath {
   '/operator/requests': typeof OperatorAuthedRequestsRoute
   '/operator/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
+  '/operator/support': typeof OperatorAuthedSupportRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
   '/s/$slug/favorites': typeof SSlugFavoritesRoute
@@ -826,6 +840,7 @@ export interface FileRoutesByTo {
   '/admin/reviews': typeof AdminAuthedReviewsRoute
   '/admin/settings': typeof AdminAuthedSettingsRoute
   '/admin/students': typeof AdminAuthedStudentsRoute
+  '/admin/support': typeof AdminAuthedSupportRoute
   '/admin/tickets': typeof AdminAuthedTicketsRoute
   '/admin/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/vip': typeof AdminAuthedVipRoute
@@ -853,6 +868,7 @@ export interface FileRoutesByTo {
   '/operator/requests': typeof OperatorAuthedRequestsRoute
   '/operator/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
+  '/operator/support': typeof OperatorAuthedSupportRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
   '/s/$slug/favorites': typeof SSlugFavoritesRoute
@@ -936,6 +952,7 @@ export interface FileRoutesById {
   '/admin/_authed/reviews': typeof AdminAuthedReviewsRoute
   '/admin/_authed/settings': typeof AdminAuthedSettingsRoute
   '/admin/_authed/students': typeof AdminAuthedStudentsRoute
+  '/admin/_authed/support': typeof AdminAuthedSupportRoute
   '/admin/_authed/tickets': typeof AdminAuthedTicketsRoute
   '/admin/_authed/undelivered': typeof AdminAuthedUndeliveredRoute
   '/admin/_authed/vip': typeof AdminAuthedVipRoute
@@ -963,6 +980,7 @@ export interface FileRoutesById {
   '/operator/_authed/requests': typeof OperatorAuthedRequestsRoute
   '/operator/_authed/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/_authed/settings': typeof OperatorAuthedSettingsRoute
+  '/operator/_authed/support': typeof OperatorAuthedSupportRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
   '/s/$slug/favorites': typeof SSlugFavoritesRoute
@@ -1047,6 +1065,7 @@ export interface FileRouteTypes {
     | '/admin/reviews'
     | '/admin/settings'
     | '/admin/students'
+    | '/admin/support'
     | '/admin/tickets'
     | '/admin/undelivered'
     | '/admin/vip'
@@ -1074,6 +1093,7 @@ export interface FileRouteTypes {
     | '/operator/requests'
     | '/operator/revenue'
     | '/operator/settings'
+    | '/operator/support'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
     | '/s/$slug/favorites'
@@ -1155,6 +1175,7 @@ export interface FileRouteTypes {
     | '/admin/reviews'
     | '/admin/settings'
     | '/admin/students'
+    | '/admin/support'
     | '/admin/tickets'
     | '/admin/undelivered'
     | '/admin/vip'
@@ -1182,6 +1203,7 @@ export interface FileRouteTypes {
     | '/operator/requests'
     | '/operator/revenue'
     | '/operator/settings'
+    | '/operator/support'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
     | '/s/$slug/favorites'
@@ -1264,6 +1286,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/reviews'
     | '/admin/_authed/settings'
     | '/admin/_authed/students'
+    | '/admin/_authed/support'
     | '/admin/_authed/tickets'
     | '/admin/_authed/undelivered'
     | '/admin/_authed/vip'
@@ -1291,6 +1314,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/requests'
     | '/operator/_authed/revenue'
     | '/operator/_authed/settings'
+    | '/operator/_authed/support'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
     | '/s/$slug/favorites'
@@ -1686,6 +1710,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedStudentsRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/_authed/support': {
+      id: '/admin/_authed/support'
+      path: '/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AdminAuthedSupportRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/admin/_authed/tickets': {
       id: '/admin/_authed/tickets'
       path: '/tickets'
@@ -1880,6 +1911,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/operator/settings'
       preLoaderRoute: typeof OperatorAuthedSettingsRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
+    '/operator/_authed/support': {
+      id: '/operator/_authed/support'
+      path: '/support'
+      fullPath: '/operator/support'
+      preLoaderRoute: typeof OperatorAuthedSupportRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
     '/s/$slug/': {
@@ -2176,6 +2214,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedReviewsRoute: typeof AdminAuthedReviewsRoute
   AdminAuthedSettingsRoute: typeof AdminAuthedSettingsRoute
   AdminAuthedStudentsRoute: typeof AdminAuthedStudentsRoute
+  AdminAuthedSupportRoute: typeof AdminAuthedSupportRoute
   AdminAuthedTicketsRoute: typeof AdminAuthedTicketsRoute
   AdminAuthedUndeliveredRoute: typeof AdminAuthedUndeliveredRoute
   AdminAuthedVipRoute: typeof AdminAuthedVipRoute
@@ -2218,6 +2257,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedReviewsRoute: AdminAuthedReviewsRoute,
   AdminAuthedSettingsRoute: AdminAuthedSettingsRoute,
   AdminAuthedStudentsRoute: AdminAuthedStudentsRoute,
+  AdminAuthedSupportRoute: AdminAuthedSupportRoute,
   AdminAuthedTicketsRoute: AdminAuthedTicketsRoute,
   AdminAuthedUndeliveredRoute: AdminAuthedUndeliveredRoute,
   AdminAuthedVipRoute: AdminAuthedVipRoute,
@@ -2266,6 +2306,7 @@ interface OperatorAuthedRouteChildren {
   OperatorAuthedRequestsRoute: typeof OperatorAuthedRequestsRoute
   OperatorAuthedRevenueRoute: typeof OperatorAuthedRevenueRoute
   OperatorAuthedSettingsRoute: typeof OperatorAuthedSettingsRoute
+  OperatorAuthedSupportRoute: typeof OperatorAuthedSupportRoute
   OperatorAuthedIndexRoute: typeof OperatorAuthedIndexRoute
   OperatorAuthedClientsBotIdRoute: typeof OperatorAuthedClientsBotIdRoute
   OperatorAuthedClientsNewRoute: typeof OperatorAuthedClientsNewRoute
@@ -2281,6 +2322,7 @@ const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedRequestsRoute: OperatorAuthedRequestsRoute,
   OperatorAuthedRevenueRoute: OperatorAuthedRevenueRoute,
   OperatorAuthedSettingsRoute: OperatorAuthedSettingsRoute,
+  OperatorAuthedSupportRoute: OperatorAuthedSupportRoute,
   OperatorAuthedIndexRoute: OperatorAuthedIndexRoute,
   OperatorAuthedClientsBotIdRoute: OperatorAuthedClientsBotIdRoute,
   OperatorAuthedClientsNewRoute: OperatorAuthedClientsNewRoute,

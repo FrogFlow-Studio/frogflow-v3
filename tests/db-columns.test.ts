@@ -89,3 +89,44 @@ describe("колонки в запросах есть в схеме", () => {
     expect(unknownColumns("x.ts", src)).toEqual(["x.ts:1 bot_users.id (order)"]);
   });
 });
+
+/**
+ * Миграции партии 19 (migrations/19-*.sql) и типы базы описывают одни и те же
+ * таблицы: колонка, добавленная в одном месте и забытая в другом, ломает
+ * запросы только на живой базе. Сверяем имена колонок каждой новой таблицы.
+ */
+describe("миграции партии 19 совпадают с db-types.ts", () => {
+  const dir = "migrations";
+  const files = readdirSync(dir).filter((f) => /^19-.*\.sql$/.test(f) && !f.endsWith(".down.sql"));
+
+  it("миграции нашлись и у каждой есть откат", () => {
+    expect(files.length).toBeGreaterThan(0);
+    for (const f of files) expect(readdirSync(dir)).toContain(f.replace(/\.sql$/, ".down.sql"));
+  });
+
+  it("колонки таблиц в SQL и в типах одни и те же", () => {
+    const schema = schemaColumns();
+    for (const f of files) {
+      const sql = readFileSync(join(dir, f), "utf8");
+      for (const m of sql.matchAll(/CREATE TABLE IF NOT EXISTS (\w+) \(\n([\s\S]*?)\n\);/g)) {
+        const cols = [...m[2]!.matchAll(/^ {2}([a-z_]+)\s+[A-Z]/gm)].map((c) => c[1]!).sort();
+        const typed = [...(schema.get(m[1]!) ?? [])].sort();
+        expect(typed, `${f}: ${m[1]}`).toEqual(cols);
+      }
+    }
+  });
+
+  it("новые миграции только добавляют: ни ALTER существующего, ни DROP таблиц, ни DELETE", () => {
+    for (const f of files) {
+      const sql = readFileSync(join(dir, f), "utf8")
+        .split("\n")
+        .filter((l) => !l.trim().startsWith("--"))
+        .join("\n");
+      expect(sql, f).not.toMatch(/\bDROP\s+(TABLE|COLUMN)\b/i);
+      expect(sql, f).not.toMatch(/\bDELETE\s+FROM\b/i);
+      // ALTER TABLE — только по таблицам, которые эта же миграция создаёт.
+      const created = [...sql.matchAll(/CREATE TABLE IF NOT EXISTS (\w+)/g)].map((c) => c[1]);
+      for (const a of sql.matchAll(/ALTER TABLE (\w+)/g)) expect(created, f).toContain(a[1]);
+    }
+  });
+});
