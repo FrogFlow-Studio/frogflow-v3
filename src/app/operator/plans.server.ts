@@ -15,6 +15,7 @@ import {
   nextPeriod,
   planInvoice,
   planModules,
+  type InvoiceLine,
   addonModules,
   suggestPlan,
   trialExtension,
@@ -366,16 +367,33 @@ function addonPrice(a: AddonKey, named: number | undefined): number {
     : ADDON_MONTHLY_PRICE[a];
 }
 
+/**
+ * Предпросмотр счёта вместе с комиссией платформы за прошедшие месяцы:
+ * ровно то, что получит владелец при выставлении (читает базу заказов).
+ */
+export async function planInvoiceQuote(
+  t: Tenant,
+  addonPrices: Partial<Record<AddonKey, number>>,
+  period?: "month" | "year",
+) {
+  const { commissionBilling } = await import("@/core/commission/invoice.server");
+  const c = await commissionBilling(t);
+  return { ...planInvoicePreview(t, addonPrices, period, c.lines), commissionMonths: c.months };
+}
+
 /** Сумма и состав счёта по плану — для предпросмотра в панели. */
 export function planInvoicePreview(
   t: Pick<Tenant, "plan" | "settings">,
   addonPrices: Partial<Record<AddonKey, number>>,
   period?: "month" | "year",
+  /** Строки комиссии платформы (core/commission/invoice): считает вызывающий, база здесь не читается. */
+  commission: InvoiceLine[] = [],
 ) {
   const parsed = parsePlan(t.plan);
   if (parsed?.kind !== "tier") throw new Error("Счёт по плану — только для клиента на плане");
   const billing = t.settings.billing ?? {};
   return planInvoice(parsed.tier, {
+    commission,
     period: period ?? billing.period ?? "month",
     withConnection: !billing.connection_paid_at,
     // Приглашённый автор: скидка на подключение, пока оно не оплачено.
@@ -403,13 +421,33 @@ export async function createPlanInvoice(
   actor: string,
 ) {
   const t = await loadWritable(botId);
-  const inv = planInvoicePreview(t, input.addonPrices, input.period);
+  const { commissionBilling, claimCommissionMonths, CommissionClaimLost } =
+    await import("@/core/commission/invoice.server");
   const { createInvoice } = await import("./billing.server");
-  const r = await createInvoice(
-    botId,
-    { amount: inv.amount, currency: "KZT", note: inv.note },
-    actor,
-  );
+  // Комиссия платформы за прошедшие месяцы — строками в счёте. Месяц закрепляется
+  // за счётом до выставления; если другой счёт успел раньше, пересчитываем без него.
+  let r: Awaited<ReturnType<typeof createInvoice>> | undefined;
+  for (let attempt = 0; attempt < 2 && !r; attempt++) {
+    const fresh = attempt === 0 ? t : await loadWritable(botId);
+    const c = await commissionBilling(fresh);
+    const inv = planInvoicePreview(fresh, input.addonPrices, input.period, c.lines);
+    try {
+      r = await createInvoice(
+        botId,
+        { amount: inv.amount, currency: "KZT", note: inv.note },
+        actor,
+        {
+          beforeIssue: async (invoiceId) => {
+            if (c.months.length && !(await claimCommissionMonths(botId, c.months, invoiceId)))
+              throw new CommissionClaimLost();
+          },
+        },
+      );
+    } catch (e) {
+      if (!(e instanceof CommissionClaimLost) || attempt === 1) throw e;
+    }
+  }
+  if (!r) throw serverFailure("[plans] счёт не создан");
   const billing = t.settings.billing ?? {};
   await patchTenantSettings(botId, {
     billing: {

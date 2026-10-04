@@ -692,7 +692,7 @@ export const planInvoicePreviewFn = createServerFn({ method: "POST" })
     const { tenantDirectory } = await import("@/core/tenant/resolve.server");
     const t = (await tenantDirectory(true)).find((x) => x.id === data.botId);
     if (!t) throw new Error("Клиент не найден");
-    return (await plans()).planInvoicePreview(t, data.addonPrices, data.period);
+    return (await plans()).planInvoiceQuote(t, data.addonPrices, data.period);
   });
 
 export const createPlanInvoiceFn = createServerFn({ method: "POST" })

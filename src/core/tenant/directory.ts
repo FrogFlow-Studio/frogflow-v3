@@ -207,11 +207,18 @@ export function settingsFromJson(json: unknown): TenantSettings {
     grace_days: typeof s.grace_days === "number" ? s.grace_days : undefined,
     billing: billingFromJson(s.billing),
     commission: (() => {
-      const start = obj(s.commission).start;
-      return typeof start === "string" &&
-        /^\d{4}-\d{2}-\d{2}$/.test(start) &&
-        !Number.isNaN(Date.parse(start))
-        ? { start }
+      const c = obj(s.commission);
+      const start =
+        typeof c.start === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(c.start) &&
+        !Number.isNaN(Date.parse(c.start))
+          ? c.start
+          : undefined;
+      const billed: Record<string, string> = {};
+      for (const [m, id] of Object.entries(obj(c.billed)))
+        if (/^\d{4}-\d{2}$/.test(m) && typeof id === "string" && id) billed[m] = id;
+      return start || Object.keys(billed).length
+        ? { start, ...(Object.keys(billed).length ? { billed } : {}) }
         : undefined;
     })(),
     consultant_limits:

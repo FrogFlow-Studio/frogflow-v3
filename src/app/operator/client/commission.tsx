@@ -8,7 +8,15 @@ import {
 import { Badge, Card, ErrorBox, useAction } from "@/app/ui";
 import type { C } from "./types";
 
-export function CommissionStartCard({ c, start }: { c: C; start: string | null }) {
+export function CommissionStartCard({
+  c,
+  start,
+  billed,
+}: {
+  c: C;
+  start: string | null;
+  billed: Array<{ month: string; invoiceId: string }>;
+}) {
   const [sw, setSw] = useState<Awaited<ReturnType<typeof commissionSwitchFn>> | null>(null);
   const [value, setValue] = useState(start ?? "");
   const [saved, setSaved] = useState<string | null>(start);
@@ -32,9 +40,17 @@ export function CommissionStartCard({ c, start }: { c: C; start: string | null }
       }
     >
       <p className="mb-2 text-sm text-muted">
-        Начисляется только при включённом общем выключателе (раздел «Настройки»). Дата начала:
+        Начисляется только при включённом общем выключателе (раздел «Настройки»): комиссия за
+        прошедший месяц входит строкой в следующий счёт за подписку. Дата начала:
         {saved ? ` ${saved}` : ` общая${sw ? ` (${sw.defaultStart})` : ""}`}.
       </p>
+      {billed.length > 0 && (
+        <p className="mb-2 text-sm text-muted">
+          Уже в счетах:{" "}
+          {billed.map((b) => `${b.month} (счёт ${b.invoiceId.slice(0, 8)})`).join(", ")}. Отменённый
+          или отклонённый счёт месяц освобождает.
+        </p>
+      )}
       <form
         className="flex flex-wrap items-center gap-2"
         onSubmit={(e) => {

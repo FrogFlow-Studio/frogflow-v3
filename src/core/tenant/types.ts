@@ -163,8 +163,10 @@ export type TenantSettings = {
   /**
    * Комиссия платформы (core/commission): дата начала у клиента, `YYYY-MM-DD`
    * по поясу магазина; нет — `COMMISSION_DEFAULT_START`. Ставит оператор.
+   * `billed` — месяцы `ГГГГ-ММ`, за которые комиссия уже вошла в счёт за подписку
+   * (значение — номер счёта); отметку ставит выставление счёта, не оператор.
    */
-  commission?: { start?: string };
+  commission?: { start?: string; billed?: Record<string, string> };
   /**
    * Продажа подарочных сертификатов на витрине сайта (core/discounts/gift-sale):
    * включает продавец, номиналы — до шести, валюта — одна на все номиналы.

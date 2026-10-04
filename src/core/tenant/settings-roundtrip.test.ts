@@ -69,7 +69,7 @@ const SAVED = {
   smart_search_limits: { daily_usd: 1 },
   billing: { plan: "flowers.pro", addons: ["whatsapp"], period: "year" },
   // комиссия платформы (core/commission)
-  commission: { start: "2027-02-01" },
+  commission: { start: "2027-02-01", billed: { "2027-02": "inv-1" } },
   // приглашение автора автором (core/invites)
   invite: {
     by: "b41a34cb-7944-441b-8f71-503184fc0f1f",
@@ -107,9 +107,16 @@ describe("settingsFromJson не теряет сохранённые ключи",
   });
 
   it("начало комиссии: только дата ГГГГ-ММ-ДД; мусор отбрасывается", () => {
-    expect(s.commission).toEqual({ start: "2027-02-01" });
+    expect(s.commission).toEqual({ start: "2027-02-01", billed: { "2027-02": "inv-1" } });
     for (const bad of ["1 января", "2027-13-45", 20270101, null])
       expect(settingsFromJson({ commission: { start: bad } }).commission).toBeUndefined();
+  });
+
+  it("месяцы комиссии в счетах: только ГГГГ-ММ с номером счёта", () => {
+    const c = settingsFromJson({
+      commission: { billed: { "2027-03": "inv-3", март: "x", "2027-04": 5, "2027-05": "" } },
+    }).commission;
+    expect(c).toEqual({ start: undefined, billed: { "2027-03": "inv-3" } });
   });
 
   it("срок просьбы об оценке: только целое 1–30", () => {

@@ -155,6 +155,8 @@ export function planInvoice(
     addons?: Array<{ title: string; monthly: number }>;
     /** Скидка на подключение (приглашённому автору); только вместе с подключением, не больше его цены. */
     connectionDiscount?: { title: string; amount: number };
+    /** Комиссия платформы за прошедшие месяцы (core/commission/invoice): строки с суммой в целых тенге. */
+    commission?: InvoiceLine[];
   },
 ): { amount: number; lines: InvoiceLine[]; note: string } {
   const months = opts.period === "year" ? ANNUAL_BILLED_MONTHS : 1;
@@ -174,6 +176,7 @@ export function planInvoice(
   const off = opts.withConnection ? opts.connectionDiscount : undefined;
   if (off && off.amount > 0)
     lines.push({ title: off.title, amount: -Math.min(off.amount, CONNECTION_PRICE[tier]) });
+  for (const c of opts.commission ?? []) if (c.amount > 0) lines.push(c);
   const amount = lines.reduce((s, l) => s + l.amount, 0);
   return { amount, lines, note: lines.map((l) => `${l.title}: ${l.amount} ₸`).join("; ") };
 }

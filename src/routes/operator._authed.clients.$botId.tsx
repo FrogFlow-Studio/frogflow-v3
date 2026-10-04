@@ -171,7 +171,7 @@ function ClientPage() {
             <PlanCard c={c} onDone={refresh} />
             <BillingCard c={c} />
             <InvitesCard c={c} />
-            <CommissionStartCard c={c} start={c.commissionStart} />
+            <CommissionStartCard c={c} start={c.commissionStart} billed={c.commissionBilled} />
             <AiBalanceCard c={c} ai={ai} onDone={refresh} />
             <ConsultantLimitsCard c={c} budget={consultant} onDone={refresh} />
             <SmartSearchLimitCard c={c} budget={smartSearch} onDone={refresh} />

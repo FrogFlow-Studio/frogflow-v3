@@ -116,6 +116,8 @@ export type ClientView = {
   zernioAccounts: string[];
   /** Своя дата начала комиссии (`settings.commission.start`); null — общая. */
   commissionStart: string | null;
+  /** Месяцы, за которые комиссия уже вошла в счёт за подписку: месяц → номер счёта. */
+  commissionBilled: Array<{ month: string; invoiceId: string }>;
   zernio: {
     profileId: string | null;
     accounts: Array<{
@@ -198,6 +200,9 @@ function toView(
     },
     zernioAccounts: t.settings.zernio?.account_ids ?? [],
     commissionStart: t.settings.commission?.start ?? null,
+    commissionBilled: Object.entries(t.settings.commission?.billed ?? {})
+      .map(([month, invoiceId]) => ({ month, invoiceId }))
+      .sort((a, b) => a.month.localeCompare(b.month)),
     zernio: {
       profileId: t.settings.zernio?.profile_id ?? null,
       accounts: (t.settings.zernio?.accounts ?? []).map((a) => ({
