@@ -14,13 +14,16 @@ function shopFor(opts: {
   platform?: "instagram" | "whatsapp";
   askedMinutesAgo?: number;
   bought?: boolean;
+  /** Товары заказа (по умолчанию один: P1). */
+  items?: Array<{ id: string; name: string }>;
 }) {
   const platform = opts.platform ?? "instagram";
   const asked = new Date(Date.now() - (opts.askedMinutesAgo ?? 30) * 60_000).toISOString();
   const state = {
     locale: "ru",
     mode: "awaiting_rating",
-    review_product_id: P1,
+    review_product_id: opts.items?.[0]?.id ?? P1,
+    review_order_id: 5,
     review_ask_at: asked,
   };
   const db = fakeDb();
@@ -30,7 +33,11 @@ function shopFor(opts: {
   db.tables.orders = [
     { id: 5, telegram_id: -1, status: opts.bought === false ? "paid" : "delivered" },
   ];
-  db.tables.order_items = [{ order_id: 5, product_id: P1, name_snapshot: "Прописи" }];
+  db.tables.order_items = (opts.items ?? [{ id: P1, name: "Прописи" }]).map((i) => ({
+    order_id: 5,
+    product_id: i.id,
+    name_snapshot: i.name,
+  }));
   const ctx = {
     tenant: {
       id: "bot-1",
@@ -58,8 +65,10 @@ function shopFor(opts: {
     loyaltyPoints: 0,
     state,
   } as unknown as Customer;
-  const say = (text: string) =>
-    handleShopMessage(
+  // Как в бою: каждая реплика приходит с состоянием, записанным в базу предыдущей.
+  const say = (text: string) => {
+    customer.state = db.tables.bot_users![0]!.state as Customer["state"];
+    return handleShopMessage(
       ctx,
       customer,
       {
@@ -73,6 +82,7 @@ function shopFor(opts: {
       } as unknown as ParsedZernioMessage,
       transport,
     );
+  };
   const mode = () => (db.tables.bot_users![0]!.state as Record<string, unknown>).mode;
   return { db, say, sent, mode };
 }
@@ -89,6 +99,32 @@ describe("Direct/WhatsApp: ответ цифрой на просьбу об оц
       expect(t.sent).toEqual([COPY.ru.ratingThanks.replace(/<[^>]+>/g, "")]);
       expect(t.mode()).toBe("idle");
     });
+
+  it("заказ из трёх товаров: три оценки по очереди, каждый раз — следующий не оценённый", async () => {
+    const P2 = "a0000000-0000-4000-8000-000000000002";
+    const P3 = "a0000000-0000-4000-8000-000000000003";
+    const t = shopFor({
+      items: [
+        { id: P1, name: "Прописи" },
+        { id: P2, name: "Пазлы" },
+        { id: P3, name: "Раскраска" },
+      ],
+    });
+    await t.say("5");
+    expect(t.mode()).toBe("awaiting_rating");
+    expect(t.sent.at(-1)).toContain(COPY.ru.reviewAskDirect("Пазлы"));
+    await t.say("4");
+    expect(t.mode()).toBe("awaiting_rating");
+    expect(t.sent.at(-1)).toContain(COPY.ru.reviewAskDirect("Раскраска"));
+    await t.say("3");
+    expect(t.mode()).toBe("idle");
+    expect(t.sent.at(-1)).toBe(COPY.ru.ratingThanks.replace(/<[^>]+>/g, ""));
+    expect(t.db.tables.product_reviews).toMatchObject([
+      { product_id: P1, rating: 5 },
+      { product_id: P2, rating: 4 },
+      { product_id: P3, rating: 3 },
+    ]);
+  });
 
   it("не цифра — обычная переписка: оценки нет, шаг снят", async () => {
     const t = shopFor({});

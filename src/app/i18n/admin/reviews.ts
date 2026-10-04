@@ -7,7 +7,7 @@ export const ru = {
   "reviews.askDaysSave": "Сохранить",
   "reviews.askDaysSaved": "Сохранено",
   "reviews.askHint":
-    "Один раз на заказ, днём по времени магазина. Telegram — кнопками оценки; Instagram и WhatsApp — только если покупатель писал за последние 24 часа, ответ цифрой от 1 до 5. Отписавшимся и заблокировавшим не пишем; просьба считается в суточном потолке маркетинговых сообщений. Если окно Instagram или WhatsApp закрыто, просьба ждёт до 3 дней после срока и другим покупателям не мешает; за один запуск уходит не больше 50 просьб. Заказ, созданный раньше чем за срок + 33 дня, не просим, даже если его недавно правили.",
+    "Один раз на заказ, днём по времени магазина. Telegram — кнопками оценки; Instagram и WhatsApp — только если покупатель писал за последние 24 часа, ответ цифрой от 1 до 5. Отписавшимся и заблокировавшим не пишем; просьба считается в суточном потолке маркетинговых сообщений. Если окно Instagram или WhatsApp закрыто, просьба ждёт до 3 дней после срока и другим покупателям не мешает; за один запуск уходит не больше 50 просьб. Заказ, созданный раньше чем за срок + 33 дня, не просим, даже если его недавно правили. В Instagram и WhatsApp, если в заказе несколько товаров, бот спрашивает их по очереди: после цифры — следующий неоценённый.",
   "reviews.subtitle":
     "Оценки и комментарии покупателей после выдачи заказа. Ответ уходит покупателю личным сообщением от магазина.",
   "reviews.avg": "Средняя оценка: {avg} из 5 · отзывов: {n}",
@@ -59,7 +59,7 @@ export const kk: SectionDict<typeof ru> = {
   "reviews.askDaysSave": "Сақтау",
   "reviews.askDaysSaved": "Сақталды",
   "reviews.askHint":
-    "Тапсырысқа бір рет, дүкен уақытымен күндіз. Telegram — баға батырмаларымен; Instagram және WhatsApp — сатып алушы соңғы 24 сағатта жазған болса ғана, 1-ден 5-ке дейінгі цифрмен жауап. Жазылымнан бас тартқандарға және бұғаттағандарға жазбаймыз; сұрау маркетингтік хабарламалардың тәуліктік шегіне кіреді. Instagram немесе WhatsApp терезесі жабық болса, сұрау мерзімнен кейін 3 күнге дейін күтеді және басқа сатып алушыларға кедергі жасамайды; бір іске қосуда 50-ден артық сұрау кетпейді. Мерзім + 33 күннен бұрын жасалған тапсырыс жақында өзгертілсе де сұралмайды.",
+    "Тапсырысқа бір рет, дүкен уақытымен күндіз. Telegram — баға батырмаларымен; Instagram және WhatsApp — сатып алушы соңғы 24 сағатта жазған болса ғана, 1-ден 5-ке дейінгі цифрмен жауап. Жазылымнан бас тартқандарға және бұғаттағандарға жазбаймыз; сұрау маркетингтік хабарламалардың тәуліктік шегіне кіреді. Instagram немесе WhatsApp терезесі жабық болса, сұрау мерзімнен кейін 3 күнге дейін күтеді және басқа сатып алушыларға кедергі жасамайды; бір іске қосуда 50-ден артық сұрау кетпейді. Мерзім + 33 күннен бұрын жасалған тапсырыс жақында өзгертілсе де сұралмайды. Instagram мен WhatsApp-та тапсырыста бірнеше тауар болса, бот оларды кезекпен сұрайды: цифрдан кейін — келесі бағаланбаған тауар.",
   "reviews.subtitle":
     "Тапсырыс берілгеннен кейінгі сатып алушылардың бағалары мен пікірлері. Жауап сатып алушыға дүкеннен жеке хабарлама болып барады.",
   "reviews.avg": "Орташа баға: 5-тен {avg} · пікірлер: {n}",
@@ -113,7 +113,7 @@ export const en: SectionDict<typeof ru> = {
   "reviews.askDaysSave": "Save",
   "reviews.askDaysSaved": "Saved",
   "reviews.askHint":
-    "Once per order, in the daytime of the shop’s time zone. Telegram uses rating buttons; Instagram and WhatsApp only if the buyer wrote within the last 24 hours, answered with a digit from 1 to 5. We do not write to buyers who unsubscribed or blocked the bot; the request counts toward the daily cap on marketing messages. If an Instagram or WhatsApp window is closed, the request waits up to 3 days past the due date and does not hold up other buyers; no more than 50 requests go out per run. An order created earlier than the due period + 33 days is not asked about, even if it was edited recently.",
+    "Once per order, in the daytime of the shop’s time zone. Telegram uses rating buttons; Instagram and WhatsApp only if the buyer wrote within the last 24 hours, answered with a digit from 1 to 5. We do not write to buyers who unsubscribed or blocked the bot; the request counts toward the daily cap on marketing messages. If an Instagram or WhatsApp window is closed, the request waits up to 3 days past the due date and does not hold up other buyers; no more than 50 requests go out per run. An order created earlier than the due period + 33 days is not asked about, even if it was edited recently. In Instagram and WhatsApp, if an order has several products, the bot asks about them one by one: after a digit, the next unrated one.",
   "reviews.subtitle":
     "Customer ratings and comments after an order is delivered. Your reply goes to the customer as a private message from the shop.",
   "reviews.avg": "Average rating: {avg} of 5 · reviews: {n}",
@@ -167,7 +167,7 @@ export const uz: SectionDict<typeof ru> = {
   "reviews.askDaysSave": "Saqlash",
   "reviews.askDaysSaved": "Saqlandi",
   "reviews.askHint":
-    "Har bir buyurtmaga bir marta, doʻkon vaqti bilan kunduzi. Telegram — baho tugmalari bilan; Instagram va WhatsApp — faqat xaridor oxirgi 24 soatda yozgan boʻlsa, 1 dan 5 gacha raqam bilan javob. Obunadan chiqqan va botni bloklagan xaridorlarga yozmaymiz; soʻrov marketing xabarlarining kunlik chegarasiga kiradi. Instagram yoki WhatsApp oynasi yopiq boʻlsa, soʻrov muddatdan keyin 3 kungacha kutadi va boshqa xaridorlarga xalaqit bermaydi; bir ishga tushirishda 50 tadan ortiq soʻrov ketmaydi. Muddat + 33 kundan oldin yaratilgan buyurtma yaqinda oʻzgartirilgan boʻlsa ham soʻralmaydi.",
+    "Har bir buyurtmaga bir marta, doʻkon vaqti bilan kunduzi. Telegram — baho tugmalari bilan; Instagram va WhatsApp — faqat xaridor oxirgi 24 soatda yozgan boʻlsa, 1 dan 5 gacha raqam bilan javob. Obunadan chiqqan va botni bloklagan xaridorlarga yozmaymiz; soʻrov marketing xabarlarining kunlik chegarasiga kiradi. Instagram yoki WhatsApp oynasi yopiq boʻlsa, soʻrov muddatdan keyin 3 kungacha kutadi va boshqa xaridorlarga xalaqit bermaydi; bir ishga tushirishda 50 tadan ortiq soʻrov ketmaydi. Muddat + 33 kundan oldin yaratilgan buyurtma yaqinda oʻzgartirilgan boʻlsa ham soʻralmaydi. Instagram va WhatsApp’da buyurtmada bir nechta mahsulot boʻlsa, bot ularni navbat bilan soʻraydi: raqamdan keyin — keyingi baholanmagani.",
   "reviews.subtitle":
     "Buyurtma topshirilgandan keyin xaridorlarning baholari va izohlari. Javob xaridorga doʻkondan shaxsiy xabar boʻlib boradi.",
   "reviews.avg": "Oʻrtacha baho: 5 dan {avg} · sharhlar: {n}",

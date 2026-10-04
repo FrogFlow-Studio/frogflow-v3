@@ -258,6 +258,7 @@ export async function runReviewAsk(
         ...marked,
         mode: "awaiting_rating",
         review_product_id: products[0]!.id,
+        review_order_id: newest.id,
         review_ask_at: now.toISOString(),
       };
       const last = typeof marked.last_marketing_at === "string" ? marked.last_marketing_at : null;
@@ -290,7 +291,7 @@ export async function runReviewAsk(
 }
 
 /** Товары выданного заказа, которые покупатель ещё не оценил. */
-async function unratedProducts(
+export async function unratedProducts(
   ctx: TenantContext,
   orderId: number,
   telegramId: number,

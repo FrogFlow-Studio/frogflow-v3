@@ -418,7 +418,12 @@ export async function handleShopMessage(
 
 /** true — реплика была оценкой и обработана; false — шаг снят, разбираем реплику как обычно. */
 async function handleRatingAnswer(s: Shop, text: string): Promise<boolean> {
-  const { review_product_id: productId, review_ask_at: askedAt, ...rest } = s.customer.state;
+  const {
+    review_product_id: productId,
+    review_ask_at: askedAt,
+    review_order_id: orderId,
+    ...rest
+  } = s.customer.state;
   const fresh = Date.now() - Date.parse(askedAt ?? "") < REPLY_WINDOW_MS;
   const rating = parseRatingReply(text);
   await setMode(s, {
@@ -426,6 +431,7 @@ async function handleRatingAnswer(s: Shop, text: string): Promise<boolean> {
     mode: "idle",
     review_product_id: undefined,
     review_ask_at: undefined,
+    review_order_id: undefined,
   });
   if (!fresh || rating == null || !productId || !s.ctx.tenant.modules.review_request) return false;
   const telegramId = s.customer.telegramId;
@@ -434,7 +440,23 @@ async function handleRatingAnswer(s: Shop, text: string): Promise<boolean> {
     return true;
   }
   await saveRating(s.ctx, telegramId, productId, rating);
-  await reply(s, s.m.ratingThanks, { force: true });
+  // В заказе есть ещё не оценённый товар — спрашиваем следующий тем же шагом. Это ответ в
+  // открытом окне на цифру покупателя, а не новая маркетинговая отправка.
+  const next = orderId
+    ? (await (await import("@/core/reviews/ask")).unratedProducts(s.ctx, orderId, telegramId))[0]
+    : undefined;
+  if (!next) {
+    await reply(s, s.m.ratingThanks, { force: true });
+    return true;
+  }
+  await setMode(s, {
+    ...rest,
+    mode: "awaiting_rating",
+    review_product_id: next.id,
+    review_order_id: orderId,
+    review_ask_at: new Date().toISOString(),
+  });
+  await reply(s, `${s.m.ratingThanks}\n\n${s.m.reviewAskDirect(next.name)}`, { force: true });
   return true;
 }
 

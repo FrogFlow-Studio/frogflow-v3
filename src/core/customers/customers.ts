@@ -111,6 +111,8 @@ export type DialogState = {
   review_product_id?: string;
   /** Когда ушла просьба об оценке в Direct/WhatsApp: цифра принимается в окне ответа (24 ч). */
   review_ask_at?: string;
+  /** Заказ, по которому идёт просьба об оценке в Direct/WhatsApp: после оценки спрашиваем следующий товар. */
+  review_order_id?: number;
   /** Кулдаун умного поиска — когда покупатель звал его последний раз. */
   last_smart_search_at?: string;
   /** История и пауза ИИ-консультанта (src/core/consultant). */
