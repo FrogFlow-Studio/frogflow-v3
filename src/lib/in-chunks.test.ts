@@ -80,7 +80,7 @@ const ALLOWED: Record<string, string[]> = {
   "src/core/orders/orders.ts": [FEW, FIXED],
   "src/core/orders/physical-admin.ts": [FEW, FEW],
   "src/core/receipts/verify.server.ts": [FEW, FEW],
-  "src/core/retention/retention.ts": Array<string>(10).fill(
+  "src/core/retention/retention.ts": Array<string>(11).fill(
     "scope — не больше IN_CHUNK клиентов: runRetention режет список на куски",
   ),
   "src/core/reviews/ask.ts": [FEW],

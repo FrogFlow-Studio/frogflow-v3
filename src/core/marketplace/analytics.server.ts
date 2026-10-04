@@ -67,13 +67,7 @@ export async function recordMarketEvent(input: TrackInput): Promise<{ counted: b
     if (isMissingTable(error)) return { counted: false };
     throw serverFailure(`аналитика площадки, событие не записано: ${error.message}`);
   }
-  // Старое убираем при записи (каждая шестнадцатая), отдельного крона не нужно; сбой не мешает счёту.
-  if (dedupe.startsWith("0")) {
-    await serviceDb()
-      .from("market_events")
-      .delete()
-      .lt("created_at", new Date(now - MARKET_STATS.keepDays * DAY).toISOString());
-  }
+  // Старые события убирает крон ретеншна (core/retention: pruneMarketEvents), порциями.
   return { counted: true };
 }
 

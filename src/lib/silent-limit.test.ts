@@ -51,7 +51,7 @@ const ALLOWED: Record<string, string[]> = {
   "src/core/consultant/engine.server.ts": [
     "потолок каталога в подсказке модели: больше не помещается в запрос",
   ],
-  "src/core/retention/retention.ts": Array<string>(11).fill(
+  "src/core/retention/retention.ts": Array<string>(13).fill(
     "уборка пачками BATCH по порядку времени: остальное в следующий запуск",
   ),
   "src/core/orders/admin.ts": [

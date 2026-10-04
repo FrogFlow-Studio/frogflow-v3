@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import { serviceDb } from "@/core/db/client.server";
 import { servedByV2 } from "@/core/tenant/directory";
 import { LEAD_PREFIX, isClosedStage, parseLead } from "@/core/pipeline/stages";
@@ -5,6 +6,8 @@ import { RECEIPT_CHECKS_PREFIX, receiptChecksDay } from "@/core/receipts/attempt
 import { RATE_LIMIT_PREFIX, parseCounter } from "@/core/storefront/rate-limit";
 import { CHECKOUT_CHALLENGE_PREFIX } from "@/core/storefront/checkout-guard";
 import { chunksOf, IN_CHUNK } from "@/lib/in-chunks";
+import { MARKET_STATS } from "@/core/marketplace/analytics";
+import { REPORT_EVENT, REPORT_STATUS } from "@/core/marketplace/report";
 
 /**
  * Ретеншн журналов — один проход на всех клиентов (serviceDb, правило 4).
@@ -31,6 +34,12 @@ export const RETENTION = {
   /** Получатели рассылок — по дате самой кампании: своей даты у строки нет. */
   broadcastRecipientsDays: 90,
   healthSnapshotsDays: 30,
+  /**
+   * Жалобы площадки (core/marketplace/report): открытые не удаляются никогда — по ним решает
+   * оператор; закрытые лежат год после решения («скрыл», «отклонил») на случай спора с магазином.
+   */
+  marketReportClosedDays: 365,
+  /** События аналитики площадки (market_events): значение — MARKET_STATS.keepDays, чистит крон. */
   /** Закрытые заявки воронки (выполнено, потеряно) — после закрытия. */
   closedLeadsDays: 90,
   /**
@@ -162,6 +171,56 @@ export async function pruneManagerChatMessages(
   if (error) throw new Error(`manager_chat_messages: ${error.message}`);
   const ids = (data ?? []).map((r) => r.id);
   await deleteIds("manager_chat_messages", ids);
+  return { deleted: ids.length, done: ids.length < BATCH };
+}
+
+/**
+ * Закрытые жалобы площадки старше года с решения (`payload.resolved_at`). Открытая жалоба и
+ * закрытая без отметки времени не трогаются ни при каком возрасте: удалить решение раньше срока
+ * хуже, чем оставить лишнюю строку. Строки читаем порциями BATCH, как остальные прогоны.
+ */
+export async function pruneClosedMarketReports(
+  now = Date.now(),
+  scope?: Scope,
+): Promise<PruneResult> {
+  if (scope && scope.length === 0) return none;
+  let q = serviceDb()
+    .from("zernio_logs")
+    .select("id")
+    .eq("event_type", REPORT_EVENT)
+    .eq("status", REPORT_STATUS.closed)
+    .lt("payload->>resolved_at", cutoff(RETENTION.marketReportClosedDays, now));
+  if (scope) q = q.in("bot_id", [...scope]);
+  const { data, error } = await q.order("created_at", { ascending: true }).limit(BATCH);
+  if (error) throw serverFailure(`zernio_logs (жалобы): ${error.message}`);
+  const ids = (data ?? []).map((r) => r.id);
+  await deleteIds("zernio_logs", ids);
+  return { deleted: ids.length, done: ids.length < BATCH };
+}
+
+/**
+ * События аналитики площадки старше MARKET_STATS.keepDays — платформенная таблица без bot_id.
+ * Раньше их удаляла запись каждого шестнадцатого события одним запросом без предела; теперь
+ * порциями BATCH по крону. Миграция 19-20 ещё не применена — таблицы нет, чистить нечего.
+ */
+export async function pruneMarketEvents(now = Date.now()): Promise<PruneResult> {
+  const { data, error } = await serviceDb()
+    .from("market_events")
+    .select("id")
+    .lt("created_at", cutoff(MARKET_STATS.keepDays, now))
+    .order("created_at", { ascending: true })
+    .limit(BATCH);
+  if (error) {
+    if (
+      /could not find the table|does not exist|PGRST205|42P01/i.test(
+        `${error.code} ${error.message}`,
+      )
+    )
+      return none;
+    throw serverFailure(`market_events: ${error.message}`);
+  }
+  const ids = (data ?? []).map((r) => r.id);
+  await deleteIds("market_events", ids);
   return { deleted: ids.length, done: ids.length < BATCH };
 }
 
@@ -429,6 +488,9 @@ export async function runRetention(
   const parts: Scope[] = all.length > IN_CHUNK ? chunksOf(all, IN_CHUNK) : [all];
   const jobs: Record<string, (n: number, s: Scope) => Promise<PruneResult>> = {
     zernio_logs: (n, s) => pruneZernioLogs(n, s),
+    market_reports_closed: (n, s) => pruneClosedMarketReports(n, s),
+    // Платформенная таблица без bot_id: границы клиентов к ней не относятся.
+    market_events: (n) => pruneMarketEvents(n),
     manager_chat_messages: (n, s) => pruneManagerChatMessages(n, s),
     admin_login_attempts: (n, s) => pruneAdminLoginAttempts(n, s),
     operator_login_attempts: (n) => pruneOperatorLoginAttempts(n),
@@ -446,7 +508,7 @@ export async function runRetention(
       (await import("@/core/delivery/watermark.server")).pruneStampedCopies(s ?? [], n),
   };
   // Без границ клиентов — один проход на всех, а не по куску.
-  const platformWide = new Set(["operator_login_attempts", "signup_challenges"]);
+  const platformWide = new Set(["operator_login_attempts", "signup_challenges", "market_events"]);
   const out: Record<string, PruneResult | { error: string }> = {};
   const startedAt = Date.now();
   for (const [name, job] of Object.entries(jobs)) {

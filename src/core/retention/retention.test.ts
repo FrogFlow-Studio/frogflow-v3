@@ -11,6 +11,8 @@ const {
   pruneBroadcastRecipients,
   pruneCheckoutChallenges,
   pruneClosedLeads,
+  pruneClosedMarketReports,
+  pruneMarketEvents,
   pruneOperatorLoginAttempts,
   pruneReceiptChecks,
   pruneRateLimits,
@@ -553,5 +555,135 @@ describe("уборка при сотнях клиентов: `.in` кускам�
     expect(out.broadcast_recipients).toEqual({ deleted: 450, done: true });
     expect(db.tables.zernio_logs).toHaveLength(0);
     expect(db.tables.broadcast_recipients).toHaveLength(0);
+  });
+});
+
+describe("жалобы и события площадки (Л2)", () => {
+  const report = (id: string, status: string, resolvedDaysAgo: number | null, bot = "b") => ({
+    id,
+    bot_id: bot,
+    event_type: "market.report",
+    status,
+    created_at: daysAgo(900),
+    payload: resolvedDaysAgo === null ? {} : { resolved_at: daysAgo(resolvedDaysAgo) },
+  });
+
+  it("жалоба остаётся: открытая — в любом возрасте, закрытая — год после решения; старые закрытые уходят", async () => {
+    const year = RETENTION.marketReportClosedDays;
+    db.tables.zernio_logs = [
+      report("open-old", "open", null),
+      report("closed-recent", "closed", 10),
+      report("closed-edge", "closed", year - 1),
+      report("closed-no-time", "closed", null),
+      report("closed-old", "closed", year + 1),
+      report("closed-older", "closed", year + 200),
+      // Не жалоба: тот же возраст решения у чужого события не делает его целью.
+      {
+        id: "other",
+        bot_id: "b",
+        event_type: "ticket",
+        status: "closed",
+        created_at: daysAgo(900),
+        payload: { resolved_at: daysAgo(900) },
+      },
+    ];
+    expect(await pruneClosedMarketReports(NOW)).toEqual({ deleted: 2, done: true });
+    expect(db.tables.zernio_logs.map((r) => r.id)).toEqual([
+      "open-old",
+      "closed-recent",
+      "closed-edge",
+      "closed-no-time",
+      "other",
+    ]);
+  });
+
+  it("границы клиентов: жалобы клиента вне списка (прежняя платформа) не трогаются", async () => {
+    db.tables.zernio_logs = [
+      report("mine", "closed", 400, "b1"),
+      report("theirs", "closed", 400, "b2"),
+    ];
+    expect(await pruneClosedMarketReports(NOW, ["b1"])).toEqual({ deleted: 1, done: true });
+    expect(db.tables.zernio_logs.map((r) => r.id)).toEqual(["theirs"]);
+    expect(await pruneClosedMarketReports(NOW, [])).toEqual({ deleted: 0, done: true });
+  });
+
+  it("ошибка чтения жалоб — ошибка, а не «удалять нечего»", async () => {
+    const { withBrokenReads } = await import("../../../tests/broken-db");
+    db = withBrokenReads(fakeDb(), ["zernio_logs"]);
+    await expect(pruneClosedMarketReports(NOW)).rejects.toThrow();
+  });
+
+  it("события площадки старше keepDays уходят порциями BATCH, свежие остаются", async () => {
+    const { MARKET_STATS } = await import("@/core/marketplace/analytics");
+    const old = Array.from({ length: BATCH + 50 }, (_, i) => ({
+      id: `old-${String(i).padStart(5, "0")}`,
+      kind: "visit",
+      created_at: daysAgo(MARKET_STATS.keepDays + 1),
+    }));
+    db.tables.market_events = [...old, { id: "fresh", kind: "visit", created_at: daysAgo(1) }];
+    expect(await pruneMarketEvents(NOW)).toEqual({ deleted: BATCH, done: false });
+    expect(await pruneMarketEvents(NOW)).toEqual({ deleted: 50, done: true });
+    expect(db.tables.market_events.map((r) => r.id)).toEqual(["fresh"]);
+  });
+
+  it("таблицы событий нет (миграция не применена) — чистить нечего, ошибки нет", async () => {
+    const chain: unknown = new Proxy(
+      {},
+      {
+        get: (_t, k) =>
+          k === "then"
+            ? (ok: (v: unknown) => unknown) =>
+                Promise.resolve({
+                  data: null,
+                  error: {
+                    code: "PGRST205",
+                    message: "Could not find the table 'public.market_events'",
+                  },
+                }).then(ok)
+            : () => chain,
+      },
+    );
+    db = { from: () => chain } as unknown as FakeDb;
+    expect(await pruneMarketEvents(NOW)).toEqual({ deleted: 0, done: true });
+  });
+
+  it("runRetention чистит и жалобы, и события площадки в общем проходе", async () => {
+    const { MARKET_STATS } = await import("@/core/marketplace/analytics");
+    directory = [{ id: "b", settings: { served_by: "v2" } }];
+    db.tables.zernio_logs = [report("closed-old", "closed", 500), report("open", "open", null)];
+    db.tables.market_events = [
+      { id: "e1", kind: "visit", created_at: daysAgo(MARKET_STATS.keepDays + 5) },
+    ];
+    const r = await runRetention(NOW);
+    expect(r.market_reports_closed).toEqual({ deleted: 1, done: true });
+    expect(r.market_events).toEqual({ deleted: 1, done: true });
+    expect(db.tables.zernio_logs.map((x) => x.id)).toEqual(["open"]);
+  });
+});
+
+describe("объём жалобы площадки (Л2)", () => {
+  it("строка жалобы с полями на потолках — не больше 4 КБ (кириллица — 2 байта на знак): форма не раздувает zernio_logs", async () => {
+    const { REPORT_TEXT_MAX, cleanReport } = await import("@/core/marketplace/report");
+    const cleaned = cleanReport({
+      reason: "other",
+      text: "я".repeat(REPORT_TEXT_MAX * 3),
+      slug: "s".repeat(500),
+      productId: "0".repeat(8) + "-0000-0000-0000-" + "0".repeat(12),
+    });
+    expect(cleaned.ok).toBe(true);
+    if (!cleaned.ok) return;
+    // Как пишет submitReport: названия обрезаются до 200, остальное — из cleanReport.
+    const row = {
+      slug: cleaned.value.slug,
+      shop: "м".repeat(200),
+      product_id: cleaned.value.productId,
+      product: "т".repeat(200),
+      reason: cleaned.value.reason,
+      text: cleaned.value.text,
+      reporter: "a".repeat(16),
+    };
+    expect(new TextEncoder().encode(JSON.stringify(row)).length).toBeLessThan(4096);
+    expect(cleaned.value.text.length).toBe(REPORT_TEXT_MAX);
+    expect(cleaned.value.slug.length).toBe(80);
   });
 });
