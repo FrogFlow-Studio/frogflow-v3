@@ -217,7 +217,7 @@ function Dashboard() {
         <Stat label={t("overview.productsOnSale")} value={d.products} />
         <Stat label={t("overview.customers")} value={d.customers.toLocaleString(loc)} />
       </div>
-      <div className="mt-6 grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <div className="mt-6 grid gap-4 lg:grid-cols-[2fr_1fr] [&>*]:min-w-0">
         <Card
           title={t("overview.recentOrders")}
           actions={
@@ -229,38 +229,42 @@ function Dashboard() {
           {d.recent.length === 0 ? (
             <Empty>{t("overview.noOrders")}</Empty>
           ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t("orders.col.no")}</th>
-                  <th>{t("orders.col.customer")}</th>
-                  <th>{t("orders.col.total")}</th>
-                  <th>{t("orders.col.status")}</th>
-                  <th>{t("orders.col.when")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.recent.map((o) => (
-                  <tr key={o.id}>
-                    <td>
-                      <Link
-                        to="/admin/orders/$id"
-                        params={{ id: String(o.id) }}
-                        className="font-medium hover:underline"
-                      >
-                        #{displayNo(o)}
-                      </Link>
-                    </td>
-                    <td>{o.display_name}</td>
-                    <td className="tabular-nums">{formatMoney(o.total, o.currency)}</td>
-                    <td>
-                      <OrderStatus status={o.status} />
-                    </td>
-                    <td className="text-muted">{new Date(o.created_at).toLocaleDateString(loc)}</td>
+            <div className="overflow-x-auto">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>{t("orders.col.no")}</th>
+                    <th>{t("orders.col.customer")}</th>
+                    <th>{t("orders.col.total")}</th>
+                    <th>{t("orders.col.status")}</th>
+                    <th>{t("orders.col.when")}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {d.recent.map((o) => (
+                    <tr key={o.id}>
+                      <td>
+                        <Link
+                          to="/admin/orders/$id"
+                          params={{ id: String(o.id) }}
+                          className="font-medium hover:underline"
+                        >
+                          #{displayNo(o)}
+                        </Link>
+                      </td>
+                      <td>{o.display_name}</td>
+                      <td className="tabular-nums">{formatMoney(o.total, o.currency)}</td>
+                      <td>
+                        <OrderStatus status={o.status} />
+                      </td>
+                      <td className="text-muted">
+                        {new Date(o.created_at).toLocaleDateString(loc)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </Card>
         <Card title={t("overview.byStatus")}>
