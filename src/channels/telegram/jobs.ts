@@ -198,31 +198,38 @@ export async function runCartReminders(tenant: Tenant) {
   const ctx = tenantContext(tenant);
   const tg = tenant.telegramTokenEnc ? api(ctx) : null;
   const { sendToZernioTarget, zernioTargetOf } = await import("@/channels/zernio/outbound.server");
-  return sendCartReminders(ctx, async (r) => {
-    const m = COPY[r.locale];
-    const text = cartReminderBody(
-      r.locale,
-      r.lines,
-      r.more,
-      r.total ? formatMoney(r.total.amount, r.total.currency) : null,
-    );
-    if (r.customer.platform === "telegram") {
-      if (!tg) return false;
-      const sent = await tg.call("sendMessage", {
-        chat_id: r.telegramId,
-        text,
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: m.openCartBtn, callback_data: "cart:show" }],
-            [{ text: m.unsubscribeBtn, callback_data: "unsub" }],
-          ],
-        },
-      });
-      return sent.ok;
-    }
-    const target = zernioTargetOf(r.customer, ctx.tenant.settings.default_locale);
-    return target ? sendToZernioTarget(target, text) : false;
-  });
+  // Напоминание в Instagram и WhatsApp — новое в v3, только если продавец включил.
+  const zernioOn = await (await import("@/core/marketing/auto-v3")).autoMessagesV3(ctx);
+  return sendCartReminders(
+    ctx,
+    async (r) => {
+      const m = COPY[r.locale];
+      const text = cartReminderBody(
+        r.locale,
+        r.lines,
+        r.more,
+        r.total ? formatMoney(r.total.amount, r.total.currency) : null,
+      );
+      if (r.customer.platform === "telegram") {
+        if (!tg) return false;
+        const sent = await tg.call("sendMessage", {
+          chat_id: r.telegramId,
+          text,
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: m.openCartBtn, callback_data: "cart:show" }],
+              [{ text: m.unsubscribeBtn, callback_data: "unsub" }],
+            ],
+          },
+        });
+        return sent.ok;
+      }
+      const target = zernioTargetOf(r.customer, ctx.tenant.settings.default_locale);
+      return target ? sendToZernioTarget(target, text) : false;
+    },
+    new Date(),
+    zernioOn,
+  );
 }
 
 export async function runFulfillmentReminders(tenant: Tenant) {
@@ -313,6 +320,8 @@ export async function runSimilarFor(tenant: Tenant) {
 export async function runReviewAskFor(tenant: Tenant) {
   if (!tenant.modules.review_request) return { skipped: "module off" };
   const ctx = tenantContext(tenant);
+  if (!(await (await import("@/core/marketing/auto-v3")).autoMessagesV3(ctx)))
+    return { skipped: "auto messages off" };
   const { runReviewAsk } = await import("@/core/reviews/ask");
   const tg = tenant.telegramTokenEnc ? api(ctx) : null;
   const { sendToZernioTarget, zernioTargetOf } = await import("@/channels/zernio/outbound.server");
@@ -385,6 +394,8 @@ export async function runSaleReminders(tenant: Tenant) {
   if (!tenant.modules.limited_offers) return { skipped: "module off" };
   if (!tenant.telegramTokenEnc) return { skipped: "no telegram" };
   const ctx = tenantContext(tenant);
+  if (!(await (await import("@/core/marketing/auto-v3")).autoMessagesV3(ctx)))
+    return { skipped: "auto messages off" };
   const tg = api(ctx);
   const { runOfferReminders } = await import("@/core/offers/remind");
   return runOfferReminders(ctx, async ({ telegramId, locale, text }) => {

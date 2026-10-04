@@ -27,6 +27,7 @@ export const SETTING_KEYS = [
   "receipt_ocr_auto",
   "weekly_report_enabled",
   "weekly_report_sections",
+  "auto_messages_v3",
   "receipt_ocr_usage",
   "consultant_enabled",
   "consultant_profile",

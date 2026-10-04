@@ -51,6 +51,7 @@ import {
   SmartSearchCard,
   WatermarkCard,
   WeeklyReportCard,
+  AutoMessagesCard,
 } from "@/app/admin/settings/shop";
 
 // Карточки за модулем или ролью: код приходит, только когда карточку показывают.
@@ -511,6 +512,9 @@ function SettingsPage() {
           )}
           <SettingsSection id="weekly">
             <WeeklyReportCard settings={settings} />
+          </SettingsSection>
+          <SettingsSection id="auto-v3">
+            <AutoMessagesCard settings={settings} />
           </SettingsSection>
           <SettingsSection id="pay-remind">
             <PayReminderCard settings={settings} />

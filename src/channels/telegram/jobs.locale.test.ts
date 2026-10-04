@@ -34,6 +34,7 @@ vi.mock("@/core/reviews/ask", () => ({
     return { sent: 2 };
   },
 }));
+vi.mock("@/core/marketing/auto-v3", () => ({ autoMessagesV3: async () => true }));
 const { runReviewAskFor } = await import("./jobs");
 
 describe("язык покупателя в автосообщениях", () => {

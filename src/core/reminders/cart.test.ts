@@ -255,6 +255,18 @@ describe("напоминание о корзине: Instagram и WhatsApp", () =
     expect((await sendCartReminders(ctx, send, new Date(NOW.getTime() + 3_600_000))).sent).toBe(0);
   });
 
+  it("автосообщения v3 выключены — Instagram молчит, корзина не отмечена, место в потолке цело", async () => {
+    const { ctx, row } = setupDirect(3);
+    const send = vi.fn(async () => true);
+    expect((await sendCartReminders(ctx, send, NOW, false)).sent).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+    expect(row.cart_reminder_sent_at).toBeNull();
+    expect(row.state).toEqual({});
+    // Включили — то же напоминание уходит.
+    expect((await sendCartReminders(ctx, send, NOW, true)).sent).toBe(1);
+    expect(row.cart_reminder_sent_at).toBe(NOW.toISOString());
+  });
+
   it("гонка двух кронов — одно сообщение", async () => {
     const { ctx } = setupDirect(3);
     const send = vi.fn(async () => true);

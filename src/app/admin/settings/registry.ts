@@ -95,6 +95,12 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     title: "settings.weekly.title",
     keys: ["weekly_report_enabled", "weekly_report_sections"],
   }),
+  E({
+    id: "auto-v3",
+    theme: "shop",
+    title: "settings.autoV3.title",
+    keys: ["auto_messages_v3"],
+  }),
   E({ id: "payment-methods", theme: "payment", title: "settings.pay.title" }),
   E({
     id: "fulfillment",

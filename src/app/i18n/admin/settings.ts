@@ -398,6 +398,11 @@ export const ru = {
     "По понедельникам в 9:00 бот магазина присылает итоги прошлой недели: выручку, скорость оплаты и выдачи, вернувшихся покупателей, одну строку «что изменилось», воронку покупателя, лучший канал и топ товаров. Отчёт приходит на языке админки.",
   "settings.weekly.on": "Включён",
   "settings.weekly.off": "Выключен",
+  "settings.autoV3.title": "Новые автосообщения",
+  "settings.autoV3.intro":
+    "Просьба об оценке через несколько дней после выдачи заказа, напоминание «акция кончается завтра» и напоминание о корзине в Instagram и WhatsApp. Работают только у тех покупателей, кому магазин может писать, и учитываются в потолке «одно маркетинговое сообщение в сутки». Пока выключено, покупателям это не отправляется. Каждая функция дополнительно зависит от своего модуля.",
+  "settings.autoV3.on": "Включены",
+  "settings.autoV3.off": "Выключены",
   "settings.payRemind.title": "Напоминание об оплате",
   "settings.payRemind.intro":
     "Если заказ из бота, Instagram или WhatsApp не оплачен, бот один раз напомнит покупателю сумму и реквизиты. В Instagram и WhatsApp — только если покупатель писал магазину в последние сутки.",
@@ -862,6 +867,11 @@ export const kk: SectionDict<typeof ru> = {
     "Дүйсенбі сайын 9:00-де дүкен боты өткен аптаның қорытындысын жібереді: түсім, төлем мен беру жылдамдығы, қайта оралған сатып алушылар, «не өзгерді» деген бір жол, сатып алушы воронкасы, үздік арна және топ тауарлар. Есеп әкімшілік тілінде келеді.",
   "settings.weekly.on": "Қосулы",
   "settings.weekly.off": "Өшірулі",
+  "settings.autoV3.title": "Жаңа автохабарламалар",
+  "settings.autoV3.intro":
+    "Тапсырыс берілгеннен кейін бірнеше күннен соң баға сұрау, «акция ертең аяқталады» еске салуы және Instagram мен WhatsApp-тағы себет туралы еске салу. Тек дүкен жаза алатын сатып алушыларға жіберіледі және тәулігіне бір маркетингтік хабарлама лимитіне кіреді. Өшірулі болса, сатып алушыларға жіберілмейді. Әр функция өз модуліне де байланысты.",
+  "settings.autoV3.on": "Қосулы",
+  "settings.autoV3.off": "Өшірулі",
   "settings.payRemind.title": "Төлем туралы еске салу",
   "settings.payRemind.intro":
     "Боттағы, Instagram немесе WhatsApp-тағы тапсырыс төленбесе, бот сатып алушыға соманы мен деректемелерді бір рет еске салады. Instagram мен WhatsApp-та — сатып алушы соңғы тәулікте дүкенге жазған болса ғана.",
@@ -1322,6 +1332,11 @@ export const en: SectionDict<typeof ru> = {
     "Every Monday at 9:00 the shop bot sends last week’s results: revenue, payment and delivery speed, returning customers, one “what changed” line, the buyer funnel, the best channel and top products. The report comes in the admin language.",
   "settings.weekly.on": "On",
   "settings.weekly.off": "Off",
+  "settings.autoV3.title": "New automatic messages",
+  "settings.autoV3.intro":
+    "A request for a rating a few days after an order is handed over, the “sale ends tomorrow” reminder, and the cart reminder in Instagram and WhatsApp. They go only to buyers the shop can message and count toward the “one marketing message per day” cap. While off, buyers receive none of them. Each one also depends on its own module.",
+  "settings.autoV3.on": "On",
+  "settings.autoV3.off": "Off",
   "settings.payRemind.title": "Payment reminder",
   "settings.payRemind.intro":
     "If an order from the bot, Instagram or WhatsApp is not paid, the bot reminds the buyer once of the amount and payment details. In Instagram and WhatsApp only if the buyer wrote to the shop within the last day.",
@@ -1788,6 +1803,11 @@ export const uz: SectionDict<typeof ru> = {
     "Har dushanba 9:00 da do‘kon boti o‘tgan hafta natijalarini yuboradi: tushum, to‘lov va topshirish tezligi, qaytgan xaridorlar, «nima o‘zgardi» degan bitta qator, xaridor voronkasi, eng yaxshi kanal va top mahsulotlar. Hisobot admin tilida keladi.",
   "settings.weekly.on": "Yoqilgan",
   "settings.weekly.off": "O‘chirilgan",
+  "settings.autoV3.title": "Yangi avtomatik xabarlar",
+  "settings.autoV3.intro":
+    "Buyurtma topshirilgandan bir necha kun keyin baho so‘rash, «aksiya ertaga tugaydi» eslatmasi va Instagram hamda WhatsApp’dagi savat eslatmasi. Faqat do‘kon yoza oladigan xaridorlarga yuboriladi va kuniga bitta marketing xabari chegarasiga kiradi. O‘chiq bo‘lsa, xaridorlarga yuborilmaydi. Har bir funksiya o‘z moduliga ham bog‘liq.",
+  "settings.autoV3.on": "Yoqilgan",
+  "settings.autoV3.off": "O‘chirilgan",
   "settings.payRemind.title": "To‘lov haqida eslatma",
   "settings.payRemind.intro":
     "Botdagi, Instagram yoki WhatsApp’dagi buyurtma to‘lanmasa, bot xaridorga summa va rekvizitlarni bir marta eslatadi. Instagram va WhatsApp’da — faqat xaridor so‘nggi sutkada do‘konga yozgan bo‘lsa.",

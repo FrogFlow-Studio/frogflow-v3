@@ -234,6 +234,35 @@ export function WeeklyReportCard({ settings }: { settings: Record<string, string
   );
 }
 
+/** Новые автосообщения покупателям (core/marketing/auto-v3): по умолчанию выключены. */
+export function AutoMessagesCard({ settings }: { settings: Record<string, string> }) {
+  const router = useRouter();
+  const { shop } = settingsRoute.useRouteContext();
+  const t = adminT(shop.locale);
+  const enabled = settings.auto_messages_v3 === "true";
+  const toggle = useAction(async (v: boolean) => {
+    await saveSettingsFn({ data: { auto_messages_v3: v ? "true" : "false" } });
+    await router.invalidate();
+  });
+  return (
+    <Card title={t("settings.autoV3.title")}>
+      <p className="mb-3 text-sm text-muted">{t("settings.autoV3.intro")}</p>
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={enabled}
+          disabled={toggle.busy || shop.role !== "owner"}
+          onChange={(v) => void toggle.run(v).catch(() => {})}
+          label={t("settings.autoV3.title")}
+        />
+        <span className="text-sm">
+          {enabled ? t("settings.autoV3.on") : t("settings.autoV3.off")}
+        </span>
+      </div>
+      <ErrorBox error={toggle.error} />
+    </Card>
+  );
+}
+
 /** Напоминание об оплате заказов из бота, Instagram и WhatsApp (core/orders/pay-remind). */
 export function PayReminderCard({ settings }: { settings: Record<string, string> }) {
   const router = useRouter();

@@ -77,6 +77,8 @@ export async function sendCartReminders(
   ctx: TenantContext,
   send: (target: CartReminderTarget) => Promise<boolean>,
   now = new Date(),
+  /** Писать ли в Instagram и WhatsApp; выключено — только Telegram, как в v2 (core/marketing/auto-v3). */
+  zernio = true,
 ): Promise<{ checked: number; sent: number; hours: number }> {
   if (!ctx.tenant.modules.cart_reminder) return { checked: 0, sent: 0, hours: 0 };
   const hours = parseReminderHours(await getSetting(ctx, "cart_reminder_hours"));
@@ -133,6 +135,8 @@ export async function sendCartReminders(
     const customer = customerFromRow(user);
     // Покупатель сайта без мессенджера: писать некуда.
     if (platform === "web") continue;
+    // Отметку корзины и место в суточном потолке не тратим на канал, куда не пишем.
+    if (platform !== "telegram" && !zernio) continue;
     let summary: Awaited<ReturnType<typeof cartReminderSummary>>;
     try {
       if (platform !== "telegram") {
