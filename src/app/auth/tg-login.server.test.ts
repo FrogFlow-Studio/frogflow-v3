@@ -113,3 +113,19 @@ describe("запрос ссылки входа", () => {
     expect(await claimLimitedLog(ctx, t0 + 3_600_000 + 2)).toBe(false);
   });
 });
+
+describe("уборка старых меток запросов", () => {
+  it("удаляет куски по 200, а не одним длинным списком", async () => {
+    const t0 = 1_700_000_000_000;
+    for (let i = 0; i < 450; i++)
+      db.tables.app_settings!.push({
+        bot_id: BOT,
+        key: `admin_tg_req:${String(t0 - 2 * 3_600_000 - i).padStart(15, "0")}:x${i}`,
+        value: "1",
+      });
+    expect(await claimLoginRequest(ctx, t0)).toBe(true);
+    expect(
+      db.tables.app_settings!.filter((r) => String(r.key).startsWith("admin_tg_req:")),
+    ).toHaveLength(1);
+  });
+});

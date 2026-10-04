@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { chunksOf } from "@/lib/in-chunks";
 import { serverFailure } from "@/lib/server-failure";
 
 /**
@@ -89,8 +90,8 @@ export async function claimLoginRequest(ctx: TenantContext, now = Date.now()): P
   const keys = (data ?? []).map((r) => r.key as string);
   const stale = keys.filter((k) => stamp(k) <= now - HOUR_MS);
   // Метки старше часа убираем; сбой уборки счёт не портит.
-  if (stale.length > 0)
-    await ctx.db.from("app_settings").delete().eq("bot_id", ctx.tenant.id).in("key", stale);
+  for (const chunk of chunksOf(stale))
+    await ctx.db.from("app_settings").delete().eq("bot_id", ctx.tenant.id).in("key", chunk);
   const live = keys.filter((k) => stamp(k) > now - HOUR_MS);
   // Живых меток вместе со своей больше предела — отказ. При гонке отказать могут обоим: лучше меньше ссылок, чем больше.
   if (live.length <= TG_LOGIN_MAX_PER_HOUR) return true;
