@@ -446,18 +446,11 @@ export async function hasOrderPage(
 }
 
 /**
- * Чей заказ страница заказа хотя бы показывает: с сайта и любой из
- * Instagram/WhatsApp — выдача в Direct и WhatsApp даёт ссылку на страницу,
- * где файлы подписываются заново при каждом открытии (ссылки в переписке
- * живут 7 дней). Оплата на странице — только где hasOrderPage.
- */
-export function viewsOrderPage(order: { platform: string | null }): boolean {
-  return (
-    order.platform === "web" || order.platform === "instagram" || order.platform === "whatsapp"
-  );
-}
-
-/**
+ * Страница заказа по подписанной ссылке открывается у любого заказа магазина — с
+ * сайта, из Telegram, Instagram/WhatsApp и созданного вручную: это «где мой заказ»
+ * (статус, шаги, трек, чек, «написать магазину»). Оплата на странице — только
+ * там, где hasOrderPage.
+ *
  * Подписанная ссылка на страницу заказа (как в письме и на сайте). Нет
  * адреса магазина (settings.slug) — null: страницы у такого магазина нет.
  */
@@ -514,7 +507,7 @@ export async function webOrderView(
   orderId: number,
 ): Promise<WebOrderView | null> {
   const order = await getOrder(ctx, orderId);
-  if (!order || !viewsOrderPage(order)) return null;
+  if (!order) return null;
   const payable = PAYABLE.has(order.status) && (await hasOrderPage(ctx, order));
   const method =
     payable && order.country_code ? await paymentMethodFor(ctx, order.country_code) : null;

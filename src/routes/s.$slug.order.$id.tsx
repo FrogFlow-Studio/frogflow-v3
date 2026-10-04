@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useLoaderData } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import {
   webCardPayFn,
@@ -14,6 +14,7 @@ import { linkWebOrderFn, webOrderLinkStateFn } from "@/app/storefront/tg-login.f
 import { formatMoney } from "@/core/money/money";
 import { intlLocale } from "@/app/i18n/admin";
 import { isoToDisplay } from "@/core/fulfillment/pure";
+import { orderSteps } from "@/core/storefront/order-steps";
 import { ErrorBox, useAction } from "@/app/ui";
 import type { StorefrontKey } from "@/app/i18n/storefront";
 import { rememberOrderToken, savedOrderToken } from "@/app/storefront/order-token";
@@ -59,6 +60,7 @@ function OrderPage() {
     }
   }, [slug, id, fromUrl]);
   const { t, locale } = useStorefrontLocale();
+  const shop = useLoaderData({ from: "/s/$slug" });
   const login = useTgLogin(slug);
   const [view, setView] = useState<View | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
@@ -105,6 +107,7 @@ function OrderPage() {
   if (noLink) return <p className="text-sm text-muted">{t("order.noLink")}</p>;
   if (loadError) return <ErrorBox error={loadError} />;
   if (!view) return <p className="text-sm text-muted">…</p>;
+  const steps = orderSteps(view.status, view.fulfillment !== null);
   const awaiting = view.status === "awaiting_payment";
   const checking = view.status === "awaiting_confirmation";
   return (
@@ -116,6 +119,26 @@ function OrderPage() {
         </p>
         <p className="mt-2 text-xs text-muted">{t("order.saveLink")}</p>
       </div>
+      {steps.length > 0 && (
+        <ol className="flex gap-2 text-xs" aria-label={t("order.steps")}>
+          {steps.map((s) => (
+            <li
+              key={s.key}
+              aria-current={s.state === "current" ? "step" : undefined}
+              className={`flex-1 rounded-md border px-2 py-2 text-center ${
+                s.state === "done"
+                  ? "border-ok bg-ok/10 text-ok"
+                  : s.state === "current"
+                    ? "border-accent bg-accent/10 font-semibold text-accent"
+                    : "border-line text-muted"
+              }`}
+            >
+              {s.state === "done" ? "✓ " : ""}
+              {t(`order.step.${s.key}` as StorefrontKey)}
+            </li>
+          ))}
+        </ol>
+      )}
       <ul className="divide-y divide-line text-sm">
         {view.items.map((i, n) => (
           <li key={n} className="flex justify-between gap-3 py-2">
@@ -128,6 +151,16 @@ function OrderPage() {
         ))}
       </ul>
       <ReorderButton slug={slug} plan={() => webOrderReorderFn({ data: ref })} />
+      {shop.contactLink && (
+        <a
+          className="btn-secondary w-full text-center"
+          href={shop.contactLink}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {t("order.writeShop")}
+        </a>
+      )}
       {view.preorder && (
         <p className="text-sm text-muted">
           {view.preorder.from

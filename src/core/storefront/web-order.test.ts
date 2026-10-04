@@ -518,6 +518,30 @@ describe("заказ с сайта: страница заказа", () => {
     expect((await webOrderView(ctx, 9))!.preorder).toBeNull();
   });
 
+  it("заказ из Telegram и ручной заказ открываются страницей статуса, но платить на ней нечем", async () => {
+    for (const platform of ["telegram", null, "manual", "instagram"]) {
+      const { ctx } = withOrder({ platform, status: "paid" });
+      const v = await webOrderView(ctx, 9);
+      expect(v, String(platform)).toMatchObject({ no: 109, status: "paid", total: 2500 });
+      // Оплата на странице — только у заказов с сайта и счетов ссылкой: у остальных реквизитов нет.
+      if (platform !== "instagram") expect(v!.payment).toBeNull();
+    }
+  });
+
+  it("заказа с таким номером нет — страницы нет", async () => {
+    const { ctx } = withOrder();
+    expect(await webOrderView(ctx, 404)).toBeNull();
+  });
+
+  it("ссылка на заказ: длинная, свой токен у каждого заказа и магазина, перебор коротких не проходит", () => {
+    const t = orderAccessToken(SECRET, BOT, 9);
+    expect(t).toMatch(/^[0-9a-f]{32}$/);
+    expect(orderAccessToken(SECRET, BOT, 10)).not.toBe(t);
+    expect(orderAccessToken(SECRET, "другой-магазин", 9)).not.toBe(t);
+    for (const bad of ["", "0", t.slice(0, 31), t.toUpperCase(), `${t}0`])
+      expect(verifyOrderAccess(SECRET, BOT, 9, bad), bad).toBe(false);
+  });
+
   it("скидка считается с доставкой и не бывает отрицательной", () => {
     const items = [{ price_snapshot: 1000, quantity: 2 }];
     expect(orderDiscount({ total: 2300, delivery_fee: 500, order_items: items })).toBe(200);
@@ -667,11 +691,6 @@ describe("заказ с сайта: страница заказа", () => {
     expect((await webOrderView(ctx, 9))!.balance).toBeNull();
   });
 
-  it("заказ из бота по этой странице не открывается", async () => {
-    const { ctx } = withOrder({ platform: "telegram" });
-    expect(await webOrderView(ctx, 9)).toBeNull();
-  });
-
   it("счёт ссылкой из Instagram/WhatsApp открывается, как заказ с сайта", async () => {
     for (const platform of ["instagram", "whatsapp"]) {
       const { ctx, db } = withOrder({ platform });
@@ -680,9 +699,9 @@ describe("заказ с сайта: страница заказа", () => {
     }
   });
 
-  it("заказ из Telegram страницей на сайте не открывается", async () => {
+  it("заказ из Telegram открывается страницей статуса, но оплатить картой на ней нельзя", async () => {
     const { ctx } = withOrder({ platform: "telegram" });
-    expect(await webOrderView(ctx, 9)).toBeNull();
+    expect(await webOrderView(ctx, 9)).toMatchObject({ no: 109, payment: null, due: 0 });
     expect(await webCardPaymentUrl(ctx, 9)).toBeNull();
   });
 

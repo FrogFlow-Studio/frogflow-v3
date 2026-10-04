@@ -350,9 +350,8 @@ export const webOrderReorderFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await orderCtx(data, "order");
     const { getOrder } = await import("@/core/orders/orders");
-    const { viewsOrderPage } = await import("@/core/storefront/web-order");
     const order = await getOrder(ctx, data.id);
-    if (!order || !viewsOrderPage(order)) throw notFound();
+    if (!order) throw notFound();
     const { planReorder } = await import("@/core/storefront/reorder");
     return planReorder(ctx, order);
   });

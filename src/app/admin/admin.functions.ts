@@ -1264,8 +1264,8 @@ export const orderFn = createServerFn({ method: "GET" })
       balancePath ? balanceProofPending(ctx, order.id, order.paid_amount) : false,
     ]);
     // Ссылка на страницу заказа — отправить покупателю, когда канал не донёс выдачу.
-    const { orderPageUrl, viewsOrderPage } = await import("@/core/storefront/web-order");
-    const pageUrl = viewsOrderPage(order) ? await orderPageUrl(ctx, order.id) : null;
+    const { orderPageUrl } = await import("@/core/storefront/web-order");
+    const pageUrl = await orderPageUrl(ctx, order.id);
     // Возвраты — события таймлайна (core/orders/refund): сколько вернули и сколько ещё можно.
     const { receivedAmount, REFUNDABLE_STATUSES } = await import("@/core/orders/refund");
     const refunded =

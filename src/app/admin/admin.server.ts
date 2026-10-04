@@ -689,8 +689,8 @@ async function replyOutsideWindow(
     return;
   }
   const { listCustomerOrders } = await import("@/core/orders/orders");
-  const { orderPageUrl, viewsOrderPage } = await import("@/core/storefront/web-order");
-  const last = (await listCustomerOrders(ctx, customer, 1)).find(viewsOrderPage);
+  const { orderPageUrl } = await import("@/core/storefront/web-order");
+  const [last] = await listCustomerOrders(ctx, customer, 1);
   const url = last ? await orderPageUrl(ctx, last.id) : null;
   throw url
     ? new UserError("err.admin.igWindowLink", IG_WINDOW_CLOSED + " Ссылка на его заказ: {url}", {
