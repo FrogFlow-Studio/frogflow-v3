@@ -57,7 +57,8 @@ export async function myRewards(ctx: TenantContext, telegramId: number): Promise
   }
   let invite: MyRewards["invite"] = null;
   const bot = ctx.tenant.settings.telegram?.username;
-  if (mod.referral && bot) {
+  // Покупатель Instagram/WhatsApp (вошёл по коду) в Telegram не пришёл: ссылки-приглашения у него нет.
+  if (mod.referral && bot && telegramId > 0) {
     const { REFERRAL_PREFIX, referralStats } = await import("@/core/referrals/referrals");
     const stats = await referralStats(ctx, telegramId);
     invite = {

@@ -81,6 +81,15 @@ describe("вход через Telegram: cookie покупателя", () => {
     expect(verifyBuyerSession(SECRET, SHOP, stamp, v, NOW + BUYER_SESSION_SEC + 1)).toBeNull();
   });
 
+  it("покупатель Instagram/WhatsApp (отрицательный id) входит по коду; нулевой id и подделка — нет", () => {
+    const v = signBuyerSession(SECRET, SHOP, stamp, -77, NOW);
+    expect(verifyBuyerSession(SECRET, SHOP, stamp, v, NOW + 10)).toBe(-77);
+    expect(verifyBuyerSession(SECRET, SHOP, stamp, v.replace("-77", "-78"), NOW + 10)).toBeNull();
+    expect(
+      verifyBuyerSession(SECRET, SHOP, stamp, signBuyerSession(SECRET, SHOP, stamp, 0, NOW), NOW),
+    ).toBeNull();
+  });
+
   it("в другом магазине не действует", () => {
     const v = signBuyerSession(SECRET, SHOP, stamp, 42, NOW);
     expect(verifyBuyerSession(SECRET, OTHER_SHOP, stamp, v, NOW)).toBeNull();

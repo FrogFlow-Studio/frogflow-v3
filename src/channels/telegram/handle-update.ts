@@ -133,6 +133,7 @@ import { findValidGift, findValidPromoCode, shopCurrency } from "@/core/discount
 import { customerTierStatus } from "@/core/loyalty/tiers";
 import { normalizeCode } from "@/core/discounts/pure";
 import { claimHandoff, HANDOFF_PREFIX } from "@/core/storefront/handoff";
+import { nonceFromPayload } from "@/core/storefront/code-login";
 import { parseWaitlistPayload, shouldJoinWaitlist } from "@/core/waitlist/link";
 import { robokassaFor, robokassaReceipt } from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
@@ -740,7 +741,26 @@ async function optOutReply(b: Bot, cmd: OptOutCommand) {
   await send(b, cmd === "unsubscribe" ? b.m.unsubscribed : b.m.resubscribed);
 }
 
+/**
+ * Ссылка входа на витрину ?start=lg_<метка> (В5): покупатель пишет «Войти по коду»
+ * на сайте, бот присылает код. Метку и код сверяет core/storefront/code-login.
+ */
+async function loginCodeFlow(b: Bot, nonce: string) {
+  const { env } = await import("@/config/env");
+  const { codeLoginOpen } = await import("@/core/storefront/code-login-gate");
+  if (!(await codeLoginOpen(b.ctx))) return void (await send(b, b.m.loginCodeBad));
+  const { issueLoginCode } = await import("@/core/storefront/code-login");
+  const r = await issueLoginCode(b.ctx, env().SESSION_SECRET, b.customer, nonce);
+  if (r.ok) {
+    b.customer = r.customer;
+    return void (await send(b, b.m.loginCodeMsg(r.code, r.ttlMin)));
+  }
+  await send(b, r.reason === "wait" ? b.m.loginCodeWait : b.m.loginCodeBad);
+}
+
 async function startFlow(b: Bot, payload = "") {
+  const loginNonce = nonceFromPayload(payload);
+  if (loginNonce) return loginCodeFlow(b, loginNonce);
   // Откуда пришёл покупатель — первая ссылка /start, для карточки покупателя (core/customers/card).
   if (payload && !b.customer.state.first_source)
     b.customer = await setState(b.ctx, b.customer, {

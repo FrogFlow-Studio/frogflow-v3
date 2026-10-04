@@ -96,6 +96,19 @@ export type DialogState = {
   locale?: Locale;
   country_code?: string;
   country_name?: string;
+  /**
+   * Вход на витрину по коду (В5, core/storefront/code-login): отпечатки метки браузера и
+   * кода, срок, число попыток, отметка «использован». Самого кода здесь нет.
+   */
+  web_login?: {
+    n?: string;
+    c?: string;
+    exp?: number;
+    at?: number;
+    tries?: number;
+    used?: boolean;
+    rev?: number;
+  };
   /** Номер, который покупатель прислал в переписке вне шага «жду телефон» (Б2); контакт для продавца. */
   phone?: string;
   /** Когда бот последний раз отвечал «вне часов работы» (core/bot-texts): не чаще раза в 6 часов. */
@@ -346,7 +359,7 @@ export async function setState(
 export async function updateStateSection(
   ctx: TenantContext,
   customer: Customer,
-  key: "consultant" | "direct" | "winback" | "web_fav",
+  key: "consultant" | "direct" | "winback" | "web_fav" | "web_login",
   patch: (current: Record<string, unknown>) => Record<string, unknown>,
 ): Promise<Customer> {
   return (await claimStateSection(ctx, customer, key, patch))!;
@@ -362,7 +375,7 @@ export async function updateStateSection(
 export async function claimStateSection(
   ctx: TenantContext,
   customer: Customer,
-  key: "consultant" | "direct" | "winback" | "web_fav",
+  key: "consultant" | "direct" | "winback" | "web_fav" | "web_login",
   patch: (current: Record<string, unknown>) => Record<string, unknown> | null,
 ): Promise<Customer | null> {
   for (let attempt = 0; attempt < 3; attempt++) {

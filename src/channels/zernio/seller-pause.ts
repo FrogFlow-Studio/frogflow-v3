@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { nonceFromMessage } from "@/core/storefront/code-login";
 import type { Locale } from "@/core/i18n/locale";
 import type { Customer } from "@/core/customers/customers";
 import { claimStateSection } from "@/core/customers/customers";
@@ -40,7 +41,8 @@ export function pauseEndsAt(lastAt: number, pause: SellerPause, timezone: string
  */
 export function isExplicitCommand(m: ParsedZernioMessage, mode: string | undefined): boolean {
   if (m.postbackPayload || m.nativeOrder) return true;
-  if (matchDirectCommand(m.text) || isShopStartWord(m.text)) return true;
+  if (matchDirectCommand(m.text) || isShopStartWord(m.text) || nonceFromMessage(m.text))
+    return true;
   const proofStep = ["awaiting_proof", "awaiting_payment", "choose_pay", "awaiting_balance_proof"];
   return m.attachments.length > 0 && proofStep.includes(mode ?? "");
 }

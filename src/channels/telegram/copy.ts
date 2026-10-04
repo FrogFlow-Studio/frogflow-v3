@@ -218,6 +218,12 @@ export type Msg = {
   contactSaved: string;
   /** Номер, присланный вне шага «жду телефон»: записали как контакт, кодов товаров в нём нет. */
   phoneNoted: string;
+  /** Вход на витрину по коду (В5): код покупателю в бот. */
+  loginCodeMsg: (code: string, minutes: number) => string;
+  /** Код на ту же ссылку просят слишком часто. */
+  loginCodeWait: string;
+  /** Ссылка входа не распознана или устарела. */
+  loginCodeBad: string;
   checkoutBusy: string;
   orderCreateFailed: string;
   manualTitleNew: (no: number) => string;
@@ -672,6 +678,10 @@ const ru: Msg = {
   phoneInvalid: "Не похоже на номер телефона. Введите в формате +7 700 000 00 00.",
   contactSaved: "✅ Номер сохранён.",
   phoneNoted: "Записал ваш номер 👍",
+  loginCodeMsg: (code, minutes) =>
+    `🔐 Код для входа на сайт: <b>${code}</b>\nДействует ${minutes} минут, подходит один раз. Никому его не сообщайте.`,
+  loginCodeWait: "Код уже отправлен. Подождите полминуты и запросите снова.",
+  loginCodeBad: "Ссылка для входа устарела. Откройте сайт и нажмите «Войти по коду» ещё раз.",
   checkoutBusy:
     "⏳ Оформление уже выполняется. Подождите несколько секунд и проверьте сообщения бота.",
   orderCreateFailed:
@@ -752,6 +762,10 @@ const ru: Msg = {
 const kk: Msg = {
   ...ru,
   phoneNoted: "Нөміріңізді жазып алдым 👍",
+  loginCodeMsg: (code, minutes) =>
+    `🔐 Сайтқа кіру коды: <b>${code}</b>\n${minutes} минут жарамды, бір рет қана қолданылады. Оны ешкімге айтпаңыз.`,
+  loginCodeWait: "Код жіберілді. Жарты минут күтіп, қайта сұраңыз.",
+  loginCodeBad: "Кіру сілтемесі ескірген. Сайтты ашып, «Код арқылы кіру» батырмасын қайта басыңыз.",
   giftBtn: "🎁 Бұл сыйлық",
   removeGiftBtn: "❌ Сыйлықты алып тастау",
   giftRecipientPrompt: "🎁 Сыйлық кімге? Алушының атын жазыңыз.",
@@ -1026,6 +1040,11 @@ const kk: Msg = {
 const en: Msg = {
   ...ru,
   phoneNoted: "Got your number 👍",
+  loginCodeMsg: (code, minutes) =>
+    `🔐 Your website login code: <b>${code}</b>\nValid for ${minutes} minutes, works once. Do not share it with anyone.`,
+  loginCodeWait: "The code has been sent. Wait half a minute and ask again.",
+  loginCodeBad:
+    "The login link has expired. Open the website and press “Log in with a code” again.",
   fulfillmentDateClosed: (d) => `There is no handover on that day. The nearest date: ${d}.`,
   fulfillmentDateFull: (d) =>
     d
@@ -1327,6 +1346,11 @@ const uz: Msg = {
   ...ru,
   cartHeader: "🛒 <b>Savatingiz</b>\n\n",
   phoneNoted: "Raqamingizni yozib oldim 👍",
+  loginCodeMsg: (code, minutes) =>
+    `🔐 Saytga kirish kodi: <b>${code}</b>\n${minutes} daqiqa amal qiladi, bir marta ishlaydi. Uni hech kimga aytmang.`,
+  loginCodeWait: "Kod yuborildi. Yarim daqiqa kutib, qayta so‘rang.",
+  loginCodeBad:
+    "Kirish havolasi eskirgan. Saytni ochib, «Kod orqali kirish» tugmasini qayta bosing.",
   giftBtn: "🎁 Bu sovg‘a",
   removeGiftBtn: "❌ Sovg‘a belgisini olib tashlash",
   giftRecipientPrompt: "🎁 Sovg‘a kimga? Oluvchining ismini yozing.",

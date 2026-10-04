@@ -20,6 +20,7 @@ export * from "./fixtures/shop12-crumbs.ts";
 export * from "./fixtures/shop19-v3-design.ts";
 export * from "./fixtures/shop14-cost.ts";
 export * from "./fixtures/shop14-delivery.ts";
+export * from "./fixtures/shop19-v5-code-login.ts";
 export * from "./fixtures/shop14-integrations.ts";
 export * from "./fixtures/shop14-free-delivery.ts";
 export * from "./fixtures/shop15-free-promo.ts";

@@ -1,3 +1,4 @@
+import { nonceFromMessage } from "@/core/storefront/code-login";
 import { explainIncoming } from "./reason";
 import { lastPaidOrder, shortLabels } from "@/core/orders/reorder";
 import {
@@ -491,6 +492,27 @@ async function handleRatingAnswer(s: Shop, text: string): Promise<boolean> {
   return true;
 }
 
+/** Код входа на витрину (В5): метку и код сверяет core/storefront/code-login. */
+async function handleLoginCode(s: Shop, nonce: string): Promise<ShopOutcome> {
+  const { env } = await import("@/config/env");
+  const { codeLoginOpen } = await import("@/core/storefront/code-login-gate");
+  if (!(await codeLoginOpen(s.ctx))) {
+    await reply(s, plain(s.m.loginCodeBad), { force: true });
+    return "handled";
+  }
+  const { issueLoginCode } = await import("@/core/storefront/code-login");
+  const r = await issueLoginCode(s.ctx, env().SESSION_SECRET, s.customer, nonce);
+  // Дальше диалог пишет состояние целиком (remember): берём свежее, иначе запись входа затрётся.
+  if (r.ok) s.customer = r.customer;
+  const text = r.ok
+    ? s.m.loginCodeMsg(r.code, r.ttlMin)
+    : r.reason === "wait"
+      ? s.m.loginCodeWait
+      : s.m.loginCodeBad;
+  await reply(s, plain(text), { force: true });
+  return "handled";
+}
+
 async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const text = msg.text;
   let mode = s.customer.state.mode;
@@ -555,6 +577,10 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   }
 
   if (!text) return "question";
+
+  // «вход <метка>» с сайта (В5): код для входа на витрину присылаем в этот же чат.
+  const loginNonce = nonceFromMessage(text);
+  if (loginNonce) return handleLoginCode(s, loginNonce);
 
   // Просьба об оценке (core/reviews/ask): цифра 1–5 в окне ответа — оценка, любой
   // другой текст — обычная переписка, шаг снимается. Раньше шага «устарел»: просьба

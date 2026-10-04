@@ -24,6 +24,7 @@ import { seedShop12Crumbs } from "./seed/shop12-crumbs.ts";
 import { seedShop19V3Design } from "./seed/shop19-v3-design.ts";
 import { seedShop14Cost } from "./seed/shop14-cost.ts";
 import { seedShop14Delivery } from "./seed/shop14-delivery.ts";
+import { seedShop19V5CodeLogin } from "./seed/shop19-v5-code-login.ts";
 import { seedShop14Integrations } from "./seed/shop14-integrations.ts";
 import { seedShop14FreeDelivery } from "./seed/shop14-free-delivery.ts";
 import { seedShop15FreePromo } from "./seed/shop15-free-promo.ts";
@@ -74,6 +75,7 @@ export function seedDb(): StubDb {
   seedShop19V3Design(db, now);
   seedShop14Cost(db, now);
   seedShop14Delivery(db, now);
+  seedShop19V5CodeLogin(db, now);
   seedShop14Integrations(db, now);
   seedShop14FreeDelivery(db, now);
   seedShop15FreePromo(db, now);

@@ -111,10 +111,11 @@ export function verifyBuyerSession(
   value: string | null | undefined,
   now = Math.floor(Date.now() / 1000),
 ): number | null {
-  const m = /^(\d{1,20})\.(\d{1,12})\.([0-9a-f]{64})$/.exec(value ?? "");
+  const m = /^(-?\d{1,20})\.(\d{1,12})\.([0-9a-f]{64})$/.exec(value ?? "");
   if (!m) return null;
   const tgId = Number(m[1]);
   const exp = Number(m[2]);
-  if (!Number.isSafeInteger(tgId) || tgId <= 0 || exp <= now) return null;
+  // Отрицательный id — покупатель Instagram/WhatsApp (синтетический id в боте), вошедший по коду (В5).
+  if (!Number.isSafeInteger(tgId) || tgId === 0 || exp <= now) return null;
   return sameHex(sessionMac(secret, botId, stamp, tgId, exp), m[3]!) ? tgId : null;
 }
