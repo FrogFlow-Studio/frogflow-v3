@@ -38,3 +38,39 @@ export function abResult(
   const leader = a.sent + b.sent < 20 || rateA === rateB ? null : rateA > rateB ? "A" : "B";
   return { rateA, rateB, leader };
 }
+
+/** Сколько заказов должно быть у каждого варианта, чтобы судить по выручке. */
+export const AB_MIN_ORDERS = 5;
+
+export type AbMoneySide = AbSide & {
+  orders: number;
+  paid: number;
+  revenue: Record<string, number>;
+};
+
+export type AbVerdict = {
+  /** По чему выбран победитель: выручка на отправленное сообщение или нажатия. */
+  basis: "revenue" | "clicks";
+  leader: "A" | "B" | null;
+  /** Заказов меньше порога у любого варианта — вывод по нажатиям, с пометкой. */
+  lowOrders: boolean;
+};
+
+/**
+ * Победитель A/B по деньгам. Если у обоих вариантов не меньше AB_MIN_ORDERS
+ * заказов и выручка в одной валюте — сравнивается выручка на отправленное
+ * сообщение (половины могут быть не равны). Иначе — нажатия (abResult) и
+ * пометка «мало заказов для вывода».
+ */
+export function abVerdict(a: AbMoneySide, b: AbMoneySide): AbVerdict {
+  const enough = a.orders >= AB_MIN_ORDERS && b.orders >= AB_MIN_ORDERS;
+  const cur = new Set([...Object.keys(a.revenue), ...Object.keys(b.revenue)]);
+  if (enough && cur.size === 1 && a.sent > 0 && b.sent > 0) {
+    const c = [...cur][0]!;
+    const perA = (a.revenue[c] ?? 0) / a.sent;
+    const perB = (b.revenue[c] ?? 0) / b.sent;
+    const leader = perA === perB ? null : perA > perB ? "A" : "B";
+    return { basis: "revenue", leader, lowOrders: false };
+  }
+  return { basis: "clicks", leader: abResult(a, b).leader, lowOrders: !enough };
+}

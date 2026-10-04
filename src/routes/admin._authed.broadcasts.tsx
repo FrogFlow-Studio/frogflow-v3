@@ -26,6 +26,7 @@ import {
   progressPercent,
   type AudienceType,
 } from "@/core/broadcasts/pure";
+import { abVerdict, type AbMoneySide } from "@/core/broadcasts/ab";
 import { parseSegmentParam } from "@/core/broadcasts/segment-link";
 import { SEGMENT_KINDS } from "@/core/broadcasts/segments";
 
@@ -1168,6 +1169,22 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
     await cancelBroadcastFn({ data: { id } });
     await router.invalidate();
   });
+  const sides = (b: Broadcast): AbMoneySide => ({
+    id: b.id,
+    sent: b.sent_count,
+    clicks: b.clicks,
+    orders: b.revenue.orders,
+    paid: b.revenue.paid,
+    revenue: b.revenue.revenue,
+  });
+  // Пары A/B-теста: группа → оба варианта; сравнение рисуется один раз, под первым в списке.
+  const pairs = new Map<string, { A?: Broadcast; B?: Broadcast }>();
+  for (const b of broadcasts) {
+    const ab = (b.audience_filter as { ab?: { group?: string; variant?: "A" | "B" } } | null)?.ab;
+    if (!ab?.group || !ab.variant) continue;
+    pairs.set(ab.group, { ...pairs.get(ab.group), [ab.variant]: b });
+  }
+  const comparisonShownFor = new Set<string>();
   return (
     <Card title={t("broadcasts.history.title")}>
       {broadcasts.length === 0 ? (
@@ -1182,7 +1199,7 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
               country_code?: string;
               segment?: { kind?: string };
               send_at?: string;
-              ab?: { variant?: "A" | "B" };
+              ab?: { group?: string; variant?: "A" | "B" };
             };
             const audienceKey = AUDIENCES.find(
               (a) => a.value === (filter.segment ? "segment" : b.audience_type),
@@ -1269,6 +1286,47 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
                     </span>
                   )}
                 </div>
+                {(() => {
+                  const g = filter.ab?.group;
+                  const pair = g ? pairs.get(g) : undefined;
+                  if (!g || !pair?.A || !pair.B || comparisonShownFor.has(g)) return null;
+                  if (pair.A.sent_count === 0 || pair.B.sent_count === 0) return null;
+                  comparisonShownFor.add(g);
+                  const v = abVerdict(sides(pair.A), sides(pair.B));
+                  const row = (x: Broadcast, name: "A" | "B") => (
+                    <li key={name} className={v.leader === name ? "font-medium text-ok" : ""}>
+                      {t("broadcasts.ab.row", {
+                        v: name,
+                        clicks: x.clicks,
+                        orders: x.revenue.orders,
+                        money:
+                          Object.entries(x.revenue.revenue)
+                            .map(([cur, sum]) => formatMoney(sum, cur))
+                            .join(", ") || "0",
+                      })}
+                    </li>
+                  );
+                  return (
+                    <div className="mt-2 rounded-lg border border-line p-2 text-xs">
+                      <p className="font-medium">{t("broadcasts.ab.compare")}</p>
+                      <ul className="mt-1 space-y-0.5 tabular-nums">
+                        {row(pair.A, "A")}
+                        {row(pair.B, "B")}
+                      </ul>
+                      <p className="mt-1 text-muted">
+                        {v.leader
+                          ? t(
+                              v.basis === "revenue"
+                                ? "broadcasts.ab.winnerRevenue"
+                                : "broadcasts.ab.winnerClicks",
+                              { v: v.leader },
+                            )
+                          : t("broadcasts.ab.noWinner")}
+                        {v.lowOrders && ` ${t("broadcasts.ab.lowOrders")}`}
+                      </p>
+                    </div>
+                  );
+                })()}
                 {b.sent_count > 0 && (
                   <p className="mt-1 text-xs text-muted tabular-nums">
                     <span className="font-medium text-fg">{t("broadcasts.revenue.label")}</span>{" "}

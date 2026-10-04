@@ -63,6 +63,14 @@ export const ru = {
   "broadcasts.ab.hint":
     "Аудитория делится пополам случайно; вариант A уходит в срок, B — сразу за ним. В истории у каждого варианта видна доля нажатий на кнопки.",
   "broadcasts.ab.badge": "A/B: вариант {v}",
+  "broadcasts.ab.compare": "Сравнение вариантов A/B",
+  "broadcasts.ab.row": "Вариант {v}: нажатий {clicks}, заказов {orders}, выручка {money}",
+  "broadcasts.ab.winnerRevenue":
+    "Вариант {v} принёс больше денег на каждое отправленное сообщение.",
+  "broadcasts.ab.winnerClicks": "Вариант {v} получил больше нажатий.",
+  "broadcasts.ab.noWinner": "Пока нельзя назвать победителя.",
+  "broadcasts.ab.lowOrders":
+    "Мало заказов для вывода (нужно не меньше 5 у каждого варианта), поэтому судим по нажатиям.",
   "broadcasts.compose.textHint":
     '{n} / 4000. Можно HTML: <b>жирный</b>, <i>курсив</i>, <a href="…">ссылка</a>.',
   "broadcasts.compose.textPlaceholder": "🎉 Новинка недели: …",
@@ -251,6 +259,13 @@ export const kk: SectionDict<typeof ru> = {
   "broadcasts.ab.hint":
     "Аудитория кездейсоқ екіге бөлінеді; A нұсқасы уақытында, B — одан кейін бірден жіберіледі. Тарихта әр нұсқаның батырмаларды басу үлесі көрінеді.",
   "broadcasts.ab.badge": "A/B: {v} нұсқасы",
+  "broadcasts.ab.compare": "A/B нұсқаларын салыстыру",
+  "broadcasts.ab.row": "{v} нұсқасы: басулар {clicks}, тапсырыс {orders}, түсім {money}",
+  "broadcasts.ab.winnerRevenue": "{v} нұсқасы әр жіберілген хабарламаға көбірек ақша әкелді.",
+  "broadcasts.ab.winnerClicks": "{v} нұсқасы көбірек басу жинады.",
+  "broadcasts.ab.noWinner": "Әзірге жеңімпазды атау мүмкін емес.",
+  "broadcasts.ab.lowOrders":
+    "Қорытынды үшін тапсырыс аз (әр нұсқада кемінде 5 керек), сондықтан басулар бойынша бағалаймыз.",
   "broadcasts.compose.textHint":
     '{n} / 4000. HTML қолдануға болады: <b>қалың</b>, <i>көлбеу</i>, <a href="…">сілтеме</a>.',
   "broadcasts.compose.textPlaceholder": "🎉 Апта жаңалығы: …",
@@ -435,6 +450,13 @@ export const en: SectionDict<typeof ru> = {
   "broadcasts.ab.hint":
     "The audience is split in half at random; variant A goes out on time, B right after it. The history shows each variant’s button click rate.",
   "broadcasts.ab.badge": "A/B: variant {v}",
+  "broadcasts.ab.compare": "A/B variant comparison",
+  "broadcasts.ab.row": "Variant {v}: clicks {clicks}, orders {orders}, revenue {money}",
+  "broadcasts.ab.winnerRevenue": "Variant {v} brought in more money per message sent.",
+  "broadcasts.ab.winnerClicks": "Variant {v} got more clicks.",
+  "broadcasts.ab.noWinner": "No winner can be named yet.",
+  "broadcasts.ab.lowOrders":
+    "Too few orders to conclude (each variant needs at least 5), so we judge by clicks.",
   "broadcasts.compose.textHint":
     '{n} / 4000. HTML allowed: <b>bold</b>, <i>italic</i>, <a href="…">link</a>.',
   "broadcasts.compose.textPlaceholder": "🎉 New this week: …",
@@ -620,6 +642,13 @@ export const uz: SectionDict<typeof ru> = {
   "broadcasts.ab.hint":
     "Auditoriya tasodifan teng boʻlinadi; A varianti oʻz vaqtida, B — undan keyin darhol yuboriladi. Tarixda har bir variant tugmalari bosilish ulushi koʻrinadi.",
   "broadcasts.ab.badge": "A/B: {v} varianti",
+  "broadcasts.ab.compare": "A/B variantlarini solishtirish",
+  "broadcasts.ab.row": "{v} varianti: bosishlar {clicks}, buyurtmalar {orders}, tushum {money}",
+  "broadcasts.ab.winnerRevenue": "{v} varianti har bir yuborilgan xabarga ko'proq pul olib keldi.",
+  "broadcasts.ab.winnerClicks": "{v} varianti ko'proq bosish oldi.",
+  "broadcasts.ab.noWinner": "Hozircha g'olibni aytib bo'lmaydi.",
+  "broadcasts.ab.lowOrders":
+    "Xulosa uchun buyurtmalar kam (har bir variantda kamida 5 ta kerak), shuning uchun bosishlar bo'yicha baholaymiz.",
   "broadcasts.compose.textHint":
     '{n} / 4000. HTML mumkin: <b>qalin</b>, <i>kursiv</i>, <a href="…">havola</a>.',
   "broadcasts.compose.textPlaceholder": "🎉 Hafta yangiligi: …",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abHalf, abResult, splitForAb } from "./ab";
+import { abHalf, abResult, abVerdict, splitForAb, type AbMoneySide } from "./ab";
 
 describe("A/B-тест рассылки", () => {
   it("половины не пересекаются, вместе — вся аудитория, близки по размеру", () => {
@@ -33,5 +33,47 @@ describe("A/B-тест рассылки", () => {
     expect(abResult({ id: "a", sent: 0, clicks: 0 }, { id: "b", sent: 0, clicks: 0 }).rateA).toBe(
       0,
     );
+  });
+
+  describe("победитель по деньгам", () => {
+    const side = (over: Partial<AbMoneySide>): AbMoneySide => ({
+      id: "x",
+      sent: 100,
+      clicks: 10,
+      orders: 6,
+      paid: 5,
+      revenue: { KZT: 50000 },
+      ...over,
+    });
+
+    it("заказов хватает — выигрывает выручка, даже если нажатий меньше", () => {
+      const v = abVerdict(
+        side({ clicks: 30, revenue: { KZT: 20000 } }),
+        side({ clicks: 5, revenue: { KZT: 90000 } }),
+      );
+      expect(v).toEqual({ basis: "revenue", leader: "B", lowOrders: false });
+    });
+
+    it("половины разного размера сравниваются по выручке на сообщение", () => {
+      const v = abVerdict(
+        side({ sent: 200, revenue: { KZT: 60000 } }),
+        side({ sent: 100, revenue: { KZT: 40000 } }),
+      );
+      expect(v.leader).toBe("B");
+    });
+
+    it("мало заказов у одного варианта — по нажатиям и с пометкой", () => {
+      const v = abVerdict(side({ clicks: 30 }), side({ clicks: 5, orders: 4 }));
+      expect(v).toEqual({ basis: "clicks", leader: "A", lowOrders: true });
+    });
+
+    it("выручка в разных валютах не сравнивается напрямую", () => {
+      const v = abVerdict(side({}), side({ revenue: { USD: 100 } }));
+      expect(v.basis).toBe("clicks");
+    });
+
+    it("поровну — без победителя", () => {
+      expect(abVerdict(side({}), side({})).leader).toBeNull();
+    });
   });
 });
