@@ -43,6 +43,7 @@ export type RefreshResult = {
 export async function refreshMarketplaceShop(
   ctx: TenantContext,
   svc: Db = serviceDb(),
+  opts: { spent?: () => boolean } = {},
 ): Promise<RefreshResult> {
   const t = ctx.tenant;
   try {
@@ -101,7 +102,7 @@ export async function refreshMarketplaceShop(
       { onConflict: "bot_id" },
     );
     check("магазин не записан в каталог", error);
-    return { action: "listed", items: await syncMarketplaceItems(ctx, svc) };
+    return { action: "listed", items: await syncMarketplaceItems(ctx, svc, new Date(), opts) };
   } catch (e) {
     if (e instanceof MarketplaceNotReady) return { action: "not-ready" };
     throw e;

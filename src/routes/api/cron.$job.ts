@@ -166,6 +166,9 @@ export const Route = createFileRoute("/api/cron/$job")({
                     await import("@/core/marketplace/shops.server")
                   ).refreshMarketplaceShop(
                     (await import("@/core/tenant/resolve.server")).tenantContext(t),
+                    undefined,
+                    // Большой магазин делится между запусками: бюджет кончился — курсор и дальше.
+                    { spent: budget.spent },
                   ),
                 }),
               }[params.job];

@@ -89,7 +89,8 @@ describe("снимок товаров магазина", () => {
     shop.tables.products![0]!.is_active = false;
     shop.tables.products![1]!.stock_quantity = 0;
     shop.tables.products![2]!.price = 777;
-    const r = await syncMarketplaceItems(ctxFor(), as(svc));
+    // Устаревшее — строки со старой меткой прохода: следующий проход часом позже.
+    const r = await syncMarketplaceItems(ctxFor(), as(svc), new Date(Date.now() + 3_600_000));
     expect(r).toMatchObject({ action: "synced", items: 1, removed: 2 });
     expect(items()).toEqual([pid(3)]);
     expect(svc.tables.marketplace_items![0]).toMatchObject({ price: 777 });
@@ -124,6 +125,84 @@ describe("снимок товаров магазина", () => {
     shop.tables.products = Array.from({ length: ITEMS_PER_SHOP_MAX + 50 }, (_, i) => prod(i + 1));
     const r = await syncMarketplaceItems(ctxFor(), as(svc));
     expect(r).toMatchObject({ action: "synced", items: ITEMS_PER_SHOP_MAX, truncated: true });
+  });
+
+  it("1000 товаров: бюджет кончился посреди магазина — остановка, продолжение с места без дублей", async () => {
+    shop.tables.products = Array.from({ length: 1000 }, (_, i) => prod(i + 1));
+    const t0 = new Date();
+    // Бюджет «кончается» после каждой страницы витрины: проход рвётся и продолжается.
+    const runs: string[] = [];
+    let reads = 0;
+    const spentAfterOnePage = () => {
+      reads++;
+      return true;
+    };
+    let r = await syncMarketplaceItems(ctxFor(), as(svc), t0, { spent: spentAfterOnePage });
+    expect(r).toEqual({ action: "partial", items: 100 });
+    expect(items()).toHaveLength(100);
+    const cursor = JSON.parse(
+      String(shop.tables.app_settings!.find((x) => x.key === "marketplace_items_cursor")!.value),
+    );
+    expect(cursor).toMatchObject({ offset: 100, written: 100 });
+
+    // Повторный запуск с места, не с начала: ровно следующие 100, дублей нет.
+    r = await syncMarketplaceItems(ctxFor(), as(svc), new Date(t0.getTime() + 60_000), {
+      spent: spentAfterOnePage,
+    });
+    expect(r).toEqual({ action: "partial", items: 200 });
+    expect(items()).toHaveLength(200);
+    expect(new Set(items()).size).toBe(200);
+
+    // Бюджета хватает: остаток записан, полный проход закончен, курсор снят.
+    for (let i = 0; i < 20 && r.action === "partial"; i++) {
+      runs.push(r.action);
+      r = await syncMarketplaceItems(ctxFor(), as(svc), new Date(t0.getTime() + 120_000));
+    }
+    expect(r).toEqual({ action: "synced", items: 1000, removed: 0, truncated: false });
+    expect(reads).toBe(2);
+    expect(items()).toHaveLength(1000);
+    expect(svc.tables.marketplace_items).toHaveLength(1000);
+    expect(shop.tables.app_settings!.find((x) => x.key === "marketplace_items_cursor")!.value).toBe(
+      "",
+    );
+  });
+
+  it("обрыв посреди прохода ничего не удаляет: устаревшее уходит только после полного прохода", async () => {
+    await syncMarketplaceItems(ctxFor(), as(svc), new Date("2026-10-04T10:00:00Z"));
+    shop.tables.products = [prod(1)];
+    const r = await syncMarketplaceItems(ctxFor(), as(svc), new Date("2026-10-04T11:00:00Z"), {
+      spent: () => true,
+    });
+    // Витрина из одной страницы: проход завершён сразу, лишнее убрано.
+    expect(r).toMatchObject({ action: "synced", items: 1, removed: 2 });
+    shop.tables.products = Array.from({ length: 250 }, (_, i) => prod(i + 1));
+    const cut = await syncMarketplaceItems(ctxFor(), as(svc), new Date("2026-10-04T12:00:00Z"), {
+      spent: () => true,
+    });
+    expect(cut).toEqual({ action: "partial", items: 100 });
+    // Обрыв: прежние строки не тронуты, к проходу добавлены новые.
+    expect(items()).toHaveLength(100);
+  });
+
+  it("курсор старше шести часов игнорируется: проход начинается с начала", async () => {
+    shop.tables.products = Array.from({ length: 250 }, (_, i) => prod(i + 1));
+    const t0 = new Date("2026-10-04T10:00:00Z");
+    await syncMarketplaceItems(ctxFor(), as(svc), t0, { spent: () => true });
+    const r = await syncMarketplaceItems(
+      ctxFor(),
+      as(svc),
+      new Date(t0.getTime() + 7 * 3_600_000),
+      {
+        spent: () => true,
+      },
+    );
+    expect(r).toEqual({ action: "partial", items: 100 });
+  });
+
+  it("сбой чтения курсора — ошибка, а не «курсора нет»", async () => {
+    const broken = withBrokenReads(shop, ["app_settings"]);
+    await expect(syncMarketplaceItems(ctxFor(broken), as(svc))).rejects.toThrow();
+    expect(items()).toEqual([]);
   });
 
   it("таблицы нет — «not-ready», а не ошибка", async () => {

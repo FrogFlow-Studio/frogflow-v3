@@ -1,5 +1,5 @@
 import { serviceDb, type Db } from "@/core/db/client.server";
-import { eachPage } from "@/core/db/page";
+import { getSettingStrict, trySetSetting } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
 import { storeCatalogPage } from "@/core/storefront/catalog";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -31,71 +31,87 @@ const READ_PAGE = 100;
 
 export type ItemsResult =
   | { action: "synced"; items: number; removed: number; truncated: boolean }
+  /** Бюджет крона кончился посреди магазина: записанное остаётся, следующий запуск идёт дальше. */
+  | { action: "partial"; items: number }
   | { action: "removed" }
   | { action: "not-ready" };
 
-/** Товары магазина, которые покупатель видит и может купить на витрине сейчас. */
-async function sellableNow(
-  ctx: TenantContext,
-): Promise<{ items: Awaited<ReturnType<typeof storeCatalogPage>>["items"]; truncated: boolean }> {
-  const items: Awaited<ReturnType<typeof storeCatalogPage>>["items"] = [];
-  for (let offset = 0; ; offset += READ_PAGE) {
-    const page = await storeCatalogPage(ctx, { inStock: true, offset, limit: READ_PAGE });
-    items.push(...page.items);
-    if (!page.hasMore) return { items, truncated: false };
-    if (items.length >= ITEMS_PER_SHOP_MAX) return { items, truncated: true };
+/** Где остановился проход по большому магазину: метка прохода и смещение в витрине. */
+export const ITEMS_CURSOR_KEY = "marketplace_items_cursor";
+/** Курсор старше — проход начинается заново: витрина за это время успела сильно сдвинуться. */
+const CURSOR_TTL_MS = 6 * 3_600_000;
+
+type Cursor = { stamp: string; offset: number; written: number };
+
+function parseCursor(raw: string | null, at: Date): Cursor | null {
+  if (!raw) return null;
+  try {
+    const c = JSON.parse(raw) as Partial<Cursor>;
+    const t = typeof c.stamp === "string" ? Date.parse(c.stamp) : NaN;
+    if (!Number.isFinite(t) || at.getTime() - t > CURSOR_TTL_MS || t > at.getTime()) return null;
+    if (!Number.isInteger(c.offset) || (c.offset as number) < 0) return null;
+    if (!Number.isInteger(c.written) || (c.written as number) < 0) return null;
+    return { stamp: c.stamp as string, offset: c.offset as number, written: c.written as number };
+  } catch {
+    return null;
   }
 }
 
 /**
  * Проход крона по товарам одного магазина, показываемого на площадке: снимок обновляется,
- * скрытое и закончившееся уходит. Сначала читается витрина (сбой чтения — ошибка, таблица
- * не тронута: «не удалось прочитать» не превращается в «убрать всё»), потом пишется.
+ * скрытое и закончившееся уходит. Витрина читается страницами, каждая сразу пишется (upsert по
+ * `bot_id,product_id`: повтор не дублирует строки). Когда `spent()` говорит, что бюджет крона
+ * кончился, проход останавливается между страницами и пишет курсор в `app_settings`; следующий
+ * запуск продолжает с того места с той же меткой. Устаревшее убирается только после полного
+ * прохода: строки со старой меткой `updated_at`. Сбой чтения — ошибка, ничего не удалено
+ * («не удалось прочитать» не превращается в «убрать всё»).
  */
 export async function syncMarketplaceItems(
   ctx: TenantContext,
   svc: Db = serviceDb(),
   at: Date = new Date(),
+  opts: { spent?: () => boolean } = {},
 ): Promise<ItemsResult> {
   const botId = ctx.tenant.id;
   try {
-    const { items, truncated } = await sellableNow(ctx);
-    const stamp = at.toISOString();
-    const rows = items.map((p) => itemRow(botId, p, stamp));
-    for (let i = 0; i < rows.length; i += CHUNK) {
-      const { error } = await svc
-        .from("marketplace_items")
-        .upsert(rows.slice(i, i + CHUNK), { onConflict: "bot_id,product_id" });
-      check("товары не записаны", error);
-    }
-    const keep = new Set(rows.map((r) => r.product_id));
-    const stale: string[] = [];
-    await eachPage<{ product_id: string }>(
-      (from, to) =>
-        svc
+    const cursor = parseCursor(await getSettingStrict(ctx, ITEMS_CURSOR_KEY), at);
+    const stamp = cursor?.stamp ?? at.toISOString();
+    let offset = cursor?.offset ?? 0;
+    let written = cursor?.written ?? 0;
+    let truncated = false;
+    for (;;) {
+      const page = await storeCatalogPage(ctx, { inStock: true, offset, limit: READ_PAGE });
+      const rows = page.items.map((p) => itemRow(botId, p, stamp));
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const { error } = await svc
           .from("marketplace_items")
-          .select("product_id")
-          .eq("bot_id", botId)
-          .order("product_id")
-          .range(from, to),
-      "площадка, снимок товаров не прочитан",
-      (page) => {
-        for (const r of page) if (!keep.has(r.product_id)) stale.push(r.product_id);
-      },
-    );
-    for (let i = 0; i < stale.length; i += CHUNK) {
-      const chunk = stale.slice(i, i + CHUNK);
-      const { error } = await svc
-        .from("marketplace_items")
-        .delete()
-        .eq("bot_id", botId)
-        .in("product_id", chunk);
-      check("устаревшие товары не убраны", error);
+          .upsert(rows.slice(i, i + CHUNK), { onConflict: "bot_id,product_id" });
+        check("товары не записаны", error);
+      }
+      written += rows.length;
+      offset += READ_PAGE;
+      if (!page.hasMore) break;
+      if (written >= ITEMS_PER_SHOP_MAX) {
+        truncated = true;
+        break;
+      }
+      if (opts.spent?.()) {
+        await trySetSetting(ctx, ITEMS_CURSOR_KEY, JSON.stringify({ stamp, offset, written }));
+        return { action: "partial", items: written };
+      }
     }
-    return { action: "synced", items: rows.length, removed: stale.length, truncated };
+    const { data, error } = await svc
+      .from("marketplace_items")
+      .delete()
+      .eq("bot_id", botId)
+      .lt("updated_at", stamp)
+      .select("product_id");
+    check("устаревшие товары не убраны", error);
+    if (cursor) await trySetSetting(ctx, ITEMS_CURSOR_KEY, "");
+    return { action: "synced", items: written, removed: (data ?? []).length, truncated };
   } catch (e) {
     if (e instanceof MarketplaceNotReady) return { action: "not-ready" };
-    // eachPage поднимает serverFailure с текстом базы: «таблицы нет» отличаем по нему.
+    // Витрина и курсор поднимают serverFailure с текстом базы: «таблицы нет» отличаем по нему.
     if (isMissingTable({ message: e instanceof Error ? e.message : String(e) }))
       return { action: "not-ready" };
     throw e;
