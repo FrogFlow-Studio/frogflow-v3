@@ -29,7 +29,7 @@ export interface Plan {
 }
 
 /** Что всегда прогоняется целиком: замки от возврата PR (CLAUDE.md, «Перед PR»). */
-export const ALWAYS_TESTS = ["src/lib", "tests/db-columns.test.ts"];
+export const ALWAYS_TESTS = ["src/lib", "tests/db-columns.test.ts", "tests/dialogs"];
 
 const FORMATTED = /\.(ts|tsx|js|mjs|cjs|json|md|css|yml|yaml)$/;
 const CODE = /\.(ts|tsx|js|mjs|cjs)$/;

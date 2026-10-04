@@ -46,6 +46,7 @@ import {
   categoryButtonLabel,
   escapeHtml,
   menuActionFor,
+  menuWordFor,
   minOrderText,
   freeDeliveryText,
   normalizePhone,
@@ -583,6 +584,8 @@ async function handleMessage(
   // «Как в прошлый раз» словом: последний оплаченный заказ в корзину (Б11).
   if (text && isReorderWord(text) && (await reorderLast(b))) return;
   if (text && (await consultantReply(b, text))) return;
+  const word = menuWordFor(text);
+  if (word) return menuAction(b, word);
   if (text && isFreeTextQuery(text)) return freeTextSearch(b, text);
   // Консультант по прайсу видит фото покупателя (не чек — чеки разобраны выше).
   if (msg.photo?.length && !text && (await pricelistPhoto(b, msg))) return;

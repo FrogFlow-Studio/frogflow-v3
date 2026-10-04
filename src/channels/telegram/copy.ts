@@ -1325,6 +1325,7 @@ const en: Msg = {
 
 const uz: Msg = {
   ...ru,
+  cartHeader: "🛒 <b>Savatingiz</b>\n\n",
   phoneNoted: "Raqamingizni yozib oldim 👍",
   giftBtn: "🎁 Bu sovg‘a",
   removeGiftBtn: "❌ Sovg‘a belgisini olib tashlash",
@@ -1644,6 +1645,25 @@ export function menuActionFor(
     if (t === m.myTicketsBtn) return "myTickets";
   }
   if (contactLabels.includes(t)) return "contact";
+  return undefined;
+}
+
+const letters = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+
+/**
+ * Слово «каталог», «корзина», «мои заказы» (в любом регистре и без значка) —
+ * то же, что нажатие кнопки меню. Только для свободного текста вне шага: без
+ * этого слово «каталог» уходило в поиск товаров с таким названием.
+ */
+export function menuWordFor(text: string | undefined): MenuAction | undefined {
+  if (!text) return undefined;
+  const t = letters(text);
+  if (!t) return undefined;
+  for (const m of Object.values(COPY)) {
+    if (t === letters(m.catalog)) return "catalog";
+    if (t === letters(m.cart)) return "cart";
+    if (t === letters(m.myOrders)) return "myOrders";
+  }
   return undefined;
 }
 
