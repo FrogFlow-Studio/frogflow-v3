@@ -1,4 +1,5 @@
 import { serviceDb } from "@/core/db/client.server";
+import { pageAll } from "@/core/db/page";
 import { UserError } from "@/core/i18n/user-error";
 import { tenantDirectory } from "@/core/tenant/resolve.server";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -473,37 +474,54 @@ export async function partnerBanners(
       .eq("status", "active")
       .gt("ends_at", now.toISOString());
     check("акции не прочитаны", pe);
-    for (const p of (ps ?? []) as PromoRow[]) {
-      const full = await loadPromo(p.id);
-      if (!full || !allReady(full.members)) continue;
-      const tenants = full.members.map((m) => dir.find((t) => t.id === m.bot_id));
-      if (tenants.some((t) => !t || !shownInCommunity(t))) continue;
-      const codeIds = full.members.map((m) => m.promo_code_id!);
+    const promos = (ps ?? []) as PromoRow[];
+    // Участники всех акций пачки одним чтением (а не по запросу на акцию).
+    const members = await pageAll<MemberRow>(
+      (from, to) =>
+        serviceDb()
+          .from("joint_promo_members")
+          .select(MEMBER_COLS)
+          .in(
+            "promo_id",
+            promos.map((p) => p.id),
+          )
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, to),
+      "участники не прочитаны",
+    );
+    const ready = promos.flatMap((p) => {
+      const ms = members.filter((m) => m.promo_id === p.id);
+      if (!allReady(ms)) return [];
+      const tenants = ms.map((m) => dir.find((t) => t.id === m.bot_id));
+      return tenants.some((t) => !t || !shownInCommunity(t)) ? [] : [{ p, members: ms }];
+    });
+    // Промокоды всех готовых акций — кусками по 200 id.
+    const codeIds = [...new Set(ready.flatMap((r) => r.members.map((m) => m.promo_code_id!)))];
+    const live = new Map<string, { code: string; discount_value: number | string }>();
+    for (let j = 0; j < codeIds.length; j += 200) {
       const { data: codes, error: ce } = await serviceDb()
         .from("promo_codes")
         .select("id, bot_id, code, discount_value, is_active, valid_until")
-        .in("id", codeIds);
+        .in("id", codeIds.slice(j, j + 200));
       check("промокоды акции не прочитаны", ce);
-      const live = new Map(
-        (codes ?? [])
-          .filter(
-            (c) =>
-              c.is_active && (!c.valid_until || new Date(c.valid_until).getTime() > now.getTime()),
-          )
-          .map((c) => [c.id, c]),
-      );
-      if (full.members.some((m) => !live.has(m.promo_code_id!))) continue;
+      for (const c of codes ?? [])
+        if (c.is_active && (!c.valid_until || new Date(c.valid_until).getTime() > now.getTime()))
+          live.set(c.id, c);
+    }
+    for (const { p, members: ms } of ready) {
+      if (ms.some((m) => !live.has(m.promo_code_id!))) continue;
       const row = (m: MemberRow) => ({
         code: live.get(m.promo_code_id!)!.code,
         percent: Number(live.get(m.promo_code_id!)!.discount_value),
         conditions: m.conditions ?? "",
       });
-      const mineM = full.members.find((m) => m.bot_id === me)!;
+      const mineM = ms.find((m) => m.bot_id === me)!;
       out.push({
         title: p.title,
         endsAt: p.ends_at,
         mine: row(mineM),
-        partners: full.members
+        partners: ms
           .filter((m) => m.bot_id !== me)
           .map((m) => {
             const t = dir.find((x) => x.id === m.bot_id)!;

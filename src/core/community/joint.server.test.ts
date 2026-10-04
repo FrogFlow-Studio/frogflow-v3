@@ -276,6 +276,53 @@ describe("совместные акции: список и витрина", () =
     expect(await srv.listJointPromos(ctx("c"))).toEqual([]);
   });
 
+  it("витрина: 5 и 50 акций читаются одним и тем же числом запросов", async () => {
+    async function banners(n: number) {
+      for (const t of ["joint_promos", "joint_promo_members", "promo_codes"]) db.tables[t] = [];
+      for (let i = 0; i < n; i++) {
+        const promo = `p${i}`;
+        db.tables.joint_promos!.push({
+          id: promo,
+          created_by: "a",
+          title: `Акция ${i}`,
+          ends_at: FUTURE,
+          status: "active",
+          created_at: new Date().toISOString(),
+        });
+        for (const bot of ["a", "b", "c"]) {
+          const codeId = `${promo}-${bot}`;
+          db.tables.promo_codes!.push({
+            id: codeId,
+            bot_id: bot,
+            code: `${bot.toUpperCase()}${i}`,
+            discount_type: "percent",
+            discount_value: 10,
+            is_active: true,
+            valid_until: null,
+          });
+          db.tables.joint_promo_members!.push({
+            id: `m-${codeId}`,
+            promo_id: promo,
+            bot_id: bot,
+            status: "accepted",
+            code: `${bot.toUpperCase()}${i}`,
+            discount_percent: 10,
+            conditions: "",
+            promo_code_id: codeId,
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+      db.queries = 0;
+      const list = await srv.partnerBanners(ctx("a"));
+      expect(list).toHaveLength(n);
+      expect(list[0]!.partners).toHaveLength(2);
+      return db.queries;
+    }
+    const few = await banners(5);
+    expect(await banners(50)).toBe(few);
+  });
+
   it("витрина показывает акцию партнёров с обеих сторон, цифры — из настоящих промокодов", async () => {
     const { id } = await propose(["b"]);
     expect(await srv.partnerBanners(ctx("a"))).toEqual([]);

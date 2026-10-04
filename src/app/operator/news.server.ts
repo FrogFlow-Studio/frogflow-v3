@@ -1,4 +1,5 @@
 import { serviceDb } from "@/core/db/client.server";
+import { pageAll } from "@/core/db/page";
 import {
   NewsInputError,
   cleanNews,
@@ -74,27 +75,42 @@ export async function listNews(): Promise<OperatorNews[] | null> {
     out.push(...rows);
     if (rows.length < PAGE) break;
   }
-  const result: OperatorNews[] = [];
-  for (const r of out) result.push(toOperatorNews(r, await pollVotes(r)));
-  return result;
+  const votes = await pollVotes(out);
+  return out.map((r) => toOperatorNews(r, votes.get(r.id)));
 }
 
-/** Голоса по вариантам: счёт на стороне базы, без выборки строк (нет молчаливого потолка). */
-async function pollVotes(r: NewsRow): Promise<number[]> {
-  const poll = parsePoll(r.poll);
-  if (!poll || !r.published_at) return [];
-  const db = serviceDb();
-  const counts: number[] = [];
-  for (let i = 0; i < poll.options.length; i++) {
-    const { count, error } = await db
-      .from("platform_news_votes")
-      .select("news_id", { count: "exact", head: true })
-      .eq("news_id", r.id)
-      .eq("option_ix", i);
-    if (error) throw serverFailure(`[operator] голоса не посчитаны: ${error.message}`);
-    counts.push(count ?? 0);
+/**
+ * Голоса по вариантам для всех опубликованных опросов сразу: одно чтение на 200 новостей
+ * (а не по запросу на каждую новость и вариант), постранично, с уникальным ключом сортировки.
+ */
+async function pollVotes(rows: readonly NewsRow[]): Promise<Map<string, number[]>> {
+  const polls = new Map<string, number>();
+  for (const r of rows) {
+    const poll = parsePoll(r.poll);
+    if (poll && r.published_at) polls.set(r.id, poll.options.length);
   }
-  return counts;
+  const out = new Map<string, number[]>();
+  for (const [id, n] of polls) out.set(id, Array(n).fill(0));
+  const ids = [...polls.keys()];
+  for (let i = 0; i < ids.length; i += 200) {
+    const chunk = ids.slice(i, i + 200);
+    const votes = await pageAll<{ news_id: string; option_ix: number }>(
+      (from, to) =>
+        serviceDb()
+          .from("platform_news_votes")
+          .select("news_id, option_ix")
+          .in("news_id", chunk)
+          .order("news_id")
+          .order("bot_id")
+          .range(from, to),
+      "[operator] голоса не посчитаны",
+    );
+    for (const v of votes) {
+      const counts = out.get(v.news_id);
+      if (counts && v.option_ix >= 0 && v.option_ix < counts.length) counts[v.option_ix]!++;
+    }
+  }
+  return out;
 }
 
 /** Новая новость (черновик) или правка существующей. */
@@ -143,7 +159,8 @@ export async function saveNews(
   const { data, error } = await db.from("platform_news").update(clean).eq("id", id).select(COLS);
   if (error) throw serverFailure(`[operator] новость не сохранена: ${error.message}`);
   if (!data?.length) throw new NewsInputError("Новость не найдена.");
-  return toOperatorNews(data[0] as NewsRow, await pollVotes(data[0] as NewsRow));
+  const saved = data[0] as NewsRow;
+  return toOperatorNews(saved, (await pollVotes([saved])).get(saved.id));
 }
 
 /**

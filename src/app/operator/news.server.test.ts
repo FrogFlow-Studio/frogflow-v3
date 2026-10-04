@@ -43,6 +43,35 @@ describe("новости оператора", () => {
     expect(await setNewsState(n.id, "unarchive")).toBe(true);
   });
 
+  it("список новостей с опросами: 5 и 50 новостей — столько же запросов, итоги верные", async () => {
+    async function listing(n: number) {
+      db = fakeDb();
+      db.tables.platform_news = Array.from({ length: n }, (_, i) => ({
+        id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+        title: { ru: `Новость ${i}` },
+        body: { ru: "Текст" },
+        plans: ["pro"],
+        action: null,
+        poll: { options: [{ ru: "Да" }, { ru: "Нет" }] },
+        published_at: "2026-10-01T00:00:00Z",
+        archived: false,
+        created_at: `2026-10-01T00:${String(i % 60).padStart(2, "0")}:00Z`,
+        created_by: "yakov",
+      }));
+      db.tables.platform_news_votes = db.tables.platform_news.flatMap((r, i) => [
+        { bot_id: `a${i}`, news_id: r.id, option_ix: 0, voted_at: "2026-10-02T00:00:00Z" },
+        { bot_id: `b${i}`, news_id: r.id, option_ix: 1, voted_at: "2026-10-02T00:00:00Z" },
+        { bot_id: `c${i}`, news_id: r.id, option_ix: 1, voted_at: "2026-10-02T00:00:00Z" },
+      ]);
+      const list = (await listNews())!;
+      expect(list).toHaveLength(n);
+      for (const item of list) expect(item.poll!.votes).toEqual([1, 2]);
+      return db.queries;
+    }
+    const few = await listing(5);
+    expect(await listing(50)).toBe(few);
+  });
+
   it("правка меняет тексты, чужой id — понятная ошибка", async () => {
     const n = await saveNews(null, input, "yakov");
     const e = await saveNews(n.id, { ...input, title: { ru: "Новый заголовок" } }, "yakov");

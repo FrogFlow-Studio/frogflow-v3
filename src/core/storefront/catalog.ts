@@ -1,6 +1,6 @@
 import { aboutFilled, parseAbout } from "@/core/storefront/about";
 import { parseDesign, type StoreDesign } from "@/core/storefront/design";
-import { getPreorder } from "@/core/preorder/preorder";
+import { preordersFor, type Preorder } from "@/core/preorder/preorder";
 import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { sortCatalog, type CatalogSort } from "./sort";
@@ -204,8 +204,21 @@ async function toStoreProducts(
     ctx,
     ps.map((p) => p.id),
   );
+  // Предзаказы нужны только тем, чего нет в наличии и что не набор: одно чтение на страницу.
+  const preorders = await preordersFor(
+    ctx,
+    ps.filter((p) => !bundles.get(p.id) && !isInStock(ctx, p)).map((p) => p.id),
+  );
   return Promise.all(
-    ps.map((p) => toStoreProduct(ctx, p, ratings.get(p.id) ?? null, bundles.get(p.id) ?? null)),
+    ps.map((p) =>
+      toStoreProduct(
+        ctx,
+        p,
+        ratings.get(p.id) ?? null,
+        bundles.get(p.id) ?? null,
+        preorders.get(p.id) ?? null,
+      ),
+    ),
   );
 }
 
@@ -214,6 +227,7 @@ async function toStoreProduct(
   p: Product,
   rating: { avg: number; count: number } | null,
   bundle: StoreBundle | null,
+  preorder: Preorder | null,
 ): Promise<StoreProduct> {
   const variants = sortedVariants(p);
   const priced = variants.length
@@ -248,7 +262,7 @@ async function toStoreProduct(
     kind: p.fulfillment_kind === "physical" ? "physical" : "digital",
     // Набор с недоступной составляющей купить нельзя; предзаказ для наборов не предлагаем.
     inStock: bundle ? bundle.available && bundle.capacity !== 0 : isInStock(ctx, p),
-    preorder: bundle || isInStock(ctx, p) ? null : await getPreorder(ctx, p.id),
+    preorder: bundle || isInStock(ctx, p) ? null : preorder,
     bundle,
     lowLeft: null,
     leadTimeDays: shownLeadDays(p),

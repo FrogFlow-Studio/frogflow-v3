@@ -25,6 +25,8 @@ export type FakeDb = {
   maxRows: number;
   /** Потолок значений в `.in(...)`: длиннее — ошибка, как 431 у PostgREST (адрес ~8 КБ). */
   maxIn: number;
+  /** Сколько запросов выполнено (каждый await построителя и rpc): тесты «5 и 50 строк — столько же запросов». */
+  queries: number;
 };
 
 export function fakeDb(
@@ -41,8 +43,10 @@ export function fakeDb(
     tables: {},
     maxRows: opts.maxRows ?? Infinity,
     maxIn: opts.maxIn ?? Infinity,
+    queries: 0,
     from: (table) => new Query(db, table, opts.unique?.[table] ?? []),
     rpc: async (name, args) => {
+      db.queries++;
       await Promise.resolve();
       const fn = opts.rpc?.[name];
       if (!fn) return { data: null, error: { message: `rpc ${name} not found` } };
@@ -356,6 +360,7 @@ class Query implements PromiseLike<Result> {
     ok?: ((v: Result) => A | PromiseLike<A>) | null,
     fail?: ((e: unknown) => B | PromiseLike<B>) | null,
   ): PromiseLike<A | B> {
+    this.db.queries++;
     return Promise.resolve()
       .then(() => this.run())
       .then(ok, fail);

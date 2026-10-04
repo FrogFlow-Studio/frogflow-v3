@@ -50,36 +50,41 @@ export async function buildAccount(
     const t = tenants.get(l.botId);
     return t && !t.archived && servedByV2(t) && t.settings.slug;
   });
-  const shops: AccountShop[] = [];
-  const addresses: { at: string; text: string }[] = [];
-  for (const l of open.slice(0, ACCOUNT_SHOPS_MAX)) {
-    const tenant = tenants.get(l.botId)!;
-    const ctx = deps.ctxFor(tenant);
-    const customer = await getCustomer(ctx, l.userKey);
-    const rows = customer ? await listCustomerOrders(ctx, customer, ORDERS_PER_SHOP) : [];
-    const state = (customer?.state ?? {}) as { web_fav?: { ids?: unknown } };
-    const ids = parseFavorites(JSON.stringify(state.web_fav?.ids ?? []));
-    const products = ids.length > 0 ? await storeProductsByIds(ctx, ids) : [];
-    for (const o of rows) {
-      const text = (o.fulfillment_address ?? "").trim().replace(/\s+/g, " ");
-      if (text) addresses.push({ at: o.created_at, text });
-    }
-    shops.push({
-      name: tenant.name,
-      slug: tenant.settings.slug!,
-      orders: rows.map((o) => ({
-        no: displayNo(o),
-        status: deps.statusLabel(o.status),
-        total: Number(o.total),
-        currency: o.currency,
-        at: o.created_at,
-      })),
-      favorites: products
-        .slice(0, FAVORITES_PER_SHOP)
-        .map((p) => ({ id: p.id, name: p.name, price: p.price, currency: p.currency })),
-      moreFavorites: Math.max(0, products.length - FAVORITES_PER_SHOP),
-    });
-  }
+  // Магазины читаются параллельно (у каждого своя роль и свои запросы), не больше ACCOUNT_SHOPS_MAX.
+  const built = await Promise.all(
+    open.slice(0, ACCOUNT_SHOPS_MAX).map(async (l) => {
+      const tenant = tenants.get(l.botId)!;
+      const ctx = deps.ctxFor(tenant);
+      const customer = await getCustomer(ctx, l.userKey);
+      const rows = customer ? await listCustomerOrders(ctx, customer, ORDERS_PER_SHOP) : [];
+      const state = (customer?.state ?? {}) as { web_fav?: { ids?: unknown } };
+      const ids = parseFavorites(JSON.stringify(state.web_fav?.ids ?? []));
+      const products = ids.length > 0 ? await storeProductsByIds(ctx, ids) : [];
+      const found: { at: string; text: string }[] = [];
+      for (const o of rows) {
+        const text = (o.fulfillment_address ?? "").trim().replace(/\s+/g, " ");
+        if (text) found.push({ at: o.created_at, text });
+      }
+      const shop: AccountShop = {
+        name: tenant.name,
+        slug: tenant.settings.slug!,
+        orders: rows.map((o) => ({
+          no: displayNo(o),
+          status: deps.statusLabel(o.status),
+          total: Number(o.total),
+          currency: o.currency,
+          at: o.created_at,
+        })),
+        favorites: products
+          .slice(0, FAVORITES_PER_SHOP)
+          .map((p) => ({ id: p.id, name: p.name, price: p.price, currency: p.currency })),
+        moreFavorites: Math.max(0, products.length - FAVORITES_PER_SHOP),
+      };
+      return { shop, found };
+    }),
+  );
+  const shops: AccountShop[] = built.map((x) => x.shop);
+  const addresses: { at: string; text: string }[] = built.flatMap((x) => x.found);
   // Адреса из заказов: новые первыми, одинаковые один раз.
   const seen = new Set<string>();
   const unique: string[] = [];

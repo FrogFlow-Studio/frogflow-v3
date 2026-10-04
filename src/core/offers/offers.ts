@@ -107,12 +107,20 @@ export function percentForNewPrice(newPrice: number, productPrice: number): numb
   return Math.min(99, Math.max(1, Math.round((1 - newPrice / productPrice) * 100)));
 }
 
-const cache = new Map<string, { ts: number; offers: LimitedOffer[]; sold: Map<string, number> }>();
+type OfferEntry = { ts: number; offers: LimitedOffer[]; sold: Map<string, number> };
+const cache = new Map<string, OfferEntry>();
+/** Чтение идёт прямо сейчас: параллельные карточки страницы ждут его, а не читают каждая своё. */
+const loading = new Map<string, Promise<OfferEntry>>();
 const TTL_MS = 60_000;
 
 export function resetOffersCache(tenantId?: string): void {
-  if (tenantId) cache.delete(tenantId);
-  else cache.clear();
+  if (tenantId) {
+    cache.delete(tenantId);
+    loading.delete(tenantId);
+  } else {
+    cache.clear();
+    loading.clear();
+  }
 }
 
 /**
@@ -190,13 +198,24 @@ async function soldCounts(ctx: TenantContext, offers: readonly LimitedOffer[]) {
   return sold;
 }
 
-export async function loadOfferState(ctx: TenantContext) {
-  const hit = cache.get(ctx.tenant.id);
+export async function loadOfferState(ctx: TenantContext): Promise<OfferEntry> {
+  const id = ctx.tenant.id;
+  const hit = cache.get(id);
   if (hit && Date.now() - hit.ts < TTL_MS) return hit;
-  const offers = parseOffers(await getSettingStrict(ctx, OFFERS_KEY));
-  const entry = { ts: Date.now(), offers, sold: await soldCounts(ctx, offers) };
-  cache.set(ctx.tenant.id, entry);
-  return entry;
+  const running = loading.get(id);
+  if (running) return running;
+  const slot: { read?: Promise<OfferEntry> } = {};
+  slot.read = (async () => {
+    const offers = parseOffers(await getSettingStrict(ctx, OFFERS_KEY));
+    const entry = { ts: Date.now(), offers, sold: await soldCounts(ctx, offers) };
+    // Сбросили кеш, пока читали (правка акций): это чтение уже могло устареть.
+    if (loading.get(id) === slot.read) cache.set(id, entry);
+    return entry;
+  })().finally(() => {
+    if (loading.get(id) === slot.read) loading.delete(id);
+  });
+  loading.set(id, slot.read);
+  return slot.read;
 }
 
 /** Действующая акция товара у арендатора (с кешем на минуту). */
