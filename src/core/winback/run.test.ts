@@ -166,3 +166,37 @@ describe("возврат клиентов: кто уже вернулся", () =
     expect(stats.winback).toMatchObject({ returned: 1, sent: 0, failed: 0 });
   });
 });
+
+describe("возврат клиентов: окно ответа Instagram и WhatsApp", () => {
+  function direct(lastInboundDaysAgo: number | null) {
+    const { db, ctx } = setup(1);
+    db.tables.bot_users![0]!.platform = "instagram";
+    db.tables.manager_chat_messages =
+      lastInboundDaysAgo == null
+        ? []
+        : [{ telegram_id: 1, direction: "in", created_at: ago(lastInboundDaysAgo) }];
+    return { db, ctx, row: db.tables.bot_users![0]! };
+  }
+
+  it("окно закрыто — не пишем, шаг серии и место в потолке не тратятся, в журнале пропуск", async () => {
+    const { db, ctx, row } = direct(30);
+    const send = vi.fn(async () => true);
+    const r = await runWinback(ctx, send, NOW);
+    expect(send).not.toHaveBeenCalled();
+    expect(r).toMatchObject({ sent: 0, failed: 0 });
+    expect(row.state).toEqual({});
+    expect(db.tables.zernio_logs!.map((l) => l.status)).toEqual(["skipped"]);
+    // Повторный прогон не плодит пропуски того же шага.
+    await runWinback(ctx, send, new Date(NOW.getTime() + 3_600_000));
+    expect(db.tables.zernio_logs).toHaveLength(1);
+  });
+
+  it("покупатель ответил — следующий прогон пишет и отмечает шаг", async () => {
+    const { ctx, row, db } = direct(30);
+    const send = vi.fn(async () => true);
+    await runWinback(ctx, send, NOW);
+    db.tables.manager_chat_messages = [{ telegram_id: 1, direction: "in", created_at: ago(0.1) }];
+    expect((await runWinback(ctx, send, NOW)).sent).toBe(1);
+    expect(row.state).toMatchObject({ winback: { order_id: 1, step: 1 } });
+  });
+});

@@ -7,6 +7,8 @@ import {
   customerFromRow,
   type Customer,
 } from "@/core/customers/customers";
+import { lastInboundAt } from "@/core/chat/chat";
+import { replyWindow } from "@/core/chat/reply-window";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { claimMarketing, loadMarketingCap } from "@/core/marketing/cap";
 import { minutesInTz } from "@/core/notify/prefs";
@@ -254,6 +256,24 @@ export async function runWinback(
         r.returned++;
         await recordAutoSkip(ctx, "winback", c.telegramId, `${order.id}:${step}`, now);
         continue;
+      }
+      // Instagram и WhatsApp: Meta пропускает ответ только в окне 24 часа от
+      // последнего входящего. Окно закрыто — шаг серии и место в потолке не
+      // тратим (напишем, когда покупатель ответит), в итогах это «пропуск».
+      if (c.platform === "instagram" || c.platform === "whatsapp") {
+        let open = false;
+        try {
+          open =
+            replyWindow(c.platform, await lastInboundAt(ctx, c.telegramId), now.getTime())
+              ?.state === "open";
+        } catch (e) {
+          console.error(`[winback:${ctx.tenant.id}] ${c.telegramId}`, e);
+          continue;
+        }
+        if (!open) {
+          await recordAutoSkip(ctx, "winback", c.telegramId, `${order.id}:${step}:window`, now);
+          continue;
+        }
       }
       // Потолок маркетинговых сообщений за сутки (core/marketing/cap): место
       // занято — шаг не отмечаем, напишем в следующий прогон.
