@@ -271,3 +271,59 @@ describe("похожие материалы: крон", () => {
     expect(sent).toEqual([]);
   });
 });
+
+describe("похожие материалы: ничего не теряется молча", () => {
+  it("больше пачки заказов: следующие запуски продолжают с курсора, каждый получает один раз", async () => {
+    const { db, ctx } = setup();
+    db.tables.bot_users = [];
+    db.tables.orders = [];
+    db.tables.order_items = [];
+    db.tables.blocked_users = [];
+    const N = 120;
+    for (let tg = 100; tg < 100 + N; tg++) {
+      db.tables.bot_users.push({
+        user_key: `tg_${tg}`,
+        telegram_id: tg,
+        platform: "telegram",
+        first_name: `П${tg}`,
+        opt_out: false,
+        state: {},
+      });
+      db.tables.orders.push({
+        id: tg,
+        telegram_id: tg,
+        platform: "telegram",
+        status: "delivered",
+        created_at: ago(8),
+      });
+      db.tables.order_items.push({ order_id: tg, product_id: A });
+    }
+    const got: number[] = [];
+    for (let run = 0; run < 6; run++) {
+      const { sent, send } = collect();
+      await runSimilar(ctx, send, new Date(NOW.getTime() + run * 3_600_000));
+      got.push(...sent.map((s) => s.to));
+    }
+    expect(new Set(got).size).toBe(N);
+    expect(got).toHaveLength(N);
+  });
+
+  it("блокировки не прочитались — ошибка, сообщение не уходит", async () => {
+    const { db, ctx } = setup();
+    const real = db.from;
+    db.from = (t) => {
+      if (t !== "blocked_users") return real(t);
+      const q: Record<string, unknown> = {};
+      q.select = () => q;
+      q.in = () => q;
+      q.then = (resolve: (v: unknown) => unknown) =>
+        resolve({ data: null, error: { message: "boom" } });
+      return q as never;
+    };
+    const { sent, send } = collect();
+    await expect(runSimilar(ctx, send, NOW)).rejects.toMatchObject({
+      message: expect.stringContaining("блокировки"),
+    });
+    expect(sent).toEqual([]);
+  });
+});

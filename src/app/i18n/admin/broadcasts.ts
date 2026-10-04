@@ -140,7 +140,7 @@ export const ru = {
   "broadcasts.winback.title": "Возвратные продажи",
   "broadcasts.winback.enabled": "включено",
   "broadcasts.winback.intro":
-    "Бот сам напишет тем, кто давно не заказывал: первое сообщение через N дней после последнего заказа, второе — если человек так и не вернулся. Только днём по вашему поясу, не больше 50 сообщений в час; отписавшимся и заблокированным не пишет, а в сутки одному покупателю — не больше потолка автосообщений. В Instagram и WhatsApp сообщение дойдёт, только пока открыто окно ответа 24 часа; иначе не дойдёт, и бот не повторит его. {name} — имя, {promo} — промокод.",
+    "Бот сам напишет тем, кто давно не заказывал: первое сообщение через N дней после последнего заказа, второе — если человек так и не вернулся. Не пишет тому, у кого есть открытый заказ или корзина, тронутая за последние сутки. Только днём по вашему поясу, не больше 50 сообщений в час; отписавшимся и заблокированным не пишет, а в сутки одному покупателю — не больше потолка автосообщений. В Instagram и WhatsApp сообщение дойдёт, только пока открыто окно ответа 24 часа; иначе не дойдёт, и бот не повторит его. {name} — имя, {promo} — промокод.",
   "broadcasts.winback.days1": "Через, дней",
   "broadcasts.winback.text1": "Первое сообщение",
   "broadcasts.winback.days2": "Второе через, дней",
@@ -366,7 +366,7 @@ export const kk: SectionDict<typeof ru> = {
   "broadcasts.winback.title": "Қайталама сатылымдар",
   "broadcasts.winback.enabled": "қосулы",
   "broadcasts.winback.intro":
-    "Бот ұзақ уақыт тапсырыс бермегендерге өзі жазады: бірінші хабарлама соңғы тапсырыстан N күн өткен соң, екіншісі — адам қайтпаса. Тек сіздің белдеуіңіз бойынша күндіз, сағатына 50 хабарламадан аспайды; жазылымнан бас тартқандарға және бұғатталғандарға жазбайды, ал бір сатып алушыға тәулігіне автохабарлама шегінен артық жазбайды. Instagram және WhatsApp-та хабарлама 24 сағаттық жауап терезесі ашық кезде ғана жетеді; әйтпесе жетпейді және бот оны қайталамайды. {name} — аты, {promo} — промокод.",
+    "Бот ұзақ уақыт тапсырыс бермегендерге өзі жазады: бірінші хабарлама соңғы тапсырыстан N күн өткен соң, екіншісі — адам қайтпаса. Ашық тапсырысы бар немесе соңғы тәулікте себеті өзгерген адамға жазбайды. Тек сіздің белдеуіңіз бойынша күндіз, сағатына 50 хабарламадан аспайды; жазылымнан бас тартқандарға және бұғатталғандарға жазбайды, ал бір сатып алушыға тәулігіне автохабарлама шегінен артық жазбайды. Instagram және WhatsApp-та хабарлама 24 сағаттық жауап терезесі ашық кезде ғана жетеді; әйтпесе жетпейді және бот оны қайталамайды. {name} — аты, {promo} — промокод.",
   "broadcasts.winback.days1": "Неше күннен соң",
   "broadcasts.winback.text1": "Бірінші хабарлама",
   "broadcasts.winback.days2": "Екіншісі, күн",
@@ -590,7 +590,7 @@ export const en: SectionDict<typeof ru> = {
   "broadcasts.winback.title": "Win-back",
   "broadcasts.winback.enabled": "on",
   "broadcasts.winback.intro":
-    "The bot messages customers who have not ordered for a while: the first message N days after their last order, the second if they still have not come back. Daytime in your zone only, at most 50 messages per hour; it does not write to customers who unsubscribed or are blocked, and one customer gets no more than the daily auto-message cap. In Instagram and WhatsApp the message arrives only while the 24-hour reply window is open; otherwise it is not delivered and the bot does not retry. {name} — name, {promo} — promo code.",
+    "The bot messages customers who have not ordered for a while: the first message N days after their last order, the second if they still have not come back. It does not write to a customer with an open order or a cart touched in the last day. Daytime in your zone only, at most 50 messages per hour; it does not write to customers who unsubscribed or are blocked, and one customer gets no more than the daily auto-message cap. In Instagram and WhatsApp the message arrives only while the 24-hour reply window is open; otherwise it is not delivered and the bot does not retry. {name} — name, {promo} — promo code.",
   "broadcasts.winback.days1": "After, days",
   "broadcasts.winback.text1": "First message",
   "broadcasts.winback.days2": "Second after, days",
@@ -814,7 +814,7 @@ export const uz: SectionDict<typeof ru> = {
   "broadcasts.winback.title": "Qaytaruvchi sotuvlar",
   "broadcasts.winback.enabled": "yoqilgan",
   "broadcasts.winback.intro":
-    "Bot uzoq vaqt buyurtma bermaganlarga o‘zi yozadi: birinchi xabar oxirgi buyurtmadan N kun o‘tgach, ikkinchisi — odam qaytmasa. Faqat sizning mintaqangiz bo‘yicha kunduzi, soatiga 50 xabardan oshmaydi; obunani bekor qilganlarga va bloklanganlarga yozmaydi, bir xaridorga sutkada avtoxabarlar chegarasidan ortiq yozmaydi. Instagram va WhatsApp’da xabar faqat 24 soatlik javob oynasi ochiq bo‘lganda yetib boradi; aks holda yetmaydi va bot uni takrorlamaydi. {name} — ism, {promo} — promokod.",
+    "Bot uzoq vaqt buyurtma bermaganlarga o‘zi yozadi: birinchi xabar oxirgi buyurtmadan N kun o‘tgach, ikkinchisi — odam qaytmasa. Ochiq buyurtmasi bor yoki oxirgi sutkada savati oʻzgargan xaridorga yozmaydi. Faqat sizning mintaqangiz bo‘yicha kunduzi, soatiga 50 xabardan oshmaydi; obunani bekor qilganlarga va bloklanganlarga yozmaydi, bir xaridorga sutkada avtoxabarlar chegarasidan ortiq yozmaydi. Instagram va WhatsApp’da xabar faqat 24 soatlik javob oynasi ochiq bo‘lganda yetib boradi; aks holda yetmaydi va bot uni takrorlamaydi. {name} — ism, {promo} — promokod.",
   "broadcasts.winback.days1": "Necha kundan keyin",
   "broadcasts.winback.text1": "Birinchi xabar",
   "broadcasts.winback.days2": "Ikkinchisi, kun",

@@ -9,6 +9,7 @@ import { daytime } from "@/core/winback/winback";
 import { serverFailure } from "@/lib/server-failure";
 import { claimMarketing, loadMarketingCap } from "@/core/marketing/cap";
 import { stateFromJson } from "@/core/customers/customers";
+import { IN_CHUNK, chunksOf, inChunks } from "@/lib/in-chunks";
 
 /**
  * «Похожие материалы» (модуль winback, повторные продажи): через N дней
@@ -34,6 +35,7 @@ export const SIMILAR_MAX_DAYS = 60;
 export const SIMILAR_LATE_DAYS = 3;
 export const SIMILAR_BATCH = 50;
 export const SIMILAR_PICKS = 3;
+/** Пачка заказов за запуск: курсор по id продолжает со следующего, ничего не теряется. */
 const SCAN = 200;
 const DAY = 86_400_000;
 /** Покупка — как у аудитории «купившие» в рассылках. */
@@ -201,13 +203,24 @@ export async function runSimilar(
   if (!latest.size) return r;
   const ids = [...latest.keys()];
 
-  const [{ data: users }, { data: blocked }, catalog, cats] = await Promise.all([
-    ctx.db
-      .from("bot_users")
-      .select("user_key, telegram_id, first_name, opt_out, state")
-      .eq("platform", "telegram")
-      .in("telegram_id", ids),
-    ctx.db.from("blocked_users").select("telegram_id").in("telegram_id", ids),
+  // Покупатели и блокировки — кусками по 200 id; не прочиталось — ошибка, а не
+  // «никто не заблокирован» (иначе заблокированному ушло бы сообщение).
+  const [users, blocked, catalog, cats] = await Promise.all([
+    inChunks(
+      ids,
+      (chunk) =>
+        ctx.db
+          .from("bot_users")
+          .select("user_key, telegram_id, first_name, opt_out, state")
+          .eq("platform", "telegram")
+          .in("telegram_id", chunk),
+      "похожие материалы: покупатели",
+    ),
+    inChunks(
+      ids,
+      (chunk) => ctx.db.from("blocked_users").select("telegram_id").in("telegram_id", chunk),
+      "похожие материалы: блокировки",
+    ),
     pageAll(
       (from, to) =>
         ctx.db
@@ -226,9 +239,9 @@ export async function runSimilar(
   ]);
   // Скрытый продавцом раздел (или его предок) — не предлагаем, как витрина и бот.
   const visible = visibleCategoryIds(cats);
-  const blockedSet = new Set((blocked ?? []).map((b) => Number(b.telegram_id)));
+  const blockedSet = new Set(blocked.map((b) => Number(b.telegram_id)));
 
-  for (const u of users ?? []) {
+  for (const u of users) {
     const telegramId = Number(u.telegram_id);
     const order = latest.get(telegramId);
     if (!order || u.opt_out || blockedSet.has(telegramId)) continue;
@@ -247,20 +260,25 @@ export async function runSimilar(
     );
     // Есть заказ новее — напишем по нему в свой срок, а не дважды.
     if (theirOrders.some((o) => o.id > order.id)) continue;
-    const items = await pageAll(
-      (from, to) =>
-        ctx.db
-          .from("order_items")
-          .select("order_id, product_id")
-          .in(
-            "order_id",
-            theirOrders.map((o) => o.id),
-          )
-          .order("order_id")
-          .order("id")
-          .range(from, to),
-      "похожие материалы: купленное",
-    );
+    const items: Array<{ order_id: number; product_id: string | null }> = [];
+    // У постоянного покупателя заказов может быть больше 200: .in кусками.
+    for (const chunk of chunksOf(
+      theirOrders.map((o) => o.id),
+      IN_CHUNK,
+    ))
+      items.push(
+        ...(await pageAll(
+          (from, to) =>
+            ctx.db
+              .from("order_items")
+              .select("order_id, product_id")
+              .in("order_id", chunk)
+              .order("order_id")
+              .order("id")
+              .range(from, to),
+          "похожие материалы: купленное",
+        )),
+      );
     const bought = new Set(items.map((i) => String(i.product_id)));
     const inOrder = items
       .filter((i) => Number(i.order_id) === order.id)
