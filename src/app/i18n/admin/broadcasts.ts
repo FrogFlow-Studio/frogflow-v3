@@ -169,6 +169,14 @@ export const ru = {
   "broadcasts.segment.inactive": "Не покупали N дней",
   "broadcasts.segment.language": "Язык бота",
   "broadcasts.segment.cart": "Бросили корзину",
+  "broadcasts.segment.broadcast": "Не заказали после рассылки",
+  "broadcasts.followup.button": "Дослать не купившим",
+  "broadcasts.followup.wait":
+    "Три дня после отправки ещё не прошли — заказавшие пока не определены.",
+  "broadcasts.followup.title": "Дослать не купившим",
+  "broadcasts.followup.hint":
+    "Получат только те, кто получил выбранную рассылку и не сделал заказ за 3 дня после неё. Отписавшиеся, заблокировавшие и те, кому сегодня уже писали сверх потолка сообщений, не получат.",
+  "broadcasts.followup.cancel": "Отменить, выбрать аудиторию вручную",
   "broadcasts.segment.course": "Ученики курса",
   "broadcasts.segment.who.all": "Все ученики",
   "broadcasts.segment.who.behind": "Отстающие",
@@ -362,6 +370,14 @@ export const kk: SectionDict<typeof ru> = {
   "broadcasts.segment.inactive": "N күн сатып алмағандар",
   "broadcasts.segment.language": "Бот тілі",
   "broadcasts.segment.cart": "Себетті тастап кеткендер",
+  "broadcasts.segment.broadcast": "Таратудан кейін тапсырыс бермегендер",
+  "broadcasts.followup.button": "Сатып алмағандарға қайта жіберу",
+  "broadcasts.followup.wait":
+    "Жіберілгеннен кейін үш күн әлі өтпеді — тапсырыс бергендер әлі анықталмады.",
+  "broadcasts.followup.title": "Сатып алмағандарға қайта жіберу",
+  "broadcasts.followup.hint":
+    "Тек таңдалған таратуды алып, одан кейін 3 күн ішінде тапсырыс бермегендер ғана алады. Жазылудан бас тартқандар, бұғаттағандар және бүгін хабарлама шегінен тыс жазылғандар алмайды.",
+  "broadcasts.followup.cancel": "Бас тарту, аудиторияны қолмен таңдау",
   "broadcasts.segment.course": "Курс оқушылары",
   "broadcasts.segment.who.all": "Барлық оқушы",
   "broadcasts.segment.who.behind": "Қалып қойғандар",
@@ -553,6 +569,14 @@ export const en: SectionDict<typeof ru> = {
   "broadcasts.segment.inactive": "No purchases for N days",
   "broadcasts.segment.language": "Bot language",
   "broadcasts.segment.cart": "Abandoned cart",
+  "broadcasts.segment.broadcast": "Did not order after a broadcast",
+  "broadcasts.followup.button": "Resend to non-buyers",
+  "broadcasts.followup.wait":
+    "Three days after sending have not passed yet — who ordered is not known yet.",
+  "broadcasts.followup.title": "Resend to non-buyers",
+  "broadcasts.followup.hint":
+    "Only people who received the chosen broadcast and did not order within 3 days after it will get this. Unsubscribed and blocked people, and anyone already messaged today up to the daily message cap, will not.",
+  "broadcasts.followup.cancel": "Cancel and choose the audience by hand",
   "broadcasts.segment.course": "Course students",
   "broadcasts.segment.who.all": "All students",
   "broadcasts.segment.who.behind": "Falling behind",
@@ -746,6 +770,14 @@ export const uz: SectionDict<typeof ru> = {
   "broadcasts.segment.inactive": "N kun xarid qilmaganlar",
   "broadcasts.segment.language": "Bot tili",
   "broadcasts.segment.cart": "Savatni tashlab ketganlar",
+  "broadcasts.segment.broadcast": "Tarqatmadan keyin buyurtma bermaganlar",
+  "broadcasts.followup.button": "Sotib olmaganlarga qayta yuborish",
+  "broadcasts.followup.wait":
+    "Yuborilgandan keyin uch kun hali o'tmadi — kim buyurtma bergani hali aniq emas.",
+  "broadcasts.followup.title": "Sotib olmaganlarga qayta yuborish",
+  "broadcasts.followup.hint":
+    "Faqat tanlangan tarqatmani olgan va undan keyin 3 kun ichida buyurtma bermaganlar oladi. Obunani bekor qilganlar, bloklaganlar va bugun xabar limitigacha yozilganlar olmaydi.",
+  "broadcasts.followup.cancel": "Bekor qilish, auditoriyani qo'lda tanlash",
   "broadcasts.segment.course": "Kurs o‘quvchilari",
   "broadcasts.segment.who.all": "Barcha o‘quvchilar",
   "broadcasts.segment.who.behind": "Orqada qolganlar",

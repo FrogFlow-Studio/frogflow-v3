@@ -19,6 +19,8 @@ import {
   type BroadcastContent,
 } from "./pure";
 import { parseSegment, segmentMembers, type Segment } from "./segments";
+import { claimMarketing, loadMarketingCap, marketingAllowed } from "@/core/marketing/cap";
+import { stateFromJson } from "@/core/customers/customers";
 
 export type BroadcastRow = Database["public"]["Tables"]["broadcasts"]["Row"];
 export type AudienceFilter = {
@@ -190,7 +192,15 @@ export async function resolveAudience(
   const segment = parseSegment(filter.segment);
   if (segment) {
     const members = await segmentMembers(ctx, segment, reachable, BUYER_STATUSES);
-    return reachable.filter((u) => members.has(u.id)).map((u) => u.id);
+    const picked = reachable.filter((u) => members.has(u.id));
+    if (segment.kind !== "broadcast") return picked.map((u) => u.id);
+    // «Дослать» — второе касание: тем, у кого сегодня уже было маркетинговое
+    // сообщение сверх потолка, не пишем (core/marketing/cap).
+    const cap = await loadMarketingCap(ctx);
+    const now = new Date();
+    return picked
+      .filter((u) => marketingAllowed(stateFromJson(u.state), cap, now))
+      .map((u) => u.id);
   }
   return reachable.map((u) => u.id);
 }
@@ -502,6 +512,10 @@ export async function processBroadcastBatch(
   if (pendingError) throw serverFailure(`Рассылки: получатели: ${pendingError.message}`);
 
   const content = contentOf(broadcast);
+  const followup =
+    parseSegment((broadcast.audience_filter as AudienceFilter | null)?.segment)?.kind ===
+    "broadcast";
+  const cap = followup ? await loadMarketingCap(ctx) : 0;
   let sent = 0;
   let failed = stale?.length ?? 0;
   let blocked = 0;
@@ -578,6 +592,34 @@ export async function processBroadcastBatch(
         .maybeSingle();
       return Boolean(data);
     };
+    if (followup) {
+      // Второе касание делит потолок маркетинга с автосообщениями: место
+      // занимается условной записью ДО отправки, шлёт только выигравший.
+      const { data: u, error: uError } = await ctx.db
+        .from("bot_users")
+        .select("user_key, state")
+        .eq("telegram_id", Number(r.telegram_id))
+        .eq("platform", channel)
+        .order("user_key")
+        .limit(1)
+        .maybeSingle();
+      if (uError) {
+        failure = serverFailure(`Рассылки: покупатель для потолка: ${uError.message}`);
+        break;
+      }
+      const place = u ? await claimMarketing(ctx, u.user_key, u.state, cap, new Date()) : null;
+      if (!place) {
+        if (
+          await settle({
+            status: "blocked",
+            sent_at: null,
+            error_message: "потолок сообщений в сутки",
+          })
+        )
+          blocked++;
+        continue;
+      }
+    }
     try {
       await send({ telegramId: Number(r.telegram_id), phone: r.phone ?? null }, content, broadcast);
       if (await settle({ status: "sent", sent_at: new Date().toISOString(), error_message: null }))

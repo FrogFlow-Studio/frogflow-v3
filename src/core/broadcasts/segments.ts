@@ -4,6 +4,7 @@ import { allSellerNotes } from "@/core/customers/seller-notes";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
 import { isLocale } from "@/core/i18n/locale";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Сегменты рассылки — кому писать сверх «все / купившие / не купившие /
@@ -21,6 +22,8 @@ export type Segment =
   | { kind: "language"; locale: string }
   /** В корзине что-то лежит, заказа нет. */
   | { kind: "cart" }
+  /** «Дослать»: получили указанную Telegram-рассылку и не заказали за 72 часа после неё. */
+  | { kind: "broadcast"; id: string; who: "no_order" }
   /** Тег продавца из карточки покупателя (app_settings customer_note:<user_key>). */
   | { kind: "tag"; tag: string }
   /** Ученики курса (модуль courses): все, отстающие, не сдавшие ДЗ, прошедшие; поток — по желанию. */
@@ -78,6 +81,10 @@ export function parseSegment(v: unknown): Segment | null {
           }
         : null;
     }
+    case "broadcast":
+      return typeof s.id === "string" && UUID.test(s.id) && s.who === "no_order"
+        ? { kind: "broadcast", id: s.id, who: "no_order" }
+        : null;
     case "tag": {
       const tag = typeof s.tag === "string" ? s.tag.trim().slice(0, 32) : "";
       return tag ? { kind: "tag", tag } : null;
@@ -134,6 +141,19 @@ export async function segmentMembers(
     for (const [key, note] of await allSellerNotes(ctx))
       if (note.tags.some((t) => t.toLowerCase() === want)) keys.add(key);
     return new Set(reachable.filter((u) => keys.has(u.userKey)).map((u) => u.id));
+  }
+
+  if (seg.kind === "broadcast") {
+    // Только завершённая Telegram-рассылка этого клиента: чужой или ещё идущий id — пустой круг.
+    const { data: src, error } = await ctx.db
+      .from("broadcasts")
+      .select("id, channel, status")
+      .eq("id", seg.id)
+      .maybeSingle();
+    if (error) throw serverFailure(`Рассылки: исходная рассылка: ${error.message}`);
+    if (!src || src.channel !== "telegram" || src.status !== "completed") return new Set();
+    const { recipientsWithoutOrder } = await import("./revenue");
+    return recipientsWithoutOrder(ctx, seg.id);
   }
 
   if (seg.kind === "course") {

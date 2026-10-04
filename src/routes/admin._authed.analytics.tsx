@@ -597,7 +597,7 @@ function CustomersCard({
         {c.dormant.count > 0 && (
           <Link
             to="/admin/broadcasts"
-            search={{ segment: "inactive", days: c.dormant.days }}
+            search={{ segment: "inactive", days: c.dormant.days, followup: undefined }}
             className="btn-secondary text-sm"
           >
             {t("analytics.customers.broadcast")}

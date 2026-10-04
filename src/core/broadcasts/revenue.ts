@@ -78,7 +78,58 @@ export function attribute(
   return out;
 }
 
-/** Выручка по каждой рассылке из списка (id → итог). Читает постранично, `.in` кусками по 200. */
+async function readSent(ctx: TenantContext, broadcastId: string): Promise<RecipientSent[]> {
+  const recipients = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("broadcast_recipients")
+        .select("id, telegram_id, sent_at")
+        .eq("broadcast_id", broadcastId)
+        .eq("status", "sent")
+        .not("sent_at", "is", null)
+        .order("id")
+        .range(from, to),
+    "Рассылки: получатели для выручки",
+  );
+  return recipients.map((r) => ({
+    telegram_id: Number(r.telegram_id),
+    sent_at: String(r.sent_at),
+  }));
+}
+
+/** Заказы этих получателей за весь период, где у кого-то может идти окно; `.in` кусками по 200. */
+async function readOrders(
+  ctx: TenantContext,
+  sent: readonly RecipientSent[],
+): Promise<OrderLite[]> {
+  const times = sent.map((r) => Date.parse(r.sent_at)).filter(Number.isFinite);
+  if (times.length === 0) return [];
+  const since = new Date(Math.min(...times)).toISOString();
+  const until = new Date(Math.max(...times) + ATTRIBUTION_MS).toISOString();
+  const orders: OrderLite[] = [];
+  for (const chunk of chunksOf(
+    sent.map((r) => r.telegram_id),
+    IN_CHUNK,
+  )) {
+    orders.push(
+      ...(await pageAll(
+        (from, to) =>
+          ctx.db
+            .from("orders")
+            .select("id, telegram_id, created_at, status, total, currency")
+            .in("telegram_id", chunk)
+            .gte("created_at", since)
+            .lte("created_at", until)
+            .order("id")
+            .range(from, to),
+        "Рассылки: заказы получателей",
+      )),
+    );
+  }
+  return orders;
+}
+
+/** Выручка по каждой рассылке из списка (id → итог). */
 export async function revenueFor(
   ctx: TenantContext,
   broadcastIds: readonly string[],
@@ -86,50 +137,39 @@ export async function revenueFor(
 ): Promise<Record<string, BroadcastRevenue>> {
   const out: Record<string, BroadcastRevenue> = {};
   for (const id of broadcastIds) {
-    const recipients = await pageAll(
-      (from, to) =>
-        ctx.db
-          .from("broadcast_recipients")
-          .select("id, telegram_id, sent_at")
-          .eq("broadcast_id", id)
-          .eq("status", "sent")
-          .not("sent_at", "is", null)
-          .order("id")
-          .range(from, to),
-      "Рассылки: получатели для выручки",
-    );
-    const sent: RecipientSent[] = recipients.map((r) => ({
-      telegram_id: Number(r.telegram_id),
-      sent_at: String(r.sent_at),
-    }));
-    if (sent.length === 0) {
-      out[id] = EMPTY_REVENUE;
-      continue;
-    }
-    const times = sent.map((r) => Date.parse(r.sent_at)).filter(Number.isFinite);
-    const since = new Date(Math.min(...times)).toISOString();
-    const until = new Date(Math.max(...times) + ATTRIBUTION_MS).toISOString();
-    const orders: OrderLite[] = [];
-    for (const chunk of chunksOf(
-      sent.map((r) => r.telegram_id),
-      IN_CHUNK,
-    )) {
-      orders.push(
-        ...(await pageAll(
-          (from, to) =>
-            ctx.db
-              .from("orders")
-              .select("id, telegram_id, created_at, status, total, currency")
-              .in("telegram_id", chunk)
-              .gte("created_at", since)
-              .lte("created_at", until)
-              .order("id")
-              .range(from, to),
-          "Рассылки: заказы получателей",
-        )),
-      );
-    }
-    out[id] = attribute(sent, orders, now);
+    const sent = await readSent(ctx, id);
+    out[id] = sent.length === 0 ? EMPTY_REVENUE : attribute(sent, await readOrders(ctx, sent), now);
   }
   return out;
+}
+
+/**
+ * Кому из получивших рассылку нечего «дослать» не надо: те, у кого в окне
+ * 72 часа после отправки есть заказ (любой, кроме отменённых и возвращённых).
+ * Остальные получатели со статусом «отправлено» — не заказавшие.
+ */
+export function withoutOrders(
+  recipients: readonly RecipientSent[],
+  orders: readonly OrderLite[],
+): Set<number> {
+  const ordered = new Set<number>();
+  const sentAt = new Map(recipients.map((r) => [Number(r.telegram_id), Date.parse(r.sent_at)]));
+  for (const o of orders) {
+    if (NOT_COUNTED.has(o.status)) continue;
+    const from = sentAt.get(Number(o.telegram_id));
+    const at = Date.parse(o.created_at);
+    if (from === undefined || !Number.isFinite(from) || !Number.isFinite(at)) continue;
+    if (at >= from && at <= from + ATTRIBUTION_MS) ordered.add(Number(o.telegram_id));
+  }
+  return new Set(recipients.map((r) => Number(r.telegram_id)).filter((id) => !ordered.has(id)));
+}
+
+/** Telegram-id тех, кто получил рассылку и не заказал за окно Р1. */
+export async function recipientsWithoutOrder(
+  ctx: TenantContext,
+  broadcastId: string,
+): Promise<Set<number>> {
+  const sent = await readSent(ctx, broadcastId);
+  if (sent.length === 0) return new Set();
+  return withoutOrders(sent, await readOrders(ctx, sent));
 }

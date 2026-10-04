@@ -35,6 +35,11 @@ export const Route = createFileRoute("/admin/_authed/broadcasts")({
   validateSearch: (s: Record<string, unknown>) => ({
     segment: s.segment === "inactive" ? ("inactive" as const) : undefined,
     days: Number.isInteger(Number(s.days)) && Number(s.days) > 0 ? Number(s.days) : undefined,
+    // «Дослать не купившим» из истории: id рассылки, у которой берём не заказавших.
+    followup:
+      typeof s.followup === "string" && /^[0-9a-f-]{36}$/i.test(s.followup)
+        ? s.followup
+        : undefined,
   }),
   loader: () => broadcastsFn(),
   component: BroadcastsPage,
@@ -513,8 +518,11 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
   const [photos, setPhotos] = useState<string[]>([]);
   const [products, setProducts] = useState<PickerProduct[]>([]);
   const [showCatalog, setShowCatalog] = useState(false);
-  const preset = parseSegmentParam(Route.useSearch());
-  const [audience, setAudience] = useState<UiAudience>(preset ? "segment" : "all");
+  const search = Route.useSearch();
+  const preset = parseSegmentParam(search);
+  const navigate = Route.useNavigate();
+  const followup = search.followup ?? null;
+  const [audience, setAudience] = useState<UiAudience>(preset || followup ? "segment" : "all");
   const [country, setCountry] = useState(Object.keys(data.countries)[0] ?? "");
   const [segment, setSegment] = useState<SegmentDraft>(
     preset ? { ...EMPTY_SEGMENT, kind: "inactive", days: String(preset.days) } : EMPTY_SEGMENT,
@@ -524,7 +532,12 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<unknown>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const seg = audience === "segment" ? segmentOf(segment) : undefined;
+  const seg =
+    audience === "segment"
+      ? followup
+        ? { kind: "broadcast", id: followup, who: "no_order" }
+        : segmentOf(segment)
+      : undefined;
   const count = useAudienceCount("telegram", audience, country, seg);
   const scheduled = later && audience !== "test" && sendAt;
 
@@ -703,17 +716,41 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
           </details>
         </div>
 
-        <AudiencePicker
-          channel="telegram"
-          data={data}
-          audience={audience}
-          setAudience={setAudience}
-          country={country}
-          setCountry={setCountry}
-          count={count}
-          segment={segment}
-          setSegment={setSegment}
-        />
+        {followup ? (
+          <div className="rounded-md border border-accent bg-accent/10 px-3 py-2 text-sm">
+            <p className="font-medium">{t("broadcasts.followup.title")}</p>
+            <p className="text-xs text-muted">{t("broadcasts.followup.hint")}</p>
+            <p className="mt-2 text-sm text-muted">
+              {t("broadcasts.audience.recipients")}{" "}
+              <span className="font-medium text-fg tabular-nums">{count ?? "…"}</span>
+            </p>
+            <button
+              type="button"
+              className="btn-ghost mt-1 text-xs"
+              onClick={() => {
+                setAudience("all");
+                void navigate({
+                  search: { segment: undefined, days: undefined, followup: undefined },
+                  replace: true,
+                });
+              }}
+            >
+              {t("broadcasts.followup.cancel")}
+            </button>
+          </div>
+        ) : (
+          <AudiencePicker
+            channel="telegram"
+            data={data}
+            audience={audience}
+            setAudience={setAudience}
+            country={country}
+            setCountry={setCountry}
+            count={count}
+            segment={segment}
+            setSegment={setSegment}
+          />
+        )}
 
         {audience !== "test" && (
           <div className="flex flex-wrap items-center gap-3">
@@ -1164,6 +1201,7 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
   const { shop } = useRouteContext({ from: "/admin/_authed" });
   const t = adminT(shop.locale);
   const router = useRouter();
+  const navigate = Route.useNavigate();
   const cancel = useAction(async (id: string) => {
     if (!confirm(t("broadcasts.history.confirmStop"))) return;
     await cancelBroadcastFn({ data: { id } });
@@ -1248,6 +1286,23 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
                         : b.message_text || t("broadcasts.history.photoOnly")}
                     </p>
                   </div>
+                  {b.channel === "telegram" &&
+                    b.status === "completed" &&
+                    b.sent_count > 0 &&
+                    !filter.ab && (
+                      <button
+                        className="btn-ghost text-xs"
+                        disabled={b.revenue.windowOpen}
+                        title={b.revenue.windowOpen ? t("broadcasts.followup.wait") : undefined}
+                        onClick={() =>
+                          void navigate({
+                            search: { segment: undefined, days: undefined, followup: b.id },
+                          }).then(() => window.scrollTo({ top: 0, behavior: "smooth" }))
+                        }
+                      >
+                        {t("broadcasts.followup.button")}
+                      </button>
+                    )}
                   {live && (
                     <button
                       className="btn-ghost text-xs text-danger"
