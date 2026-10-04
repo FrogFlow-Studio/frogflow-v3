@@ -66,6 +66,7 @@ import * as shop19Today from "./admin/shop19-today";
 import * as shop19Launch from "./admin/shop19-launch";
 import * as shop19Collections from "./admin/shop19-collections";
 import * as shop19Bell from "./admin/shop19-bell";
+import * as shop19Settings from "./admin/shop19-settings";
 import * as shop19Orders from "./admin/shop19-orders";
 import * as shop19Order from "./admin/shop19-order";
 import * as shop19States from "./admin/shop19-states";
@@ -478,6 +479,7 @@ const ru = {
   ...shop19Launch.ru,
   ...shop19Collections.ru,
   ...shop19Bell.ru,
+  ...shop19Settings.ru,
   ...shop19Orders.ru,
   ...shop19Order.ru,
   ...shop19States.ru,
@@ -1620,6 +1622,7 @@ const kk: Dict = {
   ...shop19Launch.kk,
   ...shop19Collections.kk,
   ...shop19Bell.kk,
+  ...shop19Settings.kk,
   ...shop19Orders.kk,
   ...shop19Order.kk,
   ...shop19States.kk,
@@ -1693,6 +1696,7 @@ const en: Dict = {
   ...shop19Launch.en,
   ...shop19Collections.en,
   ...shop19Bell.en,
+  ...shop19Settings.en,
   ...shop19Orders.en,
   ...shop19Order.en,
   ...shop19States.en,
@@ -1766,6 +1770,7 @@ const uz: Dict = {
   ...shop19Launch.uz,
   ...shop19Collections.uz,
   ...shop19Bell.uz,
+  ...shop19Settings.uz,
   ...shop19Orders.uz,
   ...shop19Order.uz,
   ...shop19States.uz,

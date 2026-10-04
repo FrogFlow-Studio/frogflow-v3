@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { pageAll } from "@/core/db/page";
 import { UserError } from "@/core/i18n/user-error";
 import { reportError } from "@/lib/errors";
 import { serverFailure } from "@/lib/server-failure";
@@ -101,7 +102,9 @@ async function writeSetting(ctx: TenantContext, key: string, value: string) {
   const found = await ctx.db.from("app_settings").select("key").eq("key", key).maybeSingle();
   if (found.error) return found.error.message;
   if (found.data) return updateSetting(ctx, key, value);
-  const { error } = await ctx.db.from("app_settings").insert({ bot_id: ctx.tenant.id, key, value });
+  const { error } = await ctx.db
+    .from("app_settings")
+    .insert({ bot_id: ctx.tenant.id, key, value, updated_at: new Date().toISOString() });
   if (!error) return null;
   // Ключ вставили параллельно между чтением и вставкой — дописываем поверх.
   return error.code === "23505" ? updateSetting(ctx, key, value) : error.message;
@@ -110,7 +113,8 @@ async function writeSetting(ctx: TenantContext, key: string, value: string) {
 async function updateSetting(ctx: TenantContext, key: string, value: string) {
   const { data, error } = await ctx.db
     .from("app_settings")
-    .update({ value })
+    // Дата записи — по ней страница настроек поднимает «изменено недавно».
+    .update({ value, updated_at: new Date().toISOString() })
     .eq("key", key)
     .select("key");
   if (error) return error.message;
@@ -242,4 +246,26 @@ export function parseIdList(raw: string | null | undefined): string[] {
         .filter(Boolean),
     ),
   );
+}
+
+/** Ключи из `known`, которые продавец менял за последние `days` дней (по `updated_at`). */
+export async function recentSettingKeys(
+  ctx: TenantContext,
+  known: readonly string[],
+  days = 7,
+  now = new Date(),
+): Promise<string[]> {
+  const since = new Date(now.getTime() - days * 86400_000).toISOString();
+  const rows = await pageAll<{ key: string }>(
+    (from, to) =>
+      ctx.db
+        .from("app_settings")
+        .select("key")
+        .gte("updated_at", since)
+        .order("key")
+        .range(from, to),
+    "Настройки: недавно изменённые",
+  );
+  const set = new Set(known);
+  return rows.map((r) => r.key).filter((k) => set.has(k));
 }

@@ -1728,6 +1728,12 @@ export const settingsFn = createServerFn({ method: "GET" }).handler(async () => 
     listPaymentMethods(ctx),
   ]);
   const settings = settingsForRole(raw, role);
+  const { recentSettingKeys } = await import("@/core/settings/settings");
+  // Порядок «изменено недавно» — удобство: сбой чтения не роняет страницу настроек.
+  const recentKeys = await recentSettingKeys(ctx, SETTING_KEYS).catch((e) => {
+    console.warn(`[settings:${ctx.tenant.id}] недавно изменённые: ${String(e)}`);
+    return [] as string[];
+  });
   const { platformHasKey } = await import("@/core/search/smart.server");
   const { visionConfigured } = await import("@/core/receipts/verify.server");
   return {
@@ -1736,6 +1742,7 @@ export const settingsFn = createServerFn({ method: "GET" }).handler(async () => 
     ownerTelegramId: ctx.tenant.ownerTelegramId,
     timezone: ctx.tenant.settings.timezone ?? null,
     pdfWatermark: ctx.tenant.settings.delivery?.pdf_watermark === true,
+    recentKeys,
     smartSearchKey: platformHasKey(),
     visionKey: visionConfigured(),
   };
