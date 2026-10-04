@@ -1,4 +1,4 @@
-import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
+import type { Locale } from "@/core/i18n/locale";
 
 /**
  * База знаний «Помощь»: статьи — файлы `docs/help/<slug>.<язык>.md` (таблицы
@@ -65,8 +65,6 @@ export function helpList(locale: Locale): HelpArticle[] {
     .map((s) => helpArticle(s, locale))
     .filter((a): a is HelpArticle => a !== null);
 }
-
-export const LOCALES_REQUIRED: readonly Locale[] = SUPPORTED_LOCALES;
 
 /* ---------- поиск ---------- */
 

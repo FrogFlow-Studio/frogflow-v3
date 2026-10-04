@@ -303,8 +303,6 @@ export function recentEntries(recentKeys: readonly string[]): Set<string> {
   );
 }
 
-export const RECENT_DAYS = 7;
-
 /** Раздел виден роли и набору модулей. */
 export function entryVisible(
   e: SettingsEntry,

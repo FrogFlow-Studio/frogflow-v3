@@ -8,9 +8,6 @@ import type { Tenant } from "@/core/tenant/types";
 
 export type RenewalStage = "d7" | "d3" | "d1" | "d0";
 
-/** Напоминаем за 7, 3 и 1 день до конца и в день окончания. */
-export const RENEWAL_DAYS: Record<RenewalStage, number> = { d7: 7, d3: 3, d1: 1, d0: 0 };
-
 /** Отметки клиента (`app_settings`): `<дата конца>:d7,d3,d7m` — буква m у письма. */
 export const RENEWAL_KEY = "renewal_reminded";
 

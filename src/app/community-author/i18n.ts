@@ -96,4 +96,3 @@ export function authorT(locale: Locale) {
   return (key: Key, vars?: UserErrorVars) => fill(d[key] ?? ru[key], vars);
 }
 export const AUTHOR_KEYS = Object.keys(ru) as Key[];
-export const AUTHOR_DICTS = DICTS;

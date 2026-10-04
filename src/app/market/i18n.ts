@@ -222,7 +222,6 @@ const uz: Record<Key, string> = {
 
 const DICTS: Record<Locale, Record<Key, string>> = { ru, kk, en, uz };
 
-export type MarketKey = Key;
 export const MARKET_KEYS = Object.keys(ru) as Key[];
 
 export function marketT(locale: Locale) {

@@ -121,7 +121,6 @@ const uz: Record<Key, string> = {
 
 const DICTS: Record<Locale, Record<Key, string>> = { ru, kk, en, uz };
 
-export type RulesKey = Key;
 export const RULES_KEYS = Object.keys(ru) as Key[];
 export const RULES_SECTIONS = ["s1", "s2", "s3", "s4", "s5", "s6"] as const;
 
