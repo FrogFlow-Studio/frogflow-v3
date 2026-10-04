@@ -61,3 +61,16 @@ test("чат: боковая панель покупателя — баллы, �
   await expect(page).toHaveURL(/\/admin\/customers\//);
   expect(errors).toEqual([]);
 });
+
+test("чат: ссылка из напоминания открывает диалог, которого нет на первой странице списка", async ({
+  page,
+}) => {
+  const errors = await watch(page);
+  await login(page);
+  const last = F.CHAT_MANY_COUNT;
+  await page.goto(`/admin/chat?c=${F.chatManyId(last)}`);
+  // Имя в шапке диалога; в списке этого покупателя ещё нет (он на второй странице).
+  await expect(page.getByText(`${F.chatManyName(last)} id ${F.chatManyId(last)}`)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Показать ещё", exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});

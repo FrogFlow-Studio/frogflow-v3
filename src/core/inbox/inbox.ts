@@ -125,7 +125,7 @@ export async function setInboxMeta(
         status: next.status,
         payload,
       });
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(`Входящие: ${error.message}`);
   if (patch.status === "closed") await closeTicketsFor(ctx, telegramId, actor);
   return next;
 }

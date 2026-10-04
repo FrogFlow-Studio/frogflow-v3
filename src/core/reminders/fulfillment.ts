@@ -1,3 +1,4 @@
+import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Locale } from "@/core/i18n/locale";
 import { isLocale } from "@/core/i18n/locale";
@@ -57,7 +58,7 @@ export async function sendFulfillmentReminders(
     .gt("fulfillment_at", now.toISOString())
     .lte("fulfillment_at", in24h.toISOString())
     .is("fulfillment_reminder_sent_at", null);
-  if (error) throw new Error(`fulfillment-reminder: ${error.message}`);
+  if (error) throw serverFailure(`Напоминание о выдаче: ${error.message}`);
   if (!orders?.length) return { checked: 0, sent: 0 };
 
   const slots = await fulfillmentSlots(ctx);
