@@ -36,6 +36,8 @@ export const Route = createFileRoute("/signup")({
       .regex(/^[a-z0-9][a-z0-9-]{2,29}$/)
       .optional()
       .catch(undefined),
+    /** Ссылка-приглашение от другого автора (core/invites); проверяет сервер. */
+    invite: z.string().max(80).optional().catch(undefined),
   }),
   loader: () => signupEnabledFn(),
   component: SignupPage,
@@ -72,6 +74,7 @@ function SignupPage() {
         source: readWebSource(PLATFORM_SOURCE_SLUG),
         page: search.from,
         partner: search.partner,
+        invite: search.invite,
       },
     });
     await navigate({ to: "/admin" });

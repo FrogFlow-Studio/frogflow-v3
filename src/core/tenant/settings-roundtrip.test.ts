@@ -34,6 +34,12 @@ const SAVED = {
   consultant_limits: { daily_usd: 2, daily_calls: null, daily_tests: 5 },
   smart_search_limits: { daily_usd: 1 },
   billing: { plan: "flowers.pro", addons: ["whatsapp"], period: "year" },
+  // приглашение автора автором (core/invites)
+  invite: {
+    by: "b41a34cb-7944-441b-8f71-503184fc0f1f",
+    at: "2026-10-04T10:00:00.000Z",
+    reward: { at: "2026-10-05T10:00:00.000Z", by: "operator", payment_id: "pay-1" },
+  },
   // регистрация: откуда пришёл клиент (core/signup/origin)
   signup: { source: "site:google/spring", page: "cakes" },
   // каналы
@@ -54,6 +60,14 @@ describe("settingsFromJson не теряет сохранённые ключи",
     expect(settingsFromJson({ delivery: { pdf_watermark: "yes" } }).delivery).toEqual({
       pdf_watermark: false,
     });
+  });
+
+  it("приглашение автора: кто пригласил и выданный зачёт переживают чтение; мусор отбрасывается", () => {
+    expect(s.invite).toEqual(SAVED.invite);
+    expect(settingsFromJson({ invite: { by: "не-id" } }).invite).toBeUndefined();
+    expect(
+      settingsFromJson({ invite: { by: SAVED.invite.by, reward: { at: "нет" } } }).invite,
+    ).toEqual({ by: SAVED.invite.by, at: "" });
   });
 
   it("срок просьбы об оценке: только целое 1–30", () => {

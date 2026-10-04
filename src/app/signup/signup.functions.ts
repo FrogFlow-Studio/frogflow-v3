@@ -19,6 +19,8 @@ const input = z.object({
   page: z.string().max(20).optional().catch(undefined),
   /** Код агентства-партнёра из ссылки `/signup?partner=…` (core/partners); чужой — без партнёра. */
   partner: z.string().max(30).optional().catch(undefined),
+  /** Приглашение автора автором из ссылки `/signup?invite=…` (core/invites); подделка — без приглашения. */
+  invite: z.string().max(80).optional().catch(undefined),
 });
 
 export const signupEnabledFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -69,6 +71,16 @@ export const signupFn = createServerFn({ method: "POST" })
         await (await import("@/core/tenant/resolve.server")).patchTenantSettings(id, { partner });
     } catch (e) {
       console.error(`[signup] partner for ${id}: ${e instanceof Error ? e.message : e}`);
+    }
+    // Приглашение автора: только подписанный токен живого магазина на v2. Сбой не ломает регистрацию.
+    try {
+      if (data.invite) {
+        const { inviterForSignup, recordInvite } = await import("@/app/invites/invites.server");
+        const inviter = await inviterForSignup(data.invite);
+        if (inviter) await recordInvite(id, inviter);
+      }
+    } catch (e) {
+      console.error(`[signup] invite for ${id}: ${e instanceof Error ? e.message : e}`);
     }
     // Пробный период Basic включается сам. Сбой не ломает регистрацию:
     // магазин уже создан, оператор включит пробный период кнопкой.

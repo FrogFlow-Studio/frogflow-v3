@@ -55,6 +55,7 @@ const ALLOWED: Record<string, string[]> = {
   "src/app/admin/invoice.server.ts": [FEW],
   "src/app/operator/ai-topup.server.ts": ["счета пополнения одного клиента — единицы"],
   "src/app/operator/health-alerts.server.ts": [FIXED, FIXED],
+  "src/app/operator/invites.server.ts": ["два магазина: приглашённый и пригласивший"],
   "src/app/operator/operator.server.ts": ["один клиент: `extras([botId])`; без списка — все"],
   "src/app/operator/two-factor.server.ts": [FIXED, FIXED],
   "src/app/storefront/buyer-orders.server.ts": [`${PAGE} (страница заказов покупателя)`],

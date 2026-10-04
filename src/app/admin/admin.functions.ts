@@ -1837,6 +1837,12 @@ export const takeoutLinkFn = createServerFn({ method: "POST" }).handler(async ()
   return { url: `${ctx.appUrl.replace(/\/$/, "")}${path}`, expiresAt };
 });
 
+/** «Пригласить автора»: ссылка и сводка по приглашённым (без имён). Только владелец. */
+export const inviteCardFn = createServerFn({ method: "GET" }).handler(async () => {
+  const ctx = await adminOwner();
+  return (await import("@/app/invites/invites.server")).inviteCard(ctx);
+});
+
 /* ── тариф магазина (core/plans) ─────────────────────────────────── */
 
 export const myPlanFn = createServerFn({ method: "GET" }).handler(async () => {

@@ -153,6 +153,8 @@ export function planInvoice(
     period: "month" | "year";
     withConnection: boolean;
     addons?: Array<{ title: string; monthly: number }>;
+    /** Скидка на подключение (приглашённому автору); только вместе с подключением, не больше его цены. */
+    connectionDiscount?: { title: string; amount: number };
   },
 ): { amount: number; lines: InvoiceLine[]; note: string } {
   const months = opts.period === "year" ? ANNUAL_BILLED_MONTHS : 1;
@@ -169,6 +171,9 @@ export function planInvoice(
     if (a.monthly > 0) lines.push({ title: `${a.title} сверх плана`, amount: a.monthly * months });
   if (opts.withConnection)
     lines.push({ title: `Подключение ${TIER_TITLES[tier]}`, amount: CONNECTION_PRICE[tier] });
+  const off = opts.withConnection ? opts.connectionDiscount : undefined;
+  if (off && off.amount > 0)
+    lines.push({ title: off.title, amount: -Math.min(off.amount, CONNECTION_PRICE[tier]) });
   const amount = lines.reduce((s, l) => s + l.amount, 0);
   return { amount, lines, note: lines.map((l) => `${l.title}: ${l.amount} ₸`).join("; ") };
 }

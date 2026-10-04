@@ -748,6 +748,22 @@ export const syncV2WebhookFn = createServerFn({ method: "POST" }).handler(async 
   return (await import("@/channels/zernio/connect.server")).syncV2Webhook();
 });
 
+/** Приглашения авторов (core/invites): кто кого пригласил и можно ли зачесть месяц. */
+export const inviteViewFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await import("./invites.server")).inviteView(data.botId);
+  });
+
+/** Зачесть месяц пригласившему: одна кнопка, один раз (отметка по settings.rev до платежа). */
+export const creditInviteFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ botId }).parse(d))
+  .handler(async ({ data }) => {
+    await guard();
+    return (await import("./invites.server")).creditInvite(data.botId, await actor());
+  });
+
 export const addPaymentFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z

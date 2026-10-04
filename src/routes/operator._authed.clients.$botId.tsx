@@ -11,6 +11,7 @@ import { ZernioCard, MetaCard } from "@/app/operator/client/channels";
 import { ConsultantLimitsCard, SmartSearchLimitCard } from "@/app/operator/client/limits";
 import { ShopGroupCard } from "@/app/operator/client/shop-group";
 import { CommunityModCard } from "@/app/operator/client/community";
+import { InvitesCard } from "@/app/operator/client/invites";
 import { BillingCard } from "@/app/operator/client/billing";
 import { NotesCard } from "@/app/operator/client/notes";
 import { HealthCard, MessageCard } from "@/app/operator/client/health";
@@ -164,6 +165,7 @@ function ClientPage() {
           <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
             <PlanCard c={c} onDone={refresh} />
             <BillingCard c={c} />
+            <InvitesCard c={c} />
             <AiBalanceCard c={c} ai={ai} onDone={refresh} />
             <ConsultantLimitsCard c={c} budget={consultant} onDone={refresh} />
             <SmartSearchLimitCard c={c} budget={smartSearch} onDone={refresh} />

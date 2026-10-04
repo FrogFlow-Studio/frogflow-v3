@@ -22,6 +22,7 @@ import {
 } from "@/core/plans/plans";
 import {
   ADDONS,
+  CONNECTION_PRICE,
   ADDON_MONTHLY_PRICE,
   CUSTOM_PLAN,
   PLAN_VERSION,
@@ -49,6 +50,7 @@ import {
   tenantDirectory,
 } from "@/core/tenant/resolve.server";
 import type { BillingSettings, Tenant } from "@/core/tenant/types";
+import { INVITE_DISCOUNT_PERCENT, connectionDiscount } from "@/core/invites/invites";
 import { logEvent } from "./operator.server";
 import { serverFailure } from "@/lib/server-failure";
 
@@ -376,6 +378,13 @@ export function planInvoicePreview(
   return planInvoice(parsed.tier, {
     period: period ?? billing.period ?? "month",
     withConnection: !billing.connection_paid_at,
+    // Приглашённый автор: скидка на подключение, пока оно не оплачено.
+    connectionDiscount: t.settings.invite
+      ? {
+          title: `Скидка по приглашению (−${INVITE_DISCOUNT_PERCENT} % на подключение)`,
+          amount: connectionDiscount(CONNECTION_PRICE[parsed.tier]),
+        }
+      : undefined,
     addons: (billing.addons ?? []).map((a) => ({
       title: ADDONS[a].title,
       monthly: addonPrice(a, addonPrices[a]),

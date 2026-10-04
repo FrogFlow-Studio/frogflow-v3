@@ -84,6 +84,16 @@ export type TenantSettings = {
   deletion?: { requested_at: string; by: string; prev_status: BotStatus };
   /** Код агентства-партнёра, которое привело клиента (core/partners). */
   partner?: string;
+  /**
+   * Автор, который пригласил этого продавца по ссылке (core/invites): `by` —
+   * магазин-пригласивший. `reward` ставит оператор, когда зачёл пригласившему
+   * месяц: условная запись по `rev`, поэтому зачёт выдаётся один раз.
+   */
+  invite?: {
+    by: string;
+    at: string;
+    reward?: { at: string; by: string; payment_id: string | null };
+  };
   /** Откуда пришёл продавец, зарегистрировавшийся сам (core/signup/origin). */
   signup?: { source?: string; page?: "cakes" | "materials" | "courses" };
   /**

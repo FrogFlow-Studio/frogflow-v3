@@ -69,6 +69,7 @@ import * as help from "./admin/help";
 import * as news from "./admin/news";
 import * as support from "./admin/support";
 import * as takeout from "./admin/takeout";
+import * as invites from "./admin/invites";
 
 const baseRu = {
   // навигация и оболочка
@@ -475,6 +476,7 @@ const ru = {
   ...news.ru,
   ...support.ru,
   ...takeout.ru,
+  ...invites.ru,
   ...shop4Stock.ru,
   ...shop18Bundles.ru,
   ...community.ru,
@@ -1610,6 +1612,7 @@ const kk: Dict = {
   ...news.kk,
   ...support.kk,
   ...takeout.kk,
+  ...invites.kk,
   ...shop4Stock.kk,
   ...shop18Bundles.kk,
   ...community.kk,
@@ -1676,6 +1679,7 @@ const en: Dict = {
   ...news.en,
   ...support.en,
   ...takeout.en,
+  ...invites.en,
   ...shop4Stock.en,
   ...shop18Bundles.en,
   ...community.en,
@@ -1742,6 +1746,7 @@ const uz: Dict = {
   ...news.uz,
   ...support.uz,
   ...takeout.uz,
+  ...invites.uz,
   ...shop4Stock.uz,
   ...shop18Bundles.uz,
   ...community.uz,

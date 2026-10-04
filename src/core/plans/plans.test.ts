@@ -201,6 +201,29 @@ describe("счёт по плану", () => {
     expect(r.note).toContain("Подключение Basic: 15000 ₸");
   });
 
+  it("скидка по приглашению — отдельной строкой, только вместе с подключением", () => {
+    const connectionDiscount = { title: "Скидка по приглашению", amount: 3_000 };
+    const first = planInvoice("basic", {
+      period: "month",
+      withConnection: true,
+      connectionDiscount,
+    });
+    expect(first.amount).toBe(9_900 + 15_000 - 3_000);
+    expect(first.lines.at(-1)).toEqual({ title: "Скидка по приглашению", amount: -3_000 });
+    // Подключение уже оплачено — скидки нет (второй раз не выдаётся).
+    expect(
+      planInvoice("basic", { period: "month", withConnection: false, connectionDiscount }).amount,
+    ).toBe(9_900);
+    // Скидка не уводит подключение в минус.
+    expect(
+      planInvoice("basic", {
+        period: "month",
+        withConnection: true,
+        connectionDiscount: { title: "x", amount: 99_999 },
+      }).amount,
+    ).toBe(9_900);
+  });
+
   it("год — 10 месяцев вместо 12", () => {
     expect(planInvoice("business", { period: "year", withConnection: false }).amount).toBe(399_000);
   });

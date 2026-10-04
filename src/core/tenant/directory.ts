@@ -156,6 +156,26 @@ export function settingsFromJson(json: unknown): TenantSettings {
       const code = str(s.partner)?.toLowerCase();
       return code && /^[a-z0-9][a-z0-9-]{2,29}$/.test(code) ? code : undefined;
     })(),
+    invite: (() => {
+      const i = obj(s.invite);
+      if (typeof i.by !== "string" || !/^[0-9a-f-]{36}$/i.test(i.by)) return undefined;
+      const at = typeof i.at === "string" && !Number.isNaN(Date.parse(i.at)) ? i.at : "";
+      const r = obj(i.reward);
+      const rewarded = typeof r.at === "string" && !Number.isNaN(Date.parse(r.at));
+      return {
+        by: i.by.toLowerCase(),
+        at,
+        ...(rewarded
+          ? {
+              reward: {
+                at: r.at as string,
+                by: typeof r.by === "string" ? r.by : "",
+                payment_id: typeof r.payment_id === "string" ? r.payment_id : null,
+              },
+            }
+          : {}),
+      };
+    })(),
     // Откуда пришёл продавец: из браузера при регистрации — перепроверяем при чтении.
     signup: signupOrigin(obj(s.signup)) ?? undefined,
     on_overdue:
