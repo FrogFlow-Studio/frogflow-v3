@@ -92,7 +92,7 @@ export function giveawayIdFrom(data: string): string | null {
   return m ? m[1]! : null;
 }
 
-function membership(api: TelegramApi): MembershipCheck {
+export function membership(api: TelegramApi): MembershipCheck {
   return async (channel, telegramId) => {
     const r = await api.call<{ status?: string }>("getChatMember", {
       chat_id: channel,

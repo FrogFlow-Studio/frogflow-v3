@@ -68,3 +68,34 @@ export const closeGiveawayFn = createServerFn({ method: "POST" })
     const { closeGiveaway } = await import("@/core/giveaways/giveaway");
     return closeGiveaway(ctx, data.id);
   });
+
+/** Подписку на канал проверяет бот магазина; без Telegram проверять нечем — розыгрыш с подпиской не выбирается. */
+async function memberCheck(ctx: Awaited<ReturnType<typeof moduleAdmin>>) {
+  const { adminTelegramApi } = await import("@/channels/telegram/notify");
+  const { membership } = await import("@/channels/telegram/giveaway");
+  const api = adminTelegramApi(ctx);
+  return api ? membership(api) : null;
+}
+
+/** Выбрать победителей. Повтор возвращает уже выбранных. */
+export const drawGiveawayFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: z.string().max(16) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { drawWinners } = await import("@/core/giveaways/draw");
+    return (await drawWinners(ctx, data.id, await memberCheck(ctx))).giveaway;
+  });
+
+/** Заменить победителя; причина обязательна и остаётся в журнале розыгрыша. */
+export const rerollGiveawayWinnerFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({ id: z.string().max(16), userKey: z.string().max(80), reason: z.string().max(500) })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await moduleAdmin("manager");
+    const { rerollWinner } = await import("@/core/giveaways/draw");
+    return (await rerollWinner(ctx, data.id, data.userKey, data.reason, await memberCheck(ctx)))
+      .giveaway;
+  });

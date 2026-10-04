@@ -28,6 +28,38 @@ export type GiveawayChannel = (typeof GIVEAWAY_CHANNELS)[number];
 export const GIVEAWAY_STATUSES = ["open", "closed", "drawn"] as const;
 export type GiveawayStatus = (typeof GIVEAWAY_STATUSES)[number];
 
+/** Победитель: ключ покупателя (по нему же шлём сообщение), Telegram id и канал участия. */
+export type GiveawayWinner = {
+  userKey: string;
+  telegramId: number | null;
+  channel: "telegram" | "instagram";
+};
+
+/** Замена победителя: кого, на кого, зачем и когда — запись журнала. */
+export type GiveawayReroll = {
+  at: string;
+  replaced: string;
+  by: string;
+  reason: string;
+};
+
+/**
+ * Итог выбора (core/giveaways/draw): зерно и хеш списка позволяют любому
+ * повторить выбор. Пишется один раз; дальше меняются только победители
+ * через «Перевыбрать», каждая замена — в `rerolls`.
+ */
+export type GiveawayResult = {
+  seed: string;
+  /** sha256 отсортированного списка допущенных ключей, по одному в строке. */
+  listHash: string;
+  /** Сколько человек участвовало и сколько из них допущено к выбору. */
+  entered: number;
+  eligible: number;
+  drawnAt: string;
+  winners: GiveawayWinner[];
+  rerolls: GiveawayReroll[];
+};
+
 export type Giveaway = {
   id: string;
   /** Версия записи: растёт при каждой правке, окно со старой версией получает отказ. */
@@ -55,6 +87,8 @@ export type Giveaway = {
   /** Не выбирать победителем сотрудников магазина. */
   excludeStaff: boolean;
   status: GiveawayStatus;
+  /** Есть только у выбранного (status = drawn). */
+  result?: GiveawayResult;
   createdAt: string;
   updatedAt: string;
 };
@@ -134,6 +168,7 @@ export function parseGiveaway(raw: string | null | undefined): Giveaway | null {
       status: GIVEAWAY_STATUSES.includes(p.status as GiveawayStatus)
         ? (p.status as GiveawayStatus)
         : "open",
+      ...(p.result && Array.isArray(p.result.winners) ? { result: p.result } : {}),
       createdAt: typeof p.createdAt === "string" ? p.createdAt : p.endsAt,
       updatedAt: typeof p.updatedAt === "string" ? p.updatedAt : p.endsAt,
     };

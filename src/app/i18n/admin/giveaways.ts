@@ -60,6 +60,11 @@ export const ru = {
   "err.giveaway.stale": "Розыгрыш изменён в другом окне. Обновите страницу и повторите.",
   "err.giveaway.instagramOnly": "Этот розыгрыш проходит только в Instagram.",
   "err.giveaway.notOpen": "Приём закрыт — условия уже не меняются.",
+  "err.giveaway.stillOpen": "Приём ещё идёт: закройте его, потом выбирайте победителей.",
+  "err.giveaway.notDrawn": "Победители ещё не выбраны.",
+  "err.giveaway.rerollReason": "Укажите причину замены победителя.",
+  "err.giveaway.rerollReasonLong": "Причина — не длиннее {max} символов.",
+  "err.giveaway.rerollStale": "Этого победителя уже заменили. Обновите страницу.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -121,6 +126,12 @@ export const kk: SectionDict<typeof ru> = {
   "err.giveaway.stale": "Ұтыс ойыны басқа терезеде өзгертілді. Бетті жаңартып, қайталаңыз.",
   "err.giveaway.instagramOnly": "Бұл ұтыс ойыны тек Instagram-да өтеді.",
   "err.giveaway.notOpen": "Қабылдау жабылған — шарттар енді өзгермейді.",
+  "err.giveaway.stillOpen":
+    "Қабылдау әлі жүріп жатыр: алдымен оны жауып, содан кейін жеңімпаздарды таңдаңыз.",
+  "err.giveaway.notDrawn": "Жеңімпаздар әлі таңдалмаған.",
+  "err.giveaway.rerollReason": "Жеңімпазды ауыстыру себебін көрсетіңіз.",
+  "err.giveaway.rerollReasonLong": "Себеп — {max} таңбадан аспауы керек.",
+  "err.giveaway.rerollStale": "Бұл жеңімпаз бұрын ауыстырылған. Бетті жаңартыңыз.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -183,6 +194,11 @@ export const en: SectionDict<typeof ru> = {
     "The giveaway was changed in another window. Refresh the page and try again.",
   "err.giveaway.instagramOnly": "This giveaway runs in Instagram only.",
   "err.giveaway.notOpen": "Entries are closed — the terms can no longer be changed.",
+  "err.giveaway.stillOpen": "Entries are still open: close them first, then pick the winners.",
+  "err.giveaway.notDrawn": "The winners have not been drawn yet.",
+  "err.giveaway.rerollReason": "Give a reason for replacing the winner.",
+  "err.giveaway.rerollReasonLong": "The reason must be at most {max} characters.",
+  "err.giveaway.rerollStale": "This winner has already been replaced. Refresh the page.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -245,4 +261,10 @@ export const uz: SectionDict<typeof ru> = {
     "Sovrin o'yini boshqa oynada o'zgartirildi. Sahifani yangilab, qayta urinib ko'ring.",
   "err.giveaway.instagramOnly": "Bu sovrin o'yini faqat Instagram'da o'tadi.",
   "err.giveaway.notOpen": "Qabul yopilgan — shartlar endi o'zgarmaydi.",
+  "err.giveaway.stillOpen":
+    "Qabul hali davom etmoqda: avval uni yoping, keyin g'oliblarni tanlang.",
+  "err.giveaway.notDrawn": "G'oliblar hali tanlanmagan.",
+  "err.giveaway.rerollReason": "G'olibni almashtirish sababini yozing.",
+  "err.giveaway.rerollReasonLong": "Sabab {max} belgidan oshmasligi kerak.",
+  "err.giveaway.rerollStale": "Bu g'olib allaqachon almashtirilgan. Sahifani yangilang.",
 };
