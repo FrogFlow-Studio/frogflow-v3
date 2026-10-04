@@ -265,6 +265,27 @@ export async function openTicketNumbers(
   return out;
 }
 
+/** Кому можно поручить диалог: владелец и менеджеры (наблюдатель отвечать не может). */
+export function inboxAssignees(
+  ctx: TenantContext,
+): { username: string; name: string | null; owner: boolean }[] {
+  const a = ctx.tenant.settings.admin;
+  const owner = a?.username ? [{ username: a.username, name: null, owner: true }] : [];
+  const managers = (a?.users ?? [])
+    .filter((u) => u.role === "manager")
+    .map((u) => ({ username: u.username, name: u.name ?? null, owner: false }));
+  return [...owner, ...managers];
+}
+
+/**
+ * Ответственный, которого уже нет среди сотрудников (уволен, удалён, стал наблюдателем),
+ * для списка и счётчиков — «ничей»: иначе его диалоги не «мои» ни у кого и не «ничьи».
+ * Строка учёта не меняется: вернётся в команду — диалоги снова его.
+ */
+export function liveAssignee(ctx: TenantContext, assignee: string | null): string | null {
+  return assignee && inboxAssignees(ctx).some((a) => a.username === assignee) ? assignee : null;
+}
+
 /* ── список: фильтры и порядок ─────────────────────────────────────── */
 
 export type InboxChannel = "telegram" | "instagram" | "whatsapp";

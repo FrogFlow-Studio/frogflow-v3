@@ -2450,18 +2450,6 @@ const tgId = z
   .int()
   .refine((n) => n !== 0, "telegram_id не может быть нулём");
 
-/** Кому можно поручить диалог: владелец и менеджеры (наблюдатель отвечать не может). */
-function inboxAssignees(
-  ctx: TenantContext,
-): { username: string; name: string | null; owner: boolean }[] {
-  const a = ctx.tenant.settings.admin;
-  const owner = a?.username ? [{ username: a.username, name: null, owner: true }] : [];
-  const managers = (a?.users ?? [])
-    .filter((u) => u.role === "manager")
-    .map((u) => ({ username: u.username, name: u.name ?? null, owner: false }));
-  return [...owner, ...managers];
-}
-
 const inboxFilterSchema = z.object({
   status: z.enum(["open", "closed", "all"]),
   who: z.enum(["mine", "none", "all"]),
@@ -2509,7 +2497,7 @@ export const chatConversationsFn = createServerFn({ method: "GET" })
       totals,
       asOf,
       me,
-      assignees: inboxAssignees(ctx),
+      assignees: inbox.inboxAssignees(ctx),
       quickReplies: inbox.parseQuickReplies(rawReplies),
       unansweredMinutes: parseUnansweredMinutes(rawUnanswered),
       unansweredEscalate: parseEscalate(rawEscalate),
@@ -2651,9 +2639,9 @@ export const inboxSetFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await chatModule("manager");
     const { adminActor } = await import("@/app/auth/guards.server");
+    const { setInboxMeta, inboxAssignees } = await import("@/core/inbox/inbox");
     if (data.assignee && !inboxAssignees(ctx).some((a) => a.username === data.assignee))
       throw new UserError("err.admin.inboxAssignee", "Такого пользователя нет в команде магазина.");
-    const { setInboxMeta } = await import("@/core/inbox/inbox");
     const meta = await setInboxMeta(
       ctx,
       data.telegramId,

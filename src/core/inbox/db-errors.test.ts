@@ -36,7 +36,14 @@ function ctxBroken(table: string, helpdesk = false) {
         ? (name: string) => (name === table ? broken : t.from(name))
         : Reflect.get(t, prop, r),
   });
-  return { tenant: { id: BOT, modules: { helpdesk } }, db: wrapped } as unknown as TenantContext;
+  return {
+    tenant: {
+      id: BOT,
+      modules: { helpdesk },
+      settings: { admin: { username: "owner", users: [{ username: "anna", role: "manager" }] } },
+    },
+    db: wrapped,
+  } as unknown as TenantContext;
 }
 
 const ALL = { status: "all", who: "all", channel: "all" } as const;

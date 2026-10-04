@@ -53,7 +53,19 @@ function setup(total = 3000) {
     })),
   ];
   const ctx = {
-    tenant: { id: BOT, modules: { helpdesk: false } },
+    tenant: {
+      id: BOT,
+      modules: { helpdesk: false },
+      settings: {
+        admin: {
+          username: "owner",
+          users: [
+            { username: "anna", role: "manager" },
+            { username: "boris", role: "manager" },
+          ],
+        },
+      },
+    },
     db,
   } as unknown as TenantContext;
   return { ctx, db };
@@ -182,6 +194,31 @@ describe("страницы списка диалогов", () => {
       unread: 300,
     });
     expect(await inboxTotals(ctx, "anna")).toMatchObject({ mine: 1 });
+  });
+
+  it("Д6: диалоги удалённого менеджера — «ничьи» в списке и в счётчиках", async () => {
+    const { ctx, db } = setup();
+    // №3 назначен на anna, №6 — на boris. Boris уволен: удалён из команды.
+    (ctx.tenant.settings.admin as { users: { username: string; role: string }[] }).users = [
+      { username: "anna", role: "manager" },
+    ];
+    // Хвост списка (№9…1) читается одной страницей: без прохода по всем 3000 диалогам.
+    const tail = await listInboxPage(ctx, {
+      filter: { ...ALL, status: "open", who: "none" },
+      me: "anna",
+      before: { last_message_at: new Date(T0 + 3000).toISOString(), telegram_id: 10 },
+    });
+    expect(tail.items.map((i) => i.telegram_id)).toContain(6);
+    expect(tail.items.map((i) => i.telegram_id)).not.toContain(3);
+    expect(await inboxTotals(ctx, "anna")).toMatchObject({ unassigned: 2997, mine: 1 });
+    // Строка учёта не тронута: вернётся в команду — диалог снова его.
+    expect(
+      (
+        db.tables.zernio_logs!.find((r) => r.event_id === inboxEventId(BOT, 6))!.payload as {
+          assignee: string;
+        }
+      ).assignee,
+    ).toBe("boris");
   });
 
   it("опрос берёт только изменившиеся с прошлого раза", async () => {

@@ -69,6 +69,7 @@ const ALLOWED: Record<string, string[]> = {
   "src/core/broadcasts/clicks.ts": [`${PAGE} (рассылки на экране, ≤ 50)`],
   "src/core/broadcasts/segments.ts": [FIXED],
   "src/core/customers/card.ts": [FEW, FEW, FEW],
+  "src/core/inbox/page.ts": ["сотрудники магазина (владелец и менеджеры, не больше 21)"],
   "src/core/delivery/watermark.server.ts": Array<string>(5).fill(
     "keys — кусок CHECK_CHUNK (100), нарезка у вызывающего",
   ),

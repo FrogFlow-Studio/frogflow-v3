@@ -11,7 +11,9 @@ import {
 } from "@/core/chat/chat";
 import {
   inboxChangedIds,
+  inboxAssignees,
   inboxMetaFor,
+  liveAssignee,
   matchesInbox,
   mergeInbox,
   openTicketNumbers,
@@ -44,7 +46,7 @@ async function itemsOf(
     ctx,
     convs.map((c) => c.telegram_id),
   );
-  return mergeInbox(convs, meta);
+  return mergeInbox(convs, meta).map((i) => ({ ...i, assignee: liveAssignee(ctx, i.assignee) }));
 }
 
 async function withTickets(ctx: TenantContext, items: InboxItem[]): Promise<InboxItem[]> {
@@ -170,6 +172,7 @@ export async function inboxTotals(ctx: TenantContext, me: string): Promise<Inbox
         .like("event_id", prefix)
         .eq("status", "closed"),
     ),
+    // Ответственный, которого нет среди сотрудников, считается «ничьим» (liveAssignee).
     count(
       "с ответственным",
       ctx.db
@@ -177,7 +180,10 @@ export async function inboxTotals(ctx: TenantContext, me: string): Promise<Inbox
         .select("id", { count: "exact", head: true })
         .like("event_id", prefix)
         .eq("status", "open")
-        .not("payload->>assignee", "is", null),
+        .in(
+          "payload->>assignee",
+          inboxAssignees(ctx).map((a) => a.username),
+        ),
     ),
     count(
       "мои",
