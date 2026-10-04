@@ -9,6 +9,7 @@ import {
   lastError,
   planLabel,
 } from "@/app/operator/client-health";
+import { TodayTasks } from "@/app/operator/client/notes";
 import { Badge, Empty, PageTitle, Stat } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed/")({
@@ -57,6 +58,7 @@ function ClientsPage() {
           </Link>
         }
       />
+      <TodayTasks />
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat
           label="Клиентов"

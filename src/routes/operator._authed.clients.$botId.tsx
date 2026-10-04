@@ -12,6 +12,7 @@ import { ConsultantLimitsCard, SmartSearchLimitCard } from "@/app/operator/clien
 import { ShopGroupCard } from "@/app/operator/client/shop-group";
 import { CommunityModCard } from "@/app/operator/client/community";
 import { BillingCard } from "@/app/operator/client/billing";
+import { NotesCard } from "@/app/operator/client/notes";
 import { HealthCard, MessageCard } from "@/app/operator/client/health";
 import { ReceiptAuditCard } from "@/app/operator/client/receipt-audit";
 import { AiBalanceCard } from "@/app/operator/client/ai-balance";
@@ -140,6 +141,7 @@ function ClientPage() {
             <AdminAccessCard c={c} onDone={refresh} />
             <ModulesCard c={c} onDone={refresh} />
             <MetaCard c={c} onDone={refresh} />
+            <NotesCard c={c} />
             <MessageCard c={c} />
             <ShopGroupCard c={c} />
             <CommunityModCard c={c} />
