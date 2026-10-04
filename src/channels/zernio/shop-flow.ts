@@ -191,6 +191,29 @@ export const ONE_SECTION_HINT: Record<Locale, string> = {
   uz: "Bo‘limlar bittadan ochiladi — birinchisini ko‘rsataman. Boshqa bo‘lim: «katalog».",
 };
 
+/** Склонение «товар» для русского счёта: 1 товар, 2 товара, 5 товаров. */
+function ruItems(n: number): string {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return "товар";
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return "товара";
+  return "товаров";
+}
+
+/** Короткая сводка корзины для чата: «🛒 В корзине 3 товара на 12 400 ₸» (Б5). */
+export function cartCardText(locale: Locale, count: number, total: string): string {
+  switch (locale) {
+    case "kk":
+      return `🛒 Себетте ${count} тауар, сомасы ${total}`;
+    case "en":
+      return `🛒 ${count} ${count === 1 ? "item" : "items"} in your cart, ${total}`;
+    case "uz":
+      return `🛒 Savatda ${count} ta mahsulot, ${total}`;
+    default:
+      return `🛒 В корзине ${count} ${ruItems(count)} на ${total}`;
+  }
+}
+
 /** Итог «несколько номеров»: что положили и что не нашли / нужно выбрать вариант. */
 export const MULTI_ADD_COPY: Record<
   Locale,

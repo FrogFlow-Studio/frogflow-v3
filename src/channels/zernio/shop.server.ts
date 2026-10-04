@@ -144,6 +144,7 @@ import {
   plain,
   productNumberFromKeywords,
   productNumberFromName,
+  cartCardText,
 } from "./shop-flow";
 import { matchFulfillmentType } from "@/core/fulfillment/pure";
 import {
@@ -185,6 +186,8 @@ type DirectMemory = {
 };
 
 type Shop = {
+  /** Время сообщения покупателя по часам Zernio, мс; нет — считаем свежим. */
+  inboundAt: number | null;
   ctx: TenantContext;
   customer: Customer;
   transport: ZernioTransport;
@@ -422,6 +425,8 @@ export async function handleShopMessage(
     locale,
     m: COPY[locale],
     bot,
+    inboundAt:
+      msg.sentAt && Number.isFinite(Date.parse(msg.sentAt)) ? Date.parse(msg.sentAt) : null,
   };
   const outcome = await route(s, msg);
   return { outcome, customer: s.customer };
@@ -955,6 +960,9 @@ async function handleNativeCart(s: Shop, order: NativeOrder): Promise<ShopOutcom
     await reply(s, plain(s.m.nativeCartForwarded), { force: true });
     return "handled";
   }
+  // Покупатель увидит, что бот понял корзину, ещё до вопросов оформления.
+  const card = await cartCard(s.ctx, s.customer, s.locale, s.inboundAt);
+  if (card) await reply(s, card, { force: true });
   await startCheckout(s);
   return "handled";
 }
@@ -1637,6 +1645,31 @@ async function addAndShowCart(
     return;
   }
   await showCart(s, true, plain(s.m.added));
+}
+
+/**
+ * Сводка корзины одной строкой — та же цена, что в оформлении (`cartSummary`:
+ * скидки, баллы, сертификат). null — корзина пуста. Событие старше окна ответа
+ * (повторная доставка вебхука) не отвечаем: сообщение всё равно не дойдёт.
+ */
+export async function cartCard(
+  ctx: TenantContext,
+  customer: Customer,
+  locale: Locale,
+  inboundAt: number | null = null,
+): Promise<string | null> {
+  if (inboundAt !== null && Date.now() - inboundAt > REPLY_WINDOW_MS) return null;
+  const items = await listCart(ctx, customer);
+  if (items.length === 0) return null;
+  const st = customer.state;
+  const priced = await priceCart(ctx, items, st.country_code ?? null);
+  const sum = await cartSummary(ctx, customer, priced, {
+    promoCode: st.promo_code,
+    usePoints: st.use_points,
+    giftCode: st.gift_certificate_code,
+  });
+  const count = items.reduce((n, i) => n + Number(i.quantity), 0);
+  return cartCardText(locale, count, formatMoney(sum.total, sum.currency));
 }
 
 async function showCart(s: Shop, force: boolean, prefix?: string) {
