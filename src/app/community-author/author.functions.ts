@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { notFound } from "@tanstack/react-router";
 import { z } from "zod";
 import { SHOP_SLUG_RE } from "@/core/tenant/slug";
+import { logFailure } from "@/lib/log-failure";
 
 /** Публичная страница автора (С6). Автор без согласия, скрытый или с прежней платформы — «не найден». */
 export const authorPageFn = createServerFn({ method: "GET" })
@@ -21,7 +22,7 @@ export const recommendedShopsFn = createServerFn({ method: "GET" })
       const { recommendedShops } = await import("@/core/community/author-page.server");
       return { shops: await recommendedShops(data.slug) };
     } catch (e) {
-      console.error("recommendedShops failed", e);
+      logFailure("community.recommendedShops", e);
       return { shops: [] };
     }
   });

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { logFailure } from "@/lib/log-failure";
 
 /**
  * Счётчик площадки (В20). Публичная функция без входа и без cookie: считает посещение /market,
@@ -28,7 +29,7 @@ export const trackMarketFn = createServerFn({ method: "POST" })
         secret: env().SESSION_SECRET,
       });
     } catch (e) {
-      console.error("market track failed", e);
+      logFailure("market.track", e);
     }
     return { ok: true as const };
   });

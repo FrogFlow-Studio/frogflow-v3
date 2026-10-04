@@ -40,7 +40,7 @@ const SECRET_KEY =
 export function scrubSecretsIn(text: string): string {
   return text
     .replace(/([?&]t=)[0-9a-f]{16,64}/gi, "$1***")
-    .replace(/\b\d{6,12}:[A-Za-z0-9_-]{30,}/g, "***:***")
+    .replace(/(?<!\d)\d{6,12}:[A-Za-z0-9_-]{30,}/g, "***:***")
     .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer ***");
 }
 

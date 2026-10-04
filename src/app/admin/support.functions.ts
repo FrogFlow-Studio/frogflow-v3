@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { logFailure } from "@/lib/log-failure";
 
 /**
  * Чат с поддержкой платформы. Читает вся команда магазина (кроме бухгалтера),
@@ -62,7 +63,7 @@ export const sendSupportMessageFn = createServerFn({ method: "POST" })
       ctx.tenant.name,
       r.message.id,
       r.message.body || "📎 скриншот",
-    ).catch((e: unknown) => console.error("[support] оповещение оператора", e));
+    ).catch((e: unknown) => logFailure("support.notifyOperator", e, { botId: ctx.tenant.id }));
     return { message: r.message };
   });
 
@@ -77,7 +78,7 @@ async function orderNumber(
     .eq("id", orderId)
     .maybeSingle();
   if (error) {
-    console.error(`[support:${ctx.tenant.id}] номер заказа для контекста`, error.message);
+    logFailure("support.orderNumber", error, { botId: ctx.tenant.id });
     return null;
   }
   return data ? Number(data.display_no ?? data.order_no) : null;

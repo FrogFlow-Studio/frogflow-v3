@@ -4,6 +4,7 @@ import {
   type UnappliedPayment,
   type UnappliedPaymentKind,
 } from "@/core/payments/payment";
+import { logFailure } from "@/lib/log-failure";
 
 /**
  * Шлюз прислал деньги, которые заказ не принял (закрытый заказ, не та сумма
@@ -29,6 +30,6 @@ export async function reportUnappliedPayment(
       : `⚠️ Платёж ${sum} через ${escapeHtml(p.provider)}${ref} не совпал с заказом #${no} по сумме или валюте — заказ не подтверждён. Проверьте кабинет шлюза.`;
   const { notifyAdminsHtml } = await import("@/channels/telegram/notify");
   await notifyAdminsHtml(ctx, text, { orderId: order.id, kind: "delivery_failure" }).catch((e) =>
-    console.error(`[payments] уведомление по заказу #${order.id}`, e),
+    logFailure("payments.unappliedNotice", e, { botId: ctx.tenant.id }),
   );
 }

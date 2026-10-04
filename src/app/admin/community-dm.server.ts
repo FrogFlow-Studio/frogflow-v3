@@ -4,6 +4,7 @@ import { claimDmNotice, sendDm } from "@/core/community/dm.server";
 import { communityProfile } from "@/core/community/profile";
 import { tenantContext, type TenantContext } from "@/core/tenant/resolve.server";
 import { adminTFor } from "@/app/admin/locale.server";
+import { logFailure } from "@/lib/log-failure";
 
 /**
  * Личное сообщение автору и одно уведомление ему в Telegram. Право на уведомление занимает
@@ -25,7 +26,7 @@ export async function sendCommunityDm(
       await notifyAdminsHtml(rctx, t("community.dm.notice", { name: from }), { kind: "system" });
     }
   } catch (e) {
-    console.error(`[community-dm:${ctx.tenant.id}] уведомление автору`, e);
+    logFailure("community-dm.notifyAuthor", e, { botId: ctx.tenant.id });
   }
   return { id: sent.id };
 }

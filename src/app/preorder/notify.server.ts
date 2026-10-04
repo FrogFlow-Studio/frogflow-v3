@@ -3,6 +3,7 @@ import { escapeHtml, COPY, preorderDate } from "@/channels/telegram/copy";
 import { adminTelegramApi, notifyAdminsHtml } from "@/channels/telegram/notify";
 import { notifyPreorderMoved, type PreorderMove } from "@/core/preorder/reschedule";
 import { adminTFor } from "@/app/admin/locale.server";
+import { logFailure } from "@/lib/log-failure";
 
 /**
  * Продавец перенёс срок предзаказа: покупателям с открытым заказом — по
@@ -62,7 +63,7 @@ export async function notifyPreorderMovedChannels(
       result.left ? numbers(result.leftOrders) : "",
     ].filter(Boolean);
     await notifyAdminsHtml(ctx, lines.join("\n"), { kind: "system" }).catch((e) =>
-      console.error(`[preorder-move:${ctx.tenant.id}] список продавцу`, e),
+      logFailure("preorder-move.notifySeller", e, { botId: ctx.tenant.id }),
     );
   }
   return result;

@@ -12,6 +12,7 @@ import { UserError } from "@/core/i18n/user-error";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { BATCH_MAX } from "@/core/orders/batch-pure";
 import { inChunks } from "@/lib/in-chunks";
+import { logFailure } from "@/lib/log-failure";
 
 /**
  * Сборка и печать пачкой (А16): выбранные заказы — листами упаковки, этикетками
@@ -182,7 +183,7 @@ export async function assembleOrders(
         out.assembled += 1;
         await recordOrderEvent(ctx, o.id, "status", { to: "ready", batch: true }, actor);
         const sent = await notify({ ...o, status: "ready" }).catch((e) => {
-          console.error(`[orders] сборка пачкой, заказ #${o.id}: ${String(e)}`);
+          logFailure("orders.assembleNotify", e, { botId: ctx.tenant.id });
           return false;
         });
         if (!sent) out.notNotified += 1;

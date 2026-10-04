@@ -1,6 +1,7 @@
 import type { Ticket } from "@/core/helpdesk/tickets";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
+import { logFailure } from "@/lib/log-failure";
 
 export type TeamMember = { username: string; name: string | null };
 
@@ -62,11 +63,11 @@ export async function notifyTicketClosed(
     if (rated) return true;
     const { markRatingAsked } = await import("@/core/helpdesk/tickets");
     await markRatingAsked(ctx, ticket.id).catch((e) =>
-      console.error(`[helpdesk:${ctx.tenant.id}] отметка просьбы об оценке #${ticket.number}`, e),
+      logFailure("helpdesk.markRatingAsked", e, { botId: ctx.tenant.id }),
     );
     return true;
   } catch (e) {
-    console.error(`[helpdesk:${ctx.tenant.id}] закрытие #${ticket.number} не доставлено`, e);
+    logFailure("helpdesk.closeNotice", e, { botId: ctx.tenant.id });
     return false;
   }
 }

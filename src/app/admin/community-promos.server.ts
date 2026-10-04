@@ -4,6 +4,7 @@ import { claimInviteNotice, createJointPromo } from "@/core/community/joint.serv
 import { communityProfile } from "@/core/community/profile";
 import { tenantContext, tenantDirectory, type TenantContext } from "@/core/tenant/resolve.server";
 import { adminTFor } from "@/app/admin/locale.server";
+import { logFailure } from "@/lib/log-failure";
 
 /**
  * Предложить акцию и позвать участников: каждому приглашённому — одно уведомление в Telegram. Право
@@ -34,7 +35,7 @@ export async function proposeJointPromo(
         kind: "system",
       });
     } catch (e) {
-      console.error(`[community-joint:${ctx.tenant.id}] уведомление ${botId}`, e);
+      logFailure("community-joint.notify", e, { botId: ctx.tenant.id });
     }
   }
   return { id: made.id };
