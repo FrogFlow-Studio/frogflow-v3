@@ -84,6 +84,12 @@ export type TenantSettings = {
    * архивирует и удаляет файлы. prev_status — статус до запроса.
    */
   deletion?: { requested_at: string; by: string; prev_status: BotStatus };
+  /**
+   * Центр уведомлений (core/notifications): когда каждый вход админки в
+   * последний раз отметил ленту прочитанной (ISO по логину `admin:<логин>`).
+   * Пишется только через patchTenantSettings: ключи соседей не затираются.
+   */
+  notify_read?: Record<string, string>;
   /** Код агентства-партнёра, которое привело клиента (core/partners). */
   partner?: string;
   /**

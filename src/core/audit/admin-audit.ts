@@ -60,6 +60,8 @@ const NOT_AUDITED = new Set([
   "vipProofUrlFn",
   "zernioConnectLinkFn",
   "hideSetupFn",
+  // «прочитано» в центре уведомлений: отметка продавца без изменений магазина
+  "markNotificationsReadFn",
   "skipSetupStepFn",
   "hideMovedWelcomeFn",
   "savePushFn",

@@ -20,6 +20,8 @@ const OPEN_TO_ACCOUNTANT = new Set([
   "admin.functions.ts:orderFn",
   "admin.functions.ts:analyticsFn",
   "admin.functions.ts:billingHistoryFn",
+  "notifications.functions.ts:notificationsFn",
+  "notifications.functions.ts:markNotificationsReadFn",
   "cost.functions.ts:costListFn",
   "cost.functions.ts:productCostFn",
   "cost.functions.ts:saveCostFn",

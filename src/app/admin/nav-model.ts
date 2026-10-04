@@ -60,7 +60,11 @@ export function buildAdminNav(shop: NavShop): AdminNav {
   if (shop.role === "accountant") {
     // Бухгалтеру — обзор, заказы, аналитика, прибыль, журнал склада и оплата тарифа.
     const groups: NavGroup[] = [
-      { id: "sales", label: "nav.groupSales", items: [orders] },
+      {
+        id: "sales",
+        label: "nav.groupSales",
+        items: [orders, { to: "/admin/notifications", label: "bell.nav" }],
+      },
       {
         id: "analytics",
         label: "nav.groupAnalytics",
@@ -100,6 +104,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     label: "nav.groupSales",
     items: compact<NavItem>([
       orders,
+      { to: "/admin/notifications", label: "bell.nav" },
       customers,
       m.manager_chat && chat,
       m.helpdesk &&

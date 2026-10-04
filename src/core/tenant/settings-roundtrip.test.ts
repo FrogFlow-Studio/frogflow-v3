@@ -27,6 +27,7 @@ const SAVED = {
   hosts: ["shop.kz"],
   served_by: "v2",
   served_by_since: "2026-10-01T09:00:00.000Z",
+  notify_read: { "admin:kate": "2026-10-02T09:00:00.000Z" },
   on_overdue: "suspend",
   warn_days_before: 3,
   grace_days: 2,

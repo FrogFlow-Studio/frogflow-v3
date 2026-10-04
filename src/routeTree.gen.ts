@@ -48,6 +48,7 @@ import { Route as AdminAuthedInstagramRouteImport } from './routes/admin._authed
 import { Route as AdminAuthedLogRouteImport } from './routes/admin._authed.log'
 import { Route as AdminAuthedModulesRouteImport } from './routes/admin._authed.modules'
 import { Route as AdminAuthedNewsRouteImport } from './routes/admin._authed.news'
+import { Route as AdminAuthedNotificationsRouteImport } from './routes/admin._authed.notifications'
 import { Route as AdminAuthedOrdersRouteImport } from './routes/admin._authed.orders'
 import { Route as AdminAuthedPipelineRouteImport } from './routes/admin._authed.pipeline'
 import { Route as AdminAuthedPostsRouteImport } from './routes/admin._authed.posts'
@@ -322,6 +323,12 @@ const AdminAuthedNewsRoute = AdminAuthedNewsRouteImport.update({
   path: '/news',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
+const AdminAuthedNotificationsRoute =
+  AdminAuthedNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AdminAuthedRoute,
+  } as any)
 const AdminAuthedOrdersRoute = AdminAuthedOrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
@@ -772,6 +779,7 @@ export interface FileRoutesByFullPath {
   '/admin/log': typeof AdminAuthedLogRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
   '/admin/news': typeof AdminAuthedNewsRoute
+  '/admin/notifications': typeof AdminAuthedNotificationsRoute
   '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/pipeline': typeof AdminAuthedPipelineRoute
   '/admin/posts': typeof AdminAuthedPostsRoute
@@ -890,6 +898,7 @@ export interface FileRoutesByTo {
   '/admin/log': typeof AdminAuthedLogRoute
   '/admin/modules': typeof AdminAuthedModulesRoute
   '/admin/news': typeof AdminAuthedNewsRoute
+  '/admin/notifications': typeof AdminAuthedNotificationsRoute
   '/admin/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/pipeline': typeof AdminAuthedPipelineRoute
   '/admin/posts': typeof AdminAuthedPostsRoute
@@ -1010,6 +1019,7 @@ export interface FileRoutesById {
   '/admin/_authed/log': typeof AdminAuthedLogRoute
   '/admin/_authed/modules': typeof AdminAuthedModulesRoute
   '/admin/_authed/news': typeof AdminAuthedNewsRoute
+  '/admin/_authed/notifications': typeof AdminAuthedNotificationsRoute
   '/admin/_authed/orders': typeof AdminAuthedOrdersRouteWithChildren
   '/admin/_authed/pipeline': typeof AdminAuthedPipelineRoute
   '/admin/_authed/posts': typeof AdminAuthedPostsRoute
@@ -1131,6 +1141,7 @@ export interface FileRouteTypes {
     | '/admin/log'
     | '/admin/modules'
     | '/admin/news'
+    | '/admin/notifications'
     | '/admin/orders'
     | '/admin/pipeline'
     | '/admin/posts'
@@ -1249,6 +1260,7 @@ export interface FileRouteTypes {
     | '/admin/log'
     | '/admin/modules'
     | '/admin/news'
+    | '/admin/notifications'
     | '/admin/orders'
     | '/admin/pipeline'
     | '/admin/posts'
@@ -1368,6 +1380,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/log'
     | '/admin/_authed/modules'
     | '/admin/_authed/news'
+    | '/admin/_authed/notifications'
     | '/admin/_authed/orders'
     | '/admin/_authed/pipeline'
     | '/admin/_authed/posts'
@@ -1762,6 +1775,13 @@ declare module '@tanstack/react-router' {
       path: '/news'
       fullPath: '/admin/news'
       preLoaderRoute: typeof AdminAuthedNewsRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/notifications': {
+      id: '/admin/_authed/notifications'
+      path: '/notifications'
+      fullPath: '/admin/notifications'
+      preLoaderRoute: typeof AdminAuthedNotificationsRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/orders': {
@@ -2360,6 +2380,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedLogRoute: typeof AdminAuthedLogRoute
   AdminAuthedModulesRoute: typeof AdminAuthedModulesRoute
   AdminAuthedNewsRoute: typeof AdminAuthedNewsRoute
+  AdminAuthedNotificationsRoute: typeof AdminAuthedNotificationsRoute
   AdminAuthedOrdersRoute: typeof AdminAuthedOrdersRouteWithChildren
   AdminAuthedPipelineRoute: typeof AdminAuthedPipelineRoute
   AdminAuthedPostsRoute: typeof AdminAuthedPostsRoute
@@ -2406,6 +2427,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedLogRoute: AdminAuthedLogRoute,
   AdminAuthedModulesRoute: AdminAuthedModulesRoute,
   AdminAuthedNewsRoute: AdminAuthedNewsRoute,
+  AdminAuthedNotificationsRoute: AdminAuthedNotificationsRoute,
   AdminAuthedOrdersRoute: AdminAuthedOrdersRouteWithChildren,
   AdminAuthedPipelineRoute: AdminAuthedPipelineRoute,
   AdminAuthedPostsRoute: AdminAuthedPostsRoute,

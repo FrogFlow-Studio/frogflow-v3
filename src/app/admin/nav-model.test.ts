@@ -49,7 +49,13 @@ describe("меню админки", () => {
     const l = labels(
       shop({ role: "accountant", modules: { dashboard: true, profit: true, broadcasts: true } }),
     );
-    expect(l).toEqual(["/admin/orders", "/admin/analytics", "/admin/cost", "/admin/billing"]);
+    expect(l).toEqual([
+      "/admin/orders",
+      "/admin/notifications",
+      "/admin/analytics",
+      "/admin/cost",
+      "/admin/billing",
+    ]);
   });
 
   it("не владелец не видит настройки, модули и журнал", () => {

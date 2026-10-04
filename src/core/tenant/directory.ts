@@ -142,6 +142,12 @@ export function settingsFromJson(json: unknown): TenantSettings {
       typeof s.served_by_since === "string" && !Number.isNaN(Date.parse(s.served_by_since))
         ? s.served_by_since
         : undefined,
+    notify_read: (() => {
+      const out: Record<string, string> = {};
+      for (const [k, v] of Object.entries(obj(s.notify_read)))
+        if (typeof v === "string" && !Number.isNaN(Date.parse(v))) out[k] = v;
+      return Object.keys(out).length ? out : undefined;
+    })(),
     deletion: (() => {
       const d = obj(s.deletion);
       if (typeof d.requested_at !== "string" || Number.isNaN(Date.parse(d.requested_at)))
