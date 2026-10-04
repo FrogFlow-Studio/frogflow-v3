@@ -28,7 +28,6 @@ const ALLOWED: Record<string, string[]> = {
     "проверка существования: нужен лишь факт, что открытый счёт есть",
   ],
   "src/app/operator/operator.server.ts": [
-    "последнее событие по каналам: свежие 300 записей хватает для «когда было последнее»",
     `${SHOWN} (события клиента)`,
     `${SHOWN} (события платформы)`,
     `${SHOWN} (рассылки оператора)`,
@@ -83,9 +82,6 @@ const ALLOWED: Record<string, string[]> = {
     "постраничный обход переписки: страница по курсору (created_at, id), «Показать раньше»",
   ],
   "src/core/waitlist/waitlist.ts": ["постраничный обход: страница PAGE, курсор по user_key"],
-  "src/core/billing/invoice-check.server.ts": [
-    "проверка существования: нужен лишь факт, что подтверждение есть",
-  ],
   "src/core/billing/invoices.ts": [`${SHOWN} (открытые счета владельца)`],
   "src/core/storefront/share.server.ts": [
     "обложка: хватает первых COVER_SCAN товаров порядка продавца",

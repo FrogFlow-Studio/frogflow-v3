@@ -1,4 +1,4 @@
-import { pageAll } from "@/core/db/page";
+import { eachPage, pageAll } from "@/core/db/page";
 import { env } from "@/config/env";
 import { signupOriginLabel, type SignupOrigin } from "@/core/signup/origin";
 import {
@@ -348,11 +348,13 @@ export async function listClients(): Promise<ClientView[]> {
 export async function getClient(botId: string): Promise<ClientView> {
   const { latestHealth } = await import("./health.server");
   const health = await latestHealth([botId]).catch(() => new Map());
-  const [t, { stats, unread }, ex, zernioEvents] = await Promise.all([
-    requireTenant({ by: "id", value: botId }),
+  const t = await requireTenant({ by: "id", value: botId });
+  const [{ stats, unread }, ex, zernioEvents] = await Promise.all([
     readStats(),
     extras([botId]),
-    zernioLastEvents(botId).catch(() => new Map<string, string>()),
+    zernioLastEvents(botId, t.settings.zernio?.account_ids ?? []).catch(
+      () => new Map<string, string>(),
+    ),
   ]);
   const e = ex.get(botId);
   return toView(
@@ -382,31 +384,44 @@ const PROFILE_KEY = "@profile";
  * этому видит, что вебхук доходит именно до этого клиента. Под PROFILE_KEY —
  * профиль из последнего события: его записывают клиенту v1 перед переездом.
  */
-export async function zernioLastEvents(botId: string, limit = 300): Promise<Map<string, string>> {
+export async function zernioLastEvents(
+  botId: string,
+  wantIds: string[] = [],
+): Promise<Map<string, string>> {
   // Только события вебхука Zernio (`event_type` — имя события, как в HANDLED_EVENTS): отметки
   // автосообщений, учёта диалогов, обращений и склада пишутся в ту же таблицу, тоже свежие, и
   // иначе выдали бы «последнее событие: 10 минут назад» при сломанном вебхуке.
   const { HANDLED_EVENTS } = await import("@/channels/zernio/dispatch.server");
-  const { data, error: readErr7 } = await serviceDb()
-    .from("zernio_logs")
-    .select("payload, created_at")
-    .eq("bot_id", botId)
-    .in("event_type", [...HANDLED_EVENTS])
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (readErr7) throw serverFailure(`[operator] журнал вебхуков не прочитан: ${readErr7.message}`);
   const out = new Map<string, string>();
-  for (const row of data ?? []) {
-    if (!out.has("*")) out.set("*", row.created_at);
-    const p = row.payload as {
-      account?: { accountId?: string; id?: string; _id?: string; profileId?: string };
-    } | null;
-    const id = p?.account?.accountId || p?.account?.id || p?.account?._id;
-    if (id && !out.has(id)) out.set(id, row.created_at);
-    const profile = p?.account?.profileId;
-    if (typeof profile === "string" && profile && !out.has(PROFILE_KEY))
-      out.set(PROFILE_KEY, profile);
-  }
+  // Читаем от свежих к старым постранично, пока не найдены «*» и все wantIds: аккаунт, молчавший
+  // дольше последних N событий, иначе выглядел бы «событий не было» при живом вебхуке.
+  const done = () => out.has("*") && wantIds.every((id) => out.has(id));
+  await eachPage(
+    (from, to) =>
+      serviceDb()
+        .from("zernio_logs")
+        .select("payload, created_at")
+        .eq("bot_id", botId)
+        .in("event_type", [...HANDLED_EVENTS])
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to),
+    "[operator] журнал вебхуков",
+    (rows) => {
+      for (const row of rows) {
+        if (!out.has("*")) out.set("*", row.created_at);
+        const p = row.payload as {
+          account?: { accountId?: string; id?: string; _id?: string; profileId?: string };
+        } | null;
+        const id = p?.account?.accountId || p?.account?.id || p?.account?._id;
+        if (id && !out.has(id)) out.set(id, row.created_at);
+        const profile = p?.account?.profileId;
+        if (typeof profile === "string" && profile && !out.has(PROFILE_KEY))
+          out.set(PROFILE_KEY, profile);
+      }
+      return !done();
+    },
+  );
   return out;
 }
 
@@ -418,6 +433,7 @@ export async function listEvents(botId: string, limit = 40): Promise<EventView[]
     .select("id, at, actor, kind, payload")
     .eq("bot_id", botId)
     .order("at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(limit);
   if (readErr6) throw serverFailure(`[operator] события клиента не прочитаны: ${readErr6.message}`);
   return data ?? [];
@@ -439,6 +455,7 @@ export async function listAllEvents(
     .from("bot_events")
     .select("id, at, actor, kind, payload, bot_id")
     .order("at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(opts.limit ?? 200);
   if (opts.botId) q = q.eq("bot_id", opts.botId);
   if (opts.kind) q = q.eq("kind", opts.kind);

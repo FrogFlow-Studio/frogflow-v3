@@ -10,7 +10,7 @@ import {
   recipientNames,
 } from "./invoice-check";
 import type { OpenInvoice } from "./invoices";
-import { serverFailure } from "@/lib/server-failure";
+import { pageAll } from "@/core/db/page";
 
 /**
  * Чек за подписку: распознать (PDF Kaspi — бесплатно из текста, фото —
@@ -41,16 +41,18 @@ async function marksBy(
   value: string,
   op: "eq" | "like",
 ): Promise<Array<{ invoice_id: string | null }>> {
-  const q = serviceDb()
-    .from("bot_events")
-    .select("payload")
-    .eq("kind", "payment")
-    .eq("payload->>action", "invoice_proof");
-  const { data, error } = await (
-    op === "eq" ? q.eq(`payload->>${field}`, value) : q.like(`payload->>${field}`, value)
-  ).limit(50);
-  if (error) throw serverFailure(`Не удалось проверить повтор чека: ${error.message}`);
-  return (data ?? []).map((r) => {
+  // Все отметки, не первые 50: при длинном списке повтор чека иначе пропускался бы молча.
+  const rows = await pageAll((from, to) => {
+    const q = serviceDb()
+      .from("bot_events")
+      .select("payload")
+      .eq("kind", "payment")
+      .eq("payload->>action", "invoice_proof");
+    return (op === "eq" ? q.eq(`payload->>${field}`, value) : q.like(`payload->>${field}`, value))
+      .order("id", { ascending: true })
+      .range(from, to);
+  }, "Не удалось проверить повтор чека");
+  return rows.map((r) => {
     const p = r.payload as { invoice_id?: unknown } | null;
     return { invoice_id: typeof p?.invoice_id === "string" ? p.invoice_id : null };
   });

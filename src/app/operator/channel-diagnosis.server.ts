@@ -134,7 +134,10 @@ async function zernioFacts(botId: string, channel: "instagram" | "whatsapp"): Pr
     }
   }
   try {
-    const events = await zernioLastEvents(botId);
+    const events = await zernioLastEvents(
+      botId,
+      f.accounts.map((a) => a.id),
+    );
     const own = f.accounts.map((a) => events.get(a.id)).filter((x): x is string => Boolean(x));
     f.lastEventAt = own.sort().at(-1) ?? events.get("*") ?? null;
   } catch (e) {
