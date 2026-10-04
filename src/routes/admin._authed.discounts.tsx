@@ -1,6 +1,7 @@
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
 import { ProductPicker, type PickerProduct } from "@/app/admin/product-picker";
 import { useEffect, useState } from "react";
+import { offerQueueFn } from "@/app/admin/stock-reports.functions";
 import { loyaltyTiersFn, saveLoyaltyTiersFn } from "@/app/admin/loyalty.functions";
 import {
   announceOfferFn,
@@ -28,6 +29,10 @@ import { utcToZonedLocal } from "@/core/export/csv";
 import { referralReportFn } from "@/app/admin/loyalty.functions";
 
 export const Route = createFileRoute("/admin/_authed/discounts")({
+  // Из отчёта «Залежавшийся товар»: id товаров через запятую — очередь для акций.
+  validateSearch: (s: Record<string, unknown>): { offerProducts?: string } => ({
+    offerProducts: typeof s.offerProducts === "string" ? s.offerProducts.slice(0, 800) : undefined,
+  }),
   loader: async () => {
     const [promos, gifts, settings, giftSale, tiers] = await Promise.all([
       promoCodesFn(),
@@ -600,6 +605,23 @@ function OffersCard() {
   useEffect(() => {
     void reload();
   }, []);
+  // Очередь товаров из отчёта «Залежавшийся товар»: форма берёт их по одному.
+  const { offerProducts } = Route.useSearch();
+  const [queue, setQueue] = useState<PickerProduct[]>([]);
+  useEffect(() => {
+    const ids = (offerProducts ?? "")
+      .split(",")
+      .filter((x) => /^[0-9a-f-]{36}$/i.test(x))
+      .slice(0, 20);
+    if (!ids.length) return;
+    void offerQueueFn({ data: { ids } })
+      .then((list) => {
+        setQueue(list);
+        setScope("product");
+        setProduct(list[0] ?? null);
+      })
+      .catch(() => {});
+  }, [offerProducts]);
   const reset = () => {
     setEditId(undefined);
     setProduct(null);
@@ -626,7 +648,14 @@ function OffersCard() {
         limit: scope === "product" && limit.trim() ? Number(limit) : null,
       },
     });
-    reset();
+    // Следующий товар из очереди: скидка и сроки остаются, меняется только товар.
+    if (!editId && queue.length > 1) {
+      setQueue(queue.slice(1));
+      setProduct(queue[1] ?? null);
+    } else {
+      setQueue([]);
+      reset();
+    }
     await reload();
   });
   const del = useAction(async (id: string) => {
@@ -668,6 +697,11 @@ function OffersCard() {
   return (
     <Card title={t("discounts.offers.title")} className="lg:col-span-2">
       <p className="mb-3 text-sm text-muted">{t("discounts.offers.intro")}</p>
+      {queue.length > 0 && (
+        <p className="mb-3 rounded border border-line bg-surface-2 p-2 text-sm">
+          {t("discounts.offers.queue", { n: queue.length })}
+        </p>
+      )}
       <form
         className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
         onSubmit={(e) => {
