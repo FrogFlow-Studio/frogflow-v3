@@ -7,14 +7,16 @@ import {
   useRouteContext,
   useRouter,
 } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { ordersFn } from "@/app/admin/admin.functions";
+import { assembleOrdersFn, orderBatchCountFn } from "@/app/admin/batch.functions";
 import { useLiveOrders } from "@/app/admin/live-orders";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
-import { Badge, Empty, PageTitle } from "@/app/ui";
+import { Badge, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
 import { usePullToRefresh } from "@/app/ui/pull-to-refresh";
 import { EmptyState } from "@/app/ui/states";
+import { BATCH_MAX } from "@/core/orders/batch-pure";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 import { slotOf } from "@/core/fulfillment/slots";
@@ -25,6 +27,8 @@ const search = z.object({
   pickup: z.enum(["today", "tomorrow", "overdue", "nodate"]).optional(),
   /** «Не доплачено»: задаток внесён, остаток нет (core/orders/admin underpaidOrderIds). */
   unpaid: z.boolean().optional(),
+  /** «К сборке сегодня»: принятые и в работе с днём получения «сегодня» (А16). */
+  assembly: z.literal("today").optional(),
 });
 
 const PICKUP_KEYS = ["today", "tomorrow", "overdue", "nodate"] as const;
@@ -146,17 +150,80 @@ function ExportButton({ paymentsOnly = false }: { paymentsOnly?: boolean }) {
   );
 }
 
+/** Поля фильтра в строку запроса: пустые не берём, `true` — «true». */
+function flat(o: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(o)
+      .filter(([, v]) => v !== undefined && v !== "")
+      .map(([k, v]) => [k, String(v)]),
+  );
+}
+
 function OrdersPage() {
   useLiveOrders();
   const { orders, counts, load } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
-  const { status, q, pickup, unpaid } = Route.useSearch();
+  const { status, q, pickup, unpaid, assembly } = Route.useSearch();
   const physical = shop.vertical === "confectionery" || shop.vertical === "flowers";
   const navigate = useNavigate();
   const router = useRouter();
   const pull = usePullToRefresh(() => router.invalidate());
   const [query, setQuery] = useState(q ?? "");
+  const filter = { status, q, pickup, unpaid, assembly };
+  const filterKey = JSON.stringify(filter);
+  // Выбор для «пачки» (А16): отдельные заказы страницы или «все N по фильтру».
+  const [picked, setPicked] = useState<number[]>([]);
+  const [matching, setMatching] = useState<number | null>(null);
+  const [allMode, setAllMode] = useState(false);
+  const [batchMsg, setBatchMsg] = useState<string | null>(null);
+  // Другой фильтр — другой список: выбор не переносим.
+  useEffect(() => {
+    setPicked([]);
+    setAllMode(false);
+    setMatching(null);
+  }, [filterKey]);
+  const pageIds = orders.map((o) => o.id);
+  const pageAllPicked = pageIds.length > 0 && pageIds.every((id) => picked.includes(id));
+  // Выбрана вся страница — узнаём, сколько заказов по фильтру всего (постранично, на сервере).
+  useEffect(() => {
+    if (!pageAllPicked || matching !== null) return;
+    let live = true;
+    void orderBatchCountFn({ data: filter })
+      .then((r) => live && setMatching(r.count))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageAllPicked, matching, filterKey]);
+  const toggle = (id: number) => {
+    setAllMode(false);
+    setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  };
+  const togglePage = () => {
+    setAllMode(false);
+    setPicked(pageAllPicked ? [] : pageIds);
+  };
+  const total = allMode ? (matching ?? picked.length) : picked.length;
+  const printSearch = allMode ? filter : { ids: picked.join(",") };
+  const tooMany = total > BATCH_MAX;
+  const assemble = useAction(async () => {
+    if (!confirm(t("orders.batch.assembleHint"))) return;
+    const r = await assembleOrdersFn({ data: allMode ? { filter } : { ids: picked } });
+    setBatchMsg(
+      [
+        t("orders.batch.done", { assembled: r.assembled, already: r.already, skipped: r.skipped }),
+        r.notNotified ? t("orders.batch.notNotified", { n: r.notNotified }) : "",
+        r.remaining ? t("orders.batch.remaining", { n: r.remaining }) : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
+    setPicked([]);
+    setAllMode(false);
+    await router.invalidate();
+  });
   const tabs: Array<[string | undefined, string]> = [
     [undefined, t("common.all")],
     ...(
@@ -209,7 +276,7 @@ function OrdersPage() {
             <Link
               key={k}
               to="/admin/orders"
-              search={{ status, q, pickup: pickup === k ? undefined : k, unpaid }}
+              search={{ status, q, pickup: pickup === k ? undefined : k, unpaid, assembly }}
               className={`badge cursor-pointer ${pickup === k ? "border-accent bg-accent/10 text-accent" : ""}`}
             >
               {t(`physical.pickup.${k}`)}
@@ -246,9 +313,18 @@ function OrdersPage() {
       )}
       {(physical || unpaid || (counts.unpaid ?? 0) > 0) && (
         <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+          {physical && (
+            <Link
+              to="/admin/orders"
+              search={{ status, q, pickup, unpaid, assembly: assembly ? undefined : "today" }}
+              className={`badge cursor-pointer ${assembly ? "border-accent bg-accent/10 text-accent" : ""}`}
+            >
+              {t("orders.filter.assembly")}
+            </Link>
+          )}
           <Link
             to="/admin/orders"
-            search={{ status, q, pickup, unpaid: unpaid ? undefined : true }}
+            search={{ status, q, pickup, unpaid: unpaid ? undefined : true, assembly }}
             className={`badge cursor-pointer ${unpaid ? "border-accent bg-accent/10 text-accent" : ""}`}
           >
             {t("physical.unpaid")}
@@ -266,7 +342,7 @@ function OrdersPage() {
             <Link
               key={label}
               to="/admin/orders"
-              search={{ status: s, q, pickup, unpaid }}
+              search={{ status: s, q, pickup, unpaid, assembly }}
               className={`badge cursor-pointer ${status === s ? "border-accent bg-accent/10 text-accent" : ""}`}
             >
               {label}
@@ -280,7 +356,7 @@ function OrdersPage() {
             e.preventDefault();
             void navigate({
               to: "/admin/orders",
-              search: { status, q: query || undefined, pickup, unpaid },
+              search: { status, q: query || undefined, pickup, unpaid, assembly },
             });
           }}
         >
@@ -293,8 +369,84 @@ function OrdersPage() {
           <button className="btn-secondary">{t("common.search")}</button>
         </form>
       </div>
+      {(picked.length > 0 || allMode) && (
+        <div
+          role="region"
+          aria-label={t("orders.batch.selected", { n: total })}
+          className="card sticky top-2 z-10 mb-3 flex flex-wrap items-center gap-2 p-3 text-sm"
+        >
+          <span className="font-medium">{t("orders.batch.selected", { n: total })}</span>
+          {!allMode && pageAllPicked && matching !== null && matching > pageIds.length && (
+            <button
+              type="button"
+              className="btn-secondary text-xs"
+              onClick={() => setAllMode(true)}
+            >
+              {t("orders.batch.selectFilter", { n: matching })}
+            </button>
+          )}
+          {!allMode && pageAllPicked && matching === null && (
+            <span className="text-xs text-muted">{t("orders.batch.counting")}</span>
+          )}
+          {allMode && (
+            <span className="text-xs text-muted">
+              {t("orders.batch.filterPicked", { n: total })}
+            </span>
+          )}
+          {tooMany ? (
+            <span className="text-xs text-danger">
+              {t("orders.batch.printLimit", { max: BATCH_MAX })}
+            </span>
+          ) : (
+            <>
+              <a
+                className="btn-secondary text-xs"
+                href={`/admin/print-batch?${new URLSearchParams({ kind: "slips", ...flat(printSearch) })}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {t("orders.batch.slips")}
+              </a>
+              <a
+                className="btn-secondary text-xs"
+                href={`/admin/print-batch?${new URLSearchParams({ kind: "labels", ...flat(printSearch) })}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {t("orders.batch.labels")}
+              </a>
+            </>
+          )}
+          {canEdit(shop.role) && (
+            <button
+              type="button"
+              className="btn-primary text-xs"
+              disabled={assemble.busy}
+              onClick={() => void assemble.run().catch(() => {})}
+            >
+              {t("orders.batch.assemble")}
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn-ghost text-xs"
+            onClick={() => {
+              setPicked([]);
+              setAllMode(false);
+            }}
+          >
+            {t("orders.batch.clear")}
+          </button>
+          <ErrorBox error={assemble.error} />
+        </div>
+      )}
+      {batchMsg && (
+        <p role="status" className="mb-3 text-sm">
+          {batchMsg}
+        </p>
+      )}
       {orders.length === 0 ? (
-        status || q || pickup || unpaid ? (
+        status || q || pickup || unpaid || assembly ? (
           <Empty>{t("orders.empty")}</Empty>
         ) : (
           <EmptyState
@@ -307,11 +459,18 @@ function OrdersPage() {
         <>
           <ul className="space-y-2 md:hidden">
             {orders.map((o) => (
-              <li key={o.id}>
+              <li key={o.id} className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="mt-4"
+                  aria-label={t("orders.batch.pick", { no: displayNo(o) })}
+                  checked={picked.includes(o.id)}
+                  onChange={() => toggle(o.id)}
+                />
                 <Link
                   to="/admin/orders/$id"
                   params={{ id: String(o.id) }}
-                  className="card block p-3 text-sm"
+                  className="card block min-w-0 flex-1 p-3 text-sm"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">#{displayNo(o)}</span>
@@ -343,6 +502,14 @@ function OrdersPage() {
             <table className="table">
               <thead>
                 <tr>
+                  <th>
+                    <input
+                      type="checkbox"
+                      aria-label={t("orders.batch.pickAll")}
+                      checked={pageAllPicked}
+                      onChange={togglePage}
+                    />
+                  </th>
                   <th>{t("orders.col.no")}</th>
                   <th>{t("orders.col.customer")}</th>
                   <th>{t("orders.col.items")}</th>
@@ -355,6 +522,14 @@ function OrdersPage() {
               <tbody>
                 {orders.map((o) => (
                   <tr key={o.id} className="hover:bg-surface-2/60">
+                    <td>
+                      <input
+                        type="checkbox"
+                        aria-label={t("orders.batch.pick", { no: displayNo(o) })}
+                        checked={picked.includes(o.id)}
+                        onChange={() => toggle(o.id)}
+                      />
+                    </td>
                     <td>
                       <Link
                         to="/admin/orders/$id"

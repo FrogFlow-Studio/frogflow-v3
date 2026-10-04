@@ -21,6 +21,7 @@ import { Route as StatusRouteImport } from './routes/status'
 import { Route as AdminAuthedRouteImport } from './routes/admin._authed'
 import { Route as AdminInviteRouteImport } from './routes/admin.invite'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminPrintBatchRouteImport } from './routes/admin.print-batch'
 import { Route as AdminTgLoginRouteImport } from './routes/admin.tg-login'
 import { Route as ApiClientErrorRouteImport } from './routes/api/client-error'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
@@ -206,6 +207,11 @@ const AdminInviteRoute = AdminInviteRouteImport.update({
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPrintBatchRoute = AdminPrintBatchRouteImport.update({
+  id: '/print-batch',
+  path: '/print-batch',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminTgLoginRoute = AdminTgLoginRouteImport.update({
@@ -870,6 +876,7 @@ export interface FileRoutesByFullPath {
   '/status': typeof StatusRoute
   '/admin/invite': typeof AdminInviteRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/print-batch': typeof AdminPrintBatchRoute
   '/admin/tg-login': typeof AdminTgLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
@@ -1008,6 +1015,7 @@ export interface FileRoutesByTo {
   '/status': typeof StatusRoute
   '/admin/invite': typeof AdminInviteRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/print-batch': typeof AdminPrintBatchRoute
   '/admin/tg-login': typeof AdminTgLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
@@ -1146,6 +1154,7 @@ export interface FileRoutesById {
   '/admin/_authed': typeof AdminAuthedRouteWithChildren
   '/admin/invite': typeof AdminInviteRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/print-batch': typeof AdminPrintBatchRoute
   '/admin/tg-login': typeof AdminTgLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
   '/api/health': typeof ApiHealthRoute
@@ -1288,6 +1297,7 @@ export interface FileRouteTypes {
     | '/status'
     | '/admin/invite'
     | '/admin/login'
+    | '/admin/print-batch'
     | '/admin/tg-login'
     | '/api/client-error'
     | '/api/health'
@@ -1426,6 +1436,7 @@ export interface FileRouteTypes {
     | '/status'
     | '/admin/invite'
     | '/admin/login'
+    | '/admin/print-batch'
     | '/admin/tg-login'
     | '/api/client-error'
     | '/api/health'
@@ -1563,6 +1574,7 @@ export interface FileRouteTypes {
     | '/admin/_authed'
     | '/admin/invite'
     | '/admin/login'
+    | '/admin/print-batch'
     | '/admin/tg-login'
     | '/api/client-error'
     | '/api/health'
@@ -1818,6 +1830,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/admin/login'
       preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/print-batch': {
+      id: '/admin/print-batch'
+      path: '/print-batch'
+      fullPath: '/admin/print-batch'
+      preLoaderRoute: typeof AdminPrintBatchRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/tg-login': {
@@ -2835,6 +2854,7 @@ interface AdminRouteChildren {
   AdminAuthedRoute: typeof AdminAuthedRouteWithChildren
   AdminInviteRoute: typeof AdminInviteRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminPrintBatchRoute: typeof AdminPrintBatchRoute
   AdminTgLoginRoute: typeof AdminTgLoginRoute
   AdminPackingIdRoute: typeof AdminPackingIdRoute
   AdminPrintIdRoute: typeof AdminPrintIdRoute
@@ -2844,6 +2864,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAuthedRoute: AdminAuthedRouteWithChildren,
   AdminInviteRoute: AdminInviteRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminPrintBatchRoute: AdminPrintBatchRoute,
   AdminTgLoginRoute: AdminTgLoginRoute,
   AdminPackingIdRoute: AdminPackingIdRoute,
   AdminPrintIdRoute: AdminPrintIdRoute,

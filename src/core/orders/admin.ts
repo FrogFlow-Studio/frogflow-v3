@@ -4,6 +4,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { OrderWithItems } from "./orders";
 import { serviceDb } from "@/core/db/client.server";
 import { eachPage } from "@/core/db/page";
+import { chunksOf } from "@/lib/in-chunks";
 import { isDeliverableStorageKey } from "@/core/storage/keys";
 import { isAuditableProofPath, proofPathCandidates } from "@/core/receipts/audit";
 import {
@@ -21,6 +22,11 @@ export type OrderFilter = {
   pickup?: PickupFilter;
   /** «Не доплачено»: задаток внесён, остаток нет (underpaidOrderIds). */
   unpaid?: boolean;
+  /**
+   * «К сборке сегодня»: физические заказы, принятые или в работе, с днём
+   * получения «сегодня» по часовому поясу магазина (А16).
+   */
+  assembly?: "today";
 };
 
 /** Статусы, где внесённое уже учтено и остаток ждут: в работе и выданные. */
@@ -57,23 +63,43 @@ export async function underpaidOrderIds(ctx: TenantContext): Promise<number[]> {
 /** Сколько id за раз передаём в «id in (…)»: длина адреса запроса ограничена. */
 const UNDERPAID_LIST_MAX = 300;
 
-export async function listOrdersForAdmin(
+type OrderQuery = ReturnType<ReturnType<TenantContext["db"]["from"]>["select"]>;
+
+/** Статусы, которые «собрать» ещё можно: принят или в работе. */
+export const ASSEMBLABLE_STATUSES = ["accepted", "in_production"] as const;
+
+/**
+ * Запрос заказов по фильтру админки — общий для списка и для «все по фильтру»
+ * (выбор пачки, А16). `null` — «не доплачено» без подходящих заказов.
+ */
+async function filteredOrders(
   ctx: TenantContext,
-  f: OrderFilter = {},
-): Promise<OrderWithItems[]> {
-  let q = ctx.db
-    .from("orders")
-    .select("*, order_items(*)")
-    .limit(f.limit ?? 100);
-  if (f.unpaid) {
+  f: OrderFilter,
+  select: string,
+  now: Date,
+  /** Заказы «не доплачено» уже прочитаны куском — искать среди них, без своего среза. */
+  chunk?: number[],
+): Promise<{ q: OrderQuery } | null> {
+  let q = ctx.db.from("orders").select(select) as unknown as OrderQuery;
+  if (chunk) q = q.in("id", chunk);
+  else if (f.unpaid) {
     const ids = (await underpaidOrderIds(ctx)).slice(0, UNDERPAID_LIST_MAX);
-    if (!ids.length) return [];
+    if (!ids.length) return null;
     q = q.in("id", ids);
   }
   if (f.status) q = q.eq("status", f.status);
+  if (f.assembly === "today") {
+    // fulfillment_at хранится полночью UTC календарного дня получения.
+    const today = todayInTz(ctx.timezone, now);
+    q = q
+      .eq("fulfillment_kind", "physical")
+      .in("status", [...ASSEMBLABLE_STATUSES])
+      .gte("fulfillment_at", `${today}T00:00:00Z`)
+      .lt("fulfillment_at", `${addDaysToIso(today, 1)}T00:00:00Z`);
+  }
   if (f.pickup) {
     // fulfillment_at хранится полночью UTC календарного дня получения.
-    const today = todayInTz(ctx.timezone);
+    const today = todayInTz(ctx.timezone, now);
     const day = (iso: string) => `${iso}T00:00:00Z`;
     q = q.eq("fulfillment_kind", "physical").in("status", [...OPEN_PHYSICAL_STATUSES]);
     if (f.pickup === "nodate") q = q.is("fulfillment_at", null);
@@ -84,7 +110,7 @@ export async function listOrdersForAdmin(
     }
     q = q.order("fulfillment_at", { ascending: true });
   }
-  q = q.order("created_at", { ascending: false });
+  q = q.order("created_at", { ascending: false }).order("id", { ascending: false });
   if (f.q?.trim()) {
     const s = f.q.trim().replace(/[%_,()]/g, " ");
     const asNo = Number(s);
@@ -96,9 +122,49 @@ export async function listOrdersForAdmin(
             `display_name.ilike.%${s}%,username.ilike.%${s}%,contact.ilike.%${s}%,customer_email.ilike.%${s}%`,
           );
   }
-  const { data, error } = await q;
+  // Запрос — «thenable»: из async-функции его возвращаем в обёртке, иначе он выполнится сам.
+  return { q };
+}
+
+export async function listOrdersForAdmin(
+  ctx: TenantContext,
+  f: OrderFilter = {},
+  now = new Date(),
+): Promise<OrderWithItems[]> {
+  const built = await filteredOrders(ctx, f, "*, order_items(*)", now);
+  if (!built) return [];
+  const { data, error } = await built.q.limit(f.limit ?? 100);
   if (error) throw new Error(error.message);
-  return (data ?? []) as OrderWithItems[];
+  return (data ?? []) as unknown as OrderWithItems[];
+}
+
+/**
+ * Номера всех заказов по фильтру, постранично (без лимита списка): для «выбрать
+ * все N по фильтру». Порядок тот же, что в списке, и заканчивается id.
+ */
+export async function orderIdsForFilter(
+  ctx: TenantContext,
+  f: OrderFilter,
+  now = new Date(),
+): Promise<number[]> {
+  const ids: number[] = [];
+  // «Не доплачено»: все такие заказы известны заранее; фильтр применяем кусками по 200.
+  const parts: Array<number[] | undefined> = f.unpaid
+    ? chunksOf(await underpaidOrderIds(ctx))
+    : [undefined];
+  for (const only of parts)
+    await eachPage<{ id: number }>(
+      async (from, to) => {
+        const built = await filteredOrders(ctx, f, "id", now, only);
+        if (!built) return { data: [], error: null };
+        return built.q.range(from, to);
+      },
+      "orderIds",
+      (rows) => {
+        for (const r of rows) ids.push(r.id);
+      },
+    );
+  return ids;
 }
 
 export type OrderCounts = Record<string, number>;

@@ -728,3 +728,20 @@ async function notifyReferralGrant(
   const { notifyReferralReward } = await import("@/channels/telegram/referral-notify");
   await notifyReferralReward(ctx, grant, ctx.tenant.telegramTokenEnc ? api(ctx) : null);
 }
+
+/**
+ * «Отметить собранными» пачкой (А16, core/orders/batch): покупателю уходит то же
+ * «Заказ готов к выдаче», что при одиночном «дальше», — только тем заказам, чей
+ * статус сменила именно эта запись, на языке покупателя.
+ */
+export async function assembleOrdersAndNotify(
+  ctx: TenantContext,
+  sel: import("@/core/orders/batch").BatchSelection,
+  actor = "admin",
+) {
+  const { assembleOrders } = await import("@/core/orders/batch");
+  return assembleOrders(ctx, sel, actor, async (order) => {
+    const m = COPY[await orderBuyerLocale(ctx, order)];
+    return notifyCustomer(ctx, order, m.orderStatusNotice("ready", displayNo(order)));
+  });
+}
