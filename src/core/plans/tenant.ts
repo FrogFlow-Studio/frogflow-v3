@@ -2,7 +2,14 @@ import type { Tenant } from "@/core/tenant/types";
 import { parseMonthly } from "@/core/consultant/budget";
 import { servedByV2 } from "@/core/tenant/directory";
 import { planLimits } from "./plans";
-import { PLAN_TIERS, parsePlan, type PlanLimits, type PlanTier } from "./registry";
+import {
+  CONNECTION_PRICE,
+  MONTHLY_PRICE,
+  PLAN_TIERS,
+  parsePlan,
+  type PlanLimits,
+  type PlanTier,
+} from "./registry";
 
 /** Месячные лимиты ИИ арендатора; null — не ограничиваем (без плана, по договору). */
 export function tenantLimits(tenant: Pick<Tenant, "plan" | "settings">): PlanLimits | null {
@@ -94,4 +101,48 @@ export function upgradeHint(plan: string | null, usage: PlanUsage): UpgradeHint 
   if (what.length === 0) return null;
   const i = PLAN_TIERS.indexOf(parsed.tier);
   return { level: over ? "over" : "near", what, next: PLAN_TIERS[i + 1] ?? null };
+}
+
+export type LimitNotice = {
+  key: "aiDialogs" | "receiptChecks";
+  used: number;
+  limit: number;
+  /** Доля лимита в целых процентах, не больше 100 для полоски. */
+  percent: number;
+  /** near — от 80 %, over — лимит исчерпан. */
+  level: "near" | "over";
+  /** План выше с ценой из реестра; null — уже Business. */
+  next: { tier: PlanTier; monthly: number; connection: number } | null;
+};
+
+/**
+ * Лимиты тарифа, которые подходят к концу, — для «Обзора» продавца. Цифры и
+ * цена плана выше берутся из реестра, не из текста. Ничего не блокирует:
+ * сверх лимита диалоги уходят менеджеру, а чеки — на ручную проверку.
+ */
+export function limitNotices(plan: string | null, usage: PlanUsage): LimitNotice[] {
+  const parsed = parsePlan(plan);
+  if (parsed?.kind !== "tier" || !usage.limits) return [];
+  const nextTier = PLAN_TIERS[PLAN_TIERS.indexOf(parsed.tier) + 1];
+  const next = nextTier
+    ? { tier: nextTier, monthly: MONTHLY_PRICE[nextTier], connection: CONNECTION_PRICE[nextTier] }
+    : null;
+  const pairs = [
+    ["aiDialogs", usage.aiDialogs, usage.limits.aiDialogs],
+    ["receiptChecks", usage.receiptChecks, usage.limits.receiptChecks],
+  ] as const;
+  const out: LimitNotice[] = [];
+  for (const [key, used, limit] of pairs) {
+    if (limit == null || limit <= 0) continue; // 0 — выключено оператором намеренно
+    if (used < limit * UPGRADE_HINT_SHARE) continue;
+    out.push({
+      key,
+      used,
+      limit,
+      percent: Math.min(100, Math.floor((used / limit) * 100)),
+      level: used >= limit ? "over" : "near",
+      next,
+    });
+  }
+  return out;
 }

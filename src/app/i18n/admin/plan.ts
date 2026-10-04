@@ -76,6 +76,16 @@ export const ru = {
   "plan.payTransfer":
     "Переведите ровно {amount} ₸ по реквизитам ниже и пришлите чек в вашего бота. Счёт продублирован в бота.",
   "plan.included": "в вашем плане",
+  "limits.title": "Лимиты тарифа",
+  "limits.aiDialogs": "Диалоги консультанта",
+  "limits.receiptChecks": "Проверки чеков",
+  "limits.used": "использовано {used} из {limit}",
+  "limits.near":
+    "Лимит подходит к концу. Ничего не отключится: сверх лимита диалоги уйдут менеджеру, а чеки — вам на ручную проверку.",
+  "limits.over":
+    "Лимит исчерпан до 1-го числа. Диалоги уходят менеджеру, чеки — вам на ручную проверку; бот работает.",
+  "limits.upgrade": "Подключить тариф выше: {tier} — {price} ₸ в месяц, подключение {connection} ₸",
+  "limits.top": "У вас самый высокий тариф. Нужен больший лимит — напишите нам, обсудим условия.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -153,6 +163,17 @@ export const kk: SectionDict<typeof ru> = {
   "plan.payTransfer":
     "Төмендегі деректемелер бойынша дәл {amount} ₸ аударып, чекті ботыңызға жіберіңіз. Шот ботқа да жіберілді.",
   "plan.included": "жоспарыңызда бар",
+  "limits.title": "Тариф шектері",
+  "limits.aiDialogs": "Кеңесші диалогтары",
+  "limits.receiptChecks": "Чек тексерулері",
+  "limits.used": "{limit} ішінен {used} пайдаланылды",
+  "limits.near":
+    "Шек таусылуға жақын. Ештеңе өшпейді: шектен тыс диалогтар менеджерге, чектер сізге қолмен тексеруге кетеді.",
+  "limits.over":
+    "Шек айдың 1-іне дейін таусылды. Диалогтар менеджерге, чектер сізге қолмен тексеруге кетеді; бот жұмыс істейді.",
+  "limits.upgrade": "Жоғары тарифті қосу: {tier} — айына {price} ₸, қосу {connection} ₸",
+  "limits.top":
+    "Сізде ең жоғары тариф. Үлкенірек шек керек болса, бізге жазыңыз, шарттарды талқылаймыз.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -230,6 +251,17 @@ export const en: SectionDict<typeof ru> = {
   "plan.payTransfer":
     "Transfer exactly {amount} ₸ using the details below and send the receipt to your bot. The invoice was also sent to the bot.",
   "plan.included": "in your plan",
+  "limits.title": "Plan limits",
+  "limits.aiDialogs": "Consultant dialogs",
+  "limits.receiptChecks": "Receipt checks",
+  "limits.used": "used {used} of {limit}",
+  "limits.near":
+    "The limit is running out. Nothing gets switched off: over the limit, dialogs go to a manager and receipts come to you for manual checking.",
+  "limits.over":
+    "The limit is used up until the 1st. Dialogs go to a manager and receipts come to you for manual checking; the bot keeps working.",
+  "limits.upgrade": "Switch to a higher plan: {tier} — {price} ₸ per month, setup {connection} ₸",
+  "limits.top":
+    "You are on the highest plan. If you need a bigger limit, write to us and we will agree terms.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -304,4 +336,15 @@ export const uz: SectionDict<typeof ru> = {
   "plan.payTransfer":
     "Quyidagi rekvizitlar boʻyicha aynan {amount} ₸ oʻtkazing va chekni botingizga yuboring. Hisob botga ham yuborildi.",
   "plan.included": "rejangizda bor",
+  "limits.title": "Tarif limitlari",
+  "limits.aiDialogs": "Maslahatchi dialoglari",
+  "limits.receiptChecks": "Chek tekshiruvlari",
+  "limits.used": "{limit} dan {used} ishlatildi",
+  "limits.near":
+    "Limit tugab qolmoqda. Hech narsa oʻchmaydi: limitdan oshganda dialoglar menejerga, cheklar sizga qoʻlda tekshirish uchun ketadi.",
+  "limits.over":
+    "Limit 1-sanagacha tugadi. Dialoglar menejerga, cheklar sizga qoʻlda tekshirish uchun ketadi; bot ishlaydi.",
+  "limits.upgrade": "Yuqori tarifga oʻtish: {tier} — oyiga {price} ₸, ulanish {connection} ₸",
+  "limits.top":
+    "Sizda eng yuqori tarif. Katta limit kerak boʻlsa, bizga yozing, shartlarni kelishamiz.",
 };

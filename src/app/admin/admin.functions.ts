@@ -426,9 +426,17 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
   const { redactOrders } = await import("@/core/orders/redact");
   const { starterLeft } = await import("@/core/templates/apply.server");
   const starter = settings.starter_ids ? await starterLeft(ctx, settings.starter_ids) : 0;
+  // Лимиты тарифа — только продавцу: бухгалтеру их не показываем.
+  let limits: import("@/core/plans/tenant").LimitNotice[] = [];
+  if (!accountant) {
+    const { planUsage, limitNotices, USAGE_KEYS } = await import("@/core/plans/tenant");
+    const usageValues = await getSettings(ctx, Object.values(USAGE_KEYS));
+    limits = limitNotices(ctx.tenant.plan, planUsage(ctx.tenant, usageValues));
+  }
   return {
     counts,
     rev30,
+    limits,
     recent: accountant ? redactOrders(recent) : recent,
     products: products ?? 0,
     customers: customers ?? 0,

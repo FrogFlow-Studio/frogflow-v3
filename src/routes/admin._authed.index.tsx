@@ -14,6 +14,8 @@ import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 import { OrderStatus } from "./admin._authed.orders";
 import { nextSetupStep } from "@/app/admin/setup";
+import { TIER_TITLES } from "@/core/plans/registry";
+import type { LimitNotice } from "@/core/plans/tenant";
 import { launchDone, type LaunchStepKey } from "@/core/courses/launch";
 import { MovedWelcome } from "@/app/admin/moved-welcome";
 import { useLiveOrders } from "@/app/admin/live-orders";
@@ -75,6 +77,7 @@ function Dashboard() {
           <ErrorBox error={removeStarter.error} />
         </div>
       )}
+      {d.limits.length > 0 && <LimitsCard limits={d.limits} t={t} loc={loc} />}
       {d.setup.moved && (
         <MovedWelcome
           t={t}
@@ -425,6 +428,46 @@ function SchoolCard({ t, loc }: { t: AdminT; loc: string }) {
             ? t("school.noCourses")
             : t("school.noStart")}
       </p>
+    </Card>
+  );
+}
+
+/** Лимиты тарифа от 80 %: понятная причина и цена плана выше, ничего не блокируется. */
+function LimitsCard({ limits, t, loc }: { limits: LimitNotice[]; t: AdminT; loc: string }) {
+  const over = limits.some((l) => l.level === "over");
+  const next = limits[0]?.next ?? null;
+  return (
+    <Card title={t("limits.title")} className="mb-6">
+      <div className="space-y-3 text-sm">
+        {limits.map((l) => (
+          <div key={l.key}>
+            <div className="flex justify-between gap-3">
+              <span>{t(l.key === "aiDialogs" ? "limits.aiDialogs" : "limits.receiptChecks")}</span>
+              <span className="tabular-nums text-muted">
+                {t("limits.used", { used: l.used, limit: l.limit })}
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
+              <div
+                className={`h-full ${l.level === "over" ? "bg-danger" : "bg-accent"}`}
+                style={{ width: `${l.percent}%` }}
+              />
+            </div>
+          </div>
+        ))}
+        <p className="text-muted">{t(over ? "limits.over" : "limits.near")}</p>
+        {next ? (
+          <Link to="/admin/modules" className="btn-secondary text-sm">
+            {t("limits.upgrade", {
+              tier: TIER_TITLES[next.tier],
+              price: next.monthly.toLocaleString(loc),
+              connection: next.connection.toLocaleString(loc),
+            })}
+          </Link>
+        ) : (
+          <p className="text-muted">{t("limits.top")}</p>
+        )}
+      </div>
     </Card>
   );
 }
