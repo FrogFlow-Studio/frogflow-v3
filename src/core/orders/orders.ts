@@ -474,11 +474,11 @@ export async function placeOrder(
         over = await orderOverLimit(ctx, order, await fulfillmentLimits(ctx));
       } catch (e) {
         // Не смогли проверить — заказ не оставляем (иначе лимит обходится сбоем чтения).
-        await ctx.db.from("orders").delete().eq("id", order.id);
+        await dropUnplacedOrder(ctx, order.id).catch(() => {});
         throw e;
       }
       if (over) {
-        await ctx.db.from("orders").delete().eq("id", order.id);
+        await dropUnplacedOrder(ctx, order.id);
         return await fail(over === "day" ? "day_full" : "slot_taken");
       }
     }
@@ -611,6 +611,33 @@ export async function placeOrder(
     // Позиции заказа записаны (их видно в проданном) или оформление сорвалось: штуки отпускаем.
     if (offerHeld) await releaseOfferHolds(ctx, holdToken);
   }
+}
+
+/**
+ * Убрать только что созданный заказ без позиций (лимит выдачи не пропустил). Не
+ * удалился — отменяем условной записью, чтобы пустой заказ не висел в ожидании и
+ * не держал место; не вышло и это — serverFailure, покупателю не говорим «занято».
+ */
+async function dropUnplacedOrder(ctx: TenantContext, orderId: number): Promise<void> {
+  const del = await ctx.db.from("orders").delete().eq("id", orderId);
+  if (!del.error) return;
+  console.error(`[orders] заказ #${orderId} без позиций не удалён: ${del.error.message}`);
+  const cancel = await ctx.db
+    .from("orders")
+    .update({ status: "cancelled" })
+    .eq("id", orderId)
+    .eq("status", "awaiting_payment");
+  if (cancel.error)
+    throw serverFailure(
+      `Заказ #${orderId} без позиций не удалён и не отменён: ${cancel.error.message}`,
+    );
+  await recordOrderEvent(
+    ctx,
+    orderId,
+    "status",
+    { from: "awaiting_payment", to: "cancelled", reason: "limit_cleanup" },
+    "system",
+  );
 }
 
 /** Причина для истории остатка, когда сбой после создания заказа возвращает списанное. */

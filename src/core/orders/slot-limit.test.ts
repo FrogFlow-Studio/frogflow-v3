@@ -209,3 +209,47 @@ describe("лимит заказов на слот", () => {
     });
   });
 });
+
+describe("сбой удаления лишнего заказа", () => {
+  /** Как setup, но delete по orders отвечает ошибкой (и update тоже, если failCancel). */
+  function broken(failCancel: boolean) {
+    const { db, ctx } = setup({ fulfillment_day_limit: "1" });
+    const real = ctx.db.from;
+    const from = (t: string) => {
+      const b = (real as (t: string) => unknown)(t) as Record<string, unknown>;
+      if (t !== "orders") return b;
+      return new Proxy(b, {
+        get(target, p) {
+          if (p === "delete") return () => ({ eq: async () => ({ error: { message: "boom" } }) });
+          if (p === "update" && failCancel)
+            return () => ({ eq: () => ({ eq: async () => ({ error: { message: "boom" } }) }) });
+          const v = target[p as string];
+          return typeof v === "function" ? (v as (...a: unknown[]) => unknown).bind(target) : v;
+        },
+      });
+    };
+    return { db, ctx: { ...ctx, db: { ...ctx.db, from } } as unknown as TenantContext };
+  }
+
+  it("удалить не вышло — заказ отменён, а не висит пустым в ожидании; покупателю честный отказ", async () => {
+    const { db, ctx } = broken(false);
+    expect((await placeOrder(ctx, buyer(1), "KZ", { fulfillment: at("2026-10-12") })).ok).toBe(
+      true,
+    );
+    const b = await placeOrder(ctx, buyer(2), "KZ", { fulfillment: at("2026-10-12") });
+    expect(b).toEqual({ ok: false, reason: "day_full" });
+    expect(live(db)).toHaveLength(1);
+    expect(db.tables.orders!.find((o) => o.status === "cancelled")).toBeTruthy();
+    expect(db.tables.products![0]!.stock_quantity).toBe(9);
+  });
+
+  it("не удалился и не отменился — serverFailure, а не «занято»", async () => {
+    const { ctx } = broken(true);
+    expect((await placeOrder(ctx, buyer(1), "KZ", { fulfillment: at("2026-10-12") })).ok).toBe(
+      true,
+    );
+    await expect(
+      placeOrder(ctx, buyer(2), "KZ", { fulfillment: at("2026-10-12") }),
+    ).rejects.toThrow(/не удалён и не отменён/);
+  });
+});
