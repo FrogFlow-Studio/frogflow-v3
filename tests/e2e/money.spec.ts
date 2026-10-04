@@ -247,7 +247,7 @@ test("оператор выставляет счёт за подписку и о
   await expect(page).toHaveURL(/\/operator$/);
 
   const ownerBefore = (await sent(request, F.SELLER_TG)).length;
-  await page.goto(`/operator/clients/${F.SHOP_ID}`);
+  await page.goto(`/operator/clients/${F.SHOP_ID}?tab=billing`);
   const form = page.locator("form", { hasText: "Выставить счёт владельцу" });
   await form.locator('input[name="amount"]').fill("9900");
   await form.locator('input[name="note"]').fill(note);

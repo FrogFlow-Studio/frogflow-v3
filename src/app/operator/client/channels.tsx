@@ -9,6 +9,7 @@ import {
 } from "@/app/operator/operator.functions";
 import { VERTICAL_KEYS, VERTICALS } from "@/core/verticals/registry";
 import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
+import { ConfirmName } from "./ConfirmName";
 import type { C } from "./types";
 
 export function ZernioCard({ c, onDone }: { c: C; onDone: () => Promise<void> }) {
@@ -25,13 +26,8 @@ export function ZernioCard({ c, onDone }: { c: C; onDone: () => Promise<void> })
     setResult(await adoptZernioProfileFn({ data: { botId: c.id, profileId } }));
     await onDone();
   });
-  const off = useAction(async (id: string, name: string) => {
-    if (
-      !window.confirm(
-        `Отключить ${name}? Аккаунт отключится и в Zernio, бот перестанет в нём отвечать. Переписка, заказы и покупатели останутся. Вернуть аккаунт можно только новым подключением.`,
-      )
-    )
-      return;
+  const [offAsk, setOffAsk] = useState<{ id: string; name: string } | null>(null);
+  const off = useAction(async (id: string) => {
     await disconnectZernioAccountFn({ data: { botId: c.id, accountId: id } });
     await onDone();
   });
@@ -99,9 +95,10 @@ export function ZernioCard({ c, onDone }: { c: C; onDone: () => Promise<void> })
                       className="btn-secondary text-xs"
                       disabled={off.busy}
                       onClick={() =>
-                        void off
-                          .run(a.id, a.username ? `@${a.username}` : (a.name ?? a.id))
-                          .catch(() => {})
+                        setOffAsk({
+                          id: a.id,
+                          name: a.username ? `@${a.username}` : (a.name ?? a.id),
+                        })
                       }
                     >
                       Отключить
@@ -173,6 +170,16 @@ export function ZernioCard({ c, onDone }: { c: C; onDone: () => Promise<void> })
         </button>
         <ErrorBox error={zr.error} />
       </form>
+      {offAsk && (
+        <ConfirmName
+          name={c.name}
+          title={`Отключить ${offAsk.name}?`}
+          text="Аккаунт отключится и в Zernio, бот перестанет в нём отвечать. Переписка, заказы и покупатели останутся. Вернуть аккаунт можно только новым подключением."
+          confirmLabel="Отключить"
+          onConfirm={() => off.run(offAsk.id)}
+          onCancel={() => setOffAsk(null)}
+        />
+      )}
     </Card>
   );
 }
