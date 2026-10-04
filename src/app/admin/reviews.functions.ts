@@ -136,5 +136,5 @@ export const approveLegacyReviewsFn = createServerFn({ method: "POST" }).handler
     await import("@/app/auth/guards.server")
   ).requireAdminModule("review_request", "manager");
   const { approveLegacyReviews } = await import("@/core/reviews/photos.server");
-  return { approved: await approveLegacyReviews(ctx) };
+  return await approveLegacyReviews(ctx);
 });

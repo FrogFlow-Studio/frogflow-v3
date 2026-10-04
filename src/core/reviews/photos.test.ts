@@ -333,12 +333,50 @@ describe("старые отзывы", () => {
   it("«Одобрить все старые» показывает только отзывы без решения", async () => {
     await setReviewStatus(ctx, R2, "hidden");
     await saveRating(ctx, 3, P, 4);
-    expect(await approveLegacyReviews(ctx)).toBe(1);
+    expect(await approveLegacyReviews(ctx)).toEqual({ approved: 1, remaining: 0 });
     expect((await reviewMeta(ctx, R1)).status).toBe("approved");
     expect((await reviewMeta(ctx, R2)).status).toBe("hidden");
     expect((await approvedReviews(ctx, P)).map((r) => r.id)).toEqual([R1]);
     // Повторное нажатие ничего не меняет.
-    expect(await approveLegacyReviews(ctx)).toBe(0);
+    expect(await approveLegacyReviews(ctx)).toEqual({ approved: 0, remaining: 0 });
+  });
+});
+
+describe("старые отзывы: 2 000 штук и бюджет времени", () => {
+  it("итог правдив, повтор доделывает остаток, решённые не трогаются", async () => {
+    const ids = Array.from({ length: 2000 }, (_, i) => `legacy-${String(i).padStart(4, "0")}`);
+    db.tables.product_reviews = ids.map((id) => ({
+      id,
+      product_id: P,
+      telegram_id: 500,
+      rating: 5,
+      comment: null,
+    }));
+    // Один отзыв продавец уже скрыл: «Одобрить все» его не трогает и в остаток не входит.
+    db.tables.app_settings!.push({
+      bot_id: BOT,
+      key: reviewMetaKey(ids[7]!),
+      value: JSON.stringify({ status: "hidden", photos: [] }),
+    });
+    // Часы: каждая проверка времени — одна «миллисекунда»; бюджет — 1 200 проверок.
+    const clock = () => {
+      let t = 0;
+      return () => t++;
+    };
+    const first = await approveLegacyReviews(ctx, { budgetMs: 1200, now: clock() });
+    expect(first.approved + first.remaining).toBe(1999);
+    expect(first.approved).toBeGreaterThan(0);
+    expect(first.remaining).toBeGreaterThan(0);
+    const metaRows = () =>
+      db.tables.app_settings!.filter((s) => String(s.key).startsWith("review_meta:legacy-"));
+    expect(metaRows()).toHaveLength(first.approved + 1);
+
+    const second = await approveLegacyReviews(ctx, { budgetMs: 1_000_000, now: clock() });
+    expect(second).toEqual({ approved: first.remaining, remaining: 0 });
+    expect(metaRows()).toHaveLength(2000);
+    expect((await reviewMeta(ctx, ids[7]!)).status).toBe("hidden");
+    // Третье нажатие — ничего нового.
+    expect(await approveLegacyReviews(ctx)).toEqual({ approved: 0, remaining: 0 });
   });
 });
 

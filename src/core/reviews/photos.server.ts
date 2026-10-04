@@ -124,15 +124,26 @@ export async function markReviewPending(ctx: TenantContext, reviewId: string): P
   });
 }
 
+/** Бюджет одного нажатия «Одобрить все старые»: функция живёт меньше 120 с. */
+export const APPROVE_LEGACY_BUDGET_MS = 90_000;
+
 /**
  * «Одобрить все старые»: отзывы без строки review_meta (оставленные до
  * одобрения продавцом) получают «показан на витрине». Отзыв, у которого
  * строка уже есть (новый, изменённый, скрытый продавцом), не трогаем:
- * запись только если строки всё ещё нет. Возвращает, сколько одобрено.
+ * запись только если строки всё ещё нет. Время ограничено: когда бюджет вышел,
+ * новые записи не начинаем, а остаток только считаем (чтение дешёвое), и
+ * продавец видит честный итог «одобрено N, осталось M» и жмёт ещё раз.
  */
-export async function approveLegacyReviews(ctx: TenantContext): Promise<number> {
+export async function approveLegacyReviews(
+  ctx: TenantContext,
+  opts: { budgetMs?: number; now?: () => number } = {},
+): Promise<{ approved: number; remaining: number }> {
+  const now = opts.now ?? Date.now;
+  const deadline = now() + (opts.budgetMs ?? APPROVE_LEGACY_BUDGET_MS);
   const approved = JSON.stringify({ status: "approved", photos: [] } satisfies ReviewMeta);
   let count = 0;
+  let remaining = 0;
   await eachPage(
     (a, b) => ctx.db.from("product_reviews").select("id").order("id").range(a, b),
     "product_reviews",
@@ -143,6 +154,10 @@ export async function approveLegacyReviews(ctx: TenantContext): Promise<number> 
       );
       for (const r of rows) {
         if (metas.get(r.id)!.stored) continue;
+        if (now() >= deadline) {
+          remaining++;
+          continue;
+        }
         const w = await updateSettingStamped(ctx, reviewMetaKey(r.id), (raw) =>
           raw == null ? approved : null,
         );
@@ -152,7 +167,7 @@ export async function approveLegacyReviews(ctx: TenantContext): Promise<number> 
     },
     200,
   );
-  return count;
+  return { approved: count, remaining };
 }
 
 /** Решение продавца: показать на витрине или скрыть. */

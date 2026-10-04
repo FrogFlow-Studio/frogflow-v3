@@ -52,11 +52,12 @@ function ReviewsPage() {
   const navigate = useNavigate();
   const canWrite = canEdit(shop.role);
   const router = useRouter();
-  const [legacyDone, setLegacyDone] = useState<number | null>(null);
+  const [legacyDone, setLegacyDone] = useState<{ approved: number; remaining: number } | null>(
+    null,
+  );
   const legacy = useAction(async () => {
     if (!confirm(t("reviews.approveLegacyConfirm"))) return;
-    const { approved } = await approveLegacyReviewsFn();
-    setLegacyDone(approved);
+    setLegacyDone(await approveLegacyReviewsFn());
     await router.invalidate();
   });
   const fmt = (iso: string) =>
@@ -170,7 +171,11 @@ function ReviewsPage() {
         </div>
       )}
       {legacyDone != null && (
-        <p className="mb-4 text-xs text-ok">{t("reviews.approveLegacyDone", { n: legacyDone })}</p>
+        <p className="mb-4 text-xs text-ok">
+          {legacyDone.remaining > 0
+            ? t("reviews.approveLegacyPartial", { n: legacyDone.approved, m: legacyDone.remaining })
+            : t("reviews.approveLegacyDone", { n: legacyDone.approved })}
+        </p>
       )}
       {Boolean(legacy.error) && <ErrorBox error={legacy.error} />}
       {rows.length === 0 ? (

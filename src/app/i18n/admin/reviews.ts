@@ -50,6 +50,7 @@ export const ru = {
   "reviews.approveLegacyConfirm":
     "Показать на витрине все старые отзывы? Новые и скрытые вами не изменятся.",
   "reviews.approveLegacyDone": "Одобрено старых отзывов: {n}",
+  "reviews.approveLegacyPartial": "Одобрено старых отзывов: {n}, осталось: {m}. Нажмите ещё раз.",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -102,6 +103,8 @@ export const kk: SectionDict<typeof ru> = {
   "reviews.approveLegacyConfirm":
     "Барлық ескі пікірлерді дүкенде көрсету керек пе? Жаңа және сіз жасырғандар өзгермейді.",
   "reviews.approveLegacyDone": "Мақұлданған ескі пікірлер: {n}",
+  "reviews.approveLegacyPartial":
+    "Мақұлданған ескі пікірлер: {n}, қалғаны: {m}. Тағы бір рет басыңыз.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -155,6 +158,7 @@ export const en: SectionDict<typeof ru> = {
   "reviews.approveLegacyConfirm":
     "Show all older reviews on the storefront? New reviews and ones you hid stay as they are.",
   "reviews.approveLegacyDone": "Older reviews approved: {n}",
+  "reviews.approveLegacyPartial": "Older reviews approved: {n}, left: {m}. Press the button again.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -208,4 +212,6 @@ export const uz: SectionDict<typeof ru> = {
   "reviews.approveLegacyConfirm":
     "Barcha eski sharhlar do‘konda ko‘rsatilsinmi? Yangi va siz yashirganlar o‘zgarmaydi.",
   "reviews.approveLegacyDone": "Tasdiqlangan eski sharhlar: {n}",
+  "reviews.approveLegacyPartial":
+    "Tasdiqlangan eski sharhlar: {n}, qolgani: {m}. Yana bir marta bosing.",
 };
