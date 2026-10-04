@@ -6,6 +6,7 @@
 import type { Msg } from "@/channels/telegram/copy";
 import type { Locale } from "@/core/i18n/locale";
 import type { Channel, Input, Product, Room } from "./harness";
+import { BOTS_20 } from "./scenarios-bots";
 
 /** Строка, регулярка или функция от текстов выбранного языка (COPY[locale]). */
 export type Says = string | RegExp | ((c: Msg) => string);
@@ -27,6 +28,10 @@ export interface Expect {
   state?: Record<string, unknown>;
   /** Сколько уведомлений ушло продавцу на эту реплику. */
   sellerNotices?: number;
+  /** Что за эту реплику увидел продавец в Telegram (его ответы от бота). */
+  sellerSees?: Says[];
+  /** Причин ответов бота в «Чате» не меньше стольки (Б13). */
+  reasons?: number;
 }
 
 export interface Scenario {
@@ -39,6 +44,8 @@ export interface Scenario {
   products?: Product[];
   state?: Record<string, unknown>;
   modules?: Record<string, boolean>;
+  /** Direct/WhatsApp: реплика идёт через весь разбор входящего (слова «позови человека», пауза). */
+  full?: boolean;
   /** Подготовка до первой реплики (например, «продавец ответил руками»). */
   arrange?: (r: Room) => void;
   steps: Array<{ say: Input; expect: Expect }>;
@@ -79,6 +86,7 @@ function everyLocale(
 }
 
 export const SCENARIOS: Scenario[] = [
+  ...BOTS_20,
   // ───── Телефон не коды товаров (Б2, скрин Якова 04.10) ─────
   ...everyLocale(
     () => ({

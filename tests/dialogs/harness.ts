@@ -19,6 +19,8 @@ import type { TelegramApi } from "@/channels/telegram/api";
 import { handleShopMessage } from "@/channels/zernio/shop.server";
 import { handleTelegramUpdate } from "@/channels/telegram/handle-update";
 import { claimTelegramUpdate } from "@/channels/telegram/dedupe";
+import { handleZernioMessage } from "@/channels/zernio/handle-message";
+import { orderTrackRefLine } from "@/channels/telegram/order-notify-keys";
 
 export type Channel = "telegram" | "instagram" | "whatsapp";
 
@@ -30,7 +32,9 @@ export type Input =
   | { sticker: true }
   | { photo: true }
   /** Та же реплика ещё раз: двойная доставка вебхука или двойной клик. */
-  | { repeat: true };
+  | { repeat: true }
+  /** Продавец из Telegram отвечает номером на «Отправлен + трек» по заказу №… (Б12). */
+  | { sellerTrack: string; orderId: number };
 
 export interface Product {
   id: string;
@@ -53,6 +57,10 @@ export interface Room {
   sellerNotices(): number;
   /** Продавец ответил руками N минут назад (только Direct). */
   sellerTyped(minutesAgo: number): void;
+  /** Что за последнюю реплику увидел продавец в Telegram (ответы бота ему). */
+  sellerReplies(): string[];
+  /** Причины ответов бота, записанные в «Чат» («Почему бот так ответил», Б13). */
+  reasons(): string[];
   db: FakeDb;
 }
 
@@ -63,7 +71,16 @@ export interface RoomOptions {
   /** Начальное состояние покупателя (шаг, страна, …). */
   state?: Record<string, unknown>;
   modules?: Record<string, boolean>;
+  /**
+   * Instagram/WhatsApp: реплика идёт через весь разбор входящего (handleZernioMessage),
+   * а не только через магазин: так работают слова «позови человека» и пауза.
+   */
+  full?: boolean;
 }
+
+/** Куда уходят сообщения покупателю, отправленные не из его реплики (ответ продавца, трек). */
+export const outbound: { sink: ((html: string) => void) | null } = { sink: null };
+export const SELLER_ID = 900;
 
 const BOT = "00000000-0000-4000-8000-0000000000aa";
 export const notices = { count: 0 };
@@ -107,9 +124,15 @@ function baseDb(o: RoomOptions, key: string, platform: string, telegramId: numbe
       telegram_id: telegramId,
       opt_out: false,
       loyalty_points: 0,
+      zernio_conversation_id: platform === "telegram" ? null : "conv-1",
+      zernio_account_id: platform === "telegram" ? null : "acc-1",
       state: { locale: o.locale, country_code: "KZ", ...(o.state ?? {}) },
     },
   ];
+  db.tables.manager_chat_state = [];
+  db.tables.manager_chat_messages = [];
+  db.tables.manager_chat_reasons = [];
+  db.tables.zernio_logs = [];
   db.tables.products = (o.products ?? []).map(productRow);
   db.tables.product_variants = [];
   db.tables.categories = [];
@@ -133,7 +156,10 @@ function baseDb(o: RoomOptions, key: string, platform: string, telegramId: numbe
       name: "Тест-магазин",
       status: "active",
       vertical: "digital",
-      modules: o.modules ?? {},
+      modules: {
+        ...(o.full ? { instagram: true, whatsapp: true, dm_shop: true, wa_shop: true } : {}),
+        ...(o.modules ?? {}),
+      },
       settings: { default_locale: o.locale },
     },
     db,
@@ -143,11 +169,48 @@ function baseDb(o: RoomOptions, key: string, platform: string, telegramId: numbe
   return { db, ctx };
 }
 
+/** Ответ продавца из Telegram на «Отправлен + трек»: настоящий путь handleTelegramUpdate. */
+async function sellerTrackReply(
+  ctx: TenantContext,
+  orderId: number,
+  text: string,
+): Promise<{ buyer: string[]; seller: string[] }> {
+  const buyer: string[] = [];
+  const seller: string[] = [];
+  const api = {
+    call: vi.fn(async (method: string, payload: Record<string, unknown> = {}) => {
+      if (method === "sendMessage") {
+        const line = plain(String(payload.text ?? ""));
+        if (Number(payload.chat_id) === SELLER_ID) seller.push(line);
+        else buyer.push(line);
+      }
+      return { ok: true, result: {} };
+    }),
+  } as unknown as TelegramApi;
+  const from = { id: SELLER_ID, is_bot: false, first_name: "Продавец" };
+  await handleTelegramUpdate(ctx, api, {
+    update_id: 9000 + orderId,
+    message: {
+      message_id: 9,
+      chat: { id: SELLER_ID, type: "private" },
+      from,
+      text,
+      reply_to_message: { message_id: 8, text: `📦 Заказ\n${orderTrackRefLine(orderId)}` },
+    },
+  } as never);
+  return { buyer, seller };
+}
+
+const reasonsOf = (db: FakeDb) =>
+  (db.tables.manager_chat_reasons ?? []).map((r) => String(r.reason ?? ""));
+
 function directRoom(o: RoomOptions): Room {
   const platform = o.channel as "instagram" | "whatsapp";
+  let eventNo = 0;
   const key = platform === "whatsapp" ? "wa_1" : "ig_1";
   const { db, ctx } = baseDb(o, key, platform, -1);
   const sent: Array<{ text: string; buttons: string[] }> = [];
+  let sellerLines: string[] = [];
   let mark = 0;
   let tail: unknown[] = [];
   let last: Input | null = null;
@@ -206,19 +269,53 @@ function directRoom(o: RoomOptions): Room {
   const toMessage = (i: Input): Partial<ParsedZernioMessage> => {
     if ("text" in i) return { text: i.text };
     if ("button" in i) return { text: i.button, postbackPayload: i.button };
+    if ("sellerTrack" in i) return {};
     const kind = "voice" in i ? "audio" : "sticker" in i ? "sticker" : "image";
     return { attachments: [{ type: kind, url: `https://cdn.test/${kind}`, index: 0 }] as never };
   };
+  const webhook = (m: Partial<ParsedZernioMessage>) => ({
+    id: `evt-${++eventNo}`,
+    event: "message.received",
+    account: { id: "acc-1", platform },
+    message: {
+      id: `m-${eventNo}`,
+      conversationId: "conv-1",
+      platform,
+      direction: "incoming",
+      text: m.text ?? "",
+      attachments: (m.attachments ?? []).map((a) => ({ type: a.type, url: a.url })),
+      sender: { id: "1", name: "Анна" },
+      ...(m.postbackPayload ? { metadata: { postbackPayload: m.postbackPayload } } : {}),
+    },
+  });
   return {
     db,
     async say(i) {
       mark = sent.length;
+      sellerLines = [];
       if ("repeat" in i) i = last ?? { text: "" };
       else last = i;
+      if ("sellerTrack" in i) {
+        const prev = outbound.sink;
+        outbound.sink = (html) => sent.push({ text: plain(html), buttons: [] });
+        try {
+          sellerLines = (await sellerTrackReply(ctx, i.orderId, i.sellerTrack)).seller;
+        } finally {
+          outbound.sink = prev;
+        }
+        return;
+      }
+      if (o.full) {
+        await handleZernioMessage(ctx, webhook(toMessage(i)) as never, transport);
+        current.state = db.tables.bot_users![0]!.state as Customer["state"];
+        return;
+      }
       const r = await handleShopMessage(ctx, current, parsed(toMessage(i)), transport);
       current = r.customer;
       current.state = db.tables.bot_users![0]!.state as Customer["state"];
     },
+    sellerReplies: () => sellerLines,
+    reasons: () => reasonsOf(db),
     replies: () => sent.slice(mark).map((s) => s.text),
     buttons: () => sent.slice(mark).flatMap((s) => s.buttons),
     cart: () => (db.tables.cart_items ?? []).map((c) => String(c.product_id)),
@@ -258,10 +355,20 @@ function telegramRoom(o: RoomOptions): Room {
       .flat()
       .map((b) => b.text);
   const messages = () => calls.slice(mark).filter(([m]) => m === "sendMessage");
+  let sellerLines: string[] = [];
   return {
     db,
+    sellerReplies: () => sellerLines,
+    reasons: () => reasonsOf(db),
     async say(i) {
       mark = calls.length;
+      sellerLines = [];
+      if ("sellerTrack" in i) {
+        const r = await sellerTrackReply(ctx, i.orderId, i.sellerTrack);
+        sellerLines = r.seller;
+        for (const text of r.buyer) calls.push(["sendMessage", { chat_id: TG, text }]);
+        return;
+      }
       const again = "repeat" in i && lastUpdate !== null;
       if (!again) updateId++;
       const from = { id: TG, is_bot: false, first_name: "Анна" };

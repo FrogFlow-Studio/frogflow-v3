@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setEnvForTests } from "@/config/env";
 import { COPY } from "@/channels/telegram/copy";
-import { notices, room } from "./harness";
+import { notices, outbound, room } from "./harness";
 import { SCENARIOS, type Says } from "./scenarios";
 
 /** Золотые диалоги (Б14): прогон сценариев из scenarios.ts на настоящем коде каналов. */
@@ -27,6 +27,19 @@ vi.mock("@/channels/telegram/notify", async (orig) => ({
     notices.count++;
     return 1;
   },
+}));
+// Сообщение покупателю не из его реплики (трек от продавца) уходит в «комнату».
+vi.mock("@/channels/zernio/outbound.server", async (orig) => ({
+  ...(await orig<typeof import("@/channels/zernio/outbound.server")>()),
+  sendToZernioTargetResult: async (_t: unknown, html: string) => {
+    outbound.sink?.(html);
+    return { ok: true };
+  },
+}));
+// Продавец — один, Telegram-id 900 (см. SELLER_ID в harness).
+vi.mock("@/core/notify/recipients", () => ({
+  adminRecipients: async () => ["900"],
+  shopAdminIds: async () => ["900"],
 }));
 vi.mock("@/core/catalog/low-stock", async (orig) => ({
   ...(await orig<typeof import("@/core/catalog/low-stock")>()),
@@ -74,6 +87,11 @@ describe("золотые диалоги", () => {
         for (const b of e.buttons ?? []) expect(r.buttons(), where).toContain(b);
         if (e.cart !== undefined) expect(r.cart().length, `${where}: корзина`).toBe(e.cart);
         if (e.state) expect(r.state(), `${where}: состояние`).toMatchObject(e.state);
+        const seen = r.sellerReplies().join("\n");
+        for (const x of e.sellerSees ?? [])
+          expect(has(seen, x), `${where}: продавцу нет «${String(x)}» в «${seen}»`).toBe(true);
+        if (e.reasons !== undefined)
+          expect(r.reasons().length, `${where}: причины ответов`).toBeGreaterThanOrEqual(e.reasons);
         if (e.sellerNotices !== undefined)
           expect(notices.count - before, where).toBe(e.sellerNotices);
       }
