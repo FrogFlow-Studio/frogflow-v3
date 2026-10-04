@@ -4,7 +4,8 @@ import {
   operatorLogout,
   pendingRequestCountFn,
 } from "@/app/operator/operator.functions";
-import { Badge, NavLink, Shell, ThemeToggle } from "@/app/ui";
+import { OperatorBottomBar, OperatorSideNav } from "@/app/operator/OperatorMenu";
+import { Shell, ThemeToggle } from "@/app/ui";
 
 export const Route = createFileRoute("/operator/_authed")({
   beforeLoad: async () => {
@@ -21,28 +22,7 @@ function Layout() {
   return (
     <Shell
       brand="🐸 FrogFlow · оператор"
-      nav={
-        <>
-          <NavLink to="/operator" activeOptions={{ exact: true }}>
-            Клиенты
-          </NavLink>
-          <NavLink to="/operator/clients/new">Подключить клиента</NavLink>
-          <NavLink to="/operator/revenue">Выручка</NavLink>
-          <NavLink to="/operator/partners">Партнёры</NavLink>
-          <NavLink to="/operator/leads">Лиды</NavLink>
-          <NavLink to="/operator/broadcast">Сообщение владельцам</NavLink>
-          <NavLink to="/operator/migration">Переезд на v2</NavLink>
-          <NavLink to="/operator/log">Журнал действий</NavLink>
-          <NavLink to="/operator/crons">Кроны</NavLink>
-          <NavLink to="/operator/settings">Настройки</NavLink>
-          <NavLink to="/operator/requests">
-            <span className="flex items-center justify-between gap-2">
-              Заявки на модули
-              {pendingRequests > 0 && <Badge tone="accent">{pendingRequests}</Badge>}
-            </span>
-          </NavLink>
-        </>
-      }
+      nav={<OperatorSideNav pending={pendingRequests} />}
       user={
         <div className="flex items-center justify-between">
           <ThemeToggle />
@@ -59,6 +39,8 @@ function Layout() {
       }
     >
       <Outlet />
+      <div className="h-16 md:hidden" aria-hidden />
+      <OperatorBottomBar pending={pendingRequests} />
     </Shell>
   );
 }
