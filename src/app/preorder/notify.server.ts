@@ -46,14 +46,20 @@ export async function notifyPreorderMovedChannels(
     const date = move.to
       ? preorderDate(move.to, ctx.tenant.settings.default_locale ?? "ru")
       : t("preorder.moved.noDate");
+    // Не больше 200 номеров в сообщении (лимит Telegram 4096 знаков); остаток — «…».
+    const numbers = (orders: typeof result.missed) =>
+      orders
+        .slice(0, 200)
+        .map((o) => `#${o.displayNo}`)
+        .join(", ") + (orders.length > 200 ? " …" : "");
+    const params = { name: escapeHtml(move.name), date };
     const lines = [
-      t("preorder.moved.missed", {
-        name: escapeHtml(move.name),
-        date,
-        n: result.missed.length,
-      }),
-      result.missed.map((o) => `#${o.displayNo}`).join(", "),
-      result.left ? t("preorder.moved.left", { n: result.left }) : "",
+      result.missed.length
+        ? t("preorder.moved.missed", { ...params, n: result.missed.length })
+        : "",
+      result.missed.length ? numbers(result.missed) : "",
+      result.left ? t("preorder.moved.left", { ...params, n: result.left }) : "",
+      result.left ? numbers(result.leftOrders) : "",
     ].filter(Boolean);
     await notifyAdminsHtml(ctx, lines.join("\n"), { kind: "system" }).catch((e) =>
       console.error(`[preorder-move:${ctx.tenant.id}] список продавцу`, e),

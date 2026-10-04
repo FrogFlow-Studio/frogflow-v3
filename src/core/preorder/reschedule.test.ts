@@ -176,4 +176,18 @@ describe("перенос срока предзаказа", () => {
     // и повтор сразу после — молчит
     expect((await run(ab)).notified).toBe(0);
   });
+
+  it("бюджет вышел — номера не успевших в результате, а не только их число", async () => {
+    const { ctx } = setup();
+    let t = 0;
+    const send = vi.fn(async () => {
+      t += 60_000;
+      return true;
+    });
+    const r = await notifyPreorderMoved(ctx, MOVE, send, { now: () => t, budgetMs: 50_000 });
+    // Заказы 1, 2, 4 открыты: первый ушёл за 60 с, остальные не успели.
+    expect(r.notified).toBe(1);
+    expect(r.left).toBe(2);
+    expect(r.leftOrders.map((o) => o.id)).toEqual([2, 4]);
+  });
 });

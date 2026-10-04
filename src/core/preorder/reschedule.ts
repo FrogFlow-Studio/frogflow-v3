@@ -98,8 +98,13 @@ export type MoveResult = {
   notified: number;
   /** Не смогли сообщить: вне окна, нет канала, отправка не ушла. */
   missed: MovedOrder[];
-  /** Не успели из-за бюджета времени — досылаются повторным переносом/сохранением. */
+  /**
+   * Не успели из-за бюджета времени (или не прочиталось окно ответа): сообщение
+   * им не ушло и само не уйдёт — повторное сохранение с той же датой переносом
+   * не считается. Продавцу уходят их номера, он пишет им сам.
+   */
   left: number;
+  leftOrders: MovedOrder[];
 };
 
 export const MOVE_BUDGET_MS = 90_000;
@@ -149,11 +154,12 @@ export async function notifyPreorderMoved(
 ): Promise<MoveResult> {
   const clock = opts.now ?? Date.now;
   const started = clock();
-  const r: MoveResult = { notified: 0, missed: [], left: 0 };
+  const r: MoveResult = { notified: 0, missed: [], left: 0, leftOrders: [] };
   const orders = await openPreorderOrders(ctx, move.productId);
   for (let i = 0; i < orders.length; i++) {
     if (clock() - started >= (opts.budgetMs ?? MOVE_BUDGET_MS)) {
-      r.left = orders.length - i;
+      r.leftOrders.push(...orders.slice(i));
+      r.left += orders.length - i;
       break;
     }
     const o = orders[i]!;
@@ -167,6 +173,7 @@ export async function notifyPreorderMoved(
       } catch (e) {
         // Окно не прочиталось — заказ не трогаем, переносу можно повторить.
         console.error(`[preorder-move:${ctx.tenant.id}] #${o.id}`, e);
+        r.leftOrders.push(o);
         r.left++;
         continue;
       }
@@ -178,6 +185,7 @@ export async function notifyPreorderMoved(
     } catch (e) {
       // История не прочиталась — заказ не трогаем: перенос можно сохранить повторно.
       console.error(`[preorder-move:${ctx.tenant.id}] #${o.id}`, e);
+      r.leftOrders.push(o);
       r.left++;
       continue;
     }

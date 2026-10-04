@@ -206,7 +206,8 @@ export const ru = {
   "preorder.moved.noDate": "срок уточним",
   "preorder.moved.missed":
     "Срок предзаказа «{name}» изменён (теперь: {date}). Не смогли сообщить покупателям ({n}): окно ответа 24 часа закрыто или нет канала связи. Напишите им сами. Заказы:",
-  "preorder.moved.left": "Ещё {n} заказов не успели обработать — сообщите им сами.",
+  "preorder.moved.left":
+    "Предзаказ «{name}» (срок: {date}): ещё {n} заказов не успели обработать — сообщение им не ушло, напишите им сами. Заказы:",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -411,7 +412,8 @@ export const kk: SectionDict<typeof ru> = {
   "preorder.moved.noDate": "мерзімін нақтылаймыз",
   "preorder.moved.missed":
     "«{name}» алдын ала тапсырысының мерзімі өзгерді (енді: {date}). Сатып алушыларға хабарлай алмадық ({n}): 24 сағаттық жауап терезесі жабық немесе байланыс арнасы жоқ. Өзіңіз жазыңыз. Тапсырыстар:",
-  "preorder.moved.left": "Тағы {n} тапсырысты өңдеуге үлгермедік — оларға өзіңіз хабарлаңыз.",
+  "preorder.moved.left":
+    "«{name}» алдын ала тапсырысы (мерзімі: {date}): тағы {n} тапсырысты өңдеуге үлгермедік — оларға хабарлама кетпеді, өзіңіз жазыңыз. Тапсырыстар:",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -616,7 +618,8 @@ export const en: SectionDict<typeof ru> = {
   "preorder.moved.noDate": "date to be confirmed",
   "preorder.moved.missed":
     "The pre-order date for “{name}” has changed (now: {date}). We could not tell these customers ({n}): the 24-hour reply window is closed or there is no channel. Please write to them yourself. Orders:",
-  "preorder.moved.left": "{n} more orders were not processed in time — please tell them yourself.",
+  "preorder.moved.left":
+    "Pre-order “{name}” (date: {date}): {n} more orders were not processed in time — they got no message, please tell them yourself. Orders:",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -820,5 +823,6 @@ export const uz: SectionDict<typeof ru> = {
   "preorder.moved.noDate": "muddat aniqlanadi",
   "preorder.moved.missed":
     "«{name}» oldindan buyurtmasining muddati oʻzgardi (endi: {date}). Xaridorlarga ({n}) xabar bera olmadik: 24 soatlik javob oynasi yopiq yoki aloqa kanali yoʻq. Oʻzingiz yozing. Buyurtmalar:",
-  "preorder.moved.left": "Yana {n} ta buyurtmani ulgurmadik — ularga oʻzingiz xabar bering.",
+  "preorder.moved.left":
+    "“{name}” oldindan buyurtmasi (muddat: {date}): yana {n} ta buyurtmani ulgurmadik — ularga xabar ketmadi, oʻzingiz yozing. Buyurtmalar:",
 };
