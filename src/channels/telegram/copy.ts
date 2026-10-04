@@ -262,6 +262,8 @@ export type Msg = {
   orderAccepted: (no: number) => string;
   /** Смена статуса физического заказа продавцом: готовится, готов, выдан, принят. */
   orderStatusNotice: (status: string, no: number) => string;
+  /** Продавец нажал «Отправлен» у физического заказа. */
+  orderShipped: (no: number) => string;
   orderRefunded: (no: number, full: boolean, sum: string) => string;
   searchPrompt: string;
   searchNothing: (q: string) => string;
@@ -699,6 +701,7 @@ const ru: Msg = {
   orderAccepted: (no) => `✅ Заказ #${no} принят в работу.`,
   orderStatusNotice: (status, no) =>
     `${({ in_production: "🧑‍🍳 Заказ готовится", ready: "🎉 Заказ готов к выдаче", delivered: "✅ Заказ выдан. Спасибо!", accepted: "Заказ принят" } as Record<string, string>)[status] ?? status} — #${no}`,
+  orderShipped: (no) => `📦 Заказ #${no} отправлен. Спасибо!`,
   orderRefunded: (no, full, sum) =>
     `↩️ По заказу #${no} оформлен ${full ? "возврат" : "частичный возврат"}: ${sum}.`,
   searchPrompt: "🔍 Введите слово для поиска по каталогу:",
@@ -791,6 +794,7 @@ const kk: Msg = {
     `🕒 «${name}» алдын ала тапсырысының жіберу мерзімі өзгерді: ${from ? `енді ${preorderDate(from, "kk")} күнінен бастап жіберіледі` : "жіберу мерзімін нақтылаймыз"}.`,
   orderStatusNotice: (status, no) =>
     `${({ in_production: "🧑‍🍳 Тапсырыс дайындалуда", ready: "🎉 Тапсырыс беруге дайын", delivered: "✅ Тапсырыс берілді. Рақмет!", accepted: "Тапсырыс қабылданды" } as Record<string, string>)[status] ?? status} — #${no}`,
+  orderShipped: (no) => `📦 №${no} тапсырыс жөнелтілді. Рақмет!`,
   orderDelivered: (no) => `🎉 #${no} тапсырыс берілді. Сатып алғаныңызға рахмет!`,
   orderRejected: (no) =>
     `❌ #${no} тапсырысты сатушы қабылдамады. Егер бұл қате болса — сатушыға жазыңыз.`,
@@ -1046,6 +1050,7 @@ const en: Msg = {
     `🕒 The ship date of your pre-order “${name}” has changed: ${from ? `it now ships from ${preorderDate(from, "en")}` : "we will confirm the ship date"}.`,
   orderStatusNotice: (status, no) =>
     `${({ in_production: "🧑‍🍳 Your order is being prepared", ready: "🎉 Your order is ready for pickup", delivered: "✅ Order delivered. Thank you!", accepted: "Order accepted" } as Record<string, string>)[status] ?? status} — #${no}`,
+  orderShipped: (no) => `📦 Order #${no} has been shipped. Thank you!`,
   orderDelivered: (no) => `🎉 Order #${no} has been delivered. Thank you for your purchase!`,
   orderRejected: (no) =>
     `❌ Order #${no} was declined by the seller. If this is a mistake, please message them.`,
@@ -1364,6 +1369,7 @@ const uz: Msg = {
     `🕒 «${name}» oldindan buyurtmasining joʻnatish muddati oʻzgardi: ${from ? `endi ${preorderDate(from, "uz")} dan joʻnatiladi` : "joʻnatish muddatini aniqlaymiz"}.`,
   orderStatusNotice: (status, no) =>
     `${({ in_production: "🧑‍🍳 Buyurtma tayyorlanmoqda", ready: "🎉 Buyurtma topshirishga tayyor", delivered: "✅ Buyurtma topshirildi. Rahmat!", accepted: "Buyurtma qabul qilindi" } as Record<string, string>)[status] ?? status} — #${no}`,
+  orderShipped: (no) => `📦 #${no}-buyurtma joʻnatildi. Rahmat!`,
   orderDelivered: (no) => `🎉 #${no}-buyurtma topshirildi. Xaridingiz uchun rahmat!`,
   orderRejected: (no) =>
     `❌ #${no}-buyurtma sotuvchi tomonidan rad etildi. Agar bu xato bo'lsa, sotuvchiga yozing.`,

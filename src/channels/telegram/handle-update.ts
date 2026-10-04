@@ -262,6 +262,8 @@ async function handleMessage(
 
   // Менеджер ответил свайпом на уведомление о передаче — ответ покупателю в Direct.
   if (msg.reply_to_message && msg.text?.trim() && (await relayManagerReply(ctx, api, msg))) return;
+  // Продавец ответил свайпом на «Написать покупателю» под уведомлением о заказе.
+  if (msg.reply_to_message && msg.text?.trim() && (await relayOrderReply(ctx, api, msg))) return;
 
   // Чек по счёту оператора от владельца бота — до гварда паузы: счёт и
   // выставляется как раз тогда, когда бот приостановлен за просрочку.
@@ -2296,6 +2298,8 @@ async function handleCallback(
   // Кнопки продавца в его чате/группе — до всех покупательских гвардов.
   if (data.startsWith("confirm:") || data.startsWith("reject:"))
     return adminDecision(ctx, api, from.id, chatId, data);
+  if (data.startsWith("ost:") || data.startsWith("owr:"))
+    return adminOrderButton(ctx, api, from.id, chatId, data);
   // Проверка домашнего задания из уведомления преподавателю (онлайн-школа).
   if ((data.startsWith("hwa:") || data.startsWith("hwv:")) && ctx.tenant.modules.courses) {
     const { homeworkDecision } = await import("./homework-review");
@@ -2915,7 +2919,15 @@ async function adminDecision(
     }
     await api.call("sendMessage", { chat_id: chatId, text: st.accepted(no) });
     await tellBuyer(m.orderAccepted(no));
-    await decided();
+    // Физический заказ ведётся дальше теми же сообщениями: кнопки следующего шага.
+    const { refreshOrderNotifyButtons } = await import("./order-notify");
+    const { orderStepKeyboard } = await import("./order-notify-keys");
+    await refreshOrderNotifyButtons(
+      ctx,
+      api,
+      orderId,
+      orderStepKeyboard({ id: orderId, status: "accepted" }, await sellerLocale(ctx)),
+    );
     return;
   }
   let sender = telegramMaterialSender(api, order.telegram_id, m);
@@ -2974,6 +2986,124 @@ async function adminDecision(
       text: st.partial(no, r.sent, r.failed),
     });
   }
+}
+
+/**
+ * Кнопки шага физического заказа («В работу», «Собран», «Отправлен», «Выдан»)
+ * и «Написать покупателю» под уведомлением продавцу. Шаг — тот же
+ * setPhysicalStatus, что и в админке, условная запись по статусу: двойное
+ * нажатие или кнопка устаревшего статуса ничего не пишут и не шлют.
+ */
+async function adminOrderButton(
+  ctx: TenantContext,
+  api: TelegramApi,
+  fromId: number,
+  chatId: number,
+  data: string,
+) {
+  const { shopAdminIds } = await import("@/core/notify/recipients");
+  const { SELLER_DECISION } = await import("./seller-decision-texts");
+  const { sellerLocale } = await import("@/core/catalog/low-stock");
+  const sLocale = await sellerLocale(ctx);
+  const st = SELLER_DECISION[sLocale];
+  const say = (text: string) => api.call("sendMessage", { chat_id: chatId, text });
+  if (!(await shopAdminIds(ctx)).includes(String(fromId))) return void (await say(st.onlyAdmin));
+  const [kind, idRaw, stepRaw] = data.split(":");
+  const orderId = Number(idRaw);
+  const order = Number.isInteger(orderId) ? await getOrder(ctx, orderId) : null;
+  if (!order) return void (await say(st.notFound(orderId)));
+  const no = displayNo(order);
+
+  if (kind === "owr") {
+    if (orderChannel(order.platform) === "manual" || orderChannel(order.platform) === "web")
+      return void (await say(st.writeNoChat(no)));
+    const { orderWriteRefLine } = await import("./order-notify-keys");
+    await say(`${st.writePrompt(no)}\n${orderWriteRefLine(orderId)}`);
+    return;
+  }
+
+  const { isOrderStep, ORDER_STEPS, orderStepKeyboard } = await import("./order-notify-keys");
+  if (!stepRaw || !isOrderStep(stepRaw) || order.fulfillment_kind !== "physical")
+    return void (await say(st.stepStale(no, order.status)));
+  const { from, to } = ORDER_STEPS[stepRaw];
+  const { setPhysicalStatus } = await import("@/core/orders/admin");
+  // Условная запись: выигрывает одно нажатие, остальные видят «статус уже изменился».
+  if (!(await setPhysicalStatus(ctx, orderId, from, to)))
+    return void (await say(st.stepStale(no, order.status)));
+  const { recordOrderEvent } = await import("@/core/orders/events");
+  await recordOrderEvent(ctx, orderId, "status", { to, step: stepRaw }, "admin");
+  const m = COPY[await orderBuyerLocale(ctx, order)];
+  const { sendToZernioTarget, zernioTargetForOrder } =
+    await import("@/channels/zernio/outbound.server");
+  const target = await zernioTargetForOrder(ctx, order);
+  const notice = stepRaw === "shipped" ? m.orderShipped(no) : m.orderStatusNotice(to, no);
+  if (target) await sendToZernioTarget(target, notice);
+  else if (orderChannel(order.platform) === "telegram")
+    await api.call("sendMessage", { chat_id: order.telegram_id, text: notice });
+  await say(st.stepDone(no, stepRaw));
+  const { refreshOrderNotifyButtons, scheduleOrderNotifyDismiss } = await import("./order-notify");
+  const keyboard = orderStepKeyboard({ id: orderId, status: to }, sLocale);
+  if (keyboard.length) await refreshOrderNotifyButtons(ctx, api, orderId, keyboard);
+  else {
+    await scheduleOrderNotifyDismiss(ctx, api, orderId);
+    // Выдан — как в админке: награда пригласившему за первую выдачу.
+    const { rewardReferrerIfFirstDelivery } = await import("@/core/referrals/referrals");
+    const grant = await rewardReferrerIfFirstDelivery(ctx, order.telegram_id).catch((e) => {
+      console.error(`[tg] награда пригласившему, заказ #${no}: ${String(e)}`);
+      return null;
+    });
+    await notifyReferral(ctx, api, grant);
+  }
+}
+
+/**
+ * Ответ продавца свайпом на «Написать покупателю»: текст уходит покупателю в
+ * его канал. Instagram/WhatsApp вне окна 24 часа — честный отказ, не повтор.
+ * false — это не такой ответ.
+ */
+async function relayOrderReply(
+  ctx: TenantContext,
+  api: TelegramApi,
+  msg: TelegramMessage,
+): Promise<boolean> {
+  const { orderWriteRefOf } = await import("./order-notify-keys");
+  const orderId = orderWriteRefOf(msg.reply_to_message?.text);
+  if (!orderId || !msg.from) return false;
+  const { shopAdminIds } = await import("@/core/notify/recipients");
+  if (!(await shopAdminIds(ctx)).includes(String(msg.from.id))) return false;
+  const { SELLER_DECISION } = await import("./seller-decision-texts");
+  const { sellerLocale } = await import("@/core/catalog/low-stock");
+  const st = SELLER_DECISION[await sellerLocale(ctx)];
+  const say = (text: string) => api.call("sendMessage", { chat_id: msg.chat.id, text });
+  const order = await getOrder(ctx, orderId);
+  if (!order) {
+    await say(st.notFound(orderId));
+    return true;
+  }
+  const no = displayNo(order);
+  const text = msg.text!.trim();
+  const { sendToZernioTargetResult, zernioTargetForOrder } =
+    await import("@/channels/zernio/outbound.server");
+  const target = await zernioTargetForOrder(ctx, order);
+  if (target) {
+    const { classifyZernioFailure } = await import("@/channels/zernio/errors");
+    const r = await sendToZernioTargetResult(target, escapeHtml(text));
+    if (!r.ok)
+      await say(
+        classifyZernioFailure(r.failure) === "window_closed"
+          ? st.writeWindowClosed
+          : st.writeNotSent,
+      );
+    else await say(st.writeSent(no));
+    return true;
+  }
+  if (orderChannel(order.platform) !== "telegram") {
+    await say(st.writeNoChat(no));
+    return true;
+  }
+  const res = await api.call("sendMessage", { chat_id: order.telegram_id, text });
+  await say(res.ok ? st.writeSent(no) : st.writeNotSent);
+  return true;
 }
 
 /**

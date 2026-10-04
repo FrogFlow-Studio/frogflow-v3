@@ -51,16 +51,24 @@ export async function zernioTargetForOrder(
   return zernioTargetOf(customer, ctx.tenant.settings.default_locale);
 }
 
+/** Текст покупателю в его канал, с причиной отказа (HTML снимается — Direct его не рисует). */
+export async function sendToZernioTargetResult(
+  target: ZernioTarget,
+  html: string,
+  transport: ZernioTransport = liveTransport,
+) {
+  return transport.send(target.conversationId, target.accountId, plain(html), {
+    platform: target.platform,
+  });
+}
+
 /** Текст покупателю в его канал (HTML снимается — Direct его не рисует). */
 export async function sendToZernioTarget(
   target: ZernioTarget,
   html: string,
   transport: ZernioTransport = liveTransport,
 ): Promise<boolean> {
-  const r = await transport.send(target.conversationId, target.accountId, plain(html), {
-    platform: target.platform,
-  });
-  return r.ok;
+  return (await sendToZernioTargetResult(target, html, transport)).ok;
 }
 
 export function zernioSenderFor(

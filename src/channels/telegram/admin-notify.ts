@@ -8,6 +8,8 @@ import { isoToDisplay } from "@/core/fulfillment/pure";
 import { fulfillmentSlots, slotOf } from "@/core/fulfillment/slots";
 import { collectTgMessageIds, type AdminNotifyTgRef } from "@/core/notify/order-pack";
 import { rememberOrderNotify } from "./order-notify";
+import { writeBuyerButton } from "./order-notify-keys";
+import { sellerLocale } from "@/core/catalog/low-stock";
 import { rejectedForSure } from "./api";
 import { orderPhotoUrls, proofCaption, storedProof } from "./order-notify-media";
 
@@ -101,6 +103,7 @@ export async function notifyAdminNewOrder(
           `• ${escapeHtml(i.name_snapshot)} × ${i.quantity} — ${i.price_snapshot} ${order.currency}`,
       )
       .join("\n");
+  const sellerLoc = await sellerLocale(ctx).catch(() => ctx.tenant.settings.default_locale ?? "ru");
   const reply_markup =
     (paidOnline || opts.autoDelivered) && order.fulfillment_kind !== "physical"
       ? undefined
@@ -116,6 +119,7 @@ export async function notifyAdminNewOrder(
               },
               { text: "❌ Отклонить", callback_data: `reject:${order.id}` },
             ],
+            [writeBuyerButton(order.id, sellerLoc)],
           ],
         };
   if (prefs.kinds.new_order.email && prefs.email) {

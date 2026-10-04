@@ -73,6 +73,29 @@ export async function scheduleOrderNotifyDismiss(
 }
 
 /**
+ * Физический заказ идёт дальше: кнопки уведомления заменяются на кнопки
+ * следующего шага, сами сообщения остаются. Сбой правки — не сбой шага.
+ */
+export async function refreshOrderNotifyButtons(
+  ctx: TenantContext,
+  api: TelegramApi,
+  orderId: number,
+  inline_keyboard: Array<Array<{ text: string; callback_data: string }>>,
+): Promise<void> {
+  try {
+    const pack = await loadPack(ctx, orderId);
+    for (const r of pack.refs.filter((x) => x.buttons))
+      await api.call("editMessageReplyMarkup", {
+        chat_id: r.chat_id,
+        message_id: r.message_id,
+        reply_markup: { inline_keyboard },
+      });
+  } catch (e) {
+    console.warn(`[tg:${ctx.tenant.id}] кнопки заказа #${orderId} не обновлены`, e);
+  }
+}
+
+/**
  * Минутный крон: удалить из чатов пачки, у которых вышел срок, и забыть
  * пачки без решения старше недели. Только ключи v2 и только в базе этого
  * клиента (ctx.db); крон зовёт его лишь для клиентов v2. Возвращает число пачек.

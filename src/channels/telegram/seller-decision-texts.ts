@@ -21,7 +21,18 @@ export type SellerDecisionTexts = {
   relayNoDialog: string;
   relayNotSent: string;
   relaySent: string;
+  /** Шаг статуса физического заказа с кнопки под уведомлением. */
+  stepDone: (no: string | number, step: StepName) => string;
+  stepStale: (no: string | number, status: string) => string;
+  /** Кнопка «Написать покупателю»: как ответить (метку в конце ставит код). */
+  writePrompt: (no: string | number) => string;
+  writeNoChat: (no: string | number) => string;
+  writeWindowClosed: string;
+  writeNotSent: string;
+  writeSent: (no: string | number) => string;
 };
+
+export type StepName = "work" | "ready" | "shipped" | "done";
 
 export const SELLER_DECISION: Record<Locale, SellerDecisionTexts> = {
   ru: {
@@ -41,6 +52,18 @@ export const SELLER_DECISION: Record<Locale, SellerDecisionTexts> = {
     relayNoDialog: "Не нашёл диалог покупателя — ответьте в разделе «Чат» панели.",
     relayNotSent: "Не удалось отправить покупателю — попробуйте из раздела «Чат» панели.",
     relaySent: "✅ Ответ отправлен покупателю. Консультант в этом диалоге пока молчит.",
+    stepDone: (no, step) =>
+      `${{ work: "🧑‍🍳 Заказ #" + no + ": в работе.", ready: "📦 Заказ #" + no + ": собран.", shipped: "🚚 Заказ #" + no + ": отправлен, покупателю написали.", done: "✅ Заказ #" + no + ": выдан, покупателю написали." }[step]}`,
+    stepStale: (no, st) => `Статус заказа #${no} уже изменился (${st}) — обновите уведомление.`,
+    writePrompt: (no) =>
+      `✉️ Покупателю по заказу #${no}: ответьте на это сообщение свайпом — текст уйдёт ему в тот же канал.`,
+    writeNoChat: (no) =>
+      `Заказ #${no}: у покупателя нет чата с ботом — напишите ему по контакту из заказа.`,
+    writeWindowClosed:
+      "Не отправлено: с последнего сообщения покупателя прошло больше 24 часов, Instagram/WhatsApp не принимают сообщение. Напишите ему по контакту из заказа.",
+    writeNotSent:
+      "Не удалось отправить покупателю — попробуйте позже или напишите по контакту из заказа.",
+    writeSent: (no) => `✅ Сообщение по заказу #${no} отправлено покупателю.`,
   },
   kk: {
     onlyAdmin: "⛔ Бұл батырма тек осы дүкеннің сатушысына қолжетімді.",
@@ -60,6 +83,18 @@ export const SELLER_DECISION: Record<Locale, SellerDecisionTexts> = {
     relayNoDialog: "Сатып алушының диалогы табылмады — панельдегі «Чат» бөлімінде жауап беріңіз.",
     relayNotSent: "Сатып алушыға жіберу сәтсіз болды — панельдегі «Чат» бөлімінен көріңіз.",
     relaySent: "✅ Жауап сатып алушыға жіберілді. Консультант бұл диалогта әзірге үнсіз.",
+    stepDone: (no, step) =>
+      `${{ work: "🧑‍🍳 №" + no + " тапсырыс: жұмыста.", ready: "📦 №" + no + " тапсырыс: жиналды.", shipped: "🚚 №" + no + " тапсырыс: жөнелтілді, сатып алушыға хабарланды.", done: "✅ №" + no + " тапсырыс: берілді, сатып алушыға хабарланды." }[step]}`,
+    stepStale: (no, st) => `№${no} тапсырыс күйі бұрын өзгерген (${st}) — хабарламаны жаңартыңыз.`,
+    writePrompt: (no) =>
+      `✉️ №${no} тапсырыс бойынша сатып алушыға: осы хабарламаға свайппен жауап беріңіз — мәтін сол арнаға кетеді.`,
+    writeNoChat: (no) =>
+      `№${no} тапсырыс: сатып алушының боттағы чаты жоқ — тапсырыстағы байланыс арқылы жазыңыз.`,
+    writeWindowClosed:
+      "Жіберілмеді: сатып алушының соңғы хабарынан 24 сағаттан астам өтті, Instagram/WhatsApp қабылдамайды. Тапсырыстағы байланыс арқылы жазыңыз.",
+    writeNotSent:
+      "Сатып алушыға жіберу сәтсіз болды — кейінірек көріңіз немесе тапсырыстағы байланыс арқылы жазыңыз.",
+    writeSent: (no) => `✅ №${no} тапсырыс бойынша хабарлама сатып алушыға жіберілді.`,
   },
   en: {
     onlyAdmin: "⛔ This button is available only to the seller of this shop.",
@@ -78,6 +113,18 @@ export const SELLER_DECISION: Record<Locale, SellerDecisionTexts> = {
     relayNoDialog: "Couldn't find the buyer's chat — reply in the “Chat” section of the panel.",
     relayNotSent: "Couldn't send to the buyer — try from the “Chat” section of the panel.",
     relaySent: "✅ Reply sent to the buyer. The consultant stays silent in this chat for now.",
+    stepDone: (no, step) =>
+      `${{ work: "🧑‍🍳 Order #" + no + ": in progress.", ready: "📦 Order #" + no + ": packed.", shipped: "🚚 Order #" + no + ": shipped, the buyer was notified.", done: "✅ Order #" + no + ": handed over, the buyer was notified." }[step]}`,
+    stepStale: (no, st) =>
+      `Order #${no} status has already changed (${st}) — refresh the notification.`,
+    writePrompt: (no) =>
+      `✉️ To the buyer of order #${no}: reply to this message (swipe) — the text goes to them in the same channel.`,
+    writeNoChat: (no) =>
+      `Order #${no}: the buyer has no chat with the bot — contact them via the details in the order.`,
+    writeWindowClosed:
+      "Not sent: more than 24 hours have passed since the buyer's last message, so Instagram/WhatsApp won't accept it. Contact them via the details in the order.",
+    writeNotSent: "Couldn't send to the buyer — try later or use the contact in the order.",
+    writeSent: (no) => `✅ Your message about order #${no} was sent to the buyer.`,
   },
   uz: {
     onlyAdmin: "⛔ Bu tugma faqat ushbu doʻkon sotuvchisi uchun.",
@@ -97,5 +144,18 @@ export const SELLER_DECISION: Record<Locale, SellerDecisionTexts> = {
     relayNoDialog: "Xaridor dialogi topilmadi — paneldagi «Chat» boʻlimida javob bering.",
     relayNotSent: "Xaridorga yuborib boʻlmadi — paneldagi «Chat» boʻlimidan urinib koʻring.",
     relaySent: "✅ Javob xaridorga yuborildi. Konsultant bu dialogda hozircha jim.",
+    stepDone: (no, step) =>
+      `${{ work: "🧑‍🍳 #" + no + " buyurtma: ishda.", ready: "📦 #" + no + " buyurtma: yigʻildi.", shipped: "🚚 #" + no + " buyurtma: joʻnatildi, xaridorga xabar berildi.", done: "✅ #" + no + " buyurtma: topshirildi, xaridorga xabar berildi." }[step]}`,
+    stepStale: (no, st) =>
+      `#${no} buyurtma holati allaqachon oʻzgargan (${st}) — xabarni yangilang.`,
+    writePrompt: (no) =>
+      `✉️ #${no} buyurtma xaridoriga: shu xabarga svayp bilan javob bering — matn oʻsha kanalga ketadi.`,
+    writeNoChat: (no) =>
+      `#${no} buyurtma: xaridorning botda chati yoʻq — buyurtmadagi aloqa orqali yozing.`,
+    writeWindowClosed:
+      "Yuborilmadi: xaridorning oxirgi xabaridan 24 soatdan koʻp oʻtdi, Instagram/WhatsApp qabul qilmaydi. Buyurtmadagi aloqa orqali yozing.",
+    writeNotSent:
+      "Xaridorga yuborib boʻlmadi — keyinroq urining yoki buyurtmadagi aloqadan foydalaning.",
+    writeSent: (no) => `✅ #${no} buyurtma boʻyicha xabar xaridorga yuborildi.`,
   },
 };
