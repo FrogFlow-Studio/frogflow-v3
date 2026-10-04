@@ -36,6 +36,7 @@ import { Route as AdminAuthedBotPreviewRouteImport } from './routes/admin._authe
 import { Route as AdminAuthedBroadcastsRouteImport } from './routes/admin._authed.broadcasts'
 import { Route as AdminAuthedCategoriesRouteImport } from './routes/admin._authed.categories'
 import { Route as AdminAuthedChatRouteImport } from './routes/admin._authed.chat'
+import { Route as AdminAuthedCommunityRouteImport } from './routes/admin._authed.community'
 import { Route as AdminAuthedConsultantRouteImport } from './routes/admin._authed.consultant'
 import { Route as AdminAuthedCostRouteImport } from './routes/admin._authed.cost'
 import { Route as AdminAuthedCustomersRouteImport } from './routes/admin._authed.customers'
@@ -75,6 +76,7 @@ import { Route as ApiV1SplatRouteImport } from './routes/api/v1.$'
 import { Route as ApiZernioWebhookRouteImport } from './routes/api/zernio/webhook'
 import { Route as OperatorAuthedIndexRouteImport } from './routes/operator._authed.index'
 import { Route as OperatorAuthedBroadcastRouteImport } from './routes/operator._authed.broadcast'
+import { Route as OperatorAuthedCommunityRouteImport } from './routes/operator._authed.community'
 import { Route as OperatorAuthedCronsRouteImport } from './routes/operator._authed.crons'
 import { Route as OperatorAuthedLeadsRouteImport } from './routes/operator._authed.leads'
 import { Route as OperatorAuthedLogRouteImport } from './routes/operator._authed.log'
@@ -252,6 +254,11 @@ const AdminAuthedCategoriesRoute = AdminAuthedCategoriesRouteImport.update({
 const AdminAuthedChatRoute = AdminAuthedChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedCommunityRoute = AdminAuthedCommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedConsultantRoute = AdminAuthedConsultantRouteImport.update({
@@ -447,6 +454,11 @@ const OperatorAuthedIndexRoute = OperatorAuthedIndexRouteImport.update({
 const OperatorAuthedBroadcastRoute = OperatorAuthedBroadcastRouteImport.update({
   id: '/broadcast',
   path: '/broadcast',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
+const OperatorAuthedCommunityRoute = OperatorAuthedCommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
 const OperatorAuthedCronsRoute = OperatorAuthedCronsRouteImport.update({
@@ -712,6 +724,7 @@ export interface FileRoutesByFullPath {
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/chat': typeof AdminAuthedChatRoute
+  '/admin/community': typeof AdminAuthedCommunityRoute
   '/admin/consultant': typeof AdminAuthedConsultantRoute
   '/admin/cost': typeof AdminAuthedCostRoute
   '/admin/customers': typeof AdminAuthedCustomersRoute
@@ -750,6 +763,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/$': typeof ApiV1SplatRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
+  '/operator/community': typeof OperatorAuthedCommunityRoute
   '/operator/crons': typeof OperatorAuthedCronsRoute
   '/operator/leads': typeof OperatorAuthedLeadsRoute
   '/operator/log': typeof OperatorAuthedLogRoute
@@ -822,6 +836,7 @@ export interface FileRoutesByTo {
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/chat': typeof AdminAuthedChatRoute
+  '/admin/community': typeof AdminAuthedCommunityRoute
   '/admin/consultant': typeof AdminAuthedConsultantRoute
   '/admin/cost': typeof AdminAuthedCostRoute
   '/admin/customers': typeof AdminAuthedCustomersRoute
@@ -860,6 +875,7 @@ export interface FileRoutesByTo {
   '/api/v1/$': typeof ApiV1SplatRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
+  '/operator/community': typeof OperatorAuthedCommunityRoute
   '/operator/crons': typeof OperatorAuthedCronsRoute
   '/operator/leads': typeof OperatorAuthedLeadsRoute
   '/operator/log': typeof OperatorAuthedLogRoute
@@ -934,6 +950,7 @@ export interface FileRoutesById {
   '/admin/_authed/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/_authed/categories': typeof AdminAuthedCategoriesRoute
   '/admin/_authed/chat': typeof AdminAuthedChatRoute
+  '/admin/_authed/community': typeof AdminAuthedCommunityRoute
   '/admin/_authed/consultant': typeof AdminAuthedConsultantRoute
   '/admin/_authed/cost': typeof AdminAuthedCostRoute
   '/admin/_authed/customers': typeof AdminAuthedCustomersRoute
@@ -972,6 +989,7 @@ export interface FileRoutesById {
   '/api/v1/$': typeof ApiV1SplatRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/_authed/broadcast': typeof OperatorAuthedBroadcastRoute
+  '/operator/_authed/community': typeof OperatorAuthedCommunityRoute
   '/operator/_authed/crons': typeof OperatorAuthedCronsRoute
   '/operator/_authed/leads': typeof OperatorAuthedLeadsRoute
   '/operator/_authed/log': typeof OperatorAuthedLogRoute
@@ -1047,6 +1065,7 @@ export interface FileRouteTypes {
     | '/admin/broadcasts'
     | '/admin/categories'
     | '/admin/chat'
+    | '/admin/community'
     | '/admin/consultant'
     | '/admin/cost'
     | '/admin/customers'
@@ -1085,6 +1104,7 @@ export interface FileRouteTypes {
     | '/api/v1/$'
     | '/api/zernio/webhook'
     | '/operator/broadcast'
+    | '/operator/community'
     | '/operator/crons'
     | '/operator/leads'
     | '/operator/log'
@@ -1157,6 +1177,7 @@ export interface FileRouteTypes {
     | '/admin/broadcasts'
     | '/admin/categories'
     | '/admin/chat'
+    | '/admin/community'
     | '/admin/consultant'
     | '/admin/cost'
     | '/admin/customers'
@@ -1195,6 +1216,7 @@ export interface FileRouteTypes {
     | '/api/v1/$'
     | '/api/zernio/webhook'
     | '/operator/broadcast'
+    | '/operator/community'
     | '/operator/crons'
     | '/operator/leads'
     | '/operator/log'
@@ -1268,6 +1290,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/broadcasts'
     | '/admin/_authed/categories'
     | '/admin/_authed/chat'
+    | '/admin/_authed/community'
     | '/admin/_authed/consultant'
     | '/admin/_authed/cost'
     | '/admin/_authed/customers'
@@ -1306,6 +1329,7 @@ export interface FileRouteTypes {
     | '/api/v1/$'
     | '/api/zernio/webhook'
     | '/operator/_authed/broadcast'
+    | '/operator/_authed/community'
     | '/operator/_authed/crons'
     | '/operator/_authed/leads'
     | '/operator/_authed/log'
@@ -1584,6 +1608,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedChatRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/_authed/community': {
+      id: '/admin/_authed/community'
+      path: '/community'
+      fullPath: '/admin/community'
+      preLoaderRoute: typeof AdminAuthedCommunityRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/admin/_authed/consultant': {
       id: '/admin/_authed/consultant'
       path: '/consultant'
@@ -1855,6 +1886,13 @@ declare module '@tanstack/react-router' {
       path: '/broadcast'
       fullPath: '/operator/broadcast'
       preLoaderRoute: typeof OperatorAuthedBroadcastRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
+    '/operator/_authed/community': {
+      id: '/operator/_authed/community'
+      path: '/community'
+      fullPath: '/operator/community'
+      preLoaderRoute: typeof OperatorAuthedCommunityRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
     '/operator/_authed/crons': {
@@ -2196,6 +2234,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedBroadcastsRoute: typeof AdminAuthedBroadcastsRoute
   AdminAuthedCategoriesRoute: typeof AdminAuthedCategoriesRoute
   AdminAuthedChatRoute: typeof AdminAuthedChatRoute
+  AdminAuthedCommunityRoute: typeof AdminAuthedCommunityRoute
   AdminAuthedConsultantRoute: typeof AdminAuthedConsultantRoute
   AdminAuthedCostRoute: typeof AdminAuthedCostRoute
   AdminAuthedCustomersRoute: typeof AdminAuthedCustomersRoute
@@ -2239,6 +2278,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedBroadcastsRoute: AdminAuthedBroadcastsRoute,
   AdminAuthedCategoriesRoute: AdminAuthedCategoriesRoute,
   AdminAuthedChatRoute: AdminAuthedChatRoute,
+  AdminAuthedCommunityRoute: AdminAuthedCommunityRoute,
   AdminAuthedConsultantRoute: AdminAuthedConsultantRoute,
   AdminAuthedCostRoute: AdminAuthedCostRoute,
   AdminAuthedCustomersRoute: AdminAuthedCustomersRoute,
@@ -2298,6 +2338,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface OperatorAuthedRouteChildren {
   OperatorAuthedBroadcastRoute: typeof OperatorAuthedBroadcastRoute
+  OperatorAuthedCommunityRoute: typeof OperatorAuthedCommunityRoute
   OperatorAuthedCronsRoute: typeof OperatorAuthedCronsRoute
   OperatorAuthedLeadsRoute: typeof OperatorAuthedLeadsRoute
   OperatorAuthedLogRoute: typeof OperatorAuthedLogRoute
@@ -2314,6 +2355,7 @@ interface OperatorAuthedRouteChildren {
 
 const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedBroadcastRoute: OperatorAuthedBroadcastRoute,
+  OperatorAuthedCommunityRoute: OperatorAuthedCommunityRoute,
   OperatorAuthedCronsRoute: OperatorAuthedCronsRoute,
   OperatorAuthedLeadsRoute: OperatorAuthedLeadsRoute,
   OperatorAuthedLogRoute: OperatorAuthedLogRoute,

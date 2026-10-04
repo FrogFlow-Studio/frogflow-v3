@@ -90,6 +90,21 @@ describe("колонки в запросах есть в схеме", () => {
   });
 });
 
+describe("таблицы сообщества (миграция 19-2) описаны в схеме", () => {
+  it("темы, ответы и жалобы с ключевыми колонками", () => {
+    const s = schemaColumns();
+    expect([...s.get("community_threads")!]).toEqual(
+      expect.arrayContaining(["bot_id", "section", "topic", "title", "hidden", "last_post_at"]),
+    );
+    expect([...s.get("community_posts")!]).toEqual(
+      expect.arrayContaining(["thread_id", "bot_id", "body", "hidden"]),
+    );
+    expect([...s.get("community_reports")!]).toEqual(
+      expect.arrayContaining(["bot_id", "thread_id", "post_id", "status"]),
+    );
+  });
+});
+
 /**
  * Миграции партии 19 (migrations/19-*.sql) и типы базы описывают одни и те же
  * таблицы: колонка, добавленная в одном месте и забытая в другом, ломает
@@ -108,8 +123,10 @@ describe("миграции партии 19 совпадают с db-types.ts", (
     const schema = schemaColumns();
     for (const f of files) {
       const sql = readFileSync(join(dir, f), "utf8");
-      for (const m of sql.matchAll(/CREATE TABLE IF NOT EXISTS (\w+) \(\n([\s\S]*?)\n\);/g)) {
-        const cols = [...m[2]!.matchAll(/^ {2}([a-z_]+)\s+[A-Z]/gm)].map((c) => c[1]!).sort();
+      for (const m of sql.matchAll(
+        /CREATE TABLE IF NOT EXISTS (?:public\.)?(\w+) \(\n([\s\S]*?)\n\);/gi,
+      )) {
+        const cols = [...m[2]!.matchAll(/^ {2}([a-z_]+)\s+[a-z]/gim)].map((c) => c[1]!).sort();
         const typed = [...(schema.get(m[1]!) ?? [])].sort();
         expect(typed, `${f}: ${m[1]}`).toEqual(cols);
       }
@@ -125,8 +142,11 @@ describe("миграции партии 19 совпадают с db-types.ts", (
       expect(sql, f).not.toMatch(/\bDROP\s+(TABLE|COLUMN)\b/i);
       expect(sql, f).not.toMatch(/\bDELETE\s+FROM\b/i);
       // ALTER TABLE — только по таблицам, которые эта же миграция создаёт.
-      const created = [...sql.matchAll(/CREATE TABLE IF NOT EXISTS (\w+)/g)].map((c) => c[1]);
-      for (const a of sql.matchAll(/ALTER TABLE (\w+)/g)) expect(created, f).toContain(a[1]);
+      const created = [...sql.matchAll(/CREATE TABLE IF NOT EXISTS (?:public\.)?(\w+)/gi)].map(
+        (c) => c[1],
+      );
+      for (const a of sql.matchAll(/ALTER TABLE (?:public\.)?(\w+)/gi))
+        expect(created, f).toContain(a[1]);
     }
   });
 });

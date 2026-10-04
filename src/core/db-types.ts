@@ -855,6 +855,159 @@ export type Database = {
       };
       // Заведена MIGRATION-48. Как и другие ручные добавления в этом файле:
       // scripts/sync-db-types.mjs новые объекты сюда не приносит.
+      community_posts: {
+        Row: {
+          id: string;
+          thread_id: string;
+          bot_id: string;
+          body: string;
+          hidden: boolean;
+          hidden_by: string | null;
+          hidden_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          thread_id: string;
+          bot_id: string;
+          body: string;
+          hidden?: boolean;
+          hidden_by?: string | null;
+          hidden_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          thread_id?: string;
+          bot_id?: string;
+          body?: string;
+          hidden?: boolean;
+          hidden_by?: string | null;
+          hidden_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "community_posts_thread_id_fkey";
+            columns: ["thread_id"];
+            isOneToOne: false;
+            referencedRelation: "community_threads";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "community_posts_bot_id_fkey";
+            columns: ["bot_id"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      community_reports: {
+        Row: {
+          id: string;
+          bot_id: string;
+          thread_id: string;
+          post_id: string | null;
+          reason: string | null;
+          status: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          bot_id: string;
+          thread_id: string;
+          post_id?: string | null;
+          reason?: string | null;
+          status?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          bot_id?: string;
+          thread_id?: string;
+          post_id?: string | null;
+          reason?: string | null;
+          status?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "community_reports_bot_id_fkey";
+            columns: ["bot_id"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "community_reports_thread_id_fkey";
+            columns: ["thread_id"];
+            isOneToOne: false;
+            referencedRelation: "community_threads";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "community_reports_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "community_posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      community_threads: {
+        Row: {
+          id: string;
+          bot_id: string;
+          section: string;
+          topic: string | null;
+          title: string;
+          body: string;
+          posts_count: number;
+          last_post_at: string;
+          hidden: boolean;
+          hidden_by: string | null;
+          hidden_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          bot_id: string;
+          section: string;
+          topic?: string | null;
+          title: string;
+          body: string;
+          posts_count?: number;
+          last_post_at?: string;
+          hidden?: boolean;
+          hidden_by?: string | null;
+          hidden_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          bot_id?: string;
+          section?: string;
+          topic?: string | null;
+          title?: string;
+          body?: string;
+          posts_count?: number;
+          last_post_at?: string;
+          hidden?: boolean;
+          hidden_by?: string | null;
+          hidden_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "community_threads_bot_id_fkey";
+            columns: ["bot_id"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       bot_health_snapshots: {
         Row: {
           id: string;

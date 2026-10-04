@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { communityProfileFn, saveCommunityProfileFn } from "@/app/admin/community.functions";
@@ -70,6 +71,11 @@ export function CommunityCard() {
             {view.mod?.reason
               ? ` ${t("settings.community.reason", { reason: view.mod.reason })}`
               : ""}
+          </p>
+        )}
+        {view && (view.state === "visible" || view.state === "hidden") && (
+          <p className="text-sm">
+            <Link to="/admin/community">{t("settings.community.open")}</Link>
           </p>
         )}
         <label className="flex items-center gap-2 text-sm">

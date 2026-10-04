@@ -1160,6 +1160,29 @@ export const setCommunityModFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Жалобы сообщества: список и решение «скрыть»/«отклонить» (core/community/moderation). */
+export const communityReportsFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z.object({ offset: z.number().int().min(0).max(100_000).optional() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const { orSoon } = await import("@/core/community/not-ready");
+    return orSoon(async () =>
+      (await import("@/core/community/moderation.server")).listOpenReports(data.offset),
+    );
+  });
+
+export const resolveCommunityReportFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ id: z.string().uuid(), action: z.enum(["hide", "dismiss"]) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    await (await import("@/core/community/moderation.server")).resolveReport(data.id, data.action);
+    return { ok: true };
+  });
+
 /** Воронка лидов отдела продаж FrogFlow (core/leads): список, добавление, стадия, заметки, журнал. */
 const leadsImpl = () => import("./leads.server");
 const pipelineImpl = () => import("./leads-pipeline.server");

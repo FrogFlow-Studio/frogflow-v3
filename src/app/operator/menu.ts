@@ -32,6 +32,7 @@ export const OPERATOR_MENU: OperatorMenuGroup[] = [
       { to: "/operator/leads", label: "Лиды" },
       { to: "/operator/partners", label: "Партнёры" },
       { to: "/operator/broadcast", label: "Сообщение владельцам" },
+      { to: "/operator/community", label: "Жалобы сообщества" },
       { to: "/operator/migration", label: "Переезд на v2" },
     ],
   },

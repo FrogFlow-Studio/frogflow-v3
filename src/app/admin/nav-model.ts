@@ -176,6 +176,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
       { to: "/admin/billing", label: "billing.nav" },
       { to: "/admin/ai-balance", label: "nav.aiBalance" },
       { to: "/admin/bot-preview", label: "nav.botPreview" },
+      { to: "/admin/community", label: "nav.community" },
       owner && { to: "/admin/log", label: "audit.nav" },
     ]),
   };
