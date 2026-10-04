@@ -13,6 +13,8 @@ export const ru = {
   "err.orders.paymentNotSaved": "Не удалось записать платёж, попробуйте ещё раз",
   "err.settings.saveFailed":
     "Настройка не сохранилась. Попробуйте ещё раз; если повторится — напишите в поддержку.",
+  "err.settings.tooLong":
+    "Текст в поле «{field}» слишком длинный: {length} символов, допустимо не больше {max}.",
   "err.orders.zoneNotFound": "Зона доставки не найдена",
   "err.orders.noItems": "Добавьте хотя бы одну позицию",
   "err.orders.deliveryZoneRequired": "Для доставки выберите зону",
@@ -61,6 +63,8 @@ export const kk: SectionDict<typeof ru> = {
   "err.orders.paymentNotSaved": "Төлем жазылмады, қайталап көріңіз",
   "err.settings.saveFailed":
     "Баптау сақталмады. Қайта көріңіз; қайталанса — қолдау қызметіне жазыңыз.",
+  "err.settings.tooLong":
+    "«{field}» өрісіндегі мәтін тым ұзын: {length} таңба, ең көбі {max} рұқсат етіледі.",
   "err.orders.zoneNotFound": "Жеткізу аймағы табылмады",
   "err.orders.noItems": "Кемінде бір позиция қосыңыз",
   "err.orders.deliveryZoneRequired": "Жеткізу үшін аймақты таңдаңыз",
@@ -109,6 +113,8 @@ export const en: SectionDict<typeof ru> = {
   "err.orders.paymentNotSaved": "Couldn't record the payment, please try again",
   "err.settings.saveFailed":
     "The setting was not saved. Please try again; if it happens again, contact support.",
+  "err.settings.tooLong":
+    "The text in field “{field}” is too long: {length} characters, the limit is {max}.",
   "err.orders.zoneNotFound": "Delivery zone not found",
   "err.orders.noItems": "Add at least one item",
   "err.orders.deliveryZoneRequired": "Choose a zone for delivery",
@@ -159,6 +165,8 @@ export const uz: SectionDict<typeof ru> = {
   "err.orders.paymentNotSaved": "Toʻlovni yozib boʻlmadi, qayta urinib koʻring",
   "err.settings.saveFailed":
     "Sozlama saqlanmadi. Qayta urinib koʻring; takrorlansa — qoʻllab-quvvatlash xizmatiga yozing.",
+  "err.settings.tooLong":
+    "«{field}» maydonidagi matn juda uzun: {length} belgi, ruxsat etilgani {max} tadan oshmasligi kerak.",
   "err.orders.zoneNotFound": "Yetkazib berish hududi topilmadi",
   "err.orders.noItems": "Kamida bitta pozitsiya qoʻshing",
   "err.orders.deliveryZoneRequired": "Yetkazib berish uchun hududni tanlang",

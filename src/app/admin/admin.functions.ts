@@ -9,7 +9,13 @@ import { UserError } from "@/core/i18n/user-error";
 import { STAFF_ROLES } from "@/core/auth/roles";
 import { SEARCH_MIN } from "@/core/chat/search";
 import { CATALOG_LAYOUTS, CATALOG_ORDER_MAX } from "@/core/storefront/categories";
-import { SETTING_KEYS, settingsForRole, WRITABLE_SETTING_KEYS } from "./setting-keys";
+import {
+  firstTooLongSetting,
+  LEGAL_TEXT_MAX,
+  SETTING_KEYS,
+  settingsForRole,
+  WRITABLE_SETTING_KEYS,
+} from "./setting-keys";
 
 /**
  * Серверные функции админки продавца. Каждая начинается с requireAdmin():
@@ -1649,9 +1655,18 @@ export const setPdfWatermarkFn = createServerFn({ method: "POST" })
   });
 
 export const saveSettingsFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) => z.record(z.enum(WRITABLE_SETTING_KEYS), z.string().max(4000)).parse(d))
+  .validator((d: unknown) =>
+    z.record(z.enum(WRITABLE_SETTING_KEYS), z.string().max(LEGAL_TEXT_MAX)).parse(d),
+  )
   .handler(async ({ data }) => {
     const ctx = await adminOwner();
+    const tooLong = firstTooLongSetting(data);
+    if (tooLong)
+      throw new UserError(
+        "err.settings.tooLong",
+        "Текст в поле «{field}» слишком длинный: {length} символов, допустимо не больше {max}.",
+        { field: tooLong.key, length: tooLong.length, max: tooLong.max },
+      );
     const { setSetting } = await import("@/core/settings/settings");
     // Нерабочие дни выдачи пишутся в каноничном виде: прошедшие отрезки уходят,
     // переполнение — отказ (мусор отсеивает разбор).

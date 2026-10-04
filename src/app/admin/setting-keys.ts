@@ -115,3 +115,22 @@ export function settingsForRole<T extends Partial<Record<string, string>>>(
   for (const k of OWNER_ONLY_READ) delete out[k];
   return out;
 }
+
+/** Длина обычной настройки и юридического текста (оферта бывает на десятки страниц). */
+export const SETTING_VALUE_MAX = 4000;
+export const LEGAL_TEXT_MAX = 200_000;
+
+export function settingValueMax(key: string): number {
+  return key.startsWith("legal_") ? LEGAL_TEXT_MAX : SETTING_VALUE_MAX;
+}
+
+/** Ключ первой настройки, чей текст длиннее своего предела, и сколько в нём символов. */
+export function firstTooLongSetting(
+  data: Record<string, string | undefined>,
+): { key: string; length: number; max: number } | null {
+  for (const [key, v] of Object.entries(data)) {
+    const max = settingValueMax(key);
+    if (v !== undefined && v.length > max) return { key, length: v.length, max };
+  }
+  return null;
+}
