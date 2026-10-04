@@ -22,7 +22,7 @@ export function SettingsSection({ id, children }: { id: string; children: ReactN
       id={id}
       data-settings-section={id}
       hidden={!shown}
-      className={`scroll-mt-4 ${entry?.wide ? "lg:col-span-2" : ""}`}
+      className={`min-w-0 scroll-mt-4 ${entry?.wide ? "lg:col-span-2" : ""}`}
       style={recent ? { order: -1 } : undefined}
     >
       {children}

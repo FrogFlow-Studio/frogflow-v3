@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import * as F from "./fixtures.ts";
 import { watch } from "./helpers.ts";
@@ -40,11 +41,17 @@ test("отчёты: продажи считают только оплаченн�
   await expect(page.getByRole("tab", { name: "Склад", exact: true })).toHaveCount(0);
   await expect(page.getByRole("tab", { name: "Рассылки", exact: true })).toHaveCount(0);
 
-  const csv = await page.request.get("/api/admin/reports/sales?days=7");
-  expect(csv.status()).toBe(200);
-  expect(csv.headers()["content-type"]).toContain("text/csv");
-  expect(await csv.text()).toContain("Выручка");
-  expect((await page.request.get("/api/admin/reports/stock?days=7")).status()).toBe(403);
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("link", { name: "Скачать CSV", exact: true }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^report-refusals-7d-\d{4}-\d{2}-\d{2}\.csv$/);
+  expect(readFileSync((await download.path())!, "utf8")).toContain("Отклонено заказов");
+  // Склад без модуля — 403 даже для владельца с сессией.
+  const stock = await page.evaluate(
+    async () => (await fetch("/api/admin/reports/stock?days=7")).status,
+  );
+  expect(stock).toBe(403);
   expect((await request.get("/api/admin/reports/sales?days=7")).status()).toBe(401);
   expect(errors).toEqual([]);
 });

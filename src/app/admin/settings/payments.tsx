@@ -286,11 +286,15 @@ export function RobokassaCard({ settings }: { settings: Record<string, string> }
     <Card title={t("settings.rk.title")} className="lg:col-span-2">
       <p className="mb-3 text-xs text-muted">
         {t("settings.rk.introResult")}{" "}
-        <code className="rounded bg-surface-2 px-1">{resultUrl}</code>
+        <code className="break-all rounded bg-surface-2 px-1">{resultUrl}</code>
         {t("settings.rk.introSuccess")}{" "}
-        <code className="rounded bg-surface-2 px-1">{resultUrl.replace(/result$/, "success")}</code>
+        <code className="break-all rounded bg-surface-2 px-1">
+          {resultUrl.replace(/result$/, "success")}
+        </code>
         {t("settings.rk.introFail")}{" "}
-        <code className="rounded bg-surface-2 px-1">{resultUrl.replace(/result$/, "fail")}</code>
+        <code className="break-all rounded bg-surface-2 px-1">
+          {resultUrl.replace(/result$/, "fail")}
+        </code>
         {t("settings.rk.introTail")}
       </p>
       <form
@@ -494,7 +498,7 @@ export function CryptoCard({ settings }: { settings: Record<string, string> }) {
     <Card title={t("settings.crypto.title")} className="lg:col-span-2">
       <p className="mb-3 text-xs text-muted">
         {t("settings.crypto.intro")}{" "}
-        <code className="rounded bg-surface-2 px-1">{`${origin}/api/nowpayments/${shop.botId}`}</code>
+        <code className="break-all rounded bg-surface-2 px-1">{`${origin}/api/nowpayments/${shop.botId}`}</code>
       </p>
       <form
         className="grid gap-3 sm:grid-cols-2"
@@ -563,7 +567,7 @@ export function StripeCard({ settings }: { settings: Record<string, string> }) {
     <Card title={t("settings.stripe.title")} className="lg:col-span-2">
       <p className="mb-3 text-xs text-muted">
         {t("settings.stripe.intro")}{" "}
-        <code className="rounded bg-surface-2 px-1">{`${origin}/api/stripe/${shop.botId}`}</code>
+        <code className="break-all rounded bg-surface-2 px-1">{`${origin}/api/stripe/${shop.botId}`}</code>
       </p>
       <form
         className="grid gap-3 sm:grid-cols-2"
