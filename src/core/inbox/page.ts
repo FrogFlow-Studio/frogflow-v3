@@ -6,9 +6,11 @@ import {
   type StateRow,
   listConversationStates,
   listConversationStatesSince,
+  listConversationStatesByIds,
   type ConversationCursor,
 } from "@/core/chat/chat";
 import {
+  inboxChangedIds,
   inboxMetaFor,
   matchesInbox,
   mergeInbox,
@@ -76,9 +78,15 @@ export async function listInboxPage(
   return { items: await withTickets(ctx, found.slice(0, limit)), hasMore };
 }
 
-/** Диалоги, менявшиеся с `since` (включительно) — опрос берёт только их. */
+/**
+ * Диалоги, менявшиеся с `since` (включительно) — опрос берёт только их: с новой
+ * репликой или со сменой статуса/ответственного (это другая таблица).
+ */
 export async function listInboxChanged(ctx: TenantContext, since: string): Promise<InboxItem[]> {
-  const states = await listConversationStatesSince(ctx, since);
+  const byMessage = await listConversationStatesSince(ctx, since);
+  const have = new Set(byMessage.map((s) => Number(s.telegram_id)));
+  const extra = (await inboxChangedIds(ctx, since)).filter((id) => !have.has(id));
+  const states = [...byMessage, ...(await listConversationStatesByIds(ctx, extra))];
   const chunk = await itemsOf(ctx, states);
   return withTickets(
     ctx,

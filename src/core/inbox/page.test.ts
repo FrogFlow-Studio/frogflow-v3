@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { inboxEventId, type InboxFilter } from "./inbox";
+import { listUnreadIds } from "@/core/chat/chat";
 import { INBOX_PAGE, inboxTotals, listInboxChanged, listInboxPage } from "./page";
 
 const BOT = "11111111-1111-1111-1111-111111111111";
@@ -126,5 +127,48 @@ describe("страницы списка диалогов", () => {
       2995, 2996, 2997, 2998, 2999, 3000,
     ]);
     expect(await listInboxChanged(ctx, new Date(T0 + 5000_000).toISOString())).toEqual([]);
+  });
+
+  it("опрос видит смену статуса и ответственного без новой реплики", async () => {
+    const { ctx, db } = setup();
+    const since = new Date(T0 + 5000_000).toISOString(); // реплик с тех пор нет ни в одном диалоге
+    const at = new Date(T0 + 5000_000 + 1000).toISOString();
+    const log = (id: number) =>
+      db.tables.zernio_logs!.find((r) => r.event_id === inboxEventId(BOT, id))!;
+    // Коллега решил №3 и назначил №7 (строки у №7 не было).
+    log(3).status = "closed";
+    (log(3).payload as Record<string, unknown>).updated_at = at;
+    db.tables.zernio_logs!.push({
+      bot_id: BOT,
+      event_id: inboxEventId(BOT, 7),
+      event_type: "inbox",
+      status: "open",
+      payload: { telegram_id: 7, assignee: "boris", updated_at: at },
+    });
+    const changed = await listInboxChanged(ctx, since);
+    expect(changed.map((i) => [i.telegram_id, i.status, i.assignee]).sort()).toEqual([
+      [3, "closed", "anna"],
+      [7, "open", "boris"],
+    ]);
+    // Старые изменения (до границы) не возвращаются, чужой магазин тоже.
+    (log(6).payload as Record<string, unknown>).updated_at = new Date(T0).toISOString();
+    db.tables.zernio_logs!.push({
+      bot_id: "other",
+      event_id: inboxEventId("other", 8),
+      event_type: "inbox",
+      status: "closed",
+      payload: { telegram_id: 8, updated_at: at },
+    });
+    expect((await listInboxChanged(ctx, since)).map((i) => i.telegram_id).sort()).toEqual([3, 7]);
+  });
+
+  it("список непрочитанных — все, постранично", async () => {
+    const { ctx, db } = setup();
+    const ids = await listUnreadIds(ctx);
+    // unread_count > 0 у каждого десятого из 3000, без обрезки по 1000 строк.
+    expect(ids).toHaveLength(300);
+    expect(ids[0]).toBe(1);
+    db.tables.manager_chat_state!.find((r) => r.telegram_id === 1)!.unread_count = 0;
+    expect(await listUnreadIds(ctx)).toHaveLength(299);
   });
 });

@@ -172,7 +172,7 @@ function ChatPage() {
   const canWrite = canEdit(shop.role);
   const me = initial.me;
   // Опрос и действия видят актуальные фильтр и границу «что изменилось», а не замкнутые значения.
-  const live = useRef({ filter, since: "", sig: "" });
+  const live = useRef({ filter, since: "", sig: "", unread: 0 });
   live.current.filter = filter;
   const visible = conversations;
   const counts = totals;
@@ -228,12 +228,20 @@ function ChatPage() {
               : 0) || b.telegram_id - a.telegram_id,
       );
     });
-  const noteSince = (items: InboxItem[]) => {
-    for (const i of items)
-      if (i.last_message_at > live.current.since) live.current.since = i.last_message_at;
+  /** Коллега прочитал диалог — у тех, кого нет среди непрочитанных, отметка снимается. */
+  const applyUnread = (ids: readonly number[], f: InboxFilter) => {
+    const unread = new Set(ids);
+    setConversations((cur) =>
+      cur
+        .map((c) =>
+          c.unread_count > 0 && !unread.has(c.telegram_id) ? { ...c, unread_count: 0 } : c,
+        )
+        .filter((c) => matchesInbox(c, f, me)),
+    );
   };
   const noteTotals = (tt: typeof totals) => {
     live.current.sig = JSON.stringify(tt);
+    live.current.unread = tt.unread;
     setTotals(tt);
   };
   /** Первая страница под фильтр: целиком заменяет список (смена фильтра, поиск) или вливается в него. */
@@ -250,12 +258,14 @@ function ChatPage() {
   // Эффекты опроса и поиска вызывают актуальные обработчики через ref, а не замкнутые на старый рендер.
   const fns = useRef({
     mergeChanged,
+    applyUnread,
     noteTotals,
     refreshList,
     changeFilter: (_f: InboxFilter) => {},
   });
   useEffect(() => {
     live.current.sig = JSON.stringify(initial.totals);
+    live.current.unread = initial.totals.unread;
     live.current.since = initial.asOf;
   }, [initial.totals, initial.asOf]);
   const changeFilter = (f: InboxFilter) => {
@@ -263,7 +273,7 @@ function ChatPage() {
     setFilter(f);
     void loadFirstPage(f, true).catch(setLoadError);
   };
-  fns.current = { mergeChanged, noteTotals, refreshList, changeFilter };
+  fns.current = { mergeChanged, applyUnread, noteTotals, refreshList, changeFilter };
   const loadMore = useAction(async () => {
     const last = conversations[conversations.length - 1];
     if (!last) return;
@@ -300,17 +310,20 @@ function ChatPage() {
         const r = await chatInboxPollFn({
           data: {
             since: live.current.since,
+            unread: live.current.unread,
             ...(selectedId !== null ? { selectedId } : {}),
           },
         });
         if (alive) {
           const f = live.current.filter;
           const sig = JSON.stringify(r.totals);
-          noteSince(r.changed);
+          // Граница — от сервера: в неё входят и смены статуса/ответственного, а не только реплики.
+          if (r.asOf > live.current.since) live.current.since = r.asOf;
           if (r.changed.length) fns.current.mergeChanged(r.changed, f);
           // Счётчики сдвинулись без новых реплик (кто-то решил, назначил, прочитал) — перечитываем начало списка.
           else if (sig !== live.current.sig) await fns.current.refreshList();
           fns.current.noteTotals(r.totals);
+          if (r.unreadIds) fns.current.applyUnread(r.unreadIds, f);
           if (r.selected) setOpenedItem(r.selected);
         }
         if (selectedId !== null) {

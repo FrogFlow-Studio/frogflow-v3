@@ -221,6 +221,33 @@ export async function listConversationStatesSince(
   )) as StateRow[];
 }
 
+/** Строки состояния этих диалогов (куски по 200); нет строки — диалога нет. */
+export async function listConversationStatesByIds(
+  ctx: TenantContext,
+  telegramIds: readonly number[],
+): Promise<StateRow[]> {
+  return (await inChunks(
+    telegramIds,
+    (chunk) => ctx.db.from("manager_chat_state").select(STATE_COLUMNS).in("telegram_id", chunk),
+    "Чат: диалоги по id",
+  )) as StateRow[];
+}
+
+/** id диалогов с непрочитанным: опрос сверяет с ними открытый список (прочитал коллега). */
+export async function listUnreadIds(ctx: TenantContext): Promise<number[]> {
+  const rows = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("manager_chat_state")
+        .select("telegram_id")
+        .gt("unread_count", 0)
+        .order("telegram_id")
+        .range(from, to),
+    "Чат: непрочитанные",
+  );
+  return rows.map((r) => Number(r.telegram_id));
+}
+
 /** К строкам состояния — имя, канал и пауза консультанта покупателя (куски по 200). */
 export async function conversationsOf(
   ctx: TenantContext,

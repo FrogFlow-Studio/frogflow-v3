@@ -123,3 +123,62 @@ test("чат: поиск по тексту — ничего не найдено"
   await expect(page.getByText("Ничего не найдено", { exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("чат на телефоне: панель — полоса над перепиской, список и диалог не налезают друг на друга", async ({
+  page,
+}) => {
+  test.skip(test.info().project.name !== "phone", "раскладка для узкого экрана");
+  const errors = await watch(page);
+  await openChat(page, F.CHAT_PANEL_NAME);
+  const panel = page.getByRole("complementary", { name: "Покупатель", exact: true });
+  await expect(panel).toBeVisible();
+  const send = page.getByRole("button", { name: "Отправить", exact: true });
+  await expect(send).toBeVisible();
+
+  const box = async (l: ReturnType<Page["locator"]>) => (await l.boundingBox())!;
+  const width = page.viewportSize()!.width;
+  const search = await box(page.getByPlaceholder("Поиск по имени или @username"));
+  const row = await box(page.getByRole("button", { name: new RegExp(`^${F.CHAT_PANEL_NAME}`) }));
+  const strip = await box(panel);
+  const composer = await box(send);
+
+  // Панель свёрнута до полосы: не выше 10 rem, на всю ширину экрана, без горизонтальной прокрутки.
+  expect(strip.height).toBeLessThanOrEqual(160 + 1);
+  expect(strip.x).toBeGreaterThanOrEqual(0);
+  expect(strip.x + strip.width).toBeLessThanOrEqual(width + 1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  // Сверху вниз без пересечений: список диалогов → полоса покупателя → поле ответа.
+  expect(search.y + search.height).toBeLessThanOrEqual(row.y + 1);
+  expect(row.y + row.height).toBeLessThanOrEqual(strip.y + 1);
+  expect(strip.y + strip.height).toBeLessThanOrEqual(composer.y + 1);
+  // Полоса прокручивается внутри себя, а не раздвигает экран.
+  await panel
+    .getByRole("link", { name: "Карточка покупателя", exact: true })
+    .scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  expect(errors).toEqual([]);
+});
+
+test("чат: напоминание о диалоге без ответа — второй шаг владельцу включается и запоминается", async ({
+  page,
+}) => {
+  // Настройка одна на магазин, а проекты идут параллельно: переключатель правит один desktop.
+  test.skip(test.info().project.name !== "desktop", "общая настройка магазина");
+  const errors = await watch(page);
+  await login(page);
+  await page.goto("/admin/chat");
+  await page.getByLabel("Напомнить о диалоге без ответа:").selectOption({ label: "через 30 мин" });
+  // Флажок меняется после ответа сервера, поэтому click и ожидание, а не check().
+  const second = page.getByRole("checkbox", { name: /написать владельцу магазина ещё раз/ });
+  await second.click();
+  await expect(second).toBeChecked();
+  await page.reload();
+  await expect(
+    page.getByRole("checkbox", { name: /написать владельцу магазина ещё раз/ }),
+  ).toBeChecked();
+  expect(errors).toEqual([]);
+});

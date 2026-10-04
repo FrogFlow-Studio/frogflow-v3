@@ -77,6 +77,32 @@ export async function inboxMetaFor(
   return out;
 }
 
+/**
+ * Диалоги, у которых статус или ответственный менялись с `since` (включительно):
+ * момент записи — `payload.updated_at`. Опрос списка берёт по `last_message_at`
+ * и этих изменений (решил, назначил коллега) без новой реплики не видит.
+ */
+export async function inboxChangedIds(ctx: TenantContext, since: string): Promise<number[]> {
+  const rows = await pageAll(
+    (from, to) =>
+      ctx.db
+        .from("zernio_logs")
+        .select("id, payload")
+        .eq("event_type", INBOX_EVENT_TYPE)
+        .like("event_id", `inbox:${ctx.tenant.id}:%`)
+        .gte("payload->>updated_at", since)
+        .order("id")
+        .range(from, to),
+    "Входящие: изменения",
+  );
+  const ids = new Set<number>();
+  for (const r of rows) {
+    const id = rowToMeta({ status: "open", payload: r.payload }).telegramId;
+    if (id) ids.add(id);
+  }
+  return [...ids].sort((a, b) => a - b);
+}
+
 export async function getInboxMeta(ctx: TenantContext, telegramId: number): Promise<InboxMeta> {
   return (await inboxMetaFor(ctx, [telegramId])).get(telegramId) ?? DEFAULT_META(telegramId);
 }

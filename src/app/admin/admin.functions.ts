@@ -7,6 +7,7 @@ import { MODULE_KEYS } from "@/core/modules/registry";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
 import { STAFF_ROLES } from "@/core/auth/roles";
+import { SEARCH_MIN } from "@/core/chat/search";
 import { CATALOG_LAYOUTS, CATALOG_ORDER_MAX } from "@/core/storefront/categories";
 import { SETTING_KEYS, settingsForRole, WRITABLE_SETTING_KEYS } from "./setting-keys";
 
@@ -2532,7 +2533,7 @@ export const chatSearchFn = createServerFn({ method: "GET" })
   .validator((d: unknown) =>
     z
       .object({
-        q: z.string().trim().min(1).max(100),
+        q: z.string().trim().min(SEARCH_MIN).max(100),
         // Граница идёт в or() PostgREST — только строгие форматы.
         before: z.object({ created_at: isoTime, id: z.string().uuid() }).optional(),
       })
@@ -2554,22 +2555,38 @@ export const chatCustomerPanelFn = createServerFn({ method: "GET" })
   });
 
 /**
- * Опрос: только диалоги, менявшиеся с `since` (включительно), счётчики и открытый
- * в окне диалог (`selected`: его пауза бота и «вы в чате» меняются без новых реплик).
+ * Опрос: диалоги, менявшиеся с `since` (новая реплика, статус, ответственный),
+ * счётчики и открытый в окне диалог (`selected`: его пауза бота и «вы в чате»
+ * меняются без новых реплик). `unread` — сколько непрочитанных клиент знал в
+ * прошлый раз: если число сдвинулось, приходит список диалогов с непрочитанным
+ * (`unreadIds`), чтобы снять отметку у тех, кого прочитал коллега. `asOf` — граница
+ * для следующего опроса (с запасом на расхождение часов приложения и базы).
  */
 export const chatInboxPollFn = createServerFn({ method: "GET" })
-  .validator((d: unknown) => z.object({ since: isoTime, selectedId: tgId.optional() }).parse(d))
+  .validator((d: unknown) =>
+    z
+      .object({
+        since: isoTime,
+        selectedId: tgId.optional(),
+        unread: z.number().int().min(0).optional(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const ctx = await chatModule();
     const { listInboxChanged, inboxTotals, getInboxItem } = await import("@/core/inbox/page");
+    const { listUnreadIds } = await import("@/core/chat/chat");
     const { adminIdentity } = await import("@/app/auth/guards.server");
     const me = (await adminIdentity())?.username ?? "";
+    const asOf = new Date(Date.now() - 60_000).toISOString();
     const [changed, totals, selected] = await Promise.all([
       listInboxChanged(ctx, data.since),
       inboxTotals(ctx, me),
       data.selectedId === undefined ? null : getInboxItem(ctx, data.selectedId),
     ]);
-    return { changed, totals, selected };
+    const unreadIds =
+      data.unread !== undefined && data.unread !== totals.unread ? await listUnreadIds(ctx) : null;
+    return { changed, totals, selected, asOf, unreadIds };
   });
 
 /**
