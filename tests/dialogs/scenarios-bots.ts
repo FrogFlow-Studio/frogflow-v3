@@ -189,6 +189,37 @@ export const BOTS_20: Scenario[] = [
       },
     ],
   },
+  // ───── Д2: граничные номера — ссылка только СДЭК (10 цифр) и Казпочте ─────
+  ...["123456789", "12345678901"].flatMap((n) =>
+    (["telegram", "instagram", "whatsapp"] as Channel[]).map((channel): Scenario => ({
+      id: `track-edge-${n.length}-${SUFFIX[channel]}-ru`,
+      title: `номер из ${n.length} цифр — не СДЭК: номер текстом, без ссылки и без названия службы`,
+      origin: "Д2",
+      channel,
+      locale: "ru",
+      arrange: (r) => seedOrder(r, { id: 9, status: "ready", physical: true }),
+      steps: [
+        {
+          say: { sellerTrack: n, orderId: 9 },
+          expect: { says: [`Трек-номер: ${n}`], notSays: ["http", "СДЭК", "Казпочта"], count: 1 },
+        },
+      ],
+    })),
+  ),
+  {
+    id: "track-kazpost-spaces-wa-uz",
+    title: "Казпочта строчными буквами с пробелами — номер приведён, ссылка на сайт Казпочты",
+    origin: "Д2",
+    channel: "whatsapp",
+    locale: "uz",
+    arrange: (r) => seedOrder(r, { id: 10, status: "ready", physical: true }),
+    steps: [
+      {
+        say: { sellerTrack: "rr 123456789 kz", orderId: 10 },
+        expect: { says: ["Trek-raqam: RR123456789KZ (Казпочта)", "https://post.kz/"], count: 1 },
+      },
+    ],
+  },
   // ───── «Почему бот так ответил» (Б13): причина пишется вместе с ответом, ответ не меняется ─────
   ...each("reason", ["instagram", "whatsapp"], () => ({
     title: "при включённом «Чате» ответ бота идёт как обычно и несёт причину без текста покупателя",

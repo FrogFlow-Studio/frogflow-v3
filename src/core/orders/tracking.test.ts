@@ -58,3 +58,44 @@ describe("трек-номер: формат и ссылка", () => {
     ).toEqual({ number: "1234567890", url: null, carrier: "cdek" });
   });
 });
+
+describe("Д2: граничные номера — чужой номер не превращается в ссылку", () => {
+  it.each(["123456789", "12345678901", "1234-567-890", "0000000000x", "12345678 90 1"])(
+    "«%s» — не СДЭК: номер текстом или не трек, ссылки на СДЭК нет",
+    (t) => {
+      const r = trackingFromText(t);
+      expect(r?.carrier ?? null).toBeNull();
+      expect(r?.url ?? null).toBeNull();
+    },
+  );
+  it("СДЭК: ровно 10 цифр, пробелы по краям и внутри не мешают", () => {
+    for (const t of ["1234567890", " 1234567890 ", "12 345 678 90", "1234567890\n"])
+      expect(trackingFromText(t)).toMatchObject({ number: "1234567890", carrier: "cdek" });
+  });
+  it.each(["RR12345678KZ", "RR1234567890KZ", "RR123456789CN", "R1123456789KZ", "RR123456789KZZ"])(
+    "«%s» — не Казпочта: ссылки нет",
+    (t) => {
+      const r = trackingFromText(t);
+      expect(r?.carrier ?? null).toBeNull();
+      expect(r?.url ?? null).toBeNull();
+    },
+  );
+  it("Казпочта: строчные буквы и пробелы приводятся к виду UPU", () => {
+    expect(trackingFromText("rr 123456789 kz")).toMatchObject({
+      number: "RR123456789KZ",
+      carrier: "kazpost",
+    });
+  });
+  it("ссылка только https; ftp и прочее — не трек", () => {
+    expect(trackingFromText("ftp://x.kz/1")).toBeNull();
+    expect(trackingFromText("https://go.yandex/track/1")).toMatchObject({ carrier: null });
+  });
+  it("текст покупателю не обещает отслеживание других служб: без ссылки нет «Отследить»", () => {
+    const t = trackingFromText("AB-77-XYZ-99")!;
+    for (const l of ["ru", "kk", "en", "uz"] as const) {
+      const m = trackingMessage(l, 7, t);
+      expect(m).toContain("AB-77-XYZ-99");
+      expect(m).not.toMatch(/https?:|Отследить|Бақылау|Track it|Kuzatish/);
+    }
+  });
+});
