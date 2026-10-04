@@ -1,7 +1,11 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { recordAutoMessage } from "@/core/automsg/stats";
-import type { Json } from "@/core/db-types";
-import { customerFromRow, setState, type Customer } from "@/core/customers/customers";
+import {
+  blockedAmong,
+  claimStateSection,
+  customerFromRow,
+  type Customer,
+} from "@/core/customers/customers";
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { claimMarketing, loadMarketingCap } from "@/core/marketing/cap";
 import { minutesInTz } from "@/core/notify/prefs";
@@ -153,13 +157,16 @@ export async function runWinback(
   if (!due.length) return r;
   // Покупатели кусками по 200 id (длина адреса и потолок 1000 строк), пока
   // не набрана пачка отправок.
-  const { isBlocked } = await import("@/core/customers/customers");
   for (let i = 0; i < due.length && r.sent + r.failed < WINBACK_BATCH; i += 200) {
     const { data: users, error } = await ctx.db
       .from("bot_users")
       .select("*")
       .in("telegram_id", due.slice(i, i + 200));
     if (error) throw serverFailure(`возврат клиентов: покупатели: ${error.message}`);
+    const blocked = await blockedAmong(
+      ctx,
+      (users ?? []).map((u) => Number(u.telegram_id)),
+    );
     for (const row of users ?? []) {
       if (r.sent + r.failed >= WINBACK_BATCH) break;
       // Отписавшийся от рассылок не получает и этих сообщений (core/customers/opt-out).
@@ -170,7 +177,7 @@ export async function runWinback(
       r.checked++;
       const mem = (c.state.winback ?? undefined) as WinbackMemory | undefined;
       const step = winbackStep(cfg, order, mem, now);
-      if (!step || (await isBlocked(ctx, c.telegramId))) continue;
+      if (!step || blocked.has(c.telegramId)) continue;
       // Потолок маркетинговых сообщений за сутки (core/marketing/cap): место
       // занято — шаг не отмечаем, напишем в следующий прогон.
       const marked = await claimMarketing(ctx, c.userKey, row.state, cap, now);
@@ -180,10 +187,13 @@ export async function runWinback(
       else r.failed++;
       await recordAutoMessage(ctx, "winback", c.telegramId, ok, now);
       // Шаг отмечаем и при неудаче: не долбить одного и того же каждый час.
-      await setState(ctx, c, {
-        ...marked,
-        winback: { order_id: order.id, step, at: now.toISOString() } as unknown as Json,
-      });
+      // Пишем только раздел winback на свежем state с условием на его rev и
+      // state.mode: параллельные записи бота и v1 не затираем.
+      await claimStateSection(ctx, c, "winback", () => ({
+        order_id: order.id,
+        step,
+        at: now.toISOString(),
+      }));
     }
   }
   return r;

@@ -158,7 +158,7 @@ export const ru = {
     "Акции с таймером и ограниченным количеством: скидка на товар до даты или на N штук, в карточке — отсчёт и остаток.",
   "module.waitlist.title": "Лист ожидания",
   "module.waitlist.desc":
-    "Кнопка «Сообщить, когда появится»: бот сам напишет покупателю при поступлении.",
+    "Кнопка «Сообщить, когда появится»: бот сам напишет покупателю при поступлении. Instagram и WhatsApp — пока открыто окно ответа 24 часа.",
   "vertical.digital": "Цифровые материалы",
   "vertical.confectionery": "Кондитерская",
   "vertical.consultant": "Консультант (ун. BOVI)",
@@ -354,7 +354,7 @@ export const kk: SectionDict<typeof ru> = {
     "Таймері және шектеулі саны бар акциялар: белгілі күнге дейін немесе N данаға тауар жеңілдігі, карточкада — кері санақ пен қалдық.",
   "module.waitlist.title": "Күту парағы",
   "module.waitlist.desc":
-    "«Пайда болғанда хабарлау» түймесі: тауар түскенде бот сатып алушыға өзі жазады.",
+    "«Пайда болғанда хабарлау» түймесі: тауар түскенде бот сатып алушыға өзі жазады. Instagram және WhatsApp — 24 сағаттық жауап терезесі ашық кезде.",
   "vertical.digital": "Цифрлық материалдар",
   "vertical.confectionery": "Кондитерлік",
   "vertical.consultant": "Кеңесші (BOVI)",
@@ -511,7 +511,7 @@ export const en: SectionDict<typeof ru> = {
     "Promotions with a timer and limited quantity: a discount until a date or for N items, with a countdown and remaining stock on the product card.",
   "module.waitlist.title": "Waitlist",
   "module.waitlist.desc":
-    "A “Notify me when available” button: the bot messages the customer as soon as it’s back in stock.",
+    "A “Notify me when available” button: the bot messages the customer as soon as it’s back in stock. Instagram and WhatsApp — while the 24-hour reply window is open.",
   "vertical.digital": "Digital products",
   "vertical.confectionery": "Confectionery",
   "vertical.consultant": "Consultant (BOVI)",
@@ -669,7 +669,7 @@ export const uz: SectionDict<typeof ru> = {
     "Taymer va cheklangan miqdordagi aksiyalar: sanagacha yoki N dona uchun mahsulotga chegirma, kartochkada — teskari sanoq va qoldiq.",
   "module.waitlist.title": "Kutish roʻyxati",
   "module.waitlist.desc":
-    "«Paydo boʻlganda xabar berish» tugmasi: mahsulot kelganda bot xaridorga oʻzi yozadi.",
+    "«Paydo boʻlganda xabar berish» tugmasi: mahsulot kelganda bot xaridorga oʻzi yozadi. Instagram va WhatsApp — 24 soatlik javob oynasi ochiq boʻlganda.",
   "vertical.digital": "Raqamli materiallar",
   "vertical.confectionery": "Qandolatchilik",
   "vertical.consultant": "Maslahatchi (BOVI)",

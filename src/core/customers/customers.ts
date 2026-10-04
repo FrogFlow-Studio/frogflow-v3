@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { inChunks } from "@/lib/in-chunks";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database, Json } from "@/core/db-types";
 import type { Locale } from "@/core/i18n/locale";
@@ -317,7 +318,7 @@ export async function setState(
 export async function updateStateSection(
   ctx: TenantContext,
   customer: Customer,
-  key: "consultant" | "direct",
+  key: "consultant" | "direct" | "winback",
   patch: (current: Record<string, unknown>) => Record<string, unknown>,
 ): Promise<Customer> {
   return (await claimStateSection(ctx, customer, key, patch))!;
@@ -333,7 +334,7 @@ export async function updateStateSection(
 export async function claimStateSection(
   ctx: TenantContext,
   customer: Customer,
-  key: "consultant" | "direct",
+  key: "consultant" | "direct" | "winback",
   patch: (current: Record<string, unknown>) => Record<string, unknown> | null,
 ): Promise<Customer | null> {
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -396,6 +397,24 @@ export async function setEmail(
     .eq("user_key", customer.userKey);
   if (error) throw serverFailure(`Не удалось сохранить почту: ${error.message}`);
   return { ...customer, email };
+}
+
+/**
+ * Кто из этих покупателей заблокирован — один запрос на кусок из 200 id, а не
+ * по запросу на каждого. Не прочиталось — `serverFailure`, а не «никто не
+ * заблокирован»: иначе заблокированным ушла бы рассылка.
+ */
+export async function blockedAmong(
+  ctx: TenantContext,
+  telegramIds: readonly number[],
+): Promise<Set<number>> {
+  if (!ctx.tenant.modules.blocked || !telegramIds.length) return new Set();
+  const rows = await inChunks(
+    telegramIds,
+    (chunk) => ctx.db.from("blocked_users").select("telegram_id").in("telegram_id", chunk),
+    "Покупатели: блокировки",
+  );
+  return new Set(rows.map((r) => Number(r.telegram_id)));
 }
 
 export async function isBlocked(ctx: TenantContext, telegramId: number): Promise<boolean> {
