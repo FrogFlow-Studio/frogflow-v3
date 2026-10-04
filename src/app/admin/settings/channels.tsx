@@ -371,6 +371,7 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
         triggers: s.triggersText,
         script: s.script,
         features: s.features,
+        sellerPause: s.sellerPause,
         ignoreExcluded: s.ignoreExcluded,
         notifyTemplate: s.notifyTemplate,
       },
@@ -443,6 +444,22 @@ export function DirectBotCard({ platform }: { platform: "instagram" | "whatsapp"
               placeholder={t("settings.dbot.triggersPlaceholder")}
               onChange={(e) => setS({ ...s, triggersText: e.target.value })}
             />
+          </Field>
+          <Field label={t("settings.dbot.sellerPause")} hint={t("settings.dbot.sellerPauseHint")}>
+            <select
+              className="input"
+              value={s.sellerPause}
+              disabled={!owner}
+              onChange={(e) =>
+                setS({ ...s, sellerPause: e.target.value as DirectBotSettings["sellerPause"] })
+              }
+            >
+              {(["15", "30", "60", "day"] as const).map((v) => (
+                <option key={v} value={v}>
+                  {t(`settings.dbot.sellerPause.${v}`)}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label={t("settings.dbot.script")} hint={t("settings.dbot.scriptHint")}>
             <textarea

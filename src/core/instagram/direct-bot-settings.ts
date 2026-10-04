@@ -26,6 +26,7 @@ export const DIRECT_BOT_SUFFIXES = [
   "triggers",
   "script",
   "features",
+  "seller_pause",
   // только WhatsApp
   "ignore_excluded_contacts",
   "notify_template",
@@ -38,7 +39,12 @@ export type DirectBotFeatures = {
   checkout: boolean;
 };
 
+/** Сколько бот молчит после реплики продавца руками: минуты или «до конца дня» (Б3). */
+export const SELLER_PAUSES = ["15", "30", "60", "day"] as const;
+export type SellerPause = (typeof SELLER_PAUSES)[number];
+
 export type DirectBotSettings = {
+  sellerPause: SellerPause;
   enabled: boolean;
   scope: "purchases" | "all";
   triggers: string[];
@@ -56,6 +62,7 @@ export const DEFAULT_DIRECT_BOT: DirectBotSettings = {
   triggers: [],
   script: "",
   features: { catalog: true, search: true, cart: true, checkout: true },
+  sellerPause: "30",
   ignoreExcluded: false,
   notifyTemplate: "",
 };
@@ -112,6 +119,9 @@ export function directBotSettingsFrom(
     triggers: parseTriggerWords(v("triggers")),
     script: v("script"),
     features: parseFeatures(v("features")),
+    sellerPause: (SELLER_PAUSES as readonly string[]).includes(v("seller_pause"))
+      ? (v("seller_pause") as SellerPause)
+      : "30",
     ignoreExcluded: v("ignore_excluded_contacts") === "true",
     notifyTemplate: v("notify_template"),
   };
@@ -156,6 +166,7 @@ export async function saveDirectBotSettings(
   await setSetting(ctx, `${p}triggers`, s.triggers.join(", "));
   await setSetting(ctx, `${p}script`, s.script.trim());
   await setSetting(ctx, `${p}features`, JSON.stringify(s.features));
+  await setSetting(ctx, `${p}seller_pause`, s.sellerPause);
   if (platform === "whatsapp") {
     await setSetting(ctx, `${p}ignore_excluded_contacts`, s.ignoreExcluded ? "true" : "false");
     await setSetting(ctx, `${p}notify_template`, s.notifyTemplate.trim());

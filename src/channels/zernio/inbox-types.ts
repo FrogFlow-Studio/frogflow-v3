@@ -12,7 +12,7 @@ export type ZernioInboxMessage = {
   createdAt?: string;
   sentAt?: string;
   /** Чем отправлено: через Zernio или из приложения Instagram. */
-  sentVia?: string;
+  sentVia?: string | null;
 };
 
 export function normalizeInboxMessage(m: ZernioInboxMessage): ZernioInboxMessage {

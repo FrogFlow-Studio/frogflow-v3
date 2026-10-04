@@ -63,6 +63,8 @@ export type ZernioWebhookMessagePayload = {
     };
     metadata?: ZernioInteractiveMetadata;
     sentAt?: string;
+    /** Чем отправлено исходящее: null/«human» — человек, остальное — бот и сценарии Zernio. */
+    sentVia?: string | null;
   };
   conversation?: {
     id?: string;
@@ -120,6 +122,10 @@ export type ParsedZernioMessage = {
   storyMediaUrl: string | null;
   /** Исходящее (наш же ответ, если Zernio когда-нибудь начнёт их слать) — не обрабатываем. */
   outgoing: boolean;
+  /** Только у исходящего: кто отправил (см. `ZernioInboxMessage.sentVia`); нет поля — неизвестно. */
+  sentVia?: string | null;
+  /** Время сообщения по часам Zernio (ISO), если пришло. */
+  sentAt?: string | null;
 };
 
 const STORY_ID_PATHS = [
@@ -332,6 +338,8 @@ export function parseZernioMessage(payload: ZernioWebhookMessagePayload): Parsed
     storyId,
     storyMediaUrl,
     outgoing: message.direction === "outgoing",
+    ...(message.sentVia !== undefined ? { sentVia: message.sentVia } : {}),
+    sentAt: message.sentAt ?? null,
   };
 }
 

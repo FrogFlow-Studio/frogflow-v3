@@ -74,20 +74,36 @@ export function findManagerMessage(
   return null;
 }
 
-/** Откуда Zernio отправил сообщение, если это не человек: бот, рассылка, сценарий. */
-const NOT_A_PERSON = new Set([
-  "api",
-  "broadcast",
-  "sequence",
-  "workflow",
-  "comment_automation",
-  "bulk-api",
-]);
+/**
+ * Сообщение написал человек (продавец в приложении или в инбоксе Zernio), а не
+ * бот, рассылка или сценарий: `sentVia` пришёл и равен null/«human». Нет поля
+ * вовсе — не знаем, считаем не человеком: ошибиться в эту сторону безопаснее
+ * (бот не замолчит из-за собственных ответов).
+ */
+export function isPersonMessage(m: ZernioInboxMessage, ourReplies: string[] = []): boolean {
+  if (m.direction !== "outgoing") return false;
+  if (m.sentVia !== null && m.sentVia !== "human") return false;
+  const text = (m.message ?? "").trim();
+  return !(text && ourReplies.map(foldReply).includes(foldReply(text)));
+}
+
+/** Время последнего сообщения человека в хвосте переписки, мс; null — не писал. */
+export function lastPersonMessageAt(
+  messages: ZernioInboxMessage[],
+  ourReplies: string[] = [],
+): number | null {
+  let last: number | null = null;
+  for (const m of messages.slice(-TAIL)) {
+    if (!isPersonMessage(m, ourReplies)) continue;
+    const at = Date.parse(m.createdAt ?? "");
+    if (Number.isFinite(at) && (last === null || at > last)) last = at;
+  }
+  return last;
+}
 
 /**
- * Продавец писал в диалог руками за последние `windowMs`: исходящее, отправленное
- * не нашим API (`sentVia`) и не нашими словами. Для коротких «реплик вслух»
- * вроде «Записал ваш номер»: вмешиваться в живую переписку не нужно.
+ * Продавец писал в диалог руками за последние `windowMs`. Для коротких «реплик
+ * вслух» вроде «Записал ваш номер»: вмешиваться в живую переписку не нужно.
  */
 export function sellerWroteWithin(
   messages: ZernioInboxMessage[],
@@ -95,14 +111,6 @@ export function sellerWroteWithin(
   ourReplies: string[] = [],
   now: number = Date.now(),
 ): boolean {
-  const ourVoice = new Set(ourReplies.map(foldReply).filter(Boolean));
-  for (const m of messages.slice(-TAIL)) {
-    if (m.direction !== "outgoing") continue;
-    if (m.sentVia && NOT_A_PERSON.has(m.sentVia)) continue;
-    const text = (m.message ?? "").trim();
-    if (text && ourVoice.has(foldReply(text))) continue;
-    const at = Date.parse(m.createdAt ?? "");
-    if (Number.isFinite(at) && at > now - windowMs) return true;
-  }
-  return false;
+  const at = lastPersonMessageAt(messages, ourReplies);
+  return at !== null && at > now - windowMs;
 }

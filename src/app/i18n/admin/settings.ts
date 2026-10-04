@@ -156,6 +156,13 @@ export const ru = {
   "settings.dbot.feature.checkout": "оформление заказа",
   "settings.dbot.ignoreExcluded": "Не отвечать номерам из списка исключений (раздел «Рассылки»)",
   "settings.dbot.notifyTemplate": "Шаблон для сообщений вне 24-часового окна",
+  "settings.dbot.sellerPause": "Пауза бота после вашего ответа руками",
+  "settings.dbot.sellerPauseHint":
+    "Вы ответили покупателю сами из приложения Instagram или WhatsApp — бот в этом диалоге молчит это время. Команды «меню», «корзина» и нажатия кнопок работают всегда. Чек на шаге оплаты бот принимает и в паузе.",
+  "settings.dbot.sellerPause.15": "15 минут",
+  "settings.dbot.sellerPause.30": "30 минут",
+  "settings.dbot.sellerPause.60": "1 час",
+  "settings.dbot.sellerPause.day": "До конца дня",
   "settings.dbot.notifyTemplateHint":
     "Имя одобренного Meta шаблона с одним параметром {{1}} и язык через двоеточие. Без него бот попробует служебную отправку без шаблона.",
   "settings.notify.title": "Уведомления",
@@ -589,6 +596,13 @@ export const kk: SectionDict<typeof ru> = {
   "settings.dbot.ignoreExcluded":
     "Ерекшелік тізіміндегі нөмірлерге жауап бермеу («Хабарламалар» бөлімі)",
   "settings.dbot.notifyTemplate": "24 сағаттық терезеден тыс хабарламалар шаблоны",
+  "settings.dbot.sellerPause": "Қолмен жауап бергеннен кейінгі бот үзілісі",
+  "settings.dbot.sellerPauseHint":
+    "Сіз сатып алушыға Instagram немесе WhatsApp қолданбасынан өзіңіз жауап бердіңіз — осы уақытта бот бұл диалогта үнсіз. «Мәзір», «себет» пәрмендері мен түймелер әрдайым жұмыс істейді. Төлем кезеңіндегі чекті бот үзілісте де қабылдайды.",
+  "settings.dbot.sellerPause.15": "15 минут",
+  "settings.dbot.sellerPause.30": "30 минут",
+  "settings.dbot.sellerPause.60": "1 сағат",
+  "settings.dbot.sellerPause.day": "Күн соңына дейін",
   "settings.dbot.notifyTemplateHint":
     "Бір {{1}} параметрі бар Meta бекіткен шаблон атауы және қос нүкте арқылы тілі. Онсыз бот шаблонсыз қызметтік жіберуді сынайды.",
   "settings.notify.title": "Хабарландырулар",
@@ -1013,6 +1027,13 @@ export const en: SectionDict<typeof ru> = {
   "settings.dbot.ignoreExcluded":
     "Do not reply to numbers on the exclusion list (Broadcasts section)",
   "settings.dbot.notifyTemplate": "Template for messages outside the 24-hour window",
+  "settings.dbot.sellerPause": "Bot pause after you reply by hand",
+  "settings.dbot.sellerPauseHint":
+    "You answered the buyer yourself in the Instagram or WhatsApp app — the bot stays quiet in that dialogue for this long. The “menu” and “cart” commands and button taps always work. The bot still accepts a receipt at the payment step during a pause.",
+  "settings.dbot.sellerPause.15": "15 minutes",
+  "settings.dbot.sellerPause.30": "30 minutes",
+  "settings.dbot.sellerPause.60": "1 hour",
+  "settings.dbot.sellerPause.day": "Until the end of the day",
   "settings.dbot.notifyTemplateHint":
     "Name of an approved Meta template with one {{1}} parameter and the language after a colon. Without it the bot tries a utility send without a template.",
   "settings.notify.title": "Notifications",
@@ -1441,6 +1462,13 @@ export const uz: SectionDict<typeof ru> = {
   "settings.dbot.ignoreExcluded":
     "Istisno ro‘yxatidagi raqamlarga javob bermaslik («Xabarlar» bo‘limi)",
   "settings.dbot.notifyTemplate": "24 soatlik oynadan tashqari xabarlar uchun shablon",
+  "settings.dbot.sellerPause": "Qo‘lda javob bergandan keyin botning pauzasi",
+  "settings.dbot.sellerPauseHint":
+    "Siz xaridorga Instagram yoki WhatsApp ilovasidan o‘zingiz javob berdingiz — bu vaqt davomida bot ushbu suhbatda jim turadi. «Menyu», «savat» buyruqlari va tugmalar doim ishlaydi. To‘lov bosqichidagi chekni bot pauzada ham qabul qiladi.",
+  "settings.dbot.sellerPause.15": "15 daqiqa",
+  "settings.dbot.sellerPause.30": "30 daqiqa",
+  "settings.dbot.sellerPause.60": "1 soat",
+  "settings.dbot.sellerPause.day": "Kun oxirigacha",
   "settings.dbot.notifyTemplateHint":
     "Bitta {{1}} parametrli Meta tasdiqlagan shablon nomi va ikki nuqtadan keyin til. Usiz bot shablonsiz xizmat yuborishni sinab ko‘radi.",
   "settings.notify.title": "Bildirishnomalar",

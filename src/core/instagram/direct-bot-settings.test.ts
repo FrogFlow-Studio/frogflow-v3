@@ -21,9 +21,16 @@ describe("настройки автоответчика Direct/WhatsApp", () => 
       triggers: [],
       script: "",
       features: { catalog: true, search: true, cart: true, checkout: true },
+      sellerPause: "30",
       ignoreExcluded: false,
       notifyTemplate: "",
     });
+  });
+  it("пауза после реплики продавца: 15/30/60/до конца дня, мусор — 30", () => {
+    const pick = (v: string) =>
+      directBotSettingsFrom({ instagram_direct_bot_seller_pause: v }, "instagram").sellerPause;
+    expect(["15", "30", "60", "day"].map(pick)).toEqual(["15", "30", "60", "day"]);
+    expect(pick("5")).toBe("30");
   });
   it("читает значения v1: выключен, на все сообщения, слова-вызовы, функции", () => {
     const s = directBotSettingsFrom(

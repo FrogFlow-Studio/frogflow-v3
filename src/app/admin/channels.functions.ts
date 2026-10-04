@@ -32,6 +32,7 @@ export const saveDirectBotSettingsFn = createServerFn({ method: "POST" })
           cart: z.boolean(),
           checkout: z.boolean(),
         }),
+        sellerPause: z.enum(["15", "30", "60", "day"]).optional(),
         ignoreExcluded: z.boolean().optional(),
         notifyTemplate: z.string().max(200).optional(),
       })
@@ -47,6 +48,7 @@ export const saveDirectBotSettingsFn = createServerFn({ method: "POST" })
       triggers: parseTriggerWords(data.triggers),
       script: data.script,
       features: data.features,
+      sellerPause: data.sellerPause ?? "30",
       ignoreExcluded: data.ignoreExcluded ?? false,
       notifyTemplate: data.notifyTemplate ?? "",
     });

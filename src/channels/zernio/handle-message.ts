@@ -5,7 +5,12 @@ import { notifyAdminsHtml } from "@/channels/telegram/notify";
 import { liveTransport, type ZernioTransport } from "./api.server";
 import { findManagerMessage } from "./manager-guard";
 import { pauseHours, pauseNoticeRu } from "@/core/consultant/pause";
-import { messageAsText, parseZernioMessage, type ZernioWebhookMessagePayload } from "./message";
+import {
+  messageAsText,
+  parseZernioMessage,
+  type ParsedZernioMessage,
+  type ZernioWebhookMessagePayload,
+} from "./message";
 import { PLATFORM_LABEL } from "./platform";
 
 /**
@@ -36,13 +41,34 @@ function consultantMemory(customer: Customer): ConsultantMemory {
   return c && typeof c === "object" && !Array.isArray(c) ? (c as ConsultantMemory) : {};
 }
 
+/**
+ * Исходящее сообщение: бот его не разбирает. Если написал человек (продавец
+ * руками) и в диалоге говорит магазин — начинается пауза бота (seller-pause).
+ */
+async function handleOutgoing(ctx: TenantContext, m: ParsedZernioMessage): Promise<HandleResult> {
+  const shopOn =
+    m.platform === "whatsapp" ? ctx.tenant.modules.wa_shop : ctx.tenant.modules.dm_shop;
+  const channelOn =
+    m.platform === "whatsapp" ? ctx.tenant.modules.whatsapp : ctx.tenant.modules.instagram;
+  if (!shopOn || !channelOn || m.senderId === "unknown") return ignored("исходящее сообщение");
+  const { getCustomer, userKey } = await import("@/core/customers/customers");
+  const customer = await getCustomer(ctx, userKey(m.platform, m.senderId));
+  if (!customer) return ignored("исходящее сообщение");
+  const { loadDirectBotSettings } = await import("@/core/instagram/direct-bot-settings");
+  const { handleSellerOutgoing } = await import("./seller-pause");
+  const bot = await loadDirectBotSettings(ctx, m.platform);
+  const direct = customer.state.direct as { last_reply?: string } | undefined;
+  const paused = await handleSellerOutgoing(ctx, customer, m, bot.sellerPause, direct?.last_reply);
+  return ignored(paused ? "продавец ответил руками — бот на паузе" : "исходящее сообщение");
+}
+
 export async function handleZernioMessage(
   ctx: TenantContext,
   payload: ZernioWebhookMessagePayload,
   transport: ZernioTransport = liveTransport,
 ): Promise<HandleResult> {
   const m = parseZernioMessage(payload);
-  if (m.outgoing) return ignored("исходящее сообщение");
+  if (m.outgoing) return handleOutgoing(ctx, m);
   if (!m.conversationId || !m.accountId) return ignored("нет conversationId или accountId");
   if (!ctx.tenant.modules[m.platform])
     return ignored(`модуль «${PLATFORM_LABEL[m.platform]}» у клиента выключен`);
@@ -223,6 +249,11 @@ export async function handleZernioMessage(
   const shopOn =
     m.platform === "whatsapp" ? ctx.tenant.modules.wa_shop : ctx.tenant.modules.dm_shop;
   if (shopOn) {
+    // Продавец в диалоге — бот на паузе: отвечает только на явные команды.
+    const { sellerPauseActive } = await import("./seller-pause");
+    const gate = await sellerPauseActive(ctx, customer, m, transport, bot.sellerPause);
+    customer = gate.customer;
+    if (gate.paused) return processed("продавец ведёт диалог — бот на паузе");
     const { handleShopMessage } = await import("./shop.server");
     const r = await handleShopMessage(ctx, customer, m, transport, bot);
     customerNow = r.customer;
