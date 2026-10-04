@@ -276,6 +276,13 @@ export type Msg = {
   reviewPhotoBad: string;
   reviewNotAllowed: string;
   noReviewableProducts: string;
+  /** Просьба об оценке после выдачи (core/reviews/ask): Telegram, один товар; имя уже экранировано. */
+  reviewAskOne: (name: string) => string;
+  /** То же, несколько товаров: кнопка «Оценить» ведёт к выбору. */
+  reviewAskOrder: (no: string) => string;
+  /** Instagram и WhatsApp: ответ цифрой от 1 до 5, обычный текст. */
+  reviewAskDirect: (name: string) => string;
+  ratingThanks: string;
   inviteFriendBtn: string;
   infoOfferBtn: string;
   infoPrivacyBtn: string;
@@ -375,6 +382,10 @@ const ru: Msg = {
   reviewPhotoBad: "Не получилось добавить фото: нужна картинка JPEG, PNG или WebP до 5 МБ.",
   reviewNotAllowed: "⚠️ Оценить можно только то, что вы реально купили и получили.",
   noReviewableProducts: "В этом заказе нет товаров, которые можно оценить.",
+  reviewAskOne: (name) => `Как вам «${name}»? Поставьте оценку, это поможет другим покупателям:`,
+  reviewAskOrder: (no) => `Заказ #${no} у вас уже несколько дней. Как вам покупка? Оцените товары:`,
+  reviewAskDirect: (name) => `Как вам «${name}»? Оцените от 1 до 5: ответьте одной цифрой.`,
+  ratingThanks: "✅ Спасибо за оценку!",
   inviteFriendBtn: "🎁 Пригласить друга",
   infoOfferBtn: "📄 Оферта",
   infoPrivacyBtn: "🔒 Конфиденциальность",
@@ -802,6 +813,13 @@ const kk: Msg = {
   reviewPhotoBad: "Фото қосылмады: 5 МБ-қа дейінгі JPEG, PNG не WebP сурет керек.",
   reviewNotAllowed: "⚠️ Тек нақты сатып алып, алған тауарды ғана бағалауға болады.",
   noReviewableProducts: "Бұл тапсырыста бағалауға болатын тауар жоқ.",
+  reviewAskOne: (name) =>
+    `«${name}» сізге қалай? Баға қойыңыз, бұл басқа сатып алушыларға көмектеседі:`,
+  reviewAskOrder: (no) =>
+    `#${no} тапсырысыңыз бірнеше күн бұрын берілді. Сатып алу қалай? Тауарларды бағалаңыз:`,
+  reviewAskDirect: (name) =>
+    `«${name}» сізге қалай? 1-ден 5-ке дейін бағалаңыз: бір цифрмен жауап беріңіз.`,
+  ratingThanks: "✅ Бағаңыз үшін рахмет!",
   inviteFriendBtn: "🎁 Досты шақыру",
   infoOfferBtn: "📄 Оферта",
   infoPrivacyBtn: "🔒 Құпиялылық",
@@ -1052,6 +1070,12 @@ const en: Msg = {
   reviewPhotoBad: "Couldn't add the photo: send a JPEG, PNG or WebP image up to 5 MB.",
   reviewNotAllowed: "⚠️ You can only rate something you actually bought and received.",
   noReviewableProducts: "This order has no products you can rate.",
+  reviewAskOne: (name) => `How do you like “${name}”? Leave a rating, it helps other buyers:`,
+  reviewAskOrder: (no) =>
+    `Your order #${no} was delivered a few days ago. How was it? Rate the products:`,
+  reviewAskDirect: (name) =>
+    `How do you like “${name}”? Rate it from 1 to 5: reply with a single digit.`,
+  ratingThanks: "✅ Thank you for your rating!",
   inviteFriendBtn: "🎁 Invite a friend",
   infoOfferBtn: "📄 Offer",
   infoPrivacyBtn: "🔒 Privacy",
@@ -1309,6 +1333,13 @@ const uz: Msg = {
   reviewPhotoBad: "Rasm qo‘shilmadi: 5 MB gacha JPEG, PNG yoki WebP rasm kerak.",
   reviewNotAllowed: "⚠️ Faqat haqiqatan sotib olib, qo‘lga kiritgan mahsulotni baholash mumkin.",
   noReviewableProducts: "Bu buyurtmada baholash mumkin bo‘lgan mahsulot yo‘q.",
+  reviewAskOne: (name) =>
+    `«${name}» sizga qanday? Baho qoʻying, bu boshqa xaridorlarga yordam beradi:`,
+  reviewAskOrder: (no) =>
+    `#${no} buyurtmangiz bir necha kun oldin topshirilgan. Xarid qanday? Mahsulotlarni baholang:`,
+  reviewAskDirect: (name) =>
+    `«${name}» sizga qanday? 1 dan 5 gacha baholang: bitta raqam bilan javob bering.`,
+  ratingThanks: "✅ Bahoyingiz uchun rahmat!",
   inviteFriendBtn: "🎁 Do‘stni taklif qilish",
   infoOfferBtn: "📄 Oferta",
   infoPrivacyBtn: "🔒 Maxfiylik",

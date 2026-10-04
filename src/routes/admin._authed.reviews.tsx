@@ -7,6 +7,7 @@ import {
   assistReviewReplyFn,
   replyToReviewFn,
   reviewsFn,
+  setReviewAskDaysFn,
   setReviewStatusFn,
 } from "@/app/admin/reviews.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
@@ -43,7 +44,7 @@ export const Route = createFileRoute("/admin/_authed/reviews")({
 const stars = (n: number) => "★".repeat(n) + "☆".repeat(Math.max(0, 5 - n));
 
 function ReviewsPage() {
-  const { items: rows, stats, page, pages, products, total } = Route.useLoaderData();
+  const { items: rows, stats, page, pages, products, total, askDays } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const search = Route.useSearch();
@@ -72,6 +73,7 @@ function ReviewsPage() {
             : t("reviews.subtitle")
         }
       />
+      <AskDays days={askDays} canWrite={canWrite} t={t} />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <select
           className="input w-40"
@@ -212,6 +214,52 @@ function ReviewsPage() {
         </div>
       )}
     </>
+  );
+}
+
+/** Через сколько дней после выдачи покупателю уходит просьба об оценке. */
+function AskDays({ days, canWrite, t }: { days: number; canWrite: boolean; t: AdminT }) {
+  const router = useRouter();
+  const [value, setValue] = useState(String(days));
+  const [saved, setSaved] = useState(false);
+  const n = Number(value);
+  const valid = Number.isInteger(n) && n >= 1 && n <= 30;
+  const save = useAction(async () => {
+    await setReviewAskDaysFn({ data: { days: n } });
+    setSaved(true);
+    await router.invalidate();
+  });
+  return (
+    <div className="card mb-4 space-y-2 p-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="review-ask-days">{t("reviews.askDays")}</label>
+        <input
+          id="review-ask-days"
+          className="input w-20"
+          type="number"
+          min={1}
+          max={30}
+          value={value}
+          disabled={!canWrite}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setSaved(false);
+          }}
+        />
+        {canWrite && (
+          <button
+            className="btn-secondary text-xs"
+            disabled={save.busy || !valid || n === days}
+            onClick={() => void save.run().catch(() => {})}
+          >
+            {t("reviews.askDaysSave")}
+          </button>
+        )}
+        {saved && <span className="text-xs text-ok">{t("reviews.askDaysSaved")}</span>}
+      </div>
+      <p className="text-xs text-muted">{t("reviews.askHint")}</p>
+      <ErrorBox error={save.error} />
+    </div>
   );
 }
 

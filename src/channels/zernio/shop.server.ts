@@ -60,6 +60,9 @@ import { isoToDisplay, parseDateInput } from "@/core/fulfillment/pure";
 import { robokassaFor, robokassaReceipt } from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
 import { formatRatingSummary } from "@/core/reviews/pure";
+import { parseRatingReply } from "@/core/reviews/ask";
+import { hasDeliveredPurchase, saveRating } from "@/core/reviews/reviews";
+import { REPLY_WINDOW_MS } from "@/core/chat/reply-window";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
 import { askDeliveryLangBeforeOrder, cartLanguageChoices } from "@/core/cart/languages";
 import { belowMinimum } from "@/core/cart/min-order";
@@ -400,6 +403,28 @@ export async function handleShopMessage(
   return { outcome, customer: s.customer };
 }
 
+/** true — реплика была оценкой и обработана; false — шаг снят, разбираем реплику как обычно. */
+async function handleRatingAnswer(s: Shop, text: string): Promise<boolean> {
+  const { review_product_id: productId, review_ask_at: askedAt, ...rest } = s.customer.state;
+  const fresh = Date.now() - Date.parse(askedAt ?? "") < REPLY_WINDOW_MS;
+  const rating = parseRatingReply(text);
+  await setMode(s, {
+    ...rest,
+    mode: "idle",
+    review_product_id: undefined,
+    review_ask_at: undefined,
+  });
+  if (!fresh || rating == null || !productId || !s.ctx.tenant.modules.review_request) return false;
+  const telegramId = s.customer.telegramId;
+  if (!(await hasDeliveredPurchase(s.ctx, telegramId, productId))) {
+    await reply(s, s.m.reviewNotAllowed, { force: true });
+    return true;
+  }
+  await saveRating(s.ctx, telegramId, productId, rating);
+  await reply(s, s.m.ratingThanks, { force: true });
+  return true;
+}
+
 async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   const text = msg.text;
   let mode = s.customer.state.mode;
@@ -457,6 +482,15 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
   }
 
   if (!text) return "question";
+
+  // Просьба об оценке (core/reviews/ask): цифра 1–5 в окне ответа — оценка, любой
+  // другой текст — обычная переписка, шаг снимается. Раньше шага «устарел»: просьба
+  // уходит кроном и «последнюю реплику бота» не обновляет.
+  if (mode === "awaiting_rating") {
+    const answered = await handleRatingAnswer(s, text);
+    if (answered) return "handled";
+    mode = s.customer.state.mode;
+  }
 
   // Шаг, заданный давно, реплику не забирает: это уже переписка с продавцом.
   // Язык сам не спрашивается (только словом «язык»): покупатели путались, а

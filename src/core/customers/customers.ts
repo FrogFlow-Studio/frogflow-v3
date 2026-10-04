@@ -53,6 +53,8 @@ export type DialogMode =
   | "choose_pay"
   | "awaiting_promo_code"
   | "awaiting_review_comment"
+  /** Instagram/WhatsApp: ждём цифру 1–5 на просьбу об оценке (core/reviews/ask). */
+  | "awaiting_rating"
   | "awaiting_gift_certificate_code"
   | "awaiting_fulfillment_type"
   | "awaiting_fulfillment_date"
@@ -105,6 +107,8 @@ export type DialogState = {
   delivery_lang?: string;
   /** Товар, для которого только что поставлена оценка и ждём комментарий. */
   review_product_id?: string;
+  /** Когда ушла просьба об оценке в Direct/WhatsApp: цифра принимается в окне ответа (24 ч). */
+  review_ask_at?: string;
   /** Кулдаун умного поиска — когда покупатель звал его последний раз. */
   last_smart_search_at?: string;
   /** История и пауза ИИ-консультанта (src/core/consultant). */

@@ -79,6 +79,14 @@ export function settingsFromJson(json: unknown): TenantSettings {
     hosts: strList(s.hosts)?.map((h) => h.toLowerCase()),
     default_locale: isLocale(s.default_locale) ? s.default_locale : undefined,
     timezone: validTimezone(str(s.timezone)),
+    // Дни до просьбы об оценке (core/reviews/ask): целое 1–30, остальное — по умолчанию.
+    review_ask_days:
+      typeof s.review_ask_days === "number" &&
+      Number.isInteger(s.review_ask_days) &&
+      s.review_ask_days >= 1 &&
+      s.review_ask_days <= 30
+        ? s.review_ask_days
+        : undefined,
     telegram: {
       username: str(tg.username),
       webhook_ok: tg.webhook_ok === true,

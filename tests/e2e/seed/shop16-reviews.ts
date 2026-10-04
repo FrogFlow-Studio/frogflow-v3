@@ -85,14 +85,12 @@ export function seedShop16Reviews(db: StubDb, now: string) {
   add(
     db,
     "app_settings",
-    reviews
-      .slice(0, F.REV16_CAKE_REVIEWS)
-      .map((r) =>
-        own({
-          key: `review_meta:${r.id}`,
-          value: '{"status":"approved","photos":[]}',
-          updated_at: now,
-        }),
-      ),
+    reviews.slice(0, F.REV16_CAKE_REVIEWS).map((r) =>
+      own({
+        key: `review_meta:${r.id}`,
+        value: '{"status":"approved","photos":[]}',
+        updated_at: now,
+      }),
+    ),
   );
 }

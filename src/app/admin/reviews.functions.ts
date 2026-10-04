@@ -28,7 +28,23 @@ export const reviewsFn = createServerFn({ method: "GET" })
       await import("@/app/auth/guards.server")
     ).requireAdminModule("review_request");
     const { listReviewsForAdmin } = await import("@/core/reviews/admin");
-    return listReviewsForAdmin(ctx, data);
+    const { reviewAskDays } = await import("@/core/reviews/ask");
+    return {
+      ...(await listReviewsForAdmin(ctx, data)),
+      askDays: reviewAskDays(ctx.tenant.settings.review_ask_days),
+    };
+  });
+
+/** Через сколько дней после выдачи просить оценку (core/reviews/ask). */
+export const setReviewAskDaysFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ days: z.number().int().min(1).max(30) }).parse(d))
+  .handler(async ({ data }) => {
+    const ctx = await (
+      await import("@/app/auth/guards.server")
+    ).requireAdminModule("review_request", "manager");
+    const { patchTenantSettings } = await import("@/core/tenant/resolve.server");
+    await patchTenantSettings(ctx.tenant.id, { review_ask_days: data.days });
+    return { ok: true };
   });
 
 async function reviewOrFail(id: string) {

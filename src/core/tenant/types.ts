@@ -18,6 +18,8 @@ export type TenantSettings = {
   hosts?: string[];
   /** Язык интерфейса бота по умолчанию. */
   default_locale?: Locale;
+  /** Через сколько дней после выдачи просить оценку (core/reviews/ask), 1–30; нет — 3. */
+  review_ask_days?: number;
   /** Часовой пояс магазина (IANA); нет — APP_TIMEZONE платформы. */
   timezone?: string;
   telegram?: {

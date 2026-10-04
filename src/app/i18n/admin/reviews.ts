@@ -3,6 +3,11 @@ import type { SectionDict } from "../section";
 /** Раздел «Отзывы». */
 export const ru = {
   "reviews.title": "Отзывы",
+  "reviews.askDays": "Просить оценку через, дней после выдачи",
+  "reviews.askDaysSave": "Сохранить",
+  "reviews.askDaysSaved": "Сохранено",
+  "reviews.askHint":
+    "Один раз на заказ, днём по времени магазина. Telegram — кнопками оценки; Instagram и WhatsApp — только если покупатель писал за последние 24 часа, ответ цифрой от 1 до 5. Отписавшимся и заблокировавшим не пишем; просьба считается в суточном потолке маркетинговых сообщений.",
   "reviews.subtitle":
     "Оценки и комментарии покупателей после выдачи заказа. Ответ уходит покупателю личным сообщением от магазина.",
   "reviews.avg": "Средняя оценка: {avg} из 5 · отзывов: {n}",
@@ -44,6 +49,11 @@ export const ru = {
 
 export const kk: SectionDict<typeof ru> = {
   "reviews.title": "Пікірлер",
+  "reviews.askDays": "Тапсырыс берілгеннен кейін бағаны сұрау, күн",
+  "reviews.askDaysSave": "Сақтау",
+  "reviews.askDaysSaved": "Сақталды",
+  "reviews.askHint":
+    "Тапсырысқа бір рет, дүкен уақытымен күндіз. Telegram — баға батырмаларымен; Instagram және WhatsApp — сатып алушы соңғы 24 сағатта жазған болса ғана, 1-ден 5-ке дейінгі цифрмен жауап. Жазылымнан бас тартқандарға және бұғаттағандарға жазбаймыз; сұрау маркетингтік хабарламалардың тәуліктік шегіне кіреді.",
   "reviews.subtitle":
     "Тапсырыс берілгеннен кейінгі сатып алушылардың бағалары мен пікірлері. Жауап сатып алушыға дүкеннен жеке хабарлама болып барады.",
   "reviews.avg": "Орташа баға: 5-тен {avg} · пікірлер: {n}",
@@ -86,6 +96,11 @@ export const kk: SectionDict<typeof ru> = {
 
 export const en: SectionDict<typeof ru> = {
   "reviews.title": "Reviews",
+  "reviews.askDays": "Ask for a rating, days after delivery",
+  "reviews.askDaysSave": "Save",
+  "reviews.askDaysSaved": "Saved",
+  "reviews.askHint":
+    "Once per order, in the daytime of the shop’s time zone. Telegram uses rating buttons; Instagram and WhatsApp only if the buyer wrote within the last 24 hours, answered with a digit from 1 to 5. We do not write to buyers who unsubscribed or blocked the bot; the request counts toward the daily cap on marketing messages.",
   "reviews.subtitle":
     "Customer ratings and comments after an order is delivered. Your reply goes to the customer as a private message from the shop.",
   "reviews.avg": "Average rating: {avg} of 5 · reviews: {n}",
@@ -128,6 +143,11 @@ export const en: SectionDict<typeof ru> = {
 
 export const uz: SectionDict<typeof ru> = {
   "reviews.title": "Sharhlar",
+  "reviews.askDays": "Baho soʻrash, topshirilgandan keyin necha kun",
+  "reviews.askDaysSave": "Saqlash",
+  "reviews.askDaysSaved": "Saqlandi",
+  "reviews.askHint":
+    "Har bir buyurtmaga bir marta, doʻkon vaqti bilan kunduzi. Telegram — baho tugmalari bilan; Instagram va WhatsApp — faqat xaridor oxirgi 24 soatda yozgan boʻlsa, 1 dan 5 gacha raqam bilan javob. Obunadan chiqqan va botni bloklagan xaridorlarga yozmaymiz; soʻrov marketing xabarlarining kunlik chegarasiga kiradi.",
   "reviews.subtitle":
     "Buyurtma topshirilgandan keyin xaridorlarning baholari va izohlari. Javob xaridorga doʻkondan shaxsiy xabar boʻlib boradi.",
   "reviews.avg": "Oʻrtacha baho: 5 dan {avg} · sharhlar: {n}",

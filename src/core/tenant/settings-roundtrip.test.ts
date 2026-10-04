@@ -13,6 +13,7 @@ const SAVED = {
   timezone: "Asia/Almaty",
   delivery: { pdf_watermark: true },
   consultant_pause_hours: 3,
+  review_ask_days: 5,
   gift_sale: { enabled: true, amounts: [5000, 10000], currency: "KZT" },
   admin: {
     username: "owner",
@@ -53,10 +54,17 @@ describe("settingsFromJson не теряет сохранённые ключи",
     });
   });
 
+  it("срок просьбы об оценке: только целое 1–30", () => {
+    expect(settingsFromJson({ review_ask_days: 7 }).review_ask_days).toBe(7);
+    for (const bad of [0, 31, 2.5, "5", null])
+      expect(settingsFromJson({ review_ask_days: bad }).review_ask_days).toBeUndefined();
+  });
+
   it("остальные ключи админки и оператора на месте", () => {
     expect(s).toMatchObject({
       timezone: "Asia/Almaty",
       consultant_pause_hours: 3,
+      review_ask_days: 5,
       gift_sale: { enabled: true, amounts: [5000, 10000], currency: "KZT" },
       admin: {
         username: "owner",

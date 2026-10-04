@@ -136,7 +136,7 @@ export const ru = {
   "module.helpdesk.desc": "Обращения покупателей как тикеты: статусы, ответственный, история.",
   "module.review_request.title": "Оценка после покупки",
   "module.review_request.desc":
-    "После выдачи заказа покупатель ставит оценку и оставляет комментарий; рейтинг виден в карточке товара.",
+    "Через несколько дней после выдачи покупателю один раз уходит просьба оценить товар (Telegram — кнопками, Instagram и WhatsApp — цифрой в 24-часовом окне); оценка и комментарий, рейтинг в карточке товара.",
   "module.notify_in_bot.title": "Дублирование уведомлений",
   "module.notify_in_bot.desc":
     "Уведомления о заказах приходят и в группу, и в личку всем указанным получателям; почта, тихие часы и утренний дайджест — в карточке «Уведомления».",
@@ -332,7 +332,7 @@ export const kk: SectionDict<typeof ru> = {
     "Сатып алушылардың өтініштері тикет ретінде: күйлер, жауапты адам, тарих.",
   "module.review_request.title": "Сатып алудан кейінгі баға",
   "module.review_request.desc":
-    "Тапсырыс берілгеннен кейін сатып алушы баға қойып, пікір қалдырады; рейтинг тауар карточкасында көрінеді.",
+    "Тапсырыс берілгеннен кейін бірнеше күннен соң сатып алушыға бағалау туралы өтініш бір рет жіберіледі (Telegram — батырмалармен, Instagram және WhatsApp — 24 сағаттық терезеде цифрмен); баға мен пікір, рейтинг тауар карточкасында көрінеді.",
   "module.notify_in_bot.title": "Хабарламаларды қайталау",
   "module.notify_in_bot.desc":
     "Тапсырыс туралы хабарламалар топқа да, көрсетілген барлық алушыларға жеке де келеді; пошта, тыныш сағаттар және таңғы дайджест — «Хабарламалар» карточкасында.",
@@ -489,7 +489,7 @@ export const en: SectionDict<typeof ru> = {
   "module.helpdesk.desc": "Customer requests as tickets: statuses, assignee, history.",
   "module.review_request.title": "Post-purchase rating",
   "module.review_request.desc":
-    "After the order is delivered, the customer leaves a rating and a comment; the rating is shown on the product card.",
+    "A few days after delivery the customer gets one request to rate the product (Telegram with buttons, Instagram and WhatsApp with a digit inside the 24-hour window); a rating and a comment, the rating is shown on the product card.",
   "module.notify_in_bot.title": "Duplicate notifications",
   "module.notify_in_bot.desc":
     "Order notifications go both to the group and privately to every listed recipient; email, quiet hours and the morning digest are in the “Notifications” card.",
@@ -647,7 +647,7 @@ export const uz: SectionDict<typeof ru> = {
   "module.helpdesk.desc": "Xaridorlar murojaatlari tiket sifatida: holatlar, masʼul shaxs, tarix.",
   "module.review_request.title": "Xariddan keyingi baho",
   "module.review_request.desc":
-    "Buyurtma berilgandan keyin xaridor baho qoʻyadi va izoh qoldiradi; reyting mahsulot kartochkasida koʻrinadi.",
+    "Buyurtma topshirilgandan bir necha kun oʻtgach xaridorga mahsulotni baholash soʻrovi bir marta yuboriladi (Telegram — tugmalar bilan, Instagram va WhatsApp — 24 soatlik oynada raqam bilan); baho va izoh, reyting mahsulot kartochkasida koʻrinadi.",
   "module.notify_in_bot.title": "Xabarnomalarni takrorlash",
   "module.notify_in_bot.desc":
     "Buyurtmalar haqidagi xabarnomalar guruhga ham, koʻrsatilgan barcha oluvchilarga shaxsiy ham keladi; pochta, tinch soatlar va ertalabki dayjest — «Xabarnomalar» kartochkasida.",

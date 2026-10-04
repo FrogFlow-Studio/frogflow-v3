@@ -300,6 +300,47 @@ export async function runSimilarFor(tenant: Tenant) {
   });
 }
 
+/**
+ * Просьба об оценке после выдачи (модуль review_request): Telegram — кнопками
+ * оценки, Instagram и WhatsApp — обычным текстом, ответ цифрой (core/reviews/ask).
+ */
+export async function runReviewAskFor(tenant: Tenant) {
+  if (!tenant.modules.review_request) return { skipped: "module off" };
+  const ctx = tenantContext(tenant);
+  const { runReviewAsk } = await import("@/core/reviews/ask");
+  const tg = tenant.telegramTokenEnc ? api(ctx) : null;
+  const { sendToZernioTarget, zernioTargetOf } = await import("@/channels/zernio/outbound.server");
+  return runReviewAsk(ctx, async (c, ask) => {
+    const m = COPY[(c.state.locale as keyof typeof COPY) ?? "ru"] ?? COPY.ru;
+    if (c.platform === "telegram") {
+      if (!tg) return false;
+      const first = ask.products[0]!;
+      const single = ask.products.length === 1;
+      const r = await tg.call("sendMessage", {
+        chat_id: c.telegramId,
+        text: single
+          ? m.reviewAskOne(escapeHtml(first.name))
+          : m.reviewAskOrder(String(ask.orderNo)),
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: [
+            single
+              ? [1, 2, 3, 4, 5].map((n) => ({
+                  text: "⭐".repeat(n),
+                  callback_data: `stars:${first.id}:${n}`,
+                }))
+              : [{ text: m.rateBtn(String(ask.orderNo)), callback_data: `rate:${ask.orderId}` }],
+            [{ text: m.unsubscribeBtn, callback_data: "unsub" }],
+          ],
+        },
+      });
+      return r.ok;
+    }
+    const target = zernioTargetOf(c);
+    return target ? sendToZernioTarget(target, m.reviewAskDirect(ask.products[0]!.name)) : false;
+  });
+}
+
 /** Автоворонка (модуль funnel): те же каналы, что у возвратных продаж. */
 export async function runFunnelFor(tenant: Tenant) {
   if (!tenant.modules.funnel) return { skipped: "module off" };

@@ -26,6 +26,7 @@ const TWICE: Record<string, Evidence> = {
   fulfillment: { test: ["src/core/reminders/fulfillment.test.ts"] },
   winback: { test: ["src/lib/cron-twice-marketing.test.ts"] },
   similar: { test: ["src/lib/cron-twice-marketing.test.ts"] },
+  reviewAsk: { test: ["src/core/reviews/ask.test.ts"] },
   funnel: { test: ["src/lib/cron-twice-marketing.test.ts"] },
   courses: { test: ["src/core/courses/announce.test.ts", "src/core/courses/reminders.test.ts"] },
   webOrders: { test: ["src/core/orders/reject-points.test.ts"] },

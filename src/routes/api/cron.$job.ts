@@ -134,6 +134,8 @@ export const Route = createFileRoute("/api/cron/$job")({
                   fulfillment: await jobs.runFulfillmentReminders(t),
                   winback: await jobs.runWinbackFor(t),
                   similar: await jobs.runSimilarFor(t),
+                  // Просьба об оценке через N дней после выдачи заказа.
+                  reviewAsk: await jobs.runReviewAskFor(t),
                   funnel: await jobs.runFunnelFor(t),
                   birthdays: await jobs.runBirthdaysFor(t),
                   // Акция кончается завтра — тем, кого звали на неё рассылкой.
