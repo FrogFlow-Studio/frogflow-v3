@@ -43,13 +43,16 @@ export function Breadcrumbs({
               <span className="text-fg" aria-current="page">
                 {i === 0 ? t("catalog.title") : c.name}
               </span>
-            ) : (
+            ) : c.categoryId ? (
               <Link
-                to="/s/$slug"
-                params={{ slug }}
-                search={c.categoryId ? { category: c.categoryId } : {}}
+                to="/s/$slug/c/$category"
+                params={{ slug, category: c.categoryId }}
                 className="hover:underline"
               >
+                {c.name}
+              </Link>
+            ) : (
+              <Link to="/s/$slug" params={{ slug }} className="hover:underline">
                 {i === 0 ? t("catalog.title") : c.name}
               </Link>
             )}

@@ -102,7 +102,7 @@ test("витрина: хлебные крошки на странице това
     [4, F.CRUMB_PRODUCT_NAME],
   ]);
   expect(crumbs.itemListElement[2]!.item).toMatch(
-    new RegExp(`/s/${F.CRUMB_SHOP_SLUG}\\?category=${F.CRUMB_CHILD_ID}$`),
+    new RegExp(`/s/${F.CRUMB_SHOP_SLUG}/c/${F.CRUMB_CHILD_ID}$`),
   );
   expect(crumbs.itemListElement[3]!.item).toMatch(
     new RegExp(`/s/${F.CRUMB_SHOP_SLUG}/p/${F.CRUMB_PRODUCT_ID}$`),
@@ -127,7 +127,7 @@ test("витрина: хлебные крошки на странице това
     "page",
   );
   await nav.getByRole("link", { name: F.CRUMB_CHILD_NAME, exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`category=${F.CRUMB_CHILD_ID}`));
+  await expect(page).toHaveURL(new RegExp(`/c/${F.CRUMB_CHILD_ID}$`));
   await expect(page.getByRole("heading", { name: F.CRUMB_CHILD_NAME, exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -135,9 +135,7 @@ test("витрина: хлебные крошки на странице това
 test("витрина: на странице категории — путь до неё и BreadcrumbList; товар без категории — «Каталог › Товар»", async ({
   request,
 }) => {
-  const html = await (
-    await request.get(`/s/${F.CRUMB_SHOP_SLUG}?category=${F.CRUMB_CHILD_ID}`)
-  ).text();
+  const html = await (await request.get(`/s/${F.CRUMB_SHOP_SLUG}/c/${F.CRUMB_CHILD_ID}`)).text();
   const crumbs = ldBlocks(html).find((b) => b["@type"] === "BreadcrumbList") as {
     itemListElement: Array<{ name: string }>;
   };
@@ -153,4 +151,14 @@ test("витрина: на странице категории — путь до
     itemListElement: Array<{ name: string }>;
   };
   expect(plainCrumbs.itemListElement.map((x) => x.name)).toEqual([F.SHOP_NAME, F.PRODUCT_NAME]);
+});
+
+test("витрина: старый адрес ?category= ведёт на страницу категории /c/<id>, фильтры остаются", async ({
+  page,
+}) => {
+  await page.goto(`/s/${F.CRUMB_SHOP_SLUG}?category=${F.CRUMB_CHILD_ID}&stock=1`);
+  await expect(page).toHaveURL(
+    new RegExp(`/s/${F.CRUMB_SHOP_SLUG}/c/${F.CRUMB_CHILD_ID}\\?stock=1$`),
+  );
+  await expect(page.getByRole("heading", { name: F.CRUMB_CHILD_NAME, exact: true })).toBeVisible();
 });

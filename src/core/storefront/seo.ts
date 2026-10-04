@@ -32,7 +32,14 @@ export const productCanonical = (origin: string, slug: string, id: string) =>
 
 /** Страница категории — тот же адрес, что в карте сайта (core/storefront/sitemap). */
 export const categoryCanonical = (origin: string, slug: string, id: string) =>
-  `${shopCanonical(origin, slug)}?category=${encodeURIComponent(id)}`;
+  `${shopCanonical(origin, slug)}/c/${encodeURIComponent(id)}`;
+
+/**
+ * Категория без товаров не нужна поиску: на ней нечего показать. Число товаров
+ * неизвестно (сбой загрузки) — не прячем: «не знаем» не то же, что «пусто».
+ */
+export const categoryIndexable = (itemCount: number | null): boolean =>
+  itemCount === null || itemCount > 0;
 
 /** Вторая и дальше страницы каталога — свои адреса: на них другие товары. */
 export const pagedCanonical = (url: string, page: number | undefined) =>

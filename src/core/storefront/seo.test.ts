@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   categoryCanonical,
+  categoryIndexable,
   jsonLdScript,
   productCanonical,
   productJsonLd,
@@ -25,7 +26,7 @@ describe("canonical", () => {
     expect(shopCanonical("https://shop.kz/", "lavka")).toBe("https://shop.kz/s/lavka");
     expect(productCanonical("https://shop.kz", "lavka", "p1")).toBe("https://shop.kz/s/lavka/p/p1");
     expect(categoryCanonical("https://shop.kz", "lavka", "c 1")).toBe(
-      "https://shop.kz/s/lavka?category=c%201",
+      "https://shop.kz/s/lavka/c/c%201",
     );
   });
 });
@@ -87,5 +88,13 @@ describe("JSON-LD товара", () => {
     expect(s.type).toBe("application/ld+json");
     expect(s.children).not.toMatch(/<|>/);
     expect(JSON.parse(s.children).name).toBe("A</script><script>x()");
+  });
+});
+
+describe("категория для поиска", () => {
+  it("пустая — не в индекс; неизвестное число (сбой загрузки) не прячем", () => {
+    expect(categoryIndexable(0)).toBe(false);
+    expect(categoryIndexable(5)).toBe(true);
+    expect(categoryIndexable(null)).toBe(true);
   });
 });

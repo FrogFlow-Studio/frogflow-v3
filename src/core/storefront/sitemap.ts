@@ -58,11 +58,25 @@ export async function storefrontSitemap(ctx: TenantContext, base: string): Promi
   const visible = visibleCategoryIds(cats);
 
   const out: SitemapEntry[] = [{ loc: `${base}`, priority: 1 }];
+  const listed = ((products.data ?? []) as Product[]).filter((p) =>
+    listedOnStorefront(p, known, visible),
+  );
+  // Пустая категория в карту не идёт: товары подкатегорий считаются и за родителя.
+  const parentOf = new Map(cats.map((c) => [c.id, c.parent_id]));
+  const filled = new Set<string>();
+  for (const p of listed)
+    for (const id of Array.isArray(p.category_ids) ? (p.category_ids as string[]) : []) {
+      for (
+        let cur: string | null | undefined = id;
+        cur && !filled.has(cur);
+        cur = parentOf.get(cur)
+      )
+        filled.add(cur);
+    }
   for (const c of cats)
-    if (visible.has(c.id))
-      out.push({ loc: `${base}?category=${encodeURIComponent(c.id)}`, priority: 0.6 });
-  for (const p of (products.data ?? []) as Product[]) {
-    if (!listedOnStorefront(p, known, visible)) continue;
+    if (visible.has(c.id) && filled.has(c.id))
+      out.push({ loc: `${base}/c/${encodeURIComponent(c.id)}`, priority: 0.6 });
+  for (const p of listed) {
     out.push({ loc: `${base}/p/${encodeURIComponent(p.id)}`, priority: 0.8 });
   }
   const legalSettings = legal as Record<string, string | null | undefined>;

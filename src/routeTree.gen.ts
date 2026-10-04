@@ -117,6 +117,7 @@ import { Route as ApiRobokassaBotIdActionRouteImport } from './routes/api/roboka
 import { Route as ApiTelegramBotIdVipRouteImport } from './routes/api/telegram.$botId.vip'
 import { Route as OperatorAuthedClientsBotIdRouteImport } from './routes/operator._authed.clients.$botId'
 import { Route as OperatorAuthedClientsNewRouteImport } from './routes/operator._authed.clients.new'
+import { Route as SSlugCCategoryRouteImport } from './routes/s.$slug.c.$category'
 import { Route as SSlugCertCodeRouteImport } from './routes/s.$slug.cert.$code'
 import { Route as SSlugCourseItemIdRouteImport } from './routes/s.$slug.course.$itemId'
 import { Route as SSlugGiveawayIdRouteImport } from './routes/s.$slug.giveaway.$id'
@@ -676,6 +677,11 @@ const OperatorAuthedClientsNewRoute =
     path: '/clients/new',
     getParentRoute: () => OperatorAuthedRoute,
   } as any)
+const SSlugCCategoryRoute = SSlugCCategoryRouteImport.update({
+  id: '/c/$category',
+  path: '/c/$category',
+  getParentRoute: () => SSlugRoute,
+} as any)
 const SSlugCertCodeRoute = SSlugCertCodeRouteImport.update({
   id: '/cert/$code',
   path: '/cert/$code',
@@ -829,6 +835,7 @@ export interface FileRoutesByFullPath {
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
+  '/s/$slug/c/$category': typeof SSlugCCategoryRoute
   '/s/$slug/cert/$code': typeof SSlugCertCodeRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/giveaway/$id': typeof SSlugGiveawayIdRoute
@@ -943,6 +950,7 @@ export interface FileRoutesByTo {
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
   '/operator/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
+  '/s/$slug/c/$category': typeof SSlugCCategoryRoute
   '/s/$slug/cert/$code': typeof SSlugCertCodeRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/giveaway/$id': typeof SSlugGiveawayIdRoute
@@ -1063,6 +1071,7 @@ export interface FileRoutesById {
   '/api/telegram/$botId/vip': typeof ApiTelegramBotIdVipRoute
   '/operator/_authed/clients/$botId': typeof OperatorAuthedClientsBotIdRoute
   '/operator/_authed/clients/new': typeof OperatorAuthedClientsNewRoute
+  '/s/$slug/c/$category': typeof SSlugCCategoryRoute
   '/s/$slug/cert/$code': typeof SSlugCertCodeRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
   '/s/$slug/giveaway/$id': typeof SSlugGiveawayIdRoute
@@ -1182,6 +1191,7 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId/vip'
     | '/operator/clients/$botId'
     | '/operator/clients/new'
+    | '/s/$slug/c/$category'
     | '/s/$slug/cert/$code'
     | '/s/$slug/course/$itemId'
     | '/s/$slug/giveaway/$id'
@@ -1296,6 +1306,7 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId/vip'
     | '/operator/clients/$botId'
     | '/operator/clients/new'
+    | '/s/$slug/c/$category'
     | '/s/$slug/cert/$code'
     | '/s/$slug/course/$itemId'
     | '/s/$slug/giveaway/$id'
@@ -1415,6 +1426,7 @@ export interface FileRouteTypes {
     | '/api/telegram/$botId/vip'
     | '/operator/_authed/clients/$botId'
     | '/operator/_authed/clients/new'
+    | '/s/$slug/c/$category'
     | '/s/$slug/cert/$code'
     | '/s/$slug/course/$itemId'
     | '/s/$slug/giveaway/$id'
@@ -2223,6 +2235,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedClientsNewRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/s/$slug/c/$category': {
+      id: '/s/$slug/c/$category'
+      path: '/c/$category'
+      fullPath: '/s/$slug/c/$category'
+      preLoaderRoute: typeof SSlugCCategoryRouteImport
+      parentRoute: typeof SSlugRoute
+    }
     '/s/$slug/cert/$code': {
       id: '/s/$slug/cert/$code'
       path: '/cert/$code'
@@ -2480,6 +2499,7 @@ interface SSlugRouteChildren {
   SSlugOrdersRoute: typeof SSlugOrdersRoute
   SSlugQuizRoute: typeof SSlugQuizRoute
   SSlugIndexRoute: typeof SSlugIndexRoute
+  SSlugCCategoryRoute: typeof SSlugCCategoryRoute
   SSlugCertCodeRoute: typeof SSlugCertCodeRoute
   SSlugCourseItemIdRoute: typeof SSlugCourseItemIdRoute
   SSlugGiveawayIdRoute: typeof SSlugGiveawayIdRoute
@@ -2496,6 +2516,7 @@ const SSlugRouteChildren: SSlugRouteChildren = {
   SSlugOrdersRoute: SSlugOrdersRoute,
   SSlugQuizRoute: SSlugQuizRoute,
   SSlugIndexRoute: SSlugIndexRoute,
+  SSlugCCategoryRoute: SSlugCCategoryRoute,
   SSlugCertCodeRoute: SSlugCertCodeRoute,
   SSlugCourseItemIdRoute: SSlugCourseItemIdRoute,
   SSlugGiveawayIdRoute: SSlugGiveawayIdRoute,

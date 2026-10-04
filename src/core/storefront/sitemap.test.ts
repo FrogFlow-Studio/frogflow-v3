@@ -47,12 +47,30 @@ const BASE = "https://www.frogflow.tech/s/demo";
 describe("карта сайта витрины", () => {
   it("только то, что покупатель видит в каталоге", async () => {
     const locs = (await storefrontSitemap(ctxWith(), BASE)).map((e) => e.loc);
-    expect(locs.slice(0, 2)).toEqual([BASE, `${BASE}?category=c-open`]);
+    expect(locs.slice(0, 2)).toEqual([BASE, `${BASE}/c/c-open`]);
     expect(locs.slice(2).sort()).toEqual([
       `${BASE}/p/p-cake`,
       `${BASE}/p/p-open`,
       `${BASE}/p/p-plain`,
     ]);
+  });
+
+  it("пустая категория в карту не идёт, товар подкатегории наполняет и родителя", async () => {
+    const ctx = ctxWith();
+    const tables = (ctx.db as unknown as ReturnType<typeof fakeDb>).tables;
+    tables.categories!.push(
+      { id: "c-empty", name: "Пустая", parent_id: null, is_visible: true },
+      { id: "c-parent", name: "Раздел", parent_id: null, is_visible: true },
+      { id: "c-child", name: "Подраздел", parent_id: "c-parent", is_visible: true },
+      { id: "c-child-empty", name: "Пустой подраздел", parent_id: "c-parent", is_visible: true },
+    );
+    tables.products!.push(product("p-child", { category_ids: ["c-child"] }));
+    const locs = (await storefrontSitemap(ctx, BASE)).map((e) => e.loc);
+    expect(locs).toContain(`${BASE}/c/c-parent`);
+    expect(locs).toContain(`${BASE}/c/c-child`);
+    expect(locs).not.toContain(`${BASE}/c/c-empty`);
+    expect(locs).not.toContain(`${BASE}/c/c-child-empty`);
+    expect(locs).not.toContain(`${BASE}/c/c-hidden`);
   });
 
   it("юридические страницы — только опубликованные и при модуле", async () => {
@@ -66,9 +84,9 @@ describe("карта сайта витрины", () => {
   });
 
   it("XML по протоколу, спецсимволы экранированы", () => {
-    const xml = sitemapXml([{ loc: `${BASE}?category=a&b`, priority: 0.6 }]);
+    const xml = sitemapXml([{ loc: `${BASE}?stock=1&b`, priority: 0.6 }]);
     expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
-    expect(xml).toContain("<loc>https://www.frogflow.tech/s/demo?category=a&amp;b</loc>");
+    expect(xml).toContain("<loc>https://www.frogflow.tech/s/demo?stock=1&amp;b</loc>");
     expect(xml).toContain("<priority>0.6</priority>");
     expect(sitemapIndexXml([`${BASE}/sitemap.xml`])).toContain(
       `<sitemap><loc>${BASE}/sitemap.xml</loc></sitemap>`,
