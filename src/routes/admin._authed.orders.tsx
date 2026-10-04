@@ -5,6 +5,7 @@ import {
   Outlet,
   useNavigate,
   useRouteContext,
+  useRouter,
 } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
@@ -12,6 +13,7 @@ import { ordersFn } from "@/app/admin/admin.functions";
 import { useLiveOrders } from "@/app/admin/live-orders";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
 import { Badge, Empty, PageTitle } from "@/app/ui";
+import { usePullToRefresh } from "@/app/ui/pull-to-refresh";
 import { formatMoney } from "@/core/money/money";
 import { displayNo } from "@/core/orders/pure";
 import { slotOf } from "@/core/fulfillment/slots";
@@ -151,6 +153,8 @@ function OrdersPage() {
   const { status, q, pickup, unpaid } = Route.useSearch();
   const physical = shop.vertical === "confectionery" || shop.vertical === "flowers";
   const navigate = useNavigate();
+  const router = useRouter();
+  const pull = usePullToRefresh(() => router.invalidate());
   const [query, setQuery] = useState(q ?? "");
   const tabs: Array<[string | undefined, string]> = [
     [undefined, t("common.all")],
@@ -168,6 +172,15 @@ function OrdersPage() {
   ];
   return (
     <>
+      {pull !== "idle" && (
+        <p role="status" className="mb-2 text-center text-xs text-muted md:hidden">
+          {pull === "busy"
+            ? t("orders.refreshing")
+            : pull === "ready"
+              ? t("orders.pullRelease")
+              : t("orders.pull")}
+        </p>
+      )}
       <PageTitle
         title={t("orders.title")}
         actions={
@@ -243,19 +256,25 @@ function OrdersPage() {
         </div>
       )}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        {tabs.map(([s, label]) => (
-          <Link
-            key={label}
-            to="/admin/orders"
-            search={{ status: s, q, pickup, unpaid }}
-            className={`badge cursor-pointer ${status === s ? "border-accent bg-accent/10 text-accent" : ""}`}
-          >
-            {label}
-            {s && counts[s] ? ` · ${counts[s]}` : ""}
-          </Link>
-        ))}
+        <div
+          role="group"
+          aria-label={t("orders.filtersLabel")}
+          className="-mx-4 flex w-[calc(100%+2rem)] gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:w-auto md:flex-wrap md:overflow-visible md:px-0 md:pb-0 [&>a]:shrink-0 [&>a]:whitespace-nowrap"
+        >
+          {tabs.map(([s, label]) => (
+            <Link
+              key={label}
+              to="/admin/orders"
+              search={{ status: s, q, pickup, unpaid }}
+              className={`badge cursor-pointer ${status === s ? "border-accent bg-accent/10 text-accent" : ""}`}
+            >
+              {label}
+              {s && counts[s] ? ` · ${counts[s]}` : ""}
+            </Link>
+          ))}
+        </div>
         <form
-          className="ml-auto flex gap-2"
+          className="flex w-full gap-2 md:ml-auto md:w-auto"
           onSubmit={(e) => {
             e.preventDefault();
             void navigate({
@@ -265,7 +284,7 @@ function OrdersPage() {
           }}
         >
           <input
-            className="input w-56"
+            className="input min-w-0 flex-1 md:w-56 md:flex-none"
             placeholder={t("orders.searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -276,76 +295,114 @@ function OrdersPage() {
       {orders.length === 0 ? (
         <Empty>{t("orders.empty")}</Empty>
       ) : (
-        <div className="card overflow-x-auto">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>{t("orders.col.no")}</th>
-                <th>{t("orders.col.customer")}</th>
-                <th>{t("orders.col.items")}</th>
-                <th className="text-right">{t("orders.col.total")}</th>
-                <th>{t("orders.col.status")}</th>
-                <th>{t("orders.col.channel")}</th>
-                <th>{t("orders.col.when")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((o) => (
-                <tr key={o.id} className="hover:bg-surface-2/60">
-                  <td>
-                    <Link
-                      to="/admin/orders/$id"
-                      params={{ id: String(o.id) }}
-                      className="font-medium hover:underline"
-                    >
-                      #{displayNo(o)}
-                    </Link>
-                  </td>
-                  <td>
-                    {o.display_name}
-                    <div className="text-xs text-muted">{o.contact ?? o.customer_email ?? ""}</div>
-                  </td>
-                  <td className="max-w-xs truncate text-muted">
+        <>
+          <ul className="space-y-2 md:hidden">
+            {orders.map((o) => (
+              <li key={o.id}>
+                <Link
+                  to="/admin/orders/$id"
+                  params={{ id: String(o.id) }}
+                  className="card block p-3 text-sm"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium">#{displayNo(o)}</span>
+                    <OrderStatus status={o.status} />
+                  </div>
+                  <div className="mt-1 truncate">{o.display_name}</div>
+                  <div className="truncate text-xs text-muted">
+                    {o.contact ?? o.customer_email ?? ""}
+                  </div>
+                  <div className="truncate text-xs text-muted">
                     {(o.order_items ?? []).map((i) => i.name_snapshot).join(", ")}
-                  </td>
-                  <td className="text-right tabular-nums">
-                    {formatMoney(o.total, o.currency)}
-                    {o.fulfillment_kind === "physical" &&
-                      Number(o.paid_amount) > 0 &&
-                      Number(o.paid_amount) < Number(o.total) && (
-                        <div className="text-xs text-muted">
-                          {t("physical.paid")} {formatMoney(o.paid_amount, o.currency)}
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="tabular-nums font-medium">
+                      {formatMoney(o.total, o.currency)}
+                    </span>
+                    <span className="text-xs text-muted">
+                      {new Date(o.created_at).toLocaleString(intlLocale(shop.locale), {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="card hidden overflow-x-auto md:block">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{t("orders.col.no")}</th>
+                  <th>{t("orders.col.customer")}</th>
+                  <th>{t("orders.col.items")}</th>
+                  <th className="text-right">{t("orders.col.total")}</th>
+                  <th>{t("orders.col.status")}</th>
+                  <th>{t("orders.col.channel")}</th>
+                  <th>{t("orders.col.when")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((o) => (
+                  <tr key={o.id} className="hover:bg-surface-2/60">
+                    <td>
+                      <Link
+                        to="/admin/orders/$id"
+                        params={{ id: String(o.id) }}
+                        className="font-medium hover:underline"
+                      >
+                        #{displayNo(o)}
+                      </Link>
+                    </td>
+                    <td>
+                      {o.display_name}
+                      <div className="text-xs text-muted">
+                        {o.contact ?? o.customer_email ?? ""}
+                      </div>
+                    </td>
+                    <td className="max-w-xs truncate text-muted">
+                      {(o.order_items ?? []).map((i) => i.name_snapshot).join(", ")}
+                    </td>
+                    <td className="text-right tabular-nums">
+                      {formatMoney(o.total, o.currency)}
+                      {o.fulfillment_kind === "physical" &&
+                        Number(o.paid_amount) > 0 &&
+                        Number(o.paid_amount) < Number(o.total) && (
+                          <div className="text-xs text-muted">
+                            {t("physical.paid")} {formatMoney(o.paid_amount, o.currency)}
+                          </div>
+                        )}
+                    </td>
+                    <td>
+                      <OrderStatus status={o.status} />
+                    </td>
+                    <td className="text-muted">
+                      {o.platform === "web" ? t("order.platformWeb") : o.platform}
+                    </td>
+                    <td className="whitespace-nowrap text-muted">
+                      {new Date(o.created_at).toLocaleString(intlLocale(shop.locale), {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                      {o.fulfillment_at && (
+                        <div className="text-xs text-fg">
+                          →{" "}
+                          {new Date(o.fulfillment_at).toLocaleDateString(intlLocale(shop.locale), {
+                            timeZone: "UTC",
+                            day: "2-digit",
+                            month: "2-digit",
+                          })}
+                          {slotOf(o.fulfillment_at, []) && ` ${slotOf(o.fulfillment_at, [])}`}
                         </div>
                       )}
-                  </td>
-                  <td>
-                    <OrderStatus status={o.status} />
-                  </td>
-                  <td className="text-muted">
-                    {o.platform === "web" ? t("order.platformWeb") : o.platform}
-                  </td>
-                  <td className="whitespace-nowrap text-muted">
-                    {new Date(o.created_at).toLocaleString(intlLocale(shop.locale), {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })}
-                    {o.fulfillment_at && (
-                      <div className="text-xs text-fg">
-                        →{" "}
-                        {new Date(o.fulfillment_at).toLocaleDateString(intlLocale(shop.locale), {
-                          timeZone: "UTC",
-                          day: "2-digit",
-                          month: "2-digit",
-                        })}
-                        {slotOf(o.fulfillment_at, []) && ` ${slotOf(o.fulfillment_at, [])}`}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
       <Outlet />
     </>
