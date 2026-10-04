@@ -70,6 +70,8 @@ function ctxOf(settings: Record<string, unknown> = {}): TenantContext {
       plan: null,
       vertical: "digital",
     },
+    // Как у настоящего контекста: дата акции в поясе магазина, а не в поясе машины с тестом.
+    timezone: "Asia/Almaty",
     db,
   } as unknown as TenantContext;
 }

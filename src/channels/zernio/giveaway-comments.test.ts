@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { AutomationApi } from "./automations.server";
@@ -184,6 +184,15 @@ describe("розыгрыш: участие комментарием в Instagram
 });
 
 describe("розыгрыш: путь через вебхук Zernio", () => {
+  // Вебхук читает настоящие часы, а срок розыгрыша в форме — от NOW: без подмены времени
+  // тест краснел бы после 11.10.2026, а «модуль выключен» проходил бы вхолостую.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: NOW });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("comment.received с модулем giveaways доходит до участия и личного ответа в Zernio", async () => {
     requests.length = 0;
     const { ctx, db } = setup();

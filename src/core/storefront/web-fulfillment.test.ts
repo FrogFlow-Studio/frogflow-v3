@@ -194,7 +194,9 @@ describe("нерабочие дни на сайте", () => {
   });
 
   it("введённая вручную дата выходного и праздника отклонена с ближайшей рабочей", async () => {
-    const holiday = addDaysToIso(today, 12);
+    // Среда: не выходной и не понедельник после субботы (sat + 2), иначе по средам «ближайшая
+    // рабочая» после субботы совпадала бы с праздником и тест краснел раз в неделю.
+    const holiday = addDaysToIso(nextWeekday(3), 7);
     const ctx = setup({
       settings: { fulfillment_closed_weekdays: "6,7", fulfillment_closed_dates: holiday },
     });

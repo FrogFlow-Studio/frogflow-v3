@@ -25,6 +25,15 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
   for (const [k, make] of Object.entries(defaults)) process.env[k] ??= make();
 }
 
+// Проверка «тест не зависит от сегодняшней даты»: `TEST_NOW=2026-12-31T19:30:00Z npx vitest run`
+// подменяет только `Date` (таймеры живые) во всех файлах. Тест, которому нужна своя дата, ставит её сам.
+if (process.env.TEST_NOW) {
+  const { vi } = await import("vitest");
+  const now = new Date(process.env.TEST_NOW);
+  if (Number.isNaN(now.getTime())) throw new Error(`TEST_NOW не дата: ${process.env.TEST_NOW}`);
+  vi.useFakeTimers({ toFake: ["Date"], now, shouldAdvanceTime: true });
+}
+
 // Подставная база (tests/fake-db.ts) копит обращения к несуществующим
 // колонкам — даже те, чью ошибку код поймал и проглотил. Такой тест не зелёный.
 const { afterEach, expect } = await import("vitest");
