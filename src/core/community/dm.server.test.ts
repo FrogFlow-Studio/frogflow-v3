@@ -126,6 +126,31 @@ describe("личные сообщения: переписка и прочита�
   });
 });
 
+describe("личные сообщения: страницы", () => {
+  it("65 сообщений идут 30 + 30 + 5 от свежих к старым, ничего не теряется и не повторяется", async () => {
+    for (let i = 0; i < 65; i++)
+      db.tables.community_dm!.push({
+        id: `m${String(i).padStart(3, "0")}`,
+        from_bot_id: i % 2 ? "a" : "b",
+        to_bot_id: i % 2 ? "b" : "a",
+        body: `с${i}`,
+        read_at: null,
+        created_at: new Date(Date.UTC(2026, 9, 1, 0, 0, i)).toISOString(),
+      });
+    const seen: string[] = [];
+    const sizes: number[] = [];
+    let next: number | null = 0;
+    while (next !== null) {
+      const page = await srv.dmThread(ctx("a"), "b", next);
+      sizes.push(page.messages.length);
+      seen.unshift(...page.messages.map((m) => m.body));
+      next = page.next;
+    }
+    expect(sizes).toEqual([30, 30, 5]);
+    expect(seen).toEqual(Array.from({ length: 65 }, (_, i) => `с${i}`));
+  });
+});
+
 describe("личные сообщения: приём и запреты", () => {
   it("«не принимать» и запрет автору пишутся в settings.community, список без повторов", async () => {
     await srv.setDmOff(ctx("a"), true);
