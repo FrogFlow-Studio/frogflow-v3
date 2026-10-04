@@ -56,7 +56,9 @@ export type OrderEventKind =
   /** Покупатель принял оферту и/или согласие на обработку данных при оформлении. */
   | "consent"
   /** Позиции взяты предзаказом (core/preorder): остаток не списан, срок отправки. */
-  | "preorder";
+  | "preorder"
+  /** Продавец перенёс срок предзаказа: событие — «сообщаем покупателю» (один раз на перенос). */
+  | "preorder_moved";
 
 export type OrderEvent = {
   id: string;
@@ -325,6 +327,11 @@ export function describeOrderEvent(e: Pick<OrderEvent, "kind" | "actor" | "paylo
       return {
         text: "Не удалось исключить покупателя из закрытого канала курса — удалите его из канала вручную",
         tone: "danger",
+      };
+    case "preorder_moved":
+      return {
+        text: `Срок предзаказа «${str(p.name)}» перенесён: ${p.from ? str(p.from) : "без даты"} → ${p.to ? str(p.to) : "без даты"}${who}`,
+        tone: "neutral",
       };
     case "preorder": {
       const lines = Array.isArray(p.lines)

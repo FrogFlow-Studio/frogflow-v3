@@ -891,14 +891,22 @@ export const saveProductFn = createServerFn({ method: "POST" })
     if (ctx.tenant.modules.stock) {
       const { saveProductThreshold } = await import("@/core/catalog/low-stock");
       await saveProductThreshold(ctx, id, lowStockAt);
-      const { savePreorder } = await import("@/core/preorder/preorder");
-      await savePreorder(
-        ctx,
-        id,
-        preorderOn && fields.fulfillmentKind === "physical"
-          ? { on: true, from: preorderFrom }
-          : { on: false },
-      );
+      const { savePreorder, getPreorderRaw } = await import("@/core/preorder/preorder");
+      const preorderBefore = await getPreorderRaw(ctx, id);
+      const preorderOnNow = preorderOn && fields.fulfillmentKind === "physical";
+      await savePreorder(ctx, id, preorderOnNow ? { on: true, from: preorderFrom } : { on: false });
+      // Срок отправки сдвинулся — покупатели с открытым заказом узнают об этом.
+      const { isMove } = await import("@/core/preorder/reschedule");
+      const preorderAfter = preorderOnNow ? await getPreorderRaw(ctx, id) : null;
+      if (isMove(preorderBefore, preorderAfter)) {
+        const { notifyPreorderMovedChannels } = await import("@/app/preorder/notify.server");
+        await notifyPreorderMovedChannels(ctx, {
+          productId: id,
+          name: fields.name,
+          from: preorderBefore!.from,
+          to: preorderAfter!.from,
+        }).catch((e) => console.error(`[admin:${ctx.tenant.id}] перенос предзаказа ${id}`, e));
+      }
     }
     // История остатка: правка в карточке (у нового товара «было» — не учитывался).
     {

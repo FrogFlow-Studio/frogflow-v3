@@ -172,6 +172,8 @@ export type Msg = {
   /** Товара нет, но продавец берёт предзаказ (core/preorder); from — дата отправки (ГГГГ-ММ-ДД) или null. */
   preorderLabel: (from: string | null) => string;
   preorderCartNote: (from: string | null) => string;
+  /** Продавец перенёс срок предзаказа: покупателю с открытым заказом на этот товар. */
+  preorderMoved: (name: string, from: string | null) => string;
   choosePayMethod: string;
   /** Оплата — акцепт оферты; ссылки на опубликованные документы. */
   payConsent: (offer: string | null, privacy: string | null) => string;
@@ -596,6 +598,8 @@ const ru: Msg = {
     `🕒 Предзаказ: товара пока нет в наличии${from ? `, отправка с ${preorderDate(from, "ru")}` : ", срок отправки уточним"}`,
   preorderCartNote: (from) =>
     `   🕒 предзаказ${from ? `, отправка с ${preorderDate(from, "ru")}` : ""}\n`,
+  preorderMoved: (name, from) =>
+    `🕒 Срок отправки предзаказа «${name}» изменился: ${from ? `теперь отправка с ${preorderDate(from, "ru")}` : "срок отправки уточним"}.`,
   choosePayMethod: "Выберите способ оплаты:",
   payConsent: (offer, privacy) =>
     `Оплачивая заказ, вы принимаете ${[offer && `<a href="${offer}">условия оферты</a>`, privacy && `<a href="${privacy}">согласие на обработку персональных данных</a>`].filter(Boolean).join(" и ")}.`,
@@ -716,6 +720,8 @@ const kk: Msg = {
     `🕒 Алдын ала тапсырыс: тауар әзірге қоймада жоқ${from ? `, ${preorderDate(from, "kk")} күнінен бастап жіберіледі` : ", жіберу мерзімін нақтылаймыз"}`,
   preorderCartNote: (from) =>
     `   🕒 алдын ала тапсырыс${from ? `, ${preorderDate(from, "kk")} бастап жіберіледі` : ""}\n`,
+  preorderMoved: (name, from) =>
+    `🕒 «${name}» алдын ала тапсырысының жіберу мерзімі өзгерді: ${from ? `енді ${preorderDate(from, "kk")} күнінен бастап жіберіледі` : "жіберу мерзімін нақтылаймыз"}.`,
   orderStatusNotice: (status, no) =>
     `${({ in_production: "🧑‍🍳 Тапсырыс дайындалуда", ready: "🎉 Тапсырыс беруге дайын", delivered: "✅ Тапсырыс берілді. Рақмет!", accepted: "Тапсырыс қабылданды" } as Record<string, string>)[status] ?? status} — #${no}`,
   orderDelivered: (no) => `🎉 #${no} тапсырыс берілді. Сатып алғаныңызға рахмет!`,
@@ -966,6 +972,8 @@ const en: Msg = {
     `🕒 Pre-order: not in stock yet${from ? `, ships from ${preorderDate(from, "en")}` : ", we will confirm the shipping date"}`,
   preorderCartNote: (from) =>
     `   🕒 pre-order${from ? `, ships from ${preorderDate(from, "en")}` : ""}\n`,
+  preorderMoved: (name, from) =>
+    `🕒 The ship date of your pre-order “${name}” has changed: ${from ? `it now ships from ${preorderDate(from, "en")}` : "we will confirm the ship date"}.`,
   orderStatusNotice: (status, no) =>
     `${({ in_production: "🧑‍🍳 Your order is being prepared", ready: "🎉 Your order is ready for pickup", delivered: "✅ Order delivered. Thank you!", accepted: "Order accepted" } as Record<string, string>)[status] ?? status} — #${no}`,
   orderDelivered: (no) => `🎉 Order #${no} has been delivered. Thank you for your purchase!`,
@@ -1242,6 +1250,8 @@ const uz: Msg = {
     `🕒 Oldindan buyurtma: mahsulot hozircha omborda yo‘q${from ? `, ${preorderDate(from, "uz")} dan boshlab jo‘natiladi` : ", jo‘natish muddatini aniqlaymiz"}`,
   preorderCartNote: (from) =>
     `   🕒 oldindan buyurtma${from ? `, ${preorderDate(from, "uz")} dan jo‘natiladi` : ""}\n`,
+  preorderMoved: (name, from) =>
+    `🕒 «${name}» oldindan buyurtmasining joʻnatish muddati oʻzgardi: ${from ? `endi ${preorderDate(from, "uz")} dan joʻnatiladi` : "joʻnatish muddatini aniqlaymiz"}.`,
   orderStatusNotice: (status, no) =>
     `${({ in_production: "🧑‍🍳 Buyurtma tayyorlanmoqda", ready: "🎉 Buyurtma topshirishga tayyor", delivered: "✅ Buyurtma topshirildi. Rahmat!", accepted: "Buyurtma qabul qilindi" } as Record<string, string>)[status] ?? status} — #${no}`,
   orderDelivered: (no) => `🎉 #${no}-buyurtma topshirildi. Xaridingiz uchun rahmat!`,

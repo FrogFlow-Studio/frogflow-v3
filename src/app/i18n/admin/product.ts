@@ -193,6 +193,11 @@ export const ru = {
     "Последняя рассылка ({when}): получили {notified}, не дошло {failed} (в том числе Instagram и WhatsApp вне 24-часового окна ответа).",
   "product.waitlistLeft":
     "Не успели написать {n} — им уйдёт при следующем сохранении карточки, пока товар в наличии.",
+  // перенос срока предзаказа (Р6)
+  "preorder.moved.noDate": "срок уточним",
+  "preorder.moved.missed":
+    "Срок предзаказа «{name}» изменён (теперь: {date}). Не смогли сообщить покупателям ({n}): окно ответа 24 часа закрыто или нет канала связи. Напишите им сами. Заказы:",
+  "preorder.moved.left": "Ещё {n} заказов не успели обработать — сообщите им сами.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -385,6 +390,10 @@ export const kk: SectionDict<typeof ru> = {
     "Соңғы тарату ({when}): алды {notified}, жетпеді {failed} (оның ішінде 24 сағаттық жауап терезесінен тыс Instagram және WhatsApp).",
   "product.waitlistLeft":
     "{n} адамға жазуға үлгермедік — тауар бар кезде карточканы келесі сақтағанда жіберіледі.",
+  "preorder.moved.noDate": "мерзімін нақтылаймыз",
+  "preorder.moved.missed":
+    "«{name}» алдын ала тапсырысының мерзімі өзгерді (енді: {date}). Сатып алушыларға хабарлай алмадық ({n}): 24 сағаттық жауап терезесі жабық немесе байланыс арнасы жоқ. Өзіңіз жазыңыз. Тапсырыстар:",
+  "preorder.moved.left": "Тағы {n} тапсырысты өңдеуге үлгермедік — оларға өзіңіз хабарлаңыз.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -577,6 +586,10 @@ export const en: SectionDict<typeof ru> = {
     "Last send ({when}): received {notified}, not delivered {failed} (including Instagram and WhatsApp outside the 24-hour reply window).",
   "product.waitlistLeft":
     "{n} were not reached in time — they will be messaged the next time the card is saved, while the item is in stock.",
+  "preorder.moved.noDate": "date to be confirmed",
+  "preorder.moved.missed":
+    "The pre-order date for “{name}” has changed (now: {date}). We could not tell these customers ({n}): the 24-hour reply window is closed or there is no channel. Please write to them yourself. Orders:",
+  "preorder.moved.left": "{n} more orders were not processed in time — please tell them yourself.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -768,4 +781,8 @@ export const uz: SectionDict<typeof ru> = {
     "Oxirgi yuborish ({when}): oldi {notified}, yetib bormadi {failed} (shu jumladan 24 soatlik javob oynasidan tashqaridagi Instagram va WhatsApp).",
   "product.waitlistLeft":
     "{n} kishiga yozishga ulgurmadik — mahsulot mavjud bo‘lganda kartochka keyingi saqlanganda yuboriladi.",
+  "preorder.moved.noDate": "muddat aniqlanadi",
+  "preorder.moved.missed":
+    "«{name}» oldindan buyurtmasining muddati oʻzgardi (endi: {date}). Xaridorlarga ({n}) xabar bera olmadik: 24 soatlik javob oynasi yopiq yoki aloqa kanali yoʻq. Oʻzingiz yozing. Buyurtmalar:",
+  "preorder.moved.left": "Yana {n} ta buyurtmani ulgurmadik — ularga oʻzingiz xabar bering.",
 };
