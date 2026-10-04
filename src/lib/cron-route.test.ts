@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const V2 = {
   id: "bot-v2",
-  modules: { vip: true, instagram: true },
+  modules: { vip: true, instagram: true, courses: true },
   settings: {
     served_by: "v2",
     vip: { token_enc: "x", username: "vipbot" },
@@ -21,7 +21,7 @@ const V2 = {
 };
 const V1 = {
   id: "bot-v1",
-  modules: { vip: true, instagram: true },
+  modules: { vip: true, instagram: true, courses: true },
   settings: {
     served_by: "v1",
     vip: { token_enc: "x", username: "vipbot" },
@@ -30,7 +30,7 @@ const V1 = {
 };
 const NONE = {
   id: "bot-none",
-  modules: { vip: true, instagram: true },
+  modules: { vip: true, instagram: true, courses: true },
   settings: {
     vip: { token_enc: "x", username: "vipbot" },
     zernio: { profile_id: "p", account_ids: ["a"] },
@@ -87,6 +87,7 @@ vi.mock("@/channels/telegram/jobs", () => ({
   runSaleReminders: hit("saleEnding"),
   runSubscriptionsFor: hit("subscriptions"),
   runCourseLessons: hit("courses"),
+  runCourseLives: hit("courseLives"),
 }));
 vi.mock("@/core/storefront/web-expire", () => ({ expireWebOrders: hit("webOrders") }));
 vi.mock("@/core/storefront/web-remind", () => ({ remindWebOrders: hit("webReminders") }));
@@ -155,6 +156,7 @@ const JOBS: Record<string, string[]> = {
     "chatPayReminders",
   ],
   vip: ["vip"],
+  "course-lives": ["courseLives"],
   "comment-dm-fallback": ["commentDm"],
   health: ["zernioSync", "zernioRetry", "pricelist", "digest", "weekly", "morning"],
   subscriptions: ["catalogSheet", "sheetNotify"],

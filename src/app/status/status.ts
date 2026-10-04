@@ -13,7 +13,7 @@ type CronLike = { job: string; stale: boolean; last: { at: string; ok: boolean }
 export const SERVICES: Array<{ key: string; jobs: string[] }> = [
   { key: "bots", jobs: ["ensure-webhook", "health"] },
   { key: "broadcasts", jobs: ["broadcast"] },
-  { key: "reminders", jobs: ["cart-reminder", "fulfillment-reminder"] },
+  { key: "reminders", jobs: ["cart-reminder", "fulfillment-reminder", "course-lives"] },
   { key: "instagram", jobs: ["comment-dm-fallback"] },
   { key: "vip", jobs: ["vip"] },
   { key: "daily", jobs: ["subscriptions", "retention"] },

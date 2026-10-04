@@ -199,6 +199,20 @@ export const Route = createFileRoute("/api/cron/$job")({
               resume = resumeOf(ordered, skipped);
               break;
             }
+            case "course-lives": {
+              // Напоминания об эфирах потока за сутки и за час: сетка в 10 минут.
+              const { runCourseLives } = await import("@/channels/telegram/jobs");
+              await eachWithin(ordered, budget, skipped, async (t) => {
+                if (!t.modules.courses) return;
+                try {
+                  results[t.id] = await runCourseLives(t);
+                } catch (e) {
+                  results[t.id] = await tenantFailure(t.id, e);
+                }
+              });
+              resume = resumeOf(ordered, skipped);
+              break;
+            }
             case "comment-dm-fallback": {
               // Резервная DM по комментариям Instagram, если родное правило Zernio замолчало.
               const { runCommentDmFallback } = await import("@/channels/zernio/automations.server");

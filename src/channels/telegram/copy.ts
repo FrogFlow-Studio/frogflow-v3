@@ -283,6 +283,10 @@ export type Msg = {
   courseHomeworkDue: (course: string, no: number, title: string) => string;
   /** Курс пройден: просьба оценить (оценка 1–5 звёздами, затем текст). */
   courseReviewAsk: (course: string) => string;
+  /** Напоминания об эфире потока (core/courses/live-remind): время в поясе магазина уже в строке. */
+  courseLiveDay: (course: string, title: string, when: string) => string;
+  courseLiveHour: (course: string, title: string, when: string) => string;
+  courseLiveJoinBtn: string;
   broadcastPick: string;
   openCatalogBtn: string;
   /** Кнопка под рассылкой и ответы на отписку/возврат. */
@@ -372,6 +376,11 @@ const ru: Msg = {
   courseOpenBtn: "Открыть курс",
   coursePreStart: (course, days, date) =>
     `⏳ Курс «${course}» начнётся ${days === 1 ? "завтра" : `через ${days} дн.`} — ${date}. Первый урок придёт сюда.`,
+  courseLiveDay: (course, title, when) =>
+    `🎥 Скоро эфир по курсу «${course}»: «${title}» — ${when}. Ссылка придёт за час до начала.`,
+  courseLiveHour: (course, title, when) =>
+    `🎥 Через час эфир по курсу «${course}»: «${title}» — ${when}.`,
+  courseLiveJoinBtn: "Войти на эфир",
   courseReviewAsk: (course) =>
     `🎓 Поздравляем с окончанием курса «${course}»! Оцените его — это займёт минуту:`,
   courseHomeworkDue: (course, no, title) =>
@@ -759,6 +768,11 @@ const kk: Msg = {
   courseOpenBtn: "Курсты ашу",
   coursePreStart: (course, days, date) =>
     `⏳ «${course}» курсы ${days === 1 ? "ертең" : `${days} күннен кейін`} басталады — ${date}. Бірінші сабақ осында келеді.`,
+  courseLiveDay: (course, title, when) =>
+    `🎥 «${course}» курсы бойынша жақында эфир: «${title}» — ${when}. Сілтеме басталуынан бір сағат бұрын келеді.`,
+  courseLiveHour: (course, title, when) =>
+    `🎥 «${course}» курсы бойынша эфирге бір сағат қалды: «${title}» — ${when}.`,
+  courseLiveJoinBtn: "Эфирге кіру",
   courseReviewAsk: (course) =>
     `🎓 «${course}» курсын аяқтағаныңызбен құттықтаймыз! Оны бағалаңыз — бір минут қана:`,
   courseHomeworkDue: (course, no, title) =>
@@ -985,6 +999,11 @@ const en: Msg = {
   courseOpenBtn: "Open the course",
   coursePreStart: (course, days, date) =>
     `⏳ The course “${course}” starts ${days === 1 ? "tomorrow" : `in ${days} days`} — ${date}. The first lesson will arrive here.`,
+  courseLiveDay: (course, title, when) =>
+    `🎥 A live session for “${course}” is coming up: “${title}” — ${when}. The link arrives an hour before it starts.`,
+  courseLiveHour: (course, title, when) =>
+    `🎥 A live session for “${course}” starts in an hour: “${title}” — ${when}.`,
+  courseLiveJoinBtn: "Join the live session",
   courseReviewAsk: (course) =>
     `🎓 Congratulations on finishing “${course}”! Please rate it — it takes a minute:`,
   courseHomeworkDue: (course, no, title) =>
@@ -1218,6 +1237,11 @@ const uz: Msg = {
   courseOpenBtn: "Kursni ochish",
   coursePreStart: (course, days, date) =>
     `⏳ «${course}» kursi ${days === 1 ? "ertaga" : `${days} kundan keyin`} boshlanadi — ${date}. Birinchi dars shu yerga keladi.`,
+  courseLiveDay: (course, title, when) =>
+    `🎥 «${course}» kursi bo‘yicha tez orada efir: «${title}» — ${when}. Havola boshlanishidan bir soat oldin keladi.`,
+  courseLiveHour: (course, title, when) =>
+    `🎥 «${course}» kursi bo‘yicha efirga bir soat qoldi: «${title}» — ${when}.`,
+  courseLiveJoinBtn: "Efirga kirish",
   courseReviewAsk: (course) =>
     `🎓 «${course}» kursini tugatganingiz bilan tabriklaymiz! Uni baholang — bir daqiqa kifoya:`,
   courseHomeworkDue: (course, no, title) =>

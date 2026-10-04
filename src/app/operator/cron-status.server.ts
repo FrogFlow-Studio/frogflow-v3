@@ -24,6 +24,12 @@ export const CRON_JOBS = [
   },
   { job: "vip", schedule: "*/10 * * * *", everyMin: 10, title: "VIP-подписки" },
   {
+    job: "course-lives",
+    schedule: "*/10 * * * *",
+    everyMin: 10,
+    title: "Напоминания об эфирах школы",
+  },
+  {
     job: "health",
     schedule: "*/15 * * * *",
     everyMin: 15,

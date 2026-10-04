@@ -475,6 +475,34 @@ export async function runCourseLessons(tenant: Tenant) {
   return { lessons, reminders };
 }
 
+/**
+ * Курсы: напоминания об эфирах потока за сутки и за час (core/courses/live-remind).
+ * Язык — выбранный учеником, иначе язык магазина; название и время вставляются
+ * как текст (HTML экранируется). Отправка, которая могла дойти, не повторяется.
+ */
+export async function runCourseLives(tenant: Tenant) {
+  if (!tenant.telegramTokenEnc) return { skipped: "no telegram" };
+  const ctx = tenantContext(tenant);
+  if (!ctx.tenant.modules.courses) return { skipped: "module off" };
+  const { liveReminders } = await import("@/core/courses/live-remind.server");
+  const { liveReminderMessage } = await import("./live-remind-text");
+  const { getCustomerByTelegramId } = await import("@/core/customers/customers");
+  const tg = api(ctx);
+  const fallback = ctx.tenant.settings.default_locale ?? "ru";
+  return liveReminders(ctx, async (x) => {
+    const c = await getCustomerByTelegramId(ctx, x.telegramId).catch(() => null);
+    const locale = isLocale(c?.state.locale) ? c.state.locale : fallback;
+    const { text, rows } = liveReminderMessage(x, locale);
+    const r = await tg.call("sendMessage", {
+      chat_id: x.telegramId,
+      text,
+      parse_mode: "HTML",
+      ...(rows.length ? { reply_markup: { inline_keyboard: rows } } : {}),
+    });
+    return r.ok;
+  });
+}
+
 /** «12 мин», «2 ч 5 мин» — сколько покупатель ждёт (язык продавца, по умолчанию русский). */
 export function waitedLabel(since: string, now = Date.now(), locale: Locale = "ru"): string {
   return waitedText(locale, since, now);

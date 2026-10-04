@@ -33,6 +33,8 @@ export type CourseRun = {
   until?: string;
   /** Когда ученика попросили оценить курс (А28): один раз на покупку. */
   reviewAsked?: string;
+  /** Эфиры, о которых уже напомнили: метки core/courses/live-remind (за сутки, за час). */
+  liveReminded?: string[];
 };
 
 export function parseRun(raw: string | null | undefined): CourseRun | null {
@@ -51,6 +53,7 @@ export function parseRun(raw: string | null | undefined): CourseRun | null {
       accessEnded?: unknown;
       until?: unknown;
       reviewAsked?: unknown;
+      liveReminded?: unknown;
     };
     const n = x.notified;
     const pre = Array.isArray(x.pre)
@@ -58,6 +61,9 @@ export function parseRun(raw: string | null | undefined): CourseRun | null {
       : [];
     const hw = Array.isArray(x.hwReminded)
       ? [...new Set(x.hwReminded.filter((d): d is string => typeof d === "string"))].slice(0, 200)
+      : [];
+    const live = Array.isArray(x.liveReminded)
+      ? [...new Set(x.liveReminded.filter((d): d is string => typeof d === "string"))].slice(0, 200)
       : [];
     return {
       startedAt: o.startedAt,
@@ -73,6 +79,7 @@ export function parseRun(raw: string | null | undefined): CourseRun | null {
         ? { until: x.until }
         : {}),
       ...(typeof x.reviewAsked === "string" ? { reviewAsked: x.reviewAsked } : {}),
+      ...(live.length ? { liveReminded: live } : {}),
     };
   } catch {
     return null;
