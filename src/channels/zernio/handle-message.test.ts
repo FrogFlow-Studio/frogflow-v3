@@ -67,6 +67,17 @@ vi.mock("./automations.server", () => ({
   twoStepJustDelivered,
 }));
 
+// Б9: сам разбор «позови человека» и карточка — в human-call.test.ts; здесь — что слово доходит до него.
+const callHuman = vi.fn(async (_c: unknown, cu: Customer, _m: unknown) => ({
+  handled: true,
+  customer: cu,
+  note: "позвали продавца",
+}));
+vi.mock("./human-call", async (orig) => ({
+  ...(await orig<typeof import("./human-call")>()),
+  callHuman,
+}));
+
 const { handleZernioMessage } = await import("./handle-message");
 
 const ctx = {
@@ -285,5 +296,46 @@ describe("быстрый вопрос «Связаться с продавцом
     expect(notifyAdminsHtml).toHaveBeenCalledOnce();
     expect(String(notifyAdminsHtml.mock.calls[0]![1])).toContain("Новое обращение #7");
     expect(runConsultant).not.toHaveBeenCalled();
+  });
+});
+
+describe("Б9: «позови человека» в Direct и WhatsApp", () => {
+  const shopCtx = {
+    tenant: {
+      id: "b",
+      vertical: "digital",
+      modules: { whatsapp: true, wa_shop: true },
+      settings: {},
+    },
+  } as unknown as TenantContext;
+  const payload = (text: string) =>
+    ({
+      account: { platform: "whatsapp", accountId: "acc-1" } as never,
+      conversation: { id: "conv-1" } as never,
+      message: { text, sender: { id: "77001112233" } } as never,
+    }) as never;
+  const transport = {
+    send: vi.fn(async () => ({ ok: true })),
+    tail: async () => [],
+  } as unknown as ZernioTransport;
+
+  it("слово «человек» в магазине — карточка продавцу, магазин не отвечает", async () => {
+    callHuman.mockClear();
+    const r = await handleZernioMessage(shopCtx, payload("Позовите человека"), transport);
+    expect(r).toEqual({ status: "processed", note: "позвали продавца" });
+    expect(callHuman).toHaveBeenCalledOnce();
+  });
+
+  it("обычный вопрос и фраза внутри длинного текста слово не запускают", async () => {
+    callHuman.mockClear();
+    await handleZernioMessage(shopCtx, payload("Сколько человек поместится?"), transport);
+    await handleZernioMessage(shopCtx, payload("А размер какой?"), transport);
+    expect(callHuman).not.toHaveBeenCalled();
+  });
+
+  it("без модуля магазина слово уходит консультанту, как раньше", async () => {
+    callHuman.mockClear();
+    await handleZernioMessage(ctx, payload("человек"), transport);
+    expect(callHuman).not.toHaveBeenCalled();
   });
 });

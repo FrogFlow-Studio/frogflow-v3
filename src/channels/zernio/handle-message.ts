@@ -248,6 +248,14 @@ export async function handleZernioMessage(
   let customerNow = customer;
   const shopOn =
     m.platform === "whatsapp" ? ctx.tenant.modules.wa_shop : ctx.tenant.modules.dm_shop;
+  // «Позвать продавца» словом: пауза бота, карточка продавцу, ответ — свайпом из Telegram.
+  if (shopOn && m.text && !m.postbackPayload && !intercepted) {
+    const { isHumanCallWord, callHuman } = await import("./human-call");
+    if (isHumanCallWord(m.text)) {
+      const called = await callHuman(ctx, customer, m, transport);
+      if (called.handled) return processed(called.note);
+    }
+  }
   if (shopOn) {
     // Продавец в диалоге — бот на паузе: отвечает только на явные команды.
     const { sellerPauseActive } = await import("./seller-pause");

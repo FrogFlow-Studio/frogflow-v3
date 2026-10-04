@@ -53,8 +53,11 @@ export async function issueHandoffRef(
 }
 
 /** Строка в конец уведомления: как ответить и сама метка. */
-export function handoffRefLine(token: string): string {
-  return `↩️ Ответьте на это сообщение свайпом — ответ уйдёт покупателю. [#k:${token}]`;
+export function handoffRefLine(
+  token: string,
+  hint = "↩️ Ответьте на это сообщение свайпом — ответ уйдёт покупателю.",
+): string {
+  return `${hint} [#k:${token}]`;
 }
 
 export function handoffRefOf(text: string | null | undefined): string | null {

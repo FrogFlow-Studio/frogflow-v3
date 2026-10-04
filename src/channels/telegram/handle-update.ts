@@ -3086,15 +3086,13 @@ async function relayOrderReply(
     await import("@/channels/zernio/outbound.server");
   const target = await zernioTargetForOrder(ctx, order);
   if (target) {
-    const { classifyZernioFailure } = await import("@/channels/zernio/errors");
-    const r = await sendToZernioTargetResult(target, escapeHtml(text));
-    if (!r.ok)
-      await say(
-        classifyZernioFailure(r.failure) === "window_closed"
-          ? st.writeWindowClosed
-          : st.writeNotSent,
-      );
-    else await say(st.writeSent(no));
+    const { relayToBuyer } = await import("./relay-send");
+    const out = await relayToBuyer(
+      () => sendToZernioTargetResult(target, escapeHtml(text)),
+      target.platform,
+      st,
+    );
+    await say(out.ok ? st.writeSent(no) : out.say);
     return true;
   }
   if (orderChannel(order.platform) !== "telegram") {
@@ -3127,15 +3125,22 @@ async function relayManagerReply(
   const reply = (text: string) => api.call("sendMessage", { chat_id: msg.chat.id, text });
   const userKey = await resolveHandoffRef(ctx, token);
   const buyer = userKey ? await getCustomer(ctx, userKey) : null;
-  const { sendToZernioTarget, zernioTargetOf } = await import("@/channels/zernio/outbound.server");
+  const { sendToZernioTargetResult, zernioTargetOf } =
+    await import("@/channels/zernio/outbound.server");
   const target = zernioTargetOf(buyer);
   if (!buyer || !target) {
     await reply(st.relayNoDialog);
     return true;
   }
   const text = msg.text!.trim();
-  if (!(await sendToZernioTarget(target, escapeHtml(text)))) {
-    await reply(st.relayNotSent);
+  const { relayToBuyer } = await import("./relay-send");
+  const out = await relayToBuyer(
+    () => sendToZernioTargetResult(target, escapeHtml(text)),
+    target.platform,
+    st,
+  );
+  if (!out.ok) {
+    await reply(out.say);
     return true;
   }
   const { recordRelayedReply } = await import("@/core/consultant/engine.server");
