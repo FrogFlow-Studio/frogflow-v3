@@ -6,7 +6,9 @@ import { watch } from "./helpers.ts";
  * А17: владелец зовёт человека по ссылке; ссылка одноразовая; менеджер входит,
  * но не видит оплату, настройки и команду; в журнале владельца — действия по человеку.
  */
-test("приглашение менеджера по ссылке", async ({ page, browser, baseURL }) => {
+test("приглашение менеджера по ссылке", async ({ page, browser, baseURL }, info) => {
+  // База общая для проектов desktop и phone: логин у каждого свой, иначе второй упрётся в занятый.
+  const login = `e2e_team19_${info.project.name}`;
   const errors = await watch(page);
   await page.goto("/admin/login");
   await page.locator('input[name="username"]').fill(F.TEAM19_SELLER_LOGIN);
@@ -27,7 +29,7 @@ test("приглашение менеджера по ссылке", async ({ pag
   const gp = await guest.newPage();
   await gp.goto(link);
   await expect(gp.getByText(F.TEAM19_SHOP_NAME, { exact: false }).first()).toBeVisible();
-  await gp.locator('input[name="username"]').fill("e2e_team19_anna");
+  await gp.locator('input[name="username"]').fill(login);
   await gp.locator('input[name="password"]').fill("anna-pass-12345");
   await gp.getByRole("button", { name: "Принять и создать вход", exact: true }).click();
   await expect(
@@ -43,7 +45,7 @@ test("приглашение менеджера по ссылке", async ({ pag
 
   // Менеджер входит; оплаты, настроек и журнала в меню нет.
   await gp.getByRole("link", { name: "Войти", exact: true }).click();
-  await gp.locator('input[name="username"]').fill("e2e_team19_anna");
+  await gp.locator('input[name="username"]').fill(login);
   await gp.locator('input[name="password"]').fill("anna-pass-12345");
   await gp.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(gp).toHaveURL(/\/admin$/);
@@ -53,7 +55,7 @@ test("приглашение менеджера по ссылке", async ({ pag
   await guest.close();
 
   // Владелец видит приглашение принятым и журнал по человеку.
-  await page.goto("/admin/log?who=e2e_team19_anna");
+  await page.goto(`/admin/log?who=${login}`);
   await expect(
     page.getByText("принял приглашение и вошёл в команду", { exact: true }),
   ).toBeVisible();
