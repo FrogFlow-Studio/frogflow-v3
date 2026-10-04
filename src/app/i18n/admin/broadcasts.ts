@@ -207,7 +207,7 @@ export const ru = {
   // напоминание о корзине
   "broadcasts.cart.title": "Напоминание о брошенной корзине",
   "broadcasts.cart.intro":
-    "Покупателю, который положил товары в корзину и не оформил заказ, бот напомнит об этом один раз. Новый товар в корзине разрешает следующее напоминание. «0» — выключить.",
+    "Покупателю, который положил товары в корзину и не оформил заказ, бот напомнит об этом один раз: назовёт до трёх товаров и сумму по текущим ценам (недоступные товары не упоминаются; если недоступно всё — напоминания нет). В Telegram — всегда; покупателю Instagram и WhatsApp — только пока открыто окно ответа 24 часа после его последнего сообщения. Новый товар в корзине разрешает следующее напоминание. «0» — выключить.",
   "broadcasts.cart.hours": "Через сколько часов",
   "broadcasts.cap.title": "Не больше автосообщений в сутки",
   "broadcasts.cap.intro":
@@ -421,7 +421,7 @@ export const kk: SectionDict<typeof ru> = {
     "Тесттің екінші нұсқасы төмендегі тізімде («Тағы көрсету»): жүктелгенде салыстыру шығады.",
   "broadcasts.cart.title": "Тасталған себет туралы еске салу",
   "broadcasts.cart.intro":
-    "Тауарды себетке салып, тапсырысты рәсімдемеген сатып алушыға бот бұл туралы бір рет еске салады. Себетке жаңа тауар қосылса, келесі еске салуға рұқсат беріледі. «0» — өшіру.",
+    "Тауарды себетке салып, тапсырысты рәсімдемеген сатып алушыға бот бұл туралы бір рет еске салады: үшке дейін тауардың атын және ағымдағы баға бойынша соманы айтады (қолжетімсіз тауарлар аталмайды; бәрі қолжетімсіз болса — еске салу жоқ). Telegram-да — әрқашан; Instagram және WhatsApp сатып алушысына — соңғы хабарламасынан кейінгі 24 сағаттық жауап терезесі ашық кезде ғана. Себетке жаңа тауар қосылса, келесі еске салуға рұқсат беріледі. «0» — өшіру.",
   "broadcasts.cart.hours": "Неше сағаттан кейін",
   "broadcasts.cap.title": "Тәулігіне автохабарламалар шегі",
   "broadcasts.cap.intro":
@@ -633,7 +633,7 @@ export const en: SectionDict<typeof ru> = {
     "The other test variant is further down the list (“Show more”): the comparison appears once it loads.",
   "broadcasts.cart.title": "Abandoned cart reminder",
   "broadcasts.cart.intro":
-    "A customer who added items to the cart but did not check out gets one reminder from the bot. A new item in the cart allows the next reminder. “0” — off.",
+    "A customer who added items to the cart but did not check out gets one reminder from the bot: it names up to three items and the total at current prices (unavailable items are not mentioned; if everything is unavailable, no reminder is sent). In Telegram — always; for Instagram and WhatsApp customers — only while the 24-hour reply window after their last message is open. A new item in the cart allows the next reminder. “0” — off.",
   "broadcasts.cart.hours": "After how many hours",
   "broadcasts.cap.title": "Automated messages per day",
   "broadcasts.cap.intro":
@@ -847,7 +847,7 @@ export const uz: SectionDict<typeof ru> = {
     "Testning ikkinchi varianti roʻyxatda pastda («Yana ko‘rsatish»): yuklangach, taqqoslash chiqadi.",
   "broadcasts.cart.title": "Tashlab ketilgan savat haqida eslatma",
   "broadcasts.cart.intro":
-    "Mahsulotni savatga solib, buyurtmani rasmiylashtirmagan xaridorga bot bu haqda bir marta eslatadi. Savatga yangi mahsulot qo‘shilsa, keyingi eslatmaga ruxsat beriladi. «0» — o‘chirish.",
+    "Mahsulotni savatga solib, buyurtmani rasmiylashtirmagan xaridorga bot bu haqda bir marta eslatadi: uchtagacha mahsulot nomini va joriy narxlardagi summani aytadi (mavjud bo‘lmagan mahsulotlar tilga olinmaydi; hammasi mavjud bo‘lmasa — eslatma yo‘q). Telegramda — doim; Instagram va WhatsApp xaridoriga — faqat uning oxirgi xabaridan keyingi 24 soatlik javob oynasi ochiq bo‘lganda. Savatga yangi mahsulot qo‘shilsa, keyingi eslatmaga ruxsat beriladi. «0» — o‘chirish.",
   "broadcasts.cart.hours": "Necha soatdan keyin",
   "broadcasts.cap.title": "Kuniga avtoxabarlar chegarasi",
   "broadcasts.cap.intro":

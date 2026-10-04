@@ -25,6 +25,7 @@ import { COPY, escapeHtml } from "./copy";
 import { inChunks } from "@/lib/in-chunks";
 import { isLocale, type Locale } from "@/core/i18n/locale";
 import { waitedText } from "@/core/helpdesk/seller-texts";
+import { formatMoney } from "@/core/money/money";
 
 function api(ctx: TenantContext): TelegramApi {
   return telegramApi(ctx.secrets.telegramToken(), env().TELEGRAM_API_BASE);
@@ -181,24 +182,39 @@ export async function flushOrderNotify(tenant: Tenant) {
   return { dismissed: await flushDueOrderNotify(ctx, api(ctx)) };
 }
 
+/**
+ * Напоминание о корзине: Telegram — сообщением с кнопками, Instagram/WhatsApp —
+ * в диалог Zernio (ядро присылает только тех, у кого открыто окно ответа).
+ * Текст называет до трёх позиций и сумму (core/reminders/cart).
+ */
 export async function runCartReminders(tenant: Tenant) {
   if (!tenant.modules.cart_reminder) return { skipped: "module off" };
-  if (!tenant.telegramTokenEnc) return { skipped: "no telegram" };
   const ctx = tenantContext(tenant);
-  const tg = api(ctx);
-  return sendCartReminders(ctx, async ({ telegramId, locale }) => {
-    const m = COPY[locale];
-    const r = await tg.call("sendMessage", {
-      chat_id: telegramId,
-      text: m.cartReminder,
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: m.openCartBtn, callback_data: "cart:show" }],
-          [{ text: m.unsubscribeBtn, callback_data: "unsub" }],
-        ],
-      },
-    });
-    return r.ok;
+  const tg = tenant.telegramTokenEnc ? api(ctx) : null;
+  const { sendToZernioTarget, zernioTargetOf } = await import("@/channels/zernio/outbound.server");
+  return sendCartReminders(ctx, async (r) => {
+    const m = COPY[r.locale];
+    const text = m.cartReminderItems(
+      r.lines.map((l) => (l.quantity > 1 ? `${l.name} ×${l.quantity}` : l.name)).join(", "),
+      r.more,
+      r.total ? formatMoney(r.total.amount, r.total.currency) : null,
+    );
+    if (r.customer.platform === "telegram") {
+      if (!tg) return false;
+      const sent = await tg.call("sendMessage", {
+        chat_id: r.telegramId,
+        text,
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: m.openCartBtn, callback_data: "cart:show" }],
+            [{ text: m.unsubscribeBtn, callback_data: "unsub" }],
+          ],
+        },
+      });
+      return sent.ok;
+    }
+    const target = zernioTargetOf(r.customer, ctx.tenant.settings.default_locale);
+    return target ? sendToZernioTarget(target, text) : false;
   });
 }
 

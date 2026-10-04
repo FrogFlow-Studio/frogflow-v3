@@ -117,7 +117,7 @@ export const ru = {
   "module.wa_broadcasts.desc": "Рассылки по базе WhatsApp одобренными шаблонами.",
   "module.cart_reminder.title": "Напоминание о брошенной корзине",
   "module.cart_reminder.desc":
-    "Покупателю, который положил товар и не оформил заказ, бот напомнит об этом через заданное время.",
+    "Покупателю, который положил товар и не оформил заказ, бот напомнит об этом через заданное время: назовёт товары и сумму. Instagram и WhatsApp — пока открыто окно ответа 24 часа.",
   "module.winback.title": "Возвратные продажи",
   "module.winback.desc":
     "Серия из двух сообщений тем, кто давно не покупал: через N дней после последнего заказа и повтор, с промокодом. Сегменты базы — в рассылках.",
@@ -311,7 +311,7 @@ export const kk: SectionDict<typeof ru> = {
   "module.wa_broadcasts.desc": "Мақұлданған үлгілермен WhatsApp базасына хабарлама тарату.",
   "module.cart_reminder.title": "Тасталған себет туралы еске салу",
   "module.cart_reminder.desc":
-    "Тауарды себетке салып, тапсырысты рәсімдемеген сатып алушыға бот белгіленген уақыттан кейін бұл туралы еске салады.",
+    "Тауарды себетке салып, тапсырысты рәсімдемеген сатып алушыға бот белгіленген уақыттан кейін бұл туралы еске салады: тауарлар мен соманы атайды. Instagram және WhatsApp — 24 сағаттық жауап терезесі ашық кезде.",
   "module.winback.title": "Қайтару сатылымдары",
   "module.winback.desc":
     "Көптен бері сатып алмағандарға екі хабарламалық серия: соңғы тапсырыстан N күн өткен соң және қайталау, промокодпен. База сегменттері — хабарлама таратуда.",
@@ -470,7 +470,7 @@ export const en: SectionDict<typeof ru> = {
   "module.wa_broadcasts.desc": "Broadcasts to your WhatsApp contacts using approved templates.",
   "module.cart_reminder.title": "Abandoned cart reminder",
   "module.cart_reminder.desc":
-    "If a customer adds a product but doesn’t check out, the bot reminds them after a set time.",
+    "If a customer adds a product but doesn’t check out, the bot reminds them after a set time, naming the items and the total. Instagram and WhatsApp — while the 24-hour reply window is open.",
   "module.winback.title": "Win-back sales",
   "module.winback.desc":
     "A two-message series for customers who haven’t bought in a while: N days after their last order and a follow-up, with a promo code. Customer segments are in Broadcasts.",
@@ -628,7 +628,7 @@ export const uz: SectionDict<typeof ru> = {
   "module.wa_broadcasts.desc": "Tasdiqlangan shablonlar bilan WhatsApp bazasiga xabar yuborish.",
   "module.cart_reminder.title": "Tashlab ketilgan savat haqida eslatma",
   "module.cart_reminder.desc":
-    "Mahsulotni savatga solib, buyurtma bermagan xaridorga bot belgilangan vaqtdan keyin bu haqda eslatadi.",
+    "Mahsulotni savatga solib, buyurtma bermagan xaridorga bot belgilangan vaqtdan keyin bu haqda eslatadi: mahsulotlar va summani aytadi. Instagram va WhatsApp — 24 soatlik javob oynasi ochiq bo‘lganda.",
   "module.winback.title": "Qaytaruvchi sotuvlar",
   "module.winback.desc":
     "Uzoq vaqt xarid qilmaganlarga ikki xabardan iborat seriya: oxirgi buyurtmadan N kun oʻtgach va takroriy, promokod bilan. Baza segmentlari — xabar yuborishda.",

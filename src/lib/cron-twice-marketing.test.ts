@@ -47,7 +47,26 @@ const twice = <T>(run: () => Promise<T>) => Promise.all([run(), run()]);
 describe("два крона одновременно: одно сообщение и одна отметка", () => {
   it("напоминание о корзине", async () => {
     const { db, ctx } = base({ cart_reminder: true });
-    db.tables.cart_items = [{ telegram_id: 1, created_at: ago(1) }];
+    db.tables.cart_items = [
+      {
+        id: "c1",
+        telegram_id: 1,
+        quantity: 1,
+        product_variant_id: null,
+        created_at: ago(1),
+        products: {
+          id: "p1",
+          name: "Торт",
+          price: 5000,
+          currency: "KZT",
+          country_prices: {},
+          is_active: true,
+          stock_quantity: null,
+          fulfillment_kind: "physical",
+        },
+        product_variants: null,
+      },
+    ];
     db.tables.bot_users = [buyer()];
     const send = vi.fn(async () => true);
     const [a, b] = await twice(() => sendCartReminders(ctx, send, NOW));

@@ -289,7 +289,8 @@ export type Msg = {
   inviteScreen: (link: string, came: number, bought: number, codes: string) => string;
   inviteCodeUsed: string;
   inviteShareBtn: string;
-  cartReminder: string;
+  /** Напоминание о корзине: до трёх позиций, «и ещё N» и сумма (если валюта одна). */
+  cartReminderItems: (items: string, more: number, total: string | null) => string;
   openCartBtn: string;
   fulfillmentReminder: (no: string, date: string) => string;
   courseNewLesson: (no: number, title: string) => string;
@@ -388,8 +389,8 @@ const ru: Msg = {
     `🎁 <b>Пригласить друга</b>\n\nВаша личная ссылка:\n${link}\n\nПришло друзей: <b>${came}</b>\nКупили: <b>${bought}</b>\n\nКогда друг сделает первую покупку, вы получите промокод.${codes ? `\n\nВаши коды за друзей:\n${codes}` : ""}`,
   inviteCodeUsed: "использован",
   inviteShareBtn: "🎁 Поделиться ссылкой",
-  cartReminder:
-    "🛒 Вы оставили товары в корзине — они всё ещё вас ждут! Оформить заказ можно в любой момент.",
+  cartReminderItems: (items, more, total) =>
+    `🛒 В корзине вас ждут: ${items}${more > 0 ? ` и ещё ${more}` : ""}${total ? ` — на сумму ${total}` : ""}. Оформить заказ можно в любой момент.`,
   openCartBtn: "🛒 Открыть корзину",
   fulfillmentReminder: (no, d) => `⏰ Напоминаем: заказ #${no} — получение завтра, ${d}.`,
   courseNewLesson: (no, title) => `📚 Открыт урок ${no}: «${title}».`,
@@ -815,8 +816,8 @@ const kk: Msg = {
     `🎁 <b>Досты шақыру</b>\n\nСіздің жеке сілтемеңіз:\n${link}\n\nКелген достар: <b>${came}</b>\nСатып алғандар: <b>${bought}</b>\n\nДосыңыз алғашқы сатып алуды жасағанда, сіз промокод аласыз.${codes ? `\n\nДостарыңыз үшін кодтарыңыз:\n${codes}` : ""}`,
   inviteCodeUsed: "қолданылған",
   inviteShareBtn: "🎁 Сілтемені бөлісу",
-  cartReminder:
-    "🛒 Себетте тауарлар қалды — олар әлі де сізді күтуде! Тапсырысты кез келген уақытта рәсімдей аласыз.",
+  cartReminderItems: (items, more, total) =>
+    `🛒 Себетте сізді күтіп тұр: ${items}${more > 0 ? ` және тағы ${more}` : ""}${total ? ` — жалпы ${total}` : ""}. Тапсырысты кез келген уақытта рәсімдей аласыз.`,
   openCartBtn: "🛒 Себетті ашу",
   fulfillmentReminder: (no, d) => `⏰ Еске саламыз: №${no} тапсырысты алу ертең, ${d}.`,
   courseNewLesson: (no, title) => `📚 ${no}-сабақ ашылды: «${title}».`,
@@ -1065,8 +1066,8 @@ const en: Msg = {
     `🎁 <b>Invite a friend</b>\n\nYour personal link:\n${link}\n\nFriends joined: <b>${came}</b>\nBought: <b>${bought}</b>\n\nWhen a friend makes a first purchase, you get a promo code.${codes ? `\n\nYour codes for friends:\n${codes}` : ""}`,
   inviteCodeUsed: "used",
   inviteShareBtn: "🎁 Share the link",
-  cartReminder:
-    "🛒 You left some items in your cart — they're still waiting for you! You can check out anytime.",
+  cartReminderItems: (items, more, total) =>
+    `🛒 Waiting in your cart: ${items}${more > 0 ? ` and ${more} more` : ""}${total ? ` — ${total} in total` : ""}. You can check out anytime.`,
   openCartBtn: "🛒 Open cart",
   fulfillmentReminder: (no, d) => `⏰ Reminder: order #${no} — pickup/delivery is tomorrow, ${d}.`,
   courseNewLesson: (no, title) => `📚 Lesson ${no} is open: “${title}”.`,
@@ -1322,8 +1323,8 @@ const uz: Msg = {
     `🎁 <b>Do‘stni taklif qilish</b>\n\nShaxsiy havolangiz:\n${link}\n\nKelgan do‘stlar: <b>${came}</b>\nXarid qilganlar: <b>${bought}</b>\n\nDo‘stingiz birinchi xaridni qilganda, siz promokod olasiz.${codes ? `\n\nDo‘stlar uchun kodlaringiz:\n${codes}` : ""}`,
   inviteCodeUsed: "ishlatilgan",
   inviteShareBtn: "🎁 Havolani ulashish",
-  cartReminder:
-    "🛒 Savatda mahsulotlar qoldi — ular hali ham sizni kutmoqda! Buyurtmani istalgan vaqtda rasmiylashtirishingiz mumkin.",
+  cartReminderItems: (items, more, total) =>
+    `🛒 Savatda sizni kutmoqda: ${items}${more > 0 ? ` va yana ${more} ta` : ""}${total ? ` — jami ${total}` : ""}. Buyurtmani istalgan vaqtda rasmiylashtirishingiz mumkin.`,
   openCartBtn: "🛒 Savatni ochish",
   fulfillmentReminder: (no, d) => `⏰ Eslatma: #${no} buyurtma ertaga, ${d} kuni olinadi.`,
   courseNewLesson: (no, title) => `📚 ${no}-dars ochildi: «${title}».`,

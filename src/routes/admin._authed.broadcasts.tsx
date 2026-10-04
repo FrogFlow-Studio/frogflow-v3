@@ -240,7 +240,7 @@ function BroadcastsPage() {
           {(shop.modules.cart_reminder || shop.modules.winback || shop.modules.funnel) && (
             <MarketingCapCard cap={data.marketingCap} />
           )}
-          {shop.modules.cart_reminder && channel === "telegram" && (
+          {shop.modules.cart_reminder && (
             <CartReminderCard hours={data.cartReminderHours} stats={data.autoStats?.cart} />
           )}
           {shop.modules.winback && <WinbackCard stats={data.autoStats?.winback} />}

@@ -4,11 +4,53 @@ import type { Locale } from "@/core/i18n/locale";
 import { isLocale } from "@/core/i18n/locale";
 import { getSetting } from "@/core/settings/settings";
 import { pageAll } from "@/core/db/page";
-import { stateFromJson } from "@/core/customers/customers";
+import { customerFromRow, stateFromJson, type Customer } from "@/core/customers/customers";
+import type { Platform } from "@/core/customers/customers";
+import { listCart, priceCart } from "@/core/cart/cart";
+import { lastInboundAt } from "@/core/chat/chat";
+import { replyWindow } from "@/core/chat/reply-window";
+import { inStock } from "@/core/waitlist/waitlist";
+import { serverFailure } from "@/lib/server-failure";
 import { claimMarketing, loadMarketingCap, marketingAllowed } from "@/core/marketing/cap";
 import { parseReminderHours, shouldSendCartReminder } from "./pure";
 
-export type CartReminderTarget = { telegramId: number; locale: Locale; items: number };
+/** Сколько позиций называет напоминание; остальные — «и ещё N». */
+export const REMINDER_ITEMS_SHOWN = 3;
+
+export type CartReminderTarget = {
+  telegramId: number;
+  locale: Locale;
+  /** Всего позиций в корзине. */
+  items: number;
+  customer: Customer;
+  /** До трёх доступных позиций по порядку добавления. */
+  lines: { name: string; quantity: number }[];
+  /** Сколько доступных позиций не вошло в `lines`. */
+  more: number;
+  /** Сумма доступных позиций по текущим ценам; null — валюты разные, сумму не сложить. */
+  total: { amount: number; currency: string } | null;
+};
+
+/**
+ * Что назвать в напоминании: доступные сейчас позиции (товар есть, включён и
+ * не закончился) по текущим ценам. Недоступные не упоминаем; недоступна вся
+ * корзина — null, напоминания нет.
+ */
+export async function cartReminderSummary(
+  ctx: TenantContext,
+  customer: Customer,
+): Promise<Pick<CartReminderTarget, "lines" | "more" | "total"> | null> {
+  const items = (await listCart(ctx, customer)).filter((it) => it.products && inStock(it.products));
+  if (!items.length) return null;
+  const priced = await priceCart(ctx, items, customer.state.country_code ?? null);
+  const lines = priced.lines.map((l) => ({ name: l.name, quantity: Number(l.item.quantity) }));
+  if (!lines.length) return null;
+  return {
+    lines: lines.slice(0, REMINDER_ITEMS_SHOWN),
+    more: Math.max(0, lines.length - REMINDER_ITEMS_SHOWN),
+    total: priced.mixedCurrency ? null : { amount: priced.total, currency: priced.currency },
+  };
+}
 
 /**
  * Возврат брошенной корзины. Раз в полчаса крон ищет покупателей, у которых
@@ -17,7 +59,14 @@ export type CartReminderTarget = { telegramId: number; locale: Locale; items: nu
  * поэтому активность — MAX(created_at) позиций корзины.
  *
  * Захват — CAS на bot_users.cart_reminder_sent_at до отправки: параллельный
- * запуск крона не напомнит дважды. Отправка — лучшее старание.
+ * запуск крона не напомнит дважды. Отправка — лучшее старание, неудачную (в том
+ * числе оборвавшуюся: могла дойти) не повторяем.
+ *
+ * Telegram — всегда; Instagram и WhatsApp — только пока открыто окно ответа
+ * 24 часа от последнего входящего сообщения (core/chat/reply-window), иначе
+ * Meta откажет, а отметка корзины сгорела бы. Вне окна корзину не отмечаем:
+ * напомним, когда покупатель напишет снова. Корзина без доступных позиций —
+ * тишина, без отметки.
  */
 export async function sendCartReminders(
   ctx: TenantContext,
@@ -48,17 +97,19 @@ export async function sendCartReminders(
 
   let sent = 0;
   for (const [telegramId, { at, n }] of last) {
-    if (!(telegramId > 0)) continue;
+    // У Instagram/WhatsApp telegram_id синтетический отрицательный (customers.ts).
+    if (!telegramId) continue;
     const cutoff = new Date(at);
     if (now.getTime() - cutoff.getTime() < hours * 3600_000) continue;
 
-    const { data: user } = await ctx.db
+    const { data: user, error: userError } = await ctx.db
       .from("bot_users")
-      .select("user_key, cart_reminder_sent_at, state, platform, opt_out")
+      .select("*")
       .eq("telegram_id", telegramId)
-      .eq("platform", "telegram")
       .maybeSingle();
+    if (userError) throw serverFailure(`Напоминание о корзине: ${userError.message}`);
     if (!user || user.opt_out) continue;
+    const platform = (user.platform as Platform) || "telegram";
     const eligible = shouldSendCartReminder(
       cutoff,
       now,
@@ -71,12 +122,30 @@ export async function sendCartReminders(
     const state = stateFromJson(user.state);
     if (!marketingAllowed(state, cap, now)) continue;
 
+    const customer = customerFromRow(user);
+    // Покупатель сайта без мессенджера: писать некуда.
+    if (platform === "web") continue;
+    let summary: Awaited<ReturnType<typeof cartReminderSummary>>;
+    try {
+      if (platform !== "telegram") {
+        // Direct/WhatsApp: нужен диалог Zernio и открытое окно ответа.
+        if (!customer.zernioConversationId || !customer.zernioAccountId) continue;
+        const w = replyWindow(platform, await lastInboundAt(ctx, telegramId), now.getTime());
+        if (w?.state !== "open") continue;
+      }
+      summary = await cartReminderSummary(ctx, customer);
+    } catch (e) {
+      // Не прочиталось — корзину не отмечаем, напомним в следующий прогон.
+      console.error(`[cart-reminder:${ctx.tenant.id}] ${telegramId}`, e);
+      continue;
+    }
+    if (!summary) continue;
+
     // .is() сравнивает с NULL, .eq() — с прошлым значением; не взаимозаменяемы.
     const cas = ctx.db
       .from("bot_users")
       .update({ cart_reminder_sent_at: now.toISOString() })
-      .eq("telegram_id", telegramId)
-      .eq("platform", "telegram");
+      .eq("telegram_id", telegramId);
     const { data: claimed } = await (
       user.cart_reminder_sent_at
         ? cas.eq("cart_reminder_sent_at", user.cart_reminder_sent_at)
@@ -92,7 +161,6 @@ export async function sendCartReminders(
         .from("bot_users")
         .update({ cart_reminder_sent_at: user.cart_reminder_sent_at })
         .eq("telegram_id", telegramId)
-        .eq("platform", "telegram")
         .eq("cart_reminder_sent_at", now.toISOString());
       const { error } = await back;
       if (error) console.error(`[cart-reminder:${ctx.tenant.id}] ${telegramId}: ${error.message}`);
@@ -104,7 +172,7 @@ export async function sendCartReminders(
       : (ctx.tenant.settings.default_locale ?? "ru");
     let ok = false;
     try {
-      ok = await send({ telegramId, locale, items: n });
+      ok = await send({ telegramId, locale, items: n, customer, ...summary });
     } catch (e) {
       console.error(`[cart-reminder:${ctx.tenant.id}] ${telegramId}`, e);
     }
