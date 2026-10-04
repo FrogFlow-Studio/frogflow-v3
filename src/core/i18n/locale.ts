@@ -19,6 +19,18 @@ export function isLocale(value: unknown): value is Locale {
   return typeof value === "string" && (SUPPORTED_LOCALES as readonly string[]).includes(value);
 }
 
+/**
+ * Язык покупателя в автосообщениях: выбранный им (`state.locale`), если он из
+ * поддерживаемых, иначе язык магазина, иначе русский. Покупатель из Instagram
+ * или без выбора языка в казахском магазине получает казахский, а не русский.
+ */
+export function buyerLocale(
+  state: { locale?: unknown } | null | undefined,
+  shopDefault?: Locale | null,
+): Locale {
+  return isLocale(state?.locale) ? state.locale : (shopDefault ?? "ru");
+}
+
 type Dictionary = Record<string, Record<Locale, string>>;
 
 const messages: Dictionary = {

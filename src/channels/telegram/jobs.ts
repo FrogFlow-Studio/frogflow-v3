@@ -23,7 +23,7 @@ import { sendFulfillmentReminders } from "@/core/reminders/fulfillment";
 import { telegramApi, type TelegramApi } from "./api";
 import { COPY, cartReminderBody, escapeHtml } from "./copy";
 import { inChunks } from "@/lib/in-chunks";
-import { isLocale, type Locale } from "@/core/i18n/locale";
+import { buyerLocale, isLocale, type Locale } from "@/core/i18n/locale";
 import { waitedText } from "@/core/helpdesk/seller-texts";
 import { formatMoney } from "@/core/money/money";
 
@@ -256,8 +256,7 @@ export async function runWinbackFor(tenant: Tenant) {
   return runWinback(ctx, async (c, text) => {
     if (c.platform === "telegram") {
       if (!tg) return false;
-      const locale = (c.state.locale as keyof typeof COPY) ?? "ru";
-      const m = COPY[locale] ?? COPY.ru;
+      const m = COPY[buyerLocale(c.state, ctx.tenant.settings.default_locale)];
       const r = await tg.call("sendMessage", {
         chat_id: c.telegramId,
         text: escapeHtml(text),
@@ -312,7 +311,7 @@ export async function runReviewAskFor(tenant: Tenant) {
   const tg = tenant.telegramTokenEnc ? api(ctx) : null;
   const { sendToZernioTarget, zernioTargetOf } = await import("@/channels/zernio/outbound.server");
   return runReviewAsk(ctx, async (c, ask) => {
-    const m = COPY[(c.state.locale as keyof typeof COPY) ?? "ru"] ?? COPY.ru;
+    const m = COPY[buyerLocale(c.state, ctx.tenant.settings.default_locale)];
     if (c.platform === "telegram") {
       if (!tg) return false;
       const first = ask.products[0]!;
@@ -352,7 +351,7 @@ export async function runFunnelFor(tenant: Tenant) {
   return runFunnel(ctx, async (c, text, catalogButton) => {
     if (c.platform === "telegram") {
       if (!tg) return false;
-      const m = COPY[(c.state.locale as keyof typeof COPY) ?? "ru"] ?? COPY.ru;
+      const m = COPY[buyerLocale(c.state, ctx.tenant.settings.default_locale)];
       const r = await tg.call("sendMessage", {
         chat_id: c.telegramId,
         text: escapeHtml(text),
@@ -409,7 +408,7 @@ export async function runBirthdaysFor(tenant: Tenant) {
   return runBirthdays(ctx, async (c, text) => {
     if (c.platform === "telegram") {
       if (!tg) return false;
-      const m = COPY[(c.state.locale as keyof typeof COPY) ?? "ru"] ?? COPY.ru;
+      const m = COPY[buyerLocale(c.state, ctx.tenant.settings.default_locale)];
       const r = await tg.call("sendMessage", {
         chat_id: c.telegramId,
         text: escapeHtml(text),
@@ -449,7 +448,7 @@ export async function runSubscriptionsFor(tenant: Tenant) {
   return runSubscriptionRenewals(ctx, async (r, c) => {
     const platform = c?.platform ?? r.order.platform;
     if (platform === "telegram" && c && tg) {
-      const m = COPY[(c.state.locale as keyof typeof COPY) ?? "ru"] ?? COPY.ru;
+      const m = COPY[buyerLocale(c.state, ctx.tenant.settings.default_locale)];
       const res = await tg.call("sendMessage", {
         chat_id: c.telegramId,
         text: escapeHtml(renewalText(r.name, r.days, null)),
