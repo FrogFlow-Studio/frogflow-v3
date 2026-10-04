@@ -1,55 +1,68 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { z } from "zod";
 import { platformStatusFn } from "@/app/status/status.functions";
+import { statusT } from "@/app/status/i18n";
+import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
+import type { ServiceState } from "@/app/status/status";
 
-const NAMES: Record<string, string> = {
-  bots: "Боты Telegram и Instagram/WhatsApp",
-  broadcasts: "Рассылки и уведомления",
-  reminders: "Напоминания покупателям",
-  instagram: "Ответы на комментарии Instagram",
-  vip: "VIP-подписки",
-  daily: "Ежедневные задачи",
-};
-const STATE = {
-  ok: ["✅", "Работает"],
-  degraded: ["⚠️", "С перебоями"],
-  unknown: ["⏳", "Нет данных"],
-} as const;
+const ICON: Record<ServiceState, string> = { ok: "✅", degraded: "⚠️", unknown: "⏳" };
+const intl: Record<Locale, string> = { ru: "ru-RU", kk: "kk-KZ", en: "en-GB", uz: "uz-UZ" };
 
 /** Статус платформы для продавцов: без входа и без данных магазинов. */
 export const Route = createFileRoute("/status")({
+  validateSearch: z.object({ lang: z.enum(SUPPORTED_LOCALES).optional().catch(undefined) }),
   loader: () => platformStatusFn(),
-  head: () => ({ meta: [{ title: "Статус FrogFlow" }] }),
+  head: ({ match }) => ({ meta: [{ title: statusT(match.search.lang ?? "ru")("meta.title") }] }),
   component: StatusPage,
 });
 
 function StatusPage() {
   const s = Route.useLoaderData();
-  const [icon, label] = STATE[s.overall];
+  const { lang } = Route.useSearch();
+  const locale: Locale = lang ?? "ru";
+  const t = statusT(locale);
+  const date = (iso: string) => new Date(iso).toLocaleString(intl[locale]);
   return (
     <main className="mx-auto max-w-xl px-4 py-12">
-      <Link to="/" className="text-lg font-semibold">
-        🐸 FrogFlow
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link to="/" className="text-lg font-semibold">
+          🐸 FrogFlow
+        </Link>
+        <nav className="flex gap-2 text-sm">
+          {SUPPORTED_LOCALES.map((l) => (
+            <Link
+              key={l}
+              to="/status"
+              search={{ lang: l }}
+              className={l === locale ? "font-medium" : "text-muted"}
+            >
+              {l.toUpperCase()}
+            </Link>
+          ))}
+        </nav>
+      </div>
       <h1 className="mt-6 text-2xl font-semibold">
-        {icon} {s.overall === "ok" ? "Все системы работают" : "Есть перебои"}
+        {ICON[s.overall]} {t(`title.${s.overall}`)}
       </h1>
-      <p className="mt-1 text-sm text-muted">
-        Обновлено {new Date(s.at).toLocaleString("ru-RU")} · {label}
-      </p>
+      <p className="mt-1 text-sm text-muted">{t("updated", { date: date(s.at) })}</p>
       <ul className="card mt-6 divide-y divide-line">
-        <li className="flex justify-between p-3 text-sm">
-          <span>Панели, витрины и база данных</span>
-          <span>{s.db ? "✅ Работает" : "⚠️ Недоступна"}</span>
-        </li>
         {s.services.map((x) => (
-          <li key={x.key} className="flex justify-between p-3 text-sm">
-            <span>{NAMES[x.key] ?? x.key}</span>
-            <span>
-              {STATE[x.state][0]} {STATE[x.state][1]}
-            </span>
+          <li key={x.key} className="p-3 text-sm">
+            <div className="flex justify-between gap-3">
+              <span>{t(`service.${x.key}` as "service.vip")}</span>
+              <span>
+                {ICON[x.state]} {t(`state.${x.state}`)}
+              </span>
+            </div>
+            {x.lastFailAt && (
+              <div className="mt-0.5 text-xs text-muted">
+                {t("lastFail", { date: date(x.lastFailAt) })}
+              </div>
+            )}
           </li>
         ))}
       </ul>
+      <p className="mt-4 text-xs text-muted">{t("note")}</p>
     </main>
   );
 }
