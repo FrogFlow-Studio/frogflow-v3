@@ -6,12 +6,23 @@ export const giftWrapFn = createServerFn({ method: "GET" }).handler(async () => 
   const ctx = await (await import("@/app/auth/guards.server")).requireAdminModule("bundles");
   const { loadGiftWrap } = await import("@/core/orders/gift-wrap");
   const { shopCurrency } = await import("@/core/discounts/discounts");
-  return { ...(await loadGiftWrap(ctx)), currency: await shopCurrency(ctx) };
+  const { giftAskOn } = await import("@/core/orders/gift");
+  return {
+    ...(await loadGiftWrap(ctx)),
+    currency: await shopCurrency(ctx),
+    ask: await giftAskOn(ctx),
+  };
 });
 
 export const saveGiftWrapFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
-    z.object({ on: z.boolean(), price: z.number().min(0).max(100_000_000) }).parse(d),
+    z
+      .object({
+        on: z.boolean(),
+        price: z.number().min(0).max(100_000_000),
+        ask: z.boolean().optional(),
+      })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const ctx = await (
@@ -27,5 +38,7 @@ export const saveGiftWrapFn = createServerFn({ method: "POST" })
       );
     }
     await saveGiftWrap(ctx, data);
-    return await loadGiftWrap(ctx);
+    const { saveGiftAsk, giftAskOn } = await import("@/core/orders/gift");
+    if (data.ask !== undefined) await saveGiftAsk(ctx, data.ask);
+    return { ...(await loadGiftWrap(ctx)), ask: await giftAskOn(ctx) };
   });

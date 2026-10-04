@@ -2043,6 +2043,9 @@ async function askPoints(s: Shop) {
  */
 async function askGiftFirst(s: Shop, countryCode: string): Promise<boolean> {
   if (!s.ctx.tenant.modules.bundles || s.customer.state.gift_asked) return false;
+  // Вопрос задаётся каждому покупателю — только если продавец его включил.
+  const { giftAskOn } = await import("@/core/orders/gift");
+  if (!(await giftAskOn(s.ctx))) return false;
   await setMode(s, { mode: "awaiting_gift_choice", country_code: countryCode, gift_asked: true });
   await askGift(s);
   return true;

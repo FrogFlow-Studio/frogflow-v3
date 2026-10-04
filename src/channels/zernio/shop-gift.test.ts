@@ -7,7 +7,7 @@ import type { ZernioTransport } from "./api.server";
 import { handleShopMessage } from "./shop.server";
 
 /** «Это подарок» в Direct/WhatsApp: да/нет, имя получателя, открытка, пропуск. */
-function shop(modules: Record<string, boolean> = { bundles: true }) {
+function shop(modules: Record<string, boolean> = { bundles: true }, ask = true) {
   const db = fakeDb({ unique: { zernio_logs: [["event_id"]] } });
   db.rpc = async () => ({ data: true, error: null });
   db.tables.bot_users = [
@@ -41,7 +41,10 @@ function shop(modules: Record<string, boolean> = { bundles: true }) {
       product_variants: null,
     },
   ];
-  db.tables.app_settings = [{ bot_id: "bot-1", key: "shop_currency", value: "KZT" }];
+  db.tables.app_settings = [
+    { bot_id: "bot-1", key: "shop_currency", value: "KZT" },
+    ...(ask ? [{ bot_id: "bot-1", key: "gift_ask", value: "1" }] : []),
+  ];
   const ctx = {
     tenant: { id: "bot-1", status: "active", vertical: "digital", modules, settings: {} },
     db,
@@ -130,5 +133,26 @@ describe("Direct: «это подарок?» перед оформлением",
     expect(
       Array.from(String((s.giftRows()[0]!.payload as { message: string }).message)),
     ).toHaveLength(300);
+  });
+});
+
+describe("Direct: вопрос «это подарок?» только при включённой настройке", () => {
+  const fresh = (s: ReturnType<typeof shop>) => {
+    s.db.tables.bot_users![0]!.state = { locale: "ru", country_code: "KZ" };
+  };
+  it("настройка включена — перед оформлением спрашиваем", async () => {
+    const s = shop({ bundles: true }, true);
+    fresh(s);
+    await s.msg("", "CHECKOUT");
+    expect(s.state()).toMatchObject({ mode: "awaiting_gift_choice", gift_asked: true });
+    expect(s.db.tables.orders ?? []).toHaveLength(0);
+  });
+  it("настройка не включена — заказ оформляется без вопроса", async () => {
+    const s = shop({ bundles: true }, false);
+    fresh(s);
+    await s.msg("", "CHECKOUT");
+    expect(s.state().mode).not.toBe("awaiting_gift_choice");
+    expect(s.db.tables.orders).toHaveLength(1);
+    expect(s.giftRows()).toHaveLength(0);
   });
 });

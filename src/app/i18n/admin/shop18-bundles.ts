@@ -6,6 +6,9 @@ export const ru = {
   "settings.giftWrap.intro":
     "Когда покупатель отмечает заказ подарком, он может добавить подарочную упаковку. Её цена идёт отдельной строкой в сумме заказа, в чеке и в журнале; промокод её не скидывает. Только для физических заказов.",
   "settings.giftWrap.on": "Предлагать подарочную упаковку",
+  "settings.giftWrap.ask": "Спрашивать в Instagram и WhatsApp, подарок ли заказ",
+  "settings.giftWrap.askHint":
+    "В Instagram и WhatsApp нет корзины с кнопкой «Это подарок», поэтому вопрос задаётся каждому покупателю перед оформлением. В Telegram и на сайте кнопка есть всегда.",
   "settings.giftWrap.price": "Цена упаковки, {cur}",
   "err.giftWrap.noPrice": "Чтобы включить упаковку, укажите цену больше нуля.",
   "order.gift": "Подарок",
@@ -78,6 +81,9 @@ export const kk: SectionDict<typeof ru> = {
   "settings.giftWrap.intro":
     "Сатып алушы тапсырысты сыйлық деп белгілегенде, сыйлық қаптамасын қоса алады. Оның бағасы тапсырыс сомасында, чекте және журналда жеке жолмен көрсетіледі; промокод оған жеңілдік бермейді. Тек физикалық тапсырыстарға.",
   "settings.giftWrap.on": "Сыйлық қаптамасын ұсыну",
+  "settings.giftWrap.ask": "Instagram және WhatsApp-та тапсырыс сыйлық па деп сұрау",
+  "settings.giftWrap.askHint":
+    "Instagram мен WhatsApp-та «Бұл сыйлық» түймесі бар себет жоқ, сондықтан сұрақ рәсімдеу алдында әр сатып алушыға қойылады. Telegram мен сайтта түйме әрқашан бар.",
   "settings.giftWrap.price": "Қаптама бағасы, {cur}",
   "err.giftWrap.noPrice": "Қаптаманы қосу үшін нөлден жоғары баға көрсетіңіз.",
   "order.gift": "Сыйлық",
@@ -151,6 +157,9 @@ export const en: SectionDict<typeof ru> = {
   "settings.giftWrap.intro":
     "When a buyer marks an order as a gift, they can add gift wrapping. Its price is a separate line in the order total, the receipt and the order log; promo codes do not discount it. Physical orders only.",
   "settings.giftWrap.on": "Offer gift wrapping",
+  "settings.giftWrap.ask": "Ask in Instagram and WhatsApp whether the order is a gift",
+  "settings.giftWrap.askHint":
+    "Instagram and WhatsApp have no cart with a “This is a gift” button, so the question is asked to every buyer before checkout. Telegram and the website always have the button.",
   "settings.giftWrap.price": "Wrapping price, {cur}",
   "err.giftWrap.noPrice": "To turn wrapping on, set a price above zero.",
   "order.gift": "Gift",
@@ -225,6 +234,9 @@ export const uz: SectionDict<typeof ru> = {
   "settings.giftWrap.intro":
     "Xaridor buyurtmani sovgʻa deb belgilasa, sovgʻa qadogʻini qoʻshishi mumkin. Uning narxi buyurtma summasida, chekda va jurnalda alohida qator boʻladi; promokod unga chegirma bermaydi. Faqat jismoniy buyurtmalar uchun.",
   "settings.giftWrap.on": "Sovgʻa qadogʻini taklif qilish",
+  "settings.giftWrap.ask": "Instagram va WhatsApp’da buyurtma sovg‘a ekanini so‘rash",
+  "settings.giftWrap.askHint":
+    "Instagram va WhatsApp’da «Bu sovg‘a» tugmali savat yo‘q, shuning uchun savol rasmiylashtirishdan oldin har bir xaridorga beriladi. Telegram va saytda tugma doim bor.",
   "settings.giftWrap.price": "Qadoq narxi, {cur}",
   "err.giftWrap.noPrice": "Qadoqni yoqish uchun noldan katta narx kiriting.",
   "order.gift": "Sovgʻa",

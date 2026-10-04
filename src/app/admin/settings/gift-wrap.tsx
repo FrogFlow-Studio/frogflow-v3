@@ -15,20 +15,23 @@ export function GiftWrapCard() {
   const [on, setOn] = useState(false);
   const [price, setPrice] = useState<string | null>(null);
   const [currency, setCurrency] = useState("");
+  const [ask, setAsk] = useState(false);
   const [saved, setSaved] = useState(false);
   useEffect(() => {
     void giftWrapFn().then((r) => {
       setOn(r.on);
       setPrice(r.price > 0 ? String(r.price) : "");
       setCurrency(r.currency);
+      setAsk(r.ask);
     });
   }, []);
   const owner = shop.role === "owner";
   const save = useAction(async () => {
     const r = await saveGiftWrapFn({
-      data: { on, price: Number((price ?? "").replace(",", ".")) || 0 },
+      data: { on, price: Number((price ?? "").replace(",", ".")) || 0, ask },
     });
     setOn(r.on);
+    setAsk(r.ask);
     setPrice(r.price > 0 ? String(r.price) : "");
     setSaved(true);
   });
@@ -52,6 +55,16 @@ export function GiftWrapCard() {
           />
           {t("settings.giftWrap.on")}
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={ask}
+            disabled={!owner || price === null}
+            onChange={(e) => setAsk(e.target.checked)}
+          />
+          {t("settings.giftWrap.ask")}
+        </label>
+        <p className="-mt-2 text-xs text-muted">{t("settings.giftWrap.askHint")}</p>
         <Field label={t("settings.giftWrap.price", { cur: currency })}>
           <input
             className="input w-40"

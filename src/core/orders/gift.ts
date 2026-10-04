@@ -1,5 +1,6 @@
 import type { Json } from "@/core/db-types";
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { getSetting, setSetting } from "@/core/settings/settings";
 import { serverFailure } from "@/lib/server-failure";
 import { claimOrderEvent } from "./events";
 
@@ -71,4 +72,21 @@ export async function loadOrderGift(
   if (!data) return null;
   const p = data.payload;
   return giftFromPayload(p && typeof p === "object" && !Array.isArray(p) ? p : null);
+}
+
+/**
+ * Спрашивать ли «это подарок?» в Direct/WhatsApp: там нет кнопки корзины, и вопрос
+ * задаётся каждому покупателю, поэтому по умолчанию выключен — продавец включает
+ * его в «Настройки → Подарочная упаковка» (app_settings `gift_ask` = "1").
+ * Не прочитали настройку — не спрашиваем: пропущенный вопрос заказ не ломает.
+ */
+export const GIFT_ASK_KEY = "gift_ask";
+
+export async function giftAskOn(ctx: TenantContext): Promise<boolean> {
+  if (!ctx.tenant.modules.bundles) return false;
+  return (await getSetting(ctx, GIFT_ASK_KEY)) === "1";
+}
+
+export async function saveGiftAsk(ctx: TenantContext, on: boolean): Promise<void> {
+  await setSetting(ctx, GIFT_ASK_KEY, on ? "1" : "0");
 }
