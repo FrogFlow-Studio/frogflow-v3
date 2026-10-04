@@ -91,24 +91,24 @@ test("витрина: хлебные крошки на странице това
   request,
 }) => {
   const errors = await watch(page);
-  const html = await (await request.get(`/s/${F.SHOP_SLUG}/p/${F.CRUMB_PRODUCT_ID}`)).text();
+  const html = await (await request.get(`/s/${F.CRUMB_SHOP_SLUG}/p/${F.CRUMB_PRODUCT_ID}`)).text();
   const crumbs = ldBlocks(html).find((b) => b["@type"] === "BreadcrumbList") as {
     itemListElement: Array<{ position: number; name: string; item: string }>;
   };
   expect(crumbs.itemListElement.map((x) => [x.position, x.name])).toEqual([
-    [1, F.SHOP_NAME],
+    [1, F.CRUMB_SHOP_NAME],
     [2, F.CRUMB_PARENT_NAME],
     [3, F.CRUMB_CHILD_NAME],
     [4, F.CRUMB_PRODUCT_NAME],
   ]);
   expect(crumbs.itemListElement[2]!.item).toMatch(
-    new RegExp(`/s/${F.SHOP_SLUG}\\?category=${F.CRUMB_CHILD_ID}$`),
+    new RegExp(`/s/${F.CRUMB_SHOP_SLUG}\\?category=${F.CRUMB_CHILD_ID}$`),
   );
   expect(crumbs.itemListElement[3]!.item).toMatch(
-    new RegExp(`/s/${F.SHOP_SLUG}/p/${F.CRUMB_PRODUCT_ID}$`),
+    new RegExp(`/s/${F.CRUMB_SHOP_SLUG}/p/${F.CRUMB_PRODUCT_ID}$`),
   );
   // Те же адреса — в карте сайта (домен в разметке — canonical магазина, в карте — адрес запроса).
-  const sitemap = await (await request.get(`/s/${F.SHOP_SLUG}/sitemap.xml`)).text();
+  const sitemap = await (await request.get(`/s/${F.CRUMB_SHOP_SLUG}/sitemap.xml`)).text();
   for (const i of [2, 3]) {
     const u = new URL(crumbs.itemListElement[i]!.item);
     expect(sitemap).toContain(`${u.pathname}${u.search}</loc>`);
@@ -117,7 +117,7 @@ test("витрина: хлебные крошки на странице това
   expect(html).toContain(`aria-label="Путь по каталогу"`);
   expect(html).toContain(F.CRUMB_PARENT_NAME);
 
-  await page.goto(`/s/${F.SHOP_SLUG}/p/${F.CRUMB_PRODUCT_ID}`);
+  await page.goto(`/s/${F.CRUMB_SHOP_SLUG}/p/${F.CRUMB_PRODUCT_ID}`);
   const nav = page.getByRole("navigation", { name: "Путь по каталогу" });
   await expect(nav.getByRole("link", { name: "Каталог", exact: true })).toBeVisible();
   await expect(nav.getByRole("link", { name: F.CRUMB_PARENT_NAME, exact: true })).toBeVisible();
@@ -135,12 +135,14 @@ test("витрина: хлебные крошки на странице това
 test("витрина: на странице категории — путь до неё и BreadcrumbList; товар без категории — «Каталог › Товар»", async ({
   request,
 }) => {
-  const html = await (await request.get(`/s/${F.SHOP_SLUG}?category=${F.CRUMB_CHILD_ID}`)).text();
+  const html = await (
+    await request.get(`/s/${F.CRUMB_SHOP_SLUG}?category=${F.CRUMB_CHILD_ID}`)
+  ).text();
   const crumbs = ldBlocks(html).find((b) => b["@type"] === "BreadcrumbList") as {
     itemListElement: Array<{ name: string }>;
   };
   expect(crumbs.itemListElement.map((x) => x.name)).toEqual([
-    F.SHOP_NAME,
+    F.CRUMB_SHOP_NAME,
     F.CRUMB_PARENT_NAME,
     F.CRUMB_CHILD_NAME,
   ]);
