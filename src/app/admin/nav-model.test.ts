@@ -58,9 +58,19 @@ describe("меню админки", () => {
     ]);
   });
 
-  it("не владелец не видит настройки, модули и журнал", () => {
-    const l = labels(shop({ role: "manager" }));
-    for (const p of ["/admin/settings", "/admin/modules", "/admin/log"]) expect(l).not.toContain(p);
+  it("не владелец не видит настройки, модули, журнал, оплату тарифа и баланс ИИ", () => {
+    for (const role of ["manager", "viewer"] as const) {
+      const l = labels(shop({ role }));
+      for (const p of [
+        "/admin/settings",
+        "/admin/modules",
+        "/admin/log",
+        "/admin/billing",
+        "/admin/ai-balance",
+      ])
+        expect(l).not.toContain(p);
+    }
+    expect(labels(shop({ role: "owner" }))).toContain("/admin/billing");
   });
 
   it("школа: курсы и ученики идут вперёд каталога", () => {

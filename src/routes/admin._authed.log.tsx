@@ -1,17 +1,22 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
 import { shopAuditFn } from "@/app/admin/audit.functions";
 import { auditActionLabel, auditDetailsText } from "@/app/admin/audit-labels";
 import { adminT, intlLocale } from "@/app/i18n/admin";
 import { Empty, PageTitle } from "@/app/ui";
 
 export const Route = createFileRoute("/admin/_authed/log")({
-  loader: () => shopAuditFn(),
+  validateSearch: z.object({ who: z.string().optional() }),
+  loaderDeps: ({ search }) => ({ who: search.who }),
+  loader: ({ deps }) => shopAuditFn({ data: { who: deps.who } }),
   component: AuditPage,
 });
 
 /** Журнал действий команды магазина — кто что поменял (только владельцу). */
 function AuditPage() {
-  const rows = Route.useLoaderData();
+  const { rows, people } = Route.useLoaderData();
+  const { who } = Route.useSearch();
+  const navigate = useNavigate();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const loc = intlLocale(shop.locale);
@@ -20,6 +25,23 @@ function AuditPage() {
   return (
     <>
       <PageTitle title={t("audit.title")} subtitle={t("audit.subtitle")} />
+      <label className="mb-3 flex items-center gap-2 text-sm">
+        <span className="text-muted">{t("audit.filter.who")}</span>
+        <select
+          className="input h-9 w-auto"
+          value={who ?? ""}
+          onChange={(e) =>
+            void navigate({ to: "/admin/log", search: { who: e.target.value || undefined } })
+          }
+        >
+          <option value="">{t("audit.filter.all")}</option>
+          {people.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+      </label>
       {rows.length === 0 ? (
         <Empty>{t("audit.empty")}</Empty>
       ) : (

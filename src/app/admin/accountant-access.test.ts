@@ -35,6 +35,9 @@ const PUBLIC = new Set([
   "admin.functions.ts:adminLogout",
   "admin.functions.ts:adminTgLoginRequest",
   "admin.functions.ts:adminTgLoginConsume",
+  // приглашение в команду: ссылка с секретом, сессии ещё нет
+  "team-invite.functions.ts:staffInviteInfoFn",
+  "team-invite.functions.ts:acceptStaffInviteFn",
 ]);
 
 const DENY =

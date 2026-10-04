@@ -65,6 +65,8 @@ export type TenantSettings = {
     /** scrypt-хеш, см. core/auth/password.ts */
     password_hash?: string;
     users?: AdminUser[];
+    /** Приглашения в команду по ссылке: хранится только хеш секрета (core/auth/staff-invite). */
+    invites?: AdminInvite[];
   };
   /**
    * Кураторы онлайн-школы (core/courses/curators): несколько проверяющих
@@ -245,6 +247,18 @@ export type CuratorSetting = {
   username?: string;
   /** Потоки (id из core/courses/cohort), которые ведёт куратор. */
   cohorts?: string[];
+};
+
+/** Приглашение в команду: одноразовое, со сроком; секрет в ссылке, здесь его sha256. */
+export type AdminInvite = {
+  id: string;
+  hash: string;
+  role: "manager" | "viewer" | "accountant";
+  name?: string;
+  created_at: string;
+  expires_at: string;
+  /** Логин владельца, создавшего приглашение. */
+  by: string;
 };
 
 export type AdminUser = {

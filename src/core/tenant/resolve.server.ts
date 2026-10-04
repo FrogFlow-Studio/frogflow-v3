@@ -213,6 +213,46 @@ export async function swapZernioGuard(
 }
 
 /**
+ * Изменить bots.settings.admin (пользователи и приглашения команды): прочитать,
+ * решить `update`, записать условно по `settings.rev`. `update` получает
+ * текущую запись admin и возвращает новую; null — ничего не менять (false).
+ * Гонка (два принятия одного приглашения, владелец правит команду) → перечитываем
+ * и решаем заново, поэтому одно приглашение принимается ровно один раз. Чужие
+ * ключи settings не затираем; не удалось прочитать — не пишем.
+ */
+export async function updateAdminSettings(
+  botId: string,
+  update: (admin: Record<string, unknown>) => Record<string, unknown> | null,
+): Promise<boolean> {
+  const db = serviceDb();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data, error } = await db.from("bots").select("settings").eq("id", botId).maybeSingle();
+    if (error)
+      throw serverFailure(`bots.settings: команда не прочитала настройки (${error.message})`);
+    if (!data) throw serverFailure(`bots.settings: магазин ${botId} не найден`);
+    const raw = asObject(data.settings);
+    const admin = asObject(raw.admin);
+    const nextAdmin = update(admin);
+    if (!nextAdmin) return false;
+    const rev = settingsRev(raw);
+    const next = { ...raw, admin: nextAdmin, rev: nextSettingsRev(raw) };
+    const revPath = "settings->>rev" as "id";
+    let q = db
+      .from("bots")
+      .update({ settings: next as never })
+      .eq("id", botId);
+    q = rev === null ? q.is(revPath, null as never) : q.eq(revPath, String(rev));
+    const { data: rows, error: writeError } = await q.select("id");
+    if (writeError) throw serverFailure(`bots.settings: ${writeError.message}`);
+    if (rows?.length) {
+      invalidateTenantDirectory();
+      return true;
+    }
+  }
+  throw serverFailure("bots.settings: команда не записана — настройки менялись слишком часто");
+}
+
+/**
  * Запись мастера подключения одного канала (settings.zernio.wizard): прочитать,
  * решить `update`, записать условно по `settings.rev`. `update` получает
  * текущую запись и возвращает новую; undefined — ничего не менять. Гонка

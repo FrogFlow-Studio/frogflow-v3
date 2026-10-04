@@ -3,7 +3,14 @@ import { signupOrigin } from "@/core/signup/origin";
 import { MODULE_KEYS, type ModuleKey } from "@/core/modules/registry";
 import { VERTICALS, type VerticalKey } from "@/core/verticals/registry";
 import type { Database } from "@/core/db-types";
-import type { BillingSettings, BotStatus, Tenant, TenantLookup, TenantSettings } from "./types";
+import type {
+  AdminInvite,
+  BillingSettings,
+  BotStatus,
+  Tenant,
+  TenantLookup,
+  TenantSettings,
+} from "./types";
 import { isLocale } from "@/core/i18n/locale";
 import { parseWizardMap } from "./wizard-entry";
 import { effectiveModules } from "@/core/plans/plans";
@@ -138,6 +145,7 @@ export function settingsFromJson(json: unknown): TenantSettings {
             }))
             .filter((u) => u.username && u.password_hash)
         : undefined,
+      invites: parseInvites(adm.invites),
     },
     vip: {
       token_enc: str(vip.token_enc),
@@ -548,4 +556,30 @@ export function findTenant(directory: readonly Tenant[], lookup: TenantLookup): 
       return owners.length === 1 ? owners[0]! : null;
     }
   }
+}
+
+/** Приглашения команды: битая запись пропускается, неизвестная роль — самая узкая (просмотр). */
+function parseInvites(v: unknown): AdminInvite[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const str = (x: unknown) => (typeof x === "string" && x.trim() ? x.trim() : undefined);
+  const out: AdminInvite[] = [];
+  for (const raw of v) {
+    if (!raw || typeof raw !== "object") continue;
+    const i = raw as Record<string, unknown>;
+    const id = str(i.id);
+    const hash = str(i.hash);
+    const created = str(i.created_at);
+    const expires = str(i.expires_at);
+    if (!id || !hash || !created || !expires || Number.isNaN(Date.parse(expires))) continue;
+    out.push({
+      id,
+      hash,
+      role: i.role === "manager" || i.role === "accountant" ? i.role : "viewer",
+      name: str(i.name),
+      created_at: created,
+      expires_at: expires,
+      by: str(i.by) ?? "",
+    });
+  }
+  return out;
 }

@@ -32,13 +32,18 @@ export async function recordShopAction(
 }
 
 /** Последние действия команды магазина — для владельца. Хранится 180 дней (core/retention). */
-export async function listShopActions(botId: string, limit = 200): Promise<AuditEntry[]> {
-  const { data, error } = await serviceDb()
-    .from("bot_events")
-    .select("id, at, actor, payload")
-    .eq("bot_id", botId)
-    .like("actor", `${ADMIN_AUDIT_ACTOR_PREFIX}%`)
+export async function listShopActions(
+  botId: string,
+  limit = 200,
+  who?: string,
+): Promise<AuditEntry[]> {
+  const q = serviceDb().from("bot_events").select("id, at, actor, payload").eq("bot_id", botId);
+  // «По человеку»: один логин; без него — вся команда.
+  const { data, error } = await (
+    who ? q.eq("actor", shopActor(who)) : q.like("actor", `${ADMIN_AUDIT_ACTOR_PREFIX}%`)
+  )
     .order("at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
   return (data ?? []).map(toAuditEntry);

@@ -24,6 +24,7 @@ import {
   adminLoginTaken,
   findAdminLogin,
   normalizeLogin,
+  STAFF_LOGIN_RE,
   type AdminLogin,
   type StaffRole,
 } from "@/core/auth/roles";
@@ -60,7 +61,7 @@ export async function saveTeamMember(
   input: { username: string; name?: string; role: StaffRole; password?: string },
 ): Promise<void> {
   const username = normalizeLogin(input.username);
-  if (!/^[a-z0-9][a-z0-9_.-]{2,39}$/.test(username))
+  if (!STAFF_LOGIN_RE.test(username))
     throw new UserError(
       "err.admin.loginFormat",
       "Логин: латиница, цифры, точка, дефис и «_», от 3 до 40 символов.",

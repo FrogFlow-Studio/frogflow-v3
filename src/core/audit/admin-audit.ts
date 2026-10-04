@@ -16,7 +16,7 @@ export const ADMIN_AUDIT_ACTOR_PREFIX = "admin:";
 export const ADMIN_AUDIT_KIND = "meta" as const;
 
 /** Действия, которые пишутся в журнал вручную, не прослойкой (запрос идёт без сессии продавца). */
-export const MANUAL_AUDIT_ACTIONS = ["tgLoginRequest"] as const;
+export const MANUAL_AUDIT_ACTIONS = ["tgLoginRequest", "inviteAccepted"] as const;
 
 const NOT_AUDITED = new Set([
   // «Что нового»: отметка «прочитано» без смысла для журнала
@@ -49,6 +49,8 @@ const NOT_AUDITED = new Set([
   "ticketReplyFn",
   "chatConnectFn",
   "inboxSetFn",
+  // принятие приглашения в команду: вызов без сессии, запись пишет сама функция (inviteAccepted)
+  "acceptStaffInviteFn",
   // вход и выход — в admin_login_attempts
   "adminLogin",
   "adminLogout",

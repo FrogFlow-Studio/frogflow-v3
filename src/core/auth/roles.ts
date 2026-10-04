@@ -59,6 +59,9 @@ export type AdminLogin = {
   name: string | null;
 };
 
+/** Логин сотрудника: латиница, цифры, «.», «-», «_», от 3 до 40 символов. */
+export const STAFF_LOGIN_RE = /^[a-z0-9][a-z0-9_.-]{2,39}$/;
+
 export const normalizeLogin = (u: string) => u.trim().toLowerCase();
 
 /** Кто входит под этим логином: владелец магазина или один из его пользователей. */

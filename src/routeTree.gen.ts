@@ -19,6 +19,7 @@ import { Route as SitemapPagesDotxmlRouteImport } from './routes/sitemap-pages[.
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as AdminAuthedRouteImport } from './routes/admin._authed'
+import { Route as AdminInviteRouteImport } from './routes/admin.invite'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminTgLoginRouteImport } from './routes/admin.tg-login'
 import { Route as ApiClientErrorRouteImport } from './routes/api/client-error'
@@ -187,6 +188,11 @@ const StatusRoute = StatusRouteImport.update({
 } as any)
 const AdminAuthedRoute = AdminAuthedRouteImport.update({
   id: '/_authed',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminInviteRoute = AdminInviteRouteImport.update({
+  id: '/invite',
+  path: '/invite',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
@@ -812,6 +818,7 @@ export interface FileRoutesByFullPath {
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/status': typeof StatusRoute
+  '/admin/invite': typeof AdminInviteRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/tg-login': typeof AdminTgLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
@@ -941,6 +948,7 @@ export interface FileRoutesByTo {
   '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/status': typeof StatusRoute
+  '/admin/invite': typeof AdminInviteRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/tg-login': typeof AdminTgLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
@@ -1070,6 +1078,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/status': typeof StatusRoute
   '/admin/_authed': typeof AdminAuthedRouteWithChildren
+  '/admin/invite': typeof AdminInviteRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/tg-login': typeof AdminTgLoginRoute
   '/api/client-error': typeof ApiClientErrorRoute
@@ -1203,6 +1212,7 @@ export interface FileRouteTypes {
     | '/sitemap-pages.xml'
     | '/sitemap.xml'
     | '/status'
+    | '/admin/invite'
     | '/admin/login'
     | '/admin/tg-login'
     | '/api/client-error'
@@ -1332,6 +1342,7 @@ export interface FileRouteTypes {
     | '/sitemap-pages.xml'
     | '/sitemap.xml'
     | '/status'
+    | '/admin/invite'
     | '/admin/login'
     | '/admin/tg-login'
     | '/api/client-error'
@@ -1460,6 +1471,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/status'
     | '/admin/_authed'
+    | '/admin/invite'
     | '/admin/login'
     | '/admin/tg-login'
     | '/api/client-error'
@@ -1693,6 +1705,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/admin'
       preLoaderRoute: typeof AdminAuthedRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/invite': {
+      id: '/admin/invite'
+      path: '/invite'
+      fullPath: '/admin/invite'
+      preLoaderRoute: typeof AdminInviteRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/login': {
@@ -2657,6 +2676,7 @@ const AdminAuthedRouteWithChildren = AdminAuthedRoute._addFileChildren(
 
 interface AdminRouteChildren {
   AdminAuthedRoute: typeof AdminAuthedRouteWithChildren
+  AdminInviteRoute: typeof AdminInviteRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminTgLoginRoute: typeof AdminTgLoginRoute
   AdminPackingIdRoute: typeof AdminPackingIdRoute
@@ -2665,6 +2685,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAuthedRoute: AdminAuthedRouteWithChildren,
+  AdminInviteRoute: AdminInviteRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminTgLoginRoute: AdminTgLoginRoute,
   AdminPackingIdRoute: AdminPackingIdRoute,

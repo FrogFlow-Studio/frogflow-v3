@@ -1880,7 +1880,7 @@ export const myPlanFn = createServerFn({ method: "GET" }).handler(async () => {
   };
 });
 
-/** «История оплат» в «Ваш план»: платежи или счета подписки, постранично. Видит и бухгалтер. */
+/** «История оплат» в «Ваш план»: платежи или счета подписки, постранично. Видит и бухгалтер, менеджер — нет. */
 export const billingHistoryFn = createServerFn({ method: "GET" })
   .validator((d: unknown) =>
     z
@@ -1889,6 +1889,10 @@ export const billingHistoryFn = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     const { ctx } = await finance();
+    // Оплата тарифа — владельцу и бухгалтеру; менеджер и «просмотр» её не видят.
+    const role = await (await import("@/app/auth/guards.server")).adminRole();
+    if (role === "manager" || role === "viewer")
+      throw new UserError("err.auth.ownerOnly", "Это может изменить только владелец магазина.");
     const { billingHistory } = await import("./billing-history.server");
     return data.kind === "payments"
       ? {

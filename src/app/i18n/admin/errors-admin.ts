@@ -34,6 +34,7 @@ export const ru = {
   "err.admin.passwordRequired": "Для нового пользователя нужен пароль.",
   "err.admin.passwordShort": "Пароль — не короче 8 символов.",
   "err.admin.teamLimit": "Не больше 20 пользователей у магазина.",
+  "err.admin.inviteLimit": "Не больше 20 приглашений одновременно — отзовите лишние.",
   "err.notify.urgentTelegram":
     "Срочные события (заказ, сбой выдачи, жалоба) нельзя отключить в Telegram: они всегда приходят туда, почта — дополнительно.",
   "err.notify.checkTooOften": "Проверка только что запускалась — подождите несколько секунд.",
@@ -254,6 +255,7 @@ export const kk: SectionDict<typeof ru> = {
   "err.admin.passwordRequired": "Жаңа пайдаланушыға құпиясөз қажет.",
   "err.admin.passwordShort": "Құпиясөз кемінде 8 таңбадан тұруы керек.",
   "err.admin.teamLimit": "Бір дүкенде 20-дан артық пайдаланушы болмайды.",
+  "err.admin.inviteLimit": "Бір уақытта 20-дан артық шақыру болмайды — артығын кері қайтарыңыз.",
   "err.notify.urgentTelegram":
     "Шұғыл оқиғаларды (тапсырыс, беру іркілісі, шағым) Telegram-да өшіруге болмайды: олар әрқашан сонда келеді, пошта — қосымша.",
   "err.notify.checkTooOften": "Тексеру дәл қазір іске қосылды — бірнеше секунд күте тұрыңыз.",
@@ -471,6 +473,7 @@ export const en: SectionDict<typeof ru> = {
   "err.admin.passwordRequired": "A new user needs a password.",
   "err.admin.passwordShort": "The password must be at least 8 characters.",
   "err.admin.teamLimit": "A shop can have no more than 20 users.",
+  "err.admin.inviteLimit": "No more than 20 invites at once — revoke the extra ones.",
   "err.notify.urgentTelegram":
     "Urgent events (order, delivery failure, complaint) can't be turned off in Telegram: they always arrive there, email is in addition.",
   "err.notify.checkTooOften": "The check has just been run — wait a few seconds.",
@@ -691,6 +694,8 @@ export const uz: SectionDict<typeof ru> = {
   "err.admin.passwordRequired": "Yangi foydalanuvchi uchun parol kerak.",
   "err.admin.passwordShort": "Parol kamida 8 ta belgidan iborat boʻlishi kerak.",
   "err.admin.teamLimit": "Bitta doʻkonda 20 tadan ortiq foydalanuvchi boʻlmaydi.",
+  "err.admin.inviteLimit":
+    "Bir vaqtda 20 tadan ortiq taklif boʻlmaydi — ortiqchasini bekor qiling.",
   "err.notify.urgentTelegram":
     "Shoshilinch hodisalarni (buyurtma, topshirish xatosi, shikoyat) Telegram'da o'chirib bo'lmaydi: ular doim shu yerga keladi, pochta — qo'shimcha.",
   "err.notify.checkTooOften": "Tekshiruv hozirgina ishga tushirilgan — bir necha soniya kuting.",

@@ -20,6 +20,16 @@ const SAVED = {
     username: "owner",
     password_hash: "scrypt$a$b",
     users: [{ username: "kate", password_hash: "scrypt$c$d", role: "accountant" }],
+    invites: [
+      {
+        id: "i1",
+        hash: "abc",
+        role: "manager",
+        created_at: "2026-10-04T10:00:00.000Z",
+        expires_at: "2026-10-11T10:00:00.000Z",
+        by: "owner",
+      },
+    ],
   },
   // площадка (core/marketplace)
   marketplace: { listed: true, approved: true, category: "Торты", city: "Алматы" },
