@@ -183,11 +183,14 @@ export async function runReviewAsk(
     const id = Number(o.telegram_id);
     byBuyer.set(id, [...(byBuyer.get(id) ?? []), o]);
   }
-  const buyers = [...byBuyer.entries()].slice(0, REVIEW_ASK_BATCH);
+  // Потолок REVIEW_ASK_BATCH — на отправки, а не на первых покупателей списка: ждущие окна
+  // Instagram/WhatsApp не должны занимать проход у остальных.
+  const buyers = [...byBuyer.entries()];
   if (!buyers.length) return r;
   const cap = await loadMarketingCap(ctx);
 
   for (const [telegramId, orders] of buyers) {
+    if (r.sent + r.failed >= REVIEW_ASK_BATCH) break;
     const newest = orders.reduce((a, b) => (b.id > a.id ? b : a));
     const older = orders.filter((o) => o.id !== newest.id);
     const { data: row, error } = await ctx.db

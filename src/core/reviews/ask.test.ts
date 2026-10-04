@@ -270,6 +270,66 @@ describe("просьба об оценке: старые отметки", () => 
   });
 });
 
+describe("просьба об оценке: потолок — на отправки", () => {
+  it("60 покупателей Direct с закрытым окном не занимают проход у 20 покупателей Telegram", async () => {
+    const { ctx, db } = setup();
+    const igUsers: Row[] = [];
+    const orders: Row[] = [];
+    const items: Row[] = [];
+    for (let i = 0; i < 60; i++) {
+      const tg = -(100 + i);
+      igUsers.push({
+        user_key: `ig_${100 + i}`,
+        telegram_id: tg,
+        platform: "instagram",
+        opt_out: false,
+        state: { mode: "idle" },
+        zernio_conversation_id: `c${i}`,
+        zernio_account_id: "a",
+      });
+      orders.push({
+        id: 100 + i,
+        telegram_id: tg,
+        display_no: 100 + i,
+        order_no: 100 + i,
+        status: "delivered",
+        updated_at: ago(4),
+      });
+      items.push({ order_id: 100 + i, product_id: P1, name_snapshot: "Прописи" });
+    }
+    const tgUsers: Row[] = [];
+    for (let i = 0; i < 20; i++) {
+      const tg = 5000 + i;
+      tgUsers.push({
+        user_key: `tg_${tg}`,
+        telegram_id: tg,
+        platform: "telegram",
+        opt_out: false,
+        state: {},
+      });
+      orders.push({
+        id: 1000 + i,
+        telegram_id: tg,
+        display_no: 1000 + i,
+        order_no: 1000 + i,
+        status: "delivered",
+        updated_at: ago(4),
+      });
+      items.push({ order_id: 1000 + i, product_id: P1, name_snapshot: "Прописи" });
+    }
+    db.tables.bot_users = [...igUsers, ...tgUsers];
+    db.tables.blocked_users = [];
+    db.tables.orders = orders;
+    db.tables.order_items = items;
+    const a = collect();
+    const res = await runReviewAsk(ctx, a.send, NOW);
+    expect(res.sent).toBe(20);
+    expect(a.sent.every((x) => x.to.platform === "telegram")).toBe(true);
+    // Ждущие окна заказы остались открытыми: отметок на них нет.
+    expect(db.tables.app_settings).toHaveLength(20);
+  });
+});
+
 describe("просьба об оценке: Instagram и WhatsApp — только в окне 24 часа", () => {
   const inbound = (hoursAgo: number) => ({
     telegram_id: -4,
