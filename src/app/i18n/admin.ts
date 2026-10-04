@@ -39,6 +39,7 @@ import * as warehouse from "./admin/warehouse";
 import * as shop4Stock from "./admin/shop4-stock";
 import * as shop18Bundles from "./admin/shop18-bundles";
 import * as community from "./admin/community";
+import * as communityDm from "./admin/community-dm";
 import * as physical from "./admin/physical";
 import * as refund from "./admin/refund";
 import * as igImport from "./admin/ig-import";
@@ -475,6 +476,7 @@ const ru = {
   ...shop4Stock.ru,
   ...shop18Bundles.ru,
   ...community.ru,
+  ...communityDm.ru,
   ...physical.ru,
   ...refund.ru,
   ...igImport.ru,
@@ -1608,6 +1610,7 @@ const kk: Dict = {
   ...shop4Stock.kk,
   ...shop18Bundles.kk,
   ...community.kk,
+  ...communityDm.kk,
   ...physical.kk,
   ...refund.kk,
   ...igImport.kk,
@@ -1672,6 +1675,7 @@ const en: Dict = {
   ...shop4Stock.en,
   ...shop18Bundles.en,
   ...community.en,
+  ...communityDm.en,
   ...physical.en,
   ...refund.en,
   ...igImport.en,
@@ -1736,6 +1740,7 @@ const uz: Dict = {
   ...shop4Stock.uz,
   ...shop18Bundles.uz,
   ...community.uz,
+  ...communityDm.uz,
   ...physical.uz,
   ...refund.uz,
   ...igImport.uz,

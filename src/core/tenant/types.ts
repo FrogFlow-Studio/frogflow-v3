@@ -140,6 +140,10 @@ export type TenantSettings = {
     city?: string;
     about?: string;
     links?: string[];
+    /** Не принимать личные сообщения от авторов (С3). */
+    dm_off?: boolean;
+    /** Авторы (bot_id), которым адресат запретил писать ему лично (С3). */
+    dm_blocked?: string[];
   };
   /** Решение оператора по сообществу: скрыт из списка авторов или заблокирован. */
   community_mod?: { status?: "hidden" | "blocked"; reason?: string; at?: string };

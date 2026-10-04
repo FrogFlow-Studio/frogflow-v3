@@ -963,6 +963,51 @@ export type Database = {
       };
       // Заведена MIGRATION-48. Как и другие ручные добавления в этом файле:
       // scripts/sync-db-types.mjs новые объекты сюда не приносит.
+      community_dm: {
+        Row: {
+          id: string;
+          from_bot_id: string;
+          to_bot_id: string;
+          body: string;
+          read_at: string | null;
+          notified_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          from_bot_id: string;
+          to_bot_id: string;
+          body: string;
+          read_at?: string | null;
+          notified_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          from_bot_id?: string;
+          to_bot_id?: string;
+          body?: string;
+          read_at?: string | null;
+          notified_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "community_dm_from_bot_id_fkey";
+            columns: ["from_bot_id"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "community_dm_to_bot_id_fkey";
+            columns: ["to_bot_id"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       community_posts: {
         Row: {
           id: string;

@@ -8,6 +8,8 @@ import {
   reportCommunityFn,
 } from "@/app/admin/community.functions";
 import { adminT, intlLocale, type AdminKey } from "@/app/i18n/admin";
+import { CommunityDm } from "@/app/admin/community-dm";
+import { communityUnreadFn } from "@/app/admin/community-dm.functions";
 import { Card, Empty, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { canEdit } from "@/core/auth/roles";
 
@@ -36,6 +38,14 @@ function CommunityPage() {
   const [state, setState] = useState<"loading" | "soon" | "ready">("loading");
   const [openId, setOpenId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
+  const [view, setView] = useState<"topics" | "dm">("topics");
+  // Личные сообщения: вкладки нет, пока таблицы в базе нет (миграция 19-3).
+  const [dm, setDm] = useState<{ ready: boolean; unread: number }>({ ready: false, unread: 0 });
+  useEffect(() => {
+    void communityUnreadFn()
+      .then((r) => setDm(r.soon ? { ready: false, unread: 0 } : { ready: true, unread: r.unread }))
+      .catch(() => {});
+  }, []);
 
   const load = useAction(
     async (q: { section: Section; topic: Topic | null; search: string; offset: number }) => {
@@ -64,8 +74,26 @@ function CommunityPage() {
     <>
       <PageTitle title={t("community.title")} />
       <p className="mb-3 text-sm text-muted">{t("community.rules")}</p>
-      {state === "soon" && <Empty>{t("community.soon")}</Empty>}
-      {state !== "soon" && openId ? (
+      {dm.ready && (
+        <div className="mb-3 flex gap-2">
+          <button
+            className={view === "topics" ? "btn-primary" : "btn-secondary"}
+            onClick={() => setView("topics")}
+          >
+            {t("community.title")}
+          </button>
+          <button
+            className={view === "dm" ? "btn-primary" : "btn-secondary"}
+            onClick={() => setView("dm")}
+          >
+            {t("community.dm.tab")}
+            {dm.unread > 0 ? ` (${dm.unread})` : ""}
+          </button>
+        </div>
+      )}
+      {dm.ready && view === "dm" && <CommunityDm canWrite={canWrite} loc={loc} t={t} />}
+      {view === "topics" && state === "soon" && <Empty>{t("community.soon")}</Empty>}
+      {view === "topics" && state !== "soon" && openId ? (
         <ThreadView
           id={openId}
           canWrite={canWrite}
@@ -77,6 +105,7 @@ function CommunityPage() {
           }}
         />
       ) : (
+        view === "topics" &&
         state !== "soon" && (
           <>
             <div className="mb-3 flex flex-wrap gap-2">
