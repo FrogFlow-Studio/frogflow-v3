@@ -50,26 +50,28 @@ function RevenuePage() {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
         <Card title="MRR по планам">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>План</th>
-                <th className="text-right">Клиентов</th>
-                <th className="text-right">MRR</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PLAN_TIERS.map((t) => (
-                <tr key={t}>
-                  <td>{TIER_TITLES[t]}</td>
-                  <td className="text-right tabular-nums">{s.byTier[t].clients}</td>
-                  <td className="text-right tabular-nums">{tg(s.byTier[t].mrr)}</td>
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>План</th>
+                  <th className="text-right">Клиентов</th>
+                  <th className="text-right">MRR</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {PLAN_TIERS.map((t) => (
+                  <tr key={t}>
+                    <td>{TIER_TITLES[t]}</td>
+                    <td className="text-right tabular-nums">{s.byTier[t].clients}</td>
+                    <td className="text-right tabular-nums">{tg(s.byTier[t].mrr)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {s.noPlan > 0 && (
             <p className="mt-2 text-xs text-muted">
               Без плана с ценой (нет плана или индивидуальные условия): {s.noPlan}.
@@ -77,24 +79,26 @@ function RevenuePage() {
           )}
         </Card>
         <Card title="Поступления по месяцам">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Месяц</th>
-                <th className="text-right">Платежей</th>
-                <th className="text-right">Сумма</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...cash].reverse().map((r) => (
-                <tr key={r.month}>
-                  <td>{monthTitle(r.month)}</td>
-                  <td className="text-right tabular-nums">{r.count}</td>
-                  <td className="text-right tabular-nums">{tg(r.amount)}</td>
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Месяц</th>
+                  <th className="text-right">Платежей</th>
+                  <th className="text-right">Сумма</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {[...cash].reverse().map((r) => (
+                  <tr key={r.month}>
+                    <td>{monthTitle(r.month)}</td>
+                    <td className="text-right tabular-nums">{r.count}</td>
+                    <td className="text-right tabular-nums">{tg(r.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <p className="mt-2 text-xs text-muted">
             Подписка, каналы и подключение, в тенге. Нулевые платежи пробного периода не считаются.
           </p>
@@ -105,40 +109,42 @@ function RevenuePage() {
         {clients.length === 0 ? (
           <Empty>Ни у одного клиента пока нет плана.</Empty>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Клиент</th>
-                <th>План</th>
-                <th>Состояние</th>
-                <th>Оплачено до</th>
-                <th className="text-right">В месяц</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.map((c) => (
-                <tr key={c.botId}>
-                  <td>
-                    <Link
-                      to="/operator/clients/$botId"
-                      params={{ botId: c.botId }}
-                      className="font-medium hover:underline"
-                    >
-                      {c.name}
-                    </Link>
-                  </td>
-                  <td>{c.plan}</td>
-                  <td>
-                    <Badge tone={STATE[c.state].tone}>{STATE[c.state].label}</Badge>
-                  </td>
-                  <td className="whitespace-nowrap text-muted">
-                    {day(c.state === "trial" ? c.trialUntil : c.expiresAt)}
-                  </td>
-                  <td className="text-right tabular-nums">{c.monthly ? tg(c.monthly) : "—"}</td>
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Клиент</th>
+                  <th>План</th>
+                  <th>Состояние</th>
+                  <th>Оплачено до</th>
+                  <th className="text-right">В месяц</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {clients.map((c) => (
+                  <tr key={c.botId}>
+                    <td>
+                      <Link
+                        to="/operator/clients/$botId"
+                        params={{ botId: c.botId }}
+                        className="font-medium hover:underline"
+                      >
+                        {c.name}
+                      </Link>
+                    </td>
+                    <td>{c.plan}</td>
+                    <td>
+                      <Badge tone={STATE[c.state].tone}>{STATE[c.state].label}</Badge>
+                    </td>
+                    <td className="whitespace-nowrap text-muted">
+                      {day(c.state === "trial" ? c.trialUntil : c.expiresAt)}
+                    </td>
+                    <td className="text-right tabular-nums">{c.monthly ? tg(c.monthly) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
     </>
