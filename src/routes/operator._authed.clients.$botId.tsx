@@ -3,6 +3,7 @@ import { useState } from "react";
 import { shopEventView } from "@/app/admin/audit-labels";
 import { archiveClientFn, getClientFn, setStatusFn } from "@/app/operator/operator.functions";
 import { Card, ErrorBox, PageTitle, Stat, useAction } from "@/app/ui";
+import { DiagnoseCard } from "@/app/operator/client/diagnose";
 import { MigrationCard, TelegramCard } from "@/app/operator/client/telegram";
 import { PlanCard } from "@/app/operator/client/plan";
 import { ModulesCard, AdminAccessCard, AddressingCard } from "@/app/operator/client/access";
@@ -148,6 +149,7 @@ function ClientPage() {
 
       {tab === "channels" && (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
+          <DiagnoseCard c={c} />
           <TelegramCard c={c} webhook={webhook} onDone={refresh} />
           <AddressingCard c={c} onDone={refresh} />
           <ZernioCard c={c} onDone={refresh} />
