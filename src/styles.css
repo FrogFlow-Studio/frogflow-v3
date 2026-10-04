@@ -52,6 +52,8 @@
   --line: oklch(30% 0.012 140);
   --accent: oklch(72% 0.16 150);
   --accent-fg: oklch(15% 0.02 150);
+  /* Красный текст на тёмном фоне: светлее, чтобы держать контраст ≥ 4,5:1. */
+  --danger: oklch(74% 0.17 25);
   --chart-1: #3987e5;
   --chart-2: #d95926;
 }
@@ -135,4 +137,18 @@ body {
   --surface-2: oklch(25% 0.014 255);
   --line: oklch(31% 0.012 255);
   --accent: oklch(72% 0.11 255);
+}
+
+/* Телефон: мелкий текст панелей (подсказки, подписи, бейджи, шапки таблиц) не мельче 14 px. */
+.dark .btn-danger {
+  color: oklch(15% 0.02 25);
+}
+@media (max-width: 767px) {
+  main .text-xs,
+  main .label,
+  main .badge,
+  main .table th {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
 }

@@ -98,7 +98,7 @@ export function AdminBottomBar({ nav, t }: { nav: AdminNav; t: T }) {
         <Badge tone={item.badge.tone}>{item.badge.value}</Badge>
       </span>
     );
-  const tab = "relative flex flex-1 flex-col items-center justify-center px-1 text-xs";
+  const tab = "relative flex flex-1 flex-col items-center justify-center px-1 text-sm";
   return (
     <>
       {more && (

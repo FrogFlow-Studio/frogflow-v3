@@ -45,6 +45,7 @@ import { seedShop18Requests } from "./seed/shop18-s-requests.ts";
 import { seedShop19AOrders } from "./seed/shop19-a-orders.ts";
 import { seedShop19P5Wizard } from "./seed/shop19-p5-wizard.ts";
 import { seedShop19AEmpty } from "./seed/shop19-a-empty.ts";
+import { seedShop19AA11y } from "./seed/shop19-a-a11y.ts";
 import { seedShop19VCollections } from "./seed/shop19-v-collections.ts";
 import { seedShop19ANotify } from "./seed/shop19-a-notify.ts";
 
@@ -92,6 +93,7 @@ export function seedDb(): StubDb {
   seedShop19AOrders(db, now);
   seedShop19P5Wizard(db, now);
   seedShop19AEmpty(db, now);
+  seedShop19AA11y(db, now);
   seedShop19VCollections(db, now);
   seedShop19ANotify(db, now);
   return db;
