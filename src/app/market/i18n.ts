@@ -35,6 +35,18 @@ const ru = {
   "items.open": "Открыть магазин",
   "items.meta": "Поиск товаров — FrogFlow",
   home: "На главную",
+  "tab.orders": "Мои заказы",
+  "acc.title": "Мои заказы во всех магазинах",
+  "acc.soon":
+    "Общий вход на площадке скоро заработает. Заказы пока открываются на витрине каждого магазина.",
+  "acc.signin":
+    "Войдите через любой магазин площадки: по коду из бота или через Telegram. После этого здесь появятся ваши заказы изо всех магазинов.",
+  "acc.noorders": "Заказов в этом магазине пока нет.",
+  "acc.more": "И ещё магазинов: {n}.",
+  "acc.order": "Заказ № {no}",
+  "acc.logout": "Выйти",
+  "acc.hint": "Баллы и адреса остаются в магазине, где вы их получили.",
+  "acc.meta": "Мои заказы — FrogFlow",
   rules: "Правила площадки",
 } as const;
 
@@ -73,6 +85,18 @@ const kk: Record<Key, string> = {
   "items.open": "Дүкенді ашу",
   "items.meta": "Тауар іздеу — FrogFlow",
   home: "Басты бетке",
+  "tab.orders": "Тапсырыстарым",
+  "acc.title": "Барлық дүкендегі тапсырыстарым",
+  "acc.soon":
+    "Алаңдағы ортақ кіру жақында іске қосылады. Әзірге тапсырыстар әр дүкеннің витринасында ашылады.",
+  "acc.signin":
+    "Алаңның кез келген дүкені арқылы кіріңіз: боттан келген код немесе Telegram арқылы. Содан кейін мұнда барлық дүкендегі тапсырыстарыңыз шығады.",
+  "acc.noorders": "Бұл дүкенде әзірге тапсырыс жоқ.",
+  "acc.more": "Тағы дүкендер: {n}.",
+  "acc.order": "№ {no} тапсырыс",
+  "acc.logout": "Шығу",
+  "acc.hint": "Баллдар мен мекенжайлар оларды алған дүкенде қалады.",
+  "acc.meta": "Тапсырыстарым — FrogFlow",
   rules: "Алаң ережелері",
 };
 
@@ -109,6 +133,18 @@ const en: Record<Key, string> = {
   "items.open": "Open shop",
   "items.meta": "Product search — FrogFlow",
   home: "Home",
+  "tab.orders": "My orders",
+  "acc.title": "My orders in all shops",
+  "acc.soon":
+    "Shared sign-in on the marketplace is coming soon. For now, orders open on each shop's storefront.",
+  "acc.signin":
+    "Sign in through any shop on the marketplace: with a code from the bot or through Telegram. Your orders from all shops will then appear here.",
+  "acc.noorders": "No orders in this shop yet.",
+  "acc.more": "And {n} more shops.",
+  "acc.order": "Order #{no}",
+  "acc.logout": "Sign out",
+  "acc.hint": "Points and addresses stay in the shop where you got them.",
+  "acc.meta": "My orders — FrogFlow",
   rules: "Marketplace rules",
 };
 
@@ -145,6 +181,18 @@ const uz: Record<Key, string> = {
   "items.open": "Do‘konni ochish",
   "items.meta": "Mahsulot qidirish — FrogFlow",
   home: "Bosh sahifa",
+  "tab.orders": "Buyurtmalarim",
+  "acc.title": "Barcha do‘konlardagi buyurtmalarim",
+  "acc.soon":
+    "Maydonda umumiy kirish tez orada ishga tushadi. Hozircha buyurtmalar har bir do‘kon vitrinasida ochiladi.",
+  "acc.signin":
+    "Maydonning istalgan do‘koni orqali kiring: botdan kelgan kod yoki Telegram orqali. Shundan keyin bu yerda barcha do‘konlardagi buyurtmalaringiz chiqadi.",
+  "acc.noorders": "Bu do‘konda hozircha buyurtma yo‘q.",
+  "acc.more": "Yana do‘konlar: {n}.",
+  "acc.order": "№ {no} buyurtma",
+  "acc.logout": "Chiqish",
+  "acc.hint": "Ballar va manzillar ularni olgan do‘konda qoladi.",
+  "acc.meta": "Buyurtmalarim — FrogFlow",
   rules: "Maydon qoidalari",
 };
 

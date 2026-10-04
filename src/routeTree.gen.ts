@@ -29,6 +29,7 @@ import { Route as AuthorSlugRouteImport } from './routes/author.$slug'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as ForNicheRouteImport } from './routes/for.$niche'
 import { Route as MarketIndexRouteImport } from './routes/market.index'
+import { Route as MarketAccountRouteImport } from './routes/market.account'
 import { Route as MarketOpenRouteImport } from './routes/market.open'
 import { Route as MarketReportRouteImport } from './routes/market.report'
 import { Route as MarketRulesRouteImport } from './routes/market.rules'
@@ -248,6 +249,11 @@ const ForNicheRoute = ForNicheRouteImport.update({
 const MarketIndexRoute = MarketIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => MarketRoute,
+} as any)
+const MarketAccountRoute = MarketAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => MarketRoute,
 } as any)
 const MarketOpenRoute = MarketOpenRouteImport.update({
@@ -889,6 +895,7 @@ export interface FileRoutesByFullPath {
   '/author/$slug': typeof AuthorSlugRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/for/$niche': typeof ForNicheRoute
+  '/market/account': typeof MarketAccountRoute
   '/market/open': typeof MarketOpenRoute
   '/market/report': typeof MarketReportRoute
   '/market/rules': typeof MarketRulesRoute
@@ -1029,6 +1036,7 @@ export interface FileRoutesByTo {
   '/author/$slug': typeof AuthorSlugRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/for/$niche': typeof ForNicheRoute
+  '/market/account': typeof MarketAccountRoute
   '/market/open': typeof MarketOpenRoute
   '/market/report': typeof MarketReportRoute
   '/market/rules': typeof MarketRulesRoute
@@ -1169,6 +1177,7 @@ export interface FileRoutesById {
   '/author/$slug': typeof AuthorSlugRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/for/$niche': typeof ForNicheRoute
+  '/market/account': typeof MarketAccountRoute
   '/market/open': typeof MarketOpenRoute
   '/market/report': typeof MarketReportRoute
   '/market/rules': typeof MarketRulesRoute
@@ -1313,6 +1322,7 @@ export interface FileRouteTypes {
     | '/author/$slug'
     | '/blog/$slug'
     | '/for/$niche'
+    | '/market/account'
     | '/market/open'
     | '/market/report'
     | '/market/rules'
@@ -1453,6 +1463,7 @@ export interface FileRouteTypes {
     | '/author/$slug'
     | '/blog/$slug'
     | '/for/$niche'
+    | '/market/account'
     | '/market/open'
     | '/market/report'
     | '/market/rules'
@@ -1592,6 +1603,7 @@ export interface FileRouteTypes {
     | '/author/$slug'
     | '/blog/$slug'
     | '/for/$niche'
+    | '/market/account'
     | '/market/open'
     | '/market/report'
     | '/market/rules'
@@ -1899,6 +1911,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/market/'
       preLoaderRoute: typeof MarketIndexRouteImport
+      parentRoute: typeof MarketRoute
+    }
+    '/market/account': {
+      id: '/market/account'
+      path: '/account'
+      fullPath: '/market/account'
+      preLoaderRoute: typeof MarketAccountRouteImport
       parentRoute: typeof MarketRoute
     }
     '/market/open': {
@@ -2893,6 +2912,7 @@ const AdminRouteChildren: AdminRouteChildren = {
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface MarketRouteChildren {
+  MarketAccountRoute: typeof MarketAccountRoute
   MarketOpenRoute: typeof MarketOpenRoute
   MarketReportRoute: typeof MarketReportRoute
   MarketRulesRoute: typeof MarketRulesRoute
@@ -2901,6 +2921,7 @@ interface MarketRouteChildren {
 }
 
 const MarketRouteChildren: MarketRouteChildren = {
+  MarketAccountRoute: MarketAccountRoute,
   MarketOpenRoute: MarketOpenRoute,
   MarketReportRoute: MarketReportRoute,
   MarketRulesRoute: MarketRulesRoute,

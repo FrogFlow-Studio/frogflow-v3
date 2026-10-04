@@ -69,4 +69,7 @@ export function seedShop19VMarket(db: StubDb, now: string) {
     item(S.rose, I.rose, 12000),
     item(S.hidden, I.hiddenHoney, 8000),
   ]);
+  // Таблицы аккаунта покупателя есть (миграция 19-17 применена), в них пока никого.
+  add(db, "marketplace_buyers", []);
+  add(db, "marketplace_buyer_links", []);
 }

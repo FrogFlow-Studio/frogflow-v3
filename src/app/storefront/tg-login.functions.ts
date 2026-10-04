@@ -98,6 +98,9 @@ export const tgLoginFn = createServerFn({ method: "POST" })
     });
     const { startBuyerSession } = await import("./tg-login.server");
     startBuyerSession(ctx, v.user.id);
+    // Аккаунт площадки (В17): связываем профиль, если таблицы включены; вход в магазин от этого не зависит.
+    const { rememberMarketBuyer } = await import("@/app/market/buyer.server");
+    await rememberMarketBuyer(ctx, v.user.id, "telegram_login");
     return { name: await buyerName(ctx, v.user.id) };
   });
 

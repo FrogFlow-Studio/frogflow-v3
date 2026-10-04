@@ -74,6 +74,9 @@ function MarketPage() {
         <Link to="/market/search" search={lang ? { lang } : {}} className="underline">
           {t("tab.items")}
         </Link>
+        <Link to="/market/account" search={lang ? { lang } : {}} className="underline">
+          {t("tab.orders")}
+        </Link>
       </nav>
       <h1 className="mt-4 text-2xl font-semibold">{t("title")}</h1>
       {!data.ready ? (
