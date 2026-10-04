@@ -330,6 +330,35 @@ describe("просьба об оценке: потолок — на отправ
   });
 });
 
+describe("просьба об оценке: правка старого заказа", () => {
+  it("заказ двухмесячной давности после заметки продавца и чистки отметок — просьбы нет", async () => {
+    const { ctx, db } = setup();
+    // Выдан и просился 60 дней назад (отметку уже удалила чистка), заметка — 4 дня назад.
+    db.tables.orders = [
+      {
+        id: 20,
+        telegram_id: 1,
+        display_no: 20,
+        order_no: 20,
+        status: "delivered",
+        created_at: ago(62),
+        updated_at: ago(4),
+      },
+    ];
+    db.tables.order_items = [{ order_id: 20, product_id: P1, name_snapshot: "Прописи" }];
+    const a = collect();
+    await runReviewAsk(ctx, a.send, NOW);
+    expect(a.sent).toHaveLength(0);
+    expect(db.tables.app_settings).toHaveLength(0);
+
+    // Свежий заказ с тем же сроком выдачи — просим как обычно.
+    (db.tables.orders![0] as Row).created_at = ago(6);
+    const b = collect();
+    await runReviewAsk(ctx, b.send, NOW);
+    expect(b.sent).toHaveLength(1);
+  });
+});
+
 describe("просьба об оценке: Instagram и WhatsApp — только в окне 24 часа", () => {
   const inbound = (hoursAgo: number) => ({
     telegram_id: -4,

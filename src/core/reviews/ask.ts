@@ -76,6 +76,7 @@ type DueOrder = {
   display_no: number | null;
   order_no: number;
   updated_at: string;
+  created_at?: string | null;
 };
 
 /** Занять заказ: вставка новой отметки. false — заказ уже занят другим запуском. */
@@ -153,7 +154,7 @@ export async function runReviewAsk(
     (from, to) =>
       ctx.db
         .from("orders")
-        .select("id, telegram_id, display_no, order_no, updated_at")
+        .select("id, telegram_id, display_no, order_no, updated_at, created_at")
         .eq("status", "delivered")
         .gte("updated_at", lateEdge)
         .lte("updated_at", dueEdge)
@@ -163,6 +164,18 @@ export async function runReviewAsk(
     (rows) => void due.push(...rows),
     200,
   );
+  if (!due.length) return r;
+
+  // Старый заказ, который только что правили (заметка продавца двигает updated_at), в окно
+  // не берём: его отметка могла быть уже удалена чисткой, и просьба ушла бы второй раз.
+  // Граница — та же, после которой чистка удаляет отметки.
+  const createdEdge = new Date(
+    now.getTime() - (days + REVIEW_ASK_LATE_DAYS + REVIEW_ASK_MARK_KEEP_DAYS) * DAY,
+  ).toISOString();
+  for (let i = due.length - 1; i >= 0; i--) {
+    const created = due[i]!.created_at;
+    if (created && created < createdEdge) due.splice(i, 1);
+  }
   if (!due.length) return r;
 
   // Заказы, по которым просьба уже была (или закрыта), отбрасываем.
