@@ -6,7 +6,7 @@ import {
   withoutDemoMarking,
   type ConsultantProduct,
 } from "./catalog";
-import { compileSynonyms, parseSynonymGroups } from "./synonyms";
+import { parseSynonymGroups } from "./synonyms";
 
 /**
  * Прайс консультанта BOVI из базы (перенос чтения src/lib/consultant/catalog.ts
@@ -120,9 +120,4 @@ export async function saveSynonyms(ctx: TenantContext, text: string): Promise<st
   await setSetting(ctx, SYNONYMS_KEY, groups.map((g) => g.join(", ")).join("\n"));
   invalidatePricelist(ctx);
   return groups;
-}
-
-/** Синонимы, собранные один раз на снимок: поиск зовёт withSynonyms с ними. */
-export function compiledSynonyms(snap: Pick<PricelistSnapshot, "synonyms">) {
-  return compileSynonyms(snap.synonyms);
 }

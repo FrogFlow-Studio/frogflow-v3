@@ -81,9 +81,3 @@ export function tenantDb(botId: string): Db {
   tenantClients.set(botId, entry);
   return entry.db;
 }
-
-/** Только для тестов. */
-export function resetDbClients(): void {
-  service = undefined;
-  tenantClients.clear();
-}

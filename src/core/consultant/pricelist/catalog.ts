@@ -495,65 +495,6 @@ export function searchTokens(text: string): string[] {
   });
 }
 
-/** В запросе есть размер, цвет или слово из прайса — можно ответить без Claude. */
-const CATEGORY_STEMS = new Set([
-  "одеяло",
-  "подушка",
-  "полотенце",
-  "плед",
-  "матрас",
-  "постельное",
-  "халат",
-  "тарелка",
-  "кружка",
-]);
-
-const SIZE_WORDS = /евро|семей|двуспальн|полутор|1\.5|полутораспальн/;
-
-/** «Интересует одеяло» без 150×200 — менеджер сначала даёт размеры, не одну SKU. */
-export function isCategoryWithoutSize(text: string): boolean {
-  if (/\bне\s+/i.test(text)) return false;
-  if (/\d+\s*[xх×*∗]\s*\d+/i.test(text)) return false;
-  const tokens = searchTokens(text);
-  if (tokens.length === 0) return false;
-  if (tokens.some((t) => SIZE_WORDS.test(t))) return false;
-  return tokens.every((t) => CATEGORY_STEMS.has(t));
-}
-
-export function categoryQuery(text: string): string | null {
-  const cats = searchTokens(text).filter((t) => CATEGORY_STEMS.has(t));
-  return cats.length ? cats.join(" ") : null;
-}
-
-export function sizeOptions(
-  catalog: ConsultantProduct[],
-  query: string,
-  limit = 5,
-): ConsultantProduct[] {
-  const tokens = searchTokens(query);
-  const inStock = catalog.filter((p) => {
-    if (!p.stock) return false;
-    const hay = haystackOf([p.name, p.category, p.size, p.colors.join(" ")]);
-    return tokens.length > 0 && tokens.every((t) => hay.includes(t));
-  });
-  const bySize = new Map<string, ConsultantProduct>();
-  for (const p of inStock) {
-    const key = foldText(p.size) || p.id;
-    if (!bySize.has(key)) bySize.set(key, p);
-  }
-  return [...bySize.values()].slice(0, limit);
-}
-
-export function queryHasCatalogSignal(text: string, catalog: ConsultantProduct[]): boolean {
-  if (/\d+\s*[xх×]\s*\d+/i.test(text)) return true;
-  const tokens = searchTokens(text);
-  if (tokens.length === 0) return false;
-  return catalog.some((p) => {
-    const hay = haystackOf([p.name, p.category, p.size, p.colors.join(" ")]);
-    return tokens.some((t) => hay.includes(t));
-  });
-}
-
 /**
  * Разнообразит выборку: гарантирует, что каждый доступный размер и модель
  * попадают в топ результатов, а не вытесняются несколькими расцветками одного размера.
@@ -725,56 +666,6 @@ export function suggestForBudget(
   }
   if (picks.length === 1 && under.length > 1) picks.push(under.find((p) => p.id !== picks[0]!.id)!);
   return picks.filter(Boolean);
-}
-
-/** Набор 2–3 позиций, сумма как можно ближе к бюджету, но не выше. */
-export function packBasket(
-  catalog: ConsultantProduct[],
-  budgetKzt: number,
-  maxItems = 3,
-): { items: ConsultantProduct[]; total: number } {
-  const under = productsUnderBudget(catalog, budgetKzt);
-  if (under.length === 0) return { items: [], total: 0 };
-
-  const byCat = new Map<string, ConsultantProduct[]>();
-  for (const p of under) {
-    const cat = foldText(p.category || p.name);
-    const list = byCat.get(cat) ?? [];
-    if (list.length < 3) list.push(p);
-    byCat.set(cat, list);
-  }
-  const cheap = [...under].sort((a, b) => a.price_kzt - b.price_kzt).slice(0, 10);
-  const seen = new Set<string>();
-  const pool: ConsultantProduct[] = [];
-  for (const p of [...byCat.values()].flat().concat(cheap)) {
-    if (seen.has(p.id)) continue;
-    seen.add(p.id);
-    pool.push(p);
-  }
-
-  let best: { items: ConsultantProduct[]; total: number } = { items: [], total: 0 };
-  const consider = (items: ConsultantProduct[]) => {
-    if (items.length === 0 || items.length > maxItems) return;
-    const total = items.reduce((sum, p) => sum + p.price_kzt, 0);
-    if (total > budgetKzt) return;
-    if (total > best.total || (total === best.total && items.length > best.items.length)) {
-      best = { items, total };
-    }
-  };
-
-  for (const a of pool) consider([a]);
-  for (let i = 0; i < pool.length; i++) {
-    for (let j = i + 1; j < pool.length; j++) consider([pool[i]!, pool[j]!]);
-  }
-  if (maxItems >= 3) {
-    const n = Math.min(pool.length, 18);
-    for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        for (let k = j + 1; k < n; k++) consider([pool[i]!, pool[j]!, pool[k]!]);
-      }
-    }
-  }
-  return best;
 }
 
 /** Другие карточки той же категории, чем уже показали. */

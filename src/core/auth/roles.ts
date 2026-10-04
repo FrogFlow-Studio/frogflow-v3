@@ -27,10 +27,6 @@ export const CONTACTS_MIN_ROLE = "manager" as const;
 
 const RANK: Record<AdminRole, number> = { accountant: 0, viewer: 0, manager: 1, owner: 2 };
 
-export function isAdminRole(v: unknown): v is AdminRole {
-  return typeof v === "string" && (ADMIN_ROLES as readonly string[]).includes(v);
-}
-
 /** Достаточно ли роли для действия, требующего `min`. */
 export function roleAllows(role: AdminRole | undefined, min: AdminRole): boolean {
   return RANK[role ?? "owner"] >= RANK[min];

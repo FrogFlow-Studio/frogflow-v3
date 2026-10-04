@@ -368,11 +368,6 @@ export async function recordRelayedReply(ctx: TenantContext, customer: Customer,
   });
 }
 
-/** До какого времени консультант молчит в диалоге; null — не молчит. */
-export function pausedUntil(customer: Customer, now = Date.now()): string | null {
-  return isPaused(customer, now) ? (stateOf(customer).paused_until ?? null) : null;
-}
-
 export async function resumeConsultant(ctx: TenantContext, customer: Customer) {
   return saveState(ctx, customer, {
     paused_until: undefined,

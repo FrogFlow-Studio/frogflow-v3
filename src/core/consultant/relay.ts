@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import type { Customer } from "@/core/customers/customers";
 import { getSetting, setSetting } from "@/core/settings/settings";
 
 /**
@@ -72,12 +71,4 @@ export async function resolveHandoffRef(
 ): Promise<string | null> {
   const r = parseRefs(await getSetting(ctx, REFS_KEY)).find((x) => x.t === token);
   return r && now - r.at < REF_TTL_MS ? r.k : null;
-}
-
-/** Пересланные менеджером тексты (последние 10) — «свои» для проверки менеджера в чате. */
-export function relayedTexts(customer: Pick<Customer, "state">): string[] {
-  const c = customer.state.consultant;
-  const list =
-    c && typeof c === "object" && !Array.isArray(c) ? (c as { relayed?: unknown }).relayed : null;
-  return Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : [];
 }

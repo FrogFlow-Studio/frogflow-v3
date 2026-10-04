@@ -414,14 +414,6 @@ export function isConsultantVertical(key: VerticalKey): boolean {
   return VERTICALS[key].mode === "consultant";
 }
 
-export function isBoviConsultantVertical(key: VerticalKey): boolean {
-  return key === "consultant";
-}
-
-export function isUniversalConsultantVertical(key: VerticalKey): boolean {
-  return key === "consultant_universal";
-}
-
 export function isFlowersVertical(key: VerticalKey): boolean {
   return key === "flowers";
 }

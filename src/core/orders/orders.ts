@@ -7,7 +7,7 @@ import { protectMaterials } from "@/core/delivery/watermark.server";
 import { recordOrderEvent } from "./events";
 import type { Database } from "@/core/db-types";
 import { serviceDb } from "@/core/db/client.server";
-import { isSafeStorageKey, isTenantStorageKey } from "@/core/storage/keys";
+import { isSafeStorageKey } from "@/core/storage/keys";
 import type { Customer } from "@/core/customers/customers";
 import { setState } from "@/core/customers/customers";
 import { listCart, clearCart, priceCart, type CartItem } from "@/core/cart/cart";
@@ -1531,11 +1531,6 @@ export async function signedFileUrl(
     .createSignedUrl(path, ttlSec);
   if (error || !data?.signedUrl) return null;
   return downloadName ? withDownloadName(data.signedUrl, downloadName) : data.signedUrl;
-}
-
-/** Файл из общего бакета принадлежит арендатору, только если лежит под его префиксом. */
-export function isOwnStorageKey(ctx: TenantContext, key: string): boolean {
-  return isTenantStorageKey(ctx.tenant.id, key);
 }
 
 /**

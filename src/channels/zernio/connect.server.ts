@@ -3,7 +3,6 @@ import type { Tenant, ZernioAccountSnapshot } from "@/core/tenant/types";
 import {
   patchTenantSettings,
   patchZernioIfSyncedAt,
-  requireTenant,
   tenantDirectory,
 } from "@/core/tenant/resolve.server";
 import { foreignZernioAccounts, zernioProfileOwner } from "@/core/tenant/zernio-accounts";
@@ -160,10 +159,6 @@ export async function resyncAfterReconnect(tenant: Tenant, now = new Date()): Pr
     accounts: r.accounts,
     synced_at: now.toISOString(),
   });
-}
-
-export async function syncAccountsById(botId: string): Promise<SyncResult> {
-  return syncAccounts(await requireTenant({ by: "id", value: botId }));
 }
 
 export type V2WebhookState = {

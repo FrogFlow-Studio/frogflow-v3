@@ -3,7 +3,7 @@ import type { Locale } from "@/core/i18n/locale";
 import type { Json } from "@/core/db-types";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
-import { getSetting, setSetting, updateSettingAtomic } from "@/core/settings/settings";
+import { getSetting, updateSettingAtomic } from "@/core/settings/settings";
 import { minutesInTz, type NotifyKind, type NotifyPrefs } from "./prefs";
 
 /**
@@ -188,10 +188,6 @@ export function digestDue(
 
 export async function digestSentOn(ctx: TenantContext): Promise<string | null> {
   return getSetting(ctx, SENT_KEY);
-}
-
-export async function markDigestSent(ctx: TenantContext, today: string): Promise<void> {
-  await setSetting(ctx, SENT_KEY, today);
 }
 
 /**

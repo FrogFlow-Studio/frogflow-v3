@@ -503,14 +503,3 @@ export function parseCatalogCsv(text: string): CatalogImportResult {
 
   return { products, errors };
 }
-
-export function googleSheetsCsvUrl(raw: string): string | null {
-  const url = raw.trim();
-  if (!url) return null;
-  if (url.includes("output=csv") || url.includes("export?format=csv")) return url;
-  const idMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-  if (!idMatch) return null;
-  const gidMatch = url.match(/[?&#]gid=(\d+)/);
-  const gid = gidMatch?.[1] ?? "0";
-  return `https://docs.google.com/spreadsheets/d/${idMatch[1]}/export?format=csv&gid=${gid}`;
-}
