@@ -66,6 +66,11 @@ function NewsPage() {
                   })}
                 </p>
                 <p className="whitespace-pre-wrap text-sm">{n.body}</p>
+                {n.action && (n.action.kind === "link" || shop.role === "owner") && (
+                  <a className="btn-secondary inline-block text-sm" href={n.action.href}>
+                    {t(n.action.kind === "module" ? "news.action.enable" : "news.action.more")}
+                  </a>
+                )}
               </article>
             </Card>
           ))}

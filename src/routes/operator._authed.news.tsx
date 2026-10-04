@@ -2,7 +2,8 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { newsListFn, newsStateFn, saveNewsFn } from "@/app/operator/operator.functions";
 import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
-import { NEWS_PLAN_TIERS, type NewsPlanTier } from "@/core/news/news";
+import { NEWS_LINK_PATHS, NEWS_PLAN_TIERS, type NewsPlanTier } from "@/core/news/news";
+import { MODULES, MODULE_KEYS } from "@/core/modules/registry";
 
 export const Route = createFileRoute("/operator/_authed/news")({
   loader: () => newsListFn(),
@@ -17,6 +18,10 @@ const TIER_NAME: Record<NewsPlanTier, string> = {
   business: "Business",
   custom: "По договору",
 };
+/** Кнопка новости в форме: вид и значение (ключ модуля или путь). */
+type ActionForm = { kind: "" | "module" | "link"; value: string };
+const noAction = (): ActionForm => ({ kind: "", value: "" });
+const READY_MODULES = MODULE_KEYS.filter((k) => MODULES[k].status === "available");
 type Texts = Record<(typeof LANGS)[number], string>;
 const blank = (): Texts => ({ ru: "", kk: "", en: "", uz: "" });
 const fill = (v: Record<string, string>): Texts => ({ ...blank(), ...v });
@@ -29,12 +34,27 @@ function NewsAdmin() {
   const [title, setTitle] = useState<Texts>(blank());
   const [body, setBody] = useState<Texts>(blank());
   const [plans, setPlans] = useState<NewsPlanTier[]>([]);
+  const [action, setAction] = useState<ActionForm>(noAction());
   const save = useAction(async () => {
-    await saveNewsFn({ data: { id: editing, title, body, plans } });
+    await saveNewsFn({
+      data: {
+        id: editing,
+        title,
+        body,
+        plans,
+        action:
+          action.kind === "module"
+            ? { kind: "module", module: action.value }
+            : action.kind === "link"
+              ? { kind: "link", path: action.value }
+              : null,
+      },
+    });
     setEditing(null);
     setTitle(blank());
     setBody(blank());
     setPlans([]);
+    setAction(noAction());
     await router.invalidate();
   });
   const state = useAction(async (id: string, action: "publish" | "archive" | "unarchive") => {
@@ -101,6 +121,57 @@ function NewsAdmin() {
               </label>
             ))}
           </fieldset>
+          <fieldset className="flex flex-wrap items-center gap-3 text-sm">
+            <legend className="mb-1 text-muted">Кнопка в новости</legend>
+            <select
+              className="input"
+              aria-label="Вид кнопки"
+              value={action.kind}
+              onChange={(e) =>
+                setAction({
+                  kind: e.target.value as ActionForm["kind"],
+                  value:
+                    e.target.value === "module"
+                      ? (READY_MODULES[0] ?? "")
+                      : e.target.value === "link"
+                        ? NEWS_LINK_PATHS[0]
+                        : "",
+                })
+              }
+            >
+              <option value="">Без кнопки</option>
+              <option value="module">«Включить» (ведёт в «Модули»)</option>
+              <option value="link">«Подробнее» (страница админки)</option>
+            </select>
+            {action.kind === "module" && (
+              <select
+                className="input"
+                aria-label="Модуль"
+                value={action.value}
+                onChange={(e) => setAction({ ...action, value: e.target.value })}
+              >
+                {READY_MODULES.map((k) => (
+                  <option key={k} value={k}>
+                    {MODULES[k].title}
+                  </option>
+                ))}
+              </select>
+            )}
+            {action.kind === "link" && (
+              <select
+                className="input"
+                aria-label="Страница"
+                value={action.value}
+                onChange={(e) => setAction({ ...action, value: e.target.value })}
+              >
+                {NEWS_LINK_PATHS.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            )}
+          </fieldset>
           <div className="flex gap-2">
             <button
               type="button"
@@ -119,6 +190,7 @@ function NewsAdmin() {
                   setTitle(blank());
                   setBody(blank());
                   setPlans([]);
+                  setAction(noAction());
                 }}
               >
                 Отмена
@@ -160,6 +232,13 @@ function NewsAdmin() {
                       setTitle(fill(n.title));
                       setBody(fill(n.body));
                       setPlans(n.plans);
+                      setAction(
+                        n.action?.kind === "module"
+                          ? { kind: "module", value: n.action.module }
+                          : n.action?.kind === "link"
+                            ? { kind: "link", value: n.action.path }
+                            : noAction(),
+                      );
                     }}
                   >
                     Править

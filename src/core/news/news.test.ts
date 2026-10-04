@@ -1,10 +1,16 @@
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import { withBrokenReads } from "../../../tests/broken-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import {
+  NEWS_LINK_PATHS,
   NewsInputError,
+  cleanAction,
   cleanNews,
+  itemAction,
+  parseAction,
+  safeLinkPath,
   loadNews,
   localized,
   markNewsRead,
@@ -157,6 +163,7 @@ describe("ввод оператора", () => {
       title: { ru: "Новость" },
       body: { ru: "Текст", kk: "Мәтін" },
       plans: ["pro", "business"],
+      action: null,
     });
     expect(() => cleanNews({ title: { en: "x" }, body: { ru: "т" }, plans: [] })).toThrow(
       NewsInputError,
@@ -164,5 +171,81 @@ describe("ввод оператора", () => {
     expect(() =>
       cleanNews({ title: { ru: "а".repeat(121) }, body: { ru: "т" }, plans: [] }),
     ).toThrow(NewsInputError);
+  });
+});
+
+describe("новость с действием (Ч6)", () => {
+  it("«Подробнее» ведёт только на страницы админки из списка", () => {
+    expect(safeLinkPath("/admin/billing")).toBe("/admin/billing");
+    expect(safeLinkPath("/admin/support?a=bot-silent")).toBe("/admin/support?a=bot-silent");
+    for (const bad of [
+      "https://evil.example/admin",
+      "//evil.example",
+      "javascript:alert(1)",
+      "/operator",
+      "/admin/../operator",
+      "/admin/unknown",
+      "/admin/billing?x=<script>",
+      "/admin/billing#frag",
+      "",
+      null,
+      42,
+    ])
+      expect(safeLinkPath(bad), String(bad)).toBeNull();
+  });
+
+  it("каждая страница из списка есть среди маршрутов", () => {
+    const tree = readFileSync("src/routeTree.gen.ts", "utf8");
+    const full = new Set([...tree.matchAll(/fullPath: '([^']+)'/g)].map((m) => m[1]));
+    for (const p of NEWS_LINK_PATHS) expect(full.has(p), p).toBe(true);
+  });
+
+  it("оператор: «Включить» только для готового модуля, «Подробнее» только по списку", () => {
+    expect(cleanAction({ kind: "module", module: "giveaways" })).toEqual({
+      kind: "module",
+      module: "giveaways",
+    });
+    expect(() => cleanAction({ kind: "module", module: "net-takogo" })).toThrow(NewsInputError);
+    expect(() => cleanAction({ kind: "link", path: "https://x.example" })).toThrow(NewsInputError);
+    expect(cleanAction(null)).toBeNull();
+  });
+
+  it("из базы читается только понятное действие", () => {
+    expect(parseAction({ kind: "module", module: "giveaways" })).toEqual({
+      kind: "module",
+      module: "giveaways",
+    });
+    expect(parseAction({ kind: "module", module: "net-takogo" })).toBeNull();
+    expect(parseAction({ kind: "link", path: "https://x.example" })).toBeNull();
+    expect(parseAction("строка")).toBeNull();
+    expect(parseAction(null)).toBeNull();
+  });
+
+  it("«Включить» ведёт в «Модули» и пропадает, когда модуль уже включён", () => {
+    const a = { kind: "module", module: "giveaways" } as const;
+    expect(itemAction(a, { giveaways: false })).toEqual({ kind: "module", href: "/admin/modules" });
+    expect(itemAction(a, { giveaways: true })).toBeNull();
+    expect(itemAction({ kind: "link", path: "/admin/billing" }, {})).toEqual({
+      kind: "link",
+      href: "/admin/billing",
+    });
+  });
+
+  it("продавец получает кнопку вместе с новостью", async () => {
+    db.tables.platform_news!.push(
+      news("n-act", {
+        action: { kind: "module", module: "giveaways" },
+        published_at: "2026-10-03T10:00:00Z",
+      }),
+    );
+    const ctx = {
+      tenant: { id: "b1", plan: null, modules: { giveaways: false } },
+      db,
+    } as unknown as TenantContext;
+    const v = await loadNews(ctx, "ru");
+    expect(v.available && v.items.find((i) => i.id === "n-act")?.action).toEqual({
+      kind: "module",
+      href: "/admin/modules",
+    });
   });
 });

@@ -9,6 +9,8 @@ export const ru = {
   "news.soon.text": "Раздел ещё не включён на платформе.",
   "news.empty": "Новостей пока нет.",
   "news.new": "новое",
+  "news.action.enable": "Включить",
+  "news.action.more": "Подробнее",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -19,6 +21,8 @@ export const kk: SectionDict<typeof ru> = {
   "news.soon.text": "Бөлім платформада әлі қосылмаған.",
   "news.empty": "Әзірге жаңалық жоқ.",
   "news.new": "жаңа",
+  "news.action.enable": "Қосу",
+  "news.action.more": "Толығырақ",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -29,6 +33,8 @@ export const en: SectionDict<typeof ru> = {
   "news.soon.text": "This section is not switched on yet.",
   "news.empty": "No news yet.",
   "news.new": "new",
+  "news.action.enable": "Enable",
+  "news.action.more": "Learn more",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -39,4 +45,6 @@ export const uz: SectionDict<typeof ru> = {
   "news.soon.text": "Bo‘lim platformada hali yoqilmagan.",
   "news.empty": "Hozircha yangilik yo‘q.",
   "news.new": "yangi",
+  "news.action.enable": "Yoqish",
+  "news.action.more": "Batafsil",
 };

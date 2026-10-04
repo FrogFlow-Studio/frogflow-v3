@@ -1500,6 +1500,13 @@ export const saveNewsFn = createServerFn({ method: "POST" })
         title: newsText,
         body: newsText,
         plans: z.array(z.enum(["basic", "pro", "business", "custom"])).max(4),
+        action: z
+          .discriminatedUnion("kind", [
+            z.object({ kind: z.literal("module"), module: z.string().max(60) }),
+            z.object({ kind: z.literal("link"), path: z.string().max(200) }),
+          ])
+          .nullable()
+          .default(null),
       })
       .parse(d),
   )

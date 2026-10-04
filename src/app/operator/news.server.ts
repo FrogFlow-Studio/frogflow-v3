@@ -3,6 +3,8 @@ import {
   NewsInputError,
   cleanNews,
   isMissingTable,
+  parseAction,
+  type NewsAction,
   type NewsInput,
   type NewsPlanTier,
   type NewsRow,
@@ -22,6 +24,7 @@ export type OperatorNews = {
   title: Record<string, string>;
   body: Record<string, string>;
   plans: NewsPlanTier[];
+  action: NewsAction | null;
   publishedAt: string | null;
   archived: boolean;
   createdAt: string;
@@ -40,6 +43,7 @@ function toOperatorNews(r: NewsRow): OperatorNews {
     title: texts(r.title),
     body: texts(r.body),
     plans: r.plans as NewsPlanTier[],
+    action: parseAction(r.action),
     publishedAt: r.published_at,
     archived: r.archived,
     createdAt: r.created_at,

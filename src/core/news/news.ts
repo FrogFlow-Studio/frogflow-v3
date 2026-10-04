@@ -1,6 +1,7 @@
 import type { Database, Json } from "@/core/db-types";
 import { UserError } from "@/core/i18n/user-error";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
+import { MODULES, type ModuleKey } from "@/core/modules/registry";
 import { parsePlan } from "@/core/plans/registry";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serverFailure } from "@/lib/server-failure";
@@ -32,13 +33,77 @@ export const NEWS_BODY_MAX = 4000;
 const PAGE = 1000;
 const IN_CHUNK = 200;
 
+/**
+ * Кнопка действия в новости (Ч6). «Включить» ведёт в «Модули» и показывается,
+ * пока модуль у магазина выключен; «Подробнее» ведёт на страницу админки из
+ * `NEWS_LINK_PATHS`. Внешних ссылок и произвольных путей нет.
+ */
+export type NewsAction = { kind: "module"; module: ModuleKey } | { kind: "link"; path: string };
+export type NewsItemAction = { kind: "module" | "link"; href: string };
+
+/** Страницы админки, на которые может вести «Подробнее». Каждая есть в маршрутах (тест). */
+export const NEWS_LINK_PATHS = [
+  "/admin",
+  "/admin/orders",
+  "/admin/products",
+  "/admin/customers",
+  "/admin/broadcasts",
+  "/admin/discounts",
+  "/admin/instagram",
+  "/admin/analytics",
+  "/admin/modules",
+  "/admin/billing",
+  "/admin/settings",
+  "/admin/support",
+  "/admin/help",
+  "/admin/community",
+] as const;
+const QUERY_RE = /^\?[\w=&.%-]{1,100}$/;
+
+/** Путь для «Подробнее»: страница из списка, не больше простого `?a=b`; иначе null. */
+export function safeLinkPath(path: unknown): string | null {
+  if (typeof path !== "string") return null;
+  const [base, ...rest] = path.split("?");
+  if (!(NEWS_LINK_PATHS as readonly string[]).includes(base ?? "")) return null;
+  if (rest.length === 0) return base!;
+  const query = `?${rest.join("?")}`;
+  return QUERY_RE.test(query) ? `${base}${query}` : null;
+}
+
+/** Действие из базы; всё непонятное — null (новость покажется без кнопки). */
+export function parseAction(raw: Json | null): NewsAction | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, Json | undefined>;
+  if (o.kind === "module" && typeof o.module === "string") {
+    const def = (MODULES as Record<string, { status: string } | undefined>)[o.module];
+    return def?.status === "available" ? { kind: "module", module: o.module as ModuleKey } : null;
+  }
+  if (o.kind === "link") {
+    const path = safeLinkPath(o.path);
+    return path ? { kind: "link", path } : null;
+  }
+  return null;
+}
+
 export type NewsItem = {
   id: string;
   title: string;
   body: string;
   publishedAt: string;
   read: boolean;
+  action: NewsItemAction | null;
 };
+
+/** Куда ведёт кнопка у этого магазина: «Включить» пропадает, когда модуль уже включён. */
+export function itemAction(
+  action: NewsAction | null,
+  modules: Partial<Record<ModuleKey, boolean>>,
+): NewsItemAction | null {
+  if (!action) return null;
+  if (action.kind === "module")
+    return modules[action.module] ? null : { kind: "module", href: "/admin/modules" };
+  return { kind: "link", href: action.path };
+}
 
 export type NewsView =
   { available: false } | { available: true; items: NewsItem[]; unread: number };
@@ -125,6 +190,7 @@ export async function loadNews(ctx: TenantContext, locale: Locale): Promise<News
     body: localized(n.body, locale),
     publishedAt: n.published_at ?? n.created_at,
     read: read.has(n.id),
+    action: itemAction(parseAction(n.action), ctx.tenant.modules),
   }));
   return { available: true, items, unread: items.filter((i) => !i.read).length };
 }
@@ -163,7 +229,27 @@ export type NewsInput = {
   title: Partial<Record<Locale, string>>;
   body: Partial<Record<Locale, string>>;
   plans: NewsPlanTier[];
+  /** Кнопка действия (Ч6); пусто — без кнопки. */
+  action?: { kind: "module"; module: string } | { kind: "link"; path: string } | null;
 };
+
+/** Проверенное действие оператора: неизвестный модуль, не готовый модуль и чужой путь — ошибка ввода. */
+export function cleanAction(input: NewsInput["action"]): NewsAction | null {
+  if (!input) return null;
+  if (input.kind === "module") {
+    const def = (MODULES as Record<string, { status: string } | undefined>)[input.module];
+    if (!def) throw new NewsInputError(`Кнопка «Включить»: нет модуля «${input.module}».`);
+    if (def.status !== "available")
+      throw new NewsInputError(`Кнопка «Включить»: модуль «${input.module}» ещё не готов.`);
+    return { kind: "module", module: input.module as ModuleKey };
+  }
+  const path = safeLinkPath(input.path);
+  if (!path)
+    throw new NewsInputError(
+      "Кнопка «Подробнее»: можно вести только на страницу админки из списка.",
+    );
+  return { kind: "link", path };
+}
 
 function cleanTexts(
   raw: Partial<Record<Locale, string>>,
@@ -186,6 +272,7 @@ export function cleanNews(input: NewsInput): {
   title: Record<string, string>;
   body: Record<string, string>;
   plans: NewsPlanTier[];
+  action: NewsAction | null;
 } {
   const plans = [...new Set(input.plans)].filter((p) =>
     (NEWS_PLAN_TIERS as readonly string[]).includes(p),
@@ -194,5 +281,6 @@ export function cleanNews(input: NewsInput): {
     title: cleanTexts(input.title, NEWS_TITLE_MAX, "Заголовок"),
     body: cleanTexts(input.body, NEWS_BODY_MAX, "Текст"),
     plans,
+    action: cleanAction(input.action),
   };
 }

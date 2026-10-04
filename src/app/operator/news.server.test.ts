@@ -52,6 +52,22 @@ describe("новости оператора", () => {
     );
   });
 
+  it("кнопка действия сохраняется, читается обратно и проверяется до записи", async () => {
+    const n = await saveNews(
+      null,
+      { ...input, action: { kind: "link", path: "/admin/billing" } },
+      "yakov",
+    );
+    expect(n.action).toEqual({ kind: "link", path: "/admin/billing" });
+    expect((await listNews())![0]!.action).toEqual({ kind: "link", path: "/admin/billing" });
+    const cleared = await saveNews(n.id, { ...input, action: null }, "yakov");
+    expect(cleared.action).toBeNull();
+    await expect(
+      saveNews(null, { ...input, action: { kind: "link", path: "https://x.example" } }, "y"),
+    ).rejects.toThrow("Подробнее");
+    expect(db.tables.platform_news).toHaveLength(1);
+  });
+
   it("таблиц нет — null, а не ошибка", async () => {
     const chain: unknown = new Proxy(
       {},
