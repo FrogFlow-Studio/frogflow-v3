@@ -57,7 +57,7 @@ export const ru = {
     "Товар по подписке раз в месяц или другой срок: бот сам напомнит продлить, продление — в два нажатия.",
   "module.bundles.title": "Наборы и подарки",
   "module.bundles.desc":
-    "Набор «шампунь + бальзам» со своей ценой и выгодой, остаток которого считается по составляющим; отметка «Это подарок» с открыткой и подарочная упаковка.",
+    "Набор «шампунь + бальзам» со своей ценой, остаток считается по составляющим; отметка «Это подарок» с открыткой и подарочная упаковка.",
   "module.public_api.title": "API для разработчиков",
   "module.public_api.desc":
     "Заказы и товары — в вашу учётную систему (1С, МойСклад, таблицы): чтение заказов, выгрузка каталога, обновление остатков и цен.",
@@ -120,7 +120,7 @@ export const ru = {
   "module.wa_broadcasts.desc": "Рассылки по базе WhatsApp одобренными шаблонами.",
   "module.cart_reminder.title": "Напоминание о брошенной корзине",
   "module.cart_reminder.desc":
-    "Покупателю, который положил товар и не оформил заказ, бот напомнит об этом через заданное время: назовёт товары и сумму. Instagram и WhatsApp — пока открыто окно ответа 24 часа.",
+    "Если покупатель положил товар и не оформил заказ, бот напомнит через заданное время. Instagram и WhatsApp — пока открыто окно ответа 24 часа.",
   "module.winback.title": "Возвратные продажи",
   "module.winback.desc":
     "Серия из двух сообщений тем, кто давно не покупал: через N дней после последнего заказа и повтор, с промокодом. Сегменты базы — в рассылках.",
@@ -142,7 +142,7 @@ export const ru = {
   "module.helpdesk.desc": "Обращения покупателей как тикеты: статусы, ответственный, история.",
   "module.review_request.title": "Оценка после покупки",
   "module.review_request.desc":
-    "Через несколько дней после выдачи покупателю один раз уходит просьба оценить товар (Telegram — кнопками, Instagram и WhatsApp — цифрой в 24-часовом окне); оценка и комментарий, рейтинг в карточке товара.",
+    "Через несколько дней после выдачи покупателю один раз уходит просьба оценить товар; рейтинг виден в карточке товара. Instagram и WhatsApp — в окне 24 часа.",
   "module.notify_in_bot.title": "Дублирование уведомлений",
   "module.notify_in_bot.desc":
     "Уведомления о заказах приходят и в группу, и в личку всем указанным получателям; почта, тихие часы и утренний дайджест — в карточке «Уведомления».",
@@ -259,7 +259,7 @@ export const kk: SectionDict<typeof ru> = {
     "Айына бір рет немесе басқа мерзіммен жазылым тауары: бот ұзартуды өзі еске салады, ұзарту — екі басумен.",
   "module.bundles.title": "Жиынтықтар мен сыйлықтар",
   "module.bundles.desc":
-    "«Шампунь + бальзам» жиынтығы өз бағасымен және үнемдеумен, қалдығы құрамдас бөліктер бойынша есептеледі; открыткасы бар «Бұл сыйлық» белгісі және сыйлық қаптамасы.",
+    "«Шампунь + бальзам» жиынтығы өз бағасымен, қалдығы құрамдас бөліктер бойынша; открыткасы бар «Бұл сыйлық» белгісі және сыйлық қаптамасы.",
   "module.public_api.title": "Әзірлеушілерге арналған API",
   "module.public_api.desc":
     "Тапсырыстар мен тауарлар — сіздің есеп жүйеңізге (1С, МойСклад, кестелер): тапсырыстарды оқу, каталогты түсіру, қалдықтар мен бағаларды жаңарту.",
@@ -323,7 +323,7 @@ export const kk: SectionDict<typeof ru> = {
   "module.wa_broadcasts.desc": "Мақұлданған үлгілермен WhatsApp базасына хабарлама тарату.",
   "module.cart_reminder.title": "Тасталған себет туралы еске салу",
   "module.cart_reminder.desc":
-    "Тауарды себетке салып, тапсырысты рәсімдемеген сатып алушыға бот белгіленген уақыттан кейін бұл туралы еске салады: тауарлар мен соманы атайды. Instagram және WhatsApp — 24 сағаттық жауап терезесі ашық кезде.",
+    "Тауарды себетке салып, тапсырыс бермесе, бот белгіленген уақыттан кейін еске салады. Instagram және WhatsApp — 24 сағаттық жауап терезесінде.",
   "module.winback.title": "Қайтару сатылымдары",
   "module.winback.desc":
     "Көптен бері сатып алмағандарға екі хабарламалық серия: соңғы тапсырыстан N күн өткен соң және қайталау, промокодпен. База сегменттері — хабарлама таратуда.",
@@ -347,7 +347,7 @@ export const kk: SectionDict<typeof ru> = {
     "Сатып алушылардың өтініштері тикет ретінде: күйлер, жауапты адам, тарих.",
   "module.review_request.title": "Сатып алудан кейінгі баға",
   "module.review_request.desc":
-    "Тапсырыс берілгеннен кейін бірнеше күннен соң сатып алушыға бағалау туралы өтініш бір рет жіберіледі (Telegram — батырмалармен, Instagram және WhatsApp — 24 сағаттық терезеде цифрмен); баға мен пікір, рейтинг тауар карточкасында көрінеді.",
+    "Тапсырыстан бірнеше күннен соң сатып алушыға бағалау өтініші бір рет жіберіледі; рейтинг тауар карточкасында. Instagram, WhatsApp — 24 сағат ішінде.",
   "module.notify_in_bot.title": "Хабарламаларды қайталау",
   "module.notify_in_bot.desc":
     "Тапсырыс туралы хабарламалар топқа да, көрсетілген барлық алушыларға жеке де келеді; пошта, тыныш сағаттар және таңғы дайджест — «Хабарламалар» карточкасында.",
@@ -429,7 +429,7 @@ export const en: SectionDict<typeof ru> = {
     "A product bought monthly or on another cycle: the bot reminds the customer to renew, renewal takes two taps.",
   "module.bundles.title": "Bundles and gifts",
   "module.bundles.desc":
-    "A “shampoo + conditioner” bundle with its own price and savings, with stock counted from its components; a “This is a gift” mark with a card message and gift wrapping.",
+    "A “shampoo + conditioner” bundle with its own price, stock counted from components; a “This is a gift” mark with a card and gift wrapping.",
   "module.public_api.title": "Developer API",
   "module.public_api.desc":
     "Orders and products in your accounting system (1C, MoySklad, spreadsheets): read orders, export the catalog, update stock and prices.",
@@ -491,10 +491,10 @@ export const en: SectionDict<typeof ru> = {
   "module.wa_broadcasts.desc": "Broadcasts to your WhatsApp contacts using approved templates.",
   "module.cart_reminder.title": "Abandoned cart reminder",
   "module.cart_reminder.desc":
-    "If a customer adds a product but doesn’t check out, the bot reminds them after a set time, naming the items and the total. Instagram and WhatsApp — while the 24-hour reply window is open.",
+    "If a customer adds a product but doesn’t check out, the bot reminds them after a set time. Instagram and WhatsApp — within the 24-hour reply window.",
   "module.winback.title": "Win-back sales",
   "module.winback.desc":
-    "A two-message series for customers who haven’t bought in a while: N days after their last order and a follow-up, with a promo code. Customer segments are in Broadcasts.",
+    "A two-message series for customers who haven’t bought in a while: N days after the last order and a follow-up, with a promo code.",
   "module.funnel.title": "Auto funnel",
   "module.funnel.desc": "A message series after subscribing: warm-up, useful content, an offer.",
   "module.giveaways.title": "Giveaways",
@@ -513,7 +513,7 @@ export const en: SectionDict<typeof ru> = {
   "module.helpdesk.desc": "Customer requests as tickets: statuses, assignee, history.",
   "module.review_request.title": "Post-purchase rating",
   "module.review_request.desc":
-    "A few days after delivery the customer gets one request to rate the product (Telegram with buttons, Instagram and WhatsApp with a digit inside the 24-hour window); a rating and a comment, the rating is shown on the product card.",
+    "A few days after delivery the customer gets one request to rate the product; the rating shows on the product card. Instagram and WhatsApp — within 24 hours.",
   "module.notify_in_bot.title": "Duplicate notifications",
   "module.notify_in_bot.desc":
     "Order notifications go both to the group and privately to every listed recipient; email, quiet hours and the morning digest are in the “Notifications” card.",
@@ -535,7 +535,7 @@ export const en: SectionDict<typeof ru> = {
     "Promotions with a timer and limited quantity: a discount until a date or for N items, with a countdown and remaining stock on the product card.",
   "module.waitlist.title": "Waitlist",
   "module.waitlist.desc":
-    "A “Notify me when available” button: the bot messages the customer as soon as it’s back in stock. Instagram and WhatsApp — while the 24-hour reply window is open.",
+    "A “Notify me when available” button: the bot messages the customer once the product is back. Instagram and WhatsApp — within the 24-hour window.",
   "vertical.digital": "Digital products",
   "vertical.confectionery": "Confectionery",
   "vertical.consultant": "Consultant (BOVI)",
@@ -595,7 +595,7 @@ export const uz: SectionDict<typeof ru> = {
     "Oyiga bir marta yoki boshqa muddatda obuna tovari: bot uzaytirishni oʻzi eslatadi, uzaytirish — ikki bosishda.",
   "module.bundles.title": "Toʻplamlar va sovgʻalar",
   "module.bundles.desc":
-    "“Shampun + balzam” toʻplami oʻz narxi va tejami bilan, qoldigʻi tarkibiy qismlar boʻyicha hisoblanadi; otkritkali “Bu sovgʻa” belgisi va sovgʻa qadogʻi.",
+    "“Shampun + balzam” toʻplami oʻz narxi bilan, qoldigʻi tarkibiy qismlar boʻyicha; otkritkali “Bu sovgʻa” belgisi va sovgʻa qadogʻi.",
   "module.public_api.title": "Dasturchilar uchun API",
   "module.public_api.desc":
     "Buyurtmalar va tovarlar — hisob tizimingizga (1C, MoySklad, jadvallar): buyurtmalarni oʻqish, katalogni yuklab olish, qoldiq va narxlarni yangilash.",
@@ -658,7 +658,7 @@ export const uz: SectionDict<typeof ru> = {
   "module.wa_broadcasts.desc": "Tasdiqlangan shablonlar bilan WhatsApp bazasiga xabar yuborish.",
   "module.cart_reminder.title": "Tashlab ketilgan savat haqida eslatma",
   "module.cart_reminder.desc":
-    "Mahsulotni savatga solib, buyurtma bermagan xaridorga bot belgilangan vaqtdan keyin bu haqda eslatadi: mahsulotlar va summani aytadi. Instagram va WhatsApp — 24 soatlik javob oynasi ochiq bo‘lganda.",
+    "Xaridor mahsulotni savatga solib buyurtma bermasa, bot belgilangan vaqtdan keyin eslatadi. Instagram va WhatsApp — 24 soatlik javob oynasida.",
   "module.winback.title": "Qaytaruvchi sotuvlar",
   "module.winback.desc":
     "Uzoq vaqt xarid qilmaganlarga ikki xabardan iborat seriya: oxirgi buyurtmadan N kun oʻtgach va takroriy, promokod bilan. Baza segmentlari — xabar yuborishda.",
@@ -680,10 +680,10 @@ export const uz: SectionDict<typeof ru> = {
   "module.helpdesk.desc": "Xaridorlar murojaatlari tiket sifatida: holatlar, masʼul shaxs, tarix.",
   "module.review_request.title": "Xariddan keyingi baho",
   "module.review_request.desc":
-    "Buyurtma topshirilgandan bir necha kun oʻtgach xaridorga mahsulotni baholash soʻrovi bir marta yuboriladi (Telegram — tugmalar bilan, Instagram va WhatsApp — 24 soatlik oynada raqam bilan); baho va izoh, reyting mahsulot kartochkasida koʻrinadi.",
+    "Buyurtma topshirilgandan bir necha kun oʻtgach xaridorga baholash soʻrovi bir marta yuboriladi; reyting kartochkada. Instagram va WhatsApp — 24 soat ichida.",
   "module.notify_in_bot.title": "Xabarnomalarni takrorlash",
   "module.notify_in_bot.desc":
-    "Buyurtmalar haqidagi xabarnomalar guruhga ham, koʻrsatilgan barcha oluvchilarga shaxsiy ham keladi; pochta, tinch soatlar va ertalabki dayjest — «Xabarnomalar» kartochkasida.",
+    "Buyurtma xabarnomalari guruhga ham, har bir oluvchiga shaxsiy ham keladi; pochta, tinch soatlar va dayjest — «Xabarnomalar» kartochkasida.",
   "module.crm_pipeline.title": "Mini-CRM voronkasi",
   "module.crm_pipeline.desc": "Arizalar va buyurtmalar bitim bosqichlari boʻyicha doskada.",
   "module.admin_roles.title": "Rollar bilan bir nechta admin",
@@ -711,5 +711,5 @@ export const uz: SectionDict<typeof ru> = {
   "vertical.consultant_universal": "Universal maslahatchi",
   "module.warehouse.title": "Ombor va xaridlar",
   "module.warehouse.desc":
-    "Yetkazib beruvchilar, tovar kirimi, hisobdan chiqarish, inventarizatsiya va yetkazib beruvchiga buyurtma: qoldiq raqamni tahrirlash bilan emas, hujjatlar bilan oʻzgaradi.",
+    "Yetkazib beruvchilar, tovar kirimi, hisobdan chiqarish, inventarizatsiya va buyurtma: qoldiq hujjatlar bilan oʻzgaradi, raqamni tahrirlash bilan emas.",
 };
