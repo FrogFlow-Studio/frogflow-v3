@@ -461,7 +461,7 @@ export async function updateOrderFulfillment(
   const { data: order, error: readErr } = await ctx.db
     .from("orders")
     .select(
-      "fulfillment_kind, fulfillment_type, fulfillment_at, delivery_fee, total, paid_amount, country_code, status, order_items(products(lead_time_days))",
+      "fulfillment_kind, fulfillment_type, fulfillment_at, delivery_fee, total, paid_amount, currency, gift_certificate_discount, country_code, status, order_items(products(lead_time_days))",
     )
     .eq("id", input.id)
     .maybeSingle();
@@ -501,6 +501,21 @@ export async function updateOrderFulfillment(
   let zone: { id: string; name: string; price: number } | null = null;
   if (input.fulfillmentType === "delivery" && input.deliveryZoneId) {
     zone = await resolveZone(ctx, input.deliveryZoneId, order.country_code);
+    // Бесплатная доставка от суммы — то же правило, что при оформлении: товары
+    // после скидок (итог без доставки, плюс сертификат — он оплата, не скидка).
+    if (zone.price > 0) {
+      const free = await import("@/core/fulfillment/free-delivery");
+      const rules = await free.loadFreeDeliveryRules(ctx);
+      const goods =
+        Number(order.total) -
+        (Number(order.delivery_fee) || 0) +
+        (Number(order.gift_certificate_discount) || 0);
+      const st = await free.freeDeliveryStatus(ctx, rules, zone.id, {
+        amount: goods,
+        currency: order.currency ?? "KZT",
+      });
+      if (st?.free) zone = { ...zone, price: 0 };
+    }
   } else if (input.fulfillmentType === "delivery" && order.fulfillment_type !== "delivery") {
     const zones = await activeDeliveryZones(ctx);
     if (zones.length > 0) throw new UserError("err.orders.pickZone", "Выберите зону доставки");
