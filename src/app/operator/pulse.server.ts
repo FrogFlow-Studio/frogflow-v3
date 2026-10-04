@@ -2,7 +2,7 @@ import { serviceDb } from "@/core/db/client.server";
 import { pageAll } from "@/core/db/page";
 import { ORDER_EVENT_STATUS } from "@/core/orders/events";
 import { chunksOf } from "@/lib/in-chunks";
-import { PULSE_DAYS, computePulse, type Pulse } from "./pulse";
+import { PULSE_DAYS, PULSE_ORDER_STATUSES, computePulse, type Pulse } from "./pulse";
 
 const DAY_MS = 86_400_000;
 const LOGIN_DAYS = 90;
@@ -46,7 +46,7 @@ async function readSellerActions(chunks: string[][], since: string) {
 
 /**
  * Пульс всех переданных клиентов двумя постраничными чтениями на всех сразу
- * (заказы за 28 дней и успешные входы продавцов за 90), а не запросом на
+ * (оплаченные заказы за 28 дней и успешные входы продавцов за 90), а не запросом на
  * клиента. Ошибка чтения — исключение: «не прочитали» не равно «затих».
  */
 export async function loadPulse(
@@ -69,6 +69,7 @@ export async function loadPulse(
             .from("orders")
             .select("id, bot_id, created_at")
             .in("bot_id", chunk)
+            .in("status", [...PULSE_ORDER_STATUSES])
             .gte("created_at", ordersSince)
             .order("id", { ascending: true })
             .range(from, to),

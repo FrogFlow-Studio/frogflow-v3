@@ -191,7 +191,7 @@ function PulseCell({ p, v2 }: { p: Pulse | null; v2: boolean }) {
   return (
     <div className="text-xs">
       <div className="tabular-nums">
-        {p.recent} vs {p.previous} {arrow}
+        {p.recent} vs {p.previous} опл. {arrow}
         {p.changePct !== null && ` ${p.changePct > 0 ? "+" : ""}${p.changePct}%`}{" "}
         {p.quiet && <Badge tone="warn">затих</Badge>}
       </div>

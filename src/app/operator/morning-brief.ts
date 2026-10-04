@@ -27,7 +27,7 @@ export function morningRows(
     if (p?.quiet) {
       risk += p.risk;
       if (p.ordersDropped)
-        reasons.push(`заказы ${p.recent} против ${p.previous} (${p.changePct}%)`);
+        reasons.push(`оплаченные заказы ${p.recent} против ${p.previous} (${p.changePct}%)`);
       if (p.noLogin)
         reasons.push(
           p.daysSinceLogin === null

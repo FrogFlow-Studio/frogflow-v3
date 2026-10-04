@@ -29,10 +29,12 @@ describe("loadPulse", () => {
   it("считает заказы и последний успешный вход по каждому клиенту", async () => {
     let id = 1;
     // A: 1500 заказов за последние 14 дней — больше одной страницы чтения.
-    for (let i = 0; i < 1500; i++) orders.push({ id: id++, bot_id: A, created_at: ago(2) });
-    for (let i = 0; i < 4; i++) orders.push({ id: id++, bot_id: B, created_at: ago(20) });
-    orders.push({ id: id++, bot_id: B, created_at: ago(40) }); // вне окна
-    orders.push({ id: id++, bot_id: "other", created_at: ago(1) }); // не наш клиент
+    for (let i = 0; i < 1500; i++)
+      orders.push({ id: id++, bot_id: A, created_at: ago(2), status: "paid" });
+    for (let i = 0; i < 4; i++)
+      orders.push({ id: id++, bot_id: B, created_at: ago(20), status: "delivered" });
+    orders.push({ id: id++, bot_id: B, created_at: ago(40), status: "paid" }); // вне окна
+    orders.push({ id: id++, bot_id: "other", created_at: ago(1), status: "paid" }); // не наш клиент
     logins.push(
       { id: "1", bot_id: A, at: ago(9), ok: true },
       { id: "2", bot_id: A, at: ago(3), ok: true },
@@ -43,6 +45,35 @@ describe("loadPulse", () => {
     expect(m.get(A)).toMatchObject({ recent: 1500, previous: 0, daysSinceLogin: 3, quiet: false });
     expect(m.get(B)).toMatchObject({ recent: 0, previous: 4, ordersDropped: true, noLogin: true });
     expect(m.get(B)?.quiet).toBe(true);
+  });
+
+  it("брошенные и отменённые заказы не маскируют падение продаж", async () => {
+    let id = 1;
+    // Прошлые 14 дней: 10 оплаченных. Последние 14: 10 истёкших/отменённых с сайта.
+    for (let i = 0; i < 10; i++)
+      orders.push({ id: id++, bot_id: A, created_at: ago(20), status: "paid" });
+    for (const status of [
+      "awaiting_payment",
+      "cancelled",
+      "rejected",
+      "expired",
+      "awaiting_confirmation",
+    ])
+      for (let i = 0; i < 2; i++) orders.push({ id: id++, bot_id: A, created_at: ago(3), status });
+    logins.push({ id: "1", bot_id: A, at: ago(1), ok: true });
+    const m = await loadPulse([client(A)], now);
+    expect(m.get(A)).toMatchObject({ recent: 0, previous: 10, ordersDropped: true, quiet: true });
+  });
+
+  it("пачка отмен в прошлом окне не раздувает «было»", async () => {
+    let id = 1;
+    for (let i = 0; i < 20; i++)
+      orders.push({ id: id++, bot_id: A, created_at: ago(20), status: "cancelled" });
+    for (let i = 0; i < 3; i++)
+      orders.push({ id: id++, bot_id: A, created_at: ago(2), status: "ready" });
+    logins.push({ id: "1", bot_id: A, at: ago(1), ok: true });
+    const m = await loadPulse([client(A)], now);
+    expect(m.get(A)).toMatchObject({ recent: 3, previous: 0, ordersDropped: false });
   });
 
   it("продавец не заходил в админку, но подтверждал заказы в Telegram — не затих", async () => {
@@ -62,7 +93,10 @@ describe("loadPulse", () => {
       { id: "1", bot_id: A, at: ago(30), ok: true },
       { id: "2", bot_id: B, at: ago(30), ok: true },
     );
-    orders.push({ id: 1, bot_id: A, created_at: ago(1) }, { id: 2, bot_id: B, created_at: ago(1) });
+    orders.push(
+      { id: 1, bot_id: A, created_at: ago(1), status: "paid" },
+      { id: 2, bot_id: B, created_at: ago(1), status: "paid" },
+    );
     const m = await loadPulse([client(A), client(B)], now);
     expect(m.get(A)).toMatchObject({ noLogin: false, quiet: false });
     expect(m.get(B)).toMatchObject({ noLogin: true, quiet: true });
@@ -91,8 +125,8 @@ describe("loadPulse", () => {
       (_, i) => `c${String(i).padStart(7, "0")}-0000-0000-0000-000000000000`,
     );
     db.tables.orders.push(
-      { id: 1, bot_id: ids[449], created_at: ago(2) }, // клиент из последнего куска
-      { id: 2, bot_id: "v1-client", created_at: ago(2) }, // клиент v1: читать не должны
+      { id: 1, bot_id: ids[449], created_at: ago(2), status: "paid" }, // клиент из последнего куска
+      { id: 2, bot_id: "v1-client", created_at: ago(2), status: "paid" }, // клиент v1: читать не должны
     );
     db.tables.admin_login_attempts.push({ id: "1", bot_id: ids[0], at: ago(1), ok: true });
     const seen: Record<string, number> = { orders: 0, admin_login_attempts: 0, zernio_logs: 0 };

@@ -5,6 +5,20 @@
  */
 
 export const PULSE_DAYS = 14;
+
+/**
+ * Заказы, которые считает пульс: оплаченные и дальше по работе. Брошенные
+ * (awaiting_*, expired) и отменённые (cancelled, rejected) продаж не значат:
+ * они маскируют падение или раздувают «было».
+ */
+export const PULSE_ORDER_STATUSES = [
+  "paid",
+  "delivering",
+  "delivered",
+  "accepted",
+  "in_production",
+  "ready",
+] as const;
 const DAY_MS = 86_400_000;
 
 export type Pulse = {
