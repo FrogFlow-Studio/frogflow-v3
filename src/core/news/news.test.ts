@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
+import { UserError } from "@/core/i18n/user-error";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import { withBrokenReads } from "../../../tests/broken-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -8,7 +9,10 @@ import {
   NewsInputError,
   cleanAction,
   cleanNews,
+  cleanPoll,
   itemAction,
+  parsePoll,
+  voteNews,
   parseAction,
   safeLinkPath,
   loadNews,
@@ -39,7 +43,12 @@ const news = (id: string, over: Record<string, unknown> = {}) => ({
 });
 
 beforeEach(() => {
-  db = fakeDb({ unique: { platform_news_reads: [["bot_id", "news_id"]] } });
+  db = fakeDb({
+    unique: {
+      platform_news_reads: [["bot_id", "news_id"]],
+      platform_news_votes: [["bot_id", "news_id"]],
+    },
+  });
   db.tables.platform_news = [
     news("n-all"),
     news("n-biz", { plans: ["business"], published_at: "2026-10-02T10:00:00Z" }),
@@ -164,6 +173,7 @@ describe("ввод оператора", () => {
       body: { ru: "Текст", kk: "Мәтін" },
       plans: ["pro", "business"],
       action: null,
+      poll: null,
     });
     expect(() => cleanNews({ title: { en: "x" }, body: { ru: "т" }, plans: [] })).toThrow(
       NewsInputError,
@@ -247,5 +257,97 @@ describe("новость с действием (Ч6)", () => {
       kind: "module",
       href: "/admin/modules",
     });
+  });
+});
+
+describe("опрос в ленте (Ч7)", () => {
+  const poll = { options: [{ ru: "Склад", en: "Warehouse" }, { ru: "Доставка" }] };
+  const ctx = (id: string, plan: string | null = null) =>
+    ({ tenant: { id, plan, modules: {} }, db }) as unknown as TenantContext;
+  beforeEach(() => {
+    db.tables.platform_news!.push(news("n-poll", { poll, published_at: "2026-10-03T10:00:00Z" }));
+  });
+
+  it("опрос читается из базы: 2–4 варианта с русским текстом, остальное — нет", () => {
+    expect(parsePoll(poll)).toEqual(poll);
+    expect(parsePoll({ options: [{ ru: "один" }] })).toBeNull();
+    expect(
+      parsePoll({ options: [{ ru: "а" }, { ru: "б" }, { ru: "в" }, { ru: "г" }, { ru: "д" }] }),
+    ).toBeNull();
+    expect(parsePoll({ options: [{ ru: "а" }, { en: "b" }] })).toBeNull();
+    expect(parsePoll("строка")).toBeNull();
+    expect(parsePoll(null)).toBeNull();
+  });
+
+  it("продавец видит варианты на своём языке и свой голос", async () => {
+    const before = await loadNews(ctx("b1"), "en");
+    expect(before.available && before.items.find((i) => i.id === "n-poll")?.poll).toEqual({
+      options: ["Warehouse", "Доставка"],
+      myVote: null,
+    });
+    await voteNews(ctx("b1"), "n-poll", 1);
+    const after = await loadNews(ctx("b1"), "ru");
+    expect(after.available && after.items.find((i) => i.id === "n-poll")?.poll?.myVote).toBe(1);
+    const other = await loadNews(ctx("b2"), "ru");
+    expect(other.available && other.items.find((i) => i.id === "n-poll")?.poll?.myVote).toBeNull();
+  });
+
+  it("голос один: повтор не меняет выбор и не ошибка", async () => {
+    expect(await voteNews(ctx("b1"), "n-poll", 0)).toEqual({ counted: true });
+    expect(await voteNews(ctx("b1"), "n-poll", 1)).toEqual({ counted: false });
+    expect(db.tables.platform_news_votes).toHaveLength(1);
+    expect(db.tables.platform_news_votes![0]).toMatchObject({ bot_id: "b1", option_ix: 0 });
+  });
+
+  it("двойной клик и две вкладки сразу: засчитан один голос (гонка)", async () => {
+    const r = await Promise.all([
+      voteNews(ctx("b1"), "n-poll", 0),
+      voteNews(ctx("b1"), "n-poll", 1),
+      voteNews(ctx("b1"), "n-poll", 0),
+    ]);
+    expect(r.filter((x) => x.counted)).toHaveLength(1);
+    expect(db.tables.platform_news_votes).toHaveLength(1);
+  });
+
+  it("магазины голосуют независимо", async () => {
+    await voteNews(ctx("b1"), "n-poll", 0);
+    await voteNews(ctx("b2"), "n-poll", 0);
+    expect(db.tables.platform_news_votes).toHaveLength(2);
+  });
+
+  it("нельзя: нет такого варианта, новость без опроса, черновик, чужой тариф, чужая новость", async () => {
+    db.tables.platform_news!.push(
+      news("n-draft-poll", { poll, published_at: null }),
+      news("n-biz-poll", { poll, plans: ["business"] }),
+    );
+    for (const [id, ix, plan] of [
+      ["n-poll", 2, null],
+      ["n-poll", -1, null],
+      ["n-poll", 0.5, null],
+      ["n-all", 0, null],
+      ["n-draft-poll", 0, null],
+      ["n-biz-poll", 0, "flowers.basic"],
+      ["нет-такой", 0, null],
+    ] as const)
+      await expect(voteNews(ctx("b1", plan), id, ix), `${id}/${ix}`).rejects.toBeInstanceOf(
+        UserError,
+      );
+    expect(db.tables.platform_news_votes ?? []).toHaveLength(0);
+  });
+
+  it("оператор: русский список 2–4 строки, другие языки — столько же или пусто", () => {
+    expect(cleanPoll({})).toBeNull();
+    expect(cleanPoll({ ru: "  \n " })).toBeNull();
+    expect(cleanPoll({ ru: "Склад\r\nДоставка", en: "Warehouse\nDelivery" })).toEqual({
+      options: [
+        { ru: "Склад", en: "Warehouse" },
+        { ru: "Доставка", en: "Delivery" },
+      ],
+    });
+    expect(() => cleanPoll({ ru: "один" })).toThrow(NewsInputError);
+    expect(() => cleanPoll({ ru: "а\nб\nв\nг\nд" })).toThrow(NewsInputError);
+    expect(() => cleanPoll({ ru: "а\nб", en: "a" })).toThrow(NewsInputError);
+    expect(() => cleanPoll({ ru: `а\n${"б".repeat(81)}` })).toThrow(NewsInputError);
+    expect(() => cleanPoll({ en: "a\nb" })).toThrow(NewsInputError);
   });
 });

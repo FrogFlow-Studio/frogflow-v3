@@ -68,6 +68,36 @@ describe("новости оператора", () => {
     expect(db.tables.platform_news).toHaveLength(1);
   });
 
+  it("опрос: итоги по вариантам, после публикации варианты не меняются", async () => {
+    const poll = { ru: "Склад\nДоставка\nРозыгрыши" };
+    const n = await saveNews(null, { ...input, pollOptions: poll }, "yakov");
+    expect(n.poll).toEqual({
+      options: [{ ru: "Склад" }, { ru: "Доставка" }, { ru: "Розыгрыши" }],
+      votes: [0, 0, 0],
+    });
+    // Правка черновика меняет варианты свободно.
+    const edited = await saveNews(n.id, { ...input, pollOptions: { ru: "Да\nНет" } }, "yakov");
+    expect(edited.poll!.options).toEqual([{ ru: "Да" }, { ru: "Нет" }]);
+    await setNewsState(n.id, "publish");
+    db.tables.platform_news_votes = [
+      { bot_id: "b1", news_id: n.id, option_ix: 0, voted_at: "2026-10-04T00:00:00Z" },
+      { bot_id: "b2", news_id: n.id, option_ix: 0, voted_at: "2026-10-04T00:00:00Z" },
+      { bot_id: "b3", news_id: n.id, option_ix: 1, voted_at: "2026-10-04T00:00:00Z" },
+    ];
+    expect((await listNews())![0]!.poll!.votes).toEqual([2, 1]);
+    // После публикации: тексты правятся, варианты — нет.
+    const retitled = await saveNews(
+      n.id,
+      { ...input, title: { ru: "Новый заголовок" }, pollOptions: { ru: "Да\nНет" } },
+      "yakov",
+    );
+    expect(retitled.poll!.votes).toEqual([2, 1]);
+    await expect(
+      saveNews(n.id, { ...input, pollOptions: { ru: "Нет\nДа" } }, "yakov"),
+    ).rejects.toThrow("после публикации");
+    await expect(saveNews(n.id, { ...input }, "yakov")).rejects.toThrow("после публикации");
+  });
+
   it("таблиц нет — null, а не ошибка", async () => {
     const chain: unknown = new Proxy(
       {},

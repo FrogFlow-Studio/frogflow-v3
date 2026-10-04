@@ -21,6 +21,8 @@ export const MANUAL_AUDIT_ACTIONS = ["tgLoginRequest"] as const;
 const NOT_AUDITED = new Set([
   // «Что нового»: отметка «прочитано» без смысла для журнала
   "newsReadFn",
+  // голос в опросе платформы: ответ платформе, а не изменение магазина
+  "voteNewsFn",
   // чат с поддержкой: сама переписка — журнал; «прочитано» — отметка без смысла для журнала
   "sendSupportMessageFn",
   "supportReadFn",

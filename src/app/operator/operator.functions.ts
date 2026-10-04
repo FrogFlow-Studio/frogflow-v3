@@ -1535,6 +1535,7 @@ export const saveNewsFn = createServerFn({ method: "POST" })
           ])
           .nullable()
           .default(null),
+        pollOptions: newsText.partial().default({}),
       })
       .parse(d),
   )

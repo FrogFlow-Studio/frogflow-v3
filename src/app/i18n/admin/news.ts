@@ -11,6 +11,11 @@ export const ru = {
   "news.new": "новое",
   "news.action.enable": "Включить",
   "news.action.more": "Подробнее",
+  "news.poll.title": "Опрос",
+  "news.poll.voted": "Ваш голос принят: {option}",
+  "news.poll.viewOnly": "Голосовать могут владелец и менеджер.",
+  "news.poll.once": "Отдать голос можно один раз.",
+  "err.news.noPoll": "Этот опрос недоступен.",
 };
 
 export const kk: SectionDict<typeof ru> = {
@@ -23,6 +28,11 @@ export const kk: SectionDict<typeof ru> = {
   "news.new": "жаңа",
   "news.action.enable": "Қосу",
   "news.action.more": "Толығырақ",
+  "news.poll.title": "Сауалнама",
+  "news.poll.voted": "Дауысыңыз қабылданды: {option}",
+  "news.poll.viewOnly": "Дауыс беруге иесі мен менеджер құқылы.",
+  "news.poll.once": "Дауысты бір рет қана беруге болады.",
+  "err.news.noPoll": "Бұл сауалнама қолжетімсіз.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -35,6 +45,11 @@ export const en: SectionDict<typeof ru> = {
   "news.new": "new",
   "news.action.enable": "Enable",
   "news.action.more": "Learn more",
+  "news.poll.title": "Poll",
+  "news.poll.voted": "Your vote is counted: {option}",
+  "news.poll.viewOnly": "Only the owner and managers can vote.",
+  "news.poll.once": "You can vote once.",
+  "err.news.noPoll": "This poll is not available.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -47,4 +62,9 @@ export const uz: SectionDict<typeof ru> = {
   "news.new": "yangi",
   "news.action.enable": "Yoqish",
   "news.action.more": "Batafsil",
+  "news.poll.title": "So‘rovnoma",
+  "news.poll.voted": "Ovozingiz qabul qilindi: {option}",
+  "news.poll.viewOnly": "Ovoz berish faqat egasi va menejerga mumkin.",
+  "news.poll.once": "Ovozni faqat bir marta berish mumkin.",
+  "err.news.noPoll": "Bu so‘rovnoma mavjud emas.",
 };

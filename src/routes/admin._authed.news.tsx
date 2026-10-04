@@ -1,8 +1,9 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { newsFn, newsReadFn } from "@/app/admin/news.functions";
+import { newsFn, newsReadFn, voteNewsFn } from "@/app/admin/news.functions";
 import { adminT, intlLocale } from "@/app/i18n/admin";
-import { Badge, Card, Empty, PageTitle } from "@/app/ui";
+import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
+import { canEdit } from "@/core/auth/roles";
 
 export const Route = createFileRoute("/admin/_authed/news")({
   loader: () => newsFn(),
@@ -31,6 +32,11 @@ function NewsPage() {
     // Один раз на открытие: повторный вызов после invalidate видит unread = 0.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const vote = useAction(async (newsId: string, option: number) => {
+    await voteNewsFn({ data: { newsId, option } });
+    await router.invalidate();
+  });
 
   if (!view.available)
     return (
@@ -66,6 +72,43 @@ function NewsPage() {
                   })}
                 </p>
                 <p className="whitespace-pre-wrap text-sm">{n.body}</p>
+                {n.poll && (
+                  <div className="space-y-2 rounded-md border border-line p-3">
+                    <p className="text-sm font-medium">{t("news.poll.title")}</p>
+                    {n.poll.myVote !== null ? (
+                      <p className="text-sm">
+                        {t("news.poll.voted", { option: n.poll.options[n.poll.myVote] ?? "" })}
+                      </p>
+                    ) : canEdit(shop.role) ? (
+                      <>
+                        <div className="flex flex-wrap gap-2">
+                          {n.poll.options.map((o, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              className="btn-secondary text-sm"
+                              disabled={vote.busy}
+                              onClick={() => void vote.run(n.id, i).catch(() => {})}
+                            >
+                              {o}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted">{t("news.poll.once")}</p>
+                        <ErrorBox error={vote.error} />
+                      </>
+                    ) : (
+                      <>
+                        <ul className="list-disc pl-5 text-sm">
+                          {n.poll.options.map((o, i) => (
+                            <li key={i}>{o}</li>
+                          ))}
+                        </ul>
+                        <p className="text-xs text-muted">{t("news.poll.viewOnly")}</p>
+                      </>
+                    )}
+                  </div>
+                )}
                 {n.action && (n.action.kind === "link" || shop.role === "owner") && (
                   <a className="btn-secondary inline-block text-sm" href={n.action.href}>
                     {t(n.action.kind === "module" ? "news.action.enable" : "news.action.more")}

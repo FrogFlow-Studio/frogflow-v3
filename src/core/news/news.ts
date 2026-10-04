@@ -85,6 +85,38 @@ export function parseAction(raw: Json | null): NewsAction | null {
   return null;
 }
 
+/** Опрос в новости (Ч7): 2–4 варианта, у каждого текст на языках; голос хранит номер варианта. */
+export const POLL_MIN = 2;
+export const POLL_MAX = 4;
+export const POLL_OPTION_MAX = 80;
+export type NewsPoll = { options: Record<string, string>[] };
+
+/** Опрос из базы; нет или повреждён — null (новость покажется без опроса). */
+export function parsePoll(raw: Json | null): NewsPoll | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const list = (raw as Record<string, Json | undefined>).options;
+  if (!Array.isArray(list) || list.length < POLL_MIN || list.length > POLL_MAX) return null;
+  const options: Record<string, string>[] = [];
+  for (const o of list) {
+    if (!o || typeof o !== "object" || Array.isArray(o)) return null;
+    const texts: Record<string, string> = {};
+    for (const l of SUPPORTED_LOCALES) {
+      const v = (o as Record<string, Json | undefined>)[l];
+      if (typeof v === "string" && v.trim()) texts[l] = v;
+    }
+    if (!texts.ru) return null;
+    options.push(texts);
+  }
+  return { options };
+}
+
+export type NewsItemPoll = {
+  /** Варианты на языке продавца; номер варианта — позиция в списке. */
+  options: string[];
+  /** За что проголосовал этот магазин; null — ещё не голосовал. */
+  myVote: number | null;
+};
+
 export type NewsItem = {
   id: string;
   title: string;
@@ -92,6 +124,7 @@ export type NewsItem = {
   publishedAt: string;
   read: boolean;
   action: NewsItemAction | null;
+  poll: NewsItemPoll | null;
 };
 
 /** Куда ведёт кнопка у этого магазина: «Включить» пропадает, когда модуль уже включён. */
@@ -180,10 +213,39 @@ async function readReadIds(ctx: TenantContext): Promise<Set<string>> {
   }
 }
 
+function itemPoll(
+  poll: NewsPoll | null,
+  vote: number | undefined,
+  locale: Locale,
+): NewsItemPoll | null {
+  if (!poll) return null;
+  const mine = vote !== undefined && vote >= 0 && vote < poll.options.length ? vote : null;
+  return { options: poll.options.map((o) => localized(o, locale)), myVote: mine };
+}
+
+/** Голоса этого магазина: новость → номер варианта. */
+async function readMyVotes(ctx: TenantContext): Promise<Map<string, number>> {
+  const votes = new Map<string, number>();
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await ctx.db
+      .from("platform_news_votes")
+      .select("news_id, option_ix")
+      .eq("bot_id", ctx.tenant.id)
+      .order("news_id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw serverFailure(`Новости: голоса не получены: ${error.message}`);
+    for (const r of data ?? []) votes.set(r.news_id, r.option_ix);
+    if ((data ?? []).length < PAGE) return votes;
+  }
+}
+
 export async function loadNews(ctx: TenantContext, locale: Locale): Promise<NewsView> {
   const rows = await readVisible(ctx);
   if (rows === null) return { available: false };
   const read = await readReadIds(ctx);
+  const votes = rows.some((n) => parsePoll(n.poll))
+    ? await readMyVotes(ctx)
+    : new Map<string, number>();
   const items = rows.map((n) => ({
     id: n.id,
     title: localized(n.title, locale),
@@ -191,6 +253,7 @@ export async function loadNews(ctx: TenantContext, locale: Locale): Promise<News
     publishedAt: n.published_at ?? n.created_at,
     read: read.has(n.id),
     action: itemAction(parseAction(n.action), ctx.tenant.modules),
+    poll: itemPoll(parsePoll(n.poll), votes.get(n.id), locale),
   }));
   return { available: true, items, unread: items.filter((i) => !i.read).length };
 }
@@ -223,6 +286,36 @@ export async function markNewsRead(ctx: TenantContext): Promise<number> {
   return fresh.length;
 }
 
+export const pollUnavailable = () => new UserError("err.news.noPoll", "Этот опрос недоступен.");
+
+/**
+ * Голос в опросе: один на магазин. Условие «один раз» держит первичный ключ
+ * (магазин, новость): второй клик или вторая вкладка падают на 23505 и
+ * не засчитываются — `counted: false`, без ошибки. Голосовать можно только в
+ * опубликованной новости с опросом, адресованной этому магазину.
+ */
+export async function voteNews(
+  ctx: TenantContext,
+  newsId: string,
+  option: number,
+): Promise<{ counted: boolean }> {
+  const rows = await readVisible(ctx);
+  const poll = parsePoll(rows?.find((n) => n.id === newsId)?.poll ?? null);
+  if (!poll || !Number.isInteger(option) || option < 0 || option >= poll.options.length)
+    throw pollUnavailable();
+  const { error } = await ctx.db.from("platform_news_votes").insert({
+    bot_id: ctx.tenant.id,
+    news_id: newsId,
+    option_ix: option,
+    voted_at: new Date().toISOString(),
+  });
+  if (error) {
+    if (error.code === "23505") return { counted: false };
+    throw serverFailure(`Новости: голос не записан: ${error.message}`);
+  }
+  return { counted: true };
+}
+
 /* ---------- ввод оператора ---------- */
 
 export type NewsInput = {
@@ -231,7 +324,44 @@ export type NewsInput = {
   plans: NewsPlanTier[];
   /** Кнопка действия (Ч6); пусто — без кнопки. */
   action?: { kind: "module"; module: string } | { kind: "link"; path: string } | null;
+  /**
+   * Варианты опроса (Ч7): на каждом языке по варианту в строке. Русский обязателен
+   * (2–4 строки), остальные языки — пусто или столько же строк. Пусто — без опроса.
+   */
+  pollOptions?: Partial<Record<Locale, string>>;
 };
+
+const lines = (v: string | undefined) =>
+  (v ?? "")
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+/** Проверенный опрос оператора; пустой русский список — без опроса. */
+export function cleanPoll(input: NewsInput["pollOptions"]): NewsPoll | null {
+  const ru = lines(input?.ru);
+  const others = SUPPORTED_LOCALES.filter((l) => l !== "ru").map(
+    (l) => [l, lines(input?.[l])] as const,
+  );
+  if (ru.length === 0 && others.every(([, v]) => v.length === 0)) return null;
+  if (ru.length < POLL_MIN || ru.length > POLL_MAX)
+    throw new NewsInputError(`Опрос: нужно от ${POLL_MIN} до ${POLL_MAX} вариантов по-русски.`);
+  for (const [l, v] of others)
+    if (v.length !== 0 && v.length !== ru.length)
+      throw new NewsInputError(
+        `Опрос (${l}): вариантов ${v.length}, а по-русски ${ru.length}. Столько же или пусто.`,
+      );
+  const options = ru.map((text, i) => {
+    const o: Record<string, string> = { ru: text };
+    for (const [l, v] of others) if (v[i]) o[l] = v[i]!;
+    for (const t of Object.values(o))
+      if (t.length > POLL_OPTION_MAX)
+        throw new NewsInputError(`Опрос: вариант длиннее ${POLL_OPTION_MAX} знаков.`);
+    return o;
+  });
+  return { options };
+}
 
 /** Проверенное действие оператора: неизвестный модуль, не готовый модуль и чужой путь — ошибка ввода. */
 export function cleanAction(input: NewsInput["action"]): NewsAction | null {
@@ -273,6 +403,7 @@ export function cleanNews(input: NewsInput): {
   body: Record<string, string>;
   plans: NewsPlanTier[];
   action: NewsAction | null;
+  poll: NewsPoll | null;
 } {
   const plans = [...new Set(input.plans)].filter((p) =>
     (NEWS_PLAN_TIERS as readonly string[]).includes(p),
@@ -282,5 +413,6 @@ export function cleanNews(input: NewsInput): {
     body: cleanTexts(input.body, NEWS_BODY_MAX, "Текст"),
     plans,
     action: cleanAction(input.action),
+    poll: cleanPoll(input.pollOptions),
   };
 }

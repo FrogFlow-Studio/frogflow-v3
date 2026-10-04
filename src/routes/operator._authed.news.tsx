@@ -35,6 +35,9 @@ function NewsAdmin() {
   const [body, setBody] = useState<Texts>(blank());
   const [plans, setPlans] = useState<NewsPlanTier[]>([]);
   const [action, setAction] = useState<ActionForm>(noAction());
+  const [poll, setPoll] = useState<Texts>(blank());
+  // Опрос после публикации не меняется: голоса привязаны к номерам вариантов.
+  const [pollLocked, setPollLocked] = useState(false);
   const save = useAction(async () => {
     await saveNewsFn({
       data: {
@@ -42,6 +45,7 @@ function NewsAdmin() {
         title,
         body,
         plans,
+        pollOptions: poll,
         action:
           action.kind === "module"
             ? { kind: "module", module: action.value }
@@ -55,6 +59,8 @@ function NewsAdmin() {
     setBody(blank());
     setPlans([]);
     setAction(noAction());
+    setPoll(blank());
+    setPollLocked(false);
     await router.invalidate();
   });
   const state = useAction(async (id: string, action: "publish" | "archive" | "unarchive") => {
@@ -172,6 +178,24 @@ function NewsAdmin() {
               </select>
             )}
           </fieldset>
+          <fieldset className="space-y-1 text-sm">
+            <legend className="mb-1 text-muted">
+              Опрос: варианты, по одному в строке (2–4; пусто — без опроса)
+              {pollLocked && " · после публикации не меняется"}
+            </legend>
+            {LANGS.map((l) => (
+              <textarea
+                key={l}
+                className="input w-full"
+                rows={3}
+                disabled={pollLocked}
+                value={poll[l]}
+                placeholder={`Варианты · ${LANG_NAME[l]}`}
+                aria-label={`Варианты опроса ${LANG_NAME[l]}`}
+                onChange={(e) => setPoll({ ...poll, [l]: e.target.value })}
+              />
+            ))}
+          </fieldset>
           <div className="flex gap-2">
             <button
               type="button"
@@ -191,6 +215,8 @@ function NewsAdmin() {
                   setBody(blank());
                   setPlans([]);
                   setAction(noAction());
+                  setPoll(blank());
+                  setPollLocked(false);
                 }}
               >
                 Отмена
@@ -215,6 +241,12 @@ function NewsAdmin() {
                   <span className="text-xs text-muted">
                     {n.plans.length ? n.plans.map((p) => TIER_NAME[p]).join(", ") : "всем тарифам"}
                   </span>
+                  {n.poll && n.publishedAt && (
+                    <span className="mt-1 block text-xs">
+                      Итоги опроса (голосов {n.poll.votes.reduce((a, b) => a + b, 0)}):{" "}
+                      {n.poll.options.map((o, i) => `${o.ru} — ${n.poll!.votes[i]}`).join("; ")}
+                    </span>
+                  )}
                 </span>
                 <span className="flex items-center gap-2">
                   {n.archived ? (
@@ -232,6 +264,17 @@ function NewsAdmin() {
                       setTitle(fill(n.title));
                       setBody(fill(n.body));
                       setPlans(n.plans);
+                      setPoll(
+                        n.poll
+                          ? {
+                              ru: n.poll.options.map((o) => o.ru ?? "").join("\n"),
+                              kk: n.poll.options.map((o) => o.kk ?? "").join("\n"),
+                              en: n.poll.options.map((o) => o.en ?? "").join("\n"),
+                              uz: n.poll.options.map((o) => o.uz ?? "").join("\n"),
+                            }
+                          : blank(),
+                      );
+                      setPollLocked(Boolean(n.publishedAt));
                       setAction(
                         n.action?.kind === "module"
                           ? { kind: "module", value: n.action.module }

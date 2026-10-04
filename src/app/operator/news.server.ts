@@ -4,6 +4,7 @@ import {
   cleanNews,
   isMissingTable,
   parseAction,
+  parsePoll,
   type NewsAction,
   type NewsInput,
   type NewsPlanTier,
@@ -25,6 +26,8 @@ export type OperatorNews = {
   body: Record<string, string>;
   plans: NewsPlanTier[];
   action: NewsAction | null;
+  /** Опрос и итоги: голосов за каждый вариант (по порядку) — только у опубликованных. */
+  poll: { options: Record<string, string>[]; votes: number[] } | null;
   publishedAt: string | null;
   archived: boolean;
   createdAt: string;
@@ -37,13 +40,15 @@ function texts(v: unknown): Record<string, string> {
   );
 }
 
-function toOperatorNews(r: NewsRow): OperatorNews {
+function toOperatorNews(r: NewsRow, votes: number[] = []): OperatorNews {
+  const poll = parsePoll(r.poll);
   return {
     id: r.id,
     title: texts(r.title),
     body: texts(r.body),
     plans: r.plans as NewsPlanTier[],
     action: parseAction(r.action),
+    poll: poll ? { options: poll.options, votes: poll.options.map((_, i) => votes[i] ?? 0) } : null,
     publishedAt: r.published_at,
     archived: r.archived,
     createdAt: r.created_at,
@@ -69,7 +74,27 @@ export async function listNews(): Promise<OperatorNews[] | null> {
     out.push(...rows);
     if (rows.length < PAGE) break;
   }
-  return out.map(toOperatorNews);
+  const result: OperatorNews[] = [];
+  for (const r of out) result.push(toOperatorNews(r, await pollVotes(r)));
+  return result;
+}
+
+/** Голоса по вариантам: счёт на стороне базы, без выборки строк (нет молчаливого потолка). */
+async function pollVotes(r: NewsRow): Promise<number[]> {
+  const poll = parsePoll(r.poll);
+  if (!poll || !r.published_at) return [];
+  const db = serviceDb();
+  const counts: number[] = [];
+  for (let i = 0; i < poll.options.length; i++) {
+    const { count, error } = await db
+      .from("platform_news_votes")
+      .select("news_id", { count: "exact", head: true })
+      .eq("news_id", r.id)
+      .eq("option_ix", i);
+    if (error) throw serverFailure(`[operator] голоса не посчитаны: ${error.message}`);
+    counts.push(count ?? 0);
+  }
+  return counts;
 }
 
 /** Новая новость (черновик) или правка существующей. */
@@ -99,10 +124,26 @@ export async function saveNews(
     }
     return toOperatorNews(data as NewsRow);
   }
+  // Голос хранит номер варианта: после публикации опрос не меняем, иначе голоса
+  // «переедут» на другие варианты.
+  const { data: cur, error: curError } = await db
+    .from("platform_news")
+    .select("published_at, poll")
+    .eq("id", id)
+    .maybeSingle();
+  if (curError) throw serverFailure(`[operator] новость не прочитана: ${curError.message}`);
+  if (!cur) throw new NewsInputError("Новость не найдена.");
+  if (
+    cur.published_at &&
+    JSON.stringify(clean.poll ?? null) !== JSON.stringify(parsePoll(cur.poll) ?? null)
+  )
+    throw new NewsInputError(
+      "Опрос нельзя менять после публикации: голоса уже привязаны к вариантам.",
+    );
   const { data, error } = await db.from("platform_news").update(clean).eq("id", id).select(COLS);
   if (error) throw serverFailure(`[operator] новость не сохранена: ${error.message}`);
   if (!data?.length) throw new NewsInputError("Новость не найдена.");
-  return toOperatorNews(data[0] as NewsRow);
+  return toOperatorNews(data[0] as NewsRow, await pollVotes(data[0] as NewsRow));
 }
 
 /**
