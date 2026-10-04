@@ -15,6 +15,9 @@ import type { Json } from "@/core/db-types";
 export const ADMIN_AUDIT_ACTOR_PREFIX = "admin:";
 export const ADMIN_AUDIT_KIND = "meta" as const;
 
+/** Действия, которые пишутся в журнал вручную, не прослойкой (запрос идёт без сессии продавца). */
+export const MANUAL_AUDIT_ACTIONS = ["tgLoginRequest"] as const;
+
 const NOT_AUDITED = new Set([
   // проверка уведомлений: без изменений, только тестовые сообщения
   "checkNotifyFn",

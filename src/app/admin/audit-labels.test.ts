@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { auditedAdminAction, toAuditEntry } from "@/core/audit/admin-audit";
+import { MANUAL_AUDIT_ACTIONS, auditedAdminAction, toAuditEntry } from "@/core/audit/admin-audit";
 import { ru } from "@/app/i18n/admin/audit";
 
 /** Все изменяющие серверные функции админки — прямо из исходников. */
@@ -29,7 +29,11 @@ describe("журнал действий: у каждого действия ес
     const labelled = Object.keys(ru)
       .filter((k) => k.startsWith("audit.action."))
       .map((k) => k.slice("audit.action.".length));
-    expect(labelled.filter((n) => !audited.includes(n))).toEqual([]);
+    expect(
+      labelled.filter(
+        (n) => !audited.includes(n) && !(MANUAL_AUDIT_ACTIONS as readonly string[]).includes(n),
+      ),
+    ).toEqual([]);
   });
 
   it("строка bot_events превращается в запись журнала", () => {

@@ -74,4 +74,42 @@ describe("запрос ссылки входа", () => {
     expect(sent).toHaveLength(5);
     expect(db.tables.admin_login_attempts).toHaveLength(0);
   });
+
+  it("каждая отправка и первый за час отказ идут в журнал магазина", async () => {
+    const { requestTgLogin } = await import("./tg-login-request.server");
+    const log: string[] = [];
+    for (let i = 0; i < 6; i++)
+      await requestTgLogin(
+        ctx,
+        "anna",
+        async () => {},
+        async (r) => void log.push(r),
+      );
+    expect(log).toEqual(["sent", "sent", "sent", "sent", "sent", "limited"]);
+  });
+
+  it("20 отказов подряд — в журнал одна строка limited, через час снова одна", async () => {
+    const { requestTgLogin } = await import("./tg-login-request.server");
+    const log: string[] = [];
+    const run = () =>
+      requestTgLogin(
+        ctx,
+        "anna",
+        async () => {},
+        async (r) => void log.push(r),
+      );
+    for (let i = 0; i < 5; i++) await run();
+    for (let i = 0; i < 20; i++) expect(await run()).toBe("limited");
+    expect(log.filter((r) => r === "limited")).toHaveLength(1);
+    expect(log.filter((r) => r === "sent")).toHaveLength(5);
+  });
+
+  it("отказы одновременно: журнал получает одну строку", async () => {
+    const { claimLimitedLog } = await import("./tg-login.server");
+    const t0 = 1_700_000_000_000;
+    const r = await Promise.all(Array.from({ length: 10 }, () => claimLimitedLog(ctx, t0)));
+    expect(r.filter(Boolean)).toHaveLength(1);
+    expect(await claimLimitedLog(ctx, t0 + 3_600_000 + 1)).toBe(true);
+    expect(await claimLimitedLog(ctx, t0 + 3_600_000 + 2)).toBe(false);
+  });
 });

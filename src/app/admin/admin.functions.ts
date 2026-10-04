@@ -117,7 +117,8 @@ export const adminTgLoginRequest = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const done = { ok: true as const };
     const { resolveAdminLogin } = await import("./admin.server");
-    const { loginDelay } = await import("@/app/auth/login-guard.server");
+    const { clientIp, loginDelay } = await import("@/app/auth/login-guard.server");
+    const ip = clientIp();
     await loginDelay();
     const login = await resolveAdminLogin(data.username);
     if (!login || login.role !== "owner") return done;
@@ -127,19 +128,33 @@ export const adminTgLoginRequest = createServerFn({ method: "POST" })
     const { tenantContext } = await import("@/core/tenant/resolve.server");
     const ctx = tenantContext(t);
     const { requestTgLogin } = await import("@/app/auth/tg-login-request.server");
+    const { recordShopAction } = await import("./audit.server");
     const { normalizeLogin } = await import("@/core/auth/roles");
     const { telegramApi } = await import("@/channels/telegram/api");
     const { tgLoginMessage } = await import("@/app/auth/tg-login-text");
-    const r = await requestTgLogin(ctx, normalizeLogin(data.username), async (token) => {
-      const link = `${env().APP_URL}/admin/tg-login?b=${t.id}&t=${token}`;
-      await telegramApi(ctx.secrets.telegramToken(), env().TELEGRAM_API_BASE)
-        .call("sendMessage", {
-          chat_id: t.ownerTelegramId,
-          text: tgLoginMessage(t.settings.default_locale ?? "ru", link),
-          link_preview_options: { is_disabled: true },
-        })
-        .catch(() => undefined);
-    });
+    const r = await requestTgLogin(
+      ctx,
+      normalizeLogin(data.username),
+      async (token) => {
+        const link = `${env().APP_URL}/admin/tg-login?b=${t.id}&t=${token}`;
+        await telegramApi(ctx.secrets.telegramToken(), env().TELEGRAM_API_BASE)
+          .call("sendMessage", {
+            chat_id: t.ownerTelegramId,
+            text: tgLoginMessage(t.settings.default_locale ?? "ru", link),
+            link_preview_options: { is_disabled: true },
+          })
+          .catch(() => undefined);
+      },
+      (result) =>
+        recordShopAction(
+          { botId: t.id, username: normalizeLogin(data.username) },
+          "tgLoginRequest",
+          {
+            result,
+            ip: ip ?? "—",
+          },
+        ),
+    );
     // Предел часа виден только настоящему владельцу магазина; остальным ответ прежний.
     if (r === "limited") return { ok: true as const, limited: true as const };
     return done;

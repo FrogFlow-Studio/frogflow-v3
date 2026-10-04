@@ -89,10 +89,35 @@ export async function claimLoginRequest(ctx: TenantContext, now = Date.now()): P
   const keys = (data ?? []).map((r) => r.key as string);
   const stale = keys.filter((k) => stamp(k) <= now - HOUR_MS);
   // Метки старше часа убираем; сбой уборки счёт не портит.
-  if (stale.length > 0) await ctx.db.from("app_settings").delete().in("key", stale);
+  if (stale.length > 0)
+    await ctx.db.from("app_settings").delete().eq("bot_id", ctx.tenant.id).in("key", stale);
   const live = keys.filter((k) => stamp(k) > now - HOUR_MS);
   // Живых меток вместе со своей больше предела — отказ. При гонке отказать могут обоим: лучше меньше ссылок, чем больше.
   if (live.length <= TG_LOGIN_MAX_PER_HOUR) return true;
-  await ctx.db.from("app_settings").delete().eq("key", key);
+  await ctx.db.from("app_settings").delete().eq("bot_id", ctx.tenant.id).eq("key", key);
   return false;
+}
+
+const TG_LIMITED_PREFIX = "admin_tg_req_limited:";
+
+/**
+ * Можно ли записать в журнал отказ по пределу: один раз в час на магазин.
+ * Условная запись метки часа до журнала — пишет только выигравший; иначе
+ * поток отказов вытеснил бы из журнала (последние 200) настоящие действия.
+ */
+export async function claimLimitedLog(ctx: TenantContext, now = Date.now()): Promise<boolean> {
+  const hour = Math.floor(now / HOUR_MS);
+  const key = `${TG_LIMITED_PREFIX}${hour}`;
+  const { error } = await ctx.db
+    .from("app_settings")
+    .insert({ bot_id: ctx.tenant.id, key, value: "1" });
+  if (error) return false;
+  // Метки прошлых часов не копим; сбой уборки не мешает.
+  await ctx.db
+    .from("app_settings")
+    .delete()
+    .eq("bot_id", ctx.tenant.id)
+    .like("key", `${TG_LIMITED_PREFIX}%`)
+    .neq("key", key);
+  return true;
 }
