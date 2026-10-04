@@ -8,6 +8,7 @@ import type { StoreProduct } from "@/core/storefront/catalog";
 import { STORE_PAGE } from "@/core/storefront/paging";
 import { useCart } from "@/app/storefront/cart";
 import { FavoriteButton } from "@/app/storefront/favorites";
+import { RecentlyViewed } from "@/app/storefront/recent";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { OfferNote, OfferPrice } from "@/app/storefront/offer";
 import { SmartSearchResults } from "@/app/storefront/smart-search";
@@ -707,6 +708,7 @@ function CatalogPage() {
           )}
         </div>
       )}
+      <RecentlyViewed slug={slug} />
       {added === "mixed" && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-md bg-fg px-4 py-2 text-sm text-bg shadow">
           {t("catalog.mixed")}

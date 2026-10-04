@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { storeProductsByIds } from "./catalog";
-import { FAVORITES_MAX, parseFavorites, pruneFavorites, toggleFavorite } from "./favorites";
+import {
+  FAVORITES_MAX,
+  mergeFavorites,
+  parseFavorites,
+  pruneFavorites,
+  toggleFavorite,
+} from "./favorites";
 
 const BOT = "00000000-0000-0000-0000-000000000001";
 const HIDDEN = "00000000-0000-4000-8000-00000000c0de";
@@ -76,5 +82,14 @@ describe("storeProductsByIds: карточки избранного", () => {
     const ids = Array.from({ length: 450 }, (_, i) => id(i + 1));
     const out = await storeProductsByIds(ctx, ids);
     expect(out).toHaveLength(448);
+  });
+});
+
+describe("избранное: слияние при входе", () => {
+  it("браузерное первым, сохранённое следом, без повторов и сверх лимита", () => {
+    expect(mergeFavorites([id(2), id(1)], [id(1), id(3)])).toEqual([id(2), id(1), id(3)]);
+    expect(mergeFavorites(["x"], [id(1)])).toEqual([id(1)]);
+    const many = Array.from({ length: FAVORITES_MAX + 5 }, (_, i) => id(i + 1));
+    expect(mergeFavorites(many, [])).toHaveLength(FAVORITES_MAX);
   });
 });

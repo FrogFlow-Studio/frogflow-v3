@@ -11,6 +11,7 @@ import { Breadcrumbs } from "@/app/storefront/breadcrumbs";
 import { OfferNote, OfferPrice } from "@/app/storefront/offer";
 import { pageBadge } from "@/core/catalog/lead-time";
 import { ProductReviews } from "@/app/storefront/reviews";
+import { RecentlyViewed, useRememberViewed } from "@/app/storefront/recent";
 import { productMeta } from "@/core/storefront/share";
 import { storeProductSeoFn } from "@/app/storefront/share.functions";
 import {
@@ -87,6 +88,7 @@ function ProductPage() {
   const { product: p, related, preview, course, waitlistUrl } = Route.useLoaderData();
   const { slug } = Route.useParams();
   const shop = useLoaderData({ from: "/s/$slug" });
+  useRememberViewed(slug, preview ? "" : p.id);
   const { locale, t } = useStorefrontLocale();
   const cart = useCart();
   const [img, setImg] = useState(0);
@@ -485,6 +487,7 @@ function ProductPage() {
           </div>
         </section>
       )}
+      <RecentlyViewed slug={slug} exclude={p.id} />
     </>
   );
 }

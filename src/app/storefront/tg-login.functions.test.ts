@@ -53,6 +53,7 @@ const {
   webMyOrdersFn,
   linkWebOrderFn,
   webOrderLinkStateFn,
+  webFavoritesSyncFn,
 } = await import("./tg-login.functions");
 const { orderAccessToken } = await import("@/core/storefront/web-order");
 
@@ -329,5 +330,60 @@ describe("старые заказы с сайта: привязка к Telegram 
     expect(await webOrderLinkStateFn({ data: { slug: "shop", id: 5, t: orderToken(5) } })).toEqual({
       state: null,
     });
+  });
+});
+
+describe("избранное вошедшего покупателя", () => {
+  const f = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  const sync = (ids: string[], mode: "merge" | "replace") =>
+    webFavoritesSyncFn({ data: { slug: "shop", ids, mode } });
+  const saved = () =>
+    (db.tables.bot_users![0]!.state as { web_fav?: { ids: string[]; rev: number } }).web_fav;
+
+  it("не вошёл — null, в магазине ничего не пишется", async () => {
+    expect(await sync([f(1)], "merge")).toBeNull();
+    expect(db.tables.bot_users).toEqual([]);
+  });
+
+  it("при входе браузерное и сохранённое складываются, ничего не теряется", async () => {
+    await tgLoginFn({ data: { slug: "shop", widget: widget(42) } });
+    expect(await sync([f(1), f(2)], "merge")).toEqual([f(1), f(2)]);
+    // другой телефон: свои отметки, в магазине уже есть чужие
+    expect(await sync([f(3), f(1)], "merge")).toEqual([f(3), f(1), f(2)]);
+    expect(saved()?.ids).toEqual([f(3), f(1), f(2)]);
+  });
+
+  it("снятое сердечко не возвращается: «заменить» берёт список из браузера", async () => {
+    await tgLoginFn({ data: { slug: "shop", widget: widget(42) } });
+    await sync([f(1), f(2)], "merge");
+    expect(await sync([f(2)], "replace")).toEqual([f(2)]);
+    expect(saved()?.ids).toEqual([f(2)]);
+  });
+
+  it("повтор без изменений не поднимает rev, остальное состояние не затирается", async () => {
+    await tgLoginFn({ data: { slug: "shop", widget: widget(42) } });
+    db.tables.bot_users![0]!.state = {
+      ...(db.tables.bot_users![0]!.state as object),
+      mode: "idle",
+      loyalty_note: "x",
+    };
+    await sync([f(1)], "merge");
+    const rev = saved()?.rev;
+    await sync([f(1)], "merge");
+    expect(saved()?.rev).toBe(rev);
+    expect(db.tables.bot_users![0]!.state).toMatchObject({ mode: "idle", loyalty_note: "x" });
+  });
+
+  it("чужое не видно: избранное привязано к покупателю", async () => {
+    await tgLoginFn({ data: { slug: "shop", widget: widget(42) } });
+    await sync([f(1)], "merge");
+    jar.clear();
+    await tgLoginFn({ data: { slug: "shop", widget: widget(43) } });
+    expect(await sync([f(9)], "merge")).toEqual([f(9)]);
+  });
+
+  it("клиент прежней платформы — null", async () => {
+    shop({ servedBy: "v1" });
+    expect(await sync([f(1)], "merge")).toBeNull();
   });
 });

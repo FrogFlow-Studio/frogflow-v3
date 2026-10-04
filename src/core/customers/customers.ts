@@ -344,7 +344,7 @@ export async function setState(
 export async function updateStateSection(
   ctx: TenantContext,
   customer: Customer,
-  key: "consultant" | "direct" | "winback",
+  key: "consultant" | "direct" | "winback" | "web_fav",
   patch: (current: Record<string, unknown>) => Record<string, unknown>,
 ): Promise<Customer> {
   return (await claimStateSection(ctx, customer, key, patch))!;
@@ -360,7 +360,7 @@ export async function updateStateSection(
 export async function claimStateSection(
   ctx: TenantContext,
   customer: Customer,
-  key: "consultant" | "direct" | "winback",
+  key: "consultant" | "direct" | "winback" | "web_fav",
   patch: (current: Record<string, unknown>) => Record<string, unknown> | null,
 ): Promise<Customer | null> {
   for (let attempt = 0; attempt < 3; attempt++) {

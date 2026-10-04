@@ -216,3 +216,32 @@ export const linkWebOrderFn = createServerFn({ method: "POST" })
     if (r === "busy") throw shownError(t("error.tooManyRequests"));
     throw notFound();
   });
+
+/**
+ * Избранное вошедшего покупателя: сложить с тем, что в браузере (`merge`), или
+ * заменить после нажатия сердечка (`replace`). Не вошёл или нет покупателя
+ * в магазине — null, избранное остаётся в браузере. Страница «Избранное» при
+ * этом по-прежнему показывает только товары, которые магазин отдаёт.
+ */
+export const webFavoritesSyncFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        slug,
+        ids: z.array(z.string().uuid()).max(100),
+        mode: z.enum(["merge", "replace"]),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await loginCtx(data.slug);
+    if (!ctx) return null;
+    const { buyerTelegramId } = await import("./tg-login.server");
+    const tgId = await buyerTelegramId(ctx);
+    if (tgId === null) return null;
+    const { takeWeb } = await import("@/core/storefront/checkout-guard");
+    if (!(await takeWeb(ctx, "favorites", String(tgId))))
+      throw shownError((await shopT(ctx))("error.tooManyRequests"));
+    const { syncServerFavorites } = await import("@/core/storefront/favorites-sync");
+    return syncServerFavorites(ctx, tgId, data.ids, data.mode);
+  });

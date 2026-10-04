@@ -4,12 +4,19 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { webFavoritesSyncFn } from "@/app/storefront/tg-login.functions";
 import { parseFavorites, pruneFavorites, toggleFavorite } from "@/core/storefront/favorites";
 
-/** Избранное витрины: в браузере покупателя, по магазину; сервер его не видит (core/storefront/favorites). */
+/**
+ * Избранное витрины: в браузере покупателя, по магазину. Вошедший через
+ * Telegram покупатель получает его и на других устройствах: при открытии
+ * сохранённое складывается с браузерным, после сердечка уходит весь список
+ * (core/storefront/favorites-sync). Не вошёл — сервер списка не видит.
+ */
 type FavoritesApi = {
   ids: string[];
   /** Список уже прочитан из браузера (до этого он пуст не потому, что избранного нет). */
@@ -26,16 +33,14 @@ export function FavoritesProvider({ slug, children }: { slug: string; children: 
   const key = `ff-fav-${slug}`;
   const [ids, setIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
-  useEffect(() => {
-    try {
-      setIds(parseFavorites(localStorage.getItem(key)));
-    } catch {
-      /* пусто */
-    }
-    setReady(true);
-  }, [key]);
-  const persist = useCallback(
+  const idsRef = useRef<string[]>([]);
+  // Сложение с сохранённым списком ещё идёт: до его конца «заменить» не шлём, иначе затрёт сохранённое.
+  const merging = useRef(true);
+  const touched = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const store = useCallback(
     (next: string[]) => {
+      idsRef.current = next;
       setIds(next);
       try {
         localStorage.setItem(key, JSON.stringify(next));
@@ -44,6 +49,49 @@ export function FavoritesProvider({ slug, children }: { slug: string; children: 
       }
     },
     [key],
+  );
+  const push = useCallback(() => {
+    void webFavoritesSyncFn({ data: { slug, ids: idsRef.current, mode: "replace" } }).catch(() => {
+      /* список остаётся в браузере; уйдёт со следующим сердечком */
+    });
+  }, [slug]);
+  useEffect(() => {
+    let local: string[] = [];
+    try {
+      local = parseFavorites(localStorage.getItem(key));
+    } catch {
+      /* пусто */
+    }
+    idsRef.current = local;
+    setIds(local);
+    setReady(true);
+    merging.current = true;
+    touched.current = false;
+    let live = true;
+    webFavoritesSyncFn({ data: { slug, ids: local, mode: "merge" } })
+      .then((saved) => {
+        if (!live) return;
+        merging.current = false;
+        if (touched.current) push();
+        else if (saved) store(saved);
+      })
+      .catch(() => {
+        merging.current = false;
+      });
+    return () => {
+      live = false;
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [key, slug, store, push]);
+  const persist = useCallback(
+    (next: string[]) => {
+      touched.current = true;
+      store(next);
+      if (merging.current) return;
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(push, 800);
+    },
+    [store, push],
   );
   const api = useMemo<FavoritesApi>(
     () => ({

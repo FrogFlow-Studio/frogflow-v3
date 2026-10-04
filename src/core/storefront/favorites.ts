@@ -37,3 +37,17 @@ export function pruneFavorites(list: readonly string[], existing: Iterable<strin
   const alive = new Set(existing);
   return list.filter((id) => alive.has(id));
 }
+
+/**
+ * Объединить избранное из браузера и из магазина при входе: сначала то, что
+ * покупатель отметил в этом браузере, затем сохранённое раньше; повторы и
+ * лишнее сверх лимита отбрасываются. Ничего не теряется ни с той, ни с другой стороны.
+ */
+export function mergeFavorites(local: readonly string[], saved: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const id of [...local, ...saved]) {
+    if (UUID.test(id) && !out.includes(id)) out.push(id);
+    if (out.length >= FAVORITES_MAX) break;
+  }
+  return out;
+}
