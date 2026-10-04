@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { storeReviewsFn } from "./reviews.functions";
 import { useStorefrontLocale } from "./locale";
+import { ReviewForm } from "./review-form";
 import type { PublicReview } from "@/core/reviews/photos";
 
 const stars = (n: number) => "★".repeat(n) + "☆".repeat(Math.max(0, 5 - n));
@@ -55,14 +56,17 @@ export function ProductReviews({ slug, productId }: { slug: string; productId: s
       setBusy(false);
     }
   };
-  if (!any && rows.length === 0) return null;
   const date = (iso: string) =>
     new Date(iso).toLocaleDateString(locale === "kk" ? "kk-KZ" : locale, { dateStyle: "medium" });
+  const hasReviews = any || rows.length > 0;
+  // Без отзывов блока нет; форма «Оставить отзыв» есть у того, кто может его написать.
+  if (!hasReviews) return <ReviewForm slug={slug} productId={productId} hasReviews={false} />;
   return (
     <section className="mt-10" aria-labelledby="reviews-title">
       <h2 id="reviews-title" className="mb-3 text-sm font-semibold text-muted">
         {t("product.reviewsTitle")}
       </h2>
+      <ReviewForm slug={slug} productId={productId} hasReviews />
       <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
         <select
           className="input w-auto"

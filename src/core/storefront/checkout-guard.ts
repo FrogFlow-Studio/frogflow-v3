@@ -51,6 +51,8 @@ export const WEB_BUDGETS = {
   myOrders: { limit: 30, windowMs: 60_000 },
   /** Сохранение избранного вошедшего покупателя. */
   favorites: { limit: 30, windowMs: 60_000 },
+  /** Отзыв с сайта (с фото): текст и снимки не рассылаем без счёта. */
+  review: { limit: 6, windowMs: 10 * 60_000 },
 } as const satisfies Record<string, Budget>;
 
 export function webSubject(who: string): string {
