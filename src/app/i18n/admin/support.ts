@@ -4,6 +4,8 @@ import type { SectionDict } from "../section";
 export const ru = {
   "support.nav": "Поддержка",
   "support.title": "Поддержка",
+  "support.typical":
+    "Обычно отвечаем в течение {n} ч рабочего времени (пн–пт, 10:00–19:00 по Алматы).",
   "support.subtitle":
     "Напишите нам — ответим здесь же. Переписка сохраняется, мы видим её рядом с вашим магазином.",
   "support.soon.title": "Чат с поддержкой скоро заработает",
@@ -30,6 +32,8 @@ export const ru = {
 export const kk: SectionDict<typeof ru> = {
   "support.nav": "Қолдау",
   "support.title": "Қолдау",
+  "support.typical":
+    "Әдетте {n} сағат жұмыс уақытында жауап береміз (дс–жм, Алматы уақытымен 10:00–19:00).",
   "support.subtitle":
     "Бізге жазыңыз — жауапты осы жерде береміз. Хат алмасу сақталады, оны дүкеніңіздің жанынан көреміз.",
   "support.soon.title": "Қолдау чаты жақында іске қосылады",
@@ -57,6 +61,8 @@ export const kk: SectionDict<typeof ru> = {
 export const en: SectionDict<typeof ru> = {
   "support.nav": "Support",
   "support.title": "Support",
+  "support.typical":
+    "We usually reply within {n} h of working time (Mon–Fri, 10:00–19:00 Almaty time).",
   "support.subtitle":
     "Write to us and we will answer right here. The conversation is saved, and we see it next to your shop.",
   "support.soon.title": "Support chat is coming soon",
@@ -84,6 +90,8 @@ export const en: SectionDict<typeof ru> = {
 export const uz: SectionDict<typeof ru> = {
   "support.nav": "Yordam",
   "support.title": "Yordam",
+  "support.typical":
+    "Odatda ish vaqtining {n} soati ichida javob beramiz (du–ju, Olmaota vaqti bilan 10:00–19:00).",
   "support.subtitle":
     "Bizga yozing — javobni shu yerning o‘zida beramiz. Yozishma saqlanadi, biz uni do‘koningiz yonida ko‘ramiz.",
   "support.soon.title": "Yordam chati tez orada ishga tushadi",

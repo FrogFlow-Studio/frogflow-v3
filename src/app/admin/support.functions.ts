@@ -14,6 +14,13 @@ export const supportFn = createServerFn({ method: "GET" }).handler(async () => {
   return loadSupport(ctx);
 });
 
+/** «Обычно отвечаем за N рабочих часов» — по фактам платформы; null, пока данных мало. */
+export const supportTypicalFn = createServerFn({ method: "GET" }).handler(async () => {
+  await (await guards()).requireAdmin();
+  const { typicalResponseHours } = await import("@/app/operator/support.server");
+  return typicalResponseHours();
+});
+
 export const sendSupportMessageFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ body: z.string().max(10_000) }).parse(d))
   .handler(async ({ data }) => {

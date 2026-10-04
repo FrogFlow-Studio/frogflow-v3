@@ -17,6 +17,13 @@ import {
   type ThreadStatus,
   type MessageRow,
 } from "@/core/support/support";
+import {
+  TYPICAL_WINDOW_DAYS,
+  averageResponse,
+  replyDue,
+  typicalHours,
+  type ResponseSample,
+} from "@/core/support/response";
 import { tenantDirectory } from "@/core/tenant/resolve.server";
 import { logEvent } from "./operator.server";
 import { serverFailure } from "@/lib/server-failure";
@@ -36,7 +43,48 @@ export type InboxRow = {
   labels: string[];
   lastMessageAt: string;
   unread: number;
+  /** Ждёт ответа оператора: до какого момента ответить и просрочено ли (рабочие часы, цель по тарифу). */
+  reply: { due: string; overdue: boolean } | null;
 };
+
+export type ResponseSummary = { count: number; avgMinutes: number | null };
+
+/** Первые ответы за 30 дней: обращение создано → оператор ответил (постранично, ключ сортировки — id). */
+async function responseSamples(now: Date): Promise<ResponseSample[] | null> {
+  const since = new Date(now.getTime() - TYPICAL_WINDOW_DAYS * 86_400_000).toISOString();
+  const out: ResponseSample[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await serviceDb()
+      .from("platform_threads")
+      .select("id, created_at, first_response_at")
+      .gte("first_response_at", since)
+      .order("id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) {
+      if (isMissingTable(error)) return null;
+      throw serverFailure(`[operator] скорость ответа поддержки не прочитана: ${error.message}`);
+    }
+    for (const r of data ?? [])
+      if (r.first_response_at)
+        out.push({ startedAt: r.created_at, respondedAt: r.first_response_at });
+    if ((data ?? []).length < PAGE) return out;
+  }
+}
+
+/**
+ * «Обычно отвечаем за N рабочих часов» для продавца: по фактам платформы за 30
+ * дней; мало данных или раздел выключен — null (текста нет). Ошибка чтения
+ * тоже даёт null: подсказка не стоит сломанной страницы, лучше без обещания.
+ */
+export async function typicalResponseHours(now = new Date()): Promise<number | null> {
+  try {
+    const samples = await responseSamples(now);
+    return samples ? typicalHours(samples, now) : null;
+  } catch (e) {
+    console.error("[support] «обычно отвечаем» не посчитано", e);
+    return null;
+  }
+}
 
 export type InboxFilter = { status?: ThreadStatus; label?: string };
 export type StatusCounts = Record<ThreadStatus, number>;
@@ -63,7 +111,11 @@ async function statusCounts(db: ReturnType<typeof serviceDb>): Promise<StatusCou
  * самые давние сверху); фильтр по статусу и метке; счётчики по статусам и
  * метки в работе — для чипов. null — раздел выключен (нет таблиц).
  */
-export async function supportInbox(filter: InboxFilter = {}): Promise<{
+export async function supportInbox(
+  filter: InboxFilter = {},
+  now = new Date(),
+): Promise<{
+  week: ResponseSummary;
   rows: InboxRow[];
   resolved: number;
   counts: StatusCounts;
@@ -94,7 +146,10 @@ export async function supportInbox(filter: InboxFilter = {}): Promise<{
   const used = new Map<string, number>();
   for (const t of threads) for (const l of t.labels ?? []) used.set(l, (used.get(l) ?? 0) + 1);
   const wanted = filter.label?.toLowerCase();
-  const names = new Map((await tenantDirectory()).map((t) => [t.id, t.name]));
+  const directory = await tenantDirectory();
+  const names = new Map(directory.map((t) => [t.id, t.name]));
+  const plans = new Map(directory.map((t) => [t.id, t.plan]));
+  const samples = (await responseSamples(now)) ?? [];
   const rows = threads
     .filter((t) => !wanted || (t.labels ?? []).some((l) => l.toLowerCase() === wanted))
     .map((t) => ({
@@ -105,9 +160,11 @@ export async function supportInbox(filter: InboxFilter = {}): Promise<{
       labels: t.labels ?? [],
       lastMessageAt: t.last_message_at,
       unread: t.operator_unread,
+      reply: replyDue(t, plans.get(t.bot_id), now),
     }))
     .sort(
       (a, b) =>
+        Number(b.reply?.overdue ?? false) - Number(a.reply?.overdue ?? false) ||
         Number(b.unread > 0) - Number(a.unread > 0) ||
         a.lastMessageAt.localeCompare(b.lastMessageAt) ||
         a.threadId.localeCompare(b.threadId),
@@ -115,7 +172,13 @@ export async function supportInbox(filter: InboxFilter = {}): Promise<{
   const labels = [...used.entries()]
     .map(([label, count]) => ({ label, count }))
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
-  return { rows, resolved: counts.resolved, counts, labels };
+  return {
+    rows,
+    resolved: counts.resolved,
+    counts,
+    labels,
+    week: averageResponse(samples, now, 7),
+  };
 }
 
 export type OperatorThreadView = {

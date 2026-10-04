@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import { sendSellerMessage } from "@/core/support/support";
+import { withBrokenReads } from "../../../tests/broken-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 
 /** Поддержка, сторона оператора: входящие, ответ, первый ответ, «решено» → новое обращение. */
@@ -14,7 +15,8 @@ vi.mock("@/core/tenant/resolve.server", async (orig) => ({
   ],
 }));
 
-const { supportInbox, supportConversation, operatorReply } = await import("./support.server");
+const { supportInbox, supportConversation, operatorReply, typicalResponseHours } =
+  await import("./support.server");
 const seller = (id: string) => ({ tenant: { id, name: id }, db }) as unknown as TenantContext;
 
 beforeEach(() => {
@@ -114,5 +116,64 @@ describe("ответ оператора", () => {
       operatorReply("b1", { body: "два", operator: "y" }),
     ]);
     expect(db.tables.platform_threads![0]!.seller_unread).toBe(2);
+  });
+});
+
+describe("скорость ответа", () => {
+  // Дата зашита: понедельник 5 октября 2026, Алматы = UTC+5.
+  const at = (hm: string) => `2026-10-05T${hm}:00+05:00`;
+  const NOW = new Date(at("14:00"));
+  const thread = (over: Record<string, unknown>) => ({
+    id: `t-${Math.random()}`,
+    status: "new",
+    labels: [],
+    last_message_at: at("11:00"),
+    last_operator_message_at: null,
+    seller_unread: 0,
+    operator_unread: 1,
+    rev: 0,
+    ...over,
+  });
+
+  it("в списке — «ответить до» по тарифу в рабочих часах и просрочка; среднее за неделю", async () => {
+    db.tables.platform_threads = [
+      thread({
+        bot_id: "b1",
+        created_at: at("11:00"),
+        last_seller_message_at: at("11:00"),
+        first_response_at: null,
+      }),
+      // Уже отвечено за 60 рабочих минут — в среднее за неделю.
+      thread({
+        bot_id: "b2",
+        status: "waiting_seller",
+        created_at: at("10:00"),
+        last_seller_message_at: at("10:00"),
+        last_operator_message_at: at("11:00"),
+        first_response_at: at("11:00"),
+      }),
+    ];
+    const inbox = (await supportInbox({}, NOW))!;
+    const b1 = inbox.rows.find((r) => r.botId === "b1")!;
+    // Тарифа в справочнике нет — цель как у Basic: 8 рабочих часов от 11:00 = до 19:00.
+    expect(b1.reply).toEqual({ due: new Date(at("19:00")).toISOString(), overdue: false });
+    expect(inbox.rows.find((r) => r.botId === "b2")!.reply).toBeNull();
+    expect(inbox.week).toEqual({ count: 1, avgMinutes: 60 });
+  });
+
+  it("«обычно отвечаем»: мало ответов — null; пять и больше — часы по факту; прочитать не вышло — null", async () => {
+    expect(await typicalResponseHours(NOW)).toBeNull();
+    db.tables.platform_threads = [30, 60, 90, 120, 100].map((m, i) =>
+      thread({
+        id: `s${i}`,
+        bot_id: "b1",
+        status: "resolved",
+        created_at: at("10:00"),
+        first_response_at: new Date(new Date(at("10:00")).getTime() + m * 60_000).toISOString(),
+      }),
+    );
+    expect(await typicalResponseHours(NOW)).toBe(2);
+    db = withBrokenReads(db, ["platform_threads"]);
+    expect(await typicalResponseHours(NOW)).toBeNull();
   });
 });

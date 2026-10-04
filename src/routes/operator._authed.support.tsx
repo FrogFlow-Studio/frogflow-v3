@@ -10,6 +10,7 @@ import {
   supportStatusFn,
 } from "@/app/operator/operator.functions";
 import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
+import { minutesLabel } from "@/core/support/response";
 import {
   STATUS_LABEL_RU,
   SUPPORT_BODY_MAX,
@@ -87,7 +88,7 @@ function SupportInbox() {
     <>
       <PageTitle
         title="Поддержка"
-        subtitle={`Обращений в работе: ${inbox.rows.length}, решённых: ${inbox.resolved}. Новые ответы клиентов подтягиваются раз в полминуты.`}
+        subtitle={`Обращений в работе: ${inbox.rows.length}, решённых: ${inbox.resolved}. Среднее время первого ответа за неделю: ${inbox.week.avgMinutes === null ? "данных нет" : `${minutesLabel(inbox.week.avgMinutes)} рабочего времени (обращений: ${inbox.week.count})`}. Новые ответы клиентов подтягиваются раз в полминуты.`}
       />
       <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
         <Link
@@ -147,6 +148,14 @@ function SupportInbox() {
                         {fmt(r.lastMessageAt)}
                         {r.labels.length > 0 && ` · ${r.labels.map((l) => `#${l}`).join(" ")}`}
                       </span>
+                      {r.reply && (
+                        <span
+                          className={`block text-xs ${r.reply.overdue ? "text-danger" : "text-muted"}`}
+                        >
+                          {r.reply.overdue ? "просрочено, было до " : "ответить до "}
+                          {fmt(r.reply.due)}
+                        </span>
+                      )}
                     </span>
                     <span className="flex shrink-0 items-center gap-1">
                       {r.unread > 0 && <Badge tone="danger">{r.unread}</Badge>}
