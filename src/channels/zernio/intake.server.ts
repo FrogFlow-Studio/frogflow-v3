@@ -256,11 +256,12 @@ export async function liveIntakeDeps(): Promise<IntakeDeps> {
     },
     unmatched: async (e) => {
       const { serviceDb } = await import("@/core/db/client.server");
+      const { serverFailure } = await import("@/lib/server-failure");
       const { error } = await serviceDb()
         .from("zernio_logs")
         .insert(unmatchedLogRow(e) as never);
       // Повторная доставка того же события — уже записано.
-      if (error && !/duplicate|unique/i.test(error.message)) throw new Error(error.message);
+      if (error && !/duplicate|unique/i.test(error.message)) throw serverFailure(error.message);
     },
     resync: async (tenant) => {
       const { resyncAfterReconnect } = await import("./connect.server");
