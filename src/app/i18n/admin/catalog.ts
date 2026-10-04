@@ -49,6 +49,9 @@ export const ru = {
   "module.courier.title": "Курьер и отслеживание (Яндекс Доставка, inDrive)",
   "module.courier.desc":
     "Заказ передаётся курьеру из карточки, покупатель сразу получает ссылку на отслеживание и телефон курьера.",
+  "module.profit.title": "Себестоимость и прибыль",
+  "module.profit.desc":
+    "Себестоимость товаров и вариантов, а в аналитике — валовая прибыль и маржа за период.",
   "module.subscriptions.title": "Товары-подписки",
   "module.subscriptions.desc":
     "Товар по подписке раз в месяц или другой срок: бот сам напомнит продлить, продление — в два нажатия.",
@@ -239,6 +242,9 @@ export const kk: SectionDict<typeof ru> = {
   "module.courier.title": "Курьер және бақылау (Яндекс Жеткізу, inDrive)",
   "module.courier.desc":
     "Тапсырыс карточкадан курьерге беріледі, сатып алушы бақылау сілтемесі мен курьер телефонын бірден алады.",
+  "module.profit.title": "Өзіндік құн және пайда",
+  "module.profit.desc":
+    "Тауарлар мен нұсқалардың өзіндік құны, ал аналитикада — кезеңдегі жалпы пайда мен маржа.",
   "module.subscriptions.title": "Жазылым тауарлары",
   "module.subscriptions.desc":
     "Айына бір рет немесе басқа мерзіммен жазылым тауары: бот ұзартуды өзі еске салады, ұзарту — екі басумен.",
@@ -397,6 +403,9 @@ export const en: SectionDict<typeof ru> = {
   "module.courier.title": "Courier and tracking (Yandex Delivery, inDrive)",
   "module.courier.desc":
     "Hand the order to a courier from its card; the customer instantly gets a tracking link and the courier’s phone.",
+  "module.profit.title": "Cost and profit",
+  "module.profit.desc":
+    "Cost of products and variants and, in analytics, gross profit and margin for the period.",
   "module.subscriptions.title": "Subscription products",
   "module.subscriptions.desc":
     "A product bought monthly or on another cycle: the bot reminds the customer to renew, renewal takes two taps.",
@@ -551,6 +560,9 @@ export const uz: SectionDict<typeof ru> = {
   "module.courier.title": "Kuryer va kuzatish (Yandex Yetkazish, inDrive)",
   "module.courier.desc":
     "Buyurtma kartadan kuryerga topshiriladi, xaridor darhol kuzatish havolasi va kuryer telefonini oladi.",
+  "module.profit.title": "Tannarx va foyda",
+  "module.profit.desc":
+    "Mahsulot va variantlar tannarxi, tahlilda esa davr uchun yalpi foyda va marja.",
   "module.subscriptions.title": "Obuna tovarlari",
   "module.subscriptions.desc":
     "Oyiga bir marta yoki boshqa muddatda obuna tovari: bot uzaytirishni oʻzi eslatadi, uzaytirish — ikki bosishda.",

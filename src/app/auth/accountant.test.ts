@@ -103,6 +103,27 @@ describe("бухгалтер: закрыто по умолчанию", () => {
     await expect(g.requireAdmin()).resolves.toBeTruthy();
   });
 
+  it("правка финансовых данных (себестоимость): бухгалтер и менеджер могут, «просмотр» — нет", async () => {
+    requireTenant.mockResolvedValue(
+      tenantFromRow(
+        row([
+          { username: "buh", password_hash: "scrypt$b", role: "accountant" },
+          { username: "kate", password_hash: "scrypt$k", role: "manager" },
+          { username: "vi", password_hash: "scrypt$v", role: "viewer" },
+        ]),
+      ),
+    );
+    signIn("buh", "scrypt$b");
+    expect((await g.requireAdminFinance({ edit: true })).accountant).toBe(true);
+    signIn("kate", "scrypt$k");
+    await expect(g.requireAdminFinance({ edit: true })).resolves.toBeTruthy();
+    signIn("vi", "scrypt$v");
+    await expect(g.requireAdminFinance()).resolves.toBeTruthy();
+    await expect(g.requireAdminFinance({ edit: true })).rejects.toMatchObject({
+      key: "err.auth.viewOnly",
+    });
+  });
+
   it("без модуля ролей бухгалтер не входит вовсе", async () => {
     requireTenant.mockResolvedValue({
       ...tenant,

@@ -71,8 +71,16 @@ async function currentAdmin(opts: { accountant?: boolean } = {}): Promise<Curren
  * заказов. Открыто и остальным ролям; `accountant: true` — вызывающий сам
  * убирает контакты покупателей из ответа (core/orders/redact).
  */
-export async function requireAdminFinance(): Promise<{ ctx: TenantContext; accountant: boolean }> {
+export async function requireAdminFinance(
+  opts: { edit?: boolean } = {},
+): Promise<{ ctx: TenantContext; accountant: boolean }> {
   const { ctx, role } = await currentAdmin({ accountant: true });
+  // `edit` — запись в финансовых данных (себестоимость): бухгалтер правит, «просмотр» — нет.
+  if (opts.edit && role === "viewer")
+    throw new UserError(
+      "err.auth.viewOnly",
+      "У вашей роли нет прав на изменения — только просмотр.",
+    );
   return { ctx, accountant: role === "accountant" };
 }
 

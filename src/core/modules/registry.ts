@@ -416,6 +416,15 @@ export const MODULES = {
     note: "Период на товаре — app_settings product_subscription:<id> (карточка товара). Крон раз в час днём: через N дней после оплаченного заказа — напоминание (Telegram — кнопки «Продлить» и «Отменить», Direct и сайт — ссылка на товар); отказ — bot_users.state.sub_off (core/catalog/subscription). Автосписания нет.",
   },
 
+  profit: {
+    title: "Себестоимость и прибыль",
+    desc: "Себестоимость товаров и вариантов, а в аналитике — валовая прибыль и маржа за период.",
+    group: "Аналитика",
+    price: null,
+    status: "available",
+    note: "Себестоимость — app_settings cost:<id товара> (карточка товара и страница «Себестоимость»; видит и правит бухгалтер). Входит в Pro и Business, отдельной цены нет (core/plans/registry).",
+  },
+
   // ── Физические товары ──
   stock: {
     title: "Складской учёт",

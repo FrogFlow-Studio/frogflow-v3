@@ -50,6 +50,7 @@ import * as schoolCohort from "./admin/school-cohort";
 import * as schoolLive from "./admin/school-live";
 import * as catalog from "./admin/catalog";
 import * as schoolTasks from "./admin/school-tasks";
+import * as cost from "./admin/cost";
 
 const baseRu = {
   // навигация и оболочка
@@ -447,6 +448,7 @@ const ru = {
   ...schoolLive.ru,
   ...catalog.ru,
   ...schoolTasks.ru,
+  ...cost.ru,
 } as const;
 
 export type AdminKey = keyof typeof ru;
@@ -1527,6 +1529,7 @@ const kk: Dict = {
   ...schoolLive.kk,
   ...catalog.kk,
   ...schoolTasks.kk,
+  ...cost.kk,
 };
 
 const en: Dict = {
@@ -1574,6 +1577,7 @@ const en: Dict = {
   ...schoolLive.en,
   ...catalog.en,
   ...schoolTasks.en,
+  ...cost.en,
 };
 
 const uz: Dict = {
@@ -1621,6 +1625,7 @@ const uz: Dict = {
   ...schoolLive.uz,
   ...catalog.uz,
   ...schoolTasks.uz,
+  ...cost.uz,
 };
 
 export const ADMIN_DICTS: Record<Locale, Dict> = { ru, kk, en, uz };

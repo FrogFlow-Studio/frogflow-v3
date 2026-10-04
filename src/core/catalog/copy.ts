@@ -148,6 +148,11 @@ export async function copyProduct(
       await import("@/core/catalog/subscription");
     const days = await loadSubscriptionDays(ctx, productId);
     if (days) await saveSubscriptionDays(ctx, newId, days);
+    // Себестоимость — тоже отдельная запись (app_settings cost:<id>).
+    if (ctx.tenant.modules.profit) {
+      const { copyCost } = await import("@/core/profit/cost");
+      await copyCost(ctx, productId, newId);
+    }
   } catch (e) {
     await rollback(ctx, newId, copied);
     throw e;
@@ -207,6 +212,7 @@ async function rollback(
       .delete()
       .eq("bot_id", ctx.tenant.id)
       .eq("key", `${SUBSCRIPTION_PREFIX}${id}`);
+    await ctx.db.from("app_settings").delete().eq("bot_id", ctx.tenant.id).eq("key", `cost:${id}`);
     await ctx.db.from("products").delete().eq("id", id);
   } catch {
     // Откат — на лучшее усилие: исходная ошибка важнее.

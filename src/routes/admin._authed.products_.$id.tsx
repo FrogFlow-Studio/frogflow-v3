@@ -16,6 +16,10 @@ import {
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { uploadFile } from "@/app/admin/upload-client";
 import { CourseCard } from "@/app/admin/course-card";
+import { CostEditor } from "@/app/admin/cost-editor";
+import { productCostFn } from "@/app/admin/cost.functions";
+import { canEdit } from "@/core/auth/roles";
+import type { ProductCost } from "@/core/profit/cost";
 import { assistDescriptionFn } from "@/app/admin/assistant.functions";
 import { Badge, Card, ErrorBox, Field, PageTitle, useAction } from "@/app/ui";
 import { imagePath } from "@/core/catalog/image-url";
@@ -678,6 +682,14 @@ function ProductEditor() {
             </Card>
           )}
           {p?.id && kind === "digital" && <PreviewCard productId={p.id} t={t} botId={shop.botId} />}
+          {shop.modules.profit && p?.id && (
+            <CostCard
+              productId={p.id}
+              variantNames={[...new Set((p.product_variants ?? []).map((v) => v.name.trim()))]}
+              canWrite={canEdit(shop.role) || shop.role === "accountant"}
+              t={t}
+            />
+          )}
           {shop.modules.subscriptions && p?.id && <SubscriptionCard productId={p.id} t={t} />}
           {!school && shop.modules.courses && p?.id && kind === "digital" && (
             <CourseCard productId={p.id} t={t} />
@@ -958,6 +970,37 @@ function PreviewCard({ productId, t, botId }: { productId: string; t: AdminT; bo
         )}
       </div>
       <ErrorBox error={add.error ?? save.error} />
+    </Card>
+  );
+}
+
+/** Себестоимость товара и вариантов (core/profit/cost): из неё считается прибыль в аналитике. */
+function CostCard({
+  productId,
+  variantNames,
+  canWrite,
+  t,
+}: {
+  productId: string;
+  variantNames: string[];
+  canWrite: boolean;
+  t: AdminT;
+}) {
+  const [state, setState] = useState<{ currency: string; cost: ProductCost | null } | null>(null);
+  useEffect(() => {
+    void productCostFn({ data: { id: productId } }).then(setState);
+  }, [productId]);
+  if (!state) return null;
+  return (
+    <Card title={t("cost.card")}>
+      <CostEditor
+        productId={productId}
+        variants={variantNames.map((name) => ({ name }))}
+        cost={state.cost}
+        currency={state.currency}
+        canWrite={canWrite}
+        t={t}
+      />
     </Card>
   );
 }

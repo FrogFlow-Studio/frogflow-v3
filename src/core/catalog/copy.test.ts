@@ -147,6 +147,21 @@ describe("копия подписочного товара", () => {
   });
 });
 
+describe("копия товара с себестоимостью", () => {
+  it("себестоимость переезжает к копии, у исходного не меняется; без модуля — нет", async () => {
+    const raw = JSON.stringify({ p: 100, v: { "1 кг": 80 }, cur: "KZT" });
+    const { ctx, db } = setup({});
+    (ctx.tenant.modules as Record<string, boolean>).profit = true;
+    db.tables.app_settings!.push({ bot_id: T, key: `cost:${P}`, value: raw });
+    const id = await copyProduct(ctx, P, "— копия");
+    expect(db.tables.app_settings!.find((r) => r.key === `cost:${id}`)?.value).toBe(raw);
+    expect(db.tables.app_settings!.find((r) => r.key === `cost:${P}`)?.value).toBe(raw);
+    (ctx.tenant.modules as Record<string, boolean>).profit = false;
+    const id2 = await copyProduct(ctx, P, "— копия 2");
+    expect(db.tables.app_settings!.some((r) => r.key === `cost:${id2}`)).toBe(false);
+  });
+});
+
 describe("копия товара", () => {
   it("название с пометкой не длиннее поля товара", () => {
     expect(copyName("Торт", "— копия")).toBe("Торт — копия");
