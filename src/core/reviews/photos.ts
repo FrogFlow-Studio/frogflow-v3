@@ -13,7 +13,8 @@ export const REVIEW_PHOTOS_MAX = 3;
 export const REVIEW_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 
 export type ReviewStatus = "pending" | "approved" | "hidden";
-export type ReviewMeta = { status: ReviewStatus; photos: string[] };
+/** repliedAt — когда продавец ответил покупателю (ISO); нет — ответа не было. */
+export type ReviewMeta = { status: ReviewStatus; photos: string[]; repliedAt?: string };
 
 export const reviewMetaKey = (reviewId: string) => `${REVIEW_META_PREFIX}${reviewId}`;
 
@@ -29,7 +30,9 @@ export function parseReviewMeta(raw: string | null | undefined): ReviewMeta {
     const photos = Array.isArray(v.photos)
       ? v.photos.filter((p): p is string => typeof p === "string").slice(0, REVIEW_PHOTOS_MAX)
       : [];
-    return { status, photos };
+    return typeof v.repliedAt === "string"
+      ? { status, photos, repliedAt: v.repliedAt }
+      : { status, photos };
   } catch {
     return { ...EMPTY, photos: [] };
   }

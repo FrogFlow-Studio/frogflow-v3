@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { assistPrompt } from "@/core/assistant/prompts";
-import { getReviewForAdmin, listReviewsForAdmin, reviewStats } from "./admin";
+import {
+  ADMIN_REVIEWS_PAGE_SIZE,
+  getReviewForAdmin,
+  listReviewsForAdmin,
+  reviewStats,
+  type ReviewFilter,
+} from "./admin";
 
 function ctx(): TenantContext {
   const db = fakeDb();
@@ -54,7 +60,7 @@ function ctx(): TenantContext {
 
 describe("отзывы в админке", () => {
   it("свежие сверху, с товаром и покупателем; удалённый товар и незнакомый покупатель — не падают", async () => {
-    const list = await listReviewsForAdmin(ctx());
+    const list = (await listReviewsForAdmin(ctx())).items;
     expect(list.map((r) => r.id)).toEqual(["r3", "r2", "r1"]);
     const [gone, empty, good] = list;
     expect(good).toMatchObject({
@@ -70,10 +76,80 @@ describe("отзывы в админке", () => {
   });
 
   it("фильтр по оценке и «только с текстом»", async () => {
-    expect((await listReviewsForAdmin(ctx(), { rating: 2 })).map((r) => r.id)).toEqual(["r2"]);
-    expect((await listReviewsForAdmin(ctx(), { withComment: true })).map((r) => r.id)).toEqual([
-      "r1",
-    ]);
+    const ids = async (f: ReviewFilter) =>
+      (await listReviewsForAdmin(ctx(), f)).items.map((r) => r.id);
+    expect(await ids({ rating: 2 })).toEqual(["r2"]);
+    expect(await ids({ withComment: true })).toEqual(["r1"]);
+  });
+
+  it("фильтры «без ответа», «ждут одобрения», по товару; сводка не зависит от фильтров", async () => {
+    const c = ctx();
+    (c.db as unknown as ReturnType<typeof fakeDb>).tables.app_settings = [
+      {
+        key: "review_meta:r1",
+        value: '{"status":"approved","photos":[],"repliedAt":"2026-09-25T10:00:00Z"}',
+      },
+      { key: "review_meta:r2", value: '{"status":"hidden","photos":[]}' },
+    ];
+    const ids = async (f: ReviewFilter) => (await listReviewsForAdmin(c, f)).items.map((r) => r.id);
+    expect(await ids({ noReply: true })).toEqual(["r3", "r2"]);
+    // r3 без строки review_meta — старый отзыв, он тоже ждёт решения
+    expect(await ids({ pending: true })).toEqual(["r3"]);
+    expect(await ids({ productId: "p2" })).toEqual(["r2"]);
+    const o = await listReviewsForAdmin(c, { rating: 5 });
+    expect(o.total).toBe(1);
+    expect(o.stats).toMatchObject({ count: 3, pending: 1, noReply: 2 });
+    expect(o.products.map((p) => p.id).sort()).toEqual(["gone", "p1", "p2"]);
+  });
+
+  it("250 отзывов: все на страницах, сводка по 250, сортировка заканчивается id", async () => {
+    const c = ctx();
+    const db = c.db as unknown as ReturnType<typeof fakeDb>;
+    db.tables.product_reviews = Array.from({ length: 250 }, (_, i) => ({
+      id: `rv${String(i).padStart(3, "0")}`,
+      product_id: "p1",
+      telegram_id: 11,
+      rating: (i % 5) + 1,
+      comment: "ok",
+      created_at: "2026-09-20T10:00:00Z",
+      updated_at: "2026-09-20T10:00:00Z", // одинаковое время: порядок решает id
+    }));
+    const seen: string[] = [];
+    let pages = 0;
+    for (let page = 1; ; page++) {
+      const o = await listReviewsForAdmin(c, { page });
+      pages = o.pages;
+      expect(o.stats.count).toBe(250);
+      expect(o.stats.avg).toBe(3);
+      expect(o.total).toBe(250);
+      seen.push(...o.items.map((r) => r.id));
+      if (page >= o.pages) break;
+    }
+    expect(pages).toBe(Math.ceil(250 / ADMIN_REVIEWS_PAGE_SIZE));
+    expect(seen).toHaveLength(250);
+    expect(new Set(seen).size).toBe(250);
+    expect(seen).toEqual([...seen].sort());
+    // страница за пределом — последняя, а не пустая
+    expect((await listReviewsForAdmin(c, { page: 999 })).page).toBe(pages);
+  });
+
+  it("сбой чтения отзывов — serverFailure, а не «отзывов нет»", async () => {
+    const c = ctx();
+    const db = c.db as unknown as { from: (t: string) => unknown };
+    const real = db.from.bind(db);
+    db.from = (t: string) =>
+      t === "product_reviews"
+        ? {
+            select: () => ({
+              order: () => ({
+                order: () => ({
+                  range: async () => ({ data: null, error: { message: "boom" } }),
+                }),
+              }),
+            }),
+          }
+        : real(t);
+    await expect(listReviewsForAdmin(c)).rejects.toThrow(/Отзывы: boom/);
   });
 
   it("один отзыв по id; чужого или несуществующего нет", async () => {

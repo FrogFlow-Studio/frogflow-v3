@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { UserError } from "@/core/i18n/user-error";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Отзывы покупателей (модуль review_request): список, черновик ответа от
@@ -15,6 +16,10 @@ export const reviewsFn = createServerFn({ method: "GET" })
       .object({
         rating: z.number().int().min(1).max(5).optional(),
         withComment: z.boolean().optional(),
+        noReply: z.boolean().optional(),
+        pending: z.boolean().optional(),
+        productId: z.string().min(1).max(64).optional(),
+        page: z.number().int().min(1).max(10_000).optional(),
       })
       .parse(d ?? {}),
   )
@@ -62,6 +67,8 @@ export const replyToReviewFn = createServerFn({ method: "POST" })
         "err.review.notDelivered",
         "Ответ не доставлен: покупатель недоступен в своём канале (заблокировал бота или диалог закрыт).",
       );
+    const { markReviewReplied } = await import("@/core/reviews/photos.server");
+    await markReviewReplied(ctx, review.id).catch(() => false);
     return { ok: true };
   });
 
@@ -74,7 +81,7 @@ export const setReviewStatusFn = createServerFn({ method: "POST" })
     const { ctx } = await reviewOrFail(data.id);
     const { setReviewStatus } = await import("@/core/reviews/photos.server");
     if (!(await setReviewStatus(ctx, data.id, data.status)))
-      throw new Error("review status not saved");
+      throw serverFailure("Отзывы: решение не сохранено");
     return { ok: true };
   });
 

@@ -44,6 +44,7 @@ const {
   approvedReviews,
   dropReviewExtras,
   setReviewStatus,
+  markReviewReplied,
   reviewMeta,
 } = await import("./photos.server");
 const { saveComment, saveRating } = await import("./reviews");
@@ -141,6 +142,20 @@ describe("фото к отзыву", () => {
     expect(await addReviewPhoto(ctx, 99, P, JPEG)).toEqual({ ok: false, reason: "no_review" });
     expect(stored.size).toBe(0);
     expect(db.tables.app_settings).toEqual([]);
+  });
+});
+
+describe("отметка об ответе продавца", () => {
+  it("ставится и переживает решение продавца и новое фото", async () => {
+    await setReviewStatus(ctx, R1, "approved");
+    expect((await reviewMeta(ctx, R1)).repliedAt).toBeUndefined();
+    expect(await markReviewReplied(ctx, R1)).toBe(true);
+    await setReviewStatus(ctx, R1, "hidden");
+    await addReviewPhoto(ctx, 1, P, JPEG);
+    const m = await reviewMeta(ctx, R1);
+    expect(typeof m.repliedAt).toBe("string");
+    expect(m.photos).toHaveLength(1);
+    expect(m.status).toBe("pending");
   });
 });
 

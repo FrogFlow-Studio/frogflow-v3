@@ -61,7 +61,6 @@ const ALLOWED: Record<string, string[]> = {
     `${SHOWN} (открытые заказы на доске)`,
     `${SHOWN} (закрытые за окно на доске)`,
   ],
-  "src/core/reviews/admin.ts": [`${SHOWN} (отзывы в админке)`],
   "src/core/reviews/reviews.ts": [`${SHOWN} (последние отзывы к товару)`],
   "src/core/customers/card.ts": [
     `${SHOWN} (последние обращения в карточке)`,

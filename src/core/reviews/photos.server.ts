@@ -4,7 +4,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serviceDb } from "@/core/db/client.server";
 import { eachPage } from "@/core/db/page";
 import { imagePath } from "@/core/catalog/image-url";
-import { getSetting, getSettings, updateSettingAtomic } from "@/core/settings/settings";
+import { getSetting, getSettingsStrict, updateSettingAtomic } from "@/core/settings/settings";
 export type { PublicReview } from "./photos";
 import {
   checkReviewPhoto,
@@ -35,7 +35,7 @@ export async function reviewMetas(
   const out = new Map<string, ReviewMeta & { stored: boolean }>();
   for (let i = 0; i < reviewIds.length; i += 200) {
     const part = reviewIds.slice(i, i + 200);
-    const raw = await getSettings(ctx, part.map(reviewMetaKey));
+    const raw = await getSettingsStrict(ctx, part.map(reviewMetaKey));
     for (const id of part) {
       const v = raw[reviewMetaKey(id)];
       out.set(id, { ...parseReviewMeta(v), stored: v != null });
@@ -96,7 +96,11 @@ export async function addReviewPhoto(
     const m = parseReviewMeta(raw);
     if (m.photos.length >= REVIEW_PHOTOS_MAX) return null;
     count = m.photos.length + 1;
-    return JSON.stringify({ status: "pending", photos: [...m.photos, rel] } satisfies ReviewMeta);
+    return JSON.stringify({
+      ...m,
+      status: "pending",
+      photos: [...m.photos, rel],
+    } satisfies ReviewMeta);
   });
   if (r !== "written") {
     await bucket.remove([key]);
@@ -141,7 +145,7 @@ export async function approveLegacyReviews(ctx: TenantContext): Promise<number> 
         const w = await updateSettingAtomic(ctx, reviewMetaKey(r.id), (raw) =>
           raw == null ? approved : null,
         );
-        if (w === "failed") throw new Error("review_meta: запись не удалась");
+        if (w === "failed") throw serverFailure("review_meta: запись не удалась");
         if (w === "written") count++;
       }
     },
@@ -160,6 +164,17 @@ export async function setReviewStatus(
     const m = parseReviewMeta(raw);
     return m.status === status && raw != null ? null : JSON.stringify({ ...m, status });
   });
+  return r !== "failed";
+}
+
+/**
+ * Продавец ответил покупателю: отметка нужна фильтру «без ответа». Вызывается
+ * после отправки; сорвавшаяся запись ответ не отменяет (повторять отправку нельзя).
+ */
+export async function markReviewReplied(ctx: TenantContext, reviewId: string): Promise<boolean> {
+  const r = await updateSettingAtomic(ctx, reviewMetaKey(reviewId), (raw) =>
+    JSON.stringify({ ...parseReviewMeta(raw), repliedAt: new Date().toISOString() }),
+  );
   return r !== "failed";
 }
 
@@ -184,7 +199,7 @@ export async function dropReviewExtras(
       .from("app_settings")
       .delete()
       .in("key", reviewIds.slice(i, i + 200).map(reviewMetaKey));
-    if (error) throw new Error(`review_meta: ${error.message}`);
+    if (error) throw serverFailure(`review_meta: ${error.message}`);
   }
 }
 

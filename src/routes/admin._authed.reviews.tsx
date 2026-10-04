@@ -11,30 +11,43 @@ import {
 } from "@/app/admin/reviews.functions";
 import { adminT, intlLocale, type AdminT } from "@/app/i18n/admin";
 import { Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
-import { REVIEW_REPLY_MAX, reviewStats, type AdminReview } from "@/core/reviews/admin";
+import { REVIEW_REPLY_MAX, type AdminReview } from "@/core/reviews/admin";
 
 export const Route = createFileRoute("/admin/_authed/reviews")({
   validateSearch: z.object({
     rating: z.coerce.number().int().min(1).max(5).optional(),
     text: z.coerce.boolean().optional(),
+    noreply: z.coerce.boolean().optional(),
+    pending: z.coerce.boolean().optional(),
+    product: z.string().min(1).max(64).optional(),
+    page: z.coerce.number().int().min(1).max(10_000).optional(),
   }),
   beforeLoad: ({ context }) => {
     if (!context.shop.modules.review_request) throw redirect({ to: "/admin" });
   },
   loaderDeps: ({ search }) => search,
-  loader: ({ deps }) => reviewsFn({ data: { rating: deps.rating, withComment: deps.text } }),
+  loader: ({ deps }) =>
+    reviewsFn({
+      data: {
+        rating: deps.rating,
+        withComment: deps.text,
+        noReply: deps.noreply,
+        pending: deps.pending,
+        productId: deps.product,
+        page: deps.page,
+      },
+    }),
   component: ReviewsPage,
 });
 
 const stars = (n: number) => "★".repeat(n) + "☆".repeat(Math.max(0, 5 - n));
 
 function ReviewsPage() {
-  const rows = Route.useLoaderData();
+  const { items: rows, stats, page, pages, products, total } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const stats = reviewStats(rows);
   const canWrite = canEdit(shop.role);
   const router = useRouter();
   const [legacyDone, setLegacyDone] = useState<number | null>(null);
@@ -54,8 +67,8 @@ function ReviewsPage() {
       <PageTitle
         title={t("reviews.title")}
         subtitle={
-          stats.avg != null && !search.rating && !search.text
-            ? t("reviews.avg", { avg: stats.avg, n: stats.count })
+          stats.avg != null
+            ? `${t("reviews.avg", { avg: stats.avg, n: stats.count })} · ${t("reviews.counts", { p: stats.pending, r: stats.noReply })}`
             : t("reviews.subtitle")
         }
       />
@@ -66,7 +79,11 @@ function ReviewsPage() {
           onChange={(e) =>
             void navigate({
               to: "/admin/reviews",
-              search: { ...search, rating: e.target.value ? Number(e.target.value) : undefined },
+              search: {
+                ...search,
+                page: undefined,
+                rating: e.target.value ? Number(e.target.value) : undefined,
+              },
             })
           }
         >
@@ -84,12 +101,58 @@ function ReviewsPage() {
             onChange={(e) =>
               void navigate({
                 to: "/admin/reviews",
-                search: { ...search, text: e.target.checked || undefined },
+                search: { ...search, page: undefined, text: e.target.checked || undefined },
               })
             }
           />
           {t("reviews.withComment")}
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={Boolean(search.noreply)}
+            onChange={(e) =>
+              void navigate({
+                to: "/admin/reviews",
+                search: { ...search, page: undefined, noreply: e.target.checked || undefined },
+              })
+            }
+          />
+          {t("reviews.noReply")}
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={Boolean(search.pending)}
+            onChange={(e) =>
+              void navigate({
+                to: "/admin/reviews",
+                search: { ...search, page: undefined, pending: e.target.checked || undefined },
+              })
+            }
+          />
+          {t("reviews.pending")}
+        </label>
+        {products.length > 1 && (
+          <select
+            className="input w-48"
+            aria-label={t("reviews.allProducts")}
+            value={search.product ?? ""}
+            onChange={(e) =>
+              void navigate({
+                to: "/admin/reviews",
+                search: { ...search, page: undefined, product: e.target.value || undefined },
+              })
+            }
+          >
+            <option value="">{t("reviews.allProducts")}</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name ?? t("reviews.productDeleted")}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       {canWrite && rows.some((r) => r.legacy) && (
         <div className="card mb-4 flex flex-wrap items-center gap-3 p-3 text-sm">
@@ -108,7 +171,7 @@ function ReviewsPage() {
       )}
       {Boolean(legacy.error) && <ErrorBox error={legacy.error} />}
       {rows.length === 0 ? (
-        <Empty>{t("reviews.empty")}</Empty>
+        <Empty>{stats.count === 0 ? t("reviews.empty") : t("reviews.noMatch")}</Empty>
       ) : (
         <div className="space-y-3">
           {rows.map((r) => (
@@ -121,6 +184,31 @@ function ReviewsPage() {
               lang={shop.locale}
             />
           ))}
+        </div>
+      )}
+      {pages > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-3 text-sm">
+          <button
+            className="btn-secondary text-xs"
+            disabled={page <= 1}
+            onClick={() =>
+              void navigate({ to: "/admin/reviews", search: { ...search, page: page - 1 } })
+            }
+          >
+            {t("reviews.prev")}
+          </button>
+          <span className="text-muted" data-total={total}>
+            {t("reviews.page", { p: page, n: pages })}
+          </span>
+          <button
+            className="btn-secondary text-xs"
+            disabled={page >= pages}
+            onClick={() =>
+              void navigate({ to: "/admin/reviews", search: { ...search, page: page + 1 } })
+            }
+          >
+            {t("reviews.next")}
+          </button>
         </div>
       )}
     </>

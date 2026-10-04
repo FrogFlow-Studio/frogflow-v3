@@ -23,4 +23,5 @@ export * from "./fixtures/shop14-integrations.ts";
 export * from "./fixtures/shop14-free-delivery.ts";
 export * from "./fixtures/shop15-free-promo.ts";
 export * from "./fixtures/shop15-reschedule.ts";
+export * from "./fixtures/shop16-reviews.ts";
 export * from "./fixtures/shop16-r-autostats.ts";

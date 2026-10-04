@@ -81,7 +81,7 @@ const ALLOWED: Record<string, string[]> = {
   "src/core/retention/retention.ts": Array<string>(10).fill(
     "scope — не больше IN_CHUNK клиентов: runRetention режет список на куски",
   ),
-  "src/core/reviews/admin.ts": [`${PAGE} (отзывы на экране)`, `${PAGE} (отзывы на экране)`],
+  "src/core/reviews/admin.ts": [`${PAGE} (покупатели отзывов на экране)`],
   "src/core/reviews/photos.server.ts": [`${PAGE} (отзывы на экране)`],
   "src/core/reviews/reviews.ts": [`${PAGE} (≤ 20 отзывов)`],
   "src/core/settings/settings.ts": [FIXED, FIXED],

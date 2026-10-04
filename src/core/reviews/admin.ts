@@ -1,6 +1,7 @@
 import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { imagePath } from "@/core/catalog/image-url";
+import { eachPage } from "@/core/db/page";
 import { isReviewPhotoPath, type ReviewStatus } from "./photos";
 
 /**
@@ -36,9 +37,20 @@ export type ReviewFilter = {
   rating?: number;
   /** Только с текстом. */
   withComment?: boolean;
+  /** Только те, на которые продавец ещё не отвечал. */
+  noReply?: boolean;
+  /** Только ждущие решения продавца (в том числе старые, без решения). */
+  pending?: boolean;
+  /** Только отзывы на этот товар. */
+  productId?: string;
+  /** Номер страницы, с 1. */
+  page?: number;
 };
 
-export const ADMIN_REVIEWS_LIMIT = 200;
+export const ADMIN_REVIEWS_PAGE_SIZE = 20;
+
+/** Читаем таблицу страницами по столько строк; список в админке отдаётся своими страницами. */
+const SCAN_PAGE = 200;
 
 type ReviewRow = {
   id: string;
@@ -50,21 +62,115 @@ type ReviewRow = {
   updated_at: string;
 };
 
+export type ReviewsOverview = {
+  items: AdminReview[];
+  /** Сколько отзывов подошло под фильтры (до разбивки на страницы). */
+  total: number;
+  page: number;
+  pages: number;
+  /** Сводка по ВСЕМ отзывам магазина, фильтры и страница её не меняют. */
+  stats: ReturnType<typeof reviewStats> & { pending: number; noReply: number };
+  /** Товары, на которые есть отзывы, — для фильтра. */
+  products: Array<{ id: string; name: string | null }>;
+};
+
+/**
+ * Список отзывов для продавца: страница с фильтрами и сводка по всем отзывам.
+ * Решение продавца и отметка об ответе лежат в review_meta (app_settings), не
+ * в колонках, поэтому таблица читается целиком страницами по 200, а на экран
+ * отдаётся одна страница из подошедших. Сортировка: свежие сверху, затем id.
+ */
 export async function listReviewsForAdmin(
   ctx: TenantContext,
   filter: ReviewFilter = {},
-): Promise<AdminReview[]> {
-  let q = ctx.db
-    .from("product_reviews")
-    .select("id, product_id, telegram_id, rating, comment, created_at, updated_at")
-    .order("updated_at", { ascending: false })
-    .limit(ADMIN_REVIEWS_LIMIT);
-  if (filter.rating) q = q.eq("rating", filter.rating);
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  let rows = (data ?? []) as ReviewRow[];
-  if (filter.withComment) rows = rows.filter((r) => r.comment?.trim());
-  return withNames(ctx, rows);
+): Promise<ReviewsOverview> {
+  type Slim = Pick<ReviewRow, "id" | "product_id" | "rating" | "comment" | "updated_at">;
+  const { reviewMetas } = await import("./photos.server");
+  const all: Array<Slim & { pending: boolean; replied: boolean }> = [];
+  await eachPage<Slim>(
+    (a, b) =>
+      ctx.db
+        .from("product_reviews")
+        .select("id, product_id, rating, comment, updated_at")
+        .order("updated_at", { ascending: false })
+        .order("id")
+        .range(a, b),
+    "Отзывы",
+    async (rows) => {
+      const metas = await reviewMetas(
+        ctx,
+        rows.map((r) => r.id),
+      );
+      for (const r of rows) {
+        const m = metas.get(r.id);
+        all.push({
+          ...r,
+          pending: (m?.status ?? "pending") === "pending",
+          replied: !!m?.repliedAt,
+        });
+      }
+    },
+    SCAN_PAGE,
+  );
+  const stats = {
+    ...reviewStats(all),
+    pending: all.filter((r) => r.pending).length,
+    noReply: all.filter((r) => !r.replied).length,
+  };
+  const hit = all.filter(
+    (r) =>
+      (!filter.rating || Number(r.rating) === filter.rating) &&
+      (!filter.withComment || !!r.comment?.trim()) &&
+      (!filter.noReply || !r.replied) &&
+      (!filter.pending || r.pending) &&
+      (!filter.productId || r.product_id === filter.productId),
+  );
+  const pages = Math.max(1, Math.ceil(hit.length / ADMIN_REVIEWS_PAGE_SIZE));
+  const page = Math.min(Math.max(1, filter.page ?? 1), pages);
+  const ids = hit
+    .slice((page - 1) * ADMIN_REVIEWS_PAGE_SIZE, page * ADMIN_REVIEWS_PAGE_SIZE)
+    .map((r) => r.id);
+  const names = await productNames(ctx, [...new Set(all.map((r) => r.product_id))]);
+  const rows = await reviewRowsByIds(ctx, ids);
+  return {
+    items: await withNames(ctx, rows, names),
+    total: hit.length,
+    page,
+    pages,
+    stats,
+    products: [...names].map(([id, name]) => ({ id, name })),
+  };
+}
+
+/** Названия товаров: id → name, кусками по 200; товара нет в базе — null. */
+async function productNames(
+  ctx: TenantContext,
+  productIds: readonly string[],
+): Promise<Map<string, string | null>> {
+  const out = new Map<string, string | null>(productIds.map((id) => [id, null]));
+  for (let i = 0; i < productIds.length; i += 200) {
+    const { data, error } = await ctx.db
+      .from("products")
+      .select("id, name")
+      .in("id", productIds.slice(i, i + 200));
+    if (error) throw serverFailure(`Отзывы, товары: ${error.message}`);
+    for (const p of (data ?? []) as Array<{ id: string; name: string }>) out.set(p.id, p.name);
+  }
+  return out;
+}
+
+/** Полные строки отзывов по id, в порядке ids. */
+async function reviewRowsByIds(ctx: TenantContext, ids: readonly string[]): Promise<ReviewRow[]> {
+  const got = new Map<string, ReviewRow>();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await ctx.db
+      .from("product_reviews")
+      .select("id, product_id, telegram_id, rating, comment, created_at, updated_at")
+      .in("id", ids.slice(i, i + 200));
+    if (error) throw serverFailure(`Отзывы: ${error.message}`);
+    for (const r of (data ?? []) as ReviewRow[]) got.set(r.id, r);
+  }
+  return ids.flatMap((id) => (got.has(id) ? [got.get(id)!] : []));
 }
 
 export async function getReviewForAdmin(
@@ -80,15 +186,18 @@ export async function getReviewForAdmin(
   return data ? ((await withNames(ctx, [data as ReviewRow]))[0] ?? null) : null;
 }
 
-async function withNames(ctx: TenantContext, rows: ReviewRow[]): Promise<AdminReview[]> {
+async function withNames(
+  ctx: TenantContext,
+  rows: ReviewRow[],
+  known?: Map<string, string | null>,
+): Promise<AdminReview[]> {
   if (rows.length === 0) return [];
-  const productIds = [...new Set(rows.map((r) => r.product_id))];
   const buyerIds = [...new Set(rows.map((r) => Number(r.telegram_id)))];
   // Динамически: модуль читает и страница админки (reviewStats), а
   // серверный код в клиентскую сборку не попадает.
   const { reviewMetas } = await import("./photos.server");
-  const [products, buyers, metas] = await Promise.all([
-    ctx.db.from("products").select("id, name").in("id", productIds),
+  const [productName, buyers, metas] = await Promise.all([
+    known ? Promise.resolve(known) : productNames(ctx, [...new Set(rows.map((r) => r.product_id))]),
     ctx.db
       .from("bot_users")
       .select("telegram_id, first_name, last_name, username, platform")
@@ -98,9 +207,7 @@ async function withNames(ctx: TenantContext, rows: ReviewRow[]): Promise<AdminRe
       rows.map((r) => r.id),
     ),
   ]);
-  const productName = new Map(
-    ((products.data ?? []) as Array<{ id: string; name: string }>).map((p) => [p.id, p.name]),
-  );
+  if (buyers.error) throw serverFailure(`Отзывы, покупатели: ${buyers.error.message}`);
   type Buyer = {
     telegram_id: number;
     first_name: string | null;
@@ -137,7 +244,7 @@ async function withNames(ctx: TenantContext, rows: ReviewRow[]): Promise<AdminRe
 }
 
 /** Сводка для шапки страницы: средняя оценка и сколько каких. */
-export function reviewStats(reviews: readonly Pick<AdminReview, "rating">[]): {
+export function reviewStats(reviews: readonly { rating: number }[]): {
   count: number;
   avg: number | null;
   byRating: Record<1 | 2 | 3 | 4 | 5, number>;
