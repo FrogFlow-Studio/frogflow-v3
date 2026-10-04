@@ -196,6 +196,69 @@ export type Database = {
           },
         ];
       };
+      marketplace_buyers: {
+        Row: {
+          id: string;
+          channel: string;
+          channel_id: string;
+          created_at: string;
+          last_seen_at: string;
+        };
+        Insert: {
+          id?: string;
+          channel: string;
+          channel_id: string;
+          created_at?: string;
+          last_seen_at?: string;
+        };
+        Update: {
+          id?: string;
+          channel?: string;
+          channel_id?: string;
+          created_at?: string;
+          last_seen_at?: string;
+        };
+        Relationships: [];
+      };
+      marketplace_buyer_links: {
+        Row: {
+          bot_id: string;
+          user_key: string;
+          buyer_id: string;
+          verified_by: string;
+          linked_at: string;
+        };
+        Insert: {
+          bot_id: string;
+          user_key: string;
+          buyer_id: string;
+          verified_by: string;
+          linked_at?: string;
+        };
+        Update: {
+          bot_id?: string;
+          user_key?: string;
+          buyer_id?: string;
+          verified_by?: string;
+          linked_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_buyer_links_bot_id_fkey";
+            columns: ["bot_id"];
+            isOneToOne: false;
+            referencedRelation: "bots";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "marketplace_buyer_links_buyer_id_fkey";
+            columns: ["buyer_id"];
+            isOneToOne: false;
+            referencedRelation: "marketplace_buyers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       marketplace_items: {
         Row: {
           bot_id: string;
