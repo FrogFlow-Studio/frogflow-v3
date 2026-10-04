@@ -2,14 +2,20 @@ import { serviceDb } from "@/core/db/client.server";
 import { pageAll } from "@/core/db/page";
 import { isInternalTenant } from "@/core/tenant/internal";
 import { tenantDirectory } from "@/core/tenant/resolve.server";
-import { TIER_TITLES, parsePlan } from "@/core/plans/registry";
+import { TIER_TITLES, parsePlan, type PlanTier } from "@/core/plans/registry";
 import {
   cashByMonth,
+  cashByMonthAndTier,
+  churnSummary,
   monthlyRevenue,
   revenueState,
   summarizeRevenue,
+  upcomingRenewals,
+  type ChurnSummary,
+  type Renewal,
   type RevenueState,
   type RevenueSummary,
+  type TierMonth,
 } from "@/core/plans/revenue";
 
 /**
@@ -30,6 +36,12 @@ export type RevenueRow = {
 export type RevenueReport = {
   summary: RevenueSummary;
   cash: Array<{ month: string; amount: number; count: number }>;
+  /** Поступления по месяцам и текущим тарифам клиентов (только оплаченные). */
+  cashByTier: TierMonth[];
+  /** Продления в ближайшие 14 дней и сколько за них ожидается. */
+  renewals: Renewal[];
+  renewalsExpected: number;
+  churn: ChurnSummary;
   clients: RevenueRow[];
 };
 
@@ -38,12 +50,15 @@ const ORDER: Record<RevenueState, number> = { overdue: 0, trial: 1, paying: 2, n
 export async function revenueReport(now = new Date()): Promise<RevenueReport> {
   const today = now.toISOString().slice(0, 10);
   // «Демо-тестер» и другие стенды — не выручка.
-  const tenants = (await tenantDirectory(true)).filter(
-    (t) => !t.archived && !isInternalTenant(t.id),
-  );
+  const all = await tenantDirectory(true);
+  const tenants = all.filter((t) => !t.archived && !isInternalTenant(t.id));
   const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1)).toISOString();
   const [bots, payments] = await Promise.all([
-    serviceDb().from("bots").select("id, subscription_expires_at"),
+    pageAll<{ id: string; subscription_expires_at: string | null }>(
+      (from, to) =>
+        serviceDb().from("bots").select("id, subscription_expires_at").order("id").range(from, to),
+      "сроки подписок",
+    ),
     pageAll(
       (from, to) =>
         serviceDb()
@@ -56,8 +71,7 @@ export async function revenueReport(now = new Date()): Promise<RevenueReport> {
       "оплаты подписок",
     ),
   ]);
-  if (bots.error) throw new Error(bots.error.message);
-  const expires = new Map((bots.data ?? []).map((b) => [b.id, b.subscription_expires_at]));
+  const expires = new Map(bots.map((b) => [b.id, b.subscription_expires_at]));
   const input = tenants.map((t) => ({
     t,
     c: {
@@ -82,17 +96,27 @@ export async function revenueReport(now = new Date()): Promise<RevenueReport> {
     })
     .filter((r) => r.state !== "no_plan")
     .sort((a, b) => ORDER[a.state] - ORDER[b.state] || b.monthly - a.monthly);
+  const paid = payments
+    .filter((p) => !isInternalTenant(p.bot_id))
+    .map((p) => ({ ...p, amount: Number(p.amount) }));
+  // Тариф платежа — текущий тариф клиента; архивные клиенты тоже учитываются в поступлениях.
+  const tierByBot = new Map<string, PlanTier>();
+  for (const t of all) {
+    const p = parsePlan(t.plan);
+    if (p?.kind === "tier") tierByBot.set(t.id, p.tier);
+  }
+  const named = input.map(({ t, c }) => ({ ...c, botId: t.id, name: t.name }));
+  const upcoming = upcomingRenewals(named, today, 14);
   return {
     summary: summarizeRevenue(
       input.map((x) => x.c),
       today,
     ),
-    cash: cashByMonth(
-      payments
-        .filter((p) => !isInternalTenant(p.bot_id))
-        .map((p) => ({ ...p, amount: Number(p.amount) })),
-      today,
-    ),
+    cash: cashByMonth(paid, today),
+    cashByTier: cashByMonthAndTier(paid, (id) => tierByBot.get(id) ?? null, today),
+    renewals: upcoming.renewals,
+    renewalsExpected: upcoming.expectedTotal,
+    churn: churnSummary(named, today, 30),
     clients,
   };
 }

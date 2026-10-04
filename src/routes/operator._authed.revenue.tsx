@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { revenueFn } from "@/app/operator/operator.functions";
 import { Badge, Card, Empty, PageTitle, Stat } from "@/app/ui";
 import { TIER_TITLES, PLAN_TIERS } from "@/core/plans/registry";
+import { ChartCard, DataTable, LineChart } from "@/app/ui/charts";
 import type { RevenueState } from "@/core/plans/revenue";
 
 export const Route = createFileRoute("/operator/_authed/revenue")({
@@ -28,7 +29,14 @@ const monthTitle = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.s
  * поступлениях. Поступления — фактические платежи из «Подписки и счета».
  */
 function RevenuePage() {
-  const { summary: s, cash, clients } = Route.useLoaderData();
+  const {
+    summary: s,
+    cashByTier,
+    renewals,
+    renewalsExpected,
+    churn,
+    clients,
+  } = Route.useLoaderData();
   return (
     <>
       <PageTitle
@@ -78,29 +86,134 @@ function RevenuePage() {
             </p>
           )}
         </Card>
-        <Card title="Поступления по месяцам">
-          <div className="overflow-x-auto">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Месяц</th>
-                  <th className="text-right">Платежей</th>
-                  <th className="text-right">Сумма</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...cash].reverse().map((r) => (
-                  <tr key={r.month}>
-                    <td>{monthTitle(r.month)}</td>
-                    <td className="text-right tabular-nums">{r.count}</td>
-                    <td className="text-right tabular-nums">{tg(r.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <ChartCard
+          title="Поступления по месяцам и тарифам"
+          chart={
+            <>
+              <LineChart
+                points={cashByTier.map((r) => ({ x: r.month, y: r.total }))}
+                format={tg}
+                labelX={monthTitle}
+              />
+              <p className="mt-2 text-xs text-muted">
+                Только оплаченные платежи в тенге: подписка, каналы и подключение. Нулевые платежи
+                пробного периода не считаются. Разбивка по тарифам — в таблице.
+              </p>
+            </>
+          }
+          table={
+            <>
+              <DataTable
+                head={["Месяц", "Платежей", "Basic", "Pro", "Business", "Другое", "Всего"]}
+                rows={[...cashByTier]
+                  .reverse()
+                  .map((r) => [
+                    monthTitle(r.month),
+                    r.count,
+                    tg(r.basic),
+                    tg(r.pro),
+                    tg(r.business),
+                    tg(r.other),
+                    tg(r.total),
+                  ])}
+              />
+              <p className="mt-2 text-xs text-muted">
+                Тариф платежа — текущий тариф клиента: прошлые тарифы не хранятся. «Другое» —
+                клиенты на индивидуальных условиях или без плана.
+              </p>
+            </>
+          }
+        />
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
+        <Card title="Продления в ближайшие 14 дней">
+          {renewals.length === 0 ? (
+            <Empty>Срок ни у одного платящего клиента не кончается в ближайшие 14 дней.</Empty>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Клиент</th>
+                      <th>Срок до</th>
+                      <th className="text-right">Ожидается</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {renewals.map((r) => (
+                      <tr key={r.botId}>
+                        <td>
+                          <Link
+                            to="/operator/clients/$botId"
+                            params={{ botId: r.botId }}
+                            className="font-medium hover:underline"
+                          >
+                            {r.name}
+                          </Link>
+                        </td>
+                        <td className="whitespace-nowrap text-muted">
+                          {day(r.expiresAt)}
+                          <span className="ml-2 text-xs">
+                            {r.daysLeft === 0 ? "сегодня" : `через ${r.daysLeft} дн.`}
+                          </span>
+                        </td>
+                        <td className="text-right tabular-nums">{tg(r.expected)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-2 text-sm">
+                Ожидается, если все продлят: <b className="tabular-nums">{tg(renewalsExpected)}</b>
+              </p>
+            </>
+          )}
           <p className="mt-2 text-xs text-muted">
-            Подписка, каналы и подключение, в тенге. Нулевые платежи пробного периода не считаются.
+            Платящие клиенты на плане с ценой; сумма — за следующий период (месяц или год) по их
+            плану.
+          </p>
+        </Card>
+        <Card title="Отток за 30 дней">
+          <div className="grid grid-cols-3 gap-3">
+            <Stat label="Ушли" value={churn.clients.length} />
+            <Stat label="MRR ушёл" value={tg(churn.lostMrr)} />
+            <Stat label="Доля" value={churn.ratePct === null ? "—" : `${churn.ratePct}%`} />
+          </div>
+          {churn.clients.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="table mt-3">
+                <thead>
+                  <tr>
+                    <th>Клиент</th>
+                    <th>Срок кончился</th>
+                    <th className="text-right">В месяц</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {churn.clients.map((c) => (
+                    <tr key={c.botId}>
+                      <td>
+                        <Link
+                          to="/operator/clients/$botId"
+                          params={{ botId: c.botId }}
+                          className="font-medium hover:underline"
+                        >
+                          {c.name}
+                        </Link>
+                      </td>
+                      <td className="whitespace-nowrap text-muted">{day(c.expiresAt)}</td>
+                      <td className="text-right tabular-nums">{c.monthly ? tg(c.monthly) : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mt-2 text-xs text-muted">
+            Ушёл — тот, у кого оплаченный срок кончился за последние 30 дней и не продлён. Кто не
+            заплатил после пробного периода, не считается. Доля — от платящих сейчас и ушедших.
           </p>
         </Card>
       </div>
