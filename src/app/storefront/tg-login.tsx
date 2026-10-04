@@ -167,7 +167,6 @@ function CodeLogin({ login: l }: { login: ReturnType<typeof useTgLogin> }) {
           onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
         />
       </label>
-      <ErrorBox error={l.error} />
       <button
         type="submit"
         disabled={busy || code.length !== 6}
