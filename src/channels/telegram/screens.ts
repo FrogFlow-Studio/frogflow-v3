@@ -9,6 +9,7 @@ import { verticalDef } from "@/core/verticals/registry";
 import { storefrontBase } from "@/core/tenant/custom-domain";
 import { localeFlags, localeNames, SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 import { getPreorder } from "@/core/preorder/preorder";
+import { bundleCardInfo, bundleCardLines } from "@/core/bundles/card";
 import { COPY, escapeHtml } from "./copy";
 import type { InlineButton, InlineKeyboard } from "./types";
 
@@ -103,8 +104,11 @@ export async function productCard(
   const desc = p.description ? `\n\n${escapeHtml(p.description)}` : `\n\n<i>${m.descPending}</i>`;
   const stockedOut = t.modules.stock && p.stock_quantity != null && p.stock_quantity <= 0;
   // Нет в наличии, но продавец берёт предзаказ (core/preorder): кнопки покупки остаются.
-  const preorder = stockedOut ? await getPreorder(ctx, p.id) : null;
+  // Набор (модуль bundles): предзаказ и лист ожидания для него не предлагаем.
+  const bundle = await bundleCardInfo(ctx, p.id);
+  const preorder = stockedOut && !bundle ? await getPreorder(ctx, p.id) : null;
   const outOfStock = stockedOut && !preorder;
+  const waitRows = bundle ? [] : waitlistRow(t, locale, p.id);
   let caption: string;
   let keyboard: InlineKeyboard;
   if (variants.length > 0) {
@@ -116,7 +120,7 @@ export async function productCard(
     caption = `📦 <b>${escapeHtml(p.name)}</b>${desc}\n\n💰 <b>${m.priceFrom(formatMoney(min, currency))}</b>`;
     keyboard = {
       inline_keyboard: outOfStock
-        ? waitlistRow(t, locale, p.id)
+        ? waitRows
         : priced.map(({ v, money }) => [
             {
               text: `${v.name} — ${formatMoney(money.amount, money.currency)}`,
@@ -131,9 +135,14 @@ export async function productCard(
     caption = `📦 <b>${escapeHtml(p.name)}</b>${desc}\n\n💰 ${was}<b>${formatMoney(money.amount, money.currency)}</b>`;
     keyboard = {
       inline_keyboard: outOfStock
-        ? waitlistRow(t, locale, p.id)
+        ? waitRows
         : [[{ text: m.addToCartBtn, callback_data: `add:${p.id}` }]],
     };
+  }
+  if (bundle) {
+    caption += `\n\n${escapeHtml(bundleCardLines(bundle, locale).join("\n"))}`;
+    // Составляющая вышла из продажи — покупать набор нельзя.
+    if (!bundle.available) keyboard = { inline_keyboard: [] };
   }
   const leadDays = shownLeadDays(p);
   if (leadDays) caption += `\n${m.leadTimeLabel(leadDays)}`;

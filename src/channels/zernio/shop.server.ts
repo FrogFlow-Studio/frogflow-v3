@@ -1486,8 +1486,13 @@ async function sendProductCard(s: Shop, p: Product, force: boolean) {
     s.ctx.tenant.modules.stock && p.stock_quantity != null && p.stock_quantity <= 0;
   // Нет в наличии, но продавец берёт предзаказ (core/preorder): кнопки покупки остаются.
   const { getPreorder } = await import("@/core/preorder/preorder");
-  const preorder = stockedOut ? await getPreorder(s.ctx, p.id) : null;
+  // Набор (модуль bundles): предзаказ и лист ожидания для него не предлагаем.
+  const { bundleCardInfo, bundleCardLines } = await import("@/core/bundles/card");
+  const bundle = await bundleCardInfo(s.ctx, p.id);
+  const preorder = stockedOut && !bundle ? await getPreorder(s.ctx, p.id) : null;
   const outOfStock = stockedOut && !preorder;
+  // Кнопок покупки нет: товара нет в наличии или в наборе недоступна составляющая.
+  const noBuy = outOfStock || (bundle != null && !bundle.available);
   const desc = p.description ? `\n\n${p.description.slice(0, 600)}` : "";
   let text = `${p.name}${desc}`;
   const buttons: DmButton[] = [];
@@ -1499,7 +1504,7 @@ async function sendProductCard(s: Shop, p: Product, force: boolean) {
     const min = Math.min(...priced.map((r) => r.money.amount));
     const currency = priced[0]?.money.currency ?? p.currency;
     text += `\n\n${plain(s.m.priceFrom(formatMoney(min, currency)))}`;
-    if (!outOfStock) {
+    if (!noBuy) {
       if (priced.length <= 2) {
         for (const { v, money } of priced)
           buttons.push({
@@ -1518,15 +1523,18 @@ async function sendProductCard(s: Shop, p: Product, force: boolean) {
     const { price: money, old } = await strikePrice(s.ctx, p, country);
     // Директ без разметки: прежняя цена словами, «было … → стало …».
     text += `\n\n${old != null ? `${formatMoney(old, money.currency)} → ` : ""}${formatMoney(money.amount, money.currency)}`;
-    if (!outOfStock)
+    if (!noBuy)
       buttons.push({ type: "postback", title: plain(s.m.addToCartBtn), payload: `BUY:${p.id}` });
   }
-  if (outOfStock && s.ctx.tenant.modules.waitlist)
+  if (outOfStock && !bundle && s.ctx.tenant.modules.waitlist)
     buttons.push({
       type: "postback",
       title: plain(s.m.waitlistBtn).slice(0, 20),
       payload: `WAIT:${p.id}`,
     });
+  if (bundle) {
+    text += `\n\n${bundleCardLines(bundle, s.locale).join("\n")}`;
+  }
   const leadDays = shownLeadDays(p);
   if (leadDays) text += `\n${plain(s.m.leadTimeLabel(leadDays))}`;
   // Рейтинг — только одобренные отзывы, как на витрине (колонки products.rating_* считают все).
