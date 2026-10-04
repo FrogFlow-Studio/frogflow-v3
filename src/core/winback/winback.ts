@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { recordAutoMessage } from "@/core/automsg/stats";
+import { recordAutoMessage, recordAutoSkip } from "@/core/automsg/stats";
+import { IN_CHUNK, chunksOf } from "@/lib/in-chunks";
 import {
   blockedAmong,
   claimStateSection,
@@ -9,7 +10,7 @@ import {
 import { getSetting, setSetting } from "@/core/settings/settings";
 import { claimMarketing, loadMarketingCap } from "@/core/marketing/cap";
 import { minutesInTz } from "@/core/notify/prefs";
-import { eachPage } from "@/core/db/page";
+import { eachPage, pageAll } from "@/core/db/page";
 import { serverFailure } from "@/lib/server-failure";
 
 /**
@@ -117,13 +118,77 @@ export type WinbackSender = (customer: Customer, text: string) => Promise<boolea
 
 const DONE_STATUSES = ["delivered", "paid", "accepted", "in_production", "ready"];
 
+/** Заказ ещё не закрыт: ждёт оплаты, в работе или в доставке. Такой покупатель уже вернулся. */
+const OPEN_STATUSES = [
+  "awaiting_payment",
+  "awaiting_confirmation",
+  "paid",
+  "accepted",
+  "in_production",
+  "ready",
+  "delivering",
+];
+
+/** Корзина, тронутая за последние сутки, — у покупателя своё напоминание о корзине. */
+const CART_FRESH_MS = DAY;
+
+/**
+ * Кто из этих покупателей «уже вернулся»: есть открытый заказ (с `since`) или
+ * корзина, тронутая за последние сутки. Читается постранично кусками по 200
+ * id; не прочиталось — `serverFailure`: молча писать вернувшемуся нельзя.
+ */
+export async function alreadyBack(
+  ctx: TenantContext,
+  telegramIds: readonly number[],
+  since: string,
+  now: Date,
+): Promise<Set<number>> {
+  const back = new Set<number>();
+  const cartSince = new Date(now.getTime() - CART_FRESH_MS).toISOString();
+  for (const chunk of chunksOf(telegramIds, IN_CHUNK)) {
+    const open = await pageAll(
+      (from, to) =>
+        ctx.db
+          .from("orders")
+          .select("id, telegram_id")
+          .in("telegram_id", chunk)
+          .in("status", OPEN_STATUSES)
+          .gte("created_at", since)
+          .order("id")
+          .range(from, to),
+      "возврат клиентов: открытые заказы",
+    );
+    for (const o of open) back.add(Number(o.telegram_id));
+    const carts = await pageAll(
+      (from, to) =>
+        ctx.db
+          .from("cart_items")
+          .select("id, telegram_id")
+          .in("telegram_id", chunk)
+          .gte("created_at", cartSince)
+          .order("id")
+          .range(from, to),
+      "возврат клиентов: свежие корзины",
+    );
+    for (const c of carts) back.add(Number(c.telegram_id));
+  }
+  return back;
+}
+
 /** Один проход по арендатору: не больше WINBACK_BATCH сообщений. */
 export async function runWinback(
   ctx: TenantContext,
   send: WinbackSender,
   now = new Date(),
-): Promise<{ checked: number; sent: number; failed: number; skipped?: string }> {
-  const r = { checked: 0, sent: 0, failed: 0 };
+): Promise<{
+  checked: number;
+  sent: number;
+  failed: number;
+  /** Не писали: у покупателя открытый заказ или свежая корзина. */
+  returned: number;
+  skipped?: string;
+}> {
+  const r = { checked: 0, sent: 0, failed: 0, returned: 0 };
   if (!ctx.tenant.modules.winback) return { ...r, skipped: "module off" };
   const cfg = await loadWinback(ctx);
   if (!cfg.enabled) return { ...r, skipped: "disabled" };
@@ -167,6 +232,12 @@ export async function runWinback(
       ctx,
       (users ?? []).map((u) => Number(u.telegram_id)),
     );
+    const back = await alreadyBack(
+      ctx,
+      (users ?? []).map((u) => Number(u.telegram_id)),
+      since,
+      now,
+    );
     for (const row of users ?? []) {
       if (r.sent + r.failed >= WINBACK_BATCH) break;
       // Отписавшийся от рассылок не получает и этих сообщений (core/customers/opt-out).
@@ -178,6 +249,12 @@ export async function runWinback(
       const mem = (c.state.winback ?? undefined) as WinbackMemory | undefined;
       const step = winbackStep(cfg, order, mem, now);
       if (!step || blocked.has(c.telegramId)) continue;
+      // Уже вернулся (открытый заказ, свежая корзина): не пишем и потолок не тратим.
+      if (back.has(c.telegramId)) {
+        r.returned++;
+        await recordAutoSkip(ctx, "winback", c.telegramId, `${order.id}:${step}`, now);
+        continue;
+      }
       // Потолок маркетинговых сообщений за сутки (core/marketing/cap): место
       // занято — шаг не отмечаем, напишем в следующий прогон.
       const marked = await claimMarketing(ctx, c.userKey, row.state, cap, now);

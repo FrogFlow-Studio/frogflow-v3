@@ -11,12 +11,14 @@ const DAY = 86_400_000;
 const ago = (days: number) => new Date(NOW.getTime() - days * DAY).toISOString();
 
 function setup(count: number, state: Record<string, unknown> = {}) {
-  const db = fakeDb();
+  const db = fakeDb({ unique: { zernio_logs: [["event_id"]] } });
   db.tables.app_settings = [
     { key: "winback", value: JSON.stringify({ enabled: true, days1: 30 }) },
   ];
   db.tables.orders = [];
   db.tables.blocked_users = [];
+  db.tables.cart_items = [];
+  db.tables.zernio_logs = [];
   db.tables.bot_users = [];
   for (let tg = 1; tg <= count; tg++) {
     db.tables.orders.push({
@@ -105,5 +107,62 @@ describe("возврат клиентов: запись и блокировки"
     await expect(blockedAmong(broken, [1, 2])).rejects.toMatchObject({
       message: expect.stringContaining("блокировки"),
     });
+  });
+});
+
+describe("возврат клиентов: кто уже вернулся", () => {
+  const sendAll = () => vi.fn(async () => true);
+
+  it("открытый заказ в ожидании оплаты — не пишем, потолок не тратим, пропуск считается", async () => {
+    const { db, ctx } = setup(2);
+    db.tables.orders!.push({
+      id: 900,
+      telegram_id: 1,
+      platform: "telegram",
+      status: "awaiting_payment",
+      created_at: ago(1),
+    });
+    const send = sendAll();
+    const r = await runWinback(ctx, send, NOW);
+    expect(r).toMatchObject({ sent: 1, returned: 1 });
+    expect(send).toHaveBeenCalledTimes(1);
+    const skipped = db.tables.bot_users!.find((u) => u.telegram_id === 1)!;
+    expect(skipped.state).toEqual({});
+  });
+
+  it("корзина, тронутая за сутки, — не пишем; старая корзина — пишем", async () => {
+    const { db, ctx } = setup(2);
+    db.tables.cart_items!.push(
+      { id: "c1", telegram_id: 1, created_at: new Date(NOW.getTime() - 3_600_000).toISOString() },
+      { id: "c2", telegram_id: 2, created_at: ago(3) },
+    );
+    const sent: number[] = [];
+    const r = await runWinback(
+      ctx,
+      async (c) => {
+        sent.push(c.telegramId);
+        return true;
+      },
+      NOW,
+    );
+    expect(sent).toEqual([2]);
+    expect(r.returned).toBe(1);
+  });
+
+  it("пропуск отмечается один раз, а не каждый час; в итогах он виден", async () => {
+    const { db, ctx } = setup(1);
+    db.tables.orders!.push({
+      id: 900,
+      telegram_id: 1,
+      platform: "telegram",
+      status: "awaiting_payment",
+      created_at: ago(1),
+    });
+    await runWinback(ctx, sendAll(), NOW);
+    await runWinback(ctx, sendAll(), new Date(NOW.getTime() + 3_600_000));
+    expect(db.tables.zernio_logs!.filter((e) => e.status === "skipped")).toHaveLength(1);
+    const { autoMessageStats } = await import("@/core/automsg/stats");
+    const stats = await autoMessageStats(ctx, NOW.getTime() + 2 * 3_600_000);
+    expect(stats.winback).toMatchObject({ returned: 1, sent: 0, failed: 0 });
   });
 });

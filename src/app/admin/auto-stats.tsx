@@ -19,6 +19,9 @@ export function AutoStatsBlock({ t, stats }: { t: AdminT; stats: AutoStats | und
         {t("autostats.buyers", { buyers: stats.buyers, paid: stats.paid })}
       </p>
       <p className="tabular-nums">{t("autostats.revenue", { money })}</p>
+      {stats.returned > 0 && (
+        <p className="tabular-nums">{t("autostats.returned", { n: stats.returned })}</p>
+      )}
       <p className="mt-1 text-muted">{t("autostats.hint")}</p>
     </div>
   );

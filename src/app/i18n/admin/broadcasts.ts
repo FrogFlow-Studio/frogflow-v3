@@ -215,6 +215,7 @@ export const ru = {
   "broadcasts.cap.perDay": "Сообщений в сутки",
   // итоги автосообщений за 30 дней (Р1)
   "autostats.title": "За 30 дней",
+  "autostats.returned": "Пропущено: уже вернулись сами (открытый заказ или свежая корзина) — {n}",
   "autostats.waitlistTitle": "Лист ожидания",
   "autostats.sent": "Отправлено: {sent}, не дошло: {failed}",
   "autostats.buyers": "Заказали после сообщения: {buyers}, оплаченных заказов: {paid}",
@@ -438,6 +439,7 @@ export const kk: SectionDict<typeof ru> = {
     "Себет туралы еске салу, «Ұқсас материалдар», клиенттерді қайтару және автоворонка бір сатып алушыға 24 сағатта осы саннан артық жазбайды. Төлем мен тапсырыс хабарламалары есептелмейді. «0» — шектеусіз.",
   "broadcasts.cap.perDay": "Тәулігіне хабарлама",
   "autostats.title": "30 күн ішінде",
+  "autostats.returned": "Өткізілді: өздері қайтты (ашық тапсырыс немесе жаңа себет) — {n}",
   "autostats.waitlistTitle": "Күту тізімі",
   "autostats.sent": "Жіберілді: {sent}, жетпеді: {failed}",
   "autostats.buyers": "Хабарламадан кейін тапсырыс бергендер: {buyers}, төленген тапсырыс: {paid}",
@@ -660,6 +662,7 @@ export const en: SectionDict<typeof ru> = {
     "Cart reminders, similar materials, win-back and the funnel together message one customer no more often than this per 24 hours. Payment and order messages do not count. “0” means no limit.",
   "broadcasts.cap.perDay": "Messages per day",
   "autostats.title": "Last 30 days",
+  "autostats.returned": "Skipped: already came back (open order or fresh cart) — {n}",
   "autostats.waitlistTitle": "Waitlist",
   "autostats.sent": "Sent: {sent}, not delivered: {failed}",
   "autostats.buyers": "Ordered after the message: {buyers}, paid orders: {paid}",
@@ -884,6 +887,8 @@ export const uz: SectionDict<typeof ru> = {
     "Savat eslatmasi, «O‘xshash materiallar», mijozlarni qaytarish va avtovoronka birgalikda bitta xaridorga 24 soatda shu sondan ko‘p yozmaydi. To‘lov va buyurtma xabarlari hisoblanmaydi. «0» — cheklovsiz.",
   "broadcasts.cap.perDay": "Kuniga xabarlar",
   "autostats.title": "Oxirgi 30 kun",
+  "autostats.returned":
+    "Oʻtkazib yuborildi: oʻzlari qaytdi (ochiq buyurtma yoki yangi savat) — {n}",
   "autostats.waitlistTitle": "Kutish roʻyxati",
   "autostats.sent": "Yuborildi: {sent}, yetib bormadi: {failed}",
   "autostats.buyers": "Xabardan keyin buyurtma bergan: {buyers}, to'langan buyurtmalar: {paid}",

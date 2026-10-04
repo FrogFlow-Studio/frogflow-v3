@@ -20,7 +20,14 @@ export const AUTO_WINDOW_MS = 7 * 24 * 3600_000;
 /** Период итогов. */
 export const AUTO_PERIOD_MS = 30 * 24 * 3600_000;
 
-export type AutoEvent = { kind: AutoKind; telegram_id: number; at: string; ok: boolean };
+export type AutoEvent = {
+  kind: AutoKind;
+  telegram_id: number;
+  at: string;
+  ok: boolean;
+  /** Не отправляли: покупатель уже вернулся. Не отправка и не сбой. */
+  skipped?: boolean;
+};
 
 export type AutoStats = {
   /** Отправлено (дошло до отправителя без ошибки). */
@@ -34,6 +41,8 @@ export type AutoStats = {
   paid: number;
   /** Выручка оплаченных заказов по валютам. */
   revenue: Record<string, number>;
+  /** Не писали, потому что покупатель уже вернулся (открытый заказ или свежая корзина). */
+  returned: number;
 };
 
 export type AutoStatsByKind = Record<AutoKind, AutoStats>;
@@ -45,6 +54,7 @@ export const emptyAutoStats = (): AutoStats => ({
   orders: 0,
   paid: 0,
   revenue: {},
+  returned: 0,
 });
 
 export const emptyAutoStatsByKind = (): AutoStatsByKind => ({
@@ -69,6 +79,10 @@ export function attributeAuto(
   for (const e of events) {
     const s = out[e.kind];
     if (!s) continue;
+    if (e.skipped) {
+      s.returned++;
+      continue;
+    }
     if (!e.ok) {
       s.failed++;
       continue;
@@ -135,6 +149,35 @@ export async function recordAutoMessage(
   }
 }
 
+/**
+ * Отметить пропуск: покупатель уже вернулся. Строка с детерминированным
+ * event_id (покупатель + ключ, например заказ и шаг) — повтор того же пропуска
+ * в следующий прогон отбивается уникальностью, а не плодит строки каждый час.
+ */
+export async function recordAutoSkip(
+  ctx: TenantContext,
+  kind: AutoKind,
+  telegramId: number,
+  key: string,
+  now = new Date(),
+): Promise<void> {
+  const payload = { kind, telegram_id: telegramId } as unknown as Json;
+  try {
+    const { error } = await ctx.db.from("zernio_logs").insert({
+      bot_id: ctx.tenant.id,
+      event_id: `${AUTO_MSG_EVENT_TYPE}:${ctx.tenant.id}:${kind}:${telegramId}:skip:${key}`,
+      event_type: AUTO_MSG_EVENT_TYPE,
+      status: "skipped",
+      payload,
+      created_at: now.toISOString(),
+    });
+    if (error && error.code !== "23505")
+      console.error(`[automsg:${ctx.tenant.id}] ${kind} ${telegramId} skip: ${error.message}`);
+  } catch (e) {
+    console.error(`[automsg:${ctx.tenant.id}] ${kind} ${telegramId} skip`, e);
+  }
+}
+
 /** Итоги за 30 дней по каждому виду; чтение постранично, `.in` кусками по 200. */
 export async function autoMessageStats(
   ctx: TenantContext,
@@ -163,10 +206,11 @@ export async function autoMessageStats(
       telegram_id: Number(p.telegram_id),
       at: r.created_at,
       ok: r.status === "sent",
+      skipped: r.status === "skipped",
     });
   }
   const orders: OrderLite[] = [];
-  const ids = [...new Set(events.filter((e) => e.ok).map((e) => e.telegram_id))];
+  const ids = [...new Set(events.filter((e) => e.ok && !e.skipped).map((e) => e.telegram_id))];
   for (const chunk of chunksOf(ids, IN_CHUNK))
     orders.push(
       ...(await pageAll(
