@@ -78,11 +78,13 @@ export async function rootSitemapResponse(request: Request): Promise<Response> {
   return shopXml(shop, url.origin);
 }
 
-/** /sitemap-pages.xml: главная и страницы ниш на всех языках (app/landing/niches). */
+/** /sitemap-pages.xml: главная, страницы ниш и площадка на всех языках (app/landing/niches, app/market/seo). */
 export async function pagesSitemapResponse(request: Request): Promise<Response> {
   if (!isPlatformHost(new URL(request.url).host, env().APP_URL)) return notFound();
   const { landingSitemapLocs } = await import("@/app/landing/niches");
-  return new Response(sitemapXml(landingSitemapLocs().map((loc) => ({ loc }))), { headers: XML });
+  const { marketSitemapLocs } = await import("@/app/market/seo");
+  const locs = [...landingSitemapLocs(), ...marketSitemapLocs()];
+  return new Response(sitemapXml(locs.map((loc) => ({ loc }))), { headers: XML });
 }
 
 /** /robots.txt */

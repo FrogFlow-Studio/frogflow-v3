@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { z } from "zod";
+import { marketHeadLinks } from "@/app/market/seo";
 import { openT, type OpenKey } from "@/app/market/open-i18n";
 import { openChallengeFn, submitOpenRequestFn } from "@/app/market/open.functions";
 import { solveChallenge } from "@/app/signup/challenge-solve";
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/market/open")({
     const t = openT(match.search.lang ?? "ru");
     return {
       meta: [{ title: t("meta.title") }, { name: "description", content: t("meta.description") }],
+      links: marketHeadLinks("/market/open", match.search.lang ?? "ru"),
     };
   },
   component: OpenShopPage,

@@ -131,6 +131,7 @@ export function robotsTxt(sitemapUrl: string): string {
     "Disallow: /operator",
     "Disallow: /api/",
     "Disallow: /signup",
+    "Disallow: /market/search",
     "Disallow: /s/*/cart",
     "Disallow: /s/*/orders",
     "",
