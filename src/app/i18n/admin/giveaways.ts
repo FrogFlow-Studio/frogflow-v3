@@ -16,6 +16,10 @@ export const ru = {
   "giveaways.f.conditions": "Условия участия",
   "giveaways.f.endsAt": "Приём до",
   "giveaways.f.winners": "Победителей",
+  "giveaways.f.subscribe": "Подписка на канал (по желанию)",
+  "giveaways.f.subscribeHint":
+    "Публичный канал вида @имя. Бот должен быть в нём администратором: участвовать смогут только подписчики.",
+  "err.giveaway.badSubChannel": "Канал для подписки — публичный, в виде @имя_канала.",
   "giveaways.f.excludeBlocked": "Не выбирать заблокированных вами покупателей",
   "giveaways.f.excludeStaff": "Не выбирать сотрудников магазина",
   "giveaways.channel.telegram": "Telegram",
@@ -26,6 +30,9 @@ export const ru = {
   "giveaways.status.drawn": "победители выбраны",
   "giveaways.until": "до {date}",
   "giveaways.winnersN": "победителей: {n}",
+  "giveaways.broadcastButton": "Кнопка «Участвовать» под сообщением",
+  "giveaways.broadcastNone": "Без кнопки",
+  "giveaways.link": "Ссылка для участия",
   "giveaways.saved": "Сохранено",
   "err.giveaway.titleRequired": "Укажите название розыгрыша.",
   "err.giveaway.titleLong": "Название — не длиннее 80 символов.",
@@ -40,6 +47,7 @@ export const ru = {
   "err.giveaway.limit": "Розыгрышей уже {max}: больше завести нельзя.",
   "err.giveaway.notFound": "Розыгрыш не найден.",
   "err.giveaway.stale": "Розыгрыш изменён в другом окне. Обновите страницу и повторите.",
+  "err.giveaway.instagramOnly": "Этот розыгрыш проходит только в Instagram.",
   "err.giveaway.notOpen": "Приём закрыт — условия уже не меняются.",
 } as const;
 
@@ -58,6 +66,10 @@ export const kk: SectionDict<typeof ru> = {
   "giveaways.f.conditions": "Қатысу шарттары",
   "giveaways.f.endsAt": "Қабылдау мерзімі",
   "giveaways.f.winners": "Жеңімпаздар",
+  "giveaways.f.subscribe": "Арнаға жазылу (қалауыңызша)",
+  "giveaways.f.subscribeHint":
+    "@атау түріндегі ашық арна. Бот онда әкімші болуы керек: тек жазылушылар қатыса алады.",
+  "err.giveaway.badSubChannel": "Жазылу арнасы — ашық, @арна_атауы түрінде.",
   "giveaways.f.excludeBlocked": "Сіз бұғаттаған сатып алушыларды таңдамау",
   "giveaways.f.excludeStaff": "Дүкен қызметкерлерін таңдамау",
   "giveaways.channel.telegram": "Telegram",
@@ -68,6 +80,9 @@ export const kk: SectionDict<typeof ru> = {
   "giveaways.status.drawn": "жеңімпаздар таңдалды",
   "giveaways.until": "{date} дейін",
   "giveaways.winnersN": "жеңімпаздар: {n}",
+  "giveaways.broadcastButton": "Хабарламаның астында «Қатысу» түймесі",
+  "giveaways.broadcastNone": "Түймесіз",
+  "giveaways.link": "Қатысу сілтемесі",
   "giveaways.saved": "Сақталды",
   "err.giveaway.titleRequired": "Ұтыс ойынының атауын көрсетіңіз.",
   "err.giveaway.titleLong": "Атауы 80 таңбадан аспауы керек.",
@@ -82,6 +97,7 @@ export const kk: SectionDict<typeof ru> = {
   "err.giveaway.limit": "Ұтыс ойындары қазірдің өзінде {max}: жаңасын қосуға болмайды.",
   "err.giveaway.notFound": "Ұтыс ойыны табылмады.",
   "err.giveaway.stale": "Ұтыс ойыны басқа терезеде өзгертілді. Бетті жаңартып, қайталаңыз.",
+  "err.giveaway.instagramOnly": "Бұл ұтыс ойыны тек Instagram-да өтеді.",
   "err.giveaway.notOpen": "Қабылдау жабылған — шарттар енді өзгермейді.",
 };
 
@@ -100,6 +116,10 @@ export const en: SectionDict<typeof ru> = {
   "giveaways.f.conditions": "Terms of entry",
   "giveaways.f.endsAt": "Entries until",
   "giveaways.f.winners": "Winners",
+  "giveaways.f.subscribe": "Channel subscription (optional)",
+  "giveaways.f.subscribeHint":
+    "A public channel like @name. The bot must be its administrator: only subscribers can enter.",
+  "err.giveaway.badSubChannel": "The subscription channel must be public, like @channel_name.",
   "giveaways.f.excludeBlocked": "Do not pick buyers you have blocked",
   "giveaways.f.excludeStaff": "Do not pick shop staff",
   "giveaways.channel.telegram": "Telegram",
@@ -110,6 +130,9 @@ export const en: SectionDict<typeof ru> = {
   "giveaways.status.drawn": "winners picked",
   "giveaways.until": "until {date}",
   "giveaways.winnersN": "winners: {n}",
+  "giveaways.broadcastButton": "“Enter the giveaway” button under the message",
+  "giveaways.broadcastNone": "No button",
+  "giveaways.link": "Entry link",
   "giveaways.saved": "Saved",
   "err.giveaway.titleRequired": "Enter a giveaway title.",
   "err.giveaway.titleLong": "The title must be at most 80 characters.",
@@ -125,6 +148,7 @@ export const en: SectionDict<typeof ru> = {
   "err.giveaway.notFound": "Giveaway not found.",
   "err.giveaway.stale":
     "The giveaway was changed in another window. Refresh the page and try again.",
+  "err.giveaway.instagramOnly": "This giveaway runs in Instagram only.",
   "err.giveaway.notOpen": "Entries are closed — the terms can no longer be changed.",
 };
 
@@ -143,6 +167,10 @@ export const uz: SectionDict<typeof ru> = {
   "giveaways.f.conditions": "Ishtirok shartlari",
   "giveaways.f.endsAt": "Qabul muddati",
   "giveaways.f.winners": "G'oliblar",
+  "giveaways.f.subscribe": "Kanalga obuna (ixtiyoriy)",
+  "giveaways.f.subscribeHint":
+    "@nom ko'rinishidagi ochiq kanal. Bot unda administrator bo'lishi kerak: faqat obunachilar qatnasha oladi.",
+  "err.giveaway.badSubChannel": "Obuna kanali ochiq bo'lishi kerak, @kanal_nomi ko'rinishida.",
   "giveaways.f.excludeBlocked": "Siz bloklagan xaridorlarni tanlamaslik",
   "giveaways.f.excludeStaff": "Do'kon xodimlarini tanlamaslik",
   "giveaways.channel.telegram": "Telegram",
@@ -153,6 +181,9 @@ export const uz: SectionDict<typeof ru> = {
   "giveaways.status.drawn": "g'oliblar tanlandi",
   "giveaways.until": "{date} gacha",
   "giveaways.winnersN": "g'oliblar: {n}",
+  "giveaways.broadcastButton": "Xabar ostida «Qatnashish» tugmasi",
+  "giveaways.broadcastNone": "Tugmasiz",
+  "giveaways.link": "Qatnashish havolasi",
   "giveaways.saved": "Saqlandi",
   "err.giveaway.titleRequired": "Sovrin o'yinining nomini kiriting.",
   "err.giveaway.titleLong": "Nom 80 belgidan oshmasligi kerak.",
@@ -168,5 +199,6 @@ export const uz: SectionDict<typeof ru> = {
   "err.giveaway.notFound": "Sovrin o'yini topilmadi.",
   "err.giveaway.stale":
     "Sovrin o'yini boshqa oynada o'zgartirildi. Sahifani yangilab, qayta urinib ko'ring.",
+  "err.giveaway.instagramOnly": "Bu sovrin o'yini faqat Instagram'da o'tadi.",
   "err.giveaway.notOpen": "Qabul yopilgan — shartlar endi o'zgarmaydi.",
 };

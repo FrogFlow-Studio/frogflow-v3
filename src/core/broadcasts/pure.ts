@@ -18,6 +18,8 @@ export type BroadcastContent = {
   /** Товары для кнопок под сообщением, не больше MAX_PRODUCT_BUTTONS. */
   productIds: string[];
   showCatalog: boolean;
+  /** Розыгрыш для кнопки «Участвовать» (модуль giveaways); нет — без кнопки. */
+  giveawayId?: string | null;
 };
 
 export const MAX_PRODUCT_BUTTONS = 8;
@@ -77,6 +79,7 @@ export function normalizeContent(input: BroadcastContent): BroadcastContent {
     photoKeys: Array.from(new Set(input.photoKeys.filter(Boolean))).slice(0, MAX_PHOTOS),
     productIds: Array.from(new Set(input.productIds.filter(Boolean))).slice(0, MAX_PRODUCT_BUTTONS),
     showCatalog: Boolean(input.showCatalog),
+    giveawayId: /^[a-z0-9]{8}$/.test(input.giveawayId ?? "") ? input.giveawayId! : null,
   };
 }
 

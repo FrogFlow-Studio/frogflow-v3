@@ -33,6 +33,7 @@ const input = (patch: Partial<Parameters<typeof validateGiveawayInput>[0]> = {})
   conditions: "Подписка на канал",
   endsAt: "2026-10-11T10:00:00.000Z",
   winners: 2,
+  subscribeChannel: "",
   excludeBlocked: true,
   excludeStaff: true,
   ...patch,
@@ -71,6 +72,8 @@ describe("проверка формы розыгрыша", () => {
     [{ winners: 0 }, "err.giveaway.badWinners"],
     [{ winners: 51 }, "err.giveaway.badWinners"],
     [{ winners: 1.5 }, "err.giveaway.badWinners"],
+    [{ subscribeChannel: "канал" }, "err.giveaway.badSubChannel"],
+    [{ subscribeChannel: "-1001234567890" }, "err.giveaway.badSubChannel"],
   ])("отказывает: %j", (patch, key) => {
     let got = "";
     try {
@@ -79,6 +82,13 @@ describe("проверка формы розыгрыша", () => {
       got = (e as { key: string }).key;
     }
     expect(got).toBe(key);
+  });
+
+  it("канал подписки: пусто или публичный @имя", () => {
+    expect(
+      validateGiveawayInput(input({ subscribeChannel: " @my_shop " }), NOW).subscribeChannel,
+    ).toBe("@my_shop");
+    expect(validateGiveawayInput(input(), NOW).subscribeChannel).toBe("");
   });
 
   it("срок ровно через год допустим, на минуту позже — нет", () => {

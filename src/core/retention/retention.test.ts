@@ -153,6 +153,29 @@ describe("ретеншн zernio_logs", () => {
     ]);
   });
 
+  it("участники розыгрыша не удаляются, обычные старые события — удаляются", async () => {
+    db.tables.zernio_logs = [
+      {
+        id: "entry",
+        bot_id: "b",
+        event_id: "giveaway:abcdefgh:entry:tg:1",
+        event_type: "giveaway.entry",
+        status: "event",
+        created_at: daysAgo(400),
+      },
+      {
+        id: "old-order-event",
+        bot_id: "b",
+        event_id: "order:7:placed:x",
+        event_type: "order.placed",
+        status: "event",
+        created_at: daysAgo(400),
+      },
+    ];
+    expect(await pruneZernioLogs(NOW)).toEqual({ deleted: 1, done: true });
+    expect(db.tables.zernio_logs.map((r) => r.id)).toEqual(["entry"]);
+  });
+
   it("Д3: учёт диалога (статус, ответственный) не удаляется по возрасту строки", async () => {
     db.tables.zernio_logs = [
       {

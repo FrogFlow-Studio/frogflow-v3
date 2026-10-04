@@ -5,7 +5,8 @@ import { Badge, Card, Empty, ErrorBox, Field, useAction } from "@/app/ui";
 import { GIVEAWAY_CHANNELS, GIVEAWAY_MAX_WINNERS } from "@/core/giveaways/giveaway";
 
 /** Раздел «Розыгрыши» в «Рассылках» (модуль giveaways): список и форма условий. */
-type Row = Awaited<ReturnType<typeof giveawaysFn>>[number];
+type Loaded = Awaited<ReturnType<typeof giveawaysFn>>;
+type Row = Loaded["giveaways"][number];
 type Form = {
   id?: string;
   rev?: number;
@@ -15,6 +16,7 @@ type Form = {
   conditions: string;
   endsAt: string;
   winners: number;
+  subscribeChannel: string;
   excludeBlocked: boolean;
   excludeStaff: boolean;
 };
@@ -33,15 +35,18 @@ const blank = (): Form => ({
   conditions: "",
   endsAt: toLocalInput(new Date(Date.now() + 7 * 86_400_000).toISOString()),
   winners: 1,
+  subscribeChannel: "",
   excludeBlocked: true,
   excludeStaff: true,
 });
 
 export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
-  const [rows, setRows] = useState<Row[] | null>(null);
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const rows = loaded?.giveaways ?? null;
+  const botUsername = loaded?.botUsername ?? null;
   const [form, setForm] = useState<Form | null>(null);
   const [saved, setSaved] = useState(false);
-  const load = useAction(async () => setRows(await giveawaysFn()));
+  const load = useAction(async () => setLoaded(await giveawaysFn()));
   useEffect(() => {
     void load.run().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -54,11 +59,11 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
     });
     setSaved(true);
     setForm(null);
-    setRows(await giveawaysFn());
+    setLoaded(await giveawaysFn());
   });
   const close = useAction(async (id: string) => {
     await closeGiveawayFn({ data: { id } });
-    setRows(await giveawaysFn());
+    setLoaded(await giveawaysFn());
   });
   const set = (patch: Partial<Form>) => form && setForm({ ...form, ...patch });
   return (
@@ -147,6 +152,15 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
               />
             </Field>
           </div>
+          <Field label={t("giveaways.f.subscribe")} hint={t("giveaways.f.subscribeHint")}>
+            <input
+              className="input"
+              placeholder="@my_channel"
+              maxLength={33}
+              value={form.subscribeChannel}
+              onChange={(e) => set({ subscribeChannel: e.target.value })}
+            />
+          </Field>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -191,6 +205,12 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
               {t("giveaways.until", { date: new Date(g.endsAt).toLocaleString(locale) })} ·{" "}
               {t("giveaways.winnersN", { n: g.winners })}
             </div>
+            {g.status === "open" && g.channel !== "instagram" && botUsername && (
+              <div className="mt-1 text-xs">
+                {t("giveaways.link")}:{" "}
+                <code className="select-all break-all">{`https://t.me/${botUsername}?start=gw_${g.id}`}</code>
+              </div>
+            )}
             {g.status === "open" && (
               <div className="mt-2 flex gap-2">
                 <button
@@ -217,5 +237,37 @@ export function GiveawaysCard({ t, locale }: { t: AdminT; locale: string }) {
         ))}
       </ul>
     </Card>
+  );
+}
+
+/** Выбор розыгрыша для кнопки «Участвовать» под рассылкой (Telegram). */
+export function GiveawayButtonPick({
+  t,
+  value,
+  onChange,
+}: {
+  t: AdminT;
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [rows, setRows] = useState<Row[]>([]);
+  useEffect(() => {
+    void giveawaysFn()
+      .then((r) => setRows(r.giveaways))
+      .catch(() => {});
+  }, []);
+  const open = rows.filter((g) => g.status === "open" && g.channel !== "instagram");
+  if (open.length === 0) return null;
+  return (
+    <Field label={t("giveaways.broadcastButton")}>
+      <select className="input" value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">{t("giveaways.broadcastNone")}</option>
+        {open.map((g) => (
+          <option key={g.id} value={g.id}>
+            {g.title}
+          </option>
+        ))}
+      </select>
+    </Field>
   );
 }

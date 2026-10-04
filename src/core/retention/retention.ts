@@ -125,6 +125,8 @@ export async function pruneZernioLogs(now = Date.now(), scope?: Scope): Promise<
       // created_at дня первого назначения: update его не меняет, и чистка по возрасту
       // молча открывала бы решённые диалоги и снимала ответственного.
       .neq("event_type", "inbox")
+      // Участники розыгрыша (core/giveaways): по ним выбирают победителей и считают итоги.
+      .neq("event_type", "giveaway.entry")
       .lt("created_at", cutoff(RETENTION.zernioLogsStaleDays, now));
     if (scope) q2 = q2.in("bot_id", [...scope]);
     const { data: stale, error: e2 } = await q2

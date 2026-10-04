@@ -17,6 +17,7 @@ import {
   type BroadcastSender,
 } from "@/core/broadcasts/broadcasts";
 import { buttonLabel, type BroadcastContent } from "@/core/broadcasts/pure";
+import { giveawayJoinLabel } from "./giveaway";
 import { clickMark } from "@/core/broadcasts/clicks";
 import { sendCartReminders } from "@/core/reminders/cart";
 import { sendFulfillmentReminders } from "@/core/reminders/fulfillment";
@@ -55,6 +56,10 @@ async function broadcastKeyboard(
   }
   if (content.showCatalog)
     rows.push([{ text: COPY[locale].openCatalogBtn, callback_data: `cat:root:0:${mark}` }]);
+  if (content.giveawayId && ctx.tenant.modules.giveaways)
+    rows.push([
+      { text: giveawayJoinLabel(locale), callback_data: `gw:${content.giveawayId}:${mark}` },
+    ]);
   // Отписка — под каждой рассылкой (handle-update: callback "unsub").
   rows.push([{ text: COPY[locale].unsubscribeBtn, callback_data: "unsub" }]);
   return { inline_keyboard: rows };
@@ -70,7 +75,7 @@ export function telegramBroadcastSender(ctx: TenantContext, tg: TelegramApi): Br
   // Метка рассылки в кнопках — для счёта кликов (core/broadcasts/clicks).
   const keyboardFor = async (c: BroadcastContent, broadcastId: string, locale?: Locale) => {
     const mark = clickMark(broadcastId);
-    const key = `${mark}|${c.productIds.join(",")}|${c.showCatalog}|${locale ?? ""}`;
+    const key = `${mark}|${c.productIds.join(",")}|${c.showCatalog}|${c.giveawayId ?? ""}|${locale ?? ""}`;
     if (!cache.has(key)) cache.set(key, await broadcastKeyboard(ctx, c, mark, locale));
     return cache.get(key);
   };
@@ -153,7 +158,8 @@ export function telegramBroadcastSender(ctx: TenantContext, tg: TelegramApi): Br
     );
     // У альбома кнопок нет: они — отдельным сообщением следом.
     const m = COPY[locale ?? ctx.tenant.settings.default_locale ?? "ru"];
-    const onlyUnsub = content.productIds.length === 0 && !content.showCatalog;
+    const onlyUnsub =
+      content.productIds.length === 0 && !content.showCatalog && !content.giveawayId;
     fail(
       await tg.call("sendMessage", {
         chat_id: chatId,

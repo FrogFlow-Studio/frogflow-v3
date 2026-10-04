@@ -2230,6 +2230,11 @@ export const createBroadcastFn = createServerFn({ method: "POST" })
         photoKeys: z.array(z.string().min(1).max(300)).max(10).default([]),
         productIds: z.array(uuid).max(8).default([]),
         showCatalog: z.boolean().default(false),
+        /** Кнопка «Участвовать» под сообщением (модуль giveaways). */
+        giveawayId: z
+          .string()
+          .regex(/^[a-z0-9]{8}$/)
+          .optional(),
         audience: audienceSchema,
         countryCode: z.string().max(3).optional(),
         segment: segmentSchema,
@@ -2306,10 +2311,31 @@ export const createBroadcastFn = createServerFn({ method: "POST" })
         );
       sendAt = new Date(at).toISOString();
     }
+    let giveawayId: string | undefined;
+    if (data.giveawayId && data.channel === "telegram") {
+      if (!ctx.tenant.modules.giveaways)
+        throw new UserError(
+          "err.auth.moduleOff",
+          "Модуль «{module}» не подключён к вашему тарифу.",
+          { module: "giveaways" },
+        );
+      const { getGiveaway, isAccepting } = await import("@/core/giveaways/giveaway");
+      const g = await getGiveaway(ctx, data.giveawayId);
+      if (!g) throw new UserError("err.giveaway.notFound", "Розыгрыш не найден.");
+      if (g.channel === "instagram")
+        throw new UserError(
+          "err.giveaway.instagramOnly",
+          "Этот розыгрыш проходит только в Instagram.",
+        );
+      if (!isAccepting(g, new Date()))
+        throw new UserError("err.giveaway.notOpen", "Приём закрыт — условия уже не меняются.");
+      giveawayId = g.id;
+    }
     const filter = {
       ...(data.countryCode ? { country_code: data.countryCode } : {}),
       ...(segment ? { segment } : {}),
       ...(sendAt ? { send_at: sendAt } : {}),
+      ...(giveawayId ? { giveaway_id: giveawayId } : {}),
     };
     const base = {
       channel: data.channel,

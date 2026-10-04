@@ -40,6 +40,8 @@ export type Giveaway = {
   /** Срок приёма, ISO. */
   endsAt: string;
   winners: number;
+  /** Публичный канал для условия «подписка» (`@name`), пусто — условия нет. Бот должен быть в канале администратором. */
+  subscribeChannel: string;
   /** Не выбирать победителем заблокированных продавцом. */
   excludeBlocked: boolean;
   /** Не выбирать победителем сотрудников магазина. */
@@ -57,9 +59,17 @@ export type GiveawayInput = {
   conditions: string;
   endsAt: string;
   winners: number;
+  subscribeChannel: string;
   excludeBlocked: boolean;
   excludeStaff: boolean;
 };
+
+/** Публичный канал Telegram: по @имени есть ссылка для кнопки «Подписаться». */
+export const GIVEAWAY_CHANNEL_RE = /^@[A-Za-z][A-Za-z0-9_]{4,31}$/;
+
+/** Идёт ли приём: статус открыт и срок не вышел. */
+export const isAccepting = (g: Giveaway, now: Date) =>
+  g.status === "open" && Date.parse(g.endsAt) > now.getTime();
 
 export const giveawayKey = (id: string) => `${GIVEAWAY_PREFIX}${id}`;
 
@@ -94,6 +104,10 @@ export function parseGiveaway(raw: string | null | undefined): Giveaway | null {
       conditions: typeof p.conditions === "string" ? p.conditions : "",
       endsAt: new Date(p.endsAt).toISOString(),
       winners: winners >= 1 && winners <= GIVEAWAY_MAX_WINNERS ? winners : 1,
+      subscribeChannel:
+        typeof p.subscribeChannel === "string" && GIVEAWAY_CHANNEL_RE.test(p.subscribeChannel)
+          ? p.subscribeChannel
+          : "",
       excludeBlocked: p.excludeBlocked !== false,
       excludeStaff: p.excludeStaff !== false,
       status: GIVEAWAY_STATUSES.includes(p.status as GiveawayStatus)
@@ -118,6 +132,7 @@ export function validateGiveawayInput(input: GiveawayInput, now: Date): Giveaway
   const title = input.title.trim();
   const prize = input.prize.trim();
   const conditions = input.conditions.trim();
+  const subscribeChannel = input.subscribeChannel.trim();
   if (!title) throw new UserError("err.giveaway.titleRequired", "Укажите название розыгрыша.");
   if (title.length > 80)
     throw new UserError("err.giveaway.titleLong", "Название — не длиннее 80 символов.");
@@ -126,6 +141,11 @@ export function validateGiveawayInput(input: GiveawayInput, now: Date): Giveaway
     throw new UserError("err.giveaway.prizeLong", "Приз — не длиннее 200 символов.");
   if (conditions.length > 1000)
     throw new UserError("err.giveaway.conditionsLong", "Условия — не длиннее 1000 символов.");
+  if (subscribeChannel && !GIVEAWAY_CHANNEL_RE.test(subscribeChannel))
+    throw new UserError(
+      "err.giveaway.badSubChannel",
+      "Канал для подписки — публичный, в виде @имя_канала.",
+    );
   if (!GIVEAWAY_CHANNELS.includes(input.channel))
     throw new UserError("err.giveaway.badChannel", "Выберите, где проходит розыгрыш.");
   const ends = Date.parse(input.endsAt);
@@ -146,6 +166,7 @@ export function validateGiveawayInput(input: GiveawayInput, now: Date): Giveaway
     channel: input.channel,
     endsAt: new Date(ends).toISOString(),
     winners: input.winners,
+    subscribeChannel,
     excludeBlocked: input.excludeBlocked,
     excludeStaff: input.excludeStaff,
   };

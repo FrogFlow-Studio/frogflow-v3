@@ -662,6 +662,12 @@ async function startFlow(b: Bot, payload = "") {
     if (gift) await send(b, b.m.referralWelcome(gift.percent, gift.code));
     payload = "";
   }
+  // Ссылка розыгрыша ?start=gw_<id> (модуль giveaways): участие в один шаг.
+  if (payload.startsWith("gw_") && b.ctx.tenant.modules.giveaways) {
+    const { giveawayEntry, giveawayIdFrom } = await import("./giveaway");
+    const gid = giveawayIdFrom(payload);
+    if (gid) return giveawayEntry(b.ctx, b.api, b.chatId, b.customer, b.locale, gid);
+  }
   // Ссылка продавца ?start=bday: покупатель сам вводит день рождения (модуль funnel).
   if (payload === "bday" && b.ctx.tenant.modules.funnel) {
     b.customer = await setState(b.ctx, b.customer, {
@@ -2229,6 +2235,12 @@ async function handleCallback(
     if (!step) return quizAsk(b, 0, true);
     b.customer = await setState(ctx, customer, { ...customer.state, quiz_tags: step.tags });
     return quizAsk(b, step.next);
+  }
+  // Кнопка «Участвовать» из рассылки и «Проверить ещё раз» после подписки (модуль giveaways).
+  if ((data.startsWith("gw:") || data.startsWith("gwchk:")) && ctx.tenant.modules.giveaways) {
+    const { giveawayEntry, giveawayIdFrom } = await import("./giveaway");
+    const gid = giveawayIdFrom(data);
+    if (gid) return giveawayEntry(ctx, api, chatId, customer, locale, gid);
   }
   if (data.startsWith("wait:") && ctx.tenant.modules.waitlist) {
     const { joinWaitlist } = await import("@/core/waitlist/waitlist");

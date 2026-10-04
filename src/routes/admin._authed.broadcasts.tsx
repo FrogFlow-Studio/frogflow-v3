@@ -3,7 +3,7 @@ import { EngageBlock } from "@/app/admin/engage-block";
 import { SimilarCard } from "@/app/admin/similar-card";
 import { AutoStatsBlock } from "@/app/admin/auto-stats";
 import { AutoPreview } from "@/app/admin/auto-preview";
-import { GiveawaysCard } from "@/app/admin/giveaways-card";
+import { GiveawayButtonPick, GiveawaysCard } from "@/app/admin/giveaways-card";
 import type { AutoStats } from "@/core/automsg/stats";
 import { birthdayFn, funnelFn, saveBirthdayFn, saveFunnelFn } from "@/app/admin/funnel.functions";
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
@@ -534,6 +534,7 @@ function AudiencePicker({
 
 function Composer({ data, botId, disabled }: { data: Data; botId: string; disabled: boolean }) {
   const t = useT();
+  const { shop } = useRouteContext({ from: "/admin/_authed" });
   const router = useRouter();
   const [text, setText] = useState("");
   // A/B-тест: второй текст — половине аудитории (core/broadcasts/ab).
@@ -542,6 +543,7 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
   const [photos, setPhotos] = useState<string[]>([]);
   const [products, setProducts] = useState<PickerProduct[]>([]);
   const [showCatalog, setShowCatalog] = useState(false);
+  const [giveawayId, setGiveawayId] = useState("");
   const search = Route.useSearch();
   const preset = parseSegmentParam(search);
   const navigate = Route.useNavigate();
@@ -576,6 +578,7 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
         photoKeys: photos,
         productIds: products.map((p) => p.id),
         showCatalog,
+        giveawayId: giveawayId || undefined,
         audience: audience === "segment" ? "all" : audience,
         countryCode: audience === "country" ? country : undefined,
         segment: seg,
@@ -590,6 +593,7 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
       setPhotos([]);
       setProducts([]);
       setShowCatalog(false);
+      setGiveawayId("");
     }
     await router.invalidate();
   });
@@ -712,6 +716,11 @@ function Composer({ data, botId, disabled }: { data: Data; botId: string; disabl
             />
             <span className="text-sm">{t("broadcasts.compose.catalogButton")}</span>
           </div>
+          {shop.modules.giveaways && (
+            <div className="mt-2">
+              <GiveawayButtonPick t={t} value={giveawayId} onChange={setGiveawayId} />
+            </div>
+          )}
           <details className="mt-2">
             <summary className="cursor-pointer text-sm text-muted">
               {t("broadcasts.compose.productButtons", {

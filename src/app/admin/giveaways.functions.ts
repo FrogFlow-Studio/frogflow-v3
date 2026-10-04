@@ -9,7 +9,10 @@ const moduleAdmin = async (min?: "manager") =>
 export const giveawaysFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await moduleAdmin();
   const { listGiveaways } = await import("@/core/giveaways/giveaway");
-  return listGiveaways(ctx);
+  return {
+    giveaways: await listGiveaways(ctx),
+    botUsername: ctx.tenant.settings.telegram?.username ?? null,
+  };
 });
 
 const inputSchema = z.object({
@@ -19,6 +22,7 @@ const inputSchema = z.object({
   conditions: z.string().max(3000),
   endsAt: z.string().max(40),
   winners: z.number(),
+  subscribeChannel: z.string().max(60),
   excludeBlocked: z.boolean(),
   excludeStaff: z.boolean(),
 });

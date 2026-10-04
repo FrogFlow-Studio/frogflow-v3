@@ -36,6 +36,8 @@ export type AudienceFilter = {
    * магазина. Отправитель берёт текст по `bot_users.state.locale` получателя.
    */
   texts?: Partial<Record<Locale, string>>;
+  /** Розыгрыш, на который под сообщением кнопка «Участвовать» (core/giveaways). */
+  giveaway_id?: string;
 };
 export type BroadcastChannel = "telegram" | "whatsapp";
 
@@ -414,6 +416,7 @@ export function contentOf(b: BroadcastRow): BroadcastContent {
     photoKeys: Array.isArray(b.photo_paths) ? (b.photo_paths as string[]) : [],
     productIds: Array.isArray(b.product_ids) ? (b.product_ids as string[]) : [],
     showCatalog: Boolean(b.show_catalog),
+    giveawayId: (b.audience_filter as AudienceFilter | null)?.giveaway_id ?? null,
   });
 }
 
