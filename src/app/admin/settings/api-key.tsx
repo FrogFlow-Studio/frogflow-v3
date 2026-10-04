@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, ErrorBox, useAction } from "@/app/ui";
 import { apiKeyStatusFn, createApiKeyFn, revokeApiKeyFn } from "@/app/admin/api-key.functions";
-import { adminT } from "@/app/i18n/admin";
+import { adminT, intlLocale } from "@/app/i18n/admin";
 import { settingsRoute } from "./route";
 
 /** Ключ публичного API (core/api/public-api): создать, сменить, отозвать; показ один раз. */
@@ -19,7 +19,7 @@ export function ApiKeyCard() {
     if (status?.exists && !window.confirm(t("settings.api.rotateConfirm"))) return;
     const r = await createApiKeyFn();
     setToken(r.token);
-    setStatus({ exists: true, last4: r.last4, createdAt: r.createdAt });
+    setStatus({ exists: true, last4: r.last4, createdAt: r.createdAt, lastUse: null });
   });
   const revoke = useAction(async () => {
     if (!window.confirm(t("settings.api.revokeConfirm"))) return;
@@ -40,6 +40,17 @@ export function ApiKeyCard() {
               })
             : t("settings.api.none")}
         </p>
+        {status.exists && (
+          <p className="text-muted" data-testid="api-last-use">
+            {status.lastUse
+              ? t("apiuse.last", {
+                  when: new Date(status.lastUse.at).toLocaleString(intlLocale(shop.locale)),
+                  from:
+                    [status.lastUse.ip, status.lastUse.agent].filter(Boolean).join(" · ") || "—",
+                })
+              : t("apiuse.never")}
+          </p>
+        )}
         {token && (
           <div className="space-y-1 rounded-md bg-surface-2 p-3">
             <p className="text-xs font-medium">{t("settings.api.copyNow")}</p>
@@ -47,7 +58,7 @@ export function ApiKeyCard() {
           </div>
         )}
         <pre className="overflow-x-auto rounded-md bg-surface-2 p-3 text-xs">
-          {`curl -H "Authorization: Bearer ${token ?? "ffk_…"}" \\\n  ${origin}/api/v1/orders?limit=10\n\nGET   /api/v1/orders?status=&updated_since=&limit=&before_id=\nGET   /api/v1/orders/<id>\nGET   /api/v1/products\nPATCH /api/v1/products/<id>  {"stock": 5, "price": 1000, "active": true}`}
+          {`curl -H "Authorization: Bearer ${token ?? "ffk_…"}" \\\n  ${origin}/api/v1/orders?limit=10\n\nGET   /api/v1/orders?status=&updated_since=&limit=&before_id=\nGET   /api/v1/orders/<id>\nGET   /api/v1/products\nGET   /api/v1/customers?updated_since=&limit=&after=\nPATCH /api/v1/products/<id>  {"stock": 5, "price": 1000, "active": true}`}
         </pre>
         <p className="text-xs text-muted">{t("settings.api.webhooks")}</p>
         <div className="flex flex-wrap gap-2">

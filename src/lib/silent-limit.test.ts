@@ -97,6 +97,7 @@ const ALLOWED: Record<string, string[]> = {
   ],
   "src/routes/api/v1.$.ts": [
     "заказы по курсору `before` и `limit` из запроса: клиент API листает сам",
+    "покупатели по курсору `after` (уникальный user_key) и `limit` из запроса: клиент API листает сам",
   ],
 };
 

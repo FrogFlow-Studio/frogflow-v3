@@ -6,9 +6,15 @@ const owner = async () =>
 
 export const apiKeyStatusFn = createServerFn({ method: "GET" }).handler(async () => {
   const ctx = await owner();
-  const { loadApiKeyMeta } = await import("@/core/api/public-api");
+  const { loadApiKeyMeta, loadApiKeyUse } = await import("@/core/api/public-api");
   const meta = await loadApiKeyMeta(ctx);
-  return meta ? { exists: true, last4: meta.last4, createdAt: meta.createdAt } : { exists: false };
+  if (!meta) return { exists: false as const };
+  return {
+    exists: true as const,
+    last4: meta.last4,
+    createdAt: meta.createdAt,
+    lastUse: await loadApiKeyUse(ctx),
+  };
 });
 
 /** Новый ключ взамен прежнего: прежний перестаёт работать сразу, новый виден один раз. */

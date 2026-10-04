@@ -24,6 +24,7 @@ import * as analytics from "./admin/analytics";
 import * as chat from "./admin/chat";
 import * as outbox from "./admin/outbox";
 import * as crmLog from "./admin/crm-log";
+import * as apiUse from "./admin/api-use";
 import * as audit from "./admin/audit";
 import * as posts from "./admin/posts";
 import * as quiz from "./admin/quiz";
@@ -422,6 +423,7 @@ const ru = {
   ...chat.ru,
   ...outbox.ru,
   ...crmLog.ru,
+  ...apiUse.ru,
   ...audit.ru,
   ...posts.ru,
   ...quiz.ru,
@@ -1503,6 +1505,7 @@ const kk: Dict = {
   ...chat.kk,
   ...outbox.kk,
   ...crmLog.kk,
+  ...apiUse.kk,
   ...audit.kk,
   ...posts.kk,
   ...quiz.kk,
@@ -1551,6 +1554,7 @@ const en: Dict = {
   ...chat.en,
   ...outbox.en,
   ...crmLog.en,
+  ...apiUse.en,
   ...audit.en,
   ...posts.en,
   ...quiz.en,
@@ -1599,6 +1603,7 @@ const uz: Dict = {
   ...chat.uz,
   ...outbox.uz,
   ...crmLog.uz,
+  ...apiUse.uz,
   ...audit.uz,
   ...posts.uz,
   ...quiz.uz,

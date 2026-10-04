@@ -15,7 +15,7 @@ export function seedShop14Integrations(db: StubDb, now: string) {
       bot_name: F.INT14_SHOP_NAME,
       status: "active",
       vertical: "digital",
-      modules: { shop: true, crm_integration: true },
+      modules: { shop: true, crm_integration: true, public_api: true },
       settings: {
         served_by: "v2",
         default_locale: "ru",
@@ -81,6 +81,16 @@ export function seedShop14Integrations(db: StubDb, now: string) {
         secret: "e2e-secret",
         events: ["placed", "payment"],
       }),
+      updated_at: now,
+    }),
+    int14({
+      key: "public_api_key",
+      value: JSON.stringify({ hash: "a".repeat(64), last4: "wxyz", createdAt: now }),
+      updated_at: now,
+    }),
+    int14({
+      key: "public_api_key_use",
+      value: JSON.stringify({ at: now, ip: "203.0.113.7", agent: "1C-Connector/8.3" }),
       updated_at: now,
     }),
     int14({

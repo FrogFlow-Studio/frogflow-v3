@@ -12,6 +12,7 @@ test("интеграции: журнал доставки вебхуков по�
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto("/admin/settings");
   const log = page.getByTestId("crm-log");
+  await expect(page.getByTestId("api-last-use")).toContainText("203.0.113.7 · 1C-Connector/8.3");
   await expect(log.getByText("Журнал доставки", { exact: true })).toBeVisible();
   await expect(log.getByText("принято (200)")).toBeVisible();
   await expect(log.getByText("отказ: код 500")).toBeVisible();

@@ -8,6 +8,7 @@ import { pageAll } from "@/core/db/page";
  *   GET   /api/v1/orders?status=&updated_since=&limit=&before_id=
  *   GET   /api/v1/orders/<id>
  *   GET   /api/v1/products
+ *   GET   /api/v1/customers?updated_since=&limit=&after=
  *   PATCH /api/v1/products/<id>   {"stock": 5 | null, "price": 1000, "active": true}
  *
  * Ключ — `Authorization: Bearer ffk_<bot_id>_<секрет>`, магазин берётся из
@@ -55,6 +56,8 @@ async function handle(request: Request, path: string): Promise<Response> {
   const { takeShared } = await import("@/core/storefront/rate-limit");
   if (!(await takeShared(ctx, "api", "key", { limit: 120, windowMs: 60_000 })))
     return fail(429, "rate_limited");
+  // Ключ в деле: отметка «последнее использование» (не чаще раза в минуту).
+  await api.recordApiKeyUse(ctx, api.apiCaller(request));
 
   const parts = path.split("/").filter(Boolean);
   const method = request.method.toUpperCase();
@@ -80,6 +83,8 @@ async function handle(request: Request, path: string): Promise<Response> {
       );
       return json({ products: data.map((p) => api.apiProduct(p)) });
     }
+    if (parts[0] === "customers" && parts.length === 1 && method === "GET")
+      return await listCustomers(ctx, new URL(request.url));
     if (parts[0] === "products" && parts.length === 2 && method === "PATCH")
       return await patchProduct(ctx, parts[1]!, request);
     return fail(404, "not_found");
@@ -107,6 +112,33 @@ async function listOrders(
     orders: orders.map(api.apiOrder),
     // Следующая страница: before_id = id последнего заказа в ответе.
     next_before_id: orders.length === q.limit ? orders[orders.length - 1]!.id : null,
+  });
+}
+
+/**
+ * Покупатели магазина, только чтение. Порядок — по ключу покупателя (он
+ * уникален в магазине), курсор `after` = последний ключ страницы: страницы не
+ * теряют и не повторяют строки, даже если покупатели меняются между запросами.
+ * Для обмена «что изменилось» берите `updated_since` и листайте страницы.
+ */
+async function listCustomers(
+  ctx: import("@/core/tenant/resolve.server").TenantContext,
+  url: URL,
+): Promise<Response> {
+  const api = await import("@/core/api/public-api");
+  const q = api.customerListQuery(url);
+  if (!q) return fail(400, "bad_query");
+  // Роль арендатора и так видит только свой магазин; фильтр — второй замок.
+  let query = ctx.db.from("bot_users").select(api.CUSTOMER_COLUMNS).eq("bot_id", ctx.tenant.id);
+  if (q.since) query = query.gte("updated_at", q.since);
+  if (q.after) query = query.gt("user_key", q.after);
+  const { data, error } = await query.order("user_key", { ascending: true }).limit(q.limit);
+  if (error) throw serverFailure(`API: покупатели: ${error.message}`);
+  const rows = (data ?? []) as unknown as import("@/core/api/public-api").ApiCustomerRow[];
+  return json({
+    customers: rows.map(api.apiCustomer),
+    // Следующая страница: after = id последнего покупателя в ответе.
+    next_after: rows.length === q.limit ? rows[rows.length - 1]!.user_key : null,
   });
 }
 

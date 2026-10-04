@@ -21,7 +21,8 @@ vi.mock("@/core/tenant/resolve.server", () => ({
 vi.mock("@/core/storefront/rate-limit", () => ({ takeShared: async () => true }));
 
 const { Route } = await import("@/routes/api/v1.$");
-const { createApiKey } = await import("./public-api");
+const { createApiKey, recordApiKeyUse, loadApiKeyUse, API_KEY_USE_GAP_MS } =
+  await import("./public-api");
 type Handler = (a: { request: Request; params: Record<string, string> }) => Promise<Response>;
 const handlers = (Route.options as unknown as { server: { handlers: Record<string, Handler> } })
   .server.handlers;
@@ -29,7 +30,10 @@ const handlers = (Route.options as unknown as { server: { handlers: Record<strin
 function call(path: string, token: string | null, init: RequestInit = {}) {
   const request = new Request(`https://app.test/api/v1/${path}`, {
     ...init,
-    headers: token ? { authorization: `Bearer ${token}` } : {},
+    headers: {
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(init.headers as object),
+    },
   });
   return handlers[(init.method ?? "GET") as string]!({
     request,
@@ -85,6 +89,25 @@ beforeEach(async () => {
       sort_order: 1,
       description: "",
     },
+  ];
+  db.tables.bot_users = [
+    ...[3, 1, 2, 5, 4].map((n) => ({
+      bot_id: BOT,
+      user_key: `tg:${n}`,
+      first_name: `Имя${n}`,
+      last_name: n === 1 ? "Фамилия" : null,
+      username: `u${n}`,
+      contact_phone: `+7700000000${n}`,
+      email: n === 2 ? "a@b.kz" : null,
+      loyalty_points: n * 100,
+      platform: "telegram",
+      state: { mode: "secret-state" },
+      metadata: { token: "secret-meta" },
+      zernio_conversation_id: "conv-secret",
+      created_at: "2026-09-01T00:00:00Z",
+      // у всех пятерых одно время изменения: порядок страниц держится только на ключе
+      updated_at: n === 5 ? "2026-08-01T00:00:00Z" : "2026-09-10T00:00:00Z",
+    })),
   ];
   token = (await createApiKey(ctx())).token;
 });
@@ -145,5 +168,92 @@ describe("/api/v1", () => {
     expect(bad.status).toBe(400);
     const empty = await call(`products/${id}`, token, { method: "PATCH", body: "{}" });
     expect(empty.status).toBe(400);
+  });
+
+  it("покупатели: только чтение, нужные поля, без состояния бота и служебного", async () => {
+    const r = await call("customers", token);
+    expect(r.status).toBe(200);
+    const { customers } = (await r.json()) as { customers: Array<Record<string, unknown>> };
+    expect(customers.map((c) => c.id)).toEqual(["tg:1", "tg:2", "tg:3", "tg:4", "tg:5"]);
+    expect(customers[0]).toEqual({
+      id: "tg:1",
+      name: "Имя1 Фамилия",
+      username: "u1",
+      phone: "+77000000001",
+      email: null,
+      points: 100,
+      channel: "telegram",
+      created_at: "2026-09-01T00:00:00Z",
+      updated_at: "2026-09-10T00:00:00Z",
+    });
+    expect(JSON.stringify(customers)).not.toMatch(/secret/);
+    for (const method of ["PATCH"])
+      expect((await call("customers", token, { method })).status).toBe(404);
+    expect(db.tables.bot_users).toHaveLength(5);
+  });
+
+  it("покупатели: страницы по ключу без потерь и повторов, updated_since, плохие параметры", async () => {
+    const seen: string[] = [];
+    let after: string | null = null;
+    for (let i = 0; i < 10; i++) {
+      const r = (await (
+        await call(`customers?limit=2${after ? `&after=${after}` : ""}`, token)
+      ).json()) as {
+        customers: Array<{ id: string }>;
+        next_after: string | null;
+      };
+      seen.push(...r.customers.map((c) => c.id));
+      after = r.next_after;
+      if (!after) break;
+    }
+    expect(seen).toEqual(["tg:1", "tg:2", "tg:3", "tg:4", "tg:5"]);
+    const fresh = (await (
+      await call("customers?updated_since=2026-09-01T00:00:00Z", token)
+    ).json()) as {
+      customers: Array<{ id: string }>;
+    };
+    expect(fresh.customers.map((c) => c.id)).toEqual(["tg:1", "tg:2", "tg:3", "tg:4"]);
+    for (const q of ["limit=0", "limit=101", "updated_since=вчера", "limit=x"])
+      expect((await call(`customers?${q}`, token)).status, q).toBe(400);
+  });
+
+  it("покупатели: без ключа 401, магазин прежней платформы 404, чужой магазин не виден", async () => {
+    expect((await call("customers", null)).status).toBe(401);
+    tenantSettings = { served_by: "v1" };
+    expect((await call("customers", token)).status).toBe(404);
+    tenantSettings = { served_by: "v2" };
+    db.tables.bot_users!.push({ bot_id: "other", user_key: "tg:999", loyalty_points: 1 });
+    const ids = (
+      (await (await call("customers", token)).json()) as { customers: Array<{ id: string }> }
+    ).customers.map((c) => c.id);
+    expect(ids).not.toContain("tg:999");
+  });
+
+  it("последнее использование ключа: адрес и программа, не чаще раза в минуту", async () => {
+    expect(await loadApiKeyUse(ctx())).toBeNull();
+    await call("orders", token, {
+      headers: { "x-forwarded-for": "203.0.113.7, 10.0.0.1", "user-agent": "1C-Connector/8.3" },
+    });
+    const first = await loadApiKeyUse(ctx());
+    expect(first).toMatchObject({ ip: "203.0.113.7", agent: "1C-Connector/8.3" });
+    // Запрос в ту же минуту отметку не переписывает.
+    await call("orders", token, { headers: { "x-forwarded-for": "198.51.100.9" } });
+    expect(await loadApiKeyUse(ctx())).toEqual(first);
+    // Через минуту — переписывает.
+    const later = new Date(Date.parse(first!.at) + API_KEY_USE_GAP_MS + 1);
+    expect(await recordApiKeyUse(ctx(), { ip: "198.51.100.9", agent: null }, later)).toBe(true);
+    expect((await loadApiKeyUse(ctx()))!.ip).toBe("198.51.100.9");
+  });
+
+  it("последнее использование: запрос без верного ключа его не отмечает; гонка — одна запись; новый ключ обнуляет", async () => {
+    await call("orders", `ffk_${BOT}_${"y".repeat(43)}`);
+    expect(await loadApiKeyUse(ctx())).toBeNull();
+    const now = new Date("2026-10-04T12:00:00Z");
+    const wrote = await Promise.all(
+      Array.from({ length: 10 }, () => recordApiKeyUse(ctx(), { ip: "1.1.1.1", agent: null }, now)),
+    );
+    expect(wrote.filter(Boolean)).toHaveLength(1);
+    await createApiKey(ctx());
+    expect(await loadApiKeyUse(ctx())).toBeNull();
   });
 });
