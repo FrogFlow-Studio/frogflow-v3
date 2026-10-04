@@ -27,6 +27,7 @@ export * from "./fixtures/shop16-reviews.ts";
 export * from "./fixtures/shop16-r-autostats.ts";
 export * from "./fixtures/shop16-d-chat.ts";
 export * from "./fixtures/shop16-quiz.ts";
+export * from "./fixtures/shop18-k.ts";
 export * from "./fixtures/shop16-o-reply.ts";
 export * from "./fixtures/shop16-o-filters.ts";
 export * from "./fixtures/shop16-o-engage.ts";

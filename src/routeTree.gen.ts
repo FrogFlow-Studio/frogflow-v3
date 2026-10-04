@@ -104,6 +104,7 @@ import { Route as OperatorAuthedClientsBotIdRouteImport } from './routes/operato
 import { Route as OperatorAuthedClientsNewRouteImport } from './routes/operator._authed.clients.new'
 import { Route as SSlugCertCodeRouteImport } from './routes/s.$slug.cert.$code'
 import { Route as SSlugCourseItemIdRouteImport } from './routes/s.$slug.course.$itemId'
+import { Route as SSlugGiveawayIdRouteImport } from './routes/s.$slug.giveaway.$id'
 import { Route as SSlugLegalDocRouteImport } from './routes/s.$slug.legal.$doc'
 import { Route as SSlugOrderIdRouteImport } from './routes/s.$slug.order.$id'
 import { Route as SSlugPIdRouteImport } from './routes/s.$slug.p.$id'
@@ -590,6 +591,11 @@ const SSlugCourseItemIdRoute = SSlugCourseItemIdRouteImport.update({
   path: '/course/$itemId',
   getParentRoute: () => SSlugRoute,
 } as any)
+const SSlugGiveawayIdRoute = SSlugGiveawayIdRouteImport.update({
+  id: '/giveaway/$id',
+  path: '/giveaway/$id',
+  getParentRoute: () => SSlugRoute,
+} as any)
 const SSlugLegalDocRoute = SSlugLegalDocRouteImport.update({
   id: '/legal/$doc',
   path: '/legal/$doc',
@@ -715,6 +721,7 @@ export interface FileRoutesByFullPath {
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/cert/$code': typeof SSlugCertCodeRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
+  '/s/$slug/giveaway/$id': typeof SSlugGiveawayIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
   '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
@@ -813,6 +820,7 @@ export interface FileRoutesByTo {
   '/operator/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/cert/$code': typeof SSlugCertCodeRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
+  '/s/$slug/giveaway/$id': typeof SSlugGiveawayIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
   '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
@@ -917,6 +925,7 @@ export interface FileRoutesById {
   '/operator/_authed/clients/new': typeof OperatorAuthedClientsNewRoute
   '/s/$slug/cert/$code': typeof SSlugCertCodeRoute
   '/s/$slug/course/$itemId': typeof SSlugCourseItemIdRoute
+  '/s/$slug/giveaway/$id': typeof SSlugGiveawayIdRoute
   '/s/$slug/legal/$doc': typeof SSlugLegalDocRoute
   '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
@@ -1020,6 +1029,7 @@ export interface FileRouteTypes {
     | '/operator/clients/new'
     | '/s/$slug/cert/$code'
     | '/s/$slug/course/$itemId'
+    | '/s/$slug/giveaway/$id'
     | '/s/$slug/legal/$doc'
     | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
@@ -1118,6 +1128,7 @@ export interface FileRouteTypes {
     | '/operator/clients/new'
     | '/s/$slug/cert/$code'
     | '/s/$slug/course/$itemId'
+    | '/s/$slug/giveaway/$id'
     | '/s/$slug/legal/$doc'
     | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
@@ -1221,6 +1232,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/clients/new'
     | '/s/$slug/cert/$code'
     | '/s/$slug/course/$itemId'
+    | '/s/$slug/giveaway/$id'
     | '/s/$slug/legal/$doc'
     | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
@@ -1934,6 +1946,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugCourseItemIdRouteImport
       parentRoute: typeof SSlugRoute
     }
+    '/s/$slug/giveaway/$id': {
+      id: '/s/$slug/giveaway/$id'
+      path: '/giveaway/$id'
+      fullPath: '/s/$slug/giveaway/$id'
+      preLoaderRoute: typeof SSlugGiveawayIdRouteImport
+      parentRoute: typeof SSlugRoute
+    }
     '/s/$slug/legal/$doc': {
       id: '/s/$slug/legal/$doc'
       path: '/legal/$doc'
@@ -2144,6 +2163,7 @@ interface SSlugRouteChildren {
   SSlugIndexRoute: typeof SSlugIndexRoute
   SSlugCertCodeRoute: typeof SSlugCertCodeRoute
   SSlugCourseItemIdRoute: typeof SSlugCourseItemIdRoute
+  SSlugGiveawayIdRoute: typeof SSlugGiveawayIdRoute
   SSlugLegalDocRoute: typeof SSlugLegalDocRoute
   SSlugOrderIdRoute: typeof SSlugOrderIdRoute
   SSlugPIdRoute: typeof SSlugPIdRoute
@@ -2159,6 +2179,7 @@ const SSlugRouteChildren: SSlugRouteChildren = {
   SSlugIndexRoute: SSlugIndexRoute,
   SSlugCertCodeRoute: SSlugCertCodeRoute,
   SSlugCourseItemIdRoute: SSlugCourseItemIdRoute,
+  SSlugGiveawayIdRoute: SSlugGiveawayIdRoute,
   SSlugLegalDocRoute: SSlugLegalDocRoute,
   SSlugOrderIdRoute: SSlugOrderIdRoute,
   SSlugPIdRoute: SSlugPIdRoute,

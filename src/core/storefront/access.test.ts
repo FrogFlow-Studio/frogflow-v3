@@ -25,6 +25,13 @@ describe("доступ к витрине по модулям", () => {
     expect(storefrontAllows({ legal_docs: true }, "order")).toBe(false);
   });
 
+  it("итоги розыгрыша открыты по модулю giveaways, витрина не нужна", () => {
+    expect(storefrontAllows({ shop: true, giveaways: true }, "giveaway")).toBe(true);
+    expect(storefrontAllows({ shop: true, giveaways: true }, "info")).toBe(true);
+    expect(storefrontAllows({ shop: true }, "giveaway")).toBe(false);
+    expect(storefrontAllows({ giveaways: true }, "giveaway")).toBe(false);
+  });
+
   it("веб-витрина: каталог и корзина с сайта, но не Mini App", () => {
     const m = { shop: true, web_storefront: true };
     expect(storefrontAllows(m, "catalog")).toBe(true);

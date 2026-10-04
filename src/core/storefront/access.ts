@@ -12,6 +12,8 @@ import type { Tenant } from "@/core/tenant/types";
  * «quiz» — страница подбора товара (модуль quiz) там же, где каталог.
  * «course» — страница купленного курса (модуль courses): ссылка приходит при
  * выдаче в любой канал, поэтому платная витрина для неё не нужна.
+ * «giveaway» — страница итогов розыгрыша (модуль giveaways): ссылку получают
+ * из бота и поста, платная витрина не нужна.
  * «order» — страница заказа по подписанной ссылке: её получает покупатель из
  * Direct, WhatsApp или с сайта при любом магазине, поэтому и шапка («info»)
  * для неё открыта без витрины и юр. страниц — иначе выдача вела бы на 404.
@@ -25,6 +27,7 @@ export type StorefrontPart =
   | "mini_app"
   | "legal"
   | "course"
+  | "giveaway"
   | "order";
 
 export function storefrontAllows(
@@ -38,12 +41,15 @@ export function storefrontAllows(
         storefrontAllows(modules, "catalog") ||
         storefrontAllows(modules, "legal") ||
         storefrontAllows(modules, "course") ||
+        storefrontAllows(modules, "giveaway") ||
         storefrontAllows(modules, "order")
       );
     case "order":
       return true;
     case "course":
       return Boolean(modules.courses);
+    case "giveaway":
+      return Boolean(modules.giveaways);
     case "catalog":
       return Boolean(modules.web_storefront || modules.telegram_mini_app);
     case "quiz":
