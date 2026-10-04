@@ -1250,10 +1250,10 @@
     "falls back to a numeric sender id and ignores invalid entries": "src/core/whatsapp/exclusions.test.ts › +7 и 8 — один номер; короткие и пустые записи не считаются"
   },
   "tests/zernio-account-disconnected.test.ts": {
-    "уведомляет продавца по всем адресам из admin_chat_id": "src/channels/zernio/handle-account.test.ts › уведомляет продавца по всем адресам из admin_chat_id и помечает аккаунт",
-    "без настроенного admin_chat_id ничего не отправляет": "src/channels/zernio/handle-account.test.ts › без настроенного admin_chat_id ничего не отправляет",
-    "не повторяет уведомление о том же аккаунте раньше шести часов": "src/channels/zernio/handle-account.test.ts › не повторяет уведомление о том же аккаунте раньше шести часов",
-    "другой аккаунт уведомляется даже пока первый ещё в кулдауне": "src/channels/zernio/handle-account.test.ts › другой аккаунт уведомляется даже пока первый ещё в кулдауне"
+    "уведомляет продавца по всем адресам из admin_chat_id": "src/core/notify/recipients.test.ts › уходит каждому из admin_chat_id и владельцу, а отчёт называет, кто не получил",
+    "без настроенного admin_chat_id ничего не отправляет": "src/core/notify/recipients.test.ts › без дублей и без владельца, если его нет",
+    "не повторяет уведомление о том же аккаунте раньше шести часов": "src/channels/zernio/guard.server.test.ts › повторный прогон, пока канал лежит, — тишина",
+    "другой аккаунт уведомляется даже пока первый ещё в кулдауне": "drop: шестичасового кулдауна по аккаунту в v2 нет; страж (Б10) ведёт отметку по каналу и пишет один раз на отключение, повтор — тишина (guard.server.ts)"
   },
   "tests/zernio-automation-body.test.ts": {
     "опускает null у идентификаторов поста — это автоматизация на все посты": "src/core/instagram/comment-rules.test.ts › опускает null у идентификаторов поста — это автоматизация на все посты",
