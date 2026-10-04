@@ -51,7 +51,7 @@ describe("A/B-тест рассылки", () => {
         side({ clicks: 30, revenue: { KZT: 20000 } }),
         side({ clicks: 5, revenue: { KZT: 90000 } }),
       );
-      expect(v).toEqual({ basis: "revenue", leader: "B", lowOrders: false });
+      expect(v).toEqual({ basis: "revenue", leader: "B", lowOrders: false, mixedCurrency: false });
     });
 
     it("половины разного размера сравниваются по выручке на сообщение", () => {
@@ -64,12 +64,12 @@ describe("A/B-тест рассылки", () => {
 
     it("мало заказов у одного варианта — по нажатиям и с пометкой", () => {
       const v = abVerdict(side({ clicks: 30 }), side({ clicks: 5, orders: 4 }));
-      expect(v).toEqual({ basis: "clicks", leader: "A", lowOrders: true });
+      expect(v).toEqual({ basis: "clicks", leader: "A", lowOrders: true, mixedCurrency: false });
     });
 
     it("выручка в разных валютах не сравнивается напрямую", () => {
       const v = abVerdict(side({}), side({ revenue: { USD: 100 } }));
-      expect(v.basis).toBe("clicks");
+      expect(v).toMatchObject({ basis: "clicks", lowOrders: false, mixedCurrency: true });
     });
 
     it("поровну — без победителя", () => {

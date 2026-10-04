@@ -71,6 +71,8 @@ export const ru = {
   "broadcasts.ab.noWinner": "Пока нельзя назвать победителя.",
   "broadcasts.ab.lowOrders":
     "Мало заказов для вывода (нужно не меньше 5 у каждого варианта), поэтому судим по нажатиям.",
+  "broadcasts.ab.mixedCurrency":
+    "Выручка в разных валютах — по деньгам не сравнить, судим по нажатиям.",
   "broadcasts.compose.textHint":
     '{n} / 4000. Можно HTML: <b>жирный</b>, <i>курсив</i>, <a href="…">ссылка</a>.',
   "broadcasts.compose.textPlaceholder": "🎉 Новинка недели: …",
@@ -152,6 +154,7 @@ export const ru = {
   "broadcasts.history.title": "История",
   "broadcasts.history.confirmStop": "Остановить рассылку? Уже отправленные сообщения останутся.",
   "broadcasts.history.empty": "Рассылок ещё не было.",
+  "broadcasts.history.more": "Показать ещё (осталось {n})",
   "broadcasts.history.template": "Шаблон {name} · {language}",
   "broadcasts.history.photoOnly": "(только фото)",
   "broadcasts.history.stop": "Остановить",
@@ -274,6 +277,8 @@ export const kk: SectionDict<typeof ru> = {
   "broadcasts.ab.noWinner": "Әзірге жеңімпазды атау мүмкін емес.",
   "broadcasts.ab.lowOrders":
     "Қорытынды үшін тапсырыс аз (әр нұсқада кемінде 5 керек), сондықтан басулар бойынша бағалаймыз.",
+  "broadcasts.ab.mixedCurrency":
+    "Түсім әртүрлі валютада — ақшамен салыстыру мүмкін емес, басулар бойынша бағалаймыз.",
   "broadcasts.compose.textHint":
     '{n} / 4000. HTML қолдануға болады: <b>қалың</b>, <i>көлбеу</i>, <a href="…">сілтеме</a>.',
   "broadcasts.compose.textPlaceholder": "🎉 Апта жаңалығы: …",
@@ -353,6 +358,7 @@ export const kk: SectionDict<typeof ru> = {
   "broadcasts.history.confirmStop":
     "Таратуды тоқтату керек пе? Жіберіліп қойған хабарламалар қалады.",
   "broadcasts.history.empty": "Хабарламалар әзірге жіберілмеген.",
+  "broadcasts.history.more": "Тағы көрсету (қалды: {n})",
   "broadcasts.history.template": "Шаблон {name} · {language}",
   "broadcasts.history.photoOnly": "(тек фото)",
   "broadcasts.history.stop": "Тоқтату",
@@ -473,6 +479,8 @@ export const en: SectionDict<typeof ru> = {
   "broadcasts.ab.noWinner": "No winner can be named yet.",
   "broadcasts.ab.lowOrders":
     "Too few orders to conclude (each variant needs at least 5), so we judge by clicks.",
+  "broadcasts.ab.mixedCurrency":
+    "Revenue is in different currencies — it cannot be compared in money, so we judge by clicks.",
   "broadcasts.compose.textHint":
     '{n} / 4000. HTML allowed: <b>bold</b>, <i>italic</i>, <a href="…">link</a>.',
   "broadcasts.compose.textPlaceholder": "🎉 New this week: …",
@@ -552,6 +560,7 @@ export const en: SectionDict<typeof ru> = {
   "broadcasts.history.title": "History",
   "broadcasts.history.confirmStop": "Stop the broadcast? Messages already sent will remain.",
   "broadcasts.history.empty": "No broadcasts yet.",
+  "broadcasts.history.more": "Show more ({n} left)",
   "broadcasts.history.template": "Template {name} · {language}",
   "broadcasts.history.photoOnly": "(photo only)",
   "broadcasts.history.stop": "Stop",
@@ -673,6 +682,8 @@ export const uz: SectionDict<typeof ru> = {
   "broadcasts.ab.noWinner": "Hozircha g'olibni aytib bo'lmaydi.",
   "broadcasts.ab.lowOrders":
     "Xulosa uchun buyurtmalar kam (har bir variantda kamida 5 ta kerak), shuning uchun bosishlar bo'yicha baholaymiz.",
+  "broadcasts.ab.mixedCurrency":
+    "Tushum turli valyutalarda — pul bo'yicha solishtirib bo'lmaydi, bosishlar bo'yicha baholaymiz.",
   "broadcasts.compose.textHint":
     '{n} / 4000. HTML mumkin: <b>qalin</b>, <i>kursiv</i>, <a href="…">havola</a>.',
   "broadcasts.compose.textPlaceholder": "🎉 Hafta yangiligi: …",
@@ -753,6 +764,7 @@ export const uz: SectionDict<typeof ru> = {
   "broadcasts.history.confirmStop":
     "Xabarnoma to‘xtatilsinmi? Allaqachon yuborilgan xabarlar qoladi.",
   "broadcasts.history.empty": "Xabarnomalar hali bo‘lmagan.",
+  "broadcasts.history.more": "Yana ko‘rsatish (qoldi: {n})",
   "broadcasts.history.template": "Shablon {name} · {language}",
   "broadcasts.history.photoOnly": "(faqat foto)",
   "broadcasts.history.stop": "To‘xtatish",

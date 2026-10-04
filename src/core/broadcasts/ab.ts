@@ -54,6 +54,8 @@ export type AbVerdict = {
   leader: "A" | "B" | null;
   /** Заказов меньше порога у любого варианта — вывод по нажатиям, с пометкой. */
   lowOrders: boolean;
+  /** Заказов хватает, но выручка в разных валютах — по деньгам не сравнить, судим по нажатиям. */
+  mixedCurrency: boolean;
 };
 
 /**
@@ -70,7 +72,12 @@ export function abVerdict(a: AbMoneySide, b: AbMoneySide): AbVerdict {
     const perA = (a.revenue[c] ?? 0) / a.sent;
     const perB = (b.revenue[c] ?? 0) / b.sent;
     const leader = perA === perB ? null : perA > perB ? "A" : "B";
-    return { basis: "revenue", leader, lowOrders: false };
+    return { basis: "revenue", leader, lowOrders: false, mixedCurrency: false };
   }
-  return { basis: "clicks", leader: abResult(a, b).leader, lowOrders: !enough };
+  return {
+    basis: "clicks",
+    leader: abResult(a, b).leader,
+    lowOrders: !enough,
+    mixedCurrency: enough && cur.size > 1,
+  };
 }

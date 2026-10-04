@@ -1944,6 +1944,39 @@ function whatsAppAccountsOf(ctx: TenantContext) {
     .map((a) => ({ id: a.id, name: a.name ?? a.username ?? a.id }));
 }
 
+/** Клики и «принесла» к рассылкам страницы истории. */
+async function withBroadcastStats(
+  ctx: TenantContext,
+  rows: Awaited<ReturnType<typeof import("@/core/broadcasts/broadcasts").listBroadcasts>>["rows"],
+) {
+  const { clicksFor } = await import("@/core/broadcasts/clicks");
+  const { revenueFor, EMPTY_REVENUE } = await import("@/core/broadcasts/revenue");
+  const clicks = await clicksFor(
+    ctx,
+    rows.filter((b) => b.channel !== "whatsapp").map((b) => b.id),
+  );
+  const revenue = await revenueFor(
+    ctx,
+    rows.filter((b) => b.sent_count > 0).map((b) => b.id),
+  );
+  return rows.map((b) => ({
+    ...b,
+    clicks: clicks[b.id] ?? 0,
+    revenue: revenue[b.id] ?? EMPTY_REVENUE,
+  }));
+}
+
+/** Следующая страница истории рассылок («Показать ещё»). */
+export const moreBroadcastsFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ offset: z.number().int().min(0).max(100000) }).parse(d))
+  .handler(async ({ data }) => {
+    const { requireAdminAnyModule } = await import("@/app/auth/guards.server");
+    const ctx = await requireAdminAnyModule("broadcasts", "wa_broadcasts");
+    const { listBroadcasts } = await import("@/core/broadcasts/broadcasts");
+    const page = await listBroadcasts(ctx, data.offset);
+    return { broadcasts: await withBroadcastStats(ctx, page.rows), total: page.total };
+  });
+
 export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () => {
   const { requireAdminAnyModule } = await import("@/app/auth/guards.server");
   const ctx = await requireAdminAnyModule("broadcasts", "wa_broadcasts");
@@ -1952,7 +1985,6 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
   const { listTemplates, templateBody, templateParamCount } =
     await import("@/core/whatsapp/templates");
   const wa = ctx.tenant.modules.wa_broadcasts;
-  const { clicksFor } = await import("@/core/broadcasts/clicks");
   const { pageAll } = await import("@/core/db/page");
   // Товары для кнопок и сегмента выбираются поиском (productPickerFn), не списком.
   const [broadcasts, countries, settings, templates, categories] = await Promise.all([
@@ -1977,21 +2009,9 @@ export const broadcastsFn = createServerFn({ method: "GET" }).handler(async () =
       "Категории для рассылки",
     ),
   ]);
-  const clicks = await clicksFor(
-    ctx,
-    broadcasts.filter((b) => b.channel !== "whatsapp").map((b) => b.id),
-  );
-  const { revenueFor, EMPTY_REVENUE } = await import("@/core/broadcasts/revenue");
-  const revenue = await revenueFor(
-    ctx,
-    broadcasts.filter((b) => b.sent_count > 0).map((b) => b.id),
-  );
   return {
-    broadcasts: broadcasts.map((b) => ({
-      ...b,
-      clicks: clicks[b.id] ?? 0,
-      revenue: revenue[b.id] ?? EMPTY_REVENUE,
-    })),
+    broadcasts: await withBroadcastStats(ctx, broadcasts.rows),
+    broadcastsTotal: broadcasts.total,
     categories,
     countries,
     cartReminderHours: settings.cart_reminder_hours ?? "",

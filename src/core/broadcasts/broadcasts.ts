@@ -737,14 +737,28 @@ export async function cancelBroadcast(ctx: TenantContext, id: string): Promise<b
   return true;
 }
 
-export async function listBroadcasts(ctx: TenantContext, limit = 50): Promise<BroadcastRow[]> {
-  const { data, error } = await ctx.db
+/** Размер страницы истории рассылок. */
+export const BROADCASTS_PAGE = 50;
+
+/**
+ * Страница истории рассылок: новые сверху, порядок заканчивается `id`, чтобы
+ * рассылки с одинаковым `created_at` не терялись и не двоились между страницами.
+ * `total` — сколько всего, чтобы «Показать ещё» знало, есть ли что показывать.
+ */
+export async function listBroadcasts(
+  ctx: TenantContext,
+  offset = 0,
+  size = BROADCASTS_PAGE,
+): Promise<{ rows: BroadcastRow[]; total: number }> {
+  const { data, count, error } = await ctx.db
     .from("broadcasts")
-    .select("*")
+    .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
-    .limit(limit);
-  if (error) throw new Error(`broadcasts: ${error.message}`);
-  return data ?? [];
+    .order("id", { ascending: false })
+    .range(offset, offset + size - 1);
+  if (error) throw serverFailure(`Рассылки: список: ${error.message}`);
+  const rows = data ?? [];
+  return { rows, total: count ?? offset + rows.length };
 }
 
 export async function hasActiveBroadcast(

@@ -148,7 +148,7 @@ describe.skipIf(!liveReady)("рассылки и напоминания на д�
       .eq("telegram_id", OTHER_TG_ID)
       .single();
     expect(rec?.status).toBe("blocked");
-    expect((await listBroadcasts(ctx)).some((b) => b.id === r.broadcast.id)).toBe(true);
+    expect((await listBroadcasts(ctx)).rows.some((b) => b.id === r.broadcast.id)).toBe(true);
   });
 
   it("отмена останавливает очередь", async () => {

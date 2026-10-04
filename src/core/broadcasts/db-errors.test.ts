@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { fakeDb, type FakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { activeSubscription, hadPaidAccess } from "@/core/vip/vip";
-import { cancelBroadcast, hasActiveBroadcast, processBroadcastBatch } from "./broadcasts";
+import {
+  cancelBroadcast,
+  hasActiveBroadcast,
+  listBroadcasts,
+  processBroadcastBatch,
+} from "./broadcasts";
 
 const BOT = "00000000-0000-0000-0000-000000000001";
 
@@ -171,5 +176,35 @@ describe("рассылки: сбой посреди пакета не теряе
     expect(sent).toEqual([101]);
     expect(db.tables.broadcast_recipients![0]!.status).toBe("sent");
     expect(db.tables.broadcasts![0]!.sent_count).toBe(1);
+  });
+});
+
+describe("список рассылок: страницы и сбой чтения", () => {
+  it("постранично: все рассылки видны, порядок заканчивается id, total — настоящее число", async () => {
+    const db = fakeDb();
+    // 120 рассылок, у части одинаковый created_at: старый limit(50) молча терял остальные.
+    db.tables.broadcasts = Array.from({ length: 120 }, (_, i) => ({
+      id: `b${String(i).padStart(3, "0")}`,
+      bot_id: BOT,
+      status: "completed",
+      channel: "telegram",
+      created_at: `2026-09-${String(1 + (i % 20)).padStart(2, "0")}T00:00:00Z`,
+    }));
+    const ctx = ctxOf(db);
+    const first = await listBroadcasts(ctx, 0, 50);
+    const second = await listBroadcasts(ctx, 50, 50);
+    const third = await listBroadcasts(ctx, 100, 50);
+    expect(first.total).toBe(120);
+    expect(first.rows).toHaveLength(50);
+    expect(third.rows).toHaveLength(20);
+    const ids = [...first.rows, ...second.rows, ...third.rows].map((b) => b.id);
+    expect(new Set(ids).size).toBe(120);
+  });
+
+  it("сбой чтения — serverFailure, а не пустой список", async () => {
+    const db = seed();
+    await expect(listBroadcasts(ctxOf(breakTable(db, "broadcasts")))).rejects.toThrow(
+      /Рассылки: список/,
+    );
   });
 });

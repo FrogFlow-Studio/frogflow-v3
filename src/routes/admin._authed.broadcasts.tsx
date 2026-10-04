@@ -8,6 +8,7 @@ import {
   audienceCountFn,
   broadcastsFn,
   cancelBroadcastFn,
+  moreBroadcastsFn,
   createBroadcastFn,
   createWhatsAppTemplateFn,
   saveSettingsFn,
@@ -245,7 +246,9 @@ function BroadcastsPage() {
           {shop.modules.funnel && <FunnelCard />}
           {shop.modules.funnel && <BirthdayCard />}
           <History
-            broadcasts={data.broadcasts.filter((b) => (both ? b.channel === channel : true))}
+            broadcasts={data.broadcasts}
+            total={data.broadcastsTotal}
+            onlyChannel={both ? channel : null}
             showChannel={!both}
           />
         </div>
@@ -1197,10 +1200,29 @@ function ExcludedPhonesCard({ phones }: { phones: string }) {
   );
 }
 
-function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showChannel: boolean }) {
+function History({
+  broadcasts: firstPage,
+  total,
+  onlyChannel,
+  showChannel,
+}: {
+  broadcasts: Broadcast[];
+  total: number;
+  onlyChannel: Channel | null;
+  showChannel: boolean;
+}) {
   const { shop } = useRouteContext({ from: "/admin/_authed" });
   const t = adminT(shop.locale);
   const router = useRouter();
+  // «Показать ещё»: страницы после первой, без повторов с обновлённой первой.
+  const [more, setMore] = useState<Broadcast[]>([]);
+  const firstIds = new Set(firstPage.map((b) => b.id));
+  const loaded = [...firstPage, ...more.filter((b) => !firstIds.has(b.id))];
+  const broadcasts = loaded.filter((b) => (onlyChannel ? b.channel === onlyChannel : true));
+  const loadMore = useAction(async () => {
+    const page = await moreBroadcastsFn({ data: { offset: loaded.length } });
+    setMore((m) => [...m, ...page.broadcasts]);
+  });
   const navigate = Route.useNavigate();
   const cancel = useAction(async (id: string) => {
     if (!confirm(t("broadcasts.history.confirmStop"))) return;
@@ -1378,6 +1400,7 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
                             )
                           : t("broadcasts.ab.noWinner")}
                         {v.lowOrders && ` ${t("broadcasts.ab.lowOrders")}`}
+                        {v.mixedCurrency && ` ${t("broadcasts.ab.mixedCurrency")}`}
                       </p>
                     </div>
                   );
@@ -1403,7 +1426,16 @@ function History({ broadcasts, showChannel }: { broadcasts: Broadcast[]; showCha
           })}
         </ul>
       )}
-      <ErrorBox error={cancel.error} />
+      {loaded.length < total && (
+        <button
+          className="btn-secondary mt-3 text-sm"
+          disabled={loadMore.busy}
+          onClick={() => void loadMore.run().catch(() => {})}
+        >
+          {t("broadcasts.history.more", { n: total - loaded.length })}
+        </button>
+      )}
+      <ErrorBox error={cancel.error ?? loadMore.error} />
     </Card>
   );
 }

@@ -93,7 +93,6 @@ const ALLOWED: Record<string, string[]> = {
     "активных рассылок на канале единицы: ACTIVE_SCAN с запасом",
     "активных рассылок на канале единицы: ACTIVE_SCAN с запасом",
     `${BATCH} (получатели рассылки, BATCH_SIZE)`,
-    `${SHOWN} (список рассылок)`,
     "активных рассылок на канале единицы: ACTIVE_SCAN с запасом",
   ],
   "src/routes/api/v1.$.ts": [
