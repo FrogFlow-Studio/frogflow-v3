@@ -15,7 +15,7 @@ export function SupportFab({ t, enabled }: { t: AdminT; enabled: boolean }) {
       search={{ from: path }}
       aria-label={t("help.writeUs")}
       title={t("help.writeUs")}
-      className="fixed bottom-20 right-4 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-accent text-lg text-white shadow-lg md:bottom-6"
+      className="fixed bottom-20 right-4 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-accent text-lg text-accent-fg shadow-lg md:bottom-6"
     >
       💬
     </Link>

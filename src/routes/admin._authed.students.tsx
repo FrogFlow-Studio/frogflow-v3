@@ -111,7 +111,7 @@ function StudentsPage() {
                           {s.expired && (
                             <span className="badge text-xs">{t("product.studentExpired")}</span>
                           )}
-                          <span className="shrink-0 text-xs text-muted tabular-nums">
+                          <span className="max-w-full min-w-0 text-xs text-muted tabular-nums">
                             {s.startedAt
                               ? t("product.courseProgress", {
                                   done: s.done,
