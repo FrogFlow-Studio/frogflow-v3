@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
+import { withBrokenReads } from "../../../tests/broken-db";
 
 const db = fakeDb({ unique: { market_events: [["kind", "key", "bucket", "dedupe"]] } });
 let tenants: Array<Record<string, unknown>> = [];
@@ -129,6 +130,20 @@ describe("аналитика площадки: чтение", () => {
       { id: SHOP_B, name: "Боря", clicks: 0 },
       { id: SHOP_A, name: "Аня", clicks: 2 },
     ]);
+  });
+
+  it("чтение событий упало (не «таблицы нет») — сбой, а не пустая сводка", async () => {
+    const real = db.from.bind(db);
+    const spy = vi
+      .spyOn(db, "from")
+      .mockImplementation(((t: string) =>
+        t === "market_events" ? withBrokenReads(db, ["market_events"]).from(t) : real(t)) as never);
+    try {
+      await expect(srv.marketOverview(NOW)).rejects.toThrow();
+      await expect(srv.shopMarketClicks(SHOP_A, NOW)).rejects.toThrow();
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("переходы в магазин, которого нет на площадке, не теряются и не приписываются другим", async () => {
