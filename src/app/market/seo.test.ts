@@ -3,12 +3,13 @@ import { robotsTxt } from "@/core/storefront/sitemap";
 import { MARKET_PAGES, marketHeadLinks, marketSitemapLocs, marketUrl } from "./seo";
 
 describe("SEO площадки", () => {
-  it("карта: каталог и «Открыть магазин» на четырёх языках, без повторов и без поиска", () => {
+  it("карта: каталог, «Открыть магазин» и правила на четырёх языках, без повторов и без поиска", () => {
     const locs = marketSitemapLocs();
     expect(locs).toHaveLength(MARKET_PAGES.length * 4);
     expect(new Set(locs).size).toBe(locs.length);
     expect(locs).toContain("https://www.frogflow.tech/market");
     expect(locs).toContain("https://www.frogflow.tech/market/open?lang=uz");
+    expect(locs).toContain("https://www.frogflow.tech/market/rules?lang=kk");
     expect(locs.some((l) => l.includes("search"))).toBe(false);
   });
 

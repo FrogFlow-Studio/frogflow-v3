@@ -8,6 +8,7 @@ export const ru = {
   "settings.market.on": "Показывать на площадке FrogFlow",
   "settings.market.terms":
     "Включая, вы соглашаетесь с правилами площадки. Новый магазин появляется на площадке после одобрения оператором; оператор может скрыть магазин.",
+  "settings.market.rules": "Правила площадки",
   "settings.market.state.off": "Выключено: магазина нет на площадке.",
   "settings.market.state.hidden":
     "Оператор платформы скрыл магазин с площадки. Остальное работает.",
@@ -29,6 +30,7 @@ export const kk: SectionDict<typeof ru> = {
   "settings.market.on": "FrogFlow алаңында көрсету",
   "settings.market.terms":
     "Қосу арқылы алаң ережелерімен келісесіз. Жаңа дүкен оператор мақұлдағаннан кейін алаңда пайда болады; оператор дүкенді жасыра алады.",
+  "settings.market.rules": "Алаң ережелері",
   "settings.market.state.off": "Өшірулі: дүкен алаңда жоқ.",
   "settings.market.state.hidden":
     "Платформа операторы дүкенді алаңнан жасырды. Қалғаны жұмыс істейді.",
@@ -50,6 +52,7 @@ export const en: SectionDict<typeof ru> = {
   "settings.market.on": "Show on the FrogFlow marketplace",
   "settings.market.terms":
     "By switching on you accept the marketplace rules. A new shop appears after the operator approves it; the operator may hide a shop.",
+  "settings.market.rules": "Marketplace rules",
   "settings.market.state.off": "Off: the shop is not on the marketplace.",
   "settings.market.state.hidden":
     "The platform operator has hidden the shop from the marketplace. Everything else works.",
@@ -71,6 +74,7 @@ export const uz: SectionDict<typeof ru> = {
   "settings.market.on": "FrogFlow maydonchasida ko‘rsatish",
   "settings.market.terms":
     "Yoqish orqali maydoncha qoidalariga rozilik bildirasiz. Yangi do‘kon operator tasdiqlagach paydo bo‘ladi; operator do‘konni yashirishi mumkin.",
+  "settings.market.rules": "Maydon qoidalari",
   "settings.market.state.off": "O‘chirilgan: do‘kon maydonchada yo‘q.",
   "settings.market.state.hidden":
     "Platforma operatori do‘konni maydonchadan yashirdi. Qolgani ishlaydi.",

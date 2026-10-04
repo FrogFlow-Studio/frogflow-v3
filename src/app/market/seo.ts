@@ -3,10 +3,10 @@ import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
 /**
  * SEO площадки (В10). В карту сайта идут только страницы, у которых есть что читать:
- * каталог магазинов и «Открыть свой магазин». Фильтры, поиск товаров и постраничный
+ * каталог магазинов, «Открыть свой магазин» и правила площадки. Фильтры, поиск товаров и постраничный
  * показ — те же страницы: canonical у них без параметров, кроме языка.
  */
-export const MARKET_PAGES = ["/market", "/market/open"] as const;
+export const MARKET_PAGES = ["/market", "/market/open", "/market/rules"] as const;
 export type MarketPage = (typeof MARKET_PAGES)[number];
 
 /** Адрес страницы на языке: русский — без параметра, как у главной. */

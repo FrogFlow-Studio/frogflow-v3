@@ -145,6 +145,11 @@ function MarketPage() {
           </div>
         </>
       )}
+      <p className="mt-8 text-sm">
+        <Link to="/market/rules" search={lang ? { lang } : {}} className="underline">
+          {t("rules")}
+        </Link>
+      </p>
     </main>
   );
 }

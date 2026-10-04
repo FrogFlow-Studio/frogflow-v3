@@ -173,6 +173,40 @@ describe("крон: сбор строки каталога", () => {
     expect(svc.tables.marketplace_shops ?? []).toHaveLength(0);
   });
 
+  it("до одобрения оператором магазина в каталоге нет; после одобрения — есть", async () => {
+    const pending = { ...OPEN, marketplace: { listed: true } };
+    const r1 = await refreshMarketplaceShop(ctxFor(tenant("b1", pending)), as(svc));
+    expect(r1.action).toBe("removed");
+    expect(svc.tables.marketplace_shops ?? []).toHaveLength(0);
+    // Оператор одобрил: следующий проход вносит магазин.
+    const r2 = await refreshMarketplaceShop(ctxFor(tenant("b1", OPEN)), as(svc));
+    expect(r2.action).toBe("listed");
+    expect(svc.tables.marketplace_shops).toHaveLength(1);
+  });
+
+  it("одобрение сняли или магазин скрыли — строка из каталога уходит", async () => {
+    await refreshMarketplaceShop(ctxFor(tenant("b1", OPEN)), as(svc));
+    expect(svc.tables.marketplace_shops).toHaveLength(1);
+    const hidden = { ...OPEN, marketplace: { listed: true, approved: true, hidden: true } };
+    await refreshMarketplaceShop(ctxFor(tenant("b1", hidden)), as(svc));
+    expect(svc.tables.marketplace_shops).toHaveLength(0);
+  });
+
+  it("страница каталога не показывает неодобренный магазин, даже если его строка осталась", async () => {
+    svc.tables.marketplace_shops = [
+      { bot_id: "b1", slug: "a", name: "A", category: "", city: "", rating: null, rating_count: 0 },
+      { bot_id: "b2", slug: "b", name: "B", category: "", city: "", rating: null, rating_count: 0 },
+    ];
+    // b2 ждёт одобрения: справочник его не считает участником.
+    const shown = async () =>
+      shownShopIds([
+        tenant("b1", OPEN),
+        tenant("b2", { ...OPEN, slug: "b", marketplace: { listed: true } }),
+      ]);
+    const r = await listMarketShops({}, { svc: as(svc), shown });
+    expect(r.shops.map((x) => x.id)).toEqual(["b1"]);
+  });
+
   it("таблицы нет — не ошибка, а «not-ready»", async () => {
     const missing = {
       from: () => {

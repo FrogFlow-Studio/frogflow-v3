@@ -32,6 +32,7 @@ const ru = {
   "items.open": "Открыть магазин",
   "items.meta": "Поиск товаров — FrogFlow",
   home: "На главную",
+  rules: "Правила площадки",
 } as const;
 
 type Key = keyof typeof ru;
@@ -66,6 +67,7 @@ const kk: Record<Key, string> = {
   "items.open": "Дүкенді ашу",
   "items.meta": "Тауар іздеу — FrogFlow",
   home: "Басты бетке",
+  rules: "Алаң ережелері",
 };
 
 const en: Record<Key, string> = {
@@ -98,6 +100,7 @@ const en: Record<Key, string> = {
   "items.open": "Open shop",
   "items.meta": "Product search — FrogFlow",
   home: "Home",
+  rules: "Marketplace rules",
 };
 
 const uz: Record<Key, string> = {
@@ -130,6 +133,7 @@ const uz: Record<Key, string> = {
   "items.open": "Do‘konni ochish",
   "items.meta": "Mahsulot qidirish — FrogFlow",
   home: "Bosh sahifa",
+  rules: "Maydon qoidalari",
 };
 
 const DICTS: Record<Locale, Record<Key, string>> = { ru, kk, en, uz };

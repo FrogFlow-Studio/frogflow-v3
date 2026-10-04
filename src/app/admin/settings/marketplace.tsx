@@ -78,7 +78,12 @@ export function MarketplaceCard() {
             </button>
           )}
         </form>
-        <p className="text-xs text-muted">{t("settings.market.terms")}</p>
+        <p className="text-xs text-muted">
+          {t("settings.market.terms")}{" "}
+          <a href="/market/rules" target="_blank" rel="noreferrer" className="underline">
+            {t("settings.market.rules")}
+          </a>
+        </p>
         {view && <p className="text-sm">{t(`settings.market.state.${view.state}`)}</p>}
         {view?.state === "hidden" && view.hiddenReason && (
           <p className="text-sm text-muted">
