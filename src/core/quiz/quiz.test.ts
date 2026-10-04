@@ -24,6 +24,34 @@ describe("квиз-подбор", () => {
     expect(q.questions).toHaveLength(1);
     expect(q.questions[0]!.options[0]!.tags).toEqual(["дети", "детск"]);
   });
+  it("тег — начало слова, а не подстрока: «кот» не находит «скотч» и «который»", () => {
+    const ps = [
+      { id: "1", name: "Скотч упаковочный", keywords: null, description: null },
+      { id: "2", name: "Набор, который понравится", keywords: null, description: null },
+      { id: "3", name: "Подарок для КОТА", keywords: null, description: null },
+      { id: "4", name: "Игрушка-мышка", keywords: "кот", description: null },
+      { id: "5", name: "Котёнок плюшевый", keywords: null, description: null },
+      { id: "6", name: "Миска", keywords: "кошачья", description: null },
+    ];
+    expect(
+      scoreProducts(ps, ["кот"], 10)
+        .map((p) => p.id)
+        .sort(),
+    ).toEqual(["3", "4"]);
+    // Своя основа продавца: «котён» — начало слова «котёнок»; «ё» и «е» равны.
+    expect(scoreProducts(ps, ["котен"], 10).map((p) => p.id)).toEqual(["5"]);
+    // Длинная основа берёт любое продолжение, а фраза — по границам слов.
+    expect(scoreProducts(ps, ["кошач"], 10).map((p) => p.id)).toEqual(["6"]);
+    expect(scoreProducts(ps, ["для кота"], 10).map((p) => p.id)).toEqual(["3"]);
+  });
+  it("казахские буквы: совпадение по границе слова", () => {
+    const ps = [
+      { id: "1", name: "Балаларға арналған кітап", keywords: null, description: null },
+      { id: "2", name: "Ақша салғыш", keywords: null, description: null },
+    ];
+    expect(scoreProducts(ps, ["бала"], 10).map((p) => p.id)).toEqual(["1"]);
+    expect(scoreProducts(ps, ["қша"], 10)).toEqual([]);
+  });
   it("очки за совпавшие теги, лучшие первыми, ноль очков — мимо", () => {
     const ps = [
       { id: "1", name: "Прописи для детей", keywords: "детск", description: null },

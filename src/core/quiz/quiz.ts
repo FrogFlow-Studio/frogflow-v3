@@ -89,7 +89,31 @@ export type QuizProduct = {
   description: string | null;
 };
 
-/** Очки товара: сколько тегов ответов встречается в названии, ключевых словах, описании. */
+const norm = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .join(" ");
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Тег — начало слова (основа, как «пропис», «детск»), а не любая подстрока: «кот» не находит
+ * «скотч». Короткий тег (до 3 букв) берёт слово целиком или с окончанием до 2 букв («кот»,
+ * «кота», «коты»), иначе он совпадал бы с «который» и «котёнок»: для такого слова продавец
+ * пишет свой тег («котён»). Тег от 4 букв берёт любое продолжение слова. Регистр и «ё»
+ * не важны, буквы любые (кириллица, казахские и узбекские).
+ */
+function tagMatcher(tag: string): RegExp | null {
+  const t = norm(tag);
+  if (!t) return null;
+  const tail = t.length <= 3 ? "\\p{L}{0,2}" : "\\p{L}*";
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(t)}${tail}(?![\\p{L}\\p{N}])`, "u");
+}
+
+/** Очки товара: сколько тегов ответов встречается в названии, ключевых словах, описании (по началу слова). */
 export function scoreProducts<T extends QuizProduct>(
   products: readonly T[],
   tags: readonly string[],
@@ -97,12 +121,14 @@ export function scoreProducts<T extends QuizProduct>(
 ): T[] {
   // Все теги ответов: потолок в 10 тегов относится к вводу продавца, а не к подсчёту, иначе
   // варианты поздних вопросов молча не учитывались бы.
-  const wanted = splitTags([...tags], Infinity);
+  const wanted = splitTags([...tags], Infinity)
+    .map(tagMatcher)
+    .filter((re): re is RegExp => re !== null);
   if (!wanted.length) return [];
   return products
     .map((p) => {
-      const hay = `${p.name} ${p.keywords ?? ""} ${p.description ?? ""}`.toLowerCase();
-      return { p, score: wanted.filter((t) => hay.includes(t)).length };
+      const hay = norm(`${p.name} ${p.keywords ?? ""} ${p.description ?? ""}`);
+      return { p, score: wanted.filter((re) => re.test(hay)).length };
     })
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score || a.p.name.localeCompare(b.p.name))
