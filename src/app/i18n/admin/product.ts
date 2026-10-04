@@ -208,6 +208,10 @@ export const ru = {
     "Срок предзаказа «{name}» изменён (теперь: {date}). Не смогли сообщить покупателям ({n}): окно ответа 24 часа закрыто или нет канала связи. Напишите им сами. Заказы:",
   "preorder.moved.left":
     "Предзаказ «{name}» (срок: {date}): ещё {n} заказов не успели обработать — сообщение им не ушло, напишите им сами. Заказы:",
+  "product.stockHistory.reason.receipt": "Приход №{no}",
+  "product.stockHistory.reason.writeoff": "Списание",
+  "product.stockHistory.reason.stocktake": "Инвентаризация",
+  "product.stockHistory.reason.bundle": "Набор в заказе №{no}",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -414,6 +418,10 @@ export const kk: SectionDict<typeof ru> = {
     "«{name}» алдын ала тапсырысының мерзімі өзгерді (енді: {date}). Сатып алушыларға хабарлай алмадық ({n}): 24 сағаттық жауап терезесі жабық немесе байланыс арнасы жоқ. Өзіңіз жазыңыз. Тапсырыстар:",
   "preorder.moved.left":
     "«{name}» алдын ала тапсырысы (мерзімі: {date}): тағы {n} тапсырысты өңдеуге үлгермедік — оларға хабарлама кетпеді, өзіңіз жазыңыз. Тапсырыстар:",
+  "product.stockHistory.reason.receipt": "Кіріс №{no}",
+  "product.stockHistory.reason.writeoff": "Есептен шығару",
+  "product.stockHistory.reason.stocktake": "Түгендеу",
+  "product.stockHistory.reason.bundle": "№{no} тапсырыстағы жиынтық",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -620,6 +628,10 @@ export const en: SectionDict<typeof ru> = {
     "The pre-order date for “{name}” has changed (now: {date}). We could not tell these customers ({n}): the 24-hour reply window is closed or there is no channel. Please write to them yourself. Orders:",
   "preorder.moved.left":
     "Pre-order “{name}” (date: {date}): {n} more orders were not processed in time — they got no message, please tell them yourself. Orders:",
+  "product.stockHistory.reason.receipt": "Receipt #{no}",
+  "product.stockHistory.reason.writeoff": "Write-off",
+  "product.stockHistory.reason.stocktake": "Stocktake",
+  "product.stockHistory.reason.bundle": "Bundle in order #{no}",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -825,4 +837,8 @@ export const uz: SectionDict<typeof ru> = {
     "«{name}» oldindan buyurtmasining muddati oʻzgardi (endi: {date}). Xaridorlarga ({n}) xabar bera olmadik: 24 soatlik javob oynasi yopiq yoki aloqa kanali yoʻq. Oʻzingiz yozing. Buyurtmalar:",
   "preorder.moved.left":
     "“{name}” oldindan buyurtmasi (muddat: {date}): yana {n} ta buyurtmani ulgurmadik — ularga xabar ketmadi, oʻzingiz yozing. Buyurtmalar:",
+  "product.stockHistory.reason.receipt": "Kirim №{no}",
+  "product.stockHistory.reason.writeoff": "Hisobdan chiqarish",
+  "product.stockHistory.reason.stocktake": "Inventarizatsiya",
+  "product.stockHistory.reason.bundle": "№{no} buyurtmadagi toʻplam",
 };

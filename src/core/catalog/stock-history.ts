@@ -34,6 +34,14 @@ export const STOCK_REASONS = [
   "sheet",
   /** Внешний API (PATCH /api/v1/products). */
   "api",
+  /** Проведён приход товара от поставщика (core/stock/receipts). */
+  "receipt",
+  /** Списание: брак, потеря, «себе», другое (core/stock). */
+  "writeoff",
+  /** Инвентаризация: остаток поправлен по факту. */
+  "stocktake",
+  /** Продан набор: штуки составляющих ушли вместе с заказом. */
+  "bundle",
 ] as const;
 export type StockReason = (typeof STOCK_REASONS)[number];
 
@@ -49,6 +57,10 @@ export type StockMeta = {
   orderId?: number;
   /** `admin:<логин>`, `customer`, `system`. */
   actor?: string;
+  /** Номер прихода (reason = receipt). */
+  receiptNo?: number;
+  /** Дополнительные поля события (причина списания, комментарий) — в payload как есть. */
+  extra?: Record<string, Json>;
 };
 
 export const STOCK_EVENT_PREFIX = "stock.";
@@ -70,10 +82,12 @@ export async function recordStockChanges(
       event_type: `${STOCK_EVENT_PREFIX}${meta.reason}`,
       status: "event",
       payload: {
+        ...(meta.extra ?? {}),
         product_id: c.productId,
         from: c.from,
         to: c.to,
         ...(meta.orderId !== undefined ? { order_id: meta.orderId } : {}),
+        ...(meta.receiptNo !== undefined ? { receipt_no: meta.receiptNo } : {}),
         actor: meta.actor ?? "system",
       } as Json,
     }));
@@ -99,6 +113,8 @@ export type StockHistoryEntry = {
   orderId: number | null;
   /** Номер заказа, каким его видит продавец (display_no); null — заказ не нашёлся. */
   orderNo: number | null;
+  /** Номер прихода (reason = receipt). */
+  receiptNo: number | null;
   actor: string;
 };
 
@@ -148,6 +164,7 @@ export async function listStockHistory(
       to: asNumOrNull(p.to),
       orderId: asNumOrNull(p.order_id),
       orderNo: null,
+      receiptNo: asNumOrNull(p.receipt_no),
       actor: typeof p.actor === "string" ? p.actor : "system",
     });
   }

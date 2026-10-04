@@ -769,11 +769,13 @@ function StockHistoryCard({
       e.reason === "order" ||
       e.reason === "cancel" ||
       e.reason === "refund" ||
-      e.reason === "manual_order"
+      e.reason === "manual_order" ||
+      e.reason === "bundle"
     )
       return e.orderNo === null
         ? t("product.stockHistory.reason.orderGone")
         : t(key, { no: e.orderNo });
+    if (e.reason === "receipt") return t(key, { no: e.receiptNo ?? "?" });
     return t(key);
   };
   return (

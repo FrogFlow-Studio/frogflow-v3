@@ -195,6 +195,18 @@ export const ru = {
     "Это уже досылка — досылать её ещё раз нельзя. Выберите исходную рассылку.",
   "err.broadcast.followupWindowOpen":
     "Три дня после отправки ещё не прошли — заказавшие пока не определены. Досылать можно позже.",
+  "err.stock.receiptEmpty": "Добавьте в приход хотя бы одну позицию.",
+  "err.stock.receiptTooBig": "В приходе не больше {max} позиций.",
+  "err.stock.receiptDuplicate": "Одна и та же позиция указана дважды.",
+  "err.stock.badQty": "Количество — целое число от 1 до {max}.",
+  "err.stock.badPrice": "Цена закупки — число от 0 до 1 000 000 000.",
+  "err.stock.untracked": "У товара не ведётся остаток — включите учёт в карточке товара.",
+  "err.stock.receiptNotFound": "Приход не найден.",
+  "err.stock.receiptNotDraft": "Приход уже проводится или проведён — изменить его нельзя.",
+  "err.stock.receiptTaken": "Приход проводит другой сотрудник — обновите страницу.",
+  "err.stock.receiptPosted":
+    "Приход уже проведён или проводится — повторно остаток не прибавляется.",
+  "err.stock.receiptProduct": "Товар не найден.",
   "err.stock.suppliersChanged": "Список поставщиков изменился. Обновите страницу и повторите.",
   "err.stock.supplierNotFound": "Такого поставщика нет — возможно, его уже удалили.",
   "err.stock.supplierName": "Укажите название поставщика.",
@@ -391,6 +403,18 @@ export const kk: SectionDict<typeof ru> = {
     "Бұл — қайта жіберу, оны тағы қайта жіберуге болмайды. Бастапқы таратуды таңдаңыз.",
   "err.broadcast.followupWindowOpen":
     "Жіберілгеннен кейін үш күн әлі өтпеді — тапсырыс бергендер әлі анықталмады. Кейінірек қайта жіберуге болады.",
+  "err.stock.receiptEmpty": "Кіріске кемінде бір позиция қосыңыз.",
+  "err.stock.receiptTooBig": "Кірісте {max} позициядан көп болмауы керек.",
+  "err.stock.receiptDuplicate": "Бір позиция екі рет көрсетілген.",
+  "err.stock.badQty": "Саны — 1-ден {max}-ке дейінгі бүтін сан.",
+  "err.stock.badPrice": "Сатып алу бағасы — 0-ден 1 000 000 000-ға дейінгі сан.",
+  "err.stock.untracked": "Тауардың қалдығы есепке алынбайды — тауар картасында есепті қосыңыз.",
+  "err.stock.receiptNotFound": "Кіріс табылмады.",
+  "err.stock.receiptNotDraft":
+    "Кіріс жүргізіліп жатыр немесе жүргізілген — оны өзгертуге болмайды.",
+  "err.stock.receiptTaken": "Кірісті басқа қызметкер жүргізіп жатыр — бетті жаңартыңыз.",
+  "err.stock.receiptPosted": "Кіріс жүргізілген немесе жүргізіліп жатыр — қалдық қайта қосылмайды.",
+  "err.stock.receiptProduct": "Тауар табылмады.",
   "err.stock.suppliersChanged": "Жеткізушілер тізімі өзгерді. Бетті жаңартып, қайталаңыз.",
   "err.stock.supplierNotFound": "Мұндай жеткізуші жоқ — мүмкін, оны жойып тастаған.",
   "err.stock.supplierName": "Жеткізушінің атауын көрсетіңіз.",
@@ -589,6 +613,19 @@ export const en: SectionDict<typeof ru> = {
     "This is already a follow-up — it cannot be followed up again. Pick the original broadcast.",
   "err.broadcast.followupWindowOpen":
     "Three days after sending have not passed yet — buyers are not determined. You can send the follow-up later.",
+  "err.stock.receiptEmpty": "Add at least one line to the receipt.",
+  "err.stock.receiptTooBig": "A receipt holds at most {max} lines.",
+  "err.stock.receiptDuplicate": "The same line is listed twice.",
+  "err.stock.badQty": "Quantity must be a whole number from 1 to {max}.",
+  "err.stock.badPrice": "Purchase price must be a number from 0 to 1,000,000,000.",
+  "err.stock.untracked": "This product has no stock tracking — turn it on in the product card.",
+  "err.stock.receiptNotFound": "Receipt not found.",
+  "err.stock.receiptNotDraft":
+    "The receipt is being posted or is already posted — it can't be changed.",
+  "err.stock.receiptTaken": "Another team member is posting this receipt — refresh the page.",
+  "err.stock.receiptPosted":
+    "The receipt is already posted or being posted — stock is not added again.",
+  "err.stock.receiptProduct": "Product not found.",
   "err.stock.suppliersChanged": "The supplier list has changed. Refresh the page and try again.",
   "err.stock.supplierNotFound": "There is no such supplier — it may have been deleted already.",
   "err.stock.supplierName": "Enter the supplier's name.",
@@ -790,6 +827,18 @@ export const uz: SectionDict<typeof ru> = {
     "Bu allaqachon qayta yuborish — uni yana qayta yuborib boʻlmaydi. Dastlabki xabarni tanlang.",
   "err.broadcast.followupWindowOpen":
     "Yuborilgandan keyin uch kun hali oʻtmadi — buyurtma berganlar hali aniqlanmadi. Keyinroq qayta yuborishingiz mumkin.",
+  "err.stock.receiptEmpty": "Kirimga kamida bitta pozitsiya qoʻshing.",
+  "err.stock.receiptTooBig": "Kirimda {max} tadan ortiq pozitsiya boʻlmasligi kerak.",
+  "err.stock.receiptDuplicate": "Bir xil pozitsiya ikki marta koʻrsatilgan.",
+  "err.stock.badQty": "Miqdor — 1 dan {max} gacha butun son.",
+  "err.stock.badPrice": "Xarid narxi — 0 dan 1 000 000 000 gacha son.",
+  "err.stock.untracked": "Tovarning qoldigi hisobga olinmaydi — tovar kartasida hisobni yoqing.",
+  "err.stock.receiptNotFound": "Kirim topilmadi.",
+  "err.stock.receiptNotDraft": "Kirim oʻtkazilmoqda yoki oʻtkazilgan — uni oʻzgartirib boʻlmaydi.",
+  "err.stock.receiptTaken": "Kirimni boshqa xodim oʻtkazmoqda — sahifani yangilang.",
+  "err.stock.receiptPosted":
+    "Kirim allaqachon oʻtkazilgan yoki oʻtkazilmoqda — qoldiq qayta qoʻshilmaydi.",
+  "err.stock.receiptProduct": "Tovar topilmadi.",
   "err.stock.suppliersChanged":
     "Yetkazib beruvchilar roʻyxati oʻzgardi. Sahifani yangilab, qayta urining.",
   "err.stock.supplierNotFound":
