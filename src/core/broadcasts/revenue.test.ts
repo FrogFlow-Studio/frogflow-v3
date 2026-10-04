@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fakeDb } from "../../../tests/fake-db";
 import type { TenantContext } from "@/core/tenant/resolve.server";
-import { ATTRIBUTION_MS, attribute, revenueFor } from "./revenue";
+import { ATTRIBUTION_MS, attribute, revenueFor, sentRange } from "./revenue";
 
 const BOT = "00000000-0000-0000-0000-000000000001";
 const SENT = "2026-09-20T10:00:00.000Z";
@@ -154,5 +154,13 @@ describe("«Принесла» у рассылки", () => {
     const out = await revenueFor(ctx, ["b1"], lastDay);
     expect(out.b1).toEqual({ orders: 1, paid: 0, revenue: {}, windowOpen: false });
     expect(db.tables.app_settings).toHaveLength(1);
+  });
+
+  it("границы отправки считаются и на сотнях тысяч получателей (без спреда в Math.max)", () => {
+    const sent = Array.from({ length: 300_000 }, (_, i) => ({
+      telegram_id: i,
+      sent_at: at(i % 5),
+    }));
+    expect(sentRange(sent)).toEqual({ first: Date.parse(at(0)), last: Date.parse(at(4)) });
   });
 });

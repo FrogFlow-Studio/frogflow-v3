@@ -81,3 +81,17 @@ export function abVerdict(a: AbMoneySide, b: AbMoneySide): AbVerdict {
     mixedCurrency: enough && cur.size > 1,
   };
 }
+
+/**
+ * Что показать у варианта A/B в истории: сравнение («ready»), подсказку, что
+ * второй вариант ещё не загружен («otherNotLoaded»: он на следующей странице),
+ * или ничего («notSent»: у варианта нет отправленных).
+ */
+export function abCompareState(
+  a: { sent_count: number } | undefined,
+  b: { sent_count: number } | undefined,
+): "ready" | "otherNotLoaded" | "notSent" {
+  if (!a && !b) return "notSent";
+  if (!a || !b) return (a ?? b)!.sent_count > 0 ? "otherNotLoaded" : "notSent";
+  return a.sent_count > 0 && b.sent_count > 0 ? "ready" : "notSent";
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abHalf, abResult, abVerdict, splitForAb, type AbMoneySide } from "./ab";
+import { abCompareState, abHalf, abResult, abVerdict, splitForAb, type AbMoneySide } from "./ab";
 
 describe("A/B-тест рассылки", () => {
   it("половины не пересекаются, вместе — вся аудитория, близки по размеру", () => {
@@ -75,5 +75,15 @@ describe("A/B-тест рассылки", () => {
     it("поровну — без победителя", () => {
       expect(abVerdict(side({}), side({})).leader).toBeNull();
     });
+  });
+});
+
+describe("сравнение A/B в истории", () => {
+  it("второй вариант на непрочитанной странице — «ниже», а не молчаливое отсутствие", () => {
+    expect(abCompareState({ sent_count: 10 }, undefined)).toBe("otherNotLoaded");
+    expect(abCompareState(undefined, { sent_count: 10 })).toBe("otherNotLoaded");
+    expect(abCompareState({ sent_count: 10 }, { sent_count: 12 })).toBe("ready");
+    expect(abCompareState({ sent_count: 0 }, { sent_count: 12 })).toBe("notSent");
+    expect(abCompareState(undefined, undefined)).toBe("notSent");
   });
 });

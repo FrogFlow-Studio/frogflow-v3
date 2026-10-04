@@ -27,7 +27,7 @@ import {
   progressPercent,
   type AudienceType,
 } from "@/core/broadcasts/pure";
-import { abVerdict, type AbMoneySide } from "@/core/broadcasts/ab";
+import { abCompareState, abVerdict, type AbMoneySide } from "@/core/broadcasts/ab";
 import { parseSegmentParam } from "@/core/broadcasts/segment-link";
 import { SEGMENT_KINDS } from "@/core/broadcasts/segments";
 
@@ -1367,8 +1367,14 @@ function History({
                 {(() => {
                   const g = filter.ab?.group;
                   const pair = g ? pairs.get(g) : undefined;
-                  if (!g || !pair?.A || !pair.B || comparisonShownFor.has(g)) return null;
-                  if (pair.A.sent_count === 0 || pair.B.sent_count === 0) return null;
+                  if (!g || !pair || comparisonShownFor.has(g)) return null;
+                  const state = abCompareState(pair.A, pair.B);
+                  if (state === "notSent") return null;
+                  if (state === "otherNotLoaded")
+                    return (
+                      <p className="mt-2 text-xs text-muted">{t("broadcasts.ab.otherBelow")}</p>
+                    );
+                  if (!pair.A || !pair.B) return null;
                   comparisonShownFor.add(g);
                   const v = abVerdict(sides(pair.A), sides(pair.B));
                   const row = (x: Broadcast, name: "A" | "B") => (
@@ -1418,6 +1424,8 @@ function History({
                     ))}
                     <span className="block">
                       {t("broadcasts.revenue.hint")}
+                      {filter.segment?.kind === "broadcast" &&
+                        ` ${t("broadcasts.revenue.hintFollowup")}`}
                       {b.revenue.windowOpen && ` ${t("broadcasts.revenue.windowOpen")}`}
                     </span>
                   </p>

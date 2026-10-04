@@ -104,10 +104,10 @@ async function readOrders(
   ctx: TenantContext,
   sent: readonly RecipientSent[],
 ): Promise<OrderLite[]> {
-  const times = sent.map((r) => Date.parse(r.sent_at)).filter(Number.isFinite);
-  if (times.length === 0) return [];
-  const since = new Date(Math.min(...times)).toISOString();
-  const until = new Date(Math.max(...times) + ATTRIBUTION_MS).toISOString();
+  const range = sentRange(sent);
+  if (!Number.isFinite(range.first)) return [];
+  const since = new Date(range.first).toISOString();
+  const until = new Date(range.last + ATTRIBUTION_MS).toISOString();
   const orders: OrderLite[] = [];
   for (const chunk of chunksOf(
     sent.map((r) => r.telegram_id),
@@ -133,6 +133,19 @@ async function readOrders(
 
 /** Сколько ждём оплаты после окна, прежде чем зафиксировать итог. */
 const SETTLE_MS = 7 * 24 * 3600_000;
+/** Первая и последняя отправка: циклом, не `Math.max(...)` — на десятках тысяч получателей спред упирается в стек. */
+export function sentRange(sent: readonly RecipientSent[]): { first: number; last: number } {
+  let first = Infinity;
+  let last = -Infinity;
+  for (const r of sent) {
+    const t = Date.parse(r.sent_at);
+    if (!Number.isFinite(t)) continue;
+    if (t < first) first = t;
+    if (t > last) last = t;
+  }
+  return { first, last };
+}
+
 const CACHE_PREFIX = "broadcast_revenue:";
 
 /** Сохранённый итог закрытого окна; всё, что не похоже на итог, — «не сохранён». */
@@ -187,7 +200,7 @@ export async function revenueFor(
     }
     const fresh = attribute(sent, await readOrders(ctx, sent), now);
     out[id] = fresh;
-    const lastSent = Math.max(...sent.map((r) => Date.parse(r.sent_at)).filter(Number.isFinite));
+    const lastSent = sentRange(sent).last;
     const settled = fresh.orders === fresh.paid || now >= lastSent + ATTRIBUTION_MS + SETTLE_MS;
     if (!fresh.windowOpen && settled)
       await trySetSetting(

@@ -200,6 +200,10 @@ export const ru = {
   "broadcasts.revenue.hint":
     "Заказы получателей за 3 дня после отправки им — совпадение по времени, а не доказанная причина.",
   "broadcasts.revenue.windowOpen": "Три дня ещё не прошли — цифры могут вырасти.",
+  "broadcasts.revenue.hintFollowup":
+    "Это досылка: заказы за её 3 дня засчитываются и исходной рассылке — окна пересекаются, складывать «Принесла» двух рассылок нельзя.",
+  "broadcasts.ab.otherBelow":
+    "Второй вариант теста — в списке ниже («Показать ещё»): сравнение появится, когда он загрузится.",
   // напоминание о корзине
   "broadcasts.cart.title": "Напоминание о брошенной корзине",
   "broadcasts.cart.intro":
@@ -404,6 +408,10 @@ export const kk: SectionDict<typeof ru> = {
   "broadcasts.revenue.hint":
     "Алушылардың жіберілгеннен кейінгі 3 күндегі тапсырыстары — уақыт бойынша сәйкестік, дәлелденген себеп емес.",
   "broadcasts.revenue.windowOpen": "Үш күн әлі өтпеді — сандар өсуі мүмкін.",
+  "broadcasts.revenue.hintFollowup":
+    "Бұл — қайта жіберу: оның 3 күніндегі тапсырыстар бастапқы таратуға да есептеледі — терезелер қиылысады, екі таратудың «Әкелгенін» қосуға болмайды.",
+  "broadcasts.ab.otherBelow":
+    "Тесттің екінші нұсқасы төмендегі тізімде («Тағы көрсету»): жүктелгенде салыстыру шығады.",
   "broadcasts.cart.title": "Тасталған себет туралы еске салу",
   "broadcasts.cart.intro":
     "Тауарды себетке салып, тапсырысты рәсімдемеген сатып алушыға бот бұл туралы бір рет еске салады. Себетке жаңа тауар қосылса, келесі еске салуға рұқсат беріледі. «0» — өшіру.",
@@ -606,6 +614,10 @@ export const en: SectionDict<typeof ru> = {
   "broadcasts.revenue.hint":
     "Recipients' orders within 3 days after it was sent to them — a match in time, not a proven cause.",
   "broadcasts.revenue.windowOpen": "Three days have not passed yet — the numbers may grow.",
+  "broadcasts.revenue.hintFollowup":
+    "This is a follow-up: orders in its 3 days are also credited to the original broadcast — the windows overlap, so do not add up “Brought in” of the two.",
+  "broadcasts.ab.otherBelow":
+    "The other test variant is further down the list (“Show more”): the comparison appears once it loads.",
   "broadcasts.cart.title": "Abandoned cart reminder",
   "broadcasts.cart.intro":
     "A customer who added items to the cart but did not check out gets one reminder from the bot. A new item in the cart allows the next reminder. “0” — off.",
@@ -810,6 +822,10 @@ export const uz: SectionDict<typeof ru> = {
   "broadcasts.revenue.hint":
     "Qabul qiluvchilarning yuborilgandan keyingi 3 kun ichidagi buyurtmalari — vaqt bo'yicha moslik, isbotlangan sabab emas.",
   "broadcasts.revenue.windowOpen": "Uch kun hali o'tmadi — raqamlar oshishi mumkin.",
+  "broadcasts.revenue.hintFollowup":
+    "Bu qayta yuborish: uning 3 kunidagi buyurtmalar dastlabki xabarga ham hisoblanadi — oynalar kesishadi, ikki xabarning «Olib keldi»sini qoʻshib boʻlmaydi.",
+  "broadcasts.ab.otherBelow":
+    "Testning ikkinchi varianti roʻyxatda pastda («Yana ko‘rsatish»): yuklangach, taqqoslash chiqadi.",
   "broadcasts.cart.title": "Tashlab ketilgan savat haqida eslatma",
   "broadcasts.cart.intro":
     "Mahsulotni savatga solib, buyurtmani rasmiylashtirmagan xaridorga bot bu haqda bir marta eslatadi. Savatga yangi mahsulot qo‘shilsa, keyingi eslatmaga ruxsat beriladi. «0» — o‘chirish.",
