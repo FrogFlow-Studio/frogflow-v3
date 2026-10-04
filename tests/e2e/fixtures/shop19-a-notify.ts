@@ -10,3 +10,6 @@ export const NTF19_SELLER_PASSWORD = "e2e-ntf19-pass-123";
 export const NTF19_ACC_LOGIN = "e2e_ntf19_acc";
 export const NTF19_ACC_PASSWORD = "e2e-ntf19-acc-123";
 export const NTF19_BUYER = "Данияр Н";
+// Отметка «прочитано» хранится по логину, а база общая для desktop и phone: у каждого проекта свой менеджер.
+export const NTF19_STAFF_PASSWORD = "e2e-ntf19-staff-123";
+export const ntf19StaffLogin = (project: string) => `e2e_ntf19_${project}`;

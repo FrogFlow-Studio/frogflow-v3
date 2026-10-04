@@ -1191,6 +1191,7 @@ export const ordersFn = createServerFn({ method: "GET" })
         q: z.string().optional(),
         pickup: z.enum(["today", "tomorrow", "overdue", "nodate"]).optional(),
         unpaid: z.boolean().optional(),
+        assembly: z.literal("today").optional(),
       })
       .parse(d ?? {}),
   )

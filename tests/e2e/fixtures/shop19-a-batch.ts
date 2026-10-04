@@ -10,8 +10,8 @@ export const BATCH_SELLER_LOGIN = "e2e_batch16_seller";
 export const BATCH_SELLER_PASSWORD = "e2e-batch16-pass-123";
 /** [id, имя, доставка, день: 0 — сегодня, 1 — завтра] */
 export const BATCH_ORDERS = [
-  [98951, "Сборка Анна", true, 0],
-  [98952, "Сборка Борис", true, 0],
-  [98953, "Сборка Вера", false, 0],
-  [98954, "Сборка Глеб", true, 1],
+  [98981, "Сборка Анна", true, 0],
+  [98982, "Сборка Борис", true, 0],
+  [98983, "Сборка Вера", false, 0],
+  [98984, "Сборка Глеб", true, 1],
 ] as const;

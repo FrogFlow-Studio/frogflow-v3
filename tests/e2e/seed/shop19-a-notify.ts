@@ -27,6 +27,11 @@ export function seedShop19ANotify(db: StubDb, now: string) {
               password_hash: hash(F.NTF19_ACC_PASSWORD),
               role: "accountant",
             },
+            ...["desktop", "phone"].map((project) => ({
+              username: F.ntf19StaffLogin(project),
+              password_hash: hash(F.NTF19_STAFF_PASSWORD),
+              role: "manager",
+            })),
           ],
         },
       },

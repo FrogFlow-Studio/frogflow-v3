@@ -11,9 +11,9 @@ async function login(page: import("@playwright/test").Page, user: string, passwo
 }
 
 /** А12: центр уведомлений — лента событий магазина, фильтр, «прочитано». */
-test("уведомления: лента, чужое не видно, прочитано", async ({ page }) => {
+test("уведомления: лента, чужое не видно, прочитано", async ({ page }, info) => {
   const errors = await watch(page);
-  await login(page, F.NTF19_SELLER_LOGIN, F.NTF19_SELLER_PASSWORD);
+  await login(page, F.ntf19StaffLogin(info.project.name), F.NTF19_STAFF_PASSWORD);
   await page.goto("/admin/notifications");
   await expect(page.getByRole("heading", { name: "Уведомления", exact: true })).toBeVisible();
   await expect(page.getByText("Новый заказ №1", { exact: true })).toBeVisible();
