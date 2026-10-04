@@ -12,6 +12,7 @@ import { validPauseHours } from "@/core/consultant/pause";
 import { parseCurators } from "@/core/courses/curators";
 import { parseCollections } from "@/core/storefront/collections";
 import { parseHwReplies } from "@/core/courses/hw-replies";
+import { cleanWorkHours, parseBotTexts } from "@/core/bot-texts/registry";
 
 type BotRow = Database["public"]["Tables"]["bots"]["Row"];
 
@@ -242,6 +243,9 @@ export function settingsFromJson(json: unknown): TenantSettings {
       ? parseHwReplies(s.homework_replies)
       : undefined,
     marketplace: parseMarketplace(obj(s.marketplace)),
+    // Свои тексты бота и рабочие часы (страница «Тексты бота»): без разбора здесь они не доходят до бота.
+    bot_texts: parseBotTexts(s.bot_texts),
+    work_hours: cleanWorkHours(s.work_hours) ?? undefined,
     collections: Array.isArray(s.collections) ? parseCollections(s.collections) : undefined,
     gift_sale:
       s.gift_sale && typeof s.gift_sale === "object" && !Array.isArray(s.gift_sale)

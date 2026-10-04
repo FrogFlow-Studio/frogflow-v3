@@ -138,6 +138,18 @@ export type TenantSettings = {
     /** Страница банка на finkaz.kz (по умолчанию Kaspi). */
     rate_url?: string;
   };
+  /**
+   * Свои тексты бота (core/bot-texts): ключ текста → канал → язык → текст
+   * продавца. null/нет — стандартный текст. Меняется страницей «Тексты бота».
+   */
+  bot_texts?: Partial<
+    Record<
+      "welcome" | "off_hours" | "order_thanks" | "not_understood",
+      Partial<Record<"telegram" | "instagram" | "whatsapp", Partial<Record<Locale, string>>>> | null
+    >
+  >;
+  /** Рабочие часы по поясу магазина (0–24): вне них бот шлёт текст «вне часов работы». Нет — не шлёт. */
+  work_hours?: { open: number; close: number } | null;
   /** Свой дневной предел умного поиска в долларах (core/search). Меняет оператор. */
   smart_search_limits?: SmartSearchLimitsSetting | null;
   /** Поведение при неоплате подписки (те же ключи, что в v1; читает core/billing/subscription). */

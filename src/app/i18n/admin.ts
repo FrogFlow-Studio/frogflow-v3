@@ -32,6 +32,7 @@ import * as posts from "./admin/posts";
 import * as quiz from "./admin/quiz";
 import * as reviews from "./admin/reviews";
 import * as botPreview from "./admin/bot-preview";
+import * as botTexts from "./admin/bot-texts";
 import * as tickets from "./admin/tickets";
 import * as customer from "./admin/customer";
 import * as pipeline from "./admin/pipeline";
@@ -466,6 +467,7 @@ const ru = {
   ...quiz.ru,
   ...reviews.ru,
   ...botPreview.ru,
+  ...botTexts.ru,
   ...tickets.ru,
   ...customer.ru,
   ...pipeline.ru,
@@ -1607,6 +1609,7 @@ const kk: Dict = {
   ...quiz.kk,
   ...reviews.kk,
   ...botPreview.kk,
+  ...botTexts.kk,
   ...tickets.kk,
   ...customer.kk,
   ...pipeline.kk,
@@ -1679,6 +1682,7 @@ const en: Dict = {
   ...quiz.en,
   ...reviews.en,
   ...botPreview.en,
+  ...botTexts.en,
   ...tickets.en,
   ...customer.en,
   ...pipeline.en,
@@ -1751,6 +1755,7 @@ const uz: Dict = {
   ...quiz.uz,
   ...reviews.uz,
   ...botPreview.uz,
+  ...botTexts.uz,
   ...tickets.uz,
   ...customer.uz,
   ...pipeline.uz,

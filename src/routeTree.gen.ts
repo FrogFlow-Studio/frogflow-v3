@@ -33,6 +33,7 @@ import { Route as AdminAuthedAiBalanceRouteImport } from './routes/admin._authed
 import { Route as AdminAuthedAnalyticsRouteImport } from './routes/admin._authed.analytics'
 import { Route as AdminAuthedBillingRouteImport } from './routes/admin._authed.billing'
 import { Route as AdminAuthedBotPreviewRouteImport } from './routes/admin._authed.bot-preview'
+import { Route as AdminAuthedBotTextsRouteImport } from './routes/admin._authed.bot-texts'
 import { Route as AdminAuthedBroadcastsRouteImport } from './routes/admin._authed.broadcasts'
 import { Route as AdminAuthedCategoriesRouteImport } from './routes/admin._authed.categories'
 import { Route as AdminAuthedChatRouteImport } from './routes/admin._authed.chat'
@@ -249,6 +250,11 @@ const AdminAuthedBillingRoute = AdminAuthedBillingRouteImport.update({
 const AdminAuthedBotPreviewRoute = AdminAuthedBotPreviewRouteImport.update({
   id: '/bot-preview',
   path: '/bot-preview',
+  getParentRoute: () => AdminAuthedRoute,
+} as any)
+const AdminAuthedBotTextsRoute = AdminAuthedBotTextsRouteImport.update({
+  id: '/bot-texts',
+  path: '/bot-texts',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
 const AdminAuthedBroadcastsRoute = AdminAuthedBroadcastsRouteImport.update({
@@ -782,6 +788,7 @@ export interface FileRoutesByFullPath {
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
   '/admin/billing': typeof AdminAuthedBillingRoute
   '/admin/bot-preview': typeof AdminAuthedBotPreviewRoute
+  '/admin/bot-texts': typeof AdminAuthedBotTextsRoute
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/chat': typeof AdminAuthedChatRoute
@@ -904,6 +911,7 @@ export interface FileRoutesByTo {
   '/admin/analytics': typeof AdminAuthedAnalyticsRoute
   '/admin/billing': typeof AdminAuthedBillingRoute
   '/admin/bot-preview': typeof AdminAuthedBotPreviewRoute
+  '/admin/bot-texts': typeof AdminAuthedBotTextsRoute
   '/admin/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/categories': typeof AdminAuthedCategoriesRoute
   '/admin/chat': typeof AdminAuthedChatRoute
@@ -1028,6 +1036,7 @@ export interface FileRoutesById {
   '/admin/_authed/analytics': typeof AdminAuthedAnalyticsRoute
   '/admin/_authed/billing': typeof AdminAuthedBillingRoute
   '/admin/_authed/bot-preview': typeof AdminAuthedBotPreviewRoute
+  '/admin/_authed/bot-texts': typeof AdminAuthedBotTextsRoute
   '/admin/_authed/broadcasts': typeof AdminAuthedBroadcastsRoute
   '/admin/_authed/categories': typeof AdminAuthedCategoriesRoute
   '/admin/_authed/chat': typeof AdminAuthedChatRoute
@@ -1153,6 +1162,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/billing'
     | '/admin/bot-preview'
+    | '/admin/bot-texts'
     | '/admin/broadcasts'
     | '/admin/categories'
     | '/admin/chat'
@@ -1275,6 +1285,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/billing'
     | '/admin/bot-preview'
+    | '/admin/bot-texts'
     | '/admin/broadcasts'
     | '/admin/categories'
     | '/admin/chat'
@@ -1398,6 +1409,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/analytics'
     | '/admin/_authed/billing'
     | '/admin/_authed/bot-preview'
+    | '/admin/_authed/bot-texts'
     | '/admin/_authed/broadcasts'
     | '/admin/_authed/categories'
     | '/admin/_authed/chat'
@@ -1706,6 +1718,13 @@ declare module '@tanstack/react-router' {
       path: '/bot-preview'
       fullPath: '/admin/bot-preview'
       preLoaderRoute: typeof AdminAuthedBotPreviewRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/bot-texts': {
+      id: '/admin/_authed/bot-texts'
+      path: '/bot-texts'
+      fullPath: '/admin/bot-texts'
+      preLoaderRoute: typeof AdminAuthedBotTextsRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
     '/admin/_authed/broadcasts': {
@@ -2422,6 +2441,7 @@ interface AdminAuthedRouteChildren {
   AdminAuthedAnalyticsRoute: typeof AdminAuthedAnalyticsRoute
   AdminAuthedBillingRoute: typeof AdminAuthedBillingRoute
   AdminAuthedBotPreviewRoute: typeof AdminAuthedBotPreviewRoute
+  AdminAuthedBotTextsRoute: typeof AdminAuthedBotTextsRoute
   AdminAuthedBroadcastsRoute: typeof AdminAuthedBroadcastsRoute
   AdminAuthedCategoriesRoute: typeof AdminAuthedCategoriesRoute
   AdminAuthedChatRoute: typeof AdminAuthedChatRoute
@@ -2470,6 +2490,7 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedAnalyticsRoute: AdminAuthedAnalyticsRoute,
   AdminAuthedBillingRoute: AdminAuthedBillingRoute,
   AdminAuthedBotPreviewRoute: AdminAuthedBotPreviewRoute,
+  AdminAuthedBotTextsRoute: AdminAuthedBotTextsRoute,
   AdminAuthedBroadcastsRoute: AdminAuthedBroadcastsRoute,
   AdminAuthedCategoriesRoute: AdminAuthedCategoriesRoute,
   AdminAuthedChatRoute: AdminAuthedChatRoute,

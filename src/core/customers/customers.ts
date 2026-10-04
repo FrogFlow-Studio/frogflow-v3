@@ -98,6 +98,8 @@ export type DialogState = {
   country_name?: string;
   /** Номер, который покупатель прислал в переписке вне шага «жду телефон» (Б2); контакт для продавца. */
   phone?: string;
+  /** Когда бот последний раз отвечал «вне часов работы» (core/bot-texts): не чаще раза в 6 часов. */
+  off_hours_at?: string;
   pending_order_id?: number;
   /** Заказ, фото которого покупатель согласует (core/orders/approval). */
   approval_order_id?: number;

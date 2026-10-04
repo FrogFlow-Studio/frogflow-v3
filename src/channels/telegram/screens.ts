@@ -11,6 +11,13 @@ import { localeFlags, localeNames, SUPPORTED_LOCALES, type Locale } from "@/core
 import { getPreorder } from "@/core/preorder/preorder";
 import { bundleCardInfo, bundleCardLines } from "@/core/bundles/card";
 import { COPY, escapeHtml } from "./copy";
+import {
+  STANDARD as BOT_TEXT_STANDARD,
+  customFilled,
+  fillText,
+  hhmm,
+  type WorkHours,
+} from "@/core/bot-texts/registry";
 import type { InlineButton, InlineKeyboard } from "./types";
 
 /**
@@ -54,10 +61,37 @@ export function mainMenu(tenant: Tenant, locale: Locale, appUrl: string): MainMe
 
 /** Приветствие после выбора языка; shopName — настройка shop_name или имя клиента. */
 export function welcomeHtml(tenant: Tenant, shopName: string, locale: Locale): string {
+  const custom = customFilled(tenant, "welcome", "telegram", locale, { shop: shopName });
+  if (custom !== null) return escapeHtml(custom);
   const v = verticalDef(tenant.vertical).locales[locale];
   return (
     `<b>${escapeHtml(shopName)}</b>\n${escapeHtml(v.welcomeGreeting)}\n\n` +
     `→ ${escapeHtml(v.welcomeCatalog)}\n→ ${escapeHtml(v.welcomePayment)}`
+  );
+}
+
+/** «Не понял» вместо стандартной подсказки, если продавец написал свой текст. */
+export function notUnderstoodHtml(tenant: Tenant, locale: Locale): string {
+  const custom = customFilled(tenant, "not_understood", "telegram", locale);
+  return custom === null ? COPY[locale].useMenu : escapeHtml(custom);
+}
+
+/** «Спасибо за заказ» — только свой текст продавца; null — сообщение не отправляется. */
+export function orderThanksHtml(
+  tenant: Tenant,
+  locale: Locale,
+  no: number | string,
+): string | null {
+  const custom = customFilled(tenant, "order_thanks", "telegram", locale, { order: String(no) });
+  return custom === null ? null : escapeHtml(custom);
+}
+
+/** «Вне часов работы»: свой текст или стандартный, с часами работы магазина. */
+export function offHoursHtml(tenant: Tenant, locale: Locale, hours: WorkHours): string {
+  const vars = { from: hhmm(hours.open), to: hhmm(hours.close) };
+  return escapeHtml(
+    customFilled(tenant, "off_hours", "telegram", locale, vars) ??
+      fillText(BOT_TEXT_STANDARD.off_hours![locale], vars),
   );
 }
 

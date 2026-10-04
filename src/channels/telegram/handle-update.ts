@@ -23,7 +23,16 @@ import { PRODUCT_SELECT } from "@/core/catalog/catalog";
 import { isDeliveryLangChoice } from "@/core/catalog/materials";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { TelegramApi } from "./api";
-import { languageChoice, mainMenu as screenMainMenu, productCard, welcomeHtml } from "./screens";
+import {
+  languageChoice,
+  mainMenu as screenMainMenu,
+  notUnderstoodHtml,
+  offHoursHtml,
+  orderThanksHtml,
+  productCard,
+  welcomeHtml,
+} from "./screens";
+import { cleanWorkHours, outsideWorkHours } from "@/core/bot-texts/registry";
 import {
   isHomeworkMessage,
   receiveHomework,
@@ -561,6 +570,11 @@ async function handleMessage(
     }
     return menuAction(b, action);
   }
+  if (
+    text &&
+    (!customer.state.mode || customer.state.mode === "idle" || customer.state.mode === "search")
+  )
+    await offHoursReply(b);
   if (customer.state.mode === "search" && text) return showSearch(b, text);
   // «Как в прошлый раз» словом: последний оплаченный заказ в корзину (Б11).
   if (text && isReorderWord(text) && (await reorderLast(b))) return;
@@ -568,7 +582,27 @@ async function handleMessage(
   if (text && isFreeTextQuery(text)) return freeTextSearch(b, text);
   // Консультант по прайсу видит фото покупателя (не чек — чеки разобраны выше).
   if (msg.photo?.length && !text && (await pricelistPhoto(b, msg))) return;
-  await sendMain(b, b.m.useMenu);
+  await sendMain(b, notUnderstoodHtml(ctx.tenant, b.locale));
+}
+
+/** Не чаще раза в 6 часов одному покупателю: «вне часов работы» не должно сыпаться на каждую реплику. */
+const OFF_HOURS_REPEAT_MS = 6 * 3_600_000;
+
+/**
+ * Текст «вне часов работы»: только если продавец задал рабочие часы и сейчас
+ * вне них. Отметка ставится до отправки: повтор события не пошлёт второй раз.
+ */
+async function offHoursReply(b: Bot) {
+  const tenant = b.ctx.tenant;
+  const hours = cleanWorkHours(tenant.settings.work_hours);
+  if (!hours || !outsideWorkHours(tenant, new Date(), b.ctx.timezone)) return;
+  const last = Date.parse(String(b.customer.state.off_hours_at ?? ""));
+  if (Number.isFinite(last) && Date.now() - last < OFF_HOURS_REPEAT_MS) return;
+  b.customer = await setState(b.ctx, b.customer, {
+    ...b.customer.state,
+    off_hours_at: new Date().toISOString(),
+  });
+  await send(b, offHoursHtml(tenant, b.locale, hours));
 }
 
 /** Повторить заказ: те же товары в корзину по текущим ценам и остаткам; чего нет — названо. */
@@ -1576,6 +1610,9 @@ async function finishCheckout(b: Bot, countryCode: string) {
   }
   const { order, method } = result;
   const no = displayNo(order);
+  // «Спасибо за заказ» — только свой текст продавца (core/bot-texts), перед платёжными реквизитами.
+  const thanks = orderThanksHtml(b.ctx.tenant, b.locale, no);
+  if (thanks !== null) await send(b, thanks);
   // Промокод, баллы и сертификат — одноразовые: снимаем из состояния, чтобы
   // не прилипли к следующему заказу.
   const {
