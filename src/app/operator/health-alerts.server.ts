@@ -40,7 +40,7 @@ async function readKeys(keys: string[]): Promise<Record<string, string>> {
     .from("operator_settings")
     .select("key, value")
     .in("key", keys);
-  if (error) throw new Error(`operator_settings: ${error.message}`);
+  if (error) throw serverFailure(`operator_settings: ${error.message}`);
   const out: Record<string, string> = {};
   for (const r of data ?? []) if (r.value != null) out[r.key] = r.value;
   return out;
@@ -105,7 +105,7 @@ export async function clearAlertChannel(): Promise<void> {
     .from("operator_settings")
     .delete()
     .in("key", [ALERT_KEYS.token, ALERT_KEYS.chatId, ALERT_KEYS.username]);
-  if (error) throw new Error(`operator_settings: ${error.message}`);
+  if (error) throw serverFailure(`operator_settings: ${error.message}`);
 }
 
 export type SendResult =
@@ -185,7 +185,7 @@ async function readState(key: string): Promise<StateRow> {
     .select("value")
     .eq("key", key)
     .maybeSingle();
-  if (error) throw new Error(`operator_settings: ${error.message}`);
+  if (error) throw serverFailure(`operator_settings: ${error.message}`);
   const raw = data?.value ?? null;
   return { exists: Boolean(data), raw, rev: revOf(raw) };
 }
@@ -209,7 +209,7 @@ async function casState(
   if (!prev.exists) {
     const { error } = await db.from("operator_settings").insert({ key, value });
     if (error?.code === "23505") return null;
-    if (error) throw new Error(`operator_settings: ${error.message}`);
+    if (error) throw serverFailure(`operator_settings: ${error.message}`);
     return next;
   }
   const q = db.from("operator_settings").update({ value }).eq("key", key);
@@ -222,7 +222,7 @@ async function casState(
           ? q.eq("value", prev.raw)
           : q;
   const { data, error } = await cond.select("key");
-  if (error) throw new Error(`operator_settings: ${error.message}`);
+  if (error) throw serverFailure(`operator_settings: ${error.message}`);
   return (data ?? []).length > 0 ? next : null;
 }
 

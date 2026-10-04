@@ -198,7 +198,7 @@ export async function applyImport(
         stockBefore = cur ? cur.stock_quantity : undefined;
       }
       const { error } = await ctx.db.from("products").update(patch).eq("id", id);
-      if (error) throw new Error(error.message);
+      if (error) throw serverFailure(error.message);
       if (stockBefore !== undefined && patch.stock_quantity !== undefined)
         await recordStockChange(
           ctx,

@@ -97,7 +97,7 @@ function esc(s: string): string {
 
 export async function listTariffs(ctx: TenantContext): Promise<TariffRow[]> {
   const { data, error } = await ctx.db.from("vip_tariffs").select("*").order("sort_order");
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   return data ?? [];
 }
 
@@ -144,7 +144,7 @@ export async function saveTariff(ctx: TenantContext, input: TariffInput): Promis
     let q = ctx.db.from("vip_tariffs").update({ is_entry: false }).eq("is_entry", true);
     if (input.id) q = q.neq("id", input.id);
     const { error } = await q;
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(error.message);
   }
   const payload = {
     name: input.name,
@@ -160,7 +160,7 @@ export async function saveTariff(ctx: TenantContext, input: TariffInput): Promis
   };
   if (input.id) {
     const { error } = await ctx.db.from("vip_tariffs").update(payload).eq("id", input.id);
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(error.message);
     return input.id;
   }
   const { data, error } = await ctx.db
@@ -184,7 +184,7 @@ export async function deleteTariff(ctx: TenantContext, id: string): Promise<void
       "По тарифу есть подписки — выключите его, а не удаляйте.",
     );
   const { error } = await ctx.db.from("vip_tariffs").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
 }
 
 /* ── профиль участника ──────────────────────────────────────────────── */
@@ -292,7 +292,7 @@ export async function pendingSubscription(
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   return (data as SubscriptionWithTariff | null) ?? null;
 }
 
@@ -407,7 +407,7 @@ export async function startPending(
       })
       .eq("id", reuse.id)
       .eq("status", "cancelled");
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(error.message);
     const extra = (cancelled ?? []).slice(1).map((r) => r.id);
     if (extra.length) {
       const del = await ctx.db.from("vip_subscriptions").delete().in("id", extra);
@@ -620,7 +620,7 @@ export async function rejectSubscription(
     .eq("status", "pending_payment")
     .select("telegram_id")
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   if (!updated) return { ok: true, alreadyProcessed: true };
   // Одна «отклонённая» на человека.
   const cleanup = await ctx.db
@@ -783,7 +783,7 @@ export async function extendSubscription(
         group_invite_link: null,
       })
       .eq("id", id);
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(error.message);
     const other = await latestActiveExpiry(ctx, sub.telegram_id, id);
     if (!other && groupId) await group.kick(groupId, sub.telegram_id);
     await group.send(
@@ -827,7 +827,7 @@ export async function extendSubscription(
       group_invite_link: link,
     })
     .eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   await group.send(sub.telegram_id, notify);
   return { ok: true, expired: false, expiresAt: baseSafe.toISOString() };
 }
@@ -939,7 +939,7 @@ export async function deleteSubscription(
     if (!other) await group.kick(groupId, sub.telegram_id);
   }
   const { error } = await ctx.db.from("vip_subscriptions").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   const { count, error: leftError } = await ctx.db
     .from("vip_subscriptions")
     .select("id", { count: "exact", head: true })

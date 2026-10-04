@@ -127,7 +127,7 @@ export async function claimOrderPlacement(
     p_bot_id: ctx.tenant.id,
     p_telegram_id: customer.telegramId,
   });
-  if (error) throw new Error(`claim_order_placement: ${error.message}`);
+  if (error) throw serverFailure(`claim_order_placement: ${error.message}`);
   return data === true;
 }
 
@@ -914,7 +914,7 @@ export async function attachPaymentProof(
     .in("status", [...PROOF_STATUSES])
     .select("*, order_items(*)")
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   if (!updated) {
     await serviceDb().storage.from("payment-proofs").remove([key]);
     return { ok: false, reason: "closed" };
@@ -1052,7 +1052,7 @@ export async function claimOrderForDelivery(
     .in("status", [...DELIVERABLE_STATUSES])
     .select("*, order_items(*)")
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   if (data) {
     await recordOrderEvent(ctx, orderId, "delivery_started", {}, actor);
     return data as OrderWithItems;

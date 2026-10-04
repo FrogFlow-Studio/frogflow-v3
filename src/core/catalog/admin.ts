@@ -22,7 +22,7 @@ export async function listAllCategories(ctx: TenantContext): Promise<CategoryRow
     .select("*")
     .order("sort_order")
     .order("name");
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   return data ?? [];
 }
 
@@ -62,7 +62,7 @@ export async function updateCategory(
   if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder;
   if (input.isVisible !== undefined) patch.is_visible = input.isVisible;
   const { error } = await ctx.db.from("categories").update(patch).eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
 }
 
 export async function deleteCategory(ctx: TenantContext, id: string): Promise<void> {
@@ -88,7 +88,7 @@ export async function deleteCategory(ctx: TenantContext, id: string): Promise<vo
       "У категории есть подкатегории — сначала удалите их.",
     );
   const { error } = await ctx.db.from("categories").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
 }
 
 /* ── товары ───────────────────────────────────────────────────────── */
@@ -176,8 +176,8 @@ export async function listProductsForAdmin(
       .range(offset, offset + PRODUCT_PAGE - 1),
     filtered(ctx.db.from("products").select("id", { count: "exact", head: true })),
   ]);
-  if (page.error) throw new Error(page.error.message);
-  if (count.error) throw new Error(count.error.message);
+  if (page.error) throw serverFailure(page.error.message);
+  if (count.error) throw serverFailure(count.error.message);
   const rows = (page.data ?? []).map((p) => ({
     id: p.id,
     name: p.name,
@@ -273,7 +273,7 @@ export async function deleteProduct(ctx: TenantContext, id: string): Promise<voi
   const { dropReviewExtras, productReviewIds } = await import("@/core/reviews/photos.server");
   const reviewIds = await productReviewIds(ctx, id);
   const { error } = await ctx.db.from("products").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   // Отзывы товара ушли вместе с ним — их фото и решения продавца следом.
   await dropReviewExtras(ctx, reviewIds);
   // Себестоимость товара лежит отдельной записью — без товара она никому не нужна.
@@ -305,7 +305,7 @@ export async function setProductActive(
   active: boolean,
 ): Promise<void> {
   const { error } = await ctx.db.from("products").update({ is_active: active }).eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
 }
 
 /** Картинки товара заменяются списком целиком — порядок = порядок в списке. */
@@ -334,7 +334,7 @@ export async function setProductImages(
         sort_order: i,
       })),
     );
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(error.message);
   }
 }
 
@@ -377,7 +377,7 @@ export async function setProductMaterials(
         sort_order: i,
       })),
     );
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(error.message);
   }
 }
 

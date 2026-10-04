@@ -8,6 +8,7 @@ import {
   toAuditEntry,
   type AuditEntry,
 } from "@/core/audit/admin-audit";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Журнал действий команды магазина — в bot_events, журнале оператора.
@@ -45,6 +46,6 @@ export async function listShopActions(
     .order("at", { ascending: false })
     .order("id", { ascending: false })
     .limit(limit);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   return (data ?? []).map(toAuditEntry);
 }

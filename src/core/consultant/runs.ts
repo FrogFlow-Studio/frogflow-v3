@@ -1,6 +1,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Json } from "@/core/db-types";
 import { pageAll } from "@/core/db/page";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Журнал ответов консультанта — строка на входящее сообщение в
@@ -80,7 +81,7 @@ export async function recordConsultantRun(
       },
       { onConflict: "bot_id,message_id" },
     );
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(error.message);
   } catch (e) {
     console.error(`[consultant:${ctx.tenant.id}] строка журнала ответов не записана`, e);
   }

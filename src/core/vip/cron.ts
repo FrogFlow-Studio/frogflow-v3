@@ -10,6 +10,7 @@ import {
   WARN_STAGE_2,
 } from "./pure";
 import { vipSettings, type VipGroup } from "./vip";
+import { serverFailure } from "@/lib/server-failure";
 
 export type VipCronResult = {
   warned: number;
@@ -146,7 +147,7 @@ export async function runVipCron(
           .eq("id", sub.id)
           .eq("status", "active")
           .select("id");
-        if (error) throw new Error(`expire-write: ${error.message}`);
+        if (error) throw serverFailure(`expire-write: ${error.message}`);
         if (!data?.length) return false;
         r.expired++;
         return true;

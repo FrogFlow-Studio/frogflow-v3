@@ -15,6 +15,7 @@ import {
   watermarkLine,
   type WatermarkBuyer,
 } from "./watermark";
+import { serverFailure } from "@/lib/server-failure";
 
 const BUCKET = "product-files";
 /** Больше — отдаём без знака: функция не должна держать в памяти огромный файл. */
@@ -176,7 +177,7 @@ async function markReferenced(db: Db, keys: string[], found: Set<string>): Promi
   ];
   for (const q of checks) {
     const { data, error } = await q;
-    if (error) throw new Error(`watermark prune check: ${error.message}`);
+    if (error) throw serverFailure(`watermark prune check: ${error.message}`);
     for (const row of (data ?? []) as Array<Record<string, string | null>>)
       for (const v of Object.values(row)) if (v) found.add(v);
   }
@@ -203,13 +204,13 @@ export async function pruneStampedCopies(
       limit: PRUNE_LIST_LIMIT,
       sortBy: { column: "updated_at", order: "asc" },
     });
-    if (error) throw new Error(`watermark prune list ${id}: ${error.message}`);
+    if (error) throw serverFailure(`watermark prune list ${id}: ${error.message}`);
     const stale = staleStampedCopies(id, data ?? [], now);
     const keep = await referencedAsOriginal(db, stale);
     const doomed = stale.filter((k) => !keep.has(k) && isStampedCopyKey(id, k));
     for (let i = 0; i < doomed.length; i += REMOVE_CHUNK) {
       const { error: e } = await bucket.remove(doomed.slice(i, i + REMOVE_CHUNK));
-      if (e) throw new Error(`watermark prune remove ${id}: ${e.message}`);
+      if (e) throw serverFailure(`watermark prune remove ${id}: ${e.message}`);
     }
     deleted += doomed.length;
     // Полная страница и было что удалить — дальше могут быть ещё старые.

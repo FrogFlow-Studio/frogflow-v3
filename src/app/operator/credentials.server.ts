@@ -96,7 +96,7 @@ async function upsert(key: string, value: string): Promise<void> {
   const { error } = data
     ? await db.from("operator_settings").update({ value }).eq("key", key)
     : await db.from("operator_settings").insert({ key, value });
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
 }
 
 /** Новая эпоха: все выданные ранее сессии оператора перестают действовать. */

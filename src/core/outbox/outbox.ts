@@ -223,7 +223,7 @@ export async function dueOutbox(ctx: TenantContext, now = new Date(), limit = 50
     .lte("payload->>next_at", now.toISOString())
     .order("created_at", { ascending: true })
     .limit(limit);
-  if (error) throw new Error(`outbox: ${error.message}`);
+  if (error) throw serverFailure(`outbox: ${error.message}`);
   return (data ?? []).map(rowOf);
 }
 
@@ -323,7 +323,7 @@ export async function listUndelivered(ctx: TenantContext, limit = 200): Promise<
     .in("status", ["queued", "dead", "sending"])
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (error) throw new Error(`outbox: ${error.message}`);
+  if (error) throw serverFailure(`outbox: ${error.message}`);
   return (data ?? []).map(rowOf);
 }
 

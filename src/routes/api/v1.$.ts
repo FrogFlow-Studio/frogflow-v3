@@ -114,7 +114,7 @@ async function listOrders(
   if (q.since) query = query.gte("updated_at", q.since);
   if (q.before) query = query.lt("id", q.before);
   const { data, error } = await query.order("id", { ascending: false }).limit(q.limit);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   const orders = (data ?? []) as unknown as import("@/core/orders/orders").OrderWithItems[];
   return json({
     orders: orders.map(api.apiOrder),

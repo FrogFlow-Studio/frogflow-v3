@@ -1,6 +1,7 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { pageAll } from "@/core/db/page";
 import { setSetting } from "@/core/settings/settings";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Один покупатель во всех каналах. Человек, написавший в Instagram, потом в
@@ -107,7 +108,7 @@ async function readLinks(ctx: TenantContext, userKey: string): Promise<string[]>
     .select("value")
     .eq("key", `${LINK_PREFIX}${userKey}`)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   return parseLinks(data?.value);
 }
 
@@ -141,7 +142,7 @@ async function exists(ctx: TenantContext, userKey: string): Promise<boolean> {
     .select("user_key")
     .eq("user_key", userKey)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   return Boolean(data);
 }
 

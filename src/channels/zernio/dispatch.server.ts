@@ -173,7 +173,7 @@ export async function markZernioEventSending(
     .update({ error_message: `${SENDING_NOTE}${now.toISOString()}` })
     .eq("event_id", eventId)
     .eq("status", "retrying");
-  if (error) throw new Error(`zernio_logs: ${error.message}`);
+  if (error) throw serverFailure(`zernio_logs: ${error.message}`);
 }
 
 /**
@@ -279,7 +279,7 @@ export async function retryStuckEvents(
     .lt("created_at", new Date(t - STUCK_AFTER_MS).toISOString())
     .order("created_at", { ascending: true })
     .limit(limit);
-  if (error) throw new Error(`zernio_logs: ${error.message}`);
+  if (error) throw serverFailure(`zernio_logs: ${error.message}`);
   for (const row of data ?? []) {
     if (!row.event_id) continue;
     res.found++;

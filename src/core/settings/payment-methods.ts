@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Database } from "@/core/db-types";
+import { serverFailure } from "@/lib/server-failure";
 
 type Row = Database["public"]["Tables"]["payment_methods"]["Row"];
 
@@ -9,7 +10,7 @@ export async function listPaymentMethods(ctx: TenantContext): Promise<Row[]> {
     .select("*")
     .order("sort_order")
     .order("country_code");
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   return data ?? [];
 }
 
@@ -41,7 +42,7 @@ export async function savePaymentMethod(
   };
   if (id) {
     const { error } = await ctx.db.from("payment_methods").update(row).eq("id", id);
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(error.message);
     return id;
   }
   const { data, error } = await ctx.db
@@ -55,5 +56,5 @@ export async function savePaymentMethod(
 
 export async function deletePaymentMethod(ctx: TenantContext, id: string): Promise<void> {
   const { error } = await ctx.db.from("payment_methods").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
 }

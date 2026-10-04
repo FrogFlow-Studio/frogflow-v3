@@ -42,7 +42,7 @@ export async function listChildCategories(
   const { data, error } = parentId
     ? await q.eq("parent_id", parentId)
     : await q.is("parent_id", null);
-  if (error) throw new Error(`categories: ${error.message}`);
+  if (error) throw serverFailure(`categories: ${error.message}`);
   return data ?? [];
 }
 
@@ -73,7 +73,7 @@ export async function listProductsInCategory(
   const { data, error } = categoryId
     ? await q.contains("category_ids", JSON.stringify([categoryId]))
     : await q.eq("category_ids", "[]");
-  if (error) throw new Error(`products: ${error.message}`);
+  if (error) throw serverFailure(`products: ${error.message}`);
   return (data ?? []) as Product[];
 }
 

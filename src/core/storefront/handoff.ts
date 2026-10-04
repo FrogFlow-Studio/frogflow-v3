@@ -53,7 +53,7 @@ export async function createHandoff(
       items: items as never,
       expires_at: new Date(Date.now() + TTL_MS).toISOString(),
     });
-  if (error) throw new Error(`handoff: ${error.message}`);
+  if (error) throw serverFailure(`handoff: ${error.message}`);
   return { token, url: `https://t.me/${username}?start=${HANDOFF_PREFIX}${token}` };
 }
 

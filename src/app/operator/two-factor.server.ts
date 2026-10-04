@@ -40,7 +40,7 @@ async function read(keys: string[]): Promise<Record<string, string>> {
     .from("operator_settings")
     .select("key, value")
     .in("key", keys);
-  if (error) throw new Error(`operator_settings: ${error.message}`);
+  if (error) throw serverFailure(`operator_settings: ${error.message}`);
   const out: Record<string, string> = {};
   for (const r of data ?? []) if (r.value) out[r.key] = r.value;
   return out;
@@ -57,7 +57,7 @@ async function write(key: string, value: string): Promise<void> {
   const { error } = data
     ? await db.from("operator_settings").update({ value }).eq("key", key)
     : await db.from("operator_settings").insert({ key, value });
-  if (error) throw new Error(`operator_settings: ${error.message}`);
+  if (error) throw serverFailure(`operator_settings: ${error.message}`);
 }
 
 /** Замена значения, только если оно всё ещё `prev`: два входа одним кодом не пройдут. */
@@ -68,13 +68,13 @@ async function swap(key: string, prev: string, next: string): Promise<boolean> {
     .eq("key", key)
     .eq("value", prev)
     .select("key");
-  if (error) throw new Error(`operator_settings: ${error.message}`);
+  if (error) throw serverFailure(`operator_settings: ${error.message}`);
   return (data ?? []).length > 0;
 }
 
 async function remove(keys: string[]): Promise<void> {
   const { error } = await serviceDb().from("operator_settings").delete().in("key", keys);
-  if (error) throw new Error(`operator_settings: ${error.message}`);
+  if (error) throw serverFailure(`operator_settings: ${error.message}`);
 }
 
 const secretKey = () => env().SECRETS_KEY;
@@ -151,7 +151,7 @@ export async function confirmTwoFactorSetup(code: string, now = Date.now()): Pro
     .eq("key", TOTP_KEYS.pending)
     .eq("value", s[TOTP_KEYS.pending]!)
     .select("key");
-  if (error) throw new Error(`operator_settings: ${error.message}`);
+  if (error) throw serverFailure(`operator_settings: ${error.message}`);
   if (!claimed?.length) throw new Error("Двухшаговый вход уже включается в другом окне.");
   const codes = newBackupCodes();
   // Порядок важен: сначала коды и шаг, секрет последним — он и включает защиту.

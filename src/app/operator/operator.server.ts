@@ -541,14 +541,14 @@ export async function updateClientMeta(
   if (patch.pausedMessage !== undefined) upd.paused_message = patch.pausedMessage;
   if (patch.tags !== undefined) upd.tags = patch.tags;
   const { error } = await serviceDb().from("bots").update(upd).eq("id", botId);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   invalidateTenantDirectory();
   await logEvent(botId, "meta", patch as Record<string, unknown>);
 }
 
 export async function setStatus(botId: string, status: Tenant["status"]) {
   const { error } = await serviceDb().from("bots").update({ status }).eq("id", botId);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   invalidateTenantDirectory();
   await logEvent(botId, status === "active" ? "resume" : status === "paused" ? "pause" : "suspend");
 }
@@ -583,7 +583,7 @@ export async function setModule(botId: string, key: ModuleKey, on: boolean, acto
         throw new Error(`Сначала выключите «${moduleDef(k).title}» — он зависит от этого модуля.`);
   const next = { ...cur, [key]: on };
   const { error } = await serviceDb().from("bots").update({ modules: next }).eq("id", botId);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   invalidateTenantDirectory();
   await logEvent(botId, on ? "module_on" : "module_off", { module: key });
 }
@@ -602,7 +602,7 @@ export async function connectTelegram(botId: string, token: string, actor = "ope
     .from("bots")
     .update({ bot_token: encryptSecret(token, e.SECRETS_KEY) })
     .eq("id", botId);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   await patchTenantSettings(botId, {
     telegram: { username: me.result?.username ?? null, webhook_ok: false },
   });
@@ -875,7 +875,7 @@ export async function archiveClient(botId: string) {
     .from("bots")
     .update({ archived_at: new Date().toISOString(), status: "suspended" })
     .eq("id", botId);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   invalidateTenantDirectory();
   await logEvent(botId, "suspend", { archived: true });
 }
@@ -1215,7 +1215,7 @@ export async function listOwnerBroadcasts(limit = 20): Promise<OwnerBroadcastVie
     .select("id, created_at, actor, message_text, target, results")
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   return (data ?? []).map((r) => ({
     ...r,
     results: Array.isArray(r.results) ? (r.results as unknown as OwnerDelivery[]) : [],

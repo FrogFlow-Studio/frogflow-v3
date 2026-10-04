@@ -4,6 +4,7 @@ import { serviceDb } from "@/core/db/client.server";
 import { UserError } from "@/core/i18n/user-error";
 import { invalidateTenantDirectory, patchTenantSettings } from "@/core/tenant/resolve.server";
 import { deletionConfirmed, deletionDue, deletionDueAt } from "@/core/tenant/deletion";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Удаление магазина владельцем (core/tenant/deletion): запрос ставит паузу
@@ -13,7 +14,7 @@ import { deletionConfirmed, deletionDue, deletionDueAt } from "@/core/tenant/del
  */
 async function setStatus(botId: string, status: Tenant["status"]): Promise<void> {
   const { error } = await serviceDb().from("bots").update({ status }).eq("id", botId);
-  if (error) throw new Error(`bots.status: ${error.message}`);
+  if (error) throw serverFailure(`bots.status: ${error.message}`);
 }
 
 async function alertOperator(html: string): Promise<void> {
@@ -69,7 +70,7 @@ async function listTenantKeys(bucket: string, prefix: string): Promise<string[]>
   const walk = async (dir: string, depth: number) => {
     for (let offset = 0; ; offset += 1000) {
       const { data, error } = await storage.list(dir, { limit: 1000, offset });
-      if (error) throw new Error(`${bucket}/${dir}: ${error.message}`);
+      if (error) throw serverFailure(`${bucket}/${dir}: ${error.message}`);
       const rows = data ?? [];
       for (const r of rows) {
         const path = `${dir}/${r.name}`;
@@ -107,7 +108,7 @@ export async function finalizeDueDeletions(
         .eq("id", t.id)
         .is("archived_at", null)
         .select("id");
-      if (error) throw new Error(error.message);
+      if (error) throw serverFailure(error.message);
       if (!archived?.length) {
         results[t.id] = { skipped: "уже архивирован" };
         continue;
@@ -119,7 +120,7 @@ export async function finalizeDueDeletions(
           const { error: e } = await serviceDb()
             .storage.from(bucket)
             .remove(keys.slice(i, i + 100));
-          if (e) throw new Error(`${bucket}: ${e.message}`);
+          if (e) throw serverFailure(`${bucket}: ${e.message}`);
           removed += Math.min(100, keys.length - i);
         }
       }

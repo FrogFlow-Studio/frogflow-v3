@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Выбор товара в формах админки (рассылки, предложения, допродажа, сторис):
@@ -54,7 +55,7 @@ export async function searchProducts(
     .order("name")
     .order("id")
     .limit(limit + exclude.size);
-  if (error) throw new Error(`products: ${error.message}`);
+  if (error) throw serverFailure(`products: ${error.message}`);
   return (data ?? [])
     .filter((p) => !exclude.has(p.id))
     .slice(0, limit)
@@ -73,7 +74,7 @@ export async function productsByIds(
       .from("products")
       .select("id, name, price, currency")
       .in("id", unique.slice(i, i + 100));
-    if (error) throw new Error(`products: ${error.message}`);
+    if (error) throw serverFailure(`products: ${error.message}`);
     out.push(...(data ?? []).map(toPicker));
   }
   return out;

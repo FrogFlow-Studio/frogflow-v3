@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Порядок перетаскиванием (каталог и категории): список id в новом порядке
@@ -27,6 +28,6 @@ export async function applyOrder(
 ): Promise<void> {
   for (const [id, sort_order] of sortOrders(ids, start)) {
     const { error } = await ctx.db.from(table).update({ sort_order }).eq("id", id);
-    if (error) throw new Error(`${table} sort_order: ${error.message}`);
+    if (error) throw serverFailure(`${table} sort_order: ${error.message}`);
   }
 }

@@ -575,7 +575,7 @@ export async function rejectInvoice(id: string, reason: string, actor: string): 
     .in("status", ["sent", "proof_uploaded"])
     .select("id")
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   if (!done) throw new Error("Счёт уже обработан — обновите список");
   await logEvent(
     inv.bot_id,
@@ -600,7 +600,7 @@ export async function cancelInvoice(id: string, actor: string): Promise<void> {
     .eq("status", "sent")
     .select("id")
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   if (!done) throw new Error("Счёт уже обработан — обновите список");
   await logEvent(inv.bot_id, "payment", { action: "invoice_cancelled", invoice_id: id }, actor);
   await (await import("@/core/commission/invoice.server")).releaseCommissionSafely(inv.bot_id, id);

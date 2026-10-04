@@ -74,7 +74,7 @@ async function writePlan(botId: string, plan: string, billing: BillingSettings):
     .from("bots")
     .update({ subscription_plan: dbPlanFor(plan) })
     .eq("id", botId);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   await patchTenantSettings(botId, { billing: { ...billing, plan } });
 }
 
@@ -97,7 +97,7 @@ async function writeModules(botId: string, modules: Record<ModuleKey, boolean>):
     .from("bots")
     .update({ modules: toJson(modules) })
     .eq("id", botId);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
 }
 
 /** Купленное сверх прежнего плана — в сохранённые нового (core/plans keptModules). */

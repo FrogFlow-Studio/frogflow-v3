@@ -1,4 +1,5 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Отпечаток заказов магазина для живого обновления админки без Realtime
@@ -15,7 +16,7 @@ export async function ordersStamp(ctx: TenantContext): Promise<OrdersStamp> {
     ctx.db.from("orders").select("id", { count: "exact", head: true }),
   ]);
   const error = last.error ?? all.error;
-  if (error) throw new Error(`orders stamp: ${error.message}`);
+  if (error) throw serverFailure(`orders stamp: ${error.message}`);
   const row = (last.data ?? [])[0] as { updated_at: string } | undefined;
   return { latest: row?.updated_at ?? null, count: all.count ?? 0 };
 }

@@ -3,6 +3,8 @@
  * (operator_settings.ai_markup_percent, по умолчанию 0). Отдельный модуль
  * без тяжёлых импортов: юнит-тесты подменяют источник (tests/setup-env.ts).
  */
+import { serverFailure } from "@/lib/server-failure";
+
 export const AI_MARKUP_KEY = "ai_markup_percent";
 
 let markupCache: { at: number; value: number } | null = null;
@@ -14,7 +16,7 @@ async function readMarkup(): Promise<number> {
     .select("value")
     .eq("key", AI_MARKUP_KEY)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   const n = Number(data?.value);
   return Number.isFinite(n) && n > 0 ? n : 0;
 }

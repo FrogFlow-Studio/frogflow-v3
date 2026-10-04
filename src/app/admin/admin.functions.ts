@@ -1833,7 +1833,7 @@ export const requestModuleFn = createServerFn({ method: "POST" })
     const { error } = await ctx.db
       .from("module_requests")
       .insert({ bot_id: ctx.tenant.id, module_key: data.key });
-    if (error && !/duplicate|unique/i.test(error.message)) throw new Error(error.message);
+    if (error && !/duplicate|unique/i.test(error.message)) throw serverFailure(error.message);
     return { ok: true, already: Boolean(error) };
   });
 
@@ -1944,7 +1944,7 @@ export const requestPlanFn = createServerFn({ method: "POST" })
     const { error } = await ctx.db
       .from("module_requests")
       .insert({ bot_id: ctx.tenant.id, module_key: data.key });
-    if (error && !/duplicate|unique/i.test(error.message)) throw new Error(error.message);
+    if (error && !/duplicate|unique/i.test(error.message)) throw serverFailure(error.message);
     return { ok: true };
   });
 
@@ -2121,7 +2121,7 @@ export const savePromoCodeFn = createServerFn({ method: "POST" })
     if (error)
       throw /duplicate|unique/i.test(error.message)
         ? new UserError("err.admin.codeTaken", "Такой код уже есть.")
-        : new Error(error.message);
+        : serverFailure(error.message);
     // «Один раз на покупателя» — список id в app_settings (схема не меняется).
     if (saved && data.oncePerBuyer !== undefined) {
       const { setPromoOnce } = await import("@/core/discounts/promo-once");
@@ -2136,7 +2136,7 @@ export const deletePromoCodeFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await adminWrite();
     const { error } = await ctx.db.from("promo_codes").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(error.message);
     const { setPromoOnce } = await import("@/core/discounts/promo-once");
     await setPromoOnce(ctx, data.id, false);
     return { ok: true };
@@ -2226,7 +2226,7 @@ export const cancelGiftCertificateFn = createServerFn({ method: "POST" })
       .update({ status: "cancelled" })
       .eq("id", data.id)
       .eq("status", "active");
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(error.message);
     return { ok: true };
   });
 
@@ -2239,7 +2239,7 @@ export const deliveryZonesFn = createServerFn({ method: "GET" }).handler(async (
     .select("*")
     .order("sort_order")
     .order("name");
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   return data ?? [];
 });
 
@@ -2266,7 +2266,7 @@ export const saveDeliveryZoneFn = createServerFn({ method: "POST" })
     const { error } = data.id
       ? await ctx.db.from("delivery_zones").update(row).eq("id", data.id)
       : await ctx.db.from("delivery_zones").insert({ bot_id: ctx.tenant.id, ...row });
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(error.message);
     return { ok: true };
   });
 
@@ -2275,7 +2275,7 @@ export const deleteDeliveryZoneFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ctx = await adminOwner();
     const { error } = await ctx.db.from("delivery_zones").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(error.message);
     return { ok: true };
   });
 
@@ -3013,7 +3013,7 @@ export const invoiceProductsFn = createServerFn({ method: "GET" })
     const term = data.q.trim().replace(/[%_,()]/g, " ");
     if (term) q = q.ilike("name", `%${term}%`);
     const { data: rows, error } = await q.order("sort_order").order("name").limit(INVOICE_PAGE);
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(error.message);
     return (rows ?? []).map((p) => ({
       id: p.id,
       name: p.name,

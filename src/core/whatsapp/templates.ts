@@ -26,7 +26,7 @@ export async function listTemplates(
   let q = ctx.db.from("whatsapp_templates").select("*").order("name");
   if (accountId) q = q.eq("account_id", accountId);
   const { data, error } = await q;
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   return data ?? [];
 }
 
@@ -54,7 +54,7 @@ export async function syncTemplates(
   const { error } = await ctx.db
     .from("whatsapp_templates")
     .upsert(rows, { onConflict: "bot_id,account_id,name,language" });
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   return rows.length;
 }
 

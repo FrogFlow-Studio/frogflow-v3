@@ -43,6 +43,7 @@ import { imageUrl } from "@/core/catalog/catalog";
 import { robokassaFor, robokassaReceipt, stripeFor } from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
 import { amountDueNow } from "@/core/fulfillment/fulfillment";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Заказ с витрины сайта без мессенджера. Покупатель — обычная строка
@@ -132,7 +133,7 @@ export async function rememberFirstSource(
         .select("state")
         .eq("user_key", customer.userKey)
         .maybeSingle();
-      if (error) throw new Error(error.message);
+      if (error) throw serverFailure(error.message);
       if (!data) return;
       const state = (data.state ?? {}) as Record<string, unknown>;
       if (state.first_source) return;
@@ -239,7 +240,7 @@ async function takeBotCart(ctx: TenantContext, customer: Customer): Promise<Cart
     .eq("telegram_id", customer.telegramId)
     .order("created_at")
     .order("id");
-  if (error) throw new Error(`cart: ${error.message}`);
+  if (error) throw serverFailure(`cart: ${error.message}`);
   return data ?? [];
 }
 

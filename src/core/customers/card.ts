@@ -130,7 +130,7 @@ export async function customerCard(
     )
     .eq("user_key", userKey)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   if (!u) return null;
   const telegramId = Number(u.telegram_id);
   const state = obj(u.state);
@@ -187,7 +187,7 @@ export async function customerCard(
           .in("id", linkedIds)
           .eq("platform", "web")
           .then((r) => {
-            if (r.error) throw new Error(r.error.message);
+            if (r.error) throw serverFailure(r.error.message);
             return r.data ?? [];
           })
       : Promise.resolve([]),

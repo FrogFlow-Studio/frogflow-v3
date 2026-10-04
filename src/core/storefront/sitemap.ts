@@ -16,6 +16,7 @@ import { productSellable } from "@/core/catalog/materials";
 import { getSettings } from "@/core/settings/settings";
 import { aboutFilled, parseAbout } from "./about";
 import { productOnStorefront, visibleCategoryIds } from "./categories";
+import { serverFailure } from "@/lib/server-failure";
 
 /** Протокол разрешает 50 000 адресов в одной карте; с запасом. */
 export const SITEMAP_MAX_PRODUCTS = 10_000;
@@ -54,7 +55,7 @@ export async function storefrontSitemap(ctx: TenantContext, base: string): Promi
       ? getSettings(ctx, ["legal_offer", "legal_privacy", "legal_requisites", "legal_about"])
       : Promise.resolve({} as Record<string, string | null | undefined>),
   ]);
-  if (products.error) throw new Error(products.error.message);
+  if (products.error) throw serverFailure(products.error.message);
   const known = new Set(cats.map((c) => c.id));
   const visible = visibleCategoryIds(cats);
 

@@ -35,6 +35,7 @@ import {
   type SheetFailure,
   type SheetState,
 } from "./sheet";
+import { serverFailure } from "@/lib/server-failure";
 
 export type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
 
@@ -249,7 +250,7 @@ export async function syncFromCsv(
           .from("products")
           .update(write as ProductPatch)
           .eq("id", id);
-        if (error) throw new Error(error.message);
+        if (error) throw serverFailure(error.message);
         if ("stock_quantity" in write)
           await recordStockChange(
             ctx,

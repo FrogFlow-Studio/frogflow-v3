@@ -7,6 +7,7 @@ import { customHostProblem, normalizeHost } from "@/core/tenant/custom-domain";
 import type { Tenant } from "@/core/tenant/types";
 import { productOnStorefront, visibleCategoryIds } from "./categories";
 import { storefrontOpen } from "./access";
+import { serverFailure } from "@/lib/server-failure";
 
 /** Сколько первых товаров витрины просматриваем в поисках фото для превью. */
 const COVER_SCAN = 30;
@@ -29,7 +30,7 @@ export async function storeCover(ctx: TenantContext): Promise<string | null> {
       .limit(COVER_SCAN),
     listAllCategories(ctx),
   ]);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   const known = new Set(cats.map((c) => c.id));
   const visible = visibleCategoryIds(cats);
   for (const p of (data ?? []) as Product[]) {

@@ -69,7 +69,7 @@ async function casState(
       ? guarded.eq("state->>mode", mode)
       : guarded.is("state->>mode", null)
   ).select("user_key");
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   return Boolean(data?.length);
 }
 
@@ -83,7 +83,7 @@ async function readState(ctx: TenantContext, key: string): Promise<Json | null |
     .select("state")
     .eq("user_key", key)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   return data ? (data.state as Json | null) : undefined;
 }
 
@@ -101,7 +101,7 @@ export async function linkWebOrder(
     .select("id, platform, telegram_id")
     .eq("id", orderId)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   if (!order || order.platform !== "web") return "not_web";
   if (Number(order.telegram_id) === telegramId) return "already";
 

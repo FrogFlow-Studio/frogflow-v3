@@ -10,6 +10,7 @@ import { PRODUCT_SELECT, type Product } from "@/core/catalog/catalog";
 import { listAllCategories } from "@/core/catalog/admin";
 import { visibleCategoryIds } from "@/core/storefront/categories";
 import { listedOnStorefront } from "@/core/storefront/sitemap";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Превью ссылок и установка витрины на телефон (core/storefront/share).
@@ -63,7 +64,7 @@ export async function productSeo(
     ctx.db.from("products").select(PRODUCT_SELECT).eq("id", id).maybeSingle(),
     listAllCategories(ctx),
   ]);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   const known = new Set(cats.map((c) => c.id));
   if (!data || !listedOnStorefront(data as Product, known, visibleCategoryIds(cats)))
     return { listed: false, rating: null };

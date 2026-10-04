@@ -11,6 +11,7 @@ import {
   type ClientReading,
 } from "./consultant-alerts";
 import { inChunks } from "@/lib/in-chunks";
+import { serverFailure } from "@/lib/server-failure";
 
 /** Когда оператору писали о каждом виде сбоя модели — operator_settings, JSON. */
 export const MODEL_ALERTS_KEY = "operator_consultant_model_alerts";
@@ -49,7 +50,7 @@ async function readMarks(): Promise<{ raw: string | null; exists: boolean; marks
     .select("value")
     .eq("key", MODEL_ALERTS_KEY)
     .maybeSingle();
-  if (error) throw new Error(`operator_settings: ${error.message}`);
+  if (error) throw serverFailure(`operator_settings: ${error.message}`);
   let marks: AlertMarks = {};
   try {
     marks = data?.value ? (JSON.parse(data.value) as AlertMarks) : {};
@@ -69,14 +70,14 @@ async function claim(prev: { raw: string | null; exists: boolean }, value: strin
   if (!prev.exists) {
     const { error } = await db.from("operator_settings").insert({ key: MODEL_ALERTS_KEY, value });
     if (error?.code === "23505") return false;
-    if (error) throw new Error(`operator_settings: ${error.message}`);
+    if (error) throw serverFailure(`operator_settings: ${error.message}`);
     return true;
   }
   const q = db.from("operator_settings").update({ value }).eq("key", MODEL_ALERTS_KEY);
   const { data, error } = await (
     prev.raw === null ? q.is("value", null) : q.eq("value", prev.raw)
   ).select("key");
-  if (error) throw new Error(`operator_settings: ${error.message}`);
+  if (error) throw serverFailure(`operator_settings: ${error.message}`);
   return (data ?? []).length > 0;
 }
 

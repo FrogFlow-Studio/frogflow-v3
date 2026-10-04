@@ -28,6 +28,7 @@ import {
   extractMoneyAmounts,
   type ReceiptAnalysis,
 } from "./pure";
+import { serverFailure } from "@/lib/server-failure";
 
 /**
  * Автопроверка чека — не то же, что модуль receipt_ocr. Модуль значит «тариф
@@ -122,7 +123,7 @@ async function visionImage(bytes: Uint8Array, apiKey: string): Promise<string> {
   const json = (await res.json()) as { error?: { message?: string }; responses?: VisionPage[] };
   if (!res.ok) throw new Error(json.error?.message || `Vision HTTP ${res.status}`);
   const first = json.responses?.[0];
-  if (first?.error?.message) throw new Error(first.error.message);
+  if (first?.error?.message) throw serverFailure(first.error.message);
   return pageText(first);
 }
 
@@ -155,7 +156,7 @@ async function visionPdf(bytes: Uint8Array, apiKey: string): Promise<string> {
   };
   if (!res.ok) throw new Error(json.error?.message || `Vision HTTP ${res.status}`);
   const file = json.responses?.[0];
-  if (file?.error?.message) throw new Error(file.error.message);
+  if (file?.error?.message) throw serverFailure(file.error.message);
   return (file?.responses ?? []).map(pageText).filter(Boolean).join("\n");
 }
 

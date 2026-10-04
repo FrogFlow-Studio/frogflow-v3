@@ -134,7 +134,7 @@ export async function listOrdersForAdmin(
   const built = await filteredOrders(ctx, f, "*, order_items(*)", now);
   if (!built) return [];
   const { data, error } = await built.q.limit(f.limit ?? 100);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   return (data ?? []) as unknown as OrderWithItems[];
 }
 
@@ -236,7 +236,7 @@ export async function setOrderNote(
   note: string | null,
 ): Promise<void> {
   const { error } = await ctx.db.from("orders").update({ admin_note: note }).eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
 }
 
 /** Статусы физического заказа: accepted → in_production → ready → delivered, шаг назад кроме delivered. */
@@ -332,7 +332,7 @@ export async function listCustomers(
     query,
     ctx.db.from("blocked_users").select("telegram_id"),
   ]);
-  if (error) throw new Error(error.message);
+  if (error) throw serverFailure(error.message);
   const b = new Set((blocked ?? []).map((r) => Number(r.telegram_id)));
   return (data ?? []).map((r) => ({
     ...r,
@@ -355,7 +355,7 @@ export async function setBlocked(
       first_name: meta?.firstName ?? null,
       reason: meta?.reason ?? null,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw serverFailure(error.message);
   } else {
     const { error } = await ctx.db.from("blocked_users").delete().eq("telegram_id", telegramId);
     if (error) throw serverFailure(`Заказы: разблокировка: ${error.message}`);
