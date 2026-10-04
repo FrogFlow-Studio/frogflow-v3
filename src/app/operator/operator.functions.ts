@@ -1471,10 +1471,60 @@ export const markLeadContactedFn = createServerFn({ method: "POST" })
 const supportImpl = () => import("./support.server");
 
 /** Входящие: незакрытые обращения всех клиентов; null — раздел выключен (нет таблиц). */
-export const supportInboxFn = createServerFn({ method: "GET" }).handler(async () => {
-  await guard();
-  return (await supportImpl()).supportInbox();
-});
+export const supportInboxFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        status: z.enum(["new", "in_progress", "waiting_seller", "resolved"]).optional(),
+        label: z.string().trim().min(1).max(30).optional(),
+      })
+      .default({})
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await supportImpl()).supportInbox(data);
+  });
+
+/** Статус обращения вручную; смена пишется в журнал клиента. */
+export const supportStatusFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botId,
+        status: z.enum(["new", "in_progress", "waiting_seller", "resolved"]),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await supportImpl()).setThreadStatus(data.botId, data.status, await actor());
+  });
+
+export const supportLabelsFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({ botId, labels: z.array(z.string().max(60)).max(20) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await supportImpl()).setThreadLabels(data.botId, data.labels, await actor());
+  });
+
+/** Заметка оператора к обращению: продавцу не видна (таблица закрыта от его роли). */
+export const supportNoteFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({ botId, note: z.string().max(10_000), expectedAt: z.string().max(40).nullable() })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    return (await supportImpl()).saveThreadNote(
+      data.botId,
+      { note: data.note, expectedAt: data.expectedAt },
+      await actor(),
+    );
+  });
 
 export const supportConversationFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ botId }).parse(d))

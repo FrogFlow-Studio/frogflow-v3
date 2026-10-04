@@ -26,6 +26,17 @@ type ThreadPatch = Tables["platform_threads"]["Update"];
 export const THREAD_STATUSES = ["new", "in_progress", "waiting_seller", "resolved"] as const;
 export type ThreadStatus = (typeof THREAD_STATUSES)[number];
 export const SUPPORT_BODY_MAX = 4000;
+/** Метки оператора (Ч9): быстрые варианты, до пяти на обращение, до 30 знаков каждая. */
+export const SUPPORT_LABEL_PRESETS = ["оплата", "Instagram", "ошибка"] as const;
+export const SUPPORT_LABELS_MAX = 5;
+export const SUPPORT_LABEL_MAX_LEN = 30;
+export const SUPPORT_NOTE_MAX = 4000;
+export const STATUS_LABEL_RU: Record<ThreadStatus, string> = {
+  new: "новое",
+  in_progress: "в работе",
+  waiting_seller: "ждёт продавца",
+  resolved: "решено",
+};
 const WRITE_TRIES = 4;
 const PAGE = 1000;
 
@@ -68,6 +79,21 @@ export function toSupportMessage(r: MessageRow): SupportMessage {
     createdAt: r.created_at,
     read: r.read_at != null,
   };
+}
+
+/** Метки из ввода оператора: без пустых и повторов (без учёта регистра), в пределах лимитов. */
+export function cleanLabels(raw: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const r of raw) {
+    const label = r.replace(/\s+/g, " ").trim();
+    if (!label) continue;
+    if (label.length > SUPPORT_LABEL_MAX_LEN)
+      throw new Error(`Метка «${label.slice(0, 12)}…» длиннее ${SUPPORT_LABEL_MAX_LEN} знаков.`);
+    if (!out.some((x) => x.toLowerCase() === label.toLowerCase())) out.push(label);
+  }
+  if (out.length > SUPPORT_LABELS_MAX)
+    throw new Error(`Меток не больше ${SUPPORT_LABELS_MAX} на обращение.`);
+  return out;
 }
 
 export function cleanBody(raw: string): string {

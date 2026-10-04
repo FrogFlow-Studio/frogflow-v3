@@ -2,7 +2,10 @@ import { serviceDb } from "@/core/db/client.server";
 import { UserError } from "@/core/i18n/user-error";
 import {
   MESSAGE_COLS,
+  SUPPORT_NOTE_MAX,
+  THREAD_STATUSES,
   cleanBody,
+  cleanLabels,
   ensureOpenThread,
   isMissingTable,
   latestThread,
@@ -15,6 +18,7 @@ import {
   type MessageRow,
 } from "@/core/support/support";
 import { tenantDirectory } from "@/core/tenant/resolve.server";
+import { logEvent } from "./operator.server";
 import { serverFailure } from "@/lib/server-failure";
 
 /**
@@ -29,21 +33,52 @@ export type InboxRow = {
   botId: string;
   client: string;
   status: ThreadStatus;
+  labels: string[];
   lastMessageAt: string;
   unread: number;
 };
 
-/** Незакрытые обращения всех клиентов: непрочитанные и самые давние сверху; null — раздел выключен. */
-export async function supportInbox(): Promise<{ rows: InboxRow[]; resolved: number } | null> {
+export type InboxFilter = { status?: ThreadStatus; label?: string };
+export type StatusCounts = Record<ThreadStatus, number>;
+
+/** Сколько обращений в каждом статусе (по базе, а не по загруженной странице). */
+async function statusCounts(db: ReturnType<typeof serviceDb>): Promise<StatusCounts> {
+  const out = { new: 0, in_progress: 0, waiting_seller: 0, resolved: 0 } as StatusCounts;
+  for (const status of THREAD_STATUSES) {
+    const { count, error } = await db
+      .from("platform_threads")
+      .select("id", { count: "exact", head: true })
+      .eq("status", status);
+    if (error) {
+      if (isMissingTable(error)) return out;
+      throw serverFailure(`[operator] обращения не посчитаны: ${error.message}`);
+    }
+    out[status] = count ?? 0;
+  }
+  return out;
+}
+
+/**
+ * Входящие: без фильтра — незакрытые обращения всех клиентов (непрочитанные и
+ * самые давние сверху); фильтр по статусу и метке; счётчики по статусам и
+ * метки в работе — для чипов. null — раздел выключен (нет таблиц).
+ */
+export async function supportInbox(filter: InboxFilter = {}): Promise<{
+  rows: InboxRow[];
+  resolved: number;
+  counts: StatusCounts;
+  labels: { label: string; count: number }[];
+} | null> {
   const db = serviceDb();
   const threads: ThreadRow[] = [];
   for (let from = 0; ; from += PAGE) {
-    const { data, error } = await db
+    let q = db
       .from("platform_threads")
       .select(
         "id, bot_id, status, labels, created_at, last_message_at, last_seller_message_at, last_operator_message_at, first_response_at, due_at, seller_unread, operator_unread, rev",
-      )
-      .neq("status", "resolved")
+      );
+    q = filter.status ? q.eq("status", filter.status) : q.neq("status", "resolved");
+    const { data, error } = await q
       .order("last_message_at", { ascending: false })
       .order("id", { ascending: true })
       .range(from, from + PAGE - 1);
@@ -55,19 +90,19 @@ export async function supportInbox(): Promise<{ rows: InboxRow[]; resolved: numb
     threads.push(...rows);
     if (rows.length < PAGE) break;
   }
-  const { count, error: countError } = await db
-    .from("platform_threads")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "resolved");
-  if (countError)
-    throw serverFailure(`[operator] решённые обращения не посчитаны: ${countError.message}`);
+  const counts = await statusCounts(db);
+  const used = new Map<string, number>();
+  for (const t of threads) for (const l of t.labels ?? []) used.set(l, (used.get(l) ?? 0) + 1);
+  const wanted = filter.label?.toLowerCase();
   const names = new Map((await tenantDirectory()).map((t) => [t.id, t.name]));
   const rows = threads
+    .filter((t) => !wanted || (t.labels ?? []).some((l) => l.toLowerCase() === wanted))
     .map((t) => ({
       threadId: t.id,
       botId: t.bot_id,
       client: names.get(t.bot_id) ?? "—",
       status: t.status as ThreadStatus,
+      labels: t.labels ?? [],
       lastMessageAt: t.last_message_at,
       unread: t.operator_unread,
     }))
@@ -77,14 +112,38 @@ export async function supportInbox(): Promise<{ rows: InboxRow[]; resolved: numb
         a.lastMessageAt.localeCompare(b.lastMessageAt) ||
         a.threadId.localeCompare(b.threadId),
     );
-  return { rows, resolved: count ?? 0 };
+  const labels = [...used.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  return { rows, resolved: counts.resolved, counts, labels };
 }
 
 export type OperatorThreadView = {
   client: string;
   status: ThreadStatus | null;
+  labels: string[];
+  /** Заметка оператора: лежит в таблице, к которой у продавца нет доступа вовсе. */
+  note: { text: string; updatedAt: string | null; updatedBy: string | null };
   messages: SupportMessage[];
 };
+
+/** Заметка обращения; таблицы или записи нет — пустая. */
+async function readNote(threadId: string): Promise<OperatorThreadView["note"]> {
+  const { data, error } = await serviceDb()
+    .from("platform_thread_notes")
+    .select("note, updated_at, updated_by")
+    .eq("thread_id", threadId)
+    .maybeSingle();
+  if (error) {
+    if (isMissingTable(error)) return { text: "", updatedAt: null, updatedBy: null };
+    throw serverFailure(`[operator] заметка обращения не прочитана: ${error.message}`);
+  }
+  return {
+    text: data?.note ?? "",
+    updatedAt: data?.updated_at ?? null,
+    updatedBy: data?.updated_by ?? null,
+  };
+}
 
 /** Переписка с одним клиентом; открыть — значит прочитать: счётчик оператора гаснет. */
 export async function supportConversation(botId: string): Promise<OperatorThreadView | null> {
@@ -110,6 +169,8 @@ export async function supportConversation(botId: string): Promise<OperatorThread
   return {
     client: names.get(botId) ?? "—",
     status: thread ? (thread.status as ThreadStatus) : null,
+    labels: thread?.labels ?? [],
+    note: thread ? await readNote(thread.id) : { text: "", updatedAt: null, updatedBy: null },
     messages: rows.map(toSupportMessage),
   };
 }
@@ -153,4 +214,112 @@ export async function operatorReply(
     operator_unread: 0,
   }));
   return { message: toSupportMessage(data as MessageRow), thread: updated ?? thread };
+}
+
+/** Последнее обращение клиента для правки статуса, меток и заметки; нет — отказ человеку. */
+async function threadToEdit(botId: string): Promise<ThreadRow> {
+  const thread = await latestThread(serviceDb(), botId).catch((e: unknown) => {
+    if (e instanceof UserError)
+      throw new Error("Раздел поддержки ещё не включён: миграция 19-1 не применена.");
+    throw e;
+  });
+  if (!thread) throw new Error("У клиента ещё нет обращений.");
+  return thread;
+}
+
+/**
+ * Статус обращения вручную («новое / в работе / ждёт продавца / решено»).
+ * Запись условна по версии; в журнал клиента идёт один раз, от какого к
+ * какому статусу и кто сменил. Тот же статус — ничего не пишем.
+ */
+export async function setThreadStatus(
+  botId: string,
+  status: ThreadStatus,
+  operator: string,
+): Promise<{ status: ThreadStatus; changed: boolean }> {
+  const thread = await threadToEdit(botId);
+  let from: ThreadStatus = thread.status as ThreadStatus;
+  const written = await writeThread(serviceDb(), thread.id, (t) => {
+    from = t.status as ThreadStatus;
+    return t.status === status ? null : { status };
+  });
+  if (!written) throw new Error("Обращение не найдено.");
+  const changed = from !== status;
+  if (changed)
+    await logEvent(
+      botId,
+      "message",
+      { action: "support_status", thread_id: thread.id, from, to: status },
+      operator,
+    );
+  return { status, changed };
+}
+
+/** Метки обращения целиком: пустые и повторы убираются, лимиты из core/support. */
+export async function setThreadLabels(
+  botId: string,
+  labels: string[],
+  operator: string,
+): Promise<{ labels: string[] }> {
+  const clean = cleanLabels(labels);
+  const thread = await threadToEdit(botId);
+  let before: string[] = thread.labels ?? [];
+  const written = await writeThread(serviceDb(), thread.id, (t) => {
+    before = t.labels ?? [];
+    return JSON.stringify(before) === JSON.stringify(clean) ? null : { labels: clean };
+  });
+  if (!written) throw new Error("Обращение не найдено.");
+  if (JSON.stringify(before) !== JSON.stringify(clean))
+    await logEvent(
+      botId,
+      "message",
+      { action: "support_labels", thread_id: thread.id, from: before, to: clean },
+      operator,
+    );
+  return { labels: clean };
+}
+
+/**
+ * Заметка оператора. Пишется только служебным ключом в таблицу, на которую у
+ * продавца нет ни прав, ни политик (миграция 19-1). Два оператора не затрут
+ * друг друга: запись условна по времени прежней версии заметки. В журнал
+ * идёт факт и длина, а не текст.
+ */
+export async function saveThreadNote(
+  botId: string,
+  input: { note: string; expectedAt: string | null },
+  operator: string,
+): Promise<{ updatedAt: string }> {
+  const text = input.note.replace(/\r\n/g, "\n").trim();
+  if (text.length > SUPPORT_NOTE_MAX)
+    throw new Error(`Заметка длиннее ${SUPPORT_NOTE_MAX} знаков — сократите её.`);
+  const thread = await threadToEdit(botId);
+  const db = serviceDb();
+  const now = new Date().toISOString();
+  const stale = new Error("Заметку уже изменили: обновите страницу и повторите.");
+  if (input.expectedAt === null) {
+    const { error } = await db
+      .from("platform_thread_notes")
+      .insert({ thread_id: thread.id, note: text, updated_at: now, updated_by: operator });
+    if (error) {
+      if (error.code === "23505") throw stale;
+      throw serverFailure(`[operator] заметка не записана: ${error.message}`);
+    }
+  } else {
+    const { data, error } = await db
+      .from("platform_thread_notes")
+      .update({ note: text, updated_at: now, updated_by: operator })
+      .eq("thread_id", thread.id)
+      .eq("updated_at", input.expectedAt)
+      .select("thread_id");
+    if (error) throw serverFailure(`[operator] заметка не записана: ${error.message}`);
+    if (!data?.length) throw stale;
+  }
+  await logEvent(
+    botId,
+    "message",
+    { action: "support_note", thread_id: thread.id, length: text.length },
+    operator,
+  );
+  return { updatedAt: now };
 }

@@ -4,16 +4,30 @@ import { z } from "zod";
 import {
   supportConversationFn,
   supportInboxFn,
+  supportLabelsFn,
+  supportNoteFn,
   supportReplyFn,
+  supportStatusFn,
 } from "@/app/operator/operator.functions";
 import { Badge, Card, Empty, ErrorBox, PageTitle, useAction } from "@/app/ui";
-import { SUPPORT_BODY_MAX, type ThreadStatus } from "@/core/support/support";
+import {
+  STATUS_LABEL_RU,
+  SUPPORT_BODY_MAX,
+  SUPPORT_LABEL_PRESETS,
+  SUPPORT_NOTE_MAX,
+  THREAD_STATUSES,
+  type ThreadStatus,
+} from "@/core/support/support";
 
 export const Route = createFileRoute("/operator/_authed/support")({
-  validateSearch: z.object({ bot: z.string().uuid().optional() }),
-  loaderDeps: ({ search }) => ({ bot: search.bot }),
+  validateSearch: z.object({
+    bot: z.string().uuid().optional(),
+    status: z.enum(THREAD_STATUSES).optional(),
+    label: z.string().max(30).optional(),
+  }),
+  loaderDeps: ({ search }) => ({ bot: search.bot, status: search.status, label: search.label }),
   loader: async ({ deps }) => ({
-    inbox: await supportInboxFn(),
+    inbox: await supportInboxFn({ data: { status: deps.status, label: deps.label } }),
     conversation: deps.bot ? await supportConversationFn({ data: { botId: deps.bot } }) : null,
   }),
   component: SupportInbox,
@@ -37,7 +51,7 @@ const STATUS: Record<ThreadStatus, { label: string; tone: "accent" | "warn" | "o
 /** Входящие чата поддержки: все клиенты, непрочитанные сверху; справа — переписка. */
 function SupportInbox() {
   const { inbox, conversation } = Route.useLoaderData();
-  const { bot } = Route.useSearch();
+  const { bot, status: statusFilter, label: labelFilter } = Route.useSearch();
   const router = useRouter();
   const [text, setText] = useState("");
   useEffect(() => {
@@ -75,24 +89,64 @@ function SupportInbox() {
         title="Поддержка"
         subtitle={`Обращений в работе: ${inbox.rows.length}, решённых: ${inbox.resolved}. Новые ответы клиентов подтягиваются раз в полминуты.`}
       />
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+        <Link
+          to="/operator/support"
+          search={{ bot }}
+          className={`btn-secondary ${!statusFilter && !labelFilter ? "font-semibold" : ""}`}
+        >
+          В работе
+        </Link>
+        {THREAD_STATUSES.map((st) => (
+          <Link
+            key={st}
+            to="/operator/support"
+            search={{ bot, status: st }}
+            className={`btn-secondary ${statusFilter === st ? "font-semibold" : ""}`}
+          >
+            {STATUS_LABEL_RU[st]} · {inbox.counts[st]}
+          </Link>
+        ))}
+        {inbox.labels.map((l) => (
+          <Link
+            key={l.label}
+            to="/operator/support"
+            search={{
+              bot,
+              status: statusFilter,
+              label: labelFilter === l.label ? undefined : l.label,
+            }}
+            className={`btn-secondary ${labelFilter === l.label ? "font-semibold" : ""}`}
+          >
+            #{l.label} · {l.count}
+          </Link>
+        ))}
+      </div>
       <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_1fr]">
         <Card>
           {inbox.rows.length === 0 ? (
-            <Empty>Открытых обращений нет.</Empty>
+            <Empty>
+              {statusFilter || labelFilter
+                ? "По этому фильтру обращений нет."
+                : "Открытых обращений нет."}
+            </Empty>
           ) : (
             <ul className="divide-y divide-line">
               {inbox.rows.map((r) => (
                 <li key={r.threadId}>
                   <Link
                     to="/operator/support"
-                    search={{ bot: r.botId }}
+                    search={{ bot: r.botId, status: statusFilter, label: labelFilter }}
                     className={`flex items-center justify-between gap-2 px-3 py-2 hover:bg-surface-2 ${
                       r.botId === bot ? "bg-surface-2" : ""
                     }`}
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-medium">{r.client}</span>
-                      <span className="text-xs text-muted">{fmt(r.lastMessageAt)}</span>
+                      <span className="text-xs text-muted">
+                        {fmt(r.lastMessageAt)}
+                        {r.labels.length > 0 && ` · ${r.labels.map((l) => `#${l}`).join(" ")}`}
+                      </span>
                     </span>
                     <span className="flex shrink-0 items-center gap-1">
                       {r.unread > 0 && <Badge tone="danger">{r.unread}</Badge>}
@@ -125,6 +179,16 @@ function SupportInbox() {
                   </Badge>
                 )}
               </div>
+              {conversation.status && (
+                <ThreadPanel
+                  key={`${bot}:${conversation.note.updatedAt ?? ""}`}
+                  botId={bot}
+                  status={conversation.status}
+                  labels={conversation.labels}
+                  note={conversation.note}
+                  onDone={() => router.invalidate()}
+                />
+              )}
               <div className="max-h-[55vh] space-y-3 overflow-y-auto p-4">
                 {conversation.messages.length === 0 ? (
                   <Empty>Сообщений пока нет.</Empty>
@@ -180,5 +244,126 @@ function SupportInbox() {
         </Card>
       </div>
     </>
+  );
+}
+
+type Thread = NonNullable<Awaited<ReturnType<typeof supportConversationFn>>>;
+
+/** Статус, метки и заметка обращения. Заметку продавец не видит: она в таблице без доступа его роли. */
+function ThreadPanel({
+  botId,
+  status,
+  labels,
+  note,
+  onDone,
+}: {
+  botId: string;
+  status: ThreadStatus;
+  labels: string[];
+  note: Thread["note"];
+  onDone: () => Promise<void>;
+}) {
+  const [custom, setCustom] = useState("");
+  const [text, setText] = useState(note.text);
+  const setStatus = useAction(async (st: ThreadStatus) => {
+    await supportStatusFn({ data: { botId, status: st } });
+    await onDone();
+  });
+  const setLabels = useAction(async (next: string[]) => {
+    await supportLabelsFn({ data: { botId, labels: next } });
+    setCustom("");
+    await onDone();
+  });
+  const saveNote = useAction(async () => {
+    await supportNoteFn({ data: { botId, note: text, expectedAt: note.updatedAt } });
+    await onDone();
+  });
+  const has = (l: string) => labels.some((x) => x.toLowerCase() === l.toLowerCase());
+  const toggle = (l: string) =>
+    void setLabels
+      .run(has(l) ? labels.filter((x) => x.toLowerCase() !== l.toLowerCase()) : [...labels, l])
+      .catch(() => {});
+  const busy = setStatus.busy || setLabels.busy || saveNote.busy;
+  return (
+    <div className="space-y-3 border-b border-line px-4 py-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-muted">Статус:</span>
+        {THREAD_STATUSES.map((st) => (
+          <button
+            key={st}
+            type="button"
+            className={st === status ? "btn-primary" : "btn-secondary"}
+            disabled={busy}
+            aria-pressed={st === status}
+            onClick={() => st !== status && void setStatus.run(st).catch(() => {})}
+          >
+            {STATUS_LABEL_RU[st]}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-muted">Метки:</span>
+        {[
+          ...SUPPORT_LABEL_PRESETS,
+          ...labels.filter(
+            (l) => !SUPPORT_LABEL_PRESETS.some((p) => p.toLowerCase() === l.toLowerCase()),
+          ),
+        ].map((l) => (
+          <button
+            key={l}
+            type="button"
+            className={has(l) ? "btn-primary" : "btn-secondary"}
+            disabled={busy}
+            aria-pressed={has(l)}
+            onClick={() => toggle(l)}
+          >
+            #{l}
+          </button>
+        ))}
+        <input
+          className="input w-36"
+          value={custom}
+          maxLength={30}
+          placeholder="своя метка"
+          aria-label="Своя метка"
+          onChange={(e) => setCustom(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && custom.trim()) {
+              e.preventDefault();
+              void setLabels.run([...labels, custom]).catch(() => {});
+            }
+          }}
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-muted" htmlFor="support-note">
+          Заметка оператора (продавец её не видит)
+        </label>
+        <textarea
+          id="support-note"
+          className="input w-full"
+          rows={2}
+          maxLength={SUPPORT_NOTE_MAX}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <span className="text-xs text-muted">
+            {note.updatedAt
+              ? `Изменена ${new Date(note.updatedAt).toLocaleString("ru", { dateStyle: "short", timeStyle: "short" })}${note.updatedBy ? ` · ${note.updatedBy}` : ""}`
+              : "Заметки пока нет"}
+          </span>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={busy || text.trim() === note.text}
+            onClick={() => void saveNote.run().catch(() => {})}
+          >
+            Сохранить заметку
+          </button>
+        </div>
+      </div>
+      <ErrorBox error={setStatus.error ?? setLabels.error ?? saveNote.error} />
+    </div>
   );
 }
