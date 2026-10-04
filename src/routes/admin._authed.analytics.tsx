@@ -18,6 +18,7 @@ import {
   storeSourceLink,
 } from "@/core/analytics/source-links";
 import { formatMoney } from "@/core/money/money";
+import { ProfitCard } from "@/app/admin/profit-card";
 import { OrderStatus } from "./admin._authed.orders";
 
 const searchSchema = z.object({
@@ -244,6 +245,12 @@ function AnalyticsPage() {
             .map((c) => `${formatMoney(c.revenue, c.currency)} (${num(c.orders)})`)
             .join(" · ")}
         </p>
+      )}
+
+      {shop.modules.profit && (
+        <div className="mt-4">
+          <ProfitCard days={days} loc={loc} t={t} />
+        </div>
       )}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">

@@ -57,3 +57,14 @@ export const saveCostFn = createServerFn({ method: "POST" })
     const cost = await saveCost(ctx, data.id, { price: data.price, variants: data.variants });
     return { cost };
   });
+
+/** «Аналитика»: прибыль за период (core/profit/report) — видит и бухгалтер. */
+export const profitFn = createServerFn({ method: "GET" })
+  .validator((d: unknown) =>
+    z.object({ days: z.union([z.literal(7), z.literal(30), z.literal(90)]) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await costShop(false);
+    const { profitReport } = await import("@/core/profit/report");
+    return profitReport(ctx, data.days);
+  });
