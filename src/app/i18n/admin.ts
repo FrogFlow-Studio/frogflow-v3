@@ -41,6 +41,7 @@ import * as warehouse from "./admin/warehouse";
 import * as shop4Stock from "./admin/shop4-stock";
 import * as shop18Bundles from "./admin/shop18-bundles";
 import * as community from "./admin/community";
+import * as shop19VAbout from "./admin/shop19-v-about";
 import * as shop19VDesign from "./admin/shop19-v-design";
 import * as shop19VMarket from "./admin/shop19-v-market";
 import * as communityDm from "./admin/community-dm";
@@ -505,6 +506,7 @@ const ru = {
   ...shop4Stock.ru,
   ...shop18Bundles.ru,
   ...community.ru,
+  ...shop19VAbout.ru,
   ...shop19VDesign.ru,
   ...shop19VMarket.ru,
   ...communityDm.ru,
@@ -1655,6 +1657,7 @@ const kk: Dict = {
   ...shop4Stock.kk,
   ...shop18Bundles.kk,
   ...community.kk,
+  ...shop19VAbout.kk,
   ...shop19VDesign.kk,
   ...shop19VMarket.kk,
   ...communityDm.kk,
@@ -1736,6 +1739,7 @@ const en: Dict = {
   ...shop4Stock.en,
   ...shop18Bundles.en,
   ...community.en,
+  ...shop19VAbout.en,
   ...shop19VDesign.en,
   ...shop19VMarket.en,
   ...communityDm.en,
@@ -1817,6 +1821,7 @@ const uz: Dict = {
   ...shop4Stock.uz,
   ...shop18Bundles.uz,
   ...community.uz,
+  ...shop19VAbout.uz,
   ...shop19VDesign.uz,
   ...shop19VMarket.uz,
   ...communityDm.uz,

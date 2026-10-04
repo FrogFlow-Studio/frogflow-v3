@@ -34,6 +34,14 @@ const SAVED = {
   // площадка (core/marketplace)
   marketplace: { listed: true, approved: true, category: "Торты", city: "Алматы" },
   // оформление витрины (core/storefront/design)
+  storefront_about: {
+    description: "Печём торты",
+    phone: "+7 700 000 00 00",
+    address: "Алматы, Абая 1",
+    hours: "Пн–Сб 10:00–19:00",
+    delivery: "По городу",
+    payment: "Kaspi",
+  },
   storefront_design: { theme: "warm", cover: true, blocks: ["hits", "new"] },
   // сообщество авторов (core/community)
   community: {
@@ -208,6 +216,7 @@ const ALL = {
     dm_blocked: [UUID],
   },
   community_mod: { status: "hidden", reason: "жалоба", at: AT },
+  storefront_about: { description: "x" },
   storefront_design: { theme: "warm", cover: true, blocks: ["hits", "new"] },
   marketplace: { listed: true, hidden: false, approved: true, category: "Торты", city: "Алматы" },
   collections: [{ id: "a1b2c3d4", name: "Весна", product_ids: [UUID], created_at: AT }],

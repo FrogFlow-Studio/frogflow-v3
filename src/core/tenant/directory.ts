@@ -17,6 +17,7 @@ import { effectiveModules } from "@/core/plans/plans";
 import { COURSES_SALE, parsePlan } from "@/core/plans/registry";
 import { validPauseHours } from "@/core/consultant/pause";
 import { parseCurators } from "@/core/courses/curators";
+import { parseAbout } from "@/core/storefront/about";
 import { parseDesign } from "@/core/storefront/design";
 import { parseCollections } from "@/core/storefront/collections";
 import { parseHwReplies } from "@/core/courses/hw-replies";
@@ -263,6 +264,9 @@ export function settingsFromJson(json: unknown): TenantSettings {
       ? parseHwReplies(s.homework_replies)
       : undefined,
     marketplace: parseMarketplace(obj(s.marketplace)),
+    storefront_about: Object.keys(obj(s.storefront_about)).length
+      ? parseAbout(s.storefront_about)
+      : undefined,
     storefront_design: Object.keys(obj(s.storefront_design)).length
       ? parseDesign(s.storefront_design)
       : undefined,

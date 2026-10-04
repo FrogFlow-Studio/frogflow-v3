@@ -145,6 +145,11 @@ function StoreFrame() {
       <footer className="border-t border-line">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-6 text-xs text-muted">
           <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {shop.hasAbout && (
+              <Link to="/s/$slug/about" params={{ slug: shop.slug }}>
+                {t("footer.aboutShop")}
+              </Link>
+            )}
             {shop.legal.offer && (
               <Link to="/s/$slug/legal/$doc" params={{ slug: shop.slug, doc: "offer" }}>
                 {t("footer.offer")}

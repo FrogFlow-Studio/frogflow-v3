@@ -188,6 +188,15 @@ export type TenantSettings = {
   };
   /** Решение оператора по сообществу: скрыт из списка авторов или заблокирован. */
   community_mod?: { status?: "hidden" | "blocked"; reason?: string; at?: string };
+  /** Страница «О магазине» (core/storefront/about): описание, контакты, часы, доставка, оплата. */
+  storefront_about?: {
+    description?: string;
+    phone?: string;
+    address?: string;
+    hours?: string;
+    delivery?: string;
+    payment?: string;
+  };
   /** Оформление витрины (core/storefront/design): тема, обложка, порядок блоков главной. */
   storefront_design?: { theme?: string; cover?: boolean; blocks?: string[] };
   /**

@@ -519,6 +519,14 @@ const ru = {
   "showcase.hits": "Хиты",
   "showcase.sets": "Наборы",
   "showcase.reviews": "Отзывы покупателей",
+  "about.title": "О магазине",
+  "about.contacts": "Контакты",
+  "about.phone": "Телефон",
+  "about.address": "Адрес",
+  "about.hours": "Часы работы",
+  "about.delivery": "Доставка",
+  "about.payment": "Оплата",
+  "footer.aboutShop": "О магазине",
 } as const;
 
 export type StorefrontKey = keyof typeof ru;
@@ -1036,6 +1044,14 @@ const kk: Dict = {
   "showcase.hits": "Хиттер",
   "showcase.sets": "Жиынтықтар",
   "showcase.reviews": "Сатып алушылар пікірлері",
+  "about.title": "Дүкен туралы",
+  "about.contacts": "Байланыс",
+  "about.phone": "Телефон",
+  "about.address": "Мекенжай",
+  "about.hours": "Жұмыс уақыты",
+  "about.delivery": "Жеткізу",
+  "about.payment": "Төлем",
+  "footer.aboutShop": "Дүкен туралы",
 };
 
 const en: Dict = {
@@ -1547,6 +1563,14 @@ const en: Dict = {
   "showcase.hits": "Best sellers",
   "showcase.sets": "Sets",
   "showcase.reviews": "Customer reviews",
+  "about.title": "About the shop",
+  "about.contacts": "Contacts",
+  "about.phone": "Phone",
+  "about.address": "Address",
+  "about.hours": "Opening hours",
+  "about.delivery": "Delivery",
+  "about.payment": "Payment",
+  "footer.aboutShop": "About the shop",
 };
 
 const uz: Dict = {
@@ -2063,6 +2087,14 @@ const uz: Dict = {
   "showcase.hits": "Xitlar",
   "showcase.sets": "To‘plamlar",
   "showcase.reviews": "Xaridorlar fikrlari",
+  "about.title": "Do‘kon haqida",
+  "about.contacts": "Aloqa",
+  "about.phone": "Telefon",
+  "about.address": "Manzil",
+  "about.hours": "Ish vaqti",
+  "about.delivery": "Yetkazib berish",
+  "about.payment": "To‘lov",
+  "footer.aboutShop": "Do‘kon haqida",
 };
 
 const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };

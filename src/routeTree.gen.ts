@@ -103,6 +103,7 @@ import { Route as OperatorAuthedRevenueRouteImport } from './routes/operator._au
 import { Route as OperatorAuthedSettingsRouteImport } from './routes/operator._authed.settings'
 import { Route as OperatorAuthedSupportRouteImport } from './routes/operator._authed.support'
 import { Route as SSlugIndexRouteImport } from './routes/s.$slug.index'
+import { Route as SSlugAboutRouteImport } from './routes/s.$slug.about'
 import { Route as SSlugCartRouteImport } from './routes/s.$slug.cart'
 import { Route as SSlugCheckoutRouteImport } from './routes/s.$slug.checkout'
 import { Route as SSlugFavoritesRouteImport } from './routes/s.$slug.favorites'
@@ -613,6 +614,11 @@ const SSlugIndexRoute = SSlugIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SSlugRoute,
 } as any)
+const SSlugAboutRoute = SSlugAboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => SSlugRoute,
+} as any)
 const SSlugCartRoute = SSlugCartRouteImport.update({
   id: '/cart',
   path: '/cart',
@@ -916,6 +922,7 @@ export interface FileRoutesByFullPath {
   '/operator/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/operator/support': typeof OperatorAuthedSupportRoute
+  '/s/$slug/about': typeof SSlugAboutRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
   '/s/$slug/favorites': typeof SSlugFavoritesRoute
@@ -1048,6 +1055,7 @@ export interface FileRoutesByTo {
   '/operator/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/settings': typeof OperatorAuthedSettingsRoute
   '/operator/support': typeof OperatorAuthedSupportRoute
+  '/s/$slug/about': typeof SSlugAboutRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
   '/s/$slug/favorites': typeof SSlugFavoritesRoute
@@ -1183,6 +1191,7 @@ export interface FileRoutesById {
   '/operator/_authed/revenue': typeof OperatorAuthedRevenueRoute
   '/operator/_authed/settings': typeof OperatorAuthedSettingsRoute
   '/operator/_authed/support': typeof OperatorAuthedSupportRoute
+  '/s/$slug/about': typeof SSlugAboutRoute
   '/s/$slug/cart': typeof SSlugCartRoute
   '/s/$slug/checkout': typeof SSlugCheckoutRoute
   '/s/$slug/favorites': typeof SSlugFavoritesRoute
@@ -1319,6 +1328,7 @@ export interface FileRouteTypes {
     | '/operator/revenue'
     | '/operator/settings'
     | '/operator/support'
+    | '/s/$slug/about'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
     | '/s/$slug/favorites'
@@ -1451,6 +1461,7 @@ export interface FileRouteTypes {
     | '/operator/revenue'
     | '/operator/settings'
     | '/operator/support'
+    | '/s/$slug/about'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
     | '/s/$slug/favorites'
@@ -1585,6 +1596,7 @@ export interface FileRouteTypes {
     | '/operator/_authed/revenue'
     | '/operator/_authed/settings'
     | '/operator/_authed/support'
+    | '/s/$slug/about'
     | '/s/$slug/cart'
     | '/s/$slug/checkout'
     | '/s/$slug/favorites'
@@ -2332,6 +2344,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugIndexRouteImport
       parentRoute: typeof SSlugRoute
     }
+    '/s/$slug/about': {
+      id: '/s/$slug/about'
+      path: '/about'
+      fullPath: '/s/$slug/about'
+      preLoaderRoute: typeof SSlugAboutRouteImport
+      parentRoute: typeof SSlugRoute
+    }
     '/s/$slug/cart': {
       id: '/s/$slug/cart'
       path: '/cart'
@@ -2830,6 +2849,7 @@ const OperatorRouteWithChildren = OperatorRoute._addFileChildren(
 )
 
 interface SSlugRouteChildren {
+  SSlugAboutRoute: typeof SSlugAboutRoute
   SSlugCartRoute: typeof SSlugCartRoute
   SSlugCheckoutRoute: typeof SSlugCheckoutRoute
   SSlugFavoritesRoute: typeof SSlugFavoritesRoute
@@ -2848,6 +2868,7 @@ interface SSlugRouteChildren {
 }
 
 const SSlugRouteChildren: SSlugRouteChildren = {
+  SSlugAboutRoute: SSlugAboutRoute,
   SSlugCartRoute: SSlugCartRoute,
   SSlugCheckoutRoute: SSlugCheckoutRoute,
   SSlugFavoritesRoute: SSlugFavoritesRoute,

@@ -14,6 +14,7 @@ import { listAllCategories } from "@/core/catalog/admin";
 import { PRODUCT_SELECT, type Product } from "@/core/catalog/catalog";
 import { productSellable } from "@/core/catalog/materials";
 import { getSettings } from "@/core/settings/settings";
+import { aboutFilled, parseAbout } from "./about";
 import { productOnStorefront, visibleCategoryIds } from "./categories";
 
 /** Протокол разрешает 50 000 адресов в одной карте; с запасом. */
@@ -79,6 +80,8 @@ export async function storefrontSitemap(ctx: TenantContext, base: string): Promi
   for (const p of listed) {
     out.push({ loc: `${base}/p/${encodeURIComponent(p.id)}`, priority: 0.8 });
   }
+  if (aboutFilled(parseAbout(ctx.tenant.settings.storefront_about)))
+    out.push({ loc: `${base}/about`, priority: 0.4 });
   const legalSettings = legal as Record<string, string | null | undefined>;
   for (const doc of LEGAL_DOCS)
     if (legalSettings[`legal_${doc}`]?.trim())

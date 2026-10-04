@@ -33,6 +33,7 @@ import { ApiKeyCard } from "@/app/admin/settings/api-key";
 import { PushCard } from "@/app/admin/settings/push";
 import { IceBreakersCard } from "@/app/admin/settings/ice-breakers";
 import { FulfillmentCard, ZonesCard } from "@/app/admin/settings/delivery";
+import { AboutCard } from "@/app/admin/settings/about";
 import { DesignCard } from "@/app/admin/settings/design";
 import { MarketplaceCard } from "@/app/admin/settings/marketplace";
 import { MinOrderCard } from "@/app/admin/settings/min-order";
@@ -443,6 +444,9 @@ function SettingsPage() {
           )}
           <SettingsSection id="community">
             <CommunityCard />
+          </SettingsSection>
+          <SettingsSection id="about">
+            <AboutCard />
           </SettingsSection>
           <SettingsSection id="design">
             <DesignCard />

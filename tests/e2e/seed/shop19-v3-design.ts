@@ -17,6 +17,15 @@ export function seedShop19V3Design(db: StubDb, now: string) {
         slug: F.DESIGN_SHOP_SLUG,
         telegram: { username: "e2e_design_bot", webhook_ok: true },
         storefront_design: { theme: "warm", cover: false, blocks: ["new"] },
+        // В4: страница «О магазине» (shop19-v4-about.spec.ts).
+        storefront_about: {
+          description: "Соевые свечи ручной работы.",
+          phone: "+7 700 111 22 33",
+          address: "Алматы, ул. Абая, 1",
+          hours: "Пн–Сб 10:00–19:00",
+          delivery: "Курьером по Алматы за 1 день.",
+          payment: "Kaspi или наличными.",
+        },
       },
       paused_message: null,
       owner_telegram_id: 500000193,

@@ -1,3 +1,4 @@
+import { aboutFilled, parseAbout } from "@/core/storefront/about";
 import { parseDesign, type StoreDesign } from "@/core/storefront/design";
 import { getPreorder } from "@/core/preorder/preorder";
 import { serverFailure } from "@/lib/server-failure";
@@ -115,6 +116,8 @@ export type StoreInfo = {
   legal: Record<string, boolean>;
   /** Тема, обложка и блоки главной (core/storefront/design). */
   design: StoreDesign;
+  /** Заполнена страница «О магазине»: в подвале есть ссылка на неё. */
+  hasAbout: boolean;
 };
 
 export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
@@ -166,6 +169,7 @@ export async function storeInfo(ctx: TenantContext): Promise<StoreInfo> {
       .map((c) => ({ id: c.id, name: c.name, parent_id: c.parent_id })),
     catalogLayout: parseCatalogLayout(s.mini_app_catalog),
     design: parseDesign(ctx.tenant.settings.storefront_design),
+    hasAbout: aboutFilled(parseAbout(ctx.tenant.settings.storefront_about)),
     // Ссылки на юр. страницы — только при модуле legal_docs (core/storefront/access).
     legal: {
       offer: legalOn && Boolean(s.legal_offer),
