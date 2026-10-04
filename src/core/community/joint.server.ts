@@ -406,8 +406,11 @@ export async function listJointPromos(ctx: TenantContext): Promise<JointView[]> 
         endsAt: p.ends_at,
         status: jointEffective(p),
         createdByMe: p.created_by === me,
+        // Просроченное предложение ответа не ждёт: согласиться уже нельзя.
         needsAnswer:
-          p.status === "proposed" && members.some((m) => m.bot_id === me && m.status === "invited"),
+          p.status === "proposed" &&
+          new Date(p.ends_at).getTime() > Date.now() &&
+          members.some((m) => m.bot_id === me && m.status === "invited"),
         members: members.map((m) => {
           const t = dir.find((x) => x.id === m.bot_id);
           const own = m.bot_id === me;
