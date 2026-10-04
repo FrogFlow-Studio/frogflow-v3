@@ -272,6 +272,27 @@ export const todayTasksFn = createServerFn({ method: "GET" }).handler(async () =
   return (await notesImpl()).todayTasks();
 });
 
+export const runBulkFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        botIds: z.array(botId).min(1).max(1000),
+        batchId: z.string().uuid(),
+        confirmCount: z.string().max(10),
+        action: z.discriminatedUnion("kind", [
+          z.object({ kind: z.literal("message"), text: z.string().max(5000) }),
+          z.object({ kind: z.literal("extend"), days: z.number().int() }),
+          z.object({ kind: z.literal("module"), module: z.string().max(60) }),
+        ]),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await guard();
+    const { runBulk } = await import("./bulk.server");
+    return runBulk({ ...data, actor: await actor() });
+  });
+
 export const platformHealthFn = createServerFn({ method: "GET" }).handler(async () => {
   await guard();
   const { platformHealth } = await import("./platform-health.server");

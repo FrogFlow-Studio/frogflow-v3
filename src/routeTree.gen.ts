@@ -78,6 +78,7 @@ import { Route as ApiV1SplatRouteImport } from './routes/api/v1.$'
 import { Route as ApiZernioWebhookRouteImport } from './routes/api/zernio/webhook'
 import { Route as OperatorAuthedIndexRouteImport } from './routes/operator._authed.index'
 import { Route as OperatorAuthedBroadcastRouteImport } from './routes/operator._authed.broadcast'
+import { Route as OperatorAuthedBulkRouteImport } from './routes/operator._authed.bulk'
 import { Route as OperatorAuthedCommunityRouteImport } from './routes/operator._authed.community'
 import { Route as OperatorAuthedCronsRouteImport } from './routes/operator._authed.crons'
 import { Route as OperatorAuthedHealthRouteImport } from './routes/operator._authed.health'
@@ -471,6 +472,11 @@ const OperatorAuthedBroadcastRoute = OperatorAuthedBroadcastRouteImport.update({
   path: '/broadcast',
   getParentRoute: () => OperatorAuthedRoute,
 } as any)
+const OperatorAuthedBulkRoute = OperatorAuthedBulkRouteImport.update({
+  id: '/bulk',
+  path: '/bulk',
+  getParentRoute: () => OperatorAuthedRoute,
+} as any)
 const OperatorAuthedCommunityRoute = OperatorAuthedCommunityRouteImport.update({
   id: '/community',
   path: '/community',
@@ -795,6 +801,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/$': typeof ApiV1SplatRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
+  '/operator/bulk': typeof OperatorAuthedBulkRoute
   '/operator/community': typeof OperatorAuthedCommunityRoute
   '/operator/crons': typeof OperatorAuthedCronsRoute
   '/operator/health': typeof OperatorAuthedHealthRoute
@@ -912,6 +919,7 @@ export interface FileRoutesByTo {
   '/api/v1/$': typeof ApiV1SplatRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/broadcast': typeof OperatorAuthedBroadcastRoute
+  '/operator/bulk': typeof OperatorAuthedBulkRoute
   '/operator/community': typeof OperatorAuthedCommunityRoute
   '/operator/crons': typeof OperatorAuthedCronsRoute
   '/operator/health': typeof OperatorAuthedHealthRoute
@@ -1031,6 +1039,7 @@ export interface FileRoutesById {
   '/api/v1/$': typeof ApiV1SplatRoute
   '/api/zernio/webhook': typeof ApiZernioWebhookRoute
   '/operator/_authed/broadcast': typeof OperatorAuthedBroadcastRoute
+  '/operator/_authed/bulk': typeof OperatorAuthedBulkRoute
   '/operator/_authed/community': typeof OperatorAuthedCommunityRoute
   '/operator/_authed/crons': typeof OperatorAuthedCronsRoute
   '/operator/_authed/health': typeof OperatorAuthedHealthRoute
@@ -1151,6 +1160,7 @@ export interface FileRouteTypes {
     | '/api/v1/$'
     | '/api/zernio/webhook'
     | '/operator/broadcast'
+    | '/operator/bulk'
     | '/operator/community'
     | '/operator/crons'
     | '/operator/health'
@@ -1268,6 +1278,7 @@ export interface FileRouteTypes {
     | '/api/v1/$'
     | '/api/zernio/webhook'
     | '/operator/broadcast'
+    | '/operator/bulk'
     | '/operator/community'
     | '/operator/crons'
     | '/operator/health'
@@ -1386,6 +1397,7 @@ export interface FileRouteTypes {
     | '/api/v1/$'
     | '/api/zernio/webhook'
     | '/operator/_authed/broadcast'
+    | '/operator/_authed/bulk'
     | '/operator/_authed/community'
     | '/operator/_authed/crons'
     | '/operator/_authed/health'
@@ -1962,6 +1974,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperatorAuthedBroadcastRouteImport
       parentRoute: typeof OperatorAuthedRoute
     }
+    '/operator/_authed/bulk': {
+      id: '/operator/_authed/bulk'
+      path: '/bulk'
+      fullPath: '/operator/bulk'
+      preLoaderRoute: typeof OperatorAuthedBulkRouteImport
+      parentRoute: typeof OperatorAuthedRoute
+    }
     '/operator/_authed/community': {
       id: '/operator/_authed/community'
       path: '/community'
@@ -2437,6 +2456,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface OperatorAuthedRouteChildren {
   OperatorAuthedBroadcastRoute: typeof OperatorAuthedBroadcastRoute
+  OperatorAuthedBulkRoute: typeof OperatorAuthedBulkRoute
   OperatorAuthedCommunityRoute: typeof OperatorAuthedCommunityRoute
   OperatorAuthedCronsRoute: typeof OperatorAuthedCronsRoute
   OperatorAuthedHealthRoute: typeof OperatorAuthedHealthRoute
@@ -2456,6 +2476,7 @@ interface OperatorAuthedRouteChildren {
 
 const OperatorAuthedRouteChildren: OperatorAuthedRouteChildren = {
   OperatorAuthedBroadcastRoute: OperatorAuthedBroadcastRoute,
+  OperatorAuthedBulkRoute: OperatorAuthedBulkRoute,
   OperatorAuthedCommunityRoute: OperatorAuthedCommunityRoute,
   OperatorAuthedCronsRoute: OperatorAuthedCronsRoute,
   OperatorAuthedHealthRoute: OperatorAuthedHealthRoute,
