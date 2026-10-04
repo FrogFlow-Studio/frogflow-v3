@@ -4,7 +4,12 @@ import type { Locale } from "@/core/i18n/locale";
 import { isLocale } from "@/core/i18n/locale";
 import { getSetting } from "@/core/settings/settings";
 import { pageAll } from "@/core/db/page";
-import { customerFromRow, stateFromJson, type Customer } from "@/core/customers/customers";
+import {
+  blockedAmong,
+  customerFromRow,
+  stateFromJson,
+  type Customer,
+} from "@/core/customers/customers";
 import type { Platform } from "@/core/customers/customers";
 import { listCart, priceCart } from "@/core/cart/cart";
 import { lastInboundAt } from "@/core/chat/chat";
@@ -117,6 +122,8 @@ export async function sendCartReminders(
       user.cart_reminder_sent_at ? new Date(user.cart_reminder_sent_at) : null,
     );
     if (!eligible) continue;
+    // Заблокированному продавцом покупателю маркетинг не шлём, корзину не отмечаем.
+    if ((await blockedAmong(ctx, [telegramId])).has(telegramId)) continue;
     // Потолок маркетинговых сообщений за сутки (core/marketing/cap): место занято —
     // корзину не отмечаем, напомним в следующий прогон, когда оно освободится.
     const state = stateFromJson(user.state);

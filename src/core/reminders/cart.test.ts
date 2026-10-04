@@ -52,7 +52,7 @@ function setup(state: Record<string, unknown> = {}) {
     tenant: { id: "b", modules: { cart_reminder: true }, settings: {} },
     db,
   } as unknown as TenantContext;
-  return { ctx, row: db.tables.bot_users[0]! };
+  return { ctx, db, row: db.tables.bot_users[0]! };
 }
 
 describe("напоминание о корзине под потолком", () => {
@@ -115,6 +115,18 @@ function setupDirect(inboundHoursAgo: number | null) {
   } as unknown as TenantContext;
   return { ctx, row: db.tables.bot_users[0]! };
 }
+
+describe("напоминание о корзине: заблокированный покупатель", () => {
+  it("заблокирован продавцом — ничего не ушло, корзина не отмечена", async () => {
+    const { ctx, row, db } = setup();
+    (ctx.tenant.modules as Record<string, boolean>).blocked = true;
+    db.tables.blocked_users = [{ bot_id: "b", telegram_id: 42 }];
+    const send = vi.fn(async () => true);
+    expect((await sendCartReminders(ctx, send, NOW)).sent).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+    expect(row.cart_reminder_sent_at).toBeNull();
+  });
+});
 
 describe("напоминание о корзине: что в тексте", () => {
   it("называет до трёх позиций, «ещё N» и сумму по текущим ценам", async () => {

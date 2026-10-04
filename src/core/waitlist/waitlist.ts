@@ -2,6 +2,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { recordAutoMessage } from "@/core/automsg/stats";
 import type { Json } from "@/core/db-types";
 import {
+  blockedAmong,
   customerFromRow,
   setState,
   stateFromJson,
@@ -153,12 +154,19 @@ export async function notifyWaitlist(
   const budget = opts.budgetMs ?? WAITLIST_BUDGET_MS;
   const r: WaitlistRun = { notified: 0, failed: 0, left: 0 };
   const queue = await waitingCustomers(ctx, productId);
+  // Заблокированный продавцом покупатель маркетинг не получает: молча пропускаем,
+  // товар остаётся в его списке (разблокируют — получит со следующей рассылкой).
+  const blocked = await blockedAmong(
+    ctx,
+    queue.map((c) => c.telegramId),
+  );
   for (let i = 0; i < queue.length; i++) {
     if (clock() - started >= budget) {
       r.left = queue.length - i;
       break;
     }
     const c = queue[i]!;
+    if (blocked.has(c.telegramId)) continue;
     const viaZernio = c.platform === "instagram" || c.platform === "whatsapp";
     let windowOpen = true;
     if (viaZernio) {

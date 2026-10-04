@@ -29,6 +29,17 @@ const waitlistOf = (row: Record<string, unknown>) =>
   (row.state as { waitlist?: string[] }).waitlist ?? [];
 
 describe("рассылка листа ожидания", () => {
+  it("заблокированному продавцом сообщение не уходит, товар остаётся в его списке", async () => {
+    const { db, ctx } = setup([{}, {}]);
+    (ctx.tenant.modules as Record<string, boolean>).blocked = true;
+    db.tables.blocked_users = [{ bot_id: BOT, telegram_id: 1 }];
+    const send = vi.fn(async () => true);
+    expect(await notifyWaitlist(ctx, PRODUCT, send)).toMatchObject({ notified: 1, failed: 0 });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(waitlistOf(db.tables.bot_users![0]!)).toEqual([PRODUCT, "other"]);
+    expect(waitlistOf(db.tables.bot_users![1]!)).toEqual(["other"]);
+  });
+
   it("два одновременных возврата в продажу — каждому ждущему одно сообщение", async () => {
     const { db, ctx } = setup([{}, {}, {}]);
     const send = vi.fn(async () => true);
