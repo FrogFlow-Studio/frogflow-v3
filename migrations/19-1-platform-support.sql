@@ -83,10 +83,40 @@ GRANT UPDATE (last_message_at, last_seller_message_at, operator_unread, seller_u
   ON platform_threads TO tenant_bot;
 GRANT UPDATE (read_at) ON platform_messages TO tenant_bot;
 
+-- Обращение: продавец читает своё, заводит новое только «чистым» (статус new,
+-- без меток, срока и ответов оператора); статус, метки, срок и первый ответ
+-- ставит оператор, продавцу доступен только переход waiting_seller → in_progress.
 DROP POLICY IF EXISTS tenant_isolation ON platform_threads;
-CREATE POLICY tenant_isolation ON platform_threads
-  FOR ALL TO tenant_bot
+DROP POLICY IF EXISTS tenant_select ON platform_threads;
+CREATE POLICY tenant_select ON platform_threads
+  FOR SELECT TO tenant_bot
+  USING (bot_id = current_bot_id());
+DROP POLICY IF EXISTS tenant_insert_clean ON platform_threads;
+CREATE POLICY tenant_insert_clean ON platform_threads
+  FOR INSERT TO tenant_bot
+  WITH CHECK (
+    bot_id = current_bot_id() AND status = 'new' AND labels = '{}'
+    AND first_response_at IS NULL AND due_at IS NULL AND last_operator_message_at IS NULL
+  );
+DROP POLICY IF EXISTS tenant_update_open ON platform_threads;
+DROP POLICY IF EXISTS tenant_update ON platform_threads;
+CREATE POLICY tenant_update ON platform_threads
+  FOR UPDATE TO tenant_bot
   USING (bot_id = current_bot_id()) WITH CHECK (bot_id = current_bot_id());
+-- Из статусов продавцу доступен один переход: ответил оператору на вопрос —
+-- waiting_seller → in_progress. Остальное меняет оператор (service_role).
+CREATE OR REPLACE FUNCTION platform_threads_seller_status() RETURNS trigger AS $$
+BEGIN
+  IF current_user = 'tenant_bot' AND NEW.status IS DISTINCT FROM OLD.status
+     AND NOT (OLD.status = 'waiting_seller' AND NEW.status = 'in_progress') THEN
+    RAISE EXCEPTION 'platform_threads: статус меняет оператор' USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_seller_status ON platform_threads;
+CREATE TRIGGER trg_seller_status BEFORE UPDATE OF status ON platform_threads
+  FOR EACH ROW EXECUTE FUNCTION platform_threads_seller_status();
 -- Сообщения: продавец читает и отмечает прочитанным своё, а вставляет только
 -- от своего имени. Без отдельной политики на INSERT ключ арендатора мог бы
 -- записать сообщение с author = 'operator' — ответ «от поддержки».

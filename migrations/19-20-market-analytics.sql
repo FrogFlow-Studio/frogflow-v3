@@ -25,3 +25,5 @@ create index if not exists market_events_kind_key_idx on public.market_events (k
 
 -- Строки читает и пишет только платформа (service_role): политик нет.
 alter table public.market_events enable row level security;
+revoke all on public.market_events from anon, authenticated, tenant_bot;
+grant select, insert, update, delete on public.market_events to service_role;

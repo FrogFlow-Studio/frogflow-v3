@@ -3,3 +3,4 @@
 DROP TABLE IF EXISTS platform_thread_notes;
 DROP TABLE IF EXISTS platform_messages;
 DROP TABLE IF EXISTS platform_threads;
+DROP FUNCTION IF EXISTS platform_threads_seller_status();
