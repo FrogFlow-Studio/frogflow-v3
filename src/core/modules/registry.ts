@@ -467,6 +467,14 @@ export const MODULES = {
     status: "available",
     note: "Курьер вызывается в приложении службы, в карточке заказа — служба, ссылка на отслеживание и телефон; покупателю — сообщение в его канале, ссылка — и на странице заказа (core/fulfillment/courier, событие courier). Вызов через API Яндекс Доставки — когда у продавца будет договор B2B.",
   },
+  bundles: {
+    title: "Наборы и подарки",
+    desc: "Набор «шампунь + бальзам» со своей ценой и выгодой, остаток которого считается по составляющим; отметка «Это подарок» с открыткой и подарочная упаковка.",
+    group: "Физические товары",
+    price: null,
+    status: "available",
+    note: "Состав набора — app_settings bundle:<id товара> (карточка товара, core/bundles). Входит в Pro и Business ниш «кондитерская» и «цветы», отдельной цены нет (решение Якова по тарифу ждёт: по умолчанию Pro+, меняется строкой в core/plans/registry).",
+  },
 } as const satisfies Record<string, ModuleDef>;
 
 export type ModuleKey = keyof typeof MODULES;

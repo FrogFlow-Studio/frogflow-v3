@@ -148,6 +148,11 @@ export async function copyProduct(
       await import("@/core/catalog/subscription");
     const days = await loadSubscriptionDays(ctx, productId);
     if (days) await saveSubscriptionDays(ctx, newId, days);
+    // Состав набора — тоже отдельная запись (app_settings bundle:<id>).
+    if (ctx.tenant.modules.bundles) {
+      const { copyBundle } = await import("@/core/bundles/bundle");
+      await copyBundle(ctx, productId, newId);
+    }
     // Себестоимость — тоже отдельная запись (app_settings cost:<id>).
     if (ctx.tenant.modules.profit) {
       const { copyCost } = await import("@/core/profit/cost");
@@ -213,6 +218,11 @@ async function rollback(
       .eq("bot_id", ctx.tenant.id)
       .eq("key", `${SUBSCRIPTION_PREFIX}${id}`);
     await ctx.db.from("app_settings").delete().eq("bot_id", ctx.tenant.id).eq("key", `cost:${id}`);
+    await ctx.db
+      .from("app_settings")
+      .delete()
+      .eq("bot_id", ctx.tenant.id)
+      .eq("key", `bundle:${id}`);
     await ctx.db.from("products").delete().eq("id", id);
   } catch {
     // Откат — на лучшее усилие: исходная ошибка важнее.

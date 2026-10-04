@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ProductSearch } from "@/app/admin/product-picker";
 import { useEffect, useState } from "react";
+import { BundleCard } from "@/app/admin/bundle-card";
 import { saveUpsellFn, upsellForProductFn } from "@/app/admin/upsell.functions";
 import {
   copyProductFn,
@@ -709,6 +710,9 @@ function ProductEditor() {
           {shop.modules.subscriptions && p?.id && <SubscriptionCard productId={p.id} t={t} />}
           {!school && shop.modules.courses && p?.id && kind === "digital" && (
             <CourseCard productId={p.id} t={t} />
+          )}
+          {shop.modules.bundles && p?.id && kind === "physical" && (
+            <BundleCard productId={p.id} t={t} />
           )}
           {shop.modules.upsell && p?.id && <UpsellCard productId={p.id} t={t} />}
           {shop.modules.stock && p?.id && (

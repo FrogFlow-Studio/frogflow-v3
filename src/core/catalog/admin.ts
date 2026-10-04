@@ -264,6 +264,8 @@ export async function deleteProduct(ctx: TenantContext, id: string): Promise<voi
     .eq("key", `cost:${id}`);
   if (costError)
     console.error(`[catalog] себестоимость товара ${id} не удалена`, costError.message);
+  // Состав набора (если товар был набором) — тоже отдельная запись.
+  await (await import("@/core/bundles/bundle")).dropBundle(ctx, id);
   // Файлы в общих бакетах — только под своим префиксом.
   const own = (k: string | null | undefined): k is string =>
     Boolean(k && isTenantStorageKey(ctx.tenant.id, k));

@@ -108,6 +108,7 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "manager_chat",
       "telegram_mini_app",
       "crm_pipeline",
+      "bundles",
       "giveaways",
     ],
     business: [
@@ -139,6 +140,7 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
       "cart_reminder",
       "review_request",
       "crm_pipeline",
+      "bundles",
       "giveaways",
     ],
     business: [

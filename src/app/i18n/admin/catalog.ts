@@ -55,6 +55,9 @@ export const ru = {
   "module.subscriptions.title": "Товары-подписки",
   "module.subscriptions.desc":
     "Товар по подписке раз в месяц или другой срок: бот сам напомнит продлить, продление — в два нажатия.",
+  "module.bundles.title": "Наборы и подарки",
+  "module.bundles.desc":
+    "Набор «шампунь + бальзам» со своей ценой и выгодой, остаток которого считается по составляющим; отметка «Это подарок» с открыткой и подарочная упаковка.",
   "module.public_api.title": "API для разработчиков",
   "module.public_api.desc":
     "Заказы и товары — в вашу учётную систему (1С, МойСклад, таблицы): чтение заказов, выгрузка каталога, обновление остатков и цен.",
@@ -251,6 +254,9 @@ export const kk: SectionDict<typeof ru> = {
   "module.subscriptions.title": "Жазылым тауарлары",
   "module.subscriptions.desc":
     "Айына бір рет немесе басқа мерзіммен жазылым тауары: бот ұзартуды өзі еске салады, ұзарту — екі басумен.",
+  "module.bundles.title": "Жиынтықтар мен сыйлықтар",
+  "module.bundles.desc":
+    "«Шампунь + бальзам» жиынтығы өз бағасымен және үнемдеумен, қалдығы құрамдас бөліктер бойынша есептеледі; открыткасы бар «Бұл сыйлық» белгісі және сыйлық қаптамасы.",
   "module.public_api.title": "Әзірлеушілерге арналған API",
   "module.public_api.desc":
     "Тапсырыстар мен тауарлар — сіздің есеп жүйеңізге (1С, МойСклад, кестелер): тапсырыстарды оқу, каталогты түсіру, қалдықтар мен бағаларды жаңарту.",
@@ -415,6 +421,9 @@ export const en: SectionDict<typeof ru> = {
   "module.subscriptions.title": "Subscription products",
   "module.subscriptions.desc":
     "A product bought monthly or on another cycle: the bot reminds the customer to renew, renewal takes two taps.",
+  "module.bundles.title": "Bundles and gifts",
+  "module.bundles.desc":
+    "A “shampoo + conditioner” bundle with its own price and savings, with stock counted from its components; a “This is a gift” mark with a card message and gift wrapping.",
   "module.public_api.title": "Developer API",
   "module.public_api.desc":
     "Orders and products in your accounting system (1C, MoySklad, spreadsheets): read orders, export the catalog, update stock and prices.",
@@ -575,6 +584,9 @@ export const uz: SectionDict<typeof ru> = {
   "module.subscriptions.title": "Obuna tovarlari",
   "module.subscriptions.desc":
     "Oyiga bir marta yoki boshqa muddatda obuna tovari: bot uzaytirishni oʻzi eslatadi, uzaytirish — ikki bosishda.",
+  "module.bundles.title": "Toʻplamlar va sovgʻalar",
+  "module.bundles.desc":
+    "“Shampun + balzam” toʻplami oʻz narxi va tejami bilan, qoldigʻi tarkibiy qismlar boʻyicha hisoblanadi; otkritkali “Bu sovgʻa” belgisi va sovgʻa qadogʻi.",
   "module.public_api.title": "Dasturchilar uchun API",
   "module.public_api.desc":
     "Buyurtmalar va tovarlar — hisob tizimingizga (1C, MoySklad, jadvallar): buyurtmalarni oʻqish, katalogni yuklab olish, qoldiq va narxlarni yangilash.",
