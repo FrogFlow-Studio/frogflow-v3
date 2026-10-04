@@ -1,3 +1,4 @@
+import { chunksOf } from "@/lib/in-chunks";
 import { serverFailure } from "@/lib/server-failure";
 import { UserError } from "@/core/i18n/user-error";
 import type { TenantContext } from "@/core/tenant/resolve.server";
@@ -364,18 +365,55 @@ export async function setProductVariants(
   productId: string,
   variants: VariantInput[],
 ): Promise<void> {
-  const cleared = await ctx.db.from("product_variants").delete().eq("product_id", productId);
-  if (cleared.error) throw serverFailure(`Каталог: ${cleared.error.message}`);
-  if (variants.length) {
-    const { error } = await ctx.db.from("product_variants").insert(
-      variants.map((v, i) => ({
+  // Варианты не пересоздаём: на их id ссылаются корзины и позиции неоплаченных
+  // заказов (ON DELETE SET NULL), и пересохранение карточки стирало бы выбор
+  // покупателя. Совпадение — по названию; новые добавляем, убранные удаляем.
+  const { data: existing, error: readError } = await ctx.db
+    .from("product_variants")
+    .select("id, name")
+    .eq("product_id", productId)
+    .order("sort_order")
+    .order("id");
+  if (readError) throw serverFailure(`Каталог: ${readError.message}`);
+  const free = new Map<string, string[]>();
+  for (const row of (existing ?? []) as { id: string; name: string }[]) {
+    const key = row.name.trim();
+    free.set(key, [...(free.get(key) ?? []), row.id]);
+  }
+  const fresh: {
+    bot_id: string;
+    product_id: string;
+    name: string;
+    price: number;
+    sort_order: number;
+  }[] = [];
+  const kept: { id: string; v: VariantInput; sort: number }[] = [];
+  variants.forEach((v, i) => {
+    const id = free.get(v.name.trim())?.shift();
+    if (id) kept.push({ id, v, sort: i });
+    else
+      fresh.push({
         bot_id: ctx.tenant.id,
         product_id: productId,
         name: v.name.trim(),
         price: v.price,
         sort_order: i,
-      })),
-    );
-    if (error) throw new Error(error.message);
+      });
+  });
+  if (fresh.length) {
+    const { error } = await ctx.db.from("product_variants").insert(fresh);
+    if (error) throw serverFailure(`Каталог: ${error.message}`);
+  }
+  for (const k of kept) {
+    const { error } = await ctx.db
+      .from("product_variants")
+      .update({ price: k.v.price, sort_order: k.sort })
+      .eq("id", k.id);
+    if (error) throw serverFailure(`Каталог: ${error.message}`);
+  }
+  const gone = [...free.values()].flat();
+  for (const chunk of chunksOf(gone)) {
+    const { error } = await ctx.db.from("product_variants").delete().in("id", chunk);
+    if (error) throw serverFailure(`Каталог: ${error.message}`);
   }
 }

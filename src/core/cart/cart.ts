@@ -1,4 +1,5 @@
 import { serverFailure } from "@/lib/server-failure";
+import { chunksOf, inChunks } from "@/lib/in-chunks";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Customer } from "@/core/customers/customers";
 import { PRODUCT_SELECT, type Product } from "@/core/catalog/catalog";
@@ -144,7 +145,29 @@ export async function listCart(ctx: TenantContext, customer: Customer): Promise<
     .eq("telegram_id", customer.telegramId)
     .order("created_at");
   if (error) throw new Error(`cart: ${error.message}`);
-  return (data ?? []) as unknown as CartItem[];
+  const items = (data ?? []) as unknown as CartItem[];
+  // Вариант удалили (или стёрла старая версия сохранения): строка без варианта
+  // у товара с вариантами продалась бы по служебной цене «от». Как при
+  // добавлении — «недоступна»: убираем строку, а не считаем её по цене товара.
+  const bare = items.filter((it) => it.products && !it.product_variant_id);
+  if (bare.length === 0) return items;
+  const withVariants = new Set(
+    (
+      await inChunks(
+        bare.map((it) => it.products!.id),
+        (chunk) => ctx.db.from("product_variants").select("product_id").in("product_id", chunk),
+        "Корзина",
+      )
+    ).map((r: { product_id: string }) => r.product_id),
+  );
+  const orphans = bare.filter((it) => withVariants.has(it.products!.id));
+  if (orphans.length === 0) return items;
+  for (const chunk of chunksOf(orphans.map((it) => it.id))) {
+    const { error: delError } = await ctx.db.from("cart_items").delete().in("id", chunk);
+    if (delError) throw serverFailure(`Корзина: ${delError.message}`);
+  }
+  const dead = new Set(orphans);
+  return items.filter((it) => !dead.has(it));
 }
 
 export async function cartCount(ctx: TenantContext, customer: Customer): Promise<number> {
