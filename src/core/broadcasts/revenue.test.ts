@@ -75,4 +75,84 @@ describe("«Принесла» у рассылки", () => {
     expect(out.b1).toEqual({ orders: 2, paid: 2, revenue: { KZT: 10000 }, windowOpen: false });
     expect(out.b2).toEqual({ orders: 0, paid: 0, revenue: {}, windowOpen: false });
   });
+  it("итог закрытого окна считается один раз: повторное открытие не читает получателей", async () => {
+    const db = fakeDb();
+    const FRESH = new Date(NOW - 3600_000).toISOString();
+    const recipients = (id: string, sentAt: string) =>
+      [1, 2, 3].map((n) => ({
+        id: `${id}-${n}`,
+        bot_id: BOT,
+        broadcast_id: id,
+        telegram_id: n,
+        status: "sent",
+        sent_at: sentAt,
+      }));
+    db.tables.broadcast_recipients = [
+      ...recipients("closed1", SENT),
+      ...recipients("closed2", SENT),
+      ...recipients("open", FRESH),
+    ];
+    db.tables.orders = [order(1, 1, at(2), "delivered", 5000)];
+    db.tables.app_settings = [];
+    const reads: string[] = [];
+    const realFrom = db.from.bind(db);
+    (db as { from: unknown }).from = (table: string) => {
+      reads.push(table);
+      return realFrom(table);
+    };
+    const ctx = { tenant: { id: BOT }, db } as unknown as TenantContext;
+    const ids = ["closed1", "closed2", "open"];
+
+    const first = await revenueFor(ctx, ids, NOW);
+    expect(first.closed1).toEqual({
+      orders: 1,
+      paid: 1,
+      revenue: { KZT: 5000 },
+      windowOpen: false,
+    });
+    expect(first.open?.windowOpen).toBe(true);
+
+    reads.length = 0;
+    const second = await revenueFor(ctx, ids, NOW);
+    expect(second.closed1).toEqual(first.closed1);
+    expect(second.closed2).toEqual(first.closed2);
+    // получателей читаем только у рассылки с открытым окном: один запрос, не три
+    expect(reads.filter((t) => t === "broadcast_recipients")).toHaveLength(1);
+  });
+  it("итог не фиксируется, пока в окне есть заказ, ждущий оплаты; потом фиксируется с выручкой", async () => {
+    const db = fakeDb();
+    db.tables.broadcast_recipients = [
+      { id: "r1", bot_id: BOT, broadcast_id: "b1", telegram_id: 1, status: "sent", sent_at: SENT },
+    ];
+    db.tables.orders = [order(1, 1, at(70), "awaiting_confirmation", 4000)];
+    db.tables.app_settings = [];
+    const ctx = { tenant: { id: BOT }, db } as unknown as TenantContext;
+
+    const DAY5 = Date.parse(SENT) + 5 * 24 * 3600_000;
+    const waiting = await revenueFor(ctx, ["b1"], DAY5);
+    expect(waiting.b1).toEqual({ orders: 1, paid: 0, revenue: {}, windowOpen: false });
+    expect(db.tables.app_settings).toHaveLength(0);
+
+    db.tables.orders![0]!.status = "delivered";
+    const paid = await revenueFor(ctx, ["b1"], DAY5);
+    expect(paid.b1).toEqual({ orders: 1, paid: 1, revenue: { KZT: 4000 }, windowOpen: false });
+    expect(db.tables.app_settings).toHaveLength(1);
+  });
+
+  it("заказ так и не оплатили 7 дней после окна — итог фиксируется как есть", async () => {
+    const db = fakeDb();
+    db.tables.broadcast_recipients = [
+      { id: "r1", bot_id: BOT, broadcast_id: "b1", telegram_id: 1, status: "sent", sent_at: SENT },
+    ];
+    db.tables.orders = [order(1, 1, at(70), "awaiting_payment", 4000)];
+    db.tables.app_settings = [];
+    const ctx = { tenant: { id: BOT }, db } as unknown as TenantContext;
+    const lastDay = Date.parse(SENT) + ATTRIBUTION_MS + 7 * 24 * 3600_000;
+
+    await revenueFor(ctx, ["b1"], lastDay - 1);
+    expect(db.tables.app_settings).toHaveLength(0);
+    const out = await revenueFor(ctx, ["b1"], lastDay);
+    expect(out.b1).toEqual({ orders: 1, paid: 0, revenue: {}, windowOpen: false });
+    expect(db.tables.app_settings).toHaveLength(1);
+  });
 });

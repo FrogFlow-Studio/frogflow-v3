@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { UserError } from "@/core/i18n/user-error";
+import { getSettingsStrict, trySetSetting } from "@/core/settings/settings";
 import { pageAll } from "@/core/db/page";
 import { IN_CHUNK, chunksOf } from "@/lib/in-chunks";
 import { BUYER_STATUSES } from "./broadcasts";
@@ -130,16 +131,70 @@ async function readOrders(
   return orders;
 }
 
-/** Выручка по каждой рассылке из списка (id → итог). */
+/** Сколько ждём оплаты после окна, прежде чем зафиксировать итог. */
+const SETTLE_MS = 7 * 24 * 3600_000;
+const CACHE_PREFIX = "broadcast_revenue:";
+
+/** Сохранённый итог закрытого окна; всё, что не похоже на итог, — «не сохранён». */
+export function parseCachedRevenue(raw: string | undefined): BroadcastRevenue | null {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw) as Partial<BroadcastRevenue>;
+    if (
+      !Number.isInteger(v.orders) ||
+      !Number.isInteger(v.paid) ||
+      !v.revenue ||
+      typeof v.revenue !== "object"
+    )
+      return null;
+    return { orders: v.orders!, paid: v.paid!, revenue: v.revenue, windowOpen: false };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Выручка по каждой рассылке из списка (id → итог). Итог рассылки с закрытым
+ * окном 72 часа считается один раз и хранится в app_settings
+ * (`broadcast_revenue:<id>`); пересчёт — у рассылок с открытым окном и у тех,
+ * где в окне ещё есть заказ, ждущий оплаты (Kaspi по чеку оплачивается позже
+ * закрытия окна). Такой итог фиксируется, когда ждущих не осталось или прошло
+ * 7 дней после окна: неоплаченное старше 7 дней v1 всё равно чистит. Возврат
+ * после фиксации итог не меняет.
+ */
 export async function revenueFor(
   ctx: TenantContext,
   broadcastIds: readonly string[],
   now = Date.now(),
 ): Promise<Record<string, BroadcastRevenue>> {
   const out: Record<string, BroadcastRevenue> = {};
+  const saved: Record<string, string> = {};
+  for (const chunk of chunksOf(
+    broadcastIds.map((id) => `${CACHE_PREFIX}${id}`),
+    IN_CHUNK,
+  ))
+    Object.assign(saved, await getSettingsStrict(ctx, chunk));
   for (const id of broadcastIds) {
+    const cached = parseCachedRevenue(saved[`${CACHE_PREFIX}${id}`]);
+    if (cached) {
+      out[id] = cached;
+      continue;
+    }
     const sent = await readSent(ctx, id);
-    out[id] = sent.length === 0 ? EMPTY_REVENUE : attribute(sent, await readOrders(ctx, sent), now);
+    if (sent.length === 0) {
+      out[id] = EMPTY_REVENUE;
+      continue;
+    }
+    const fresh = attribute(sent, await readOrders(ctx, sent), now);
+    out[id] = fresh;
+    const lastSent = Math.max(...sent.map((r) => Date.parse(r.sent_at)).filter(Number.isFinite));
+    const settled = fresh.orders === fresh.paid || now >= lastSent + ATTRIBUTION_MS + SETTLE_MS;
+    if (!fresh.windowOpen && settled)
+      await trySetSetting(
+        ctx,
+        `${CACHE_PREFIX}${id}`,
+        JSON.stringify({ orders: fresh.orders, paid: fresh.paid, revenue: fresh.revenue }),
+      );
   }
   return out;
 }
