@@ -412,6 +412,7 @@ const ru = {
   "tickets.append": "Дописать в обращение",
   "tickets.sent": "Отправлено — ответим в чате с магазином.",
   "tickets.noOpen": "Открытого обращения нет — дописать некуда.",
+  "catalog.breadcrumbs": "Путь по каталогу",
 } as const;
 
 export type StorefrontKey = keyof typeof ru;
@@ -820,6 +821,7 @@ const kk: Dict = {
   "tickets.append": "Өтінішке қосу",
   "tickets.sent": "Жіберілді — дүкенмен чатта жауап береміз.",
   "tickets.noOpen": "Ашық өтініш жоқ — қосатын жер жоқ.",
+  "catalog.breadcrumbs": "Каталог бойынша жол",
 };
 
 const en: Dict = {
@@ -1220,6 +1222,7 @@ const en: Dict = {
   "tickets.append": "Add to request",
   "tickets.sent": "Sent — we will reply in your chat with the shop.",
   "tickets.noOpen": "There is no open request to add to.",
+  "catalog.breadcrumbs": "You are here in the catalog",
 };
 
 const uz: Dict = {
@@ -1628,6 +1631,7 @@ const uz: Dict = {
   "tickets.append": "Murojaatga qoʻshish",
   "tickets.sent": "Yuborildi — doʻkon bilan chatda javob beramiz.",
   "tickets.noOpen": "Ochiq murojaat yoʻq — qoʻshadigan joy yoʻq.",
+  "catalog.breadcrumbs": "Katalogdagi yo‘l",
 };
 
 const DICTS: Record<Locale, Dict> = { ru, kk, en, uz };

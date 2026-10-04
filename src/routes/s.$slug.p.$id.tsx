@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useLoaderData } from "@tanstack/react-router";
 import { useState } from "react";
 import { storeProductFn } from "@/app/storefront/storefront.functions";
 import { useCart } from "@/app/storefront/cart";
@@ -7,6 +7,7 @@ import { useStorefrontLocale } from "@/app/storefront/locale";
 import { reviewsWord } from "@/app/i18n/storefront";
 import { formatMoney } from "@/core/money/money";
 import { intlLocale } from "@/app/i18n/admin";
+import { Breadcrumbs } from "@/app/storefront/breadcrumbs";
 import { OfferNote, OfferPrice } from "@/app/storefront/offer";
 import { pageBadge } from "@/core/catalog/lead-time";
 import { ProductReviews } from "@/app/storefront/reviews";
@@ -17,6 +18,8 @@ import {
   jsonLdScript,
   productCanonical,
   productJsonLd,
+  breadcrumbJsonLd,
+  storefrontCrumbs,
 } from "@/core/storefront/seo";
 
 export const Route = createFileRoute("/s/$slug/p/$id")({
@@ -35,6 +38,7 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
           name: string;
           tagline: string | null;
           accent: string | null;
+          categories: Array<{ id: string; name: string; parent_id: string | null }>;
           share: { origin: string; canonical: string; cover: string | null };
         }
       | undefined;
@@ -56,7 +60,17 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
     // Разметка товара — только если он виден в каталоге витрины (как в карте сайта).
     const ld =
       seoShop && loaderData.seo?.listed
-        ? [jsonLdScript(productJsonLd(loaderData.product, seoShop, loaderData.seo.rating))]
+        ? [
+            jsonLdScript(productJsonLd(loaderData.product, seoShop, loaderData.seo.rating)),
+            jsonLdScript(
+              breadcrumbJsonLd(
+                storefrontCrumbs(seoShop, shop?.categories ?? [], loaderData.product.categoryIds, {
+                  name: loaderData.product.name,
+                  url: productCanonical(seoShop.origin, seoShop.slug, loaderData.product.id),
+                }),
+              ),
+            ),
+          ]
         : [];
     return {
       meta: share,
@@ -72,6 +86,7 @@ export const Route = createFileRoute("/s/$slug/p/$id")({
 function ProductPage() {
   const { product: p, related, preview, course, waitlistUrl } = Route.useLoaderData();
   const { slug } = Route.useParams();
+  const shop = useLoaderData({ from: "/s/$slug" });
   const { locale, t } = useStorefrontLocale();
   const cart = useCart();
   const [img, setImg] = useState(0);
@@ -110,13 +125,7 @@ function ProductPage() {
   };
   return (
     <>
-      <nav className="text-sm text-muted">
-        <Link to="/s/$slug" params={{ slug }} className="hover:underline">
-          {t("catalog.title")}
-        </Link>
-        <span className="mx-1.5">/</span>
-        <span className="text-fg">{p.name}</span>
-      </nav>
+      <Breadcrumbs slug={slug} shop={shop} categoryIds={p.categoryIds} leaf={p.name} t={t} />
       <div className="mt-3 grid gap-6 md:grid-cols-2">
         <div>
           {p.images[img] ? (

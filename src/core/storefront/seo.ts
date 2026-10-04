@@ -100,6 +100,59 @@ export function productJsonLd(
   };
 }
 
+export type Crumb = {
+  name: string;
+  /** Тот же canonical, что в карте сайта. */
+  url: string;
+  /** Категория звена; null — главная витрины или сам товар. */
+  categoryId: string | null;
+};
+
+type CrumbCategory = { id: string; name: string; parent_id: string | null };
+
+/**
+ * Хлебные крошки «Магазин › Категория › Подкатегория › Товар». Категории
+ * приходят уже видимыми (storeInfo): скрытая — не показывается покупателю, и
+ * путь строится только по видимым предкам. `categoryIds` — категории товара;
+ * берётся первая из видимых (по ней же строятся «похожие»). Цикл в parent_id
+ * не зависает. Без `leaf` последнее звено — сама категория (страница категории).
+ */
+export function storefrontCrumbs(
+  shop: { name: string; slug: string; origin: string },
+  cats: readonly CrumbCategory[],
+  categoryIds: readonly string[],
+  leaf?: { name: string; url: string },
+): Crumb[] {
+  const byId = new Map(cats.map((c) => [c.id, c]));
+  const start = categoryIds.map((id) => byId.get(id)).find(Boolean);
+  const trail: CrumbCategory[] = [];
+  for (let c = start; c && !trail.includes(c); c = c.parent_id ? byId.get(c.parent_id) : undefined)
+    trail.unshift(c);
+  return [
+    { name: shop.name, url: shopCanonical(shop.origin, shop.slug), categoryId: null },
+    ...trail.map((c) => ({
+      name: c.name,
+      url: categoryCanonical(shop.origin, shop.slug, c.id),
+      categoryId: c.id,
+    })),
+    ...(leaf ? [{ name: leaf.name, url: leaf.url, categoryId: null }] : []),
+  ];
+}
+
+/** https://schema.org/BreadcrumbList: позиции с 1, у последнего звена адрес тоже есть. */
+export function breadcrumbJsonLd(crumbs: readonly Crumb[]): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((c, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: c.name,
+      item: c.url,
+    })),
+  };
+}
+
 /**
  * <script type="application/ld+json"> для head().scripts. Содержимое идёт в
  * страницу как есть, поэтому «<» (и «</script>» в названии товара)

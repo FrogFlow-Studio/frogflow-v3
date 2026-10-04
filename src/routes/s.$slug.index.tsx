@@ -16,10 +16,14 @@ import { storefrontT } from "@/app/i18n/storefront";
 import { shareText } from "@/core/storefront/share";
 import {
   canonicalLink,
+  breadcrumbJsonLd,
   categoryCanonical,
+  jsonLdScript,
   pagedCanonical,
   shopCanonical,
+  storefrontCrumbs,
 } from "@/core/storefront/seo";
+import { Breadcrumbs } from "@/app/storefront/breadcrumbs";
 import type { Locale } from "@/core/i18n/locale";
 
 export const Route = createFileRoute("/s/$slug/")({
@@ -72,7 +76,7 @@ export const Route = createFileRoute("/s/$slug/")({
           name: string;
           tagline: string | null;
           locale: Locale;
-          categories: Array<{ id: string; name: string }>;
+          categories: Array<{ id: string; name: string; parent_id: string | null }>;
           share: { origin: string; canonical: string; cover: string | null };
         }
       | undefined;
@@ -107,6 +111,17 @@ export const Route = createFileRoute("/s/$slug/")({
         { property: "og:url", content: url },
       ],
       links: [canonicalLink(url)],
+      scripts: [
+        jsonLdScript(
+          breadcrumbJsonLd(
+            storefrontCrumbs(
+              { name: shop.name, slug: shop.slug, origin: shop.share.canonical },
+              shop.categories,
+              [cat.id],
+            ),
+          ),
+        ),
+      ],
     };
   },
   component: CatalogPage,
@@ -199,6 +214,11 @@ function CatalogPage() {
 
   return (
     <>
+      {current && (
+        <div className="mb-3">
+          <Breadcrumbs slug={slug} shop={shop} categoryIds={[current.id]} t={t} />
+        </div>
+      )}
       <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">{current ? current.name : t("catalog.title")}</h1>
