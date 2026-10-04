@@ -6,6 +6,7 @@ import {
   parseReviewMeta,
   publicBuyerName,
   REVIEW_PHOTO_MAX_BYTES,
+  REVIEW_REPLY_MAX,
   reviewMetaKey,
 } from "./photos";
 
@@ -45,6 +46,7 @@ const {
   dropReviewExtras,
   setReviewStatus,
   markReviewReplied,
+  clearPublicReply,
   reviewMeta,
 } = await import("./photos.server");
 const { saveComment, saveRating } = await import("./reviews");
@@ -186,6 +188,54 @@ describe("витрина показывает только одобренные"
     await saveComment(ctx, 1, P, "Передумал");
     expect((await reviewMeta(ctx, R1)).status).toBe("pending");
     expect(await approvedReviews(ctx, P)).toEqual([]);
+  });
+});
+
+describe("публичный ответ продавца", () => {
+  it("виден на витрине только у одобренного отзыва, личный ответ в ленту не попадает", async () => {
+    await markReviewReplied(ctx, R1, "Спасибо за отзыв!");
+    // Решения ещё нет: ответ сохранён, витрина отзыв не показывает вовсе.
+    expect(await approvedReviews(ctx, P)).toEqual([]);
+    await setReviewStatus(ctx, R1, "approved");
+    await setReviewStatus(ctx, R2, "approved");
+    await markReviewReplied(ctx, R2, null);
+    const shown = await approvedReviews(ctx, P);
+    expect(shown.find((r) => r.id === R1)!.reply).toBe("Спасибо за отзыв!");
+    expect(shown.find((r) => r.id === R2)!.reply).toBeNull();
+    expect((await reviewMeta(ctx, R2)).repliedAt).toBeTruthy();
+    // Скрыли отзыв — ответ вместе с ним уходит с витрины.
+    await setReviewStatus(ctx, R1, "hidden");
+    expect((await approvedReviews(ctx, P)).map((r) => r.id)).toEqual([R2]);
+  });
+
+  it("ответ переживает смену решения и правку фото; убирается отдельно, отметка «отвечено» остаётся", async () => {
+    await markReviewReplied(ctx, R1, "Ответ");
+    await setReviewStatus(ctx, R1, "approved");
+    await addReviewPhoto(ctx, 1, P, JPEG);
+    await setReviewStatus(ctx, R1, "approved");
+    expect((await reviewMeta(ctx, R1)).reply).toBe("Ответ");
+    expect(await clearPublicReply(ctx, R1)).toBe(true);
+    const m = await reviewMeta(ctx, R1);
+    expect(m.reply).toBeUndefined();
+    expect(m.repliedAt).toBeTruthy();
+    // Повторное снятие ничего не пишет и не падает.
+    expect(await clearPublicReply(ctx, R1)).toBe(true);
+  });
+
+  it("личный ответ после публичного не стирает публичный; текст режется по REVIEW_REPLY_MAX", async () => {
+    await markReviewReplied(ctx, R1, "Публично");
+    await markReviewReplied(ctx, R1, null);
+    expect((await reviewMeta(ctx, R1)).reply).toBe("Публично");
+    await markReviewReplied(ctx, R1, "я".repeat(REVIEW_REPLY_MAX + 50));
+    expect((await reviewMeta(ctx, R1)).reply).toHaveLength(REVIEW_REPLY_MAX);
+  });
+
+  it("два ответа одновременно: остаётся один из них целиком, решение не теряется", async () => {
+    await setReviewStatus(ctx, R1, "approved");
+    await Promise.all([markReviewReplied(ctx, R1, "Первый"), markReviewReplied(ctx, R1, "Второй")]);
+    const m = await reviewMeta(ctx, R1);
+    expect(["Первый", "Второй"]).toContain(m.reply);
+    expect(m.status).toBe("approved");
   });
 });
 

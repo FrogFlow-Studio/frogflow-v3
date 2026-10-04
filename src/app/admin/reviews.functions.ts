@@ -73,18 +73,47 @@ export const assistReviewReplyFn = createServerFn({ method: "POST" })
 
 export const replyToReviewFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
-    z.object({ id: z.string().uuid(), text: z.string().trim().min(1).max(1000) }).parse(d),
+    z
+      .object({
+        id: z.string().uuid(),
+        text: z.string().trim().min(1).max(1000),
+        // Куда ответ: покупателю личным сообщением и/или публично на витрине.
+        notify: z.boolean().default(true),
+        publish: z.boolean().default(false),
+      })
+      .refine((v) => v.notify || v.publish)
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const { ctx, review } = await reviewOrFail(data.id);
-    const { sendReviewReply } = await import("./reviews.server");
-    if (!(await sendReviewReply(ctx, review, data.text)))
-      throw new UserError(
-        "err.review.notDelivered",
-        "Ответ не доставлен: покупатель недоступен в своём канале (заблокировал бота или диалог закрыт).",
-      );
+    if (data.notify) {
+      const { sendReviewReply } = await import("./reviews.server");
+      if (!(await sendReviewReply(ctx, review, data.text)))
+        throw new UserError(
+          "err.review.notDelivered",
+          "Ответ не доставлен: покупатель недоступен в своём канале (заблокировал бота или диалог закрыт).",
+        );
+    }
     const { markReviewReplied } = await import("@/core/reviews/photos.server");
-    await markReviewReplied(ctx, review.id).catch(() => false);
+    const saved = await markReviewReplied(ctx, review.id, data.publish ? data.text : null).catch(
+      () => false,
+    );
+    // Личное сообщение уже ушло и не отменяется; а публичный ответ без записи не виден.
+    if (!saved && data.publish)
+      throw new UserError(
+        "err.review.publicNotSaved",
+        "Ответ не сохранён для витрины. Если он уже ушёл покупателю, повторите только «Показать на витрине».",
+      );
+    return { ok: true };
+  });
+
+/** «Убрать ответ с витрины»: личное сообщение покупателю не отзывается. */
+export const clearPublicReplyFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { ctx } = await reviewOrFail(data.id);
+    const { clearPublicReply } = await import("@/core/reviews/photos.server");
+    if (!(await clearPublicReply(ctx, data.id))) throw serverFailure("Отзывы: ответ не убран");
     return { ok: true };
   });
 

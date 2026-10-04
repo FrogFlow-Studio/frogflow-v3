@@ -11,10 +11,20 @@
 export const REVIEW_META_PREFIX = "review_meta:";
 export const REVIEW_PHOTOS_MAX = 3;
 export const REVIEW_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+/** Длина ответа продавца на отзыв (личного и публичного). */
+export const REVIEW_REPLY_MAX = 1000;
 
 export type ReviewStatus = "pending" | "approved" | "hidden";
-/** repliedAt — когда продавец ответил покупателю (ISO); нет — ответа не было. */
-export type ReviewMeta = { status: ReviewStatus; photos: string[]; repliedAt?: string };
+/**
+ * repliedAt — когда продавец ответил (ISO); нет — ответа не было.
+ * reply — публичный ответ продавца: показывается на витрине под одобренным отзывом.
+ */
+export type ReviewMeta = {
+  status: ReviewStatus;
+  photos: string[];
+  repliedAt?: string;
+  reply?: string;
+};
 
 export const reviewMetaKey = (reviewId: string) => `${REVIEW_META_PREFIX}${reviewId}`;
 
@@ -30,9 +40,10 @@ export function parseReviewMeta(raw: string | null | undefined): ReviewMeta {
     const photos = Array.isArray(v.photos)
       ? v.photos.filter((p): p is string => typeof p === "string").slice(0, REVIEW_PHOTOS_MAX)
       : [];
-    return typeof v.repliedAt === "string"
-      ? { status, photos, repliedAt: v.repliedAt }
-      : { status, photos };
+    const meta: ReviewMeta = { status, photos };
+    if (typeof v.repliedAt === "string") meta.repliedAt = v.repliedAt;
+    if (typeof v.reply === "string" && v.reply.trim()) meta.reply = v.reply.trim();
+    return meta;
   } catch {
     return { ...EMPTY, photos: [] };
   }
@@ -90,4 +101,6 @@ export type PublicReview = {
   createdAt: string;
   buyer: string | null;
   photos: string[];
+  /** Публичный ответ продавца; нет — null. */
+  reply: string | null;
 };

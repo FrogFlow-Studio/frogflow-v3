@@ -2,7 +2,7 @@ import { serverFailure } from "@/lib/server-failure";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { imagePath } from "@/core/catalog/image-url";
 import { eachPage } from "@/core/db/page";
-import { isReviewPhotoPath, type ReviewStatus } from "./photos";
+import { isReviewPhotoPath, REVIEW_REPLY_MAX, type ReviewStatus } from "./photos";
 
 /**
  * Отзывы покупателей для продавца: оценка, комментарий, товар и покупатель.
@@ -30,6 +30,8 @@ export type AdminReview = {
   legacy: boolean;
   /** Адреса фото покупателя (/api/img/…). */
   photos: string[];
+  /** Публичный ответ продавца на витрине; нет — null. */
+  publicReply: string | null;
 };
 
 export type ReviewFilter = {
@@ -239,6 +241,7 @@ async function withNames(
       photos: meta.photos
         .filter((p) => isReviewPhotoPath(r.id, p))
         .map((p) => imagePath(ctx.tenant.id, p)),
+      publicReply: meta.reply ?? null,
     };
   });
 }
@@ -263,4 +266,4 @@ export function reviewStats(reviews: readonly { rating: number }[]): {
   };
 }
 
-export const REVIEW_REPLY_MAX = 1000;
+export { REVIEW_REPLY_MAX };

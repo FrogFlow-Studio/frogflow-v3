@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   approveLegacyReviewsFn,
   assistReviewReplyFn,
+  clearPublicReplyFn,
   replyToReviewFn,
   reviewsFn,
   setReviewAskDaysFn,
@@ -279,7 +280,9 @@ function ReviewCard({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState<"buyer" | "store" | null>(null);
+  const [toBuyer, setToBuyer] = useState(true);
+  const [toStore, setToStore] = useState(false);
   const assist = useAction(async () => {
     const { text } = await assistReviewReplyFn({ data: { id: r.id, lang } });
     setText(text);
@@ -289,10 +292,14 @@ function ReviewCard({
     await router.invalidate();
   });
   const send = useAction(async () => {
-    await replyToReviewFn({ data: { id: r.id, text } });
-    setSent(true);
+    await replyToReviewFn({ data: { id: r.id, text, notify: toBuyer, publish: toStore } });
+    setSent(toBuyer ? "buyer" : "store");
     setOpen(false);
     setText("");
+    await router.invalidate();
+  });
+  const clearPublic = useAction(async () => {
+    await clearPublicReplyFn({ data: { id: r.id } });
     await router.invalidate();
   });
   const buyer =
@@ -356,7 +363,27 @@ function ReviewCard({
         )}
       </div>
       {Boolean(decide.error) && <ErrorBox error={decide.error} />}
-      {sent && <p className="mt-2 text-xs text-ok">{t("reviews.sent")}</p>}
+      {r.publicReply && (
+        <div className="mt-2 rounded-md border-l-2 border-accent pl-3 text-sm">
+          <p className="text-xs text-muted">{t("reviews.publicReply")}</p>
+          <p className="whitespace-pre-line">{r.publicReply}</p>
+          {canWrite && (
+            <button
+              className="btn-ghost text-xs"
+              disabled={clearPublic.busy}
+              onClick={() => void clearPublic.run().catch(() => {})}
+            >
+              {t("reviews.clearPublic")}
+            </button>
+          )}
+          <ErrorBox error={clearPublic.error} />
+        </div>
+      )}
+      {sent && (
+        <p className="mt-2 text-xs text-ok">
+          {t(sent === "buyer" ? "reviews.sent" : "reviews.savedPublic")}
+        </p>
+      )}
       {canWrite && !open && (
         <button className="btn-secondary mt-3 text-xs" onClick={() => setOpen(true)}>
           {t("reviews.reply")}
@@ -372,10 +399,26 @@ function ReviewCard({
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={toBuyer}
+              onChange={(e) => setToBuyer(e.target.checked)}
+            />
+            {t("reviews.toBuyer")}
+          </label>
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={toStore}
+              onChange={(e) => setToStore(e.target.checked)}
+            />
+            {t("reviews.toStore")}
+          </label>
           <div className="flex flex-wrap items-center gap-2">
             <button
               className="btn-primary text-xs"
-              disabled={send.busy || !text.trim()}
+              disabled={send.busy || !text.trim() || !(toBuyer || toStore)}
               onClick={() => void send.run().catch(() => {})}
             >
               {t("reviews.send")}

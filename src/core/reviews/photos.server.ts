@@ -4,7 +4,7 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import { serviceDb } from "@/core/db/client.server";
 import { eachPage } from "@/core/db/page";
 import { imagePath } from "@/core/catalog/image-url";
-import { getSetting, getSettingsStrict, updateSettingAtomic } from "@/core/settings/settings";
+import { getSetting, getSettingsStrict, updateSettingStamped } from "@/core/settings/settings";
 export type { PublicReview } from "./photos";
 import {
   checkReviewPhoto,
@@ -12,6 +12,7 @@ import {
   parseReviewMeta,
   publicBuyerName,
   REVIEW_PHOTOS_MAX,
+  REVIEW_REPLY_MAX,
   reviewMetaKey,
   reviewPhotoPath,
   type PublicReview,
@@ -92,7 +93,7 @@ export async function addReviewPhoto(
   });
   if (up.error) return { ok: false, reason: "upload_failed" };
   let count = 0;
-  const r = await updateSettingAtomic(ctx, reviewMetaKey(reviewId), (raw) => {
+  const r = await updateSettingStamped(ctx, reviewMetaKey(reviewId), (raw) => {
     const m = parseReviewMeta(raw);
     if (m.photos.length >= REVIEW_PHOTOS_MAX) return null;
     count = m.photos.length + 1;
@@ -115,7 +116,7 @@ export async function addReviewPhoto(
  * (оставлен до появления одобрения), см. approveLegacyReviews.
  */
 export async function markReviewPending(ctx: TenantContext, reviewId: string): Promise<void> {
-  await updateSettingAtomic(ctx, reviewMetaKey(reviewId), (raw) => {
+  await updateSettingStamped(ctx, reviewMetaKey(reviewId), (raw) => {
     const m = parseReviewMeta(raw);
     return raw != null && m.status === "pending"
       ? null
@@ -142,7 +143,7 @@ export async function approveLegacyReviews(ctx: TenantContext): Promise<number> 
       );
       for (const r of rows) {
         if (metas.get(r.id)!.stored) continue;
-        const w = await updateSettingAtomic(ctx, reviewMetaKey(r.id), (raw) =>
+        const w = await updateSettingStamped(ctx, reviewMetaKey(r.id), (raw) =>
           raw == null ? approved : null,
         );
         if (w === "failed") throw serverFailure("review_meta: запись не удалась");
@@ -160,7 +161,7 @@ export async function setReviewStatus(
   reviewId: string,
   status: Exclude<ReviewStatus, "pending">,
 ): Promise<boolean> {
-  const r = await updateSettingAtomic(ctx, reviewMetaKey(reviewId), (raw) => {
+  const r = await updateSettingStamped(ctx, reviewMetaKey(reviewId), (raw) => {
     const m = parseReviewMeta(raw);
     return m.status === status && raw != null ? null : JSON.stringify({ ...m, status });
   });
@@ -171,10 +172,32 @@ export async function setReviewStatus(
  * Продавец ответил покупателю: отметка нужна фильтру «без ответа». Вызывается
  * после отправки; сорвавшаяся запись ответ не отменяет (повторять отправку нельзя).
  */
-export async function markReviewReplied(ctx: TenantContext, reviewId: string): Promise<boolean> {
-  const r = await updateSettingAtomic(ctx, reviewMetaKey(reviewId), (raw) =>
-    JSON.stringify({ ...parseReviewMeta(raw), repliedAt: new Date().toISOString() }),
-  );
+export async function markReviewReplied(
+  ctx: TenantContext,
+  reviewId: string,
+  /** Публичный ответ для витрины; null — только отметка (ответ ушёл личным сообщением). */
+  publicReply: string | null = null,
+): Promise<boolean> {
+  const text = publicReply?.trim().slice(0, REVIEW_REPLY_MAX) || null;
+  const r = await updateSettingStamped(ctx, reviewMetaKey(reviewId), (raw) => {
+    const m = parseReviewMeta(raw);
+    return JSON.stringify({
+      ...m,
+      repliedAt: new Date().toISOString(),
+      ...(text ? { reply: text } : {}),
+    } satisfies ReviewMeta);
+  });
+  return r !== "failed";
+}
+
+/** «Убрать ответ с витрины»: публичный ответ уходит, отметка «отвечено» остаётся. */
+export async function clearPublicReply(ctx: TenantContext, reviewId: string): Promise<boolean> {
+  const r = await updateSettingStamped(ctx, reviewMetaKey(reviewId), (raw) => {
+    const m = parseReviewMeta(raw);
+    if (!m.reply) return null;
+    const { reply: _gone, ...rest } = m;
+    return JSON.stringify(rest satisfies ReviewMeta);
+  });
   return r !== "failed";
 }
 
@@ -279,6 +302,7 @@ export async function approvedReviews(
     photos: r.meta.photos
       .filter((p) => isReviewPhotoPath(r.id, p))
       .map((p) => imagePath(ctx.tenant.id, p)),
+    reply: r.meta.reply ?? null,
   }));
 }
 

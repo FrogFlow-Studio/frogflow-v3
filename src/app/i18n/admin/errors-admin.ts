@@ -92,6 +92,8 @@ export const ru = {
   "err.ticket.badAssignee": "Такого сотрудника нет в команде магазина.",
   "err.review.notDelivered":
     "Ответ не доставлен: покупатель недоступен в своём канале (заблокировал бота или диалог закрыт).",
+  "err.review.publicNotSaved":
+    "Ответ не сохранён для витрины. Если он уже ушёл покупателю, повторите только «Показать на витрине».",
   "err.template.notEmpty":
     "Примеры добавляются только в пустой магазин — у вас уже есть товары или категории.",
   "err.upload.tooBig": "Файл больше {mb} МБ.",
@@ -285,6 +287,8 @@ export const kk: SectionDict<typeof ru> = {
   "err.ticket.badAssignee": "Дүкен командасында мұндай қызметкер жоқ.",
   "err.review.notDelivered":
     "Жауап жеткізілмеді: сатып алушы өз арнасында қолжетімсіз (ботты бұғаттаған немесе диалог жабық).",
+  "err.review.publicNotSaved":
+    "Жауап витринаға сақталмады. Ол сатып алушыға кетіп қалса, тек «Витринада көрсету» опциясын қайталаңыз.",
   "err.template.notEmpty": "Үлгілер тек бос дүкенге қосылады — сізде тауарлар немесе санаттар бар.",
   "err.upload.tooBig": "Файл {mb} МБ-тан үлкен.",
   "err.upload.badType": "Бұл файл түріне қолдау көрсетілмейді.",
@@ -474,6 +478,8 @@ export const en: SectionDict<typeof ru> = {
   "err.ticket.badAssignee": "There is no such member in the shop team.",
   "err.review.notDelivered":
     "The reply was not delivered: the customer is unreachable in their channel (blocked the bot or the chat is closed).",
+  "err.review.publicNotSaved":
+    "The reply was not saved for the storefront. If it already went to the customer, repeat only “Show on the storefront”.",
   "err.template.notEmpty":
     "Examples can only be added to an empty shop: you already have products or categories.",
   "err.upload.tooBig": "The file is larger than {mb} MB.",
@@ -665,6 +671,8 @@ export const uz: SectionDict<typeof ru> = {
   "err.ticket.badAssignee": "Doʻkon jamoasida bunday xodim yoʻq.",
   "err.review.notDelivered":
     "Javob yetkazilmadi: xaridor oʻz kanalida mavjud emas (botni bloklagan yoki suhbat yopilgan).",
+  "err.review.publicNotSaved":
+    "Javob vitrina uchun saqlanmadi. Agar u xaridorga ketgan boʻlsa, faqat «Vitrinada koʻrsatish»ni takrorlang.",
   "err.template.notEmpty":
     "Namunalar faqat boʻsh do‘konga qo‘shiladi: sizda mahsulot yoki toifalar bor.",
   "err.upload.tooBig": "Fayl {mb} MB dan katta.",

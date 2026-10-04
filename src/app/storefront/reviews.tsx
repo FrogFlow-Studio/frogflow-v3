@@ -54,6 +54,12 @@ export function ProductReviews({ slug, productId }: { slug: string; productId: s
                 ))}
               </div>
             )}
+            {r.reply && (
+              <div className="mt-3 rounded-md border-l-2 border-accent bg-surface/60 py-1 pl-3">
+                <p className="text-xs font-semibold text-muted">{t("product.reviewReply")}</p>
+                <p className="mt-1 text-sm leading-relaxed whitespace-pre-line">{r.reply}</p>
+              </div>
+            )}
           </li>
         ))}
       </ul>
