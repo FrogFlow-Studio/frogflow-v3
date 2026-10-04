@@ -13,6 +13,8 @@ import { isLocale, SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
  */
 export const Route = createFileRoute("/admin/invite")({
   validateSearch: z.object({ b: z.string().optional(), t: z.string().optional() }),
+  // В адресе страницы секрет приглашения: в поиск она не попадает.
+  head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
   component: InvitePage,
 });
 

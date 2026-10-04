@@ -30,8 +30,11 @@ export const revokeStaffInviteFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Страница ссылки (без сессии): магазин и роль, если ссылка ещё действует. */
-export const staffInviteInfoFn = createServerFn({ method: "GET" })
+/**
+ * Страница ссылки (без сессии): магазин и роль, если ссылка ещё действует. POST, а не GET: данные
+ * GET-функции уходят в адрес запроса, а секрет ссылки не должен попадать в журналы адресов.
+ */
+export const staffInviteInfoFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z.object({ b: z.string().uuid(), t: z.string().min(10).max(100) }).parse(d),
   )

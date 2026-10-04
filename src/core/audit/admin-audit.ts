@@ -51,6 +51,8 @@ const NOT_AUDITED = new Set([
   "inboxSetFn",
   // принятие приглашения в команду: вызов без сессии, запись пишет сама функция (inviteAccepted)
   "acceptStaffInviteFn",
+  // сведения о приглашении по секрету из ссылки: вызов без сессии, ничего не меняет
+  "staffInviteInfoFn",
   // вход и выход — в admin_login_attempts
   "adminLogin",
   "adminLogout",

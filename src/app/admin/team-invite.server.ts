@@ -114,6 +114,14 @@ export async function acceptInvite(
 ): Promise<boolean> {
   const t = await inviteShop(botId);
   if (!t) return false;
+  const hash = sha256(secret);
+  // Секрет ссылки проверяется раньше всего: без действующего приглашения ответ один — «ссылка не
+  // действует», а не «логин занят» или «логин неверного вида», иначе по чужому адресу можно было бы
+  // выяснять, какие логины заняты у других магазинов. Читаем свежий справочник: он нужен и ниже.
+  const directory = await tenantDirectory(true);
+  const current = directory.find((x) => x.id === botId);
+  if (!liveInvites(current?.settings.admin?.invites, now).some((i) => i.hash === hash))
+    return false;
   const username = normalizeLogin(input.username);
   if (!STAFF_LOGIN_RE.test(username))
     throw new UserError(
@@ -122,9 +130,8 @@ export async function acceptInvite(
     );
   if (input.password.length < 8)
     throw new UserError("err.admin.passwordShort", "Пароль — не короче 8 символов.");
-  const hash = sha256(secret);
   // Логин проверяем до записи, чтобы занятый логин не сжигал приглашение.
-  if (adminLoginTaken(await tenantDirectory(true), username))
+  if (adminLoginTaken(directory, username))
     throw new UserError("err.admin.loginTaken", "Логин «{login}» уже занят.", { login: username });
   let role: StaffRole | null = null;
   let full = false;
