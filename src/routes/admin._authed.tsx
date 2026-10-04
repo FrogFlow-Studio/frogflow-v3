@@ -91,6 +91,9 @@ function Layout() {
                 <NavLink to="/admin/products">{t("nav.products")}</NavLink>
               )}
               <NavLink to="/admin/categories">{t("nav.categories")}</NavLink>
+              {shop.modules.warehouse && (
+                <NavLink to="/admin/warehouse">{t("warehouse.nav")}</NavLink>
+              )}
               <NavLink to="/admin/customers">{t("nav.customers")}</NavLink>
               {shop.modules.review_request && (
                 <NavLink to="/admin/reviews">{t("nav.reviews")}</NavLink>

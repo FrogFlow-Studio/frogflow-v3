@@ -111,6 +111,9 @@ export const ru = {
   "audit.action.saveCrmFn": "изменил интеграцию с CRM",
   "audit.action.retryCrmDeliveryFn": "повторил отправку события в CRM",
   "audit.action.saveFunnelFn": "изменил автоворонку",
+  "audit.action.saveProductBundleFn": "изменил состав набора",
+  "audit.action.saveGiveawayFn": "сохранил розыгрыш",
+  "audit.action.closeGiveawayFn": "закрыл приём в розыгрыш",
   "audit.action.syncInstagramPostFn": "обновил пост Instagram",
   "audit.action.saveAutomationFn": "сохранил автоматизацию Instagram",
   "audit.action.deleteAutomationFn": "удалил автоматизацию Instagram",
@@ -141,6 +144,10 @@ export const ru = {
   "audit.action.quickRepliesSaveFn": "изменил быстрые ответы во входящих",
   "audit.action.chatUnansweredSaveFn": "изменил напоминание о диалогах без ответа",
   "audit.action.ticketOverdueSaveFn": "изменил напоминание об обращениях без ответа",
+  "audit.action.addSupplierFn": "добавил поставщика",
+  "audit.action.updateSupplierFn": "изменил поставщика",
+  "audit.action.removeSupplierFn": "удалил поставщика",
+  "audit.action.setProductSupplierFn": "назначил товару поставщика",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -253,6 +260,9 @@ export const kk: SectionDict<typeof ru> = {
   "audit.action.saveCrmFn": "CRM интеграциясын өзгертті",
   "audit.action.retryCrmDeliveryFn": "CRM-ге оқиға жіберуді қайталады",
   "audit.action.saveFunnelFn": "автоворонканы өзгертті",
+  "audit.action.saveProductBundleFn": "жиынтық құрамын өзгертті",
+  "audit.action.saveGiveawayFn": "ұтыс ойынын сақтады",
+  "audit.action.closeGiveawayFn": "ұтыс ойынына қабылдауды жапты",
   "audit.action.syncInstagramPostFn": "Instagram жазбасын жаңартты",
   "audit.action.saveAutomationFn": "Instagram автоматтандыруын сақтады",
   "audit.action.deleteAutomationFn": "Instagram автоматтандыруын жойды",
@@ -283,6 +293,10 @@ export const kk: SectionDict<typeof ru> = {
   "audit.action.quickRepliesSaveFn": "кіріс хаттардағы жылдам жауаптарды өзгертті",
   "audit.action.chatUnansweredSaveFn": "жауапсыз диалогтар туралы еске салуды өзгертті",
   "audit.action.ticketOverdueSaveFn": "жауапсыз өтініштер туралы еске салуды өзгертті",
+  "audit.action.addSupplierFn": "жеткізуші қосты",
+  "audit.action.updateSupplierFn": "жеткізушіні өзгертті",
+  "audit.action.removeSupplierFn": "жеткізушіні жойды",
+  "audit.action.setProductSupplierFn": "тауарға жеткізуші тағайындады",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -395,6 +409,9 @@ export const en: SectionDict<typeof ru> = {
   "audit.action.saveCrmFn": "changed the CRM integration",
   "audit.action.retryCrmDeliveryFn": "retried a CRM event delivery",
   "audit.action.saveFunnelFn": "changed the auto-funnel",
+  "audit.action.saveProductBundleFn": "changed a bundle's contents",
+  "audit.action.saveGiveawayFn": "saved a giveaway",
+  "audit.action.closeGiveawayFn": "closed giveaway entries",
   "audit.action.syncInstagramPostFn": "refreshed an Instagram post",
   "audit.action.saveAutomationFn": "saved an Instagram automation",
   "audit.action.deleteAutomationFn": "deleted an Instagram automation",
@@ -425,6 +442,10 @@ export const en: SectionDict<typeof ru> = {
   "audit.action.quickRepliesSaveFn": "changed saved replies in the inbox",
   "audit.action.chatUnansweredSaveFn": "changed the unanswered chat reminder",
   "audit.action.ticketOverdueSaveFn": "changed the overdue request reminder",
+  "audit.action.addSupplierFn": "added a supplier",
+  "audit.action.updateSupplierFn": "changed a supplier",
+  "audit.action.removeSupplierFn": "deleted a supplier",
+  "audit.action.setProductSupplierFn": "set a product's supplier",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -537,6 +558,9 @@ export const uz: SectionDict<typeof ru> = {
   "audit.action.saveCrmFn": "CRM integratsiyasini oʻzgartirdi",
   "audit.action.retryCrmDeliveryFn": "CRM hodisasini qayta yubordi",
   "audit.action.saveFunnelFn": "avtovoronkani oʻzgartirdi",
+  "audit.action.saveProductBundleFn": "toʻplam tarkibini oʻzgartirdi",
+  "audit.action.saveGiveawayFn": "sovrin oʻyinini saqladi",
+  "audit.action.closeGiveawayFn": "sovrin oʻyiniga qabulni yopdi",
   "audit.action.syncInstagramPostFn": "Instagram postini yangiladi",
   "audit.action.saveAutomationFn": "Instagram avtomatlashtirishini saqladi",
   "audit.action.deleteAutomationFn": "Instagram avtomatlashtirishini oʻchirdi",
@@ -567,4 +591,8 @@ export const uz: SectionDict<typeof ru> = {
   "audit.action.quickRepliesSaveFn": "kiruvchi xabarlardagi tezkor javoblarni o‘zgartirdi",
   "audit.action.chatUnansweredSaveFn": "javobsiz suhbatlar haqidagi eslatmani o‘zgartirdi",
   "audit.action.ticketOverdueSaveFn": "javobsiz murojaatlar haqidagi eslatmani o‘zgartirdi",
+  "audit.action.addSupplierFn": "yetkazib beruvchi qoʻshdi",
+  "audit.action.updateSupplierFn": "yetkazib beruvchini oʻzgartirdi",
+  "audit.action.removeSupplierFn": "yetkazib beruvchini oʻchirdi",
+  "audit.action.setProductSupplierFn": "tovarga yetkazib beruvchi tayinladi",
 };

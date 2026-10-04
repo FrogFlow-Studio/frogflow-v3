@@ -93,6 +93,8 @@ import { Route as AdminAuthedCustomersKeyRouteImport } from './routes/admin._aut
 import { Route as AdminAuthedOrdersIdRouteImport } from './routes/admin._authed.orders.$id'
 import { Route as AdminAuthedOrdersNewRouteImport } from './routes/admin._authed.orders.new'
 import { Route as AdminAuthedProductsIdRouteImport } from './routes/admin._authed.products_.$id'
+import { Route as AdminAuthedWarehouseIndexRouteImport } from './routes/admin._authed.warehouse.index'
+import { Route as AdminAuthedWarehouseSuppliersRouteImport } from './routes/admin._authed.warehouse.suppliers'
 import { Route as ApiAdminExportKindRouteImport } from './routes/api/admin/export.$kind'
 import { Route as ApiImgBotIdSplatRouteImport } from './routes/api/img.$botId.$'
 import { Route as ApiRobokassaBotIdActionRouteImport } from './routes/api/robokassa.$botId.$action'
@@ -527,6 +529,18 @@ const AdminAuthedProductsIdRoute = AdminAuthedProductsIdRouteImport.update({
   path: '/products/$id',
   getParentRoute: () => AdminAuthedRoute,
 } as any)
+const AdminAuthedWarehouseIndexRoute =
+  AdminAuthedWarehouseIndexRouteImport.update({
+    id: '/warehouse/',
+    path: '/warehouse/',
+    getParentRoute: () => AdminAuthedRoute,
+  } as any)
+const AdminAuthedWarehouseSuppliersRoute =
+  AdminAuthedWarehouseSuppliersRouteImport.update({
+    id: '/warehouse/suppliers',
+    path: '/warehouse/suppliers',
+    getParentRoute: () => AdminAuthedRoute,
+  } as any)
 const ApiAdminExportKindRoute = ApiAdminExportKindRouteImport.update({
   id: '/api/admin/export/$kind',
   path: '/api/admin/export/$kind',
@@ -684,6 +698,7 @@ export interface FileRoutesByFullPath {
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/warehouse/suppliers': typeof AdminAuthedWarehouseSuppliersRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
@@ -696,6 +711,7 @@ export interface FileRoutesByFullPath {
   '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
   '/s/$slug/icon/$size': typeof SSlugIconSizeRoute
+  '/admin/warehouse/': typeof AdminAuthedWarehouseIndexRoute
   '/s/$slug/cert/$code/pdf': typeof SSlugCertCodePdfRoute
   '/api/course-file/$slug/$productId/$no/$idx': typeof ApiCourseFileSlugProductIdNoIdxRoute
 }
@@ -779,6 +795,7 @@ export interface FileRoutesByTo {
   '/admin/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/products/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/warehouse/suppliers': typeof AdminAuthedWarehouseSuppliersRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
@@ -791,6 +808,7 @@ export interface FileRoutesByTo {
   '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
   '/s/$slug/icon/$size': typeof SSlugIconSizeRoute
+  '/admin/warehouse': typeof AdminAuthedWarehouseIndexRoute
   '/s/$slug/cert/$code/pdf': typeof SSlugCertCodePdfRoute
   '/api/course-file/$slug/$productId/$no/$idx': typeof ApiCourseFileSlugProductIdNoIdxRoute
 }
@@ -880,6 +898,7 @@ export interface FileRoutesById {
   '/admin/_authed/orders/$id': typeof AdminAuthedOrdersIdRoute
   '/admin/_authed/orders/new': typeof AdminAuthedOrdersNewRoute
   '/admin/_authed/products_/$id': typeof AdminAuthedProductsIdRoute
+  '/admin/_authed/warehouse/suppliers': typeof AdminAuthedWarehouseSuppliersRoute
   '/api/admin/export/$kind': typeof ApiAdminExportKindRoute
   '/api/img/$botId/$': typeof ApiImgBotIdSplatRoute
   '/api/robokassa/$botId/$action': typeof ApiRobokassaBotIdActionRoute
@@ -892,6 +911,7 @@ export interface FileRoutesById {
   '/s/$slug/order/$id': typeof SSlugOrderIdRoute
   '/s/$slug/p/$id': typeof SSlugPIdRoute
   '/s/$slug_/icon/$size': typeof SSlugIconSizeRoute
+  '/admin/_authed/warehouse/': typeof AdminAuthedWarehouseIndexRoute
   '/s/$slug_/cert/$code/pdf': typeof SSlugCertCodePdfRoute
   '/api/course-file/$slug/$productId/$no/$idx': typeof ApiCourseFileSlugProductIdNoIdxRoute
 }
@@ -980,6 +1000,7 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/admin/orders/new'
     | '/admin/products/$id'
+    | '/admin/warehouse/suppliers'
     | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
@@ -992,6 +1013,7 @@ export interface FileRouteTypes {
     | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
     | '/s/$slug/icon/$size'
+    | '/admin/warehouse/'
     | '/s/$slug/cert/$code/pdf'
     | '/api/course-file/$slug/$productId/$no/$idx'
   fileRoutesByTo: FileRoutesByTo
@@ -1075,6 +1097,7 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/admin/orders/new'
     | '/admin/products/$id'
+    | '/admin/warehouse/suppliers'
     | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
@@ -1087,6 +1110,7 @@ export interface FileRouteTypes {
     | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
     | '/s/$slug/icon/$size'
+    | '/admin/warehouse'
     | '/s/$slug/cert/$code/pdf'
     | '/api/course-file/$slug/$productId/$no/$idx'
   id:
@@ -1175,6 +1199,7 @@ export interface FileRouteTypes {
     | '/admin/_authed/orders/$id'
     | '/admin/_authed/orders/new'
     | '/admin/_authed/products_/$id'
+    | '/admin/_authed/warehouse/suppliers'
     | '/api/admin/export/$kind'
     | '/api/img/$botId/$'
     | '/api/robokassa/$botId/$action'
@@ -1187,6 +1212,7 @@ export interface FileRouteTypes {
     | '/s/$slug/order/$id'
     | '/s/$slug/p/$id'
     | '/s/$slug_/icon/$size'
+    | '/admin/_authed/warehouse/'
     | '/s/$slug_/cert/$code/pdf'
     | '/api/course-file/$slug/$productId/$no/$idx'
   fileRoutesById: FileRoutesById
@@ -1818,6 +1844,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuthedProductsIdRouteImport
       parentRoute: typeof AdminAuthedRoute
     }
+    '/admin/_authed/warehouse/': {
+      id: '/admin/_authed/warehouse/'
+      path: '/warehouse'
+      fullPath: '/admin/warehouse/'
+      preLoaderRoute: typeof AdminAuthedWarehouseIndexRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
+    '/admin/_authed/warehouse/suppliers': {
+      id: '/admin/_authed/warehouse/suppliers'
+      path: '/warehouse/suppliers'
+      fullPath: '/admin/warehouse/suppliers'
+      preLoaderRoute: typeof AdminAuthedWarehouseSuppliersRouteImport
+      parentRoute: typeof AdminAuthedRoute
+    }
     '/api/admin/export/$kind': {
       id: '/api/admin/export/$kind'
       path: '/api/admin/export/$kind'
@@ -1964,6 +2004,8 @@ interface AdminAuthedRouteChildren {
   AdminAuthedIndexRoute: typeof AdminAuthedIndexRoute
   AdminAuthedCustomersKeyRoute: typeof AdminAuthedCustomersKeyRoute
   AdminAuthedProductsIdRoute: typeof AdminAuthedProductsIdRoute
+  AdminAuthedWarehouseSuppliersRoute: typeof AdminAuthedWarehouseSuppliersRoute
+  AdminAuthedWarehouseIndexRoute: typeof AdminAuthedWarehouseIndexRoute
 }
 
 const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
@@ -1998,6 +2040,8 @@ const AdminAuthedRouteChildren: AdminAuthedRouteChildren = {
   AdminAuthedIndexRoute: AdminAuthedIndexRoute,
   AdminAuthedCustomersKeyRoute: AdminAuthedCustomersKeyRoute,
   AdminAuthedProductsIdRoute: AdminAuthedProductsIdRoute,
+  AdminAuthedWarehouseSuppliersRoute: AdminAuthedWarehouseSuppliersRoute,
+  AdminAuthedWarehouseIndexRoute: AdminAuthedWarehouseIndexRoute,
 }
 
 const AdminAuthedRouteWithChildren = AdminAuthedRoute._addFileChildren(

@@ -19,6 +19,7 @@ import { uploadFile } from "@/app/admin/upload-client";
 import { CourseCard } from "@/app/admin/course-card";
 import { CostEditor } from "@/app/admin/cost-editor";
 import { productCostFn } from "@/app/admin/cost.functions";
+import { productSupplierFn, setProductSupplierFn } from "@/app/admin/warehouse.functions";
 import { canEdit } from "@/core/auth/roles";
 import type { ProductCost } from "@/core/profit/cost";
 import { assistDescriptionFn } from "@/app/admin/assistant.functions";
@@ -715,6 +716,9 @@ function ProductEditor() {
             <BundleCard productId={p.id} t={t} />
           )}
           {shop.modules.upsell && p?.id && <UpsellCard productId={p.id} t={t} />}
+          {shop.modules.warehouse && kind === "physical" && p?.id && (
+            <SupplierCard productId={p.id} canWrite={canEdit(shop.role)} t={t} />
+          )}
           {shop.modules.stock && p?.id && (
             <StockHistoryCard productId={p.id} locale={shop.locale} t={t} />
           )}
@@ -1001,6 +1005,51 @@ function PreviewCard({ productId, t, botId }: { productId: string; t: AdminT; bo
         )}
       </div>
       <ErrorBox error={add.error ?? save.error} />
+    </Card>
+  );
+}
+
+/** Основной поставщик товара (core/stock/suppliers): список поставщиков — в разделе «Склад». */
+function SupplierCard({
+  productId,
+  canWrite,
+  t,
+}: {
+  productId: string;
+  canWrite: boolean;
+  t: AdminT;
+}) {
+  const [state, setState] = useState<Awaited<ReturnType<typeof productSupplierFn>> | null>(null);
+  useEffect(() => {
+    void productSupplierFn({ data: { id: productId } }).then(setState);
+  }, [productId]);
+  const save = useAction(async (supplierId: string | null) => {
+    const r = await setProductSupplierFn({ data: { id: productId, supplierId } });
+    setState((s) => (s ? { ...s, current: r.supplierId } : s));
+  });
+  if (!state) return null;
+  return (
+    <Card title={t("product.supplier.card")}>
+      {state.suppliers.length === 0 ? (
+        <p className="text-sm text-muted">{t("product.supplier.empty")}</p>
+      ) : (
+        <Field label={t("product.supplier.card")} hint={t("product.supplier.hint")}>
+          <select
+            className="input"
+            value={state.current ?? ""}
+            disabled={!canWrite || save.busy}
+            onChange={(e) => void save.run(e.target.value || null).catch(() => {})}
+          >
+            <option value="">{t("product.supplier.none")}</option>
+            {state.suppliers.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+      <ErrorBox error={save.error} />
     </Card>
   );
 }

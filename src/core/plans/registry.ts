@@ -98,6 +98,7 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
     // Дата и способ получения, зоны, ручной заказ и задаток — в ядре, без флага.
     basic: ["stock"],
     pro: [
+      "warehouse",
       "profit",
       "robokassa",
       "receipt_ocr",
@@ -131,6 +132,7 @@ export const PLAN_MODULES: Record<PlanNiche, Record<PlanTier, readonly ModuleKey
     // Покупатели цветов пишут в WhatsApp — он с Basic.
     basic: ["whatsapp", "wa_shop", "stock"],
     pro: [
+      "warehouse",
       "profit",
       "robokassa",
       "receipt_ocr",

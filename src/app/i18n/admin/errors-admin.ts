@@ -195,6 +195,11 @@ export const ru = {
     "Это уже досылка — досылать её ещё раз нельзя. Выберите исходную рассылку.",
   "err.broadcast.followupWindowOpen":
     "Три дня после отправки ещё не прошли — заказавшие пока не определены. Досылать можно позже.",
+  "err.stock.suppliersChanged": "Список поставщиков изменился. Обновите страницу и повторите.",
+  "err.stock.supplierNotFound": "Такого поставщика нет — возможно, его уже удалили.",
+  "err.stock.supplierName": "Укажите название поставщика.",
+  "err.stock.suppliersMax": "Поставщиков не больше {max}.",
+  "err.stock.productNotFound": "Товар не найден.",
 } as const;
 
 export const kk: SectionDict<typeof ru> = {
@@ -386,6 +391,11 @@ export const kk: SectionDict<typeof ru> = {
     "Бұл — қайта жіберу, оны тағы қайта жіберуге болмайды. Бастапқы таратуды таңдаңыз.",
   "err.broadcast.followupWindowOpen":
     "Жіберілгеннен кейін үш күн әлі өтпеді — тапсырыс бергендер әлі анықталмады. Кейінірек қайта жіберуге болады.",
+  "err.stock.suppliersChanged": "Жеткізушілер тізімі өзгерді. Бетті жаңартып, қайталаңыз.",
+  "err.stock.supplierNotFound": "Мұндай жеткізуші жоқ — мүмкін, оны жойып тастаған.",
+  "err.stock.supplierName": "Жеткізушінің атауын көрсетіңіз.",
+  "err.stock.suppliersMax": "Жеткізушілер {max}-тен көп болмауы керек.",
+  "err.stock.productNotFound": "Тауар табылмады.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -579,6 +589,11 @@ export const en: SectionDict<typeof ru> = {
     "This is already a follow-up — it cannot be followed up again. Pick the original broadcast.",
   "err.broadcast.followupWindowOpen":
     "Three days after sending have not passed yet — buyers are not determined. You can send the follow-up later.",
+  "err.stock.suppliersChanged": "The supplier list has changed. Refresh the page and try again.",
+  "err.stock.supplierNotFound": "There is no such supplier — it may have been deleted already.",
+  "err.stock.supplierName": "Enter the supplier's name.",
+  "err.stock.suppliersMax": "No more than {max} suppliers.",
+  "err.stock.productNotFound": "Product not found.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -775,4 +790,11 @@ export const uz: SectionDict<typeof ru> = {
     "Bu allaqachon qayta yuborish — uni yana qayta yuborib boʻlmaydi. Dastlabki xabarni tanlang.",
   "err.broadcast.followupWindowOpen":
     "Yuborilgandan keyin uch kun hali oʻtmadi — buyurtma berganlar hali aniqlanmadi. Keyinroq qayta yuborishingiz mumkin.",
+  "err.stock.suppliersChanged":
+    "Yetkazib beruvchilar roʻyxati oʻzgardi. Sahifani yangilab, qayta urining.",
+  "err.stock.supplierNotFound":
+    "Bunday yetkazib beruvchi yoʻq — u allaqachon oʻchirilgan boʻlishi mumkin.",
+  "err.stock.supplierName": "Yetkazib beruvchining nomini kiriting.",
+  "err.stock.suppliersMax": "Yetkazib beruvchilar {max} tadan oshmasligi kerak.",
+  "err.stock.productNotFound": "Tovar topilmadi.",
 };

@@ -35,6 +35,7 @@ import * as botPreview from "./admin/bot-preview";
 import * as tickets from "./admin/tickets";
 import * as customer from "./admin/customer";
 import * as pipeline from "./admin/pipeline";
+import * as warehouse from "./admin/warehouse";
 import * as shop4Stock from "./admin/shop4-stock";
 import * as shop18Bundles from "./admin/shop18-bundles";
 import * as physical from "./admin/physical";
@@ -437,6 +438,7 @@ const ru = {
   ...tickets.ru,
   ...customer.ru,
   ...pipeline.ru,
+  ...warehouse.ru,
   ...shop4Stock.ru,
   ...shop18Bundles.ru,
   ...physical.ru,
@@ -1522,6 +1524,7 @@ const kk: Dict = {
   ...tickets.kk,
   ...customer.kk,
   ...pipeline.kk,
+  ...warehouse.kk,
   ...shop4Stock.kk,
   ...shop18Bundles.kk,
   ...physical.kk,
@@ -1574,6 +1577,7 @@ const en: Dict = {
   ...tickets.en,
   ...customer.en,
   ...pipeline.en,
+  ...warehouse.en,
   ...shop4Stock.en,
   ...shop18Bundles.en,
   ...physical.en,
@@ -1626,6 +1630,7 @@ const uz: Dict = {
   ...tickets.uz,
   ...customer.uz,
   ...pipeline.uz,
+  ...warehouse.uz,
   ...shop4Stock.uz,
   ...shop18Bundles.uz,
   ...physical.uz,

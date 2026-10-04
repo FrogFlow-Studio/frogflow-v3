@@ -171,6 +171,9 @@ export const ru = {
   "vertical.flowers": "Цветы и букеты",
   "vertical.courses": "Онлайн-школа",
   "vertical.consultant_universal": "Универсальный консультант",
+  "module.warehouse.title": "Склад и закупки",
+  "module.warehouse.desc":
+    "Поставщики, приход товара, списание, инвентаризация и заявка поставщику: остаток меняется документами, а не правкой цифры.",
 } as const;
 
 type CatalogKey = keyof typeof ru;
@@ -373,6 +376,9 @@ export const kk: SectionDict<typeof ru> = {
   "vertical.flowers": "Гүлдер мен букеттер",
   "vertical.courses": "Онлайн-мектеп",
   "vertical.consultant_universal": "Әмбебап кеңесші",
+  "module.warehouse.title": "Қойма және сатып алу",
+  "module.warehouse.desc":
+    "Жеткізушілер, тауар кірісі, есептен шығару, түгендеу және жеткізушіге өтінім: қалдық санды түзетумен емес, құжаттармен өзгереді.",
 };
 
 export const en: SectionDict<typeof ru> = {
@@ -536,6 +542,9 @@ export const en: SectionDict<typeof ru> = {
   "vertical.flowers": "Flowers and bouquets",
   "vertical.courses": "Online school",
   "vertical.consultant_universal": "Universal consultant",
+  "module.warehouse.title": "Warehouse and purchasing",
+  "module.warehouse.desc":
+    "Suppliers, goods receipts, write-offs, stocktakes and supplier orders: stock changes by documents, not by editing a number.",
 };
 
 export const uz: SectionDict<typeof ru> = {
@@ -700,4 +709,7 @@ export const uz: SectionDict<typeof ru> = {
   "vertical.flowers": "Gullar va guldastalar",
   "vertical.courses": "Onlayn maktab",
   "vertical.consultant_universal": "Universal maslahatchi",
+  "module.warehouse.title": "Ombor va xaridlar",
+  "module.warehouse.desc":
+    "Yetkazib beruvchilar, tovar kirimi, hisobdan chiqarish, inventarizatsiya va yetkazib beruvchiga buyurtma: qoldiq raqamni tahrirlash bilan emas, hujjatlar bilan oʻzgaradi.",
 };
