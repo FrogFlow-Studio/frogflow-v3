@@ -10,7 +10,17 @@ import {
   zoneFee,
 } from "@/core/fulfillment/fulfillment";
 import { closedRules, type ClosedRange } from "@/core/fulfillment/closed-days";
-import { todayInTz } from "@/core/fulfillment/pure";
+import { addDaysToIso, todayInTz } from "@/core/fulfillment/pure";
+import {
+  LOAD_WINDOW_DAYS,
+  dateAvailability,
+  dayUnavailable,
+  freeSlots,
+  freeSlotsOnDate,
+  fulfillmentLimits,
+  hasLimits,
+  loadByDay,
+} from "@/core/fulfillment/capacity";
 import { fulfillmentSlots, withSlot } from "@/core/fulfillment/slots";
 
 /**
@@ -40,6 +50,10 @@ export type WebFulfillmentOptions = {
   /** Нерабочие дни недели (1 — пн … 7 — вс) и отрезки дат: форма подсказывает, сервер отклоняет. */
   closedWeekdays: number[];
   closedRanges: ClosedRange[];
+  /** Даты, на которые заказы набраны (лимит на день или заняты все слоты), в ближайшие три месяца. */
+  fullDays: string[];
+  /** Дата → слоты, на которые места нет (только для дат, где остальные слоты свободны). */
+  fullSlots: Record<string, string[]>;
 };
 
 export async function webFulfillmentOptions(
@@ -49,6 +63,22 @@ export async function webFulfillmentOptions(
   const fs = await fulfillmentSettings(ctx);
   const zones = fs.delivery ? await activeDeliveryZones(ctx) : [];
   const rules = await closedRules(ctx);
+  const slots = await fulfillmentSlots(ctx);
+  const today = todayInTz(ctx.timezone);
+  const limits = await fulfillmentLimits(ctx);
+  const fullDays: string[] = [];
+  const fullSlots: Record<string, string[]> = {};
+  if (hasLimits(limits)) {
+    const loads = await loadByDay(ctx, today, addDaysToIso(today, LOAD_WINDOW_DAYS));
+    for (const [day, load] of loads) {
+      if (dayUnavailable(load, slots, limits)) fullDays.push(day);
+      else {
+        const free = freeSlots(slots, load, limits);
+        if (free.length < slots.length) fullSlots[day] = slots.filter((x) => !free.includes(x));
+      }
+    }
+    fullDays.sort();
+  }
   return {
     pickup: fs.pickup,
     delivery: fs.delivery,
@@ -59,10 +89,12 @@ export async function webFulfillmentOptions(
         fee: await zoneFee(ctx, z.price, countryCode),
       })),
     ),
-    today: todayInTz(ctx.timezone),
-    slots: await fulfillmentSlots(ctx),
+    today,
+    slots,
     closedWeekdays: rules.weekdays,
     closedRanges: rules.ranges,
+    fullDays,
+    fullSlots,
   };
 }
 
@@ -70,7 +102,9 @@ export type WebFulfillmentCheck =
   | { ok: true; input: FulfillmentInput }
   | { ok: false; reason: "missing" | "type" | "date" | "slot" | "zone" | "address" }
   | { ok: false; reason: "date_early"; minDate: string }
-  | { ok: false; reason: "date_closed"; nextDate: string };
+  | { ok: false; reason: "date_closed"; nextDate: string }
+  | { ok: false; reason: "date_full"; nextDate: string | null }
+  | { ok: false; reason: "slot_full" };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -101,10 +135,14 @@ export async function resolveWebFulfillment(
     return date.reason === "early"
       ? { ok: false, reason: "date_early", minDate: date.minDate }
       : { ok: false, reason: "date_closed", nextDate: date.nextDate };
+  const avail = await dateAvailability(ctx, req.date, rules);
+  if (!avail.ok) return { ok: false, reason: "date_full", nextDate: avail.nextDate };
   const note = req.note?.trim().slice(0, 500) || null;
   // Слот — только из списка магазина; есть слоты — без слота нельзя.
   const slots = await fulfillmentSlots(ctx);
   if (slots.length && !slots.includes(req.slot ?? "")) return { ok: false, reason: "slot" };
+  if (slots.length && !(await freeSlotsOnDate(ctx, req.date)).includes(req.slot ?? ""))
+    return { ok: false, reason: "slot_full" };
   const at = withSlot(req.date, slots.length ? req.slot : null);
   if (req.type === "pickup")
     return {

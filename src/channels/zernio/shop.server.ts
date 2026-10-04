@@ -55,6 +55,7 @@ import {
   zoneFee,
 } from "@/core/fulfillment/fulfillment";
 import { closedRules, describeClosed, hasClosedDays } from "@/core/fulfillment/closed-days";
+import { dateAvailability, freeSlotsOnDate } from "@/core/fulfillment/capacity";
 import { isoToDisplay, parseDateInput } from "@/core/fulfillment/pure";
 import { robokassaFor, robokassaReceipt } from "@/core/payments/payment";
 import { buildPaymentUrl } from "@/core/payments/robokassa";
@@ -633,6 +634,12 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
             ? s.m.fulfillmentDateTooEarly(isoToDisplay(check.minDate))
             : s.m.fulfillmentDateClosed(isoToDisplay(check.nextDate)),
         ).then(() => "handled" as const);
+      const avail = await dateAvailability(s.ctx, iso, rules);
+      if (!avail.ok)
+        return reply(
+          s,
+          s.m.fulfillmentDateFull(avail.nextDate ? isoToDisplay(avail.nextDate) : null),
+        ).then(() => "handled" as const);
       await setMode(s, { checkout_fulfillment_at: iso });
       await afterDate(s);
       return "handled";
@@ -640,10 +647,14 @@ async function route(s: Shop, msg: ParsedZernioMessage): Promise<ShopOutcome> {
     case "awaiting_fulfillment_slot": {
       const { fulfillmentSlots, normalizeSlot, withSlot } =
         await import("@/core/fulfillment/slots");
-      const slots = await fulfillmentSlots(s.ctx);
-      const n = /^\s*(\d{1,2})\s*$/.exec(text)?.[1];
-      const slot = n ? slots[Number(n) - 1] : slots.find((x) => x === normalizeSlot(text));
       const date = s.customer.state.checkout_fulfillment_at;
+      // Номер в списке — среди свободных слотов, как их видел покупатель (afterDate).
+      const slots = date ? await freeSlotsOnDate(s.ctx, date) : await fulfillmentSlots(s.ctx);
+      const all = await fulfillmentSlots(s.ctx);
+      const n = /^\s*(\d{1,2})\s*$/.exec(text)?.[1];
+      const named = n ? undefined : all.find((x) => x === normalizeSlot(text));
+      if (named && !slots.includes(named)) await reply(s, s.m.fulfillmentSlotFull);
+      const slot = n ? slots[Number(n) - 1] : slots.find((x) => x === named);
       if (!slot || !date) {
         await setMode(s, { checkout_fulfillment_at: date?.slice(0, 10) });
         await afterDate(s);
@@ -1554,7 +1565,13 @@ async function afterDate(s: Shop) {
   const at = s.customer.state.checkout_fulfillment_at ?? "";
   if (at && !at.includes("T")) {
     const { fulfillmentSlots } = await import("@/core/fulfillment/slots");
-    const slots = await fulfillmentSlots(s.ctx);
+    const free = await freeSlotsOnDate(s.ctx, at);
+    if ((await fulfillmentSlots(s.ctx)).length && free.length === 0) {
+      // Все слоты дня разобрали, пока покупатель выбирал: назад к дате.
+      await reply(s, s.m.fulfillmentDateFull(null), { force: true });
+      return askFulfillmentDate(s);
+    }
+    const slots = free;
     if (slots.length) {
       await setMode(s, { mode: "awaiting_fulfillment_slot" });
       const lines = slots.map((x, i) => `${i + 1}. ${x}`).join("\n");
@@ -1783,6 +1800,15 @@ async function finishCheckout(s: Shop, countryCode: string) {
       }
       case "out_of_stock":
         return void (await reply(s, s.m.outOfStockAtCheckout));
+      case "day_full":
+        await reply(s, s.m.orderDayTaken, { force: true });
+        return askFulfillmentDate(s);
+      case "slot_taken": {
+        await reply(s, s.m.orderSlotTaken, { force: true });
+        // Дата та же, время выбрать заново.
+        await setMode(s, { checkout_fulfillment_at: st.checkout_fulfillment_at?.slice(0, 10) });
+        return afterDate(s);
+      }
       case "below_min":
         return void (await reply(s, minOrderText(s.m, result)));
       default:

@@ -1038,11 +1038,15 @@ export const ordersFn = createServerFn({ method: "GET" })
     // Поиск по имени и телефону — это тоже контакты: бухгалтер ищет по номеру.
     const { accountantSearch, redactOrders } = await import("@/core/orders/redact");
     const q = accountant ? accountantSearch(data.q) : data.q;
-    const [orders, counts] = await Promise.all([
+    const { loadSummary } = await import("@/core/fulfillment/capacity");
+    const { todayInTz } = await import("@/core/fulfillment/pure");
+    const [orders, counts, load] = await Promise.all([
       m.listOrdersForAdmin(ctx, { ...data, q }),
       m.orderCounts(ctx),
+      // Загрузка дня при лимитах: числа без контактов, видны всем ролям заказов.
+      loadSummary(ctx, todayInTz(ctx.timezone)),
     ]);
-    return { orders: accountant ? redactOrders(orders) : orders, counts };
+    return { orders: accountant ? redactOrders(orders) : orders, counts, load };
   });
 
 /** Отпечаток заказов для живого обновления страниц (core/orders/live). */
@@ -1541,6 +1545,7 @@ export const saveSettingsFn = createServerFn({ method: "POST" })
     // переполнение — отказ (мусор отсеивает разбор).
     const { parseClosedWeekdays, prepareClosedDates, MAX_CLOSED_ENTRIES } =
       await import("@/core/fulfillment/closed-days");
+    const { parseLimit } = await import("@/core/fulfillment/capacity");
     const out: Record<string, string> = { ...data };
     if (data.fulfillment_closed_weekdays !== undefined)
       out.fulfillment_closed_weekdays = parseClosedWeekdays(data.fulfillment_closed_weekdays).join(
@@ -1557,6 +1562,8 @@ export const saveSettingsFn = createServerFn({ method: "POST" })
       }
       out.fulfillment_closed_dates = r.value;
     }
+    for (const key of ["fulfillment_day_limit", "fulfillment_slot_limit"] as const)
+      if (data[key] !== undefined) out[key] = String(parseLimit(data[key]) ?? "");
     for (const [k, v] of Object.entries(out)) await setSetting(ctx, k, v);
     return { ok: true };
   });

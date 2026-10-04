@@ -208,3 +208,87 @@ function nextWeekday(weekday: number): string {
   while (isoWeekday(d) !== weekday) d = addDaysToIso(d, 1);
   return d;
 }
+
+describe("лимит заказов на сайте", () => {
+  const day = addDaysToIso(today, 10);
+  const busyOrders = (ctx: ReturnType<typeof setup>, at: string, n = 1) => {
+    const db = ctx.db as unknown as { tables: Record<string, Array<Record<string, unknown>>> };
+    db.tables.orders = Array.from({ length: n }, (_, i) => ({
+      id: i + 1,
+      fulfillment_kind: "physical",
+      fulfillment_at: at,
+      status: "accepted",
+    }));
+  };
+
+  it("форма получает занятые даты и занятые слоты", async () => {
+    const ctx = setup({
+      settings: {
+        fulfillment_day_limit: "1",
+        fulfillment_slot_limit: "1",
+        fulfillment_slots: "10:00–12:00\n12:00–14:00",
+      },
+    });
+    busyOrders(ctx, `${day}T10:00:00Z`);
+    const o = await webFulfillmentOptions(ctx, "KZ");
+    expect(o.fullDays).toEqual([day]);
+    const ctx2 = setup({
+      settings: {
+        fulfillment_day_limit: "5",
+        fulfillment_slot_limit: "1",
+        fulfillment_slots: "10:00–12:00\n12:00–14:00",
+      },
+    });
+    busyOrders(ctx2, `${day}T10:00:00Z`);
+    const o2 = await webFulfillmentOptions(ctx2, "KZ");
+    expect(o2.fullDays).toEqual([]);
+    expect(o2.fullSlots).toEqual({ [day]: ["10:00–12:00"] });
+  });
+
+  it("занятая дата введена вручную — отказ с ближайшей свободной, соседняя проходит", async () => {
+    const ctx = setup({ settings: { fulfillment_day_limit: "1" } });
+    busyOrders(ctx, `${day}T00:00:00Z`);
+    expect(await resolveWebFulfillment(ctx, customer, { type: "pickup", date: day }, "KZ")).toEqual(
+      {
+        ok: false,
+        reason: "date_full",
+        nextDate: addDaysToIso(day, 1),
+      },
+    );
+    expect(
+      (
+        await resolveWebFulfillment(
+          ctx,
+          customer,
+          { type: "pickup", date: addDaysToIso(day, 1) },
+          "KZ",
+        )
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("занятый слот — отказ, свободный проходит", async () => {
+    const ctx = setup({
+      settings: { fulfillment_slot_limit: "1", fulfillment_slots: "10:00–12:00\n12:00–14:00" },
+    });
+    busyOrders(ctx, `${day}T10:00:00Z`);
+    expect(
+      await resolveWebFulfillment(
+        ctx,
+        customer,
+        { type: "pickup", date: day, slot: "10:00–12:00" },
+        "KZ",
+      ),
+    ).toEqual({ ok: false, reason: "slot_full" });
+    expect(
+      (
+        await resolveWebFulfillment(
+          ctx,
+          customer,
+          { type: "pickup", date: day, slot: "12:00–14:00" },
+          "KZ",
+        )
+      ).ok,
+    ).toBe(true);
+  });
+});

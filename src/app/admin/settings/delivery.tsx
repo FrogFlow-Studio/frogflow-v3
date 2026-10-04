@@ -37,6 +37,8 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
         deposit_percent: String(f.get("deposit_percent") || "30"),
         // Слоты — по строке, чистит parseSlots (core/fulfillment/slots).
         fulfillment_slots: parseSlots(String(f.get("slots") ?? "")).join("\n"),
+        fulfillment_day_limit: String(f.get("day_limit") ?? "").trim(),
+        fulfillment_slot_limit: String(f.get("slot_limit") ?? "").trim(),
         fulfillment_closed_weekdays: closed.join(","),
         fulfillment_closed_dates: serializeClosedDates(parseClosedDates(datesRaw)),
       },
@@ -130,6 +132,30 @@ export function FulfillmentCard({ settings }: { settings: Record<string, string>
             defaultValue={settings.fulfillment_closed_dates ?? ""}
           />
         </Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label={t("settings.ful.dayLimit")} hint={t("settings.ful.limitHint")}>
+            <input
+              className="input w-32"
+              name="day_limit"
+              type="number"
+              min={1}
+              max={1000}
+              step={1}
+              defaultValue={settings.fulfillment_day_limit ?? ""}
+            />
+          </Field>
+          <Field label={t("settings.ful.slotLimit")}>
+            <input
+              className="input w-32"
+              name="slot_limit"
+              type="number"
+              min={1}
+              max={1000}
+              step={1}
+              defaultValue={settings.fulfillment_slot_limit ?? ""}
+            />
+          </Field>
+        </div>
         <div className="flex items-center gap-3">
           <button className="btn-secondary" disabled={save.busy}>
             {t("common.save")}

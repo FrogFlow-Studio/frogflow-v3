@@ -129,6 +129,7 @@ import {
   zoneFee,
 } from "@/core/fulfillment/fulfillment";
 import { closedRules, describeClosed, hasClosedDays } from "@/core/fulfillment/closed-days";
+import { dateAvailability, freeSlotsOnDate } from "@/core/fulfillment/capacity";
 import { isoToDisplay, matchFulfillmentType, parseDateInput } from "@/core/fulfillment/pure";
 import { serverFailure } from "@/lib/server-failure";
 
@@ -381,6 +382,12 @@ async function handleMessage(
             ? b.m.fulfillmentDateTooEarly(isoToDisplay(check.minDate))
             : b.m.fulfillmentDateClosed(isoToDisplay(check.nextDate)),
         ));
+      const avail = await dateAvailability(ctx, iso, rules);
+      if (!avail.ok)
+        return void (await send(
+          b,
+          b.m.fulfillmentDateFull(avail.nextDate ? isoToDisplay(avail.nextDate) : null),
+        ));
       b.customer = await setState(ctx, customer, {
         ...customer.state,
         checkout_fulfillment_at: iso,
@@ -390,8 +397,11 @@ async function handleMessage(
     if (mode === "awaiting_fulfillment_slot") {
       const { fulfillmentSlots, normalizeSlot, withSlot } =
         await import("@/core/fulfillment/slots");
-      const slot = (await fulfillmentSlots(ctx)).find((x) => x === normalizeSlot(text));
       const date = customer.state.checkout_fulfillment_at;
+      const wanted = (await fulfillmentSlots(ctx)).find((x) => x === normalizeSlot(text));
+      const free = date ? await freeSlotsOnDate(ctx, date) : [];
+      if (wanted && !free.includes(wanted)) await send(b, b.m.fulfillmentSlotFull);
+      const slot = free.find((x) => x === wanted);
       if (slot && date)
         b.customer = await setState(ctx, customer, {
           ...customer.state,
@@ -1233,13 +1243,22 @@ async function afterDate(b: Bot) {
     const { fulfillmentSlots } = await import("@/core/fulfillment/slots");
     const slots = await fulfillmentSlots(b.ctx);
     if (slots.length) {
+      const free = await freeSlotsOnDate(b.ctx, at);
+      // Все слоты дня разобрали, пока покупатель выбирал: назад к дате.
+      if (free.length === 0) {
+        await send(b, b.m.fulfillmentDateFull(null));
+        return askFulfillmentDate(b);
+      }
       b.customer = await setState(b.ctx, b.customer, {
         ...b.customer.state,
         mode: "awaiting_fulfillment_slot",
       });
       return void (await send(b, b.m.fulfillmentSlotPrompt, {
         reply_markup: {
-          inline_keyboard: slots.map((s, i) => [{ text: s, callback_data: `slot:${i}` }]),
+          // Номер кнопки — место слота в списке магазина, а не в списке свободных.
+          inline_keyboard: free.map((s) => [
+            { text: s, callback_data: `slot:${slots.indexOf(s)}` },
+          ]),
         },
       }));
     }
@@ -1395,6 +1414,19 @@ async function finishCheckout(b: Bot, countryCode: string) {
       }
       case "out_of_stock":
         return void (await send(b, b.m.outOfStockAtCheckout));
+      case "day_full":
+        await send(b, b.m.orderDayTaken);
+        return askFulfillmentDate(b);
+      case "slot_taken": {
+        await send(b, b.m.orderSlotTaken);
+        // Дата та же, время выбрать заново.
+        const { checkout_fulfillment_at: at, ...keep } = b.customer.state;
+        b.customer = await setState(b.ctx, b.customer, {
+          ...keep,
+          checkout_fulfillment_at: at?.slice(0, 10),
+        });
+        return afterDate(b);
+      }
       case "below_min":
         return void (await send(b, minOrderText(b.m, result)));
       default:
@@ -2402,6 +2434,10 @@ async function handleCallback(
     const slot = (await fulfillmentSlots(ctx))[Number(data.slice(5))];
     const date = customer.state.checkout_fulfillment_at;
     if (!slot || !date) return askFulfillmentDate(b);
+    if (!(await freeSlotsOnDate(ctx, date)).includes(slot)) {
+      await send(b, b.m.fulfillmentSlotFull);
+      return afterDate(b);
+    }
     b.customer = await setState(ctx, customer, {
       ...customer.state,
       checkout_fulfillment_at: withSlot(date, slot),

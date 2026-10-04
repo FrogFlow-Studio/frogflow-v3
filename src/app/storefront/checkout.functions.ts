@@ -208,6 +208,19 @@ export const webCheckoutFn = createServerFn({ method: "POST" })
           const { isoToDisplay } = await import("@/core/fulfillment/pure");
           throw shownError(t("checkout.error.dateClosed", { date: isoToDisplay(r.nextDate) }));
         }
+        case "date_full":
+        case "day_full": {
+          const { isoToDisplay } = await import("@/core/fulfillment/pure");
+          const next = r.reason === "date_full" ? r.nextDate : null;
+          throw shownError(
+            next
+              ? t("checkout.error.dateFull", { date: isoToDisplay(next) })
+              : t("checkout.error.dateFullNoNext"),
+          );
+        }
+        case "slot_full":
+        case "slot_taken":
+          throw shownError(t("checkout.error.slotFull"));
         case "zone":
           throw shownError(t("checkout.error.zone"));
         case "address":

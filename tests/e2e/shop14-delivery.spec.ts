@@ -45,6 +45,13 @@ test("витрина: в нерабочий день выдачи нет — ф�
   await date.fill(nextDow(1));
   await expect.poll(() => date.evaluate((el: HTMLInputElement) => el.validationMessage)).toBe("");
 
+  // Занятый день (лимит заказов на день): форма тоже не даёт его выбрать.
+  await date.fill(F.deliveryFullDay());
+  await expect
+    .poll(() => date.evaluate((el: HTMLInputElement) => el.validationMessage))
+    .toBe("На эту дату заказы набраны — выберите другую дату.");
+  await date.fill(nextDow(1));
+
   // Рабочий день принят: заказ ложится на выбранную дату.
   const monday = nextDow(1);
   await page.locator('input[name="name"]').fill("Анна Д14");

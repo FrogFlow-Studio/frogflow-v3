@@ -39,6 +39,8 @@ export const SETTING_KEYS = [
   "fulfillment_slots",
   "fulfillment_closed_weekdays",
   "fulfillment_closed_dates",
+  "fulfillment_day_limit",
+  "fulfillment_slot_limit",
   "legal_offer",
   "legal_privacy",
   "legal_requisites",

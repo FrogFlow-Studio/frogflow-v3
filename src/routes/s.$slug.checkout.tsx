@@ -46,6 +46,7 @@ function CheckoutPage() {
   const [ftype, setFtype] = useState<"pickup" | "delivery">(
     ff && !ff.pickup && ff.delivery ? "delivery" : "pickup",
   );
+  const [fdate, setFdate] = useState("");
   const { run, busy, error } = useAction(async (f: FormData) => {
     if (!info.enabled) return;
     // Задача против ботов решается в браузере, пока кнопка «занята».
@@ -192,15 +193,15 @@ function CheckoutPage() {
                 required
                 min={ff.today}
                 onChange={(e) => {
-                  // Нерабочий день: браузер не умеет гасить отдельные даты, поэтому — своим сообщением.
+                  // Нерабочий или занятый день: браузер не умеет гасить отдельные даты, поэтому — своим сообщением.
+                  const v = e.currentTarget.value;
+                  setFdate(v);
                   e.currentTarget.setCustomValidity(
-                    e.currentTarget.value &&
-                      isClosedDay(e.currentTarget.value, {
-                        weekdays: ff.closedWeekdays,
-                        ranges: ff.closedRanges,
-                      })
+                    v && isClosedDay(v, { weekdays: ff.closedWeekdays, ranges: ff.closedRanges })
                       ? t("checkout.fulfillment.closedPick")
-                      : "",
+                      : v && ff.fullDays.includes(v)
+                        ? t("checkout.fulfillment.dayFullPick")
+                        : "",
                   );
                 }}
               />
@@ -219,11 +220,14 @@ function CheckoutPage() {
               <Field label={t("checkout.fulfillment.slot")}>
                 <select className="input" name="slot" required defaultValue="">
                   <option value="" disabled />
-                  {ff.slots.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
+                  {ff.slots.map((s) => {
+                    const busy = (ff.fullSlots[fdate] ?? []).includes(s);
+                    return (
+                      <option key={s} value={s} disabled={busy}>
+                        {busy ? `${s} (${t("checkout.fulfillment.slotBusy")})` : s}
+                      </option>
+                    );
+                  })}
                 </select>
               </Field>
             )}

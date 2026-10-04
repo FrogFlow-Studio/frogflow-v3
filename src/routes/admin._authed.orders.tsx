@@ -145,7 +145,7 @@ function ExportButton({ paymentsOnly = false }: { paymentsOnly?: boolean }) {
 
 function OrdersPage() {
   useLiveOrders();
-  const { orders, counts } = Route.useLoaderData();
+  const { orders, counts, load } = Route.useLoaderData();
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const { status, q, pickup, unpaid } = Route.useSearch();
@@ -200,6 +200,33 @@ function OrdersPage() {
             >
               {t(`physical.pickup.${k}`)}
             </Link>
+          ))}
+        </div>
+      )}
+      {physical && load && (
+        <div className="mb-3 space-y-1 text-sm">
+          {load.days.map((d, i) => (
+            <div key={d.date} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="text-muted">
+                {t("physical.load.label")}{" "}
+                {t(i === 0 ? "physical.pickup.today" : "physical.pickup.tomorrow")}
+              </span>
+              <span
+                className={`badge ${load.limits.day !== null && d.total >= load.limits.day ? "border-danger text-danger" : ""}`}
+              >
+                {d.total}
+                {load.limits.day !== null ? ` / ${load.limits.day}` : ""}
+              </span>
+              {d.slots.map((x) => (
+                <span
+                  key={x.slot}
+                  className={`badge ${load.limits.slot !== null && x.count >= load.limits.slot ? "border-danger text-danger" : ""}`}
+                >
+                  {x.slot}: {x.count}
+                  {load.limits.slot !== null ? ` / ${load.limits.slot}` : ""}
+                </span>
+              ))}
+            </div>
           ))}
         </div>
       )}

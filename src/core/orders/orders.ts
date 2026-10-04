@@ -166,7 +166,10 @@ export type PlaceOrderResult =
         | "discount_fx"
         /** В корзине товары в разных валютах: сумму не сложить. */
         | "mixed_currency"
-        | "out_of_stock";
+        | "out_of_stock"
+        /** Лимит заказов на день или слот (core/fulfillment/capacity): место только что заняли. */
+        | "day_full"
+        | "slot_taken";
     }
   | {
       ok: false;
@@ -449,6 +452,23 @@ export async function placeOrder(
       .single();
     if (error || !order) return await fail("order_failed");
     redemptions.orderId = order.id;
+    // Лимит на день и слот: заказ уже создан, поэтому его место в очереди известно
+    // (core/fulfillment/capacity); лишний снимается, покупателю — честный отказ.
+    if (fulfillmentAt) {
+      const { fulfillmentLimits, orderOverLimit } = await import("@/core/fulfillment/capacity");
+      let over: "day" | "slot" | null = null;
+      try {
+        over = await orderOverLimit(ctx, order, await fulfillmentLimits(ctx));
+      } catch (e) {
+        // Не смогли проверить — заказ не оставляем (иначе лимит обходится сбоем чтения).
+        await ctx.db.from("orders").delete().eq("id", order.id);
+        throw e;
+      }
+      if (over) {
+        await ctx.db.from("orders").delete().eq("id", order.id);
+        return await fail(over === "day" ? "day_full" : "slot_taken");
+      }
+    }
     if (redemptions.giftId) {
       const link = await ctx.db
         .from("gift_certificates")

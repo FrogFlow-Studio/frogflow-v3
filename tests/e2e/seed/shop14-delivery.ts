@@ -38,6 +38,7 @@ export function seedShop14Delivery(db: StubDb, now: string) {
     own({ key: "shop_name", value: F.DELIVERY_SHOP_NAME, updated_at: now }),
     own({ key: "storefront_checkout", value: '{"enabled":true}', updated_at: now }),
     own({ key: "fulfillment_closed_weekdays", value: "7", updated_at: now }),
+    own({ key: "fulfillment_day_limit", value: String(F.DELIVERY_DAY_LIMIT), updated_at: now }),
   ]);
   add(db, "payment_methods", [
     own({
@@ -79,4 +80,29 @@ export function seedShop14Delivery(db: StubDb, now: string) {
       created_at: now,
     }),
   ]);
+  // Занятый день: на него уже стоят заказы до лимита.
+  add(
+    db,
+    "orders",
+    Array.from({ length: F.DELIVERY_DAY_LIMIT }, (_, i) =>
+      own({
+        id: 14001 + i,
+        order_no: i + 1,
+        display_no: null,
+        status: "accepted",
+        platform: "telegram",
+        telegram_id: 140140 + i,
+        user_key: `tg_${140140 + i}`,
+        display_name: "Покупатель",
+        username: null,
+        total: F.DELIVERY_PRODUCT_PRICE,
+        currency: "KZT",
+        fulfillment_kind: "physical",
+        fulfillment_type: "pickup",
+        fulfillment_at: `${F.deliveryFullDay()}T00:00:00Z`,
+        created_at: now,
+        updated_at: now,
+      }),
+    ),
+  );
 }

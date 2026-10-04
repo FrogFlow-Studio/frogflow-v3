@@ -142,6 +142,13 @@ export type Msg = {
   fulfillmentDateTooEarly: (minDate: string) => string;
   /** Выбранный день нерабочий: покупателю — ближайшая рабочая дата. */
   fulfillmentDateClosed: (nextDate: string) => string;
+  /** Лимит заказов: на дату всё разобрано; ближайшая свободная дата или null. */
+  fulfillmentDateFull: (nextDate: string | null) => string;
+  /** Выбранный слот занят. */
+  fulfillmentSlotFull: string;
+  /** Пока оформлялся заказ, место разобрали (день / слот). */
+  orderDayTaken: string;
+  orderSlotTaken: string;
   /** Строка под вопросом о дате: когда выдачи нет (дни недели и даты). */
   fulfillmentClosedNote: (list: string) => string;
   deliveryZonePrompt: string;
@@ -523,6 +530,14 @@ const ru: Msg = {
   fulfillmentDateInvalid: "Не разобрал дату. Формат: ДД.ММ.ГГГГ, например 05.03.2026.",
   fulfillmentDateTooEarly: (d) => `Так быстро не успеем. Ближайшая дата: ${d}.`,
   fulfillmentDateClosed: (d) => `В этот день выдачи нет. Ближайшая дата: ${d}.`,
+  fulfillmentDateFull: (d) =>
+    d
+      ? `На эту дату заказы уже набраны. Ближайшая свободная: ${d}.`
+      : "На эту дату заказы уже набраны. Напишите другую дату.",
+  fulfillmentSlotFull: "Это время уже занято, выберите другое.",
+  orderDayTaken:
+    "Пока вы оформляли заказ, места на эту дату разобрали. Заказ не создан — выберите другую дату.",
+  orderSlotTaken: "Это время только что заняли. Заказ не создан — выберите другое время.",
   fulfillmentClosedNote: (list) => `Выдачи нет: ${list}.`,
   fulfillmentSlotPrompt: "🕒 В какое время удобно?",
   approvalAskChanges: "✏️ Напишите одним сообщением, что поправить.",
@@ -656,6 +671,14 @@ const ru: Msg = {
 const kk: Msg = {
   ...ru,
   fulfillmentDateClosed: (d) => `Бұл күні беру жоқ. Ең жақын күн: ${d}.`,
+  fulfillmentDateFull: (d) =>
+    d
+      ? `Бұл күнге тапсырыстар толды. Ең жақын бос күн: ${d}.`
+      : "Бұл күнге тапсырыстар толды. Басқа күнді жазыңыз.",
+  fulfillmentSlotFull: "Бұл уақыт бос емес, басқасын таңдаңыз.",
+  orderDayTaken:
+    "Тапсырысты рәсімдеп жатқанда бұл күнге орындар таусылды. Тапсырыс жасалмады — басқа күнді таңдаңыз.",
+  orderSlotTaken: "Бұл уақытты жаңа ғана алып қойды. Тапсырыс жасалмады — басқа уақытты таңдаңыз.",
   fulfillmentClosedNote: (list) => `Беру жоқ: ${list}.`,
   lowStockLabel: (n) => `⚠️ Қалды ${n} дана`,
   preorderLabel: (from) =>
@@ -884,6 +907,14 @@ const kk: Msg = {
 const en: Msg = {
   ...ru,
   fulfillmentDateClosed: (d) => `There is no handover on that day. The nearest date: ${d}.`,
+  fulfillmentDateFull: (d) =>
+    d
+      ? `Orders for this date are full. The nearest free date: ${d}.`
+      : "Orders for this date are full. Please send another date.",
+  fulfillmentSlotFull: "This time is already taken, please pick another.",
+  orderDayTaken:
+    "The spots for this date ran out while you were checking out. The order was not created — please pick another date.",
+  orderSlotTaken: "This time was just taken. The order was not created — please pick another time.",
   fulfillmentClosedNote: (list) => `No handover: ${list}.`,
   lowStockLabel: (n) => `⚠️ Only ${n} left`,
   preorderLabel: (from) =>
@@ -1139,6 +1170,14 @@ const en: Msg = {
 const uz: Msg = {
   ...ru,
   fulfillmentDateClosed: (d) => `Bu kuni topshirish yo‘q. Eng yaqin sana: ${d}.`,
+  fulfillmentDateFull: (d) =>
+    d
+      ? `Bu sanaga buyurtmalar to‘lgan. Eng yaqin bo‘sh sana: ${d}.`
+      : "Bu sanaga buyurtmalar to‘lgan. Boshqa sanani yozing.",
+  fulfillmentSlotFull: "Bu vaqt band, boshqasini tanlang.",
+  orderDayTaken:
+    "Buyurtma rasmiylashtirilayotganda bu sanadagi joylar tugadi. Buyurtma yaratilmadi — boshqa sanani tanlang.",
+  orderSlotTaken: "Bu vaqt hozirgina band qilindi. Buyurtma yaratilmadi — boshqa vaqtni tanlang.",
   fulfillmentClosedNote: (list) => `Topshirish yo‘q: ${list}.`,
   lowStockLabel: (n) => `⚠️ ${n} dona qoldi`,
   preorderLabel: (from) =>

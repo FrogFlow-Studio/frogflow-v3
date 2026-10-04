@@ -253,6 +253,10 @@ export const ru = {
   "settings.ful.closedAll": "Нельзя отметить все семь дней нерабочими.",
   "settings.ful.closedTooMany":
     "Нерабочих дат не больше {max}: удалите прошедшие или объедините в отрезки.",
+  "settings.ful.dayLimit": "Заказов на день",
+  "settings.ful.slotLimit": "Заказов на слот",
+  "settings.ful.limitHint":
+    "Пусто — без лимита. Считаются заказы с датой выдачи, кроме отклонённых, отменённых и возвращённых. Занятые дата или слот покупателю не предлагаются; если последнее место заняли одновременно, второй заказ не создаётся. Заказы, которые продавец вносит сам, лимитом не ограничены; лимит на слот работает, когда слоты заданы.",
   // зоны доставки
   "settings.zones.title": "Зоны доставки",
   "settings.zones.add": "+ Зона",
@@ -674,6 +678,10 @@ export const kk: SectionDict<typeof ru> = {
   "settings.ful.closedAll": "Жеті күннің бәрін демалыс етуге болмайды.",
   "settings.ful.closedTooMany":
     "Демалыс даталары {max}-тен көп болмауы керек: өткендерін жойыңыз немесе аралыққа біріктіріңіз.",
+  "settings.ful.dayLimit": "Күніне тапсырыс саны",
+  "settings.ful.slotLimit": "Слотқа тапсырыс саны",
+  "settings.ful.limitHint":
+    "Бос — шектеусіз. Беру күні бар тапсырыстар саналады, қабылданбаған, бас тартылған және қайтарылғандары есепке алынбайды. Толған күн немесе слот сатып алушыға ұсынылмайды; соңғы орынды бір мезгілде алса, екінші тапсырыс жасалмайды. Сатушы өзі енгізген тапсырыстарға шек қойылмайды; слот шегі слоттар берілгенде ғана жұмыс істейді.",
   "settings.zones.title": "Жеткізу аймақтары",
   "settings.zones.add": "+ Аймақ",
   "settings.zones.intro":
@@ -1089,6 +1097,10 @@ export const en: SectionDict<typeof ru> = {
   "settings.ful.closedAll": "You cannot mark all seven days as closed.",
   "settings.ful.closedTooMany":
     "No more than {max} closed dates: delete past ones or merge them into ranges.",
+  "settings.ful.dayLimit": "Orders per day",
+  "settings.ful.slotLimit": "Orders per slot",
+  "settings.ful.limitHint":
+    "Empty — no limit. Orders with a handover date count, except rejected, cancelled and refunded ones. A full date or slot is not offered to the customer; if the last spot is taken at the same moment, the second order is not created. Orders the seller enters by hand are not limited; the slot limit works when slots are set.",
   "settings.zones.title": "Delivery zones",
   "settings.zones.add": "+ Zone",
   "settings.zones.intro":
@@ -1509,6 +1521,10 @@ export const uz: SectionDict<typeof ru> = {
   "settings.ful.closedAll": "Yetti kunning hammasini dam olish kuni qilib bo‘lmaydi.",
   "settings.ful.closedTooMany":
     "Dam olish sanalari {max} tadan oshmasligi kerak: o‘tganlarini o‘chiring yoki oraliqqa birlashtiring.",
+  "settings.ful.dayLimit": "Kuniga buyurtmalar soni",
+  "settings.ful.slotLimit": "Slotga buyurtmalar soni",
+  "settings.ful.limitHint":
+    "Boʻsh — cheklovsiz. Topshirish sanasi bor buyurtmalar hisoblanadi, rad etilgan, bekor qilingan va qaytarilganlari hisobga olinmaydi. Band sana yoki slot xaridorga taklif qilinmaydi; oxirgi joyni bir vaqtda olishsa, ikkinchi buyurtma yaratilmaydi. Sotuvchi qoʻlda kiritgan buyurtmalar cheklanmaydi; slot chegarasi slotlar berilganda ishlaydi.",
   "settings.zones.title": "Yetkazib berish hududlari",
   "settings.zones.add": "+ Hudud",
   "settings.zones.intro":
