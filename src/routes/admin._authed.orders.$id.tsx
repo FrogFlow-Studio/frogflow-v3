@@ -17,6 +17,7 @@ import { Badge, Card, ErrorBox, Field, useAction } from "@/app/ui";
 import { describeOrderEvent } from "@/core/orders/events";
 import { formatMoney } from "@/core/money/money";
 import { displayNo, itemLanguages } from "@/core/orders/pure";
+import { isClosedDay, type ClosedRules } from "@/core/fulfillment/closed-days";
 import { slotOf } from "@/core/fulfillment/slots";
 import { OrderStatus } from "./admin._authed.orders";
 
@@ -38,6 +39,9 @@ function OrderPage() {
     refunded,
     refundable,
     slots,
+    closedWeekdays,
+    closedRanges,
+    fullDays,
     approval,
     approvalPhotoUrl,
     courier,
@@ -204,7 +208,13 @@ function OrderPage() {
             {editable &&
               physical &&
               !["delivered", "rejected", "cancelled", "refunded"].includes(o.status) && (
-                <FulfillmentEditor order={o} zones={zones} slots={slots} />
+                <FulfillmentEditor
+                  order={o}
+                  zones={zones}
+                  slots={slots}
+                  closed={{ weekdays: closedWeekdays, ranges: closedRanges }}
+                  fullDays={fullDays}
+                />
               )}
           </Card>
           {physical &&
@@ -709,15 +719,21 @@ function FulfillmentEditor({
   order: o,
   zones,
   slots,
+  closed,
+  fullDays,
 }: {
   order: Order;
   zones: Zone[];
   slots: string[];
+  closed: ClosedRules;
+  fullDays: string[];
 }) {
   const { shop } = Route.useRouteContext();
   const t = adminT(shop.locale);
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const currentDate = o.fulfillment_at ? o.fulfillment_at.slice(0, 10) : "";
+  const [pickedDate, setPickedDate] = useState(currentDate);
   const [type, setType] = useState<"pickup" | "delivery">(
     o.fulfillment_type === "delivery" ? "delivery" : "pickup",
   );
@@ -768,8 +784,16 @@ function FulfillmentEditor({
           className="input"
           type="date"
           name="at"
-          defaultValue={o.fulfillment_at ? o.fulfillment_at.slice(0, 10) : ""}
+          defaultValue={currentDate}
+          onChange={(e) => setPickedDate(e.target.value)}
         />
+        {pickedDate &&
+          pickedDate !== currentDate &&
+          (isClosedDay(pickedDate, closed) ? (
+            <p className="text-xs text-warn">{t("physical.dateClosedWarn")}</p>
+          ) : fullDays.includes(pickedDate) ? (
+            <p className="text-xs text-warn">{t("physical.dateFullWarn")}</p>
+          ) : null)}
       </Field>
       {slots.length > 0 && (
         <Field label={t("physical.slot")}>

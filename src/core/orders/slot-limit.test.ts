@@ -212,11 +212,13 @@ describe("лимит заказов на слот", () => {
 
 describe("сбой удаления лишнего заказа", () => {
   /** Как setup, но delete по orders отвечает ошибкой (и update тоже, если failCancel). */
-  function broken(failCancel: boolean) {
+  function broken(failCancel: boolean, failItems = false) {
     const { db, ctx } = setup({ fulfillment_day_limit: "1" });
     const real = ctx.db.from;
     const from = (t: string) => {
       const b = (real as (t: string) => unknown)(t) as Record<string, unknown>;
+      if (t === "order_items" && failItems)
+        return { insert: async () => ({ error: { message: "boom" } }) };
       if (t !== "orders") return b;
       return new Proxy(b, {
         get(target, p) {
@@ -251,5 +253,13 @@ describe("сбой удаления лишнего заказа", () => {
     await expect(
       placeOrder(ctx, buyer(2), "KZ", { fulfillment: at("2026-10-12") }),
     ).rejects.toThrow(/не удалён и не отменён/);
+  });
+
+  it("позиции не записались и удалить заказ не вышло — он отменён, а не висит пустым в ожидании", async () => {
+    const { db, ctx } = broken(false, true);
+    const r = await placeOrder(ctx, buyer(1), "KZ", { fulfillment: at("2026-10-12") });
+    expect(r).toEqual({ ok: false, reason: "order_failed" });
+    expect(live(db)).toHaveLength(0);
+    expect(db.tables.orders!.map((o) => o.status)).toEqual(["cancelled"]);
   });
 });

@@ -1069,6 +1069,24 @@ export const orderFn = createServerFn({ method: "GET" })
     type DeliveryZone = Awaited<ReturnType<typeof activeDeliveryZones>>[number];
     const physical = order.fulfillment_kind === "physical";
     const { fulfillmentSlots } = await import("@/core/fulfillment/slots");
+    // Нерабочие и занятые даты — предупреждение при переносе даты: перенос ими не ограничен.
+    const { closedRules } = await import("@/core/fulfillment/closed-days");
+    const { busyOverview } = await import("@/core/fulfillment/capacity");
+    const { minFulfillmentDate } = await import("@/core/orders/physical-admin");
+    const dateRules = physical
+      ? await (async () => {
+          const rules = await closedRules(ctx);
+          return {
+            closedWeekdays: rules.weekdays,
+            closedRanges: rules.ranges,
+            fullDays: (await busyOverview(ctx, minFulfillmentDate(ctx, 0))).fullDays,
+          };
+        })()
+      : {
+          closedWeekdays: [] as number[],
+          closedRanges: [] as Awaited<ReturnType<typeof closedRules>>["ranges"],
+          fullDays: [] as string[],
+        };
     const [proofUrl, events, zones, dueNow, slots] = await Promise.all([
       order.payment_proof_path ? proofSignedUrl(ctx, order.payment_proof_path) : null,
       listOrderEvents(ctx, data.id),
@@ -1118,6 +1136,7 @@ export const orderFn = createServerFn({ method: "GET" })
         refunded,
         refundable,
         slots,
+        ...dateRules,
         approval,
         approvalPhotoUrl,
         courier,
@@ -1136,6 +1155,7 @@ export const orderFn = createServerFn({ method: "GET" })
       refunded,
       refundable,
       slots,
+      ...dateRules,
       approval,
       approvalPhotoUrl,
       courier: courier ? { ...courier, phone: null } : null,

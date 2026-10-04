@@ -20,6 +20,10 @@ export const ru = {
   "physical.recordAll": "Весь остаток",
   "physical.recordHint": "Наличные при выдаче, перевод остатка — всё, что пришло мимо бота.",
   "physical.edit": "Изменить",
+  "physical.dateClosedWarn":
+    "В этот день выдачи нет по настройкам магазина. Дата всё равно будет сохранена.",
+  "physical.dateFullWarn":
+    "На эту дату заказы уже набраны по лимиту. Дата всё равно будет сохранена.",
   "physical.editTitle": "Изменить получение",
   "physical.date": "Дата получения",
   "print.button": "🖨 Печать",
@@ -78,6 +82,8 @@ export const kk: SectionDict<typeof ru> = {
   "physical.recordAll": "Бүкіл қалдық",
   "physical.recordHint": "Беру кезіндегі қолма-қол, қалдықты аудару — боттан тыс келгеннің бәрі.",
   "physical.edit": "Өзгерту",
+  "physical.dateClosedWarn": "Дүкен баптауы бойынша бұл күні беру жоқ. Күн бәрібір сақталады.",
+  "physical.dateFullWarn": "Бұл күнге тапсырыстар шектен толған. Күн бәрібір сақталады.",
   "physical.editTitle": "Алуды өзгерту",
   "physical.date": "Алу күні",
   "print.button": "🖨 Басып шығару",
@@ -136,6 +142,10 @@ export const en: SectionDict<typeof ru> = {
   "physical.recordHint":
     "Cash on pickup, a transfer of the remainder — anything paid outside the bot.",
   "physical.edit": "Edit",
+  "physical.dateClosedWarn":
+    "There is no handover on this day per the shop settings. The date will still be saved.",
+  "physical.dateFullWarn":
+    "Orders for this date are already at the limit. The date will still be saved.",
   "physical.editTitle": "Edit pickup / delivery",
   "physical.date": "Date",
   "print.button": "🖨 Print",
@@ -195,6 +205,9 @@ export const uz: SectionDict<typeof ru> = {
   "physical.recordAll": "Butun qoldiq",
   "physical.recordHint": "Berishda naqd, qoldiqni oʻtkazish — botdan tashqari kelgan hamma narsa.",
   "physical.edit": "Oʻzgartirish",
+  "physical.dateClosedWarn":
+    "Do‘kon sozlamalariga ko‘ra bu kuni topshirish yo‘q. Sana baribir saqlanadi.",
+  "physical.dateFullWarn": "Bu sanaga buyurtmalar chegaraga yetgan. Sana baribir saqlanadi.",
   "physical.editTitle": "Olishni oʻzgartirish",
   "physical.date": "Olish sanasi",
   "print.button": "🖨 Chop etish",

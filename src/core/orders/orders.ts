@@ -520,7 +520,7 @@ export async function placeOrder(
     });
     const { error: itemsError } = await ctx.db.from("order_items").insert(rows);
     if (itemsError) {
-      await ctx.db.from("orders").delete().eq("id", order.id);
+      await dropUnplacedOrder(ctx, order.id);
       return await fail("order_failed");
     }
     // Какие позиции взяты предзаказом, помнит только это событие: по нему склад при
