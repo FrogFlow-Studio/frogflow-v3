@@ -5,7 +5,15 @@ import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant } from "@/core/tenant/types";
 import { marketplaceCategory, marketplaceCity, shownOnMarketplace } from "./consent";
 import { MarketplaceNotReady, isMissingTable } from "./not-ready";
-import { MARKET_PAGE, cleanLabel, shopRating, tally, type MarketShop } from "./shops";
+import {
+  MARKET_ORDER_STATUSES,
+  MARKET_PAGE,
+  cleanLabel,
+  roundOrders,
+  shopRating,
+  tally,
+  type MarketShop,
+} from "./shops";
 import { removeMarketplaceItems, syncMarketplaceItems, type ItemsResult } from "./items.server";
 
 /**
@@ -66,6 +74,17 @@ export async function refreshMarketplaceShop(
     const { rating, count } = shopRating(
       [...approved.values()].map((r) => ({ rating_avg: r.avg, rating_count: r.count })),
     );
+    // Заказы за 30 дней — только оплаченные, округлённо; «на FrogFlow с» — дата подключения магазина.
+    const since30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const orders = await ctx.db
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("bot_id", t.id)
+      .in("status", [...MARKET_ORDER_STATUSES])
+      .gte("created_at", since30);
+    check("заказы магазина не посчитаны", orders.error);
+    const born = await svc.from("bots").select("created_at").eq("id", t.id).maybeSingle();
+    check("дата подключения магазина не прочитана", born.error);
     const { error } = await svc.from("marketplace_shops").upsert(
       {
         bot_id: t.id,
@@ -75,6 +94,8 @@ export async function refreshMarketplaceShop(
         city: marketplaceCity(t),
         rating,
         rating_count: count,
+        orders_month: roundOrders(orders.count ?? 0),
+        since: (born.data as { created_at?: string } | null)?.created_at ?? null,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "bot_id" },
@@ -104,8 +125,10 @@ type ShopRow = {
   city: string;
   rating: number | null;
   rating_count: number;
+  orders_month: number;
+  since: string | null;
 };
-const SHOP_COLS = "bot_id, slug, name, category, city, rating, rating_count";
+const SHOP_COLS = "bot_id, slug, name, category, city, rating, rating_count, orders_month, since";
 const SCAN_BATCH = 50;
 const SCAN_BATCHES = 10;
 
@@ -150,6 +173,8 @@ export async function listMarketShops(
         city: r.city,
         rating: r.rating,
         ratingCount: r.rating_count,
+        ordersMonth: r.orders_month ?? 0,
+        since: r.since ?? null,
       });
       if (out.length >= MARKET_PAGE) return { shops: out, next: offset };
     }

@@ -4,7 +4,7 @@ import { withBrokenReads } from "../../../tests/broken-db";
 import type { Db } from "@/core/db/client.server";
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import type { Tenant, TenantSettings } from "@/core/tenant/types";
-import { MARKET_PAGE, cleanLabel, shopRating, tally } from "./shops";
+import { MARKET_PAGE, cleanLabel, roundOrders, shopRating, tally } from "./shops";
 import {
   listMarketShops,
   marketFacets,
@@ -249,6 +249,72 @@ describe("крон: сбор строки каталога", () => {
       refreshMarketplaceShop(ctxFor(tenant("b1", OPEN), broken), as(svc)),
     ).rejects.toThrow(/товары с оценками/);
     expect(svc.tables.marketplace_shops).toHaveLength(1);
+  });
+});
+
+describe("карточка магазина (В9): заказы за 30 дней и «на FrogFlow с»", () => {
+  const order = (i: number, status: string, daysAgo = 1) => ({
+    id: `o${i}`,
+    bot_id: "b1",
+    status,
+    created_at: new Date(Date.now() - daysAgo * 86_400_000).toISOString(),
+  });
+
+  it("округление вниз: меньше 10 — 0, десятки, полсотни, сотни", () => {
+    expect([0, 9, 10, 19, 99, 100, 149, 150, 999, 1000, 1234, NaN].map(roundOrders)).toEqual([
+      0, 0, 10, 10, 90, 100, 100, 150, 950, 1000, 1200, 0,
+    ]);
+  });
+
+  it("считаются только оплаченные заказы за 30 дней, точное число не сохраняется", async () => {
+    shop.tables.orders = [
+      ...Array.from({ length: 23 }, (_, i) => order(i, "delivered")),
+      order(100, "awaiting_payment"),
+      order(101, "cancelled"),
+      order(102, "rejected"),
+      order(103, "paid", 45),
+    ];
+    svc.tables.bots = [{ id: "b1", created_at: "2026-03-05T10:00:00.000Z" }];
+    await refreshMarketplaceShop(ctxFor(tenant("b1", OPEN)), as(svc));
+    expect(svc.tables.marketplace_shops![0]).toMatchObject({
+      orders_month: 20,
+      since: "2026-03-05T10:00:00.000Z",
+    });
+  });
+
+  it("мало заказов — 0, нет даты подключения — null", async () => {
+    shop.tables.orders = [order(1, "paid"), order(2, "delivered")];
+    await refreshMarketplaceShop(ctxFor(tenant("b1", OPEN)), as(svc));
+    expect(svc.tables.marketplace_shops![0]).toMatchObject({ orders_month: 0, since: null });
+  });
+
+  it("сбой чтения заказов — ошибка, строка каталога не затирается нулём", async () => {
+    svc.tables.marketplace_shops = [
+      { bot_id: "b1", slug: "cakes", name: "x", category: "", city: "", orders_month: 50 },
+    ];
+    const broken = withBrokenReads(shop, ["orders"]);
+    await expect(
+      refreshMarketplaceShop(ctxFor(tenant("b1", OPEN), broken), as(svc)),
+    ).rejects.toThrow(/заказы магазина/);
+    expect(svc.tables.marketplace_shops![0]).toMatchObject({ orders_month: 50 });
+  });
+
+  it("страница каталога отдаёт заказы и дату из строки", async () => {
+    svc.tables.marketplace_shops = [
+      {
+        bot_id: "b1",
+        slug: "cakes",
+        name: "Сладкая",
+        category: "",
+        city: "",
+        rating: null,
+        rating_count: 0,
+        orders_month: 150,
+        since: "2026-03-05T10:00:00.000Z",
+      },
+    ];
+    const r = await listMarketShops({}, { svc: as(svc), shown: async () => new Set(["b1"]) });
+    expect(r.shops[0]).toMatchObject({ ordersMonth: 150, since: "2026-03-05T10:00:00.000Z" });
   });
 });
 

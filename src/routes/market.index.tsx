@@ -120,6 +120,22 @@ function MarketPage() {
                       ? t("rating.none")
                       : t("rating.count", { rating: s.rating.toFixed(1), count: s.ratingCount })}
                   </p>
+                  {s.ordersMonth > 0 && (
+                    <p className="mt-0.5 text-xs text-muted">
+                      {t("orders.month", { count: s.ordersMonth })}
+                    </p>
+                  )}
+                  {s.since && (
+                    <p className="mt-0.5 text-xs text-muted">
+                      {t("since", {
+                        date: new Date(s.since).toLocaleDateString(locale, {
+                          month: "long",
+                          year: "numeric",
+                          timeZone: "UTC",
+                        }),
+                      })}
+                    </p>
+                  )}
                   <Link
                     to="/s/$slug"
                     params={{ slug: s.slug }}

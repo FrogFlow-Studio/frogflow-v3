@@ -15,7 +15,32 @@ export type MarketShop = {
   /** Средняя оценка 1–5 с двумя знаками; нет оценок — null. */
   rating: number | null;
   ratingCount: number;
+  /** Оплаченных заказов за 30 дней, округлённо (roundOrders); 0 — меньше десяти. */
+  ordersMonth: number;
+  /** Когда магазин на FrogFlow (ISO); null — не знаем. */
+  since: string | null;
 };
+
+/** Заказ для карточки — оплаченный: ждущие оплаты, отменённые и отклонённые не считаются. */
+export const MARKET_ORDER_STATUSES = [
+  "paid",
+  "accepted",
+  "in_production",
+  "ready",
+  "delivering",
+  "delivered",
+] as const;
+
+/**
+ * Число заказов в карточке — округлённое вниз, чтобы не выдавать точные обороты:
+ * меньше 10 — 0 (карточка не хвастается), до 100 — десятки, до 1000 — полсотни, дальше — сотни.
+ */
+export function roundOrders(n: number): number {
+  if (!Number.isFinite(n) || n < 10) return 0;
+  if (n < 100) return Math.floor(n / 10) * 10;
+  if (n < 1000) return Math.floor(n / 50) * 50;
+  return Math.floor(n / 100) * 100;
+}
 
 /**
  * Оценка магазина — среднее по оценкам всех его товаров, взвешенное числом оценок
