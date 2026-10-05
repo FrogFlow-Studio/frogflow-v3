@@ -11,6 +11,7 @@ import { useTelegramWebApp } from "@/app/storefront/cart";
 import { webMyOrdersFn, webMyReorderFn, webMyRewardsFn } from "@/app/storefront/tg-login.functions";
 import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
 import { MyRewardsBox } from "@/app/storefront/my-rewards";
+import { MyAddressesBox } from "@/app/storefront/my-addresses";
 import { MyTicketsBox } from "@/app/storefront/my-tickets";
 import { ReorderButton } from "@/app/storefront/reorder";
 import { useStorefrontLocale } from "@/app/storefront/locale";
@@ -118,6 +119,8 @@ function OrdersPage() {
           }
         />
       )}
+      {/* Сохранённые адреса (К5): для подтверждённого входа на сайте; в Mini App адрес берётся из бота. */}
+      {showOrders && webIn && <MyAddressesBox slug={slug} />}
       {/* «Поддержка» — только внутри Telegram: обращения открываются по подписанному initData. */}
       {showOrders && wa && (
         <MyTicketsBox

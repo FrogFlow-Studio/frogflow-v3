@@ -7,6 +7,9 @@ import { useCart } from "@/app/storefront/cart";
 import { rememberOrderToken } from "@/app/storefront/order-token";
 import { useStorefrontLocale } from "@/app/storefront/locale";
 import { TgLoginBox, useTgLogin } from "@/app/storefront/tg-login";
+import { useSavedAddresses } from "@/app/storefront/my-addresses";
+import { webAddressSaveFn } from "@/app/storefront/tg-login.functions";
+import { addrT } from "@/app/i18n/storefront-addr";
 import { formatMoney } from "@/core/money/money";
 import { Empty, ErrorBox, Field, useAction } from "@/app/ui";
 import { freeDeliveryHint } from "@/core/fulfillment/free-delivery-hint";
@@ -26,6 +29,10 @@ function CheckoutPage() {
   // Вошёл через Telegram — заказ попадёт к тому же покупателю, что и в боте.
   const login = useTgLogin(slug);
   const navigate = useNavigate();
+  // Сохранённые адреса (К5): только вошедшему; выбранный подставляется в поле адреса.
+  const saved = useSavedAddresses(slug, Boolean(login.state?.available && login.state.me));
+  const at = addrT(locale);
+  const [address, setAddress] = useState("");
   // Решение задачи одноразовое: после отказа (неверный промокод, товар
   // закончился) берём новую, чтобы покупатель исправил поле и отправил снова.
   const [challenge, setChallenge] = useState(info.enabled ? info.challenge : "");
@@ -119,6 +126,11 @@ function CheckoutPage() {
       if (fresh?.enabled) setChallenge(fresh.challenge);
       throw e;
     });
+    // «Запомнить адрес» (К5): заказ уже оформлен, сбой сохранения его не затрагивает.
+    if (physical && ftype === "delivery" && f.get("rememberAddress") === "on")
+      await webAddressSaveFn({ data: { slug, text: String(f.get("address") ?? "") } }).catch(
+        () => {},
+      );
     cart.clear();
     rememberOrderToken(slug, String(r.id), r.t);
     await navigate({
@@ -299,6 +311,23 @@ function CheckoutPage() {
                       })}
               </p>
             )}
+            {ftype === "delivery" && saved.items && saved.items.length > 0 && (
+              <Field label={at("addr.pick")}>
+                <select
+                  className="input"
+                  data-testid="saved-address"
+                  value=""
+                  onChange={(e) => e.target.value && setAddress(e.target.value)}
+                >
+                  <option value="">{at("addr.pickNone")}</option>
+                  {saved.items.map((a) => (
+                    <option key={a.id} value={a.text}>
+                      {a.text}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
             {ftype === "delivery" && (
               <Field label={t("checkout.fulfillment.address")}>
                 <textarea
@@ -308,8 +337,16 @@ function CheckoutPage() {
                   maxLength={500}
                   rows={2}
                   autoComplete="street-address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
                 />
               </Field>
+            )}
+            {ftype === "delivery" && saved.items && (
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="rememberAddress" />
+                {at("addr.remember")}
+              </label>
             )}
             <Field label={t("checkout.fulfillment.note")}>
               <textarea className="input" name="note" maxLength={500} rows={2} />

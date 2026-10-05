@@ -248,3 +248,64 @@ export const webFavoritesSyncFn = createServerFn({ method: "POST" })
     const { syncServerFavorites } = await import("@/core/storefront/favorites-sync");
     return syncServerFavorites(ctx, tgId, data.ids, data.mode);
   });
+
+const addressText = z.string().max(2000);
+
+/**
+ * Сохранённые адреса вошедшего покупателя (К5): список, добавить/изменить, удалить. Покупатель —
+ * только из подписанной сессии витрины (core/storefront/addresses.server); не вошёл — «не найдено».
+ */
+async function addressBuyer(s: string) {
+  const ctx = await loginCtx(s);
+  if (!ctx) throw notFound();
+  const { buyerTelegramId } = await import("./tg-login.server");
+  const tgId = await buyerTelegramId(ctx);
+  if (tgId === null) throw notFound();
+  const { takeWeb } = await import("@/core/storefront/checkout-guard");
+  if (!(await takeWeb(ctx, "myOrders", String(tgId))))
+    throw shownError((await shopT(ctx))("error.tooManyRequests"));
+  return { ctx, tgId };
+}
+
+export const webMyAddressesFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ slug }).parse(d))
+  .handler(async ({ data }) => {
+    const { ctx, tgId } = await addressBuyer(data.slug);
+    const { listAddresses } = await import("@/core/storefront/addresses.server");
+    const items = await listAddresses(ctx, tgId);
+    if (!items) throw notFound();
+    return { items };
+  });
+
+export const webAddressSaveFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        slug,
+        text: addressText,
+        id: z
+          .string()
+          .regex(/^[0-9a-f]{12}$/)
+          .optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { ctx, tgId } = await addressBuyer(data.slug);
+    const { saveAddress, updateAddress } = await import("@/core/storefront/addresses.server");
+    const r = data.id
+      ? await updateAddress(ctx, tgId, data.id, data.text)
+      : await saveAddress(ctx, tgId, data.text);
+    if (!r.ok && r.reason === "no_card") throw notFound();
+    return r;
+  });
+
+export const webAddressDeleteFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ slug, id: z.string().regex(/^[0-9a-f]{12}$/) }).parse(d))
+  .handler(async ({ data }) => {
+    const { ctx, tgId } = await addressBuyer(data.slug);
+    const { deleteAddress } = await import("@/core/storefront/addresses.server");
+    const r = await deleteAddress(ctx, tgId, data.id);
+    if (!r.ok && r.reason === "no_card") throw notFound();
+    return r;
+  });

@@ -109,6 +109,8 @@ export type DialogState = {
     used?: boolean;
     rev?: number;
   };
+  /** Сохранённые адреса вошедшего покупателя (К5, core/storefront/addresses): список и версия секции. */
+  web_addr?: { items?: { id: string; text: string }[]; rev?: number };
   /** Номер, который покупатель прислал в переписке вне шага «жду телефон» (Б2); контакт для продавца. */
   phone?: string;
   /** Когда бот последний раз отвечал «вне часов работы» (core/bot-texts): не чаще раза в 6 часов. */
@@ -359,7 +361,7 @@ export async function setState(
 export async function updateStateSection(
   ctx: TenantContext,
   customer: Customer,
-  key: "consultant" | "direct" | "winback" | "web_fav" | "web_login",
+  key: "consultant" | "direct" | "winback" | "web_fav" | "web_login" | "web_addr",
   patch: (current: Record<string, unknown>) => Record<string, unknown>,
 ): Promise<Customer> {
   return (await claimStateSection(ctx, customer, key, patch))!;
@@ -375,7 +377,7 @@ export async function updateStateSection(
 export async function claimStateSection(
   ctx: TenantContext,
   customer: Customer,
-  key: "consultant" | "direct" | "winback" | "funnel" | "web_fav" | "web_login",
+  key: "consultant" | "direct" | "winback" | "funnel" | "web_fav" | "web_login" | "web_addr",
   patch: (current: Record<string, unknown>) => Record<string, unknown> | null,
 ): Promise<Customer | null> {
   for (let attempt = 0; attempt < 3; attempt++) {
