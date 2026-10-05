@@ -31,7 +31,7 @@
     "@tanstack/react-start": "^1.168.60",
     "@tanstack/router-plugin": "^1.168.42",
     "@vercel/functions": "^2.2.13",
-    "nodemailer": "^9.1.1",
+    "nodemailer": "^10.0.14",
     "pdf-lib": "^1.17.1",
     "qrcode-generator": "^2.0.4",
     "react": "^19.2.7",
