@@ -11,6 +11,7 @@ import {
 import { lastInboundAt } from "@/core/chat/chat";
 import { replyWindow } from "@/core/chat/reply-window";
 import { getSettingsStrict, trySetSetting } from "@/core/settings/settings";
+import { claimMarketing, loadMarketingCap, marketingAllowed } from "@/core/marketing/cap";
 import { serverFailure } from "@/lib/server-failure";
 
 /**
@@ -136,7 +137,11 @@ export async function claimWaitlistNotice(
 }
 
 /**
- * Разослать ждущим. Сначала запись «сообщаем» (claimWaitlistNotice), потом
+ * Разослать ждущим. Сообщение «товар появился» — маркетинговое: оно делит с остальными
+ * автосообщениями общий потолок на покупателя (core/marketing/cap, по умолчанию одно в сутки).
+ * Место в потолке занимается условной записью ДО отправки (claimMarketing); не досталось —
+ * покупатель остаётся в списке и попадает в `left`, ему уйдёт со следующим прогоном.
+ * Сначала запись «сообщаем» (claimWaitlistNotice), потом
  * отправка: товар убран из списка у каждого, кому мы пытались написать, —
  * отправку, которая могла дойти, не повторяем. Instagram и WhatsApp вне окна
  * ответа 24 часа Meta не пропустит: это «не дошло», покупатель не остаётся в
@@ -154,6 +159,8 @@ export async function notifyWaitlist(
   const budget = opts.budgetMs ?? WAITLIST_BUDGET_MS;
   const r: WaitlistRun = { notified: 0, failed: 0, left: 0 };
   const queue = await waitingCustomers(ctx, productId);
+  const cap = await loadMarketingCap(ctx);
+  const at = new Date(started);
   // Заблокированный продавцом покупатель маркетинг не получает: молча пропускаем,
   // товар остаётся в его списке (разблокируют — получит со следующей рассылкой).
   const blocked = await blockedAmong(
@@ -181,6 +188,16 @@ export async function notifyWaitlist(
         continue;
       }
     }
+    // Общий потолок маркетинга: закрытое окно Direct сообщения не требует, место не тратим.
+    if (windowOpen) {
+      if (
+        !marketingAllowed(c.state, cap, at) ||
+        !(await claimMarketing(ctx, c.userKey, c.state as Json, cap, at))
+      ) {
+        r.left++;
+        continue;
+      }
+    }
     if (!(await claimWaitlistNotice(ctx, c, productId))) continue;
     let ok = false;
     try {
@@ -196,7 +213,7 @@ export async function notifyWaitlist(
   return r;
 }
 
-const LAST_RUN_PREFIX = "waitlist_last:";
+export const LAST_RUN_PREFIX = "waitlist_last:";
 
 export type WaitlistLastRun = WaitlistRun & { at: string };
 
@@ -229,4 +246,9 @@ export async function lastWaitlistRun(
 ): Promise<WaitlistLastRun | null> {
   const key = `${LAST_RUN_PREFIX}${productId}`;
   return parseLastRun((await getSettingsStrict(ctx, [key]))[key]);
+}
+
+/** Сброс итога: ждать больше некого (или товар пропал) — «осталось» не висит вечно и крон его не берёт. */
+export async function clearWaitlistRun(ctx: TenantContext, productId: string, at: number) {
+  await saveLastRun(ctx, productId, { notified: 0, failed: 0, left: 0 }, at);
 }

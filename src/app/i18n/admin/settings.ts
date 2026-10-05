@@ -400,7 +400,7 @@ export const ru = {
   "settings.weekly.off": "Выключен",
   "settings.autoV3.title": "Новые автосообщения",
   "settings.autoV3.intro":
-    "Просьба об оценке через несколько дней после выдачи заказа, напоминание «акция кончается завтра» и напоминание о корзине в Instagram и WhatsApp. Работают только у тех покупателей, кому магазин может писать, и учитываются в потолке «одно маркетинговое сообщение в сутки». Пока выключено, покупателям это не отправляется. Каждая функция дополнительно зависит от своего модуля.",
+    "Просьба об оценке через несколько дней после выдачи заказа, напоминание «акция кончается завтра» и напоминание о корзине в Instagram и WhatsApp. Работают только у тех покупателей, кому магазин может писать, и учитываются в потолке «одно маркетинговое сообщение в сутки». Раз в час также дошлёт «Товар появился» тем, кто в листе ожидания и кому сообщение не ушло сразу (не хватило времени или за сутки уже было маркетинговое сообщение). Пока выключено, покупателям это не отправляется. Каждая функция дополнительно зависит от своего модуля.",
   "settings.autoV3.on": "Включены",
   "settings.autoV3.off": "Выключены",
   "settings.svcNotice.title": "Служебные уведомления из Instagram и WhatsApp",
@@ -874,7 +874,7 @@ export const kk: SectionDict<typeof ru> = {
   "settings.weekly.off": "Өшірулі",
   "settings.autoV3.title": "Жаңа автохабарламалар",
   "settings.autoV3.intro":
-    "Тапсырыс берілгеннен кейін бірнеше күннен соң баға сұрау, «акция ертең аяқталады» еске салуы және Instagram мен WhatsApp-тағы себет туралы еске салу. Тек дүкен жаза алатын сатып алушыларға жіберіледі және тәулігіне бір маркетингтік хабарлама лимитіне кіреді. Өшірулі болса, сатып алушыларға жіберілмейді. Әр функция өз модуліне де байланысты.",
+    "Тапсырыс берілгеннен кейін бірнеше күннен соң баға сұрау, «акция ертең аяқталады» еске салуы және Instagram мен WhatsApp-тағы себет туралы еске салу. Тек дүкен жаза алатын сатып алушыларға жіберіледі және тәулігіне бір маркетингтік хабарлама лимитіне кіреді. Сағат сайын «Тауар пайда болды» хабарламасын да жібереді: күту тізіміндегі, бірақ хабарлама бірден жетпегендерге (уақыт жетпеді немесе тәулік ішінде маркетингтік хабарлама болды). Өшірулі болса, сатып алушыларға жіберілмейді. Әр функция өз модуліне де байланысты.",
   "settings.autoV3.on": "Қосулы",
   "settings.autoV3.off": "Өшірулі",
   "settings.svcNotice.title": "Instagram және WhatsApp қызметтік хабарламалары",
@@ -1344,7 +1344,7 @@ export const en: SectionDict<typeof ru> = {
   "settings.weekly.off": "Off",
   "settings.autoV3.title": "New automatic messages",
   "settings.autoV3.intro":
-    "A request for a rating a few days after an order is handed over, the “sale ends tomorrow” reminder, and the cart reminder in Instagram and WhatsApp. They go only to buyers the shop can message and count toward the “one marketing message per day” cap. While off, buyers receive none of them. Each one also depends on its own module.",
+    "A request for a rating a few days after an order is handed over, the “sale ends tomorrow” reminder, and the cart reminder in Instagram and WhatsApp. They go only to buyers the shop can message and count toward the “one marketing message per day” cap. Once an hour it also sends “Back in stock” to people on the waiting list who did not get it right away (time ran out or they had a marketing message within a day). While off, buyers receive none of them. Each one also depends on its own module.",
   "settings.autoV3.on": "On",
   "settings.autoV3.off": "Off",
   "settings.svcNotice.title": "Service notices from Instagram and WhatsApp",
@@ -1820,7 +1820,7 @@ export const uz: SectionDict<typeof ru> = {
   "settings.weekly.off": "O‘chirilgan",
   "settings.autoV3.title": "Yangi avtomatik xabarlar",
   "settings.autoV3.intro":
-    "Buyurtma topshirilgandan bir necha kun keyin baho so‘rash, «aksiya ertaga tugaydi» eslatmasi va Instagram hamda WhatsApp’dagi savat eslatmasi. Faqat do‘kon yoza oladigan xaridorlarga yuboriladi va kuniga bitta marketing xabari chegarasiga kiradi. O‘chiq bo‘lsa, xaridorlarga yuborilmaydi. Har bir funksiya o‘z moduliga ham bog‘liq.",
+    "Buyurtma topshirilgandan bir necha kun keyin baho so‘rash, «aksiya ertaga tugaydi» eslatmasi va Instagram hamda WhatsApp’dagi savat eslatmasi. Faqat do‘kon yoza oladigan xaridorlarga yuboriladi va kuniga bitta marketing xabari chegarasiga kiradi. Har soatda kutish ro‘yxatidagi, lekin xabar darhol yetib bormagan xaridorlarga («Mahsulot paydo bo‘ldi») ham yuboradi (vaqt yetmadi yoki sutka ichida marketing xabari bo‘lgan). O‘chiq bo‘lsa, xaridorlarga yuborilmaydi. Har bir funksiya o‘z moduliga ham bog‘liq.",
   "settings.autoV3.on": "Yoqilgan",
   "settings.autoV3.off": "O‘chirilgan",
   "settings.svcNotice.title": "Instagram va WhatsApp xizmat xabarlari",

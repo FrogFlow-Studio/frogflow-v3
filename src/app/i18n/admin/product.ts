@@ -201,7 +201,7 @@ export const ru = {
   "product.waitlistLast":
     "Последняя рассылка ({when}): получили {notified}, не дошло {failed} (в том числе Instagram и WhatsApp вне 24-часового окна ответа).",
   "product.waitlistLeft":
-    "Не успели написать {n} — им уйдёт при следующем сохранении карточки, пока товар в наличии.",
+    "Ещё не получили {n}: не хватило времени или за сутки им уже писал магазин. Им уйдёт позже, пока товар в наличии: при следующем сохранении карточки, а при включённых «Новых автосообщениях» — в течение часа.",
   // перенос срока предзаказа (Р6)
   "preorder.moved.noDate": "срок уточним",
   "preorder.moved.missed":
@@ -438,7 +438,7 @@ export const kk: SectionDict<typeof ru> = {
   "product.waitlistLast":
     "Соңғы тарату ({when}): алды {notified}, жетпеді {failed} (оның ішінде 24 сағаттық жауап терезесінен тыс Instagram және WhatsApp).",
   "product.waitlistLeft":
-    "{n} адамға жазуға үлгермедік — тауар бар кезде карточканы келесі сақтағанда жіберіледі.",
+    "{n} адам әлі алған жоқ: уақыт жетпеді немесе тәулік ішінде дүкен оларға жазған. Тауар бар кезде кейінірек жіберіледі: карточканы келесі сақтағанда, ал «Жаңа автохабарламалар» қосулы болса — бір сағат ішінде.",
   "preorder.moved.noDate": "мерзімін нақтылаймыз",
   "preorder.moved.missed":
     "«{name}» алдын ала тапсырысының мерзімі өзгерді (енді: {date}). Сатып алушыларға хабарлай алмадық ({n}): 24 сағаттық жауап терезесі жабық немесе байланыс арнасы жоқ. Өзіңіз жазыңыз. Тапсырыстар:",
@@ -674,7 +674,7 @@ export const en: SectionDict<typeof ru> = {
   "product.waitlistLast":
     "Last send ({when}): received {notified}, not delivered {failed} (including Instagram and WhatsApp outside the 24-hour reply window).",
   "product.waitlistLeft":
-    "{n} were not reached in time — they will be messaged the next time the card is saved, while the item is in stock.",
+    "{n} have not received it yet: time ran out or the shop had already messaged them within a day. They will be messaged later while the item is in stock: the next time the card is saved, or within an hour if “New automatic messages” is on.",
   "preorder.moved.noDate": "date to be confirmed",
   "preorder.moved.missed":
     "The pre-order date for “{name}” has changed (now: {date}). We could not tell these customers ({n}): the 24-hour reply window is closed or there is no channel. Please write to them yourself. Orders:",
@@ -909,7 +909,7 @@ export const uz: SectionDict<typeof ru> = {
   "product.waitlistLast":
     "Oxirgi yuborish ({when}): oldi {notified}, yetib bormadi {failed} (shu jumladan 24 soatlik javob oynasidan tashqaridagi Instagram va WhatsApp).",
   "product.waitlistLeft":
-    "{n} kishiga yozishga ulgurmadik — mahsulot mavjud bo‘lganda kartochka keyingi saqlanganda yuboriladi.",
+    "{n} kishi hali olmadi: vaqt yetmadi yoki sutka ichida do‘kon ularga yozgan. Mahsulot mavjud bo‘lganda keyinroq yuboriladi: kartochka keyingi saqlanganda, «Yangi avtomatik xabarlar» yoqilgan bo‘lsa — bir soat ichida.",
   "preorder.moved.noDate": "muddat aniqlanadi",
   "preorder.moved.missed":
     "«{name}» oldindan buyurtmasining muddati oʻzgardi (endi: {date}). Xaridorlarga ({n}) xabar bera olmadik: 24 soatlik javob oynasi yopiq yoki aloqa kanali yoʻq. Oʻzingiz yozing. Buyurtmalar:",

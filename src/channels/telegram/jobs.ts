@@ -415,6 +415,16 @@ export async function runSaleReminders(tenant: Tenant) {
   });
 }
 
+/**
+ * Догоняющая рассылка «товар появился» (К4): тем, кого первая рассылка не успела или кому не
+ * хватило места в общем суточном потолке маркетинга (app/waitlist/catchup).
+ */
+export async function runWaitlistCatchupFor(tenant: Tenant) {
+  if (!tenant.modules.waitlist) return { skipped: "module off" };
+  const { runWaitlistCatchup } = await import("@/app/waitlist/catchup.server");
+  return runWaitlistCatchup(tenantContext(tenant));
+}
+
 /** Поздравления с днём рождения (core/funnel/birthday) — в канал покупателя. */
 export async function runBirthdaysFor(tenant: Tenant) {
   if (!tenant.modules.funnel) return { skipped: "module off" };

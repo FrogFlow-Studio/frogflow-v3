@@ -143,6 +143,8 @@ export const Route = createFileRoute("/api/cron/$job")({
                   funnel: await jobs.runFunnelFor(t),
                   // Акция кончается завтра — тем, кого звали на неё рассылкой.
                   saleEnding: await jobs.runSaleReminders(t),
+                  // «Товар появился» — тем, кого первая рассылка не успела или не пустил суточный потолок.
+                  waitlist: await jobs.runWaitlistCatchupFor(t),
                   subscriptions: await jobs.runSubscriptionsFor(t),
                   courses: await jobs.runCourseLessons(t),
                   // Неоплаченные сутки заказы с сайта — отмена и возврат остатка.

@@ -1,6 +1,6 @@
 import type { TenantContext } from "@/core/tenant/resolve.server";
 import { isLocale } from "@/core/i18n/locale";
-import { notifyWaitlist } from "@/core/waitlist/waitlist";
+import { notifyWaitlist, type WaitlistRun } from "@/core/waitlist/waitlist";
 import { COPY, escapeHtml } from "@/channels/telegram/copy";
 import { adminTelegramApi } from "@/channels/telegram/notify";
 
@@ -12,8 +12,8 @@ export async function notifyBackInStock(
   ctx: TenantContext,
   product: { id: string; name: string },
   opts: { budgetMs?: number } = {},
-): Promise<{ notified: number; failed: number }> {
-  if (!ctx.tenant.modules.waitlist) return { notified: 0, failed: 0 };
+): Promise<WaitlistRun> {
+  if (!ctx.tenant.modules.waitlist) return { notified: 0, failed: 0, left: 0 };
   const api = adminTelegramApi(ctx);
   const { sendToZernioTarget, zernioTargetOf } = await import("@/channels/zernio/outbound.server");
   return notifyWaitlist(

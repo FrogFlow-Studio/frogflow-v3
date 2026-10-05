@@ -58,11 +58,14 @@ describe("рассылка листа ожидания", () => {
       { state: { waitlist: [PRODUCT], locale: "kk", last_marketing_at: "x" } },
     ]);
     await notifyWaitlist(ctx, PRODUCT, async () => true);
-    expect(db.tables.bot_users![0]!.state).toEqual({
-      waitlist: [],
-      locale: "kk",
-      last_marketing_at: "x",
-    });
+    // Место в общем потолке маркетинга занято (К4); остальные поля на месте.
+    expect(db.tables.bot_users![0]!.state).toMatchObject({ waitlist: [], locale: "kk" });
+    expect(
+      typeof (db.tables.bot_users![0]!.state as { last_marketing_at: string }).last_marketing_at,
+    ).toBe("string");
+    expect(
+      (db.tables.bot_users![0]!.state as { last_marketing_at: string }).last_marketing_at,
+    ).not.toBe("x");
   });
 
   it("отправка не дошла — «не дошло», в очереди не остаётся, повтора нет", async () => {
@@ -109,6 +112,88 @@ describe("рассылка листа ожидания", () => {
     const second = await notifyWaitlist(ctx, PRODUCT, send, { now: () => t, budgetMs: 90_000 });
     expect(second).toMatchObject({ notified: 1, left: 0 });
     expect(send).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe("общий потолок маркетинга: «товар появился» (К4)", () => {
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+
+  it("покупателю, получившему другое маркетинговое сообщение за сутки, не пишем: он остаётся в списке и в «left»", async () => {
+    const { db, ctx } = setup([
+      { state: { waitlist: [PRODUCT], last_marketing_at: hoursAgo(2) } },
+      { state: { waitlist: [PRODUCT] } },
+    ]);
+    const send = vi.fn(async () => true);
+    const r = await notifyWaitlist(ctx, PRODUCT, send);
+    expect(r).toMatchObject({ notified: 1, failed: 0, left: 1 });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(waitlistOf(db.tables.bot_users![0]!)).toEqual([PRODUCT]);
+    expect(waitlistOf(db.tables.bot_users![1]!)).toEqual([]);
+    // Через сутки место освободилось: оставшемуся уйдёт со следующим прогоном.
+    (db.tables.bot_users![0]!.state as Record<string, unknown>).last_marketing_at = hoursAgo(25);
+    expect(await notifyWaitlist(ctx, PRODUCT, send)).toMatchObject({ notified: 1, left: 0 });
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("сообщение занимает место в потолке: второй товар в тот же день тому же покупателю не уходит", async () => {
+    const { db, ctx } = setup([{ state: { waitlist: [PRODUCT, "p-2"] } }]);
+    const send = vi.fn(async () => true);
+    await notifyWaitlist(ctx, PRODUCT, send);
+    expect(await notifyWaitlist(ctx, "p-2", send)).toMatchObject({ notified: 0, left: 1 });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(waitlistOf(db.tables.bot_users![0]!)).toEqual(["p-2"]);
+  });
+
+  it("два крона разом на двух товарах одного покупателя — уходит одно сообщение", async () => {
+    const { ctx } = setup([{ state: { waitlist: [PRODUCT, "p-2"] } }]);
+    const send = vi.fn(async () => true);
+    const [a, b] = await Promise.all([
+      notifyWaitlist(ctx, PRODUCT, send),
+      notifyWaitlist(ctx, "p-2", send),
+    ]);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(a.notified + b.notified).toBe(1);
+    expect(a.left + b.left).toBe(1);
+  });
+
+  it("потолок «0» в «Рассылках» снимает ограничение", async () => {
+    const { db, ctx } = setup([{ state: { waitlist: [PRODUCT], last_marketing_at: hoursAgo(1) } }]);
+    db.tables.app_settings = [{ key: "marketing_daily_cap", value: "0" }];
+    const send = vi.fn(async () => true);
+    expect(await notifyWaitlist(ctx, PRODUCT, send)).toMatchObject({ notified: 1, left: 0 });
+  });
+
+  it("отправка могла дойти, но не подтвердилась — место занято, в списке не остаётся, повтора нет", async () => {
+    const { db, ctx } = setup([{ state: { waitlist: [PRODUCT] } }]);
+    const send = vi.fn(async () => false);
+    await notifyWaitlist(ctx, PRODUCT, send);
+    await notifyWaitlist(ctx, PRODUCT, send);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(waitlistOf(db.tables.bot_users![0]!)).toEqual([]);
+    expect(
+      (db.tables.bot_users![0]!.state as { last_marketing_at?: string }).last_marketing_at,
+    ).toBeTruthy();
+  });
+
+  it("закрытое окно Direct сообщения не требует: место в потолке не тратится", async () => {
+    const { db, ctx } = setup([
+      { platform: "instagram", user_key: "ig_a", telegram_id: -1, state: { waitlist: [PRODUCT] } },
+    ]);
+    db.tables.manager_chat_messages = [
+      {
+        id: "m1",
+        bot_id: BOT,
+        telegram_id: -1,
+        direction: "in",
+        created_at: new Date(Date.now() - 30 * 3_600_000).toISOString(),
+      },
+    ];
+    const send = vi.fn(async () => true);
+    expect(await notifyWaitlist(ctx, PRODUCT, send)).toMatchObject({ notified: 0, failed: 1 });
+    expect(send).not.toHaveBeenCalled();
+    expect(
+      (db.tables.bot_users![0]!.state as { last_marketing_at?: string }).last_marketing_at,
+    ).toBeUndefined();
   });
 });
 
