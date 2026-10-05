@@ -149,6 +149,7 @@ export function buildAdminNav(shop: NavShop): AdminNav {
     id: "marketing",
     label: "nav.groupMarketing",
     items: compact<NavItem>([
+      { to: "/admin/share", label: "share.nav" },
       (m.broadcasts || m.wa_broadcasts || m.winback || m.funnel) && {
         to: "/admin/broadcasts",
         label: "nav.broadcasts",
