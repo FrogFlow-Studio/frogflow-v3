@@ -198,12 +198,12 @@ function SettingsPage() {
     await router.invalidate();
   });
   const themeChips = (
-    <div className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
+    <div className="flex flex-wrap gap-1 md:flex-col md:flex-nowrap">
       {(["all", ...visibleThemes(shop)] as const).map((x) => (
         <button
           key={x}
           type="button"
-          className={`btn-ghost shrink-0 whitespace-nowrap text-sm md:text-left ${theme === x ? "font-medium text-accent" : ""}`}
+          className={`btn-ghost text-sm md:text-left ${theme === x ? "font-medium text-accent" : ""}`}
           aria-pressed={theme === x}
           onClick={() => setTheme(x)}
         >
@@ -225,8 +225,10 @@ function SettingsPage() {
           onChange={(e) => setQuery(e.target.value)}
         />
       </div>
-      <div className="grid gap-4 md:grid-cols-[13rem_minmax(0,1fr)]">
-        <nav aria-label={t("settings.title")}>{themeChips}</nav>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[13rem_minmax(0,1fr)]">
+        <nav className="min-w-0" aria-label={t("settings.title")}>
+          {themeChips}
+        </nav>
         <div className="min-w-0">
           {visibleEntries.length === 0 && <Empty>{t("settings19.empty")}</Empty>}
           {links.length > 0 && (
