@@ -29,6 +29,8 @@ test("площадка → фильтр → магазин → «Вернуть�
 
   await page.getByRole("link", { name: "Вернуться ко всем товарам", exact: true }).click();
   await expect(page).toHaveURL(/\/market\/search\?.*category=/);
+  // Страница ещё переключается: без этого openFilters видит старую страницу без кнопки и ничего не открывает.
+  await expect(page.getByTestId("filters")).toBeAttached();
   await openFilters(page);
   await expect(page.getByRole("combobox", { name: "Категория", exact: true })).toHaveValue("Торты");
   await expect(page.getByRole("textbox", { name: "Что ищете", exact: true })).toHaveValue("пряник");
