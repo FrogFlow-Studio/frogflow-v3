@@ -417,7 +417,7 @@ export const dashboardFn = createServerFn({ method: "GET" }).handler(async () =>
   const [counts, rev30, recent] = await Promise.all([
     orderCounts(ctx),
     revenue(ctx, 30),
-    listOrdersForAdmin(ctx, { limit: 8 }),
+    listOrdersForAdmin(ctx, { limit: 5 }),
   ]);
   const { listPaymentMethods } = await import("@/core/settings/payment-methods");
   const { getSettings } = await import("@/core/settings/settings");

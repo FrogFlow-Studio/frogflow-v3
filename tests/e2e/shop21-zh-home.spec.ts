@@ -118,3 +118,14 @@ test("Ж2: менеджеру и бухгалтеру ИИ-баланс на г�
   await expect(ap.getByRole("link", { name: /Осталось/ })).toHaveCount(0);
   await acc.close();
 });
+
+test("Ж4: на главной нет «Заказов по статусам», последние заказы — не больше пяти", async ({
+  page,
+}) => {
+  await login(page, F.ZH21_SELLER_LOGIN, F.ZH21_SELLER_PASSWORD);
+  await expect(page.getByText("Последние заказы", { exact: true })).toBeVisible();
+  await expect(page.getByText("Заказы по статусам", { exact: true })).toHaveCount(0);
+  expect(await page.locator("table tbody tr").count()).toBeLessThanOrEqual(5);
+  await page.getByRole("link", { name: "все заказы", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/orders/);
+});

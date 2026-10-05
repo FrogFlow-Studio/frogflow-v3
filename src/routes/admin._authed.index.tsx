@@ -284,39 +284,6 @@ function Dashboard() {
                 </div>
               )}
             </Card>
-            <Card title={t("overview.byStatus")}>
-              <ul className="space-y-2 text-sm">
-                {(
-                  [
-                    "awaiting_payment",
-                    "awaiting_confirmation",
-                    "delivering",
-                    "delivered",
-                    "accepted",
-                    "in_production",
-                    "ready",
-                    "rejected",
-                  ] as const
-                )
-                  .filter((s) => d.counts[s])
-                  .map((s) => (
-                    <li key={s} className="flex items-center justify-between">
-                      <Link to="/admin/orders" search={{ status: s }} className="hover:underline">
-                        <OrderStatus status={s} />
-                      </Link>
-                      <span className="tabular-nums">{d.counts[s]}</span>
-                    </li>
-                  ))}
-                {(d.counts.unpaid ?? 0) > 0 && (
-                  <li className="flex items-center justify-between">
-                    <Link to="/admin/orders" search={{ unpaid: true }} className="hover:underline">
-                      <Badge tone="warn">{t("physical.unpaid")}</Badge>
-                    </Link>
-                    <span className="tabular-nums">{d.counts.unpaid}</span>
-                  </li>
-                )}
-              </ul>
-            </Card>
           </div>
         </div>
       </div>
