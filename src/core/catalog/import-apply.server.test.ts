@@ -36,7 +36,7 @@ vi.mock("./import-photo.server", () => ({
   },
 }));
 
-const { applyImport, previewImport } = await import("./import.server");
+const { applyImport, previewImport, MAX_CATALOG_SKUS } = await import("./import.server");
 
 const BOT = BOT_ID;
 function ctx(fresh = false) {
@@ -114,5 +114,47 @@ describe("импорт: артикул, повторная загрузка, ф�
     const p = await previewImport(c, FILE);
     expect(p.withPhotos).toBe(2);
     expect(tables().products).toHaveLength(n);
+  });
+});
+
+describe("импорт: бюджет времени и потолок артикулов", () => {
+  const ROWS = ["Артикул;Название;Цена", "T-1;Один;100", "T-2;Два;200", "T-3;Три;300"].join("\n");
+
+  it("время вышло: остановка на строке, повторная загрузка дозаканчивает и не задваивает", async () => {
+    const c = ctx(true);
+    let t = 0;
+    const spy = vi.spyOn(Date, "now").mockImplementation(() => (t += 50_000));
+    const first = await applyImport(c, ROWS);
+    spy.mockRestore();
+    expect(first.created).toBe(1);
+    expect(first.errors.some((e) => e.startsWith("Время вышло на строке 3:"))).toBe(true);
+    expect(tables().products).toHaveLength(1);
+
+    const second = await applyImport(ctx(), ROWS);
+    expect(second.created).toBe(2);
+    expect(second.updated).toBe(1);
+    expect(second.errors).toEqual([]);
+    expect(
+      tables()
+        .products!.map((p) => p.name)
+        .sort(),
+    ).toEqual(["Один", "Три", "Два"].sort());
+  });
+
+  it("потолок артикулов: сверх него не запоминаем, пишем в предупреждения, товары создаются", async () => {
+    const c = ctx(true) as unknown as {
+      tenant: { settings: { catalog_skus: Record<string, string> } };
+    };
+    const old: Record<string, string> = {};
+    for (let i = 0; i < MAX_CATALOG_SKUS - 1; i++) old[`old-${i}`] = `id-${i}`;
+    c.tenant.settings.catalog_skus = old;
+    state.patches = [];
+    const r = await applyImport(c as never, ROWS);
+    expect(r.created).toBe(3);
+    expect(r.warnings.some((w) => w.includes(`не больше ${MAX_CATALOG_SKUS} артикулов`))).toBe(
+      true,
+    );
+    const saved = state.patches.at(-1)!.catalog_skus as Record<string, string>;
+    expect(Object.keys(saved)).toEqual(["t-1"]);
   });
 });

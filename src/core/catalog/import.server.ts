@@ -62,6 +62,8 @@ const skuMap = (ctx: TenantContext) =>
 /** Общий бюджет применения меньше лимита функции (120 с): таблица и фото. */
 export const IMPORT_DB_BUDGET_MS = 80_000;
 export const IMPORT_TOTAL_BUDGET_MS = 105_000;
+/** Потолок запомненных артикулов: они лежат в settings и читаются на каждый запрос. */
+export const MAX_CATALOG_SKUS = 5000;
 
 /** maxRows — потолок строк за раз; таблица по ссылке (sheet.server) читается целиком. */
 export async function previewImport(
@@ -280,6 +282,21 @@ export async function applyImport(
     );
 
   // Артикулы запоминаем сразу после таблицы: даже если фото не успеют, повтор найдёт товары.
+  const known = skuMap(ctx);
+  let room = Math.max(0, MAX_CATALOG_SKUS - known.size);
+  let skipped = 0;
+  for (const k of Object.keys(newSkus)) {
+    if (known.has(k)) continue;
+    if (room > 0) room--;
+    else {
+      delete newSkus[k];
+      skipped++;
+    }
+  }
+  if (skipped)
+    result.warnings.push(
+      `Запомнено не больше ${MAX_CATALOG_SKUS} артикулов: ещё ${skipped} не запомнены, при повторной загрузке такие товары найдутся по названию`,
+    );
   if (Object.keys(newSkus).length) {
     try {
       await patchTenantSettings(ctx.tenant.id, { catalog_skus: newSkus });
