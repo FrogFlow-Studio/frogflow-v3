@@ -1,6 +1,7 @@
 import { publicHeaders } from "@/app/cache-policy";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
+import { rememberMarketBack } from "@/app/market/back";
 import { marketT } from "@/app/market/i18n";
 import { marketSearchFn } from "@/app/market/search.functions";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
@@ -25,12 +26,22 @@ export const Route = createFileRoute("/market/search")({
 });
 
 /** «в магазине {имя}»: имя автора ведёт в его витрину, остальной текст по языку (П1). */
-function ItemAuthor({ text, slug, name }: { text: string; slug: string; name: string }) {
+function ItemAuthor({
+  text,
+  slug,
+  name,
+  onOpen,
+}: {
+  text: string;
+  slug: string;
+  name: string;
+  onOpen: () => void;
+}) {
   const [before = "", after = ""] = text.split("\u0000");
   return (
     <>
       {before}
-      <Link to="/s/$slug" params={{ slug }} className="underline">
+      <Link to="/s/$slug" params={{ slug }} className="underline" onClick={onOpen}>
         {name}
       </Link>
       {after}
@@ -132,12 +143,14 @@ function MarketSearchPage() {
                         text={t("items.in", { shop: "\u0000" })}
                         slug={i.shopSlug}
                         name={i.shopName}
+                        onOpen={() => rememberMarketBack(i.shopSlug, "/market/search", search)}
                       />
                     </p>
                     <Link
                       to="/s/$slug"
                       params={{ slug: i.shopSlug }}
                       className="mt-2 inline-block text-sm font-medium underline"
+                      onClick={() => rememberMarketBack(i.shopSlug, "/market/search", search)}
                     >
                       {t("items.open")}
                     </Link>

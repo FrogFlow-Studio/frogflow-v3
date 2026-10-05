@@ -5,6 +5,7 @@ import { z } from "zod";
 import { trackMarketFn } from "@/app/market/track.functions";
 import { marketFn } from "@/app/market/market.functions";
 import { marketHeadLinks } from "@/app/market/seo";
+import { rememberMarketBack } from "@/app/market/back";
 import { marketT } from "@/app/market/i18n";
 import { SUPPORTED_LOCALES, type Locale } from "@/core/i18n/locale";
 
@@ -159,9 +160,10 @@ function MarketPage() {
                     to="/s/$slug"
                     params={{ slug: s.slug }}
                     className="mt-3 inline-block text-sm font-medium underline"
-                    onClick={() =>
-                      void trackMarketFn({ data: { kind: "click", key: s.id } }).catch(() => {})
-                    }
+                    onClick={() => {
+                      rememberMarketBack(s.slug, "/market", search);
+                      void trackMarketFn({ data: { kind: "click", key: s.id } }).catch(() => {});
+                    }}
                   >
                     {t("shop.open")}
                   </Link>

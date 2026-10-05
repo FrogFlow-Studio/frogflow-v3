@@ -37,6 +37,7 @@ export const storeInfoFn = createServerFn({ method: "GET" })
     const { giftSaleOpen } = await import("@/core/discounts/gift-sale");
     const { storefrontOpen } = await import("@/core/storefront/access");
     const { webCheckoutSettings } = await import("@/core/storefront/web-order");
+    const { shownOnMarketplace, marketplaceCity } = await import("@/core/marketplace/consent");
     return {
       ...(await storeInfo(ctx)),
       /** Ссылка «Сертификат» в шапке: продажа сертификатов и оформление на сайте открыты. */
@@ -49,6 +50,9 @@ export const storeInfoFn = createServerFn({ method: "GET" })
         storefrontOpen(ctx.tenant, "quiz") &&
         (await (await import("@/core/quiz/quiz")).loadQuiz(ctx)).questions.length > 0,
       paused: ctx.tenant.status !== "active",
+      /** Магазин виден на площадке: у него есть плашка «Вы смотрите только магазин…» (П2). */
+      onMarket: shownOnMarketplace(ctx.tenant),
+      marketCity: marketplaceCity(ctx.tenant),
       /** Язык витрины — язык магазина; покупатель может сменить его через `?lang=`. */
       locale: (ctx.tenant.settings.default_locale ?? "ru") as Locale,
     };

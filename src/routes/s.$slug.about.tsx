@@ -105,7 +105,7 @@ function AboutPage() {
         </section>
       )}
       {reviews.length > 0 && (
-        <section className="mt-8" data-testid="about-reviews">
+        <section id="reviews" className="mt-8" data-testid="about-reviews">
           <h2 className="mb-3 text-sm font-semibold">{t("showcase.reviews")}</h2>
           <ul className="space-y-3">
             {reviews.map((r) => (

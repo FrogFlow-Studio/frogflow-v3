@@ -7,6 +7,7 @@ import { storeShareFn } from "@/app/storefront/share.functions";
 import { shopLinks, shopMeta } from "@/core/storefront/share";
 import { CartProvider, useCart, useTelegramWebApp } from "@/app/storefront/cart";
 import { FavoritesProvider, useFavorites } from "@/app/storefront/favorites";
+import { MarketBand } from "@/app/storefront/market-band";
 import { InstallPrompt } from "@/app/storefront/install";
 import { StorefrontLocaleProvider, useStorefrontLocale } from "@/app/storefront/locale";
 import { storefrontT } from "@/app/i18n/storefront";
@@ -133,6 +134,16 @@ function StoreFrame() {
           </div>
         </div>
       </header>
+      {!wa && (
+        <MarketBand
+          slug={shop.slug}
+          name={shop.name}
+          tagline={shop.tagline}
+          city={shop.marketCity}
+          hasAbout={shop.hasAbout}
+          onMarket={shop.onMarket}
+        />
+      )}
       {shop.paused && (
         <div className="bg-warn/20 px-4 py-2 text-center text-sm">{t("layout.paused")}</div>
       )}
