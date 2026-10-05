@@ -16,7 +16,6 @@ import {
   PAY_REMIND_KEY,
   parsePayRemindHours,
 } from "@/core/orders/pay-remind-settings";
-import { newViewOn } from "@/core/settings/new-view";
 import { settingsRoute } from "./route";
 
 export function LegalCard({ settings }: { settings: Record<string, string> }) {
@@ -292,32 +291,6 @@ export function ServiceNoticesCard({ settings }: { settings: Record<string, stri
             <span className="text-sm">{t(r.label)}</span>
           </div>
         ))}
-      </div>
-      <ErrorBox error={toggle.error} />
-    </Card>
-  );
-}
-
-/** Переключатель «новый вид» (core/settings/new-view): новые страницы вместо старых, назад без выкладки. */
-export function NewViewCard({ settings }: { settings: Record<string, string> }) {
-  const router = useRouter();
-  const { shop } = settingsRoute.useRouteContext();
-  const t = adminT(shop.locale);
-  const toggle = useAction(async (v: boolean) => {
-    await saveSettingsFn({ data: { new_view: v ? "true" : "false" } });
-    await router.invalidate();
-  });
-  return (
-    <Card title={t("settings.newView.title")}>
-      <p className="mb-3 text-sm text-muted">{t("settings.newView.intro")}</p>
-      <div className="flex items-center gap-3">
-        <Switch
-          checked={newViewOn(settings.new_view)}
-          disabled={toggle.busy || shop.role !== "owner"}
-          onChange={(v) => void toggle.run(v).catch(() => {})}
-          label={t("settings.newView.label")}
-        />
-        <span className="text-sm">{t("settings.newView.label")}</span>
       </div>
       <ErrorBox error={toggle.error} />
     </Card>

@@ -273,7 +273,7 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
     const { VERTICALS } = await import("@/core/verticals/registry");
     const { getSettings } = await import("@/core/settings/settings");
     const { isLocale } = await import("@/core/i18n/locale");
-    const st = await getSettings(ctx, ["shop_name", "admin_locale", "shop_currency", "new_view"]);
+    const st = await getSettings(ctx, ["shop_name", "admin_locale", "shop_currency"]);
     const shopName = st.shop_name ?? ctx.tenant.name;
     const locale = isLocale(st.admin_locale)
       ? st.admin_locale
@@ -285,8 +285,6 @@ export const adminShopFn = createServerFn({ method: "GET" }).handler(async () =>
       locale,
       /** Валюта магазина по умолчанию — для новых товаров и реквизитов. */
       currency: (st.shop_currency ?? "KZT").toUpperCase(),
-      /** «Новый вид» (core/settings/new-view): страницы партии 21 за этим флагом. */
-      newView: (await import("@/core/settings/new-view")).newViewOn(st.new_view),
       role: await (await import("@/app/auth/guards.server")).adminRole(),
       username: s.data.admin.username,
       vertical: ctx.tenant.vertical,
