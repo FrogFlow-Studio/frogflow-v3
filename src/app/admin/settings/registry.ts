@@ -107,6 +107,12 @@ export const SETTINGS_REGISTRY: readonly SettingsEntry[] = [
     title: "settings.svcNotice.title",
     keys: ["notify_photo_not_receipt", "notify_bot_pause"],
   }),
+  E({
+    id: "new-view",
+    theme: "shop",
+    title: "settings.newView.title",
+    keys: ["new_view"],
+  }),
   E({ id: "payment-methods", theme: "payment", title: "settings.pay.title" }),
   E({
     id: "fulfillment",

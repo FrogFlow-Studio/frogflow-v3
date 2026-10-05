@@ -53,6 +53,7 @@ import {
   WeeklyReportCard,
   AutoMessagesCard,
   ServiceNoticesCard,
+  NewViewCard,
 } from "@/app/admin/settings/shop";
 
 // Карточки за модулем или ролью: код приходит, только когда карточку показывают.
@@ -519,6 +520,9 @@ function SettingsPage() {
           </SettingsSection>
           <SettingsSection id="service-notices">
             <ServiceNoticesCard settings={settings} />
+          </SettingsSection>
+          <SettingsSection id="new-view">
+            <NewViewCard settings={settings} />
           </SettingsSection>
           <SettingsSection id="pay-remind">
             <PayReminderCard settings={settings} />

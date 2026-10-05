@@ -408,6 +408,10 @@ export const ru = {
     "Эти сообщения бот присылает вам в Telegram. Выключите те, которые мешают: покупателям это ничего не меняет, бот работает как раньше. Заказы, чеки, жалобы и вопросы покупателей сюда не входят, они настраиваются в «Уведомлениях».",
   "settings.svcNotice.photo": "Покупатель прислал фото, а заказа, который ждёт оплаты, нет",
   "settings.svcNotice.pause": "Бот на паузе в диалоге: вы ответили покупателю сами",
+  "settings.newView.title": "Новый вид",
+  "settings.newView.intro":
+    "Новые страницы админки и площадки (главная «Ждёт вас», заказы в три колонки, товар одной страницей, темы настроек) вместо привычных. Данные и действия те же. Выключите, и всё вернётся как было, ничего устанавливать не нужно.",
+  "settings.newView.label": "Включить новый вид",
   "settings.payRemind.title": "Напоминание об оплате",
   "settings.payRemind.intro":
     "Если заказ из бота, Instagram или WhatsApp не оплачен, бот один раз напомнит покупателю сумму и реквизиты. В Instagram и WhatsApp — только если покупатель писал магазину в последние сутки.",
@@ -882,6 +886,10 @@ export const kk: SectionDict<typeof ru> = {
     "Бұл хабарламаларды бот Telegram-ға жібереді. Кедергі келтіретіндерін өшіріңіз: сатып алушыларға ештеңе өзгермейді, бот бұрынғыдай жұмыс істейді. Тапсырыстар, чектер, шағымдар мен сатып алушылардың сұрақтары бұған кірмейді, олар «Хабарламалар» бөлімінде бапталады.",
   "settings.svcNotice.photo": "Сатып алушы фото жіберді, бірақ төлем күтіп тұрған тапсырыс жоқ",
   "settings.svcNotice.pause": "Диалогта бот үзілісте: сіз сатып алушыға өзіңіз жауап бердіңіз",
+  "settings.newView.title": "Жаңа көрініс",
+  "settings.newView.intro":
+    "Әкімшілік пен алаңның жаңа беттері (басты бет «Сізді күтеді», үш бағанды тапсырыстар, бір беттегі тауар, баптау тақырыптары) әдеттегілердің орнына. Деректер мен әрекеттер сол. Өшірсеңіз, бәрі бұрынғыдай болады, ештеңе орнатудың қажеті жоқ.",
+  "settings.newView.label": "Жаңа көріністі қосу",
   "settings.payRemind.title": "Төлем туралы еске салу",
   "settings.payRemind.intro":
     "Боттағы, Instagram немесе WhatsApp-тағы тапсырыс төленбесе, бот сатып алушыға соманы мен деректемелерді бір рет еске салады. Instagram мен WhatsApp-та — сатып алушы соңғы тәулікте дүкенге жазған болса ғана.",
@@ -1352,6 +1360,10 @@ export const en: SectionDict<typeof ru> = {
     "The bot sends these to you in Telegram. Turn off the ones that get in the way: buyers see no difference and the bot works as before. Orders, receipts, complaints and buyer questions are not included; they are set in “Notifications”.",
   "settings.svcNotice.photo": "A buyer sent a photo and no order is waiting for payment",
   "settings.svcNotice.pause": "Bot paused in a dialogue: you replied to the buyer yourself",
+  "settings.newView.title": "New look",
+  "settings.newView.intro":
+    "New admin and marketplace pages (a home page with “Waiting for you”, orders in three columns, a product on one page, settings themes) instead of the familiar ones. Data and actions are the same. Switch it off and everything returns as it was; nothing to install.",
+  "settings.newView.label": "Turn on the new look",
   "settings.payRemind.title": "Payment reminder",
   "settings.payRemind.intro":
     "If an order from the bot, Instagram or WhatsApp is not paid, the bot reminds the buyer once of the amount and payment details. In Instagram and WhatsApp only if the buyer wrote to the shop within the last day.",
@@ -1828,6 +1840,10 @@ export const uz: SectionDict<typeof ru> = {
     "Bu xabarlarni bot sizga Telegram’da yuboradi. Xalaqit berayotganlarini o‘chiring: xaridorlar uchun hech narsa o‘zgarmaydi, bot avvalgidek ishlaydi. Buyurtmalar, cheklar, shikoyatlar va xaridorlar savollari bunga kirmaydi, ular «Xabarnomalar»da sozlanadi.",
   "settings.svcNotice.photo": "Xaridor rasm yubordi, lekin to‘lov kutayotgan buyurtma yo‘q",
   "settings.svcNotice.pause": "Suhbatda bot pauzada: siz xaridorga o‘zingiz javob berdingiz",
+  "settings.newView.title": "Yangi ko‘rinish",
+  "settings.newView.intro":
+    "Admin va maydonning yangi sahifalari (bosh sahifa «Sizni kutmoqda», uch ustunli buyurtmalar, bitta sahifadagi mahsulot, sozlama mavzulari) odatdagilar o‘rniga. Ma’lumotlar va amallar o‘sha-o‘sha. O‘chirsangiz, hammasi avvalgidek bo‘ladi, hech narsa o‘rnatish shart emas.",
+  "settings.newView.label": "Yangi ko‘rinishni yoqish",
   "settings.payRemind.title": "To‘lov haqida eslatma",
   "settings.payRemind.intro":
     "Botdagi, Instagram yoki WhatsApp’dagi buyurtma to‘lanmasa, bot xaridorga summa va rekvizitlarni bir marta eslatadi. Instagram va WhatsApp’da — faqat xaridor so‘nggi sutkada do‘konga yozgan bo‘lsa.",
