@@ -490,12 +490,20 @@ export async function runOrderAction(
       // Шаги сборки — только у физического заказа: так же решает `orderActions` для кнопок.
       if (!to || order.fulfillment_kind !== "physical")
         return { ok: false, message: t("msg.orders.noTransition") };
+      // «Готов» → закрытие: у доставки «Отправлен», у самовывоза и старых заказов «Выдан» (Х4).
+      const { defaultHandoverStep } = await import("@/core/orders/handover");
+      const step = to === "delivered" ? defaultHandoverStep(order.fulfillment_type) : undefined;
       const ok = await setPhysicalStatus(ctx, id, order.status, to);
       if (ok) {
         const { recordOrderEvent } = await import("@/core/orders/events");
-        await recordOrderEvent(ctx, id, "status", { to }, actor);
+        await recordOrderEvent(ctx, id, "status", step ? { to, step } : { to }, actor);
       }
-      if (ok && action === "next") await notifyCustomer(ctx, order, m.orderStatusNotice(to, no));
+      if (ok && action === "next")
+        await notifyCustomer(
+          ctx,
+          order,
+          step === "shipped" ? m.orderShipped(no) : m.orderStatusNotice(to, no),
+        );
       if (ok && to === "delivered") {
         const { rewardReferrerIfFirstDelivery } = await import("@/core/referrals/referrals");
         // Статус уже сменён: сбой награды не должен выглядеть как сбой смены.
@@ -508,7 +516,9 @@ export async function runOrderAction(
       return {
         ok,
         message: ok
-          ? t("msg.orders.status", { status: statusName(t, to) })
+          ? t("msg.orders.status", {
+              status: step === "shipped" ? t("order.step.shipped") : statusName(t, to),
+            })
           : t("msg.orders.statusChanged"),
       };
     }

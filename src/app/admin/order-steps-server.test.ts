@@ -65,3 +65,41 @@ describe("переходы статуса: недоступное в кнопк�
           }
         });
 });
+
+describe("Х4: «дальше» из «готов» в админке", () => {
+  for (const [type, step] of [
+    ["delivery", "shipped"],
+    ["pickup", "done"],
+    [null, "done"],
+  ] as const)
+    it(`${type ?? "без способа получения"}: шаг ${step} в журнале заказа`, async () => {
+      const db = fakeDb({ unique: { zernio_logs: [["event_id"]] } });
+      db.tables.zernio_logs = [];
+      db.tables.orders = [
+        { id: 2, status: "ready", fulfillment_kind: "physical", fulfillment_type: type },
+      ];
+      orders[2] = {
+        id: 2,
+        order_no: 2,
+        display_no: 2,
+        status: "ready",
+        fulfillment_kind: "physical",
+        fulfillment_type: type,
+        platform: "web",
+        total: 100,
+        currency: "KZT",
+        telegram_id: -1,
+        order_items: [],
+      };
+      const ctx = {
+        tenant: { id: "b", telegramTokenEnc: null, modules: {}, settings: {} },
+        db,
+      } as unknown as TenantContext;
+      const r = await runOrderAction(ctx, 2, "next");
+      expect(r.ok).toBe(true);
+      expect(db.tables.orders![0]!.status).toBe("delivered");
+      const ev = db.tables.zernio_logs!.filter((e) => e.event_type === "order.status");
+      expect(ev).toHaveLength(1);
+      expect((ev[0]!.payload as Record<string, unknown>).step).toBe(step);
+    });
+});

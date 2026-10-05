@@ -116,7 +116,11 @@ function OrderPage() {
   if (noLink) return <p className="text-sm text-muted">{t("order.noLink")}</p>;
   if (loadError) return <ErrorBox error={loadError} />;
   if (!view) return <p className="text-sm text-muted">…</p>;
-  const steps = orderSteps(view.status, view.fulfillment !== null);
+  const steps = orderSteps(
+    view.status,
+    view.fulfillment !== null,
+    view.fulfillment?.type === "delivery",
+  );
   const awaiting = view.status === "awaiting_payment";
   const checking = view.status === "awaiting_confirmation";
   return (

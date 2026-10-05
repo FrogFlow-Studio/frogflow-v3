@@ -61,13 +61,14 @@ export type MainActionLabel =
   | "order.confirmDeliver"
   | "order.toProduction"
   | "order.toReady"
-  | "order.toDelivered";
+  | "order.toDelivered"
+  | "order.toShipped";
 
 export type MainAction = { action: "confirm" | "next"; label: MainActionLabel };
 
 /** Одна главная кнопка по статусу; нет допустимого действия (или нет права правки) — null. */
 export function mainAction(
-  o: { status: string; fulfillment_kind: string },
+  o: { status: string; fulfillment_kind: string; fulfillment_type?: string | null },
   editable: boolean,
 ): MainAction | null {
   const actions = orderActions(o, editable);
@@ -84,7 +85,9 @@ export function mainAction(
           ? "order.toProduction"
           : o.status === "in_production"
             ? "order.toReady"
-            : "order.toDelivered",
+            : o.fulfillment_type === "delivery"
+              ? "order.toShipped"
+              : "order.toDelivered",
     };
   return null;
 }

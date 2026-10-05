@@ -10,6 +10,7 @@ import { displayNo, itemLanguages } from "@/core/orders/pure";
 import { orderBlocks } from "@/core/orders/blocks";
 import { orderMoney } from "@/core/orders/money";
 import { mainAction, moreActions, orderSteps } from "@/core/orders/steps";
+import { closedHandover, defaultHandoverStep } from "@/core/orders/handover";
 import { slotOf } from "@/core/fulfillment/slots";
 import { ApprovalCard, CourierCard, FulfillmentEditor } from "@/app/admin/order-cards";
 import { MoneyBlock } from "@/app/admin/order-money";
@@ -63,6 +64,12 @@ function OrderPage() {
   const main = mainAction(o, editable);
   const more = moreActions(o, editable);
   const stepView = orderSteps(o);
+  // Последний шаг: у доставки «Отправлен», у самовывоза «Выдан»; закрытый заказ — как закрыт (старые — «Выдан»).
+  const lastStep = !physical
+    ? "done"
+    : o.status === "delivered"
+      ? closedHandover(events)
+      : defaultHandoverStep(o.fulfillment_type);
   const blocks = orderBlocks({
     status: o.status,
     fulfillment_kind: o.fulfillment_kind,
@@ -128,7 +135,7 @@ function OrderPage() {
                 }`}
               >
                 <span aria-hidden="true">{s.state === "done" ? "✓" : i + 1}</span>
-                {t(`order.step.${s.key}` as AdminKey)}
+                {t(`order.step.${s.key === "done" ? lastStep : s.key}` as AdminKey)}
               </li>
             ))}
           </ol>

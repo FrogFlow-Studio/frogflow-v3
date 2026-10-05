@@ -56,3 +56,21 @@ describe("шаги заказа на странице статуса", () => {
     }
   });
 });
+
+describe("Х4: доставка закрывается «Отправлен», самовывоз — «Получен»", () => {
+  it("последний шаг доставки — shipped, у самовывоза и по умолчанию — received", () => {
+    const last = (delivery?: boolean) =>
+      orderSteps("delivered", true, delivery)
+        .map((s) => `${s.key}:${s.state}`)
+        .at(-1);
+    expect(last(true)).toBe("shipped:done");
+    expect(last(false)).toBe("received:done");
+    expect(last()).toBe("received:done");
+    expect(orderSteps("ready", true, true).map((s) => s.key)).toEqual([
+      "placed",
+      "working",
+      "ready",
+      "shipped",
+    ]);
+  });
+});

@@ -1,4 +1,5 @@
 import type { Locale } from "@/core/i18n/locale";
+import { handoverAllowed } from "@/core/orders/handover";
 
 /**
  * Кнопки под уведомлением продавцу о заказе. Физический заказ ведётся
@@ -68,10 +69,15 @@ export function writeBuyerButton(orderId: number, locale: Locale): Key {
  * Кнопки по текущему статусу физического заказа. Пустой список — шагов нет
  * (выдан, закрыт): уведомление тогда снимается.
  */
-export function orderStepKeyboard(order: { id: number; status: string }, locale: Locale): Key[][] {
+export function orderStepKeyboard(
+  order: { id: number; status: string; fulfillment_type?: string | null },
+  locale: Locale,
+): Key[][] {
   const L = LABELS[locale];
   const steps = (Object.keys(ORDER_STEPS) as OrderStep[]).filter(
-    (s) => ORDER_STEPS[s].from === order.status,
+    (s) =>
+      ORDER_STEPS[s].from === order.status &&
+      (s === "shipped" || s === "done" ? handoverAllowed(order.fulfillment_type, s) : true),
   );
   if (!steps.length) return [];
   return [

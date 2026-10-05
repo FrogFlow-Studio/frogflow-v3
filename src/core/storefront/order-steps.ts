@@ -7,13 +7,15 @@
  * сумму и статус оплаты показывает сам заказ. Отклонённый, отменённый и
  * возвращённый заказ шагов не имеет: его статус виден текстом.
  */
-export type OrderStepKey = "placed" | "working" | "ready" | "paid" | "received" | "issued";
+export type OrderStepKey =
+  "placed" | "working" | "ready" | "paid" | "received" | "shipped" | "issued";
 export type OrderStep = { key: OrderStepKey; state: "done" | "current" | "todo" };
 
 const TERMINAL = new Set(["rejected", "cancelled", "refunded"]);
 
 const DIGITAL: OrderStepKey[] = ["placed", "paid", "issued"];
 const PHYSICAL: OrderStepKey[] = ["placed", "working", "ready", "received"];
+const PHYSICAL_SHIPPED: OrderStepKey[] = ["placed", "working", "ready", "shipped"];
 
 /** Номер текущего шага; больше длины списка — всё выполнено. */
 function position(status: string, physical: boolean): number {
@@ -29,9 +31,10 @@ function position(status: string, physical: boolean): number {
 }
 
 /** Шаги заказа; пустой список — шагов нет (отменён, отклонён, возвращён). */
-export function orderSteps(status: string, physical: boolean): OrderStep[] {
+export function orderSteps(status: string, physical: boolean, delivery = false): OrderStep[] {
   if (TERMINAL.has(status)) return [];
-  const keys = physical ? PHYSICAL : DIGITAL;
+  // Доставка закрывается «Отправлен», а не «Получен»: продавец не знает, дошла ли посылка (Х4).
+  const keys = physical ? (delivery ? PHYSICAL_SHIPPED : PHYSICAL) : DIGITAL;
   const at = position(status, physical);
   return keys.map((key, i) => ({
     key,

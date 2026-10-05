@@ -1,6 +1,7 @@
 import { isReorderWord } from "@/core/orders/reorder-words";
 import { lastPaidOrder, shortLabels } from "@/core/orders/reorder";
 import { orderBuyerLocale } from "@/core/orders/buyer-locale";
+import { handoverAllowed } from "@/core/orders/handover";
 import {
   REFERRAL_PREFIX,
   referralStats,
@@ -3058,6 +3059,9 @@ async function adminOrderButton(
   if (kind === "otr") {
     if (order.fulfillment_kind !== "physical" || !["ready", "delivered"].includes(order.status))
       return void (await say(st.trackNeedReady(no, order.status)));
+    // Самовывоз не отправляют: трека нет (Х4).
+    if (!handoverAllowed(order.fulfillment_type, "shipped"))
+      return void (await say(st.stepStale(no, order.status)));
     const { orderTrackRefLine } = await import("./order-notify-keys");
     await say(`${st.trackPrompt(no)}\n${orderTrackRefLine(orderId)}`);
     return;
@@ -3067,6 +3071,12 @@ async function adminOrderButton(
   if (!stepRaw || !isOrderStep(stepRaw) || order.fulfillment_kind !== "physical")
     return void (await say(st.stepStale(no, order.status)));
   const { from, to } = ORDER_STEPS[stepRaw];
+  // Доставка закрывается «Отправлен», самовывоз — «Выдан»: чужая кнопка (устаревшее сообщение) — отказ (Х4).
+  if (
+    (stepRaw === "shipped" || stepRaw === "done") &&
+    !handoverAllowed(order.fulfillment_type, stepRaw)
+  )
+    return void (await say(st.stepStale(no, order.status)));
   const { setPhysicalStatus } = await import("@/core/orders/admin");
   // Условная запись: выигрывает одно нажатие, остальные видят «статус уже изменился».
   if (!(await setPhysicalStatus(ctx, orderId, from, to)))
@@ -3097,7 +3107,10 @@ async function afterOrderStep(
   const no = displayNo(order);
   const { orderStepKeyboard } = await import("./order-notify-keys");
   const { refreshOrderNotifyButtons, scheduleOrderNotifyDismiss } = await import("./order-notify");
-  const keyboard = orderStepKeyboard({ id: orderId, status: to }, sLocale);
+  const keyboard = orderStepKeyboard(
+    { id: orderId, status: to, fulfillment_type: order.fulfillment_type },
+    sLocale,
+  );
   if (keyboard.length) await refreshOrderNotifyButtons(ctx, api, orderId, keyboard);
   else {
     await scheduleOrderNotifyDismiss(ctx, api, orderId);
@@ -3199,6 +3212,10 @@ async function trackReply(
     (order.status !== "ready" && order.status !== "delivered")
   ) {
     await say(st.trackNeedReady(no, order.status));
+    return true;
+  }
+  if (!handoverAllowed(order.fulfillment_type, "shipped")) {
+    await say(st.stepStale(no, order.status));
     return true;
   }
   const { recordOrderEvent, claimOrderEvent } = await import("@/core/orders/events");

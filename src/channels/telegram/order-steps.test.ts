@@ -299,3 +299,45 @@ describe("Б12: «Отправлен + трек»", () => {
     expect(zernioSent.join("\n")).toContain("Трек-номер: 1234567890");
   });
 });
+
+describe("Х4: «Отправлен» для доставки, «Выдан» для самовывоза", () => {
+  it("клавиатура: у доставки только «Отправлен», у самовывоза только «Выдан»", () => {
+    const flat = (fulfillment_type: string | null) =>
+      orderStepKeyboard({ id: 7, status: "ready", fulfillment_type }, "ru")
+        .flat()
+        .map((b) => b.callback_data);
+    expect(flat("delivery")).toEqual(["ost:7:shipped", "otr:7", "owr:7"]);
+    expect(flat("pickup")).toEqual(["ost:7:done", "otr:7", "owr:7"]);
+    expect(flat(null)).toEqual(["ost:7:shipped", "ost:7:done", "otr:7", "owr:7"]);
+  });
+
+  it("доставка: «Выдан» от устаревшей кнопки отклонён на сервере, статус не меняется", async () => {
+    const { press, order, events, texts } = setup({ fulfillment_type: "delivery" });
+    await press("ost:7:done");
+    expect(order().status).toBe("ready");
+    expect(events().filter((e) => e.event_type === "order.status")).toEqual([]);
+    expect(texts().filter((t) => t.startsWith(`${BUYER}:`))).toEqual([]);
+  });
+
+  it("самовывоз: «Отправлен» и трек отклонены, «Выдан» проходит с записью в журнале", async () => {
+    const { press, order, events, texts } = setup({ fulfillment_type: "pickup" });
+    await press("ost:7:shipped");
+    await press("otr:7");
+    expect(order().status).toBe("ready");
+    await press("ost:7:done");
+    expect(order().status).toBe("delivered");
+    const st = events().filter((e) => e.event_type === "order.status");
+    expect(st).toHaveLength(1);
+    expect(st[0]!.payload).toMatchObject({ to: "delivered", step: "done" });
+    expect(texts().filter((t) => t.startsWith(`${BUYER}:`))).toHaveLength(1);
+  });
+
+  it("доставка: «Отправлен» закрывает заказ, в журнале шаг shipped, покупателю сообщение об отправке", async () => {
+    const { press, order, events, texts } = setup({ fulfillment_type: "delivery" });
+    await press("ost:7:shipped");
+    expect(order().status).toBe("delivered");
+    const st = events().filter((e) => e.event_type === "order.status");
+    expect(st[0]!.payload).toMatchObject({ to: "delivered", step: "shipped" });
+    expect(texts().filter((t) => t.startsWith(`${BUYER}:`))[0]).toContain("отправлен");
+  });
+});
